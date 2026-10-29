@@ -104,6 +104,7 @@ import {
   isAppleSiliconHost,
   isVariantCompatibleWithHost,
   chatVariantPlatformGate,
+  filterFamiliesForHost,
 } from "./utils";
 import {
   useWorkspace,
@@ -1263,7 +1264,7 @@ export default function App() {
   if (activeTab === "online-models") {
     content = (
       <OnlineModelsTab
-        searchResults={searchResults}
+        searchResults={filterFamiliesForHost(searchResults, workspace.system)}
         searchInput={searchInput}
         onSearchInputChange={setSearchInput}
         searchError={searchError}
@@ -1279,6 +1280,7 @@ export default function App() {
           mtplxModels: workspace.system.mtplx?.supportedModels ?? [],
           tensorfoldModels: workspace.system.tensorfold?.supportedModels ?? [],
           turboInstalled: Boolean(workspace.system.llamaServerTurboPath),
+          appleSilicon: isAppleSilicon,
         }}
         expandedFamilyId={expandedFamilyId}
         onExpandedFamilyIdChange={setExpandedFamilyId}
@@ -1957,6 +1959,7 @@ export default function App() {
     content = <LogsTab filteredLogs={filteredLogs} logQuery={logQuery} onLogQueryChange={setLogQuery} />;
   } else if (activeTab === "settings") {
     content = <SettingsTab
+      hostSystem={workspace.system}
       settingsDraft={settingsDraft}
       onSettingsDraftChange={setSettingsDraft}
       newDirectoryLabel={newDirectoryLabel}

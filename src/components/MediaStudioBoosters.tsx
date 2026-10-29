@@ -5,10 +5,11 @@ import { AcceleratorCard } from "./AcceleratorCard";
 import {
   type AcceleratorId,
   getAccelerator,
-  getApplicableAccelerators,
+  getApplicableAcceleratorsForHost,
 } from "./acceleratorCatalog";
 import { installPipPackage } from "../api";
 import type { NativeBackendStatus } from "../types/server";
+import type { SystemStats } from "../types/system";
 
 /**
  * Shared "Performance boosters" section (FU-056 Phase 3 + Phase 4).
@@ -49,6 +50,9 @@ import type { NativeBackendStatus } from "../types/server";
 export interface MediaStudioBoostersVariant {
   repo: string;
   name?: string;
+  /** Engine label of the catalog row ("mflux (MLX native)", "stable-diffusion.cpp
+   * (subprocess)", ...). The boosters speed up diffusers pipelines only. */
+  runtime?: string;
 }
 
 export interface MediaStudioBoostersProps {
@@ -59,6 +63,10 @@ export interface MediaStudioBoostersProps {
    * ``workspace.runtime.nativeBackends``. ``undefined`` (older
    * backends) collapses every card to its "available" form. */
   nativeBackends?: NativeBackendStatus;
+  /** The host (``workspace.system``). A card is hidden when its hardware
+   * is absent: the CUDA boosters never show on a Mac or on a PC without an
+   * NVIDIA GPU. Without it every applicable card shows (older callers). */
+  hostSystem?: Pick<SystemStats, "platform" | "arch" | "gpuVramTotalGb">;
 }
 
 interface InstallState {
@@ -76,6 +84,7 @@ const EMPTY_INSTALL_STATE: InstallState = {
 export function MediaStudioBoosters({
   selectedVariant,
   nativeBackends,
+  hostSystem,
 }: MediaStudioBoostersProps) {
   const { t } = useTranslation("studio");
   // Hold a local capabilities overlay so a fresh install flips the
@@ -127,8 +136,7 @@ export function MediaStudioBoosters({
     }
   }, [installStates]);
 
-  const repo = selectedVariant?.repo;
-  const applicable: AcceleratorId[] = getApplicableAccelerators(repo);
+  const applicable: AcceleratorId[] = getApplicableAcceleratorsForHost(selectedVariant, hostSystem);
 
   if (applicable.length === 0) return null;
 

@@ -27,6 +27,7 @@ import {
   isGatedImageAccessError,
 } from "../../utils";
 import {
+  hasNvidiaGpu,
   imageOrVideoVariantPlatformGate,
   isVariantCompatibleWithHost,
 } from "../../utils/platform";
@@ -117,7 +118,7 @@ export interface ImageStudioTabProps {
    * (per the FU-056 hide-unrecoverable-options policy). Threaded from
    * App.tsx → workspace.system. Optional because some test harnesses
    * mount the component without a full SystemStats. */
-  hostSystem?: Pick<SystemStats, "platform" | "arch">;
+  hostSystem?: Pick<SystemStats, "platform" | "arch" | "gpuVramTotalGb">;
   onPreloadImageModel: (variant: ImageModelVariant) => void;
   onUnloadImageModel: (variant?: ImageModelVariant) => void;
   onInstallImageRuntime: () => Promise<InstallResult>;
@@ -305,6 +306,8 @@ export function ImageStudioTab({
     IMAGE_RATIO_PRESETS[0];
   const selectedQuality =
     IMAGE_QUALITY_PRESETS.find((preset) => preset.id === imageQualityPreset) ?? IMAGE_QUALITY_PRESETS[1];
+  // CUDA-only controls need an NVIDIA GPU: hidden on a Mac and on a PC without one.
+  const showCudaControls = hostSystem ? hasNvidiaGpu(hostSystem) : !isAppleSiliconHost;
   const selectedImageDownload = selectedImageVariant ? activeImageDownloads[selectedImageVariant.repo] : undefined;
   const selectedImageDownloadPaused = selectedImageDownload?.state === "cancelled";
   const selectedImageDownloadComplete = selectedImageDownload?.state === "completed";
@@ -486,6 +489,7 @@ export function ImageStudioTab({
           ) : null}
         </div>
         <ImageStudioRuntimeBanner
+          hostSystem={hostSystem}
           imageRuntimeStatus={imageRuntimeStatus}
           selectedImageVariant={selectedImageVariant}
           selectedImageLoaded={selectedImageLoaded}
@@ -914,7 +918,7 @@ export function ImageStudioTab({
             unreachable. Still rendered on Linux / Windows where backend
             checks compute capability + skips on pre-Ada hardware.
           */}
-          {!isAppleSiliconHost ? (
+          {showCudaControls ? (
             <label className="checkbox-row">
               <input
                 type="checkbox"

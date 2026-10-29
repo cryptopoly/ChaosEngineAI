@@ -37,6 +37,8 @@
  */
 
 import type { NativeBackendStatus } from "../types/server";
+import type { SystemStats } from "../types/system";
+import { isVariantCompatibleWithHost } from "../utils/platform";
 
 export type AcceleratorId =
   | "nunchaku"
@@ -284,4 +286,34 @@ export function isPlatformCompatible(
       // the WSL bridge work, when we surface ``cudaAvailable`` explicitly.
       return !capabilities.mlxAvailable;
   }
+}
+
+
+/** The boosters patch a diffusers pipeline. MLX-native engines (mflux,
+ * mlx-video), the stable-diffusion.cpp subprocess and LongLive never load
+ * one, so none of them applies to those variants. */
+function runsOnDiffusers(runtime: string | undefined): boolean {
+  const label = (runtime ?? "").toLowerCase();
+  return !(
+    label.includes("mflux")
+    || label.includes("mlx")
+    || label.includes("stable-diffusion.cpp")
+    || label.includes("sd.cpp")
+    || label.includes("longlive")
+  );
+}
+
+/** The accelerators worth showing for ``variant`` on ``host``: those that
+ * apply to its repo, run on a diffusers pipeline, and whose hardware the host
+ * has. The CUDA boosters never show on a Mac or on a PC without an NVIDIA
+ * GPU. Without ``host`` every applicable accelerator is returned. */
+export function getApplicableAcceleratorsForHost(
+  variant: { repo: string; runtime?: string } | null | undefined,
+  host: Pick<SystemStats, "platform" | "arch" | "gpuVramTotalGb"> | null | undefined,
+): AcceleratorId[] {
+  if (!variant || !runsOnDiffusers(variant.runtime)) return [];
+  return getApplicableAccelerators(variant.repo).filter((id) => {
+    const meta = getAccelerator(id);
+    return meta !== undefined && isVariantCompatibleWithHost(meta.platformGate, host);
+  });
 }

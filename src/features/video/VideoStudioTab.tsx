@@ -16,6 +16,7 @@ import type {
 import type { NativeBackendStatus } from "../../types/server";
 import type { SystemStats } from "../../types/system";
 import {
+  hasNvidiaGpu,
   imageOrVideoVariantPlatformGate,
   isVariantCompatibleWithHost,
 } from "../../utils/platform";
@@ -52,7 +53,7 @@ export interface VideoStudioTabProps {
   /** Filter platform-incompatible variants out of the model dropdown
    * (FU-056 hide-unrecoverable-options policy). Threaded from App.tsx →
    * workspace.system. Optional for test harnesses. */
-  hostSystem?: Pick<SystemStats, "platform" | "arch">;
+  hostSystem?: Pick<SystemStats, "platform" | "arch" | "gpuVramTotalGb">;
   selectedVideoModelId: string;
   onSelectedVideoModelIdChange: (id: string) => void;
   selectedVideoVariant: VideoModelVariant | null;
@@ -476,6 +477,8 @@ export function VideoStudioTab({
   const isAppleSiliconHost =
     mlxVideoStatus !== null
     && (mlxVideoStatus.device === "mps" || mlxVideoStatus.expectedDevice === "mps");
+  // CUDA-only controls (NF4, FP8) need an NVIDIA GPU: hidden on a Mac and on a PC without one.
+  const showCudaControls = hostSystem ? hasNvidiaGpu(hostSystem) : !isAppleSiliconHost;
   const mlxVideoMissing =
     isAppleSiliconHost
     && !mlxVideoStatus.realGenerationAvailable
@@ -691,6 +694,7 @@ export function VideoStudioTab({
         }
       >
         <VideoStudioRuntimeBanner
+          hostSystem={hostSystem}
           videoRuntimeStatus={videoRuntimeStatus}
           loadedVideoVariant={loadedVideoVariant}
           busy={busy}
@@ -1179,7 +1183,7 @@ export function VideoStudioTab({
             </p>
           ) : null}
 
-          {!isAppleSiliconHost ? (
+          {showCudaControls ? (
             <label className="checkbox-row">
               <input
                 type="checkbox"
@@ -1278,7 +1282,7 @@ export function VideoStudioTab({
             Linux / Windows where the user may or may not have an Ada+
             GPU; backend silently skips on pre-Ada hardware.
           */}
-          {!isAppleSiliconHost ? (
+          {showCudaControls ? (
             <label className="checkbox-row">
               <input
                 type="checkbox"

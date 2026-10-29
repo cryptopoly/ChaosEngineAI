@@ -43,6 +43,8 @@ export interface OnlineModelsTabProps {
     /** Exact repo ids TensorFold serves (``system.tensorfold.supportedModels``). */
     tensorfoldModels?: string[];
     turboInstalled: boolean;
+    /** MTPLX and TensorFold run on Apple Silicon only; their chips hide elsewhere. */
+    appleSilicon?: boolean;
   };
   expandedFamilyId: string | null;
   onExpandedFamilyIdChange: (id: string | null) => void;
@@ -217,6 +219,8 @@ export function OnlineModelsTab({
     { id: "tensorfold", label: "TensorFold", color: "#34d399" },
     { id: "turboquant", label: "TurboQuant", color: "#60a5fa" },
   ];
+
+  const APPLE_ONLY_ACCEL = new Set(["mtplx", "tensorfold"]);
 
   function familyReleaseTimestamp(family: ModelFamily): number {
     let latest = 0;
@@ -747,7 +751,7 @@ export function OnlineModelsTab({
           >
             {t("onlineModels.filter.allAccel", { defaultValue: "All acceleration" })}
           </button>
-          {ACCEL_FILTERS.map((af) => {
+          {ACCEL_FILTERS.filter((af) => accelCompat?.appleSilicon !== false || !APPLE_ONLY_ACCEL.has(af.id)).map((af) => {
             const count = searchResults.filter((f) => familyMatchesAccel(f, af.id)).length;
             // TurboQuant shrinks the KV cache; it does not speed anything up,
             // so its chip says so instead of sitting bare among the

@@ -66,7 +66,7 @@ export interface VideoDiscoverTabProps {
   nativeBackends?: NativeBackendStatus;
   /** FU-056 follow-up: host platform info for hiding mlx-video /
    * LTX-2 (apple-only) variants on Win/Linux. */
-  hostSystem?: Pick<SystemStats, "platform" | "arch">;
+  hostSystem?: Pick<SystemStats, "platform" | "arch" | "gpuVramTotalGb">;
   longLiveStatus: VideoRuntimeStatus | null;
   installingLongLive: boolean;
   longLiveJob: LongLiveJobState | null;

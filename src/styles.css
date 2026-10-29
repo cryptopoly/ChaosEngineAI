@@ -10055,6 +10055,17 @@ html[lang="ko"] select {
   margin-top: 8px;
 }
 
+/* The shared card head squeezes both children, so the badges overflowed the
+ * card on narrow cards. Let the head wrap and keep the badges whole. */
+.voice-model-card .image-library-card-head {
+  flex-wrap: wrap;
+}
+
+.voice-model-card .image-library-card-head > .voice-model-card__badges {
+  flex: 0 0 auto;
+  max-width: 100%;
+}
+
 .voice-groups {
   display: flex;
   flex-direction: column;

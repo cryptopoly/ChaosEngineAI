@@ -60,7 +60,7 @@ export interface ImageDiscoverTabProps {
   nativeBackends?: NativeBackendStatus;
   /** FU-056 follow-up: host platform info for hiding MLX-only /
    * CUDA-only variants on the wrong host. */
-  hostSystem?: Pick<SystemStats, "platform" | "arch">;
+  hostSystem?: Pick<SystemStats, "platform" | "arch" | "gpuVramTotalGb">;
   onActiveTabChange: (tab: TabId) => void;
   onOpenImageStudio: (modelId?: string) => void;
   onImageDownload: (repo: string) => void;

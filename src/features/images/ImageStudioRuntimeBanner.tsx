@@ -16,6 +16,7 @@ import type {
 } from "../../api";
 import type { ImageModelVariant, ImageRuntimeStatus } from "../../types";
 import type { NativeBackendStatus } from "../../types/server";
+import type { SystemStats } from "../../types/system";
 import { MediaStudioBoosters } from "../../components/MediaStudioBoosters";
 
 
@@ -43,6 +44,8 @@ export interface ImageStudioRuntimeBannerProps {
    * boosters" sub-section. Optional — collapses to the "available"
    * card state if the backend hasn't probed yet. */
   nativeBackends?: NativeBackendStatus;
+  /** Host description; the CUDA boosters hide on hosts without an NVIDIA GPU. */
+  hostSystem?: Pick<SystemStats, "platform" | "arch" | "gpuVramTotalGb">;
 }
 
 
@@ -69,6 +72,7 @@ export function ImageStudioRuntimeBanner(props: ImageStudioRuntimeBannerProps) {
     gpuBundleJob,
     onInstallImageRuntime,
     nativeBackends,
+    hostSystem,
   } = props;
 
   return (
@@ -193,6 +197,7 @@ export function ImageStudioRuntimeBanner(props: ImageStudioRuntimeBannerProps) {
         <MediaStudioBoosters
           selectedVariant={selectedImageVariant}
           nativeBackends={nativeBackends}
+          hostSystem={hostSystem}
         />
       ) : null}
       {selectedImageVariant && imageRuntimeStatus.realGenerationAvailable ? (

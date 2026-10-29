@@ -51,7 +51,7 @@ export interface VideoModelsTabProps {
   nativeBackends?: NativeBackendStatus;
   /** FU-056 follow-up: host platform info for hiding MLX-only video
    * variants (mlx-video / LTX-2 family) on Windows + Linux. */
-  hostSystem?: Pick<SystemStats, "platform" | "arch">;
+  hostSystem?: Pick<SystemStats, "platform" | "arch" | "gpuVramTotalGb">;
   onActiveTabChange: (tab: TabId) => void;
   onOpenVideoStudio: (modelId?: string) => void;
   onVideoDownload: (repo: string, modelId?: string) => void;

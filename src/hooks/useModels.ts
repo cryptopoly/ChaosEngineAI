@@ -15,6 +15,7 @@ import {
   pendingDownloadStatus,
   failedDownloadStatus,
 } from "../utils";
+import { CHAT_MODELS_DEFAULT_SORT, type ChatModelsSort } from "../components/models/adapters/chat";
 import type {
   HubFileListResponse,
   HubModel,
@@ -40,12 +41,15 @@ export function useModels(
   const [detailFamilyId, setDetailFamilyId] = useState<string | null>(null);
   const [selectedFamilyId, setSelectedFamilyId] = useState("");
   const [selectedVariantId, setSelectedVariantId] = useState("");
-  const [expandedFamilyId, setExpandedFamilyId] = useState<string | null>(null);
-  const [expandedVariantId, setExpandedVariantId] = useState<string | null>(null);
   const [activeDownloads, setActiveDownloads] = useState<Record<string, DownloadStatus>>({});
   const [discoverCapFilter, setDiscoverCapFilter] = useState<string | null>(null);
   const [discoverFormatFilter, setDiscoverFormatFilter] = useState<string | null>(null);
   const [discoverAccelFilter, setDiscoverAccelFilter] = useState<string | null>(null);
+  // Chat Models page (FU-129): backend filter and sort live here, next to
+  // the search and the other filters, so they survive tab switches.
+  const [chatModelsBackendFilter, setChatModelsBackendFilter] = useState<string | null>(null);
+  const [chatModelsSort, setChatModelsSort] = useState<ChatModelsSort>(CHAT_MODELS_DEFAULT_SORT);
+  const [chatModelsSortDir, setChatModelsSortDir] = useState<"asc" | "desc">("desc");
 
   // Keep curated families in sync when workspace refreshes (without
   // retriggering the search effect, which would cancel in-flight API calls).
@@ -242,10 +246,6 @@ export function useModels(
     setSelectedFamilyId,
     selectedVariantId,
     setSelectedVariantId,
-    expandedFamilyId,
-    setExpandedFamilyId,
-    expandedVariantId,
-    setExpandedVariantId,
     activeDownloads,
     setActiveDownloads,
     discoverCapFilter,
@@ -254,6 +254,12 @@ export function useModels(
     setDiscoverFormatFilter,
     discoverAccelFilter,
     setDiscoverAccelFilter,
+    chatModelsBackendFilter,
+    setChatModelsBackendFilter,
+    chatModelsSort,
+    setChatModelsSort,
+    chatModelsSortDir,
+    setChatModelsSortDir,
     hasActiveDownloads,
     handleDownloadModel,
     handleCancelModelDownload,

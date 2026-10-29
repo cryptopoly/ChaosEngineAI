@@ -3,13 +3,14 @@ import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
 import { SoundBadge } from "../../components/SoundBadge";
 import { fetchVideoOutputBlobUrl } from "../../api";
-import type { TabId, VideoOutputArtifact } from "../../types";
+import type { VideoOutputArtifact } from "../../types";
 import { formatImageTimestamp, number } from "../../utils";
+import { modelsPageRequest, type TabRequest } from "../../constants/tabRedirects";
 
 export interface VideoGalleryTabProps {
   videoOutputs: VideoOutputArtifact[];
   videoBusy: boolean;
-  onActiveTabChange: (tab: TabId) => void;
+  onActiveTabChange: (tab: TabRequest) => void;
   onOpenVideoStudio: (modelId?: string) => void;
   onRevealPath: (path: string) => void;
   onDeleteVideoArtifact: (artifactId: string) => void;
@@ -62,7 +63,7 @@ export function VideoGalleryTab({
             <button className="secondary-button" type="button" onClick={() => onOpenVideoStudio()}>
               {tStudio("videoGallery.actions.openStudio", { defaultValue: "Open Studio" })}
             </button>
-            <button className="secondary-button" type="button" onClick={() => onActiveTabChange("video-models")}>
+            <button className="secondary-button" type="button" onClick={() => onActiveTabChange(modelsPageRequest("video", "installed"))}>
               {tStudio("videoGallery.actions.installedModels", { defaultValue: "Installed Models" })}
             </button>
           </div>

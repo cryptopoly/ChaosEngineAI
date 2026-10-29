@@ -14,7 +14,6 @@ import {
 import { VideoStudioRuntimeBanner } from "./VideoStudioRuntimeBanner";
 import type { CudaTorchInstallResult, DownloadStatus, GpuBundleJobState, InstallResult, LongLiveJobState } from "../../api";
 import type {
-  TabId,
   TauriBackendInfo,
   VideoCacheStrategyId,
   VideoModelFamily,
@@ -53,6 +52,7 @@ import {
   onNumericBlur,
   onNumericChange,
 } from "./videoStudioConstants";
+import { modelsPageRequest, type TabRequest } from "../../constants/tabRedirects";
 
 export interface VideoStudioTabProps {
   videoCatalog: VideoModelFamily[];
@@ -126,7 +126,7 @@ export interface VideoStudioTabProps {
   onVideoStgScaleChange: (value: number) => void;
   videoFastPreview: boolean;
   onVideoFastPreviewChange: (value: boolean) => void;
-  onActiveTabChange: (tab: TabId) => void;
+  onActiveTabChange: (tab: TabRequest) => void;
   onPreloadVideoModel: (variant: VideoModelVariant) => void;
   onUnloadVideoModel: (variant?: VideoModelVariant) => void;
   onVideoDownload: (repo: string, modelId?: string) => void;
@@ -763,10 +763,10 @@ export function VideoStudioTab({
         className="span-2"
         actions={
           <div className="button-row">
-            <button className="secondary-button" type="button" onClick={() => onActiveTabChange("video-discover")}>
+            <button className="secondary-button" type="button" onClick={() => onActiveTabChange(modelsPageRequest("video", "available"))}>
               {t("videoStudio.actions.browseCatalog", { defaultValue: "Browse Catalog" })}
             </button>
-            <button className="secondary-button" type="button" onClick={() => onActiveTabChange("video-models")}>
+            <button className="secondary-button" type="button" onClick={() => onActiveTabChange(modelsPageRequest("video", "installed"))}>
               {t("videoStudio.actions.installedModels", { defaultValue: "Installed Models" })}
             </button>
           </div>
@@ -848,7 +848,7 @@ export function VideoStudioTab({
                   <button
                     className="primary-button"
                     type="button"
-                    onClick={() => onActiveTabChange("video-discover")}
+                    onClick={() => onActiveTabChange(modelsPageRequest("video", "available"))}
                   >
                     {t("videoStudio.noModelsCallout.openDiscover", { defaultValue: "Open Video Discover" })}
                   </button>
@@ -1642,7 +1642,7 @@ export function VideoStudioTab({
                   <button
                     className="secondary-button"
                     type="button"
-                    onClick={() => onActiveTabChange("video-discover")}
+                    onClick={() => onActiveTabChange(modelsPageRequest("video", "available"))}
                     disabled={videoBusy}
                   >
                     {t("videoStudio.safety.browseSmaller", { defaultValue: "Browse smaller models" })}

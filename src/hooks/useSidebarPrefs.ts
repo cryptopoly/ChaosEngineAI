@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { SidebarGroupId, SidebarMode } from "../types";
+import { migrateLastChildByGroup } from "../constants/tabRedirects";
 
 const STORAGE_KEY = "chaosengine.sidebar.prefs.v1";
 
@@ -18,13 +19,15 @@ interface SidebarPrefs {
   rememberLastChild: (group: SidebarGroupId, tabId: string) => void;
 }
 
-function readStored(): StoredPrefs {
+export function readStoredSidebarPrefs(): StoredPrefs {
   if (typeof window === "undefined") return {};
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return {};
     const parsed = JSON.parse(raw) as StoredPrefs;
-    return parsed ?? {};
+    if (!parsed) return {};
+    // Ids of the old Discover / My Models tabs map to their Models page.
+    return { ...parsed, lastChildByGroup: migrateLastChildByGroup(parsed.lastChildByGroup) };
   } catch {
     return {};
   }
@@ -40,12 +43,12 @@ function writeStored(prefs: StoredPrefs) {
 }
 
 export function useSidebarPrefs(): SidebarPrefs {
-  const [mode, setModeState] = useState<SidebarMode>(() => readStored().mode ?? "collapsible");
+  const [mode, setModeState] = useState<SidebarMode>(() => readStoredSidebarPrefs().mode ?? "collapsible");
   const [collapsedGroups, setCollapsedGroups] = useState<Set<SidebarGroupId>>(
-    () => new Set(readStored().collapsedGroups ?? []),
+    () => new Set(readStoredSidebarPrefs().collapsedGroups ?? []),
   );
   const [lastChildByGroup, setLastChildByGroup] = useState<Partial<Record<SidebarGroupId, string>>>(
-    () => readStored().lastChildByGroup ?? {},
+    () => readStoredSidebarPrefs().lastChildByGroup ?? {},
   );
 
   useEffect(() => {

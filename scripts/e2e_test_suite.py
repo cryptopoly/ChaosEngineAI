@@ -237,7 +237,10 @@ def _scan_hf_cache(cap: Capability) -> None:
             continue
         for gguf in sorted(snapshot.glob("*.gguf")):
             low = gguf.name.lower()
-            if "mmproj" not in low and not low.startswith(("dflash-", "dspark-", "eagle3-", "mtp-", "t5", "clip_")):
+            # A drafter is not a model: llama.cpp sidecars start with dflash- and the
+            # like, and NVIDIA's Bolt drafter sits in a "...-DFlash" repo of its own.
+            drafter = "dflash" in low or name.lower().endswith(("-dflash", "-dflash2", "-dspark", "-eagle3"))
+            if "mmproj" not in low and not drafter and not low.startswith(("dspark-", "eagle3-", "mtp-", "t5", "clip_")):
                 cap.local_gguf_files.append((ref, str(gguf)))
         if not any(snapshot.glob("*.safetensors")) or (snapshot / "model_index.json").exists():
             continue  # no weights, or a diffusion pipeline
@@ -467,6 +470,10 @@ def phase_0(cap: Capability) -> PhaseResult:
             # LFM3-1.7B: MLX 4/8-bit on the vendored lfm3 architecture, and the
             # official GGUF on llama.cpp b11938+.
             "lfm-3": 3,
+            # 2026-10-29: NVIDIA's Gemma-4-E4B post-train (official Q4_K_M with a
+            # separately published DFlash drafter, plus ggml-org's Q8_0) and IBM
+            # Granite Switch 4.1 (8B and 30B GGUF).
+            "nemotron-3-5-bolt": 2, "granite-switch-4-1": 2,
         }
         missing = []
         for fid, min_variants in expected.items():
@@ -496,6 +503,8 @@ def phase_0(cap: Capability) -> PhaseResult:
             "lmstudio-community/Qwen3.6-27B-GGUF", "lmstudio-community/Qwen3.8-27B-GGUF",
             "ggml-org/Qwen3.8-27B-GGUF", "unsloth/GLM-5.1-GGUF",
             "unsloth/Mistral-Large-3-675B-Instruct-2512-GGUF",
+            "nvidia/NVIDIA-Nemotron-3.5-Bolt-E4B-4GB", "ggml-org/NVIDIA-Nemotron-3.5-Bolt-E4B-GGUF",
+            "ibm-granite/granite-switch-4.1-8b-GGUF", "ibm-granite/granite-switch-4.1-30b-GGUF",
         )
         unpinned = [repo for repo in must_pin if not (variants.get(repo) or {}).get("ggufFile")]
         if unpinned:
@@ -962,6 +971,35 @@ def phase_1(cap: Capability) -> PhaseResult:
             return "fail", f"spec requested but note reports no active lane: {low[:160]}", detail
         return "pass", "", detail
 
+    # 1e4. Nemotron 3.5 Bolt with NVIDIA's DFlash drafter. The drafter lives in a
+    # repo of its own (no ``dflash-`` file beside the model), so the engine pairs
+    # them by repo id; a note that names no drafter means the pairing broke.
+    # Skips when the Bolt GGUF or the drafter is not on disk.
+    def _bolt_drafter():
+        if not cap.gguf_available:
+            return "skip", "GGUF backend not available", {}
+        if not cap.gguf_mtp_available:
+            return "skip", "llama-server lacks --spec-type (run scripts/update-llama-cpp.sh)", {}
+        bolt = [
+            (ref, p) for (ref, p) in cap.local_gguf_files
+            if "bolt-e4b" in p.lower() and "dflash" not in p.lower() and "uncensored" not in p.lower()
+        ]
+        if not bolt:
+            return "skip", "no Nemotron 3.5 Bolt GGUF on disk", {}
+        ref, gguf_path = bolt[0]
+        status, reason, detail = _load_unload_prompt(
+            ref, path=gguf_path, backend="gguf", spec=True,
+            canonical_repo="nvidia/NVIDIA-Nemotron-3.5-Bolt-E4B-4GB",
+            cache_strategy="native", context=4096, max_tokens=24,
+            load_timeout=600.0,
+        )
+        if status != "pass":
+            return status, reason, detail
+        note = detail.get("runtimeNote") or ""
+        if "Nemotron-3.5-Bolt-E4B-DFlash" not in note:
+            return "skip", f"drafter not on disk or not paired: {note[:160]}", detail
+        return "pass", "", detail
+
     # 1f. Long context cache preview
     def _long_context_preview():
         pick = _pick_model_by_ref_prefix(cap.local_mlx_models, "Qwen3") \
@@ -1080,6 +1118,7 @@ def phase_1(cap: Capability) -> PhaseResult:
         ("GGUF llama.cpp", _gguf),
         ("GGUF MTP speculative", _gguf_mtp),
         ("GGUF speculative lane (sidecar / ngram-mod)", _gguf_spec_lane),
+        ("GGUF Nemotron 3.5 Bolt + pinned DFlash drafter", _bolt_drafter),
         ("long context cache-preview", _long_context_preview),
         ("fused attention flag", _fused_attention),
         ("modern samplers (DRY+XTC)", _modern_samplers),
@@ -1243,6 +1282,7 @@ def phase_4(cap: Capability) -> PhaseResult:
         wanted_mflux = {
             "Qwen/Qwen-Image-2.1-mflux": "qwen-image",
             "black-forest-labs/FLUX.2-klein-4B-mflux": "flux-2",
+            "speridlabs/iris-3b-mflux": "iris-3b",
         }
         for variant_id, family_id in wanted_mflux.items():
             found = next(
@@ -1343,9 +1383,13 @@ def phase_4(cap: Capability) -> PhaseResult:
             return "skip", "mflux engine not installed", {}
         rc, lib, _ = _cli_json("image-library", timeout=15.0)
         installed = {m.get("id") for m in ((lib or {}).get("models") or []) if m.get("availableLocally")}
-        model_id = "black-forest-labs/FLUX.2-klein-4B-mflux"
-        if model_id not in installed:
-            return "skip", "FLUX.2 klein 4B not downloaded", {}
+        # Smallest first: Iris-3B Turbo (4 steps, 7.5 GB peak), then FLUX.2 klein 4B.
+        model_id = next(
+            (m for m in ("speridlabs/iris-3b-mflux", "black-forest-labs/FLUX.2-klein-4B-mflux") if m in installed),
+            None,
+        )
+        if model_id is None:
+            return "skip", "no mflux checkpoint downloaded (Iris-3B Turbo, FLUX.2 klein 4B)", {}
         rc, payload, err = _cli_json(
             "image-generate", "a red fox in the snow, golden hour",
             "--model", model_id, "--width", "512", "--height", "512", "--seed", "42", "--timeout", "900",
@@ -1770,6 +1814,18 @@ def phase_8(cap: Capability) -> PhaseResult:
         synth_result["wav"] = body
         return "pass", "", {"wavBytes": len(body)}
 
+    # The mlx-audio Nemotron 3.5 ASR row belongs to the MLX lane only; a Mac must
+    # list it, Windows / Linux must not offer an id they cannot run.
+    def _nemotron_asr_listed():
+        models = runtime_payload.get("sttModels") or []
+        row = next((m for m in models if m.get("key") == "nemotron-3.5-asr"), None)
+        on_mlx_lane = any(m.get("backend") in ("parakeet-mlx", "mlx-whisper") for m in models)
+        if on_mlx_lane and row is None:
+            return "fail", "Nemotron 3.5 ASR missing from the MLX voice lane", {}
+        if not on_mlx_lane and row is not None:
+            return "fail", "Nemotron 3.5 ASR offered on a lane that cannot run it", {}
+        return ("pass" if row else "skip"), ("" if row else "portable lane has no Nemotron ASR"), {}
+
     def _transcribe():
         if not runtime_payload.get("sttAvailable"):
             return "skip", "STT backend not installed", {}
@@ -2027,7 +2083,7 @@ def phase_8(cap: Capability) -> PhaseResult:
         ("voice call turn detector", _vad_turn),
         ("stt rejects unknown model", _stt_rejects_unknown_model),
         ("synthesize smoke", _synthesize),
-        ("transcribe smoke", _transcribe), ("library with speaker labels", _library),
+        ("Nemotron 3.5 ASR listed", _nemotron_asr_listed), ("transcribe smoke", _transcribe), ("library with speaker labels", _library),
         ("translate to English", _translate),
     ]:
         phase.checks.append(_check(name, fn))

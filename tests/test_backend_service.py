@@ -398,15 +398,18 @@ class ChaosEngineBackendTests(unittest.TestCase):
 
         state = self.client.app.state.chaosengine
         variant = {"id": "x/klein-mflux", "name": "Klein (mflux)", "repo": "x/klein", "engine": "mflux"}
-        runtime = _m.MagicMock()
+        from backend_service.image_runtime import ImageRuntimeManager
+
+        runtime = _m.MagicMock(spec=ImageRuntimeManager)  # a plain MagicMock hid a wrong method name once
         runtime.preload.side_effect = AssertionError("diffusers preload must not run for mflux")
-        runtime.probe.return_value = {"activeEngine": "diffusers"}
+        runtime.capabilities.return_value = {"activeEngine": "diffusers"}
         state.image_runtime = runtime
         with _m.patch("backend_service.routes.images._find_image_variant", return_value=variant), _m.patch(
             "backend_service.routes.images._image_variant_available_locally", return_value=True
         ):
             response = self.client.post("/api/images/preload", json={"modelId": "x/klein-mflux"})
         self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"runtime": {"activeEngine": "diffusers"}})
         runtime.preload.assert_not_called()
 
     def test_chat_generate_still_answers_500_for_an_engine_failure(self):

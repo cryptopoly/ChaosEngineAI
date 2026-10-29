@@ -144,7 +144,7 @@ def preload_image_model(request: Request, body: ImageRuntimePreloadRequest) -> d
         # mflux and stable-diffusion.cpp start one process per image and free it afterwards;
         # there is no pipeline to preload, and sending these repos to diffusers answers 500.
         state.add_log("images", "info", f"{variant['name']} loads per image; nothing to preload.")
-        return {"runtime": state.image_runtime.probe()}
+        return {"runtime": state.image_runtime.capabilities()}
     try:
         runtime = state.image_runtime.preload(variant["repo"])
     except RuntimeError as exc:

@@ -61,10 +61,11 @@ _SPEED_KV_TOKENS = 2048
 # the footprint key the figure sits under. Rows whose number was copied from a sibling or scaled
 # from another row are left out on purpose.
 MEASURED_FOOTPRINTS: dict[str, str] = {
-    "Qwen/Qwen-Image-2.1-mflux": "runtimeFootprintMpsGb",     # 28.7-29.9 GB peak, 1024 px / 40 steps
+    "Qwen/Qwen-Image-2.1-mflux": "runtimeFootprintMpsGb",     # 46-50 GB peak at 1024 px / 40 steps (28.7-29.9 was an early undercount)
     "speridlabs/iris-3b-mflux": "runtimeFootprintMpsGb",      # peak MLX memory at 768x768
     "prince-canuma/LTX-2.3-distilled": "runtimeFootprintGb",  # 37.2 GB mlx-video peak, 40.0 GB process
     "dgrauet/ltx-2.3-mlx-q4": "runtimeFootprintGb",           # 15-18 GB sampled, 4-10 s clips
+    "Qwen/Qwen-Image-2.1-Turbo-mflux": "runtimeFootprintMpsGb",  # 46-50 GB peak, 1024 px / 8 steps
 }
 
 _MEDIA_FOOTPRINT_KEYS: dict[str, tuple[str, str]] = {
@@ -365,6 +366,10 @@ def variant_fit(
         need, reason, basis = footprint
 
     status = classify_share(need, usable)
+    if status == "wont-fit" and basis == "measured" and need <= usable:
+        # A peak that was measured on this kind of machine did run, so it cannot be "won't fit";
+        # it is as tight as it gets (Qwen-Image-2.1 peaks at 46-50 GB of 51.8).
+        status = "tight"
     if status != "fits" and hardware.kind == "cuda":
         reason += " (GPU memory only; offloading to system RAM would run far slower)"
     return {

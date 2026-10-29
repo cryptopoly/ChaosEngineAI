@@ -207,14 +207,15 @@ class MediaFootprintTests(unittest.TestCase):
         for hardware in (APPLE_64, APPLE_16):
             result = variant_fit(qwen, "image", hardware)
             self.assertEqual(result["basis"], "measured", hardware.label)
-            self.assertEqual(result["needGb"], 30.0)
+            self.assertEqual(result["needGb"], 50.0)
         self.assertEqual(variant_fit(qwen, "image", APPLE_16)["status"], "wont-fit")
+        self.assertEqual(variant_fit(qwen, "image", APPLE_64)["status"], "tight")  # a measured peak that ran is never won't-fit
         ltx = VIDEO_VARIANTS_BY_ID["dgrauet/ltx-2.3-mlx-q4"]
         self.assertEqual(variant_fit(ltx, "video", APPLE_64)["basis"], "measured")
 
     def test_copied_or_scaled_footprints_stay_estimated(self):
-        # Turbo reuses the 30 GB measured on its sibling; the 8-bit row scales it.
-        for variant_id in ("Qwen/Qwen-Image-2.1-Turbo-mflux", "Qwen/Qwen-Image-2.1-mflux-q8"):
+        # The 8-bit row scales the bf16 figure; only the bf16 and Turbo rows were run.
+        for variant_id in ("Qwen/Qwen-Image-2.1-mflux-q8",):
             result = variant_fit(IMAGE_MODEL_FAMILIES_BY_ID[variant_id], "image", APPLE_64)
             self.assertEqual(result["basis"], "estimated", variant_id)
         self.assertEqual(variant_fit(VIDEO_VARIANTS_BY_ID["prince-canuma/LTX-2.3-dev"], "video", APPLE_64)["basis"], "estimated")
@@ -719,3 +720,18 @@ class RoutePayloadTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class MeasuredPeakTests(unittest.TestCase):
+    def test_a_measured_peak_that_ran_is_tight_not_wont_fit(self):
+        # Qwen-Image-2.1 peaks at 46-50 GB of 51.8 on a 64 GB Mac and runs there.
+        variant = {"id": "Qwen/Qwen-Image-2.1-mflux", "repo": "Qwen/Qwen-Image-2.1", "runtime": "mflux (MLX native)",
+                   "runtimeFootprintMpsGb": 50.0, "sizeGb": 33.1, "releaseDate": "2026-09"}
+        fit = variant_fit(variant, "image", APPLE_64)
+        self.assertEqual(fit["basis"], "measured")
+        self.assertEqual(fit["status"], "tight")
+
+    def test_an_estimated_need_that_close_to_the_limit_is_still_wont_fit(self):
+        variant = {"id": "x/y", "repo": "x/y", "runtime": "diffusers (MPS / CUDA)", "runtimeFootprintGb": 50.0,
+                   "sizeGb": 30.0, "releaseDate": "2026-09"}
+        self.assertEqual(variant_fit(variant, "image", APPLE_64)["status"], "wont-fit")

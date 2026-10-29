@@ -70,12 +70,16 @@ export function FitBadge({ fit, className }: { fit: Fit | null | undefined; clas
   );
 }
 
-/** Marks the family's best fit for this machine. */
-export function BestFitRibbon() {
+/** Marks the family's best fit for this machine. Chat picks differently
+ * (the larger model among rows released together), so an area can pass
+ * its own explanation. */
+export function BestFitRibbon({ title: titleOverride }: { title?: string } = {}) {
   const { t } = useTranslation("library");
-  const title = t("models.fit.bestFitTitle", {
-    defaultValue: "The pick in this family for this machine: newest release that fits comfortably.",
-  });
+  const title =
+    titleOverride ??
+    t("models.fit.bestFitTitle", {
+      defaultValue: "The pick in this family for this machine: the newest release that fits comfortably.",
+    });
   return (
     <span className="best-fit-ribbon" title={title} aria-label={title}>
       {t("models.fit.bestFit", { defaultValue: "Best fit" })}

@@ -24,6 +24,8 @@ import { CAPABILITY_META } from "../../constants";
 import { CapabilityStrip } from "../../components/CapabilityStrip";
 import { candidateKeys, isMemorySaverStrategy } from "../../components/runtimeSupport";
 import { isTensorfoldRepo } from "../../components/tensorfoldSupport";
+import { FitBadge } from "../../components/models/FitBadge";
+import { readVariantFit } from "../../components/models/fit";
 
 export interface OnlineModelsTabProps {
   searchResults: ModelFamily[];
@@ -72,6 +74,9 @@ export interface OnlineModelsTabProps {
 /**
  * Phase 2.14: classify whether a variant fits the current host's
  * available memory. Three buckets: comfortable / tight / over.
+ *
+ * Superseded by the backend ``fit`` verdict (FitBadge); used only when the
+ * backend does not send one. Remove with the chat Models page port.
  *
  * - comfortable: estimated memory ≤ 70% of available
  * - tight: estimated memory ≤ 100% of available
@@ -413,6 +418,12 @@ export function OnlineModelsTab({
                               <span>
                                 {variant.estimatedMemoryGb ? `~${number(variant.estimatedMemoryGb)}GB` : "?"}
                                 {(() => {
+                                  // The backend verdict (static usable memory, measured
+                                  // when possible) replaces the client guess against
+                                  // currently free RAM; the guess stays only for
+                                  // backends that do not send ``fit`` yet (R14).
+                                  const backendFit = readVariantFit(variant);
+                                  if (backendFit) return <FitBadge fit={backendFit} className="fit-badge--inline" />;
                                   const fit = memoryFitBucket(variant, availableMemoryGb);
                                   if (fit.kind === "unknown") return null;
                                   return (

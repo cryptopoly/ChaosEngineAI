@@ -414,3 +414,60 @@ describe("OnlineModelsTab", () => {
     expect(markup).toContain("Largest shard 9.5 GB");
   });
 });
+
+function renderVariantRow(variant: ModelVariant, availableMemoryGb: number | null): string {
+  const family = makeFamily(variant);
+  return renderToStaticMarkup(
+    <OnlineModelsTab
+      searchResults={[family]}
+      searchInput=""
+      onSearchInputChange={() => {}}
+      searchError={null}
+      localVariantCount={0}
+      discoverCapFilter={null}
+      onDiscoverCapFilterChange={() => {}}
+      discoverFormatFilter={null}
+      onDiscoverFormatFilterChange={() => {}}
+      expandedFamilyId={family.id}
+      onExpandedFamilyIdChange={() => {}}
+      expandedVariantId={null}
+      onExpandedVariantIdChange={() => {}}
+      onDetailFamilyIdChange={() => {}}
+      library={[]}
+      activeDownloads={{}}
+      onDownloadModel={vi.fn()}
+      onCancelModelDownload={vi.fn()}
+      onDeleteModelDownload={vi.fn()}
+      onPrepareCatalogConversion={vi.fn()}
+      onOpenModelSelector={vi.fn()}
+      onOpenExternalUrl={vi.fn()}
+      hubResults={[]}
+      expandedHubId={null}
+      onToggleHubExpand={() => {}}
+      hubFileCache={{}}
+      hubFileLoading={{}}
+      hubFileError={{}}
+      availableMemoryGb={availableMemoryGb}
+    />,
+  );
+}
+
+describe("OnlineModelsTab fit verdict (R14)", () => {
+  it("shows the backend fit verdict instead of the free-RAM guess", () => {
+    const variant = {
+      ...makeVariant({ estimatedMemoryGb: 60 }),
+      fit: { status: "tight", needGb: 44, usableGb: 51.8, headroomPct: 15, reason: "Weights 40 GB + 4 GB cache", basis: "estimated" },
+    } as ModelVariant;
+    // 60 GB against 16 GB free would be "Too big" by the old guess.
+    const markup = renderVariantRow(variant, 16);
+    expect(markup).toContain("fit-badge--tight");
+    expect(markup).toContain("Weights 40 GB + 4 GB cache");
+    expect(markup).not.toContain("memory-fit-badge--over");
+  });
+
+  it("falls back to the free-RAM guess when the backend sends no verdict", () => {
+    const markup = renderVariantRow(makeVariant({ estimatedMemoryGb: 60 }), 16);
+    expect(markup).toContain("memory-fit-badge--over");
+    expect(markup).not.toContain("class=\"fit-badge ");
+  });
+});

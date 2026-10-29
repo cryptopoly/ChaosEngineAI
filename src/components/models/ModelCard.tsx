@@ -25,6 +25,8 @@ export interface ModelCardProps {
   onToggleExpanded?: () => void;
   /** Full-width notes under the row (download error, gated-access help). */
   callouts?: ReactNode;
+  /** Tooltip of the "Best fit" ribbon when the area picks differently. */
+  bestFitTitle?: string;
 }
 
 /** "provider · family" without repeating a family named like the provider. */
@@ -66,6 +68,7 @@ export function ModelCard({
   expanded = false,
   onToggleExpanded,
   callouts,
+  bestFitTitle,
 }: ModelCardProps) {
   const { t } = useTranslation("library");
   const classes = ["media-model-row-wrap", "models-card"];
@@ -99,7 +102,7 @@ export function ModelCard({
             ) : (
               <strong>{entry.name}</strong>
             )}
-            {entry.bestFit ? <BestFitRibbon /> : null}
+            {entry.bestFit ? <BestFitRibbon title={bestFitTitle} /> : null}
           </div>
           {subtitleNode ? <small>{subtitleNode}</small> : null}
           <div className="media-model-chip-row">

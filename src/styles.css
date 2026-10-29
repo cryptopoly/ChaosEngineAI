@@ -11055,6 +11055,11 @@ html[lang="ko"] select {
   cursor: help;
 }
 
+.fit-badge--inline {
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
 .fit-badge__basis {
   color: inherit;
   font-size: 0.68rem;

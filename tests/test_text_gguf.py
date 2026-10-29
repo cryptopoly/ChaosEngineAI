@@ -196,6 +196,35 @@ class DownloadTests(unittest.TestCase):
         self.assertEqual(self.state._downloads["nobody/sharded-repo"]["totalGb"], 4.0)
 
 
+    def test_bolt_download_also_fetches_its_separately_published_drafter(self) -> None:
+        spawn = self._start(_BOLT_REPO, [{"path": "Nemotron-3.5-Bolt-E4B-Q4_K_M.gguf", "sizeBytes": 6 * 1024 ** 3}])
+        fetched = [(c.args[0], c.kwargs["allow_patterns"]) for c in spawn.call_args_list]
+        self.assertEqual(
+            fetched,
+            [
+                (_BOLT_REPO, fetched[0][1]),
+                (_BOLT_DRAFTER_REPO, [_BOLT_DRAFTER_FILE]),
+            ],
+        )
+        self.assertEqual(self.state._downloads[_BOLT_REPO]["state"], "completed")
+
+    def test_a_repo_without_a_pinned_drafter_fetches_nothing_extra(self) -> None:
+        spawn = self._start(_QWEN_REPO, [{"path": _QWEN_PIN, "sizeBytes": 16 * 1024 ** 3}])
+        self.assertEqual([c.args[0] for c in spawn.call_args_list], [_QWEN_REPO])
+
+    def test_a_failed_drafter_fetch_does_not_fail_the_model(self) -> None:
+        ok = mock.Mock(); ok.poll.return_value = 0; ok.returncode = 0; ok.wait.return_value = 0
+        bad = mock.Mock(); bad.poll.return_value = 1; bad.returncode = 1; bad.wait.return_value = 1
+        with mock.patch("backend_service.state.downloads._spawn_snapshot_download", side_effect=[ok, bad]), \
+             mock.patch("backend_service.helpers.huggingface._hf_repo_downloaded_bytes", return_value=0), \
+             mock.patch("backend_service.helpers.huggingface._hf_repo_preflight_size_gb", return_value=6.0), \
+             mock.patch("backend_service.helpers.huggingface._hub_repo_files", return_value={"files": []}), \
+             mock.patch("backend_service.state.downloads.threading.Thread") as thread:
+            thread.side_effect = lambda *, target=None, daemon=None: mock.Mock(start=lambda: target() if target.__name__ == "_download_worker" else None)
+            self.state.start_download(_BOLT_REPO)
+        self.assertEqual(self.state._downloads[_BOLT_REPO]["state"], "completed")
+
+
 class CatalogPinInvariantTests(unittest.TestCase):
     def test_pins_are_main_weight_first_shards(self) -> None:
         pinned = [v for f in MODEL_FAMILIES for v in f["variants"] if v.get("ggufFile")]
@@ -284,3 +313,78 @@ class LoadSizeTests(unittest.TestCase):
             (repo / "Big-00001-of-00002.gguf").write_bytes(b"x" * 100)
             (repo / "Big-00002-of-00002.gguf").write_bytes(b"x" * 300)
             self.assertEqual(gguf_load_bytes(repo), 400)
+
+
+_BOLT_REPO = "nvidia/NVIDIA-Nemotron-3.5-Bolt-E4B-4GB"
+_BOLT_DRAFTER_REPO = "nvidia/NVIDIA-Nemotron-3.5-Bolt-E4B-4GB-DFlash"
+_BOLT_DRAFTER_FILE = "Nemotron-3.5-Bolt-E4B-DFlash-BF16.gguf"
+
+
+class PinnedDrafterTests(unittest.TestCase):
+    """NVIDIA publishes the Bolt DFlash drafter in a repo of its own, under a
+    name with no ``dflash-`` prefix, so the sidecar scan can never find it."""
+
+    def test_bolt_is_paired_with_nvidias_drafter(self) -> None:
+        self.assertEqual(
+            text_gguf.pinned_drafter(_BOLT_REPO),
+            (_BOLT_DRAFTER_REPO, _BOLT_DRAFTER_FILE, "draft-dflash"),
+        )
+        self.assertIsNone(text_gguf.pinned_drafter("someone/else-GGUF"))
+        self.assertIsNone(text_gguf.pinned_drafter(None))
+
+    def test_resolves_the_drafter_from_the_hub_cache(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            snapshot = Path(tmp) / "snap"
+            drafter = _write(snapshot / _BOLT_DRAFTER_FILE, 8)
+            with mock.patch(
+                "backend_service.helpers.hf_cache_paths._hf_repo_snapshot_dir", return_value=snapshot
+            ):
+                self.assertEqual(
+                    text_gguf.resolve_pinned_drafter(_BOLT_REPO), ("draft-dflash", str(drafter))
+                )
+                # A model launched from its library folder: only the path names the repo.
+                model = Path(tmp) / "models--nvidia--NVIDIA-Nemotron-3.5-Bolt-E4B-4GB" / "snapshots" / "abc" / "m.gguf"
+                self.assertEqual(
+                    text_gguf.resolve_pinned_drafter("", str(model)), ("draft-dflash", str(drafter))
+                )
+
+    def test_missing_drafter_resolves_to_nothing(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            with mock.patch(
+                "backend_service.helpers.hf_cache_paths._hf_repo_snapshot_dir", return_value=Path(tmp)
+            ):
+                self.assertIsNone(text_gguf.resolve_pinned_drafter(_BOLT_REPO))
+            with mock.patch(
+                "backend_service.helpers.hf_cache_paths._hf_repo_snapshot_dir", return_value=None
+            ):
+                self.assertIsNone(text_gguf.resolve_pinned_drafter(_BOLT_REPO))
+
+    def test_every_pin_names_a_catalog_target_and_a_gguf(self) -> None:
+        catalog_repos = {v["repo"] for f in MODEL_FAMILIES for v in f["variants"]}
+        for target, (drafter_repo, drafter_file, spec_type) in text_gguf.PINNED_DRAFTERS.items():
+            self.assertIn(target, catalog_repos)
+            self.assertTrue(drafter_file.endswith(".gguf"))
+            self.assertTrue(spec_type.startswith("draft-"))
+            self.assertNotEqual(drafter_repo, target)
+
+    def test_engine_loads_the_pinned_drafter_before_scanning_for_sidecars(self) -> None:
+        from backend_service.inference import llama_cpp_engine
+
+        with tempfile.TemporaryDirectory() as tmp:
+            model = _write(Path(tmp) / "model.gguf", 8)
+            drafter = Path(tmp) / "drafter.gguf"
+            with (
+                mock.patch.object(llama_cpp_engine, "_llama_server_supports", return_value=True),
+                mock.patch("backend_service.inference._mtp.model_has_mtp_tensors", return_value=False),
+                mock.patch(
+                    "backend_service.helpers.text_gguf.resolve_pinned_drafter",
+                    return_value=("draft-dflash", str(drafter)),
+                ),
+            ):
+                args, note = llama_cpp_engine._speculative_args(
+                    "llama-server", resolved_gguf=str(model), path=str(model), repo=_BOLT_REPO
+                )
+        self.assertEqual(
+            args, ["--model-draft", str(drafter), "--spec-type", "draft-dflash", "--spec-draft-n-max", "15"]
+        )
+        self.assertIn("drafter.gguf", note or "")

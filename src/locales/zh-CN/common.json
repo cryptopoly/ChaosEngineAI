@@ -1072,9 +1072,7 @@
     "importing": "正在导入…",
     "import": "导入",
     "title": "导入现有模型",
-    "subtitle": "在另一个本地应用的存储中发现了模型。导入会就地链接它们，无需重新下载。",
-    "ollama": "Ollama",
-    "lmstudio": "LM Studio"
+    "subtitle": "在另一个本地应用的存储中发现了模型。导入会就地链接它们，无需重新下载。"
   },
   "gpuBanner": {
     "runningOnCpu": "正在使用 CPU 运行。",

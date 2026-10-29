@@ -63,7 +63,9 @@ When DFlash is enabled on an MLX model, the launch modal exposes a **Tree
 budget** slider (0 - 64). The budget is the number of tokens the target
 verifies per step, the root included:
 
-- **0** — linear DFlash: the draft's single best path, 16 tokens per verify.
+- **0** — linear DFlash: the draft's single best path, 8 tokens per verify
+  (the drafters are trained for 16; on an M4 Max with Qwen3-4B 16 ran slower
+  than plain decoding on prose, 8 ran ahead of it).
 - **4 - 8** — a small draft tree. Each node is verified at its depth in the
   tree and sees only its own ancestors, so the output is still exactly what
   plain greedy decoding produces. On an M4 Max with Qwen3-4B (bf16 and

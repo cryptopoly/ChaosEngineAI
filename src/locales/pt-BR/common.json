@@ -1072,9 +1072,7 @@
     "importing": "Importando…",
     "import": "Importar",
     "title": "Importar modelos existentes",
-    "subtitle": "Modelos encontrados no armazenamento de outro app local. A importação os vincula no local — sem baixar de novo.",
-    "ollama": "Ollama",
-    "lmstudio": "LM Studio"
+    "subtitle": "Modelos encontrados no armazenamento de outro app local. A importação os vincula no local — sem baixar de novo."
   },
   "gpuBanner": {
     "runningOnCpu": "Executando na CPU.",

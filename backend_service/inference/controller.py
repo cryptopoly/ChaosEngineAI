@@ -30,7 +30,14 @@ from backend_service.reasoning_split import (
     ThinkingTokenFilter,
     strip_thinking_tokens as _strip_thinking_tokens,
 )
-from backend_service.helpers.request_guards import empty_reply_note, guard_chat_request, merge_notes
+from backend_service.helpers.request_guards import (
+    SCHEMA_FALLBACK_NOTE,
+    empty_reply_note,
+    guard_chat_request,
+    merge_notes,
+    schema_fallback_prompt,
+    strip_json_fence,
+)
 from backend_service.model_resolution import resolve_dflash_target_ref
 
 from backend_service.inference._constants import (
@@ -1234,6 +1241,30 @@ class RuntimeController:
         if result.runtimeNote is None:
             result.runtimeNote = self.runtime_note
         notes = list(guard.notes)
+        if (
+            guard.jsonSchema
+            and not result.text.strip()
+            and not result.tool_calls
+            and self.loaded_model.engine == "llama.cpp"
+        ):
+            # A reasoning model under a JSON grammar can answer with nothing at all; ask for the
+            # JSON in words instead and say so.
+            retry = target_engine.generate(
+                prompt=prompt,
+                history=history,
+                system_prompt=schema_fallback_prompt(system_prompt, guard.jsonSchema),
+                max_tokens=max_tokens,
+                temperature=temperature,
+                images=guard.images,
+                tools=tools,
+                samplers=guard.samplers,
+                reasoning_effort=reasoning_effort,
+                json_schema=None,
+            )
+            if retry.text.strip():
+                retry.text = strip_json_fence(retry.text)
+                retry.runtimeNote = merge_notes(retry.runtimeNote or self.runtime_note, [*guard.notes, SCHEMA_FALLBACK_NOTE])
+                return retry
         if not result.text.strip() and not result.tool_calls:
             empty_note = empty_reply_note(
                 completion_tokens=result.completionTokens,
@@ -1292,6 +1323,30 @@ class RuntimeController:
             saw_reasoning = saw_reasoning or bool(chunk.reasoning)
             if chunk.done:
                 notes = list(guard.notes)
+                if (
+                    not saw_text
+                    and guard.jsonSchema
+                    and self.loaded_model.engine == "llama.cpp"
+                ):
+                    retry = target_engine.generate(
+                        prompt=prompt,
+                        history=history,
+                        system_prompt=schema_fallback_prompt(system_prompt, guard.jsonSchema),
+                        max_tokens=max_tokens,
+                        temperature=temperature,
+                        images=guard.images,
+                        tools=tools,
+                        samplers=guard.samplers,
+                        reasoning_effort=reasoning_effort,
+                        json_schema=None,
+                    )
+                    if retry.text.strip():
+                        saw_text = True
+                        notes.append(SCHEMA_FALLBACK_NOTE)
+                        yield StreamChunk(text=strip_json_fence(retry.text))
+                        chunk.finish_reason = retry.finishReason or chunk.finish_reason
+                        chunk.completion_tokens += retry.completionTokens
+                        chunk.total_tokens += retry.completionTokens
                 if not saw_text:
                     empty_note = empty_reply_note(
                         completion_tokens=chunk.completion_tokens,

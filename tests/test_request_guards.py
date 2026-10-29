@@ -3,6 +3,7 @@ import unittest
 
 from backend_service.helpers.generation_limits import (
     align_video_frames,
+    distilled_steps_note,
     normalize_image_size,
     normalize_video_size,
     snap_to_multiple,
@@ -220,6 +221,21 @@ class SizeAndFrameTests(unittest.TestCase):
         self.assertEqual(align_video_frames("some/other-model", 50), (50, None))
 
 
+class DistilledStepsTests(unittest.TestCase):
+    def test_many_steps_on_a_turbo_model_are_explained_not_changed(self):
+        note = distilled_steps_note("Qwen-Image-2.1 Turbo", 40, 8)
+        self.assertIn("tuned for 8 steps", note)
+        self.assertIn("5 times", note)
+
+    def test_the_tuned_count_and_a_small_overshoot_are_quiet(self):
+        self.assertIsNone(distilled_steps_note("Iris-3B", 4, 4))
+        self.assertIsNone(distilled_steps_note("Iris-3B", 8, 4))
+
+    def test_full_step_models_and_unknown_defaults_are_quiet(self):
+        self.assertIsNone(distilled_steps_note("FLUX.1 dev", 60, 28))
+        self.assertIsNone(distilled_steps_note("Model", 60, None))
+
+
 class ImageInputsTests(unittest.TestCase):
     def test_a_distilled_mflux_model_takes_neither_guidance_nor_a_negative_prompt(self):
         self.assertEqual(
@@ -242,3 +258,109 @@ class ImageInputsTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class GatedTokenMessageTests(unittest.TestCase):
+    def test_a_fine_grained_token_without_gated_access_gets_exact_steps(self) -> None:
+        from backend_service.helpers.hf_errors import _friendly_hf_download_error
+
+        error = (
+            "403 Forbidden: Please enable access to public gated repositories in your "
+            "fine-grained token settings to view this repository."
+        )
+        message = _friendly_hf_download_error("dgrauet/ltx-2.5-mlx-q4", error)
+        self.assertIn("settings/tokens", message)
+        self.assertIn("gated", message)
+        self.assertIn("licence", message)
+
+    def test_a_plain_403_keeps_the_generic_message(self) -> None:
+        from backend_service.helpers.hf_errors import _friendly_hf_download_error
+
+        message = _friendly_hf_download_error("org/model", "HTTP 403 refused")
+        self.assertIn("refused access", message)
+
+
+class ContextOverflowStatusTests(unittest.TestCase):
+    def test_a_context_overflow_is_a_not_usable_request(self) -> None:
+        from backend_service.helpers.request_guards import RequestNotUsable, llama_error
+
+        body = json.dumps({"error": {"type": "exceed_context_size_error", "n_prompt_tokens": 9000, "n_ctx": 4096, "message": "x"}})
+        error = llama_error(body, "fallback")
+        self.assertIsInstance(error, RequestNotUsable)
+        self.assertIsInstance(error, RuntimeError)
+        self.assertIn("9000", str(error))
+
+    def test_other_errors_stay_runtime_errors(self) -> None:
+        from backend_service.helpers.request_guards import RequestNotUsable, llama_error
+
+        error = llama_error(json.dumps({"error": {"type": "server_error", "message": "boom"}}), "fallback")
+        self.assertNotIsInstance(error, RequestNotUsable)
+        self.assertEqual(str(error), "boom")
+        self.assertEqual(str(llama_error("", "fallback")), "fallback")
+
+
+class JsonSchemaFallbackTests(unittest.TestCase):
+    """A reasoning model under a JSON grammar can answer with nothing; the controller asks in words."""
+
+    SCHEMA = {"type": "object", "properties": {"answer": {"type": "number"}}}
+
+    def _controller(self, calls, *, engine_name="llama.cpp"):
+        from types import SimpleNamespace
+
+        from backend_service.inference.base import GenerationResult, StreamChunk
+        from backend_service.inference.controller import RuntimeController
+
+        def result(text):
+            return GenerationResult(text=text, finishReason="stop", promptTokens=5, completionTokens=7,
+                                    totalTokens=12, tokS=10.0, responseSeconds=0.5)
+
+        class Engine:
+            def generate(self, **kwargs):
+                calls.append(("generate", kwargs.get("json_schema"), kwargs.get("system_prompt")))
+                return result("" if kwargs.get("json_schema") else '```json\n{"answer": 391}\n```')
+
+            def stream_generate(self, **kwargs):
+                calls.append(("stream", kwargs.get("json_schema"), kwargs.get("system_prompt")))
+                yield StreamChunk(reasoning="thinking")
+                yield StreamChunk(done=True, finish_reason="length", completion_tokens=50, total_tokens=55)
+
+        controller = RuntimeController.__new__(RuntimeController)
+        controller.loaded_model = SimpleNamespace(engine=engine_name, visionEnabled=False)
+        controller.engine = Engine()
+        controller.runtime_note = None
+        return controller
+
+    def test_an_empty_reply_under_a_grammar_is_retried_as_plain_json(self):
+        calls = []
+        controller = self._controller(calls)
+        result = controller.generate(prompt="17*23?", history=[], system_prompt=None, max_tokens=64,
+                                     temperature=0.0, json_schema=self.SCHEMA)
+        self.assertEqual(result.text, '{"answer": 391}')
+        self.assertIn("plain JSON", result.runtimeNote)
+        self.assertEqual([c[0] for c in calls], ["generate", "generate"])
+        self.assertIsNone(calls[1][1])
+        self.assertIn('"answer"', calls[1][2])
+
+    def test_the_streamed_reply_gets_the_same_retry(self):
+        calls = []
+        controller = self._controller(calls)
+        chunks = list(controller.stream_generate(prompt="17*23?", history=[], system_prompt=None, max_tokens=64,
+                                                 temperature=0.0, json_schema=self.SCHEMA))
+        text = "".join(c.text or "" for c in chunks)
+        self.assertEqual(text, '{"answer": 391}')
+        self.assertTrue(chunks[-1].done)
+        self.assertIn("plain JSON", chunks[-1].runtime_note)
+
+    def test_other_engines_are_left_alone(self):
+        calls = []
+        controller = self._controller(calls, engine_name="mlx")
+        controller.generate(prompt="x", history=[], system_prompt=None, max_tokens=8, temperature=0.0)
+        self.assertEqual(len(calls), 1)
+
+    def test_a_fenced_reply_is_unwrapped_only_when_the_whole_reply_is_fenced(self):
+        from backend_service.helpers.request_guards import strip_json_fence
+
+        self.assertEqual(strip_json_fence('```json\n{"a": 1}\n```'), '{"a": 1}')
+        self.assertEqual(strip_json_fence('```\n[1, 2]\n```'), "[1, 2]")
+        self.assertEqual(strip_json_fence('text ```json\n{"a": 1}\n``` more'), 'text ```json\n{"a": 1}\n``` more')
+        self.assertEqual(strip_json_fence('{"a": 1}'), '{"a": 1}')

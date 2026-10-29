@@ -223,14 +223,14 @@ def _ltx2_mlx_pack_error(snapshot_dir: Path | str, repo_id: str) -> str | None:
     """ltx-2-mlx packs are bare safetensors files: check the ones the distilled pipeline reads."""
     from backend_service.ltx2_mlx_runtime import missing_pack_files
 
-    missing = missing_pack_files(Path(snapshot_dir))
+    missing = missing_pack_files(Path(snapshot_dir), repo_id)
     if not missing:
         return None
     return f"The snapshot of {repo_id} is missing {', '.join(missing)}. Retry the download."
 
 
 def _ltx2_mlx_variant_error(variant: dict[str, Any]) -> str | None:
-    """Pack files plus the Gemma text encoder the engine loads beside them."""
+    """Pack files plus the Gemma text encoder the engine loads beside them (2.3 packs only)."""
     repo = str(variant.get("repo") or "")
     snapshot_dir = _hf_repo_snapshot_dir(repo)
     if snapshot_dir is None:
@@ -238,11 +238,14 @@ def _ltx2_mlx_variant_error(variant: dict[str, Any]) -> str | None:
     pack_error = _ltx2_mlx_pack_error(snapshot_dir, repo)
     if pack_error:
         return pack_error
-    from backend_service.ltx2_mlx_runtime import GEMMA_REPO
+    from backend_service.ltx2_mlx_runtime import gemma_repo
 
-    gemma = _hf_repo_snapshot_dir(GEMMA_REPO)
+    text_encoder_repo = gemma_repo(repo)
+    if text_encoder_repo is None:
+        return None
+    gemma = _hf_repo_snapshot_dir(text_encoder_repo)
     if gemma is None or not (Path(gemma) / "model.safetensors.index.json").exists():
-        return f"The text encoder {GEMMA_REPO} is not downloaded. Retry the download."
+        return f"The text encoder {text_encoder_repo} is not downloaded. Retry the download."
     return None
 
 

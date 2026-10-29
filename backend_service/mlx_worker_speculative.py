@@ -39,6 +39,13 @@ if TYPE_CHECKING:
     from backend_service.mlx_worker import WorkerState
 
 
+# Draft tokens per verify step for linear DFlash. The shipped z-lab drafters
+# are trained for 16, but verifying 16 rows costs more than the extra accepted
+# tokens return on prose: Qwen3-4B bf16 on an M4 Max ran 34 tok/s at 16 against
+# 50 plain, and ahead of plain at 8 (docs/features/dflash.md).
+LINEAR_DFLASH_BLOCK_TOKENS = 8
+
+
 def generate_dflash(state: WorkerState, request: dict[str, Any]) -> dict[str, Any]:
     """Generate using DFLASH speculative decoding."""
     from dflash_mlx.runtime import stream_dflash_generate
@@ -94,6 +101,7 @@ def generate_dflash(state: WorkerState, request: dict[str, Any]) -> dict[str, An
         prompt=prompt_text,
         max_new_tokens=int(request.get("maxTokens") or 256),
         use_chat_template=False,
+        block_tokens=LINEAR_DFLASH_BLOCK_TOKENS,
         stop_token_ids=eos_token_ids,
         prompt_tokens_override=prompt_tokens,
         **context_kwargs,

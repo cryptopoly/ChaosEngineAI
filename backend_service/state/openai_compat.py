@@ -29,6 +29,7 @@ from typing import TYPE_CHECKING, Any
 from fastapi import HTTPException
 from starlette.responses import StreamingResponse
 
+from backend_service.helpers.request_guards import RequestNotUsable
 from backend_service.models import (
     LoadModelRequest,
     OpenAIChatCompletionRequest,
@@ -366,7 +367,7 @@ def openai_chat_completion(
         with state._lock:
             state.active_requests = max(0, state.active_requests - 1)
             state.add_log("server", "error", f"[{model_tag}] Generation failed: {exc}")
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(status_code=400 if isinstance(exc, RequestNotUsable) else 500, detail=str(exc)) from exc
 
     gen_elapsed = round(time.perf_counter() - gen_start, 2)
     with state._lock:

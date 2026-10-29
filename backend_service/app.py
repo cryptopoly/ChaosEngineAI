@@ -35,6 +35,7 @@ from backend_service.helpers.generation_limits import (
     align_video_frames,
     normalize_image_size,
     normalize_video_size,
+    distilled_steps_note,
 )
 from backend_service.helpers.system import (
     _build_system_snapshot as _build_system_snapshot_impl,
@@ -412,6 +413,15 @@ def _generate_image_artifacts(
         effective_steps = int(variant_default_steps)
     if variant_cfg_override is not None and abs(request.guidance - SCHEMA_DEFAULT_GUIDANCE) < 1e-3:
         effective_guidance = float(variant_cfg_override)
+
+    steps_note = distilled_steps_note(
+        str(variant.get("name") or "This model"),
+        effective_steps,
+        int(variant_default_steps) if variant_default_steps is not None else None,
+    )
+    if steps_note:
+        size_notes.append(steps_note)
+        size_note = " ".join(size_notes)
 
     rendered_images, runtime_status = runtime_manager.generate(
         ImageGenerationConfig(

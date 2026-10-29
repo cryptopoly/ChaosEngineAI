@@ -123,9 +123,56 @@ def empty_reply_note(
     return "The model returned no visible text for this prompt."
 
 
+SCHEMA_FALLBACK_NOTE = (
+    "This model produced no text under the JSON grammar (reasoning models can spend the whole reply "
+    "on thinking), so the reply was asked for as plain JSON instead. Check it before you rely on it."
+)
+
+
+def schema_fallback_prompt(system_prompt: str | None, schema: dict[str, Any]) -> str:
+    """The system prompt for a retry that asks for JSON in words instead of through a grammar."""
+    instruction = (
+        "Reply with only one JSON value that matches this JSON schema. No explanation, no markdown fence.\n"
+        + json.dumps(schema, ensure_ascii=False)
+    )
+    return f"{system_prompt}\n\n{instruction}" if system_prompt else instruction
+
+
+def strip_json_fence(text: str) -> str:
+    """Remove a single ```json fence around the whole reply, which models add even when told not to."""
+    stripped = text.strip()
+    if stripped.startswith("```") and stripped.endswith("```") and stripped.count("```") == 2:
+        inner = stripped[3:-3]
+        newline = inner.find("\n")
+        first = inner[:newline].strip().lower() if newline != -1 else ""
+        if newline != -1 and first in ("", "json"):
+            return inner[newline + 1:].strip()
+    return text
+
+
 def merge_notes(existing: str | None, notes: list[str]) -> str | None:
     parts = [part for part in [existing, *notes] if part]
     return " · ".join(parts) if parts else None
+
+
+class RequestNotUsable(RuntimeError):
+    """The request cannot run as sent (conversation larger than the loaded context).
+
+    A RuntimeError so every existing handler still catches it; the HTTP routes
+    answer 400 for it instead of 500, because the person can fix it.
+    """
+
+
+def llama_error(detail: str, fallback: str) -> RuntimeError:
+    """The exception for a llama-server error body: 400-class for a context overflow."""
+    message = friendly_llama_error(detail) if detail else fallback
+    try:
+        kind = str((json.loads(detail).get("error") or {}).get("type") or "")
+    except (ValueError, AttributeError, TypeError):
+        kind = ""
+    if kind == "exceed_context_size_error":
+        return RequestNotUsable(message)
+    return RuntimeError(message)
 
 
 def friendly_llama_error(detail: str) -> str:

@@ -460,6 +460,7 @@ class DFlashCompatibilityTests(unittest.TestCase):
             worker._generate_dflash({"prompt": "hello", "maxTokens": 16})
 
         self.assertEqual(seen["runtime_context"], ("ctx", {"target_fa_window": 0}))
+        self.assertEqual(seen["block_tokens"], 8)
 
     def test_generate_dflash_supplies_every_required_argument_of_the_installed_release(self):
         try:
@@ -474,6 +475,7 @@ class DFlashCompatibilityTests(unittest.TestCase):
         }
         passed = {"target_model", "tokenizer", "draft_model", "prompt", "max_new_tokens",
                   "use_chat_template", "stop_token_ids", "prompt_tokens_override", "runtime_context"}
+        self.assertIn("block_tokens", inspect.signature(stream_dflash_generate_impl).parameters)
         self.assertLessEqual(required, passed, "dflash-mlx needs arguments the worker does not pass (FU-057)")
 
     def _generate_with_reply(self, reply: str) -> str:

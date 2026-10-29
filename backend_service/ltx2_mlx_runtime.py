@@ -1,4 +1,4 @@
-"""Native Apple Silicon video runtime for LTX-2.3 through ltx-2-mlx.
+"""Native Apple Silicon video runtime for LTX-2.3 and LTX-2.5 through ltx-2-mlx.
 
 ltx-2-mlx (MIT) is a pure MLX port of Lightricks LTX-2.3 / 2.5: text-to-video
 with stereo sound on the Apple GPU, no PyTorch. It lives in its own venv
@@ -13,7 +13,9 @@ negative prompt do not apply to it and are reported as such.
 
 The weights come from ``dgrauet/ltx-2.3-mlx-q4`` (the Download button fetches
 only the files this pipeline reads) and the text encoder from
-``mlx-community/gemma-3-12b-it-4bit``. Generation never downloads anything.
+``mlx-community/gemma-3-12b-it-4bit``. An LTX-2.5 pack (``dgrauet/ltx-2.5-mlx-q4``,
+gated: the licence is accepted on Hugging Face) carries its own Gemma 4 text
+encoder, so it needs no companion repo. Generation never downloads anything.
 """
 
 from __future__ import annotations
@@ -38,10 +40,12 @@ LTX2_VENV_DIR = Path.home() / ".chaosengine" / "ltx2-venv"
 LTX2_VERSION_FILE = Path.home() / ".chaosengine" / "bin" / "ltx2-mlx.version"
 _FFMPEG_SHIM_DIR = Path.home() / ".chaosengine" / "bin" / "ffmpeg-shim"
 
+LTX25_REPOS: frozenset[str] = frozenset({"dgrauet/ltx-2.5-mlx-q4"})
 SUPPORTED_REPOS: frozenset[str] = frozenset({
     "dgrauet/ltx-2.3-mlx-q4",
     "dgrauet/ltx-2.3-mlx-q8",
-})
+}) | LTX25_REPOS
+# LTX-2.3 packs read their text encoder from this separate repo; 2.5 packs carry their own.
 GEMMA_REPO = "mlx-community/gemma-3-12b-it-4bit"
 
 # The distilled pipeline denoises 8 steps at half size, then 3 after the upscale.
@@ -59,6 +63,18 @@ REQUIRED_FILES: tuple[str, ...] = (
     "audio_vae.safetensors",
     "vocoder.safetensors",
     "spatial_upscaler_x2_v1_1.safetensors",
+)
+# The LTX-2.5 pack names its files differently (conv video VAE, v1.0 upscaler)
+# and bundles the Gemma 4 text encoder.
+REQUIRED_FILES_25: tuple[str, ...] = (
+    "transformer-distilled.safetensors",
+    "connector.safetensors",
+    "vae_decoder_conv.safetensors",
+    "vae_encoder_conv.safetensors",
+    "audio_vae.safetensors",
+    "vocoder.safetensors",
+    "spatial_upscaler_x2_v1_0.safetensors",
+    "text_encoder.safetensors",
 )
 
 _LAST_OUTPUT_LINES = 60
@@ -88,8 +104,25 @@ def _is_ltx2_mlx_repo(repo: str | None) -> bool:
     return bool(repo) and repo in SUPPORTED_REPOS
 
 
-def missing_pack_files(root: Path) -> list[str]:
-    return [name for name in REQUIRED_FILES if not (root / name).exists()]
+def is_ltx25_repo(repo: str | None) -> bool:
+    return bool(repo) and repo in LTX25_REPOS
+
+
+def required_files(repo: str | None) -> tuple[str, ...]:
+    return REQUIRED_FILES_25 if is_ltx25_repo(repo) else REQUIRED_FILES
+
+
+def gemma_repo(repo: str | None) -> str | None:
+    """Repo holding the text encoder, or None when the pack bundles it."""
+    return None if is_ltx25_repo(repo) else GEMMA_REPO
+
+
+def generation_label(repo: str | None) -> str:
+    return "LTX-2.5" if is_ltx25_repo(repo) else "LTX-2.3"
+
+
+def missing_pack_files(root: Path, repo: str | None = None) -> list[str]:
+    return [name for name in required_files(repo) if not (root / name).exists()]
 
 
 def _local_snapshot(repo: str) -> Path | None:
@@ -177,23 +210,27 @@ class Ltx2MlxVideoEngine:
         pack = _local_snapshot(config.repo)
         if pack is None:
             raise RuntimeError(f"{config.modelName} is not downloaded. Download it from Video Discover first.")
-        missing = missing_pack_files(pack)
+        missing = missing_pack_files(pack, config.repo)
         if missing:
             raise RuntimeError(
                 f"{config.modelName} is incomplete (missing {', '.join(missing)}). Download it again from Video Discover."
             )
-        gemma = _local_snapshot(GEMMA_REPO)
-        if gemma is None or not (gemma / "model.safetensors.index.json").exists():
-            raise RuntimeError(
-                f"The text encoder {GEMMA_REPO} is not downloaded. Download {config.modelName} again from Video Discover."
-            )
+        gemma: Path | None = None
+        text_encoder_repo = gemma_repo(config.repo)
+        if text_encoder_repo is not None:
+            gemma = _local_snapshot(text_encoder_repo)
+            if gemma is None or not (gemma / "model.safetensors.index.json").exists():
+                raise RuntimeError(
+                    f"The text encoder {text_encoder_repo} is not downloaded. Download {config.modelName} again from Video Discover."
+                )
 
         from backend_service.progress import PHASE_LOADING, VIDEO_PROGRESS
         from backend_service.video_runtime import _resolve_video_seed
 
         width, height = align_size(config.width, config.height)
         seed = _resolve_video_seed(config.seed)
-        notes = [f"LTX-2.3 distilled ({DISTILLED_STEPS} passes, no guidance; steps and guidance do not apply)"]
+        label = generation_label(config.repo)
+        notes = [f"{label} distilled ({DISTILLED_STEPS} passes, no guidance; steps and guidance do not apply)"]
         if (width, height) != (config.width, config.height):
             notes.append(f"size {config.width}x{config.height} changed to {width}x{height} (multiples of {SIZE_MULTIPLE})")
         if config.negativePrompt.strip():
@@ -225,7 +262,7 @@ class Ltx2MlxVideoEngine:
             fps=config.fps,
             width=width,
             height=height,
-            runtimeLabel=self.runtime_label,
+            runtimeLabel=f"{label} (MLX native)",
             runtimeNote="; ".join(notes) + ".",
             effectiveSteps=DISTILLED_STEPS,
             effectiveGuidance=1.0,
@@ -235,18 +272,19 @@ class Ltx2MlxVideoEngine:
     def _build_command(
         config: VideoGenerationConfig,
         pack: Path,
-        gemma: Path,
+        gemma: Path | None,
         width: int,
         height: int,
         seed: int,
         output: Path,
     ) -> list[str]:
+        gemma_args = ["--gemma", str(gemma)] if gemma is not None else []
         return [
             str(LTX2_VENV_DIR / "bin" / "ltx-2-mlx"),
             "generate",
             "--distilled",
             "--model", str(pack),
-            "--gemma", str(gemma),
+            *gemma_args,
             "--prompt", config.prompt,
             "-H", str(height),
             "-W", str(width),

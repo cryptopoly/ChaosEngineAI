@@ -49,3 +49,10 @@
 - **Discover went blank** when you typed in the search box.
 - Apple Silicon: a model that reasons after a tool result, even with Thinking Off, no longer shows that reasoning in its answer.
 - A reasoning level that a model's chat template does not accept is mapped to the nearest one it does.
+- **Speculative decoding on Apple Silicon works again, and faster.** DFlash had been quietly falling back to plain decoding on every reply; it now runs (Qwen3-4B: about 113 tokens per second against 53) and verifies 8 tokens per step instead of 16, which was slower than plain decoding on prose. DDTree (the draft tree) is back, with a corrected tree verification, for models made of plain attention layers; hybrid models such as Qwen3.5 and 3.6 keep linear DFlash. On a 30B-class model (Qwen3-Coder-30B-A3B, 4-bit) code and reasoning replies run 1.4 to 1.7 times faster; creative writing is still slower with speculative decoding on, so leave it off for stories.
+- **Clips with sound say so.** LTX clips show a Sound badge in the gallery and the result window, which plays them with sound; the Video Studio reminds you that the sound follows your prompt.
+- **A JSON schema on a reasoning model** (llama.cpp) no longer returns nothing: if the grammar leaves the model with no text, the reply is asked for as plain JSON and the note says so. A conversation larger than the loaded context now answers with a 400 and the sizes, not a 500.
+- **A failed mflux update keeps your working engine.** The old install is moved aside and put back if the new one does not verify.
+- **Gated models:** when your Hugging Face token cannot open gated repos, the download error now says exactly which token setting to enable.
+- **Wan** default guidance follows the Wan-AI model cards (5.0 for Wan 2.1, 4.0 for 2.2 A14B); the old values over-saturated Wan 2.2 5B clips. These two were not run here.
+- The import-models panel labels each group with the folder it found them in instead of naming other apps.

@@ -1581,7 +1581,7 @@ def phase_5(cap: Capability) -> PhaseResult:
             return "skip", f"needs imageio-ffmpeg, numpy and Pillow in the test environment: {exc}", {}
         rc, payload, err = _cli_json(
             "video-generate", "a calm lake at sunrise, soft pastel colors, gentle ripples, realistic",
-            "--model", model_id, "--width", "640", "--height", "352", "--frames", "9",
+            "--model", model_id, "--width", "640", "--height", "352", "--frames", "17",
             "--seed", "7", "--timeout", "2400",
         )
         if rc != 0:
@@ -1594,16 +1594,20 @@ def phase_5(cap: Capability) -> PhaseResult:
         frame_path = Path(tempfile.mkdtemp(prefix="ce-wan-")) / "frame.png"
         done = subprocess.run(
             [imageio_ffmpeg.get_ffmpeg_exe(), "-y", "-loglevel", "error", "-i", path,
-             "-vf", "select=eq(n\\,4)", "-vframes", "1", str(frame_path)],
+             "-vf", "select=eq(n\\,16)", "-vframes", "1", str(frame_path)],
             capture_output=True, text=True, timeout=120,
         )
         if done.returncode != 0 or not frame_path.exists():
             return "fail", f"could not read a frame from {path}: {done.stderr[:200]}", {}
         pixels = np.asarray(Image.open(frame_path).convert("RGB"))
         clipped = float((pixels >= 250).mean())
-        if clipped > 0.20:
-            return "fail", f"{clipped:.0%} of the pixels are clipped to white (a healthy frame is under 5 %)", {}
-        return "pass", "", {"clippedShare": round(clipped, 4)}
+        luma = float((pixels.astype("float64") @ np.array([0.299, 0.587, 0.114])).mean())
+        # The burn grows with clip length, so the last frame of a 17-frame clip is read. Thresholds
+        # come from two real runs (FU-122: burnt frames 46-69 % clipped at mean luma 232-240, a clean
+        # bright beach scene 19-22 % at 226-230); a smoke guard, not a quality metric.
+        if clipped > 0.35 or luma > 238:
+            return "fail", f"the last frame looks burnt: {clipped:.0%} of pixels clipped to white, mean luma {luma:.0f}", {}
+        return "pass", "", {"clippedShare": round(clipped, 4), "meanLuma": round(luma, 1)}
 
     # LTX-2.3 on its own MLX engine (ltx-2-mlx, own venv). The catalog row must
     # route there, the engine status must answer, and, when the engine and the

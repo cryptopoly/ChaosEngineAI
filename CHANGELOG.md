@@ -36,6 +36,13 @@ Full notes in [RELEASE_NOTES_v0.9.9.md](RELEASE_NOTES_v0.9.9.md).
 - A crashed voice worker on Windows was reported as "did not answer within 300 s".
 - Chat no longer re-requests the model load before every message.
 - A reasoning effort the chat template rejects is mapped to the nearest one it accepts.
+- MLX DFlash fell back to plain decoding on every reply (dflash-mlx 0.1.5 made `runtime_context` required); linear DFlash now verifies 8 tokens per step (16 lost to plain decoding on prose); DDTree verifies tree nodes at their own positions and is back for attention-only models (FU-112, FU-134).
+- LTX clips carry a `hasAudio` flag read from the mp4; gallery and result window show a Sound badge and the result window plays the clip with sound (FU-130).
+- A JSON schema that leaves a llama.cpp reasoning model with no text is retried as plain JSON; a conversation larger than the context answers 400 with both sizes; a Turbo or distilled model asked for many more steps than it is tuned for says what that costs (FU-127).
+- The mflux installer moves the old venv aside and restores it when the new install fails to verify (FU-123).
+- A fine-grained Hugging Face token without gated-repo access gets a specific message; the import-models panel no longer names other apps (FU-119).
+- Wan 2.1 and 2.2 A14B default guidance follow the Wan-AI model cards, and the Wan burn check in the E2E suite reads the last frame of a 17-frame clip (FU-122).
+- Project hub: `docs/hub/` plus `tools/hub_tracker.py` and `tools/build_hub.py` (FU-131).
 
 ## Unreleased
 

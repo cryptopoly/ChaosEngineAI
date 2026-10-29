@@ -220,8 +220,9 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 # The repo holds three transformers and two LoRAs (60 GB); the distilled
                 # pipeline reads 20.4 GB of it, plus the 8.1 GB Gemma 3 text encoder.
                 "sizeGb": 28.5,
-                # Measured 2026-10-29 (M4 Max 64 GB, 768x512): process footprint peaked at 15.0 GB
-                # on a 25-frame clip (sampled every 2 s); a 97-frame clip holds more activations.
+                # Measured 2026-10-29 (M4 Max 64 GB, process footprint sampled every 3 s): 15.0 GB
+                # on 768x512 x 25 frames, and 18 GB on both 768x512 x 257 frames (10.7 s, 352 s)
+                # and 1280x704 x 121 frames (5 s, 363 s). Length and size barely move it.
                 "runtimeFootprintGb": 20.0,
                 "recommendedResolution": "768x512",
                 "defaultDurationSeconds": 4.0,
@@ -251,6 +252,47 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 ],
                 "availableLocally": False,
                 "releaseDate": "2026-03",
+            },
+            {
+                "id": "dgrauet/ltx-2.5-mlx-q4",
+                "familyId": "ltx-2",
+                "name": "LTX-2.5 · distilled q4 (ltx-2-mlx)",
+                "provider": "Lightricks · dgrauet",
+                "repo": "dgrauet/ltx-2.5-mlx-q4",
+                "link": "https://huggingface.co/dgrauet/ltx-2.5-mlx-q4",
+                "runtime": "ltx-2-mlx (MLX native)",
+                "styleTags": ["general", "fast", "motion", "audio", "mlx"],
+                "taskSupport": ["txt2video"],
+                # The repo holds the dev transformer and a distilled LoRA as well (50.7 GB);
+                # the distilled pipeline reads the distilled transformer, the Gemma 4 text
+                # encoder bundled in the pack and the small VAE / vocoder / upscaler files.
+                "sizeGb": 28.7,
+                "runtimeFootprintGb": 24.0,
+                "recommendedResolution": "768x512",
+                "defaultDurationSeconds": 4.0,
+                "note": (
+                    "LTX-2.5 distilled on the same MLX engine as LTX-2.3: stereo sound, 8 + 3 denoise passes, "
+                    "no guidance (steps, guidance and negative prompt do not apply). Gated: accept the licence "
+                    "on Hugging Face first, and add a Hugging Face token with read access in Settings. Needs the "
+                    "LTX-2.3 MLX engine, installed from the Video Studio. Sizes are multiples of 64. Weights: "
+                    "LTX-2 community licence (free below US$10M annual revenue)."
+                ),
+                "estimatedGenerationSeconds": 160.0,
+                "downloadFiles": [
+                    "transformer-distilled.safetensors",
+                    "connector.safetensors",
+                    "vae_decoder_conv.safetensors",
+                    "vae_encoder_conv.safetensors",
+                    "audio_vae.safetensors",
+                    "vocoder.safetensors",
+                    "spatial_upscaler_x2_v1_0.safetensors",
+                    "text_encoder.safetensors",
+                    "*.json",
+                    "*.jinja",
+                    "LICENSE",
+                ],
+                "availableLocally": False,
+                "releaseDate": "2026-08",
             },
             {
                 "id": "prince-canuma/LTX-2.3-dev",

@@ -380,6 +380,29 @@ class ChaosEngineBackendTests(unittest.TestCase):
         )
         self._memory_patch.start()
 
+    def test_chat_generate_answers_400_when_the_conversation_exceeds_the_context(self):
+        from backend_service.helpers.request_guards import RequestNotUsable
+
+        runtime = self.client.app.state.chaosengine.runtime
+
+        def too_long(**_kwargs):
+            raise RequestNotUsable("The conversation is about 9000 tokens, but the model is loaded with a 4096-token context.")
+
+        runtime.generate = too_long
+        response = self.client.post("/api/chat/generate", json={"prompt": "Hi", "maxTokens": 16})
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("9000", response.json()["detail"])
+
+    def test_chat_generate_still_answers_500_for_an_engine_failure(self):
+        runtime = self.client.app.state.chaosengine.runtime
+
+        def broken(**_kwargs):
+            raise RuntimeError("the engine fell over")
+
+        runtime.generate = broken
+        response = self.client.post("/api/chat/generate", json={"prompt": "Hi", "maxTokens": 16})
+        self.assertEqual(response.status_code, 500)
+
     def tearDown(self):
         self._memory_patch.stop()
         self.tempdir.cleanup()

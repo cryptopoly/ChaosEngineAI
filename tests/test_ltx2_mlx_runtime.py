@@ -10,6 +10,7 @@ from backend_service.helpers.companions import companion_downloads
 from backend_service.video_runtime.types import VideoGenerationConfig
 
 REPO = "dgrauet/ltx-2.3-mlx-q4"
+REPO25 = "dgrauet/ltx-2.5-mlx-q4"
 
 
 def _variant() -> dict:
@@ -62,6 +63,47 @@ class CatalogTests(unittest.TestCase):
                 self.assertIn("text encoder", video_helpers._video_variant_validation_error(_variant()))
 
 
+class Ltx25Tests(unittest.TestCase):
+    def test_the_25_pack_is_routed_to_this_engine_and_bundles_its_text_encoder(self) -> None:
+        self.assertTrue(ltx2._is_ltx2_mlx_repo(REPO25))
+        self.assertIsNone(ltx2.gemma_repo(REPO25))
+        self.assertEqual(ltx2.gemma_repo(REPO), ltx2.GEMMA_REPO)
+        self.assertEqual(ltx2.generation_label(REPO25), "LTX-2.5")
+
+    def test_the_25_download_pins_its_own_file_names(self) -> None:
+        variant = next(v for f in VIDEO_MODEL_FAMILIES for v in f["variants"] if v["repo"] == REPO25)
+        self.assertTrue(set(ltx2.REQUIRED_FILES_25) <= set(variant["downloadFiles"]))
+        self.assertNotIn("downloadCompanions", variant)
+        self.assertEqual(companion_downloads(REPO25), [])
+        patterns = video_helpers._video_repo_allow_patterns(REPO25)
+        self.assertNotIn("transformer-dev.safetensors", patterns)
+
+    def test_a_25_pack_is_installed_without_a_separate_text_encoder(self) -> None:
+        variant = next(v for f in VIDEO_MODEL_FAMILIES for v in f["variants"] if v["repo"] == REPO25)
+        with tempfile.TemporaryDirectory() as pack:
+            for name in ltx2.REQUIRED_FILES_25:
+                (Path(pack) / name).write_bytes(b"x")
+            with mock.patch.object(video_helpers, "_hf_repo_snapshot_dir", return_value=pack):
+                self.assertIsNone(video_helpers._video_variant_validation_error(variant))
+            (Path(pack) / "text_encoder.safetensors").unlink()
+            with mock.patch.object(video_helpers, "_hf_repo_snapshot_dir", return_value=pack):
+                self.assertIn("text_encoder.safetensors", video_helpers._video_variant_validation_error(variant))
+
+    def test_a_23_pack_does_not_pass_as_a_25_pack(self) -> None:
+        with tempfile.TemporaryDirectory() as pack:
+            for name in ltx2.REQUIRED_FILES:
+                (Path(pack) / name).write_bytes(b"x")
+            self.assertEqual(ltx2.missing_pack_files(Path(pack), REPO), [])
+            self.assertTrue(ltx2.missing_pack_files(Path(pack), REPO25))
+
+    def test_the_25_command_passes_no_gemma_argument(self) -> None:
+        args = ltx2.Ltx2MlxVideoEngine._build_command(
+            _config(repo=REPO25), Path("/pack"), None, 768, 512, 7, Path("/tmp/out.mp4")
+        )
+        self.assertNotIn("--gemma", args)
+        self.assertEqual(args[args.index("--model") + 1], str(Path("/pack")))
+
+
 class EngineTests(unittest.TestCase):
     def test_sizes_snap_to_sixty_four(self) -> None:
         self.assertEqual(ltx2.align_size(768, 512), (768, 512))
@@ -73,8 +115,8 @@ class EngineTests(unittest.TestCase):
             _config(), Path("/pack"), Path("/gemma"), 768, 512, 7, Path("/tmp/out.mp4")
         )
         self.assertEqual(args[1:3], ["generate", "--distilled"])
-        self.assertEqual(args[args.index("--model") + 1], "/pack")
-        self.assertEqual(args[args.index("--gemma") + 1], "/gemma")
+        self.assertEqual(args[args.index("--model") + 1], str(Path("/pack")))
+        self.assertEqual(args[args.index("--gemma") + 1], str(Path("/gemma")))
         self.assertEqual(args[args.index("--frames") + 1], "97")
         self.assertEqual(args[args.index("--frame-rate") + 1], "24")
         self.assertEqual(args[args.index("--seed") + 1], "7")

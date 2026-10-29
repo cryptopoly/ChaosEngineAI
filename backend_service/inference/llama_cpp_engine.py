@@ -67,7 +67,7 @@ from backend_service.inference.base import (
     RepeatedLineGuard,
     StreamChunk,
 )
-from backend_service.helpers.request_guards import friendly_llama_error
+from backend_service.helpers.request_guards import friendly_llama_error, llama_error
 from backend_service.reasoning_split import (
     ThinkingTokenFilter,
     strip_thinking_tokens as _strip_thinking_tokens,
@@ -925,7 +925,7 @@ class LlamaCppEngine(BaseInferenceEngine):
             )
         except urllib.error.HTTPError as exc:
             detail = exc.read().decode("utf-8", errors="ignore")
-            raise RuntimeError(friendly_llama_error(detail) if detail else str(exc)) from exc
+            raise llama_error(detail, str(exc)) from exc
         except urllib.error.URLError as exc:
             raise RuntimeError(str(exc.reason)) from exc
 
@@ -1012,7 +1012,7 @@ class LlamaCppEngine(BaseInferenceEngine):
             resp = urllib.request.urlopen(request, timeout=DEFAULT_LLAMA_TIMEOUT_SECONDS)
         except urllib.error.HTTPError as exc:
             detail = exc.read().decode("utf-8", errors="ignore")
-            raise RuntimeError(friendly_llama_error(detail) if detail else str(exc)) from exc
+            raise llama_error(detail, str(exc)) from exc
         except urllib.error.URLError as exc:
             raise RuntimeError(str(exc.reason)) from exc
 

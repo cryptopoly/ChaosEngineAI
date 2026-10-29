@@ -95,3 +95,18 @@ def align_video_frames(repo: str, frames: int) -> tuple[int, str | None]:
             return frames, None
         return aligned, f"Frame count {frames} changed to {aligned}: this video model needs {step}k+{offset} frames."
     return frames, None
+
+
+def distilled_steps_note(model_name: str, requested: int, tuned: int | None) -> str | None:
+    """A note when a few-step model is asked for many more steps than it was tuned for.
+
+    Distilled and turbo models are trained for a handful of steps (4 to 8). More
+    steps cost time in proportion and rarely look better, so the run still does
+    what was asked and the note says what it costs.
+    """
+    if tuned is None or tuned > 8 or requested <= tuned * 2:
+        return None
+    return (
+        f"{model_name} is tuned for {tuned} steps; {requested} steps take about "
+        f"{requested / tuned:.0f} times as long and rarely look better."
+    )

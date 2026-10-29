@@ -4,11 +4,11 @@ status: done
 ---
 # Progress: translations
 
-Updated: 2026-10-29. Owner: translations engineer agent. Branch: `feat/models-fit` (no commit made; files left in the working tree).
+Updated: 2026-10-29 (second pass added). Owner: translations engineer agent. Branch: `feat/models-fit` (no commit made by me; first pass is committed in the merge, second pass is in the working tree).
 
 ## Goal
 
-Give all 10 shipping locales the new UI keys from `ui-core.md` ("New i18n keys") and `settings-rec.md` ("New i18n keys (namespace `studio`)"), so the catalogs match the inline English `defaultValue` text used in the code today.
+Give all 10 shipping locales the new UI keys from `ui-core.md`, `settings-rec.md` (first pass), `ui-video.md` and `ui-chat.md` (second pass), so the catalogs match the inline English `defaultValue` text used in the code.
 
 ## Done
 
@@ -16,6 +16,17 @@ Give all 10 shipping locales the new UI keys from `ui-core.md` ("New i18n keys")
 - No source key left unplaced. The parser checked the English text of every key against the progress files (zero mismatches).
 - 43 of the 107 keys per locale are copies of existing translations in the same locale (so the old and new pages say the same thing): `library:imageDiscover.{action,status,filter,summary}.*`, `library:imageModels.{action.openModelCard,action.browseCatalog,status.downloadFailed}`, `library:onlineModels.memory.{comfortableLabel,tightLabel}` (Fits / Tight), `library:card.license`, `library:filter.all`, `runtime:controls.engine`, `common:tabGroups.models`, `common:imageDiscover.sortLabel.{likes,downloads}`, `studio:voice.library.filter` (Show), and the studio labels (`image.qualityPreset|steps|guidance|sampler|diffusionCache`, `videoStudio.fields.frames|fps`, `imageStudio.toggles.cfgDecay|previewVae|fp8Layerwise` with the " (CUDA Ada+)" suffix removed).
 - Checks run: `npm run i18n:validate` (100 % parity, ICU compile OK, no orphans), `npx vitest run src/locales` (10 passed). Every message with `{`/`'` was also rendered with `intl-messageformat` for counts 1, 2, 5, 21 (all plural forms correct, no swallowed apostrophes). Only additions: every existing key is unchanged and in the same position; `git diff` shows the new lines plus the unavoidable trailing-comma line changes (50 deleted lines across the 30 files).
+
+## Second pass (ui-video, ui-chat)
+
+- 56 keys added to each of the 10 locales (`en` plus 9 translations), all in `src/locales/<locale>/library.json`: 13 new from `ui-video.md` (`models.video.*` x5, `models.detail.ggufFile|textEncoder|catalogSize`, `videoModels.sharedRepo|sharedRepoTitle`, `videoModels.action.deleteShared{Gguf,TextEncoder,Component}`), the 3 older keys that were never in `en` (`videoDiscover.status.installing`, `videoDiscover.sortLabel.likes|downloads`; copied from the existing `common:videoDiscover.*` translations), and 40 from `ui-chat.md` (`models.chat.*`). No source key left unplaced; the parser compared the English text of all 56 against the two progress files (zero mismatches).
+- Reworded `myModels.strategy.dflashEmptyTooltip` in all 10 locales. English: "... Download a base model from the Models page to enable DFlash." (was "from Discover"). Only the last sentence changed; the other translations point at "Models" (zh 模型 / ja モデル / de Modelle / ru Модели / ko 모델 / fr Modèles / es Modelos / pt Modelos). The sidebar entry for this page is actually called "Chat Models" (`tabs.chatModels`); say if the tooltip should name that instead.
+- The three temporary `models.legacy.*` keys were removed by the lead before this pass and are not re-added. Net keys added by me per locale: 104 (first pass) + 56 = 160. `i18n:validate` coverage is 3003/3003 for every locale.
+- Reused existing translations where the text matched: sorts and column labels (`imageModels.sort.*`, `myModels.column.format|backend`, `imageModels.column.released`), and the RAM sorts derived from the RAM/VRAM ones with "/VRAM" removed (`models.chat.sort.ram*`), so the old and new pages read the same.
+- Subtitle `models.chat.subtitle` is built from the first-pass `models.subtitle` translation plus "{size} on disk" and a `{dirs}` plural (ru has one/few/many/other).
+- Checks: `npm run i18n:validate` OK, `npx vitest run src/locales` 10 passed, every new message rendered with `intl-messageformat` (no errors, no swallowed apostrophes). Against HEAD the only changed existing value in any file is `dflashEmptyTooltip`; all other existing entries are unchanged and in the same order.
+- Not mine: `tsc`-visible code still calls keys that have no catalog entry: `video.ltx2.install|installing|notInstalled|retry` (Ltx2EngineBanner), `videoStudio.ltx2.engineMessage` (VideoStudioTab), `installLog.statusNoun.ltx2` (InstallLogPanel). They show their inline English default in every locale.
+- Judgement calls: "Capability" (filter label) is 能力 / 能力 / 機能 / Fähigkeit / Возможность / 기능 / Capacité / Capacidad / Capacidade; "Acceleration" follows the existing "All acceleration" wording; "thread" follows the existing chat sidebar (zh 线程, zh-TW 執行緒, ja スレッド, de Thread, ru поток, ko 스레드, fr fil, es hilo, pt-BR thread); ru keeps "скачивание" for download nouns in the library namespace (the existing `common` sort labels say "загрузок"); "Download" as the source badge (`models.chat.sourceDownload`) is the noun form (Скачивание, Téléchargement, Descarga).
 
 ## Not done
 

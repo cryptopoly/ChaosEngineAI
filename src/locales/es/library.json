@@ -81,7 +81,7 @@
     "strategy": {
       "chip": "{label} ({count})",
       "compatTooltip": "Mostrar modelos compatibles con {label} ({count})",
-      "dflashEmptyTooltip": "Los borradores de decodificación especulativa DFlash solo existen para modelos base específicos: Qwen/Qwen3 (4B, 8B), Qwen/Qwen3-Coder (4B, 8B, 30B-A3B, Next), Qwen/Qwen3.5 (4B, 7B, 9B, 14B, 27B, 35B-A3B), Qwen/Qwen3.6-35B-A3B, meta-llama/Llama-3.1-8B-Instruct, gpt-oss (20B, 120B), moonshotai/Kimi-K2.5. Los ajustes finos normalmente no coinciden. Descarga un modelo base desde Descubrir para habilitar DFlash.",
+      "dflashEmptyTooltip": "Los borradores de decodificación especulativa DFlash solo existen para modelos base específicos: Qwen/Qwen3 (4B, 8B), Qwen/Qwen3-Coder (4B, 8B, 30B-A3B, Next), Qwen/Qwen3.5 (4B, 7B, 9B, 14B, 27B, 35B-A3B), Qwen/Qwen3.6-35B-A3B, meta-llama/Llama-3.1-8B-Instruct, gpt-oss (20B, 120B), moonshotai/Kimi-K2.5. Los ajustes finos normalmente no coinciden. Descarga un modelo base desde la página Modelos para habilitar DFlash.",
       "memorySaverLabel": "{label} · ahorro de memoria",
       "memorySaverTooltip": "Mostrar modelos que pueden usar {label}, un ahorro de memoria para la caché KV: las conversaciones largas caben en menos RAM, pero la generación es más lenta que con Nativo ({count})"
     },
@@ -360,7 +360,10 @@
       "downloadModel": "Descargar modelo",
       "cancelDownload": "Cancelar descarga",
       "deleteModel": "Eliminar modelo",
-      "openModelCard": "Abrir ficha del modelo"
+      "openModelCard": "Abrir ficha del modelo",
+      "deleteSharedGguf": "Eliminar la descarga de GGUF compartida",
+      "deleteSharedTextEncoder": "Eliminar la descarga del codificador de texto compartido",
+      "deleteSharedComponent": "Eliminar la descarga del componente compartido"
     },
     "filter": {
       "searchLabel": "Buscar",
@@ -436,7 +439,9 @@
       "pending": "pendiente",
       "pendingTitle": "Estimación de RAM/VRAM pendiente hasta conocer el tamaño de los pesos del modelo."
     },
-    "releaseUnknown": "Desconocido"
+    "releaseUnknown": "Desconocido",
+    "sharedRepo": "comparte almacenamiento · +{count}",
+    "sharedRepoTitle": "Usa la misma descarga que {count} variante(s) más de {repo}. Al eliminar esta fila también se eliminan esos archivos."
   },
   "imageDiscover": {
     "access": {
@@ -581,7 +586,8 @@
       "downloading": "Descargando",
       "paused": "Pausado",
       "failed": "Fallido",
-      "incomplete": "Incompleto"
+      "incomplete": "Incompleto",
+      "installing": "Instalando"
     },
     "sort": {
       "name": "Nombre",
@@ -615,6 +621,10 @@
     "unknown": "Desconocido",
     "longLive": {
       "installNote": "LongLive se instala en un venv aislado en ~/.chaosengine/longlive. Solo CUDA, 5-15 min según la red."
+    },
+    "sortLabel": {
+      "likes": "más valorado primero",
+      "downloads": "más descargas primero"
     }
   },
   "models": {
@@ -658,7 +668,10 @@
       "repo": "Repositorio",
       "resolution": "Tamaño recomendado",
       "sharedWith": "Comparte su descarga con",
-      "warning": "Nota"
+      "warning": "Nota",
+      "ggufFile": "Archivo GGUF",
+      "textEncoder": "Codificador de texto",
+      "catalogSize": "Tamaño en el catálogo"
     },
     "empty": {
       "availability": "No hay modelos en «{bucket}» con los filtros actuales.",
@@ -712,6 +725,61 @@
       "availability": "Mostrando: {bucket}",
       "count": "{count, plural, one {# modelo} other {# modelos}} · {sortLabel}",
       "search": "Búsqueda: {query}"
+    },
+    "video": {
+      "intro": "Todos los modelos de video en una sola lista. Descarga uno para usarlo en Estudio de video; filtra por instalados, disponibles o en descarga.",
+      "emptyCatalog": "Aún no hay modelos de video en el catálogo. Comprueba que el backend esté en ejecución.",
+      "emptyInstalled": "Aún no hay modelos de video instalados. Elige uno de los modelos disponibles para descargarlo.",
+      "emptyDownloading": "No se está descargando ningún modelo de video.",
+      "emptyAttention": "Ningún modelo de video requiere atención."
+    },
+    "chat": {
+      "intro": "Todos los modelos de chat en una sola lista: los que están en disco, el catálogo y los resultados de búsqueda de Hugging Face. Filtra por instalados, disponibles o en descarga.",
+      "subtitle": "{shown} de {total, plural, one {# modelo} other {# modelos}} · instalados: {installed} · {size} en disco · {dirs, plural, one {# directorio} other {# directorios}}",
+      "searchPlaceholder": "Busca por nombre, proveedor, capacidad, ruta o formato (también busca en Hugging Face)...",
+      "newThread": "Chatear en un hilo nuevo",
+      "useInThisChat": "Usar en este chat",
+      "bestFitTitle": "La mejor opción de esta familia para esta máquina: la versión más reciente que cabe con holgura; entre tamaños publicados a la vez, el más grande que cabe.",
+      "closestMatch": "Entrada de catálogo más cercana: {name}",
+      "sourceDownload": "Descarga",
+      "sizeTitle": "{onDisk} en disco; el catálogo indica {catalog}",
+      "detail": {
+        "released": "Lanzado",
+        "directory": "Directorio",
+        "modified": "Modificado"
+      },
+      "filter": {
+        "capability": "Capacidad",
+        "format": "Formato",
+        "backend": "Backend",
+        "acceleration": "Aceleración"
+      },
+      "emptyCatalog": "Aún no hay modelos de chat en el catálogo ni en disco. Comprueba que el backend esté en ejecución o añade directorios de modelos en Preferencias.",
+      "emptyDownloading": "No se está descargando ningún modelo de chat.",
+      "emptyAttention": "Ningún modelo de chat requiere atención.",
+      "emptySearchHub": "Ningún modelo en disco ni en el catálogo coincide con «{query}». Los resultados de Hugging Face están más abajo.",
+      "sort": {
+        "release": "Lanzamiento más reciente",
+        "name": "Nombre",
+        "format": "Formato",
+        "formatDir": "formato {direction}",
+        "backend": "Backend",
+        "backendDir": "backend {direction}",
+        "size": "Mayor tamaño",
+        "ram": "Mayor RAM",
+        "ramDesc": "mayor RAM primero",
+        "ramAsc": "menor RAM primero",
+        "compressed": "Mayor RAM comprimida",
+        "compressedDesc": "mayor RAM comprimida primero",
+        "compressedAsc": "menor RAM comprimida primero",
+        "context": "Contexto más largo",
+        "contextDesc": "contexto más largo primero",
+        "contextAsc": "contexto más corto primero",
+        "modified": "Modificados recientemente",
+        "modifiedDesc": "modificados recientemente primero",
+        "modifiedAsc": "modificados hace más tiempo primero",
+        "status": "Estado"
+      }
     }
   }
 }

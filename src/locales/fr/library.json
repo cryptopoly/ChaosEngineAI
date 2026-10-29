@@ -81,7 +81,7 @@
     "strategy": {
       "chip": "{label} ({count})",
       "compatTooltip": "Afficher les modèles compatibles avec {label} ({count})",
-      "dflashEmptyTooltip": "Les brouillons de décodage spéculatif DFlash n'existent que pour des modèles de base spécifiques : Qwen/Qwen3 (4B, 8B), Qwen/Qwen3-Coder (4B, 8B, 30B-A3B, Next), Qwen/Qwen3.5 (4B, 7B, 9B, 14B, 27B, 35B-A3B), Qwen/Qwen3.6-35B-A3B, meta-llama/Llama-3.1-8B-Instruct, gpt-oss (20B, 120B), moonshotai/Kimi-K2.5. Les fine-tunes ne correspondent généralement pas. Téléchargez un modèle de base depuis Découvrir pour activer DFlash.",
+      "dflashEmptyTooltip": "Les brouillons de décodage spéculatif DFlash n'existent que pour des modèles de base spécifiques : Qwen/Qwen3 (4B, 8B), Qwen/Qwen3-Coder (4B, 8B, 30B-A3B, Next), Qwen/Qwen3.5 (4B, 7B, 9B, 14B, 27B, 35B-A3B), Qwen/Qwen3.6-35B-A3B, meta-llama/Llama-3.1-8B-Instruct, gpt-oss (20B, 120B), moonshotai/Kimi-K2.5. Les fine-tunes ne correspondent généralement pas. Téléchargez un modèle de base depuis la page Modèles pour activer DFlash.",
       "memorySaverLabel": "{label} · économiseur de mémoire",
       "memorySaverTooltip": "Afficher les modèles pouvant utiliser {label}, un économiseur de mémoire pour le cache KV : les longues conversations tiennent dans moins de RAM, mais la génération est plus lente qu'avec Natif ({count})"
     },
@@ -360,7 +360,10 @@
       "downloadModel": "Télécharger le modèle",
       "cancelDownload": "Annuler le téléchargement",
       "deleteModel": "Supprimer le modèle",
-      "openModelCard": "Ouvrir la fiche du modèle"
+      "openModelCard": "Ouvrir la fiche du modèle",
+      "deleteSharedGguf": "Supprimer le téléchargement GGUF partagé",
+      "deleteSharedTextEncoder": "Supprimer le téléchargement de l'encodeur de texte partagé",
+      "deleteSharedComponent": "Supprimer le téléchargement du composant partagé"
     },
     "filter": {
       "searchLabel": "Rechercher",
@@ -436,7 +439,9 @@
       "pending": "en attente",
       "pendingTitle": "Estimation RAM/VRAM en attente tant que la taille des poids du modèle n'est pas connue."
     },
-    "releaseUnknown": "Inconnu"
+    "releaseUnknown": "Inconnu",
+    "sharedRepo": "stockage partagé · +{count}",
+    "sharedRepoTitle": "Utilise le même téléchargement que {count} autre(s) variante(s) de {repo}. Supprimer cette ligne supprime aussi ces fichiers."
   },
   "imageDiscover": {
     "access": {
@@ -581,7 +586,8 @@
       "downloading": "Téléchargement",
       "paused": "En pause",
       "failed": "Échec",
-      "incomplete": "Incomplet"
+      "incomplete": "Incomplet",
+      "installing": "Installation en cours"
     },
     "sort": {
       "name": "Nom",
@@ -615,6 +621,10 @@
     "unknown": "Inconnu",
     "longLive": {
       "installNote": "LongLive s'installe dans un venv isolé à ~/.chaosengine/longlive. CUDA uniquement, 5-15 min selon le réseau."
+    },
+    "sortLabel": {
+      "likes": "favoris en premier",
+      "downloads": "téléchargements en premier"
     }
   },
   "models": {
@@ -658,7 +668,10 @@
       "repo": "Dépôt",
       "resolution": "Taille recommandée",
       "sharedWith": "Partage son téléchargement avec",
-      "warning": "Remarque"
+      "warning": "Remarque",
+      "ggufFile": "Fichier GGUF",
+      "textEncoder": "Encodeur de texte",
+      "catalogSize": "Taille au catalogue"
     },
     "empty": {
       "availability": "Aucun modèle dans « {bucket} » avec les filtres actuels.",
@@ -712,6 +725,61 @@
       "availability": "Affichage : {bucket}",
       "count": "{count, plural, one {# modèle} other {# modèles}} · {sortLabel}",
       "search": "Recherche : {query}"
+    },
+    "video": {
+      "intro": "Tous les modèles vidéo dans une seule liste. Téléchargez-en un pour l'utiliser dans Studio vidéo ; filtrez par modèles installés, disponibles ou en cours de téléchargement.",
+      "emptyCatalog": "Aucun modèle vidéo dans le catalogue pour l'instant. Vérifiez que le backend est lancé.",
+      "emptyInstalled": "Aucun modèle vidéo installé pour l'instant. Choisissez-en un parmi les modèles disponibles pour le télécharger.",
+      "emptyDownloading": "Aucun modèle vidéo n'est en cours de téléchargement.",
+      "emptyAttention": "Aucun modèle vidéo ne demande d'attention."
+    },
+    "chat": {
+      "intro": "Tous les modèles de discussion dans une seule liste : ceux présents sur le disque, le catalogue et les résultats de recherche Hugging Face. Filtrez par modèles installés, disponibles ou en cours de téléchargement.",
+      "subtitle": "{shown} sur {total, plural, one {# modèle} other {# modèles}} · installés : {installed} · {size} sur le disque · {dirs, plural, one {# répertoire} other {# répertoires}}",
+      "searchPlaceholder": "Rechercher par nom, fournisseur, capacité, chemin ou format (recherche aussi sur Hugging Face)...",
+      "newThread": "Discuter dans un nouveau fil",
+      "useInThisChat": "Utiliser dans cette discussion",
+      "bestFitTitle": "Le meilleur choix de cette famille pour cette machine : la version la plus récente qui tient confortablement ; parmi les tailles publiées en même temps, la plus grande qui tient.",
+      "closestMatch": "Entrée de catalogue la plus proche : {name}",
+      "sourceDownload": "Téléchargement",
+      "sizeTitle": "{onDisk} sur le disque ; le catalogue indique {catalog}",
+      "detail": {
+        "released": "Publié",
+        "directory": "Répertoire",
+        "modified": "Modifié"
+      },
+      "filter": {
+        "capability": "Capacité",
+        "format": "Format",
+        "backend": "Backend",
+        "acceleration": "Accélération"
+      },
+      "emptyCatalog": "Aucun modèle de discussion dans le catalogue ni sur le disque pour l'instant. Vérifiez que le backend est lancé, ou ajoutez des répertoires de modèles dans les Préférences.",
+      "emptyDownloading": "Aucun modèle de discussion n'est en cours de téléchargement.",
+      "emptyAttention": "Aucun modèle de discussion ne demande d'attention.",
+      "emptySearchHub": "Aucun modèle sur le disque ou dans le catalogue ne correspond à « {query} ». Les résultats de Hugging Face sont ci-dessous.",
+      "sort": {
+        "release": "Plus récemment publié",
+        "name": "Nom",
+        "format": "Format",
+        "formatDir": "format {direction}",
+        "backend": "Backend",
+        "backendDir": "backend {direction}",
+        "size": "Plus grande taille",
+        "ram": "RAM la plus élevée",
+        "ramDesc": "RAM la plus élevée d'abord",
+        "ramAsc": "RAM la plus faible d'abord",
+        "compressed": "RAM compressée la plus élevée",
+        "compressedDesc": "RAM compressée la plus élevée d'abord",
+        "compressedAsc": "RAM compressée la plus faible d'abord",
+        "context": "Contexte le plus long",
+        "contextDesc": "contexte le plus long d'abord",
+        "contextAsc": "contexte le plus court d'abord",
+        "modified": "Modifiés récemment",
+        "modifiedDesc": "modifiés récemment d'abord",
+        "modifiedAsc": "modifiés le moins récemment d'abord",
+        "status": "Statut"
+      }
     }
   }
 }

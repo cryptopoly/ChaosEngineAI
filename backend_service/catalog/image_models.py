@@ -783,12 +783,15 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "taskSupport": ["txt2img"],
                 # transformer 11.1 + text encoder 8.9 + VAE 0.3 GB: the folders mflux loads.
                 "sizeGb": 20.3,
-                "defaultSteps": 16,
+                # The maker's default is 16; 8 looked the same on three prompts and took 40 s against
+                # 70 s on an M4 Max (2026-10-29), so the Studio starts at 8.
+                "defaultSteps": 8,
                 "recommendedResolution": "1024x1024",
                 "note": (
-                    "Apple Silicon only. Distilled: 16 steps, no guidance. Gated: accept the FLUX "
-                    "Kommunity licence on Hugging Face first. Needs the mflux engine, installed from "
-                    "the Image Studio."
+                    "Apple Silicon only. Distilled, no guidance: starts at 8 steps (the maker's default "
+                    "is 16; 8 looked the same in our tests and takes about half the time). Gated: accept "
+                    "the FLUX Kommunity licence on Hugging Face first. Needs the mflux engine, installed "
+                    "from the Image Studio."
                 ),
                 "releaseDate": "2026-10",
             },

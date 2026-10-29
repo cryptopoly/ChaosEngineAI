@@ -43,6 +43,9 @@ Full notes in [RELEASE_NOTES_v0.9.9.md](RELEASE_NOTES_v0.9.9.md).
 - The mflux installer moves the old venv aside and restores it when the new install fails to verify (FU-123).
 - A fine-grained Hugging Face token without gated-repo access gets a specific message; the import-models panel no longer names other apps (FU-119).
 - Wan 2.1 and 2.2 A14B default guidance follow the Wan-AI model cards, and the Wan burn check in the E2E suite reads the last frame of a 17-frame clip (FU-122).
+- One **Models** page per area replaces Discover and My Models for Chat, Images and Video, built on shared components in `src/components/models/`; old tab ids redirect with a preset, persisted sidebar ids migrate, image and video model deletes confirm, paused rows show Resume (FU-129).
+- **Fit** rating and best-fit pick on every chat, image and video row (`helpers/fit.py`, `helpers/hardware_class.py`); **recommended settings** panel in the Image and Video Studios (`helpers/recommendations.py`); **per-model size limits** replace the 2048 px cap with a pixel-aware memory gate (`catalog/size_limits.py`, `helpers/memory_gate.py`), hard ceiling 8192 (FU-133).
+- Preloading an mflux or stable-diffusion.cpp model is a no-op instead of a 500; distilled video rows start the Studio at their own steps and guidance; the video safety estimate no longer applies the diffusers attention heuristic to ltx-2-mlx; the startup timer no longer re-renders the app every second.
 - Project hub: `docs/hub/` plus `tools/hub_tracker.py` and `tools/build_hub.py` (FU-131).
 
 ## Unreleased

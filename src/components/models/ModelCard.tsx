@@ -158,8 +158,10 @@ export function ModelMemoryCell({
   const parts = memoryParts(memory?.label);
   return (
     <span className="media-model-memory models-memory-cell" title={memory?.title ?? pendingTitle}>
-      <span>{parts?.primary ?? pendingLabel}</span>
-      {parts?.secondary ? <small>{parts.secondary}</small> : null}
+      <span className="models-memory-cell__text">
+        <span>{parts?.primary ?? pendingLabel}</span>
+        {parts?.secondary ? <small>{parts.secondary}</small> : null}
+      </span>
       <FitBadge fit={fit} />
     </span>
   );

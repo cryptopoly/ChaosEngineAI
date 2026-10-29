@@ -190,7 +190,7 @@ _ENTRIES: tuple[_Entry, ...] = (
         ("black-forest-labs/flux-3-image-klein-mflux",),
         {"steps": 8, "width": 1024, "height": 1024},
         {
-            "steps": "8 steps looked the same as the default 16 on three test prompts and took about half the time on an M4 Max (not timed on this machine).",
+            "steps": "The Studio starts at 8: it looked the same as the maker's 16 on three test prompts and took about half the time on an M4 Max (not timed on this machine).",
             "width": "1024 px is the size the model is tuned for.",
             "height": "1024 px is the size the model is tuned for.",
         },
@@ -340,7 +340,7 @@ _MEASURED: dict[str, tuple[_Measurement, ...]] = {
             _M4_MAX,
             frozenset({"steps", "width", "height"}),
             {
-                "steps": "8 steps: 40 s per 1024 px image here against 70-78 s at the default 16, with no visible difference on three test prompts.",
+                "steps": "8 steps (the Studio default): 40 s per 1024 px image here against 70-78 s at the maker's 16, with no visible difference on three test prompts.",
                 "width": "1024 px: 40 s at 8 steps and about 15 GB here (3 runs).",
                 "height": "1024 px: 40 s at 8 steps and about 15 GB here (3 runs).",
             },

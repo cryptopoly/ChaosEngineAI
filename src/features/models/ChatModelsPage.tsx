@@ -452,7 +452,7 @@ export function ChatModelsPage({
                     "DFlash speculative-decode drafts only exist for specific base models: "
                     + "Qwen/Qwen3-{4B,8B}, Qwen/Qwen3-Coder-{4B,8B,30B-A3B,Next}, Qwen/Qwen3.5-{4B,7B,9B,14B,27B,35B-A3B}, "
                     + "Qwen/Qwen3.6-35B-A3B, meta-llama/Llama-3.1-8B-Instruct, gpt-oss-{20B,120B}, moonshotai/Kimi-K2.5. "
-                    + "Fine-tunes typically don't match. Download a base model from Discover to enable DFlash.",
+                    + "Fine-tunes typically don't match. Download a base model from the Models page to enable DFlash.",
                 })
               : t("onlineModels.accelFilter.tooltip", {
                   defaultValue: "Show {label}-compatible models ({count})",

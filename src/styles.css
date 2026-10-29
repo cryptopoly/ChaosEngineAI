@@ -11035,9 +11035,26 @@ html[lang="ko"] select {
   font-size: 0.82rem;
 }
 
+/* The figure, its size note and the fit chip sat in one inline run with no gap ("@768x512Fits").
+   Keep the figure and note together and let the chip wrap below them in a narrow column. */
+.models-memory-cell {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 3px 8px;
+}
+
+.models-memory-cell__text {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 5px;
+  min-width: 0;
+}
+
 .models-memory-cell .fit-badge {
-  align-self: flex-start;
-  margin-top: 2px;
+  align-self: center;
+  margin-top: 0;
 }
 
 .fit-badge {

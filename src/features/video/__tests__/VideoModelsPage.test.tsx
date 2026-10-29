@@ -228,6 +228,20 @@ describe("VideoModelsPage", () => {
     expect(markup).toContain("Show available models");
   });
 
+  it("blames the filters, not the install state, when a task filter hides the installed rows", () => {
+    // The installed LTX rows are text-to-video; an image-to-video filter
+    // leaves only a not-installed row.
+    const i2v = makeVideoVariant({ id: "i2v", name: "I2V Model", repo: "org/i2v", taskSupport: ["img2video"] });
+    const markup = render({
+      catalog: [...catalog(), makeVideoFamily({ id: "i2v" }, [i2v])],
+      availability: "installed",
+      taskFilter: "img2video",
+    });
+    expect(markup).not.toContain("No video models installed yet");
+    expect(markup).toContain("No installed models under the current filters.");
+    expect(markup).toContain(">Clear Filters</button>");
+  });
+
   it("hides a model this host cannot run unless it is installed, then marks it", () => {
     const mlxAvailable = makeVideoVariant({ ...ltx25 });
     const mlxInstalled = makeVideoVariant({ ...ltxInstalled });

@@ -11,6 +11,7 @@ from backend_service.models import (
     ImageRuntimePreloadRequest,
     ImageRuntimeUnloadRequest,
 )
+from backend_service.helpers.fit import annotate_variants
 from backend_service.helpers.images import (
     _image_model_payloads,
     _find_image_variant,
@@ -22,6 +23,7 @@ from backend_service.helpers.images import (
 )
 from backend_service.app import (
     _generate_image_artifacts,
+    _resolve_image_size,
     _load_image_outputs,
     _find_image_output,
     _delete_image_output,
@@ -80,7 +82,8 @@ def image_catalog(request: Request) -> dict[str, Any]:
     library = state._library()
     return {
         "families": _image_model_payloads(library),
-        "latest": _latest_image_model_payloads(library),
+        # Copies: the latest list is cached between requests.
+        "latest": annotate_variants([dict(row) for row in _latest_image_model_payloads(library)], "image"),
     }
 
 
@@ -268,13 +271,22 @@ def generate_image(request: Request, body: ImageGenerationRequest) -> dict[str, 
             snapshot_memory_signals,
         )
 
+        from backend_service.helpers.generation_limits import reference_pixels
+
         resident = variant.get("repo") == getattr(state.image_runtime, "loaded_repo", None)
         available_gb, pressure_percent = snapshot_memory_signals()
+        # The size that will actually render (draft mode, minimum edge, per-model limits),
+        # so the gate judges that and not what was typed.
+        render_width, render_height, _ = _resolve_image_size(body, variant)
         refusal = gate_image_generation(
             available_gb,
             pressure_percent,
             model_gb=None if resident else model_memory_gb(variant),
             model_name=variant.get("name"),
+            width=render_width,
+            height=render_height,
+            reference_pixels=reference_pixels(variant),
+            footprint_gb=model_memory_gb(variant),
         )
     except Exception as gate_exc:
         state.add_log("images", "warning", f"Memory gate skipped: {gate_exc}")

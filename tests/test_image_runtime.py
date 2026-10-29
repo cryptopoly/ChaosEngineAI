@@ -356,7 +356,8 @@ class MinSideTests(unittest.TestCase):
 
     def test_extreme_aspect_ratios_are_capped(self):
         from backend_service.app import _apply_min_side
-        w, h = _apply_min_side(2048, 256, 768)
+        # The cap is the model's maxSide now (the old global 2048 is gone).
+        w, h = _apply_min_side(2048, 256, 768, max_side=2048)
         self.assertLessEqual(max(w, h), 2048)
         self.assertGreaterEqual(min(w, h), 768)
 

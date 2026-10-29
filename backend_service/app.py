@@ -32,10 +32,13 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 from backend_service.helpers.video_audio import mp4_has_audio_bytes
 from backend_service.helpers.generation_limits import (
+    DEFAULT_MAX_SIDE,
+    HARD_MAX_SIDE,
     align_video_frames,
     normalize_image_size,
     normalize_video_size,
     distilled_steps_note,
+    size_limits,
 )
 from backend_service.helpers.system import (
     _build_system_snapshot as _build_system_snapshot_impl,
@@ -354,19 +357,58 @@ def _apply_draft_resolution(width: int, height: int) -> tuple[int, int]:
     return scaled_w, scaled_h
 
 
-def _apply_min_side(width: int, height: int, min_side: int | None) -> tuple[int, int]:
+def _apply_min_side(
+    width: int, height: int, min_side: int | None, max_side: int | None = None
+) -> tuple[int, int]:
     """Raise a size whose short edge is under ``min_side``, keeping the aspect ratio.
 
     Pixel-space models (Iris-3B has no VAE) come out as noise at 256 px and with
     visible blocks at 512 px. Sizes snap to multiples of 16 and the long edge is
-    capped at 2048.
+    capped at the model's ``max_side`` (``DEFAULT_MAX_SIDE`` when not given, and
+    never above ``HARD_MAX_SIDE``), the same limit ``normalize_image_size`` applies.
     """
     if not min_side or min(width, height) >= min_side:
         return width, height
+    cap = min(HARD_MAX_SIDE, max_side) if max_side else DEFAULT_MAX_SIDE
     scale = min_side / min(width, height)
-    new_w = min(2048, max(min_side, int(round(width * scale / 16)) * 16))
-    new_h = min(2048, max(min_side, int(round(height * scale / 16)) * 16))
+    new_w = min(cap, max(min_side, int(round(width * scale / 16)) * 16))
+    new_h = min(cap, max(min_side, int(round(height * scale / 16)) * 16))
     return new_w, new_h
+
+
+def _resolve_image_size(
+    request: ImageGenerationRequest, variant: dict[str, Any]
+) -> tuple[int, int, str]:
+    """The size an image request is actually rendered at, and the notes saying why.
+
+    Draft mode, the model's minimum edge, its multiple of 16 and its per-model
+    size limits (``maxSide`` / ``maxPixels``). The memory gate asks for the same
+    size, so it judges what will run and not what was typed.
+    """
+    limits = size_limits(variant)
+    width, height = (
+        _apply_draft_resolution(request.width, request.height)
+        if request.draftMode
+        else (request.width, request.height)
+    )
+    requested_size = (width, height)
+    width, height = _apply_min_side(width, height, variant.get("minSide"), limits.max_side)
+    size_notes: list[str] = []
+    if (width, height) != requested_size:
+        size_notes.append(
+            f"Rendered at {width}x{height}: {variant.get('name')} needs at least "
+            f"{variant.get('minSide')} px on the short edge, below that it comes out as noise or blocks."
+        )
+    width, height, snap_note = normalize_image_size(
+        width,
+        height,
+        min_side=variant.get("minSide"),
+        model_name=str(variant.get("name") or "") or None,
+        **limits.as_kwargs(),
+    )
+    if snap_note:
+        size_notes.append(snap_note)
+    return width, height, " ".join(size_notes)
 
 
 def _generate_image_artifacts(
@@ -378,25 +420,7 @@ def _generate_image_artifacts(
     from backend_service.image_runtime import ImageGenerationConfig, ImageRuntimeManager
 
     logger = logging.getLogger("chaosengine.images")
-    effective_width, effective_height = (
-        _apply_draft_resolution(request.width, request.height)
-        if request.draftMode
-        else (request.width, request.height)
-    )
-    requested_size = (effective_width, effective_height)
-    effective_width, effective_height = _apply_min_side(effective_width, effective_height, variant.get("minSide"))
-    size_notes: list[str] = []
-    if (effective_width, effective_height) != requested_size:
-        size_notes.append(
-            f"Rendered at {effective_width}x{effective_height}: {variant.get('name')} needs at least "
-            f"{variant.get('minSide')} px on the short edge, below that it comes out as noise or blocks."
-        )
-    effective_width, effective_height, snap_note = normalize_image_size(
-        effective_width, effective_height, min_side=variant.get("minSide")
-    )
-    if snap_note:
-        size_notes.append(snap_note)
-    size_note = " ".join(size_notes)
+    effective_width, effective_height, size_note = _resolve_image_size(request, variant)
     logger.info("Generating image: model=%s repo=%s size=%dx%d steps=%d draft=%s",
                 variant.get("name"), variant.get("repo"), effective_width, effective_height, request.steps, request.draftMode)
     runtime_manager = runtime_manager or ImageRuntimeManager()
@@ -515,7 +539,11 @@ def _generate_video_artifact(
 
     logger = logging.getLogger("chaosengine.video")
     video_width, video_height, size_snap_note = normalize_video_size(
-        request.width, request.height, str(variant["repo"])
+        request.width,
+        request.height,
+        str(variant["repo"]),
+        model_name=str(variant.get("name") or "") or None,
+        **size_limits(variant).as_kwargs(),
     )
     video_frames, frame_snap_note = align_video_frames(str(variant["repo"]), request.numFrames)
     request_notes = [note for note in (size_snap_note, frame_snap_note) if note]

@@ -1147,3 +1147,10 @@ LATEST_IMAGE_TRACKED_SEEDS: list[dict[str, Any]] = [
         "releaseDate": "2025-03",
     },
 ]
+
+
+# Per-model size limits (maxSide / maxPixels / nativeSide) for every variant and tracked seed.
+# The table and its sources live in size_limits.py.
+from backend_service.catalog.size_limits import apply_image_size_limits  # noqa: E402
+
+apply_image_size_limits(IMAGE_MODEL_FAMILIES, LATEST_IMAGE_TRACKED_SEEDS)

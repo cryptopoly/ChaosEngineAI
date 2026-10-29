@@ -5,6 +5,14 @@ import { InfoTooltip } from "../../components/InfoTooltip";
 import { ImageOutputCard } from "../../components/ImageOutputCard";
 import { PromptEnhanceButton } from "../../components/PromptEnhanceButton";
 import { MfluxEngineBanner } from "../../components/MfluxEngineBanner";
+import { RecommendedSettingsPanel } from "../../components/RecommendedSettingsPanel";
+import {
+  DEFAULT_MAX_SIDE,
+  DEFAULT_MIN_SIDE,
+  clampStudioSide,
+  type RecommendationAppliers,
+  type RecommendationCurrent,
+} from "../../components/recommendedSettings";
 import { ImageStudioRuntimeBanner } from "./ImageStudioRuntimeBanner";
 import type { CudaTorchInstallResult, DownloadStatus, GpuBundleJobState, InstallResult } from "../../api";
 import type {
@@ -395,6 +403,78 @@ export function ImageStudioTab({
     }
   }, [availableImageCacheStrategies, imageCacheStrategy, onImageCacheStrategyChange]);
 
+  // mflux and stable-diffusion.cpp run their own samplers outside diffusers: the sampler,
+  // diffusion cache, CFG decay, preview VAE and FP8 casting do nothing there, so the
+  // Studio does not offer them (the recommendations never include them either).
+  const externalImageEngine = variantEngine === "mflux" || variantEngine === "sdcpp";
+  const showSampler = Boolean(selectedImageVariant) && !externalImageEngine && !isFlowMatchingRepo(selectedImageRepo);
+  const showDiffusionCache = Boolean(selectedImageVariant) && !externalImageEngine && !isUnetVariant;
+  const showCfgDecay = Boolean(selectedImageVariant) && !externalImageEngine && isFlowMatchingRepo(selectedImageRepo);
+  const showPreviewVae = !externalImageEngine;
+  const showFp8 = showCudaControls && !externalImageEngine;
+  const acceptsGuidance = selectedImageVariant?.acceptsGuidance !== false;
+
+  // Per-model size limits (``maxSide`` from the catalog; 4096 when the backend sends none).
+  const imageMaxSide = selectedImageVariant?.maxSide && selectedImageVariant.maxSide > 0
+    ? selectedImageVariant.maxSide
+    : DEFAULT_MAX_SIDE;
+  const imageMinSide = Math.max(DEFAULT_MIN_SIDE, selectedImageVariant?.minSide ?? DEFAULT_MIN_SIDE);
+  useEffect(() => {
+    if (Number.isFinite(imageWidth) && imageWidth > imageMaxSide) onImageWidthChange(imageMaxSide);
+    if (Number.isFinite(imageHeight) && imageHeight > imageMaxSide) onImageHeightChange(imageMaxSide);
+  }, [imageMaxSide, imageWidth, imageHeight, onImageWidthChange, onImageHeightChange]);
+
+  // "Recommended for this machine": the panel applies through the same setters as the
+  // controls below, and only for settings this variant shows.
+  const recommendationAppliers = useMemo<RecommendationAppliers>(() => {
+    const allowedCache = new Set(availableImageCacheStrategies.map((strategy) => strategy.id as string));
+    return {
+      steps: onImageStepsChange,
+      guidance: acceptsGuidance ? onImageGuidanceChange : undefined,
+      width: (value) => onImageWidthChange(clampStudioSide(value, { maxSide: imageMaxSide, minSide: imageMinSide }, 1024)),
+      height: (value) => onImageHeightChange(clampStudioSide(value, { maxSide: imageMaxSide, minSide: imageMinSide }, 1024)),
+      qualityPreset: (value) => {
+        if (IMAGE_QUALITY_PRESETS.some((preset) => preset.id === value)) onApplyImageQuality(value as ImageQualityPreset);
+      },
+      sampler: showSampler
+        ? (value) => {
+            if (IMAGE_SAMPLERS.some((sampler) => sampler.id === value)) onImageSamplerChange(value as ImageSamplerId);
+          }
+        : undefined,
+      cacheStrategy: showDiffusionCache
+        ? (value) => {
+            if (allowedCache.has(value)) onImageCacheStrategyChange(value as ImageCacheStrategyId);
+          }
+        : undefined,
+      cacheThreshold: showDiffusionCache ? onImageCacheRelL1ThreshChange : undefined,
+      cfgDecay: showCfgDecay ? onImageCfgDecayChange : undefined,
+      previewVae: showPreviewVae ? onImagePreviewVaeChange : undefined,
+      fp8LayerwiseCasting: showFp8 ? onImageFp8LayerwiseCastingChange : undefined,
+    };
+  }, [
+    availableImageCacheStrategies, acceptsGuidance, imageMaxSide, imageMinSide, showSampler,
+    showDiffusionCache, showCfgDecay, showPreviewVae, showFp8, onImageStepsChange,
+    onImageGuidanceChange, onImageWidthChange, onImageHeightChange, onApplyImageQuality,
+    onImageSamplerChange, onImageCacheStrategyChange, onImageCacheRelL1ThreshChange,
+    onImageCfgDecayChange, onImagePreviewVaeChange, onImageFp8LayerwiseCastingChange,
+  ]);
+  const recommendationCurrent = useMemo<RecommendationCurrent>(() => ({
+    steps: imageSteps,
+    guidance: imageGuidance,
+    width: imageWidth,
+    height: imageHeight,
+    qualityPreset: imageQualityPreset,
+    sampler: imageSampler,
+    cacheStrategy: imageCacheStrategy,
+    cacheThreshold: imageCacheRelL1Thresh ?? IMAGE_CACHE_STRATEGY_DEFAULT_THRESH[imageCacheStrategy],
+    cfgDecay: imageCfgDecay,
+    previewVae: imagePreviewVae,
+    fp8LayerwiseCasting: imageFp8LayerwiseCasting,
+  }), [
+    imageSteps, imageGuidance, imageWidth, imageHeight, imageQualityPreset, imageSampler,
+    imageCacheStrategy, imageCacheRelL1Thresh, imageCfgDecay, imagePreviewVae, imageFp8LayerwiseCasting,
+  ]);
+
   function handleApplySafeImageSettings() {
     const suggestion = imageSafety.suggestion;
     if (!suggestion) return;
@@ -724,6 +804,22 @@ export function ImageStudioTab({
             </label>
           ) : null}
 
+          {selectedImageVariant?.availableLocally ? (
+            <RecommendedSettingsPanel
+              recommendation={selectedImageVariant.recommendedSettings}
+              appliers={recommendationAppliers}
+              current={recommendationCurrent}
+              labelFor={(kind, id) =>
+                kind === "sampler"
+                  ? samplerLabelFor(id)
+                  : kind === "cacheStrategy"
+                    ? cacheStrategyLabelFor(id)
+                    : qualityLabelFor(id)
+              }
+              disabled={imageBusy}
+            />
+          ) : null}
+
           <div className="control-stack">
             <span className="eyebrow">{t("image.aspectRatio", { defaultValue: "Aspect Ratio" })}</span>
             <div className="image-pill-row">
@@ -772,7 +868,7 @@ export function ImageStudioTab({
             </div>
           </div>
 
-          {selectedImageVariant && !isFlowMatchingRepo(selectedImageVariant.repo) ? (
+          {showSampler ? (
             <div className="control-stack">
               <span className="eyebrow">
                 {t("image.sampler", { defaultValue: "Sampler" })}
@@ -804,7 +900,7 @@ export function ImageStudioTab({
             (UNet-based SD1.5/SDXL fall through gracefully on the
             backend with a runtimeNote).
           */}
-          {selectedImageVariant && !isUnetVariant ? (
+          {showDiffusionCache ? (
             <div className="control-stack">
               <span className="eyebrow">
                 {t("image.diffusionCache", { defaultValue: "Diffusion cache" })}
@@ -876,7 +972,7 @@ export function ImageStudioTab({
             Backend gates non-flow-match repos automatically; we hide
             the toggle for SD1.5/SDXL so the UI matches behaviour.
           */}
-          {selectedImageVariant && isFlowMatchingRepo(selectedImageVariant.repo) ? (
+          {showCfgDecay ? (
             <label className="checkbox-row">
               <input
                 type="checkbox"
@@ -904,6 +1000,7 @@ export function ImageStudioTab({
             (taef1/taef2/taesd3/taesdxl/taesd/taeqwenimage); unmapped
             repos no-op silently.
           */}
+          {showPreviewVae ? (
           <label className="checkbox-row">
             <input
               type="checkbox"
@@ -922,6 +1019,7 @@ export function ImageStudioTab({
               })} />
             </span>
           </label>
+          ) : null}
 
           {/*
             FU-024: FP8 layerwise casting on CUDA SM 8.9+ (Ada/Hopper/
@@ -931,7 +1029,7 @@ export function ImageStudioTab({
             unreachable. Still rendered on Linux / Windows where backend
             checks compute capability + skips on pre-Ada hardware.
           */}
-          {showCudaControls ? (
+          {showFp8 ? (
             <label className="checkbox-row">
               <input
                 type="checkbox"
@@ -958,11 +1056,12 @@ export function ImageStudioTab({
               <input
                 className="text-input"
                 type="number"
-                min={256}
-                max={2048}
+                min={imageMinSide}
+                max={imageMaxSide}
                 step={64}
                 value={imageWidth}
                 onChange={(event) => onImageWidthChange(Number(event.target.value) || 1024)}
+                onBlur={() => onImageWidthChange(clampStudioSide(imageWidth, { maxSide: imageMaxSide, minSide: imageMinSide }, 1024))}
               />
             </label>
             <label>
@@ -970,11 +1069,12 @@ export function ImageStudioTab({
               <input
                 className="text-input"
                 type="number"
-                min={256}
-                max={2048}
+                min={imageMinSide}
+                max={imageMaxSide}
                 step={64}
                 value={imageHeight}
                 onChange={(event) => onImageHeightChange(Number(event.target.value) || 1024)}
+                onBlur={() => onImageHeightChange(clampStudioSide(imageHeight, { maxSide: imageMaxSide, minSide: imageMinSide }, 1024))}
               />
             </label>
             <label>
@@ -988,7 +1088,7 @@ export function ImageStudioTab({
                 onChange={(event) => onImageStepsChange(Number(event.target.value) || 24)}
               />
             </label>
-            {selectedImageVariant?.acceptsGuidance !== false ? (
+            {acceptsGuidance ? (
               <label>
                 {t("imageStudio.fields.guidance", { defaultValue: "Guidance" })}
                 <input
@@ -1022,6 +1122,19 @@ export function ImageStudioTab({
               />
             </label>
           </div>
+
+          {selectedImageVariant?.maxPixels
+            && Number.isFinite(imageWidth) && Number.isFinite(imageHeight)
+            && imageWidth * imageHeight > selectedImageVariant.maxPixels ? (
+            <p className="muted-text" role="note">
+              {t("imageStudio.fields.maxPixelsNote", {
+                defaultValue:
+                  "{name} renders at most {megapixels} megapixels; this size is reduced to fit, keeping its shape.",
+                name: selectedImageVariant.name,
+                megapixels: (selectedImageVariant.maxPixels / 1_000_000).toFixed(1),
+              })}
+            </p>
+          ) : null}
 
           {/*
             Pre-flight memory callout. Same structure as the video studio's

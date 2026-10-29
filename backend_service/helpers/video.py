@@ -10,10 +10,13 @@ from __future__ import annotations
 import json
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout, as_completed
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from backend_service.catalog import VIDEO_MODEL_FAMILIES
+from backend_service.helpers.fit import annotate_fit
 from backend_service.helpers.formatting import _bytes_to_gb
+from backend_service.helpers.generation_limits import size_limit_fields
+from backend_service.helpers.recommendations import annotate_recommendations
 from backend_service.helpers.huggingface import _format_release_label, _hf_repo_snapshot_dir
 from backend_service.helpers.images import _image_repo_live_metadata, _snapshot_on_disk_bytes
 from backend_service.helpers.mlx_video_validation import (
@@ -36,8 +39,14 @@ from backend_service.helpers.video_artifacts import (
 )
 from backend_service.image_runtime import validate_local_diffusers_snapshot
 
+if TYPE_CHECKING:
+    from backend_service.helpers.hardware_class import HardwareClass
 
-def _video_model_payloads(library: list[dict[str, Any]]) -> list[dict[str, Any]]:
+
+def _video_model_payloads(
+    library: list[dict[str, Any]],
+    hardware: HardwareClass | None = None,
+) -> list[dict[str, Any]]:
     """Return the catalog families enriched with per-variant availability
     plus live Hugging Face metadata (downloads, likes, lastModified).
 
@@ -46,6 +55,8 @@ def _video_model_payloads(library: list[dict[str, Any]]) -> list[dict[str, Any]]
     with a 6-hour in-process cache. Called in parallel across repos with
     an 8-second wall-clock budget; repos whose fetch times out fall back
     to the curated defaults on the variant dict.
+
+    ``hardware`` (default: this machine) decides each variant's ``fit``.
     """
     repo_metadata: dict[str, dict[str, Any]] = {}
     repos = sorted({
@@ -82,7 +93,7 @@ def _video_model_payloads(library: list[dict[str, Any]]) -> list[dict[str, Any]]
             live_metadata = repo_metadata.get(repo, {}) if repo else {}
             # Merge live metadata first so curated fields (releaseDate,
             # familyName) still win when both exist.
-            enriched = {**enriched, **live_metadata}
+            enriched = {**enriched, **live_metadata, **size_limit_fields(enriched)}
             validation_error = _video_variant_validation_error(enriched)
             local_data_repos = _video_variant_local_data_repos(enriched)
             enriched["availableLocally"] = validation_error is None
@@ -153,7 +164,11 @@ def _video_model_payloads(library: list[dict[str, Any]]) -> list[dict[str, Any]]
         payload = dict(family)
         payload["variants"] = variants
         families.append(payload)
-    return filter_mlx_only_families(families, on_apple_silicon=is_apple_silicon())
+    families = filter_mlx_only_families(families, on_apple_silicon=is_apple_silicon())
+    # Hardware fit: ``fit`` on every variant, ``bestFitVariantId`` on every family.
+    families = annotate_fit(families, "video", hardware)
+    # Studio "Recommended for this machine" panel: ``recommendedSettings`` per variant.
+    return annotate_recommendations(families, "video", hardware)
 
 
 def _annotate_shared_repo_siblings(variants: list[dict[str, Any]]) -> None:

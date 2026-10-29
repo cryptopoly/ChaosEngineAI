@@ -16,7 +16,7 @@ from __future__ import annotations
 import platform
 import subprocess
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 
 def _reveal_path_in_file_manager(path: Path) -> None:
@@ -72,14 +72,46 @@ def _variant_available_locally(variant: dict[str, Any], library: list[dict[str, 
     return False
 
 
-def _model_family_payloads(system_stats: dict[str, Any], library: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def measured_speed_lookup(state: Any) -> Callable[[dict[str, Any]], float | None]:
+    """``measured_speed_for`` for ``_model_family_payloads``: this machine's median plain-decode tok/s."""
+    from backend_service.helpers.speed_history import measured_decode_tok_s
+
+    def lookup(variant: dict[str, Any]) -> float | None:
+        return measured_decode_tok_s(
+            state.chat_sessions,
+            state.benchmark_runs,
+            model_path=None,
+            model_repo=str(variant.get("repo") or "") or None,
+            strategy="native",
+        )
+
+    return lookup
+
+
+def _model_family_payloads(
+    system_stats: dict[str, Any],
+    library: list[dict[str, Any]],
+    *,
+    measured_speed_for: Callable[[dict[str, Any]], float | None] | None = None,
+) -> list[dict[str, Any]]:
+    """Catalog families with per-variant availability, memory estimates and hardware fit.
+
+    ``measured_speed_for`` returns this machine's own median tok/s for a variant (from chat and
+    benchmark history); the best-fit pick uses it, ahead of the bandwidth estimate, to choose
+    between variants released in the same month.
+    """
     from backend_service.catalog import MODEL_FAMILIES
+    from backend_service.helpers.fit import annotate_chat_families
     from backend_service.helpers.formatting import _parse_context_label
+    from backend_service.helpers.hardware_class import hardware_class
 
     payloads: list[dict[str, Any]] = []
+    explicit_memory: dict[str, float] = {}
     for family in MODEL_FAMILIES:
         variants: list[dict[str, Any]] = []
         for variant in family["variants"]:
+            if variant.get("estimatedMemoryGb"):
+                explicit_memory[str(variant["id"])] = float(variant["estimatedMemoryGb"])
             # A row may state its own figure: the parameter-count formula is
             # meaningless when the total is unknown (``paramsB`` 0) or the
             # weights are mapped rather than resident.
@@ -104,4 +136,10 @@ def _model_family_payloads(system_stats: dict[str, Any], library: list[dict[str,
             }
         )
 
-    return payloads
+    try:
+        hardware = hardware_class(system_stats)
+    except Exception:
+        return payloads
+    return annotate_chat_families(
+        payloads, hardware, explicit_memory=explicit_memory, measured_speed_for=measured_speed_for,
+    )

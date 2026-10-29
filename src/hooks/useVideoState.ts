@@ -63,6 +63,7 @@ import { compareDiscoverVariants } from "../utils";
 import {
   DEFAULT_VIDEO_FPS,
   DEFAULT_VIDEO_GUIDANCE,
+  MAX_VIDEO_SIDE,
   DEFAULT_VIDEO_NEGATIVE_PROMPT,
   DEFAULT_VIDEO_NUM_FRAMES,
   DEFAULT_VIDEO_STEPS,
@@ -354,8 +355,11 @@ export function useVideoState(
     setVideoHeight(h);
     setVideoNumFrames(DEFAULT_VIDEO_NUM_FRAMES);
     setVideoFps(DEFAULT_VIDEO_FPS);
-    setVideoSteps(DEFAULT_VIDEO_STEPS);
-    setVideoGuidance(recommendedGuidanceForRepo(selectedVideoVariant.repo));
+    // Distilled rows declare the few steps and the guidance they were trained for; without this the
+    // Studio sent 30 steps at guidance 5 and the backend (which only substitutes schema defaults)
+    // ran a 4-step model for 30.
+    setVideoSteps(selectedVideoVariant.defaultSteps ?? DEFAULT_VIDEO_STEPS);
+    setVideoGuidance(selectedVideoVariant.cfgOverride ?? recommendedGuidanceForRepo(selectedVideoVariant.repo));
     setVideoNegativePrompt(DEFAULT_VIDEO_NEGATIVE_PROMPT);
     // Intentionally only depend on the variant ID so we don't clobber the
     // user's edits when unrelated catalog fields refresh.
@@ -597,10 +601,10 @@ export function useVideoState(
       ? Math.max(1, Math.min(20, videoGuidance))
       : DEFAULT_VIDEO_GUIDANCE;
     const safeWidth = Number.isFinite(videoWidth)
-      ? Math.max(256, Math.min(2048, Math.round(videoWidth)))
+      ? Math.max(256, Math.min(MAX_VIDEO_SIDE, Math.round(videoWidth)))
       : 832;
     const safeHeight = Number.isFinite(videoHeight)
-      ? Math.max(256, Math.min(2048, Math.round(videoHeight)))
+      ? Math.max(256, Math.min(MAX_VIDEO_SIDE, Math.round(videoHeight)))
       : 480;
 
     // Fast-preview swap: if the user toggled Fast preview on a variant

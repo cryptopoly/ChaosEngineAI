@@ -612,6 +612,11 @@ function assessVideoGenerationSafetyForBudget(opts: {
   /** GB already held by loaded chat models (runtime status
    * ``residentModelGb``); the video run cannot use that memory. */
   otherResidentGb?: number | null;
+  /** True for engines that do not run a full-size attention pass (ltx-2-mlx
+   * denoises at half size, then tiles): the peak is the resident footprint, and
+   * the diffusers attention heuristic would warn about 42 GB where 18 GB was
+   * measured at 1280x704 x 121 frames and 15 GB at 768x512 x 97. */
+  skipAttentionEstimate?: boolean;
 }): VideoGenerationSafety {
   const {
     width,
@@ -712,8 +717,9 @@ function assessVideoGenerationSafetyForBudget(opts: {
 
   const latentTokens =
     Math.ceil(width / 16) * Math.ceil(height / 16) * Math.ceil(numFrames / 4);
-  const attentionPeakGb =
-    estimatePeakAttentionBytes(latentTokens, effectiveDevice) / 1024 ** 3;
+  const attentionPeakGb = opts.skipAttentionEstimate
+    ? 0
+    : estimatePeakAttentionBytes(latentTokens, effectiveDevice) / 1024 ** 3;
   const estimatedPeakGb = estimateVideoRequestPeakGb({
     modelFootprintGb,
     attentionPeakGb,

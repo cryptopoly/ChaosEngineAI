@@ -112,9 +112,9 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
         "id": "ltx-2",
         "name": "LTX-2 (MLX)",
         "provider": "Lightricks · prince-canuma",
-        "headline": "LTX-2.3 with sound on Apple Silicon: a 4 s clip in about 2.5 minutes.",
+        "headline": "LTX-2.5 with sound on Apple Silicon: a 4 s clip in about 2 minutes.",
         "summary": (
-            "LTX-2.3 q4 runs on its own MLX engine (ltx-2-mlx): the fastest and cleanest video "
+            "LTX-2.5 and LTX-2.3 q4 run on their own MLX engine (ltx-2-mlx): the fastest and cleanest video "
             "path measured on a Mac, with stereo sound. The prince-canuma LTX-2 and LTX-2.3 rows "
             "run through Blaizzy/mlx-video: distilled variants are fast iteration paths with "
             "fixed low-step sampling, 'dev' variants run CFG steps for best fidelity. Neither "
@@ -122,7 +122,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
         ),
         "updatedLabel": "Native MLX",
         "badges": ["MLX Native", "Apple Silicon", "Apache 2.0"],
-        "defaultVariantId": "dgrauet/ltx-2.3-mlx-q4",
+        "defaultVariantId": "dgrauet/ltx-2.5-mlx-q4",
         "variants": [
             {
                 "id": "prince-canuma/LTX-2-distilled",
@@ -267,7 +267,11 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 # the distilled pipeline reads the distilled transformer, the Gemma 4 text
                 # encoder bundled in the pack and the small VAE / vocoder / upscaler files.
                 "sizeGb": 28.7,
-                "runtimeFootprintGb": 24.0,
+                # Measured 2026-10-29 (M4 Max 64 GB, process footprint sampled every 3 s): 17 GB on a
+                # 4 s 768x512 clip (97 frames), 128 s including the model load, against 155 s and 18 GB
+                # for LTX-2.3 with the same prompt and seed.
+                "runtimeFootprintGb": 17.0,
+                "footprintBasis": "measured",
                 "recommendedResolution": "768x512",
                 "defaultDurationSeconds": 4.0,
                 "note": (
@@ -277,7 +281,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                     "LTX-2.3 MLX engine, installed from the Video Studio. Sizes are multiples of 64. Weights: "
                     "LTX-2 community licence (free below US$10M annual revenue)."
                 ),
-                "estimatedGenerationSeconds": 160.0,
+                "estimatedGenerationSeconds": 128.0,  # measured, see above
                 "downloadFiles": [
                     "transformer-distilled.safetensors",
                     "connector.safetensors",
@@ -958,3 +962,10 @@ if not _LONGLIVE_ENABLED:
     VIDEO_MODEL_FAMILIES = [
         family for family in VIDEO_MODEL_FAMILIES if family.get("id") != "longlive"
     ]
+
+
+# Per-model size limits (maxSide / maxPixels / nativeSide) for every variant.
+# The table and its sources live in size_limits.py.
+from backend_service.catalog.size_limits import apply_video_size_limits  # noqa: E402
+
+apply_video_size_limits(VIDEO_MODEL_FAMILIES)

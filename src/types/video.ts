@@ -1,3 +1,6 @@
+import type { ModelFit } from "./models";
+import type { RecommendedSettings } from "./recommendations";
+
 export type VideoDiscoverTaskFilter = "all" | "txt2video" | "img2video" | "video2video";
 
 // 2026-05-16 (FU-026 follow-up): taylorseer + pab exposed in the UI
@@ -14,6 +17,9 @@ export type VideoCacheStrategyId =
 export type VideoModelTask = "txt2video" | "img2video" | "video2video";
 
 export interface VideoModelVariant {
+  /** Few-step distilled rows (CausVid, lightx2v, LTX distilled): the steps and guidance the Studio starts from. */
+  defaultSteps?: number | null;
+  cfgOverride?: number | null;
   id: string;
   familyId: string;
   name: string;
@@ -93,6 +99,17 @@ export interface VideoModelVariant {
    * — typically pointing a "dev" variant at its "distilled" sibling so
    * the same prompt + seed renders in a fraction of the time. */
   fastPreviewSiblingId?: string | null;
+  fit?: ModelFit;
+  /** Settings that work best for this model on this machine (Studio panel). */
+  recommendedSettings?: RecommendedSettings | null;
+  /** Largest allowed edge in px for this model; the Studio inputs clamp to it (default 4096). */
+  maxSide?: number;
+  /** Largest allowed width x height; a larger request is reduced (see the run's note). */
+  maxPixels?: number;
+  /** Edge the model was trained at. */
+  nativeSide?: number;
+  /** Smallest edge the model renders cleanly at (the backend raises smaller sizes). */
+  minSide?: number | null;
 }
 
 export interface VideoModelFamily {
@@ -104,6 +121,8 @@ export interface VideoModelFamily {
   updatedLabel: string;
   badges: string[];
   defaultVariantId: string;
+  /** Newest release in the family that fits this machine comfortably; ``null`` when none does. */
+  bestFitVariantId?: string | null;
   variants: VideoModelVariant[];
 }
 

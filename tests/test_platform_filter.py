@@ -76,6 +76,12 @@ class IsMlxOnlyVariantTests(unittest.TestCase):
     def test_mlx_video_runtime_marker(self) -> None:
         self.assertTrue(is_mlx_only_variant(_ltx2_distilled_mlx()))
 
+    def test_ltx2_mlx_engine_rows_are_apple_only(self) -> None:
+        self.assertTrue(is_mlx_only_variant({
+            "id": "dgrauet/ltx-2.5-mlx-q4",
+            "runtime": "ltx-2-mlx (MLX native)",
+        }))
+
     def test_explicit_mlx_only_flag(self) -> None:
         variant = {"id": "x", "name": "x", "mlxOnly": True}
         self.assertTrue(is_mlx_only_variant(variant))

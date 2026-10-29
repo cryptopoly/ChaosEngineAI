@@ -1317,6 +1317,33 @@ def phase_4(cap: Capability) -> PhaseResult:
             return "fail", "catalog fetch failed", {}
         return "pass", "", {"families": len(payload.get("families") or [])}
 
+    # FU-133: every model row carries a fit rating and size limits, every family a best-fit
+    # pick, and the old 2048 px cap is gone (a model that can do more says so).
+    def _fit_and_limits():
+        problems = []
+        biggest = 0
+        for kind, command in (("image", "image-catalog"), ("video", "video-catalog")):
+            rc, payload, err = _cli_json(command, timeout=20.0)
+            if rc != 0 or not isinstance(payload, dict):
+                return "fail", f"{command} failed: {err[:160]}", {}
+            for family in payload.get("families") or []:
+                if "bestFitVariantId" not in family:
+                    problems.append(f"{kind} family {family.get('id')}: no bestFitVariantId")
+                for variant in family.get("variants") or []:
+                    fit = variant.get("fit") or {}
+                    if fit.get("status") not in {"fits", "tight", "wont-fit", "unknown"}:
+                        problems.append(f"{variant.get('id')}: bad or missing fit {fit!r}")
+                    side = variant.get("maxSide")
+                    if not isinstance(side, int) or side < 256:
+                        problems.append(f"{variant.get('id')}: bad maxSide {side!r}")
+                    else:
+                        biggest = max(biggest, side)
+        if biggest <= 2048:
+            problems.append(f"no model allows more than 2048 px per side (largest maxSide {biggest})")
+        if problems:
+            return "fail", "; ".join(problems[:6]), {"count": len(problems)}
+        return "pass", "", {"largestMaxSide": biggest}
+
     # New-feature gate: the image families added this release (Qwen-Image,
     # Z-Image Turbo, FLUX.2) must surface in the live image catalog with a
     # diffusers runtime — they were promoted out of FU-061 "watching upstream"
@@ -1491,6 +1518,7 @@ def phase_4(cap: Capability) -> PhaseResult:
     for name, fn in [
         ("catalog", _catalog),
         ("new image families (Qwen-Image / Z-Image / FLUX.2)", _new_image_families),
+        ("fit ratings and size limits in the catalogs (FU-133)", _fit_and_limits),
         ("FLUX.1 sd.cpp variants pin real GGUF files (FU-096)", _flux_sdcpp_catalog),
         ("library", _library), ("runtime", _runtime), ("generate", _generate),
         ("generate via mflux (FU-096)", _generate_mflux),

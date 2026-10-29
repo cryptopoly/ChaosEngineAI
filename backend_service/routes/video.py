@@ -147,13 +147,22 @@ def cancel_video_generation(request: Request) -> dict[str, Any]:
     return {"cancelled": signalled}
 
 
-def _video_memory_gate(request: Request, variant: dict[str, Any], action: str) -> None:
+def _video_memory_gate(
+    request: Request,
+    variant: dict[str, Any],
+    action: str,
+    body: VideoGenerationRequest | None = None,
+) -> None:
     """Refuse video work the host cannot hold. Run after idle image weights are freed.
 
     Phase 2.0.5-H: a hung diffusion loop on a memory-starved Apple Silicon
     machine can swap-thrash the host for minutes. A model that is not
     resident yet must also fit in free memory, as for images. Gate failures
     (psutil errors) never block; they are logged and skipped.
+
+    ``body`` (a generation request) adds the size check: the clip is judged at the
+    size and length it will actually render, which the per-model limits may have
+    changed from what was typed.
     """
     state = request.app.state.chaosengine
     try:
@@ -168,11 +177,34 @@ def _video_memory_gate(request: Request, variant: dict[str, Any], action: str) -
         except Exception:
             loaded_repo = ""
         available_gb, pressure_percent = snapshot_memory_signals()
+        size_args: dict[str, Any] = {}
+        if body is not None:
+            from backend_service.helpers.generation_limits import (
+                align_video_frames,
+                normalize_video_size,
+                reference_frames,
+                reference_pixels,
+                size_limits,
+            )
+
+            repo = str(variant.get("repo") or "")
+            render_width, render_height, _ = normalize_video_size(
+                body.width, body.height, repo, **size_limits(variant).as_kwargs()
+            )
+            size_args = {
+                "width": render_width,
+                "height": render_height,
+                "frames": align_video_frames(repo, body.numFrames)[0],
+                "reference_pixels": reference_pixels(variant),
+                "reference_frames": reference_frames(variant),
+                "footprint_gb": model_memory_gb(variant),
+            }
         refusal = gate_video_generation(
             available_gb,
             pressure_percent,
             model_gb=None if loaded_repo == variant.get("repo") else model_memory_gb(variant),
             model_name=variant.get("name"),
+            **size_args,
         )
     except Exception as gate_exc:
         state.add_log("video", "warning", f"Memory gate skipped: {gate_exc}")
@@ -373,7 +405,7 @@ def generate_video(request: Request, body: VideoGenerationRequest) -> dict[str, 
         raise HTTPException(status_code=409, detail=detail)
 
     _unload_idle_image_runtime_for_video(request, "video generation")
-    _video_memory_gate(request, variant, "video generation")
+    _video_memory_gate(request, variant, "video generation", body)
     try:
         artifact, runtime = _generate_video_artifact(body, variant, state.video_runtime)
     except GenerationCancelled:

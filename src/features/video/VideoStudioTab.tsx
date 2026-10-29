@@ -4,6 +4,13 @@ import { Panel } from "../../components/Panel";
 import { InfoTooltip } from "../../components/InfoTooltip";
 import { Ltx2EngineBanner } from "../../components/Ltx2EngineBanner";
 import { PromptEnhanceButton } from "../../components/PromptEnhanceButton";
+import { RecommendedSettingsPanel } from "../../components/RecommendedSettingsPanel";
+import {
+  DEFAULT_MAX_SIDE,
+  clampStudioSide,
+  type RecommendationAppliers,
+  type RecommendationCurrent,
+} from "../../components/recommendedSettings";
 import { VideoStudioRuntimeBanner } from "./VideoStudioRuntimeBanner";
 import type { CudaTorchInstallResult, DownloadStatus, GpuBundleJobState, InstallResult, LongLiveJobState } from "../../api";
 import type {
@@ -483,6 +490,60 @@ export function VideoStudioTab({
     && (mlxVideoStatus.device === "mps" || mlxVideoStatus.expectedDevice === "mps");
   // CUDA-only controls (NF4, FP8) need an NVIDIA GPU: hidden on a Mac and on a PC without one.
   const showCudaControls = hostSystem ? hasNvidiaGpu(hostSystem) : !isAppleSiliconHost;
+  // Per-model size limit (``maxSide`` from the catalog; 4096 when the backend sends none).
+  const videoMaxSide = selectedVideoVariant?.maxSide && selectedVideoVariant.maxSide > 0
+    ? selectedVideoVariant.maxSide
+    : DEFAULT_MAX_SIDE;
+  useEffect(() => {
+    if (Number.isFinite(videoWidth) && videoWidth > videoMaxSide) onVideoWidthChange(videoMaxSide);
+    if (Number.isFinite(videoHeight) && videoHeight > videoMaxSide) onVideoHeightChange(videoMaxSide);
+  }, [videoMaxSide, videoWidth, videoHeight, onVideoWidthChange, onVideoHeightChange]);
+
+  // "Recommended for this machine": applied through the same setters as the controls
+  // below, and only for settings this variant shows (ltx-2-mlx: size, frames and fps).
+  const showVideoDiffusionCache = !fixedSampler && !isMlxVideoSubprocessPath;
+  const recommendationAppliers = useMemo<RecommendationAppliers>(() => {
+    const allowedCache = new Set(availableCacheStrategies.map((strategy) => strategy.id as string));
+    return {
+      width: (value) => onVideoWidthChange(clampStudioSide(value, { maxSide: videoMaxSide }, 832)),
+      height: (value) => onVideoHeightChange(clampStudioSide(value, { maxSide: videoMaxSide }, 480)),
+      numFrames: onVideoNumFramesChange,
+      fps: onVideoFpsChange,
+      steps: fixedSampler ? undefined : onVideoStepsChange,
+      guidance: fixedSampler ? undefined : onVideoGuidanceChange,
+      cfgDecay: fixedSampler ? undefined : onVideoCfgDecayChange,
+      previewVae: fixedSampler ? undefined : onVideoPreviewVaeChange,
+      cacheStrategy: showVideoDiffusionCache
+        ? (value) => {
+            if (allowedCache.has(value)) onVideoCacheStrategyChange(value as VideoCacheStrategyId);
+          }
+        : undefined,
+      cacheThreshold: showVideoDiffusionCache ? onVideoCacheRelL1ThreshChange : undefined,
+      fp8LayerwiseCasting: showCudaControls && !fixedSampler ? onVideoFp8LayerwiseCastingChange : undefined,
+    };
+  }, [
+    availableCacheStrategies, videoMaxSide, fixedSampler, showVideoDiffusionCache, showCudaControls,
+    onVideoWidthChange, onVideoHeightChange, onVideoNumFramesChange, onVideoFpsChange,
+    onVideoStepsChange, onVideoGuidanceChange, onVideoCfgDecayChange, onVideoPreviewVaeChange,
+    onVideoCacheStrategyChange, onVideoCacheRelL1ThreshChange, onVideoFp8LayerwiseCastingChange,
+  ]);
+  const recommendationCurrent = useMemo<RecommendationCurrent>(() => ({
+    width: videoWidth,
+    height: videoHeight,
+    numFrames: videoNumFrames,
+    fps: videoFps,
+    steps: videoSteps,
+    guidance: videoGuidance,
+    cfgDecay: videoCfgDecay,
+    previewVae: videoPreviewVae,
+    cacheStrategy: videoCacheStrategy,
+    cacheThreshold: videoCacheRelL1Thresh ?? VIDEO_CACHE_STRATEGY_DEFAULT_THRESH[videoCacheStrategy],
+    fp8LayerwiseCasting: videoFp8LayerwiseCasting,
+  }), [
+    videoWidth, videoHeight, videoNumFrames, videoFps, videoSteps, videoGuidance, videoCfgDecay,
+    videoPreviewVae, videoCacheStrategy, videoCacheRelL1Thresh, videoFp8LayerwiseCasting,
+  ]);
+
   const mlxVideoMissing =
     !fixedSampler
     && isAppleSiliconHost
@@ -582,8 +643,10 @@ export function VideoStudioTab({
         repo: selectedVideoVariant?.repo,
         useNf4: videoUseNf4 && !selectedVideoVariant?.ggufFile,
         otherResidentGb: residentChatModelGb,
+        skipAttentionEstimate: fixedSampler,
       }),
     [
+      fixedSampler,
       residentChatModelGb,
       videoWidth,
       videoHeight,
@@ -940,6 +1003,22 @@ export function VideoStudioTab({
             workspaces. The label-on-top + pills layout inside each group
             is unchanged.
           */}
+          {selectedVideoVariant?.availableLocally ? (
+            <RecommendedSettingsPanel
+              recommendation={selectedVideoVariant.recommendedSettings}
+              appliers={recommendationAppliers}
+              current={recommendationCurrent}
+              labelFor={(kind, id) =>
+                kind === "cacheStrategy"
+                  ? t(`videoStudio.cacheStrategies.${id}.label`, {
+                      defaultValue: IMAGE_CACHE_STRATEGIES.find((strategy) => strategy.id === id)?.label ?? id,
+                    })
+                  : id
+              }
+              disabled={videoBusy}
+            />
+          ) : null}
+
           <div className="preset-row-pair">
           {!fixedSampler ? (
             <div className="preset-row">
@@ -1062,11 +1141,11 @@ export function VideoStudioTab({
                 className="text-input"
                 type="number"
                 min={256}
-                max={2048}
+                max={videoMaxSide}
                 step={64}
                 value={displayNumber(videoWidth)}
                 onChange={(event) => onNumericChange(event, onVideoWidthChange)}
-                onBlur={() => onNumericBlur(videoWidth, onVideoWidthChange, 832, 256)}
+                onBlur={() => onVideoWidthChange(clampStudioSide(videoWidth, { maxSide: videoMaxSide }, 832))}
               />
             </label>
             <label>
@@ -1081,11 +1160,11 @@ export function VideoStudioTab({
                 className="text-input"
                 type="number"
                 min={256}
-                max={2048}
+                max={videoMaxSide}
                 step={64}
                 value={displayNumber(videoHeight)}
                 onChange={(event) => onNumericChange(event, onVideoHeightChange)}
-                onBlur={() => onNumericBlur(videoHeight, onVideoHeightChange, 480, 256)}
+                onBlur={() => onVideoHeightChange(clampStudioSide(videoHeight, { maxSide: videoMaxSide }, 480))}
               />
             </label>
             <label>
@@ -1195,6 +1274,19 @@ export function VideoStudioTab({
               </label>
             ) : null}
           </div>
+
+          {selectedVideoVariant?.maxPixels
+            && Number.isFinite(videoWidth) && Number.isFinite(videoHeight)
+            && videoWidth * videoHeight > selectedVideoVariant.maxPixels ? (
+            <p className="muted-text" role="note">
+              {t("videoStudio.fields.maxPixelsNote", {
+                defaultValue:
+                  "{name} renders at most {megapixels} megapixels per frame; this size is reduced to fit, keeping its shape.",
+                name: selectedVideoVariant.name,
+                megapixels: (selectedVideoVariant.maxPixels / 1_000_000).toFixed(1),
+              })}
+            </p>
+          ) : null}
 
           {Number.isFinite(videoNumFrames) && Number.isFinite(videoFps) && videoFps > 0 ? (
             <p className="muted-text" aria-live="polite">

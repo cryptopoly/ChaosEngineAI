@@ -16,7 +16,7 @@ Newest dated update first. Each update has the same sections: Done, Open for Cla
 - PR 119 open (LTX-2.3 on its own MLX engine, settings guards for chat, image, video and voice, MLX DDTree fix, hardware gating). macOS and Ubuntu checks pass; Windows failed on one test that compared `/pack` with `\pack`. Fixed locally, **not pushed** (push is held, see [rules](rules.md)).
 - Linear DFlash on MLX now verifies 8 tokens per step instead of 16 (16 was slower than plain decoding on prose). Tests and `docs/features/dflash.md` updated.
 - LTX long-clip memory measured on the M4 Max: 18 GB engine footprint at both 768x512 x 257 frames (352 s) and 1280x704 x 121 frames (363 s); the 20 GB catalog figure holds. See [FU-128](tracker/open.md).
-- LTX-2.5 support added to the engine and catalog (own Gemma 4 text encoder, no companion repo); the licence is accepted on Hugging Face. Not yet run live (download queued).
+- LTX-2.5 runs live and is the LTX default: 128 s against 155 s for LTX-2.3 on the same clip, 17 GB, clean output with sound ([FU-128](tracker/closed.md)).
 - Sound in Video Studio ([FU-130](tracker/open.md)): sound badge on clips that have it, result window plays them with sound, prompt hint for the LTX rows. Checked in the running Video Gallery (the badge shows); the result window was not opened.
 - This hub: [tracker pages](tracker/README.md) are generated from `CLAUDE.md` by `tools/hub_tracker.py`.
 
@@ -26,7 +26,6 @@ Newest dated update first. Each update has the same sections: Done, Open for Cla
 
 **Open for Claude**
 
-- Run LTX-2.5 live, then decide the default LTX row.
 - Keep this hub current after every batch.
 
 **Open for Dan**

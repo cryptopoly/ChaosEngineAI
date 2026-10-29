@@ -56,6 +56,103 @@ VIDEO_MAX_PRESSURE_PERCENT = 92.0
 # Video rows carry a runtime footprint that is already the generation peak.
 VIDEO_MODEL_HEADROOM = 1.0
 
+# Larger-than-reference sizes (estimated, not measured; same model as the Studio's own
+# warning in src/utils/images.ts). A catalog footprint describes a run at the variant's
+# recommended resolution. Attention, latents and the VAE decode grow with the pixel count,
+# so every megapixel above that resolution is charged this share of the model's footprint.
+# `scripts/measure-image-ceiling.py` measures the real figure on a machine.
+EXTRA_SHARE_PER_MEGAPIXEL = 0.15
+# Stand-in footprint for a variant that has none, so its size still counts.
+UNKNOWN_FOOTPRINT_GB = 10.0
+_MEGAPIXEL = 1024 * 1024
+
+
+def _gb_per_megapixel(footprint_gb: float | None, frames: int | None, reference_frames: int | None) -> float:
+    """Extra GB per megapixel above the reference resolution."""
+    rate = EXTRA_SHARE_PER_MEGAPIXEL * (footprint_gb or UNKNOWN_FOOTPRINT_GB)
+    if frames and reference_frames and frames > reference_frames:
+        rate *= frames / reference_frames
+    return rate
+
+
+def size_extra_gb(
+    width: int,
+    height: int,
+    *,
+    reference_pixels: int | None,
+    footprint_gb: float | None,
+    frames: int | None = None,
+    reference_frames: int | None = None,
+) -> float:
+    """Extra memory in GB a size above the reference resolution needs. 0 at or below it.
+
+    Video clips longer than the reference length scale the extra by the length ratio.
+    """
+    if not reference_pixels or width * height <= reference_pixels:
+        return 0.0
+    extra_megapixels = (width * height - reference_pixels) / _MEGAPIXEL
+    return _gb_per_megapixel(footprint_gb, frames, reference_frames) * extra_megapixels
+
+
+def _fitting_size(
+    width: int,
+    height: int,
+    *,
+    allowed_gb: float,
+    reference_pixels: int,
+    footprint_gb: float | None,
+    frames: int | None,
+    reference_frames: int | None,
+) -> tuple[int, int]:
+    """The requested aspect ratio at the largest area (multiples of 64) that fits ``allowed_gb``."""
+    rate = _gb_per_megapixel(footprint_gb, frames, reference_frames)
+    pixels = reference_pixels + max(0.0, allowed_gb) / rate * _MEGAPIXEL
+    scale = min(1.0, (pixels / (width * height)) ** 0.5)
+    return max(256, int(width * scale) // 64 * 64), max(256, int(height * scale) // 64 * 64)
+
+
+def _size_refusal(
+    *,
+    code: str,
+    noun: str,
+    label: str,
+    width: int,
+    height: int,
+    available_gb: float,
+    load_gb: float,
+    extra_gb: float,
+    reference_pixels: int,
+    footprint_gb: float | None,
+    frames: int | None,
+    reference_frames: int | None,
+) -> dict[str, Any] | None:
+    """Refusal for a size that does not fit in the free memory, or None when it does."""
+    need_gb = load_gb + extra_gb
+    if extra_gb <= 0 or available_gb >= need_gb:
+        return None
+    fit_w, fit_h = _fitting_size(
+        width, height,
+        allowed_gb=max(0.0, available_gb - load_gb),
+        reference_pixels=reference_pixels,
+        footprint_gb=footprint_gb,
+        frames=frames,
+        reference_frames=reference_frames,
+    )
+    sized_for = f"the {reference_pixels / 1_000_000:.1f} megapixels {label} is sized for"
+    need_text = (
+        f"about {need_gb:.0f} GB of free memory ({load_gb:.0f} GB to load the model and {extra_gb:.0f} GB "
+        f"because the size is above {sized_for})"
+        if load_gb > 0
+        else f"about {extra_gb:.0f} GB of free memory on top of the loaded model, because the size is above {sized_for}"
+    )
+    return {
+        "code": code,
+        "message": (
+            f"A {width}x{height} {noun} with {label} needs {need_text}, but only {available_gb:.1f} GB "
+            f"is available. Try {fit_w}x{fit_h} or smaller, or close other apps and unload models."
+        ),
+    }
+
 
 def model_memory_gb(variant: dict[str, Any], *, apple_silicon: bool | None = None) -> float | None:
     """Memory an image / video catalog variant needs once loaded, in GB.
@@ -124,6 +221,10 @@ def gate_image_generation(
     max_pressure_percent: float = IMAGE_MAX_PRESSURE_PERCENT,
     model_gb: float | None = None,
     model_name: str | None = None,
+    width: int | None = None,
+    height: int | None = None,
+    reference_pixels: int | None = None,
+    footprint_gb: float | None = None,
 ) -> dict[str, Any] | None:
     """Pre-flight check for image generation. Returns refusal or None.
 
@@ -134,6 +235,12 @@ def gate_image_generation(
     ``model_gb`` is the weight size of a model that is not resident yet. A
     model larger than free memory is killed by the OS mid-load, which takes
     the whole backend down with it, so it is refused up front instead.
+
+    ``width`` / ``height`` are the size that will actually render and
+    ``reference_pixels`` the area the footprint describes (the variant's
+    recommended resolution); a size above it is charged extra memory
+    (``size_extra_gb``) and refused when the free memory cannot hold it.
+    ``footprint_gb`` is the model's footprint, resident or not (default: ``model_gb``).
     """
     if model_gb and available_gb < model_gb * IMAGE_MODEL_HEADROOM:
         label = model_name or "This image model"
@@ -146,6 +253,25 @@ def gate_image_generation(
                 "image model."
             ),
         }
+    if width and height and reference_pixels:
+        refusal = _size_refusal(
+            code="memory_gate_image_size_too_large",
+            noun="image",
+            label=model_name or "this image model",
+            width=width,
+            height=height,
+            available_gb=available_gb,
+            load_gb=(model_gb or 0.0) * IMAGE_MODEL_HEADROOM,
+            extra_gb=size_extra_gb(
+                width, height, reference_pixels=reference_pixels, footprint_gb=footprint_gb or model_gb
+            ),
+            reference_pixels=reference_pixels,
+            footprint_gb=footprint_gb or model_gb,
+            frames=None,
+            reference_frames=None,
+        )
+        if refusal is not None:
+            return refusal
     if available_gb < min_available_gb:
         return {
             "code": "memory_gate_image_low_available",
@@ -176,6 +302,12 @@ def gate_video_generation(
     max_pressure_percent: float = VIDEO_MAX_PRESSURE_PERCENT,
     model_gb: float | None = None,
     model_name: str | None = None,
+    width: int | None = None,
+    height: int | None = None,
+    frames: int | None = None,
+    reference_pixels: int | None = None,
+    reference_frames: int | None = None,
+    footprint_gb: float | None = None,
 ) -> dict[str, Any] | None:
     """Pre-flight check for video generation. Returns refusal or None.
 
@@ -185,7 +317,9 @@ def gate_video_generation(
     down — this gate is the cheapest possible defence.
 
     ``model_gb`` is the peak memory of a model that is not resident yet; one
-    that does not fit is refused before loading, as for images.
+    that does not fit is refused before loading, as for images. The size
+    arguments work as for images; a clip longer than ``reference_frames``
+    scales the extra memory for a size above the reference by the length ratio.
     """
     if model_gb and available_gb < model_gb * VIDEO_MODEL_HEADROOM:
         label = model_name or "This video model"
@@ -198,6 +332,26 @@ def gate_video_generation(
                 "a smaller or quantized video model."
             ),
         }
+    if width and height and reference_pixels:
+        refusal = _size_refusal(
+            code="memory_gate_video_size_too_large",
+            noun="video",
+            label=model_name or "this video model",
+            width=width,
+            height=height,
+            available_gb=available_gb,
+            load_gb=(model_gb or 0.0) * VIDEO_MODEL_HEADROOM,
+            extra_gb=size_extra_gb(
+                width, height, reference_pixels=reference_pixels, footprint_gb=footprint_gb or model_gb,
+                frames=frames, reference_frames=reference_frames,
+            ),
+            reference_pixels=reference_pixels,
+            footprint_gb=footprint_gb or model_gb,
+            frames=frames,
+            reference_frames=reference_frames,
+        )
+        if refusal is not None:
+            return refusal
     if available_gb < min_available_gb:
         return {
             "code": "memory_gate_video_low_available",

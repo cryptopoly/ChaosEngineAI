@@ -1045,7 +1045,7 @@
   },
   "runHf": {
     "resolveFailed": "Não foi possível resolver esse repositório.",
-    "downloadStarted": "Download iniciado — acompanhe o progresso em Meus modelos e depois clique em Carregar.",
+    "downloadStarted": "Download iniciado — acompanhe o progresso na página Modelos e depois clique em Carregar.",
     "downloadFailed": "Falha no download.",
     "loaded": "{label} carregado.",
     "loadFailed": "Falha ao carregar.",

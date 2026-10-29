@@ -59,7 +59,7 @@
     "recommendedTarget": "Objetivo recomendado",
     "currentRuntime": "Tiempo de ejecución actual",
     "modelLoadedVia": "{model} cargado mediante {engine}.",
-    "noModelHint": "Aún no hay ningún modelo cargado. Elige un modelo de hilo en Chat o explora una familia más nueva en Descubrir."
+    "noModelHint": "Aún no hay ningún modelo cargado. Elige un modelo de hilo en Chat o explora una familia más nueva en Chat > Modelos."
   },
   "activityFeed": {
     "title": "Feed de actividad",

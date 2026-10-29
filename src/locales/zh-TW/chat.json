@@ -1,7 +1,7 @@
 {
   "composer": {
     "placeholderReady": "輸入訊息…(Enter 傳送,Shift+Enter 換行,/ 輸入命令)",
-    "placeholderNoModel": "請先載入模型 — 從 我的模型 或 探索 選擇一個,然後點擊 對話。",
+    "placeholderNoModel": "請先載入模型 — 從 對話 > 模型 選擇一個,然後點擊 對話。",
     "send": "傳送",
     "stop": "停止",
     "clear": "清除",
@@ -114,7 +114,7 @@
     "dialogAriaLabel": "為下一輪選擇模型",
     "sendNextVia": "下一則透過",
     "oneTurnNote": "覆寫僅適用於一輪。",
-    "noWarmModels": "沒有其他熱模型。從 我的模型 載入第二個模型以啟用快速切換。"
+    "noWarmModels": "沒有其他熱模型。從 對話 > 模型 載入第二個模型以啟用快速切換。"
   },
   "activeThread": {
     "title": "活動執行緒",
@@ -400,8 +400,8 @@
   },
   "emptyBanner": {
     "welcomeTitle": "👋 歡迎使用 ChaosEngineAI 對話",
-    "welcomeBody": "請先在「探索」中選擇一個聊天模型。首次使用建議選擇較小的 Qwen3 或 Llama 3 變體，下載只需一兩分鐘，任何筆記型電腦都能執行。",
-    "browseDiscover": "瀏覽「探索」",
+    "welcomeBody": "請先在「對話 > 模型」中選擇一個聊天模型。首次使用建議選擇較小的 Qwen3 或 Llama 3 變體，下載只需一兩分鐘，任何筆記型電腦都能執行。",
+    "browseDiscover": "瀏覽模型",
     "noModelLoaded": "需要先載入模型才能聊天。請從模型庫中選擇一個，將它載入記憶體。",
     "loadModel": "載入模型",
     "getStartedAriaLabel": "開始使用對話",

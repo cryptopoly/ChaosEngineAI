@@ -51,7 +51,6 @@
 - **Options for hardware you do not have are hidden.** CUDA-only boosters and toggles no longer show on a Mac or a PC without an NVIDIA GPU, MLX rows no longer show on Windows and Linux, and Settings > Accelerators lists only what your machine can run.
 - **Iris-3B Turbo images** came out as noise or blocks at small sizes: it now renders at 768 px or more and says so when it raises a smaller size. The gallery also records the steps and guidance the model really used.
 - **Voice Models** cards no longer overflow when the DOWNLOADED badge is shown.
-- **Discover went blank** when you typed in the search box.
 - Apple Silicon: a model that reasons after a tool result, even with Thinking Off, no longer shows that reasoning in its answer.
 - A reasoning level that a model's chat template does not accept is mapped to the nearest one it does.
 - **Speculative decoding on Apple Silicon works again, and faster.** DFlash had been quietly falling back to plain decoding on every reply; it now runs (Qwen3-4B: about 113 tokens per second against 53) and verifies 8 tokens per step instead of 16, which was slower than plain decoding on prose. DDTree (the draft tree) is back, with a corrected tree verification, for models made of plain attention layers; hybrid models such as Qwen3.5 and 3.6 run linear DFlash (Qwen3.6-27B: about 4 accepted tokens per step; with the newer MLX libraries it had produced garbage on them until the app corrected which output head it reads, and every load now checks the draft runtime against the model before using it). On a 30B-class model (Qwen3-Coder-30B-A3B, 4-bit) code and reasoning replies run 1.4 to 1.7 times faster; creative writing is still slower with speculative decoding on, so leave it off for stories.
@@ -59,5 +58,18 @@
 - **A JSON schema on a reasoning model** (llama.cpp) no longer returns nothing: if the grammar leaves the model with no text, the reply is asked for as plain JSON and the note says so. A conversation larger than the loaded context now answers with a 400 and the sizes, not a 500.
 - **A failed mflux update keeps your working engine.** The old install is moved aside and put back if the new one does not verify.
 - **Gated models:** when your Hugging Face token cannot open gated repos, the download error now says exactly which token setting to enable.
-- **Wan** default guidance follows the Wan-AI model cards (5.0 for Wan 2.1, 4.0 for 2.2 A14B); the old values over-saturated Wan 2.2 5B clips. These two were not run here.
+- **Wan** default guidance follows the Wan-AI model cards (5.0 for Wan 2.1, 4.0 for 2.2 A14B); the old values over-saturated Wan 2.2 clips. These two were not run here.
+- **Memory checks that fit the machine.** Qwen-Image-2.1 is no longer refused on a 64 GB Mac for needing 55 GB (the check added 10 % to a figure that already is the measured peak). On an NVIDIA card a large size is judged against the free memory on the card, not system RAM, so a size that would run out of GPU memory is refused with a size that fits instead of failing mid-run.
+- **Sizes keep their shape.** A width and height over a model's limit are scaled together (3000 x 1688 on a 2048 px model becomes 2048 x 1152, not 2048 x 1688), and the LTX memory estimate grows with size and frames again.
+- **Models pages.** The tables fit the window down to 1200 px by leaving out the least useful columns in a narrower window, long names wrap, and a model you delete stops showing as Installed.
+- **Best fit picks.** FLUX.1 no longer recommends the slow stable-diffusion.cpp build on a Mac, and a model that runs as downloaded is preferred to one that must be converted first.
 - The import-models panel labels each group with the folder it found them in instead of naming other apps.
+
+### Known limits
+
+- Voice, the new Models pages and the CUDA memory check were built and tested on an Apple Silicon Mac. They have not been run on Windows or Linux; please report anything that looks wrong there.
+- Speculative decoding (DFlash, DDTree) speeds up code and reasoning but can be two to four times slower on creative prose. Leave it off for story writing.
+- TurboQuant saves memory on long chats but is much slower than Native at long context (about 25 times at 16K tokens in our test). It is labelled as a memory saver.
+- LTX-2.5 is a gated Hugging Face repo: accept its licence on the model page and give your token read access to gated repos before the download.
+- Reference images and videos (image-to-video, editing with a reference image) are not in this release.
+- The machine-made translations have not been read by native speakers; corrections are welcome.

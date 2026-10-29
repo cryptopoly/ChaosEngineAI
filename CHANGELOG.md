@@ -7,6 +7,7 @@ Full notes in [RELEASE_NOTES_v0.9.9.md](RELEASE_NOTES_v0.9.9.md).
 ### Added
 
 - **Voice I/O** (FU-117): a voice pack in its own environment (MLX Whisper, Parakeet and Kokoro on Apple Silicon; faster-whisper and kokoro-onnx on Windows and Linux), dictation and read-aloud in Chat, voice calls with turn detection and barge-in, Voice Studio (transcription queue, speaker labels, translation, transcript editor, Speak) and Voice Library, which replaces Gallery.
+- **LTX-2.5** (`dgrauet/ltx-2.5-mlx-q4`, gated) on the ltx-2-mlx engine and the new LTX default: 128 s against 155 s for LTX-2.3 on the same 4 s clip with sound, 17 GB (FU-128). Sound is badged in the gallery and result window (FU-130).
 - **LFM3-1.7B** (Liquid AI) on MLX through a vendored `lfm3` architecture, official MLX 4-bit and 8-bit rows (FU-118).
 - Unload / Cancel load button in the chat header.
 - **Nemotron 3.5 Bolt E4B** (NVIDIA) and **Granite Switch 4.1** (IBM) catalog families on llama.cpp. Bolt's DFlash drafter is published in a repo of its own, so a model can now be paired with a drafter by repo id (`PINNED_DRAFTERS`) and a download fetches companion files from other repos (`backend_service/helpers/companions.py`): 62 to 160 tok/s on an M4 Max with the drafter (FU-123).
@@ -24,6 +25,10 @@ Full notes in [RELEASE_NOTES_v0.9.9.md](RELEASE_NOTES_v0.9.9.md).
 - Frontend: react-syntax-highlighter 16 (removes a PrismJS DOM-clobbering issue), vite 7.3.7, vitest 4.1.12, postcss, nanoid, browserslist and source-map-js. `npm audit` is down to four low-severity KaTeX findings.
 
 ### Fixed
+
+- Memory gate: a measured peak footprint is no longer charged 10 % headroom a second time (Qwen-Image-2.1 was refused on a 64 GB Mac below 55 GB free); on a CUDA host the size term is judged against free GPU memory instead of system RAM.
+- A width and height over a model's limit keep their aspect ratio; the LTX-2 memory estimate grows with size and frames; the LTX-2 size guard rounds to 64 like the engine.
+- Models pages fit the window (narrow template below 1440 px), deleting a model drops its finished download record, tracked-only rows that have files keep delete and pause, best-fit picks prefer rows that run as downloaded and the faster build.
 
 - Hardware-specific options (CUDA boosters, FP8 / NF4, MLX rows) show only on hosts that can run them (FU-124); Iris-3B Turbo renders at 768 px or more (FU-124).
 - Tools never ran on GGUF models: llama.cpp returns tool calls as structured data and the engine ignored them, so the answer was empty.

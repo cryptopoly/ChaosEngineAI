@@ -96,7 +96,7 @@ export function ImageGalleryTab({
               {tStudio("imageGallery.actions.studio", { defaultValue: "Studio" })}
             </button>
             <button className="secondary-button" type="button" onClick={() => onActiveTabChange(modelsPageRequest("image", "installed"))}>
-              {tStudio("imageGallery.actions.installedModels", { defaultValue: "Installed Models" })}
+              {tStudio("imageGallery.actions.installedModels", { defaultValue: "Installed" })}
             </button>
           </div>
         }

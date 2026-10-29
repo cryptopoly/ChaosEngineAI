@@ -52,7 +52,7 @@ defaults are:
 - `~/AI_Models/` — the app's primary model root.
 - Hugging Face cache (`~/.cache/huggingface/hub/`) — symlinked /
   resolved through `huggingface_hub`.
-- Any custom directories you add (Ollama, LM Studio, network shares).
+- Any custom directories you add (shared model folders, network shares).
 
 The library scanner walks each directory, identifies safetensors / GGUF
 / MLX checkpoints, and surfaces a `LibraryEntry` carrying:

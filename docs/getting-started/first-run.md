@@ -41,10 +41,15 @@ copy existing models to the new path before switching over.
 
 ## First model
 
-The Dashboard's empty state nudges you to the **Discover** tab. Pick a model
-family, expand to see quant variants, and queue a download. Smaller models
+Open **Chat > Models**. It lists every chat model in one place: what is
+already on disk, the curated catalog, and Hugging Face search results. Each
+row says whether it fits this machine, and the newest model of a family that
+fits comfortably carries a **Best fit** ribbon. Pick a model family, expand to
+see quant variants, and queue a download. Smaller models
 (Qwen3-4B 4-bit MLX, ~2.3 GB) finish in a couple of minutes on a normal
 connection and are a good way to verify the full pipeline.
+
+![Chat > Models with fit chips and Best fit ribbons](../screenshots/models-chat.png)
 
 When the download lands, the launch modal pre-populates with sensible defaults
 for the model's architecture — engine, context length, cache strategy,

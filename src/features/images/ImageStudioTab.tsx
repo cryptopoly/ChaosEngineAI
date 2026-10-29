@@ -553,7 +553,7 @@ export function ImageStudioTab({
         actions={
           <div className="button-row">
             <button className="secondary-button" type="button" onClick={() => onActiveTabChange(modelsPageRequest("image", "available"))}>
-              {t("imageStudio.actions.discover", { defaultValue: "Discover" })}
+              {t("imageStudio.actions.discover", { defaultValue: "Find models" })}
             </button>
             <button className="secondary-button" type="button" onClick={() => onActiveTabChange(modelsPageRequest("image", "installed"))}>
               {t("imageStudio.actions.installed", { defaultValue: "Installed" })}
@@ -647,7 +647,7 @@ export function ImageStudioTab({
                   </optgroup>
                 ))
               ) : (
-                <option value="">{t("image.noModelsOption", { defaultValue: "No models installed — download one from Discover" })}</option>
+                <option value="">{t("image.noModelsOption", { defaultValue: "No models installed — download one from Images > Models" })}</option>
               )}
             </select>
           </label>
@@ -661,12 +661,12 @@ export function ImageStudioTab({
               <p>
                 {t("imageStudio.noModelsCallout.message", {
                   defaultValue:
-                    "You don't have any image models downloaded yet. Head to Image Discover to browse and install one, then come back here to generate.",
+                    "You don't have any image models downloaded yet. Head to Images > Models to browse and install one, then come back here to generate.",
                 })}
               </p>
               <div className="button-row">
                 <button className="secondary-button" type="button" onClick={() => onActiveTabChange(modelsPageRequest("image", "available"))}>
-                  {t("imageStudio.noModelsCallout.openDiscover", { defaultValue: "Open Image Discover" })}
+                  {t("imageStudio.noModelsCallout.openDiscover", { defaultValue: "Open Image Models" })}
                 </button>
               </div>
             </div>
@@ -695,7 +695,7 @@ export function ImageStudioTab({
                     })
                   : t("imageStudio.download.notInstalledMessage", {
                       defaultValue:
-                        "{name} is not installed locally. Download it from Discover to enable local generation.",
+                        "{name} is not installed locally. Download it from the Models page to enable local generation.",
                       name: selectedImageVariant.name,
                     })}
               </p>

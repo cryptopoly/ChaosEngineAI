@@ -59,7 +59,7 @@
     "recommendedTarget": "Cible recommandée",
     "currentRuntime": "Environnement d'exécution actuel",
     "modelLoadedVia": "{model} chargé via {engine}.",
-    "noModelHint": "Aucun modèle chargé pour l'instant. Choisissez un modèle de thread dans Discussion ou parcourez une famille plus récente dans Découvrir."
+    "noModelHint": "Aucun modèle chargé pour l'instant. Choisissez un modèle de thread dans Discussion ou parcourez une famille plus récente dans Discussion > Modèles."
   },
   "activityFeed": {
     "title": "Flux d'activité",

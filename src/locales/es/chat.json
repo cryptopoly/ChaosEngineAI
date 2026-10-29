@@ -1,7 +1,7 @@
 {
   "composer": {
     "placeholderReady": "Escribir un mensaje… (Enter para enviar, Shift+Enter para nueva línea, / para comandos)",
-    "placeholderNoModel": "Carga primero un modelo — elige uno desde Mis modelos o Descubrir, y pulsa CHAT.",
+    "placeholderNoModel": "Carga primero un modelo — elige uno en Chat > Modelos y pulsa CHAT.",
     "send": "Enviar",
     "stop": "Detener",
     "clear": "Limpiar",
@@ -114,7 +114,7 @@
     "dialogAriaLabel": "Elige un modelo para el siguiente turno",
     "sendNextVia": "Enviar siguiente vía",
     "oneTurnNote": "La anulación solo se aplica para un turno.",
-    "noWarmModels": "No hay otros modelos calientes disponibles. Carga un segundo modelo desde Mis modelos para habilitar cambios rápidos."
+    "noWarmModels": "No hay otros modelos calientes disponibles. Carga un segundo modelo desde Chat > Modelos para habilitar cambios rápidos."
   },
   "activeThread": {
     "title": "Hilo activo",
@@ -400,8 +400,8 @@
   },
   "emptyBanner": {
     "welcomeTitle": "👋 Te damos la bienvenida al chat de ChaosEngineAI",
-    "welcomeBody": "Elige un modelo de chat en Descubrir para empezar. Para la primera vez recomendamos una variante pequeña de Qwen3 o Llama 3: se descarga en uno o dos minutos y funciona en cualquier portátil.",
-    "browseDiscover": "Explorar Descubrir",
+    "welcomeBody": "Elige un modelo de chat en Chat > Modelos para empezar. Para la primera vez recomendamos una variante pequeña de Qwen3 o Llama 3: se descarga en uno o dos minutos y funciona en cualquier portátil.",
+    "browseDiscover": "Explorar modelos",
     "noModelLoaded": "Hay que cargar un modelo antes de poder chatear. Elige uno de tu biblioteca para cargarlo en memoria.",
     "loadModel": "Cargar modelo",
     "getStartedAriaLabel": "Empezar con el chat",

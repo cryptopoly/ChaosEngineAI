@@ -9,6 +9,24 @@ summary: Read this first in every session.
 
 Newest dated update first. Each update has the same sections: Done, Open for Claude, Open for Dan.
 
+## Update 2026-10-29, release prep for v0.9.9
+
+**Done**
+
+- Release notes, CHANGELOG, README and the mkdocs pages describe v0.9.9 (voice first, then the Models pages, best fit, recommended settings, bigger images, LTX-2.5 with sound). New screenshots are in `Screenshots/v0.9.9/` (3600 x 2260, taken with headless Chromium); the old Discover / My Models / Image Discover screenshots are no longer referenced.
+- Website (`ChaosEngineAI-Site`, branch `site-v0.9.9`, not pushed): copy, tour and cards updated for v0.9.9, mobile layout fixed, invented speculative-decoding figures replaced with the release notes' numbers. Its `v0.9.9` images load from the app repo's `main`, so **publish the site only after the app branch is merged**.
+- Stale UI labels from the merge fixed (composer placeholder, Studio header buttons, empty-state text, Dashboard hint) in English and all nine locales; the Dashboard's "Backend readiness" line no longer reports MLX as missing at startup (it now waits for the probe).
+- Packaging: `npm run pre-build-check` passes (14 gates, 1 warning: the turbo llama-server build is behind upstream, FU-065). `npm run release:macos` built an unsigned `ChaosEngineAI_0.9.9_aarch64.dmg` (513 MB); the staged runtime has `llamaServer`, turbo and `sd`, no warnings, the four Setup installers and `dflash`; the bundled backend starts and reports MLX 0.32.4, mlx-lm 0.32.2, DFlash and GGUF-MTP. The signed and notarised builds for all platforms come from the tag workflow.
+
+**Open for Claude**
+
+- After the merge: re-tag, watch the release workflow, check `llamaServer` in each `runtime-*.manifest.json`, publish the draft release with `RELEASE_NOTES_v0.9.9.md`, then publish the site.
+
+**Open for Dan**
+
+- Say go to push `feat/models-fit` (it contains PR 119 plus everything above) and update the PR.
+- The packaged app was not launched as an app (only its backend), and the desktop shell on Tauri 2.12 has not been run on any platform: open the dmg once before the release.
+
 ## Update 2026-10-29, evening
 
 **Done**

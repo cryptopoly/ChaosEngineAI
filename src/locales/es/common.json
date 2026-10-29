@@ -1045,7 +1045,7 @@
   },
   "runHf": {
     "resolveFailed": "No se pudo resolver ese repo.",
-    "downloadStarted": "Descarga iniciada — sigue el progreso en Mis modelos y luego pulsa Cargar.",
+    "downloadStarted": "Descarga iniciada — sigue el progreso en la página Modelos y luego pulsa Cargar.",
     "downloadFailed": "La descarga falló.",
     "loaded": "Cargado: {label}",
     "loadFailed": "La carga falló.",

@@ -1,7 +1,7 @@
 {
   "composer": {
     "placeholderReady": "Nachricht eingeben… (Enter zum Senden, Shift+Enter für neue Zeile, / für Befehle)",
-    "placeholderNoModel": "Erst ein Modell laden — eines aus Meine Modelle oder Entdecken auswählen, dann CHAT drücken.",
+    "placeholderNoModel": "Erst ein Modell laden — eines unter Chat > Modelle auswählen, dann CHAT drücken.",
     "send": "Senden",
     "stop": "Stoppen",
     "clear": "Leeren",
@@ -114,7 +114,7 @@
     "dialogAriaLabel": "Modell für die nächste Runde auswählen",
     "sendNextVia": "Nächste senden über",
     "oneTurnNote": "Override gilt nur für eine Runde.",
-    "noWarmModels": "Keine weiteren warmen Modelle verfügbar. Lade ein zweites Modell aus Meine Modelle, um Quick-Swaps zu aktivieren."
+    "noWarmModels": "Keine weiteren warmen Modelle verfügbar. Lade ein zweites Modell unter Chat > Modelle, um Quick-Swaps zu aktivieren."
   },
   "activeThread": {
     "title": "Aktiver Thread",
@@ -400,8 +400,8 @@
   },
   "emptyBanner": {
     "welcomeTitle": "👋 Willkommen im ChaosEngineAI-Chat",
-    "welcomeBody": "Wähle unter „Entdecken“ ein Chat-Modell aus, um loszulegen. Für den ersten Start empfehlen wir eine kleine Qwen3- oder Llama-3-Variante — sie ist in ein bis zwei Minuten heruntergeladen und läuft auf jedem Laptop.",
-    "browseDiscover": "Entdecken öffnen",
+    "welcomeBody": "Wähle unter Chat > Modelle ein Chat-Modell aus, um loszulegen. Für den ersten Start empfehlen wir eine kleine Qwen3- oder Llama-3-Variante — sie ist in ein bis zwei Minuten heruntergeladen und läuft auf jedem Laptop.",
+    "browseDiscover": "Modelle durchsuchen",
     "noModelLoaded": "Zum Chatten muss zuerst ein Modell geladen sein. Wähle eines aus deiner Bibliothek, um es in den Speicher zu laden.",
     "loadModel": "Modell laden",
     "getStartedAriaLabel": "Mit dem Chat loslegen",

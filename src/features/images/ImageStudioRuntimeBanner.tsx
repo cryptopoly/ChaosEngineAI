@@ -219,7 +219,7 @@ export function ImageStudioRuntimeBanner(props: ImageStudioRuntimeBannerProps) {
                   : !selectedImageVariant.availableLocally
                     ? t("runtimeBanner.summaryNotInstalled", {
                       selected: selectedImageVariant.name,
-                      defaultValue: "{selected} is not installed locally. Download it from Discover to enable local generation.",
+                      defaultValue: "{selected} is not installed locally. Download it from the Models page to enable local generation.",
                     })
                     : t("runtimeBanner.summaryOnDemand", { defaultValue: "Model will load on demand when you generate." })}
           </p>

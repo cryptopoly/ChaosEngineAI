@@ -108,7 +108,7 @@ export function MidThreadSwapMenu({
           {candidates.length === 0 ? (
             <p className="muted-text" style={{ margin: "8px 0", fontSize: 11 }}>
               {t("swapMenu.noWarmModels", {
-                defaultValue: "No other warm models available. Load a second model from My Models to enable quick swaps.",
+                defaultValue: "No other warm models available. Load a second model from Chat > Models to enable quick swaps.",
               })}
             </p>
           ) : (

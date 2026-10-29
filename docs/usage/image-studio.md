@@ -17,9 +17,34 @@ output through the Image Gallery.
 | SD 1.5 / 2.x family | Stability AI / community | ~2 s | 512 × 512 |
 | Qwen-Image, Z-Image (+ Turbo) | Tongyi / community | ~3 – 8 s | 1024 × 1024 |
 
-Discover and download new models from the **Image Discover** tab; installed
-models surface in the **Image Models** library with a one-click **Generate**
-shortcut into Image Studio.
+Find and download new models from **Images > Models**. That page lists every
+image model in one place, installed or not; filter it by **Installed**,
+**Available**, **Downloading** or **Needs attention**, and use **Open Studio**
+to come back here.
+
+![Images > Models: one list of every image model, with fit chips and a Best fit
+ribbon](../screenshots/models-image.png)
+
+Each row shows whether the model fits this machine (Fits, Tight, Won't fit;
+an "est." marks an estimate) and the newest model of a family that fits
+comfortably carries a **Best fit** ribbon.
+
+![Image Studio with the Recommended for this machine panel](../screenshots/image-studio.png)
+
+## Recommended for this machine
+
+Under the prompt, **Recommended for this machine** lists the steps, size and
+other settings that suit your hardware. Each suggestion has a reason and a
+**Measured** or **Estimated** tag, and **Apply recommended** sets them in one
+click. Controls the loaded model's engine ignores are hidden.
+
+## Image sizes
+
+There is no fixed 2048 px limit. Each model has its own limit (FLUX.2 and
+Qwen-Image-2.1 go up to 4096) and the memory check accounts for pixels, so a
+size that would not fit in memory is refused with one that does. Models
+without a VAE, such as Iris-3B Turbo, render at 768 px or more; a smaller
+request is raised and the result's note says so.
 
 ## Composing a generation
 

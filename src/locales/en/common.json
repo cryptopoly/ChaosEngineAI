@@ -1045,7 +1045,7 @@
   },
   "runHf": {
     "resolveFailed": "Could not resolve that repo.",
-    "downloadStarted": "Download started — track progress in My Models, then Load.",
+    "downloadStarted": "Download started — track progress on the Models page, then Load.",
     "downloadFailed": "Download failed.",
     "loaded": "Loaded {label}.",
     "loadFailed": "Load failed.",

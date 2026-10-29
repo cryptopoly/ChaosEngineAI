@@ -27,7 +27,7 @@
     "copyImage": "复制图像",
     "openFolder": "在文件夹中显示",
     "modelLabel": "模型",
-    "noModelsOption": "未安装模型 — 从 发现 中下载",
+    "noModelsOption": "未安装模型 — 从 图像 > 模型 中下载",
     "aspectRatio": "纵横比",
     "qualityPreset": "质量预设",
     "previewLabel": "预览",
@@ -152,7 +152,7 @@
     "summaryLoaded": "{selected} 已加载，可以开始生成。",
     "summarySwap": "已加载 {loaded}。使用 {selected} 生成将切换管线。",
     "summaryNotLoaded": "{selected} 已安装在本地，但尚未加载。首次生成需要更长时间，因为扩散管线需要预热。",
-    "summaryNotInstalled": "{selected} 尚未安装到本地。请从“发现”下载它以启用本地生成。",
+    "summaryNotInstalled": "{selected} 尚未安装到本地。请从“模型”页面下载它以启用本地生成。",
     "summaryOnDemand": "生成时会按需加载模型。",
     "preloadModel": "预加载模型",
     "unloadModel": "卸载模型",
@@ -173,7 +173,7 @@
       "ready": "生成此图像。"
     },
     "actions": {
-      "discover": "发现",
+      "discover": "查找模型",
       "installed": "已安装",
       "gallery": "图库"
     },
@@ -189,14 +189,14 @@
       "downloaded": "已下载"
     },
     "noModelsCallout": {
-      "message": "你还没有下载任何图像模型。前往图像发现浏览并安装一个模型,然后回到这里生成。",
-      "openDiscover": "打开图像发现"
+      "message": "你还没有下载任何图像模型。前往 图像 > 模型 浏览并安装一个模型,然后回到这里生成。",
+      "openDiscover": "打开图像模型"
     },
     "download": {
       "failedMessage": "{name} 未正确完成下载。ChaosEngineAI 只发现部分本地快照,因此无法加载真实的图像管线。",
       "pausedMessage": "{name} 已部分下载。准备就绪后恢复,ChaosEngineAI 将从磁盘已有的文件继续。",
       "completeMessage": "{name} 已完成下载。已安装模型扫描将自动刷新。",
-      "notInstalledMessage": "{name} 未在本地安装。从发现页面下载以启用本地生成。",
+      "notInstalledMessage": "{name} 未在本地安装。从模型页面下载以启用本地生成。",
       "huggingFace": "Hugging Face",
       "settings": "设置",
       "technicalDetails": "技术细节",
@@ -396,8 +396,8 @@
     },
     "subtitle": "选择一个视频模型以开始",
     "actions": {
-      "browseCatalog": "浏览目录",
-      "installedModels": "已安装的模型",
+      "browseCatalog": "查找模型",
+      "installedModels": "已安装",
       "downloadModel": "下载模型",
       "loadIntoMemory": "加载到内存",
       "unload": "卸载",
@@ -409,8 +409,8 @@
       "incomplete": "不完整"
     },
     "noModelsCallout": {
-      "message": "尚未安装任何视频模型。浏览目录下载一个。",
-      "openDiscover": "打开视频发现"
+      "message": "尚未安装任何视频模型。打开 视频 > 模型 下载一个。",
+      "openDiscover": "打开视频模型"
     },
     "stats": {
       "clipDuration": "{value} 秒片段"
@@ -575,7 +575,7 @@
     },
     "actions": {
       "studio": "工作室",
-      "installedModels": "已安装的模型"
+      "installedModels": "已安装"
     },
     "hero": {
       "eyebrow": "已保存的输出",
@@ -629,7 +629,7 @@
     "actions": {
       "autoPlay": "自动播放",
       "openStudio": "打开工作室",
-      "installedModels": "已安装的模型"
+      "installedModels": "已安装"
     },
     "empty": {
       "body": "尚无视频输出。在工作室中加载模型并生成片段 — 完成的渲染将出现在此处。",

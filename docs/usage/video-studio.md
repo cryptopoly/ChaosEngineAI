@@ -1,9 +1,11 @@
 # Video Studio
 
 Video Studio mirrors Image Studio for diffusion-DiT video models. It supports
-Wan 2.1 / 2.2, Lightricks LTX-Video 2.0 / 2.3, HunyuanVideo, CogVideoX, and
-Mochi via three runtime paths:
+LTX-2.3 and LTX-2.5 (with sound, on Apple Silicon), Wan 2.1 / 2.2,
+Lightricks LTX-Video, HunyuanVideo, CogVideoX, and Mochi via four runtime
+paths:
 
+- **ltx-2-mlx** (Apple Silicon) for LTX-2.3 and LTX-2.5, with stereo sound.
 - **Diffusers** on MPS (Apple Silicon) or CUDA (Linux + NVIDIA).
 - **mlx-video subprocess engine** (Apple Silicon) for LTX-2 and converted
   Wan 2.1 / 2.2 checkpoints — typically 2-5× faster than diffusers on MPS.
@@ -14,7 +16,8 @@ Mochi via three runtime paths:
 | Model | Provider | Engine | Notes |
 |---|---|---|---|
 | **Wan 2.1 T2V 1.3B / 14B** | Alibaba Wan-AI | diffusers (MPS / CUDA) | T2V; 1.3B comfortable on a 64 GB Mac. |
-| **Wan 2.2** | Alibaba Wan-AI | diffusers, mlx-video | T2V successor; catalog metadata fixes shipped. |
+| **LTX-2.5 / LTX-2.3 distilled q4** | Lightricks | ltx-2-mlx (Apple Silicon) | Own MLX engine, stereo sound. LTX-2.5 is the default LTX model. |
+| **Wan 2.2 A14B** | Alibaba Wan-AI | diffusers, mlx-video | T2V and I2V. The Wan 2.2 TI2V 5B models were removed from the catalog. |
 | **Wan 2.2 A14B I2V × lightx2v 4-step distill** | Alibaba Wan-AI + lightx2v | diffusers | Distilled transformer (bf16 / fp8_e4m3). |
 | **LTX-Video 2.0 / 2.3** (distilled + dev) | Lightricks | mlx-video subprocess | `prince-canuma/LTX-2-*` repos. |
 | **HunyuanVideo** | Tencent | diffusers | TeaCache rescale coefficients vendored. |
@@ -25,6 +28,37 @@ The Wan mlx-video path runs through a one-shot convert pipeline that
 downloads the raw Hugging Face checkpoint and converts it to mlx-video's
 expected weight layout. Use **Setup → Install Wan (Apple Silicon)** to
 manage this.
+
+Find and download models from **Video > Models**, which lists every video
+model in one place (filter by **Installed**, **Available**, **Downloading** or
+**Needs attention**; each row says whether it fits this machine).
+
+![Video > Models](../screenshots/models-video.png)
+
+![Video Studio on Apple Silicon with LTX-2.3 and the Recommended for this machine panel](../screenshots/video-studio.png)
+
+## LTX-2.3 and LTX-2.5 with sound (Apple Silicon)
+
+LTX-2.3 and LTX-2.5 run on their own MLX engine and write stereo sound that
+follows your prompt, so describe the sound too (footsteps crunching in snow,
+wind in the trees, a low engine hum).
+
+- Install the engine from the Video Studio (about 1 GB), then download
+  **LTX-2.3 distilled q4** (28 GB, including its text encoder).
+- LTX-2.5 is the default LTX model and a gated Hugging Face repo: accept its
+  licence on the model page and give your token read access to public gated
+  repos, then download it from the Video Studio.
+- On an M4 Max a 4-second 768 by 512 clip with sound takes about 2.5 minutes
+  with LTX-2.3; the same prompt and seed took 128 seconds with LTX-2.5
+  against 155 for LTX-2.3 (17 GB of memory), and looks cleaner.
+- Sizes are multiples of 64. The steps, guidance and negative prompt controls
+  are hidden because this pipeline has none.
+- Clips with sound show a **Sound** badge in the gallery and play with sound
+  in the result window.
+
+**Recommended for this machine** (size, frames and fps for your hardware,
+each tagged Measured or Estimated, with **Apply recommended**) works here as in
+Image Studio.
 
 ## Composing a generation
 

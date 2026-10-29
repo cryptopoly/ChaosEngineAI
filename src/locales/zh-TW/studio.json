@@ -27,7 +27,7 @@
     "copyImage": "複製影像",
     "openFolder": "在資料夾中顯示",
     "modelLabel": "模型",
-    "noModelsOption": "未安裝模型 — 從 探索 中下載",
+    "noModelsOption": "未安裝模型 — 從 影像 > 模型 中下載",
     "aspectRatio": "長寬比",
     "qualityPreset": "品質預設",
     "previewLabel": "預覽",
@@ -152,7 +152,7 @@
     "summaryLoaded": "{selected} 已載入，可以開始生成。",
     "summarySwap": "已載入 {loaded}。使用 {selected} 生成會切換管線。",
     "summaryNotLoaded": "{selected} 已安裝在本地，但尚未載入。首次生成會花較長時間，因為擴散管線需要預熱。",
-    "summaryNotInstalled": "{selected} 尚未安裝到本地。請從「探索」下載它以啟用本地生成。",
+    "summaryNotInstalled": "{selected} 尚未安裝到本地。請從「模型」頁面下載它以啟用本地生成。",
     "summaryOnDemand": "生成時會依需求載入模型。",
     "preloadModel": "預先載入模型",
     "unloadModel": "卸載模型",
@@ -173,7 +173,7 @@
       "ready": "生成此影像。"
     },
     "actions": {
-      "discover": "探索",
+      "discover": "尋找模型",
       "installed": "已安裝",
       "gallery": "圖庫"
     },
@@ -189,14 +189,14 @@
       "downloaded": "已下載"
     },
     "noModelsCallout": {
-      "message": "您尚未下載任何影像模型。前往「影像探索」瀏覽並安裝模型,然後回到此處進行生成。",
-      "openDiscover": "開啟影像探索"
+      "message": "您尚未下載任何影像模型。前往「影像 > 模型」瀏覽並安裝模型,然後回到此處進行生成。",
+      "openDiscover": "開啟影像模型"
     },
     "download": {
       "failedMessage": "{name} 未正確完成下載。ChaosEngineAI 僅找到部分本地快照,因此尚無法載入實際的影像管線。",
       "pausedMessage": "{name} 已部分下載。準備就緒後可恢復,ChaosEngineAI 將從已存在磁碟的檔案繼續。",
       "completeMessage": "{name} 已完成下載。已安裝模型清單將自動重新整理。",
-      "notInstalledMessage": "{name} 尚未在本機安裝。請從「探索」下載以啟用本地生成。",
+      "notInstalledMessage": "{name} 尚未在本機安裝。請從「模型」頁面下載以啟用本地生成。",
       "huggingFace": "Hugging Face",
       "settings": "設定",
       "technicalDetails": "技術細節",
@@ -396,8 +396,8 @@
     },
     "subtitle": "選擇影片模型以開始",
     "actions": {
-      "browseCatalog": "瀏覽型錄",
-      "installedModels": "已安裝模型",
+      "browseCatalog": "尋找模型",
+      "installedModels": "已安裝",
       "downloadModel": "下載模型",
       "loadIntoMemory": "載入記憶體",
       "unload": "卸載",
@@ -409,8 +409,8 @@
       "incomplete": "未完成"
     },
     "noModelsCallout": {
-      "message": "尚未安裝任何影片模型。請瀏覽型錄以下載。",
-      "openDiscover": "開啟影片探索"
+      "message": "尚未安裝任何影片模型。請開啟 影片 > 模型 以下載。",
+      "openDiscover": "開啟影片模型"
     },
     "stats": {
       "clipDuration": "{value} 秒片段"
@@ -575,7 +575,7 @@
     },
     "actions": {
       "studio": "工作室",
-      "installedModels": "已安裝模型"
+      "installedModels": "已安裝"
     },
     "hero": {
       "eyebrow": "已儲存輸出",
@@ -629,7 +629,7 @@
     "actions": {
       "autoPlay": "自動播放",
       "openStudio": "開啟工作室",
-      "installedModels": "已安裝模型"
+      "installedModels": "已安裝"
     },
     "empty": {
       "body": "尚無影片輸出。在工作室中載入模型並生成片段 — 完成的渲染將顯示在此。",

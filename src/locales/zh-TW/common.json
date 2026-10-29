@@ -1045,7 +1045,7 @@
   },
   "runHf": {
     "resolveFailed": "無法解析該 repo。",
-    "downloadStarted": "已開始下載 — 請在「我的模型」中查看進度，然後載入。",
+    "downloadStarted": "已開始下載 — 請在「模型」頁面中查看進度，然後載入。",
     "downloadFailed": "下載失敗。",
     "loaded": "已載入 {label}。",
     "loadFailed": "載入失敗。",

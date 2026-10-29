@@ -197,7 +197,7 @@ export function ChatComposer({
                   defaultValue: "Type a message... (Enter to send, Shift+Enter for new line, / for commands)",
                 })
               : t("composer.placeholderNoModel", {
-                  defaultValue: "Load a model first — pick one from My Models or Discover, then hit CHAT.",
+                  defaultValue: "Load a model first — pick one from Chat > Models, then hit CHAT.",
                 })
           }
           rows={3}

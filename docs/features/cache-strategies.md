@@ -39,7 +39,7 @@ memory forces you to.
 | A vLLM server on Linux + CUDA with a fixed KV budget | **TriAttention** | Hooks into vLLM's scheduler. Not useful on Apple Silicon today (see below). |
 
 The launch modal and the chat composer label TurboQuant a **memory saver** for
-this reason, and the **Models** and **Discover** filters tag it the same way.
+this reason, and the filters on the **Models** page tag it the same way.
 
 ## Legacy aliases
 

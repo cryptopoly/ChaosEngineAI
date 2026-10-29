@@ -64,7 +64,7 @@ export function VideoGalleryTab({
               {tStudio("videoGallery.actions.openStudio", { defaultValue: "Open Studio" })}
             </button>
             <button className="secondary-button" type="button" onClick={() => onActiveTabChange(modelsPageRequest("video", "installed"))}>
-              {tStudio("videoGallery.actions.installedModels", { defaultValue: "Installed Models" })}
+              {tStudio("videoGallery.actions.installedModels", { defaultValue: "Installed" })}
             </button>
           </div>
         }

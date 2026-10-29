@@ -1045,7 +1045,7 @@
   },
   "runHf": {
     "resolveFailed": "无法解析该仓库。",
-    "downloadStarted": "已开始下载 — 在“我的模型”中查看进度，然后加载。",
+    "downloadStarted": "已开始下载 — 在“模型”页面中查看进度，然后加载。",
     "downloadFailed": "下载失败。",
     "loaded": "已加载 {label}。",
     "loadFailed": "加载失败。",

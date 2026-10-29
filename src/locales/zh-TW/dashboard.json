@@ -59,7 +59,7 @@
     "recommendedTarget": "推薦目標",
     "currentRuntime": "目前執行階段",
     "modelLoadedVia": "{model} 透過 {engine} 載入。",
-    "noModelHint": "尚未載入模型。在 對話 中選擇執行緒模型,或在 探索 中瀏覽更新的家族。"
+    "noModelHint": "尚未載入模型。在 對話 中選擇執行緒模型,或在 對話 > 模型 中瀏覽更新的家族。"
   },
   "activityFeed": {
     "title": "活動摘要",

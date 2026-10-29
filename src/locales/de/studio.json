@@ -27,7 +27,7 @@
     "copyImage": "Bild kopieren",
     "openFolder": "Im Ordner anzeigen",
     "modelLabel": "Modell",
-    "noModelsOption": "Keine Modelle installiert — eines aus „Entdecken“ herunterladen",
+    "noModelsOption": "Keine Modelle installiert — eines unter Bilder > Modelle herunterladen",
     "aspectRatio": "Seitenverhältnis",
     "qualityPreset": "Qualitäts-Preset",
     "previewLabel": "Vorschau",
@@ -152,7 +152,7 @@
     "summaryLoaded": "{selected} ist geladen und bereit zum Generieren.",
     "summarySwap": "{loaded} ist geladen. Beim Generieren mit {selected} wird die Pipeline gewechselt.",
     "summaryNotLoaded": "{selected} ist lokal installiert, aber noch nicht geladen. Das erste Generieren dauert länger, während die Diffusions-Pipeline warmläuft.",
-    "summaryNotInstalled": "{selected} ist lokal nicht installiert. Lade es unter „Entdecken“ herunter, um die lokale Generierung zu aktivieren.",
+    "summaryNotInstalled": "{selected} ist lokal nicht installiert. Lade es auf der Seite „Modelle“ herunter, um die lokale Generierung zu aktivieren.",
     "summaryOnDemand": "Das Modell wird bei Bedarf geladen, sobald du generierst.",
     "preloadModel": "Modell vorladen",
     "unloadModel": "Modell entladen",
@@ -173,7 +173,7 @@
       "ready": "Dieses Bild generieren."
     },
     "actions": {
-      "discover": "Entdecken",
+      "discover": "Modelle finden",
       "installed": "Installiert",
       "gallery": "Galerie"
     },
@@ -189,14 +189,14 @@
       "downloaded": "Heruntergeladen"
     },
     "noModelsCallout": {
-      "message": "Du hast noch keine Bildmodelle heruntergeladen. Gehe zu „Bilder entdecken“, um eines durchzusehen und zu installieren, und komm dann zum Generieren hierher zurück.",
-      "openDiscover": "Bilder entdecken öffnen"
+      "message": "Du hast noch keine Bildmodelle heruntergeladen. Gehe zu Bilder > Modelle, um eines durchzusehen und zu installieren, und komm dann zum Generieren hierher zurück.",
+      "openDiscover": "Bildmodelle öffnen"
     },
     "download": {
       "failedMessage": "{name} wurde nicht korrekt heruntergeladen. ChaosEngineAI hat nur einen teilweisen lokalen Snapshot gefunden und kann die echte Bild-Pipeline noch nicht laden.",
       "pausedMessage": "{name} ist teilweise heruntergeladen. Setze den Download fort, wenn du bereit bist — ChaosEngineAI macht mit den bereits vorhandenen Dateien weiter.",
       "completeMessage": "{name} wurde fertig heruntergeladen. Der Scan installierter Modelle wird automatisch aktualisiert.",
-      "notInstalledMessage": "{name} ist nicht lokal installiert. Lade es aus „Entdecken“ herunter, um die lokale Generierung zu aktivieren.",
+      "notInstalledMessage": "{name} ist nicht lokal installiert. Lade es auf der Seite „Modelle“ herunter, um die lokale Generierung zu aktivieren.",
       "huggingFace": "Hugging Face",
       "settings": "Einstellungen",
       "technicalDetails": "Technische Details",
@@ -396,8 +396,8 @@
     },
     "subtitle": "Wähle ein Videomodell, um zu beginnen",
     "actions": {
-      "browseCatalog": "Katalog durchsuchen",
-      "installedModels": "Installierte Modelle",
+      "browseCatalog": "Modelle finden",
+      "installedModels": "Installiert",
       "downloadModel": "Modell herunterladen",
       "loadIntoMemory": "In Speicher laden",
       "unload": "Entladen",
@@ -409,8 +409,8 @@
       "incomplete": "unvollständig"
     },
     "noModelsCallout": {
-      "message": "Noch keine Videomodelle installiert. Durchsuche den Katalog, um eines herunterzuladen.",
-      "openDiscover": "Videos entdecken öffnen"
+      "message": "Noch keine Videomodelle installiert. Öffne Video > Modelle, um eines herunterzuladen.",
+      "openDiscover": "Videomodelle öffnen"
     },
     "stats": {
       "clipDuration": "{value}s Clip"
@@ -575,7 +575,7 @@
     },
     "actions": {
       "studio": "Studio",
-      "installedModels": "Installierte Modelle"
+      "installedModels": "Installiert"
     },
     "hero": {
       "eyebrow": "Gespeicherte Ausgaben",
@@ -629,7 +629,7 @@
     "actions": {
       "autoPlay": "Auto-Play",
       "openStudio": "Studio öffnen",
-      "installedModels": "Installierte Modelle"
+      "installedModels": "Installiert"
     },
     "empty": {
       "body": "Noch keine Videoausgaben. Lade ein Modell im Studio und generiere einen Clip — fertige Renders landen hier.",

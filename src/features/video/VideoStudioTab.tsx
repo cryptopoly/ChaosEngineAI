@@ -766,10 +766,10 @@ export function VideoStudioTab({
         actions={
           <div className="button-row">
             <button className="secondary-button" type="button" onClick={() => onActiveTabChange(modelsPageRequest("video", "available"))}>
-              {t("videoStudio.actions.browseCatalog", { defaultValue: "Browse Catalog" })}
+              {t("videoStudio.actions.browseCatalog", { defaultValue: "Find models" })}
             </button>
             <button className="secondary-button" type="button" onClick={() => onActiveTabChange(modelsPageRequest("video", "installed"))}>
-              {t("videoStudio.actions.installedModels", { defaultValue: "Installed Models" })}
+              {t("videoStudio.actions.installedModels", { defaultValue: "Installed" })}
             </button>
           </div>
         }
@@ -844,7 +844,7 @@ export function VideoStudioTab({
             ) : (
               <div className="callout image-callout">
                 <p>{t("videoStudio.noModelsCallout.message", {
-                  defaultValue: "No video models installed yet. Browse the catalog to download one.",
+                  defaultValue: "No video models installed yet. Open Video > Models to download one.",
                 })}</p>
                 <div className="button-row">
                   <button
@@ -852,7 +852,7 @@ export function VideoStudioTab({
                     type="button"
                     onClick={() => onActiveTabChange(modelsPageRequest("video", "available"))}
                   >
-                    {t("videoStudio.noModelsCallout.openDiscover", { defaultValue: "Open Video Discover" })}
+                    {t("videoStudio.noModelsCallout.openDiscover", { defaultValue: "Open Video Models" })}
                   </button>
                 </div>
               </div>

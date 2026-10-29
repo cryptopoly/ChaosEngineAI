@@ -27,7 +27,7 @@
     "copyImage": "이미지 복사",
     "openFolder": "폴더에서 표시",
     "modelLabel": "모델",
-    "noModelsOption": "설치된 모델 없음 — 둘러보기에서 다운로드하세요",
+    "noModelsOption": "설치된 모델 없음 — 이미지 > 모델에서 다운로드하세요",
     "aspectRatio": "종횡비",
     "qualityPreset": "품질 프리셋",
     "previewLabel": "미리보기",
@@ -152,7 +152,7 @@
     "summaryLoaded": "{selected}이(가) 로드되어 생성할 준비가 되었습니다.",
     "summarySwap": "{loaded}이(가) 로드되어 있습니다. {selected}(으)로 생성하면 파이프라인이 교체됩니다.",
     "summaryNotLoaded": "{selected}이(가) 로컬에 설치되어 있지만 아직 로드되지 않았습니다. 첫 생성은 디퓨전 파이프라인이 준비되는 동안 더 오래 걸립니다.",
-    "summaryNotInstalled": "{selected}이(가) 로컬에 설치되지 않았습니다. 로컬 생성을 사용하려면 둘러보기에서 다운로드하세요.",
+    "summaryNotInstalled": "{selected}이(가) 로컬에 설치되지 않았습니다. 로컬 생성을 사용하려면 모델 페이지에서 다운로드하세요.",
     "summaryOnDemand": "생성할 때 모델이 필요에 따라 로드됩니다.",
     "preloadModel": "모델 미리 로드",
     "unloadModel": "모델 언로드",
@@ -173,7 +173,7 @@
       "ready": "이 이미지를 생성합니다."
     },
     "actions": {
-      "discover": "둘러보기",
+      "discover": "모델 찾기",
       "installed": "설치됨",
       "gallery": "갤러리"
     },
@@ -189,14 +189,14 @@
       "downloaded": "다운로드됨"
     },
     "noModelsCallout": {
-      "message": "아직 다운로드된 이미지 모델이 없습니다. 이미지 둘러보기로 이동하여 둘러보고 설치한 다음 여기로 돌아와 생성하세요.",
-      "openDiscover": "이미지 둘러보기 열기"
+      "message": "아직 다운로드된 이미지 모델이 없습니다. 이미지 > 모델로 이동하여 둘러보고 설치한 다음 여기로 돌아와 생성하세요.",
+      "openDiscover": "이미지 모델 열기"
     },
     "download": {
       "failedMessage": "{name}이(가) 올바르게 다운로드되지 않았습니다. ChaosEngineAI는 부분적인 로컬 스냅샷만 발견했으므로 아직 실제 이미지 파이프라인을 로드할 수 없습니다.",
       "pausedMessage": "{name}이(가) 부분적으로 다운로드되었습니다. 준비되면 재개하세요. ChaosEngineAI가 이미 디스크에 있는 파일에서 계속 진행합니다.",
       "completeMessage": "{name} 다운로드가 완료되었습니다. 설치된 모델 스캔이 자동으로 새로 고침됩니다.",
-      "notInstalledMessage": "{name}이(가) 로컬에 설치되지 않았습니다. 로컬 생성을 활성화하려면 둘러보기에서 다운로드하세요.",
+      "notInstalledMessage": "{name}이(가) 로컬에 설치되지 않았습니다. 로컬 생성을 활성화하려면 모델 페이지에서 다운로드하세요.",
       "huggingFace": "Hugging Face",
       "settings": "설정",
       "technicalDetails": "기술 세부 정보",
@@ -396,8 +396,8 @@
     },
     "subtitle": "시작하려면 비디오 모델을 선택하세요",
     "actions": {
-      "browseCatalog": "카탈로그 둘러보기",
-      "installedModels": "설치된 모델",
+      "browseCatalog": "모델 찾기",
+      "installedModels": "설치됨",
       "downloadModel": "모델 다운로드",
       "loadIntoMemory": "메모리에 로드",
       "unload": "언로드",
@@ -409,8 +409,8 @@
       "incomplete": "불완전"
     },
     "noModelsCallout": {
-      "message": "아직 비디오 모델이 설치되지 않았습니다. 카탈로그를 둘러보고 다운로드하세요.",
-      "openDiscover": "비디오 둘러보기 열기"
+      "message": "아직 비디오 모델이 설치되지 않았습니다. 비디오 > 모델을 열어 다운로드하세요.",
+      "openDiscover": "비디오 모델 열기"
     },
     "stats": {
       "clipDuration": "{value}초 클립"
@@ -575,7 +575,7 @@
     },
     "actions": {
       "studio": "Studio",
-      "installedModels": "설치된 모델"
+      "installedModels": "설치됨"
     },
     "hero": {
       "eyebrow": "저장된 출력",
@@ -629,7 +629,7 @@
     "actions": {
       "autoPlay": "자동 재생",
       "openStudio": "Studio 열기",
-      "installedModels": "설치된 모델"
+      "installedModels": "설치됨"
     },
     "empty": {
       "body": "아직 비디오 출력이 없습니다. Studio에서 모델을 로드하고 클립을 생성하세요 — 완료된 렌더가 여기에 표시됩니다.",

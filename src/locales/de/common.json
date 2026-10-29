@@ -1045,7 +1045,7 @@
   },
   "runHf": {
     "resolveFailed": "Dieses Repo konnte nicht aufgelöst werden.",
-    "downloadStarted": "Download gestartet — verfolge den Fortschritt unter „Meine Modelle“ und klicke dann auf „Laden“.",
+    "downloadStarted": "Download gestartet — verfolge den Fortschritt auf der Seite „Modelle“ und klicke dann auf „Laden“.",
     "downloadFailed": "Download fehlgeschlagen.",
     "loaded": "Geladen: {label}",
     "loadFailed": "Laden fehlgeschlagen.",

@@ -1,7 +1,7 @@
 {
   "composer": {
     "placeholderReady": "Saisir un message… (Entrée pour envoyer, Maj+Entrée pour une nouvelle ligne, / pour les commandes)",
-    "placeholderNoModel": "Chargez d'abord un modèle — choisissez-en un dans Mes modèles ou Découvrir, puis cliquez sur Discussion.",
+    "placeholderNoModel": "Chargez d'abord un modèle — choisissez-en un dans Discussion > Modèles, puis cliquez sur Discussion.",
     "send": "Envoyer",
     "stop": "Arrêter",
     "clear": "Effacer",
@@ -114,7 +114,7 @@
     "dialogAriaLabel": "Choisir un modèle pour le prochain tour",
     "sendNextVia": "Envoyer le suivant via",
     "oneTurnNote": "La surcharge ne s'applique que pour un seul tour.",
-    "noWarmModels": "Pas d'autres modèles chauds disponibles. Chargez un deuxième modèle depuis Mes modèles pour activer les permutations rapides."
+    "noWarmModels": "Pas d'autres modèles chauds disponibles. Chargez un deuxième modèle depuis Discussion > Modèles pour activer les permutations rapides."
   },
   "activeThread": {
     "title": "Fil actif",
@@ -400,8 +400,8 @@
   },
   "emptyBanner": {
     "welcomeTitle": "👋 Bienvenue dans le chat ChaosEngineAI",
-    "welcomeBody": "Choisissez un modèle de chat dans Découvrir pour commencer. Nous recommandons une petite variante de Qwen3 ou de Llama 3 pour un premier essai : elle se télécharge en une à deux minutes et tourne sur n'importe quel ordinateur portable.",
-    "browseDiscover": "Parcourir Découvrir",
+    "welcomeBody": "Choisissez un modèle de chat dans Discussion > Modèles pour commencer. Nous recommandons une petite variante de Qwen3 ou de Llama 3 pour un premier essai : elle se télécharge en une à deux minutes et tourne sur n'importe quel ordinateur portable.",
+    "browseDiscover": "Parcourir les modèles",
     "noModelLoaded": "Un modèle doit être chargé avant de pouvoir discuter. Choisissez-en un dans votre bibliothèque pour le charger en mémoire.",
     "loadModel": "Charger le modèle",
     "getStartedAriaLabel": "Démarrer avec la discussion",

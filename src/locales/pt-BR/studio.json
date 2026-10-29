@@ -27,7 +27,7 @@
     "copyImage": "Copiar imagem",
     "openFolder": "Mostrar na pasta",
     "modelLabel": "Modelo",
-    "noModelsOption": "Nenhum modelo instalado — baixe um em Descobrir",
+    "noModelsOption": "Nenhum modelo instalado — baixe um em Imagens > Modelos",
     "aspectRatio": "Proporção",
     "qualityPreset": "Predefinição de qualidade",
     "previewLabel": "Pré-visualização",
@@ -152,7 +152,7 @@
     "summaryLoaded": "{selected} está carregado e pronto para gerar.",
     "summarySwap": "{loaded} está carregado. Gerar com {selected} trocará o pipeline.",
     "summaryNotLoaded": "{selected} está instalado localmente, mas ainda não foi carregado. A primeira geração vai demorar mais enquanto o pipeline de difusão aquece.",
-    "summaryNotInstalled": "{selected} não está instalado localmente. Baixe-o em Descobrir para habilitar a geração local.",
+    "summaryNotInstalled": "{selected} não está instalado localmente. Baixe-o na página Modelos para habilitar a geração local.",
     "summaryOnDemand": "O modelo será carregado sob demanda quando você gerar.",
     "preloadModel": "Pré-carregar modelo",
     "unloadModel": "Descarregar modelo",
@@ -173,7 +173,7 @@
       "ready": "Gerar esta imagem."
     },
     "actions": {
-      "discover": "Descobrir",
+      "discover": "Buscar modelos",
       "installed": "Instalados",
       "gallery": "Galeria"
     },
@@ -189,14 +189,14 @@
       "downloaded": "Baixado"
     },
     "noModelsCallout": {
-      "message": "Você ainda não tem nenhum modelo de imagem baixado. Vá para Descobrir imagens para navegar e instalar um, depois volte aqui para gerar.",
-      "openDiscover": "Abrir Descobrir imagens"
+      "message": "Você ainda não tem nenhum modelo de imagem baixado. Vá para Imagens > Modelos para navegar e instalar um, depois volte aqui para gerar.",
+      "openDiscover": "Abrir modelos de imagens"
     },
     "download": {
       "failedMessage": "{name} não terminou o download corretamente. O ChaosEngineAI encontrou apenas um snapshot local parcial, então ainda não pode carregar o pipeline de imagem real.",
       "pausedMessage": "{name} foi parcialmente baixado. Retome quando estiver pronto e o ChaosEngineAI continuará a partir dos arquivos já em disco.",
       "completeMessage": "{name} terminou de baixar. A varredura de modelos instalados será atualizada automaticamente.",
-      "notInstalledMessage": "{name} não está instalado localmente. Baixe-o em Descobrir para habilitar a geração local.",
+      "notInstalledMessage": "{name} não está instalado localmente. Baixe-o na página Modelos para habilitar a geração local.",
       "huggingFace": "Hugging Face",
       "settings": "Configurações",
       "technicalDetails": "Detalhes técnicos",
@@ -396,8 +396,8 @@
     },
     "subtitle": "Escolha um modelo de vídeo para começar",
     "actions": {
-      "browseCatalog": "Navegar pelo catálogo",
-      "installedModels": "Modelos instalados",
+      "browseCatalog": "Buscar modelos",
+      "installedModels": "Instalados",
       "downloadModel": "Baixar modelo",
       "loadIntoMemory": "Carregar na memória",
       "unload": "Descarregar",
@@ -409,8 +409,8 @@
       "incomplete": "incompleto"
     },
     "noModelsCallout": {
-      "message": "Nenhum modelo de vídeo instalado ainda. Navegue pelo catálogo para baixar um.",
-      "openDiscover": "Abrir Descobrir vídeos"
+      "message": "Nenhum modelo de vídeo instalado ainda. Abra Vídeo > Modelos para baixar um.",
+      "openDiscover": "Abrir modelos de vídeo"
     },
     "stats": {
       "clipDuration": "clipe de {value}s"
@@ -575,7 +575,7 @@
     },
     "actions": {
       "studio": "Estúdio",
-      "installedModels": "Modelos instalados"
+      "installedModels": "Instalados"
     },
     "hero": {
       "eyebrow": "Saídas salvas",
@@ -629,7 +629,7 @@
     "actions": {
       "autoPlay": "Reprodução automática",
       "openStudio": "Abrir Estúdio",
-      "installedModels": "Modelos instalados"
+      "installedModels": "Instalados"
     },
     "empty": {
       "body": "Nenhuma saída de vídeo ainda. Carregue um modelo no Estúdio e gere um clipe — renderizações concluídas aparecerão aqui.",

@@ -59,7 +59,7 @@
     "recommendedTarget": "Destino recomendado",
     "currentRuntime": "Runtime atual",
     "modelLoadedVia": "{model} carregado via {engine}.",
-    "noModelHint": "Ainda não há modelo carregado. Escolha um modelo de thread no Chat ou navegue em uma família mais nova em Descobrir."
+    "noModelHint": "Ainda não há modelo carregado. Escolha um modelo de thread no Chat ou navegue em uma família mais nova em Chat > Modelos."
   },
   "activityFeed": {
     "title": "Feed de atividades",

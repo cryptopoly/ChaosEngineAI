@@ -59,7 +59,7 @@
     "recommendedTarget": "권장 대상",
     "currentRuntime": "현재 런타임",
     "modelLoadedVia": "{model}이(가) {engine}을(를) 통해 로드되었습니다.",
-    "noModelHint": "아직 모델이 로드되지 않았습니다. 채팅에서 스레드 모델을 선택하거나 둘러보기에서 새 패밀리를 살펴보세요."
+    "noModelHint": "아직 모델이 로드되지 않았습니다. 채팅에서 스레드 모델을 선택하거나 채팅 > 모델에서 새 패밀리를 살펴보세요."
   },
   "activityFeed": {
     "title": "활동 피드",

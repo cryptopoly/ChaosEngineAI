@@ -27,7 +27,7 @@
     "copyImage": "Copy image",
     "openFolder": "Show in folder",
     "modelLabel": "Model",
-    "noModelsOption": "No models installed — download one from Discover",
+    "noModelsOption": "No models installed — download one from Images > Models",
     "aspectRatio": "Aspect Ratio",
     "qualityPreset": "Quality Preset",
     "previewLabel": "Preview",
@@ -152,7 +152,7 @@
     "summaryLoaded": "{selected} is loaded and ready to generate.",
     "summarySwap": "{loaded} is loaded. Generating with {selected} will swap the pipeline.",
     "summaryNotLoaded": "{selected} is installed locally but not loaded yet. The first generate will take longer while the diffusion pipeline warms up.",
-    "summaryNotInstalled": "{selected} is not installed locally. Download it from Discover to enable local generation.",
+    "summaryNotInstalled": "{selected} is not installed locally. Download it from the Models page to enable local generation.",
     "summaryOnDemand": "Model will load on demand when you generate.",
     "preloadModel": "Preload Model",
     "unloadModel": "Unload Model",
@@ -173,7 +173,7 @@
       "ready": "Generate this image."
     },
     "actions": {
-      "discover": "Discover",
+      "discover": "Find models",
       "installed": "Installed",
       "gallery": "Gallery"
     },
@@ -189,14 +189,14 @@
       "downloaded": "Downloaded"
     },
     "noModelsCallout": {
-      "message": "You don't have any image models downloaded yet. Head to Image Discover to browse and install one, then come back here to generate.",
-      "openDiscover": "Open Image Discover"
+      "message": "You don't have any image models downloaded yet. Head to Images > Models to browse and install one, then come back here to generate.",
+      "openDiscover": "Open Image Models"
     },
     "download": {
       "failedMessage": "{name} did not finish downloading correctly. ChaosEngineAI only found a partial local snapshot, so it cannot load the real image pipeline yet.",
       "pausedMessage": "{name} is partially downloaded. Resume when you're ready and ChaosEngineAI will continue from the files already on disk.",
       "completeMessage": "{name} finished downloading. The installed-model scan will refresh automatically.",
-      "notInstalledMessage": "{name} is not installed locally. Download it from Discover to enable local generation.",
+      "notInstalledMessage": "{name} is not installed locally. Download it from the Models page to enable local generation.",
       "huggingFace": "Hugging Face",
       "settings": "Settings",
       "technicalDetails": "Technical details",
@@ -396,8 +396,8 @@
     },
     "subtitle": "Choose a video model to get started",
     "actions": {
-      "browseCatalog": "Browse Catalog",
-      "installedModels": "Installed Models",
+      "browseCatalog": "Find models",
+      "installedModels": "Installed",
       "downloadModel": "Download model",
       "loadIntoMemory": "Load into memory",
       "unload": "Unload",
@@ -409,8 +409,8 @@
       "incomplete": "incomplete"
     },
     "noModelsCallout": {
-      "message": "No video models installed yet. Browse the catalog to download one.",
-      "openDiscover": "Open Video Discover"
+      "message": "No video models installed yet. Open Video > Models to download one.",
+      "openDiscover": "Open Video Models"
     },
     "stats": {
       "clipDuration": "{value}s clip"
@@ -575,7 +575,7 @@
     },
     "actions": {
       "studio": "Studio",
-      "installedModels": "Installed Models"
+      "installedModels": "Installed"
     },
     "hero": {
       "eyebrow": "Saved Outputs",
@@ -629,7 +629,7 @@
     "actions": {
       "autoPlay": "Auto-Play",
       "openStudio": "Open Studio",
-      "installedModels": "Installed Models"
+      "installedModels": "Installed"
     },
     "empty": {
       "body": "No video outputs yet. Load a model in the Studio and generate a clip — finished renders will land here.",

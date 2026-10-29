@@ -1,7 +1,7 @@
 {
   "composer": {
     "placeholderReady": "메시지 입력… (Enter로 전송, Shift+Enter로 새 줄, /로 명령)",
-    "placeholderNoModel": "먼저 모델을 로드하세요 — 내 모델 또는 둘러보기에서 선택한 다음 채팅을 누르세요.",
+    "placeholderNoModel": "먼저 모델을 로드하세요 — 채팅 > 모델에서 선택한 다음 채팅을 누르세요.",
     "send": "보내기",
     "stop": "중지",
     "clear": "지우기",
@@ -114,7 +114,7 @@
     "dialogAriaLabel": "다음 턴의 모델 선택",
     "sendNextVia": "다음을 통해 전송",
     "oneTurnNote": "재정의는 한 턴에만 적용됩니다.",
-    "noWarmModels": "다른 웜 모델이 없습니다. 빠른 전환을 활성화하려면 내 모델에서 두 번째 모델을 로드하세요."
+    "noWarmModels": "다른 웜 모델이 없습니다. 빠른 전환을 활성화하려면 채팅 > 모델에서 두 번째 모델을 로드하세요."
   },
   "activeThread": {
     "title": "활성 스레드",
@@ -400,8 +400,8 @@
   },
   "emptyBanner": {
     "welcomeTitle": "👋 ChaosEngineAI 채팅에 오신 것을 환영합니다",
-    "welcomeBody": "시작하려면 둘러보기에서 채팅 모델을 선택하세요. 처음에는 작은 Qwen3 또는 Llama 3 모델을 추천합니다. 1~2분이면 다운로드되고 어떤 노트북에서도 실행됩니다.",
-    "browseDiscover": "둘러보기 열기",
+    "welcomeBody": "시작하려면 채팅 > 모델에서 채팅 모델을 선택하세요. 처음에는 작은 Qwen3 또는 Llama 3 모델을 추천합니다. 1~2분이면 다운로드되고 어떤 노트북에서도 실행됩니다.",
+    "browseDiscover": "모델 둘러보기",
     "noModelLoaded": "채팅하려면 먼저 모델을 로드해야 합니다. 라이브러리에서 모델을 선택해 메모리에 로드하세요.",
     "loadModel": "모델 로드",
     "getStartedAriaLabel": "채팅 시작하기",

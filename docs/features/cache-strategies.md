@@ -93,14 +93,16 @@ configurable from the launch modal.
 TurboQuant trades speed for memory. Treat it as the answer to "this context
 does not fit", not as a way to go faster:
 
-- **Slower decode.** On an M4 Max with `Qwen3-4B-bf16` and a 160-token decode,
-  Native ran at 25.7–29.7 tok/s; TurboQuant at 3-bit ran at 7.4 tok/s on
-  `turboquant-mlx-full` 0.3.0 and 5.6 tok/s on 0.28.0. Output stayed coherent
-  on both. That is a short-context, single-model measurement (FU-066 in
-  `CLAUDE.md`), so the gap at long context is not yet characterised — but the
-  direction is not in doubt. The launch-modal estimate uses 0.20× Native speed
-  at 3-bit (0.15 / 0.17 / 0.22 at 1 / 2 / 4 bits, scaled from that one point).
-  To replace those with measured numbers for your Mac and model, run
+- **Slower decode, and slower as the conversation grows.** Measured on an M4
+  Max with `Qwen3-4B-4bit` (`turboquant-mlx-full` 0.28, 128-token decode, 2026-10-29):
+  Native ran at 163 / 128 / 75 tok/s after prompts of 512 / 4096 / 16384 tokens;
+  TurboQuant at 2 to 4 bits ran at 29-34 / 14-15 / 3.0. That is 0.18-0.21 of
+  Native at 512 tokens, 0.10-0.12 at 4K and 0.04 at 16K, the same at every bit
+  width. A longer context is exactly where the memory saving matters, and where
+  decode is slowest. Output stayed coherent. The launch-modal estimate uses the
+  figure for a typical 2048-token conversation (0.13 at 1 to 3 bits, 0.15 at 4)
+  and adds the long-context figure to its summary past 4K tokens. To replace
+  these with numbers for your Mac and model, run
   `scripts/calibrate-cache-speed.py`: it loads Native and then TurboQuant at each
   bit width, times a fixed-length reply after prompts of several sizes, and
   prints a line to paste into `_strategy_speed_map`.

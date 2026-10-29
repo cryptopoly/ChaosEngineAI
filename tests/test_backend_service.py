@@ -2351,6 +2351,18 @@ class ChaosEngineBackendTests(unittest.TestCase):
             self.assertLess(preview["estimatedTokS"], native["estimatedTokS"])
         # Measured decode is flat across bit widths, so no ordering is asserted.
 
+    def test_turboquant_summary_warns_about_long_context_decode(self):
+        common = dict(
+            bits=3, fp16_layers=0, num_layers=32, num_heads=32, hidden_size=4096,
+            params_b=7.0, system_stats=fake_system_snapshot(), strategy="turboquant",
+        )
+        short = compute_cache_preview(context_tokens=2048, **common)
+        long = compute_cache_preview(context_tokens=16384, **common)
+        self.assertNotIn("keeps slowing", short["summary"])
+        self.assertIn("0.04x", long["summary"])
+        native = compute_cache_preview(bits=0, strategy="native", **{k: v for k, v in common.items() if k not in ("bits", "strategy")}, context_tokens=16384)
+        self.assertNotIn("keeps slowing", native["summary"])
+
     def test_preview_math_reduces_cache_size(self):
         preview = compute_cache_preview(
             bits=3,

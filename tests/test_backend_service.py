@@ -393,6 +393,22 @@ class ChaosEngineBackendTests(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("9000", response.json()["detail"])
 
+    def test_image_preload_is_a_no_op_for_engines_that_start_one_process_per_image(self):
+        from unittest import mock as _m
+
+        state = self.client.app.state.chaosengine
+        variant = {"id": "x/klein-mflux", "name": "Klein (mflux)", "repo": "x/klein", "engine": "mflux"}
+        runtime = _m.MagicMock()
+        runtime.preload.side_effect = AssertionError("diffusers preload must not run for mflux")
+        runtime.probe.return_value = {"activeEngine": "diffusers"}
+        state.image_runtime = runtime
+        with _m.patch("backend_service.routes.images._find_image_variant", return_value=variant), _m.patch(
+            "backend_service.routes.images._image_variant_available_locally", return_value=True
+        ):
+            response = self.client.post("/api/images/preload", json={"modelId": "x/klein-mflux"})
+        self.assertEqual(response.status_code, 200)
+        runtime.preload.assert_not_called()
+
     def test_chat_generate_still_answers_500_for_an_engine_failure(self):
         runtime = self.client.app.state.chaosengine.runtime
 

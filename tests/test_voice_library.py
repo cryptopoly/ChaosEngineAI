@@ -166,6 +166,48 @@ class TranscribeOptionsTests(unittest.TestCase):
         self.assertTrue(transcribe_call.kwargs["words"])
         self.assertEqual(diarize_call.kwargs["speakers"], 2)
 
+    def _transcribe_with(self, worker, language):
+        with (
+            mock.patch("backend_service.voice_client.get_worker", return_value=worker),
+            mock.patch.object(voice_runtime, "resolve_stt_model", return_value=("mlx-whisper", "repo")),
+            mock.patch.object(voice_runtime, "_hf_snapshot_path", return_value=None),
+        ):
+            return voice_runtime.transcribe_file(Path("a.wav"), "", language)
+
+    def test_an_unsupported_language_falls_back_to_detection(self) -> None:
+        worker = mock.Mock()
+        worker.request.side_effect = [
+            RuntimeError("ValueError: Unsupported language: xx"),
+            {"text": "hello", "language": "en", "seconds": 0.1, "segments": []},
+        ]
+        result = self._transcribe_with(worker, "xx")
+        self.assertEqual(result["text"], "hello")
+        self.assertIsNone(worker.request.call_args_list[1].kwargs["language"])
+        self.assertIn("'xx'", result["note"])
+
+    def test_an_empty_transcript_is_retried_without_the_language(self) -> None:
+        worker = mock.Mock()
+        worker.request.side_effect = [
+            {"text": "", "language": None, "seconds": 0.1, "segments": []},
+            {"text": "hello", "language": "en", "seconds": 0.1, "segments": []},
+        ]
+        result = self._transcribe_with(worker, "ja")
+        self.assertEqual(result["text"], "hello")
+        self.assertIn("detected", result["note"])
+
+    def test_silence_says_so_instead_of_returning_nothing(self) -> None:
+        worker = mock.Mock()
+        worker.request.return_value = {"text": "", "language": None, "seconds": 0.1, "segments": []}
+        result = self._transcribe_with(worker, None)
+        self.assertEqual(worker.request.call_count, 1)
+        self.assertIn("No speech", result["note"])
+
+    def test_other_worker_errors_are_not_swallowed(self) -> None:
+        worker = mock.Mock()
+        worker.request.side_effect = RuntimeError("worker died")
+        with self.assertRaises(RuntimeError):
+            self._transcribe_with(worker, "en")
+
     def test_translate_refuses_parakeet_and_speakers_need_the_update(self) -> None:
         with mock.patch.object(voice_runtime, "resolve_stt_model", return_value=("parakeet-mlx", "repo")):
             with self.assertRaises(ValueError):

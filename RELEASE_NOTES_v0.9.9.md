@@ -12,6 +12,7 @@
 - **Granite Switch 4.1** (IBM, Apache 2.0): the 8B and 30B Granite models in one checkpoint with built-in decision and safety adapters. The app runs the chat model.
 - **Iris-3B Turbo** on Apple Silicon: Apache 2.0, four steps, a 1024 by 1024 image in about 18 seconds on an M4 Max using 7.5 GB of memory. The MLX image engine moves to mflux 0.24; update it from the Image Studio.
 - **LFM3-1.7B** (Liquid AI): a small model for agents and tool calling, with a 256K context and 16 languages. On Apple Silicon the official MLX 4-bit build is about 1 GB and writes at about 250 tokens per second on an M4 Max. On every platform the official GGUF (Q4_K_M, 1.1 GB) runs through llama.cpp, about 190 to 240 tokens per second on the same Mac. Tool calls work on both.
+- **LTX-2.3 video with sound on Apple Silicon** replaces Wan 2.2 TI2V 5B. On its own MLX engine a 4-second 768 by 512 clip with stereo sound takes about 2.5 minutes on an M4 Max (the same model through the older route took 19 minutes for a 1.4-second clip). Install the engine from the Video Studio (about 1 GB), then download **LTX-2.3 distilled q4** (28 GB, including its text encoder). Sizes are multiples of 64, and the steps, guidance and negative prompt controls are hidden because this pipeline has none. The Wan 2.2 5B models are removed from the catalog.
 - **Every screen in all 10 languages.** The whole app, including Voice, Settings, the model panels and the Image and Video Studios, is now translated into German, French, Spanish, Russian, Portuguese (Brazil), Japanese, Korean and both Chinese variants. The translations were machine-made; corrections from native speakers are welcome.
 - **Security updates.** The libraries that read PDFs and images, handle uploads and make web requests are on their latest versions, and so are the certificate list used for HTTPS and the TLS stack in the desktop shell. See "Security" below.
 
@@ -41,7 +42,10 @@
 
 ### Fixes
 
-- **Wan 2.2 TI2V 5B video** no longer comes out over-bright with colour blocks at the default settings (the default guidance now matches the model card).
+- **A setting a model cannot use no longer breaks the reply.** A repeat penalty of 0 (llama.cpp refused it), XTC with a threshold of 0 (the text turned to noise), an image sent to a model that cannot read images, a prompt larger than the context, and a reply that spent its whole budget thinking all used to fail or come back empty with no reason. They are now corrected or explained in the reply's note. Image and video models are only given the arguments they accept, sizes and frame counts are rounded to what the model needs (multiples of 16, LTX frames 8k+1, Wan 4k+1), and speech recognition falls back to automatic language detection when the language does not fit.
+- **Options for hardware you do not have are hidden.** CUDA-only boosters and toggles no longer show on a Mac or a PC without an NVIDIA GPU, MLX rows no longer show on Windows and Linux, and Settings > Accelerators lists only what your machine can run.
+- **Iris-3B Turbo images** came out as noise or blocks at small sizes: it now renders at 768 px or more and says so when it raises a smaller size. The gallery also records the steps and guidance the model really used.
+- **Voice Models** cards no longer overflow when the DOWNLOADED badge is shown.
 - **Discover went blank** when you typed in the search box.
 - Apple Silicon: a model that reasons after a tool result, even with Thinking Off, no longer shows that reasoning in its answer.
 - A reasoning level that a model's chat template does not accept is mapped to the nearest one it does.

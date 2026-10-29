@@ -1056,6 +1056,40 @@ def phase_1(cap: Capability) -> PhaseResult:
         ctoks = metrics.get("completionTokens") or 0
         return ("pass" if ctoks > 0 else "fail"), f"completionTokens={ctoks}", {"completionTokens": ctoks}
 
+    # Settings a model or engine cannot use must be corrected with a note, never
+    # fail the reply: a repeat penalty of 0 made llama-server answer 400, XTC with a
+    # zero threshold turned the text to noise, and an image sent to a text-only model
+    # was a 500. Runs on the MLX lane (the sampler guard sits in front of every engine).
+    def _hostile_settings():
+        pick = _pick_fast_mlx()
+        if not pick:
+            return "skip", "no MLX text model on disk", {}
+        ref, path = pick
+        rc, loaded, err = _cli_json(
+            "load", ref, "--backend", "mlx", "--cache-strategy", "native",
+            "--context", "8192", "--path", path, "--timeout", "1800", timeout=1860.0,
+        )
+        if rc != 0 or not isinstance(loaded, dict) or loaded.get("state") != "loaded":
+            return "fail", f"load failed: {err[:160] if err else loaded}", {}
+        body = json.dumps({
+            "sessionId": "e2e-hostile", "prompt": "Say hello in one short sentence.",
+            "modelRef": ref, "backend": "mlx", "cacheStrategy": "native",
+            "maxTokens": 24, "thinkingMode": "off",
+            "repeatPenalty": 0.0, "xtcProbability": 1.0, "xtcThreshold": 0.0,
+            "mirostatMode": 2, "jsonSchema": {"type": "object"},
+        })
+        rc, gen, err = _cli_json("call", "POST", "/api/chat/generate", "--body", body, "--timeout", "300")
+        _cli("unload", timeout=60.0)
+        if rc != 0 or not isinstance(gen, dict):
+            return "fail", f"generate with unusable settings rc={rc}: {err[:160]}", {}
+        metrics = (gen.get("assistant") or {}).get("metrics") or {}
+        note = str(metrics.get("runtimeNote") or "")
+        if not (metrics.get("completionTokens") or 0) > 0:
+            return "fail", "no tokens were generated", {}
+        if "Repeat penalty" not in note or "XTC" not in note:
+            return "fail", f"the corrections were not reported in the runtimeNote: {note[:200]}", {}
+        return "pass", "", {"note": note[:160]}
+
     # 1i. MLX persistent prompt-cache reuse (tier 4; hybrid models via the
     # FU-090 recurrent checkpoint — the default Qwen3.6-35B-A3B pick is a
     # hybrid GDN model, so this now exercises that path). New-feature gate +
@@ -1122,6 +1156,7 @@ def phase_1(cap: Capability) -> PhaseResult:
         ("long context cache-preview", _long_context_preview),
         ("fused attention flag", _fused_attention),
         ("modern samplers (DRY+XTC)", _modern_samplers),
+        ("unusable settings are corrected with a note", _hostile_settings),
         ("MLX prompt-cache reuse", _mlx_prompt_cache_reuse),
     ]:
         phase.checks.append(_check(name, fn))
@@ -1526,18 +1561,18 @@ def phase_5(cap: Capability) -> PhaseResult:
 
     # FU-102: diffusers' UniPC scheduler diverges on MPS and Wan came out burnt
     # (over 55 % of the pixels clipped to white). Apple Silicon only; skips when
-    # Wan 2.2 TI2V 5B is not downloaded or ffmpeg is not available.
+    # Wan 2.1 T2V 1.3B is not downloaded or ffmpeg is not available.
     def _wan_not_burnt():
         import platform
         import tempfile
 
         if not (sys.platform == "darwin" and platform.machine() == "arm64"):
             return "skip", "the UniPC divergence is specific to MPS (Apple Silicon)", {}
-        model_id = "Wan-AI/Wan2.2-TI2V-5B-Diffusers"
+        model_id = "Wan-AI/Wan2.1-T2V-1.3B-Diffusers"
         rc, lib, _ = _cli_json("video-library", timeout=15.0)
         installed = {m.get("id") for m in ((lib or {}).get("models") or []) if m.get("availableLocally")}
         if model_id not in installed:
-            return "skip", "Wan 2.2 TI2V 5B not downloaded", {}
+            return "skip", "Wan 2.1 T2V 1.3B not downloaded", {}
         try:
             import imageio_ffmpeg  # type: ignore
             import numpy as np  # type: ignore
@@ -1570,9 +1605,47 @@ def phase_5(cap: Capability) -> PhaseResult:
             return "fail", f"{clipped:.0%} of the pixels are clipped to white (a healthy frame is under 5 %)", {}
         return "pass", "", {"clippedShare": round(clipped, 4)}
 
+    # LTX-2.3 on its own MLX engine (ltx-2-mlx, own venv). The catalog row must
+    # route there, the engine status must answer, and, when the engine and the
+    # weights are present, a clip must render with the sizes snapped to 64.
+    def _ltx2_engine():
+        import platform
+
+        rc, payload, _ = _cli_json("video-catalog", timeout=15.0)
+        variants = [v for f in ((payload or {}).get("families") or []) for v in (f.get("variants") or [])]
+        row = next((v for v in variants if v.get("id") == "dgrauet/ltx-2.3-mlx-q4"), None)
+        if row is None or "ltx-2-mlx" not in str(row.get("runtime") or ""):
+            return "fail", "dgrauet/ltx-2.3-mlx-q4 is missing from the video catalog or not routed to ltx-2-mlx", {}
+        rc, status, _ = _cli_json("ltx2-status", timeout=15.0)
+        if rc != 0 or not isinstance(status, dict):
+            return "fail", "ltx2-status failed", {}
+        if not (sys.platform == "darwin" and platform.machine() == "arm64"):
+            return "skip", "ltx-2-mlx needs Apple Silicon", {}
+        if not status.get("installed"):
+            return "skip", "the LTX-2.3 MLX engine is not installed", {}
+        if not row.get("availableLocally"):
+            return "skip", "LTX-2.3 q4 pack (and its Gemma text encoder) not downloaded", {}
+        rc, payload, err = _cli_json(
+            "video-generate", "a red fox running through fresh snow, soft morning light",
+            "--model", "dgrauet/ltx-2.3-mlx-q4", "--width", "500", "--height", "330", "--frames", "26",
+            "--seed", "7", "--timeout", "2400",
+        )
+        if rc != 0:
+            if _is_memory_refusal(err):
+                return "skip", f"host memory gate fired: {err[:200]}", {}
+            return "fail", f"video-generate rc={rc}: {err[:300]}", {}
+        artifact = (payload or {}).get("artifact") or {}
+        if not artifact.get("videoPath"):
+            return "fail", "video-generate returned no videoPath", {}
+        # 500x330 -> 512x320 and 26 -> 25 frames: the corrections must reach the artifact.
+        if (artifact.get("width"), artifact.get("height")) != (512, 320) or artifact.get("numFrames") != 25:
+            return "fail", f"expected 512x320 / 25 frames, got {artifact.get('width')}x{artifact.get('height')} / {artifact.get('numFrames')}", {}
+        return "pass", "", {"seconds": artifact.get("durationSeconds")}
+
     for name, fn in [("catalog", _catalog), ("library", _library),
                       ("mlx-runtime", _mlx_runtime), ("generate", _generate),
-                      ("Wan TI2V is not burnt on MPS (FU-102)", _wan_not_burnt)]:
+                      ("LTX-2.3 on ltx-2-mlx (routing + live)", _ltx2_engine),
+                      ("Wan is not burnt on MPS (FU-102)", _wan_not_burnt)]:
         phase.checks.append(_check(name, fn))
     fails = [c for c in phase.checks if c.status == "fail"]
     phase.status = "fail" if fails else ("skip" if all(c.status == "skip" for c in phase.checks) else "pass")
@@ -1595,6 +1668,7 @@ def phase_6(cap: Capability) -> PhaseResult:
         ("mtplx-status", "mtplx-status"),
         ("tensorfold-status", "tensorfold-status"),
         ("mflux-status", "mflux-status"),
+        ("ltx2-status", "ltx2-status"),
         ("longlive-status", "longlive-status"),
         ("wan-status", "wan-status"),
         ("wan-inventory", "wan-inventory"),

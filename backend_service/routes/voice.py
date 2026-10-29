@@ -86,6 +86,11 @@ def _worker_error(exc: Exception) -> HTTPException:
 
     if isinstance(exc, (UnknownSttModelError, ValueError)) and not isinstance(exc, VoiceWorkerError):
         return HTTPException(status_code=400, detail=str(exc))
+    if "invalid data found" in str(exc).lower() or "invaliddataerror" in str(exc).lower():
+        return HTTPException(
+            status_code=400,
+            detail="This file could not be read as audio. Use WAV, MP3, M4A, FLAC, OGG or a video file.",
+        )
     # RuntimeError / VoiceWorkerError: not installed, model missing, worker died.
     return HTTPException(status_code=503, detail=str(exc))
 

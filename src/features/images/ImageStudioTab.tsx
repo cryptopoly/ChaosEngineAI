@@ -281,6 +281,17 @@ export function ImageStudioTab({
       .filter((family) => family.variants.length > 0);
   }, [imageCatalog, hostSystem]);
 
+  // The status comes from the diffusers runtime; mflux and stable-diffusion.cpp variants run elsewhere.
+  const variantEngine = selectedImageVariant?.engine ?? null;
+  const bannerRuntimeStatus: typeof imageRuntimeStatus =
+    variantEngine === "mflux" || variantEngine === "sdcpp"
+      ? {
+          ...imageRuntimeStatus,
+          activeEngine: variantEngine === "mflux" ? "mflux" : "stable-diffusion.cpp",
+          device: variantEngine === "mflux" ? "mlx" : imageRuntimeStatus.device,
+          expectedDevice: variantEngine === "mflux" ? "mlx" : imageRuntimeStatus.expectedDevice,
+        }
+      : imageRuntimeStatus;
   const hasInstalledImageModels = installedCatalog.length > 0;
 
   // If the currently-selected model is no longer in the installed list
@@ -490,7 +501,7 @@ export function ImageStudioTab({
         </div>
         <ImageStudioRuntimeBanner
           hostSystem={hostSystem}
-          imageRuntimeStatus={imageRuntimeStatus}
+          imageRuntimeStatus={bannerRuntimeStatus}
           selectedImageVariant={selectedImageVariant}
           selectedImageLoaded={selectedImageLoaded}
           selectedImageWillLoadOnGenerate={selectedImageWillLoadOnGenerate}
@@ -698,18 +709,20 @@ export function ImageStudioTab({
             />
           </label>
 
-          <label>
-            {t("image.negativePrompt", { defaultValue: "Negative prompt" })}
-            <textarea
-              className="text-input prompt-area prompt-area--secondary"
-              rows={3}
-              placeholder={t("imageStudio.negativePrompt.placeholder", {
-                defaultValue: "blurry, deformed hands, extra limbs, overexposed",
-              })}
-              value={imageNegativePrompt}
-              onChange={(event) => onImageNegativePromptChange(event.target.value)}
-            />
-          </label>
+          {selectedImageVariant?.acceptsNegativePrompt !== false ? (
+            <label>
+              {t("image.negativePrompt", { defaultValue: "Negative prompt" })}
+              <textarea
+                className="text-input prompt-area prompt-area--secondary"
+                rows={3}
+                placeholder={t("imageStudio.negativePrompt.placeholder", {
+                  defaultValue: "blurry, deformed hands, extra limbs, overexposed",
+                })}
+                value={imageNegativePrompt}
+                onChange={(event) => onImageNegativePromptChange(event.target.value)}
+              />
+            </label>
+          ) : null}
 
           <div className="control-stack">
             <span className="eyebrow">{t("image.aspectRatio", { defaultValue: "Aspect Ratio" })}</span>
@@ -975,18 +988,20 @@ export function ImageStudioTab({
                 onChange={(event) => onImageStepsChange(Number(event.target.value) || 24)}
               />
             </label>
-            <label>
-              {t("imageStudio.fields.guidance", { defaultValue: "Guidance" })}
-              <input
-                className="text-input"
-                type="number"
-                min={1}
-                max={20}
-                step={0.5}
-                value={imageGuidance}
-                onChange={(event) => onImageGuidanceChange(Number(event.target.value) || 6)}
-              />
-            </label>
+            {selectedImageVariant?.acceptsGuidance !== false ? (
+              <label>
+                {t("imageStudio.fields.guidance", { defaultValue: "Guidance" })}
+                <input
+                  className="text-input"
+                  type="number"
+                  min={1}
+                  max={20}
+                  step={0.5}
+                  value={imageGuidance}
+                  onChange={(event) => onImageGuidanceChange(Number(event.target.value) || 6)}
+                />
+              </label>
+            ) : null}
             <label>
               {t("imageStudio.fields.images", { defaultValue: "Images" })}
               <input

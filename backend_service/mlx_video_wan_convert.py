@@ -73,7 +73,6 @@ CONVERT_ROOT: Path = _resolve_convert_root()
 SUPPORTED_RAW_REPOS: frozenset[str] = frozenset({
     "Wan-AI/Wan2.1-T2V-1.3B",
     "Wan-AI/Wan2.1-T2V-14B",
-    "Wan-AI/Wan2.2-TI2V-5B",
     "Wan-AI/Wan2.2-T2V-A14B",
     "Wan-AI/Wan2.2-I2V-A14B",
 })

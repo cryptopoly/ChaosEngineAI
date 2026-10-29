@@ -30,6 +30,11 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 # Helper modules -- extracted from this file for maintainability.
 # ---------------------------------------------------------------------------
+from backend_service.helpers.generation_limits import (
+    align_video_frames,
+    normalize_image_size,
+    normalize_video_size,
+)
 from backend_service.helpers.system import (
     _build_system_snapshot as _build_system_snapshot_impl,
     _resolve_app_version,
@@ -378,12 +383,18 @@ def _generate_image_artifacts(
     )
     requested_size = (effective_width, effective_height)
     effective_width, effective_height = _apply_min_side(effective_width, effective_height, variant.get("minSide"))
-    size_note = (
-        f"Rendered at {effective_width}x{effective_height}: {variant.get('name')} needs at least "
-        f"{variant.get('minSide')} px on the short edge, below that it comes out as noise or blocks."
-        if (effective_width, effective_height) != requested_size
-        else ""
+    size_notes: list[str] = []
+    if (effective_width, effective_height) != requested_size:
+        size_notes.append(
+            f"Rendered at {effective_width}x{effective_height}: {variant.get('name')} needs at least "
+            f"{variant.get('minSide')} px on the short edge, below that it comes out as noise or blocks."
+        )
+    effective_width, effective_height, snap_note = normalize_image_size(
+        effective_width, effective_height, min_side=variant.get("minSide")
     )
+    if snap_note:
+        size_notes.append(snap_note)
+    size_note = " ".join(size_notes)
     logger.info("Generating image: model=%s repo=%s size=%dx%d steps=%d draft=%s",
                 variant.get("name"), variant.get("repo"), effective_width, effective_height, request.steps, request.draftMode)
     runtime_manager = runtime_manager or ImageRuntimeManager()
@@ -468,7 +479,7 @@ def _generate_image_artifacts(
             "imageMimeType": rendered.mimeType,
             "imageExtension": rendered.extension,
             "runtimeLabel": rendered.runtimeLabel,
-            "runtimeNote": f"{rendered.runtimeNote} {size_note}".strip() if size_note else rendered.runtimeNote,
+            "runtimeNote": " · ".join(part for part in (rendered.runtimeNote, size_note) if part) or None,
             "qualityPreset": request.qualityPreset,
             "draftMode": request.draftMode,
         }
@@ -492,13 +503,18 @@ def _generate_video_artifact(
     from backend_service.video_runtime import VideoGenerationConfig
 
     logger = logging.getLogger("chaosengine.video")
+    video_width, video_height, size_snap_note = normalize_video_size(
+        request.width, request.height, str(variant["repo"])
+    )
+    video_frames, frame_snap_note = align_video_frames(str(variant["repo"]), request.numFrames)
+    request_notes = [note for note in (size_snap_note, frame_snap_note) if note]
     logger.info(
         "Generating video: model=%s repo=%s size=%dx%d frames=%d steps=%d",
         variant.get("name"),
         variant.get("repo"),
-        request.width,
-        request.height,
-        request.numFrames,
+        video_width,
+        video_height,
+        video_frames,
         request.steps,
     )
 
@@ -524,9 +540,9 @@ def _generate_video_artifact(
             repo=str(variant["repo"]),
             prompt=request.prompt,
             negativePrompt=request.negativePrompt or "",
-            width=request.width,
-            height=request.height,
-            numFrames=request.numFrames,
+            width=video_width,
+            height=video_height,
+            numFrames=video_frames,
             fps=request.fps,
             steps=effective_steps,
             guidance=effective_guidance,
@@ -585,7 +601,7 @@ def _generate_video_artifact(
         "videoMimeType": video.mimeType,
         "videoExtension": video.extension,
         "runtimeLabel": video.runtimeLabel,
-        "runtimeNote": video.runtimeNote,
+        "runtimeNote": " · ".join([*request_notes, *([video.runtimeNote] if video.runtimeNote else [])]) or None,
     }
     return _save_video_artifact(artifact), runtime_status
 

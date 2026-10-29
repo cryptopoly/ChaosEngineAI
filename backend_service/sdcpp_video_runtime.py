@@ -55,7 +55,6 @@ _RUNTIME_LABEL = "stable-diffusion.cpp"
 _SUPPORTED_REPOS: frozenset[str] = frozenset({
     "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
     "Wan-AI/Wan2.1-T2V-14B-Diffusers",
-    "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
     "Wan-AI/Wan2.2-T2V-A14B-Diffusers",
 })
 
@@ -166,12 +165,12 @@ class SdCppVideoEngine:
         # The Wan video path needs a GGUF transformer file — sd.cpp
         # cannot consume a sharded diffusers safetensors snapshot
         # directly. The catalog variant pins ``ggufRepo`` + ``ggufFile``
-        # for the GGUF lanes (e.g. QuantStack/Wan2.2-TI2V-5B-GGUF).
+        # for the GGUF lanes (e.g. city96/Wan2.1-T2V-14B-gguf).
         if not config.ggufFile:
             raise RuntimeError(
                 "sd.cpp video generate requires a GGUF variant. Pick a "
                 "catalog entry that pins ``ggufRepo`` + ``ggufFile`` "
-                "(e.g. Wan 2.2 TI2V 5B · GGUF Q4_K_M)."
+                "(e.g. Wan 2.1 T2V 14B · GGUF Q4_K_M)."
             )
 
         seed = config.seed if config.seed is not None else int(time.time())

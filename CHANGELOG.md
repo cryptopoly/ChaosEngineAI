@@ -11,6 +11,8 @@ Full notes in [RELEASE_NOTES_v0.9.9.md](RELEASE_NOTES_v0.9.9.md).
 - Unload / Cancel load button in the chat header.
 - **Nemotron 3.5 Bolt E4B** (NVIDIA) and **Granite Switch 4.1** (IBM) catalog families on llama.cpp. Bolt's DFlash drafter is published in a repo of its own, so a model can now be paired with a drafter by repo id (`PINNED_DRAFTERS`) and a download fetches companion files from other repos (`backend_service/helpers/companions.py`): 62 to 160 tok/s on an M4 Max with the drafter (FU-123).
 - **Nemotron 3.5 ASR** speech-to-text backend (mlx-audio, Apple Silicon): 40 languages with automatic detection.
+- **LTX-2.3 distilled q4** on its own MLX engine (ltx-2-mlx, isolated venv, installed from the Video Studio): 4 s at 768x512 with stereo sound in about 155 s on an M4 Max; the Wan 2.2 TI2V 5B rows are removed (FU-128).
+- Request guards: settings a model or engine cannot use are corrected with a note instead of failing or blanking the reply, for chat, image, video and speech recognition (FU-127).
 - **Iris-3B Turbo** image variant through mflux 0.24; image variants can pin `downloadFiles` and list `downloadCompanions` for repos that hold several models.
 - **LFM3-1.7B GGUF** (official Q4_K_M) on llama.cpp, pinned at b11981 (b11938 added the `lfm3` architecture); the language catalogs cover the whole frontend in all 10 locales (FU-119).
 - `scripts/audit-dependencies.py`: checks every pinned Python package, Rust crate and npm package against osv.dev for known vulnerabilities and lists what is behind the newest release. `pre-build-check` and the release workflow run it; a high or critical advisory blocks, and an accepted one needs a reason and an expiry date in `scripts/dependency-audit-ignore.json` (FU-120).
@@ -23,7 +25,7 @@ Full notes in [RELEASE_NOTES_v0.9.9.md](RELEASE_NOTES_v0.9.9.md).
 
 ### Fixed
 
-- Wan 2.2 TI2V 5B video came out over-bright, with stripes and colour blocks, at the Studio's default settings. The default guidance was 7.5; the model card's 5.0 gives clean frames (FU-122).
+- Hardware-specific options (CUDA boosters, FP8 / NF4, MLX rows) show only on hosts that can run them (FU-124); Iris-3B Turbo renders at 768 px or more (FU-124).
 - Tools never ran on GGUF models: llama.cpp returns tool calls as structured data and the engine ignored them, so the answer was empty.
 - `release-constraints.txt` pinned pypdf 6.10.2 and the other vulnerable versions, so release builds shipped them.
 

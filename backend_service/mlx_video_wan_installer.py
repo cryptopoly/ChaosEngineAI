@@ -65,7 +65,6 @@ INSTALL_PHASES: tuple[str, ...] = (
 _APPROX_RAW_SIZE_GB: dict[str, float] = {
     "Wan-AI/Wan2.1-T2V-1.3B": 3.5,
     "Wan-AI/Wan2.1-T2V-14B": 28.0,
-    "Wan-AI/Wan2.2-TI2V-5B": 24.0,
     "Wan-AI/Wan2.2-T2V-A14B": 67.0,
     "Wan-AI/Wan2.2-I2V-A14B": 67.0,
 }

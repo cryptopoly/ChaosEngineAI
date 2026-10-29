@@ -28,6 +28,8 @@ export interface TranscribeResult {
   model: string;
   task?: "transcribe" | "translate";
   seconds: number | null;
+  /** Set when a setting was changed or nothing was recognised, with the reason. */
+  note?: string | null;
   /** Set when the request asked to save to the Library. */
   libraryId?: string;
 }

@@ -11,6 +11,7 @@ import gc
 import secrets
 
 from backend_service.helpers.lora import fuse_catalog_lora
+from backend_service.helpers.pipeline_kwargs import filter_pipeline_kwargs
 from backend_service.helpers.gpu import (
     nvidia_gpu_present as _nvidia_gpu_present,
     torch_install_warning as _torch_install_warning,
@@ -286,6 +287,10 @@ class DiffusersTextToImageEngine:
             lowered_repo = config.repo.lower()
             if "flux" in lowered_repo:
                 kwargs.pop("negative_prompt", None)
+            # Distilled checkpoints are trained for a handful of steps; more only
+            # over-bakes the picture. The guided FLUX.1 / FLUX.2 dev models run
+            # the steps the user asked for.
+            if any(tag in lowered_repo for tag in ("schnell", "klein")) and "base" not in lowered_repo:
                 kwargs["num_inference_steps"] = min(config.steps, 8)
             if "turbo" in lowered_repo:
                 kwargs["num_inference_steps"] = min(config.steps, 8)
@@ -409,6 +414,7 @@ class DiffusersTextToImageEngine:
                 return callback_kwargs
 
             kwargs.setdefault("callback_on_step_end", _on_step_end)
+            kwargs, kwarg_notes = filter_pipeline_kwargs(pipeline, kwargs)
 
             started = time.perf_counter()
             try:
@@ -451,6 +457,7 @@ class DiffusersTextToImageEngine:
                     note_parts.append(sampler_note)
                 if cache_note:
                     note_parts.append(cache_note)
+                note_parts.extend(kwarg_notes)
                 runtime_note = " · ".join(note_parts) if note_parts else None
                 artifacts.append(
                     GeneratedImage(

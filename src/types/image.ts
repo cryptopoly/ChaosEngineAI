@@ -64,6 +64,9 @@ export interface ImageModelVariant {
   /** ``mflux`` or ``sdcpp`` for variants that run outside the diffusers
    * pipeline; absent for diffusers. */
   engine?: string | null;
+  /** False when the variant's engine has no guidance / negative-prompt input; the Studio hides it. */
+  acceptsGuidance?: boolean;
+  acceptsNegativePrompt?: boolean;
   /** Other catalog variants that use the same download (see Video). */
   sharedRepoSiblings?: number | null;
   sharedRepoSiblingIds?: string[];

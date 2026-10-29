@@ -206,7 +206,44 @@ def _video_variant_download_repos(variant: dict[str, Any]) -> list[str]:
         repo = str(variant.get(key) or "").strip()
         if repo and repo not in repos:
             repos.append(repo)
+    for companion in variant.get("downloadCompanions") or []:
+        repo = str(companion.get("repo") or "").strip()
+        if repo and repo not in repos:
+            repos.append(repo)
     return repos
+
+
+def _is_ltx2_mlx_repo_id(repo_id: str) -> bool:
+    from backend_service.ltx2_mlx_runtime import _is_ltx2_mlx_repo
+
+    return _is_ltx2_mlx_repo(repo_id)
+
+
+def _ltx2_mlx_pack_error(snapshot_dir: Path | str, repo_id: str) -> str | None:
+    """ltx-2-mlx packs are bare safetensors files: check the ones the distilled pipeline reads."""
+    from backend_service.ltx2_mlx_runtime import missing_pack_files
+
+    missing = missing_pack_files(Path(snapshot_dir))
+    if not missing:
+        return None
+    return f"The snapshot of {repo_id} is missing {', '.join(missing)}. Retry the download."
+
+
+def _ltx2_mlx_variant_error(variant: dict[str, Any]) -> str | None:
+    """Pack files plus the Gemma text encoder the engine loads beside them."""
+    repo = str(variant.get("repo") or "")
+    snapshot_dir = _hf_repo_snapshot_dir(repo)
+    if snapshot_dir is None:
+        return f"Download did not produce a local snapshot for {repo}."
+    pack_error = _ltx2_mlx_pack_error(snapshot_dir, repo)
+    if pack_error:
+        return pack_error
+    from backend_service.ltx2_mlx_runtime import GEMMA_REPO
+
+    gemma = _hf_repo_snapshot_dir(GEMMA_REPO)
+    if gemma is None or not (Path(gemma) / "model.safetensors.index.json").exists():
+        return f"The text encoder {GEMMA_REPO} is not downloaded. Retry the download."
+    return None
 
 
 def _is_video_repo(repo_id: str) -> bool:
@@ -232,6 +269,8 @@ def _video_repo_runtime_ready(repo_id: str) -> bool:
     snapshot_dir = _hf_repo_snapshot_dir(repo_id)
     if snapshot_dir is None:
         return False
+    if _is_ltx2_mlx_repo_id(repo_id):
+        return _ltx2_mlx_pack_error(snapshot_dir, repo_id) is None
     if _is_mlx_video_routed_repo(repo_id):
         return _validate_mlx_video_snapshot(snapshot_dir, repo_id) is None
     return validate_local_diffusers_snapshot(snapshot_dir, repo_id) is None
@@ -279,6 +318,8 @@ def _video_variant_validation_error(variant: dict[str, Any]) -> str | None:
     repo = str(variant.get("repo") or "")
     if not repo:
         return "Video model variant is missing its base repo id."
+    if _is_ltx2_mlx_repo_id(repo):
+        return _ltx2_mlx_variant_error(variant)
     is_gguf_variant = bool(str(variant.get("ggufFile") or "").strip())
     repo_error = (
         _video_gguf_base_validation_error(repo)
@@ -549,9 +590,22 @@ def _video_repo_allow_patterns(repo_id: str) -> list[str] | None:
     """
     if not _is_video_repo(repo_id):
         return None
+    pinned = _pinned_video_download_files(repo_id)
+    if pinned:
+        return pinned
     if _is_mlx_video_routed_repo(repo_id):
         return list(_VIDEO_MLX_ALLOW_PATTERNS)
     return list(_VIDEO_DIFFUSERS_ALLOW_PATTERNS)
+
+
+def _pinned_video_download_files(repo_id: str) -> list[str]:
+    """Files a variant pins with ``downloadFiles`` when its repo holds more than it runs."""
+    files: list[str] = []
+    for family in VIDEO_MODEL_FAMILIES:
+        for variant in family["variants"]:
+            if str(variant.get("repo") or "") == repo_id:
+                files.extend(str(name) for name in variant.get("downloadFiles") or [])
+    return list(dict.fromkeys(files))
 
 
 def _video_gguf_base_allow_patterns() -> list[str]:
@@ -570,6 +624,8 @@ def _video_download_validation_error(repo_id: str) -> str | None:
     # mlx-video routed repos (e.g. ``prince-canuma/LTX-2-*``) ship MLX
     # layouts without ``model_index.json``. Don't apply the diffusers-shape
     # validator to them; check for the expected MLX component folders instead.
+    if _is_ltx2_mlx_repo_id(repo_id):
+        return _ltx2_mlx_pack_error(snapshot_dir, repo_id)
     if _is_mlx_video_routed_repo(repo_id):
         return _validate_mlx_video_snapshot(snapshot_dir, repo_id)
     return validate_local_diffusers_snapshot(snapshot_dir, repo_id)

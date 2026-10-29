@@ -938,8 +938,8 @@ class VideoDownloadRouteTests(unittest.TestCase):
             response = self.client.post(
                 "/api/video/download",
                 json={
-                    "repo": "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
-                    "modelId": "QuantStack/Wan2.2-TI2V-5B-GGUF-q4km",
+                    "repo": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+                    "modelId": "samuelchristlie/Wan2.1-T2V-1.3B-GGUF-q4km",
                 },
             )
 
@@ -947,8 +947,8 @@ class VideoDownloadRouteTests(unittest.TestCase):
         self.assertEqual(
             [repo for repo, _ in calls],
             [
-                "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
-                "QuantStack/Wan2.2-TI2V-5B-GGUF",
+                "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+                "samuelchristlie/Wan2.1-T2V-1.3B-GGUF",
             ],
         )
         base_patterns = calls[0][1]
@@ -956,8 +956,8 @@ class VideoDownloadRouteTests(unittest.TestCase):
         assert base_patterns is not None
         self.assertIn("transformer/config.json", base_patterns)
         self.assertNotIn("transformer/**", base_patterns)
-        self.assertEqual(calls[1][1], ["Wan2.2-TI2V-5B-Q4_K_M.gguf", "*.md", "LICENSE*"])
-        self.assertEqual(response.json()["download"]["repo"], "Wan-AI/Wan2.2-TI2V-5B-Diffusers")
+        self.assertEqual(calls[1][1], ["Wan2.1-T2V-1.3B-Q4_K_M.gguf", "*.md", "LICENSE*"])
+        self.assertEqual(response.json()["download"]["repo"], "Wan-AI/Wan2.1-T2V-1.3B-Diffusers")
 
     def test_cancel_rejects_repo_outside_video_catalog(self):
         response = self.client.post(

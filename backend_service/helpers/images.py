@@ -122,6 +122,21 @@ def _snapshot_on_disk_bytes(snapshot_dir: Path | None) -> int | None:
     return total or None
 
 
+def _image_variant_inputs(variant: dict[str, Any]) -> dict[str, bool]:
+    """Which Studio inputs the variant's engine reads; the Studio hides the others.
+
+    An mflux checkpoint takes the arguments its family table lists (the distilled
+    ones have no guidance, most have no negative prompt); every other engine reads both.
+    """
+    if variant.get("engine") == "mflux":
+        from backend_service.image_runtime.mflux_engine import mflux_family_for_repo
+
+        family = mflux_family_for_repo(str(variant.get("repo") or ""))
+        if family is not None:
+            return {"acceptsGuidance": family.takes_guidance, "acceptsNegativePrompt": family.takes_negative_prompt}
+    return {"acceptsGuidance": True, "acceptsNegativePrompt": True}
+
+
 def _image_model_payloads(library: list[dict[str, Any]]) -> list[dict[str, Any]]:
     repo_metadata: dict[str, dict[str, Any]] = {}
     repos = sorted({
@@ -166,6 +181,7 @@ def _image_model_payloads(library: list[dict[str, Any]]) -> list[dict[str, Any]]
                     "source": "curated",
                     "familyName": family.get("name"),
                     "availableLocally": _image_variant_available_locally(variant, library),
+                    **_image_variant_inputs(variant),
                     "hasLocalData": snapshot_dir is not None,
                     "localPath": str(snapshot_dir) if snapshot_dir else None,
                     "releaseDate": curated_release_date,

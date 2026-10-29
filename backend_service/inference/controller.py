@@ -30,6 +30,7 @@ from backend_service.reasoning_split import (
     ThinkingTokenFilter,
     strip_thinking_tokens as _strip_thinking_tokens,
 )
+from backend_service.helpers.request_guards import empty_reply_note, guard_chat_request, merge_notes
 from backend_service.model_resolution import resolve_dflash_target_ref
 
 from backend_service.inference._constants import (
@@ -1211,20 +1212,38 @@ class RuntimeController:
             raise RuntimeError("Load a model before sending prompts.")
 
         target_engine = engine or self.engine
+        guard = guard_chat_request(
+            engine=self.loaded_model.engine,
+            vision_enabled=self.loaded_model.visionEnabled,
+            images=images,
+            samplers=samplers,
+            json_schema=json_schema,
+        )
         result = target_engine.generate(
             prompt=prompt,
             history=history,
             system_prompt=system_prompt,
             max_tokens=max_tokens,
             temperature=temperature,
-            images=images,
+            images=guard.images,
             tools=tools,
-            samplers=samplers,
+            samplers=guard.samplers,
             reasoning_effort=reasoning_effort,
-            json_schema=json_schema,
+            json_schema=guard.jsonSchema,
         )
         if result.runtimeNote is None:
             result.runtimeNote = self.runtime_note
+        notes = list(guard.notes)
+        if not result.text.strip() and not result.tool_calls:
+            empty_note = empty_reply_note(
+                completion_tokens=result.completionTokens,
+                finish_reason=result.finishReason,
+                had_reasoning=False,
+                json_schema=guard.jsonSchema,
+            )
+            if empty_note:
+                notes.append(empty_note)
+        result.runtimeNote = merge_notes(result.runtimeNote, notes)
         return result
 
     def stream_generate(
@@ -1247,19 +1266,43 @@ class RuntimeController:
             raise RuntimeError("Load a model before sending prompts.")
 
         target_engine = engine or self.engine
-        yield from target_engine.stream_generate(
+        guard = guard_chat_request(
+            engine=self.loaded_model.engine,
+            vision_enabled=self.loaded_model.visionEnabled,
+            images=images,
+            samplers=samplers,
+            json_schema=json_schema,
+        )
+        saw_text = False
+        saw_reasoning = False
+        for chunk in target_engine.stream_generate(
             prompt=prompt,
             history=history,
             system_prompt=system_prompt,
             max_tokens=max_tokens,
             temperature=temperature,
-            images=images,
+            images=guard.images,
             tools=tools,
             thinking_mode=thinking_mode,
-            samplers=samplers,
+            samplers=guard.samplers,
             reasoning_effort=reasoning_effort,
-            json_schema=json_schema,
-        )
+            json_schema=guard.jsonSchema,
+        ):
+            saw_text = saw_text or bool(chunk.text)
+            saw_reasoning = saw_reasoning or bool(chunk.reasoning)
+            if chunk.done:
+                notes = list(guard.notes)
+                if not saw_text:
+                    empty_note = empty_reply_note(
+                        completion_tokens=chunk.completion_tokens,
+                        finish_reason=chunk.finish_reason,
+                        had_reasoning=saw_reasoning,
+                        json_schema=guard.jsonSchema,
+                    )
+                    if empty_note:
+                        notes.append(empty_note)
+                chunk.runtime_note = merge_notes(chunk.runtime_note, notes)
+            yield chunk
 
     def extract_gguf_metadata(self, path: str) -> dict[str, Any]:
         code, payload, message = _json_subprocess(

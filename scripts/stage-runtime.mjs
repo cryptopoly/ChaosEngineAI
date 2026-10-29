@@ -42,7 +42,12 @@ const archiveDest = path.join(embeddedResourcesRoot, `runtime-${platformTag}.tar
 // there; without them every one of those Install buttons failed in a release
 // build with "No such file". tests/test_stage_runtime_scripts.py keeps this
 // list in step with the routes.
-const BUNDLED_INSTALL_SCRIPTS = ["install-mflux.sh", "install-mtplx.sh", "install-tensorfold.sh"];
+const BUNDLED_INSTALL_SCRIPTS = [
+  "install-mflux.sh",
+  "install-ltx2-mlx.sh",
+  "install-mtplx.sh",
+  "install-tensorfold.sh",
+];
 
 // The llama.cpp release whose prebuilt binaries are bundled. Pinned (not
 // "latest") and kept equal to LLAMA_CPP_REF in scripts/update-llama-cpp.sh, which

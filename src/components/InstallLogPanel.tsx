@@ -23,7 +23,7 @@ export type InstallJobState =
   | TensorfoldJobState
   | VllmWslJobState;
 
-type InstallLogVariant = "gpu-bundle" | "longlive" | "mflux" | "mtplx" | "tensorfold" | "vllm-wsl";
+type InstallLogVariant = "gpu-bundle" | "longlive" | "ltx2" | "mflux" | "mtplx" | "tensorfold" | "vllm-wsl";
 
 // Optional fields read by the meta line. ``GpuBundleJobState`` has these;
 // ``LongLiveJobState`` doesn't. Centralised here so the meta renderer
@@ -124,6 +124,8 @@ function formatStatusLabel(job: InstallJobState, variant: InstallLogVariant, t: 
     ? t("installLog.statusNoun.tensorfold", { defaultValue: "TensorFold install" })
     : variant === "mflux"
     ? t("installLog.statusNoun.mflux", { defaultValue: "mflux install" })
+    : variant === "ltx2"
+    ? t("installLog.statusNoun.ltx2", { defaultValue: "LTX-2.3 engine install" })
     : variant === "vllm-wsl"
     ? t("installLog.statusNoun.vllmWsl", { defaultValue: "vLLM-in-WSL install" })
     : t("installLog.statusNoun.gpuBundle", { defaultValue: "Install" });
@@ -133,7 +135,7 @@ function formatStatusLabel(job: InstallJobState, variant: InstallLogVariant, t: 
   if (job.phase === "verifying") {
     // The CUDA check only applies to the GPU installs; the Apple Silicon
     // engines verify their own imports.
-    return variant === "mtplx" || variant === "tensorfold" || variant === "mflux"
+    return variant === "mtplx" || variant === "tensorfold" || variant === "mflux" || variant === "ltx2"
       ? t("installLog.status.verifying", { defaultValue: "Verifying install…" })
       : t("installLog.status.verifyingCuda", { defaultValue: "Verifying CUDA…" });
   }

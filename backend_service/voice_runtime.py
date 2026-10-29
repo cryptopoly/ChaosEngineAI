@@ -44,6 +44,17 @@ _STT_MODELS: list[dict[str, Any]] = [
         "sources": {"parakeet-mlx": ("mlx-community/parakeet-tdt-0.6b-v3", 2.5)},
     },
     {
+        # NVIDIA's cache-aware streaming FastConformer-RNNT with language-ID
+        # prompting (2026-10-23, OpenMDW-1.1 weights); MLX port and 8-bit
+        # conversion by mlx-community, run through mlx-audio.
+        "key": "nemotron-3.5-asr",
+        "name": "Nemotron 3.5 ASR 0.6B",
+        "languages": "40 languages, automatic detection",
+        "default": False,
+        "translate": False,
+        "sources": {"nemotron-asr-mlx": ("mlx-community/nemotron-3.5-asr-streaming-0.6b-8bit", 0.72)},
+    },
+    {
         "key": "whisper-large-v3-turbo",
         "name": "Whisper Large v3 Turbo",
         "languages": "99 languages",
@@ -89,7 +100,7 @@ class UnknownSttModelError(ValueError):
 
 
 def _lane_backends() -> tuple[str, ...]:
-    return ("parakeet-mlx", "mlx-whisper") if voice_env.lane() == "mlx" else ("faster-whisper",)
+    return ("parakeet-mlx", "nemotron-asr-mlx", "mlx-whisper") if voice_env.lane() == "mlx" else ("faster-whisper",)
 
 
 def _hf_snapshot_path(repo_id: str) -> Path | None:

@@ -357,7 +357,8 @@ def _speculative_args(
     Preference order (FU-047 / FU-089):
 
     1. Baked-in MTP heads in the model itself → ``draft-mtp``.
-    2. A drafter sidecar beside the GGUF → ``-md <file>`` + its type,
+    2. A drafter the author publishes in a repo of its own (pinned by repo
+       id), else a sidecar beside the GGUF → ``-md <file>`` + its type,
        in llama.cpp's own order (mtp- > dspark- > dflash- > eagle3-).
        DFlash 2 drafters are ``dflash-`` files; llama.cpp detects v2
        from the file's metadata, so the flags are the same.
@@ -368,7 +369,10 @@ def _speculative_args(
     Each type is gated on the binary listing it in ``--help``; an older
     llama-server gets standard decode plus a note, never a startup error.
     """
-    from backend_service.helpers.text_gguf import resolve_spec_sidecar  # noqa: PLC0415
+    from backend_service.helpers.text_gguf import (  # noqa: PLC0415
+        resolve_pinned_drafter,
+        resolve_spec_sidecar,
+    )
     from backend_service.inference._mtp import (  # noqa: PLC0415
         get_mtp_draft_n,
         is_mtp_gguf_repo,
@@ -397,8 +401,9 @@ def _speculative_args(
             "D2H embedding transfers (per upstream PR #22673)."
         )
 
-    # 2. Drafter sidecar beside the model file.
-    sidecar = resolve_spec_sidecar(resolved_gguf)
+    # 2. A drafter the model's author published in a repo of its own, then a
+    # sidecar beside the model file.
+    sidecar = resolve_pinned_drafter(repo, resolved_gguf) or resolve_spec_sidecar(resolved_gguf)
     if sidecar is not None:
         spec_type, sidecar_path = sidecar
         if supports(spec_type):

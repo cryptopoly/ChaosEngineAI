@@ -57,6 +57,48 @@ _SIDECAR_PREFIXES = tuple(prefix for prefix, _ in SPEC_SIDECAR_TYPES)
 _QUANT_TAG_RE = re.compile(r"[-.]([A-Z0-9_]+)$", re.IGNORECASE)
 
 
+# Drafters their authors publish in a repo of their own (NVIDIA ships the
+# Nemotron 3.5 Bolt DFlash drafter apart from the model, under a name that
+# carries no ``dflash-`` prefix). Paired with the target by exact repo id,
+# never by file name, so a stranger's drafter is never loaded against the
+# wrong model. ``(drafter repo, drafter file, llama.cpp spec type)``.
+PINNED_DRAFTERS: dict[str, tuple[str, str, str]] = {
+    "nvidia/NVIDIA-Nemotron-3.5-Bolt-E4B-4GB": (
+        "nvidia/NVIDIA-Nemotron-3.5-Bolt-E4B-4GB-DFlash",
+        "Nemotron-3.5-Bolt-E4B-DFlash-BF16.gguf",
+        "draft-dflash",
+    ),
+}
+
+
+def pinned_drafter(repo_id: str | None) -> tuple[str, str, str] | None:
+    """``(drafter repo, file, spec type)`` for a target with a separately published drafter."""
+    return PINNED_DRAFTERS.get(repo_id) if repo_id else None
+
+
+def resolve_pinned_drafter(
+    repo_id: str | None, model_path: str | None = None
+) -> tuple[str, str] | None:
+    """``(spec_type, path)`` of the pinned drafter when it is in the Hub cache.
+
+    ``model_path`` covers a model launched from its library folder, where the
+    repo id is only recoverable from the Hub-cache layout.
+    """
+    pin = pinned_drafter(repo_id)
+    if pin is None and model_path:
+        pin = pinned_drafter(repo_id_from_path(Path(model_path)))
+    if pin is None:
+        return None
+    from backend_service.helpers.hf_cache_paths import _hf_repo_snapshot_dir  # noqa: PLC0415
+
+    drafter_repo, drafter_file, spec_type = pin
+    snapshot = _hf_repo_snapshot_dir(drafter_repo)
+    if snapshot is None:
+        return None
+    candidate = snapshot / drafter_file
+    return (spec_type, str(candidate)) if candidate.is_file() else None
+
+
 def is_aux_gguf(name: str) -> bool:
     """True for projector / imatrix / spec-dec sidecar files — never the
     model itself (mirrors llama.cpp's ``gguf_filename_is_model``).

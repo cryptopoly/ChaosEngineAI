@@ -7,7 +7,7 @@
 # commands from this venv, one process per image.
 #
 # Why a separate venv: mflux 0.20 pins mlx >=0.32,<0.33, torch >=2.13 and
-# pillow >=12.3, which is newer than the stack the app itself runs (mlx 0.31).
+# pillow >=12.3 (0.24: >=13), which is newer than the stack the app itself runs (mlx 0.31).
 # Installing it next to the app's packages would replace mlx for every MLX lane.
 #
 # Apple Silicon only; requires native arm64 Python 3.11-3.13.
@@ -32,7 +32,7 @@ VERSION_FILE="${BIN_DIR}/mflux.version"
 # Pinned: the command names and flags in the engine's family table were read
 # from this release. Bump together with that table. Override with
 # MFLUX_VERSION=<version> to try a newer build.
-MFLUX_VERSION="${MFLUX_VERSION:-0.23.0}"
+MFLUX_VERSION="${MFLUX_VERSION:-0.24.0}"
 # MFLUX_SOURCE overrides where pip installs from (a wheelhouse path or an
 # internal mirror); the pinned PyPI release is the default.
 MFLUX_SOURCE="${MFLUX_SOURCE:-mflux==${MFLUX_VERSION}}"
@@ -95,10 +95,11 @@ log "Upgrading pip"
 phase "installing"
 
 log "Installing mflux ${MFLUX_VERSION} (pulls mlx, torch and transformers; about 1.3 GB)"
+# mflux 0.24 requires Pillow 13 (it fixes a critical FlashPix heap overflow) and
+# no longer fails at import on older Python 3.12 patch releases that lack
+# numbers._IntegralLike, so Pillow is left to mflux's own requirement.
 PIP_DISABLE_PIP_VERSION_CHECK=1 PIP_NO_INPUT=1 \
-    # Pillow 13 imports numbers._IntegralLike, which older Python 3.12 patch
-    # releases (e.g. 3.12.5) do not have; mflux then fails at import.
-    "${VENV_DIR}/bin/pip" install --upgrade "${MFLUX_SOURCE}" "pillow>=12.3,<13"
+    "${VENV_DIR}/bin/pip" install --upgrade "${MFLUX_SOURCE}"
 
 phase "verifying"
 

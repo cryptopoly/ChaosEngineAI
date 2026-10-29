@@ -9,7 +9,10 @@ Full notes in [RELEASE_NOTES_v0.9.9.md](RELEASE_NOTES_v0.9.9.md).
 - **Voice I/O** (FU-117): a voice pack in its own environment (MLX Whisper, Parakeet and Kokoro on Apple Silicon; faster-whisper and kokoro-onnx on Windows and Linux), dictation and read-aloud in Chat, voice calls with turn detection and barge-in, Voice Studio (transcription queue, speaker labels, translation, transcript editor, Speak) and Voice Library, which replaces Gallery.
 - **LFM3-1.7B** (Liquid AI) on MLX through a vendored `lfm3` architecture, official MLX 4-bit and 8-bit rows (FU-118).
 - Unload / Cancel load button in the chat header.
-- **LFM3-1.7B GGUF** (official Q4_K_M) on llama.cpp, now pinned at b11938 (adds the `lfm3` architecture); the language catalogs cover the whole frontend in all 10 locales (FU-119).
+- **Nemotron 3.5 Bolt E4B** (NVIDIA) and **Granite Switch 4.1** (IBM) catalog families on llama.cpp. Bolt's DFlash drafter is published in a repo of its own, so a model can now be paired with a drafter by repo id (`PINNED_DRAFTERS`) and a download fetches companion files from other repos (`backend_service/helpers/companions.py`): 62 to 160 tok/s on an M4 Max with the drafter (FU-123).
+- **Nemotron 3.5 ASR** speech-to-text backend (mlx-audio, Apple Silicon): 40 languages with automatic detection.
+- **Iris-3B Turbo** image variant through mflux 0.24; image variants can pin `downloadFiles` and list `downloadCompanions` for repos that hold several models.
+- **LFM3-1.7B GGUF** (official Q4_K_M) on llama.cpp, pinned at b11981 (b11938 added the `lfm3` architecture); the language catalogs cover the whole frontend in all 10 locales (FU-119).
 - `scripts/audit-dependencies.py`: checks every pinned Python package, Rust crate and npm package against osv.dev for known vulnerabilities and lists what is behind the newest release. `pre-build-check` and the release workflow run it; a high or critical advisory blocks, and an accepted one needs a reason and an expiry date in `scripts/dependency-audit-ignore.json` (FU-120).
 
 ### Security

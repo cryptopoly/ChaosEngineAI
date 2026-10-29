@@ -45,6 +45,8 @@ class FamilyTableTests(unittest.TestCase):
         self.assertEqual(mflux_engine._mflux_name_for_repo("black-forest-labs/FLUX.1-dev"), "dev")
         qwen = mflux_family_for_repo("Qwen/Qwen-Image-2.1")
         self.assertEqual((qwen.command, qwen.model), ("mflux-generate-qwen-2.1", "qwen-image-2.1"))
+        iris = mflux_family_for_repo("speridlabs/iris-3b")
+        self.assertEqual((iris.command, iris.model, iris.takes_guidance), ("mflux-generate-iris", "iris-3b", False))
         self.assertIsNone(mflux_engine._mflux_name_for_repo("stabilityai/stable-diffusion-3.5-medium"))
 
     def test_every_catalog_mflux_variant_has_a_command(self) -> None:
@@ -343,6 +345,7 @@ class MfluxRequiredVersionTests(unittest.TestCase):
         from backend_service.image_runtime.mflux_engine import mflux_version_is_outdated
 
         self.assertTrue(mflux_version_is_outdated("0.20.0"))
-        self.assertFalse(mflux_version_is_outdated("0.23.0"))
+        self.assertTrue(mflux_version_is_outdated("0.23.0"))
+        self.assertFalse(mflux_version_is_outdated("0.24.0"))
         self.assertFalse(mflux_version_is_outdated("0.24.1"))
         self.assertFalse(mflux_version_is_outdated(None))

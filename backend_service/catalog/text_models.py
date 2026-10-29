@@ -2700,6 +2700,141 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         ],
     },
     {
+        # Gemma-4-E4B post-trained by NVIDIA (2026-10-23). llama.cpp runs it as a
+        # gemma4 model; NVIDIA publishes the DFlash drafter in a repo of its own,
+        # which text_gguf.PINNED_DRAFTERS pairs with the 4 GB build.
+        "id": "nemotron-3-5-bolt",
+        "name": "Nemotron 3.5 Bolt",
+        "provider": "NVIDIA",
+        "headline": "4B-effective assistant model: a 6 GB download, up to 3x faster with its DFlash drafter.",
+        "summary": "NVIDIA's Gemma-4-E4B post-train for voice and device assistants: better multi-turn tool use, instruction following and grounding. 64K context.",
+        "description": (
+            "Nemotron 3.5 Bolt E4B is Gemma-4-E4B-it further post-trained by NVIDIA for fast local assistants, "
+            "interactive personas and embedded interfaces: multi-turn tool use, instruction following and "
+            "input grounding, with reasoning and conversational modes set through the chat template. 8B "
+            "parameters, 4B effective, 64K context, 35 languages. The official Q4_K_M build is about 6 GB and "
+            "downloads together with NVIDIA's DFlash drafter, which llama.cpp uses for speculative decoding. "
+            "NVIDIA OpenMDW-1.1 licence."
+        ),
+        "updatedLabel": "Released Oct 2026",
+        "popularityLabel": "Trending",
+        "likesLabel": "NVIDIA official",
+        "badges": ["Small", "Fast", "Tool use", "Speculative decoding"],
+        "capabilities": ["reasoning", "tool-use", "multilingual"],
+        "defaultVariantId": "nvidia/NVIDIA-Nemotron-3.5-Bolt-E4B-4GB",
+        "readme": [
+            "Bolt is built for low time-to-first-token on small machines: the Q4_K_M build runs at about 60 tok/s on an M4 Max.",
+            "With the DFlash drafter NVIDIA publishes beside it, the same build reaches about 160 tok/s on the same Mac (2.6x to 3x in our runs), with roughly 60 % of drafted tokens accepted. Tick speculative decoding in the launch settings.",
+            "The drafter is a separate 0.7 GB download that comes with the model. It works on llama.cpp b11938 or newer, on macOS, Windows and Linux.",
+            "Thinking and conversational modes are chat-template switches; NVIDIA recommends temperature 1.0 and top_p 0.95 in both thinking modes.",
+        ],
+        "variants": [
+            {
+                "id": "nvidia/NVIDIA-Nemotron-3.5-Bolt-E4B-4GB",
+                "name": "Nemotron 3.5 Bolt E4B GGUF Q4_K_M",
+                "repo": "nvidia/NVIDIA-Nemotron-3.5-Bolt-E4B-4GB",
+                "link": "https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Bolt-E4B-4GB",
+                "paramsB": 8.0,
+                "sizeGb": 6.9,
+                "format": "GGUF",
+                "quantization": "Q4_K_M",
+                "ggufFile": "Nemotron-3.5-Bolt-E4B-Q4_K_M.gguf",
+                "capabilities": ["reasoning", "tool-use", "multilingual"],
+                "note": (
+                    "Official NVIDIA build. Downloads with the 0.7 GB DFlash drafter (size includes it); tick "
+                    "speculative decoding for up to 3x the decode speed. OpenMDW-1.1 licence."
+                ),
+                "contextWindow": "64K",
+                "launchMode": "direct",
+                "backend": "llama.cpp",
+                "releaseDate": "2026-10",
+            },
+            {
+                "id": "ggml-org/NVIDIA-Nemotron-3.5-Bolt-E4B-GGUF",
+                "name": "Nemotron 3.5 Bolt E4B GGUF Q8_0",
+                "repo": "ggml-org/NVIDIA-Nemotron-3.5-Bolt-E4B-GGUF",
+                "link": "https://huggingface.co/ggml-org/NVIDIA-Nemotron-3.5-Bolt-E4B-GGUF",
+                "paramsB": 8.0,
+                "sizeGb": 8.6,
+                "format": "GGUF",
+                "quantization": "Q8_0",
+                "ggufFile": "NVIDIA-Nemotron-3.5-Bolt-E4B-Q8_0.gguf",
+                "capabilities": ["reasoning", "tool-use", "multilingual"],
+                "note": "ggml-org's 8-bit build with its own DFlash drafter beside it (size includes the drafter).",
+                "contextWindow": "64K",
+                "launchMode": "direct",
+                "backend": "llama.cpp",
+                "releaseDate": "2026-10",
+            },
+        ],
+    },
+    {
+        # IBM Granite Switch 4.1 (2026-10-14, revision 4.1.1 on 2026-10-27): a Granite 4.1
+        # base with the decision and guardian-core aLoRA adapters and a speech encoder
+        # composed into one checkpoint. llama.cpp has the graniteswitch architecture;
+        # the app drives it as a chat model.
+        "id": "granite-switch-4-1",
+        "name": "Granite Switch 4.1",
+        "provider": "IBM",
+        "headline": "Granite 4.1 with built-in decision and safety adapters, 128K context. Apache 2.0.",
+        "summary": "IBM's modular Granite 4.1 (8B and 30B): one checkpoint that holds the chat model plus decision and guardian aLoRA adapters switched on by control tokens.",
+        "description": (
+            "Granite Switch composes a Granite 4.1 base model with two adapters (a general-purpose decision "
+            "adapter that returns a probability over labelled options, and Guardian Core, which flags harm, "
+            "jailbreaks, profanity and bias) and a speech encoder, so one endpoint can chat, decide and "
+            "screen. Adapters are switched on by control tokens in the chat template. The app runs the chat "
+            "model; the speech-to-text encoder is not used. Apache 2.0."
+        ),
+        "updatedLabel": "Released Oct 2026",
+        "popularityLabel": "New release",
+        "likesLabel": "IBM official",
+        "badges": ["Agents", "Safety", "Long context"],
+        "capabilities": ["agents", "tool-use", "multilingual"],
+        "defaultVariantId": "ibm-granite/granite-switch-4.1-8b-GGUF",
+        "readme": [
+            "Granite Switch 4.1 is one checkpoint that holds a Granite 4.1 chat model, two aLoRA adapters (Decision and Guardian Core) and a speech encoder. Control tokens in the chat template switch an adapter on for a single call.",
+            "The app runs it as a chat model through llama.cpp (the graniteswitch architecture, b11938 or newer). It measures about 29 tok/s for the 8B Q4_K_M on an M4 Max.",
+            "The adapters and the speech-to-text encoder are not driven by the app yet; use Voice for transcription.",
+            "Apache 2.0.",
+        ],
+        "variants": [
+            {
+                "id": "ibm-granite/granite-switch-4.1-8b-GGUF",
+                "name": "Granite Switch 4.1 8B GGUF Q4_K_M",
+                "repo": "ibm-granite/granite-switch-4.1-8b-GGUF",
+                "link": "https://huggingface.co/ibm-granite/granite-switch-4.1-8b-GGUF",
+                "paramsB": 8.0,
+                "sizeGb": 6.4,
+                "format": "GGUF",
+                "quantization": "Q4_K_M",
+                "ggufFile": "granite-switch-4.1-8b-Q4_K_M.gguf",
+                "capabilities": ["agents", "tool-use", "multilingual"],
+                "note": "Official GGUF; llama.cpp b11938 or newer (graniteswitch). Chat only: the adapters and speech encoder are not driven by the app.",
+                "contextWindow": "128K",
+                "launchMode": "direct",
+                "backend": "llama.cpp",
+                "releaseDate": "2026-10",
+            },
+            {
+                "id": "ibm-granite/granite-switch-4.1-30b-GGUF",
+                "name": "Granite Switch 4.1 30B GGUF Q4_K_M",
+                "repo": "ibm-granite/granite-switch-4.1-30b-GGUF",
+                "link": "https://huggingface.co/ibm-granite/granite-switch-4.1-30b-GGUF",
+                "paramsB": 30.0,
+                "sizeGb": 21.0,
+                "format": "GGUF",
+                "quantization": "Q4_K_M",
+                "ggufFile": "granite-switch-4.1-30b-Q4_K_M.gguf",
+                "capabilities": ["agents", "tool-use", "multilingual"],
+                "note": "Official GGUF; needs a 32 GB Mac or a 24 GB GPU. Chat only, like the 8B.",
+                "contextWindow": "128K",
+                "launchMode": "direct",
+                "backend": "llama.cpp",
+                "releaseDate": "2026-10",
+            },
+        ],
+    },
+    {
         "id": "muse-glimmer",
         "name": "Muse Glimmer",
         "provider": "Meta",

@@ -24,12 +24,18 @@
  *      search result, Run from Hugging Face) is a "download" row with a
  *      ``download://<repo>`` path until the files reach the library scan.
  *
- * Installed state, in this order: the library scan when the row has local
- * files (a broken item is not installed), else the catalog's
- * ``availableLocally``; an active download wins over both (shared status
- * ladder, ``resolveModelStatus``). Each download is shown on exactly one
- * row: the catalog row of its repo, else the library row that is that
- * repo, else a download row.
+ * Installed state comes from the library scan: a row is installed when it
+ * has local files that are not broken, or its download completed; an
+ * active download wins over both (shared status ladder,
+ * ``resolveModelStatus``). The catalog's ``availableLocally`` only confirms
+ * a merge (rule 2). On its own it is a name-substring check that also
+ * fires on DFlash drafter repos and on other quants of the same model
+ * (measured 2026-10-29: "Qwen3.6 27B" BF16 flagged by the 4-bit
+ * conversion, "Qwen3.8 27B" and "Gemma 4 26B A4B" by their drafters), so a
+ * catalog row with no files is "available" even when it is set.
+ *
+ * Each download is shown on exactly one row: the catalog row of its repo,
+ * else the library row that is that repo, else a download row.
  */
 
 import type { DownloadStatus } from "../../../api";
@@ -488,7 +494,8 @@ export function buildChatEntries(
       link: variant.link || null,
       downloadKey: variant.repo,
       deleteTarget: item?.path ?? variant.repo,
-      availableLocally: item ? !item.broken : Boolean(variant.availableLocally),
+      // Files the join gave this row decide; ``availableLocally`` alone does not (header).
+      availableLocally: item ? !item.broken : false,
       hasLocalData: Boolean(item),
       broken: item?.broken ? { reason: item.brokenReason ?? "" } : null,
       loaded: isLoaded(ctx.loadedModel, item, variant),

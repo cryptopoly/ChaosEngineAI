@@ -211,6 +211,18 @@ describe("chat status resolution", () => {
     expect(row.source.download?.progress).toBeCloseTo(23.9 / 67);
   });
 
+  it("does not trust availableLocally alone: a drafter repo or another quant trips the backend's name check", () => {
+    const flagged = { ...qwenMlx, availableLocally: true };
+    const entries = buildChatEntries([makeChatFamily({}, [flagged])], [], {}, { now: NOW });
+    expect(stateOf(byId(entries, `catalog:${flagged.id}`))).toBe("available");
+    // With its files merged it is installed.
+    const merged = buildChatEntries([makeChatFamily({}, [flagged])], [makeLibraryItem()], {}, { now: NOW });
+    expect(stateOf(byId(merged, `catalog:${flagged.id}`))).toBe("installed");
+    // A completed download also counts until the library rescans.
+    const done = buildChatEntries([makeChatFamily({}, [qwenMlx])], [], { [qwenMlx.repo]: transfer(qwenMlx.repo, "completed") }, { now: NOW });
+    expect(stateOf(byId(done, `catalog:${qwenMlx.id}`))).toBe("installed");
+  });
+
   it("lets an active download win over installed files", () => {
     const item = makeLibraryItem();
     const entries = buildChatEntries([family], [item], { [qwenMlx.repo]: transfer(qwenMlx.repo, "downloading") }, { now: NOW });

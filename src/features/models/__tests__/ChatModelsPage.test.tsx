@@ -435,8 +435,8 @@ describe("ChatModelsPage: launch actions (lead's decision)", () => {
       ["chat", `library:${item.path}`],
       ["server", `library:${item.path}`],
     ]);
-    // A catalog row the backend says is on disk, with no matched file, keys by catalog id.
-    const catalogOnly = buildChatEntries([makeChatFamily({}, [makeChatVariant({ availableLocally: true })])], [], {});
+    // A catalog row with no files keys by catalog id (the modal maps it to local files when it finds them).
+    const catalogOnly = buildChatEntries([makeChatFamily({}, [makeChatVariant()])], [], {});
     chatLaunchActions(catalogOnly[0], onOpen, t).launch.onClick();
     expect(onOpen).toHaveBeenLastCalledWith("thread", "catalog:mlx-community/Qwen3-4B-4bit");
   });
@@ -451,9 +451,18 @@ describe("ChatModelsPage: launch actions (lead's decision)", () => {
   });
 
   it("offers Convert on an installed catalog model that needs converting (R4)", () => {
-    const variant = coderVariant({ availableLocally: true });
-    const row = rowMarkup(render({ families: [coderFamily(variant)] }), `catalog:${variant.id}`);
+    const variant = coderVariant();
+    const item = makeLibraryItem({
+      name: "Qwen/Qwen3-Coder-Next-FP8",
+      path: "/cache/hub/models--Qwen--Qwen3-Coder-Next-FP8",
+      format: "Transformers",
+      quantization: "FP8",
+      sizeGb: 74.9,
+    });
+    const onConvert = vi.fn();
+    const row = rowMarkup(render({ families: [coderFamily(variant)], library: [item], onPrepareCatalogConversion: onConvert }), `catalog:${variant.id}`);
     expect(row).toContain('aria-label="Convert model"');
+    expect(rowMarkup(render({ families: [coderFamily(variant)] }), `catalog:${variant.id}`)).not.toContain("Convert model");
   });
 });
 

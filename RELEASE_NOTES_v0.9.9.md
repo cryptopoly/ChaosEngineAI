@@ -33,7 +33,7 @@
 - Pillow (images) moves to 13, python-multipart (uploads) to 0.0.31, and aiohttp, urllib3, anyio, idna, msgpack, fsspec and filelock to their fixed versions.
 - The certificate bundle (certifi) no longer trusts a certificate authority whose keys were compromised, in the Python runtime and in the desktop shell.
 - The desktop shell's TLS and async libraries (rustls, tokio and others) and the chat code highlighter are updated.
-- One advisory is accepted for now: the `zip` crate used by the Windows updater. It only unpacks update archives after their signature has been verified; the fix needs a Tauri update that is planned.
+- The desktop shell moves to Tauri 2.12, which brings the updater plugin 2.14 and a patched `zip` library (the Windows update unpacker). Every advisory the pre-release audit finds is now fixed.
 
 ### Fixes
 

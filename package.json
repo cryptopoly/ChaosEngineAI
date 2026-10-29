@@ -19,11 +19,11 @@
     "i18n:pseudo": "node ./scripts/i18n-pseudo.mjs"
   },
   "dependencies": {
-    "@tauri-apps/api": "~2.11.0",
-    "@tauri-apps/plugin-dialog": "^2.7.0",
-    "@tauri-apps/plugin-opener": "^2.5.3",
-    "@tauri-apps/plugin-process": "^2.0.0",
-    "@tauri-apps/plugin-updater": "^2.0.0",
+    "@tauri-apps/api": "~2.12.4",
+    "@tauri-apps/plugin-dialog": "^2.8.4",
+    "@tauri-apps/plugin-opener": "^2.7.2",
+    "@tauri-apps/plugin-process": "^2.4.0",
+    "@tauri-apps/plugin-updater": "^2.14.1",
     "i18next": "^24.2.0",
     "i18next-browser-languagedetector": "^8.0.2",
     "i18next-icu": "^2.3.0",
@@ -39,7 +39,7 @@
     "remark-math": "^6.0.0"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "~2.11.0",
+    "@tauri-apps/cli": "~2.12.4",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@types/react-syntax-highlighter": "^15.5.13",

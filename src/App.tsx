@@ -51,8 +51,7 @@ import { MyModelsTab } from "./features/models/MyModelsTab";
 import { ImageModelsPage } from "./features/images/ImageModelsPage";
 import { ImageStudioTab } from "./features/images/ImageStudioTab";
 import { ImageGalleryTab } from "./features/images/ImageGalleryTab";
-import { VideoDiscoverTab } from "./features/video/VideoDiscoverTab";
-import { VideoModelsTab } from "./features/video/VideoModelsTab";
+import { VideoModelsPage } from "./features/video/VideoModelsPage";
 import { VideoStudioTab } from "./features/video/VideoStudioTab";
 import { VideoGalleryTab } from "./features/video/VideoGalleryTab";
 import { VoiceStudioTab } from "./features/voice/VoiceStudioTab";
@@ -1524,22 +1523,29 @@ export default function App() {
         onDeleteImageArtifact={(id) => void imgState.handleDeleteImageArtifact(id)}
       />
     );
-  } else if (activeTab === "video-models" && legacyModelsView(modelsAvailability.video) === "catalog") {
-    // TEMPORARY (FU-129): the Video Models page still shows the old
-    // Discover / My Models tabs until ui-video ports it to ModelsPage.
+  } else if (activeTab === "video-models") {
     content = (
-      <VideoDiscoverTab
-        combinedVideoDiscoverResults={videoState.combinedVideoDiscoverResults}
-        videoDiscoverSearchInput={videoState.videoDiscoverSearchInput}
-        onVideoDiscoverSearchInputChange={videoState.setVideoDiscoverSearchInput}
-        videoDiscoverTaskFilter={videoState.videoDiscoverTaskFilter}
-        onVideoDiscoverTaskFilterChange={videoState.setVideoDiscoverTaskFilter}
-        videoDiscoverSort={videoState.videoDiscoverSort}
-        onVideoDiscoverSortChange={videoState.setVideoDiscoverSort}
-        videoDiscoverHasActiveFilters={videoState.videoDiscoverHasActiveFilters}
-        videoDiscoverSearchQuery={videoState.videoDiscoverSearchQuery}
+      <VideoModelsPage
+        catalog={videoState.videoCatalog}
+        latest={videoState.latestVideoDiscoverResults}
+        searchInput={videoState.videoDiscoverSearchInput}
+        onSearchInputChange={videoState.setVideoDiscoverSearchInput}
+        taskFilter={videoState.videoDiscoverTaskFilter}
+        onTaskFilterChange={videoState.setVideoDiscoverTaskFilter}
+        sort={videoState.videoDiscoverSort}
+        onSortChange={videoState.setVideoDiscoverSort}
+        availability={modelsAvailability.video}
+        onAvailabilityChange={(value) => setAreaAvailability("video", value)}
         activeVideoDownloads={videoState.activeVideoDownloads}
         selectedVideoVariant={videoState.selectedVideoVariant}
+        // The runtime reports a repo; several rows can share one. The row
+        // selected in the Studio is the one that was loaded when its repo
+        // matches, otherwise the first row with that repo (as before).
+        loadedVideoVariantId={
+          videoState.selectedVideoLoaded
+            ? videoState.selectedVideoVariant?.id ?? null
+            : videoState.loadedVideoVariant?.id ?? null
+        }
         fileRevealLabel={fileRevealLabel}
         nativeBackends={nativeBackends}
         hostSystem={workspace.system}
@@ -1555,30 +1561,6 @@ export default function App() {
         onRevealPath={(path) => void handleRevealPath(path)}
         onRefreshLongLiveStatus={() => void videoState.refreshLongLiveStatus()}
         onInstallLongLive={() => videoState.handleInstallLongLive()}
-      />
-    );
-  } else if (activeTab === "video-models") {
-    content = (
-      <VideoModelsTab
-        installedVideoVariants={videoState.installedVideoVariants}
-        videoCatalog={videoState.videoCatalog}
-        activeVideoDownloads={videoState.activeVideoDownloads}
-        videoRuntimeStatus={videoState.videoRuntimeStatus}
-        videoBusy={videoState.videoBusy}
-        videoBusyLabel={videoState.videoBusyLabel}
-        loadedVideoVariant={videoState.loadedVideoVariant}
-        fileRevealLabel={fileRevealLabel}
-        nativeBackends={nativeBackends}
-        hostSystem={workspace.system}
-        onActiveTabChange={setActiveTab}
-        onOpenVideoStudio={videoState.openVideoStudio}
-        onVideoDownload={(repo, modelId) => void videoState.handleVideoDownload(repo, modelId)}
-        onCancelVideoDownload={(repo) => void videoState.handleCancelVideoDownload(repo)}
-        onDeleteVideoDownload={(repo) => void videoState.handleDeleteVideoDownload(repo)}
-        onPreloadVideoModel={(variant) => void videoState.handlePreloadVideoModel(variant)}
-        onUnloadVideoModel={(variant) => void videoState.handleUnloadVideoModel(variant)}
-        onOpenExternalUrl={(url) => void handleOpenExternalUrl(url)}
-        onRevealPath={(path) => void handleRevealPath(path)}
       />
     );
   } else if (activeTab === "video-studio") {
@@ -2052,13 +2034,11 @@ export default function App() {
             </p>
           </div>
           <div className="header-badges">
-            {activeTab === "chat-models" || activeTab === "video-models" ? (
+            {activeTab === "chat-models" ? (
               // TEMPORARY (FU-129): picks the old view until the page is ported.
               <LegacyModelsSwitch
-                view={legacyModelsView(modelsAvailability[activeTab === "chat-models" ? "chat" : "video"])}
-                onViewChange={(view) =>
-                  setAreaAvailability(activeTab === "chat-models" ? "chat" : "video", view === "catalog" ? "available" : "installed")
-                }
+                view={legacyModelsView(modelsAvailability.chat)}
+                onViewChange={(view) => setAreaAvailability("chat", view === "catalog" ? "available" : "installed")}
               />
             ) : null}
             <span className="badge muted">{workspace.system.platform}</span>

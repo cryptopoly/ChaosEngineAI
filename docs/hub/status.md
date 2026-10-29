@@ -23,7 +23,7 @@ Newest dated update first. Each update has the same sections: Done, Open for Cla
 
 **Open for Dan**
 
-- Decide whether `feat/models-fit` ships in v0.9.9 (the release gate in [the plan](../plans/models-fit.md) is met except the native-speaker read of de / ja / ru / zh-TW and Windows / Linux runs) or waits for the next release behind PR 119.
+- Decide whether `feat/models-fit` ships in v0.9.9 (the release gate in `docs/plans/models-fit.md` is met except the native-speaker read of de / ja / ru / zh-TW and Windows / Linux runs) or waits for the next release behind PR 119.
 - Real click-throughs of download, pause, resume and delete on the new pages were not run; worth one try with a small model.
 
 ## Update 2026-10-29, afternoon

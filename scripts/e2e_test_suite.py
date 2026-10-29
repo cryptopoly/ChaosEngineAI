@@ -1640,6 +1640,9 @@ def phase_5(cap: Capability) -> PhaseResult:
         # 500x330 -> 512x320 and 26 -> 25 frames: the corrections must reach the artifact.
         if (artifact.get("width"), artifact.get("height")) != (512, 320) or artifact.get("numFrames") != 25:
             return "fail", f"expected 512x320 / 25 frames, got {artifact.get('width')}x{artifact.get('height')} / {artifact.get('numFrames')}", {}
+        # LTX-2 writes a stereo track; the gallery and result window rely on this flag (FU-130).
+        if artifact.get("hasAudio") is not True:
+            return "fail", f"the clip should carry sound but hasAudio={artifact.get('hasAudio')!r}", {}
         return "pass", "", {"seconds": artifact.get("durationSeconds")}
 
     for name, fn in [("catalog", _catalog), ("library", _library),

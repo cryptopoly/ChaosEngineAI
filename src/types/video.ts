@@ -160,6 +160,8 @@ export interface VideoOutputArtifact {
   videoExtension?: string | null;
   runtimeLabel?: string | null;
   runtimeNote?: string | null;
+  /** True when the mp4 has an audio track (LTX-2 clips); older backends omit it. */
+  hasAudio?: boolean;
 }
 
 export interface VideoGenerationPayload {

@@ -30,6 +30,7 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 # Helper modules -- extracted from this file for maintainability.
 # ---------------------------------------------------------------------------
+from backend_service.helpers.video_audio import mp4_has_audio_bytes
 from backend_service.helpers.generation_limits import (
     align_video_frames,
     normalize_image_size,
@@ -602,6 +603,7 @@ def _generate_video_artifact(
         "videoExtension": video.extension,
         "runtimeLabel": video.runtimeLabel,
         "runtimeNote": " · ".join([*request_notes, *([video.runtimeNote] if video.runtimeNote else [])]) or None,
+        "hasAudio": video.extension == "mp4" and mp4_has_audio_bytes(video.bytes),
     }
     return _save_video_artifact(artifact), runtime_status
 

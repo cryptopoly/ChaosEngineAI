@@ -18,12 +18,23 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from backend_service.helpers.video_audio import mp4_has_audio_file
+
 
 def _video_output_directory(video_outputs_dir: Path, created_at: str | None = None) -> Path:
     day_label = (created_at or datetime.utcnow().isoformat())[:10]
     output_dir = video_outputs_dir / day_label
     output_dir.mkdir(parents=True, exist_ok=True)
     return output_dir
+
+
+def _artifact_has_audio(payload: dict[str, Any]) -> bool:
+    """Saved clips record it; older ones are read from the file (a few KB of headers)."""
+    if isinstance(payload.get("hasAudio"), bool):
+        return bool(payload["hasAudio"])
+    path = str(payload.get("videoPath") or "")
+    extension = str(payload.get("videoExtension") or Path(path).suffix.lstrip(".") or "mp4").lower()
+    return bool(path) and extension == "mp4" and mp4_has_audio_file(path)
 
 
 def _hydrate_video_artifact(payload: dict[str, Any]) -> dict[str, Any]:
@@ -53,6 +64,7 @@ def _hydrate_video_artifact(payload: dict[str, Any]) -> dict[str, Any]:
         "videoExtension": str(payload.get("videoExtension") or "mp4"),
         "runtimeLabel": str(payload.get("runtimeLabel") or ""),
         "runtimeNote": str(payload.get("runtimeNote") or "") or None,
+        "hasAudio": _artifact_has_audio(payload),
     }
 
 

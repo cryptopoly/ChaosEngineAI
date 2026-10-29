@@ -851,6 +851,14 @@ export function VideoStudioTab({
                 defaultValue: "A cinematic drone shot of a misty pine forest at dawn...",
               })}
             />
+            {fixedSampler ? (
+              <p className="muted-text" role="note">
+                {t("videoStudio.prompt.soundHint", {
+                  defaultValue:
+                    "This model makes sound too, and the sound follows your prompt. Describe it: footsteps crunching in snow, wind in the trees, a low engine hum.",
+                })}
+              </p>
+            ) : null}
             {selectedVideoVariant?.repo === "Lightricks/LTX-Video"
               && hasPrompt
               && videoPrompt.trim().split(/\s+/).length < 25 ? (

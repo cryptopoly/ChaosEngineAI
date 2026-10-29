@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { LiveProgress, type LiveProgressPhase } from "./LiveProgress";
+import { SoundBadge } from "./SoundBadge";
 import { fetchVideoOutputBlobUrl } from "../api";
 import { useGenerationProgress } from "../hooks/useGenerationProgress";
 import { number, formatImageTimestamp } from "../utils";
@@ -211,7 +212,9 @@ export function VideoGenerationModal({
                     src={videoUrl}
                     controls
                     loop
-                    muted
+                    // The user just pressed Generate, so a clip with sound may start with sound;
+                    // clips without sound stay muted so autoplay is never refused.
+                    muted={!artifact.hasAudio}
                     playsInline
                     autoPlay
                     preload="metadata"
@@ -229,6 +232,7 @@ export function VideoGenerationModal({
                 <div className="chip-row">
                   <span className="badge success">{t("video.modal.savedToGallery", { defaultValue: "Saved To Gallery" })}</span>
                   {artifact.runtimeLabel ? <span className="badge subtle">{artifact.runtimeLabel}</span> : null}
+                  {artifact.hasAudio ? <SoundBadge /> : null}
                 </div>
                 <div>
                   <h3>{artifact.modelName}</h3>

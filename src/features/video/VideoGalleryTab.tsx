@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
+import { SoundBadge } from "../../components/SoundBadge";
 import { fetchVideoOutputBlobUrl } from "../../api";
 import type { TabId, VideoOutputArtifact } from "../../types";
 import { formatImageTimestamp, number } from "../../utils";
@@ -228,12 +229,15 @@ function VideoOutputCard({
           <strong>{artifact.modelName}</strong>
           <span className="badge muted">{formatImageTimestamp(artifact.createdAt, locale)}</span>
         </div>
-        {artifact.runtimeLabel ? (
+        {artifact.runtimeLabel || artifact.hasAudio ? (
           <div className="chip-row">
-            <span className="badge subtle">{artifact.runtimeLabel}</span>
-            <span className="badge muted">
-              {artifact.width} × {artifact.height}
-            </span>
+            {artifact.runtimeLabel ? <span className="badge subtle">{artifact.runtimeLabel}</span> : null}
+            {artifact.runtimeLabel ? (
+              <span className="badge muted">
+                {artifact.width} × {artifact.height}
+              </span>
+            ) : null}
+            {artifact.hasAudio ? <SoundBadge /> : null}
           </div>
         ) : null}
         <p className="image-output-prompt">{artifact.prompt}</p>

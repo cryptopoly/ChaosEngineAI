@@ -17,13 +17,13 @@ Newest dated update first. Each update has the same sections: Done, Open for Cla
 - Linear DFlash on MLX now verifies 8 tokens per step instead of 16 (16 was slower than plain decoding on prose). Tests and `docs/features/dflash.md` updated.
 - LTX long-clip memory measured on the M4 Max: 18 GB engine footprint at both 768x512 x 257 frames (352 s) and 1280x704 x 121 frames (363 s); the 20 GB catalog figure holds. See [FU-128](tracker/open.md).
 - LTX-2.5 support added to the engine and catalog (own Gemma 4 text encoder, no companion repo); the licence is accepted on Hugging Face. Not yet run live (download queued).
+- Sound in Video Studio ([FU-130](tracker/open.md)): sound badge on clips that have it, result window plays them with sound, prompt hint for the LTX rows. Not yet looked at in the running app.
 - This hub: [tracker pages](tracker/README.md) are generated from `CLAUDE.md` by `tools/hub_tracker.py`.
 
 **Open for Claude**
 
 - Run the DDTree speed test on a 27B-class target (`Qwen3-Coder-30B-A3B` 4-bit is downloading; it is the only attention-only model of that size with a drafter) and check block 8 against 16 on Qwen3.6-27B. See [progress](progress/runs-2026-10-29.md).
 - Run LTX-2.5 live, then decide the default LTX row.
-- Sound in Video Studio ([FU-130](tracker/open.md)): sound icon, unmuted result window, prompt hint.
 - Keep this hub current after every batch.
 
 **Open for Dan**

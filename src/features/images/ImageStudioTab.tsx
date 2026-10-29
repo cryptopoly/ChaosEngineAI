@@ -10,6 +10,7 @@ import {
   DEFAULT_MAX_SIDE,
   DEFAULT_MIN_SIDE,
   clampStudioSide,
+  fitStudioSize,
   type RecommendationAppliers,
   type RecommendationCurrent,
 } from "../../components/recommendedSettings";
@@ -319,10 +320,11 @@ export function ImageStudioTab({
     }
   }, [installedCatalog, hasInstalledImageModels, selectedImageModelId, onSelectedImageModelIdChange]);
 
-  const selectedRatioPreset =
-    IMAGE_RATIO_PRESETS.find((preset) => preset.width === imageWidth && preset.height === imageHeight) ??
-    IMAGE_RATIO_PRESETS.find((preset) => preset.id === imageRatioId) ??
-    IMAGE_RATIO_PRESETS[0];
+  // A pill is highlighted only while the fields hold its size (a recommended or hand-typed
+  // size that matches no preset leaves none highlighted).
+  const selectedRatioPreset = IMAGE_RATIO_PRESETS.find(
+    (preset) => preset.width === imageWidth && preset.height === imageHeight,
+  );
   const selectedQuality =
     IMAGE_QUALITY_PRESETS.find((preset) => preset.id === imageQualityPreset) ?? IMAGE_QUALITY_PRESETS[1];
   // CUDA-only controls need an NVIDIA GPU: hidden on a Mac and on a PC without one.
@@ -420,8 +422,9 @@ export function ImageStudioTab({
     : DEFAULT_MAX_SIDE;
   const imageMinSide = Math.max(DEFAULT_MIN_SIDE, selectedImageVariant?.minSide ?? DEFAULT_MIN_SIDE);
   useEffect(() => {
-    if (Number.isFinite(imageWidth) && imageWidth > imageMaxSide) onImageWidthChange(imageMaxSide);
-    if (Number.isFinite(imageHeight) && imageHeight > imageMaxSide) onImageHeightChange(imageMaxSide);
+    const fitted = fitStudioSize(imageWidth, imageHeight, { maxSide: imageMaxSide });
+    if (fitted.width !== imageWidth) onImageWidthChange(fitted.width);
+    if (fitted.height !== imageHeight) onImageHeightChange(fitted.height);
   }, [imageMaxSide, imageWidth, imageHeight, onImageWidthChange, onImageHeightChange]);
 
   // "Recommended for this machine": the panel applies through the same setters as the
@@ -826,7 +829,7 @@ export function ImageStudioTab({
               {IMAGE_RATIO_PRESETS.map((preset) => (
                 <button
                   key={preset.id}
-                  className={selectedRatioPreset.id === preset.id ? "pill-button active" : "pill-button"}
+                  className={selectedRatioPreset?.id === preset.id ? "pill-button active" : "pill-button"}
                   type="button"
                   onClick={() => onApplyImageRatioPreset(preset.id)}
                 >

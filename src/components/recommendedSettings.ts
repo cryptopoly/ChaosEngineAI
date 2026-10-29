@@ -137,3 +137,20 @@ export function clampStudioSide(
   if (!Number.isFinite(value) || value <= 0) return Math.max(min, Math.min(max, fallback));
   return Math.max(min, Math.min(max, Math.round(value)));
 }
+
+/** Keep both edges inside ``maxSide`` and keep the aspect ratio when one is over, as the
+ * backend does (scaling one edge alone would turn 3000 x 1688 into 2048 x 1688). Scaled
+ * edges are rounded down to a multiple of 16. Returns the input unchanged when it fits. */
+export function fitStudioSize(
+  width: number,
+  height: number,
+  limits: { maxSide?: number | null },
+): { width: number; height: number } {
+  const max = limits.maxSide && limits.maxSide > 0 ? limits.maxSide : DEFAULT_MAX_SIDE;
+  if (!Number.isFinite(width) || !Number.isFinite(height)) return { width, height };
+  const longest = Math.max(width, height);
+  if (longest <= max) return { width, height };
+  const scale = max / longest;
+  const snap = (edge: number) => Math.max(DEFAULT_MIN_SIDE, Math.floor((edge * scale) / 16) * 16);
+  return { width: snap(width), height: snap(height) };
+}

@@ -594,6 +594,16 @@ export function budgetAfterResidentModels(budgetGb: number, otherResidentGb: num
   return Math.max(budgetGb * 0.1, budgetGb - other);
 }
 
+/** ltx-2-mlx peak growth above its reference clip: 15 GB at 768x512 x 97 frames (38,400
+ * latent tokens) and 18 GB at 1280x704 x 121 (109,120) on an M4 Max, so about 3 GB per
+ * 70,000 tokens. Two points only; it keeps a 4K, 480-frame request from reading "safe". */
+const LTX_REFERENCE_TOKENS = 38_400;
+const LTX_GB_PER_TOKEN = 3 / 70_720;
+
+function ltxGrowthGb(latentTokens: number): number {
+  return Math.max(0, latentTokens - LTX_REFERENCE_TOKENS) * LTX_GB_PER_TOKEN;
+}
+
 export function assessVideoGenerationSafety(opts: Parameters<typeof assessVideoGenerationSafetyForBudget>[0]): VideoGenerationSafety {
   const result = assessVideoGenerationSafetyForBudget(opts);
   const note = result.reason ? residentModelNote(opts.otherResidentGb) : null;
@@ -736,7 +746,7 @@ function assessVideoGenerationSafetyForBudget(opts: {
   const latentTokens =
     Math.ceil(width / 16) * Math.ceil(height / 16) * Math.ceil(numFrames / 4);
   const attentionPeakGb = opts.skipAttentionEstimate
-    ? 0
+    ? ltxGrowthGb(latentTokens)
     : estimatePeakAttentionBytes(latentTokens, effectiveDevice) / 1024 ** 3;
   const estimatedPeakGb = estimateVideoRequestPeakGb({
     modelFootprintGb,

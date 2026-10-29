@@ -8,6 +8,7 @@ import { RecommendedSettingsPanel } from "../../components/RecommendedSettingsPa
 import {
   DEFAULT_MAX_SIDE,
   clampStudioSide,
+  fitStudioSize,
   type RecommendationAppliers,
   type RecommendationCurrent,
 } from "../../components/recommendedSettings";
@@ -495,8 +496,9 @@ export function VideoStudioTab({
     ? selectedVideoVariant.maxSide
     : DEFAULT_MAX_SIDE;
   useEffect(() => {
-    if (Number.isFinite(videoWidth) && videoWidth > videoMaxSide) onVideoWidthChange(videoMaxSide);
-    if (Number.isFinite(videoHeight) && videoHeight > videoMaxSide) onVideoHeightChange(videoMaxSide);
+    const fitted = fitStudioSize(videoWidth, videoHeight, { maxSide: videoMaxSide });
+    if (fitted.width !== videoWidth) onVideoWidthChange(fitted.width);
+    if (fitted.height !== videoHeight) onVideoHeightChange(fitted.height);
   }, [videoMaxSide, videoWidth, videoHeight, onVideoWidthChange, onVideoHeightChange]);
 
   // "Recommended for this machine": applied through the same setters as the controls

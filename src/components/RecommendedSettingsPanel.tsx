@@ -147,10 +147,10 @@ export function RecommendedSettingsPanel({
       className="callout quiet recommended-settings-panel"
       aria-label={t("recommended.title", { defaultValue: "Recommended for this machine" })}
     >
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      <div className="recommended-settings-panel__head">
+        <div className="recommended-settings-panel__title">
           <span className="eyebrow">{t("recommended.title", { defaultValue: "Recommended for this machine" })}</span>
-          <span className="muted-text" style={{ fontSize: 12 }}>
+          <span className="muted-text recommended-settings-panel__hardware">
             {recommendation.hardwareLabel ?? recommendation.hardwareBucket}
             {anyMeasured && recommendation.measuredOn
               ? ` · ${t("recommended.measuredOn", { defaultValue: "timed on {machine}", machine: recommendation.measuredOn })}`
@@ -168,21 +168,17 @@ export function RecommendedSettingsPanel({
             : t("recommended.applyAll", { defaultValue: "Apply recommended" })}
         </button>
       </div>
-      <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 8 }}>
+      <ul className="recommended-settings-panel__rows">
         {rows.map((row) => {
           const { label, value } = formatRecommendationRow(row, t, labelFor);
           return (
-            <li key={row.id} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                  <strong>{label}</strong>
-                  <span>{value}</span>
-                  {basisChip(row.basis)}
-                </div>
-                {row.reason ? (
-                  <p className="muted-text" style={{ margin: "2px 0 0", fontSize: 12 }}>{row.reason}</p>
-                ) : null}
+            <li key={row.id} className="recommended-settings-panel__row">
+              <div className="recommended-settings-panel__setting">
+                <strong>{label}</strong>
+                <span className="recommended-settings-panel__value">{value}</span>
+                {basisChip(row.basis)}
               </div>
+              <div className="recommended-settings-panel__action">
               {row.inUse ? (
                 <span className="badge muted">{t("recommended.inUse", { defaultValue: "In use" })}</span>
               ) : (
@@ -195,6 +191,10 @@ export function RecommendedSettingsPanel({
                   {t("recommended.use", { defaultValue: "Use" })}
                 </button>
               )}
+              </div>
+              {row.reason ? (
+                <p className="muted-text recommended-settings-panel__reason" title={row.reason}>{row.reason}</p>
+              ) : null}
             </li>
           );
         })}

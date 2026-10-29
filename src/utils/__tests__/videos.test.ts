@@ -1132,8 +1132,23 @@ describe("assessVideoGenerationSafety() with a chat model loaded", () => {
     };
     const diffusers = assessVideoGenerationSafety(common);
     const ltx = assessVideoGenerationSafety({ ...common, skipAttentionEstimate: true });
-    expect(ltx.estimatedPeakGb).toBeCloseTo(20, 0);
+    expect(ltx.estimatedPeakGb).toBeGreaterThan(20);
+    expect(ltx.estimatedPeakGb).toBeLessThan(24);
     expect(ltx.riskLevel).toBe("safe");
     expect(diffusers.estimatedPeakGb).toBeGreaterThan(ltx.estimatedPeakGb);
+  });
+
+  it("still grows with size and frames for that engine, so a 4K long clip is not 'safe'", () => {
+    const huge = assessVideoGenerationSafety({
+      width: 3840,
+      height: 2160,
+      numFrames: 481,
+      device: "mps",
+      deviceMemoryGb: 64,
+      baseModelFootprintGb: 28.5,
+      runtimeFootprintGb: 20,
+      skipAttentionEstimate: true,
+    });
+    expect(huge.riskLevel).not.toBe("safe");
   });
 });

@@ -6,6 +6,7 @@ import { RecommendedSettingsPanel } from "../RecommendedSettingsPanel";
 import {
   applyRecommendationRows,
   clampStudioSide,
+  fitStudioSize,
   recommendationRows,
   type RecommendationAppliers,
 } from "../recommendedSettings";
@@ -129,6 +130,17 @@ describe("clampStudioSide", () => {
     expect(clampStudioSide(512, { minSide: 768 }, 1024)).toBe(768);
     expect(clampStudioSide(100, {}, 1024)).toBe(256);
     expect(clampStudioSide(Number.NaN, { maxSide: 2048 }, 832)).toBe(832);
+  });
+});
+
+describe("fitStudioSize", () => {
+  it("keeps the aspect ratio when one edge is over the limit", () => {
+    expect(fitStudioSize(3000, 1688, { maxSide: 2048 })).toEqual({ width: 2048, height: 1152 });
+  });
+
+  it("leaves a size that fits alone and ignores invalid input", () => {
+    expect(fitStudioSize(1024, 768, { maxSide: 2048 })).toEqual({ width: 1024, height: 768 });
+    expect(fitStudioSize(Number.NaN, 768, { maxSide: 2048 }).height).toBe(768);
   });
 });
 

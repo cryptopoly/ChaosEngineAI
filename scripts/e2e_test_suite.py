@@ -783,6 +783,30 @@ def phase_1(cap: Capability) -> PhaseResult:
                 return "pass", "", detail
         return "skip", "no DDTree-capable model on disk", {}
 
+    # 1c3. FU-135: DFlash on a hybrid recurrent target (Qwen3.5 / 3.6 / Next) produced garbage on
+    # mlx-lm 0.32, so the worker keeps it off. The check loads one with speculative decoding
+    # requested and asserts it was refused with the explanation (and still answers), so the
+    # lane cannot be switched on again without someone noticing.
+    def _mlx_dflash_hybrid_off():
+        import os
+        if os.environ.get("CHAOSENGINE_ALLOW_HYBRID_DFLASH"):
+            return "skip", "CHAOSENGINE_ALLOW_HYBRID_DFLASH is set (testing the hybrid lane on purpose)", {}
+        for prefix in ("Qwen3.6-27B", "Qwen3.6-35B", "Qwen3.5-", "Qwen3-Coder-Next", "Qwen3-Next"):
+            pick = _pick_model_by_ref_prefix(cap.local_mlx_models, prefix)
+            if not pick:
+                continue
+            ref, path = pick
+            status, reason, detail = _load_unload_prompt(ref, path=path, backend="mlx", spec=True,
+                                                          context=4096, max_tokens=24,
+                                                          canonical_repo=ref)
+            if status != "pass":
+                return status, reason, detail
+            note = detail.get("runtimeNote") or ""
+            if detail.get("speculativeDecoding"):
+                return "fail", f"DFlash engaged on a hybrid model ({ref}); it must stay off (FU-135): {note[:160]}", detail
+            return "pass", "", detail
+        return "skip", "no hybrid Qwen3.5 / 3.6 / Next MLX model on disk", {}
+
     # 1d. MTPLX. Uses leaf-name as modelRef + canonical_repo for the registry
     # match — works around a backend gotcha where the broken-library-entry
     # rejection shadows path-load on the full ref. FU-075/079 hardening:
@@ -1145,6 +1169,7 @@ def phase_1(cap: Capability) -> PhaseResult:
         ("MLX TurboQuant cache", _mlx_turboquant),
         ("MLX + DFlash speculative", _mlx_dflash),
         ("MLX + DDTree speculative", _mlx_ddtree),
+        ("MLX DFlash stays off on hybrid models (FU-135)", _mlx_dflash_hybrid_off),
         ("MLX + MTPLX speculative", _mtplx),
         ("MLX + TensorFold exact speculative (FU-093)", _tensorfold_engine),
         ("MLX Kolibri 1, vendored architecture (FU-103)", _kolibri),

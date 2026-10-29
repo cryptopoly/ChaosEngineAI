@@ -1,13 +1,22 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 55 rows with work, decisions or watch items still open, newest first.
+summary: 56 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `CLAUDE.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-135 · DFlash on hybrid Qwen3.5 / 3.6 / Next targets produced garbage text on the release MLX stack — Mitigated 2026-10-29 (kept off on MLX)</summary>
+
+**Status or trigger:** **Mitigated 2026-10-29 (kept off on MLX); cause not isolated; real fix open.**
+
+**Notes:** Found by the 27B check for FU-112 (Qwen3.6-27B 4-bit + `z-lab/Qwen3.6-27B-DFlash`): through the app, DFlash replied with random tokens at 8 tok/s and 0.0 accepted tokens per step (plain: a correct palindrome function at 29 tok/s); the first generated token already differs from plain decoding. The bench had shown the same (4.6 to 7.1 tok/s, divergence at token 0). **Isolation (same model, same prompt, 48 tokens, the pinned dflash-mlx `fada1eb`):** mlx 0.31.2 + mlx-lm 0.31.3 works (identical text, 40 of 48 tokens from the draft in 8 steps); mlx 0.32.4 + mlx-lm 0.31.3 works; **mlx 0.32.4 + mlx-lm 0.32.2 fails**. So the break is mlx-lm 0.32, not mlx 0.32. Ruled out: the q/k normalisation epsilon (mlx-lm 0.32 `normalize_qk` scales it by `inv_scale**2`; patching it in did not help), cache truthiness, `fa_idx` / `ssm_idx` / `pipeline_layers` (consistent). Not yet looked at: the rest of the 0.32 `GatedDeltaNet` path against dflash-mlx's copy in [target_qwen_gdn.py](https://github.com/bstnxbt/dflash-mlx) (`_install_speculative_linear_cache_hook`), and the Qwen3.5 `Model` / `DecoderLayer` wrappers. Pure-attention targets (Qwen3, Qwen3-Coder-30B-A3B) are unaffected (FU-112 numbers). **What shipped:** `dflash.is_hybrid_gdn_target` (Qwen3.5-, Qwen3.6-, Qwen3-Coder-Next, Qwen3-Next); the launch list on a host without vLLM drops them (`availability_info`), and the worker refuses DFlash for any target whose adapter reports `hybrid_gdn` ("DFLASH is off for this model ..." note, standard decoding, checked live: 29.7 tok/s and a correct reply); `CHAOSENGINE_ALLOW_HYBRID_DFLASH=1` switches it back for testing; vLLM (CUDA) is unaffected. 7 tests ([test_dflash.py](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/tests/test_dflash.py), [test_mlx_worker.py](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/tests/test_mlx_worker.py)). **Why it matters:** upstream claims 2.8 to 3.1 times on exactly this model (FU-057), and the catalog and drafter map list these families, so this is the largest speed-up we cannot offer on a Mac. **Open:** (a) find the break (diff the 0.31.3 and 0.32.2 `GatedDeltaNet.__call__` and `Model` code against the hook, test with a tiny random `qwen3_5` model on real MLX) and either patch the hook from our worker or move to a newer dflash-mlx (FU-057, v0.1.10 targets the newer stack); (b) pre-release gate: a hybrid DFlash cell in the E2E suite that compares the first tokens with plain decoding, so this cannot ship silently again (the matrix only ran Qwen3-4B); (c) the same question for MTPLX and TensorFold on hybrid models is not affected (their own runtimes).
+
+</details>
 
 <details>
 <summary>FU-134 · Speculative decoding on creative prose is 2 to 4 times slower than plain — Open (2026-10-29), found by the 27B-class check in FU-112</summary>

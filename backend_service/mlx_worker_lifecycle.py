@@ -43,6 +43,11 @@ if TYPE_CHECKING:
     from backend_service.mlx_worker import WorkerState
 
 
+class _HybridDflashDisabled(Exception):
+    """Raised inside the DFlash init block to skip loading a draft for a hybrid target."""
+
+
+
 def load_model(state: WorkerState, request: dict[str, Any]) -> dict[str, Any]:
     from mlx_lm import load
 
@@ -178,14 +183,26 @@ def load_model(state: WorkerState, request: dict[str, Any]) -> dict[str, Any]:
             # the split only when the family calls for it.
             target_ops = resolve_target_ops(state._dflash_target)
             family_fn = getattr(target_ops, "family", None)
-            if (
-                family_fn is not None
-                and family_fn(state._dflash_target) == "hybrid_gdn"
-                and hasattr(target_ops, "configure_full_attention_split")
-            ):
+            is_hybrid = family_fn is not None and family_fn(state._dflash_target) == "hybrid_gdn"
+            if is_hybrid:
+                from dflash import allow_hybrid_dflash
+
+                if not allow_hybrid_dflash():
+                    # FU-135: the pinned dflash-mlx hooks the recurrent layers in a way that
+                    # produces wrong text on mlx-lm 0.32 (Qwen3.6-27B: garbage at 8 tok/s).
+                    state._dflash_target = None
+                    state.speculative_decoding = False
+                    state.tree_budget = 0
+                    raise _HybridDflashDisabled()
+            if is_hybrid and hasattr(target_ops, "configure_full_attention_split"):
                 target_ops.configure_full_attention_split(state._dflash_target, enabled=True)
             state._dflash_generator, _ = load_draft_bundle(dflash_draft_model, lazy=True)
             dflash_note = f"DFLASH speculative decoding active (draft: {dflash_draft_model})."
+        except _HybridDflashDisabled:
+            dflash_note = (
+                "DFLASH is off for this model: it is built from recurrent (gated delta) layers, and the "
+                "installed dflash-mlx produces wrong text on them. Standard generation is used."
+            )
         except ImportError as exc:
             dflash_note = f"dflash-mlx could not be imported ({exc}). Falling back to standard generation."
             state.speculative_decoding = False

@@ -368,31 +368,45 @@ class DFlashCompatibilityTests(unittest.TestCase):
         self.assertIs(worker._ddtree_target, fake_model)
         self.assertEqual(worker._ddtree_draft, "draft_bundle")
 
-    def test_load_model_applies_full_attention_split_for_hybrid_gdn(self):
-        # hybrid_gdn target (e.g. Qwen3-Next GDN): configure_full_attention_split
-        # MUST be invoked on the resolved target_ops adapter (FU-075 split path).
+    def _hybrid_load(self, env=None):
         worker = WorkerState()
         fake_model = SimpleNamespace(layers=[object(), object()])
-        fake_tokenizer = _FakeTokenizer()
         target_ops = SimpleNamespace(
             family=Mock(return_value="hybrid_gdn"),
             configure_full_attention_split=Mock(),
         )
-        fake_runtime, modules = self._fake_dflash_modules(fake_model, fake_tokenizer, target_ops)
-
-        with patch.dict("sys.modules", modules):
+        fake_runtime, modules = self._fake_dflash_modules(fake_model, _FakeTokenizer(), target_ops)
+        with patch.dict("sys.modules", modules), patch.dict("os.environ", env or {}):
             result = worker.load_model(
                 {
                     "target": "/tmp/model",
                     "speculativeDecoding": True,
-                    "dflashDraftModel": "z-lab/Qwen3-Next-DFlash",
-                    "treeBudget": 0,
+                    "dflashDraftModel": "z-lab/Qwen3.6-27B-DFlash",
+                    "treeBudget": 8,
                 }
             )
+        return worker, result, fake_model, target_ops, fake_runtime
+
+    def test_load_model_keeps_dflash_off_for_hybrid_gdn_targets(self):
+        # FU-135: the pinned dflash-mlx produced garbage on Qwen3.6-27B (mlx-lm 0.32), so a hybrid
+        # recurrent target loads without a draft and says so.
+        worker, result, _model, target_ops, fake_runtime = self._hybrid_load()
+
+        self.assertFalse(result["speculativeDecoding"])
+        self.assertEqual(result["treeBudget"], 0)
+        self.assertIn("DFLASH is off for this model", result.get("note") or "")
+        self.assertIsNone(worker._dflash_generator)
+        fake_runtime.load_draft_bundle.assert_not_called()
+        target_ops.configure_full_attention_split.assert_not_called()
+
+    def test_hybrid_gdn_dflash_can_be_switched_back_on_for_testing(self):
+        # CHAOSENGINE_ALLOW_HYBRID_DFLASH=1 is the developer switch for retrying after a dflash-mlx
+        # upgrade; the split is configured on the resolved target_ops adapter (FU-075).
+        worker, result, fake_model, target_ops, fake_runtime = self._hybrid_load({"CHAOSENGINE_ALLOW_HYBRID_DFLASH": "1"})
 
         self.assertTrue(result["speculativeDecoding"])
         target_ops.configure_full_attention_split.assert_called_once_with(fake_model, enabled=True)
-        fake_runtime.load_draft_bundle.assert_called_once_with("z-lab/Qwen3-Next-DFlash", lazy=True)
+        fake_runtime.load_draft_bundle.assert_called_once_with("z-lab/Qwen3.6-27B-DFlash", lazy=True)
 
     def test_generate_dflash_uses_runtime_summary_shape(self):
         worker = WorkerState()

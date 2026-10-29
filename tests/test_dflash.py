@@ -1,6 +1,7 @@
 """Tests for the DFLASH speculative decoding integration module."""
 
 import unittest
+import dflash
 from unittest.mock import patch, MagicMock
 from types import SimpleNamespace
 
@@ -474,3 +475,34 @@ class DFlash2DraftMapTests(unittest.TestCase):
         with patch("dflash.is_vllm_available", return_value=True), \
              patch("dflash.is_mlx_available", return_value=False):
             self.assertIn("Qwen/Qwen3.8-27B", dflash.availability_info()["supportedModels"])
+
+
+class HybridTargetGateTests(unittest.TestCase):
+    """FU-135: DFlash on hybrid recurrent targets is kept off on MLX."""
+
+    def test_the_qwen_hybrid_families_are_recognised_by_any_name(self):
+        for ref in (
+            "Qwen/Qwen3.6-27B", "mlx-community/Qwen3.6-27B-4bit", "Qwen/Qwen3.5-4B",
+            "lmstudio-community/Qwen3-Coder-Next-MLX-4bit", "Qwen/Qwen3.6-35B-A3B",
+        ):
+            self.assertTrue(dflash.is_hybrid_gdn_target(ref), ref)
+
+    def test_attention_only_targets_are_not_hybrid(self):
+        for ref in ("Qwen/Qwen3-4B", "mlx-community/Qwen3-8B-4bit", "Qwen/Qwen3-Coder-30B-A3B",
+                    "google/gemma-4-31B-it", "openai/gpt-oss-20b"):
+            self.assertFalse(dflash.is_hybrid_gdn_target(ref), ref)
+
+    def test_the_launch_list_drops_hybrids_without_vllm_and_keeps_them_with_it(self):
+        with patch.object(dflash, "is_vllm_available", return_value=False), patch.object(dflash, "is_mlx_available", return_value=True):
+            models = dflash.availability_info()["supportedModels"]
+            self.assertNotIn("Qwen/Qwen3.6-27B", models)
+            self.assertNotIn("mlx-community/Qwen3.6-27B-4bit", models)
+            self.assertIn("Qwen/Qwen3-4B", models)
+            self.assertIn("Qwen/Qwen3-Coder-30B-A3B", models)
+        with patch.object(dflash, "is_vllm_available", return_value=True), patch.object(dflash, "is_mlx_available", return_value=False):
+            self.assertIn("Qwen/Qwen3.6-27B", dflash.availability_info()["supportedModels"])
+
+    def test_the_developer_switch_restores_them(self):
+        with patch.object(dflash, "is_vllm_available", return_value=False), patch.object(dflash, "is_mlx_available", return_value=True), \
+                patch.dict("os.environ", {"CHAOSENGINE_ALLOW_HYBRID_DFLASH": "1"}):
+            self.assertIn("Qwen/Qwen3.6-27B", dflash.availability_info()["supportedModels"])

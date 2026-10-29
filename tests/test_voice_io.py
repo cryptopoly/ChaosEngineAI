@@ -190,6 +190,22 @@ class CatalogTests(unittest.TestCase):
         self.assertEqual(rows[0]["backend"], "parakeet-mlx")
         self.assertEqual([r["key"] for r in rows if r["default"]], ["parakeet-tdt-v3"])
 
+    def test_nemotron_asr_is_offered_on_the_mlx_lane_only(self) -> None:
+        mlx = {r["key"]: r for r in self._rows("mlx")}
+        self.assertEqual(mlx["nemotron-3.5-asr"]["backend"], "nemotron-asr-mlx")
+        self.assertEqual(mlx["nemotron-3.5-asr"]["id"], "mlx-community/nemotron-3.5-asr-streaming-0.6b-8bit")
+        self.assertFalse(mlx["nemotron-3.5-asr"]["default"])
+        self.assertFalse(mlx["nemotron-3.5-asr"]["translate"])
+        self.assertNotIn("nemotron-3.5-asr", {r["key"] for r in self._rows("portable")})
+
+    def test_nemotron_asr_resolves_by_key_and_by_repo(self) -> None:
+        with mock.patch.object(voice_env, "lane", return_value="mlx"), \
+                mock.patch.object(voice_env, "is_installed", return_value=True), \
+                mock.patch.object(voice_runtime, "_hf_snapshot_path", return_value=None):
+            expected = ("nemotron-asr-mlx", "mlx-community/nemotron-3.5-asr-streaming-0.6b-8bit")
+            self.assertEqual(voice_runtime.resolve_stt_model("nemotron-3.5-asr"), expected)
+            self.assertEqual(voice_runtime.resolve_stt_model(expected[1]), expected)
+
     def test_portable_lane_has_no_mlx_ids_and_defaults_to_whisper_turbo(self) -> None:
         rows = self._rows("portable")
         self.assertTrue(all(r["backend"] == "faster-whisper" for r in rows))
@@ -477,3 +493,26 @@ class VoiceRouteTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class NemotronLanguageTests(unittest.TestCase):
+    """The UI sends ISO codes; Nemotron prompts by locale key."""
+
+    class _Model:
+        prompt_dictionary = {"auto": 0, "en-US": 1, "de-DE": 2, "pt-BR": 3, "zh-CN": 4}
+
+    def test_iso_codes_map_onto_locale_keys(self) -> None:
+        from backend_service import voice_worker
+
+        model = self._Model()
+        self.assertEqual(voice_worker._nemotron_language(model, "de"), "de-DE")
+        self.assertEqual(voice_worker._nemotron_language(model, "PT"), "pt-BR")
+        self.assertEqual(voice_worker._nemotron_language(model, "en-US"), "en-US")
+
+    def test_missing_or_unknown_language_is_auto_detected(self) -> None:
+        from backend_service import voice_worker
+
+        model = self._Model()
+        self.assertEqual(voice_worker._nemotron_language(model, None), "auto")
+        self.assertEqual(voice_worker._nemotron_language(model, "xx"), "auto")
+        self.assertEqual(voice_worker._nemotron_language(object(), "de"), "auto")

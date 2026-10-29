@@ -142,6 +142,10 @@ def _load_stt(backend: str, source: str) -> Any:
             decode_audio(str(filename), sampling_rate)
         )
         model = from_pretrained(source)
+    elif backend == "nemotron-asr-mlx":
+        from mlx_audio.stt import load as load_stt  # type: ignore[import-untyped]
+
+        model = load_stt(source)
     elif backend == "mlx-whisper":
         model = source  # mlx-whisper keeps its own loaded-model cache
     elif backend == "faster-whisper":
@@ -182,6 +186,17 @@ def _parakeet_words(tokens: list[Any]) -> list[dict[str, Any]]:
     return [w for w in words if w["text"]]
 
 
+def _nemotron_language(model: Any, language: str | None) -> str:
+    """Nemotron's prompt key for an ISO code (``de`` -> ``de-DE``); ``auto`` when unknown."""
+    if not language:
+        return "auto"
+    prompts = getattr(model, "prompt_dictionary", None) or {}
+    if language in prompts:
+        return language
+    base = language.split("-")[0].lower()
+    return next((key for key in prompts if key.split("-")[0].lower() == base), "auto")
+
+
 def transcribe(request: dict[str, Any]) -> dict[str, Any]:
     """Text, segments and (when ``words``) word timings.
 
@@ -211,6 +226,21 @@ def transcribe(request: dict[str, Any]) -> dict[str, Any]:
 
     audio = decode_audio(path)
     duration = len(audio) / STT_SAMPLE_RATE
+    if backend == "nemotron-asr-mlx":
+        if task == "translate":
+            raise ValueError("Translation to English needs a Whisper model.")
+        import mlx.core as mx  # type: ignore[import-untyped]
+
+        # Chunked streaming decode: bounded memory on hour-long recordings.
+        result = model.generate(mx.array(audio), language=_nemotron_language(model, language))
+        segments = []
+        for s in getattr(result, "sentences", []) or []:
+            segment = {"start": round(float(s.start), 2), "end": round(float(s.end), 2), "text": s.text.strip()}
+            if want_words:
+                segment["words"] = _parakeet_words(s.tokens)
+            segments.append(segment)
+        # The sentences come back joined with two spaces.
+        return {"text": " ".join(result.text.split()), "language": None, "segments": segments, "durationS": round(duration, 2)}
     if backend == "mlx-whisper":
         import mlx_whisper  # type: ignore[import-untyped]
 

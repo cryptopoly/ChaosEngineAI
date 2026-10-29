@@ -8,7 +8,7 @@ export interface SttModel {
   sizeGb: number;
   installed: boolean;
   default: boolean;
-  /** "parakeet-mlx" | "mlx-whisper" | "faster-whisper". */
+  /** "parakeet-mlx" | "nemotron-asr-mlx" | "mlx-whisper" | "faster-whisper". */
   backend?: string;
   /** Can translate speech into English. */
   translate?: boolean;

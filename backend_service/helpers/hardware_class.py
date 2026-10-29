@@ -38,7 +38,7 @@ _GIB = 1024 ** 3
 _HOST_MATCH_TOLERANCE_GB = 0.6
 _METAL_PROBE_TIMEOUT_SECONDS = 8.0
 # How long a caller waits for the read before using the heuristic for this call.
-_METAL_WAIT_SECONDS = 1.5
+_METAL_WAIT_SECONDS = 6.0
 # A failed probe (slow cold import, busy machine) is retried after this long.
 _METAL_FAILURE_TTL_SECONDS = 300.0
 _HOST_CLASS_TTL_SECONDS = 60.0

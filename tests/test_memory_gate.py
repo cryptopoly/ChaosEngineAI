@@ -101,6 +101,19 @@ class GateImageModelSizeTests(unittest.TestCase):
             available_gb=40.0, pressure_percent=30.0, model_gb=23.8, model_name="FLUX.1 Dev",
         ))
 
+    def test_a_measured_peak_footprint_is_not_charged_headroom_twice(self):
+        # Qwen-Image-2.1 peaks at 50 GB: 1.1 x 50 = 55 GB would refuse a 64 GB Mac with 54 GB free.
+        refused = gate_image_generation(available_gb=54.0, pressure_percent=30.0, model_gb=50.0, model_name="Qwen-Image-2.1")
+        self.assertIsNotNone(refused)
+        allowed = gate_image_generation(
+            available_gb=54.0, pressure_percent=30.0, model_gb=50.0, model_name="Qwen-Image-2.1", headroom=1.0,
+        )
+        self.assertIsNone(allowed)
+        still_refused = gate_image_generation(
+            available_gb=48.0, pressure_percent=30.0, model_gb=50.0, model_name="Qwen-Image-2.1", headroom=1.0,
+        )
+        self.assertIsNotNone(still_refused)
+
     def test_no_size_means_no_size_check(self):
         self.assertIsNone(gate_image_generation(available_gb=8.0, pressure_percent=30.0))
 

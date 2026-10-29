@@ -118,7 +118,12 @@ export interface ChatModelsPageProps {
 
 const CHAT_GRID =
   "minmax(240px, 2fr) minmax(90px, 0.7fr) minmax(80px, 0.6fr) minmax(76px, 0.55fr) " +
-  "minmax(96px, 0.7fr) minmax(84px, 0.55fr) minmax(64px, 0.45fr) minmax(56px, 0.4fr) minmax(200px, 1fr)";
+  "minmax(112px, 0.8fr) minmax(84px, 0.55fr) minmax(64px, 0.45fr) minmax(56px, 0.4fr) minmax(232px, 1fr)";
+// Below 1440 px the Backend, Compressed and Context columns (3, 6, 7) are left out so the rest
+// fits at 1100 px.
+const CHAT_GRID_NARROW =
+  "minmax(200px, 1.8fr) minmax(80px, 0.7fr) minmax(70px, 0.55fr) minmax(112px, 0.8fr) " +
+  "minmax(64px, 0.5fr) minmax(232px, 1fr)";
 
 function directionLabel(dir: SortDir, t: TFunction<"library">): string {
   return dir === "asc"
@@ -830,6 +835,8 @@ export function ChatModelsPage({
       }}
       columns={columns}
       gridTemplate={CHAT_GRID}
+      narrowGridTemplate={CHAT_GRID_NARROW}
+      narrowHide={[3, 6, 7]}
       renderRow={renderRow}
       emptyCatalog={t("models.chat.emptyCatalog", {
         defaultValue: "No chat models in the catalog or on disk yet. Check that the backend is running, or add model directories in Settings.",

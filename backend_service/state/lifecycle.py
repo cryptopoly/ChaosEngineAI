@@ -440,6 +440,17 @@ def delete_model_path(state: ChaosEngineState, path: str) -> dict[str, Any]:
                 detail=f"Failed to delete {resolved}: {exc}",
             )
 
+        # A finished download record would keep the model "installed" in the app after its
+        # files are gone, so forget the ones whose Hugging Face cache folder was removed.
+        removed = str(resolved)
+        for repo in list(state._downloads):
+            record = state._downloads.get(repo) or {}
+            if record.get("state") != "completed":
+                continue
+            cache_folder = "models--" + repo.replace("/", "--")
+            if cache_folder in removed or removed.rstrip("/").endswith(repo):
+                state._downloads.pop(repo, None)
+
         state.add_log("library", "info", f"Deleted model at {resolved}.")
         return {
             "deleted": str(resolved),

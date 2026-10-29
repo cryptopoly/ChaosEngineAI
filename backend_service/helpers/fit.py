@@ -398,6 +398,11 @@ def best_fit_variant_id(
     fitting = [v for v in variants if (v.get("fit") or {}).get("status") == "fits"]
     if not fitting:
         return None
+    # A row that must be converted from full-precision weights first is a fallback: the
+    # recommendation goes to a row that runs as downloaded when one fits.
+    direct = [v for v in fitting if v.get("launchMode") != "convert"]
+    if direct:
+        fitting = direct
     newest = max(_release_key(v) for v in fitting)
     tied = [v for v in fitting if _release_key(v) == newest]
     if len(tied) == 1:

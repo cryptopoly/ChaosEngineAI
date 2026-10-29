@@ -131,6 +131,9 @@ _FRAME_RULES: tuple[tuple[str, int, int], ...] = (
 
 # Spatial multiple of the video VAE, patch size included.
 _VIDEO_SIZE_MULTIPLES: tuple[tuple[str, int], ...] = (
+    # ltx-2-mlx rounds to 64 itself, so the guard and the memory gate must judge that size.
+    ("ltx-2.3-mlx", 64),
+    ("ltx-2.5-mlx", 64),
     ("ltx", 32),
     ("wan", 16),
     ("hunyuan", 16),

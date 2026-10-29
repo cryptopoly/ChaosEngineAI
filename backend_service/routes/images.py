@@ -271,6 +271,7 @@ def generate_image(request: Request, body: ImageGenerationRequest) -> dict[str, 
     refusal = None
     try:
         from backend_service.helpers.memory_gate import (
+            IMAGE_MODEL_HEADROOM,
             gate_image_generation,
             model_memory_gb,
             snapshot_memory_signals,
@@ -278,8 +279,12 @@ def generate_image(request: Request, body: ImageGenerationRequest) -> dict[str, 
 
         from backend_service.helpers.generation_limits import reference_pixels
 
+        from backend_service.helpers.fit import MEASURED_FOOTPRINTS
+
         resident = variant.get("repo") == getattr(state.image_runtime, "loaded_repo", None)
         available_gb, pressure_percent = snapshot_memory_signals()
+        # A footprint that is a measured process peak already includes the headroom.
+        measured_peak = variant.get("id") in MEASURED_FOOTPRINTS or variant.get("footprintBasis") == "measured"
         # The size that will actually render (draft mode, minimum edge, per-model limits),
         # so the gate judges that and not what was typed.
         render_width, render_height, _ = _resolve_image_size(body, variant)
@@ -292,6 +297,7 @@ def generate_image(request: Request, body: ImageGenerationRequest) -> dict[str, 
             height=render_height,
             reference_pixels=reference_pixels(variant),
             footprint_gb=model_memory_gb(variant),
+            headroom=1.0 if measured_peak else IMAGE_MODEL_HEADROOM,
         )
     except Exception as gate_exc:
         state.add_log("images", "warning", f"Memory gate skipped: {gate_exc}")

@@ -97,6 +97,10 @@ export interface VideoModelsPageProps {
 const VIDEO_GRID =
   "minmax(220px, 1.8fr) minmax(95px, 0.7fr) minmax(100px, 0.75fr) minmax(82px, 0.55fr) " +
   "minmax(120px, 0.8fr) minmax(88px, 0.55fr) minmax(92px, 0.6fr) minmax(220px, 1fr)";
+// Below 1440 px the Provider and Tasks columns (2, 3) are left out so the rest fits at 1100 px.
+const VIDEO_GRID_NARROW =
+  "minmax(190px, 1.6fr) minmax(76px, 0.6fr) minmax(112px, 0.8fr) minmax(100px, 0.65fr) " +
+  "minmax(88px, 0.6fr) minmax(188px, 1fr)";
 
 const DEFAULT_SORT: DiscoverSort = "release";
 
@@ -650,6 +654,8 @@ export function VideoModelsPage({
       }}
       columns={columns}
       gridTemplate={VIDEO_GRID}
+      narrowGridTemplate={VIDEO_GRID_NARROW}
+      narrowHide={[2, 3]}
       renderRow={renderRow}
       emptyCatalog={t("models.video.emptyCatalog", {
         defaultValue: "No video models in the catalog yet. Check that the backend is running.",

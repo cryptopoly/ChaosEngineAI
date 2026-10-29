@@ -280,6 +280,13 @@ class BestFitTests(unittest.TestCase):
         small = fitted("image", APPLE_64, id="small", sizeGb=8.0, runtimeFootprintMpsGb=10.0)
         self.assertEqual(best_fit_variant_id([big, small], "image"), "small")
 
+    def test_a_row_that_runs_as_downloaded_beats_a_larger_convert_row(self):
+        direct = fitted("chat", APPLE_64, id="direct", releaseDate="2026-02", paramsB=9.0, sizeGb=5.0, launchMode="direct")
+        convert = fitted("chat", APPLE_64, id="convert", releaseDate="2026-02", paramsB=35.0, sizeGb=20.0, launchMode="convert")
+        self.assertEqual(best_fit_variant_id([convert, direct], "chat"), "direct")
+        # With nothing else that fits, the convert row is still the pick.
+        self.assertEqual(best_fit_variant_id([convert], "chat"), "convert")
+
     def test_none_when_nothing_fits(self):
         tight = fitted("image", APPLE_64, id="tight", runtimeFootprintMpsGb=40.0)
         self.assertIsNone(best_fit_variant_id([tight], "image"))

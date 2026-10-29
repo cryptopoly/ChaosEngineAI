@@ -225,6 +225,7 @@ def gate_image_generation(
     height: int | None = None,
     reference_pixels: int | None = None,
     footprint_gb: float | None = None,
+    headroom: float = IMAGE_MODEL_HEADROOM,
 ) -> dict[str, Any] | None:
     """Pre-flight check for image generation. Returns refusal or None.
 
@@ -241,13 +242,15 @@ def gate_image_generation(
     recommended resolution); a size above it is charged extra memory
     (``size_extra_gb``) and refused when the free memory cannot hold it.
     ``footprint_gb`` is the model's footprint, resident or not (default: ``model_gb``).
+    ``headroom`` multiplies the model's size for the load check; a footprint that is already a
+    measured process peak passes 1.0, as video does, so it is not counted twice.
     """
-    if model_gb and available_gb < model_gb * IMAGE_MODEL_HEADROOM:
+    if model_gb and available_gb < model_gb * headroom:
         label = model_name or "This image model"
         return {
             "code": "memory_gate_image_model_too_large",
             "message": (
-                f"{label} needs about {model_gb * IMAGE_MODEL_HEADROOM:.0f} GB "
+                f"{label} needs about {model_gb * headroom:.0f} GB "
                 f"of free memory to load, but only {available_gb:.1f} GB is "
                 "available. Close other apps, or pick a smaller or quantized "
                 "image model."
@@ -261,7 +264,7 @@ def gate_image_generation(
             width=width,
             height=height,
             available_gb=available_gb,
-            load_gb=(model_gb or 0.0) * IMAGE_MODEL_HEADROOM,
+            load_gb=(model_gb or 0.0) * headroom,
             extra_gb=size_extra_gb(
                 width, height, reference_pixels=reference_pixels, footprint_gb=footprint_gb or model_gb
             ),

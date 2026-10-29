@@ -73,6 +73,10 @@ export interface ModelsPageProps<E extends ModelEntry> {
   columns: ModelsPageColumn[];
   /** CSS grid template for name + columns + status + actions. */
   gridTemplate?: string;
+  /** Template used in a window narrower than 1440 px, with the (1-based) columns in
+   * ``narrowHide`` left out so the table fits without scrolling sideways. */
+  narrowGridTemplate?: string;
+  narrowHide?: readonly number[];
   renderRow: (row: ModelRow<E>) => ReactNode;
 
   /** Text for an empty catalog. */
@@ -115,6 +119,8 @@ export function ModelsPage<E extends ModelEntry>(props: ModelsPageProps<E>) {
     onClearFilters,
     columns,
     gridTemplate,
+    narrowGridTemplate,
+    narrowHide,
     renderRow,
     emptyCatalog,
     emptyByAvailability,
@@ -197,13 +203,20 @@ export function ModelsPage<E extends ModelEntry>(props: ModelsPageProps<E>) {
         });
 
   const gridStyle = gridTemplate
-    ? ({ ["--media-model-grid-columns" as string]: gridTemplate } as CSSProperties)
+    ? ({
+        ["--media-model-grid-columns" as string]: gridTemplate,
+        ...(narrowGridTemplate ? { ["--media-model-grid-columns-narrow" as string]: narrowGridTemplate } : {}),
+      } as CSSProperties)
     : undefined;
 
   let body: ReactNode;
   if (rows.length > 0) {
     body = (
-      <div className="media-model-table models-table" style={gridStyle}>
+      <div
+        className="media-model-table models-table"
+        style={gridStyle}
+        data-narrow-hide={narrowHide && narrowHide.length > 0 ? narrowHide.join(" ") : undefined}
+      >
         <div className="media-model-head" role="row">
           {columns.map((column) =>
             column.sortId ? (

@@ -35,12 +35,16 @@ describe("downloadActionsFor", () => {
     expect(kinds("partial", { canDeleteModel: false })).toEqual(["resume"]);
   });
 
-  it("gives a tracked-only row one disabled button whatever its state (FU-061)", () => {
-    for (const state of ["available", "installed", "downloading", "paused"] as const) {
-      const actions = downloadActionsFor({ state }, { trackedOnly: true });
-      expect(actions).toHaveLength(1);
-      expect(actions[0]).toMatchObject({ kind: "trackedOnly", disabled: true });
-    }
+  it("gives a tracked-only row that is only available one disabled button (FU-061)", () => {
+    const actions = downloadActionsFor({ state: "available" }, { trackedOnly: true });
+    expect(actions).toHaveLength(1);
+    expect(actions[0]).toMatchObject({ kind: "trackedOnly", disabled: true });
+  });
+
+  it("keeps pause, cancel and delete on a tracked-only row that has files or a transfer", () => {
+    expect(kinds("installed", { trackedOnly: true })).toEqual(["deleteModel"]);
+    expect(kinds("downloading", { trackedOnly: true })).toEqual(["pause", "cancel"]);
+    expect(kinds("paused", { trackedOnly: true })).toEqual(["resume", "deleteDownload"]);
   });
 
   it("marks destructive actions as danger", () => {

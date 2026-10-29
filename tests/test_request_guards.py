@@ -201,6 +201,11 @@ class SizeAndFrameTests(unittest.TestCase):
         self.assertEqual((width, height), (768, 512))
         self.assertIn("multiples of 32", note)
 
+    def test_ltx_mlx_video_size_snaps_to_sixty_four_like_the_engine(self):
+        width, height, note = normalize_video_size(1280, 720, "dgrauet/ltx-2.5-mlx-q4")
+        self.assertEqual((width % 64, height % 64), (0, 0))
+        self.assertIn("multiples of 64", note)
+
     def test_wan_video_size_snaps_to_sixteen(self):
         width, height, _ = normalize_video_size(833, 481, "Wan-AI/Wan2.2-TI2V-5B-Diffusers")
         self.assertEqual((width, height), (832, 480))

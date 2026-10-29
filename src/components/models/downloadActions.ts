@@ -60,8 +60,9 @@ const SPECS: Record<DownloadActionKind, DownloadActionSpec> = {
 };
 
 export interface DownloadActionOptions {
-  /** Nothing in the app can run the model yet (FU-061): one disabled
-   * download button, whatever the state. */
+  /** Nothing in the app can run the model yet (FU-061): a row that is still only
+   * available gets one disabled download button; a row with files or a transfer keeps
+   * its normal actions so the user can pause, cancel or delete what is on disk. */
   trackedOnly?: boolean;
   /** The area can delete the files of an installed model. */
   canDeleteModel?: boolean;
@@ -77,7 +78,7 @@ export function downloadActionsFor(
   status: Pick<ResolvedModelStatus, "state">,
   options: DownloadActionOptions = {},
 ): DownloadActionSpec[] {
-  if (options.trackedOnly) return [SPECS.trackedOnly];
+  if (options.trackedOnly && status.state === "available") return [SPECS.trackedOnly];
   const canDelete = options.canDeleteModel !== false;
   if (options.canDownload === false && status.state !== "installed") {
     return canDelete ? [SPECS.deleteModel] : [];

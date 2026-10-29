@@ -120,8 +120,8 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                     "6.9 GB transformer; the T5 text encoder (5.2 GB), CLIP-L and VAE "
                     "(0.6 GB together) download on the first run. Apache 2.0."
                 ),
-                "estimatedGenerationSeconds": 4.5,
-                "releaseDate": "2026-05",
+                "estimatedGenerationSeconds": 114.0,
+                "releaseDate": "2024-08",
             },
             {
                 "id": "black-forest-labs/FLUX.1-schnell-nunchaku-int4",
@@ -257,8 +257,8 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                     "(0.6 GB together) download on the first run. FLUX.1 Dev licence: "
                     "non-commercial."
                 ),
-                "estimatedGenerationSeconds": 6.0,
-                "releaseDate": "2026-05",
+                "estimatedGenerationSeconds": 230.0,
+                "releaseDate": "2024-08",
             },
             {
                 "id": "black-forest-labs/FLUX.1-dev-mflux",
@@ -786,6 +786,8 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 # The maker's default is 16; 8 looked the same on three prompts and took 40 s against
                 # 70 s on an M4 Max (2026-10-29), so the Studio starts at 8.
                 "defaultSteps": 8,
+                # 40 s measured at 1024 px / 8 steps on an M4 Max.
+                "estimatedGenerationSeconds": 40.0,
                 "recommendedResolution": "1024x1024",
                 "note": (
                     "Apple Silicon only. Distilled, no guidance: starts at 8 steps (the maker's default "
@@ -809,6 +811,8 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "sizeGb": 20.3,
                 "defaultSteps": 50,
                 "cfgOverride": 3.5,
+                # Estimate, not timed: the distilled row takes about 5 s a step and guidance doubles each step.
+                "estimatedGenerationSeconds": 500.0,
                 "recommendedResolution": "1024x1024",
                 "note": (
                     "Apple Silicon only. Undistilled Base: 50 steps with guidance 3.5, slower but "

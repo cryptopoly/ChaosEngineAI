@@ -251,7 +251,8 @@
       "guidance": "引导",
       "images": "图像数",
       "randomSeed": "随机种子",
-      "seed": "种子"
+      "seed": "种子",
+      "maxPixelsNote": "{name} 最多渲染 {megapixels} 百万像素；此尺寸会按比例缩小以适配。"
     },
     "safety": {
       "dangerTitle": "可能导致后端崩溃",
@@ -463,7 +464,8 @@
       "guidanceTooltip": "模型遵循提示词的强度。过低 = 忽略提示词;过高 = 输出僵硬或失真。推荐:LTX-Video ≈ 3、Wan ≈ 5、HunyuanVideo ≈ 6。提示词的\"反向\"方向来自上方的反向提示词。",
       "guidanceLtxWarning": "LTX-Video 是流匹配模型 — CFG 超过约 3.5 会导致过饱和并产生模糊 / 彩虹色输出。降低至 3 以获得最干净的结果。",
       "randomSeed": "随机种子",
-      "seedPlaceholder": "种子(整数)"
+      "seedPlaceholder": "种子(整数)",
+      "maxPixelsNote": "{name} 每帧最多渲染 {megapixels} 百万像素；此尺寸会按比例缩小以适配。"
     },
     "clipLength": {
       "line": "片段长度:{seconds} 秒({frames} 帧 ÷ {fps} fps)"
@@ -872,5 +874,33 @@
     "rollbackKeptTail": "以便手动恢复。",
     "close": "关闭",
     "installLog": "安装日志（{count, plural, other {# 步}}）"
+  },
+  "recommended": {
+    "title": "为本机推荐",
+    "measured": "实测",
+    "estimated": "估算",
+    "measuredTitle": "已在 {machine} 上实测计时。",
+    "estimatedTitle": "来自模型卡、上游文档或类似的机器，并未在此硬件上实测。",
+    "measuredOn": "实测于 {machine}",
+    "applyAll": "应用推荐设置",
+    "allApplied": "全部已采用",
+    "inUse": "使用中",
+    "use": "使用",
+    "on": "开",
+    "off": "关",
+    "cacheValue": "{name}，阈值 {threshold}",
+    "labels": {
+      "qualityPreset": "质量预设",
+      "steps": "步数",
+      "guidance": "引导",
+      "sampler": "采样器",
+      "size": "尺寸",
+      "numFrames": "帧数",
+      "fps": "FPS",
+      "cache": "扩散缓存",
+      "cfgDecay": "CFG 衰减",
+      "previewVae": "预览 VAE",
+      "fp8LayerwiseCasting": "FP8 逐层"
+    }
   }
 }

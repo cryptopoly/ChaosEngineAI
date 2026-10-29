@@ -251,7 +251,8 @@
       "guidance": "引導",
       "images": "影像數",
       "randomSeed": "隨機種子",
-      "seed": "種子"
+      "seed": "種子",
+      "maxPixelsNote": "{name} 最多渲染 {megapixels} 百萬像素；此尺寸會依比例縮小以符合上限。"
     },
     "safety": {
       "dangerTitle": "可能導致後端崩潰",
@@ -463,7 +464,8 @@
       "guidanceTooltip": "模型遵循提示詞的強度。過低 = 忽略提示詞;過高 = 僵硬或失真的輸出。建議值:LTX-Video 約 3、Wan 約 5、HunyuanVideo 約 6。提示詞的「反向」方向來自上方的反向提示詞。",
       "guidanceLtxWarning": "LTX-Video 是 flow-matching 模型 — CFG 高於約 3.5 會過度飽和,產生模糊 / 彩虹色輸出。降至 3 以取得最乾淨的結果。",
       "randomSeed": "隨機種子",
-      "seedPlaceholder": "種子 (整數)"
+      "seedPlaceholder": "種子 (整數)",
+      "maxPixelsNote": "{name} 每幀最多渲染 {megapixels} 百萬像素；此尺寸會依比例縮小以符合上限。"
     },
     "clipLength": {
       "line": "片段長度:{seconds} 秒 ({frames} 幀 ÷ {fps} fps)"
@@ -872,5 +874,33 @@
     "rollbackKeptTail": "以便手動復原。",
     "close": "關閉",
     "installLog": "安裝記錄（{count, plural, other {# 步}}）"
+  },
+  "recommended": {
+    "title": "為本機推薦",
+    "measured": "實測",
+    "estimated": "估算",
+    "measuredTitle": "已在 {machine} 上實測計時。",
+    "estimatedTitle": "來自模型卡片、上游文件或類似的機器，並未在此硬體上實測。",
+    "measuredOn": "實測於 {machine}",
+    "applyAll": "套用建議設定",
+    "allApplied": "全部已採用",
+    "inUse": "使用中",
+    "use": "使用",
+    "on": "開",
+    "off": "關",
+    "cacheValue": "{name}，閾值 {threshold}",
+    "labels": {
+      "qualityPreset": "品質預設",
+      "steps": "步數",
+      "guidance": "引導",
+      "sampler": "取樣器",
+      "size": "尺寸",
+      "numFrames": "幀數",
+      "fps": "FPS",
+      "cache": "擴散快取",
+      "cfgDecay": "CFG 衰減",
+      "previewVae": "預覽 VAE",
+      "fp8LayerwiseCasting": "FP8 逐層"
+    }
   }
 }

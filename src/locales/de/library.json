@@ -529,6 +529,10 @@
     "trackedOnly": {
       "tooltip": "Wird upstream beobachtet — die Nutzung im Studio ist für diese Familie noch nicht angebunden. Der Katalogeintrag dient nur zur Information; ein Download schaltet das Studio nicht frei.",
       "badge": "Upstream beobachtet"
+    },
+    "sortLabel": {
+      "likes": "Beliebteste zuerst",
+      "downloads": "Meiste Downloads zuerst"
     }
   },
   "videoDiscover": {
@@ -611,6 +615,108 @@
     "unknown": "Unbekannt",
     "longLive": {
       "installNote": "LongLive wird in einem isolierten venv unter ~/.chaosengine/longlive installiert. Nur CUDA, 5-15 min je nach Netzwerk."
+    }
+  },
+  "models": {
+    "action": {
+      "cancel": "Download abbrechen",
+      "deleteDownload": "Download löschen",
+      "deleteModel": "Modell löschen",
+      "download": "Modell herunterladen",
+      "more": "Weitere Aktionen",
+      "pause": "Download pausieren",
+      "resume": "Download fortsetzen",
+      "retry": "Download wiederholen",
+      "trackedOnly": "Nur beobachtet — noch nicht startbar"
+    },
+    "availability": {
+      "all": "Alle",
+      "attention": "Zu prüfen",
+      "available": "Verfügbar",
+      "downloading": "Wird heruntergeladen",
+      "installed": "Installiert",
+      "label": "Anzeigen"
+    },
+    "card": {
+      "collapse": "Details ausblenden",
+      "expand": "Details anzeigen",
+      "incompatible": "Läuft nicht auf diesem Rechner",
+      "incompatibleTitle": "Die Engine dieses Modells läuft nicht auf diesem Rechner. Die Dateien lassen sich trotzdem löschen."
+    },
+    "delete": {
+      "confirmShared": "{count, plural, one {# weiteres Modell nutzt} other {# weitere Modelle nutzen}} denselben Download und {count, plural, one {wird} other {werden}} ebenfalls entfernt:",
+      "confirmSharedMore": "und {count} weitere",
+      "confirmTarget": "Dadurch wird {target} von der Festplatte entfernt. Das lässt sich nicht rückgängig machen.",
+      "confirmTitle": "Dateien von „{name}“ löschen?"
+    },
+    "detail": {
+      "engine": "Engine",
+      "fit": "Eignung für diesen Rechner",
+      "license": "Lizenz",
+      "localPath": "Auf der Festplatte",
+      "openModelCard": "Modellkarte öffnen",
+      "repo": "Repository",
+      "resolution": "Empfohlene Größe",
+      "sharedWith": "Teilt den Download mit",
+      "warning": "Hinweis"
+    },
+    "empty": {
+      "availability": "Mit den aktuellen Filtern gibt es keine Modelle in „{bucket}“.",
+      "catalog": "Noch keine Modelle im Katalog.",
+      "filters": "Keine Modelle passen zu den aktuellen Filtern. Versuche, die Filter oder Suchbegriffe zu erweitern.",
+      "showAvailable": "Verfügbare Modelle anzeigen"
+    },
+    "filter": {
+      "clear": "Filter zurücksetzen",
+      "search": "Suchen",
+      "sortBy": "Sortieren nach"
+    },
+    "fit": {
+      "bestFit": "Beste Wahl",
+      "bestFitTitle": "Die Empfehlung aus dieser Familie für diesen Rechner: die neueste Version, die komfortabel passt.",
+      "estimated": "geschätzt",
+      "estimatedNote": "Aus der Modellgröße geschätzt, nicht auf diesem Rechner gemessen.",
+      "estimatedShort": "gesch.",
+      "fits": "Passt",
+      "measured": "gemessen",
+      "measuredNote": "Auf diesem Rechner gemessen.",
+      "numbers": "Benötigt etwa {need} GB der {usable} GB, die auf diesem Rechner nutzbar sind.",
+      "tight": "Knapp",
+      "unknown": "Nicht für diesen Rechner",
+      "wontFit": "Passt nicht"
+    },
+    "image": {
+      "emptyAttention": "Kein Bildmodell muss geprüft werden.",
+      "emptyCatalog": "Noch keine Bildmodelle im Katalog. Prüfe, ob das Backend läuft.",
+      "emptyDownloading": "Es wird kein Bildmodell heruntergeladen.",
+      "emptyInstalled": "Noch keine Bildmodelle installiert. Wähle unter den verfügbaren Modellen eines zum Herunterladen aus.",
+      "intro": "Alle Bildmodelle in einer Liste. Lade eines herunter, um es im Bildstudio zu nutzen; filtere nach installiert, verfügbar oder Download läuft."
+    },
+    "legacy": {
+      "catalog": "Katalog durchsuchen",
+      "installed": "Installiert",
+      "label": "Ansicht"
+    },
+    "sort": {
+      "fewestDownloads": "Wenigste Downloads zuerst",
+      "leastLiked": "Am wenigsten beliebte zuerst"
+    },
+    "status": {
+      "available": "Nicht installiert",
+      "broken": "Defekt",
+      "downloading": "Wird heruntergeladen",
+      "failed": "Fehlgeschlagen",
+      "failedDetail": "Download fehlgeschlagen",
+      "installed": "Installiert",
+      "loaded": "Im Speicher geladen",
+      "partial": "Unvollständig",
+      "paused": "Pausiert"
+    },
+    "subtitle": "{shown} von {total, plural, one {# Modell} other {# Modellen}} · {installed} installiert",
+    "summary": {
+      "availability": "Angezeigt: {bucket}",
+      "count": "{count, plural, one {# Modell} other {# Modelle}} · {sortLabel}",
+      "search": "Suche: {query}"
     }
   }
 }

@@ -251,7 +251,8 @@
       "guidance": "Guidance",
       "images": "Images",
       "randomSeed": "Random seed",
-      "seed": "Seed"
+      "seed": "Seed",
+      "maxPixelsNote": "{name} renders at most {megapixels} megapixels; this size is reduced to fit, keeping its shape."
     },
     "safety": {
       "dangerTitle": "Likely to crash the backend",
@@ -463,7 +464,8 @@
       "guidanceTooltip": "How strongly the model follows your prompt. Too low = ignores the prompt; too high = rigid or distorted output. Recommended: LTX-Video ≈ 3, Wan ≈ 5, HunyuanVideo ≈ 6. The prompt's 'negative' direction comes from the Negative prompt above.",
       "guidanceLtxWarning": "LTX-Video is a flow-matching model — CFG above ~3.5 over-saturates and produces blurred / rainbow output. Lower to 3 for the cleanest results.",
       "randomSeed": "Random seed",
-      "seedPlaceholder": "Seed (integer)"
+      "seedPlaceholder": "Seed (integer)",
+      "maxPixelsNote": "{name} renders at most {megapixels} megapixels per frame; this size is reduced to fit, keeping its shape."
     },
     "clipLength": {
       "line": "Clip length: {seconds}s ({frames} frames ÷ {fps} fps)"
@@ -872,5 +874,33 @@
     "rollbackKeptTail": "for manual recovery.",
     "close": "Close",
     "installLog": "Install log ({count, plural, one {# step} other {# steps}})"
+  },
+  "recommended": {
+    "title": "Recommended for this machine",
+    "measured": "Measured",
+    "estimated": "Estimated",
+    "measuredTitle": "Timed on {machine}.",
+    "estimatedTitle": "From the model card, upstream documentation or a similar machine; not timed on this hardware.",
+    "measuredOn": "timed on {machine}",
+    "applyAll": "Apply recommended",
+    "allApplied": "All in use",
+    "inUse": "In use",
+    "use": "Use",
+    "on": "On",
+    "off": "Off",
+    "cacheValue": "{name}, threshold {threshold}",
+    "labels": {
+      "qualityPreset": "Quality preset",
+      "steps": "Steps",
+      "guidance": "Guidance",
+      "sampler": "Sampler",
+      "size": "Size",
+      "numFrames": "Frames",
+      "fps": "FPS",
+      "cache": "Diffusion cache",
+      "cfgDecay": "CFG decay",
+      "previewVae": "Preview VAE",
+      "fp8LayerwiseCasting": "FP8 layerwise"
+    }
   }
 }

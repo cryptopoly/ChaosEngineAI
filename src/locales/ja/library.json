@@ -529,6 +529,10 @@
     "trackedOnly": {
       "tooltip": "上流を監視中 — このファミリーのスタジオでの実行にはまだ対応していません。カタログへの掲載は情報提供のためで、ダウンロードしてもスタジオでは使えません。",
       "badge": "上流を監視中"
+    },
+    "sortLabel": {
+      "likes": "いいねが多い順",
+      "downloads": "ダウンロード数が多い順"
     }
   },
   "videoDiscover": {
@@ -611,6 +615,108 @@
     "unknown": "不明",
     "longLive": {
       "installNote": "LongLive は ~/.chaosengine/longlive の隔離された venv にインストールされます。CUDA のみ、ネットワークによって 5~15 分。"
+    }
+  },
+  "models": {
+    "action": {
+      "cancel": "ダウンロードをキャンセル",
+      "deleteDownload": "ダウンロードを削除",
+      "deleteModel": "モデルを削除",
+      "download": "モデルをダウンロード",
+      "more": "その他の操作",
+      "pause": "ダウンロードを一時停止",
+      "resume": "ダウンロードを再開",
+      "retry": "ダウンロードを再試行",
+      "trackedOnly": "追跡のみ — まだ起動できません"
+    },
+    "availability": {
+      "all": "すべて",
+      "attention": "要確認",
+      "available": "ダウンロード可能",
+      "downloading": "ダウンロード中",
+      "installed": "インストール済み",
+      "label": "表示"
+    },
+    "card": {
+      "collapse": "詳細を隠す",
+      "expand": "詳細を表示",
+      "incompatible": "このマシンでは実行できません",
+      "incompatibleTitle": "このモデルのエンジンはこのマシンでは動作しません。ファイルの削除は可能です。"
+    },
+    "delete": {
+      "confirmShared": "{count, plural, other {他の # 個のモデル}}が同じダウンロードを使用しており、一緒に削除されます:",
+      "confirmSharedMore": "ほか {count} 件",
+      "confirmTarget": "ディスクから {target} を削除します。この操作は元に戻せません。",
+      "confirmTitle": "「{name}」のファイルを削除しますか？"
+    },
+    "detail": {
+      "engine": "エンジン",
+      "fit": "このマシンでの適合性",
+      "license": "ライセンス",
+      "localPath": "ディスク上の場所",
+      "openModelCard": "モデルカードを開く",
+      "repo": "リポジトリ",
+      "resolution": "推奨サイズ",
+      "sharedWith": "次のモデルとダウンロードを共有",
+      "warning": "注意"
+    },
+    "empty": {
+      "availability": "現在のフィルターでは、「{bucket}」のモデルはありません。",
+      "catalog": "カタログにはまだモデルがありません。",
+      "filters": "現在のフィルターに一致するモデルはありません。フィルターまたは検索語の範囲を広げてみてください。",
+      "showAvailable": "ダウンロード可能なモデルを表示"
+    },
+    "filter": {
+      "clear": "フィルターをクリア",
+      "search": "検索",
+      "sortBy": "並べ替え"
+    },
+    "fit": {
+      "bestFit": "最適",
+      "bestFitTitle": "このマシンに最適なこのファミリーのモデル:余裕を持って収まる最新リリースです。",
+      "estimated": "推定",
+      "estimatedNote": "モデルサイズからの推定値で、このマシンでは測定していません。",
+      "estimatedShort": "推定",
+      "fits": "収まる",
+      "measured": "実測",
+      "measuredNote": "このマシンで測定した値です。",
+      "numbers": "約 {need} GB が必要です(このマシンで使えるのは {usable} GB)。",
+      "tight": "ギリギリ",
+      "unknown": "このマシン向けではありません",
+      "wontFit": "収まらない"
+    },
+    "image": {
+      "emptyAttention": "要確認の画像モデルはありません。",
+      "emptyCatalog": "カタログにはまだ画像モデルがありません。バックエンドが起動しているか確認してください。",
+      "emptyDownloading": "ダウンロード中の画像モデルはありません。",
+      "emptyInstalled": "インストール済みの画像モデルはまだありません。ダウンロード可能なモデルから選んでダウンロードしてください。",
+      "intro": "すべての画像モデルを 1 つのリストにまとめました。ダウンロードすると画像スタジオで使えます。インストール済み・ダウンロード可能・ダウンロード中で絞り込めます。"
+    },
+    "legacy": {
+      "catalog": "カタログを閲覧",
+      "installed": "インストール済み",
+      "label": "表示"
+    },
+    "sort": {
+      "fewestDownloads": "ダウンロード数が少ない順",
+      "leastLiked": "いいねが少ない順"
+    },
+    "status": {
+      "available": "未インストール",
+      "broken": "破損",
+      "downloading": "ダウンロード中",
+      "failed": "失敗",
+      "failedDetail": "ダウンロード失敗",
+      "installed": "インストール済み",
+      "loaded": "メモリに読み込み済み",
+      "partial": "不完全",
+      "paused": "一時停止"
+    },
+    "subtitle": "{total, plural, other {# 個のモデル}}中 {shown} 個を表示 · インストール済み {installed} 個",
+    "summary": {
+      "availability": "表示:{bucket}",
+      "count": "{count, plural, other {# 個のモデル}} · {sortLabel}",
+      "search": "検索:{query}"
     }
   }
 }

@@ -529,6 +529,10 @@
     "trackedOnly": {
       "tooltip": "持續關注上游 — 此系列在工作室中的執行尚未串接。目錄項目僅供參考，下載後也無法在工作室中使用。",
       "badge": "關注上游中"
+    },
+    "sortLabel": {
+      "likes": "最多按讚優先",
+      "downloads": "最多下載優先"
     }
   },
   "videoDiscover": {
@@ -611,6 +615,108 @@
     "unknown": "未知",
     "longLive": {
       "installNote": "LongLive 將安裝至 ~/.chaosengine/longlive 的獨立 venv。僅限 CUDA,依網路速度需 5-15 分鐘。"
+    }
+  },
+  "models": {
+    "action": {
+      "cancel": "取消下載",
+      "deleteDownload": "刪除下載",
+      "deleteModel": "刪除模型",
+      "download": "下載模型",
+      "more": "更多操作",
+      "pause": "暫停下載",
+      "resume": "恢復下載",
+      "retry": "重試下載",
+      "trackedOnly": "僅追蹤 — 尚無法啟動"
+    },
+    "availability": {
+      "all": "全部",
+      "attention": "需要留意",
+      "available": "可下載",
+      "downloading": "下載中",
+      "installed": "已安裝",
+      "label": "顯示"
+    },
+    "card": {
+      "collapse": "收合詳細資訊",
+      "expand": "展開詳細資訊",
+      "incompatible": "無法在本機執行",
+      "incompatibleTitle": "它的引擎無法在本機執行，但仍可刪除其檔案。"
+    },
+    "delete": {
+      "confirmShared": "{count, plural, other {另有 # 個模型}}使用同一份下載，也會一併刪除：",
+      "confirmSharedMore": "以及另外 {count} 個",
+      "confirmTarget": "這會從磁碟移除 {target}，且無法復原。",
+      "confirmTitle": "刪除「{name}」的檔案？"
+    },
+    "detail": {
+      "engine": "引擎",
+      "fit": "在本機上的適配度",
+      "license": "授權",
+      "localPath": "磁碟位置",
+      "openModelCard": "開啟模型卡片",
+      "repo": "儲存庫",
+      "resolution": "推薦尺寸",
+      "sharedWith": "與以下模型共用下載",
+      "warning": "注意"
+    },
+    "empty": {
+      "availability": "目前的篩選條件下，「{bucket}」中沒有模型。",
+      "catalog": "目錄中尚無模型。",
+      "filters": "沒有模型符合目前的篩選條件。請嘗試擴大篩選條件或搜尋字詞。",
+      "showAvailable": "顯示可下載的模型"
+    },
+    "filter": {
+      "clear": "清除篩選器",
+      "search": "搜尋",
+      "sortBy": "排序方式"
+    },
+    "fit": {
+      "bestFit": "最適合",
+      "bestFitTitle": "本機在此系列中的首選：能舒適容納的最新版本。",
+      "estimated": "估算",
+      "estimatedNote": "依模型大小估算，未在本機實測。",
+      "estimatedShort": "估算",
+      "fits": "可容納",
+      "measured": "實測",
+      "measuredNote": "已在本機實測。",
+      "numbers": "需要約 {need} GB，本機可用 {usable} GB。",
+      "tight": "勉強",
+      "unknown": "不適合本機",
+      "wontFit": "放不下"
+    },
+    "image": {
+      "emptyAttention": "沒有需要留意的影像模型。",
+      "emptyCatalog": "目錄中尚無影像模型。請確認後端正在執行。",
+      "emptyDownloading": "沒有正在下載的影像模型。",
+      "emptyInstalled": "尚未安裝影像模型。請從可下載的模型中挑選一個來下載。",
+      "intro": "所有影像模型集中在同一份清單。下載後即可在影像工作室中使用；可依已安裝、可下載或下載中篩選。"
+    },
+    "legacy": {
+      "catalog": "瀏覽目錄",
+      "installed": "已安裝",
+      "label": "檢視"
+    },
+    "sort": {
+      "fewestDownloads": "最少下載優先",
+      "leastLiked": "最少按讚優先"
+    },
+    "status": {
+      "available": "未安裝",
+      "broken": "損壞",
+      "downloading": "下載中",
+      "failed": "失敗",
+      "failedDetail": "下載失敗",
+      "installed": "已安裝",
+      "loaded": "已載入記憶體",
+      "partial": "不完整",
+      "paused": "已暫停"
+    },
+    "subtitle": "{total, plural, other {# 個模型}}中顯示 {shown} 個 · 已安裝 {installed} 個",
+    "summary": {
+      "availability": "顯示:{bucket}",
+      "count": "{count, plural, other {# 個模型}} · {sortLabel}",
+      "search": "搜尋:{query}"
     }
   }
 }

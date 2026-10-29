@@ -35,7 +35,8 @@
     "diagnostics": "Diagnose",
     "voiceStudio": "Sprachstudio",
     "voiceModels": "Sprachmodelle",
-    "voiceLibrary": "Sprachbibliothek"
+    "voiceLibrary": "Sprachbibliothek",
+    "chatModels": "Chat-Modelle"
   },
   "tabCaptions": {
     "dashboard": "Systemübersicht",
@@ -63,7 +64,10 @@
     "settings": "Verzeichnisse und Standardwerte",
     "voiceStudio": "Aufnehmen, transkribieren und sprechen",
     "voiceModels": "STT- und TTS-Modelle verwalten",
-    "voiceLibrary": "Deine Transkripte und Sprachausgaben"
+    "voiceLibrary": "Deine Transkripte und Sprachausgaben",
+    "chatModels": "Sprachmodelle finden, herunterladen und verwalten",
+    "imageModelsPage": "Bildmodelle finden, herunterladen und verwalten",
+    "videoModelsPage": "Videomodelle finden, herunterladen und verwalten"
   },
   "tabShortLabels": {
     "chat": "Chat",
@@ -87,7 +91,8 @@
     "plugins": "Plugins",
     "voiceStudio": "Studio",
     "voiceModels": "Meine Modelle",
-    "voiceLibrary": "Bibliothek"
+    "voiceLibrary": "Bibliothek",
+    "models": "Modelle"
   },
   "tabGroups": {
     "chat": "Chat",

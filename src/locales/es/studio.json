@@ -251,7 +251,8 @@
       "guidance": "Guidance",
       "images": "Imágenes",
       "randomSeed": "Semilla aleatoria",
-      "seed": "Semilla"
+      "seed": "Semilla",
+      "maxPixelsNote": "{name} renderiza como máximo {megapixels} megapíxeles; este tamaño se reduce para ajustarse, manteniendo su proporción."
     },
     "safety": {
       "dangerTitle": "Probable que rompa el backend",
@@ -463,7 +464,8 @@
       "guidanceTooltip": "Qué tan fuertemente el modelo sigue tu prompt. Demasiado bajo = ignora el prompt; demasiado alto = salida rígida o distorsionada. Recomendado: LTX-Video ≈ 3, Wan ≈ 5, HunyuanVideo ≈ 6. La dirección 'negativa' del prompt viene del Prompt negativo de arriba.",
       "guidanceLtxWarning": "LTX-Video es un modelo flow-matching — CFG por encima de ~3,5 sobresatura y produce salida borrosa / arcoíris. Baja a 3 para los resultados más limpios.",
       "randomSeed": "Semilla aleatoria",
-      "seedPlaceholder": "Semilla (entero)"
+      "seedPlaceholder": "Semilla (entero)",
+      "maxPixelsNote": "{name} renderiza como máximo {megapixels} megapíxeles por fotograma; este tamaño se reduce para ajustarse, manteniendo su proporción."
     },
     "clipLength": {
       "line": "Duración del clip: {seconds}s ({frames} fotogramas ÷ {fps} fps)"
@@ -872,5 +874,33 @@
     "rollbackKeptTail": "para la recuperación manual.",
     "close": "Cerrar",
     "installLog": "Registro de instalación ({count, plural, one {# paso} other {# pasos}})"
+  },
+  "recommended": {
+    "title": "Recomendado para esta máquina",
+    "measured": "Medido",
+    "estimated": "Estimado",
+    "measuredTitle": "Medido en {machine}.",
+    "estimatedTitle": "Procede de la ficha del modelo, de la documentación upstream o de una máquina similar; no medido en este hardware.",
+    "measuredOn": "medido en {machine}",
+    "applyAll": "Aplicar lo recomendado",
+    "allApplied": "Todo en uso",
+    "inUse": "En uso",
+    "use": "Usar",
+    "on": "Activado",
+    "off": "Desactivado",
+    "cacheValue": "{name}, umbral {threshold}",
+    "labels": {
+      "qualityPreset": "Preajuste de calidad",
+      "steps": "Pasos",
+      "guidance": "Guidance",
+      "sampler": "Sampler",
+      "size": "Tamaño",
+      "numFrames": "Fotogramas",
+      "fps": "FPS",
+      "cache": "Caché de difusión",
+      "cfgDecay": "Decay de CFG",
+      "previewVae": "Preview VAE",
+      "fp8LayerwiseCasting": "FP8 layerwise"
+    }
   }
 }

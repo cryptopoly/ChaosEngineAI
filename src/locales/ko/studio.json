@@ -251,7 +251,8 @@
       "guidance": "가이던스",
       "images": "이미지",
       "randomSeed": "랜덤 시드",
-      "seed": "시드"
+      "seed": "시드",
+      "maxPixelsNote": "{name}의 최대 렌더링 크기는 {megapixels}메가픽셀입니다. 이 크기는 비율을 유지한 채 줄여서 맞춥니다."
     },
     "safety": {
       "dangerTitle": "백엔드가 충돌할 가능성이 있음",
@@ -463,7 +464,8 @@
       "guidanceTooltip": "모델이 프롬프트를 얼마나 강하게 따르는지. 너무 낮음 = 프롬프트 무시; 너무 높음 = 경직되거나 왜곡된 출력. 권장: LTX-Video ≈ 3, Wan ≈ 5, HunyuanVideo ≈ 6. 프롬프트의 '네거티브' 방향은 위의 네거티브 프롬프트에서 옵니다.",
       "guidanceLtxWarning": "LTX-Video는 flow-matching 모델입니다 — CFG가 ~3.5를 초과하면 과포화되고 흐릿한/무지개색 출력이 생성됩니다. 가장 깔끔한 결과를 위해 3으로 낮추세요.",
       "randomSeed": "랜덤 시드",
-      "seedPlaceholder": "시드 (정수)"
+      "seedPlaceholder": "시드 (정수)",
+      "maxPixelsNote": "{name}의 프레임당 최대 렌더링 크기는 {megapixels}메가픽셀입니다. 이 크기는 비율을 유지한 채 줄여서 맞춥니다."
     },
     "clipLength": {
       "line": "클립 길이: {seconds}초 ({frames} 프레임 ÷ {fps} fps)"
@@ -872,5 +874,33 @@
     "rollbackKeptTail": "수동 복구용으로 보관됩니다.",
     "close": "닫기",
     "installLog": "설치 로그 ({count, plural, other {#단계}})"
+  },
+  "recommended": {
+    "title": "이 컴퓨터 권장 설정",
+    "measured": "측정값",
+    "estimated": "추정값",
+    "measuredTitle": "{machine}에서 측정했습니다.",
+    "estimatedTitle": "모델 카드, 업스트림 문서 또는 비슷한 컴퓨터에서 가져온 값이며, 이 하드웨어에서 측정한 것이 아닙니다.",
+    "measuredOn": "{machine}에서 측정",
+    "applyAll": "권장값 적용",
+    "allApplied": "모두 사용 중",
+    "inUse": "사용 중",
+    "use": "사용",
+    "on": "켜짐",
+    "off": "꺼짐",
+    "cacheValue": "{name}, 임계값 {threshold}",
+    "labels": {
+      "qualityPreset": "품질 프리셋",
+      "steps": "단계",
+      "guidance": "가이던스",
+      "sampler": "샘플러",
+      "size": "크기",
+      "numFrames": "프레임",
+      "fps": "FPS",
+      "cache": "디퓨전 캐시",
+      "cfgDecay": "CFG 감쇠",
+      "previewVae": "미리보기 VAE",
+      "fp8LayerwiseCasting": "FP8 레이어별"
+    }
   }
 }

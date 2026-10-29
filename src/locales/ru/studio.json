@@ -251,7 +251,8 @@
       "guidance": "Guidance",
       "images": "Изображения",
       "randomSeed": "Случайный сид",
-      "seed": "Сид"
+      "seed": "Сид",
+      "maxPixelsNote": "{name} создаёт изображения до {megapixels} Мп; этот размер будет уменьшен с сохранением пропорций."
     },
     "safety": {
       "dangerTitle": "Вероятно, обрушит бэкенд",
@@ -463,7 +464,8 @@
       "guidanceTooltip": "Насколько строго модель следует вашему промпту. Слишком низко = игнорирует промпт; слишком высоко = жёсткий или искажённый вывод. Рекомендовано: LTX-Video ≈ 3, Wan ≈ 5, HunyuanVideo ≈ 6. «Негативное» направление промпта берётся из Негативного промпта выше.",
       "guidanceLtxWarning": "LTX-Video — это flow-matching модель — CFG выше ~3.5 пересатурирует и даёт размытый / радужный вывод. Снизьте до 3 для самых чистых результатов.",
       "randomSeed": "Случайный сид",
-      "seedPlaceholder": "Сид (целое число)"
+      "seedPlaceholder": "Сид (целое число)",
+      "maxPixelsNote": "{name} создаёт кадры до {megapixels} Мп; этот размер будет уменьшен с сохранением пропорций."
     },
     "clipLength": {
       "line": "Длина клипа: {seconds}с ({frames} кадров ÷ {fps} fps)"
@@ -872,5 +874,33 @@
     "rollbackKeptTail": "для ручного восстановления.",
     "close": "Закрыть",
     "installLog": "Журнал установки ({count, plural, one {# шаг} few {# шага} many {# шагов} other {# шага}})"
+  },
+  "recommended": {
+    "title": "Рекомендуется для этого компьютера",
+    "measured": "Измерено",
+    "estimated": "Расчётно",
+    "measuredTitle": "Замер выполнен на {machine}.",
+    "estimatedTitle": "Взято из карточки модели, документации разработчиков или с похожего компьютера; на этом оборудовании не замерялось.",
+    "measuredOn": "замер на {machine}",
+    "applyAll": "Применить рекомендуемое",
+    "allApplied": "Всё применено",
+    "inUse": "Применено",
+    "use": "Применить",
+    "on": "Вкл",
+    "off": "Выкл",
+    "cacheValue": "{name}, порог {threshold}",
+    "labels": {
+      "qualityPreset": "Пресет качества",
+      "steps": "Шаги",
+      "guidance": "Guidance",
+      "sampler": "Сэмплер",
+      "size": "Размер",
+      "numFrames": "Кадры",
+      "fps": "FPS",
+      "cache": "Кэш диффузии",
+      "cfgDecay": "Затухание CFG",
+      "previewVae": "Предпросмотровый VAE",
+      "fp8LayerwiseCasting": "FP8 послойно"
+    }
   }
 }

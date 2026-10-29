@@ -35,7 +35,8 @@
     "diagnostics": "진단",
     "voiceStudio": "음성 스튜디오",
     "voiceModels": "음성 모델",
-    "voiceLibrary": "음성 라이브러리"
+    "voiceLibrary": "음성 라이브러리",
+    "chatModels": "채팅 모델"
   },
   "tabCaptions": {
     "dashboard": "시스템 개요",
@@ -63,7 +64,10 @@
     "settings": "디렉터리 및 기본값",
     "voiceStudio": "녹음, 받아쓰기, 음성 합성",
     "voiceModels": "STT 및 TTS 모델 관리",
-    "voiceLibrary": "만든 받아쓰기와 음성"
+    "voiceLibrary": "만든 받아쓰기와 음성",
+    "chatModels": "언어 모델 찾기, 다운로드 및 관리",
+    "imageModelsPage": "이미지 모델 찾기, 다운로드 및 관리",
+    "videoModelsPage": "비디오 모델 찾기, 다운로드 및 관리"
   },
   "tabShortLabels": {
     "chat": "채팅",
@@ -87,7 +91,8 @@
     "plugins": "플러그인",
     "voiceStudio": "스튜디오",
     "voiceModels": "내 모델",
-    "voiceLibrary": "라이브러리"
+    "voiceLibrary": "라이브러리",
+    "models": "모델"
   },
   "tabGroups": {
     "chat": "채팅",

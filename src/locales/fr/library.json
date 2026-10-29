@@ -529,6 +529,10 @@
     "trackedOnly": {
       "tooltip": "Suivi en amont — l'utilisation dans Studio n'est pas encore branchée pour cette famille. L'entrée du catalogue est là à titre informatif ; le téléchargement ne débloquera pas Studio.",
       "badge": "Suivi en amont"
+    },
+    "sortLabel": {
+      "likes": "favoris en premier",
+      "downloads": "téléchargements en premier"
     }
   },
   "videoDiscover": {
@@ -611,6 +615,108 @@
     "unknown": "Inconnu",
     "longLive": {
       "installNote": "LongLive s'installe dans un venv isolé à ~/.chaosengine/longlive. CUDA uniquement, 5-15 min selon le réseau."
+    }
+  },
+  "models": {
+    "action": {
+      "cancel": "Annuler le téléchargement",
+      "deleteDownload": "Supprimer le téléchargement",
+      "deleteModel": "Supprimer le modèle",
+      "download": "Télécharger le modèle",
+      "more": "Plus d'actions",
+      "pause": "Mettre le téléchargement en pause",
+      "resume": "Reprendre le téléchargement",
+      "retry": "Réessayer le téléchargement",
+      "trackedOnly": "Suivi uniquement — pas encore lançable"
+    },
+    "availability": {
+      "all": "Tous",
+      "attention": "À vérifier",
+      "available": "Disponibles",
+      "downloading": "Téléchargement",
+      "installed": "Installés",
+      "label": "Afficher"
+    },
+    "card": {
+      "collapse": "Masquer les détails",
+      "expand": "Afficher les détails",
+      "incompatible": "Ne peut pas s'exécuter sur cette machine",
+      "incompatibleTitle": "Son moteur ne fonctionne pas sur cette machine. Vous pouvez quand même supprimer ses fichiers."
+    },
+    "delete": {
+      "confirmShared": "{count, plural, one {# autre modèle utilise} other {# autres modèles utilisent}} le même téléchargement et {count, plural, one {sera supprimé} other {seront supprimés}} aussi :",
+      "confirmSharedMore": "et {count} de plus",
+      "confirmTarget": "Cela supprime {target} du disque. Cette action est irréversible.",
+      "confirmTitle": "Supprimer les fichiers de « {name} » ?"
+    },
+    "detail": {
+      "engine": "Moteur",
+      "fit": "Adéquation à cette machine",
+      "license": "Licence",
+      "localPath": "Sur le disque",
+      "openModelCard": "Ouvrir la fiche du modèle",
+      "repo": "Dépôt",
+      "resolution": "Taille recommandée",
+      "sharedWith": "Partage son téléchargement avec",
+      "warning": "Remarque"
+    },
+    "empty": {
+      "availability": "Aucun modèle dans « {bucket} » avec les filtres actuels.",
+      "catalog": "Aucun modèle dans le catalogue pour l'instant.",
+      "filters": "Aucun modèle ne correspond aux filtres actuels. Essayez d'élargir les filtres ou les termes de recherche.",
+      "showAvailable": "Afficher les modèles disponibles"
+    },
+    "filter": {
+      "clear": "Effacer les filtres",
+      "search": "Rechercher",
+      "sortBy": "Trier par"
+    },
+    "fit": {
+      "bestFit": "Meilleur choix",
+      "bestFitTitle": "Le meilleur choix de cette famille pour cette machine : la version la plus récente qui tient confortablement.",
+      "estimated": "estimé",
+      "estimatedNote": "Estimé d'après la taille du modèle ; non mesuré sur cette machine.",
+      "estimatedShort": "est.",
+      "fits": "Tient",
+      "measured": "mesuré",
+      "measuredNote": "Mesuré sur cette machine.",
+      "numbers": "Nécessite environ {need} Go sur les {usable} Go utilisables sur cette machine.",
+      "tight": "Juste",
+      "unknown": "Pas pour cette machine",
+      "wontFit": "Ne tient pas"
+    },
+    "image": {
+      "emptyAttention": "Aucun modèle d'image ne demande d'attention.",
+      "emptyCatalog": "Aucun modèle d'image dans le catalogue pour l'instant. Vérifiez que le backend est lancé.",
+      "emptyDownloading": "Aucun modèle d'image n'est en cours de téléchargement.",
+      "emptyInstalled": "Aucun modèle d'image installé pour l'instant. Choisissez-en un parmi les modèles disponibles pour le télécharger.",
+      "intro": "Tous les modèles d'image dans une seule liste. Téléchargez-en un pour l'utiliser dans Studio image ; filtrez par modèles installés, disponibles ou en cours de téléchargement."
+    },
+    "legacy": {
+      "catalog": "Parcourir le catalogue",
+      "installed": "Installé",
+      "label": "Vue"
+    },
+    "sort": {
+      "fewestDownloads": "moins de téléchargements en premier",
+      "leastLiked": "moins de favoris en premier"
+    },
+    "status": {
+      "available": "Non installé",
+      "broken": "Corrompu",
+      "downloading": "Téléchargement",
+      "failed": "Échec",
+      "failedDetail": "Échec du téléchargement",
+      "installed": "Installé",
+      "loaded": "Chargé en mémoire",
+      "partial": "Incomplet",
+      "paused": "En pause"
+    },
+    "subtitle": "{shown} sur {total, plural, one {# modèle} other {# modèles}} · installés : {installed}",
+    "summary": {
+      "availability": "Affichage : {bucket}",
+      "count": "{count, plural, one {# modèle} other {# modèles}} · {sortLabel}",
+      "search": "Recherche : {query}"
     }
   }
 }

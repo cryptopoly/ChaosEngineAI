@@ -529,6 +529,10 @@
     "trackedOnly": {
       "tooltip": "En seguimiento upstream — el uso en Studio aún no está conectado para esta familia. La entrada del catálogo es solo informativa; descargarla no desbloquea Studio.",
       "badge": "Seguimiento upstream"
+    },
+    "sortLabel": {
+      "likes": "más valorado primero",
+      "downloads": "más descargas primero"
     }
   },
   "videoDiscover": {
@@ -611,6 +615,108 @@
     "unknown": "Desconocido",
     "longLive": {
       "installNote": "LongLive se instala en un venv aislado en ~/.chaosengine/longlive. Solo CUDA, 5-15 min según la red."
+    }
+  },
+  "models": {
+    "action": {
+      "cancel": "Cancelar descarga",
+      "deleteDownload": "Eliminar descarga",
+      "deleteModel": "Eliminar modelo",
+      "download": "Descargar modelo",
+      "more": "Más acciones",
+      "pause": "Pausar descarga",
+      "resume": "Reanudar descarga",
+      "retry": "Reintentar descarga",
+      "trackedOnly": "Solo en seguimiento — aún no se puede lanzar"
+    },
+    "availability": {
+      "all": "Todos",
+      "attention": "Requieren atención",
+      "available": "Disponibles",
+      "downloading": "Descargando",
+      "installed": "Instalados",
+      "label": "Mostrar"
+    },
+    "card": {
+      "collapse": "Ocultar detalles",
+      "expand": "Mostrar detalles",
+      "incompatible": "No se puede ejecutar en esta máquina",
+      "incompatibleTitle": "Su motor no se ejecuta en esta máquina. Aun así, puedes eliminar sus archivos."
+    },
+    "delete": {
+      "confirmShared": "{count, plural, one {# modelo más usa} other {# modelos más usan}} la misma descarga y {count, plural, one {se eliminará} other {se eliminarán}} también:",
+      "confirmSharedMore": "y {count} más",
+      "confirmTarget": "Esto elimina {target} del disco. No se puede deshacer.",
+      "confirmTitle": "¿Eliminar los archivos de «{name}»?"
+    },
+    "detail": {
+      "engine": "Motor",
+      "fit": "Ajuste en esta máquina",
+      "license": "Licencia",
+      "localPath": "En el disco",
+      "openModelCard": "Abrir ficha del modelo",
+      "repo": "Repositorio",
+      "resolution": "Tamaño recomendado",
+      "sharedWith": "Comparte su descarga con",
+      "warning": "Nota"
+    },
+    "empty": {
+      "availability": "No hay modelos en «{bucket}» con los filtros actuales.",
+      "catalog": "Aún no hay modelos en el catálogo.",
+      "filters": "Ningún modelo coincide con los filtros actuales. Intenta ampliar los filtros o los términos de búsqueda.",
+      "showAvailable": "Mostrar modelos disponibles"
+    },
+    "filter": {
+      "clear": "Limpiar filtros",
+      "search": "Buscar",
+      "sortBy": "Ordenar por"
+    },
+    "fit": {
+      "bestFit": "Mejor opción",
+      "bestFitTitle": "La mejor opción de esta familia para esta máquina: la versión más reciente que cabe con holgura.",
+      "estimated": "estimado",
+      "estimatedNote": "Estimado a partir del tamaño del modelo; no medido en esta máquina.",
+      "estimatedShort": "est.",
+      "fits": "Cabe",
+      "measured": "medido",
+      "measuredNote": "Medido en esta máquina.",
+      "numbers": "Necesita unos {need} GB de los {usable} GB utilizables en esta máquina.",
+      "tight": "Justo",
+      "unknown": "No para esta máquina",
+      "wontFit": "No cabe"
+    },
+    "image": {
+      "emptyAttention": "Ningún modelo de imagen requiere atención.",
+      "emptyCatalog": "Aún no hay modelos de imagen en el catálogo. Comprueba que el backend esté en ejecución.",
+      "emptyDownloading": "No se está descargando ningún modelo de imagen.",
+      "emptyInstalled": "Aún no hay modelos de imagen instalados. Elige uno de los modelos disponibles para descargarlo.",
+      "intro": "Todos los modelos de imagen en una sola lista. Descarga uno para usarlo en Estudio de imagen; filtra por instalados, disponibles o en descarga."
+    },
+    "legacy": {
+      "catalog": "Explorar catálogo",
+      "installed": "Instalado",
+      "label": "Vista"
+    },
+    "sort": {
+      "fewestDownloads": "menos descargas primero",
+      "leastLiked": "menos valorado primero"
+    },
+    "status": {
+      "available": "No instalado",
+      "broken": "Roto",
+      "downloading": "Descargando",
+      "failed": "Fallido",
+      "failedDetail": "Descarga fallida",
+      "installed": "Instalado",
+      "loaded": "Cargado en memoria",
+      "partial": "Incompleto",
+      "paused": "Pausado"
+    },
+    "subtitle": "{shown} de {total, plural, one {# modelo} other {# modelos}} · instalados: {installed}",
+    "summary": {
+      "availability": "Mostrando: {bucket}",
+      "count": "{count, plural, one {# modelo} other {# modelos}} · {sortLabel}",
+      "search": "Búsqueda: {query}"
     }
   }
 }

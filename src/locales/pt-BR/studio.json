@@ -251,7 +251,8 @@
       "guidance": "Guidance",
       "images": "Imagens",
       "randomSeed": "Seed aleatória",
-      "seed": "Seed"
+      "seed": "Seed",
+      "maxPixelsNote": "{name} renderiza no máximo {megapixels} megapixels; este tamanho é reduzido para caber, mantendo a proporção."
     },
     "safety": {
       "dangerTitle": "Provável travar o backend",
@@ -463,7 +464,8 @@
       "guidanceTooltip": "Quão fortemente o modelo segue seu prompt. Muito baixo = ignora o prompt; muito alto = saída rígida ou distorcida. Recomendado: LTX-Video ≈ 3, Wan ≈ 5, HunyuanVideo ≈ 6. A direção 'negativa' do prompt vem do Prompt negativo acima.",
       "guidanceLtxWarning": "LTX-Video é um modelo flow-matching — CFG acima de ~3,5 supersatura e produz saída borrada / arco-íris. Diminua para 3 para os resultados mais limpos.",
       "randomSeed": "Seed aleatória",
-      "seedPlaceholder": "Seed (inteiro)"
+      "seedPlaceholder": "Seed (inteiro)",
+      "maxPixelsNote": "{name} renderiza no máximo {megapixels} megapixels por quadro; este tamanho é reduzido para caber, mantendo a proporção."
     },
     "clipLength": {
       "line": "Duração do clipe: {seconds}s ({frames} quadros ÷ {fps} fps)"
@@ -872,5 +874,33 @@
     "rollbackKeptTail": "para recuperação manual.",
     "close": "Fechar",
     "installLog": "Log de instalação ({count, plural, one {# etapa} other {# etapas}})"
+  },
+  "recommended": {
+    "title": "Recomendado para esta máquina",
+    "measured": "Medido",
+    "estimated": "Estimado",
+    "measuredTitle": "Medido em {machine}.",
+    "estimatedTitle": "Vem do model card, da documentação upstream ou de uma máquina semelhante; não medido neste hardware.",
+    "measuredOn": "medido em {machine}",
+    "applyAll": "Aplicar recomendados",
+    "allApplied": "Tudo em uso",
+    "inUse": "Em uso",
+    "use": "Usar",
+    "on": "Ligado",
+    "off": "Desligado",
+    "cacheValue": "{name}, limiar {threshold}",
+    "labels": {
+      "qualityPreset": "Predefinição de qualidade",
+      "steps": "Passos",
+      "guidance": "Guidance",
+      "sampler": "Sampler",
+      "size": "Tamanho",
+      "numFrames": "Quadros",
+      "fps": "FPS",
+      "cache": "Cache de difusão",
+      "cfgDecay": "Decaimento de CFG",
+      "previewVae": "VAE de pré-visualização",
+      "fp8LayerwiseCasting": "FP8 por camada"
+    }
   }
 }

@@ -251,7 +251,8 @@
       "guidance": "Guidance",
       "images": "Bilder",
       "randomSeed": "Zufalls-Seed",
-      "seed": "Seed"
+      "seed": "Seed",
+      "maxPixelsNote": "{name} rendert höchstens {megapixels} Megapixel; diese Größe wird unter Beibehaltung des Seitenverhältnisses verkleinert."
     },
     "safety": {
       "dangerTitle": "Wird das Backend wahrscheinlich zum Absturz bringen",
@@ -463,7 +464,8 @@
       "guidanceTooltip": "Wie stark das Modell deinem Prompt folgt. Zu niedrig = ignoriert den Prompt; zu hoch = starre oder verzerrte Ausgabe. Empfohlen: LTX-Video ≈ 3, Wan ≈ 5, HunyuanVideo ≈ 6. Die „negative“ Richtung des Prompts kommt aus dem Negativen Prompt oben.",
       "guidanceLtxWarning": "LTX-Video ist ein Flow-Matching-Modell — CFG über ~3,5 übersättigt und erzeugt verschwommene / regenbogenartige Ausgaben. Senke auf 3 für die saubersten Ergebnisse.",
       "randomSeed": "Zufalls-Seed",
-      "seedPlaceholder": "Seed (Ganzzahl)"
+      "seedPlaceholder": "Seed (Ganzzahl)",
+      "maxPixelsNote": "{name} rendert pro Bild höchstens {megapixels} Megapixel; diese Größe wird unter Beibehaltung des Seitenverhältnisses verkleinert."
     },
     "clipLength": {
       "line": "Cliplänge: {seconds}s ({frames} Bilder ÷ {fps} fps)"
@@ -872,5 +874,33 @@
     "rollbackKeptTail": "zur manuellen Wiederherstellung.",
     "close": "Schließen",
     "installLog": "Installations-Log ({count, plural, one {# Schritt} other {# Schritte}})"
+  },
+  "recommended": {
+    "title": "Empfohlen für diesen Rechner",
+    "measured": "Gemessen",
+    "estimated": "Geschätzt",
+    "measuredTitle": "Auf {machine} gemessen.",
+    "estimatedTitle": "Aus der Modellkarte, der Upstream-Dokumentation oder von einem ähnlichen Rechner; nicht auf dieser Hardware gemessen.",
+    "measuredOn": "gemessen auf {machine}",
+    "applyAll": "Empfehlung übernehmen",
+    "allApplied": "Alle aktiv",
+    "inUse": "Aktiv",
+    "use": "Übernehmen",
+    "on": "An",
+    "off": "Aus",
+    "cacheValue": "{name}, Schwellwert {threshold}",
+    "labels": {
+      "qualityPreset": "Qualitäts-Preset",
+      "steps": "Schritte",
+      "guidance": "Guidance",
+      "sampler": "Sampler",
+      "size": "Größe",
+      "numFrames": "Bilder",
+      "fps": "FPS",
+      "cache": "Diffusions-Cache",
+      "cfgDecay": "CFG-Decay",
+      "previewVae": "Preview-VAE",
+      "fp8LayerwiseCasting": "FP8 layerwise"
+    }
   }
 }

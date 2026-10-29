@@ -529,6 +529,10 @@
     "trackedOnly": {
       "tooltip": "正在关注上游 — 该系列在工作室中的运行尚未接入。目录条目仅供了解，下载后也无法在工作室中使用。",
       "badge": "关注上游中"
+    },
+    "sortLabel": {
+      "likes": "最受欢迎优先",
+      "downloads": "下载量最多优先"
     }
   },
   "videoDiscover": {
@@ -611,6 +615,108 @@
     "unknown": "未知",
     "longLive": {
       "installNote": "LongLive 安装到 ~/.chaosengine/longlive 下的独立 venv。仅支持 CUDA,根据网络情况需要 5-15 分钟。"
+    }
+  },
+  "models": {
+    "action": {
+      "cancel": "取消下载",
+      "deleteDownload": "删除下载",
+      "deleteModel": "删除模型",
+      "download": "下载模型",
+      "more": "更多操作",
+      "pause": "暂停下载",
+      "resume": "恢复下载",
+      "retry": "重试下载",
+      "trackedOnly": "仅追踪 — 暂时无法启动"
+    },
+    "availability": {
+      "all": "全部",
+      "attention": "需要关注",
+      "available": "可下载",
+      "downloading": "下载中",
+      "installed": "已安装",
+      "label": "显示"
+    },
+    "card": {
+      "collapse": "收起详情",
+      "expand": "展开详情",
+      "incompatible": "无法在本机运行",
+      "incompatibleTitle": "它的引擎无法在本机运行，但仍可删除其文件。"
+    },
+    "delete": {
+      "confirmShared": "{count, plural, other {另有 # 个模型}}使用同一份下载，也将一并删除：",
+      "confirmSharedMore": "以及另外 {count} 个",
+      "confirmTarget": "这会从磁盘中删除 {target}，且无法撤销。",
+      "confirmTitle": "删除“{name}”的文件？"
+    },
+    "detail": {
+      "engine": "引擎",
+      "fit": "在本机上的适配度",
+      "license": "许可证",
+      "localPath": "磁盘位置",
+      "openModelCard": "打开模型卡",
+      "repo": "仓库",
+      "resolution": "推荐尺寸",
+      "sharedWith": "与以下模型共享下载",
+      "warning": "注意"
+    },
+    "empty": {
+      "availability": "当前筛选条件下，“{bucket}”中没有模型。",
+      "catalog": "目录中暂无模型。",
+      "filters": "没有模型符合当前过滤条件。请尝试扩大过滤器或搜索词。",
+      "showAvailable": "显示可下载的模型"
+    },
+    "filter": {
+      "clear": "清除过滤器",
+      "search": "搜索",
+      "sortBy": "排序方式"
+    },
+    "fit": {
+      "bestFit": "最适合",
+      "bestFitTitle": "本机在此系列中的首选：能舒适放入的最新版本。",
+      "estimated": "估算",
+      "estimatedNote": "根据模型大小估算，未在本机实测。",
+      "estimatedShort": "估算",
+      "fits": "可放入",
+      "measured": "实测",
+      "measuredNote": "已在本机实测。",
+      "numbers": "需要约 {need} GB，本机可用 {usable} GB。",
+      "tight": "紧张",
+      "unknown": "不适合本机",
+      "wontFit": "放不下"
+    },
+    "image": {
+      "emptyAttention": "没有需要关注的图像模型。",
+      "emptyCatalog": "目录中暂无图像模型。请确认后端正在运行。",
+      "emptyDownloading": "没有正在下载的图像模型。",
+      "emptyInstalled": "尚未安装图像模型。请从可下载的模型中选择一个进行下载。",
+      "intro": "所有图像模型汇总在一个列表中。下载后即可在图像工作室中使用；可按已安装、可下载或下载中筛选。"
+    },
+    "legacy": {
+      "catalog": "浏览目录",
+      "installed": "已安装",
+      "label": "视图"
+    },
+    "sort": {
+      "fewestDownloads": "下载量最少优先",
+      "leastLiked": "点赞最少优先"
+    },
+    "status": {
+      "available": "未安装",
+      "broken": "已损坏",
+      "downloading": "下载中",
+      "failed": "失败",
+      "failedDetail": "下载失败",
+      "installed": "已安装",
+      "loaded": "已加载到内存",
+      "partial": "不完整",
+      "paused": "已暂停"
+    },
+    "subtitle": "{total, plural, other {# 个模型}}中显示 {shown} 个 · 已安装 {installed} 个",
+    "summary": {
+      "availability": "显示:{bucket}",
+      "count": "{count, plural, other {# 个模型}} · {sortLabel}",
+      "search": "搜索:{query}"
     }
   }
 }

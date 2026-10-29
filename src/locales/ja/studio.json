@@ -251,7 +251,8 @@
       "guidance": "ガイダンス",
       "images": "画像数",
       "randomSeed": "ランダムシード",
-      "seed": "シード"
+      "seed": "シード",
+      "maxPixelsNote": "{name} が描画できるのは最大 {megapixels} メガピクセルです。このサイズは縦横比を保ったまま縮小されます。"
     },
     "safety": {
       "dangerTitle": "バックエンドがクラッシュする可能性が高い",
@@ -463,7 +464,8 @@
       "guidanceTooltip": "モデルがプロンプトにどれだけ強く従うか。低すぎ = プロンプトを無視、高すぎ = 硬直または歪んだ出力。推奨:LTX-Video ≈ 3、Wan ≈ 5、HunyuanVideo ≈ 6。プロンプトの「ネガティブ」方向は上のネガティブプロンプトから来ます。",
       "guidanceLtxWarning": "LTX-Video はフローマッチングモデル — CFG が ~3.5 を超えると過飽和となり、ぼやけた / 虹色の出力を生成します。最もクリーンな結果を得るには 3 に下げてください。",
       "randomSeed": "ランダムシード",
-      "seedPlaceholder": "シード(整数)"
+      "seedPlaceholder": "シード(整数)",
+      "maxPixelsNote": "{name} が 1 フレームあたり描画できるのは最大 {megapixels} メガピクセルです。このサイズは縦横比を保ったまま縮小されます。"
     },
     "clipLength": {
       "line": "クリップ長:{seconds} 秒({frames} フレーム ÷ {fps} fps)"
@@ -872,5 +874,33 @@
     "rollbackKeptTail": "（手動復旧用）。",
     "close": "閉じる",
     "installLog": "インストールログ（{count, plural, other {# ステップ}}）"
+  },
+  "recommended": {
+    "title": "このマシンの推奨設定",
+    "measured": "実測",
+    "estimated": "推定",
+    "measuredTitle": "{machine} で計測しました。",
+    "estimatedTitle": "モデルカード、上流のドキュメント、または類似のマシンに基づく値で、このハードウェアでは計測していません。",
+    "measuredOn": "{machine} で計測",
+    "applyAll": "推奨設定を適用",
+    "allApplied": "すべて適用中",
+    "inUse": "適用中",
+    "use": "適用",
+    "on": "オン",
+    "off": "オフ",
+    "cacheValue": "{name}、しきい値 {threshold}",
+    "labels": {
+      "qualityPreset": "品質プリセット",
+      "steps": "ステップ",
+      "guidance": "ガイダンス",
+      "sampler": "サンプラー",
+      "size": "サイズ",
+      "numFrames": "フレーム",
+      "fps": "FPS",
+      "cache": "拡散キャッシュ",
+      "cfgDecay": "CFG ディケイ",
+      "previewVae": "プレビュー VAE",
+      "fp8LayerwiseCasting": "FP8 レイヤーワイズ"
+    }
   }
 }

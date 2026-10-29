@@ -529,6 +529,10 @@
     "trackedOnly": {
       "tooltip": "Watching upstream — Studio playback for this family isn't wired yet. Catalog entry is for awareness; download won't unlock Studio.",
       "badge": "Watching upstream"
+    },
+    "sortLabel": {
+      "likes": "most liked first",
+      "downloads": "most downloads first"
     }
   },
   "videoDiscover": {
@@ -611,6 +615,108 @@
     "unknown": "Unknown",
     "longLive": {
       "installNote": "LongLive installs into an isolated venv at ~/.chaosengine/longlive. CUDA only, 5-15 min depending on network."
+    }
+  },
+  "models": {
+    "action": {
+      "cancel": "Cancel download",
+      "deleteDownload": "Delete download",
+      "deleteModel": "Delete model",
+      "download": "Download model",
+      "more": "More actions",
+      "pause": "Pause download",
+      "resume": "Resume download",
+      "retry": "Retry download",
+      "trackedOnly": "Tracked only — not yet launchable"
+    },
+    "availability": {
+      "all": "All",
+      "attention": "Needs attention",
+      "available": "Available",
+      "downloading": "Downloading",
+      "installed": "Installed",
+      "label": "Show"
+    },
+    "card": {
+      "collapse": "Hide details",
+      "expand": "Show details",
+      "incompatible": "Cannot run on this machine",
+      "incompatibleTitle": "Its engine does not run on this machine. You can still delete its files."
+    },
+    "delete": {
+      "confirmShared": "{count, plural, one {# other model uses} other {# other models use}} the same download and will be removed too:",
+      "confirmSharedMore": "and {count} more",
+      "confirmTarget": "This removes {target} from disk. It cannot be undone.",
+      "confirmTitle": "Delete the files of \"{name}\"?"
+    },
+    "detail": {
+      "engine": "Engine",
+      "fit": "Fit on this machine",
+      "license": "Licence",
+      "localPath": "On disk",
+      "openModelCard": "Open model card",
+      "repo": "Repository",
+      "resolution": "Recommended size",
+      "sharedWith": "Shares its download with",
+      "warning": "Note"
+    },
+    "empty": {
+      "availability": "No {bucket} models under the current filters.",
+      "catalog": "No models in the catalog yet.",
+      "filters": "No models match the current filters. Try broadening the filters or search terms.",
+      "showAvailable": "Show available models"
+    },
+    "filter": {
+      "clear": "Clear Filters",
+      "search": "Search",
+      "sortBy": "Sort by"
+    },
+    "fit": {
+      "bestFit": "Best fit",
+      "bestFitTitle": "The pick in this family for this machine: the newest release that fits comfortably.",
+      "estimated": "estimated",
+      "estimatedNote": "Estimated from the model size; not measured on this machine.",
+      "estimatedShort": "est.",
+      "fits": "Fits",
+      "measured": "measured",
+      "measuredNote": "Measured on this machine.",
+      "numbers": "Needs about {need} GB of {usable} GB usable on this machine.",
+      "tight": "Tight",
+      "unknown": "Not for this machine",
+      "wontFit": "Won't fit"
+    },
+    "image": {
+      "emptyAttention": "No image model needs attention.",
+      "emptyCatalog": "No image models in the catalog yet. Check that the backend is running.",
+      "emptyDownloading": "No image model is downloading.",
+      "emptyInstalled": "No image models installed yet. Pick one from the available models to download it.",
+      "intro": "Every image model in one list. Download one to use it in Image Studio; filter by what is installed, available or downloading."
+    },
+    "legacy": {
+      "catalog": "Browse catalog",
+      "installed": "Installed",
+      "label": "View"
+    },
+    "sort": {
+      "fewestDownloads": "fewest downloads first",
+      "leastLiked": "least liked first"
+    },
+    "status": {
+      "available": "Not installed",
+      "broken": "Broken",
+      "downloading": "Downloading",
+      "failed": "Failed",
+      "failedDetail": "Download failed",
+      "installed": "Installed",
+      "loaded": "Loaded in memory",
+      "partial": "Incomplete",
+      "paused": "Paused"
+    },
+    "subtitle": "{shown} of {total, plural, one {# model} other {# models}} · {installed} installed",
+    "summary": {
+      "availability": "Showing: {bucket}",
+      "count": "{count, plural, one {# model} other {# models}} · {sortLabel}",
+      "search": "Search: {query}"
     }
   }
 }

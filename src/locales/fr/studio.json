@@ -251,7 +251,8 @@
       "guidance": "Guidance",
       "images": "Images",
       "randomSeed": "Graine aléatoire",
-      "seed": "Graine"
+      "seed": "Graine",
+      "maxPixelsNote": "{name} génère au maximum {megapixels} mégapixels ; cette taille est réduite pour s'adapter, en conservant ses proportions."
     },
     "safety": {
       "dangerTitle": "Risque élevé de planter le backend",
@@ -463,7 +464,8 @@
       "guidanceTooltip": "Avec quelle force le modèle suit votre invite. Trop bas = ignore l'invite ; trop haut = sortie rigide ou déformée. Recommandé : LTX-Video ≈ 3, Wan ≈ 5, HunyuanVideo ≈ 6. La direction « négative » de l'invite vient de l'invite négative ci-dessus.",
       "guidanceLtxWarning": "LTX-Video est un modèle flow-matching — un CFG supérieur à ~3,5 sursature et produit une sortie floue / arc-en-ciel. Baissez à 3 pour les résultats les plus propres.",
       "randomSeed": "Graine aléatoire",
-      "seedPlaceholder": "Graine (entier)"
+      "seedPlaceholder": "Graine (entier)",
+      "maxPixelsNote": "{name} génère au maximum {megapixels} mégapixels par image ; cette taille est réduite pour s'adapter, en conservant ses proportions."
     },
     "clipLength": {
       "line": "Durée du clip : {seconds} s ({frames} images ÷ {fps} fps)"
@@ -872,5 +874,33 @@
     "rollbackKeptTail": "pour une récupération manuelle.",
     "close": "Fermer",
     "installLog": "Journal d'installation ({count, plural, one {# étape} other {# étapes}})"
+  },
+  "recommended": {
+    "title": "Recommandé pour cette machine",
+    "measured": "Mesuré",
+    "estimated": "Estimé",
+    "measuredTitle": "Chronométré sur {machine}.",
+    "estimatedTitle": "Issu de la fiche du modèle, de la documentation en amont ou d'une machine similaire ; non chronométré sur ce matériel.",
+    "measuredOn": "chronométré sur {machine}",
+    "applyAll": "Appliquer les recommandations",
+    "allApplied": "Tout est appliqué",
+    "inUse": "Appliqué",
+    "use": "Appliquer",
+    "on": "Activé",
+    "off": "Désactivé",
+    "cacheValue": "{name}, seuil {threshold}",
+    "labels": {
+      "qualityPreset": "Préréglage de qualité",
+      "steps": "Étapes",
+      "guidance": "Guidance",
+      "sampler": "Échantillonneur",
+      "size": "Taille",
+      "numFrames": "Images",
+      "fps": "FPS",
+      "cache": "Cache de diffusion",
+      "cfgDecay": "Décroissance CFG",
+      "previewVae": "VAE d'aperçu",
+      "fp8LayerwiseCasting": "FP8 par couche"
+    }
   }
 }

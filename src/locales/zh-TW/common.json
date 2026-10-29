@@ -35,7 +35,8 @@
     "diagnostics": "診斷",
     "voiceStudio": "語音工作室",
     "voiceModels": "語音模型",
-    "voiceLibrary": "語音資料庫"
+    "voiceLibrary": "語音資料庫",
+    "chatModels": "對話模型"
   },
   "tabCaptions": {
     "dashboard": "系統概覽",
@@ -63,7 +64,10 @@
     "settings": "目錄與預設值",
     "voiceStudio": "錄音、轉寫與朗讀",
     "voiceModels": "STT 與 TTS 模型管理",
-    "voiceLibrary": "你建立的轉寫與語音"
+    "voiceLibrary": "你建立的轉寫與語音",
+    "chatModels": "尋找、下載並管理語言模型",
+    "imageModelsPage": "尋找、下載並管理影像模型",
+    "videoModelsPage": "尋找、下載並管理影片模型"
   },
   "tabShortLabels": {
     "chat": "對話",
@@ -87,7 +91,8 @@
     "plugins": "外掛程式",
     "voiceStudio": "工作室",
     "voiceModels": "我的模型",
-    "voiceLibrary": "資料庫"
+    "voiceLibrary": "資料庫",
+    "models": "模型"
   },
   "tabGroups": {
     "chat": "對話",

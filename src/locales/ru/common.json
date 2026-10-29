@@ -35,7 +35,8 @@
     "diagnostics": "Диагностика",
     "voiceStudio": "Голосовая студия",
     "voiceModels": "Голосовые модели",
-    "voiceLibrary": "Голосовая библиотека"
+    "voiceLibrary": "Голосовая библиотека",
+    "chatModels": "Модели чата"
   },
   "tabCaptions": {
     "dashboard": "Обзор системы",
@@ -63,7 +64,10 @@
     "settings": "Каталоги и значения по умолчанию",
     "voiceStudio": "Запись, расшифровка и озвучка",
     "voiceModels": "Управление моделями STT и TTS",
-    "voiceLibrary": "Ваши расшифровки и озвучки"
+    "voiceLibrary": "Ваши расшифровки и озвучки",
+    "chatModels": "Поиск, загрузка и управление языковыми моделями",
+    "imageModelsPage": "Поиск, загрузка и управление моделями изображений",
+    "videoModelsPage": "Поиск, загрузка и управление моделями видео"
   },
   "tabShortLabels": {
     "chat": "Чат",
@@ -87,7 +91,8 @@
     "plugins": "Плагины",
     "voiceStudio": "Студия",
     "voiceModels": "Мои модели",
-    "voiceLibrary": "Библиотека"
+    "voiceLibrary": "Библиотека",
+    "models": "Модели"
   },
   "tabGroups": {
     "chat": "Чат",

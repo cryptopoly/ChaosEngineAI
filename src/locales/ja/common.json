@@ -35,7 +35,8 @@
     "diagnostics": "診断",
     "voiceStudio": "音声スタジオ",
     "voiceModels": "音声モデル",
-    "voiceLibrary": "ボイスライブラリ"
+    "voiceLibrary": "ボイスライブラリ",
+    "chatModels": "チャットモデル"
   },
   "tabCaptions": {
     "dashboard": "システム概要",
@@ -63,7 +64,10 @@
     "settings": "ディレクトリとデフォルト",
     "voiceStudio": "録音・文字起こし・読み上げ",
     "voiceModels": "STT・TTS モデルの管理",
-    "voiceLibrary": "作成した文字起こしと音声"
+    "voiceLibrary": "作成した文字起こしと音声",
+    "chatModels": "言語モデルを検索・ダウンロード・管理",
+    "imageModelsPage": "画像モデルを検索・ダウンロード・管理",
+    "videoModelsPage": "動画モデルを検索・ダウンロード・管理"
   },
   "tabShortLabels": {
     "chat": "チャット",
@@ -87,7 +91,8 @@
     "plugins": "プラグイン",
     "voiceStudio": "スタジオ",
     "voiceModels": "マイモデル",
-    "voiceLibrary": "ライブラリ"
+    "voiceLibrary": "ライブラリ",
+    "models": "モデル"
   },
   "tabGroups": {
     "chat": "チャット",

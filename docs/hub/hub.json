@@ -1,0 +1,7 @@
+{
+  "project_name": "ChaosEngineAI",
+  "tagline": "Project hub: read Status first.",
+  "nav_order": ["status", "decisions", "backlog", "tracker", "overview", "rules", "testing", "engineering", "risks", "ideas", "progress"],
+  "hide_folders": [],
+  "accent": "#2f6f8f"
+}

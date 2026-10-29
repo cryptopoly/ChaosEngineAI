@@ -24,3 +24,6 @@ coverage/
 .tmp-*/
 # MkDocs build output
 site/
+
+# Project hub (generated site; docs/hub is the source)
+docs/site/

@@ -75,11 +75,29 @@ export function videoDeleteRepoForVariant<T extends { repo?: string | null }>(
   return variant.repo;
 }
 
+/** What a delete of ``repo`` removes for ``variant``: its own repo, or a
+ * download it shares with other rows (pinned GGUF, text encoder, another
+ * component). */
+export type VideoDeleteRepoKind = "primary" | "gguf" | "textEncoder" | "component";
+
+export function videoDeleteRepoKind(variant: VideoModelVariant, repo: string): VideoDeleteRepoKind {
+  if (repo === variant.ggufRepo) return "gguf";
+  if (repo === variant.textEncoderRepo) return "textEncoder";
+  if (repo !== variant.repo) return "component";
+  return "primary";
+}
+
 export function videoDeleteLabelForRepo(variant: VideoModelVariant, repo: string, fallback = "Delete model"): string {
-  if (repo === variant.ggufRepo) return "Delete shared GGUF download";
-  if (repo === variant.textEncoderRepo) return "Delete shared text encoder download";
-  if (repo !== variant.repo) return "Delete shared component download";
-  return fallback;
+  switch (videoDeleteRepoKind(variant, repo)) {
+    case "gguf":
+      return "Delete shared GGUF download";
+    case "textEncoder":
+      return "Delete shared text encoder download";
+    case "component":
+      return "Delete shared component download";
+    default:
+      return fallback;
+  }
 }
 
 export function videoVariantMatchesDiscoverFilters(

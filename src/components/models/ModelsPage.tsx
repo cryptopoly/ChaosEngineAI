@@ -213,10 +213,15 @@ export function ModelsPage<E extends ModelEntry>(props: ModelsPageProps<E>) {
   } else {
     const catalogEmpty = hostVisibleCount === 0;
     const availabilityOnly = !catalogEmpty && availability !== "all" && counts.all > 0;
+    // The area's own sentence ("No video models installed yet") is only
+    // true when nothing else narrows the list; with a search or a group
+    // filter on, say the filters hide them.
+    const otherFiltersActive =
+      search.value.trim().length > 0 || (groups ?? []).some((group) => group.value !== group.defaultValue);
     const message = catalogEmpty
       ? emptyCatalog ?? t("models.empty.catalog", { defaultValue: "No models in the catalog yet." })
       : availabilityOnly
-        ? emptyByAvailability?.[availability] ??
+        ? (otherFiltersActive ? undefined : emptyByAvailability?.[availability]) ??
           t("models.empty.availability", {
             defaultValue: "No {bucket} models under the current filters.",
             bucket: modelBucketLabel(availability, t).toLowerCase(),

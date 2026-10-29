@@ -20,9 +20,11 @@ Newest dated update first. Each update has the same sections: Done, Open for Cla
 - Sound in Video Studio ([FU-130](tracker/open.md)): sound badge on clips that have it, result window plays them with sound, prompt hint for the LTX rows. Not yet looked at in the running app.
 - This hub: [tracker pages](tracker/README.md) are generated from `CLAUDE.md` by `tools/hub_tracker.py`.
 
+- DDTree on a 27B-class target (Qwen3-Coder-30B-A3B 4-bit, the only attention-only model of that size with a drafter): block 8 confirmed (mean 101 tok/s against 91 plain and 74 for block 16); DDTree adds nothing over a chain of the same width; creative prose runs 2 to 4 times slower with any speculative mode ([FU-134](tracker/open.md)).
+
 **Open for Claude**
 
-- Run the DDTree speed test on a 27B-class target (`Qwen3-Coder-30B-A3B` 4-bit is downloading; it is the only attention-only model of that size with a drafter) and check block 8 against 16 on Qwen3.6-27B. See [progress](progress/runs-2026-10-29.md).
+- Check block 8 against 16 on Qwen3.6-27B (hybrid model, download in progress). See [progress](progress/runs-2026-10-29.md).
 - Run LTX-2.5 live, then decide the default LTX row.
 - Keep this hub current after every batch.
 

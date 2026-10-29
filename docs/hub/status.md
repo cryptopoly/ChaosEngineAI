@@ -9,6 +9,23 @@ summary: Read this first in every session.
 
 Newest dated update first. Each update has the same sections: Done, Open for Claude, Open for Dan.
 
+## Update 2026-10-29, evening
+
+**Done**
+
+- **Models page, best-fit badges, recommended settings and bigger image sizes are built on branch `feat/models-fit`** (the main checkout is on it; not pushed, no PR). Four Opus agents built the shared Models page and the Chat, Image and Video pages; Discover and My Models are gone and their old ids redirect ([FU-129](tracker/open.md)). Fit badges and "Best fit" ribbons ([FU-133](tracker/open.md)); the Studios show "Recommended for this machine" with Apply; per-model size limits replace the 2048 px cap (FLUX 3 Klein measured: 3072 px = 41 GB, 110 s; 4096 px refused on 64 GB). FLUX 3 Klein now starts at 8 steps.
+- Three read-only reviewers (backend, Models pages, Studios) found and I fixed: the memory gate refused Qwen-Image-2.1 on a 64 GB Mac (1.1 x a measured peak), the best-fit pick for FLUX.1 was the slow sd.cpp row, tables overflowing below 1440 px, a deleted model staying Installed, tracked-only rows that could not be deleted, size limits that broke the aspect ratio, and the recommended panel layout. Details and what is still open are in the FU-129 and FU-133 rows.
+- Checks on the merged branch: pytest all pass, vitest 777, `tsc` clean, `i18n:validate` OK (3003 keys in all 10 locales), E2E smoke phases 0, 3-8 pass (includes a live LTX clip). Looked at in the running app: Chat, Image and Video Models pages at 1200 and 1500 px, Image Studio recommended panel.
+
+**Open for Claude**
+
+- Nothing blocking on this branch. Open items are listed in the FU-129 / FU-133 rows (Discover wording in locale strings, menu keyboard handling, CUDA VRAM in the gate).
+
+**Open for Dan**
+
+- Decide whether `feat/models-fit` ships in v0.9.9 (the release gate in [the plan](../plans/models-fit.md) is met except the native-speaker read of de / ja / ru / zh-TW and Windows / Linux runs) or waits for the next release behind PR 119.
+- Real click-throughs of download, pause, resume and delete on the new pages were not run; worth one try with a small model.
+
 ## Update 2026-10-29, afternoon
 
 **Done**
@@ -53,7 +70,5 @@ The full list, including the release gate, is in [testing](testing.md).
 | Problem | Since | Workaround | Owner |
 |---|---|---|---|
 | PR 119 Windows test fails (`\pack` vs `/pack`) | 2026-10-29 | Fixed locally; needs a push | Claude |
-| JSON schema on a reasoning model through llama.cpp returns no content (Nemotron 3.5 Bolt) | 2026-10-29 | Reply now explains why; turn the schema off | open ([FU-127](tracker/open.md)) |
-| A context overflow answers HTTP 500 with a readable message (400 would be right) | 2026-10-29 | None needed | open ([FU-127](tracker/open.md)) |
-| A mflux venv rebuild deletes the old venv first | 2026-10-29 | Re-run the install | open ([FU-123](tracker/open.md)) |
+| Real download / pause / resume / delete clicks on the new Models pages not run | 2026-10-29 | Try one with a small model | open ([FU-129](tracker/open.md)) |
 | Desktop shell not launched on Tauri 2.12 | 2026-10-28 | Launch once per platform before release | open ([FU-121](tracker/open.md)) |

@@ -22,7 +22,7 @@ The work ships in v0.9.9 only if all of this is true at the end; otherwise it sh
 
 ## Rules for every agent (read before touching anything)
 
-- Work in `/Users/dan/ChaosEngineAI` on branch `feat/models-fit`. **No worktrees, no `git checkout`, `git stash`, `git reset`, `git commit`, `git push`.** The lead commits. Edit only the files you own (below); if you need a change elsewhere, write it in your progress file under "Requests".
+- Agents that work in the main checkout (`/Users/dan/ChaosEngineAI`, branch `feat/models-fit`): **no `git checkout`, `git stash`, `git reset`, `git commit`, `git push`**; the lead commits. Agents in their own git worktree (the owner allowed worktrees on 2026-10-29): commit freely to your own worktree branch in small conventional commits (no attribution lines), never push, never touch the main checkout. Edit only the files you own (below); if you need a change elsewhere, write it in your progress file under "Requests".
 - **Do not edit locale JSON** (`src/locales/*`), `CLAUDE.md`, `docs/hub/*`, `CHANGELOG.md` or `RELEASE_NOTES_v0.9.9.md`: several agents work at once and these files race. Use inline `defaultValue` strings with `t()` and list every new key (`namespace:key = English text`) in your progress file; the lead adds translations.
 - Progress file: `docs/hub/progress/<your-stream>.md` (copy `_template.md`), updated at every checkpoint so a fresh agent can resume.
 - Run only your own tests (`pytest tests/test_<yours>.py`, `npx vitest run <path>`, `npx tsc --noEmit`). Do not run the whole suite; the lead does.
@@ -64,9 +64,9 @@ Every key in `settings` is optional; the Studio applies only what is present and
 | `fit-backend` | sonnet | `backend_service/helpers/fit.py`, `hardware_class.py` refinements, fit fields in the three catalog payload builders, `tests/test_model_fit.py` | none |
 | `limits` | sonnet | `backend_service/helpers/generation_limits.py`, `maxSide`/`maxPixels` catalog fields, memory-gate integration, `scripts/measure-image-ceiling.py`, `tests/test_size_limits.py` | none |
 | `settings-rec` | opus | `backend_service/helpers/recommendations.py`, catalog `recommendedSettings` data, measurement scripts and results, the "Recommended for this Mac" panel in `ImageStudioTab.tsx` / `VideoStudioTab.tsx` (and the Studio size inputs reading `maxSide`), `tests/test_recommendations.py` | `hardware_class.py`, `limits` field names |
-| `ui-core` | opus | `src/components/models/*` (shared Models page shell, card, filter bar, FitBadge), Image area port, `App.tsx` routing and sidebar, redirects | `map`, fit contract |
-| `ui-video` | sonnet | Video area port | `ui-core` shell |
-| `ui-chat` | sonnet | Chat area port (`OnlineModelsTab` + `MyModelsTab`) | `ui-core` shell |
+| `ui-core` | opus, own worktree `../ChaosEngineAI-wt/ui-core`, branch `feat/models-ui-core` | `src/components/models/*` (shared Models page shell, card, filter bar, FitBadge), Image area port, `App.tsx` routing and sidebar, redirects | `map`, fit contract |
+| `ui-video` | opus, own worktree, branch off `feat/models-ui-core` | Video area port | `ui-core` shell |
+| `ui-chat` | opus, own worktree, branch off `feat/models-ui-core` | Chat area port (`OnlineModelsTab` + `MyModelsTab`) | `ui-core` shell |
 | `review` | reviewer | read-only diff review at the end | everything |
 
 The lead (main thread) owns commits, locale translations, `CLAUDE.md` / hub / release-notes text, LTX-2.5 validation and the final full test run.

@@ -89,7 +89,7 @@ How Claude and its team of agents work on ChaosEngineAI. The generic rules come 
 ## 11. ChaosEngineAI rules (these win over the generic ones)
 
 - **Editorial rule:** no code, comment, UI string, doc or commit message names or compares against other desktop AI apps (the full list and the three allowed exceptions are at the top of `CLAUDE.md`). When a question mentions one, log it here by what it is, for example "an MLX server", not by the app's name.
-- **No worktrees.** Work in the main checkout (`/Users/dan/ChaosEngineAI`); the owner runs and tests from there, and edits in a worktree are invisible to them. This replaces the generic one-worktree-per-agent rule; parallel agents still keep one progress file each and the lead owns shared files.
+- **Worktrees are allowed** (the owner lifted the old no-worktrees rule on 2026-10-29): one per agent when several agents change the same files, under `../ChaosEngineAI-wt/<stream>`, each on its own branch; the lead merges. The owner tests from the main checkout, so say which branch it is on and never leave it on a half-finished branch.
 - **Hold pushes until tested.** No push, pull request, merge into `staging` or re-tag until the work is finished and tested; every push runs GitHub builds that cost Actions minutes. Keep committing locally; ask before any push.
 - **No attribution lines** in commit messages or pull request text.
 - **Icons:** monochrome SVG only, no emoji in the UI.

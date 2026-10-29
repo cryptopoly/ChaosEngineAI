@@ -20,6 +20,7 @@ Full notes in [RELEASE_NOTES_v0.9.9.md](RELEASE_NOTES_v0.9.9.md).
 
 ### Fixed
 
+- Wan 2.2 TI2V 5B video came out over-bright, with stripes and colour blocks, at the Studio's default settings. The default guidance was 7.5; the model card's 5.0 gives clean frames (FU-122).
 - Tools never ran on GGUF models: llama.cpp returns tool calls as structured data and the engine ignored them, so the answer was empty.
 - `release-constraints.txt` pinned pypdf 6.10.2 and the other vulnerable versions, so release builds shipped them.
 

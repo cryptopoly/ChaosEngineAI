@@ -645,6 +645,15 @@ class ResolveVideoDefaultsTests(unittest.TestCase):
         self.assertEqual(resolved["scheduler"], "unipc")
         self.assertTrue(resolved["substituted"])
 
+    def test_wan22_ti2v_default_guidance_is_the_model_card_value(self):
+        # 7.5 over-saturated Wan 2.2 TI2V 5B clips on Apple Silicon (bright
+        # washed-out frames with colour blocks, worse on longer clips); the
+        # model card's 5.0 gives clean frames.
+        from backend_service.video_runtime import _resolve_video_defaults
+        resolved = _resolve_video_defaults("Wan-AI/Wan2.2-TI2V-5B-Diffusers", 50, 3.0)
+        self.assertEqual(resolved["guidance"], 5.0)
+        self.assertEqual(resolved["steps"], 20)
+
     def test_user_overrides_preserved(self):
         from backend_service.video_runtime import _resolve_video_defaults
         resolved = _resolve_video_defaults("Wan-AI/Wan2.1-T2V-1.3B-Diffusers", 60, 8.5)

@@ -9,7 +9,6 @@ not installed.
 from __future__ import annotations
 
 import importlib.util
-import os
 import re
 from pathlib import Path
 from typing import Any
@@ -289,24 +288,6 @@ def supported_models() -> list[str]:
     return sorted(set(DRAFT_MODEL_MAP.keys()) | set(_ALIASES.keys()))
 
 
-# Targets built from gated-delta-net (recurrent) layers: Qwen3.5 / 3.6 and Qwen3-Next / Coder-Next.
-# dflash-mlx 0.1.5.1 (the pinned release) hooks their recurrent layers; on mlx-lm 0.32 the first
-# token already differs from plain decoding and the reply is garbage (Qwen3.6-27B, 2026-10-29,
-# FU-135), so the MLX lane keeps them off. vLLM runs them without those hooks.
-_HYBRID_GDN_PREFIXES = ("Qwen/Qwen3.5-", "Qwen/Qwen3.6-", "Qwen/Qwen3-Coder-Next", "Qwen/Qwen3-Next")
-
-
-def allow_hybrid_dflash() -> bool:
-    """Developer switch to retry hybrid targets after a dflash-mlx upgrade."""
-    return os.environ.get("CHAOSENGINE_ALLOW_HYBRID_DFLASH", "").strip().lower() in {"1", "true", "yes"}
-
-
-def is_hybrid_gdn_target(target_ref: str) -> bool:
-    """True for a Qwen3.5 / 3.6 / Next family ref, canonical or community alias."""
-    canonical = _ALIASES.get(target_ref, target_ref)
-    return canonical.startswith(_HYBRID_GDN_PREFIXES)
-
-
 def is_ddtree_available() -> bool:
     """True when DDTree (tree-based speculative decoding) can run.
 
@@ -350,9 +331,6 @@ def availability_info() -> dict[str, Any]:
     """Return a JSON-friendly dict for the frontend system stats."""
     vllm_ok = is_vllm_available()
     models = supported_models()
-    if not vllm_ok and not allow_hybrid_dflash():
-        # MLX only: hybrid recurrent targets are kept off (see _HYBRID_GDN_PREFIXES).
-        models = [ref for ref in models if not is_hybrid_gdn_target(ref)]
     if vllm_ok:
         # DFlash 2-only targets are runnable only through vLLM.
         models = sorted(set(models) | set(DFLASH2_DRAFT_MODEL_MAP))

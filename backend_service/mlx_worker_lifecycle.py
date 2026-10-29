@@ -43,8 +43,8 @@ if TYPE_CHECKING:
     from backend_service.mlx_worker import WorkerState
 
 
-class _HybridDflashDisabled(Exception):
-    """Raised inside the DFlash init block to skip loading a draft for a hybrid target."""
+class _DflashSelfCheckFailed(Exception):
+    """Raised inside the DFlash init block when the draft runtime disagrees with the model."""
 
 
 
@@ -172,6 +172,10 @@ def load_model(state: WorkerState, request: dict[str, Any]) -> dict[str, Any]:
             # generation). Use the new ``resolve_target_ops`` entry point;
             # both it and ``load_draft_bundle`` are still top-level.
             from dflash_mlx.runtime import load_draft_bundle, resolve_target_ops
+
+            from backend_service.dflash_compat import patch_text_wrapper, self_check
+
+            patch_text_wrapper()
             emit_progress("dflash", 96.0, f"Loading DFLASH draft model: {dflash_draft_model}")
             # Reuse the already loaded MLX target model. Loading a second
             # target bundle can duplicate the full model footprint and
@@ -184,25 +188,20 @@ def load_model(state: WorkerState, request: dict[str, Any]) -> dict[str, Any]:
             target_ops = resolve_target_ops(state._dflash_target)
             family_fn = getattr(target_ops, "family", None)
             is_hybrid = family_fn is not None and family_fn(state._dflash_target) == "hybrid_gdn"
-            if is_hybrid:
-                from dflash import allow_hybrid_dflash
-
-                if not allow_hybrid_dflash():
-                    # FU-135: the pinned dflash-mlx hooks the recurrent layers in a way that
-                    # produces wrong text on mlx-lm 0.32 (Qwen3.6-27B: garbage at 8 tok/s).
-                    state._dflash_target = None
-                    state.speculative_decoding = False
-                    state.tree_budget = 0
-                    raise _HybridDflashDisabled()
             if is_hybrid and hasattr(target_ops, "configure_full_attention_split"):
                 target_ops.configure_full_attention_split(state._dflash_target, enabled=True)
+            mismatch = self_check(state._dflash_target, target_ops)
+            if mismatch:
+                # FU-135: a library pair that disagrees with the model produced garbage text before;
+                # refuse it here and say why.
+                state._dflash_target = None
+                state.speculative_decoding = False
+                state.tree_budget = 0
+                raise _DflashSelfCheckFailed(mismatch)
             state._dflash_generator, _ = load_draft_bundle(dflash_draft_model, lazy=True)
             dflash_note = f"DFLASH speculative decoding active (draft: {dflash_draft_model})."
-        except _HybridDflashDisabled:
-            dflash_note = (
-                "DFLASH is off for this model: it is built from recurrent (gated delta) layers, and the "
-                "installed dflash-mlx produces wrong text on them. Standard generation is used."
-            )
+        except _DflashSelfCheckFailed as exc:
+            dflash_note = f"DFLASH is off for this model: {exc}. Standard generation is used."
         except ImportError as exc:
             dflash_note = f"dflash-mlx could not be imported ({exc}). Falling back to standard generation."
             state.speculative_decoding = False

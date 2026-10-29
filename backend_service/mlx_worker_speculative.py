@@ -46,6 +46,15 @@ if TYPE_CHECKING:
 LINEAR_DFLASH_BLOCK_TOKENS = 8
 
 
+def _without_trailing_stop(tokens: list[int], stop_ids: Any) -> list[int]:
+    """Drop the stop token a speculative run keeps at the end (plain decoding never shows it)."""
+    stops = {int(t) for t in (stop_ids or [])}
+    trimmed = list(tokens)
+    while trimmed and trimmed[-1] in stops:
+        trimmed.pop()
+    return trimmed
+
+
 def generate_dflash(state: WorkerState, request: dict[str, Any]) -> dict[str, Any]:
     """Generate using DFLASH speculative decoding."""
     from dflash_mlx.runtime import stream_dflash_generate
@@ -132,7 +141,9 @@ def generate_dflash(state: WorkerState, request: dict[str, Any]) -> dict[str, An
         prev_cycle = cycle
         prev_gen_count = gen_count
 
-    gen_tokens = [int(token_id) for token_id in summary.get("generated_token_ids", [])]
+    gen_tokens = _without_trailing_stop(
+        [int(token_id) for token_id in summary.get("generated_token_ids", [])], eos_token_ids
+    )
     text = state.tokenizer.decode(gen_tokens).strip() if gen_tokens else ""
     # Respect thinkingMode: only strip raw reasoning patterns when thinking
     # is enabled. XML <think> tags are always processed regardless.
@@ -255,7 +266,7 @@ def generate_ddtree(state: WorkerState, request: dict[str, Any]) -> dict[str, An
     )
 
     # Decode output tokens
-    gen_tokens = result["generated_tokens"]
+    gen_tokens = _without_trailing_stop(list(result["generated_tokens"]), stop_ids)
     text = state.tokenizer.decode(gen_tokens).strip()
     # Respect thinkingMode: only strip raw reasoning patterns when thinking
     # is enabled. XML <think> tags are always processed regardless.

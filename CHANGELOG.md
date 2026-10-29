@@ -37,7 +37,7 @@ Full notes in [RELEASE_NOTES_v0.9.9.md](RELEASE_NOTES_v0.9.9.md).
 - Chat no longer re-requests the model load before every message.
 - A reasoning effort the chat template rejects is mapped to the nearest one it accepts.
 - MLX DFlash fell back to plain decoding on every reply (dflash-mlx 0.1.5 made `runtime_context` required); linear DFlash now verifies 8 tokens per step (16 lost to plain decoding on prose); DDTree verifies tree nodes at their own positions and is back for attention-only models (FU-112, FU-134).
-- DFlash is kept off for hybrid Qwen3.5 / 3.6 / Next targets on MLX: with mlx-lm 0.32 the pinned dflash-mlx produced garbage on Qwen3.6-27B (FU-135).
+- DFlash on hybrid Qwen3.5 / 3.6 / Next targets produced garbage with mlx-lm 0.32 (the pinned dflash-mlx read the output head from the wrong object); `backend_service/dflash_compat.py` corrects it and a self-check compares the draft runtime with the model at load (FU-135). The stop token a speculative reply keeps is no longer shown.
 - LTX clips carry a `hasAudio` flag read from the mp4; gallery and result window show a Sound badge and the result window plays the clip with sound (FU-130).
 - A JSON schema that leaves a llama.cpp reasoning model with no text is retried as plain JSON; a conversation larger than the context answers 400 with both sizes; a Turbo or distilled model asked for many more steps than it is tuned for says what that costs (FU-127).
 - The mflux installer moves the old venv aside and restores it when the new install fails to verify (FU-123).

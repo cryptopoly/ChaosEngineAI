@@ -15,7 +15,7 @@ Generated from the Follow-Ups Tracker in `CLAUDE.md` by `tools/hub_tracker.py`; 
 
 | Row | Item | Status |
 |---|---|---|
-| [FU-135](open.md) | DFlash on hybrid Qwen3.5 / 3.6 / Next targets produced garbage text on the release MLX sta | Mitigated 2026-10-29 (kept off on MLX) |
+| [FU-135](open.md) | DFlash on hybrid Qwen3.5 / 3.6 / Next targets produced garbage text on the release MLX sta | Fixed 2026-10-29 (root cause found, patched, self-checked at load) |
 | [FU-134](open.md) | Speculative decoding on creative prose is 2 to 4 times slower than plain | Open (2026-10-29), found by the 27B-class check in FU-112 |
 | [FU-133](open.md) | "Best fit for your hardware" badges and recommended settings in the Studios | Idea, not started (2026-10-29) |
 | [FU-132](open.md) | oMLX (jundot/omlx) as an MLX engine lane | Open question (2026-10-29) |

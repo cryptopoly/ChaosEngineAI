@@ -783,14 +783,12 @@ def phase_1(cap: Capability) -> PhaseResult:
                 return "pass", "", detail
         return "skip", "no DDTree-capable model on disk", {}
 
-    # 1c3. FU-135: DFlash on a hybrid recurrent target (Qwen3.5 / 3.6 / Next) produced garbage on
-    # mlx-lm 0.32, so the worker keeps it off. The check loads one with speculative decoding
-    # requested and asserts it was refused with the explanation (and still answers), so the
-    # lane cannot be switched on again without someone noticing.
-    def _mlx_dflash_hybrid_off():
-        import os
-        if os.environ.get("CHAOSENGINE_ALLOW_HYBRID_DFLASH"):
-            return "skip", "CHAOSENGINE_ALLOW_HYBRID_DFLASH is set (testing the hybrid lane on purpose)", {}
+    # 1c3. FU-135: on mlx-lm 0.32 the pinned dflash-mlx read the wrong output head of a hybrid
+    # recurrent target (Qwen3.5 / 3.6 / Next) and the reply was garbage at 8 tok/s. The worker now
+    # patches the adapter and self-checks it at load. The check loads one with speculative decoding
+    # requested and asserts the lane engaged, or, when the self-check refused it, that the note says
+    # why; either way the reply must come back.
+    def _mlx_dflash_hybrid():
         for prefix in ("Qwen3.6-27B", "Qwen3.6-35B", "Qwen3.5-", "Qwen3-Coder-Next", "Qwen3-Next"):
             pick = _pick_model_by_ref_prefix(cap.local_mlx_models, prefix)
             if not pick:
@@ -803,8 +801,10 @@ def phase_1(cap: Capability) -> PhaseResult:
                 return status, reason, detail
             note = detail.get("runtimeNote") or ""
             if detail.get("speculativeDecoding"):
-                return "fail", f"DFlash engaged on a hybrid model ({ref}); it must stay off (FU-135): {note[:160]}", detail
-            return "pass", "", detail
+                return "pass", "", detail
+            if "DFLASH is off for this model" in note:
+                return "pass", f"refused by the self-check: {note[-160:]}", detail
+            return "fail", f"DFlash did not engage on a hybrid model ({ref}) and gave no reason: {note[:160]}", detail
         return "skip", "no hybrid Qwen3.5 / 3.6 / Next MLX model on disk", {}
 
     # 1d. MTPLX. Uses leaf-name as modelRef + canonical_repo for the registry
@@ -1169,7 +1169,7 @@ def phase_1(cap: Capability) -> PhaseResult:
         ("MLX TurboQuant cache", _mlx_turboquant),
         ("MLX + DFlash speculative", _mlx_dflash),
         ("MLX + DDTree speculative", _mlx_ddtree),
-        ("MLX DFlash stays off on hybrid models (FU-135)", _mlx_dflash_hybrid_off),
+        ("MLX DFlash on a hybrid model (FU-135)", _mlx_dflash_hybrid),
         ("MLX + MTPLX speculative", _mtplx),
         ("MLX + TensorFold exact speculative (FU-093)", _tensorfold_engine),
         ("MLX Kolibri 1, vendored architecture (FU-103)", _kolibri),

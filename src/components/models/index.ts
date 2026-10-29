@@ -27,5 +27,5 @@ export type { ModelCardProps } from "./ModelCard";
 export { AcceleratorPills, acceleratorsForHost } from "./AcceleratorPills";
 export type { AcceleratorHost } from "./AcceleratorPills";
 export { ModelsPage } from "./ModelsPage";
-export type { ModelsPageColumn, ModelsPageProps } from "./ModelsPage";
+export type { ModelsPageColumn, ModelsPageCounts, ModelsPageProps } from "./ModelsPage";
 export { LegacyModelsSwitch } from "./LegacyModelsSwitch";

@@ -65,6 +65,10 @@ export interface DownloadActionOptions {
   trackedOnly?: boolean;
   /** The area can delete the files of an installed model. */
   canDeleteModel?: boolean;
+  /** ``false`` when the row has no download to start, pause or resume
+   * (a local model with no known Hugging Face repo): only Delete model
+   * is offered outside the installed state. Default ``true``. */
+  canDownload?: boolean;
 }
 
 /** The ordered download / delete actions for a row. The launch action
@@ -75,6 +79,9 @@ export function downloadActionsFor(
 ): DownloadActionSpec[] {
   if (options.trackedOnly) return [SPECS.trackedOnly];
   const canDelete = options.canDeleteModel !== false;
+  if (options.canDownload === false && status.state !== "installed") {
+    return canDelete ? [SPECS.deleteModel] : [];
+  }
   switch (status.state) {
     case "installed":
       return canDelete ? [SPECS.deleteModel] : [];

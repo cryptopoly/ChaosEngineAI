@@ -125,6 +125,7 @@ def _size_refusal(
     footprint_gb: float | None,
     frames: int | None,
     reference_frames: int | None,
+    memory_name: str = "memory",
 ) -> dict[str, Any] | None:
     """Refusal for a size that does not fit in the free memory, or None when it does."""
     need_gb = load_gb + extra_gb
@@ -140,10 +141,10 @@ def _size_refusal(
     )
     sized_for = f"the {reference_pixels / 1_000_000:.1f} megapixels {label} is sized for"
     need_text = (
-        f"about {need_gb:.0f} GB of free memory ({load_gb:.0f} GB to load the model and {extra_gb:.0f} GB "
+        f"about {need_gb:.0f} GB of free {memory_name} ({load_gb:.0f} GB to load the model and {extra_gb:.0f} GB "
         f"because the size is above {sized_for})"
         if load_gb > 0
-        else f"about {extra_gb:.0f} GB of free memory on top of the loaded model, because the size is above {sized_for}"
+        else f"about {extra_gb:.0f} GB of free {memory_name} on top of the loaded model, because the size is above {sized_for}"
     )
     return {
         "code": code,
@@ -226,6 +227,7 @@ def gate_image_generation(
     reference_pixels: int | None = None,
     footprint_gb: float | None = None,
     headroom: float = IMAGE_MODEL_HEADROOM,
+    size_available_gb: float | None = None,
 ) -> dict[str, Any] | None:
     """Pre-flight check for image generation. Returns refusal or None.
 
@@ -244,6 +246,9 @@ def gate_image_generation(
     ``footprint_gb`` is the model's footprint, resident or not (default: ``model_gb``).
     ``headroom`` multiplies the model's size for the load check; a footprint that is already a
     measured process peak passes 1.0, as video does, so it is not counted twice.
+    ``size_available_gb`` is the free GPU memory on a CUDA host: the size term is then judged
+    against it (the extra memory a large size needs lives on the card, not in system RAM) and the
+    model's own load is left to the card's offload modes.
     """
     if model_gb and available_gb < model_gb * headroom:
         label = model_name or "This image model"
@@ -263,8 +268,8 @@ def gate_image_generation(
             label=model_name or "this image model",
             width=width,
             height=height,
-            available_gb=available_gb,
-            load_gb=(model_gb or 0.0) * headroom,
+            available_gb=available_gb if size_available_gb is None else size_available_gb,
+            load_gb=0.0 if size_available_gb is not None else (model_gb or 0.0) * headroom,
             extra_gb=size_extra_gb(
                 width, height, reference_pixels=reference_pixels, footprint_gb=footprint_gb or model_gb
             ),
@@ -272,6 +277,7 @@ def gate_image_generation(
             footprint_gb=footprint_gb or model_gb,
             frames=None,
             reference_frames=None,
+            memory_name="GPU memory" if size_available_gb is not None else "memory",
         )
         if refusal is not None:
             return refusal
@@ -311,6 +317,7 @@ def gate_video_generation(
     reference_pixels: int | None = None,
     reference_frames: int | None = None,
     footprint_gb: float | None = None,
+    size_available_gb: float | None = None,
 ) -> dict[str, Any] | None:
     """Pre-flight check for video generation. Returns refusal or None.
 
@@ -323,6 +330,7 @@ def gate_video_generation(
     that does not fit is refused before loading, as for images. The size
     arguments work as for images; a clip longer than ``reference_frames``
     scales the extra memory for a size above the reference by the length ratio.
+    ``size_available_gb`` works as for images (free GPU memory on a CUDA host).
     """
     if model_gb and available_gb < model_gb * VIDEO_MODEL_HEADROOM:
         label = model_name or "This video model"
@@ -342,8 +350,8 @@ def gate_video_generation(
             label=model_name or "this video model",
             width=width,
             height=height,
-            available_gb=available_gb,
-            load_gb=(model_gb or 0.0) * VIDEO_MODEL_HEADROOM,
+            available_gb=available_gb if size_available_gb is None else size_available_gb,
+            load_gb=0.0 if size_available_gb is not None else (model_gb or 0.0) * VIDEO_MODEL_HEADROOM,
             extra_gb=size_extra_gb(
                 width, height, reference_pixels=reference_pixels, footprint_gb=footprint_gb or model_gb,
                 frames=frames, reference_frames=reference_frames,
@@ -352,6 +360,7 @@ def gate_video_generation(
             footprint_gb=footprint_gb or model_gb,
             frames=frames,
             reference_frames=reference_frames,
+            memory_name="GPU memory" if size_available_gb is not None else "memory",
         )
         if refusal is not None:
             return refusal
@@ -418,6 +427,20 @@ def pressure_percent_from_available(total_gb: float, available_gb: float) -> flo
     if total_gb <= 0:
         return 0.0
     return min(100.0, max(0.0, (1.0 - available_gb / total_gb) * 100.0))
+
+
+def cuda_free_vram_gb() -> float | None:
+    """Free GPU memory in GB on a CUDA host, None everywhere else (Mac, CPU-only, unreadable)."""
+    try:
+        from backend_service.helpers.hardware_class import host_hardware_class
+
+        if host_hardware_class().kind != "cuda":
+            return None
+        from backend_service.helpers.gpu import get_device_vram_free_gb
+
+        return get_device_vram_free_gb()
+    except Exception:
+        return None
 
 
 def snapshot_memory_signals() -> tuple[float, float]:

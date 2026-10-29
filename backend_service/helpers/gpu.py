@@ -326,10 +326,42 @@ def get_device_vram_total_gb() -> float | None:
     return value
 
 
+_VRAM_FREE_TTL_SECONDS = 2.0
+_VRAM_FREE_CACHE: dict[str, tuple[float, float | None]] = {}
+
+
+def get_device_vram_free_gb() -> float | None:
+    """Free device memory in GB right now (total minus used), or None when it cannot be read.
+
+    Read through the same monitor as the metrics endpoint and kept for two seconds, so a
+    request gate and the status poll that follows it share one reading.
+    """
+    import time
+
+    now = time.monotonic()
+    with _VRAM_TOTAL_LOCK:
+        cached = _VRAM_FREE_CACHE.get("value")
+        if cached is not None and now - cached[0] < _VRAM_FREE_TTL_SECONDS:
+            return cached[1]
+    try:
+        snapshot = _monitor.snapshot()
+    except Exception:
+        snapshot = {}
+    total = snapshot.get("vram_total_gb")
+    used = snapshot.get("vram_used_gb")
+    value: float | None = None
+    if isinstance(total, (int, float)) and isinstance(used, (int, float)) and total > 0:
+        value = round(max(0.0, float(total) - float(used)), 1)
+    with _VRAM_TOTAL_LOCK:
+        _VRAM_FREE_CACHE["value"] = (now, value)
+    return value
+
+
 def reset_vram_total_cache() -> None:
     """Clear the cached VRAM total. Used by tests."""
     with _VRAM_TOTAL_LOCK:
         _VRAM_TOTAL_CACHE.clear()
+        _VRAM_FREE_CACHE.clear()
 
 
 def nvidia_gpu_present() -> bool:

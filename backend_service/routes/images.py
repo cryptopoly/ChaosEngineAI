@@ -272,6 +272,7 @@ def generate_image(request: Request, body: ImageGenerationRequest) -> dict[str, 
     try:
         from backend_service.helpers.memory_gate import (
             IMAGE_MODEL_HEADROOM,
+            cuda_free_vram_gb,
             gate_image_generation,
             model_memory_gb,
             snapshot_memory_signals,
@@ -298,6 +299,7 @@ def generate_image(request: Request, body: ImageGenerationRequest) -> dict[str, 
             reference_pixels=reference_pixels(variant),
             footprint_gb=model_memory_gb(variant),
             headroom=1.0 if measured_peak else IMAGE_MODEL_HEADROOM,
+            size_available_gb=cuda_free_vram_gb(),
         )
     except Exception as gate_exc:
         state.add_log("images", "warning", f"Memory gate skipped: {gate_exc}")

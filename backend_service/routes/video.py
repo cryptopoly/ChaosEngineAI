@@ -167,6 +167,7 @@ def _video_memory_gate(
     state = request.app.state.chaosengine
     try:
         from backend_service.helpers.memory_gate import (
+            cuda_free_vram_gb,
             gate_video_generation,
             model_memory_gb,
             snapshot_memory_signals,
@@ -204,6 +205,7 @@ def _video_memory_gate(
             pressure_percent,
             model_gb=None if loaded_repo == variant.get("repo") else model_memory_gb(variant),
             model_name=variant.get("name"),
+            size_available_gb=cuda_free_vram_gb(),
             **size_args,
         )
     except Exception as gate_exc:

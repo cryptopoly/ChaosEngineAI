@@ -10,6 +10,7 @@ Parked ideas live here, not in [decisions](decisions.md) or [backlog](backlog.md
 | Idea | Why | Effort | Depends on | Phase |
 |---|---|---|---|---|
 | Local agents that build a game through the app ([FU-126](tracker/open.md)) | One local app, one memory manager, one API for code, art, voice and video | M (thin MCP layer, 1 to 2 days) plus a local coding model that is good enough | A local model close to a hosted frontier one | Banked |
+| Fit badge and recommended settings per hardware ([FU-133](tracker/open.md)) | Tells the user what runs well on their machine and which Studio settings to turn on | M to L (1.5 days badge, 2 days settings with measurements) | The shared model card from the Models page merge; measurements on 3 to 4 families | Later |
 | One Models page per area instead of Discover and My Models ([FU-129](tracker/open.md)) | The screens are nearly identical | L (2 to 4 days) | After v0.9.9 | Later |
 | Image-to-video and sound-to-video on the LTX engine | The engine supports both; the request has no image or audio field yet | M | Video request schema change | Later |
 | oMLX as an engine lane ([FU-132](tracker/open.md)) | SSD-persistent KV cache and concurrent requests | M | A measured win over our MLX lane | Later |

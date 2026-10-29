@@ -214,6 +214,10 @@ class LoadedModelInfo:
     # The context the load asked for, before it was clamped to the model's
     # maximum; the app compares its launch settings against this.
     requestedContextTokens: int | None = None
+    # The tree budget the load asked for. The worker drops it for targets
+    # DDTree cannot verify, and the app compares its launch settings
+    # against what it asked for, not what ran.
+    requestedTreeBudget: int | None = None
 
     def to_dict(self) -> dict[str, Any]:
         # Phase 2.11: include resolved capabilities so the frontend can
@@ -251,6 +255,7 @@ class LoadedModelInfo:
             "speculativeDecoding": self.speculativeDecoding,
             "dflashDraftModel": self.dflashDraftModel,
             "treeBudget": self.treeBudget,
+            "requestedTreeBudget": self.requestedTreeBudget,
             "visionEnabled": self.visionEnabled,
             "capabilities": capabilities,
         }

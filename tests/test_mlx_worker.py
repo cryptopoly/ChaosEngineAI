@@ -326,8 +326,8 @@ class DFlashCompatibilityTests(unittest.TestCase):
             )
 
         self.assertTrue(result["speculativeDecoding"])
-        # DDTree tree verification is unfinished on MLX: the tree budget is
-        # dropped and linear DFlash runs, with a note saying so.
+        # This fake target cannot be tree-verified (no KV cache factory), so
+        # the tree budget is dropped and linear DFlash runs, with a note.
         self.assertEqual(result["treeBudget"], 0)
         self.assertIn("DDTree", result.get("note") or "")
         self.assertEqual(result["dflashDraftModel"], "z-lab/Qwen3.5-35B-A3B-DFlash")
@@ -340,6 +340,33 @@ class DFlashCompatibilityTests(unittest.TestCase):
             "z-lab/Qwen3.5-35B-A3B-DFlash",
             lazy=True,
         )
+
+    def test_load_model_keeps_tree_budget_when_target_supports_tree_verify(self):
+        worker = WorkerState()
+        fake_model = SimpleNamespace(layers=[object(), object()])
+        target_ops = SimpleNamespace(
+            family=Mock(return_value="pure_attention"),
+            configure_full_attention_split=Mock(),
+        )
+        fake_runtime, modules = self._fake_dflash_modules(fake_model, _FakeTokenizer(), target_ops)
+
+        with patch.dict("sys.modules", modules), patch(
+            "backend_service.ddtree.ddtree_unsupported_reason", return_value=None,
+        ) as probe:
+            result = worker.load_model(
+                {
+                    "target": "/tmp/model",
+                    "speculativeDecoding": True,
+                    "dflashDraftModel": "z-lab/Qwen3-4B-DFlash-b16",
+                    "treeBudget": 16,
+                }
+            )
+
+        probe.assert_called_once_with(fake_model, target_ops)
+        self.assertEqual(result["treeBudget"], 16)
+        self.assertIn("DDTree speculative decoding active (budget=16", result.get("note") or "")
+        self.assertIs(worker._ddtree_target, fake_model)
+        self.assertEqual(worker._ddtree_draft, "draft_bundle")
 
     def test_load_model_applies_full_attention_split_for_hybrid_gdn(self):
         # hybrid_gdn target (e.g. Qwen3-Next GDN): configure_full_attention_split

@@ -438,6 +438,11 @@ class DDTreeAvailabilityProbeTests(unittest.TestCase):
         with patch("dflash.importlib.util.find_spec", return_value=None):
             self.assertFalse(is_ddtree_available())
 
+    def test_availability_info_reports_the_probe(self):
+        for probed in (True, False):
+            with patch("dflash.is_ddtree_available", return_value=probed):
+                self.assertIs(availability_info()["ddtreeAvailable"], probed)
+
 
 if __name__ == "__main__":
     unittest.main()

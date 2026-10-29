@@ -103,6 +103,14 @@ describe("loadedModelMatchesRuntimeProfile()", () => {
     expect(loadedModelMatchesRuntimeProfile(makeLoadedModel({ contextTokens: 131072 }), profile)).toBe(false);
   });
 
+  it("matches a model whose tree budget was dropped because its target cannot be tree-verified", () => {
+    const profile = resolveChatRuntimeProfile(null, { ...launchSettings, speculativeDecoding: true, treeBudget: 8 });
+    const dropped = makeLoadedModel({ speculativeDecoding: true, treeBudget: 0, requestedTreeBudget: 8 });
+    expect(loadedModelMatchesRuntimeProfile(dropped, profile)).toBe(true);
+    // Without the requested value (older backends) it still counts as a change.
+    expect(loadedModelMatchesRuntimeProfile(makeLoadedModel({ speculativeDecoding: true, treeBudget: 0 }), profile)).toBe(false);
+  });
+
   it("treats launch settings without the speculative fields as off", () => {
     // The backend's saved launch preferences carry no speculativeDecoding /
     // treeBudget; that must not count as a change on every message.

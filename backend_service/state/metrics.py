@@ -120,8 +120,13 @@ def runtime_profile_change_reasons(
         changes.append(
             f"speculative decoding {'on' if loaded_model.speculativeDecoding else 'off'} -> {'on' if speculative_decoding else 'off'}"
         )
-    if int(loaded_model.treeBudget or 0) != int(tree_budget):
-        changes.append(f"tree budget {loaded_model.treeBudget or 0} -> {tree_budget}")
+    # A budget the worker dropped (target DDTree cannot verify) still counts
+    # as what was asked for, or every turn would reload to ask again.
+    loaded_tree_budget = getattr(loaded_model, "requestedTreeBudget", None)
+    if loaded_tree_budget is None:
+        loaded_tree_budget = loaded_model.treeBudget
+    if int(loaded_tree_budget or 0) != int(tree_budget):
+        changes.append(f"tree budget {loaded_tree_budget or 0} -> {tree_budget}")
     return changes
 
 

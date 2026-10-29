@@ -156,6 +156,7 @@ def load_model(state: WorkerState, request: dict[str, Any]) -> dict[str, Any]:
     dflash_note = None
     state.tree_budget = int(request.get("treeBudget") or 0)
     if state.speculative_decoding and dflash_draft_model:
+        target_ops = None
         try:
             # FU-075: dflash-mlx 0.1.5 moved the pre-0.1.5 top-level
             # ``configure_full_attention_split`` onto the per-family
@@ -192,18 +193,28 @@ def load_model(state: WorkerState, request: dict[str, Any]) -> dict[str, Any]:
             dflash_note = f"DFLASH initialisation failed: {exc}. Falling back to standard generation."
             state.speculative_decoding = False
 
-        # The MLX DDTree port never fed its tree position ids to the model, so
-        # tree nodes verified at the wrong RoPE positions; it only ever ran by
-        # raising and falling back. Until that is finished, a tree budget runs
-        # linear DFlash and says so.
+        # DDTree verifies a whole draft tree in one pass, which only works on
+        # targets made of plain attention layers over a KV cache. Hybrid
+        # recurrent models (Qwen3.5 / 3.6, Qwen3-Next) keep linear DFlash.
         if state.speculative_decoding and state.tree_budget > 0:
-            dflash_note = (
-                f"DFLASH speculative decoding active (draft: {dflash_draft_model}). "
-                "DDTree tree verification is not available on MLX yet, so the tree budget is ignored."
-            )
-            state.tree_budget = 0
-            state._ddtree_draft = None
-            state._ddtree_target = None
+            from backend_service.ddtree import ddtree_unsupported_reason
+
+            reason = ddtree_unsupported_reason(state._dflash_target, target_ops)
+            if reason is None:
+                state._ddtree_target = state._dflash_target
+                state._ddtree_draft = state._dflash_generator
+                dflash_note = (
+                    f"DDTree speculative decoding active (budget={state.tree_budget}, "
+                    f"draft: {dflash_draft_model})."
+                )
+            else:
+                dflash_note = (
+                    f"DFLASH speculative decoding active (draft: {dflash_draft_model}). "
+                    f"DDTree is not available for this model ({reason}), so the tree budget is ignored."
+                )
+                state.tree_budget = 0
+                state._ddtree_draft = None
+                state._ddtree_target = None
 
     profile_note = state._apply_cache_profile(
         cache_strategy=requested_cache_strategy,

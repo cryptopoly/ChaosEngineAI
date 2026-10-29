@@ -41,9 +41,9 @@ _PEAK_RE = re.compile(r"Peak MLX memory:\s*([\d.]+)\s*GB", re.IGNORECASE)
 
 
 # The release scripts/install-mflux.sh installs (``MFLUX_VERSION``). An older
-# install lacks the newer commands and model names (FLUX 3, Qwen-Image-2.1
-# Turbo need 0.23), so the setup status reports it as outdated.
-MFLUX_REQUIRED_VERSION = "0.23.0"
+# install lacks the newer commands and model names (FLUX 3 and Qwen-Image-2.1
+# Turbo need 0.23, Iris-3B 0.24), so the setup status reports it as outdated.
+MFLUX_REQUIRED_VERSION = "0.24.0"
 
 
 def mflux_version_is_outdated(version: str | None) -> bool:
@@ -70,7 +70,7 @@ class MfluxFamily:
     takes_negative_prompt: bool = False
 
 
-# Command names and flags read from mflux 0.23.0 (``--help`` of each command);
+# Command names and flags read from mflux 0.24.0 (``--help`` of each command);
 # re-check them when ``scripts/install-mflux.sh`` moves ``MFLUX_VERSION``.
 _FAMILIES: dict[str, MfluxFamily] = {
     "black-forest-labs/FLUX.1-schnell": MfluxFamily("mflux-generate", "schnell"),
@@ -85,6 +85,9 @@ _FAMILIES: dict[str, MfluxFamily] = {
     # guidance (16 steps by default); Base is guided (50 steps, 3.5).
     "black-forest-labs/flux-3-image-klein": MfluxFamily("mflux-generate-flux3", "flux3-image-klein", takes_guidance=False),
     "black-forest-labs/flux-3-image-klein-base": MfluxFamily("mflux-generate-flux3", "flux3-image-klein-base"),
+    # Iris-3B Turbo (mflux 0.24): a 3B model that generates pixels directly, 4
+    # steps and no guidance.
+    "speridlabs/iris-3b": MfluxFamily("mflux-generate-iris", "iris-3b", takes_guidance=False),
 }
 
 

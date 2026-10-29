@@ -48,6 +48,20 @@ def _sdcpp_gguf_files(repo_id: str) -> list[str]:
     ]
 
 
+def _pinned_download_files(repo_id: str) -> list[str]:
+    """Files a variant pins with ``downloadFiles`` when its repo holds several models.
+
+    Iris-3B keeps the Turbo, base, depth and upscaler checkpoints in one 42 GB
+    repo; the Turbo variant needs only its own folder.
+    """
+    files: list[str] = []
+    for family in IMAGE_MODEL_FAMILIES:
+        for variant in family["variants"]:
+            if str(variant.get("repo") or "") == repo_id:
+                files.extend(str(name) for name in variant.get("downloadFiles") or [])
+    return list(dict.fromkeys(files))
+
+
 # The folders mflux loads (its own allow-list in each model's weight
 # definition). FLUX 3 ships ``modular_model_index.json`` instead of the
 # ``model_index.json`` a diffusers snapshot has, so the diffusers check
@@ -83,6 +97,9 @@ def _image_repo_runtime_ready(repo_id: str) -> bool:
     gguf_files = _sdcpp_gguf_files(repo_id)
     if gguf_files:
         return any((Path(snapshot_dir) / name).is_file() for name in gguf_files)
+    pinned = _pinned_download_files(repo_id)
+    if pinned:
+        return all((Path(snapshot_dir) / name).is_file() for name in pinned)
     if _mflux_only_repo(repo_id):
         return _mflux_snapshot_error(Path(snapshot_dir), repo_id) is None
     return validate_local_diffusers_snapshot(snapshot_dir, repo_id) is None
@@ -130,6 +147,12 @@ def _image_download_validation_error(repo_id: str) -> str | None:
         if any((Path(snapshot_dir) / name).is_file() for name in gguf_files):
             return None
         return f"Download finished but none of {', '.join(gguf_files)} is in the snapshot of {repo_id}."
+    pinned = _pinned_download_files(repo_id)
+    if pinned:
+        missing = [name for name in pinned if not (Path(snapshot_dir) / name).is_file()]
+        if missing:
+            return f"The snapshot of {repo_id} is missing {', '.join(missing)}. Retry the download."
+        return None
     if _mflux_only_repo(repo_id):
         return _mflux_snapshot_error(Path(snapshot_dir), repo_id)
     return validate_local_diffusers_snapshot(snapshot_dir, repo_id)

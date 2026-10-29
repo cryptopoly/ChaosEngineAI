@@ -642,6 +642,54 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
         ],
     },
     {
+        # Iris-3B (Sperid Labs, 2026-10): a pixel-space 3B model with no VAE. The
+        # repo holds the base, Turbo, depth and upscaler checkpoints (42 GB); the
+        # Turbo variant needs only its own folder plus the Qwen3-VL-4B text
+        # encoder, which mflux reads from the Qwen repo.
+        "id": "iris-3b",
+        "name": "Iris-3B Turbo",
+        "provider": "Sperid Labs",
+        "headline": "Pixel-space 3B model with no VAE: four steps, Apache 2.0, runs natively on MLX.",
+        "summary": "Iris-3B Turbo is the 4-step distilled Iris-3B. It paints every pixel directly, so there is no decoder to load.",
+        "updatedLabel": "MLX native (mflux)",
+        "badges": ["Fast", "Apple Silicon", "Apache 2.0"],
+        "defaultVariantId": "speridlabs/iris-3b-mflux",
+        "variants": [
+            {
+                "id": "speridlabs/iris-3b-mflux",
+                "familyId": "iris-3b",
+                "name": "Iris-3B Turbo · mflux (MLX)",
+                "provider": "Sperid Labs · mflux",
+                "repo": "speridlabs/iris-3b",
+                "engine": "mflux",
+                "link": "https://huggingface.co/speridlabs/iris-3b",
+                "runtime": "mflux (MLX native)",
+                "styleTags": ["photoreal", "fast", "general", "apple-silicon"],
+                "taskSupport": ["txt2img"],
+                "sizeGb": 15.0,
+                # Peak MLX memory measured on an M4 Max at 768x768 (mflux 0.24).
+                "runtimeFootprintMpsGb": 8.0,
+                "defaultSteps": 4,
+                "cfgOverride": 1.0,
+                "recommendedResolution": "1024x1024",
+                "downloadFiles": ["turbo/model.safetensors"],
+                "downloadCompanions": [
+                    {
+                        "repo": "Qwen/Qwen3-VL-4B-Instruct",
+                        "patterns": ["model-*.safetensors", "model.safetensors.index.json", "*.json", "tokenizer*", "vocab.json", "merges.txt"],
+                    },
+                ],
+                "note": (
+                    "Apple Silicon only. The 4-step distilled Iris-3B through mflux on MLX, Apache 2.0. "
+                    "Downloads the 6 GB Turbo checkpoint and the Qwen3-VL-4B text encoder (about 9 GB). "
+                    "Needs the mflux engine, installed from the Image Studio."
+                ),
+                "estimatedGenerationSeconds": 18.0,
+                "releaseDate": "2026-10",
+            },
+        ],
+    },
+    {
         "id": "flux-2",
         "name": "FLUX.2",
         "provider": "Black Forest Labs",

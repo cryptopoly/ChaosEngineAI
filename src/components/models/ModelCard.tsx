@@ -19,8 +19,9 @@ export interface ModelCardProps {
   statusCell?: ReactNode;
   /** Usually ``<ModelDownloadControls>``. */
   actions: ReactNode;
-  /** Expandable detail (note, path, licence, model card link...). */
-  detail?: ReactNode;
+  /** Expandable detail (note, path, licence, model card link...). Pass a
+   * function to build it only while the row is expanded. */
+  detail?: ReactNode | (() => ReactNode);
   expanded?: boolean;
   onToggleExpanded?: () => void;
   /** Full-width notes under the row (download error, gated-access help). */
@@ -127,7 +128,9 @@ export function ModelCard({
         <span className="models-card__status">{statusCell ?? <ModelStatusChip status={status} reason={entry.broken?.reason} />}</span>
         {actions}
       </div>
-      {expanded && detail ? <div className="models-card__detail">{detail}</div> : null}
+      {expanded && detail ? (
+        <div className="models-card__detail">{typeof detail === "function" ? detail() : detail}</div>
+      ) : null}
       {callouts}
     </div>
   );

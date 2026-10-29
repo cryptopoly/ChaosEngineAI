@@ -394,7 +394,7 @@ export function ImageModelsPage({
       />
     );
 
-    const detail = (
+    const detail = () => (
       <>
         {entry.note ? <p className="models-card__note">{entry.note}</p> : null}
         <ModelDetailList

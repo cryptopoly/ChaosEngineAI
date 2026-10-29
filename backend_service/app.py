@@ -347,6 +347,21 @@ def _apply_draft_resolution(width: int, height: int) -> tuple[int, int]:
     return scaled_w, scaled_h
 
 
+def _apply_min_side(width: int, height: int, min_side: int | None) -> tuple[int, int]:
+    """Raise a size whose short edge is under ``min_side``, keeping the aspect ratio.
+
+    Pixel-space models (Iris-3B has no VAE) come out as noise at 256 px and with
+    visible blocks at 512 px. Sizes snap to multiples of 16 and the long edge is
+    capped at 2048.
+    """
+    if not min_side or min(width, height) >= min_side:
+        return width, height
+    scale = min_side / min(width, height)
+    new_w = min(2048, max(min_side, int(round(width * scale / 16)) * 16))
+    new_h = min(2048, max(min_side, int(round(height * scale / 16)) * 16))
+    return new_w, new_h
+
+
 def _generate_image_artifacts(
     request: ImageGenerationRequest,
     variant: dict[str, Any],
@@ -360,6 +375,14 @@ def _generate_image_artifacts(
         _apply_draft_resolution(request.width, request.height)
         if request.draftMode
         else (request.width, request.height)
+    )
+    requested_size = (effective_width, effective_height)
+    effective_width, effective_height = _apply_min_side(effective_width, effective_height, variant.get("minSide"))
+    size_note = (
+        f"Rendered at {effective_width}x{effective_height}: {variant.get('name')} needs at least "
+        f"{variant.get('minSide')} px on the short edge, below that it comes out as noise or blocks."
+        if (effective_width, effective_height) != requested_size
+        else ""
     )
     logger.info("Generating image: model=%s repo=%s size=%dx%d steps=%d draft=%s",
                 variant.get("name"), variant.get("repo"), effective_width, effective_height, request.steps, request.draftMode)
@@ -436,8 +459,8 @@ def _generate_image_artifacts(
             "negativePrompt": request.negativePrompt or "",
             "width": effective_width,
             "height": effective_height,
-            "steps": request.steps,
-            "guidance": request.guidance,
+            "steps": effective_steps,
+            "guidance": effective_guidance,
             "seed": rendered.seed,
             "createdAt": created_at,
             "durationSeconds": rendered.durationSeconds,
@@ -445,7 +468,7 @@ def _generate_image_artifacts(
             "imageMimeType": rendered.mimeType,
             "imageExtension": rendered.extension,
             "runtimeLabel": rendered.runtimeLabel,
-            "runtimeNote": rendered.runtimeNote,
+            "runtimeNote": f"{rendered.runtimeNote} {size_note}".strip() if size_note else rendered.runtimeNote,
             "qualityPreset": request.qualityPreset,
             "draftMode": request.draftMode,
         }

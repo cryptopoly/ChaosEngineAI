@@ -672,6 +672,8 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "defaultSteps": 4,
                 "cfgOverride": 1.0,
                 "recommendedResolution": "1024x1024",
+                # No VAE: noise at 256 px and visible blocks at 512 px (measured), clean from 768 px.
+                "minSide": 768,
                 "downloadFiles": ["turbo/model.safetensors"],
                 "downloadCompanions": [
                     {
@@ -681,7 +683,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 ],
                 "note": (
                     "Apple Silicon only. The 4-step distilled Iris-3B through mflux on MLX, Apache 2.0. "
-                    "Downloads the 6 GB Turbo checkpoint and the Qwen3-VL-4B text encoder (about 9 GB). "
+                    "Needs at least 768 px (smaller sizes come out as noise or blocks, so the app raises them). Downloads the 6 GB Turbo checkpoint and the Qwen3-VL-4B text encoder (about 9 GB). "
                     "Needs the mflux engine, installed from the Image Studio."
                 ),
                 "estimatedGenerationSeconds": 18.0,

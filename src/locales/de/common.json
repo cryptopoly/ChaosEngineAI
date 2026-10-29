@@ -1072,7 +1072,9 @@
     "importing": "Wird importiert…",
     "import": "Importieren",
     "title": "Vorhandene Modelle importieren",
-    "subtitle": "Im Speicher einer anderen lokalen App wurden Modelle gefunden. Der Import verknüpft sie an Ort und Stelle — kein erneuter Download."
+    "subtitle": "Im Speicher einer anderen lokalen App wurden Modelle gefunden. Der Import verknüpft sie an Ort und Stelle — kein erneuter Download.",
+    "foundIn": "Gefunden in {path}",
+    "foundElsewhere": "Auf diesem Computer gefunden"
   },
   "gpuBanner": {
     "runningOnCpu": "Läuft auf der CPU.",

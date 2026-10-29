@@ -21,7 +21,7 @@ Priority: P1 urgent, P2 next, P3 later. The complete list of follow-ups (129+ ro
 - [ ] **P1, todo.** Re-tag `v0.9.9` after merge ([decisions](decisions.md) item 2).
 - [ ] **P2, in progress.** DDTree speed on a 27B-class target and block 8 versus 16 on Qwen3.6-27B ([progress](progress/runs-2026-10-29.md)).
 - [ ] **P2, in progress.** LTX-2.5 live run, then the default LTX row ([decisions](decisions.md) item 3).
-- [x] **P2, done (not yet seen in the app).** Sound in Video Studio: badge, unmuted result window, prompt hint ([FU-130](tracker/open.md)).
+- [x] **P2, done (badge seen in the gallery).** Sound in Video Studio: badge, unmuted result window, prompt hint ([FU-130](tracker/open.md)).
 - [x] **P2, done.** Project hub scaffolded ([FU-131](tracker/open.md)).
 - [ ] **P3, todo.** Models page consolidation after the release ([FU-129](tracker/open.md)).
 

@@ -424,7 +424,8 @@
     "prompt": {
       "label": "Prompt",
       "placeholder": "Eine cinematische Drohnenaufnahme eines nebligen Kiefernwaldes im Morgengrauen...",
-      "ltxShortWarning": "LTX-Video liefert die besten Ergebnisse mit detaillierten Prompts (~50-100 Wörter). Kurze Prompts (z. B. „Cartoon-Lama frisst Stroh“) konditionieren das Modell zu schwach und neigen zum Driften. Lightricks empfiehlt, mit der Handlung zu beginnen und dann visuelle Details, Beleuchtung und Kameraführung hinzuzufügen."
+      "ltxShortWarning": "LTX-Video liefert die besten Ergebnisse mit detaillierten Prompts (~50-100 Wörter). Kurze Prompts (z. B. „Cartoon-Lama frisst Stroh“) konditionieren das Modell zu schwach und neigen zum Driften. Lightricks empfiehlt, mit der Handlung zu beginnen und dann visuelle Details, Beleuchtung und Kameraführung hinzuzufügen.",
+      "soundHint": "Dieses Modell erzeugt auch Ton, und der Ton folgt dem Prompt. Beschreibe ihn: Schritte im knirschenden Schnee, Wind in den Bäumen, ein tiefes Motorbrummen."
     },
     "negativePrompt": {
       "tooltip": "Sagt dem Modell, was vermieden werden soll. Ein generischer Prompt ist vorausgefüllt und für die meisten Videomodelle abgestimmt — leere ihn oder bearbeite ihn, wenn du eine modellspezifische Präferenz hast. Mehr Spezifik hilft meist mehr, als sie schadet.",
@@ -559,6 +560,10 @@
         "label": "Max",
         "sub": "50 Schritte"
       }
+    },
+    "sound": {
+      "badge": "Ton",
+      "badgeTooltip": "Dieser Clip hat Ton. Schalte ihn mit der Lautstärkeregelung des Players ein."
     }
   },
   "imageGallery": {

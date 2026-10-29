@@ -1072,7 +1072,9 @@
     "importing": "Importando…",
     "import": "Importar",
     "title": "Importar modelos existentes",
-    "subtitle": "Se encontraron modelos en el almacén de otra app local. Al importar se enlazan donde están — sin volver a descargar."
+    "subtitle": "Se encontraron modelos en el almacén de otra app local. Al importar se enlazan donde están — sin volver a descargar.",
+    "foundIn": "Encontrado en {path}",
+    "foundElsewhere": "Encontrado en este equipo"
   },
   "gpuBanner": {
     "runningOnCpu": "Ejecutándose en la CPU.",

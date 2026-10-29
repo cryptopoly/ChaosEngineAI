@@ -424,7 +424,8 @@
     "prompt": {
       "label": "Invite",
       "placeholder": "Un plan cinématographique en drone d'une forêt de pins brumeuse à l'aube...",
-      "ltxShortWarning": "LTX-Video produit de meilleurs résultats avec des invites détaillées (~50-100 mots). Les invites courtes (« lama de dessin animé mangeant de la paille ») sous-conditionnent le modèle et ont tendance à dériver. Lightricks recommande de commencer par l'action, puis d'ajouter les détails visuels, l'éclairage et la direction de la caméra."
+      "ltxShortWarning": "LTX-Video produit de meilleurs résultats avec des invites détaillées (~50-100 mots). Les invites courtes (« lama de dessin animé mangeant de la paille ») sous-conditionnent le modèle et ont tendance à dériver. Lightricks recommande de commencer par l'action, puis d'ajouter les détails visuels, l'éclairage et la direction de la caméra.",
+      "soundHint": "Ce modèle produit aussi du son, et le son suit votre invite. Décrivez-le : des pas qui crissent dans la neige, du vent dans les arbres, un ronronnement grave de moteur."
     },
     "negativePrompt": {
       "tooltip": "Indique au modèle ce qu'il doit éviter. Une invite générique est préremplie et réglée pour la plupart des modèles vidéo — effacez-la ou modifiez-la si vous avez une préférence spécifique au modèle. Plus de spécificité aide généralement plus qu'elle ne nuit.",
@@ -559,6 +560,10 @@
         "label": "Max",
         "sub": "50 étapes"
       }
+    },
+    "sound": {
+      "badge": "Son",
+      "badgeTooltip": "Ce clip a du son. Activez-le avec le réglage du volume du lecteur."
     }
   },
   "imageGallery": {

@@ -1072,7 +1072,9 @@
     "importing": "正在匯入…",
     "import": "匯入",
     "title": "匯入現有模型",
-    "subtitle": "在另一個本地應用程式的儲存空間中找到了模型。匯入會就地連結它們，不需要重新下載。"
+    "subtitle": "在另一個本地應用程式的儲存空間中找到了模型。匯入會就地連結它們，不需要重新下載。",
+    "foundIn": "在 {path} 中找到",
+    "foundElsewhere": "在此電腦上找到"
   },
   "gpuBanner": {
     "runningOnCpu": "正在使用 CPU 執行。",

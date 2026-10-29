@@ -424,7 +424,8 @@
     "prompt": {
       "label": "Prompt",
       "placeholder": "Una toma de dron cinematográfica de un bosque de pinos brumoso al amanecer...",
-      "ltxShortWarning": "LTX-Video produce mejores resultados con prompts detallados (~50-100 palabras). Los prompts cortos (\\\"llama caricatura comiendo paja\\\") sub-condicionan el modelo y tienden a derivar. Lightricks recomienda empezar con la acción y luego agregar detalles visuales, iluminación y dirección de cámara."
+      "ltxShortWarning": "LTX-Video produce mejores resultados con prompts detallados (~50-100 palabras). Los prompts cortos (\\\"llama caricatura comiendo paja\\\") sub-condicionan el modelo y tienden a derivar. Lightricks recomienda empezar con la acción y luego agregar detalles visuales, iluminación y dirección de cámara.",
+      "soundHint": "Este modelo también genera sonido, y el sonido sigue tu prompt. Descríbelo: pasos crujiendo en la nieve, viento entre los árboles, un zumbido grave de motor."
     },
     "negativePrompt": {
       "tooltip": "Le dice al modelo qué evitar. Hay un prompt genérico precargado y ajustado para la mayoría de los modelos de video — bórralo o edítalo si tienes una preferencia específica del modelo. Más especificidad suele ayudar más que perjudicar.",
@@ -559,6 +560,10 @@
         "label": "Máx.",
         "sub": "50 pasos"
       }
+    },
+    "sound": {
+      "badge": "Sonido",
+      "badgeTooltip": "Este clip tiene sonido. Actívalo con el control de volumen del reproductor."
     }
   },
   "imageGallery": {

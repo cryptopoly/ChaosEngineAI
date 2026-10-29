@@ -692,11 +692,6 @@
       "emptyInstalled": "尚未安裝影像模型。請從可下載的模型中挑選一個來下載。",
       "intro": "所有影像模型集中在同一份清單。下載後即可在影像工作室中使用；可依已安裝、可下載或下載中篩選。"
     },
-    "legacy": {
-      "catalog": "瀏覽目錄",
-      "installed": "已安裝",
-      "label": "檢視"
-    },
     "sort": {
       "fewestDownloads": "最少下載優先",
       "leastLiked": "最少按讚優先"

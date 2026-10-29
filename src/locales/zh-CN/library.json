@@ -692,11 +692,6 @@
       "emptyInstalled": "尚未安装图像模型。请从可下载的模型中选择一个进行下载。",
       "intro": "所有图像模型汇总在一个列表中。下载后即可在图像工作室中使用；可按已安装、可下载或下载中筛选。"
     },
-    "legacy": {
-      "catalog": "浏览目录",
-      "installed": "已安装",
-      "label": "视图"
-    },
     "sort": {
       "fewestDownloads": "下载量最少优先",
       "leastLiked": "点赞最少优先"

@@ -30,6 +30,9 @@ export interface ModelDownloadControlsProps {
   /** Delete the files of an installed or partial model. The caller asks
    * for confirmation (``confirmAndDelete``). Omit to hide the button. */
   onDeleteModel?: () => void;
+  /** ``false`` hides the transfer buttons of a row with nothing to
+   * download (``downloadActionsFor`` option). Default ``true``. */
+  canDownload?: boolean;
   /** Primary launch action, shown on installed rows only. */
   launch?: ModelLaunchAction | null;
   /** Secondary launch actions, in a "More actions" menu (installed rows). */
@@ -95,12 +98,13 @@ export function ModelDownloadControls({
   onPause,
   onCancel,
   onDeleteModel,
+  canDownload,
   launch,
   overflow,
   trailing,
 }: ModelDownloadControlsProps) {
   const { t } = useTranslation("library");
-  const actions = downloadActionsFor(status, { trackedOnly, canDeleteModel: Boolean(onDeleteModel) });
+  const actions = downloadActionsFor(status, { trackedOnly, canDeleteModel: Boolean(onDeleteModel), canDownload });
   const installed = status.state === "installed" && !trackedOnly;
 
   function handlerFor(kind: DownloadActionKind): (() => void) | undefined {

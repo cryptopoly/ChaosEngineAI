@@ -21,13 +21,21 @@ export interface ModelsPageColumn {
   sortId?: string;
 }
 
+/** The numbers behind the default subtitle. */
+export interface ModelsPageCounts {
+  shown: number;
+  total: number;
+  installed: number;
+}
+
 export interface ModelsPageProps<E extends ModelEntry> {
   /** Extra class on the page root ("image-models-page"...). */
   className?: string;
   title: string;
   /** Default: "{shown} of {total} models · {installed} installed", where
-   * total counts the rows this machine can show before any filter. */
-  subtitle?: string;
+   * total counts the rows this machine can show before any filter. A
+   * function receives those counts, to add to them (chat adds disk use). */
+  subtitle?: string | ((counts: ModelsPageCounts) => string);
   /** Buttons in the panel header (Open Studio...). */
   headerActions?: ReactNode;
   /** Short text under the header. */
@@ -50,6 +58,9 @@ export interface ModelsPageProps<E extends ModelEntry> {
   availability: ModelAvailabilityFilter;
   onAvailabilityChange: (value: ModelAvailabilityFilter) => void;
 
+  /** Rows kept above the others whatever the sort (chat favourites). */
+  pinned?: (entry: E) => boolean;
+
   sortOptions: ModelSortOption<E>[];
   sortId: string;
   sortDir: SortDir;
@@ -68,6 +79,9 @@ export interface ModelsPageProps<E extends ModelEntry> {
   emptyCatalog?: ReactNode;
   /** Text when the availability filter leaves nothing (keyed by bucket). */
   emptyByAvailability?: Partial<Record<ModelAvailabilityFilter, ReactNode>>;
+  /** Text when search and filters leave nothing. Default: a generic
+   * "no models match" line. */
+  emptyFilters?: ReactNode;
 }
 
 function sortIndicator(active: boolean, dir: SortDir): string {
@@ -92,6 +106,7 @@ export function ModelsPage<E extends ModelEntry>(props: ModelsPageProps<E>) {
     groups,
     availability,
     onAvailabilityChange,
+    pinned,
     sortOptions,
     sortId,
     sortDir,
@@ -103,6 +118,7 @@ export function ModelsPage<E extends ModelEntry>(props: ModelsPageProps<E>) {
     renderRow,
     emptyCatalog,
     emptyByAvailability,
+    emptyFilters,
   } = props;
 
   const sort = sortOptions.find((option) => option.id === sortId) ?? null;
@@ -119,8 +135,9 @@ export function ModelsPage<E extends ModelEntry>(props: ModelsPageProps<E>) {
         availability,
         sort,
         sortDir,
+        pinned,
       }),
-    [entries, resolveStatus, matches, search.value, groups, availability, sort, sortDir],
+    [entries, resolveStatus, matches, search.value, groups, availability, sort, sortDir, pinned],
   );
 
   const hasActiveFilters = hasActiveModelFilters({
@@ -169,14 +186,15 @@ export function ModelsPage<E extends ModelEntry>(props: ModelsPageProps<E>) {
     });
   }
 
+  const pageCounts: ModelsPageCounts = { shown: rows.length, total: hostVisibleCount, installed: counts.installed };
   const subtitleText =
-    subtitle ??
-    t("models.subtitle", {
-      defaultValue: "{shown} of {total, plural, one {# model} other {# models}} · {installed} installed",
-      shown: rows.length,
-      total: hostVisibleCount,
-      installed: counts.installed,
-    });
+    typeof subtitle === "function"
+      ? subtitle(pageCounts)
+      : subtitle ??
+        t("models.subtitle", {
+          defaultValue: "{shown} of {total, plural, one {# model} other {# models}} · {installed} installed",
+          ...pageCounts,
+        });
 
   const gridStyle = gridTemplate
     ? ({ ["--media-model-grid-columns" as string]: gridTemplate } as CSSProperties)
@@ -226,7 +244,8 @@ export function ModelsPage<E extends ModelEntry>(props: ModelsPageProps<E>) {
             defaultValue: "No {bucket} models under the current filters.",
             bucket: modelBucketLabel(availability, t).toLowerCase(),
           })
-        : t("models.empty.filters", { defaultValue: "No models match the current filters. Try broadening the filters or search terms." });
+        : emptyFilters ??
+          t("models.empty.filters", { defaultValue: "No models match the current filters. Try broadening the filters or search terms." });
     body = (
       <div className="empty-state image-empty-state models-empty">
         <p>{message}</p>

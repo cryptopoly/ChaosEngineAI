@@ -692,11 +692,6 @@
       "emptyInstalled": "Aucun modèle d'image installé pour l'instant. Choisissez-en un parmi les modèles disponibles pour le télécharger.",
       "intro": "Tous les modèles d'image dans une seule liste. Téléchargez-en un pour l'utiliser dans Studio image ; filtrez par modèles installés, disponibles ou en cours de téléchargement."
     },
-    "legacy": {
-      "catalog": "Parcourir le catalogue",
-      "installed": "Installé",
-      "label": "Vue"
-    },
     "sort": {
       "fewestDownloads": "moins de téléchargements en premier",
       "leastLiked": "moins de favoris en premier"

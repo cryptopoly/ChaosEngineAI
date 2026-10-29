@@ -68,6 +68,9 @@ export interface BuildModelRowsInput<E extends ModelEntry> {
   availability: ModelAvailabilityFilter;
   sort?: ModelSortOption<E> | null;
   sortDir?: SortDir;
+  /** Rows to keep above the others whatever the sort (chat favourites).
+   * Order inside each band follows the sort. */
+  pinned?: (entry: E) => boolean;
 }
 
 export interface BuildModelRowsResult<E extends ModelEntry> {
@@ -129,7 +132,12 @@ export function buildModelRows<E extends ModelEntry>(input: BuildModelRowsInput<
   const filtered = visible.filter((row) => matchesAvailability(row.status.bucket, input.availability));
   const sort = input.sort ?? null;
   const dir = input.sortDir ?? sort?.defaultDir ?? "desc";
-  return { rows: sortModelRows(filtered, sort, dir), counts, hostVisibleCount };
+  const sorted = sortModelRows(filtered, sort, dir);
+  const pinned = input.pinned;
+  const rows = pinned
+    ? [...sorted.filter((row) => pinned(row.entry)), ...sorted.filter((row) => !pinned(row.entry))]
+    : sorted;
+  return { rows, counts, hostVisibleCount };
 }
 
 export function hasActiveModelFilters<E extends ModelEntry>(input: {

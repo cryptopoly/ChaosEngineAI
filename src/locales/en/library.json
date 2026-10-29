@@ -692,11 +692,6 @@
       "emptyInstalled": "No image models installed yet. Pick one from the available models to download it.",
       "intro": "Every image model in one list. Download one to use it in Image Studio; filter by what is installed, available or downloading."
     },
-    "legacy": {
-      "catalog": "Browse catalog",
-      "installed": "Installed",
-      "label": "View"
-    },
     "sort": {
       "fewestDownloads": "fewest downloads first",
       "leastLiked": "least liked first"

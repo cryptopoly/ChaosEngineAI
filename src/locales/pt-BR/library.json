@@ -692,11 +692,6 @@
       "emptyInstalled": "Ainda não há modelos de imagem instalados. Escolha um dos modelos disponíveis para baixá-lo.",
       "intro": "Todos os modelos de imagem em uma só lista. Baixe um para usá-lo no Estúdio de imagem; filtre por instalados, disponíveis ou em download."
     },
-    "legacy": {
-      "catalog": "Navegar catálogo",
-      "installed": "Instalado",
-      "label": "Visualização"
-    },
     "sort": {
       "fewestDownloads": "menos downloads primeiro",
       "leastLiked": "menos curtidos primeiro"

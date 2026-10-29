@@ -692,11 +692,6 @@
       "emptyInstalled": "Noch keine Bildmodelle installiert. Wähle unter den verfügbaren Modellen eines zum Herunterladen aus.",
       "intro": "Alle Bildmodelle in einer Liste. Lade eines herunter, um es im Bildstudio zu nutzen; filtere nach installiert, verfügbar oder Download läuft."
     },
-    "legacy": {
-      "catalog": "Katalog durchsuchen",
-      "installed": "Installiert",
-      "label": "Ansicht"
-    },
     "sort": {
       "fewestDownloads": "Wenigste Downloads zuerst",
       "leastLiked": "Am wenigsten beliebte zuerst"

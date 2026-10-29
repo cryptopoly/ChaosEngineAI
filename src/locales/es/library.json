@@ -692,11 +692,6 @@
       "emptyInstalled": "Aún no hay modelos de imagen instalados. Elige uno de los modelos disponibles para descargarlo.",
       "intro": "Todos los modelos de imagen en una sola lista. Descarga uno para usarlo en Estudio de imagen; filtra por instalados, disponibles o en descarga."
     },
-    "legacy": {
-      "catalog": "Explorar catálogo",
-      "installed": "Instalado",
-      "label": "Vista"
-    },
     "sort": {
       "fewestDownloads": "menos descargas primero",
       "leastLiked": "menos valorado primero"

@@ -1202,3 +1202,63 @@ class MtpProbeOnHubFolderTests(unittest.TestCase):
             header = json.dumps({"mtp.fc.weight": {"dtype": "F16"}}).encode()
             (model / "model.safetensors").write_bytes(len(header).to_bytes(8, "little") + header)
             self.assertIs(model_has_mtp_tensors(str(model)), True)
+
+
+class CapabilityProbeRetryTests(unittest.TestCase):
+    """A boot probe that fails once must not turn MLX off for the whole session."""
+
+    def _run_worker(self, results, *, expected: bool = True):
+        from unittest import mock
+
+        from backend_service.inference import controller as controller_module
+        from backend_service.inference.base import BackendCapabilities
+
+        def caps(usable: bool) -> BackendCapabilities:
+            return BackendCapabilities(
+                pythonExecutable="python",
+                mlxAvailable=usable,
+                mlxLmAvailable=usable,
+                mlxUsable=usable,
+                mlxMessage=None,
+                ggufAvailable=False,
+                llamaCliPath=None,
+                llamaServerPath=None,
+                llamaServerTurboPath=None,
+                converterAvailable=usable,
+                vllmAvailable=False,
+                vllmVersion=None,
+            )
+
+        probes = iter([caps(usable) for usable in results])
+        calls: list[bool] = []
+
+        def fake_probe(*, force: bool = False):
+            calls.append(force)
+            return next(probes)
+
+        controller = controller_module.RuntimeController()
+        with mock.patch.object(controller_module, "get_backend_capabilities", fake_probe), \
+                mock.patch.object(controller_module, "_mlx_expected_on_this_host", lambda: expected), \
+                mock.patch.object(controller_module, "_MLX_PROBE_RETRY_DELAY_SECONDS", 0.0):
+            controller._capability_probe_worker()
+        return controller.capabilities, calls
+
+    def test_a_failed_first_probe_is_asked_again(self) -> None:
+        capabilities, calls = self._run_worker([False, True])
+        self.assertTrue(capabilities.mlxUsable)
+        self.assertEqual(calls, [False, True])
+
+    def test_a_usable_first_probe_is_not_repeated(self) -> None:
+        capabilities, calls = self._run_worker([True])
+        self.assertTrue(capabilities.mlxUsable)
+        self.assertEqual(calls, [False])
+
+    def test_retries_stop_after_two(self) -> None:
+        capabilities, calls = self._run_worker([False, False, False])
+        self.assertFalse(capabilities.mlxUsable)
+        self.assertEqual(len(calls), 3)
+
+    def test_no_retry_where_mlx_is_not_expected(self) -> None:
+        capabilities, calls = self._run_worker([False], expected=False)
+        self.assertFalse(capabilities.mlxUsable)
+        self.assertEqual(calls, [False])

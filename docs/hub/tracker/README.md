@@ -8,13 +8,14 @@ summary: Every FU row from CLAUDE.md, split into open and closed.
 
 Generated from the Follow-Ups Tracker in `CLAUDE.md` by `tools/hub_tracker.py`; edit the row there, not here.
 
-- [Open and live follow-ups](open.md): **56** rows.
+- [Open and live follow-ups](open.md): **57** rows.
 - [Closed follow-ups](closed.md): **77** rows.
 
 ## Newest ten
 
 | Row | Item | Status |
 |---|---|---|
+| [FU-136](open.md) | Boot-time MLX probe that fails once switched MLX off for the whole session | Fixed 2026-10-30 (cause of the one failure not found) |
 | [FU-135](open.md) | DFlash on hybrid Qwen3.5 / 3.6 / Next targets produced garbage text on the release MLX sta | Fixed 2026-10-29 (root cause found, patched, self-checked at load) |
 | [FU-134](open.md) | Speculative decoding on creative prose is 2 to 4 times slower than plain | Open (2026-10-29), found by the 27B-class check in FU-112 |
 | [FU-133](open.md) | "Best fit for your hardware" badges, recommended Studio settings, per-model size limits | Built 2026-10-29 on feat/models-fit (team of agents) |
@@ -24,4 +25,3 @@ Generated from the Follow-Ups Tracker in `CLAUDE.md` by `tools/hub_tracker.py`; 
 | [FU-129](open.md) | One "Models" page per area instead of separate Discover and My Models pages | Built 2026-10-29 on feat/models-fit by four Opus agents (shared components + Images, Video, Chat) from a read-… |
 | [FU-128](open.md) | LTX-2.3 on its own MLX engine (ltx-2-mlx) replaces Wan 2.2 TI2V 5B on the Mac | Shipped 2026-10-29 |
 | [FU-127](open.md) | Settings a model cannot use no longer fail or blank a reply (chat, image, video, voice) | Shipped 2026-10-29 on fix/hardware-gating-ddtree |
-| [FU-126](open.md) | AI agents driving ChaosEngineAI (game-dev angle): feasibility | Open: assessment only, nothing built. |

@@ -156,6 +156,18 @@ def _one_load_at_a_time(method):
     return wrapper
 
 
+_MLX_PROBE_RETRIES = 2
+_MLX_PROBE_RETRY_DELAY_SECONDS = 3.0
+
+
+def _mlx_expected_on_this_host() -> bool:
+    """True where the bundled runtime ships MLX (Apple Silicon)."""
+    import platform
+    import sys
+
+    return sys.platform == "darwin" and platform.machine() == "arm64"
+
+
 class RuntimeController:
     # Hard upper bound on the warm pool independently of memory accounting —
     # if psutil isn't available we still want a sane cap.
@@ -211,6 +223,15 @@ class RuntimeController:
     def _capability_probe_worker(self, *, force: bool = False) -> None:
         try:
             capabilities = get_backend_capabilities(force=force)
+            # One failed probe is kept for the whole session, and on a Mac that has
+            # MLX it turned MLX off in the Dashboard and in model loading until a
+            # manual refresh. Ask again before reporting that (the placeholder keeps
+            # ``probing`` true meanwhile, so nothing announces the wrong answer).
+            for _ in range(_MLX_PROBE_RETRIES):
+                if capabilities.mlxUsable or not _mlx_expected_on_this_host():
+                    break
+                time.sleep(_MLX_PROBE_RETRY_DELAY_SECONDS)
+                capabilities = get_backend_capabilities(force=True)
         except Exception as exc:
             current = self.capabilities
             capabilities = BackendCapabilities(

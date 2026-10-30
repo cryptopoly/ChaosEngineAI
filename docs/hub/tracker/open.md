@@ -1,13 +1,22 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 56 rows with work, decisions or watch items still open, newest first.
+summary: 57 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `CLAUDE.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-136 · Boot-time MLX probe that fails once switched MLX off for the whole session — Fixed 2026-10-30 (cause of the one failure not found)</summary>
+
+**Status or trigger:** **Fixed 2026-10-30 (cause of the one failure not found); packaged v0.9.9 build looked at on the M4 Max.**
+
+**Notes:** Found from a Dashboard screenshot of the packaged app: Activity Feed said "MLX installed: no / MLX usable: no" and Hardware Fit said "70B GGUF, cross-platform mode" while `/api/health` of the same backend reported MLX 0.32.4 usable. The capability probe at startup is cached (`CAPABILITY_CACHE_TTL_SECONDS` 300 s) and the controller keeps its result, so one failed probe left MLX off until something forced a refresh (the Settings > Accelerators page does on mount). **Measured:** the probe takes 26 s on the first start of a freshly extracted runtime (every new build extracts to a new folder, so each new install is a cold start) and 2-3 s afterwards; four cold boots in a row (fresh extraction each, backend launched from a parent that stays alive) all probed fine and logged "yes", so the failure is intermittent and was **not reproduced on purpose**: it did happen in two runs, the packaged app itself and a backend I launched from a shell that exited at once (so `_watch_parent_and_exit` may have fired), and the probe payload came back empty with exit code 0 and no message in the second. **Fix:** `_capability_probe_worker` ([controller.py](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/backend_service/inference/controller.py)) re-asks up to twice, 3 s apart, when the host is Apple Silicon and MLX is not usable, while the placeholder (`probing` true) is still shown, so the readiness line and the recommendation are only written once; an empty probe result now carries the message "The MLX probe returned no readable result." ([capabilities.py](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/backend_service/inference/capabilities.py)). 4 tests in `CapabilityProbeRetryTests`. **Open:** (a) the cause of the single failed probe; (b) the "Hardware profile refreshed" activity line is still written at boot from the placeholder snapshot, so it can say "70B GGUF" on a Mac; the live recommendation is correct; (c) a user whose probe still fails after the retries needs Settings > Accelerators to refresh.
+
+</details>
 
 <details>
 <summary>FU-135 · DFlash on hybrid Qwen3.5 / 3.6 / Next targets produced garbage text on the release MLX stack — Fixed 2026-10-29 (root cause found, patched, self-checked at load)</summary>

@@ -753,7 +753,7 @@
     "stop": "Arrêter",
     "studio": {
       "title": "Voice Studio",
-      "needsPack": "La voix s'exécute sur cet ordinateur et nécessite le pack vocal (environ 2 Go). Installez-le une fois depuis Voix > Mes modèles.",
+      "needsPack": "La voix s'exécute sur cet ordinateur et nécessite le pack vocal (environ 2 Go). Installez-le une fois depuis Voix > Modèles.",
       "openModels": "Ouvrir Modèles vocaux"
     },
     "savedToLibrary": "Enregistré dans la bibliothèque",

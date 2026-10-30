@@ -753,7 +753,7 @@
     "stop": "Detener",
     "studio": {
       "title": "Voice Studio",
-      "needsPack": "La voz se ejecuta en este equipo y necesita el paquete de voz (unos 2 GB). Instálalo una vez desde Voz > Mis modelos.",
+      "needsPack": "La voz se ejecuta en este equipo y necesita el paquete de voz (unos 2 GB). Instálalo una vez desde Voz > Modelos.",
       "openModels": "Abrir Modelos de voz"
     },
     "savedToLibrary": "Guardado en la biblioteca",

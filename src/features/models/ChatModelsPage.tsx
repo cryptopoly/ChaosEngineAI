@@ -117,13 +117,13 @@ export interface ChatModelsPageProps {
 }
 
 const CHAT_GRID =
-  "minmax(240px, 2fr) minmax(90px, 0.7fr) minmax(80px, 0.6fr) minmax(76px, 0.55fr) " +
-  "minmax(112px, 0.8fr) minmax(84px, 0.55fr) minmax(64px, 0.45fr) minmax(56px, 0.4fr) minmax(232px, 1fr)";
+  "minmax(240px, 1.9fr) minmax(90px, 0.85fr) minmax(80px, 0.75fr) minmax(76px, 0.7fr) " +
+  "minmax(112px, 1fr) minmax(84px, 0.75fr) minmax(64px, 0.6fr) minmax(56px, 0.3fr) 240px";
 // Below 1440 px the Backend, Compressed and Context columns (3, 6, 7) are left out so the rest
 // fits at 1100 px.
 const CHAT_GRID_NARROW =
-  "minmax(200px, 1.8fr) minmax(80px, 0.7fr) minmax(70px, 0.55fr) minmax(112px, 0.8fr) " +
-  "minmax(64px, 0.5fr) minmax(232px, 1fr)";
+  "minmax(200px, 1.7fr) minmax(80px, 0.8fr) minmax(70px, 0.65fr) minmax(112px, 0.9fr) " +
+  "minmax(56px, 0.35fr) 232px";
 
 function directionLabel(dir: SortDir, t: TFunction<"library">): string {
   return dir === "asc"

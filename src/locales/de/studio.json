@@ -753,7 +753,7 @@
     "stop": "Stoppen",
     "studio": {
       "title": "Voice Studio",
-      "needsPack": "Sprachfunktionen laufen auf diesem Computer und benötigen das Sprachpaket (etwa 2 GB). Installiere es einmalig unter Sprache > Meine Modelle.",
+      "needsPack": "Sprachfunktionen laufen auf diesem Computer und benötigen das Sprachpaket (etwa 2 GB). Installiere es einmalig unter Sprache > Modelle.",
       "openModels": "Sprachmodelle öffnen"
     },
     "savedToLibrary": "In der Bibliothek gespeichert",

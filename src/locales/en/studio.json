@@ -753,7 +753,7 @@
     "stop": "Stop",
     "studio": {
       "title": "Voice Studio",
-      "needsPack": "Voice runs on this computer and needs the voice pack (about 2 GB). Install it once from Voice > My Models.",
+      "needsPack": "Voice runs on this computer and needs the voice pack (about 2 GB). Install it once from Voice > Models.",
       "openModels": "Open Voice Models"
     },
     "savedToLibrary": "Saved to Library",

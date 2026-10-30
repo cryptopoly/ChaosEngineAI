@@ -753,7 +753,7 @@
     "stop": "停止",
     "studio": {
       "title": "Voice Studio",
-      "needsPack": "語音功能在這台電腦上執行，需要語音包（約 2 GB）。請在「語音 > 我的模型」中安裝一次。",
+      "needsPack": "語音功能在這台電腦上執行，需要語音包（約 2 GB）。請在「語音 > 模型」中安裝一次。",
       "openModels": "開啟語音模型"
     },
     "savedToLibrary": "已儲存到資料庫",

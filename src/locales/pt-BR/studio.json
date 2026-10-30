@@ -753,7 +753,7 @@
     "stop": "Parar",
     "studio": {
       "title": "Voice Studio",
-      "needsPack": "A voz roda neste computador e precisa do pacote de voz (cerca de 2 GB). Instale-o uma vez em Voz > Meus modelos.",
+      "needsPack": "A voz roda neste computador e precisa do pacote de voz (cerca de 2 GB). Instale-o uma vez em Voz > Modelos.",
       "openModels": "Abrir Modelos de voz"
     },
     "savedToLibrary": "Salvo na biblioteca",

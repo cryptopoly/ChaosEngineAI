@@ -753,7 +753,7 @@
     "stop": "停止",
     "studio": {
       "title": "Voice Studio",
-      "needsPack": "语音功能在这台电脑上运行，需要语音包（约 2 GB）。请在“语音 > 我的模型”中安装一次。",
+      "needsPack": "语音功能在这台电脑上运行，需要语音包（约 2 GB）。请在“语音 > 模型”中安装一次。",
       "openModels": "打开语音模型"
     },
     "savedToLibrary": "已保存到资料库",

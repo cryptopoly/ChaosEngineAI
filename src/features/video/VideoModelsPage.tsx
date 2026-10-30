@@ -95,12 +95,12 @@ export interface VideoModelsPageProps {
 }
 
 const VIDEO_GRID =
-  "minmax(220px, 1.8fr) minmax(95px, 0.7fr) minmax(100px, 0.75fr) minmax(82px, 0.55fr) " +
-  "minmax(120px, 0.8fr) minmax(88px, 0.55fr) minmax(92px, 0.6fr) minmax(220px, 1fr)";
+  "minmax(220px, 1.7fr) minmax(95px, 0.9fr) minmax(100px, 0.85fr) minmax(82px, 0.65fr) " +
+  "minmax(120px, 1fr) minmax(88px, 0.8fr) minmax(88px, 0.4fr) 204px";
 // Below 1440 px the Provider and Tasks columns (2, 3) are left out so the rest fits at 1100 px.
 const VIDEO_GRID_NARROW =
-  "minmax(190px, 1.6fr) minmax(76px, 0.6fr) minmax(112px, 0.8fr) minmax(100px, 0.65fr) " +
-  "minmax(88px, 0.6fr) minmax(188px, 1fr)";
+  "minmax(190px, 1.6fr) minmax(76px, 0.7fr) minmax(112px, 0.9fr) minmax(100px, 0.75fr) " +
+  "minmax(72px, 0.4fr) 188px";
 
 const DEFAULT_SORT: DiscoverSort = "release";
 

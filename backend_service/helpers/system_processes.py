@@ -182,10 +182,14 @@ def _list_llm_processes(limit: int = 12) -> list[dict[str, Any]]:
     # Process-name keywords that indicate an LLM-related process.
     # Intentionally excludes the desktop app name itself, which is too broad
     # and can match the shell/UI process instead of the actual model worker.
-    name_keywords = ("mlx", "llama-server", "llama-cli", "openclaw")
+    name_keywords = ("mlx", "llama-server", "llama-cli")
     # Match real model workers by their command line too so bundled workers
     # still show up even if their executable name is not literally "python".
-    cmdline_markers = ("backend_service.mlx_worker", "mlx_worker", "llama-server", "llama-cli", "openclaw")
+    # Only the program and its first two arguments count (``python -m
+    # backend_service.mlx_worker``), and only words without spaces: a marker
+    # anywhere else is a path or a prompt of some other program, which listed
+    # unrelated tools here.
+    cmdline_markers = ("backend_service.mlx_worker", "mlx_worker", "llama-server", "llama-cli")
     # Get real memory from top (includes GPU/Metal memory on macOS)
     top_mem = _get_top_memory_map() if platform.system() == "Darwin" else {}
 
@@ -195,8 +199,8 @@ def _list_llm_processes(limit: int = 12) -> list[dict[str, Any]]:
             try:
                 name = (process.info.get("name") or "").lower()
                 cmdline_parts = process.info.get("cmdline") or []
-                cmdline = " ".join(cmdline_parts).lower()
-                haystack = f"{name} {cmdline}"
+                # Words with spaces are prose (a prompt), never a module or a binary.
+                cmdline = " ".join(part for part in cmdline_parts[:3] if " " not in part).lower()
 
                 # Check if this is an LLM process by name
                 is_llm = any(keyword in name for keyword in name_keywords)

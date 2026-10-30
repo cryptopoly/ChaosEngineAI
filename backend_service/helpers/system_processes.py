@@ -11,8 +11,8 @@ Two-step approach for memory accounting:
    (Linux / Windows).
 
 ``_list_llm_processes`` walks ``psutil.process_iter`` filtering by
-LLM-related keywords (``mlx_worker``, ``llama-server``, ``llama-cli``,
-``openclaw``) and returns up to ``limit`` rows ranked by memory + CPU.
+LLM-related keywords (``mlx_worker``, ``llama-server``, ``llama-cli``)
+and returns up to ``limit`` rows ranked by memory + CPU.
 
 Extracted from ``backend_service/helpers/system.py`` as part of the
 v0.8.0 refactor. Re-exported from ``helpers.system`` so existing

@@ -191,6 +191,21 @@ def _first_gguf(path: Path) -> Path | None:
     return None
 
 
+def _holds_only_onnx_weights(path: Path) -> bool:
+    """True for a folder whose weights are ONNX files (voice, VAD, speaker models).
+
+    Nothing we run for chat reads ONNX, and these repos ship no ``config.json``,
+    so the config rules below never see them.
+    """
+    if not path.is_dir():
+        return False
+    try:
+        suffixes = {p.suffix.lower() for p in path.rglob("*") if p.suffix}
+    except OSError:
+        return False
+    return ".onnx" in suffixes and not suffixes & {".safetensors", ".gguf", ".bin"}
+
+
 def _looks_like_non_chat_model(
     path: Path,
     name: str,
@@ -205,7 +220,7 @@ def _looks_like_non_chat_model(
     tokenizer, so nothing can load it as a chat model); a GGUF whose
     architecture is not a language model; a ``config.json`` whose
     architecture is not a generator (unless the folder ships a chat
-    template); and, for entries with no readable config, the path and name.
+    template); a folder holding only ONNX weights; and, for entries with no readable config, the path and name.
     """
     if source_kind == "File" and file_format.upper() == "SAFETENSORS":
         return True
@@ -215,6 +230,9 @@ def _looks_like_non_chat_model(
         return True
     lowered_name = name.lower()
     if any(keyword in lowered_name for keyword in _NON_CHAT_NAME_KEYWORDS):
+        return True
+
+    if _holds_only_onnx_weights(path):
         return True
 
     if file_format.upper() == "GGUF":

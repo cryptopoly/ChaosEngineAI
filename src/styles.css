@@ -7845,6 +7845,41 @@ select.text-input {
   background: #000;
 }
 
+.video-output-stage {
+  position: relative;
+}
+
+.video-output-stage > .video-output-preview {
+  display: block;
+}
+
+.video-sound-toggle {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 50%;
+  background: rgba(10, 12, 18, 0.62);
+  color: #fff;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  transition: background 120ms ease;
+}
+
+.video-sound-toggle:hover {
+  background: rgba(10, 12, 18, 0.85);
+}
+
+.video-sound-toggle:focus-visible {
+  outline: 2px solid var(--accent, #6ea8ff);
+  outline-offset: 2px;
+}
+
 .video-output-card--expanded {
   position: relative;
   display: grid;

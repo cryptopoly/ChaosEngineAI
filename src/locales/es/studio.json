@@ -650,7 +650,9 @@
       },
       "expand": "Expandir",
       "revealFile": "Mostrar archivo",
-      "delete": "Eliminar"
+      "delete": "Eliminar",
+      "soundOn": "Activar el sonido",
+      "soundOff": "Silenciar"
     }
   },
   "voice": {

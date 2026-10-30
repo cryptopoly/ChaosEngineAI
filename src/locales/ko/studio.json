@@ -650,7 +650,9 @@
       },
       "expand": "펼치기",
       "revealFile": "파일 위치 표시",
-      "delete": "삭제"
+      "delete": "삭제",
+      "soundOn": "소리 켜기",
+      "soundOff": "음소거"
     }
   },
   "voice": {

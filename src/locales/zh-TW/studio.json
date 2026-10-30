@@ -650,7 +650,9 @@
       },
       "expand": "展開",
       "revealFile": "顯示檔案",
-      "delete": "刪除"
+      "delete": "刪除",
+      "soundOn": "開啟聲音",
+      "soundOff": "靜音"
     }
   },
   "voice": {

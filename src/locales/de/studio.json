@@ -27,7 +27,7 @@
     "copyImage": "Bild kopieren",
     "openFolder": "Im Ordner anzeigen",
     "modelLabel": "Modell",
-    "noModelsOption": "Keine Modelle installiert — eines aus „Entdecken“ herunterladen",
+    "noModelsOption": "Keine Modelle installiert — eines unter Bilder > Modelle herunterladen",
     "aspectRatio": "Seitenverhältnis",
     "qualityPreset": "Qualitäts-Preset",
     "previewLabel": "Vorschau",
@@ -40,7 +40,36 @@
       "cancelled": "Bildgenerierung abgebrochen",
       "failed": "Bildgenerierung fehlgeschlagen",
       "imagesReady": "Bilder bereit",
-      "imageReady": "Bild bereit"
+      "imageReady": "Bild bereit",
+      "cancelledBody": "Du hast diese Generierung abgebrochen. Es wurde kein Bild gespeichert.",
+      "modelStillLoaded": "Das Modell ist weiterhin geladen — das nächste Generieren startet ohne Kaltstart-Wartezeit.",
+      "savedToGallery": "In der Galerie gespeichert",
+      "phaseLoading": "Modell wird in den Speicher geladen",
+      "phaseEncoding": "Prompt wird kodiert",
+      "phaseDiffusing": "Diffusion: {count, plural, one {# Bild} other {# Bilder}}",
+      "phaseDecoding": "Pixel werden dekodiert",
+      "phaseSaving": "Wird in der Ausgabegalerie gespeichert",
+      "errorHint": "Passe den Prompt oder die Laufzeiteinstellungen an und versuche es erneut. Die Galerie behält alle früheren erfolgreichen Ausgaben.",
+      "settings": "Einstellungen",
+      "stepsCount": "{count, plural, one {# Schritt} other {# Schritte}}",
+      "seedValue": "Seed {seed}",
+      "generatedCount": "{count} Bilder in diesem Lauf generiert. Klicke auf eine Miniatur, um ein anderes Ergebnis zu betrachten.",
+      "useSameSettings": "Gleiche Einstellungen verwenden",
+      "varySeed": "Seed variieren",
+      "open": "Öffnen",
+      "reveal": "Anzeigen",
+      "delete": "Löschen",
+      "cancelGeneration": "Generierung abbrechen",
+      "close": "Schließen",
+      "done": "Fertig"
+    },
+    "mflux": {
+      "outdated": "Die hier installierte mflux-Engine ({installed}) ist älter, als diese App erwartet ({required}), daher laufen neuere Modelle wie FLUX 3 und Qwen-Image-2.1 Turbo nicht. Beim Aktualisieren wird sie in ihrer eigenen Umgebung neu installiert.",
+      "notInstalled": "Dieses Modell läuft auf der mflux-MLX-Engine, die noch nicht installiert ist. Sie wird in einer eigenen Umgebung installiert (etwa 1,3 GB) und verändert die Pakete der App nicht.",
+      "installing": "Wird installiert…",
+      "retry": "Installation wiederholen",
+      "update": "mflux-Engine aktualisieren",
+      "install": "mflux-Engine installieren"
     }
   },
   "video": {
@@ -63,7 +92,30 @@
       "generating": "Video wird generiert",
       "cancelled": "Videogenerierung abgebrochen",
       "failed": "Videogenerierung fehlgeschlagen",
-      "ready": "Video bereit"
+      "ready": "Video bereit",
+      "cancelledBody": "Du hast diese Generierung abgebrochen. Es wurde kein Clip gespeichert.",
+      "modelStillLoaded": "Das Modell ist weiterhin geladen — das nächste Generieren startet ohne Kaltstart-Wartezeit.",
+      "savedToGallery": "In der Galerie gespeichert",
+      "loadError": "Video konnte nicht geladen werden.",
+      "phaseLoading": "Modell wird in den Speicher geladen",
+      "phaseEncoding": "Prompt wird kodiert",
+      "phaseDiffusing": "Diffusion: {count, plural, one {# Bild} other {# Bilder}}",
+      "phaseDiffusingFrames": "Diffusion der Bilder",
+      "phaseEncodingMp4": "mp4 wird kodiert",
+      "phaseSaving": "Wird in der Galerie gespeichert",
+      "errorHint": "Passe den Prompt, die Auflösung oder die Bildanzahl an und versuche es erneut. Die Galerie behält alle früheren erfolgreichen Clips.",
+      "loadingClip": "Clip wird geladen...",
+      "framesCount": "{count, plural, one {# Bild} other {# Bilder}}",
+      "clipLength": "{seconds}-s-Clip",
+      "stepsCount": "{count, plural, one {# Schritt} other {# Schritte}}",
+      "seedValue": "Seed {seed}",
+      "renderTime": "{seconds} s Rendering",
+      "openGallery": "Galerie öffnen",
+      "revealFile": "Datei anzeigen",
+      "delete": "Löschen",
+      "cancelGeneration": "Generierung abbrechen",
+      "close": "Schließen",
+      "done": "Fertig"
     }
   },
   "progress": {
@@ -82,7 +134,36 @@
     "error": "Enhancer-Fehler: {message}"
   },
   "runtimeBanner": {
-    "loadingModel": "Modell wird in den Speicher geladen..."
+    "loadingModel": "Modell wird in den Speicher geladen...",
+    "cudaTorchInstalled": "CUDA-torch installiert.",
+    "cudaTorchRestartHint": "Das laufende Backend hat noch das alte torch in seinem Modul-Cache. Starte das Backend neu, um das neue Wheel{index} zu aktivieren.",
+    "gpuNotActive": "GPU-Beschleunigung nicht aktiv.",
+    "restarting": "Wird neu gestartet...",
+    "restartBackend": "Backend neu starten",
+    "installingCudaTorch": "CUDA-torch wird installiert...",
+    "installCudaTorch": "CUDA-torch installieren",
+    "realGenerationAvailable": "Echte lokale Generierung verfügbar",
+    "runtimeUnavailable": "Laufzeit nicht verfügbar",
+    "usingPlaceholder": "Platzhalter-Ausgaben werden verwendet",
+    "cpuFallback": "CPU-Fallback",
+    "engineChip": "Engine: {engine}",
+    "deviceExpected": "{device} (erwartet)",
+    "deviceChip": "Gerät: {device}",
+    "summaryLoaded": "{selected} ist geladen und bereit zum Generieren.",
+    "summarySwap": "{loaded} ist geladen. Beim Generieren mit {selected} wird die Pipeline gewechselt.",
+    "summaryNotLoaded": "{selected} ist lokal installiert, aber noch nicht geladen. Das erste Generieren dauert länger, während die Diffusions-Pipeline warmläuft.",
+    "summaryNotInstalled": "{selected} ist lokal nicht installiert. Lade es auf der Seite „Modelle“ herunter, um die lokale Generierung zu aktivieren.",
+    "summaryOnDemand": "Das Modell wird bei Bedarf geladen, sobald du generierst.",
+    "preloadModel": "Modell vorladen",
+    "unloadModel": "Modell entladen",
+    "unloadNamed": "{name} entladen",
+    "gpuRuntimeInstalledIntro": "GPU-Laufzeit installiert in",
+    "extrasFallback": "extras",
+    "gpuRuntimeInstalledOutro": "Das laufende Backend hat noch seinen alten Import-Cache — klicke auf „Backend neu starten“, um die neue Laufzeit zu aktivieren; danach nutzt die Bildgenerierung deine GPU.",
+    "restartBackendToActivate": "Backend neu starten zum Aktivieren",
+    "gpuRuntimeInstallPrompt": "Installiere die GPU-Bildlaufzeit (torch + diffusers + accelerate + transformers, ~2,5 GB), um echte lokale Generierung zu aktivieren. Sie wird in einen dauerhaften benutzerlokalen Ordner geschrieben, damit App-Updates sie nicht löschen.",
+    "installing": "Wird installiert...",
+    "installGpuRuntime": "GPU-Laufzeit installieren"
   },
   "imageStudio": {
     "generateTitle": {
@@ -92,7 +173,7 @@
       "ready": "Dieses Bild generieren."
     },
     "actions": {
-      "discover": "Entdecken",
+      "discover": "Modelle finden",
       "installed": "Installiert",
       "gallery": "Galerie"
     },
@@ -108,14 +189,14 @@
       "downloaded": "Heruntergeladen"
     },
     "noModelsCallout": {
-      "message": "Du hast noch keine Bildmodelle heruntergeladen. Gehe zu „Bilder entdecken“, um eines durchzusehen und zu installieren, und komm dann zum Generieren hierher zurück.",
-      "openDiscover": "Bilder entdecken öffnen"
+      "message": "Du hast noch keine Bildmodelle heruntergeladen. Gehe zu Bilder > Modelle, um eines durchzusehen und zu installieren, und komm dann zum Generieren hierher zurück.",
+      "openDiscover": "Bildmodelle öffnen"
     },
     "download": {
       "failedMessage": "{name} wurde nicht korrekt heruntergeladen. ChaosEngineAI hat nur einen teilweisen lokalen Snapshot gefunden und kann die echte Bild-Pipeline noch nicht laden.",
       "pausedMessage": "{name} ist teilweise heruntergeladen. Setze den Download fort, wenn du bereit bist — ChaosEngineAI macht mit den bereits vorhandenen Dateien weiter.",
       "completeMessage": "{name} wurde fertig heruntergeladen. Der Scan installierter Modelle wird automatisch aktualisiert.",
-      "notInstalledMessage": "{name} ist nicht lokal installiert. Lade es aus „Entdecken“ herunter, um die lokale Generierung zu aktivieren.",
+      "notInstalledMessage": "{name} ist nicht lokal installiert. Lade es auf der Seite „Modelle“ herunter, um die lokale Generierung zu aktivieren.",
       "huggingFace": "Hugging Face",
       "settings": "Einstellungen",
       "technicalDetails": "Technische Details",
@@ -170,7 +251,8 @@
       "guidance": "Guidance",
       "images": "Bilder",
       "randomSeed": "Zufalls-Seed",
-      "seed": "Seed"
+      "seed": "Seed",
+      "maxPixelsNote": "{name} rendert höchstens {megapixels} Megapixel; diese Größe wird unter Beibehaltung des Seitenverhältnisses verkleinert."
     },
     "safety": {
       "dangerTitle": "Wird das Backend wahrscheinlich zum Absturz bringen",
@@ -190,6 +272,98 @@
       "openGallery": "Galerie öffnen",
       "emptyHint": "Generiere einen Prompt, um das erste gespeicherte Bild-Artefakt für diesen Branch zu erzeugen.",
       "footnote": "Hier werden die neuesten {recent} gespeicherten Bilder angezeigt. Öffne die Bildgalerie, um alles zu durchsuchen, nach Modell zu filtern und ältere Läufe zu verwalten."
+    },
+    "aspectRatios": {
+      "square": {
+        "label": "Quadrat"
+      },
+      "portrait": {
+        "label": "Hochformat"
+      },
+      "landscape": {
+        "label": "Querformat"
+      },
+      "wide": {
+        "label": "Breit"
+      }
+    },
+    "quality": {
+      "fast": {
+        "label": "Schnell",
+        "hint": "Schnelle Entwürfe"
+      },
+      "balanced": {
+        "label": "Ausgewogen",
+        "hint": "Beste Standardwahl"
+      },
+      "quality": {
+        "label": "Hohe Qualität",
+        "hint": "Langsamerer finaler Durchlauf"
+      }
+    },
+    "samplers": {
+      "default": {
+        "label": "Modell-Standard",
+        "hint": "Was auch immer mit dem Modell geliefert wurde"
+      },
+      "dpmpp_2m": {
+        "label": "DPM++ 2M",
+        "hint": "Schnell, ausgewogen — 20-30 Schritte"
+      },
+      "dpmpp_2m_karras": {
+        "label": "DPM++ 2M Karras",
+        "hint": "Glatter bei wenigen Schritten"
+      },
+      "dpmpp_sde": {
+        "label": "DPM++ SDE",
+        "hint": "Etwas verrauschter, kreativ"
+      },
+      "euler": {
+        "label": "Euler",
+        "hint": "Klassisch, zuverlässig ab 25 Schritten"
+      },
+      "euler_a": {
+        "label": "Euler ancestral",
+        "hint": "Kreativ, nicht deterministisch"
+      },
+      "ddim": {
+        "label": "DDIM",
+        "hint": "Deterministisch, langsamer"
+      },
+      "unipc": {
+        "label": "UniPC",
+        "hint": "Schnell bei wenigen Schritten"
+      },
+      "ays_dpmpp_2m_sd15": {
+        "label": "AYS DPM++ 2M (SD1.5)",
+        "hint": "Align Your Steps mit 10 Schritten · nur für SD1.5 wählen"
+      },
+      "ays_dpmpp_2m_sdxl": {
+        "label": "AYS DPM++ 2M (SDXL)",
+        "hint": "Align Your Steps mit 10 Schritten · nur für SDXL wählen"
+      }
+    },
+    "cacheStrategies": {
+      "none": {
+        "label": "Aus",
+        "hint": "Standard-Pipeline — kein Caching"
+      },
+      "fbcache": {
+        "label": "First Block Cache",
+        "hint": "1,5–2× schneller bei DiTs · plattformübergreifend"
+      },
+      "teacache": {
+        "label": "TeaCache",
+        "hint": "Kalibriert für FLUX / Hunyuan / LTX / CogVideoX / Mochi"
+      },
+      "taylorseer": {
+        "label": "TaylorSeer",
+        "hint": "~2,4× durch Polynom-Extrapolation (nativ in diffusers 0.38)"
+      },
+      "pab": {
+        "label": "PAB",
+        "hint": "Pyramid Attention Broadcast — Attention über benachbarte Schritte wiederverwenden"
+      }
     }
   },
   "videoStudio": {
@@ -222,8 +396,8 @@
     },
     "subtitle": "Wähle ein Videomodell, um zu beginnen",
     "actions": {
-      "browseCatalog": "Katalog durchsuchen",
-      "installedModels": "Installierte Modelle",
+      "browseCatalog": "Modelle finden",
+      "installedModels": "Installiert",
       "downloadModel": "Modell herunterladen",
       "loadIntoMemory": "In Speicher laden",
       "unload": "Entladen",
@@ -235,8 +409,8 @@
       "incomplete": "unvollständig"
     },
     "noModelsCallout": {
-      "message": "Noch keine Videomodelle installiert. Durchsuche den Katalog, um eines herunterzuladen.",
-      "openDiscover": "Videos entdecken öffnen"
+      "message": "Noch keine Videomodelle installiert. Öffne Video > Modelle, um eines herunterzuladen.",
+      "openDiscover": "Videomodelle öffnen"
     },
     "stats": {
       "clipDuration": "{value}s Clip"
@@ -251,7 +425,8 @@
     "prompt": {
       "label": "Prompt",
       "placeholder": "Eine cinematische Drohnenaufnahme eines nebligen Kiefernwaldes im Morgengrauen...",
-      "ltxShortWarning": "LTX-Video liefert die besten Ergebnisse mit detaillierten Prompts (~50-100 Wörter). Kurze Prompts (z. B. „Cartoon-Lama frisst Stroh“) konditionieren das Modell zu schwach und neigen zum Driften. Lightricks empfiehlt, mit der Handlung zu beginnen und dann visuelle Details, Beleuchtung und Kameraführung hinzuzufügen."
+      "ltxShortWarning": "LTX-Video liefert die besten Ergebnisse mit detaillierten Prompts (~50-100 Wörter). Kurze Prompts (z. B. „Cartoon-Lama frisst Stroh“) konditionieren das Modell zu schwach und neigen zum Driften. Lightricks empfiehlt, mit der Handlung zu beginnen und dann visuelle Details, Beleuchtung und Kameraführung hinzuzufügen.",
+      "soundHint": "Dieses Modell erzeugt auch Ton, und der Ton folgt dem Prompt. Beschreibe ihn: Schritte im knirschenden Schnee, Wind in den Bäumen, ein tiefes Motorbrummen."
     },
     "negativePrompt": {
       "tooltip": "Sagt dem Modell, was vermieden werden soll. Ein generischer Prompt ist vorausgefüllt und für die meisten Videomodelle abgestimmt — leere ihn oder bearbeite ihn, wenn du eine modellspezifische Präferenz hast. Mehr Spezifik hilft meist mehr, als sie schadet.",
@@ -289,7 +464,8 @@
       "guidanceTooltip": "Wie stark das Modell deinem Prompt folgt. Zu niedrig = ignoriert den Prompt; zu hoch = starre oder verzerrte Ausgabe. Empfohlen: LTX-Video ≈ 3, Wan ≈ 5, HunyuanVideo ≈ 6. Die „negative“ Richtung des Prompts kommt aus dem Negativen Prompt oben.",
       "guidanceLtxWarning": "LTX-Video ist ein Flow-Matching-Modell — CFG über ~3,5 übersättigt und erzeugt verschwommene / regenbogenartige Ausgaben. Senke auf 3 für die saubersten Ergebnisse.",
       "randomSeed": "Zufalls-Seed",
-      "seedPlaceholder": "Seed (Ganzzahl)"
+      "seedPlaceholder": "Seed (Ganzzahl)",
+      "maxPixelsNote": "{name} rendert pro Bild höchstens {megapixels} Megapixel; diese Größe wird unter Beibehaltung des Seitenverhältnisses verkleinert."
     },
     "clipLength": {
       "line": "Cliplänge: {seconds}s ({frames} Bilder ÷ {fps} fps)"
@@ -346,7 +522,51 @@
       "reasonCaution": "Das Modell benötigt ~{model} GB resident. Auf {platform} mit insgesamt {total} GB liegt das über dem konservativen Komfort-Ziel (~{comfort} GB), aber unter dem geschätzten Working Set (~{working} GB). Die Generierung sollte passen; senke die Einstellungen, falls es instabil wird."
     },
     "disabledHint": "Generieren deaktiviert: {reason}",
-    "willLoadHint": "Das ausgewählte Modell wird bei der nächsten Generierung in den Speicher geladen. Der erste Ladevorgang kann bei größeren Varianten eine Minute dauern."
+    "willLoadHint": "Das ausgewählte Modell wird bei der nächsten Generierung in den Speicher geladen. Der erste Ladevorgang kann bei größeren Varianten eine Minute dauern.",
+    "cacheStrategies": {
+      "none": {
+        "label": "Aus",
+        "hint": "Standard-Pipeline — kein Caching"
+      },
+      "fbcache": {
+        "label": "First Block Cache",
+        "hint": "1,5–2× schneller bei DiTs · plattformübergreifend"
+      },
+      "teacache": {
+        "label": "TeaCache",
+        "hint": "Kalibriert für FLUX / Hunyuan / LTX / CogVideoX / Mochi"
+      },
+      "taylorseer": {
+        "label": "TaylorSeer",
+        "hint": "~2,4× durch Polynom-Extrapolation (nativ in diffusers 0.38)"
+      },
+      "pab": {
+        "label": "PAB",
+        "hint": "Pyramid Attention Broadcast — Attention über benachbarte Schritte wiederverwenden"
+      }
+    },
+    "quality": {
+      "draft": {
+        "label": "Entwurf",
+        "sub": "20 Schritte"
+      },
+      "standard": {
+        "label": "Standard",
+        "sub": "30 Schritte"
+      },
+      "high": {
+        "label": "Hoch",
+        "sub": "40 Schritte"
+      },
+      "max": {
+        "label": "Max",
+        "sub": "50 Schritte"
+      }
+    },
+    "sound": {
+      "badge": "Ton",
+      "badgeTooltip": "Dieser Clip hat Ton. Schalte ihn mit der Lautstärkeregelung des Players ein."
+    }
   },
   "imageGallery": {
     "subtitle": {
@@ -355,7 +575,7 @@
     },
     "actions": {
       "studio": "Studio",
-      "installedModels": "Installierte Modelle"
+      "installedModels": "Installiert"
     },
     "hero": {
       "eyebrow": "Gespeicherte Ausgaben",
@@ -409,7 +629,7 @@
     "actions": {
       "autoPlay": "Auto-Play",
       "openStudio": "Studio öffnen",
-      "installedModels": "Installierte Modelle"
+      "installedModels": "Installiert"
     },
     "empty": {
       "body": "Noch keine Videoausgaben. Lade ein Modell im Studio und generiere einen Clip — fertige Renders landen hier.",
@@ -430,7 +650,259 @@
       },
       "expand": "Ausklappen",
       "revealFile": "Datei anzeigen",
-      "delete": "Löschen"
+      "delete": "Löschen",
+      "soundOn": "Ton einschalten",
+      "soundOff": "Stummschalten"
+    }
+  },
+  "voice": {
+    "pack": {
+      "title": "Sprachpaket",
+      "installed": "Installiert",
+      "notInstalled": "Nicht installiert",
+      "about": "Spracherkennung und Sprachausgabe laufen in einer eigenen Umgebung auf diesem Computer (etwa 2 GB, plus die Modelle, die du herunterlädst). Nichts wird online gesendet.",
+      "cancel": "Abbrechen",
+      "update": "Sprachpaket aktualisieren",
+      "install": "Sprachpaket installieren",
+      "reinstall": "Reparieren / neu installieren",
+      "done": "Sprachpaket installiert.",
+      "log": "Installations-Log",
+      "updateFeatures": "Aktualisiere das Sprachpaket für Sprachanrufe im Chat und Sprecherkennzeichnung in Transkripten (etwa 40 MB Modelle; ein bis zwei Minuten)."
+    },
+    "models": {
+      "recommended": "Empfohlen",
+      "downloaded": "Heruntergeladen",
+      "use": "Fürs Diktieren verwenden",
+      "download": "Herunterladen",
+      "firstUse": "Wird bei der ersten Verwendung heruntergeladen, wenn du das überspringst.",
+      "title": "Voice",
+      "sttTitle": "Modelle für die Spracherkennung",
+      "sttSubtitle": "Werden vom Mikrofon im Chat und von Voice Studio verwendet."
+    },
+    "voices": {
+      "title": "Stimmen",
+      "subtitle": "Kokoro: 54 Stimmen in 9 Sprachen. Wähle die Stimme, mit der der Chat vorliest.",
+      "needsChinese": "Hake im Sprachpaket die Mandarin-Stimmen an.",
+      "notYet": "Auf diesem Computer noch nicht verfügbar.",
+      "useVoice": "Diese Stimme verwenden",
+      "preview": "Vorschau"
+    },
+    "settings": {
+      "title": "Spracheinstellungen",
+      "autoSend": "Nachricht senden, sobald das Diktat beendet ist",
+      "autoRead": "Jede Chat-Antwort nach Abschluss vorlesen",
+      "language": "Diktiersprache",
+      "languageHint": "Whisper nutzt sie; Parakeet erkennt die Sprache selbst.",
+      "speed": "Lesegeschwindigkeit",
+      "idle": "Sprachspeicher freigeben nach (Minuten Leerlauf, 0 = nie)",
+      "workerRunning": "Sprachmodelle sind geladen (Prozess {pid}).",
+      "workerStopped": "Sprachmodelle sind nicht geladen.",
+      "unload": "Jetzt entladen",
+      "silence": "Sprachanruf: Pause, die deinen Redebeitrag beendet",
+      "silenceHint": "Kürzer antwortet schneller; länger lässt dir Zeit zum Nachdenken.",
+      "bargeIn": "Sprachanruf: Modell durch Sprechen unterbrechen"
+    },
+    "offline": "Warte auf das Backend…",
+    "copy": "Kopieren",
+    "save": "In der Galerie speichern",
+    "transcribe": {
+      "title": "Transkribieren",
+      "subtitle": "Aufnehmen oder eine Audio- oder Videodatei ablegen",
+      "model": "Modell",
+      "language": "Sprache",
+      "hint": "Klicke auf die Schaltfläche, um aufzunehmen, oder lege hier eine Datei ab.",
+      "choose": "Datei wählen",
+      "took": "in {s} s transkribiert",
+      "placeholder": "Das Transkript erscheint hier. Du kannst es bearbeiten.",
+      "segments": "Zeitstempel ({n})",
+      "tooBig": "{name} ist größer als 500 MB.",
+      "recordingName": "Aufnahme",
+      "subtitleQueue": "Aufnehmen oder Audio- und Videodateien ablegen",
+      "translateNeedsWhisper": "Für die Übersetzung ins Englische wird Whisper Small oder Whisper Base benötigt.",
+      "translate": "Ins Englische übersetzen",
+      "speakers": "Sprecher kennzeichnen",
+      "speakerCount": "Anzahl der Sprecher",
+      "speakersAuto": "Automatisch erkennen",
+      "speakersN": "{n} Sprecher",
+      "speakersNeedUpdate": "Für Sprecherkennzeichnung muss das Sprachpaket aktualisiert werden.",
+      "hintQueue": "Aufnehmen oder Dateien hier ablegen (auch mehrere auf einmal).",
+      "chooseFiles": "Dateien wählen"
+    },
+    "stopRecording": "Aufnahme beenden",
+    "record": "Aufnehmen",
+    "transcribing": "Wird transkribiert",
+    "cancel": "Abbrechen",
+    "sendToChat": "An den Chat senden",
+    "copied": "Kopiert",
+    "saved": "Gespeichert",
+    "speak": {
+      "title": "Sprechen",
+      "subtitle": "Text in Sprache umwandeln",
+      "placeholder": "Text eingeben oder einfügen. Markdown und Code werden vor dem Sprechen aufbereitet.",
+      "voice": "Stimme",
+      "speed": "Geschwindigkeit",
+      "generating": "Wird erzeugt…",
+      "generate": "Audio erzeugen",
+      "readNow": "Jetzt vorlesen",
+      "download": "WAV herunterladen",
+      "subtitleLong": "Text in Sprache umwandeln. Leerzeilen beginnen einen neuen Absatz; [pause] fügt eine Pause ein.",
+      "preview": "Diese Stimme anhören",
+      "listen": "Anhören",
+      "progress": "Teil {done} von {total}",
+      "generateParts": "Audio erzeugen ({n} Teile)",
+      "encoding": "Wird kodiert…"
+    },
+    "stop": "Stoppen",
+    "studio": {
+      "title": "Voice Studio",
+      "needsPack": "Sprachfunktionen laufen auf diesem Computer und benötigen das Sprachpaket (etwa 2 GB). Installiere es einmalig unter Sprache > Modelle.",
+      "openModels": "Sprachmodelle öffnen"
+    },
+    "savedToLibrary": "In der Bibliothek gespeichert",
+    "saveToLibrary": "In der Bibliothek speichern",
+    "queue": {
+      "queued": "Wartet",
+      "running": "Wird transkribiert",
+      "doneIn": "Fertig in {s} s",
+      "done": "Fertig",
+      "cancelled": "Abgebrochen",
+      "failed": "Fehlgeschlagen",
+      "title": "Warteschlange",
+      "open": "Öffnen",
+      "remove": "Entfernen"
+    },
+    "editor": {
+      "heading": "Transkript",
+      "translated": "ins Englische übersetzt",
+      "subtitle": "Klicke auf eine Zeit oder ein Wort, um ab dort abzuspielen; Doppelklick auf eine Zeile zum Bearbeiten.",
+      "none": "Fertige Transkripte öffnen sich hier und werden in der Bibliothek aufbewahrt.",
+      "speaker": "Sprecher {n}",
+      "title": "Titel",
+      "saving": "Wird gespeichert…",
+      "saveFailed": "Nicht gespeichert",
+      "savedToLibrary": "In der Bibliothek gespeichert",
+      "renameSpeaker": "Name für Sprecher {n}",
+      "empty": "Keine Sprache gefunden.",
+      "editHint": "Doppelklick zum Bearbeiten",
+      "edit": "Zeile bearbeiten",
+      "export": "Exportieren"
+    },
+    "handoff": {
+      "summary": "Im Chat zusammenfassen",
+      "actions": "Aufgaben",
+      "notes": "Besprechungsnotizen",
+      "summaryPrompt": "Fasse dieses Transkript in wenigen kurzen Absätzen zusammen.",
+      "actionsPrompt": "Liste die Aufgaben aus diesem Transkript auf: wer was macht und bis wann, falls genannt.",
+      "notesPrompt": "Schreibe Besprechungsnotizen zu diesem Transkript: Teilnehmende, besprochene Themen, Entscheidungen und Aufgaben."
+    },
+    "library": {
+      "speakers": "{n} Sprecher",
+      "select": "{title} auswählen",
+      "transcript": "Transkript",
+      "speech": "Sprache",
+      "play": "Abspielen",
+      "working": "Wird bearbeitet…",
+      "originalAudio": "Audio ({ext})",
+      "delete": "Löschen",
+      "confirmDelete": "Diesen Eintrag und sein Audio löschen? Das kann nicht rückgängig gemacht werden.",
+      "confirmDeleteMany": "{n} Einträge und ihr Audio löschen? Das kann nicht rückgängig gemacht werden.",
+      "all": "Alle",
+      "transcripts": "Transkripte",
+      "speechFilter": "Sprache",
+      "title": "Sprachbibliothek",
+      "subtitle": "Deine Transkripte und Sprachaufnahmen, auf diesem Computer gespeichert",
+      "search": "Titel und Text durchsuchen",
+      "filter": "Anzeigen",
+      "deleteSelected": "Ausgewählte löschen ({n})",
+      "loading": "Wird geladen…",
+      "noMatch": "Keine Treffer.",
+      "empty": "Noch nichts hier. In Voice Studio erstellte Transkripte landen hier, ebenso gespeicherte Sprache."
+    },
+    "languages": {
+      "auto": "Automatisch erkennen"
+    },
+    "lane": {
+      "mlx": "Apple Silicon: Parakeet und Whisper auf MLX, Kokoro-Stimmen",
+      "cuda": "NVIDIA-GPU: Whisper auf CUDA, Kokoro-Stimmen",
+      "nvidia": "Whisper (die CUDA-Bibliotheken kommen mit der Installation), Kokoro-Stimmen",
+      "cpu": "Whisper auf der CPU, Kokoro-Stimmen"
+    },
+    "micError": {
+      "blockedMac": "Der Mikrofonzugriff ist blockiert. Erlaube ChaosEngineAI unter Systemeinstellungen > Datenschutz & Sicherheit > Mikrofon und versuche es dann erneut.",
+      "blockedWindows": "Der Mikrofonzugriff ist blockiert. Erlaube Desktop-Apps den Mikrofonzugriff unter Einstellungen > Datenschutz und Sicherheit > Mikrofon und versuche es dann erneut.",
+      "blocked": "Der Mikrofonzugriff ist blockiert. Prüfe die Datenschutzeinstellungen deines Desktops und ob eine andere App das Mikrofon belegt.",
+      "notFound": "Kein Mikrofon gefunden. Schließe eines an und versuche es erneut.",
+      "inUse": "Das Mikrofon wird von einer anderen App verwendet oder konnte nicht geöffnet werden.",
+      "unsupported": "Dieses Fenster kann das Mikrofon nicht nutzen (keine Unterstützung für Mediengeräte).",
+      "generic": "Das Mikrofon konnte nicht geöffnet werden."
+    }
+  },
+  "residentChatModelNote": "Ein geladenes Chat-Modell belegt etwa {gb} GB dieses Speichers; beim Entladen wird er freigegeben.",
+  "mediaStudioBoosters": {
+    "title": "Leistungsbooster",
+    "forModel": "für {model}",
+    "selectedModelFallback": "das ausgewählte Modell"
+  },
+  "torchUpgradePill": {
+    "attempt": {
+      "rollbackPrepare": "Vorhandenes torch ins Rollback-Verzeichnis verschieben",
+      "install": "pip install torch (neue Version)",
+      "deps": "pip install torch (transitive Abhängigkeiten)",
+      "constraint": "torch in constraints.txt anpinnen",
+      "rebuildPackage": "pip install {package} (--force-reinstall)",
+      "rebuild": "ABI-abhängiges Paket neu bauen",
+      "verify": "torch.cuda.is_available() im Subprozess verifizieren",
+      "cleanup": "Alte Rollback-Verzeichnisse bereinigen",
+      "rollbackRestore": "Vorheriges torch aus dem Rollback wiederherstellen",
+      "step": "Schritt"
+    },
+    "available": "torch-Upgrade verfügbar:",
+    "starting": "Wird gestartet…",
+    "upgrade": "torch aktualisieren",
+    "dismiss": "Schließen",
+    "willRebuild": "Baut außerdem {count, plural, one {# ABI-abhängiges Paket} other {# ABI-abhängige Pakete}} neu",
+    "abiExplainer": "torch-{type}-Upgrades brechen die C++-ABI, daher lassen sich die Wheels dieser Pakete erst laden, wenn sie gegen das neue torch neu installiert wurden:",
+    "rollbackLead": "Falls die Verifizierung des Upgrades fehlschlägt, wird dein vorheriges torch",
+    "rollbackTail": "automatisch aus einem benachbarten Rollback-Verzeichnis wiederhergestellt — ein erneuter Download ist nicht nötig.",
+    "whatHappens": "Was passiert beim Upgrade?",
+    "patchBumpExplainer": "Patch-Updates halten die C++-ABI von torch stabil, daher wird nur das torch-Wheel selbst neu installiert. Dein aktuelles torch wird zuerst in ein benachbartes Rollback-Verzeichnis verschoben; besteht das neue Wheel die CUDA-Verifizierung nicht, wird das vorherige automatisch wiederhergestellt. „Backend neu starten“ aktiviert das neue Wheel.",
+    "upgrading": "torch wird aktualisiert",
+    "complete": "torch-Upgrade abgeschlossen",
+    "failed": "torch-Upgrade fehlgeschlagen",
+    "restarting": "Wird neu gestartet…",
+    "restartToActivate": "Backend neu starten zum Aktivieren",
+    "rolledBack": "Vorheriges torch aus dem Rollback wiederhergestellt — die Generierung läuft mit der früheren Version weiter.",
+    "rollbackKeptLead": "Rollback-Verzeichnis liegt unter",
+    "rollbackKeptTail": "zur manuellen Wiederherstellung.",
+    "close": "Schließen",
+    "installLog": "Installations-Log ({count, plural, one {# Schritt} other {# Schritte}})"
+  },
+  "recommended": {
+    "title": "Empfohlen für diesen Rechner",
+    "measured": "Gemessen",
+    "estimated": "Geschätzt",
+    "measuredTitle": "Auf {machine} gemessen.",
+    "estimatedTitle": "Aus der Modellkarte, der Upstream-Dokumentation oder von einem ähnlichen Rechner; nicht auf dieser Hardware gemessen.",
+    "measuredOn": "gemessen auf {machine}",
+    "applyAll": "Empfehlung übernehmen",
+    "allApplied": "Alle aktiv",
+    "inUse": "Aktiv",
+    "use": "Übernehmen",
+    "on": "An",
+    "off": "Aus",
+    "cacheValue": "{name}, Schwellwert {threshold}",
+    "labels": {
+      "qualityPreset": "Qualitäts-Preset",
+      "steps": "Schritte",
+      "guidance": "Guidance",
+      "sampler": "Sampler",
+      "size": "Größe",
+      "numFrames": "Bilder",
+      "fps": "FPS",
+      "cache": "Diffusions-Cache",
+      "cfgDecay": "CFG-Decay",
+      "previewVae": "Preview-VAE",
+      "fp8LayerwiseCasting": "FP8 layerwise"
     }
   }
 }

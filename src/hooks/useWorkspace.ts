@@ -119,6 +119,20 @@ export function useWorkspace() {
     return () => clearTimeout(timer);
   }, []);
 
+  // The backend answers the first workspace request while its library scan is
+  // still running (a few seconds to a minute on a big model folder) with an
+  // empty list and ``libraryStatus: "scanning"``. Nothing refetched afterwards,
+  // so a window opened right after launch showed "No models found" until the
+  // user reloaded it. Poll until the scan finishes.
+  useEffect(() => {
+    if (workspace.libraryStatus !== "scanning") return undefined;
+    const timer = setInterval(() => {
+      void refreshWorkspace().catch(() => undefined);
+    }, 2000);
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workspace.libraryStatus]);
+
   // Initial workspace load — retry until the backend is ready.
   //
   // The Tauri sidecar now bootstraps on a background thread so the window
@@ -153,13 +167,16 @@ export function useWorkspace() {
           const [healthOnline, payload, runtimeInfo] = await Promise.all([
             checkBackend(),
             getWorkspace(),
-            getTauriBackendInfo(),
+            getTauriBackendInfo(true),
           ]);
           if (cancelled) return;
           setBackendOnline(healthOnline || Boolean(payload));
           setTauriBackend(runtimeInfo);
           setWorkspace(payload);
           setLoading(false);
+          // The elapsed-seconds ticker only feeds the startup splash. Left running it
+          // re-rendered the whole app once a second for as long as it stayed open.
+          clearInterval(elapsedTimer);
           return;
         } catch {
           if (!cancelled) {
@@ -167,9 +184,11 @@ export function useWorkspace() {
             // Poll tauri backend info even while the FastAPI sidecar
             // is still booting — it's served by the Rust shell so it
             // comes online ~immediately and exposes startupError when
-            // the sidecar fails to spawn at all.
+            // the sidecar fails to spawn at all. ``force`` matters: the
+            // first reply is cached, and without a fresh read the splash
+            // never learns that the sidecar died.
             try {
-              const runtimeInfo = await getTauriBackendInfo();
+              const runtimeInfo = await getTauriBackendInfo(true);
               if (!cancelled) setTauriBackend(runtimeInfo);
             } catch {
               /* tauri command not ready yet */

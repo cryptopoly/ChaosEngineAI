@@ -20,7 +20,7 @@
     },
     "turboquant": {
       "name": "TurboQuant",
-      "description": "Quantification KV à rotation Hadamard. Compression 2–4× avec perte de qualité minimale."
+      "description": "Économiseur de mémoire : quantification KV à rotation Hadamard. Cache 2–4× plus petit pour faire tenir de longues conversations dans moins de RAM ; la génération est plus lente qu'avec Natif."
     },
     "triattention": {
       "name": "TriAttention",
@@ -57,7 +57,11 @@
     "contextSize": "Taille du contexte",
     "gpuLayers": "Couches GPU",
     "threads": "Threads",
-    "fitInMemory": "Tenir en mémoire"
+    "fitInMemory": "Tenir en mémoire",
+    "cacheStrategyTensorfoldNote": "(TensorFold gère son propre cache KV)",
+    "moreInfo": "Plus d'informations",
+    "requiresLabel": "Requiert :",
+    "installLabel": "Installation :"
   },
   "notes": {
     "binaryRequired": "Nécessite {binary}.",
@@ -87,7 +91,16 @@
     "requiresBody": "Apple Silicon + dflash-mlx, ou Linux/CUDA + dflash. Modèle de brouillon compatible pour la cible.",
     "currentModelLabel": "Modèle actuel :",
     "supportedVia": "Pris en charge via {model}",
-    "compatibilityUnresolved": "Compatibilité non encore résolue."
+    "compatibilityUnresolved": "Compatibilité non encore résolue.",
+    "composerHint": "Le décodage spéculatif DFlash peut rendre ce modèle ~2× plus rapide sans perte de qualité.",
+    "registeredTargetsLabel": "Cibles enregistrées :",
+    "targetModelsCount": "{count} modèles cibles",
+    "ddtreeLabel": "DDTree :",
+    "ddtreeAvailable": "Disponible",
+    "ddtreeUnavailable": "Pas encore disponible ; DFlash linéaire est utilisé à la place.",
+    "installLabel": "Installation :",
+    "treeBudgetTooltip": "DDTree : décodage spéculatif arborescent. 0 = DFlash linéaire, >0 = explore plusieurs chemins de brouillon en parallèle pour de meilleurs taux d'acceptation.",
+    "treeBudgetLabel": "Budget d'arbre (DDTree)"
   },
   "presets": {
     "quality": {
@@ -110,21 +123,125 @@
   "sliders": {
     "context": "Contexte",
     "maxTokens": "Tokens max",
-    "temperature": "Température"
+    "temperature": "Température",
+    "fp16Layers": "Couches FP16"
   },
   "fitInMemory": {
-    "body": "Tenir en mémoire demande à ChaosEngineAI de choisir un profil runtime/cache qui maintient le modèle et le cache KV dans la mémoire disponible. Désactivez uniquement si vous voulez forcer un profil plus grand ou plus agressif et acceptez un éventuel swap ou échec de chargement."
+    "body": "Tenir en mémoire demande à ChaosEngineAI de choisir un profil runtime/cache qui maintient le modèle et le cache KV dans la mémoire disponible. Désactivez uniquement si vous voulez forcer un profil plus grand ou plus agressif et acceptez un éventuel swap ou échec de chargement.",
+    "aboutTitle": "À propos de « Tenir en mémoire »"
   },
   "cacheFit": {
     "mayNotFit": "Ne tient peut-être pas",
     "modelMayNotFit": "Modèle ne tient peut-être pas",
     "fitsEasily": "Tient facilement",
     "tightFit": "Tient juste",
-    "contextMayNotFit": "Le contexte complet ne tient peut-être pas"
+    "contextMayNotFit": "Le contexte complet ne tient peut-être pas",
+    "vramWontFit": "Le cache ne tient pas sur le GPU"
   },
   "cacheAdvice": {
     "modelExceedsRam": "Les poids du modèle seuls dépassent la RAM utilisable estimée. Choisissez un modèle plus petit ou une quantification plus agressive.",
     "nativeF16TooBig": "Le modèle peut se charger, mais un cache f16 natif complet à ce contexte peut dépasser la RAM système au fur et à mesure que le fil se remplit. Baissez le contexte ou choisissez une stratégie compressée.",
-    "compressedTooBig": "Le modèle peut se charger, mais le cache de contexte sélectionné peut dépasser la RAM système au fur et à mesure que le fil se remplit. Baissez le contexte ou réduisez les couches FP16."
+    "compressedTooBig": "Le modèle peut se charger, mais le cache de contexte sélectionné peut dépasser la RAM système au fur et à mesure que le fil se remplit. Baissez le contexte ou réduisez les couches FP16.",
+    "vramNativeF16": "Un cache KV natif f16 complet pèse ~{cacheGb} Go à ce contexte, soit plus que les {vramGb} Go de VRAM GPU disponibles. llama.cpp débordera sur la RAM système (transferts PCIe lents à chaque token) ou échouera à allouer la mémoire. Réduisez le contexte, abandonnez les couches FP16 ou choisissez l'économiseur de mémoire TurboQuant pour que le cache tienne dans la VRAM.",
+    "vramSelected": "Le cache KV sélectionné pèse ~{cacheGb} Go à ce contexte, soit plus que les {vramGb} Go de VRAM GPU disponibles. llama.cpp débordera sur la RAM système (transferts PCIe lents à chaque token) ou échouera à allouer la mémoire. Réduisez le contexte, abandonnez les couches FP16 ou choisissez l'économiseur de mémoire TurboQuant pour que le cache tienne dans la VRAM."
+  },
+  "tensorfold": {
+    "tooltip": "TensorFold : décodage spéculatif exact. Les brouillons issus de la tête MTP du modèle et/ou d'un modèle de brouillon sont vérifiés par le modèle cible ; les réponses sont donc identiques à un décodage séquentiel — en plus rapide.",
+    "label": "TensorFold (brouillons DFlash 2 / MTP)",
+    "requiredNote": "requis pour ce modèle",
+    "installing": "Installation...",
+    "installButton": "Installer TensorFold",
+    "addVisionTitle": "Permet à ce modèle de lire les images jointes (expérimental). Ajoute Pillow, transformers et mlx-vlm à l'environnement propre de TensorFold.",
+    "addVision": "Ajouter la prise en charge des images",
+    "imageInputOn": "entrée d'images activée (expérimental)",
+    "aboutTitle": "À propos du décodage spéculatif TensorFold",
+    "memoryShortfall": "Ce checkpoint nécessite un Mac avec au moins {needed} Go de mémoire ; celui-ci en a {have} Go.",
+    "body": "TensorFold est un moteur d'inférence local doté de noyaux écrits à la main pour chaque famille de modèles. Il propose plusieurs tokens à la fois (issus de la tête MTP du modèle et, pour certaines familles, d'un petit modèle de brouillon) et vérifie chaque brouillon avec le modèle cible, de sorte que la réponse est identique, octet pour octet, à un décodage token par token.",
+    "requiresLabel": "Requiert :",
+    "requiresBody": "Apple Silicon et un environnement Python TensorFold distinct (installé depuis ce panneau). Ne prend en charge que les checkpoints avec lesquels il a été testé.",
+    "memoryLabel": "Mémoire :",
+    "memoryBody": "{needed} Go de mémoire unifiée ou plus.",
+    "statusLabel": "Statut :",
+    "statusInstalled": "Installé{version} — actif lorsque le décodage spéculatif est coché.",
+    "statusNotInstalled": "Non installé. Cliquez sur Installer TensorFold pour configurer son environnement distinct.",
+    "visionLabel": "Entrée d'images :",
+    "visionInstalled": "Installé (expérimental) — joignez des images dans le chat tant que TensorFold est coché. Une requête avec images repart d'un cache KV vierge.",
+    "visionNotInstalled": "Non installé. Lit les images avec l'encodeur de vision propre au modèle. Ajoute Pillow, transformers et mlx-vlm ; les auteurs de TensorFold le considèrent encore comme expérimental.",
+    "grammarLabel": "Sortie structurée :",
+    "grammarInstalled": "Installé — un schéma JSON défini dans le panneau du sampler est appliqué.",
+    "grammarNotInstalled": "Non installé. Nécessaire pour appliquer un schéma JSON ; sans lui, ces requêtes sont refusées. Ajoute PyTorch, ce qui représente un gros téléchargement.",
+    "addGrammar": "Ajouter la sortie structurée",
+    "exclusiveLabel": "Remarque :",
+    "exclusiveBody": "Aucun autre moteur de l'application ne peut charger ce modèle ; il tourne donc toujours sur TensorFold, et la case active ou désactive uniquement les brouillons."
+  },
+  "strategyRole": {
+    "memorySaverTitle": "Réduit le cache KV pour que les longs contextes tiennent dans moins de mémoire. La génération est plus lente qu'avec Natif.",
+    "memorySaver": "Économiseur de mémoire"
+  },
+  "mtplx": {
+    "tooltip": "MTPLX : décodage spéculatif MTP natif. Utilise des têtes de prédiction intégrées pour une génération ~1,8–2,2× plus rapide sans perte de qualité.",
+    "label": "MTPLX",
+    "installing": "Installation...",
+    "installButton": "Installer MTPLX",
+    "aboutTitle": "À propos du décodage spéculatif MTPLX",
+    "body": "MTPLX utilise des têtes de prédiction multi-tokens (MTP) intégrées, entraînées directement dans le modèle. À l'inférence, les têtes proposent 1 à 3 tokens par passe avant, vérifiés dans la même passe — aucun modèle de brouillon séparé n'est nécessaire. Offre une génération ~1,8–2,2× plus rapide sans perte de qualité.",
+    "requiresLabel": "Requiert :",
+    "requiresBody": "Apple Silicon + venv MTPLX isolé. Le modèle doit avoir des têtes MTP intégrées (Qwen3.5/3.6, DeepSeek V3/R1, Qwen3-Coder-Next).",
+    "statusLabel": "Statut :",
+    "statusInstalled": "Installé — actif lorsque le décodage spéculatif est activé.",
+    "statusNotInstalled": "Non installé. Cliquez sur Installer MTPLX pour configurer le venv isolé (~500 Mo)."
+  },
+  "ggufMtp": {
+    "tooltip": "Décodage spéculatif GGUF MTP : utilise les têtes MTP intégrées du modèle via llama.cpp --spec-type draft-mtp pour une génération ~1,8–2,2× plus rapide sans perte de qualité.",
+    "label": "GGUF MTP",
+    "body": "Ce GGUF embarque des têtes de prédiction multi-tokens (MTP) intégrées. llama.cpp les exécute via --spec-type draft-mtp (PR #22673) — décodage spéculatif sans perte, sans modèle de brouillon séparé.",
+    "requiresLabel": "Requiert :"
+  },
+  "ggufSpec": {
+    "tooltip": "Décodage spéculatif llama.cpp : utilise un drafter DFlash / DFlash 2 / EAGLE-3 / MTP fourni à côté de ce GGUF s'il est présent, sinon une recherche de n-grammes sans brouillon. Sans perte — la sortie est vérifiée par le modèle.",
+    "label": "Décodage spéculatif",
+    "aboutTitle": "À propos du décodage spéculatif de llama.cpp",
+    "body": "Si le dossier du modèle contient un fichier de drafter (mtp-, dflash-, dspark- ou eagle3-*.gguf — les drafters DFlash 2 utilisent le préfixe dflash-), llama.cpp génère ses brouillons avec lui. Sinon, il se rabat sur ngram-mod, qui réutilise le texte répété (modifications de code, résumés, raisonnement repris dans la réponse) sans modèle supplémentaire. Chaque token proposé est vérifié : la sortie reste donc inchangée.",
+    "requiresBody": "Un llama-server récent (exécutez scripts/update-llama-cpp.sh). Les anciens binaires reviennent au décodage standard avec une note du runtime."
+  },
+  "strategyInfo": {
+    "native": {
+      "description": "Cache KV en FP16 pleine précision. Pas de compression : c'est donc le choix le plus rapide et de la meilleure qualité, et il fonctionne avec le décodage spéculatif. Il consomme le plus de mémoire en contexte long. Fonctionne avec tous les backends.",
+      "requires": "Intégré"
+    },
+    "triattention": {
+      "description": "Compression transparente du cache KV intégrée via vLLM. Linux + CUDA uniquement ; ChaosEngineAI ne prend pas en charge TriAttention sur macOS.",
+      "requires": "Linux + GPU CUDA + backend vLLM. Non pris en charge sur macOS.",
+      "installHint": "À utiliser uniquement dans un environnement Linux/CUDA utilisé par ChaosEngineAI, puis redémarrez l'application."
+    },
+    "turboquant": {
+      "description": "Économiseur de mémoire. Stocke le cache KV sur 1 à 4 bits (environ 4-5× plus petit à 3 bits) pour que les longues conversations tiennent dans beaucoup moins de RAM. Le prix à payer est la vitesse : attendez-vous à une génération plus lente qu'avec Natif ; sous MLX, il désactive aussi la réutilisation du cache de l'historique de discussion et ne peut pas être combiné avec le décodage spéculatif. Choisissez-le quand un long contexte ne tient pas en mémoire ; sinon, restez sur Natif. Sous MLX, il utilise une rotation de Hadamard + des codebooks Lloyd-Max ; sous GGUF, il utilise llama-server-turbo.",
+      "requires": "Apple Silicon + MLX pour la voie MLX ; llama-server-turbo pour la voie GGUF.",
+      "installHint": "Pour MLX : installez turboquant-mlx-full. Pour GGUF : exécutez scripts/build-llama-turbo.sh. Puis redémarrez ChaosEngineAI."
+    }
+  },
+  "installTerminal": {
+    "statusRunning": "en cours",
+    "statusComplete": "terminé",
+    "statusFailed": "échec",
+    "statusReady": "prêt",
+    "noOutputYet": "Aucune sortie d'installation pour l'instant. Lancez l'installateur pour capturer stdout et stderr ici.",
+    "title": "Terminal d'installation de {label}",
+    "startedAt": "Démarré {time}",
+    "collapsedHint": "Replié par défaut. Ouvrez-le après une tentative d'installation pour examiner les échecs.",
+    "finishedAt": "Terminé {time}"
+  },
+  "strategyCard": {
+    "turboMissingTooltip": "Nécessite le binaire llama-server-turbo. Exécutez scripts/build-llama-turbo.sh pour l'installer.",
+    "badgeNotApplicable": "N/D",
+    "badgeNoTurbo": "Pas de binaire turbo",
+    "badgeReady": "Prêt",
+    "badgeInstall": "Installer",
+    "buildingTurbo": "Compilation de llama-server-turbo...",
+    "installing": "Installation...",
+    "installNow": "Installer maintenant",
+    "runInTerminal": "Exécutez dans votre terminal, puis redémarrez ChaosEngineAI.",
+    "updating": "Mise à jour...",
+    "updateAvailable": "Mise à jour disponible"
   }
 }

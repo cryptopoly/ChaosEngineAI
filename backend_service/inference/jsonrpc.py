@@ -198,6 +198,40 @@ class JsonRpcProcess:
                 self.close()
                 raise RuntimeError(f"Native worker stdin failed: {exc}") from exc
 
+        for response in self._stream_responses():
+            try:
+                yield response
+            except GeneratorExit:
+                # The consumer stopped early (runaway guard, a client that
+                # disconnected). The worker cannot be interrupted and keeps
+                # writing this reply; left in the queue, those lines were read
+                # as the answer to the next request ("invalid result payload").
+                if not response.get("done"):
+                    self._drain_abandoned_stream()
+                raise
+            if response.get("done"):
+                return
+
+    def _drain_abandoned_stream(self) -> None:
+        """Discard the rest of an abandoned stream, up to its ``done`` line."""
+        while self.process is not None:
+            try:
+                line = self._stdout_queue.get(timeout=self.timeout)
+            except Empty:
+                self.close()
+                return
+            if line is None:
+                self.close()
+                return
+            try:
+                response = json.loads(line)
+            except json.JSONDecodeError:
+                self.close()
+                return
+            if response.get("done") or not response.get("ok", False):
+                return
+
+    def _stream_responses(self) -> Iterator[dict[str, Any]]:
         while True:
             try:
                 line = self._stdout_queue.get(timeout=self.timeout)
@@ -228,4 +262,4 @@ class JsonRpcProcess:
 
             yield response
             if response.get("done"):
-                break
+                return

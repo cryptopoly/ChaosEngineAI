@@ -72,7 +72,10 @@ def start_download(
         _friendly_hf_download_error,
         _hf_repo_downloaded_bytes,
         _hf_repo_preflight_size_gb,
+        _hub_repo_files,
     )
+    from backend_service.helpers.companions import companion_downloads
+    from backend_service.helpers.text_gguf import matched_size_bytes, text_repo_allow_patterns
 
     if not _HF_REPO_PATTERN.match(repo):
         raise HTTPException(
@@ -108,7 +111,26 @@ def start_download(
         return failed_status
     if isinstance(preflight_total_gb, (int, float)) and preflight_total_gb > 0:
         total_gb = float(preflight_total_gb)
+    # A pinned text GGUF fetches one quant, not the whole repo — size the
+    # progress bar against what will actually land on disk.
+    text_patterns = None if allow_patterns else text_repo_allow_patterns(repo)
+    if text_patterns:
+        hub_files = _hub_repo_files(repo).get("files") or []
+        # Re-derive with the file list so spec-dec sidecars are included.
+        text_patterns = text_repo_allow_patterns(repo, hub_files) or text_patterns
+        pinned_bytes = matched_size_bytes(hub_files, text_patterns)
+        if pinned_bytes > 0:
+            total_gb = _bytes_to_gb(pinned_bytes)
 
+    # The files this download fetches: progress counts only those, not other
+    # quants of the repo that an earlier download left in the cache.
+    scope_patterns = (
+        allow_patterns
+        or _video_repo_allow_patterns(repo)
+        or _image_repo_allow_patterns(repo)
+        or text_patterns
+    )
+    downloaded_gb = _bytes_to_gb(_hf_repo_downloaded_bytes(repo, scope_patterns))
     initial_progress = 0.0
     if isinstance(total_gb, (int, float)) and total_gb > 0 and downloaded_gb > 0:
         initial_progress = min(0.99, downloaded_gb / float(total_gb))
@@ -138,7 +160,7 @@ def start_download(
 
         def _progress_worker() -> None:
             while not stop_progress.wait(1.0):
-                downloaded_bytes = _hf_repo_downloaded_bytes(repo)
+                downloaded_bytes = _hf_repo_downloaded_bytes(repo, scope_patterns)
                 downloaded_gb_local = _bytes_to_gb(downloaded_bytes)
                 with state._lock:
                     current = state._downloads.get(repo)
@@ -179,12 +201,32 @@ def start_download(
             with open(process_log_path, "w", encoding="utf-8", errors="replace") as process_log:
                 # Diffusers repos (image + video) get a component-folder
                 # allowlist so we skip legacy single-file checkpoints the
-                # pipelines never load. Both helpers return None for repos
-                # outside their catalog, so only one ever applies.
+                # pipelines never load; pinned text GGUFs fetch one quant.
+                # Each helper returns None for repos outside its catalog,
+                # so only one ever applies.
                 effective_allow_patterns = allow_patterns or (
                     _video_repo_allow_patterns(repo)
                     or _image_repo_allow_patterns(repo)
+                    or text_patterns
                 )
+                # Leave out stale shard sets no index file uses (38 GB on
+                # LTX-2.3 distilled). Any failure keeps the patterns as they are.
+                try:
+                    from backend_service.helpers.shard_index import pruned_allow_patterns
+
+                    pruned = pruned_allow_patterns(repo, effective_allow_patterns)
+                except Exception:
+                    pruned = None
+                if pruned is not None:
+                    effective_allow_patterns, kept_bytes, skipped_bytes = pruned
+                    with state._lock:
+                        current = state._downloads.get(repo)
+                        if current is not None and state._download_tokens.get(repo) == download_token:
+                            current["totalGb"] = _bytes_to_gb(kept_bytes)
+                    state.add_log(
+                        "library", "info",
+                        f"Skipping {_bytes_to_gb(skipped_bytes):.1f} GB of weight shards no index uses in {repo}.",
+                    )
                 process = _spawn_snapshot_download(
                     repo,
                     env,
@@ -222,7 +264,7 @@ def start_download(
                     return
                 cancelled = state._download_cancel.get(repo, False)
             if cancelled:
-                downloaded_gb_local = _bytes_to_gb(_hf_repo_downloaded_bytes(repo))
+                downloaded_gb_local = _bytes_to_gb(_hf_repo_downloaded_bytes(repo, scope_patterns))
                 with state._lock:
                     current = state._downloads.get(repo)
                     if current is None or state._download_tokens.get(repo) != download_token:
@@ -242,6 +284,35 @@ def start_download(
                     stderr_output or f"snapshot_download exited with status {returncode}"
                 )
 
+            # Files other repos publish for this model (the Nemotron 3.5 Bolt
+            # DFlash drafter, Iris-3B's text encoder) ride along, so the first
+            # launch works offline.
+            for companion_repo, companion_patterns in companion_downloads(repo):
+                state.add_log("library", "info", f"Fetching {companion_repo} for {repo}")
+                with open(process_log_path, "a", encoding="utf-8", errors="replace") as process_log:
+                    companion_process = _spawn_snapshot_download(
+                        companion_repo, env, process_log, allow_patterns=companion_patterns,
+                    )
+                    with state._lock:
+                        if state._download_tokens.get(repo) == download_token:
+                            state._download_processes[repo] = companion_process
+                    while companion_process.poll() is None:
+                        with state._lock:
+                            if state._download_cancel.get(repo, False) or state._download_tokens.get(repo) != download_token:
+                                companion_process.terminate()
+                                break
+                        time.sleep(0.5)
+                if companion_process.wait() != 0:
+                    with state._lock:
+                        cancelled_now = state._download_cancel.get(repo, False)
+                    if not cancelled_now:
+                        # The model itself is complete; a missing companion costs the speed-up
+                        # or a download on first use.
+                        state.add_log(
+                            "library", "warning",
+                            f"Could not fetch {companion_repo}: {_read_text_tail(process_log_path)}",
+                        )
+
             # Image catalog validation first; fall through to video so
             # a successful video download isn't flagged for missing image
             # shape. Each validator returns None for repos outside its
@@ -260,7 +331,7 @@ def start_download(
                     state._downloads[repo]["error"] = validation_error
                     state.add_log("library", "error", validation_error)
                 return
-            downloaded_gb_local = _bytes_to_gb(_hf_repo_downloaded_bytes(repo))
+            downloaded_gb_local = _bytes_to_gb(_hf_repo_downloaded_bytes(repo, scope_patterns))
             with state._lock:
                 if state._download_tokens.get(repo) != download_token:
                     return
@@ -405,7 +476,14 @@ def cancel_download(state: ChaosEngineState, repo: str) -> dict[str, Any]:
         except Exception:
             pass
 
-    downloaded_gb = _bytes_to_gb(_hf_repo_downloaded_bytes(repo))
+    from backend_service.helpers.text_gguf import text_repo_allow_patterns
+
+    scope_patterns = (
+        _video_repo_allow_patterns(repo)
+        or _image_repo_allow_patterns(repo)
+        or text_repo_allow_patterns(repo)
+    )
+    downloaded_gb = _bytes_to_gb(_hf_repo_downloaded_bytes(repo, scope_patterns))
     with state._lock:
         current = state._downloads.get(repo)
         if current is None:

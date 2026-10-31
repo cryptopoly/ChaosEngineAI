@@ -1,11 +1,12 @@
 {
   "composer": {
     "placeholderReady": "輸入訊息…(Enter 傳送,Shift+Enter 換行,/ 輸入命令)",
-    "placeholderNoModel": "請先載入模型 — 從 我的模型 或 探索 選擇一個,然後點擊 對話。",
+    "placeholderNoModel": "請先載入模型 — 從 對話 > 模型 選擇一個,然後點擊 對話。",
     "send": "傳送",
     "stop": "停止",
     "clear": "清除",
-    "sendDisabledTooltip": "請先載入模型再傳送訊息"
+    "sendDisabledTooltip": "請先載入模型再傳送訊息",
+    "sendLoadingTooltip": "請等待模型載入完成"
   },
   "thinkingMode": {
     "label": "思考",
@@ -72,7 +73,23 @@
     "ready": "就緒",
     "loadChatModel": "載入此對話的模型",
     "loading": "載入中...",
-    "loadModel": "載入模型"
+    "loadModel": "載入模型",
+    "cancelLoadTitle": "停止載入並釋放記憶體",
+    "unloadTitle": "卸載模型並釋放記憶體",
+    "cancelLoad": "取消載入",
+    "unload": "卸載",
+    "startCall": "透過語音與模型對話",
+    "call": "通話",
+    "callNeedsModel": "載入聊天模型後即可開始語音通話",
+    "callInfo": "用語音與已載入的模型對話。說話、停頓，它就會用語音回答；搶話即可打斷。每一輪都會儲存在此聊天中。",
+    "callNeeds": "需要：",
+    "callReady": "就緒",
+    "callMissing": "缺少",
+    "callSetup": "按「通話」開啟語音模型並安裝缺少的項目。",
+    "callNeedModel": "已載入的聊天模型",
+    "callNeedStt": "語音辨識（語音模型）",
+    "callNeedTts": "回覆用的語音（語音模型）",
+    "callNeedVad": "輪次偵測（語音套件內含）"
   },
   "sidebar": {
     "title": "對話",
@@ -82,14 +99,22 @@
     "collapseChatList": "摺疊對話清單",
     "searchThreadsPlaceholder": "搜尋執行緒...",
     "searchThreadsAriaLabel": "搜尋執行緒",
-    "clearSearch": "清除搜尋"
+    "clearSearch": "清除搜尋",
+    "noThreadsMatch": "沒有符合「{query}」的執行緒。",
+    "unpin": "取消釘選",
+    "pin": "釘選",
+    "deleteChat": "刪除對話",
+    "forkedFrom": "從另一個執行緒的第 #{number} 則訊息分支",
+    "forkBadge": "⑂ 分支",
+    "modelReadyTooltip": "模型已載入 — 此對話無需重新載入，會立即回應。",
+    "readyBadge": "就緒"
   },
   "swapMenu": {
     "clearOverride": "清除覆寫",
     "dialogAriaLabel": "為下一輪選擇模型",
     "sendNextVia": "下一則透過",
     "oneTurnNote": "覆寫僅適用於一輪。",
-    "noWarmModels": "沒有其他熱模型。從 我的模型 載入第二個模型以啟用快速切換。"
+    "noWarmModels": "沒有其他熱模型。從 對話 > 模型 載入第二個模型以啟用快速切換。"
   },
   "activeThread": {
     "title": "活動執行緒",
@@ -180,7 +205,8 @@
       "cancel": "取消",
       "usePromptInNewChallenge": "在新挑戰中使用提示詞",
       "runChallenge": "執行挑戰",
-      "runNewChallenge": "執行新挑戰"
+      "runNewChallenge": "執行新挑戰",
+      "browsePrompts": "提示詞庫"
     },
     "status": {
       "generating": "正在生成...",
@@ -214,6 +240,46 @@
       "titleForSlot": "選擇 {slot}",
       "confirm": "使用模型",
       "confirmForSlot": "用於 {slot}"
+    },
+    "promptLibrary": {
+      "tabs": {
+        "all": "全部"
+      },
+      "title": "提示詞庫",
+      "subtitle": "選擇一個現成的挑戰，或關閉後自行撰寫。",
+      "searchPlaceholder": "搜尋提示詞（名稱、機制、關鍵字）...",
+      "resultCount": "顯示 {count} 項",
+      "empty": "沒有符合搜尋的提示詞。",
+      "close": "取消",
+      "categories": {
+        "games": "遊戲",
+        "simulations": "模擬",
+        "tech-demos": "技術展示",
+        "creative-tools": "創意工具"
+      }
+    },
+    "slotPanel": {
+      "collapsePreview": "摺疊預覽",
+      "expandPreview": "展開預覽",
+      "viewRender": "檢視渲染結果",
+      "viewHtmlCode": "檢視 HTML 程式碼",
+      "collapse": "摺疊",
+      "latest": "最新",
+      "changeModel": "更換模型",
+      "continueHtml": "接續 HTML",
+      "repairHtml": "修復 HTML",
+      "retry": "重試",
+      "fileDeleted": "檔案已刪除",
+      "fileDeletedDetail": "{filename} 已不在此挑戰資料夾中。",
+      "savedFileFallback": "已儲存的 HTML 檔案",
+      "noHtmlOutput": "沒有 HTML 輸出",
+      "noRenderablePage": "此模型已結束，但未產生可渲染的 HTML 頁面。",
+      "noStandaloneDocument": "儲存的輸出中不包含獨立的 HTML 文件。",
+      "previewTitle": "{label} 的 HTML 預覽",
+      "loadingModel": "正在載入模型...",
+      "waitingFor": "正在等待 {label} 完成...",
+      "waiting": "等待中...",
+      "waitingToStart": "等待開始..."
     }
   },
   "samplerPanel": {
@@ -223,14 +289,40 @@
     "dialogAriaLabel": "取樣器覆寫",
     "headerTitle": "取樣器覆寫",
     "resetAll": "全部重設",
-    "resetAllTooltip": "全部重設為後端預設值"
+    "resetAllTooltip": "全部重設為後端預設值",
+    "useBackendDefault": "使用後端預設值",
+    "reset": "重設",
+    "schemaNotObject": "Schema 必須是 JSON 物件",
+    "invalidJson": "無效的 JSON",
+    "hints": {
+      "topP": "核取樣截斷（越低越集中）",
+      "topK": "保留機率最高的 N 個 token（0 = 停用）",
+      "minP": "最小機率閾值",
+      "repeatPenalty": "1.0 = 無；>1 = 懲罰重複",
+      "xtcProbability": "XTC：為增加多樣性而排除高機率 token 的機率（0 = 關閉）",
+      "xtcThreshold": "XTC：僅當最高機率 token 的機率不低於此值時才觸發",
+      "dryMultiplier": "DRY 防重複強度（0 = 關閉；僅限 llama.cpp）",
+      "seed": "確定性解碼（任意非負整數）",
+      "mirostatTau": "目標熵",
+      "mirostatEta": "學習率"
+    },
+    "placeholderDefault": "預設",
+    "placeholderOff": "關閉",
+    "placeholderRandom": "隨機",
+    "mirostatHint": "自適應取樣的目標熵",
+    "jsonSchema": "JSON Schema",
+    "jsonSchemaHint": "限制輸出（僅限 llama.cpp）",
+    "schemaOk": "Schema 已解析，將限制下一次回覆。",
+    "panelHint": "針對每個執行緒的覆寫設定。llama.cpp 會全部套用；mlx-lm 僅使用其支援的項目（top_p / top_k / min_p），其餘忽略。留空 = 使用後端預設值。"
   },
   "kvChip": {
     "clearOverride": "清除 KV 覆寫",
     "revertTooltip": "恢復至工作階段預設值",
     "dialogAriaLabel": "KV 快取策略",
     "headingTitle": "下一輪的 KV 快取",
-    "reloadNote": "切換將在需要時重新載入執行階段。"
+    "reloadNote": "切換將在需要時重新載入執行階段。",
+    "memorySaverTitle": "壓縮 KV 快取，讓長對話佔用更少記憶體。生成速度比原生慢。",
+    "memorySaver": "節省記憶體"
   },
   "citations": {
     "sourcesLabel": "來源：",
@@ -269,5 +361,55 @@
     "promptPlaceholder": "輸入要比較的提示...",
     "cancel": "取消",
     "compareButton": "比較"
+  },
+  "voice": {
+    "heardNothing": "沒有聽到語音。請靠近麥克風再試一次。",
+    "installToDictate": "語音輸入需要語音包。點擊以安裝。",
+    "stopDictation": "停止並轉寫（按 Esc 取消）",
+    "transcribing": "正在轉寫…",
+    "startDictation": "語音輸入（點擊，或按住說話；Ctrl/Cmd+Shift+M）",
+    "installToRead": "朗讀需要語音包。點擊以安裝。",
+    "stopReading": "停止朗讀",
+    "readAloud": "朗讀",
+    "dismiss": "關閉",
+    "resume": "恢復",
+    "pause": "暫停",
+    "stop": "停止",
+    "preparing": "正在準備語音…"
+  },
+  "voiceCall": {
+    "starting": "正在啟動麥克風…",
+    "listening": "正在聆聽…",
+    "hearing": "正在聽你說…",
+    "transcribing": "收到…",
+    "thinking": "思考中…",
+    "speaking": "正在說話…",
+    "error": "通話已停止",
+    "muted": "已靜音",
+    "title": "語音通話",
+    "you": "你",
+    "model": "模型",
+    "interrupted": "（已打斷）",
+    "muteHint": "麥克風靜音（空白鍵）",
+    "unmute": "取消靜音",
+    "mute": "靜音",
+    "endHint": "結束通話（Esc）",
+    "end": "結束通話",
+    "meta": "語音：{voice}",
+    "headphones": "使用耳機更便於打斷"
+  },
+  "emptyBanner": {
+    "welcomeTitle": "👋 歡迎使用 ChaosEngineAI 對話",
+    "welcomeBody": "請先在「對話 > 模型」中選擇一個聊天模型。首次使用建議選擇較小的 Qwen3 或 Llama 3 變體，下載只需一兩分鐘，任何筆記型電腦都能執行。",
+    "browseDiscover": "瀏覽模型",
+    "noModelLoaded": "需要先載入模型才能聊天。請從模型庫中選擇一個，將它載入記憶體。",
+    "loadModel": "載入模型",
+    "getStartedAriaLabel": "開始使用對話",
+    "loadModelAriaLabel": "載入模型以開始對話"
+  },
+  "codeBlock": {
+    "copied": "已複製",
+    "copyCode": "複製程式碼",
+    "copy": "複製"
   }
 }

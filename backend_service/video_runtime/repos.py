@@ -38,7 +38,7 @@ PIPELINE_REGISTRY: dict[str, dict[str, str]] = {
     # weights and a higher training resolution.
     "THUDM/CogVideoX-2b": {"class_name": "CogVideoXPipeline", "task": "txt2video"},
     "THUDM/CogVideoX-5b": {"class_name": "CogVideoXPipeline", "task": "txt2video"},
-    "THUDM/CogVideoX-1.5-5b": {"class_name": "CogVideoXPipeline", "task": "txt2video"},
+    "THUDM/CogVideoX1.5-5B": {"class_name": "CogVideoXPipeline", "task": "txt2video"},
 }
 
 
@@ -89,7 +89,12 @@ def _bnb_nf4_transformer_class_for_repo(repo: str) -> str | None:
 #   - LTX-Video: Lightricks model card recommends 30 steps CFG 3 for the
 #     full model; distilled variants override to 8 steps CFG 1.
 #   - Wan 2.1 / 2.2: Wan-AI model card recommendations, Uni-PC
-#     scheduler with CFG 6 (2.1) or 7.5 (2.2).
+#     scheduler with CFG 5.0 (2.1) or 4.0 (2.2 A14B; the card gives 4.0 and
+#     3.0 per expert and the pipeline reuses one value for both). Wan 2.2
+#     TI2V 5B uses the card's CFG 5.0: at 7.5 the clip came out over-bright
+#     with stripes and colour blocks, the longer the clip the worse it got
+#     (FU-122). The 2.1 and A14B values follow the cards and were not run
+#     here (no A14B weights; 2.1 was 6.0 and 7.5 before).
 #   - HunyuanVideo: tencent/HunyuanVideo recommends 50 steps CFG 6.
 #   - Mochi: genmo/mochi-1-preview defaults from upstream pipeline.
 #   - CogVideoX: THUDM model cards.
@@ -99,17 +104,17 @@ _VIDEO_PIPELINE_DEFAULTS: dict[str, dict[str, Any]] = {
     # have plain ``EulerDiscreteScheduler`` baked in, so force-swap on
     # every load to keep the pipeline call valid.
     "Lightricks/LTX-Video": {"steps": 30, "guidance": 3.0, "scheduler": "flow-euler"},
-    "Wan-AI/Wan2.1-T2V-1.3B-Diffusers": {"steps": 30, "guidance": 6.0, "scheduler": "unipc"},
-    "Wan-AI/Wan2.1-T2V-14B-Diffusers": {"steps": 30, "guidance": 6.0, "scheduler": "unipc"},
-    "Wan-AI/Wan2.2-TI2V-5B-Diffusers": {"steps": 20, "guidance": 7.5, "scheduler": "unipc"},
-    "Wan-AI/Wan2.2-T2V-A14B-Diffusers": {"steps": 30, "guidance": 7.5, "scheduler": "unipc"},
+    "Wan-AI/Wan2.1-T2V-1.3B-Diffusers": {"steps": 30, "guidance": 5.0, "scheduler": "unipc"},
+    "Wan-AI/Wan2.1-T2V-14B-Diffusers": {"steps": 30, "guidance": 5.0, "scheduler": "unipc"},
+    "Wan-AI/Wan2.2-TI2V-5B-Diffusers": {"steps": 20, "guidance": 5.0, "scheduler": "unipc"},
+    "Wan-AI/Wan2.2-T2V-A14B-Diffusers": {"steps": 30, "guidance": 4.0, "scheduler": "unipc"},
     "hunyuanvideo-community/HunyuanVideo": {"steps": 50, "guidance": 6.0, "scheduler": None},
     "genmo/mochi-1-preview": {"steps": 64, "guidance": 4.5, "scheduler": None},
     "THUDM/CogVideoX-2b": {"steps": 50, "guidance": 6.0, "scheduler": None},
     "THUDM/CogVideoX-5b": {"steps": 50, "guidance": 7.0, "scheduler": None},
     # CogVideoX 1.5 5B inherits the 5B defaults — refreshed weights but
     # the same step / CFG sweet spot per upstream model card.
-    "THUDM/CogVideoX-1.5-5b": {"steps": 50, "guidance": 7.0, "scheduler": None},
+    "THUDM/CogVideoX1.5-5B": {"steps": 50, "guidance": 7.0, "scheduler": None},
 }
 
 # Schema-level defaults — must mirror ``VideoGenerationRequest`` in

@@ -10,10 +10,13 @@ from __future__ import annotations
 import json
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout, as_completed
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from backend_service.catalog import VIDEO_MODEL_FAMILIES
+from backend_service.helpers.fit import annotate_fit
 from backend_service.helpers.formatting import _bytes_to_gb
+from backend_service.helpers.generation_limits import size_limit_fields
+from backend_service.helpers.recommendations import annotate_recommendations
 from backend_service.helpers.huggingface import _format_release_label, _hf_repo_snapshot_dir
 from backend_service.helpers.images import _image_repo_live_metadata, _snapshot_on_disk_bytes
 from backend_service.helpers.mlx_video_validation import (
@@ -36,8 +39,14 @@ from backend_service.helpers.video_artifacts import (
 )
 from backend_service.image_runtime import validate_local_diffusers_snapshot
 
+if TYPE_CHECKING:
+    from backend_service.helpers.hardware_class import HardwareClass
 
-def _video_model_payloads(library: list[dict[str, Any]]) -> list[dict[str, Any]]:
+
+def _video_model_payloads(
+    library: list[dict[str, Any]],
+    hardware: HardwareClass | None = None,
+) -> list[dict[str, Any]]:
     """Return the catalog families enriched with per-variant availability
     plus live Hugging Face metadata (downloads, likes, lastModified).
 
@@ -46,6 +55,8 @@ def _video_model_payloads(library: list[dict[str, Any]]) -> list[dict[str, Any]]
     with a 6-hour in-process cache. Called in parallel across repos with
     an 8-second wall-clock budget; repos whose fetch times out fall back
     to the curated defaults on the variant dict.
+
+    ``hardware`` (default: this machine) decides each variant's ``fit``.
     """
     repo_metadata: dict[str, dict[str, Any]] = {}
     repos = sorted({
@@ -82,7 +93,7 @@ def _video_model_payloads(library: list[dict[str, Any]]) -> list[dict[str, Any]]
             live_metadata = repo_metadata.get(repo, {}) if repo else {}
             # Merge live metadata first so curated fields (releaseDate,
             # familyName) still win when both exist.
-            enriched = {**enriched, **live_metadata}
+            enriched = {**enriched, **live_metadata, **size_limit_fields(enriched)}
             validation_error = _video_variant_validation_error(enriched)
             local_data_repos = _video_variant_local_data_repos(enriched)
             enriched["availableLocally"] = validation_error is None
@@ -153,7 +164,11 @@ def _video_model_payloads(library: list[dict[str, Any]]) -> list[dict[str, Any]]
         payload = dict(family)
         payload["variants"] = variants
         families.append(payload)
-    return filter_mlx_only_families(families, on_apple_silicon=is_apple_silicon())
+    families = filter_mlx_only_families(families, on_apple_silicon=is_apple_silicon())
+    # Hardware fit: ``fit`` on every variant, ``bestFitVariantId`` on every family.
+    families = annotate_fit(families, "video", hardware)
+    # Studio "Recommended for this machine" panel: ``recommendedSettings`` per variant.
+    return annotate_recommendations(families, "video", hardware)
 
 
 def _annotate_shared_repo_siblings(variants: list[dict[str, Any]]) -> None:
@@ -206,7 +221,47 @@ def _video_variant_download_repos(variant: dict[str, Any]) -> list[str]:
         repo = str(variant.get(key) or "").strip()
         if repo and repo not in repos:
             repos.append(repo)
+    for companion in variant.get("downloadCompanions") or []:
+        repo = str(companion.get("repo") or "").strip()
+        if repo and repo not in repos:
+            repos.append(repo)
     return repos
+
+
+def _is_ltx2_mlx_repo_id(repo_id: str) -> bool:
+    from backend_service.ltx2_mlx_runtime import _is_ltx2_mlx_repo
+
+    return _is_ltx2_mlx_repo(repo_id)
+
+
+def _ltx2_mlx_pack_error(snapshot_dir: Path | str, repo_id: str) -> str | None:
+    """ltx-2-mlx packs are bare safetensors files: check the ones the distilled pipeline reads."""
+    from backend_service.ltx2_mlx_runtime import missing_pack_files
+
+    missing = missing_pack_files(Path(snapshot_dir), repo_id)
+    if not missing:
+        return None
+    return f"The snapshot of {repo_id} is missing {', '.join(missing)}. Retry the download."
+
+
+def _ltx2_mlx_variant_error(variant: dict[str, Any]) -> str | None:
+    """Pack files plus the Gemma text encoder the engine loads beside them (2.3 packs only)."""
+    repo = str(variant.get("repo") or "")
+    snapshot_dir = _hf_repo_snapshot_dir(repo)
+    if snapshot_dir is None:
+        return f"Download did not produce a local snapshot for {repo}."
+    pack_error = _ltx2_mlx_pack_error(snapshot_dir, repo)
+    if pack_error:
+        return pack_error
+    from backend_service.ltx2_mlx_runtime import gemma_repo
+
+    text_encoder_repo = gemma_repo(repo)
+    if text_encoder_repo is None:
+        return None
+    gemma = _hf_repo_snapshot_dir(text_encoder_repo)
+    if gemma is None or not (Path(gemma) / "model.safetensors.index.json").exists():
+        return f"The text encoder {text_encoder_repo} is not downloaded. Retry the download."
+    return None
 
 
 def _is_video_repo(repo_id: str) -> bool:
@@ -232,6 +287,8 @@ def _video_repo_runtime_ready(repo_id: str) -> bool:
     snapshot_dir = _hf_repo_snapshot_dir(repo_id)
     if snapshot_dir is None:
         return False
+    if _is_ltx2_mlx_repo_id(repo_id):
+        return _ltx2_mlx_pack_error(snapshot_dir, repo_id) is None
     if _is_mlx_video_routed_repo(repo_id):
         return _validate_mlx_video_snapshot(snapshot_dir, repo_id) is None
     return validate_local_diffusers_snapshot(snapshot_dir, repo_id) is None
@@ -279,6 +336,8 @@ def _video_variant_validation_error(variant: dict[str, Any]) -> str | None:
     repo = str(variant.get("repo") or "")
     if not repo:
         return "Video model variant is missing its base repo id."
+    if _is_ltx2_mlx_repo_id(repo):
+        return _ltx2_mlx_variant_error(variant)
     is_gguf_variant = bool(str(variant.get("ggufFile") or "").strip())
     repo_error = (
         _video_gguf_base_validation_error(repo)
@@ -549,9 +608,22 @@ def _video_repo_allow_patterns(repo_id: str) -> list[str] | None:
     """
     if not _is_video_repo(repo_id):
         return None
+    pinned = _pinned_video_download_files(repo_id)
+    if pinned:
+        return pinned
     if _is_mlx_video_routed_repo(repo_id):
         return list(_VIDEO_MLX_ALLOW_PATTERNS)
     return list(_VIDEO_DIFFUSERS_ALLOW_PATTERNS)
+
+
+def _pinned_video_download_files(repo_id: str) -> list[str]:
+    """Files a variant pins with ``downloadFiles`` when its repo holds more than it runs."""
+    files: list[str] = []
+    for family in VIDEO_MODEL_FAMILIES:
+        for variant in family["variants"]:
+            if str(variant.get("repo") or "") == repo_id:
+                files.extend(str(name) for name in variant.get("downloadFiles") or [])
+    return list(dict.fromkeys(files))
 
 
 def _video_gguf_base_allow_patterns() -> list[str]:
@@ -570,6 +642,8 @@ def _video_download_validation_error(repo_id: str) -> str | None:
     # mlx-video routed repos (e.g. ``prince-canuma/LTX-2-*``) ship MLX
     # layouts without ``model_index.json``. Don't apply the diffusers-shape
     # validator to them; check for the expected MLX component folders instead.
+    if _is_ltx2_mlx_repo_id(repo_id):
+        return _ltx2_mlx_pack_error(snapshot_dir, repo_id)
     if _is_mlx_video_routed_repo(repo_id):
         return _validate_mlx_video_snapshot(snapshot_dir, repo_id)
     return validate_local_diffusers_snapshot(snapshot_dir, repo_id)

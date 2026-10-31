@@ -4,6 +4,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+from backend_service.helpers.generation_limits import HARD_MAX_SIDE
+
 
 class LoadModelRequest(BaseModel):
     modelRef: str = Field(min_length=1)
@@ -190,6 +192,8 @@ class GenerateRequest(BaseModel):
     # where sending with a different model permanently switches the
     # thread.
     oneTurnOverride: bool = False
+    # Sent from a voice call: its Thinking Off is not saved to the thread.
+    voiceTurn: bool = False
 
 
 class RemoteProviderRequest(BaseModel):
@@ -359,8 +363,9 @@ class ImageGenerationRequest(BaseModel):
     modelId: str = Field(min_length=1, max_length=256)
     prompt: str = Field(min_length=1, max_length=4000)
     negativePrompt: str | None = Field(default=None, max_length=4000)
-    width: int = Field(default=1024, ge=256, le=2048)
-    height: int = Field(default=1024, ge=256, le=2048)
+    # Hard ceiling only; the model's own maxSide / maxPixels are applied by helpers/generation_limits.
+    width: int = Field(default=1024, ge=256, le=HARD_MAX_SIDE)
+    height: int = Field(default=1024, ge=256, le=HARD_MAX_SIDE)
     steps: int = Field(default=24, ge=1, le=100)
     guidance: float = Field(default=5.5, ge=1.0, le=20.0)
     seed: int | None = Field(default=None, ge=0, le=2147483647)
@@ -425,8 +430,8 @@ class VideoGenerationRequest(BaseModel):
     modelId: str = Field(min_length=1, max_length=256)
     prompt: str = Field(min_length=1, max_length=4000)
     negativePrompt: str | None = Field(default=None, max_length=4000)
-    width: int = Field(default=768, ge=256, le=2048)
-    height: int = Field(default=512, ge=256, le=2048)
+    width: int = Field(default=768, ge=256, le=HARD_MAX_SIDE)
+    height: int = Field(default=512, ge=256, le=HARD_MAX_SIDE)
     numFrames: int = Field(default=97, ge=8, le=257)
     fps: int = Field(default=24, ge=1, le=60)
     steps: int = Field(default=50, ge=1, le=100)

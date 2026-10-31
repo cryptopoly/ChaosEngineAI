@@ -52,12 +52,17 @@ file.
 | Package | Repository | Licence |
 |---|---|---|
 | `dflash-mlx` | [bstnxbt/dflash-mlx](https://github.com/bstnxbt/dflash-mlx) | MIT |
-| `dflash` (CUDA) | upstream of `dflash-mlx` | MIT |
+| vLLM built-in DFlash (CUDA) | `vllm>=0.28` — replaces the PyPI `dflash` package | Apache-2.0 |
 | `mtplx` | [youssofal/mtplx](https://github.com/youssofal/mtplx) | Apache 2.0 |
+| `tensorfold` | [ashhart/TensorFold](https://github.com/ashhart/TensorFold) | MIT |
 
 `mtplx` ships a forked `mlx-mtplx` runtime that conflicts with upstream
 `mlx`, so it lives in an isolated venv at `~/.chaosengine/mtplx-venv/`.
 See the [MTPLX page](../features/mtplx.md).
+
+`tensorfold` pins its own `mlx` / `mlx-lm` ranges, so it lives in an isolated
+venv at `~/.chaosengine/tensorfold-venv/` and is installed at an exact commit.
+See the [TensorFold page](../features/tensorfold.md).
 
 ## Optional Apple Silicon video runtime
 

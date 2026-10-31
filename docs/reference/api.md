@@ -43,7 +43,7 @@ Quick links to the key surfaces:
 | OpenAI shim | `POST /v1/chat/completions`, `GET /v1/models`, `POST /v1/embeddings` |
 | Image | `POST /api/images/generate`, `GET /api/images/progress`, `GET /api/images/outputs`, `GET /api/images/catalog`, `GET /api/images/library` |
 | Video | `POST /api/video/generate`, `GET /api/video/progress`, `GET /api/video/outputs`, `GET /api/video/catalog`, `GET /api/video/mlx-runtime` |
-| Setup | `POST /api/setup/install-mtplx`, `POST /api/setup/install-mlx-video-wan`, `POST /api/setup/install-longlive`, `POST /api/setup/refresh-capabilities` |
+| Setup | `POST /api/setup/install-mtplx`, `POST /api/setup/install-tensorfold`, `POST /api/setup/install-mlx-video-wan`, `POST /api/setup/install-longlive`, `POST /api/setup/refresh-capabilities` |
 | Diagnostics | `GET /api/diagnostics/snapshot`, `GET /api/diagnostics/log-tail`, `POST /api/diagnostics/reextract-runtime` |
 | Settings | `GET/PATCH /api/settings`, `GET/POST /api/settings/storage` |
 | Plugins / tools | `GET /api/plugins`, `POST /api/plugins/{id}/enable`, `GET /api/tools`, `GET /api/adapters` |

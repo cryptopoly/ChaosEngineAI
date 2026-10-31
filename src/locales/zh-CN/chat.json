@@ -1,11 +1,12 @@
 {
   "composer": {
     "placeholderReady": "输入消息…(Enter 发送,Shift+Enter 换行,/ 输入命令)",
-    "placeholderNoModel": "请先加载模型 — 从 我的模型 或 发现 选择一个,然后点击 对话。",
+    "placeholderNoModel": "请先加载模型 — 从 对话 > 模型 选择一个,然后点击 对话。",
     "send": "发送",
     "stop": "停止",
     "clear": "清除",
-    "sendDisabledTooltip": "请先加载模型再发送消息"
+    "sendDisabledTooltip": "请先加载模型再发送消息",
+    "sendLoadingTooltip": "请等待模型加载完成"
   },
   "thinkingMode": {
     "label": "思考",
@@ -72,7 +73,23 @@
     "ready": "就绪",
     "loadChatModel": "加载此对话的模型",
     "loading": "加载中...",
-    "loadModel": "加载模型"
+    "loadModel": "加载模型",
+    "cancelLoadTitle": "停止加载并释放内存",
+    "unloadTitle": "卸载模型并释放内存",
+    "cancelLoad": "取消加载",
+    "unload": "卸载",
+    "startCall": "通过语音与模型对话",
+    "call": "通话",
+    "callNeedsModel": "加载聊天模型后即可开始语音通话",
+    "callInfo": "用语音与已加载的模型对话。说话、停顿，它就会用语音回答；插话即可打断。每一轮都会保存在此聊天中。",
+    "callNeeds": "需要：",
+    "callReady": "就绪",
+    "callMissing": "缺少",
+    "callSetup": "点击“通话”打开语音模型并安装缺少的项目。",
+    "callNeedModel": "已加载的聊天模型",
+    "callNeedStt": "语音识别（语音模型）",
+    "callNeedTts": "回复用的语音（语音模型）",
+    "callNeedVad": "轮次检测（语音包内含）"
   },
   "sidebar": {
     "title": "对话",
@@ -82,14 +99,22 @@
     "collapseChatList": "折叠对话列表",
     "searchThreadsPlaceholder": "搜索线程...",
     "searchThreadsAriaLabel": "搜索线程",
-    "clearSearch": "清除搜索"
+    "clearSearch": "清除搜索",
+    "noThreadsMatch": "没有与“{query}”匹配的线程。",
+    "unpin": "取消置顶",
+    "pin": "置顶",
+    "deleteChat": "删除对话",
+    "forkedFrom": "从另一个线程的第 #{number} 条消息分支",
+    "forkBadge": "⑂ 分支",
+    "modelReadyTooltip": "模型已加载 — 此对话无需重新加载，会立即响应。",
+    "readyBadge": "就绪"
   },
   "swapMenu": {
     "clearOverride": "清除覆盖",
     "dialogAriaLabel": "为下一轮选择模型",
     "sendNextVia": "下一条通过",
     "oneTurnNote": "覆盖仅适用于一轮。",
-    "noWarmModels": "没有其他热模型。从 我的模型 加载第二个模型以启用快速切换。"
+    "noWarmModels": "没有其他热模型。从 对话 > 模型 加载第二个模型以启用快速切换。"
   },
   "activeThread": {
     "title": "活动线程",
@@ -180,7 +205,8 @@
       "cancel": "取消",
       "usePromptInNewChallenge": "在新挑战中使用此提示",
       "runChallenge": "运行挑战",
-      "runNewChallenge": "运行新挑战"
+      "runNewChallenge": "运行新挑战",
+      "browsePrompts": "提示词库"
     },
     "status": {
       "generating": "正在生成...",
@@ -214,6 +240,46 @@
       "titleForSlot": "选择 {slot}",
       "confirm": "使用模型",
       "confirmForSlot": "用于 {slot}"
+    },
+    "promptLibrary": {
+      "tabs": {
+        "all": "全部"
+      },
+      "title": "提示词库",
+      "subtitle": "选择一个现成的挑战，或关闭后自己编写。",
+      "searchPlaceholder": "搜索提示词（名称、机制、关键词）...",
+      "resultCount": "显示 {count} 项",
+      "empty": "没有与搜索匹配的提示词。",
+      "close": "取消",
+      "categories": {
+        "games": "游戏",
+        "simulations": "模拟",
+        "tech-demos": "技术演示",
+        "creative-tools": "创意工具"
+      }
+    },
+    "slotPanel": {
+      "collapsePreview": "折叠预览",
+      "expandPreview": "展开预览",
+      "viewRender": "查看渲染结果",
+      "viewHtmlCode": "查看 HTML 代码",
+      "collapse": "折叠",
+      "latest": "最新",
+      "changeModel": "更换模型",
+      "continueHtml": "续写 HTML",
+      "repairHtml": "修复 HTML",
+      "retry": "重试",
+      "fileDeleted": "文件已删除",
+      "fileDeletedDetail": "{filename} 已不在此挑战文件夹中。",
+      "savedFileFallback": "已保存的 HTML 文件",
+      "noHtmlOutput": "没有 HTML 输出",
+      "noRenderablePage": "此模型已结束，但没有生成可渲染的 HTML 页面。",
+      "noStandaloneDocument": "保存的输出中不包含独立的 HTML 文档。",
+      "previewTitle": "{label} 的 HTML 预览",
+      "loadingModel": "正在加载模型...",
+      "waitingFor": "正在等待 {label} 完成...",
+      "waiting": "等待中...",
+      "waitingToStart": "等待开始..."
     }
   },
   "samplerPanel": {
@@ -223,14 +289,40 @@
     "dialogAriaLabel": "采样器覆盖",
     "headerTitle": "采样器覆盖",
     "resetAll": "全部重置",
-    "resetAllTooltip": "全部重置为后端默认值"
+    "resetAllTooltip": "全部重置为后端默认值",
+    "useBackendDefault": "使用后端默认值",
+    "reset": "重置",
+    "schemaNotObject": "Schema 必须是 JSON 对象",
+    "invalidJson": "无效的 JSON",
+    "hints": {
+      "topP": "核采样截断（越低越集中）",
+      "topK": "保留概率最高的 N 个 token（0 = 禁用）",
+      "minP": "最小概率阈值",
+      "repeatPenalty": "1.0 = 无；>1 = 惩罚重复",
+      "xtcProbability": "XTC：为增加多样性而剔除高概率 token 的几率（0 = 关闭）",
+      "xtcThreshold": "XTC：仅当最高概率 token 的概率不低于此值时才触发",
+      "dryMultiplier": "DRY 防重复强度（0 = 关闭；仅 llama.cpp）",
+      "seed": "确定性解码（任意非负整数）",
+      "mirostatTau": "目标熵",
+      "mirostatEta": "学习率"
+    },
+    "placeholderDefault": "默认",
+    "placeholderOff": "关闭",
+    "placeholderRandom": "随机",
+    "mirostatHint": "自适应采样的目标熵",
+    "jsonSchema": "JSON Schema",
+    "jsonSchemaHint": "约束输出（仅 llama.cpp）",
+    "schemaOk": "Schema 已解析，将约束下一次回复。",
+    "panelHint": "针对每个线程的覆盖设置。llama.cpp 会全部应用；mlx-lm 仅使用其支持的项（top_p / top_k / min_p），其余忽略。留空 = 使用后端默认值。"
   },
   "kvChip": {
     "clearOverride": "清除 KV 覆盖",
     "revertTooltip": "恢复到会话默认值",
     "dialogAriaLabel": "KV 缓存策略",
     "headingTitle": "下一轮的 KV 缓存",
-    "reloadNote": "切换将在需要时重新加载运行时。"
+    "reloadNote": "切换将在需要时重新加载运行时。",
+    "memorySaverTitle": "压缩 KV 缓存，让长对话占用更少内存。生成速度比原生慢。",
+    "memorySaver": "节省内存"
   },
   "citations": {
     "sourcesLabel": "来源：",
@@ -269,5 +361,55 @@
     "promptPlaceholder": "输入要比较的提示...",
     "cancel": "取消",
     "compareButton": "比较"
+  },
+  "voice": {
+    "heardNothing": "没有听到语音。请靠近麦克风再试一次。",
+    "installToDictate": "语音输入需要语音包。点击安装。",
+    "stopDictation": "停止并转写（按 Esc 取消）",
+    "transcribing": "正在转写…",
+    "startDictation": "语音输入（点击，或按住说话；Ctrl/Cmd+Shift+M）",
+    "installToRead": "朗读需要语音包。点击安装。",
+    "stopReading": "停止朗读",
+    "readAloud": "朗读",
+    "dismiss": "关闭",
+    "resume": "恢复",
+    "pause": "暂停",
+    "stop": "停止",
+    "preparing": "正在准备语音…"
+  },
+  "voiceCall": {
+    "starting": "正在启动麦克风…",
+    "listening": "正在聆听…",
+    "hearing": "正在听你说…",
+    "transcribing": "收到…",
+    "thinking": "思考中…",
+    "speaking": "正在说话…",
+    "error": "通话已停止",
+    "muted": "已静音",
+    "title": "语音通话",
+    "you": "你",
+    "model": "模型",
+    "interrupted": "（已打断）",
+    "muteHint": "麦克风静音（空格）",
+    "unmute": "取消静音",
+    "mute": "静音",
+    "endHint": "结束通话（Esc）",
+    "end": "结束通话",
+    "meta": "语音：{voice}",
+    "headphones": "使用耳机更便于打断"
+  },
+  "emptyBanner": {
+    "welcomeTitle": "👋 欢迎使用 ChaosEngineAI 对话",
+    "welcomeBody": "请先在“对话 > 模型”中选择一个聊天模型。首次使用推荐较小的 Qwen3 或 Llama 3 变体，下载只需一两分钟，任何笔记本电脑都能运行。",
+    "browseDiscover": "浏览模型",
+    "noModelLoaded": "需要先加载模型才能聊天。请从模型库中选择一个，将其载入内存。",
+    "loadModel": "加载模型",
+    "getStartedAriaLabel": "开始使用对话",
+    "loadModelAriaLabel": "加载模型以开始对话"
+  },
+  "codeBlock": {
+    "copied": "已复制",
+    "copyCode": "复制代码",
+    "copy": "复制"
   }
 }

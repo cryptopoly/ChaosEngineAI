@@ -10,6 +10,8 @@
  */
 
 export const MAX_VIDEO_SEED = 2147483647;
+/** Hard ceiling on a video edge; each model's own maxSide (catalog) is lower and applied by the Studio. */
+export const MAX_VIDEO_SIDE = 8192;
 
 export const DEFAULT_VIDEO_NUM_FRAMES = 33;
 export const DEFAULT_VIDEO_FPS = 24;
@@ -69,7 +71,7 @@ export function parseRecommendedResolution(
   const width = Number(match[1]);
   const height = Number(match[2]);
   if (!Number.isFinite(width) || !Number.isFinite(height)) return [defaultWidth, defaultHeight];
-  if (width < 256 || width > 2048 || height < 256 || height > 2048) {
+  if (width < 256 || width > MAX_VIDEO_SIDE || height < 256 || height > MAX_VIDEO_SIDE) {
     return [defaultWidth, defaultHeight];
   }
   return [width, height];

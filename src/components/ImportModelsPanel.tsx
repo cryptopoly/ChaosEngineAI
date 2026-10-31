@@ -3,14 +3,15 @@ import { useTranslation } from "react-i18next";
 import { importModel, scanImportableModels, type ImportableModel, type ImportScanResult } from "../api";
 
 /**
- * "Import from Ollama / LM Studio" (#4): surfaces models already on disk
- * in another local-AI app's store and registers them by reference
+ * "Import existing models" (#4): surfaces models already on disk in
+ * another local-AI app's store and registers them by reference
  * (symlink, no re-download). Imported models then appear in My Models
- * and load like any other.
+ * and load like any other. Each group is labelled with the folder it
+ * was found in, so the panel never names the other app.
  *
  * Self-contained: scans on mount (read-only) and hides itself entirely
  * when neither store is present, so it adds no clutter for users who
- * don't have Ollama or LM Studio installed.
+ * have no other local-AI app installed.
  */
 export function ImportModelsPanel() {
   const { t } = useTranslation("common");
@@ -55,6 +56,12 @@ export function ImportModelsPanel() {
   const hasAny = scan.ollama.models.length > 0 || scan.lmstudio.models.length > 0;
   if (!scan.ollama.available && !scan.lmstudio.available) return null;
   if (!hasAny) return null;
+
+  function storeLabel(path: string | null): string {
+    return path
+      ? t("importModels.foundIn", { defaultValue: "Found in {path}", path })
+      : t("importModels.foundElsewhere", { defaultValue: "Found on this computer" });
+  }
 
   function renderGroup(label: string, models: ImportableModel[]) {
     if (models.length === 0) return null;
@@ -101,8 +108,8 @@ export function ImportModelsPanel() {
           <p>{error}</p>
         </div>
       ) : null}
-      {renderGroup(t("importModels.ollama", { defaultValue: "Ollama" }), scan.ollama.models)}
-      {renderGroup(t("importModels.lmstudio", { defaultValue: "LM Studio" }), scan.lmstudio.models)}
+      {renderGroup(storeLabel(scan.ollama.dir), scan.ollama.models)}
+      {renderGroup(storeLabel(scan.lmstudio.dirs[0] ?? null), scan.lmstudio.models)}
     </section>
   );
 }

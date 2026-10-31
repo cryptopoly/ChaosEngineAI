@@ -1,0 +1,433 @@
+"""Controller tests for the TensorFold lane: engine selection tiers, startup
+fallback, memory handling and orphan pruning.
+
+Selection rules under test (see ``RuntimeController._select_tensorfold``):
+
+* an explicit ``tensorfold`` backend always gets the engine;
+* families only TensorFold can load ("exclusive") always get it, and an
+  uninstalled TensorFold becomes an install prompt;
+* checkpoints TensorFold is tested with ("tested") get it when speculative
+  decoding is requested and it is installed — the MTPLX rule — else standard
+  MLX;
+* everything else stays on standard MLX unless asked for.
+"""
+
+from __future__ import annotations
+
+import json
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+from unittest import mock
+
+from backend_service.inference import RuntimeController
+from backend_service.inference.base import BackendCapabilities, LoadedModelInfo
+from backend_service.inference.mlx_engine import MLXWorkerEngine
+from backend_service.inference.tensorfold_engine import TensorFoldEngine
+
+_FLASH = "Vontra/Qwen3.8-Flash-Next-MLX-4bit-MTP"
+_NATIVE = "Vontra/Qwen3.8-27B-MLX-4bit"
+_COMMUNITY = "mlx-community/gemma-4-26b-a4b-it-4bit"
+_UNRELATED = "mlx-community/Llama-3.2-3B-Instruct-4bit"
+
+
+def _capabilities(*, tensorfold: bool, mlx: bool = True) -> BackendCapabilities:
+    return BackendCapabilities(
+        pythonExecutable=sys.executable,
+        mlxAvailable=mlx,
+        mlxLmAvailable=mlx,
+        mlxUsable=mlx,
+        tensorfoldAvailable=tensorfold,
+    )
+
+
+def _controller(*, tensorfold: bool, mlx: bool = True) -> RuntimeController:
+    with mock.patch(
+        "backend_service.inference.get_backend_capabilities",
+        return_value=_capabilities(tensorfold=tensorfold, mlx=mlx),
+    ):
+        controller = RuntimeController()
+    controller.capabilities = _capabilities(tensorfold=tensorfold, mlx=mlx)
+    return controller
+
+
+def _select(controller: RuntimeController, repo: str, *, backend: str = "mlx", **extra):
+    return controller._select_engine(
+        backend=backend,
+        runtime_target=extra.pop("runtime_target", repo),
+        path=extra.pop("path", None),
+        model_ref=repo,
+        canonical_repo=repo,
+        speculative_decoding=extra.pop("speculative_decoding", True),
+    )
+
+
+class SelectEngineTests(unittest.TestCase):
+    def test_explicit_backend_gets_tensorfold_for_any_mlx_model(self) -> None:
+        engine = _select(_controller(tensorfold=True), _COMMUNITY, backend="tensorfold")
+        self.assertIsInstance(engine, TensorFoldEngine)
+        engine = _select(_controller(tensorfold=True), _UNRELATED, backend="tensorfold")
+        self.assertIsInstance(engine, TensorFoldEngine)
+
+    def test_explicit_backend_needs_the_install(self) -> None:
+        with self.assertRaises(RuntimeError) as ctx:
+            _select(_controller(tensorfold=False), _COMMUNITY, backend="tensorfold")
+        self.assertIn("not installed", str(ctx.exception))
+
+    def test_explicit_backend_refuses_gguf(self) -> None:
+        with self.assertRaises(RuntimeError) as ctx:
+            _select(_controller(tensorfold=True), "unsloth/Some-Model-GGUF", backend="tensorfold")
+        self.assertIn("GGUF", str(ctx.exception))
+
+    def test_exclusive_family_routes_without_being_asked(self) -> None:
+        for backend in ("mlx", "auto"):
+            engine = _select(_controller(tensorfold=True), _FLASH, backend=backend, speculative_decoding=False)
+            self.assertIsInstance(engine, TensorFoldEngine, backend)
+
+    def test_exclusive_family_does_not_need_the_apps_own_mlx(self) -> None:
+        engine = _select(_controller(tensorfold=True, mlx=False), _FLASH)
+        self.assertIsInstance(engine, TensorFoldEngine)
+
+    def test_exclusive_family_without_install_is_an_install_prompt(self) -> None:
+        with self.assertRaises(RuntimeError) as ctx:
+            _select(_controller(tensorfold=False), _FLASH)
+        message = str(ctx.exception)
+        self.assertIn("Qwen3.8 Flash Next", message)
+        self.assertIn("runs only on TensorFold", message)
+        self.assertIn("128 GB", message)
+
+    def test_exclusive_family_is_recognised_from_a_local_config(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            model = Path(tmp) / "my-converted-model"
+            model.mkdir()
+            (model / "config.json").write_text(json.dumps({"model_type": "glm5_next"}))
+            engine = _select(_controller(tensorfold=True), "local/my-converted-model", path=str(model), runtime_target=str(model))
+            self.assertIsInstance(engine, TensorFoldEngine)
+            with self.assertRaises(RuntimeError):
+                _select(_controller(tensorfold=False), "local/my-converted-model", path=str(model), runtime_target=str(model))
+
+    def test_tested_checkpoints_follow_the_speculative_toggle(self) -> None:
+        for repo in (_NATIVE, _COMMUNITY):
+            self.assertIsInstance(_select(_controller(tensorfold=True), repo, speculative_decoding=True), TensorFoldEngine, repo)
+            # toggle off: the standard MLX path, so the toggle is the A/B switch
+            self.assertIsInstance(_select(_controller(tensorfold=True), repo, speculative_decoding=False), MLXWorkerEngine, repo)
+            # not installed: standard MLX, never an error
+            self.assertIsInstance(_select(_controller(tensorfold=False), repo, speculative_decoding=True), MLXWorkerEngine, repo)
+
+    def test_tensorfold_takes_precedence_over_mtplx_for_its_checkpoints(self) -> None:
+        controller = _controller(tensorfold=True)
+        controller.capabilities.mtplxAvailable = True
+        engine = _select(controller, _NATIVE, speculative_decoding=True)
+        self.assertIsInstance(engine, TensorFoldEngine)
+
+    def test_unrelated_models_stay_on_mlx_even_with_speculative_on(self) -> None:
+        self.assertIsInstance(_select(_controller(tensorfold=True), _UNRELATED, speculative_decoding=True), MLXWorkerEngine)
+
+    def test_gguf_target_never_routes_to_tensorfold(self) -> None:
+        controller = _controller(tensorfold=True)
+        controller.capabilities.ggufAvailable = True
+        engine = controller._select_engine(
+            backend="auto",
+            runtime_target="/models/Vontra-Qwen3.8-27B-Q4_K_M.gguf",
+            path="/models/Vontra-Qwen3.8-27B-Q4_K_M.gguf",
+            model_ref=_NATIVE,
+            canonical_repo=_NATIVE,
+        )
+        self.assertNotIsInstance(engine, TensorFoldEngine)
+
+
+class _LoadedByStub:
+    """Minimal engine double whose ``load_model`` records its call."""
+
+    engine_name = "stub"
+
+    def __init__(self, label: str, *, fail: Exception | None = None) -> None:
+        self.label = label
+        self.fail = fail
+        self.loads: list[dict] = []
+        self.unloads = 0
+
+    def load_model(self, **kwargs):
+        self.loads.append(kwargs)
+        if self.fail is not None:
+            raise self.fail
+        return LoadedModelInfo(
+            ref=kwargs["model_ref"], name=kwargs["model_name"], backend=kwargs["backend"], source=kwargs["source"],
+            engine=self.engine_name, cacheStrategy=kwargs["cache_strategy"], cacheBits=kwargs["cache_bits"],
+            fp16Layers=kwargs["fp16_layers"], fusedAttention=kwargs["fused_attention"],
+            fitModelInMemory=kwargs["fit_model_in_memory"], contextTokens=kwargs["context_tokens"],
+            loadedAt="now", path=kwargs.get("path"), runtimeTarget=kwargs.get("runtime_target"), runtimeNote=self.label,
+        )
+
+    def unload_model(self) -> None:
+        self.unloads += 1
+
+    def process_pid(self):
+        return None
+
+
+def _real_tensorfold_engine_that_fails(controller: RuntimeController, message: str) -> TensorFoldEngine:
+    engine = TensorFoldEngine(controller.capabilities)
+    engine.load_model = mock.Mock(side_effect=RuntimeError(message))  # type: ignore[method-assign]
+    return engine
+
+
+class StartupFallbackTests(unittest.TestCase):
+    def _load(self, controller: RuntimeController, repo: str):
+        return controller.load_model(
+            model_ref=repo, model_name=repo, canonical_repo=repo, source="library", backend="mlx",
+            path=None, runtime_target=repo, speculative_decoding=True,
+        )
+
+    def test_a_failed_tested_checkpoint_falls_back_to_standard_mlx(self) -> None:
+        controller = _controller(tensorfold=True)
+        controller._select_engine = mock.Mock(return_value=_real_tensorfold_engine_that_fails(controller, "Metal exploded"))
+        fallback = _LoadedByStub("standard MLX")
+        # ``load_model`` re-probes capabilities; pin the probe so a host without mlx
+        # (CI on Linux) still sees the usable MLX these tests set up.
+        with mock.patch(
+            "backend_service.inference.controller.get_backend_capabilities",
+            return_value=controller.capabilities,
+        ), mock.patch("backend_service.inference.controller.MLXWorkerEngine", return_value=fallback):
+            loaded = self._load(controller, _NATIVE)
+        self.assertIs(controller.engine, fallback)
+        self.assertIn("TensorFold startup failed (Metal exploded); using standard MLX.", loaded.runtimeNote or "")
+
+    def test_a_failed_exclusive_family_reports_the_error_instead(self) -> None:
+        controller = _controller(tensorfold=True)
+        controller._select_engine = mock.Mock(return_value=_real_tensorfold_engine_that_fails(controller, "weights do not fit"))
+        with mock.patch("backend_service.inference.controller.MLXWorkerEngine") as standard:
+            with self.assertRaises(RuntimeError) as ctx:
+                self._load(controller, _FLASH)
+        standard.assert_not_called()
+        self.assertIn("weights do not fit", str(ctx.exception))
+        self.assertIsNone(controller.loaded_model)
+
+    def test_no_fallback_when_the_apps_mlx_is_unusable(self) -> None:
+        controller = _controller(tensorfold=True, mlx=False)
+        controller._select_engine = mock.Mock(return_value=_real_tensorfold_engine_that_fails(controller, "boom"))
+        # The app's MLX is unusable, so the fallback worker must not be tried.
+        # ``load_model`` re-probes capabilities, so pin the probe too: on a Mac
+        # the real one reports a working MLX and the fallback would run.
+        with mock.patch(
+            "backend_service.inference.controller.get_backend_capabilities",
+            return_value=controller.capabilities,
+        ), mock.patch("backend_service.inference.controller.MLXWorkerEngine") as worker:
+            with self.assertRaises(RuntimeError):
+                self._load(controller, _NATIVE)
+        worker.assert_not_called()
+
+    def test_an_explicit_request_for_an_unlisted_model_falls_back_too(self) -> None:
+        controller = _controller(tensorfold=True)
+        controller._select_engine = mock.Mock(return_value=_real_tensorfold_engine_that_fails(controller, "unsupported model_type"))
+        fallback = _LoadedByStub("standard MLX")
+        # ``load_model`` re-probes capabilities; pin the probe so a host without mlx
+        # (CI on Linux) still sees the usable MLX these tests set up.
+        with mock.patch(
+            "backend_service.inference.controller.get_backend_capabilities",
+            return_value=controller.capabilities,
+        ), mock.patch("backend_service.inference.controller.MLXWorkerEngine", return_value=fallback):
+            loaded = self._load(controller, _COMMUNITY)
+        self.assertIn("using standard MLX", loaded.runtimeNote or "")
+
+
+class MemoryHandlingTests(unittest.TestCase):
+    def test_loading_tensorfold_clears_warm_models_and_does_not_park_the_previous_one(self) -> None:
+        controller = _controller(tensorfold=True)
+        previous = _LoadedByStub("previous")
+        previous.engine_name = "mlx"
+        controller.engine = previous  # type: ignore[assignment]
+        controller.loaded_model = previous.load_model(
+            model_ref="other/model", model_name="other", backend="mlx", source="library", cache_strategy="native",
+            cache_bits=0, fp16_layers=0, fused_attention=False, fit_model_in_memory=True, context_tokens=8192,
+        )
+        warm = _LoadedByStub("warm")
+        controller._warm_pool["k"] = (warm, controller.loaded_model)  # type: ignore[assignment]
+
+        tensorfold = TensorFoldEngine(controller.capabilities)
+        tensorfold.load_model = mock.Mock(  # type: ignore[method-assign]
+            return_value=LoadedModelInfo(
+                ref=_NATIVE, name="n", backend="tensorfold", source="library", engine="tensorfold", cacheStrategy="native",
+                cacheBits=0, fp16Layers=0, fusedAttention=False, fitModelInMemory=True, contextTokens=8192, loadedAt="now",
+            )
+        )
+        controller._select_engine = mock.Mock(return_value=tensorfold)
+        controller.load_model(
+            model_ref=_NATIVE, model_name="n", canonical_repo=_NATIVE, source="library", backend="mlx",
+            path=None, runtime_target=_NATIVE, keep_warm_previous=True,
+        )
+        self.assertEqual(warm.unloads, 1)
+        self.assertEqual(previous.unloads, 1)
+        self.assertEqual(controller._warm_pool, {})
+        self.assertIs(controller.engine, tensorfold)
+
+
+class OrphanPruningTests(unittest.TestCase):
+    def test_an_untracked_tensorfold_server_is_pruned(self) -> None:
+        controller = _controller(tensorfold=True)
+        controller._tracked_process_pids = mock.Mock(return_value=set())
+        orphan = mock.Mock()
+        orphan.pid = 4242
+        orphan.cmdline.return_value = [
+            "/Users/x/.chaosengine/tensorfold-venv/bin/python",
+            "/Users/x/.chaosengine/tensorfold-venv/bin/tensorfold",
+            "serve",
+            "/models/m",
+        ]
+        orphan.name.return_value = "python"
+        orphan.create_time.return_value = 0.0
+        parent = mock.Mock()
+        parent.children.return_value = [orphan]
+        with mock.patch("psutil.Process", return_value=parent):
+            status = controller.status()
+        orphan.terminate.assert_called_once()
+        record = status["recentOrphanedWorkers"][0]
+        self.assertEqual((record["pid"], record["kind"], record["label"]), (4242, "tensorfold", "TensorFold server"))
+
+    def test_the_tracked_server_is_left_alone(self) -> None:
+        controller = _controller(tensorfold=True)
+        controller._tracked_process_pids = mock.Mock(return_value={4242})
+        server = mock.Mock()
+        server.pid = 4242
+        server.cmdline.return_value = ["/x/.chaosengine/tensorfold-venv/bin/python", "tensorfold", "serve"]
+        server.name.return_value = "python"
+        server.create_time.return_value = 0.0
+        parent = mock.Mock()
+        parent.children.return_value = [server]
+        with mock.patch("psutil.Process", return_value=parent):
+            controller.prune_stale_backend_children()
+        server.terminate.assert_not_called()
+
+
+if __name__ == "__main__":
+    unittest.main()
+
+
+class ColdStartNoteTests(unittest.TestCase):
+    def test_loading_progress_says_a_cold_start_takes_minutes(self) -> None:
+        from backend_service.inference import tensorfold_engine as tf
+
+        engine = tf.TensorFoldEngine.__new__(tf.TensorFoldEngine)
+        engine.process = None
+        engine.log_path = None
+        messages: list[str] = []
+        with mock.patch.object(tf, "_http_json", return_value={"status": "ok"}), \
+                mock.patch.object(tf.TensorFoldEngine, "_server_url", return_value="http://127.0.0.1:1/health"):
+            engine._wait_for_server("m", lambda payload: messages.append(str(payload.get("message") or payload)))
+        self.assertTrue(any("cold start can take a few minutes" in m for m in messages), messages)
+
+
+class OneLoadAtATimeTests(unittest.TestCase):
+    def test_a_second_request_waits_for_the_load_in_flight(self) -> None:
+        import threading
+        import time
+
+        controller = _controller(tensorfold=True)
+        controller.engine = _LoadedByStub("current")  # type: ignore[assignment]
+        finished = threading.Event()
+        controller._load_lock.acquire()  # stands in for a model load that is still running
+        try:
+            worker = threading.Thread(target=lambda: (controller.unload_model(), finished.set()), daemon=True)
+            worker.start()
+            time.sleep(0.2)
+            self.assertFalse(finished.is_set(), "unload ran while a load held the lock")
+        finally:
+            controller._load_lock.release()
+        worker.join(timeout=2)
+        self.assertTrue(finished.is_set())
+
+
+class StopProcessTests(unittest.TestCase):
+    """The Stop buttons act on leftovers only and never on the loaded model or other programs."""
+
+    def _engine(self, pid: int):
+        engine = _LoadedByStub("e")
+        engine.process_pid = lambda: pid  # type: ignore[method-assign]
+        return engine
+
+    def test_the_loaded_models_process_is_refused(self) -> None:
+        controller = _controller(tensorfold=True)
+        controller.engine = self._engine(4242)  # type: ignore[assignment]
+        with self.assertRaises(ValueError) as ctx:
+            controller.stop_process(4242)
+        self.assertIn("Unload the model", str(ctx.exception))
+
+    def test_a_warm_model_is_evicted_through_its_engine(self) -> None:
+        controller = _controller(tensorfold=True)
+        controller.engine = self._engine(1)  # type: ignore[assignment]
+        warm = self._engine(5151)
+        controller._warm_pool["k"] = (warm, mock.Mock(name="info"))  # type: ignore[assignment]
+        controller._warm_pool["k"][1].name = "Parked model"
+        with mock.patch.object(controller, "prune_stale_backend_children"):
+            result = controller.stop_process(5151)
+        self.assertEqual(result["action"], "unloaded")
+        self.assertEqual(warm.unloads, 1)
+        self.assertNotIn("k", controller._warm_pool)
+
+    def test_a_process_this_backend_did_not_start_is_refused(self) -> None:
+        import os
+
+        controller = _controller(tensorfold=True)
+        controller.engine = self._engine(1)  # type: ignore[assignment]
+        # the test runner itself: a real process, but not a model process under the backend
+        with self.assertRaises(ValueError):
+            controller.stop_process(os.getpid())
+
+    def test_stop_idle_clears_the_warm_pool_and_prunes_without_a_grace_window(self) -> None:
+        controller = _controller(tensorfold=True)
+        controller.engine = self._engine(1)  # type: ignore[assignment]
+        controller._warm_pool["k"] = (self._engine(7), mock.Mock())  # type: ignore[assignment]
+        with mock.patch.object(controller, "prune_stale_backend_children") as prune:
+            result = controller.stop_idle()
+        self.assertEqual(result["warmEvicted"], 1)
+        prune.assert_called_with(grace_seconds=0.0)
+
+
+class SupersedeAndCancelTests(unittest.TestCase):
+    """A newer load replaces the one in flight, a repeat waits for it, and unload cancels it."""
+
+    class _SlowEngine(_LoadedByStub):
+        def __init__(self, label: str) -> None:
+            super().__init__(label)
+            self.started = __import__("threading").Event()
+            self.release = __import__("threading").Event()
+
+        def load_model(self, **kwargs):
+            self.started.set()
+            if not self.release.wait(timeout=5):
+                raise RuntimeError("never released")
+            if getattr(self, "killed", False):
+                raise RuntimeError("worker exited unexpectedly")
+            return super().load_model(**kwargs)
+
+        def unload_model(self) -> None:
+            self.killed = True
+            self.release.set()
+            super().unload_model()
+
+    def _kwargs(self, repo: str) -> dict:
+        return dict(model_ref=repo, model_name=repo, canonical_repo=repo, source="library", backend="mlx",
+                    path=None, runtime_target=repo)
+
+    def test_unload_cancels_a_load_in_flight(self) -> None:
+        import threading
+
+        controller = _controller(tensorfold=True)
+        slow = self._SlowEngine("slow")
+        controller._select_engine = mock.Mock(return_value=slow)
+        outcome: list = []
+        loader = threading.Thread(target=lambda: outcome.append(self._attempt(controller, "acme/Big")), daemon=True)
+        loader.start()
+        self.assertTrue(slow.started.wait(timeout=2))
+        controller.unload_model()  # must not wait for the load
+        loader.join(timeout=3)
+        self.assertFalse(loader.is_alive())
+        self.assertIsNone(controller.loaded_model)
+        self.assertIn("cancelled", str(outcome[0]).lower())
+
+    def _attempt(self, controller, repo):
+        try:
+            return controller.load_model(**self._kwargs(repo))
+        except RuntimeError as exc:
+            return exc

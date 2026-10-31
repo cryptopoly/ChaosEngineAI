@@ -7,6 +7,7 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
+import { useTranslation } from "react-i18next";
 
 interface InfoTooltipProps {
   /** Body of the tooltip. Plain text preferred; pass JSX only when a line
@@ -39,6 +40,7 @@ function clamp(value: number, min: number, max: number): number {
 // Native `title` was considered but its 500-1500ms delay and un-styleable
 // body make it a bad fit for dense forms where users want quick context.
 export function InfoTooltip({ text, icon = "ℹ" }: InfoTooltipProps) {
+  const { t } = useTranslation("common");
   const tooltipId = useId();
   const triggerRef = useRef<HTMLSpanElement>(null);
   const [position, setPosition] = useState<TooltipPosition | null>(null);
@@ -96,7 +98,7 @@ export function InfoTooltip({ text, icon = "ℹ" }: InfoTooltipProps) {
         ref={triggerRef}
         className="info-tooltip"
         tabIndex={0}
-        aria-label="More info"
+        aria-label={t("infoTooltip.ariaLabel", { defaultValue: "More info" })}
         aria-describedby={position ? tooltipId : undefined}
         onMouseEnter={showTooltip}
         onMouseLeave={hideTooltip}

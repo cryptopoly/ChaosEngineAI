@@ -1,7 +1,7 @@
 import i18next from "i18next";
 import type { ImageModelFamily, ImageModelVariant, ImageOutputArtifact } from "../types";
 import type { ImageDiscoverTaskFilter, ImageDiscoverAccessFilter, ImageGalleryOrientationFilter } from "../types/image";
-import { inferDeviceFromHostPlatform } from "./videos";
+import { budgetAfterResidentModels, inferDeviceFromHostPlatform, residentModelNote } from "./videos";
 
 export function flattenImageVariants(families: ImageModelFamily[]): ImageModelVariant[] {
   return families.flatMap((family) => family.variants);
@@ -171,6 +171,7 @@ export function imageDiscoverMemoryEstimate(variant: ImageModelVariant): ImageDi
     runtimeFootprintCpuGb: variant.runtimeFootprintCpuGb,
     repo: variant.repo,
     ggufFile: variant.ggufFile,
+    engine: variant.engine,
   });
   const resolutionLabel = `${width}×${height}`;
   const estimatedPeakGb = Math.max(safety.estimatedPeakGb, safety.modelFootprintGb);
@@ -249,6 +250,35 @@ function estimatePeakAttentionBytes(latentTokens: number, device: ImageEffective
   return latentTokens * latentTokens * bytesPerElement(device) * IMAGE_HEAD_SLAB_MULTIPLIER;
 }
 
+/** The engine that runs a variant. ``mflux`` (MLX) and ``sdcpp``
+ * (stable-diffusion.cpp) are separate processes with their own memory
+ * behaviour; anything else is the in-process diffusers pipeline. */
+type ImageEngine = "diffusers" | "mflux" | "sdcpp";
+
+function imageEngine(engine?: string | null): ImageEngine {
+  return engine === "mflux" || engine === "sdcpp" ? engine : "diffusers";
+}
+
+// mflux and sd.cpp use fused attention (MLX SDPA, sd.cpp ``--fa``), which
+// never holds the full score matrix. Their working set grows roughly with
+// pixel count, so allow 15% of the model per extra megapixel above 1024².
+const FUSED_ATTENTION_EXTRA_SHARE_PER_MEGAPIXEL = 0.15;
+
+function estimateActivationGb(
+  width: number,
+  height: number,
+  device: ImageEffectiveDevice,
+  engine: ImageEngine,
+  modelFootprintGb: number,
+): number {
+  if (engine !== "diffusers") {
+    const extraMegapixels = Math.max(0, (width * height) / (1024 * 1024) - 1);
+    return modelFootprintGb * FUSED_ATTENTION_EXTRA_SHARE_PER_MEGAPIXEL * extraMegapixels;
+  }
+  const latentTokens = Math.ceil(width / 8) * Math.ceil(height / 8);
+  return estimatePeakAttentionBytes(latentTokens, device) / 1024 ** 3;
+}
+
 function isFluxRepo(repo?: string | null): boolean {
   return (repo ?? "").toLowerCase().includes("flux");
 }
@@ -265,8 +295,14 @@ function estimateResidentModelGb(
   device: ImageEffectiveDevice,
   repo?: string | null,
   ggufFile?: string | null,
+  engine: ImageEngine = "diffusers",
 ): number {
   if (!(baseGb > 0) || !Number.isFinite(baseGb)) return 0;
+  // MLX maps the weights as they are, with no PyTorch allocator watermark;
+  // sd.cpp adds its companion files (text encoder, VAE) and compute buffers,
+  // which catalog rows give as a runtime footprint when they are known.
+  if (engine === "mflux") return baseGb;
+  if (engine === "sdcpp") return baseGb * 1.1;
   const flux = isFluxRepo(repo);
   const hasExplicitQuant = Boolean(ggufFile);
   if (flux && hasExplicitQuant) {
@@ -326,7 +362,13 @@ function runtimeFootprintForDevice(opts: {
  * - FLUX standard at 2048×2048 on 64 GB MPS: danger from attention peak.
  * - HiDream (47 GB) at 1024×1024 on 64 GB MPS: caution.
  */
-export function assessImageGenerationSafety(opts: {
+export function assessImageGenerationSafety(opts: Parameters<typeof assessImageGenerationSafetyForBudget>[0]): ImageGenerationSafety {
+  const result = assessImageGenerationSafetyForBudget(opts);
+  const note = result.reason ? residentModelNote(opts.otherResidentGb) : null;
+  return note ? { ...result, reason: `${result.reason} ${note}` } : result;
+}
+
+function assessImageGenerationSafetyForBudget(opts: {
   width: number;
   height: number;
   device: string | null | undefined;
@@ -338,6 +380,10 @@ export function assessImageGenerationSafety(opts: {
   runtimeFootprintCpuGb?: number | null;
   repo?: string | null;
   ggufFile?: string | null;
+  /** Variant ``engine`` from the catalog (``mflux`` / ``sdcpp``); absent for diffusers. */
+  engine?: string | null;
+  /** GB already held by loaded chat models (runtime status ``residentModelGb``). */
+  otherResidentGb?: number | null;
 }): ImageGenerationSafety {
   const {
     width,
@@ -352,6 +398,7 @@ export function assessImageGenerationSafety(opts: {
     repo,
     ggufFile,
   } = opts;
+  const engine = imageEngine(opts.engine);
 
   const normalised = (device ?? "").toLowerCase();
   const isCuda = normalised.startsWith("cuda");
@@ -364,7 +411,11 @@ export function assessImageGenerationSafety(opts: {
       : isMps
         ? "mps"
         : inferDeviceFromHostPlatform();
-  if (effectiveDevice === "mps" && runsOnCpuForMps(repo)) {
+  if (engine === "mflux") {
+    // MLX runs on the Apple GPU whatever the diffusers device probe says.
+    effectiveDevice = "mps";
+  } else if (engine === "diffusers" && effectiveDevice === "mps" && runsOnCpuForMps(repo)) {
+    // Only the diffusers pipeline sends Qwen-Image to the CPU on a Mac.
     effectiveDevice = "cpu";
   }
   const effectiveDeviceWasInferred = !isCuda && !isCpu && !isMps;
@@ -379,7 +430,7 @@ export function assessImageGenerationSafety(opts: {
     deviceMemoryGb != null && Number.isFinite(deviceMemoryGb) && deviceMemoryGb > 0
       ? deviceMemoryGb
       : fallback;
-  const budgetGb = effectiveBudgetGb(totalMemoryGb, effectiveDevice);
+  const budgetGb = budgetAfterResidentModels(effectiveBudgetGb(totalMemoryGb, effectiveDevice), opts.otherResidentGb);
 
   const baseFootprint =
     baseModelFootprintGb != null && Number.isFinite(baseModelFootprintGb) && baseModelFootprintGb > 0
@@ -395,7 +446,7 @@ export function assessImageGenerationSafety(opts: {
   const modelFootprintGb =
     runtimeOverrideGb != null
       ? runtimeOverrideGb
-      : estimateResidentModelGb(baseFootprint, effectiveDevice, repo, ggufFile);
+      : estimateResidentModelGb(baseFootprint, effectiveDevice, repo, ggufFile, engine);
 
   if (
     !Number.isFinite(width)
@@ -416,8 +467,7 @@ export function assessImageGenerationSafety(opts: {
     };
   }
 
-  const latentTokens = Math.ceil(width / 8) * Math.ceil(height / 8);
-  const attentionPeakGb = estimatePeakAttentionBytes(latentTokens, effectiveDevice) / 1024 ** 3;
+  const attentionPeakGb = estimateActivationGb(width, height, effectiveDevice, engine, modelFootprintGb);
   const estimatedPeakGb = modelFootprintGb + attentionPeakGb;
 
   const { caution: cautionRatio, danger: dangerRatio } = riskRatios(effectiveDevice);
@@ -503,8 +553,8 @@ export function assessImageGenerationSafety(opts: {
   let suggestedWidth = width;
   let suggestedHeight = height;
   for (let attempt = 0; attempt < 6; attempt += 1) {
-    const tokens = Math.ceil(suggestedWidth / 8) * Math.ceil(suggestedHeight / 8);
-    const peak = modelFootprintGb + estimatePeakAttentionBytes(tokens, effectiveDevice) / 1024 ** 3;
+    const peak = modelFootprintGb
+      + estimateActivationGb(suggestedWidth, suggestedHeight, effectiveDevice, engine, modelFootprintGb);
     if (peak / budgetGb < safeRatioTarget) break;
     if (suggestedWidth > 512 || suggestedHeight > 512) {
       suggestedWidth = Math.max(512, Math.floor((suggestedWidth * 0.75) / 64) * 64);

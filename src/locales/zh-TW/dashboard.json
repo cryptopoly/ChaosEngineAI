@@ -45,7 +45,12 @@
       "system": "系統",
       "empty": "未偵測到活動的本地 LLM 處理程序。",
       "memoryGb": "{value} GB",
-      "cpuPercent": "{value}%"
+      "cpuPercent": "{value}%",
+      "stopIdleHint": "卸載待命中的模型，並停止所有未為目前已載入模型提供服務的模型處理程序。",
+      "stopIdle": "停止閒置處理程序",
+      "stopHint": "未為已載入的模型提供服務。停止它即可釋放其記憶體。",
+      "stopConfirm": "停止此處理程序並釋放其記憶體？",
+      "stop": "停止"
     }
   },
   "hardwareFit": {
@@ -54,7 +59,7 @@
     "recommendedTarget": "推薦目標",
     "currentRuntime": "目前執行階段",
     "modelLoadedVia": "{model} 透過 {engine} 載入。",
-    "noModelHint": "尚未載入模型。在 對話 中選擇執行緒模型,或在 探索 中瀏覽更新的家族。"
+    "noModelHint": "尚未載入模型。在 對話 中選擇執行緒模型,或在 對話 > 模型 中瀏覽更新的家族。"
   },
   "activityFeed": {
     "title": "活動摘要",

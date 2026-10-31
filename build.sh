@@ -27,19 +27,19 @@ case "$PLATFORM" in
   darwin)
     .venv/bin/pip install --upgrade pip -q
     .venv/bin/pip install --upgrade "setuptools>=77,<82" wheel -q
-    .venv/bin/pip install mlx mlx-lm gguf fastapi psutil uvicorn "pypdf>=6.10.2" python-multipart huggingface_hub -q
+    .venv/bin/pip install mlx mlx-lm gguf fastapi psutil uvicorn "pypdf>=6.21.4" python-multipart huggingface_hub -q
     export CHAOSENGINE_EMBED_PYTHON_BIN="$SCRIPT_DIR/.venv/bin/python3"
     ;;
   linux)
     .venv/bin/pip install --upgrade pip -q
     .venv/bin/pip install --upgrade "setuptools>=77,<82" wheel -q
-    .venv/bin/pip install fastapi psutil uvicorn "pypdf>=6.10.2" python-multipart huggingface_hub -q
+    .venv/bin/pip install fastapi psutil uvicorn "pypdf>=6.21.4" python-multipart huggingface_hub -q
     export CHAOSENGINE_EMBED_PYTHON_BIN="$SCRIPT_DIR/.venv/bin/python3"
     ;;
   windows)
     .venv/Scripts/pip install --upgrade pip -q
     .venv/Scripts/pip install --upgrade "setuptools>=77,<82" wheel -q
-    .venv/Scripts/pip install fastapi psutil uvicorn "pypdf>=6.10.2" python-multipart huggingface_hub -q
+    .venv/Scripts/pip install fastapi psutil uvicorn "pypdf>=6.21.4" python-multipart huggingface_hub -q
     export CHAOSENGINE_EMBED_PYTHON_BIN="$SCRIPT_DIR/.venv/Scripts/python.exe"
     ;;
 esac

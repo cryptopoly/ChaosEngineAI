@@ -45,7 +45,12 @@
       "system": "システム",
       "empty": "アクティブなローカル LLM プロセスは検出されませんでした。",
       "memoryGb": "{value} GB",
-      "cpuPercent": "{value}%"
+      "cpuPercent": "{value}%",
+      "stopIdleHint": "待機中のモデルをアンロードし、読み込み中のモデルを担当していないモデルプロセスをすべて停止します。",
+      "stopIdle": "アイドルを停止",
+      "stopHint": "読み込み中のモデルを担当していません。停止してメモリを解放できます。",
+      "stopConfirm": "このプロセスを停止してメモリを解放しますか？",
+      "stop": "停止"
     }
   },
   "hardwareFit": {
@@ -54,7 +59,7 @@
     "recommendedTarget": "推奨ターゲット",
     "currentRuntime": "現在のランタイム",
     "modelLoadedVia": "{model} を {engine} 経由で読み込み済み。",
-    "noModelHint": "まだモデルが読み込まれていません。チャットでスレッドモデルを選択するか、ディスカバーで新しいファミリーを参照してください。"
+    "noModelHint": "まだモデルが読み込まれていません。チャットでスレッドモデルを選択するか、チャット > モデルで新しいファミリーを参照してください。"
   },
   "activityFeed": {
     "title": "アクティビティフィード",

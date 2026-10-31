@@ -48,6 +48,7 @@ from backend_service.inference._constants import (
     DEFAULT_LLAMA_TIMEOUT_SECONDS,
     WORKSPACE_ROOT,
 )
+from backend_service.inference._tensorfold_wire import _TOOL_CALL_BLOCK, _structured_calls
 from backend_service.inference._utils import (
     _append_runtime_note,
     _find_open_port,
@@ -66,6 +67,7 @@ from backend_service.inference.base import (
     RepeatedLineGuard,
     StreamChunk,
 )
+from backend_service.helpers.request_guards import friendly_llama_error, llama_error
 from backend_service.reasoning_split import (
     ThinkingTokenFilter,
     strip_thinking_tokens as _strip_thinking_tokens,
@@ -156,6 +158,7 @@ def _apply_sampler_kwargs(
     samplers: dict[str, Any] | None,
     reasoning_effort: str | None,
     json_schema: dict[str, Any] | None,
+    thinking_mode: str | None = None,
 ) -> None:
     """Merge Phase 2.2 sampler overrides into a chat-completions payload.
 
@@ -172,6 +175,11 @@ def _apply_sampler_kwargs(
             payload[key] = value
     if reasoning_effort:
         payload["reasoning_effort"] = reasoning_effort
+    if thinking_mode is not None:
+        # Templates that gate reasoning on ``enable_thinking`` (Qwen3 family,
+        # LFM2.5, ...) reason by default; the server-wide ``--reasoning off``
+        # does not reach every one, so say it per request.
+        payload["chat_template_kwargs"] = {"enable_thinking": thinking_mode != "off"}
     if json_schema:
         payload["response_format"] = {
             "type": "json_schema",
@@ -338,6 +346,98 @@ def _resolve_mmproj_path(model_gguf_path: str | None) -> str | None:
     return str(candidates[0])
 
 
+def _speculative_args(
+    binary: str | None,
+    *,
+    resolved_gguf: str | None,
+    path: str | None,
+    repo: str,
+) -> tuple[list[str], str | None]:
+    """llama-server speculative-decoding flags for a GGUF load.
+
+    Preference order (FU-047 / FU-089):
+
+    1. Baked-in MTP heads in the model itself → ``draft-mtp``.
+    2. A drafter the author publishes in a repo of its own (pinned by repo
+       id), else a sidecar beside the GGUF → ``-md <file>`` + its type,
+       in llama.cpp's own order (mtp- > dspark- > dflash- > eagle3-).
+       DFlash 2 drafters are ``dflash-`` files; llama.cpp detects v2
+       from the file's metadata, so the flags are the same.
+    3. Nothing to draft with → ``ngram-mod``: draft-free n-gram lookup,
+       lossless, ~16 MB, pays off on repetitive text (code edits,
+       summaries, reasoning echoed in the answer).
+
+    Each type is gated on the binary listing it in ``--help``; an older
+    llama-server gets standard decode plus a note, never a startup error.
+    """
+    from backend_service.helpers.text_gguf import (  # noqa: PLC0415
+        resolve_pinned_drafter,
+        resolve_spec_sidecar,
+    )
+    from backend_service.inference._mtp import (  # noqa: PLC0415
+        get_mtp_draft_n,
+        is_mtp_gguf_repo,
+        model_has_mtp_tensors,
+    )
+
+    if not _llama_server_supports(binary, "--spec-type"):
+        return [], (
+            "Speculative decoding needs a newer llama-server (no --spec-type in "
+            "the installed binary; run scripts/update-llama-cpp.sh). Using "
+            "standard decode."
+        )
+
+    def supports(spec_type: str) -> bool:
+        return _llama_server_supports(binary, spec_type)
+
+    # 1. Baked-in MTP heads. Authoritative check peeks the GGUF tensors
+    # when a local path is supplied; repo-name aliases otherwise.
+    tensor_probe = model_has_mtp_tensors(path)
+    has_mtp_tensors = tensor_probe if tensor_probe is not None else is_mtp_gguf_repo(repo)
+    if has_mtp_tensors and supports("draft-mtp"):
+        n_max = get_mtp_draft_n(repo) or 2
+        return ["--spec-type", "draft-mtp", "--spec-draft-n-max", str(n_max)], (
+            f"MTP speculative decoding active (draft-mtp, spec-draft-n-max={n_max}). "
+            "Prompt-processing speed may dip slightly vs. standard decode due to "
+            "D2H embedding transfers (per upstream PR #22673)."
+        )
+
+    # 2. A drafter the model's author published in a repo of its own, then a
+    # sidecar beside the model file.
+    sidecar = resolve_pinned_drafter(repo, resolved_gguf) or resolve_spec_sidecar(resolved_gguf)
+    if sidecar is not None:
+        spec_type, sidecar_path = sidecar
+        if supports(spec_type):
+            args = ["--model-draft", sidecar_path, "--spec-type", spec_type]
+            if spec_type == "draft-mtp":
+                args += ["--spec-draft-n-max", str(get_mtp_draft_n(repo) or 2)]
+            elif spec_type in ("draft-dflash", "draft-dspark"):
+                # Block drafters: ask for a full block; llama.cpp clamps to
+                # the drafter's trained block size (15 for a b16 DFlash).
+                args += ["--spec-draft-n-max", "15"]
+            return args, (
+                f"Speculative decoding active ({spec_type} with drafter "
+                f"{Path(sidecar_path).name})."
+            )
+        sidecar_note = (
+            f"Found drafter {Path(sidecar_path).name} but the installed "
+            f"llama-server has no {spec_type}; run scripts/update-llama-cpp.sh."
+        )
+    else:
+        sidecar_note = None
+
+    # 3. Draft-free n-gram lookup.
+    if supports("ngram-mod"):
+        note = (
+            "Speculative decoding active (ngram-mod: no draft model; speeds up "
+            "repetitive output such as code edits and summaries)."
+        )
+        return ["--spec-type", "ngram-mod"], f"{sidecar_note} {note}" if sidecar_note else note
+
+    fallback = "No speculative-decoding mode available for this model; using standard decode."
+    return [], f"{sidecar_note} {fallback}" if sidecar_note else fallback
+
+
 def _gguf_startup_fallback_note(strategy_name: str) -> str:
     return (
         f"GGUF startup failed with {strategy_name} cache, so ChaosEngineAI retried "
@@ -348,6 +448,46 @@ def _gguf_startup_fallback_note(strategy_name: str) -> str:
 # ---------------------------------------------------------------------------
 # Engine
 # ---------------------------------------------------------------------------
+
+
+def _chat_messages(
+    system_prompt: str | None,
+    history: list[dict[str, Any]],
+    prompt: str,
+    images: list[str] | None,
+) -> list[dict[str, Any]]:
+    """Chat state -> llama-server messages, keeping tool calls structured.
+
+    The agent loop records an assistant tool call with ``tool_calls`` and its
+    result as a ``tool`` turn with ``tool_call_id``; both are passed on so the
+    model's chat template renders them natively. Its follow-up requests send
+    an empty ``prompt`` (the tool result is the last turn), which adds no
+    user turn.
+    """
+    messages: list[dict[str, Any]] = []
+    if system_prompt:
+        messages.append({"role": "system", "content": system_prompt})
+    for message in history:
+        role = message.get("role")
+        if role not in {"system", "user", "assistant", "tool"}:
+            continue
+        entry: dict[str, Any] = {"role": role, "content": _normalize_message_content(message.get("text", ""))}
+        if role == "assistant":
+            calls = _structured_calls(message.get("tool_calls"))
+            if calls:
+                entry["tool_calls"] = calls
+                entry["content"] = _TOOL_CALL_BLOCK.sub("", entry["content"]).strip()
+        elif role == "tool" and message.get("tool_call_id"):
+            entry["tool_call_id"] = str(message["tool_call_id"])
+        messages.append(entry)
+    if images:
+        content_parts: list[dict[str, Any]] = [{"type": "text", "text": prompt}]
+        for img_b64 in images:
+            content_parts.append({"type": "image_url", "image_url": {"url": f"data:image/png;base64,{img_b64}"}})
+        messages.append({"role": "user", "content": content_parts})
+    elif prompt:
+        messages.append({"role": "user", "content": prompt})
+    return messages
 
 
 class LlamaCppEngine(BaseInferenceEngine):
@@ -547,56 +687,16 @@ class LlamaCppEngine(BaseInferenceEngine):
             if mmproj_path:
                 command.extend(["--mmproj", mmproj_path])
 
-        # FU-047: GGUF MTP speculative decoding via llama.cpp PR #22673.
-        # Emit ``--spec-type draft-mtp --spec-draft-n-max N`` when the
-        # requested model is a known MTP-GGUF mirror AND the binary
-        # advertises ``--spec-type`` in its help text. Fall back to
-        # standard decode with a runtimeNote when either prerequisite
-        # is missing — never error.
         if speculative_decoding:
-            from backend_service.inference._mtp import (
-                get_mtp_draft_n,
-                is_mtp_gguf_repo,
-                model_has_mtp_tensors,
+            spec_args, spec_note = _speculative_args(
+                binary,
+                resolved_gguf=resolved_gguf,
+                path=path,
+                repo=canonical_repo or runtime_target or model_ref or path or "",
             )
-            repo_for_mtp = canonical_repo or runtime_target or model_ref or path or ""
-            # Authoritative MTP check: peek the GGUF header for
-            # ``mtp_decoder`` / ``mtp_emb`` tensors when a local path
-            # is supplied. Falls back to name-alias matching for repo-
-            # only loads. Catches new MTP-GGUF mirrors we haven't
-            # enumerated; rejects non-MTP GGUFs that happen to match
-            # the heuristic by name.
-            tensor_probe = model_has_mtp_tensors(path)
-            has_mtp_tensors = (
-                tensor_probe if tensor_probe is not None else is_mtp_gguf_repo(repo_for_mtp)
-            )
-            if has_mtp_tensors:
-                if _llama_server_supports(binary, "--spec-type"):
-                    n_max = get_mtp_draft_n(repo_for_mtp) or 2
-                    command.extend([
-                        "--spec-type", "draft-mtp",
-                        "--spec-draft-n-max", str(n_max),
-                    ])
-                    mtp_note = (
-                        f"MTP speculative decoding active "
-                        f"(draft-mtp, spec-draft-n-max={n_max}). "
-                        f"Prompt-processing speed may dip slightly vs. standard "
-                        f"decode due to D2H embedding transfers (per upstream PR #22673)."
-                    )
-                    runtime_note = (
-                        f"{runtime_note} {mtp_note}".strip()
-                        if runtime_note else mtp_note
-                    )
-                else:
-                    note = (
-                        "MTP speculative decoding requires llama-server built "
-                        "from ggml-org/llama.cpp master after 2026-05-16 (PR #22673). "
-                        "The installed binary does not advertise --spec-type; "
-                        "using standard decode."
-                    )
-                    runtime_note = (
-                        f"{runtime_note} {note}".strip() if runtime_note else note
-                    )
+            command.extend(spec_args)
+            if spec_note:
+                runtime_note = f"{runtime_note} {spec_note}".strip() if runtime_note else spec_note
 
         return command, runtime_note, fell_back_to_native, mmproj_path
 
@@ -761,6 +861,9 @@ class LlamaCppEngine(BaseInferenceEngine):
             runtimeTarget=runtime_target or path,
             runtimeNote=runtime_note,
             visionEnabled=attempt_mmproj_path is not None,
+            # Drafter sidecar, baked-in MTP or ngram-mod: whatever
+            # _speculative_args emitted is what the server is running.
+            speculativeDecoding="--spec-type" in command,
         )
         return self.loaded_model
 
@@ -788,22 +891,7 @@ class LlamaCppEngine(BaseInferenceEngine):
             logs = _read_text_tail(self.log_path)
             raise RuntimeError(logs or "The llama.cpp server is not running.")
 
-        messages: list[dict[str, Any]] = []
-        if system_prompt:
-            messages.append({"role": "system", "content": system_prompt})
-        for message in history:
-            role = message.get("role")
-            if role not in {"system", "user", "assistant", "tool"}:
-                continue
-            messages.append({"role": role, "content": _normalize_message_content(message.get("text", ""))})
-        # Build user message with optional images
-        if images:
-            content_parts: list[dict[str, Any]] = [{"type": "text", "text": prompt}]
-            for img_b64 in images:
-                content_parts.append({"type": "image_url", "image_url": {"url": f"data:image/png;base64,{img_b64}"}})
-            messages.append({"role": "user", "content": content_parts})
-        else:
-            messages.append({"role": "user", "content": prompt})
+        messages = _chat_messages(system_prompt, history, prompt, images)
 
         # Phase 3.8 follow-up: apply known chat-template auto-fixes
         # before the messages reach llama-server (e.g. Gemma family
@@ -837,7 +925,7 @@ class LlamaCppEngine(BaseInferenceEngine):
             )
         except urllib.error.HTTPError as exc:
             detail = exc.read().decode("utf-8", errors="ignore")
-            raise RuntimeError(detail or str(exc)) from exc
+            raise llama_error(detail, str(exc)) from exc
         except urllib.error.URLError as exc:
             raise RuntimeError(str(exc.reason)) from exc
 
@@ -849,6 +937,9 @@ class LlamaCppEngine(BaseInferenceEngine):
         prompt_tokens = int(usage.get("prompt_tokens") or 0)
         total_tokens = int(usage.get("total_tokens") or (prompt_tokens + completion_tokens))
         text = _strip_thinking_tokens(str(message.get("content") or ""))
+        # llama-server parses tool calls with the model's own template and
+        # returns them structured, leaving ``content`` empty.
+        tool_calls = _structured_calls(message.get("tool_calls"))
 
         return GenerationResult(
             text=text,
@@ -863,6 +954,7 @@ class LlamaCppEngine(BaseInferenceEngine):
                 if template_fix_note
                 else self.loaded_model.runtimeNote
             ),
+            tool_calls=tool_calls or None,
         )
 
     def stream_generate(
@@ -886,21 +978,7 @@ class LlamaCppEngine(BaseInferenceEngine):
             logs = _read_text_tail(self.log_path)
             raise RuntimeError(logs or "The llama.cpp server is not running.")
 
-        messages: list[dict[str, Any]] = []
-        if system_prompt:
-            messages.append({"role": "system", "content": system_prompt})
-        for message in history:
-            role = message.get("role")
-            if role not in {"system", "user", "assistant", "tool"}:
-                continue
-            messages.append({"role": role, "content": _normalize_message_content(message.get("text", ""))})
-        if images:
-            content_parts: list[dict[str, Any]] = [{"type": "text", "text": prompt}]
-            for img_b64 in images:
-                content_parts.append({"type": "image_url", "image_url": {"url": f"data:image/png;base64,{img_b64}"}})
-            messages.append({"role": "user", "content": content_parts})
-        else:
-            messages.append({"role": "user", "content": prompt})
+        messages = _chat_messages(system_prompt, history, prompt, images)
 
         # Phase 3.8 follow-up: chat-template auto-fix on the streaming
         # path matches the non-stream behaviour. The note is forwarded
@@ -924,6 +1002,7 @@ class LlamaCppEngine(BaseInferenceEngine):
             samplers=samplers,
             reasoning_effort=reasoning_effort,
             json_schema=json_schema,
+            thinking_mode=thinking_mode,
         )
         url = self._server_url("/v1/chat/completions")
         data = json.dumps(payload).encode("utf-8")
@@ -933,7 +1012,7 @@ class LlamaCppEngine(BaseInferenceEngine):
             resp = urllib.request.urlopen(request, timeout=DEFAULT_LLAMA_TIMEOUT_SECONDS)
         except urllib.error.HTTPError as exc:
             detail = exc.read().decode("utf-8", errors="ignore")
-            raise RuntimeError(detail or str(exc)) from exc
+            raise llama_error(detail, str(exc)) from exc
         except urllib.error.URLError as exc:
             raise RuntimeError(str(exc.reason)) from exc
 
@@ -947,6 +1026,10 @@ class LlamaCppEngine(BaseInferenceEngine):
             runtime_note = _append_runtime_note(runtime_note, template_fix_note)
         think_filter = ThinkingTokenFilter(detect_raw_reasoning=(thinking_mode or "off") != "off")
         runaway_guard = RepeatedLineGuard()
+        # llama-server parses <think> blocks into ``reasoning_content`` itself
+        # (--reasoning-format deepseek), and some models reason even with
+        # --reasoning off. Track whether that channel still needs closing.
+        server_reasoning_open = False
         try:
             for raw_line in resp:
                 line = raw_line.decode("utf-8", errors="ignore").strip()
@@ -962,6 +1045,16 @@ class LlamaCppEngine(BaseInferenceEngine):
                 choice = (chunk.get("choices") or [{}])[0]
                 delta = choice.get("delta") or {}
                 content = delta.get("content")
+                reasoning_content = delta.get("reasoning_content")
+                if reasoning_content:
+                    if first_token_time is None:
+                        first_token_time = time.perf_counter()
+                    completion_tokens += 1
+                    server_reasoning_open = True
+                    yield StreamChunk(reasoning=str(reasoning_content))
+                if content and server_reasoning_open:
+                    server_reasoning_open = False
+                    yield StreamChunk(reasoning_done=True)
                 # Phase 3.3: extract per-token logprobs when llama-server
                 # returns them. The `logprobs.content` field is a list of
                 # token entries with top_logprobs alternatives.
@@ -1003,6 +1096,8 @@ class LlamaCppEngine(BaseInferenceEngine):
                 if usage:
                     prompt_tokens = int(usage.get("prompt_tokens") or 0)
                     completion_tokens = int(usage.get("completion_tokens") or completion_tokens)
+            if server_reasoning_open:
+                yield StreamChunk(reasoning_done=True)
             flushed = think_filter.flush()
             if flushed.reasoning:
                 yield StreamChunk(reasoning=flushed.reasoning)

@@ -71,8 +71,8 @@ class SdCppSupportedReposTests(unittest.TestCase):
 
     def test_supported_repos_includes_wan_2_2(self):
         repos = supported_repos()
-        self.assertIn("Wan-AI/Wan2.2-TI2V-5B-Diffusers", repos)
         self.assertIn("Wan-AI/Wan2.2-T2V-A14B-Diffusers", repos)
+        self.assertNotIn("Wan-AI/Wan2.2-TI2V-5B-Diffusers", repos)
 
     def test_is_sdcpp_video_repo(self):
         self.assertTrue(_is_sdcpp_video_repo("Wan-AI/Wan2.1-T2V-1.3B-Diffusers"))
@@ -90,7 +90,7 @@ class SdCppResolveBinaryTests(unittest.TestCase):
 
     def test_returns_env_path_when_set(self):
         with patch.dict(os.environ, {}, clear=False):
-            tmp = Path("/tmp/sdcpp-test-binary")
+            tmp = Path(__import__("tempfile").gettempdir()) / "sdcpp-test-binary"
             tmp.write_text("")
             try:
                 os.environ["CHAOSENGINE_SDCPP_BIN"] = str(tmp)

@@ -3,6 +3,9 @@ import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
 import {
   fetchDiagnosticsSnapshot,
+  deleteHfRepo,
+  deleteModelPath,
+  fetchStorageChildren,
   fetchStorageTop,
   installCudaTorch,
   installPipPackage,
@@ -10,9 +13,11 @@ import {
   type CudaTorchInstallResult,
   type DiagnosticsSnapshot,
   type InstallResult,
+  type StorageTopEntry,
   type StorageTopResponse,
 } from "../../api";
 import { AcceleratorsBoostPack } from "./AcceleratorsBoostPack";
+import type { SystemStats } from "../../types/system";
 import { WslBridgePanel } from "./WslBridgePanel";
 
 // In-app troubleshooting panel. Surfaces OS, hardware, runtime paths,
@@ -415,8 +420,43 @@ export function DiagnosticsPanel({ backendOnline, onRestartServer, busyAction }:
           </div>
         </div>
       ) : null}
-      <AcceleratorsBoostPack backendOnline={backendOnline} />
+    </Panel>
+  );
+}
+
+// Settings > Accelerators. The Boost Pack and the WSL bridge used to sit at
+// the bottom of the Diagnostics panel, below the system snapshot; refreshing
+// the snapshot grew that panel and pushed them off screen with no way to scroll
+// to them, so they now have their own tab.
+export function AcceleratorsPanel({
+  backendOnline,
+  hostSystem,
+}: {
+  backendOnline: boolean;
+  hostSystem?: Pick<SystemStats, "platform" | "arch" | "gpuVramTotalGb">;
+}) {
+  const { t } = useTranslation("diagnostics");
+  return (
+    <Panel
+      title={t("accelerators.title", { defaultValue: "Accelerators" })}
+      subtitle={t("accelerators.subtitle", {
+        defaultValue: "Optional speed-ups for image, video and chat inference, and the Windows WSL bridge.",
+      })}
+    >
+      <AcceleratorsBoostPack backendOnline={backendOnline} hostSystem={hostSystem} />
       <WslBridgePanel backendOnline={backendOnline} />
+    </Panel>
+  );
+}
+
+// Settings > Disk usage (FU-055), for the same reason.
+export function DiskUsagePanel({ backendOnline }: { backendOnline: boolean }) {
+  const { t } = useTranslation("diagnostics");
+  return (
+    <Panel
+      title={t("diskUsage.title", { defaultValue: "Disk usage" })}
+      subtitle={t("diskUsage.subtitle", { defaultValue: "Which model repos take the space, so you know what to delete." })}
+    >
       <StorageTopSection backendOnline={backendOnline} />
     </Panel>
   );
@@ -428,14 +468,17 @@ function StorageTopSection({ backendOnline }: { backendOnline: boolean }) {
   // FU-055: in-app top-disk-consumers view. Walks every enabled model dir
   // and reports the biggest repo dirs, sorted by actual byte size. Closes
   // the Stuff Diver gap on HF cache symlink layouts.
+  const { t } = useTranslation("diagnostics");
   const [data, setData] = useState<StorageTopResponse | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [freedBytes, setFreedBytes] = useState(0);
 
   const scan = useCallback(async () => {
     if (!backendOnline) return;
     setBusy(true);
     setErr(null);
+    setFreedBytes(0);
     try {
       const next = await fetchStorageTop(20);
       setData(next);
@@ -448,11 +491,12 @@ function StorageTopSection({ backendOnline }: { backendOnline: boolean }) {
 
   return (
     <div className="diagnostics-section">
-      <h3>Disk usage — top 20 model repos</h3>
+      <h3>{t("diskUsage.topTitle", { defaultValue: "Top 20 model repos" })}</h3>
       <p className="muted-text" style={{ marginBottom: 8 }}>
-        Walks every enabled model directory and lists the biggest repos on disk.
-        Counts blob bytes once (Hugging Face's ``snapshots/`` are symlinks to
-        ``blobs/`` so naive scanners over-count).
+        {t("diskUsage.topHint", {
+          defaultValue:
+            "Walks every enabled model directory and lists the biggest repos on disk. Counts blob bytes once (Hugging Face's snapshots/ are symlinks to blobs/ so naive scanners over-count).",
+        })}
       </p>
       <button
         className="secondary-button"
@@ -460,39 +504,175 @@ function StorageTopSection({ backendOnline }: { backendOnline: boolean }) {
         onClick={() => void scan()}
         disabled={!backendOnline || busy}
       >
-        {busy ? "Scanning..." : data ? "Rescan" : "Scan disk usage"}
+        {busy
+          ? t("diskUsage.scanning", { defaultValue: "Scanning…" })
+          : data
+            ? t("diskUsage.rescan", { defaultValue: "Rescan" })
+            : t("diskUsage.scan", { defaultValue: "Scan disk usage" })}
       </button>
       {err ? <p className="muted-text" style={{ color: "#f87171", marginTop: 8 }}>{err}</p> : null}
       {data ? (
         <div style={{ marginTop: 12 }}>
           <p className="muted-text">
-            Total across all enabled directories:{" "}
+            {t("diskUsage.total", { defaultValue: "Total across all enabled directories:" })}{" "}
             <strong>{data.totalGb !== null ? `${data.totalGb.toFixed(1)} GB` : "—"}</strong>
             {" · "}
-            {data.entries.length} repos shown / scanned{" "}
-            {data.scannedDirectories.length} root dir(s)
+            {t("diskUsage.shown", {
+              defaultValue: "{repos} repos shown / scanned {dirs} root dir(s)",
+              repos: data.entries.length,
+              dirs: data.scannedDirectories.length,
+            })}
+            {freedBytes > 0 ? (
+              <>
+                {" · "}
+                <strong>
+                  {t("diskUsage.freed", { defaultValue: "{gb} GB freed since scan", gb: (freedBytes / 1e9).toFixed(1) })}
+                </strong>
+              </>
+            ) : null}
           </p>
           <div className="storage-top-table">
             <div className="storage-top-head">
-              <span>Repo</span>
-              <span>Size</span>
-              <span>Source</span>
-              <span>Path</span>
+              <span>{t("diskUsage.colRepo", { defaultValue: "Repo" })}</span>
+              <span>{t("diskUsage.colSize", { defaultValue: "Size" })}</span>
+              <span>{t("diskUsage.colSource", { defaultValue: "Source" })}</span>
+              <span>{t("diskUsage.colPath", { defaultValue: "Path" })}</span>
+              <span />
             </div>
-            {data.entries.map((entry: import("../../api").StorageTopEntry) => (
-              <div key={entry.path} className="storage-top-row">
-                <span className="mono-text">{entry.repoLabel}</span>
-                <span><strong>{entry.sizeGb !== null ? `${entry.sizeGb.toFixed(1)} GB` : "—"}</strong></span>
-                <span className="muted-text">{entry.sourceKind || "—"}</span>
-                <span className="mono-text muted-text storage-top-path" title={entry.path}>
-                  {entry.path}
-                </span>
-              </div>
+            {data.entries.map((entry) => (
+              <StorageRow
+                key={entry.path}
+                entry={entry}
+                depth={0}
+                onDeleted={(removed) => setFreedBytes((n) => n + removed.sizeBytes)}
+              />
             ))}
           </div>
         </div>
       ) : null}
     </div>
+  );
+}
+
+function StorageRow({
+  entry,
+  depth,
+  onDeleted,
+}: {
+  entry: StorageTopEntry;
+  depth: number;
+  onDeleted: (entry: StorageTopEntry) => void;
+}) {
+  const { t } = useTranslation("diagnostics");
+  const [open, setOpen] = useState(false);
+  const [gone, setGone] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [children, setChildren] = useState<StorageTopEntry[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const toggle = async () => {
+    const next = !open;
+    setOpen(next);
+    if (!next || children !== null) return;
+    setLoading(true);
+    setErr(null);
+    try {
+      setChildren(await fetchStorageChildren(entry.path));
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const remove = async () => {
+    const size = entry.sizeGb !== null
+      ? `${entry.sizeGb.toFixed(1)} GB`
+      : t("diskUsage.unknownSize", { defaultValue: "unknown size" });
+    const confirmed = window.confirm(
+      t("diskUsage.deleteConfirm", {
+        defaultValue: "Permanently delete {name} ({size})?\n\nThis removes it from disk and cannot be undone.",
+        name: entry.hfRepo ?? entry.path,
+        size,
+      }),
+    );
+    if (!confirmed) return;
+    setDeleting(true);
+    setErr(null);
+    try {
+      if (entry.hfRepo) await deleteHfRepo(entry.hfRepo);
+      else await deleteModelPath(entry.path);
+      setGone(true);
+      onDeleted(entry);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  if (gone) return null;
+
+  return (
+    <>
+      <div className="storage-top-row">
+        <span className="mono-text" style={{ paddingLeft: depth * 16 }}>
+          {entry.expandable ? (
+            <button
+              type="button"
+              className="storage-top-toggle"
+              onClick={() => void toggle()}
+              aria-expanded={open}
+              aria-label={open
+                ? t("diskUsage.collapse", { defaultValue: "Collapse {name}", name: entry.repoLabel })
+                : t("diskUsage.expand", { defaultValue: "Expand {name}", name: entry.repoLabel })}
+            >
+              {open ? "▾" : "▸"}
+            </button>
+          ) : (
+            <span className="storage-top-toggle" aria-hidden="true" />
+          )}
+          {entry.repoLabel}
+        </span>
+        <span><strong>{entry.sizeGb !== null ? `${entry.sizeGb.toFixed(1)} GB` : "—"}</strong></span>
+        <span className="muted-text">{entry.sourceKind || "—"}</span>
+        <span className="mono-text muted-text storage-top-path" title={entry.path}>
+          {entry.path}
+        </span>
+        {entry.deletable === false ? (
+          <span
+            className="muted-text"
+            title={t("diskUsage.sharedTitle", { defaultValue: "Shared Hugging Face store: many repos link into it" })}
+          >
+            {t("diskUsage.shared", { defaultValue: "shared" })}
+          </span>
+        ) : (
+          <button
+            type="button"
+            className="secondary-button storage-top-delete"
+            onClick={() => void remove()}
+            disabled={deleting}
+          >
+            {deleting
+              ? t("diskUsage.deleting", { defaultValue: "Deleting…" })
+              : t("diskUsage.delete", { defaultValue: "Delete" })}
+          </button>
+        )}
+      </div>
+      {open && loading ? (
+        <div className="storage-top-row muted-text">{t("diskUsage.reading", { defaultValue: "Reading…" })}</div>
+      ) : null}
+      {open && err ? <div className="storage-top-row" style={{ color: "#f87171" }}>{err}</div> : null}
+      {open && children?.map((child) => (
+        <StorageRow key={child.path} entry={child} depth={depth + 1} onDeleted={onDeleted} />
+      ))}
+      {open && children?.length === 0 ? (
+        <div className="storage-top-row muted-text" style={{ paddingLeft: 12 + (depth + 1) * 16 }}>
+          {t("diskUsage.empty", { defaultValue: "Empty" })}
+        </div>
+      ) : null}
+    </>
   );
 }
 

@@ -21,6 +21,7 @@ from backend_service.helpers.model_classifier import (
     _VIDEO_MODEL_KEYWORDS,
     _looks_like_draft_model,
     _looks_like_image_model,
+    _looks_like_non_chat_model,
     _looks_like_video_model,
 )
 from backend_service.helpers.model_family_payload import (
@@ -173,6 +174,20 @@ def _read_model_config(path: Path) -> dict[str, Any] | None:
     return None
 
 
+def _has_chat_template(path: Path) -> bool:
+    """True when the model folder ships a chat template (a sign it answers chat)."""
+    for directory in _candidate_model_dirs(path):
+        try:
+            if (directory / "chat_template.jinja").exists() or (directory / "chat_template.json").exists():
+                return True
+            tokenizer_config = directory / "tokenizer_config.json"
+            if tokenizer_config.exists() and '"chat_template"' in tokenizer_config.read_text(encoding="utf-8"):
+                return True
+        except OSError:
+            continue
+    return False
+
+
 def _model_has_files(path: Path, pattern: str) -> bool:
     try:
         return any(path.rglob(pattern))
@@ -180,6 +195,14 @@ def _model_has_files(path: Path, pattern: str) -> bool:
         return False
 
 
+
+
+def _gguf_load_size_gb(directory: Path) -> float | None:
+    """Size of the one GGUF that loads from a multi-quant repo folder."""
+    from backend_service.helpers.text_gguf import gguf_load_bytes
+
+    size = gguf_load_bytes(directory)
+    return round(size / 1_000_000_000, 2) if size else None
 
 
 def _detect_storage_format(path: Path, *, name_hint: str = "") -> str:
@@ -232,9 +255,23 @@ def _detect_model_quantization(path: Path, fmt: str, *, name_hint: str = "") -> 
     return _quantization_label_from_text(text_hint)
 
 
+# ModelScope stores a repo's dots as three underscores in its cache folder
+# names (``Qwen3.5-9B`` becomes ``Qwen3___5-9B``), which hides the model family
+# from every name-based check downstream.
+_MODELSCOPE_DOT = re.compile(r"(?<=[A-Za-z0-9])___(?=[A-Za-z0-9])")
+
+
+def _directory_model_name(directory_name: str) -> str:
+    return _MODELSCOPE_DOT.sub(".", directory_name)
+
+
 def _detect_directory_model(path: Path) -> tuple[str, str, str] | None:
     source_kind = "HF cache" if path.name.startswith("models--") else "Directory"
-    name = path.name.replace("models--", "").replace("--", "/") if source_kind == "HF cache" else path.name
+    name = (
+        path.name.removeprefix("models--").replace("--", "/", 1)
+        if source_kind == "HF cache"
+        else _directory_model_name(path.name)
+    )
     if source_kind == "HF cache":
         detected_format = _detect_storage_format(path, name_hint=name)
         return (name, detected_format, source_kind) if detected_format != "unknown" else (name, "Transformers", source_kind)
@@ -243,6 +280,33 @@ def _detect_directory_model(path: Path) -> tuple[str, str, str] | None:
     if (path / "config.json").exists() or (path / "tokenizer.json").exists():
         return (name, _detect_storage_format(path, name_hint=name), source_kind)
     return None
+
+
+_GGUF_SPLIT_RE = re.compile(r"^(?P<stem>.+)-(?P<index>\d{5})-of-(?P<total>\d{5})\.gguf$")
+
+
+def _snapshot_has_complete_weights(repo_dir: Path) -> bool:
+    """True when a snapshot of this HF cache entry holds a loadable weight set.
+
+    Snapshot files are links created only once their blob has finished, so a
+    linked weight is complete. A split GGUF counts only with every part linked;
+    sharded safetensors are checked separately against their index.
+    """
+    splits: dict[tuple[Path, str, int], set[int]] = {}
+    for entry in (repo_dir / "snapshots").rglob("*"):
+        name = entry.name
+        if not entry.is_file():  # follows the link, so a dangling one is skipped
+            continue
+        if name.endswith(".safetensors") or (name.startswith("pytorch_model") and name.endswith(".bin")):
+            return True
+        if not name.endswith(".gguf") or "mmproj" in name.lower():
+            continue
+        match = _GGUF_SPLIT_RE.match(name)
+        if not match:
+            return True
+        key = (entry.parent, match["stem"], int(match["total"]))
+        splits.setdefault(key, set()).add(int(match["index"]))
+    return any(len(parts) == total for (_, _, total), parts in splits.items())
 
 
 def _detect_broken_library_item(child: Path, file_format: str, source_kind: str | None = None) -> tuple[bool, str | None]:
@@ -274,7 +338,10 @@ def _detect_broken_library_item(child: Path, file_format: str, source_kind: str 
         # because the format slot says "HF cache".
         if source == "hf cache":
             try:
-                if any((child / "blobs").glob("*.incomplete")):
+                # A partial blob only matters when the snapshot has no complete
+                # weights of its own: a cancelled pull of another quant in the
+                # same repo leaves partials that never link into a snapshot.
+                if any((child / "blobs").glob("*.incomplete")) and not _snapshot_has_complete_weights(child):
                     return (True, "Hugging Face download is incomplete: partial blob files are still present.")
             except OSError:
                 pass
@@ -323,9 +390,17 @@ def _iter_discovered_models(root: Path, *, max_depth: int = 8) -> list[tuple[Pat
     # the detector to produce phantom "broken" HF cache duplicates (lock
     # dirs contain no weights).
     skip_names = {"blobs", "refs", ".locks", ".cache", ".git", "__pycache__", ".venv", "node_modules"}
+    # Model folders are often symlinks into another drive. Follow them, but
+    # walk each real directory once so a link back up the tree cannot loop.
+    visited: set[str] = set()
 
-    for current_root, dirnames, filenames in os.walk(root):
+    for current_root, dirnames, filenames in os.walk(root, followlinks=True):
         current = Path(current_root)
+        real_current = os.path.realpath(current_root)
+        if real_current in visited:
+            dirnames[:] = []
+            continue
+        visited.add(real_current)
         depth = _relative_depth(current, root)
         if depth > max_depth:
             dirnames[:] = []
@@ -399,6 +474,11 @@ def _discover_local_models(model_directories: list[dict[str, Any]], limit: int =
                     model_type = "image"
                 elif _looks_like_draft_model(name):
                     model_type = "draft"
+                elif _looks_like_non_chat_model(
+                    child, name, file_format, source_kind, _read_model_config(child), _has_chat_template(child)
+                ):
+                    # 3D generators, encoders, voice models, bare weight files.
+                    model_type = "other"
                 else:
                     model_type = "text"
                 items.append(
@@ -411,6 +491,7 @@ def _discover_local_models(model_directories: list[dict[str, Any]], limit: int =
                         "backend": backend,
                         "modelType": model_type,
                         "sizeGb": _du_size_gb(child),
+                        "loadSizeGb": _gguf_load_size_gb(child) if file_format == "GGUF" and child.is_dir() else None,
                         "lastModified": time.strftime("%Y-%m-%d %H:%M", time.localtime(child.stat().st_mtime)),
                         "actions": ["Run Chat", "Run Server", "Cache Preview", "Delete"],
                         "directoryId": directory_id,

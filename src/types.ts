@@ -228,3 +228,18 @@ export type {
 export type { GenerationProgressSnapshot } from "./types/progress";
 
 export type { HubModel, HubFile, HubFileListResponse } from "./types/hub";
+
+export type {
+  VoiceRuntime,
+  SttModel,
+  TtsVoice,
+  VoiceSettings,
+  VoiceInstallJob,
+  VoiceExtra,
+  TranscriptSegment,
+  TranscriptWord,
+  VoiceLibraryItem,
+  VoiceLibraryKind,
+  VoiceLibraryPatch,
+  VoiceLibrarySummary,
+} from "./types/voice";

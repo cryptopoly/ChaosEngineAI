@@ -1,11 +1,12 @@
 {
   "composer": {
     "placeholderReady": "Nachricht eingeben… (Enter zum Senden, Shift+Enter für neue Zeile, / für Befehle)",
-    "placeholderNoModel": "Erst ein Modell laden — eines aus Meine Modelle oder Entdecken auswählen, dann CHAT drücken.",
+    "placeholderNoModel": "Erst ein Modell laden — eines unter Chat > Modelle auswählen, dann CHAT drücken.",
     "send": "Senden",
     "stop": "Stoppen",
     "clear": "Leeren",
-    "sendDisabledTooltip": "Erst ein Modell laden, um Nachrichten zu senden"
+    "sendDisabledTooltip": "Erst ein Modell laden, um Nachrichten zu senden",
+    "sendLoadingTooltip": "Warte, bis das Modell fertig geladen ist"
   },
   "thinkingMode": {
     "label": "Denken",
@@ -72,7 +73,23 @@
     "ready": "Bereit",
     "loadChatModel": "Modell dieses Chats laden",
     "loading": "Lädt...",
-    "loadModel": "Modell laden"
+    "loadModel": "Modell laden",
+    "cancelLoadTitle": "Laden stoppen und Speicher freigeben",
+    "unloadTitle": "Modell entladen und Speicher freigeben",
+    "cancelLoad": "Laden abbrechen",
+    "unload": "Entladen",
+    "startCall": "Per Sprache mit dem Modell sprechen",
+    "call": "Anrufen",
+    "callNeedsModel": "Lade ein Chat-Modell, um einen Sprachanruf zu starten",
+    "callInfo": "Sprich laut mit dem geladenen Modell. Sprich, mach eine Pause, und es antwortet per Stimme; sprich dazwischen, um es zu unterbrechen. Jede Runde wird in diesem Chat gespeichert.",
+    "callNeeds": "Benötigt:",
+    "callReady": "Bereit",
+    "callMissing": "Fehlt",
+    "callSetup": "Klicke auf Anrufen, um Sprachmodelle zu öffnen und das Fehlende zu installieren.",
+    "callNeedModel": "ein geladenes Chat-Modell",
+    "callNeedStt": "Spracherkennung (Sprachmodelle)",
+    "callNeedTts": "eine Stimme für Antworten (Sprachmodelle)",
+    "callNeedVad": "Sprecherwechsel-Erkennung, Teil des Sprachpakets"
   },
   "sidebar": {
     "title": "Chats",
@@ -82,14 +99,22 @@
     "collapseChatList": "Chat-Liste einklappen",
     "searchThreadsPlaceholder": "Threads suchen...",
     "searchThreadsAriaLabel": "Threads suchen",
-    "clearSearch": "Suche zurücksetzen"
+    "clearSearch": "Suche zurücksetzen",
+    "noThreadsMatch": "Keine Threads entsprechen „{query}“.",
+    "unpin": "Loslösen",
+    "pin": "Anheften",
+    "deleteChat": "Chat löschen",
+    "forkedFrom": "Von einem anderen Thread bei Nachricht #{number} abgezweigt",
+    "forkBadge": "⑂ abgezweigt",
+    "modelReadyTooltip": "Das Modell ist bereits geladen — dieser Chat antwortet sofort, ohne erneute Ladezeit.",
+    "readyBadge": "bereit"
   },
   "swapMenu": {
     "clearOverride": "Override löschen",
     "dialogAriaLabel": "Modell für die nächste Runde auswählen",
     "sendNextVia": "Nächste senden über",
     "oneTurnNote": "Override gilt nur für eine Runde.",
-    "noWarmModels": "Keine weiteren warmen Modelle verfügbar. Lade ein zweites Modell aus Meine Modelle, um Quick-Swaps zu aktivieren."
+    "noWarmModels": "Keine weiteren warmen Modelle verfügbar. Lade ein zweites Modell unter Chat > Modelle, um Quick-Swaps zu aktivieren."
   },
   "activeThread": {
     "title": "Aktiver Thread",
@@ -180,7 +205,8 @@
       "cancel": "Abbrechen",
       "usePromptInNewChallenge": "Prompt in neuer Challenge verwenden",
       "runChallenge": "Challenge ausführen",
-      "runNewChallenge": "Neue Challenge ausführen"
+      "runNewChallenge": "Neue Challenge ausführen",
+      "browsePrompts": "Prompt-Bibliothek"
     },
     "status": {
       "generating": "Wird generiert...",
@@ -214,6 +240,46 @@
       "titleForSlot": "{slot} auswählen",
       "confirm": "Modell verwenden",
       "confirmForSlot": "Für {slot} verwenden"
+    },
+    "promptLibrary": {
+      "tabs": {
+        "all": "Alle"
+      },
+      "title": "Prompt-Bibliothek",
+      "subtitle": "Wähle eine fertige Challenge oder schließe das Fenster, um eine eigene zu schreiben.",
+      "searchPlaceholder": "Prompts suchen (Name, Mechanik, Stichwort)...",
+      "resultCount": "{count} angezeigt",
+      "empty": "Keine Prompts entsprechen deiner Suche.",
+      "close": "Abbrechen",
+      "categories": {
+        "games": "Spiele",
+        "simulations": "Simulationen",
+        "tech-demos": "Tech-Demos",
+        "creative-tools": "Kreativ-Tools"
+      }
+    },
+    "slotPanel": {
+      "collapsePreview": "Vorschau einklappen",
+      "expandPreview": "Vorschau ausklappen",
+      "viewRender": "Rendering ansehen",
+      "viewHtmlCode": "HTML-Code ansehen",
+      "collapse": "Einklappen",
+      "latest": "Neueste",
+      "changeModel": "Modell ändern",
+      "continueHtml": "HTML fortsetzen",
+      "repairHtml": "HTML reparieren",
+      "retry": "Erneut versuchen",
+      "fileDeleted": "Datei gelöscht",
+      "fileDeletedDetail": "{filename} befindet sich nicht mehr in diesem Challenge-Ordner.",
+      "savedFileFallback": "Die gespeicherte HTML-Datei",
+      "noHtmlOutput": "Keine HTML-Ausgabe",
+      "noRenderablePage": "Dieses Modell wurde ohne darstellbare HTML-Seite beendet.",
+      "noStandaloneDocument": "Die gespeicherte Ausgabe enthielt kein eigenständiges HTML-Dokument.",
+      "previewTitle": "HTML-Vorschau von {label}",
+      "loadingModel": "Modell wird geladen...",
+      "waitingFor": "Warte auf den Abschluss von {label}...",
+      "waiting": "Warten...",
+      "waitingToStart": "Warte auf den Start..."
     }
   },
   "samplerPanel": {
@@ -223,14 +289,40 @@
     "dialogAriaLabel": "Sampler-Overrides",
     "headerTitle": "Sampler-Overrides",
     "resetAll": "Alle zurücksetzen",
-    "resetAllTooltip": "Alle auf Backend-Standards zurücksetzen"
+    "resetAllTooltip": "Alle auf Backend-Standards zurücksetzen",
+    "useBackendDefault": "Backend-Standard verwenden",
+    "reset": "Zurücksetzen",
+    "schemaNotObject": "Das Schema muss ein JSON-Objekt sein",
+    "invalidJson": "Ungültiges JSON",
+    "hints": {
+      "topP": "Nucleus-Grenze (niedriger = fokussierter)",
+      "topK": "Die N wahrscheinlichsten Tokens behalten (0 = deaktiviert)",
+      "minP": "Untere Wahrscheinlichkeitsgrenze",
+      "repeatPenalty": "1.0 = keine; >1 = Wiederholungen bestrafen",
+      "xtcProbability": "XTC: Chance, Top-Tokens für mehr Vielfalt auszulassen (0 = aus)",
+      "xtcThreshold": "XTC: greift nur, wenn die Wahrscheinlichkeit des Top-Tokens mindestens so hoch ist",
+      "dryMultiplier": "DRY-Stärke gegen Wiederholungen (0 = aus; nur llama.cpp)",
+      "seed": "Deterministische Decodierung (beliebige nicht-negative Ganzzahl)",
+      "mirostatTau": "Ziel-Entropie",
+      "mirostatEta": "Lernrate"
+    },
+    "placeholderDefault": "Standard",
+    "placeholderOff": "aus",
+    "placeholderRandom": "zufällig",
+    "mirostatHint": "Ziel-Entropie des adaptiven Samplings",
+    "jsonSchema": "JSON-Schema",
+    "jsonSchemaHint": "Eingeschränkte Ausgabe (nur llama.cpp)",
+    "schemaOk": "Schema geparst; schränkt die nächste Antwort ein.",
+    "panelHint": "Overrides pro Thread. llama.cpp wendet alle an; mlx-lm nutzt, was es unterstützt (top_p / top_k / min_p), und ignoriert den Rest. Leeres Feld = Backend-Standard verwenden."
   },
   "kvChip": {
     "clearOverride": "KV-Override entfernen",
     "revertTooltip": "Auf Sitzungs-Standard zurücksetzen",
     "dialogAriaLabel": "KV-Cache-Strategie",
     "headingTitle": "KV-Cache für nächste Runde",
-    "reloadNote": "Beim Wechsel wird die Laufzeit bei Bedarf neu geladen."
+    "reloadNote": "Beim Wechsel wird die Laufzeit bei Bedarf neu geladen.",
+    "memorySaverTitle": "Verkleinert den KV-Cache, damit lange Chats in weniger Speicher passen. Die Generierung ist langsamer als bei Nativ.",
+    "memorySaver": "Speicherspar-Modus"
   },
   "citations": {
     "sourcesLabel": "Quellen:",
@@ -269,5 +361,55 @@
     "promptPlaceholder": "Prompt zum Vergleichen eingeben...",
     "cancel": "Abbrechen",
     "compareButton": "Vergleichen"
+  },
+  "voice": {
+    "heardNothing": "Es wurde keine Sprache erkannt. Versuche es näher am Mikrofon noch einmal.",
+    "installToDictate": "Die Spracheingabe benötigt das Sprachpaket. Klicke, um es zu installieren.",
+    "stopDictation": "Stoppen und transkribieren (Esc bricht ab)",
+    "transcribing": "Wird transkribiert…",
+    "startDictation": "Diktieren (klicken oder zum Sprechen gedrückt halten; Ctrl/Cmd+Shift+M)",
+    "installToRead": "Vorlesen benötigt das Sprachpaket. Klicke, um es zu installieren.",
+    "stopReading": "Vorlesen stoppen",
+    "readAloud": "Vorlesen",
+    "dismiss": "Schließen",
+    "resume": "Fortsetzen",
+    "pause": "Pause",
+    "stop": "Stoppen",
+    "preparing": "Sprache wird vorbereitet…"
+  },
+  "voiceCall": {
+    "starting": "Mikrofon wird gestartet…",
+    "listening": "Hört zu…",
+    "hearing": "Ich höre dich…",
+    "transcribing": "Verstanden…",
+    "thinking": "Denkt nach…",
+    "speaking": "Spricht…",
+    "error": "Der Anruf wurde beendet",
+    "muted": "Stummgeschaltet",
+    "title": "Sprachanruf",
+    "you": "Du",
+    "model": "Modell",
+    "interrupted": "(unterbrochen)",
+    "muteHint": "Mikrofon stummschalten (Leertaste)",
+    "unmute": "Stummschaltung aufheben",
+    "mute": "Stumm",
+    "endHint": "Anruf beenden (Esc)",
+    "end": "Anruf beenden",
+    "meta": "Stimme: {voice}",
+    "headphones": "Mit Kopfhörern klappt das Unterbrechen am besten"
+  },
+  "emptyBanner": {
+    "welcomeTitle": "👋 Willkommen im ChaosEngineAI-Chat",
+    "welcomeBody": "Wähle unter Chat > Modelle ein Chat-Modell aus, um loszulegen. Für den ersten Start empfehlen wir eine kleine Qwen3- oder Llama-3-Variante — sie ist in ein bis zwei Minuten heruntergeladen und läuft auf jedem Laptop.",
+    "browseDiscover": "Modelle durchsuchen",
+    "noModelLoaded": "Zum Chatten muss zuerst ein Modell geladen sein. Wähle eines aus deiner Bibliothek, um es in den Speicher zu laden.",
+    "loadModel": "Modell laden",
+    "getStartedAriaLabel": "Mit dem Chat loslegen",
+    "loadModelAriaLabel": "Ein Modell zum Chatten laden"
+  },
+  "codeBlock": {
+    "copied": "Kopiert",
+    "copyCode": "Code kopieren",
+    "copy": "Kopieren"
   }
 }

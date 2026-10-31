@@ -31,6 +31,8 @@ from pathlib import Path
 from typing import Any
 
 from backend_service.helpers.gpu import nvidia_gpu_present, torch_install_warning
+from backend_service.helpers.lora import fuse_catalog_lora
+from backend_service.helpers.pipeline_kwargs import filter_pipeline_kwargs
 from backend_service.image_runtime import validate_local_diffusers_snapshot
 from backend_service.progress import (
     GenerationCancelled,
@@ -327,6 +329,7 @@ class DiffusersVideoEngine:
             generator = torch.Generator(device=generator_device).manual_seed(base_seed)
 
             kwargs = self._build_pipeline_kwargs(config, generator)
+            kwargs, kwarg_notes = filter_pipeline_kwargs(pipeline, kwargs)
 
             VIDEO_PROGRESS.set_phase(
                 PHASE_DIFFUSING,
@@ -399,9 +402,8 @@ class DiffusersVideoEngine:
             # fuse, attention backend) on every generated mp4 so the
             # user sees what was applied. Joined with " · " for a
             # single-line UI presentation.
-            runtime_note = (
-                " · ".join(self._load_notes) if self._load_notes else None
-            )
+            note_parts = [*self._load_notes, *finalize_notes, *kwarg_notes]
+            runtime_note = " · ".join(note_parts) if note_parts else None
             return GeneratedVideo(
                 seed=base_seed,
                 bytes=mp4_bytes,
@@ -626,15 +628,11 @@ class DiffusersVideoEngine:
                 self._release_pipeline()
 
             import torch  # type: ignore
-            from huggingface_hub import snapshot_download  # type: ignore
+            from backend_service.helpers.hf_local import local_snapshot_path
 
             pipeline_cls = self._pipeline_class(repo)
 
-            local_path = snapshot_download(
-                repo_id=repo,
-                local_files_only=True,
-                resume_download=True,
-            )
+            local_path = local_snapshot_path(repo, resume_download=True)
             local_root = Path(local_path)
             validation_error = validate_local_diffusers_snapshot(local_root, repo)
             if validation_error is not None:
@@ -750,21 +748,8 @@ class DiffusersVideoEngine:
 
             if lora_repo and lora_file and not distill_active:
                 try:
-                    pipeline.load_lora_weights(
-                        lora_repo,
-                        weight_name=lora_file,
-                        local_files_only=True,
-                    )
-                    effective_scale = (
-                        float(lora_scale) if lora_scale is not None else 1.0
-                    )
-                    pipeline.fuse_lora(lora_scale=effective_scale)
-                    try:
-                        pipeline.unload_lora_weights()
-                    except Exception:
-                        pass
                     self._load_notes.append(
-                        f"LoRA: {lora_repo}/{lora_file} @ scale {effective_scale:.3f}"
+                        fuse_catalog_lora(pipeline, lora_repo, lora_file, lora_scale)
                     )
                 except Exception as exc:  # noqa: BLE001 — non-fatal
                     self._load_notes.append(
@@ -945,6 +930,8 @@ class VideoRuntimeManager:
         # routed; generate() raises NotImplementedError so the manager
         # falls through to diffusers until the CLI subprocess lands.
         self._sdcpp_video: Any | None = None
+        # ltx-2-mlx subprocess engine (LTX-2.3 on MLX, own venv).
+        self._ltx2_mlx: Any | None = None
 
     def _get_longlive(self) -> Any:
         if self._longlive is None:
@@ -965,6 +952,19 @@ class VideoRuntimeManager:
             return False
         from backend_service.mlx_video_runtime import _is_mlx_video_repo
         return _is_mlx_video_repo(repo)
+
+    def _get_ltx2_mlx(self) -> Any:
+        if self._ltx2_mlx is None:
+            from backend_service.ltx2_mlx_runtime import Ltx2MlxVideoEngine
+            self._ltx2_mlx = Ltx2MlxVideoEngine()
+        return self._ltx2_mlx
+
+    @staticmethod
+    def _is_ltx2_mlx_repo(repo: str | None) -> bool:
+        if not repo:
+            return False
+        from backend_service.ltx2_mlx_runtime import _is_ltx2_mlx_repo
+        return _is_ltx2_mlx_repo(repo)
 
     def _get_sdcpp_video(self) -> Any:
         if self._sdcpp_video is None:
@@ -1013,6 +1013,8 @@ class VideoRuntimeManager:
                 if not status.realGenerationAvailable:
                     raise RuntimeError(status.message)
                 return engine.preload(repo).to_dict()
+            if self._is_ltx2_mlx_repo(repo):
+                return self._get_ltx2_mlx().preload(repo).to_dict()
             if self._is_mlx_video_repo(repo):
                 mlx = self._get_mlx_video()
                 status = mlx.probe()
@@ -1028,6 +1030,8 @@ class VideoRuntimeManager:
         with self._lock:
             if _is_longlive_repo(repo):
                 return self._get_longlive().unload(repo).to_dict()
+            if self._is_ltx2_mlx_repo(repo):
+                return self._get_ltx2_mlx().unload(repo).to_dict()
             if self._is_mlx_video_repo(repo):
                 return self._get_mlx_video().unload(repo).to_dict()
             return self._engine.unload(repo).to_dict()
@@ -1048,6 +1052,19 @@ class VideoRuntimeManager:
             with self._lock:
                 video = engine.generate(config)
                 runtime = engine.probe().to_dict()
+            return video, runtime
+
+        if self._is_ltx2_mlx_repo(config.repo):
+            ltx2 = self._get_ltx2_mlx()
+            status = ltx2.probe()
+            if not status.realGenerationAvailable:
+                raise RuntimeError(status.message)
+            # The clip renders in its own process; free any resident diffusers
+            # pipeline first so the two do not share the Mac's memory.
+            with self._lock:
+                self._engine.unload(None)
+                video = ltx2.generate(config)
+                runtime = ltx2.probe().to_dict()
             return video, runtime
 
         if self._is_mlx_video_repo(config.repo):

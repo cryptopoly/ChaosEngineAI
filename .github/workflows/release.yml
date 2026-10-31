@@ -29,7 +29,21 @@ jobs:
     outputs:
       release_id: ${{ steps.find-or-create.outputs.result }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
+      # The updater compares the app's own version (tauri.conf.json) with the
+      # version in latest.json, which comes from this tag. A mismatch makes every
+      # install offer the release it already has (v0.9.4 shipped 0.9.3 files), so
+      # stop before a release is created or anything is built.
+      - name: Check the tag matches the app version
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
+        run: node scripts/check-version-sync.mjs --tag "$RELEASE_TAG"
+      # Known vulnerabilities in what ships (pinned Python packages, Rust crates,
+      # npm packages), checked against osv.dev. A high or critical advisory stops
+      # the release before anything is built; accept one on purpose in
+      # scripts/dependency-audit-ignore.json with a reason and an expiry date.
+      - name: Dependency audit
+        run: python3 scripts/audit-dependencies.py
       - name: Find or create release
         id: find-or-create
         uses: actions/github-script@v9
@@ -113,7 +127,7 @@ jobs:
     name: Build (${{ matrix.os }})
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Install Linux system dependencies
         if: matrix.platform == 'linux'
@@ -126,7 +140,7 @@ jobs:
             librsvg2-dev \
             patchelf
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -138,7 +152,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
 
       - name: Cache Cargo
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/registry
@@ -147,7 +161,7 @@ jobs:
           key: cargo-release-${{ matrix.os }}-${{ hashFiles('src-tauri/Cargo.lock') }}
           restore-keys: cargo-release-${{ matrix.os }}-
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         if: matrix.platform != 'darwin'
         with:
           python-version: ${{ env.PYTHON_VERSION }}
@@ -214,21 +228,21 @@ jobs:
         run: |
           .python-portable/bin/python3 -m venv .venv
           .venv/bin/pip install --upgrade pip
-          .venv/bin/pip install mlx mlx-lm gguf fastapi psutil uvicorn "pypdf>=6.10.2" python-multipart huggingface_hub babel
+          .venv/bin/pip install -c release-constraints.txt mlx mlx-lm gguf fastapi psutil uvicorn "pypdf>=6.21.4" python-multipart huggingface_hub babel
 
       - name: Create Python venv (Linux)
         if: matrix.platform == 'linux'
         run: |
           python -m venv .venv
           .venv/bin/pip install --upgrade pip
-          .venv/bin/pip install fastapi psutil uvicorn "pypdf>=6.10.2" python-multipart huggingface_hub babel
+          .venv/bin/pip install -c release-constraints.txt fastapi psutil uvicorn "pypdf>=6.21.4" python-multipart huggingface_hub babel
 
       - name: Create Python venv (Windows)
         if: matrix.platform == 'windows'
         run: |
           python -m venv .venv
           .venv\Scripts\pip install --upgrade pip
-          .venv\Scripts\pip install fastapi psutil uvicorn "pypdf>=6.10.2" python-multipart huggingface_hub babel
+          .venv\Scripts\pip install -c release-constraints.txt fastapi psutil uvicorn "pypdf>=6.21.4" python-multipart huggingface_hub babel
 
       - name: Set Python embed path (Unix)
         if: matrix.platform != 'windows'
@@ -304,8 +318,8 @@ jobs:
     needs: [create-release, build]
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
       - name: Generate combined updater manifest

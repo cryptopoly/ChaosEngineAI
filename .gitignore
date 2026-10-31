@@ -1,10 +1,12 @@
 __pycache__/
 *.pyc
+.venv
 .venv/
 *.egg-info/
 build/
 dist/
 .DS_Store
+node_modules
 node_modules/
 src-tauri/target/
 src-tauri/resources/embedded/
@@ -22,3 +24,6 @@ coverage/
 .tmp-*/
 # MkDocs build output
 site/
+
+# Project hub (generated site; docs/hub is the source)
+docs/site/

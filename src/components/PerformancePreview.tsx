@@ -42,6 +42,17 @@ export function PerformancePreview({ preview, availableMemoryGb, totalMemoryGb, 
     : 0;
   const ramColor = ramUsedPercent > 90 ? "var(--warning, #e4be75)" : "var(--accent)";
   const speedLabel = getSpeedLabel(preview.estimatedTokS, t);
+  const speedMeasured = preview.speedSource === "measured";
+  const speedTitle = speedMeasured
+    ? t("performancePreview.speedMeasuredTitle", {
+        defaultValue: "Median of your own recent runs of this model with this cache strategy.",
+      })
+    : t("performancePreview.speedEstimateTitle", {
+        defaultValue: "Estimated from memory bandwidth ({bandwidth}) and the weights read per token. Your own runs replace it once you have used the model.",
+        bandwidth: preview.bandwidthLabel && preview.bandwidthGbps
+          ? `${preview.bandwidthLabel}, ${preview.bandwidthGbps} GB/s${preview.bandwidthKnown ? "" : ", guessed"}`
+          : "unknown",
+      });
   const cacheLabel = t("performancePreview.cacheLabel", { defaultValue: "Cache" });
 
   return (
@@ -130,11 +141,16 @@ export function PerformancePreview({ preview, availableMemoryGb, totalMemoryGb, 
             />
             <div className="metric-row">
               <span>{t("performancePreview.speed", { defaultValue: "Speed" })}</span>
-              <span className="metric-row-right">
+              <span className="metric-row-right" title={speedTitle}>
                 <strong>{t("performancePreview.tokensPerSec", {
                   defaultValue: "{value} tok/s",
                   value: fmt(preview.estimatedTokS),
                 })}</strong>
+                <span className="perf-preview__speed-source muted-text">
+                  {speedMeasured
+                    ? t("performancePreview.speedMeasured", { defaultValue: "measured" })
+                    : t("performancePreview.speedEstimate", { defaultValue: "est." })}
+                </span>
                 {speedLabel ? (
                   <span className={`perf-preview__speed-label ${speedLabel.className}`}>
                     {speedLabel.label}
@@ -162,6 +178,21 @@ export function PerformancePreview({ preview, availableMemoryGb, totalMemoryGb, 
           </div>
         </div>
       </div>
+
+      <p className="perf-preview__source muted-text">
+        {preview.archSource === "config" || preview.archSource === "gguf"
+          ? t("performancePreview.sourceModel", {
+              defaultValue: "Cache sized from the model's own {source}.",
+              source: preview.archSource === "gguf" ? "GGUF header" : "config",
+            })
+          : preview.archSource === "hub"
+          ? t("performancePreview.sourceHub", {
+              defaultValue: "Cache sized from the model's config on Hugging Face.",
+            })
+          : t("performancePreview.sourceEstimate", {
+              defaultValue: "Rough cache estimate from the parameter count; it gets exact once the model is downloaded.",
+            })}
+      </p>
 
       <div className="perf-preview__footer">
         <span className="perf-preview__stat">{t("performancePreview.diskStat", {

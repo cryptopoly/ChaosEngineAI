@@ -45,7 +45,12 @@
       "system": "Système",
       "empty": "Aucun processus LLM local actif détecté.",
       "memoryGb": "{value} Go",
-      "cpuPercent": "{value}%"
+      "cpuPercent": "{value}%",
+      "stopIdleHint": "Décharge les modèles en attente et arrête tous les processus de modèle qui ne servent pas le modèle chargé.",
+      "stopIdle": "Arrêter les inactifs",
+      "stopHint": "Ne sert pas le modèle chargé. Arrêtez-le pour libérer sa mémoire.",
+      "stopConfirm": "Arrêter ce processus et libérer sa mémoire ?",
+      "stop": "Arrêter"
     }
   },
   "hardwareFit": {
@@ -54,7 +59,7 @@
     "recommendedTarget": "Cible recommandée",
     "currentRuntime": "Environnement d'exécution actuel",
     "modelLoadedVia": "{model} chargé via {engine}.",
-    "noModelHint": "Aucun modèle chargé pour l'instant. Choisissez un modèle de thread dans Discussion ou parcourez une famille plus récente dans Découvrir."
+    "noModelHint": "Aucun modèle chargé pour l'instant. Choisissez un modèle de thread dans Discussion ou parcourez une famille plus récente dans Discussion > Modèles."
   },
   "activityFeed": {
     "title": "Flux d'activité",

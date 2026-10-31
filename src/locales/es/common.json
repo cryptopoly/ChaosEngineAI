@@ -32,7 +32,11 @@
     "image": "Estudio de imagen",
     "video": "Estudio de video",
     "setup": "Configuración",
-    "diagnostics": "Diagnóstico"
+    "diagnostics": "Diagnóstico",
+    "voiceStudio": "Estudio de voz",
+    "voiceModels": "Modelos de voz",
+    "voiceLibrary": "Biblioteca de voz",
+    "chatModels": "Modelos de chat"
   },
   "tabCaptions": {
     "dashboard": "Resumen del sistema",
@@ -57,7 +61,13 @@
     "promptLibrary": "Plantillas de prompts reutilizables",
     "plugins": "Extensiones y sistema de plugins",
     "logs": "Eventos del entorno de ejecución",
-    "settings": "Directorios y valores predeterminados"
+    "settings": "Directorios y valores predeterminados",
+    "voiceStudio": "Grabar, transcribir y hablar",
+    "voiceModels": "Gestión de modelos STT y TTS",
+    "voiceLibrary": "Tus transcripciones y audios generados",
+    "chatModels": "Buscar, descargar y gestionar modelos de lenguaje",
+    "imageModelsPage": "Buscar, descargar y gestionar modelos de imagen",
+    "videoModelsPage": "Buscar, descargar y gestionar modelos de video"
   },
   "tabShortLabels": {
     "chat": "Chat",
@@ -78,7 +88,11 @@
     "conversion": "Conversión",
     "fineTuning": "Ajuste fino",
     "promptLibrary": "Prompts",
-    "plugins": "Plugins"
+    "plugins": "Plugins",
+    "voiceStudio": "Estudio",
+    "voiceModels": "Mis modelos",
+    "voiceLibrary": "Biblioteca",
+    "models": "Modelos"
   },
   "tabGroups": {
     "chat": "Chat",
@@ -86,14 +100,16 @@
     "images": "Imágenes",
     "video": "Video",
     "benchmarks": "Benchmarks",
-    "tools": "Herramientas"
+    "tools": "Herramientas",
+    "voice": "Voz"
   },
   "tabsCount": "{count, plural, one {# pestaña} other {# pestañas}}",
   "sidebar": {
     "backendOnline": "Backend en línea",
     "backendOffline": "Sin conexión",
     "noModelLoaded": "Ningún modelo cargado",
-    "groupTabsAriaLabel": "Pestañas {group}"
+    "groupTabsAriaLabel": "Pestañas {group}",
+    "primaryNavAriaLabel": "Principal"
   },
   "slashCommands": {
     "menuAriaLabel": "Comandos de barra"
@@ -128,7 +144,8 @@
     "tryAgain": "Reintentar",
     "copyDetails": "Copiar detalles",
     "switchTo": "Cambiar a {target}",
-    "keepEnglish": "Mantener inglés"
+    "keepEnglish": "Mantener inglés",
+    "dismiss": "Cerrar"
   },
   "status": {
     "loading": "Cargando…",
@@ -164,7 +181,8 @@
     "detected": "{endonym} detectado.",
     "prompt": "¿Cambiar la aplicación a {endonym}? Puedes cambiarlo en cualquier momento en Preferencias → Idioma.",
     "switch": "Cambiar a {endonym}",
-    "keep": "Mantener inglés"
+    "keep": "Mantener inglés",
+    "ariaLabel": "Preferencia de idioma"
   },
   "panels": {
     "mlxConversion": "Conversión MLX",
@@ -260,6 +278,18 @@
       "remoteHealth": "Salud remota",
       "remoteModels": "Modelos remotos",
       "close": "Cerrar"
+    },
+    "connect": {
+      "title": "Conecta tu app",
+      "subtitle": "Endpoint compatible con OpenAI. Apunta cualquier SDK de OpenAI o app compatible a la URL base de abajo, con la clave de API de arriba.",
+      "baseUrl": "URL base",
+      "python": "Python · openai",
+      "javascript": "JavaScript · openai",
+      "continueDev": "Continue.dev (config)",
+      "openWebui": "Open WebUI",
+      "openWebuiHint": "Admin → Ajustes → Conexiones → OpenAI API. URL base: {base} — usa la clave de API de arriba.",
+      "ollamaApps": "Apps compatibles con Ollama",
+      "ollamaHint": "Configura el host de Ollama / la URL base de la app con la dirección de abajo — los endpoints nativos /api se sirven junto con /v1."
     }
   },
   "conversionTab": {
@@ -434,6 +464,11 @@
       "close": "Cerrar",
       "ok": "OK",
       "cancel": "Cancelar benchmark"
+    },
+    "promptPresets": {
+      "balanced": "Resumen equilibrado",
+      "reasoning": "Prueba de razonamiento",
+      "coding": "Respuesta de código"
     }
   },
   "benchmarkHistory": {
@@ -649,7 +684,10 @@
     "specTitle": "Decodificación especulativa basada en árbol activa",
     "specTitleWithBudget": "Decodificación especulativa basada en árbol activa (presupuesto de {budget} tokens borrador por paso)",
     "acceptLabel": "{value} aceptación promedio",
-    "acceptTitle": "Promedio de tokens borrador aceptados por paso ({value})"
+    "acceptTitle": "Promedio de tokens borrador aceptados por paso ({value})",
+    "cacheTitleMemorySaver": "Estrategia de caché KV ({label}) — un ahorro de memoria: una caché mucho más pequeña para conversaciones largas, a costa de una generación más lenta",
+    "specLabelExact": "Borradores exactos",
+    "specTitleExact": "Decodificación especulativa activa — cada borrador se verifica con el modelo objetivo, por lo que la respuesta coincide con la decodificación en serie"
   },
   "gpuCard": {
     "heading": "GPU",
@@ -685,7 +723,14 @@
     "speedSlow": "Lento",
     "speedGood": "Bueno",
     "speedFast": "Rápido",
-    "speedVeryFast": "Muy rápido"
+    "speedVeryFast": "Muy rápido",
+    "speedMeasuredTitle": "Mediana de tus propias ejecuciones recientes de este modelo con esta estrategia de caché.",
+    "speedEstimateTitle": "Estimada a partir del ancho de banda de memoria ({bandwidth}) y los pesos leídos por token. Tus propias ejecuciones la sustituyen cuando hayas usado el modelo.",
+    "speedMeasured": "medida",
+    "speedEstimate": "est.",
+    "sourceModel": "Tamaño de la caché calculado a partir de los datos del propio modelo ({source}).",
+    "sourceHub": "Tamaño de la caché calculado a partir de la configuración del modelo en Hugging Face.",
+    "sourceEstimate": "Estimación aproximada de la caché a partir del número de parámetros; se vuelve exacta una vez descargado el modelo."
   },
   "reasoningPanel": {
     "label": "Pensando",
@@ -766,7 +811,9 @@
       "storage": "Almacenamiento",
       "providers": "Proveedores",
       "integrations": "Integraciones",
-      "diagnostics": "Diagnóstico"
+      "diagnostics": "Diagnóstico",
+      "accelerators": "Aceleradores",
+      "disk": "Uso del disco"
     },
     "sectionsAria": "Secciones de configuración",
     "badges": {
@@ -934,7 +981,8 @@
         "title": "Aún cargando",
         "detail": "Las importaciones del arranque en frío están tardando más de lo habitual. Si se queda parado más de dos minutos, cierra y vuelve a abrir — un manifiesto obsoleto puede forzar una nueva extracción."
       }
-    }
+    },
+    "logPath": "Registro del backend: {path}"
   },
   "imageDiscover": {
     "sortLabel": {
@@ -980,5 +1028,227 @@
       "incomplete": "Incompleto",
       "notInstalled": "No instalado"
     }
+  },
+  "videoStudio": {
+    "safety": {
+      "reasonDangerOver": "El modelo necesita ~{model} GB residentes con la colocación estándar, pero {platform} con {total} GB totales solo tiene ~{working} GB disponibles con seguridad. El runtime recurrirá automáticamente al CPU offload secuencial -- la generación tendrá éxito pero cada paso será varias veces más lento porque los submódulos se intercambiarán entre la memoria de la CPU y la de {offloadDevice} en cada pasada. Para generación a máxima velocidad, elige un modelo más pequeño (LTX-Video es ~2 GB residentes) o una máquina con más memoria.",
+      "reasonDangerNear": "El modelo necesita ~{model} GB residentes y esta ejecución alcanza un pico de ~{peak} GB. En {platform} con {total} GB totales, eso está por encima del umbral de alto riesgo (~{highRisk} GB) y cerca del conjunto de trabajo estimado (~{working} GB). El runtime puede activar CPU offload para hacerlo encajar -- reduce los ajustes o elige un modelo más pequeño si quieres generación a máxima velocidad.",
+      "reasonCaution": "El modelo necesita ~{model} GB residentes. En {platform} con {total} GB totales, eso está por encima del objetivo de comodidad conservador (~{comfort} GB) pero por debajo del conjunto de trabajo estimado (~{working} GB). La generación debería caber; reduce los ajustes si se vuelve inestable."
+    }
+  },
+  "imageStudio": {
+    "safety": {
+      "reasonDangerOver": "El modelo necesita ~{model} GB solo para mantener sus pesos + codificador de texto. En {platform} con {total} GB totales, el conjunto de trabajo estimado es ~{working} GB, así que el modelo por sí solo ya supera ese límite. Incluso imágenes pequeñas probablemente romperían el backend. Prueba un modelo más pequeño (SD 1.5 es ~4 GB, SDXL ~13 GB) o una máquina con más memoria.",
+      "reasonDangerNear": "El modelo necesita ~{model} GB solo para mantener sus pesos + codificador de texto, y esta ejecución alcanza un pico de ~{peak} GB. En {platform} con {total} GB totales, eso está por encima del umbral de alto riesgo (~{highRisk} GB) y cerca del conjunto de trabajo estimado (~{working} GB). Es probable que la generación rompa el backend; reduce la resolución o elige un modelo más pequeño.",
+      "reasonCaution": "El modelo necesita ~{model} GB solo para mantener sus pesos + codificador de texto. En {platform} con {total} GB totales, eso está por encima del objetivo de comodidad conservador (~{comfort} GB) pero por debajo del conjunto de trabajo estimado (~{working} GB). La generación puede ser lenta o fallar; reduce la resolución si se vuelve inestable."
+    }
+  },
+  "runHf": {
+    "resolveFailed": "No se pudo resolver ese repo.",
+    "downloadStarted": "Descarga iniciada — sigue el progreso en la página Modelos y luego pulsa Cargar.",
+    "downloadFailed": "La descarga falló.",
+    "loaded": "Cargado: {label}",
+    "loadFailed": "La carga falló.",
+    "title": "Ejecutar desde Hugging Face",
+    "subtitle": "Pega cualquier repo GGUF o MLX (owner/name o URL) para ejecutarlo sin una entrada de catálogo.",
+    "resolving": "Resolviendo…",
+    "resolve": "Resolver",
+    "ctx": "{ctx} ctx",
+    "downloading": "Iniciando…",
+    "download": "Descargar",
+    "notRunnable": "Este repo no se puede ejecutar directamente en esta plataforma — consulta la nota de arriba.",
+    "loading": "Cargando…",
+    "load": "Cargar"
+  },
+  "rag": {
+    "vectorTooltip": "Los documentos se buscan por significado con un modelo de embeddings local.",
+    "semantic": "Búsqueda semántica",
+    "lexicalTooltip": "Los documentos se buscan por palabra clave (TF-IDF + BM25). Activa la búsqueda semántica para obtener mejores resultados.",
+    "binaryMissingTooltip": "Solo búsqueda por palabra clave — no se encontró el binario llama-embedding, así que la búsqueda semántica no está disponible en esta instalación.",
+    "keyword": "Búsqueda por palabra clave",
+    "verifying": "Verificando…",
+    "downloading": "Descargando {sizeLabel}…",
+    "enable": "Activar la búsqueda semántica",
+    "installFailed": "Instalación fallida"
+  },
+  "importModels": {
+    "failed": "La importación falló.",
+    "imported": "Importado",
+    "importing": "Importando…",
+    "import": "Importar",
+    "title": "Importar modelos existentes",
+    "subtitle": "Se encontraron modelos en el almacén de otra app local. Al importar se enlazan donde están — sin volver a descargar.",
+    "foundIn": "Encontrado en {path}",
+    "foundElsewhere": "Encontrado en este equipo"
+  },
+  "gpuBanner": {
+    "runningOnCpu": "Ejecutándose en la CPU.",
+    "recommendationFallback": "Se ve una GPU NVIDIA, pero torch no puede acceder a CUDA — la generación de imágenes y video será muy lenta.",
+    "cudaInstalled": "torch CUDA instalado{source}{python}. Reinicia la app para usar la GPU.",
+    "cudaInstalledSource": " desde {index}",
+    "cudaInstalledPython": " en el Python incluido {version}",
+    "noWheel": "No hay wheel de torch CUDA para Python{version}.",
+    "noWheelBundledVenv": " (venv incluido)",
+    "noWheelDetail": "PyTorch ofrece actualmente wheels CUDA para Python 3.9–3.13. Reinstala la app con un Python compatible en el PATH (p. ej., 3.12 o 3.13) e inténtalo de nuevo.",
+    "installFailed": "Instalación fallida:",
+    "downloading": "Descargando un wheel CUDA de ~2,5 GB en el Python incluido de la app — puede tardar varios minutos.",
+    "installing": "Instalando torch CUDA...",
+    "install": "Instalar torch CUDA"
+  },
+  "llamaRebuild": {
+    "rebuilding": "Recompilando llama.cpp...",
+    "rebuild": "Recompilar llama.cpp"
+  },
+  "discoverModal": {
+    "downloadedCount": "{count} descargados",
+    "variants": "Variantes ({count})",
+    "convert": "Convertir",
+    "chat": "Chat",
+    "server": "Servidor",
+    "pause": "Pausa",
+    "resume": "Reanudar",
+    "downloadFailed": "La descarga falló",
+    "downloadComplete": "Descarga completada",
+    "overview": "Resumen"
+  },
+  "dataDirRestart": {
+    "title": "Reinicio necesario",
+    "body": "Se ha cambiado el directorio de datos. ChaosEngineAI debe reiniciar el backend para empezar a leer y escribir archivos en la nueva ubicación.",
+    "from": "Desde: {path}",
+    "to": "A: {path}",
+    "copied": "Copiado: {items}",
+    "skipped": "Omitido (ya existe en el destino): {items}",
+    "notNow": "Ahora no",
+    "restarting": "Reiniciando el backend...",
+    "notBackOnline": "El backend no volvió a estar en línea tras el reinicio.",
+    "failed": "No se pudo reiniciar el backend.",
+    "confirm": "De acuerdo, reiniciar ahora"
+  },
+  "wslBridgePanel": {
+    "title": "Puente WSL2 vLLM",
+    "backendOffline": "Backend sin conexión — inicia el sidecar para comprobar el estado de WSL.",
+    "capsError": "No se pudo leer el estado de WSL: {error}",
+    "probing": "Comprobando el estado de WSL...",
+    "ready": "✓ Listo{version}",
+    "notInstalled": "WSL2 no está instalado en este equipo Windows. vLLM no distribuye wheels nativos para Windows, así que lo práctico es ejecutar vLLM dentro de una distro Ubuntu en WSL2.",
+    "runInPowershell": "Abre PowerShell como administrador y ejecuta:",
+    "rebootHint": "Reinicia cuando se te pida y luego vuelve a abrir ChaosEngineAI.",
+    "microsoftDocs": "Documentación de Microsoft",
+    "cudaMissingLead": "WSL2 está instalado ({distro}), pero",
+    "cudaMissingTail": "no es accesible dentro de la distro. Instala el controlador NVIDIA WSL en Windows — permite el paso de CUDA desde tu controlador de GPU a WSL.",
+    "nvidiaGuide": "Guía de NVIDIA WSL ↗",
+    "installing": "Instalando...",
+    "reinstall": "Reinstalar vLLM en WSL",
+    "install": "Instalar vLLM en WSL",
+    "installedSummary": "vLLM {version} está instalado en {distro} en ~/.chaosengine/vllm-venv. La app de escritorio puede enrutar las cargas de modelos vLLM a través de este venv.",
+    "readySummary": "WSL2 ({distro}) + el paso de CUDA están listos. Instala vLLM en un venv aislado en ~/.chaosengine/vllm-venv (~2 GB de descarga, ~5-15 min en un equipo con las cachés ya calientes)."
+  },
+  "acceleratorsBoostPack": {
+    "installFailed": "El comando de instalación terminó con un código de error.",
+    "title": "Boost Pack",
+    "description": "Aceleradores opcionales para la inferencia de imagen, video y chat. Cada uno está a un solo pip install — haz clic en Instalar en las filas que tu hardware admita.",
+    "capError": "No se pudieron leer las capacidades de los aceleradores: {error}",
+    "backendOffline": "Backend sin conexión — inicia el sidecar para leer el estado de los aceleradores.",
+    "columns": {
+      "accelerator": "Acelerador",
+      "size": "Tamaño",
+      "platform": "Plataforma",
+      "status": "Estado",
+      "action": "Acción"
+    }
+  },
+  "modelStoragePanel": {
+    "phase": {
+      "preflight": "Comprobando tamaños y espacio libre",
+      "copying": "Copiando",
+      "cleanup": "Eliminando la copia antigua",
+      "done": "Listo",
+      "error": "Error"
+    },
+    "pathSavedRestart": "Ruta guardada. Reinicia el backend para que las nuevas descargas se guarden en la nueva unidad.",
+    "pathSaved": "Ruta guardada.",
+    "resetDoneRestart": "Restablecido a los valores por defecto. Reinicia el backend para usar la ubicación por defecto.",
+    "resetDone": "Restablecido a los valores por defecto.",
+    "destinationRequired": "Define primero una ruta de destino (escríbela o usa Examinar arriba).",
+    "moveConfirm": "¿Mover {size} de modelos de {from} a {to}?\n\nEl árbol de origen se eliminará tras una copia correcta. En un HDD mecánico puede tardar de 15 a 45 min para 100 GB.\n\nCierra cualquier generación en curso antes de empezar.",
+    "reading": "Leyendo la información de almacenamiento...",
+    "loading": "Cargando la información de almacenamiento...",
+    "backendOffline": "Backend sin conexión — inicia el sidecar para configurar el almacenamiento.",
+    "currentLocation": "Ubicación actual de la caché",
+    "inCache": "{size} en la caché",
+    "free": "{size} libres",
+    "overridePath": "Ruta personalizada (requiere reinicio)",
+    "usingDefault": "usando el valor por defecto",
+    "browse": "Examinar...",
+    "saving": "Guardando...",
+    "savePath": "Guardar ruta",
+    "resetToDefault": "Restablecer valores por defecto",
+    "restarting": "Reiniciando...",
+    "restartBackendNow": "Reiniciar el backend ahora",
+    "moveHint": "Tienes {size} de modelos en la ubicación anterior. Muévelos para que sigan funcionando desde la nueva ruta. En un HDD mecánico, calcula ~1 minuto por cada 6 GB.",
+    "starting": "Iniciando...",
+    "moveModels": "Mover los modelos existentes a la nueva ruta",
+    "filesProgress": "{copied} / {total} archivos",
+    "restartBackend": "Reiniciar el backend"
+  },
+  "videoPlaceholderTab": {
+    "engines": {
+      "ltxVideo": "Rápido y ligero — diseñado para hardware de consumo. Un buen primer objetivo.",
+      "wan22": "Gran calidad de texto a video. Funciona con 24 GB+ de VRAM o en Apple Silicon con memoria unificada.",
+      "hunyuanVideo": "Alta fidelidad, clips más largos. Requiere hardware de clase 40 GB+.",
+      "mochi1": "De pesos abiertos y con una calidad de movimiento competitiva. Licencia Apache 2.0."
+    },
+    "models": {
+      "title": "Modelos de video instalados",
+      "subtitle": "Modelos en esta máquina",
+      "body": "Aún no se han detectado modelos de video localmente. Cuando llegue el motor de video, los pesos descargados aparecerán aquí junto con su cuantización, tamaño en disco y destino de ejecución."
+    },
+    "discover": {
+      "title": "Descubrir modelos de video",
+      "subtitle": "Explora y descarga generadores de video",
+      "body": "El catálogo de abajo muestra los motores que planeamos soportar primero. Los botones de descarga se activarán cuando el runtime de video esté conectado."
+    },
+    "studio": {
+      "title": "Estudio de video",
+      "subtitle": "Promptear, generar e iterar",
+      "body": "Studio incluirá el editor de prompts, los controles de relación de aspecto y duración, la fijación de semilla y las vistas previas por fotograma. Un poco de paciencia — aún no hay ningún motor cargado."
+    },
+    "gallery": {
+      "title": "Galería de video",
+      "subtitle": "Salidas guardadas y filtros",
+      "body": "Los renders terminados aparecerán aquí, con filtros por modelo, duración y resolución. Reordenar arrastrando y los favoritos están en la hoja de ruta."
+    },
+    "comingSoon": "Próximamente",
+    "roadmap": "La generación de video local está en la hoja de ruta de ChaosEngineAI. Esta pestaña es un marcador de posición para poder lanzar pronto el enrutamiento y la capa de UX — el motor de inferencia se conectará detrás.",
+    "planned": "Planificado"
+  },
+  "acceleratorCard": {
+    "platform": {
+      "cuda": "Solo CUDA",
+      "appleSilicon": "Solo Apple Silicon",
+      "any": "Multiplataforma"
+    },
+    "installing": "Instalando…",
+    "retry": "Reintentar",
+    "installBackground": "Instalar (en segundo plano)",
+    "install": "Instalar",
+    "installedVersion": "✓ v{version}",
+    "installedBadge": "✓ Instalado",
+    "installFailed": "Instalación fallida",
+    "installLabel": "Instalar {label}",
+    "requires": "Requiere: {platform}",
+    "appliesTo": "Se aplica a:",
+    "backgroundInstall": "Instalación en segundo plano",
+    "quickInstall": "Instalación rápida",
+    "installFailureOutput": "Instalación fallida — mostrar salida",
+    "installOutput": "Salida de la instalación"
+  },
+  "infoTooltip": {
+    "ariaLabel": "Más información"
+  },
+  "fileReveal": {
+    "finder": "Mostrar en el Finder",
+    "explorer": "Mostrar en el Explorador",
+    "files": "Mostrar en Archivos"
   }
 }

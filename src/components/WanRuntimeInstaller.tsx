@@ -127,7 +127,7 @@ export function WanRuntimeInstaller({ repo }: WanRuntimeInstallerProps) {
   };
 
   if (item == null) {
-    if (error) return <p className="caution-text">Wan inventory: {error}</p>;
+    if (error) return <p className="caution-text">{t("wanRuntime.inventoryError", { error, defaultValue: "Wan inventory: {error}" })}</p>;
     return null;
   }
 
@@ -143,15 +143,18 @@ export function WanRuntimeInstaller({ repo }: WanRuntimeInstallerProps) {
           <strong>{t("wanRuntime.title", { defaultValue: "Wan MLX runtime" })}</strong>
           <small>
             {item.converted
-              ? `Converted · routes via mlx-video native`
-              : `Raw download ${formatSize(item.approxRawSizeGb)} → MLX convert (5-30 min)`}
+              ? t("wanRuntime.converted", { defaultValue: "Converted · routes via mlx-video native" })
+              : t("wanRuntime.rawDownload", {
+                size: formatSize(item.approxRawSizeGb),
+                defaultValue: "Raw download {size} → MLX convert (5-30 min)",
+              })}
           </small>
           {item.status.note && !item.converted ? (
             <small className="muted">{item.status.note}</small>
           ) : null}
           {convertRoot && !item.converted ? (
             <small className="muted">
-              Output: <code>{convertRoot}</code>
+              {t("wanRuntime.outputLabel", { defaultValue: "Output:" })} <code>{convertRoot}</code>
             </small>
           ) : null}
         </div>
@@ -166,11 +169,18 @@ export function WanRuntimeInstaller({ repo }: WanRuntimeInstallerProps) {
               onClick={() => void handleInstall()}
               title={
                 isOtherRunning
-                  ? `Another Wan install is running (${job?.repo}). Wait or cancel it first.`
-                  : "Download raw weights + convert to MLX"
+                  ? t("wanRuntime.otherRunning", {
+                    repo: job?.repo,
+                    defaultValue: "Another Wan install is running ({repo}). Wait or cancel it first.",
+                  })
+                  : t("wanRuntime.installTitle", { defaultValue: "Download raw weights + convert to MLX" })
               }
             >
-              {isThisRunning ? "Installing..." : pending ? "Starting..." : "Install"}
+              {isThisRunning
+                ? t("wanRuntime.installing", { defaultValue: "Installing..." })
+                : pending
+                  ? t("wanRuntime.starting", { defaultValue: "Starting..." })
+                  : t("wanRuntime.install", { defaultValue: "Install" })}
             </button>
           )}
         </div>

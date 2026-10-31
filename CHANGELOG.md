@@ -1,5 +1,137 @@
 # Changelog
 
+## v0.9.9 - 2026-10
+
+Full notes in [RELEASE_NOTES_v0.9.9.md](RELEASE_NOTES_v0.9.9.md).
+
+### Added
+
+- **Voice I/O** (FU-117): a voice pack in its own environment (MLX Whisper, Parakeet and Kokoro on Apple Silicon; faster-whisper and kokoro-onnx on Windows and Linux), dictation and read-aloud in Chat, voice calls with turn detection and barge-in, Voice Studio (transcription queue, speaker labels, translation, transcript editor, Speak) and Voice Library, which replaces Gallery.
+- **LTX-2.5** (`dgrauet/ltx-2.5-mlx-q4`, gated) on the ltx-2-mlx engine and the new LTX default: 128 s against 155 s for LTX-2.3 on the same 4 s clip with sound, 17 GB (FU-128). Sound is badged in the gallery and result window (FU-130).
+- **LFM3-1.7B** (Liquid AI) on MLX through a vendored `lfm3` architecture, official MLX 4-bit and 8-bit rows (FU-118).
+- Unload / Cancel load button in the chat header.
+- **Nemotron 3.5 Bolt E4B** (NVIDIA) and **Granite Switch 4.1** (IBM) catalog families on llama.cpp. Bolt's DFlash drafter is published in a repo of its own, so a model can now be paired with a drafter by repo id (`PINNED_DRAFTERS`) and a download fetches companion files from other repos (`backend_service/helpers/companions.py`): 62 to 160 tok/s on an M4 Max with the drafter (FU-123).
+- **Nemotron 3.5 ASR** speech-to-text backend (mlx-audio, Apple Silicon): 40 languages with automatic detection.
+- **LTX-2.3 distilled q4** on its own MLX engine (ltx-2-mlx, isolated venv, installed from the Video Studio): 4 s at 768x512 with stereo sound in about 155 s on an M4 Max; the Wan 2.2 TI2V 5B rows are removed (FU-128).
+- Request guards: settings a model or engine cannot use are corrected with a note instead of failing or blanking the reply, for chat, image, video and speech recognition (FU-127).
+- **Iris-3B Turbo** image variant through mflux 0.24; image variants can pin `downloadFiles` and list `downloadCompanions` for repos that hold several models.
+- **LFM3-1.7B GGUF** (official Q4_K_M) on llama.cpp, pinned at b11981 (b11938 added the `lfm3` architecture); the language catalogs cover the whole frontend in all 10 locales (FU-119).
+- `scripts/audit-dependencies.py`: checks every pinned Python package, Rust crate and npm package against osv.dev for known vulnerabilities and lists what is behind the newest release. `pre-build-check` and the release workflow run it; a high or critical advisory blocks, and an accepted one needs a reason and an expiry date in `scripts/dependency-audit-ignore.json` (FU-120).
+
+### Security
+
+- Python pins (`release-constraints.txt`): certifi 2026.10.19, pypdf 6.21.4 (the PDF reader also refuses anything older), Pillow 13.0.0, python-multipart 0.0.31, aiohttp 3.14.4, yarl 1.25.1, urllib3 2.8.0, anyio 4.14.2, idna 3.15, msgpack 1.2.3, fsspec 2026.6.0, multidict 6.9.1, filelock 4.2.1, datasets 5.0.1, accelerate 1.15.0; docs tools mkdocs-material 9.7.7 and pymdown-extensions 11.0.2.
+- Rust: tokio, rustls, rustls-webpki, webpki-root-certs (the certificate fix), plist and quick-xml, serde_with, anyhow and others, within their compatible ranges. Tauri 2.12 with the updater plugin 2.14, which brings `zip` 9 and closes the three `zip` advisories (the Windows update unpacker). The audit now passes with no accepted advisories (FU-121).
+- Frontend: react-syntax-highlighter 16 (removes a PrismJS DOM-clobbering issue), vite 7.3.7, vitest 4.1.12, postcss, nanoid, browserslist and source-map-js. `npm audit` is down to four low-severity KaTeX findings.
+
+### Fixed
+
+- Memory gate: a measured peak footprint is no longer charged 10 % headroom a second time (Qwen-Image-2.1 was refused on a 64 GB Mac below 55 GB free); on a CUDA host the size term is judged against free GPU memory instead of system RAM.
+- A width and height over a model's limit keep their aspect ratio; the LTX-2 memory estimate grows with size and frames; the LTX-2 size guard rounds to 64 like the engine.
+- Models pages fit the window (narrow template below 1440 px), deleting a model drops its finished download record, tracked-only rows that have files keep delete and pause, best-fit picks prefer rows that run as downloaded and the faster build.
+
+- Hardware-specific options (CUDA boosters, FP8 / NF4, MLX rows) show only on hosts that can run them (FU-124); Iris-3B Turbo renders at 768 px or more (FU-124).
+- Tools never ran on GGUF models: llama.cpp returns tool calls as structured data and the engine ignored them, so the answer was empty.
+- `release-constraints.txt` pinned pypdf 6.10.2 and the other vulnerable versions, so release builds shipped them.
+
+- Typing in the Discover search blanked the page: LFM2.5, Muse Glimmer and LFM3 had no `readme` lines.
+- Tool calls written as `<function=...><parameter=...>` (LFM3, Qwen3-Coder) showed as text and never ran.
+- MLX: reasoning that ends in an unopened `</think>` after a tool result showed in the answer.
+- MLX: the tokenizer of a vendored architecture could ask on stdin whether to run checkpoint code.
+- A crashed voice worker on Windows was reported as "did not answer within 300 s".
+- Chat no longer re-requests the model load before every message.
+- A reasoning effort the chat template rejects is mapped to the nearest one it accepts.
+- MLX DFlash fell back to plain decoding on every reply (dflash-mlx 0.1.5 made `runtime_context` required); linear DFlash now verifies 8 tokens per step (16 lost to plain decoding on prose); DDTree verifies tree nodes at their own positions and is back for attention-only models (FU-112, FU-134).
+- DFlash on hybrid Qwen3.5 / 3.6 / Next targets produced garbage with mlx-lm 0.32 (the pinned dflash-mlx read the output head from the wrong object); `backend_service/dflash_compat.py` corrects it and a self-check compares the draft runtime with the model at load (FU-135). The stop token a speculative reply keeps is no longer shown.
+- LTX clips carry a `hasAudio` flag read from the mp4; gallery and result window show a Sound badge and the result window plays the clip with sound (FU-130).
+- A JSON schema that leaves a llama.cpp reasoning model with no text is retried as plain JSON; a conversation larger than the context answers 400 with both sizes; a Turbo or distilled model asked for many more steps than it is tuned for says what that costs (FU-127).
+- The mflux installer moves the old venv aside and restores it when the new install fails to verify (FU-123).
+- A fine-grained Hugging Face token without gated-repo access gets a specific message; the import-models panel no longer names other apps (FU-119).
+- Wan 2.1 and 2.2 A14B default guidance follow the Wan-AI model cards, and the Wan burn check in the E2E suite reads the last frame of a 17-frame clip (FU-122).
+- One **Models** page per area replaces Discover and My Models for Chat, Images and Video, built on shared components in `src/components/models/`; old tab ids redirect with a preset, persisted sidebar ids migrate, image and video model deletes confirm, paused rows show Resume (FU-129).
+- **Fit** rating and best-fit pick on every chat, image and video row (`helpers/fit.py`, `helpers/hardware_class.py`); **recommended settings** panel in the Image and Video Studios (`helpers/recommendations.py`); **per-model size limits** replace the 2048 px cap with a pixel-aware memory gate (`catalog/size_limits.py`, `helpers/memory_gate.py`), hard ceiling 8192 (FU-133).
+- Preloading an mflux or stable-diffusion.cpp model is a no-op instead of a 500; distilled video rows start the Studio at their own steps and guidance; the video safety estimate no longer applies the diffusers attention heuristic to ltx-2-mlx; the startup timer no longer re-renders the app every second.
+- Project hub: `docs/hub/` plus `tools/hub_tracker.py` and `tools/build_hub.py` (FU-131).
+
+## Unreleased
+
+### Added
+
+- **Voice I/O**: a mic in the chat composer (click or hold to talk, optional auto-send), read-aloud on every reply with an auto-read setting, Voice Studio (record or drop audio and video files, editable transcripts with timestamps, TXT/SRT/VTT export; speech with download) and Voice Models (one-click voice pack, model picker, 54 voices in 9 languages with previews). Runs on this computer only: Parakeet / Whisper and Kokoro on MLX on Apple Silicon; faster-whisper (CUDA when available) and kokoro-onnx on Windows and Linux.
+- **Voice calls** in Chat: a Call button opens a hands-free conversation with the loaded model. Silero VAD detects when you stop talking, the reply is spoken sentence by sentence while it is still being written, and speaking over the model interrupts it (the cut-off reply stays in the thread). Space mutes, Esc ends. Turn pause and interruption are in Voice > Models settings. Existing voice packs get an "Update voice pack" button (about 20 seconds).
+- **Voice Studio, Transcribe**: drop several audio or video files at once (or record) and they are transcribed one after another, each kept in the Library with its audio. Optional speaker labels ("Speaker 1", "Speaker 2", renameable) and translation to English (Whisper Small and Base). The transcript editor plays from any time or word you click, highlights the word being spoken, lets you edit a line in place (its times stay) and exports TXT, Markdown, SRT, VTT or JSON. "Summarise in chat", "Action items" and "Meeting notes" put the transcript into the chat composer with a prompt.
+- **Voice Studio, Speak**: long texts are spoken paragraph by paragraph with progress and Cancel; `[pause]` adds a pause; any voice can be previewed with one click; export WAV or MP3.
+- **Voice Library** replaces Voice Gallery: search, filter by transcripts or speech, open a transcript in the editor, play, export, delete one or several. Items saved in the Gallery move to the Library on first open.
+
+### Fixed
+
+- Every chat message waited about 3 seconds before generating: the launch settings saved by the backend lack the speculative-decoding fields, and a context above the model's maximum is clamped at load, so each send looked like a settings change, re-requested the model load and refreshed the whole workspace.
+- Thinking High on Qwen3.8 failed with "name 'TranscriptLoopFilter' is not defined"; an effort level a model's template rejects is now mapped to the nearest one it accepts.
+- The chat header has an Unload button, which reads "Cancel load" while a model is loading.
+
+## v0.9.8 - 2026-10
+
+First release since v0.9.4; versions 0.9.5 to 0.9.7 were internal. Full notes in [RELEASE_NOTES_v0.9.8.md](RELEASE_NOTES_v0.9.8.md). This file has no entries for v0.9.3 and v0.9.4; their notes are on the GitHub releases page.
+
+### Added
+
+- **Voice I/O** backend (in progress, screens hidden): speech-to-text and text-to-speech with per-platform STT sources and Parakeet on Apple Silicon.
+- **TensorFold** exact speculative-decoding lane (Apple Silicon) with optional vision and structured-output extras.
+- **llama.cpp speculative lanes**: DFlash 2, EAGLE-3, ngram-mod, chosen from the drafter files beside a GGUF.
+- **mflux** image engine (Apple Silicon, isolated environment): Qwen-Image-2.1, FLUX.2 klein, FLUX.1.
+- **stable-diffusion.cpp** variants for Qwen-Image-2.1 and FLUX.1 with companion files and live progress.
+- **Kolibri 1** (Aleph Alpha, 78B MoE, German and English) on MLX via a vendored architecture; reasoning effort follows the Thinking control.
+- New catalog families: Kimi K2.6, Llama 4 Scout, MiniMax M3, Mistral Large 3, Ornith 1, Qwen 3.8, Bonsai, Nemotron 3.5 Lightning, MiniCPM 5.
+- `scripts/audit-catalog-repos.py` checks every Hub repo and pinned file in the catalogs.
+- Disk usage rows expand into their contents and each has a Delete button behind a confirmation; the shared Hugging Face `blobs` store is protected (FU-109).
+- Settings splits Diagnostics into Diagnostics, Accelerators and Disk usage tabs, so the Boost Pack and the disk scan no longer fall off screen when the snapshot refreshes.
+- New models: LFM2.5 24B-A2B (MLX 4/8-bit and GGUF), Muse Glimmer 30B GGUF (vision, DFlash 2 sidecar), Kolibri 1 GGUF Q3_K_M, Qwen3.8 Flash Next GGUF, Qwen3.6 35B-A3B MTP through TensorFold, Qwen-Image-2.1 Turbo and FLUX 3 Image Klein through mflux.
+- Image input for MLX vision models loaded through mlx-vlm (Gemma 4 on Apple Silicon).
+- Memory and speed estimates rebuilt for chat, image and video: real KV-cache layout per architecture, memory pressure from available memory, decode speed from this machine's history or its memory bandwidth, an advisory check before a chat model loads, and engine-aware image and video estimates (FU-110).
+- Dashboard process list: Stop per leftover model process and a Stop idle button; unloading cancels a load in flight and a newer load replaces the one running.
+- Disk usage breaks the shared Hugging Face blob store down by repo, and a cached repo can be deleted there through the cache API.
+- `release-constraints.txt` pins every package in release builds to the tested versions.
+
+### Fixed
+
+- Chat > My Models listed 3D tool parts, encoders, voice models and bare weight files as chat models; discovery now marks them `other` and the Chat filter hides them (FU-108).
+- Release bundles shipped without `llama-server` because upstream's "latest" llama.cpp release no longer carries binaries; the build now fetches a pinned tag (FU-107).
+- MLX DFlash never ran: since dflash-mlx 0.1.5 every reply fell back to standard decoding while the note said DFlash was active. Qwen3-4B now decodes at 113-138 tok/s against 53 (FU-112).
+- Thinking Off was ignored by Qwen3-family models on MLX, and by the DFlash and DDTree paths for every model (FU-112).
+- GGUF replies from models that reason with reasoning off came back empty; catalog launches skipped the pinned quant and drafter sidecars; GGUF speculative runs were recorded as plain decoding (FU-114).
+- An abandoned MLX reply was read as the answer to the next request ("invalid result payload") (FU-114).
+- LFM2.5's reasoning leaked into the answer on MLX; a cancelled quant, a scan taken mid-download or an org name ending in "models" stopped a downloaded model from loading (FU-114).
+- Text-to-speech reported ready when mlx-audio arrived without its misaki front-end, and produced no audio; a long espeak data path could exit the backend.
+- Linux AppImage backend killed right after startup; loading screen never showed the error (FU-100).
+- ModelScope-named and symlinked model folders were not listed (FU-101).
+- Wan video rendered burnt on Apple Silicon: UniPC diverges on MPS, now flow-match Euler (FU-102).
+- 13 catalog rows pointed at Hub repos or files that do not exist; LoRA variants never downloaded their LoRA (FU-099).
+- GGUF rows downloaded every quant in the repo and loaded the largest (FU-087).
+- Release bundle shipped no `dflash` package (FU-085) and no Setup installer scripts (FU-104).
+- Setup installs of MLX-stack packages polluted the extras overlay (FU-098).
+- MTPLX reasoning deltas were dropped (FU-079); hybrid-model chat history was re-read every turn (FU-090).
+- Cached snapshots with deliberately skipped files opened as the placeholder image engine (FU-097).
+- Tool results were dropped on MLX so models repeated the same call; non-streaming chat with tools answered 500 (FU-105).
+- Release tag could differ from the app version, so installs were offered the release they already had (FU-106); the release workflow now fails early on a mismatch.
+- Image models larger than free memory are refused before loading; the memory check counts macOS-reclaimable memory.
+
+### Changed
+
+- MLX stack for releases: mlx 0.32.4, mlx-lm 0.32.2, transformers 5.20.2; Setup installs resolve mlx-vlm 0.7.10 and diffusers 0.41.0 (FU-113); checkpoints whose architecture only mlx-vlm ships (Flint, Qwen3.8 Flash Next, GLM-5.3 Flash, DeepSeek-V4, Bonsai) load through it.
+- llama.cpp b11810 (adds Kolibri 1 and Flint), Flint catalog rows (GGUF), TensorFold 0.6.6, mflux 0.23.0.
+- MLX DDTree is no longer offered: its tree verification was never finished. A tree budget runs linear DFlash (FU-112).
+- TurboQuant is presented as a memory saver; its speed estimate uses measured M4 Max ratios (FU-095).
+- Removed the DeepSeek-V4 8-bit, BF16 and Pro MLX rows, which no shipped runtime could load; the 4-bit row runs through TensorFold.
+- In-range frontend dependency bumps (Tauri JS packages kept in step with the Rust side, vite, vitest, katex).
+- Bundled llama.cpp build script pins tag b11277; vLLM floor raised to 0.28; diffusers floor 0.40; `turboquant-mlx-full` floor 0.11.
+- CUDA DFlash uses vLLM's built-in method; the PyPI `dflash` package is no longer installed (FU-091).
+
+### Upgrade notes
+
+- No breaking changes; settings, sessions and APIs carry forward.
+- Not bundled in release builds (as before): `sd` (stable-diffusion.cpp) and `llama-server-turbo`.
+- v0.9.4 was built as 0.9.3, so current installs kept being offered it. The release workflow now fails before building when the tag and the app version differ (FU-106).
+
 ## v0.9.2 - 2026-05-16
 
 ### Added

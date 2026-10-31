@@ -54,6 +54,28 @@ class AgentResult:
 
 _TOOL_CALL_OPEN = re.compile(r"<tool_call>\s*", re.IGNORECASE)
 _TOOL_CALL_CLOSE = re.compile(r"\s*</tool_call>", re.IGNORECASE)
+# XML call body used by LFM3 and Qwen3-Coder chat templates:
+# <function=NAME><parameter=KEY>VALUE</parameter>...</function>
+_XML_FUNCTION = re.compile(r"<function=([^>\n]+)>(.*?)</function>", re.DOTALL)
+_XML_PARAMETER = re.compile(r"<parameter=([^>\n]+)>\n?(.*?)\n?</parameter>", re.DOTALL)
+
+
+def _decode_xml_tool_call(text: str, start: int) -> tuple[dict[str, Any], int] | None:
+    """Decode an XML call body at ``start``, as ``({"name", "arguments"}, end)``.
+
+    Parameter values are read as JSON where they parse (numbers, lists,
+    objects) and kept as text otherwise, as the templates' own parser does.
+    """
+    match = _XML_FUNCTION.match(text, start)
+    if match is None:
+        return None
+    arguments: dict[str, Any] = {}
+    for key, value in _XML_PARAMETER.findall(match.group(2)):
+        try:
+            arguments[key.strip()] = json.loads(value)
+        except json.JSONDecodeError:
+            arguments[key.strip()] = value
+    return {"name": match.group(1).strip(), "arguments": arguments}, match.end()
 
 
 def _strip_tool_call_xml(text: str) -> str:
@@ -89,7 +111,7 @@ def _strip_tool_call_xml(text: str) -> str:
         if start >= len(text):
             break
         try:
-            _payload, end = decoder.raw_decode(text, start)
+            _payload, end = _decode_xml_tool_call(text, start) or decoder.raw_decode(text, start)
         except json.JSONDecodeError:
             # Malformed JSON after ``<tool_call>`` — drop the opener
             # alone and continue. The garbage payload stays so the
@@ -159,7 +181,10 @@ def _parse_tool_calls_from_response(response_text: str) -> list[dict[str, Any]] 
         if start >= len(response_text):
             break
         try:
-            payload, end = decoder.raw_decode(response_text, start)
+            payload, end = (
+                _decode_xml_tool_call(response_text, start)
+                or decoder.raw_decode(response_text, start)
+            )
         except json.JSONDecodeError:
             cursor = start + 1
             continue

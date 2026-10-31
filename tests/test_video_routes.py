@@ -367,8 +367,16 @@ class VideoRuntimeRouteTests(unittest.TestCase):
 class VideoPreloadRouteTests(unittest.TestCase):
     def setUp(self) -> None:
         self.client, self.tempdir, self.env_snapshot = make_client()
+        # Same as the generate tests (FU-060): preload runs the memory gate, and a
+        # small CI runner would refuse a 10 GB model before the route logic runs.
+        self._memory_patch = mock.patch(
+            "backend_service.helpers.memory_gate.snapshot_memory_signals",
+            return_value=(64.0, 10.0),
+        )
+        self._memory_patch.start()
 
     def tearDown(self) -> None:
+        self._memory_patch.stop()
         restore_env(self.env_snapshot)
         self.tempdir.cleanup()
 
@@ -603,6 +611,51 @@ class VideoGenerateRouteTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200, response.text)
         state.image_runtime.unload.assert_called_once_with()
+
+    def _stub_video_generate(self):
+        state = self.client.app.state.chaosengine
+        state.video_runtime.generate = mock.MagicMock(  # type: ignore[method-assign]
+            return_value=(
+                self._fake_generated_video(),
+                {"activeEngine": "diffusers", "realGenerationAvailable": True, "message": "Ready",
+                 "missingDependencies": [], "loadedModelRepo": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers"},
+            )
+        )
+        return state
+
+    def test_memory_gate_runs_after_the_idle_image_model_is_unloaded(self):
+        # Memory is short only while the idle image model is still loaded.
+        state = self._stub_video_generate()
+        state.image_runtime = mock.MagicMock()
+        state.image_runtime.capabilities.return_value = {"loadedModelRepo": "black-forest-labs/FLUX.1-schnell"}
+        state.image_runtime.unload.return_value = {"loadedModelRepo": None}
+
+        def signals():
+            return (40.0, 30.0) if state.image_runtime.unload.called else (3.0, 95.0)
+
+        with mock.patch("backend_service.helpers.memory_gate.snapshot_memory_signals", side_effect=signals), \
+                mock.patch.object(video_routes, "_video_variant_available_locally", return_value=True):
+            response = self.client.post("/api/video/generate", json=self._payload())
+        self.assertEqual(response.status_code, 200, response.text)
+
+    def test_refuses_a_model_larger_than_free_memory(self):
+        state = self._stub_video_generate()
+        with mock.patch("backend_service.helpers.memory_gate.snapshot_memory_signals", return_value=(10.0, 30.0)), \
+                mock.patch.object(video_routes, "_video_variant_available_locally", return_value=True):
+            response = self.client.post("/api/video/generate", json=self._payload())
+        self.assertEqual(response.status_code, 503, response.text)
+        self.assertIn("needs about", response.json()["detail"]["message"])
+        state.video_runtime.generate.assert_not_called()
+
+    def test_a_resident_model_skips_the_size_check(self):
+        state = self._stub_video_generate()
+        state.video_runtime.capabilities = mock.MagicMock(  # type: ignore[method-assign]
+            return_value={"loadedModelRepo": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers"},
+        )
+        with mock.patch("backend_service.helpers.memory_gate.snapshot_memory_signals", return_value=(10.0, 30.0)), \
+                mock.patch.object(video_routes, "_video_variant_available_locally", return_value=True):
+            response = self.client.post("/api/video/generate", json=self._payload())
+        self.assertEqual(response.status_code, 200, response.text)
 
     def test_generate_rejects_while_image_generation_active(self):
         from backend_service.progress import IMAGE_PROGRESS
@@ -885,8 +938,8 @@ class VideoDownloadRouteTests(unittest.TestCase):
             response = self.client.post(
                 "/api/video/download",
                 json={
-                    "repo": "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
-                    "modelId": "QuantStack/Wan2.2-TI2V-5B-GGUF-q4km",
+                    "repo": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+                    "modelId": "samuelchristlie/Wan2.1-T2V-1.3B-GGUF-q4km",
                 },
             )
 
@@ -894,8 +947,8 @@ class VideoDownloadRouteTests(unittest.TestCase):
         self.assertEqual(
             [repo for repo, _ in calls],
             [
-                "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
-                "QuantStack/Wan2.2-TI2V-5B-GGUF",
+                "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+                "samuelchristlie/Wan2.1-T2V-1.3B-GGUF",
             ],
         )
         base_patterns = calls[0][1]
@@ -903,8 +956,8 @@ class VideoDownloadRouteTests(unittest.TestCase):
         assert base_patterns is not None
         self.assertIn("transformer/config.json", base_patterns)
         self.assertNotIn("transformer/**", base_patterns)
-        self.assertEqual(calls[1][1], ["Wan2.2-TI2V-5B-Q4_K_M.gguf", "*.md", "LICENSE*"])
-        self.assertEqual(response.json()["download"]["repo"], "Wan-AI/Wan2.2-TI2V-5B-Diffusers")
+        self.assertEqual(calls[1][1], ["Wan2.1-T2V-1.3B-Q4_K_M.gguf", "*.md", "LICENSE*"])
+        self.assertEqual(response.json()["download"]["repo"], "Wan-AI/Wan2.1-T2V-1.3B-Diffusers")
 
     def test_cancel_rejects_repo_outside_video_catalog(self):
         response = self.client.post(

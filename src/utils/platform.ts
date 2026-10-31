@@ -12,7 +12,7 @@ import type { SystemStats } from "../types";
  * The three checks here are the ones that actually gate UI today:
  *
  *   - ``isAppleSiliconHost`` — Darwin + arm64. MLX, MLX-LM, MLX-VLM,
- *     mlx-video, mflux, MTPLX, dflash-mlx, turboquant-mlx-full all
+ *     mlx-video, mflux, MTPLX, TensorFold, dflash-mlx, turboquant-mlx-full all
  *     need Apple Silicon hardware (the MLX framework is closed to
  *     Metal-backed unified-memory devices). UI install prompts for
  *     any of these are noise + an install attempt would silently no-op
@@ -34,7 +34,7 @@ import type { SystemStats } from "../types";
  * flash of inappropriate UI before the probe lands.
  */
 
-type SystemLike = Pick<SystemStats, "platform" | "arch"> | null | undefined;
+type SystemLike = Pick<SystemStats, "platform" | "arch" | "gpuVramTotalGb"> | null | undefined;
 
 function normalize(value: string | undefined): string {
   return (value ?? "").trim().toLowerCase();
@@ -58,6 +58,18 @@ export function isCudaHost(system: SystemLike): boolean {
   if (platform !== "windows" && platform !== "linux") return false;
   const arch = normalize(system.arch);
   return arch === "x86_64" || arch === "amd64";
+}
+
+/** True when ``system`` describes a host that can run CUDA: Windows or Linux
+ * x86_64 with an NVIDIA GPU. The backend reads ``gpuVramTotalGb`` from
+ * ``nvidia-smi``, so ``null`` means no NVIDIA card (an AMD or Intel GPU, or a
+ * CPU-only box) and CUDA-only controls would be noise. ``undefined`` (an older
+ * backend that does not report it) keeps the old Windows / Linux behaviour. */
+export function hasNvidiaGpu(system: SystemLike): boolean {
+  if (!isCudaHost(system)) return false;
+  const vram = system?.gpuVramTotalGb;
+  if (vram === undefined) return true;
+  return typeof vram === "number" && vram > 0;
 }
 
 /** True when ``system`` describes an Intel Mac (rare in 2026 but
@@ -123,7 +135,7 @@ export function imageOrVideoVariantPlatformGate(variant: VariantLikeImageOrVideo
   if (tags.includes("apple-silicon")) {
     return "apple-silicon";
   }
-  if (runtime.includes("nunchaku") || tags.includes("cuda")) {
+  if (runtime.includes("nunchaku") || runtime.includes("longlive") || repo.startsWith("nvlabs/longlive") || tags.includes("cuda")) {
     return "cuda";
   }
   return "any";
@@ -145,7 +157,7 @@ interface VariantLikeChat {
  */
 export function chatVariantPlatformGate(variant: VariantLikeChat): PlatformGate {
   const backend = normalize(variant.backend ?? "");
-  if (backend === "mlx" || backend === "mlx-lm" || backend === "mtplx") {
+  if (backend === "mlx" || backend === "mlx-lm" || backend === "mtplx" || backend === "tensorfold") {
     return "apple-silicon";
   }
   if (backend === "vllm") {
@@ -175,6 +187,28 @@ export function isVariantCompatibleWithHost(
   if (gate === "any") return true;
   if (!system) return true; // early-paint safety
   if (gate === "apple-silicon") return isAppleSiliconHost(system);
-  if (gate === "cuda") return isCudaHost(system);
+  if (gate === "cuda") return hasNvidiaGpu(system);
   return true;
+}
+
+interface FamilyLike<V> {
+  variants: V[];
+}
+
+/** Drop the chat-catalog variants this host cannot run (MLX, MTPLX and
+ * TensorFold rows on Windows / Linux, vLLM rows on a Mac) and the families
+ * left with none, so Discover only lists what the user can launch. */
+export function filterFamiliesForHost<V extends VariantLikeChat, F extends FamilyLike<V>>(
+  families: F[],
+  system: SystemLike,
+): F[] {
+  if (!system) return families;
+  return families
+    .map((family) => ({
+      ...family,
+      variants: family.variants.filter((variant) =>
+        isVariantCompatibleWithHost(chatVariantPlatformGate(variant), system),
+      ),
+    }))
+    .filter((family) => family.variants.length > 0);
 }

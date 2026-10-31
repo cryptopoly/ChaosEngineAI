@@ -1,11 +1,12 @@
 {
   "composer": {
     "placeholderReady": "Type a message... (Enter to send, Shift+Enter for new line, / for commands)",
-    "placeholderNoModel": "Load a model first — pick one from My Models or Discover, then hit CHAT.",
+    "placeholderNoModel": "Load a model first — pick one from Chat > Models, then hit CHAT.",
     "send": "Send",
     "stop": "Stop",
     "clear": "Clear",
-    "sendDisabledTooltip": "Load a model first to send messages"
+    "sendDisabledTooltip": "Load a model first to send messages",
+    "sendLoadingTooltip": "Wait for the model to finish loading"
   },
   "thinkingMode": {
     "label": "Thinking",
@@ -72,7 +73,23 @@
     "ready": "Ready",
     "loadChatModel": "Load this chat's model",
     "loading": "Loading...",
-    "loadModel": "Load model"
+    "loadModel": "Load model",
+    "cancelLoadTitle": "Stop loading and free the memory",
+    "unloadTitle": "Unload the model and free its memory",
+    "cancelLoad": "Cancel load",
+    "unload": "Unload",
+    "startCall": "Talk with the model by voice",
+    "call": "Call",
+    "callNeedsModel": "Load a chat model to start a voice call",
+    "callInfo": "Talk with the loaded model out loud. Speak, pause, and it answers by voice; talk over it to interrupt. Each turn is saved in this chat.",
+    "callNeeds": "Needs:",
+    "callReady": "Ready",
+    "callMissing": "Missing",
+    "callSetup": "Click Call to open Voice Models and install what is missing.",
+    "callNeedModel": "a chat model loaded",
+    "callNeedStt": "speech recognition (Voice Models)",
+    "callNeedTts": "a voice for replies (Voice Models)",
+    "callNeedVad": "turn detection, part of the voice pack"
   },
   "sidebar": {
     "title": "Chats",
@@ -82,14 +99,22 @@
     "collapseChatList": "Collapse chat list",
     "searchThreadsPlaceholder": "Search threads...",
     "searchThreadsAriaLabel": "Search threads",
-    "clearSearch": "Clear search"
+    "clearSearch": "Clear search",
+    "noThreadsMatch": "No threads match \"{query}\".",
+    "unpin": "Unpin",
+    "pin": "Pin",
+    "deleteChat": "Delete chat",
+    "forkedFrom": "Forked from another thread at message #{number}",
+    "forkBadge": "⑂ fork",
+    "modelReadyTooltip": "Model is already loaded — this chat will respond instantly with no reload time.",
+    "readyBadge": "ready"
   },
   "swapMenu": {
     "clearOverride": "Clear override",
     "dialogAriaLabel": "Pick a model for the next turn",
     "sendNextVia": "Send next via",
     "oneTurnNote": "Override applies for one turn only.",
-    "noWarmModels": "No other warm models available. Load a second model from My Models to enable quick swaps."
+    "noWarmModels": "No other warm models available. Load a second model from Chat > Models to enable quick swaps."
   },
   "activeThread": {
     "title": "Active Thread",
@@ -180,7 +205,8 @@
       "cancel": "Cancel",
       "usePromptInNewChallenge": "Use Prompt in New Challenge",
       "runChallenge": "Run Challenge",
-      "runNewChallenge": "Run New Challenge"
+      "runNewChallenge": "Run New Challenge",
+      "browsePrompts": "Prompt library"
     },
     "status": {
       "generating": "Generating...",
@@ -214,6 +240,46 @@
       "titleForSlot": "Select {slot}",
       "confirm": "Use model",
       "confirmForSlot": "Use for {slot}"
+    },
+    "promptLibrary": {
+      "tabs": {
+        "all": "All"
+      },
+      "title": "Prompt library",
+      "subtitle": "Pick a ready-made challenge, or close to write your own.",
+      "searchPlaceholder": "Search prompts (name, mechanic, keyword)...",
+      "resultCount": "{count} shown",
+      "empty": "No prompts match your search.",
+      "close": "Cancel",
+      "categories": {
+        "games": "Games",
+        "simulations": "Simulations",
+        "tech-demos": "Tech Demos",
+        "creative-tools": "Creative Tools"
+      }
+    },
+    "slotPanel": {
+      "collapsePreview": "Collapse preview",
+      "expandPreview": "Expand preview",
+      "viewRender": "View Render",
+      "viewHtmlCode": "View HTML Code",
+      "collapse": "Collapse",
+      "latest": "Latest",
+      "changeModel": "Change Model",
+      "continueHtml": "Continue HTML",
+      "repairHtml": "Repair HTML",
+      "retry": "Retry",
+      "fileDeleted": "File deleted",
+      "fileDeletedDetail": "{filename} is no longer in this challenge folder.",
+      "savedFileFallback": "The saved HTML file",
+      "noHtmlOutput": "No HTML output",
+      "noRenderablePage": "This model finished without a renderable HTML page.",
+      "noStandaloneDocument": "The saved output did not contain a standalone HTML document.",
+      "previewTitle": "{label} HTML preview",
+      "loadingModel": "Loading model...",
+      "waitingFor": "Waiting for {label} to finish...",
+      "waiting": "Waiting...",
+      "waitingToStart": "Waiting to start..."
     }
   },
   "samplerPanel": {
@@ -223,14 +289,40 @@
     "dialogAriaLabel": "Sampler overrides",
     "headerTitle": "Sampler overrides",
     "resetAll": "Reset all",
-    "resetAllTooltip": "Reset all to backend defaults"
+    "resetAllTooltip": "Reset all to backend defaults",
+    "useBackendDefault": "Use backend default",
+    "reset": "Reset",
+    "schemaNotObject": "Schema must be a JSON object",
+    "invalidJson": "Invalid JSON",
+    "hints": {
+      "topP": "Nucleus cutoff (lower = focused)",
+      "topK": "Keep N most-likely tokens (0 = disabled)",
+      "minP": "Minimum probability cutoff",
+      "repeatPenalty": "1.0 = none; >1 = penalise repeats",
+      "xtcProbability": "XTC: chance to drop top tokens for variety (0 = off)",
+      "xtcThreshold": "XTC: only fires when the top token prob is at least this",
+      "dryMultiplier": "DRY anti-repetition strength (0 = off; llama.cpp only)",
+      "seed": "Deterministic decode (any non-negative int)",
+      "mirostatTau": "Target entropy",
+      "mirostatEta": "Learning rate"
+    },
+    "placeholderDefault": "default",
+    "placeholderOff": "off",
+    "placeholderRandom": "random",
+    "mirostatHint": "Adaptive sampling target entropy",
+    "jsonSchema": "JSON schema",
+    "jsonSchemaHint": "Constrained output (llama.cpp only)",
+    "schemaOk": "Schema parsed; will constrain next response.",
+    "panelHint": "Per-thread overrides. llama.cpp applies all; mlx-lm uses what it supports (top_p / top_k / min_p) and ignores the rest. Empty field = use the backend default."
   },
   "kvChip": {
     "clearOverride": "Clear KV override",
     "revertTooltip": "Revert to session default",
     "dialogAriaLabel": "KV cache strategy",
     "headingTitle": "KV cache for next turn",
-    "reloadNote": "Switching reloads the runtime if needed."
+    "reloadNote": "Switching reloads the runtime if needed.",
+    "memorySaverTitle": "Shrinks the KV cache so long chats fit in less memory. Generation is slower than Native.",
+    "memorySaver": "memory saver"
   },
   "citations": {
     "sourcesLabel": "Sources:",
@@ -269,5 +361,55 @@
     "promptPlaceholder": "Enter a prompt to compare...",
     "cancel": "Cancel",
     "compareButton": "Compare"
+  },
+  "voice": {
+    "heardNothing": "No speech was heard. Try again closer to the microphone.",
+    "installToDictate": "Voice input needs the voice pack. Click to install it.",
+    "stopDictation": "Stop and transcribe (Esc cancels)",
+    "transcribing": "Transcribing…",
+    "startDictation": "Dictate (click, or hold to talk; Ctrl/Cmd+Shift+M)",
+    "installToRead": "Read aloud needs the voice pack. Click to install it.",
+    "stopReading": "Stop reading",
+    "readAloud": "Read aloud",
+    "dismiss": "Dismiss",
+    "resume": "Resume",
+    "pause": "Pause",
+    "stop": "Stop",
+    "preparing": "Preparing speech…"
+  },
+  "voiceCall": {
+    "starting": "Starting the microphone…",
+    "listening": "Listening…",
+    "hearing": "Hearing you…",
+    "transcribing": "Got it…",
+    "thinking": "Thinking…",
+    "speaking": "Speaking…",
+    "error": "The call stopped",
+    "muted": "Muted",
+    "title": "Voice call",
+    "you": "You",
+    "model": "Model",
+    "interrupted": "(interrupted)",
+    "muteHint": "Mute the microphone (Space)",
+    "unmute": "Unmute",
+    "mute": "Mute",
+    "endHint": "End the call (Esc)",
+    "end": "End call",
+    "meta": "Voice: {voice}",
+    "headphones": "Headphones work best for interrupting"
+  },
+  "emptyBanner": {
+    "welcomeTitle": "👋 Welcome to ChaosEngineAI Chat",
+    "welcomeBody": "Pick a chat model from Chat > Models to get started. We recommend a small Qwen3 or Llama 3 variant for your first run — they download in a minute or two and run on any laptop.",
+    "browseDiscover": "Browse Models",
+    "noModelLoaded": "A model needs to be loaded before you can chat. Pick one from your library to bring it into memory.",
+    "loadModel": "Load Model",
+    "getStartedAriaLabel": "Get started with chat",
+    "loadModelAriaLabel": "Load a model to chat"
+  },
+  "codeBlock": {
+    "copied": "Copied",
+    "copyCode": "Copy code",
+    "copy": "Copy"
   }
 }

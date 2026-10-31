@@ -48,7 +48,7 @@ export function RunFromHuggingFace() {
     setError(null);
     try {
       await downloadModel(resolved.repo);
-      setNotice(t("runHf.downloadStarted", { defaultValue: "Download started — track progress in My Models, then Load." }));
+      setNotice(t("runHf.downloadStarted", { defaultValue: "Download started — track progress on the Models page, then Load." }));
     } catch (err) {
       setError(err instanceof Error ? err.message : t("runHf.downloadFailed", { defaultValue: "Download failed." }));
     } finally {

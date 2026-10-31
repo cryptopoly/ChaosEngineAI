@@ -110,6 +110,17 @@ export function SettingsIcon(props: IconProps) {
   );
 }
 
+export function MicrophoneIcon(props: IconProps) {
+  return (
+    <svg {...baseProps} {...props}>
+      <rect x="9" y="2" width="6" height="11" rx="3" />
+      <path d="M5 10a7 7 0 0 0 14 0" />
+      <line x1="12" y1="19" x2="12" y2="22" />
+      <line x1="8" y1="22" x2="16" y2="22" />
+    </svg>
+  );
+}
+
 export function ChevronIcon(props: IconProps & { open?: boolean }) {
   const { open, style, ...rest } = props;
   return (
@@ -137,6 +148,7 @@ export const groupIcon: Record<SidebarGroupId, ComponentType<IconProps>> = {
   models: ModelsIcon,
   images: ImagesIcon,
   video: VideoIcon,
+  voice: MicrophoneIcon,
   benchmarks: BenchmarksIcon,
   tools: ToolsIcon,
 };

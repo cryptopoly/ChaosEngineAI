@@ -12,9 +12,20 @@ export interface DashboardTabProps {
   runtime: RuntimeStatus;
   activity: ActivityItem[];
   backendOnline: boolean;
+  /** Stop one leftover model process (not the loaded model's). */
+  onStopProcess?: (pid: number) => void | Promise<void>;
+  /** Stop parked warm models and every model process nothing is using. */
+  onStopIdleProcesses?: () => void | Promise<void>;
 }
 
-export function DashboardTab({ system, recommendation, runtime, activity, backendOnline }: DashboardTabProps) {
+type RunningProcess = SystemStats["runningLlmProcesses"][number];
+
+/** A model process this app started that serves nothing: stale, safe to stop. */
+function isStopCandidate(process: RunningProcess): boolean {
+  return process.owner === "ChaosEngineAI" && !process.modelStatus && process.kind !== "backend";
+}
+
+export function DashboardTab({ system, recommendation, runtime, activity, backendOnline, onStopProcess, onStopIdleProcesses }: DashboardTabProps) {
   const { t } = useTranslation("dashboard");
   const warmModels = runtime.warmModels ?? [];
   const activeReq = runtime.activeRequests ?? 0;
@@ -138,12 +149,26 @@ export function DashboardTab({ system, recommendation, runtime, activity, backen
               </div>
             ) : null}
           </div>
-          <div className="data-table compact-table">
+          <div className="data-table compact-table process-table">
             <div className="table-row table-head">
               <span>{t("liveStats.processes.name")}</span>
               <span>{t("liveStats.processes.owner")}</span>
               <span>{t("liveStats.processes.memory")}</span>
               <span>{t("liveStats.processes.cpu")}</span>
+              <span>
+                {onStopIdleProcesses && (warmModels.length > 0 || system.runningLlmProcesses.some(isStopCandidate)) ? (
+                  <button
+                    type="button"
+                    className="secondary-button small-button"
+                    title={t("liveStats.processes.stopIdleHint", {
+                      defaultValue: "Unload parked models and stop every model process that is not serving the loaded model.",
+                    })}
+                    onClick={() => void onStopIdleProcesses()}
+                  >
+                    {t("liveStats.processes.stopIdle", { defaultValue: "Stop idle" })}
+                  </button>
+                ) : null}
+              </span>
             </div>
             <div className="data-table-body">
               {system.runningLlmProcesses.length ? (
@@ -169,6 +194,24 @@ export function DashboardTab({ system, recommendation, runtime, activity, backen
                     </span>
                     <span>{t("liveStats.processes.memoryGb", { value: number(process.memoryGb, 2) })}</span>
                     <span>{t("liveStats.processes.cpuPercent", { value: number(process.cpuPercent, 0) })}</span>
+                    <span>
+                      {isStopCandidate(process) && onStopProcess ? (
+                        <button
+                          type="button"
+                          className="secondary-button small-button"
+                          title={t("liveStats.processes.stopHint", {
+                            defaultValue: "Not serving the loaded model. Stop it to free its memory.",
+                          })}
+                          onClick={() => {
+                            if (window.confirm(t("liveStats.processes.stopConfirm", { defaultValue: "Stop this process and free its memory?" }))) {
+                              void onStopProcess(process.pid);
+                            }
+                          }}
+                        >
+                          {t("liveStats.processes.stop", { defaultValue: "Stop" })}
+                        </button>
+                      ) : null}
+                    </span>
                   </div>
                 ))
               ) : (

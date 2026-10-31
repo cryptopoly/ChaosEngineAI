@@ -14,6 +14,7 @@ const strict = mode === "release";
 const scriptRoot = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(scriptRoot, "..");
 const workspaceRoot = projectRoot;
+const releaseConstraintsPath = path.join(workspaceRoot, "release-constraints.txt");
 const tauriRoot = path.join(projectRoot, "src-tauri");
 const resourcesRoot = path.join(tauriRoot, "resources");
 const embeddedResourcesRoot = path.join(resourcesRoot, "embedded");
@@ -34,6 +35,27 @@ const backendDest = path.join(stageRoot, "backend");
 const binDest = path.join(stageRoot, "bin");
 const manifestDest = path.join(embeddedResourcesRoot, `runtime-${platformTag}.manifest.json`);
 const archiveDest = path.join(embeddedResourcesRoot, `runtime-${platformTag}.tar.gz`);
+
+// Installers the Setup tab runs as ``bash <backend>/scripts/<name>``. Each route
+// under backend_service/routes/setup resolves its script next to
+// ``backend_service`` (``parents[3]``), so a packaged build must stage them
+// there; without them every one of those Install buttons failed in a release
+// build with "No such file". tests/test_stage_runtime_scripts.py keeps this
+// list in step with the routes.
+const BUNDLED_INSTALL_SCRIPTS = [
+  "install-mflux.sh",
+  "install-ltx2-mlx.sh",
+  "install-mtplx.sh",
+  "install-tensorfold.sh",
+];
+
+// The llama.cpp release whose prebuilt binaries are bundled. Pinned (not
+// "latest") and kept equal to LLAMA_CPP_REF in scripts/update-llama-cpp.sh, which
+// tests/test_stage_runtime_scripts.py checks. The v0.9.8 build asked GitHub for
+// the repository's "latest" release, which had become a `v0.7.0` entry holding
+// only nightly-tag.txt, so no platform's release bundle got a llama-server.
+// Override with CHAOSENGINE_LLAMA_CPP_TAG.
+const LLAMA_CPP_TAG = process.env.CHAOSENGINE_LLAMA_CPP_TAG || "b11981";
 
 main();
 
@@ -61,11 +83,18 @@ function main() {
   pruneBundledProjectArtifacts();
 
   ensureDir(backendDest);
-  for (const relativePath of ["backend_service", "cache_compression", "turboquant_mlx"]) {
+  // ``dflash`` is the in-repo DFlash integration package (drafter map +
+  // availability probes). It was missing from this list since the initial
+  // release, so packaged builds hit an ImportError on every
+  // ``from dflash import ...`` and silently never engaged DFlash / DDTree.
+  for (const relativePath of ["backend_service", "cache_compression", "dflash", "turboquant_mlx"]) {
     copyTree(path.join(workspaceRoot, relativePath), path.join(backendDest, relativePath));
   }
   for (const relativeFile of ["README.md", "pyproject.toml"]) {
     copyFile(path.join(workspaceRoot, relativeFile), path.join(backendDest, relativeFile));
+  }
+  for (const script of BUNDLED_INSTALL_SCRIPTS) {
+    copyFile(path.join(workspaceRoot, "scripts", script), path.join(backendDest, "scripts", script));
   }
 
   const bundledOptionalPackages = stageOptionalRuntimePackages(pythonInfo.executable);
@@ -245,6 +274,8 @@ function validateBundledProjectImports(pythonBinary) {
   const script = [
     "import json",
     "from cache_compression import registry",
+    // Fails loudly if the ``dflash`` package wasn't staged (see above).
+    "from dflash import DRAFT_MODEL_MAP, get_draft_model",
     "print(json.dumps([entry['id'] for entry in registry.available()]))",
   ].join("\n");
 
@@ -253,8 +284,11 @@ function validateBundledProjectImports(pythonBinary) {
     PYTHONPATH: [backendDest, sitePackagesDest].join(path.delimiter),
   };
 
+  // cwd = backendDest, not workspaceRoot: ``python -c`` puts the cwd first
+  // on sys.path, so running from the repo let the source tree mask any
+  // package missing from the staged backend.
   const payload = execFileSync(pythonBinary, ["-c", script], {
-    cwd: workspaceRoot,
+    cwd: backendDest,
     encoding: "utf8",
     env,
   }).trim();
@@ -345,6 +379,8 @@ function stageOptionalRuntimePackages(pythonBinary) {
           "--no-compile",
           "--upgrade",
           "--target", sitePackagesDest,
+          // Same versions the app is tested with (scripts/freeze-release-constraints.py).
+          ...(fs.existsSync(releaseConstraintsPath) ? ["-c", releaseConstraintsPath] : []),
           pipName,
         ],
         {
@@ -497,7 +533,7 @@ function attemptPrebuiltLlamaDownload() {
 
   let release;
   try {
-    release = fetchLatestLlamaRelease();
+    release = fetchLlamaRelease(LLAMA_CPP_TAG);
   } catch (err) {
     return { ok: false, reason: `github api fetch failed: ${shortError(err)}` };
   }
@@ -571,7 +607,7 @@ function attemptPrebuiltLlamaDownload() {
   return { ok: true, binDir: cacheBinDir, source: `downloaded ${tag}` };
 }
 
-function fetchLatestLlamaRelease() {
+function fetchLlamaRelease(tag) {
   const payload = execFileSync(
     "curl",
     [
@@ -580,7 +616,7 @@ function fetchLatestLlamaRelease() {
       "User-Agent: ChaosEngineAI-build",
       "-H",
       "Accept: application/vnd.github+json",
-      "https://api.github.com/repos/ggml-org/llama.cpp/releases/latest",
+      `https://api.github.com/repos/ggml-org/llama.cpp/releases/tags/${encodeURIComponent(tag)}`,
     ],
     { encoding: "utf8" },
   );
@@ -621,10 +657,11 @@ function pickLlamaAsset(assets, platformKey) {
     "macos-x64": [
       /^llama-.*-bin-macos-x64(?:-[\w]+)?\.(?:zip|tar\.gz)$/i,
     ],
+    // Linux assets moved from .zip to .tar.gz upstream; accept both.
     "linux-x64": [
-      /^llama-.*-bin-ubuntu-vulkan-x64\.zip$/i,
-      /^llama-.*-bin-ubuntu-x64\.zip$/i,
-      /^llama-.*-bin-linux-x64\.zip$/i,
+      /^llama-.*-bin-ubuntu-vulkan-x64\.(?:zip|tar\.gz)$/i,
+      /^llama-.*-bin-ubuntu-x64\.(?:zip|tar\.gz)$/i,
+      /^llama-.*-bin-linux-x64\.(?:zip|tar\.gz)$/i,
     ],
   };
   for (const pattern of preferencePatterns[platformKey] || []) {

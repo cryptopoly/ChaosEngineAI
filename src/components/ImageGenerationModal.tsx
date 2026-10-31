@@ -86,16 +86,19 @@ export function ImageGenerationModal({
   // match them up with the real-time signal. Keep the labels human-friendly.
   const imagePhases: LiveProgressPhase[] = [
     ...(runInfo?.needsPipelineLoad
-      ? [{ id: "loading", label: "Loading model into memory", estimatedSeconds: 30 }]
+      ? [{ id: "loading", label: t("image.modal.phaseLoading", { defaultValue: "Loading model into memory" }), estimatedSeconds: 30 }]
       : []),
-    { id: "encoding", label: "Encoding prompt", estimatedSeconds: 5 },
+    { id: "encoding", label: t("image.modal.phaseEncoding", { defaultValue: "Encoding prompt" }), estimatedSeconds: 5 },
     {
       id: "diffusing",
-      label: `Diffusing ${batch} image${batch > 1 ? "s" : ""}`,
+      label: t("image.modal.phaseDiffusing", {
+        count: batch,
+        defaultValue: "Diffusing {count, plural, one {# image} other {# images}}",
+      }),
       estimatedSeconds: diffuseEstimate,
     },
-    { id: "decoding", label: "Decoding pixels", estimatedSeconds: 8 },
-    { id: "saving", label: "Saving to output gallery", estimatedSeconds: 3 },
+    { id: "decoding", label: t("image.modal.phaseDecoding", { defaultValue: "Decoding pixels" }), estimatedSeconds: 8 },
+    { id: "saving", label: t("image.modal.phaseSaving", { defaultValue: "Saving to output gallery" }), estimatedSeconds: 3 },
   ];
 
   return (
@@ -135,9 +138,11 @@ export function ImageGenerationModal({
             />
           ) : imageGenerationCancelled ? (
             <div className="callout">
-              <p>You cancelled this generation. No image was saved.</p>
+              <p>{t("image.modal.cancelledBody", { defaultValue: "You cancelled this generation. No image was saved." })}</p>
               <p className="muted-text">
-                The model is still loaded — next Generate will start without the cold-start wait.
+                {t("image.modal.modelStillLoaded", {
+                  defaultValue: "The model is still loaded — next Generate will start without the cold-start wait.",
+                })}
               </p>
             </div>
           ) : imageGenerationError ? (
@@ -145,7 +150,9 @@ export function ImageGenerationModal({
               <h3>{t("image.modal.failed", { defaultValue: "Image generation failed" })}</h3>
               <p>{imageGenerationError}</p>
               <p className="muted-text">
-                Adjust the prompt or runtime settings, then try again. The gallery keeps any earlier successful outputs.
+                {t("image.modal.errorHint", {
+                  defaultValue: "Adjust the prompt or runtime settings, then try again. The gallery keeps any earlier successful outputs.",
+                })}
               </p>
             </div>
           ) : activeArtifact ? (
@@ -173,7 +180,7 @@ export function ImageGenerationModal({
               </div>
               <div className="image-generation-info">
                 <div className="chip-row">
-                  <span className="badge success">Saved To Gallery</span>
+                  <span className="badge success">{t("image.modal.savedToGallery", { defaultValue: "Saved To Gallery" })}</span>
                   {activeArtifact.runtimeLabel ? <span className="badge subtle">{activeArtifact.runtimeLabel}</span> : null}
                 </div>
                 <div>
@@ -198,20 +205,23 @@ export function ImageGenerationModal({
                         onActiveTabChange("settings");
                       }}
                     >
-                      Settings
+                      {t("image.modal.settings", { defaultValue: "Settings" })}
                     </button>
                   </div>
                 ) : null}
                 <div className="image-output-meta">
                   <span>{activeArtifact.width} x {activeArtifact.height}</span>
-                  <span>{activeArtifact.steps} steps</span>
+                  <span>{t("image.modal.stepsCount", { count: activeArtifact.steps, defaultValue: "{count, plural, one {# step} other {# steps}}" })}</span>
                   <span>CFG {activeArtifact.guidance}</span>
-                  <span>Seed {activeArtifact.seed}</span>
+                  <span>{t("image.modal.seedValue", { seed: activeArtifact.seed, defaultValue: "Seed {seed}" })}</span>
                   <span>{number(activeArtifact.durationSeconds)}s</span>
                 </div>
                 {imageGenerationArtifacts.length > 1 ? (
                   <p className="muted-text">
-                    Generated {imageGenerationArtifacts.length} images in this run. Click a thumbnail to inspect a different result.
+                    {t("image.modal.generatedCount", {
+                      count: imageGenerationArtifacts.length,
+                      defaultValue: "Generated {count} images in this run. Click a thumbnail to inspect a different result.",
+                    })}
                   </p>
                 ) : null}
                 <div className="button-row">
@@ -220,7 +230,7 @@ export function ImageGenerationModal({
                     type="button"
                     onClick={() => onUseSameSettings(activeArtifact, true)}
                   >
-                    Use Same Settings
+                    {t("image.modal.useSameSettings", { defaultValue: "Use Same Settings" })}
                   </button>
                   <button
                     className="secondary-button"
@@ -228,7 +238,7 @@ export function ImageGenerationModal({
                     onClick={() => void onVarySeed(activeArtifact)}
                     disabled={imageBusy}
                   >
-                    Vary Seed
+                    {t("image.modal.varySeed", { defaultValue: "Vary Seed" })}
                   </button>
                 </div>
                 <div className="button-row">
@@ -237,21 +247,21 @@ export function ImageGenerationModal({
                     type="button"
                     onClick={() => void onOpenExternalUrl(activeArtifact.imagePath ?? activeArtifact.previewUrl)}
                   >
-                    Open
+                    {t("image.modal.open", { defaultValue: "Open" })}
                   </button>
                   <button
                     className="secondary-button"
                     type="button"
                     onClick={() => activeArtifact.imagePath ? void onRevealPath(activeArtifact.imagePath) : void onOpenExternalUrl(activeArtifact.previewUrl)}
                   >
-                    Reveal
+                    {t("image.modal.reveal", { defaultValue: "Reveal" })}
                   </button>
                   <button
                     className="secondary-button danger-button"
                     type="button"
                     onClick={() => void onDeleteArtifact(activeArtifact.artifactId)}
                   >
-                    Delete
+                    {t("image.modal.delete", { defaultValue: "Delete" })}
                   </button>
                 </div>
               </div>
@@ -266,7 +276,9 @@ export function ImageGenerationModal({
               onClick={onCancelGeneration}
               disabled={imageGenerationCancelling}
             >
-              {imageGenerationCancelling ? "Cancelling..." : "Cancel generation"}
+              {imageGenerationCancelling
+                ? t("image.modal.cancelling", { defaultValue: "Cancelling..." })
+                : t("image.modal.cancelGeneration", { defaultValue: "Cancel generation" })}
             </button>
           ) : (
             <button
@@ -274,11 +286,9 @@ export function ImageGenerationModal({
               type="button"
               onClick={() => onShowImageGenerationModalChange(false)}
             >
-              {imageGenerationError
-                ? "Close"
-                : imageGenerationCancelled
-                  ? "Close"
-                  : "Done"}
+              {imageGenerationError || imageGenerationCancelled
+                ? t("image.modal.close", { defaultValue: "Close" })
+                : t("image.modal.done", { defaultValue: "Done" })}
             </button>
           )}
         </div>

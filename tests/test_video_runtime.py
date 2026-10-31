@@ -234,7 +234,7 @@ class PipelineRegistryTests(unittest.TestCase):
             "THUDM/CogVideoX-5b",
             # FU-019 catalog refresh: CogVideoX 1.5 5B routes via the same
             # CogVideoXPipeline class as the 5B base.
-            "THUDM/CogVideoX-1.5-5b",
+            "THUDM/CogVideoX1.5-5B",
         }
         self.assertEqual(set(PIPELINE_REGISTRY.keys()), expected)
         for entry in PIPELINE_REGISTRY.values():
@@ -641,9 +641,28 @@ class ResolveVideoDefaultsTests(unittest.TestCase):
         from backend_service.video_runtime import _resolve_video_defaults
         resolved = _resolve_video_defaults("Wan-AI/Wan2.1-T2V-1.3B-Diffusers", 50, 3.0)
         self.assertEqual(resolved["steps"], 30)
-        self.assertEqual(resolved["guidance"], 6.0)
+        self.assertEqual(resolved["guidance"], 5.0)
         self.assertEqual(resolved["scheduler"], "unipc")
         self.assertTrue(resolved["substituted"])
+
+    def test_wan_defaults_follow_the_model_cards(self):
+        # Over-guidance burnt the Wan 2.2 5B clips (FU-122); the 2.1 and A14B rows use the card values.
+        from backend_service.video_runtime import _resolve_video_defaults
+        for repo, expected in (
+            ("Wan-AI/Wan2.1-T2V-1.3B-Diffusers", 5.0),
+            ("Wan-AI/Wan2.1-T2V-14B-Diffusers", 5.0),
+            ("Wan-AI/Wan2.2-T2V-A14B-Diffusers", 4.0),
+        ):
+            self.assertEqual(_resolve_video_defaults(repo, 50, 3.0)["guidance"], expected, repo)
+
+    def test_wan22_ti2v_default_guidance_is_the_model_card_value(self):
+        # 7.5 over-saturated Wan 2.2 TI2V 5B clips on Apple Silicon (bright
+        # washed-out frames with colour blocks, worse on longer clips); the
+        # model card's 5.0 gives clean frames.
+        from backend_service.video_runtime import _resolve_video_defaults
+        resolved = _resolve_video_defaults("Wan-AI/Wan2.2-TI2V-5B-Diffusers", 50, 3.0)
+        self.assertEqual(resolved["guidance"], 5.0)
+        self.assertEqual(resolved["steps"], 20)
 
     def test_user_overrides_preserved(self):
         from backend_service.video_runtime import _resolve_video_defaults
@@ -1793,3 +1812,59 @@ class VideoWarmCacheVariantKeyTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class UniPCOnMpsTests(unittest.TestCase):
+    """Wan's UniPC scheduler diverges on MPS and burns the picture; Euler does not."""
+
+    def _wan_pipeline(self, device_type: str, scheduler_cls: str = "UniPCMultistepScheduler"):
+        config = {
+            "prediction_type": "flow_prediction",
+            "flow_shift": 5.0,
+            "num_train_timesteps": 1000,
+        }
+        scheduler = type(scheduler_cls, (), {})()
+        scheduler.config = config
+        return SimpleNamespace(scheduler=scheduler, device=SimpleNamespace(type=device_type))
+
+    def _fake_diffusers(self):
+        made: list[dict] = []
+
+        class FlowMatchEulerDiscreteScheduler:
+            def __init__(self, **kwargs):
+                made.append(kwargs)
+
+        return SimpleNamespace(FlowMatchEulerDiscreteScheduler=FlowMatchEulerDiscreteScheduler), made
+
+    def test_unipc_becomes_flow_euler_with_the_repos_shift_on_mps(self):
+        engine = DiffusersVideoEngine()
+        pipeline = self._wan_pipeline("mps")
+        fake, made = self._fake_diffusers()
+        with mock.patch.object(video_runtime.importlib, "import_module", return_value=fake):
+            note = engine._swap_scheduler(pipeline, "unipc")
+
+        self.assertIn("flow-match Euler", note or "")
+        self.assertEqual(type(pipeline.scheduler).__name__, "FlowMatchEulerDiscreteScheduler")
+        self.assertEqual(made, [{"num_train_timesteps": 1000, "shift": 5.0}])
+
+    def test_a_second_run_on_the_same_pipeline_keeps_euler(self):
+        engine = DiffusersVideoEngine()
+        pipeline = self._wan_pipeline("mps", "FlowMatchEulerDiscreteScheduler")
+        before = pipeline.scheduler
+        self.assertIsNone(engine._swap_scheduler(pipeline, "unipc"))
+        self.assertIs(pipeline.scheduler, before)
+
+    def test_other_devices_keep_unipc(self):
+        engine = DiffusersVideoEngine()
+        for device in ("cuda", "cpu"):
+            pipeline = self._wan_pipeline(device)
+            before = pipeline.scheduler
+            self.assertIsNone(engine._swap_scheduler(pipeline, "unipc"))
+            self.assertIs(pipeline.scheduler, before)
+
+    def test_a_non_flow_unipc_config_is_left_to_the_normal_swap(self):
+        engine = DiffusersVideoEngine()
+        pipeline = self._wan_pipeline("mps")
+        pipeline.scheduler.config = {"prediction_type": "epsilon"}
+        self.assertIsNone(engine._swap_scheduler(pipeline, "unipc"))
+        self.assertEqual(type(pipeline.scheduler).__name__, "UniPCMultistepScheduler")

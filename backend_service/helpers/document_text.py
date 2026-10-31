@@ -19,7 +19,7 @@ from pathlib import Path
 
 CHUNK_SIZE_CHARS = 1600  # ~400 tokens
 CHUNK_OVERLAP_CHARS = 200  # ~50 tokens overlap
-_MIN_SAFE_PYPDF_VERSION = (6, 10, 2)
+_MIN_SAFE_PYPDF_VERSION = (6, 21, 4)
 
 
 # =========================================================================
@@ -47,10 +47,10 @@ def _require_safe_pypdf() -> None:
     try:
         installed = metadata.version("pypdf")
     except metadata.PackageNotFoundError as exc:
-        raise RuntimeError("PDF support requires pypdf>=6.10.2 to be installed.") from exc
+        raise RuntimeError("PDF support requires pypdf>=6.21.4 to be installed.") from exc
     if _parse_version_tuple(installed) < _MIN_SAFE_PYPDF_VERSION:
         raise RuntimeError(
-            "PDF support is disabled until pypdf>=6.10.2 is installed to address known parser DoS issues."
+            "PDF support is disabled until pypdf>=6.21.4 is installed to address known parser DoS issues."
         )
 
 

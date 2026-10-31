@@ -14,5 +14,10 @@
   <true/>
   <key>com.apple.security.cs.allow-jit</key>
   <true/>
+  <!-- Hardened runtime blocks microphone access unless the app declares it
+       (Voice dictation and voice chat; NSMicrophoneUsageDescription in
+       Info.plist is the text macOS shows). -->
+  <key>com.apple.security.device.audio-input</key>
+  <true/>
 </dict>
 </plist>

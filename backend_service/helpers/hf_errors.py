@@ -68,6 +68,13 @@ def _friendly_hf_download_error(repo_id: str, error: str) -> str:
             f"{repo_id} was not found on Hugging Face. "
             "This repo may have moved or the catalog entry may be stale."
         )
+    if "fine-grained token" in lowered and "gated" in lowered:
+        return (
+            f"Your Hugging Face token cannot open gated repos, so {repo_id} was refused. "
+            "Open huggingface.co/settings/tokens, edit the token, enable read access to public "
+            "gated repos you can access, save it in Settings, and retry. Accepting the model's "
+            "licence on its page is a separate step that must be done first."
+        )
     if (
         "refused access" in lowered
         or "http 401" in lowered

@@ -29,7 +29,14 @@
     "cancelled": "キャンセル済み",
     "complete": "完了",
     "totalSize": "合計 {size}",
-    "downloaded": "{downloaded} / {total}"
+    "downloaded": "{downloaded} / {total}",
+    "preparing": "ダウンロードを準備中...",
+    "pausedPercent": "一時停止中 {percent}%",
+    "downloadingPercent": "ダウンロード中 {percent}%",
+    "pausedAtSize": "{size} GB で一時停止",
+    "downloadingSize": "{size} GB をダウンロード中",
+    "sizeTotalGb": "合計 {size} GB",
+    "sizeDownloadedGb": "{size} GB ダウンロード済み"
   },
   "details": {
     "loadModel": "モデルを読み込む",
@@ -74,7 +81,9 @@
     "strategy": {
       "chip": "{label}({count})",
       "compatTooltip": "{label} と互換性のあるモデルを表示({count})",
-      "dflashEmptyTooltip": "DFlash の投機的デコード用ドラフトは特定のベースモデルにのみ存在します:Qwen/Qwen3(4B、8B)、Qwen/Qwen3-Coder(4B、8B、30B-A3B、Next)、Qwen/Qwen3.5(4B、7B、9B、14B、27B、35B-A3B)、Qwen/Qwen3.6-35B-A3B、meta-llama/Llama-3.1-8B-Instruct、gpt-oss(20B、120B)、moonshotai/Kimi-K2.5。ファインチューン版は通常合致しません。DFlash を有効化するにはディスカバーからベースモデルをダウンロードしてください。"
+      "dflashEmptyTooltip": "DFlash の投機的デコード用ドラフトは特定のベースモデルにのみ存在します:Qwen/Qwen3(4B、8B)、Qwen/Qwen3-Coder(4B、8B、30B-A3B、Next)、Qwen/Qwen3.5(4B、7B、9B、14B、27B、35B-A3B)、Qwen/Qwen3.6-35B-A3B、meta-llama/Llama-3.1-8B-Instruct、gpt-oss(20B、120B)、moonshotai/Kimi-K2.5。ファインチューン版は通常合致しません。DFlash を有効化するには「モデル」ページからベースモデルをダウンロードしてください。",
+      "memorySaverLabel": "{label} · メモリ節約",
+      "memorySaverTooltip": "KV キャッシュのメモリ節約方式である {label} を使えるモデルを表示: 長いチャットが少ない RAM に収まりますが、生成はネイティブより遅くなります({count})"
     },
     "column": {
       "model": "モデル",
@@ -118,7 +127,9 @@
       "deleteDownload": "ダウンロードを削除",
       "chatWithModel": "モデルとチャット",
       "loadForServer": "サーバー用に読み込む",
-      "deleteModel": "モデルを削除"
+      "deleteModel": "モデルを削除",
+      "unstarModel": "お気に入りから削除",
+      "starModel": "お気に入りに追加"
     }
   },
   "onlineModels": {
@@ -127,7 +138,8 @@
     "variantCount": "{count, plural, other {# 個のバリアント}}",
     "filter": {
       "all": "すべて",
-      "allFormats": "すべてのフォーマット"
+      "allFormats": "すべてのフォーマット",
+      "allAccel": "すべての高速化"
     },
     "capability": {
       "title": {
@@ -225,6 +237,11 @@
       "capFilter": "「{cap}」フィルターに一致するモデルはありません。",
       "search": "「{query}」に一致するモデルはありません。別の検索語を試してください。",
       "prompt": "モデルを検索するために入力してください。"
+    },
+    "accelFilter": {
+      "memorySaverLabel": "{label} · メモリ節約",
+      "memorySaverTooltip": "KV キャッシュのメモリ節約方式である {label} を使えるモデルを表示: 長いチャットが少ない RAM に収まりますが、生成はネイティブより遅くなります({count})",
+      "tooltip": "{label} と互換性のあるモデルを表示({count})"
     }
   },
   "imageModels": {
@@ -320,7 +337,9 @@
       "pending": "保留中",
       "pendingTitle": "モデルの重みサイズが判明するまで RAM/VRAM 推定は保留中です。"
     },
-    "releaseUnknown": "不明"
+    "releaseUnknown": "不明",
+    "sharedRepoTitle": "{repo} の他の {count} 個のバリアントと同じダウンロードを使用しています。この行を削除すると、それらのファイルも削除されます。",
+    "sharedRepo": "保存領域を共有 · +{count}"
   },
   "videoModels": {
     "subtitle": {
@@ -341,7 +360,10 @@
       "downloadModel": "モデルをダウンロード",
       "cancelDownload": "ダウンロードをキャンセル",
       "deleteModel": "モデルを削除",
-      "openModelCard": "モデルカードを開く"
+      "openModelCard": "モデルカードを開く",
+      "deleteSharedGguf": "共有 GGUF のダウンロードを削除",
+      "deleteSharedTextEncoder": "共有テキストエンコーダのダウンロードを削除",
+      "deleteSharedComponent": "共有コンポーネントのダウンロードを削除"
     },
     "filter": {
       "searchLabel": "検索",
@@ -417,7 +439,9 @@
       "pending": "保留中",
       "pendingTitle": "モデルの重みサイズが判明するまで RAM/VRAM 推定は保留中です。"
     },
-    "releaseUnknown": "不明"
+    "releaseUnknown": "不明",
+    "sharedRepo": "保存領域を共有 · +{count}",
+    "sharedRepoTitle": "{repo} の他の {count} 個のバリアントと同じダウンロードを使用しています。この行を削除すると、それらのファイルも削除されます。"
   },
   "imageDiscover": {
     "access": {
@@ -504,7 +528,16 @@
       "deleteModel": "モデルを削除",
       "openHuggingFace": "Hugging Face で開く",
       "huggingFace": "Hugging Face",
-      "settings": "設定"
+      "settings": "設定",
+      "trackedOnly": "追跡のみ — まだ起動できません"
+    },
+    "trackedOnly": {
+      "tooltip": "上流を監視中 — このファミリーのスタジオでの実行にはまだ対応していません。カタログへの掲載は情報提供のためで、ダウンロードしてもスタジオでは使えません。",
+      "badge": "上流を監視中"
+    },
+    "sortLabel": {
+      "likes": "いいねが多い順",
+      "downloads": "ダウンロード数が多い順"
     }
   },
   "videoDiscover": {
@@ -553,7 +586,8 @@
       "downloading": "ダウンロード中",
       "paused": "一時停止",
       "failed": "失敗",
-      "incomplete": "不完全"
+      "incomplete": "不完全",
+      "installing": "インストール中"
     },
     "sort": {
       "name": "名前",
@@ -587,6 +621,165 @@
     "unknown": "不明",
     "longLive": {
       "installNote": "LongLive は ~/.chaosengine/longlive の隔離された venv にインストールされます。CUDA のみ、ネットワークによって 5~15 分。"
+    },
+    "sortLabel": {
+      "likes": "いいねが多い順",
+      "downloads": "ダウンロード数が多い順"
+    }
+  },
+  "models": {
+    "action": {
+      "cancel": "ダウンロードをキャンセル",
+      "deleteDownload": "ダウンロードを削除",
+      "deleteModel": "モデルを削除",
+      "download": "モデルをダウンロード",
+      "more": "その他の操作",
+      "pause": "ダウンロードを一時停止",
+      "resume": "ダウンロードを再開",
+      "retry": "ダウンロードを再試行",
+      "trackedOnly": "追跡のみ — まだ起動できません"
+    },
+    "availability": {
+      "all": "すべて",
+      "attention": "要確認",
+      "available": "ダウンロード可能",
+      "downloading": "ダウンロード中",
+      "installed": "インストール済み",
+      "label": "表示"
+    },
+    "card": {
+      "collapse": "詳細を隠す",
+      "expand": "詳細を表示",
+      "incompatible": "このマシンでは実行できません",
+      "incompatibleTitle": "このモデルのエンジンはこのマシンでは動作しません。ファイルの削除は可能です。"
+    },
+    "delete": {
+      "confirmShared": "{count, plural, other {他の # 個のモデル}}が同じダウンロードを使用しており、一緒に削除されます:",
+      "confirmSharedMore": "ほか {count} 件",
+      "confirmTarget": "ディスクから {target} を削除します。この操作は元に戻せません。",
+      "confirmTitle": "「{name}」のファイルを削除しますか？"
+    },
+    "detail": {
+      "engine": "エンジン",
+      "fit": "このマシンでの適合性",
+      "license": "ライセンス",
+      "localPath": "ディスク上の場所",
+      "openModelCard": "モデルカードを開く",
+      "repo": "リポジトリ",
+      "resolution": "推奨サイズ",
+      "sharedWith": "次のモデルとダウンロードを共有",
+      "warning": "注意",
+      "ggufFile": "GGUF ファイル",
+      "textEncoder": "テキストエンコーダ",
+      "catalogSize": "カタログ上のサイズ"
+    },
+    "empty": {
+      "availability": "現在のフィルターでは、「{bucket}」のモデルはありません。",
+      "catalog": "カタログにはまだモデルがありません。",
+      "filters": "現在のフィルターに一致するモデルはありません。フィルターまたは検索語の範囲を広げてみてください。",
+      "showAvailable": "ダウンロード可能なモデルを表示"
+    },
+    "filter": {
+      "clear": "フィルターをクリア",
+      "search": "検索",
+      "sortBy": "並べ替え"
+    },
+    "fit": {
+      "bestFit": "最適",
+      "bestFitTitle": "このマシンに最適なこのファミリーのモデル:余裕を持って収まる最新リリースです。",
+      "estimated": "推定",
+      "estimatedNote": "モデルサイズからの推定値で、このマシンでは測定していません。",
+      "estimatedShort": "推定",
+      "fits": "収まる",
+      "measured": "実測",
+      "measuredNote": "このマシンで測定した値です。",
+      "numbers": "約 {need} GB が必要です(このマシンで使えるのは {usable} GB)。",
+      "tight": "ギリギリ",
+      "unknown": "このマシン向けではありません",
+      "wontFit": "収まらない"
+    },
+    "image": {
+      "emptyAttention": "要確認の画像モデルはありません。",
+      "emptyCatalog": "カタログにはまだ画像モデルがありません。バックエンドが起動しているか確認してください。",
+      "emptyDownloading": "ダウンロード中の画像モデルはありません。",
+      "emptyInstalled": "インストール済みの画像モデルはまだありません。ダウンロード可能なモデルから選んでダウンロードしてください。",
+      "intro": "すべての画像モデルを 1 つのリストにまとめました。ダウンロードすると画像スタジオで使えます。インストール済み・ダウンロード可能・ダウンロード中で絞り込めます。"
+    },
+    "sort": {
+      "fewestDownloads": "ダウンロード数が少ない順",
+      "leastLiked": "いいねが少ない順"
+    },
+    "status": {
+      "available": "未インストール",
+      "broken": "破損",
+      "downloading": "ダウンロード中",
+      "failed": "失敗",
+      "failedDetail": "ダウンロード失敗",
+      "installed": "インストール済み",
+      "loaded": "メモリに読み込み済み",
+      "partial": "不完全",
+      "paused": "一時停止"
+    },
+    "subtitle": "{total, plural, other {# 個のモデル}}中 {shown} 個を表示 · インストール済み {installed} 個",
+    "summary": {
+      "availability": "表示:{bucket}",
+      "count": "{count, plural, other {# 個のモデル}} · {sortLabel}",
+      "search": "検索:{query}"
+    },
+    "video": {
+      "intro": "すべての動画モデルを 1 つのリストにまとめました。ダウンロードすると動画スタジオで使えます。インストール済み・ダウンロード可能・ダウンロード中で絞り込めます。",
+      "emptyCatalog": "カタログにはまだ動画モデルがありません。バックエンドが起動しているか確認してください。",
+      "emptyInstalled": "インストール済みの動画モデルはまだありません。ダウンロード可能なモデルから選んでダウンロードしてください。",
+      "emptyDownloading": "ダウンロード中の動画モデルはありません。",
+      "emptyAttention": "要確認の動画モデルはありません。"
+    },
+    "chat": {
+      "intro": "すべてのチャットモデルを 1 つのリストにまとめました。ディスク上のモデル、カタログ、Hugging Face の検索結果が含まれます。インストール済み・ダウンロード可能・ダウンロード中で絞り込めます。",
+      "subtitle": "{total, plural, other {# 個のモデル}}中 {shown} 個を表示 · インストール済み {installed} 個 · ディスク使用量 {size} · {dirs, plural, other {# 個のディレクトリ}}",
+      "searchPlaceholder": "名前、プロバイダー、機能、パス、フォーマットで検索(Hugging Face も検索します)...",
+      "newThread": "新規スレッドでチャット",
+      "useInThisChat": "このチャットで使用",
+      "bestFitTitle": "このマシンに最適なこのファミリーのモデル:余裕を持って収まる最新リリース。同時にリリースされたサイズが複数ある場合は、収まる最大のものです。",
+      "closestMatch": "最も近いカタログ項目:{name}",
+      "sourceDownload": "ダウンロード",
+      "sizeTitle": "ディスク上 {onDisk}。カタログ上は {catalog} です",
+      "detail": {
+        "released": "リリース",
+        "directory": "ディレクトリ",
+        "modified": "更新日時"
+      },
+      "filter": {
+        "capability": "機能",
+        "format": "フォーマット",
+        "backend": "バックエンド",
+        "acceleration": "高速化"
+      },
+      "emptyCatalog": "カタログにもディスクにもチャットモデルがまだありません。バックエンドが起動しているか確認するか、設定でモデルディレクトリを追加してください。",
+      "emptyDownloading": "ダウンロード中のチャットモデルはありません。",
+      "emptyAttention": "要確認のチャットモデルはありません。",
+      "emptySearchHub": "ディスクにもカタログにも「{query}」に一致するモデルはありません。下に Hugging Face の結果を表示します。",
+      "sort": {
+        "release": "リリースが新しい順",
+        "name": "名前",
+        "format": "フォーマット",
+        "formatDir": "フォーマット {direction}",
+        "backend": "バックエンド",
+        "backendDir": "バックエンド {direction}",
+        "size": "サイズが大きい順",
+        "ram": "RAM が大きい順",
+        "ramDesc": "RAM が大きい順",
+        "ramAsc": "RAM が小さい順",
+        "compressed": "圧縮後 RAM が大きい順",
+        "compressedDesc": "圧縮後 RAM が大きい順",
+        "compressedAsc": "圧縮後 RAM が小さい順",
+        "context": "コンテキストが長い順",
+        "contextDesc": "コンテキストが長い順",
+        "contextAsc": "コンテキストが短い順",
+        "modified": "更新が新しい順",
+        "modifiedDesc": "更新が新しい順",
+        "modifiedAsc": "更新が古い順",
+        "status": "ステータス"
+      }
     }
   }
 }

@@ -24,18 +24,37 @@ interface Props {
 // "Loading workspace state..." for 30 s on first launch made the app
 // feel hung. This panel turns the wait into a phased narrative driven
 // off elapsed wall time + the tauri-side backend info.
+// The shell keeps a message in ``startupError`` for two different things. Once
+// the sidecar process is gone it is a failure. While the process still runs it
+// is a note (a slow start, a port fallback) and the splash keeps waiting.
+export function startupFailure(info: TauriBackendInfo | null): string | null {
+  const message = info?.startupError;
+  return message && !info?.processRunning ? message : null;
+}
+
+export function startupNote(info: TauriBackendInfo | null): string | null {
+  const message = info?.startupError;
+  return message && info?.processRunning ? message : null;
+}
+
 export function StartupProgressPanel(props: Props) {
   const { t } = useTranslation("common");
   const { elapsedSeconds, backendOnline, tauriBackend } = props;
-  const startupError = tauriBackend?.startupError;
+  const failure = startupFailure(tauriBackend);
+  const note = startupNote(tauriBackend);
+  const logPath = tauriBackend?.logPath;
+  const logLine = logPath
+    ? t("startupProgress.logPath", { defaultValue: "Backend log: {path}", path: logPath })
+    : null;
 
-  if (startupError) {
+  if (failure) {
     return (
       <div className="loading-state loading-state-error">
         <div className="loading-state-title">
           {t("startupProgress.error.title", { defaultValue: "Backend failed to start" })}
         </div>
-        <div className="loading-state-detail">{startupError}</div>
+        <div className="loading-state-detail loading-state-log">{failure}</div>
+        {logLine ? <div className="loading-state-elapsed">{logLine}</div> : null}
       </div>
     );
   }
@@ -46,6 +65,7 @@ export function StartupProgressPanel(props: Props) {
       <div className="loading-state-spinner" aria-hidden="true" />
       <div className="loading-state-title">{phase.title}</div>
       <div className="loading-state-detail">{phase.detail}</div>
+      {note ? <div className="loading-state-detail loading-state-log">{note}</div> : null}
       <div className="loading-state-elapsed">
         {elapsedSeconds > 45
           ? t("startupProgress.elapsedSlow", {
@@ -57,6 +77,7 @@ export function StartupProgressPanel(props: Props) {
               seconds: elapsedSeconds,
             })}
       </div>
+      {logLine && elapsedSeconds > 45 ? <div className="loading-state-elapsed">{logLine}</div> : null}
     </div>
   );
 }

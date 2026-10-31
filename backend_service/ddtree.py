@@ -4,10 +4,12 @@ Port of the tree-building algorithm from
 https://github.com/liranringel/ddtree adapted for ChaosEngineAI's MLX
 runtime.  Reuses the same DFlash draft model — the innovation is in
 how draft tokens are expanded into a *tree* of candidates and verified
-in a single forward pass with a tree-structured attention mask.
+in a single forward pass with a tree-structured attention mask (see
+``backend_service/ddtree_attention.py``).
 
-When ``tree_budget=0`` the module falls back to plain linear DFlash
-(identical to the existing ``_generate_dflash`` path).
+Verification is exact: with greedy decoding the output equals plain
+greedy decoding of the target. ``tree_budget <= 0`` verifies the draft's
+top-1 chain, which is linear DFlash on the same machinery.
 """
 
 from __future__ import annotations
@@ -18,13 +20,26 @@ from typing import Any, Optional
 
 import numpy as np
 
+from backend_service.ddtree_attention import (
+    compact_kv_cache,
+    prefill_with_capture,
+    tree_attention_mask,
+    tree_forward,
+    tree_positions,
+    tree_verify_unsupported_reason,
+)
+
+# Tokens verified per step, root included (the launch slider's maximum).
+MAX_TREE_BUDGET = 64
+
 
 # ======================================================================
 # 1.  Tree building  (framework-agnostic — pure Python / NumPy)
 # ======================================================================
 
-def build_ddtree_tree(
-    draft_logits_np: np.ndarray,
+def build_ddtree_tree_from_topk(
+    top_indices: np.ndarray,
+    top_log_probs: np.ndarray,
     budget: int,
 ) -> tuple[
     np.ndarray,       # node_token_ids  (N,)
@@ -33,22 +48,17 @@ def build_ddtree_tree(
     list[dict[int, int]],  # child_maps (1+N dicts)
     np.ndarray,        # visibility      (1+N, 1+N) bool
 ]:
-    """Build a draft tree from top-k logits using a max-probability heap.
+    """Build a draft tree with a max-probability heap.
 
-    Parameters
-    ----------
-    draft_logits_np : (depth, vocab) float32 NumPy array
-        Raw draft logits for each future position.
-    budget : int
-        Maximum number of tree nodes (excluding root).
-
-    Returns
-    -------
-    node_token_ids, node_depths, parents, child_maps, visibility
+    ``top_indices`` / ``top_log_probs`` are ``(depth, k)`` arrays holding the
+    k most likely tokens per future position, sorted by descending log
+    probability. A node's score is the sum of its path's log
+    probabilities; the ``budget`` best-scoring nodes (excluding the root)
+    are kept. Node order is pop order, so a parent always precedes its
+    children.
     """
-    if budget <= 0 or draft_logits_np.shape[0] == 0:
-        vis = np.zeros((1, 1), dtype=np.bool_)
-        vis[0, 0] = True
+    if budget <= 0 or top_indices.shape[0] == 0 or top_indices.shape[1] == 0:
+        vis = np.ones((1, 1), dtype=np.bool_)
         return (
             np.empty(0, dtype=np.int64),
             np.empty(0, dtype=np.int64),
@@ -57,23 +67,9 @@ def build_ddtree_tree(
             vis,
         )
 
-    topk = min(budget, draft_logits_np.shape[-1])
-    depth_limit = int(draft_logits_np.shape[0])
+    topk = int(top_indices.shape[1])
+    depth_limit = int(top_indices.shape[0])
 
-    logits = draft_logits_np.astype(np.float32)
-    log_z = np.log(np.sum(np.exp(logits - logits.max(axis=-1, keepdims=True)), axis=-1, keepdims=True)) + logits.max(axis=-1, keepdims=True)
-
-    # top-k per position
-    top_indices = np.argpartition(logits, -topk, axis=-1)[:, -topk:]
-    # sort within top-k by descending value
-    row_idx = np.arange(logits.shape[0])[:, None]
-    top_vals = logits[row_idx, top_indices]
-    sort_order = np.argsort(-top_vals, axis=-1)
-    top_indices = np.take_along_axis(top_indices, sort_order, axis=-1)
-    top_vals = np.take_along_axis(top_vals, sort_order, axis=-1)
-    top_log_probs = top_vals - log_z
-
-    # Heap-based tree expansion
     first_logw = float(top_log_probs[0, 0])
     heap: list[tuple[float, tuple[int, ...], int, int, int, float]] = [
         (-first_logw, (0,), 0, 1, 0, first_logw)
@@ -128,13 +124,36 @@ def build_ddtree_tree(
     )
 
 
+def build_ddtree_tree(
+    draft_logits_np: np.ndarray,
+    budget: int,
+) -> tuple[np.ndarray, np.ndarray, list[int], list[dict[int, int]], np.ndarray]:
+    """Build a draft tree from raw ``(depth, vocab)`` draft logits (NumPy)."""
+    if budget <= 0 or draft_logits_np.shape[0] == 0:
+        return build_ddtree_tree_from_topk(
+            np.empty((0, 0), dtype=np.int64), np.empty((0, 0), dtype=np.float32), 0,
+        )
+    logits = draft_logits_np.astype(np.float32)
+    row_max = logits.max(axis=-1, keepdims=True)
+    log_z = np.log(np.sum(np.exp(logits - row_max), axis=-1, keepdims=True)) + row_max
+    topk = min(budget, logits.shape[-1])
+    top_indices = np.argpartition(logits, -topk, axis=-1)[:, -topk:]
+    row_idx = np.arange(logits.shape[0])[:, None]
+    top_vals = logits[row_idx, top_indices]
+    order = np.argsort(-top_vals, axis=-1, kind="stable")
+    top_indices = np.take_along_axis(top_indices, order, axis=-1)
+    top_log_probs = np.take_along_axis(top_vals, order, axis=-1) - log_z
+    return build_ddtree_tree_from_topk(top_indices, top_log_probs, budget)
+
+
 def follow_verified_tree(
     child_maps: list[dict[int, int]],
     posterior_tokens: list[int],
 ) -> tuple[list[int], int]:
     """Walk the verified tree to find the longest accepted path.
 
-    Returns (accepted_node_indices, next_token_id).
+    ``posterior_tokens[i]`` is the target's greedy token after tree node
+    ``i``. Returns (accepted_node_indices, next_token_id).
     """
     accepted = [0]
     current = 0
@@ -143,118 +162,99 @@ def follow_verified_tree(
     while next_token in child_maps[current]:
         current = child_maps[current][next_token]
         accepted.append(current)
-        if current < len(posterior_tokens):
-            next_token = posterior_tokens[current]
-        else:
-            break
+        next_token = posterior_tokens[current]
 
     return accepted, next_token
 
 
 # ======================================================================
-# 2.  MLX tree compilation & verification
+# 2.  Full DDTree generation loop (MLX)
 # ======================================================================
 
-def compile_ddtree_tree_mlx(
-    mx: Any,
-    root_token_id: int,
-    start: int,
-    node_token_ids: np.ndarray,
-    node_depths: np.ndarray,
-    visibility: np.ndarray,
-    past_length: int,
-) -> tuple[Any, Any, Any]:
-    """Compile a draft tree into MLX tensors for batched verification.
+def ddtree_unsupported_reason(target_model: Any, target_ops: Any = None) -> Optional[str]:
+    """Why ``target_model`` cannot run DDTree on MLX, or None when it can."""
+    try:
+        if target_ops is None:
+            from dflash_mlx.runtime import resolve_target_ops
 
-    Returns (input_ids, position_ids, tree_mask) as MLX arrays.
-    ``tree_mask`` is an additive float mask: 0 where attention is allowed,
-    -inf where blocked — matching MLX's scaled_dot_product_attention convention.
+            target_ops = resolve_target_ops(target_model)
+        cache = target_ops.make_cache(target_model, enable_speculative_linear_cache=False)
+        return tree_verify_unsupported_reason(target_ops.text_model(target_model), cache)
+    except Exception as exc:
+        return f"tree verification could not be prepared: {exc}"
+
+
+def _draft_top_k(mx: Any, draft_logits: Any, k: int, suppress_mask: Any) -> tuple[np.ndarray, np.ndarray]:
+    """Top-k tokens and log probabilities per draft position, sorted.
+
+    Runs on the GPU so only ``(depth, k)`` values cross to the host.
     """
-    current_length = 1 + len(node_token_ids)
-
-    # input_ids: [root, node_0, node_1, ...]
-    ids = np.empty(current_length, dtype=np.int32)
-    ids[0] = root_token_id
-    if len(node_token_ids) > 0:
-        ids[1:] = node_token_ids
-    input_ids = mx.array(ids)[None]  # (1, tree_len)
-
-    # position_ids: root=start, children=start+depth
-    pos = np.empty(current_length, dtype=np.int32)
-    pos[0] = start
-    if len(node_depths) > 0:
-        pos[1:] = node_depths + start
-    position_ids = mx.array(pos)[None]  # (1, tree_len)
-
-    # Attention mask: (1, 1, tree_len, past_length + tree_len)
-    # Causal prefix (attend to all past) + tree visibility block
-    total_seq = past_length + current_length
-    mask_np = np.zeros((current_length, total_seq), dtype=np.float32)
-    # Block attention to tree positions based on visibility
-    tree_block = np.where(visibility, 0.0, -1e9)
-    mask_np[:, past_length:past_length + current_length] = tree_block
-    tree_mask = mx.array(mask_np)[None, None]  # (1, 1, tree_len, total_seq)
-
-    return input_ids, position_ids, tree_mask
+    logits = draft_logits.astype(mx.float32)
+    if suppress_mask is not None:
+        logits = mx.where(suppress_mask, mx.array(-np.inf, dtype=mx.float32), logits)
+    log_z = mx.logsumexp(logits, axis=-1, keepdims=True)
+    if k == 1:
+        top = mx.argmax(logits, axis=-1, keepdims=True)
+    else:
+        top = mx.argpartition(-logits, kth=k - 1, axis=-1)[:, :k]
+    top_log_probs = mx.take_along_axis(logits, top, axis=-1) - log_z
+    mx.eval(top, top_log_probs)
+    ids = np.array(top).astype(np.int64)
+    log_probs = np.array(top_log_probs)
+    if k > 1:
+        order = np.argsort(-log_probs, axis=-1, kind="stable")
+        ids = np.take_along_axis(ids, order, axis=-1)
+        log_probs = np.take_along_axis(log_probs, order, axis=-1)
+    return ids, log_probs
 
 
-def compact_cache_entries(
-    cache_entries: list[Any],
-    past_length: int,
-    accepted_indices: list[int],
-    trim_fn: Any,
-) -> None:
-    """Compact the KV cache after tree verification.
+def _make_draft_cache(draft_model: Any, context_len: int) -> list[Any]:
+    """The draft cache upstream's own decode loop uses for this drafter."""
+    try:
+        from dflash_mlx.draft_backend import make_draft_backend
+        from dflash_mlx.engine.config import resolve_draft_window
+    except ImportError:
+        from dflash_mlx.model import ContextOnlyDraftKVCache
 
-    Keeps only the entries corresponding to accepted tree nodes, then trims
-    the cache to ``past_length + len(accepted_indices)``.
-    """
-    import mlx.core as mx
-
-    if not accepted_indices:
-        trim_fn(cache_entries, past_length)
-        return
-
-    keep = mx.array(accepted_indices, dtype=mx.int32)
-    for entry in cache_entries:
-        if entry is None:
-            continue
-        # cache entries in mlx-lm / dflash_mlx are typically objects with
-        # .keys and .values attributes (or key_cache/value_cache).
-        for attr_name in ("keys", "key_cache"):
-            tensor = getattr(entry, attr_name, None)
-            if tensor is None or not hasattr(tensor, "shape"):
-                continue
-            seq_dim = len(tensor.shape) - 2  # (..., seq, head_dim)
-            if tensor.shape[seq_dim] <= past_length:
-                continue
-            # Extract the appended tree window and keep only accepted nodes
-            appended = tensor[..., past_length:, :]
-            kept = mx.take(appended, keep, axis=seq_dim)
-            # Write back: prefix + kept
-            prefix = tensor[..., :past_length, :]
-            new_tensor = mx.concatenate([prefix, kept], axis=seq_dim)
-            setattr(entry, attr_name, new_tensor)
-
-        for attr_name in ("values", "value_cache"):
-            tensor = getattr(entry, attr_name, None)
-            if tensor is None or not hasattr(tensor, "shape"):
-                continue
-            seq_dim = len(tensor.shape) - 2
-            if tensor.shape[seq_dim] <= past_length:
-                continue
-            appended = tensor[..., past_length:, :]
-            kept = mx.take(appended, keep, axis=seq_dim)
-            prefix = tensor[..., :past_length, :]
-            new_tensor = mx.concatenate([prefix, kept], axis=seq_dim)
-            setattr(entry, attr_name, new_tensor)
-
-    trim_fn(cache_entries, past_length + len(accepted_indices))
+        return [
+            ContextOnlyDraftKVCache(sink_size=64, window_size=1024)
+            for _ in range(len(draft_model.layers))
+        ]
+    sink_size, window_size = resolve_draft_window(None, draft_model, context_len=context_len)
+    return make_draft_backend().make_cache(
+        draft_model=draft_model, sink_size=sink_size, window_size=window_size,
+    )
 
 
-# ======================================================================
-# 3.  Full DDTree generation loop (MLX)
-# ======================================================================
+def _accepted_spans(
+    tokenizer: Any,
+    tokens: list[int],
+    accepted: list[bool],
+) -> tuple[list[dict[str, Any]], Optional[str]]:
+    """Run-length encode per-token draft acceptance into character spans so
+    the frontend overlay can tint draft-accepted ranges."""
+    limit = min(len(tokens), len(accepted))
+    if limit == 0:
+        return [], None
+    per_token_text: list[str] = []
+    for tok_id in tokens[:limit]:
+        try:
+            per_token_text.append(tokenizer.decode([int(tok_id)]))
+        except Exception:
+            per_token_text.append("")
+    spans: list[dict[str, Any]] = []
+    offset = 0
+    run_start = 0
+    run_kind = accepted[0]
+    for idx in range(limit):
+        if accepted[idx] != run_kind:
+            spans.append({"start": run_start, "length": offset - run_start, "accepted": run_kind})
+            run_start = offset
+            run_kind = accepted[idx]
+        offset += len(per_token_text[idx])
+    spans.append({"start": run_start, "length": offset - run_start, "accepted": run_kind})
+    return spans, "".join(per_token_text)
+
 
 def generate_ddtree_mlx(
     *,
@@ -268,366 +268,169 @@ def generate_ddtree_mlx(
     stop_token_ids: Optional[list[int]] = None,
     suppress_token_ids: Optional[list[int]] = None,
 ) -> dict[str, Any]:
-    """DDTree generation loop using dflash_mlx primitives.
+    """Greedy DDTree generation with a DFlash draft model.
 
-    Falls back to linear DFlash when tree_budget <= 0.
+    Raises ``ValueError`` when the target cannot be tree-verified (hybrid
+    recurrent layers, rotating or quantized caches); callers fall back to
+    linear DFlash.
     """
     import mlx.core as mx
-    # dflash-mlx 0.1.5+ moved every primitive consumed below off the
-    # ``runtime`` module top-level onto a per-family ``target_ops``
-    # adapter (Qwen3.5/3.6 / Llama-4 / Phi-4 / DeepSeek-V3). One adapter
-    # instance carries every per-architecture entry point we need —
-    # forward+capture, embed, text_model, lm_head, make_cache,
-    # extract_context_feature. ``ContextOnlyDraftKVCache`` moved to
-    # ``dflash_mlx.model``; ``create_attention_mask`` is upstream
-    # mlx-lm. ``trim_cache_to`` was removed entirely — the replacement
-    # is a thin local helper that calls each entry's own ``.trim()`` /
-    # ``.rollback()`` / ``.crop()`` based on what the cache type
-    # exposes.
-    from dflash_mlx.runtime import (
-        greedy_tokens_with_mask,
-        build_suppress_token_mask,
-        resolve_target_ops,
-    )
-    from dflash_mlx.model import ContextOnlyDraftKVCache
-    from mlx_lm.models.base import create_attention_mask
+    # dflash-mlx 0.1.5+ exposes the per-architecture entry points (text
+    # model, embeddings, lm head, cache factory, hidden-feature extraction)
+    # through a per-family ``target_ops`` adapter.
+    from dflash_mlx.runtime import resolve_target_ops
 
     target_ops = resolve_target_ops(target_model)
-
-    def _trim_cache_to(cache_entries: list[Any], target_len: int) -> None:
-        """Local replacement for the dropped ``dflash_mlx.runtime.trim_cache_to``.
-
-        Mirrors the trim half of ``target_ops.restore_after_acceptance``
-        — for every entry that exposes ``trim`` / ``crop`` / ``offset``,
-        roll the entry's effective length back to ``target_len``.
-        """
-        for entry in cache_entries:
-            if entry is None:
-                continue
-            if hasattr(entry, "rollback"):
-                offset = int(getattr(entry, "offset", 0) or 0)
-                if offset > target_len:
-                    entry.rollback(offset - target_len)
-            elif hasattr(entry, "trim"):
-                offset = int(getattr(entry, "offset", 0) or 0)
-                if offset > target_len:
-                    entry.trim(offset - target_len)
-            elif hasattr(entry, "offset"):
-                offset = int(getattr(entry, "offset", 0) or 0)
-                if offset > target_len:
-                    entry.offset = target_len
-            elif hasattr(entry, "crop"):
-                entry.crop(target_len)
-
-    trim_cache_to = _trim_cache_to
-
-    prompt_len = len(prompt_tokens)
-    prompt_array = mx.array(prompt_tokens, dtype=mx.uint32)[None]
-    stop_ids = list(stop_token_ids or [])
-    stop_set = set(stop_ids)
-
-    effective_block = max(1, min(int(block_tokens), int(draft_model.block_size)))
-    draft_horizon = effective_block - 1
-    effective_budget = max(0, min(tree_budget, 64))
-
-    # Caches
+    bind_target = getattr(draft_model, "bind_target_model", None)
+    if bind_target is not None:
+        bind_target(target_model, target_ops=target_ops)
+    text_model = target_ops.text_model(target_model)
     target_cache = target_ops.make_cache(target_model, enable_speculative_linear_cache=False)
-    draft_cache = [
-        ContextOnlyDraftKVCache(sink_size=0, window_size=0)
-        for _ in range(len(draft_model.layers))
-    ]
-    capture_layer_ids = {int(lid) + 1 for lid in draft_model.target_layer_ids}
+    unsupported = tree_verify_unsupported_reason(text_model, target_cache)
+    if unsupported:
+        raise ValueError(f"DDTree tree verification needs a pure-attention target: {unsupported}")
 
-    suppress_mask = build_suppress_token_mask(
-        tokenizer.vocab_size if hasattr(tokenizer, "vocab_size") else 151936,
-        suppress_token_ids,
-    )
+    def logits_fn(hidden: Any) -> Any:
+        return target_ops.logits_from_hidden(target_model, hidden)
+
+    embed_fn = target_ops.embed_tokens(target_model)
+    target_layer_ids = list(draft_model.target_layer_ids)
+    capture_layer_ids = {int(lid) + 1 for lid in target_layer_ids}
+    prompt_len = len(prompt_tokens)
+    draft_cache = _make_draft_cache(draft_model, context_len=prompt_len + max(0, int(max_new_tokens)))
+    stop_set = {int(t) for t in (stop_token_ids or [])}
+
+    # The budget counts every token the target verifies per step, the root
+    # included, so a budget of 32 is one 32-row verify pass.
+    effective_budget = max(0, min(int(tree_budget), MAX_TREE_BUDGET))
+    node_budget = max(1, effective_budget - 1) if effective_budget > 0 else 0
+    effective_block = max(1, min(int(block_tokens), int(draft_model.block_size)))
+    if node_budget > 0:
+        # A tree of N nodes is at most N deep; drafting further is wasted work.
+        effective_block = min(effective_block, node_budget + 1)
+    mask_tail = mx.full((max(0, effective_block - 1),), int(draft_model.mask_token_id), dtype=mx.uint32)
 
     # ── Prefill ──────────────────────────────────────────────
     t_start = time.perf_counter()
-    prefill_logits, prefill_hidden = target_ops.forward_with_hidden_capture(
-        target_model, input_ids=prompt_array, cache=target_cache,
+    prefill_logits, prefill_hidden = prefill_with_capture(
+        text_model=text_model,
+        logits_fn=logits_fn,
+        cache=target_cache,
+        input_ids=mx.array(prompt_tokens, dtype=mx.uint32)[None],
         capture_layer_ids=capture_layer_ids,
     )
-    mx.eval(prefill_logits)
-    if isinstance(prefill_hidden, dict):
-        mx.eval(*prefill_hidden.values())
-    else:
-        mx.eval(*prefill_hidden)
+    vocab_size = int(prefill_logits.shape[-1])
+    suppress_ids = sorted({int(t) for t in (suppress_token_ids or []) if 0 <= int(t) < vocab_size})
+    suppress_mask = None
+    if suppress_ids:
+        suppress_np = np.zeros(vocab_size, dtype=np.bool_)
+        suppress_np[suppress_ids] = True
+        suppress_mask = mx.array(suppress_np)
 
-    first_token = greedy_tokens_with_mask(prefill_logits[:, -1, :], suppress_mask).reshape(-1)
-    target_hidden = target_ops.extract_context_feature(
-        prefill_hidden, list(draft_model.target_layer_ids),
-    )
+    def greedy(logits: Any) -> Any:
+        if suppress_mask is not None:
+            logits = mx.where(suppress_mask, mx.array(-np.inf, dtype=logits.dtype), logits)
+        return mx.argmax(logits, axis=-1)
+
+    first_token = greedy(prefill_logits[0])
+    target_hidden = target_ops.extract_context_feature(prefill_hidden, target_layer_ids)
     mx.eval(first_token, target_hidden)
+    prefill_seconds = time.perf_counter() - t_start
 
     generated_tokens: list[int] = [int(first_token.item())]
-    # Phase 3.1 follow-up: track per-token accepted-from-draft bools so
-    # the AcceptedTokenOverlay can tint draft-accepted spans for the
-    # DDTree path the same way it does for linear DFLASH. The first
-    # token is the prefill posterior (verifier-decoded), so it's False.
+    # Per-token accepted-from-draft flags for the accepted-span overlay. The
+    # first token is the prefill posterior, so it is not draft-accepted.
     per_token_accepted: list[bool] = [False]
     start = prompt_len
     cycles = 0
     accepted_from_draft = 0
     acceptance_history: list[int] = []
-
-    embed_fn = target_ops.embed_tokens(target_model)
-    inner = target_ops.text_model(target_model)
+    stopped = generated_tokens[0] in stop_set
 
     # ── Decode loop ──────────────────────────────────────────
-    while len(generated_tokens) < max_new_tokens:
+    while not stopped and len(generated_tokens) < max_new_tokens:
         remaining = max_new_tokens - len(generated_tokens)
-        block_len = max(1, min(effective_block, remaining + 1))
+        # At most ``block_len - 1`` drafts are accepted plus one posterior
+        # token, so a cycle never commits more than ``remaining``.
+        block_len = max(1, min(effective_block, remaining))
+        root_token = generated_tokens[-1]
 
-        # Build the noise block: [last_committed_token, mask, mask, ...]
-        block_ids_np = np.full(block_len, draft_model.mask_token_id, dtype=np.int32)
-        block_ids_np[0] = generated_tokens[-1]
-        block_ids = mx.array(block_ids_np, dtype=mx.uint32)[None]
-
-        # ── Draft ────────────────────────────────────────────
         if block_len > 1:
-            noise_embedding = embed_fn(block_ids)
+            block_ids = mx.concatenate(
+                [mx.array([root_token], dtype=mx.uint32), mask_tail[: block_len - 1]]
+            )[None]
             draft_hidden = draft_model(
-                noise_embedding=noise_embedding,
+                noise_embedding=embed_fn(block_ids),
                 target_hidden=target_hidden,
                 cache=draft_cache,
             )
-            draft_logits = target_ops.logits_from_hidden(target_model, draft_hidden[:, 1:, :])
-            mx.eval(draft_logits)
-        else:
-            draft_logits = None
-
-        # Trim draft cache back to committed length
-        trim_cache_to(draft_cache, start)
-
-        if draft_logits is None or effective_budget <= 0:
-            # Linear DFlash fallback: greedy single path
-            if draft_logits is not None:
-                drafted = greedy_tokens_with_mask(draft_logits, suppress_mask).squeeze(0)
-                block_ids_np[1:block_len] = np.array(drafted.tolist(), dtype=np.int32)[:block_len - 1]
-                block_ids = mx.array(block_ids_np, dtype=mx.uint32)[None]
-
-            verify_logits, verify_hidden = target_ops.forward_with_hidden_capture(
-                target_model, input_ids=block_ids[:, :block_len],
-                cache=target_cache, capture_layer_ids=capture_layer_ids,
-            )
-            mx.eval(verify_logits)
-
-            posterior = greedy_tokens_with_mask(verify_logits[0], suppress_mask)
-            mx.eval(posterior)
-
-            # Linear acceptance
-            acceptance_len = 0
-            for i in range(1, block_len):
-                if int(posterior[i - 1].item()) == block_ids_np[i]:
-                    acceptance_len += 1
-                else:
-                    break
-
-            commit_count = 1 + acceptance_len
-            committed = [int(block_ids_np[i]) for i in range(1, commit_count)]
-            next_tok = int(posterior[min(acceptance_len, block_len - 1)].item())
-            committed.append(next_tok)
-
-            generated_tokens.extend(committed)
-            # Per-token accepted bools: first `acceptance_len` are
-            # draft-accepted; final one is the verifier's posterior
-            # decode for the position the draft got wrong (or the
-            # natural next token when the whole draft block was
-            # accepted).
-            for _ in range(acceptance_len):
-                per_token_accepted.append(True)
-            per_token_accepted.append(False)
-            accepted_from_draft += acceptance_len
-            acceptance_history.append(acceptance_len)
-            start += commit_count
-
-            committed_hidden = target_ops.extract_context_feature(
-                verify_hidden, list(draft_model.target_layer_ids),
-            )[:, :commit_count, :]
-            mx.eval(committed_hidden)
-            target_hidden = committed_hidden
-
-            trim_cache_to(target_cache, start)
-            cycles += 1
-        else:
-            # ── DDTree path ──────────────────────────────────
-            # Evaluate and convert MLX tensor directly to NumPy via the
-            # buffer protocol — avoids the very slow .tolist() intermediate
-            # Python list, which is a major bottleneck for large vocabularies
-            # (150K+ tokens for Qwen models).
-            mx.eval(draft_logits)
-            draft_logits_np = np.array(draft_logits[0], dtype=np.float32)
-
-            node_token_ids, node_depths, parents, child_maps, visibility = \
-                build_ddtree_tree(draft_logits_np, effective_budget)
-
-            tree_input_ids, tree_position_ids, tree_mask = compile_ddtree_tree_mlx(
-                mx,
-                root_token_id=generated_tokens[-1],
-                start=start,
-                node_token_ids=node_token_ids,
-                node_depths=node_depths,
-                visibility=visibility,
-                past_length=start,
-            )
-
-            # Tree verification: run target model with tree attention mask
-            tree_len = 1 + len(node_token_ids)
-            tree_embeddings = inner.embed_tokens(tree_input_ids)
-
-            # Build full attention mask: causal for prefix, tree for new tokens
-            h = tree_embeddings
-            captured_hidden: dict[int, Any] = {}
-            if 0 in capture_layer_ids:
-                captured_hidden[0] = h
-
-            # Get the cache's current prefix length for mask construction.
-            # ``create_attention_mask`` lives in mlx_lm upstream (dflash-mlx
-            # 0.1.5 dropped the runtime re-export).
-            causal_mask = create_attention_mask(h, target_cache[0] if target_cache else None)
-
-            # Replace the tree portion of the causal mask with our tree mask
-            if causal_mask is not None:
-                # causal_mask shape: (1, 1, tree_len, past + tree_len)
-                # We need to override the tree-to-tree block with visibility
-                vis_block = mx.where(
-                    mx.array(visibility)[None, None],
-                    mx.zeros_like(tree_mask[:, :, :tree_len, -tree_len:]),
-                    mx.array(-1e9),
+            draft_logits = logits_fn(draft_hidden[:, 1:, :])[0]
+            if node_budget > 0:
+                top_ids, top_log_probs = _draft_top_k(
+                    mx, draft_logits, min(node_budget, vocab_size), suppress_mask,
                 )
-                # Build combined mask: keep causal for prefix, use tree for tree block
-                combined = causal_mask.astype(mx.float32)
-                # Zero out the tree-to-tree portion and replace with visibility
-                prefix_len = combined.shape[-1] - tree_len
-                combined_np = np.array(combined.tolist(), dtype=np.float32)
-                vis_np = np.where(visibility, 0.0, -1e9).astype(np.float32)
-                combined_np[0, 0, :tree_len, prefix_len:prefix_len + tree_len] = vis_np
-                full_mask = mx.array(combined_np)
+                tree = build_ddtree_tree_from_topk(top_ids, top_log_probs, node_budget)
             else:
-                full_mask = tree_mask
-
-            # Run through target model layers with tree mask
-            for i, layer in enumerate(inner.layers):
-                h = layer(h, mask=full_mask, cache=target_cache[i])
-                layer_id = i + 1
-                if layer_id in capture_layer_ids:
-                    captured_hidden[layer_id] = h
-
-            h = inner.norm(h)
-            verify_logits = target_model.lm_head(h) if hasattr(target_model, "lm_head") else inner.lm_head(h) if hasattr(inner, "lm_head") else h
-            mx.eval(verify_logits)
-
-            # Sample from verified logits
-            posterior = greedy_tokens_with_mask(verify_logits[0], suppress_mask)
-            mx.eval(posterior)
-            posterior_list = [int(t.item()) for t in posterior]
-
-            # Walk the tree to find accepted path
-            accepted_indices, next_tok = follow_verified_tree(child_maps, posterior_list)
-            acceptance_len = len(accepted_indices) - 1  # exclude root
-            acceptance_history.append(acceptance_len)
-            accepted_from_draft += acceptance_len
-
-            # Extract committed tokens
-            tree_ids_list = [generated_tokens[-1]] + [int(node_token_ids[i]) for i in range(len(node_token_ids))]
-            committed = [tree_ids_list[idx] for idx in accepted_indices[1:]]  # skip root
-            committed.append(next_tok)
-            generated_tokens.extend(committed)
-            # Per-token accepted bools — same shape as the linear path:
-            # `acceptance_len` tokens came from the draft tree (True),
-            # the final next_tok is verifier-decoded (False).
-            for _ in range(acceptance_len):
-                per_token_accepted.append(True)
-            per_token_accepted.append(False)
-            start += len(accepted_indices)
-
-            # Compact cache: keep only accepted nodes
-            compact_cache_entries(target_cache, start - len(accepted_indices), accepted_indices, trim_cache_to)
-
-            # Extract hidden states for accepted nodes
-            accepted_mx = mx.array(accepted_indices, dtype=mx.int32)
-            committed_hidden = target_ops.extract_context_feature(
-                captured_hidden, list(draft_model.target_layer_ids),
+                top_ids, top_log_probs = _draft_top_k(mx, draft_logits, 1, suppress_mask)
+                tree = build_ddtree_tree_from_topk(top_ids, top_log_probs, block_len - 1)
+        else:
+            tree = build_ddtree_tree_from_topk(
+                np.empty((0, 0), dtype=np.int64), np.empty((0, 0), dtype=np.float32), 0,
             )
-            committed_hidden = mx.take(committed_hidden, accepted_mx, axis=1)
-            mx.eval(committed_hidden)
-            target_hidden = committed_hidden
+        node_token_ids, node_depths, _parents, child_maps, visibility = tree
 
-            cycles += 1
+        tree_tokens = [root_token] + [int(t) for t in node_token_ids]
+        verify_logits, verify_hidden = tree_forward(
+            text_model=text_model,
+            logits_fn=logits_fn,
+            cache=target_cache,
+            input_ids=mx.array(tree_tokens, dtype=mx.uint32)[None],
+            positions=tree_positions(start, node_depths),
+            mask=tree_attention_mask(mx, visibility, start),
+            capture_layer_ids=capture_layer_ids,
+        )
+        posterior = greedy(verify_logits[0])
+        mx.eval(posterior)
+        accepted_indices, next_token = follow_verified_tree(child_maps, posterior.tolist())
+        acceptance_len = len(accepted_indices) - 1
 
-        # Stop token check
-        if stop_set:
-            for tok in generated_tokens[-(len(committed) if 'committed' in dir() else 1):]:
-                if tok in stop_set:
-                    # Truncate at stop token
-                    for si, st in enumerate(generated_tokens):
-                        if st in stop_set:
-                            generated_tokens = generated_tokens[:si + 1]
-                            # Phase 3.1 follow-up: keep per_token_accepted
-                            # length aligned with generated_tokens after
-                            # stop-token truncation.
-                            per_token_accepted = per_token_accepted[:si + 1]
-                            break
-                    break
+        compact_kv_cache(target_cache, start, accepted_indices)
+        context_feature = target_ops.extract_context_feature(verify_hidden, target_layer_ids)
+        if accepted_indices == list(range(len(accepted_indices))):
+            target_hidden = context_feature[:, : len(accepted_indices), :]
+        else:
+            target_hidden = mx.take(
+                context_feature, mx.array(accepted_indices, dtype=mx.int32), axis=1,
+            )
+        mx.async_eval(target_hidden)
+        start += len(accepted_indices)
+        cycles += 1
+        accepted_from_draft += acceptance_len
+        acceptance_history.append(acceptance_len)
 
-        if stop_set and any(t in stop_set for t in generated_tokens[-10:]):
-            break
+        committed = [tree_tokens[idx] for idx in accepted_indices[1:]] + [int(next_token)]
+        for position, token in enumerate(committed):
+            generated_tokens.append(token)
+            per_token_accepted.append(position < acceptance_len)
+            if token in stop_set:
+                stopped = True
+                break
 
     elapsed = time.perf_counter() - t_start
     output_tokens = len(generated_tokens)
     avg_acceptance = float(np.mean(acceptance_history)) if acceptance_history else 0.0
-
-    # Phase 3.1 follow-up: per-token text decode + run-length encode
-    # the accepted bools into character spans so the frontend overlay
-    # can tint draft-accepted ranges. Defensive try/except — token
-    # decoders sometimes fail on rare ids; we fall through to no
-    # overlay rather than crashing the turn.
-    accepted_spans: list[dict[str, Any]] = []
-    accepted_token_text: str | None = None
     try:
-        if generated_tokens and per_token_accepted:
-            # Defensive align — slice both to the same length in case
-            # truncation paths drift.
-            limit = min(len(generated_tokens), len(per_token_accepted))
-            tokens = generated_tokens[:limit]
-            accepted = per_token_accepted[:limit]
-            per_token_text: list[str] = []
-            for tok_id in tokens:
-                try:
-                    per_token_text.append(tokenizer.decode([int(tok_id)]))
-                except Exception:
-                    per_token_text.append("")
-            accepted_token_text = "".join(per_token_text)
-            offset = 0
-            run_start = 0
-            run_kind = accepted[0] if accepted else False
-            for idx, is_accepted in enumerate(accepted):
-                tok_text = per_token_text[idx]
-                if is_accepted != run_kind:
-                    accepted_spans.append({
-                        "start": run_start,
-                        "length": offset - run_start,
-                        "accepted": run_kind,
-                    })
-                    run_start = offset
-                    run_kind = is_accepted
-                offset += len(tok_text)
-            if accepted:
-                accepted_spans.append({
-                    "start": run_start,
-                    "length": offset - run_start,
-                    "accepted": run_kind,
-                })
+        accepted_spans, accepted_token_text = _accepted_spans(
+            tokenizer, generated_tokens, per_token_accepted,
+        )
     except Exception:
-        accepted_spans = []
-        accepted_token_text = None
+        accepted_spans, accepted_token_text = [], None
 
     return {
         "generated_tokens": generated_tokens,
         "output_tokens": output_tokens,
         "elapsed_seconds": elapsed,
+        "prefill_seconds": prefill_seconds,
         "cycles": cycles,
         "accepted_from_draft": accepted_from_draft,
         "avg_acceptance_length": avg_acceptance,

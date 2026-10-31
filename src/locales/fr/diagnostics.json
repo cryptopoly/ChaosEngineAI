@@ -44,5 +44,35 @@
     "subtitle": "Vue recherchable sur les canaux sidecar, runtime et serveur.",
     "filterPlaceholder": "Filtrer les journaux",
     "emptyFiltered": "Aucune ligne de journal ne correspond au filtre actuel."
+  },
+  "accelerators": {
+    "title": "Accélérateurs",
+    "subtitle": "Accélérations optionnelles pour l'inférence image, vidéo et chat, ainsi que le pont WSL de Windows."
+  },
+  "diskUsage": {
+    "title": "Utilisation du disque",
+    "subtitle": "Quels repos de modèles occupent l'espace, pour savoir quoi supprimer.",
+    "topTitle": "Top 20 des repos de modèles",
+    "topHint": "Parcourt chaque répertoire de modèles activé et liste les plus gros repos sur le disque. Compte les octets des blobs une seule fois (les snapshots/ de Hugging Face sont des liens symboliques vers blobs/, ce qui fait que les scanners naïfs comptent en double).",
+    "scanning": "Analyse…",
+    "rescan": "Réanalyser",
+    "scan": "Analyser l'utilisation du disque",
+    "total": "Total de tous les répertoires activés :",
+    "shown": "{repos} repos affichés / {dirs} répertoire(s) racine analysé(s)",
+    "freed": "{gb} Go libérés depuis l'analyse",
+    "colRepo": "Repo",
+    "colSize": "Taille",
+    "colSource": "Source",
+    "colPath": "Chemin",
+    "unknownSize": "taille inconnue",
+    "deleteConfirm": "Supprimer définitivement {name} ({size}) ?\n\nCela le retire du disque et ne peut pas être annulé.",
+    "collapse": "Replier {name}",
+    "expand": "Déplier {name}",
+    "sharedTitle": "Stockage Hugging Face partagé : de nombreux repos y pointent",
+    "shared": "partagé",
+    "deleting": "Suppression…",
+    "delete": "Supprimer",
+    "reading": "Lecture…",
+    "empty": "Vide"
   }
 }

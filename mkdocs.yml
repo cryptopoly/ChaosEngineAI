@@ -82,10 +82,12 @@ nav:
       - usage/html-challenge.md
       - usage/image-studio.md
       - usage/video-studio.md
+      - usage/voice.md
       - usage/server-mode.md
       - usage/benchmarks.md
   - Features:
       - features/mtplx.md
+      - features/tensorfold.md
       - features/dflash.md
       - features/cache-strategies.md
       - features/fused-attention.md

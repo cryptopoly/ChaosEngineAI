@@ -380,6 +380,48 @@ class ChaosEngineBackendTests(unittest.TestCase):
         )
         self._memory_patch.start()
 
+    def test_chat_generate_answers_400_when_the_conversation_exceeds_the_context(self):
+        from backend_service.helpers.request_guards import RequestNotUsable
+
+        runtime = self.client.app.state.chaosengine.runtime
+
+        def too_long(**_kwargs):
+            raise RequestNotUsable("The conversation is about 9000 tokens, but the model is loaded with a 4096-token context.")
+
+        runtime.generate = too_long
+        response = self.client.post("/api/chat/generate", json={"prompt": "Hi", "maxTokens": 16})
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("9000", response.json()["detail"])
+
+    def test_image_preload_is_a_no_op_for_engines_that_start_one_process_per_image(self):
+        from unittest import mock as _m
+
+        state = self.client.app.state.chaosengine
+        variant = {"id": "x/klein-mflux", "name": "Klein (mflux)", "repo": "x/klein", "engine": "mflux"}
+        from backend_service.image_runtime import ImageRuntimeManager
+
+        runtime = _m.MagicMock(spec=ImageRuntimeManager)  # a plain MagicMock hid a wrong method name once
+        runtime.preload.side_effect = AssertionError("diffusers preload must not run for mflux")
+        runtime.capabilities.return_value = {"activeEngine": "diffusers"}
+        state.image_runtime = runtime
+        with _m.patch("backend_service.routes.images._find_image_variant", return_value=variant), _m.patch(
+            "backend_service.routes.images._image_variant_available_locally", return_value=True
+        ):
+            response = self.client.post("/api/images/preload", json={"modelId": "x/klein-mflux"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"runtime": {"activeEngine": "diffusers"}})
+        runtime.preload.assert_not_called()
+
+    def test_chat_generate_still_answers_500_for_an_engine_failure(self):
+        runtime = self.client.app.state.chaosengine.runtime
+
+        def broken(**_kwargs):
+            raise RuntimeError("the engine fell over")
+
+        runtime.generate = broken
+        response = self.client.post("/api/chat/generate", json={"prompt": "Hi", "maxTokens": 16})
+        self.assertEqual(response.status_code, 500)
+
     def tearDown(self):
         self._memory_patch.stop()
         self.tempdir.cleanup()
@@ -612,7 +654,7 @@ class ChaosEngineBackendTests(unittest.TestCase):
         Discover panel can render them as alternate variants."""
         # urlopen is called once per mirror author — return the same
         # payload for all of them; only city96's contains real matches.
-        def _fake_urlopen(req, timeout=8):
+        def _fake_urlopen(req, timeout=8, **_kwargs):
             if "author=city96" in req.full_url:
                 return fake_urlopen_json([
                     {
@@ -646,7 +688,7 @@ class ChaosEngineBackendTests(unittest.TestCase):
     def test_quantized_variants_detects_nf4_from_repo_name(self, urlopen_mock):
         """NF4 mirrors sometimes ship without a tag — fall back to
         matching ``nf4`` / ``bnb`` in the repo id so those still surface."""
-        def _fake_urlopen(req, timeout=8):
+        def _fake_urlopen(req, timeout=8, **_kwargs):
             if "author=QuantStack" in req.full_url:
                 return fake_urlopen_json([
                     {
@@ -1015,6 +1057,66 @@ class ChaosEngineBackendTests(unittest.TestCase):
         self.assertEqual(workspace["server"]["status"], "running")
         self.assertGreaterEqual(workspace["server"]["requestsServed"], 1)
 
+
+    def test_a_clamped_context_records_what_was_requested(self):
+        body = {"modelRef": "google/gemma-4-E4B-it", "modelName": "Gemma 4 E4B Instruct", "source": "catalog",
+                "backend": "mock", "contextTokens": 2_000_000}
+        loaded = self.client.post("/api/models/load", json=body).json()["runtime"]["loadedModel"]
+        self.assertLess(loaded["contextTokens"], 2_000_000)
+        self.assertEqual(loaded["requestedContextTokens"], 2_000_000)
+        # The same request again is a no-op, not a reload.
+        again = self.client.post("/api/models/load", json=body).json()["runtime"]["loadedModel"]
+        self.assertEqual(again["loadedAt"], loaded["loadedAt"])
+        self.assertEqual(again["requestedContextTokens"], 2_000_000)
+
+    def test_voice_turn_does_not_save_its_thinking_mode_to_the_thread(self):
+        self.client.post(
+            "/api/models/load",
+            json={"modelRef": "google/gemma-4-E4B-it", "modelName": "Gemma 4 E4B Instruct", "source": "catalog", "backend": "mock"},
+        )
+        first = self.client.post("/api/chat/generate", json={"prompt": "Hi", "thinkingMode": "auto", "maxTokens": 16}).json()
+        session_id = first["session"]["id"]
+        self.assertEqual(first["session"]["thinkingMode"], "auto")
+        voice = self.client.post(
+            "/api/chat/generate",
+            json={"sessionId": session_id, "prompt": "Hello", "thinkingMode": "off", "voiceTurn": True, "maxTokens": 16},
+        ).json()
+        self.assertEqual(voice["session"]["thinkingMode"], "auto")
+        plain = self.client.post(
+            "/api/chat/generate", json={"sessionId": session_id, "prompt": "Again", "thinkingMode": "off", "maxTokens": 16}
+        ).json()
+        self.assertEqual(plain["session"]["thinkingMode"], "off")
+
+    def test_generate_with_tools_enabled_returns_the_agent_answer(self):
+        from types import SimpleNamespace
+        from unittest import mock
+
+        self.client.post(
+            "/api/models/load",
+            json={"modelRef": "google/gemma-4-E4B-it", "modelName": "Gemma 4 E4B Instruct", "source": "catalog", "backend": "mock"},
+        )
+        agent_result = SimpleNamespace(
+            text="Das Ergebnis ist 24300.",
+            iterations=2,
+            total_prompt_tokens=40,
+            total_completion_tokens=12,
+            tool_calls=[
+                SimpleNamespace(
+                    tool_call_id="c1", tool_name="calculator", arguments={"expression": "2025*12"},
+                    result="24300", elapsed_seconds=0.01, render_as=None, data=None,
+                )
+            ],
+        )
+        with mock.patch("backend_service.agent.run_agent_loop", return_value=agent_result):
+            response = self.client.post(
+                "/api/chat/generate",
+                json={"prompt": "2025 mal 12?", "enableTools": True, "availableTools": ["calculator"], "maxTokens": 64},
+            )
+        self.assertEqual(response.status_code, 200, response.text)
+        assistant = response.json()["assistant"]
+        self.assertEqual(assistant["text"], "Das Ergebnis ist 24300.")
+        self.assertEqual(assistant["metrics"]["completionTokens"], 12)
+        self.assertEqual(assistant["metrics"]["toolCalls"][0]["name"], "calculator")
     def test_model_load_rejects_models_not_on_disk(self):
         """Regression: previously a load request for a model not in the library
         would fall through to llama-server's HuggingFace auto-fetch, which on
@@ -1203,6 +1305,29 @@ class ChaosEngineBackendTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200, response.text)
         state.video_runtime.unload.assert_called_once_with()
+
+    def test_image_memory_gate_runs_after_the_idle_video_model_is_unloaded(self):
+        state = self.client.app.state.chaosengine
+        unload = mock.Mock(return_value={"loadedModelRepo": None})
+        state.video_runtime = SimpleNamespace(
+            capabilities=mock.Mock(return_value={"loadedModelRepo": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers"}),
+            unload=unload,
+        )
+
+        def signals():
+            return (60.0, 20.0) if unload.called else (2.0, 97.0)
+
+        with mock.patch("backend_service.helpers.memory_gate.snapshot_memory_signals", side_effect=signals), \
+                mock.patch(
+                    "backend_service.routes.images._generate_image_artifacts",
+                    return_value=([], {"activeEngine": "diffusers"}),
+                ):
+            response = self.client.post(
+                "/api/images/generate",
+                json={"modelId": "black-forest-labs/FLUX.1-schnell", "prompt": "x", "width": 512,
+                      "height": 512, "steps": 4, "guidance": 3.5},
+            )
+        self.assertEqual(response.status_code, 200, response.text)
 
     def test_image_generate_rejects_while_video_generation_active(self):
         from backend_service.progress import VIDEO_PROGRESS
@@ -1767,7 +1892,6 @@ class ChaosEngineBackendTests(unittest.TestCase):
                 self.assertGreater(slot["fileBytes"], 0)
                 self.assertTrue(slot["validHtmlDocument"])
                 self.assertEqual(slot["htmlValidation"]["status"], "valid")
-            self.assertEqual(self.client.app.state.chaosengine.runtime.last_generate_kwargs["thinking_mode"], "off")
             self.assertIsNone(self.client.app.state.chaosengine.runtime.last_generate_kwargs["reasoning_effort"])
 
             second_slot = challenge["slots"][1]
@@ -2228,6 +2352,36 @@ class ChaosEngineBackendTests(unittest.TestCase):
         self.assertEqual(args[3], "org/video-model")
         self.assertEqual(json.loads(args[4]), patterns)
 
+    def test_turboquant_preview_is_a_memory_saver_not_a_speed_up(self):
+        """Measured decode is several times slower than Native (FU-066), so the
+        estimate must not promise anything near Native speed."""
+        common = dict(
+            fp16_layers=0, num_layers=32, num_heads=32, hidden_size=4096,
+            context_tokens=8192, params_b=7.0, system_stats=fake_system_snapshot(),
+        )
+        native = compute_cache_preview(bits=0, strategy="native", **common)
+        by_bits = {
+            bits: compute_cache_preview(bits=bits, strategy="turboquant", **common)
+            for bits in (1, 2, 3, 4)
+        }
+        self.assertEqual(native["speedRatio"], 1.0)
+        for preview in by_bits.values():
+            self.assertLess(preview["speedRatio"], 0.3)
+            self.assertLess(preview["estimatedTokS"], native["estimatedTokS"])
+        # Measured decode is flat across bit widths, so no ordering is asserted.
+
+    def test_turboquant_summary_warns_about_long_context_decode(self):
+        common = dict(
+            bits=3, fp16_layers=0, num_layers=32, num_heads=32, hidden_size=4096,
+            params_b=7.0, system_stats=fake_system_snapshot(), strategy="turboquant",
+        )
+        short = compute_cache_preview(context_tokens=2048, **common)
+        long = compute_cache_preview(context_tokens=16384, **common)
+        self.assertNotIn("keeps slowing", short["summary"])
+        self.assertIn("0.04x", long["summary"])
+        native = compute_cache_preview(bits=0, strategy="native", **{k: v for k, v in common.items() if k not in ("bits", "strategy")}, context_tokens=16384)
+        self.assertNotIn("keeps slowing", native["summary"])
+
     def test_preview_math_reduces_cache_size(self):
         preview = compute_cache_preview(
             bits=3,
@@ -2456,6 +2610,56 @@ class ChaosEngineBackendTests(unittest.TestCase):
 
         self.assertEqual(runtime_target, "/tmp/test-model.gguf")
         self.assertEqual(resolved_backend, "llama.cpp")
+
+    def test_local_model_directory_wins_over_catalog_repo_id(self):
+        """A catalogued model already on disk must load from its directory;
+        the repo id would make the MLX worker download it again."""
+        model_dir = Path(self.tempdir.name) / "AI_Models" / "prism-ml" / "Ternary-Bonsai-27B-mlx-2bit"
+        model_dir.mkdir(parents=True)
+        (model_dir / "config.json").write_text("{}", encoding="utf-8")
+        state = ChaosEngineState(
+            system_snapshot_provider=fake_system_snapshot,
+            library_provider=lambda: [],
+            settings_path=self.settings_path,
+            benchmarks_path=self.benchmarks_path,
+            chat_sessions_path=self.chat_sessions_path,
+        )
+
+        runtime_target, _ = state._resolve_model_target(
+            model_ref="prism-ml/Ternary-Bonsai-27B-mlx-2bit",
+            path=str(model_dir),
+            backend="mlx",
+        )
+        self.assertEqual(runtime_target, str(model_dir))
+
+        # Without a usable directory the catalog repo id is still the target.
+        runtime_target, _ = state._resolve_model_target(
+            model_ref="prism-ml/Ternary-Bonsai-27B-mlx-2bit",
+            path=str(model_dir / "missing"),
+            backend="mlx",
+        )
+        self.assertEqual(runtime_target, "prism-ml/Ternary-Bonsai-27B-mlx-2bit")
+
+    def test_downloaded_catalog_gguf_loads_from_its_cache_folder(self):
+        """A catalog launch without a path still uses the downloaded GGUF, so
+        the pinned quant and a drafter sidecar next to it are found."""
+        repo_dir = "/cache/models--meta-models--Muse-Glimmer-30B-GGUF"
+        state = ChaosEngineState(
+            system_snapshot_provider=fake_system_snapshot,
+            library_provider=lambda: [{
+                "name": "meta-models/Muse-Glimmer-30B-GGUF", "path": repo_dir, "format": "GGUF",
+                "sourceKind": "HF cache", "sizeGb": 19.8, "actions": ["Run Chat"],
+            }],
+            settings_path=self.settings_path,
+            benchmarks_path=self.benchmarks_path,
+            chat_sessions_path=self.chat_sessions_path,
+        )
+
+        runtime_target, backend = state._resolve_model_target(
+            model_ref="meta-models/Muse-Glimmer-30B-GGUF", path=None, backend="auto",
+        )
+        self.assertEqual(runtime_target, repo_dir)
+        self.assertEqual(backend, "llama.cpp")
 
     def test_recursive_discovery_finds_nested_model_directories(self):
         models_root = Path(self.tempdir.name) / "AI_Models"
@@ -2792,6 +2996,43 @@ class ChaosEngineBackendTests(unittest.TestCase):
                 "modelRef": "owner/name",
                 "modelName": "Owner Name",
                 "path": str(real),
+                "source": "library",
+                "backend": "mock",
+                "cacheBits": 0,
+                "fp16Layers": 0,
+            },
+        )
+
+        self.assertEqual(response.status_code, 200, msg=response.text)
+
+    def test_model_load_rechecks_a_broken_verdict_from_a_scan_mid_download(self):
+        # The library scan ran while shard 2 was still downloading; it has
+        # finished since, so the load must not be refused on the old verdict.
+        repo = Path(self.tempdir.name) / "hf-cache" / "models--owner--sharded"
+        snap = repo / "snapshots" / "abc"
+        snap.mkdir(parents=True)
+        for index in (1, 2):
+            (snap / f"model-0000{index}-of-00002.safetensors").write_bytes(b"x")
+
+        self.client.app.state.chaosengine._library_provider = lambda: [
+            {
+                "name": "owner/sharded",
+                "path": str(repo),
+                "format": "MLX",
+                "sourceKind": "HF cache",
+                "backend": "mlx",
+                "sizeGb": 0.01,
+                "actions": ["Run Chat"],
+                "broken": True,
+                "brokenReason": "Incomplete sharded safetensors checkpoint: found 1 of 2 shard files.",
+            }
+        ]
+
+        response = self.client.post(
+            "/api/models/load",
+            json={
+                "modelRef": "owner/sharded",
+                "modelName": "Owner Sharded",
                 "source": "library",
                 "backend": "mock",
                 "cacheBits": 0,

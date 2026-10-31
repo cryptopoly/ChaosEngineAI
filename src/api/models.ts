@@ -73,6 +73,14 @@ export async function unloadModel(ref?: string): Promise<RuntimeStatus> {
   return result.runtime;
 }
 
+export async function stopModelProcess(pid: number): Promise<{ pid: number; action: string }> {
+  return await postJson<{ pid: number; action: string }>("/api/models/processes/stop", { pid });
+}
+
+export async function stopIdleModelProcesses(): Promise<{ warmEvicted: number; orphansStopped: number }> {
+  return await postJson<{ warmEvicted: number; orphansStopped: number }>("/api/models/processes/stop-idle");
+}
+
 // ---------------------------------------------------------------------------
 // Downloads (text models — image / video have their own clusters)
 // ---------------------------------------------------------------------------
@@ -178,7 +186,7 @@ export async function resolveHfModel(repo: string, file?: string): Promise<Resol
 }
 
 // ---------------------------------------------------------------------------
-// Import existing Ollama / LM Studio models, no re-download (#4)
+// Import models already on disk from another local-AI app, no re-download (#4)
 // ---------------------------------------------------------------------------
 
 export interface ImportableModel {

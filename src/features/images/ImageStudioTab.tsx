@@ -4,6 +4,16 @@ import { Panel } from "../../components/Panel";
 import { InfoTooltip } from "../../components/InfoTooltip";
 import { ImageOutputCard } from "../../components/ImageOutputCard";
 import { PromptEnhanceButton } from "../../components/PromptEnhanceButton";
+import { MfluxEngineBanner } from "../../components/MfluxEngineBanner";
+import { RecommendedSettingsPanel } from "../../components/RecommendedSettingsPanel";
+import {
+  DEFAULT_MAX_SIDE,
+  DEFAULT_MIN_SIDE,
+  clampStudioSide,
+  fitStudioSize,
+  type RecommendationAppliers,
+  type RecommendationCurrent,
+} from "../../components/recommendedSettings";
 import { ImageStudioRuntimeBanner } from "./ImageStudioRuntimeBanner";
 import type { CudaTorchInstallResult, DownloadStatus, GpuBundleJobState, InstallResult } from "../../api";
 import type {
@@ -14,7 +24,6 @@ import type {
   ImageQualityPreset,
   ImageSamplerId,
   ImageRuntimeStatus,
-  TabId,
   TauriBackendInfo,
 } from "../../types";
 import type { NativeBackendStatus } from "../../types/server";
@@ -26,6 +35,7 @@ import {
   isGatedImageAccessError,
 } from "../../utils";
 import {
+  hasNvidiaGpu,
   imageOrVideoVariantPlatformGate,
   isVariantCompatibleWithHost,
 } from "../../utils/platform";
@@ -39,9 +49,12 @@ import {
   isFlowMatchingRepo,
   isUnetImageRepo,
 } from "../../constants";
+import { modelsPageRequest, type TabRequest } from "../../constants/tabRedirects";
 
 export interface ImageStudioTabProps {
   imageCatalog: ImageModelFamily[];
+  /** GB held by loaded chat models; the memory estimate counts it. */
+  residentChatModelGb?: number;
   selectedImageModelId: string;
   onSelectedImageModelIdChange: (id: string) => void;
   selectedImageVariant: ImageModelVariant | null;
@@ -84,7 +97,7 @@ export interface ImageStudioTabProps {
   onImageSeedInputChange: (value: string) => void;
   imageOutputs: ImageOutputArtifact[];
   recentImageOutputs: ImageOutputArtifact[];
-  onActiveTabChange: (tab: TabId) => void;
+  onActiveTabChange: (tab: TabRequest) => void;
   onOpenImageStudio: (modelId?: string) => void;
   onOpenImageGallery: (modelId?: string) => void;
   onSubmitImageGeneration: () => void;
@@ -114,7 +127,7 @@ export interface ImageStudioTabProps {
    * (per the FU-056 hide-unrecoverable-options policy). Threaded from
    * App.tsx → workspace.system. Optional because some test harnesses
    * mount the component without a full SystemStats. */
-  hostSystem?: Pick<SystemStats, "platform" | "arch">;
+  hostSystem?: Pick<SystemStats, "platform" | "arch" | "gpuVramTotalGb">;
   onPreloadImageModel: (variant: ImageModelVariant) => void;
   onUnloadImageModel: (variant?: ImageModelVariant) => void;
   onInstallImageRuntime: () => Promise<InstallResult>;
@@ -223,6 +236,7 @@ export function ImageStudioTab({
   onVaryImageSeed,
   onRevealPath,
   onDeleteImageArtifact,
+  residentChatModelGb,
 }: ImageStudioTabProps) {
   const { t } = useTranslation("studio");
   const [installingImageRuntime, setInstallingImageRuntime] = useState(false);
@@ -276,6 +290,17 @@ export function ImageStudioTab({
       .filter((family) => family.variants.length > 0);
   }, [imageCatalog, hostSystem]);
 
+  // The status comes from the diffusers runtime; mflux and stable-diffusion.cpp variants run elsewhere.
+  const variantEngine = selectedImageVariant?.engine ?? null;
+  const bannerRuntimeStatus: typeof imageRuntimeStatus =
+    variantEngine === "mflux" || variantEngine === "sdcpp"
+      ? {
+          ...imageRuntimeStatus,
+          activeEngine: variantEngine === "mflux" ? "mflux" : "stable-diffusion.cpp",
+          device: variantEngine === "mflux" ? "mlx" : imageRuntimeStatus.device,
+          expectedDevice: variantEngine === "mflux" ? "mlx" : imageRuntimeStatus.expectedDevice,
+        }
+      : imageRuntimeStatus;
   const hasInstalledImageModels = installedCatalog.length > 0;
 
   // If the currently-selected model is no longer in the installed list
@@ -295,12 +320,15 @@ export function ImageStudioTab({
     }
   }, [installedCatalog, hasInstalledImageModels, selectedImageModelId, onSelectedImageModelIdChange]);
 
-  const selectedRatioPreset =
-    IMAGE_RATIO_PRESETS.find((preset) => preset.width === imageWidth && preset.height === imageHeight) ??
-    IMAGE_RATIO_PRESETS.find((preset) => preset.id === imageRatioId) ??
-    IMAGE_RATIO_PRESETS[0];
+  // A pill is highlighted only while the fields hold its size (a recommended or hand-typed
+  // size that matches no preset leaves none highlighted).
+  const selectedRatioPreset = IMAGE_RATIO_PRESETS.find(
+    (preset) => preset.width === imageWidth && preset.height === imageHeight,
+  );
   const selectedQuality =
     IMAGE_QUALITY_PRESETS.find((preset) => preset.id === imageQualityPreset) ?? IMAGE_QUALITY_PRESETS[1];
+  // CUDA-only controls need an NVIDIA GPU: hidden on a Mac and on a PC without one.
+  const showCudaControls = hostSystem ? hasNvidiaGpu(hostSystem) : !isAppleSiliconHost;
   const selectedImageDownload = selectedImageVariant ? activeImageDownloads[selectedImageVariant.repo] : undefined;
   const selectedImageDownloadPaused = selectedImageDownload?.state === "cancelled";
   const selectedImageDownloadComplete = selectedImageDownload?.state === "completed";
@@ -330,8 +358,11 @@ export function ImageStudioTab({
         runtimeFootprintCpuGb: selectedImageVariant?.runtimeFootprintCpuGb,
         repo: selectedImageVariant?.repo,
         ggufFile: selectedImageVariant?.ggufFile,
+        engine: selectedImageVariant?.engine,
+        otherResidentGb: residentChatModelGb,
       }),
     [
+      residentChatModelGb,
       imageWidth,
       imageHeight,
       imageRuntimeStatus.device,
@@ -339,6 +370,7 @@ export function ImageStudioTab({
       imageRuntimeStatus.deviceMemoryGb,
       selectedImageVariant?.repo,
       selectedImageVariant?.ggufFile,
+      selectedImageVariant?.engine,
       selectedImageVariant?.sizeGb,
       selectedImageVariant?.coreWeightsGb,
       selectedImageVariant?.onDiskGb,
@@ -372,6 +404,79 @@ export function ImageStudioTab({
       onImageCacheStrategyChange("none");
     }
   }, [availableImageCacheStrategies, imageCacheStrategy, onImageCacheStrategyChange]);
+
+  // mflux and stable-diffusion.cpp run their own samplers outside diffusers: the sampler,
+  // diffusion cache, CFG decay, preview VAE and FP8 casting do nothing there, so the
+  // Studio does not offer them (the recommendations never include them either).
+  const externalImageEngine = variantEngine === "mflux" || variantEngine === "sdcpp";
+  const showSampler = Boolean(selectedImageVariant) && !externalImageEngine && !isFlowMatchingRepo(selectedImageRepo);
+  const showDiffusionCache = Boolean(selectedImageVariant) && !externalImageEngine && !isUnetVariant;
+  const showCfgDecay = Boolean(selectedImageVariant) && !externalImageEngine && isFlowMatchingRepo(selectedImageRepo);
+  const showPreviewVae = !externalImageEngine;
+  const showFp8 = showCudaControls && !externalImageEngine;
+  const acceptsGuidance = selectedImageVariant?.acceptsGuidance !== false;
+
+  // Per-model size limits (``maxSide`` from the catalog; 4096 when the backend sends none).
+  const imageMaxSide = selectedImageVariant?.maxSide && selectedImageVariant.maxSide > 0
+    ? selectedImageVariant.maxSide
+    : DEFAULT_MAX_SIDE;
+  const imageMinSide = Math.max(DEFAULT_MIN_SIDE, selectedImageVariant?.minSide ?? DEFAULT_MIN_SIDE);
+  useEffect(() => {
+    const fitted = fitStudioSize(imageWidth, imageHeight, { maxSide: imageMaxSide });
+    if (fitted.width !== imageWidth) onImageWidthChange(fitted.width);
+    if (fitted.height !== imageHeight) onImageHeightChange(fitted.height);
+  }, [imageMaxSide, imageWidth, imageHeight, onImageWidthChange, onImageHeightChange]);
+
+  // "Recommended for this machine": the panel applies through the same setters as the
+  // controls below, and only for settings this variant shows.
+  const recommendationAppliers = useMemo<RecommendationAppliers>(() => {
+    const allowedCache = new Set(availableImageCacheStrategies.map((strategy) => strategy.id as string));
+    return {
+      steps: onImageStepsChange,
+      guidance: acceptsGuidance ? onImageGuidanceChange : undefined,
+      width: (value) => onImageWidthChange(clampStudioSide(value, { maxSide: imageMaxSide, minSide: imageMinSide }, 1024)),
+      height: (value) => onImageHeightChange(clampStudioSide(value, { maxSide: imageMaxSide, minSide: imageMinSide }, 1024)),
+      qualityPreset: (value) => {
+        if (IMAGE_QUALITY_PRESETS.some((preset) => preset.id === value)) onApplyImageQuality(value as ImageQualityPreset);
+      },
+      sampler: showSampler
+        ? (value) => {
+            if (IMAGE_SAMPLERS.some((sampler) => sampler.id === value)) onImageSamplerChange(value as ImageSamplerId);
+          }
+        : undefined,
+      cacheStrategy: showDiffusionCache
+        ? (value) => {
+            if (allowedCache.has(value)) onImageCacheStrategyChange(value as ImageCacheStrategyId);
+          }
+        : undefined,
+      cacheThreshold: showDiffusionCache ? onImageCacheRelL1ThreshChange : undefined,
+      cfgDecay: showCfgDecay ? onImageCfgDecayChange : undefined,
+      previewVae: showPreviewVae ? onImagePreviewVaeChange : undefined,
+      fp8LayerwiseCasting: showFp8 ? onImageFp8LayerwiseCastingChange : undefined,
+    };
+  }, [
+    availableImageCacheStrategies, acceptsGuidance, imageMaxSide, imageMinSide, showSampler,
+    showDiffusionCache, showCfgDecay, showPreviewVae, showFp8, onImageStepsChange,
+    onImageGuidanceChange, onImageWidthChange, onImageHeightChange, onApplyImageQuality,
+    onImageSamplerChange, onImageCacheStrategyChange, onImageCacheRelL1ThreshChange,
+    onImageCfgDecayChange, onImagePreviewVaeChange, onImageFp8LayerwiseCastingChange,
+  ]);
+  const recommendationCurrent = useMemo<RecommendationCurrent>(() => ({
+    steps: imageSteps,
+    guidance: imageGuidance,
+    width: imageWidth,
+    height: imageHeight,
+    qualityPreset: imageQualityPreset,
+    sampler: imageSampler,
+    cacheStrategy: imageCacheStrategy,
+    cacheThreshold: imageCacheRelL1Thresh ?? IMAGE_CACHE_STRATEGY_DEFAULT_THRESH[imageCacheStrategy],
+    cfgDecay: imageCfgDecay,
+    previewVae: imagePreviewVae,
+    fp8LayerwiseCasting: imageFp8LayerwiseCasting,
+  }), [
+    imageSteps, imageGuidance, imageWidth, imageHeight, imageQualityPreset, imageSampler,
+    imageCacheStrategy, imageCacheRelL1Thresh, imageCfgDecay, imagePreviewVae, imageFp8LayerwiseCasting,
+  ]);
 
   function handleApplySafeImageSettings() {
     const suggestion = imageSafety.suggestion;
@@ -447,10 +552,10 @@ export function ImageStudioTab({
         className="span-2"
         actions={
           <div className="button-row">
-            <button className="secondary-button" type="button" onClick={() => onActiveTabChange("image-discover")}>
-              {t("imageStudio.actions.discover", { defaultValue: "Discover" })}
+            <button className="secondary-button" type="button" onClick={() => onActiveTabChange(modelsPageRequest("image", "available"))}>
+              {t("imageStudio.actions.discover", { defaultValue: "Find models" })}
             </button>
-            <button className="secondary-button" type="button" onClick={() => onActiveTabChange("image-models")}>
+            <button className="secondary-button" type="button" onClick={() => onActiveTabChange(modelsPageRequest("image", "installed"))}>
               {t("imageStudio.actions.installed", { defaultValue: "Installed" })}
             </button>
             <button className="secondary-button" type="button" onClick={() => onOpenImageGallery()}>
@@ -478,7 +583,8 @@ export function ImageStudioTab({
           ) : null}
         </div>
         <ImageStudioRuntimeBanner
-          imageRuntimeStatus={imageRuntimeStatus}
+          hostSystem={hostSystem}
+          imageRuntimeStatus={bannerRuntimeStatus}
           selectedImageVariant={selectedImageVariant}
           selectedImageLoaded={selectedImageLoaded}
           selectedImageWillLoadOnGenerate={selectedImageWillLoadOnGenerate}
@@ -541,22 +647,26 @@ export function ImageStudioTab({
                   </optgroup>
                 ))
               ) : (
-                <option value="">{t("image.noModelsOption", { defaultValue: "No models installed — download one from Discover" })}</option>
+                <option value="">{t("image.noModelsOption", { defaultValue: "No models installed — download one from Images > Models" })}</option>
               )}
             </select>
           </label>
+
+          <MfluxEngineBanner
+            modelNeedsMflux={Boolean(selectedImageVariant?.runtime?.toLowerCase().includes("mflux"))}
+          />
 
           {!hasInstalledImageModels ? (
             <div className="callout image-callout">
               <p>
                 {t("imageStudio.noModelsCallout.message", {
                   defaultValue:
-                    "You don't have any image models downloaded yet. Head to Image Discover to browse and install one, then come back here to generate.",
+                    "You don't have any image models downloaded yet. Head to Images > Models to browse and install one, then come back here to generate.",
                 })}
               </p>
               <div className="button-row">
-                <button className="secondary-button" type="button" onClick={() => onActiveTabChange("image-discover")}>
-                  {t("imageStudio.noModelsCallout.openDiscover", { defaultValue: "Open Image Discover" })}
+                <button className="secondary-button" type="button" onClick={() => onActiveTabChange(modelsPageRequest("image", "available"))}>
+                  {t("imageStudio.noModelsCallout.openDiscover", { defaultValue: "Open Image Models" })}
                 </button>
               </div>
             </div>
@@ -585,7 +695,7 @@ export function ImageStudioTab({
                     })
                   : t("imageStudio.download.notInstalledMessage", {
                       defaultValue:
-                        "{name} is not installed locally. Download it from Discover to enable local generation.",
+                        "{name} is not installed locally. Download it from the Models page to enable local generation.",
                       name: selectedImageVariant.name,
                     })}
               </p>
@@ -682,18 +792,36 @@ export function ImageStudioTab({
             />
           </label>
 
-          <label>
-            {t("image.negativePrompt", { defaultValue: "Negative prompt" })}
-            <textarea
-              className="text-input prompt-area prompt-area--secondary"
-              rows={3}
-              placeholder={t("imageStudio.negativePrompt.placeholder", {
-                defaultValue: "blurry, deformed hands, extra limbs, overexposed",
-              })}
-              value={imageNegativePrompt}
-              onChange={(event) => onImageNegativePromptChange(event.target.value)}
+          {selectedImageVariant?.acceptsNegativePrompt !== false ? (
+            <label>
+              {t("image.negativePrompt", { defaultValue: "Negative prompt" })}
+              <textarea
+                className="text-input prompt-area prompt-area--secondary"
+                rows={3}
+                placeholder={t("imageStudio.negativePrompt.placeholder", {
+                  defaultValue: "blurry, deformed hands, extra limbs, overexposed",
+                })}
+                value={imageNegativePrompt}
+                onChange={(event) => onImageNegativePromptChange(event.target.value)}
+              />
+            </label>
+          ) : null}
+
+          {selectedImageVariant?.availableLocally ? (
+            <RecommendedSettingsPanel
+              recommendation={selectedImageVariant.recommendedSettings}
+              appliers={recommendationAppliers}
+              current={recommendationCurrent}
+              labelFor={(kind, id) =>
+                kind === "sampler"
+                  ? samplerLabelFor(id)
+                  : kind === "cacheStrategy"
+                    ? cacheStrategyLabelFor(id)
+                    : qualityLabelFor(id)
+              }
+              disabled={imageBusy}
             />
-          </label>
+          ) : null}
 
           <div className="control-stack">
             <span className="eyebrow">{t("image.aspectRatio", { defaultValue: "Aspect Ratio" })}</span>
@@ -701,7 +829,7 @@ export function ImageStudioTab({
               {IMAGE_RATIO_PRESETS.map((preset) => (
                 <button
                   key={preset.id}
-                  className={selectedRatioPreset.id === preset.id ? "pill-button active" : "pill-button"}
+                  className={selectedRatioPreset?.id === preset.id ? "pill-button active" : "pill-button"}
                   type="button"
                   onClick={() => onApplyImageRatioPreset(preset.id)}
                 >
@@ -743,7 +871,7 @@ export function ImageStudioTab({
             </div>
           </div>
 
-          {selectedImageVariant && !isFlowMatchingRepo(selectedImageVariant.repo) ? (
+          {showSampler ? (
             <div className="control-stack">
               <span className="eyebrow">
                 {t("image.sampler", { defaultValue: "Sampler" })}
@@ -775,7 +903,7 @@ export function ImageStudioTab({
             (UNet-based SD1.5/SDXL fall through gracefully on the
             backend with a runtimeNote).
           */}
-          {selectedImageVariant && !isUnetVariant ? (
+          {showDiffusionCache ? (
             <div className="control-stack">
               <span className="eyebrow">
                 {t("image.diffusionCache", { defaultValue: "Diffusion cache" })}
@@ -847,7 +975,7 @@ export function ImageStudioTab({
             Backend gates non-flow-match repos automatically; we hide
             the toggle for SD1.5/SDXL so the UI matches behaviour.
           */}
-          {selectedImageVariant && isFlowMatchingRepo(selectedImageVariant.repo) ? (
+          {showCfgDecay ? (
             <label className="checkbox-row">
               <input
                 type="checkbox"
@@ -875,6 +1003,7 @@ export function ImageStudioTab({
             (taef1/taef2/taesd3/taesdxl/taesd/taeqwenimage); unmapped
             repos no-op silently.
           */}
+          {showPreviewVae ? (
           <label className="checkbox-row">
             <input
               type="checkbox"
@@ -893,6 +1022,7 @@ export function ImageStudioTab({
               })} />
             </span>
           </label>
+          ) : null}
 
           {/*
             FU-024: FP8 layerwise casting on CUDA SM 8.9+ (Ada/Hopper/
@@ -902,7 +1032,7 @@ export function ImageStudioTab({
             unreachable. Still rendered on Linux / Windows where backend
             checks compute capability + skips on pre-Ada hardware.
           */}
-          {!isAppleSiliconHost ? (
+          {showFp8 ? (
             <label className="checkbox-row">
               <input
                 type="checkbox"
@@ -929,11 +1059,12 @@ export function ImageStudioTab({
               <input
                 className="text-input"
                 type="number"
-                min={256}
-                max={2048}
+                min={imageMinSide}
+                max={imageMaxSide}
                 step={64}
                 value={imageWidth}
                 onChange={(event) => onImageWidthChange(Number(event.target.value) || 1024)}
+                onBlur={() => onImageWidthChange(clampStudioSide(imageWidth, { maxSide: imageMaxSide, minSide: imageMinSide }, 1024))}
               />
             </label>
             <label>
@@ -941,11 +1072,12 @@ export function ImageStudioTab({
               <input
                 className="text-input"
                 type="number"
-                min={256}
-                max={2048}
+                min={imageMinSide}
+                max={imageMaxSide}
                 step={64}
                 value={imageHeight}
                 onChange={(event) => onImageHeightChange(Number(event.target.value) || 1024)}
+                onBlur={() => onImageHeightChange(clampStudioSide(imageHeight, { maxSide: imageMaxSide, minSide: imageMinSide }, 1024))}
               />
             </label>
             <label>
@@ -959,18 +1091,20 @@ export function ImageStudioTab({
                 onChange={(event) => onImageStepsChange(Number(event.target.value) || 24)}
               />
             </label>
-            <label>
-              {t("imageStudio.fields.guidance", { defaultValue: "Guidance" })}
-              <input
-                className="text-input"
-                type="number"
-                min={1}
-                max={20}
-                step={0.5}
-                value={imageGuidance}
-                onChange={(event) => onImageGuidanceChange(Number(event.target.value) || 6)}
-              />
-            </label>
+            {acceptsGuidance ? (
+              <label>
+                {t("imageStudio.fields.guidance", { defaultValue: "Guidance" })}
+                <input
+                  className="text-input"
+                  type="number"
+                  min={1}
+                  max={20}
+                  step={0.5}
+                  value={imageGuidance}
+                  onChange={(event) => onImageGuidanceChange(Number(event.target.value) || 6)}
+                />
+              </label>
+            ) : null}
             <label>
               {t("imageStudio.fields.images", { defaultValue: "Images" })}
               <input
@@ -991,6 +1125,19 @@ export function ImageStudioTab({
               />
             </label>
           </div>
+
+          {selectedImageVariant?.maxPixels
+            && Number.isFinite(imageWidth) && Number.isFinite(imageHeight)
+            && imageWidth * imageHeight > selectedImageVariant.maxPixels ? (
+            <p className="muted-text" role="note">
+              {t("imageStudio.fields.maxPixelsNote", {
+                defaultValue:
+                  "{name} renders at most {megapixels} megapixels; this size is reduced to fit, keeping its shape.",
+                name: selectedImageVariant.name,
+                megapixels: (selectedImageVariant.maxPixels / 1_000_000).toFixed(1),
+              })}
+            </p>
+          ) : null}
 
           {/*
             Pre-flight memory callout. Same structure as the video studio's
@@ -1054,7 +1201,7 @@ export function ImageStudioTab({
                   <button
                     className="secondary-button"
                     type="button"
-                    onClick={() => onActiveTabChange("image-discover")}
+                    onClick={() => onActiveTabChange(modelsPageRequest("image", "available"))}
                     disabled={imageBusy}
                   >
                     {t("imageStudio.safety.browseSmaller", { defaultValue: "Browse smaller models" })}

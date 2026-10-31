@@ -359,26 +359,54 @@ class ChaosEngineState:
             recommendation["title"],
             title_key="activity.hardwareProfile.title",
         )
-        self.add_activity(
-            "Backend readiness",
-            " / ".join(
-                [
-                    f"MLX installed: {'yes' if system['mlxAvailable'] else 'no'}",
-                    f"mlx-lm installed: {'yes' if system['mlxLmAvailable'] else 'no'}",
-                    f"MLX usable: {'yes' if system.get('mlxUsable') else 'no'}",
-                    f"GGUF runtime: {'yes' if system.get('ggufAvailable') else 'no'}",
-                ]
-            ),
-            title_key="activity.backendReadiness.title",
-            detail_key="activity.backendReadiness.detail",
-            payload={
-                "mlx": "yes" if system["mlxAvailable"] else "no",
-                "mlxLm": "yes" if system["mlxLmAvailable"] else "no",
-                "mlxUsable": "yes" if system.get("mlxUsable") else "no",
-                "gguf": "yes" if system.get("ggufAvailable") else "no",
-            },
-        )
+        self._announce_backend_readiness_when_known(system)
         self._kick_library_scan()
+
+    def _announce_backend_readiness_when_known(self, system: dict[str, Any]) -> None:
+        """Log the "Backend readiness" activity once native backend detection has finished.
+
+        At boot the MLX probe is still running, so the first snapshot says MLX is missing on a
+        Mac that has it. A short daemon thread waits for the probe and logs the real answer.
+        """
+
+        def announce(snapshot: dict[str, Any]) -> None:
+            self.add_activity(
+                "Backend readiness",
+                " / ".join(
+                    [
+                        f"MLX installed: {'yes' if snapshot['mlxAvailable'] else 'no'}",
+                        f"mlx-lm installed: {'yes' if snapshot['mlxLmAvailable'] else 'no'}",
+                        f"MLX usable: {'yes' if snapshot.get('mlxUsable') else 'no'}",
+                        f"GGUF runtime: {'yes' if snapshot.get('ggufAvailable') else 'no'}",
+                    ]
+                ),
+                title_key="activity.backendReadiness.title",
+                detail_key="activity.backendReadiness.detail",
+                payload={
+                    "mlx": "yes" if snapshot["mlxAvailable"] else "no",
+                    "mlxLm": "yes" if snapshot["mlxLmAvailable"] else "no",
+                    "mlxUsable": "yes" if snapshot.get("mlxUsable") else "no",
+                    "gguf": "yes" if snapshot.get("ggufAvailable") else "no",
+                },
+            )
+
+        if not getattr(self.runtime.capabilities, "probing", False):
+            announce(system)
+            return
+
+        import threading
+        import time
+
+        def wait_then_announce() -> None:
+            deadline = time.monotonic() + 120.0
+            while time.monotonic() < deadline and getattr(self.runtime.capabilities, "probing", False):
+                time.sleep(1.0)
+            try:
+                announce(self._system_snapshot())
+            except Exception:
+                pass
+
+        threading.Thread(target=wait_then_announce, name="backend-readiness", daemon=True).start()
 
     @staticmethod
     def _time_label() -> str:
@@ -640,7 +668,18 @@ class ChaosEngineState:
             return runtime_target, resolved_backend
 
         if catalog_entry is not None:
-            runtime_target = _hf_repo_from_link(catalog_entry.get("link")) or runtime_target or model_ref
+            if path and (Path(path).expanduser() / "config.json").is_file():
+                # A model directory already on disk loads from there. Handing
+                # the worker the catalog repo id instead would download the
+                # whole model again whenever the Hugging Face cache lacks it.
+                runtime_target = path
+            elif library_entry is not None and library_entry.get("format") == "GGUF" and library_entry.get("path"):
+                # A downloaded GGUF loads from its folder, so the catalog's
+                # pinned quant and any drafter sidecar next to it are used;
+                # a bare repo id leaves the quant choice to llama-server.
+                runtime_target = library_entry["path"]
+            else:
+                runtime_target = _hf_repo_from_link(catalog_entry.get("link")) or runtime_target or model_ref
             if backend == "auto":
                 resolved_backend = "llama.cpp" if catalog_entry.get("format") == "GGUF" else "mlx"
         elif library_entry is not None:

@@ -4,13 +4,13 @@ import { ImageOutputCard } from "../../components/ImageOutputCard";
 import type {
   ImageModelFamily,
   ImageOutputArtifact,
-  TabId,
 } from "../../types";
 import type {
   ImageGalleryRuntimeFilter,
   ImageGalleryOrientationFilter,
   ImageGallerySort,
 } from "../../types/image";
+import { modelsPageRequest, type TabRequest } from "../../constants/tabRedirects";
 
 export interface ImageGalleryTabProps {
   imageOutputs: ImageOutputArtifact[];
@@ -33,7 +33,7 @@ export interface ImageGalleryTabProps {
   imageGalleryPlaceholderCount: number;
   imageGalleryWarningCount: number;
   imageGalleryHasActiveFilters: boolean;
-  onActiveTabChange: (tab: TabId) => void;
+  onActiveTabChange: (tab: TabRequest) => void;
   onOpenImageStudio: (modelId?: string) => void;
   onResetImageGalleryFilters: () => void;
   onOpenExternalUrl: (url: string) => void;
@@ -95,8 +95,8 @@ export function ImageGalleryTab({
             <button className="secondary-button" type="button" onClick={() => onOpenImageStudio()}>
               {tStudio("imageGallery.actions.studio", { defaultValue: "Studio" })}
             </button>
-            <button className="secondary-button" type="button" onClick={() => onActiveTabChange("image-models")}>
-              {tStudio("imageGallery.actions.installedModels", { defaultValue: "Installed Models" })}
+            <button className="secondary-button" type="button" onClick={() => onActiveTabChange(modelsPageRequest("image", "installed"))}>
+              {tStudio("imageGallery.actions.installedModels", { defaultValue: "Installed" })}
             </button>
           </div>
         }

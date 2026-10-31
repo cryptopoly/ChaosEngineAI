@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- Merged into the app bundle's Info.plist by Tauri. macOS shows this
+       text when the app first asks for the microphone (Voice dictation and
+       voice chat); without it the request is refused or the app is killed. -->
+  <key>NSMicrophoneUsageDescription</key>
+  <string>ChaosEngineAI uses the microphone for voice dictation and voice chat. Audio is processed on this Mac and never uploaded.</string>
+</dict>
+</plist>

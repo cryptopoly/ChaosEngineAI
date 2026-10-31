@@ -31,7 +31,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "provider": "Lightricks",
                 "repo": "Lightricks/LTX-Video",
                 "link": "https://huggingface.co/Lightricks/LTX-Video",
-                "runtime": "diffusers LTXPipeline (planned)",
+                "runtime": "diffusers LTXPipeline",
                 "styleTags": ["general", "fast", "motion"],
                 "taskSupport": ["txt2video"],
                 "sizeGb": 2.0,
@@ -112,15 +112,17 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
         "id": "ltx-2",
         "name": "LTX-2 (MLX)",
         "provider": "Lightricks · prince-canuma",
-        "headline": "LTX-2 19B with pre-converted MLX weights — native Apple Silicon path.",
+        "headline": "LTX-2.5 with sound on Apple Silicon: a 4 s clip in about 2 minutes.",
         "summary": (
-            "Pre-converted LTX-2 weights for mlx-video on Apple Silicon. Distilled variants "
-            "are fast iteration paths with fixed low-step sampling; 'dev' variants run CFG steps for "
-            "best fidelity. Routes through Blaizzy/mlx-video — no torch/MPS round trip."
+            "LTX-2.5 and LTX-2.3 q4 run on their own MLX engine (ltx-2-mlx): the fastest and cleanest video "
+            "path measured on a Mac, with stereo sound. The prince-canuma LTX-2 and LTX-2.3 rows "
+            "run through Blaizzy/mlx-video: distilled variants are fast iteration paths with "
+            "fixed low-step sampling, 'dev' variants run CFG steps for best fidelity. Neither "
+            "uses torch or MPS."
         ),
         "updatedLabel": "Native MLX",
         "badges": ["MLX Native", "Apple Silicon", "Apache 2.0"],
-        "defaultVariantId": "prince-canuma/LTX-2-distilled",
+        "defaultVariantId": "dgrauet/ltx-2.5-mlx-q4",
         "variants": [
             {
                 "id": "prince-canuma/LTX-2-distilled",
@@ -132,15 +134,19 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "runtime": "mlx-video (MLX native)",
                 "styleTags": ["general", "fast", "motion", "mlx"],
                 "taskSupport": ["txt2video"],
-                "sizeGb": 19.0,
-                "runtimeFootprintGb": 27.0,
+                "sizeGb": 93.1,
+                # Measured 2026-10-21 on LTX-2.3 distilled (M4 Max 64 GB, 768x512, 33 frames,
+                # 8 steps): mlx-video's own peak 37.2 GB, process footprint 40.0 GB. All four
+                # rows share the 19B transformer (38 GB bf16) and the Gemma 3 12B text
+                # encoder, which is freed before the transformer loads.
+                "runtimeFootprintGb": 40.0,
                 "recommendedResolution": "768x512",
                 "defaultDurationSeconds": 4.0,
                 "note": "Distilled LTX-2 — fastest MLX path for previews. Use the dev variant for final fidelity.",
                 # Distilled is 8 + 3 fixed sampler passes with CFG off; STG is
                 # ignored. Real-world wall time on M4 Max at 768×512 / 4 s
                 # lands around 90 s including model load.
-                "estimatedGenerationSeconds": 90.0,
+                "estimatedGenerationSeconds": 1130.0,  # same sampler as LTX-2.3 distilled (measured there)
                 "availableLocally": False,
                 "releaseDate": "2026-01",
             },
@@ -154,8 +160,12 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "runtime": "mlx-video (MLX native)",
                 "styleTags": ["general", "quality", "motion", "mlx"],
                 "taskSupport": ["txt2video"],
-                "sizeGb": 19.0,
-                "runtimeFootprintGb": 27.0,
+                "sizeGb": 93.1,
+                # Measured 2026-10-21 on LTX-2.3 distilled (M4 Max 64 GB, 768x512, 33 frames,
+                # 8 steps): mlx-video's own peak 37.2 GB, process footprint 40.0 GB. All four
+                # rows share the 19B transformer (38 GB bf16) and the Gemma 3 12B text
+                # encoder, which is freed before the transformer loads.
+                "runtimeFootprintGb": 40.0,
                 "recommendedResolution": "768x512",
                 "defaultDurationSeconds": 4.0,
                 "note": "Full LTX-2 dev weights — higher fidelity, longer sampling than distilled.",
@@ -181,17 +191,112 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "runtime": "mlx-video (MLX native)",
                 "styleTags": ["general", "fast", "motion", "mlx"],
                 "taskSupport": ["txt2video"],
-                "sizeGb": 19.0,
-                "runtimeFootprintGb": 27.0,
+                "sizeGb": 49.2,
+                # Measured 2026-10-21 on LTX-2.3 distilled (M4 Max 64 GB, 768x512, 33 frames,
+                # 8 steps): mlx-video's own peak 37.2 GB, process footprint 40.0 GB. All four
+                # rows share the 19B transformer (38 GB bf16) and the Gemma 3 12B text
+                # encoder, which is freed before the transformer loads.
+                "runtimeFootprintGb": 40.0,
                 "recommendedResolution": "768x512",
                 "defaultDurationSeconds": 4.0,
-                "note": "LTX-2.3 distilled — refreshed fast preview path with sharper texture detail vs LTX-2. Use the dev variant for final fidelity.",
+                "note": "LTX-2.3 distilled — refreshed fast preview path with sharper texture detail vs LTX-2. Use the dev variant for final fidelity. Also needs the shared 49 GB text encoder from LTX-2 distilled (downloaded with it).",
                 # Same fixed 8 + 3 sampler shape as LTX-2 distilled with the
                 # 2.3 weight refresh; wall time tracks the LTX-2 distilled
                 # entry within measurement noise.
-                "estimatedGenerationSeconds": 100.0,
+                "estimatedGenerationSeconds": 1130.0,  # measured with the footprint above (34 s/frame)
                 "availableLocally": False,
                 "releaseDate": "2026-03",
+            },
+            {
+                "id": "dgrauet/ltx-2.3-mlx-q4",
+                "familyId": "ltx-2",
+                "name": "LTX-2.3 · distilled q4 (ltx-2-mlx)",
+                "provider": "Lightricks · dgrauet",
+                "repo": "dgrauet/ltx-2.3-mlx-q4",
+                "link": "https://huggingface.co/dgrauet/ltx-2.3-mlx-q4",
+                "runtime": "ltx-2-mlx (MLX native)",
+                "styleTags": ["general", "fast", "motion", "audio", "mlx"],
+                "taskSupport": ["txt2video"],
+                # The repo holds three transformers and two LoRAs (60 GB); the distilled
+                # pipeline reads 20.4 GB of it, plus the 8.1 GB Gemma 3 text encoder.
+                "sizeGb": 28.5,
+                # Measured 2026-10-29 (M4 Max 64 GB, process footprint sampled every 3 s): 15.0 GB
+                # on 768x512 x 25 frames, and 18 GB on both 768x512 x 257 frames (10.7 s, 352 s)
+                # and 1280x704 x 121 frames (5 s, 363 s). Length and size barely move it.
+                "runtimeFootprintGb": 20.0,
+                "recommendedResolution": "768x512",
+                "defaultDurationSeconds": 4.0,
+                "note": (
+                    "LTX-2.3 distilled on its own MLX engine: stereo sound, 8 + 3 denoise passes, no guidance "
+                    "(steps, guidance and negative prompt do not apply). Needs the LTX-2.3 MLX engine, installed "
+                    "from the Video Studio. Sizes are multiples of 64. Weights: LTX-2 community licence (free below US$10M "
+                    "annual revenue)."
+                ),
+                # Measured: 155 s for a 4 s clip (97 frames, 768x512, with sound) including the
+                # model load; 40 s for 25 frames at 512x320. LTX-2.3 through mlx-video took
+                # 1130 s for 33 frames.
+                "estimatedGenerationSeconds": 155.0,
+                "downloadFiles": [
+                    "transformer-distilled-1.1.safetensors",
+                    "connector.safetensors",
+                    "vae_decoder.safetensors",
+                    "vae_encoder.safetensors",
+                    "audio_vae.safetensors",
+                    "vocoder.safetensors",
+                    "spatial_upscaler_x2_v1_1.safetensors",
+                    "*.json",
+                    "LICENSE",
+                ],
+                "downloadCompanions": [
+                    {"repo": "mlx-community/gemma-3-12b-it-4bit", "patterns": ["*"]},
+                ],
+                "availableLocally": False,
+                "releaseDate": "2026-03",
+            },
+            {
+                "id": "dgrauet/ltx-2.5-mlx-q4",
+                "familyId": "ltx-2",
+                "name": "LTX-2.5 · distilled q4 (ltx-2-mlx)",
+                "provider": "Lightricks · dgrauet",
+                "repo": "dgrauet/ltx-2.5-mlx-q4",
+                "link": "https://huggingface.co/dgrauet/ltx-2.5-mlx-q4",
+                "runtime": "ltx-2-mlx (MLX native)",
+                "styleTags": ["general", "fast", "motion", "audio", "mlx"],
+                "taskSupport": ["txt2video"],
+                # The repo holds the dev transformer and a distilled LoRA as well (50.7 GB);
+                # the distilled pipeline reads the distilled transformer, the Gemma 4 text
+                # encoder bundled in the pack and the small VAE / vocoder / upscaler files.
+                "sizeGb": 28.7,
+                # Measured 2026-10-29 (M4 Max 64 GB, process footprint sampled every 3 s): 17 GB on a
+                # 4 s 768x512 clip (97 frames), 128 s including the model load, against 155 s and 18 GB
+                # for LTX-2.3 with the same prompt and seed.
+                "runtimeFootprintGb": 17.0,
+                "footprintBasis": "measured",
+                "recommendedResolution": "768x512",
+                "defaultDurationSeconds": 4.0,
+                "note": (
+                    "LTX-2.5 distilled on the same MLX engine as LTX-2.3: stereo sound, 8 + 3 denoise passes, "
+                    "no guidance (steps, guidance and negative prompt do not apply). Gated: accept the licence "
+                    "on Hugging Face first, and add a Hugging Face token with read access in Settings. Needs the "
+                    "LTX-2.3 MLX engine, installed from the Video Studio. Sizes are multiples of 64. Weights: "
+                    "LTX-2 community licence (free below US$10M annual revenue)."
+                ),
+                "estimatedGenerationSeconds": 128.0,  # measured, see above
+                "downloadFiles": [
+                    "transformer-distilled.safetensors",
+                    "connector.safetensors",
+                    "vae_decoder_conv.safetensors",
+                    "vae_encoder_conv.safetensors",
+                    "audio_vae.safetensors",
+                    "vocoder.safetensors",
+                    "spatial_upscaler_x2_v1_0.safetensors",
+                    "text_encoder.safetensors",
+                    "*.json",
+                    "*.jinja",
+                    "LICENSE",
+                ],
+                "availableLocally": False,
+                "releaseDate": "2026-08",
             },
             {
                 "id": "prince-canuma/LTX-2.3-dev",
@@ -204,11 +309,15 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "runtime": "mlx-video (MLX native)",
                 "styleTags": ["general", "quality", "motion", "mlx"],
                 "taskSupport": ["txt2video"],
-                "sizeGb": 19.0,
-                "runtimeFootprintGb": 27.0,
+                "sizeGb": 49.2,
+                # Measured 2026-10-21 on LTX-2.3 distilled (M4 Max 64 GB, 768x512, 33 frames,
+                # 8 steps): mlx-video's own peak 37.2 GB, process footprint 40.0 GB. All four
+                # rows share the 19B transformer (38 GB bf16) and the Gemma 3 12B text
+                # encoder, which is freed before the transformer loads.
+                "runtimeFootprintGb": 40.0,
                 "recommendedResolution": "768x512",
                 "defaultDurationSeconds": 4.0,
-                "note": "LTX-2.3 dev — quality tier; full sampler steps for best output. Apple Silicon native via MLX. Install mlx-video from Setup → GPU runtime bundle to enable.",
+                "note": "LTX-2.3 dev — quality tier; full sampler steps for best output. Apple Silicon native via MLX. Install mlx-video from Setup → GPU runtime bundle to enable. Also needs the shared 49 GB text encoder from LTX-2 distilled (downloaded with it).",
                 # Dev pipeline + CFG + STG=1.0 = 3 forward passes per step;
                 # observed wall time on M4 Max for a 4-s / 30-step / 768×512
                 # render is ~600 s. Drops to ~400 s with STG=0.0. Old 180 s
@@ -282,14 +391,14 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "releaseDate": "2025-02",
             },
             {
-                "id": "city96/Wan2.1-T2V-1.3B-gguf-q4km",
+                "id": "samuelchristlie/Wan2.1-T2V-1.3B-GGUF-q4km",
                 "familyId": "wan-2-1",
                 "name": "Wan 2.1 T2V 1.3B · GGUF Q4_K_M",
-                "provider": "Alibaba · city96",
+                "provider": "Alibaba · samuelchristlie",
                 "repo": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
-                "ggufRepo": "city96/Wan2.1-T2V-1.3B-gguf",
-                "ggufFile": "wan2.1-t2v-1.3B-Q4_K_M.gguf",
-                "link": "https://huggingface.co/city96/Wan2.1-T2V-1.3B-gguf",
+                "ggufRepo": "samuelchristlie/Wan2.1-T2V-1.3B-GGUF",
+                "ggufFile": "Wan2.1-T2V-1.3B-Q4_K_M.gguf",
+                "link": "https://huggingface.co/samuelchristlie/Wan2.1-T2V-1.3B-GGUF",
                 "runtime": "diffusers WanPipeline + GGUF transformer",
                 "styleTags": ["general", "fast", "small", "gguf"],
                 "taskSupport": ["txt2video"],
@@ -305,14 +414,14 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "releaseDate": "2025-03",
             },
             {
-                "id": "city96/Wan2.1-T2V-1.3B-gguf-q6k",
+                "id": "samuelchristlie/Wan2.1-T2V-1.3B-GGUF-q6k",
                 "familyId": "wan-2-1",
                 "name": "Wan 2.1 T2V 1.3B · GGUF Q6_K",
-                "provider": "Alibaba · city96",
+                "provider": "Alibaba · samuelchristlie",
                 "repo": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
-                "ggufRepo": "city96/Wan2.1-T2V-1.3B-gguf",
-                "ggufFile": "wan2.1-t2v-1.3B-Q6_K.gguf",
-                "link": "https://huggingface.co/city96/Wan2.1-T2V-1.3B-gguf",
+                "ggufRepo": "samuelchristlie/Wan2.1-T2V-1.3B-GGUF",
+                "ggufFile": "Wan2.1-T2V-1.3B-Q6_K.gguf",
+                "link": "https://huggingface.co/samuelchristlie/Wan2.1-T2V-1.3B-GGUF",
                 "runtime": "diffusers WanPipeline + GGUF transformer",
                 "styleTags": ["general", "fast", "small", "gguf"],
                 "taskSupport": ["txt2video"],
@@ -327,14 +436,14 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "releaseDate": "2025-03",
             },
             {
-                "id": "city96/Wan2.1-T2V-1.3B-gguf-q8",
+                "id": "samuelchristlie/Wan2.1-T2V-1.3B-GGUF-q8",
                 "familyId": "wan-2-1",
                 "name": "Wan 2.1 T2V 1.3B · GGUF Q8_0",
-                "provider": "Alibaba · city96",
+                "provider": "Alibaba · samuelchristlie",
                 "repo": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
-                "ggufRepo": "city96/Wan2.1-T2V-1.3B-gguf",
-                "ggufFile": "wan2.1-t2v-1.3B-Q8_0.gguf",
-                "link": "https://huggingface.co/city96/Wan2.1-T2V-1.3B-gguf",
+                "ggufRepo": "samuelchristlie/Wan2.1-T2V-1.3B-GGUF",
+                "ggufFile": "Wan2.1-T2V-1.3B-Q8_0.gguf",
+                "link": "https://huggingface.co/samuelchristlie/Wan2.1-T2V-1.3B-GGUF",
                 "runtime": "diffusers WanPipeline + GGUF transformer",
                 "styleTags": ["general", "quality", "small", "gguf"],
                 "taskSupport": ["txt2video"],
@@ -355,14 +464,14 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "provider": "Alibaba · city96",
                 "repo": "Wan-AI/Wan2.1-T2V-14B-Diffusers",
                 "ggufRepo": "city96/Wan2.1-T2V-14B-gguf",
-                "ggufFile": "wan2.1-t2v-14B-Q4_K_M.gguf",
+                "ggufFile": "wan2.1-t2v-14b-Q4_K_M.gguf",
                 "link": "https://huggingface.co/city96/Wan2.1-T2V-14B-gguf",
                 "runtime": "diffusers WanPipeline + GGUF transformer",
                 "styleTags": ["general", "quality", "motion", "gguf"],
                 "taskSupport": ["txt2video"],
-                # ~7 GB GGUF transformer + ~14 GB shared UMT5-XXL/VAE — fits
-                # comfortably on a 24 GB RTX 4090 with VAE headroom.
-                "sizeGb": 21.0,
+                # 10.1 GB GGUF transformer + ~14 GB shared UMT5-XXL/VAE — fits
+                # a 24 GB RTX 4090 with the text encoder offloaded.
+                "sizeGb": 24.1,
                 "runtimeFootprintGb": 18.0,
                 "runtimeFootprintMpsGb": 27.0,
                 "recommendedResolution": "832x480",
@@ -379,12 +488,12 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "provider": "Alibaba · city96",
                 "repo": "Wan-AI/Wan2.1-T2V-14B-Diffusers",
                 "ggufRepo": "city96/Wan2.1-T2V-14B-gguf",
-                "ggufFile": "wan2.1-t2v-14B-Q6_K.gguf",
+                "ggufFile": "wan2.1-t2v-14b-Q6_K.gguf",
                 "link": "https://huggingface.co/city96/Wan2.1-T2V-14B-gguf",
                 "runtime": "diffusers WanPipeline + GGUF transformer",
                 "styleTags": ["general", "quality", "motion", "gguf"],
                 "taskSupport": ["txt2video"],
-                "sizeGb": 24.0,
+                "sizeGb": 26.5,
                 "runtimeFootprintGb": 21.0,
                 "runtimeFootprintMpsGb": 30.0,
                 "recommendedResolution": "832x480",
@@ -401,12 +510,12 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "provider": "Alibaba · city96",
                 "repo": "Wan-AI/Wan2.1-T2V-14B-Diffusers",
                 "ggufRepo": "city96/Wan2.1-T2V-14B-gguf",
-                "ggufFile": "wan2.1-t2v-14B-Q8_0.gguf",
+                "ggufFile": "wan2.1-t2v-14b-Q8_0.gguf",
                 "link": "https://huggingface.co/city96/Wan2.1-T2V-14B-gguf",
                 "runtime": "diffusers WanPipeline + GGUF transformer",
                 "styleTags": ["general", "quality", "motion", "gguf"],
                 "taskSupport": ["txt2video"],
-                "sizeGb": 28.0,
+                "sizeGb": 29.9,
                 "runtimeFootprintGb": 25.0,
                 "runtimeFootprintMpsGb": 34.0,
                 "recommendedResolution": "832x480",
@@ -416,7 +525,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "availableLocally": False,
                 "releaseDate": "2025-03",
             },
-            # FU-019 distill LoRAs. lightx2v's CausVid LoRAs collapse
+            # FU-019 distill LoRAs. The CausVid LoRAs collapse
             # the 30-step base schedule to 4 steps, CFG-free. Wall-time
             # win is ~7-8× before any caching strategy stacks on top.
             # Keep the full-fat Wan 2.1 1.3B / 14B variants above for
@@ -425,14 +534,14 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "id": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers-causvid",
                 "familyId": "wan-2-1",
                 "name": "Wan 2.1 T2V 1.3B · CausVid (4-step)",
-                "provider": "Alibaba · lightx2v",
+                "provider": "Alibaba · CausVid (Kijai)",
                 "repo": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
-                "loraRepo": "lightx2v/Wan2.1-T2V-1.3B-CausVid-LoRA",
-                "loraFile": "wan21_t2v_1.3b_causvid_lora.safetensors",
+                "loraRepo": "Kijai/WanVideo_comfy",
+                "loraFile": "Wan21_CausVid_bidirect2_T2V_1_3B_lora_rank32.safetensors",
                 "loraScale": 1.0,
                 "defaultSteps": 4,
                 "cfgOverride": 1.0,
-                "link": "https://huggingface.co/lightx2v/Wan2.1-T2V-1.3B-CausVid-LoRA",
+                "link": "https://huggingface.co/Kijai/WanVideo_comfy",
                 "runtime": "diffusers WanPipeline + CausVid LoRA",
                 "styleTags": ["general", "fast", "small", "lora"],
                 "taskSupport": ["txt2video"],
@@ -442,9 +551,11 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "recommendedResolution": "832x480",
                 "defaultDurationSeconds": 4.0,
                 "note": (
-                    "lightx2v CausVid distillation LoRA fused into Wan 2.1 1.3B. "
+                    "CausVid distillation LoRA fused into Wan 2.1 1.3B. "
                     "Runs at 4 steps, CFG-free — roughly 7-8× faster than the "
-                    "base 30-step schedule on the same hardware."
+                    "base 30-step schedule on the same hardware. The 0.1 GB LoRA "
+                    "downloads on the first run. CausVid is CC BY-NC 4.0 "
+                    "(non-commercial)."
                 ),
                 "estimatedGenerationSeconds": 9.0,
                 "availableLocally": False,
@@ -454,14 +565,14 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "id": "Wan-AI/Wan2.1-T2V-14B-Diffusers-causvid",
                 "familyId": "wan-2-1",
                 "name": "Wan 2.1 T2V 14B · CausVid (4-step)",
-                "provider": "Alibaba · lightx2v",
+                "provider": "Alibaba · CausVid (Kijai)",
                 "repo": "Wan-AI/Wan2.1-T2V-14B-Diffusers",
-                "loraRepo": "lightx2v/Wan2.1-T2V-14B-CausVid-LoRA",
-                "loraFile": "wan21_t2v_14b_causvid_lora.safetensors",
+                "loraRepo": "Kijai/WanVideo_comfy",
+                "loraFile": "Wan21_CausVid_14B_T2V_lora_rank32.safetensors",
                 "loraScale": 1.0,
                 "defaultSteps": 4,
                 "cfgOverride": 1.0,
-                "link": "https://huggingface.co/lightx2v/Wan2.1-T2V-14B-CausVid-LoRA",
+                "link": "https://huggingface.co/Kijai/WanVideo_comfy",
                 "runtime": "diffusers WanPipeline + CausVid LoRA",
                 "styleTags": ["general", "quality", "motion", "lora"],
                 "taskSupport": ["txt2video"],
@@ -470,9 +581,11 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "recommendedResolution": "832x480",
                 "defaultDurationSeconds": 5.0,
                 "note": (
-                    "lightx2v CausVid distillation LoRA fused into Wan 2.1 14B. "
+                    "CausVid distillation LoRA fused into Wan 2.1 14B. "
                     "Runs at 4 steps, CFG-free — quality holds close to the base "
-                    "30-step Wan 2.1 14B at a fraction of the wall time."
+                    "30-step Wan 2.1 14B at a fraction of the wall time. The 0.3 GB "
+                    "LoRA downloads on the first run. CausVid is CC BY-NC 4.0 "
+                    "(non-commercial)."
                 ),
                 "estimatedGenerationSeconds": 24.0,
                 "availableLocally": False,
@@ -484,117 +597,17 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
         "id": "wan-2-2",
         "name": "Wan 2.2",
         "provider": "Alibaba",
-        "headline": "Wan 2.2 ships a dense 5B that fits consumer GPUs and an MoE A14B quality tier.",
+        "headline": "Wan 2.2 A14B: the mixture-of-experts quality tier, for large GPUs.",
         "summary": (
-            "Two very different models under one family name. The TI2V-5B is a dense 5B dual-"
-            "task model (text-to-video + image-to-video) that runs on a 24 GB GPU or a 32 GB+ "
-            "Mac. The T2V-A14B is a mixture-of-experts model with separate high-noise and low-"
-            "noise transformers — roughly 27B total weights on disk and only viable on data-"
-            "center-class hardware."
+            "A mixture-of-experts model with separate high-noise and low-noise transformers: "
+            "roughly 27B total weights on disk, only viable on data-center-class hardware. The "
+            "4-step distilled image-to-video builds cut the cost. The dense 5B (TI2V) was "
+            "retired: LTX-2.3 on its own MLX engine is faster and cleaner on a Mac."
         ),
         "updatedLabel": "Planned — first wave",
         "badges": ["Balanced", "Quality", "Apache 2.0"],
-        "defaultVariantId": "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
+        "defaultVariantId": "Wan-AI/Wan2.2-I2V-A14B-Diffusers-distill-fp8",
         "variants": [
-            {
-                "id": "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
-                "familyId": "wan-2-2",
-                "name": "Wan 2.2 TI2V 5B",
-                "provider": "Alibaba",
-                # Dense 5B text+image-to-video model. Unlike A14B there's no
-                # expert split — standard WanPipeline loads it directly.
-                "repo": "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
-                "link": "https://huggingface.co/Wan-AI/Wan2.2-TI2V-5B-Diffusers",
-                "runtime": "diffusers WanPipeline",
-                "styleTags": ["general", "balanced", "small"],
-                "taskSupport": ["txt2video"],
-                # 5B transformer bf16 (~10 GB) + UMT5-XXL text encoder (~11 GB)
-                # + VAE. Sits right around 24 GB on disk which is a similar
-                # footprint to Wan 2.1 1.3B but with a much larger transformer.
-                "sizeGb": 24.0,
-                # Runtime resident peak (text encode phase): ~22 GB. Drops to
-                # ~12 GB during diffusion once UMT5 is freed. Disk size
-                # over-estimates resident because the repo carries duplicate
-                # sharded safetensors + tokenizer caches.
-                "runtimeFootprintGb": 22.0,
-                "runtimeFootprintMpsGb": 24.0,
-                "recommendedResolution": "832x480",
-                "defaultDurationSeconds": 5.0,
-                "note": "Best Wan 2.2 pick for consumer hardware. 24 GB on disk, runs on a 24 GB GPU or a 32 GB+ Mac.",
-                "estimatedGenerationSeconds": 150.0,
-                "availableLocally": False,
-                "releaseDate": "2025-07",
-            },
-            {
-                "id": "QuantStack/Wan2.2-TI2V-5B-GGUF-q4km",
-                "familyId": "wan-2-2",
-                "name": "Wan 2.2 TI2V 5B · GGUF Q4_K_M",
-                "provider": "Alibaba · QuantStack",
-                "repo": "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
-                "ggufRepo": "QuantStack/Wan2.2-TI2V-5B-GGUF",
-                "ggufFile": "Wan2.2-TI2V-5B-Q4_K_M.gguf",
-                "link": "https://huggingface.co/QuantStack/Wan2.2-TI2V-5B-GGUF",
-                "runtime": "diffusers WanPipeline + GGUF transformer",
-                "styleTags": ["general", "balanced", "small", "gguf"],
-                "taskSupport": ["txt2video"],
-                # ~3.5 GB quantized transformer + shared UMT5-XXL / VAE from
-                # the base repo. Users installing this variant still pay the
-                # ~14 GB text-encoder+VAE download once.
-                "sizeGb": 17.5,
-                # GGUF Q4_K_M trans (~3.5 GB) + UMT5-XXL during encode (~11 GB).
-                "runtimeFootprintGb": 14.5,
-                "runtimeFootprintMpsGb": 22.0,
-                "recommendedResolution": "832x480",
-                "defaultDurationSeconds": 5.0,
-                "note": "Q4_K_M — smallest Wan 2.2 that still generates usable quality. Best fit for 16 GB unified memory.",
-                "estimatedGenerationSeconds": 160.0,
-                "availableLocally": False,
-                "releaseDate": "2025-08",
-            },
-            {
-                "id": "QuantStack/Wan2.2-TI2V-5B-GGUF-q6k",
-                "familyId": "wan-2-2",
-                "name": "Wan 2.2 TI2V 5B · GGUF Q6_K",
-                "provider": "Alibaba · QuantStack",
-                "repo": "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
-                "ggufRepo": "QuantStack/Wan2.2-TI2V-5B-GGUF",
-                "ggufFile": "Wan2.2-TI2V-5B-Q6_K.gguf",
-                "link": "https://huggingface.co/QuantStack/Wan2.2-TI2V-5B-GGUF",
-                "runtime": "diffusers WanPipeline + GGUF transformer",
-                "styleTags": ["general", "balanced", "quality", "gguf"],
-                "taskSupport": ["txt2video"],
-                "sizeGb": 18.2,
-                "runtimeFootprintGb": 16.5,  # Q6_K trans ~5 GB + UMT5 ~11 GB
-                "runtimeFootprintMpsGb": 24.0,
-                "recommendedResolution": "832x480",
-                "defaultDurationSeconds": 5.0,
-                "note": "Q6_K — mid-point between Q4 footprint and Q8 fidelity.",
-                "estimatedGenerationSeconds": 155.0,
-                "availableLocally": False,
-                "releaseDate": "2025-08",
-            },
-            {
-                "id": "QuantStack/Wan2.2-TI2V-5B-GGUF-q8",
-                "familyId": "wan-2-2",
-                "name": "Wan 2.2 TI2V 5B · GGUF Q8_0",
-                "provider": "Alibaba · QuantStack",
-                "repo": "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
-                "ggufRepo": "QuantStack/Wan2.2-TI2V-5B-GGUF",
-                "ggufFile": "Wan2.2-TI2V-5B-Q8_0.gguf",
-                "link": "https://huggingface.co/QuantStack/Wan2.2-TI2V-5B-GGUF",
-                "runtime": "diffusers WanPipeline + GGUF transformer",
-                "styleTags": ["general", "quality", "gguf"],
-                "taskSupport": ["txt2video"],
-                "sizeGb": 19.0,
-                "runtimeFootprintGb": 18.0,  # Q8 trans ~7 GB + UMT5 ~11 GB
-                "runtimeFootprintMpsGb": 26.0,
-                "recommendedResolution": "832x480",
-                "defaultDurationSeconds": 5.0,
-                "note": "Q8_0 — near-bf16 quality at roughly half the transformer footprint.",
-                "estimatedGenerationSeconds": 150.0,
-                "availableLocally": False,
-                "releaseDate": "2025-08",
-            },
             {
                 "id": "Wan-AI/Wan2.2-T2V-A14B-Diffusers",
                 "familyId": "wan-2-2",
@@ -771,7 +784,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "provider": "Genmo",
                 "repo": "genmo/mochi-1-preview",
                 "link": "https://huggingface.co/genmo/mochi-1-preview",
-                "runtime": "diffusers MochiPipeline (planned)",
+                "runtime": "diffusers MochiPipeline",
                 "styleTags": ["general", "motion", "balanced"],
                 "taskSupport": ["txt2video"],
                 "sizeGb": 10.0,
@@ -863,12 +876,12 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
             # CogVideoXPipeline class, so PIPELINE_REGISTRY only needs the
             # repo id added.
             {
-                "id": "THUDM/CogVideoX-1.5-5b",
+                "id": "THUDM/CogVideoX1.5-5B",
                 "familyId": "cogvideox",
                 "name": "CogVideoX 1.5 · 5B",
                 "provider": "THUDM",
-                "repo": "THUDM/CogVideoX-1.5-5b",
-                "link": "https://huggingface.co/THUDM/CogVideoX-1.5-5b",
+                "repo": "THUDM/CogVideoX1.5-5B",
+                "link": "https://huggingface.co/THUDM/CogVideoX1.5-5B",
                 "runtime": "diffusers CogVideoXPipeline",
                 "styleTags": ["general", "quality", "balanced", "refreshed"],
                 "taskSupport": ["txt2video"],
@@ -949,3 +962,10 @@ if not _LONGLIVE_ENABLED:
     VIDEO_MODEL_FAMILIES = [
         family for family in VIDEO_MODEL_FAMILIES if family.get("id") != "longlive"
     ]
+
+
+# Per-model size limits (maxSide / maxPixels / nativeSide) for every variant.
+# The table and its sources live in size_limits.py.
+from backend_service.catalog.size_limits import apply_video_size_limits  # noqa: E402
+
+apply_video_size_limits(VIDEO_MODEL_FAMILIES)

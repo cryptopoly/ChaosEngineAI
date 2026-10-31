@@ -7,6 +7,13 @@
 #
 # Override the source dir with LLAMA_CPP_DIR if your checkout lives
 # somewhere other than ../llama.cpp.
+#
+# Builds a pinned release tag (LLAMA_CPP_REF) rather than whatever the
+# branch HEAD happens to be, so two installs ship the same binary (the
+# FU-065 drift lesson). b11981 carries DFlash + DFlash 2
+# (--spec-type draft-dflash), EAGLE-3, DSpark, the draft-free ngram-mod
+# mode, drafter sidecar discovery and the Metal-4 M5 prefill path, plus the kolibri1 (2026-10-17), flint (2026-10-21) and lfm3 (2026-10-27) architectures, then LFM3 audio / omni and video input (2026-10-28), graniteswitch and gemma4 (Nemotron 3.5 Bolt).
+# LLAMA_CPP_REF=master tracks upstream HEAD instead.
 
 set -euo pipefail
 
@@ -26,12 +33,7 @@ cd "$LLAMA_DIR"
 echo "==> git fetch"
 git fetch --all --tags --prune
 
-CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-UPSTREAM="origin/$CURRENT_BRANCH"
-if ! git rev-parse --verify "$UPSTREAM" >/dev/null 2>&1; then
-  echo "error: no upstream branch $UPSTREAM — aborting." >&2
-  exit 1
-fi
+LLAMA_CPP_REF="${LLAMA_CPP_REF:-b11981}"
 
 # Warn loudly if there are uncommitted changes — then refuse unless FORCE=1.
 if [[ -n "$(git status --porcelain)" ]]; then
@@ -43,8 +45,17 @@ if [[ -n "$(git status --porcelain)" ]]; then
   echo "warning: uncommitted changes detected but FORCE=1, proceeding."
 fi
 
-echo "==> resetting $CURRENT_BRANCH to $UPSTREAM (handles force-pushes / divergence)"
-git reset --hard "$UPSTREAM"
+if [[ "$LLAMA_CPP_REF" == "master" ]]; then
+  echo "==> checking out origin/master (unpinned)"
+  git checkout --detach origin/master
+else
+  if ! git rev-parse --verify "refs/tags/$LLAMA_CPP_REF" >/dev/null 2>&1; then
+    echo "error: tag $LLAMA_CPP_REF not found after fetch." >&2
+    exit 1
+  fi
+  echo "==> checking out pinned tag $LLAMA_CPP_REF"
+  git checkout --detach "refs/tags/$LLAMA_CPP_REF"
+fi
 
 echo "==> configure (Metal ON)"
 cmake -B build -DGGML_METAL=ON -DCMAKE_BUILD_TYPE=Release

@@ -20,7 +20,7 @@
     },
     "turboquant": {
       "name": "TurboQuant",
-      "description": "Hadamard 회전 KV 양자화. 품질 손실을 최소화하면서 2–4배 압축."
+      "description": "메모리 절약: Hadamard 회전 KV 양자화. 캐시가 2–4배 작아져 긴 채팅이 더 적은 RAM에 들어갑니다. 생성 속도는 네이티브보다 느립니다."
     },
     "triattention": {
       "name": "TriAttention",
@@ -57,7 +57,11 @@
     "contextSize": "컨텍스트 크기",
     "gpuLayers": "GPU 레이어",
     "threads": "스레드",
-    "fitInMemory": "메모리에 맞추기"
+    "fitInMemory": "메모리에 맞추기",
+    "cacheStrategyTensorfoldNote": "(TensorFold가 자체 KV cache를 관리합니다)",
+    "moreInfo": "자세한 정보",
+    "requiresLabel": "필요:",
+    "installLabel": "설치:"
   },
   "notes": {
     "binaryRequired": "{binary}가 필요합니다.",
@@ -87,7 +91,16 @@
     "requiresBody": "Apple Silicon + dflash-mlx, 또는 Linux/CUDA + dflash. 대상 모델용 호환 드래프트 모델.",
     "currentModelLabel": "현재 모델:",
     "supportedVia": "{model}을 통해 지원됨",
-    "compatibilityUnresolved": "호환성이 아직 확인되지 않았습니다."
+    "compatibilityUnresolved": "호환성이 아직 확인되지 않았습니다.",
+    "composerHint": "DFlash 추측 디코딩으로 이 모델을 품질 손실 없이 약 2배 빠르게 할 수 있습니다.",
+    "registeredTargetsLabel": "등록된 대상:",
+    "targetModelsCount": "대상 모델 {count}개",
+    "ddtreeLabel": "DDTree:",
+    "ddtreeAvailable": "사용 가능",
+    "ddtreeUnavailable": "아직 사용할 수 없으며, 대신 선형 DFlash가 실행됩니다.",
+    "installLabel": "설치:",
+    "treeBudgetTooltip": "DDTree: 트리 기반 추측 디코딩. 0 = 선형 DFlash, >0 = 여러 드래프트 경로를 병렬로 탐색해 수락률을 높입니다.",
+    "treeBudgetLabel": "트리 예산 (DDTree)"
   },
   "presets": {
     "quality": {
@@ -110,21 +123,125 @@
   "sliders": {
     "context": "컨텍스트",
     "maxTokens": "최대 토큰",
-    "temperature": "온도"
+    "temperature": "온도",
+    "fp16Layers": "FP16 레이어"
   },
   "fitInMemory": {
-    "body": "메모리에 맞추기는 ChaosEngineAI가 모델과 KV 캐시를 사용 가능한 메모리 내에 유지하는 런타임/캐시 프로필을 선택하도록 요청합니다. 더 크거나 적극적인 프로필을 강제하고 스와핑이나 로드 실패 가능성을 받아들이려는 경우에만 비활성화하세요."
+    "body": "메모리에 맞추기는 ChaosEngineAI가 모델과 KV 캐시를 사용 가능한 메모리 내에 유지하는 런타임/캐시 프로필을 선택하도록 요청합니다. 더 크거나 적극적인 프로필을 강제하고 스와핑이나 로드 실패 가능성을 받아들이려는 경우에만 비활성화하세요.",
+    "aboutTitle": "메모리에 맞추기 정보"
   },
   "cacheFit": {
     "mayNotFit": "맞지 않을 수 있음",
     "modelMayNotFit": "모델이 맞지 않을 수 있음",
     "fitsEasily": "쉽게 맞음",
     "tightFit": "빠듯하게 맞음",
-    "contextMayNotFit": "전체 컨텍스트가 맞지 않을 수 있음"
+    "contextMayNotFit": "전체 컨텍스트가 맞지 않을 수 있음",
+    "vramWontFit": "캐시가 GPU에 맞지 않음"
   },
   "cacheAdvice": {
     "modelExceedsRam": "모델 가중치만으로도 예상 사용 가능 RAM을 초과합니다. 더 작은 모델이나 더 적극적인 양자화를 선택하세요.",
     "nativeF16TooBig": "모델은 로드될 수 있지만 이 컨텍스트에서 전체 네이티브 f16 캐시는 스레드가 채워지면서 시스템 RAM을 초과할 수 있습니다. 컨텍스트를 낮추거나 압축 전략을 선택하세요.",
-    "compressedTooBig": "모델은 로드될 수 있지만 선택한 컨텍스트 캐시는 스레드가 채워지면서 시스템 RAM을 초과할 수 있습니다. 컨텍스트를 낮추거나 FP16 레이어를 줄이세요."
+    "compressedTooBig": "모델은 로드될 수 있지만 선택한 컨텍스트 캐시는 스레드가 채워지면서 시스템 RAM을 초과할 수 있습니다. 컨텍스트를 낮추거나 FP16 레이어를 줄이세요.",
+    "vramNativeF16": "이 컨텍스트에서 전체 네이티브 f16 KV 캐시는 ~{cacheGb} GB로, 사용 가능한 GPU VRAM {vramGb} GB보다 큽니다. llama.cpp가 시스템 RAM으로 넘치거나(토큰마다 느린 PCIe 전송) 메모리 할당에 실패할 수 있습니다. 컨텍스트를 줄이거나 FP16 레이어를 줄이거나, TurboQuant 메모리 절약을 선택해 캐시가 VRAM에 들어가게 하세요.",
+    "vramSelected": "이 컨텍스트에서 선택한 KV 캐시는 ~{cacheGb} GB로, 사용 가능한 GPU VRAM {vramGb} GB보다 큽니다. llama.cpp가 시스템 RAM으로 넘치거나(토큰마다 느린 PCIe 전송) 메모리 할당에 실패할 수 있습니다. 컨텍스트를 줄이거나 FP16 레이어를 줄이거나, TurboQuant 메모리 절약을 선택해 캐시가 VRAM에 들어가게 하세요."
+  },
+  "tensorfold": {
+    "tooltip": "TensorFold: 정확한 추측 디코딩. 모델의 MTP 헤드 및/또는 드래프트 모델이 만든 드래프트를 대상 모델이 검증하므로, 응답은 순차 디코딩과 동일하고 속도만 빨라집니다.",
+    "label": "TensorFold (DFlash 2 / MTP 드래프팅)",
+    "requiredNote": "이 모델에 필수",
+    "installing": "설치 중...",
+    "installButton": "TensorFold 설치",
+    "addVisionTitle": "이 모델이 첨부된 이미지를 읽을 수 있게 합니다(실험적). TensorFold 전용 환경에 Pillow, transformers, mlx-vlm이 추가됩니다.",
+    "addVision": "이미지 지원 추가",
+    "imageInputOn": "이미지 입력 켜짐 (실험적)",
+    "aboutTitle": "TensorFold 추측 디코딩 정보",
+    "memoryShortfall": "이 체크포인트에는 메모리가 최소 {needed} GB인 Mac이 필요합니다. 이 Mac은 {have} GB입니다.",
+    "body": "TensorFold는 모델 계열마다 직접 작성한 커널을 사용하는 로컬 추론 엔진입니다. 모델 자체의 MTP 헤드(일부 계열은 작은 드래프트 모델 포함)로 한 번에 여러 토큰을 초안으로 만들고, 모든 초안을 대상 모델과 대조해 확인하므로 응답이 한 번에 한 토큰씩 디코딩할 때와 바이트 단위로 동일합니다.",
+    "requiresLabel": "필요:",
+    "requiresBody": "Apple Silicon과 별도의 TensorFold Python 환경(이 패널에서 설치)이 필요합니다. 테스트를 마친 체크포인트만 지원합니다.",
+    "memoryLabel": "메모리:",
+    "memoryBody": "통합 메모리 {needed} GB 이상.",
+    "statusLabel": "상태:",
+    "statusInstalled": "설치됨{version} — 추측 디코딩을 체크하면 활성화됩니다.",
+    "statusNotInstalled": "설치되지 않았습니다. TensorFold 설치를 클릭하여 별도 환경을 구성하세요.",
+    "visionLabel": "이미지 입력:",
+    "visionInstalled": "설치됨(실험적) — TensorFold를 체크한 상태에서 채팅에 이미지를 첨부할 수 있습니다. 이미지가 포함된 요청은 새 KV cache에서 시작합니다.",
+    "visionNotInstalled": "설치되지 않았습니다. 모델 자체의 비전 타워로 이미지를 읽습니다. Pillow, transformers, mlx-vlm이 추가되며, TensorFold 개발진은 아직 실험적 기능으로 표시합니다.",
+    "grammarLabel": "구조화된 출력:",
+    "grammarInstalled": "설치됨 — 샘플러 패널에서 지정한 JSON 스키마가 적용됩니다.",
+    "grammarNotInstalled": "설치되지 않았습니다. JSON 스키마를 적용하는 데 필요하며, 없으면 해당 요청이 거부됩니다. PyTorch가 추가되므로 다운로드 용량이 큽니다.",
+    "addGrammar": "구조화된 출력 추가",
+    "exclusiveLabel": "참고:",
+    "exclusiveBody": "앱의 다른 엔진은 이 모델을 로드할 수 없으므로 항상 TensorFold에서 실행됩니다. 체크박스는 드래프팅만 켜고 끕니다."
+  },
+  "strategyRole": {
+    "memorySaverTitle": "KV cache를 줄여 긴 컨텍스트가 더 적은 메모리에 들어가도록 합니다. 생성 속도는 네이티브보다 느립니다.",
+    "memorySaver": "메모리 절약"
+  },
+  "mtplx": {
+    "tooltip": "MTPLX: 네이티브 MTP 추측 디코딩. 내장된 예측 헤드를 사용해 품질 손실 없이 약 1.8–2.2배 빠르게 생성합니다.",
+    "label": "MTPLX",
+    "installing": "설치 중...",
+    "installButton": "MTPLX 설치",
+    "aboutTitle": "MTPLX 추측 디코딩 정보",
+    "body": "MTPLX는 모델에 직접 학습되어 내장된 MTP(Multi-Token Prediction) 헤드를 사용합니다. 추론 시 이 헤드가 순방향 한 번에 1–3개 토큰을 초안으로 만들고 같은 패스에서 검증하므로 별도의 드래프트 모델이 필요 없습니다. 품질 손실 없이 생성 속도가 약 1.8–2.2배 빨라집니다.",
+    "requiresLabel": "필요:",
+    "requiresBody": "Apple Silicon + MTPLX 격리 venv. 모델에 MTP 헤드가 내장되어 있어야 합니다(Qwen3.5/3.6, DeepSeek V3/R1, Qwen3-Coder-Next).",
+    "statusLabel": "상태:",
+    "statusInstalled": "설치됨 — 추측 디코딩을 켜면 활성화됩니다.",
+    "statusNotInstalled": "설치되지 않았습니다. MTPLX 설치를 클릭하여 격리 venv(~500 MB)를 구성하세요."
+  },
+  "ggufMtp": {
+    "tooltip": "GGUF MTP 추측 디코딩: llama.cpp --spec-type draft-mtp로 모델에 내장된 MTP 헤드를 사용해 품질 손실 없이 약 1.8–2.2배 빠르게 생성합니다.",
+    "label": "GGUF MTP",
+    "body": "이 GGUF에는 MTP(Multi-Token Prediction) 헤드가 내장되어 있습니다. llama.cpp가 --spec-type draft-mtp(PR #22673)로 이를 실행하며, 별도의 드래프트 모델 없이 무손실 추측 디코딩을 수행합니다.",
+    "requiresLabel": "필요:"
+  },
+  "ggufSpec": {
+    "tooltip": "llama.cpp 추측 디코딩: 이 GGUF 옆에 DFlash / DFlash 2 / EAGLE-3 / MTP 드래프터가 있으면 이를 사용하고, 없으면 드래프트 없는 n-gram 조회를 사용합니다. 무손실 — 출력은 모델이 검증합니다.",
+    "label": "추측 디코딩",
+    "aboutTitle": "llama.cpp 추측 디코딩 정보",
+    "body": "모델 폴더에 드래프터 파일(mtp-, dflash-, dspark- 또는 eagle3-*.gguf — DFlash 2 드래프터는 dflash- 접두사를 사용)이 있으면 llama.cpp가 이를 사용해 드래프트를 만듭니다. 없으면 ngram-mod로 전환하며, 이는 추가 모델 없이 반복되는 텍스트(코드 수정, 요약, 답변에 되풀이되는 추론)를 재사용합니다. 드래프트된 모든 토큰이 검증되므로 출력은 달라지지 않습니다.",
+    "requiresBody": "최신 llama-server(scripts/update-llama-cpp.sh 실행)가 필요합니다. 이전 바이너리는 런타임 안내와 함께 표준 디코딩으로 되돌아갑니다."
+  },
+  "strategyInfo": {
+    "native": {
+      "description": "전체 정밀도 FP16 KV cache입니다. 압축이 없어 가장 빠르고 품질이 가장 높은 선택이며, 추측 디코딩과 함께 사용할 수 있습니다. 긴 컨텍스트에서는 메모리를 가장 많이 사용합니다. 모든 백엔드에서 작동합니다.",
+      "requires": "내장"
+    },
+    "triattention": {
+      "description": "vLLM을 통해 연동되는 투명한 KV cache 압축입니다. Linux + CUDA 전용이며, ChaosEngineAI는 macOS에서 TriAttention을 지원하지 않습니다.",
+      "requires": "Linux + CUDA GPU + vLLM 백엔드. macOS에서는 지원되지 않습니다.",
+      "installHint": "ChaosEngineAI가 사용하는 Linux/CUDA 환경에서만 사용한 다음 앱을 다시 시작하세요."
+    },
+    "turboquant": {
+      "description": "메모리 절약. KV cache를 1-4비트로 저장해(3비트에서 약 4-5배 작음) 긴 대화가 훨씬 적은 RAM에 들어가도록 합니다. 대신 속도가 희생됩니다. 네이티브보다 생성이 느리고, MLX에서는 채팅 기록 캐시 재사용이 꺼지며 추측 디코딩과 함께 쓸 수 없습니다. 긴 컨텍스트가 메모리에 들어가지 않을 때만 선택하고, 그렇지 않으면 네이티브를 사용하세요. MLX에서는 Hadamard 회전 + Lloyd-Max 코드북을, GGUF에서는 llama-server-turbo를 사용합니다.",
+      "requires": "MLX 경로: Apple Silicon + MLX, GGUF 경로: llama-server-turbo.",
+      "installHint": "MLX: turboquant-mlx-full을 설치하세요. GGUF: scripts/build-llama-turbo.sh를 실행하세요. 그런 다음 ChaosEngineAI를 다시 시작하세요."
+    }
+  },
+  "installTerminal": {
+    "statusRunning": "실행 중",
+    "statusComplete": "완료",
+    "statusFailed": "실패",
+    "statusReady": "준비됨",
+    "noOutputYet": "아직 설치 출력이 없습니다. 설치 프로그램을 실행하면 stdout과 stderr가 여기에 표시됩니다.",
+    "title": "{label} 설치 터미널",
+    "startedAt": "시작: {time}",
+    "collapsedHint": "기본적으로 접혀 있습니다. 설치를 시도한 뒤 열어 실패 원인을 확인하세요.",
+    "finishedAt": "종료: {time}"
+  },
+  "strategyCard": {
+    "turboMissingTooltip": "llama-server-turbo 바이너리가 필요합니다. 설치하려면 scripts/build-llama-turbo.sh를 실행하세요.",
+    "badgeNotApplicable": "해당 없음",
+    "badgeNoTurbo": "turbo 바이너리 없음",
+    "badgeReady": "준비됨",
+    "badgeInstall": "설치",
+    "buildingTurbo": "llama-server-turbo 빌드 중...",
+    "installing": "설치 중...",
+    "installNow": "지금 설치",
+    "runInTerminal": "터미널에서 실행한 다음 ChaosEngineAI를 다시 시작하세요.",
+    "updating": "업데이트 중...",
+    "updateAvailable": "업데이트 가능"
   }
 }

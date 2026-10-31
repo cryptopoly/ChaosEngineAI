@@ -31,15 +31,85 @@ def _is_image_repo(repo_id: str) -> bool:
     )
 
 
+def _sdcpp_gguf_files(repo_id: str) -> list[str]:
+    """GGUF files of the stable-diffusion.cpp variants that live in ``repo_id``.
+
+    Those repos hold bare GGUF files, not a diffusers pipeline, so "installed"
+    means one of the files is on disk.
+    """
+    return [
+        str(variant["ggufFile"])
+        for family in IMAGE_MODEL_FAMILIES
+        for variant in family["variants"]
+        if variant.get("engine") == "sdcpp"
+        and variant.get("ggufFile")
+        and str(variant.get("repo") or "") == repo_id
+        and str(variant.get("ggufRepo") or "") == repo_id
+    ]
+
+
+def _pinned_download_files(repo_id: str) -> list[str]:
+    """Files a variant pins with ``downloadFiles`` when its repo holds several models.
+
+    Iris-3B keeps the Turbo, base, depth and upscaler checkpoints in one 42 GB
+    repo; the Turbo variant needs only its own folder.
+    """
+    files: list[str] = []
+    for family in IMAGE_MODEL_FAMILIES:
+        for variant in family["variants"]:
+            if str(variant.get("repo") or "") == repo_id:
+                files.extend(str(name) for name in variant.get("downloadFiles") or [])
+    return list(dict.fromkeys(files))
+
+
+# The folders mflux loads (its own allow-list in each model's weight
+# definition). FLUX 3 ships ``modular_model_index.json`` instead of the
+# ``model_index.json`` a diffusers snapshot has, so the diffusers check
+# would never call it installed.
+_MFLUX_COMPONENT_DIRS = ("transformer", "text_encoder", "vae")
+
+
+def _mflux_only_repo(repo_id: str) -> bool:
+    """True when every catalog variant of ``repo_id`` runs on mflux."""
+    engines = [
+        variant.get("engine")
+        for family in IMAGE_MODEL_FAMILIES
+        for variant in family["variants"]
+        if str(variant.get("repo") or "") == repo_id
+    ]
+    return bool(engines) and all(engine == "mflux" for engine in engines)
+
+
+def _mflux_snapshot_error(snapshot_dir: Path, repo_id: str) -> str | None:
+    missing = [
+        name for name in _MFLUX_COMPONENT_DIRS
+        if not any((snapshot_dir / name).glob("*.safetensors"))
+    ]
+    if not missing:
+        return None
+    return f"The snapshot of {repo_id} has no weights in: {', '.join(missing)}. Retry the download."
+
+
 def _image_repo_runtime_ready(repo_id: str) -> bool:
     snapshot_dir = _hf_repo_snapshot_dir(repo_id)
     if snapshot_dir is None:
         return False
+    gguf_files = _sdcpp_gguf_files(repo_id)
+    if gguf_files:
+        return any((Path(snapshot_dir) / name).is_file() for name in gguf_files)
+    pinned = _pinned_download_files(repo_id)
+    if pinned:
+        return all((Path(snapshot_dir) / name).is_file() for name in pinned)
+    if _mflux_only_repo(repo_id):
+        return _mflux_snapshot_error(Path(snapshot_dir), repo_id) is None
     return validate_local_diffusers_snapshot(snapshot_dir, repo_id) is None
 
 
 def _image_variant_available_locally(variant: dict[str, Any], library: list[dict[str, Any]]) -> bool:
     repo = str(variant.get("repo") or "")
+    if variant.get("engine") == "sdcpp" and variant.get("ggufFile") and str(variant.get("ggufRepo") or "") == repo:
+        snapshot_dir = _hf_repo_snapshot_dir(repo)
+        return snapshot_dir is not None and (Path(snapshot_dir) / str(variant["ggufFile"])).is_file()
     if repo and _image_repo_runtime_ready(repo):
         return True
 
@@ -51,11 +121,10 @@ def _image_variant_available_locally(variant: dict[str, Any], library: list[dict
     compact_candidates = {candidate.split("/")[-1] for candidate in candidates if candidate}
     for item in library:
         name = str(item.get("name") or "").lower()
-        if not (
-            name in candidates
-            or any(candidate and candidate in name for candidate in candidates)
-            or any(candidate and candidate in name for candidate in compact_candidates)
-        ):
+        # Whole names only: a substring test made a Qwen/Qwen-Image-2.1
+        # snapshot count as Qwen/Qwen-Image (and its Lightning variant)
+        # installed after the user had deleted it.
+        if not (name in candidates or name.split("/")[-1] in compact_candidates):
             continue
         item_path = Path(str(item.get("path") or "")).expanduser()
         for directory in _candidate_model_dirs(item_path):
@@ -73,6 +142,19 @@ def _image_download_validation_error(repo_id: str) -> str | None:
             f"Download did not produce a local snapshot for {repo_id}. "
             "Retry the download and make sure the backend can access Hugging Face."
         )
+    gguf_files = _sdcpp_gguf_files(repo_id)
+    if gguf_files:
+        if any((Path(snapshot_dir) / name).is_file() for name in gguf_files):
+            return None
+        return f"Download finished but none of {', '.join(gguf_files)} is in the snapshot of {repo_id}."
+    pinned = _pinned_download_files(repo_id)
+    if pinned:
+        missing = [name for name in pinned if not (Path(snapshot_dir) / name).is_file()]
+        if missing:
+            return f"The snapshot of {repo_id} is missing {', '.join(missing)}. Retry the download."
+        return None
+    if _mflux_only_repo(repo_id):
+        return _mflux_snapshot_error(Path(snapshot_dir), repo_id)
     return validate_local_diffusers_snapshot(snapshot_dir, repo_id)
 
 

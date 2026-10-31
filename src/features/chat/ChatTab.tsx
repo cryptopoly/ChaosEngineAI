@@ -1,5 +1,5 @@
 import type { Ref } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
 import type { ChatSession, ChatThinkingMode, ModelCapabilities, ModelLoadingState, LaunchPreferences, SamplerOverrides, SystemStats, WarmModel } from "../../types";
@@ -14,6 +14,12 @@ import type { ChatModelOption } from "../../types/chat";
 import { ChatSidebar } from "./ChatSidebar";
 import { ChatHeader } from "./ChatHeader";
 import { ChatThread } from "./ChatThread";
+import { SpeechPlayerBar } from "../voice/ReadAloud";
+import { speechPlayer } from "../voice/speechPlayer";
+import { useVoice } from "../voice/VoiceContext";
+import { VoiceCallOverlay } from "../voice/conversation/VoiceCallOverlay";
+import { cancelChatGeneration } from "../../api";
+import type { SendMessageOptions } from "../../hooks/useChat";
 import { ChatComposer } from "./ChatComposer";
 import { readSamplerOverrides, writeSamplerOverrides } from "./samplerOverrides";
 import { matchSlashCommands, type SlashCommand, type SlashCommandContext } from "./slashCommands";
@@ -97,8 +103,9 @@ export interface ChatTabProps {
   /** Phase 3.6: run the message through a critique pass. */
   onDelveMessage: (messageIndex: number) => void;
   onDetailsToggle: (opened: boolean) => void;
-  onSendMessage: () => void;
+  onSendMessage: (overrideText?: string, options?: SendMessageOptions) => Promise<void> | void;
   onSetError: (msg: string | null) => void;
+  onUnloadModel: () => void;
   enableTools: boolean;
   onToggleTools: (enabled: boolean) => void;
   onCancelGeneration: () => void;
@@ -177,6 +184,7 @@ export function ChatTab({
   onDetailsToggle,
   onSendMessage,
   onSetError,
+  onUnloadModel,
   enableTools,
   onToggleTools,
   onCancelGeneration,
@@ -193,6 +201,30 @@ export function ChatTab({
   onOpenModels,
 }: ChatTabProps) {
   const { t } = useTranslation("chat");
+  const voice = useVoice();
+  const [callOpen, setCallOpen] = useState(false);
+  const voiceRuntime = voice.runtime;
+  const callRequirements = [
+    { label: t("header.callNeedModel", { defaultValue: "a chat model loaded" }), ready: Boolean(loadedModelRef) },
+    { label: t("header.callNeedStt", { defaultValue: "speech recognition (Voice Models)" }), ready: Boolean(voiceRuntime?.sttAvailable) },
+    { label: t("header.callNeedTts", { defaultValue: "a voice for replies (Voice Models)" }), ready: Boolean(voiceRuntime?.ttsAvailable) },
+    { label: t("header.callNeedVad", { defaultValue: "turn detection, part of the voice pack" }), ready: Boolean(voiceRuntime?.vadAvailable) },
+  ];
+  const voiceReady = Boolean(voiceRuntime?.sttAvailable && voiceRuntime.ttsAvailable && voiceRuntime.vadAvailable);
+
+  // Auto-read: speak a reply once it has finished streaming.
+  const busyBeforeRef = useRef<string | null>(null);
+  useEffect(() => {
+    const wasBusy = busyBeforeRef.current;
+    busyBeforeRef.current = chatBusySessionId;
+    if (!voice.settings.autoRead || !voice.runtime?.ttsAvailable || callOpen) return;
+    if (!wasBusy || chatBusySessionId !== null || !activeChat || wasBusy !== activeChat.id) return;
+    const index = activeChat.messages.length - 1;
+    const last = activeChat.messages[index];
+    if (last?.role === "assistant" && last.text.trim()) {
+      void speechPlayer.play(`${activeChat.id}-${index}`, last.text, voice.settings.ttsVoice, voice.settings.speed);
+    }
+  }, [activeChat, callOpen, chatBusySessionId, voice.runtime?.ttsAvailable, voice.settings]);
   const modelBusyLabel =
     busyAction === "Loading model..." || busyAction === "Reloading model for updated launch settings..."
       ? busyAction
@@ -433,6 +465,46 @@ export function ChatTab({
           onDeleteSessionDocument={onDeleteSessionDocument}
           onRefreshWorkspace={onRefreshWorkspace}
           onSetError={onSetError}
+          onUnloadModel={onUnloadModel}
+          onStartCall={() => {
+            if (voiceReady) setCallOpen(true);
+            else voice.openVoiceModels();
+          }}
+          callBlockedReason={
+            !loadedModelRef || modelBusyLabel
+              ? t("header.callNeedsModel", { defaultValue: "Load a chat model to start a voice call" })
+              : null
+          }
+          callInfo={
+            <>
+              {t("header.callInfo", {
+                defaultValue:
+                  "Talk with the loaded model out loud. Speak, pause, and it answers by voice; talk over it to interrupt. Each turn is saved in this chat.",
+              })}
+              <br />
+              <br />
+              {t("header.callNeeds", { defaultValue: "Needs:" })}
+              {callRequirements.map((req) => (
+                <span key={req.label}>
+                  <br />
+                  {req.ready
+                    ? t("header.callReady", { defaultValue: "Ready" })
+                    : t("header.callMissing", { defaultValue: "Missing" })}
+                  {" · "}
+                  {req.label}
+                </span>
+              ))}
+              {voiceReady ? null : (
+                <>
+                  <br />
+                  <br />
+                  {t("header.callSetup", {
+                    defaultValue: "Click Call to open Voice Models and install what is missing.",
+                  })}
+                </>
+              )}
+            </>
+          }
         />
         <ChatThread
           activeChat={activeChat}
@@ -458,10 +530,12 @@ export function ChatTab({
           onBrowseDiscover={onBrowseDiscover}
           onOpenModels={onOpenModels}
         />
+        <SpeechPlayerBar />
         <ChatComposer
           draftMessage={draftMessage}
           pendingImages={pendingImages}
           loadedModelRef={loadedModelRef}
+          modelLoading={modelBusyLabel !== null}
           loadedModelCapabilities={loadedModelCapabilities ?? null}
           thinkingMode={thinkingMode}
           reasoningEffort={reasoningEffort}
@@ -501,6 +575,19 @@ export function ChatTab({
           onInstallPackage={onInstallPackage}
           installingPackage={installingPackage}
         />
+        {callOpen ? (
+          <VoiceCallOverlay
+            messages={activeChat?.messages ?? []}
+            modelName={loadedModelName ?? null}
+            send={(text) => onSendMessage(text, { voice: true })}
+            // Only flag the backend: the stream then ends on its own and the
+            // cut-off reply is saved, so the model sees it next turn.
+            cancel={() => {
+              if (chatBusySessionId) void cancelChatGeneration(chatBusySessionId).catch(() => {});
+            }}
+            onEnd={() => setCallOpen(false)}
+          />
+        ) : null}
       </Panel>
     </div>
   );

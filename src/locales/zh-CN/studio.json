@@ -27,7 +27,7 @@
     "copyImage": "复制图像",
     "openFolder": "在文件夹中显示",
     "modelLabel": "模型",
-    "noModelsOption": "未安装模型 — 从 发现 中下载",
+    "noModelsOption": "未安装模型 — 从 图像 > 模型 中下载",
     "aspectRatio": "纵横比",
     "qualityPreset": "质量预设",
     "previewLabel": "预览",
@@ -40,7 +40,36 @@
       "cancelled": "图像生成已取消",
       "failed": "图像生成失败",
       "imagesReady": "图像已就绪",
-      "imageReady": "图像已就绪"
+      "imageReady": "图像已就绪",
+      "cancelledBody": "你已取消本次生成，未保存任何图像。",
+      "modelStillLoaded": "模型仍已加载 — 下次点击“生成”将无需等待冷启动。",
+      "savedToGallery": "已保存到图库",
+      "phaseLoading": "正在将模型加载到内存",
+      "phaseEncoding": "正在编码提示词",
+      "phaseDiffusing": "正在扩散 {count, plural, other {# 张图像}}",
+      "phaseDecoding": "正在解码像素",
+      "phaseSaving": "正在保存到输出图库",
+      "errorHint": "请调整提示词或运行时设置后重试。图库会保留之前所有成功的输出。",
+      "settings": "设置",
+      "stepsCount": "{count, plural, other {# 步}}",
+      "seedValue": "种子 {seed}",
+      "generatedCount": "本次运行生成了 {count} 张图像。点击缩略图可查看其他结果。",
+      "useSameSettings": "使用相同设置",
+      "varySeed": "更换种子",
+      "open": "打开",
+      "reveal": "显示位置",
+      "delete": "删除",
+      "cancelGeneration": "取消生成",
+      "close": "关闭",
+      "done": "完成"
+    },
+    "mflux": {
+      "outdated": "此处安装的 mflux 引擎（{installed}）比本应用所需的版本（{required}）更旧，因此 FLUX 3、Qwen-Image-2.1 Turbo 等较新的模型将无法运行。更新会在其独立环境中重新安装它。",
+      "notInstalled": "此模型运行在 mflux MLX 引擎上，该引擎尚未安装。它会安装到自己的独立环境中（约 1.3 GB），不会更改应用的软件包。",
+      "installing": "安装中…",
+      "retry": "重试安装",
+      "update": "更新 mflux 引擎",
+      "install": "安装 mflux 引擎"
     }
   },
   "video": {
@@ -63,7 +92,30 @@
       "generating": "正在生成视频",
       "cancelled": "视频生成已取消",
       "failed": "视频生成失败",
-      "ready": "视频已就绪"
+      "ready": "视频已就绪",
+      "cancelledBody": "你已取消本次生成，未保存任何片段。",
+      "modelStillLoaded": "模型仍已加载 — 下次点击“生成”将无需等待冷启动。",
+      "savedToGallery": "已保存到图库",
+      "loadError": "无法加载视频。",
+      "phaseLoading": "正在将模型加载到内存",
+      "phaseEncoding": "正在编码提示词",
+      "phaseDiffusing": "正在扩散 {count, plural, other {# 帧}}",
+      "phaseDiffusingFrames": "正在扩散帧",
+      "phaseEncodingMp4": "正在编码 mp4",
+      "phaseSaving": "正在保存到图库",
+      "errorHint": "请调整提示词、分辨率或帧数后重试。图库会保留之前所有成功的片段。",
+      "loadingClip": "正在加载片段...",
+      "framesCount": "{count, plural, other {# 帧}}",
+      "clipLength": "{seconds} 秒片段",
+      "stepsCount": "{count, plural, other {# 步}}",
+      "seedValue": "种子 {seed}",
+      "renderTime": "渲染耗时 {seconds} 秒",
+      "openGallery": "打开图库",
+      "revealFile": "显示文件位置",
+      "delete": "删除",
+      "cancelGeneration": "取消生成",
+      "close": "关闭",
+      "done": "完成"
     }
   },
   "progress": {
@@ -82,7 +134,36 @@
     "error": "增强器错误:{message}"
   },
   "runtimeBanner": {
-    "loadingModel": "正在将模型加载到内存中..."
+    "loadingModel": "正在将模型加载到内存中...",
+    "cudaTorchInstalled": "CUDA torch 已安装。",
+    "cudaTorchRestartHint": "正在运行的后端在模块缓存中仍持有旧的 torch。请重启后端以激活新的 wheel{index}。",
+    "gpuNotActive": "GPU 加速未激活。",
+    "restarting": "正在重启...",
+    "restartBackend": "重启后端",
+    "installingCudaTorch": "正在安装 CUDA torch...",
+    "installCudaTorch": "安装 CUDA torch",
+    "realGenerationAvailable": "可使用真实的本地生成",
+    "runtimeUnavailable": "运行时不可用",
+    "usingPlaceholder": "正在使用占位输出",
+    "cpuFallback": "CPU 回退",
+    "engineChip": "引擎：{engine}",
+    "deviceExpected": "{device}（预期）",
+    "deviceChip": "设备：{device}",
+    "summaryLoaded": "{selected} 已加载，可以开始生成。",
+    "summarySwap": "已加载 {loaded}。使用 {selected} 生成将切换管线。",
+    "summaryNotLoaded": "{selected} 已安装在本地，但尚未加载。首次生成需要更长时间，因为扩散管线需要预热。",
+    "summaryNotInstalled": "{selected} 尚未安装到本地。请从“模型”页面下载它以启用本地生成。",
+    "summaryOnDemand": "生成时会按需加载模型。",
+    "preloadModel": "预加载模型",
+    "unloadModel": "卸载模型",
+    "unloadNamed": "卸载 {name}",
+    "gpuRuntimeInstalledIntro": "GPU 运行时已安装至",
+    "extrasFallback": "附加项",
+    "gpuRuntimeInstalledOutro": "正在运行的后端仍保留旧的导入缓存 — 点击重启后端以激活新运行时，然后图像生成将使用你的 GPU。",
+    "restartBackendToActivate": "重启后端以激活",
+    "gpuRuntimeInstallPrompt": "安装 GPU 图像运行时（torch + diffusers + accelerate + transformers，约 2.5 GB），即可启用真实的本地生成。它会写入持久的用户本地文件夹，因此应用更新不会将其清除。",
+    "installing": "安装中...",
+    "installGpuRuntime": "安装 GPU 运行时"
   },
   "imageStudio": {
     "generateTitle": {
@@ -92,7 +173,7 @@
       "ready": "生成此图像。"
     },
     "actions": {
-      "discover": "发现",
+      "discover": "查找模型",
       "installed": "已安装",
       "gallery": "图库"
     },
@@ -108,14 +189,14 @@
       "downloaded": "已下载"
     },
     "noModelsCallout": {
-      "message": "你还没有下载任何图像模型。前往图像发现浏览并安装一个模型,然后回到这里生成。",
-      "openDiscover": "打开图像发现"
+      "message": "你还没有下载任何图像模型。前往 图像 > 模型 浏览并安装一个模型,然后回到这里生成。",
+      "openDiscover": "打开图像模型"
     },
     "download": {
       "failedMessage": "{name} 未正确完成下载。ChaosEngineAI 只发现部分本地快照,因此无法加载真实的图像管线。",
       "pausedMessage": "{name} 已部分下载。准备就绪后恢复,ChaosEngineAI 将从磁盘已有的文件继续。",
       "completeMessage": "{name} 已完成下载。已安装模型扫描将自动刷新。",
-      "notInstalledMessage": "{name} 未在本地安装。从发现页面下载以启用本地生成。",
+      "notInstalledMessage": "{name} 未在本地安装。从模型页面下载以启用本地生成。",
       "huggingFace": "Hugging Face",
       "settings": "设置",
       "technicalDetails": "技术细节",
@@ -170,7 +251,8 @@
       "guidance": "引导",
       "images": "图像数",
       "randomSeed": "随机种子",
-      "seed": "种子"
+      "seed": "种子",
+      "maxPixelsNote": "{name} 最多渲染 {megapixels} 百万像素；此尺寸会按比例缩小以适配。"
     },
     "safety": {
       "dangerTitle": "可能导致后端崩溃",
@@ -190,6 +272,98 @@
       "openGallery": "打开图库",
       "emptyHint": "生成一个提示词,为此分支创建第一个已保存的图像。",
       "footnote": "此处显示最新的 {recent} 张已保存图像。打开图像图库浏览全部、按模型过滤并管理较旧的生成。"
+    },
+    "aspectRatios": {
+      "square": {
+        "label": "正方形"
+      },
+      "portrait": {
+        "label": "竖向"
+      },
+      "landscape": {
+        "label": "横向"
+      },
+      "wide": {
+        "label": "宽屏"
+      }
+    },
+    "quality": {
+      "fast": {
+        "label": "快速",
+        "hint": "快速出草稿"
+      },
+      "balanced": {
+        "label": "平衡",
+        "hint": "最佳默认选择"
+      },
+      "quality": {
+        "label": "高质量",
+        "hint": "最终处理更慢"
+      }
+    },
+    "samplers": {
+      "default": {
+        "label": "模型默认",
+        "hint": "沿用模型自带的设置"
+      },
+      "dpmpp_2m": {
+        "label": "DPM++ 2M",
+        "hint": "快速、均衡 — 20-30 步"
+      },
+      "dpmpp_2m_karras": {
+        "label": "DPM++ 2M Karras",
+        "hint": "低步数下更平滑"
+      },
+      "dpmpp_sde": {
+        "label": "DPM++ SDE",
+        "hint": "噪点稍多，更有创意"
+      },
+      "euler": {
+        "label": "Euler",
+        "hint": "经典，25 步以上时可靠"
+      },
+      "euler_a": {
+        "label": "Euler ancestral",
+        "hint": "有创意，非确定性"
+      },
+      "ddim": {
+        "label": "DDIM",
+        "hint": "确定性，较慢"
+      },
+      "unipc": {
+        "label": "UniPC",
+        "hint": "低步数下速度快"
+      },
+      "ays_dpmpp_2m_sd15": {
+        "label": "AYS DPM++ 2M (SD1.5)",
+        "hint": "10 步 Align Your Steps · 仅适用于 SD1.5"
+      },
+      "ays_dpmpp_2m_sdxl": {
+        "label": "AYS DPM++ 2M (SDXL)",
+        "hint": "10 步 Align Your Steps · 仅适用于 SDXL"
+      }
+    },
+    "cacheStrategies": {
+      "none": {
+        "label": "关闭",
+        "hint": "原始管线 — 不使用缓存"
+      },
+      "fbcache": {
+        "label": "First Block Cache",
+        "hint": "在 DiT 上加速 1.5–2 倍 · 跨平台"
+      },
+      "teacache": {
+        "label": "TeaCache",
+        "hint": "已针对 FLUX / Hunyuan / LTX / CogVideoX / Mochi 校准"
+      },
+      "taylorseer": {
+        "label": "TaylorSeer",
+        "hint": "通过多项式外推实现约 2.4 倍（diffusers 0.38 原生）"
+      },
+      "pab": {
+        "label": "PAB",
+        "hint": "Pyramid Attention Broadcast — 在相邻步骤间复用注意力"
+      }
     }
   },
   "videoStudio": {
@@ -222,8 +396,8 @@
     },
     "subtitle": "选择一个视频模型以开始",
     "actions": {
-      "browseCatalog": "浏览目录",
-      "installedModels": "已安装的模型",
+      "browseCatalog": "查找模型",
+      "installedModels": "已安装",
       "downloadModel": "下载模型",
       "loadIntoMemory": "加载到内存",
       "unload": "卸载",
@@ -235,8 +409,8 @@
       "incomplete": "不完整"
     },
     "noModelsCallout": {
-      "message": "尚未安装任何视频模型。浏览目录下载一个。",
-      "openDiscover": "打开视频发现"
+      "message": "尚未安装任何视频模型。打开 视频 > 模型 下载一个。",
+      "openDiscover": "打开视频模型"
     },
     "stats": {
       "clipDuration": "{value} 秒片段"
@@ -251,7 +425,8 @@
     "prompt": {
       "label": "提示词",
       "placeholder": "黎明时分薄雾笼罩的松树林的电影感无人机镜头...",
-      "ltxShortWarning": "LTX-Video 在详细提示词(约 50-100 个词)下效果最佳。短提示词(\\\"卡通羊驼吃稻草\\\")对模型条件化不足,容易漂移。Lightricks 建议先描述动作,然后添加视觉细节、灯光和摄影指导。"
+      "ltxShortWarning": "LTX-Video 在详细提示词(约 50-100 个词)下效果最佳。短提示词(\\\"卡通羊驼吃稻草\\\")对模型条件化不足,容易漂移。Lightricks 建议先描述动作,然后添加视觉细节、灯光和摄影指导。",
+      "soundHint": "此模型也会生成声音,声音会遵循你的提示词。请一并描述:踩在雪上的脚步声、树林里的风声、低沉的引擎声。"
     },
     "negativePrompt": {
       "tooltip": "告诉模型要避免的内容。已预填一个通用提示词,适合大多数视频模型 — 如果你有针对特定模型的偏好,请清除或编辑。具体性通常利大于弊。",
@@ -289,7 +464,8 @@
       "guidanceTooltip": "模型遵循提示词的强度。过低 = 忽略提示词;过高 = 输出僵硬或失真。推荐:LTX-Video ≈ 3、Wan ≈ 5、HunyuanVideo ≈ 6。提示词的\"反向\"方向来自上方的反向提示词。",
       "guidanceLtxWarning": "LTX-Video 是流匹配模型 — CFG 超过约 3.5 会导致过饱和并产生模糊 / 彩虹色输出。降低至 3 以获得最干净的结果。",
       "randomSeed": "随机种子",
-      "seedPlaceholder": "种子(整数)"
+      "seedPlaceholder": "种子(整数)",
+      "maxPixelsNote": "{name} 每帧最多渲染 {megapixels} 百万像素；此尺寸会按比例缩小以适配。"
     },
     "clipLength": {
       "line": "片段长度:{seconds} 秒({frames} 帧 ÷ {fps} fps)"
@@ -346,7 +522,51 @@
       "reasonCaution": "模型需要约 {model} GB 常驻。在 {platform} 上共有 {total} GB,这超过了保守舒适目标(约 {comfort} GB),但仍低于估算工作集(约 {working} GB)。生成应能装下;如果不稳定请降低设置。"
     },
     "disabledHint": "生成已禁用:{reason}",
-    "willLoadHint": "所选模型将在下次生成时加载到内存。大型变体的首次加载可能需要一分钟。"
+    "willLoadHint": "所选模型将在下次生成时加载到内存。大型变体的首次加载可能需要一分钟。",
+    "cacheStrategies": {
+      "none": {
+        "label": "关闭",
+        "hint": "原始管线 — 不使用缓存"
+      },
+      "fbcache": {
+        "label": "First Block Cache",
+        "hint": "在 DiT 上加速 1.5–2 倍 · 跨平台"
+      },
+      "teacache": {
+        "label": "TeaCache",
+        "hint": "已针对 FLUX / Hunyuan / LTX / CogVideoX / Mochi 校准"
+      },
+      "taylorseer": {
+        "label": "TaylorSeer",
+        "hint": "通过多项式外推实现约 2.4 倍（diffusers 0.38 原生）"
+      },
+      "pab": {
+        "label": "PAB",
+        "hint": "Pyramid Attention Broadcast — 在相邻步骤间复用注意力"
+      }
+    },
+    "quality": {
+      "draft": {
+        "label": "草稿",
+        "sub": "20 步"
+      },
+      "standard": {
+        "label": "标准",
+        "sub": "30 步"
+      },
+      "high": {
+        "label": "高",
+        "sub": "40 步"
+      },
+      "max": {
+        "label": "最高",
+        "sub": "50 步"
+      }
+    },
+    "sound": {
+      "badge": "声音",
+      "badgeTooltip": "此片段带有声音。请用播放器的音量控件开启。"
+    }
   },
   "imageGallery": {
     "subtitle": {
@@ -355,7 +575,7 @@
     },
     "actions": {
       "studio": "工作室",
-      "installedModels": "已安装的模型"
+      "installedModels": "已安装"
     },
     "hero": {
       "eyebrow": "已保存的输出",
@@ -409,7 +629,7 @@
     "actions": {
       "autoPlay": "自动播放",
       "openStudio": "打开工作室",
-      "installedModels": "已安装的模型"
+      "installedModels": "已安装"
     },
     "empty": {
       "body": "尚无视频输出。在工作室中加载模型并生成片段 — 完成的渲染将出现在此处。",
@@ -430,7 +650,259 @@
       },
       "expand": "展开",
       "revealFile": "显示文件",
-      "delete": "删除"
+      "delete": "删除",
+      "soundOn": "开启声音",
+      "soundOff": "静音"
+    }
+  },
+  "voice": {
+    "pack": {
+      "title": "语音包",
+      "installed": "已安装",
+      "notInstalled": "未安装",
+      "about": "语音转文字和文字转语音在这台电脑上各自独立的环境中运行（约 2 GB，另加你下载的模型）。不会向网络发送任何内容。",
+      "cancel": "取消",
+      "update": "更新语音包",
+      "install": "安装语音包",
+      "reinstall": "修复 / 重新安装",
+      "done": "语音包已安装。",
+      "log": "安装日志",
+      "updateFeatures": "更新语音包以在聊天中使用语音通话并为转写稿区分说话人（约 40 MB 模型，一两分钟）。"
+    },
+    "models": {
+      "recommended": "推荐",
+      "downloaded": "已下载",
+      "use": "用于语音输入",
+      "download": "下载",
+      "firstUse": "如果跳过此步，将在首次使用时下载。",
+      "title": "语音",
+      "sttTitle": "语音转文字模型",
+      "sttSubtitle": "供聊天中的麦克风和 Voice Studio 使用。"
+    },
+    "voices": {
+      "title": "声音",
+      "subtitle": "Kokoro：9 种语言共 54 种声音。选择聊天朗读时使用的声音。",
+      "needsChinese": "请在语音包中勾选普通话语音。",
+      "notYet": "这台电脑上暂不可用。",
+      "useVoice": "使用这个声音",
+      "preview": "试听"
+    },
+    "settings": {
+      "title": "语音设置",
+      "autoSend": "语音输入结束后立即发送消息",
+      "autoRead": "回复完成后自动朗读每条聊天回复",
+      "language": "语音输入语言",
+      "languageHint": "Whisper 会使用此设置；Parakeet 会自动检测语言。",
+      "speed": "朗读速度",
+      "idle": "空闲多久后释放语音内存（分钟，0 = 从不）",
+      "workerRunning": "语音模型已加载（进程 {pid}）。",
+      "workerStopped": "语音模型未加载。",
+      "unload": "立即卸载",
+      "silence": "语音通话：结束你发言的停顿时长",
+      "silenceHint": "越短回复越快；越长越方便停下来思考。",
+      "bargeIn": "语音通话：开口说话即可打断模型"
+    },
+    "offline": "正在等待后端…",
+    "copy": "复制",
+    "save": "保存到图库",
+    "transcribe": {
+      "title": "转写",
+      "subtitle": "录音，或拖入音频或视频文件",
+      "model": "模型",
+      "language": "语言",
+      "hint": "点击按钮录音，或把文件拖到这里。",
+      "choose": "选择文件",
+      "took": "{s} 秒完成转写",
+      "placeholder": "转写稿会显示在这里，你可以编辑。",
+      "segments": "时间戳（{n}）",
+      "tooBig": "{name} 超过 500 MB。",
+      "recordingName": "录音",
+      "subtitleQueue": "录音，或拖入音频和视频文件",
+      "translateNeedsWhisper": "翻译成英文需要 Whisper Small 或 Whisper Base。",
+      "translate": "翻译成英文",
+      "speakers": "区分说话人",
+      "speakerCount": "说话人数量",
+      "speakersAuto": "自动判断",
+      "speakersN": "{n} 位说话人",
+      "speakersNeedUpdate": "区分说话人需要更新语音包。",
+      "hintQueue": "录音，或把文件拖到这里（可一次拖入多个）。",
+      "chooseFiles": "选择文件"
+    },
+    "stopRecording": "停止录音",
+    "record": "录音",
+    "transcribing": "正在转写",
+    "cancel": "取消",
+    "sendToChat": "发送到聊天",
+    "copied": "已复制",
+    "saved": "已保存",
+    "speak": {
+      "title": "朗读",
+      "subtitle": "把文字转成语音",
+      "placeholder": "输入或粘贴文字。朗读前会先整理 Markdown 和代码。",
+      "voice": "声音",
+      "speed": "速度",
+      "generating": "正在生成…",
+      "generate": "生成音频",
+      "readNow": "立即朗读",
+      "download": "下载 WAV",
+      "subtitleLong": "把文字转成语音。空行开始新段落；[pause] 插入停顿。",
+      "preview": "试听这个声音",
+      "listen": "试听",
+      "progress": "第 {done} 部分，共 {total} 部分",
+      "generateParts": "生成音频（{n} 部分）",
+      "encoding": "正在编码…"
+    },
+    "stop": "停止",
+    "studio": {
+      "title": "Voice Studio",
+      "needsPack": "语音功能在这台电脑上运行，需要语音包（约 2 GB）。请在“语音 > 模型”中安装一次。",
+      "openModels": "打开语音模型"
+    },
+    "savedToLibrary": "已保存到资料库",
+    "saveToLibrary": "保存到资料库",
+    "queue": {
+      "queued": "等待中",
+      "running": "正在转写",
+      "doneIn": "{s} 秒完成",
+      "done": "完成",
+      "cancelled": "已取消",
+      "failed": "失败",
+      "title": "队列",
+      "open": "打开",
+      "remove": "移除"
+    },
+    "editor": {
+      "heading": "转写稿",
+      "translated": "已翻译成英文",
+      "subtitle": "点击时间或单词从该处播放；双击一行进行编辑。",
+      "none": "完成的转写稿会在这里打开，并保存在资料库中。",
+      "speaker": "说话人 {n}",
+      "title": "标题",
+      "saving": "正在保存…",
+      "saveFailed": "未保存",
+      "savedToLibrary": "已保存到资料库",
+      "renameSpeaker": "说话人 {n} 的名字",
+      "empty": "没有找到语音。",
+      "editHint": "双击编辑",
+      "edit": "编辑这一行",
+      "export": "导出"
+    },
+    "handoff": {
+      "summary": "在聊天中总结",
+      "actions": "待办事项",
+      "notes": "会议纪要",
+      "summaryPrompt": "用几个简短的段落总结这份转写稿。",
+      "actionsPrompt": "列出这份转写稿中的待办事项：谁做什么，如有提到则包括截止时间。",
+      "notesPrompt": "为这份转写稿写会议纪要：参会人员、讨论的议题、决定和待办事项。"
+    },
+    "library": {
+      "speakers": "{n} 位说话人",
+      "select": "选择 {title}",
+      "transcript": "转写稿",
+      "speech": "语音",
+      "play": "播放",
+      "working": "处理中…",
+      "originalAudio": "音频（{ext}）",
+      "delete": "删除",
+      "confirmDelete": "删除此项目及其音频？此操作无法撤销。",
+      "confirmDeleteMany": "删除 {n} 个项目及其音频？此操作无法撤销。",
+      "all": "全部",
+      "transcripts": "转写稿",
+      "speechFilter": "语音",
+      "title": "语音资料库",
+      "subtitle": "你制作的转写稿和语音，保存在这台电脑上",
+      "search": "搜索标题和正文",
+      "filter": "显示",
+      "deleteSelected": "删除所选（{n}）",
+      "loading": "正在加载…",
+      "noMatch": "没有匹配项。",
+      "empty": "这里还没有内容。在 Voice Studio 中制作的转写稿和你保存的语音都会放在这里。"
+    },
+    "languages": {
+      "auto": "自动检测"
+    },
+    "lane": {
+      "mlx": "Apple Silicon：MLX 上的 Parakeet 和 Whisper，Kokoro 语音",
+      "cuda": "NVIDIA GPU：CUDA 上的 Whisper，Kokoro 语音",
+      "nvidia": "Whisper（安装时会添加 CUDA 库），Kokoro 语音",
+      "cpu": "CPU 上的 Whisper，Kokoro 语音"
+    },
+    "micError": {
+      "blockedMac": "麦克风访问被阻止。请在“系统设置 > 隐私与安全性 > 麦克风”中允许 ChaosEngineAI，然后重试。",
+      "blockedWindows": "麦克风访问被阻止。请在“设置 > 隐私和安全性 > 麦克风”中允许桌面应用使用麦克风，然后重试。",
+      "blocked": "麦克风访问被阻止。请检查桌面的隐私设置，并确认没有其他应用占用麦克风。",
+      "notFound": "未找到麦克风。请连接麦克风后重试。",
+      "inUse": "麦克风正被其他应用使用，或无法打开。",
+      "unsupported": "此窗口无法使用麦克风（不支持媒体设备）。",
+      "generic": "无法打开麦克风。"
+    }
+  },
+  "residentChatModelNote": "已加载的聊天模型占用了其中约 {gb} GB 内存；卸载它即可释放这部分内存。",
+  "mediaStudioBoosters": {
+    "title": "性能增强",
+    "forModel": "适用于 {model}",
+    "selectedModelFallback": "所选模型"
+  },
+  "torchUpgradePill": {
+    "attempt": {
+      "rollbackPrepare": "将现有 torch 移到回滚目录",
+      "install": "pip install torch（新版本）",
+      "deps": "pip install torch（传递依赖）",
+      "constraint": "在 constraints.txt 中固定 torch",
+      "rebuildPackage": "pip install {package}（--force-reinstall）",
+      "rebuild": "重新构建依赖 ABI 的包",
+      "verify": "在子进程中验证 torch.cuda.is_available()",
+      "cleanup": "清理旧的回滚目录",
+      "rollbackRestore": "从回滚目录恢复之前的 torch",
+      "step": "步骤"
+    },
+    "available": "有可用的 Torch 升级：",
+    "starting": "正在开始…",
+    "upgrade": "升级 torch",
+    "dismiss": "关闭",
+    "willRebuild": "还会重新构建 {count, plural, other {# 个依赖 ABI 的包}}",
+    "abiExplainer": "Torch 的 {type} 升级会破坏 C++ ABI，因此这些包的 wheel 在针对新 torch 重新安装之前无法加载：",
+    "rollbackLead": "如果升级未通过验证，之前的 torch",
+    "rollbackTail": "会自动从同级回滚目录恢复 — 无需重新下载。",
+    "whatHappens": "升级时会发生什么？",
+    "patchBumpExplainer": "补丁版本升级不会改变 torch 的 C++ ABI，因此只会重新安装 torch 的 wheel 本身。当前的 torch 会先被移到同级回滚目录；如果新 wheel 未通过 CUDA 验证，会自动恢复之前的版本。重启后端即可激活新的 wheel。",
+    "upgrading": "正在升级 torch",
+    "complete": "Torch 升级完成",
+    "failed": "Torch 升级失败",
+    "restarting": "正在重启…",
+    "restartToActivate": "重启后端以激活",
+    "rolledBack": "已从回滚目录恢复之前的 torch — 生成将继续使用之前的版本。",
+    "rollbackKeptLead": "回滚目录保留在",
+    "rollbackKeptTail": "以便手动恢复。",
+    "close": "关闭",
+    "installLog": "安装日志（{count, plural, other {# 步}}）"
+  },
+  "recommended": {
+    "title": "为本机推荐",
+    "measured": "实测",
+    "estimated": "估算",
+    "measuredTitle": "已在 {machine} 上实测计时。",
+    "estimatedTitle": "来自模型卡、上游文档或类似的机器，并未在此硬件上实测。",
+    "measuredOn": "实测于 {machine}",
+    "applyAll": "应用推荐设置",
+    "allApplied": "全部已采用",
+    "inUse": "使用中",
+    "use": "使用",
+    "on": "开",
+    "off": "关",
+    "cacheValue": "{name}，阈值 {threshold}",
+    "labels": {
+      "qualityPreset": "质量预设",
+      "steps": "步数",
+      "guidance": "引导",
+      "sampler": "采样器",
+      "size": "尺寸",
+      "numFrames": "帧数",
+      "fps": "FPS",
+      "cache": "扩散缓存",
+      "cfgDecay": "CFG 衰减",
+      "previewVae": "预览 VAE",
+      "fp8LayerwiseCasting": "FP8 逐层"
     }
   }
 }

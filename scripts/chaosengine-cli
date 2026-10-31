@@ -10,6 +10,7 @@ Two layers:
 
   2. Typed shortcuts — ergonomic subcommands for common workflows:
      load / unload / prompt / bench / status / mtplx-install / mtplx-status
+     tensorfold-install / tensorfold-status / mflux-install / mflux-status / ltx2-install / ltx2-status
      download / convert / search / hub-search / list-weights
      session-create / session-delete / session-fork / session-variant
      server-start / server-stop / server-status / server-logs
@@ -290,6 +291,7 @@ def cmd_status(args: argparse.Namespace) -> int:
             "totalMemoryGb": system.get("totalMemoryGb"),
             "availableMemoryGb": system.get("availableMemoryGb"),
             "mtplx": system.get("mtplx"),
+            "tensorfold": system.get("tensorfold"),
             "dflash": system.get("dflash"),
         },
         "libraryCount": len(workspace.get("library") or []),
@@ -815,6 +817,48 @@ def cmd_mtplx_status(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_tensorfold_install(args: argparse.Namespace) -> int:
+    # ``--extras vision,grammar`` adds image input / structured output to the
+    # install; the backend rejects anything else.
+    extras = [part.strip() for part in (args.extras or "").split(",") if part.strip()]
+    _hit_post(args, "/api/setup/install-tensorfold", body={"extras": extras}, timeout=30.0)
+    if not args.wait:
+        _ok(_hit_get(args, "/api/setup/install-tensorfold/status", timeout=10.0))
+        return 0
+    return _poll_install(args, "/api/setup/install-tensorfold/status", label="tensorfold")
+
+
+def cmd_mflux_install(args: argparse.Namespace) -> int:
+    _hit_post(args, "/api/setup/install-mflux", body={}, timeout=30.0)
+    if not args.wait:
+        _ok(_hit_get(args, "/api/setup/install-mflux/status", timeout=10.0))
+        return 0
+    return _poll_install(args, "/api/setup/install-mflux/status", label="mflux")
+
+
+def cmd_ltx2_install(args: argparse.Namespace) -> int:
+    _hit_post(args, "/api/setup/install-ltx2", body={}, timeout=30.0)
+    if not args.wait:
+        _ok(_hit_get(args, "/api/setup/install-ltx2/status", timeout=10.0))
+        return 0
+    return _poll_install(args, "/api/setup/install-ltx2/status", label="ltx2")
+
+
+def cmd_ltx2_status(args: argparse.Namespace) -> int:
+    _ok(_hit_get(args, "/api/setup/ltx2-status", timeout=10.0))
+    return 0
+
+
+def cmd_mflux_status(args: argparse.Namespace) -> int:
+    _ok(_hit_get(args, "/api/setup/mflux-status", timeout=10.0))
+    return 0
+
+
+def cmd_tensorfold_status(args: argparse.Namespace) -> int:
+    _ok(_hit_get(args, "/api/setup/tensorfold-status", timeout=10.0))
+    return 0
+
+
 def cmd_longlive_install(args: argparse.Namespace) -> int:
     _hit_post(args, "/api/setup/install-longlive", body={}, timeout=30.0)
     if not args.wait:
@@ -938,13 +982,21 @@ def cmd_metrics_gpu(args: argparse.Namespace) -> int:
 
 
 def cmd_cache_preview(args: argparse.Namespace) -> int:
-    query = f"?ref={urllib.parse.quote(args.ref)}"
+    # ``ref`` is a local model folder / GGUF file or a Hugging Face repo id; the
+    # backend reads the model's real attention layout from either. The route's
+    # parameter names are snake_case (``context_tokens`` / ``strategy`` / ``bits``).
+    params: dict[str, Any] = {}
+    if os.path.exists(os.path.expanduser(args.ref)):
+        params["model_path"] = os.path.abspath(os.path.expanduser(args.ref))
+    else:
+        params["model_repo"] = args.ref
     if args.context is not None:
-        query += f"&context={args.context}"
+        params["context_tokens"] = args.context
     if args.cache_strategy:
-        query += f"&cacheStrategy={urllib.parse.quote(args.cache_strategy)}"
+        params["strategy"] = args.cache_strategy
     if args.cache_bits is not None:
-        query += f"&cacheBits={args.cache_bits}"
+        params["bits"] = args.cache_bits
+    query = "?" + urllib.parse.urlencode(params)
     code, payload = _request("GET", f"{_base_url(args)}/api/cache/preview{query}", timeout=15.0)
     if code != 200:
         _die(f"cache-preview failed: {payload}")
@@ -1574,6 +1626,12 @@ def build_parser() -> argparse.ArgumentParser:
     # -- Setup --
     s = sub.add_parser("mtplx-install"); s.add_argument("--wait", action="store_true"); s.add_argument("--timeout", type=float, default=600.0); s.set_defaults(func=cmd_mtplx_install)
     sub.add_parser("mtplx-status").set_defaults(func=cmd_mtplx_status)
+    s = sub.add_parser("tensorfold-install"); s.add_argument("--extras", default="", help="Comma-separated optional extras: vision (image input), grammar (structured output)"); s.add_argument("--wait", action="store_true"); s.add_argument("--timeout", type=float, default=900.0); s.set_defaults(func=cmd_tensorfold_install)
+    sub.add_parser("tensorfold-status").set_defaults(func=cmd_tensorfold_status)
+    s = sub.add_parser("mflux-install"); s.add_argument("--wait", action="store_true"); s.add_argument("--timeout", type=float, default=900.0); s.set_defaults(func=cmd_mflux_install)
+    sub.add_parser("mflux-status").set_defaults(func=cmd_mflux_status)
+    s = sub.add_parser("ltx2-install"); s.add_argument("--wait", action="store_true"); s.add_argument("--timeout", type=float, default=900.0); s.set_defaults(func=cmd_ltx2_install)
+    sub.add_parser("ltx2-status").set_defaults(func=cmd_ltx2_status)
     s = sub.add_parser("longlive-install"); s.add_argument("--wait", action="store_true"); s.add_argument("--timeout", type=float, default=1800.0); s.set_defaults(func=cmd_longlive_install)
     sub.add_parser("longlive-status").set_defaults(func=cmd_longlive_status)
     s = sub.add_parser("wan-install"); s.add_argument("--repo", default=None); s.add_argument("--wait", action="store_true"); s.add_argument("--timeout", type=float, default=3600.0); s.set_defaults(func=cmd_wan_install)

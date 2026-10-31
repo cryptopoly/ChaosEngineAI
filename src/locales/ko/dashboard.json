@@ -45,7 +45,12 @@
       "system": "시스템",
       "empty": "활성 로컬 LLM 프로세스가 감지되지 않았습니다.",
       "memoryGb": "{value} GB",
-      "cpuPercent": "{value}%"
+      "cpuPercent": "{value}%",
+      "stopIdleHint": "대기 중인 모델을 언로드하고, 로드된 모델을 처리하지 않는 모든 모델 프로세스를 중지합니다.",
+      "stopIdle": "유휴 항목 중지",
+      "stopHint": "로드된 모델을 처리하지 않습니다. 중지하면 메모리가 해제됩니다.",
+      "stopConfirm": "이 프로세스를 중지하고 메모리를 해제할까요?",
+      "stop": "중지"
     }
   },
   "hardwareFit": {
@@ -54,7 +59,7 @@
     "recommendedTarget": "권장 대상",
     "currentRuntime": "현재 런타임",
     "modelLoadedVia": "{model}이(가) {engine}을(를) 통해 로드되었습니다.",
-    "noModelHint": "아직 모델이 로드되지 않았습니다. 채팅에서 스레드 모델을 선택하거나 둘러보기에서 새 패밀리를 살펴보세요."
+    "noModelHint": "아직 모델이 로드되지 않았습니다. 채팅에서 스레드 모델을 선택하거나 채팅 > 모델에서 새 패밀리를 살펴보세요."
   },
   "activityFeed": {
     "title": "활동 피드",

@@ -71,13 +71,15 @@ export function ChallengePromptLibraryModal({
     },
     ...CHALLENGE_PROMPT_CATEGORIES.map((category) => ({
       id: category.id,
-      label: category.label,
+      label: t(`htmlChallenge.promptLibrary.categories.${category.id}`, { defaultValue: category.label }),
       count: counts[category.id],
     })),
   ];
 
   const categoryLabel = (id: ChallengePromptCategoryId): string =>
-    CHALLENGE_PROMPT_CATEGORIES.find((category) => category.id === id)?.label ?? id;
+    t(`htmlChallenge.promptLibrary.categories.${id}`, {
+      defaultValue: CHALLENGE_PROMPT_CATEGORIES.find((category) => category.id === id)?.label ?? id,
+    });
 
   return (
     <div

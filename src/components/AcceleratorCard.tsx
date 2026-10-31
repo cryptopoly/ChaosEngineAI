@@ -1,4 +1,6 @@
+import i18next from "i18next";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import type { NativeBackendStatus } from "../types/server";
 import {
@@ -98,11 +100,11 @@ export function readVersion(
 export function platformLabel(gate: AcceleratorMeta["platformGate"]): string {
   switch (gate) {
     case "cuda":
-      return "CUDA only";
+      return i18next.t("common:acceleratorCard.platform.cuda", { defaultValue: "CUDA only" });
     case "apple-silicon":
-      return "Apple Silicon only";
+      return i18next.t("common:acceleratorCard.platform.appleSilicon", { defaultValue: "Apple Silicon only" });
     case "any":
-      return "Cross-platform";
+      return i18next.t("common:acceleratorCard.platform.any", { defaultValue: "Cross-platform" });
   }
 }
 
@@ -117,12 +119,15 @@ export function actionLabelFor(args: {
   installMode: AcceleratorMeta["installMode"];
 }): string | null {
   if (args.installed) return null;
-  if (args.installing) return "Installing…";
-  if (args.hasError) return "Retry";
-  return args.installMode === "async" ? "Install (background)" : "Install";
+  if (args.installing) return i18next.t("common:acceleratorCard.installing", { defaultValue: "Installing…" });
+  if (args.hasError) return i18next.t("common:acceleratorCard.retry", { defaultValue: "Retry" });
+  return args.installMode === "async"
+    ? i18next.t("common:acceleratorCard.installBackground", { defaultValue: "Install (background)" })
+    : i18next.t("common:acceleratorCard.install", { defaultValue: "Install" });
 }
 
 export function AcceleratorCard(props: AcceleratorCardProps) {
+  const { t } = useTranslation("common");
   const {
     meta,
     capabilities,
@@ -167,21 +172,23 @@ export function AcceleratorCard(props: AcceleratorCardProps) {
     if (installed) {
       return (
         <span className="accelerator-card-status accelerator-card-status-installed">
-          {version ? `✓ v${version}` : "✓ Installed"}
+          {version
+            ? t("acceleratorCard.installedVersion", { version, defaultValue: "✓ v{version}" })
+            : t("acceleratorCard.installedBadge", { defaultValue: "✓ Installed" })}
         </span>
       );
     }
     if (installing) {
       return (
         <span className="accelerator-card-status accelerator-card-status-installing">
-          Installing…
+          {t("acceleratorCard.installing", { defaultValue: "Installing…" })}
         </span>
       );
     }
     if (installError) {
       return (
         <span className="accelerator-card-status accelerator-card-status-failed">
-          Install failed
+          {t("acceleratorCard.installFailed", { defaultValue: "Install failed" })}
         </span>
       );
     }
@@ -215,7 +222,7 @@ export function AcceleratorCard(props: AcceleratorCardProps) {
             className="accelerator-card-action accelerator-card-action-pill"
             onClick={handleInstall}
             disabled={installing}
-            aria-label={`Install ${meta.label}`}
+            aria-label={t("acceleratorCard.installLabel", { label: meta.label, defaultValue: "Install {label}" })}
           >
             {actionLabel}
           </button>
@@ -248,7 +255,9 @@ export function AcceleratorCard(props: AcceleratorCardProps) {
               className="accelerator-card-action"
               onClick={handleInstall}
               disabled={installing || !compatible}
-              title={!compatible ? `Requires: ${platformLabel(meta.platformGate)}` : undefined}
+              title={!compatible
+                ? t("acceleratorCard.requires", { platform: platformLabel(meta.platformGate), defaultValue: "Requires: {platform}" })
+                : undefined}
             >
               {actionLabel}
             </button>
@@ -278,7 +287,7 @@ export function AcceleratorCard(props: AcceleratorCardProps) {
 
       <p className="accelerator-card-claim">{meta.speedupClaim}</p>
       <p className="accelerator-card-applies">
-        <span className="accelerator-card-applies-label">Applies to:</span>{" "}
+        <span className="accelerator-card-applies-label">{t("acceleratorCard.appliesTo", { defaultValue: "Applies to:" })}</span>{" "}
         {meta.appliesTo}
       </p>
 
@@ -286,7 +295,9 @@ export function AcceleratorCard(props: AcceleratorCardProps) {
         <span className="accelerator-card-meta-item">{meta.sizeOnDiskLabel}</span>
         <span className="accelerator-card-meta-item">{platformLabel(meta.platformGate)}</span>
         <span className="accelerator-card-meta-item">
-          {meta.installMode === "async" ? "Background install" : "Quick install"}
+          {meta.installMode === "async"
+            ? t("acceleratorCard.backgroundInstall", { defaultValue: "Background install" })
+            : t("acceleratorCard.quickInstall", { defaultValue: "Quick install" })}
         </span>
         <span className="accelerator-card-meta-item accelerator-card-meta-follow-up">
           {meta.followUp}
@@ -300,7 +311,9 @@ export function AcceleratorCard(props: AcceleratorCardProps) {
             className="accelerator-card-action accelerator-card-action-primary"
             onClick={handleInstall}
             disabled={installing || !compatible}
-            title={!compatible ? `Requires: ${platformLabel(meta.platformGate)}` : undefined}
+            title={!compatible
+                ? t("acceleratorCard.requires", { platform: platformLabel(meta.platformGate), defaultValue: "Requires: {platform}" })
+                : undefined}
           >
             {actionLabel}
           </button>
@@ -314,7 +327,7 @@ export function AcceleratorCard(props: AcceleratorCardProps) {
           onToggle={(event) => setLogOpen((event.target as HTMLDetailsElement).open)}
         >
           <summary className="accelerator-card-log-summary">
-            Install failure — show output
+            {t("acceleratorCard.installFailureOutput", { defaultValue: "Install failure — show output" })}
           </summary>
           <p className="accelerator-card-log-error">{installError}</p>
           {installOutput && (
@@ -326,7 +339,7 @@ export function AcceleratorCard(props: AcceleratorCardProps) {
       {installed && installOutput && !installError && (
         <details className="accelerator-card-log accelerator-card-log-success">
           <summary className="accelerator-card-log-summary">
-            Install output
+            {t("acceleratorCard.installOutput", { defaultValue: "Install output" })}
           </summary>
           <pre className="accelerator-card-log-output">{installOutput}</pre>
         </details>

@@ -31,6 +31,7 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from backend_service.mlx_models import needs_vlm_runtime, vendored_load_kwargs
 from backend_service.mlx_worker_cache import make_mlx_cache
 from backend_service.mlx_worker_diagnostics import _reject_unsupported_quant
 from backend_service.mlx_worker_io import emit_progress
@@ -40,6 +41,11 @@ from backend_service.mlx_worker_prompt import _merge_runtime_notes
 
 if TYPE_CHECKING:
     from backend_service.mlx_worker import WorkerState
+
+
+class _DflashSelfCheckFailed(Exception):
+    """Raised inside the DFlash init block when the draft runtime disagrees with the model."""
+
 
 
 def load_model(state: WorkerState, request: dict[str, Any]) -> dict[str, Any]:
@@ -104,7 +110,7 @@ def load_model(state: WorkerState, request: dict[str, Any]) -> dict[str, Any]:
     # runtimeNote so the user gets a clear "install mlx-vlm" hint.
     from backend_service.helpers.chat_template import is_multimodal_family
     multimodal_note: str | None = None
-    use_multimodal = is_multimodal_family(target)
+    use_multimodal = is_multimodal_family(target) or needs_vlm_runtime(local_path)
     try:
         # Reject quantisation formats that MLX cannot dequantize.
         _reject_unsupported_quant(local_path)
@@ -135,10 +141,16 @@ def load_model(state: WorkerState, request: dict[str, Any]) -> dict[str, Any]:
             else:
                 state.config = {}
             state.is_multimodal = True
+            state.has_vision = bool((state.config or {}).get("vision_config"))
         else:
-            state.model, state.tokenizer, state.config = load(local_path, return_config=True)
+            load_kwargs: dict[str, Any] = {"return_config": True}
+            # Architectures mlx-lm does not ship yet (Kolibri 1) load from a
+            # vendored file; everything else keeps the plain call.
+            load_kwargs.update(vendored_load_kwargs(local_path, load))
+            state.model, state.tokenizer, state.config = load(local_path, **load_kwargs)
             state.processor = None
             state.is_multimodal = False
+            state.has_vision = False
         state._loaded_model_ref = target
     finally:
         load_done.set()
@@ -149,6 +161,7 @@ def load_model(state: WorkerState, request: dict[str, Any]) -> dict[str, Any]:
     dflash_note = None
     state.tree_budget = int(request.get("treeBudget") or 0)
     if state.speculative_decoding and dflash_draft_model:
+        target_ops = None
         try:
             # FU-075: dflash-mlx 0.1.5 moved the pre-0.1.5 top-level
             # ``configure_full_attention_split`` onto the per-family
@@ -159,6 +172,10 @@ def load_model(state: WorkerState, request: dict[str, Any]) -> dict[str, Any]:
             # generation). Use the new ``resolve_target_ops`` entry point;
             # both it and ``load_draft_bundle`` are still top-level.
             from dflash_mlx.runtime import load_draft_bundle, resolve_target_ops
+
+            from backend_service.dflash_compat import patch_text_wrapper, self_check
+
+            patch_text_wrapper()
             emit_progress("dflash", 96.0, f"Loading DFLASH draft model: {dflash_draft_model}")
             # Reuse the already loaded MLX target model. Loading a second
             # target bundle can duplicate the full model footprint and
@@ -170,14 +187,21 @@ def load_model(state: WorkerState, request: dict[str, Any]) -> dict[str, Any]:
             # the split only when the family calls for it.
             target_ops = resolve_target_ops(state._dflash_target)
             family_fn = getattr(target_ops, "family", None)
-            if (
-                family_fn is not None
-                and family_fn(state._dflash_target) == "hybrid_gdn"
-                and hasattr(target_ops, "configure_full_attention_split")
-            ):
+            is_hybrid = family_fn is not None and family_fn(state._dflash_target) == "hybrid_gdn"
+            if is_hybrid and hasattr(target_ops, "configure_full_attention_split"):
                 target_ops.configure_full_attention_split(state._dflash_target, enabled=True)
+            mismatch = self_check(state._dflash_target, target_ops)
+            if mismatch:
+                # FU-135: a library pair that disagrees with the model produced garbage text before;
+                # refuse it here and say why.
+                state._dflash_target = None
+                state.speculative_decoding = False
+                state.tree_budget = 0
+                raise _DflashSelfCheckFailed(mismatch)
             state._dflash_generator, _ = load_draft_bundle(dflash_draft_model, lazy=True)
             dflash_note = f"DFLASH speculative decoding active (draft: {dflash_draft_model})."
+        except _DflashSelfCheckFailed as exc:
+            dflash_note = f"DFLASH is off for this model: {exc}. Standard generation is used."
         except ImportError as exc:
             dflash_note = f"dflash-mlx could not be imported ({exc}). Falling back to standard generation."
             state.speculative_decoding = False
@@ -185,15 +209,25 @@ def load_model(state: WorkerState, request: dict[str, Any]) -> dict[str, Any]:
             dflash_note = f"DFLASH initialisation failed: {exc}. Falling back to standard generation."
             state.speculative_decoding = False
 
-        # Load DDTree components when tree budget is set
+        # DDTree verifies a whole draft tree in one pass, which only works on
+        # targets made of plain attention layers over a KV cache. Hybrid
+        # recurrent models (Qwen3.5 / 3.6, Qwen3-Next) keep linear DFlash.
         if state.speculative_decoding and state.tree_budget > 0:
-            try:
-                emit_progress("ddtree", 97.0, "Preparing DDTree runtime")
+            from backend_service.ddtree import ddtree_unsupported_reason
+
+            reason = ddtree_unsupported_reason(state._dflash_target, target_ops)
+            if reason is None:
                 state._ddtree_target = state._dflash_target
                 state._ddtree_draft = state._dflash_generator
-                dflash_note = f"DDTree speculative decoding active (budget={state.tree_budget}, draft: {dflash_draft_model})."
-            except Exception as exc:
-                dflash_note = f"DDTree init failed ({exc}). Using linear DFLASH."
+                dflash_note = (
+                    f"DDTree speculative decoding active (budget={state.tree_budget}, "
+                    f"draft: {dflash_draft_model})."
+                )
+            else:
+                dflash_note = (
+                    f"DFLASH speculative decoding active (draft: {dflash_draft_model}). "
+                    f"DDTree is not available for this model ({reason}), so the tree budget is ignored."
+                )
                 state.tree_budget = 0
                 state._ddtree_draft = None
                 state._ddtree_target = None
@@ -224,6 +258,8 @@ def load_model(state: WorkerState, request: dict[str, Any]) -> dict[str, Any]:
             else None
         ),
         "treeBudget": state.tree_budget if state.speculative_decoding and state._dflash_generator is not None else 0,
+        # Loaded through mlx-vlm, so the generate paths accept images.
+        "multimodal": bool(state.has_vision),
         "note": _merge_runtime_notes(profile_note, dflash_note),
     }
 
@@ -233,6 +269,7 @@ def unload_model(state: WorkerState) -> dict[str, Any]:
     state.tokenizer = None
     state.processor = None
     state.is_multimodal = False
+    state.has_vision = False
     state._loaded_model_ref = None
     state._dflash_generator = None
     state._dflash_target = None
@@ -344,4 +381,12 @@ def apply_triattention_mlx_compressor(state: WorkerState) -> str | None:
             f"TriAttention apply_mlx_compressor raised "
             f"({type(exc).__name__}: {exc}); using native cache."
         )
-    return f"TriAttention MLX compressor applied (kv_budget={state.kv_budget})."
+    # ``apply_triattention_mlx`` only attaches the compressor to the model; the
+    # upstream MLX port expects the caller's decode loop to invoke it
+    # (``triattention_generate_step``), and mlx-lm's generation never does. A
+    # tiny-model smoke at both the old and current pins shows identical tokens
+    # and an uncompressed KV cache, so say so rather than imply compression.
+    return (
+        f"TriAttention compressor attached (kv_budget={state.kv_budget}), but MLX generation does not "
+        "invoke it yet: replies and KV cache are the same as native."
+    )

@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { AcceleratorCard } from "../../components/AcceleratorCard";
 import { ACCELERATOR_CATALOG } from "../../components/acceleratorCatalog";
 import { installPipPackage, refreshCapabilities } from "../../api";
 import type { NativeBackendStatus } from "../../types/server";
+import type { SystemStats } from "../../types/system";
+import { isVariantCompatibleWithHost } from "../../utils/platform";
 
 /**
  * The Diagnostics tab's "Boost Pack" section (FU-056 Phase 6).
@@ -36,6 +39,10 @@ export interface AcceleratorsBoostPackProps {
   /** Set false until the backend health check has cleared.
    * Capabilities fetch needs the backend up. */
   backendOnline: boolean;
+  /** The host (``workspace.system``). A row whose hardware the host lacks
+   * is hidden: no CUDA rows on a Mac or on a PC without an NVIDIA GPU, no
+   * Apple Silicon rows on Windows or Linux. Without it every row shows. */
+  hostSystem?: Pick<SystemStats, "platform" | "arch" | "gpuVramTotalGb">;
 }
 
 interface InstallState {
@@ -50,7 +57,8 @@ const EMPTY_INSTALL_STATE: InstallState = {
   output: null,
 };
 
-export function AcceleratorsBoostPack({ backendOnline }: AcceleratorsBoostPackProps) {
+export function AcceleratorsBoostPack({ backendOnline, hostSystem }: AcceleratorsBoostPackProps) {
+  const { t } = useTranslation("common");
   const [capabilities, setCapabilities] = useState<NativeBackendStatus | null>(null);
   const [capError, setCapError] = useState<string | null>(null);
   const [installStates, setInstallStates] = useState<Record<string, InstallState>>({});
@@ -108,7 +116,7 @@ export function AcceleratorsBoostPack({ backendOnline }: AcceleratorsBoostPackPr
             ...prev,
             [pipPackage]: {
               installing: false,
-              error: "Install command exited non-zero.",
+              error: t("acceleratorsBoostPack.installFailed", { defaultValue: "Install command exited non-zero." }),
               output: result.output ?? null,
             },
           }));
@@ -125,25 +133,22 @@ export function AcceleratorsBoostPack({ backendOnline }: AcceleratorsBoostPackPr
         }));
       }
     },
-    [installStates, probe],
+    [installStates, probe, t],
   );
 
-  // Ordered: Apple Silicon, CUDA, cross-platform — but really, all
-  // surfaced together. The user can scan the platformGate column to
-  // decide what their box supports. Keep the catalog order verbatim
-  // so the table is stable across runs.
-  const rows = ACCELERATOR_CATALOG;
+  // Catalog order, minus the rows this host's hardware cannot run.
+  const rows = ACCELERATOR_CATALOG.filter((meta) => isVariantCompatibleWithHost(meta.platformGate, hostSystem));
 
   return (
     <section className="accelerators-boost-pack" style={{ marginTop: 18 }}>
       <header className="accelerators-boost-pack-header">
         <h3 style={{ margin: 0, fontSize: "0.98rem", fontWeight: 600 }}>
-          Boost Pack
+          {t("acceleratorsBoostPack.title", { defaultValue: "Boost Pack" })}
         </h3>
         <p className="muted-text" style={{ margin: "4px 0 0", fontSize: "0.84rem" }}>
-          Optional accelerators for image, video, and chat inference. Each is a
-          single pip install away — click Install on the rows your hardware
-          supports.
+          {t("acceleratorsBoostPack.description", {
+            defaultValue: "Optional accelerators for image, video, and chat inference. Each is a single pip install away — click Install on the rows your hardware supports.",
+          })}
         </p>
       </header>
 
@@ -152,24 +157,24 @@ export function AcceleratorsBoostPack({ backendOnline }: AcceleratorsBoostPackPr
           className="muted-text"
           style={{ color: "rgb(252, 165, 165)", margin: "8px 0 0", fontSize: "0.82rem" }}
         >
-          Could not read accelerator capabilities: {capError}
+          {t("acceleratorsBoostPack.capError", { error: capError, defaultValue: "Could not read accelerator capabilities: {error}" })}
         </p>
       ) : null}
 
       {!backendOnline ? (
         <p className="muted-text" style={{ margin: "8px 0 0", fontSize: "0.82rem" }}>
-          Backend offline — start the sidecar to read accelerator state.
+          {t("acceleratorsBoostPack.backendOffline", { defaultValue: "Backend offline — start the sidecar to read accelerator state." })}
         </p>
       ) : null}
 
       <table className="accelerators-boost-pack-table" style={{ width: "100%", marginTop: 10, borderCollapse: "collapse" }}>
         <thead>
           <tr style={{ borderBottom: "1px solid rgba(255, 255, 255, 0.06)", fontSize: "0.76rem", color: "var(--muted)" }}>
-            <th style={{ padding: "6px 10px", textAlign: "left", fontWeight: 500 }}>Accelerator</th>
-            <th style={{ padding: "6px 10px", textAlign: "left", fontWeight: 500 }}>Size</th>
-            <th style={{ padding: "6px 10px", textAlign: "left", fontWeight: 500 }}>Platform</th>
-            <th style={{ padding: "6px 10px", textAlign: "right", fontWeight: 500 }}>Status</th>
-            <th style={{ padding: "6px 10px", textAlign: "right", fontWeight: 500 }}>Action</th>
+            <th style={{ padding: "6px 10px", textAlign: "left", fontWeight: 500 }}>{t("acceleratorsBoostPack.columns.accelerator", { defaultValue: "Accelerator" })}</th>
+            <th style={{ padding: "6px 10px", textAlign: "left", fontWeight: 500 }}>{t("acceleratorsBoostPack.columns.size", { defaultValue: "Size" })}</th>
+            <th style={{ padding: "6px 10px", textAlign: "left", fontWeight: 500 }}>{t("acceleratorsBoostPack.columns.platform", { defaultValue: "Platform" })}</th>
+            <th style={{ padding: "6px 10px", textAlign: "right", fontWeight: 500 }}>{t("acceleratorsBoostPack.columns.status", { defaultValue: "Status" })}</th>
+            <th style={{ padding: "6px 10px", textAlign: "right", fontWeight: 500 }}>{t("acceleratorsBoostPack.columns.action", { defaultValue: "Action" })}</th>
           </tr>
         </thead>
         <tbody>

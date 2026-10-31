@@ -8,10 +8,13 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from backend_service.catalog import IMAGE_MODEL_FAMILIES, LATEST_IMAGE_TRACKED_SEEDS
+from backend_service.helpers.fit import annotate_fit
 from backend_service.helpers.formatting import _bytes_to_gb
+from backend_service.helpers.generation_limits import size_limit_fields
+from backend_service.helpers.recommendations import annotate_recommendations
 from backend_service.helpers.huggingface import (
     _classify_hub_file,
     _format_hf_updated_label,
@@ -46,6 +49,9 @@ from backend_service.helpers.platform_filter import (
     is_apple_silicon,
 )
 from backend_service.image_runtime import validate_local_diffusers_snapshot
+
+if TYPE_CHECKING:
+    from backend_service.helpers.hardware_class import HardwareClass
 
 
 _IMAGE_DISCOVER_METADATA_CACHE: dict[tuple[str, str], tuple[float, dict[str, Any]]] = {}
@@ -122,7 +128,25 @@ def _snapshot_on_disk_bytes(snapshot_dir: Path | None) -> int | None:
     return total or None
 
 
-def _image_model_payloads(library: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def _image_variant_inputs(variant: dict[str, Any]) -> dict[str, bool]:
+    """Which Studio inputs the variant's engine reads; the Studio hides the others.
+
+    An mflux checkpoint takes the arguments its family table lists (the distilled
+    ones have no guidance, most have no negative prompt); every other engine reads both.
+    """
+    if variant.get("engine") == "mflux":
+        from backend_service.image_runtime.mflux_engine import mflux_family_for_repo
+
+        family = mflux_family_for_repo(str(variant.get("repo") or ""))
+        if family is not None:
+            return {"acceptsGuidance": family.takes_guidance, "acceptsNegativePrompt": family.takes_negative_prompt}
+    return {"acceptsGuidance": True, "acceptsNegativePrompt": True}
+
+
+def _image_model_payloads(
+    library: list[dict[str, Any]],
+    hardware: HardwareClass | None = None,
+) -> list[dict[str, Any]]:
     repo_metadata: dict[str, dict[str, Any]] = {}
     repos = sorted({
         str(variant.get("repo") or "")
@@ -166,6 +190,8 @@ def _image_model_payloads(library: list[dict[str, Any]]) -> list[dict[str, Any]]
                     "source": "curated",
                     "familyName": family.get("name"),
                     "availableLocally": _image_variant_available_locally(variant, library),
+                    **_image_variant_inputs(variant),
+                    **size_limit_fields(variant),
                     "hasLocalData": snapshot_dir is not None,
                     "localPath": str(snapshot_dir) if snapshot_dir else None,
                     "releaseDate": curated_release_date,
@@ -174,6 +200,12 @@ def _image_model_payloads(library: list[dict[str, Any]]) -> list[dict[str, Any]]
                     "onDiskGb": _bytes_to_gb(on_disk_bytes) if on_disk_bytes else None,
                 }
             )
+        # Variants that use the same download (FLUX.2 Klein 4B for diffusers
+        # and mflux, the FLUX.1 Dev LoRA rows) are flagged, as in Video, so the
+        # Models tab says deleting one removes files the others use.
+        from backend_service.helpers.video import _annotate_shared_repo_siblings
+
+        _annotate_shared_repo_siblings(variants)
         families.append(
             {
                 **family,
@@ -181,7 +213,11 @@ def _image_model_payloads(library: list[dict[str, Any]]) -> list[dict[str, Any]]
                 "variants": variants,
             }
         )
-    return filter_mlx_only_families(families, on_apple_silicon=is_apple_silicon())
+    families = filter_mlx_only_families(families, on_apple_silicon=is_apple_silicon())
+    # Hardware fit: ``fit`` on every variant, ``bestFitVariantId`` on every family.
+    families = annotate_fit(families, "image", hardware)
+    # Studio "Recommended for this machine" panel: ``recommendedSettings`` per variant.
+    return annotate_recommendations(families, "image", hardware)
 
 
 def _find_image_variant(model_id: str) -> dict[str, Any] | None:
@@ -210,6 +246,7 @@ def _find_image_variant(model_id: str) -> dict[str, Any] | None:
                 "styleTags": list(seed.get("styleTags") or []),
                 "taskSupport": list(seed.get("taskSupport") or ["txt2img"]),
                 "recommendedResolution": seed.get("recommendedResolution") or "1024x1024",
+                **size_limit_fields(seed),
             }
     return None
 
@@ -239,6 +276,7 @@ def _find_image_variant_by_repo(repo: str) -> dict[str, Any] | None:
                 "styleTags": list(seed.get("styleTags") or []),
                 "taskSupport": list(seed.get("taskSupport") or ["txt2img"]),
                 "recommendedResolution": seed.get("recommendedResolution") or "1024x1024",
+                **size_limit_fields(seed),
             }
     return None
 
@@ -475,6 +513,7 @@ def _tracked_latest_seed_payloads(library: list[dict[str, Any]]) -> list[dict[st
                 "metadataWarning": "Showing ChaosEngineAI tracked latest defaults until live Hugging Face metadata is available.",
                 "source": "latest",
                 "trackedOnly": not _is_launchable_image_repo(repo_id),
+                **size_limit_fields(seed),
             }
         )
     return payloads
@@ -681,6 +720,7 @@ def _latest_image_model_payloads(library: list[dict[str, Any]], limit: int = 10)
             "metadataWarning": metadata.get("metadataWarning"),
             "source": "latest",
             "trackedOnly": not _is_launchable_image_repo(model_id),
+            **size_limit_fields({"recommendedResolution": _image_recommended_resolution(model_id, pipeline_tag, tags)}),
         })
 
     candidates.sort(
@@ -742,6 +782,7 @@ _IMAGE_DIFFUSERS_ALLOW_PATTERNS: list[str] = [
     "tokenizer/**",
     "tokenizer_2/**",
     "tokenizer_3/**",
+    "processor/**",
     "transformer/**",
     "transformer_2/**",
     "unet/**",
@@ -767,6 +808,14 @@ def _image_repo_allow_patterns(repo_id: str) -> list[str] | None:
     known = _image_download_repo_ids()
     if repo_id not in known:
         return None
+    from backend_service.helpers.image_validation import _pinned_download_files, _sdcpp_gguf_files
+
+    gguf_files = _sdcpp_gguf_files(repo_id)
+    if gguf_files:
+        return [*gguf_files, "*.md", "LICENSE*"]
+    pinned = _pinned_download_files(repo_id)
+    if pinned:
+        return [*pinned, "*.md", "LICENSE*"]
     return list(_IMAGE_DIFFUSERS_ALLOW_PATTERNS)
 
 

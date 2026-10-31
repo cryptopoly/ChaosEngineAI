@@ -29,7 +29,7 @@ echo
 # ------------------------------------------------------------------
 # 1. Python tests
 # ------------------------------------------------------------------
-echo "[1/9] Python tests..."
+echo "[1/10] Python tests..."
 if .venv/bin/python -m pytest tests/ -q --tb=line 2>&1 | tail -3; then
   pass "Python tests"
 else
@@ -40,7 +40,7 @@ echo
 # ------------------------------------------------------------------
 # 2. TypeScript tests
 # ------------------------------------------------------------------
-echo "[2/9] TypeScript tests..."
+echo "[2/10] TypeScript tests..."
 if npm test 2>&1 | tail -5; then
   pass "TypeScript tests"
 else
@@ -51,7 +51,7 @@ echo
 # ------------------------------------------------------------------
 # 3. TypeScript type checking
 # ------------------------------------------------------------------
-echo "[3/9] TypeScript type checking..."
+echo "[3/10] TypeScript type checking..."
 if npx tsc --noEmit 2>&1; then
   pass "TypeScript types"
 else
@@ -62,7 +62,7 @@ echo
 # ------------------------------------------------------------------
 # 4. Licence notices
 # ------------------------------------------------------------------
-echo "[4/9] Licence notices..."
+echo "[4/10] Licence notices..."
 if [[ -f "THIRD_PARTY_NOTICES.md" ]] && [[ -s "THIRD_PARTY_NOTICES.md" ]]; then
   # Check that key dependencies are mentioned
   missing=""
@@ -87,7 +87,7 @@ echo
 # ------------------------------------------------------------------
 # 5. Cache strategy validation
 # ------------------------------------------------------------------
-echo "[5/9] Cache strategy validation..."
+echo "[5/10] Cache strategy validation..."
 CACHE_CHECK=$(.venv/bin/python -c "
 from cache_compression import registry
 registry.discover()
@@ -120,7 +120,7 @@ echo
 # ------------------------------------------------------------------
 # 6. Upstream dependency update check
 # ------------------------------------------------------------------
-echo "[6/9] Upstream dependency check..."
+echo "[6/10] Upstream dependency check..."
 
 # Turbo fork
 TURBO_VERSION_FILE="$HOME/.chaosengine/bin/llama-server-turbo.version"
@@ -146,12 +146,25 @@ fi
 # old binary in release builds).
 PYPROJECT_PIN=$(grep -E 'dflash-mlx\.git@[a-f0-9]+' pyproject.toml | head -1 | sed -E 's/.*dflash-mlx\.git@([a-f0-9]+).*/\1/')
 STAGE_PIN=$(grep -E 'dflash-mlx\.git@[a-f0-9]+' scripts/stage-runtime.mjs | head -1 | sed -E 's/.*dflash-mlx\.git@([a-f0-9]+).*/\1/')
-if [[ -z "$PYPROJECT_PIN" || -z "$STAGE_PIN" ]]; then
-  warn "dflash-mlx pin sync — could not extract commit hashes from both files"
-elif [[ "$PYPROJECT_PIN" != "$STAGE_PIN" ]]; then
-  fail "dflash-mlx pin drift — pyproject.toml=${PYPROJECT_PIN:0:12} stage-runtime.mjs=${STAGE_PIN:0:12}. Sync both to the same commit."
+SETUP_PIN=$(grep -E 'dflash-mlx\.git@[a-f0-9]+' backend_service/routes/setup/__init__.py | head -1 | sed -E 's/.*dflash-mlx\.git@([a-f0-9]+).*/\1/')
+if [[ -z "$PYPROJECT_PIN" || -z "$STAGE_PIN" || -z "$SETUP_PIN" ]]; then
+  warn "dflash-mlx pin sync — could not extract commit hashes from all three files"
+elif [[ "$PYPROJECT_PIN" != "$STAGE_PIN" || "$PYPROJECT_PIN" != "$SETUP_PIN" ]]; then
+  fail "dflash-mlx pin drift — pyproject.toml=${PYPROJECT_PIN:0:12} stage-runtime.mjs=${STAGE_PIN:0:12} routes/setup=${SETUP_PIN:0:12}. Sync all three to the same commit."
 else
   pass "dflash-mlx pin sync (${PYPROJECT_PIN:0:12})"
+fi
+
+# TriAttention pin sync: the two pyproject extras and the Setup tab's
+# installer allowlist must name one upstream commit (mirrors the .mjs probe).
+TRI_PINS=$(grep -ohE 'WeianMao/triattention\.git@[a-f0-9]+' pyproject.toml backend_service/routes/setup/__init__.py | sed -E 's/.*@//' | sort -u)
+TRI_COUNT=$(printf '%s\n' "$TRI_PINS" | grep -c . || true)
+if [[ "$TRI_COUNT" -eq 0 ]]; then
+  warn "triattention pin sync — no pinned commit found in pyproject.toml / routes/setup"
+elif [[ "$TRI_COUNT" -gt 1 ]]; then
+  fail "triattention pin drift — found $(printf '%s' "$TRI_PINS" | tr '\n' ' ') across pyproject.toml and routes/setup. Sync them to one commit."
+else
+  pass "triattention pin sync (${TRI_PINS:0:12})"
 fi
 
 # App version sync across the 4 manifests. v0.9.0 release shipped with
@@ -167,12 +180,38 @@ elif [[ "$PKG_VERSION" != "$PY_VERSION" || "$PKG_VERSION" != "$CARGO_VERSION" ||
 else
   pass "app version sync ($PKG_VERSION)"
 fi
+# Lock files too (package-lock.json, Cargo.lock): a stale one ships a build
+# whose own version differs from the manifests.
+if VERSION_SYNC_OUT=$(node scripts/check-version-sync.mjs 2>&1); then
+  pass "app version sync incl. lock files"
+else
+  fail "$VERSION_SYNC_OUT"
+fi
+echo
+
+# ------------------------------------------------------------------
+# 7. Dependency audit (known vulnerabilities + out-of-date packages)
+# ------------------------------------------------------------------
+# Checks every pinned Python package, Rust crate and npm package against
+# osv.dev. A high or critical advisory blocks; accept one on purpose in
+# scripts/dependency-audit-ignore.json (reason + expiry). Packages behind the
+# newest release are listed but never block. Needs network access.
+echo "[7/10] Dependency audit (osv.dev)..."
+.venv/bin/python scripts/audit-dependencies.py
+AUDIT_RC=$?
+if [[ $AUDIT_RC -eq 0 ]]; then
+  pass "dependency audit — no blocking advisories"
+elif [[ $AUDIT_RC -eq 2 ]]; then
+  warn "dependency audit could not run (no network?) — re-run when online; the release workflow runs it too"
+else
+  fail "dependency audit — a shipped package has a high or critical advisory (see above); upgrade it or accept it in scripts/dependency-audit-ignore.json"
+fi
 echo
 
 # ------------------------------------------------------------------
 # 7. Binary availability
 # ------------------------------------------------------------------
-echo "[7/9] Binary availability..."
+echo "[8/10] Binary availability..."
 if command -v llama-server &>/dev/null || [[ -f "/opt/homebrew/bin/llama-server" ]]; then
   pass "llama-server (standard) — found"
 else
@@ -208,7 +247,7 @@ echo
 # Runs the JS-side parity + ICU compile + orphan checker.  Warn-only
 # by default per FU-042 §Coverage Gate; pass --strict to upgrade the
 # threshold to fail-on-merge once translations stabilise.
-echo "[8/9] i18n locale validation..."
+echo "[9/10] i18n locale validation..."
 if node scripts/i18n-validate.mjs 2>&1 | tail -15; then
   pass "i18n locale catalogs"
 else
@@ -224,7 +263,7 @@ echo
 # Skip if no backend is running — pre-build doesn't spawn one.
 # Full suite (./scripts/e2e_test_suite.py) is required for releases;
 # see docs/E2E_TESTING.md.
-echo "[9/9] E2E smoke (CLI + backend)..."
+echo "[10/10] E2E smoke (CLI + backend)..."
 if curl -s -m 2 http://127.0.0.1:8876/api/health > /dev/null 2>&1; then
   if ./scripts/e2e_test_suite.py --smoke 2>&1 | tail -12; then
     pass "E2E smoke — all phases green"

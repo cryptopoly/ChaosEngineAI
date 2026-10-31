@@ -1,12 +1,16 @@
 import { useEffect, useState } from "react";
+import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import type { LaunchPreferences, PreviewMetrics, StrategyInstallLog } from "../types";
-import type { MtplxJobState } from "../api";
+import type { MtplxJobState, TensorfoldExtra, TensorfoldJobState } from "../api";
 import { InstallLogPanel } from "./InstallLogPanel";
+import { TensorfoldLaunchControl } from "./TensorfoldLaunchControl";
+import { tensorfoldEngaged, type TensorfoldLaunchInfo } from "./tensorfoldSupport";
 import { SliderField } from "./SliderField";
 import { PerformancePreview } from "./PerformancePreview";
 import {
   dflashPackageFor,
+  isMemorySaverStrategy,
   isMtpGgufRepo,
   isStrategyCompatible,
   resolveDflashSupport,
@@ -27,32 +31,17 @@ const LAUNCH_PRESETS: Array<{
   { id: "memory", labelKey: "presets.memory.label", labelFallback: "Min Memory", hintKey: "presets.memory.hint", hintFallback: "Tight RAM", values: { contextTokens: 4096, fusedAttention: true, fitModelInMemory: false, maxTokens: 2048 } },
 ];
 
-const STRATEGY_INFO: Record<string, { description: string; install: string; requires: string; installHint?: string; autoInstallPackage?: string }> = {
-  native: {
-    description: "Full-precision FP16 KV cache. No compression, maximum quality. Works with all backends.",
-    install: "",
-    requires: "Built-in",
-  },
+type StrategyInfo = { description: string; install: string; requires: string; installHint?: string; autoInstallPackage?: string };
+
+// Retired strategy ids (FU-030): the registry no longer lists them, so their
+// text is left as plain English.
+const STRATEGY_INFO: Record<string, StrategyInfo> = {
   rotorquant: {
     description: "IsoQuant/PlanarQuant KV cache compression using 4D quaternion or 2D Givens rotations. 3-4 bit quantisation with minimal quality loss.",
     install: "./scripts/build-llama-turbo.sh && ./.venv/bin/python3 -m pip install turboquant",
     requires: "llama-server-turbo (TurboQuant fork) + CUDA/Metal GPU",
     installHint: "Run scripts/build-llama-turbo.sh to build the forked llama-server, then install the Python marker package and restart ChaosEngineAI.",
     autoInstallPackage: "turboquant",
-  },
-  triattention: {
-    description: "Transparent KV cache compression integrated via vLLM. Linux + CUDA only; ChaosEngineAI does not support TriAttention on macOS.",
-    install: "./.venv/bin/python3 -m pip install triattention vllm",
-    requires: "Linux + CUDA GPU + vLLM backend. Not supported on macOS.",
-    installHint: "Use this only in a Linux/CUDA environment used by ChaosEngineAI, then restart the app.",
-    autoInstallPackage: "triattention",
-  },
-  turboquant: {
-    description: "TurboQuant KV cache compression (~4.6x at 3-bit). On MLX, uses Hadamard rotation + Lloyd-Max codebooks. On GGUF, uses llama-server-turbo. Works with all model architectures.",
-    install: "./.venv/bin/python3 -m pip install turboquant-mlx-full && ./scripts/build-llama-turbo.sh",
-    requires: "Apple Silicon + MLX for MLX path; llama-server-turbo for GGUF path.",
-    installHint: "For MLX: install turboquant-mlx-full. For GGUF: run scripts/build-llama-turbo.sh. Then restart ChaosEngineAI.",
-    autoInstallPackage: "turboquant-mlx",
   },
   chaosengine: {
     description: "PCA-based decorrelation + channel truncation + hybrid quantization. Achieves ~3.7x KV cache compression with minimal quality loss (0.034 avg attention error). Supports 2-8 bit compression tiers.",
@@ -61,6 +50,49 @@ const STRATEGY_INFO: Record<string, { description: string; install: string; requ
     installHint: "Desktop builds can bundle a vendored ChaosEngine checkout automatically. For source/dev installs, clone the repo, pip install it into ChaosEngineAI's backend Python, then restart.",
   },
 };
+
+function strategyInfoFor(id: string, t: TFunction<"runtime">): StrategyInfo | undefined {
+  switch (id) {
+    case "native":
+      return {
+        description: t("strategyInfo.native.description", {
+          defaultValue: "Full-precision FP16 KV cache. No compression, so it is the fastest and highest-quality choice, and it works with speculative decoding. It uses the most memory at long context. Works with all backends.",
+        }),
+        install: "",
+        requires: t("strategyInfo.native.requires", { defaultValue: "Built-in" }),
+      };
+    case "triattention":
+      return {
+        description: t("strategyInfo.triattention.description", {
+          defaultValue: "Transparent KV cache compression integrated via vLLM. Linux + CUDA only; ChaosEngineAI does not support TriAttention on macOS.",
+        }),
+        install: "./.venv/bin/python3 -m pip install triattention vllm",
+        requires: t("strategyInfo.triattention.requires", {
+          defaultValue: "Linux + CUDA GPU + vLLM backend. Not supported on macOS.",
+        }),
+        installHint: t("strategyInfo.triattention.installHint", {
+          defaultValue: "Use this only in a Linux/CUDA environment used by ChaosEngineAI, then restart the app.",
+        }),
+        autoInstallPackage: "triattention",
+      };
+    case "turboquant":
+      return {
+        description: t("strategyInfo.turboquant.description", {
+          defaultValue: "Memory saver. Stores the KV cache in 1-4 bits (about 4-5x smaller at 3-bit) so long conversations fit in far less RAM. The trade is speed: expect slower generation than Native, and on MLX it turns off chat-history cache reuse and cannot be combined with speculative decoding. Pick it when a long context will not fit in memory; otherwise stay on Native. On MLX it uses Hadamard rotation + Lloyd-Max codebooks; on GGUF it uses llama-server-turbo.",
+        }),
+        install: "./.venv/bin/python3 -m pip install turboquant-mlx-full && ./scripts/build-llama-turbo.sh",
+        requires: t("strategyInfo.turboquant.requires", {
+          defaultValue: "Apple Silicon + MLX for MLX path; llama-server-turbo for GGUF path.",
+        }),
+        installHint: t("strategyInfo.turboquant.installHint", {
+          defaultValue: "For MLX: install turboquant-mlx-full. For GGUF: run scripts/build-llama-turbo.sh. Then restart ChaosEngineAI.",
+        }),
+        autoInstallPackage: "turboquant-mlx",
+      };
+    default:
+      return STRATEGY_INFO[id];
+  }
+}
 
 function activePresetId(settings: LaunchPreferences): string | null {
   for (const preset of LAUNCH_PRESETS) {
@@ -148,6 +180,13 @@ interface RuntimeControlsProps {
   onInstallMtplx?: () => void;
   installingMtplx?: boolean;
   mtplxJob?: MtplxJobState | null;
+  /** TensorFold engine state for the selected checkpoint; ``null`` /
+   * omitted when the model is not one TensorFold serves (no control is
+   * shown — there is nothing an install could do for it). */
+  tensorfoldInfo?: TensorfoldLaunchInfo | null;
+  onInstallTensorfold?: (extras?: TensorfoldExtra[]) => void;
+  installingTensorfold?: boolean;
+  tensorfoldJob?: TensorfoldJobState | null;
   /** FU-056 follow-up: pass ``isAppleSilicon=true`` to surface the
    * MTPLX block (Apple-Silicon-only). Defaults to ``false`` (hidden)
    * on Windows / Linux where MTPLX can't run — the install button
@@ -163,31 +202,34 @@ function StrategyInstallTerminal({
   label: string;
   log?: StrategyInstallLog;
 }) {
+  const { t } = useTranslation("runtime");
   const status = log?.status ?? "idle";
   const summaryStatus =
-    status === "running" ? "running" :
-    status === "success" ? "complete" :
-    status === "failed" ? "failed" :
-    "ready";
+    status === "running" ? t("installTerminal.statusRunning", { defaultValue: "running" }) :
+    status === "success" ? t("installTerminal.statusComplete", { defaultValue: "complete" }) :
+    status === "failed" ? t("installTerminal.statusFailed", { defaultValue: "failed" }) :
+    t("installTerminal.statusReady", { defaultValue: "ready" });
   const lines = log?.steps.length
     ? log.steps.map((step) => [
       `$ ${step.command}`,
       `[${step.status.toUpperCase()}] ${step.label}`,
       formatStrategyInstallOutput(step.output, step.status),
     ].join("\n")).join("\n\n")
-    : "No install output yet. Run the installer to capture stdout and stderr here.";
+    : t("installTerminal.noOutputYet", { defaultValue: "No install output yet. Run the installer to capture stdout and stderr here." });
 
   return (
     <details className={`strategy-install-terminal strategy-install-terminal--${status}`}>
       <summary className="strategy-install-terminal-summary">
-        <span>{label} install terminal</span>
+        <span>{t("installTerminal.title", { label, defaultValue: "{label} install terminal" })}</span>
         <span className={`strategy-install-terminal-status strategy-install-terminal-status--${status}`}>
           {summaryStatus}
         </span>
       </summary>
       <div className="strategy-install-terminal-meta">
-        {log?.startedAt ? <span>Started {log.startedAt}</span> : <span>Collapsed by default. Open after an install attempt to inspect failures.</span>}
-        {log?.finishedAt ? <span>Finished {log.finishedAt}</span> : null}
+        {log?.startedAt
+          ? <span>{t("installTerminal.startedAt", { time: log.startedAt, defaultValue: "Started {time}" })}</span>
+          : <span>{t("installTerminal.collapsedHint", { defaultValue: "Collapsed by default. Open after an install attempt to inspect failures." })}</span>}
+        {log?.finishedAt ? <span>{t("installTerminal.finishedAt", { time: log.finishedAt, defaultValue: "Finished {time}" })}</span> : null}
       </div>
       <pre className="strategy-install-terminal-output">{lines}</pre>
     </details>
@@ -254,6 +296,10 @@ export function RuntimeControls({
   onInstallMtplx,
   installingMtplx,
   mtplxJob,
+  tensorfoldInfo,
+  onInstallTensorfold,
+  installingTensorfold,
+  tensorfoldJob,
   isAppleSilicon = false,
 }: RuntimeControlsProps) {
   const { t } = useTranslation("runtime");
@@ -283,14 +329,26 @@ export function RuntimeControls({
   // showing DFlash alongside an installed MTPLX is confusing (it appears
   // "ticked" even though MTPLX is what actually runs). Hide DFlash in that
   // case; MTPLX takes precedence.
-  const mtplxSupersedesDflash = (mtplxInfo?.modelSupported ?? false) && (mtplxInfo?.available ?? false);
+  // TensorFold outranks both (``RuntimeController._select_tensorfold`` runs
+  // first), so once it is installed for a checkpoint it serves, neither
+  // DFlash nor MTPLX is offered for it.
+  const tensorfoldShown = isAppleSilicon && Boolean(tensorfoldInfo);
+  const tensorfoldActive = tensorfoldShown && (tensorfoldInfo?.available ?? false);
+  const tensorfoldRuns = tensorfoldShown && tensorfoldEngaged(tensorfoldInfo, settings.speculativeDecoding);
+  const mtplxSupersedesDflash =
+    tensorfoldActive || ((mtplxInfo?.modelSupported ?? false) && (mtplxInfo?.available ?? false));
   // FU-074: GGUF MTP speculative decoding (FU-047 backend, --spec-type
   // draft-mtp). Separate lane from MLX DFlash/MTPLX — applies only to a
   // llama.cpp model whose repo carries baked-in MTP heads. The backend
   // gates `--spec-type` on the same `speculativeDecoding` flag, so this
   // toggle binds to it too. Shown only for applicable models (FU-034).
   const ggufMtpModelSupported = isGgufBackend && isMtpGgufRepo(selectedCanonicalRepo ?? selectedModelRef);
-  const specActive = settings.speculativeDecoding && dflashAvailable;
+  // FU-089: every llama.cpp model has a speculative lane now — baked-in
+  // MTP heads, a drafter file beside the GGUF (mtp- / dflash- / dspark- /
+  // eagle3-; DFlash 2 drafters are dflash- files), or the draft-free
+  // ngram-mod lookup. The backend picks one and notes a fallback.
+  const ggufSpecSupported = isGgufBackend;
+  const specActive = (settings.speculativeDecoding && dflashAvailable) || tensorfoldRuns;
   const strategies = (availableCacheStrategies ?? [{id: "native", name: "Native f16", available: true, bitRange: null, defaultBits: null, supportsFp16Layers: false}])
     .filter((s) => !s.appliesTo || s.appliesTo.length === 0 || s.appliesTo.includes("text"));
   const hasSelectedStrategy = strategies.some((strategy) => strategy.id === settings.cacheStrategy);
@@ -331,10 +389,21 @@ export function RuntimeControls({
     if (!settings.speculativeDecoding) return;
     // FU-074: GGUF MTP keeps speculativeDecoding on via its own lane —
     // don't let the DFlash-availability guard clear it for those models.
-    if (!dflashAvailable && !ggufMtpModelSupported) {
+    // A checkpoint TensorFold serves keeps it on for the same reason: the
+    // backend routes it to TensorFold or falls back to standard decoding.
+    if (!dflashAvailable && !ggufSpecSupported && !tensorfoldShown) {
       onChange("speculativeDecoding", false);
     }
-  }, [dflashAvailable, ggufMtpModelSupported, onChange, settings.speculativeDecoding]);
+  }, [dflashAvailable, ggufSpecSupported, onChange, settings.speculativeDecoding, tensorfoldShown]);
+
+  // TensorFold manages its own KV caches, so whatever strategy was selected
+  // for another model must not ride along into the request.
+  useEffect(() => {
+    if (!tensorfoldRuns || settings.cacheStrategy === "native") return;
+    onChange("cacheStrategy", "native");
+    if (settings.cacheBits !== 0) onChange("cacheBits", 0);
+    if (settings.fp16Layers !== 0) onChange("fp16Layers", 0);
+  }, [onChange, settings.cacheBits, settings.cacheStrategy, settings.fp16Layers, tensorfoldRuns]);
 
   useEffect(() => {
     if (!ddtreeAvailable && (settings.treeBudget ?? 0) !== 0) {
@@ -402,10 +471,10 @@ export function RuntimeControls({
 
   return (
     <>
-      <span className="eyebrow">{t("controls.cacheStrategy")} {specActive ? <small style={{ fontWeight: "normal", opacity: 0.6 }}> {t("controls.cacheStrategyLockedNote", { defaultValue: "(locked to Native during speculative decoding)" })}</small> : null}</span>
+      <span className="eyebrow">{t("controls.cacheStrategy")} {specActive ? <small style={{ fontWeight: "normal", opacity: 0.6 }}> {tensorfoldRuns ? t("controls.cacheStrategyTensorfoldNote", { defaultValue: "(TensorFold manages its own KV cache)" }) : t("controls.cacheStrategyLockedNote", { defaultValue: "(locked to Native during speculative decoding)" })}</small> : null}</span>
       <div className="cache-strategy-cards">
         {strategies.map((strategy) => {
-          const info = STRATEGY_INFO[strategy.id];
+          const info = strategyInfoFor(strategy.id, t);
           const isSelected = specActive ? strategy.id === "native" : settings.cacheStrategy === strategy.id;
           const isExpanded = expandedInfo === strategy.id;
           const incompatReason = strategyIncompatReason(strategy.id, selectedBackend);
@@ -430,7 +499,7 @@ export function RuntimeControls({
           }
 
           return (
-            <div key={strategy.id} className={`cache-strategy-card${isSelected ? " cache-strategy-card--active" : ""}${isDisabled ? " cache-strategy-card--disabled" : ""}`} title={incompatReason ?? (turboMissing ? "Requires llama-server-turbo binary. Run scripts/build-llama-turbo.sh to install." : undefined)}>
+            <div key={strategy.id} className={`cache-strategy-card${isSelected ? " cache-strategy-card--active" : ""}${isDisabled ? " cache-strategy-card--disabled" : ""}`} title={incompatReason ?? (turboMissing ? t("strategyCard.turboMissingTooltip", { defaultValue: "Requires llama-server-turbo binary. Run scripts/build-llama-turbo.sh to install." }) : undefined)}>
               <div className="cache-strategy-card-header">
                 <button
                   type="button"
@@ -439,13 +508,31 @@ export function RuntimeControls({
                   onClick={() => selectStrategy(strategy)}
                 >
                   <span className={`cache-strategy-radio${isSelected ? " cache-strategy-radio--checked" : ""}`} />
-                  <span className="cache-strategy-card-name">{strategy.name}</span>
+                  <span className="cache-strategy-card-name">
+                    {strategy.name}
+                    {isMemorySaverStrategy(strategy.id) ? (
+                      <span
+                        className="cache-strategy-role"
+                        title={t("strategyRole.memorySaverTitle", {
+                          defaultValue: "Shrinks the KV cache so long contexts fit in less memory. Generation is slower than Native.",
+                        })}
+                      >
+                        {t("strategyRole.memorySaver", { defaultValue: "Memory saver" })}
+                      </span>
+                    ) : null}
+                  </span>
                   <span
                     className={`cache-strategy-badge cache-strategy-badge--${
                       isIncompat ? "warning" : turboMissing ? "warning" : runtimeAvailable ? "ready" : strategy.availabilityTone ?? "install"
                     }`}
                   >
-                    {isIncompat ? "N/A" : turboMissing ? "No turbo binary" : runtimeAvailable ? "Ready" : strategy.availabilityBadge ?? "Install"}
+                    {isIncompat
+                      ? t("strategyCard.badgeNotApplicable", { defaultValue: "N/A" })
+                      : turboMissing
+                        ? t("strategyCard.badgeNoTurbo", { defaultValue: "No turbo binary" })
+                        : runtimeAvailable
+                          ? t("strategyCard.badgeReady", { defaultValue: "Ready" })
+                          : strategy.availabilityBadge ?? t("strategyCard.badgeInstall", { defaultValue: "Install" })}
                   </span>
                 </button>
                 {info ? (
@@ -453,7 +540,7 @@ export function RuntimeControls({
                     type="button"
                     className="cache-strategy-info-btn"
                     onClick={() => setExpandedInfo(isExpanded ? null : strategy.id)}
-                    title="More info"
+                    title={t("controls.moreInfo", { defaultValue: "More info" })}
                   >
                     i
                   </button>
@@ -466,12 +553,12 @@ export function RuntimeControls({
                     <p className="cache-strategy-status-note">{strategy.availabilityReason}</p>
                   ) : null}
                   <div className="cache-strategy-meta">
-                    <span className="cache-strategy-meta-label">Requires:</span>
+                    <span className="cache-strategy-meta-label">{t("controls.requiresLabel", { defaultValue: "Requires:" })}</span>
                     <span>{info.requires}</span>
                   </div>
                   {info.install ? (
                     <div className="cache-strategy-install">
-                      <span className="cache-strategy-meta-label">Install:</span>
+                      <span className="cache-strategy-meta-label">{t("controls.installLabel", { defaultValue: "Install:" })}</span>
                       <code>{info.install}</code>
                       {info.autoInstallPackage && onInstallPackage && !runtimeAvailable ? (
                         <button
@@ -482,12 +569,12 @@ export function RuntimeControls({
                         >
                           {installingPackage === strategy.id
                             ? strategy.requiredLlamaBinary === "turbo" && isGgufBackend && !turboInstalled
-                              ? "Building llama-server-turbo..."
-                              : "Installing..."
-                            : "Install now"}
+                              ? t("strategyCard.buildingTurbo", { defaultValue: "Building llama-server-turbo..." })
+                              : t("strategyCard.installing", { defaultValue: "Installing..." })
+                            : t("strategyCard.installNow", { defaultValue: "Install now" })}
                         </button>
                       ) : (
-                        <p className="cache-strategy-install-hint">{info.installHint ?? "Run in your terminal, then restart ChaosEngineAI."}</p>
+                        <p className="cache-strategy-install-hint">{info.installHint ?? t("strategyCard.runInTerminal", { defaultValue: "Run in your terminal, then restart ChaosEngineAI." })}</p>
                       )}
                       {strategy.available && strategy.requiredLlamaBinary === "turbo" && isGgufBackend && turboUpdateAvailable && onInstallPackage ? (
                         <button
@@ -496,7 +583,9 @@ export function RuntimeControls({
                           disabled={installingPackage != null}
                           onClick={() => onInstallPackage(strategy.id)}
                         >
-                          {installingPackage === strategy.id ? "Updating..." : "Update available"}
+                          {installingPackage === strategy.id
+                            ? t("strategyCard.updating", { defaultValue: "Updating..." })
+                            : t("strategyCard.updateAvailable", { defaultValue: "Update available" })}
                         </button>
                       ) : null}
                       {info.autoInstallPackage || installLogs?.[strategy.id] ? (
@@ -541,7 +630,7 @@ export function RuntimeControls({
         ) : null}
         {fp16LayersSupported ? (
           <SliderField
-            label="FP16 layers"
+            label={t("sliders.fp16Layers", { defaultValue: "FP16 layers" })}
             value={settings.fp16Layers}
             min={0} max={16} step={1}
             ticks={[{ value: 0, label: "0" }, { value: 4, label: "4" }, { value: 8, label: "8" }, { value: 12, label: "12" }, { value: 16, label: "16" }]}
@@ -584,6 +673,11 @@ export function RuntimeControls({
       </div>
 
       <div className="toggle-column">
+        {/* Only llama.cpp acts on these two. MLX and vLLM record Fit in memory
+            without using it, and Fused attention only reaches an MLX cache
+            strategy that is not Native, so showing them elsewhere offered
+            switches that did nothing. */}
+        {isGgufBackend ? (<>
         <div className="check-row">
           <label className="check-row" style={{ margin: 0 }}>
             <input
@@ -597,7 +691,7 @@ export function RuntimeControls({
             type="button"
             className="cache-strategy-info-btn"
             onClick={() => setExpandedInfo(expandedInfo === "fit-memory" ? null : "fit-memory")}
-            title="About fit in memory"
+            title={t("fitInMemory.aboutTitle", { defaultValue: "About fit in memory" })}
           >
             i
           </button>
@@ -612,6 +706,8 @@ export function RuntimeControls({
             </p>
           </div>
         ) : null}
+        </>) : null}
+        {isGgufBackend || settings.cacheStrategy !== "native" ? (<>
         <div className="check-row">
           <label className="check-row" style={{ margin: 0 }}>
             <input
@@ -640,6 +736,7 @@ export function RuntimeControls({
             </p>
           </div>
         ) : null}
+        </>) : null}
         {/* FU-034 (2026-05-10): hide the DFlash toggle entirely when the
             selected model has no draft in DRAFT_MODEL_MAP, or when the
             engine is GGUF (DFlash requires MLX/vLLM). Both cases give
@@ -730,16 +827,18 @@ export function RuntimeControls({
                 : dflashUnavailableReason ?? t("dflash.compatibilityUnresolved", { defaultValue: "Compatibility not resolved yet." })}</span>
             </div>
             <div className="cache-strategy-meta">
-              <span className="cache-strategy-meta-label">Registered targets:</span>
-              <span>{dflashInfo?.supportedModels?.length ?? 0} target models</span>
+              <span className="cache-strategy-meta-label">{t("dflash.registeredTargetsLabel", { defaultValue: "Registered targets:" })}</span>
+              <span>{t("dflash.targetModelsCount", { count: dflashInfo?.supportedModels?.length ?? 0, defaultValue: "{count} target models" })}</span>
             </div>
             <div className="cache-strategy-meta">
-              <span className="cache-strategy-meta-label">DDTree:</span>
-              <span>{ddtreeAvailable ? "Available" : "Not available in the current dflash runtime."}</span>
+              <span className="cache-strategy-meta-label">{t("dflash.ddtreeLabel", { defaultValue: "DDTree:" })}</span>
+              <span>{ddtreeAvailable
+                ? t("dflash.ddtreeAvailable", { defaultValue: "Available" })
+                : t("dflash.ddtreeUnavailable", { defaultValue: "Not available yet; linear DFlash runs instead." })}</span>
             </div>
             {!dflashInstalled && canInstallDflashForModel ? (
               <div className="cache-strategy-install">
-                <span className="cache-strategy-meta-label">Install:</span>
+                <span className="cache-strategy-meta-label">{t("dflash.installLabel", { defaultValue: "Install:" })}</span>
                 {/* Pin string mirrors pyproject.toml + scripts/stage-runtime.mjs.
                     Update all three together when bumping (FU-033 pin-sync probe
                     catches drift between the latter two). */}
@@ -751,10 +850,15 @@ export function RuntimeControls({
         {showDflashInstallTerminal && !mtplxSupersedesDflash ? (
           <StrategyInstallTerminal label="DFlash" log={dflashInstallLog} />
         ) : null}
-        {settings.speculativeDecoding && dflashAvailable && !mtplxSupersedesDflash ? (
+        {settings.speculativeDecoding && dflashAvailable && ddtreeAvailable && !mtplxSupersedesDflash ? (
           <div className="slider-row" style={{ marginTop: 6 }}>
-            <label className="slider-label" title="DDTree: tree-based speculative decoding. 0 = linear DFlash, >0 = explore multiple draft paths in parallel for higher acceptance rates.">
-              Tree budget (DDTree)
+            <label
+              className="slider-label"
+              title={t("dflash.treeBudgetTooltip", {
+                defaultValue: "DDTree: tree-based speculative decoding. 0 = linear DFlash, >0 = explore multiple draft paths in parallel for higher acceptance rates.",
+              })}
+            >
+              {t("dflash.treeBudgetLabel", { defaultValue: "Tree budget (DDTree)" })}
             </label>
             <input
               type="range"
@@ -768,6 +872,27 @@ export function RuntimeControls({
             <span className="slider-value">{settings.treeBudget ?? 0}</span>
           </div>
         ) : null}
+        {/* TensorFold: exact speculative decoding for the checkpoints it serves
+            (Apple Silicon only; hidden for every other model). Replaces the
+            DFlash / MTPLX toggles once installed — they share this flag. */}
+        {tensorfoldShown && tensorfoldInfo ? (
+          <TensorfoldLaunchControl
+            launch={tensorfoldInfo}
+            speculativeDecoding={settings.speculativeDecoding}
+            onSpeculativeChange={(enabled) => {
+              onChange("speculativeDecoding", enabled);
+              if (enabled) {
+                onChange("cacheStrategy", "native");
+                onChange("cacheBits", 0);
+                onChange("fp16Layers", 0);
+              }
+            }}
+            onInstall={onInstallTensorfold}
+            installing={installingTensorfold}
+            job={tensorfoldJob}
+            totalMemoryGb={totalMemoryGb}
+          />
+        ) : null}
         {/* MTPLX: native in-model MTP speculative decoding. Apple-Silicon-only —
             the engine runs in an isolated venv at ~/.chaosengine/mtplx-venv
             and requires the MLX framework which has no Linux/Windows build.
@@ -776,7 +901,7 @@ export function RuntimeControls({
             user-actionable recovery path. Apple Silicon hosts still need the
             model itself to advertise MTP heads (``modelSupported``) — no
             install button rescues a model without baked-in MTP heads. */}
-        {isAppleSilicon && mtplxInfo?.modelSupported ? (
+        {isAppleSilicon && mtplxInfo?.modelSupported && !tensorfoldActive ? (
           <div className="check-row">
             <label
               className="check-row"
@@ -830,7 +955,7 @@ export function RuntimeControls({
         {mtplxJob && mtplxJob.phase !== "idle" && mtplxJob.phase !== "done" ? (
           <InstallLogPanel job={mtplxJob} variant="mtplx" />
         ) : null}
-        {isAppleSilicon && expandedInfo === "mtplx" && mtplxInfo?.modelSupported ? (
+        {isAppleSilicon && expandedInfo === "mtplx" && mtplxInfo?.modelSupported && !tensorfoldActive ? (
           <div className="cache-strategy-info-panel" style={{ marginTop: 4 }}>
             <p>
               {t("mtplx.body", {
@@ -852,7 +977,7 @@ export function RuntimeControls({
               <span className="cache-strategy-meta-label">{t("mtplx.statusLabel", { defaultValue: "Status:" })}</span>
               <span>
                 {mtplxInfo.available
-                  ? t("mtplx.statusInstalled", { defaultValue: "Installed — active when speculativeDecoding is enabled." })
+                  ? t("mtplx.statusInstalled", { defaultValue: "Installed — active when speculative decoding is ticked." })
                   : t("mtplx.statusNotInstalled", { defaultValue: "Not installed. Click Install MTPLX to set up the isolated venv (~500 MB)." })}
               </span>
             </div>
@@ -865,45 +990,56 @@ export function RuntimeControls({
             same speculativeDecoding flag the backend reads to emit
             --spec-type draft-mtp. No cache-strategy lock: GGUF KV cache
             is orthogonal to MTP draft decode. */}
-        {ggufMtpModelSupported ? (
+        {ggufSpecSupported ? (
           <div className="check-row">
             <label
               className="check-row"
               style={{ margin: 0 }}
-              title={t("ggufMtp.tooltip", {
-                defaultValue: "GGUF MTP speculative decoding: uses the model's baked-in MTP heads via llama.cpp --spec-type draft-mtp for ~1.8-2.2x faster generation with zero quality loss.",
-              })}
+              title={ggufMtpModelSupported
+                ? t("ggufMtp.tooltip", {
+                    defaultValue: "GGUF MTP speculative decoding: uses the model's baked-in MTP heads via llama.cpp --spec-type draft-mtp for ~1.8-2.2x faster generation with zero quality loss.",
+                  })
+                : t("ggufSpec.tooltip", {
+                    defaultValue: "llama.cpp speculative decoding: uses a DFlash / DFlash 2 / EAGLE-3 / MTP drafter shipped beside this GGUF when present, otherwise draft-free n-gram lookup. Lossless — output is verified by the model.",
+                  })}
             >
               <input
                 type="checkbox"
                 checked={settings.speculativeDecoding}
                 onChange={(event) => onChange("speculativeDecoding", event.target.checked)}
               />
-              <span>{t("ggufMtp.label", { defaultValue: "GGUF MTP" })}</span>
+              <span>{ggufMtpModelSupported
+                ? t("ggufMtp.label", { defaultValue: "GGUF MTP" })
+                : t("ggufSpec.label", { defaultValue: "Speculative decoding" })}</span>
             </label>
             <button
               type="button"
               className="cache-strategy-info-btn"
               onClick={() => setExpandedInfo(expandedInfo === "ggufMtp" ? null : "ggufMtp")}
-              title={t("ggufMtp.aboutTitle", { defaultValue: "About GGUF MTP speculative decoding" })}
+              title={t("ggufSpec.aboutTitle", { defaultValue: "About llama.cpp speculative decoding" })}
             >
               i
             </button>
           </div>
         ) : null}
-        {expandedInfo === "ggufMtp" && ggufMtpModelSupported ? (
+        {expandedInfo === "ggufMtp" && ggufSpecSupported ? (
           <div className="cache-strategy-info">
             <p>
-              {t("ggufMtp.body", {
-                defaultValue:
-                  "This GGUF ships baked-in Multi-Token Prediction (MTP) heads. llama.cpp runs them via --spec-type draft-mtp (PR #22673) — lossless speculative decoding with no separate draft model.",
-              })}
+              {ggufMtpModelSupported
+                ? t("ggufMtp.body", {
+                    defaultValue:
+                      "This GGUF ships baked-in Multi-Token Prediction (MTP) heads. llama.cpp runs them via --spec-type draft-mtp (PR #22673) — lossless speculative decoding with no separate draft model.",
+                  })
+                : t("ggufSpec.body", {
+                    defaultValue:
+                      "If the model folder has a drafter file (mtp-, dflash-, dspark- or eagle3-*.gguf — DFlash 2 drafters use the dflash- prefix), llama.cpp drafts with it. Otherwise it falls back to ngram-mod, which reuses repeated text (code edits, summaries, reasoning echoed into the answer) with no extra model. Every drafted token is verified, so output is unchanged.",
+                  })}
             </p>
             <div className="cache-strategy-meta">
               <span className="cache-strategy-meta-label">{t("ggufMtp.requiresLabel", { defaultValue: "Requires:" })}</span>
               <span>
-                {t("ggufMtp.requiresBody", {
-                  defaultValue: "llama-server built from ggml-org/llama.cpp after 2026-05-16. Older binaries fall back to standard decode with a runtime note.",
+                {t("ggufSpec.requiresBody", {
+                  defaultValue: "A current llama-server (run scripts/update-llama-cpp.sh). Older binaries fall back to standard decode with a runtime note.",
                 })}
               </span>
             </div>

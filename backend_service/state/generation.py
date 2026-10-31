@@ -30,6 +30,8 @@ from typing import TYPE_CHECKING, Any
 from fastapi import HTTPException
 from starlette.responses import StreamingResponse
 
+from backend_service.helpers.request_guards import RequestNotUsable
+from backend_service.inference.base import GenerationResult
 from backend_service.models import GenerateRequest, LoadModelRequest
 from backend_service.state._helpers import (
     _build_history_with_reasoning,
@@ -172,7 +174,8 @@ def generate(state: ChaosEngineState, request: GenerateRequest) -> dict[str, Any
             session["modelSource"] = state.runtime.loaded_model.source
             session["modelPath"] = state.runtime.loaded_model.path
             session["modelBackend"] = state.runtime.loaded_model.backend
-        session["thinkingMode"] = effective_thinking_mode
+        if not request.voiceTurn:  # a voice call's Thinking Off is for that turn only
+            session["thinkingMode"] = effective_thinking_mode
         session["cacheLabel"] = state._cache_label(
             cache_strategy=str(state.runtime.loaded_model.cacheStrategy),
             bits=int(state.runtime.loaded_model.cacheBits),
@@ -225,18 +228,19 @@ def generate(state: ChaosEngineState, request: GenerateRequest) -> dict[str, Any
                 images=request.images,
                 available_tools=request.availableTools,
             )
-            # Synthesize a GenerationResult-like object for metrics
-            class _AgentResultProxy:
-                text = agent_result.text
-                finishReason = "stop"
-                promptTokens = agent_result.total_prompt_tokens
-                completionTokens = agent_result.total_completion_tokens
-                totalTokens = agent_result.total_prompt_tokens + agent_result.total_completion_tokens
-                tokS = 0.0
-                runtimeNote = f"Agent loop: {agent_result.iterations} iterations, {len(agent_result.tool_calls)} tool calls"
-                responseSeconds = 0.0
-                tool_calls = None
-            result = _AgentResultProxy()
+            # A real GenerationResult, so ``assistant_metrics_payload`` can call
+            # ``to_metrics()``; a bare stand-in object made every non-streaming
+            # request with tools enabled answer 500.
+            result = GenerationResult(
+                text=agent_result.text,
+                finishReason="stop",
+                promptTokens=agent_result.total_prompt_tokens,
+                completionTokens=agent_result.total_completion_tokens,
+                totalTokens=agent_result.total_prompt_tokens + agent_result.total_completion_tokens,
+                tokS=0.0,
+                responseSeconds=0.0,
+                runtimeNote=f"Agent loop: {agent_result.iterations} iterations, {len(agent_result.tool_calls)} tool calls",
+            )
             tool_call_payloads = [
                 {
                     "id": tc.tool_call_id,
@@ -276,7 +280,7 @@ def generate(state: ChaosEngineState, request: GenerateRequest) -> dict[str, Any
                 state._persist_sessions()
             state.active_requests = max(0, state.active_requests - 1)
             state.add_log("chat", "error", f"[{model_tag}] Generation failed: {exc}")
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(status_code=400 if isinstance(exc, RequestNotUsable) else 500, detail=str(exc)) from exc
 
     gen_elapsed = round(time.perf_counter() - gen_start, 2)
     with state._lock:
@@ -431,7 +435,8 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest):
             session["modelSource"] = state.runtime.loaded_model.source
             session["modelPath"] = state.runtime.loaded_model.path
             session["modelBackend"] = state.runtime.loaded_model.backend
-        session["thinkingMode"] = effective_thinking_mode
+        if not request.voiceTurn:  # a voice call's Thinking Off is for that turn only
+            session["thinkingMode"] = effective_thinking_mode
         session["cacheLabel"] = state._cache_label(
             cache_strategy=str(state.runtime.loaded_model.cacheStrategy),
             bits=int(state.runtime.loaded_model.cacheBits),

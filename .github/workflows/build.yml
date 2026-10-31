@@ -42,11 +42,11 @@ jobs:
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.advisory }}
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - uses: dtolnay/rust-toolchain@stable
@@ -63,11 +63,11 @@ jobs:
       - name: cargo check
         run: cargo check --manifest-path src-tauri/Cargo.toml --all-targets
       - name: Python venv + install
-        shell: ${{ matrix.shell }}
+        shell: bash
         run: |
           python -m venv .venv
           ${{ matrix.venv-activate }}
-          pip install --upgrade pip
+          python -m pip install --upgrade pip
           # [images] brings torch+diffusers+accelerate+pillow+safetensors, which
           # tests/test_video_runtime.py needs because probe() does a real
           # ``import torch`` after the mocked _find_missing returns. Without
@@ -76,7 +76,7 @@ jobs:
           # assertion fails.
           pip install -e ".[desktop,dev,images]"
       - name: Python tests with coverage
-        shell: ${{ matrix.shell }}
+        shell: bash
         run: |
           ${{ matrix.venv-activate }}
           python -m pytest tests/ -v --tb=short \
@@ -127,7 +127,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: true
 
@@ -145,7 +145,7 @@ jobs:
 
       # ── Node.js ────────────────────────────────────────────────
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -159,7 +159,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Cache Cargo
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/registry
@@ -170,7 +170,7 @@ jobs:
 
       # ── Python + venv ──────────────────────────────────────────
       - name: Setup Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
@@ -222,21 +222,21 @@ jobs:
         run: |
           python -m venv .venv
           .venv/bin/pip install --upgrade pip
-          .venv/bin/pip install mlx mlx-lm gguf fastapi psutil uvicorn "pypdf>=6.10.2" python-multipart huggingface_hub
+          .venv/bin/pip install mlx mlx-lm gguf fastapi psutil uvicorn "pypdf>=6.21.4" python-multipart huggingface_hub
 
       - name: Create Python venv (Linux)
         if: matrix.platform == 'linux'
         run: |
           python -m venv .venv
           .venv/bin/pip install --upgrade pip
-          .venv/bin/pip install fastapi psutil uvicorn "pypdf>=6.10.2" python-multipart huggingface_hub
+          .venv/bin/pip install fastapi psutil uvicorn "pypdf>=6.21.4" python-multipart huggingface_hub
 
       - name: Create Python venv (Windows)
         if: matrix.platform == 'windows'
         run: |
           python -m venv .venv
           .venv\Scripts\pip install --upgrade pip
-          .venv\Scripts\pip install fastapi psutil uvicorn "pypdf>=6.10.2" python-multipart huggingface_hub
+          .venv\Scripts\pip install fastapi psutil uvicorn "pypdf>=6.21.4" python-multipart huggingface_hub
 
       # ── Configure runtime staging ──────────────────────────────
       - name: Set Python embed path (Unix)

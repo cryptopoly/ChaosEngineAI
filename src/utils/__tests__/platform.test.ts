@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   chatVariantPlatformGate,
+  filterFamiliesForHost,
+  hasNvidiaGpu,
   imageOrVideoVariantPlatformGate,
   isAppleSiliconHost,
   isCudaHost,
@@ -127,6 +129,8 @@ describe("imageOrVideoVariantPlatformGate", () => {
 describe("chatVariantPlatformGate", () => {
   it("mlx backend → apple-silicon", () => {
     expect(chatVariantPlatformGate({ backend: "mlx" })).toBe("apple-silicon");
+    // TensorFold's Mac engine is Apple-Silicon-only too
+    expect(chatVariantPlatformGate({ backend: "tensorfold" })).toBe("apple-silicon");
     expect(chatVariantPlatformGate({ backend: "MLX" })).toBe("apple-silicon");
   });
 
@@ -175,5 +179,68 @@ describe("isVariantCompatibleWithHost", () => {
   it("null / undefined system → true (early-paint safety)", () => {
     expect(isVariantCompatibleWithHost("apple-silicon", null)).toBe(true);
     expect(isVariantCompatibleWithHost("cuda", undefined)).toBe(true);
+  });
+});
+
+
+describe("hasNvidiaGpu", () => {
+  it("needs a Windows or Linux x86_64 host with an NVIDIA GPU", () => {
+    expect(hasNvidiaGpu({ platform: "windows", arch: "x86_64", gpuVramTotalGb: 24 })).toBe(true);
+    expect(hasNvidiaGpu({ platform: "linux", arch: "x86_64", gpuVramTotalGb: 12 })).toBe(true);
+  });
+
+  it("is false on a PC without an NVIDIA card (the backend reports null)", () => {
+    expect(hasNvidiaGpu({ platform: "windows", arch: "x86_64", gpuVramTotalGb: null })).toBe(false);
+    expect(hasNvidiaGpu({ platform: "linux", arch: "x86_64", gpuVramTotalGb: 0 })).toBe(false);
+  });
+
+  it("is false on any Mac, whatever the backend reports", () => {
+    expect(hasNvidiaGpu({ platform: "darwin", arch: "arm64", gpuVramTotalGb: null })).toBe(false);
+    expect(hasNvidiaGpu({ platform: "darwin", arch: "arm64", gpuVramTotalGb: 64 })).toBe(false);
+  });
+
+  it("keeps the old Windows / Linux behaviour for a backend that does not report VRAM", () => {
+    expect(hasNvidiaGpu({ platform: "windows", arch: "x86_64" })).toBe(true);
+  });
+
+  it("the cuda variant gate follows it", () => {
+    const noGpu = { platform: "linux", arch: "x86_64", gpuVramTotalGb: null };
+    const gpu = { platform: "linux", arch: "x86_64", gpuVramTotalGb: 24 };
+    expect(isVariantCompatibleWithHost("cuda", noGpu)).toBe(false);
+    expect(isVariantCompatibleWithHost("cuda", gpu)).toBe(true);
+  });
+});
+
+describe("LongLive is CUDA-only", () => {
+  it("is gated to CUDA hosts", () => {
+    expect(
+      imageOrVideoVariantPlatformGate({ runtime: "LongLive subprocess (torchrun)", repo: "NVlabs/LongLive-1.3B" }),
+    ).toBe("cuda");
+  });
+});
+
+describe("filterFamiliesForHost", () => {
+  const families = [
+    { id: "qwen", variants: [{ backend: "mlx" }, { backend: "llama.cpp" }] },
+    { id: "mlx-only", variants: [{ backend: "mlx" }, { backend: "mtplx" }] },
+    { id: "vllm-only", variants: [{ backend: "vllm" }] },
+  ];
+  const mac = { platform: "darwin", arch: "arm64", gpuVramTotalGb: null };
+  const pc = { platform: "windows", arch: "x86_64", gpuVramTotalGb: 24 };
+
+  it("drops MLX rows and MLX-only families on a PC", () => {
+    const result = filterFamiliesForHost(families, pc);
+    expect(result.map((f) => f.id)).toEqual(["qwen", "vllm-only"]);
+    expect(result[0].variants).toEqual([{ backend: "llama.cpp" }]);
+  });
+
+  it("drops vLLM-only families on a Mac and keeps MLX", () => {
+    const result = filterFamiliesForHost(families, mac);
+    expect(result.map((f) => f.id)).toEqual(["qwen", "mlx-only"]);
+    expect(result[0].variants).toHaveLength(2);
+  });
+
+  it("shows everything until the host is known", () => {
+    expect(filterFamiliesForHost(families, null)).toBe(families);
   });
 });

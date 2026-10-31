@@ -6,6 +6,7 @@ import unittest
 
 from backend_service.reasoning_split import (
     ThinkingTokenFilter,
+    prompt_opens_reasoning,
     reasoning_delimiters_for,
     strip_harmony_boilerplate,
 )
@@ -166,6 +167,31 @@ class GemmaThinkFilterIntegrationTests(unittest.TestCase):
             f"{result.text}{flushed.text}".strip()
         )
         self.assertEqual(text, "The answer is 42.")
+
+
+
+class PromptOpensReasoningTests(unittest.TestCase):
+    """Templates that end the prompt with ``<think>`` (LFM2.5) stream only the close tag."""
+
+    def test_detects_a_prompt_ending_in_the_open_tag(self):
+        self.assertTrue(prompt_opens_reasoning("<|im_start|>assistant\n<think>", "<think>"))
+        self.assertTrue(prompt_opens_reasoning("<|im_start|>assistant\n<think>\n", "<think>"))
+        self.assertFalse(prompt_opens_reasoning("<|im_start|>assistant\n<think>\n\n</think>\n\n", "<think>"))
+        self.assertFalse(prompt_opens_reasoning("", "<think>"))
+
+    def test_reply_starting_inside_reasoning_is_split(self):
+        filt = ThinkingTokenFilter(detect_raw_reasoning=False, starts_inside_reasoning=True)
+        first = filt.feed("We need three sentences. ")
+        second = filt.feed("Rayleigh scattering.</think>\n\nThe sky is blue.")
+        rest = filt.flush()
+        self.assertEqual(first.reasoning + second.reasoning, "We need three sentences. Rayleigh scattering.")
+        self.assertTrue(second.reasoning_done)
+        self.assertEqual((first.text + second.text + rest.text).strip(), "The sky is blue.")
+
+    def test_default_leaves_an_orphan_close_tag_in_the_text(self):
+        filt = ThinkingTokenFilter(detect_raw_reasoning=False)
+        out = filt.feed("plan</think>answer")
+        self.assertIn("</think>", out.text + filt.flush().text)
 
 
 if __name__ == "__main__":

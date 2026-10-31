@@ -24,6 +24,7 @@ from typing import Any
 _MLX_ONLY_RUNTIME_MARKERS: tuple[str, ...] = (
     "mflux (MLX native)",
     "mlx-video (MLX native)",
+    "ltx-2-mlx (MLX native)",
 )
 
 _MLX_ONLY_ENGINES: frozenset[str] = frozenset({"mflux", "mlx-video"})

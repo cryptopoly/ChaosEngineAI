@@ -124,19 +124,16 @@ class VisionCapabilityFlipTests(unittest.TestCase):
         )
         self.assertTrue(caps.supportsVision)
 
-    def test_mlx_engine_still_demotes_even_when_mmproj_loaded(self):
-        # Belt-and-braces: any future MLX-equivalent that claims
-        # `vision_enabled=True` should still demote because the MLX
-        # worker has no image-carrying code path. Re-enable when
-        # mlx-vlm wiring lands.
+    def test_mlx_engine_keeps_vision_when_the_worker_loaded_mlx_vlm(self):
+        # The MLX worker now reports vision_enabled for an mlx-vlm load,
+        # whose generate paths carry images through to the model.
         caps = resolve_capabilities(
             "mlx-community/llava-v1.6-mistral-7b",
             None,
             engine="mlx",
             vision_enabled=True,
         )
-        self.assertFalse(caps.supportsVision)
-
+        self.assertTrue(caps.supportsVision)
 
 if __name__ == "__main__":
     unittest.main()

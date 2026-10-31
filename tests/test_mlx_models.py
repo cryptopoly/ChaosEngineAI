@@ -1,0 +1,635 @@
+"""Kolibri 1 on MLX: the vendored architecture, its loader hook and the effort switch.
+
+mlx-lm 0.31 / 0.32 do not ship ``kolibri1`` (ml-explore/mlx-lm#1945 is open), so
+``backend_service/mlx_models`` carries the architecture and hands it to
+``mlx_lm.load`` through the ``model_file`` hook. The model tests build a tiny
+random Kolibri on real MLX and skip without it.
+"""
+from __future__ import annotations
+
+import importlib.util
+import json
+import tempfile
+import unittest
+from pathlib import Path
+from types import SimpleNamespace
+from unittest import mock
+
+from backend_service import mlx_models
+from backend_service.helpers.quantization import _unsupported_mlx_quantization_reason
+from backend_service.mlx_worker_prompt import _build_prompt_text, chat_template_switches
+
+_HAS_MLX = importlib.util.find_spec("mlx_lm") is not None
+
+TINY = {
+    "model_type": "kolibri1",
+    "hidden_size": 32,
+    "num_hidden_layers": 5,
+    "num_attention_heads": 4,
+    "num_key_value_heads": 2,
+    "head_dim": 8,
+    "rms_norm_eps": 1e-6,
+    "vocab_size": 64,
+    "num_experts": 8,
+    "num_experts_per_tok": 2,
+    "moe_intermediate_size": 16,
+    "shared_expert_intermediate_size": 16,
+    "sliding_window": 8,
+    "layer_types": ["sliding_attention"] * 4 + ["full_attention"],
+    "rope_theta": 10000.0,
+    "norm_topk_prob": False,
+    "tie_word_embeddings": False,
+    "max_position_embeddings": 4096,
+}
+
+
+def _snapshot(config: dict | str | None) -> Path:
+    directory = Path(tempfile.mkdtemp(prefix="ce-kolibri-"))
+    if config is not None:
+        text = config if isinstance(config, str) else json.dumps(config)
+        (directory / "config.json").write_text(text, encoding="utf-8")
+    return directory
+
+
+class VendoredModelConfigTests(unittest.TestCase):
+    def test_a_kolibri_checkpoint_gets_the_vendored_file(self) -> None:
+        # Pinned to "mlx-lm has no kolibri1" so the test keeps passing once it does.
+        with mock.patch.object(mlx_models, "_mlx_lm_ships", return_value=False):
+            config = mlx_models.vendored_model_config(_snapshot({"model_type": "kolibri1"}))
+        self.assertIsNotNone(config)
+        self.assertEqual(Path(config["model_file"]), Path(mlx_models.__file__).with_name("kolibri1.py"))
+        self.assertTrue(Path(config["model_file"]).is_file())
+
+    def test_other_architectures_load_the_normal_way(self) -> None:
+        self.assertIsNone(mlx_models.vendored_model_config(_snapshot({"model_type": "qwen3_moe"})))
+
+    def test_a_config_that_names_its_own_model_file_is_left_alone(self) -> None:
+        config = {"model_type": "kolibri1", "model_file": "custom.py"}
+        self.assertIsNone(mlx_models.vendored_model_config(_snapshot(config)))
+
+    def test_a_native_mlx_lm_module_wins(self) -> None:
+        with mock.patch.object(mlx_models, "_mlx_lm_ships", return_value=True):
+            self.assertIsNone(mlx_models.vendored_model_config(_snapshot({"model_type": "kolibri1"})))
+
+    def test_the_mlx_lm_probe_reads_the_module_search(self) -> None:
+        with mock.patch.object(importlib.util, "find_spec", return_value=object()):
+            self.assertTrue(mlx_models._mlx_lm_ships("kolibri1"))
+        with mock.patch.object(importlib.util, "find_spec", return_value=None):
+            self.assertFalse(mlx_models._mlx_lm_ships("kolibri1"))
+        with mock.patch.object(importlib.util, "find_spec", side_effect=ModuleNotFoundError("mlx_lm")):
+            self.assertFalse(mlx_models._mlx_lm_ships("kolibri1"))
+
+    def test_a_missing_or_broken_config_is_ignored(self) -> None:
+        self.assertIsNone(mlx_models.vendored_model_config(_snapshot(None)))
+        self.assertIsNone(mlx_models.vendored_model_config(_snapshot("{not json")))
+        self.assertIsNone(mlx_models.vendored_model_config(_snapshot("[1, 2]")))
+        self.assertIsNone(mlx_models.vendored_model_config("owner/not-a-local-path"))
+
+    def test_the_mlx_quantisation_the_conversions_use_is_accepted(self) -> None:
+        config = {
+            "quantization": {
+                "group_size": 64,
+                "bits": 4,
+                "mode": "affine",
+                "model.embed_tokens": {"group_size": 64, "bits": 8},
+                "lm_head": {"group_size": 64, "bits": 8},
+            }
+        }
+        self.assertIsNone(_unsupported_mlx_quantization_reason(config))
+
+
+@unittest.skipUnless(_HAS_MLX, "needs mlx-lm")
+class NeedsVlmRuntimeTests(unittest.TestCase):
+    """Architectures only mlx-vlm ships pick the mlx-vlm loader."""
+
+    def _checkpoint(self, model_type: str) -> Path:
+        directory = Path(tempfile.mkdtemp())
+        self.addCleanup(lambda: __import__("shutil").rmtree(directory, ignore_errors=True))
+        (directory / "config.json").write_text(json.dumps({"model_type": model_type}), encoding="utf-8")
+        return directory
+
+    def _ships(self, lm: set[str], vlm: set[str]):
+        def find_spec(name: str):
+            package, _, model_type = name.rpartition(".")
+            shipped = lm if package == "mlx_lm.models" else vlm
+            return object() if model_type in shipped else None
+
+        return mock.patch.object(mlx_models.importlib.util, "find_spec", side_effect=find_spec)
+
+    def test_listed_type_only_mlx_vlm_ships(self) -> None:
+        with self._ships(lm=set(), vlm={"flint"}):
+            self.assertTrue(mlx_models.needs_vlm_runtime(self._checkpoint("flint")))
+
+    def test_stays_on_mlx_lm_once_it_ships_the_type(self) -> None:
+        with self._ships(lm={"flint"}, vlm={"flint"}):
+            self.assertFalse(mlx_models.needs_vlm_runtime(self._checkpoint("flint")))
+
+    def test_old_mlx_vlm_without_the_type_keeps_the_old_loader(self) -> None:
+        with self._ships(lm=set(), vlm=set()):
+            self.assertFalse(mlx_models.needs_vlm_runtime(self._checkpoint("flint")))
+
+    def test_unlisted_type_is_left_alone(self) -> None:
+        with self._ships(lm=set(), vlm={"gemma4"}):
+            self.assertFalse(mlx_models.needs_vlm_runtime(self._checkpoint("gemma4")))
+
+    def test_missing_or_broken_config_is_false(self) -> None:
+        self.assertFalse(mlx_models.needs_vlm_runtime(Path(tempfile.mkdtemp())))
+
+
+class KolibriTinyModelTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        try:
+            import mlx.core as mx
+        except ImportError:
+            raise unittest.SkipTest("mlx is not installed")
+
+        cls.mx = mx
+        path = Path(mlx_models.__file__).with_name("kolibri1.py")
+        spec = importlib.util.spec_from_file_location("kolibri1_under_test", path)
+        cls.module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cls.module)
+
+    def _model(self):
+        mx = self.mx
+        mx.random.seed(0)
+        model = self.module.Model(self.module.ModelArgs.from_dict(TINY))
+        mx.eval(model.parameters())
+        return model
+
+    def test_cache_types_follow_the_layer_pattern(self) -> None:
+        from mlx_lm.models.cache import KVCache, RotatingKVCache
+
+        caches = self._model().make_cache()
+        self.assertEqual([type(c) for c in caches], [RotatingKVCache] * 4 + [KVCache])
+        self.assertEqual(caches[0].max_size, TINY["sliding_window"])
+
+    def test_cached_decoding_matches_a_full_forward_pass_across_the_window(self) -> None:
+        # 12 tokens against a window of 8: the sliding layers drop old keys, and
+        # the rotating cache has to drop exactly the ones the window mask hides.
+        import numpy as np
+
+        mx = self.mx
+        model = self._model()
+        tokens = mx.array([[3, 17, 5, 9, 41, 2, 28, 11, 7, 33, 19, 4]])
+        full = np.array(model(tokens))
+
+        caches = model.make_cache()
+        steps = [np.array(model(tokens[:, :8], cache=caches))]
+        for i in range(8, 12):
+            steps.append(np.array(model(tokens[:, i : i + 1], cache=caches)))
+        decoded = np.concatenate(steps, axis=1)
+        np.testing.assert_allclose(decoded, full, rtol=1e-4, atol=1e-4)
+
+    def test_the_router_picks_on_the_biased_scores_but_weighs_with_the_unbiased_ones(self) -> None:
+        import numpy as np
+
+        mx = self.mx
+        block = self._model().model.layers[0].mlp
+        experts, top_k, hidden = TINY["num_experts"], TINY["num_experts_per_tok"], TINY["hidden_size"]
+        block.expert_bias = mx.array(np.linspace(-3.0, 3.0, experts).astype("float32"))
+        x = mx.random.normal((1, 5, hidden))
+        got = np.array(block(x)).reshape(-1, hidden)
+
+        def silu(a):
+            return a / (1.0 + np.exp(-a))
+
+        flat = np.array(x).reshape(-1, hidden)
+        logits = flat @ np.array(block.gate.weight).T
+        picked = np.argsort(-(logits + np.array(block.expert_bias)), axis=-1)[:, :top_k]
+        weights = 1.0 / (1.0 + np.exp(-np.take_along_axis(logits, picked, axis=-1)))
+        gate_w, up_w, down_w = (np.array(getattr(block.switch_mlp, n).weight) for n in ("gate_proj", "up_proj", "down_proj"))
+        want = np.zeros_like(flat)
+        for t in range(flat.shape[0]):
+            for slot, e in enumerate(picked[t]):
+                want[t] += weights[t, slot] * (down_w[e] @ (silu(gate_w[e] @ flat[t]) * (up_w[e] @ flat[t])))
+        shared = block.shared_experts
+        sg, su, sd = (np.array(getattr(shared, n).weight) for n in ("gate_proj", "up_proj", "down_proj"))
+        want += (silu(flat @ sg.T) * (flat @ su.T)) @ sd.T
+
+        # The bias must change which experts win, or the check proves nothing.
+        unbiased = np.argsort(-logits, axis=-1)[:, :top_k]
+        self.assertFalse(np.array_equal(np.sort(picked, axis=-1), np.sort(unbiased, axis=-1)))
+        np.testing.assert_allclose(got, want, rtol=1e-4, atol=1e-5)
+
+    def test_mlx_lm_loads_the_checkpoint_through_the_model_file_hook(self) -> None:
+        import numpy as np
+        from mlx.utils import tree_flatten
+        from mlx_lm.utils import load_model
+
+        mx = self.mx
+        model = self._model()
+        directory = _snapshot(TINY)
+        mx.save_safetensors(str(directory / "model.safetensors"), dict(tree_flatten(model.parameters())))
+
+        with mock.patch.object(mlx_models, "_mlx_lm_ships", return_value=False):
+            kwargs = mlx_models.vendored_load_kwargs(directory, load_model)
+        self.assertIn("model_config", kwargs)
+        loaded, config = load_model(directory, **kwargs)
+        self.assertEqual(config["model_type"], "kolibri1")
+
+        tokens = mx.array([[1, 2, 3, 4, 5, 6]])
+        np.testing.assert_allclose(np.array(loaded(tokens)), np.array(model(tokens)), rtol=1e-5, atol=1e-5)
+
+    def test_load_kwargs_trust_only_our_file_and_only_where_supported(self) -> None:
+        directory = _snapshot(TINY)
+
+        def new_load(path, model_config=None, trust_remote_code=False, tokenizer_config=None): ...
+
+        def old_load(path, model_config=None): ...
+
+        with mock.patch.object(mlx_models, "_mlx_lm_ships", return_value=False):
+            new = mlx_models.vendored_load_kwargs(directory, new_load)
+            old = mlx_models.vendored_load_kwargs(directory, old_load)
+            plain = mlx_models.vendored_load_kwargs(_snapshot({"model_type": "qwen3"}), new_load)
+        self.assertTrue(new["trust_remote_code"])
+        self.assertEqual(new["model_config"]["model_file"], str(mlx_models._VENDORED["kolibri1"]))
+        # The tokenizer never runs checkpoint code and never asks on stdin.
+        self.assertEqual(new["tokenizer_config"], {"trust_remote_code": False})
+        self.assertNotIn("trust_remote_code", old)
+        self.assertNotIn("tokenizer_config", old)
+        self.assertEqual(plain, {})
+
+    def test_sanitize_stacks_the_experts_and_renames_the_router_bias(self) -> None:
+        mx = self.mx
+        model = self._model()
+        experts, inter, hidden = TINY["num_experts"], TINY["moe_intermediate_size"], TINY["hidden_size"]
+        weights = {"model.layers.0.moe.router.expert_bias": mx.zeros((experts,))}
+        for e in range(experts):
+            for name, shape in (("gate_proj", (inter, hidden)), ("up_proj", (inter, hidden)), ("down_proj", (hidden, inter))):
+                weights[f"model.layers.0.mlp.experts.{e}.{name}.weight"] = mx.full(shape, float(e))
+
+        out = model.sanitize(weights)
+
+        self.assertIn("model.layers.0.mlp.expert_bias", out)
+        self.assertNotIn("model.layers.0.moe.router.expert_bias", out)
+        self.assertEqual(out["model.layers.0.mlp.switch_mlp.gate_proj.weight"].shape, (experts, inter, hidden))
+        self.assertEqual(out["model.layers.0.mlp.switch_mlp.down_proj.weight"].shape, (experts, hidden, inter))
+        self.assertEqual(float(out["model.layers.0.mlp.switch_mlp.up_proj.weight"][3, 0, 0]), 3.0)
+        self.assertFalse([k for k in out if ".experts." in k])
+
+
+# Same layout as the published LFM3 configs, scaled down; a window of 4 so a
+# 12-token run crosses it.
+LFM3_TINY = {
+    "model_type": "lfm3",
+    "hidden_size": 32,
+    "intermediate_size": 48,
+    "num_hidden_layers": 7,
+    "num_attention_heads": 4,
+    "num_key_value_heads": 2,
+    "head_dim": 8,
+    "vocab_size": 64,
+    "norm_eps": 1e-5,
+    "conv_L_cache": 7,
+    "conv_bias": False,
+    "layer_types": [
+        "conv", "conv", "full_attention", "conv", "sliding_attention", "conv", "sliding_attention",
+    ],
+    "rope_parameters": {
+        "full_attention": {"partial_rotary_factor": 0.5, "rope_theta": 1000000.0, "rope_type": "default"},
+        "sliding_attention": {"rope_theta": 10000, "rope_type": "default"},
+    },
+    "sliding_window": 4,
+    "use_sandwich_norm": True,
+    "tie_word_embeddings": True,
+}
+
+
+class Lfm3TinyModelTests(unittest.TestCase):
+    """LFM3 on MLX, checked against NumPy written from Liquid AI's modeling_lfm3.py."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        try:
+            import mlx.core as mx
+        except ImportError:
+            raise unittest.SkipTest("mlx is not installed")
+
+        cls.mx = mx
+        path = Path(mlx_models.__file__).with_name("lfm3.py")
+        spec = importlib.util.spec_from_file_location("lfm3_under_test", path)
+        cls.module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cls.module)
+
+    def _model(self):
+        mx = self.mx
+        mx.random.seed(0)
+        model = self.module.Model(self.module.ModelArgs.from_dict(LFM3_TINY))
+        # Non-unit norm weights, so a norm in the wrong place changes the output.
+        for layer in model.layers:
+            for name in ("operator_norm", "ffn_norm", "post_operator_norm", "post_ffn_norm"):
+                norm = getattr(layer, name)
+                norm.weight = 1.0 + 0.5 * mx.random.normal(norm.weight.shape)
+        mx.eval(model.parameters())
+        return model
+
+    def test_cache_types_follow_the_layer_pattern(self) -> None:
+        from mlx_lm.models.cache import ArraysCache, KVCache, RotatingKVCache
+
+        caches = self._model().make_cache()
+        self.assertEqual(
+            [type(c) for c in caches],
+            [ArraysCache, ArraysCache, KVCache, ArraysCache, RotatingKVCache, ArraysCache, RotatingKVCache],
+        )
+        self.assertEqual(caches[4].max_size, LFM3_TINY["sliding_window"])
+
+    def test_cached_decoding_matches_a_full_forward_pass_across_the_window(self) -> None:
+        # The conv layers carry 6 tokens of state and the sliding layers a window
+        # of 4: decoding one token at a time must give the full pass's logits.
+        import numpy as np
+
+        mx = self.mx
+        model = self._model()
+        tokens = mx.array([[3, 17, 5, 9, 41, 2, 28, 11, 7, 33, 19, 4]])
+        full = np.array(model(tokens))
+
+        caches = model.make_cache()
+        steps = [np.array(model(tokens[:, :3], cache=caches))]
+        for i in range(3, 12):
+            steps.append(np.array(model(tokens[:, i : i + 1], cache=caches)))
+        np.testing.assert_allclose(np.concatenate(steps, axis=1), full, rtol=1e-4, atol=1e-4)
+
+    def test_full_attention_rotates_only_the_leading_frequency_pairs(self) -> None:
+        import numpy as np
+
+        mx = self.mx
+        dim = 8
+        rope = self.module.RotaryEmbedding(dim, LFM3_TINY["rope_parameters"]["full_attention"])
+        x = np.random.default_rng(1).standard_normal((1, 1, 5, dim)).astype("float32")
+        got = np.array(rope(mx.array(x), offset=3))
+
+        # modeling_lfm3: inv_freq for 2 of the 4 pairs, zeros after, then
+        # x * cos + rotate_half(x) * sin with rotate_half(x) = cat(-x2, x1).
+        angles = int(0.5 * dim) // 2
+        inv_freq = 1.0 / (1e6 ** (np.arange(0, 2 * angles, 2) / dim))
+        inv_freq = np.concatenate([inv_freq, np.zeros(dim // 2 - angles)])
+        emb = np.concatenate([np.outer(np.arange(3, 8), inv_freq)] * 2, axis=-1)
+        rotate_half = np.concatenate([-x[..., dim // 2 :], x[..., : dim // 2]], axis=-1)
+        want = x * np.cos(emb) + rotate_half * np.sin(emb)
+        np.testing.assert_allclose(got, want, rtol=1e-5, atol=1e-5)
+        # Pairs 2 and 3 (dims 2, 3, 6, 7) are not rotated at all.
+        np.testing.assert_allclose(got[..., [2, 3, 6, 7]], x[..., [2, 3, 6, 7]], rtol=1e-6)
+
+    def test_attention_applies_the_sigmoid_head_gate(self) -> None:
+        import numpy as np
+
+        mx = self.mx
+        attn = self._model().layers[2].self_attn
+        x = mx.random.normal((1, 5, LFM3_TINY["hidden_size"]))
+        got = np.array(attn(x, mask="causal"))
+
+        heads, kv_heads, hd = 4, 2, 8
+        xs = np.array(x)[0]
+
+        def lin(layer, a):
+            return a @ np.array(layer.weight).T
+
+        def rms(a, w):
+            return a / np.sqrt((a**2).mean(-1, keepdims=True) + 1e-5) * w
+
+        q = rms(lin(attn.q_proj, xs).reshape(5, heads, hd), np.array(attn.q_norm.weight))
+        k = rms(lin(attn.k_proj, xs).reshape(5, kv_heads, hd), np.array(attn.k_norm.weight))
+        v = lin(attn.v_proj, xs).reshape(5, kv_heads, hd)
+        q = np.array(attn.rope(mx.array(q.transpose(1, 0, 2)[None]), 0))[0]
+        k = np.array(attn.rope(mx.array(k.transpose(1, 0, 2)[None]), 0))[0]
+        out = np.zeros((heads, 5, hd), dtype="float32")
+        causal = np.triu(np.full((5, 5), -np.inf), 1)
+        for h in range(heads):
+            scores = q[h] @ k[h // 2].T / np.sqrt(hd) + causal
+            p = np.exp(scores - scores.max(-1, keepdims=True))
+            out[h] = (p / p.sum(-1, keepdims=True)) @ v[:, h // 2]
+        gate = 1.0 / (1.0 + np.exp(-lin(attn.gate_proj, xs)))  # (5, heads)
+        out = out.transpose(1, 0, 2) * gate[..., None]
+        want = lin(attn.o_proj, out.reshape(5, -1))
+        np.testing.assert_allclose(got[0], want, rtol=1e-4, atol=1e-4)
+
+    def test_decoder_layer_norms_each_branch_before_the_residual(self) -> None:
+        # Lfm3DecoderLayer: x + post_operator_norm(op(operator_norm(x))), then
+        # + post_ffn_norm(ffn(ffn_norm(.))). The operator is taken as given.
+        import numpy as np
+
+        mx = self.mx
+        layer = self._model().layers[2]
+        x = mx.random.normal((1, 5, LFM3_TINY["hidden_size"]))
+        got = np.array(layer(x, mask="causal"))
+
+        def rms(a, norm):
+            return a / np.sqrt((a**2).mean(-1, keepdims=True) + 1e-5) * np.array(norm.weight)
+
+        def lin(m, a):
+            return a @ np.array(m.weight).T
+
+        xs = np.array(x)
+        op = np.array(layer.self_attn(mx.array(rms(xs, layer.operator_norm)), mask="causal"))
+        h = xs + rms(op, layer.post_operator_norm)
+        f = rms(h, layer.ffn_norm)
+        w1 = lin(layer.feed_forward.w1, f)
+        ffn = lin(layer.feed_forward.w2, w1 / (1.0 + np.exp(-w1)) * lin(layer.feed_forward.w3, f))
+        want = h + rms(ffn, layer.post_ffn_norm)
+        np.testing.assert_allclose(got, want, rtol=1e-4, atol=1e-4)
+
+    def test_sanitize_reads_the_mlx_vlm_layout_and_torch_conv_weights(self) -> None:
+        mx = self.mx
+        model = self._model()
+        out = model.sanitize({
+            "language_model.model.layers.0.conv.conv.weight": mx.zeros((32, 1, 7)),
+            "language_model.model.embed_tokens.weight": mx.zeros((64, 32)),
+            "lm_head.weight": mx.zeros((64, 32)),
+        })
+        self.assertEqual(out["model.layers.0.conv.conv.weight"].shape, (32, 7, 1))
+        self.assertIn("model.embed_tokens.weight", out)
+        self.assertNotIn("lm_head.weight", out)  # tied to the embeddings
+        # An already converted conv weight is left as it is.
+        again = model.sanitize({"model.layers.0.conv.conv.weight": mx.zeros((32, 7, 1))})
+        self.assertEqual(again["model.layers.0.conv.conv.weight"].shape, (32, 7, 1))
+
+    def test_mlx_lm_loads_an_mlx_vlm_layout_checkpoint_through_the_hook(self) -> None:
+        import numpy as np
+        from mlx.utils import tree_flatten
+        from mlx_lm.utils import load_model
+
+        mx = self.mx
+        model = self._model()
+        directory = _snapshot(LFM3_TINY)
+        weights = {f"language_model.{k}": v for k, v in tree_flatten(model.parameters())}
+        mx.save_safetensors(str(directory / "model.safetensors"), weights)
+
+        with mock.patch.object(mlx_models, "_mlx_lm_ships", return_value=False):
+            kwargs = mlx_models.vendored_load_kwargs(directory, load_model)
+        self.assertEqual(Path(kwargs["model_config"]["model_file"]).name, "lfm3.py")
+        loaded, config = load_model(directory, **kwargs)
+        self.assertEqual(config["model_type"], "lfm3")
+
+        tokens = mx.array([[1, 2, 3, 4, 5, 6]])
+        np.testing.assert_allclose(np.array(loaded(tokens)), np.array(model(tokens)), rtol=1e-5, atol=1e-5)
+
+
+KOLIBRI_TEMPLATE = (
+    "{%- set _sv_reasoning_effort = reasoning_effort | default(none) -%}"
+    "{%- if _sv_reasoning_effort is not none -%}"
+    "{%- set _sv_thinking_disabled = _sv_reasoning_effort == 'none' -%}{%- endif -%}"
+)
+LEVELS_ONLY_TEMPLATE = "Reasoning: {{ reasoning_effort | default('medium') }}"
+
+
+def _tok(template):
+    return SimpleNamespace(chat_template=template)
+
+
+class ChatTemplateSwitchesTests(unittest.TestCase):
+    def test_the_chosen_effort_reaches_a_template_that_defines_levels(self) -> None:
+        for template in (KOLIBRI_TEMPLATE, LEVELS_ONLY_TEMPLATE):
+            for effort in ("low", "medium", "high"):
+                request = {"thinkingMode": "auto", "reasoningEffort": effort}
+                self.assertEqual(chat_template_switches(_tok(template), request), {"reasoning_effort": effort})
+
+    def test_thinking_off_selects_the_none_level_where_the_template_has_one(self) -> None:
+        for request in ({"thinkingMode": "off"}, {}):
+            self.assertEqual(chat_template_switches(_tok(KOLIBRI_TEMPLATE), request), {"reasoning_effort": "none"})
+
+    def test_a_template_without_a_none_level_is_left_to_its_default(self) -> None:
+        self.assertEqual(chat_template_switches(_tok(LEVELS_ONLY_TEMPLATE), {"thinkingMode": "off"}), {})
+
+    def test_thinking_on_without_an_effort_keeps_the_template_default(self) -> None:
+        self.assertEqual(chat_template_switches(_tok(KOLIBRI_TEMPLATE), {"thinkingMode": "auto"}), {})
+
+    def test_enable_thinking_follows_the_thinking_toggle(self) -> None:
+        qwen = "{%- if enable_thinking is defined and enable_thinking is false %}<think>\n\n</think>{% endif %}"
+        self.assertEqual(chat_template_switches(_tok(qwen), {"thinkingMode": "off"}), {"enable_thinking": False})
+        self.assertEqual(chat_template_switches(_tok(qwen), {}), {"enable_thinking": False})
+        self.assertEqual(chat_template_switches(_tok(qwen), {"thinkingMode": "auto"}), {"enable_thinking": True})
+
+    def test_both_switches_reach_a_template_that_reads_both(self) -> None:
+        both = KOLIBRI_TEMPLATE + "{%- elif enable_thinking is defined and enable_thinking is false -%}"
+        self.assertEqual(
+            chat_template_switches(_tok(both), {"thinkingMode": "off"}),
+            {"enable_thinking": False, "reasoning_effort": "none"},
+        )
+
+    def test_other_templates_get_nothing(self) -> None:
+        request = {"thinkingMode": "auto", "reasoningEffort": "high"}
+        self.assertEqual(chat_template_switches(_tok("{{ messages }}"), request), {})
+        self.assertEqual(chat_template_switches(_tok(None), request), {})
+        self.assertEqual(chat_template_switches(SimpleNamespace(), request), {})
+
+
+class PromptBuilderForwardsSwitchesTests(unittest.TestCase):
+    class _Tokenizer:
+        chat_template = KOLIBRI_TEMPLATE
+
+        def __init__(self) -> None:
+            self.calls: list[dict] = []
+
+        def apply_chat_template(self, messages, **kwargs):
+            self.calls.append(kwargs)
+            return "rendered"
+
+    def test_the_switches_are_passed_to_the_template(self) -> None:
+        tokenizer = self._Tokenizer()
+        text, _ = _build_prompt_text(
+            tokenizer, history=[], prompt="Hallo", system_prompt=None,
+            template_kwargs={"reasoning_effort": "low"},
+        )
+        self.assertEqual(text, "rendered")
+        self.assertEqual(
+            tokenizer.calls, [{"tokenize": False, "add_generation_prompt": True, "reasoning_effort": "low"}]
+        )
+
+    def test_without_switches_the_call_is_unchanged(self) -> None:
+        tokenizer = self._Tokenizer()
+        _build_prompt_text(tokenizer, history=[], prompt="Hallo", system_prompt=None)
+        self.assertEqual(tokenizer.calls, [{"tokenize": False, "add_generation_prompt": True}])
+
+    def test_tool_results_reach_the_model_as_tool_response_turns(self) -> None:
+        # The agent loop returns results as ``tool`` messages; dropping them made
+        # the model repeat the same call until the loop gave up.
+        seen: list[list[dict]] = []
+
+        class _Tok:
+            def apply_chat_template(self, messages, **kwargs):
+                seen.append(messages)
+                return "rendered"
+
+        history = [
+            {"role": "user", "text": "2025 mal 12?"},
+            {"role": "assistant", "text": '<tool_call>{"name": "calculator"}</tool_call>'},
+            {"role": "tool", "text": "2025 * 12 = 24300", "name": "calculator"},
+        ]
+        _build_prompt_text(_Tok(), history=history, prompt="", system_prompt=None)
+        rendered = seen[0]
+        self.assertEqual(rendered[-1]["role"], "user")
+        self.assertIn("<tool_response>\n2025 * 12 = 24300\n</tool_response>", rendered[-1]["content"])
+        self.assertEqual([m["role"] for m in rendered].count("assistant"), 1)
+
+
+if __name__ == "__main__":
+    unittest.main()
+
+
+class FlintOnMlxTests(unittest.TestCase):
+    """A Flint checkpoint MLX cannot load fails with a reason and the way out."""
+
+    def _dir(self, *, marker: bool) -> str:
+        directory = Path(tempfile.mkdtemp())
+        self.addCleanup(lambda: __import__("shutil").rmtree(directory, ignore_errors=True))
+        (directory / "config.json").write_text(json.dumps({"model_type": "flint"}), encoding="utf-8")
+        if marker:
+            (directory / "flint-int4.json").write_text("{}", encoding="utf-8")
+        return str(directory)
+
+    def test_recursives_int4_export_points_at_the_gguf(self) -> None:
+        from backend_service.mlx_worker_diagnostics import _reject_unsupported_quant
+
+        with self.assertRaises(RuntimeError) as ctx:
+            _reject_unsupported_quant(self._dir(marker=True))
+        self.assertIn("RecursiveSI/flint-int4-gguf", str(ctx.exception))
+
+    def test_a_stack_without_the_architecture_says_so(self) -> None:
+        from backend_service.mlx_worker_diagnostics import _reject_unsupported_quant
+
+        with mock.patch("importlib.util.find_spec", return_value=None):
+            with self.assertRaises(RuntimeError) as ctx:
+                _reject_unsupported_quant(self._dir(marker=False))
+        self.assertIn("do not include the Flint architecture", str(ctx.exception))
+
+    def test_a_stack_that_ships_it_is_left_alone(self) -> None:
+        from backend_service.mlx_worker_diagnostics import _reject_unsupported_quant
+
+        with mock.patch("importlib.util.find_spec", return_value=object()):
+            _reject_unsupported_quant(self._dir(marker=False))
+
+
+QWEN38_EFFORT_TEMPLATE = (
+    "{%- set resolved_reasoning_effort = reasoning_effort|default('xhigh') %}"
+    "{%- if resolved_reasoning_effort not in ('xhigh', 'medium', 'low') %}"
+    "{{- raise_exception('Unexpected reasoning effort') }}{%- endif %}"
+    "{%- if enable_thinking %}x{%- endif %}"
+)
+
+
+class TemplateEffortLevelTests(unittest.TestCase):
+    def test_levels_are_read_from_the_template(self):
+        from backend_service.mlx_worker_prompt import template_effort_levels
+
+        self.assertEqual(template_effort_levels(QWEN38_EFFORT_TEMPLATE), ["low", "medium", "xhigh"])
+        self.assertIsNone(template_effort_levels("{{ messages }}"))
+
+    def test_high_maps_to_xhigh_on_qwen38(self):
+        request = {"thinkingMode": "auto", "reasoningEffort": "high"}
+        self.assertEqual(
+            chat_template_switches(_tok(QWEN38_EFFORT_TEMPLATE), request),
+            {"enable_thinking": True, "reasoning_effort": "xhigh"},
+        )
+
+    def test_supported_levels_pass_through(self):
+        for effort in ("low", "medium"):
+            request = {"thinkingMode": "auto", "reasoningEffort": effort}
+            self.assertEqual(
+                chat_template_switches(_tok(QWEN38_EFFORT_TEMPLATE), request)["reasoning_effort"], effort
+            )
+
+    def test_generate_module_has_the_transcript_filter(self):
+        import backend_service.mlx_worker_generate as generate
+
+        self.assertTrue(hasattr(generate, "TranscriptLoopFilter"))

@@ -29,7 +29,14 @@
     "cancelled": "Cancelled",
     "complete": "Complete",
     "totalSize": "{size} total",
-    "downloaded": "{downloaded} of {total}"
+    "downloaded": "{downloaded} of {total}",
+    "preparing": "Preparing download...",
+    "pausedPercent": "Paused {percent}%",
+    "downloadingPercent": "Downloading {percent}%",
+    "pausedAtSize": "Paused at {size} GB",
+    "downloadingSize": "Downloading {size} GB",
+    "sizeTotalGb": "{size} GB total",
+    "sizeDownloadedGb": "{size} GB downloaded"
   },
   "details": {
     "loadModel": "Load model",
@@ -74,7 +81,9 @@
     "strategy": {
       "chip": "{label} ({count})",
       "compatTooltip": "Show models compatible with {label} ({count})",
-      "dflashEmptyTooltip": "DFlash speculative-decode drafts only exist for specific base models: Qwen/Qwen3 (4B, 8B), Qwen/Qwen3-Coder (4B, 8B, 30B-A3B, Next), Qwen/Qwen3.5 (4B, 7B, 9B, 14B, 27B, 35B-A3B), Qwen/Qwen3.6-35B-A3B, meta-llama/Llama-3.1-8B-Instruct, gpt-oss (20B, 120B), moonshotai/Kimi-K2.5. Fine-tunes typically don't match. Download a base model from Discover to enable DFlash."
+      "dflashEmptyTooltip": "DFlash speculative-decode drafts only exist for specific base models: Qwen/Qwen3 (4B, 8B), Qwen/Qwen3-Coder (4B, 8B, 30B-A3B, Next), Qwen/Qwen3.5 (4B, 7B, 9B, 14B, 27B, 35B-A3B), Qwen/Qwen3.6-35B-A3B, meta-llama/Llama-3.1-8B-Instruct, gpt-oss (20B, 120B), moonshotai/Kimi-K2.5. Fine-tunes typically don't match. Download a base model from the Models page to enable DFlash.",
+      "memorySaverLabel": "{label} · memory saver",
+      "memorySaverTooltip": "Show models that can use {label}, a KV-cache memory saver: long chats fit in less RAM, but generation is slower than Native ({count})"
     },
     "column": {
       "model": "Model",
@@ -118,7 +127,9 @@
       "deleteDownload": "Delete download",
       "chatWithModel": "Chat with model",
       "loadForServer": "Load for server",
-      "deleteModel": "Delete model"
+      "deleteModel": "Delete model",
+      "unstarModel": "Remove from favourites",
+      "starModel": "Mark as favourite"
     }
   },
   "onlineModels": {
@@ -127,7 +138,8 @@
     "variantCount": "{count, plural, one {# variant} other {# variants}}",
     "filter": {
       "all": "All",
-      "allFormats": "All formats"
+      "allFormats": "All formats",
+      "allAccel": "All acceleration"
     },
     "capability": {
       "title": {
@@ -225,6 +237,11 @@
       "capFilter": "No models match the \"{cap}\" filter.",
       "search": "No models match \"{query}\". Try a different search term.",
       "prompt": "Type to search for models."
+    },
+    "accelFilter": {
+      "memorySaverLabel": "{label} · memory saver",
+      "memorySaverTooltip": "Show models that can use {label}, a KV-cache memory saver: long chats fit in less RAM, but generation is slower than Native ({count})",
+      "tooltip": "Show {label}-compatible models ({count})"
     }
   },
   "imageModels": {
@@ -320,7 +337,9 @@
       "pending": "pending",
       "pendingTitle": "RAM/VRAM estimate pending until model weight size is known."
     },
-    "releaseUnknown": "Unknown"
+    "releaseUnknown": "Unknown",
+    "sharedRepoTitle": "Uses the same download as {count} other variant(s) of {repo}. Deleting this row removes those files too.",
+    "sharedRepo": "shares storage · +{count}"
   },
   "videoModels": {
     "subtitle": {
@@ -341,7 +360,10 @@
       "downloadModel": "Download model",
       "cancelDownload": "Cancel download",
       "deleteModel": "Delete model",
-      "openModelCard": "Open model card"
+      "openModelCard": "Open model card",
+      "deleteSharedGguf": "Delete shared GGUF download",
+      "deleteSharedTextEncoder": "Delete shared text encoder download",
+      "deleteSharedComponent": "Delete shared component download"
     },
     "filter": {
       "searchLabel": "Search",
@@ -417,7 +439,9 @@
       "pending": "pending",
       "pendingTitle": "RAM/VRAM estimate pending until model weight size is known."
     },
-    "releaseUnknown": "Unknown"
+    "releaseUnknown": "Unknown",
+    "sharedRepo": "shares storage · +{count}",
+    "sharedRepoTitle": "Uses the same download as {count} other variant(s) of {repo}. Deleting this row removes those files too."
   },
   "imageDiscover": {
     "access": {
@@ -504,7 +528,16 @@
       "deleteModel": "Delete model",
       "openHuggingFace": "Open on Hugging Face",
       "huggingFace": "Hugging Face",
-      "settings": "Settings"
+      "settings": "Settings",
+      "trackedOnly": "Tracked only — not yet launchable"
+    },
+    "trackedOnly": {
+      "tooltip": "Watching upstream — Studio playback for this family isn't wired yet. Catalog entry is for awareness; download won't unlock Studio.",
+      "badge": "Watching upstream"
+    },
+    "sortLabel": {
+      "likes": "most liked first",
+      "downloads": "most downloads first"
     }
   },
   "videoDiscover": {
@@ -553,7 +586,8 @@
       "downloading": "Downloading",
       "paused": "Paused",
       "failed": "Failed",
-      "incomplete": "Incomplete"
+      "incomplete": "Incomplete",
+      "installing": "Installing"
     },
     "sort": {
       "name": "Name",
@@ -587,6 +621,165 @@
     "unknown": "Unknown",
     "longLive": {
       "installNote": "LongLive installs into an isolated venv at ~/.chaosengine/longlive. CUDA only, 5-15 min depending on network."
+    },
+    "sortLabel": {
+      "likes": "most liked first",
+      "downloads": "most downloads first"
+    }
+  },
+  "models": {
+    "action": {
+      "cancel": "Cancel download",
+      "deleteDownload": "Delete download",
+      "deleteModel": "Delete model",
+      "download": "Download model",
+      "more": "More actions",
+      "pause": "Pause download",
+      "resume": "Resume download",
+      "retry": "Retry download",
+      "trackedOnly": "Tracked only — not yet launchable"
+    },
+    "availability": {
+      "all": "All",
+      "attention": "Needs attention",
+      "available": "Available",
+      "downloading": "Downloading",
+      "installed": "Installed",
+      "label": "Show"
+    },
+    "card": {
+      "collapse": "Hide details",
+      "expand": "Show details",
+      "incompatible": "Cannot run on this machine",
+      "incompatibleTitle": "Its engine does not run on this machine. You can still delete its files."
+    },
+    "delete": {
+      "confirmShared": "{count, plural, one {# other model uses} other {# other models use}} the same download and will be removed too:",
+      "confirmSharedMore": "and {count} more",
+      "confirmTarget": "This removes {target} from disk. It cannot be undone.",
+      "confirmTitle": "Delete the files of \"{name}\"?"
+    },
+    "detail": {
+      "engine": "Engine",
+      "fit": "Fit on this machine",
+      "license": "Licence",
+      "localPath": "On disk",
+      "openModelCard": "Open model card",
+      "repo": "Repository",
+      "resolution": "Recommended size",
+      "sharedWith": "Shares its download with",
+      "warning": "Note",
+      "ggufFile": "GGUF file",
+      "textEncoder": "Text encoder",
+      "catalogSize": "Catalog size"
+    },
+    "empty": {
+      "availability": "No {bucket} models under the current filters.",
+      "catalog": "No models in the catalog yet.",
+      "filters": "No models match the current filters. Try broadening the filters or search terms.",
+      "showAvailable": "Show available models"
+    },
+    "filter": {
+      "clear": "Clear Filters",
+      "search": "Search",
+      "sortBy": "Sort by"
+    },
+    "fit": {
+      "bestFit": "Best fit",
+      "bestFitTitle": "The pick in this family for this machine: the newest release that fits comfortably.",
+      "estimated": "estimated",
+      "estimatedNote": "Estimated from the model size; not measured on this machine.",
+      "estimatedShort": "est.",
+      "fits": "Fits",
+      "measured": "measured",
+      "measuredNote": "Measured on this machine.",
+      "numbers": "Needs about {need} GB of {usable} GB usable on this machine.",
+      "tight": "Tight",
+      "unknown": "Not for this machine",
+      "wontFit": "Won't fit"
+    },
+    "image": {
+      "emptyAttention": "No image model needs attention.",
+      "emptyCatalog": "No image models in the catalog yet. Check that the backend is running.",
+      "emptyDownloading": "No image model is downloading.",
+      "emptyInstalled": "No image models installed yet. Pick one from the available models to download it.",
+      "intro": "Every image model in one list. Download one to use it in Image Studio; filter by what is installed, available or downloading."
+    },
+    "sort": {
+      "fewestDownloads": "fewest downloads first",
+      "leastLiked": "least liked first"
+    },
+    "status": {
+      "available": "Not installed",
+      "broken": "Broken",
+      "downloading": "Downloading",
+      "failed": "Failed",
+      "failedDetail": "Download failed",
+      "installed": "Installed",
+      "loaded": "Loaded in memory",
+      "partial": "Incomplete",
+      "paused": "Paused"
+    },
+    "subtitle": "{shown} of {total, plural, one {# model} other {# models}} · {installed} installed",
+    "summary": {
+      "availability": "Showing: {bucket}",
+      "count": "{count, plural, one {# model} other {# models}} · {sortLabel}",
+      "search": "Search: {query}"
+    },
+    "video": {
+      "intro": "Every video model in one list. Download one to use it in Video Studio; filter by what is installed, available or downloading.",
+      "emptyCatalog": "No video models in the catalog yet. Check that the backend is running.",
+      "emptyInstalled": "No video models installed yet. Pick one from the available models to download it.",
+      "emptyDownloading": "No video model is downloading.",
+      "emptyAttention": "No video model needs attention."
+    },
+    "chat": {
+      "intro": "Every chat model in one list: the ones on disk, the catalog, and Hugging Face search results. Filter by installed, available or downloading.",
+      "subtitle": "{shown} of {total, plural, one {# model} other {# models}} · {installed} installed · {size} on disk · {dirs, plural, one {# directory} other {# directories}}",
+      "searchPlaceholder": "Search name, provider, capability, path or format (also searches Hugging Face)...",
+      "newThread": "Chat in a new thread",
+      "useInThisChat": "Use in this chat",
+      "bestFitTitle": "The pick in this family for this machine: the newest release that fits comfortably; among sizes released together, the largest that fits.",
+      "closestMatch": "Closest catalog entry: {name}",
+      "sourceDownload": "Download",
+      "sizeTitle": "{onDisk} on disk; the catalog lists {catalog}",
+      "detail": {
+        "released": "Released",
+        "directory": "Directory",
+        "modified": "Modified"
+      },
+      "filter": {
+        "capability": "Capability",
+        "format": "Format",
+        "backend": "Backend",
+        "acceleration": "Acceleration"
+      },
+      "emptyCatalog": "No chat models in the catalog or on disk yet. Check that the backend is running, or add model directories in Settings.",
+      "emptyDownloading": "No chat model is downloading.",
+      "emptyAttention": "No chat model needs attention.",
+      "emptySearchHub": "No model on disk or in the catalog matches \"{query}\". Results from Hugging Face are below.",
+      "sort": {
+        "release": "Newest released",
+        "name": "Name",
+        "format": "Format",
+        "formatDir": "format {direction}",
+        "backend": "Backend",
+        "backendDir": "backend {direction}",
+        "size": "Largest size",
+        "ram": "Highest RAM",
+        "ramDesc": "highest RAM first",
+        "ramAsc": "lowest RAM first",
+        "compressed": "Highest compressed RAM",
+        "compressedDesc": "highest compressed RAM first",
+        "compressedAsc": "lowest compressed RAM first",
+        "context": "Longest context",
+        "contextDesc": "longest context first",
+        "contextAsc": "shortest context first",
+        "modified": "Recently modified",
+        "modifiedDesc": "recently modified first",
+        "modifiedAsc": "least recently modified first",
+        "status": "Status"
+      }
     }
   }
 }

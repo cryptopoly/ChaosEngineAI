@@ -2,6 +2,7 @@ import { type KeyboardEvent as ReactKeyboardEvent, useEffect, useRef, useState }
 import { useTranslation } from "react-i18next";
 import { apiFetch } from "../../api";
 import type { MtplxJobState } from "../../api";
+import type { TensorfoldLaunchControls } from "../../components/tensorfoldSupport";
 import type { LaunchPreferences, StrategyInstallLog, SystemStats } from "../../types";
 import type { ChatModelOption } from "../../types/chat";
 import {
@@ -10,6 +11,7 @@ import {
   compareTargetLabels,
   compareTargets,
   modelUsesMtplx,
+  modelUsesTensorfold,
   summarizeLaunchSettings,
   type CompareTarget,
 } from "./CompareView";
@@ -73,6 +75,7 @@ import { ChallengePickerModal } from "./html_challenge/ChallengePickerModal";
 import { ChallengePromptLibraryModal } from "./html_challenge/ChallengePromptLibraryModal";
 import { ChallengeSetupPanel } from "./html_challenge/ChallengeSetupPanel";
 import { ChallengeSlotPanel } from "./html_challenge/ChallengeSlotPanel";
+import { newStickyScroll, stickToBottom, updateStickyScroll, type StickyScroll } from "../../utils/stickyScroll";
 
 interface HtmlChallengeTabProps {
   modelOptions: ChatModelOption[];
@@ -87,6 +90,7 @@ interface HtmlChallengeTabProps {
   onInstallMtplx?: () => void;
   installingMtplx?: boolean;
   mtplxJob?: MtplxJobState | null;
+  tensorfold?: TensorfoldLaunchControls;
   /** FU-056 follow-up: hide MTPLX block on non-Apple-Silicon hosts. */
   isAppleSilicon?: boolean;
   onInstallPackage?: (strategyId: string) => void;
@@ -110,6 +114,7 @@ export function HtmlChallengeTab({
   onInstallMtplx,
   installingMtplx,
   mtplxJob,
+  tensorfold,
   isAppleSilicon = false,
   onInstallPackage,
   installingPackage,
@@ -145,6 +150,7 @@ export function HtmlChallengeTab({
   const [pickerInitialKey, setPickerInitialKey] = useState("");
   const [pickerInitialSettings, setPickerInitialSettings] = useState<LaunchPreferences>(() => cloneLaunchSettings(launchSettings));
   const abortRef = useRef<AbortController | null>(null);
+  const streamSticky = useRef<Record<string, StickyScroll>>({});
   const streamRefs = useRef<Record<CompareTarget, HTMLPreElement | null>>({
     a: null,
     b: null,
@@ -164,13 +170,6 @@ export function HtmlChallengeTab({
     d: null,
   });
   const activePreviewSlotRef = useRef<CompareTarget | null>(null);
-  // FU-036: timestamp of the most recent programmatic scroll-to-bottom for
-  // each slot. ``handleStreamScroll`` ignores scroll events fired in the
-  // immediate window after one (the browser fires ``scroll`` for both
-  // user wheel input AND ``element.scrollTop = …`` writes; without the
-  // guard the post-write event re-flips ``streamAtBottom`` to true even
-  // when the user just scrolled away).
-  const lastProgrammaticScrollRef = useRef<Record<string, number>>({});
 
   const textModelOptions = modelOptions.filter(isTextModelOption);
   const selectedBySlot = Object.fromEntries(
@@ -278,30 +277,11 @@ export function HtmlChallengeTab({
   }, []);
 
   useEffect(() => {
-    // FU-036 (2026-05-10): re-measure scroll position inside the rAF
-    // before yanking back to bottom. ``setStreamAtBottom`` from the
-    // ``onScroll`` handler is async, so a streaming chunk that arrives
-    // a few ms after the user wheel-scrolls would otherwise see the
-    // stale ``streamAtBottom[slot.id] === true`` from the previous
-    // render and snap the box back down — felt as a jerk that fought
-    // the user's scroll. Re-measuring against the live DOM closes the
-    // race; if the user has moved away in the gap, we drop tracking
-    // for that slot instead of stomping their scroll position.
+    // Follow state lives in a ref (see utils/stickyScroll): content growth
+    // never ends the follow, only the user scrolling up does.
     const handles = slots
-      .filter((slot) => streamAtBottom[slot.id])
-      .map((slot) => requestAnimationFrame(() => {
-        const element = streamRefs.current[slot.id];
-        if (!element) return;
-        const stillNearBottom =
-          element.scrollHeight - element.scrollTop - element.clientHeight < 32;
-        if (stillNearBottom) {
-          scrollStreamToBottom(slot.id);
-        } else {
-          setStreamAtBottom((current) => current[slot.id]
-            ? { ...current, [slot.id]: false }
-            : current);
-        }
-      }));
+      .filter((slot) => streamSticky.current[slot.id]?.stuck ?? true)
+      .map((slot) => requestAnimationFrame(() => scrollStreamToBottom(slot.id)));
     return () => handles.forEach((handle) => cancelAnimationFrame(handle));
   }, [slots, slotStates, streamAtBottom]);
 
@@ -345,24 +325,17 @@ export function HtmlChallengeTab({
   }
 
   function handleStreamScroll(target: CompareTarget) {
-    // Ignore the scroll event the browser fires immediately after our
-    // own ``element.scrollTop = …`` write. Without this guard, the
-    // post-write event re-flipped ``streamAtBottom`` true and the next
-    // chunk would yank the box back even when the user had since
-    // scrolled away.
-    const lastProgrammatic = lastProgrammaticScrollRef.current[target] ?? 0;
-    if (performance.now() - lastProgrammatic < 80) return;
     const element = streamRefs.current[target];
     if (!element) return;
-    const atBottom = element.scrollHeight - element.scrollTop - element.clientHeight < 32;
-    setStreamAtBottom((current) => ({ ...current, [target]: atBottom }));
+    const sticky = (streamSticky.current[target] ??= newStickyScroll());
+    const atBottom = updateStickyScroll(element, sticky);
+    setStreamAtBottom((current) => current[target] === atBottom ? current : { ...current, [target]: atBottom });
   }
 
   function scrollStreamToBottom(target: CompareTarget) {
     const element = streamRefs.current[target];
     if (!element) return;
-    lastProgrammaticScrollRef.current[target] = performance.now();
-    element.scrollTop = element.scrollHeight;
+    stickToBottom(element, (streamSticky.current[target] ??= newStickyScroll()));
     setStreamAtBottom((current) => current[target] ? current : { ...current, [target]: true });
   }
 
@@ -942,7 +915,10 @@ export function HtmlChallengeTab({
     // Bind the option + mtplx context so the summary label reflects which
     // engine the backend will actually route to.
     const summarizeForSlot = (settings: ChallengeSlot["settings"]) =>
-      summarizeLaunchSettings(settings, { usesMtplx: modelUsesMtplx(option, settings, mtplxSystemInfo) });
+      summarizeLaunchSettings(settings, {
+        usesMtplx: modelUsesMtplx(option, settings, mtplxSystemInfo),
+        usesTensorfold: modelUsesTensorfold(option, settings, tensorfold),
+      });
     const settingsSummary = compactSettingsSummary(slot, state, summarizeForSlot);
 
     return (
@@ -1151,6 +1127,7 @@ export function HtmlChallengeTab({
         onInstallMtplx={onInstallMtplx}
         installingMtplx={installingMtplx}
         mtplxJob={mtplxJob}
+        tensorfold={tensorfold}
         isAppleSilicon={isAppleSilicon}
         onConfirm={(selectedKey, newSettings) => {
           if (pickerTarget) {

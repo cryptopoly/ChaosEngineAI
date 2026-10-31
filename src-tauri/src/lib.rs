@@ -76,6 +76,10 @@ impl Default for BackendRuntimeInfo {
 struct ManagedBackend {
     info: BackendRuntimeInfo,
     child: Option<Child>,
+    // True while `info.startup_error` holds only a note about a sidecar that is
+    // still running (a slow start, a port fallback). A crash replaces the note
+    // and a successful start clears it.
+    startup_note_soft: bool,
 }
 
 #[derive(Default)]
@@ -249,6 +253,88 @@ fn set_app_locale(locale: String) -> Result<(), String> {
     Ok(())
 }
 
+/// Run `job` on a background thread, keeping that thread alive afterwards on
+/// Linux.
+///
+/// Linux sends `PR_SET_PDEATHSIG` when the *thread* that forked the child
+/// exits, not when the whole process does (prctl(2)). `BackendManager::bootstrap`
+/// forks the sidecar from the thread it runs on, so letting that thread return
+/// would SIGKILL the backend the moment it became ready and leave the window on
+/// its loading screen. Parking the thread ties the sidecar to the life of the
+/// app, which is what the death signal is for.
+fn spawn_sidecar_thread(job: impl FnOnce() + Send + 'static) -> thread::JoinHandle<()> {
+    thread::spawn(move || {
+        job();
+        #[cfg(target_os = "linux")]
+        loop {
+            thread::park();
+        }
+    })
+}
+
+// Runs on every Unix so the plumbing stays compiled; only Linux has a death
+// signal, so only there does the assertion mean anything.
+#[cfg(all(test, unix))]
+mod sidecar_thread_tests {
+    use super::*;
+    use std::os::unix::process::CommandExt;
+    use std::sync::mpsc;
+
+    #[test]
+    fn a_child_with_a_death_signal_outlives_the_closure_that_forked_it() {
+        let (sender, receiver) = mpsc::channel();
+        spawn_sidecar_thread(move || {
+            let mut command = Command::new("sleep");
+            command.arg("30");
+            unsafe {
+                command.pre_exec(|| {
+                    #[cfg(target_os = "linux")]
+                    libc::prctl(libc::PR_SET_PDEATHSIG, libc::SIGKILL);
+                    Ok(())
+                });
+            }
+            sender.send(command.spawn().expect("spawn sleep")).expect("send child");
+        });
+        let mut child = receiver.recv().expect("child handle");
+        thread::sleep(Duration::from_millis(300));
+        let status = child.try_wait().expect("try_wait");
+        let _ = child.kill();
+        let _ = child.wait();
+        assert!(
+            status.is_none(),
+            "the child died with {status:?} once the thread that forked it finished its closure"
+        );
+    }
+}
+
+/// Linux: WebKitGTK ships with media capture off and refuses any permission
+/// request nobody answers, so the voice microphone would never open. Turn
+/// media streams on and allow microphone / camera requests from our own page.
+/// macOS (wry grants WKWebView capture requests; TCC asks the user once) and
+/// Windows (WebView2 shows its own prompt) need nothing here.
+#[cfg(target_os = "linux")]
+fn allow_microphone(app: &tauri::App) {
+    use webkit2gtk::glib::prelude::*;
+    use webkit2gtk::{PermissionRequestExt, SettingsExt, UserMediaPermissionRequest, WebViewExt};
+
+    for window in app.webview_windows().values() {
+        let _ = window.with_webview(|webview| {
+            let view = webview.inner();
+            if let Some(settings) = WebViewExt::settings(&view) {
+                settings.set_enable_media_stream(true);
+            }
+            view.connect_permission_request(|_, request| {
+                if request.is::<UserMediaPermissionRequest>() {
+                    request.allow();
+                    true
+                } else {
+                    false
+                }
+            });
+        });
+    }
+}
+
 pub fn run() {
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
@@ -271,6 +357,9 @@ pub fn run() {
             // "Connecting..." state when started=false.
             app.manage(BackendManager::default());
 
+            #[cfg(target_os = "linux")]
+            allow_microphone(app);
+
             // The Python sidecar serves /api/* — without it the desktop
             // app is dead. Always bootstrap on launch, regardless of the
             // `autoStartServer` setting (which controls whether the
@@ -283,7 +372,7 @@ pub fn run() {
             // Python startup + port-wait), which macOS surfaces as the
             // spinning beachball and looks like a crash.
             let bootstrap_handle = app.handle().clone();
-            thread::spawn(move || {
+            spawn_sidecar_thread(move || {
                 let state = bootstrap_handle.state::<BackendManager>();
                 state.bootstrap(&bootstrap_handle);
             });

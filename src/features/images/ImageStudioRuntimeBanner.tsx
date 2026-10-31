@@ -16,6 +16,7 @@ import type {
 } from "../../api";
 import type { ImageModelVariant, ImageRuntimeStatus } from "../../types";
 import type { NativeBackendStatus } from "../../types/server";
+import type { SystemStats } from "../../types/system";
 import { MediaStudioBoosters } from "../../components/MediaStudioBoosters";
 
 
@@ -43,6 +44,8 @@ export interface ImageStudioRuntimeBannerProps {
    * boosters" sub-section. Optional — collapses to the "available"
    * card state if the backend hasn't probed yet. */
   nativeBackends?: NativeBackendStatus;
+  /** Host description; the CUDA boosters hide on hosts without an NVIDIA GPU. */
+  hostSystem?: Pick<SystemStats, "platform" | "arch" | "gpuVramTotalGb">;
 }
 
 
@@ -69,6 +72,7 @@ export function ImageStudioRuntimeBanner(props: ImageStudioRuntimeBannerProps) {
     gpuBundleJob,
     onInstallImageRuntime,
     nativeBackends,
+    hostSystem,
   } = props;
 
   return (
@@ -95,13 +99,13 @@ export function ImageStudioRuntimeBanner(props: ImageStudioRuntimeBannerProps) {
         * backend reloads -- showing both at once just confuses. */}
       {cudaTorchResult?.ok && cudaTorchResult.requiresRestart ? (
         <div className="callout" style={{ marginBottom: "0.6rem" }}>
-          <strong>CUDA torch installed.</strong>{" "}
-          The running backend still has the old torch in its module cache.
-          Restart the backend to activate the new wheel
-          {cudaTorchResult.indexUrl
-            ? ` (${cudaTorchResult.indexUrl.replace("https://download.pytorch.org/whl/", "")})`
-            : ""}
-          .
+          <strong>{t("runtimeBanner.cudaTorchInstalled", { defaultValue: "CUDA torch installed." })}</strong>{" "}
+          {t("runtimeBanner.cudaTorchRestartHint", {
+            defaultValue: "The running backend still has the old torch in its module cache. Restart the backend to activate the new wheel{index}.",
+            index: cudaTorchResult.indexUrl
+              ? ` (${cudaTorchResult.indexUrl.replace("https://download.pytorch.org/whl/", "")})`
+              : "",
+          })}
           <div style={{ marginTop: "0.5rem" }}>
             <button
               className="primary-button"
@@ -109,14 +113,16 @@ export function ImageStudioRuntimeBanner(props: ImageStudioRuntimeBannerProps) {
               onClick={() => onRestartServer()}
               disabled={busy}
             >
-              {busyAction === "Restarting server..." ? "Restarting..." : "Restart Backend"}
+              {busyAction === "Restarting server..."
+                ? t("runtimeBanner.restarting", { defaultValue: "Restarting..." })
+                : t("runtimeBanner.restartBackend", { defaultValue: "Restart Backend" })}
             </button>
           </div>
           <CudaTorchLogPanel result={cudaTorchResult ?? null} />
         </div>
       ) : imageRuntimeStatus.torchInstallWarning ? (
         <div className="callout error" style={{ marginBottom: "0.6rem" }}>
-          <strong>GPU acceleration not active.</strong>{" "}
+          <strong>{t("runtimeBanner.gpuNotActive", { defaultValue: "GPU acceleration not active." })}</strong>{" "}
           {imageRuntimeStatus.torchInstallWarning}
           {/* Inline remedy button + collapsible log. Only renders
             * when the warning is the "+cpu wheel" case (text
@@ -132,7 +138,9 @@ export function ImageStudioRuntimeBanner(props: ImageStudioRuntimeBannerProps) {
                 onClick={() => onInstallCudaTorch()}
                 disabled={Boolean(installingCudaTorch) || !backendOnline}
               >
-                {installingCudaTorch ? "Installing CUDA torch..." : "Install CUDA torch"}
+                {installingCudaTorch
+                  ? t("runtimeBanner.installingCudaTorch", { defaultValue: "Installing CUDA torch..." })
+                  : t("runtimeBanner.installCudaTorch", { defaultValue: "Install CUDA torch" })}
               </button>
               <CudaTorchLogPanel result={cudaTorchResult ?? null} />
             </div>
@@ -142,17 +150,17 @@ export function ImageStudioRuntimeBanner(props: ImageStudioRuntimeBannerProps) {
       <div className="chip-row">
         <span className={`badge ${imageRuntimeStatus.realGenerationAvailable ? "success" : "warning"}`}>
           {imageRuntimeStatus.realGenerationAvailable
-            ? "Real local generation available"
+            ? t("runtimeBanner.realGenerationAvailable", { defaultValue: "Real local generation available" })
             : imageRuntimeStatus.activeEngine === "unavailable"
-              ? "Runtime unavailable"
-              : "Using placeholder outputs"}
+              ? t("runtimeBanner.runtimeUnavailable", { defaultValue: "Runtime unavailable" })
+              : t("runtimeBanner.usingPlaceholder", { defaultValue: "Using placeholder outputs" })}
         </span>
         {imageRuntimeStatus.torchInstallWarning ? (
           <span className="badge danger" title={imageRuntimeStatus.torchInstallWarning}>
-            CPU fallback
+            {t("runtimeBanner.cpuFallback", { defaultValue: "CPU fallback" })}
           </span>
         ) : null}
-        <span className="badge muted">Engine: {imageRuntimeStatus.activeEngine}</span>
+        <span className="badge muted">{t("runtimeBanner.engineChip", { engine: imageRuntimeStatus.activeEngine, defaultValue: "Engine: {engine}" })}</span>
         {/* Prefer the actual-loaded device; fall back to the
           * predicted expectedDevice computed cheaply via
           * nvidia-smi + find_spec (no torch import). When
@@ -163,9 +171,9 @@ export function ImageStudioRuntimeBanner(props: ImageStudioRuntimeBannerProps) {
           const resolved =
             imageRuntimeStatus.device
             ?? (imageRuntimeStatus.expectedDevice
-              ? `${imageRuntimeStatus.expectedDevice} (expected)`
+              ? t("runtimeBanner.deviceExpected", { device: imageRuntimeStatus.expectedDevice, defaultValue: "{device} (expected)" })
               : null);
-          return resolved ? <span className="badge muted">Device: {resolved}</span> : null;
+          return resolved ? <span className="badge muted">{t("runtimeBanner.deviceChip", { device: resolved, defaultValue: "Device: {device}" })}</span> : null;
         })()}
       </div>
       {/* Torch upgrade nudge — renders only when real generation is
@@ -189,20 +197,31 @@ export function ImageStudioRuntimeBanner(props: ImageStudioRuntimeBannerProps) {
         <MediaStudioBoosters
           selectedVariant={selectedImageVariant}
           nativeBackends={nativeBackends}
+          hostSystem={hostSystem}
         />
       ) : null}
       {selectedImageVariant && imageRuntimeStatus.realGenerationAvailable ? (
         <div className="image-runtime-summary">
           <p className="muted-text">
             {selectedImageLoaded
-              ? `${selectedImageVariant.name} is loaded and ready to generate.`
+              ? t("runtimeBanner.summaryLoaded", { selected: selectedImageVariant.name, defaultValue: "{selected} is loaded and ready to generate." })
               : imageRuntimeLoadedDifferentModel && loadedImageVariant
-                ? `${loadedImageVariant.name} is loaded. Generating with ${selectedImageVariant.name} will swap the pipeline.`
+                ? t("runtimeBanner.summarySwap", {
+                  loaded: loadedImageVariant.name,
+                  selected: selectedImageVariant.name,
+                  defaultValue: "{loaded} is loaded. Generating with {selected} will swap the pipeline.",
+                })
                 : selectedImageWillLoadOnGenerate
-                  ? `${selectedImageVariant.name} is installed locally but not loaded yet. The first generate will take longer while the diffusion pipeline warms up.`
+                  ? t("runtimeBanner.summaryNotLoaded", {
+                    selected: selectedImageVariant.name,
+                    defaultValue: "{selected} is installed locally but not loaded yet. The first generate will take longer while the diffusion pipeline warms up.",
+                  })
                   : !selectedImageVariant.availableLocally
-                    ? `${selectedImageVariant.name} is not installed locally. Download it from Discover to enable local generation.`
-                    : "Model will load on demand when you generate."}
+                    ? t("runtimeBanner.summaryNotInstalled", {
+                      selected: selectedImageVariant.name,
+                      defaultValue: "{selected} is not installed locally. Download it from the Models page to enable local generation.",
+                    })
+                    : t("runtimeBanner.summaryOnDemand", { defaultValue: "Model will load on demand when you generate." })}
           </p>
           {imageBusy && selectedImageWillLoadOnGenerate ? (
             <p className="busy-indicator"><span className="busy-dot" />{t("runtimeBanner.loadingModel", { defaultValue: "Loading model into memory..." })}</p>
@@ -216,7 +235,7 @@ export function ImageStudioRuntimeBanner(props: ImageStudioRuntimeBannerProps) {
                   onClick={() => onPreloadImageModel(selectedImageVariant)}
                   disabled={imageBusy || busy || !backendOnline}
                 >
-                  Preload Model
+                  {t("runtimeBanner.preloadModel", { defaultValue: "Preload Model" })}
                 </button>
               ) : null}
               {selectedImageLoaded ? (
@@ -226,7 +245,7 @@ export function ImageStudioRuntimeBanner(props: ImageStudioRuntimeBannerProps) {
                   onClick={() => onUnloadImageModel(selectedImageVariant)}
                   disabled={imageBusy || busy || !backendOnline}
                 >
-                  Unload Model
+                  {t("runtimeBanner.unloadModel", { defaultValue: "Unload Model" })}
                 </button>
               ) : null}
               {!selectedImageLoaded && loadedImageVariant ? (
@@ -236,7 +255,7 @@ export function ImageStudioRuntimeBanner(props: ImageStudioRuntimeBannerProps) {
                   onClick={() => onUnloadImageModel()}
                   disabled={imageBusy || busy || !backendOnline}
                 >
-                  Unload {loadedImageVariant.name}
+                  {t("runtimeBanner.unloadNamed", { name: loadedImageVariant.name, defaultValue: "Unload {name}" })}
                 </button>
               ) : null}
             </div>
@@ -258,10 +277,11 @@ export function ImageStudioRuntimeBanner(props: ImageStudioRuntimeBannerProps) {
             {gpuBundleJob?.phase === "done" && gpuBundleJob.requiresRestart ? (
               <>
                 <p className="muted-text">
-                  GPU runtime installed to{" "}
-                  <code>{gpuBundleJob.targetDir ?? "extras"}</code>. The running backend
-                  still has its old import cache — click Restart Backend to activate the
-                  new runtime, then image generation will use your GPU.
+                  {t("runtimeBanner.gpuRuntimeInstalledIntro", { defaultValue: "GPU runtime installed to" })}{" "}
+                  <code>{gpuBundleJob.targetDir ?? t("runtimeBanner.extrasFallback", { defaultValue: "extras" })}</code>.{" "}
+                  {t("runtimeBanner.gpuRuntimeInstalledOutro", {
+                    defaultValue: "The running backend still has its old import cache — click Restart Backend to activate the new runtime, then image generation will use your GPU.",
+                  })}
                 </p>
                 <div className="button-row">
                   <button
@@ -270,16 +290,18 @@ export function ImageStudioRuntimeBanner(props: ImageStudioRuntimeBannerProps) {
                     onClick={() => onRestartServer()}
                     disabled={busy}
                   >
-                    {busyAction === "Restarting server..." ? "Restarting..." : "Restart Backend to activate"}
+                    {busyAction === "Restarting server..."
+                      ? t("runtimeBanner.restarting", { defaultValue: "Restarting..." })
+                      : t("runtimeBanner.restartBackendToActivate", { defaultValue: "Restart Backend to activate" })}
                   </button>
                 </div>
               </>
             ) : (
               <>
                 <p className="muted-text">
-                  Install the GPU image runtime (torch + diffusers + accelerate + transformers,
-                  ~2.5 GB) to enable real local generation. Writes to a persistent user-local
-                  folder so app updates don't wipe it.
+                  {t("runtimeBanner.gpuRuntimeInstallPrompt", {
+                    defaultValue: "Install the GPU image runtime (torch + diffusers + accelerate + transformers, ~2.5 GB) to enable real local generation. Writes to a persistent user-local folder so app updates don't wipe it.",
+                  })}
                 </p>
                 <div className="button-row">
                   <button
@@ -288,10 +310,14 @@ export function ImageStudioRuntimeBanner(props: ImageStudioRuntimeBannerProps) {
                     onClick={() => onInstallImageRuntime()}
                     disabled={installingImageRuntime || !backendOnline}
                   >
-                    {installingImageRuntime ? "Installing..." : "Install GPU runtime"}
+                    {installingImageRuntime
+                      ? t("runtimeBanner.installing", { defaultValue: "Installing..." })
+                      : t("runtimeBanner.installGpuRuntime", { defaultValue: "Install GPU runtime" })}
                   </button>
                   <button className="secondary-button" type="button" onClick={() => onRestartServer()} disabled={busy}>
-                    {busyAction === "Restarting server..." ? "Restarting..." : "Restart Backend"}
+                    {busyAction === "Restarting server..."
+                      ? t("runtimeBanner.restarting", { defaultValue: "Restarting..." })
+                      : t("runtimeBanner.restartBackend", { defaultValue: "Restart Backend" })}
                   </button>
                 </div>
               </>

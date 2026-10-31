@@ -105,6 +105,8 @@ class WorkerState:
         # ``None`` / ``False`` for plain text-only mlx-lm models.
         self.processor = None
         self.is_multimodal = False
+        # True only when the loaded model takes images (its config has a vision tower).
+        self.has_vision = False
         self.config: dict[str, Any] | None = None
         self.cache_strategy = "native"
         self.cache_bits = 0
@@ -135,6 +137,10 @@ class WorkerState:
         self._persist_cache: Any | None = None
         self._persist_tokens: list[int] = []
         self._persist_cache_model_ref: str | None = None
+        # FU-090 hybrid-model checkpoint: (boundary_tokens, per-layer
+        # recurrent state). Pending = taken this turn, promoted on commit.
+        self._persist_snapshot: tuple[int, list[Any]] | None = None
+        self._persist_snapshot_pending: tuple[int, list[Any]] | None = None
 
     def handle(self, request: dict[str, Any]) -> dict[str, Any] | None:
         op = request.get("op")

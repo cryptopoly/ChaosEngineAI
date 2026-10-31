@@ -37,6 +37,9 @@ The composer at the bottom of the thread accepts:
 - **Cache strategy override.** The KV strategy chip in the composer lets
   you flip between `native` / `turboquant` / `triattention` per turn for
   models that support multiple strategies without a reload.
+- **Voice.** The microphone button dictates into the message box, a speaker
+  button on every reply reads it aloud, and **Call** starts a hands-free voice
+  conversation. See [Voice](voice.md).
 
 ## Turn-level actions
 

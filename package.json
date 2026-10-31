@@ -1,7 +1,7 @@
 {
   "name": "chaosengine-desktop",
   "private": true,
-  "version": "0.9.3",
+  "version": "0.9.9",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -19,11 +19,11 @@
     "i18n:pseudo": "node ./scripts/i18n-pseudo.mjs"
   },
   "dependencies": {
-    "@tauri-apps/api": "~2.11.0",
-    "@tauri-apps/plugin-dialog": "^2.7.0",
-    "@tauri-apps/plugin-opener": "^2.5.3",
-    "@tauri-apps/plugin-process": "^2.0.0",
-    "@tauri-apps/plugin-updater": "^2.0.0",
+    "@tauri-apps/api": "~2.12.4",
+    "@tauri-apps/plugin-dialog": "^2.8.4",
+    "@tauri-apps/plugin-opener": "^2.7.2",
+    "@tauri-apps/plugin-process": "^2.4.0",
+    "@tauri-apps/plugin-updater": "^2.14.1",
     "i18next": "^24.2.0",
     "i18next-browser-languagedetector": "^8.0.2",
     "i18next-icu": "^2.3.0",
@@ -33,20 +33,20 @@
     "react-dom": "^18.3.1",
     "react-i18next": "^15.4.0",
     "react-markdown": "^10.1.0",
-    "react-syntax-highlighter": "^15.6.6",
+    "react-syntax-highlighter": "^16.1.2",
     "rehype-katex": "^7.0.1",
     "remark-gfm": "^4.0.1",
     "remark-math": "^6.0.0"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "~2.11.0",
+    "@tauri-apps/cli": "~2.12.4",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@types/react-syntax-highlighter": "^15.5.13",
     "@vitejs/plugin-react": "^5.1.0",
-    "@vitest/coverage-v8": "^4.1.5",
+    "@vitest/coverage-v8": "^4.1.12",
     "typescript": "^5.6.3",
-    "vite": "^7.3.2",
-    "vitest": "^4.1.4"
+    "vite": "^7.3.7",
+    "vitest": "^4.1.12"
   }
 }

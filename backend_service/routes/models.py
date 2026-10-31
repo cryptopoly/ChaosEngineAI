@@ -86,10 +86,11 @@ def _family_matches_discover_query(family: dict[str, Any], query: str) -> bool:
 def search_models(request: Request, query: str = Query("", alias="q", min_length=0, max_length=120)) -> dict[str, Any]:
     state = request.app.state.chaosengine
     from backend_service.helpers.discovery import _model_family_payloads
+    from backend_service.helpers.model_family_payload import measured_speed_lookup
 
     system_stats = state._system_snapshot_provider()
     library = state._library()
-    catalog = _model_family_payloads(system_stats, library)
+    catalog = _model_family_payloads(system_stats, library, measured_speed_for=measured_speed_lookup(state))
     search_query = query.strip()
     if not search_query:
         results = catalog
@@ -136,6 +137,30 @@ async def unload_model(request: Request) -> dict[str, Any]:
         ref = None
     runtime = state.unload_model(ref=ref)
     return {"runtime": runtime}
+
+
+@router.post("/api/models/processes/stop")
+def stop_model_process(request: Request, body: dict[str, Any]) -> dict[str, Any]:
+    """Stop one leftover model process (not the loaded model's)."""
+    pid = body.get("pid")
+    if not isinstance(pid, int) or isinstance(pid, bool):
+        raise HTTPException(status_code=400, detail="pid must be an integer.")
+    state = request.app.state.chaosengine
+    try:
+        result = state.runtime.stop_process(pid)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    state.add_log("runtime", "info", f"Stopped model process {pid} ({result['action']}).")
+    return result
+
+
+@router.post("/api/models/processes/stop-idle")
+def stop_idle_model_processes(request: Request) -> dict[str, Any]:
+    """Evict parked warm models and stop model processes nothing is using."""
+    state = request.app.state.chaosengine
+    result = state.runtime.stop_idle()
+    state.add_log("runtime", "info", f"Stopped idle model processes: {result}.")
+    return result
 
 
 @router.post("/api/models/convert")

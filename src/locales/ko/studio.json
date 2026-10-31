@@ -27,7 +27,7 @@
     "copyImage": "이미지 복사",
     "openFolder": "폴더에서 표시",
     "modelLabel": "모델",
-    "noModelsOption": "설치된 모델 없음 — 둘러보기에서 다운로드하세요",
+    "noModelsOption": "설치된 모델 없음 — 이미지 > 모델에서 다운로드하세요",
     "aspectRatio": "종횡비",
     "qualityPreset": "품질 프리셋",
     "previewLabel": "미리보기",
@@ -40,7 +40,36 @@
       "cancelled": "이미지 생성 취소됨",
       "failed": "이미지 생성 실패",
       "imagesReady": "이미지 준비됨",
-      "imageReady": "이미지 준비됨"
+      "imageReady": "이미지 준비됨",
+      "cancelledBody": "이 생성을 취소했습니다. 저장된 이미지가 없습니다.",
+      "modelStillLoaded": "모델이 아직 로드되어 있어 다음 생성은 콜드 스타트 대기 없이 바로 시작됩니다.",
+      "savedToGallery": "갤러리에 저장됨",
+      "phaseLoading": "모델을 메모리에 로드하는 중",
+      "phaseEncoding": "프롬프트 인코딩 중",
+      "phaseDiffusing": "{count, plural, other {이미지 #개 디퓨전 중}}",
+      "phaseDecoding": "픽셀 디코딩 중",
+      "phaseSaving": "출력 갤러리에 저장하는 중",
+      "errorHint": "프롬프트나 런타임 설정을 조정한 뒤 다시 시도하세요. 이전에 성공한 결과물은 갤러리에 그대로 남습니다.",
+      "settings": "설정",
+      "stepsCount": "{count, plural, other {#단계}}",
+      "seedValue": "시드 {seed}",
+      "generatedCount": "이번 실행에서 이미지 {count}개를 생성했습니다. 썸네일을 클릭하면 다른 결과를 볼 수 있습니다.",
+      "useSameSettings": "같은 설정 사용",
+      "varySeed": "시드 변경",
+      "open": "열기",
+      "reveal": "위치 보기",
+      "delete": "삭제",
+      "cancelGeneration": "생성 취소",
+      "close": "닫기",
+      "done": "완료"
+    },
+    "mflux": {
+      "outdated": "여기에 설치된 mflux 엔진({installed})이 이 앱이 요구하는 버전({required})보다 오래되어 FLUX 3, Qwen-Image-2.1 Turbo 같은 최신 모델은 실행되지 않습니다. 업데이트하면 전용 환경에 다시 설치됩니다.",
+      "notInstalled": "이 모델은 mflux MLX 엔진에서 실행되며, 아직 설치되지 않았습니다. 전용 환경(약 1.3 GB)에 설치되며 앱의 패키지는 변경되지 않습니다.",
+      "installing": "설치 중…",
+      "retry": "설치 재시도",
+      "update": "mflux 엔진 업데이트",
+      "install": "mflux 엔진 설치"
     }
   },
   "video": {
@@ -63,7 +92,30 @@
       "generating": "비디오 생성 중",
       "cancelled": "비디오 생성 취소됨",
       "failed": "비디오 생성 실패",
-      "ready": "비디오 준비됨"
+      "ready": "비디오 준비됨",
+      "cancelledBody": "이 생성을 취소했습니다. 저장된 클립이 없습니다.",
+      "modelStillLoaded": "모델이 아직 로드되어 있어 다음 생성은 콜드 스타트 대기 없이 바로 시작됩니다.",
+      "savedToGallery": "갤러리에 저장됨",
+      "loadError": "비디오를 불러올 수 없습니다.",
+      "phaseLoading": "모델을 메모리에 로드하는 중",
+      "phaseEncoding": "프롬프트 인코딩 중",
+      "phaseDiffusing": "{count, plural, other {프레임 #개 디퓨전 중}}",
+      "phaseDiffusingFrames": "프레임 디퓨전 중",
+      "phaseEncodingMp4": "mp4 인코딩 중",
+      "phaseSaving": "갤러리에 저장하는 중",
+      "errorHint": "프롬프트, 해상도, 프레임 수를 조정한 뒤 다시 시도하세요. 이전에 성공한 클립은 갤러리에 그대로 남습니다.",
+      "loadingClip": "클립을 불러오는 중...",
+      "framesCount": "{count, plural, other {#프레임}}",
+      "clipLength": "{seconds}초 클립",
+      "stepsCount": "{count, plural, other {#단계}}",
+      "seedValue": "시드 {seed}",
+      "renderTime": "렌더링 {seconds}초",
+      "openGallery": "갤러리 열기",
+      "revealFile": "파일 위치 보기",
+      "delete": "삭제",
+      "cancelGeneration": "생성 취소",
+      "close": "닫기",
+      "done": "완료"
     }
   },
   "progress": {
@@ -82,7 +134,36 @@
     "error": "향상기 오류: {message}"
   },
   "runtimeBanner": {
-    "loadingModel": "모델을 메모리에 로드 중..."
+    "loadingModel": "모델을 메모리에 로드 중...",
+    "cudaTorchInstalled": "CUDA torch가 설치되었습니다.",
+    "cudaTorchRestartHint": "실행 중인 백엔드의 모듈 캐시에 아직 이전 torch가 남아 있습니다. 새 wheel{index}을(를) 활성화하려면 백엔드를 다시 시작하세요.",
+    "gpuNotActive": "GPU 가속이 활성화되지 않았습니다.",
+    "restarting": "다시 시작 중...",
+    "restartBackend": "백엔드 다시 시작",
+    "installingCudaTorch": "CUDA torch 설치 중...",
+    "installCudaTorch": "CUDA torch 설치",
+    "realGenerationAvailable": "실제 로컬 생성 사용 가능",
+    "runtimeUnavailable": "런타임 사용 불가",
+    "usingPlaceholder": "플레이스홀더 출력 사용 중",
+    "cpuFallback": "CPU 폴백",
+    "engineChip": "엔진: {engine}",
+    "deviceExpected": "{device}(예상)",
+    "deviceChip": "장치: {device}",
+    "summaryLoaded": "{selected}이(가) 로드되어 생성할 준비가 되었습니다.",
+    "summarySwap": "{loaded}이(가) 로드되어 있습니다. {selected}(으)로 생성하면 파이프라인이 교체됩니다.",
+    "summaryNotLoaded": "{selected}이(가) 로컬에 설치되어 있지만 아직 로드되지 않았습니다. 첫 생성은 디퓨전 파이프라인이 준비되는 동안 더 오래 걸립니다.",
+    "summaryNotInstalled": "{selected}이(가) 로컬에 설치되지 않았습니다. 로컬 생성을 사용하려면 모델 페이지에서 다운로드하세요.",
+    "summaryOnDemand": "생성할 때 모델이 필요에 따라 로드됩니다.",
+    "preloadModel": "모델 미리 로드",
+    "unloadModel": "모델 언로드",
+    "unloadNamed": "{name} 언로드",
+    "gpuRuntimeInstalledIntro": "GPU 런타임 설치 위치:",
+    "extrasFallback": "extras",
+    "gpuRuntimeInstalledOutro": "실행 중인 백엔드는 아직 이전 임포트 캐시를 사용하고 있습니다. 백엔드 다시 시작을 클릭해 새 런타임을 활성화하면 이미지 생성이 GPU를 사용합니다.",
+    "restartBackendToActivate": "활성화하려면 백엔드를 다시 시작하세요",
+    "gpuRuntimeInstallPrompt": "실제 로컬 생성을 사용하려면 GPU 이미지 런타임(torch + diffusers + accelerate + transformers, 약 2.5 GB)을 설치하세요. 사용자 로컬의 영구 폴더에 저장되므로 앱 업데이트로 지워지지 않습니다.",
+    "installing": "설치 중...",
+    "installGpuRuntime": "GPU 런타임 설치"
   },
   "imageStudio": {
     "generateTitle": {
@@ -92,7 +173,7 @@
       "ready": "이 이미지를 생성합니다."
     },
     "actions": {
-      "discover": "둘러보기",
+      "discover": "모델 찾기",
       "installed": "설치됨",
       "gallery": "갤러리"
     },
@@ -108,14 +189,14 @@
       "downloaded": "다운로드됨"
     },
     "noModelsCallout": {
-      "message": "아직 다운로드된 이미지 모델이 없습니다. 이미지 둘러보기로 이동하여 둘러보고 설치한 다음 여기로 돌아와 생성하세요.",
-      "openDiscover": "이미지 둘러보기 열기"
+      "message": "아직 다운로드된 이미지 모델이 없습니다. 이미지 > 모델로 이동하여 둘러보고 설치한 다음 여기로 돌아와 생성하세요.",
+      "openDiscover": "이미지 모델 열기"
     },
     "download": {
       "failedMessage": "{name}이(가) 올바르게 다운로드되지 않았습니다. ChaosEngineAI는 부분적인 로컬 스냅샷만 발견했으므로 아직 실제 이미지 파이프라인을 로드할 수 없습니다.",
       "pausedMessage": "{name}이(가) 부분적으로 다운로드되었습니다. 준비되면 재개하세요. ChaosEngineAI가 이미 디스크에 있는 파일에서 계속 진행합니다.",
       "completeMessage": "{name} 다운로드가 완료되었습니다. 설치된 모델 스캔이 자동으로 새로 고침됩니다.",
-      "notInstalledMessage": "{name}이(가) 로컬에 설치되지 않았습니다. 로컬 생성을 활성화하려면 둘러보기에서 다운로드하세요.",
+      "notInstalledMessage": "{name}이(가) 로컬에 설치되지 않았습니다. 로컬 생성을 활성화하려면 모델 페이지에서 다운로드하세요.",
       "huggingFace": "Hugging Face",
       "settings": "설정",
       "technicalDetails": "기술 세부 정보",
@@ -170,7 +251,8 @@
       "guidance": "가이던스",
       "images": "이미지",
       "randomSeed": "랜덤 시드",
-      "seed": "시드"
+      "seed": "시드",
+      "maxPixelsNote": "{name}의 최대 렌더링 크기는 {megapixels}메가픽셀입니다. 이 크기는 비율을 유지한 채 줄여서 맞춥니다."
     },
     "safety": {
       "dangerTitle": "백엔드가 충돌할 가능성이 있음",
@@ -190,6 +272,98 @@
       "openGallery": "갤러리 열기",
       "emptyHint": "이 브랜치에 대한 첫 번째 저장된 이미지 아티팩트를 만들려면 프롬프트를 생성하세요.",
       "footnote": "여기에 최신 {recent}개의 저장된 이미지를 표시 중. 이미지 갤러리를 열어 모든 항목을 둘러보고 모델로 필터링하고 이전 실행을 관리하세요."
+    },
+    "aspectRatios": {
+      "square": {
+        "label": "정사각형"
+      },
+      "portrait": {
+        "label": "세로"
+      },
+      "landscape": {
+        "label": "가로"
+      },
+      "wide": {
+        "label": "와이드"
+      }
+    },
+    "quality": {
+      "fast": {
+        "label": "빠름",
+        "hint": "빠른 초안"
+      },
+      "balanced": {
+        "label": "균형",
+        "hint": "추천 기본값"
+      },
+      "quality": {
+        "label": "고품질",
+        "hint": "더 느린 최종 패스"
+      }
+    },
+    "samplers": {
+      "default": {
+        "label": "모델 기본값",
+        "hint": "모델에 기본 포함된 설정"
+      },
+      "dpmpp_2m": {
+        "label": "DPM++ 2M",
+        "hint": "빠르고 균형 잡힘 — 20-30 단계"
+      },
+      "dpmpp_2m_karras": {
+        "label": "DPM++ 2M Karras",
+        "hint": "적은 단계에서 더 부드러움"
+      },
+      "dpmpp_sde": {
+        "label": "DPM++ SDE",
+        "hint": "약간 노이즈가 많고 창의적"
+      },
+      "euler": {
+        "label": "Euler",
+        "hint": "클래식하며 25단계 이상에서 안정적"
+      },
+      "euler_a": {
+        "label": "Euler ancestral",
+        "hint": "창의적, 비결정적"
+      },
+      "ddim": {
+        "label": "DDIM",
+        "hint": "결정적, 더 느림"
+      },
+      "unipc": {
+        "label": "UniPC",
+        "hint": "적은 단계에서 빠름"
+      },
+      "ays_dpmpp_2m_sd15": {
+        "label": "AYS DPM++ 2M (SD1.5)",
+        "hint": "10단계 Align Your Steps · SD1.5 전용"
+      },
+      "ays_dpmpp_2m_sdxl": {
+        "label": "AYS DPM++ 2M (SDXL)",
+        "hint": "10단계 Align Your Steps · SDXL 전용"
+      }
+    },
+    "cacheStrategies": {
+      "none": {
+        "label": "끄기",
+        "hint": "기본 파이프라인 — 캐시 없음"
+      },
+      "fbcache": {
+        "label": "First Block Cache",
+        "hint": "DiT에서 1.5–2배 속도 향상 · 크로스 플랫폼"
+      },
+      "teacache": {
+        "label": "TeaCache",
+        "hint": "FLUX / Hunyuan / LTX / CogVideoX / Mochi에 맞게 보정됨"
+      },
+      "taylorseer": {
+        "label": "TaylorSeer",
+        "hint": "다항식 외삽으로 약 2.4배 (diffusers 0.38 네이티브)"
+      },
+      "pab": {
+        "label": "PAB",
+        "hint": "Pyramid Attention Broadcast — 인접한 단계 간에 어텐션 재사용"
+      }
     }
   },
   "videoStudio": {
@@ -222,8 +396,8 @@
     },
     "subtitle": "시작하려면 비디오 모델을 선택하세요",
     "actions": {
-      "browseCatalog": "카탈로그 둘러보기",
-      "installedModels": "설치된 모델",
+      "browseCatalog": "모델 찾기",
+      "installedModels": "설치됨",
       "downloadModel": "모델 다운로드",
       "loadIntoMemory": "메모리에 로드",
       "unload": "언로드",
@@ -235,8 +409,8 @@
       "incomplete": "불완전"
     },
     "noModelsCallout": {
-      "message": "아직 비디오 모델이 설치되지 않았습니다. 카탈로그를 둘러보고 다운로드하세요.",
-      "openDiscover": "비디오 둘러보기 열기"
+      "message": "아직 비디오 모델이 설치되지 않았습니다. 비디오 > 모델을 열어 다운로드하세요.",
+      "openDiscover": "비디오 모델 열기"
     },
     "stats": {
       "clipDuration": "{value}초 클립"
@@ -251,7 +425,8 @@
     "prompt": {
       "label": "프롬프트",
       "placeholder": "새벽 안개 낀 소나무 숲의 시네마틱 드론 샷...",
-      "ltxShortWarning": "LTX-Video는 상세한 프롬프트(약 50-100단어)에서 최상의 결과를 생성합니다. 짧은 프롬프트(\\\"짚을 먹는 만화 라마\\\")는 모델을 충분히 조건화하지 못하며 드리프트하는 경향이 있습니다. Lightricks는 액션으로 시작한 다음 시각적 디테일, 조명, 카메라 방향을 추가하는 것을 권장합니다."
+      "ltxShortWarning": "LTX-Video는 상세한 프롬프트(약 50-100단어)에서 최상의 결과를 생성합니다. 짧은 프롬프트(\\\"짚을 먹는 만화 라마\\\")는 모델을 충분히 조건화하지 못하며 드리프트하는 경향이 있습니다. Lightricks는 액션으로 시작한 다음 시각적 디테일, 조명, 카메라 방향을 추가하는 것을 권장합니다.",
+      "soundHint": "이 모델은 소리도 만들며, 소리는 프롬프트를 따릅니다. 눈 밟는 발소리, 나무 사이의 바람, 낮은 엔진 소리처럼 소리도 적어 주세요."
     },
     "negativePrompt": {
       "tooltip": "모델에게 피해야 할 것을 알려줍니다. 일반적인 프롬프트가 미리 채워져 있으며 대부분의 비디오 모델에 맞게 조정되어 있습니다 — 모델별 선호도가 있는 경우 지우거나 편집하세요. 더 많은 구체성은 일반적으로 해를 끼치는 것보다 도움이 됩니다.",
@@ -289,7 +464,8 @@
       "guidanceTooltip": "모델이 프롬프트를 얼마나 강하게 따르는지. 너무 낮음 = 프롬프트 무시; 너무 높음 = 경직되거나 왜곡된 출력. 권장: LTX-Video ≈ 3, Wan ≈ 5, HunyuanVideo ≈ 6. 프롬프트의 '네거티브' 방향은 위의 네거티브 프롬프트에서 옵니다.",
       "guidanceLtxWarning": "LTX-Video는 flow-matching 모델입니다 — CFG가 ~3.5를 초과하면 과포화되고 흐릿한/무지개색 출력이 생성됩니다. 가장 깔끔한 결과를 위해 3으로 낮추세요.",
       "randomSeed": "랜덤 시드",
-      "seedPlaceholder": "시드 (정수)"
+      "seedPlaceholder": "시드 (정수)",
+      "maxPixelsNote": "{name}의 프레임당 최대 렌더링 크기는 {megapixels}메가픽셀입니다. 이 크기는 비율을 유지한 채 줄여서 맞춥니다."
     },
     "clipLength": {
       "line": "클립 길이: {seconds}초 ({frames} 프레임 ÷ {fps} fps)"
@@ -346,7 +522,51 @@
       "reasonCaution": "모델은 상주하는 데 ~{model} GB가 필요합니다. 총 {total} GB의 {platform}에서 이는 보수적 안정 목표(~{comfort} GB)를 초과하지만 추정 작업 세트(~{working} GB) 아래입니다. 생성은 맞을 수 있으니 불안정해지면 설정을 낮추세요."
     },
     "disabledHint": "생성 비활성화: {reason}",
-    "willLoadHint": "선택한 모델은 다음 생성 시 메모리에 로드됩니다. 큰 변형의 경우 첫 로드에 1분이 걸릴 수 있습니다."
+    "willLoadHint": "선택한 모델은 다음 생성 시 메모리에 로드됩니다. 큰 변형의 경우 첫 로드에 1분이 걸릴 수 있습니다.",
+    "cacheStrategies": {
+      "none": {
+        "label": "끄기",
+        "hint": "기본 파이프라인 — 캐시 없음"
+      },
+      "fbcache": {
+        "label": "First Block Cache",
+        "hint": "DiT에서 1.5–2배 속도 향상 · 크로스 플랫폼"
+      },
+      "teacache": {
+        "label": "TeaCache",
+        "hint": "FLUX / Hunyuan / LTX / CogVideoX / Mochi에 맞게 보정됨"
+      },
+      "taylorseer": {
+        "label": "TaylorSeer",
+        "hint": "다항식 외삽으로 약 2.4배 (diffusers 0.38 네이티브)"
+      },
+      "pab": {
+        "label": "PAB",
+        "hint": "Pyramid Attention Broadcast — 인접한 단계 간에 어텐션 재사용"
+      }
+    },
+    "quality": {
+      "draft": {
+        "label": "초안",
+        "sub": "20단계"
+      },
+      "standard": {
+        "label": "표준",
+        "sub": "30단계"
+      },
+      "high": {
+        "label": "높음",
+        "sub": "40단계"
+      },
+      "max": {
+        "label": "최대",
+        "sub": "50단계"
+      }
+    },
+    "sound": {
+      "badge": "소리",
+      "badgeTooltip": "이 클립에는 소리가 있습니다. 플레이어의 볼륨 컨트롤로 켜세요."
+    }
   },
   "imageGallery": {
     "subtitle": {
@@ -355,7 +575,7 @@
     },
     "actions": {
       "studio": "Studio",
-      "installedModels": "설치된 모델"
+      "installedModels": "설치됨"
     },
     "hero": {
       "eyebrow": "저장된 출력",
@@ -409,7 +629,7 @@
     "actions": {
       "autoPlay": "자동 재생",
       "openStudio": "Studio 열기",
-      "installedModels": "설치된 모델"
+      "installedModels": "설치됨"
     },
     "empty": {
       "body": "아직 비디오 출력이 없습니다. Studio에서 모델을 로드하고 클립을 생성하세요 — 완료된 렌더가 여기에 표시됩니다.",
@@ -430,7 +650,259 @@
       },
       "expand": "펼치기",
       "revealFile": "파일 위치 표시",
-      "delete": "삭제"
+      "delete": "삭제",
+      "soundOn": "소리 켜기",
+      "soundOff": "음소거"
+    }
+  },
+  "voice": {
+    "pack": {
+      "title": "음성 팩",
+      "installed": "설치됨",
+      "notInstalled": "설치되지 않음",
+      "about": "음성 인식과 음성 합성은 이 컴퓨터의 별도 환경에서 실행됩니다(약 2 GB, 다운로드하는 모델 별도). 온라인으로 전송되는 데이터는 없습니다.",
+      "cancel": "취소",
+      "update": "음성 팩 업데이트",
+      "install": "음성 팩 설치",
+      "reinstall": "복구 / 재설치",
+      "done": "음성 팩이 설치되었습니다.",
+      "log": "설치 로그",
+      "updateFeatures": "채팅 음성 통화와 받아쓰기 화자 구분을 위해 음성 팩을 업데이트하세요 (모델 약 40 MB, 1~2분)."
+    },
+    "models": {
+      "recommended": "권장",
+      "downloaded": "다운로드됨",
+      "use": "음성 입력에 사용",
+      "download": "다운로드",
+      "firstUse": "건너뛰면 처음 사용할 때 다운로드됩니다.",
+      "title": "음성",
+      "sttTitle": "음성 인식 모델",
+      "sttSubtitle": "채팅의 마이크와 Voice Studio에서 사용합니다."
+    },
+    "voices": {
+      "title": "음성",
+      "subtitle": "Kokoro: 9개 언어, 54개 음성. 채팅이 소리 내어 읽을 음성을 선택하세요.",
+      "needsChinese": "음성 팩에서 중국어(표준 중국어) 음성을 선택하세요.",
+      "notYet": "이 컴퓨터에서는 아직 사용할 수 없습니다.",
+      "useVoice": "이 음성 사용",
+      "preview": "미리 듣기"
+    },
+    "settings": {
+      "title": "음성 설정",
+      "autoSend": "음성 입력이 끝나면 바로 메시지 보내기",
+      "autoRead": "채팅 답변이 끝나면 매번 소리 내어 읽기",
+      "language": "음성 입력 언어",
+      "languageHint": "Whisper가 사용하며, Parakeet는 언어를 스스로 감지합니다.",
+      "speed": "읽기 속도",
+      "idle": "유휴 시간 후 음성 메모리 해제 (분, 0 = 해제 안 함)",
+      "workerRunning": "음성 모델이 로드되어 있습니다 (프로세스 {pid}).",
+      "workerStopped": "음성 모델이 로드되어 있지 않습니다.",
+      "unload": "지금 언로드",
+      "silence": "음성 통화: 차례를 끝내는 멈춤 시간",
+      "silenceHint": "짧을수록 빨리 답하고, 길수록 생각할 여유가 생깁니다.",
+      "bargeIn": "음성 통화: 말해서 모델 끼어들기"
+    },
+    "offline": "백엔드 대기 중…",
+    "copy": "복사",
+    "save": "갤러리에 저장",
+    "transcribe": {
+      "title": "받아쓰기",
+      "subtitle": "녹음하거나 오디오 또는 비디오 파일을 끌어다 놓으세요",
+      "model": "모델",
+      "language": "언어",
+      "hint": "버튼을 눌러 녹음하거나 여기에 파일을 끌어다 놓으세요.",
+      "choose": "파일 선택",
+      "took": "{s}초 만에 받아쓰기 완료",
+      "placeholder": "받아쓰기 결과가 여기에 표시됩니다. 직접 편집할 수 있습니다.",
+      "segments": "타임스탬프 ({n})",
+      "tooBig": "{name}이(가) 500 MB를 넘습니다.",
+      "recordingName": "녹음",
+      "subtitleQueue": "녹음하거나 오디오·비디오 파일을 끌어다 놓으세요",
+      "translateNeedsWhisper": "영어로 번역하려면 Whisper Small 또는 Whisper Base가 필요합니다.",
+      "translate": "영어로 번역",
+      "speakers": "화자 구분",
+      "speakerCount": "화자 수",
+      "speakersAuto": "자동으로 찾기",
+      "speakersN": "화자 {n}명",
+      "speakersNeedUpdate": "화자 구분을 사용하려면 음성 팩을 업데이트해야 합니다.",
+      "hintQueue": "녹음하거나 여기에 파일을 끌어다 놓으세요 (여러 개도 가능).",
+      "chooseFiles": "파일 선택"
+    },
+    "stopRecording": "녹음 중지",
+    "record": "녹음",
+    "transcribing": "받아쓰는 중",
+    "cancel": "취소",
+    "sendToChat": "채팅으로 보내기",
+    "copied": "복사됨",
+    "saved": "저장됨",
+    "speak": {
+      "title": "말하기",
+      "subtitle": "텍스트를 음성으로 바꿉니다",
+      "placeholder": "텍스트를 입력하거나 붙여 넣으세요. Markdown과 코드는 읽기 전에 정리됩니다.",
+      "voice": "음성",
+      "speed": "속도",
+      "generating": "생성 중…",
+      "generate": "오디오 생성",
+      "readNow": "지금 소리 내어 읽기",
+      "download": "WAV 다운로드",
+      "subtitleLong": "텍스트를 음성으로 바꿉니다. 빈 줄은 새 문단을 시작하고, [pause]는 쉼을 넣습니다.",
+      "preview": "이 음성 미리 듣기",
+      "listen": "듣기",
+      "progress": "{total}개 중 {done}번째",
+      "generateParts": "오디오 생성 ({n}개 부분)",
+      "encoding": "인코딩 중…"
+    },
+    "stop": "중지",
+    "studio": {
+      "title": "Voice Studio",
+      "needsPack": "음성 기능은 이 컴퓨터에서 실행되며 음성 팩(약 2 GB)이 필요합니다. 음성 > 모델에서 한 번만 설치하세요.",
+      "openModels": "음성 모델 열기"
+    },
+    "savedToLibrary": "라이브러리에 저장됨",
+    "saveToLibrary": "라이브러리에 저장",
+    "queue": {
+      "queued": "대기 중",
+      "running": "받아쓰는 중",
+      "doneIn": "{s}초 만에 완료",
+      "done": "완료",
+      "cancelled": "취소됨",
+      "failed": "실패",
+      "title": "대기열",
+      "open": "열기",
+      "remove": "제거"
+    },
+    "editor": {
+      "heading": "받아쓰기",
+      "translated": "영어로 번역됨",
+      "subtitle": "시간이나 단어를 클릭하면 그 지점부터 재생하고, 줄을 더블클릭하면 편집합니다.",
+      "none": "완료된 받아쓰기는 여기서 열리고 라이브러리에 보관됩니다.",
+      "speaker": "화자 {n}",
+      "title": "제목",
+      "saving": "저장 중…",
+      "saveFailed": "저장되지 않음",
+      "savedToLibrary": "라이브러리에 저장됨",
+      "renameSpeaker": "화자 {n} 이름",
+      "empty": "음성을 찾지 못했습니다.",
+      "editHint": "더블클릭하여 편집",
+      "edit": "줄 편집",
+      "export": "내보내기"
+    },
+    "handoff": {
+      "summary": "채팅에서 요약",
+      "actions": "할 일",
+      "notes": "회의록",
+      "summaryPrompt": "이 받아쓰기를 짧은 문단 몇 개로 요약해 줘.",
+      "actionsPrompt": "이 받아쓰기의 할 일을 정리해 줘: 누가 무엇을 하는지, 기한이 언급되면 기한도.",
+      "notesPrompt": "이 받아쓰기로 회의록을 작성해 줘: 참석자, 논의한 주제, 결정 사항, 할 일."
+    },
+    "library": {
+      "speakers": "화자 {n}명",
+      "select": "{title} 선택",
+      "transcript": "받아쓰기",
+      "speech": "음성",
+      "play": "재생",
+      "working": "처리 중…",
+      "originalAudio": "오디오 ({ext})",
+      "delete": "삭제",
+      "confirmDelete": "이 항목과 오디오를 삭제할까요? 되돌릴 수 없습니다.",
+      "confirmDeleteMany": "항목 {n}개와 오디오를 삭제할까요? 되돌릴 수 없습니다.",
+      "all": "전체",
+      "transcripts": "받아쓰기",
+      "speechFilter": "음성",
+      "title": "음성 라이브러리",
+      "subtitle": "이 컴퓨터에 보관된 받아쓰기와 음성",
+      "search": "제목과 본문 검색",
+      "filter": "보기",
+      "deleteSelected": "선택 항목 삭제 ({n})",
+      "loading": "불러오는 중…",
+      "noMatch": "일치하는 항목이 없습니다.",
+      "empty": "아직 아무것도 없습니다. Voice Studio에서 만든 받아쓰기와 저장한 음성이 여기에 보관됩니다."
+    },
+    "languages": {
+      "auto": "자동 감지"
+    },
+    "lane": {
+      "mlx": "Apple Silicon: MLX의 Parakeet 및 Whisper, Kokoro 음성",
+      "cuda": "NVIDIA GPU: CUDA의 Whisper, Kokoro 음성",
+      "nvidia": "Whisper(CUDA 라이브러리는 설치 시 추가됨), Kokoro 음성",
+      "cpu": "CPU의 Whisper, Kokoro 음성"
+    },
+    "micError": {
+      "blockedMac": "마이크 접근이 차단되어 있습니다. 시스템 설정 > 개인정보 보호 및 보안 > 마이크에서 ChaosEngineAI를 허용한 후 다시 시도하세요.",
+      "blockedWindows": "마이크 접근이 차단되어 있습니다. 설정 > 개인 정보 및 보안 > 마이크에서 데스크톱 앱의 마이크 사용을 허용한 후 다시 시도하세요.",
+      "blocked": "마이크 접근이 차단되어 있습니다. 데스크톱의 개인정보 설정과 다른 앱이 마이크를 사용 중인지 확인하세요.",
+      "notFound": "마이크를 찾을 수 없습니다. 마이크를 연결한 후 다시 시도하세요.",
+      "inUse": "다른 앱이 마이크를 사용 중이거나 마이크를 열 수 없습니다.",
+      "unsupported": "이 창에서는 마이크를 사용할 수 없습니다(미디어 장치 미지원).",
+      "generic": "마이크를 열 수 없습니다."
+    }
+  },
+  "residentChatModelNote": "로드된 채팅 모델이 이 메모리의 약 {gb} GB를 차지하며, 언로드하면 해제됩니다.",
+  "mediaStudioBoosters": {
+    "title": "성능 부스터",
+    "forModel": "{model}용",
+    "selectedModelFallback": "선택한 모델"
+  },
+  "torchUpgradePill": {
+    "attempt": {
+      "rollbackPrepare": "기존 torch를 롤백 디렉터리로 이동",
+      "install": "pip install torch (새 버전)",
+      "deps": "pip install torch (전이 의존성)",
+      "constraint": "constraints.txt에 torch 고정",
+      "rebuildPackage": "pip install {package} (--force-reinstall)",
+      "rebuild": "ABI에 의존하는 패키지 다시 빌드",
+      "verify": "하위 프로세스에서 torch.cuda.is_available() 확인",
+      "cleanup": "오래된 롤백 디렉터리 정리",
+      "rollbackRestore": "롤백에서 이전 torch 복원",
+      "step": "단계"
+    },
+    "available": "torch 업그레이드 가능:",
+    "starting": "시작 중…",
+    "upgrade": "torch 업그레이드",
+    "dismiss": "닫기",
+    "willRebuild": "{count, plural, other {ABI에 의존하는 패키지 #개도 다시 빌드합니다}}",
+    "abiExplainer": "torch {type} 버전 업데이트는 C++ ABI를 깨뜨리므로, 이 패키지들의 wheel은 새 torch에 맞게 다시 설치하기 전까지 로드되지 않습니다:",
+    "rollbackLead": "업그레이드가 검증에 실패하면 이전 torch",
+    "rollbackTail": "버전이 인접한 롤백 디렉터리에서 자동으로 복원되므로 다시 다운로드할 필요가 없습니다.",
+    "whatHappens": "업그레이드하면 어떻게 되나요?",
+    "patchBumpExplainer": "패치 업데이트는 torch의 C++ ABI를 그대로 유지하므로 torch wheel만 다시 설치됩니다. 먼저 현재 torch를 인접한 롤백 디렉터리로 옮기고, 새 wheel이 CUDA 검증에 실패하면 이전 버전이 자동으로 복원됩니다. 백엔드를 다시 시작하면 새 wheel이 활성화됩니다.",
+    "upgrading": "torch 업그레이드 중",
+    "complete": "torch 업그레이드 완료",
+    "failed": "torch 업그레이드 실패",
+    "restarting": "다시 시작 중…",
+    "restartToActivate": "활성화하려면 백엔드를 다시 시작하세요",
+    "rolledBack": "롤백에서 이전 torch를 복원했습니다. 생성은 이전 버전으로 계속됩니다.",
+    "rollbackKeptLead": "롤백 디렉터리 보관 위치:",
+    "rollbackKeptTail": "수동 복구용으로 보관됩니다.",
+    "close": "닫기",
+    "installLog": "설치 로그 ({count, plural, other {#단계}})"
+  },
+  "recommended": {
+    "title": "이 컴퓨터 권장 설정",
+    "measured": "측정값",
+    "estimated": "추정값",
+    "measuredTitle": "{machine}에서 측정했습니다.",
+    "estimatedTitle": "모델 카드, 업스트림 문서 또는 비슷한 컴퓨터에서 가져온 값이며, 이 하드웨어에서 측정한 것이 아닙니다.",
+    "measuredOn": "{machine}에서 측정",
+    "applyAll": "권장값 적용",
+    "allApplied": "모두 사용 중",
+    "inUse": "사용 중",
+    "use": "사용",
+    "on": "켜짐",
+    "off": "꺼짐",
+    "cacheValue": "{name}, 임계값 {threshold}",
+    "labels": {
+      "qualityPreset": "품질 프리셋",
+      "steps": "단계",
+      "guidance": "가이던스",
+      "sampler": "샘플러",
+      "size": "크기",
+      "numFrames": "프레임",
+      "fps": "FPS",
+      "cache": "디퓨전 캐시",
+      "cfgDecay": "CFG 감쇠",
+      "previewVae": "미리보기 VAE",
+      "fp8LayerwiseCasting": "FP8 레이어별"
     }
   }
 }

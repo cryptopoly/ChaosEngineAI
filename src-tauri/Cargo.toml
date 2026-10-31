@@ -1,6 +1,6 @@
 [package]
 name = "chaosengineai"
-version = "0.9.4"
+version = "0.9.9"
 description = "ChaosEngineAI desktop shell for local AI model inference"
 authors = ["OpenAI Codex"]
 edition = "2021"
@@ -37,7 +37,7 @@ unic-langid = "0.9"
 # without rebuilding the app with ``cargo tauri dev``. We pair this
 # with the per-tab ``ErrorBoundary`` so JS exceptions stay recoverable
 # AND inspectable.
-tauri = { version = "~2.11.2", features = ["devtools"] }
+tauri = { version = "~2.12.0", features = ["devtools"] }
 tauri-plugin-dialog = "2.7"
 tauri-plugin-opener = "2"
 tauri-plugin-updater = "2"
@@ -45,6 +45,11 @@ tauri-plugin-process = "2"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
+
+# Linux: WebKitGTK ships with media capture off; the voice microphone needs it
+# switched on and its permission request answered (see allow_microphone).
+[target.'cfg(target_os = "linux")'.dependencies]
+webkit2gtk = { version = "2.0", features = ["v2_8"] }
 
 # Windows: we need the Job Objects API + Threading handles to assign
 # spawned child processes to a kill-on-close job. That's the only way

@@ -238,16 +238,22 @@ export function useImageState(
     }))
     .filter((family) => family.variants.length > 0);
 
+  // A tracked "latest" entry for a repo the curated catalog already lists
+  // (FLUX.2 Dev, FLUX.2 Klein 4B, Z-Image Turbo) would show up twice.
+  const curatedImageRepos = new Set(imageVariants.map((variant) => variant.repo.toLowerCase()));
   const filteredLatestImageDiscoverResults = latestImageDiscoverResults.filter((variant) =>
+    !curatedImageRepos.has(variant.repo.toLowerCase()) &&
     imageVariantMatchesDiscoverFilters(variant, imageDiscoverTaskFilter, imageDiscoverAccessFilter) &&
     imageDiscoverVariantMatchesQuery(variant, imageDiscoverSearchQuery),
   );
 
+  // Every variant gets its own row, as in Video Discover. Showing only each
+  // family's default hid the mflux / sd.cpp / GGUF variants from Discover and
+  // reported a family "Not installed" when another of its variants was.
   const combinedImageDiscoverResults: ImageModelVariant[] = [
-    ...filteredImageDiscoverFamilies.flatMap((family) => {
-      const variant = defaultImageVariantForFamily(family);
-      return variant ? [{ ...variant, familyName: variant.familyName ?? family.name }] : [];
-    }),
+    ...filteredImageDiscoverFamilies.flatMap((family) =>
+      family.variants.map((variant) => ({ ...variant, familyName: variant.familyName ?? family.name })),
+    ),
     ...filteredLatestImageDiscoverResults,
   ].sort((a, b) => compareDiscoverVariants(imageDiscoverSort, a, b));
 
@@ -511,7 +517,11 @@ export function useImageState(
       if (seed !== null && !imageUseRandomSeed && !overrides) {
         setImageSeedInput(String(seed));
       }
-      setError(null);
+      if (response.artifacts.length === 0) {
+        setError("Generation completed but returned no image. Check the backend log for this run and try again.");
+      } else {
+        setError(null);
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Image generation failed.";
       // The backend returns HTTPException(409, detail="cancelled") when the

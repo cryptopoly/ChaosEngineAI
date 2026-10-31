@@ -24,13 +24,13 @@ from __future__ import annotations
 import io
 import os
 import platform
-import re
 import subprocess
 import tempfile
 import time
 from pathlib import Path
 from typing import Any
 
+from backend_service.helpers.sdcpp_progress import parse_step
 from backend_service.image_runtime import (
     GeneratedImage,
     ImageGenerationConfig,
@@ -38,9 +38,6 @@ from backend_service.image_runtime import (
 )
 
 
-# Same progress regex as the video engine — sd.cpp emits ``[INFO] step
-# N/M`` lines on stdout regardless of which output type is active.
-_STEP_RE = re.compile(r"(?:step\s+|\[)(\d+)\s*/\s*(\d+)")
 _LAST_OUTPUT_LINES = 80
 _RUNTIME_LABEL = "stable-diffusion.cpp"
 
@@ -61,9 +58,38 @@ _SUPPORTED_REPOS: frozenset[str] = frozenset({
     "stabilityai/stable-diffusion-2-1",
     "Qwen/Qwen-Image",
     "Qwen/Qwen-Image-2512",
+    "leejet/Qwen-Image-2.1-GGUF",
+    "leejet/FLUX.1-schnell-gguf",
+    "leejet/FLUX.1-dev-gguf",
     "Tongyi-MAI/Z-Image",
     "Tongyi-MAI/Z-Image-Turbo",
 })
+
+
+# FLUX.1 takes its guidance as a model input (``--guidance``); the unconditional
+# pass behind ``--cfg-scale`` stays off at 1. Sending the guidance slider to
+# ``--cfg-scale`` instead would double the work and wreck the picture.
+_DISTILLED_GUIDANCE_REPOS: frozenset[str] = frozenset({
+    "leejet/FLUX.1-schnell-gguf",
+    "leejet/FLUX.1-dev-gguf",
+})
+
+
+def _fetch_file(repo: str, filename: str) -> str:
+    """Local path of ``filename`` from ``repo``, downloading it on first use.
+
+    The first run of a model fetches its companion files (a T5 encoder is
+    5 GB), so say so in the progress message instead of looking hung.
+    """
+    try:
+        from huggingface_hub import hf_hub_download, try_to_load_from_cache  # type: ignore
+    except ImportError as exc:
+        raise RuntimeError(f"huggingface_hub is required to resolve {filename}: {exc}") from exc
+    from backend_service.progress import IMAGE_PROGRESS
+
+    if not isinstance(try_to_load_from_cache(repo, filename), str):
+        IMAGE_PROGRESS.set_message(f"Downloading {filename} from {repo} (first run only)")
+    return hf_hub_download(repo_id=repo, filename=filename)
 
 
 def supported_repos() -> frozenset[str]:
@@ -168,54 +194,67 @@ class SdCppImageEngine:
             raise RuntimeError(
                 "sd.cpp image generate requires a GGUF variant. Pick a "
                 "catalog entry that pins ``ggufRepo`` + ``ggufFile`` "
-                "(e.g. FLUX.1-dev · GGUF Q4_K_M)."
+                "(e.g. FLUX.1 Dev · sd.cpp Q4_K)."
             )
+
+        from backend_service.progress import IMAGE_PROGRESS, PHASE_LOADING
 
         base_seed = _resolve_base_seed(config.seed)
         batch = max(1, int(config.batchSize or 1))
         out_images: list[GeneratedImage] = []
         started = time.perf_counter()
 
-        # sd.cpp renders one image per invocation. Loop the batch — same
-        # pattern the diffusers engine uses when it can't batch on a
-        # given pipeline. Each iteration gets its own seed so the user
-        # sees a real variation set rather than four copies.
-        for index in range(batch):
-            seed = base_seed + index
-            with tempfile.TemporaryDirectory(prefix="chaosengine-sdcpp-img-") as tmpdir:
-                output_path = Path(tmpdir) / f"sdcpp-{seed}.png"
-                model_path = self._resolve_gguf_path(config)
-                args = self._build_cli_args(
-                    binary=binary,
-                    config=config,
-                    model_path=model_path,
-                    output_path=output_path,
-                    seed=seed,
-                )
-                output_bytes = self._run_subprocess(
-                    args=args,
-                    config=config,
-                    output_path=output_path,
-                )
+        IMAGE_PROGRESS.begin(
+            run_label=f"{config.modelName} · {config.width}x{config.height} · sd.cpp",
+            total_steps=max(1, int(config.steps)),
+            phase=PHASE_LOADING,
+            message=f"Loading {config.modelName}",
+        )
+        try:
+            # sd.cpp renders one image per invocation. Loop the batch — same
+            # pattern the diffusers engine uses when it can't batch on a
+            # given pipeline. Each iteration gets its own seed so the user
+            # sees a real variation set rather than four copies.
+            for index in range(batch):
+                seed = base_seed + index
+                with tempfile.TemporaryDirectory(prefix="chaosengine-sdcpp-img-") as tmpdir:
+                    output_path = Path(tmpdir) / f"sdcpp-{seed}.png"
+                    model_path = self._resolve_gguf_path(config)
+                    aux_paths = self._resolve_aux_paths(config)
+                    args = self._build_cli_args(
+                        binary=binary,
+                        config=config,
+                        model_path=model_path,
+                        output_path=output_path,
+                        seed=seed,
+                        aux_paths=aux_paths,
+                    )
+                    output_bytes = self._run_subprocess(
+                        args=args,
+                        config=config,
+                        output_path=output_path,
+                    )
 
-            elapsed = max(0.1, time.perf_counter() - started)
-            out_images.append(
-                GeneratedImage(
-                    seed=seed,
-                    bytes=output_bytes,
-                    extension="png",
-                    mimeType="image/png",
-                    durationSeconds=round(elapsed, 1),
-                    runtimeLabel=_RUNTIME_LABEL,
-                    runtimeNote=(
-                        f"Generated via sd.cpp subprocess "
-                        f"({Path(model_path).name})."
-                    ),
+                elapsed = max(0.1, time.perf_counter() - started)
+                out_images.append(
+                    GeneratedImage(
+                        seed=seed,
+                        bytes=output_bytes,
+                        extension="png",
+                        mimeType="image/png",
+                        durationSeconds=round(elapsed, 1),
+                        runtimeLabel=_RUNTIME_LABEL,
+                        runtimeNote=(
+                            f"Generated via sd.cpp subprocess "
+                            f"({Path(model_path).name})."
+                        ),
+                    )
                 )
-            )
-            # Reset the timer so the next image's durationSeconds
-            # measures its own wall-time, not cumulative.
-            started = time.perf_counter()
+                # Reset the timer so the next image's durationSeconds
+                # measures its own wall-time, not cumulative.
+                started = time.perf_counter()
+        finally:
+            IMAGE_PROGRESS.finish()
 
         return out_images
 
@@ -233,16 +272,28 @@ class SdCppImageEngine:
                 "GGUF transformer required for sd.cpp image. Catalog variant "
                 "must pin ``ggufRepo`` + ``ggufFile``."
             )
-        try:
-            from huggingface_hub import hf_hub_download  # type: ignore
-        except ImportError as exc:
-            raise RuntimeError(
-                f"huggingface_hub is required to resolve the GGUF path: {exc}"
-            ) from exc
-        return hf_hub_download(
-            repo_id=config.ggufRepo,
-            filename=config.ggufFile,
-        )
+        return _fetch_file(config.ggufRepo, config.ggufFile)
+
+    def _resolve_aux_paths(self, config: ImageGenerationConfig) -> dict[str, str]:
+        """Materialise the companion files (text encoder, VAE) a model needs.
+
+        Returns ``{cli flag: local path}`` in the catalog's order. Files come
+        from the Hugging Face cache and download on first use.
+        """
+        resolved: dict[str, str] = {}
+        for flag, source in (config.sdcppAux or {}).items():
+            repo = source.get("repo")
+            filename = source.get("file")
+            if not repo or not filename:
+                raise RuntimeError(f"sd.cpp companion file for {flag} needs a repo and a file name.")
+            resolved[flag] = _fetch_file(repo, filename)
+        return resolved
+
+    @staticmethod
+    def _guidance_args(config: ImageGenerationConfig) -> list[str]:
+        if config.repo in _DISTILLED_GUIDANCE_REPOS:
+            return ["--cfg-scale", "1", "--guidance", f"{config.guidance:g}"]
+        return ["--cfg-scale", f"{config.guidance:g}"]
 
     def _build_cli_args(
         self,
@@ -252,6 +303,7 @@ class SdCppImageEngine:
         model_path: str,
         output_path: Path,
         seed: int,
+        aux_paths: dict[str, str] | None = None,
     ) -> list[str]:
         """Map an ``ImageGenerationConfig`` onto sd.cpp's CLI flags.
 
@@ -271,15 +323,17 @@ class SdCppImageEngine:
             str(config.height),
             "--steps",
             str(config.steps),
-            "--cfg-scale",
-            f"{config.guidance:g}",
+            *self._guidance_args(config),
             "--seed",
             str(seed),
             "-o",
             str(output_path),
         ]
+        for flag, path in (aux_paths or {}).items():
+            args.extend([flag, path])
         if config.negativePrompt:
             args.extend(["--negative-prompt", config.negativePrompt])
+        args.extend(config.sdcppArgs or [])
         return args
 
     def _run_subprocess(
@@ -290,7 +344,12 @@ class SdCppImageEngine:
         output_path: Path,
     ) -> bytes:
         """Spawn ``sd``, stream stdout into ``IMAGE_PROGRESS``, read result."""
-        from backend_service.progress import IMAGE_PROGRESS
+        from backend_service.progress import (
+            IMAGE_PROGRESS,
+            PHASE_DECODING,
+            PHASE_DIFFUSING,
+            GenerationCancelled,
+        )
 
         proc = subprocess.Popen(
             args,
@@ -312,11 +371,14 @@ class SdCppImageEngine:
                 if len(last_lines) > _LAST_OUTPUT_LINES:
                     last_lines.pop(0)
 
-                match = _STEP_RE.search(stripped)
-                if match:
-                    step = int(match.group(1))
-                    total = int(match.group(2))
+                parsed = parse_step(stripped)
+                if parsed:
+                    step, total = parsed
+                    if step <= 1:
+                        IMAGE_PROGRESS.set_phase(PHASE_DIFFUSING, message="Diffusing")
                     IMAGE_PROGRESS.set_step(step, total=total)
+                elif "decoding" in stripped and "latents" in stripped:
+                    IMAGE_PROGRESS.set_phase(PHASE_DECODING, message="Decoding pixels")
 
                 if IMAGE_PROGRESS.is_cancelled():
                     proc.terminate()
@@ -324,7 +386,7 @@ class SdCppImageEngine:
                         proc.wait(timeout=5)
                     except subprocess.TimeoutExpired:
                         proc.kill()
-                    raise RuntimeError("sd.cpp generation cancelled by user.")
+                    raise GenerationCancelled("Image generation cancelled by user")
 
             rc = proc.wait()
         except KeyboardInterrupt:

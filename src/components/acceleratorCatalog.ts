@@ -8,7 +8,10 @@
  *
  *   - ``pipPackage`` — argument to ``POST /api/setup/install-package``.
  *     Must match a key in the backend's ``_INSTALLABLE_PIP_PACKAGES``
- *     allow-list ([backend_service/routes/setup/__init__.py]).
+ *     allow-list ([backend_service/routes/setup/__init__.py]) — or in
+ *     ``_MANUAL_INSTALL_MESSAGES`` for packages with no usable PyPI
+ *     release (nunchaku, sageattention), where the endpoint answers 400
+ *     with build/wheel instructions that the Install button surfaces.
  *   - ``capabilityField`` / ``versionField`` — the ``NativeBackendStatus``
  *     keys to read for installed state + display version. Wired in
  *     FU-056 Phase 1 on the backend.
@@ -34,6 +37,8 @@
  */
 
 import type { NativeBackendStatus } from "../types/server";
+import type { SystemStats } from "../types/system";
+import { isVariantCompatibleWithHost } from "../utils/platform";
 
 export type AcceleratorId =
   | "nunchaku"
@@ -121,13 +126,16 @@ export const ACCELERATOR_CATALOG: ReadonlyArray<AcceleratorMeta> = [
     id: "dflash-cuda",
     label: "DFlash (CUDA)",
     shortLabel: "Speculative decoding",
-    pipPackage: "dflash",
+    // FU-091: DFlash on CUDA is built into vLLM >=0.28 — the install
+    // button upgrades vLLM. The PyPI ``dflash`` package is not used
+    // (its module name collides with our in-repo ``dflash`` registry).
+    pipPackage: "vllm",
     capabilityField: "dflashCudaAvailable",
     versionField: "dflashCudaVersion",
     speedupClaim: "≈1.5-2× tokens/sec on Qwen3.x and DeepSeek chat models",
     appliesTo: "CUDA — any LLM with a registered draft model",
-    sizeOnDiskLabel: "~80 MB",
-    installMode: "sync",
+    sizeOnDiskLabel: "~2 GB (vLLM 0.28+)",
+    installMode: "async",
     platformGate: "cuda",
     followUp: "FU-048",
     docsSlug: "dflash",
@@ -278,4 +286,34 @@ export function isPlatformCompatible(
       // the WSL bridge work, when we surface ``cudaAvailable`` explicitly.
       return !capabilities.mlxAvailable;
   }
+}
+
+
+/** The boosters patch a diffusers pipeline. MLX-native engines (mflux,
+ * mlx-video), the stable-diffusion.cpp subprocess and LongLive never load
+ * one, so none of them applies to those variants. */
+function runsOnDiffusers(runtime: string | undefined): boolean {
+  const label = (runtime ?? "").toLowerCase();
+  return !(
+    label.includes("mflux")
+    || label.includes("mlx")
+    || label.includes("stable-diffusion.cpp")
+    || label.includes("sd.cpp")
+    || label.includes("longlive")
+  );
+}
+
+/** The accelerators worth showing for ``variant`` on ``host``: those that
+ * apply to its repo, run on a diffusers pipeline, and whose hardware the host
+ * has. The CUDA boosters never show on a Mac or on a PC without an NVIDIA
+ * GPU. Without ``host`` every applicable accelerator is returned. */
+export function getApplicableAcceleratorsForHost(
+  variant: { repo: string; runtime?: string } | null | undefined,
+  host: Pick<SystemStats, "platform" | "arch" | "gpuVramTotalGb"> | null | undefined,
+): AcceleratorId[] {
+  if (!variant || !runsOnDiffusers(variant.runtime)) return [];
+  return getApplicableAccelerators(variant.repo).filter((id) => {
+    const meta = getAccelerator(id);
+    return meta !== undefined && isVariantCompatibleWithHost(meta.platformGate, host);
+  });
 }

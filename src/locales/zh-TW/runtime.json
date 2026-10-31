@@ -20,7 +20,7 @@
     },
     "turboquant": {
       "name": "TurboQuant",
-      "description": "Hadamard 旋轉 KV 量化。2–4 倍壓縮,品質損失極小。"
+      "description": "節省記憶體：Hadamard 旋轉 KV 量化。快取縮小 2–4 倍,長對話佔用更少記憶體。生成速度比原生慢。"
     },
     "triattention": {
       "name": "TriAttention",
@@ -57,7 +57,11 @@
     "contextSize": "上下文大小",
     "gpuLayers": "GPU 層數",
     "threads": "執行緒數",
-    "fitInMemory": "適配記憶體"
+    "fitInMemory": "適配記憶體",
+    "cacheStrategyTensorfoldNote": "(TensorFold 自行管理 KV 快取)",
+    "moreInfo": "更多資訊",
+    "requiresLabel": "需要:",
+    "installLabel": "安裝:"
   },
   "notes": {
     "binaryRequired": "需要 {binary}。",
@@ -87,7 +91,16 @@
     "requiresBody": "Apple Silicon + dflash-mlx,或 Linux/CUDA + dflash。目標模型需有相容的草稿模型。",
     "currentModelLabel": "目前模型:",
     "supportedVia": "透過 {model} 支援",
-    "compatibilityUnresolved": "相容性尚未確定。"
+    "compatibilityUnresolved": "相容性尚未確定。",
+    "composerHint": "DFlash 推測解碼可在不損失品質的情況下，將此模型加速約 2 倍。",
+    "registeredTargetsLabel": "已註冊的目標:",
+    "targetModelsCount": "{count} 個目標模型",
+    "ddtreeLabel": "DDTree:",
+    "ddtreeAvailable": "可用",
+    "ddtreeUnavailable": "目前尚無法使用；將改用線性 DFlash 執行。",
+    "installLabel": "安裝:",
+    "treeBudgetTooltip": "DDTree：以樹狀結構進行的推測解碼。0 = 線性 DFlash，>0 = 平行探索多條草稿路徑，以提高接受率。",
+    "treeBudgetLabel": "樹預算（DDTree）"
   },
   "presets": {
     "quality": {
@@ -110,21 +123,125 @@
   "sliders": {
     "context": "上下文",
     "maxTokens": "最大 tokens",
-    "temperature": "溫度"
+    "temperature": "溫度",
+    "fp16Layers": "FP16 層數"
   },
   "fitInMemory": {
-    "body": "適配記憶體讓 ChaosEngineAI 選擇一個將模型和 KV 快取控制在可用記憶體內的執行階段/快取設定檔。僅當您希望強制使用更大或更積極的設定檔並接受可能的交換或載入失敗時才停用此選項。"
+    "body": "適配記憶體讓 ChaosEngineAI 選擇一個將模型和 KV 快取控制在可用記憶體內的執行階段/快取設定檔。僅當您希望強制使用更大或更積極的設定檔並接受可能的交換或載入失敗時才停用此選項。",
+    "aboutTitle": "關於「適配記憶體」"
   },
   "cacheFit": {
     "mayNotFit": "可能不適配",
     "modelMayNotFit": "模型可能不適配",
     "fitsEasily": "輕鬆適配",
     "tightFit": "緊湊適配",
-    "contextMayNotFit": "完整上下文可能不適配"
+    "contextMayNotFit": "完整上下文可能不適配",
+    "vramWontFit": "快取無法適配 GPU"
   },
   "cacheAdvice": {
     "modelExceedsRam": "僅模型權重就超出預估可用記憶體。請選擇更小的模型或更積極的量化。",
     "nativeF16TooBig": "模型可以載入,但在此上下文下完整的原生 f16 快取可能在執行緒填充時超出系統記憶體。降低上下文或選擇壓縮策略。",
-    "compressedTooBig": "模型可以載入,但所選上下文快取可能在執行緒填充時超出系統記憶體。降低上下文或減少 FP16 層數。"
+    "compressedTooBig": "模型可以載入,但所選上下文快取可能在執行緒填充時超出系統記憶體。降低上下文或減少 FP16 層數。",
+    "vramNativeF16": "此上下文下完整的原生 f16 KV 快取約為 {cacheGb} GB，超過了可用的 {vramGb} GB GPU VRAM。llama.cpp 會溢出到系統記憶體（每個 token 都要經過緩慢的 PCIe 傳輸）或配置失敗。請降低上下文、減少 FP16 層數，或選擇 TurboQuant 節省記憶體方案，讓快取放進 VRAM。",
+    "vramSelected": "所選的 KV 快取在此上下文下約為 {cacheGb} GB，超過了可用的 {vramGb} GB GPU VRAM。llama.cpp 會溢出到系統記憶體（每個 token 都要經過緩慢的 PCIe 傳輸）或配置失敗。請降低上下文、減少 FP16 層數，或選擇 TurboQuant 節省記憶體方案，讓快取放進 VRAM。"
+  },
+  "tensorfold": {
+    "tooltip": "TensorFold：精確推測解碼。由模型的 MTP 頭和/或草稿模型產生的草稿會經目標模型驗證，因此回覆與循序解碼完全相同，只是更快。",
+    "label": "TensorFold（DFlash 2 / MTP 草稿）",
+    "requiredNote": "此模型必須",
+    "installing": "安裝中...",
+    "installButton": "安裝 TensorFold",
+    "addVisionTitle": "讓此模型讀取附加的影像（實驗性）。會在 TensorFold 自己的環境中加入 Pillow、transformers 和 mlx-vlm。",
+    "addVision": "加入影像支援",
+    "imageInputOn": "影像輸入已開啟（實驗性）",
+    "aboutTitle": "關於 TensorFold 推測解碼",
+    "memoryShortfall": "此檢查點需要至少 {needed} GB 記憶體的 Mac；這台只有 {have} GB。",
+    "body": "TensorFold 是一款本地推論引擎，為每個模型系列配備手寫核心。它一次產生多個草稿 token（來自模型本身的 MTP 頭，部分系列還會用到小型草稿模型），並以目標模型逐一驗證每個草稿，因此回覆與逐個 token 解碼的結果逐位元組相同。",
+    "requiresLabel": "需要:",
+    "requiresBody": "Apple Silicon，以及獨立的 TensorFold Python 環境（在此面板中安裝）。僅支援經過測試的檢查點。",
+    "memoryLabel": "記憶體:",
+    "memoryBody": "{needed} GB 或更多的統一記憶體。",
+    "statusLabel": "狀態:",
+    "statusInstalled": "已安裝{version} — 勾選推測解碼後生效。",
+    "statusNotInstalled": "尚未安裝。點擊「安裝 TensorFold」以設定其獨立環境。",
+    "visionLabel": "影像輸入:",
+    "visionInstalled": "已安裝（實驗性）— 勾選 TensorFold 時，可在聊天中附加影像。含影像的請求會從全新的 KV 快取開始。",
+    "visionNotInstalled": "尚未安裝。使用模型本身的視覺編碼器讀取影像。會加入 Pillow、transformers 和 mlx-vlm；TensorFold 的作者仍將其標示為實驗性。",
+    "grammarLabel": "結構化輸出:",
+    "grammarInstalled": "已安裝 — 在取樣器面板中設定的 JSON Schema 會被強制執行。",
+    "grammarNotInstalled": "尚未安裝。強制執行 JSON Schema 需要它；沒有它時，此類請求會被拒絕。會加入 PyTorch，下載體積較大。",
+    "addGrammar": "加入結構化輸出",
+    "exclusiveLabel": "說明:",
+    "exclusiveBody": "應用程式中沒有其他引擎能載入此模型，因此它一律在 TensorFold 上執行；此核取方塊用於開啟或關閉其草稿功能。"
+  },
+  "strategyRole": {
+    "memorySaverTitle": "壓縮 KV 快取，讓長上下文佔用更少記憶體。生成速度比原生慢。",
+    "memorySaver": "節省記憶體"
+  },
+  "mtplx": {
+    "tooltip": "MTPLX：原生 MTP 推測解碼。利用內建的預測頭，在不損失品質的前提下將生成速度提升約 1.8–2.2 倍。",
+    "label": "MTPLX",
+    "installing": "安裝中...",
+    "installButton": "安裝 MTPLX",
+    "aboutTitle": "關於 MTPLX 推測解碼",
+    "body": "MTPLX 使用直接訓練進模型的內建多 token 預測（MTP）頭。推論時，這些頭會在每次前向傳遞中產生 1–3 個草稿 token，並在同一次傳遞中完成驗證，不需要另外的草稿模型。生成速度提升約 1.8–2.2 倍，且無品質損失。",
+    "requiresLabel": "需要:",
+    "requiresBody": "Apple Silicon + MTPLX 獨立 venv。模型必須內建 MTP 頭（Qwen3.5/3.6、DeepSeek V3/R1、Qwen3-Coder-Next）。",
+    "statusLabel": "狀態:",
+    "statusInstalled": "已安裝 — 啟用推測解碼後生效。",
+    "statusNotInstalled": "尚未安裝。點擊「安裝 MTPLX」以設定獨立 venv（約 500 MB）。"
+  },
+  "ggufMtp": {
+    "tooltip": "GGUF MTP 推測解碼：透過 llama.cpp 的 --spec-type draft-mtp 使用模型內建的 MTP 頭，在不損失品質的前提下將生成速度提升約 1.8-2.2 倍。",
+    "label": "GGUF MTP",
+    "body": "此 GGUF 內建多 token 預測（MTP）頭。llama.cpp 透過 --spec-type draft-mtp（PR #22673）執行它們 — 不需要另外的草稿模型，是無損的推測解碼。",
+    "requiresLabel": "需要:"
+  },
+  "ggufSpec": {
+    "tooltip": "llama.cpp 推測解碼：如果此 GGUF 旁附有 DFlash / DFlash 2 / EAGLE-3 / MTP 草稿模型，就使用它；否則使用不需草稿模型的 n-gram 查找。無損 — 輸出由模型驗證。",
+    "label": "推測解碼",
+    "aboutTitle": "關於 llama.cpp 推測解碼",
+    "body": "如果模型資料夾中有草稿模型檔案（mtp-、dflash-、dspark- 或 eagle3-*.gguf — DFlash 2 的草稿模型使用 dflash- 前綴），llama.cpp 會用它來產生草稿。否則退回使用 ngram-mod：它不需要額外的模型，直接重複使用重複出現的文字（程式碼修改、摘要、回顯到答案中的推理內容）。每個草稿 token 都會經過驗證，因此輸出不變。",
+    "requiresBody": "需要較新的 llama-server（執行 scripts/update-llama-cpp.sh）。舊版二進位檔案會退回標準解碼，並附上執行階段說明。"
+  },
+  "strategyInfo": {
+    "native": {
+      "description": "全精度 FP16 KV 快取。不做壓縮，因此是最快、品質最高的選擇，並且可與推測解碼搭配使用。在長上下文下佔用的記憶體最多。適用於所有後端。",
+      "requires": "內建"
+    },
+    "triattention": {
+      "description": "透過 vLLM 整合的透明 KV 快取壓縮。僅限 Linux + CUDA；ChaosEngineAI 不支援在 macOS 上使用 TriAttention。",
+      "requires": "Linux + CUDA GPU + vLLM 後端。不支援 macOS。",
+      "installHint": "僅在 ChaosEngineAI 所使用的 Linux/CUDA 環境中使用，然後重新啟動應用程式。"
+    },
+    "turboquant": {
+      "description": "節省記憶體。以 1-4 位元儲存 KV 快取（3 位元時約縮小 4-5 倍），讓長對話佔用少得多的 RAM。代價是速度：生成會比原生慢，在 MLX 上還會關閉聊天記錄的快取重複使用，且無法與推測解碼同時使用。僅當長上下文放不進記憶體時才選用；否則請維持使用原生。MLX 上使用 Hadamard 旋轉 + Lloyd-Max 碼簿；GGUF 上使用 llama-server-turbo。",
+      "requires": "MLX 路徑需要 Apple Silicon + MLX；GGUF 路徑需要 llama-server-turbo。",
+      "installHint": "MLX：安裝 turboquant-mlx-full。GGUF：執行 scripts/build-llama-turbo.sh。然後重新啟動 ChaosEngineAI。"
+    }
+  },
+  "installTerminal": {
+    "statusRunning": "執行中",
+    "statusComplete": "已完成",
+    "statusFailed": "失敗",
+    "statusReady": "就緒",
+    "noOutputYet": "尚無安裝輸出。執行安裝程式後，stdout 和 stderr 會記錄在這裡。",
+    "title": "{label} 安裝終端機",
+    "startedAt": "開始於 {time}",
+    "collapsedHint": "預設為摺疊。嘗試安裝後展開，可查看失敗原因。",
+    "finishedAt": "結束於 {time}"
+  },
+  "strategyCard": {
+    "turboMissingTooltip": "需要 llama-server-turbo 二進位檔案。執行 scripts/build-llama-turbo.sh 進行安裝。",
+    "badgeNotApplicable": "不適用",
+    "badgeNoTurbo": "無 turbo 二進位檔案",
+    "badgeReady": "就緒",
+    "badgeInstall": "安裝",
+    "buildingTurbo": "正在建置 llama-server-turbo...",
+    "installing": "安裝中...",
+    "installNow": "立即安裝",
+    "runInTerminal": "在終端機中執行，然後重新啟動 ChaosEngineAI。",
+    "updating": "正在更新...",
+    "updateAvailable": "有可用更新"
   }
 }

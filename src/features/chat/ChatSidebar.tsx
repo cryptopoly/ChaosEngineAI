@@ -88,7 +88,7 @@ export function ChatSidebar({
         </div>
         {searchQuery && filteredChatSessions.length === 0 ? (
           <p className="muted-text" style={{ fontSize: 12, padding: "8px 4px", margin: 0 }}>
-            No threads match "{searchQuery}".
+            {t("sidebar.noThreadsMatch", { query: searchQuery, defaultValue: "No threads match \"{query}\"." })}
           </p>
         ) : null}
         <div className="session-list">
@@ -106,7 +106,9 @@ export function ChatSidebar({
                       className={`pin-icon${session.pinned ? " pinned" : ""}`}
                       role="button"
                       tabIndex={0}
-                      title={session.pinned ? "Unpin" : "Pin"}
+                      title={session.pinned
+                        ? t("sidebar.unpin", { defaultValue: "Unpin" })
+                        : t("sidebar.pin", { defaultValue: "Pin" })}
                       onClick={(e) => { e.stopPropagation(); void onToggleThreadPin(session); }}
                       onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); void onToggleThreadPin(session); } }}
                     >
@@ -116,7 +118,7 @@ export function ChatSidebar({
                       className="session-delete-icon"
                       role="button"
                       tabIndex={0}
-                      title="Delete chat"
+                      title={t("sidebar.deleteChat", { defaultValue: "Delete chat" })}
                       onClick={(e) => { e.stopPropagation(); void onDeleteSession(session.id); }}
                       onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); void onDeleteSession(session.id); } }}
                     >
@@ -129,17 +131,22 @@ export function ChatSidebar({
                   {session.parentSessionId ? (
                     <span
                       className="badge session-fork-badge"
-                      title={`Forked from another thread at message #${(session.forkedAtMessageIndex ?? 0) + 1}`}
+                      title={t("sidebar.forkedFrom", {
+                        number: (session.forkedAtMessageIndex ?? 0) + 1,
+                        defaultValue: "Forked from another thread at message #{number}",
+                      })}
                     >
-                      ⑂ fork
+                      {t("sidebar.forkBadge", { defaultValue: "⑂ fork" })}
                     </span>
                   ) : null}
                   {session.modelRef && warmModels.some((w) => w.ref === session.modelRef) ? (
                     <span
                       className="badge success session-warm-badge"
-                      title="Model is already loaded — this chat will respond instantly with no reload time."
+                      title={t("sidebar.modelReadyTooltip", {
+                        defaultValue: "Model is already loaded — this chat will respond instantly with no reload time.",
+                      })}
                     >
-                      {"⚡"} ready
+                      {"⚡"} {t("sidebar.readyBadge", { defaultValue: "ready" })}
                     </span>
                   ) : null}
                 </div>

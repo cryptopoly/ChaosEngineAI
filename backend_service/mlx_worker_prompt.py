@@ -123,12 +123,73 @@ def _should_retry_cache_failure(exc: BaseException) -> bool:
     )
 
 
+_NONE_LEVEL_RE = re.compile(r"""reasoning_effort\s*==\s*['"]none['"]""")
+
+_EFFORT_LADDER = ("none", "minimal", "low", "medium", "high", "xhigh")
+_EFFORT_NOT_IN_RE = re.compile(r"""reasoning_effort[^%]*?not\s+in\s*\(([^)]*)\)""")
+
+
+def template_effort_levels(template: str) -> list[str] | None:
+    """Reasoning levels a chat template accepts, or None when it does not say.
+
+    Only a template that rejects every level outside an explicit list says so
+    (Qwen3.8 raises on anything but ``xhigh`` / ``medium`` / ``low``). A template
+    that merely tests for one level (Kolibri 1's ``none``) accepts the rest.
+    """
+    listed = _EFFORT_NOT_IN_RE.search(template)
+    if not listed:
+        return None
+    names = re.findall(r"""['"](\w+)['"]""", listed.group(1))
+    levels = [name for name in _EFFORT_LADDER if name in names]
+    return levels or None
+
+
+def nearest_effort_level(requested: str, levels: list[str]) -> str:
+    """The supported level closest to ``requested`` (ties go to the higher one)."""
+    if requested in levels:
+        return requested
+    rank = _EFFORT_LADDER.index(requested) if requested in _EFFORT_LADDER else _EFFORT_LADDER.index("medium")
+    return min(levels, key=lambda lv: (abs(_EFFORT_LADDER.index(lv) - rank), -_EFFORT_LADDER.index(lv)))
+
+
+def chat_template_switches(tokenizer: Any, request: dict[str, Any]) -> dict[str, Any]:
+    """Extra ``apply_chat_template`` arguments for templates with a reasoning switch.
+
+    A template that reads ``enable_thinking`` (the Qwen3 family) gets it from the
+    Thinking toggle.
+
+    A template that mentions ``reasoning_effort`` (Kolibri 1, gpt-oss) gets the
+    effort the user picked; the composer sends it only while Thinking is on. A
+    template that also defines a ``none`` level (Kolibri 1) gets it while
+    Thinking is off. Without it such a model reasons at its default, high, effort
+    whatever the toggle says.
+    """
+    template = getattr(tokenizer, "chat_template", None)
+    if not isinstance(template, str):
+        return {}
+    thinking_off = (request.get("thinkingMode") or "off") == "off"
+    switches: dict[str, Any] = {}
+    # Qwen3 / 3.5 / 3.6 / 3.8 and others gate reasoning on enable_thinking and
+    # reason by default, so Thinking Off has to say so explicitly.
+    if "enable_thinking" in template:
+        switches["enable_thinking"] = not thinking_off
+    if "reasoning_effort" in template:
+        effort = request.get("reasoningEffort")
+        if effort in {"low", "medium", "high"}:
+            levels = template_effort_levels(template)
+            switches["reasoning_effort"] = nearest_effort_level(effort, levels) if levels else effort
+        elif thinking_off and _NONE_LEVEL_RE.search(template):
+            switches["reasoning_effort"] = "none"
+    return switches
+
+
 def _build_prompt_text(
     tokenizer: Any,
     history: list[dict[str, Any]],
     prompt: str,
     system_prompt: str | None,
     model_ref: str | None = None,
+    template_kwargs: dict[str, Any] | None = None,
 ) -> tuple[str, str | None]:
     # Phase 3.8: detect chat-template quirks at render time and apply
     # the matching auto-fix. Today: Gemma family rejects the system role
@@ -146,6 +207,14 @@ def _build_prompt_text(
         messages.append({"role": "system", "content": system_prompt})
     for message in history:
         role = message.get("role")
+        if role == "tool":
+            # The agent loop feeds tool results back as ``tool`` messages. They
+            # used to be dropped here, so the model never saw a result and called
+            # the same tool again until the loop gave up. Chat templates render a
+            # tool turn as a user turn wrapping the result in <tool_response>.
+            result_text = _normalize_message_content(message.get("text", ""))
+            messages.append({"role": "user", "content": f"<tool_response>\n{result_text}\n</tool_response>"})
+            continue
         if role not in {"system", "user", "assistant"}:
             continue
         messages.append({"role": role, "content": _normalize_message_content(message.get("text", ""))})
@@ -159,14 +228,15 @@ def _build_prompt_text(
         template_note = report.to_runtime_note()
 
     apply_template = getattr(tokenizer, "apply_chat_template", None)
+    extra = template_kwargs or {}
     if callable(apply_template):
         try:
-            rendered = apply_template(messages, tokenize=False, add_generation_prompt=True)
+            rendered = apply_template(messages, tokenize=False, add_generation_prompt=True, **extra)
             if isinstance(rendered, str):
                 return rendered, template_note
         except TypeError:
             try:
-                rendered = apply_template(messages, add_generation_prompt=True)
+                rendered = apply_template(messages, add_generation_prompt=True, **extra)
                 if isinstance(rendered, str):
                     return rendered, template_note
                 if isinstance(rendered, list):

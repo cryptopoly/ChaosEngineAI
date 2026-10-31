@@ -70,6 +70,8 @@ export interface LoadedModel {
   cacheStrategy: string;
   fitModelInMemory: boolean;
   contextTokens: number;
+  /** Context the load asked for before it was clamped to the model maximum. */
+  requestedContextTokens?: number | null;
   loadedAt: string;
   path: string | null;
   runtimeTarget?: string | null;
@@ -77,6 +79,8 @@ export interface LoadedModel {
   speculativeDecoding: boolean;
   dflashDraftModel?: string | null;
   treeBudget: number;
+  /** Tree budget the load asked for, before it was dropped for a target that cannot be tree-verified. */
+  requestedTreeBudget?: number | null;
   /** Phase 2.11: capability declarations (vision / tools / reasoning / etc.) */
   capabilities?: ModelCapabilities | null;
 }
@@ -95,6 +99,8 @@ export interface RuntimeStatus {
   engineLabel: string;
   loadedModel: LoadedModel | null;
   warmModels?: WarmModel[];
+  /** GB held by the active and warm chat models. */
+  residentModelGb?: number;
   supportsGeneration: boolean;
   serverReady: boolean;
   activeRequests: number;
@@ -128,6 +134,10 @@ export interface NativeBackendStatus {
   vllmVersion?: string | null;
   mtplxAvailable?: boolean;
   mtplxPythonPath?: string | null;
+  tensorfoldAvailable?: boolean;
+  tensorfoldPythonPath?: string | null;
+  tensorfoldVersion?: string | null;
+  tensorfoldExtras?: string[];
   ggufMtpAvailable?: boolean;
   // FU-056 Phase 1 — per-accelerator import probes. Optional so a
   // backend running an older build than the frontend doesn't crash the

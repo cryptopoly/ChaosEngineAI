@@ -45,7 +45,12 @@
       "system": "System",
       "empty": "No active local LLM processes were detected.",
       "memoryGb": "{value} GB",
-      "cpuPercent": "{value}%"
+      "cpuPercent": "{value}%",
+      "stopIdleHint": "Unload parked models and stop every model process that is not serving the loaded model.",
+      "stopIdle": "Stop idle",
+      "stopHint": "Not serving the loaded model. Stop it to free its memory.",
+      "stopConfirm": "Stop this process and free its memory?",
+      "stop": "Stop"
     }
   },
   "hardwareFit": {
@@ -54,7 +59,7 @@
     "recommendedTarget": "Recommended target",
     "currentRuntime": "Current runtime",
     "modelLoadedVia": "{model} loaded via {engine}.",
-    "noModelHint": "No model is loaded yet. Pick a thread model in Chat or browse a newer family in Online Models."
+    "noModelHint": "No model is loaded yet. Pick a thread model in Chat or browse a newer family in Chat > Models."
   },
   "activityFeed": {
     "title": "Activity Feed",

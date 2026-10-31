@@ -125,6 +125,10 @@ export interface StorageTopEntry {
   sizeGb: number | null;
   sourceKind: string;
   lastModified: number;
+  expandable?: boolean;
+  deletable?: boolean;
+  /** Set for a cached Hugging Face repo: deleted through the cache API, not by path. */
+  hfRepo?: string | null;
 }
 
 export interface StorageTopResponse {
@@ -142,6 +146,18 @@ export async function fetchStorageTop(limit = 20): Promise<StorageTopResponse> {
     `/api/diagnostics/storage-top?limit=${encodeURIComponent(limit)}`,
     30000,
   );
+}
+
+export async function deleteHfRepo(repo: string): Promise<{ deleted: string; freedBytes: number }> {
+  return await postJson<{ deleted: string; freedBytes: number }>("/api/diagnostics/hf-repo/delete", { repo });
+}
+
+export async function fetchStorageChildren(path: string): Promise<StorageTopEntry[]> {
+  const res = await fetchJson<{ entries: StorageTopEntry[] }>(
+    `/api/diagnostics/storage-children?path=${encodeURIComponent(path)}`,
+    30000,
+  );
+  return res.entries;
 }
 
 // ---------------------------------------------------------------------------

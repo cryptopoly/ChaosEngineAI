@@ -90,19 +90,15 @@ class ResolveCapabilitiesTests(unittest.TestCase):
             caps.supportsVideo, caps.supportsMultilingual,
         ]))
 
-    def test_mlx_engine_demotes_vision_even_when_runtime_says_enabled(self):
-        # Belt-and-braces: even if a future mmproj-equivalent path on
-        # MLX claims vision_enabled=True, the engine demotion still
-        # fires because the MLX worker subprocess has no image-carrying
-        # code. Re-enable this check only after mlx-vlm is actually wired.
-        caps = resolve_capabilities(
-            "google/gemma-4-E4B-it",
-            None,
-            engine="mlx",
-            vision_enabled=True,
-        )
-        self.assertFalse(caps.supportsVision)
-        self.assertIn("vision", caps.tags)
+    def test_mlx_engine_keeps_vision_only_for_an_mlx_vlm_load(self):
+        # The worker reports vision_enabled when it loaded the model through
+        # mlx-vlm, whose generate paths carry images; a text-only mlx-lm load
+        # of the same family leaves it False.
+        on = resolve_capabilities("google/gemma-4-E4B-it", None, engine="mlx", vision_enabled=True)
+        off = resolve_capabilities("google/gemma-4-E4B-it", None, engine="mlx", vision_enabled=False)
+        self.assertTrue(on.supportsVision)
+        self.assertFalse(off.supportsVision)
+        self.assertIn("vision", off.tags)
 
     def test_turboquant_engine_demotes_vision(self):
         caps = resolve_capabilities(
@@ -112,6 +108,19 @@ class ResolveCapabilitiesTests(unittest.TestCase):
             vision_enabled=True,
         )
         self.assertFalse(caps.supportsVision)
+
+    def test_tensorfold_engine_keeps_vision_only_when_started_with_vision(self):
+        # TensorFold reads images when its server runs with --vision, and the
+        # engine reports that as vision_enabled. Without it the composer must
+        # not offer "Attach image".
+        on = resolve_capabilities(
+            "Vontra/Qwen3.8-27B-MLX-4bit", None, engine="tensorfold", vision_enabled=True,
+        )
+        off = resolve_capabilities(
+            "Vontra/Qwen3.8-27B-MLX-4bit", None, engine="tensorfold", vision_enabled=False,
+        )
+        self.assertTrue(on.supportsVision)
+        self.assertFalse(off.supportsVision)
 
     def test_llama_cpp_engine_keeps_vision_when_runtime_enabled(self):
         # llama.cpp accepts image_url parts natively when an mmproj is

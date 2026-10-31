@@ -13,13 +13,15 @@ RuntimeController``) keep working without churn.
 
 from __future__ import annotations
 
+from functools import lru_cache, wraps
+
 import json
 import os
 import subprocess
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from threading import Lock, Thread
+from threading import Event, Lock, RLock, Thread
 from collections.abc import Callable, Iterator
 from typing import Any
 
@@ -27,6 +29,14 @@ from backend_service.reasoning_split import (
     ThinkingStreamResult,
     ThinkingTokenFilter,
     strip_thinking_tokens as _strip_thinking_tokens,
+)
+from backend_service.helpers.request_guards import (
+    SCHEMA_FALLBACK_NOTE,
+    empty_reply_note,
+    guard_chat_request,
+    merge_notes,
+    schema_fallback_prompt,
+    strip_json_fence,
 )
 from backend_service.model_resolution import resolve_dflash_target_ref
 
@@ -106,6 +116,56 @@ from backend_service.inference.simple_engines import (
     RemoteOpenAIEngine,
 )
 from backend_service.inference._mtp import has_mtp_heads, has_mtp_heads_strict
+from backend_service.inference._tensorfold import TensorFoldMatch, match_model
+from backend_service.inference.tensorfold_engine import TensorFoldEngine
+
+
+def _model_weights_bytes(path: str) -> int:
+    """Bytes a model occupies when loaded, as opposed to bytes in its folder.
+
+    A GGUF repo folder usually holds several quants (a 24B model's BF16, F16 and
+    Q8_0 are 148 GB together) but one file loads, so count that file. Folders
+    that also carry safetensors are sized whole: their loader reads those.
+    """
+    try:
+        folder = Path(path)
+        if folder.is_dir() and not any(folder.rglob("*.safetensors")):
+            from backend_service.helpers.text_gguf import gguf_load_bytes  # noqa: PLC0415
+
+            loaded = gguf_load_bytes(folder)
+            if loaded:
+                return loaded
+    except OSError:
+        pass
+    return _path_size_bytes(path)
+
+
+@lru_cache(maxsize=32)
+def _cached_path_size_bytes(path: str) -> int:
+    """Size of a loaded model's files. Cached: the runtime status (polled every
+    few seconds) reports it, and a loaded model's files do not change."""
+    return _model_weights_bytes(path)
+
+
+def _one_load_at_a_time(method):
+    @wraps(method)
+    def wrapper(self, *args, **kwargs):
+        with self._load_lock:
+            return method(self, *args, **kwargs)
+
+    return wrapper
+
+
+_MLX_PROBE_RETRIES = 2
+_MLX_PROBE_RETRY_DELAY_SECONDS = 3.0
+
+
+def _mlx_expected_on_this_host() -> bool:
+    """True where the bundled runtime ships MLX (Apple Silicon)."""
+    import platform
+    import sys
+
+    return sys.platform == "darwin" and platform.machine() == "arm64"
 
 
 class RuntimeController:
@@ -125,6 +185,16 @@ class RuntimeController:
         # Warm pool: keeps previously loaded engines alive for instant switch-back
         self._warm_pool: dict[str, tuple[BaseInferenceEngine, LoadedModelInfo]] = {}
         self._pool_lock = Lock()
+        # One load or unload at a time: a second request used to start while the
+        # first was still loading, replace ``self.engine`` and orphan the first
+        # engine's process (a 21 GB TensorFold worker kept running, starving the next model).
+        self._load_lock = RLock()
+        # Newest request wins: a load for another model aborts the one in flight,
+        # a repeat of the same request waits for it, and unload cancels any load.
+        self._latest_load_key: str | None = None
+        self._inflight_load_key: str | None = None
+        self._loaded_key: str | None = None
+        self._load_aborted = Event()
         self._loading_progress: dict[str, Any] | None = None
         self._loading_log_tail: list[str] = []
         self._recent_orphaned_workers: list[dict[str, Any]] = []
@@ -153,6 +223,15 @@ class RuntimeController:
     def _capability_probe_worker(self, *, force: bool = False) -> None:
         try:
             capabilities = get_backend_capabilities(force=force)
+            # One failed probe is kept for the whole session, and on a Mac that has
+            # MLX it turned MLX off in the Dashboard and in model loading until a
+            # manual refresh. Ask again before reporting that (the placeholder keeps
+            # ``probing`` true meanwhile, so nothing announces the wrong answer).
+            for _ in range(_MLX_PROBE_RETRIES):
+                if capabilities.mlxUsable or not _mlx_expected_on_this_host():
+                    break
+                time.sleep(_MLX_PROBE_RETRY_DELAY_SECONDS)
+                capabilities = get_backend_capabilities(force=True)
         except Exception as exc:
             current = self.capabilities
             capabilities = BackendCapabilities(
@@ -280,14 +359,7 @@ class RuntimeController:
             except Exception:
                 pass
             return
-        active_bytes = max(
-            self._model_resident_bytes(self.loaded_model),
-            self._engine_resident_bytes(self.engine),
-        )
-        self._evict_warm_pool(
-            incoming_bytes=active_bytes,
-        )
-        if not self._can_keep_warm_model(active_bytes, required_free_bytes=required_free_bytes):
+        if not self._make_room_keeping_active(required_free_bytes):
             try:
                 self.engine.unload_model()
             except Exception:
@@ -317,7 +389,8 @@ class RuntimeController:
     # pure noise.
     ORPHAN_DETECTION_GRACE_SECONDS = 3.0
 
-    def prune_stale_backend_children(self) -> None:
+    def prune_stale_backend_children(self, grace_seconds: float | None = None) -> None:
+        grace = self.ORPHAN_DETECTION_GRACE_SECONDS if grace_seconds is None else grace_seconds
         tracked = self._tracked_process_pids()
         try:
             import psutil
@@ -342,7 +415,8 @@ class RuntimeController:
             is_mlx_worker = "backend_service.mlx_worker" in cmdline or "mlx_worker" in cmdline
             is_llama = "llama-server" in name or "llama-server" in cmdline
             is_mtplx = "mtplx" in name or "/mtplx-venv/" in cmdline or " mtplx " in f" {cmdline} " or cmdline.endswith(" mtplx")
-            if not (is_mlx_worker or is_llama or is_mtplx):
+            is_tensorfold = "/tensorfold-venv/" in cmdline
+            if not (is_mlx_worker or is_llama or is_mtplx or is_tensorfold):
                 continue
             if child.pid in tracked:
                 continue
@@ -351,13 +425,15 @@ class RuntimeController:
             # every time an engine was swapped in or out, so a normal
             # model-change session produced 5-10 "orphans" purely from
             # timing races.
-            if now_wall - create_time < self.ORPHAN_DETECTION_GRACE_SECONDS:
+            if now_wall - create_time < grace:
                 continue
 
             if is_mlx_worker:
                 kind, label = "mlx_worker", "MLX worker"
             elif is_mtplx:
                 kind, label = "mtplx", "MTPLX server"
+            elif is_tensorfold:
+                kind, label = "tensorfold", "TensorFold server"
             else:
                 kind, label = "llama_server", "llama-server"
             record = {
@@ -384,6 +460,62 @@ class RuntimeController:
             self._recent_orphaned_workers = (pruned + self._recent_orphaned_workers)[:8]
 
         self._expire_orphan_records()
+
+    _OWNED_PROCESS_MARKERS = ("mlx_worker", "llama-server", "/mtplx-venv/", "/tensorfold-venv/", "voice_worker.py")
+
+    def stop_process(self, pid: int) -> dict[str, Any]:
+        """Stop one process this app started that is not serving the loaded model.
+
+        The loaded model's process is refused (unload the model instead), a parked
+        warm model is evicted properly, and anything that is not a model process
+        under this backend is refused, so the button cannot touch other programs.
+        """
+        active = self.engine.process_pid() if self.engine else None
+        if active and int(active) == pid:
+            raise ValueError("That process serves the loaded model. Unload the model instead.")
+        with self._pool_lock:
+            warm_key = next(
+                (key for key, (engine, _info) in self._warm_pool.items() if engine.process_pid() == pid),
+                None,
+            )
+            warm = self._warm_pool.pop(warm_key) if warm_key is not None else None
+        if warm is not None:
+            try:
+                warm[0].unload_model()
+            except Exception:
+                pass
+            self.prune_stale_backend_children(grace_seconds=0.0)
+            return {"pid": pid, "action": "unloaded", "label": warm[1].name}
+        try:
+            import psutil
+
+            process = psutil.Process(pid)
+            owned = process.parent() is not None and any(
+                parent.pid == os.getpid() for parent in [process.parent(), *process.parents()]
+            )
+            cmdline = " ".join(process.cmdline()).lower()
+        except Exception as exc:  # noqa: BLE001 - gone, or not ours to read
+            raise ValueError("That process is no longer running.") from exc
+        if not owned or not any(marker in cmdline for marker in self._OWNED_PROCESS_MARKERS):
+            raise ValueError("That is not a model process started by ChaosEngineAI.")
+        try:
+            process.terminate()
+            process.wait(timeout=3)
+            action = "terminated"
+        except Exception:  # noqa: BLE001
+            try:
+                process.kill()
+                action = "killed"
+            except Exception:  # noqa: BLE001
+                action = "kill_failed"
+        return {"pid": pid, "action": action}
+
+    def stop_idle(self) -> dict[str, Any]:
+        """Evict every parked warm model and stop every model process nothing is using."""
+        before = len(self._recent_orphaned_workers)
+        evicted = self.clear_warm_pool()
+        self.prune_stale_backend_children(grace_seconds=0.0)
+        return {"warmEvicted": evicted, "orphansStopped": max(0, len(self._recent_orphaned_workers) - before)}
 
     def _expire_orphan_records(self) -> None:
         if not self._recent_orphaned_workers:
@@ -479,6 +611,106 @@ class RuntimeController:
             self.engine.capabilities = self.capabilities
         return self.capabilities
 
+    def _tensorfold_match(
+        self,
+        *,
+        model_ref: str,
+        canonical_repo: str | None,
+        runtime_target: str | None,
+        path: str | None,
+    ) -> TensorFoldMatch | None:
+        return match_model(
+            canonical_repo=canonical_repo,
+            model_ref=model_ref,
+            runtime_target=runtime_target,
+            path=path,
+        )
+
+    def _select_tensorfold(
+        self,
+        *,
+        hint: str,
+        target: str | None,
+        model_ref: str,
+        canonical_repo: str | None,
+        runtime_target: str | None,
+        path: str | None,
+        speculative_decoding: bool = False,
+    ) -> BaseInferenceEngine | None:
+        """The TensorFold engine when the request asks for it, or when the model needs it.
+
+        An explicit ``tensorfold`` backend always gets the engine. Families
+        no other engine we ship can load ("exclusive") always get it, and an
+        uninstalled TensorFold becomes an install prompt instead of a stack
+        trace. Checkpoints TensorFold is merely tested with ("tested", see
+        ``TensorFoldMatch.tier``) get it when speculative decoding is asked
+        for and it is installed — the same rule that picks MTPLX — and load
+        on standard MLX otherwise, so the launch toggle is the A/B switch.
+        """
+        if hint == "tensorfold":
+            if _looks_like_gguf(target):
+                raise RuntimeError(
+                    "TensorFold serves MLX (safetensors) checkpoints, not GGUF files. "
+                    "Use the llama.cpp backend for this model."
+                )
+            if not self.capabilities.tensorfoldAvailable:
+                raise RuntimeError(
+                    "TensorFold backend requested but not installed. "
+                    "Install it from the launch settings or the Setup tab."
+                )
+            return TensorFoldEngine(self.capabilities)
+        if hint not in {"mlx", "auto"} or _looks_like_gguf(target):
+            return None
+        match = self._tensorfold_match(
+            model_ref=model_ref,
+            canonical_repo=canonical_repo,
+            runtime_target=runtime_target,
+            path=path,
+        )
+        if match is None:
+            return None
+        if self.capabilities.tensorfoldAvailable and (match.tier == "exclusive" or speculative_decoding):
+            return TensorFoldEngine(self.capabilities)
+        if match.tier == "exclusive":
+            needs = (
+                f" It needs a Mac with at least {match.family.min_memory_gb} GB of memory."
+                if match.family.min_memory_gb
+                else ""
+            )
+            raise RuntimeError(
+                f"{match.family.title} runs only on TensorFold, which is not installed. "
+                f"Install it from the launch settings or the Setup tab, then load the model again.{needs}"
+            )
+        return None
+
+    def _startup_fallback_label(
+        self,
+        engine: BaseInferenceEngine,
+        *,
+        model_ref: str,
+        canonical_repo: str | None,
+        runtime_target: str | None,
+        path: str | None,
+    ) -> str | None:
+        """Which engine's startup failure should fall back to standard MLX, if any.
+
+        MTPLX always can (it is an accelerator over a model MLX also loads).
+        TensorFold can except for exclusive families, which standard MLX
+        cannot load at all — there the error must reach the user.
+        """
+        if isinstance(engine, MtplxEngine):
+            return "MTPLX"
+        if isinstance(engine, TensorFoldEngine) and self.capabilities.mlxUsable:
+            match = self._tensorfold_match(
+                model_ref=model_ref,
+                canonical_repo=canonical_repo,
+                runtime_target=runtime_target,
+                path=path,
+            )
+            if match is None or match.tier != "exclusive":
+                return "TensorFold"
+        return None
+
     def _select_engine(
         self,
         *,
@@ -494,6 +726,17 @@ class RuntimeController:
 
         if hint in {"remote", "openai", "cloud"}:
             return RemoteOpenAIEngine(self.capabilities)
+        tensorfold = self._select_tensorfold(
+            hint=hint,
+            target=target,
+            model_ref=model_ref,
+            canonical_repo=canonical_repo,
+            runtime_target=runtime_target,
+            path=path,
+            speculative_decoding=speculative_decoding,
+        )
+        if tensorfold is not None:
+            return tensorfold
         if hint == "mlx":
             if self.capabilities.mlxUsable:
                 # ``has_mtp_heads_strict`` peeks the on-disk safetensors
@@ -508,6 +751,11 @@ class RuntimeController:
                     and has_mtp_heads_strict(canonical_repo or model_ref, path)
                 ):
                     return MtplxEngine(self.capabilities)
+                return MLXWorkerEngine(self.capabilities)
+            # The probe result is cached for the session; re-run it once before
+            # refusing, so a probe that was killed at launch does not block
+            # every MLX model until the app restarts.
+            if self.refresh_capabilities(force=True).mlxUsable:
                 return MLXWorkerEngine(self.capabilities)
             reason = self.capabilities.mlxMessage or "MLX is not available in this environment"
             raise RuntimeError(
@@ -600,14 +848,14 @@ class RuntimeController:
         whole file ends up resident once warm. For catalog/no-path entries
         we fall back to 0 (no useful estimate, treat as memory-free).
         """
-        return _path_size_bytes(info.path) if info.path else 0
+        return _cached_path_size_bytes(info.path) if info.path else 0
 
     @staticmethod
     def _target_resident_bytes(*, path: str | None, runtime_target: str | None) -> int:
         for candidate in (path, runtime_target):
             if not candidate:
                 continue
-            size = _path_size_bytes(candidate)
+            size = _model_weights_bytes(candidate)
             if size > 0:
                 return size
         return 0
@@ -627,66 +875,127 @@ class RuntimeController:
         except Exception:
             return 0
 
-    def _warm_pool_resident_bytes(self) -> int:
-        return sum(
-            max(self._model_resident_bytes(info), self._engine_resident_bytes(engine))
-            for engine, info in self._warm_pool.values()
-        )
+    def _memory_budget_bytes(self) -> int | None:
+        """Free memory after OS headroom, in bytes; ``None`` when it can't be read.
 
-    def _memory_budget_bytes(self) -> int:
-        """Bytes available for warm-pool weights, after OS headroom.
-
-        Returns 0 when psutil isn't usable; callers must fall back to the
-        count-based MAX_WARM_MODELS cap in that case.
+        Models already loaded (active or warm) are part of used memory, so
+        this is what a new load can still take without unloading anything.
+        Uses the same macOS-corrected available figure as the memory gates.
         """
         try:
             import psutil
 
-            available = int(psutil.virtual_memory().available)
+            from backend_service.helpers.memory_gate import available_memory_gb
+
+            memory = psutil.virtual_memory()
+            available = int(available_memory_gb(memory.total, memory.available) * 1024 ** 3)
         except Exception:
-            return 0
+            return None
         return max(0, available - self.WARM_POOL_MEMORY_HEADROOM_BYTES)
 
-    def _pop_oldest_warm_entry(self) -> None:
+    def reclaimable_model_bytes(self) -> int:
+        """Memory held by the active and warm chat models that a new load can take back.
+
+        Loading another model parks or unloads the active one and evicts warm
+        ones as needed (see ``_make_room_keeping_active``), so for a load-time
+        memory check their memory counts as available.
+        """
+        total = 0
+        if self.loaded_model is not None:
+            total += max(self._model_resident_bytes(self.loaded_model), self._engine_resident_bytes(self.engine))
+        for engine, info in self._warm_pool.values():
+            total += max(self._model_resident_bytes(info), self._engine_resident_bytes(engine))
+        return total
+
+    def _pop_oldest_warm_entry(self) -> int:
+        """Unload the oldest warm model; return roughly how many bytes that frees."""
         if not self._warm_pool:
-            return
+            return 0
         oldest_key = next(iter(self._warm_pool))
-        old_engine, _ = self._warm_pool.pop(oldest_key)
+        old_engine, old_info = self._warm_pool.pop(oldest_key)
+        freed = max(self._model_resident_bytes(old_info), self._engine_resident_bytes(old_engine))
         try:
             old_engine.unload_model()
         except Exception:
             pass
+        return freed
 
-    def _can_keep_warm_model(self, incoming_bytes: int, *, required_free_bytes: int = 0) -> bool:
-        budget = self._memory_budget_bytes()
-        if budget <= 0:
-            return True
-        if required_free_bytes > budget:
-            return False
-        return self._warm_pool_resident_bytes() + incoming_bytes <= budget
+    def _make_room_keeping_active(self, required_free_bytes: int) -> bool:
+        """Evict warm models until the incoming load fits; False if the active one must go too.
 
-    def _evict_warm_pool(self, *, incoming_bytes: int = 0) -> None:
-        """Make room for an incoming entry in the warm pool.
-
-        First applies the count cap (MAX_WARM_MODELS) so a flapping budget
-        can never grow the pool unboundedly. Then, if ``psutil`` reports a
-        live memory budget, evicts oldest entries until the pool plus the
-        incoming model fits within ``available - headroom``.
-
-        ``incoming_bytes`` is the resident-byte estimate for the model
-        about to enter the pool (typically the model being parked from
-        active to warm). Passing 0 still triggers the count cap.
+        Applies the count cap first (MAX_WARM_MODELS, leaving a slot for the
+        model being parked). Then, while the incoming model needs more than is
+        free, unloads the oldest warm model and counts what it frees. Loaded
+        models are already in used memory, so they are counted once; the old
+        check compared them against free memory, which counts them twice and
+        dropped warm models far too eagerly.
         """
         while len(self._warm_pool) >= self.MAX_WARM_MODELS:
             self._pop_oldest_warm_entry()
+        free = self._memory_budget_bytes()
+        if free is None:
+            return True
+        while self._warm_pool and free < required_free_bytes:
+            free += self._pop_oldest_warm_entry()
+        return free >= required_free_bytes
 
-        budget = self._memory_budget_bytes()
-        if budget <= 0:
-            return
-        while self._warm_pool and self._warm_pool_resident_bytes() + incoming_bytes > budget:
-            self._pop_oldest_warm_entry()
+    def load_model(self, **kwargs: Any) -> LoadedModelInfo:
+        key = self._warm_pool_key(
+            model_ref=kwargs["model_ref"],
+            runtime_target=kwargs.get("runtime_target"),
+            path=kwargs.get("path"),
+            cache_strategy=kwargs.get("cache_strategy", "native"),
+            cache_bits=kwargs.get("cache_bits", 0),
+            fp16_layers=kwargs.get("fp16_layers", 0),
+            fused_attention=kwargs.get("fused_attention", False),
+            fit_model_in_memory=kwargs.get("fit_model_in_memory", True),
+            context_tokens=kwargs.get("context_tokens", 8192),
+            speculative_decoding=kwargs.get("speculative_decoding", False),
+        )
+        self._latest_load_key = key
+        waited = False
+        if not self._load_lock.acquire(timeout=0.2):
+            waited = True
+            if self._inflight_load_key not in (None, key):
+                self._abort_inflight_load()
+            self._load_lock.acquire()
+        try:
+            if self._latest_load_key != key:
+                raise RuntimeError("A newer load request replaced this one.")
+            # A repeat of the request that just finished loading is already served;
+            # a request that did not have to wait is a deliberate reload.
+            if waited and self.loaded_model is not None and self._loaded_key == key:
+                return self.loaded_model
+            self._load_aborted.clear()
+            self._inflight_load_key = key
+            try:
+                loaded = self._load_model_locked(**kwargs)
+            finally:
+                self._inflight_load_key = None
+            self._loaded_key = key
+            return loaded
+        finally:
+            self._load_lock.release()
 
-    def load_model(
+    def _abort_inflight_load(self) -> None:
+        """Make the load in flight fail now by ending its engine's process."""
+        self._load_aborted.set()
+        engine = self.engine
+        pid = engine.process_pid() if engine is not None else None
+        if pid:
+            try:
+                import psutil
+
+                psutil.Process(int(pid)).kill()
+                return
+            except Exception:  # noqa: BLE001 - already gone
+                pass
+        try:
+            engine.unload_model()
+        except Exception:  # noqa: BLE001
+            pass
+
+    def _load_model_locked(
         self,
         *,
         model_ref: str,
@@ -776,6 +1085,12 @@ class RuntimeController:
             speculative_decoding=speculative_decoding,
         )
 
+        if isinstance(selected_engine, TensorFoldEngine):
+            # TensorFold sizes its memory budget from physical RAM and its
+            # models run to 100+ GB, so nothing else may stay resident.
+            keep_warm_previous = False
+            self.clear_warm_pool()
+
         # Never keep multiple warm copies of the same logical model under
         # different runtime profiles; that just burns extra RAM.
         self._purge_warm_entries_for_identity(requested_identity)
@@ -806,9 +1121,24 @@ class RuntimeController:
         )
         try:
             loaded = self.engine.load_model(**_load_kwargs)
-        except RuntimeError as _mtplx_exc:
-            # MtplxEngine startup failure → fall back to standard MLX worker.
-            if isinstance(self.engine, MtplxEngine):
+        except RuntimeError as _startup_exc:
+            if self._load_aborted.is_set():
+                self.loaded_model = None
+                self.runtime_note = None
+                self._loading_progress = None
+                self._loading_log_tail = []
+                self.prune_stale_backend_children()
+                raise RuntimeError("Model load cancelled.") from _startup_exc
+            # An accelerator engine's startup failure → fall back to the
+            # standard MLX worker (see ``_startup_fallback_label``).
+            fallback_from = self._startup_fallback_label(
+                self.engine,
+                model_ref=model_ref,
+                canonical_repo=canonical_repo,
+                runtime_target=runtime_target,
+                path=path,
+            )
+            if fallback_from is not None:
                 fallback = MLXWorkerEngine(self.capabilities)
                 self.engine = fallback
                 _load_kwargs["backend"] = fallback.engine_name
@@ -816,7 +1146,7 @@ class RuntimeController:
                     loaded = self.engine.load_model(**_load_kwargs)
                     loaded.runtimeNote = _append_runtime_note(
                         loaded.runtimeNote,
-                        f"MTPLX startup failed ({_mtplx_exc}); using standard MLX.",
+                        f"{fallback_from} startup failed ({_startup_exc}); using standard MLX.",
                     )
                 except Exception:
                     self.loaded_model = None
@@ -878,10 +1208,18 @@ class RuntimeController:
         return self._loading_progress, list(self._loading_log_tail)
 
     def unload_model(self) -> None:
-        self.engine.unload_model()
-        self.loaded_model = None
-        self.runtime_note = None
-        self.prune_stale_backend_children()
+        self._latest_load_key = None  # queued loads give up instead of reloading
+        if not self._load_lock.acquire(timeout=0.2):
+            self._abort_inflight_load()
+            self._load_lock.acquire()
+        try:
+            self.engine.unload_model()
+            self.loaded_model = None
+            self._loaded_key = None
+            self.runtime_note = None
+            self.prune_stale_backend_children()
+        finally:
+            self._load_lock.release()
 
     def generate(
         self,
@@ -902,20 +1240,62 @@ class RuntimeController:
             raise RuntimeError("Load a model before sending prompts.")
 
         target_engine = engine or self.engine
+        guard = guard_chat_request(
+            engine=self.loaded_model.engine,
+            vision_enabled=self.loaded_model.visionEnabled,
+            images=images,
+            samplers=samplers,
+            json_schema=json_schema,
+        )
         result = target_engine.generate(
             prompt=prompt,
             history=history,
             system_prompt=system_prompt,
             max_tokens=max_tokens,
             temperature=temperature,
-            images=images,
+            images=guard.images,
             tools=tools,
-            samplers=samplers,
+            samplers=guard.samplers,
             reasoning_effort=reasoning_effort,
-            json_schema=json_schema,
+            json_schema=guard.jsonSchema,
         )
         if result.runtimeNote is None:
             result.runtimeNote = self.runtime_note
+        notes = list(guard.notes)
+        if (
+            guard.jsonSchema
+            and not result.text.strip()
+            and not result.tool_calls
+            and self.loaded_model.engine == "llama.cpp"
+        ):
+            # A reasoning model under a JSON grammar can answer with nothing at all; ask for the
+            # JSON in words instead and say so.
+            retry = target_engine.generate(
+                prompt=prompt,
+                history=history,
+                system_prompt=schema_fallback_prompt(system_prompt, guard.jsonSchema),
+                max_tokens=max_tokens,
+                temperature=temperature,
+                images=guard.images,
+                tools=tools,
+                samplers=guard.samplers,
+                reasoning_effort=reasoning_effort,
+                json_schema=None,
+            )
+            if retry.text.strip():
+                retry.text = strip_json_fence(retry.text)
+                retry.runtimeNote = merge_notes(retry.runtimeNote or self.runtime_note, [*guard.notes, SCHEMA_FALLBACK_NOTE])
+                return retry
+        if not result.text.strip() and not result.tool_calls:
+            empty_note = empty_reply_note(
+                completion_tokens=result.completionTokens,
+                finish_reason=result.finishReason,
+                had_reasoning=False,
+                json_schema=guard.jsonSchema,
+            )
+            if empty_note:
+                notes.append(empty_note)
+        result.runtimeNote = merge_notes(result.runtimeNote, notes)
         return result
 
     def stream_generate(
@@ -938,19 +1318,67 @@ class RuntimeController:
             raise RuntimeError("Load a model before sending prompts.")
 
         target_engine = engine or self.engine
-        yield from target_engine.stream_generate(
+        guard = guard_chat_request(
+            engine=self.loaded_model.engine,
+            vision_enabled=self.loaded_model.visionEnabled,
+            images=images,
+            samplers=samplers,
+            json_schema=json_schema,
+        )
+        saw_text = False
+        saw_reasoning = False
+        for chunk in target_engine.stream_generate(
             prompt=prompt,
             history=history,
             system_prompt=system_prompt,
             max_tokens=max_tokens,
             temperature=temperature,
-            images=images,
+            images=guard.images,
             tools=tools,
             thinking_mode=thinking_mode,
-            samplers=samplers,
+            samplers=guard.samplers,
             reasoning_effort=reasoning_effort,
-            json_schema=json_schema,
-        )
+            json_schema=guard.jsonSchema,
+        ):
+            saw_text = saw_text or bool(chunk.text)
+            saw_reasoning = saw_reasoning or bool(chunk.reasoning)
+            if chunk.done:
+                notes = list(guard.notes)
+                if (
+                    not saw_text
+                    and guard.jsonSchema
+                    and self.loaded_model.engine == "llama.cpp"
+                ):
+                    retry = target_engine.generate(
+                        prompt=prompt,
+                        history=history,
+                        system_prompt=schema_fallback_prompt(system_prompt, guard.jsonSchema),
+                        max_tokens=max_tokens,
+                        temperature=temperature,
+                        images=guard.images,
+                        tools=tools,
+                        samplers=guard.samplers,
+                        reasoning_effort=reasoning_effort,
+                        json_schema=None,
+                    )
+                    if retry.text.strip():
+                        saw_text = True
+                        notes.append(SCHEMA_FALLBACK_NOTE)
+                        yield StreamChunk(text=strip_json_fence(retry.text))
+                        chunk.finish_reason = retry.finishReason or chunk.finish_reason
+                        chunk.completion_tokens += retry.completionTokens
+                        chunk.total_tokens += retry.completionTokens
+                if not saw_text:
+                    empty_note = empty_reply_note(
+                        completion_tokens=chunk.completion_tokens,
+                        finish_reason=chunk.finish_reason,
+                        had_reasoning=saw_reasoning,
+                        json_schema=guard.jsonSchema,
+                    )
+                    if empty_note:
+                        notes.append(empty_note)
+                chunk.runtime_note = merge_notes(chunk.runtime_note, notes)
+            yield chunk
 
     def extract_gguf_metadata(self, path: str) -> dict[str, Any]:
         code, payload, message = _json_subprocess(
@@ -1222,6 +1650,9 @@ class RuntimeController:
             "engineLabel": self.engine.engine_label,
             "loadedModel": self.loaded_model.to_dict() if self.loaded_model is not None else None,
             "warmModels": self.warm_models(),
+            # Memory held by the active and warm chat models, so the image and
+            # video estimates can count it.
+            "residentModelGb": round(self.reclaimable_model_bytes() / 1024 ** 3, 1),
             "supportsGeneration": True,
             "serverReady": self.loaded_model is not None,
             "activeRequests": active_requests,

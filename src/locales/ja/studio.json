@@ -27,7 +27,7 @@
     "copyImage": "画像をコピー",
     "openFolder": "フォルダーで表示",
     "modelLabel": "モデル",
-    "noModelsOption": "インストール済みモデルなし — ディスカバーからダウンロード",
+    "noModelsOption": "インストール済みモデルなし — 画像 > モデルからダウンロード",
     "aspectRatio": "アスペクト比",
     "qualityPreset": "品質プリセット",
     "previewLabel": "プレビュー",
@@ -40,7 +40,36 @@
       "cancelled": "画像生成がキャンセルされました",
       "failed": "画像生成に失敗しました",
       "imagesReady": "画像の準備ができました",
-      "imageReady": "画像の準備ができました"
+      "imageReady": "画像の準備ができました",
+      "cancelledBody": "この生成をキャンセルしました。画像は保存されていません。",
+      "modelStillLoaded": "モデルはまだ読み込まれています — 次回の「生成」はコールドスタートの待ち時間なしで始まります。",
+      "savedToGallery": "ギャラリーに保存しました",
+      "phaseLoading": "モデルをメモリに読み込み中",
+      "phaseEncoding": "プロンプトをエンコード中",
+      "phaseDiffusing": "{count, plural, other {# 枚の画像}}を拡散中",
+      "phaseDecoding": "ピクセルをデコード中",
+      "phaseSaving": "出力ギャラリーに保存中",
+      "errorHint": "プロンプトまたはランタイム設定を調整して、もう一度お試しください。ギャラリーには、以前に成功した出力がそのまま残ります。",
+      "settings": "設定",
+      "stepsCount": "{count, plural, other {# ステップ}}",
+      "seedValue": "シード {seed}",
+      "generatedCount": "この実行で {count} 枚の画像を生成しました。サムネイルをクリックすると別の結果を確認できます。",
+      "useSameSettings": "同じ設定を使用",
+      "varySeed": "シードを変更",
+      "open": "開く",
+      "reveal": "場所を表示",
+      "delete": "削除",
+      "cancelGeneration": "生成をキャンセル",
+      "close": "閉じる",
+      "done": "完了"
+    },
+    "mflux": {
+      "outdated": "ここにインストールされている mflux エンジン（{installed}）は、このアプリが想定するバージョン（{required}）より古いため、FLUX 3 や Qwen-Image-2.1 Turbo などの新しいモデルは実行できません。アップデートすると、専用の環境に再インストールされます。",
+      "notInstalled": "このモデルは mflux MLX エンジンで動作しますが、まだインストールされていません。専用の環境（約 1.3 GB）にインストールされ、アプリのパッケージは変更されません。",
+      "installing": "インストール中…",
+      "retry": "インストールを再試行",
+      "update": "mflux エンジンをアップデート",
+      "install": "mflux エンジンをインストール"
     }
   },
   "video": {
@@ -63,7 +92,30 @@
       "generating": "動画を生成中",
       "cancelled": "動画生成がキャンセルされました",
       "failed": "動画生成に失敗しました",
-      "ready": "動画の準備ができました"
+      "ready": "動画の準備ができました",
+      "cancelledBody": "この生成をキャンセルしました。クリップは保存されていません。",
+      "modelStillLoaded": "モデルはまだ読み込まれています — 次回の「生成」はコールドスタートの待ち時間なしで始まります。",
+      "savedToGallery": "ギャラリーに保存しました",
+      "loadError": "動画を読み込めませんでした。",
+      "phaseLoading": "モデルをメモリに読み込み中",
+      "phaseEncoding": "プロンプトをエンコード中",
+      "phaseDiffusing": "{count, plural, other {# フレーム}}を拡散中",
+      "phaseDiffusingFrames": "フレームを拡散中",
+      "phaseEncodingMp4": "mp4 をエンコード中",
+      "phaseSaving": "ギャラリーに保存中",
+      "errorHint": "プロンプト、解像度、またはフレーム数を調整して、もう一度お試しください。ギャラリーには、以前に成功したクリップがそのまま残ります。",
+      "loadingClip": "クリップを読み込み中...",
+      "framesCount": "{count, plural, other {# フレーム}}",
+      "clipLength": "{seconds} 秒のクリップ",
+      "stepsCount": "{count, plural, other {# ステップ}}",
+      "seedValue": "シード {seed}",
+      "renderTime": "レンダリング時間 {seconds} 秒",
+      "openGallery": "ギャラリーを開く",
+      "revealFile": "ファイルの場所を表示",
+      "delete": "削除",
+      "cancelGeneration": "生成をキャンセル",
+      "close": "閉じる",
+      "done": "完了"
     }
   },
   "progress": {
@@ -82,7 +134,36 @@
     "error": "エンハンサーエラー:{message}"
   },
   "runtimeBanner": {
-    "loadingModel": "モデルをメモリに読み込み中..."
+    "loadingModel": "モデルをメモリに読み込み中...",
+    "cudaTorchInstalled": "CUDA torch がインストール済みです。",
+    "cudaTorchRestartHint": "実行中のバックエンドにはまだ古い torch がモジュールキャッシュに残っています。新しい wheel を有効化するにはバックエンドを再起動してください{index}。",
+    "gpuNotActive": "GPU アクセラレーションが有効ではありません。",
+    "restarting": "再起動中...",
+    "restartBackend": "バックエンドを再起動",
+    "installingCudaTorch": "CUDA torch をインストール中...",
+    "installCudaTorch": "CUDA torch をインストール",
+    "realGenerationAvailable": "実際のローカル生成が利用可能",
+    "runtimeUnavailable": "ランタイムを利用できません",
+    "usingPlaceholder": "プレースホルダー出力を使用中",
+    "cpuFallback": "CPU フォールバック",
+    "engineChip": "エンジン:{engine}",
+    "deviceExpected": "{device}(予想)",
+    "deviceChip": "デバイス:{device}",
+    "summaryLoaded": "{selected} は読み込み済みで、生成できる状態です。",
+    "summarySwap": "{loaded} が読み込まれています。{selected} で生成するとパイプラインが入れ替わります。",
+    "summaryNotLoaded": "{selected} はローカルにインストール済みですが、まだ読み込まれていません。拡散パイプラインのウォームアップがあるため、最初の生成は時間がかかります。",
+    "summaryNotInstalled": "{selected} はローカルにインストールされていません。ローカル生成を有効にするには、モデルページからダウンロードしてください。",
+    "summaryOnDemand": "生成時にモデルが必要に応じて読み込まれます。",
+    "preloadModel": "モデルをプリロード",
+    "unloadModel": "モデルをアンロード",
+    "unloadNamed": "{name} をアンロード",
+    "gpuRuntimeInstalledIntro": "GPU ランタイムがインストールされました:",
+    "extrasFallback": "extras",
+    "gpuRuntimeInstalledOutro": "実行中のバックエンドにはまだ古いインポートキャッシュが残っています — バックエンドを再起動して新しいランタイムを有効化すると、画像生成で GPU が使用されます。",
+    "restartBackendToActivate": "有効化するにはバックエンドを再起動してください",
+    "gpuRuntimeInstallPrompt": "実際のローカル生成を有効にするには、GPU 画像ランタイム（torch + diffusers + accelerate + transformers、約 2.5 GB）をインストールしてください。ユーザーローカルの永続フォルダに書き込まれるため、アプリを更新しても消えません。",
+    "installing": "インストール中...",
+    "installGpuRuntime": "GPU ランタイムをインストール"
   },
   "imageStudio": {
     "generateTitle": {
@@ -92,7 +173,7 @@
       "ready": "この画像を生成します。"
     },
     "actions": {
-      "discover": "ディスカバー",
+      "discover": "モデルを探す",
       "installed": "インストール済み",
       "gallery": "ギャラリー"
     },
@@ -108,14 +189,14 @@
       "downloaded": "ダウンロード済み"
     },
     "noModelsCallout": {
-      "message": "まだ画像モデルがダウンロードされていません。画像ディスカバーから閲覧してインストールし、ここに戻って生成してください。",
-      "openDiscover": "画像ディスカバーを開く"
+      "message": "まだ画像モデルがダウンロードされていません。画像 > モデルで閲覧してインストールし、ここに戻って生成してください。",
+      "openDiscover": "画像モデルを開く"
     },
     "download": {
       "failedMessage": "{name} のダウンロードが正常に完了しませんでした。ChaosEngineAI は部分的なローカルスナップショットしか見つけられなかったため、実際の画像パイプラインをまだ読み込めません。",
       "pausedMessage": "{name} は部分的にダウンロードされています。再開すると ChaosEngineAI は既にディスク上にあるファイルから続行します。",
       "completeMessage": "{name} のダウンロードが完了しました。インストール済みモデルのスキャンが自動的に更新されます。",
-      "notInstalledMessage": "{name} はローカルにインストールされていません。ローカル生成を有効にするには、ディスカバーからダウンロードしてください。",
+      "notInstalledMessage": "{name} はローカルにインストールされていません。ローカル生成を有効にするには、モデルページからダウンロードしてください。",
       "huggingFace": "Hugging Face",
       "settings": "設定",
       "technicalDetails": "技術的な詳細",
@@ -170,7 +251,8 @@
       "guidance": "ガイダンス",
       "images": "画像数",
       "randomSeed": "ランダムシード",
-      "seed": "シード"
+      "seed": "シード",
+      "maxPixelsNote": "{name} が描画できるのは最大 {megapixels} メガピクセルです。このサイズは縦横比を保ったまま縮小されます。"
     },
     "safety": {
       "dangerTitle": "バックエンドがクラッシュする可能性が高い",
@@ -190,6 +272,98 @@
       "openGallery": "ギャラリーを開く",
       "emptyHint": "このブランチの最初の保存済み画像アーティファクトを作成するにはプロンプトを生成してください。",
       "footnote": "ここには最新の保存済み画像 {recent} 個を表示しています。すべてを閲覧し、モデルでフィルターし、古い実行を管理するには画像ギャラリーを開いてください。"
+    },
+    "aspectRatios": {
+      "square": {
+        "label": "正方形"
+      },
+      "portrait": {
+        "label": "縦長"
+      },
+      "landscape": {
+        "label": "横長"
+      },
+      "wide": {
+        "label": "ワイド"
+      }
+    },
+    "quality": {
+      "fast": {
+        "label": "高速",
+        "hint": "素早くドラフトを作成"
+      },
+      "balanced": {
+        "label": "バランス",
+        "hint": "最適なデフォルト"
+      },
+      "quality": {
+        "label": "高品質",
+        "hint": "最終パスは低速"
+      }
+    },
+    "samplers": {
+      "default": {
+        "label": "モデルのデフォルト",
+        "hint": "モデルに同梱されていた設定のまま"
+      },
+      "dpmpp_2m": {
+        "label": "DPM++ 2M",
+        "hint": "高速でバランス型 — 20-30 ステップ"
+      },
+      "dpmpp_2m_karras": {
+        "label": "DPM++ 2M Karras",
+        "hint": "少ないステップでもより滑らか"
+      },
+      "dpmpp_sde": {
+        "label": "DPM++ SDE",
+        "hint": "ややノイズが多く、創造的"
+      },
+      "euler": {
+        "label": "Euler",
+        "hint": "定番で、25 ステップ以上で安定"
+      },
+      "euler_a": {
+        "label": "Euler ancestral",
+        "hint": "創造的で、非決定的"
+      },
+      "ddim": {
+        "label": "DDIM",
+        "hint": "決定的で、やや遅い"
+      },
+      "unipc": {
+        "label": "UniPC",
+        "hint": "少ないステップ数で高速"
+      },
+      "ays_dpmpp_2m_sd15": {
+        "label": "AYS DPM++ 2M (SD1.5)",
+        "hint": "10 ステップの Align Your Steps · SD1.5 専用"
+      },
+      "ays_dpmpp_2m_sdxl": {
+        "label": "AYS DPM++ 2M (SDXL)",
+        "hint": "10 ステップの Align Your Steps · SDXL 専用"
+      }
+    },
+    "cacheStrategies": {
+      "none": {
+        "label": "オフ",
+        "hint": "標準パイプライン — キャッシュなし"
+      },
+      "fbcache": {
+        "label": "First Block Cache",
+        "hint": "DiT で 1.5–2 倍高速化 · クロスプラットフォーム"
+      },
+      "teacache": {
+        "label": "TeaCache",
+        "hint": "FLUX / Hunyuan / LTX / CogVideoX / Mochi 向けにキャリブレーション済み"
+      },
+      "taylorseer": {
+        "label": "TaylorSeer",
+        "hint": "多項式外挿で約 2.4 倍（diffusers 0.38 ネイティブ）"
+      },
+      "pab": {
+        "label": "PAB",
+        "hint": "Pyramid Attention Broadcast — 近いステップ間でアテンションを再利用"
+      }
     }
   },
   "videoStudio": {
@@ -222,8 +396,8 @@
     },
     "subtitle": "開始するには動画モデルを選択してください",
     "actions": {
-      "browseCatalog": "カタログを閲覧",
-      "installedModels": "インストール済みモデル",
+      "browseCatalog": "モデルを探す",
+      "installedModels": "インストール済み",
       "downloadModel": "モデルをダウンロード",
       "loadIntoMemory": "メモリに読み込み",
       "unload": "アンロード",
@@ -235,8 +409,8 @@
       "incomplete": "未完了"
     },
     "noModelsCallout": {
-      "message": "まだ動画モデルがインストールされていません。カタログを閲覧してダウンロードしてください。",
-      "openDiscover": "動画ディスカバーを開く"
+      "message": "まだ動画モデルがインストールされていません。動画 > モデルを開いてダウンロードしてください。",
+      "openDiscover": "動画モデルを開く"
     },
     "stats": {
       "clipDuration": "{value} 秒のクリップ"
@@ -251,7 +425,8 @@
     "prompt": {
       "label": "プロンプト",
       "placeholder": "夜明けの霧の松林を映した映画的なドローンショット...",
-      "ltxShortWarning": "LTX-Video は詳細なプロンプト(~50-100 ワード)で最良の結果を出します。短いプロンプト(「藁を食べる漫画ラマ」)はモデルを十分に条件付けせず、ドリフトする傾向があります。Lightricks は最初にアクションを書き、その後に視覚的な詳細、ライティング、カメラの向きを加えることを推奨しています。"
+      "ltxShortWarning": "LTX-Video は詳細なプロンプト(~50-100 ワード)で最良の結果を出します。短いプロンプト(「藁を食べる漫画ラマ」)はモデルを十分に条件付けせず、ドリフトする傾向があります。Lightricks は最初にアクションを書き、その後に視覚的な詳細、ライティング、カメラの向きを加えることを推奨しています。",
+      "soundHint": "このモデルは音も生成し、音はプロンプトに従います。雪を踏む足音、木々を渡る風、低いエンジン音のように音も書いてください。"
     },
     "negativePrompt": {
       "tooltip": "モデルに避けるべきものを伝えます。一般的なプロンプトが事前に入力されており、ほとんどの動画モデル向けにチューニングされています — モデル固有の好みがあればクリアまたは編集してください。具体性は通常、害よりも益をもたらします。",
@@ -289,7 +464,8 @@
       "guidanceTooltip": "モデルがプロンプトにどれだけ強く従うか。低すぎ = プロンプトを無視、高すぎ = 硬直または歪んだ出力。推奨:LTX-Video ≈ 3、Wan ≈ 5、HunyuanVideo ≈ 6。プロンプトの「ネガティブ」方向は上のネガティブプロンプトから来ます。",
       "guidanceLtxWarning": "LTX-Video はフローマッチングモデル — CFG が ~3.5 を超えると過飽和となり、ぼやけた / 虹色の出力を生成します。最もクリーンな結果を得るには 3 に下げてください。",
       "randomSeed": "ランダムシード",
-      "seedPlaceholder": "シード(整数)"
+      "seedPlaceholder": "シード(整数)",
+      "maxPixelsNote": "{name} が 1 フレームあたり描画できるのは最大 {megapixels} メガピクセルです。このサイズは縦横比を保ったまま縮小されます。"
     },
     "clipLength": {
       "line": "クリップ長:{seconds} 秒({frames} フレーム ÷ {fps} fps)"
@@ -346,7 +522,51 @@
       "reasonCaution": "モデルは約 {model} GB の常駐を必要とします。{platform}(合計 {total} GB)では、これは保守的な快適目標(約 {comfort} GB)を超えていますが、推定ワーキングセット(約 {working} GB)以下です。生成は収まるはずですが、不安定になった場合は設定を下げてください。"
     },
     "disabledHint": "生成は無効:{reason}",
-    "willLoadHint": "次の生成時に選択されたモデルがメモリに読み込まれます。大きなバリアントの初回読み込みは 1 分程度かかることがあります。"
+    "willLoadHint": "次の生成時に選択されたモデルがメモリに読み込まれます。大きなバリアントの初回読み込みは 1 分程度かかることがあります。",
+    "cacheStrategies": {
+      "none": {
+        "label": "オフ",
+        "hint": "標準パイプライン — キャッシュなし"
+      },
+      "fbcache": {
+        "label": "First Block Cache",
+        "hint": "DiT で 1.5–2 倍高速化 · クロスプラットフォーム"
+      },
+      "teacache": {
+        "label": "TeaCache",
+        "hint": "FLUX / Hunyuan / LTX / CogVideoX / Mochi 向けにキャリブレーション済み"
+      },
+      "taylorseer": {
+        "label": "TaylorSeer",
+        "hint": "多項式外挿で約 2.4 倍（diffusers 0.38 ネイティブ）"
+      },
+      "pab": {
+        "label": "PAB",
+        "hint": "Pyramid Attention Broadcast — 近いステップ間でアテンションを再利用"
+      }
+    },
+    "quality": {
+      "draft": {
+        "label": "ドラフト",
+        "sub": "20 ステップ"
+      },
+      "standard": {
+        "label": "標準",
+        "sub": "30 ステップ"
+      },
+      "high": {
+        "label": "高",
+        "sub": "40 ステップ"
+      },
+      "max": {
+        "label": "最大",
+        "sub": "50 ステップ"
+      }
+    },
+    "sound": {
+      "badge": "サウンド",
+      "badgeTooltip": "このクリップには音声があります。プレーヤーの音量コントロールでオンにしてください。"
+    }
   },
   "imageGallery": {
     "subtitle": {
@@ -355,7 +575,7 @@
     },
     "actions": {
       "studio": "スタジオ",
-      "installedModels": "インストール済みモデル"
+      "installedModels": "インストール済み"
     },
     "hero": {
       "eyebrow": "保存された出力",
@@ -409,7 +629,7 @@
     "actions": {
       "autoPlay": "自動再生",
       "openStudio": "スタジオを開く",
-      "installedModels": "インストール済みモデル"
+      "installedModels": "インストール済み"
     },
     "empty": {
       "body": "動画出力はまだありません。スタジオでモデルを読み込んでクリップを生成すると、完了したレンダーがここに表示されます。",
@@ -430,7 +650,259 @@
       },
       "expand": "展開",
       "revealFile": "ファイルを表示",
-      "delete": "削除"
+      "delete": "削除",
+      "soundOn": "音声をオンにする",
+      "soundOff": "ミュート"
+    }
+  },
+  "voice": {
+    "pack": {
+      "title": "音声パック",
+      "installed": "インストール済み",
+      "notInstalled": "未インストール",
+      "about": "音声認識と音声合成は、このコンピューター上の専用環境で動作します（約 2 GB、ダウンロードするモデルは別）。オンラインには何も送信されません。",
+      "cancel": "キャンセル",
+      "update": "音声パックを更新",
+      "install": "音声パックをインストール",
+      "reinstall": "修復 / 再インストール",
+      "done": "音声パックをインストールしました。",
+      "log": "インストールログ",
+      "updateFeatures": "チャットの音声通話と文字起こしの話者区別のために音声パックを更新してください（約 40 MB のモデル、1〜2 分）。"
+    },
+    "models": {
+      "recommended": "おすすめ",
+      "downloaded": "ダウンロード済み",
+      "use": "音声入力に使用",
+      "download": "ダウンロード",
+      "firstUse": "ここでダウンロードしなくても、初回使用時にダウンロードされます。",
+      "title": "音声",
+      "sttTitle": "音声認識モデル",
+      "sttSubtitle": "チャットのマイクと Voice Studio で使用されます。"
+    },
+    "voices": {
+      "title": "ボイス",
+      "subtitle": "Kokoro: 9 言語・54 種類のボイス。チャットの読み上げに使うものを選んでください。",
+      "needsChinese": "音声パックで中国語（普通話）のボイスにチェックを入れてください。",
+      "notYet": "このコンピューターではまだ利用できません。",
+      "useVoice": "このボイスを使用",
+      "preview": "試聴"
+    },
+    "settings": {
+      "title": "音声設定",
+      "autoSend": "音声入力が終わったらすぐにメッセージを送信",
+      "autoRead": "チャットの返信が完了したら毎回読み上げる",
+      "language": "音声入力の言語",
+      "languageHint": "Whisper はこの設定を使用し、Parakeet は言語を自動で判別します。",
+      "speed": "読み上げ速度",
+      "idle": "アイドル後に音声メモリを解放（分。0 = 解放しない）",
+      "workerRunning": "音声モデルは読み込み済みです（プロセス {pid}）。",
+      "workerStopped": "音声モデルは読み込まれていません。",
+      "unload": "今すぐアンロード",
+      "silence": "音声通話: 発話の終わりとみなす無音時間",
+      "silenceHint": "短いほど速く応答し、長いほど考える間を取れます。",
+      "bargeIn": "音声通話: 話しかけてモデルを中断する"
+    },
+    "offline": "バックエンドを待っています…",
+    "copy": "コピー",
+    "save": "ギャラリーに保存",
+    "transcribe": {
+      "title": "文字起こし",
+      "subtitle": "録音するか、音声または動画ファイルをドロップ",
+      "model": "モデル",
+      "language": "言語",
+      "hint": "ボタンをクリックして録音するか、ここにファイルをドロップしてください。",
+      "choose": "ファイルを選択",
+      "took": "{s} 秒で文字起こし",
+      "placeholder": "文字起こしの結果がここに表示されます。編集もできます。",
+      "segments": "タイムスタンプ（{n}）",
+      "tooBig": "{name} は 500 MB を超えています。",
+      "recordingName": "録音",
+      "subtitleQueue": "録音するか、音声・動画ファイルをドロップ",
+      "translateNeedsWhisper": "英語への翻訳には Whisper Small か Whisper Base が必要です。",
+      "translate": "英語に翻訳",
+      "speakers": "話者を区別",
+      "speakerCount": "話者の人数",
+      "speakersAuto": "自動で判定",
+      "speakersN": "{n} 人",
+      "speakersNeedUpdate": "話者の区別には音声パックの更新が必要です。",
+      "hintQueue": "録音するか、ここにファイルをドロップ（複数同時も可）。",
+      "chooseFiles": "ファイルを選択"
+    },
+    "stopRecording": "録音を停止",
+    "record": "録音",
+    "transcribing": "文字起こし中",
+    "cancel": "キャンセル",
+    "sendToChat": "チャットに送る",
+    "copied": "コピーしました",
+    "saved": "保存しました",
+    "speak": {
+      "title": "読み上げ",
+      "subtitle": "テキストを音声に変換",
+      "placeholder": "テキストを入力または貼り付けてください。Markdown やコードは読み上げ前に整えられます。",
+      "voice": "ボイス",
+      "speed": "速度",
+      "generating": "生成中…",
+      "generate": "音声を生成",
+      "readNow": "今すぐ読み上げ",
+      "download": "WAV をダウンロード",
+      "subtitleLong": "テキストを音声にします。空行で段落が変わり、[pause] で間を入れます。",
+      "preview": "この声を試聴",
+      "listen": "試聴",
+      "progress": "{total} 中 {done} 番目",
+      "generateParts": "音声を生成（{n} パート）",
+      "encoding": "エンコード中…"
+    },
+    "stop": "停止",
+    "studio": {
+      "title": "Voice Studio",
+      "needsPack": "音声機能はこのコンピューター上で動作し、音声パック（約 2 GB）が必要です。音声 > モデル から一度だけインストールしてください。",
+      "openModels": "音声モデルを開く"
+    },
+    "savedToLibrary": "ライブラリに保存しました",
+    "saveToLibrary": "ライブラリに保存",
+    "queue": {
+      "queued": "待機中",
+      "running": "文字起こし中",
+      "doneIn": "{s} 秒で完了",
+      "done": "完了",
+      "cancelled": "キャンセル済み",
+      "failed": "失敗",
+      "title": "キュー",
+      "open": "開く",
+      "remove": "削除"
+    },
+    "editor": {
+      "heading": "文字起こし",
+      "translated": "英語に翻訳済み",
+      "subtitle": "時刻や単語をクリックするとそこから再生、行をダブルクリックで編集できます。",
+      "none": "完了した文字起こしはここで開き、ライブラリに保存されます。",
+      "speaker": "話者 {n}",
+      "title": "タイトル",
+      "saving": "保存中…",
+      "saveFailed": "未保存",
+      "savedToLibrary": "ライブラリに保存しました",
+      "renameSpeaker": "話者 {n} の名前",
+      "empty": "音声が見つかりませんでした。",
+      "editHint": "ダブルクリックで編集",
+      "edit": "行を編集",
+      "export": "書き出し"
+    },
+    "handoff": {
+      "summary": "チャットで要約",
+      "actions": "アクション項目",
+      "notes": "議事録",
+      "summaryPrompt": "この文字起こしを短い段落いくつかで要約してください。",
+      "actionsPrompt": "この文字起こしからアクション項目を挙げてください。誰が何をするか、期限が言及されていればそれも。",
+      "notesPrompt": "この文字起こしの議事録を作成してください：参加者、話し合った議題、決定事項、アクション項目。"
+    },
+    "library": {
+      "speakers": "話者 {n} 人",
+      "select": "{title} を選択",
+      "transcript": "文字起こし",
+      "speech": "音声",
+      "play": "再生",
+      "working": "処理中…",
+      "originalAudio": "音声（{ext}）",
+      "delete": "削除",
+      "confirmDelete": "この項目と音声を削除しますか？元に戻せません。",
+      "confirmDeleteMany": "{n} 件の項目と音声を削除しますか？元に戻せません。",
+      "all": "すべて",
+      "transcripts": "文字起こし",
+      "speechFilter": "音声",
+      "title": "ボイスライブラリ",
+      "subtitle": "このコンピューターに保存された文字起こしと音声",
+      "search": "タイトルと本文を検索",
+      "filter": "表示",
+      "deleteSelected": "選択項目を削除（{n}）",
+      "loading": "読み込み中…",
+      "noMatch": "一致する項目はありません。",
+      "empty": "まだ何もありません。Voice Studio で作った文字起こしと、保存した音声がここに保存されます。"
+    },
+    "languages": {
+      "auto": "自動検出"
+    },
+    "lane": {
+      "mlx": "Apple Silicon：MLX 上の Parakeet と Whisper、Kokoro の音声",
+      "cuda": "NVIDIA GPU：CUDA 上の Whisper、Kokoro の音声",
+      "nvidia": "Whisper（CUDA ライブラリはインストール時に追加されます）、Kokoro の音声",
+      "cpu": "CPU 上の Whisper、Kokoro の音声"
+    },
+    "micError": {
+      "blockedMac": "マイクへのアクセスがブロックされています。システム設定 > プライバシーとセキュリティ > マイク で ChaosEngineAI を許可してから、もう一度お試しください。",
+      "blockedWindows": "マイクへのアクセスがブロックされています。設定 > プライバシーとセキュリティ > マイク でデスクトップ アプリのマイク使用を許可してから、もう一度お試しください。",
+      "blocked": "マイクへのアクセスがブロックされています。デスクトップのプライバシー設定と、ほかのアプリがマイクを使用していないかを確認してください。",
+      "notFound": "マイクが見つかりません。マイクを接続してからもう一度お試しください。",
+      "inUse": "マイクがほかのアプリで使用中か、開けませんでした。",
+      "unsupported": "このウィンドウではマイクを使用できません（メディアデバイスに対応していません）。",
+      "generic": "マイクを開けませんでした。"
+    }
+  },
+  "residentChatModelNote": "読み込み済みのチャットモデルがこのメモリのうち約 {gb} GB を使用しています。アンロードするとその分が解放されます。",
+  "mediaStudioBoosters": {
+    "title": "パフォーマンス向上機能",
+    "forModel": "{model} 向け",
+    "selectedModelFallback": "選択中のモデル"
+  },
+  "torchUpgradePill": {
+    "attempt": {
+      "rollbackPrepare": "既存の torch をロールバック用ディレクトリに移動",
+      "install": "pip install torch（新バージョン）",
+      "deps": "pip install torch（間接的な依存関係）",
+      "constraint": "constraints.txt で torch を固定",
+      "rebuildPackage": "pip install {package}（--force-reinstall）",
+      "rebuild": "ABI に依存するパッケージを再ビルド",
+      "verify": "サブプロセスで torch.cuda.is_available() を検証",
+      "cleanup": "古いロールバック用ディレクトリを整理",
+      "rollbackRestore": "ロールバックから以前の torch を復元",
+      "step": "ステップ"
+    },
+    "available": "Torch のアップグレードが利用可能:",
+    "starting": "開始中…",
+    "upgrade": "torch をアップグレード",
+    "dismiss": "閉じる",
+    "willRebuild": "{count, plural, other {ABI に依存する # 個のパッケージ}}も再ビルドします",
+    "abiExplainer": "Torch の {type} アップデートは C++ ABI を壊すため、これらのパッケージの wheel は、新しい torch に合わせて再インストールするまで読み込めません:",
+    "rollbackLead": "アップグレードの検証に失敗した場合、以前の torch",
+    "rollbackTail": "は、隣接するロールバック用ディレクトリから自動的に復元されます — 再ダウンロードは不要です。",
+    "whatHappens": "アップグレードすると何が起こりますか？",
+    "patchBumpExplainer": "パッチ更新では torch の C++ ABI が変わらないため、torch の wheel だけが再インストールされます。現在の torch は先に隣接するロールバック用ディレクトリへ移動され、新しい wheel が CUDA の検証に失敗した場合は、以前のものが自動的に復元されます。「バックエンドを再起動」すると、新しい wheel が有効になります。",
+    "upgrading": "torch をアップグレード中",
+    "complete": "Torch のアップグレードが完了",
+    "failed": "Torch のアップグレードに失敗",
+    "restarting": "再起動中…",
+    "restartToActivate": "有効化するにはバックエンドを再起動してください",
+    "rolledBack": "ロールバックから以前の torch を復元しました — 生成は以前のバージョンで続行されます。",
+    "rollbackKeptLead": "ロールバック用ディレクトリの保存場所:",
+    "rollbackKeptTail": "（手動復旧用）。",
+    "close": "閉じる",
+    "installLog": "インストールログ（{count, plural, other {# ステップ}}）"
+  },
+  "recommended": {
+    "title": "このマシンの推奨設定",
+    "measured": "実測",
+    "estimated": "推定",
+    "measuredTitle": "{machine} で計測しました。",
+    "estimatedTitle": "モデルカード、上流のドキュメント、または類似のマシンに基づく値で、このハードウェアでは計測していません。",
+    "measuredOn": "{machine} で計測",
+    "applyAll": "推奨設定を適用",
+    "allApplied": "すべて適用中",
+    "inUse": "適用中",
+    "use": "適用",
+    "on": "オン",
+    "off": "オフ",
+    "cacheValue": "{name}、しきい値 {threshold}",
+    "labels": {
+      "qualityPreset": "品質プリセット",
+      "steps": "ステップ",
+      "guidance": "ガイダンス",
+      "sampler": "サンプラー",
+      "size": "サイズ",
+      "numFrames": "フレーム",
+      "fps": "FPS",
+      "cache": "拡散キャッシュ",
+      "cfgDecay": "CFG ディケイ",
+      "previewVae": "プレビュー VAE",
+      "fp8LayerwiseCasting": "FP8 レイヤーワイズ"
     }
   }
 }

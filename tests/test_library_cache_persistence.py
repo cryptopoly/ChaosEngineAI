@@ -109,7 +109,7 @@ class SaveLoadTests(unittest.TestCase):
 
 class StateIntegrationTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.tmp = tempfile.TemporaryDirectory()
+        self.tmp = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
         tmpdir = Path(self.tmp.name)
         self.cache_path = tmpdir / "library_cache.json"
         self.kwargs = dict(

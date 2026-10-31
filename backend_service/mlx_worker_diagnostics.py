@@ -32,6 +32,30 @@ from backend_service.mlx_worker_io import _emit
 _UNSUPPORTED_QUANT_ALGOS = {"NVFP4", "NVINT4"}
 
 
+_FLINT_USE_GGUF = (
+    "Use the Flint INT4 GGUF (RecursiveSI/flint-int4-gguf) with the llama.cpp backend instead."
+)
+
+
+def _reject_unloadable_flint(model_dir: Path) -> None:
+    """Say why a Flint checkpoint cannot load on MLX, instead of 'Model type flint not supported'."""
+    if (model_dir / "flint-int4.json").exists():
+        raise RuntimeError(
+            "Recursive's MLX INT4 build of Flint stores its embeddings in a layout only their own "
+            "rec engine reads, so MLX cannot load it. " + _FLINT_USE_GGUF
+        )
+    shipped = [
+        name
+        for name in ("mlx_lm", "mlx_vlm")
+        if importlib.util.find_spec(f"{name}.models.flint") is not None
+    ]
+    if not shipped:
+        raise RuntimeError(
+            "The installed MLX packages do not include the Flint architecture "
+            "(mlx-vlm 0.7.10 or newer does). " + _FLINT_USE_GGUF
+        )
+
+
 def _reject_unsupported_quant(model_path: str) -> None:
     """Raise early if the model uses a quantisation format MLX cannot handle."""
     cfg_path = Path(model_path) / "config.json"
@@ -40,6 +64,8 @@ def _reject_unsupported_quant(model_path: str) -> None:
     try:
         with open(cfg_path) as f:
             cfg = json.load(f)
+        if cfg.get("model_type") == "flint":
+            _reject_unloadable_flint(Path(model_path))
         qcfg = cfg.get("quantization_config") or {}
         algo = qcfg.get("quant_algo", "")
         method = qcfg.get("quant_method", "")

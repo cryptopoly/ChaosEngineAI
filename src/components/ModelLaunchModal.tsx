@@ -6,6 +6,7 @@ import type { LaunchPreferences, ModelCapabilities, PreviewMetrics, StrategyInst
 import type { ChatModelOption } from "../types/chat";
 import type { MtplxJobState } from "../api";
 import { candidateKeys } from "./runtimeSupport";
+import { tensorfoldLaunchInfoFor, type TensorfoldLaunchControls } from "./tensorfoldSupport";
 
 /**
  * Phase 2.11: typed capability badges for the picker. Mirrors the
@@ -19,13 +20,13 @@ const CAPABILITY_BADGES: Array<{
   titleKey: string;
   titleDefault: string;
 }> = [
-  { flag: "supportsVision", labelKey: "capability.vision.label", labelDefault: "Vision", titleKey: "capability.vision.title", titleDefault: "Model accepts image input" },
-  { flag: "supportsTools", labelKey: "capability.tools.label", labelDefault: "Tools", titleKey: "capability.tools.title", titleDefault: "Model supports tool / function calling" },
-  { flag: "supportsReasoning", labelKey: "capability.reasoning.label", labelDefault: "Reasoning", titleKey: "capability.reasoning.title", titleDefault: "Model emits a reasoning trace" },
-  { flag: "supportsCoding", labelKey: "capability.code.label", labelDefault: "Code", titleKey: "capability.code.title", titleDefault: "Model is tuned for code generation" },
-  { flag: "supportsAgents", labelKey: "capability.agents.label", labelDefault: "Agents", titleKey: "capability.agents.title", titleDefault: "Model is tuned for multi-step agentic flows" },
-  { flag: "supportsAudio", labelKey: "capability.audio.label", labelDefault: "Audio", titleKey: "capability.audio.title", titleDefault: "Model accepts audio input" },
-  { flag: "supportsVideo", labelKey: "capability.video.label", labelDefault: "Video", titleKey: "capability.video.title", titleDefault: "Model accepts video input" },
+  { flag: "supportsVision", labelKey: "modelLaunchModal.capability.vision.label", labelDefault: "Vision", titleKey: "modelLaunchModal.capability.vision.title", titleDefault: "Model accepts image input" },
+  { flag: "supportsTools", labelKey: "modelLaunchModal.capability.tools.label", labelDefault: "Tools", titleKey: "modelLaunchModal.capability.tools.title", titleDefault: "Model supports tool / function calling" },
+  { flag: "supportsReasoning", labelKey: "modelLaunchModal.capability.reasoning.label", labelDefault: "Reasoning", titleKey: "modelLaunchModal.capability.reasoning.title", titleDefault: "Model emits a reasoning trace" },
+  { flag: "supportsCoding", labelKey: "modelLaunchModal.capability.code.label", labelDefault: "Code", titleKey: "modelLaunchModal.capability.code.title", titleDefault: "Model is tuned for code generation" },
+  { flag: "supportsAgents", labelKey: "modelLaunchModal.capability.agents.label", labelDefault: "Agents", titleKey: "modelLaunchModal.capability.agents.title", titleDefault: "Model is tuned for multi-step agentic flows" },
+  { flag: "supportsAudio", labelKey: "modelLaunchModal.capability.audio.label", labelDefault: "Audio", titleKey: "modelLaunchModal.capability.audio.title", titleDefault: "Model accepts audio input" },
+  { flag: "supportsVideo", labelKey: "modelLaunchModal.capability.video.label", labelDefault: "Video", titleKey: "modelLaunchModal.capability.video.title", titleDefault: "Model accepts video input" },
 ];
 
 function CapabilityBadges({ capabilities }: { capabilities: ModelCapabilities | null | undefined }) {
@@ -70,6 +71,9 @@ export interface ModelLaunchModalProps {
   onInstallMtplx?: () => void;
   installingMtplx?: boolean;
   mtplxJob?: MtplxJobState | null;
+  /** TensorFold engine state; the launch settings show its block for the
+   * selected checkpoint only when TensorFold serves it. */
+  tensorfold?: TensorfoldLaunchControls;
   /** FU-056 follow-up: forwarded to ``RuntimeControls`` so the MTPLX
    * block hides on non-Apple-Silicon hosts where MTPLX can't run. */
   isAppleSilicon?: boolean;
@@ -103,6 +107,7 @@ export function ModelLaunchModal({
   onInstallMtplx,
   installingMtplx,
   mtplxJob,
+  tensorfold,
   isAppleSilicon = false,
   onSelectedKeyChange,
   onSearchChange,
@@ -123,6 +128,17 @@ export function ModelLaunchModal({
     setShowList(!collapseOnOpen);
   }, [open, collapseOnOpen]);
 
+  // The slider already caps at the model's own context window, but the stored
+  // setting kept an earlier, larger value, so the memory estimate below was
+  // computed for (say) 262K tokens on a 32K model and warned about RAM wrongly.
+  useEffect(() => {
+    if (!open) return;
+    const maxContext = (options.find((option) => option.key === selectedKey) ?? options[0])?.maxContext;
+    if (maxContext && settings.contextTokens > maxContext) {
+      onSettingChange("contextTokens", maxContext);
+    }
+  }, [open, options, selectedKey, settings.contextTokens, onSettingChange]);
+
   if (!open) return null;
 
   const searchLower = search.toLowerCase();
@@ -135,6 +151,11 @@ export function ModelLaunchModal({
   const selectedOption = options.find((option) => option.key === selectedKey) ?? options[0] ?? null;
   const resolvedSelectedKey = selectedOption?.key ?? "";
   const listVisible = showList || !selectedOption || search.length > 0;
+
+  const tensorfoldLaunch = tensorfoldLaunchInfoFor(tensorfold, [
+    selectedOption?.canonicalRepo,
+    selectedOption?.modelRef,
+  ]);
 
   const mtplxModelSupported = (() => {
     if (!mtplxSystemInfo?.supportedModels?.length) return false;
@@ -258,6 +279,10 @@ export function ModelLaunchModal({
               onInstallMtplx={onInstallMtplx}
               installingMtplx={installingMtplx}
               mtplxJob={mtplxJob}
+              tensorfoldInfo={tensorfoldLaunch}
+              onInstallTensorfold={tensorfold?.onInstall}
+              installingTensorfold={tensorfold?.installing}
+              tensorfoldJob={tensorfold?.job}
               isAppleSilicon={isAppleSilicon}
               compact
             />

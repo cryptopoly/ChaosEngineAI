@@ -92,6 +92,15 @@ class BackendCapabilities:
     vllmVersion: str | None = None
     mtplxAvailable: bool = False
     mtplxPythonPath: str | None = None
+    # TensorFold engine: exact speculative decoding for the model families
+    # it has kernels for, served from an isolated venv at
+    # ``~/.chaosengine/tensorfold-venv`` (Apple Silicon only).
+    tensorfoldAvailable: bool = False
+    tensorfoldPythonPath: str | None = None
+    tensorfoldVersion: str | None = None
+    # Optional pip extras installed in that venv: "vision" (image input) and
+    # "grammar" (structured output). Read from the installer's version file.
+    tensorfoldExtras: tuple[str, ...] = ()
     # FU-047: GGUF MTP speculative decoding via llama.cpp PR #22673. Set
     # when the resolved llama-server binary advertises --spec-type in its
     # help text. The UI keys an MTP affordance for GGUF models off this
@@ -147,6 +156,10 @@ class BackendCapabilities:
             "vllmVersion": self.vllmVersion,
             "mtplxAvailable": self.mtplxAvailable,
             "mtplxPythonPath": self.mtplxPythonPath,
+            "tensorfoldAvailable": self.tensorfoldAvailable,
+            "tensorfoldPythonPath": self.tensorfoldPythonPath,
+            "tensorfoldVersion": self.tensorfoldVersion,
+            "tensorfoldExtras": list(self.tensorfoldExtras),
             "ggufMtpAvailable": self.ggufMtpAvailable,
             "nunchakuAvailable": self.nunchakuAvailable,
             "nunchakuVersion": self.nunchakuVersion,
@@ -198,6 +211,13 @@ class LoadedModelInfo:
     # flag accordingly. The catalog `tags` keep "vision" so the UI can
     # still surface "this model supports vision once mmproj loads".
     visionEnabled: bool = False
+    # The context the load asked for, before it was clamped to the model's
+    # maximum; the app compares its launch settings against this.
+    requestedContextTokens: int | None = None
+    # The tree budget the load asked for. The worker drops it for targets
+    # DDTree cannot verify, and the app compares its launch settings
+    # against what it asked for, not what ran.
+    requestedTreeBudget: int | None = None
 
     def to_dict(self) -> dict[str, Any]:
         # Phase 2.11: include resolved capabilities so the frontend can
@@ -227,6 +247,7 @@ class LoadedModelInfo:
             "fusedAttention": self.fusedAttention,
             "fitModelInMemory": self.fitModelInMemory,
             "contextTokens": self.contextTokens,
+            "requestedContextTokens": self.requestedContextTokens,
             "loadedAt": self.loadedAt,
             "path": self.path,
             "runtimeTarget": self.runtimeTarget,
@@ -234,6 +255,7 @@ class LoadedModelInfo:
             "speculativeDecoding": self.speculativeDecoding,
             "dflashDraftModel": self.dflashDraftModel,
             "treeBudget": self.treeBudget,
+            "requestedTreeBudget": self.requestedTreeBudget,
             "visionEnabled": self.visionEnabled,
             "capabilities": capabilities,
         }
@@ -255,6 +277,10 @@ class GenerationResult:
     fp16_layers: int | None = None
     speculative_decoding: bool | None = None
     tree_budget: int | None = None
+    # Structured OpenAI-style tool calls, when the engine's server parsed
+    # them itself (TensorFold does). The agent loop reads this before it
+    # falls back to scanning ``text`` for ``<tool_call>`` blocks.
+    tool_calls: list[dict[str, Any]] | None = None
 
     def to_metrics(self) -> dict[str, Any]:
         d: dict[str, Any] = {

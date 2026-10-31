@@ -13,6 +13,7 @@ import { ModelLaunchModal } from "../../../components/ModelLaunchModal";
 import type { LaunchPreferences, StrategyInstallLog, SystemStats } from "../../../types";
 import type { ChatModelOption } from "../../../types/chat";
 import type { MtplxJobState } from "../../../api";
+import type { TensorfoldLaunchControls } from "../../../components/tensorfoldSupport";
 import { compareTargetLabels, type CompareTarget, cloneLaunchSettings, useLaunchPreview } from "../CompareView";
 
 interface ChallengePickerModalProps {
@@ -32,6 +33,7 @@ interface ChallengePickerModalProps {
   onInstallMtplx?: () => void;
   installingMtplx?: boolean;
   mtplxJob?: MtplxJobState | null;
+  tensorfold?: TensorfoldLaunchControls;
   /** FU-056 follow-up: hide MTPLX block on non-Apple-Silicon hosts. */
   isAppleSilicon?: boolean;
   onConfirm: (selectedKey: string, settings: LaunchPreferences) => void;
@@ -56,6 +58,7 @@ export function ChallengePickerModal({
   onInstallMtplx,
   installingMtplx,
   mtplxJob,
+  tensorfold,
   isAppleSilicon = false,
   onConfirm,
   onClose,
@@ -110,6 +113,7 @@ export function ChallengePickerModal({
       onInstallMtplx={onInstallMtplx}
       installingMtplx={installingMtplx}
       mtplxJob={mtplxJob}
+      tensorfold={tensorfold}
       isAppleSilicon={isAppleSilicon}
       onSelectedKeyChange={setDraftKey}
       onSearchChange={setSearch}

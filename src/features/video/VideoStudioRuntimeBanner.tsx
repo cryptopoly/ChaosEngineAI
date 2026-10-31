@@ -22,6 +22,7 @@ import type {
 } from "../../api";
 import type { VideoModelVariant, VideoRuntimeStatus } from "../../types";
 import type { NativeBackendStatus } from "../../types/server";
+import type { SystemStats } from "../../types/system";
 import { MediaStudioBoosters } from "../../components/MediaStudioBoosters";
 
 
@@ -69,6 +70,8 @@ export interface VideoStudioRuntimeBannerProps {
    * backends + early-render states collapse cleanly. */
   selectedVideoVariant?: VideoModelVariant | null;
   nativeBackends?: NativeBackendStatus;
+  /** Host description; the CUDA boosters hide on hosts without an NVIDIA GPU. */
+  hostSystem?: Pick<SystemStats, "platform" | "arch" | "gpuVramTotalGb">;
 }
 
 
@@ -110,6 +113,7 @@ export function VideoStudioRuntimeBanner(props: VideoStudioRuntimeBannerProps) {
     onInstallGpuRuntime,
     selectedVideoVariant,
     nativeBackends,
+    hostSystem,
   } = props;
 
   return (
@@ -289,6 +293,7 @@ export function VideoStudioRuntimeBanner(props: VideoStudioRuntimeBannerProps) {
         <MediaStudioBoosters
           selectedVariant={selectedVideoVariant ?? null}
           nativeBackends={nativeBackends}
+          hostSystem={hostSystem}
         />
       ) : null}
       {isLongLiveVariant && longLiveStatus && !longLiveStatus.realGenerationAvailable ? (

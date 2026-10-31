@@ -141,7 +141,7 @@ class LlamaCppCommandTests(unittest.TestCase):
             )
 
         self.assertNotIn("--spec-type", command)
-        self.assertIn("requires llama-server", runtime_note or "")
+        self.assertIn("newer llama-server", runtime_note or "")
 
     def test_build_command_skips_mtp_for_non_mtp_repo(self):
         engine = LlamaCppEngine(self._capabilities())
@@ -163,8 +163,93 @@ class LlamaCppCommandTests(unittest.TestCase):
                 model_ref="lmstudio-community/Qwen3.6-27B-GGUF",
             )
 
-        # Standard non-MTP GGUF — no spec-type flag even when speculativeDecoding=True
-        self.assertNotIn("--spec-type", command)
+        # Standard non-MTP GGUF with no drafter beside it — FU-089 falls
+        # back to draft-free ngram-mod rather than a draft-mtp head.
+        idx = command.index("--spec-type")
+        self.assertEqual(command[idx + 1], "ngram-mod")
+        self.assertNotIn("--model-draft", command)
+
+    # ----- FU-089: drafter sidecars (DFlash / DFlash 2 / EAGLE-3 / MTP) -----
+
+    def _build_with_dir(self, files: list[str], main: str, supports=lambda _b, _o: True):
+        import tempfile
+
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        for name in files:
+            Path(tmp.name, name).write_bytes(b"x")
+        engine = LlamaCppEngine(self._capabilities())
+        with (
+            mock.patch("backend_service.inference._find_open_port", return_value=9999),
+            mock.patch("backend_service.inference.llama_cpp_engine._llama_server_supports", side_effect=supports),
+        ):
+            command, note, _, _ = engine._build_command(
+                path=str(Path(tmp.name, main)),
+                runtime_target="ggml-org/Qwen3.8-27B-GGUF",
+                cache_strategy="native",
+                cache_bits=0,
+                context_tokens=8192,
+                fit_enabled=True,
+                is_fallback=False,
+                speculative_decoding=True,
+                canonical_repo="ggml-org/Qwen3.8-27B-GGUF",
+                model_ref="ggml-org/Qwen3.8-27B-GGUF",
+            )
+        return command, note, tmp.name
+
+    def test_dflash_sidecar_wired_with_block_draft(self):
+        command, note, root = self._build_with_dir(
+            ["Qwen3.8-27B-Q8_0.gguf", "dflash-Qwen3.8-27B-Q8_0.gguf", "dflash-Qwen3.8-27B-BF16.gguf"],
+            "Qwen3.8-27B-Q8_0.gguf",
+        )
+        self.assertEqual(command[command.index("--model") + 1], str(Path(root, "Qwen3.8-27B-Q8_0.gguf")))
+        # Closest quant to the model (Q8_0), not the BF16 one.
+        self.assertEqual(command[command.index("--model-draft") + 1], str(Path(root, "dflash-Qwen3.8-27B-Q8_0.gguf")))
+        self.assertEqual(command[command.index("--spec-type") + 1], "draft-dflash")
+        self.assertEqual(command[command.index("--spec-draft-n-max") + 1], "15")
+        self.assertIn("draft-dflash", note or "")
+
+    def test_mtp_sidecar_outranks_dflash(self):
+        command, _note, root = self._build_with_dir(
+            ["M-Q4_K_M.gguf", "dflash-M-Q4_K_M.gguf", "mtp-M-Q4_K_M.gguf"],
+            "M-Q4_K_M.gguf",
+        )
+        self.assertEqual(command[command.index("--spec-type") + 1], "draft-mtp")
+        self.assertEqual(command[command.index("--model-draft") + 1], str(Path(root, "mtp-M-Q4_K_M.gguf")))
+
+    def test_eagle3_sidecar(self):
+        command, _note, _root = self._build_with_dir(["M-Q4_K_M.gguf", "eagle3-M.gguf"], "M-Q4_K_M.gguf")
+        self.assertEqual(command[command.index("--spec-type") + 1], "draft-eagle3")
+
+    def test_sidecar_unsupported_by_binary_falls_back_to_ngram(self):
+        def supports(_b, option):
+            return option != "draft-dflash"
+
+        command, note, _root = self._build_with_dir(
+            ["M-Q8_0.gguf", "dflash-M-Q8_0.gguf"], "M-Q8_0.gguf", supports=supports
+        )
+        self.assertEqual(command[command.index("--spec-type") + 1], "ngram-mod")
+        self.assertNotIn("--model-draft", command)
+        self.assertIn("update-llama-cpp", note or "")
+
+    def test_directory_load_never_picks_a_sidecar_as_the_model(self):
+        import tempfile
+        from backend_service.inference._utils import _resolve_gguf_path
+
+        with tempfile.TemporaryDirectory() as tmp:
+            Path(tmp, "M-Q4_K_M.gguf").write_bytes(b"x" * 10)
+            Path(tmp, "dflash-M-BF16.gguf").write_bytes(b"x" * 100)  # larger
+            Path(tmp, "M-mmproj-F16.gguf").write_bytes(b"x" * 50)
+            self.assertEqual(_resolve_gguf_path(tmp, None), str(Path(tmp, "M-Q4_K_M.gguf")))
+
+    def test_baked_in_mtp_model_name_is_not_a_sidecar(self):
+        # llama.cpp matches sidecar prefixes case-sensitively; the MTP
+        # model file itself must still count as a model.
+        from backend_service.helpers.text_gguf import is_aux_gguf
+
+        self.assertFalse(is_aux_gguf("Qwen3.6-27B-MTP-Q8_0.gguf"))
+        self.assertTrue(is_aux_gguf("mtp-Qwen3.8-27B-Q8_0.gguf"))
+        self.assertTrue(is_aux_gguf("mmproj-F16.gguf"))
 
 
 class MtpGgufDetectionTests(unittest.TestCase):
@@ -334,6 +419,66 @@ class GgufTargetDetectionTests(unittest.TestCase):
         )
 
 
+class LlamaCppToolCallTests(unittest.TestCase):
+    """llama-server parses tool calls itself and returns them structured with
+    empty ``content``. The engine dropped them, so tool use on GGUF models
+    returned an empty answer and never ran the tool."""
+
+    def _engine(self) -> LlamaCppEngine:
+        engine = LlamaCppEngine(LlamaCppCommandTests._capabilities(None))  # type: ignore[arg-type]
+        engine.loaded_model = LoadedModelInfo(
+            ref="LiquidAI/LFM3-1.7B-GGUF", name="LFM3", backend="llama.cpp", source="catalog",
+            engine="llama.cpp", cacheStrategy="native", cacheBits=0, fp16Layers=0,
+            fusedAttention=False, fitModelInMemory=True, contextTokens=4096, loadedAt="now",
+        )
+        engine.process = mock.Mock(poll=mock.Mock(return_value=None))
+        engine.port = 1
+        return engine
+
+    def _generate(self, engine, response, **kwargs):
+        sent = {}
+
+        def fake_http(url, payload=None, timeout=None):
+            sent.update(payload or {})
+            return response
+
+        with mock.patch("backend_service.inference.llama_cpp_engine._http_json", side_effect=fake_http):
+            result = engine.generate(system_prompt=None, max_tokens=64, temperature=0.1, **kwargs)
+        return result, sent
+
+    def test_structured_tool_calls_are_returned(self):
+        response = {"choices": [{"finish_reason": "tool_calls", "message": {"content": "", "tool_calls": [
+            {"id": "abc", "type": "function",
+             "function": {"name": "calculator", "arguments": "{\"expression\":\"1234 * 5678\"}"}},
+        ]}}]}
+        result, _ = self._generate(self._engine(), response, prompt="compute", history=[], tools=[{"type": "function"}])
+        self.assertEqual(result.tool_calls, [{
+            "id": "abc", "type": "function",
+            "function": {"name": "calculator", "arguments": "{\"expression\":\"1234 * 5678\"}"},
+        }])
+
+    def test_a_plain_reply_has_no_tool_calls(self):
+        response = {"choices": [{"message": {"content": "Hello."}}]}
+        result, _ = self._generate(self._engine(), response, prompt="hi", history=[])
+        self.assertIsNone(result.tool_calls)
+        self.assertEqual(result.text, "Hello.")
+
+    def test_follow_up_keeps_the_call_and_result_structured(self):
+        history = [
+            {"role": "user", "text": "compute"},
+            {"role": "assistant", "text": "", "tool_calls": [
+                {"id": "abc", "type": "function", "function": {"name": "calculator", "arguments": "{}"}},
+            ]},
+            {"role": "tool", "text": "7006652", "tool_call_id": "abc", "name": "calculator"},
+        ]
+        response = {"choices": [{"message": {"content": "It is 7,006,652."}}]}
+        _, sent = self._generate(self._engine(), response, prompt="", history=history)
+        messages = sent["messages"]
+        self.assertEqual([m["role"] for m in messages], ["user", "assistant", "tool"])  # no empty user turn
+        self.assertEqual(messages[1]["tool_calls"][0]["id"], "abc")
+        self.assertEqual(messages[2]["tool_call_id"], "abc")
+
+
 class LlamaCppFallbackMetadataTests(unittest.TestCase):
     def _capabilities(self) -> BackendCapabilities:
         return BackendCapabilities(
@@ -417,6 +562,29 @@ class LlamaCppFallbackMetadataTests(unittest.TestCase):
             )
 
         self.assertEqual(loaded.cacheStrategy, "turboquant")
+
+    def test_loaded_model_reports_speculative_decoding_from_the_command(self):
+        """Speed history skips speculative runs, so the flag must be accurate."""
+        for command, expected in (
+            (["llama-server", "--spec-type", "draft-dflash"], True),
+            (["llama-server"], False),
+        ):
+            engine = LlamaCppEngine(self._capabilities())
+            fake_process = mock.Mock()
+            fake_process.poll.return_value = None
+            with (
+                mock.patch.object(engine, "_build_command", return_value=(command, None, False, None)),
+                mock.patch.object(engine, "_wait_for_server", return_value=None),
+                mock.patch.object(engine, "_cleanup_process"),
+                mock.patch("backend_service.inference.subprocess.Popen", return_value=fake_process),
+            ):
+                loaded = engine.load_model(
+                    model_ref="m", model_name="M", canonical_repo=None, source="library",
+                    backend="llama.cpp", path=None, runtime_target="org/m-GGUF",
+                    cache_strategy="native", cache_bits=0, fp16_layers=0, fused_attention=False,
+                    fit_model_in_memory=True, context_tokens=4096, speculative_decoding=True,
+                )
+            self.assertEqual(loaded.speculativeDecoding, expected, command)
 
     def test_successful_gguf_load_reports_fp16_layers_as_ignored(self):
         engine = LlamaCppEngine(self._capabilities())
@@ -643,6 +811,42 @@ class RuntimeControllerWarmPoolTests(unittest.TestCase):
         self.assertEqual(loaded.ref, "model-b")
         self.assertEqual(engine_a.unload_calls, 1)
         self.assertEqual(controller._warm_pool, {})
+
+    def test_loaded_models_are_not_counted_twice_against_free_memory(self):
+        # 20 GB free after headroom, a 10 GB incoming model, a 25 GB model
+        # being parked. The old check compared the parked model (25) with free
+        # memory (20), which already excludes it, and unloaded it.
+        controller = self._controller()
+        engine_a = DummyEngine("A")
+        engine_b = DummyEngine("B")
+        controller._select_engine = mock.Mock(side_effect=[engine_a, engine_b])
+        self._load(controller, "model-a", context_tokens=8192)
+        with (
+            mock.patch.object(RuntimeController, "_target_resident_bytes", return_value=10),
+            mock.patch.object(RuntimeController, "_model_resident_bytes", return_value=25),
+            mock.patch.object(controller, "_memory_budget_bytes", return_value=20),
+        ):
+            self._load(controller, "model-b", context_tokens=8192)
+        self.assertEqual(engine_a.unload_calls, 0)
+        self.assertEqual(len(controller._warm_pool), 1)
+
+    def test_evicting_a_warm_model_counts_the_memory_it_frees(self):
+        controller = self._controller()
+        controller.MAX_WARM_MODELS = 3
+        engines = [DummyEngine(name) for name in ("A", "B", "C")]
+        controller._select_engine = mock.Mock(side_effect=engines)
+        self._load(controller, "model-a", context_tokens=8192)
+        self._load(controller, "model-b", context_tokens=8192)
+        # A is warm, B active. C needs 20; 12 free; evicting A frees 10 -> 22: keep B.
+        with (
+            mock.patch.object(RuntimeController, "_target_resident_bytes", return_value=20),
+            mock.patch.object(RuntimeController, "_model_resident_bytes", return_value=10),
+            mock.patch.object(controller, "_memory_budget_bytes", return_value=12),
+        ):
+            self._load(controller, "model-c", context_tokens=8192)
+        self.assertEqual(engines[0].unload_calls, 1)
+        self.assertEqual(engines[1].unload_calls, 0)
+        self.assertEqual(len(controller._warm_pool), 1)
 
     def test_clear_warm_pool_unloads_every_parked_engine(self):
         controller = self._controller()
@@ -890,3 +1094,171 @@ class CacheTypeValidationTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class LlamaStreamReasoningTests(unittest.TestCase):
+    """llama-server's parsed reasoning channel reaches the chat stream."""
+
+    def _stream(self, deltas):
+        engine = LlamaCppEngine(BackendCapabilities(
+            pythonExecutable="python", mlxAvailable=False, mlxLmAvailable=False, mlxUsable=False,
+            ggufAvailable=True, llamaServerPath="/bin/llama-server",
+        ))
+        engine.port = 1
+        engine.process = mock.Mock(poll=mock.Mock(return_value=None))
+        engine.loaded_model = LoadedModelInfo(
+            ref="org/model", name="m", backend="llama.cpp", source="library", engine="llama.cpp",
+            cacheStrategy="native", cacheBits=0, fp16Layers=0, fusedAttention=False,
+            fitModelInMemory=True, contextTokens=4096, loadedAt="now",
+        )
+        lines = [f"data: {json.dumps({'choices': [{'delta': d}]})}\n".encode() for d in deltas]
+        lines.append(b"data: [DONE]\n")
+        response = mock.MagicMock()
+        response.__iter__.return_value = iter(lines)
+        with mock.patch("urllib.request.urlopen", return_value=response):
+            return list(engine.stream_generate(
+                prompt="hi", history=[], system_prompt=None, max_tokens=50, temperature=0.2,
+            ))
+
+    def test_reasoning_content_streams_then_closes_before_the_answer(self):
+        chunks = self._stream([
+            {"reasoning_content": "Plan the "}, {"reasoning_content": "greeting."},
+            {"content": "Hello"}, {"content": " there."},
+        ])
+        self.assertEqual("".join(c.reasoning or "" for c in chunks), "Plan the greeting.")
+        self.assertEqual("".join(c.text or "" for c in chunks), "Hello there.")
+        done_at = next(i for i, c in enumerate(chunks) if c.reasoning_done)
+        first_text = next(i for i, c in enumerate(chunks) if c.text)
+        self.assertLess(done_at, first_text)
+        # Two reasoning deltas plus the text pieces the filter emitted.
+        self.assertGreaterEqual(chunks[-1].completion_tokens, 3)
+
+    def test_reasoning_only_reply_still_counts_and_closes(self):
+        chunks = self._stream([{"reasoning_content": "thinking"}, {"reasoning_content": " more"}])
+        self.assertTrue(any(c.reasoning_done for c in chunks))
+        self.assertEqual(chunks[-1].completion_tokens, 2)
+
+
+class ModelWeightsBytesTests(unittest.TestCase):
+    """A multi-quant GGUF folder counts as the one file that loads (warm pool, image/video gates)."""
+
+    def test_gguf_folder_counts_the_loaded_quant_only(self) -> None:
+        import tempfile
+        from pathlib import Path
+
+        from backend_service.inference.controller import _model_weights_bytes
+
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp) / "models--acme--Model-GGUF" / "snapshots" / "abc"
+            folder.mkdir(parents=True)
+            (folder / "Model-BF16.gguf").write_bytes(b"x" * 480)
+            (folder / "Model-Q4_K_M.gguf").write_bytes(b"x" * 150)
+            self.assertEqual(_model_weights_bytes(str(folder)), 480)  # no catalog pin: the largest loads
+
+    def test_a_folder_with_safetensors_is_sized_whole(self) -> None:
+        import tempfile
+        from pathlib import Path
+
+        from backend_service.inference.controller import _model_weights_bytes
+
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp) / "model"
+            folder.mkdir()
+            (folder / "model.safetensors").write_bytes(b"x" * 300)
+            (folder / "extra.gguf").write_bytes(b"x" * 100)
+            self.assertEqual(_model_weights_bytes(str(folder)), 400)
+
+
+class MtpProbeOnHubFolderTests(unittest.TestCase):
+    """The probe must see through a Hugging Face cache folder, not fall back to a name match."""
+
+    def test_repo_folder_resolves_to_its_snapshot(self) -> None:
+        import json
+        import tempfile
+        from pathlib import Path
+
+        from backend_service.inference._mtp import has_mtp_heads_strict, model_has_mtp_tensors
+
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "models--mlx-community--Qwen3-4B-bf16"
+            snap = repo / "snapshots" / "abc"
+            snap.mkdir(parents=True)
+            (snap / "model.safetensors.index.json").write_text(
+                json.dumps({"weight_map": {"model.layers.0.mlp.up_proj.weight": "a.safetensors"}}), encoding="utf-8"
+            )
+            self.assertIs(model_has_mtp_tensors(str(repo)), False)
+            # a catalog name that carries MTP heads must not win over what is on disk
+            self.assertFalse(has_mtp_heads_strict("Qwen/Qwen3.5-4B", str(repo)))
+
+    def test_single_file_checkpoint_header_is_read(self) -> None:
+        import json
+        import tempfile
+        from pathlib import Path
+
+        from backend_service.inference._mtp import model_has_mtp_tensors
+
+        with tempfile.TemporaryDirectory() as tmp:
+            model = Path(tmp)
+            header = json.dumps({"mtp.fc.weight": {"dtype": "F16"}}).encode()
+            (model / "model.safetensors").write_bytes(len(header).to_bytes(8, "little") + header)
+            self.assertIs(model_has_mtp_tensors(str(model)), True)
+
+
+class CapabilityProbeRetryTests(unittest.TestCase):
+    """A boot probe that fails once must not turn MLX off for the whole session."""
+
+    def _run_worker(self, results, *, expected: bool = True):
+        from unittest import mock
+
+        from backend_service.inference import controller as controller_module
+        from backend_service.inference.base import BackendCapabilities
+
+        def caps(usable: bool) -> BackendCapabilities:
+            return BackendCapabilities(
+                pythonExecutable="python",
+                mlxAvailable=usable,
+                mlxLmAvailable=usable,
+                mlxUsable=usable,
+                mlxMessage=None,
+                ggufAvailable=False,
+                llamaCliPath=None,
+                llamaServerPath=None,
+                llamaServerTurboPath=None,
+                converterAvailable=usable,
+                vllmAvailable=False,
+                vllmVersion=None,
+            )
+
+        probes = iter([caps(usable) for usable in results])
+        calls: list[bool] = []
+
+        def fake_probe(*, force: bool = False):
+            calls.append(force)
+            return next(probes)
+
+        controller = controller_module.RuntimeController()
+        with mock.patch.object(controller_module, "get_backend_capabilities", fake_probe), \
+                mock.patch.object(controller_module, "_mlx_expected_on_this_host", lambda: expected), \
+                mock.patch.object(controller_module, "_MLX_PROBE_RETRY_DELAY_SECONDS", 0.0):
+            controller._capability_probe_worker()
+        return controller.capabilities, calls
+
+    def test_a_failed_first_probe_is_asked_again(self) -> None:
+        capabilities, calls = self._run_worker([False, True])
+        self.assertTrue(capabilities.mlxUsable)
+        self.assertEqual(calls, [False, True])
+
+    def test_a_usable_first_probe_is_not_repeated(self) -> None:
+        capabilities, calls = self._run_worker([True])
+        self.assertTrue(capabilities.mlxUsable)
+        self.assertEqual(calls, [False])
+
+    def test_retries_stop_after_two(self) -> None:
+        capabilities, calls = self._run_worker([False, False, False])
+        self.assertFalse(capabilities.mlxUsable)
+        self.assertEqual(len(calls), 3)
+
+    def test_no_retry_where_mlx_is_not_expected(self) -> None:
+        capabilities, calls = self._run_worker([False], expected=False)
+        self.assertFalse(capabilities.mlxUsable)
+        self.assertEqual(calls, [False])

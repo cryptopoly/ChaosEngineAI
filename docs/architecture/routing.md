@@ -28,7 +28,13 @@ The function follows this order:
 1. **Explicit remote / cloud.** If `backend in {"remote", "openai",
    "cloud"}` → `RemoteOpenAIEngine`.
 
-2. **Explicit MLX.** If `backend == "mlx"`:
+2. **TensorFold.** `_select_tensorfold` runs before the MLX / GGUF
+   branches: an explicit `backend == "tensorfold"`, a model from a
+   TensorFold-only family, or a tested checkpoint with speculative decoding on
+   and TensorFold installed → `TensorFoldEngine`. See
+   [TensorFold](../features/tensorfold.md) for the registry and the rules.
+
+3. **Explicit MLX.** If `backend == "mlx"`:
    - If `speculative_decoding` and MTPLX is available and the model
      has MTP heads (`has_mtp_heads(canonical_repo or model_ref)`) →
      `MtplxEngine`.
@@ -36,13 +42,13 @@ The function follows this order:
    - If MLX isn't usable on this machine → raise with a clear error
      telling the user to fall back to GGUF.
 
-3. **Explicit GGUF.** If `backend in {"gguf", "llama.cpp",
+4. **Explicit GGUF.** If `backend in {"gguf", "llama.cpp",
    "llama-cpp"}` and GGUF is available → `LlamaCppEngine`.
 
-4. **Explicit vLLM.** If `backend == "vllm"` and vLLM is installed →
+5. **Explicit vLLM.** If `backend == "vllm"` and vLLM is installed →
    `VLLMEngine`.
 
-5. **Auto-detect.** If the target looks like a GGUF path
+6. **Auto-detect.** If the target looks like a GGUF path
    (`_looks_like_gguf(target)`) and GGUF is available →
    `LlamaCppEngine`. Otherwise:
    - If MLX is usable → `MLXWorkerEngine`.
@@ -51,7 +57,8 @@ The function follows this order:
 
 ## Speculative-decoding routing
 
-The MLX branch handles the MTPLX vs DFlash priority:
+TensorFold outranks both (step 2 above). The MLX branch then handles the
+MTPLX vs DFlash priority:
 
 | `speculativeDecoding` | MTPLX available | Has MTP heads | DFlash available | Engine | Speculative mode |
 |---|---|---|---|---|---|
@@ -85,7 +92,9 @@ ladder:
 MTPLX → MLX is the documented contract: `MtplxEngine.load_model` raises
 `RuntimeError` on any startup failure, and the `RuntimeController`
 catches that and immediately tries `MLXWorkerEngine`. The same model
-ref loads with one ladder rung difference.
+ref loads with one ladder rung difference. TensorFold follows the same
+contract, except for families only TensorFold can load, where there is no
+rung below it and the error is shown.
 
 For the llama.cpp engine, the cache-strategy fallback is **two-level**
 after FU-030 (was three): requested strategy → native (the deprecated
@@ -102,6 +111,8 @@ see:
 
 - `"mlx + dflash"` — DFlash fired.
 - `"mtplx"` — MTPLX engine.
+- `"TensorFold startup failed (...); using standard MLX."` — TensorFold was
+  chosen but its server would not start; the model loaded on stock MLX.
 - `"mlx (mtplx fallback: venv missing)"` — MTPLX requested but venv not
   installed.
 - `"llama-server-turbo + turboquant3"` — GGUF turbo path active.
@@ -116,5 +127,6 @@ correctness — see [E2E testing](../testing/e2e-testing.md).
 
 - [Inference engines](inference-engines.md).
 - [MTPLX](../features/mtplx.md).
+- [TensorFold](../features/tensorfold.md).
 - [DFlash](../features/dflash.md).
 - [Cache strategies](../features/cache-strategies.md).

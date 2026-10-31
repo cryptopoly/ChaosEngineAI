@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ModelVariant } from "../../../types";
-import { memoryFitBucket } from "../OnlineModelsTab";
+import { memoryFitBucket } from "../memoryFit";
 
 function makeVariant(overrides: Partial<ModelVariant> = {}): ModelVariant {
   return {

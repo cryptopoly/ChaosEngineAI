@@ -27,13 +27,13 @@ from __future__ import annotations
 
 import os
 import platform
-import re
 import subprocess
 import tempfile
 import time
 from pathlib import Path
 from typing import Any
 
+from backend_service.helpers.sdcpp_progress import parse_step
 from backend_service.video_runtime import (
     GeneratedVideo,
     VideoGenerationConfig,
@@ -41,11 +41,6 @@ from backend_service.video_runtime import (
 )
 
 
-# Progress regex — sd.cpp emits ``[INFO] step N/M (..)`` style lines on
-# stdout during the denoise loop. Loose pattern catches both the older
-# ``step N/M`` and the newer ``[N/M]`` formats; whichever matches gets
-# fed into ``VIDEO_PROGRESS``.
-_STEP_RE = re.compile(r"(?:step\s+|\[)(\d+)\s*/\s*(\d+)")
 _LAST_OUTPUT_LINES = 80
 _RUNTIME_LABEL = "stable-diffusion.cpp"
 
@@ -54,13 +49,12 @@ _RUNTIME_LABEL = "stable-diffusion.cpp"
 # the binary supports image families too, but those route through
 # image_runtime (FU-008 image side, separate engine).
 #
-# Wan 2.1 GGUF (city96/Wan2.1-T2V-{1.3B,14B}-gguf) and Wan 2.2 GGUF
+# Wan 2.1 GGUF (city96/Wan2.1-T2V-14B-gguf, samuelchristlie/Wan2.1-T2V-1.3B-GGUF) and Wan 2.2 GGUF
 # (QuantStack/Wan2.2-T2V-A14B-GGUF) are the immediate targets — those
 # unlock the Mac Metal video path that diffusers MPS cannot serve.
 _SUPPORTED_REPOS: frozenset[str] = frozenset({
     "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
     "Wan-AI/Wan2.1-T2V-14B-Diffusers",
-    "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
     "Wan-AI/Wan2.2-T2V-A14B-Diffusers",
 })
 
@@ -171,12 +165,12 @@ class SdCppVideoEngine:
         # The Wan video path needs a GGUF transformer file — sd.cpp
         # cannot consume a sharded diffusers safetensors snapshot
         # directly. The catalog variant pins ``ggufRepo`` + ``ggufFile``
-        # for the GGUF lanes (e.g. QuantStack/Wan2.2-TI2V-5B-GGUF).
+        # for the GGUF lanes (e.g. city96/Wan2.1-T2V-14B-gguf).
         if not config.ggufFile:
             raise RuntimeError(
                 "sd.cpp video generate requires a GGUF variant. Pick a "
                 "catalog entry that pins ``ggufRepo`` + ``ggufFile`` "
-                "(e.g. Wan 2.2 TI2V 5B · GGUF Q4_K_M)."
+                "(e.g. Wan 2.1 T2V 14B · GGUF Q4_K_M)."
             )
 
         seed = config.seed if config.seed is not None else int(time.time())
@@ -330,11 +324,9 @@ class SdCppVideoEngine:
                 if len(last_lines) > _LAST_OUTPUT_LINES:
                     last_lines.pop(0)
 
-                match = _STEP_RE.search(stripped)
-                if match:
-                    step = int(match.group(1))
-                    total = int(match.group(2))
-                    VIDEO_PROGRESS.set_step(step, total=total)
+                parsed = parse_step(stripped)
+                if parsed:
+                    VIDEO_PROGRESS.set_step(parsed[0], total=parsed[1])
 
                 if VIDEO_PROGRESS.is_cancelled():
                     proc.terminate()

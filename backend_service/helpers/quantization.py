@@ -14,6 +14,7 @@ imports keep working.
 from __future__ import annotations
 
 import re
+import sys
 from typing import Any
 
 
@@ -51,7 +52,32 @@ def _quantization_algo_label(config: dict[str, Any] | None) -> str | None:
     return None
 
 
+def _is_fp8_compressed_tensors(config: dict[str, Any] | None) -> bool:
+    """A compressed-tensors checkpoint whose weights are FP8 ("float-quantized")."""
+    if not isinstance(config, dict):
+        return False
+    payload = config.get("quantization_config")
+    if not isinstance(payload, dict) or payload.get("quant_method") != "compressed-tensors":
+        return False
+    if payload.get("format") == "float-quantized":
+        return True
+    groups = payload.get("config_groups")
+    if isinstance(groups, dict):
+        for group in groups.values():
+            weights = group.get("weights") if isinstance(group, dict) else None
+            if isinstance(weights, dict) and weights.get("type") == "float":
+                return True
+    return False
+
+
 def _unsupported_mlx_quantization_reason(config: dict[str, Any] | None) -> str | None:
+    # On a Mac MLX is the only runtime, and it cannot dequantize FP8 safetensors
+    # (mlx-lm convert stops with "unsupported compressed-tensors format").
+    if sys.platform == "darwin" and _is_fp8_compressed_tensors(config):
+        return (
+            "This FP8 checkpoint (compressed-tensors) needs an NVIDIA GPU runtime such as vLLM; "
+            "MLX cannot read it. Use an MLX or GGUF build of this model on a Mac."
+        )
     algo = _quantization_algo_label(config)
     if not algo or algo not in _UNSUPPORTED_MLX_QUANT_ALGOS:
         return None

@@ -15,7 +15,7 @@ backend is running on `127.0.0.1:8876` (the default).
 If every command returns 200 / non-error and you see 125 routes, the
 install is healthy.
 
-## Discover + download a model
+## Find + download a model
 
 ```bash
 # Catalog search (curated models)

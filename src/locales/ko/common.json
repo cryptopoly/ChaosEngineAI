@@ -32,7 +32,11 @@
     "image": "이미지 스튜디오",
     "video": "비디오 스튜디오",
     "setup": "설정",
-    "diagnostics": "진단"
+    "diagnostics": "진단",
+    "voiceStudio": "음성 스튜디오",
+    "voiceModels": "음성 모델",
+    "voiceLibrary": "음성 라이브러리",
+    "chatModels": "채팅 모델"
   },
   "tabCaptions": {
     "dashboard": "시스템 개요",
@@ -57,7 +61,13 @@
     "promptLibrary": "재사용 가능한 프롬프트 템플릿",
     "plugins": "확장 및 플러그인 시스템",
     "logs": "런타임 이벤트",
-    "settings": "디렉터리 및 기본값"
+    "settings": "디렉터리 및 기본값",
+    "voiceStudio": "녹음, 받아쓰기, 음성 합성",
+    "voiceModels": "STT 및 TTS 모델 관리",
+    "voiceLibrary": "만든 받아쓰기와 음성",
+    "chatModels": "언어 모델 찾기, 다운로드 및 관리",
+    "imageModelsPage": "이미지 모델 찾기, 다운로드 및 관리",
+    "videoModelsPage": "비디오 모델 찾기, 다운로드 및 관리"
   },
   "tabShortLabels": {
     "chat": "채팅",
@@ -78,7 +88,11 @@
     "conversion": "변환",
     "fineTuning": "파인 튜닝",
     "promptLibrary": "프롬프트",
-    "plugins": "플러그인"
+    "plugins": "플러그인",
+    "voiceStudio": "스튜디오",
+    "voiceModels": "내 모델",
+    "voiceLibrary": "라이브러리",
+    "models": "모델"
   },
   "tabGroups": {
     "chat": "채팅",
@@ -86,14 +100,16 @@
     "images": "이미지",
     "video": "비디오",
     "benchmarks": "벤치마크",
-    "tools": "도구"
+    "tools": "도구",
+    "voice": "음성"
   },
   "tabsCount": "{count, plural, other {탭 #개}}",
   "sidebar": {
     "backendOnline": "백엔드 온라인",
     "backendOffline": "오프라인",
     "noModelLoaded": "로드된 모델 없음",
-    "groupTabsAriaLabel": "{group} 탭"
+    "groupTabsAriaLabel": "{group} 탭",
+    "primaryNavAriaLabel": "기본"
   },
   "slashCommands": {
     "menuAriaLabel": "슬래시 명령"
@@ -128,7 +144,8 @@
     "tryAgain": "다시 시도",
     "copyDetails": "세부 정보 복사",
     "switchTo": "{target}(으)로 전환",
-    "keepEnglish": "영어 유지"
+    "keepEnglish": "영어 유지",
+    "dismiss": "닫기"
   },
   "status": {
     "loading": "로딩 중…",
@@ -164,7 +181,8 @@
     "detected": "{endonym}이(가) 감지되었습니다.",
     "prompt": "앱을 {endonym}(으)로 전환하시겠습니까? 환경설정 → 언어에서 언제든지 변경할 수 있습니다.",
     "switch": "{endonym}(으)로 전환",
-    "keep": "영어 유지"
+    "keep": "영어 유지",
+    "ariaLabel": "언어 설정"
   },
   "panels": {
     "mlxConversion": "MLX 변환",
@@ -260,6 +278,18 @@
       "remoteHealth": "원격 상태",
       "remoteModels": "원격 모델",
       "close": "닫기"
+    },
+    "connect": {
+      "title": "앱 연결",
+      "subtitle": "OpenAI 호환 엔드포인트입니다. 모든 OpenAI SDK 또는 호환 앱에서 아래 기본 URL과 위의 API 키를 사용하도록 설정하세요.",
+      "baseUrl": "기본 URL",
+      "python": "Python · openai",
+      "javascript": "JavaScript · openai",
+      "continueDev": "Continue.dev (설정)",
+      "openWebui": "Open WebUI",
+      "openWebuiHint": "관리자 → 설정 → 연결 → OpenAI API. 기본 URL: {base} — 위의 API 키를 사용하세요.",
+      "ollamaApps": "Ollama 호환 앱",
+      "ollamaHint": "앱의 Ollama 호스트 / 기본 URL을 아래 주소로 설정하세요. 기본 /api 엔드포인트가 /v1과 함께 제공됩니다."
     }
   },
   "conversionTab": {
@@ -434,6 +464,11 @@
       "close": "닫기",
       "ok": "확인",
       "cancel": "벤치마크 취소"
+    },
+    "promptPresets": {
+      "balanced": "균형 잡힌 요약",
+      "reasoning": "추론 점검",
+      "coding": "코딩 답변"
     }
   },
   "benchmarkHistory": {
@@ -649,7 +684,10 @@
     "specTitle": "트리 기반 추측 디코딩 활성",
     "specTitleWithBudget": "트리 기반 추측 디코딩 활성 (단계당 드래프트 토큰 예산 {budget})",
     "acceptLabel": "평균 수락 {value}",
-    "acceptTitle": "단계당 평균 드래프트 토큰 수락 수 ({value})"
+    "acceptTitle": "단계당 평균 드래프트 토큰 수락 수 ({value})",
+    "cacheTitleMemorySaver": "KV cache 전략 ({label}) — 메모리 절약: 긴 채팅용 캐시가 훨씬 작아지는 대신 생성 속도가 느려집니다",
+    "specLabelExact": "정확한 드래프트",
+    "specTitleExact": "추측 디코딩 활성 — 모든 드래프트를 대상 모델이 검증하므로 응답이 순차 디코딩과 동일합니다"
   },
   "gpuCard": {
     "heading": "GPU",
@@ -685,7 +723,14 @@
     "speedSlow": "느림",
     "speedGood": "양호",
     "speedFast": "빠름",
-    "speedVeryFast": "매우 빠름"
+    "speedVeryFast": "매우 빠름",
+    "speedMeasuredTitle": "이 모델과 이 캐시 전략으로 최근 실행한 결과의 중앙값입니다.",
+    "speedEstimateTitle": "메모리 대역폭({bandwidth})과 토큰당 읽는 가중치를 바탕으로 추정한 값입니다. 모델을 사용하고 나면 직접 실행한 결과로 대체됩니다.",
+    "speedMeasured": "측정값",
+    "speedEstimate": "추정",
+    "sourceModel": "캐시 크기는 모델 자체 정보({source})로 계산했습니다.",
+    "sourceHub": "Hugging Face에 있는 모델 구성을 기준으로 캐시 크기를 계산했습니다.",
+    "sourceEstimate": "파라미터 수로 계산한 대략적인 캐시 추정치이며, 모델을 다운로드하면 정확해집니다."
   },
   "reasoningPanel": {
     "label": "사고",
@@ -766,7 +811,9 @@
       "storage": "저장소",
       "providers": "공급자",
       "integrations": "통합",
-      "diagnostics": "진단"
+      "diagnostics": "진단",
+      "accelerators": "가속기",
+      "disk": "디스크 사용량"
     },
     "sectionsAria": "환경설정 섹션",
     "badges": {
@@ -934,7 +981,8 @@
         "title": "여전히 로드 중",
         "detail": "콜드 스타트 임포트가 평소보다 더 오래 걸리고 있습니다. 2분 이상 중단되면 종료 후 다시 여세요 — 오래된 매니페스트가 재추출을 강제할 수 있습니다."
       }
-    }
+    },
+    "logPath": "백엔드 로그: {path}"
   },
   "imageDiscover": {
     "sortLabel": {
@@ -980,5 +1028,227 @@
       "incomplete": "불완전",
       "notInstalled": "설치되지 않음"
     }
+  },
+  "videoStudio": {
+    "safety": {
+      "reasonDangerOver": "모델은 표준 배치에서 상주하는 데 ~{model} GB가 필요하지만, 총 {total} GB의 {platform}에는 ~{working} GB만 안전하게 사용 가능합니다. 런타임은 순차적 CPU 오프로드로 자동 폴백합니다 — 생성은 성공하지만 서브모듈이 매 패스마다 CPU와 {offloadDevice} 메모리 간을 스왑하므로 각 스텝이 몇 배 느려집니다. 풀 스피드 생성을 위해서는 더 작은 모델(LTX-Video는 ~2 GB 상주) 또는 더 많은 메모리를 갖춘 머신을 선택하세요.",
+      "reasonDangerNear": "모델은 상주하는 데 ~{model} GB가 필요하며 이 실행은 약 ~{peak} GB에서 정점을 찍습니다. 총 {total} GB의 {platform}에서 이는 고위험 임계값(~{highRisk} GB)을 초과하고 추정 작업 세트(~{working} GB)에 근접합니다. 런타임이 CPU 오프로드를 활성화해 맞출 수 있습니다 — 풀 스피드 생성을 원한다면 설정을 낮추거나 더 작은 모델을 선택하세요.",
+      "reasonCaution": "모델은 상주하는 데 ~{model} GB가 필요합니다. 총 {total} GB의 {platform}에서 이는 보수적 안정 목표(~{comfort} GB)를 초과하지만 추정 작업 세트(~{working} GB) 아래입니다. 생성은 맞을 수 있으니 불안정해지면 설정을 낮추세요."
+    }
+  },
+  "imageStudio": {
+    "safety": {
+      "reasonDangerOver": "모델은 가중치 + 텍스트 인코더만 저장하는 데 ~{model} GB가 필요합니다. 총 {total} GB의 {platform}에서 추정 작업 세트는 ~{working} GB이므로 모델만으로도 이미 초과합니다. 작은 이미지조차 백엔드가 크래시할 가능성이 높습니다. 더 작은 모델(SD 1.5는 ~4 GB, SDXL은 ~13 GB) 또는 더 많은 메모리를 갖춘 머신을 시도하세요.",
+      "reasonDangerNear": "모델은 가중치 + 텍스트 인코더만 저장하는 데 ~{model} GB가 필요하며, 이 실행은 약 ~{peak} GB에서 정점을 찍습니다. 총 {total} GB의 {platform}에서 이는 고위험 임계값(~{highRisk} GB)을 초과하고 추정 작업 세트(~{working} GB)에 근접합니다. 생성 시 백엔드가 크래시할 가능성이 높으니 해상도를 낮추거나 더 작은 모델을 선택하세요.",
+      "reasonCaution": "모델은 가중치 + 텍스트 인코더만 저장하는 데 ~{model} GB가 필요합니다. 총 {total} GB의 {platform}에서 이는 보수적 안정 목표(~{comfort} GB)를 초과하지만 추정 작업 세트(~{working} GB) 아래입니다. 생성이 느리거나 실패할 수 있으니 불안정해지면 해상도를 낮추세요."
+    }
+  },
+  "runHf": {
+    "resolveFailed": "해당 저장소를 확인할 수 없습니다.",
+    "downloadStarted": "다운로드를 시작했습니다. 모델 페이지에서 진행 상황을 확인한 다음 로드하세요.",
+    "downloadFailed": "다운로드 실패.",
+    "loaded": "{label}을(를) 로드했습니다.",
+    "loadFailed": "로드 실패.",
+    "title": "Hugging Face에서 실행",
+    "subtitle": "GGUF 또는 MLX 저장소(owner/name 또는 URL)를 붙여 넣으면 카탈로그 항목 없이 실행할 수 있습니다.",
+    "resolving": "확인 중…",
+    "resolve": "확인",
+    "ctx": "컨텍스트 {ctx}",
+    "downloading": "시작 중…",
+    "download": "다운로드",
+    "notRunnable": "이 저장소는 이 플랫폼에서 바로 실행할 수 없습니다. 위의 안내를 확인하세요.",
+    "loading": "로딩 중…",
+    "load": "불러오기"
+  },
+  "rag": {
+    "vectorTooltip": "로컬 임베딩 모델을 사용해 의미 기반으로 문서를 검색합니다.",
+    "semantic": "시맨틱 검색",
+    "lexicalTooltip": "키워드(TF-IDF + BM25)로 문서를 검색합니다. 더 나은 재현율을 위해 시맨틱 검색을 켜세요.",
+    "binaryMissingTooltip": "키워드 검색만 가능합니다. llama-embedding 바이너리를 찾을 수 없어 이 설치에서는 시맨틱 검색을 사용할 수 없습니다.",
+    "keyword": "키워드 검색",
+    "verifying": "확인 중…",
+    "downloading": "{sizeLabel} 다운로드 중…",
+    "enable": "시맨틱 검색 켜기",
+    "installFailed": "설치 실패"
+  },
+  "importModels": {
+    "failed": "가져오기 실패.",
+    "imported": "가져옴",
+    "importing": "가져오는 중…",
+    "import": "가져오기",
+    "title": "기존 모델 가져오기",
+    "subtitle": "다른 로컬 앱의 저장소에서 모델을 찾았습니다. 가져오기는 해당 위치에 연결만 하므로 다시 다운로드하지 않습니다.",
+    "foundIn": "{path}에서 찾음",
+    "foundElsewhere": "이 컴퓨터에서 찾음"
+  },
+  "gpuBanner": {
+    "runningOnCpu": "CPU에서 실행 중입니다.",
+    "recommendationFallback": "NVIDIA GPU가 감지되었지만 torch가 CUDA에 접근할 수 없습니다. 이미지와 비디오 생성이 매우 느려집니다.",
+    "cudaInstalled": "CUDA torch가{source}{python} 설치되었습니다. GPU를 사용하려면 앱을 다시 시작하세요.",
+    "cudaInstalledSource": " {index}에서",
+    "cudaInstalledPython": " 내장 Python {version}에",
+    "noWheel": "Python{version}용 CUDA torch wheel이 없습니다.",
+    "noWheelBundledVenv": " (내장 venv)",
+    "noWheelDetail": "현재 PyTorch는 Python 3.9–3.13용 CUDA wheel을 제공합니다. 지원되는 Python(예: 3.12 또는 3.13)이 PATH에 있는 상태에서 앱을 다시 설치한 뒤 다시 시도하세요.",
+    "installFailed": "설치 실패:",
+    "downloading": "약 2.5 GB의 CUDA wheel을 앱에 내장된 Python으로 다운로드하는 중입니다. 몇 분 걸릴 수 있습니다.",
+    "installing": "CUDA torch 설치 중...",
+    "install": "CUDA torch 설치"
+  },
+  "llamaRebuild": {
+    "rebuilding": "llama.cpp 다시 빌드 중...",
+    "rebuild": "llama.cpp 다시 빌드"
+  },
+  "discoverModal": {
+    "downloadedCount": "{count}개 다운로드됨",
+    "variants": "변형 ({count})",
+    "convert": "변환",
+    "chat": "채팅",
+    "server": "서버",
+    "pause": "일시 중지",
+    "resume": "재개",
+    "downloadFailed": "다운로드 실패",
+    "downloadComplete": "다운로드 완료",
+    "overview": "개요"
+  },
+  "dataDirRestart": {
+    "title": "재시작 필요",
+    "body": "데이터 디렉터리가 변경되었습니다. 새 위치에서 파일을 읽고 쓰려면 ChaosEngineAI가 백엔드를 다시 시작해야 합니다.",
+    "from": "원본: {path}",
+    "to": "대상: {path}",
+    "copied": "복사됨: {items}",
+    "skipped": "건너뜀(대상에 이미 있음): {items}",
+    "notNow": "나중에",
+    "restarting": "백엔드를 다시 시작하는 중...",
+    "notBackOnline": "재시작 후 백엔드가 다시 온라인 상태가 되지 않았습니다.",
+    "failed": "백엔드를 다시 시작하지 못했습니다.",
+    "confirm": "확인, 지금 다시 시작"
+  },
+  "wslBridgePanel": {
+    "title": "WSL2 vLLM 브리지",
+    "backendOffline": "백엔드가 오프라인입니다. WSL 상태를 확인하려면 사이드카를 시작하세요.",
+    "capsError": "WSL 상태를 읽을 수 없습니다: {error}",
+    "probing": "WSL 상태 확인 중...",
+    "ready": "✓ 준비됨{version}",
+    "notInstalled": "이 Windows 호스트에는 WSL2가 설치되어 있지 않습니다. vLLM은 Windows용 네이티브 wheel을 제공하지 않으므로, WSL2 Ubuntu 배포판 안에서 vLLM을 실행하는 것이 현실적인 방법입니다.",
+    "runInPowershell": "관리자 권한으로 PowerShell을 열고 다음을 실행하세요:",
+    "rebootHint": "안내가 나오면 재부팅한 다음 ChaosEngineAI를 다시 여세요.",
+    "microsoftDocs": "Microsoft 문서",
+    "cudaMissingLead": "WSL2가 설치되어 있지만({distro}),",
+    "cudaMissingTail": "명령을 배포판 안에서 사용할 수 없습니다. Windows에 NVIDIA WSL 드라이버를 설치하세요. GPU 드라이버의 CUDA를 WSL로 전달할 수 있게 해 줍니다.",
+    "nvidiaGuide": "NVIDIA WSL 가이드 ↗",
+    "installing": "설치 중...",
+    "reinstall": "WSL에 vLLM 재설치",
+    "install": "WSL에 vLLM 설치",
+    "installedSummary": "vLLM {version}이(가) {distro}의 ~/.chaosengine/vllm-venv에 설치되어 있습니다. 데스크톱 앱은 이 venv를 통해 vLLM 모델을 로드할 수 있습니다.",
+    "readySummary": "WSL2({distro})와 CUDA 패스스루가 준비되었습니다. ~/.chaosengine/vllm-venv의 격리된 venv에 vLLM을 설치하세요(약 2 GB 다운로드, 캐시가 준비된 환경에서 약 5-15분)."
+  },
+  "acceleratorsBoostPack": {
+    "installFailed": "설치 명령이 0이 아닌 종료 코드로 끝났습니다.",
+    "title": "부스트 팩",
+    "description": "이미지, 비디오, 채팅 추론을 위한 선택적 가속기입니다. 각각 pip install 한 번이면 설치됩니다. 사용 중인 하드웨어가 지원하는 항목에서 설치를 클릭하세요.",
+    "capError": "가속기 기능 정보를 읽을 수 없습니다: {error}",
+    "backendOffline": "백엔드가 오프라인입니다. 가속기 상태를 읽으려면 사이드카를 시작하세요.",
+    "columns": {
+      "accelerator": "가속기",
+      "size": "크기",
+      "platform": "플랫폼",
+      "status": "상태",
+      "action": "작업"
+    }
+  },
+  "modelStoragePanel": {
+    "phase": {
+      "preflight": "크기 및 여유 공간 확인 중",
+      "copying": "복사 중",
+      "cleanup": "이전 사본 삭제 중",
+      "done": "완료",
+      "error": "실패"
+    },
+    "pathSavedRestart": "경로가 저장되었습니다. 새 다운로드가 새 드라이브에 저장되도록 백엔드를 다시 시작하세요.",
+    "pathSaved": "경로가 저장되었습니다.",
+    "resetDoneRestart": "기본값으로 되돌렸습니다. 기본 위치를 사용하려면 백엔드를 다시 시작하세요.",
+    "resetDone": "기본값으로 되돌렸습니다.",
+    "destinationRequired": "먼저 대상 경로를 지정하세요(위에 입력하거나 찾아보기 사용).",
+    "moveConfirm": "모델 {size}을(를) {from}에서 {to}(으)로 이동할까요?\n\n복사가 성공하면 원본 폴더 트리가 삭제됩니다. 회전식 HDD에서는 100 GB에 15-45분이 걸릴 수 있습니다.\n\n시작하기 전에 실행 중인 생성 작업을 모두 닫으세요.",
+    "reading": "저장소 정보를 읽는 중...",
+    "loading": "저장소 정보를 불러오는 중...",
+    "backendOffline": "백엔드가 오프라인입니다. 저장소를 설정하려면 사이드카를 시작하세요.",
+    "currentLocation": "현재 캐시 위치",
+    "inCache": "캐시에 {size}",
+    "free": "{size} 여유",
+    "overridePath": "경로 재정의 (재시작 필요)",
+    "usingDefault": "기본값 사용 중",
+    "browse": "찾아보기...",
+    "saving": "저장 중...",
+    "savePath": "경로 저장",
+    "resetToDefault": "기본값으로 되돌리기",
+    "restarting": "다시 시작 중...",
+    "restartBackendNow": "지금 백엔드 다시 시작",
+    "moveHint": "이전 위치에 모델 {size}이(가) 있습니다. 새 경로에서도 계속 쓸 수 있도록 이동하세요. 회전식 HDD에서는 6 GB당 약 1분을 예상하세요.",
+    "starting": "시작 중...",
+    "moveModels": "기존 모델을 새 경로로 이동",
+    "filesProgress": "{copied} / {total}개 파일",
+    "restartBackend": "백엔드 다시 시작"
+  },
+  "videoPlaceholderTab": {
+    "engines": {
+      "ltxVideo": "빠르고 가벼우며 일반 소비자용 하드웨어를 위해 설계되었습니다. 처음 시도하기에 좋습니다.",
+      "wan22": "텍스트-투-비디오 품질이 뛰어납니다. VRAM 24GB 이상 또는 통합 메모리를 갖춘 Apple Silicon에서 실행됩니다.",
+      "hunyuanVideo": "높은 충실도와 더 긴 클립을 지원합니다. 40GB 이상급 하드웨어가 필요합니다.",
+      "mochi1": "오픈 웨이트이며 경쟁력 있는 모션 품질을 제공합니다. Apache 2.0 라이선스."
+    },
+    "models": {
+      "title": "설치된 비디오 모델",
+      "subtitle": "이 컴퓨터의 모델",
+      "body": "아직 로컬에서 감지된 비디오 모델이 없습니다. 비디오 엔진이 출시되면 다운로드한 가중치가 양자화 방식, 디스크 크기, 실행 대상과 함께 여기에 표시됩니다."
+    },
+    "discover": {
+      "title": "비디오 모델 둘러보기",
+      "subtitle": "비디오 생성기를 둘러보고 다운로드합니다",
+      "body": "아래 카탈로그는 우선 지원할 예정인 엔진을 미리 보여 줍니다. 비디오 런타임이 연결되면 다운로드 버튼이 활성화됩니다."
+    },
+    "studio": {
+      "title": "비디오 스튜디오",
+      "subtitle": "프롬프트 입력, 생성, 반복",
+      "body": "스튜디오에는 프롬프트 편집기, 화면 비율과 길이 조절, 시드 고정, 프레임별 미리보기가 제공될 예정입니다. 조금만 기다려 주세요. 아직 엔진이 로드되지 않았습니다."
+    },
+    "gallery": {
+      "title": "비디오 갤러리",
+      "subtitle": "저장된 결과물과 필터",
+      "body": "완성된 렌더링은 모델, 길이, 해상도별 필터와 함께 여기에 표시됩니다. 끌어서 순서 바꾸기와 즐겨찾기는 로드맵에 있습니다."
+    },
+    "comingSoon": "출시 예정",
+    "roadmap": "로컬 비디오 생성은 ChaosEngineAI 로드맵에 있습니다. 이 탭은 라우팅과 UX 틀을 먼저 선보이기 위한 임시 화면이며, 추론 엔진은 이후에 연결됩니다.",
+    "planned": "예정"
+  },
+  "acceleratorCard": {
+    "platform": {
+      "cuda": "CUDA 전용",
+      "appleSilicon": "Apple Silicon 전용",
+      "any": "크로스 플랫폼"
+    },
+    "installing": "설치 중…",
+    "retry": "재시도",
+    "installBackground": "설치 (백그라운드)",
+    "install": "설치",
+    "installedVersion": "✓ v{version}",
+    "installedBadge": "✓ 설치됨",
+    "installFailed": "설치 실패",
+    "installLabel": "{label} 설치",
+    "requires": "필요: {platform}",
+    "appliesTo": "적용 대상:",
+    "backgroundInstall": "백그라운드 설치",
+    "quickInstall": "빠른 설치",
+    "installFailureOutput": "설치 실패 — 출력 보기",
+    "installOutput": "설치 출력"
+  },
+  "infoTooltip": {
+    "ariaLabel": "자세한 정보"
+  },
+  "fileReveal": {
+    "finder": "Finder에서 보기",
+    "explorer": "탐색기에서 보기",
+    "files": "파일에서 보기"
   }
 }

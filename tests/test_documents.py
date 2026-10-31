@@ -2,6 +2,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from backend_service.helpers.documents import (
     BM25Scorer,
@@ -9,6 +10,31 @@ from backend_service.helpers.documents import (
     TFIDFVectoriser,
     _chunk_text,
 )
+
+
+class PypdfGateTests(unittest.TestCase):
+    """PDF text extraction refuses a pypdf with known parser DoS advisories."""
+
+    def _gate(self, installed: str) -> None:
+        from backend_service.helpers import document_text
+
+        with mock.patch.object(document_text.metadata, "version", return_value=installed):
+            document_text._require_safe_pypdf()
+
+    def test_the_floor_is_the_release_pin(self):
+        from backend_service.helpers import document_text
+
+        self.assertEqual(document_text._MIN_SAFE_PYPDF_VERSION, (6, 21, 4))
+
+    def test_an_older_pypdf_is_refused(self):
+        for installed in ("6.10.2", "6.21.2", "6.21.3", "5.9.0"):
+            with self.subTest(installed=installed), self.assertRaises(RuntimeError):
+                self._gate(installed)
+
+    def test_the_fixed_pypdf_and_newer_pass(self):
+        for installed in ("6.21.4", "6.30.0", "7.0.0"):
+            with self.subTest(installed=installed):
+                self._gate(installed)
 
 
 class ChunkTextTests(unittest.TestCase):

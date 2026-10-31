@@ -88,6 +88,12 @@ class CLIParserTests(unittest.TestCase):
             ["mtplx-install"],
             ["mtplx-install", "--wait"],
             ["mtplx-status"],
+            ["tensorfold-install"],
+            ["tensorfold-install", "--wait"],
+            ["tensorfold-status"],
+            ["mflux-install"],
+            ["mflux-install", "--wait"],
+            ["mflux-status"],
             ["call", "GET", "/api/health"],
             ["call", "POST", "/api/models/load", "--body", "{}"],
             ["routes"],
@@ -397,6 +403,83 @@ class CLIUnloadTests(unittest.TestCase):
         self.assertEqual(captured["body"], {"ref": "some/ref"})
 
 
+class CLIMfluxTests(unittest.TestCase):
+    def test_mflux_status_passthrough(self) -> None:
+        body = {"installed": True, "version": "0.20.0", "supported": True}
+        out = io.StringIO()
+        with mock.patch.object(cli.urllib.request, "urlopen", _mock_urlopen({
+            "/api/setup/mflux-status": _FakeResp(json.dumps(body).encode("utf-8")),
+        })):
+            with mock.patch.object(sys, "stdout", out):
+                rc = cli.main(["mflux-status"])
+        self.assertEqual(rc, 0)
+        self.assertEqual(json.loads(out.getvalue())["version"], "0.20.0")
+
+    def test_mflux_install_no_wait_returns_the_job(self) -> None:
+        body = {"id": "mflux-install", "phase": "preflight", "done": False}
+        out = io.StringIO()
+        with mock.patch.object(cli.urllib.request, "urlopen", _mock_urlopen({
+            "/api/setup/install-mflux": _FakeResp(json.dumps(body).encode("utf-8")),
+            "/api/setup/install-mflux/status": _FakeResp(json.dumps(body).encode("utf-8")),
+        })):
+            with mock.patch.object(sys, "stdout", out):
+                rc = cli.main(["mflux-install"])
+        self.assertEqual(rc, 0)
+        self.assertEqual(json.loads(out.getvalue())["id"], "mflux-install")
+
+
+class CLITensorFoldTests(unittest.TestCase):
+    def test_tensorfold_status_passthrough(self) -> None:
+        body = {"installed": True, "version": "0.5.0", "supported": True, "venvPath": "/Users/x/.chaosengine/tensorfold-venv"}
+        resp = _FakeResp(json.dumps(body).encode("utf-8"))
+        out = io.StringIO()
+        with mock.patch.object(cli.urllib.request, "urlopen", _mock_urlopen({"/api/setup/tensorfold-status": resp})):
+            with mock.patch.object(sys, "stdout", out):
+                rc = cli.main(["tensorfold-status"])
+        self.assertEqual(rc, 0)
+        self.assertEqual(json.loads(out.getvalue())["version"], "0.5.0")
+
+    def test_tensorfold_install_no_wait_returns_the_job(self) -> None:
+        body = {"id": "tensorfold-install", "phase": "preflight", "done": False}
+        out = io.StringIO()
+        with mock.patch.object(cli.urllib.request, "urlopen", _mock_urlopen({
+            "/api/setup/install-tensorfold": _FakeResp(json.dumps(body).encode("utf-8")),
+            "/api/setup/install-tensorfold/status": _FakeResp(json.dumps(body).encode("utf-8")),
+        })):
+            with mock.patch.object(sys, "stdout", out):
+                rc = cli.main(["tensorfold-install"])
+        self.assertEqual(rc, 0)
+        self.assertEqual(json.loads(out.getvalue())["id"], "tensorfold-install")
+
+    def test_tensorfold_install_sends_the_requested_extras(self) -> None:
+        bodies: list[dict] = []
+        job = _FakeResp(json.dumps({"id": "tensorfold-install", "phase": "preflight", "done": False}).encode("utf-8"))
+
+        def _opener(req, timeout=None):  # noqa: ARG001
+            if req.data is not None:
+                bodies.append(json.loads(req.data.decode("utf-8")))
+            return job
+
+        for argv in (["tensorfold-install"], ["tensorfold-install", "--extras", "vision, grammar"]):
+            with mock.patch.object(cli.urllib.request, "urlopen", _opener):
+                with mock.patch.object(sys, "stdout", io.StringIO()):
+                    self.assertEqual(cli.main(argv), 0)
+        self.assertEqual(bodies, [{"extras": []}, {"extras": ["vision", "grammar"]}])
+
+    def test_status_summary_carries_the_tensorfold_block(self) -> None:
+        workspace_body = {
+            "runtime": {"state": "idle"},
+            "system": {"tensorfold": {"available": True, "supportedModels": ["Vontra/Qwen3.8-27B-MLX-4bit"]}},
+            "library": [],
+        }
+        out = io.StringIO()
+        with mock.patch.object(cli.urllib.request, "urlopen", _mock_urlopen({"/api/workspace": _FakeResp(json.dumps(workspace_body).encode("utf-8"))})):
+            with mock.patch.object(sys, "stdout", out):
+                rc = cli.main(["status"])
+        self.assertEqual(rc, 0)
+        self.assertTrue(json.loads(out.getvalue())["system"]["tensorfold"]["available"])
+
+
 class CLIMtplxTests(unittest.TestCase):
     def test_mtplx_status_passthrough(self) -> None:
         body = {"installed": True, "version": "0.3.5", "venvPath": "/Users/x/.chaosengine/mtplx-venv"}
@@ -637,10 +720,11 @@ class CLITypedShortcutTests(unittest.TestCase):
                     "--context", "32768", "--cache-strategy", "turboquant", "--cache-bits", "4",
                 ])
         self.assertEqual(rc, 0)
-        self.assertIn("ref=Qwen", captured["url"])
-        self.assertIn("context=32768", captured["url"])
-        self.assertIn("cacheStrategy=turboquant", captured["url"])
-        self.assertIn("cacheBits=4", captured["url"])
+        # The route's own parameter names (see CLICachePreviewTests).
+        self.assertIn("model_repo=Qwen%2FQwen3.5-7B", captured["url"])
+        self.assertIn("context_tokens=32768", captured["url"])
+        self.assertIn("strategy=turboquant", captured["url"])
+        self.assertIn("bits=4", captured["url"])
 
     def test_settings_patch_sends_patch_method(self) -> None:
         captured: dict[str, Any] = {}
@@ -884,3 +968,45 @@ class CLIMiscTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CLICachePreviewTests(unittest.TestCase):
+    """``cache-preview`` must send the route's own parameter names.
+
+    It used to send ``ref`` / ``context`` / ``cacheStrategy`` / ``cacheBits``,
+    which the route ignores, so every call returned the default 7B / 8K preview.
+    """
+
+    def _query(self, argv: list[str]) -> dict[str, list[str]]:
+        import urllib.parse
+
+        captured: dict[str, Any] = {}
+
+        def _opener(req, timeout=None):  # noqa: ARG001
+            captured["url"] = req.full_url
+            return _FakeResp(json.dumps({"archSource": "config"}).encode("utf-8"))
+
+        with mock.patch.object(cli.urllib.request, "urlopen", _opener):
+            with mock.patch.object(sys, "stdout", io.StringIO()):
+                self.assertEqual(cli.main(argv), 0)
+        return urllib.parse.parse_qs(urllib.parse.urlparse(captured["url"]).query)
+
+    def test_repo_id_and_options(self) -> None:
+        query = self._query([
+            "cache-preview", "velaia/Kolibri-1-MLX-3bit",
+            "--context", "32768", "--cache-strategy", "turboquant", "--cache-bits", "3",
+        ])
+        self.assertEqual(query["model_repo"], ["velaia/Kolibri-1-MLX-3bit"])
+        self.assertEqual(query["context_tokens"], ["32768"])
+        self.assertEqual(query["strategy"], ["turboquant"])
+        self.assertEqual(query["bits"], ["3"])
+
+    def test_local_path_is_sent_as_model_path(self) -> None:
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            query = self._query(["cache-preview", tmp])
+        import os
+
+        self.assertEqual(query["model_path"], [os.path.abspath(tmp)])
+        self.assertNotIn("model_repo", query)

@@ -31,6 +31,8 @@ from backend_service.mlx_worker_prompt import (
     _plain_chat_fallback_active,
     _should_retry_cache_failure,
     _trim_transcript_continuation,
+    TranscriptLoopFilter,
+    chat_template_switches,
 )
 from backend_service.mlx_worker_request import (
     _apply_mlx_seed,
@@ -43,6 +45,7 @@ from backend_service.mlx_worker_request import (
 from backend_service.reasoning_split import (
     RAW_REASONING_HEADING_RE,
     ThinkingTokenFilter,
+    prompt_opens_reasoning,
     reasoning_delimiters_for,
     strip_harmony_boilerplate,
 )
@@ -109,6 +112,7 @@ def generate_standard(state: WorkerState, request: dict[str, Any]) -> dict[str, 
         history=list(request.get("history") or []),
         prompt=str(request.get("prompt") or ""),
         system_prompt=system_prompt,
+        template_kwargs=chat_template_switches(state.tokenizer, request),
     )
     sampler = _build_mlx_sampler(request)
     acq = _prompt_cache.acquire(state, prompt_text)
@@ -203,10 +207,18 @@ def generate_standard(state: WorkerState, request: dict[str, Any]) -> dict[str, 
     # Respect thinkingMode: only strip raw reasoning when thinking is on.
     thinking_mode = request.get("thinkingMode") or "off"
     _open_tag, _close_tag = reasoning_delimiters_for(state._loaded_model_ref)
+    starts_inside = prompt_opens_reasoning(prompt_text, _open_tag)
+    # Some models reason even when the prompt closed an empty block (LFM3
+    # after a tool result) and end with a close tag that has no opener. The
+    # whole reply is in hand here, so treat everything before it as reasoning
+    # instead of showing it, and the stray tag, as the answer.
+    if not starts_inside and _close_tag in raw_text and _open_tag not in raw_text:
+        starts_inside = True
     think_filter = ThinkingTokenFilter(
         detect_raw_reasoning=(thinking_mode != "off"),
         open_tag=_open_tag,
         close_tag=_close_tag,
+        starts_inside_reasoning=starts_inside,
     )
     filter_result = think_filter.feed(raw_text)
     flushed = think_filter.flush()
@@ -263,6 +275,9 @@ def stream_generate(state: WorkerState, request: dict[str, Any]) -> None:
     if state.speculative_decoding and state.tree_budget > 0 and state._ddtree_draft is not None:
         try:
             result = state._generate_ddtree(request)
+            if result.get("reasoning"):
+                _emit({"ok": True, "chunk": {"reasoning": result["reasoning"]}})
+                _emit({"ok": True, "chunk": {"reasoningDone": True}})
             if result.get("text"):
                 _emit({"ok": True, "chunk": {"text": result["text"]}})
             _emit({
@@ -296,6 +311,9 @@ def stream_generate(state: WorkerState, request: dict[str, Any]) -> None:
     if state.speculative_decoding and state._dflash_generator is not None:
         try:
             result = state._generate_dflash(request)
+            if result.get("reasoning"):
+                _emit({"ok": True, "chunk": {"reasoning": result["reasoning"]}})
+                _emit({"ok": True, "chunk": {"reasoningDone": True}})
             if result.get("text"):
                 _emit({"ok": True, "chunk": {"text": result["text"]}})
             _emit({
@@ -309,7 +327,7 @@ def stream_generate(state: WorkerState, request: dict[str, Any]) -> None:
                     "tokS": result.get("tokS", 0.0),
                     "promptTokS": result.get("promptTokS", 0.0),
                     "peakMemoryGb": result.get("peakMemoryGb", 0.0),
-                    "runtimeNote": result.get("runtimeNote"),
+                    "runtimeNote": _merge_runtime_notes(speculative_stream_fallback_note, result.get("runtimeNote")),
                     "dflashAcceptanceRate": result.get("dflashAcceptanceRate"),
                     "cacheStrategy": result.get("cacheStrategy"),
                     "cacheBits": result.get("cacheBits"),
@@ -339,6 +357,7 @@ def stream_generate(state: WorkerState, request: dict[str, Any]) -> None:
         history=list(request.get("history") or []),
         prompt=str(request.get("prompt") or ""),
         system_prompt=system_prompt,
+        template_kwargs=chat_template_switches(state.tokenizer, request),
     )
     sampler = _build_mlx_sampler(request)
     acq = _prompt_cache.acquire(state, prompt_text)
@@ -356,6 +375,7 @@ def stream_generate(state: WorkerState, request: dict[str, Any]) -> None:
         detect_raw_reasoning=(thinking_mode != "off"),
         open_tag=_open_tag,
         close_tag=_close_tag,
+        starts_inside_reasoning=prompt_opens_reasoning(prompt_text, _open_tag),
     )
     transcript_filter = TranscriptLoopFilter() if transcript_fallback else None
     transcript_trimmed = False
@@ -452,6 +472,7 @@ def stream_generate(state: WorkerState, request: dict[str, Any]) -> None:
                 detect_raw_reasoning=(thinking_mode != "off"),
                 open_tag=_open_tag,
                 close_tag=_close_tag,
+                starts_inside_reasoning=prompt_opens_reasoning(prompt_text, _open_tag),
             )
             transcript_filter = TranscriptLoopFilter() if transcript_fallback else None
             transcript_trimmed = False

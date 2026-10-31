@@ -1,0 +1,4 @@
+{
+  "_comment": "Advisories we accept for now. One entry per advisory id (any alias works); a reason and an expires date (YYYY-MM-DD) are required, and an entry stops working on its date so the decision is revisited. scripts/audit-dependencies.py reads this file.",
+  "ignore": []
+}

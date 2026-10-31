@@ -36,16 +36,20 @@ concurrency:
 
 jobs:
   build-and-deploy:
+    # Runs once the deploy key exists: add the SITE_REPO_DEPLOY_KEY secret, then set the
+    # repository variable SITE_DEPLOY_ENABLED to true. Until then the job is skipped
+    # instead of failing on the push to ChaosEngineAI-Site.
+    if: vars.SITE_DEPLOY_ENABLED == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - name: Checkout main repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: '3.11'
           cache: pip
@@ -59,7 +63,7 @@ jobs:
         run: mkdocs build --strict
 
       - name: Checkout marketing site repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: cryptopoly/ChaosEngineAI-Site
           ssh-key: ${{ secrets.SITE_REPO_DEPLOY_KEY }}

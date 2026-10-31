@@ -88,7 +88,7 @@ export function ChallengeSetupPanel({
               disabled={busy || (!manifest && !selectedChallengeId)}
               onClick={onNewChallenge}
             >
-              New Challenge
+              {t("htmlChallenge.actions.newChallenge", { defaultValue: "New Challenge" })}
             </button>
             <ChallengeHistoryCombobox
               challenges={challenges}
@@ -105,13 +105,13 @@ export function ChallengeSetupPanel({
           </div>
         ) : null}
         <div className="html-challenge-setup-actions-spacer" />
-        <div className="html-challenge-layout-toggle" aria-label="HTML challenge layout">
+        <div className="html-challenge-layout-toggle" aria-label={t("htmlChallenge.layoutToggleAria", { defaultValue: "HTML challenge layout" })}>
           <button
             className={layoutMode === "row" ? "active" : ""}
             type="button"
             onClick={() => onLayoutModeChange("row")}
           >
-            Row
+            {t("htmlChallenge.layoutRow", { defaultValue: "Row" })}
           </button>
           <button
             className={layoutMode === "stacked" ? "active" : ""}
@@ -127,7 +127,7 @@ export function ChallengeSetupPanel({
             type="button"
             onClick={() => onRevealPath(manifest.folderPath)}
           >
-            Open Folder
+            {t("htmlChallenge.actions.openFolder", { defaultValue: "Open Folder" })}
           </button>
         ) : null}
         {manifest?.settingsPath ? (
@@ -136,23 +136,23 @@ export function ChallengeSetupPanel({
             type="button"
             onClick={() => onOpenFilePath(manifest.settingsPath!)}
           >
-            Open Settings
+            {t("htmlChallenge.actions.openSettings", { defaultValue: "Open Settings" })}
           </button>
         ) : null}
         {!completedChallenge ? (
           <button className="secondary-button" type="button" onClick={onAddSlot} disabled={busy || slotCount >= 4}>
-            Add model
+            {t("htmlChallenge.actions.addModel", { defaultValue: "Add model" })}
           </button>
         ) : null}
         {busy ? (
-          <button className="secondary-button" type="button" onClick={onCancelChallenge}>Cancel</button>
+          <button className="secondary-button" type="button" onClick={onCancelChallenge}>{t("htmlChallenge.actions.cancel", { defaultValue: "Cancel" })}</button>
         ) : completedValidChallenge ? (
           <button
             className="primary-button"
             type="button"
             onClick={onUsePromptInNewChallenge}
           >
-            Use Prompt in New Challenge
+            {t("htmlChallenge.actions.usePromptInNewChallenge", { defaultValue: "Use Prompt in New Challenge" })}
           </button>
         ) : (
           <button
@@ -161,7 +161,9 @@ export function ChallengeSetupPanel({
             onClick={onRunChallenge}
             disabled={!canRunChallenge}
           >
-            {manifest ? "Run New Challenge" : "Run Challenge"}
+            {manifest
+              ? t("htmlChallenge.actions.runNewChallenge", { defaultValue: "Run New Challenge" })
+              : t("htmlChallenge.actions.runChallenge", { defaultValue: "Run Challenge" })}
           </button>
         )}
       </div>

@@ -44,5 +44,35 @@
     "subtitle": "Visualização pesquisável sobre canais sidecar, runtime e servidor.",
     "filterPlaceholder": "Filtrar logs",
     "emptyFiltered": "Nenhuma linha de log corresponde ao filtro atual."
+  },
+  "accelerators": {
+    "title": "Aceleradores",
+    "subtitle": "Aceleradores opcionais para inferência de imagem, vídeo e chat, e a ponte do Windows com o WSL."
+  },
+  "diskUsage": {
+    "title": "Uso de disco",
+    "subtitle": "Quais repositórios de modelos ocupam espaço, para você saber o que excluir.",
+    "topTitle": "20 maiores repositórios de modelos",
+    "topHint": "Percorre cada diretório de modelos ativado e lista os maiores repositórios no disco. Conta os bytes de blob uma única vez (os snapshots/ do Hugging Face são links simbólicos para blobs/, então scanners simples contam em dobro).",
+    "scanning": "Escaneando…",
+    "rescan": "Escanear de novo",
+    "scan": "Escanear uso de disco",
+    "total": "Total em todos os diretórios ativados:",
+    "shown": "{repos} repositórios exibidos / {dirs} diretório(s) raiz escaneado(s)",
+    "freed": "{gb} GB liberados desde o escaneamento",
+    "colRepo": "Repositório",
+    "colSize": "Tamanho",
+    "colSource": "Origem",
+    "colPath": "Caminho",
+    "unknownSize": "tamanho desconhecido",
+    "deleteConfirm": "Excluir {name} ({size}) permanentemente?\n\nIsso remove do disco e não pode ser desfeito.",
+    "collapse": "Recolher {name}",
+    "expand": "Expandir {name}",
+    "sharedTitle": "Armazenamento compartilhado do Hugging Face: muitos repositórios apontam para ele",
+    "shared": "compartilhado",
+    "deleting": "Excluindo…",
+    "delete": "Excluir",
+    "reading": "Lendo…",
+    "empty": "Vazio"
   }
 }

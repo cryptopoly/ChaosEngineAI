@@ -11,6 +11,11 @@ on:
     branches: [main, staging]
   workflow_dispatch:
 
+# A new push to the same branch or PR cancels the run it supersedes.
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   NODE_VERSION: "24"
   PYTHON_VERSION: "3.12"

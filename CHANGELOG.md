@@ -20,7 +20,7 @@ Full notes in [RELEASE_NOTES_v0.9.9.md](RELEASE_NOTES_v0.9.9.md).
 
 ### Security
 
-- Python pins (`release-constraints.txt`): certifi 2026.10.19, pypdf 6.21.2 (the PDF reader also refuses anything older), Pillow 13.0.0, python-multipart 0.0.31, aiohttp 3.14.4, yarl 1.25.1, urllib3 2.8.0, anyio 4.14.2, idna 3.15, msgpack 1.2.3, fsspec 2026.6.0, multidict 6.9.1, filelock 4.2.1, datasets 5.0.1, accelerate 1.15.0; docs tools mkdocs-material 9.7.7 and pymdown-extensions 11.0.2.
+- Python pins (`release-constraints.txt`): certifi 2026.10.19, pypdf 6.21.4 (the PDF reader also refuses anything older), Pillow 13.0.0, python-multipart 0.0.31, aiohttp 3.14.4, yarl 1.25.1, urllib3 2.8.0, anyio 4.14.2, idna 3.15, msgpack 1.2.3, fsspec 2026.6.0, multidict 6.9.1, filelock 4.2.1, datasets 5.0.1, accelerate 1.15.0; docs tools mkdocs-material 9.7.7 and pymdown-extensions 11.0.2.
 - Rust: tokio, rustls, rustls-webpki, webpki-root-certs (the certificate fix), plist and quick-xml, serde_with, anyhow and others, within their compatible ranges. Tauri 2.12 with the updater plugin 2.14, which brings `zip` 9 and closes the three `zip` advisories (the Windows update unpacker). The audit now passes with no accepted advisories (FU-121).
 - Frontend: react-syntax-highlighter 16 (removes a PrismJS DOM-clobbering issue), vite 7.3.7, vitest 4.1.12, postcss, nanoid, browserslist and source-map-js. `npm audit` is down to four low-severity KaTeX findings.
 

@@ -75,11 +75,29 @@ export function videoDeleteRepoForVariant<T extends { repo?: string | null }>(
   return variant.repo;
 }
 
+/** What a delete of ``repo`` removes for ``variant``: its own repo, or a
+ * download it shares with other rows (pinned GGUF, text encoder, another
+ * component). */
+export type VideoDeleteRepoKind = "primary" | "gguf" | "textEncoder" | "component";
+
+export function videoDeleteRepoKind(variant: VideoModelVariant, repo: string): VideoDeleteRepoKind {
+  if (repo === variant.ggufRepo) return "gguf";
+  if (repo === variant.textEncoderRepo) return "textEncoder";
+  if (repo !== variant.repo) return "component";
+  return "primary";
+}
+
 export function videoDeleteLabelForRepo(variant: VideoModelVariant, repo: string, fallback = "Delete model"): string {
-  if (repo === variant.ggufRepo) return "Delete shared GGUF download";
-  if (repo === variant.textEncoderRepo) return "Delete shared text encoder download";
-  if (repo !== variant.repo) return "Delete shared component download";
-  return fallback;
+  switch (videoDeleteRepoKind(variant, repo)) {
+    case "gguf":
+      return "Delete shared GGUF download";
+    case "textEncoder":
+      return "Delete shared text encoder download";
+    case "component":
+      return "Delete shared component download";
+    default:
+      return fallback;
+  }
 }
 
 export function videoVariantMatchesDiscoverFilters(
@@ -576,6 +594,16 @@ export function budgetAfterResidentModels(budgetGb: number, otherResidentGb: num
   return Math.max(budgetGb * 0.1, budgetGb - other);
 }
 
+/** ltx-2-mlx peak growth above its reference clip: 15 GB at 768x512 x 97 frames (38,400
+ * latent tokens) and 18 GB at 1280x704 x 121 (109,120) on an M4 Max, so about 3 GB per
+ * 70,000 tokens. Two points only; it keeps a 4K, 480-frame request from reading "safe". */
+const LTX_REFERENCE_TOKENS = 38_400;
+const LTX_GB_PER_TOKEN = 3 / 70_720;
+
+function ltxGrowthGb(latentTokens: number): number {
+  return Math.max(0, latentTokens - LTX_REFERENCE_TOKENS) * LTX_GB_PER_TOKEN;
+}
+
 export function assessVideoGenerationSafety(opts: Parameters<typeof assessVideoGenerationSafetyForBudget>[0]): VideoGenerationSafety {
   const result = assessVideoGenerationSafetyForBudget(opts);
   const note = result.reason ? residentModelNote(opts.otherResidentGb) : null;
@@ -612,6 +640,11 @@ function assessVideoGenerationSafetyForBudget(opts: {
   /** GB already held by loaded chat models (runtime status
    * ``residentModelGb``); the video run cannot use that memory. */
   otherResidentGb?: number | null;
+  /** True for engines that do not run a full-size attention pass (ltx-2-mlx
+   * denoises at half size, then tiles): the peak is the resident footprint, and
+   * the diffusers attention heuristic would warn about 42 GB where 18 GB was
+   * measured at 1280x704 x 121 frames and 15 GB at 768x512 x 97. */
+  skipAttentionEstimate?: boolean;
 }): VideoGenerationSafety {
   const {
     width,
@@ -712,8 +745,9 @@ function assessVideoGenerationSafetyForBudget(opts: {
 
   const latentTokens =
     Math.ceil(width / 16) * Math.ceil(height / 16) * Math.ceil(numFrames / 4);
-  const attentionPeakGb =
-    estimatePeakAttentionBytes(latentTokens, effectiveDevice) / 1024 ** 3;
+  const attentionPeakGb = opts.skipAttentionEstimate
+    ? ltxGrowthGb(latentTokens)
+    : estimatePeakAttentionBytes(latentTokens, effectiveDevice) / 1024 ** 3;
   const estimatedPeakGb = estimateVideoRequestPeakGb({
     modelFootprintGb,
     attentionPeakGb,

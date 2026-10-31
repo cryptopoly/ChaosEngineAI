@@ -1,14 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
+import { SoundBadge } from "../../components/SoundBadge";
+import { VideoSoundToggle } from "../../components/VideoSoundToggle";
 import { fetchVideoOutputBlobUrl } from "../../api";
-import type { TabId, VideoOutputArtifact } from "../../types";
+import type { VideoOutputArtifact } from "../../types";
 import { formatImageTimestamp, number } from "../../utils";
+import { modelsPageRequest, type TabRequest } from "../../constants/tabRedirects";
 
 export interface VideoGalleryTabProps {
   videoOutputs: VideoOutputArtifact[];
   videoBusy: boolean;
-  onActiveTabChange: (tab: TabId) => void;
+  onActiveTabChange: (tab: TabRequest) => void;
   onOpenVideoStudio: (modelId?: string) => void;
   onRevealPath: (path: string) => void;
   onDeleteVideoArtifact: (artifactId: string) => void;
@@ -61,8 +64,8 @@ export function VideoGalleryTab({
             <button className="secondary-button" type="button" onClick={() => onOpenVideoStudio()}>
               {tStudio("videoGallery.actions.openStudio", { defaultValue: "Open Studio" })}
             </button>
-            <button className="secondary-button" type="button" onClick={() => onActiveTabChange("video-models")}>
-              {tStudio("videoGallery.actions.installedModels", { defaultValue: "Installed Models" })}
+            <button className="secondary-button" type="button" onClick={() => onActiveTabChange(modelsPageRequest("video", "installed"))}>
+              {tStudio("videoGallery.actions.installedModels", { defaultValue: "Installed" })}
             </button>
           </div>
         }
@@ -105,6 +108,8 @@ export function VideoGalleryTab({
   );
 }
 
+const CLIP_UNMUTED_EVENT = "chaosengine:gallery-clip-unmuted";
+
 interface VideoOutputCardProps {
   artifact: VideoOutputArtifact;
   videoBusy: boolean;
@@ -138,6 +143,7 @@ function VideoOutputCard({
   const [loadError, setLoadError] = useState<string | null>(null);
   const activeUrlRef = useRef<string | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [soundMuted, setSoundMuted] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -182,6 +188,32 @@ function VideoOutputCard({
     });
   }, [autoPlay, videoUrl]);
 
+  // Follow the player's own volume control, and let only one clip speak at a time.
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    const sync = () => setSoundMuted(video.muted || video.volume === 0);
+    const muteWhenAnotherSpeaks = (event: Event) => {
+      if ((event as CustomEvent<string>).detail !== artifact.artifactId) video.muted = true;
+    };
+    video.addEventListener("volumechange", sync);
+    window.addEventListener(CLIP_UNMUTED_EVENT, muteWhenAnotherSpeaks);
+    return () => {
+      video.removeEventListener("volumechange", sync);
+      window.removeEventListener(CLIP_UNMUTED_EVENT, muteWhenAnotherSpeaks);
+    };
+  }, [videoUrl, artifact.artifactId]);
+
+  const toggleSound = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.muted = !video.muted;
+    if (!video.muted) {
+      if (video.volume === 0) video.volume = 1;
+      window.dispatchEvent(new CustomEvent(CLIP_UNMUTED_EVENT, { detail: artifact.artifactId }));
+    }
+  };
+
   const clipSeconds = artifact.clipDurationSeconds || artifact.numFrames / Math.max(1, artifact.fps);
   const previewAspect = artifact.width > 0 && artifact.height > 0 ? `${artifact.width} / ${artifact.height}` : undefined;
   return (
@@ -196,18 +228,21 @@ function VideoOutputCard({
         </button>
       ) : null}
       {videoUrl ? (
-        <video
-          ref={videoRef}
-          className="image-output-preview video-output-preview"
-          src={videoUrl}
-          controls
-          loop
-          muted
-          playsInline
-          autoPlay={autoPlay}
-          preload="metadata"
-          style={previewAspect ? { aspectRatio: previewAspect } : undefined}
-        />
+        <div className="video-output-stage">
+          <video
+            ref={videoRef}
+            className="image-output-preview video-output-preview"
+            src={videoUrl}
+            controls
+            loop
+            muted
+            playsInline
+            autoPlay={autoPlay}
+            preload="metadata"
+            style={previewAspect ? { aspectRatio: previewAspect } : undefined}
+          />
+          {artifact.hasAudio ? <VideoSoundToggle muted={soundMuted} onToggle={toggleSound} /> : null}
+        </div>
       ) : (
         <div
           className="image-output-preview video-output-preview"
@@ -228,12 +263,15 @@ function VideoOutputCard({
           <strong>{artifact.modelName}</strong>
           <span className="badge muted">{formatImageTimestamp(artifact.createdAt, locale)}</span>
         </div>
-        {artifact.runtimeLabel ? (
+        {artifact.runtimeLabel || artifact.hasAudio ? (
           <div className="chip-row">
-            <span className="badge subtle">{artifact.runtimeLabel}</span>
-            <span className="badge muted">
-              {artifact.width} × {artifact.height}
-            </span>
+            {artifact.runtimeLabel ? <span className="badge subtle">{artifact.runtimeLabel}</span> : null}
+            {artifact.runtimeLabel ? (
+              <span className="badge muted">
+                {artifact.width} × {artifact.height}
+              </span>
+            ) : null}
+            {artifact.hasAudio ? <SoundBadge /> : null}
           </div>
         ) : null}
         <p className="image-output-prompt">{artifact.prompt}</p>

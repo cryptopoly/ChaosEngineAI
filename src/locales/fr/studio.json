@@ -27,7 +27,7 @@
     "copyImage": "Copier l'image",
     "openFolder": "Afficher dans le dossier",
     "modelLabel": "Modèle",
-    "noModelsOption": "Aucun modèle installé — téléchargez-en un depuis Découvrir",
+    "noModelsOption": "Aucun modèle installé — téléchargez-en un depuis Images > Modèles",
     "aspectRatio": "Format",
     "qualityPreset": "Préréglage de qualité",
     "previewLabel": "Aperçu",
@@ -152,7 +152,7 @@
     "summaryLoaded": "{selected} est chargé et prêt à générer.",
     "summarySwap": "{loaded} est chargé. Générer avec {selected} remplacera le pipeline.",
     "summaryNotLoaded": "{selected} est installé localement mais pas encore chargé. La première génération sera plus longue pendant la préparation du pipeline de diffusion.",
-    "summaryNotInstalled": "{selected} n'est pas installé localement. Téléchargez-le depuis Découvrir pour activer la génération locale.",
+    "summaryNotInstalled": "{selected} n'est pas installé localement. Téléchargez-le depuis la page Modèles pour activer la génération locale.",
     "summaryOnDemand": "Le modèle sera chargé à la demande lorsque vous générerez.",
     "preloadModel": "Précharger le modèle",
     "unloadModel": "Décharger le modèle",
@@ -173,7 +173,7 @@
       "ready": "Générer cette image."
     },
     "actions": {
-      "discover": "Découvrir",
+      "discover": "Trouver des modèles",
       "installed": "Installés",
       "gallery": "Galerie"
     },
@@ -189,14 +189,14 @@
       "downloaded": "Téléchargé"
     },
     "noModelsCallout": {
-      "message": "Vous n'avez encore aucun modèle d'image téléchargé. Rendez-vous dans Découvrir des images pour parcourir et installer un modèle, puis revenez ici pour générer.",
-      "openDiscover": "Ouvrir Découvrir des images"
+      "message": "Vous n'avez encore aucun modèle d'image téléchargé. Rendez-vous dans Images > Modèles pour parcourir et installer un modèle, puis revenez ici pour générer.",
+      "openDiscover": "Ouvrir les modèles d'images"
     },
     "download": {
       "failedMessage": "{name} n'a pas terminé son téléchargement correctement. ChaosEngineAI n'a trouvé qu'un instantané local partiel et ne peut donc pas encore charger le véritable pipeline d'image.",
       "pausedMessage": "{name} est partiellement téléchargé. Reprenez quand vous êtes prêt et ChaosEngineAI continuera à partir des fichiers déjà présents sur le disque.",
       "completeMessage": "{name} a terminé son téléchargement. L'analyse des modèles installés se rafraîchira automatiquement.",
-      "notInstalledMessage": "{name} n'est pas installé localement. Téléchargez-le depuis Découvrir pour activer la génération locale.",
+      "notInstalledMessage": "{name} n'est pas installé localement. Téléchargez-le depuis la page Modèles pour activer la génération locale.",
       "huggingFace": "Hugging Face",
       "settings": "Paramètres",
       "technicalDetails": "Détails techniques",
@@ -251,7 +251,8 @@
       "guidance": "Guidance",
       "images": "Images",
       "randomSeed": "Graine aléatoire",
-      "seed": "Graine"
+      "seed": "Graine",
+      "maxPixelsNote": "{name} génère au maximum {megapixels} mégapixels ; cette taille est réduite pour s'adapter, en conservant ses proportions."
     },
     "safety": {
       "dangerTitle": "Risque élevé de planter le backend",
@@ -395,8 +396,8 @@
     },
     "subtitle": "Choisissez un modèle vidéo pour commencer",
     "actions": {
-      "browseCatalog": "Parcourir le catalogue",
-      "installedModels": "Modèles installés",
+      "browseCatalog": "Trouver des modèles",
+      "installedModels": "Installés",
       "downloadModel": "Télécharger le modèle",
       "loadIntoMemory": "Charger en mémoire",
       "unload": "Décharger",
@@ -408,8 +409,8 @@
       "incomplete": "incomplet"
     },
     "noModelsCallout": {
-      "message": "Aucun modèle vidéo installé pour le moment. Parcourez le catalogue pour en télécharger un.",
-      "openDiscover": "Ouvrir Découvrir des vidéos"
+      "message": "Aucun modèle vidéo installé pour le moment. Ouvrez Vidéo > Modèles pour en télécharger un.",
+      "openDiscover": "Ouvrir les modèles vidéo"
     },
     "stats": {
       "clipDuration": "clip de {value} s"
@@ -424,7 +425,8 @@
     "prompt": {
       "label": "Invite",
       "placeholder": "Un plan cinématographique en drone d'une forêt de pins brumeuse à l'aube...",
-      "ltxShortWarning": "LTX-Video produit de meilleurs résultats avec des invites détaillées (~50-100 mots). Les invites courtes (« lama de dessin animé mangeant de la paille ») sous-conditionnent le modèle et ont tendance à dériver. Lightricks recommande de commencer par l'action, puis d'ajouter les détails visuels, l'éclairage et la direction de la caméra."
+      "ltxShortWarning": "LTX-Video produit de meilleurs résultats avec des invites détaillées (~50-100 mots). Les invites courtes (« lama de dessin animé mangeant de la paille ») sous-conditionnent le modèle et ont tendance à dériver. Lightricks recommande de commencer par l'action, puis d'ajouter les détails visuels, l'éclairage et la direction de la caméra.",
+      "soundHint": "Ce modèle produit aussi du son, et le son suit votre invite. Décrivez-le : des pas qui crissent dans la neige, du vent dans les arbres, un ronronnement grave de moteur."
     },
     "negativePrompt": {
       "tooltip": "Indique au modèle ce qu'il doit éviter. Une invite générique est préremplie et réglée pour la plupart des modèles vidéo — effacez-la ou modifiez-la si vous avez une préférence spécifique au modèle. Plus de spécificité aide généralement plus qu'elle ne nuit.",
@@ -462,7 +464,8 @@
       "guidanceTooltip": "Avec quelle force le modèle suit votre invite. Trop bas = ignore l'invite ; trop haut = sortie rigide ou déformée. Recommandé : LTX-Video ≈ 3, Wan ≈ 5, HunyuanVideo ≈ 6. La direction « négative » de l'invite vient de l'invite négative ci-dessus.",
       "guidanceLtxWarning": "LTX-Video est un modèle flow-matching — un CFG supérieur à ~3,5 sursature et produit une sortie floue / arc-en-ciel. Baissez à 3 pour les résultats les plus propres.",
       "randomSeed": "Graine aléatoire",
-      "seedPlaceholder": "Graine (entier)"
+      "seedPlaceholder": "Graine (entier)",
+      "maxPixelsNote": "{name} génère au maximum {megapixels} mégapixels par image ; cette taille est réduite pour s'adapter, en conservant ses proportions."
     },
     "clipLength": {
       "line": "Durée du clip : {seconds} s ({frames} images ÷ {fps} fps)"
@@ -559,6 +562,10 @@
         "label": "Max",
         "sub": "50 étapes"
       }
+    },
+    "sound": {
+      "badge": "Son",
+      "badgeTooltip": "Ce clip a du son. Activez-le avec le réglage du volume du lecteur."
     }
   },
   "imageGallery": {
@@ -568,7 +575,7 @@
     },
     "actions": {
       "studio": "Studio",
-      "installedModels": "Modèles installés"
+      "installedModels": "Installés"
     },
     "hero": {
       "eyebrow": "Sorties sauvegardées",
@@ -622,7 +629,7 @@
     "actions": {
       "autoPlay": "Lecture automatique",
       "openStudio": "Ouvrir Studio",
-      "installedModels": "Modèles installés"
+      "installedModels": "Installés"
     },
     "empty": {
       "body": "Aucune sortie vidéo pour le moment. Chargez un modèle dans Studio et générez un clip — les rendus terminés apparaîtront ici.",
@@ -643,7 +650,9 @@
       },
       "expand": "Agrandir",
       "revealFile": "Afficher le fichier",
-      "delete": "Supprimer"
+      "delete": "Supprimer",
+      "soundOn": "Activer le son",
+      "soundOff": "Couper le son"
     }
   },
   "voice": {
@@ -746,7 +755,7 @@
     "stop": "Arrêter",
     "studio": {
       "title": "Voice Studio",
-      "needsPack": "La voix s'exécute sur cet ordinateur et nécessite le pack vocal (environ 2 Go). Installez-le une fois depuis Voix > Mes modèles.",
+      "needsPack": "La voix s'exécute sur cet ordinateur et nécessite le pack vocal (environ 2 Go). Installez-le une fois depuis Voix > Modèles.",
       "openModels": "Ouvrir Modèles vocaux"
     },
     "savedToLibrary": "Enregistré dans la bibliothèque",
@@ -867,5 +876,33 @@
     "rollbackKeptTail": "pour une récupération manuelle.",
     "close": "Fermer",
     "installLog": "Journal d'installation ({count, plural, one {# étape} other {# étapes}})"
+  },
+  "recommended": {
+    "title": "Recommandé pour cette machine",
+    "measured": "Mesuré",
+    "estimated": "Estimé",
+    "measuredTitle": "Chronométré sur {machine}.",
+    "estimatedTitle": "Issu de la fiche du modèle, de la documentation en amont ou d'une machine similaire ; non chronométré sur ce matériel.",
+    "measuredOn": "chronométré sur {machine}",
+    "applyAll": "Appliquer les recommandations",
+    "allApplied": "Tout est appliqué",
+    "inUse": "Appliqué",
+    "use": "Appliquer",
+    "on": "Activé",
+    "off": "Désactivé",
+    "cacheValue": "{name}, seuil {threshold}",
+    "labels": {
+      "qualityPreset": "Préréglage de qualité",
+      "steps": "Étapes",
+      "guidance": "Guidance",
+      "sampler": "Échantillonneur",
+      "size": "Taille",
+      "numFrames": "Images",
+      "fps": "FPS",
+      "cache": "Cache de diffusion",
+      "cfgDecay": "Décroissance CFG",
+      "previewVae": "VAE d'aperçu",
+      "fp8LayerwiseCasting": "FP8 par couche"
+    }
   }
 }

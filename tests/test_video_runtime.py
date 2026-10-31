@@ -641,9 +641,19 @@ class ResolveVideoDefaultsTests(unittest.TestCase):
         from backend_service.video_runtime import _resolve_video_defaults
         resolved = _resolve_video_defaults("Wan-AI/Wan2.1-T2V-1.3B-Diffusers", 50, 3.0)
         self.assertEqual(resolved["steps"], 30)
-        self.assertEqual(resolved["guidance"], 6.0)
+        self.assertEqual(resolved["guidance"], 5.0)
         self.assertEqual(resolved["scheduler"], "unipc")
         self.assertTrue(resolved["substituted"])
+
+    def test_wan_defaults_follow_the_model_cards(self):
+        # Over-guidance burnt the Wan 2.2 5B clips (FU-122); the 2.1 and A14B rows use the card values.
+        from backend_service.video_runtime import _resolve_video_defaults
+        for repo, expected in (
+            ("Wan-AI/Wan2.1-T2V-1.3B-Diffusers", 5.0),
+            ("Wan-AI/Wan2.1-T2V-14B-Diffusers", 5.0),
+            ("Wan-AI/Wan2.2-T2V-A14B-Diffusers", 4.0),
+        ):
+            self.assertEqual(_resolve_video_defaults(repo, 50, 3.0)["guidance"], expected, repo)
 
     def test_wan22_ti2v_default_guidance_is_the_model_card_value(self):
         # 7.5 over-saturated Wan 2.2 TI2V 5B clips on Apple Silicon (bright

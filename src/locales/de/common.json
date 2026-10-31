@@ -35,7 +35,8 @@
     "diagnostics": "Diagnose",
     "voiceStudio": "Sprachstudio",
     "voiceModels": "Sprachmodelle",
-    "voiceLibrary": "Sprachbibliothek"
+    "voiceLibrary": "Sprachbibliothek",
+    "chatModels": "Chat-Modelle"
   },
   "tabCaptions": {
     "dashboard": "Systemübersicht",
@@ -63,7 +64,10 @@
     "settings": "Verzeichnisse und Standardwerte",
     "voiceStudio": "Aufnehmen, transkribieren und sprechen",
     "voiceModels": "STT- und TTS-Modelle verwalten",
-    "voiceLibrary": "Deine Transkripte und Sprachausgaben"
+    "voiceLibrary": "Deine Transkripte und Sprachausgaben",
+    "chatModels": "Sprachmodelle finden, herunterladen und verwalten",
+    "imageModelsPage": "Bildmodelle finden, herunterladen und verwalten",
+    "videoModelsPage": "Videomodelle finden, herunterladen und verwalten"
   },
   "tabShortLabels": {
     "chat": "Chat",
@@ -87,7 +91,8 @@
     "plugins": "Plugins",
     "voiceStudio": "Studio",
     "voiceModels": "Meine Modelle",
-    "voiceLibrary": "Bibliothek"
+    "voiceLibrary": "Bibliothek",
+    "models": "Modelle"
   },
   "tabGroups": {
     "chat": "Chat",
@@ -1040,7 +1045,7 @@
   },
   "runHf": {
     "resolveFailed": "Dieses Repo konnte nicht aufgelöst werden.",
-    "downloadStarted": "Download gestartet — verfolge den Fortschritt unter „Meine Modelle“ und klicke dann auf „Laden“.",
+    "downloadStarted": "Download gestartet — verfolge den Fortschritt auf der Seite „Modelle“ und klicke dann auf „Laden“.",
     "downloadFailed": "Download fehlgeschlagen.",
     "loaded": "Geladen: {label}",
     "loadFailed": "Laden fehlgeschlagen.",
@@ -1073,8 +1078,8 @@
     "import": "Importieren",
     "title": "Vorhandene Modelle importieren",
     "subtitle": "Im Speicher einer anderen lokalen App wurden Modelle gefunden. Der Import verknüpft sie an Ort und Stelle — kein erneuter Download.",
-    "ollama": "Ollama",
-    "lmstudio": "LM Studio"
+    "foundIn": "Gefunden in {path}",
+    "foundElsewhere": "Auf diesem Computer gefunden"
   },
   "gpuBanner": {
     "runningOnCpu": "Läuft auf der CPU.",

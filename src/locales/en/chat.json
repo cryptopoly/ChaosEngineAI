@@ -1,7 +1,7 @@
 {
   "composer": {
     "placeholderReady": "Type a message... (Enter to send, Shift+Enter for new line, / for commands)",
-    "placeholderNoModel": "Load a model first — pick one from My Models or Discover, then hit CHAT.",
+    "placeholderNoModel": "Load a model first — pick one from Chat > Models, then hit CHAT.",
     "send": "Send",
     "stop": "Stop",
     "clear": "Clear",
@@ -114,7 +114,7 @@
     "dialogAriaLabel": "Pick a model for the next turn",
     "sendNextVia": "Send next via",
     "oneTurnNote": "Override applies for one turn only.",
-    "noWarmModels": "No other warm models available. Load a second model from My Models to enable quick swaps."
+    "noWarmModels": "No other warm models available. Load a second model from Chat > Models to enable quick swaps."
   },
   "activeThread": {
     "title": "Active Thread",
@@ -400,8 +400,8 @@
   },
   "emptyBanner": {
     "welcomeTitle": "👋 Welcome to ChaosEngineAI Chat",
-    "welcomeBody": "Pick a chat model from Discover to get started. We recommend a small Qwen3 or Llama 3 variant for your first run — they download in a minute or two and run on any laptop.",
-    "browseDiscover": "Browse Discover",
+    "welcomeBody": "Pick a chat model from Chat > Models to get started. We recommend a small Qwen3 or Llama 3 variant for your first run — they download in a minute or two and run on any laptop.",
+    "browseDiscover": "Browse Models",
     "noModelLoaded": "A model needs to be loaded before you can chat. Pick one from your library to bring it into memory.",
     "loadModel": "Load Model",
     "getStartedAriaLabel": "Get started with chat",

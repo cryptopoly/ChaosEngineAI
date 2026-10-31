@@ -74,6 +74,24 @@ class NonChatClassificationTests(unittest.TestCase):
         (folder / "dit.gguf").write_bytes(b"x" * 16)
         self.assertEqual(self._types()["shape"], "other")
 
+    def test_a_folder_of_only_onnx_weights_is_other(self) -> None:
+        # Voice pack models (VAD, speaker segmentation) sit in the HF cache with
+        # no config.json; they showed up in Chat > Models as broken chat models.
+        def hf_repo(name: str, files: tuple[str, ...]) -> None:
+            snapshot = self.root / f"models--{name.replace('/', '--')}" / "snapshots" / "abc123"
+            for relative in files:
+                target = snapshot / relative
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(b"x" * 16)
+
+        hf_repo("onnx-community/silero-vad", ("onnx/model.onnx",))
+        hf_repo("csukuangfj/speaker-embedding-models", ("3dspeaker.onnx", "README.md"))
+        hf_repo("acme/onnx-and-safetensors", ("model.onnx", "model.safetensors"))
+        types = self._types()
+        self.assertEqual(types["onnx-community/silero-vad"], "other")
+        self.assertEqual(types["csukuangfj/speaker-embedding-models"], "other")
+        self.assertNotEqual(types["acme/onnx-and-safetensors"], "other")
+
     def test_a_gguf_decides_by_its_architecture(self) -> None:
         for name, arch in (("chat-gguf", "qwen3"), ("image-gguf", "flux"), ("embed-gguf", "bert")):
             folder = self.root / name

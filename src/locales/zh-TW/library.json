@@ -81,7 +81,7 @@
     "strategy": {
       "chip": "{label} ({count})",
       "compatTooltip": "顯示相容於 {label} 的模型 ({count})",
-      "dflashEmptyTooltip": "DFlash 推測解碼草稿模型僅存在於特定的基礎模型:Qwen/Qwen3 (4B, 8B)、Qwen/Qwen3-Coder (4B, 8B, 30B-A3B, Next)、Qwen/Qwen3.5 (4B, 7B, 9B, 14B, 27B, 35B-A3B)、Qwen/Qwen3.6-35B-A3B、meta-llama/Llama-3.1-8B-Instruct、gpt-oss (20B, 120B)、moonshotai/Kimi-K2.5。微調模型通常不相符。請從 探索 下載基礎模型以啟用 DFlash。",
+      "dflashEmptyTooltip": "DFlash 推測解碼草稿模型僅存在於特定的基礎模型:Qwen/Qwen3 (4B, 8B)、Qwen/Qwen3-Coder (4B, 8B, 30B-A3B, Next)、Qwen/Qwen3.5 (4B, 7B, 9B, 14B, 27B, 35B-A3B)、Qwen/Qwen3.6-35B-A3B、meta-llama/Llama-3.1-8B-Instruct、gpt-oss (20B, 120B)、moonshotai/Kimi-K2.5。微調模型通常不相符。請從「模型」頁面下載基礎模型以啟用 DFlash。",
       "memorySaverLabel": "{label} · 節省記憶體",
       "memorySaverTooltip": "顯示可使用 {label} 的模型（一種節省記憶體的 KV 快取方案）：長對話佔用更少 RAM，但生成比原生慢 ({count})"
     },
@@ -360,7 +360,10 @@
       "downloadModel": "下載模型",
       "cancelDownload": "取消下載",
       "deleteModel": "刪除模型",
-      "openModelCard": "開啟模型卡片"
+      "openModelCard": "開啟模型卡片",
+      "deleteSharedGguf": "刪除共用的 GGUF 下載",
+      "deleteSharedTextEncoder": "刪除共用的文字編碼器下載",
+      "deleteSharedComponent": "刪除共用元件的下載"
     },
     "filter": {
       "searchLabel": "搜尋",
@@ -436,7 +439,9 @@
       "pending": "等待中",
       "pendingTitle": "RAM/VRAM 估算將在模型權重大小確定後提供。"
     },
-    "releaseUnknown": "未知"
+    "releaseUnknown": "未知",
+    "sharedRepo": "共用儲存空間 · +{count}",
+    "sharedRepoTitle": "與 {repo} 的另外 {count} 個變體共用同一份下載。刪除此項目也會一併刪除這些檔案。"
   },
   "imageDiscover": {
     "access": {
@@ -529,6 +534,10 @@
     "trackedOnly": {
       "tooltip": "持續關注上游 — 此系列在工作室中的執行尚未串接。目錄項目僅供參考，下載後也無法在工作室中使用。",
       "badge": "關注上游中"
+    },
+    "sortLabel": {
+      "likes": "最多按讚優先",
+      "downloads": "最多下載優先"
     }
   },
   "videoDiscover": {
@@ -577,7 +586,8 @@
       "downloading": "下載中",
       "paused": "已暫停",
       "failed": "失敗",
-      "incomplete": "不完整"
+      "incomplete": "不完整",
+      "installing": "安裝中"
     },
     "sort": {
       "name": "名稱",
@@ -611,6 +621,165 @@
     "unknown": "未知",
     "longLive": {
       "installNote": "LongLive 將安裝至 ~/.chaosengine/longlive 的獨立 venv。僅限 CUDA,依網路速度需 5-15 分鐘。"
+    },
+    "sortLabel": {
+      "likes": "最多按讚優先",
+      "downloads": "最多下載優先"
+    }
+  },
+  "models": {
+    "action": {
+      "cancel": "取消下載",
+      "deleteDownload": "刪除下載",
+      "deleteModel": "刪除模型",
+      "download": "下載模型",
+      "more": "更多操作",
+      "pause": "暫停下載",
+      "resume": "恢復下載",
+      "retry": "重試下載",
+      "trackedOnly": "僅追蹤 — 尚無法啟動"
+    },
+    "availability": {
+      "all": "全部",
+      "attention": "需要留意",
+      "available": "可下載",
+      "downloading": "下載中",
+      "installed": "已安裝",
+      "label": "顯示"
+    },
+    "card": {
+      "collapse": "收合詳細資訊",
+      "expand": "展開詳細資訊",
+      "incompatible": "無法在本機執行",
+      "incompatibleTitle": "它的引擎無法在本機執行，但仍可刪除其檔案。"
+    },
+    "delete": {
+      "confirmShared": "{count, plural, other {另有 # 個模型}}使用同一份下載，也會一併刪除：",
+      "confirmSharedMore": "以及另外 {count} 個",
+      "confirmTarget": "這會從磁碟移除 {target}，且無法復原。",
+      "confirmTitle": "刪除「{name}」的檔案？"
+    },
+    "detail": {
+      "engine": "引擎",
+      "fit": "在本機上的適配度",
+      "license": "授權",
+      "localPath": "磁碟位置",
+      "openModelCard": "開啟模型卡片",
+      "repo": "儲存庫",
+      "resolution": "推薦尺寸",
+      "sharedWith": "與以下模型共用下載",
+      "warning": "注意",
+      "ggufFile": "GGUF 檔案",
+      "textEncoder": "文字編碼器",
+      "catalogSize": "目錄大小"
+    },
+    "empty": {
+      "availability": "目前的篩選條件下，「{bucket}」中沒有模型。",
+      "catalog": "目錄中尚無模型。",
+      "filters": "沒有模型符合目前的篩選條件。請嘗試擴大篩選條件或搜尋字詞。",
+      "showAvailable": "顯示可下載的模型"
+    },
+    "filter": {
+      "clear": "清除篩選器",
+      "search": "搜尋",
+      "sortBy": "排序方式"
+    },
+    "fit": {
+      "bestFit": "最適合",
+      "bestFitTitle": "本機在此系列中的首選：能舒適容納的最新版本。",
+      "estimated": "估算",
+      "estimatedNote": "依模型大小估算，未在本機實測。",
+      "estimatedShort": "估算",
+      "fits": "可容納",
+      "measured": "實測",
+      "measuredNote": "已在本機實測。",
+      "numbers": "需要約 {need} GB，本機可用 {usable} GB。",
+      "tight": "勉強",
+      "unknown": "不適合本機",
+      "wontFit": "放不下"
+    },
+    "image": {
+      "emptyAttention": "沒有需要留意的影像模型。",
+      "emptyCatalog": "目錄中尚無影像模型。請確認後端正在執行。",
+      "emptyDownloading": "沒有正在下載的影像模型。",
+      "emptyInstalled": "尚未安裝影像模型。請從可下載的模型中挑選一個來下載。",
+      "intro": "所有影像模型集中在同一份清單。下載後即可在影像工作室中使用；可依已安裝、可下載或下載中篩選。"
+    },
+    "sort": {
+      "fewestDownloads": "最少下載優先",
+      "leastLiked": "最少按讚優先"
+    },
+    "status": {
+      "available": "未安裝",
+      "broken": "損壞",
+      "downloading": "下載中",
+      "failed": "失敗",
+      "failedDetail": "下載失敗",
+      "installed": "已安裝",
+      "loaded": "已載入記憶體",
+      "partial": "不完整",
+      "paused": "已暫停"
+    },
+    "subtitle": "{total, plural, other {# 個模型}}中顯示 {shown} 個 · 已安裝 {installed} 個",
+    "summary": {
+      "availability": "顯示:{bucket}",
+      "count": "{count, plural, other {# 個模型}} · {sortLabel}",
+      "search": "搜尋:{query}"
+    },
+    "video": {
+      "intro": "所有影片模型集中在同一份清單。下載後即可在影片工作室中使用；可依已安裝、可下載或下載中篩選。",
+      "emptyCatalog": "目錄中尚無影片模型。請確認後端正在執行。",
+      "emptyInstalled": "尚未安裝影片模型。請從可下載的模型中挑選一個來下載。",
+      "emptyDownloading": "沒有正在下載的影片模型。",
+      "emptyAttention": "沒有需要留意的影片模型。"
+    },
+    "chat": {
+      "intro": "所有對話模型集中在同一份清單：磁碟上的模型、目錄中的模型，以及 Hugging Face 搜尋結果。可依已安裝、可下載或下載中篩選。",
+      "subtitle": "{total, plural, other {# 個模型}}中顯示 {shown} 個 · 已安裝 {installed} 個 · 磁碟佔用 {size} · {dirs, plural, other {# 個目錄}}",
+      "searchPlaceholder": "搜尋名稱、提供者、能力、路徑或格式（同時搜尋 Hugging Face）...",
+      "newThread": "在新執行緒中對話",
+      "useInThisChat": "在此對話中使用",
+      "bestFitTitle": "本機在此系列中的首選：能舒適容納的最新版本；若同時發佈了多個尺寸，則選能容納的最大尺寸。",
+      "closestMatch": "最接近的目錄項目:{name}",
+      "sourceDownload": "下載",
+      "sizeTitle": "磁碟佔用 {onDisk}；目錄標示為 {catalog}",
+      "detail": {
+        "released": "發佈日期",
+        "directory": "目錄",
+        "modified": "修改時間"
+      },
+      "filter": {
+        "capability": "能力",
+        "format": "格式",
+        "backend": "後端",
+        "acceleration": "加速"
+      },
+      "emptyCatalog": "目錄和磁碟上尚無對話模型。請確認後端正在執行，或在偏好設定中新增模型目錄。",
+      "emptyDownloading": "沒有正在下載的對話模型。",
+      "emptyAttention": "沒有需要留意的對話模型。",
+      "emptySearchHub": "磁碟和目錄中沒有符合「{query}」的模型。下方為 Hugging Face 的結果。",
+      "sort": {
+        "release": "最新發佈",
+        "name": "名稱",
+        "format": "格式",
+        "formatDir": "格式 {direction}",
+        "backend": "後端",
+        "backendDir": "後端 {direction}",
+        "size": "最大",
+        "ram": "最高 RAM",
+        "ramDesc": "最高 RAM 優先",
+        "ramAsc": "最低 RAM 優先",
+        "compressed": "最高壓縮後 RAM",
+        "compressedDesc": "最高壓縮後 RAM 優先",
+        "compressedAsc": "最低壓縮後 RAM 優先",
+        "context": "最長上下文",
+        "contextDesc": "最長上下文優先",
+        "contextAsc": "最短上下文優先",
+        "modified": "最近修改",
+        "modifiedDesc": "最近修改優先",
+        "modifiedAsc": "最早修改優先",
+        "status": "狀態"
+      }
     }
   }
 }

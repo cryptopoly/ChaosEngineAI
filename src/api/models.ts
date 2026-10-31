@@ -186,7 +186,7 @@ export async function resolveHfModel(repo: string, file?: string): Promise<Resol
 }
 
 // ---------------------------------------------------------------------------
-// Import existing Ollama / LM Studio models, no re-download (#4)
+// Import models already on disk from another local-AI app, no re-download (#4)
 // ---------------------------------------------------------------------------
 
 export interface ImportableModel {

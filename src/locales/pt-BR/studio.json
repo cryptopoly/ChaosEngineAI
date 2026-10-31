@@ -27,7 +27,7 @@
     "copyImage": "Copiar imagem",
     "openFolder": "Mostrar na pasta",
     "modelLabel": "Modelo",
-    "noModelsOption": "Nenhum modelo instalado — baixe um em Descobrir",
+    "noModelsOption": "Nenhum modelo instalado — baixe um em Imagens > Modelos",
     "aspectRatio": "Proporção",
     "qualityPreset": "Predefinição de qualidade",
     "previewLabel": "Pré-visualização",
@@ -152,7 +152,7 @@
     "summaryLoaded": "{selected} está carregado e pronto para gerar.",
     "summarySwap": "{loaded} está carregado. Gerar com {selected} trocará o pipeline.",
     "summaryNotLoaded": "{selected} está instalado localmente, mas ainda não foi carregado. A primeira geração vai demorar mais enquanto o pipeline de difusão aquece.",
-    "summaryNotInstalled": "{selected} não está instalado localmente. Baixe-o em Descobrir para habilitar a geração local.",
+    "summaryNotInstalled": "{selected} não está instalado localmente. Baixe-o na página Modelos para habilitar a geração local.",
     "summaryOnDemand": "O modelo será carregado sob demanda quando você gerar.",
     "preloadModel": "Pré-carregar modelo",
     "unloadModel": "Descarregar modelo",
@@ -173,7 +173,7 @@
       "ready": "Gerar esta imagem."
     },
     "actions": {
-      "discover": "Descobrir",
+      "discover": "Buscar modelos",
       "installed": "Instalados",
       "gallery": "Galeria"
     },
@@ -189,14 +189,14 @@
       "downloaded": "Baixado"
     },
     "noModelsCallout": {
-      "message": "Você ainda não tem nenhum modelo de imagem baixado. Vá para Descobrir imagens para navegar e instalar um, depois volte aqui para gerar.",
-      "openDiscover": "Abrir Descobrir imagens"
+      "message": "Você ainda não tem nenhum modelo de imagem baixado. Vá para Imagens > Modelos para navegar e instalar um, depois volte aqui para gerar.",
+      "openDiscover": "Abrir modelos de imagens"
     },
     "download": {
       "failedMessage": "{name} não terminou o download corretamente. O ChaosEngineAI encontrou apenas um snapshot local parcial, então ainda não pode carregar o pipeline de imagem real.",
       "pausedMessage": "{name} foi parcialmente baixado. Retome quando estiver pronto e o ChaosEngineAI continuará a partir dos arquivos já em disco.",
       "completeMessage": "{name} terminou de baixar. A varredura de modelos instalados será atualizada automaticamente.",
-      "notInstalledMessage": "{name} não está instalado localmente. Baixe-o em Descobrir para habilitar a geração local.",
+      "notInstalledMessage": "{name} não está instalado localmente. Baixe-o na página Modelos para habilitar a geração local.",
       "huggingFace": "Hugging Face",
       "settings": "Configurações",
       "technicalDetails": "Detalhes técnicos",
@@ -251,7 +251,8 @@
       "guidance": "Guidance",
       "images": "Imagens",
       "randomSeed": "Seed aleatória",
-      "seed": "Seed"
+      "seed": "Seed",
+      "maxPixelsNote": "{name} renderiza no máximo {megapixels} megapixels; este tamanho é reduzido para caber, mantendo a proporção."
     },
     "safety": {
       "dangerTitle": "Provável travar o backend",
@@ -395,8 +396,8 @@
     },
     "subtitle": "Escolha um modelo de vídeo para começar",
     "actions": {
-      "browseCatalog": "Navegar pelo catálogo",
-      "installedModels": "Modelos instalados",
+      "browseCatalog": "Buscar modelos",
+      "installedModels": "Instalados",
       "downloadModel": "Baixar modelo",
       "loadIntoMemory": "Carregar na memória",
       "unload": "Descarregar",
@@ -408,8 +409,8 @@
       "incomplete": "incompleto"
     },
     "noModelsCallout": {
-      "message": "Nenhum modelo de vídeo instalado ainda. Navegue pelo catálogo para baixar um.",
-      "openDiscover": "Abrir Descobrir vídeos"
+      "message": "Nenhum modelo de vídeo instalado ainda. Abra Vídeo > Modelos para baixar um.",
+      "openDiscover": "Abrir modelos de vídeo"
     },
     "stats": {
       "clipDuration": "clipe de {value}s"
@@ -424,7 +425,8 @@
     "prompt": {
       "label": "Prompt",
       "placeholder": "Um plano cinematográfico de drone sobre uma floresta de pinheiros enevoada ao amanhecer...",
-      "ltxShortWarning": "LTX-Video produz os melhores resultados com prompts detalhados (~50-100 palavras). Prompts curtos (\\\"lhama de desenho comendo palha\\\") sub-condicionam o modelo e tendem a divergir. A Lightricks recomenda começar com a ação, depois adicionar detalhes visuais, iluminação e direção de câmera."
+      "ltxShortWarning": "LTX-Video produz os melhores resultados com prompts detalhados (~50-100 palavras). Prompts curtos (\\\"lhama de desenho comendo palha\\\") sub-condicionam o modelo e tendem a divergir. A Lightricks recomenda começar com a ação, depois adicionar detalhes visuais, iluminação e direção de câmera.",
+      "soundHint": "Este modelo também gera som, e o som segue o seu prompt. Descreva-o: passos rangendo na neve, vento nas árvores, um zumbido grave de motor."
     },
     "negativePrompt": {
       "tooltip": "Diz ao modelo o que evitar. Um prompt genérico é pré-preenchido e ajustado para a maioria dos modelos de vídeo — limpe ou edite se tiver uma preferência específica do modelo. Mais especificidade geralmente ajuda mais do que atrapalha.",
@@ -462,7 +464,8 @@
       "guidanceTooltip": "Quão fortemente o modelo segue seu prompt. Muito baixo = ignora o prompt; muito alto = saída rígida ou distorcida. Recomendado: LTX-Video ≈ 3, Wan ≈ 5, HunyuanVideo ≈ 6. A direção 'negativa' do prompt vem do Prompt negativo acima.",
       "guidanceLtxWarning": "LTX-Video é um modelo flow-matching — CFG acima de ~3,5 supersatura e produz saída borrada / arco-íris. Diminua para 3 para os resultados mais limpos.",
       "randomSeed": "Seed aleatória",
-      "seedPlaceholder": "Seed (inteiro)"
+      "seedPlaceholder": "Seed (inteiro)",
+      "maxPixelsNote": "{name} renderiza no máximo {megapixels} megapixels por quadro; este tamanho é reduzido para caber, mantendo a proporção."
     },
     "clipLength": {
       "line": "Duração do clipe: {seconds}s ({frames} quadros ÷ {fps} fps)"
@@ -559,6 +562,10 @@
         "label": "Máximo",
         "sub": "50 passos"
       }
+    },
+    "sound": {
+      "badge": "Som",
+      "badgeTooltip": "Este clipe tem som. Ative-o com o controle de volume do player."
     }
   },
   "imageGallery": {
@@ -568,7 +575,7 @@
     },
     "actions": {
       "studio": "Estúdio",
-      "installedModels": "Modelos instalados"
+      "installedModels": "Instalados"
     },
     "hero": {
       "eyebrow": "Saídas salvas",
@@ -622,7 +629,7 @@
     "actions": {
       "autoPlay": "Reprodução automática",
       "openStudio": "Abrir Estúdio",
-      "installedModels": "Modelos instalados"
+      "installedModels": "Instalados"
     },
     "empty": {
       "body": "Nenhuma saída de vídeo ainda. Carregue um modelo no Estúdio e gere um clipe — renderizações concluídas aparecerão aqui.",
@@ -643,7 +650,9 @@
       },
       "expand": "Expandir",
       "revealFile": "Mostrar arquivo",
-      "delete": "Excluir"
+      "delete": "Excluir",
+      "soundOn": "Ativar o som",
+      "soundOff": "Silenciar"
     }
   },
   "voice": {
@@ -746,7 +755,7 @@
     "stop": "Parar",
     "studio": {
       "title": "Voice Studio",
-      "needsPack": "A voz roda neste computador e precisa do pacote de voz (cerca de 2 GB). Instale-o uma vez em Voz > Meus modelos.",
+      "needsPack": "A voz roda neste computador e precisa do pacote de voz (cerca de 2 GB). Instale-o uma vez em Voz > Modelos.",
       "openModels": "Abrir Modelos de voz"
     },
     "savedToLibrary": "Salvo na biblioteca",
@@ -867,5 +876,33 @@
     "rollbackKeptTail": "para recuperação manual.",
     "close": "Fechar",
     "installLog": "Log de instalação ({count, plural, one {# etapa} other {# etapas}})"
+  },
+  "recommended": {
+    "title": "Recomendado para esta máquina",
+    "measured": "Medido",
+    "estimated": "Estimado",
+    "measuredTitle": "Medido em {machine}.",
+    "estimatedTitle": "Vem do model card, da documentação upstream ou de uma máquina semelhante; não medido neste hardware.",
+    "measuredOn": "medido em {machine}",
+    "applyAll": "Aplicar recomendados",
+    "allApplied": "Tudo em uso",
+    "inUse": "Em uso",
+    "use": "Usar",
+    "on": "Ligado",
+    "off": "Desligado",
+    "cacheValue": "{name}, limiar {threshold}",
+    "labels": {
+      "qualityPreset": "Predefinição de qualidade",
+      "steps": "Passos",
+      "guidance": "Guidance",
+      "sampler": "Sampler",
+      "size": "Tamanho",
+      "numFrames": "Quadros",
+      "fps": "FPS",
+      "cache": "Cache de difusão",
+      "cfgDecay": "Decaimento de CFG",
+      "previewVae": "VAE de pré-visualização",
+      "fp8LayerwiseCasting": "FP8 por camada"
+    }
   }
 }

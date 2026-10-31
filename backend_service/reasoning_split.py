@@ -275,6 +275,11 @@ def _looks_like_final_answer_line(line: str) -> bool:
 
 
 def strip_thinking_tokens(text: str) -> str:
+    # A template that opens the reasoning block in the prompt leaves only the
+    # closing tag in the reply; everything before it is the reasoning.
+    close_at = text.rfind(_THINK_CLOSE)
+    if close_at != -1 and _THINK_OPEN not in text[:close_at]:
+        text = text[close_at + len(_THINK_CLOSE):]
     splitter = ThinkingTokenFilter()
     result = splitter.feed(text)
     flushed = splitter.flush()

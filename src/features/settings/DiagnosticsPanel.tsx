@@ -17,6 +17,7 @@ import {
   type StorageTopResponse,
 } from "../../api";
 import { AcceleratorsBoostPack } from "./AcceleratorsBoostPack";
+import type { SystemStats } from "../../types/system";
 import { WslBridgePanel } from "./WslBridgePanel";
 
 // In-app troubleshooting panel. Surfaces OS, hardware, runtime paths,
@@ -427,7 +428,13 @@ export function DiagnosticsPanel({ backendOnline, onRestartServer, busyAction }:
 // the bottom of the Diagnostics panel, below the system snapshot; refreshing
 // the snapshot grew that panel and pushed them off screen with no way to scroll
 // to them, so they now have their own tab.
-export function AcceleratorsPanel({ backendOnline }: { backendOnline: boolean }) {
+export function AcceleratorsPanel({
+  backendOnline,
+  hostSystem,
+}: {
+  backendOnline: boolean;
+  hostSystem?: Pick<SystemStats, "platform" | "arch" | "gpuVramTotalGb">;
+}) {
   const { t } = useTranslation("diagnostics");
   return (
     <Panel
@@ -436,7 +443,7 @@ export function AcceleratorsPanel({ backendOnline }: { backendOnline: boolean })
         defaultValue: "Optional speed-ups for image, video and chat inference, and the Windows WSL bridge.",
       })}
     >
-      <AcceleratorsBoostPack backendOnline={backendOnline} />
+      <AcceleratorsBoostPack backendOnline={backendOnline} hostSystem={hostSystem} />
       <WslBridgePanel backendOnline={backendOnline} />
     </Panel>
   );

@@ -86,10 +86,11 @@ def _family_matches_discover_query(family: dict[str, Any], query: str) -> bool:
 def search_models(request: Request, query: str = Query("", alias="q", min_length=0, max_length=120)) -> dict[str, Any]:
     state = request.app.state.chaosengine
     from backend_service.helpers.discovery import _model_family_payloads
+    from backend_service.helpers.model_family_payload import measured_speed_lookup
 
     system_stats = state._system_snapshot_provider()
     library = state._library()
-    catalog = _model_family_payloads(system_stats, library)
+    catalog = _model_family_payloads(system_stats, library, measured_speed_for=measured_speed_lookup(state))
     search_query = query.strip()
     if not search_query:
         results = catalog

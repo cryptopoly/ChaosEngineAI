@@ -174,6 +174,24 @@ it as a subprocess from ``backend_service/mlx_video_runtime.py`` — not
 bundled, installable on demand from the Setup page on Apple Silicon
 hosts. See FU-009 in CLAUDE.md.
 
+| Package | Repository | Licence |
+|---------|-----------|---------|
+| `ltx-2-mlx` (`ltx-core-mlx`, `ltx-pipelines-mlx`) | <https://github.com/dgrauet/ltx-2-mlx> | MIT |
+
+`ltx-2-mlx` is a pure MLX port of Lightricks LTX-2.3 / 2.5 (text to video with
+stereo sound, no PyTorch). It pins its own ``mlx`` / ``mlx-lm`` floors, so it
+installs into an **isolated venv** at ``~/.chaosengine/ltx2-venv/`` from a pinned
+commit (it is not on PyPI) and is never co-installed with the main ``.venv``.
+ChaosEngineAI shells out to its ``ltx-2-mlx generate --distilled`` command from
+``backend_service/ltx2_mlx_runtime.py``, one process per clip. Not bundled in
+the desktop ``.app``; installed on demand from the Video Studio
+(``scripts/install-ltx2-mlx.sh``) or with ``chaosengine-cli ltx2-install``.
+
+The weights it runs keep their own licences: ``dgrauet/ltx-2.3-mlx-q4`` is
+derived from Lightricks LTX-2.3 under the LTX-2 community licence (free below
+US$10 million annual revenue), and ``mlx-community/gemma-3-12b-it-4bit`` (the
+text encoder) is under the Gemma terms of use. Neither is bundled.
+
 ---
 
 ## Ported Algorithms

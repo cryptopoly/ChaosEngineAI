@@ -11,6 +11,7 @@ from backend_service.models import (
     ImageRuntimePreloadRequest,
     ImageRuntimeUnloadRequest,
 )
+from backend_service.helpers.fit import annotate_variants
 from backend_service.helpers.images import (
     _image_model_payloads,
     _find_image_variant,
@@ -22,6 +23,7 @@ from backend_service.helpers.images import (
 )
 from backend_service.app import (
     _generate_image_artifacts,
+    _resolve_image_size,
     _load_image_outputs,
     _find_image_output,
     _delete_image_output,
@@ -80,7 +82,8 @@ def image_catalog(request: Request) -> dict[str, Any]:
     library = state._library()
     return {
         "families": _image_model_payloads(library),
-        "latest": _latest_image_model_payloads(library),
+        # Copies: the latest list is cached between requests.
+        "latest": annotate_variants([dict(row) for row in _latest_image_model_payloads(library)], "image"),
     }
 
 
@@ -137,6 +140,11 @@ def preload_image_model(request: Request, body: ImageRuntimePreloadRequest) -> d
         detail = validation_error or f"{variant['name']} is not installed locally yet."
         raise HTTPException(status_code=409, detail=localized_detail(request, detail))
     _unload_idle_video_runtime_for_image(request, "image preload")
+    if str(variant.get("engine") or "").lower() in {"mflux", "sdcpp"}:
+        # mflux and stable-diffusion.cpp start one process per image and free it afterwards;
+        # there is no pipeline to preload, and sending these repos to diffusers answers 500.
+        state.add_log("images", "info", f"{variant['name']} loads per image; nothing to preload.")
+        return {"runtime": state.image_runtime.capabilities()}
     try:
         runtime = state.image_runtime.preload(variant["repo"])
     except RuntimeError as exc:
@@ -263,18 +271,35 @@ def generate_image(request: Request, body: ImageGenerationRequest) -> dict[str, 
     refusal = None
     try:
         from backend_service.helpers.memory_gate import (
+            IMAGE_MODEL_HEADROOM,
+            cuda_free_vram_gb,
             gate_image_generation,
             model_memory_gb,
             snapshot_memory_signals,
         )
 
+        from backend_service.helpers.generation_limits import reference_pixels
+
+        from backend_service.helpers.fit import MEASURED_FOOTPRINTS
+
         resident = variant.get("repo") == getattr(state.image_runtime, "loaded_repo", None)
         available_gb, pressure_percent = snapshot_memory_signals()
+        # A footprint that is a measured process peak already includes the headroom.
+        measured_peak = variant.get("id") in MEASURED_FOOTPRINTS or variant.get("footprintBasis") == "measured"
+        # The size that will actually render (draft mode, minimum edge, per-model limits),
+        # so the gate judges that and not what was typed.
+        render_width, render_height, _ = _resolve_image_size(body, variant)
         refusal = gate_image_generation(
             available_gb,
             pressure_percent,
             model_gb=None if resident else model_memory_gb(variant),
             model_name=variant.get("name"),
+            width=render_width,
+            height=render_height,
+            reference_pixels=reference_pixels(variant),
+            footprint_gb=model_memory_gb(variant),
+            headroom=1.0 if measured_peak else IMAGE_MODEL_HEADROOM,
+            size_available_gb=cuda_free_vram_gb(),
         )
     except Exception as gate_exc:
         state.add_log("images", "warning", f"Memory gate skipped: {gate_exc}")

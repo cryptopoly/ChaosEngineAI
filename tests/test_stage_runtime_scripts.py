@@ -33,7 +33,7 @@ class InstallScriptStagingTests(unittest.TestCase):
     def test_the_routes_still_use_the_pattern_this_test_reads(self) -> None:
         self.assertGreaterEqual(
             _scripts_the_routes_run(),
-            {"install-mflux.sh", "install-mtplx.sh", "install-tensorfold.sh"},
+            {"install-mflux.sh", "install-ltx2-mlx.sh", "install-mtplx.sh", "install-tensorfold.sh"},
         )
 
     def test_every_script_a_route_runs_is_staged(self) -> None:

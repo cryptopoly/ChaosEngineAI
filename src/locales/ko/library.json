@@ -81,7 +81,7 @@
     "strategy": {
       "chip": "{label} ({count})",
       "compatTooltip": "{label}와 호환되는 모델 표시 ({count})",
-      "dflashEmptyTooltip": "DFlash 추측 디코드 드래프트는 특정 베이스 모델에만 존재합니다: Qwen/Qwen3 (4B, 8B), Qwen/Qwen3-Coder (4B, 8B, 30B-A3B, Next), Qwen/Qwen3.5 (4B, 7B, 9B, 14B, 27B, 35B-A3B), Qwen/Qwen3.6-35B-A3B, meta-llama/Llama-3.1-8B-Instruct, gpt-oss (20B, 120B), moonshotai/Kimi-K2.5. 파인 튜닝 모델은 일반적으로 일치하지 않습니다. DFlash를 활성화하려면 둘러보기에서 베이스 모델을 다운로드하세요.",
+      "dflashEmptyTooltip": "DFlash 추측 디코드 드래프트는 특정 베이스 모델에만 존재합니다: Qwen/Qwen3 (4B, 8B), Qwen/Qwen3-Coder (4B, 8B, 30B-A3B, Next), Qwen/Qwen3.5 (4B, 7B, 9B, 14B, 27B, 35B-A3B), Qwen/Qwen3.6-35B-A3B, meta-llama/Llama-3.1-8B-Instruct, gpt-oss (20B, 120B), moonshotai/Kimi-K2.5. 파인 튜닝 모델은 일반적으로 일치하지 않습니다. DFlash를 활성화하려면 모델 페이지에서 베이스 모델을 다운로드하세요.",
       "memorySaverLabel": "{label} · 메모리 절약",
       "memorySaverTooltip": "{label}을(를) 사용할 수 있는 모델 표시 — KV cache 메모리 절약 방식으로, 긴 채팅이 더 적은 RAM에 들어가지만 생성 속도는 네이티브보다 느립니다 ({count})"
     },
@@ -360,7 +360,10 @@
       "downloadModel": "모델 다운로드",
       "cancelDownload": "다운로드 취소",
       "deleteModel": "모델 삭제",
-      "openModelCard": "모델 카드 열기"
+      "openModelCard": "모델 카드 열기",
+      "deleteSharedGguf": "공유 GGUF 다운로드 삭제",
+      "deleteSharedTextEncoder": "공유 텍스트 인코더 다운로드 삭제",
+      "deleteSharedComponent": "공유 구성 요소 다운로드 삭제"
     },
     "filter": {
       "searchLabel": "검색",
@@ -436,7 +439,9 @@
       "pending": "대기 중",
       "pendingTitle": "모델 가중치 크기를 알 때까지 RAM/VRAM 추정이 대기 중입니다."
     },
-    "releaseUnknown": "알 수 없음"
+    "releaseUnknown": "알 수 없음",
+    "sharedRepo": "저장소 공유 · +{count}",
+    "sharedRepoTitle": "{repo}의 다른 변형 {count}개와 같은 다운로드를 사용합니다. 이 행을 삭제하면 해당 파일도 함께 삭제됩니다."
   },
   "imageDiscover": {
     "access": {
@@ -529,6 +534,10 @@
     "trackedOnly": {
       "tooltip": "업스트림을 지켜보는 중입니다. 이 모델 계열은 아직 Studio에서 재생할 수 없습니다. 카탈로그 항목은 참고용이며, 다운로드해도 Studio에서 사용할 수 없습니다.",
       "badge": "업스트림 주시 중"
+    },
+    "sortLabel": {
+      "likes": "좋아요 많은 순",
+      "downloads": "다운로드 많은 순"
     }
   },
   "videoDiscover": {
@@ -577,7 +586,8 @@
       "downloading": "다운로드 중",
       "paused": "일시정지",
       "failed": "실패",
-      "incomplete": "미완료"
+      "incomplete": "미완료",
+      "installing": "설치 중"
     },
     "sort": {
       "name": "이름",
@@ -611,6 +621,165 @@
     "unknown": "알 수 없음",
     "longLive": {
       "installNote": "LongLive는 ~/.chaosengine/longlive의 격리된 venv에 설치됩니다. CUDA 전용이며 네트워크에 따라 5~15분 소요됩니다."
+    },
+    "sortLabel": {
+      "likes": "좋아요 많은 순",
+      "downloads": "다운로드 많은 순"
+    }
+  },
+  "models": {
+    "action": {
+      "cancel": "다운로드 취소",
+      "deleteDownload": "다운로드 삭제",
+      "deleteModel": "모델 삭제",
+      "download": "모델 다운로드",
+      "more": "더 보기",
+      "pause": "다운로드 일시정지",
+      "resume": "다운로드 재개",
+      "retry": "다운로드 재시도",
+      "trackedOnly": "추적 전용 — 아직 실행 불가"
+    },
+    "availability": {
+      "all": "전체",
+      "attention": "확인 필요",
+      "available": "다운로드 가능",
+      "downloading": "다운로드 중",
+      "installed": "설치됨",
+      "label": "보기"
+    },
+    "card": {
+      "collapse": "세부 정보 숨기기",
+      "expand": "세부 정보 보기",
+      "incompatible": "이 컴퓨터에서 실행할 수 없음",
+      "incompatibleTitle": "이 모델의 엔진은 이 컴퓨터에서 실행되지 않습니다. 파일은 삭제할 수 있습니다."
+    },
+    "delete": {
+      "confirmShared": "{count, plural, other {다른 모델 #개}}가 같은 다운로드를 사용하며 함께 삭제됩니다:",
+      "confirmSharedMore": "외 {count}개",
+      "confirmTarget": "디스크에서 {target}을(를) 삭제합니다. 되돌릴 수 없습니다.",
+      "confirmTitle": "\"{name}\"의 파일을 삭제할까요?"
+    },
+    "detail": {
+      "engine": "엔진",
+      "fit": "이 컴퓨터에서의 적합 여부",
+      "license": "라이선스",
+      "localPath": "디스크 위치",
+      "openModelCard": "모델 카드 열기",
+      "repo": "리포지토리",
+      "resolution": "권장 크기",
+      "sharedWith": "다운로드를 공유하는 모델",
+      "warning": "참고",
+      "ggufFile": "GGUF 파일",
+      "textEncoder": "텍스트 인코더",
+      "catalogSize": "카탈로그 크기"
+    },
+    "empty": {
+      "availability": "현재 필터에서 \"{bucket}\"에 해당하는 모델이 없습니다.",
+      "catalog": "카탈로그에 아직 모델이 없습니다.",
+      "filters": "현재 필터와 일치하는 모델이 없습니다. 필터나 검색어를 더 넓혀 보세요.",
+      "showAvailable": "다운로드 가능한 모델 보기"
+    },
+    "filter": {
+      "clear": "필터 지우기",
+      "search": "검색",
+      "sortBy": "정렬 기준"
+    },
+    "fit": {
+      "bestFit": "가장 적합",
+      "bestFitTitle": "이 컴퓨터에 가장 알맞은 이 계열의 모델: 여유롭게 적합한 최신 릴리스입니다.",
+      "estimated": "추정값",
+      "estimatedNote": "모델 크기로 추정한 값이며, 이 컴퓨터에서 측정한 것이 아닙니다.",
+      "estimatedShort": "추정",
+      "fits": "적합",
+      "measured": "측정값",
+      "measuredNote": "이 컴퓨터에서 측정한 값입니다.",
+      "numbers": "약 {need} GB가 필요합니다(이 컴퓨터에서 사용 가능한 용량: {usable} GB).",
+      "tight": "빠듯함",
+      "unknown": "이 컴퓨터용이 아님",
+      "wontFit": "부적합"
+    },
+    "image": {
+      "emptyAttention": "확인이 필요한 이미지 모델이 없습니다.",
+      "emptyCatalog": "카탈로그에 아직 이미지 모델이 없습니다. 백엔드가 실행 중인지 확인하세요.",
+      "emptyDownloading": "다운로드 중인 이미지 모델이 없습니다.",
+      "emptyInstalled": "설치된 이미지 모델이 아직 없습니다. 다운로드 가능한 모델 중 하나를 골라 다운로드하세요.",
+      "intro": "모든 이미지 모델을 한 목록에 모았습니다. 다운로드하면 이미지 스튜디오에서 사용할 수 있으며, 설치됨·다운로드 가능·다운로드 중으로 필터링할 수 있습니다."
+    },
+    "sort": {
+      "fewestDownloads": "다운로드 적은 순",
+      "leastLiked": "좋아요 적은 순"
+    },
+    "status": {
+      "available": "미설치",
+      "broken": "손상됨",
+      "downloading": "다운로드 중",
+      "failed": "실패",
+      "failedDetail": "다운로드 실패",
+      "installed": "설치됨",
+      "loaded": "메모리에 로드됨",
+      "partial": "미완료",
+      "paused": "일시정지"
+    },
+    "subtitle": "{total, plural, other {모델 #개}} 중 {shown}개 · {installed}개 설치됨",
+    "summary": {
+      "availability": "표시 중: {bucket}",
+      "count": "{count, plural, other {모델 #개}} · {sortLabel}",
+      "search": "검색: {query}"
+    },
+    "video": {
+      "intro": "모든 비디오 모델을 한 목록에 모았습니다. 다운로드하면 비디오 스튜디오에서 사용할 수 있으며, 설치됨·다운로드 가능·다운로드 중으로 필터링할 수 있습니다.",
+      "emptyCatalog": "카탈로그에 아직 비디오 모델이 없습니다. 백엔드가 실행 중인지 확인하세요.",
+      "emptyInstalled": "설치된 비디오 모델이 아직 없습니다. 다운로드 가능한 모델 중 하나를 골라 다운로드하세요.",
+      "emptyDownloading": "다운로드 중인 비디오 모델이 없습니다.",
+      "emptyAttention": "확인이 필요한 비디오 모델이 없습니다."
+    },
+    "chat": {
+      "intro": "모든 채팅 모델을 한 목록에 모았습니다. 디스크에 있는 모델, 카탈로그, Hugging Face 검색 결과가 포함됩니다. 설치됨·다운로드 가능·다운로드 중으로 필터링할 수 있습니다.",
+      "subtitle": "{total, plural, other {모델 #개}} 중 {shown}개 · {installed}개 설치됨 · 디스크 {size} · {dirs, plural, other {디렉터리 #개}}",
+      "searchPlaceholder": "이름, 공급자, 기능, 경로 또는 형식으로 검색 (Hugging Face도 검색)...",
+      "newThread": "새 스레드에서 채팅",
+      "useInThisChat": "이 채팅에서 사용",
+      "bestFitTitle": "이 컴퓨터에 가장 알맞은 이 계열의 모델: 여유롭게 적합한 최신 릴리스입니다. 함께 출시된 크기 중에서는 적합한 가장 큰 것을 고릅니다.",
+      "closestMatch": "가장 가까운 카탈로그 항목: {name}",
+      "sourceDownload": "다운로드",
+      "sizeTitle": "디스크 {onDisk}, 카탈로그 표기 {catalog}",
+      "detail": {
+        "released": "출시일",
+        "directory": "디렉터리",
+        "modified": "수정일"
+      },
+      "filter": {
+        "capability": "기능",
+        "format": "형식",
+        "backend": "백엔드",
+        "acceleration": "가속"
+      },
+      "emptyCatalog": "카탈로그와 디스크에 아직 채팅 모델이 없습니다. 백엔드가 실행 중인지 확인하거나 환경설정에서 모델 디렉터리를 추가하세요.",
+      "emptyDownloading": "다운로드 중인 채팅 모델이 없습니다.",
+      "emptyAttention": "확인이 필요한 채팅 모델이 없습니다.",
+      "emptySearchHub": "디스크나 카탈로그에 \"{query}\"와(과) 일치하는 모델이 없습니다. 아래에 Hugging Face 결과가 표시됩니다.",
+      "sort": {
+        "release": "최신 출시",
+        "name": "이름",
+        "format": "형식",
+        "formatDir": "형식 {direction}",
+        "backend": "백엔드",
+        "backendDir": "백엔드 {direction}",
+        "size": "가장 큰 크기",
+        "ram": "가장 높은 RAM",
+        "ramDesc": "가장 높은 RAM부터",
+        "ramAsc": "가장 낮은 RAM부터",
+        "compressed": "가장 높은 압축 RAM",
+        "compressedDesc": "가장 높은 압축 RAM부터",
+        "compressedAsc": "가장 낮은 압축 RAM부터",
+        "context": "가장 긴 컨텍스트",
+        "contextDesc": "가장 긴 컨텍스트부터",
+        "contextAsc": "가장 짧은 컨텍스트부터",
+        "modified": "최근 수정",
+        "modifiedDesc": "최근 수정부터",
+        "modifiedAsc": "오래전 수정부터",
+        "status": "상태"
+      }
     }
   }
 }

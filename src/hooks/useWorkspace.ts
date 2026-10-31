@@ -174,6 +174,9 @@ export function useWorkspace() {
           setTauriBackend(runtimeInfo);
           setWorkspace(payload);
           setLoading(false);
+          // The elapsed-seconds ticker only feeds the startup splash. Left running it
+          // re-rendered the whole app once a second for as long as it stayed open.
+          clearInterval(elapsedTimer);
           return;
         } catch {
           if (!cancelled) {

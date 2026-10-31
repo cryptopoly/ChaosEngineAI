@@ -27,7 +27,7 @@
     "copyImage": "이미지 복사",
     "openFolder": "폴더에서 표시",
     "modelLabel": "모델",
-    "noModelsOption": "설치된 모델 없음 — 둘러보기에서 다운로드하세요",
+    "noModelsOption": "설치된 모델 없음 — 이미지 > 모델에서 다운로드하세요",
     "aspectRatio": "종횡비",
     "qualityPreset": "품질 프리셋",
     "previewLabel": "미리보기",
@@ -152,7 +152,7 @@
     "summaryLoaded": "{selected}이(가) 로드되어 생성할 준비가 되었습니다.",
     "summarySwap": "{loaded}이(가) 로드되어 있습니다. {selected}(으)로 생성하면 파이프라인이 교체됩니다.",
     "summaryNotLoaded": "{selected}이(가) 로컬에 설치되어 있지만 아직 로드되지 않았습니다. 첫 생성은 디퓨전 파이프라인이 준비되는 동안 더 오래 걸립니다.",
-    "summaryNotInstalled": "{selected}이(가) 로컬에 설치되지 않았습니다. 로컬 생성을 사용하려면 둘러보기에서 다운로드하세요.",
+    "summaryNotInstalled": "{selected}이(가) 로컬에 설치되지 않았습니다. 로컬 생성을 사용하려면 모델 페이지에서 다운로드하세요.",
     "summaryOnDemand": "생성할 때 모델이 필요에 따라 로드됩니다.",
     "preloadModel": "모델 미리 로드",
     "unloadModel": "모델 언로드",
@@ -173,7 +173,7 @@
       "ready": "이 이미지를 생성합니다."
     },
     "actions": {
-      "discover": "둘러보기",
+      "discover": "모델 찾기",
       "installed": "설치됨",
       "gallery": "갤러리"
     },
@@ -189,14 +189,14 @@
       "downloaded": "다운로드됨"
     },
     "noModelsCallout": {
-      "message": "아직 다운로드된 이미지 모델이 없습니다. 이미지 둘러보기로 이동하여 둘러보고 설치한 다음 여기로 돌아와 생성하세요.",
-      "openDiscover": "이미지 둘러보기 열기"
+      "message": "아직 다운로드된 이미지 모델이 없습니다. 이미지 > 모델로 이동하여 둘러보고 설치한 다음 여기로 돌아와 생성하세요.",
+      "openDiscover": "이미지 모델 열기"
     },
     "download": {
       "failedMessage": "{name}이(가) 올바르게 다운로드되지 않았습니다. ChaosEngineAI는 부분적인 로컬 스냅샷만 발견했으므로 아직 실제 이미지 파이프라인을 로드할 수 없습니다.",
       "pausedMessage": "{name}이(가) 부분적으로 다운로드되었습니다. 준비되면 재개하세요. ChaosEngineAI가 이미 디스크에 있는 파일에서 계속 진행합니다.",
       "completeMessage": "{name} 다운로드가 완료되었습니다. 설치된 모델 스캔이 자동으로 새로 고침됩니다.",
-      "notInstalledMessage": "{name}이(가) 로컬에 설치되지 않았습니다. 로컬 생성을 활성화하려면 둘러보기에서 다운로드하세요.",
+      "notInstalledMessage": "{name}이(가) 로컬에 설치되지 않았습니다. 로컬 생성을 활성화하려면 모델 페이지에서 다운로드하세요.",
       "huggingFace": "Hugging Face",
       "settings": "설정",
       "technicalDetails": "기술 세부 정보",
@@ -251,7 +251,8 @@
       "guidance": "가이던스",
       "images": "이미지",
       "randomSeed": "랜덤 시드",
-      "seed": "시드"
+      "seed": "시드",
+      "maxPixelsNote": "{name}의 최대 렌더링 크기는 {megapixels}메가픽셀입니다. 이 크기는 비율을 유지한 채 줄여서 맞춥니다."
     },
     "safety": {
       "dangerTitle": "백엔드가 충돌할 가능성이 있음",
@@ -395,8 +396,8 @@
     },
     "subtitle": "시작하려면 비디오 모델을 선택하세요",
     "actions": {
-      "browseCatalog": "카탈로그 둘러보기",
-      "installedModels": "설치된 모델",
+      "browseCatalog": "모델 찾기",
+      "installedModels": "설치됨",
       "downloadModel": "모델 다운로드",
       "loadIntoMemory": "메모리에 로드",
       "unload": "언로드",
@@ -408,8 +409,8 @@
       "incomplete": "불완전"
     },
     "noModelsCallout": {
-      "message": "아직 비디오 모델이 설치되지 않았습니다. 카탈로그를 둘러보고 다운로드하세요.",
-      "openDiscover": "비디오 둘러보기 열기"
+      "message": "아직 비디오 모델이 설치되지 않았습니다. 비디오 > 모델을 열어 다운로드하세요.",
+      "openDiscover": "비디오 모델 열기"
     },
     "stats": {
       "clipDuration": "{value}초 클립"
@@ -424,7 +425,8 @@
     "prompt": {
       "label": "프롬프트",
       "placeholder": "새벽 안개 낀 소나무 숲의 시네마틱 드론 샷...",
-      "ltxShortWarning": "LTX-Video는 상세한 프롬프트(약 50-100단어)에서 최상의 결과를 생성합니다. 짧은 프롬프트(\\\"짚을 먹는 만화 라마\\\")는 모델을 충분히 조건화하지 못하며 드리프트하는 경향이 있습니다. Lightricks는 액션으로 시작한 다음 시각적 디테일, 조명, 카메라 방향을 추가하는 것을 권장합니다."
+      "ltxShortWarning": "LTX-Video는 상세한 프롬프트(약 50-100단어)에서 최상의 결과를 생성합니다. 짧은 프롬프트(\\\"짚을 먹는 만화 라마\\\")는 모델을 충분히 조건화하지 못하며 드리프트하는 경향이 있습니다. Lightricks는 액션으로 시작한 다음 시각적 디테일, 조명, 카메라 방향을 추가하는 것을 권장합니다.",
+      "soundHint": "이 모델은 소리도 만들며, 소리는 프롬프트를 따릅니다. 눈 밟는 발소리, 나무 사이의 바람, 낮은 엔진 소리처럼 소리도 적어 주세요."
     },
     "negativePrompt": {
       "tooltip": "모델에게 피해야 할 것을 알려줍니다. 일반적인 프롬프트가 미리 채워져 있으며 대부분의 비디오 모델에 맞게 조정되어 있습니다 — 모델별 선호도가 있는 경우 지우거나 편집하세요. 더 많은 구체성은 일반적으로 해를 끼치는 것보다 도움이 됩니다.",
@@ -462,7 +464,8 @@
       "guidanceTooltip": "모델이 프롬프트를 얼마나 강하게 따르는지. 너무 낮음 = 프롬프트 무시; 너무 높음 = 경직되거나 왜곡된 출력. 권장: LTX-Video ≈ 3, Wan ≈ 5, HunyuanVideo ≈ 6. 프롬프트의 '네거티브' 방향은 위의 네거티브 프롬프트에서 옵니다.",
       "guidanceLtxWarning": "LTX-Video는 flow-matching 모델입니다 — CFG가 ~3.5를 초과하면 과포화되고 흐릿한/무지개색 출력이 생성됩니다. 가장 깔끔한 결과를 위해 3으로 낮추세요.",
       "randomSeed": "랜덤 시드",
-      "seedPlaceholder": "시드 (정수)"
+      "seedPlaceholder": "시드 (정수)",
+      "maxPixelsNote": "{name}의 프레임당 최대 렌더링 크기는 {megapixels}메가픽셀입니다. 이 크기는 비율을 유지한 채 줄여서 맞춥니다."
     },
     "clipLength": {
       "line": "클립 길이: {seconds}초 ({frames} 프레임 ÷ {fps} fps)"
@@ -559,6 +562,10 @@
         "label": "최대",
         "sub": "50단계"
       }
+    },
+    "sound": {
+      "badge": "소리",
+      "badgeTooltip": "이 클립에는 소리가 있습니다. 플레이어의 볼륨 컨트롤로 켜세요."
     }
   },
   "imageGallery": {
@@ -568,7 +575,7 @@
     },
     "actions": {
       "studio": "Studio",
-      "installedModels": "설치된 모델"
+      "installedModels": "설치됨"
     },
     "hero": {
       "eyebrow": "저장된 출력",
@@ -622,7 +629,7 @@
     "actions": {
       "autoPlay": "자동 재생",
       "openStudio": "Studio 열기",
-      "installedModels": "설치된 모델"
+      "installedModels": "설치됨"
     },
     "empty": {
       "body": "아직 비디오 출력이 없습니다. Studio에서 모델을 로드하고 클립을 생성하세요 — 완료된 렌더가 여기에 표시됩니다.",
@@ -643,7 +650,9 @@
       },
       "expand": "펼치기",
       "revealFile": "파일 위치 표시",
-      "delete": "삭제"
+      "delete": "삭제",
+      "soundOn": "소리 켜기",
+      "soundOff": "음소거"
     }
   },
   "voice": {
@@ -746,7 +755,7 @@
     "stop": "중지",
     "studio": {
       "title": "Voice Studio",
-      "needsPack": "음성 기능은 이 컴퓨터에서 실행되며 음성 팩(약 2 GB)이 필요합니다. 음성 > 내 모델에서 한 번만 설치하세요.",
+      "needsPack": "음성 기능은 이 컴퓨터에서 실행되며 음성 팩(약 2 GB)이 필요합니다. 음성 > 모델에서 한 번만 설치하세요.",
       "openModels": "음성 모델 열기"
     },
     "savedToLibrary": "라이브러리에 저장됨",
@@ -867,5 +876,33 @@
     "rollbackKeptTail": "수동 복구용으로 보관됩니다.",
     "close": "닫기",
     "installLog": "설치 로그 ({count, plural, other {#단계}})"
+  },
+  "recommended": {
+    "title": "이 컴퓨터 권장 설정",
+    "measured": "측정값",
+    "estimated": "추정값",
+    "measuredTitle": "{machine}에서 측정했습니다.",
+    "estimatedTitle": "모델 카드, 업스트림 문서 또는 비슷한 컴퓨터에서 가져온 값이며, 이 하드웨어에서 측정한 것이 아닙니다.",
+    "measuredOn": "{machine}에서 측정",
+    "applyAll": "권장값 적용",
+    "allApplied": "모두 사용 중",
+    "inUse": "사용 중",
+    "use": "사용",
+    "on": "켜짐",
+    "off": "꺼짐",
+    "cacheValue": "{name}, 임계값 {threshold}",
+    "labels": {
+      "qualityPreset": "품질 프리셋",
+      "steps": "단계",
+      "guidance": "가이던스",
+      "sampler": "샘플러",
+      "size": "크기",
+      "numFrames": "프레임",
+      "fps": "FPS",
+      "cache": "디퓨전 캐시",
+      "cfgDecay": "CFG 감쇠",
+      "previewVae": "미리보기 VAE",
+      "fp8LayerwiseCasting": "FP8 레이어별"
+    }
   }
 }

@@ -43,6 +43,7 @@ export function loadedModelMatchesRuntimeProfile(
     (loadedModel.requestedContextTokens ?? loadedModel.contextTokens) === profile.contextTokens &&
     // Saved launch settings may lack these; missing means off.
     (loadedModel.speculativeDecoding ?? false) === (profile.speculativeDecoding ?? false) &&
-    (loadedModel.treeBudget ?? 0) === (profile.treeBudget ?? 0)
+    // A tree budget the target cannot use (hybrid and rotating-cache models) is dropped at load; compare what was asked for.
+    (loadedModel.requestedTreeBudget ?? loadedModel.treeBudget ?? 0) === (profile.treeBudget ?? 0)
   );
 }

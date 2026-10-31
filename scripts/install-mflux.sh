@@ -78,13 +78,32 @@ log "Python ${PY_VER} (arm64) at ${PYTHON_BIN}: OK"
 mkdir -p "${BIN_DIR}"
 
 # A half-finished install must never read as installed.
-rm -f "${VERSION_FILE}"
+BACKUP_DIR="${VENV_DIR}.previous"
+BACKUP_VERSION="${VERSION_FILE}.previous"
+HAVE_BACKUP=0
+restore_previous() {
+    local code=$?
+    if [[ ${code} -ne 0 && ${HAVE_BACKUP} -eq 1 ]]; then
+        rm -rf "${VENV_DIR}"
+        mv "${BACKUP_DIR}" "${VENV_DIR}"
+        [[ -f "${BACKUP_VERSION}" ]] && mv "${BACKUP_VERSION}" "${VERSION_FILE}"
+        echo "Install failed; the previous mflux install was put back."
+    fi
+}
+trap restore_previous EXIT
+
+# Keep the working install until the new one has passed its checks: the venv is
+# moved aside (not deleted) and put back if anything below fails. Its scripts
+# name its own path, so it only works at the original location.
+rm -rf "${BACKUP_DIR}" "${BACKUP_VERSION}"
+[[ -f "${VERSION_FILE}" ]] && mv "${VERSION_FILE}" "${BACKUP_VERSION}"
 
 phase "creating-venv"
 
 if [[ -d "${VENV_DIR}" ]]; then
-    log "Removing existing venv at ${VENV_DIR}"
-    rm -rf "${VENV_DIR}"
+    log "Moving the existing venv aside to ${BACKUP_DIR}"
+    mv "${VENV_DIR}" "${BACKUP_DIR}"
+    HAVE_BACKUP=1
 fi
 
 log "Creating venv at ${VENV_DIR}"
@@ -125,4 +144,6 @@ log "mflux ${INSTALLED_VERSION} import + CLI verified"
 } > "${VERSION_FILE}"
 
 log "Version file written to ${VERSION_FILE}"
+HAVE_BACKUP=0
+rm -rf "${BACKUP_DIR}" "${BACKUP_VERSION}"
 echo "OK"

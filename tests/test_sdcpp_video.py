@@ -71,8 +71,8 @@ class SdCppSupportedReposTests(unittest.TestCase):
 
     def test_supported_repos_includes_wan_2_2(self):
         repos = supported_repos()
-        self.assertIn("Wan-AI/Wan2.2-TI2V-5B-Diffusers", repos)
         self.assertIn("Wan-AI/Wan2.2-T2V-A14B-Diffusers", repos)
+        self.assertNotIn("Wan-AI/Wan2.2-TI2V-5B-Diffusers", repos)
 
     def test_is_sdcpp_video_repo(self):
         self.assertTrue(_is_sdcpp_video_repo("Wan-AI/Wan2.1-T2V-1.3B-Diffusers"))

@@ -422,6 +422,7 @@ from backend_service.routes.setup.gpu_bundle import router as _gpu_bundle_router
 from backend_service.routes.setup.llama_server import router as _llama_server_router
 from backend_service.routes.setup.longlive import router as _longlive_router
 from backend_service.routes.setup.mflux import router as _mflux_router
+from backend_service.routes.setup.ltx2 import router as _ltx2_router
 from backend_service.routes.setup.mtplx import router as _mtplx_router
 from backend_service.routes.setup.tensorfold import router as _tensorfold_router
 from backend_service.routes.setup.torch_upgrade import router as _torch_upgrade_router
@@ -435,6 +436,7 @@ router.include_router(_gpu_bundle_router)
 router.include_router(_llama_server_router)
 router.include_router(_longlive_router)
 router.include_router(_mflux_router)
+router.include_router(_ltx2_router)
 router.include_router(_mtplx_router)
 router.include_router(_tensorfold_router)
 router.include_router(_torch_upgrade_router)

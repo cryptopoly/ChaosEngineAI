@@ -1118,4 +1118,37 @@ describe("assessVideoGenerationSafety() with a chat model loaded", () => {
     expect(withChat.riskLevel).not.toBe("safe");
     expect(withChat.reason).toContain("chat model holds about 30 GB");
   });
+
+  it("does not run the attention heuristic for an engine that denoises at half size", () => {
+    // ltx-2-mlx measured 18 GB at 1280x704 x 121 frames; the diffusers attention estimate said ~42 GB.
+    const common = {
+      width: 1280,
+      height: 704,
+      numFrames: 121,
+      device: "mps",
+      deviceMemoryGb: 64,
+      baseModelFootprintGb: 28.5,
+      runtimeFootprintGb: 20,
+    };
+    const diffusers = assessVideoGenerationSafety(common);
+    const ltx = assessVideoGenerationSafety({ ...common, skipAttentionEstimate: true });
+    expect(ltx.estimatedPeakGb).toBeGreaterThan(20);
+    expect(ltx.estimatedPeakGb).toBeLessThan(24);
+    expect(ltx.riskLevel).toBe("safe");
+    expect(diffusers.estimatedPeakGb).toBeGreaterThan(ltx.estimatedPeakGb);
+  });
+
+  it("still grows with size and frames for that engine, so a 4K long clip is not 'safe'", () => {
+    const huge = assessVideoGenerationSafety({
+      width: 3840,
+      height: 2160,
+      numFrames: 481,
+      device: "mps",
+      deviceMemoryGb: 64,
+      baseModelFootprintGb: 28.5,
+      runtimeFootprintGb: 20,
+      skipAttentionEstimate: true,
+    });
+    expect(huge.riskLevel).not.toBe("safe");
+  });
 });

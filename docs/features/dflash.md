@@ -59,18 +59,29 @@ work).
 
 ## Configuring DDTree
 
-When DFlash is enabled, the launch modal exposes a **Tree budget** slider
-(0 - 64):
+When DFlash is enabled on an MLX model, the launch modal exposes a **Tree
+budget** slider (0 - 64). The budget is the number of tokens the target
+verifies per step, the root included:
 
-- **0** — linear DFlash. One candidate path, single verify per block.
-- **1 - 8** — light tree exploration. Modest acceptance-rate boost, low
-  memory overhead.
-- **16 - 32** — heavier tree, higher acceptance, more memory.
-- **64** — full upper bound. Significant memory; only worth it when
-  acceptance rates at lower budgets feel constrained.
+- **0** — linear DFlash: the draft's single best path, 8 tokens per verify
+  (the drafters are trained for 16; on an M4 Max with Qwen3-4B 16 ran slower
+  than plain decoding on prose, 8 ran ahead of it).
+- **4 - 8** — a small draft tree. Each node is verified at its depth in the
+  tree and sees only its own ancestors, so the output is still exactly what
+  plain greedy decoding produces. On an M4 Max with Qwen3-4B (bf16 and
+  4-bit) a budget of 8 ran 1.4× (code) to 2× (prose) faster than linear
+  DFlash, mostly because an 8-row verify pass costs far less than a 16-row
+  one on Apple Silicon.
+- **12 - 64** — wider trees accept more tokens per step, but each extra
+  verify row costs time, so on the same machine these were slower than 8.
 
-DDTree falls back to linear DFlash on any failure, and DFlash falls back
-to standard generation.
+DDTree runs on targets built only from attention layers over a plain KV
+cache (Qwen3, Qwen3-Coder). Hybrid models with recurrent layers (Qwen3.5 /
+3.6, Qwen3-Next) keep one sequential state and cannot score sibling
+branches in one pass, and Gemma 4's sliding-window layers use a rotating
+cache; on those the budget is ignored at load with a note, and linear
+DFlash runs. DDTree falls back to linear DFlash on any failure, and DFlash
+falls back to standard generation.
 
 ## How routing works
 

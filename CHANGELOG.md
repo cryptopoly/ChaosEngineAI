@@ -7,10 +7,13 @@ Full notes in [RELEASE_NOTES_v0.9.9.md](RELEASE_NOTES_v0.9.9.md).
 ### Added
 
 - **Voice I/O** (FU-117): a voice pack in its own environment (MLX Whisper, Parakeet and Kokoro on Apple Silicon; faster-whisper and kokoro-onnx on Windows and Linux), dictation and read-aloud in Chat, voice calls with turn detection and barge-in, Voice Studio (transcription queue, speaker labels, translation, transcript editor, Speak) and Voice Library, which replaces Gallery.
+- **LTX-2.5** (`dgrauet/ltx-2.5-mlx-q4`, gated) on the ltx-2-mlx engine and the new LTX default: 128 s against 155 s for LTX-2.3 on the same 4 s clip with sound, 17 GB (FU-128). Sound is badged in the gallery and result window (FU-130).
 - **LFM3-1.7B** (Liquid AI) on MLX through a vendored `lfm3` architecture, official MLX 4-bit and 8-bit rows (FU-118).
 - Unload / Cancel load button in the chat header.
 - **Nemotron 3.5 Bolt E4B** (NVIDIA) and **Granite Switch 4.1** (IBM) catalog families on llama.cpp. Bolt's DFlash drafter is published in a repo of its own, so a model can now be paired with a drafter by repo id (`PINNED_DRAFTERS`) and a download fetches companion files from other repos (`backend_service/helpers/companions.py`): 62 to 160 tok/s on an M4 Max with the drafter (FU-123).
 - **Nemotron 3.5 ASR** speech-to-text backend (mlx-audio, Apple Silicon): 40 languages with automatic detection.
+- **LTX-2.3 distilled q4** on its own MLX engine (ltx-2-mlx, isolated venv, installed from the Video Studio): 4 s at 768x512 with stereo sound in about 155 s on an M4 Max; the Wan 2.2 TI2V 5B rows are removed (FU-128).
+- Request guards: settings a model or engine cannot use are corrected with a note instead of failing or blanking the reply, for chat, image, video and speech recognition (FU-127).
 - **Iris-3B Turbo** image variant through mflux 0.24; image variants can pin `downloadFiles` and list `downloadCompanions` for repos that hold several models.
 - **LFM3-1.7B GGUF** (official Q4_K_M) on llama.cpp, pinned at b11981 (b11938 added the `lfm3` architecture); the language catalogs cover the whole frontend in all 10 locales (FU-119).
 - `scripts/audit-dependencies.py`: checks every pinned Python package, Rust crate and npm package against osv.dev for known vulnerabilities and lists what is behind the newest release. `pre-build-check` and the release workflow run it; a high or critical advisory blocks, and an accepted one needs a reason and an expiry date in `scripts/dependency-audit-ignore.json` (FU-120).
@@ -23,7 +26,11 @@ Full notes in [RELEASE_NOTES_v0.9.9.md](RELEASE_NOTES_v0.9.9.md).
 
 ### Fixed
 
-- Wan 2.2 TI2V 5B video came out over-bright, with stripes and colour blocks, at the Studio's default settings. The default guidance was 7.5; the model card's 5.0 gives clean frames (FU-122).
+- Memory gate: a measured peak footprint is no longer charged 10 % headroom a second time (Qwen-Image-2.1 was refused on a 64 GB Mac below 55 GB free); on a CUDA host the size term is judged against free GPU memory instead of system RAM.
+- A width and height over a model's limit keep their aspect ratio; the LTX-2 memory estimate grows with size and frames; the LTX-2 size guard rounds to 64 like the engine.
+- Models pages fit the window (narrow template below 1440 px), deleting a model drops its finished download record, tracked-only rows that have files keep delete and pause, best-fit picks prefer rows that run as downloaded and the faster build.
+
+- Hardware-specific options (CUDA boosters, FP8 / NF4, MLX rows) show only on hosts that can run them (FU-124); Iris-3B Turbo renders at 768 px or more (FU-124).
 - Tools never ran on GGUF models: llama.cpp returns tool calls as structured data and the engine ignored them, so the answer was empty.
 - `release-constraints.txt` pinned pypdf 6.10.2 and the other vulnerable versions, so release builds shipped them.
 
@@ -34,6 +41,17 @@ Full notes in [RELEASE_NOTES_v0.9.9.md](RELEASE_NOTES_v0.9.9.md).
 - A crashed voice worker on Windows was reported as "did not answer within 300 s".
 - Chat no longer re-requests the model load before every message.
 - A reasoning effort the chat template rejects is mapped to the nearest one it accepts.
+- MLX DFlash fell back to plain decoding on every reply (dflash-mlx 0.1.5 made `runtime_context` required); linear DFlash now verifies 8 tokens per step (16 lost to plain decoding on prose); DDTree verifies tree nodes at their own positions and is back for attention-only models (FU-112, FU-134).
+- DFlash on hybrid Qwen3.5 / 3.6 / Next targets produced garbage with mlx-lm 0.32 (the pinned dflash-mlx read the output head from the wrong object); `backend_service/dflash_compat.py` corrects it and a self-check compares the draft runtime with the model at load (FU-135). The stop token a speculative reply keeps is no longer shown.
+- LTX clips carry a `hasAudio` flag read from the mp4; gallery and result window show a Sound badge and the result window plays the clip with sound (FU-130).
+- A JSON schema that leaves a llama.cpp reasoning model with no text is retried as plain JSON; a conversation larger than the context answers 400 with both sizes; a Turbo or distilled model asked for many more steps than it is tuned for says what that costs (FU-127).
+- The mflux installer moves the old venv aside and restores it when the new install fails to verify (FU-123).
+- A fine-grained Hugging Face token without gated-repo access gets a specific message; the import-models panel no longer names other apps (FU-119).
+- Wan 2.1 and 2.2 A14B default guidance follow the Wan-AI model cards, and the Wan burn check in the E2E suite reads the last frame of a 17-frame clip (FU-122).
+- One **Models** page per area replaces Discover and My Models for Chat, Images and Video, built on shared components in `src/components/models/`; old tab ids redirect with a preset, persisted sidebar ids migrate, image and video model deletes confirm, paused rows show Resume (FU-129).
+- **Fit** rating and best-fit pick on every chat, image and video row (`helpers/fit.py`, `helpers/hardware_class.py`); **recommended settings** panel in the Image and Video Studios (`helpers/recommendations.py`); **per-model size limits** replace the 2048 px cap with a pixel-aware memory gate (`catalog/size_limits.py`, `helpers/memory_gate.py`), hard ceiling 8192 (FU-133).
+- Preloading an mflux or stable-diffusion.cpp model is a no-op instead of a 500; distilled video rows start the Studio at their own steps and guidance; the video safety estimate no longer applies the diffusers attention heuristic to ltx-2-mlx; the startup timer no longer re-renders the app every second.
+- Project hub: `docs/hub/` plus `tools/hub_tracker.py` and `tools/build_hub.py` (FU-131).
 
 ## Unreleased
 

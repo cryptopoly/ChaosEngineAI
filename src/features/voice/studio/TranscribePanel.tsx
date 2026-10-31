@@ -41,6 +41,7 @@ interface Job {
   libraryId?: string;
   startedAt?: number;
   seconds?: number;
+  note?: string;
 }
 
 export interface OpenRequest {
@@ -152,7 +153,12 @@ export function TranscribePanel({ runtime, openRequest, onSendToChat, onOpenMode
           save: true,
           signal: controller.signal,
         });
-        patchJob(job.id, { status: "done", libraryId: result.libraryId, seconds: result.seconds ?? undefined });
+        patchJob(job.id, {
+          status: "done",
+          libraryId: result.libraryId,
+          seconds: result.seconds ?? undefined,
+          note: result.note ?? undefined,
+        });
         if (result.libraryId) {
           const item = await getLibraryItem(result.libraryId);
           // Show the first finished file, or this one if nothing is open.
@@ -388,7 +394,10 @@ export function TranscribePanel({ runtime, openRequest, onSendToChat, onOpenMode
                   <span className="voice-queue__name" title={job.name}>
                     {job.name}
                   </span>
-                  <span className="voice-queue__status">{statusText(job)}</span>
+                  <span className="voice-queue__status" title={job.note}>
+                    {statusText(job)}
+                    {job.note ? ` · ${job.note}` : ""}
+                  </span>
                   {job.status === "done" ? (
                     <button type="button" className="link-button" onClick={() => void openJob(job)}>
                       {t("voice.queue.open", { defaultValue: "Open" })}

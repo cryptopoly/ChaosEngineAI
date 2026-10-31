@@ -2,11 +2,19 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
 import { InfoTooltip } from "../../components/InfoTooltip";
+import { Ltx2EngineBanner } from "../../components/Ltx2EngineBanner";
 import { PromptEnhanceButton } from "../../components/PromptEnhanceButton";
+import { RecommendedSettingsPanel } from "../../components/RecommendedSettingsPanel";
+import {
+  DEFAULT_MAX_SIDE,
+  clampStudioSide,
+  fitStudioSize,
+  type RecommendationAppliers,
+  type RecommendationCurrent,
+} from "../../components/recommendedSettings";
 import { VideoStudioRuntimeBanner } from "./VideoStudioRuntimeBanner";
 import type { CudaTorchInstallResult, DownloadStatus, GpuBundleJobState, InstallResult, LongLiveJobState } from "../../api";
 import type {
-  TabId,
   TauriBackendInfo,
   VideoCacheStrategyId,
   VideoModelFamily,
@@ -16,6 +24,7 @@ import type {
 import type { NativeBackendStatus } from "../../types/server";
 import type { SystemStats } from "../../types/system";
 import {
+  hasNvidiaGpu,
   imageOrVideoVariantPlatformGate,
   isVariantCompatibleWithHost,
 } from "../../utils/platform";
@@ -44,6 +53,7 @@ import {
   onNumericBlur,
   onNumericChange,
 } from "./videoStudioConstants";
+import { modelsPageRequest, type TabRequest } from "../../constants/tabRedirects";
 
 export interface VideoStudioTabProps {
   videoCatalog: VideoModelFamily[];
@@ -52,7 +62,7 @@ export interface VideoStudioTabProps {
   /** Filter platform-incompatible variants out of the model dropdown
    * (FU-056 hide-unrecoverable-options policy). Threaded from App.tsx →
    * workspace.system. Optional for test harnesses. */
-  hostSystem?: Pick<SystemStats, "platform" | "arch">;
+  hostSystem?: Pick<SystemStats, "platform" | "arch" | "gpuVramTotalGb">;
   selectedVideoModelId: string;
   onSelectedVideoModelIdChange: (id: string) => void;
   selectedVideoVariant: VideoModelVariant | null;
@@ -117,7 +127,7 @@ export interface VideoStudioTabProps {
   onVideoStgScaleChange: (value: number) => void;
   videoFastPreview: boolean;
   onVideoFastPreviewChange: (value: boolean) => void;
-  onActiveTabChange: (tab: TabId) => void;
+  onActiveTabChange: (tab: TabRequest) => void;
   onPreloadVideoModel: (variant: VideoModelVariant) => void;
   onUnloadVideoModel: (variant?: VideoModelVariant) => void;
   onVideoDownload: (repo: string, modelId?: string) => void;
@@ -409,6 +419,9 @@ export function VideoStudioTab({
   const isMlxVideoVariant =
     !!selectedVideoVariant?.repo && MLX_VIDEO_SUPPORTED_REPOS.has(selectedVideoVariant.repo);
   const isLtx2DistilledVariant = isLtx2DistilledRepo(selectedVideoVariant?.repo);
+  // ltx-2-mlx runs a fixed distilled sampler: steps, guidance, the negative prompt, CFG decay,
+  // the preview VAE and the diffusion cache do not exist for it, so they are not offered.
+  const fixedSampler = Boolean(selectedVideoVariant?.runtime?.toLowerCase().includes("ltx-2-mlx"));
   const ltx2DevSibling = selectedVideoFamily?.variants.find(
     (variant) => variant.repo === selectedVideoVariant?.repo.replace(/-distilled$/i, "-dev"),
   ) ?? null;
@@ -476,12 +489,71 @@ export function VideoStudioTab({
   const isAppleSiliconHost =
     mlxVideoStatus !== null
     && (mlxVideoStatus.device === "mps" || mlxVideoStatus.expectedDevice === "mps");
+  // CUDA-only controls (NF4, FP8) need an NVIDIA GPU: hidden on a Mac and on a PC without one.
+  const showCudaControls = hostSystem ? hasNvidiaGpu(hostSystem) : !isAppleSiliconHost;
+  // Per-model size limit (``maxSide`` from the catalog; 4096 when the backend sends none).
+  const videoMaxSide = selectedVideoVariant?.maxSide && selectedVideoVariant.maxSide > 0
+    ? selectedVideoVariant.maxSide
+    : DEFAULT_MAX_SIDE;
+  useEffect(() => {
+    const fitted = fitStudioSize(videoWidth, videoHeight, { maxSide: videoMaxSide });
+    if (fitted.width !== videoWidth) onVideoWidthChange(fitted.width);
+    if (fitted.height !== videoHeight) onVideoHeightChange(fitted.height);
+  }, [videoMaxSide, videoWidth, videoHeight, onVideoWidthChange, onVideoHeightChange]);
+
+  // "Recommended for this machine": applied through the same setters as the controls
+  // below, and only for settings this variant shows (ltx-2-mlx: size, frames and fps).
+  const showVideoDiffusionCache = !fixedSampler && !isMlxVideoSubprocessPath;
+  const recommendationAppliers = useMemo<RecommendationAppliers>(() => {
+    const allowedCache = new Set(availableCacheStrategies.map((strategy) => strategy.id as string));
+    return {
+      width: (value) => onVideoWidthChange(clampStudioSide(value, { maxSide: videoMaxSide }, 832)),
+      height: (value) => onVideoHeightChange(clampStudioSide(value, { maxSide: videoMaxSide }, 480)),
+      numFrames: onVideoNumFramesChange,
+      fps: onVideoFpsChange,
+      steps: fixedSampler ? undefined : onVideoStepsChange,
+      guidance: fixedSampler ? undefined : onVideoGuidanceChange,
+      cfgDecay: fixedSampler ? undefined : onVideoCfgDecayChange,
+      previewVae: fixedSampler ? undefined : onVideoPreviewVaeChange,
+      cacheStrategy: showVideoDiffusionCache
+        ? (value) => {
+            if (allowedCache.has(value)) onVideoCacheStrategyChange(value as VideoCacheStrategyId);
+          }
+        : undefined,
+      cacheThreshold: showVideoDiffusionCache ? onVideoCacheRelL1ThreshChange : undefined,
+      fp8LayerwiseCasting: showCudaControls && !fixedSampler ? onVideoFp8LayerwiseCastingChange : undefined,
+    };
+  }, [
+    availableCacheStrategies, videoMaxSide, fixedSampler, showVideoDiffusionCache, showCudaControls,
+    onVideoWidthChange, onVideoHeightChange, onVideoNumFramesChange, onVideoFpsChange,
+    onVideoStepsChange, onVideoGuidanceChange, onVideoCfgDecayChange, onVideoPreviewVaeChange,
+    onVideoCacheStrategyChange, onVideoCacheRelL1ThreshChange, onVideoFp8LayerwiseCastingChange,
+  ]);
+  const recommendationCurrent = useMemo<RecommendationCurrent>(() => ({
+    width: videoWidth,
+    height: videoHeight,
+    numFrames: videoNumFrames,
+    fps: videoFps,
+    steps: videoSteps,
+    guidance: videoGuidance,
+    cfgDecay: videoCfgDecay,
+    previewVae: videoPreviewVae,
+    cacheStrategy: videoCacheStrategy,
+    cacheThreshold: videoCacheRelL1Thresh ?? VIDEO_CACHE_STRATEGY_DEFAULT_THRESH[videoCacheStrategy],
+    fp8LayerwiseCasting: videoFp8LayerwiseCasting,
+  }), [
+    videoWidth, videoHeight, videoNumFrames, videoFps, videoSteps, videoGuidance, videoCfgDecay,
+    videoPreviewVae, videoCacheStrategy, videoCacheRelL1Thresh, videoFp8LayerwiseCasting,
+  ]);
+
   const mlxVideoMissing =
-    isAppleSiliconHost
+    !fixedSampler
+    && isAppleSiliconHost
     && !mlxVideoStatus.realGenerationAvailable
     && (mlxVideoStatus.missingDependencies ?? []).includes("mlx-video");
   const mlxVideoInstalledScaffold =
-    isAppleSiliconHost
+    !fixedSampler
+    && isAppleSiliconHost
     && !mlxVideoStatus.realGenerationAvailable
     && !(mlxVideoStatus.missingDependencies ?? []).includes("mlx-video");
 
@@ -493,8 +565,18 @@ export function VideoStudioTab({
   const isDownloaded =
     !!selectedVideoVariant && (selectedVideoVariant.availableLocally || downloadState?.state === "completed");
   const hasPrompt = videoPrompt.trim().length > 0;
-  const selectedVideoRuntimeStatus: VideoRuntimeStatus =
-    isMlxVideoVariant && mlxVideoStatus?.realGenerationAvailable
+  const selectedVideoRuntimeStatus: VideoRuntimeStatus = fixedSampler
+    ? {
+        ...videoRuntimeStatus,
+        activeEngine: "ltx-2-mlx",
+        device: "mlx",
+        expectedDevice: "mlx",
+        realGenerationAvailable: true,
+        message: t("videoStudio.ltx2.engineMessage", {
+          defaultValue: "This model runs on its own MLX engine (ltx-2-mlx) on the Apple GPU, with sound.",
+        }),
+      }
+    : isMlxVideoVariant && mlxVideoStatus?.realGenerationAvailable
       ? {
           ...mlxVideoStatus,
           deviceMemoryGb: mlxVideoStatus.deviceMemoryGb ?? videoRuntimeStatus.deviceMemoryGb,
@@ -563,8 +645,10 @@ export function VideoStudioTab({
         repo: selectedVideoVariant?.repo,
         useNf4: videoUseNf4 && !selectedVideoVariant?.ggufFile,
         otherResidentGb: residentChatModelGb,
+        skipAttentionEstimate: fixedSampler,
       }),
     [
+      fixedSampler,
       residentChatModelGb,
       videoWidth,
       videoHeight,
@@ -681,17 +765,19 @@ export function VideoStudioTab({
         className="span-2"
         actions={
           <div className="button-row">
-            <button className="secondary-button" type="button" onClick={() => onActiveTabChange("video-discover")}>
-              {t("videoStudio.actions.browseCatalog", { defaultValue: "Browse Catalog" })}
+            <button className="secondary-button" type="button" onClick={() => onActiveTabChange(modelsPageRequest("video", "available"))}>
+              {t("videoStudio.actions.browseCatalog", { defaultValue: "Find models" })}
             </button>
-            <button className="secondary-button" type="button" onClick={() => onActiveTabChange("video-models")}>
-              {t("videoStudio.actions.installedModels", { defaultValue: "Installed Models" })}
+            <button className="secondary-button" type="button" onClick={() => onActiveTabChange(modelsPageRequest("video", "installed"))}>
+              {t("videoStudio.actions.installedModels", { defaultValue: "Installed" })}
             </button>
           </div>
         }
       >
+        <Ltx2EngineBanner modelNeedsLtx2={Boolean(selectedVideoVariant?.runtime?.toLowerCase().includes("ltx-2-mlx"))} />
         <VideoStudioRuntimeBanner
-          videoRuntimeStatus={videoRuntimeStatus}
+          hostSystem={hostSystem}
+          videoRuntimeStatus={selectedVideoRuntimeStatus}
           loadedVideoVariant={loadedVideoVariant}
           busy={busy}
           busyAction={busyAction}
@@ -758,15 +844,15 @@ export function VideoStudioTab({
             ) : (
               <div className="callout image-callout">
                 <p>{t("videoStudio.noModelsCallout.message", {
-                  defaultValue: "No video models installed yet. Browse the catalog to download one.",
+                  defaultValue: "No video models installed yet. Open Video > Models to download one.",
                 })}</p>
                 <div className="button-row">
                   <button
                     className="primary-button"
                     type="button"
-                    onClick={() => onActiveTabChange("video-discover")}
+                    onClick={() => onActiveTabChange(modelsPageRequest("video", "available"))}
                   >
-                    {t("videoStudio.noModelsCallout.openDiscover", { defaultValue: "Open Video Discover" })}
+                    {t("videoStudio.noModelsCallout.openDiscover", { defaultValue: "Open Video Models" })}
                   </button>
                 </div>
               </div>
@@ -830,6 +916,14 @@ export function VideoStudioTab({
                 defaultValue: "A cinematic drone shot of a misty pine forest at dawn...",
               })}
             />
+            {fixedSampler ? (
+              <p className="muted-text" role="note">
+                {t("videoStudio.prompt.soundHint", {
+                  defaultValue:
+                    "This model makes sound too, and the sound follows your prompt. Describe it: footsteps crunching in snow, wind in the trees, a low engine hum.",
+                })}
+              </p>
+            ) : null}
             {selectedVideoVariant?.repo === "Lightricks/LTX-Video"
               && hasPrompt
               && videoPrompt.trim().split(/\s+/).length < 25 ? (
@@ -842,24 +936,26 @@ export function VideoStudioTab({
             ) : null}
           </label>
 
-          <label>
-            <span className="inline-label-text">
-              {t("video.negativePrompt", { defaultValue: "Negative prompt" })}
-              <InfoTooltip text={t("videoStudio.negativePrompt.tooltip", {
-                defaultValue:
-                  "Tells the model what to avoid. A generic prompt is pre-filled and tuned for most video models — clear or edit it if you have a model-specific preference. More specificity usually helps more than it hurts.",
-              })} />
-            </span>
-            <input
-              className="text-input"
-              type="text"
-              value={videoNegativePrompt}
-              onChange={(event) => onVideoNegativePromptChange(event.target.value)}
-              placeholder={t("videoStudio.negativePrompt.placeholder", {
-                defaultValue: "Optional: things to avoid (low quality, watermark, etc.)",
-              })}
-            />
-          </label>
+          {!fixedSampler ? (
+            <label>
+              <span className="inline-label-text">
+                {t("video.negativePrompt", { defaultValue: "Negative prompt" })}
+                <InfoTooltip text={t("videoStudio.negativePrompt.tooltip", {
+                  defaultValue:
+                    "Tells the model what to avoid. A generic prompt is pre-filled and tuned for most video models — clear or edit it if you have a model-specific preference. More specificity usually helps more than it hurts.",
+                })} />
+              </span>
+              <input
+                className="text-input"
+                type="text"
+                value={videoNegativePrompt}
+                onChange={(event) => onVideoNegativePromptChange(event.target.value)}
+                placeholder={t("videoStudio.negativePrompt.placeholder", {
+                  defaultValue: "Optional: things to avoid (low quality, watermark, etc.)",
+                })}
+              />
+            </label>
+          ) : null}
 
           {/*
             Fast-preview toggle. Only renders when the selected variant
@@ -909,33 +1005,51 @@ export function VideoStudioTab({
             workspaces. The label-on-top + pills layout inside each group
             is unchanged.
           */}
+          {selectedVideoVariant?.availableLocally ? (
+            <RecommendedSettingsPanel
+              recommendation={selectedVideoVariant.recommendedSettings}
+              appliers={recommendationAppliers}
+              current={recommendationCurrent}
+              labelFor={(kind, id) =>
+                kind === "cacheStrategy"
+                  ? t(`videoStudio.cacheStrategies.${id}.label`, {
+                      defaultValue: IMAGE_CACHE_STRATEGIES.find((strategy) => strategy.id === id)?.label ?? id,
+                    })
+                  : id
+              }
+              disabled={videoBusy}
+            />
+          ) : null}
+
           <div className="preset-row-pair">
-          <div className="preset-row">
-            <span className="preset-row-label">
-              {t("video.qualityPreset", { defaultValue: "Quality preset" })}
-              <InfoTooltip text={t("videoStudio.qualityPreset.tooltip", {
-                defaultValue:
-                  "Sets the denoising step count. More steps = sharper frames + longer generation time. Frame count (clip length) and guidance stay as set — presets don't touch them.",
-              })} />
-            </span>
-            {(Object.keys(QUALITY_PRESETS) as VideoQualityPreset[]).map((key) => {
-              const preset = QUALITY_PRESETS[key];
-              const active = videoSteps === preset.steps;
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  className={`preset-pill ${active ? "active" : ""}`.trim()}
-                  onClick={() => {
-                    onVideoStepsChange(preset.steps);
-                  }}
-                >
-                  <span className="preset-pill-label">{t(`videoStudio.quality.${key}.label`, { defaultValue: preset.label })}</span>
-                  <span className="preset-pill-sub">{t(`videoStudio.quality.${key}.sub`, { defaultValue: preset.sub })}</span>
-                </button>
-              );
-            })}
-          </div>
+          {!fixedSampler ? (
+            <div className="preset-row">
+              <span className="preset-row-label">
+                {t("video.qualityPreset", { defaultValue: "Quality preset" })}
+                <InfoTooltip text={t("videoStudio.qualityPreset.tooltip", {
+                  defaultValue:
+                    "Sets the denoising step count. More steps = sharper frames + longer generation time. Frame count (clip length) and guidance stay as set — presets don't touch them.",
+                })} />
+              </span>
+              {(Object.keys(QUALITY_PRESETS) as VideoQualityPreset[]).map((key) => {
+                const preset = QUALITY_PRESETS[key];
+                const active = videoSteps === preset.steps;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    className={`preset-pill ${active ? "active" : ""}`.trim()}
+                    onClick={() => {
+                      onVideoStepsChange(preset.steps);
+                    }}
+                  >
+                    <span className="preset-pill-label">{t(`videoStudio.quality.${key}.label`, { defaultValue: preset.label })}</span>
+                    <span className="preset-pill-sub">{t(`videoStudio.quality.${key}.sub`, { defaultValue: preset.sub })}</span>
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
 
           {/*
             Aspect-ratio preset pills. Fixed resolutions (not "apply ratio
@@ -1029,11 +1143,11 @@ export function VideoStudioTab({
                 className="text-input"
                 type="number"
                 min={256}
-                max={2048}
+                max={videoMaxSide}
                 step={64}
                 value={displayNumber(videoWidth)}
                 onChange={(event) => onNumericChange(event, onVideoWidthChange)}
-                onBlur={() => onNumericBlur(videoWidth, onVideoWidthChange, 832, 256)}
+                onBlur={() => onVideoWidthChange(clampStudioSide(videoWidth, { maxSide: videoMaxSide }, 832))}
               />
             </label>
             <label>
@@ -1048,11 +1162,11 @@ export function VideoStudioTab({
                 className="text-input"
                 type="number"
                 min={256}
-                max={2048}
+                max={videoMaxSide}
                 step={64}
                 value={displayNumber(videoHeight)}
                 onChange={(event) => onNumericChange(event, onVideoHeightChange)}
-                onBlur={() => onNumericBlur(videoHeight, onVideoHeightChange, 480, 256)}
+                onBlur={() => onVideoHeightChange(clampStudioSide(videoHeight, { maxSide: videoMaxSide }, 480))}
               />
             </label>
             <label>
@@ -1092,72 +1206,89 @@ export function VideoStudioTab({
                 onBlur={() => onNumericBlur(videoFps, onVideoFpsChange, 24)}
               />
             </label>
-            <label>
-              <span className="inline-label-text">
-                {t("videoStudio.fields.steps", { defaultValue: "Steps" })}
-                <InfoTooltip text={t("videoStudio.fields.stepsTooltip", {
-                  defaultValue:
-                    "Denoising steps — how many passes the model makes to clean up noise into an image. More = sharper and more coherent, but linearly slower. 20 is draft quality, 30 is standard, 50+ is high quality with diminishing returns.",
-                })} />
-              </span>
-              <div className="slider-number-row">
-                <input
-                  type="range"
-                  min={1}
-                  max={100}
-                  step={1}
-                  value={Number.isFinite(videoSteps) ? videoSteps : 30}
-                  onChange={(event) => onVideoStepsChange(Number(event.target.value))}
-                />
-                <input
-                  className="text-input"
-                  type="number"
-                  min={1}
-                  max={100}
-                  value={displayNumber(videoSteps)}
-                  onChange={(event) => onNumericChange(event, onVideoStepsChange)}
-                  onBlur={() => onNumericBlur(videoSteps, onVideoStepsChange, 30)}
-                />
-              </div>
-            </label>
-            <label>
-              <span className="inline-label-text">
-                {t("videoStudio.fields.guidance", { defaultValue: "Guidance" })}
-                <InfoTooltip text={t("videoStudio.fields.guidanceTooltip", {
-                  defaultValue:
-                    "How strongly the model follows your prompt. Too low = ignores the prompt; too high = rigid or distorted output. Recommended: LTX-Video ≈ 3, Wan ≈ 5, HunyuanVideo ≈ 6. The prompt's 'negative' direction comes from the Negative prompt above.",
-                })} />
-              </span>
-              <div className="slider-number-row">
-                <input
-                  type="range"
-                  min={1}
-                  max={15}
-                  step={0.5}
-                  value={Number.isFinite(videoGuidance) ? videoGuidance : 5}
-                  onChange={(event) => onVideoGuidanceChange(Number(event.target.value))}
-                />
-                <input
-                  className="text-input"
-                  type="number"
-                  min={1}
-                  max={20}
-                  step={0.5}
-                  value={displayNumber(videoGuidance)}
-                  onChange={(event) => onNumericChange(event, onVideoGuidanceChange)}
-                  onBlur={() => onNumericBlur(videoGuidance, onVideoGuidanceChange, 5)}
-                />
-              </div>
-              {selectedVideoVariant?.repo === "Lightricks/LTX-Video" && videoGuidance > 4 ? (
-                <p className="caution-text" role="alert">
-                  {t("videoStudio.fields.guidanceLtxWarning", {
+            {!fixedSampler ? (
+              <label>
+                <span className="inline-label-text">
+                  {t("videoStudio.fields.steps", { defaultValue: "Steps" })}
+                  <InfoTooltip text={t("videoStudio.fields.stepsTooltip", {
                     defaultValue:
-                      "LTX-Video is a flow-matching model — CFG above ~3.5 over-saturates and produces blurred / rainbow output. Lower to 3 for the cleanest results.",
-                  })}
-                </p>
-              ) : null}
-            </label>
+                      "Denoising steps — how many passes the model makes to clean up noise into an image. More = sharper and more coherent, but linearly slower. 20 is draft quality, 30 is standard, 50+ is high quality with diminishing returns.",
+                  })} />
+                </span>
+                <div className="slider-number-row">
+                  <input
+                    type="range"
+                    min={1}
+                    max={100}
+                    step={1}
+                    value={Number.isFinite(videoSteps) ? videoSteps : 30}
+                    onChange={(event) => onVideoStepsChange(Number(event.target.value))}
+                  />
+                  <input
+                    className="text-input"
+                    type="number"
+                    min={1}
+                    max={100}
+                    value={displayNumber(videoSteps)}
+                    onChange={(event) => onNumericChange(event, onVideoStepsChange)}
+                    onBlur={() => onNumericBlur(videoSteps, onVideoStepsChange, 30)}
+                  />
+                </div>
+              </label>
+            ) : null}
+            {!fixedSampler ? (
+              <label>
+                <span className="inline-label-text">
+                  {t("videoStudio.fields.guidance", { defaultValue: "Guidance" })}
+                  <InfoTooltip text={t("videoStudio.fields.guidanceTooltip", {
+                    defaultValue:
+                      "How strongly the model follows your prompt. Too low = ignores the prompt; too high = rigid or distorted output. Recommended: LTX-Video ≈ 3, Wan ≈ 5, HunyuanVideo ≈ 6. The prompt's 'negative' direction comes from the Negative prompt above.",
+                  })} />
+                </span>
+                <div className="slider-number-row">
+                  <input
+                    type="range"
+                    min={1}
+                    max={15}
+                    step={0.5}
+                    value={Number.isFinite(videoGuidance) ? videoGuidance : 5}
+                    onChange={(event) => onVideoGuidanceChange(Number(event.target.value))}
+                  />
+                  <input
+                    className="text-input"
+                    type="number"
+                    min={1}
+                    max={20}
+                    step={0.5}
+                    value={displayNumber(videoGuidance)}
+                    onChange={(event) => onNumericChange(event, onVideoGuidanceChange)}
+                    onBlur={() => onNumericBlur(videoGuidance, onVideoGuidanceChange, 5)}
+                  />
+                </div>
+                {selectedVideoVariant?.repo === "Lightricks/LTX-Video" && videoGuidance > 4 ? (
+                  <p className="caution-text" role="alert">
+                    {t("videoStudio.fields.guidanceLtxWarning", {
+                      defaultValue:
+                        "LTX-Video is a flow-matching model — CFG above ~3.5 over-saturates and produces blurred / rainbow output. Lower to 3 for the cleanest results.",
+                    })}
+                  </p>
+                ) : null}
+              </label>
+            ) : null}
           </div>
+
+          {selectedVideoVariant?.maxPixels
+            && Number.isFinite(videoWidth) && Number.isFinite(videoHeight)
+            && videoWidth * videoHeight > selectedVideoVariant.maxPixels ? (
+            <p className="muted-text" role="note">
+              {t("videoStudio.fields.maxPixelsNote", {
+                defaultValue:
+                  "{name} renders at most {megapixels} megapixels per frame; this size is reduced to fit, keeping its shape.",
+                name: selectedVideoVariant.name,
+                megapixels: (selectedVideoVariant.maxPixels / 1_000_000).toFixed(1),
+              })}
+            </p>
+          ) : null}
 
           {Number.isFinite(videoNumFrames) && Number.isFinite(videoFps) && videoFps > 0 ? (
             <p className="muted-text" aria-live="polite">
@@ -1179,7 +1310,7 @@ export function VideoStudioTab({
             </p>
           ) : null}
 
-          {!isAppleSiliconHost ? (
+          {showCudaControls ? (
             <label className="checkbox-row">
               <input
                 type="checkbox"
@@ -1215,37 +1346,41 @@ export function VideoStudioTab({
             </label>
           ) : null}
 
-          <label className="checkbox-row">
-            <input
-              type="checkbox"
-              checked={videoEnhancePrompt}
-              onChange={(event) => onVideoEnhancePromptChange(event.target.checked)}
-            />
-            <span>
-              <strong>{t("videoStudio.toggles.enhancePrompt.label", {
-                defaultValue: "Auto-enhance short prompts",
-              })}</strong>
-              <InfoTooltip text={t("videoStudio.toggles.enhancePrompt.tooltip", {
-                defaultValue:
-                  "Appends model-tuned structural hints (cinematic descriptors, lighting, camera direction) when the prompt is under 25 words. Diffusion video models train on 50-100-word prompts and under-condition on shorter inputs. Long custom prompts are sent verbatim — the threshold is the safeguard.",
-              })} />
-            </span>
-          </label>
+          {!fixedSampler ? (
+            <label className="checkbox-row">
+              <input
+                type="checkbox"
+                checked={videoEnhancePrompt}
+                onChange={(event) => onVideoEnhancePromptChange(event.target.checked)}
+              />
+              <span>
+                <strong>{t("videoStudio.toggles.enhancePrompt.label", {
+                  defaultValue: "Auto-enhance short prompts",
+                })}</strong>
+                <InfoTooltip text={t("videoStudio.toggles.enhancePrompt.tooltip", {
+                  defaultValue:
+                    "Appends model-tuned structural hints (cinematic descriptors, lighting, camera direction) when the prompt is under 25 words. Diffusion video models train on 50-100-word prompts and under-condition on shorter inputs. Long custom prompts are sent verbatim — the threshold is the safeguard.",
+                })} />
+              </span>
+            </label>
+          ) : null}
 
-          <label className="checkbox-row">
-            <input
-              type="checkbox"
-              checked={videoCfgDecay}
-              onChange={(event) => onVideoCfgDecayChange(event.target.checked)}
-            />
-            <span>
-              <strong>{t("videoStudio.toggles.cfgDecay.label", { defaultValue: "CFG decay" })}</strong>
-              <InfoTooltip text={t("videoStudio.toggles.cfgDecay.tooltip", {
-                defaultValue:
-                  "Linearly drops guidance_scale from your slider value at step 0 toward 1.5 (the floor that keeps classifier-free guidance enabled end-to-end) at the final step. Flow-match video models (Wan, LTX, HunyuanVideo) oversaturate when CFG stays high throughout sampling; decay lets early steps lock semantics and late steps preserve fine detail. Default on for video — the runtime gates non-flow-match repos automatically.",
-              })} />
-            </span>
-          </label>
+          {!fixedSampler ? (
+            <label className="checkbox-row">
+              <input
+                type="checkbox"
+                checked={videoCfgDecay}
+                onChange={(event) => onVideoCfgDecayChange(event.target.checked)}
+              />
+              <span>
+                <strong>{t("videoStudio.toggles.cfgDecay.label", { defaultValue: "CFG decay" })}</strong>
+                <InfoTooltip text={t("videoStudio.toggles.cfgDecay.tooltip", {
+                  defaultValue:
+                    "Linearly drops guidance_scale from your slider value at step 0 toward 1.5 (the floor that keeps classifier-free guidance enabled end-to-end) at the final step. Flow-match video models (Wan, LTX, HunyuanVideo) oversaturate when CFG stays high throughout sampling; decay lets early steps lock semantics and late steps preserve fine detail. Default on for video — the runtime gates non-flow-match repos automatically.",
+                })} />
+              </span>
+            </label>
+          ) : null}
 
           {/*
             FU-018: TAESD/TAEHV preview-decode VAE swap. Off by
@@ -1255,20 +1390,22 @@ export function VideoStudioTab({
             HunyuanVideo, taecogvideox / taemochi for the others);
             unmapped repos no-op silently.
           */}
-          <label className="checkbox-row">
-            <input
-              type="checkbox"
-              checked={videoPreviewVae}
-              onChange={(event) => onVideoPreviewVaeChange(event.target.checked)}
-            />
-            <span>
-              <strong>{t("videoStudio.toggles.previewVae.label", { defaultValue: "Preview VAE" })}</strong>
-              <InfoTooltip text={t("videoStudio.toggles.previewVae.tooltip", {
-                defaultValue:
-                  "Swaps the full VAE for the matching tiny VAE (madebyollin/taew2_2 for Wan, taeltx2_3_wide for LTX, taehv1_5 for HunyuanVideo, taecogvideox / taemochi for the others) so each step decodes in a fraction of the wall-time. Trades final fidelity for iteration speed. Off by default; backend silently no-ops on repos without a mapped tiny VAE.",
-              })} />
-            </span>
-          </label>
+          {!fixedSampler ? (
+            <label className="checkbox-row">
+              <input
+                type="checkbox"
+                checked={videoPreviewVae}
+                onChange={(event) => onVideoPreviewVaeChange(event.target.checked)}
+              />
+              <span>
+                <strong>{t("videoStudio.toggles.previewVae.label", { defaultValue: "Preview VAE" })}</strong>
+                <InfoTooltip text={t("videoStudio.toggles.previewVae.tooltip", {
+                  defaultValue:
+                    "Swaps the full VAE for the matching tiny VAE (madebyollin/taew2_2 for Wan, taeltx2_3_wide for LTX, taehv1_5 for HunyuanVideo, taecogvideox / taemochi for the others) so each step decodes in a fraction of the wall-time. Trades final fidelity for iteration speed. Off by default; backend silently no-ops on repos without a mapped tiny VAE.",
+                })} />
+              </span>
+            </label>
+          ) : null}
 
           {/*
             FU-024: FP8 layerwise casting on CUDA SM 8.9+ (Ada / Hopper /
@@ -1278,7 +1415,7 @@ export function VideoStudioTab({
             Linux / Windows where the user may or may not have an Ada+
             GPU; backend silently skips on pre-Ada hardware.
           */}
-          {!isAppleSiliconHost ? (
+          {showCudaControls ? (
             <label className="checkbox-row">
               <input
                 type="checkbox"
@@ -1306,79 +1443,81 @@ export function VideoStudioTab({
             attach to the diffusers transformer; the backend swallows
             the no-op silently.
           */}
-          <div className="control-stack">
-            <span className="eyebrow">
-              {t("videoStudio.diffusionCache.label", { defaultValue: "Diffusion cache" })}
-              <InfoTooltip text={t("videoStudio.diffusionCache.tooltip", {
-                defaultValue:
-                  "Speed up generation by reusing transformer block outputs between similar timesteps. First Block Cache works on every DiT pipeline (Wan, LTX, Hunyuan, CogVideoX, Mochi) on macOS / Windows / Linux. TeaCache only applies to FLUX-family video models (Hunyuan / LTX / CogVideoX / Mochi) — hidden for Wan because the upstream patch targets a different transformer layout. The mlx-video LTX-2 subprocess path renders outside the diffusers hook system, so caching is unavailable there.",
-              })} />
-            </span>
-            <select
-              className="text-input"
-              value={videoCacheStrategy}
-              onChange={(event) =>
-                onVideoCacheStrategyChange(event.target.value as VideoCacheStrategyId)
-              }
-              disabled={isMlxVideoSubprocessPath}
-            >
-              {availableCacheStrategies.map((strategy) => (
-                <option key={strategy.id} value={strategy.id}>
-                  {t(`videoStudio.cacheStrategies.${strategy.id}.label`, { defaultValue: strategy.label })}
-                  {" · "}
-                  {t(`videoStudio.cacheStrategies.${strategy.id}.hint`, { defaultValue: strategy.hint })}
-                </option>
-              ))}
-            </select>
-            {isMlxVideoSubprocessPath ? (
-              <span className="muted-text" style={{ fontSize: 11 }}>
-                {t("videoStudio.diffusionCache.mlxSubprocessNote", {
+          {!fixedSampler ? (
+            <div className="control-stack">
+              <span className="eyebrow">
+                {t("videoStudio.diffusionCache.label", { defaultValue: "Diffusion cache" })}
+                <InfoTooltip text={t("videoStudio.diffusionCache.tooltip", {
                   defaultValue:
-                    "mlx-video LTX-2 runs as a subprocess outside the diffusers hook system — caching strategies are not available here. Switch to a diffusers Wan / LTX / Hunyuan variant to use First Block Cache.",
-                })}
+                    "Speed up generation by reusing transformer block outputs between similar timesteps. First Block Cache works on every DiT pipeline (Wan, LTX, Hunyuan, CogVideoX, Mochi) on macOS / Windows / Linux. TeaCache only applies to FLUX-family video models (Hunyuan / LTX / CogVideoX / Mochi) — hidden for Wan because the upstream patch targets a different transformer layout. The mlx-video LTX-2 subprocess path renders outside the diffusers hook system, so caching is unavailable there.",
+                })} />
               </span>
-            ) : null}
-            {isWanRepo ? (
-              <span className="muted-text" style={{ fontSize: 11 }}>
-                {t("videoStudio.diffusionCache.wanNote", {
-                  defaultValue:
-                    "TeaCache hidden for Wan — its calibration tables target a different transformer layout. First Block Cache covers Wan via the diffusers 0.36 generic hook.",
-                })}
-              </span>
-            ) : null}
-            {videoCacheStrategy !== "none" ? (
-              <label className="control-stack-inline">
-                <span className="muted-text">
-                  {t("videoStudio.diffusionCache.threshold", {
-                    defaultValue: "Threshold ({value})",
-                    value: videoCacheRelL1Thresh ??
-                      VIDEO_CACHE_STRATEGY_DEFAULT_THRESH[videoCacheStrategy],
-                  })}
-                  <InfoTooltip text={t("videoStudio.diffusionCache.thresholdTooltip", {
+              <select
+                className="text-input"
+                value={videoCacheStrategy}
+                onChange={(event) =>
+                  onVideoCacheStrategyChange(event.target.value as VideoCacheStrategyId)
+                }
+                disabled={isMlxVideoSubprocessPath}
+              >
+                {availableCacheStrategies.map((strategy) => (
+                  <option key={strategy.id} value={strategy.id}>
+                    {t(`videoStudio.cacheStrategies.${strategy.id}.label`, { defaultValue: strategy.label })}
+                    {" · "}
+                    {t(`videoStudio.cacheStrategies.${strategy.id}.hint`, { defaultValue: strategy.hint })}
+                  </option>
+                ))}
+              </select>
+              {isMlxVideoSubprocessPath ? (
+                <span className="muted-text" style={{ fontSize: 11 }}>
+                  {t("videoStudio.diffusionCache.mlxSubprocessNote", {
                     defaultValue:
-                      "Lower = stricter (less speedup, less quality drift). Higher = more aggressive caching. Video DiTs are more sensitive to drift than image DiTs, so the default is tighter (0.08 vs 0.12).",
-                  })} />
+                      "mlx-video LTX-2 runs as a subprocess outside the diffusers hook system — caching strategies are not available here. Switch to a diffusers Wan / LTX / Hunyuan variant to use First Block Cache.",
+                  })}
                 </span>
-                <input
-                  className="text-input"
-                  type="number"
-                  min={0.01}
-                  max={0.6}
-                  step={0.01}
-                  value={
-                    videoCacheRelL1Thresh ??
-                    VIDEO_CACHE_STRATEGY_DEFAULT_THRESH[videoCacheStrategy]
-                  }
-                  onChange={(event) => {
-                    const value = Number(event.target.value);
-                    onVideoCacheRelL1ThreshChange(
-                      Number.isFinite(value) && value > 0 ? value : null,
-                    );
-                  }}
-                />
-              </label>
-            ) : null}
-          </div>
+              ) : null}
+              {isWanRepo ? (
+                <span className="muted-text" style={{ fontSize: 11 }}>
+                  {t("videoStudio.diffusionCache.wanNote", {
+                    defaultValue:
+                      "TeaCache hidden for Wan — its calibration tables target a different transformer layout. First Block Cache covers Wan via the diffusers 0.36 generic hook.",
+                  })}
+                </span>
+              ) : null}
+              {videoCacheStrategy !== "none" ? (
+                <label className="control-stack-inline">
+                  <span className="muted-text">
+                    {t("videoStudio.diffusionCache.threshold", {
+                      defaultValue: "Threshold ({value})",
+                      value: videoCacheRelL1Thresh ??
+                        VIDEO_CACHE_STRATEGY_DEFAULT_THRESH[videoCacheStrategy],
+                    })}
+                    <InfoTooltip text={t("videoStudio.diffusionCache.thresholdTooltip", {
+                      defaultValue:
+                        "Lower = stricter (less speedup, less quality drift). Higher = more aggressive caching. Video DiTs are more sensitive to drift than image DiTs, so the default is tighter (0.08 vs 0.12).",
+                    })} />
+                  </span>
+                  <input
+                    className="text-input"
+                    type="number"
+                    min={0.01}
+                    max={0.6}
+                    step={0.01}
+                    value={
+                      videoCacheRelL1Thresh ??
+                      VIDEO_CACHE_STRATEGY_DEFAULT_THRESH[videoCacheStrategy]
+                    }
+                    onChange={(event) => {
+                      const value = Number(event.target.value);
+                      onVideoCacheRelL1ThreshChange(
+                        Number.isFinite(value) && value > 0 ? value : null,
+                      );
+                    }}
+                  />
+                </label>
+              ) : null}
+            </div>
+          ) : null}
 
           {/*
             STG (Spatial-Temporal Guidance) — mlx-video LTX-2 only. Adds
@@ -1505,7 +1644,7 @@ export function VideoStudioTab({
                   <button
                     className="secondary-button"
                     type="button"
-                    onClick={() => onActiveTabChange("video-discover")}
+                    onClick={() => onActiveTabChange(modelsPageRequest("video", "available"))}
                     disabled={videoBusy}
                   >
                     {t("videoStudio.safety.browseSmaller", { defaultValue: "Browse smaller models" })}

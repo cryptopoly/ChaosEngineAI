@@ -1,3 +1,6 @@
+import type { ModelFit } from "./models";
+import type { RecommendedSettings } from "./recommendations";
+
 export type ImageGalleryRuntimeFilter = "all" | "diffusers" | "placeholder" | "warning";
 export type ImageGalleryOrientationFilter = "all" | "square" | "portrait" | "landscape";
 export type ImageGallerySort = "newest" | "oldest";
@@ -64,6 +67,9 @@ export interface ImageModelVariant {
   /** ``mflux`` or ``sdcpp`` for variants that run outside the diffusers
    * pipeline; absent for diffusers. */
   engine?: string | null;
+  /** False when the variant's engine has no guidance / negative-prompt input; the Studio hides it. */
+  acceptsGuidance?: boolean;
+  acceptsNegativePrompt?: boolean;
   /** Other catalog variants that use the same download (see Video). */
   sharedRepoSiblings?: number | null;
   sharedRepoSiblingIds?: string[];
@@ -115,6 +121,17 @@ export interface ImageModelVariant {
   releaseDate?: string | null;
   createdAt?: string | null;
   releaseLabel?: string | null;
+  fit?: ModelFit;
+  /** Settings that work best for this model on this machine (Studio panel). */
+  recommendedSettings?: RecommendedSettings | null;
+  /** Largest allowed edge in px for this model; the Studio inputs clamp to it (default 4096). */
+  maxSide?: number;
+  /** Largest allowed width x height; a larger request is reduced (see the run's note). */
+  maxPixels?: number;
+  /** Edge the model was trained at. */
+  nativeSide?: number;
+  /** Smallest edge the model renders cleanly at (the backend raises smaller sizes). */
+  minSide?: number | null;
 }
 
 export interface ImageModelFamily {
@@ -126,6 +143,8 @@ export interface ImageModelFamily {
   updatedLabel: string;
   badges: string[];
   defaultVariantId: string;
+  /** Newest release in the family that fits this machine comfortably; ``null`` when none does. */
+  bestFitVariantId?: string | null;
   variants: ImageModelVariant[];
 }
 

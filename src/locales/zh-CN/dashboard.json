@@ -59,7 +59,7 @@
     "recommendedTarget": "推荐目标",
     "currentRuntime": "当前运行时",
     "modelLoadedVia": "{model} 通过 {engine} 加载。",
-    "noModelHint": "尚未加载模型。在 对话 中选择线程模型,或在 发现 中浏览更新的家族。"
+    "noModelHint": "尚未加载模型。在 对话 中选择线程模型,或在 对话 > 模型 中浏览更新的家族。"
   },
   "activityFeed": {
     "title": "活动源",

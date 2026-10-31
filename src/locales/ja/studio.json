@@ -27,7 +27,7 @@
     "copyImage": "画像をコピー",
     "openFolder": "フォルダーで表示",
     "modelLabel": "モデル",
-    "noModelsOption": "インストール済みモデルなし — ディスカバーからダウンロード",
+    "noModelsOption": "インストール済みモデルなし — 画像 > モデルからダウンロード",
     "aspectRatio": "アスペクト比",
     "qualityPreset": "品質プリセット",
     "previewLabel": "プレビュー",
@@ -152,7 +152,7 @@
     "summaryLoaded": "{selected} は読み込み済みで、生成できる状態です。",
     "summarySwap": "{loaded} が読み込まれています。{selected} で生成するとパイプラインが入れ替わります。",
     "summaryNotLoaded": "{selected} はローカルにインストール済みですが、まだ読み込まれていません。拡散パイプラインのウォームアップがあるため、最初の生成は時間がかかります。",
-    "summaryNotInstalled": "{selected} はローカルにインストールされていません。ローカル生成を有効にするには、ディスカバーからダウンロードしてください。",
+    "summaryNotInstalled": "{selected} はローカルにインストールされていません。ローカル生成を有効にするには、モデルページからダウンロードしてください。",
     "summaryOnDemand": "生成時にモデルが必要に応じて読み込まれます。",
     "preloadModel": "モデルをプリロード",
     "unloadModel": "モデルをアンロード",
@@ -173,7 +173,7 @@
       "ready": "この画像を生成します。"
     },
     "actions": {
-      "discover": "ディスカバー",
+      "discover": "モデルを探す",
       "installed": "インストール済み",
       "gallery": "ギャラリー"
     },
@@ -189,14 +189,14 @@
       "downloaded": "ダウンロード済み"
     },
     "noModelsCallout": {
-      "message": "まだ画像モデルがダウンロードされていません。画像ディスカバーから閲覧してインストールし、ここに戻って生成してください。",
-      "openDiscover": "画像ディスカバーを開く"
+      "message": "まだ画像モデルがダウンロードされていません。画像 > モデルで閲覧してインストールし、ここに戻って生成してください。",
+      "openDiscover": "画像モデルを開く"
     },
     "download": {
       "failedMessage": "{name} のダウンロードが正常に完了しませんでした。ChaosEngineAI は部分的なローカルスナップショットしか見つけられなかったため、実際の画像パイプラインをまだ読み込めません。",
       "pausedMessage": "{name} は部分的にダウンロードされています。再開すると ChaosEngineAI は既にディスク上にあるファイルから続行します。",
       "completeMessage": "{name} のダウンロードが完了しました。インストール済みモデルのスキャンが自動的に更新されます。",
-      "notInstalledMessage": "{name} はローカルにインストールされていません。ローカル生成を有効にするには、ディスカバーからダウンロードしてください。",
+      "notInstalledMessage": "{name} はローカルにインストールされていません。ローカル生成を有効にするには、モデルページからダウンロードしてください。",
       "huggingFace": "Hugging Face",
       "settings": "設定",
       "technicalDetails": "技術的な詳細",
@@ -251,7 +251,8 @@
       "guidance": "ガイダンス",
       "images": "画像数",
       "randomSeed": "ランダムシード",
-      "seed": "シード"
+      "seed": "シード",
+      "maxPixelsNote": "{name} が描画できるのは最大 {megapixels} メガピクセルです。このサイズは縦横比を保ったまま縮小されます。"
     },
     "safety": {
       "dangerTitle": "バックエンドがクラッシュする可能性が高い",
@@ -395,8 +396,8 @@
     },
     "subtitle": "開始するには動画モデルを選択してください",
     "actions": {
-      "browseCatalog": "カタログを閲覧",
-      "installedModels": "インストール済みモデル",
+      "browseCatalog": "モデルを探す",
+      "installedModels": "インストール済み",
       "downloadModel": "モデルをダウンロード",
       "loadIntoMemory": "メモリに読み込み",
       "unload": "アンロード",
@@ -408,8 +409,8 @@
       "incomplete": "未完了"
     },
     "noModelsCallout": {
-      "message": "まだ動画モデルがインストールされていません。カタログを閲覧してダウンロードしてください。",
-      "openDiscover": "動画ディスカバーを開く"
+      "message": "まだ動画モデルがインストールされていません。動画 > モデルを開いてダウンロードしてください。",
+      "openDiscover": "動画モデルを開く"
     },
     "stats": {
       "clipDuration": "{value} 秒のクリップ"
@@ -424,7 +425,8 @@
     "prompt": {
       "label": "プロンプト",
       "placeholder": "夜明けの霧の松林を映した映画的なドローンショット...",
-      "ltxShortWarning": "LTX-Video は詳細なプロンプト(~50-100 ワード)で最良の結果を出します。短いプロンプト(「藁を食べる漫画ラマ」)はモデルを十分に条件付けせず、ドリフトする傾向があります。Lightricks は最初にアクションを書き、その後に視覚的な詳細、ライティング、カメラの向きを加えることを推奨しています。"
+      "ltxShortWarning": "LTX-Video は詳細なプロンプト(~50-100 ワード)で最良の結果を出します。短いプロンプト(「藁を食べる漫画ラマ」)はモデルを十分に条件付けせず、ドリフトする傾向があります。Lightricks は最初にアクションを書き、その後に視覚的な詳細、ライティング、カメラの向きを加えることを推奨しています。",
+      "soundHint": "このモデルは音も生成し、音はプロンプトに従います。雪を踏む足音、木々を渡る風、低いエンジン音のように音も書いてください。"
     },
     "negativePrompt": {
       "tooltip": "モデルに避けるべきものを伝えます。一般的なプロンプトが事前に入力されており、ほとんどの動画モデル向けにチューニングされています — モデル固有の好みがあればクリアまたは編集してください。具体性は通常、害よりも益をもたらします。",
@@ -462,7 +464,8 @@
       "guidanceTooltip": "モデルがプロンプトにどれだけ強く従うか。低すぎ = プロンプトを無視、高すぎ = 硬直または歪んだ出力。推奨:LTX-Video ≈ 3、Wan ≈ 5、HunyuanVideo ≈ 6。プロンプトの「ネガティブ」方向は上のネガティブプロンプトから来ます。",
       "guidanceLtxWarning": "LTX-Video はフローマッチングモデル — CFG が ~3.5 を超えると過飽和となり、ぼやけた / 虹色の出力を生成します。最もクリーンな結果を得るには 3 に下げてください。",
       "randomSeed": "ランダムシード",
-      "seedPlaceholder": "シード(整数)"
+      "seedPlaceholder": "シード(整数)",
+      "maxPixelsNote": "{name} が 1 フレームあたり描画できるのは最大 {megapixels} メガピクセルです。このサイズは縦横比を保ったまま縮小されます。"
     },
     "clipLength": {
       "line": "クリップ長:{seconds} 秒({frames} フレーム ÷ {fps} fps)"
@@ -559,6 +562,10 @@
         "label": "最大",
         "sub": "50 ステップ"
       }
+    },
+    "sound": {
+      "badge": "サウンド",
+      "badgeTooltip": "このクリップには音声があります。プレーヤーの音量コントロールでオンにしてください。"
     }
   },
   "imageGallery": {
@@ -568,7 +575,7 @@
     },
     "actions": {
       "studio": "スタジオ",
-      "installedModels": "インストール済みモデル"
+      "installedModels": "インストール済み"
     },
     "hero": {
       "eyebrow": "保存された出力",
@@ -622,7 +629,7 @@
     "actions": {
       "autoPlay": "自動再生",
       "openStudio": "スタジオを開く",
-      "installedModels": "インストール済みモデル"
+      "installedModels": "インストール済み"
     },
     "empty": {
       "body": "動画出力はまだありません。スタジオでモデルを読み込んでクリップを生成すると、完了したレンダーがここに表示されます。",
@@ -643,7 +650,9 @@
       },
       "expand": "展開",
       "revealFile": "ファイルを表示",
-      "delete": "削除"
+      "delete": "削除",
+      "soundOn": "音声をオンにする",
+      "soundOff": "ミュート"
     }
   },
   "voice": {
@@ -746,7 +755,7 @@
     "stop": "停止",
     "studio": {
       "title": "Voice Studio",
-      "needsPack": "音声機能はこのコンピューター上で動作し、音声パック（約 2 GB）が必要です。音声 > マイモデル から一度だけインストールしてください。",
+      "needsPack": "音声機能はこのコンピューター上で動作し、音声パック（約 2 GB）が必要です。音声 > モデル から一度だけインストールしてください。",
       "openModels": "音声モデルを開く"
     },
     "savedToLibrary": "ライブラリに保存しました",
@@ -867,5 +876,33 @@
     "rollbackKeptTail": "（手動復旧用）。",
     "close": "閉じる",
     "installLog": "インストールログ（{count, plural, other {# ステップ}}）"
+  },
+  "recommended": {
+    "title": "このマシンの推奨設定",
+    "measured": "実測",
+    "estimated": "推定",
+    "measuredTitle": "{machine} で計測しました。",
+    "estimatedTitle": "モデルカード、上流のドキュメント、または類似のマシンに基づく値で、このハードウェアでは計測していません。",
+    "measuredOn": "{machine} で計測",
+    "applyAll": "推奨設定を適用",
+    "allApplied": "すべて適用中",
+    "inUse": "適用中",
+    "use": "適用",
+    "on": "オン",
+    "off": "オフ",
+    "cacheValue": "{name}、しきい値 {threshold}",
+    "labels": {
+      "qualityPreset": "品質プリセット",
+      "steps": "ステップ",
+      "guidance": "ガイダンス",
+      "sampler": "サンプラー",
+      "size": "サイズ",
+      "numFrames": "フレーム",
+      "fps": "FPS",
+      "cache": "拡散キャッシュ",
+      "cfgDecay": "CFG ディケイ",
+      "previewVae": "プレビュー VAE",
+      "fp8LayerwiseCasting": "FP8 レイヤーワイズ"
+    }
   }
 }

@@ -42,16 +42,19 @@ def _strategy_speed_map(strategy: str) -> dict[int, float]:
     """Speed ratio maps by strategy and bit count (fraction of baseline FP16 speed).
 
     TurboQuant is a memory saver, not a speed option. Measured with
-    ``scripts/calibrate-cache-speed.py`` on Qwen3-4B-bf16, M4 Max
-    (2026-10-01): Native 54.3 / 50.1 tok/s at 512 / 4096 prompt tokens against
-    9.8-10.7 / 6.4-6.5 for 2-4 bits, so 0.18-0.20 at short context and 0.13 at
-    4K. The map holds the median of the two; 1 bit is unmeasured and kept at
-    the 2-bit level. Decode is flat across bit widths, so the ratios are too.
-    The TriAttention row is an unmeasured estimate.
+    ``scripts/calibrate-cache-speed.py`` on Qwen3-4B-4bit, M4 Max (2026-10-29):
+    Native 163.0 / 128.1 / 75.0 tok/s at 512 / 4096 / 16384 prompt tokens
+    against 29-34 / 14-15 / 3.0 for 2-4 bits, so the ratio is 0.18-0.21 at 512,
+    0.10-0.12 at 4K and 0.04 at 16K: it falls as the conversation grows. The
+    estimate describes a typical conversation (``_TYPICAL_KV_TOKENS``, 2048
+    tokens), where the three points interpolate to 0.13 / 0.13 / 0.15 at 2 / 3
+    / 4 bits; 1 bit is unmeasured and kept at the 2-bit level. Past 4K tokens
+    the summary adds the measured long-context figure. The TriAttention row is
+    an unmeasured estimate.
     """
     maps: dict[str, dict[int, float]] = {
         "triattention": {1: 0.48, 2: 0.56, 3: 0.63, 4: 0.70},
-        "turboquant":   {1: 0.16, 2: 0.16, 3: 0.15, 4: 0.16},
+        "turboquant":   {1: 0.13, 2: 0.13, 3: 0.13, 4: 0.15},
     }
     return maps.get(strategy, {1: 0.45, 2: 0.53, 3: 0.59, 4: 0.68})
 
@@ -178,6 +181,11 @@ def compute_cache_preview(
             f"{_bytes_to_gb(optimized_bytes):.1f} GB from {_bytes_to_gb(baseline_bytes):.1f} GB, "
             f"about {compression_ratio:.1f}x smaller, with an estimated {estimated_tok_s:.1f} tok/s on this machine."
         )
+        if strategy == "turboquant" and context_tokens > 4096:
+            summary += (
+                " Decode keeps slowing as the conversation grows: on an M4 Max it fell to about 0.04x "
+                "Native at 16K tokens."
+            )
 
     return {
         "bits": bits,

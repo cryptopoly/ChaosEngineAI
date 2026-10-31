@@ -19,7 +19,7 @@ failure. The tool is composable with `jq` or any other pipeline tool.
 ./scripts/chaosengine-cli health
 ./scripts/chaosengine-cli status | jq '.runtime.state'
 
-# Discover + load
+# Find + load
 ./scripts/chaosengine-cli search "qwen3"
 ./scripts/chaosengine-cli load Qwen/Qwen3-4B --spec
 

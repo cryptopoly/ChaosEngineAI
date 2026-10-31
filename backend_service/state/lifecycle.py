@@ -198,6 +198,7 @@ def load_model(
         if same_loaded_model and not profile_changes:
             if state.runtime.loaded_model is not None:
                 state.runtime.loaded_model.requestedContextTokens = requested_context_tokens
+                state.runtime.loaded_model.requestedTreeBudget = tree_budget
             if effective_canonical_repo is not None and state.runtime.loaded_model is not None:
                 state.runtime.loaded_model.canonicalRepo = effective_canonical_repo
             return state.runtime.status(active_requests=state.active_requests, requests_served=state.requests_served)
@@ -294,6 +295,7 @@ def load_model(
     with state._lock:
         state._loading_state = None
         loaded.requestedContextTokens = requested_context_tokens
+        loaded.requestedTreeBudget = tree_budget
         loaded_cache_label = state._cache_label(
             cache_strategy=str(loaded.cacheStrategy),
             bits=int(loaded.cacheBits),
@@ -437,6 +439,17 @@ def delete_model_path(state: ChaosEngineState, path: str) -> dict[str, Any]:
                 status_code=500,
                 detail=f"Failed to delete {resolved}: {exc}",
             )
+
+        # A finished download record would keep the model "installed" in the app after its
+        # files are gone, so forget the ones whose Hugging Face cache folder was removed.
+        removed = str(resolved)
+        for repo in list(state._downloads):
+            record = state._downloads.get(repo) or {}
+            if record.get("state") != "completed":
+                continue
+            cache_folder = "models--" + repo.replace("/", "--")
+            if cache_folder in removed or removed.rstrip("/").endswith(repo):
+                state._downloads.pop(repo, None)
 
         state.add_log("library", "info", f"Deleted model at {resolved}.")
         return {

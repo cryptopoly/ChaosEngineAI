@@ -46,14 +46,11 @@ import { PluginsTab } from "./features/plugins/PluginsTab";
 import { ConversionTab } from "./features/conversion/ConversionTab";
 import { BenchmarkRunTab } from "./features/benchmarks/BenchmarkRunTab";
 import { BenchmarkHistoryTab } from "./features/benchmarks/BenchmarkHistoryTab";
-import { OnlineModelsTab } from "./features/models/OnlineModelsTab";
-import { MyModelsTab } from "./features/models/MyModelsTab";
-import { ImageDiscoverTab } from "./features/images/ImageDiscoverTab";
-import { ImageModelsTab } from "./features/images/ImageModelsTab";
+import { ChatModelsPage } from "./features/models/ChatModelsPage";
+import { ImageModelsPage } from "./features/images/ImageModelsPage";
 import { ImageStudioTab } from "./features/images/ImageStudioTab";
 import { ImageGalleryTab } from "./features/images/ImageGalleryTab";
-import { VideoDiscoverTab } from "./features/video/VideoDiscoverTab";
-import { VideoModelsTab } from "./features/video/VideoModelsTab";
+import { VideoModelsPage } from "./features/video/VideoModelsPage";
 import { VideoStudioTab } from "./features/video/VideoStudioTab";
 import { VideoGalleryTab } from "./features/video/VideoGalleryTab";
 import { VoiceStudioTab } from "./features/voice/VoiceStudioTab";
@@ -70,35 +67,31 @@ import type {
   VoiceRuntime,
 } from "./types";
 import type { ChatModelOption } from "./types/chat";
-import { tabs } from "./constants";
+import { modelsAreaForTab, modelsPageRequest, resolveTabRequest, tabs } from "./constants";
+import type { TabRequest } from "./constants";
+import type { ModelAvailabilityFilter, ModelsArea } from "./components/models/modelEntry";
 import { CapabilityStrip } from "./components/CapabilityStrip";
 import {
   number,
   sizeLabel,
-  flattenVariants,
   firstDirectVariant,
   findVariantById,
   findVariantForReference,
   findLibraryItemForVariant,
   findCatalogVariantForLibraryItem,
-  estimateLibraryItemResidentGb,
-  estimateLibraryItemCompressedGb,
   libraryItemFormat,
   libraryItemQuantization,
   libraryItemBackend,
-  libraryItemSourceKind,
   inferHfRepoFromLocalPath,
   isChatLibraryItem,
   resolveCapabilities,
   downloadProgressLabel,
   syncRuntime,
   settingsDraftFromWorkspace,
-  parseContextK,
   estimateParamsBFromDisk,
   previewModelControls,
   samePreviewModel,
   detectBitsPerWeight,
-  compareOptionalNumber,
   serverOriginFromBase,
   isUnsavedEmptySession,
   isAppleSiliconHost,
@@ -144,7 +137,27 @@ export default function App() {
     refreshWorkspace,
   } = ws;
 
-  const [activeTab, setActiveTab] = useState<TabId>("dashboard");
+  const [activeTab, setActiveTabState] = useState<TabId>("dashboard");
+  // Availability filter of each area's Models page (FU-129). Lives here so
+  // it survives tab switches and so a navigation can preset it.
+  const [modelsAvailability, setModelsAvailability] = useState<Record<ModelsArea, ModelAvailabilityFilter>>({
+    chat: "all",
+    image: "all",
+    video: "all",
+  });
+  const setAreaAvailability = useCallback((area: ModelsArea, value: ModelAvailabilityFilter) => {
+    setModelsAvailability((previous) => (previous[area] === value ? previous : { ...previous, [area]: value }));
+  }, []);
+  // The one tab setter every caller gets. Old Discover / My Models ids
+  // redirect to the area's Models page with a preset filter
+  // (``constants/tabRedirects.ts``).
+  const setActiveTab = useCallback((request: TabRequest) => {
+    const navigation = resolveTabRequest(request);
+    if (!navigation) return;
+    const area = modelsAreaForTab(navigation.tab);
+    if (area && navigation.modelsPreset) setAreaAvailability(area, navigation.modelsPreset);
+    setActiveTabState(navigation.tab);
+  }, [setAreaAvailability]);
   const [apiToken, setApiToken] = useState<string | null>(null);
   const [voiceRuntime, setVoiceRuntime] = useState<VoiceRuntime | null>(null);
   const [voiceOpenRequest, setVoiceOpenRequest] = useState<VoiceOpenRequest | null>(null);
@@ -267,12 +280,13 @@ export default function App() {
     detailFamilyId, setDetailFamilyId,
     selectedFamilyId,
     selectedVariantId,
-    expandedFamilyId, setExpandedFamilyId,
-    expandedVariantId, setExpandedVariantId,
     activeDownloads,
     discoverCapFilter, setDiscoverCapFilter,
     discoverFormatFilter, setDiscoverFormatFilter,
     discoverAccelFilter, setDiscoverAccelFilter,
+    chatModelsBackendFilter, setChatModelsBackendFilter,
+    chatModelsSort, setChatModelsSort,
+    chatModelsSortDir, setChatModelsSortDir,
     handleDownloadModel,
     handleCancelModelDownload,
     handleDeleteModelDownload,
@@ -280,119 +294,26 @@ export default function App() {
   } = models;
 
   // ── Derived model values ───────────────────────────────────
-  const allFeaturedVariants = flattenVariants(workspace.featuredModels);
   const defaultChatVariant = firstDirectVariant(workspace.featuredModels);
   const activeFamilies = searchResults;
   const selectedFamily = activeFamilies.find((family) => family.id === selectedFamilyId) ?? activeFamilies[0] ?? null;
   const selectedVariant = findVariantById(activeFamilies, selectedVariantId) ?? (selectedFamily ? findVariantById([selectedFamily], selectedVariantId) : null);
 
   // ── Library state ──────────────────────────────────────────
-  const [librarySearchInput, setLibrarySearchInput] = useState("");
-  const [selectedLibraryPath, setSelectedLibraryPath] = useState(workspace.library.find(isChatLibraryItem)?.path ?? "");
-  const [expandedLibraryPath, setExpandedLibraryPath] = useState<string | null>(null);
-  const [librarySortKey, setLibrarySortKey] = useState<"name" | "format" | "backend" | "size" | "ram" | "compressed" | "modified" | "context">("modified");
-  const [librarySortDir, setLibrarySortDir] = useState<"asc" | "desc">("desc");
-  const [libraryCapFilter, setLibraryCapFilter] = useState<string | null>(null);
-  const [libraryFormatFilter, setLibraryFormatFilter] = useState<string | null>(null);
-  const [libraryBackendFilter, setLibraryBackendFilter] = useState<string | null>(null);
   const chatLibrary = useMemo(() => workspace.library.filter(isChatLibraryItem), [workspace.library]);
-
-  // Library search sync
-  useEffect(() => {
-    const nextFilteredLibrary = chatLibrary
-      .filter((item) => {
-        const haystack = `${item.name} ${item.path} ${item.format} ${item.directoryLabel ?? ""}`.toLowerCase();
-        return haystack.includes(librarySearchInput.trim().toLowerCase());
-      })
+  // Model the cache preview follows on the Chat Models page when it does
+  // not show only the catalog (R18): the newest local model that matches
+  // the page's search, as the old My Models tab did.
+  const chatModelsLibraryVariant = useMemo(() => {
+    const query = searchInput.trim().toLowerCase();
+    const newest = chatLibrary
+      .filter((item) => `${item.name} ${item.path} ${item.format} ${item.directoryLabel ?? ""}`.toLowerCase().includes(query))
       .sort((left, right) => {
         if (left.lastModified !== right.lastModified) return right.lastModified.localeCompare(left.lastModified);
         return right.sizeGb - left.sizeGb;
-      });
-    if (!nextFilteredLibrary.length) { setSelectedLibraryPath(""); return; }
-    setSelectedLibraryPath((current) =>
-      nextFilteredLibrary.some((item) => item.path === current) ? current : nextFilteredLibrary[0].path,
-    );
-  }, [chatLibrary, librarySearchInput]);
-
-  // Library rows
-  const libraryRows = chatLibrary.map((item) => {
-    const matchedVariant = findCatalogVariantForLibraryItem(workspace.featuredModels, item);
-    return {
-      item,
-      matchedVariant,
-      displayFormat: libraryItemFormat(item, matchedVariant),
-      displayQuantization: libraryItemQuantization(item, matchedVariant),
-      displayBackend: libraryItemBackend(item, matchedVariant),
-      sourceKind: libraryItemSourceKind(item),
-      estimatedRamGb: estimateLibraryItemResidentGb(item, matchedVariant),
-      estimatedCompressedGb: estimateLibraryItemCompressedGb(item, matchedVariant),
-    };
-  });
-  // Synthetic rows for active downloads that have not yet landed in
-  // ``workspace.library`` (e.g. the backend hasn't rescanned, or the partial
-  // file isn't on disk yet). Without this a user clicking Download sees no
-  // feedback in My Models until the backend refresh happens. We match by
-  // any ``repo`` we can already attribute to a library row — via matched
-  // catalog variant or an inferred HF cache path — so we don't duplicate
-  // rows once the download hits disk.
-  const knownDownloadRepos = new Set<string>();
-  for (const row of libraryRows) {
-    const repo = inferHfRepoFromLocalPath(row.item.path) ?? row.matchedVariant?.repo ?? (row.item.name.includes("/") ? row.item.name : null);
-    if (repo) knownDownloadRepos.add(repo);
-  }
-  const syntheticDownloadRows = Object.values(activeDownloads)
-    .filter((download) => download.state === "downloading" || download.state === "cancelled" || download.state === "failed")
-    .filter((download) => !knownDownloadRepos.has(download.repo))
-    .map((download) => {
-      const variant = allFeaturedVariants.find((candidate) => candidate.repo === download.repo) ?? null;
-      const now = new Date().toISOString().replace("T", " ").slice(0, 16);
-      const downloadedGb = Math.max(0, download.downloadedGb ?? 0);
-      const item: LibraryItem = {
-        name: variant?.name ?? download.repo,
-        path: `download://${download.repo}`,
-        format: variant?.format ?? "Downloading",
-        sourceKind: "HF cache",
-        quantization: variant?.quantization ?? null,
-        backend: variant?.backend ?? null,
-        modelType: "text",
-        sizeGb: downloadedGb,
-        lastModified: now,
-        actions: [],
-        broken: false,
-        brokenReason: null,
-      };
-      return {
-        item,
-        matchedVariant: variant,
-        displayFormat: variant?.format ?? "Downloading",
-        displayQuantization: variant?.quantization ?? null,
-        displayBackend: variant?.backend ?? "",
-        sourceKind: "Download",
-        estimatedRamGb: variant?.estimatedMemoryGb ?? null,
-        estimatedCompressedGb: variant?.estimatedCompressedMemoryGb ?? null,
-      };
-    });
-  const filteredLibraryRows = [...libraryRows, ...syntheticDownloadRows]
-    .filter(({ item, displayFormat, displayQuantization, displayBackend, sourceKind }) => {
-      const haystack = `${item.name} ${item.path} ${displayFormat} ${displayQuantization ?? ""} ${displayBackend} ${sourceKind} ${item.directoryLabel ?? ""}`.toLowerCase();
-      return haystack.includes(librarySearchInput.trim().toLowerCase());
-    })
-    .sort((left, right) => {
-      const dir = librarySortDir === "asc" ? 1 : -1;
-      switch (librarySortKey) {
-        case "name": return dir * left.item.name.localeCompare(right.item.name);
-        case "format": return dir * left.displayFormat.localeCompare(right.displayFormat);
-        case "backend": return dir * left.displayBackend.localeCompare(right.displayBackend);
-        case "size": return dir * (left.item.sizeGb - right.item.sizeGb);
-        case "ram": return compareOptionalNumber(left.estimatedRamGb, right.estimatedRamGb, dir);
-        case "compressed": return compareOptionalNumber(left.estimatedCompressedGb, right.estimatedCompressedGb, dir);
-        case "context": { const lc = parseContextK(left.matchedVariant?.contextWindow); const rc = parseContextK(right.matchedVariant?.contextWindow); return dir * (lc - rc); }
-        case "modified": default: return dir * left.item.lastModified.localeCompare(right.item.lastModified);
-      }
-    });
-  const selectedLibraryRow = filteredLibraryRows.find(({ item }) => item.path === selectedLibraryPath) ?? filteredLibraryRows[0] ?? null;
-  const selectedLibraryItem = selectedLibraryRow?.item ?? null;
-  const selectedLibraryVariant = selectedLibraryRow?.matchedVariant ?? null;
+      })[0];
+    return newest ? findCatalogVariantForLibraryItem(workspace.featuredModels, newest) : null;
+  }, [chatLibrary, searchInput, workspace.featuredModels]);
 
   // ── Chat model options ─────────────────────────────────────
   // Only list models present in the local library — catalog-only entries
@@ -715,8 +636,6 @@ export default function App() {
   const previewSavings = Math.max(0, preview.baselineCacheGb - preview.optimizedCacheGb);
   const conversionReady = Boolean(nativeBackends?.converterAvailable ?? workspace.system.mlxLmAvailable);
   const enabledDirectoryCount = (workspace.settings?.modelDirectories ?? []).filter((directory) => directory.enabled).length;
-  const libraryTotalSizeGb = chatLibrary.reduce((sum, item) => sum + item.sizeGb, 0);
-  const localVariantCount = allFeaturedVariants.filter((variant) => variant.availableLocally).length;
   const fileRevealLabel =
     workspace.system.platform === "Darwin" ? tCommon("fileReveal.finder", { defaultValue: "Show in Finder" }) :
     workspace.system.platform === "Windows" ? tCommon("fileReveal.explorer", { defaultValue: "Show in Explorer" }) : tCommon("fileReveal.files", { defaultValue: "Show in Files" });
@@ -761,8 +680,8 @@ export default function App() {
     activeTab === "server"
       ? findVariantForReference(workspace.featuredModels, selectedServerOption?.modelRef ?? workspace.runtime.loadedModel?.ref, selectedServerOption?.model ?? workspace.runtime.loadedModel?.name) ??
         findVariantForReference(workspace.featuredModels, activeChat?.modelRef, activeChat?.model) ?? defaultChatVariant
-      : activeTab === "my-models"
-        ? selectedLibraryVariant ?? findVariantForReference(workspace.featuredModels, activeChat?.modelRef, activeChat?.model) ?? defaultChatVariant
+      : activeTab === "chat-models" && modelsAvailability.chat !== "available"
+        ? chatModelsLibraryVariant ?? findVariantForReference(workspace.featuredModels, activeChat?.modelRef, activeChat?.model) ?? defaultChatVariant
       : activeTab === "chat"
         ? findVariantForReference(workspace.featuredModels, activeChat?.modelRef, activeChat?.model) ??
           findVariantForReference(workspace.featuredModels, selectedServerOption?.modelRef ?? workspace.runtime.loadedModel?.ref, selectedServerOption?.model ?? workspace.runtime.loadedModel?.name) ?? defaultChatVariant
@@ -1260,85 +1179,50 @@ export default function App() {
       await refreshWorkspace();
     }}
   />;
-  if (activeTab === "online-models") {
+  if (activeTab === "chat-models") {
     content = (
-      <OnlineModelsTab
-        searchResults={searchResults}
+      <ChatModelsPage
+        families={workspace.featuredModels}
+        library={chatLibrary}
+        activeDownloads={activeDownloads}
         searchInput={searchInput}
         onSearchInputChange={setSearchInput}
         searchError={searchError}
-        localVariantCount={localVariantCount}
-        discoverCapFilter={discoverCapFilter}
-        onDiscoverCapFilterChange={setDiscoverCapFilter}
-        discoverFormatFilter={discoverFormatFilter}
-        onDiscoverFormatFilterChange={setDiscoverFormatFilter}
-        discoverAccelFilter={discoverAccelFilter}
-        onDiscoverAccelFilterChange={setDiscoverAccelFilter}
-        accelCompat={{
-          dflashModels: workspace.system.dflash?.supportedModels ?? [],
-          mtplxModels: workspace.system.mtplx?.supportedModels ?? [],
-          tensorfoldModels: workspace.system.tensorfold?.supportedModels ?? [],
-          turboInstalled: Boolean(workspace.system.llamaServerTurboPath),
-        }}
-        expandedFamilyId={expandedFamilyId}
-        onExpandedFamilyIdChange={setExpandedFamilyId}
-        expandedVariantId={expandedVariantId}
-        onExpandedVariantIdChange={setExpandedVariantId}
-        onDetailFamilyIdChange={setDetailFamilyId}
-        library={chatLibrary}
-        activeDownloads={activeDownloads}
-        onDownloadModel={(repo) => void handleDownloadModel(repo)}
-        onCancelModelDownload={(repo) => void handleCancelModelDownload(repo)}
-        onDeleteModelDownload={(repo) => void handleDeleteModelDownload(repo)}
-        onPrepareCatalogConversion={prepareCatalogConversion}
-        onOpenModelSelector={openModelSelector}
-        onOpenExternalUrl={(url) => void handleOpenExternalUrl(url)}
         hubResults={hubResults}
         expandedHubId={expandedHubId}
         onToggleHubExpand={(repo) => void toggleHubExpand(repo)}
         hubFileCache={hubFileCache}
         hubFileLoading={hubFileLoading}
         hubFileError={hubFileError}
-        availableMemoryGb={workspace.system.availableMemoryGb}
-      />
-    );
-  } else if (activeTab === "my-models") {
-    content = (
-      <MyModelsTab
-        filteredLibraryRows={filteredLibraryRows}
-        libraryTotalSizeGb={libraryTotalSizeGb}
-        enabledDirectoryCount={enabledDirectoryCount}
-        librarySearchInput={librarySearchInput}
-        onLibrarySearchInputChange={setLibrarySearchInput}
-        libraryCapFilter={libraryCapFilter}
-        onLibraryCapFilterChange={setLibraryCapFilter}
-        libraryFormatFilter={libraryFormatFilter}
-        onLibraryFormatFilterChange={setLibraryFormatFilter}
-        libraryBackendFilter={libraryBackendFilter}
-        onLibraryBackendFilterChange={setLibraryBackendFilter}
-        strategyCompat={{
-          turboInstalled: !!workspace.system.llamaServerTurboPath,
-          turboquantMlxAvailable: workspace.system.availableCacheStrategies?.some((s) => s.id === "turboquant" && s.available) ?? false,
-          dflashSupportedModels: workspace.system.dflash?.supportedModels ?? [],
-          mtplxInstalled: workspace.system.mtplx?.available ?? false,
-          mtplxSupportedModels: workspace.system.mtplx?.supportedModels ?? [],
-          tensorfoldSupportedModels: workspace.system.tensorfold?.supportedModels ?? [],
+        capFilter={discoverCapFilter}
+        onCapFilterChange={setDiscoverCapFilter}
+        formatFilter={discoverFormatFilter}
+        onFormatFilterChange={setDiscoverFormatFilter}
+        accelFilter={discoverAccelFilter}
+        onAccelFilterChange={setDiscoverAccelFilter}
+        backendFilter={chatModelsBackendFilter}
+        onBackendFilterChange={setChatModelsBackendFilter}
+        sort={chatModelsSort}
+        sortDir={chatModelsSortDir}
+        onSortChange={(sort, dir) => {
+          setChatModelsSort(sort);
+          setChatModelsSortDir(dir);
         }}
-        activeDownloads={activeDownloads}
-        expandedLibraryPath={expandedLibraryPath}
-        onExpandedLibraryPathChange={setExpandedLibraryPath}
+        availability={modelsAvailability.chat}
+        onAvailabilityChange={(value) => setAreaAvailability("chat", value)}
+        accelCompat={{
+          dflashModels: workspace.system.dflash?.supportedModels ?? [],
+          mtplxModels: workspace.system.mtplx?.supportedModels ?? [],
+          tensorfoldModels: workspace.system.tensorfold?.supportedModels ?? [],
+          turboInstalled: Boolean(workspace.system.llamaServerTurboPath),
+          turboquantMlxAvailable: workspace.system.availableCacheStrategies?.some((s) => s.id === "turboquant" && s.available) ?? false,
+          appleSilicon: isAppleSilicon,
+        }}
+        hostSystem={workspace.system}
+        loadedModel={workspace.runtime.loadedModel}
+        availableMemoryGb={workspace.system.availableMemoryGb}
+        enabledDirectoryCount={enabledDirectoryCount}
         fileRevealLabel={fileRevealLabel}
-        onDownloadModel={(repo) => void handleDownloadModel(repo)}
-        onCancelModelDownload={(repo) => void handleCancelModelDownload(repo)}
-        onDeleteModelDownload={(repo) => void handleDeleteModelDownload(repo)}
-        onPrepareLibraryConversion={prepareLibraryConversion}
-        onOpenModelSelector={openModelSelector}
-        onRevealPath={(path) => void handleRevealPath(path)}
-        onDeleteModel={(item) => void handleDeleteModel(item)}
-        librarySortKey={librarySortKey}
-        librarySortDir={librarySortDir}
-        onLibrarySortKeyChange={setLibrarySortKey}
-        onLibrarySortDirChange={setLibrarySortDir}
         favoriteModelRefs={workspace.settings?.favoriteModelRefs ?? []}
         onToggleFavoriteModel={(ref) => {
           const current = workspace.settings?.favoriteModelRefs ?? [];
@@ -1349,42 +1233,35 @@ export default function App() {
             void refreshWorkspace();
           });
         }}
-      />
-    );
-  } else if (activeTab === "image-discover") {
-    content = (
-      <ImageDiscoverTab
-        combinedImageDiscoverResults={imgState.combinedImageDiscoverResults}
-        imageDiscoverSearchInput={imgState.imageDiscoverSearchInput}
-        onImageDiscoverSearchInputChange={imgState.setImageDiscoverSearchInput}
-        imageDiscoverTaskFilter={imgState.imageDiscoverTaskFilter}
-        onImageDiscoverTaskFilterChange={imgState.setImageDiscoverTaskFilter}
-        imageDiscoverAccessFilter={imgState.imageDiscoverAccessFilter}
-        onImageDiscoverAccessFilterChange={imgState.setImageDiscoverAccessFilter}
-        imageDiscoverSort={imgState.imageDiscoverSort}
-        onImageDiscoverSortChange={imgState.setImageDiscoverSort}
-        imageDiscoverHasActiveFilters={imgState.imageDiscoverHasActiveFilters}
-        imageDiscoverSearchQuery={imgState.imageDiscoverSearchQuery}
-        activeImageDownloads={imgState.activeImageDownloads}
-        selectedImageVariant={imgState.selectedImageVariant}
-        fileRevealLabel={fileRevealLabel}
-        nativeBackends={nativeBackends}
-        hostSystem={workspace.system}
-        onActiveTabChange={setActiveTab}
-        onOpenImageStudio={imgState.openImageStudio}
-        onImageDownload={(repo) => void imgState.handleImageDownload(repo)}
-        onCancelImageDownload={(repo) => void imgState.handleCancelImageDownload(repo)}
-        onDeleteImageDownload={(repo) => void imgState.handleDeleteImageDownload(repo)}
+        onDownloadModel={(repo) => void handleDownloadModel(repo)}
+        onCancelModelDownload={(repo) => void handleCancelModelDownload(repo)}
+        onDeleteModelDownload={(repo) => void handleDeleteModelDownload(repo)}
+        onDeleteModel={(item) => void handleDeleteModel(item)}
+        onPrepareCatalogConversion={prepareCatalogConversion}
+        onOpenModelSelector={openModelSelector}
+        onOpenFamilyDetails={setDetailFamilyId}
         onOpenExternalUrl={(url) => void handleOpenExternalUrl(url)}
         onRevealPath={(path) => void handleRevealPath(path)}
       />
     );
   } else if (activeTab === "image-models") {
     content = (
-      <ImageModelsTab
-        installedImageVariants={imgState.installedImageVariants}
-        imageCatalog={imgState.imageCatalog}
+      <ImageModelsPage
+        catalog={imgState.imageCatalog}
+        latest={imgState.latestImageDiscoverResults}
+        searchInput={imgState.imageDiscoverSearchInput}
+        onSearchInputChange={imgState.setImageDiscoverSearchInput}
+        taskFilter={imgState.imageDiscoverTaskFilter}
+        onTaskFilterChange={imgState.setImageDiscoverTaskFilter}
+        accessFilter={imgState.imageDiscoverAccessFilter}
+        onAccessFilterChange={imgState.setImageDiscoverAccessFilter}
+        sort={imgState.imageDiscoverSort}
+        onSortChange={imgState.setImageDiscoverSort}
+        availability={modelsAvailability.image}
+        onAvailabilityChange={(value) => setAreaAvailability("image", value)}
         activeImageDownloads={imgState.activeImageDownloads}
+        selectedImageVariant={imgState.selectedImageVariant}
+        loadedImageRepo={imgState.imageRuntimeStatus.loadedModelRepo ?? null}
         fileRevealLabel={fileRevealLabel}
         nativeBackends={nativeBackends}
         hostSystem={workspace.system}
@@ -1514,20 +1391,29 @@ export default function App() {
         onDeleteImageArtifact={(id) => void imgState.handleDeleteImageArtifact(id)}
       />
     );
-  } else if (activeTab === "video-discover") {
+  } else if (activeTab === "video-models") {
     content = (
-      <VideoDiscoverTab
-        combinedVideoDiscoverResults={videoState.combinedVideoDiscoverResults}
-        videoDiscoverSearchInput={videoState.videoDiscoverSearchInput}
-        onVideoDiscoverSearchInputChange={videoState.setVideoDiscoverSearchInput}
-        videoDiscoverTaskFilter={videoState.videoDiscoverTaskFilter}
-        onVideoDiscoverTaskFilterChange={videoState.setVideoDiscoverTaskFilter}
-        videoDiscoverSort={videoState.videoDiscoverSort}
-        onVideoDiscoverSortChange={videoState.setVideoDiscoverSort}
-        videoDiscoverHasActiveFilters={videoState.videoDiscoverHasActiveFilters}
-        videoDiscoverSearchQuery={videoState.videoDiscoverSearchQuery}
+      <VideoModelsPage
+        catalog={videoState.videoCatalog}
+        latest={videoState.latestVideoDiscoverResults}
+        searchInput={videoState.videoDiscoverSearchInput}
+        onSearchInputChange={videoState.setVideoDiscoverSearchInput}
+        taskFilter={videoState.videoDiscoverTaskFilter}
+        onTaskFilterChange={videoState.setVideoDiscoverTaskFilter}
+        sort={videoState.videoDiscoverSort}
+        onSortChange={videoState.setVideoDiscoverSort}
+        availability={modelsAvailability.video}
+        onAvailabilityChange={(value) => setAreaAvailability("video", value)}
         activeVideoDownloads={videoState.activeVideoDownloads}
         selectedVideoVariant={videoState.selectedVideoVariant}
+        // The runtime reports a repo; several rows can share one. The row
+        // selected in the Studio is the one that was loaded when its repo
+        // matches, otherwise the first row with that repo (as before).
+        loadedVideoVariantId={
+          videoState.selectedVideoLoaded
+            ? videoState.selectedVideoVariant?.id ?? null
+            : videoState.loadedVideoVariant?.id ?? null
+        }
         fileRevealLabel={fileRevealLabel}
         nativeBackends={nativeBackends}
         hostSystem={workspace.system}
@@ -1543,30 +1429,6 @@ export default function App() {
         onRevealPath={(path) => void handleRevealPath(path)}
         onRefreshLongLiveStatus={() => void videoState.refreshLongLiveStatus()}
         onInstallLongLive={() => videoState.handleInstallLongLive()}
-      />
-    );
-  } else if (activeTab === "video-models") {
-    content = (
-      <VideoModelsTab
-        installedVideoVariants={videoState.installedVideoVariants}
-        videoCatalog={videoState.videoCatalog}
-        activeVideoDownloads={videoState.activeVideoDownloads}
-        videoRuntimeStatus={videoState.videoRuntimeStatus}
-        videoBusy={videoState.videoBusy}
-        videoBusyLabel={videoState.videoBusyLabel}
-        loadedVideoVariant={videoState.loadedVideoVariant}
-        fileRevealLabel={fileRevealLabel}
-        nativeBackends={nativeBackends}
-        hostSystem={workspace.system}
-        onActiveTabChange={setActiveTab}
-        onOpenVideoStudio={videoState.openVideoStudio}
-        onVideoDownload={(repo, modelId) => void videoState.handleVideoDownload(repo, modelId)}
-        onCancelVideoDownload={(repo) => void videoState.handleCancelVideoDownload(repo)}
-        onDeleteVideoDownload={(repo) => void videoState.handleDeleteVideoDownload(repo)}
-        onPreloadVideoModel={(variant) => void videoState.handlePreloadVideoModel(variant)}
-        onUnloadVideoModel={(variant) => void videoState.handleUnloadVideoModel(variant)}
-        onOpenExternalUrl={(url) => void handleOpenExternalUrl(url)}
-        onRevealPath={(path) => void handleRevealPath(path)}
       />
     );
   } else if (activeTab === "video-studio") {
@@ -1793,8 +1655,8 @@ export default function App() {
         onInstallPackage={handleInstallPackage}
         installingPackage={installingPackage}
         noChatModelsInstalled={libraryChatOptions.length === 0}
-        onBrowseDiscover={() => setActiveTab("online-models")}
-        onOpenModels={() => setActiveTab("my-models")}
+        onBrowseDiscover={() => setActiveTab(modelsPageRequest("chat", "available"))}
+        onOpenModels={() => setActiveTab(modelsPageRequest("chat", "installed"))}
       />
     );
   } else if (activeTab === "chat-compare") {
@@ -1957,6 +1819,7 @@ export default function App() {
     content = <LogsTab filteredLogs={filteredLogs} logQuery={logQuery} onLogQueryChange={setLogQuery} />;
   } else if (activeTab === "settings") {
     content = <SettingsTab
+      hostSystem={workspace.system}
       settingsDraft={settingsDraft}
       onSettingsDraftChange={setSettingsDraft}
       newDirectoryLabel={newDirectoryLabel}

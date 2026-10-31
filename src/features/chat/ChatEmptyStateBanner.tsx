@@ -11,7 +11,7 @@ import { useTranslation } from "react-i18next";
  * starter.
  *
  * Two states:
- *   - No chat models in the library → "Browse Discover" CTA
+ *   - No chat models in the library → "Browse Models" CTA
  *   - Models present but none loaded → "Load a model from Models →" hint
  *
  * Both states are non-blocking — the composer is still usable above,
@@ -50,7 +50,7 @@ export function ChatEmptyStateBanner({
         <p className="chat-empty-banner-body">
           {t("emptyBanner.welcomeBody", {
             defaultValue:
-              "Pick a chat model from Discover to get started. We recommend a small Qwen3 or Llama 3 variant for your first run — they download in a minute or two and run on any laptop.",
+              "Pick a chat model from Chat > Models to get started. We recommend a small Qwen3 or Llama 3 variant for your first run — they download in a minute or two and run on any laptop.",
           })}
         </p>
         <div className="chat-empty-banner-actions">
@@ -59,7 +59,7 @@ export function ChatEmptyStateBanner({
             className="primary-button"
             onClick={onBrowseDiscover}
           >
-            {t("emptyBanner.browseDiscover", { defaultValue: "Browse Discover" })}
+            {t("emptyBanner.browseDiscover", { defaultValue: "Browse Models" })}
           </button>
         </div>
       </div>

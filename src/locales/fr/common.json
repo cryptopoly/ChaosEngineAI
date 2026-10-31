@@ -35,7 +35,8 @@
     "diagnostics": "Diagnostic",
     "voiceStudio": "Studio vocal",
     "voiceModels": "Modèles vocaux",
-    "voiceLibrary": "Bibliothèque vocale"
+    "voiceLibrary": "Bibliothèque vocale",
+    "chatModels": "Modèles de discussion"
   },
   "tabCaptions": {
     "dashboard": "Vue d'ensemble du système",
@@ -63,7 +64,10 @@
     "settings": "Répertoires et valeurs par défaut",
     "voiceStudio": "Enregistrer, transcrire et parler",
     "voiceModels": "Gestion des modèles STT et TTS",
-    "voiceLibrary": "Vos transcriptions et synthèses vocales"
+    "voiceLibrary": "Vos transcriptions et synthèses vocales",
+    "chatModels": "Trouver, télécharger et gérer des modèles de langage",
+    "imageModelsPage": "Trouver, télécharger et gérer des modèles d'images",
+    "videoModelsPage": "Trouver, télécharger et gérer des modèles vidéo"
   },
   "tabShortLabels": {
     "chat": "Discussion",
@@ -87,7 +91,8 @@
     "plugins": "Plugins",
     "voiceStudio": "Studio",
     "voiceModels": "Mes modèles",
-    "voiceLibrary": "Bibliothèque"
+    "voiceLibrary": "Bibliothèque",
+    "models": "Modèles"
   },
   "tabGroups": {
     "chat": "Discussion",
@@ -1040,7 +1045,7 @@
   },
   "runHf": {
     "resolveFailed": "Impossible de résoudre ce repo.",
-    "downloadStarted": "Téléchargement démarré — suivez la progression dans Mes modèles, puis cliquez sur Charger.",
+    "downloadStarted": "Téléchargement démarré — suivez la progression sur la page Modèles, puis cliquez sur Charger.",
     "downloadFailed": "Échec du téléchargement.",
     "loaded": "Chargé : {label}",
     "loadFailed": "Échec du chargement.",
@@ -1073,8 +1078,8 @@
     "import": "Importer",
     "title": "Importer des modèles existants",
     "subtitle": "Des modèles ont été trouvés dans le stockage d'une autre application locale. L'importation les relie sur place — sans nouveau téléchargement.",
-    "ollama": "Ollama",
-    "lmstudio": "LM Studio"
+    "foundIn": "Trouvé dans {path}",
+    "foundElsewhere": "Trouvé sur cet ordinateur"
   },
   "gpuBanner": {
     "runningOnCpu": "Exécution sur le CPU.",

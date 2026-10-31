@@ -39,6 +39,22 @@ if TYPE_CHECKING:
     from backend_service.mlx_worker import WorkerState
 
 
+# Draft tokens per verify step for linear DFlash. The shipped z-lab drafters
+# are trained for 16, but verifying 16 rows costs more than the extra accepted
+# tokens return on prose: Qwen3-4B bf16 on an M4 Max ran 34 tok/s at 16 against
+# 50 plain, and ahead of plain at 8 (docs/features/dflash.md).
+LINEAR_DFLASH_BLOCK_TOKENS = 8
+
+
+def _without_trailing_stop(tokens: list[int], stop_ids: Any) -> list[int]:
+    """Drop the stop token a speculative run keeps at the end (plain decoding never shows it)."""
+    stops = {int(t) for t in (stop_ids or [])}
+    trimmed = list(tokens)
+    while trimmed and trimmed[-1] in stops:
+        trimmed.pop()
+    return trimmed
+
+
 def generate_dflash(state: WorkerState, request: dict[str, Any]) -> dict[str, Any]:
     """Generate using DFLASH speculative decoding."""
     from dflash_mlx.runtime import stream_dflash_generate
@@ -94,6 +110,7 @@ def generate_dflash(state: WorkerState, request: dict[str, Any]) -> dict[str, An
         prompt=prompt_text,
         max_new_tokens=int(request.get("maxTokens") or 256),
         use_chat_template=False,
+        block_tokens=LINEAR_DFLASH_BLOCK_TOKENS,
         stop_token_ids=eos_token_ids,
         prompt_tokens_override=prompt_tokens,
         **context_kwargs,
@@ -124,7 +141,9 @@ def generate_dflash(state: WorkerState, request: dict[str, Any]) -> dict[str, An
         prev_cycle = cycle
         prev_gen_count = gen_count
 
-    gen_tokens = [int(token_id) for token_id in summary.get("generated_token_ids", [])]
+    gen_tokens = _without_trailing_stop(
+        [int(token_id) for token_id in summary.get("generated_token_ids", [])], eos_token_ids
+    )
     text = state.tokenizer.decode(gen_tokens).strip() if gen_tokens else ""
     # Respect thinkingMode: only strip raw reasoning patterns when thinking
     # is enabled. XML <think> tags are always processed regardless.
@@ -231,8 +250,10 @@ def generate_ddtree(state: WorkerState, request: dict[str, Any]) -> dict[str, An
 
     # Tokenize prompt
     prompt_tokens = state.tokenizer.encode(prompt_text)
+    stop_ids = list(getattr(state.tokenizer, "eos_token_ids", None) or [])
     eos = getattr(state.tokenizer, "eos_token_id", None)
-    stop_ids = [eos] if eos is not None else []
+    if eos is not None and int(eos) not in stop_ids:
+        stop_ids.append(int(eos))
 
     result = generate_ddtree_mlx(
         target_model=state._ddtree_target,
@@ -245,7 +266,7 @@ def generate_ddtree(state: WorkerState, request: dict[str, Any]) -> dict[str, An
     )
 
     # Decode output tokens
-    gen_tokens = result["generated_tokens"]
+    gen_tokens = _without_trailing_stop(list(result["generated_tokens"]), stop_ids)
     text = state.tokenizer.decode(gen_tokens).strip()
     # Respect thinkingMode: only strip raw reasoning patterns when thinking
     # is enabled. XML <think> tags are always processed regardless.
@@ -267,8 +288,8 @@ def generate_ddtree(state: WorkerState, request: dict[str, Any]) -> dict[str, An
         text = "Generation completed without decoded text."
 
     output_tokens = result["output_tokens"]
-    elapsed = result["elapsed_seconds"]
-    tok_s = round(output_tokens / max(elapsed, 1e-6), 1)
+    generation_elapsed = result["elapsed_seconds"] - float(result.get("prefill_seconds") or 0.0)
+    tok_s = round(output_tokens / max(generation_elapsed, 1e-6), 1)
     acceptance_rate = result["avg_acceptance_length"]
 
     runtime_note = _merge_runtime_notes(

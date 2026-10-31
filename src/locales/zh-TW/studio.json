@@ -27,7 +27,7 @@
     "copyImage": "複製影像",
     "openFolder": "在資料夾中顯示",
     "modelLabel": "模型",
-    "noModelsOption": "未安裝模型 — 從 探索 中下載",
+    "noModelsOption": "未安裝模型 — 從 影像 > 模型 中下載",
     "aspectRatio": "長寬比",
     "qualityPreset": "品質預設",
     "previewLabel": "預覽",
@@ -152,7 +152,7 @@
     "summaryLoaded": "{selected} 已載入，可以開始生成。",
     "summarySwap": "已載入 {loaded}。使用 {selected} 生成會切換管線。",
     "summaryNotLoaded": "{selected} 已安裝在本地，但尚未載入。首次生成會花較長時間，因為擴散管線需要預熱。",
-    "summaryNotInstalled": "{selected} 尚未安裝到本地。請從「探索」下載它以啟用本地生成。",
+    "summaryNotInstalled": "{selected} 尚未安裝到本地。請從「模型」頁面下載它以啟用本地生成。",
     "summaryOnDemand": "生成時會依需求載入模型。",
     "preloadModel": "預先載入模型",
     "unloadModel": "卸載模型",
@@ -173,7 +173,7 @@
       "ready": "生成此影像。"
     },
     "actions": {
-      "discover": "探索",
+      "discover": "尋找模型",
       "installed": "已安裝",
       "gallery": "圖庫"
     },
@@ -189,14 +189,14 @@
       "downloaded": "已下載"
     },
     "noModelsCallout": {
-      "message": "您尚未下載任何影像模型。前往「影像探索」瀏覽並安裝模型,然後回到此處進行生成。",
-      "openDiscover": "開啟影像探索"
+      "message": "您尚未下載任何影像模型。前往「影像 > 模型」瀏覽並安裝模型,然後回到此處進行生成。",
+      "openDiscover": "開啟影像模型"
     },
     "download": {
       "failedMessage": "{name} 未正確完成下載。ChaosEngineAI 僅找到部分本地快照,因此尚無法載入實際的影像管線。",
       "pausedMessage": "{name} 已部分下載。準備就緒後可恢復,ChaosEngineAI 將從已存在磁碟的檔案繼續。",
       "completeMessage": "{name} 已完成下載。已安裝模型清單將自動重新整理。",
-      "notInstalledMessage": "{name} 尚未在本機安裝。請從「探索」下載以啟用本地生成。",
+      "notInstalledMessage": "{name} 尚未在本機安裝。請從「模型」頁面下載以啟用本地生成。",
       "huggingFace": "Hugging Face",
       "settings": "設定",
       "technicalDetails": "技術細節",
@@ -251,7 +251,8 @@
       "guidance": "引導",
       "images": "影像數",
       "randomSeed": "隨機種子",
-      "seed": "種子"
+      "seed": "種子",
+      "maxPixelsNote": "{name} 最多渲染 {megapixels} 百萬像素；此尺寸會依比例縮小以符合上限。"
     },
     "safety": {
       "dangerTitle": "可能導致後端崩潰",
@@ -395,8 +396,8 @@
     },
     "subtitle": "選擇影片模型以開始",
     "actions": {
-      "browseCatalog": "瀏覽型錄",
-      "installedModels": "已安裝模型",
+      "browseCatalog": "尋找模型",
+      "installedModels": "已安裝",
       "downloadModel": "下載模型",
       "loadIntoMemory": "載入記憶體",
       "unload": "卸載",
@@ -408,8 +409,8 @@
       "incomplete": "未完成"
     },
     "noModelsCallout": {
-      "message": "尚未安裝任何影片模型。請瀏覽型錄以下載。",
-      "openDiscover": "開啟影片探索"
+      "message": "尚未安裝任何影片模型。請開啟 影片 > 模型 以下載。",
+      "openDiscover": "開啟影片模型"
     },
     "stats": {
       "clipDuration": "{value} 秒片段"
@@ -424,7 +425,8 @@
     "prompt": {
       "label": "提示詞",
       "placeholder": "黎明時分薄霧繚繞松林的電影感空拍鏡頭...",
-      "ltxShortWarning": "LTX-Video 使用詳細提示詞 (約 50-100 字) 時效果最佳。簡短提示詞 (例如「卡通駱馬吃稻草」) 條件不足,容易產生漂移。Lightricks 建議先描述動作,再加入視覺細節、光線與鏡頭方向。"
+      "ltxShortWarning": "LTX-Video 使用詳細提示詞 (約 50-100 字) 時效果最佳。簡短提示詞 (例如「卡通駱馬吃稻草」) 條件不足,容易產生漂移。Lightricks 建議先描述動作,再加入視覺細節、光線與鏡頭方向。",
+      "soundHint": "此模型也會產生聲音,聲音會依照你的提示詞。請一併描述:踩在雪上的腳步聲、樹林中的風聲、低沉的引擎聲。"
     },
     "negativePrompt": {
       "tooltip": "告訴模型要避免什麼。已預先填入適用於多數影片模型的通用提示 — 如有特定模型偏好可清除或編輯。具體性通常利大於弊。",
@@ -462,7 +464,8 @@
       "guidanceTooltip": "模型遵循提示詞的強度。過低 = 忽略提示詞;過高 = 僵硬或失真的輸出。建議值:LTX-Video 約 3、Wan 約 5、HunyuanVideo 約 6。提示詞的「反向」方向來自上方的反向提示詞。",
       "guidanceLtxWarning": "LTX-Video 是 flow-matching 模型 — CFG 高於約 3.5 會過度飽和,產生模糊 / 彩虹色輸出。降至 3 以取得最乾淨的結果。",
       "randomSeed": "隨機種子",
-      "seedPlaceholder": "種子 (整數)"
+      "seedPlaceholder": "種子 (整數)",
+      "maxPixelsNote": "{name} 每幀最多渲染 {megapixels} 百萬像素；此尺寸會依比例縮小以符合上限。"
     },
     "clipLength": {
       "line": "片段長度:{seconds} 秒 ({frames} 幀 ÷ {fps} fps)"
@@ -559,6 +562,10 @@
         "label": "最高",
         "sub": "50 步"
       }
+    },
+    "sound": {
+      "badge": "聲音",
+      "badgeTooltip": "此片段帶有聲音。請用播放器的音量控制開啟。"
     }
   },
   "imageGallery": {
@@ -568,7 +575,7 @@
     },
     "actions": {
       "studio": "工作室",
-      "installedModels": "已安裝模型"
+      "installedModels": "已安裝"
     },
     "hero": {
       "eyebrow": "已儲存輸出",
@@ -622,7 +629,7 @@
     "actions": {
       "autoPlay": "自動播放",
       "openStudio": "開啟工作室",
-      "installedModels": "已安裝模型"
+      "installedModels": "已安裝"
     },
     "empty": {
       "body": "尚無影片輸出。在工作室中載入模型並生成片段 — 完成的渲染將顯示在此。",
@@ -643,7 +650,9 @@
       },
       "expand": "展開",
       "revealFile": "顯示檔案",
-      "delete": "刪除"
+      "delete": "刪除",
+      "soundOn": "開啟聲音",
+      "soundOff": "靜音"
     }
   },
   "voice": {
@@ -746,7 +755,7 @@
     "stop": "停止",
     "studio": {
       "title": "Voice Studio",
-      "needsPack": "語音功能在這台電腦上執行，需要語音包（約 2 GB）。請在「語音 > 我的模型」中安裝一次。",
+      "needsPack": "語音功能在這台電腦上執行，需要語音包（約 2 GB）。請在「語音 > 模型」中安裝一次。",
       "openModels": "開啟語音模型"
     },
     "savedToLibrary": "已儲存到資料庫",
@@ -867,5 +876,33 @@
     "rollbackKeptTail": "以便手動復原。",
     "close": "關閉",
     "installLog": "安裝記錄（{count, plural, other {# 步}}）"
+  },
+  "recommended": {
+    "title": "為本機推薦",
+    "measured": "實測",
+    "estimated": "估算",
+    "measuredTitle": "已在 {machine} 上實測計時。",
+    "estimatedTitle": "來自模型卡片、上游文件或類似的機器，並未在此硬體上實測。",
+    "measuredOn": "實測於 {machine}",
+    "applyAll": "套用建議設定",
+    "allApplied": "全部已採用",
+    "inUse": "使用中",
+    "use": "使用",
+    "on": "開",
+    "off": "關",
+    "cacheValue": "{name}，閾值 {threshold}",
+    "labels": {
+      "qualityPreset": "品質預設",
+      "steps": "步數",
+      "guidance": "引導",
+      "sampler": "取樣器",
+      "size": "尺寸",
+      "numFrames": "幀數",
+      "fps": "FPS",
+      "cache": "擴散快取",
+      "cfgDecay": "CFG 衰減",
+      "previewVae": "預覽 VAE",
+      "fp8LayerwiseCasting": "FP8 逐層"
+    }
   }
 }

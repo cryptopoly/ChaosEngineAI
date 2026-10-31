@@ -27,7 +27,7 @@
     "copyImage": "复制图像",
     "openFolder": "在文件夹中显示",
     "modelLabel": "模型",
-    "noModelsOption": "未安装模型 — 从 发现 中下载",
+    "noModelsOption": "未安装模型 — 从 图像 > 模型 中下载",
     "aspectRatio": "纵横比",
     "qualityPreset": "质量预设",
     "previewLabel": "预览",
@@ -152,7 +152,7 @@
     "summaryLoaded": "{selected} 已加载，可以开始生成。",
     "summarySwap": "已加载 {loaded}。使用 {selected} 生成将切换管线。",
     "summaryNotLoaded": "{selected} 已安装在本地，但尚未加载。首次生成需要更长时间，因为扩散管线需要预热。",
-    "summaryNotInstalled": "{selected} 尚未安装到本地。请从“发现”下载它以启用本地生成。",
+    "summaryNotInstalled": "{selected} 尚未安装到本地。请从“模型”页面下载它以启用本地生成。",
     "summaryOnDemand": "生成时会按需加载模型。",
     "preloadModel": "预加载模型",
     "unloadModel": "卸载模型",
@@ -173,7 +173,7 @@
       "ready": "生成此图像。"
     },
     "actions": {
-      "discover": "发现",
+      "discover": "查找模型",
       "installed": "已安装",
       "gallery": "图库"
     },
@@ -189,14 +189,14 @@
       "downloaded": "已下载"
     },
     "noModelsCallout": {
-      "message": "你还没有下载任何图像模型。前往图像发现浏览并安装一个模型,然后回到这里生成。",
-      "openDiscover": "打开图像发现"
+      "message": "你还没有下载任何图像模型。前往 图像 > 模型 浏览并安装一个模型,然后回到这里生成。",
+      "openDiscover": "打开图像模型"
     },
     "download": {
       "failedMessage": "{name} 未正确完成下载。ChaosEngineAI 只发现部分本地快照,因此无法加载真实的图像管线。",
       "pausedMessage": "{name} 已部分下载。准备就绪后恢复,ChaosEngineAI 将从磁盘已有的文件继续。",
       "completeMessage": "{name} 已完成下载。已安装模型扫描将自动刷新。",
-      "notInstalledMessage": "{name} 未在本地安装。从发现页面下载以启用本地生成。",
+      "notInstalledMessage": "{name} 未在本地安装。从模型页面下载以启用本地生成。",
       "huggingFace": "Hugging Face",
       "settings": "设置",
       "technicalDetails": "技术细节",
@@ -251,7 +251,8 @@
       "guidance": "引导",
       "images": "图像数",
       "randomSeed": "随机种子",
-      "seed": "种子"
+      "seed": "种子",
+      "maxPixelsNote": "{name} 最多渲染 {megapixels} 百万像素；此尺寸会按比例缩小以适配。"
     },
     "safety": {
       "dangerTitle": "可能导致后端崩溃",
@@ -395,8 +396,8 @@
     },
     "subtitle": "选择一个视频模型以开始",
     "actions": {
-      "browseCatalog": "浏览目录",
-      "installedModels": "已安装的模型",
+      "browseCatalog": "查找模型",
+      "installedModels": "已安装",
       "downloadModel": "下载模型",
       "loadIntoMemory": "加载到内存",
       "unload": "卸载",
@@ -408,8 +409,8 @@
       "incomplete": "不完整"
     },
     "noModelsCallout": {
-      "message": "尚未安装任何视频模型。浏览目录下载一个。",
-      "openDiscover": "打开视频发现"
+      "message": "尚未安装任何视频模型。打开 视频 > 模型 下载一个。",
+      "openDiscover": "打开视频模型"
     },
     "stats": {
       "clipDuration": "{value} 秒片段"
@@ -424,7 +425,8 @@
     "prompt": {
       "label": "提示词",
       "placeholder": "黎明时分薄雾笼罩的松树林的电影感无人机镜头...",
-      "ltxShortWarning": "LTX-Video 在详细提示词(约 50-100 个词)下效果最佳。短提示词(\\\"卡通羊驼吃稻草\\\")对模型条件化不足,容易漂移。Lightricks 建议先描述动作,然后添加视觉细节、灯光和摄影指导。"
+      "ltxShortWarning": "LTX-Video 在详细提示词(约 50-100 个词)下效果最佳。短提示词(\\\"卡通羊驼吃稻草\\\")对模型条件化不足,容易漂移。Lightricks 建议先描述动作,然后添加视觉细节、灯光和摄影指导。",
+      "soundHint": "此模型也会生成声音,声音会遵循你的提示词。请一并描述:踩在雪上的脚步声、树林里的风声、低沉的引擎声。"
     },
     "negativePrompt": {
       "tooltip": "告诉模型要避免的内容。已预填一个通用提示词,适合大多数视频模型 — 如果你有针对特定模型的偏好,请清除或编辑。具体性通常利大于弊。",
@@ -462,7 +464,8 @@
       "guidanceTooltip": "模型遵循提示词的强度。过低 = 忽略提示词;过高 = 输出僵硬或失真。推荐:LTX-Video ≈ 3、Wan ≈ 5、HunyuanVideo ≈ 6。提示词的\"反向\"方向来自上方的反向提示词。",
       "guidanceLtxWarning": "LTX-Video 是流匹配模型 — CFG 超过约 3.5 会导致过饱和并产生模糊 / 彩虹色输出。降低至 3 以获得最干净的结果。",
       "randomSeed": "随机种子",
-      "seedPlaceholder": "种子(整数)"
+      "seedPlaceholder": "种子(整数)",
+      "maxPixelsNote": "{name} 每帧最多渲染 {megapixels} 百万像素；此尺寸会按比例缩小以适配。"
     },
     "clipLength": {
       "line": "片段长度:{seconds} 秒({frames} 帧 ÷ {fps} fps)"
@@ -559,6 +562,10 @@
         "label": "最高",
         "sub": "50 步"
       }
+    },
+    "sound": {
+      "badge": "声音",
+      "badgeTooltip": "此片段带有声音。请用播放器的音量控件开启。"
     }
   },
   "imageGallery": {
@@ -568,7 +575,7 @@
     },
     "actions": {
       "studio": "工作室",
-      "installedModels": "已安装的模型"
+      "installedModels": "已安装"
     },
     "hero": {
       "eyebrow": "已保存的输出",
@@ -622,7 +629,7 @@
     "actions": {
       "autoPlay": "自动播放",
       "openStudio": "打开工作室",
-      "installedModels": "已安装的模型"
+      "installedModels": "已安装"
     },
     "empty": {
       "body": "尚无视频输出。在工作室中加载模型并生成片段 — 完成的渲染将出现在此处。",
@@ -643,7 +650,9 @@
       },
       "expand": "展开",
       "revealFile": "显示文件",
-      "delete": "删除"
+      "delete": "删除",
+      "soundOn": "开启声音",
+      "soundOff": "静音"
     }
   },
   "voice": {
@@ -746,7 +755,7 @@
     "stop": "停止",
     "studio": {
       "title": "Voice Studio",
-      "needsPack": "语音功能在这台电脑上运行，需要语音包（约 2 GB）。请在“语音 > 我的模型”中安装一次。",
+      "needsPack": "语音功能在这台电脑上运行，需要语音包（约 2 GB）。请在“语音 > 模型”中安装一次。",
       "openModels": "打开语音模型"
     },
     "savedToLibrary": "已保存到资料库",
@@ -867,5 +876,33 @@
     "rollbackKeptTail": "以便手动恢复。",
     "close": "关闭",
     "installLog": "安装日志（{count, plural, other {# 步}}）"
+  },
+  "recommended": {
+    "title": "为本机推荐",
+    "measured": "实测",
+    "estimated": "估算",
+    "measuredTitle": "已在 {machine} 上实测计时。",
+    "estimatedTitle": "来自模型卡、上游文档或类似的机器，并未在此硬件上实测。",
+    "measuredOn": "实测于 {machine}",
+    "applyAll": "应用推荐设置",
+    "allApplied": "全部已采用",
+    "inUse": "使用中",
+    "use": "使用",
+    "on": "开",
+    "off": "关",
+    "cacheValue": "{name}，阈值 {threshold}",
+    "labels": {
+      "qualityPreset": "质量预设",
+      "steps": "步数",
+      "guidance": "引导",
+      "sampler": "采样器",
+      "size": "尺寸",
+      "numFrames": "帧数",
+      "fps": "FPS",
+      "cache": "扩散缓存",
+      "cfgDecay": "CFG 衰减",
+      "previewVae": "预览 VAE",
+      "fp8LayerwiseCasting": "FP8 逐层"
+    }
   }
 }

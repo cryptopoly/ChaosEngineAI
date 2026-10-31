@@ -5,6 +5,8 @@ import { AcceleratorCard } from "../../components/AcceleratorCard";
 import { ACCELERATOR_CATALOG } from "../../components/acceleratorCatalog";
 import { installPipPackage, refreshCapabilities } from "../../api";
 import type { NativeBackendStatus } from "../../types/server";
+import type { SystemStats } from "../../types/system";
+import { isVariantCompatibleWithHost } from "../../utils/platform";
 
 /**
  * The Diagnostics tab's "Boost Pack" section (FU-056 Phase 6).
@@ -37,6 +39,10 @@ export interface AcceleratorsBoostPackProps {
   /** Set false until the backend health check has cleared.
    * Capabilities fetch needs the backend up. */
   backendOnline: boolean;
+  /** The host (``workspace.system``). A row whose hardware the host lacks
+   * is hidden: no CUDA rows on a Mac or on a PC without an NVIDIA GPU, no
+   * Apple Silicon rows on Windows or Linux. Without it every row shows. */
+  hostSystem?: Pick<SystemStats, "platform" | "arch" | "gpuVramTotalGb">;
 }
 
 interface InstallState {
@@ -51,7 +57,7 @@ const EMPTY_INSTALL_STATE: InstallState = {
   output: null,
 };
 
-export function AcceleratorsBoostPack({ backendOnline }: AcceleratorsBoostPackProps) {
+export function AcceleratorsBoostPack({ backendOnline, hostSystem }: AcceleratorsBoostPackProps) {
   const { t } = useTranslation("common");
   const [capabilities, setCapabilities] = useState<NativeBackendStatus | null>(null);
   const [capError, setCapError] = useState<string | null>(null);
@@ -130,11 +136,8 @@ export function AcceleratorsBoostPack({ backendOnline }: AcceleratorsBoostPackPr
     [installStates, probe, t],
   );
 
-  // Ordered: Apple Silicon, CUDA, cross-platform — but really, all
-  // surfaced together. The user can scan the platformGate column to
-  // decide what their box supports. Keep the catalog order verbatim
-  // so the table is stable across runs.
-  const rows = ACCELERATOR_CATALOG;
+  // Catalog order, minus the rows this host's hardware cannot run.
+  const rows = ACCELERATOR_CATALOG.filter((meta) => isVariantCompatibleWithHost(meta.platformGate, hostSystem));
 
   return (
     <section className="accelerators-boost-pack" style={{ marginTop: 18 }}>

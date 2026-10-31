@@ -35,7 +35,8 @@
     "diagnostics": "诊断",
     "voiceStudio": "语音工作室",
     "voiceModels": "语音模型",
-    "voiceLibrary": "语音资料库"
+    "voiceLibrary": "语音资料库",
+    "chatModels": "对话模型"
   },
   "tabCaptions": {
     "dashboard": "系统概览",
@@ -63,7 +64,10 @@
     "settings": "目录和默认值",
     "voiceStudio": "录音、转写和朗读",
     "voiceModels": "STT 与 TTS 模型管理",
-    "voiceLibrary": "你创建的转写和语音"
+    "voiceLibrary": "你创建的转写和语音",
+    "chatModels": "查找、下载和管理语言模型",
+    "imageModelsPage": "查找、下载和管理图像模型",
+    "videoModelsPage": "查找、下载和管理视频模型"
   },
   "tabShortLabels": {
     "chat": "对话",
@@ -87,7 +91,8 @@
     "plugins": "插件",
     "voiceStudio": "工作室",
     "voiceModels": "我的模型",
-    "voiceLibrary": "资料库"
+    "voiceLibrary": "资料库",
+    "models": "模型"
   },
   "tabGroups": {
     "chat": "对话",
@@ -1040,7 +1045,7 @@
   },
   "runHf": {
     "resolveFailed": "无法解析该仓库。",
-    "downloadStarted": "已开始下载 — 在“我的模型”中查看进度，然后加载。",
+    "downloadStarted": "已开始下载 — 在“模型”页面中查看进度，然后加载。",
     "downloadFailed": "下载失败。",
     "loaded": "已加载 {label}。",
     "loadFailed": "加载失败。",
@@ -1073,8 +1078,8 @@
     "import": "导入",
     "title": "导入现有模型",
     "subtitle": "在另一个本地应用的存储中发现了模型。导入会就地链接它们，无需重新下载。",
-    "ollama": "Ollama",
-    "lmstudio": "LM Studio"
+    "foundIn": "在 {path} 中找到",
+    "foundElsewhere": "在此电脑上找到"
   },
   "gpuBanner": {
     "runningOnCpu": "正在使用 CPU 运行。",

@@ -120,8 +120,8 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                     "6.9 GB transformer; the T5 text encoder (5.2 GB), CLIP-L and VAE "
                     "(0.6 GB together) download on the first run. Apache 2.0."
                 ),
-                "estimatedGenerationSeconds": 4.5,
-                "releaseDate": "2026-05",
+                "estimatedGenerationSeconds": 114.0,
+                "releaseDate": "2024-08",
             },
             {
                 "id": "black-forest-labs/FLUX.1-schnell-nunchaku-int4",
@@ -257,8 +257,8 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                     "(0.6 GB together) download on the first run. FLUX.1 Dev licence: "
                     "non-commercial."
                 ),
-                "estimatedGenerationSeconds": 6.0,
-                "releaseDate": "2026-05",
+                "estimatedGenerationSeconds": 230.0,
+                "releaseDate": "2024-08",
             },
             {
                 "id": "black-forest-labs/FLUX.1-dev-mflux",
@@ -504,16 +504,16 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "styleTags": ["photoreal", "typography", "detailed", "apple-silicon"],
                 "taskSupport": ["txt2img"],
                 "sizeGb": 33.1,
-                "runtimeFootprintMpsGb": 30.0,  # measured: 28.7-29.9 GB peak at 1024² / 40 steps on an M4 Max (FU-096)
+                "runtimeFootprintMpsGb": 50.0,  # measured 2026-10-29: 46-50 GB peak at 1024² / 40 steps on an M4 Max (the earlier 28.7-29.9 GB reading missed the load-time peak, FU-096, FU-133)
                 "defaultSteps": 40,
                 "cfgOverride": 1.0,
                 "recommendedResolution": "1024x1024",
                 "note": (
-                    "Apple Silicon only. 7B Qwen-Image-2.1 on MLX: about 30 GB peak and about 6 minutes "
+                    "Apple Silicon only. 7B Qwen-Image-2.1 on MLX: about 50 GB peak and about 4.5 minutes "
                     "for a 1024x1024 image on an M4 Max (faster on M5). Qwen Research licence: "
                     "non-commercial use only. Needs the mflux engine, installed from the Image Studio."
                 ),
-                "estimatedGenerationSeconds": 340.0,
+                "estimatedGenerationSeconds": 265.0,  # measured 258-271 s at 1024², 40 steps (2026-10-29)
                 "releaseDate": "2026-09",
             },
             {
@@ -556,7 +556,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "taskSupport": ["txt2img"],
                 "sizeGb": 32.4,
                 # Same 7B architecture as Qwen-Image-2.1 (measured 30 GB peak there).
-                "runtimeFootprintMpsGb": 30.0,
+                "runtimeFootprintMpsGb": 50.0,  # measured 2026-10-29: 46-50 GB peak at 1024² / 8 steps
                 "defaultSteps": 8,
                 "cfgOverride": 1.0,
                 "recommendedResolution": "1024x1024",
@@ -565,7 +565,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                     "same quality class in 8 steps instead of 40, no CFG. Qwen Research licence: "
                     "non-commercial use only. Needs the mflux engine, installed from the Image Studio."
                 ),
-                "estimatedGenerationSeconds": 75.0,
+                "estimatedGenerationSeconds": 74.0,  # measured 72-75 s at 1024², 8 steps (2026-10-29)
                 "releaseDate": "2026-10",
             },
             {
@@ -672,6 +672,8 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "defaultSteps": 4,
                 "cfgOverride": 1.0,
                 "recommendedResolution": "1024x1024",
+                # No VAE: noise at 256 px and visible blocks at 512 px (measured), clean from 768 px.
+                "minSide": 768,
                 "downloadFiles": ["turbo/model.safetensors"],
                 "downloadCompanions": [
                     {
@@ -681,7 +683,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 ],
                 "note": (
                     "Apple Silicon only. The 4-step distilled Iris-3B through mflux on MLX, Apache 2.0. "
-                    "Downloads the 6 GB Turbo checkpoint and the Qwen3-VL-4B text encoder (about 9 GB). "
+                    "Needs at least 768 px (smaller sizes come out as noise or blocks, so the app raises them). Downloads the 6 GB Turbo checkpoint and the Qwen3-VL-4B text encoder (about 9 GB). "
                     "Needs the mflux engine, installed from the Image Studio."
                 ),
                 "estimatedGenerationSeconds": 18.0,
@@ -781,12 +783,17 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "taskSupport": ["txt2img"],
                 # transformer 11.1 + text encoder 8.9 + VAE 0.3 GB: the folders mflux loads.
                 "sizeGb": 20.3,
-                "defaultSteps": 16,
+                # The maker's default is 16; 8 looked the same on three prompts and took 40 s against
+                # 70 s on an M4 Max (2026-10-29), so the Studio starts at 8.
+                "defaultSteps": 8,
+                # 40 s measured at 1024 px / 8 steps on an M4 Max.
+                "estimatedGenerationSeconds": 40.0,
                 "recommendedResolution": "1024x1024",
                 "note": (
-                    "Apple Silicon only. Distilled: 16 steps, no guidance. Gated: accept the FLUX "
-                    "Kommunity licence on Hugging Face first. Needs the mflux engine, installed from "
-                    "the Image Studio."
+                    "Apple Silicon only. Distilled, no guidance: starts at 8 steps (the maker's default "
+                    "is 16; 8 looked the same in our tests and takes about half the time). Gated: accept "
+                    "the FLUX Kommunity licence on Hugging Face first. Needs the mflux engine, installed "
+                    "from the Image Studio."
                 ),
                 "releaseDate": "2026-10",
             },
@@ -804,6 +811,8 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "sizeGb": 20.3,
                 "defaultSteps": 50,
                 "cfgOverride": 3.5,
+                # Estimate, not timed: the distilled row takes about 5 s a step and guidance doubles each step.
+                "estimatedGenerationSeconds": 500.0,
                 "recommendedResolution": "1024x1024",
                 "note": (
                     "Apple Silicon only. Undistilled Base: 50 steps with guidance 3.5, slower but "
@@ -1145,3 +1154,10 @@ LATEST_IMAGE_TRACKED_SEEDS: list[dict[str, Any]] = [
         "releaseDate": "2025-03",
     },
 ]
+
+
+# Per-model size limits (maxSide / maxPixels / nativeSide) for every variant and tracked seed.
+# The table and its sources live in size_limits.py.
+from backend_service.catalog.size_limits import apply_image_size_limits  # noqa: E402
+
+apply_image_size_limits(IMAGE_MODEL_FAMILIES, LATEST_IMAGE_TRACKED_SEEDS)

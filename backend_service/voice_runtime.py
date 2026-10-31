@@ -332,17 +332,38 @@ def transcribe_file(
     if speakers and not voice_env.diarize_installed():
         raise RuntimeError("Speaker labels need a voice pack update. Update it from Voice > Models.")
     snapshot = _hf_snapshot_path(repo)
-    reply = get_worker().request(
-        "transcribe",
-        timeout=1800.0,
-        backend=backend,
-        source=str(snapshot or repo),
-        path=str(path),
-        language=(language or None),
-        task=task,
-        # Speaker labels split segments at word boundaries.
-        words=words or speakers,
-    )
+
+    def run(language_code: str | None) -> dict[str, Any]:
+        return get_worker().request(
+            "transcribe",
+            timeout=1800.0,
+            backend=backend,
+            source=str(snapshot or repo),
+            path=str(path),
+            language=language_code,
+            task=task,
+            # Speaker labels split segments at word boundaries.
+            words=words or speakers,
+        )
+
+    notes: list[str] = []
+    language = language or None
+    try:
+        reply = run(language)
+    except Exception as exc:  # noqa: BLE001 - only a rejected language is retried
+        if not language or "unsupported language" not in str(exc).lower():
+            raise
+        notes.append(f"This model does not know the language '{language}', so it detected the language instead.")
+        language = None
+        reply = run(None)
+    if language and not str(reply.get("text", "")).strip():
+        # A language setting that does not match the audio can return nothing at all.
+        retry = run(None)
+        if str(retry.get("text", "")).strip():
+            notes.append(f"No speech was recognised as '{language}', so the language was detected instead.")
+            reply = retry
+    if not str(reply.get("text", "")).strip():
+        notes.append("No speech was recognised in this audio.")
     segments = reply.get("segments", [])
     seconds = float(reply.get("seconds") or 0.0)
     if speakers:
@@ -359,6 +380,7 @@ def transcribe_file(
         "model": repo,
         "task": task,
         "seconds": round(seconds, 3),
+        "note": " ".join(notes) or None,
     }
 
 

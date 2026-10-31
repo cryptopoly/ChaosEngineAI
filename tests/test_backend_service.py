@@ -380,6 +380,48 @@ class ChaosEngineBackendTests(unittest.TestCase):
         )
         self._memory_patch.start()
 
+    def test_chat_generate_answers_400_when_the_conversation_exceeds_the_context(self):
+        from backend_service.helpers.request_guards import RequestNotUsable
+
+        runtime = self.client.app.state.chaosengine.runtime
+
+        def too_long(**_kwargs):
+            raise RequestNotUsable("The conversation is about 9000 tokens, but the model is loaded with a 4096-token context.")
+
+        runtime.generate = too_long
+        response = self.client.post("/api/chat/generate", json={"prompt": "Hi", "maxTokens": 16})
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("9000", response.json()["detail"])
+
+    def test_image_preload_is_a_no_op_for_engines_that_start_one_process_per_image(self):
+        from unittest import mock as _m
+
+        state = self.client.app.state.chaosengine
+        variant = {"id": "x/klein-mflux", "name": "Klein (mflux)", "repo": "x/klein", "engine": "mflux"}
+        from backend_service.image_runtime import ImageRuntimeManager
+
+        runtime = _m.MagicMock(spec=ImageRuntimeManager)  # a plain MagicMock hid a wrong method name once
+        runtime.preload.side_effect = AssertionError("diffusers preload must not run for mflux")
+        runtime.capabilities.return_value = {"activeEngine": "diffusers"}
+        state.image_runtime = runtime
+        with _m.patch("backend_service.routes.images._find_image_variant", return_value=variant), _m.patch(
+            "backend_service.routes.images._image_variant_available_locally", return_value=True
+        ):
+            response = self.client.post("/api/images/preload", json={"modelId": "x/klein-mflux"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"runtime": {"activeEngine": "diffusers"}})
+        runtime.preload.assert_not_called()
+
+    def test_chat_generate_still_answers_500_for_an_engine_failure(self):
+        runtime = self.client.app.state.chaosengine.runtime
+
+        def broken(**_kwargs):
+            raise RuntimeError("the engine fell over")
+
+        runtime.generate = broken
+        response = self.client.post("/api/chat/generate", json={"prompt": "Hi", "maxTokens": 16})
+        self.assertEqual(response.status_code, 500)
+
     def tearDown(self):
         self._memory_patch.stop()
         self.tempdir.cleanup()
@@ -2327,6 +2369,18 @@ class ChaosEngineBackendTests(unittest.TestCase):
             self.assertLess(preview["speedRatio"], 0.3)
             self.assertLess(preview["estimatedTokS"], native["estimatedTokS"])
         # Measured decode is flat across bit widths, so no ordering is asserted.
+
+    def test_turboquant_summary_warns_about_long_context_decode(self):
+        common = dict(
+            bits=3, fp16_layers=0, num_layers=32, num_heads=32, hidden_size=4096,
+            params_b=7.0, system_stats=fake_system_snapshot(), strategy="turboquant",
+        )
+        short = compute_cache_preview(context_tokens=2048, **common)
+        long = compute_cache_preview(context_tokens=16384, **common)
+        self.assertNotIn("keeps slowing", short["summary"])
+        self.assertIn("0.04x", long["summary"])
+        native = compute_cache_preview(bits=0, strategy="native", **{k: v for k, v in common.items() if k not in ("bits", "strategy")}, context_tokens=16384)
+        self.assertNotIn("keeps slowing", native["summary"])
 
     def test_preview_math_reduces_cache_size(self):
         preview = compute_cache_preview(

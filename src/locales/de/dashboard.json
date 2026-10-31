@@ -59,7 +59,7 @@
     "recommendedTarget": "Empfohlenes Ziel",
     "currentRuntime": "Aktuelle Laufzeit",
     "modelLoadedVia": "{model} geladen über {engine}.",
-    "noModelHint": "Noch kein Modell geladen. Wähle ein Thread-Modell im Chat oder durchsuche eine neuere Familie in Online-Modelle."
+    "noModelHint": "Noch kein Modell geladen. Wähle ein Thread-Modell im Chat oder durchsuche eine neuere Familie unter Chat > Modelle."
   },
   "activityFeed": {
     "title": "Aktivitäten",

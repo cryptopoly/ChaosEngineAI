@@ -59,7 +59,7 @@
     "recommendedTarget": "Recommended target",
     "currentRuntime": "Current runtime",
     "modelLoadedVia": "{model} loaded via {engine}.",
-    "noModelHint": "No model is loaded yet. Pick a thread model in Chat or browse a newer family in Online Models."
+    "noModelHint": "No model is loaded yet. Pick a thread model in Chat or browse a newer family in Chat > Models."
   },
   "activityFeed": {
     "title": "Activity Feed",

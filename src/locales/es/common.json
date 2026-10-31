@@ -35,7 +35,8 @@
     "diagnostics": "Diagnóstico",
     "voiceStudio": "Estudio de voz",
     "voiceModels": "Modelos de voz",
-    "voiceLibrary": "Biblioteca de voz"
+    "voiceLibrary": "Biblioteca de voz",
+    "chatModels": "Modelos de chat"
   },
   "tabCaptions": {
     "dashboard": "Resumen del sistema",
@@ -63,7 +64,10 @@
     "settings": "Directorios y valores predeterminados",
     "voiceStudio": "Grabar, transcribir y hablar",
     "voiceModels": "Gestión de modelos STT y TTS",
-    "voiceLibrary": "Tus transcripciones y audios generados"
+    "voiceLibrary": "Tus transcripciones y audios generados",
+    "chatModels": "Buscar, descargar y gestionar modelos de lenguaje",
+    "imageModelsPage": "Buscar, descargar y gestionar modelos de imagen",
+    "videoModelsPage": "Buscar, descargar y gestionar modelos de video"
   },
   "tabShortLabels": {
     "chat": "Chat",
@@ -87,7 +91,8 @@
     "plugins": "Plugins",
     "voiceStudio": "Estudio",
     "voiceModels": "Mis modelos",
-    "voiceLibrary": "Biblioteca"
+    "voiceLibrary": "Biblioteca",
+    "models": "Modelos"
   },
   "tabGroups": {
     "chat": "Chat",
@@ -1040,7 +1045,7 @@
   },
   "runHf": {
     "resolveFailed": "No se pudo resolver ese repo.",
-    "downloadStarted": "Descarga iniciada — sigue el progreso en Mis modelos y luego pulsa Cargar.",
+    "downloadStarted": "Descarga iniciada — sigue el progreso en la página Modelos y luego pulsa Cargar.",
     "downloadFailed": "La descarga falló.",
     "loaded": "Cargado: {label}",
     "loadFailed": "La carga falló.",
@@ -1073,8 +1078,8 @@
     "import": "Importar",
     "title": "Importar modelos existentes",
     "subtitle": "Se encontraron modelos en el almacén de otra app local. Al importar se enlazan donde están — sin volver a descargar.",
-    "ollama": "Ollama",
-    "lmstudio": "LM Studio"
+    "foundIn": "Encontrado en {path}",
+    "foundElsewhere": "Encontrado en este equipo"
   },
   "gpuBanner": {
     "runningOnCpu": "Ejecutándose en la CPU.",

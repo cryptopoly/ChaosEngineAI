@@ -530,6 +530,48 @@ export async function getMfluxInstallStatus(): Promise<MfluxJobState> {
   return await fetchJson<MfluxJobState>("/api/setup/install-mflux/status", 10000);
 }
 
+// ---- LTX-2.3 MLX engine (ltx-2-mlx, its own venv) ----
+
+export interface Ltx2JobState {
+  id: string;
+  phase: "idle" | "preflight" | "creating-venv" | "installing" | "verifying" | "done" | "error";
+  message: string;
+  packageCurrent: string | null;
+  packageIndex: number;
+  packageTotal: number;
+  percent: number;
+  targetDir: string | null;
+  error: string | null;
+  startedAt: number;
+  finishedAt: number;
+  attempts: TensorfoldAttempt[];
+  done: boolean;
+}
+
+export interface Ltx2Status {
+  installed: boolean;
+  version: string | null;
+  installedAt: string | null;
+  pinned: string | null;
+  venvPath: string | null;
+  /** False off Apple Silicon: the MLX engine cannot run there. */
+  supported: boolean;
+  /** Catalog repos the engine can run. */
+  repos: string[];
+}
+
+export async function getLtx2Status(): Promise<Ltx2Status> {
+  return await fetchJson<Ltx2Status>("/api/setup/ltx2-status", 8000);
+}
+
+export async function startLtx2Install(): Promise<Ltx2JobState> {
+  return await postJson<Ltx2JobState>("/api/setup/install-ltx2", {}, 15000);
+}
+
+export async function getLtx2InstallStatus(): Promise<Ltx2JobState> {
+  return await fetchJson<Ltx2JobState>("/api/setup/install-ltx2/status", 10000);
+}
+
 export interface TorchUpgradeJobState {
   id: string;
   /** Lifecycle: idle (no run yet) -> preflight -> upgrading -> verifying -> done | error */

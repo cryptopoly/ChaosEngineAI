@@ -183,6 +183,7 @@ def _probe_native_backends() -> BackendCapabilities:
             timeout=45.0,
         )
 
+    payload_missing = payload is None
     if payload is None:
         payload = {}
 
@@ -192,6 +193,8 @@ def _probe_native_backends() -> BackendCapabilities:
     probe_message = payload.get("message")
     if probe_message is None and code != 0:
         probe_message = message or f"probe exited with code {code}"
+    elif probe_message is None and payload_missing:
+        probe_message = "The MLX probe returned no readable result."
 
     from backend_service.vllm_engine import _vllm_importable, _vllm_version
 

@@ -81,7 +81,7 @@
     "strategy": {
       "chip": "{label} ({count})",
       "compatTooltip": "Modelle anzeigen, die mit {label} kompatibel sind ({count})",
-      "dflashEmptyTooltip": "DFlash-Spec-Decode-Drafts existieren nur für bestimmte Basismodelle: Qwen/Qwen3 (4B, 8B), Qwen/Qwen3-Coder (4B, 8B, 30B-A3B, Next), Qwen/Qwen3.5 (4B, 7B, 9B, 14B, 27B, 35B-A3B), Qwen/Qwen3.6-35B-A3B, meta-llama/Llama-3.1-8B-Instruct, gpt-oss (20B, 120B), moonshotai/Kimi-K2.5. Fine-Tunes passen typischerweise nicht. Lade ein Basismodell aus „Entdecken“, um DFlash zu aktivieren.",
+      "dflashEmptyTooltip": "DFlash-Spec-Decode-Drafts existieren nur für bestimmte Basismodelle: Qwen/Qwen3 (4B, 8B), Qwen/Qwen3-Coder (4B, 8B, 30B-A3B, Next), Qwen/Qwen3.5 (4B, 7B, 9B, 14B, 27B, 35B-A3B), Qwen/Qwen3.6-35B-A3B, meta-llama/Llama-3.1-8B-Instruct, gpt-oss (20B, 120B), moonshotai/Kimi-K2.5. Fine-Tunes passen typischerweise nicht. Lade ein Basismodell auf der Seite „Modelle“ herunter, um DFlash zu aktivieren.",
       "memorySaverLabel": "{label} · Speicherspar-Modus",
       "memorySaverTooltip": "Modelle anzeigen, die {label} nutzen können, einen KV-Cache-Speichersparer: Lange Chats passen in weniger RAM, aber die Generierung ist langsamer als bei Nativ ({count})"
     },
@@ -360,7 +360,10 @@
       "downloadModel": "Modell herunterladen",
       "cancelDownload": "Download abbrechen",
       "deleteModel": "Modell löschen",
-      "openModelCard": "Modellkarte öffnen"
+      "openModelCard": "Modellkarte öffnen",
+      "deleteSharedGguf": "Geteilten GGUF-Download löschen",
+      "deleteSharedTextEncoder": "Geteilten Text-Encoder-Download löschen",
+      "deleteSharedComponent": "Geteilten Komponenten-Download löschen"
     },
     "filter": {
       "searchLabel": "Suche",
@@ -436,7 +439,9 @@
       "pending": "ausstehend",
       "pendingTitle": "RAM/VRAM-Schätzung ausstehend, bis Modellgewichts-Größe bekannt ist."
     },
-    "releaseUnknown": "Unbekannt"
+    "releaseUnknown": "Unbekannt",
+    "sharedRepo": "teilt Speicherplatz · +{count}",
+    "sharedRepoTitle": "Nutzt denselben Download wie {count} weitere Variante(n) von {repo}. Beim Löschen dieser Zeile werden auch diese Dateien entfernt."
   },
   "imageDiscover": {
     "access": {
@@ -529,6 +534,10 @@
     "trackedOnly": {
       "tooltip": "Wird upstream beobachtet — die Nutzung im Studio ist für diese Familie noch nicht angebunden. Der Katalogeintrag dient nur zur Information; ein Download schaltet das Studio nicht frei.",
       "badge": "Upstream beobachtet"
+    },
+    "sortLabel": {
+      "likes": "Beliebteste zuerst",
+      "downloads": "Meiste Downloads zuerst"
     }
   },
   "videoDiscover": {
@@ -577,7 +586,8 @@
       "downloading": "Wird heruntergeladen",
       "paused": "Pausiert",
       "failed": "Fehlgeschlagen",
-      "incomplete": "Unvollständig"
+      "incomplete": "Unvollständig",
+      "installing": "Wird installiert"
     },
     "sort": {
       "name": "Name",
@@ -611,6 +621,165 @@
     "unknown": "Unbekannt",
     "longLive": {
       "installNote": "LongLive wird in einem isolierten venv unter ~/.chaosengine/longlive installiert. Nur CUDA, 5-15 min je nach Netzwerk."
+    },
+    "sortLabel": {
+      "likes": "Beliebteste zuerst",
+      "downloads": "Meiste Downloads zuerst"
+    }
+  },
+  "models": {
+    "action": {
+      "cancel": "Download abbrechen",
+      "deleteDownload": "Download löschen",
+      "deleteModel": "Modell löschen",
+      "download": "Modell herunterladen",
+      "more": "Weitere Aktionen",
+      "pause": "Download pausieren",
+      "resume": "Download fortsetzen",
+      "retry": "Download wiederholen",
+      "trackedOnly": "Nur beobachtet — noch nicht startbar"
+    },
+    "availability": {
+      "all": "Alle",
+      "attention": "Zu prüfen",
+      "available": "Verfügbar",
+      "downloading": "Wird heruntergeladen",
+      "installed": "Installiert",
+      "label": "Anzeigen"
+    },
+    "card": {
+      "collapse": "Details ausblenden",
+      "expand": "Details anzeigen",
+      "incompatible": "Läuft nicht auf diesem Rechner",
+      "incompatibleTitle": "Die Engine dieses Modells läuft nicht auf diesem Rechner. Die Dateien lassen sich trotzdem löschen."
+    },
+    "delete": {
+      "confirmShared": "{count, plural, one {# weiteres Modell nutzt} other {# weitere Modelle nutzen}} denselben Download und {count, plural, one {wird} other {werden}} ebenfalls entfernt:",
+      "confirmSharedMore": "und {count} weitere",
+      "confirmTarget": "Dadurch wird {target} von der Festplatte entfernt. Das lässt sich nicht rückgängig machen.",
+      "confirmTitle": "Dateien von „{name}“ löschen?"
+    },
+    "detail": {
+      "engine": "Engine",
+      "fit": "Eignung für diesen Rechner",
+      "license": "Lizenz",
+      "localPath": "Auf der Festplatte",
+      "openModelCard": "Modellkarte öffnen",
+      "repo": "Repository",
+      "resolution": "Empfohlene Größe",
+      "sharedWith": "Teilt den Download mit",
+      "warning": "Hinweis",
+      "ggufFile": "GGUF-Datei",
+      "textEncoder": "Text-Encoder",
+      "catalogSize": "Kataloggröße"
+    },
+    "empty": {
+      "availability": "Mit den aktuellen Filtern gibt es keine Modelle in „{bucket}“.",
+      "catalog": "Noch keine Modelle im Katalog.",
+      "filters": "Keine Modelle passen zu den aktuellen Filtern. Versuche, die Filter oder Suchbegriffe zu erweitern.",
+      "showAvailable": "Verfügbare Modelle anzeigen"
+    },
+    "filter": {
+      "clear": "Filter zurücksetzen",
+      "search": "Suchen",
+      "sortBy": "Sortieren nach"
+    },
+    "fit": {
+      "bestFit": "Beste Wahl",
+      "bestFitTitle": "Die Empfehlung aus dieser Familie für diesen Rechner: die neueste Version, die komfortabel passt.",
+      "estimated": "geschätzt",
+      "estimatedNote": "Aus der Modellgröße geschätzt, nicht auf diesem Rechner gemessen.",
+      "estimatedShort": "gesch.",
+      "fits": "Passt",
+      "measured": "gemessen",
+      "measuredNote": "Auf diesem Rechner gemessen.",
+      "numbers": "Benötigt etwa {need} GB der {usable} GB, die auf diesem Rechner nutzbar sind.",
+      "tight": "Knapp",
+      "unknown": "Nicht für diesen Rechner",
+      "wontFit": "Passt nicht"
+    },
+    "image": {
+      "emptyAttention": "Kein Bildmodell muss geprüft werden.",
+      "emptyCatalog": "Noch keine Bildmodelle im Katalog. Prüfe, ob das Backend läuft.",
+      "emptyDownloading": "Es wird kein Bildmodell heruntergeladen.",
+      "emptyInstalled": "Noch keine Bildmodelle installiert. Wähle unter den verfügbaren Modellen eines zum Herunterladen aus.",
+      "intro": "Alle Bildmodelle in einer Liste. Lade eines herunter, um es im Bildstudio zu nutzen; filtere nach installiert, verfügbar oder Download läuft."
+    },
+    "sort": {
+      "fewestDownloads": "Wenigste Downloads zuerst",
+      "leastLiked": "Am wenigsten beliebte zuerst"
+    },
+    "status": {
+      "available": "Nicht installiert",
+      "broken": "Defekt",
+      "downloading": "Wird heruntergeladen",
+      "failed": "Fehlgeschlagen",
+      "failedDetail": "Download fehlgeschlagen",
+      "installed": "Installiert",
+      "loaded": "Im Speicher geladen",
+      "partial": "Unvollständig",
+      "paused": "Pausiert"
+    },
+    "subtitle": "{shown} von {total, plural, one {# Modell} other {# Modellen}} · {installed} installiert",
+    "summary": {
+      "availability": "Angezeigt: {bucket}",
+      "count": "{count, plural, one {# Modell} other {# Modelle}} · {sortLabel}",
+      "search": "Suche: {query}"
+    },
+    "video": {
+      "intro": "Alle Videomodelle in einer Liste. Lade eines herunter, um es im Videostudio zu nutzen; filtere nach installiert, verfügbar oder Download läuft.",
+      "emptyCatalog": "Noch keine Videomodelle im Katalog. Prüfe, ob das Backend läuft.",
+      "emptyInstalled": "Noch keine Videomodelle installiert. Wähle unter den verfügbaren Modellen eines zum Herunterladen aus.",
+      "emptyDownloading": "Es wird kein Videomodell heruntergeladen.",
+      "emptyAttention": "Kein Videomodell muss geprüft werden."
+    },
+    "chat": {
+      "intro": "Alle Chat-Modelle in einer Liste: die auf der Festplatte, der Katalog und Suchergebnisse von Hugging Face. Filtere nach installiert, verfügbar oder Download läuft.",
+      "subtitle": "{shown} von {total, plural, one {# Modell} other {# Modellen}} · {installed} installiert · {size} auf der Festplatte · {dirs, plural, one {# Verzeichnis} other {# Verzeichnisse}}",
+      "searchPlaceholder": "Name, Anbieter, Fähigkeit, Pfad oder Format suchen (durchsucht auch Hugging Face)...",
+      "newThread": "In neuem Thread chatten",
+      "useInThisChat": "In diesem Chat verwenden",
+      "bestFitTitle": "Die Empfehlung aus dieser Familie für diesen Rechner: die neueste Version, die komfortabel passt; bei gleichzeitig veröffentlichten Größen die größte, die passt.",
+      "closestMatch": "Ähnlichster Katalogeintrag: {name}",
+      "sourceDownload": "Download",
+      "sizeTitle": "{onDisk} auf der Festplatte; laut Katalog {catalog}",
+      "detail": {
+        "released": "Veröffentlicht",
+        "directory": "Verzeichnis",
+        "modified": "Geändert"
+      },
+      "filter": {
+        "capability": "Fähigkeit",
+        "format": "Format",
+        "backend": "Backend",
+        "acceleration": "Beschleunigung"
+      },
+      "emptyCatalog": "Noch keine Chat-Modelle im Katalog oder auf der Festplatte. Prüfe, ob das Backend läuft, oder füge in den Einstellungen Modellverzeichnisse hinzu.",
+      "emptyDownloading": "Es wird kein Chat-Modell heruntergeladen.",
+      "emptyAttention": "Kein Chat-Modell muss geprüft werden.",
+      "emptySearchHub": "Kein Modell auf der Festplatte oder im Katalog passt zu „{query}“. Ergebnisse von Hugging Face stehen unten.",
+      "sort": {
+        "release": "Neueste Veröffentlichung",
+        "name": "Name",
+        "format": "Format",
+        "formatDir": "Format {direction}",
+        "backend": "Backend",
+        "backendDir": "Backend {direction}",
+        "size": "Größte Größe",
+        "ram": "Höchster RAM",
+        "ramDesc": "höchster RAM zuerst",
+        "ramAsc": "niedrigster RAM zuerst",
+        "compressed": "Höchster komprimierter RAM",
+        "compressedDesc": "höchster komprimierter RAM zuerst",
+        "compressedAsc": "niedrigster komprimierter RAM zuerst",
+        "context": "Längster Kontext",
+        "contextDesc": "längster Kontext zuerst",
+        "contextAsc": "kürzester Kontext zuerst",
+        "modified": "Zuletzt geändert",
+        "modifiedDesc": "zuletzt geändert zuerst",
+        "modifiedAsc": "am längsten unveränderte zuerst",
+        "status": "Status"
+      }
     }
   }
 }

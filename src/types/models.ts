@@ -1,5 +1,22 @@
 export type ModelLaunchMode = "direct" | "convert";
 
+export type ModelFitStatus = "fits" | "tight" | "wont-fit" | "unknown";
+
+/** Will this variant run on this machine? Set by the backend on every chat, image and
+ * video catalog variant (``backend_service/helpers/fit.py``). ``needGb`` / ``headroomPct``
+ * are ``null`` when ``status`` is ``unknown`` (the variant cannot run on this kind of
+ * hardware, or the catalog has no size for it); ``headroomPct`` is the share of the
+ * usable memory left after the model, negative when it needs more than the machine has.
+ * ``basis`` is ``measured`` only for a footprint read from a run. */
+export interface ModelFit {
+  status: ModelFitStatus;
+  needGb: number | null;
+  usableGb: number;
+  headroomPct: number | null;
+  reason: string;
+  basis: "measured" | "estimated";
+}
+
 export interface ModelVariant {
   id: string;
   familyId: string;
@@ -23,6 +40,7 @@ export interface ModelVariant {
   maxContext?: number | null;
   releaseDate?: string | null;
   releaseLabel?: string | null;
+  fit?: ModelFit;
 }
 
 export interface ModelFamily {
@@ -38,6 +56,8 @@ export interface ModelFamily {
   badges: string[];
   capabilities: string[];
   defaultVariantId: string;
+  /** Newest release in the family that fits this machine comfortably; ``null`` when none does. */
+  bestFitVariantId?: string | null;
   variants: ModelVariant[];
   readme: string[];
 }

@@ -6,6 +6,7 @@ import {
   type AcceleratorMeta,
   getAccelerator,
   getApplicableAccelerators,
+  getApplicableAcceleratorsForHost,
   isPlatformCompatible,
 } from "../acceleratorCatalog";
 
@@ -179,5 +180,35 @@ describe("isPlatformCompatible", () => {
     const dflashMlx = ACCELERATOR_CATALOG.find((e) => e.id === "dflash-mlx")!;
     expect(isPlatformCompatible(dflashMlx, cudaCaps)).toBe(false);
     expect(isPlatformCompatible(dflashMlx, mlxCaps)).toBe(true);
+  });
+});
+
+describe("getApplicableAcceleratorsForHost", () => {
+  const mac = { platform: "darwin", arch: "arm64", gpuVramTotalGb: null };
+  const pcNoGpu = { platform: "windows", arch: "x86_64", gpuVramTotalGb: null };
+  const pcNvidia = { platform: "windows", arch: "x86_64", gpuVramTotalGb: 24 };
+  const flux = { repo: "black-forest-labs/FLUX.1-dev", runtime: "diffusers FluxPipeline" };
+
+  it("shows the CUDA boosters on an NVIDIA PC", () => {
+    expect(getApplicableAcceleratorsForHost(flux, pcNvidia)).toEqual(["nunchaku", "sageattention"]);
+  });
+
+  it("shows no CUDA booster on a Mac or on a PC without an NVIDIA GPU", () => {
+    expect(getApplicableAcceleratorsForHost(flux, mac)).toEqual([]);
+    expect(getApplicableAcceleratorsForHost(flux, pcNoGpu)).toEqual([]);
+  });
+
+  it("shows no booster for MLX-native, sd.cpp or LongLive variants", () => {
+    for (const runtime of ["mflux (MLX native)", "stable-diffusion.cpp (subprocess)", "LongLive subprocess (torchrun)", "mlx-video"]) {
+      expect(getApplicableAcceleratorsForHost({ repo: "Qwen/Qwen-Image-2.1", runtime }, pcNvidia)).toEqual([]);
+    }
+  });
+
+  it("keeps every applicable card when the host is unknown", () => {
+    expect(getApplicableAcceleratorsForHost(flux, undefined)).toEqual(["nunchaku", "sageattention"]);
+  });
+
+  it("returns nothing without a variant", () => {
+    expect(getApplicableAcceleratorsForHost(null, pcNvidia)).toEqual([]);
   });
 });

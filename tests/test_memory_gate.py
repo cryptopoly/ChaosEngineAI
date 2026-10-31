@@ -101,6 +101,40 @@ class GateImageModelSizeTests(unittest.TestCase):
             available_gb=40.0, pressure_percent=30.0, model_gb=23.8, model_name="FLUX.1 Dev",
         ))
 
+    def test_a_measured_peak_footprint_is_not_charged_headroom_twice(self):
+        # Qwen-Image-2.1 peaks at 50 GB: 1.1 x 50 = 55 GB would refuse a 64 GB Mac with 54 GB free.
+        refused = gate_image_generation(available_gb=54.0, pressure_percent=30.0, model_gb=50.0, model_name="Qwen-Image-2.1")
+        self.assertIsNotNone(refused)
+        allowed = gate_image_generation(
+            available_gb=54.0, pressure_percent=30.0, model_gb=50.0, model_name="Qwen-Image-2.1", headroom=1.0,
+        )
+        self.assertIsNone(allowed)
+        still_refused = gate_image_generation(
+            available_gb=48.0, pressure_percent=30.0, model_gb=50.0, model_name="Qwen-Image-2.1", headroom=1.0,
+        )
+        self.assertIsNotNone(still_refused)
+
+    def test_on_cuda_the_size_is_judged_against_free_gpu_memory_not_ram(self):
+        # RTX 4090 (about 22 GB free) in a 128 GB workstation: FLUX.1 dev at 4096 x 4096 needs ~54 GB more.
+        args = dict(
+            pressure_percent=30.0, model_gb=23.8, model_name="FLUX.1 Dev",
+            width=4096, height=4096, reference_pixels=1024 * 1024, footprint_gb=23.8, headroom=1.0,
+        )
+        by_ram = gate_image_generation(available_gb=120.0, **args)
+        self.assertIsNone(by_ram)
+        by_gpu = gate_image_generation(available_gb=120.0, size_available_gb=22.0, **args)
+        self.assertIsNotNone(by_gpu)
+        self.assertEqual(by_gpu["code"], "memory_gate_image_size_too_large")
+        self.assertIn("GPU memory", by_gpu["message"])
+
+    def test_on_cuda_a_size_that_fits_the_card_passes_even_when_ram_could_not_hold_it(self):
+        result = gate_image_generation(
+            available_gb=30.0, pressure_percent=30.0, model_gb=23.8, model_name="FLUX.1 Dev",
+            width=2048, height=2048, reference_pixels=1024 * 1024, footprint_gb=23.8, headroom=1.0,
+            size_available_gb=22.0,
+        )
+        self.assertIsNone(result)
+
     def test_no_size_means_no_size_check(self):
         self.assertIsNone(gate_image_generation(available_gb=8.0, pressure_percent=30.0))
 

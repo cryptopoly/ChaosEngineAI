@@ -336,6 +336,37 @@ class DraftResolutionTests(unittest.TestCase):
         self.assertGreaterEqual(height, 256)
 
 
+class MinSideTests(unittest.TestCase):
+    """Pixel-space models (Iris-3B) render noise or blocks below 768 px."""
+
+    def test_small_sizes_are_raised_keeping_the_aspect_ratio(self):
+        from backend_service.app import _apply_min_side
+        self.assertEqual(_apply_min_side(256, 256, 768), (768, 768))
+        self.assertEqual(_apply_min_side(512, 512, 768), (768, 768))
+        w, h = _apply_min_side(512, 384, 768)
+        self.assertEqual(min(w, h), 768)
+        self.assertEqual((w % 16, h % 16), (0, 0))
+        self.assertAlmostEqual(w / h, 512 / 384, delta=0.05)
+
+    def test_sizes_at_or_above_the_minimum_and_models_without_one_are_unchanged(self):
+        from backend_service.app import _apply_min_side
+        self.assertEqual(_apply_min_side(1024, 768, 768), (1024, 768))
+        self.assertEqual(_apply_min_side(256, 256, None), (256, 256))
+        self.assertEqual(_apply_min_side(256, 256, 0), (256, 256))
+
+    def test_extreme_aspect_ratios_are_capped(self):
+        from backend_service.app import _apply_min_side
+        # The cap is the model's maxSide now (the old global 2048 is gone).
+        w, h = _apply_min_side(2048, 256, 768, max_side=2048)
+        self.assertLessEqual(max(w, h), 2048)
+        self.assertGreaterEqual(min(w, h), 768)
+
+    def test_iris_declares_the_minimum(self):
+        from backend_service.catalog import IMAGE_MODEL_FAMILIES
+        iris = next(v for f in IMAGE_MODEL_FAMILIES for v in f["variants"] if v["id"] == "speridlabs/iris-3b-mflux")
+        self.assertEqual(iris["minSide"], 768)
+
+
 class GgufTransformerLoaderTests(unittest.TestCase):
     """``_try_load_gguf_transformer`` returns ``(None, note)`` on every
     missing-dependency / unsupported-repo path, so the caller falls back

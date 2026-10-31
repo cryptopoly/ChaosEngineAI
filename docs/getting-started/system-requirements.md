@@ -70,7 +70,7 @@ not a daily driver.
 | Mid-quality SDXL pipeline | ~7 GB |
 | FLUX.1-dev or FLUX.1-schnell | ~24 GB |
 | Wan 2.1 T2V 14B | ~28 GB |
-| Wan 2.2 TI2V 5B (mlx-video converted) | ~12 GB |
+| LTX-2.3 distilled q4 (ltx-2-mlx, with its text encoder) | ~28.5 GB |
 
 Plan for at least 100 GB free if you're going to seriously explore image and
 video diffusion models. Models live under `~/AI_Models/` by default; the

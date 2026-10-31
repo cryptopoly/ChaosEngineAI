@@ -27,7 +27,7 @@
     "copyImage": "Copy image",
     "openFolder": "Show in folder",
     "modelLabel": "Model",
-    "noModelsOption": "No models installed — download one from Discover",
+    "noModelsOption": "No models installed — download one from Images > Models",
     "aspectRatio": "Aspect Ratio",
     "qualityPreset": "Quality Preset",
     "previewLabel": "Preview",
@@ -152,7 +152,7 @@
     "summaryLoaded": "{selected} is loaded and ready to generate.",
     "summarySwap": "{loaded} is loaded. Generating with {selected} will swap the pipeline.",
     "summaryNotLoaded": "{selected} is installed locally but not loaded yet. The first generate will take longer while the diffusion pipeline warms up.",
-    "summaryNotInstalled": "{selected} is not installed locally. Download it from Discover to enable local generation.",
+    "summaryNotInstalled": "{selected} is not installed locally. Download it from the Models page to enable local generation.",
     "summaryOnDemand": "Model will load on demand when you generate.",
     "preloadModel": "Preload Model",
     "unloadModel": "Unload Model",
@@ -173,7 +173,7 @@
       "ready": "Generate this image."
     },
     "actions": {
-      "discover": "Discover",
+      "discover": "Find models",
       "installed": "Installed",
       "gallery": "Gallery"
     },
@@ -189,14 +189,14 @@
       "downloaded": "Downloaded"
     },
     "noModelsCallout": {
-      "message": "You don't have any image models downloaded yet. Head to Image Discover to browse and install one, then come back here to generate.",
-      "openDiscover": "Open Image Discover"
+      "message": "You don't have any image models downloaded yet. Head to Images > Models to browse and install one, then come back here to generate.",
+      "openDiscover": "Open Image Models"
     },
     "download": {
       "failedMessage": "{name} did not finish downloading correctly. ChaosEngineAI only found a partial local snapshot, so it cannot load the real image pipeline yet.",
       "pausedMessage": "{name} is partially downloaded. Resume when you're ready and ChaosEngineAI will continue from the files already on disk.",
       "completeMessage": "{name} finished downloading. The installed-model scan will refresh automatically.",
-      "notInstalledMessage": "{name} is not installed locally. Download it from Discover to enable local generation.",
+      "notInstalledMessage": "{name} is not installed locally. Download it from the Models page to enable local generation.",
       "huggingFace": "Hugging Face",
       "settings": "Settings",
       "technicalDetails": "Technical details",
@@ -251,7 +251,8 @@
       "guidance": "Guidance",
       "images": "Images",
       "randomSeed": "Random seed",
-      "seed": "Seed"
+      "seed": "Seed",
+      "maxPixelsNote": "{name} renders at most {megapixels} megapixels; this size is reduced to fit, keeping its shape."
     },
     "safety": {
       "dangerTitle": "Likely to crash the backend",
@@ -395,8 +396,8 @@
     },
     "subtitle": "Choose a video model to get started",
     "actions": {
-      "browseCatalog": "Browse Catalog",
-      "installedModels": "Installed Models",
+      "browseCatalog": "Find models",
+      "installedModels": "Installed",
       "downloadModel": "Download model",
       "loadIntoMemory": "Load into memory",
       "unload": "Unload",
@@ -408,8 +409,8 @@
       "incomplete": "incomplete"
     },
     "noModelsCallout": {
-      "message": "No video models installed yet. Browse the catalog to download one.",
-      "openDiscover": "Open Video Discover"
+      "message": "No video models installed yet. Open Video > Models to download one.",
+      "openDiscover": "Open Video Models"
     },
     "stats": {
       "clipDuration": "{value}s clip"
@@ -424,7 +425,8 @@
     "prompt": {
       "label": "Prompt",
       "placeholder": "A cinematic drone shot of a misty pine forest at dawn...",
-      "ltxShortWarning": "LTX-Video produces best results with detailed prompts (~50-100 words). Short prompts (\\\"cartoon llama eating straw\\\") under-condition the model and tend to drift. Lightricks recommends starting with the action, then adding visual details, lighting, and camera direction."
+      "ltxShortWarning": "LTX-Video produces best results with detailed prompts (~50-100 words). Short prompts (\\\"cartoon llama eating straw\\\") under-condition the model and tend to drift. Lightricks recommends starting with the action, then adding visual details, lighting, and camera direction.",
+      "soundHint": "This model makes sound too, and the sound follows your prompt. Describe it: footsteps crunching in snow, wind in the trees, a low engine hum."
     },
     "negativePrompt": {
       "tooltip": "Tells the model what to avoid. A generic prompt is pre-filled and tuned for most video models — clear or edit it if you have a model-specific preference. More specificity usually helps more than it hurts.",
@@ -462,7 +464,8 @@
       "guidanceTooltip": "How strongly the model follows your prompt. Too low = ignores the prompt; too high = rigid or distorted output. Recommended: LTX-Video ≈ 3, Wan ≈ 5, HunyuanVideo ≈ 6. The prompt's 'negative' direction comes from the Negative prompt above.",
       "guidanceLtxWarning": "LTX-Video is a flow-matching model — CFG above ~3.5 over-saturates and produces blurred / rainbow output. Lower to 3 for the cleanest results.",
       "randomSeed": "Random seed",
-      "seedPlaceholder": "Seed (integer)"
+      "seedPlaceholder": "Seed (integer)",
+      "maxPixelsNote": "{name} renders at most {megapixels} megapixels per frame; this size is reduced to fit, keeping its shape."
     },
     "clipLength": {
       "line": "Clip length: {seconds}s ({frames} frames ÷ {fps} fps)"
@@ -559,6 +562,10 @@
         "label": "Max",
         "sub": "50 steps"
       }
+    },
+    "sound": {
+      "badge": "Sound",
+      "badgeTooltip": "This clip has sound. Turn it on with the volume control on the player."
     }
   },
   "imageGallery": {
@@ -568,7 +575,7 @@
     },
     "actions": {
       "studio": "Studio",
-      "installedModels": "Installed Models"
+      "installedModels": "Installed"
     },
     "hero": {
       "eyebrow": "Saved Outputs",
@@ -622,7 +629,7 @@
     "actions": {
       "autoPlay": "Auto-Play",
       "openStudio": "Open Studio",
-      "installedModels": "Installed Models"
+      "installedModels": "Installed"
     },
     "empty": {
       "body": "No video outputs yet. Load a model in the Studio and generate a clip — finished renders will land here.",
@@ -643,7 +650,9 @@
       },
       "expand": "Expand",
       "revealFile": "Reveal File",
-      "delete": "Delete"
+      "delete": "Delete",
+      "soundOn": "Turn sound on",
+      "soundOff": "Mute"
     }
   },
   "voice": {
@@ -746,7 +755,7 @@
     "stop": "Stop",
     "studio": {
       "title": "Voice Studio",
-      "needsPack": "Voice runs on this computer and needs the voice pack (about 2 GB). Install it once from Voice > My Models.",
+      "needsPack": "Voice runs on this computer and needs the voice pack (about 2 GB). Install it once from Voice > Models.",
       "openModels": "Open Voice Models"
     },
     "savedToLibrary": "Saved to Library",
@@ -867,5 +876,33 @@
     "rollbackKeptTail": "for manual recovery.",
     "close": "Close",
     "installLog": "Install log ({count, plural, one {# step} other {# steps}})"
+  },
+  "recommended": {
+    "title": "Recommended for this machine",
+    "measured": "Measured",
+    "estimated": "Estimated",
+    "measuredTitle": "Timed on {machine}.",
+    "estimatedTitle": "From the model card, upstream documentation or a similar machine; not timed on this hardware.",
+    "measuredOn": "timed on {machine}",
+    "applyAll": "Apply recommended",
+    "allApplied": "All in use",
+    "inUse": "In use",
+    "use": "Use",
+    "on": "On",
+    "off": "Off",
+    "cacheValue": "{name}, threshold {threshold}",
+    "labels": {
+      "qualityPreset": "Quality preset",
+      "steps": "Steps",
+      "guidance": "Guidance",
+      "sampler": "Sampler",
+      "size": "Size",
+      "numFrames": "Frames",
+      "fps": "FPS",
+      "cache": "Diffusion cache",
+      "cfgDecay": "CFG decay",
+      "previewVae": "Preview VAE",
+      "fp8LayerwiseCasting": "FP8 layerwise"
+    }
   }
 }

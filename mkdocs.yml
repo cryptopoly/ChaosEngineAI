@@ -82,6 +82,7 @@ nav:
       - usage/html-challenge.md
       - usage/image-studio.md
       - usage/video-studio.md
+      - usage/voice.md
       - usage/server-mode.md
       - usage/benchmarks.md
   - Features:

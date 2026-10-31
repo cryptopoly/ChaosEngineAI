@@ -26,6 +26,7 @@ import time
 from typing import TYPE_CHECKING, Any
 
 from backend_service.helpers.discovery import _model_family_payloads
+from backend_service.helpers.model_family_payload import measured_speed_lookup
 from backend_service.helpers.network import _local_ipv4_addresses
 from backend_service.helpers.system import (
     _best_fit_recommendation,
@@ -247,7 +248,9 @@ def workspace(state: ChaosEngineState) -> dict[str, Any]:
     return {
         "system": system_stats,
         "recommendation": recommendation,
-        "featuredModels": _model_family_payloads(system_stats, library),
+        "featuredModels": _model_family_payloads(
+            system_stats, library, measured_speed_for=measured_speed_lookup(state),
+        ),
         "library": library,
         "libraryStatus": "ready" if state._library_scan_done.is_set() else "scanning",
         "settings": state._settings_payload(library),

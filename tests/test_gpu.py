@@ -333,3 +333,36 @@ class WindowsConsoleSuppressionTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class FreeVramTests(unittest.TestCase):
+    def setUp(self) -> None:
+        from backend_service.helpers import gpu
+
+        gpu.reset_vram_total_cache()
+        self.gpu = gpu
+
+    def tearDown(self) -> None:
+        self.gpu.reset_vram_total_cache()
+
+    def test_free_is_total_minus_used(self) -> None:
+        from unittest import mock
+
+        with mock.patch.object(self.gpu._monitor, "snapshot", return_value={"vram_total_gb": 24.0, "vram_used_gb": 5.5}):
+            self.assertEqual(self.gpu.get_device_vram_free_gb(), 18.5)
+
+    def test_unreadable_card_gives_none(self) -> None:
+        from unittest import mock
+
+        with mock.patch.object(self.gpu._monitor, "snapshot", return_value={"vram_total_gb": None, "vram_used_gb": None}):
+            self.assertIsNone(self.gpu.get_device_vram_free_gb())
+
+    def test_not_a_cuda_host_gives_none(self) -> None:
+        from unittest import mock
+
+        from backend_service.helpers import hardware_class as hc
+        from backend_service.helpers.memory_gate import cuda_free_vram_gb
+
+        apple = hc.HardwareClass("apple", "apple-64", "Apple Silicon, 64 GB", 64.0, 51.8)
+        with mock.patch.object(hc, "host_hardware_class", return_value=apple):
+            self.assertIsNone(cuda_free_vram_gb())

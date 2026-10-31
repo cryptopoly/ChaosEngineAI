@@ -27,7 +27,7 @@
     "copyImage": "Bild kopieren",
     "openFolder": "Im Ordner anzeigen",
     "modelLabel": "Modell",
-    "noModelsOption": "Keine Modelle installiert — eines aus „Entdecken“ herunterladen",
+    "noModelsOption": "Keine Modelle installiert — eines unter Bilder > Modelle herunterladen",
     "aspectRatio": "Seitenverhältnis",
     "qualityPreset": "Qualitäts-Preset",
     "previewLabel": "Vorschau",
@@ -152,7 +152,7 @@
     "summaryLoaded": "{selected} ist geladen und bereit zum Generieren.",
     "summarySwap": "{loaded} ist geladen. Beim Generieren mit {selected} wird die Pipeline gewechselt.",
     "summaryNotLoaded": "{selected} ist lokal installiert, aber noch nicht geladen. Das erste Generieren dauert länger, während die Diffusions-Pipeline warmläuft.",
-    "summaryNotInstalled": "{selected} ist lokal nicht installiert. Lade es unter „Entdecken“ herunter, um die lokale Generierung zu aktivieren.",
+    "summaryNotInstalled": "{selected} ist lokal nicht installiert. Lade es auf der Seite „Modelle“ herunter, um die lokale Generierung zu aktivieren.",
     "summaryOnDemand": "Das Modell wird bei Bedarf geladen, sobald du generierst.",
     "preloadModel": "Modell vorladen",
     "unloadModel": "Modell entladen",
@@ -173,7 +173,7 @@
       "ready": "Dieses Bild generieren."
     },
     "actions": {
-      "discover": "Entdecken",
+      "discover": "Modelle finden",
       "installed": "Installiert",
       "gallery": "Galerie"
     },
@@ -189,14 +189,14 @@
       "downloaded": "Heruntergeladen"
     },
     "noModelsCallout": {
-      "message": "Du hast noch keine Bildmodelle heruntergeladen. Gehe zu „Bilder entdecken“, um eines durchzusehen und zu installieren, und komm dann zum Generieren hierher zurück.",
-      "openDiscover": "Bilder entdecken öffnen"
+      "message": "Du hast noch keine Bildmodelle heruntergeladen. Gehe zu Bilder > Modelle, um eines durchzusehen und zu installieren, und komm dann zum Generieren hierher zurück.",
+      "openDiscover": "Bildmodelle öffnen"
     },
     "download": {
       "failedMessage": "{name} wurde nicht korrekt heruntergeladen. ChaosEngineAI hat nur einen teilweisen lokalen Snapshot gefunden und kann die echte Bild-Pipeline noch nicht laden.",
       "pausedMessage": "{name} ist teilweise heruntergeladen. Setze den Download fort, wenn du bereit bist — ChaosEngineAI macht mit den bereits vorhandenen Dateien weiter.",
       "completeMessage": "{name} wurde fertig heruntergeladen. Der Scan installierter Modelle wird automatisch aktualisiert.",
-      "notInstalledMessage": "{name} ist nicht lokal installiert. Lade es aus „Entdecken“ herunter, um die lokale Generierung zu aktivieren.",
+      "notInstalledMessage": "{name} ist nicht lokal installiert. Lade es auf der Seite „Modelle“ herunter, um die lokale Generierung zu aktivieren.",
       "huggingFace": "Hugging Face",
       "settings": "Einstellungen",
       "technicalDetails": "Technische Details",
@@ -251,7 +251,8 @@
       "guidance": "Guidance",
       "images": "Bilder",
       "randomSeed": "Zufalls-Seed",
-      "seed": "Seed"
+      "seed": "Seed",
+      "maxPixelsNote": "{name} rendert höchstens {megapixels} Megapixel; diese Größe wird unter Beibehaltung des Seitenverhältnisses verkleinert."
     },
     "safety": {
       "dangerTitle": "Wird das Backend wahrscheinlich zum Absturz bringen",
@@ -395,8 +396,8 @@
     },
     "subtitle": "Wähle ein Videomodell, um zu beginnen",
     "actions": {
-      "browseCatalog": "Katalog durchsuchen",
-      "installedModels": "Installierte Modelle",
+      "browseCatalog": "Modelle finden",
+      "installedModels": "Installiert",
       "downloadModel": "Modell herunterladen",
       "loadIntoMemory": "In Speicher laden",
       "unload": "Entladen",
@@ -408,8 +409,8 @@
       "incomplete": "unvollständig"
     },
     "noModelsCallout": {
-      "message": "Noch keine Videomodelle installiert. Durchsuche den Katalog, um eines herunterzuladen.",
-      "openDiscover": "Videos entdecken öffnen"
+      "message": "Noch keine Videomodelle installiert. Öffne Video > Modelle, um eines herunterzuladen.",
+      "openDiscover": "Videomodelle öffnen"
     },
     "stats": {
       "clipDuration": "{value}s Clip"
@@ -424,7 +425,8 @@
     "prompt": {
       "label": "Prompt",
       "placeholder": "Eine cinematische Drohnenaufnahme eines nebligen Kiefernwaldes im Morgengrauen...",
-      "ltxShortWarning": "LTX-Video liefert die besten Ergebnisse mit detaillierten Prompts (~50-100 Wörter). Kurze Prompts (z. B. „Cartoon-Lama frisst Stroh“) konditionieren das Modell zu schwach und neigen zum Driften. Lightricks empfiehlt, mit der Handlung zu beginnen und dann visuelle Details, Beleuchtung und Kameraführung hinzuzufügen."
+      "ltxShortWarning": "LTX-Video liefert die besten Ergebnisse mit detaillierten Prompts (~50-100 Wörter). Kurze Prompts (z. B. „Cartoon-Lama frisst Stroh“) konditionieren das Modell zu schwach und neigen zum Driften. Lightricks empfiehlt, mit der Handlung zu beginnen und dann visuelle Details, Beleuchtung und Kameraführung hinzuzufügen.",
+      "soundHint": "Dieses Modell erzeugt auch Ton, und der Ton folgt dem Prompt. Beschreibe ihn: Schritte im knirschenden Schnee, Wind in den Bäumen, ein tiefes Motorbrummen."
     },
     "negativePrompt": {
       "tooltip": "Sagt dem Modell, was vermieden werden soll. Ein generischer Prompt ist vorausgefüllt und für die meisten Videomodelle abgestimmt — leere ihn oder bearbeite ihn, wenn du eine modellspezifische Präferenz hast. Mehr Spezifik hilft meist mehr, als sie schadet.",
@@ -462,7 +464,8 @@
       "guidanceTooltip": "Wie stark das Modell deinem Prompt folgt. Zu niedrig = ignoriert den Prompt; zu hoch = starre oder verzerrte Ausgabe. Empfohlen: LTX-Video ≈ 3, Wan ≈ 5, HunyuanVideo ≈ 6. Die „negative“ Richtung des Prompts kommt aus dem Negativen Prompt oben.",
       "guidanceLtxWarning": "LTX-Video ist ein Flow-Matching-Modell — CFG über ~3,5 übersättigt und erzeugt verschwommene / regenbogenartige Ausgaben. Senke auf 3 für die saubersten Ergebnisse.",
       "randomSeed": "Zufalls-Seed",
-      "seedPlaceholder": "Seed (Ganzzahl)"
+      "seedPlaceholder": "Seed (Ganzzahl)",
+      "maxPixelsNote": "{name} rendert pro Bild höchstens {megapixels} Megapixel; diese Größe wird unter Beibehaltung des Seitenverhältnisses verkleinert."
     },
     "clipLength": {
       "line": "Cliplänge: {seconds}s ({frames} Bilder ÷ {fps} fps)"
@@ -559,6 +562,10 @@
         "label": "Max",
         "sub": "50 Schritte"
       }
+    },
+    "sound": {
+      "badge": "Ton",
+      "badgeTooltip": "Dieser Clip hat Ton. Schalte ihn mit der Lautstärkeregelung des Players ein."
     }
   },
   "imageGallery": {
@@ -568,7 +575,7 @@
     },
     "actions": {
       "studio": "Studio",
-      "installedModels": "Installierte Modelle"
+      "installedModels": "Installiert"
     },
     "hero": {
       "eyebrow": "Gespeicherte Ausgaben",
@@ -622,7 +629,7 @@
     "actions": {
       "autoPlay": "Auto-Play",
       "openStudio": "Studio öffnen",
-      "installedModels": "Installierte Modelle"
+      "installedModels": "Installiert"
     },
     "empty": {
       "body": "Noch keine Videoausgaben. Lade ein Modell im Studio und generiere einen Clip — fertige Renders landen hier.",
@@ -643,7 +650,9 @@
       },
       "expand": "Ausklappen",
       "revealFile": "Datei anzeigen",
-      "delete": "Löschen"
+      "delete": "Löschen",
+      "soundOn": "Ton einschalten",
+      "soundOff": "Stummschalten"
     }
   },
   "voice": {
@@ -746,7 +755,7 @@
     "stop": "Stoppen",
     "studio": {
       "title": "Voice Studio",
-      "needsPack": "Sprachfunktionen laufen auf diesem Computer und benötigen das Sprachpaket (etwa 2 GB). Installiere es einmalig unter Sprache > Meine Modelle.",
+      "needsPack": "Sprachfunktionen laufen auf diesem Computer und benötigen das Sprachpaket (etwa 2 GB). Installiere es einmalig unter Sprache > Modelle.",
       "openModels": "Sprachmodelle öffnen"
     },
     "savedToLibrary": "In der Bibliothek gespeichert",
@@ -867,5 +876,33 @@
     "rollbackKeptTail": "zur manuellen Wiederherstellung.",
     "close": "Schließen",
     "installLog": "Installations-Log ({count, plural, one {# Schritt} other {# Schritte}})"
+  },
+  "recommended": {
+    "title": "Empfohlen für diesen Rechner",
+    "measured": "Gemessen",
+    "estimated": "Geschätzt",
+    "measuredTitle": "Auf {machine} gemessen.",
+    "estimatedTitle": "Aus der Modellkarte, der Upstream-Dokumentation oder von einem ähnlichen Rechner; nicht auf dieser Hardware gemessen.",
+    "measuredOn": "gemessen auf {machine}",
+    "applyAll": "Empfehlung übernehmen",
+    "allApplied": "Alle aktiv",
+    "inUse": "Aktiv",
+    "use": "Übernehmen",
+    "on": "An",
+    "off": "Aus",
+    "cacheValue": "{name}, Schwellwert {threshold}",
+    "labels": {
+      "qualityPreset": "Qualitäts-Preset",
+      "steps": "Schritte",
+      "guidance": "Guidance",
+      "sampler": "Sampler",
+      "size": "Größe",
+      "numFrames": "Bilder",
+      "fps": "FPS",
+      "cache": "Diffusions-Cache",
+      "cfgDecay": "CFG-Decay",
+      "previewVae": "Preview-VAE",
+      "fp8LayerwiseCasting": "FP8 layerwise"
+    }
   }
 }

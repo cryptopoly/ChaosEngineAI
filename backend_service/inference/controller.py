@@ -30,6 +30,14 @@ from backend_service.reasoning_split import (
     ThinkingTokenFilter,
     strip_thinking_tokens as _strip_thinking_tokens,
 )
+from backend_service.helpers.request_guards import (
+    SCHEMA_FALLBACK_NOTE,
+    empty_reply_note,
+    guard_chat_request,
+    merge_notes,
+    schema_fallback_prompt,
+    strip_json_fence,
+)
 from backend_service.model_resolution import resolve_dflash_target_ref
 
 from backend_service.inference._constants import (
@@ -148,6 +156,18 @@ def _one_load_at_a_time(method):
     return wrapper
 
 
+_MLX_PROBE_RETRIES = 2
+_MLX_PROBE_RETRY_DELAY_SECONDS = 3.0
+
+
+def _mlx_expected_on_this_host() -> bool:
+    """True where the bundled runtime ships MLX (Apple Silicon)."""
+    import platform
+    import sys
+
+    return sys.platform == "darwin" and platform.machine() == "arm64"
+
+
 class RuntimeController:
     # Hard upper bound on the warm pool independently of memory accounting —
     # if psutil isn't available we still want a sane cap.
@@ -203,6 +223,15 @@ class RuntimeController:
     def _capability_probe_worker(self, *, force: bool = False) -> None:
         try:
             capabilities = get_backend_capabilities(force=force)
+            # One failed probe is kept for the whole session, and on a Mac that has
+            # MLX it turned MLX off in the Dashboard and in model loading until a
+            # manual refresh. Ask again before reporting that (the placeholder keeps
+            # ``probing`` true meanwhile, so nothing announces the wrong answer).
+            for _ in range(_MLX_PROBE_RETRIES):
+                if capabilities.mlxUsable or not _mlx_expected_on_this_host():
+                    break
+                time.sleep(_MLX_PROBE_RETRY_DELAY_SECONDS)
+                capabilities = get_backend_capabilities(force=True)
         except Exception as exc:
             current = self.capabilities
             capabilities = BackendCapabilities(
@@ -1211,20 +1240,62 @@ class RuntimeController:
             raise RuntimeError("Load a model before sending prompts.")
 
         target_engine = engine or self.engine
+        guard = guard_chat_request(
+            engine=self.loaded_model.engine,
+            vision_enabled=self.loaded_model.visionEnabled,
+            images=images,
+            samplers=samplers,
+            json_schema=json_schema,
+        )
         result = target_engine.generate(
             prompt=prompt,
             history=history,
             system_prompt=system_prompt,
             max_tokens=max_tokens,
             temperature=temperature,
-            images=images,
+            images=guard.images,
             tools=tools,
-            samplers=samplers,
+            samplers=guard.samplers,
             reasoning_effort=reasoning_effort,
-            json_schema=json_schema,
+            json_schema=guard.jsonSchema,
         )
         if result.runtimeNote is None:
             result.runtimeNote = self.runtime_note
+        notes = list(guard.notes)
+        if (
+            guard.jsonSchema
+            and not result.text.strip()
+            and not result.tool_calls
+            and self.loaded_model.engine == "llama.cpp"
+        ):
+            # A reasoning model under a JSON grammar can answer with nothing at all; ask for the
+            # JSON in words instead and say so.
+            retry = target_engine.generate(
+                prompt=prompt,
+                history=history,
+                system_prompt=schema_fallback_prompt(system_prompt, guard.jsonSchema),
+                max_tokens=max_tokens,
+                temperature=temperature,
+                images=guard.images,
+                tools=tools,
+                samplers=guard.samplers,
+                reasoning_effort=reasoning_effort,
+                json_schema=None,
+            )
+            if retry.text.strip():
+                retry.text = strip_json_fence(retry.text)
+                retry.runtimeNote = merge_notes(retry.runtimeNote or self.runtime_note, [*guard.notes, SCHEMA_FALLBACK_NOTE])
+                return retry
+        if not result.text.strip() and not result.tool_calls:
+            empty_note = empty_reply_note(
+                completion_tokens=result.completionTokens,
+                finish_reason=result.finishReason,
+                had_reasoning=False,
+                json_schema=guard.jsonSchema,
+            )
+            if empty_note:
+                notes.append(empty_note)
+        result.runtimeNote = merge_notes(result.runtimeNote, notes)
         return result
 
     def stream_generate(
@@ -1247,19 +1318,67 @@ class RuntimeController:
             raise RuntimeError("Load a model before sending prompts.")
 
         target_engine = engine or self.engine
-        yield from target_engine.stream_generate(
+        guard = guard_chat_request(
+            engine=self.loaded_model.engine,
+            vision_enabled=self.loaded_model.visionEnabled,
+            images=images,
+            samplers=samplers,
+            json_schema=json_schema,
+        )
+        saw_text = False
+        saw_reasoning = False
+        for chunk in target_engine.stream_generate(
             prompt=prompt,
             history=history,
             system_prompt=system_prompt,
             max_tokens=max_tokens,
             temperature=temperature,
-            images=images,
+            images=guard.images,
             tools=tools,
             thinking_mode=thinking_mode,
-            samplers=samplers,
+            samplers=guard.samplers,
             reasoning_effort=reasoning_effort,
-            json_schema=json_schema,
-        )
+            json_schema=guard.jsonSchema,
+        ):
+            saw_text = saw_text or bool(chunk.text)
+            saw_reasoning = saw_reasoning or bool(chunk.reasoning)
+            if chunk.done:
+                notes = list(guard.notes)
+                if (
+                    not saw_text
+                    and guard.jsonSchema
+                    and self.loaded_model.engine == "llama.cpp"
+                ):
+                    retry = target_engine.generate(
+                        prompt=prompt,
+                        history=history,
+                        system_prompt=schema_fallback_prompt(system_prompt, guard.jsonSchema),
+                        max_tokens=max_tokens,
+                        temperature=temperature,
+                        images=guard.images,
+                        tools=tools,
+                        samplers=guard.samplers,
+                        reasoning_effort=reasoning_effort,
+                        json_schema=None,
+                    )
+                    if retry.text.strip():
+                        saw_text = True
+                        notes.append(SCHEMA_FALLBACK_NOTE)
+                        yield StreamChunk(text=strip_json_fence(retry.text))
+                        chunk.finish_reason = retry.finishReason or chunk.finish_reason
+                        chunk.completion_tokens += retry.completionTokens
+                        chunk.total_tokens += retry.completionTokens
+                if not saw_text:
+                    empty_note = empty_reply_note(
+                        completion_tokens=chunk.completion_tokens,
+                        finish_reason=chunk.finish_reason,
+                        had_reasoning=saw_reasoning,
+                        json_schema=guard.jsonSchema,
+                    )
+                    if empty_note:
+                        notes.append(empty_note)
+                chunk.runtime_note = merge_notes(chunk.runtime_note, notes)
+            yield chunk
 
     def extract_gguf_metadata(self, path: str) -> dict[str, Any]:
         code, payload, message = _json_subprocess(

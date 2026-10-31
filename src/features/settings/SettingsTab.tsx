@@ -6,6 +6,7 @@ import { LanguagePanel } from "./LanguagePanel";
 import { ModelStoragePanel } from "./ModelStoragePanel";
 import type { SettingsDraft } from "../../types/chat";
 import type { SidebarMode } from "../../types";
+import type { SystemStats } from "../../types/system";
 import type { UiScale } from "../../hooks";
 
 export interface SettingsTabProps {
@@ -37,6 +38,8 @@ export interface SettingsTabProps {
   // the app uses — backendOnline gates the Refresh button, onRestartServer
   // triggers the Tauri restart command after a Re-extract runtime action.
   backendOnline: boolean;
+  /** The host, so the Accelerators list shows only what this hardware can run. */
+  hostSystem?: Pick<SystemStats, "platform" | "arch" | "gpuVramTotalGb">;
   onRestartServer: () => void;
   busyAction: string | null;
 }
@@ -94,6 +97,7 @@ export function SettingsTab({
   uiScale,
   onUiScaleChange,
   backendOnline,
+  hostSystem,
   onRestartServer,
   busyAction,
 }: SettingsTabProps) {
@@ -632,7 +636,7 @@ export function SettingsTab({
           : activeSection === "integrations"
             ? integrationPanels
             : activeSection === "accelerators"
-              ? <AcceleratorsPanel backendOnline={backendOnline} />
+              ? <AcceleratorsPanel backendOnline={backendOnline} hostSystem={hostSystem} />
               : activeSection === "disk"
                 ? <DiskUsagePanel backendOnline={backendOnline} />
                 : diagnosticsPanels;

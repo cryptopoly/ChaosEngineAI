@@ -79,6 +79,8 @@ export interface LoadedModel {
   speculativeDecoding: boolean;
   dflashDraftModel?: string | null;
   treeBudget: number;
+  /** Tree budget the load asked for, before it was dropped for a target that cannot be tree-verified. */
+  requestedTreeBudget?: number | null;
   /** Phase 2.11: capability declarations (vision / tools / reasoning / etc.) */
   capabilities?: ModelCapabilities | null;
 }

@@ -161,7 +161,7 @@ spawns `tensorfold serve <model dir>` on a local port and proxies
 `/v1/chat/completions`.
 
 - **Local directory, offline.** The server is started on the model's snapshot
-  directory with `HF_HUB_OFFLINE=1`. Downloads stay in Discover and the Library,
+  directory with `HF_HUB_OFFLINE=1`. Downloads stay on the Models page and in the Library,
   with their progress and the relocated-cache setting. The one thing the engine
   fetches itself is the small optional draft model.
 - **In-memory prefix snapshots.** `--snapshot-dir none`: the default would write

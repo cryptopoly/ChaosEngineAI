@@ -271,7 +271,8 @@ _FAKE_WORKER = textwrap.dedent(
 
 class VoiceClientTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.tmp = tempfile.TemporaryDirectory()
+        # Windows can hold worker.log for a moment after the process exits.
+        self.tmp = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
         script = Path(self.tmp.name) / "fake_worker.py"
         script.write_text(_FAKE_WORKER, encoding="utf-8")
         self.patches = [

@@ -104,6 +104,13 @@ class VoiceWorker:
             process.wait(timeout=5)
         except Exception:  # noqa: BLE001 - kill whatever is left
             process.kill()
+            try:
+                process.wait(timeout=5)
+            except Exception:  # noqa: BLE001 - nothing more to do
+                pass
+        finally:
+            if process.stdout:
+                process.stdout.close()
 
     def stop(self) -> None:
         with self._lock:

@@ -16,6 +16,11 @@ from starlette.responses import JSONResponse
 
 from backend_service.runtime_paths import ensure_extras_on_sys_path, guard_overlay_against_bundle
 
+# The Hugging Face libraries add library and version details to their requests
+# unless this is set. Set before any of them is imported; every worker and
+# installer subprocess copies this environment. A user can still export 0.
+os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
+
 guard_overlay_against_bundle()
 ensure_extras_on_sys_path()
 

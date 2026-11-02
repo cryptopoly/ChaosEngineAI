@@ -1,13 +1,22 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 57 rows with work, decisions or watch items still open, newest first.
+summary: 58 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `CLAUDE.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-137 · Linux ARM64 build (NVIDIA DGX Spark class) — Open, planned for v0.9.10</summary>
+
+**Status or trigger:** **Open, planned for v0.9.10; experimental until someone tests on real hardware.**
+
+**Notes:** Asked by a prospective user (2026-11-02). **Today:** releases are Linux x86_64 only (the matrix in [release.yml](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/github/workflows/release.yml) has one `ubuntu-22.04` x86_64 job; only the amd64 AppImage and deb exist, neither installs on ARM). **From source on ARM Linux** the app starts but GGUF would run on the CPU: [update-llama-cpp.sh](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/scripts/update-llama-cpp.sh) configures `-DGGML_METAL=ON` only (no CUDA flag), [stage-runtime.mjs](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/scripts/stage-runtime.mjs) knows only `linux-x64` so no `llama-server` is staged, and the `llama-server` lookup in [binaries.py](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/backend_service/inference/binaries.py) then needs `CHAOSENGINE_LLAMA_SERVER` or a PATH entry; a user who supplies a CUDA build that way gets the GPU. GPU detection (`nvidia-smi`) is present and would see a Spark. The Setup page's torch CUDA install ([gpu_bundle.py](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/backend_service/routes/setup/gpu_bundle.py)) skips only macOS arm64; aarch64 CUDA wheel coverage for torch and the extras (vLLM, bitsandbytes, Nunchaku) is unchecked. **Plan:** (1) release matrix job on `ubuntu-24.04-arm` (free for public repos) producing aarch64 AppImage and deb; (2) `linux-arm64` entry in stage-runtime picking llama.cpp's `ubuntu-cuda-13.4-arm64` binaries (exist in b11981; plus the `cudart` archive) with `ubuntu-arm64` as the CPU fallback; (3) an aarch64 Python runtime for the bundle; (4) a CUDA branch in `update-llama-cpp.sh` for Linux (`-DGGML_CUDA=ON`); (5) check torch / extras wheels on aarch64. **Testing:** the Ubuntu 26.04 ARM64 Parallels VM can test the build, install and CPU-only GGUF chat; CUDA, Blackwell and the unified-memory behaviour need a real DGX Spark (none here).
+
+</details>
 
 <details>
 <summary>FU-136 · Boot-time MLX probe that fails once switched MLX off for the whole session — Fixed 2026-10-30 (cause of the one failure not found)</summary>

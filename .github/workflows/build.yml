@@ -122,6 +122,10 @@ jobs:
             platform: linux
             arch: x86_64
             bundle_targets: deb,appimage
+          - os: ubuntu-22.04-arm
+            platform: linux
+            arch: aarch64
+            bundle_targets: deb,appimage
           - os: windows-latest
             platform: windows
             arch: x86_64

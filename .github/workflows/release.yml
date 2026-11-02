@@ -118,6 +118,12 @@ jobs:
             platform: linux
             arch: x86_64
             bundle_targets: appimage,deb
+          # Linux ARM64 (NVIDIA DGX Spark class). Same Ubuntu 22.04 baseline as
+          # the x86_64 job so the AppImage runs on the same glibc range.
+          - os: ubuntu-22.04-arm
+            platform: linux
+            arch: aarch64
+            bundle_targets: appimage,deb
           - os: windows-latest
             platform: windows
             arch: x86_64

@@ -630,6 +630,7 @@ function llamaPlatformKey() {
   if (plat === "darwin" && arch === "arm64") return "macos-arm64";
   if (plat === "darwin" && arch === "x64") return "macos-x64";
   if (plat === "linux" && arch === "x64") return "linux-x64";
+  if (plat === "linux" && arch === "arm64") return "linux-arm64";
   return null;
 }
 
@@ -662,6 +663,14 @@ function pickLlamaAsset(assets, platformKey) {
       /^llama-.*-bin-ubuntu-vulkan-x64\.(?:zip|tar\.gz)$/i,
       /^llama-.*-bin-ubuntu-x64\.(?:zip|tar\.gz)$/i,
       /^llama-.*-bin-linux-x64\.(?:zip|tar\.gz)$/i,
+    ],
+    // Upstream also ships ``ubuntu-cuda-13.4-arm64`` (plus a separate cudart
+    // archive) for DGX Spark class machines. The bundle stages the CPU build
+    // because the CUDA one fails to start on an ARM host without a CUDA 13
+    // driver; GPU use on ARM needs ``update-llama-cpp.sh`` (builds with CUDA
+    // when nvcc exists) and CHAOSENGINE_LLAMA_SERVER.
+    "linux-arm64": [
+      /^llama-.*-bin-ubuntu-arm64\.(?:zip|tar\.gz)$/i,
     ],
   };
   for (const pattern of preferencePatterns[platformKey] || []) {

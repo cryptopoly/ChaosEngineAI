@@ -15,7 +15,7 @@ Generated from the Follow-Ups Tracker in `CLAUDE.md` by `tools/hub_tracker.py`; 
 
 | Row | Item | Status |
 |---|---|---|
-| [FU-137](open.md) | Linux ARM64 build (NVIDIA DGX Spark class) | Open, planned for v0.9.10 |
+| [FU-137](open.md) | Linux ARM64 build (NVIDIA DGX Spark class) | Phase 1 coded 2026-11-02 on release/v0.9.10, not yet built in CI |
 | [FU-136](open.md) | Boot-time MLX probe that fails once switched MLX off for the whole session | Fixed 2026-10-30 (cause of the one failure not found) |
 | [FU-135](open.md) | DFlash on hybrid Qwen3.5 / 3.6 / Next targets produced garbage text on the release MLX sta | Fixed 2026-10-29 (root cause found, patched, self-checked at load) |
 | [FU-134](open.md) | Speculative decoding on creative prose is 2 to 4 times slower than plain | Open (2026-10-29), found by the 27B-class check in FU-112 |

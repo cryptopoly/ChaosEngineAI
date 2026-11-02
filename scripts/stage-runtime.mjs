@@ -1188,10 +1188,16 @@ function pathDepth(targetPath) {
 
 function copyTree(source, destination) {
   ensureDir(path.dirname(destination));
+  // Windows: the runner's Python install holds python3.exe as a symlink to an
+  // absolute CI path (C:/hostedtoolcache/...). Kept verbatim it cannot be
+  // unpacked on a user's machine (no symlink privilege, dangling target), so
+  // the app never started. Copy what it points at instead.
+  const onWindows = process.platform === "win32";
   fs.cpSync(source, destination, {
     recursive: true,
     force: true,
-    verbatimSymlinks: true,
+    dereference: onWindows,
+    verbatimSymlinks: !onWindows,
     filter: (currentPath) => !shouldIgnorePath(currentPath),
   });
 }

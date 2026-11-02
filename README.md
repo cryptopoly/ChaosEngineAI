@@ -65,7 +65,7 @@ ChaosEngineAI is a desktop control plane for running large language models local
 - 🏛️ **Image Gallery** to browse, filter, and reuse saved outputs — compare models and re-run with the same settings
 - 🎬 **Video Studio** for prompt-based video generation across LTX-2.3 and LTX-2.5 (with sound, Apple Silicon), Wan 2.1/2.2, LTX-Video, HunyuanVideo, CogVideoX, and Mochi — with model picker, runtime status overlay, live progress, recommended settings for your machine, and cancellable generation
 - 🍿 **Video Models** page with the curated set of diffusion DiT video models and one-click downloads
-- 🔊 **Sound on LTX clips** (Apple Silicon): LTX-2.3 and LTX-2.5 write stereo sound that follows your prompt; clips with sound carry a Sound badge and play with sound
+- 🔊 **Sound on LTX clips** (Apple Silicon): LTX-2.3 and LTX-2.5 write stereo sound that follows your prompt; clips with sound carry a Sound badge and a speaker button in the gallery, and play with sound
 - 🎙️ **Voice** — dictation (microphone button in the chat box), read-aloud on every reply, voice calls in Chat (talk, interrupt, every turn saved in the thread), and **Voice Studio** to transcribe recordings and files with speaker labels, translation to English, a click-a-word transcript editor, and TXT / Markdown / SRT / VTT / JSON export, plus text to speech saved as WAV or MP3
 - 🗃️ **Voice Library** keeping every recording, transcript and generated clip (old Gallery items move over the first time you open it)
 - ⚡ **First Block Cache + TaylorSeer / MagCache / PyramidAttentionBroadcast / FasterCache** cross-platform diffusion cache hooks (≈1.8× FLUX.1-dev with imperceptible drift), plus TeaCache for FLUX / HunyuanVideo / LTX-Video / CogVideoX / Mochi

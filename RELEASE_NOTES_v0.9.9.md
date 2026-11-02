@@ -54,7 +54,7 @@
 - Apple Silicon: a model that reasons after a tool result, even with Thinking Off, no longer shows that reasoning in its answer.
 - A reasoning level that a model's chat template does not accept is mapped to the nearest one it does.
 - **Speculative decoding on Apple Silicon works again, and faster.** DFlash had been quietly falling back to plain decoding on every reply; it now runs (Qwen3-4B: about 113 tokens per second against 53) and verifies 8 tokens per step instead of 16, which was slower than plain decoding on prose. DDTree (the draft tree) is back, with a corrected tree verification, for models made of plain attention layers; hybrid models such as Qwen3.5 and 3.6 run linear DFlash (Qwen3.6-27B: about 4 accepted tokens per step; with the newer MLX libraries it had produced garbage on them until the app corrected which output head it reads, and every load now checks the draft runtime against the model before using it). On a 30B-class model (Qwen3-Coder-30B-A3B, 4-bit) code and reasoning replies run 1.4 to 1.7 times faster; creative writing is still slower with speculative decoding on, so leave it off for stories.
-- **Clips with sound say so.** LTX clips show a Sound badge in the gallery and the result window, which plays them with sound; the Video Studio reminds you that the sound follows your prompt.
+- **Clips with sound say so.** LTX clips show a Sound badge in the gallery and the result window, which plays them with sound. Gallery cards of clips with sound also get a speaker button (crossed out while muted) so you can hear a clip without opening it; one clip speaks at a time; the Video Studio reminds you that the sound follows your prompt.
 - **A JSON schema on a reasoning model** (llama.cpp) no longer returns nothing: if the grammar leaves the model with no text, the reply is asked for as plain JSON and the note says so. A conversation larger than the loaded context now answers with a 400 and the sizes, not a 500.
 - **A failed mflux update keeps your working engine.** The old install is moved aside and put back if the new one does not verify.
 - **Gated models:** when your Hugging Face token cannot open gated repos, the download error now says exactly which token setting to enable.
@@ -64,6 +64,9 @@
 - **Models pages.** The tables fit the window down to 1200 px by leaving out the least useful columns in a narrower window, long names wrap, and a model you delete stops showing as Installed.
 - **Best fit picks.** FLUX.1 no longer recommends the slow stable-diffusion.cpp build on a Mac, and a model that runs as downloaded is preferred to one that must be converted first.
 - The import-models panel labels each group with the folder it found them in instead of naming other apps.
+- **Voice-pack models no longer show as broken chat models.** The voice detector and speaker models (ONNX files) were listed under Chat > Models.
+- **Dashboard shows MLX correctly.** One failed start-up check no longer leaves MLX marked as missing for the whole session on Apple Silicon: the check is asked again, and the Dashboard process list shows only inference programs.
+- **Windows:** the bundled Python is packaged without symlinks, so the runtime unpacks on any PC. The Models tables also spread spare width to their data columns, and the Voice sidebar item reads "Models".
 
 ### Known limits
 

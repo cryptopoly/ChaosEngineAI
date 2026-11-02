@@ -86,3 +86,13 @@ class ReleaseConstraintsTests(unittest.TestCase):
         }
         for name in ("mlx", "mlx-lm", "huggingface-hub", "transformers", "fastapi", "uvicorn"):
             self.assertIn(name, pins)
+
+
+class WindowsSymlinkTests(unittest.TestCase):
+    def test_windows_runtime_copy_follows_symlinks(self) -> None:
+        # The Windows runner's python3.exe is a symlink to C:/hostedtoolcache/...;
+        # shipped verbatim, the archive could not be unpacked and the app never started.
+        source = (ROOT / "scripts" / "stage-runtime.mjs").read_text(encoding="utf-8")
+        body = source[source.index("function copyTree"):source.index("function copyFile")]
+        self.assertIn("dereference: onWindows", body)
+        self.assertIn("verbatimSymlinks: !onWindows", body)

@@ -296,6 +296,12 @@ jobs:
           "
 
       # ── Build ──────────────────────────────────────────────────
+      # src-tauri/target is restored from the cache, bundle outputs included, so
+      # without this the artifacts also carried packages from an older version.
+      - name: Remove bundles left by the cache
+        shell: bash
+        run: rm -rf src-tauri/target/release/bundle
+
       - name: Build Tauri app (macOS, signed)
         if: matrix.platform == 'darwin'
         env:

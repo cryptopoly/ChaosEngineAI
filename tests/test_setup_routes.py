@@ -452,8 +452,8 @@ class SetupRouteTests(unittest.TestCase):
         body = resp.json()
         self.assertTrue(body["ok"])
         self.assertTrue(body["requiresRestart"])
-        self.assertIsNotNone(body["indexUrl"])
-        self.assertIn("cu124", body["indexUrl"])
+        from backend_service.routes.setup._install_helpers import cuda_torch_indexes
+        self.assertEqual(body["indexUrl"], cuda_torch_indexes()[0])
         self.assertEqual(body["pythonVersion"], "3.12.5")
         self.assertFalse(body["noWheelForPython"])
         # Only one index should have been attempted — cu124 succeeded so
@@ -551,7 +551,8 @@ class SetupRouteTests(unittest.TestCase):
         self.assertEqual(len(body["attempts"]), 2)
         self.assertFalse(body["attempts"][0]["ok"])
         self.assertTrue(body["attempts"][1]["ok"])
-        self.assertIn("cu126", body["indexUrl"])
+        from backend_service.routes.setup._install_helpers import cuda_torch_indexes
+        self.assertEqual(body["indexUrl"], cuda_torch_indexes()[1])
         self.assertFalse(body["noWheelForPython"])
 
     def test_install_cuda_torch_reports_failure_after_all_attempts(self):

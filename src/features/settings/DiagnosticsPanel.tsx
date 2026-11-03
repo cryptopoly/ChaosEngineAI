@@ -17,6 +17,7 @@ import {
   type StorageTopResponse,
 } from "../../api";
 import { AcceleratorsBoostPack } from "./AcceleratorsBoostPack";
+import { LlamaCudaPanel } from "./LlamaCudaPanel";
 import type { SystemStats } from "../../types/system";
 import { WslBridgePanel } from "./WslBridgePanel";
 
@@ -444,6 +445,7 @@ export function AcceleratorsPanel({
       })}
     >
       <AcceleratorsBoostPack backendOnline={backendOnline} hostSystem={hostSystem} />
+      <LlamaCudaPanel backendOnline={backendOnline} />
       <WslBridgePanel backendOnline={backendOnline} />
     </Panel>
   );

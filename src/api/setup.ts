@@ -572,6 +572,49 @@ export async function getLtx2InstallStatus(): Promise<Ltx2JobState> {
   return await fetchJson<Ltx2JobState>("/api/setup/install-ltx2/status", 10000);
 }
 
+// ---- CUDA llama-server (Linux x86_64 / ARM64 with an NVIDIA driver) ----
+
+export interface LlamaCudaStatus {
+  /** True on Linux x86_64 / ARM64 when nvidia-smi answers. */
+  supported: boolean;
+  arch: "x64" | "arm64" | null;
+  driverMajor: number | null;
+  cudaVersion: string | null;
+  tag: string;
+  installed: boolean;
+  installedCuda: string | null;
+  path: string | null;
+  /** True when GGUF models run on this build now (it lists a CUDA device). */
+  inUse: boolean;
+  /** CHAOSENGINE_LLAMA_CUDA=0 switches it off. */
+  disabled: boolean;
+}
+
+export interface LlamaCudaJobState {
+  id: string;
+  phase: "idle" | "preflight" | "downloading" | "verifying" | "done" | "error";
+  message: string;
+  packageCurrent: string | null;
+  percent: number;
+  error: string | null;
+  startedAt: number;
+  finishedAt: number;
+  log: string[];
+  done: boolean;
+}
+
+export async function getLlamaCudaStatus(): Promise<LlamaCudaStatus> {
+  return await fetchJson<LlamaCudaStatus>("/api/setup/llama-cuda-status", 15000);
+}
+
+export async function startLlamaCudaInstall(): Promise<LlamaCudaJobState> {
+  return await postJson<LlamaCudaJobState>("/api/setup/install-llama-cuda", {}, 15000);
+}
+
+export async function getLlamaCudaInstallStatus(): Promise<LlamaCudaJobState> {
+  return await fetchJson<LlamaCudaJobState>("/api/setup/install-llama-cuda/status", 10000);
+}
+
 export interface TorchUpgradeJobState {
   id: string;
   /** Lifecycle: idle (no run yet) -> preflight -> upgrading -> verifying -> done | error */

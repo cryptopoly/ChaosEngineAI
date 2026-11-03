@@ -25,6 +25,10 @@ env:
 
 jobs:
   create-release:
+    # A pre-release tag (v0.9.10-beta.1) is published by hand as a GitHub
+    # pre-release from a Build run's packages; pushing it must not start the
+    # full release, which would attach every platform and a latest.json.
+    if: github.event_name == 'workflow_dispatch' || !contains(github.ref_name, '-')
     runs-on: ubuntu-22.04
     outputs:
       release_id: ${{ steps.find-or-create.outputs.result }}

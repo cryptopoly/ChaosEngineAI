@@ -14,6 +14,7 @@ Covers:
 from __future__ import annotations
 
 import itertools
+from types import SimpleNamespace
 import tempfile
 import unittest
 from pathlib import Path
@@ -400,7 +401,7 @@ class MlxVideoGenerateE2ETests(unittest.TestCase):
 
         with patch.object(engine, "_launch", side_effect=fake_launch), \
              patch.object(engine, "probe") as mock_probe, \
-             patch("backend_service.mlx_video_runtime.time.monotonic", side_effect=itertools.chain([100.0, 102.5], itertools.repeat(102.5))), \
+             patch("backend_service.mlx_video_runtime.time", SimpleNamespace(monotonic=MagicMock(side_effect=itertools.chain([100.0, 102.5], itertools.repeat(102.5))))), \
              patch(
                  "backend_service.mlx_video_runtime._resolve_ltx2_spatial_upscaler",
                  return_value=Path("/tmp/ltx-2-spatial-upscaler-x2-1.0.safetensors"),
@@ -449,7 +450,7 @@ class MlxVideoGenerateE2ETests(unittest.TestCase):
         with patch.object(engine, "_launch", side_effect=fake_launch), \
              patch.object(engine, "probe") as mock_probe, \
              patch("backend_service.mlx_video_runtime._resolve_video_seed", return_value=1234), \
-             patch("backend_service.mlx_video_runtime.time.monotonic", side_effect=itertools.chain([10.0, 11.0], itertools.repeat(11.0))), \
+             patch("backend_service.mlx_video_runtime.time", SimpleNamespace(monotonic=MagicMock(side_effect=itertools.chain([10.0, 11.0], itertools.repeat(11.0))))), \
              patch(
                  "backend_service.mlx_video_runtime._resolve_ltx2_spatial_upscaler",
                  return_value=Path("/tmp/ltx-2-spatial-upscaler-x2-1.0.safetensors"),

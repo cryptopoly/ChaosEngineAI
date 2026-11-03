@@ -54,7 +54,7 @@ class UpdaterManifestTests(unittest.TestCase):
 class LlamaBuildScriptTests(unittest.TestCase):
     def test_script_parses_and_picks_cuda_only_without_metal(self) -> None:
         script = ROOT / "scripts" / "update-llama-cpp.sh"
-        subprocess.run(["bash", "-n"], input=script.read_bytes(), check=True)  # stdin: Windows paths confuse bash
+        subprocess.run(["bash", "-n"], input=script.read_bytes().replace(b"\r\n", b"\n"), check=True)  # stdin + LF: Windows paths and CRLF checkouts confuse bash
         text = script.read_text(encoding="utf-8")
         self.assertIn("-DGGML_METAL=ON", text)
         self.assertIn("-DGGML_CUDA=ON", text)
@@ -91,7 +91,7 @@ class PlatformWheelCheckTests(unittest.TestCase):
 class GpuCheckScriptTests(unittest.TestCase):
     def test_script_parses_and_uses_the_bundled_tag(self) -> None:
         script = ROOT / "scripts" / "linux-gpu-check.sh"
-        subprocess.run(["bash", "-n"], input=script.read_bytes(), check=True)  # stdin: Windows paths confuse bash
+        subprocess.run(["bash", "-n"], input=script.read_bytes().replace(b"\r\n", b"\n"), check=True)  # stdin + LF: Windows paths and CRLF checkouts confuse bash
         stage = _read("scripts/stage-runtime.mjs")
         tag = re.search(r'LLAMA_CPP_TAG = process\.env\.CHAOSENGINE_LLAMA_CPP_TAG \|\| "(b\d+)"', stage).group(1)
         self.assertIn(f'TAG="${{CHAOSENGINE_LLAMA_CPP_TAG:-{tag}}}"', script.read_text(encoding="utf-8"))

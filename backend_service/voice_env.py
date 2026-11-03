@@ -151,9 +151,18 @@ def has_nvidia_gpu() -> bool:
     return shutil.which("nvidia-smi") is not None
 
 
+def voice_uses_cuda() -> bool:
+    """Whether the portable lane runs speech on the GPU.
+
+    PyPI's aarch64 CTranslate2 wheel has no CUDA, so on Linux ARM64 (DGX Spark)
+    faster-whisper runs on the CPU and the CUDA 12 libraries would be dead weight.
+    """
+    return has_nvidia_gpu() and platform.machine().lower() not in ("aarch64", "arm64")
+
+
 def packages_for(lane_name: str, extras: list[str] | None = None) -> list[str]:
     specs = list(_MLX_PACKAGES if lane_name == "mlx" else _PORTABLE_PACKAGES)
-    if lane_name == "portable" and has_nvidia_gpu():
+    if lane_name == "portable" and voice_uses_cuda():
         specs += _CUDA_PACKAGES
     for name in extras or []:
         lanes, extra_specs, _label = EXTRAS[name]
@@ -418,7 +427,7 @@ def _run_install(extras: list[str]) -> None:
                     "extras": extras,
                     "python": ".".join(map(str, sys.version_info[:3])),
                     "installedAt": time.strftime("%Y-%m-%dT%H:%M:%S"),
-                    "cuda": lane_name == "portable" and has_nvidia_gpu(),
+                    "cuda": lane_name == "portable" and voice_uses_cuda(),
                     "features": FEATURES,
                 }
             ),

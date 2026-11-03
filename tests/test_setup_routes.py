@@ -567,8 +567,8 @@ class SetupRouteTests(unittest.TestCase):
         self.assertFalse(body["ok"])
         self.assertFalse(body["requiresRestart"])
         self.assertIsNone(body["indexUrl"])
-        from backend_service.routes.setup import _CUDA_TORCH_INDEXES
-        self.assertEqual(len(body["attempts"]), len(_CUDA_TORCH_INDEXES))
+        from backend_service.routes.setup._install_helpers import cuda_torch_indexes
+        self.assertEqual(len(body["attempts"]), len(cuda_torch_indexes()))
         # Generic failure (not a wheel mismatch) must NOT be flagged as
         # noWheelForPython — the user can usefully retry.
         self.assertFalse(body["noWheelForPython"])
@@ -805,6 +805,21 @@ class SetupRouteTests(unittest.TestCase):
         # stable index catches up.
         self.assertIn("https://download.pytorch.org/whl/nightly/cu128", _CUDA_TORCH_INDEXES)
         self.assertEqual(_CUDA_TORCH_INDEXES[-1], "https://download.pytorch.org/whl/nightly/cu128")
+
+    def test_cuda_torch_order_follows_the_driver_and_cpu(self):
+        """Blackwell (RTX 50, DGX Spark) needs CUDA 12.8+; Linux ARM64 has no cu124 build."""
+        from backend_service.routes.setup._install_helpers import _CUDA_TORCH_INDEXES, cuda_torch_indexes
+
+        cu130 = "https://download.pytorch.org/whl/cu130"
+        cu128 = "https://download.pytorch.org/whl/cu128"
+        self.assertEqual(cuda_torch_indexes(driver_major=None, machine="aarch64"), [cu130, cu128])
+        self.assertEqual(cuda_torch_indexes(driver_major=580, machine="aarch64"), [cu130, cu128])
+        newest = cuda_torch_indexes(driver_major=590, machine="x86_64")
+        self.assertEqual(newest[:2], [cu130, cu128])
+        self.assertEqual(len(newest), len(set(newest)))
+        self.assertEqual(cuda_torch_indexes(driver_major=575, machine="x86_64")[0], cu128)
+        self.assertEqual(cuda_torch_indexes(driver_major=550, machine="x86_64"), _CUDA_TORCH_INDEXES)
+        self.assertEqual(cuda_torch_indexes(driver_major=None, machine="x86_64"), _CUDA_TORCH_INDEXES)
 
     # ------------------------------------------------------------------
     # Turbo update check

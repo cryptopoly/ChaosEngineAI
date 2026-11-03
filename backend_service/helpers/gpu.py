@@ -336,6 +336,33 @@ def _parse_nvidia_smi(output: str) -> dict[str, Any] | None:
     }
 
 
+_SHARED_MEMORY_NVIDIA: dict[str, bool] = {}
+
+
+def nvidia_shared_memory() -> bool:
+    """True on a Linux NVIDIA GPU with no memory of its own (DGX Spark, GH200, Jetson).
+
+    nvidia-smi reports ``memory.total`` as ``[N/A]`` / ``Not Supported`` there.
+    Checked once per process; False wherever nvidia-smi is missing.
+    """
+    if "value" in _SHARED_MEMORY_NVIDIA:
+        return _SHARED_MEMORY_NVIDIA["value"]
+    value = False
+    if sys.platform.startswith("linux") and shutil.which("nvidia-smi"):
+        try:
+            out = subprocess.run(
+                ["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader,nounits"],
+                capture_output=True, text=True, timeout=10,
+            ).stdout
+            first = next((line for line in out.splitlines() if line.strip()), "")
+            name, _, total = first.partition(",")
+            value = bool(name.strip()) and _nvidia_number(total) is None
+        except (OSError, subprocess.SubprocessError):
+            value = False
+    _SHARED_MEMORY_NVIDIA["value"] = value
+    return value
+
+
 def get_device_vram_total_gb() -> float | None:
     """Return total device memory in GB, cached for the process lifetime.
 

@@ -32,6 +32,7 @@ from backend_service.i18n import localized_detail
 
 from backend_service.routes.setup._install_helpers import (
     _CUDA_TORCH_INDEXES,
+    cuda_torch_indexes,
     _all_attempts_lack_wheel,
     _cleanup_mlx_video_shadow_metadata,
     _extras_site_packages,
@@ -251,7 +252,7 @@ def _install_torch_walking_indexes(
     python: str, extras_dir: Path, state: _GpuBundleJobState
 ) -> tuple[bool, str | None]:
     """Install torch walking the CUDA index list. First success wins."""
-    for index_url in _CUDA_TORCH_INDEXES:
+    for index_url in cuda_torch_indexes():
         state.message = f"Downloading torch from {index_url}"
         ok, output = _run_pip_install(
             python, "torch>=2.4.0", extras_dir, index_url,

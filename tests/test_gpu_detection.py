@@ -205,7 +205,7 @@ class ParseNvidiaSmiTests(unittest.TestCase):
         # DGX Spark (GB10) reports memory.total as [N/A]; usable memory is system RAM.
         memory = mock.Mock(total=128 * 1024**3, available=100 * 1024**3)
         with mock.patch("psutil.virtual_memory", return_value=memory):
-            parsed = gpu_module._parse_nvidia_smi("NVIDIA GB10, [N/A], [N/A], 0, 38, [N/A]\n")
+            parsed = gpu_module._parse_nvidia_smi("NVIDIA GB10, [Not Supported], [Not Supported], 0, 38, [N/A]\n")
         self.assertEqual(parsed["gpu_name"], "NVIDIA GB10")
         self.assertEqual(parsed["vram_total_gb"], 128.0)
         self.assertEqual(parsed["vram_used_gb"], 28.0)
@@ -222,3 +222,27 @@ class ParseNvidiaSmiTests(unittest.TestCase):
     def test_garbage_is_no_gpu(self) -> None:
         self.assertIsNone(gpu_module._parse_nvidia_smi(""))
         self.assertIsNone(gpu_module._parse_nvidia_smi("No devices were found\n"))
+
+
+class SharedMemoryNvidiaTests(unittest.TestCase):
+    def setUp(self) -> None:
+        gpu_module._SHARED_MEMORY_NVIDIA.clear()
+        self.addCleanup(gpu_module._SHARED_MEMORY_NVIDIA.clear)
+
+    def _probe(self, stdout: str) -> bool:
+        result = mock.Mock(stdout=stdout)
+        with mock.patch.object(gpu_module.sys, "platform", "linux"), \
+                mock.patch.object(gpu_module.shutil, "which", return_value="/usr/bin/nvidia-smi"), \
+                mock.patch.object(gpu_module.subprocess, "run", return_value=result):
+            return gpu_module.nvidia_shared_memory()
+
+    def test_spark_reports_not_supported(self) -> None:
+        # NVIDIA's DGX Spark known-issues page: memory shows "Not Supported" on iGPU platforms.
+        self.assertTrue(self._probe("NVIDIA GB10, [Not Supported]\n"))
+
+    def test_a_discrete_card_is_not_shared(self) -> None:
+        self.assertFalse(self._probe("NVIDIA GeForce RTX 4090, 24564\n"))
+
+    def test_off_linux_it_is_false(self) -> None:
+        with mock.patch.object(gpu_module.sys, "platform", "darwin"):
+            self.assertFalse(gpu_module.nvidia_shared_memory())

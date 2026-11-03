@@ -92,8 +92,13 @@ class LaneTests(unittest.TestCase):
         self.assertTrue(any(p.startswith("faster-whisper") for p in portable))
         self.assertFalse(any("mlx" in p for p in portable))
         self.assertFalse(any(p.startswith("nvidia-") for p in portable))
-        with mock.patch.object(voice_env, "has_nvidia_gpu", return_value=True):
+        with mock.patch.object(voice_env, "has_nvidia_gpu", return_value=True), \
+                mock.patch.object(voice_env.platform, "machine", return_value="x86_64"):
             self.assertTrue(any(p.startswith("nvidia-cudnn") for p in voice_env.packages_for("portable")))
+        # Linux ARM64 (DGX Spark): CTranslate2's aarch64 wheel is CPU-only, so no CUDA libraries.
+        with mock.patch.object(voice_env, "has_nvidia_gpu", return_value=True), \
+                mock.patch.object(voice_env.platform, "machine", return_value="aarch64"):
+            self.assertFalse(any(p.startswith("nvidia-") for p in voice_env.packages_for("portable")))
         # Conversation mode's VAD runs on onnxruntime on both lanes.
         self.assertTrue(any(p.startswith("onnxruntime") for p in mlx))
         self.assertTrue(any(p.startswith("onnxruntime") for p in portable))

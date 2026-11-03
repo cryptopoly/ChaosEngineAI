@@ -62,5 +62,40 @@ class LlamaBuildScriptTests(unittest.TestCase):
         self.assertIn("command -v nvcc", text)
 
 
+
+
+class PlatformWheelCheckTests(unittest.TestCase):
+    def test_tags_cover_every_manylinux_level_up_to_glibc_2_35(self) -> None:
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location("wheels", ROOT / "scripts" / "check-platform-wheels.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        tags = module.platform_tags("aarch64")
+        # llguidance (a vLLM dependency) ships only manylinux_2_31; a gap in this
+        # list made vLLM look uninstallable on both architectures.
+        for minor in (17, 28, 31, 35):
+            self.assertIn(f"manylinux_2_{minor}_aarch64", tags)
+        self.assertIn("manylinux2014_aarch64", tags)
+        self.assertNotIn("manylinux_2_36_aarch64", tags)
+
+    def test_core_group_mirrors_the_release_linux_venv(self) -> None:
+        source = _read("scripts/check-platform-wheels.py")
+        workflow = _read(".github/workflows/release.yml")
+        linux_step = workflow.split("Create Python venv (Linux)", 1)[1].split("- name:", 1)[0]
+        for package in ("fastapi", "psutil", "uvicorn", "python-multipart", "huggingface_hub", "babel", "pypdf"):
+            self.assertIn(package, linux_step)
+            self.assertIn(f'"{package}', source)
+
+
+class GpuCheckScriptTests(unittest.TestCase):
+    def test_script_parses_and_uses_the_bundled_tag(self) -> None:
+        script = ROOT / "scripts" / "linux-gpu-check.sh"
+        subprocess.run(["bash", "-n", str(script)], check=True)
+        stage = _read("scripts/stage-runtime.mjs")
+        tag = re.search(r'LLAMA_CPP_TAG = process\.env\.CHAOSENGINE_LLAMA_CPP_TAG \|\| "(b\d+)"', stage).group(1)
+        self.assertIn(f'TAG="${{CHAOSENGINE_LLAMA_CPP_TAG:-{tag}}}"', script.read_text(encoding="utf-8"))
+
+
 if __name__ == "__main__":
     unittest.main()

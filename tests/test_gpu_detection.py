@@ -190,3 +190,35 @@ class GetDeviceVramTotalGbTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ParseNvidiaSmiTests(unittest.TestCase):
+    """``nvidia-smi --query-gpu=name,memory.total,memory.used,...`` CSV parsing."""
+
+    def test_a_discrete_card(self) -> None:
+        parsed = gpu_module._parse_nvidia_smi("NVIDIA GeForce RTX 4090, 24564, 1200, 3, 41, 30.5\n")
+        self.assertEqual(parsed["gpu_name"], "NVIDIA GeForce RTX 4090")
+        self.assertEqual(parsed["vram_total_gb"], 23.99)
+        self.assertFalse(parsed["unified_memory"])
+
+    def test_a_shared_memory_gpu_uses_system_ram(self) -> None:
+        # DGX Spark (GB10) reports memory.total as [N/A]; usable memory is system RAM.
+        memory = mock.Mock(total=128 * 1024**3, available=100 * 1024**3)
+        with mock.patch("psutil.virtual_memory", return_value=memory):
+            parsed = gpu_module._parse_nvidia_smi("NVIDIA GB10, [N/A], [N/A], 0, 38, [N/A]\n")
+        self.assertEqual(parsed["gpu_name"], "NVIDIA GB10")
+        self.assertEqual(parsed["vram_total_gb"], 128.0)
+        self.assertEqual(parsed["vram_used_gb"], 28.0)
+        self.assertTrue(parsed["unified_memory"])
+        self.assertIsNone(parsed["power_w"])
+
+    def test_two_gpus_read_the_first_line(self) -> None:
+        # Splitting the whole output on commas mixed the two lines and failed.
+        parsed = gpu_module._parse_nvidia_smi(
+            "NVIDIA RTX A6000, 49140, 100, 0, 30, 20.1\nNVIDIA RTX A6000, 49140, 100, 0, 31, 20.4\n"
+        )
+        self.assertEqual(parsed["vram_total_gb"], 47.99)
+
+    def test_garbage_is_no_gpu(self) -> None:
+        self.assertIsNone(gpu_module._parse_nvidia_smi(""))
+        self.assertIsNone(gpu_module._parse_nvidia_smi("No devices were found\n"))

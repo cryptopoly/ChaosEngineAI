@@ -6,6 +6,7 @@ import json
 import os
 import re
 import stat
+import sys
 import tarfile
 import tempfile
 import unittest
@@ -79,6 +80,7 @@ class _TempRoot(unittest.TestCase):
         return folder / "llama-server"
 
 
+@unittest.skipIf(sys.platform == "win32", "the fake llama-server is a shell script; the feature is Linux-only")
 class SelectionTests(_TempRoot):
     def test_used_when_it_lists_a_cuda_device(self) -> None:
         binary = self._install_fake("  CUDA0: NVIDIA GB10 (122000 MiB, 120000 MiB free)")

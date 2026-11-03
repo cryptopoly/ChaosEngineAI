@@ -60,8 +60,13 @@ describe("isCudaHost", () => {
     expect(isCudaHost({ platform: "darwin", arch: "arm64" })).toBe(false);
   });
 
-  it("returns false for ARM Linux (not the CUDA-class hosts we ship for)", () => {
-    expect(isCudaHost({ platform: "linux", arch: "arm64" })).toBe(false);
+  it("returns true for ARM Linux (DGX Spark, GH200)", () => {
+    expect(isCudaHost({ platform: "linux", arch: "arm64" })).toBe(true);
+    expect(isCudaHost({ platform: "Linux", arch: "aarch64" })).toBe(true);
+  });
+
+  it("returns false for Windows on ARM (no CUDA there)", () => {
+    expect(isCudaHost({ platform: "windows", arch: "arm64" })).toBe(false);
   });
 
   it("returns false for null / undefined system", () => {
@@ -197,6 +202,11 @@ describe("hasNvidiaGpu", () => {
   it("is false on any Mac, whatever the backend reports", () => {
     expect(hasNvidiaGpu({ platform: "darwin", arch: "arm64", gpuVramTotalGb: null })).toBe(false);
     expect(hasNvidiaGpu({ platform: "darwin", arch: "arm64", gpuVramTotalGb: 64 })).toBe(false);
+  });
+
+  it("is true on a DGX Spark (Linux ARM64, shared memory reported as VRAM)", () => {
+    expect(hasNvidiaGpu({ platform: "Linux", arch: "aarch64", gpuVramTotalGb: 119.7 })).toBe(true);
+    expect(hasNvidiaGpu({ platform: "Linux", arch: "aarch64", gpuVramTotalGb: null })).toBe(false);
   });
 
   it("keeps the old Windows / Linux behaviour for a backend that does not report VRAM", () => {

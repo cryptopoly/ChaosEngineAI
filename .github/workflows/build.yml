@@ -32,6 +32,12 @@ jobs:
             shell: bash
             venv-activate: source .venv/bin/activate
             advisory: false
+          # Linux ARM64 (DGX Spark class, FU-137). Advisory until it has
+          # passed on a few pushes; then make it required like the others.
+          - os: ubuntu-24.04-arm
+            shell: bash
+            venv-activate: source .venv/bin/activate
+            advisory: true
           - os: macos-latest
             shell: bash
             venv-activate: source .venv/bin/activate
@@ -56,7 +62,7 @@ jobs:
           python-version: "3.12"
       - uses: dtolnay/rust-toolchain@stable
       - name: Linux system deps for Tauri
-        if: matrix.os == 'ubuntu-latest'
+        if: startsWith(matrix.os, 'ubuntu')
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -87,6 +93,15 @@ jobs:
           python -m pytest tests/ -v --tb=short \
             --cov=backend_service --cov=cache_compression --cov=dflash \
             --cov-report=term --cov-report=json:coverage.json
+      - name: Linux ARM64 and x86_64 wheels exist for every pinned package
+        # Proves the Linux venv, the portable voice pack, the GPU runtime and
+        # vLLM all resolve from wheels on both architectures (FU-137).
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
+        run: |
+          ${{ matrix.venv-activate }}
+          python scripts/check-platform-wheels.py --arch aarch64
+          python scripts/check-platform-wheels.py --arch x86_64
       - name: Coverage gate vs baseline
         # Linux is the canonical baseline runner; macOS/Windows numbers
         # may differ slightly because some platform-gated branches only

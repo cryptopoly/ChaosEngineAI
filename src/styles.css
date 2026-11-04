@@ -473,6 +473,12 @@ strong {
   overflow: hidden;
 }
 
+/* A panel that fills a clipped frame (Settings > Diagnostics, Accelerators,
+   Disk usage) scrolls inside itself; .panel alone clips its overflow. */
+.panel.panel-scroll {
+  overflow-y: auto;
+}
+
 .panel-header {
   display: flex;
   justify-content: space-between;

@@ -143,7 +143,7 @@ export async function fetchStorageTop(limit = 20): Promise<StorageTopResponse> {
   // HF caches (997 GB across 14 repos on the dev box ≈ 4 s with cycle
   // protection). 30 s timeout is enough headroom for a TB-scale scan.
   return await fetchJson<StorageTopResponse>(
-    `/api/diagnostics/storage-top?limit=${encodeURIComponent(limit)}`,
+    `/api/diagnostics/storage-top?limit=${encodeURIComponent(limit)}&_=${Date.now()}`,
     30000,
   );
 }
@@ -154,7 +154,7 @@ export async function deleteHfRepo(repo: string): Promise<{ deleted: string; fre
 
 export async function fetchStorageChildren(path: string): Promise<StorageTopEntry[]> {
   const res = await fetchJson<{ entries: StorageTopEntry[] }>(
-    `/api/diagnostics/storage-children?path=${encodeURIComponent(path)}`,
+    `/api/diagnostics/storage-children?path=${encodeURIComponent(path)}&_=${Date.now()}`,
     30000,
   );
   return res.entries;

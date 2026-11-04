@@ -1662,7 +1662,7 @@ def phase_5(cap: Capability) -> PhaseResult:
             return "fail", f"the last frame looks burnt: {clipped:.0%} of pixels clipped to white, mean luma {luma:.0f}", {}
         return "pass", "", {"clippedShare": round(clipped, 4), "meanLuma": round(luma, 1)}
 
-    # LTX-2.3 on its own MLX engine (ltx-2-mlx, own venv). The catalog row must
+    # LTX-2.5 on its own MLX engine (ltx-2-mlx, own venv). The catalog row must
     # route there, the engine status must answer, and, when the engine and the
     # weights are present, a clip must render with the sizes snapped to 64.
     def _ltx2_engine():
@@ -1670,21 +1670,21 @@ def phase_5(cap: Capability) -> PhaseResult:
 
         rc, payload, _ = _cli_json("video-catalog", timeout=15.0)
         variants = [v for f in ((payload or {}).get("families") or []) for v in (f.get("variants") or [])]
-        row = next((v for v in variants if v.get("id") == "dgrauet/ltx-2.3-mlx-q4"), None)
+        row = next((v for v in variants if v.get("id") == "dgrauet/ltx-2.5-mlx-q4"), None)
         if row is None or "ltx-2-mlx" not in str(row.get("runtime") or ""):
-            return "fail", "dgrauet/ltx-2.3-mlx-q4 is missing from the video catalog or not routed to ltx-2-mlx", {}
+            return "fail", "dgrauet/ltx-2.5-mlx-q4 is missing from the video catalog or not routed to ltx-2-mlx", {}
         rc, status, _ = _cli_json("ltx2-status", timeout=15.0)
         if rc != 0 or not isinstance(status, dict):
             return "fail", "ltx2-status failed", {}
         if not (sys.platform == "darwin" and platform.machine() == "arm64"):
             return "skip", "ltx-2-mlx needs Apple Silicon", {}
         if not status.get("installed"):
-            return "skip", "the LTX-2.3 MLX engine is not installed", {}
+            return "skip", "the LTX MLX engine is not installed", {}
         if not row.get("availableLocally"):
-            return "skip", "LTX-2.3 q4 pack (and its Gemma text encoder) not downloaded", {}
+            return "skip", "LTX-2.5 q4 pack not downloaded", {}
         rc, payload, err = _cli_json(
             "video-generate", "a red fox running through fresh snow, soft morning light",
-            "--model", "dgrauet/ltx-2.3-mlx-q4", "--width", "500", "--height", "330", "--frames", "26",
+            "--model", "dgrauet/ltx-2.5-mlx-q4", "--width", "500", "--height", "330", "--frames", "26",
             "--seed", "7", "--timeout", "2400",
         )
         if rc != 0:
@@ -1704,7 +1704,7 @@ def phase_5(cap: Capability) -> PhaseResult:
 
     for name, fn in [("catalog", _catalog), ("library", _library),
                       ("mlx-runtime", _mlx_runtime), ("generate", _generate),
-                      ("LTX-2.3 on ltx-2-mlx (routing + live)", _ltx2_engine),
+                      ("LTX-2.5 on ltx-2-mlx (routing + live)", _ltx2_engine),
                       ("Wan is not burnt on MPS (FU-102)", _wan_not_burnt)]:
         phase.checks.append(_check(name, fn))
     fails = [c for c in phase.checks if c.status == "fail"]

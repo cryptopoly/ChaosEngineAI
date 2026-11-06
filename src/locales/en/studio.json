@@ -904,5 +904,20 @@
       "previewVae": "Preview VAE",
       "fp8LayerwiseCasting": "FP8 layerwise"
     }
+  },
+  "inputImage": {
+    "chooseFile": "Choose file",
+    "fromGallery": "From gallery",
+    "remove": "Remove",
+    "pickFailed": "The file picker is not available here. Pick from the gallery instead.",
+    "referenceLabel": "Reference image",
+    "referenceLabelMany": "Reference images",
+    "referenceHintOne": "Starts the picture from this image. Strength: higher stays closer to it.",
+    "referenceHintMany": "Up to {max} images. The model edits or re-draws them from your prompt, to keep a subject or style.",
+    "strength": "Strength",
+    "startLabel": "Start image",
+    "startHint": "The clip begins on this image.",
+    "endLabel": "End image (optional)",
+    "endHint": "The clip ends on this image. Needs a start image."
   }
 }

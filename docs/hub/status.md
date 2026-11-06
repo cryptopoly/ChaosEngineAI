@@ -9,6 +9,27 @@ summary: Read this first in every session.
 
 Newest dated update first. Each update has the same sections: Done, Open for Claude, Open for Dan.
 
+## Update 2026-11-06, media input slice C: Studio picker
+
+**Done** (branch `feat/media-input`)
+
+- **Image Studio:** a "Reference image(s)" picker appears under the prompt for models that take one (FLUX.1, FLUX.2 Klein, Qwen: one image plus a Strength slider; FLUX 3 Klein: up to four). Hidden for every other model.
+- **Video Studio:** "Start image" for LTX-2.3 / 2.5; "End image (optional)" appears once a start image is set. Removing the start image clears the end image.
+- **Picker** (`src/components/InputImagePicker.tsx`): "Choose file" (desktop file dialog; png, jpg, webp) or "From gallery" (the 12 newest Image Studio outputs). A pick is a path on this Mac, not an upload.
+- **Catalog flags:** image variants carry `maxReferenceImages`, video variants `acceptsImageInput`, so the Studio never guesses.
+- **Checked in the running UI** (Vite dev server against a real backend): picked the earlier lighthouse from the gallery, FLUX 3 Klein, prompt "the same lighthouse in a snowstorm at night, blue moonlight". The request carried `referenceImagePaths`; the result keeps the same tower, stripes, rocks, hut and beam in a new scene. The Video Studio picker showed Start image, then End image after a pick.
+- Tests: vitest 784 passed plus 2 new; new `CatalogFlagsTests`; `i18n:validate` OK (new `studio.inputImage.*` keys, en text and null elsewhere).
+
+**Not tested:** the "Choose file" button in the packaged desktop app (the browser pane has no file dialog; the code path is the same plugin the folder picker already uses); a video render started from the Studio; strength slider output; layout on a narrow window.
+
+**Open for Claude**
+
+- Nothing for media input v1. Not planned: voice cloning, sound-to-video, ControlNet, several keyframes, remote upload.
+
+**Open for Dan**
+
+- Merge of `feat/agent-bridge` and `feat/media-input` into `release/v0.9.10` (on hold at your request). Clip-length rounding (round down vs nearest) and Windows/Linux checks are still open.
+
 ## Update 2026-11-06, media input slice B: reference images for image generation
 
 **Done** (branch `feat/media-input`)

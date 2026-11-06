@@ -60,6 +60,7 @@ import type {
 import type { VideoDiscoverTaskFilter } from "../types/video";
 import type { DiscoverSort } from "../types/image";
 import { compareDiscoverVariants } from "../utils";
+import type { InputImage } from "../components/InputImagePicker";
 import {
   DEFAULT_VIDEO_FPS,
   DEFAULT_VIDEO_GUIDANCE,
@@ -89,6 +90,8 @@ export function useVideoState(
   const [selectedVideoModelId, setSelectedVideoModelId] = useState("");
   const [videoPrompt, setVideoPrompt] = useState("");
   const [videoNegativePrompt, setVideoNegativePrompt] = useState(DEFAULT_VIDEO_NEGATIVE_PROMPT);
+  const [videoStartImage, setVideoStartImage] = useState<InputImage | null>(null);
+  const [videoEndImage, setVideoEndImage] = useState<InputImage | null>(null);
   const [videoSeedInput, setVideoSeedInput] = useState("");
   const [videoUseRandomSeed, setVideoUseRandomSeed] = useState(true);
   // Generation knobs the user can tweak in Studio. Defaults are populated
@@ -622,6 +625,9 @@ export function useVideoState(
       modelId: fastPreviewTarget,
       prompt: trimmedPrompt,
       negativePrompt: videoNegativePrompt.trim() || undefined,
+      startImagePath: selectedVideoVariant.acceptsImageInput && videoStartImage ? videoStartImage.path : undefined,
+      endImagePath:
+        selectedVideoVariant.acceptsImageInput && videoStartImage && videoEndImage ? videoEndImage.path : undefined,
       width: safeWidth,
       height: safeHeight,
       numFrames: safeNumFrames,
@@ -789,6 +795,10 @@ export function useVideoState(
     videoPrompt,
     setVideoPrompt,
     videoNegativePrompt,
+    videoStartImage,
+    setVideoStartImage,
+    videoEndImage,
+    setVideoEndImage,
     setVideoNegativePrompt,
     videoSeedInput,
     setVideoSeedInput,

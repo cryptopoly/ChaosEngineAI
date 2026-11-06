@@ -904,5 +904,20 @@
       "previewVae": "VAE d'aperçu",
       "fp8LayerwiseCasting": "FP8 par couche"
     }
+  },
+  "inputImage": {
+    "chooseFile": null,
+    "fromGallery": null,
+    "remove": null,
+    "pickFailed": null,
+    "referenceLabel": null,
+    "referenceLabelMany": null,
+    "referenceHintOne": null,
+    "referenceHintMany": null,
+    "strength": null,
+    "startLabel": null,
+    "startHint": null,
+    "endLabel": null,
+    "endHint": null
   }
 }

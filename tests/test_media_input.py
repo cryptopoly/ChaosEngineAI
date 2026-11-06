@@ -172,6 +172,7 @@ class ReferenceImageTests(unittest.TestCase):
             self.assertIn(needle, str(ctx.exception))
 
     def test_route_returns_400(self):
+        import backend_service.app  # noqa: F401  (loads the routes in their usual order)
         from backend_service.models import ImageGenerationRequest
         from backend_service.routes.images import _checked_reference_images
 
@@ -191,6 +192,29 @@ class ReferenceImageTests(unittest.TestCase):
             ImageGenerationRequest(modelId="m", prompt="p", referenceImagePaths=["/a.png"] * 5)
         with self.assertRaises(ValidationError):
             ImageGenerationRequest(modelId="m", prompt="p", imageStrength=0.0)
+
+
+class CatalogFlagsTests(unittest.TestCase):
+    """Slice C: the catalogs tell the Studio which variants take an input image."""
+
+    def test_image_variant_inputs_report_reference_limit(self):
+        from backend_service.helpers.images import _image_variant_inputs as inputs
+
+        self.assertEqual(inputs({"engine": "mflux", "repo": "black-forest-labs/flux-3-image-klein"})["maxReferenceImages"], 4)
+        self.assertEqual(inputs({"engine": "mflux", "repo": "Qwen/Qwen-Image-2.1"})["maxReferenceImages"], 1)
+        self.assertEqual(inputs({"engine": "mflux", "repo": "speridlabs/iris-3b"})["maxReferenceImages"], 0)
+        self.assertEqual(inputs({"repo": "black-forest-labs/FLUX.1-dev"})["maxReferenceImages"], 0)
+
+    def test_video_payloads_flag_ltx2_only(self):
+        from backend_service.helpers.video import _video_model_payloads
+
+        flags = {
+            v["repo"]: v["acceptsImageInput"]
+            for family in _video_model_payloads([])
+            for v in family["variants"]
+        }
+        self.assertTrue(flags["dgrauet/ltx-2.5-mlx-q4"])
+        self.assertFalse(flags["Lightricks/LTX-Video"])
 
 
 if __name__ == "__main__":

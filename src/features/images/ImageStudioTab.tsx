@@ -49,6 +49,7 @@ import {
   isFlowMatchingRepo,
   isUnetImageRepo,
 } from "../../constants";
+import { InputImagePicker, type InputImage } from "../../components/InputImagePicker";
 import { modelsPageRequest, type TabRequest } from "../../constants/tabRedirects";
 
 export interface ImageStudioTabProps {
@@ -78,6 +79,10 @@ export interface ImageStudioTabProps {
   imagePrompt: string;
   onImagePromptChange: (value: string) => void;
   imageNegativePrompt: string;
+  imageReferences: InputImage[];
+  onImageReferencesChange: (next: InputImage[]) => void;
+  imageReferenceStrength: number;
+  onImageReferenceStrengthChange: (next: number) => void;
   onImageNegativePromptChange: (value: string) => void;
   imageQualityPreset: ImageQualityPreset;
   imageRatioId: (typeof IMAGE_RATIO_PRESETS)[number]["id"];
@@ -179,6 +184,10 @@ export function ImageStudioTab({
   imagePrompt,
   onImagePromptChange,
   imageNegativePrompt,
+  imageReferences,
+  onImageReferencesChange,
+  imageReferenceStrength,
+  onImageReferenceStrengthChange,
   onImageNegativePromptChange,
   imageQualityPreset,
   imageRatioId,
@@ -805,6 +814,39 @@ export function ImageStudioTab({
                 onChange={(event) => onImageNegativePromptChange(event.target.value)}
               />
             </label>
+          ) : null}
+
+          {(selectedImageVariant?.maxReferenceImages ?? 0) > 0 ? (
+            <>
+              <InputImagePicker
+                label={t(
+                  (selectedImageVariant?.maxReferenceImages ?? 0) > 1 ? "inputImage.referenceLabelMany" : "inputImage.referenceLabel",
+                                  )}
+                hint={t(
+                  (selectedImageVariant?.maxReferenceImages ?? 0) > 1 ? "inputImage.referenceHintMany" : "inputImage.referenceHintOne",
+                  { max: selectedImageVariant?.maxReferenceImages ?? 1 },
+                )}
+                images={imageReferences}
+                max={selectedImageVariant?.maxReferenceImages ?? 1}
+                onChange={onImageReferencesChange}
+                gallery={imageOutputs}
+                disabled={imageBusy}
+              />
+              {selectedImageVariant?.maxReferenceImages === 1 && imageReferences.length > 0 ? (
+                <label>
+                  {t("inputImage.strength")} ({imageReferenceStrength.toFixed(2)})
+                  <input
+                    type="range"
+                    min={0.05}
+                    max={1}
+                    step={0.05}
+                    value={imageReferenceStrength}
+                    disabled={imageBusy}
+                    onChange={(event) => onImageReferenceStrengthChange(Number(event.target.value))}
+                  />
+                </label>
+              ) : null}
+            </>
           ) : null}
 
           {selectedImageVariant?.availableLocally ? (

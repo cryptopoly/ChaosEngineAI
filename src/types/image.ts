@@ -69,6 +69,8 @@ export interface ImageModelVariant {
   engine?: string | null;
   /** False when the variant's engine has no guidance / negative-prompt input; the Studio hides it. */
   acceptsGuidance?: boolean;
+  /** Reference images the variant takes (0 = none). 1 = a start image with a strength; more = edit / re-draw. */
+  maxReferenceImages?: number;
   acceptsNegativePrompt?: boolean;
   /** Other catalog variants that use the same download (see Video). */
   sharedRepoSiblings?: number | null;
@@ -185,6 +187,10 @@ export interface ImageGenerationPayload {
   guidance: number;
   seed?: number | null;
   batchSize?: number;
+  /** Absolute paths of reference images; only for variants with ``maxReferenceImages`` > 0. */
+  referenceImagePaths?: string[];
+  /** Single start image only: higher stays closer to it. */
+  imageStrength?: number;
   qualityPreset?: ImageQualityPreset;
   draftMode?: boolean;
   sampler?: ImageSamplerId | null;

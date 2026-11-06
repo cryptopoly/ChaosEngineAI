@@ -1299,6 +1299,10 @@ export default function App() {
         imagePrompt={imgState.imagePrompt}
         onImagePromptChange={imgState.setImagePrompt}
         imageNegativePrompt={imgState.imageNegativePrompt}
+        imageReferences={imgState.imageReferences}
+        onImageReferencesChange={imgState.setImageReferences}
+        imageReferenceStrength={imgState.imageReferenceStrength}
+        onImageReferenceStrengthChange={imgState.setImageReferenceStrength}
         onImageNegativePromptChange={imgState.setImageNegativePrompt}
         imageQualityPreset={imgState.imageQualityPreset}
         imageDraftMode={imgState.imageDraftMode}
@@ -1457,6 +1461,11 @@ export default function App() {
         videoPrompt={videoState.videoPrompt}
         onVideoPromptChange={videoState.setVideoPrompt}
         videoNegativePrompt={videoState.videoNegativePrompt}
+        videoStartImage={videoState.videoStartImage}
+        onVideoStartImageChange={videoState.setVideoStartImage}
+        videoEndImage={videoState.videoEndImage}
+        onVideoEndImageChange={videoState.setVideoEndImage}
+        imageGallery={imgState.imageOutputs}
         onVideoNegativePromptChange={videoState.setVideoNegativePrompt}
         videoUseRandomSeed={videoState.videoUseRandomSeed}
         onVideoUseRandomSeedChange={videoState.setVideoUseRandomSeed}

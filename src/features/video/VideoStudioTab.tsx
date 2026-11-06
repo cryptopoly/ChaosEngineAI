@@ -21,6 +21,8 @@ import type {
   VideoModelVariant,
   VideoRuntimeStatus,
 } from "../../types";
+import { InputImagePicker, type InputImage } from "../../components/InputImagePicker";
+import type { ImageOutputArtifact } from "../../types/image";
 import type { NativeBackendStatus } from "../../types/server";
 import type { SystemStats } from "../../types/system";
 import {
@@ -86,6 +88,11 @@ export interface VideoStudioTabProps {
   videoPrompt: string;
   onVideoPromptChange: (value: string) => void;
   videoNegativePrompt: string;
+  videoStartImage: InputImage | null;
+  onVideoStartImageChange: (next: InputImage | null) => void;
+  videoEndImage: InputImage | null;
+  onVideoEndImageChange: (next: InputImage | null) => void;
+  imageGallery: ImageOutputArtifact[];
   onVideoNegativePromptChange: (value: string) => void;
   videoUseRandomSeed: boolean;
   onVideoUseRandomSeedChange: (value: boolean) => void;
@@ -199,6 +206,11 @@ export function VideoStudioTab({
   videoPrompt,
   onVideoPromptChange,
   videoNegativePrompt,
+  videoStartImage,
+  onVideoStartImageChange,
+  videoEndImage,
+  onVideoEndImageChange,
+  imageGallery,
   onVideoNegativePromptChange,
   videoUseRandomSeed,
   onVideoUseRandomSeedChange,
@@ -955,6 +967,32 @@ export function VideoStudioTab({
                 })}
               />
             </label>
+          ) : null}
+
+          {selectedVideoVariant?.acceptsImageInput ? (
+            <>
+              <InputImagePicker
+                label={t("inputImage.startLabel")}
+                hint={t("inputImage.startHint")}
+                images={videoStartImage ? [videoStartImage] : []}
+                max={1}
+                onChange={(next) => {
+                  onVideoStartImageChange(next[0] ?? null);
+                  if (next.length === 0) onVideoEndImageChange(null);
+                }}
+                gallery={imageGallery}
+              />
+              {videoStartImage ? (
+                <InputImagePicker
+                  label={t("inputImage.endLabel")}
+                  hint={t("inputImage.endHint")}
+                  images={videoEndImage ? [videoEndImage] : []}
+                  max={1}
+                  onChange={(next) => onVideoEndImageChange(next[0] ?? null)}
+                  gallery={imageGallery}
+                />
+              ) : null}
+            </>
           ) : null}
 
           {/*

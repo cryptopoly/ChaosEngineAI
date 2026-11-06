@@ -35,6 +35,7 @@ _SETTING_KEYS = (
     "startImagePath",
     "endImagePath",
     "imageStrength",
+    "referenceImagePaths",
     "createdAt",
 )
 

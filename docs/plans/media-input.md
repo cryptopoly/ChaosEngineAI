@@ -24,10 +24,10 @@ bridge, is the gap.
 
 ## Order
 
-1. **Video start / end image** (LTX only): request fields `startImagePath`, `endImagePath`, `imageStrength`; the
+1. **Video start / end image** (LTX only; **done 2026-11-06**): request fields `startImagePath`, `endImagePath`, `imageStrength`; the
    engine adds `--image`; other video models answer a clear 400. MCP `generate_video` gets `start_image`,
    `end_image`. Done when a poster turns into a clip that starts on it (live run).
-2. **Image reference** (mflux): `referenceImagePaths` and `imageStrength` on the image request; FLUX.1, FLUX.2 Klein
+2. **Image reference** (mflux; **done 2026-11-06**): `referenceImagePaths` and `imageStrength` on the image request; FLUX.1, FLUX.2 Klein
    and Qwen use init-image; FLUX 3 Klein uses its edit command. MCP `generate_image` gets `reference_images`.
 3. **Studio UI**: an image picker in Image Studio and Video Studio (upload, or pick from the gallery), shown only
    for models that take it. Strings and locales.

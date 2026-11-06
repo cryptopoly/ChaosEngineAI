@@ -49,6 +49,12 @@ def _row(family: dict[str, Any], variant: dict[str, Any], kind: str) -> dict[str
         "note": variant.get("note"),
         **_licence_hints(family, variant),
     }
+    if kind == "image":
+        from backend_service.image_runtime.mflux_engine import reference_image_limit
+
+        limit = reference_image_limit(str(variant.get("repo") or "")) if variant.get("engine") == "mflux" else 0
+        row["acceptsImageInput"] = limit > 0
+        row["maxReferenceImages"] = limit
     if kind == "video":
         from backend_service.helpers.generation_limits import align_video_frames
 

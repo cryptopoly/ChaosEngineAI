@@ -111,6 +111,7 @@ def _hydrate_image_artifact(payload: dict[str, Any]) -> dict[str, Any]:
         "runtimeNote": str(payload.get("runtimeNote") or "") or None,
         "qualityPreset": str(payload.get("qualityPreset") or "") or None,
         "draftMode": bool(payload.get("draftMode")),
+        "referenceImagePaths": list(payload.get("referenceImagePaths") or []) or None,
     }
 
 

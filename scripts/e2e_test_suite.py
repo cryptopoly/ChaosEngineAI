@@ -2330,6 +2330,30 @@ def phase_9(cap: Capability) -> PhaseResult:
             return "fail", "PNG has no embedded generation settings", {}
         return "pass", "", {"model": smallest["id"], "path": str(path), "notes": job.get("notes")}
 
+    def _input_refusals():
+        # Cheap: the route refuses before any model loads. A wrong model must say why, not ignore the image.
+        import tempfile
+
+        from PIL import Image
+
+        with tempfile.TemporaryDirectory() as tmp:
+            png = Path(tmp) / "ref.png"
+            Image.new("RGB", (64, 64), "red").save(png)
+            cases = [
+                ("/api/images/generate", {"modelId": "speridlabs/iris-3b-mflux", "prompt": "x",
+                                          "referenceImagePaths": [str(png)]}, "cannot take a reference image"),
+                ("/api/images/generate", {"modelId": "black-forest-labs/FLUX.1-dev-mflux", "prompt": "x",
+                                          "referenceImagePaths": ["/no/such.png"]}, "not found"),
+                ("/api/video/generate", {"modelId": "Lightricks/LTX-Video", "prompt": "x",
+                                         "startImagePath": str(png)}, "LTX-2"),
+            ]
+            for path, payload, needle in cases:
+                code, body = _json_call("POST", path, payload, timeout=30.0)
+                detail = str((body or {}).get("detail") if isinstance(body, dict) else body)
+                if code != 400 or needle not in detail:
+                    return "fail", f"{payload['modelId']}: HTTP {code} {detail[:160]!r}, wanted 400 with {needle!r}", {}
+        return "pass", "", {}
+
     try:
         for name, fn in [
             ("off answer explains how to turn it on", _off_answer),
@@ -2337,6 +2361,7 @@ def phase_9(cap: Capability) -> PhaseResult:
             ("system_status and recommend_models", _status_and_recommend),
             ("stdio relay forwards to the app", _relay),
             ("image job to a file with embedded settings", _image_job),
+            ("image and video input refuses the wrong model clearly", _input_refusals),
         ]:
             phase.checks.append(_check(name, fn))
     finally:

@@ -258,6 +258,19 @@ def generate_image(request: Request, body: ImageGenerationRequest) -> dict[str, 
         raise HTTPException(status_code=409, detail=localized_detail(request, "cancelled")) from None
 
 
+def _checked_reference_images(body: ImageGenerationRequest, variant: dict[str, Any]) -> ImageGenerationRequest:
+    """Resolve reference image paths; 400 with a readable message when the model or a file is wrong."""
+    if not body.referenceImagePaths:
+        return body
+    from backend_service.helpers.media_input import InputImageError, checked_reference_images
+
+    try:
+        paths = checked_reference_images(body.referenceImagePaths, variant)
+    except InputImageError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return body.model_copy(update={"referenceImagePaths": paths})
+
+
 def _generate_image_locked(request: Request, body: ImageGenerationRequest) -> dict[str, Any]:
     import traceback as _tb
     state = request.app.state.chaosengine
@@ -273,6 +286,7 @@ def _generate_image_locked(request: Request, body: ImageGenerationRequest) -> di
             ),
         )
     state.add_log("images", "info", f"Resolved variant: {variant.get('name')} (repo={variant.get('repo')})")
+    body = _checked_reference_images(body, variant)
     # Free an idle video model first, so the memory it held counts as free
     # in the gate below.
     _unload_idle_video_runtime_for_image(request, "image generation")

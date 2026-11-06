@@ -9,6 +9,24 @@ summary: Read this first in every session.
 
 Newest dated update first. Each update has the same sections: Done, Open for Claude, Open for Dan.
 
+## Update 2026-11-06, media input slice B: reference images for image generation
+
+**Done** (branch `feat/media-input`)
+
+- **Image references.** `POST /api/images/generate` takes `referenceImagePaths` (up to 4) and `imageStrength`. FLUX.1 (dev, schnell), FLUX.2 Klein and Qwen Image 2.1 (and Turbo) pass one image to `mflux-generate* --image PATH STRENGTH` (start image; higher strength stays closer). FLUX 3 Klein (and Base) switch to `mflux-generate-flux3-edit --image-paths ...` and take up to four. Iris-3B, every diffusers / GGUF / sd.cpp model and any non-mflux variant answer 400 with the list of models that work. If mflux fails or is missing, the run errors instead of falling back to an engine that would drop the image.
+- **MCP:** `generate_image` gets `reference_images` and `image_strength`; `list_models` marks image models with `acceptsImageInput` and `maxReferenceImages`. With no width and height the image takes the first reference's shape. The tool-schema checker now handles arrays.
+- Reference paths are saved in the artifact JSON and in the PNG's embedded settings. The video route now checks the image fields before the "not installed" gate, so the clear reason shows first.
+- **Live check on this Mac:** FLUX 3 Klein with the lighthouse poster as reference and the prompt "the same lighthouse at sunrise, warm golden light, calm sea" gave a 512x768 image in 43 s (peak 12.45 GB). Side by side: same tower, stripes, rocks, hut and beam, new light and sky. Not tried live: FLUX.1, FLUX.2 Klein and Qwen start-image mode (command lines are unit-tested only; those models are not installed here).
+- E2E phase 9 has a sixth check (wrong-model refusals, image and video). Phase 9: 6 of 6.
+
+**Open for Claude**
+
+- Slice C: the Studio picker (upload or pick from the gallery) in Image Studio and Video Studio, strings and locales.
+
+**Open for Dan**
+
+- Merge of `feat/agent-bridge` and `feat/media-input` into `release/v0.9.10` stays on hold.
+
 ## Update 2026-11-06, media input slice A: video start / end image
 
 **Done** (branch `feat/media-input`, cut from `feat/agent-bridge`; plan [media-input](https://github.com/cryptopoly/ChaosEngineAI/blob/feat/media-input/docs/plans/media-input.md), decision D-23)

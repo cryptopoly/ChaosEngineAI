@@ -189,6 +189,41 @@ class McpBridgeTests(unittest.TestCase):
             self.assertTrue(is_error)
             self.assertIn("cannot start from an image", text)
 
+    def test_image_reference_is_passed_and_shapes_the_image(self):
+        from PIL import Image
+
+        access.set_enabled(True)
+        row = {"id": "black-forest-labs/flux-3-image-klein-mflux", "fit": "fits"}
+        seen = {}
+
+        def fake(request, body):
+            seen["body"] = body
+            return {"artifacts": [{"imagePath": "/tmp/i.png", "width": 1, "height": 1}]}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            ref = Path(tmp) / "ref.png"
+            Image.new("RGB", (768, 1152), "blue").save(ref)
+            with mock.patch("backend_service.mcp_bridge.models.installed_models", return_value=[row]), \
+                    mock.patch("backend_service.routes.images._generate_image_locked", side_effect=fake):
+                _, text = call(self.client, "generate_image", {"prompt": "x", "reference_images": [str(ref)]}, self.auth())
+                _, done = call(self.client, "wait_for_job", {"job_id": _field(text, "jobId"), "timeout_seconds": 5}, self.auth())
+        body = seen["body"]
+        self.assertEqual(body.referenceImagePaths, [str(ref.resolve())])
+        self.assertLess(body.width, body.height)
+        self.assertIn("follows the first reference", done)
+
+    def test_image_reference_errors_are_readable(self):
+        access.set_enabled(True)
+        for model, refs, needle in (
+            ("speridlabs/iris-3b-mflux", ["/nope.png"], "cannot take a reference image"),
+            ("black-forest-labs/FLUX.1-dev-mflux", ["/nope.png"], "not found"),
+            ("black-forest-labs/FLUX.1-dev-mflux", ["/a.png", "/b.png"], "takes 1 reference image"),
+        ):
+            with mock.patch("backend_service.mcp_bridge.models.installed_models", return_value=[{"id": model, "fit": "fits"}]):
+                is_error, text = call(self.client, "generate_image", {"prompt": "x", "reference_images": refs}, self.auth())
+            self.assertTrue(is_error)
+            self.assertIn(needle, text)
+
     def test_list_models_flags_image_input(self):
         from backend_service.mcp_bridge import models as bridge_models
 

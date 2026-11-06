@@ -472,6 +472,8 @@ def _generate_image_artifacts(
             sdcppAux=(variant.get("sdcppAux") or None),
             sdcppArgs=(variant.get("sdcppArgs") or None),
             mfluxQuantize=(variant.get("mfluxQuantize") or None),
+            referenceImagePaths=(request.referenceImagePaths or None),
+            imageStrength=request.imageStrength,
             runtime=(variant.get("engine") or None),
             cacheStrategy=request.cacheStrategy,
             cacheRelL1Thresh=request.cacheRelL1Thresh,
@@ -522,6 +524,8 @@ def _generate_image_artifacts(
             "runtimeNote": " · ".join(part for part in (rendered.runtimeNote, size_note) if part) or None,
             "qualityPreset": request.qualityPreset,
             "draftMode": request.draftMode,
+            "referenceImagePaths": request.referenceImagePaths or None,
+            "imageStrength": request.imageStrength if request.referenceImagePaths else None,
         }
         artifacts.append(_save_image_artifact(artifact))
     return artifacts, runtime_status

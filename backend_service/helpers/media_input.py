@@ -48,3 +48,24 @@ def image_size(path: Path) -> tuple[int, int] | None:
             return image.size
     except Exception:
         return None
+
+
+def checked_reference_images(raw_paths: list[str] | None, variant: dict) -> list[str]:
+    """Resolve reference images for an image model, or raise ``InputImageError`` naming what works.
+
+    Only mflux models take them; the same variant on another engine would drop the image silently.
+    """
+    if not raw_paths:
+        return []
+    from backend_service.image_runtime.mflux_engine import reference_image_limit
+
+    name = variant.get("name") or variant.get("id")
+    limit = reference_image_limit(str(variant.get("repo") or "")) if (variant.get("engine") or "").lower() == "mflux" else 0
+    if limit == 0:
+        raise InputImageError(
+            f"{name} cannot take a reference image. Use FLUX.1, FLUX.2 Klein, Qwen Image 2.1 or FLUX 3 Klein "
+            "on the mflux (MLX) engine."
+        )
+    if len(raw_paths) > limit:
+        raise InputImageError(f"{name} takes {limit} reference image{'s' if limit != 1 else ''}; got {len(raw_paths)}.")
+    return [str(resolve_input_image(raw)) for raw in raw_paths]

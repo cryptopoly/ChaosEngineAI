@@ -38,8 +38,8 @@ job waits for a running agent job (the progress panel says "Waiting for an agent
 | `recommend_models` | For `image`, `video`, `voice` or `stt`, the best models **not installed** that fit this machine, with size and gated / non-commercial flags. The agent tells you what to download. |
 | `list_models` | Installed models with id, size, fit, size limits and frame rules. |
 | `list_voices` | Voices that are ready, with language. |
-| `generate_image` | Prompt, model, size, steps, seed. Returns a job id. Sizes are snapped to what the model supports; corrections appear in the job notes. |
-| `generate_video` | Prompt, model, size, `seconds` (or `frames`), fps, seed. Returns a job id. Seconds are converted to the model's frame rule. |
+| `generate_image` | Prompt, model, size, steps, seed, optional `reference_images` and `image_strength`. Returns a job id. Sizes are snapped to what the model supports; corrections appear in the job notes. |
+| `generate_video` | Prompt, model, size, `seconds` (or `frames`), fps, seed, optional `start_image`, `end_image`, `image_strength`. Returns a job id. Seconds are converted to the model's frame rule. |
 | `speak` | Text, voice, speed. Returns a job id. |
 | `transcribe` | Path to an audio or video file the app can read. Returns a job id. |
 | `job_status`, `wait_for_job`, `cancel_job` | Poll, wait up to 60 s, cancel. |
@@ -48,8 +48,21 @@ A finished job returns the **absolute path** of the PNG, MP4 or WAV, plus width,
 `hasAudio`. `generate_image` can also return the PNG as base64 (`include_preview`). Every PNG and MP4
 carries its prompt, model, seed, steps, guidance, size and app version inside the file.
 
-Not in the first version: model downloads, chat (the OpenAI-compatible API covers it), editing, and
-image-to-video.
+### Input images (for consistency)
+
+Give a file path, not the image data. `list_models` marks the models that take one (`acceptsImageInput`;
+images also report `maxReferenceImages`). A model that cannot take an image answers with a clear error;
+it never ignores the image.
+
+- **Video:** `start_image` (and `end_image`) on LTX-2.3 / 2.5. The clip begins on the start image and ends
+  on the end image. `image_strength` 1.0 follows the image closely; lower lets it drift.
+- **Image:** `reference_images` on FLUX.1, FLUX.2 Klein and Qwen Image 2.1 (one start image; higher
+  `image_strength` stays closer to it) and on FLUX 3 Klein (up to four images, edited or re-drawn from the
+  prompt: the way to keep a subject or a style across a set).
+- With no width and height, the output takes the shape of the first image.
+- Voice cloning and sound input are not supported: the speech engine has no reference-audio input.
+
+Not in the first version: model downloads, chat (the OpenAI-compatible API covers it) and editing tools.
 
 ## Safety
 

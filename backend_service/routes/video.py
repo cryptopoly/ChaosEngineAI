@@ -438,12 +438,12 @@ def _generate_video_locked(request: Request, body: VideoGenerationRequest) -> di
             status_code=404,
             detail=f"Unknown video model '{body.modelId}'. The model isn't in the curated catalog.",
         )
+    body = _checked_input_images(body, variant)
     if not _video_variant_available_locally(variant):
         validation_error = _video_variant_validation_error(variant)
         detail = validation_error or f"{variant['name']} is not installed locally yet."
         raise HTTPException(status_code=409, detail=detail)
 
-    body = _checked_input_images(body, variant)
     _unload_idle_image_runtime_for_video(request, "video generation")
     _video_memory_gate(request, variant, "video generation", body)
     try:

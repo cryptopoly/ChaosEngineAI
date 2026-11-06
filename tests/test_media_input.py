@@ -103,5 +103,95 @@ class RouteChecksTests(unittest.TestCase):
             self.assertEqual(out.startImagePath, str(path.resolve()))
 
 
+class ReferenceImageTests(unittest.TestCase):
+    """Slice B: reference images for image models."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.png = _png(Path(self.tmp.name) / "r.png")
+
+    @staticmethod
+    def variant(repo, engine="mflux"):
+        return {"name": "Model", "repo": repo, "engine": engine}
+
+    def cmd(self, repo, refs, strength=None):
+        from backend_service.image_runtime.mflux_engine import MfluxImageEngine, mflux_family_for_repo
+        from backend_service.image_runtime.types import ImageGenerationConfig
+
+        config = ImageGenerationConfig(
+            modelId="x", modelName="M", repo=repo, prompt="p", negativePrompt="", width=1024, height=768,
+            steps=4, guidance=3.5, batchSize=1, runtime="mflux", referenceImagePaths=refs, imageStrength=strength,
+        )
+        return MfluxImageEngine()._build_command(mflux_family_for_repo(repo), config, seed=1, output_path=Path("/o.png"))
+
+    def test_limits_per_family(self):
+        from backend_service.image_runtime.mflux_engine import reference_image_limit as limit
+
+        self.assertEqual(limit("black-forest-labs/FLUX.1-dev"), 1)
+        self.assertEqual(limit("black-forest-labs/FLUX.2-klein-4B"), 1)
+        self.assertEqual(limit("Qwen/Qwen-Image-2.1"), 1)
+        self.assertEqual(limit("black-forest-labs/flux-3-image-klein"), 4)
+        self.assertEqual(limit("speridlabs/iris-3b"), 0)
+        self.assertEqual(limit("stabilityai/stable-diffusion-3.5-medium"), 0)
+
+    def test_init_image_command(self):
+        args = self.cmd("black-forest-labs/FLUX.1-dev", ["/a.png"], 0.6)
+        self.assertTrue(args[0].endswith("/mflux-generate"))
+        self.assertEqual(args[args.index("--image") : args.index("--image") + 3], ["--image", "/a.png", "0.6"])
+        no_strength = self.cmd("black-forest-labs/FLUX.1-dev", ["/a.png"])
+        self.assertEqual(no_strength[no_strength.index("--image") + 1 :][:1], ["/a.png"])
+        self.assertNotIn("0.6", no_strength)
+
+    def test_flux3_uses_the_edit_command_with_all_images(self):
+        args = self.cmd("black-forest-labs/flux-3-image-klein", ["/a.png", "/b.png"])
+        self.assertTrue(args[0].endswith("/mflux-generate-flux3-edit"))
+        i = args.index("--image-paths")
+        self.assertEqual(args[i + 1 : i + 3], ["/a.png", "/b.png"])
+
+    def test_no_reference_keeps_the_normal_command(self):
+        args = self.cmd("black-forest-labs/flux-3-image-klein", None)
+        self.assertTrue(args[0].endswith("/mflux-generate-flux3"))
+        self.assertNotIn("--image", args)
+        self.assertNotIn("--image-paths", args)
+
+    def test_model_check(self):
+        from backend_service.helpers.media_input import checked_reference_images as check
+
+        self.assertEqual(check(None, self.variant("x")), [])
+        out = check([str(self.png)], self.variant("black-forest-labs/FLUX.1-dev"))
+        self.assertEqual(out, [str(self.png.resolve())])
+        for variant, refs, needle in (
+            (self.variant("speridlabs/iris-3b"), [str(self.png)], "cannot take a reference image"),
+            (self.variant("black-forest-labs/FLUX.1-dev", engine="diffusers"), [str(self.png)], "cannot take a reference image"),
+            (self.variant("black-forest-labs/FLUX.1-dev"), [str(self.png)] * 2, "takes 1 reference image"),
+            (self.variant("black-forest-labs/FLUX.1-dev"), ["/nope.png"], "not found"),
+        ):
+            with self.assertRaises(InputImageError) as ctx:
+                check(refs, variant)
+            self.assertIn(needle, str(ctx.exception))
+
+    def test_route_returns_400(self):
+        from backend_service.models import ImageGenerationRequest
+        from backend_service.routes.images import _checked_reference_images
+
+        body = ImageGenerationRequest(modelId="m", prompt="p", referenceImagePaths=[str(self.png)])
+        with self.assertRaises(HTTPException) as ctx:
+            _checked_reference_images(body, self.variant("speridlabs/iris-3b"))
+        self.assertEqual(ctx.exception.status_code, 400)
+        out = _checked_reference_images(body, self.variant("Qwen/Qwen-Image-2.1"))
+        self.assertEqual(out.referenceImagePaths, [str(self.png.resolve())])
+
+    def test_request_limits(self):
+        from pydantic import ValidationError
+
+        from backend_service.models import ImageGenerationRequest
+
+        with self.assertRaises(ValidationError):
+            ImageGenerationRequest(modelId="m", prompt="p", referenceImagePaths=["/a.png"] * 5)
+        with self.assertRaises(ValidationError):
+            ImageGenerationRequest(modelId="m", prompt="p", imageStrength=0.0)
+
+
 if __name__ == "__main__":
     unittest.main()

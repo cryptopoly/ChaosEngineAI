@@ -370,6 +370,11 @@ class ImageGenerationRequest(BaseModel):
     guidance: float = Field(default=5.5, ge=1.0, le=20.0)
     seed: int | None = Field(default=None, ge=0, le=2147483647)
     batchSize: int = Field(default=1, ge=1, le=4)
+    # Reference images (absolute paths on this machine). Only some mflux models take
+    # them; the route refuses the rest. ``imageStrength`` applies to single-image
+    # start images (FLUX.1, FLUX.2 Klein, Qwen); higher stays closer to the image.
+    referenceImagePaths: list[str] | None = Field(default=None, max_length=4)
+    imageStrength: float | None = Field(default=None, ge=0.05, le=1.0)
     qualityPreset: str | None = Field(default=None, max_length=32)
     draftMode: bool = Field(default=False)
     sampler: str | None = Field(default=None, max_length=32)

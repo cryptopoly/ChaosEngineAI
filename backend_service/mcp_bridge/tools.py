@@ -52,6 +52,13 @@ TOOLS: list[dict[str, Any]] = [
                 "width": {"type": "integer", "minimum": 256, "maximum": 4096},
                 "height": {"type": "integer", "minimum": 256, "maximum": 4096},
                 "steps": {"type": "integer", "minimum": 1, "maximum": 100},
+                "reference_images": {
+                    "type": "array", "items": {"type": "string"}, "maxItems": 4,
+                    "description": "Absolute paths of reference images. Only for models with acceptsImageInput in list_models: "
+                    "FLUX.1, FLUX.2 Klein and Qwen take one start image; FLUX 3 Klein takes up to four to edit or re-draw. "
+                    "If width and height are not given, the image follows the first reference's shape.",
+                },
+                "image_strength": {"type": "number", "minimum": 0.05, "maximum": 1.0, "description": "Single start image only: higher stays closer to it (mflux default 0.4)."},
                 "seed": {"type": "integer", "minimum": 0, "maximum": 2147483647},
                 "include_preview": {"type": "boolean", "description": "Also return the PNG as base64."},
             },
@@ -109,7 +116,7 @@ TOOLS: list[dict[str, Any]] = [
     {"name": "cancel_job", "description": "Cancel a queued or running job.", "inputSchema": _obj({"job_id": _JOB_ID}, ["job_id"])},
 ]
 
-_TYPES = {"string": str, "integer": int, "number": (int, float), "boolean": bool}
+_TYPES = {"string": str, "integer": int, "number": (int, float), "boolean": bool, "array": list}
 
 
 def validate(schema: dict[str, Any], args: Any) -> str | None:
@@ -129,6 +136,12 @@ def validate(schema: dict[str, Any], args: Any) -> str | None:
             return f"'{name}' must be {spec['type']}"
         if not isinstance(value, expected):
             return f"'{name}' must be {spec['type']}"
+        if isinstance(value, list):
+            if len(value) > spec.get("maxItems", 10**9):
+                return f"'{name}' takes at most {spec['maxItems']} items"
+            item_type = spec.get("items", {}).get("type")
+            if item_type and not all(isinstance(v, _TYPES[item_type]) for v in value):
+                return f"'{name}' items must be {item_type}"
         if "enum" in spec and value not in spec["enum"]:
             return f"'{name}' must be one of {', '.join(spec['enum'])}"
         if isinstance(value, str):
@@ -219,9 +232,19 @@ def _artifact_notes(artifact: dict[str, Any]) -> list[str]:
     return [str(n).strip() for n in str(note).split("\n") if n.strip()] if note else []
 
 
+def _shape_like(found: tuple[int, int], size: tuple[int, int]) -> tuple[int, int]:
+    """Keep ``size``'s pixel count, take the image's shape (multiples of 64 as the engines want)."""
+    pixels = size[0] * size[1]
+    ratio = found[0] / found[1]
+    width = max(256, round((pixels * ratio) ** 0.5 / 64) * 64)
+    height = max(256, round(width / ratio / 64) * 64)
+    return width, height
+
+
 def generate_image(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
     from pydantic import ValidationError
 
+    from backend_service.helpers.generation_limits import parse_resolution
     from backend_service.models import ImageGenerationRequest
     from backend_service.routes.images import _generate_image_locked
 
@@ -236,6 +259,22 @@ def generate_image(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
         fields["steps"] = steps
     if settings.get("guidance") is not None:
         fields["guidance"] = settings["guidance"]
+    notes: list[str] = []
+    if args.get("reference_images"):
+        from backend_service.helpers.media_input import InputImageError, checked_reference_images, image_size
+
+        try:
+            refs = checked_reference_images(list(args["reference_images"]), variant)
+        except InputImageError as exc:
+            raise ToolError(str(exc)) from exc
+        fields["referenceImagePaths"] = refs
+        if "image_strength" in args:
+            fields["imageStrength"] = args["image_strength"]
+        found = image_size(Path(refs[0]))
+        if found and "width" not in args and "height" not in args:
+            size = _shape_like(found, parse_resolution(variant.get("recommendedResolution")) or (1024, 1024))
+            fields["width"], fields["height"] = size
+            notes.append(f"Image shape {size[0]}x{size[1]} follows the first reference ({found[0]}x{found[1]}).")
     try:
         body = ImageGenerationRequest(**fields)
     except ValidationError as exc:
@@ -256,7 +295,7 @@ def generate_image(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
         }
         if preview and art.get("imagePath"):
             output["previewBase64"] = base64.b64encode(Path(art["imagePath"]).read_bytes()).decode("ascii")
-        return output, _artifact_notes(art)
+        return output, notes + _artifact_notes(art)
 
     return _submitted(STORE.submit("image", str(variant.get("name") or variant["id"]), run))
 
@@ -303,12 +342,8 @@ def generate_video(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
         found = image_size(start)
         if found and "width" not in args and "height" not in args:
             # Keep the recommended pixel count, take the image's shape (multiples of 64 as the engine wants).
-            pixels = size[0] * size[1]
-            ratio = found[0] / found[1]
-            width = max(256, round((pixels * ratio) ** 0.5 / 64) * 64)
-            height = max(256, round(width / ratio / 64) * 64)
-            size = (width, height)
-            notes.append(f"Clip shape {width}x{height} follows the start image ({found[0]}x{found[1]}).")
+            size = _shape_like(found, size)
+            notes.append(f"Clip shape {size[0]}x{size[1]} follows the start image ({found[0]}x{found[1]}).")
     fields: dict[str, Any] = {
         **image_fields,
         "modelId": variant["id"],

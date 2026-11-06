@@ -68,23 +68,38 @@ class MfluxFamily:
     # False for guidance-distilled models that take no guidance argument.
     takes_guidance: bool = True
     takes_negative_prompt: bool = False
+    # Reference images. ``init_image``: the command takes one ``--image PATH [STRENGTH]``
+    # start image (img2img). ``edit_command``: a sibling command that takes up to
+    # ``MAX_EDIT_IMAGES`` ``--image-paths`` and edits or re-draws them from the prompt.
+    init_image: bool = False
+    edit_command: str | None = None
+
+
+MAX_EDIT_IMAGES = 4
 
 
 # Command names and flags read from mflux 0.24.0 (``--help`` of each command);
 # re-check them when ``scripts/install-mflux.sh`` moves ``MFLUX_VERSION``.
 _FAMILIES: dict[str, MfluxFamily] = {
-    "black-forest-labs/FLUX.1-schnell": MfluxFamily("mflux-generate", "schnell"),
-    "black-forest-labs/FLUX.1-dev": MfluxFamily("mflux-generate", "dev"),
-    "black-forest-labs/FLUX.2-klein-4B": MfluxFamily("mflux-generate-flux2", "flux2-klein-4b", takes_guidance=False),
+    "black-forest-labs/FLUX.1-schnell": MfluxFamily("mflux-generate", "schnell", init_image=True),
+    "black-forest-labs/FLUX.1-dev": MfluxFamily("mflux-generate", "dev", init_image=True),
+    "black-forest-labs/FLUX.2-klein-4B": MfluxFamily("mflux-generate-flux2", "flux2-klein-4b", takes_guidance=False, init_image=True),
     "Qwen/Qwen-Image-2.1": MfluxFamily(
-        "mflux-generate-qwen-2.1", "qwen-image-2.1", takes_guidance=False, takes_negative_prompt=True
+        "mflux-generate-qwen-2.1", "qwen-image-2.1", takes_guidance=False, takes_negative_prompt=True,
+        init_image=True,
     ),
     # The 8-step distilled checkpoint; it samples without CFG (mflux 0.23).
-    "Qwen/Qwen-Image-2.1-Turbo": MfluxFamily("mflux-generate-qwen-2.1", "qwen-image-2.1-turbo", takes_guidance=False),
+    "Qwen/Qwen-Image-2.1-Turbo": MfluxFamily(
+        "mflux-generate-qwen-2.1", "qwen-image-2.1-turbo", takes_guidance=False, init_image=True
+    ),
     # FLUX 3 Image Klein (mflux 0.23): the distilled checkpoint takes no
     # guidance (16 steps by default); Base is guided (50 steps, 3.5).
-    "black-forest-labs/flux-3-image-klein": MfluxFamily("mflux-generate-flux3", "flux3-image-klein", takes_guidance=False),
-    "black-forest-labs/flux-3-image-klein-base": MfluxFamily("mflux-generate-flux3", "flux3-image-klein-base"),
+    "black-forest-labs/flux-3-image-klein": MfluxFamily(
+        "mflux-generate-flux3", "flux3-image-klein", takes_guidance=False, edit_command="mflux-generate-flux3-edit"
+    ),
+    "black-forest-labs/flux-3-image-klein-base": MfluxFamily(
+        "mflux-generate-flux3", "flux3-image-klein-base", edit_command="mflux-generate-flux3-edit"
+    ),
     # Iris-3B Turbo (mflux 0.24): a 3B model that generates pixels directly, 4
     # steps and no guidance.
     "speridlabs/iris-3b": MfluxFamily("mflux-generate-iris", "iris-3b", takes_guidance=False),
@@ -93,6 +108,16 @@ _FAMILIES: dict[str, MfluxFamily] = {
 
 def mflux_family_for_repo(repo: str) -> MfluxFamily | None:
     return _FAMILIES.get(repo)
+
+
+def reference_image_limit(repo: str) -> int:
+    """How many reference images this model takes through mflux: 0 when none."""
+    family = mflux_family_for_repo(repo)
+    if family is None:
+        return 0
+    if family.edit_command:
+        return MAX_EDIT_IMAGES
+    return 1 if family.init_image else 0
 
 
 def _mflux_name_for_repo(repo: str) -> str | None:
@@ -203,8 +228,10 @@ class MfluxImageEngine:
         seed: int,
         output_path: Path,
     ) -> list[str]:
+        refs = list(config.referenceImagePaths or [])
+        command = family.edit_command if refs and family.edit_command else family.command
         args = [
-            str(MFLUX_VENV_DIR / "bin" / family.command),
+            str(MFLUX_VENV_DIR / "bin" / command),
             "--model", family.model,
             "--prompt", config.prompt,
             "--steps", str(config.steps),
@@ -218,6 +245,14 @@ class MfluxImageEngine:
             args += ["--guidance", f"{config.guidance:g}"]
         if family.takes_negative_prompt and config.negativePrompt:
             args += ["--negative-prompt", config.negativePrompt]
+        if refs:
+            if family.edit_command:
+                args += ["--image-paths", *refs]
+            elif family.init_image:
+                strength = [f"{config.imageStrength:g}"] if config.imageStrength is not None else []
+                args += ["--image", refs[0], *strength]
+            else:
+                raise RuntimeError(f"{family.model} cannot take a reference image through mflux.")
         if config.mfluxQuantize:
             args += ["--quantize", str(int(config.mfluxQuantize))]
         return args

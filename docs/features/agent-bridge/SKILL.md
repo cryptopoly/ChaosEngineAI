@@ -28,3 +28,12 @@ open ChaosEngineAI > Settings > Integrations > Agent access, switch it on, and r
 3. `list_voices`, `speak` with the text, `wait_for_job`.
 
 Prompts: be concrete about subject, style, light and framing. Keep video prompts to one clear motion.
+
+## Keeping a subject or style consistent
+
+Pass the path of an earlier output as an input image. Only models with `acceptsImageInput` in `list_models` take one; the others return an error.
+
+- Poster to clip: `generate_video` with `start_image` set to the poster path (LTX-2 models). Add `end_image` to land on a second image.
+- Same subject in new scenes: `generate_image` with `reference_images` set to the earlier image (FLUX 3 Klein takes up to four; FLUX.1, FLUX.2 Klein and Qwen take one, with `image_strength` where higher stays closer).
+- Leave width and height out and the output takes the image's shape.
+- Voice cloning is not available.

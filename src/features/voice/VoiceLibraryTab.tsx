@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { MediaLibraryCard } from "../../components/MediaLibraryCard";
 import { Panel } from "../../components/Panel";
 import { deleteLibraryItems, getLibrary, getLibraryAudio, getLibraryItem } from "../../api";
 import type { VoiceLibraryKind, VoiceLibrarySummary } from "../../types";
@@ -79,74 +80,61 @@ function LibraryCard({
   ].filter(Boolean);
 
   return (
-    <article className={`voice-library-card${selected ? " voice-library-card--selected" : ""}`}>
-      <div className="voice-library-card__head">
-        <input
-          type="checkbox"
-          checked={selected}
-          onChange={(e) => onSelect(e.target.checked)}
-          aria-label={t("voice.library.select", { defaultValue: "Select {title}", title: item.title })}
-        />
-        <div className="voice-library-card__title">
-          <strong>{item.title}</strong>
-          <span className="muted-text">
-            <span className="badge subtle">
-              {item.kind === "transcript" ? t("voice.library.transcript", { defaultValue: "Transcript" }) : t("voice.library.speech", { defaultValue: "Speech" })}
-            </span>{" "}
-            {meta.join(" · ")}
-          </span>
-        </div>
-      </div>
-      {item.preview ? <p className="voice-library-card__preview">{item.preview}</p> : null}
-      {audioUrl ? <audio controls autoPlay src={audioUrl} /> : null}
-      {error ? (
-        <p className="voice-error" role="alert">
-          {error}
-        </p>
-      ) : null}
-      <div className="button-row">
-        {item.kind === "transcript" ? (
-          <button type="button" className="secondary-button" onClick={onOpen}>
-            {t("voice.queue.open", { defaultValue: "Open" })}
-          </button>
-        ) : null}
-        {item.audio && !audioUrl ? (
-          <button type="button" className="secondary-button" disabled={busy} onClick={() => void play()}>
-            {t("voice.library.play", { defaultValue: "Play" })}
-          </button>
-        ) : null}
-        <select
-          className="text-input voice-library-card__export"
-          value=""
-          disabled={busy}
-          aria-label={t("voice.editor.export", { defaultValue: "Export" })}
-          onChange={(e) => {
-            const value = e.target.value;
-            if (value === "audio") void exportAudio("");
-            else if (value === "mp3") void exportAudio("mp3");
-            else if (value) void exportTranscriptAs(value as ExportFormat);
-          }}
-        >
-          <option value="">{busy ? t("voice.library.working", { defaultValue: "Working…" }) : t("voice.editor.export", { defaultValue: "Export" })}</option>
-          {item.kind === "transcript"
-            ? (["txt", "md", "srt", "vtt", "json"] as const).map((f) => (
-                <option key={f} value={f}>
-                  {f.toUpperCase()}
-                </option>
-              ))
-            : null}
-          {item.audio ? (
-            <option value="audio">
-              {t("voice.library.originalAudio", { defaultValue: "Audio ({ext})", ext: item.audio.replace(".", "").toUpperCase() })}
-            </option>
+    <MediaLibraryCard
+      title={item.title}
+      badge={item.kind === "transcript" ? t("voice.library.transcript", { defaultValue: "Transcript" }) : t("voice.library.speech", { defaultValue: "Speech" })}
+      meta={meta.join(" · ")}
+      preview={item.preview || undefined}
+      selected={selected}
+      onSelect={onSelect}
+      selectLabel={t("voice.library.select", { defaultValue: "Select {title}", title: item.title })}
+      player={audioUrl ? <audio controls autoPlay src={audioUrl} /> : null}
+      error={error}
+      actions={
+        <>
+          {item.kind === "transcript" ? (
+            <button type="button" className="secondary-button" onClick={onOpen}>
+              {t("voice.queue.open", { defaultValue: "Open" })}
+            </button>
           ) : null}
-          {item.audio && item.audio !== ".mp3" ? <option value="mp3">MP3</option> : null}
-        </select>
-        <button type="button" className="secondary-button" onClick={onDelete}>
-          {t("voice.library.delete", { defaultValue: "Delete" })}
-        </button>
-      </div>
-    </article>
+          {item.audio && !audioUrl ? (
+            <button type="button" className="secondary-button" disabled={busy} onClick={() => void play()}>
+              {t("voice.library.play", { defaultValue: "Play" })}
+            </button>
+          ) : null}
+          <select
+            className="text-input voice-library-card__export"
+            value=""
+            disabled={busy}
+            aria-label={t("voice.editor.export", { defaultValue: "Export" })}
+            onChange={(e) => {
+              const value = e.target.value;
+              if (value === "audio") void exportAudio("");
+              else if (value === "mp3") void exportAudio("mp3");
+              else if (value) void exportTranscriptAs(value as ExportFormat);
+            }}
+          >
+            <option value="">{busy ? t("voice.library.working", { defaultValue: "Working…" }) : t("voice.editor.export", { defaultValue: "Export" })}</option>
+            {item.kind === "transcript"
+              ? (["txt", "md", "srt", "vtt", "json"] as const).map((f) => (
+                  <option key={f} value={f}>
+                    {f.toUpperCase()}
+                  </option>
+                ))
+              : null}
+            {item.audio ? (
+              <option value="audio">
+                {t("voice.library.originalAudio", { defaultValue: "Audio ({ext})", ext: item.audio.replace(".", "").toUpperCase() })}
+              </option>
+            ) : null}
+            {item.audio && item.audio !== ".mp3" ? <option value="mp3">MP3</option> : null}
+          </select>
+          <button type="button" className="secondary-button" onClick={onDelete}>
+            {t("voice.library.delete", { defaultValue: "Delete" })}
+          </button>
+        </>
+      }
+    />
   );
 }
 

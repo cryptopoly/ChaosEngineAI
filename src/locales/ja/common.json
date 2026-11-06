@@ -36,7 +36,13 @@
     "voiceStudio": "音声スタジオ",
     "voiceModels": "音声モデル",
     "voiceLibrary": "ボイスライブラリ",
-    "chatModels": "チャットモデル"
+    "chatModels": "チャットモデル",
+    "musicModels": null,
+    "musicStudio": null,
+    "musicLibrary": null,
+    "storyProjects": null,
+    "storyBoard": null,
+    "storyMixer": null
   },
   "tabCaptions": {
     "dashboard": "システム概要",
@@ -67,7 +73,13 @@
     "voiceLibrary": "作成した文字起こしと音声",
     "chatModels": "言語モデルを検索・ダウンロード・管理",
     "imageModelsPage": "画像モデルを検索・ダウンロード・管理",
-    "videoModelsPage": "動画モデルを検索・ダウンロード・管理"
+    "videoModelsPage": "動画モデルを検索・ダウンロード・管理",
+    "musicModels": null,
+    "musicStudio": null,
+    "musicLibrary": null,
+    "storyProjects": null,
+    "storyBoard": null,
+    "storyMixer": null
   },
   "tabShortLabels": {
     "chat": "チャット",
@@ -92,7 +104,12 @@
     "voiceStudio": "スタジオ",
     "voiceModels": "マイモデル",
     "voiceLibrary": "ライブラリ",
-    "models": "モデル"
+    "models": "モデル",
+    "musicStudio": null,
+    "musicLibrary": null,
+    "storyProjects": null,
+    "storyBoard": null,
+    "storyMixer": null
   },
   "tabGroups": {
     "chat": "チャット",
@@ -101,7 +118,9 @@
     "video": "動画",
     "benchmarks": "ベンチマーク",
     "tools": "ツール",
-    "voice": "音声"
+    "voice": "音声",
+    "music": null,
+    "storyboard": null
   },
   "tabsCount": "{count, plural, other {# 個のタブ}}",
   "sidebar": {
@@ -109,7 +128,9 @@
     "backendOffline": "オフライン",
     "noModelLoaded": "モデルが読み込まれていません",
     "groupTabsAriaLabel": "{group} タブ",
-    "primaryNavAriaLabel": "メイン"
+    "primaryNavAriaLabel": "メイン",
+    "sectionMake": null,
+    "sectionRun": null
   },
   "slashCommands": {
     "menuAriaLabel": "スラッシュコマンド"
@@ -830,7 +851,9 @@
       "sidebarCollapsibleHelp": "すべてのグループを展開した状態で表示し、子要素をインラインで一覧表示します — 各遷移先までワンクリックです。",
       "sidebarTabsHelp": "サイドバーをコンパクトに保ちます:グループは最後に使ったタブにジャンプする単一ボタンとして振る舞い、コンテンツの上にサブタブバーが表示されます。",
       "uiScaleAria": "UI スケール",
-      "uiScaleHelp": "UI スケールはアプリのクロームの密度を即座に変更します。メディアプレビューは独自のアスペクト比に基づくサイズを維持します。"
+      "uiScaleHelp": "UI スケールはアプリのクロームの密度を即座に変更します。メディアプレビューは独自のアスペクト比に基づくサイズを維持します。",
+      "keepGroupsOpen": null,
+      "keepGroupsOpenHelp": null
     },
     "dataDirectory": {
       "title": "データディレクトリ",
@@ -1263,5 +1286,9 @@
     "finder": "Finder で表示",
     "explorer": "エクスプローラーで表示",
     "files": "ファイルで表示"
+  },
+  "comingSoon": {
+    "music": null,
+    "storyboard": null
   }
 }

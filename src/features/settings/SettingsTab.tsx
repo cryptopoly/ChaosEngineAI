@@ -33,6 +33,8 @@ export interface SettingsTabProps {
   apiToken: string | null;
   sidebarMode: SidebarMode;
   onSidebarModeChange: (mode: SidebarMode) => void;
+  sidebarKeepAllOpen: boolean;
+  onSidebarKeepAllOpenChange: (value: boolean) => void;
   uiScale: UiScale;
   onUiScaleChange: (scale: UiScale) => void;
   // Diagnostics subtab needs the same online/restart wiring the rest of
@@ -95,6 +97,8 @@ export function SettingsTab({
   apiToken,
   sidebarMode,
   onSidebarModeChange,
+  sidebarKeepAllOpen,
+  onSidebarKeepAllOpenChange,
   uiScale,
   onUiScaleChange,
   backendOnline,
@@ -166,6 +170,20 @@ export function SettingsTab({
             {t("settingsTab.appearance.sidebarTabsHelp", {
               defaultValue:
                 "keeps the sidebar compact: groups behave like single buttons that jump to their last-used tab, with a sub-tab bar above the content.",
+            })}
+          </p>
+          <label className="check-row">
+            <input
+              type="checkbox"
+              checked={sidebarKeepAllOpen}
+              onChange={(event) => onSidebarKeepAllOpenChange(event.target.checked)}
+            />
+            {t("settingsTab.appearance.keepGroupsOpen", { defaultValue: "Keep all sidebar groups open" })}
+          </label>
+          <p className="muted-text">
+            {t("settingsTab.appearance.keepGroupsOpenHelp", {
+              defaultValue:
+                "Off by default: only the group you are working in stays open. Turn it on to keep every group expanded.",
             })}
           </p>
           <div

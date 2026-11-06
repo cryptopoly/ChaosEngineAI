@@ -46,6 +46,20 @@ describe("sidebarGroups", () => {
     }
   });
 
+  it("registers Music and Storyboard with their tabs and ready children", () => {
+    const music = sidebarGroups.find((g) => g.id === "music");
+    const story = sidebarGroups.find((g) => g.id === "storyboard");
+    expect(music?.defaultChild).toBe("music-models");
+    expect(music?.readyChild).toBe("music-studio");
+    expect(story?.defaultChild).toBe("story-projects");
+    expect(story?.readyChild).toBe("story-board");
+    for (const group of [music, story]) {
+      expect(tabs.find((t) => t.id === group?.readyChild)?.group).toBe(group?.id);
+    }
+    expect(tabs.filter((t) => t.group === "music").map((t) => t.id)).toEqual(["music-models", "music-studio", "music-library"]);
+    expect(tabs.filter((t) => t.group === "storyboard").map((t) => t.id)).toEqual(["story-projects", "story-board", "story-mixer"]);
+  });
+
   it("opens Images and Video on their Models page and Chat on the chat", () => {
     const defaults = Object.fromEntries(sidebarGroups.map((group) => [group.id, group.defaultChild]));
     expect(defaults.images).toBe("image-models");

@@ -36,7 +36,13 @@
     "voiceStudio": "Голосовая студия",
     "voiceModels": "Голосовые модели",
     "voiceLibrary": "Голосовая библиотека",
-    "chatModels": "Модели чата"
+    "chatModels": "Модели чата",
+    "musicModels": null,
+    "musicStudio": null,
+    "musicLibrary": null,
+    "storyProjects": null,
+    "storyBoard": null,
+    "storyMixer": null
   },
   "tabCaptions": {
     "dashboard": "Обзор системы",
@@ -67,7 +73,13 @@
     "voiceLibrary": "Ваши расшифровки и озвучки",
     "chatModels": "Поиск, загрузка и управление языковыми моделями",
     "imageModelsPage": "Поиск, загрузка и управление моделями изображений",
-    "videoModelsPage": "Поиск, загрузка и управление моделями видео"
+    "videoModelsPage": "Поиск, загрузка и управление моделями видео",
+    "musicModels": null,
+    "musicStudio": null,
+    "musicLibrary": null,
+    "storyProjects": null,
+    "storyBoard": null,
+    "storyMixer": null
   },
   "tabShortLabels": {
     "chat": "Чат",
@@ -92,7 +104,12 @@
     "voiceStudio": "Студия",
     "voiceModels": "Мои модели",
     "voiceLibrary": "Библиотека",
-    "models": "Модели"
+    "models": "Модели",
+    "musicStudio": null,
+    "musicLibrary": null,
+    "storyProjects": null,
+    "storyBoard": null,
+    "storyMixer": null
   },
   "tabGroups": {
     "chat": "Чат",
@@ -101,7 +118,9 @@
     "video": "Видео",
     "benchmarks": "Бенчмарки",
     "tools": "Инструменты",
-    "voice": "Голос"
+    "voice": "Голос",
+    "music": null,
+    "storyboard": null
   },
   "tabsCount": "{count, plural, one {# вкладка} few {# вкладки} many {# вкладок} other {# вкладки}}",
   "sidebar": {
@@ -109,7 +128,9 @@
     "backendOffline": "Офлайн",
     "noModelLoaded": "Модель не загружена",
     "groupTabsAriaLabel": "Вкладки {group}",
-    "primaryNavAriaLabel": "Основная"
+    "primaryNavAriaLabel": "Основная",
+    "sectionMake": null,
+    "sectionRun": null
   },
   "slashCommands": {
     "menuAriaLabel": "Слэш-команды"
@@ -830,7 +851,9 @@
       "sidebarCollapsibleHelp": "показывает все группы развёрнутыми с дочерними элементами в строку — один клик до каждого назначения.",
       "sidebarTabsHelp": "сохраняет боковую панель компактной: группы ведут себя как одиночные кнопки, переходящие на последнюю использованную вкладку, с панелью под-вкладок над содержимым.",
       "uiScaleAria": "Масштаб интерфейса",
-      "uiScaleHelp": "Масштаб интерфейса немедленно меняет плотность хрома приложения. Превью медиа сохраняют свои размеры по соотношению сторон."
+      "uiScaleHelp": "Масштаб интерфейса немедленно меняет плотность хрома приложения. Превью медиа сохраняют свои размеры по соотношению сторон.",
+      "keepGroupsOpen": null,
+      "keepGroupsOpenHelp": null
     },
     "dataDirectory": {
       "title": "Каталог данных",
@@ -1263,5 +1286,9 @@
     "finder": "Показать в Finder",
     "explorer": "Показать в Проводнике",
     "files": "Показать в «Файлах»"
+  },
+  "comingSoon": {
+    "music": null,
+    "storyboard": null
   }
 }

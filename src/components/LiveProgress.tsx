@@ -13,7 +13,7 @@ interface LiveProgressProps {
   subtitle?: string;
   phases: LiveProgressPhase[];
   startedAt: number;
-  accent?: "convert" | "benchmark" | "image";
+  accent?: "convert" | "benchmark" | "image" | "audio" | "storyboard";
   /**
    * Optional real-time progress snapshot from the backend tracker. When
    * present and ``active=true`` it overrides the time-based estimates: the

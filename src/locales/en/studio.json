@@ -915,5 +915,97 @@
     "resolution": "Resolution",
     "overLimit": "Above this model's size limit.",
     "current": "Current size: {width} x {height} ({megapixels} MP)"
+  },
+  "estimate": {
+    "time": "About {time}",
+    "timeUnknown": "Time: unknown until the first run",
+    "memory": "Peak {peak} of {total}",
+    "memoryUnknown": "Memory: not estimated",
+    "disk": "Writes {size}",
+    "diskUnknown": "Disk: not estimated",
+    "measured": "Measured",
+    "estimated": "Estimated",
+    "measuredTitle": "Timed on this machine for this model and preset.",
+    "estimatedTitle": "From the model card or a similar machine; not timed here yet.",
+    "queueRunning": "{what} is running, about {time} left. Yours starts after it.",
+    "queuePosition": "Waiting for another job to finish (position {position})",
+    "dangerAck": "Run anyway. I accept that the backend may crash.",
+    "duration": {
+      "seconds": "{n} s",
+      "minutes": "{n} min",
+      "minutesSeconds": "{m} min {s} s"
+    },
+    "size": {
+      "gb": "{n} GB",
+      "mb": "{n} MB"
+    }
+  },
+  "disclosure": {
+    "options": "Options",
+    "expert": "Expert",
+    "defaults": "Model defaults"
+  },
+  "preset": {
+    "custom": "Custom",
+    "customTitle": "A value was changed by hand. Pick a preset to go back."
+  },
+  "error": {
+    "technicalDetails": "Technical details",
+    "retry": "Retry"
+  },
+  "licence": {
+    "chip": {
+      "commercial": "{name} · commercial",
+      "limited": "{name} · limited commercial",
+      "noCommercial": "{name} · no commercial use",
+      "gated": "Gated"
+    },
+    "screen": {
+      "asks": "What this licence asks of you",
+      "gatedNote": "This model is gated: accept the terms on Hugging Face, then download here with your token (Settings > Hugging Face).",
+      "readFull": "Read the full licence",
+      "openHub": "Open on Hugging Face",
+      "notNow": "Not now",
+      "accepted": "I have accepted",
+      "ok": "OK"
+    },
+    "status": {
+      "needs": "Needs licence"
+    },
+    "action": {
+      "accept": "Accept licence"
+    }
+  },
+  "models": {
+    "makes": {
+      "songs": "Songs with vocals",
+      "instrumental": "Instrumental",
+      "sfx": "Sound effects",
+      "loops": "Loops"
+    },
+    "speed": {
+      "measured": "About {rate} s of audio per second on this machine",
+      "unknown": "Speed not measured yet"
+    }
+  },
+  "musicStudio": {
+    "result": {
+      "loop": "Loop",
+      "play": "Play {title}, {seconds} seconds",
+      "stop": "Stop"
+    },
+    "options": {
+      "reference": "Reference audio",
+      "referenceRights": "You are responsible for rights in audio you supply."
+    }
+  },
+  "audioPlayer": {
+    "timeOf": "{current} of {total}"
+  },
+  "inputAudio": {
+    "chooseFile": "Choose file",
+    "fromLibrary": "From library",
+    "remove": "Remove",
+    "pickFailed": "The file picker is not available here. Pick from the library instead."
   }
 }

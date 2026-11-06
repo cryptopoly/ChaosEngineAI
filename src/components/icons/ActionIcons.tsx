@@ -1,0 +1,77 @@
+/**
+ * Small monochrome action icons for the Music and Storyboard areas. Same
+ * contract as SidebarIcons: stroke is `currentColor`, no fill colours.
+ */
+import type { SVGProps } from "react";
+
+const baseProps: SVGProps<SVGSVGElement> = {
+  xmlns: "http://www.w3.org/2000/svg",
+  width: 16,
+  height: 16,
+  viewBox: "0 0 24 24",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: 1.9,
+  strokeLinecap: "round",
+  strokeLinejoin: "round",
+  "aria-hidden": true,
+};
+
+type IconProps = Omit<SVGProps<SVGSVGElement>, "children">;
+
+export function LockIcon(props: IconProps) {
+  return (
+    <svg {...baseProps} {...props}>
+      <rect x="4" y="11" width="16" height="10" rx="2" />
+      <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+    </svg>
+  );
+}
+
+export function RedoIcon(props: IconProps) {
+  return (
+    <svg {...baseProps} {...props}>
+      <polyline points="21 4 21 10 15 10" />
+      <path d="M20 14a8 8 0 1 1-2.3-6.4L21 10" />
+    </svg>
+  );
+}
+
+export function PlayIcon(props: IconProps) {
+  return (
+    <svg {...baseProps} {...props}>
+      <polygon points="7 4 20 12 7 20 7 4" />
+    </svg>
+  );
+}
+
+export function StopIcon(props: IconProps) {
+  return (
+    <svg {...baseProps} {...props}>
+      <rect x="6" y="6" width="12" height="12" rx="1.5" />
+    </svg>
+  );
+}
+
+export function LoopIcon(props: IconProps) {
+  return (
+    <svg {...baseProps} {...props}>
+      <polyline points="17 2 21 6 17 10" />
+      <path d="M3 11V9a3 3 0 0 1 3-3h15" />
+      <polyline points="7 22 3 18 7 14" />
+      <path d="M21 13v2a3 3 0 0 1-3 3H3" />
+    </svg>
+  );
+}
+
+/** Lowers one lane under another: a tall bar, then a short one. */
+export function DuckIcon(props: IconProps) {
+  return (
+    <svg {...baseProps} {...props}>
+      <line x1="5" y1="5" x2="5" y2="19" />
+      <line x1="10" y1="9" x2="10" y2="19" />
+      <line x1="15" y1="13" x2="15" y2="19" />
+      <line x1="20" y1="16" x2="20" y2="19" />
+    </svg>
+  );
+}

@@ -120,8 +120,10 @@ class RenderPlanTests(unittest.TestCase):
         self.assertAlmostEqual(plan["audio"][0]["start"], 97 / 24 - 0.5 + 1.0, places=3)
         self.assertEqual((plan["width"], plan["height"], plan["fps"]), (1280, 720, 24))
         meta = json.dumps(plan["metadata"])
-        self.assertTrue(plan["metadata"]["machineGenerated"])
-        self.assertEqual(plan["metadata"]["models"], ["LTX-2.3"])
+        # The assembler writes the MP4 comment from strings only; lists and booleans arrive as compact JSON.
+        self.assertTrue(all(isinstance(k, str) and isinstance(v, str) for k, v in plan["metadata"].items()))
+        self.assertEqual(plan["metadata"]["machineGenerated"], "true")
+        self.assertEqual(json.loads(plan["metadata"]["models"]), ["LTX-2.3"])
         for leak in ("SECRET PROMPT", "My Film", str(self.folder)):
             self.assertNotIn(leak, meta)
         self.assertIsNone(plan["end_card"])

@@ -176,7 +176,7 @@ def _apply_side(data: dict[str, Any], side: dict[str, Any]) -> None:
                 known = {t["id"] for t in item.get("takes", [])}
                 item["takes"] += [t for t in current[item_id].get("takes", []) if t["id"] not in known]
                 ids = {t["id"] for t in item["takes"]}
-                if item.get("activeTake") not in ids:
+                if item.get("activeTake") is not None and item["activeTake"] not in ids:
                     item["activeTake"] = current[item_id].get("activeTake")
                 item["status"] = current[item_id].get("status", item.get("status"))
             current[item_id] = item

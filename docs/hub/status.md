@@ -18,7 +18,9 @@ Newest dated update first. Each update has the same sections: Done, Open for Cla
 
 **Found:** the release workflow installs a fixed package list (`.github/workflows/release.yml` lines 241 to 255) that does **not** include imageio-ffmpeg, so a packaged app has no pinned ffmpeg unless something installs it. Adding it changes what ships (a GPL binary of about 47 MB on macOS arm64; other platforms not measured), so I did not change the workflow; it needs your decision with D-35.
 
-**Open for Claude:** `App.tsx` extract (2,269 lines, one function) and the shared registry scaffold (P-1 b and c).
+- **`App.tsx` extract:** 2,269 lines down to 930. Each tab's render block moved into `src/app/*Tabs.tsx` views taking one `ctx` object; load / launch actions, modals, banners and the header moved to their own files. Every hook stays in `App` in the original order; no tab id, prop contract or string changed. Built by a Sonnet agent in a worktree, then re-applied by me onto this branch (the agent started from an older base without the media-input work). Checked: `tsc`, 791 vitest, `i18n:validate`, `npm run build`, and a click-through of the real UI (Image Studio reference picker and size rows, Video Studio start / end pickers and resolutions, dashboard, server, settings, logs). About 60 lines of already-unused code stay in `App.tsx` on purpose (deleting would reach about 870).
+
+**Open for Claude:** the shared registry scaffold (P-1 c: tab, group, kind and tool registries, catalog licence field) and the rest of the plan once the open decisions are answered.
 
 ## Update 2026-11-06, the home studio plan
 

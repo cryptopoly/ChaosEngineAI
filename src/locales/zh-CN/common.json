@@ -36,7 +36,13 @@
     "voiceStudio": "语音工作室",
     "voiceModels": "语音模型",
     "voiceLibrary": "语音资料库",
-    "chatModels": "对话模型"
+    "chatModels": "对话模型",
+    "musicModels": null,
+    "musicStudio": null,
+    "musicLibrary": null,
+    "storyProjects": null,
+    "storyBoard": null,
+    "storyMixer": null
   },
   "tabCaptions": {
     "dashboard": "系统概览",
@@ -67,7 +73,13 @@
     "voiceLibrary": "你创建的转写和语音",
     "chatModels": "查找、下载和管理语言模型",
     "imageModelsPage": "查找、下载和管理图像模型",
-    "videoModelsPage": "查找、下载和管理视频模型"
+    "videoModelsPage": "查找、下载和管理视频模型",
+    "musicModels": null,
+    "musicStudio": null,
+    "musicLibrary": null,
+    "storyProjects": null,
+    "storyBoard": null,
+    "storyMixer": null
   },
   "tabShortLabels": {
     "chat": "对话",
@@ -92,7 +104,12 @@
     "voiceStudio": "工作室",
     "voiceModels": "我的模型",
     "voiceLibrary": "资料库",
-    "models": "模型"
+    "models": "模型",
+    "musicStudio": null,
+    "musicLibrary": null,
+    "storyProjects": null,
+    "storyBoard": null,
+    "storyMixer": null
   },
   "tabGroups": {
     "chat": "对话",
@@ -101,7 +118,9 @@
     "video": "视频",
     "benchmarks": "基准测试",
     "tools": "工具",
-    "voice": "语音"
+    "voice": "语音",
+    "music": null,
+    "storyboard": null
   },
   "tabsCount": "{count, plural, other {# 个标签页}}",
   "sidebar": {
@@ -109,7 +128,9 @@
     "backendOffline": "离线",
     "noModelLoaded": "未加载模型",
     "groupTabsAriaLabel": "{group} 标签页",
-    "primaryNavAriaLabel": "主导航"
+    "primaryNavAriaLabel": "主导航",
+    "sectionMake": null,
+    "sectionRun": null
   },
   "slashCommands": {
     "menuAriaLabel": "斜杠命令"
@@ -830,7 +851,9 @@
       "sidebarCollapsibleHelp": "显示所有分组并展开，子项内联列出 — 每个目标一次点击。",
       "sidebarTabsHelp": "保持侧边栏紧凑：分组的行为类似单个按钮，跳转到上次使用的标签页，并在内容上方显示子标签页栏。",
       "uiScaleAria": "界面缩放",
-      "uiScaleHelp": "界面缩放会立即更改应用界面的密度。媒体预览保持各自的纵横比尺寸。"
+      "uiScaleHelp": "界面缩放会立即更改应用界面的密度。媒体预览保持各自的纵横比尺寸。",
+      "keepGroupsOpen": null,
+      "keepGroupsOpenHelp": null
     },
     "dataDirectory": {
       "title": "数据目录",
@@ -1263,5 +1286,9 @@
     "finder": "在 Finder 中显示",
     "explorer": "在资源管理器中显示",
     "files": "在“文件”中显示"
+  },
+  "comingSoon": {
+    "music": null,
+    "storyboard": null
   }
 }

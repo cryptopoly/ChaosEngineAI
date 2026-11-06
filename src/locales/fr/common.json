@@ -36,7 +36,13 @@
     "voiceStudio": "Studio vocal",
     "voiceModels": "Modèles vocaux",
     "voiceLibrary": "Bibliothèque vocale",
-    "chatModels": "Modèles de discussion"
+    "chatModels": "Modèles de discussion",
+    "musicModels": null,
+    "musicStudio": null,
+    "musicLibrary": null,
+    "storyProjects": null,
+    "storyBoard": null,
+    "storyMixer": null
   },
   "tabCaptions": {
     "dashboard": "Vue d'ensemble du système",
@@ -67,7 +73,13 @@
     "voiceLibrary": "Vos transcriptions et synthèses vocales",
     "chatModels": "Trouver, télécharger et gérer des modèles de langage",
     "imageModelsPage": "Trouver, télécharger et gérer des modèles d'images",
-    "videoModelsPage": "Trouver, télécharger et gérer des modèles vidéo"
+    "videoModelsPage": "Trouver, télécharger et gérer des modèles vidéo",
+    "musicModels": null,
+    "musicStudio": null,
+    "musicLibrary": null,
+    "storyProjects": null,
+    "storyBoard": null,
+    "storyMixer": null
   },
   "tabShortLabels": {
     "chat": "Discussion",
@@ -92,7 +104,12 @@
     "voiceStudio": "Studio",
     "voiceModels": "Mes modèles",
     "voiceLibrary": "Bibliothèque",
-    "models": "Modèles"
+    "models": "Modèles",
+    "musicStudio": null,
+    "musicLibrary": null,
+    "storyProjects": null,
+    "storyBoard": null,
+    "storyMixer": null
   },
   "tabGroups": {
     "chat": "Discussion",
@@ -101,7 +118,9 @@
     "video": "Vidéo",
     "benchmarks": "Benchmarks",
     "tools": "Outils",
-    "voice": "Voix"
+    "voice": "Voix",
+    "music": null,
+    "storyboard": null
   },
   "tabsCount": "{count, plural, one {# onglet} other {# onglets}}",
   "sidebar": {
@@ -109,7 +128,9 @@
     "backendOffline": "Hors ligne",
     "noModelLoaded": "Aucun modèle chargé",
     "groupTabsAriaLabel": "Onglets {group}",
-    "primaryNavAriaLabel": "Principale"
+    "primaryNavAriaLabel": "Principale",
+    "sectionMake": null,
+    "sectionRun": null
   },
   "slashCommands": {
     "menuAriaLabel": "Commandes barre oblique"
@@ -830,7 +851,9 @@
       "sidebarCollapsibleHelp": "affiche tous les groupes dépliés avec les enfants listés en ligne — un clic par destination.",
       "sidebarTabsHelp": "garde la barre latérale compacte : les groupes se comportent comme des boutons uniques qui basculent sur leur dernier onglet utilisé, avec une barre de sous-onglets au-dessus du contenu.",
       "uiScaleAria": "Échelle de l'interface",
-      "uiScaleHelp": "L'échelle de l'interface change la densité du chrome de l'app immédiatement. Les aperçus média conservent leur propre dimensionnement par ratio."
+      "uiScaleHelp": "L'échelle de l'interface change la densité du chrome de l'app immédiatement. Les aperçus média conservent leur propre dimensionnement par ratio.",
+      "keepGroupsOpen": null,
+      "keepGroupsOpenHelp": null
     },
     "dataDirectory": {
       "title": "Répertoire de données",
@@ -1263,5 +1286,9 @@
     "finder": "Afficher dans le Finder",
     "explorer": "Afficher dans l'Explorateur",
     "files": "Afficher dans Fichiers"
+  },
+  "comingSoon": {
+    "music": null,
+    "storyboard": null
   }
 }

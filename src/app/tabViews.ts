@@ -5,6 +5,9 @@ import { ChatModelsView, ConversionView } from "./ModelsTabs";
 import { ImageModelsView, ImageStudioView, ImageGalleryView } from "./ImageTabs";
 import { VideoModelsView, VideoStudioView, VideoGalleryView } from "./VideoTabs";
 import { VoiceStudioView, VoiceModelsView, VoiceLibraryView } from "./VoiceTabs";
+import { MusicModelsView, MusicStudioView, MusicLibraryView } from "./MusicTabs";
+import { StoryProjectsView, StoryBoardView, StoryMixerView } from "./StoryboardTabs";
+import { isHomeStudioTab, HOME_STUDIO_ENABLED } from "../constants/features";
 import { ChatView, CompareChatView, HtmlChallengeView } from "./ChatTabs";
 import { BenchmarkRunView, BenchmarkHistoryView } from "./BenchmarkTabs";
 import {
@@ -31,6 +34,12 @@ const TAB_VIEWS: Partial<Record<TabId, TabView>> = {
   "voice-studio": VoiceStudioView,
   "voice-models": VoiceModelsView,
   "voice-gallery": VoiceLibraryView,
+  "music-models": MusicModelsView,
+  "music-studio": MusicStudioView,
+  "music-library": MusicLibraryView,
+  "story-projects": StoryProjectsView,
+  "story-board": StoryBoardView,
+  "story-mixer": StoryMixerView,
   conversion: ConversionView,
   chat: ChatView,
   "chat-compare": CompareChatView,
@@ -45,6 +54,8 @@ const TAB_VIEWS: Partial<Record<TabId, TabView>> = {
   settings: SettingsView,
 };
 
-export function tabViewFor(tab: TabId): TabView {
+/** Music and Storyboard ids render the dashboard while the feature flag is off. */
+export function tabViewFor(tab: TabId, homeStudioEnabled: boolean = HOME_STUDIO_ENABLED): TabView {
+  if (!homeStudioEnabled && isHomeStudioTab(tab)) return DashboardView;
   return TAB_VIEWS[tab] ?? DashboardView;
 }

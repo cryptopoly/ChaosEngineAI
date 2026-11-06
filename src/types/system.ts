@@ -13,6 +13,12 @@ export type TabId =
   | "voice-studio"
   | "voice-models"
   | "voice-gallery"
+  | "music-models"
+  | "music-studio"
+  | "music-library"
+  | "story-projects"
+  | "story-board"
+  | "story-mixer"
   | "conversion"
   | "chat"
   | "chat-compare"
@@ -32,6 +38,8 @@ export type SidebarGroupId =
   | "images"
   | "video"
   | "voice"
+  | "music"
+  | "storyboard"
   | "benchmarks"
   | "tools";
 

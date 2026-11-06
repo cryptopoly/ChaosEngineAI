@@ -151,6 +151,8 @@ export function SettingsView({ ctx }: { ctx: AppTabContext }) {
     apiToken={apiToken}
     sidebarMode={sidebarPrefs.mode}
     onSidebarModeChange={sidebarPrefs.setMode}
+    sidebarKeepAllOpen={sidebarPrefs.keepAllOpen}
+    onSidebarKeepAllOpenChange={sidebarPrefs.setKeepAllOpen}
     uiScale={uiScalePrefs.uiScale}
     onUiScaleChange={uiScalePrefs.setUiScale}
     backendOnline={backendOnline}

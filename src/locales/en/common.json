@@ -36,7 +36,13 @@
     "voiceStudio": "Voice Studio",
     "voiceModels": "Voice Models",
     "voiceLibrary": "Voice Library",
-    "chatModels": "Chat Models"
+    "chatModels": "Chat Models",
+    "musicModels": "Music Models",
+    "musicStudio": "Music Studio",
+    "musicLibrary": "Music Library",
+    "storyProjects": "Projects",
+    "storyBoard": "Board",
+    "storyMixer": "Mixer"
   },
   "tabCaptions": {
     "dashboard": "System overview",
@@ -67,7 +73,13 @@
     "voiceLibrary": "Transcripts and speech you made",
     "chatModels": "Find, download and manage language models",
     "imageModelsPage": "Find, download and manage image models",
-    "videoModelsPage": "Find, download and manage video models"
+    "videoModelsPage": "Find, download and manage video models",
+    "musicModels": "Find, download and manage music and sound models",
+    "musicStudio": "Make tracks and sound effects",
+    "musicLibrary": "Tracks and sounds you made",
+    "storyProjects": "Your films, one folder each",
+    "storyBoard": "Shots, takes and prompts",
+    "storyMixer": "Picture, sound and export"
   },
   "tabShortLabels": {
     "chat": "Chat",
@@ -92,7 +104,12 @@
     "voiceStudio": "Studio",
     "voiceModels": "My Models",
     "voiceLibrary": "Library",
-    "models": "Models"
+    "models": "Models",
+    "musicStudio": "Studio",
+    "musicLibrary": "Library",
+    "storyProjects": "Projects",
+    "storyBoard": "Board",
+    "storyMixer": "Mixer"
   },
   "tabGroups": {
     "chat": "Chat",
@@ -101,7 +118,9 @@
     "video": "Video",
     "benchmarks": "Benchmarks",
     "tools": "Tools",
-    "voice": "Voice"
+    "voice": "Voice",
+    "music": "Music",
+    "storyboard": "Storyboard"
   },
   "tabsCount": "{count, plural, one {# tab} other {# tabs}}",
   "sidebar": {
@@ -109,7 +128,9 @@
     "backendOffline": "Offline",
     "noModelLoaded": "No model loaded",
     "groupTabsAriaLabel": "{group} tabs",
-    "primaryNavAriaLabel": "Primary"
+    "primaryNavAriaLabel": "Primary",
+    "sectionMake": "Make",
+    "sectionRun": "Run"
   },
   "slashCommands": {
     "menuAriaLabel": "Slash commands"
@@ -830,7 +851,9 @@
       "sidebarCollapsibleHelp": "shows all groups expanded with children listed inline — one click per destination.",
       "sidebarTabsHelp": "keeps the sidebar compact: groups behave like single buttons that jump to their last-used tab, with a sub-tab bar above the content.",
       "uiScaleAria": "UI scale",
-      "uiScaleHelp": "UI scale changes the app chrome density immediately. Media previews keep their own aspect-ratio sizing."
+      "uiScaleHelp": "UI scale changes the app chrome density immediately. Media previews keep their own aspect-ratio sizing.",
+      "keepGroupsOpen": "Keep all sidebar groups open",
+      "keepGroupsOpenHelp": "Off by default: only the group you are working in stays open. Turn it on to keep every group expanded."
     },
     "dataDirectory": {
       "title": "Data Directory",
@@ -1263,5 +1286,9 @@
     "finder": "Show in Finder",
     "explorer": "Show in Explorer",
     "files": "Show in Files"
+  },
+  "comingSoon": {
+    "music": "Music is coming soon.",
+    "storyboard": "Storyboard is coming soon."
   }
 }

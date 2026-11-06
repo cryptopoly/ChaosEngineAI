@@ -226,6 +226,16 @@ strong {
   color: var(--accent);
 }
 
+.nav-section-label {
+  padding: 10px 12px 2px;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  opacity: 0.8;
+  user-select: none;
+}
+
 .nav-group {
   display: flex;
   flex-direction: column;

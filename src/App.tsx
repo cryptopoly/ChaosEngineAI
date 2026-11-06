@@ -854,6 +854,7 @@ export default function App() {
         loadedModelName={workspace.runtime.loadedModel?.name ?? null}
         mode={sidebarPrefs.mode}
         collapsedGroups={sidebarPrefs.collapsedGroups}
+        keepAllOpen={sidebarPrefs.keepAllOpen}
         onToggleGroupCollapsed={sidebarPrefs.toggleGroupCollapsed}
         lastChildByGroup={sidebarPrefs.lastChildByGroup}
         onRememberLastChild={sidebarPrefs.rememberLastChild}

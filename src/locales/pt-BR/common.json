@@ -36,7 +36,13 @@
     "voiceStudio": "Estúdio de voz",
     "voiceModels": "Modelos de voz",
     "voiceLibrary": "Biblioteca de voz",
-    "chatModels": "Modelos de chat"
+    "chatModels": "Modelos de chat",
+    "musicModels": null,
+    "musicStudio": null,
+    "musicLibrary": null,
+    "storyProjects": null,
+    "storyBoard": null,
+    "storyMixer": null
   },
   "tabCaptions": {
     "dashboard": "Visão geral do sistema",
@@ -67,7 +73,13 @@
     "voiceLibrary": "Suas transcrições e falas geradas",
     "chatModels": "Encontre, baixe e gerencie modelos de linguagem",
     "imageModelsPage": "Encontre, baixe e gerencie modelos de imagem",
-    "videoModelsPage": "Encontre, baixe e gerencie modelos de vídeo"
+    "videoModelsPage": "Encontre, baixe e gerencie modelos de vídeo",
+    "musicModels": null,
+    "musicStudio": null,
+    "musicLibrary": null,
+    "storyProjects": null,
+    "storyBoard": null,
+    "storyMixer": null
   },
   "tabShortLabels": {
     "chat": "Chat",
@@ -92,7 +104,12 @@
     "voiceStudio": "Estúdio",
     "voiceModels": "Meus modelos",
     "voiceLibrary": "Biblioteca",
-    "models": "Modelos"
+    "models": "Modelos",
+    "musicStudio": null,
+    "musicLibrary": null,
+    "storyProjects": null,
+    "storyBoard": null,
+    "storyMixer": null
   },
   "tabGroups": {
     "chat": "Chat",
@@ -101,7 +118,9 @@
     "video": "Vídeo",
     "benchmarks": "Benchmarks",
     "tools": "Ferramentas",
-    "voice": "Voz"
+    "voice": "Voz",
+    "music": null,
+    "storyboard": null
   },
   "tabsCount": "{count, plural, one {# aba} other {# abas}}",
   "sidebar": {
@@ -109,7 +128,9 @@
     "backendOffline": "Offline",
     "noModelLoaded": "Nenhum modelo carregado",
     "groupTabsAriaLabel": "Abas {group}",
-    "primaryNavAriaLabel": "Principal"
+    "primaryNavAriaLabel": "Principal",
+    "sectionMake": null,
+    "sectionRun": null
   },
   "slashCommands": {
     "menuAriaLabel": "Comandos de barra"
@@ -830,7 +851,9 @@
       "sidebarCollapsibleHelp": "mostra todos os grupos expandidos com os filhos listados inline — um clique por destino.",
       "sidebarTabsHelp": "mantém a barra lateral compacta: grupos se comportam como botões únicos que vão para a última aba usada, com uma barra de subabas acima do conteúdo.",
       "uiScaleAria": "Escala da interface",
-      "uiScaleHelp": "A escala da interface muda a densidade do cromo do app imediatamente. As pré-visualizações de mídia mantêm seu próprio dimensionamento por proporção."
+      "uiScaleHelp": "A escala da interface muda a densidade do cromo do app imediatamente. As pré-visualizações de mídia mantêm seu próprio dimensionamento por proporção.",
+      "keepGroupsOpen": null,
+      "keepGroupsOpenHelp": null
     },
     "dataDirectory": {
       "title": "Diretório de dados",
@@ -1263,5 +1286,9 @@
     "finder": "Mostrar no Finder",
     "explorer": "Mostrar no Explorador de Arquivos",
     "files": "Mostrar em Arquivos"
+  },
+  "comingSoon": {
+    "music": null,
+    "storyboard": null
   }
 }

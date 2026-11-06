@@ -915,5 +915,97 @@
     "resolution": null,
     "overLimit": null,
     "current": null
+  },
+  "estimate": {
+    "time": null,
+    "timeUnknown": null,
+    "memory": null,
+    "memoryUnknown": null,
+    "disk": null,
+    "diskUnknown": null,
+    "measured": null,
+    "estimated": null,
+    "measuredTitle": null,
+    "estimatedTitle": null,
+    "queueRunning": null,
+    "queuePosition": null,
+    "dangerAck": null,
+    "duration": {
+      "seconds": null,
+      "minutes": null,
+      "minutesSeconds": null
+    },
+    "size": {
+      "gb": null,
+      "mb": null
+    }
+  },
+  "disclosure": {
+    "options": null,
+    "expert": null,
+    "defaults": null
+  },
+  "preset": {
+    "custom": null,
+    "customTitle": null
+  },
+  "error": {
+    "technicalDetails": null,
+    "retry": null
+  },
+  "licence": {
+    "chip": {
+      "commercial": null,
+      "limited": null,
+      "noCommercial": null,
+      "gated": null
+    },
+    "screen": {
+      "asks": null,
+      "gatedNote": null,
+      "readFull": null,
+      "openHub": null,
+      "notNow": null,
+      "accepted": null,
+      "ok": null
+    },
+    "status": {
+      "needs": null
+    },
+    "action": {
+      "accept": null
+    }
+  },
+  "models": {
+    "makes": {
+      "songs": null,
+      "instrumental": null,
+      "sfx": null,
+      "loops": null
+    },
+    "speed": {
+      "measured": null,
+      "unknown": null
+    }
+  },
+  "musicStudio": {
+    "result": {
+      "loop": null,
+      "play": null,
+      "stop": null
+    },
+    "options": {
+      "reference": null,
+      "referenceRights": null
+    }
+  },
+  "audioPlayer": {
+    "timeOf": null
+  },
+  "inputAudio": {
+    "chooseFile": null,
+    "fromLibrary": null,
+    "remove": null,
+    "pickFailed": null
   }
 }

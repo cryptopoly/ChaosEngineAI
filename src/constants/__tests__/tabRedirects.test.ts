@@ -78,6 +78,14 @@ describe("persisted sidebar ids", () => {
     expect(normalizeStoredTabId("image-discover")).toBe("image-models");
     expect(normalizeStoredTabId("my-models")).toBe("chat-models");
     expect(normalizeStoredTabId("voice-models")).toBe("voice-models");
+    // Music and Storyboard ids are real tabs: they are neither legacy nor redirected.
+    expect(normalizeStoredTabId("music-studio")).toBe("music-studio");
+    expect(isLegacyTabId("story-board")).toBe(false);
+    expect(resolveTabRequest("story-mixer")).toEqual({ tab: "story-mixer" });
+    expect(migrateLastChildByGroup({ music: "music-library", storyboard: "story-board" })).toEqual({
+      music: "music-library",
+      storyboard: "story-board",
+    });
     expect(normalizeStoredTabId(42)).toBeNull();
     expect(normalizeStoredTabId("")).toBeNull();
   });

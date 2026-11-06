@@ -36,7 +36,13 @@
     "voiceStudio": "Sprachstudio",
     "voiceModels": "Sprachmodelle",
     "voiceLibrary": "Sprachbibliothek",
-    "chatModels": "Chat-Modelle"
+    "chatModels": "Chat-Modelle",
+    "musicModels": null,
+    "musicStudio": null,
+    "musicLibrary": null,
+    "storyProjects": null,
+    "storyBoard": null,
+    "storyMixer": null
   },
   "tabCaptions": {
     "dashboard": "Systemübersicht",
@@ -67,7 +73,13 @@
     "voiceLibrary": "Deine Transkripte und Sprachausgaben",
     "chatModels": "Sprachmodelle finden, herunterladen und verwalten",
     "imageModelsPage": "Bildmodelle finden, herunterladen und verwalten",
-    "videoModelsPage": "Videomodelle finden, herunterladen und verwalten"
+    "videoModelsPage": "Videomodelle finden, herunterladen und verwalten",
+    "musicModels": null,
+    "musicStudio": null,
+    "musicLibrary": null,
+    "storyProjects": null,
+    "storyBoard": null,
+    "storyMixer": null
   },
   "tabShortLabels": {
     "chat": "Chat",
@@ -92,7 +104,12 @@
     "voiceStudio": "Studio",
     "voiceModels": "Meine Modelle",
     "voiceLibrary": "Bibliothek",
-    "models": "Modelle"
+    "models": "Modelle",
+    "musicStudio": null,
+    "musicLibrary": null,
+    "storyProjects": null,
+    "storyBoard": null,
+    "storyMixer": null
   },
   "tabGroups": {
     "chat": "Chat",
@@ -101,7 +118,9 @@
     "video": "Video",
     "benchmarks": "Benchmarks",
     "tools": "Werkzeuge",
-    "voice": "Sprache"
+    "voice": "Sprache",
+    "music": null,
+    "storyboard": null
   },
   "tabsCount": "{count, plural, one {# Tab} other {# Tabs}}",
   "sidebar": {
@@ -109,7 +128,9 @@
     "backendOffline": "Offline",
     "noModelLoaded": "Kein Modell geladen",
     "groupTabsAriaLabel": "{group}-Tabs",
-    "primaryNavAriaLabel": "Primär"
+    "primaryNavAriaLabel": "Primär",
+    "sectionMake": null,
+    "sectionRun": null
   },
   "slashCommands": {
     "menuAriaLabel": "Slash-Befehle"
@@ -830,7 +851,9 @@
       "sidebarCollapsibleHelp": "zeigt alle Gruppen aufgeklappt mit den enthaltenen Tabs inline — ein Klick pro Ziel.",
       "sidebarTabsHelp": "hält die Seitenleiste kompakt: Gruppen verhalten sich wie einzelne Schaltflächen, die zum zuletzt verwendeten Tab springen, mit einer Unter-Tab-Leiste über dem Inhalt.",
       "uiScaleAria": "UI-Skalierung",
-      "uiScaleHelp": "Die UI-Skalierung ändert die Dichte der App-Chrome sofort. Medien-Vorschauen behalten ihre eigene Seitenverhältnis-Anpassung."
+      "uiScaleHelp": "Die UI-Skalierung ändert die Dichte der App-Chrome sofort. Medien-Vorschauen behalten ihre eigene Seitenverhältnis-Anpassung.",
+      "keepGroupsOpen": null,
+      "keepGroupsOpenHelp": null
     },
     "dataDirectory": {
       "title": "Datenverzeichnis",
@@ -1263,5 +1286,9 @@
     "finder": "Im Finder anzeigen",
     "explorer": "Im Explorer anzeigen",
     "files": "In Dateien anzeigen"
+  },
+  "comingSoon": {
+    "music": null,
+    "storyboard": null
   }
 }

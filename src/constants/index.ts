@@ -1,5 +1,6 @@
 export { tabs } from "./tabs";
 export type { TabConfig } from "./tabs";
+export { HOME_STUDIO_ENABLED, HOME_STUDIO_GROUPS, HOME_STUDIO_TABS, isHomeStudioTab } from "./features";
 export { sidebarGroups } from "./sidebarGroups";
 export {
   LEGACY_TAB_REDIRECTS,

@@ -36,7 +36,13 @@
     "voiceStudio": "語音工作室",
     "voiceModels": "語音模型",
     "voiceLibrary": "語音資料庫",
-    "chatModels": "對話模型"
+    "chatModels": "對話模型",
+    "musicModels": null,
+    "musicStudio": null,
+    "musicLibrary": null,
+    "storyProjects": null,
+    "storyBoard": null,
+    "storyMixer": null
   },
   "tabCaptions": {
     "dashboard": "系統概覽",
@@ -67,7 +73,13 @@
     "voiceLibrary": "你建立的轉寫與語音",
     "chatModels": "尋找、下載並管理語言模型",
     "imageModelsPage": "尋找、下載並管理影像模型",
-    "videoModelsPage": "尋找、下載並管理影片模型"
+    "videoModelsPage": "尋找、下載並管理影片模型",
+    "musicModels": null,
+    "musicStudio": null,
+    "musicLibrary": null,
+    "storyProjects": null,
+    "storyBoard": null,
+    "storyMixer": null
   },
   "tabShortLabels": {
     "chat": "對話",
@@ -92,7 +104,12 @@
     "voiceStudio": "工作室",
     "voiceModels": "我的模型",
     "voiceLibrary": "資料庫",
-    "models": "模型"
+    "models": "模型",
+    "musicStudio": null,
+    "musicLibrary": null,
+    "storyProjects": null,
+    "storyBoard": null,
+    "storyMixer": null
   },
   "tabGroups": {
     "chat": "對話",
@@ -101,7 +118,9 @@
     "video": "影片",
     "benchmarks": "基準測試",
     "tools": "工具",
-    "voice": "語音"
+    "voice": "語音",
+    "music": null,
+    "storyboard": null
   },
   "tabsCount": "{count, plural, other {# 個分頁}}",
   "sidebar": {
@@ -109,7 +128,9 @@
     "backendOffline": "離線",
     "noModelLoaded": "未載入模型",
     "groupTabsAriaLabel": "{group} 分頁",
-    "primaryNavAriaLabel": "主導覽"
+    "primaryNavAriaLabel": "主導覽",
+    "sectionMake": null,
+    "sectionRun": null
   },
   "slashCommands": {
     "menuAriaLabel": "斜線命令"
@@ -830,7 +851,9 @@
       "sidebarCollapsibleHelp": "所有群組展開顯示,子項目以內嵌方式列出 — 每個目的地一鍵直達。",
       "sidebarTabsHelp": "保持側邊欄精簡:群組像單一按鈕一樣運作,點擊跳至上次使用的分頁,內容上方有子分頁列。",
       "uiScaleAria": "UI 縮放",
-      "uiScaleHelp": "UI 縮放會立即改變應用程式介面的密度。媒體預覽會保留自身的長寬比尺寸。"
+      "uiScaleHelp": "UI 縮放會立即改變應用程式介面的密度。媒體預覽會保留自身的長寬比尺寸。",
+      "keepGroupsOpen": null,
+      "keepGroupsOpenHelp": null
     },
     "dataDirectory": {
       "title": "資料目錄",
@@ -1263,5 +1286,9 @@
     "finder": "在 Finder 中顯示",
     "explorer": "在檔案總管中顯示",
     "files": "在「檔案」中顯示"
+  },
+  "comingSoon": {
+    "music": null,
+    "storyboard": null
   }
 }

@@ -261,7 +261,7 @@ Critical path: P-1, then P3, then P4, then the definition-of-done run. Music (P0
 | D-31 | Project format | **Decided.** Portable folder: `project.json` with `schemaVersion` and `revision`, media copied in, no database; plus a single-file `.chaosfilm` bundle for sharing |
 | D-32 | Release and branch order | Merge agent bridge and media input as v0.9.10 first (owner's call, on hold); Music and Storyboard as v0.10.0 |
 | D-33 | Storyboard before music | Yes: P3 runs beside the music spike, not after music |
-| D-34 | AI labelling | Machine-readable marker in exported MP4 and audio tags, optional visible end card; ask about an audio watermark |
+| D-34 | AI labelling | **Decided.** Metadata tag on by default with a Settings switch for private use; cloned-voice output always tagged; optional visible end card; no hidden watermark yet. Voluntary EU-style compliance (owner is UK-based); a legal check of Art. 50 timing and scope is still open |
 | D-35 | ffmpeg licence | Add a GPL notice and source offer now, or move to an LGPL build; owner to choose |
 
 ## 10. Definition of done for the first "home studio" release

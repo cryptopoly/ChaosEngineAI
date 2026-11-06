@@ -14,7 +14,7 @@ relative links only, no scripts or fonts from the web.
 Optional docs/hub/hub.json:
   {"project_name": "...", "tagline": "...", "nav_order": ["status", "decisions"],
    "hide_folders": ["drafts"], "accent": "#2f6f8f", "font": "fonts/MyFont.woff2"}
-Optional front matter per page: title, order, status, summary, example.
+Optional front matter per page: title, order, status, summary, example, width ("wide" for wide tables).
 `example: true` marks template content that has not been replaced yet; the build errors until it is removed.
 Errors: missing link targets, missing images, links that leave the hub folder.
 Warnings: everything else (unknown nav_order entries, web iframes).
@@ -35,7 +35,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
-STATUS_WORDS = {"todo", "in progress", "done", "blocked", "open", "decided", "draft", "dropped", "accepted", "proposed"}
+STATUS_WORDS = {"todo", "in progress", "done", "blocked", "open", "decided", "draft", "dropped", "accepted", "proposed", "banked"}
 INDEX_NAMES = {"readme", "index"}
 CSS_PATH = "_hub/hub.css"
 
@@ -271,10 +271,15 @@ def render_table(rows: list[str], ctx: Ctx) -> str:
 
     out = []
     if status_col >= 0:
-        seen = sorted({status_of(c) for c in rows_cells if status_of(c)})
-        buttons = ['<button type="button" class="on" data-filter="">all</button>']
-        buttons += [f'<button type="button" data-filter="{html.escape(v)}">{html.escape(v)}</button>' for v in seen]
-        out.append(f'<div class="tablefilter" role="group" aria-label="Filter by status">{"".join(buttons)}</div>')
+        counts: dict[str, int] = {}
+        for c in rows_cells:
+            if status_of(c):
+                counts[status_of(c)] = counts.get(status_of(c), 0) + 1
+        buttons = [f'<button type="button" class="on" data-filter="">all <b>{len(rows_cells)}</b></button>']
+        buttons += [f'<button type="button" data-filter="{html.escape(v)}">{html.escape(v)} <b>{n}</b></button>'
+                    for v, n in sorted(counts.items())]
+        out.append(f'<div class="tablefilter" role="group" aria-label="Filter by status">{"".join(buttons)}'
+                   '<input type="search" placeholder="Search this table" aria-label="Search this table"></div>')
     out += ['<div class="tablewrap"><table>', "<thead><tr>" + "".join(cell("th", c, n) for n, c in enumerate(head)) + "</tr></thead><tbody>"]
     for cells in rows_cells:
         attr = f' data-status="{html.escape(status_of(cells))}"' if status_col >= 0 else ""
@@ -519,7 +524,7 @@ def page_html(page: Page, body: str, ctx: dict) -> str:
 <div class="layout">
 <aside class="side"><a class="brand" href="{home}">{html.escape(ctx["project"])}</a>{tagline}
 <nav aria-label="Pages">{nav}</nav></aside>
-<main>
+<main{' class="wide"' if page.meta.get("width") == "wide" else ""}>
 {breadcrumbs(page, ctx["pages"], ctx["project"])}
 {status_html}
 <article>
@@ -529,7 +534,7 @@ def page_html(page: Page, body: str, ctx: dict) -> str:
 </main>
 </div>
 <script>addEventListener("beforeprint",function(){{document.querySelectorAll("main details").forEach(function(d){{d.open=true}})}})</script>
-<script>document.querySelectorAll(".tablefilter").forEach(function(bar){{var t=bar.nextElementSibling;bar.addEventListener("click",function(e){{var b=e.target.closest("button");if(!b)return;bar.querySelectorAll("button").forEach(function(x){{x.classList.toggle("on",x===b)}});var f=b.dataset.filter;t.querySelectorAll("tbody tr").forEach(function(r){{r.hidden=!!f&&r.dataset.status!==f}})}})}})</script>
+<script>document.querySelectorAll(".tablefilter").forEach(function(bar){{var t=bar.nextElementSibling,q=bar.querySelector("input"),f="";function apply(){{var s=q.value.trim().toLowerCase();t.querySelectorAll("tbody tr").forEach(function(r){{r.hidden=(!!f&&r.dataset.status!==f)||(!!s&&r.textContent.toLowerCase().indexOf(s)<0)}})}}bar.addEventListener("click",function(e){{var b=e.target.closest("button");if(!b)return;bar.querySelectorAll("button").forEach(function(x){{x.classList.toggle("on",x===b)}});f=b.dataset.filter;apply()}});q.addEventListener("input",apply)}})</script>
 </body>
 </html>
 """
@@ -694,6 +699,7 @@ a{color:var(--link);text-underline-offset:2px}
 .side li a:hover{background:color-mix(in srgb,var(--accent) 12%,transparent)}
 .side a.current{background:color-mix(in srgb,var(--accent) 18%,transparent);font-weight:600}
 main{padding:28px clamp(18px,4vw,56px) 40px;max-width:60rem;width:100%}
+main.wide{max-width:96rem}main.wide td{font-size:.92em}main.wide td:first-child,main.wide td:nth-last-child(2){white-space:nowrap}
 .crumbs{font-size:.82rem;color:var(--muted);margin-bottom:14px}
 .crumbs a{color:var(--muted)}.crumbs i{font-style:normal;opacity:.5;margin:0 3px}
 h1,h2,h3,h4{line-height:1.25;letter-spacing:-.01em;scroll-margin-top:16px}
@@ -712,7 +718,7 @@ li.task{list-style:none;margin-left:-1.3em}li.task input{margin-right:.5em;accen
 li.task.done{color:var(--muted)}
 img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--line)}
 hr{border:0;border-top:1px solid var(--line);margin:2em 0}
-.tablefilter{display:flex;flex-wrap:wrap;gap:6px;margin:1em 0 -.4em}.tablefilter button{font:inherit;font-size:.82em;padding:.3em .8em;border-radius:99px;border:1px solid var(--line);background:var(--card);color:inherit;cursor:pointer}.tablefilter button.on{border-color:var(--accent);color:var(--accent)}
+.tablefilter{display:flex;flex-wrap:wrap;gap:6px;margin:1em 0 -.4em}.tablefilter button{font:inherit;font-size:.82em;padding:.3em .8em;border-radius:99px;border:1px solid var(--line);background:var(--card);color:inherit;cursor:pointer}.tablefilter button.on{border-color:var(--accent);color:var(--accent)}.tablefilter b{opacity:.7;font-weight:600}.tablefilter input{font:inherit;font-size:.85em;padding:.3em .7em;border-radius:99px;border:1px solid var(--line);background:var(--card);color:inherit;margin-left:auto;min-width:14em}
 .tablewrap{overflow-x:auto;margin:1em 0;border:1px solid var(--line);border-radius:10px;background:var(--card)}
 table{border-collapse:collapse;width:100%;font-size:.93rem}
 th,td{padding:8px 12px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}
@@ -734,6 +740,7 @@ letter-spacing:.03em;text-transform:uppercase;background:color-mix(in srgb,var(-
 .badge.p1,.badge.blocked{background:color-mix(in srgb,var(--p1) 16%,transparent);color:var(--p1)}
 .badge.p2,.badge.open,.badge.in-progress,.badge.draft,.badge.proposed{background:color-mix(in srgb,var(--p2) 16%,transparent);color:var(--p2)}
 .badge.p3{background:color-mix(in srgb,var(--p3) 16%,transparent);color:var(--p3)}
+.badge.banked,.badge.dropped{background:color-mix(in srgb,var(--muted) 18%,transparent);color:var(--muted)}
 .badge.done,.badge.decided,.badge.accepted{background:color-mix(in srgb,var(--ok) 16%,transparent);color:var(--ok)}
 .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px;margin-top:22px}
 .card{display:flex;flex-direction:column;gap:6px;padding:16px;background:var(--card);border:1px solid var(--line);border-radius:12px;

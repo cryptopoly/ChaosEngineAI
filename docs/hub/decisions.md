@@ -1,11 +1,12 @@
 ---
 title: Decisions
 order: 2
+width: wide
 summary: Every decision, open and made, in one table you can filter by status.
 ---
 # Decisions
 
-One row per decision. Use the buttons above the table to show only open, decided or done rows. A decision raised in chat is added here the same turn, with a recommendation and a reason. Newest IDs are at the top.
+One row per decision. Use the buttons above the table to show one status (banked rows are parked until a named trigger), or search it. A decision raised in chat is added here the same turn, with a recommendation and a reason. Newest IDs are at the top.
 
 | ID | Decision | ELI5 | Question for Dan | Recommendation | Status | Date | Links |
 |---|---|---|---|---|---|---|---|
@@ -13,7 +14,7 @@ One row per decision. Use the buttons above the table to show only open, decided
 | D-20 | Agent bridge: app and agent jobs share one queue | Only one big job runs at a time, whoever asked for it, so the computer doesn't fall over. | | Yes. | decided | 2026-11-06 | [plan](https://github.com/cryptopoly/ChaosEngineAI/blob/release/v0.9.10/docs/plans/agent-bridge.md) |
 | D-19 | Agent bridge: off until the user turns it on | The door for assistants starts locked; the user unlocks it in Settings. A locked door still answers "it's locked, here's how to open it". | | Off by default, one switch in Settings; when off, every tool answers with how to turn it on. | decided | 2026-11-06 | [plan](https://github.com/cryptopoly/ChaosEngineAI/blob/release/v0.9.10/docs/plans/agent-bridge.md) |
 | D-18 | Agent bridge: no downloads in v1, recommendations instead | The assistant can say "you have no video model; this one fits your computer, get it from the Models page", but cannot start a 30 GB download or accept a licence for you. | | No download tool in v1; add `recommend_models` (uses the fit ratings). A confirmed download tool is v2. | decided | 2026-11-06 | [plan](https://github.com/cryptopoly/ChaosEngineAI/blob/release/v0.9.10/docs/plans/agent-bridge.md) |
-| D-17 | Where the project hub lives | These planning pages are in the public code repo; they could live somewhere private instead. | Move the hub out of the repo, and also scrub it from history? | Being explored; no change yet. | open | 2026-11-06 | |
+| D-17 | Where the project hub lives (banked) | These planning pages are in the public code repo; they could live somewhere private instead. Dan will decide this across all his open-source projects at once. | Move the hub (and the tracker in `CLAUDE.md`) to a private repo, and rewrite git history too? | Move both to a private repo from now on; skip the history rewrite (it found only the username `dan` in paths: no emails, no real IP addresses) unless something sensitive turns up. | banked | 2026-11-06 | |
 | D-16 | Recruit DGX Spark testers | Find people with the special NVIDIA computer to try the test build and report back. | OK to post: the user who asked first, then a pinned GitHub issue, the NVIDIA forum, r/LocalLLaMA? | Yes, in that order; each post needs your OK. | open | 2026-11-03 | [beta](https://github.com/cryptopoly/ChaosEngineAI/releases/tag/v0.9.10-beta.1), [FU-137](tracker/open.md) |
 | D-15 | How to ship the Linux ARM64 / DGX Spark beta | A test version for one kind of Linux computer, which normal users are not offered as an update. | | GitHub pre-release `v0.9.10-beta.1`, no `latest.json`. Version files go back to `0.9.10` before the real release. | done | 2026-11-03 | [beta](https://github.com/cryptopoly/ChaosEngineAI/releases/tag/v0.9.10-beta.1) |
 | D-14 | How to get a standalone ARM64 test package | Make the test build include everything it needs to run. | | The manual Build workflow gets a `linux_release_mode` input. | decided | 2026-11-03 | [FU-137](tracker/open.md) |
@@ -27,7 +28,7 @@ One row per decision. Use the buttons above the table to show only open, decided
 | D-06 | DFlash on hybrid Qwen models: fix, don't switch off | A speed trick produced gibberish on some models; the cause was found and fixed. | | Fixed, with a self-check at load. | decided | 2026-10-29 | [FU-135](tracker/open.md) |
 | D-05 | Prefer newer and faster models for defaults | When two models do the same job, start with the newer, quicker one. | | Your rule of thumb; used for the LTX and Wan choices. | decided | 2026-10-29 | |
 | D-04 | Wan 2.2 TI2V 5B replaced by LTX on its own MLX engine | Swap a slow, glitchy video model for a better one. | | Done; Wan 2.2 A14B and Wan 2.1 stay. | decided | 2026-10-29 | [FU-128](tracker/closed.md) |
-| D-03 | Agent game-dev idea is banked | Park the "AI builds a whole game in the app" idea until local models are strong enough. | | Banked; revisit when a local coding model matches a hosted one. | decided | 2026-10-29 | [FU-126](tracker/open.md) |
+| D-03 | Agent game-dev idea is banked | Park the "AI builds a whole game in the app" idea until local models are strong enough. | | Banked; revisit when a local coding model matches a hosted one. | banked | 2026-10-29 | [FU-126](tracker/open.md) |
 | D-02 | Linear DFlash block size 8 on MLX | Guess 8 words ahead instead of 16; fewer wasted guesses. | | Checked on 4B and 27B-class models. | decided | 2026-10-29 | [FU-112](tracker/open.md) |
 | D-01 | Sound in Video Studio: no toggle, show the sound | Videos with sound get a speaker icon; no on/off switch. | | Done. | decided | 2026-10-29 | [FU-130](tracker/open.md) |
 | D-00 | A project hub generated from `CLAUDE.md` and `docs/` | One set of web pages that shows where the project is. | | Done; see D-17 for where it lives. | decided | 2026-10-29 | [FU-131](tracker/open.md) |

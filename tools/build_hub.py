@@ -259,10 +259,26 @@ def render_table(rows: list[str], ctx: Ctx) -> str:
         style = f' style="text-align:{align[n]}"' if n < len(align) and align[n] else ""
         return f"<{tag}{style}>{content}</{tag}>"
 
-    out = ['<div class="tablewrap"><table>', "<thead><tr>" + "".join(cell("th", c, n) for n, c in enumerate(head)) + "</tr></thead><tbody>"]
-    for r in body:
-        cells = split_row(r)
-        out.append("<tr>" + "".join(cell("td", c, n) for n, c in enumerate(cells)) + "</tr>")
+    # A table with a Status column gets a row of filter buttons (one per status, plus All).
+    plain_head = [re.sub(r"[*_`]", "", h).strip().lower() for h in head]
+    status_col = plain_head.index("status") if "status" in plain_head else -1
+    rows_cells = [split_row(r) for r in body]
+
+    def status_of(cells: list[str]) -> str:
+        if status_col < 0 or status_col >= len(cells):
+            return ""
+        return re.sub(r"[*_`]", "", cells[status_col]).strip().rstrip(".").lower()
+
+    out = []
+    if status_col >= 0:
+        seen = sorted({status_of(c) for c in rows_cells if status_of(c)})
+        buttons = ['<button type="button" class="on" data-filter="">all</button>']
+        buttons += [f'<button type="button" data-filter="{html.escape(v)}">{html.escape(v)}</button>' for v in seen]
+        out.append(f'<div class="tablefilter" role="group" aria-label="Filter by status">{"".join(buttons)}</div>')
+    out += ['<div class="tablewrap"><table>', "<thead><tr>" + "".join(cell("th", c, n) for n, c in enumerate(head)) + "</tr></thead><tbody>"]
+    for cells in rows_cells:
+        attr = f' data-status="{html.escape(status_of(cells))}"' if status_col >= 0 else ""
+        out.append(f"<tr{attr}>" + "".join(cell("td", c, n) for n, c in enumerate(cells)) + "</tr>")
     out.append("</tbody></table></div>")
     return "\n".join(out)
 
@@ -513,6 +529,7 @@ def page_html(page: Page, body: str, ctx: dict) -> str:
 </main>
 </div>
 <script>addEventListener("beforeprint",function(){{document.querySelectorAll("main details").forEach(function(d){{d.open=true}})}})</script>
+<script>document.querySelectorAll(".tablefilter").forEach(function(bar){{var t=bar.nextElementSibling;bar.addEventListener("click",function(e){{var b=e.target.closest("button");if(!b)return;bar.querySelectorAll("button").forEach(function(x){{x.classList.toggle("on",x===b)}});var f=b.dataset.filter;t.querySelectorAll("tbody tr").forEach(function(r){{r.hidden=!!f&&r.dataset.status!==f}})}})}})</script>
 </body>
 </html>
 """
@@ -695,6 +712,7 @@ li.task{list-style:none;margin-left:-1.3em}li.task input{margin-right:.5em;accen
 li.task.done{color:var(--muted)}
 img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--line)}
 hr{border:0;border-top:1px solid var(--line);margin:2em 0}
+.tablefilter{display:flex;flex-wrap:wrap;gap:6px;margin:1em 0 -.4em}.tablefilter button{font:inherit;font-size:.82em;padding:.3em .8em;border-radius:99px;border:1px solid var(--line);background:var(--card);color:inherit;cursor:pointer}.tablefilter button.on{border-color:var(--accent);color:var(--accent)}
 .tablewrap{overflow-x:auto;margin:1em 0;border:1px solid var(--line);border-radius:10px;background:var(--card)}
 table{border-collapse:collapse;width:100%;font-size:.93rem}
 th,td{padding:8px 12px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}

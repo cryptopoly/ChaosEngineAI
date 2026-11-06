@@ -42,7 +42,8 @@ fix points 3 and 4.
 
 | Tool | Does | Notes |
 |---|---|---|
-| `system_status` | Free memory, platform, loaded models, running job | Lets the agent decide before it asks |
+| `system_status` | Free memory, platform, loaded models, running job, whether agent access is on | Lets the agent decide before it asks |
+| `recommend_models` | For a kind (`image`, `video`, `voice`), the best not-installed models for this machine, with size, licence, gated flag and fit | Read-only; uses the fit ratings (FU-133). The agent relays it to the user, who downloads from the Models page |
 | `list_models` | Installed models by kind (`image`, `video`, `voice`, `stt`) with id, size, fit, sizes / frame rules | Only installed and runnable on this host; no downloads in v1 |
 | `list_voices` | TTS voices with language and accent | |
 | `generate_image` | Prompt, model, size, seed, steps (optional) → job id | Sizes snapped as the UI does; notes returned |
@@ -57,8 +58,15 @@ fix points 3 and 4.
 under the app's output folders plus width, height, duration and `hasAudio`. Base64 only on request
 (`include_preview: true`, images only). A remote client cannot read the path; that is a v2 concern.
 
-**Out of scope for v1:** model downloads (multi-GB, needs the user's say), chat (the OpenAI-compatible
-API already covers it), editing (ffmpeg stays the agent's job), image-to-video.
+**Out of scope for v1:** model downloads, chat (the OpenAI-compatible API already covers it), editing
+(ffmpeg stays the agent's job), image-to-video.
+
+**Why no downloads (decided 2026-11-06).** One call could start a 30 to 60 GB download, gated models need
+the licence accepted on Hugging Face by the user, some licences are non-commercial, and nothing checks the
+disk first. A user is expected to set the app up before pointing an agent at it; when an agent finds no
+suitable model it calls `recommend_models` and tells the user which one to get and why. v2 may add a
+`download_model` tool that shows size and licence and asks the user to confirm in the agent's chat, and
+refuses gated or non-commercial models whose licence the user has not accepted.
 
 ## Guards built in
 
@@ -73,6 +81,11 @@ API already covers it), editing (ffmpeg stays the agent's job), image-to-video.
 ## Auth and setup
 
 - Loopback only by default (as the API today). The bridge uses the same bearer token.
+- **Off until the user turns it on (decided 2026-11-06).** When off, `/mcp` still answers: `initialize` and
+  `tools/list` work, and every tool call returns one clear error, "Agent access is off. Turn it on in
+  ChaosEngineAI: Settings > Integrations > Agent access.", so the agent can tell the user what to do instead
+  of seeing a connection failure. The stdio relay does the same when the app is not running ("start
+  ChaosEngineAI").
 - Settings > Integrations gets an "Agent access" card: on/off switch, copy buttons for the
   `claude mcp add --transport http chaosengine http://127.0.0.1:8876/mcp --header "Authorization: Bearer …"`
   line and a JSON block for other clients, and a token rotate button.
@@ -88,6 +101,19 @@ API already covers it), editing (ffmpeg stays the agent's job), image-to-video.
   helper in `backend_service/inference/jsonrpc.py`).
 - `scripts/chaosengine-cli mcp`: stdio relay that reads the port and token from the running app.
 - `docs/features/agent-bridge.md`, plus a `SKILL.md` users can drop into `~/.claude/skills/`.
+
+## Related work
+
+- **Generation settings inside the output files (v1, standalone, about half a day).** Write prompt, model,
+  seed, steps, guidance, size and app version into PNG text chunks and MP4 metadata tags, so any output can
+  be reproduced by a person or an agent, and dropping a file back into a Studio could restore its settings
+  later. Nothing writes this today.
+- **Recipes (v2).** A saved, replayable list of steps (image, then video, then voice) as a small data file,
+  so a multi-step job like the advert demo can be rerun with new prompts. Not a node editor.
+- **Reusing unchanged work (later, measure first).** Keeping a text encoder's output between runs that
+  change only the seed could cut repeat-generation time; measure before building.
+- **No arbitrary code from agents.** The tool set stays fixed and reviewed; agents cannot load plugins or
+  run code inside the app.
 
 ## Effort
 
@@ -117,5 +143,7 @@ tests and a live agent run 0.5. The FU-126 estimate (1 to 2 days) did not includ
 1. ~~Should UI-started jobs and agent jobs share one queue?~~ **Decided 2026-11-06: yes**, so an agent job never
    starts while the Studio is rendering. Cost: a queued UI job waits too, so the UI shows "waiting for an
    agent job".
-2. Agent access on or off by default? Recommendation: off, one switch in Settings.
-3. Include model downloads in v1? Recommendation: no; list what is missing and let the user download it.
+2. ~~Agent access on or off by default?~~ **Decided 2026-11-06: off**, one switch in Settings; tools explain
+   how to turn it on.
+3. ~~Include model downloads in v1?~~ **Decided 2026-11-06: no**; `recommend_models` instead.
+4. Go ahead and build v1? See decision D-21.

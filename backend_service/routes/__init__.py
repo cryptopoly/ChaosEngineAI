@@ -29,6 +29,7 @@ def register_routes(app: FastAPI) -> None:
     from .storage import router as storage_router
     from .workspaces import router as workspaces_router
     from .voice import router as voice_router
+    from .agent import router as agent_router
 
     app.include_router(auth_router)
     app.include_router(health_router)
@@ -53,3 +54,4 @@ def register_routes(app: FastAPI) -> None:
     app.include_router(storage_router)
     app.include_router(workspaces_router)
     app.include_router(voice_router)
+    app.include_router(agent_router)

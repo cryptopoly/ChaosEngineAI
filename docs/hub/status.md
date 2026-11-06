@@ -9,6 +9,25 @@ summary: Read this first in every session.
 
 Newest dated update first. Each update has the same sections: Done, Open for Claude, Open for Dan.
 
+## Update 2026-11-06, agent bridge step 2
+
+**Done**
+
+- **`POST /mcp`** (`backend_service/routes/agent.py`, package `backend_service/mcp_bridge/`): hand-written JSON-RPC for `initialize`, `ping`, `tools/list` and `tools/call` over streamable HTTP (single JSON replies). The `mcp` SDK is not used, so no new dependency or notice.
+- **11 tools:** `system_status`, `recommend_models`, `list_models`, `list_voices`, `generate_image`, `generate_video`, `speak`, `transcribe`, `job_status`, `wait_for_job`, `cancel_job`. Inputs are validated against each tool's schema; errors come back as readable tool errors. Generate tools reuse the Studio routes' own code (size snapping, frame rule, memory gate), so refusals carry the numbers. Every job takes a slot on the step 1 queue as source `agent`; outputs are file paths.
+- **Off by default.** While off, `initialize` and `tools/list` answer without a token and every tool call returns "Agent access is off. Turn it on in ChaosEngineAI: Settings > Integrations > Agent access." While on, `/mcp` needs a Bearer token: the new persisted agent token or the app token. The switch and token live in `agent_access.json` beside `settings.json` (not in the settings payload), read and set through `GET/POST /api/agent/access` (`enabled`, `rotateToken`) for the step 3 card.
+- `recommend_models` and `list_models` use the catalog fit ratings. Only text-to-image and text-to-video models are offered (image-to-video is out of v1). Recommendations list open-licence ungated models first, then newest; gated and non-commercial flags are read from catalog notes and badges (the catalog has no licence field).
+- Tests: `tests/test_mcp_bridge.py` (12: off/on auth, notifications, access round trip, schema errors, job to a path, refusal text, seconds to frames, cancel while queued). Full pytest 2585 passed. Checked against this Mac's real catalog: `list_models` shows Iris-3B, LTX-2.5 and the STT models; `recommend_models` picks T2V / T2I rows only.
+
+**Open for Claude**
+
+- Step 3: stdio relay (`scripts/chaosengine-cli mcp`) and the Settings > Integrations "Agent access" card.
+
+**Open for Dan**
+
+- No real MCP client or real generation through `/mcp` yet (step 5). Tool texts and the licence-hint heuristic are worth a read.
+- The agent token is stored in plain JSON (mode 600) in the app data folder, like the HF token in settings.
+
 ## Update 2026-11-06, agent bridge step 1
 
 **Done**

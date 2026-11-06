@@ -651,12 +651,15 @@ export {
   fetchStorageChildren,
   fetchStorageTop,
   getModelMoveStatus,
+  getAgentAccess,
   getStorageSettings,
   reextractRuntime,
+  updateAgentAccess,
   startModelMove,
   updateHfCachePath,
 } from "./admin";
 export type {
+  AgentAccess,
   DiagnosticsLogTail,
   DiagnosticsSnapshot,
   ModelMoveJobState,

@@ -885,6 +885,16 @@
       "tokenPlaceholder": "hf_...",
       "helpText": "Stocké localement. Utilisé par la conversion MLX lors de la récupération de modèles à accès restreint depuis Hugging Face."
     },
+    "agentAccess": {
+      "title": null,
+      "subtitle": null,
+      "switch": null,
+      "hint": null,
+      "claudeCode": null,
+      "otherClients": null,
+      "rotate": null,
+      "rotateHint": null
+    },
     "integrations": {
       "title": "Intégrations",
       "subtitle": "Connectez des outils externes à l'API compatible OpenAI de ChaosEngineAI.",

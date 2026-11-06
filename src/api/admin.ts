@@ -227,3 +227,21 @@ export async function startModelMove(
 export async function getModelMoveStatus(): Promise<ModelMoveJobState> {
   return await fetchJson<ModelMoveJobState>("/api/settings/storage/move/status", 10000);
 }
+
+// ---------------------------------------------------------------------------
+// Agent access (the MCP bridge switch and token)
+// ---------------------------------------------------------------------------
+
+export interface AgentAccess {
+  enabled: boolean;
+  token: string;
+  mcpUrl: string;
+}
+
+export async function getAgentAccess(): Promise<AgentAccess> {
+  return await fetchJson<AgentAccess>("/api/agent/access");
+}
+
+export async function updateAgentAccess(patch: { enabled?: boolean; rotateToken?: boolean }): Promise<AgentAccess> {
+  return await postJson<AgentAccess>("/api/agent/access", patch);
+}

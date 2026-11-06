@@ -885,6 +885,16 @@
       "tokenPlaceholder": "hf_...",
       "helpText": "Stored locally. Used by MLX conversion when fetching gated models from Hugging Face."
     },
+    "agentAccess": {
+      "title": "Agent access",
+      "subtitle": "Let an AI agent (Claude Code, Cursor and others) make images, video, speech and transcripts here.",
+      "switch": "Allow agents to use ChaosEngineAI",
+      "hint": "Off by default. Agents run one job at a time, only on this computer, and need the token below. They can only use models you have already downloaded.",
+      "claudeCode": "Claude Code",
+      "otherClients": "Other MCP clients (JSON)",
+      "rotate": "Make a new token",
+      "rotateHint": "The old token stops working at once. Agents need the new line."
+    },
     "integrations": {
       "title": "Integrations",
       "subtitle": "Connect external tools to ChaosEngineAI's OpenAI-compatible API.",

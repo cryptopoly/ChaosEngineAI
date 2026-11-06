@@ -9,6 +9,24 @@ summary: Read this first in every session.
 
 Newest dated update first. Each update has the same sections: Done, Open for Claude, Open for Dan.
 
+## Update 2026-11-06, agent bridge step 3
+
+**Done**
+
+- **Stdio relay:** `scripts/chaosengine-cli mcp` reads one JSON-RPC message per line on stdin and forwards each to the running app's `/mcp`. The token is `CHAOSENGINE_API_TOKEN` if set, else the app's loopback session token (fetched again once on a 401). While the app is not reachable it answers `initialize` and `ping` itself, and `tools/list` and tool calls say "ChaosEngineAI is not running. Start ChaosEngineAI, then try again."
+- **Settings > Integrations > Agent access card** (`src/features/settings/AgentAccessPanel.tsx`): on/off switch, copy buttons for the `claude mcp add --transport http chaosengine ... --header "Authorization: Bearer ..."` line and a JSON block for other clients, and "Make a new token". English strings added; the nine other locales hold `null` and fall back to English.
+- Tests: `tests/test_mcp_relay.py` runs the real CLI against a live uvicorn server (app closed, access off, access on). `AgentAccessPanel.test.ts` checks the copied line and JSON. Full pytest 2587 passed, vitest 781, `tsc` clean, `i18n:validate` OK.
+
+**Open for Claude**
+
+- Step 4: `SKILL.md`, `docs/features/agent-bridge.md`, locale strings.
+
+**Open for Dan**
+
+- **The CLI is not in the release bundle** (`stage-runtime.mjs` does not stage it), so an installed app has the HTTP line only; the stdio relay needs a repo checkout. Say if step 4 should also stage the CLI (small change, touches packaging).
+- The card was not looked at in the running app (type-checked and unit-tested only). The card is first in Integrations, above the OpenAI-compatible snippets.
+- Not tried with a real Claude Code client yet (step 5).
+
 ## Update 2026-11-06, agent bridge step 2
 
 **Done**

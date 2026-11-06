@@ -9,6 +9,20 @@ summary: Read this first in every session.
 
 Newest dated update first. Each update has the same sections: Done, Open for Claude, Open for Dan.
 
+## Update 2026-11-06 (overnight), home studio build on `feat/home-studio`
+
+**Done** (all merged into `feat/home-studio`, pushed, full suite 2693 passed)
+
+- **UX spec:** [home-studio-ux](https://github.com/cryptopoly/ChaosEngineAI/blob/feat/home-studio/docs/plans/home-studio-ux.md): audit (Image Studio about 44 controls at first load, Video Studio about 47; a new user needs 8 or 9), principles, wireframes, component list, copy deck, and nine ranked clean-up changes for the existing Studios (not built).
+- **UI kit and scaffold:** shared components (Disclosure, StudioShell, RunEstimateStrip, licence chip and screen, audio player, media library card, audio picker), lane tokens, icons; the sidebar is now an accordion with "Make" and "Run" section labels (Settings switch "Keep all sidebar groups open" restores the old behaviour); Music and Storyboard tabs are registered but hidden behind `HOME_STUDIO_ENABLED = false` (`src/constants/features.ts`). Voice Library now uses the shared card.
+- **Storyboard core (backend):** project folder (self-contained, revisioned, undo/redo, takes, locks, stale marking), timeline from measured durations, batches by kind with one cancel, `.chaosfilm` bundles with hostile-input defences, routes, 5 agent tools (17 in total), E2E phase 10.
+- **Assemble engine:** cached per-shot intermediates, cuts and crossfades, ducked music under voice, two-pass loudness, end card, cancel; 32 tests. **Real check:** the 8 lighthouse clips plus the voiceover rendered in 4.4 s straight through the engine and in 7.2 s through the API (export with end card), loudness -16.0 LUFS; I looked at a crossfade frame and the end card.
+- **Integration bug caught and fixed:** the store sent non-string metadata that the assembler refused; fixed, with a permanent store + routes + real assembler test.
+
+**Under way:** ACE-Step spike on this Mac; Storyboard Projects and Board UI.
+
+**Decision for Dan (new):** the sidebar order now puts Chat below Images / Video / Voice (the UX spec's "Make" and "Run" sections). Keep, or put Chat back on top?
+
 ## Update 2026-11-06, decisions answered; embedded file paths removed
 
 **Done** (branch `feat/media-input`)

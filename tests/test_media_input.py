@@ -1,0 +1,107 @@
+import tempfile
+import unittest
+from pathlib import Path
+from unittest import mock
+
+from fastapi import HTTPException
+
+from backend_service.helpers.media_input import InputImageError, image_size, resolve_input_image
+from backend_service.ltx2_mlx_runtime import Ltx2MlxVideoEngine
+from backend_service.models import VideoGenerationRequest
+from backend_service.video_runtime.types import VideoGenerationConfig
+
+
+def _png(path: Path, size=(64, 32)) -> Path:
+    from PIL import Image
+
+    Image.new("RGB", size, "red").save(path)
+    return path
+
+
+class ResolveInputImageTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.dir = Path(self.tmp.name)
+
+    def test_accepts_a_png_and_reads_its_size(self):
+        path = _png(self.dir / "a.png")
+        self.assertEqual(resolve_input_image(str(path)), path.resolve())
+        self.assertEqual(image_size(path), (64, 32))
+
+    def test_rejects_bad_input_with_readable_messages(self):
+        (self.dir / "note.txt").write_text("x")
+        (self.dir / "empty.png").write_bytes(b"")
+        for raw, needle in (
+            ("", "empty"),
+            (str(self.dir / "missing.png"), "not found"),
+            (str(self.dir), "not a file"),
+            (str(self.dir / "note.txt"), "PNG, JPEG or WebP"),
+            (str(self.dir / "empty.png"), "empty"),
+        ):
+            with self.assertRaises(InputImageError, msg=raw) as ctx:
+                resolve_input_image(raw)
+            self.assertIn(needle, str(ctx.exception))
+
+    def test_size_cap(self):
+        path = _png(self.dir / "big.png")
+        with mock.patch("backend_service.helpers.media_input.MAX_INPUT_IMAGE_BYTES", 10):
+            with self.assertRaises(InputImageError):
+                resolve_input_image(str(path))
+
+
+class LtxCommandTests(unittest.TestCase):
+    def config(self, **extra):
+        return VideoGenerationConfig(
+            modelId="m", modelName="LTX", repo="dgrauet/ltx-2.5-mlx-q4", prompt="p", negativePrompt="",
+            width=768, height=512, numFrames=65, fps=24, guidance=1.0, **extra,
+        )
+
+    def build(self, config):
+        return Ltx2MlxVideoEngine._build_command(config, Path("/pack"), None, 768, 512, 7, Path("/o.mp4"))
+
+    def test_no_images_no_flag(self):
+        self.assertNotIn("--image", self.build(self.config()))
+
+    def test_start_and_end_images_anchor_first_and_last_frame(self):
+        args = self.build(self.config(startImagePath="/a.png", endImagePath="/b.png", imageStrength=0.8))
+        pairs = [args[i + 1 : i + 4] for i, a in enumerate(args) if a == "--image"]
+        self.assertEqual(pairs, [["/a.png", "0", "0.8"], ["/b.png", "64", "0.8"]])
+        self.assertEqual(args[-2:], ["--output", "/o.mp4"])
+
+
+class RouteChecksTests(unittest.TestCase):
+    def check(self, body, repo="dgrauet/ltx-2.5-mlx-q4"):
+        from backend_service.routes.video import _checked_input_images
+
+        return _checked_input_images(body, {"name": "Model", "repo": repo})
+
+    def request(self, **kw):
+        return VideoGenerationRequest(modelId="m", prompt="p", **kw)
+
+    def test_no_image_passes_through(self):
+        body = self.request()
+        self.assertIs(self.check(body, repo="Wan-AI/other"), body)
+
+    def test_other_models_refuse_with_a_reason(self):
+        with self.assertRaises(HTTPException) as ctx:
+            self.check(self.request(startImagePath="/x.png"), repo="Wan-AI/other")
+        self.assertEqual(ctx.exception.status_code, 400)
+        self.assertIn("LTX-2", ctx.exception.detail)
+
+    def test_end_without_start_and_missing_file(self):
+        for kw, needle in (({"endImagePath": "/x.png"}, "start image"), ({"startImagePath": "/nope.png"}, "not found")):
+            with self.assertRaises(HTTPException) as ctx:
+                self.check(self.request(**kw))
+            self.assertEqual(ctx.exception.status_code, 400)
+            self.assertIn(needle, ctx.exception.detail)
+
+    def test_valid_paths_are_resolved(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = _png(Path(tmp) / "a.png")
+            out = self.check(self.request(startImagePath=str(path)))
+            self.assertEqual(out.startImagePath, str(path.resolve()))
+
+
+if __name__ == "__main__":
+    unittest.main()

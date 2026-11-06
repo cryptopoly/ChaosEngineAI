@@ -56,6 +56,10 @@ class OutputMetadataTests(unittest.TestCase):
             self.assertEqual(got["seed"], 3)
             self.assertIn("appVersion", got)
 
+    def test_generation_settings_records_the_input_image(self):
+        got = generation_settings({"prompt": "x", "startImagePath": "/a.png", "imageStrength": 0.8})
+        self.assertEqual((got["startImagePath"], got["imageStrength"]), ("/a.png", 0.8))
+
     def test_generation_settings_skips_empty(self):
         self.assertNotIn("negativePrompt", generation_settings({"prompt": "x", "negativePrompt": ""}))
 

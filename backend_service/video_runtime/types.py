@@ -161,6 +161,10 @@ class VideoGenerationConfig:
     # inside the matmul. E5M2 for HunyuanVideo, E4M3 for Wan / LTX / FLUX
     # / Qwen-Image. Default off; opt-in.
     fp8LayerwiseCasting: bool = False
+    # Image-to-video (ltx-2-mlx only); absolute, already-validated paths.
+    startImagePath: str | None = None
+    endImagePath: str | None = None
+    imageStrength: float = 1.0
     # FU-019 distill LoRAs: when the catalog variant pins a LoRA
     # (lightx2v Wan2.1 CausVid, Wan2.2-Distill-Models, FastWan), the
     # engine fuses it into the pipeline transformer at load time so

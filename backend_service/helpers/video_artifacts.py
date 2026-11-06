@@ -65,6 +65,8 @@ def _hydrate_video_artifact(payload: dict[str, Any]) -> dict[str, Any]:
         "runtimeLabel": str(payload.get("runtimeLabel") or ""),
         "runtimeNote": str(payload.get("runtimeNote") or "") or None,
         "hasAudio": _artifact_has_audio(payload),
+        "startImagePath": str(payload.get("startImagePath") or "") or None,
+        "endImagePath": str(payload.get("endImagePath") or "") or None,
     }
 
 

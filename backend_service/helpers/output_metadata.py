@@ -32,6 +32,9 @@ _SETTING_KEYS = (
     "height",
     "numFrames",
     "fps",
+    "startImagePath",
+    "endImagePath",
+    "imageStrength",
     "createdAt",
 )
 

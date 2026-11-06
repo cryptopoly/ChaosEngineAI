@@ -70,6 +70,9 @@ TOOLS: list[dict[str, Any]] = [
                 "height": {"type": "integer", "minimum": 256, "maximum": 4096},
                 "seconds": {"type": "number", "minimum": 0.5, "maximum": 20},
                 "frames": {"type": "integer", "minimum": 8, "maximum": 257},
+                "start_image": {"type": "string", "description": "Absolute path of an image the clip starts on (image-to-video). Only for models with acceptsImageInput in list_models. If width and height are not given, the clip follows the image's shape."},
+                "end_image": {"type": "string", "description": "Absolute path of an image the clip ends on. Needs start_image."},
+                "image_strength": {"type": "number", "minimum": 0.1, "maximum": 1.0, "description": "1.0 follows the image closely (default); lower lets the clip drift."},
                 "fps": {"type": "integer", "minimum": 1, "maximum": 60},
                 "steps": {"type": "integer", "minimum": 1, "maximum": 100},
                 "seed": {"type": "integer", "minimum": 0, "maximum": 2147483647},
@@ -279,7 +282,35 @@ def generate_video(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
     if frame_note:
         notes.append(frame_note)
     size = parse_resolution(variant.get("recommendedResolution")) or (768, 512)
+    image_fields: dict[str, Any] = {}
+    if args.get("start_image") or args.get("end_image"):
+        from backend_service.helpers.media_input import InputImageError, image_size, resolve_input_image
+        from backend_service.ltx2_mlx_runtime import _is_ltx2_mlx_repo
+
+        if not _is_ltx2_mlx_repo(str(variant.get("repo") or "")):
+            raise ToolError(f"{variant.get('name')} cannot start from an image. Use a model with acceptsImageInput in list_models.")
+        if args.get("end_image") and not args.get("start_image"):
+            raise ToolError("end_image needs start_image too.")
+        try:
+            start = resolve_input_image(args["start_image"])
+            image_fields["startImagePath"] = str(start)
+            if args.get("end_image"):
+                image_fields["endImagePath"] = str(resolve_input_image(args["end_image"]))
+        except InputImageError as exc:
+            raise ToolError(str(exc)) from exc
+        if "image_strength" in args:
+            image_fields["imageStrength"] = args["image_strength"]
+        found = image_size(start)
+        if found and "width" not in args and "height" not in args:
+            # Keep the recommended pixel count, take the image's shape (multiples of 64 as the engine wants).
+            pixels = size[0] * size[1]
+            ratio = found[0] / found[1]
+            width = max(256, round((pixels * ratio) ** 0.5 / 64) * 64)
+            height = max(256, round(width / ratio / 64) * 64)
+            size = (width, height)
+            notes.append(f"Clip shape {width}x{height} follows the start image ({found[0]}x{found[1]}).")
     fields: dict[str, Any] = {
+        **image_fields,
         "modelId": variant["id"],
         "prompt": args["prompt"],
         "numFrames": frames,

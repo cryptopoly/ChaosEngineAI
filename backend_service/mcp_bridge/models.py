@@ -61,6 +61,9 @@ def _row(family: dict[str, Any], variant: dict[str, Any], kind: str) -> dict[str
             else "Any frame count works."
         )
         row["defaultSeconds"] = variant.get("defaultDurationSeconds")
+        from backend_service.ltx2_mlx_runtime import _is_ltx2_mlx_repo
+
+        row["acceptsImageInput"] = _is_ltx2_mlx_repo(repo)
     return row
 
 

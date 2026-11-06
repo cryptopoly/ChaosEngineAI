@@ -150,6 +150,55 @@ class McpBridgeTests(unittest.TestCase):
         self.assertEqual((seen["frames"] - 1) % 8, 0)
         self.assertIn("Frame count 72 changed", text)
 
+    def test_video_start_image_is_passed_and_shapes_the_clip(self):
+        from PIL import Image
+
+        access.set_enabled(True)
+        row = {"id": "dgrauet/ltx-2.5-mlx-q4", "fit": "fits"}
+        seen = {}
+
+        def fake(request, body):
+            seen["body"] = body
+            return {"artifact": {"videoPath": "/tmp/c.mp4", "width": 1, "height": 1}}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            poster = Path(tmp) / "poster.png"
+            Image.new("RGB", (768, 1152), "blue").save(poster)  # portrait 2:3
+            with mock.patch("backend_service.mcp_bridge.models.installed_models", return_value=[row]), \
+                    mock.patch("backend_service.routes.video._generate_video_locked", side_effect=fake):
+                _, text = call(self.client, "generate_video", {"prompt": "x", "seconds": 3, "start_image": str(poster)}, self.auth())
+                _, done = call(self.client, "wait_for_job", {"job_id": _field(text, "jobId"), "timeout_seconds": 5}, self.auth())
+        body = seen["body"]
+        self.assertEqual(body.startImagePath, str(poster.resolve()))
+        self.assertLess(body.width, body.height)  # portrait follows the image
+        self.assertEqual((body.width % 64, body.height % 64), (0, 0))
+        self.assertIn("follows the start image", done)
+
+    def test_video_image_errors_are_readable(self):
+        access.set_enabled(True)
+        ltx = {"id": "dgrauet/ltx-2.5-mlx-q4", "fit": "fits"}
+        other = {"id": "Lightricks/LTX-Video", "fit": "fits"}
+        with mock.patch("backend_service.mcp_bridge.models.installed_models", return_value=[ltx]):
+            is_error, text = call(self.client, "generate_video", {"prompt": "x", "start_image": "/nope.png"}, self.auth())
+            self.assertTrue(is_error)
+            self.assertIn("not found", text)
+            is_error, text = call(self.client, "generate_video", {"prompt": "x", "end_image": "/nope.png"}, self.auth())
+            self.assertIn("needs start_image", text)
+        with mock.patch("backend_service.mcp_bridge.models.installed_models", return_value=[other]):
+            is_error, text = call(self.client, "generate_video", {"prompt": "x", "start_image": "/nope.png"}, self.auth())
+            self.assertTrue(is_error)
+            self.assertIn("cannot start from an image", text)
+
+    def test_list_models_flags_image_input(self):
+        from backend_service.mcp_bridge import models as bridge_models
+
+        variants = [{"id": "dgrauet/ltx-2.5-mlx-q4", "repo": "dgrauet/ltx-2.5-mlx-q4", "name": "LTX", "availableLocally": True, "fit": {"status": "fits"}, "taskSupport": ["txt2video"]},
+                    {"id": "Lightricks/LTX-Video", "repo": "Lightricks/LTX-Video", "name": "Old", "availableLocally": True, "fit": {"status": "fits"}, "taskSupport": ["txt2video"]}]
+        with mock.patch.object(bridge_models, "_families", return_value=[{"name": "F", "variants": variants}]):
+            rows = {r["id"]: r for r in bridge_models.installed_models(object(), "video")}
+        self.assertTrue(rows["dgrauet/ltx-2.5-mlx-q4"]["acceptsImageInput"])
+        self.assertFalse(rows["Lightricks/LTX-Video"]["acceptsImageInput"])
+
     def test_cancel_queued_job(self):
         from backend_service.helpers.job_queue import HEAVY_JOBS
 

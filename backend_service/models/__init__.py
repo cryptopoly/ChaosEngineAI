@@ -491,3 +491,9 @@ class VideoGenerationRequest(BaseModel):
     nunchakuFile: str | None = Field(default=None, min_length=1, max_length=200)
     # FU-024 FP8 layerwise casting (CUDA SM 8.9+ Ada/Hopper/Blackwell).
     fp8LayerwiseCasting: bool = Field(default=False)
+    # Image-to-video (LTX-2 only): a local image file the clip starts on, and
+    # optionally one it ends on. ``imageStrength`` 1.0 follows the image
+    # closely, lower lets the model move away from it.
+    startImagePath: str | None = Field(default=None, max_length=1024)
+    endImagePath: str | None = Field(default=None, max_length=1024)
+    imageStrength: float = Field(default=1.0, ge=0.1, le=1.0)

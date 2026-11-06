@@ -9,6 +9,24 @@ summary: Read this first in every session.
 
 Newest dated update first. Each update has the same sections: Done, Open for Claude, Open for Dan.
 
+## Update 2026-11-06, media input slice A: video start / end image
+
+**Done** (branch `feat/media-input`, cut from `feat/agent-bridge`; plan [media-input](https://github.com/cryptopoly/ChaosEngineAI/blob/feat/media-input/docs/plans/media-input.md), decision D-23)
+
+- **Video from an image.** `POST /api/video/generate` takes `startImagePath`, `endImagePath` and `imageStrength`; LTX-2.3 / 2.5 pass them to `ltx-2-mlx --image PATH FRAME STRENGTH` (start on frame 0, end on the last frame). Every other video model answers 400 naming LTX-2 (it never ignores the image); a missing or non-image file, an end image without a start image, and files over 30 MB are refused with a readable message (`helpers/media_input.py`). The saved clip's metadata records the input image.
+- **MCP:** `generate_video` gets `start_image`, `end_image` and `image_strength`; `list_models` marks models with `acceptsImageInput`. With no width and height the clip takes the image's shape at the model's usual pixel count.
+- **Live check on this Mac:** the earlier lighthouse poster (768x1152) as `start_image` gave a 512x768, 2.7 s clip with sound in about 90 s. I looked at the first, last and poster frames side by side: same lighthouse, rocks, sky and beam from first to last frame, only the sea and light move.
+- Tests: `test_media_input.py` (9), new cases in `test_mcp_bridge.py` and `test_output_metadata.py`.
+
+**Open for Claude**
+
+- Slice B: reference images for image generation (mflux init-image and the `-flux3-edit` / `-flux2-edit` / `-qwen-2.1-edit` commands); slice C: the Studio picker; docs, SKILL.md and an E2E check for each.
+
+**Open for Dan**
+
+- Say whether slice B should come before the Studio picker (my order) or after.
+- Sound-to-video, voice cloning and diffusers video models stay out of scope (listed in the plan).
+
 ## Update 2026-11-06, agent bridge: real Claude Code run
 
 **Done**

@@ -620,6 +620,9 @@ def _generate_video_artifact(
             nunchakuRepo=(variant.get("nunchakuRepo") or None),
             nunchakuFile=(variant.get("nunchakuFile") or None),
             fp8LayerwiseCasting=request.fp8LayerwiseCasting,
+            startImagePath=request.startImagePath,
+            endImagePath=request.endImagePath,
+            imageStrength=request.imageStrength,
         )
     )
 
@@ -648,6 +651,11 @@ def _generate_video_artifact(
         "runtimeNote": " · ".join([*request_notes, *([video.runtimeNote] if video.runtimeNote else [])]) or None,
         "hasAudio": video.extension == "mp4" and mp4_has_audio_bytes(video.bytes),
     }
+    if request.startImagePath:
+        artifact["startImagePath"] = request.startImagePath
+        artifact["imageStrength"] = request.imageStrength
+    if request.endImagePath:
+        artifact["endImagePath"] = request.endImagePath
     return _save_video_artifact(artifact), runtime_status
 
 

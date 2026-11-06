@@ -397,6 +397,29 @@ def generate_video(request: Request, body: VideoGenerationRequest) -> dict[str, 
         raise HTTPException(status_code=409, detail="cancelled") from None
 
 
+def _checked_input_images(body: VideoGenerationRequest, variant: dict[str, Any]) -> VideoGenerationRequest:
+    """Resolve start / end image paths; only LTX-2 models take them. 400 with a readable message otherwise."""
+    if not (body.startImagePath or body.endImagePath):
+        return body
+    from backend_service.helpers.media_input import InputImageError, resolve_input_image
+    from backend_service.ltx2_mlx_runtime import _is_ltx2_mlx_repo
+
+    if not _is_ltx2_mlx_repo(str(variant.get("repo") or "")):
+        raise HTTPException(
+            status_code=400,
+            detail=f"{variant.get('name')} cannot start from an image. Pick an LTX-2 model (ltx-2-mlx).",
+        )
+    if body.endImagePath and not body.startImagePath:
+        raise HTTPException(status_code=400, detail="An end image needs a start image too.")
+    try:
+        return body.model_copy(update={
+            "startImagePath": str(resolve_input_image(body.startImagePath)) if body.startImagePath else None,
+            "endImagePath": str(resolve_input_image(body.endImagePath)) if body.endImagePath else None,
+        })
+    except InputImageError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 def _generate_video_locked(request: Request, body: VideoGenerationRequest) -> dict[str, Any]:
     import traceback as _tb
     from backend_service.app import _generate_video_artifact, _load_video_outputs
@@ -420,6 +443,7 @@ def _generate_video_locked(request: Request, body: VideoGenerationRequest) -> di
         detail = validation_error or f"{variant['name']} is not installed locally yet."
         raise HTTPException(status_code=409, detail=detail)
 
+    body = _checked_input_images(body, variant)
     _unload_idle_image_runtime_for_video(request, "video generation")
     _video_memory_gate(request, variant, "video generation", body)
     try:

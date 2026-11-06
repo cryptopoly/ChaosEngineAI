@@ -89,6 +89,10 @@ def _save_video_artifact(artifact: dict[str, Any], video_outputs_dir: Path) -> d
                 "— check the backend log for this generation."
             )
         video_path.write_bytes(bytes(video_bytes))
+        if extension.lower() == "mp4":
+            from backend_service.helpers.output_metadata import embed_mp4_settings, generation_settings
+
+            embed_mp4_settings(video_path, generation_settings(artifact))
     else:
         raise ValueError(
             f"Cannot persist video artifact '{artifact_id}': no raw bytes "

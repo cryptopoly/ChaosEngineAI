@@ -126,7 +126,7 @@ TOOLS: list[dict[str, Any]] = [
     {"name": "cancel_job", "description": "Cancel a queued or running job.", "inputSchema": _obj({"job_id": _JOB_ID}, ["job_id"])},
 ]
 
-_TYPES = {"string": str, "integer": int, "number": (int, float), "boolean": bool, "array": list}
+_TYPES = {"string": str, "integer": int, "number": (int, float), "boolean": bool, "array": list, "object": dict}
 
 
 def validate(schema: dict[str, Any], args: Any) -> str | None:
@@ -501,3 +501,10 @@ HANDLERS: dict[str, Callable[[Any, dict[str, Any]], dict[str, Any]]] = {
 
 def make_context(request: Any) -> Any:
     return SimpleNamespace(app=request.app, request=request)
+
+
+# Storyboard tools live in their own module; registered here so the tool list stays in one place.
+from backend_service.mcp_bridge.storyboard_tools import STORYBOARD_HANDLERS, STORYBOARD_TOOLS  # noqa: E402
+
+TOOLS.extend(STORYBOARD_TOOLS)
+HANDLERS.update(STORYBOARD_HANDLERS)

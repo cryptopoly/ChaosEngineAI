@@ -70,7 +70,6 @@ ChaosEngineAI is a desktop control plane for running large language models local
 - 🗃️ **Voice Library** keeping every recording, transcript and generated clip (old Gallery items move over the first time you open it)
 - ⚡ **First Block Cache + TaylorSeer / MagCache / PyramidAttentionBroadcast / FasterCache** cross-platform diffusion cache hooks (≈1.8× FLUX.1-dev with imperceptible drift), plus TeaCache for FLUX / HunyuanVideo / LTX-Video / CogVideoX / Mochi
 - 🖼️ **Live denoise thumbnails** in Image + Video Studio via TAESD/TAEHV preview VAE swap — see what's being generated in real time, not just a progress bar
-- ✨ **MLX prompt enhancer** (Apple Silicon) — local Qwen2.5-0.5B rewrites your prompt into the active DiT's training distribution per family (FLUX / Wan / LTX / HunyuanVideo / SDXL / SD3)
 - 🧬 **Distill LoRA + transformer support** — Hyper-SD-8step / Turbo-Alpha for FLUX.1-dev, CausVid for Wan 2.1, lightx2v 4-step distill for Wan 2.2 A14B I2V (bf16 + fp8_e4m3)
 - 🎯 **Wan 2.1 / 2.2 mlx-video runtime** on Apple Silicon — one-shot convert pipeline, GUI install panel, runtime routing for the Wan 2.1 and Wan 2.2 A14B repos
 - 🩺 **Diagnostics panel** in Settings — per-section error fallback, platform-aware repair actions, and a one-click reinstall for the Apple Silicon mlx-video runtime
@@ -135,7 +134,7 @@ ChaosEngineAI is a desktop control plane for running large language models local
 - Download management with progress, pause / resume, cancel, and a metadata-rich local library; deleting image or video model files asks first and names every model that shares the files; models your machine cannot run are hidden unless already on disk
 - Apple Silicon conversion from Hugging Face or local checkpoints to MLX with live progress
 - Full local image workflow: Image Models, Image Studio with recommended settings for your machine, Image Gallery, preload/unload controls, seed reuse, saved artifact metadata, and per-model size limits (the fixed 2048 px cap is gone; FLUX.2 and Qwen-Image-2.1 go up to 4096, and a size that does not fit in memory is refused with one that does)
-- Full local video workflow: Video Models, Video Studio with prompt enhancer and recommended settings, runtime probe/preload/unload, LTX-2.3 and LTX-2.5 with stereo sound on their own MLX engine (ltx-2-mlx) on Apple Silicon, mlx-video for the LTX-2 dev / distilled rows, diffusers for Wan and the other DiTs, and stable-diffusion.cpp scaffolding for cross-platform
+- Full local video workflow: Video Models, Video Studio with recommended settings, runtime probe/preload/unload, LTX-2.3 and LTX-2.5 with stereo sound on their own MLX engine (ltx-2-mlx) on Apple Silicon, mlx-video for the LTX-2 dev / distilled rows, diffusers for Wan and the other DiTs, and stable-diffusion.cpp scaffolding for cross-platform
 - Hugging Face token management for gated model access
 
 ### Models added in v0.9.9
@@ -466,7 +465,7 @@ Each model has its own size limit instead of a fixed 2048 px cap (FLUX.2 and Qwe
 | **CogVideoX** | Zhipu | diffusers | TeaCache supported |
 | **Mochi** | Genmo | diffusers | TeaCache supported |
 
-Find and download models from the **Models** pages under Images and Video, generate from prompts in **Image Studio** or **Video Studio** with aspect ratio, quality presets, negative prompts, prompt enhancer, seed control and recommended settings for your machine, then browse and reuse outputs in **Image Gallery**.
+Find and download models from the **Models** pages under Images and Video, generate from prompts in **Image Studio** or **Video Studio** with aspect ratio, quality presets, negative prompts, seed control and recommended settings for your machine, then browse and reuse outputs in **Image Gallery**.
 
 ---
 

@@ -8,7 +8,6 @@
     "recentOutputsTitle": "最近的输出",
     "prompt": "提示词",
     "negativePrompt": "反向提示词",
-    "enhancePrompt": "增强",
     "width": "宽度",
     "height": "高度",
     "steps": "步数",
@@ -126,12 +125,6 @@
     "title": "高级",
     "show": "显示高级设置",
     "hide": "隐藏高级设置"
-  },
-  "enhance": {
-    "label": "增强",
-    "busy": "增强中...",
-    "tooltip": "在本地增强此提示词",
-    "error": "增强器错误:{message}"
   },
   "runtimeBanner": {
     "loadingModel": "正在将模型加载到内存中...",
@@ -479,10 +472,6 @@
       "ltxRefiner": {
         "label": "LTX 两阶段空间放大",
         "tooltip": "以请求的分辨率渲染基础样本,然后通过 Lightricks/LTX-Video-0.9.5-spatial-upscaler 以 2 倍空间分辨率精炼。帧预算增长 ~1.5 倍。微细节更清晰、运动边缘更干净;默认关闭,因为耗时代价真实存在。"
-      },
-      "enhancePrompt": {
-        "label": "自动增强短提示词",
-        "tooltip": "当提示词少于 25 个词时,附加模型调优的结构提示(电影感描述符、灯光、摄影指导)。扩散视频模型基于 50-100 个词的提示词训练,在较短输入上条件化不足。较长的自定义提示词原样发送 — 此阈值是保护措施。"
       },
       "cfgDecay": {
         "label": "CFG 衰减",

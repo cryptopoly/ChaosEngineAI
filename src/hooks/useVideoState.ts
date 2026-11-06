@@ -110,11 +110,6 @@ export function useVideoState(
   // LTX-Video two-stage spatial upscale (LTXLatentUpsamplePipeline).
   // Visible only when an LTX variant is selected. Frame budget +50%.
   const [videoEnableLtxRefiner, setVideoEnableLtxRefiner] = useState<boolean>(false);
-  // Phase E1: auto-enhance short prompts with model-specific structural
-  // hints. Default-on so the typical 4-word prompt user gets quality
-  // uplift; explicit-off survives if the user has crafted a long custom
-  // prompt and wants it sent verbatim.
-  const [videoEnhancePrompt, setVideoEnhancePrompt] = useState<boolean>(true);
   // Phase E2: linearly decay guidance_scale across the sampling
   // schedule. Flow-match video models oversaturate at constant high
   // CFG; decaying lets early steps lock semantics and late steps
@@ -637,7 +632,6 @@ export function useVideoState(
       seed: parsedSeed,
       useNf4: videoUseNf4,
       enableLtxRefiner: videoEnableLtxRefiner,
-      enhancePrompt: videoEnhancePrompt,
       cfgDecay: videoCfgDecay,
       stgScale: videoStgScale,
       previewVae: videoPreviewVae,
@@ -820,8 +814,6 @@ export function useVideoState(
     setVideoUseNf4,
     videoEnableLtxRefiner,
     setVideoEnableLtxRefiner,
-    videoEnhancePrompt,
-    setVideoEnhancePrompt,
     videoCfgDecay,
     videoCacheStrategy,
     setVideoCacheStrategy,

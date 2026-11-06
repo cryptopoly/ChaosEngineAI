@@ -5,7 +5,7 @@
  * progress-poll: pip / system packages, CUDA torch install with index
  * walk, GPU bundle background job, LongLive (FU-003) + mlx-video Wan
  * (FU-025) async installs, llama-server-turbo update probe,
- * capability refresh, FU-022 prompt enhancer.
+ * capability refresh.
  *
  * Re-exported from ``./index`` so existing
  * ``import { startGpuBundleInstall } from "../api"`` paths keep
@@ -683,43 +683,6 @@ export async function checkTurboUpdate(): Promise<TurboUpdateInfo> {
 export async function refreshCapabilities(): Promise<Record<string, unknown>> {
   const result = await postJson<{ capabilities: Record<string, unknown> }>("/api/setup/refresh-capabilities");
   return result.capabilities;
-}
-
-// ---------------------------------------------------------------------------
-// FU-022 LLM-based prompt enhancer
-// ---------------------------------------------------------------------------
-
-/**
- * FU-022: LLM-based prompt enhancer. Rewrites a short user prompt into
- * the structured format the requested image / video model was trained
- * on. Apple Silicon path uses mlx_lm with a small instruct model
- * (default mlx-community/Qwen2.5-0.5B-Instruct-4bit, ~700 MB). Other
- * platforms use the backend's deterministic template fallback.
- */
-export interface PromptEnhanceResult {
-  enhanced: string;
-  note: string | null;
-  modelUsed: string | null;
-  family: string;
-}
-
-export async function enhancePromptViaLLM(payload: {
-  prompt: string;
-  repo: string;
-  modelId?: string;
-  maxTokens?: number;
-}): Promise<PromptEnhanceResult> {
-  // Long timeout: the first call materialises the model (~2-3s on
-  // M-series cold cache), subsequent calls are sub-second. 30s is
-  // enough headroom for first-call without waiting forever if the
-  // model fails to load.
-  const body = {
-    prompt: payload.prompt,
-    repo: payload.repo,
-    modelId: payload.modelId ?? null,
-    maxTokens: payload.maxTokens ?? 256,
-  };
-  return await postJson<PromptEnhanceResult>("/api/prompt/enhance", body, 30000);
 }
 
 // ---------------------------------------------------------------------------

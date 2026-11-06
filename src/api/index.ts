@@ -570,7 +570,6 @@ export {
 export {
   checkTorchUpgradeAvailable,
   checkTurboUpdate,
-  enhancePromptViaLLM,
   fetchGpuBundleInfo,
   getGpuBundleStatus,
   getLongLiveInstallStatus,
@@ -620,7 +619,6 @@ export type {
   MtplxAttempt,
   MtplxJobState,
   MtplxStatus,
-  PromptEnhanceResult,
   RagStatus,
   TensorfoldAttempt,
   TensorfoldExtra,

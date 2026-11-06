@@ -1487,8 +1487,6 @@ export default function App() {
         onVideoUseNf4Change={videoState.setVideoUseNf4}
         videoEnableLtxRefiner={videoState.videoEnableLtxRefiner}
         onVideoEnableLtxRefinerChange={videoState.setVideoEnableLtxRefiner}
-        videoEnhancePrompt={videoState.videoEnhancePrompt}
-        onVideoEnhancePromptChange={videoState.setVideoEnhancePrompt}
         videoCfgDecay={videoState.videoCfgDecay}
         onVideoCfgDecayChange={videoState.setVideoCfgDecay}
         videoPreviewVae={videoState.videoPreviewVae}

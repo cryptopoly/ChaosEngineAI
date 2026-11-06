@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
 import { InfoTooltip } from "../../components/InfoTooltip";
 import { ImageOutputCard } from "../../components/ImageOutputCard";
-import { PromptEnhanceButton } from "../../components/PromptEnhanceButton";
 import { MfluxEngineBanner } from "../../components/MfluxEngineBanner";
 import { RecommendedSettingsPanel } from "../../components/RecommendedSettingsPanel";
 import {
@@ -784,11 +783,6 @@ export function ImageStudioTab({
           <label>
             <span className="prompt-label-row">
               {t("imageStudio.prompt.label", { defaultValue: "Prompt" })}
-              <PromptEnhanceButton
-                prompt={imagePrompt}
-                repo={selectedImageVariant?.repo ?? ""}
-                onEnhanced={onImagePromptChange}
-              />
             </span>
             <textarea
               className="text-input prompt-area"

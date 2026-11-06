@@ -601,7 +601,6 @@ def _generate_video_artifact(
             scheduler=request.scheduler,
             useNf4=request.useNf4,
             enableLtxRefiner=request.enableLtxRefiner,
-            enhancePrompt=request.enhancePrompt,
             cfgDecay=request.cfgDecay,
             stgScale=request.stgScale,
             previewVae=request.previewVae,

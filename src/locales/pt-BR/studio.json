@@ -8,7 +8,6 @@
     "recentOutputsTitle": "Saídas recentes",
     "prompt": "Prompt",
     "negativePrompt": "Prompt negativo",
-    "enhancePrompt": "Aprimorar",
     "width": "Largura",
     "height": "Altura",
     "steps": "Passos",
@@ -126,12 +125,6 @@
     "title": "Avançado",
     "show": "Mostrar configurações avançadas",
     "hide": "Ocultar configurações avançadas"
-  },
-  "enhance": {
-    "label": "Aprimorar",
-    "busy": "Aprimorando...",
-    "tooltip": "Aprimorar este prompt localmente",
-    "error": "Erro do aprimorador: {message}"
   },
   "runtimeBanner": {
     "loadingModel": "Carregando modelo na memória...",
@@ -479,10 +472,6 @@
       "ltxRefiner": {
         "label": "Upscale espacial LTX em duas etapas",
         "tooltip": "Renderiza a amostra base na resolução solicitada, depois refina através de Lightricks/LTX-Video-0.9.5-spatial-upscaler em 2× resolução espacial. O orçamento de quadros cresce ~1,5×. Detalhes micro mais nítidos e bordas de movimento mais limpas; desativado por padrão porque o impacto no tempo total é real."
-      },
-      "enhancePrompt": {
-        "label": "Aprimorar automaticamente prompts curtos",
-        "tooltip": "Anexa dicas estruturais ajustadas ao modelo (descritores cinematográficos, iluminação, direção de câmera) quando o prompt tem menos de 25 palavras. Modelos de vídeo de difusão treinam em prompts de 50-100 palavras e sub-condicionam em entradas mais curtas. Prompts customizados longos são enviados literalmente — o limiar é a salvaguarda."
       },
       "cfgDecay": {
         "label": "Decaimento de CFG",

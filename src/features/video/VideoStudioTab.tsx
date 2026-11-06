@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
 import { InfoTooltip } from "../../components/InfoTooltip";
 import { Ltx2EngineBanner } from "../../components/Ltx2EngineBanner";
-import { PromptEnhanceButton } from "../../components/PromptEnhanceButton";
 import { RecommendedSettingsPanel } from "../../components/RecommendedSettingsPanel";
 import {
   DEFAULT_MAX_SIDE,
@@ -120,8 +119,6 @@ export interface VideoStudioTabProps {
   onVideoUseNf4Change: (value: boolean) => void;
   videoEnableLtxRefiner: boolean;
   onVideoEnableLtxRefinerChange: (value: boolean) => void;
-  videoEnhancePrompt: boolean;
-  onVideoEnhancePromptChange: (value: boolean) => void;
   videoCfgDecay: boolean;
   onVideoCfgDecayChange: (value: boolean) => void;
   /** FU-018: TAESD/TAEHV preview-decode VAE swap. Off by default. */
@@ -238,8 +235,6 @@ export function VideoStudioTab({
   onVideoUseNf4Change,
   videoEnableLtxRefiner,
   onVideoEnableLtxRefinerChange,
-  videoEnhancePrompt,
-  onVideoEnhancePromptChange,
   videoCfgDecay,
   onVideoCfgDecayChange,
   videoPreviewVae,
@@ -922,11 +917,6 @@ export function VideoStudioTab({
           <label>
             <span className="prompt-label-row">
               {t("videoStudio.prompt.label", { defaultValue: "Prompt" })}
-              <PromptEnhanceButton
-                prompt={videoPrompt}
-                repo={selectedVideoVariant?.repo ?? ""}
-                onEnhanced={onVideoPromptChange}
-              />
             </span>
             <textarea
               className="text-input"
@@ -1408,25 +1398,6 @@ export function VideoStudioTab({
                 <InfoTooltip text={t("videoStudio.toggles.ltxRefiner.tooltip", {
                   defaultValue:
                     "Renders the base sample at the requested resolution, then refines through Lightricks/LTX-Video-0.9.5-spatial-upscaler at 2× spatial resolution. Frame budget grows ~1.5×. Sharper micro-detail and cleaner motion edges; off by default because the wall-time hit is real.",
-                })} />
-              </span>
-            </label>
-          ) : null}
-
-          {!fixedSampler ? (
-            <label className="checkbox-row">
-              <input
-                type="checkbox"
-                checked={videoEnhancePrompt}
-                onChange={(event) => onVideoEnhancePromptChange(event.target.checked)}
-              />
-              <span>
-                <strong>{t("videoStudio.toggles.enhancePrompt.label", {
-                  defaultValue: "Auto-enhance short prompts",
-                })}</strong>
-                <InfoTooltip text={t("videoStudio.toggles.enhancePrompt.tooltip", {
-                  defaultValue:
-                    "Appends model-tuned structural hints (cinematic descriptors, lighting, camera direction) when the prompt is under 25 words. Diffusion video models train on 50-100-word prompts and under-condition on shorter inputs. Long custom prompts are sent verbatim — the threshold is the safeguard.",
                 })} />
               </span>
             </label>

@@ -155,7 +155,6 @@ class CLIParserTests(unittest.TestCase):
             ["metrics-gpu"],
             ["cache-preview", "foo/bar"],
             ["prompts-list"],
-            ["prompts-enhance", "a fluffy cat"],
             ["settings-get"],
             ["settings-storage-get"],
             ["workspaces-list"],

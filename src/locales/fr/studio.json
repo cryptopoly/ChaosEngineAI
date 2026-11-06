@@ -8,7 +8,6 @@
     "recentOutputsTitle": "Sorties récentes",
     "prompt": "Invite",
     "negativePrompt": "Invite négative",
-    "enhancePrompt": "Améliorer",
     "width": "Largeur",
     "height": "Hauteur",
     "steps": "Étapes",
@@ -126,12 +125,6 @@
     "title": "Avancé",
     "show": "Afficher les paramètres avancés",
     "hide": "Masquer les paramètres avancés"
-  },
-  "enhance": {
-    "label": "Améliorer",
-    "busy": "Amélioration...",
-    "tooltip": "Améliorer cette invite localement",
-    "error": "Erreur de l'enhancer : {message}"
   },
   "runtimeBanner": {
     "loadingModel": "Chargement du modèle en mémoire...",
@@ -479,10 +472,6 @@
       "ltxRefiner": {
         "label": "Upscale spatial LTX en deux étapes",
         "tooltip": "Rend l'échantillon de base à la résolution demandée, puis affine via Lightricks/LTX-Video-0.9.5-spatial-upscaler à 2× la résolution spatiale. Le budget d'images augmente d'environ 1,5×. Micro-détails plus nets et bords de mouvement plus propres ; désactivé par défaut car l'impact sur le temps total est réel."
-      },
-      "enhancePrompt": {
-        "label": "Améliorer automatiquement les invites courtes",
-        "tooltip": "Ajoute des indices structurels réglés par modèle (descripteurs cinématographiques, éclairage, direction de caméra) lorsque l'invite fait moins de 25 mots. Les modèles vidéo de diffusion s'entraînent sur des invites de 50-100 mots et sous-conditionnent sur les entrées plus courtes. Les longues invites personnalisées sont envoyées telles quelles — le seuil est la protection."
       },
       "cfgDecay": {
         "label": "Décroissance CFG",

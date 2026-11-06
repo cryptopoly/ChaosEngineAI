@@ -113,9 +113,6 @@ class VideoGenerationConfig:
     # (Lightricks/LTX-Video-0.9.5-spatial-upscaler). Frame budget grows
     # ~1.5×; the ``runtimeNote`` surfaces the substitution to users.
     enableLtxRefiner: bool = False
-    # Phase E1: opt-in template-based prompt enhancement for short prompts
-    # (< 25 words). See ``_enhance_prompt`` for the per-model suffixes.
-    enhancePrompt: bool = True
     # FU-018: TAESD / TAEHV preview-decode VAE swap. Preview-only quality
     # knob — when True the engine swaps ``pipeline.vae`` for the matching
     # tiny VAE (taew2_2 for Wan, taeltx2_3_wide for LTX, taehv1_5 for

@@ -8,7 +8,6 @@
     "recentOutputsTitle": "Salidas recientes",
     "prompt": "Prompt",
     "negativePrompt": "Prompt negativo",
-    "enhancePrompt": "Mejorar",
     "width": "Ancho",
     "height": "Alto",
     "steps": "Pasos",
@@ -126,12 +125,6 @@
     "title": "Avanzado",
     "show": "Mostrar configuración avanzada",
     "hide": "Ocultar configuración avanzada"
-  },
-  "enhance": {
-    "label": "Mejorar",
-    "busy": "Mejorando...",
-    "tooltip": "Mejorar este prompt localmente",
-    "error": "Error del mejorador: {message}"
   },
   "runtimeBanner": {
     "loadingModel": "Cargando modelo en memoria...",
@@ -479,10 +472,6 @@
       "ltxRefiner": {
         "label": "Escalado espacial LTX en dos etapas",
         "tooltip": "Renderiza la muestra base a la resolución solicitada y luego refina a través de Lightricks/LTX-Video-0.9.5-spatial-upscaler a 2× de resolución espacial. El presupuesto de fotogramas crece ~1,5×. Microdetalle más nítido y bordes de movimiento más limpios; desactivado por defecto porque el coste en tiempo es real."
-      },
-      "enhancePrompt": {
-        "label": "Auto-mejorar prompts cortos",
-        "tooltip": "Añade pistas estructurales ajustadas al modelo (descriptores cinematográficos, iluminación, dirección de cámara) cuando el prompt tiene menos de 25 palabras. Los modelos de video por difusión se entrenan con prompts de 50-100 palabras y sub-condicionan con entradas más cortas. Los prompts largos personalizados se envían tal cual — el umbral es la salvaguarda."
       },
       "cfgDecay": {
         "label": "Decay de CFG",

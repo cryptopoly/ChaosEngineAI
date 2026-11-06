@@ -9,6 +9,13 @@ summary: Read this first in every session.
 
 Newest dated update first. Each update has the same sections: Done, Open for Claude, Open for Dan.
 
+## Update 2026-11-06, Enhance removed
+
+**Done** (branch `feat/media-input`, decision D-24)
+
+- Removed the Enhance button (Image and Video Studio), the "Auto-enhance short prompts" switch, the `/api/prompt/enhance` route, `helpers/prompt_enhancer.py`, the `prompts-enhance` CLI command, the `enhancePrompt` request field and its template suffixes, the frontend API call, locale strings, tests and docs. No model download is needed for any prompt feature now.
+- Video prompts are sent exactly as typed. Older callers that still send `enhancePrompt` are not rejected (the field is ignored).
+
 ## Update 2026-11-06, Studio sizes, friendly errors, end-only image
 
 **Done** (branch `feat/media-input`)

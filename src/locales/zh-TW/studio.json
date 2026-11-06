@@ -8,7 +8,6 @@
     "recentOutputsTitle": "最近的輸出",
     "prompt": "提示詞",
     "negativePrompt": "反向提示詞",
-    "enhancePrompt": "增強",
     "width": "寬度",
     "height": "高度",
     "steps": "步數",
@@ -126,12 +125,6 @@
     "title": "進階",
     "show": "顯示進階設定",
     "hide": "隱藏進階設定"
-  },
-  "enhance": {
-    "label": "增強",
-    "busy": "增強中...",
-    "tooltip": "在本地增強此提示詞",
-    "error": "增強器錯誤:{message}"
   },
   "runtimeBanner": {
     "loadingModel": "正在將模型載入記憶體...",
@@ -479,10 +472,6 @@
       "ltxRefiner": {
         "label": "LTX 兩階段空間升頻",
         "tooltip": "以要求的解析度渲染基礎樣本,然後透過 Lightricks/LTX-Video-0.9.5-spatial-upscaler 以 2 倍空間解析度精修。幀預算增加約 1.5 倍。更銳利的細節與更乾淨的動態邊緣;預設關閉,因為牆鐘時間的影響相當明顯。"
-      },
-      "enhancePrompt": {
-        "label": "自動增強短提示詞",
-        "tooltip": "當提示詞少於 25 字時,附加模型調整過的結構提示 (電影感描述、光線、鏡頭方向)。擴散影片模型訓練於 50-100 字的提示詞,對較短輸入條件不足。較長的自訂提示詞會原封不動傳送 — 此閾值僅是安全防護。"
       },
       "cfgDecay": {
         "label": "CFG 衰減",

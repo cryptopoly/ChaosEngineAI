@@ -201,7 +201,6 @@ export interface VideoGenerationPayload {
   seed?: number | null;
   useNf4?: boolean;
   enableLtxRefiner?: boolean;
-  enhancePrompt?: boolean;
   cfgDecay?: boolean;
   stgScale?: number;
   /** FU-018: TAESD/TAEHV preview-decode VAE swap. Preview-only

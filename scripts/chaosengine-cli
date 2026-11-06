@@ -19,7 +19,7 @@ Two layers:
      setup-install / setup-refresh / longlive-install / wan-install
      cuda-torch-install / gpu-bundle-install / turbo-update-check
      diagnostics-snapshot / diagnostics-log-tail / diagnostics-reextract
-     gpu-status / cache-preview / prompts-list / prompts-enhance
+     gpu-status / cache-preview / prompts-list
      settings-get / settings-patch / workspaces-list
      plugins-list / plugins-enable / plugins-disable / tools-list / adapters-list
      finetuning-start / finetuning-status / metrics-gpu / compare
@@ -1025,16 +1025,6 @@ def cmd_prompts_delete(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_prompts_enhance(args: argparse.Namespace) -> int:
-    body = {"prompt": args.text}
-    if args.family:
-        body["family"] = args.family
-    if args.model:
-        body["model"] = args.model
-    _ok(_hit_post(args, "/api/prompt/enhance", body=body, timeout=args.timeout))
-    return 0
-
-
 def cmd_settings_get(args: argparse.Namespace) -> int:
     _ok(_hit_get(args, "/api/settings", timeout=10.0))
     return 0
@@ -1760,7 +1750,6 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("prompts-list").set_defaults(func=cmd_prompts_list)
     s = sub.add_parser("prompts-create"); s.add_argument("--body", default=None); s.add_argument("--file", default=None); s.set_defaults(func=cmd_prompts_create)
     s = sub.add_parser("prompts-delete"); s.add_argument("template_id"); s.set_defaults(func=cmd_prompts_delete)
-    s = sub.add_parser("prompts-enhance"); s.add_argument("text"); s.add_argument("--family", default=None); s.add_argument("--model", default=None); s.add_argument("--timeout", type=float, default=120.0); s.set_defaults(func=cmd_prompts_enhance)
     sub.add_parser("settings-get").set_defaults(func=cmd_settings_get)
     s = sub.add_parser("settings-patch"); s.add_argument("--body", default=None); s.add_argument("--file", default=None); s.set_defaults(func=cmd_settings_patch)
     sub.add_parser("settings-storage-get").set_defaults(func=cmd_settings_storage_get)

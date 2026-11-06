@@ -131,7 +131,7 @@ Every API surface lives in its own file under `backend_service/routes/`:
 | `models.py` | `/api/models/*` |
 | `openai_compat.py` | `/v1/*` |
 | `plugins.py` | `/api/plugins/*` |
-| `prompts.py` | `/api/prompts/*`, `/api/prompt/enhance` |
+| `prompts.py` | `/api/prompts/*` |
 | `server.py` | `/api/server/*` |
 | `settings.py` | `/api/settings/*` |
 | `setup/` | `/api/setup/*` — submodules per installer (mtplx, tensorfold, longlive, wan, gpu_bundle, cuda_torch, turbo) |

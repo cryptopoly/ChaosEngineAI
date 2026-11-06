@@ -3,7 +3,7 @@
 Upload: an image goes into an inbox folder next to settings.json and comes back as a handle
 (``upload:<id>``) that image and video tools accept wherever they accept a path. Download: a
 finished job's output can be fetched over HTTP, but only files inside the app's own output
-folders (images, videos, voice library), never an arbitrary path. Inbox files are removed after a day.
+folders (images, videos, voice library, storyboard exports), never an arbitrary path. Inbox files are removed after a day.
 """
 
 from __future__ import annotations
@@ -84,7 +84,7 @@ def output_roots() -> list[Path]:
     from backend_service import voice_library
     from backend_service.app import _current_image_outputs_dir, _current_video_outputs_dir
 
-    roots = [_current_image_outputs_dir(), _current_video_outputs_dir(), voice_library.library_dir()]
+    roots = [_current_image_outputs_dir(), _current_video_outputs_dir(), voice_library.library_dir(), *_storyboard_exports()]
     resolved: list[Path] = []
     for root in roots:
         try:
@@ -92,6 +92,20 @@ def output_roots() -> list[Path]:
         except OSError:
             pass
     return resolved
+
+
+def _storyboard_exports() -> list[Path]:
+    """Each storyboard project's ``exports/`` folder (films and bundles); never its media or the projects root."""
+    from backend_service.storyboard.models import PROJECT_ID_RE
+    from backend_service.storyboard.store import storyboards_dir
+
+    root = storyboards_dir()
+    try:
+        real_root = root.resolve()
+        folders = [p / "exports" for p in root.iterdir() if PROJECT_ID_RE.match(p.name)] if root.is_dir() else []
+    except OSError:
+        return []
+    return [f for f in folders if f.is_dir() and not f.is_symlink() and f.resolve().is_relative_to(real_root)]
 
 
 def fetchable(path: str | Path) -> Path | None:

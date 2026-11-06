@@ -27,6 +27,7 @@ class _Ticket:
     queued_at: float = field(default_factory=time.time)
     started_at: float | None = None
     cancelled: bool = False
+    batch: str | None = None  # a storyboard batch id: one Cancel for all of its tickets
 
     def describe(self) -> dict[str, Any]:
         return {
@@ -36,6 +37,7 @@ class _Ticket:
             "label": self.label,
             "queuedAt": self.queued_at,
             "startedAt": self.started_at,
+            "batch": self.batch,
         }
 
 
@@ -47,18 +49,18 @@ class HeavyJobQueue:
         self._ids = itertools.count(1)
 
     @contextmanager
-    def slot(self, kind: str, source: str = "ui", label: str = "") -> Iterator[_Ticket]:
+    def slot(self, kind: str, source: str = "ui", label: str = "", batch: str | None = None) -> Iterator[_Ticket]:
         """Block until this job is first in line and nothing else runs; release on exit."""
-        ticket = self.enqueue(kind, source, label)
+        ticket = self.enqueue(kind, source, label, batch)
         try:
             self.wait_turn(ticket)
             yield ticket
         finally:
             self.release(ticket)
 
-    def enqueue(self, kind: str, source: str = "ui", label: str = "") -> _Ticket:
+    def enqueue(self, kind: str, source: str = "ui", label: str = "", batch: str | None = None) -> _Ticket:
         with self._cond:
-            ticket = _Ticket(next(self._ids), kind, source, label)
+            ticket = _Ticket(next(self._ids), kind, source, label, batch=batch)
             self._waiting.append(ticket)
             return ticket
 
@@ -100,7 +102,7 @@ class HeavyJobQueue:
         return count
 
     def running_source(self, kind: str) -> str | None:
-        """Who owns the running job of this kind ("ui" or "agent"), or None when none of that kind runs."""
+        """Who owns the running job of this kind ("ui", "agent" or "storyboard"), or None when none of that kind runs."""
         with self._cond:
             running = self._running
             return running.source if running is not None and running.kind == kind else None
@@ -112,6 +114,24 @@ class HeavyJobQueue:
         """
         stopped = stop_running() if self.running_source(kind) in (None, "ui") else False
         return stopped or self.cancel_waiting(kind, source="ui") > 0
+
+    def cancel_batch(self, batch_id: str, stop_running: Callable[[str], bool] | None = None) -> int:
+        """Cancel every waiting ticket of one batch and, if its ticket runs, ask ``stop_running(kind)`` to stop it.
+
+        Returns how many tickets were hit. Nothing outside the batch is touched.
+        """
+        count = 0
+        with self._cond:
+            for ticket in list(self._waiting):
+                if ticket.batch == batch_id:
+                    ticket.cancelled = True
+                    self._waiting.remove(ticket)
+                    count += 1
+            running = self._running if self._running is not None and self._running.batch == batch_id else None
+            self._cond.notify_all()
+        if running is not None and stop_running is not None and stop_running(running.kind):
+            count += 1
+        return count
 
     def position(self, ticket: _Ticket) -> int:
         """0 when running, 1.. for waiting (1 = next), -1 when finished or cancelled."""

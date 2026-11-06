@@ -125,6 +125,35 @@ class HeavyJobQueueTests(unittest.TestCase):
                 raise ValueError("boom")
         self.assertIsNone(queue.snapshot()["running"])
 
+    def test_cancel_batch_hits_only_that_batch(self):
+        queue = HeavyJobQueue()
+        running = queue.enqueue("image", "storyboard", "shot 1", batch="b_1")
+        queue.wait_turn(running)
+        mine = queue.enqueue("video", "storyboard", "shot 1 clip", batch="b_1")
+        other_batch = queue.enqueue("image", "storyboard", "x", batch="b_2")
+        studio = queue.enqueue("image", "ui", "poster")
+        agent = queue.enqueue("image", "agent", "poster")
+        stopped: list[str] = []
+        self.assertEqual(queue.cancel_batch("b_1", lambda kind: stopped.append(kind) or True), 2)
+        self.assertEqual(stopped, ["image"])
+        self.assertTrue(mine.cancelled)
+        self.assertFalse(any(t.cancelled for t in (other_batch, studio, agent)))
+        self.assertEqual(queue.snapshot()["running"]["batch"], "b_1")
+        self.assertEqual(queue.cancel_batch("b_9", lambda kind: True), 0)
+        queue.release(running)
+
+    def test_studio_cancel_leaves_a_storyboard_batch_alone(self):
+        queue = HeavyJobQueue()
+        running = queue.enqueue("image", "storyboard", "shot 1", batch="b_1")
+        queue.wait_turn(running)
+        waiting = queue.enqueue("image", "storyboard", "shot 2", batch="b_1")
+        stopped: list[str] = []
+        self.assertFalse(queue.cancel_studio("image", lambda: stopped.append("stop") or True))
+        self.assertEqual(stopped, [])
+        self.assertFalse(waiting.cancelled)
+        queue.release(running)
+        queue.release(waiting)
+
 
 
 class ProgressRouteQueueTests(unittest.TestCase):

@@ -16,8 +16,9 @@ Runner = Callable[[], tuple[dict[str, Any], list[str]]]
 
 
 class Job:
-    def __init__(self, job_id: str, kind: str, label: str, ticket: Any) -> None:
+    def __init__(self, job_id: str, kind: str, label: str, ticket: Any, cancel: Callable[[], bool] | None = None) -> None:
         self.id = job_id
+        self.cancel_fn = cancel  # set for a job that queues its own work (a storyboard batch or render)
         self.kind = kind
         self.label = label
         self.ticket = ticket
@@ -37,7 +38,7 @@ class Job:
             "state": self.state,
             "notes": list(self.notes),
         }
-        if self.state == "queued":
+        if self.state == "queued" and self.ticket is not None:
             info["queuePosition"] = max(HEAVY_JOBS.position(self.ticket), 0)
         if self.state == "running":
             tracker = {"image": IMAGE_PROGRESS, "video": VIDEO_PROGRESS}.get(self.kind)
@@ -62,10 +63,11 @@ class JobStore:
         self._jobs: dict[str, Job] = {}
         self._ids = itertools.count(1)
 
-    def submit(self, kind: str, label: str, runner: Runner) -> Job:
-        ticket = HEAVY_JOBS.enqueue(kind, "agent", label)
+    def submit(self, kind: str, label: str, runner: Runner, cancel: Callable[[], bool] | None = None) -> Job:
+        """Run ``runner`` on the heavy queue. With ``cancel``, take no ticket: the runner queues its own work."""
+        ticket = HEAVY_JOBS.enqueue(kind, "agent", label) if cancel is None else None
         with self._lock:
-            job = Job(f"job-{next(self._ids)}", kind, label, ticket)
+            job = Job(f"job-{next(self._ids)}", kind, label, ticket, cancel)
             self._jobs[job.id] = job
             for old in [j for j in self._jobs.values() if j.done.is_set()][:-MAX_KEPT]:
                 self._jobs.pop(old.id, None)
@@ -74,7 +76,8 @@ class JobStore:
 
     def _run(self, job: Job, runner: Runner) -> None:
         try:
-            HEAVY_JOBS.wait_turn(job.ticket)
+            if job.ticket is not None:
+                HEAVY_JOBS.wait_turn(job.ticket)
             job.state = "running"
             output, notes = runner()
             if output.get("path"):
@@ -94,7 +97,8 @@ class JobStore:
             job.state = "failed"
             job.error = _readable(exc)
         finally:
-            HEAVY_JOBS.release(job.ticket)
+            if job.ticket is not None:
+                HEAVY_JOBS.release(job.ticket)
             job.finished_at = time.time()
             job.done.set()
 
@@ -105,6 +109,8 @@ class JobStore:
     def cancel(self, job: Job) -> bool:
         if job.done.is_set():
             return False
+        if job.cancel_fn is not None:
+            return bool(job.cancel_fn())
         if job.state == "queued":
             return HEAVY_JOBS.cancel_waiting(ticket_id=job.ticket.id) > 0
         tracker = {"image": IMAGE_PROGRESS, "video": VIDEO_PROGRESS}.get(job.kind)

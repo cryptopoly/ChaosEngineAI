@@ -1,4 +1,5 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
+import { friendlyValidationDetail } from "./validationErrors";
 import type {
   AppSettings,
   BenchmarkRunPayload,
@@ -163,6 +164,8 @@ export async function readErrorDetail(response: Response, fallback: string): Pro
       } else {
         detail = JSON.stringify(errorBody.detail);
       }
+    } else if (friendlyValidationDetail(errorBody?.detail)) {
+      detail = friendlyValidationDetail(errorBody.detail) as string;
     } else if (errorBody?.detail) {
       detail = typeof errorBody.detail === "string" ? errorBody.detail : JSON.stringify(errorBody.detail);
     } else if (errorBody?.error) {

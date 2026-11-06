@@ -60,6 +60,11 @@ class LtxCommandTests(unittest.TestCase):
     def build(self, config):
         return Ltx2MlxVideoEngine._build_command(config, Path("/pack"), None, 768, 512, 7, Path("/o.mp4"))
 
+    def test_an_end_image_alone_anchors_the_last_frame(self):
+        args = self.build(self.config(endImagePath="/b.png"))
+        pairs = [args[i + 1 : i + 4] for i, a in enumerate(args) if a == "--image"]
+        self.assertEqual(pairs, [["/b.png", "64", "1"]])
+
     def test_no_images_no_flag(self):
         self.assertNotIn("--image", self.build(self.config()))
 
@@ -89,12 +94,19 @@ class RouteChecksTests(unittest.TestCase):
         self.assertEqual(ctx.exception.status_code, 400)
         self.assertIn("LTX-2", ctx.exception.detail)
 
-    def test_end_without_start_and_missing_file(self):
-        for kw, needle in (({"endImagePath": "/x.png"}, "start image"), ({"startImagePath": "/nope.png"}, "not found")):
+    def test_missing_file_is_refused(self):
+        for kw in ({"startImagePath": "/nope.png"}, {"endImagePath": "/nope.png"}):
             with self.assertRaises(HTTPException) as ctx:
                 self.check(self.request(**kw))
             self.assertEqual(ctx.exception.status_code, 400)
-            self.assertIn(needle, ctx.exception.detail)
+            self.assertIn("not found", ctx.exception.detail)
+
+    def test_an_end_image_alone_is_allowed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = _png(Path(tmp) / "e.png")
+            out = self.check(self.request(endImagePath=str(path)))
+            self.assertIsNone(out.startImagePath)
+            self.assertEqual(out.endImagePath, str(path.resolve()))
 
     def test_valid_paths_are_resolved(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -409,8 +409,6 @@ def _checked_input_images(body: VideoGenerationRequest, variant: dict[str, Any])
             status_code=400,
             detail=f"{variant.get('name')} cannot start from an image. Pick an LTX-2 model (ltx-2-mlx).",
         )
-    if body.endImagePath and not body.startImagePath:
-        raise HTTPException(status_code=400, detail="An end image needs a start image too.")
     try:
         return body.model_copy(update={
             "startImagePath": str(resolve_input_image(body.startImagePath)) if body.startImagePath else None,

@@ -918,6 +918,13 @@
     "startLabel": "Start image",
     "startHint": "The clip begins on this image.",
     "endLabel": "End image (optional)",
-    "endHint": "The clip ends on this image. Needs a start image."
+    "endHint": "The clip ends on this image. Use it alone and the prompt moves toward this image."
+  },
+  "sizePresets": {
+    "aspect": "Aspect ratio",
+    "size": "Size",
+    "resolution": "Resolution",
+    "overLimit": "Above this model's size limit.",
+    "current": "Current size: {width} x {height} ({megapixels} MP)"
   }
 }

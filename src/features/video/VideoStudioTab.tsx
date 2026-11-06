@@ -21,6 +21,14 @@ import type {
   VideoModelVariant,
   VideoRuntimeStatus,
 } from "../../types";
+import {
+  VIDEO_ASPECTS,
+  VIDEO_RESOLUTIONS,
+  fitsLimit,
+  nearestAspect,
+  nearestVideoResolution,
+  sizeForShortEdge,
+} from "../../utils/sizePresets";
 import { InputImagePicker, type InputImage } from "../../components/InputImagePicker";
 import type { ImageOutputArtifact } from "../../types/image";
 import type { NativeBackendStatus } from "../../types/server";
@@ -44,11 +52,9 @@ import {
   videoSecondarySizeLabel,
 } from "../../utils";
 import {
-  ASPECT_RATIOS,
   KNOWN_INSTALLABLE_VIDEO_DEPS,
   MLX_VIDEO_SUPPORTED_REPOS,
   QUALITY_PRESETS,
-  type VideoAspectRatio,
   type VideoQualityPreset,
   displayNumber,
   isLtx2DistilledRepo,
@@ -504,9 +510,12 @@ export function VideoStudioTab({
   // CUDA-only controls (NF4, FP8) need an NVIDIA GPU: hidden on a Mac and on a PC without one.
   const showCudaControls = hostSystem ? hasNvidiaGpu(hostSystem) : !isAppleSiliconHost;
   // Per-model size limit (``maxSide`` from the catalog; 4096 when the backend sends none).
+  const activeVideoAspect = nearestAspect(videoWidth, videoHeight, VIDEO_ASPECTS);
+  const activeVideoResolution = nearestVideoResolution(videoWidth, videoHeight);
   const videoMaxSide = selectedVideoVariant?.maxSide && selectedVideoVariant.maxSide > 0
     ? selectedVideoVariant.maxSide
     : DEFAULT_MAX_SIDE;
+  const videoSizeLimit = { maxSide: videoMaxSide, maxPixels: selectedVideoVariant?.maxPixels ?? null };
   useEffect(() => {
     const fitted = fitStudioSize(videoWidth, videoHeight, { maxSide: videoMaxSide });
     if (fitted.width !== videoWidth) onVideoWidthChange(fitted.width);
@@ -976,22 +985,17 @@ export function VideoStudioTab({
                 hint={t("inputImage.startHint")}
                 images={videoStartImage ? [videoStartImage] : []}
                 max={1}
-                onChange={(next) => {
-                  onVideoStartImageChange(next[0] ?? null);
-                  if (next.length === 0) onVideoEndImageChange(null);
-                }}
+                onChange={(next) => onVideoStartImageChange(next[0] ?? null)}
                 gallery={imageGallery}
               />
-              {videoStartImage ? (
-                <InputImagePicker
-                  label={t("inputImage.endLabel")}
-                  hint={t("inputImage.endHint")}
-                  images={videoEndImage ? [videoEndImage] : []}
-                  max={1}
-                  onChange={(next) => onVideoEndImageChange(next[0] ?? null)}
-                  gallery={imageGallery}
-                />
-              ) : null}
+              <InputImagePicker
+                label={t("inputImage.endLabel")}
+                hint={t("inputImage.endHint")}
+                images={videoEndImage ? [videoEndImage] : []}
+                max={1}
+                onChange={(next) => onVideoEndImageChange(next[0] ?? null)}
+                gallery={imageGallery}
+              />
             </>
           ) : null}
 
@@ -1096,29 +1100,54 @@ export function VideoStudioTab({
             tested envelope — safer than letting users pick arbitrary W×H.
           */}
           <div className="preset-row">
-            <span className="preset-row-label">
-              {t("video.aspectRatio", { defaultValue: "Aspect ratio" })}
-              <InfoTooltip text={t("videoStudio.aspectRatio.tooltip", {
-                defaultValue:
-                  "Sets Width and Height to a common video shape. All presets are safe on every supported model (≤1024 on the long edge, divisible by 8). Edit Width/Height below for finer control.",
-              })} />
-            </span>
-            {(Object.keys(ASPECT_RATIOS) as VideoAspectRatio[]).map((key) => {
-              const ratio = ASPECT_RATIOS[key];
-              const active =
-                videoWidth === ratio.width && videoHeight === ratio.height;
+            <span className="preset-row-label">{t("sizePresets.aspect")}</span>
+            {VIDEO_ASPECTS.map((aspect) => {
+              const shortEdge = nearestVideoResolution(videoWidth, videoHeight)?.shortEdge ?? Math.min(videoWidth, videoHeight);
+              const size = sizeForShortEdge(aspect, shortEdge);
+              const ok = fitsLimit(size, videoSizeLimit);
               return (
                 <button
-                  key={key}
+                  key={aspect.id}
                   type="button"
-                  className={`preset-pill ${active ? "active" : ""}`.trim()}
+                  className={`preset-pill ${activeVideoAspect?.id === aspect.id ? "active" : ""}`.trim()}
+                  disabled={!ok}
+                  title={ok ? `${size.width} x ${size.height}` : t("sizePresets.overLimit")}
                   onClick={() => {
-                    onVideoWidthChange(ratio.width);
-                    onVideoHeightChange(ratio.height);
+                    onVideoWidthChange(size.width);
+                    onVideoHeightChange(size.height);
                   }}
                 >
-                  <span className="preset-pill-label">{key}</span>
-                  <span className="preset-pill-sub">{ratio.width}×{ratio.height}</span>
+                  <span className="preset-pill-label">{aspect.label}</span>
+                </button>
+              );
+            })}
+          </div>
+          <div className="preset-row">
+            <span className="preset-row-label">
+              {t("sizePresets.resolution")}
+              <InfoTooltip text={t("videoStudio.aspectRatio.tooltip", {
+                defaultValue:
+                  "Sets Width and Height from a common name such as HD or 4K, in the aspect ratio chosen above. Sizes past this model's limits are greyed out. A large size also needs a lot of memory: the Studio refuses a run that would not fit.",
+              })} />
+            </span>
+            {VIDEO_RESOLUTIONS.map((resolution) => {
+              const aspect = activeVideoAspect ?? VIDEO_ASPECTS[0];
+              const size = sizeForShortEdge(aspect, resolution.shortEdge);
+              const ok = fitsLimit(size, videoSizeLimit);
+              return (
+                <button
+                  key={resolution.id}
+                  type="button"
+                  className={`preset-pill ${activeVideoResolution?.id === resolution.id ? "active" : ""}`.trim()}
+                  disabled={!ok}
+                  title={ok ? `${size.width} x ${size.height}` : t("sizePresets.overLimit")}
+                  onClick={() => {
+                    onVideoWidthChange(size.width);
+                    onVideoHeightChange(size.height);
+                  }}
+                >
+                  <span className="preset-pill-label">{resolution.label}</span>
+                  <span className="preset-pill-sub">{resolution.sub} · {size.width}×{size.height}</span>
                 </button>
               );
             })}

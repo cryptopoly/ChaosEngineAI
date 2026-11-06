@@ -49,6 +49,14 @@ import {
   isFlowMatchingRepo,
   isUnetImageRepo,
 } from "../../constants";
+import {
+  IMAGE_ASPECTS,
+  IMAGE_MEGAPIXELS,
+  fitsLimit,
+  nearestAspect,
+  nearestMegapixels,
+  sizeForPixels,
+} from "../../utils/sizePresets";
 import { InputImagePicker, type InputImage } from "../../components/InputImagePicker";
 import { modelsPageRequest, type TabRequest } from "../../constants/tabRedirects";
 
@@ -329,11 +337,6 @@ export function ImageStudioTab({
     }
   }, [installedCatalog, hasInstalledImageModels, selectedImageModelId, onSelectedImageModelIdChange]);
 
-  // A pill is highlighted only while the fields hold its size (a recommended or hand-typed
-  // size that matches no preset leaves none highlighted).
-  const selectedRatioPreset = IMAGE_RATIO_PRESETS.find(
-    (preset) => preset.width === imageWidth && preset.height === imageHeight,
-  );
   const selectedQuality =
     IMAGE_QUALITY_PRESETS.find((preset) => preset.id === imageQualityPreset) ?? IMAGE_QUALITY_PRESETS[1];
   // CUDA-only controls need an NVIDIA GPU: hidden on a Mac and on a PC without one.
@@ -430,6 +433,9 @@ export function ImageStudioTab({
     ? selectedImageVariant.maxSide
     : DEFAULT_MAX_SIDE;
   const imageMinSide = Math.max(DEFAULT_MIN_SIDE, selectedImageVariant?.minSide ?? DEFAULT_MIN_SIDE);
+  const imageSizeLimit = { maxSide: imageMaxSide, maxPixels: selectedImageVariant?.maxPixels ?? null, minSide: imageMinSide };
+  const activeImageAspect = nearestAspect(imageWidth, imageHeight, IMAGE_ASPECTS);
+  const activeImageMegapixels = nearestMegapixels(imageWidth, imageHeight);
   useEffect(() => {
     const fitted = fitStudioSize(imageWidth, imageHeight, { maxSide: imageMaxSide });
     if (fitted.width !== imageWidth) onImageWidthChange(fitted.width);
@@ -512,11 +518,6 @@ export function ImageStudioTab({
   // in src/constants/image.ts stay english-only (shared with non-React
   // call sites); we resolve the visible label here so the studio renders
   // the user's chosen locale.
-  const ratioLabelFor = (id: string): string =>
-    t(`imageStudio.aspectRatios.${id}.label`, {
-      defaultValue:
-        IMAGE_RATIO_PRESETS.find((p) => p.id === id)?.label ?? id,
-    });
   const qualityLabelFor = (id: string): string =>
     t(`imageStudio.quality.${id}.label`, {
       defaultValue:
@@ -866,20 +867,60 @@ export function ImageStudioTab({
           ) : null}
 
           <div className="control-stack">
-            <span className="eyebrow">{t("image.aspectRatio", { defaultValue: "Aspect Ratio" })}</span>
+            <span className="eyebrow">{t("sizePresets.aspect")}</span>
             <div className="image-pill-row">
-              {IMAGE_RATIO_PRESETS.map((preset) => (
-                <button
-                  key={preset.id}
-                  className={selectedRatioPreset?.id === preset.id ? "pill-button active" : "pill-button"}
-                  type="button"
-                  onClick={() => onApplyImageRatioPreset(preset.id)}
-                >
-                  <strong>{ratioLabelFor(preset.id)}</strong>
-                  <span>{preset.hint}</span>
-                </button>
-              ))}
+              {IMAGE_ASPECTS.map((aspect) => {
+                const current = nearestMegapixels(imageWidth, imageHeight)?.mp ?? (imageWidth * imageHeight) / 1_000_000;
+                const size = sizeForPixels(aspect, current * 1_000_000);
+                const ok = fitsLimit(size, imageSizeLimit);
+                return (
+                  <button
+                    key={aspect.id}
+                    className={activeImageAspect?.id === aspect.id ? "pill-button active" : "pill-button"}
+                    type="button"
+                    disabled={!ok}
+                    title={ok ? `${size.width} x ${size.height}` : t("sizePresets.overLimit")}
+                    onClick={() => {
+                      onImageWidthChange(size.width);
+                      onImageHeightChange(size.height);
+                    }}
+                  >
+                    <strong>{aspect.label}</strong>
+                  </button>
+                );
+              })}
             </div>
+            <span className="eyebrow">{t("sizePresets.size")}</span>
+            <div className="image-pill-row">
+              {IMAGE_MEGAPIXELS.map((option) => {
+                const aspect = activeImageAspect ?? IMAGE_ASPECTS[0];
+                const size = sizeForPixels(aspect, option.mp * 1_000_000);
+                const ok = fitsLimit(size, imageSizeLimit);
+                return (
+                  <button
+                    key={option.id}
+                    className={activeImageMegapixels?.id === option.id ? "pill-button active" : "pill-button"}
+                    type="button"
+                    disabled={!ok}
+                    title={ok ? `${size.width} x ${size.height}` : t("sizePresets.overLimit")}
+                    onClick={() => {
+                      onImageWidthChange(size.width);
+                      onImageHeightChange(size.height);
+                    }}
+                  >
+                    <strong>{option.label}</strong>
+                    <span>{size.width} x {size.height}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="muted-text">
+              {t("sizePresets.current", {
+                width: imageWidth,
+                height: imageHeight,
+                megapixels: ((imageWidth * imageHeight) / 1_000_000).toFixed(1),
+              })}
+            </p>
           </div>
 
           <div className="control-stack">
@@ -1130,7 +1171,7 @@ export function ImageStudioTab({
                 min={1}
                 max={100}
                 value={imageSteps}
-                onChange={(event) => onImageStepsChange(Number(event.target.value) || 24)}
+                onChange={(event) => onImageStepsChange(Math.min(100, Math.max(1, Math.round(Number(event.target.value)) || 24)))}
               />
             </label>
             {acceptsGuidance ? (

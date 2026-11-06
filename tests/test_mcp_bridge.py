@@ -183,7 +183,8 @@ class McpBridgeTests(unittest.TestCase):
             self.assertTrue(is_error)
             self.assertIn("not found", text)
             is_error, text = call(self.client, "generate_video", {"prompt": "x", "end_image": "/nope.png"}, self.auth())
-            self.assertIn("needs start_image", text)
+            self.assertTrue(is_error)
+            self.assertIn("not found", text)
         with mock.patch("backend_service.mcp_bridge.models.installed_models", return_value=[other]):
             is_error, text = call(self.client, "generate_video", {"prompt": "x", "start_image": "/nope.png"}, self.auth())
             self.assertTrue(is_error)

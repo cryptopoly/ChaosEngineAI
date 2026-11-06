@@ -919,5 +919,12 @@
     "startHint": null,
     "endLabel": null,
     "endHint": null
+  },
+  "sizePresets": {
+    "aspect": null,
+    "size": null,
+    "resolution": null,
+    "overLimit": null,
+    "current": null
   }
 }

@@ -9,6 +9,16 @@ summary: Read this first in every session.
 
 Newest dated update first. Each update has the same sections: Done, Open for Claude, Open for Dan.
 
+## Update 2026-11-06, Studio sizes, friendly errors, end-only image
+
+**Done** (branch `feat/media-input`)
+
+- **Image Studio sizes:** the four fixed pills are replaced by an aspect row (1:1, 3:2, 2:3, 4:3, 3:4, 16:9, 9:16, 21:9) and a size row (0.5, 1, 2, 4, 8 MP). A button the model cannot take (its `maxSide` / `maxPixels`) is greyed out with a reason. The 2048 x 2048 failure was not a size limit: the model allows 4096 / 16.7 MP. The Steps box held 248 and the request refused anything over 100; Steps now clamps to 1 to 100.
+- **Video Studio sizes:** aspect row (16:9, 9:16, 1:1, 4:3, 21:9) plus named resolutions SD 480p, HD 720p, Full HD 1080p, 2K, 4K, 8K (short edge, multiples of 64), greyed out past the model's limits. LTX-2.5 allows up to 9.4 MP, so 8K is greyed out; 4K is allowed by the limit but a 64 GB Mac may refuse it at the memory check.
+- **Friendly errors:** a validation error from the backend now reads "Steps must be at most 100 (you entered 248)." instead of raw JSON (`src/api/validationErrors.ts`).
+- **End image alone:** LTX-2 takes an end image without a start image (the clip moves toward it); API, agent tool and Studio all allow it. Not yet judged on a real clip.
+- Tests: pytest 2614 passed, vitest 791 passed, `tsc` and `i18n:validate` clean.
+
 ## Update 2026-11-06, media input slice C: Studio picker
 
 **Done** (branch `feat/media-input`)

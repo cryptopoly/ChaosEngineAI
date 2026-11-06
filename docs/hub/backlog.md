@@ -5,7 +5,7 @@ summary: Reminders for Dan, then the work in flight and the full follow-up track
 ---
 # Backlog and issues
 
-Priority: P1 urgent, P2 next, P3 later. The complete list of follow-ups (129+ rows with the full reasoning and measurements) is the [tracker](tracker/README.md), generated from `CLAUDE.md`; this page is the short view.
+Priority: P1 urgent, P2 next, P3 later. The complete list of follow-ups (129+ rows with the full reasoning and measurements) is the [tracker](tracker/README.md), generated from `FOLLOW_UPS.md`; this page is the short view.
 
 ## Reminders for Dan
 

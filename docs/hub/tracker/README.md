@@ -1,12 +1,12 @@
 ---
 title: Follow-up tracker
 order: 1
-summary: Every FU row from CLAUDE.md, split into open and closed.
+summary: Every FU row from FOLLOW_UPS.md, split into open and closed.
 ---
 
 # Follow-up tracker
 
-Generated from the Follow-Ups Tracker in `CLAUDE.md` by `tools/hub_tracker.py`; edit the row there, not here.
+Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here.
 
 - [Open and live follow-ups](open.md): **58** rows.
 - [Closed follow-ups](closed.md): **77** rows.

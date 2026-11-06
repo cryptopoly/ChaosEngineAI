@@ -53,7 +53,7 @@ Newest dated update first. Each update has the same sections: Done, Open for Cla
 - LTX long-clip memory measured on the M4 Max: 18 GB engine footprint at both 768x512 x 257 frames (352 s) and 1280x704 x 121 frames (363 s); the 20 GB catalog figure holds. See [FU-128](tracker/open.md).
 - LTX-2.5 runs live and is the LTX default: 128 s against 155 s for LTX-2.3 on the same clip, 17 GB, clean output with sound ([FU-128](tracker/closed.md)).
 - Sound in Video Studio ([FU-130](tracker/open.md)): sound badge on clips that have it, result window plays them with sound, prompt hint for the LTX rows. Checked in the running Video Gallery (the badge shows); the result window was not opened.
-- This hub: [tracker pages](tracker/README.md) are generated from `CLAUDE.md` by `tools/hub_tracker.py`.
+- This hub: [tracker pages](tracker/README.md) are generated from `FOLLOW_UPS.md` by `tools/hub_tracker.py`.
 
 - **DFlash on hybrid Qwen3.5 / 3.6 models was producing garbage on the release MLX libraries; fixed** (the adapter read the wrong output head, [FU-135](tracker/open.md)) with a load-time self-check. Qwen3.6-27B: 26.9 tok/s plain against 35.1 with DFlash through the app, same text; block 8 beats 16 there too.
 - TurboQuant speed measured: decode is 0.18-0.21 of Native at 512 tokens and 0.04 at 16K, so it gets slower exactly where it saves memory ([FU-095](tracker/open.md)); the launch estimate and a long-context warning are updated.

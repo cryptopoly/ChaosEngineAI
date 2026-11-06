@@ -21,7 +21,7 @@
  *     a user will hit.
  *   - ``sizeOnDiskLabel`` — rough human-readable on-disk footprint
  *     (compressed download + extracted wheel). Sourced from the
- *     CLAUDE.md FU rows that registered each package.
+ *     FOLLOW_UPS.md FU rows that registered each package.
  *   - ``installMode`` — ``"sync"`` for ~5 min installs that we can hold
  *     a single HTTP call open for; ``"async"`` for the >5 min builds
  *     (triattention compiles flash-attn from source; vLLM ships a
@@ -72,7 +72,7 @@ export interface AcceleratorMeta {
   installMode: "sync" | "async";
   /** Platforms where this can actually run. Affordances hide on the wrong platform. */
   platformGate: PlatformGate;
-  /** FU row in CLAUDE.md that registered or owns this accelerator. For provenance. */
+  /** FU row in FOLLOW_UPS.md that registered or owns this accelerator. For provenance. */
   followUp: string;
   /** Optional doc link slug under ``docs/features/`` for a "Learn more" affordance. */
   docsSlug?: string;

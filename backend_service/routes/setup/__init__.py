@@ -146,7 +146,7 @@ _INSTALLABLE_PIP_PACKAGES: dict[str, str] = {
     # needing a PyPI release every time.
     # to native MLX kernels instead of diffusers+MPS. The capability probe
     # gates this package on Apple Silicon — installer hides it elsewhere.
-    # See FU-009 in CLAUDE.md.
+    # See FU-009 in FOLLOW_UPS.md.
     "mlx-video": "mlx-video @ git+https://github.com/Blaizzy/mlx-video.git",
     # Voice / STT backends
     "mlx-whisper": "mlx-whisper",

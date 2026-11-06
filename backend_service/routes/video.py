@@ -114,7 +114,7 @@ def mlx_video_runtime_status(request: Request) -> dict[str, Any]:
     Apple Silicon hosts. Reports unavailable on non-Apple platforms with a
     platform-mismatch message; the frontend hides the chip when
     ``activeEngine == "mlx-video"`` and ``device is None`` (gate signal).
-    See FU-009 in CLAUDE.md.
+    See FU-009 in FOLLOW_UPS.md.
     """
     state = request.app.state.chaosengine
     return {"runtime": state.video_runtime.mlx_video_capabilities()}

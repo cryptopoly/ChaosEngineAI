@@ -342,7 +342,7 @@ class DiffusersVideoEngine:
             # where TeaCache pays off most (1.6–2.1× on HunyuanVideo,
             # ~1.3–2× on Wan). NotImplementedError is swallowed by the
             # helper when the pipeline class has no vendored patch yet;
-            # see FU-007 in CLAUDE.md.
+            # see FU-007 in FOLLOW_UPS.md.
             from cache_compression import apply_diffusion_cache_strategy
 
             apply_diffusion_cache_strategy(

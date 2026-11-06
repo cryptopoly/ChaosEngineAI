@@ -13,7 +13,7 @@ Newest dated update first. Each update has the same sections: Done, Open for Cla
 
 **Done**
 
-- Branch `feat/agent-bridge` cut from `release/v0.9.10`. Building the [agent bridge](../plans/agent-bridge.md) in rollout order (D-18 to D-21).
+- Branch `feat/agent-bridge` cut from `release/v0.9.10`. Building the [agent bridge](https://github.com/cryptopoly/ChaosEngineAI/blob/feat/agent-bridge/docs/plans/agent-bridge.md) in rollout order (D-18 to D-21).
 - **Step 0, auth:** the demo's calls worked without a token because the author's `~/.chaosengine/settings.json` has `requireApiAuth: false` (the Settings toggle). The default is on and the middleware is correct; not a bug. One gap for step 2: the middleware only guards `/api/` and `/v1/`, so `/mcp` must check the token itself.
 - **Step 0, settings in files:** new `backend_service/helpers/output_metadata.py`. PNGs get a `tEXt` chunk `chaosengine`, MP4s a `comment` tag (via ffmpeg stream copy), both holding prompt, model, seed, steps, guidance, size, frames, fps and app version. Written at the one save point each in `image_artifacts.py` and `video_artifacts.py`; best effort. New `tests/test_output_metadata.py` (PNG and MP4 round trips). 560 image/video tests and `test_backend_service.py` pass.
 

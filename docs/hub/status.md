@@ -9,6 +9,23 @@ summary: Read this first in every session.
 
 Newest dated update first. Each update has the same sections: Done, Open for Claude, Open for Dan.
 
+## Update 2026-11-06, agent bridge step 4
+
+**Done**
+
+- **CLI staged in the release bundle:** `scripts/stage-runtime.mjs` now copies `chaosengine-cli` to `backend/scripts/` (new `BUNDLED_CLI_SCRIPTS`; test in `test_stage_runtime_scripts.py`). `GET /api/agent/access` returns `stdioCommand` (this Python plus the staged CLI plus `mcp`), and the Agent access card shows a third snippet for clients that only start local programs. The staged runtime archive was **not rebuilt**; the check is the staging test.
+- **Docs:** `docs/features/agent-bridge.md` (setup in four steps, the one-job-at-a-time rule, tools, safety, stdio, troubleshooting; in the mkdocs nav) and `docs/features/agent-bridge/SKILL.md` (drop into `~/.claude/skills/chaosengine/`). The CLAUDE.md test table lists the four new test files.
+- Strings: one more English string (`settingsTab.agentAccess.stdio`), `null` in the other nine locales. vitest 782, `tsc` clean, `i18n:validate` OK.
+
+**Open for Claude**
+
+- Step 5: E2E phase check (`tools/list`, then `generate_image` with the smallest installed image model and `wait_for_job`), unit gaps, and a live Claude Code run.
+
+**Open for Dan**
+
+- Docs and the skill were not tried by someone who has not seen the project.
+- Pre-build checklist: after the next runtime build, confirm `tar -tzf src-tauri/resources/embedded/runtime-*.tar.gz | grep chaosengine-cli`.
+
 ## Update 2026-11-06, agent bridge step 3
 
 **Done**
@@ -23,7 +40,7 @@ Newest dated update first. Each update has the same sections: Done, Open for Cla
 
 **Open for Dan**
 
-- **The CLI is not in the release bundle** (`stage-runtime.mjs` does not stage it), so an installed app has the HTTP line only; the stdio relay needs a repo checkout. Say if step 4 should also stage the CLI (small change, touches packaging).
+- ~~The CLI is not in the release bundle~~ Staged in step 4.
 - The card was not looked at in the running app (type-checked and unit-tested only). The card is first in Integrations, above the OpenAI-compatible snippets.
 - Not tried with a real Claude Code client yet (step 5).
 

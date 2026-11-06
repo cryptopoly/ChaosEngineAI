@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import secrets
+import sys
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Request
@@ -66,6 +68,14 @@ def mcp_get() -> Response:
     return Response(status_code=405, headers={"Allow": "POST"})
 
 
+def _stdio_command(port: int) -> list[str] | None:
+    """Command for MCP clients that only start local programs: this Python running the CLI relay."""
+    cli = Path(__file__).resolve().parents[2] / "scripts" / "chaosengine-cli"
+    if not cli.is_file():
+        return None
+    return [sys.executable, str(cli), "--port", str(port), "mcp"]
+
+
 @router.get("/api/agent/access")
 def get_agent_access(request: Request) -> dict[str, Any]:
     port = request.app.state.chaosengine.server_port
@@ -73,6 +83,7 @@ def get_agent_access(request: Request) -> dict[str, Any]:
         "enabled": access.is_enabled(),
         "token": access.get_token(),
         "mcpUrl": f"http://127.0.0.1:{port}/mcp",
+        "stdioCommand": _stdio_command(port),
     }
 
 

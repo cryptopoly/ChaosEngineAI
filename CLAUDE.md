@@ -154,6 +154,7 @@ Add a row there when you defer work, edit it when you ship, then run
 | Vendored MLX architectures (Kolibri 1) + reasoning-effort template switch | `test_mlx_models.py` | `pytest tests/test_mlx_models.py -v` |
 | Release bundle staging (Setup installer scripts) | `test_stage_runtime_scripts.py` | `pytest tests/test_stage_runtime_scripts.py -v` |
 | Project hub (tracker pages current with CLAUDE.md, hub builds without link errors) | `test_hub_tracker.py` | `pytest tests/test_hub_tracker.py -v` |
+| Agent bridge (`/mcp` tools, access switch, shared job queue, stdio relay, output metadata) | `test_mcp_bridge.py`, `test_mcp_relay.py`, `test_job_queue.py`, `test_output_metadata.py` | `pytest tests/test_mcp_bridge.py tests/test_mcp_relay.py tests/test_job_queue.py tests/test_output_metadata.py -v` |
 | Request guards (chat settings, pipeline kwargs, sizes and frames, STT language fallback) | `test_request_guards.py`, `test_voice_library.py` | `pytest tests/test_request_guards.py tests/test_voice_library.py -v` |
 | LTX-2.3 MLX engine (ltx-2-mlx) routing, catalog, command line | `test_ltx2_mlx_runtime.py` | `pytest tests/test_ltx2_mlx_runtime.py -v` |
 | Cross-strategy E2E matrix runner | `test_cache_strategy_matrix_runner.py` | `pytest tests/test_cache_strategy_matrix_runner.py -v` |

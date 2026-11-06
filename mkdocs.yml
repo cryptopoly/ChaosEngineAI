@@ -88,6 +88,7 @@ nav:
   - Features:
       - features/mtplx.md
       - features/tensorfold.md
+      - features/agent-bridge.md
       - features/dflash.md
       - features/cache-strategies.md
       - features/fused-attention.md

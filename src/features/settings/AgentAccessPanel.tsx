@@ -18,6 +18,11 @@ export function agentConfigLine(access: AgentAccess): string {
   return `claude mcp add --transport http chaosengine ${access.mcpUrl} --header ${shellQuote(`Authorization: Bearer ${access.token}`)}`;
 }
 
+export function agentStdioLine(access: AgentAccess): string | null {
+  if (!access.stdioCommand) return null;
+  return `claude mcp add chaosengine -- ${access.stdioCommand.map(shellQuote).join(" ")}`;
+}
+
 export function agentConfigJson(access: AgentAccess): string {
   return JSON.stringify(
     {
@@ -112,6 +117,17 @@ export function AgentAccessPanel({ backendOnline, onCopyText }: AgentAccessPanel
               </div>
               <pre className="integration-snippet">{agentConfigJson(access)}</pre>
             </div>
+            {agentStdioLine(access) ? (
+              <div className="integration-card">
+                <div className="integration-card-header">
+                  <strong>{t("settingsTab.agentAccess.stdio", { defaultValue: "Clients that only start local programs (stdio)" })}</strong>
+                  <button className="secondary-button" type="button" onClick={() => onCopyText(agentStdioLine(access) ?? "")}>
+                    {t("settingsTab.integrations.copyButton", { defaultValue: "Copy" })}
+                  </button>
+                </div>
+                <pre className="integration-snippet">{agentStdioLine(access)}</pre>
+              </div>
+            ) : null}
             <div>
               <button className="secondary-button" type="button" disabled={busy} onClick={() => void apply({ rotateToken: true })}>
                 {t("settingsTab.agentAccess.rotate", { defaultValue: "Make a new token" })}

@@ -60,6 +60,8 @@ class McpBridgeTests(unittest.TestCase):
         headers = {"Authorization": "Bearer app-token"}
         state = self.client.get("/api/agent/access", headers=headers).json()
         self.assertFalse(state["enabled"])
+        self.assertEqual(state["stdioCommand"][-1], "mcp")
+        self.assertTrue(Path(state["stdioCommand"][1]).is_file())
         on = self.client.post("/api/agent/access", json={"enabled": True}, headers=headers).json()
         self.assertTrue(on["enabled"])
         rotated = self.client.post("/api/agent/access", json={"rotateToken": True}, headers=headers).json()

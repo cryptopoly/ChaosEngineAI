@@ -891,6 +891,7 @@
       "switch": "Allow agents to use ChaosEngineAI",
       "hint": "Off by default. Agents run one job at a time, only on this computer, and need the token below. They can only use models you have already downloaded.",
       "claudeCode": "Claude Code",
+      "stdio": "Clients that only start local programs (stdio)",
       "otherClients": "Other MCP clients (JSON)",
       "rotate": "Make a new token",
       "rotateHint": "The old token stops working at once. Agents need the new line."

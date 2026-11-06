@@ -236,6 +236,8 @@ export interface AgentAccess {
   enabled: boolean;
   token: string;
   mcpUrl: string;
+  /** Command that starts the stdio relay, or null when the CLI script is not installed. */
+  stdioCommand: string[] | null;
 }
 
 export async function getAgentAccess(): Promise<AgentAccess> {

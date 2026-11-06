@@ -891,6 +891,7 @@
       "switch": null,
       "hint": null,
       "claudeCode": null,
+      "stdio": null,
       "otherClients": null,
       "rotate": null,
       "rotateHint": null

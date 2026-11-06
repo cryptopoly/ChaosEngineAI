@@ -49,6 +49,10 @@ const BUNDLED_INSTALL_SCRIPTS = [
   "install-tensorfold.sh",
 ];
 
+// The agent bridge's stdio relay (``chaosengine-cli mcp``), staged beside the installers so the
+// Agent access card can show a command that works in a packaged app. Python standard library only.
+const BUNDLED_CLI_SCRIPTS = ["chaosengine-cli"];
+
 // The llama.cpp release whose prebuilt binaries are bundled. Pinned (not
 // "latest") and kept equal to LLAMA_CPP_REF in scripts/update-llama-cpp.sh, which
 // tests/test_stage_runtime_scripts.py checks. The v0.9.8 build asked GitHub for
@@ -93,7 +97,7 @@ function main() {
   for (const relativeFile of ["README.md", "pyproject.toml"]) {
     copyFile(path.join(workspaceRoot, relativeFile), path.join(backendDest, relativeFile));
   }
-  for (const script of BUNDLED_INSTALL_SCRIPTS) {
+  for (const script of [...BUNDLED_INSTALL_SCRIPTS, ...BUNDLED_CLI_SCRIPTS]) {
     copyFile(path.join(workspaceRoot, "scripts", script), path.join(backendDest, "scripts", script));
   }
 

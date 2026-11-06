@@ -13,7 +13,7 @@ import threading
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import Any, Iterator
+from typing import Any, Callable, Iterator
 
 from backend_service.progress import GenerationCancelled
 
@@ -82,8 +82,8 @@ class HeavyJobQueue:
                 self._waiting.remove(ticket)
             self._cond.notify_all()
 
-    def cancel_waiting(self, kind: str | None = None, ticket_id: int | None = None) -> int:
-        """Cancel waiting jobs (all of a kind, or one id). A running job is not touched."""
+    def cancel_waiting(self, kind: str | None = None, ticket_id: int | None = None, source: str | None = None) -> int:
+        """Cancel waiting jobs (all of a kind, one id, or one source). A running job is not touched."""
         count = 0
         with self._cond:
             for ticket in list(self._waiting):
@@ -91,11 +91,27 @@ class HeavyJobQueue:
                     continue
                 if kind is not None and ticket.kind != kind:
                     continue
+                if source is not None and ticket.source != source:
+                    continue
                 ticket.cancelled = True
                 self._waiting.remove(ticket)
                 count += 1
             self._cond.notify_all()
         return count
+
+    def running_source(self, kind: str) -> str | None:
+        """Who owns the running job of this kind ("ui" or "agent"), or None when none of that kind runs."""
+        with self._cond:
+            running = self._running
+            return running.source if running is not None and running.kind == kind else None
+
+    def cancel_studio(self, kind: str, stop_running: Callable[[], bool]) -> bool:
+        """What a Studio's Cancel button does: stop its own running job and drop its own waiting jobs.
+
+        An agent's job (running or waiting) is left alone; an agent cancels its own with ``cancel_job``.
+        """
+        stopped = stop_running() if self.running_source(kind) in (None, "ui") else False
+        return stopped or self.cancel_waiting(kind, source="ui") > 0
 
     def position(self, ticket: _Ticket) -> int:
         """0 when running, 1.. for waiting (1 = next), -1 when finished or cancelled."""

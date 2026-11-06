@@ -120,7 +120,7 @@ def cancel_image_generation(request: Request) -> dict[str, Any]:
     from backend_service.helpers.job_queue import HEAVY_JOBS
 
     state = request.app.state.chaosengine
-    signalled = IMAGE_PROGRESS.request_cancel() or HEAVY_JOBS.cancel_waiting("image") > 0
+    signalled = HEAVY_JOBS.cancel_studio("image", IMAGE_PROGRESS.request_cancel)
     if signalled:
         state.add_log("images", "info", "Cancel signal sent to running image generation.")
     return {"cancelled": signalled}

@@ -9,6 +9,17 @@ summary: Read this first in every session.
 
 Newest dated update first. Each update has the same sections: Done, Open for Claude, Open for Dan.
 
+## Update 2026-11-06, home studio P-1 started (cancel fix, ffmpeg notice)
+
+**Done** (branch `feat/media-input`)
+
+- **Cancel fix:** a Studio's Cancel now stops only its own running job and drops only its own waiting jobs (`HEAVY_JOBS.cancel_studio`). An agent's running or waiting job is left alone; an agent cancels its own with `cancel_job`. Three new tests.
+- **ffmpeg notice:** `THIRD_PARTY_NOTICES.md` now lists imageio-ffmpeg and its GPL ffmpeg build with a source offer; the pre-build licence checks look for it; `imageio-ffmpeg` is declared as the `ffmpeg` extra in `pyproject.toml` (it was only pulled in by `mlx-video`).
+
+**Found:** the release workflow installs a fixed package list (`.github/workflows/release.yml` lines 241 to 255) that does **not** include imageio-ffmpeg, so a packaged app has no pinned ffmpeg unless something installs it. Adding it changes what ships (a GPL binary of about 70 MB per platform), so I did not change the workflow; it needs your decision with D-35.
+
+**Open for Claude:** `App.tsx` extract (2,269 lines, one function) and the shared registry scaffold (P-1 b and c).
+
 ## Update 2026-11-06, the home studio plan
 
 **Done** (branch `feat/media-input`)

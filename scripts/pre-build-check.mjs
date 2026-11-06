@@ -165,6 +165,7 @@ console.log("[4/9] Licence notices...");
       "llama-cpp-turboquant",
       "dflash-mlx",
       "turboquant",
+      "imageio-ffmpeg",
     ];
     const missing = required.filter((dep) => !content.includes(dep.toLowerCase()));
     if (missing.length === 0) {

@@ -6,7 +6,6 @@ import threading
 import time
 import unittest
 import zipfile
-from pathlib import Path
 from unittest import mock
 
 from backend_service.storyboard import bundle, store as store_module

@@ -130,6 +130,8 @@ class Batch:
             LIVE_BATCHES.discard(self.id)
             raise
         with _BATCHES_LOCK:
+            for old in [b for b in BATCHES.values() if b.done.is_set()][:-KEEP_BATCHES]:
+                BATCHES.pop(old.id, None)
             BATCHES[self.id] = self
         return project
 
@@ -162,7 +164,7 @@ class Batch:
         state = "done"
         try:
             ran_still = False
-            for index, (shot_id, kind) in enumerate(self.steps):
+            for shot_id, kind in self.steps:
                 if self.cancel_event.is_set():
                     state = "cancelled"
                     break

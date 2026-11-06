@@ -340,13 +340,13 @@ def relink(p: Project, folder: Path, a: Relink) -> None:
     shot.status = "done"
 
 
-def _position(clip_fields: AudioFields, clip: AudioClip | None) -> None:
+def _position(clip_fields: AudioFields) -> None:
     if clip_fields.anchor is not None and clip_fields.start is not None:
         raise OpError("Give an anchor or a start, not both.")
 
 
 def add_audio(p: Project, folder: Path, a: AddAudio) -> None:
-    _position(a, None)
+    _position(a)
     if a.anchor is not None:
         _shot(p, a.anchor.shotId)
     clip_id = new_id("a")
@@ -362,7 +362,7 @@ def add_audio(p: Project, folder: Path, a: AddAudio) -> None:
 
 
 def edit_audio(p: Project, folder: Path, a: EditAudio) -> None:
-    _position(a, None)
+    _position(a)
     clip = _clip(p, a.clipId)
     if a.anchor is not None:
         _shot(p, a.anchor.shotId)

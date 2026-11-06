@@ -115,6 +115,26 @@ refuses gated or non-commercial models whose licence the user has not accepted.
 - **No arbitrary code from agents.** The tool set stays fixed and reviewed; agents cannot load plugins or
   run code inside the app.
 
+## Rollout (v1)
+
+Built on a feature branch (`feat/agent-bridge`) cut from `release/v0.9.10`, merged when the gate below
+passes, shipped in the next release after v0.9.10. The shared queue changes how the Studios start jobs,
+so it should not ride into a release that is already in beta.
+
+| Step | What | Days | Done when |
+|---|---|---|---|
+| 0 | Find why the demo's calls worked without a token; write generation settings into PNG and MP4 files | 0.5 | Auth behaviour explained (fixed if it is a bug); outputs carry their settings |
+| 1 | One job queue for image, video and voice, used by the Studios and by agents | 1 | Two jobs started together run one after the other; the Studio shows "waiting for an agent job" |
+| 2 | `/mcp` endpoint with the v1 tools, off by default, the "turn it on" answer, `recommend_models` | 1 | `tools/list` and every tool work from an MCP client; off answers with the Settings path |
+| 3 | `chaosengine-cli mcp` stdio relay; Settings > Integrations "Agent access" card | 0.5 | One copied line adds the server to Claude Code; the relay says "start ChaosEngineAI" when the app is closed |
+| 4 | `SKILL.md`, `docs/features/agent-bridge.md`, locale strings | 0.25 | A new user can set it up from the docs alone |
+| 5 | Tests: unit, an E2E phase check, a live run | 0.5 to 1 | Claude Code remakes a poster, a 3 s clip and a voice line from one prompt on this Mac; Windows checked for the relay and endpoint only |
+
+The user's flow once shipped: install the app and download a model or two, turn on Agent access in
+Settings, paste the copied line into the agent, then ask the agent for an image, clip or voiceover. The
+agent checks `system_status`, calls `recommend_models` if nothing suitable is installed (and tells the user
+what to download), starts jobs, waits for them one at a time, and gets file paths back to edit or share.
+
 ## Effort
 
 About 3 days: queue and tools 1 day, MCP wiring 0.5, stdio relay 0.5, Settings card and docs 0.5,

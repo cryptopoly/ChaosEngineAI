@@ -114,8 +114,8 @@ tests and a live agent run 0.5. The FU-126 estimate (1 to 2 days) did not includ
 
 ## Open questions for the owner
 
-1. Should UI-started jobs and agent jobs share one queue? Recommendation: yes, so an agent job never starts
-   while the Studio is rendering. Cost: a queued UI job waits too, so the UI needs to show "waiting for an
+1. ~~Should UI-started jobs and agent jobs share one queue?~~ **Decided 2026-11-06: yes**, so an agent job never
+   starts while the Studio is rendering. Cost: a queued UI job waits too, so the UI shows "waiting for an
    agent job".
 2. Agent access on or off by default? Recommendation: off, one switch in Settings.
 3. Include model downloads in v1? Recommendation: no; list what is missing and let the user download it.

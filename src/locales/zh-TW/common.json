@@ -664,6 +664,8 @@
     "thumbnailAlt": "即時去噪預覽",
     "thumbnailCaption": "即時預覽 · TAESD 解碼",
     "stepCounter": "第 {current} / {total} 步",
+    "waitingForAgent": null,
+    "waitingInQueue": null,
     "inProgress": "進行中…",
     "finalizing": "正在完成…",
     "phaseTiming": "{elapsed} 秒 / 約 {estimated} 秒"

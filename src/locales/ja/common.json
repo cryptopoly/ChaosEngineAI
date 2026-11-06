@@ -664,6 +664,8 @@
     "thumbnailAlt": "ライブのノイズ除去プレビュー",
     "thumbnailCaption": "ライブプレビュー · TAESD デコード",
     "stepCounter": "ステップ {current} / {total}",
+    "waitingForAgent": null,
+    "waitingInQueue": null,
     "inProgress": "進行中…",
     "finalizing": "最終処理中…",
     "phaseTiming": "{elapsed} 秒 / 約 {estimated} 秒"

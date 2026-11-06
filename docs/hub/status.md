@@ -9,6 +9,24 @@ summary: Read this first in every session.
 
 Newest dated update first. Each update has the same sections: Done, Open for Claude, Open for Dan.
 
+## Update 2026-11-06, agent bridge step 1
+
+**Done**
+
+- **Shared job queue** (`backend_service/helpers/job_queue.py`, `HEAVY_JOBS`): first come, first served, one heavy job at a time. `POST /api/images/generate`, `/api/video/generate`, `/api/voice/synthesize` and `/api/voice/transcribe` take a slot before the memory gate and the model run. A waiting request can be cancelled through the existing cancel routes (409 `cancelled`). Live speech streaming and voice activity detection are not queued (light, interactive).
+- Image and video progress responses carry `queue` (`waiting`, `position`, `agentAhead`); the Studio progress panel shows "Waiting for an agent job to finish" or "Waiting for another job to finish (position N)". New en strings; other nine locales hold `null` placeholders and fall back to en.
+- Agent jobs (step 2) will use `HEAVY_JOBS.slot(kind, "agent", label)`.
+- Tests: new `tests/test_job_queue.py` (order, peak concurrency 1, positions, cancel while waiting, slot freed after error, progress route). Full pytest 2573 passed, vitest 779, `tsc` clean, `i18n:validate` OK.
+
+**Open for Claude**
+
+- Step 2: `/mcp` endpoint with v1 tools, off by default, `recommend_models`; check the token itself.
+
+**Open for Dan**
+
+- The "waiting" note in the Studio was not looked at in the running app, and no live two-jobs-at-once run yet (planned in step 5).
+- Translations for the two new strings in nine locales are still `null`.
+
 ## Update 2026-11-06, agent bridge step 0
 
 **Done**

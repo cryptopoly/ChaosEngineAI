@@ -664,6 +664,8 @@
     "thumbnailAlt": "Live-Entrausch-Vorschau",
     "thumbnailCaption": "Live-Vorschau · TAESD-Decode",
     "stepCounter": "Schritt {current} / {total}",
+    "waitingForAgent": null,
+    "waitingInQueue": null,
     "inProgress": "läuft…",
     "finalizing": "wird abgeschlossen…",
     "phaseTiming": "{elapsed}s / ~{estimated}s"

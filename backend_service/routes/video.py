@@ -128,7 +128,9 @@ def video_generation_progress() -> dict[str, Any]:
     client code. Returns ``active=false`` when nothing is running so the UI
     falls back to its estimate-driven view.
     """
-    return {"progress": VIDEO_PROGRESS.snapshot()}
+    from backend_service.helpers.job_queue import HEAVY_JOBS
+
+    return {"progress": {**VIDEO_PROGRESS.snapshot(), "queue": HEAVY_JOBS.queue_state("video")}}
 
 
 @router.post("/api/video/cancel")
@@ -140,8 +142,10 @@ def cancel_video_generation(request: Request) -> dict[str, Any]:
     and raises ``GenerationCancelled``, which the generate handler turns
     into a 409 response.
     """
+    from backend_service.helpers.job_queue import HEAVY_JOBS
+
     state = request.app.state.chaosengine
-    signalled = VIDEO_PROGRESS.request_cancel()
+    signalled = VIDEO_PROGRESS.request_cancel() or HEAVY_JOBS.cancel_waiting("video") > 0
     if signalled:
         state.add_log("video", "info", "Cancel signal sent to running video generation.")
     return {"cancelled": signalled}
@@ -384,6 +388,16 @@ def delete_video_output_endpoint(request: Request, artifact_id: str) -> dict[str
 
 @router.post("/api/video/generate")
 def generate_video(request: Request, body: VideoGenerationRequest) -> dict[str, Any]:
+    from backend_service.helpers.job_queue import HEAVY_JOBS
+
+    try:
+        with HEAVY_JOBS.slot("video", "ui", body.modelId):
+            return _generate_video_locked(request, body)
+    except GenerationCancelled:
+        raise HTTPException(status_code=409, detail="cancelled") from None
+
+
+def _generate_video_locked(request: Request, body: VideoGenerationRequest) -> dict[str, Any]:
     import traceback as _tb
     from backend_service.app import _generate_video_artifact, _load_video_outputs
 

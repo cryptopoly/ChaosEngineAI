@@ -664,6 +664,8 @@
     "thumbnailAlt": "실시간 디노이즈 미리보기",
     "thumbnailCaption": "실시간 미리보기 · TAESD 디코드",
     "stepCounter": "{current} / {total} 단계",
+    "waitingForAgent": null,
+    "waitingInQueue": null,
     "inProgress": "진행 중…",
     "finalizing": "완료 중…",
     "phaseTiming": "{elapsed}초 / ~{estimated}초"

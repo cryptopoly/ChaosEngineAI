@@ -664,6 +664,8 @@
     "thumbnailAlt": "Vista previa de eliminación de ruido en vivo",
     "thumbnailCaption": "Vista previa en vivo · Decodificación TAESD",
     "stepCounter": "paso {current} / {total}",
+    "waitingForAgent": null,
+    "waitingInQueue": null,
     "inProgress": "en curso…",
     "finalizing": "finalizando…",
     "phaseTiming": "{elapsed}s / ~{estimated}s"

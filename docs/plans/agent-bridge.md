@@ -124,7 +124,7 @@ so it should not ride into a release that is already in beta.
 | Step | What | Days | Done when |
 |---|---|---|---|
 | 0 (done 2026-11-06) | Find why the demo's calls worked without a token; write generation settings into PNG and MP4 files | 0.5 | Auth behaviour explained (fixed if it is a bug); outputs carry their settings |
-| 1 | One job queue for image, video and voice, used by the Studios and by agents | 1 | Two jobs started together run one after the other; the Studio shows "waiting for an agent job" |
+| 1 (done 2026-11-06) | One job queue for image, video and voice, used by the Studios and by agents | 1 | Two jobs started together run one after the other; the Studio shows "waiting for an agent job" |
 | 2 | `/mcp` endpoint with the v1 tools, off by default, the "turn it on" answer, `recommend_models` | 1 | `tools/list` and every tool work from an MCP client; off answers with the Settings path |
 | 3 | `chaosengine-cli mcp` stdio relay; Settings > Integrations "Agent access" card | 0.5 | One copied line adds the server to Claude Code; the relay says "start ChaosEngineAI" when the app is closed |
 | 4 | `SKILL.md`, `docs/features/agent-bridge.md`, locale strings | 0.25 | A new user can set it up from the docs alone |

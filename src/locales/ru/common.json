@@ -664,6 +664,8 @@
     "thumbnailAlt": "Предпросмотр denoise в реальном времени",
     "thumbnailCaption": "Предпросмотр · декодирование TAESD",
     "stepCounter": "шаг {current} / {total}",
+    "waitingForAgent": null,
+    "waitingInQueue": null,
     "inProgress": "в процессе…",
     "finalizing": "завершение…",
     "phaseTiming": "{elapsed}с / ~{estimated}с"

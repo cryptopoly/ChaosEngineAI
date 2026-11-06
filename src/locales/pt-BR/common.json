@@ -664,6 +664,8 @@
     "thumbnailAlt": "Pré-visualização ao vivo do denoise",
     "thumbnailCaption": "Pré-visualização ao vivo · decodificação TAESD",
     "stepCounter": "passo {current} / {total}",
+    "waitingForAgent": null,
+    "waitingInQueue": null,
     "inProgress": "em andamento…",
     "finalizing": "finalizando…",
     "phaseTiming": "{elapsed}s / ~{estimated}s"

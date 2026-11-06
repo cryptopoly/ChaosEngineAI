@@ -186,16 +186,19 @@ def transcribe(
 
     tmp_path, suffix = _receive_upload(audio)
     try:
+        from backend_service.helpers.job_queue import HEAVY_JOBS  # noqa: PLC0415
+
         try:
-            result = transcribe_file(
-                tmp_path,
-                model,
-                language.strip() or None,
-                task=task,
-                words=words,
-                speakers=speakers,
-                speaker_count=speakerCount,
-            )
+            with HEAVY_JOBS.slot("voice", "ui", "transcript"):
+                result = transcribe_file(
+                    tmp_path,
+                    model,
+                    language.strip() or None,
+                    task=task,
+                    words=words,
+                    speakers=speakers,
+                    speaker_count=speakerCount,
+                )
         except HTTPException:
             raise
         except Exception as exc:  # noqa: BLE001 - mapped to 400 / 503
@@ -259,8 +262,11 @@ def synthesize(request: Request, body: SynthesizeRequest) -> Response:
 
     if not body.text.strip():
         raise HTTPException(status_code=400, detail="Text is required.")
+    from backend_service.helpers.job_queue import HEAVY_JOBS  # noqa: PLC0415
+
     try:
-        wav, _duration = run(body.text, body.voice, body.speed)
+        with HEAVY_JOBS.slot("voice", "ui", "speech"):
+            wav, _duration = run(body.text, body.voice, body.speed)
     except Exception as exc:  # noqa: BLE001
         raise _worker_error(exc) from exc
     return Response(content=wav, media_type="audio/wav")

@@ -664,6 +664,8 @@
     "thumbnailAlt": "Live denoise preview",
     "thumbnailCaption": "Live preview · TAESD decode",
     "stepCounter": "step {current} / {total}",
+    "waitingForAgent": "Waiting for an agent job to finish",
+    "waitingInQueue": "Waiting for another job to finish (position {position})",
     "inProgress": "in progress…",
     "finalizing": "finalizing…",
     "phaseTiming": "{elapsed}s / ~{estimated}s"

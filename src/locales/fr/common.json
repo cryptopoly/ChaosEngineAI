@@ -664,6 +664,8 @@
     "thumbnailAlt": "Aperçu de débruitage en direct",
     "thumbnailCaption": "Aperçu en direct · décodage TAESD",
     "stepCounter": "étape {current} / {total}",
+    "waitingForAgent": null,
+    "waitingInQueue": null,
     "inProgress": "en cours…",
     "finalizing": "finalisation…",
     "phaseTiming": "{elapsed} s / ~{estimated} s"

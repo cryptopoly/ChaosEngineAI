@@ -155,6 +155,13 @@ def output_size(project: Project, preview: bool) -> tuple[int, int]:
     return int(round(width / 2) * 2), int(round(height / 2) * 2)
 
 
+def _string_metadata(meta: dict[str, Any]) -> dict[str, str]:
+    """The MP4 comment tag holds strings only: lists, booleans and numbers go in as compact JSON."""
+    import json
+
+    return {str(k): v if isinstance(v, str) else json.dumps(v, separators=(",", ":")) for k, v in meta.items()}
+
+
 def provenance(project: Project) -> dict[str, Any]:
     """Prompt-free provenance for the MP4 comment tag, or {} when the tag is off (D-34)."""
     if not project.embed_tag():
@@ -229,7 +236,7 @@ def build_render_plan(project: Project, preview: bool, folder: Path | None = Non
         "work_dir": str(folder / "cache" / "render"),
         "shots": shots,
         "audio": audio,
-        "metadata": provenance(project),
+        "metadata": _string_metadata(provenance(project)),
         "end_card": {"text": project.export.endCardText, "seconds": project.export.endCardSeconds} if label.endCard else None,
         "captions_srt": None,
     }

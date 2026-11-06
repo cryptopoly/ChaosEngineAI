@@ -40,6 +40,15 @@ _SETTING_KEYS = (
 )
 
 
+# Input-image paths are kept as file names only: the file travels, the folder names (and the user's
+# account name inside them) must not. The artifact's own JSON in the library keeps the full paths.
+_PATH_KEYS = ("startImagePath", "endImagePath", "referenceImagePaths")
+
+
+def _file_name(value: Any) -> str:
+    return str(value).replace("\\", "/").rsplit("/", 1)[-1]
+
+
 def generation_settings(artifact: dict[str, Any]) -> dict[str, Any]:
     """Pick the reproducible settings from an artifact dict and add the app version."""
     settings = {
@@ -47,6 +56,10 @@ def generation_settings(artifact: dict[str, Any]) -> dict[str, Any]:
         for key in _SETTING_KEYS
         if artifact.get(key) not in (None, "")
     }
+    for key in _PATH_KEYS:
+        if key in settings:
+            value = settings[key]
+            settings[key] = [_file_name(v) for v in value] if isinstance(value, (list, tuple)) else _file_name(value)
     try:
         from backend_service.helpers.system_hardware import _resolve_app_version
 

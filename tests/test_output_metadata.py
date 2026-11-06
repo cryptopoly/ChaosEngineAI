@@ -58,7 +58,19 @@ class OutputMetadataTests(unittest.TestCase):
 
     def test_generation_settings_records_the_input_image(self):
         got = generation_settings({"prompt": "x", "startImagePath": "/a.png", "imageStrength": 0.8})
-        self.assertEqual((got["startImagePath"], got["imageStrength"]), ("/a.png", 0.8))
+        self.assertEqual((got["startImagePath"], got["imageStrength"]), ("a.png", 0.8))
+
+    def test_input_image_paths_are_reduced_to_file_names(self):
+        got = generation_settings({
+            "prompt": "x",
+            "startImagePath": "/Users/dan/secret/photo.jpg",
+            "endImagePath": "C:\\Users\\dan\\end.png",
+            "referenceImagePaths": ["/Users/dan/a/ref1.png", "/tmp/ref2.webp"],
+        })
+        self.assertEqual(got["startImagePath"], "photo.jpg")
+        self.assertEqual(got["endImagePath"], "end.png")
+        self.assertEqual(got["referenceImagePaths"], ["ref1.png", "ref2.webp"])
+        self.assertNotIn("dan", str(got))
 
     def test_generation_settings_skips_empty(self):
         self.assertNotIn("negativePrompt", generation_settings({"prompt": "x", "negativePrompt": ""}))

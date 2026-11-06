@@ -9,6 +9,19 @@ summary: Read this first in every session.
 
 Newest dated update first. Each update has the same sections: Done, Open for Claude, Open for Dan.
 
+## Update 2026-11-06, decisions answered; embedded file paths removed
+
+**Done** (branch `feat/media-input`)
+
+- **Decided by the owner:** D-25 (ACE-Step first, other engines as options), D-28 (voice cloning with consent), D-31 (project folder plus a single-file bundle), D-32 (order; merge still on hold), D-33 (storyboard beside music), D-35 (keep the ffmpeg build, notice added). D-34 (AI labelling) is still open: owner asked why.
+- **Privacy bug fixed:** images and videos made with an input image carried the full local path (including the account name) inside the file's embedded settings. They now carry the file name only; the library's own JSON keeps the full path. Test added.
+- **Plan:** music engines table added (ACE-Step, HeartMuLa, Magenta RT 2, DiffRhythm, MiniMax Music 3, Stable Audio Open); `.chaosfilm` bundle and a later OpenTimelineIO export added to the project format.
+
+**Open for Dan**
+
+- D-34: metadata tag only, or also a visible end card, or an inaudible watermark (explained in chat).
+- Say when to merge `feat/agent-bridge` and `feat/media-input` into `release/v0.9.10`.
+
 ## Update 2026-11-06, home studio P-1 started (cancel fix, ffmpeg notice)
 
 **Done** (branch `feat/media-input`)

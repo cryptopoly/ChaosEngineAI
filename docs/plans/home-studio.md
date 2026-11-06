@@ -84,6 +84,21 @@ Traps a new area must not miss (full list in appendix A):
 
 **Agent tools:** `make_music` (style, lyrics, seconds, bpm, key, seed, instrumental), `list_models kind music`, plus `music` in the output downloads.
 
+#### Music engines: ACE-Step first, others as options
+
+The worker takes an `engine` field, so ACE-Step is the first engine, not the only one. Each catalog row carries its licence, gated flag, platforms and what it makes (songs, instrumentals, loops), and the Models page shows them. Candidates for people who do not want ACE-Step, from the research:
+
+| Engine | For whom | Caveat |
+|---|---|---|
+| ACE-Step 1.5 (2B turbo; XL 4B) | Default: songs with vocals, Mac and CUDA | MIT; speed on a Mac to be measured |
+| HeartMuLa 3B | CUDA users who want a second song model | Apache 2.0; slow (about real time); no reference audio; no Mac note |
+| Magenta RealTime 2 | Mac users who only want instrumental beds or loops | Weights CC-BY 4.0 (credit Google); instrumental only |
+| DiffRhythm v1.2 | Light option (about 8 GB, Mac supported) | Apache 2.0 code and DiT; VAE licence unstated; quality behind the leaders |
+| MiniMax Music 3 | Big-GPU users who accept its terms | Needs "MiniMax-Music3" shown in the product UI, an AI-disclosure rule, revenue authorisation above US$20M, CUDA, about 57 GB: opt-in only |
+| Stable Audio Open (Small / 1.0) | Loops and effects, not songs | Gated; Stability Community License (see 5.2) |
+
+Cloud services are out of scope (local-first).
+
 ### 5.2 Sound effects, video to sound, voice
 
 - **Sound effects** as a mode of the Music area ("Sounds"), engine Stable Audio Open (Small first). A licence screen shows "Powered by Stability AI" terms and the US$1M cap; the model stays gated, so the user accepts on Hugging Face.
@@ -122,6 +137,8 @@ Shot     { id, order, title, status(idle|queued|running|done|failed|stale|missin
 AudioClip{ id, kind(music|sfx|voice|import), source, anchor{shotId, offset} | start,
            trimIn, trimOut, gainDb, fadeIn, fadeOut, duck, loop }
 ```
+
+Sharing and layers: the folder is the working format (like a layered PSD, but for a film: shots, takes and audio lanes stay separate and editable). A single-file **bundle** (`.chaosfilm`, a zip of the folder) is for sharing and backup, and opens in the app. Later (P6): export the timeline as OpenTimelineIO, so a cut can be finished in DaVinci Resolve or Premiere, and export each audio lane as its own stem file. (OpenTimelineIO's licence to be read before use.)
 
 Rules (each one answers a review finding):
 
@@ -241,7 +258,7 @@ Critical path: P-1, then P3, then P4, then the definition-of-done run. Music (P0
 | D-28 | Voice cloning | Yes, Qwen3-TTS; consent recorded; off for remote agents by default |
 | D-29 | Remote compute | Prove the PC as a `/mcp` target first (P7); decide Mac-routes-to-PC afterwards |
 | D-30 | Agent tool surface | Group storyboard tools by verb to keep the list near 20 and descriptions short |
-| D-31 | Project format | Portable folder: `project.json` with `schemaVersion` and `revision`, media copied in, no database |
+| D-31 | Project format | **Decided.** Portable folder: `project.json` with `schemaVersion` and `revision`, media copied in, no database; plus a single-file `.chaosfilm` bundle for sharing |
 | D-32 | Release and branch order | Merge agent bridge and media input as v0.9.10 first (owner's call, on hold); Music and Storyboard as v0.10.0 |
 | D-33 | Storyboard before music | Yes: P3 runs beside the music spike, not after music |
 | D-34 | AI labelling | Machine-readable marker in exported MP4 and audio tags, optional visible end card; ask about an audio watermark |

@@ -37,7 +37,7 @@ huggingface_hub==1.33.0
 idna==3.15
 imageio-ffmpeg==0.6.0
 ImageIO==2.37.3
-importlib_metadata==9.0.0
+importlib_metadata==9.0.1
 iniconfig==2.3.0
 Jinja2==3.1.6
 joblib==1.5.3

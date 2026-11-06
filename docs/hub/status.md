@@ -9,6 +9,18 @@ summary: Read this first in every session.
 
 Newest dated update first. Each update has the same sections: Done, Open for Claude, Open for Dan.
 
+## Update 2026-11-06, agent bridge: real Claude Code run
+
+**Done**
+
+- **Claude Code (2.1.316, Sonnet) used the bridge from one prompt** ("poster of a lighthouse at dusk, a 3 second clip of waves on rocks, a one-line voiceover"), through the HTTP line the card gives (temporary `--mcp-config`, only the `chaosengine` tools allowed). It called `system_status`, then ran image, video and speech one after the other with `wait_for_job` between them, and reported three files that exist: a 768x1152 PNG (1.0 MB), an MP4 (788 KB, 2.7 s) and a WAV (89 KB). 10 turns, $0.19. It told the user the clip is 2.7 s, not 3 s, because of the 8k+1 frame rule.
+- Cleanup: Agent access switched back off, the test backend stopped, the temporary config with the token deleted.
+
+**Open for Dan**
+
+- I did not look at the poster or play the clip or the voice line; only that the files exist and the run was clean. Worth a look at `~/.chaosengine/images/outputs/2026-11-06/img-27df9123926f.png`.
+- Still open: Windows / Linux check of the relay and endpoint; merge decision (D-21); clip-length rounding.
+
 ## Update 2026-11-06, agent bridge step 5 (v1 built, ready for review)
 
 **Done**
@@ -23,7 +35,7 @@ Newest dated update first. Each update has the same sections: Done, Open for Cla
 
 **Open for Dan**
 
-- **Not done: a real Claude Code run** ("one prompt, three files"). Needs `claude mcp add` against a running app and spends your Claude usage; say if you want me to run it, or run the card's copied line yourself.
+- ~~Real Claude Code run~~ Done, see the update above.
 - **Not done: Windows check** of the relay and endpoint (no Windows machine here). Linux untested too.
 - Decide: merge `feat/agent-bridge` into `release/v0.9.10` or hold it for the release after (plan says after; the queue changes how the Studios start jobs). D-21 still reads "open".
 - Rounded-down clip length: a 3 s ask gives 2.7 s on LTX (frames round down to 8k+1). Say if it should round to the nearest instead.

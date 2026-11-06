@@ -128,7 +128,7 @@ so it should not ride into a release that is already in beta.
 | 2 (done 2026-11-06) | `/mcp` endpoint with the v1 tools, off by default, the "turn it on" answer, `recommend_models` | 1 | `tools/list` and every tool work from an MCP client; off answers with the Settings path |
 | 3 (done 2026-11-06) | `chaosengine-cli mcp` stdio relay; Settings > Integrations "Agent access" card | 0.5 | One copied line adds the server to Claude Code; the relay says "start ChaosEngineAI" when the app is closed |
 | 4 (done 2026-11-06) | `SKILL.md`, `docs/features/agent-bridge.md`, locale strings | 0.25 | A new user can set it up from the docs alone |
-| 5 (done 2026-11-06, live agent run and Windows still open) | Tests: unit, an E2E phase check, a live run | 0.5 to 1 | Claude Code remakes a poster, a 3 s clip and a voice line from one prompt on this Mac; Windows checked for the relay and endpoint only |
+| 5 (done 2026-11-06; Claude Code run passed; Windows still open) | Tests: unit, an E2E phase check, a live run | 0.5 to 1 | Claude Code remakes a poster, a 3 s clip and a voice line from one prompt on this Mac; Windows checked for the relay and endpoint only |
 
 The user's flow once shipped: install the app and download a model or two, turn on Agent access in
 Settings, paste the copied line into the agent, then ask the agent for an image, clip or voiceover. The

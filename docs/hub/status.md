@@ -9,6 +9,20 @@ summary: Read this first in every session.
 
 Newest dated update first. Each update has the same sections: Done, Open for Claude, Open for Dan.
 
+## Update 2026-11-06, the home studio plan
+
+**Done** (branch `feat/media-input`)
+
+- **Plan:** [home-studio](https://github.com/cryptopoly/ChaosEngineAI/blob/feat/media-input/docs/plans/home-studio.md): a Music area (Models, Studio, Library), a Storyboard with takes, locks, a mixer and export, sound effects, voice cloning, a quality pack and the remote 4090. Built from an Opus model and licence sweep, a Sonnet code survey, and an Opus adversarial review whose findings changed the plan (section 12 of the plan).
+- **First music model:** ACE-Step 1.5 (MIT), after a Mac speed spike. Sound effects: Stable Audio Open (gated, opt-in). Voice cloning: Qwen3-TTS (Apache 2.0). Rejected on licence: MusicGen, YuE, SongGeneration, MMAudio, F5-TTS and others (table in the plan).
+- **Found along the way (exists today):** one Studio Cancel cancels every waiting image or video job including an agent's; the ffmpeg we ship is a GPL build with no notice in `THIRD_PARTY_NOTICES.md`; `App.tsx` is 2,269 lines against a 500-line cap.
+- Decisions D-25 to D-35 logged, all open.
+
+**Open for Dan**
+
+- Answer the open decisions, mainly D-25 (go on the spike), D-32 (merge order), D-34 and D-35.
+- Say when to start P-1 (cancel fix, `App.tsx` extract, scaffold, ffmpeg notice).
+
 ## Update 2026-11-06, remote files for the agent bridge, and the 32 s film
 
 **Done** (branch `feat/media-input`)

@@ -9,6 +9,26 @@ summary: Read this first in every session.
 
 Newest dated update first. Each update has the same sections: Done, Open for Claude, Open for Dan.
 
+## Update 2026-11-06, agent bridge step 5 (v1 built, ready for review)
+
+**Done**
+
+- **E2E phase 9 "Agent bridge"** in `scripts/e2e_test_suite.py` (also in `docs/E2E_TESTING.md`): off answer, `tools/list`, `system_status` + `recommend_models`, stdio relay, and a real image job to a PNG with embedded settings. It switches Agent access on and restores the old state. Passed against a live backend on this Mac (5 of 5, 9 s; Iris-3B). The suite found one bug in itself (it looked for the PNG settings chunk at the start of the file; it is written just before the end).
+- **Live run through `/mcp` on this Mac** (M4 Max, 64 GB, driven by a script, not by an agent): a poster (Iris-3B, 1024 px, 11 s), a 3 s LTX-2.5 clip with sound (768x512, 65 frames, 2.7 s) and a voice line (Kokoro, 1.85 s) submitted at the same moment. They ran strictly one after the other (at most 1 running; the others showed queue positions 1 and 2). Notes came back (LTX 8k+1 rule: 72 frames became 65). PNG and MP4 both carry prompt, model, seed, steps, size and app version.
+- Full pytest and vitest were green at step 4 (2588 / 782); phase 9 and doc edits since touch no app code.
+
+**Open for Claude**
+
+- Nothing left in the v1 rollout table. Merge needs your go (see below).
+
+**Open for Dan**
+
+- **Not done: a real Claude Code run** ("one prompt, three files"). Needs `claude mcp add` against a running app and spends your Claude usage; say if you want me to run it, or run the card's copied line yourself.
+- **Not done: Windows check** of the relay and endpoint (no Windows machine here). Linux untested too.
+- Decide: merge `feat/agent-bridge` into `release/v0.9.10` or hold it for the release after (plan says after; the queue changes how the Studios start jobs). D-21 still reads "open".
+- Rounded-down clip length: a 3 s ask gives 2.7 s on LTX (frames round down to 8k+1). Say if it should round to the nearest instead.
+- Agent token is shown in the running app's API response; the backend I started for the test is stopped.
+
 ## Update 2026-11-06, agent bridge step 4
 
 **Done**

@@ -2228,6 +2228,126 @@ def phase_8(cap: Capability) -> PhaseResult:
     return phase
 
 
+def phase_9(cap: Capability) -> PhaseResult:
+    """Agent bridge: /mcp tools, the off answer, the stdio relay, and one real image job."""
+    phase = PhaseResult(phase=9, name="Agent bridge")
+    if not cap.backend_reachable:
+        phase.status = "skip"
+        phase.checks.append(CheckResult("phase 9", "skip", reason="backend not reachable"))
+        return phase
+
+    def _json_call(method: str, path: str, payload: dict[str, Any] | None = None, headers: dict[str, str] | None = None,
+                   timeout: float = 90.0) -> tuple[int, Any]:
+        body = json.dumps(payload).encode("utf-8") if payload is not None else None
+        code, raw = _voice_http(method, path, body=body, content_type="application/json" if body else None, timeout=timeout)
+        try:
+            return code, json.loads(raw.decode("utf-8")) if raw.strip() else None
+        except ValueError:
+            return code, raw
+
+    def _mcp(method: str, params: dict[str, Any] | None = None, timeout: float = 90.0) -> dict[str, Any]:
+        message = {"jsonrpc": "2.0", "id": 1, "method": method, **({"params": params} if params is not None else {})}
+        code, body = _json_call("POST", "/mcp", message, timeout=timeout)
+        if code != 200 or not isinstance(body, dict):
+            raise RuntimeError(f"/mcp {method} HTTP {code}: {str(body)[:160]}")
+        return body
+
+    def _tool(name: str, arguments: dict[str, Any] | None = None, timeout: float = 90.0) -> tuple[bool, Any]:
+        result = _mcp("tools/call", {"name": name, "arguments": arguments or {}}, timeout)["result"]
+        text = result["content"][0]["text"]
+        try:
+            return bool(result["isError"]), json.loads(text)
+        except ValueError:
+            return bool(result["isError"]), text
+
+    code, access_before = _json_call("GET", "/api/agent/access")
+    if code == 404:
+        phase.status = "skip"
+        phase.checks.append(CheckResult("phase 9", "skip", reason="agent bridge not present in this build"))
+        return phase
+    was_enabled = bool(isinstance(access_before, dict) and access_before.get("enabled"))
+
+    def _set_access(enabled: bool) -> None:
+        _json_call("POST", "/api/agent/access", {"enabled": enabled})
+
+    def _off_answer():
+        _set_access(False)
+        is_error, text = _tool("system_status")
+        if not is_error or "Settings > Integrations > Agent access" not in str(text):
+            return "fail", f"off state did not explain how to turn it on: {text!r}", {}
+        return "pass", "", {}
+
+    def _tools_list():
+        _set_access(True)
+        tools = {t["name"] for t in _mcp("tools/list")["result"]["tools"]}
+        wanted = {"system_status", "recommend_models", "list_models", "list_voices", "generate_image",
+                  "generate_video", "speak", "transcribe", "job_status", "wait_for_job", "cancel_job"}
+        if wanted - tools:
+            return "fail", f"tools missing: {sorted(wanted - tools)}", {}
+        return "pass", "", {"tools": len(tools)}
+
+    def _status_and_recommend():
+        is_error, status = _tool("system_status")
+        if is_error or "freeMemoryGb" not in status:
+            return "fail", f"system_status: {status!r}", {}
+        is_error, rec = _tool("recommend_models", {"kind": "video"})
+        if is_error or "models" not in rec:
+            return "fail", f"recommend_models: {rec!r}", {}
+        return "pass", "", {"freeMemoryGb": status["freeMemoryGb"], "recommended": len(rec["models"])}
+
+    def _relay():
+        lines = "\n".join(json.dumps(m) for m in (
+            {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2025-03-26"}},
+            {"jsonrpc": "2.0", "id": 2, "method": "tools/list"},
+        )) + "\n"
+        rc, out, err = _cli("mcp", stdin=lines, timeout=60.0)
+        replies = [json.loads(line) for line in out.splitlines() if line.strip()]
+        if rc != 0 or len(replies) != 2 or len(replies[1].get("result", {}).get("tools", [])) < 11:
+            return "fail", f"stdio relay rc={rc} out={out[:160]!r} err={err[:120]!r}", {}
+        return "pass", "", {}
+
+    def _image_job():
+        is_error, models = _tool("list_models", {"kind": "image"})
+        rows = [m for m in (models.get("models") if isinstance(models, dict) else None) or [] if m.get("fit") != "wont-fit"]
+        if not rows:
+            return "skip", "no image model installed (the suite never downloads one)", {}
+        smallest = min(rows, key=lambda m: m.get("sizeGb") or 1e9)
+        is_error, job = _tool("generate_image", {"prompt": "a red cube on a white table", "model": smallest["id"],
+                                                 "width": 512, "height": 512, "seed": 1})
+        if is_error:
+            return "fail", f"generate_image refused: {job!r}", {}
+        deadline = time.time() + 600
+        while True:
+            is_error, job = _tool("wait_for_job", {"job_id": job["jobId"], "timeout_seconds": 30}, timeout=60.0)
+            if job.get("state") in ("done", "failed", "cancelled") or time.time() > deadline:
+                break
+        if job.get("state") != "done":
+            return "fail", f"image job ended {job.get('state')}: {job.get('error')}", {}
+        path = Path(str((job.get("output") or {}).get("path") or ""))
+        if not path.is_file() or path.stat().st_size == 0:
+            return "fail", f"job output path missing: {path}", {}
+        if b"chaosengine" not in path.read_bytes():  # the tEXt chunk sits just before IEND
+            return "fail", "PNG has no embedded generation settings", {}
+        return "pass", "", {"model": smallest["id"], "path": str(path), "notes": job.get("notes")}
+
+    try:
+        for name, fn in [
+            ("off answer explains how to turn it on", _off_answer),
+            ("tools/list has the v1 tools", _tools_list),
+            ("system_status and recommend_models", _status_and_recommend),
+            ("stdio relay forwards to the app", _relay),
+            ("image job to a file with embedded settings", _image_job),
+        ]:
+            phase.checks.append(_check(name, fn))
+    finally:
+        _set_access(was_enabled)
+    fails = [c for c in phase.checks if c.status == "fail"]
+    phase.status = "fail" if fails else (
+        "skip" if all(c.status == "skip" for c in phase.checks) else "pass"
+    )
+    return phase
+
+
 # ---------------------------------------------------------------------------
 # Driver
 # ---------------------------------------------------------------------------
@@ -2235,7 +2355,7 @@ def phase_8(cap: Capability) -> PhaseResult:
 
 PHASES = {
     0: phase_0, 1: phase_1, 2: phase_2, 3: phase_3,
-    4: phase_4, 5: phase_5, 6: phase_6, 7: phase_7, 8: phase_8,
+    4: phase_4, 5: phase_5, 6: phase_6, 7: phase_7, 8: phase_8, 9: phase_9,
 }
 
 

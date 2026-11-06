@@ -38,3 +38,7 @@ Pass the path of an earlier output as an input image. Only models with `acceptsI
 - Leave width and height out and the output takes the image's shape.
 - Voice cloning is not available.
 - On another machine, paths in a job result are not readable from here: send inputs with `upload_image` (use the `upload:` handle as the path) and fetch a result from `output.download.url` with the same token.
+
+## Making a short film (storyboard)
+
+`storyboard_project` create, then `storyboard_shot` add one shot per beat (`stillPrompt`, `motionPrompt`, `seconds`; `startFrom: previous-shot` continues from the last frame). Every edit needs the `revision` from the last answer; if it is refused, call `storyboard_project` get and retry. `storyboard_generate` makes new takes (stills first, then clips); `wait_for_job`, then `get` to check statuses. To redo shots, `storyboard_shot` redo them and generate again: other shots are untouched, and shots that continue from a redone one turn `stale`. Add sound with `storyboard_audio` (anchor voice to its shot), then `storyboard_render` with `preview` true; render the final with `preview` false and give the user the path.

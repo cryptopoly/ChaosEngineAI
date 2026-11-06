@@ -102,7 +102,7 @@ class HeavyJobQueue:
         return count
 
     def running_source(self, kind: str) -> str | None:
-        """Who owns the running job of this kind ("ui" or "agent"), or None when none of that kind runs."""
+        """Who owns the running job of this kind ("ui", "agent" or "storyboard"), or None when none of that kind runs."""
         with self._cond:
             running = self._running
             return running.source if running is not None and running.kind == kind else None

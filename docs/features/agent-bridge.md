@@ -44,6 +44,11 @@ job waits for a running agent job (the progress panel says "Waiting for an agent
 | `speak` | Text, voice, speed. Returns a job id. |
 | `transcribe` | Path to an audio or video file the app can read. Returns a job id. |
 | `job_status`, `wait_for_job`, `cancel_job` | Poll, wait up to 60 s, cancel. |
+| `storyboard_project` | Film projects: `create`, `list`, `get` (shots, takes, timeline, revision), `edit` (name, defaults, export), `undo`, `redo`, `delete`, `export` (a `.chaosfilm` bundle with a `download`), `import`. |
+| `storyboard_shot` | `add`, `edit`, `remove`, `reorder`, `lock`, `unlock`, `pick_take`, `redo` (marks a shot for the next generate), `import` (a clip or still file). |
+| `storyboard_audio` | `add`, `edit`, `remove` audio clips; anchor one to a shot so it follows the shot. |
+| `storyboard_generate` | New takes for the shots that need work (or `shot_ids`): all stills, then all clips. Locked shots are skipped; naming one needs `force`. Returns a job id; `cancel_job` stops the whole batch. |
+| `storyboard_render` | Render the film to MP4 (`preview` is small and fast). Returns a job id; the finished output has the path and `download`. |
 
 A finished job returns the **absolute path** of the PNG, MP4 or WAV, plus width, height, duration and
 `hasAudio`. `generate_image` can also return the PNG as base64 (`include_preview`). Every PNG and MP4
@@ -63,7 +68,10 @@ it never ignores the image.
 - With no width and height, the output takes the shape of the first image.
 - Voice cloning and sound input are not supported: the speech engine has no reference-audio input.
 
-Not in the first version: model downloads, chat (the OpenAI-compatible API covers it) and editing tools.
+Every storyboard edit carries the project's `revision`; an old one is refused with the current number, so
+the agent and the app can edit the same project. See [Storyboard](storyboard.md).
+
+Not in the first version: model downloads, chat (the OpenAI-compatible API covers it) and media editing tools.
 
 ## Using ChaosEngineAI on another machine
 
@@ -76,7 +84,7 @@ your home network. The paths in a job result belong to that PC, so files move ov
   from the bytes, the size cap is 30 MB, and handles are removed after 24 hours.
 - **Get an output back.** A finished job's `output.download` has `url` (relative to the app's address), `bytes`
   and `sha256`. `GET` that URL with the token. Only files inside the app's own image, video and voice folders can
-  be fetched; any other path answers 404.
+  be fetched, plus each storyboard project's `exports/` folder (films and bundles); any other path answers 404.
 - **Reach the app.** The backend must listen on the network (`--host`, for example `0.0.0.0`) and the firewall
   must allow its port on private networks. The traffic is plain HTTP with a bearer token, which is fine on a home
   network nobody else can join; use a VPN or SSH tunnel anywhere else.

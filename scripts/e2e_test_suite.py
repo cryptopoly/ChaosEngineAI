@@ -2302,7 +2302,7 @@ def phase_9(cap: Capability) -> PhaseResult:
         )) + "\n"
         rc, out, err = _cli("mcp", stdin=lines, timeout=60.0)
         replies = [json.loads(line) for line in out.splitlines() if line.strip()]
-        if rc != 0 or len(replies) != 2 or len(replies[1].get("result", {}).get("tools", [])) < 12:
+        if rc != 0 or len(replies) != 2 or len(replies[1].get("result", {}).get("tools", [])) < 17:
             return "fail", f"stdio relay rc={rc} out={out[:160]!r} err={err[:120]!r}", {}
         return "pass", "", {}
 
@@ -2405,6 +2405,144 @@ def phase_9(cap: Capability) -> PhaseResult:
     return phase
 
 
+def phase_10(cap: Capability) -> PhaseResult:
+    """Storyboard core: project, shots, edits, revisions, takes, bundle round trip, hostile input. No model runs."""
+    import io
+    import tempfile
+    import urllib.parse
+    import zipfile
+
+    phase = PhaseResult(phase=10, name="Storyboard")
+    if not cap.backend_reachable:
+        phase.status = "skip"
+        phase.checks.append(CheckResult("phase 10", "skip", reason="backend not reachable"))
+        return phase
+
+    def _call(method: str, path: str, payload: Any = None, raw: bytes | None = None) -> tuple[int, Any]:
+        body = raw if raw is not None else (json.dumps(payload).encode("utf-8") if payload is not None else None)
+        kind = "application/zip" if raw is not None else ("application/json" if body else None)
+        code, data = _voice_http(method, f"/api/storyboard{path}", body=body, content_type=kind, timeout=60.0)
+        try:
+            return code, json.loads(data.decode("utf-8")) if data.strip() else None
+        except ValueError:
+            return code, data
+
+    code, _ = _call("GET", "/projects")
+    if code == 404:
+        phase.status = "skip"
+        phase.checks.append(CheckResult("phase 10", "skip", reason="storyboard not present in this build"))
+        return phase
+    state: dict[str, Any] = {"cleanup": []}
+    tmp = tempfile.TemporaryDirectory()
+
+    def _op(op: str, args: dict[str, Any], want: int = 200) -> Any:
+        code, body = _call("POST", f"/projects/{state['id']}/ops", {"revision": state["rev"], "op": op, "args": args})
+        if code != want:
+            raise RuntimeError(f"{op}: HTTP {code} {str(body)[:160]}")
+        if code == 200:
+            state["rev"] = body["project"]["revision"]
+        return body
+
+    def _create():
+        code, body = _call("POST", "/projects", {"name": "E2E mini film"})
+        if code != 200:
+            return "fail", f"create: HTTP {code} {str(body)[:160]}", {}
+        state["id"], state["rev"] = body["project"]["id"], body["project"]["revision"]
+        state["cleanup"].append(state["id"])
+        return "pass", "", {"projectId": state["id"]}
+
+    def _shots():
+        for index in range(3):
+            body = _op("add_shot", {"title": f"shot {index + 1}", "stillPrompt": "a lighthouse", "seconds": 3})
+        state["shots"] = [s["id"] for s in body["project"]["shots"]]
+        body = _op("edit_shot", {"shotId": state["shots"][1], "startFrom": "previous-shot", "trimIn": 0.5})
+        if abs(body["timeline"]["total"] - 8.5) > 1e-6:
+            return "fail", f"timeline total {body['timeline']['total']}, wanted 8.5", {}
+        current = state["rev"]
+        state["rev"] = current - 1  # a writer that missed the last change
+        conflict = _op("lock", {"shotId": state["shots"][0]}, want=409)
+        state["rev"] = current
+        if conflict["detail"]["revision"] != state["rev"]:
+            return "fail", "the 409 did not carry the current revision", {}
+        return "pass", "", {"shots": len(state["shots"])}
+
+    def _takes():
+        sid = state["shots"][0]
+        takes = []
+        for name in ("a.mp4", "b.mp4"):
+            path = Path(tmp.name) / name
+            path.write_bytes(b"\x00\x00\x00\x18ftypmp42" + name.encode() * 64)
+            body = _op("import_take", {"shotId": sid, "clip": str(path)})
+            takes.append(body["project"]["shots"][0]["activeTake"])
+        body = _op("pick_take", {"shotId": sid, "takeId": takes[0]})
+        if body["project"]["shots"][0]["activeTake"] != takes[0]:
+            return "fail", "pick_take did not switch the active take", {}
+        code, body = _call("POST", f"/projects/{state['id']}/undo", {"revision": state["rev"]})
+        if code != 200 or body["project"]["shots"][0]["activeTake"] != takes[1]:
+            return "fail", f"undo of pick_take: HTTP {code}", {}
+        state["rev"] = body["project"]["revision"]
+        return "pass", "", {"takes": len(takes)}
+
+    def _bundle():
+        code, body = _call("POST", f"/projects/{state['id']}/bundle")
+        if code != 200:
+            return "fail", f"bundle export: HTTP {code} {str(body)[:160]}", {}
+        code, raw = _voice_http("GET", f"/api/storyboard/projects/{state['id']}/files?path={urllib.parse.quote(body['file'])}")
+        if code != 200 or len(raw) != body["bytes"]:
+            return "fail", f"bundle fetch: HTTP {code}", {}
+        code, imported = _call("POST", "/import", raw=raw)
+        if code != 200 or imported["project"]["id"] == state["id"]:
+            return "fail", f"bundle import: HTTP {code} {str(imported)[:160]}", {}
+        state["cleanup"].append(imported["project"]["id"])
+        if [s["status"] for s in imported["project"]["shots"]][0] != "done":
+            return "fail", "the imported take did not come back", {}
+        return "pass", "", {"bytes": len(raw)}
+
+    def _hostile():
+        cases = {
+            "absolute path": {"schemaVersion": 1, "revision": 1, "id": "0123456789abcdef", "name": "x",
+                              "audio": [{"id": "a_1", "kind": "voice", "source": {"path": "/etc/passwd"}, "start": 0}]},
+            "newer format": {"schemaVersion": 999, "revision": 1, "id": "0123456789abcdef", "name": "x"},
+        }
+        for label, project in cases.items():
+            buffer = io.BytesIO()
+            with zipfile.ZipFile(buffer, "w") as zf:
+                zf.writestr("project.json", json.dumps(project))
+            code, body = _call("POST", "/import", raw=buffer.getvalue())
+            if code != 400:
+                return "fail", f"{label}: HTTP {code}, wanted 400", {}
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w") as zf:
+            zf.writestr("project.json", json.dumps(cases["newer format"]))
+            zf.writestr("../../evil.txt", "x")
+        code, _ = _call("POST", "/import", raw=buffer.getvalue())
+        if code != 400:
+            return "fail", f"zip-slip entry: HTTP {code}, wanted 400", {}
+        return "pass", "", {}
+
+    try:
+        for name, fn in [
+            ("create a project", _create),
+            ("add and edit shots; a stale revision answers 409", _shots),
+            ("import two takes, pick one, undo", _takes),
+            ("export a .chaosfilm bundle and import it again", _bundle),
+            ("a hostile project.json or bundle is refused", _hostile),
+        ]:
+            if "id" not in state and name != "create a project":
+                phase.checks.append(CheckResult(name, "skip", reason="no project"))
+                continue
+            phase.checks.append(_check(name, fn))
+    finally:
+        for project_id in state["cleanup"]:
+            code, body = _call("GET", f"/projects/{project_id}")
+            if code == 200:
+                _voice_http("DELETE", f"/api/storyboard/projects/{project_id}?revision={body['project']['revision']}")
+        tmp.cleanup()
+    fails = [c for c in phase.checks if c.status == "fail"]
+    phase.status = "fail" if fails else ("skip" if all(c.status == "skip" for c in phase.checks) else "pass")
+    return phase
+
+
 # ---------------------------------------------------------------------------
 # Driver
 # ---------------------------------------------------------------------------
@@ -2412,7 +2550,7 @@ def phase_9(cap: Capability) -> PhaseResult:
 
 PHASES = {
     0: phase_0, 1: phase_1, 2: phase_2, 3: phase_3,
-    4: phase_4, 5: phase_5, 6: phase_6, 7: phase_7, 8: phase_8, 9: phase_9,
+    4: phase_4, 5: phase_5, 6: phase_6, 7: phase_7, 8: phase_8, 9: phase_9, 10: phase_10,
 }
 
 

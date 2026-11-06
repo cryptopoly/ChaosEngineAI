@@ -6,7 +6,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   StoryboardApiError,
-  StoryboardRevisionConflict,
   cancelStoryboardBatch,
   getStoryboardBatch,
   getStoryboardProject,
@@ -24,7 +23,7 @@ import type {
   StoryboardProjectPayload,
   StoryboardTimeline,
 } from "../../types";
-import { isBatchRunning, readOpenProjectId, writeOpenProjectId } from "./storyboardLogic";
+import { classifyFailure, isBatchRunning, readOpenProjectId, writeOpenProjectId } from "./storyboardLogic";
 
 export const BATCH_POLL_MS = 1500;
 
@@ -129,6 +128,22 @@ export function useStoryboard(enabled: boolean): UseStoryboardResult {
     };
   }, [enabled, projectId, reload]);
 
+  /** A stale revision adopts the server's project and raises the notice; any other failure is an error. */
+  const handleFailure = useCallback(
+    async (err: unknown) => {
+      const outcome = classifyFailure(err);
+      if (outcome.kind === "conflict") {
+        projectRef.current = outcome.project;
+        setProject(outcome.project);
+        setNotice("conflict");
+        await reload();
+      } else {
+        setError(outcome.message);
+      }
+    },
+    [reload],
+  );
+
   /** Run one change after the previous one finished, always against the newest revision. */
   const mutate = useCallback(
     (run: (id: string, revision: number) => Promise<StoryboardProjectPayload>): Promise<boolean> => {
@@ -142,14 +157,7 @@ export function useStoryboard(enabled: boolean): UseStoryboardResult {
           setError(null);
           return true;
         } catch (err) {
-          if (err instanceof StoryboardRevisionConflict) {
-            projectRef.current = err.project;
-            setProject(err.project);
-            setNotice("conflict");
-            await reload();
-          } else {
-            setError(message(err));
-          }
+          await handleFailure(err);
           return false;
         } finally {
           setBusy(false);
@@ -158,7 +166,7 @@ export function useStoryboard(enabled: boolean): UseStoryboardResult {
       queue.current = task.catch(() => false);
       return task;
     },
-    [adopt, reload],
+    [adopt, handleFailure],
   );
 
   const op = useCallback(
@@ -182,16 +190,11 @@ export function useStoryboard(enabled: boolean): UseStoryboardResult {
         setError(null);
         return true;
       } catch (err) {
-        if (err instanceof StoryboardRevisionConflict) {
-          setNotice("conflict");
-          await reload();
-        } else {
-          setError(message(err));
-        }
+        await handleFailure(err);
         return false;
       }
     },
-    [reload],
+    [handleFailure],
   );
 
   const cancelBatch = useCallback(async () => {

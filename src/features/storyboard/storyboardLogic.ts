@@ -3,6 +3,7 @@
  * takes strip keyboard model, batch progress, reorder, which shots a batch should make, and project
  * summaries. No React here so the rules are unit-tested directly.
  */
+import { StoryboardRevisionConflict } from "../../api/storyboard";
 import type {
   StoryboardBatchRecord,
   StoryboardExportPreset,
@@ -29,6 +30,20 @@ export function writeOpenProjectId(id: string | null): void {
   } catch {
     // storage unavailable: the open project is simply not remembered
   }
+}
+
+// ---- failed requests ----
+export type FailureOutcome =
+  | { kind: "conflict"; project: StoryboardProject }
+  | { kind: "error"; message: string };
+
+/**
+ * What the screen does with a failed change: a stale revision adopts the project the server sent and
+ * shows the short "Changed elsewhere" notice; anything else is an error message in the server's words.
+ */
+export function classifyFailure(err: unknown): FailureOutcome {
+  if (err instanceof StoryboardRevisionConflict) return { kind: "conflict", project: err.project };
+  return { kind: "error", message: err instanceof Error ? err.message : String(err) };
 }
 
 // ---- export presets ----

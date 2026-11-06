@@ -54,7 +54,7 @@ TOOLS: list[dict[str, Any]] = [
                 "steps": {"type": "integer", "minimum": 1, "maximum": 100},
                 "reference_images": {
                     "type": "array", "items": {"type": "string"}, "maxItems": 4,
-                    "description": "Absolute paths of reference images. Only for models with acceptsImageInput in list_models: "
+                    "description": "Absolute paths or upload: handles of reference images. Only for models with acceptsImageInput in list_models: "
                     "FLUX.1, FLUX.2 Klein and Qwen take one start image; FLUX 3 Klein takes up to four to edit or re-draw. "
                     "If width and height are not given, the image follows the first reference's shape.",
                 },
@@ -77,8 +77,8 @@ TOOLS: list[dict[str, Any]] = [
                 "height": {"type": "integer", "minimum": 256, "maximum": 4096},
                 "seconds": {"type": "number", "minimum": 0.5, "maximum": 20},
                 "frames": {"type": "integer", "minimum": 8, "maximum": 257},
-                "start_image": {"type": "string", "description": "Absolute path of an image the clip starts on (image-to-video). Only for models with acceptsImageInput in list_models. If width and height are not given, the clip follows the image's shape."},
-                "end_image": {"type": "string", "description": "Absolute path of an image the clip ends on. Can be used alone: the prompt then moves toward this image."},
+                "start_image": {"type": "string", "description": "Absolute path (or upload: handle) of an image the clip starts on (image-to-video). Only for models with acceptsImageInput in list_models. If width and height are not given, the clip follows the image's shape."},
+                "end_image": {"type": "string", "description": "Absolute path (or upload: handle) of an image the clip ends on. Can be used alone: the prompt then moves toward this image."},
                 "image_strength": {"type": "number", "minimum": 0.1, "maximum": 1.0, "description": "1.0 follows the image closely (default); lower lets the clip drift."},
                 "fps": {"type": "integer", "minimum": 1, "maximum": 60},
                 "steps": {"type": "integer", "minimum": 1, "maximum": 100},
@@ -97,6 +97,16 @@ TOOLS: list[dict[str, Any]] = [
                 "speed": {"type": "number", "minimum": 0.5, "maximum": 2.0},
             },
             ["text"],
+        ),
+    },
+    {
+        "name": "upload_image",
+        "description": "Send a small image (up to about 8 MB) to the machine running ChaosEngineAI, for an agent on another "
+        "machine. Returns a handle like upload:ab12cd34ef56 that start_image, end_image and reference_images accept in place "
+        "of a path. Handles last 24 hours. Larger files: POST the raw bytes to /api/agent/uploads with the same token.",
+        "inputSchema": _obj(
+            {"data_base64": {"type": "string", "minLength": 1, "maxLength": 12_000_000, "description": "The image file, base64."}},
+            ["data_base64"],
         ),
     },
     {
@@ -411,6 +421,20 @@ def speak(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
     return _submitted(STORE.submit("voice", "speech", run))
 
 
+def upload_image(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
+    from backend_service.helpers.media_input import InputImageError
+    from backend_service.mcp_bridge.files import save_upload
+
+    try:
+        data = base64.b64decode(str(args["data_base64"]), validate=True)
+    except ValueError as exc:
+        raise ToolError("data_base64 is not valid base64.") from exc
+    try:
+        return save_upload(data)
+    except InputImageError as exc:
+        raise ToolError(str(exc)) from exc
+
+
 def transcribe(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
     from backend_service import voice_runtime
 
@@ -467,6 +491,7 @@ HANDLERS: dict[str, Callable[[Any, dict[str, Any]], dict[str, Any]]] = {
     "generate_image": generate_image,
     "generate_video": generate_video,
     "speak": speak,
+    "upload_image": upload_image,
     "transcribe": transcribe,
     "job_status": job_status,
     "wait_for_job": wait_for_job,

@@ -7,8 +7,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Request
-from fastapi.responses import JSONResponse, Response
+from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import FileResponse, JSONResponse, Response
 from pydantic import BaseModel
 
 from backend_service.mcp_bridge import access
@@ -66,6 +66,43 @@ async def mcp_endpoint(request: Request) -> Response:
 def mcp_get() -> Response:
     # No server-initiated stream: the spec lets a server answer 405.
     return Response(status_code=405, headers={"Allow": "POST"})
+
+
+def _require_agent(request: Request) -> None:
+    if not access.is_enabled():
+        raise HTTPException(status_code=403, detail=access.OFF_MESSAGE)
+    if not _authorized(request):
+        raise HTTPException(status_code=401, detail="Unauthorized. Send the Agent access token as a Bearer token.")
+
+
+@router.post("/api/agent/uploads")
+async def upload_input_image(request: Request) -> dict[str, Any]:
+    """Raw image bytes in the body; returns a handle for ``start_image`` / ``reference_images``."""
+    _require_agent(request)
+    from backend_service.helpers.media_input import MAX_INPUT_IMAGE_BYTES, InputImageError
+    from backend_service.mcp_bridge.files import save_upload
+
+    data = bytearray()
+    async for chunk in request.stream():
+        data.extend(chunk)
+        if len(data) > MAX_INPUT_IMAGE_BYTES:
+            raise HTTPException(status_code=413, detail=f"The upload is larger than {MAX_INPUT_IMAGE_BYTES // (1024 * 1024)} MB.")
+    try:
+        return save_upload(bytes(data))
+    except InputImageError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/api/agent/files")
+def download_output_file(request: Request, path: str) -> FileResponse:
+    """A finished job's output. Only files inside the app's own output folders."""
+    _require_agent(request)
+    from backend_service.mcp_bridge.files import fetchable
+
+    real = fetchable(path)
+    if real is None:
+        raise HTTPException(status_code=404, detail="Not an output file of this app.")
+    return FileResponse(real, filename=real.name)
 
 
 def _stdio_command(port: int) -> list[str] | None:

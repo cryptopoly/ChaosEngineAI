@@ -37,3 +37,4 @@ Pass the path of an earlier output as an input image. Only models with `acceptsI
 - Same subject in new scenes: `generate_image` with `reference_images` set to the earlier image (FLUX 3 Klein takes up to four; FLUX.1, FLUX.2 Klein and Qwen take one, with `image_strength` where higher stays closer).
 - Leave width and height out and the output takes the image's shape.
 - Voice cloning is not available.
+- On another machine, paths in a job result are not readable from here: send inputs with `upload_image` (use the `upload:` handle as the path) and fetch a result from `output.download.url` with the same token.

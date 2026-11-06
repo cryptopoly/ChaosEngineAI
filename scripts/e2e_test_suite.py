@@ -2302,9 +2302,11 @@ def phase_9(cap: Capability) -> PhaseResult:
         )) + "\n"
         rc, out, err = _cli("mcp", stdin=lines, timeout=60.0)
         replies = [json.loads(line) for line in out.splitlines() if line.strip()]
-        if rc != 0 or len(replies) != 2 or len(replies[1].get("result", {}).get("tools", [])) < 11:
+        if rc != 0 or len(replies) != 2 or len(replies[1].get("result", {}).get("tools", [])) < 12:
             return "fail", f"stdio relay rc={rc} out={out[:160]!r} err={err[:120]!r}", {}
         return "pass", "", {}
+
+    fetched: dict[str, Any] = {}
 
     def _image_job():
         is_error, models = _tool("list_models", {"kind": "image"})
@@ -2328,7 +2330,36 @@ def phase_9(cap: Capability) -> PhaseResult:
             return "fail", f"job output path missing: {path}", {}
         if b"chaosengine" not in path.read_bytes():  # the tEXt chunk sits just before IEND
             return "fail", "PNG has no embedded generation settings", {}
+        fetched["output"] = job.get("output") or {}
         return "pass", "", {"model": smallest["id"], "path": str(path), "notes": job.get("notes")}
+
+    def _upload_and_fetch():
+        # What an agent on another machine uses: send an image in, get an output back, nothing else readable.
+        import hashlib
+        import tempfile
+
+        from PIL import Image
+
+        with tempfile.TemporaryDirectory() as tmp:
+            png = Path(tmp) / "in.png"
+            Image.new("RGB", (64, 64), "blue").save(png)
+            code, raw = _voice_http("POST", "/api/agent/uploads", body=png.read_bytes(), content_type="application/octet-stream")
+        body = json.loads(raw.decode("utf-8")) if raw.strip() else {}
+        if code != 200 or not str(body.get("handle", "")).startswith("upload:"):
+            return "fail", f"upload: HTTP {code} {raw[:120]!r}", {}
+        code, _ = _voice_http("POST", "/api/agent/uploads", body=b"not an image", content_type="application/octet-stream")
+        if code != 400:
+            return "fail", f"a non-image upload answered HTTP {code}, wanted 400", {}
+        code, _ = _voice_http("GET", "/api/agent/files?path=%2Fetc%2Fhosts")
+        if code != 404:
+            return "fail", f"a path outside the output folders answered HTTP {code}, wanted 404", {}
+        download = (fetched.get("output") or {}).get("download")
+        if not download:
+            return "pass", "", {"handle": body["handle"], "download": "skipped (no image job ran)"}
+        code, data = _voice_http("GET", download["url"])
+        if code != 200 or hashlib.sha256(data).hexdigest() != download["sha256"]:
+            return "fail", f"fetching the job output: HTTP {code}, checksum mismatch or missing", {}
+        return "pass", "", {"handle": body["handle"], "fetchedBytes": len(data)}
 
     def _input_refusals():
         # Cheap: the route refuses before any model loads. A wrong model must say why, not ignore the image.
@@ -2362,6 +2393,7 @@ def phase_9(cap: Capability) -> PhaseResult:
             ("stdio relay forwards to the app", _relay),
             ("image job to a file with embedded settings", _image_job),
             ("image and video input refuses the wrong model clearly", _input_refusals),
+            ("upload a file and fetch an output over HTTP", _upload_and_fetch),
         ]:
             phase.checks.append(_check(name, fn))
     finally:

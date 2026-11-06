@@ -66,7 +66,7 @@ class McpRelayTests(unittest.TestCase):
         self.assertTrue(server.started)
 
         off = relay(port)
-        self.assertEqual(len(off[1]["result"]["tools"]), 11)
+        self.assertEqual(len(off[1]["result"]["tools"]), 12)
         self.assertIn("Agent access is off", off[2]["result"]["content"][0]["text"])
 
         access.set_enabled(True)

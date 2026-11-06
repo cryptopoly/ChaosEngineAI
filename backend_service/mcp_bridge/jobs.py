@@ -77,6 +77,15 @@ class JobStore:
             HEAVY_JOBS.wait_turn(job.ticket)
             job.state = "running"
             output, notes = runner()
+            if output.get("path"):
+                from backend_service.mcp_bridge.files import download_info
+
+                try:
+                    info = download_info(str(output["path"]))
+                except OSError:
+                    info = None
+                if info:
+                    output = {**output, "download": info}
             job.output, job.notes = output, notes
             job.state = "done"
         except GenerationCancelled:

@@ -40,6 +40,7 @@ job waits for a running agent job (the progress panel says "Waiting for an agent
 | `list_voices` | Voices that are ready, with language. |
 | `generate_image` | Prompt, model, size, steps, seed, optional `reference_images` and `image_strength`. Returns a job id. Sizes are snapped to what the model supports; corrections appear in the job notes. |
 | `generate_video` | Prompt, model, size, `seconds` (or `frames`), fps, seed, optional `start_image`, `end_image`, `image_strength`. Returns a job id. Seconds are converted to the model's frame rule. |
+| `upload_image` | A small image as base64. Returns a handle (`upload:...`) for the image inputs above; for an agent on another machine. |
 | `speak` | Text, voice, speed. Returns a job id. |
 | `transcribe` | Path to an audio or video file the app can read. Returns a job id. |
 | `job_status`, `wait_for_job`, `cancel_job` | Poll, wait up to 60 s, cancel. |
@@ -63,6 +64,23 @@ it never ignores the image.
 - Voice cloning and sound input are not supported: the speech engine has no reference-audio input.
 
 Not in the first version: model downloads, chat (the OpenAI-compatible API covers it) and editing tools.
+
+## Using ChaosEngineAI on another machine
+
+An agent can drive a ChaosEngineAI running on a different computer, for example a PC with an NVIDIA GPU on
+your home network. The paths in a job result belong to that PC, so files move over HTTP:
+
+- **Send an image in.** `upload_image` takes a small image as base64; larger files: `POST` the raw bytes to
+  `/api/agent/uploads` with the Agent access token. Either returns a handle like `upload:ab12cd34ef56`. Use the
+  handle wherever a tool takes an image path (`start_image`, `end_image`, `reference_images`). The type is read
+  from the bytes, the size cap is 30 MB, and handles are removed after 24 hours.
+- **Get an output back.** A finished job's `output.download` has `url` (relative to the app's address), `bytes`
+  and `sha256`. `GET` that URL with the token. Only files inside the app's own image, video and voice folders can
+  be fetched; any other path answers 404.
+- **Reach the app.** The backend must listen on the network (`--host`, for example `0.0.0.0`) and the firewall
+  must allow its port on private networks. The traffic is plain HTTP with a bearer token, which is fine on a home
+  network nobody else can join; use a VPN or SSH tunnel anywhere else.
+- Audio for `transcribe` is not uploaded yet.
 
 ## Safety
 

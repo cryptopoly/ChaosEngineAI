@@ -9,6 +9,19 @@ summary: Read this first in every session.
 
 Newest dated update first. Each update has the same sections: Done, Open for Claude, Open for Dan.
 
+## Update 2026-11-06, remote files for the agent bridge, and the 32 s film
+
+**Done** (branch `feat/media-input`)
+
+- **Film:** `docs/examples/lighthouse-keeper-demo/` makes a 32.4 s, eight-shot film (768x448, 24 fps, with sound) only through `/mcp`: keeper portrait, one still per shot (FLUX 3 Klein, lighthouse and keeper as `reference_images`), one LTX-2.5 clip per still (`start_image`), Kokoro voiceover, ffmpeg join. About 25 minutes on this Mac. I looked at one frame from each shot: same keeper (yellow raincoat, cap, white beard) and same lighthouse in all eight. I have not played the video or listened to it; the audio level read -24 dB mean, so there is sound.
+- **Remote files:** `upload_image` tool and `POST /api/agent/uploads` return an `upload:` handle that image and video tools accept as a path; job outputs carry `download` (`url`, `bytes`, `sha256`) and `GET /api/agent/files` serves only files inside the image, video and voice output folders (404 otherwise, symlinks out refused). Inbox files expire after 24 hours. 12 tools now. E2E phase 9 has a check for the round trip.
+
+**Not tested:** a real second machine (the endpoint was exercised on this Mac only); the packaged Windows app listening on the network (not checked: it may bind to loopback only); audio upload for `transcribe`.
+
+**Open for Dan**
+
+- Install on the 4090 PC, start the backend with `--host 0.0.0.0`, allow the port on the private network, and point Claude at `http://<pc-address>:<port>/mcp` with the Agent access token.
+
 ## Update 2026-11-06, Enhance removed
 
 **Done** (branch `feat/media-input`, decision D-24)

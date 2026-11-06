@@ -21,6 +21,10 @@ def resolve_input_image(raw: str) -> Path:
     text = str(raw or "").strip()
     if not text:
         raise InputImageError("The input image path is empty.")
+    if text.startswith("upload:"):
+        from backend_service.mcp_bridge.files import resolve_handle
+
+        text = str(resolve_handle(text))
     try:
         path = Path(text).expanduser().resolve(strict=True)
     except (OSError, RuntimeError) as exc:

@@ -115,7 +115,7 @@ tqdm==4.67.3
 transformers==5.20.2
 turboquant-mlx-full==0.3.0
 turboquant==0.2.0
-typer==0.24.1
+typer==0.27.3
 typing-inspection==0.4.2
 typing_extensions==4.15.0
 urllib3==2.8.0

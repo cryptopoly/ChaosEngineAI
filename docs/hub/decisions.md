@@ -1,55 +1,34 @@
 ---
 title: Decisions
 order: 2
-summary: Open decisions with a recommendation, and the dated log of decisions made.
+width: wide
+summary: Every decision, open and made, in one table you can filter by status.
 ---
 # Decisions
 
-Open decisions come first, in priority order. Decided ones move to the collapsed log at the bottom with a date. A decision raised in chat is logged here the same turn, with a recommendation and a reason.
+One row per decision. Use the buttons above the table to show one status (banked rows are parked until a named trigger), or search it. A decision raised in chat is added here the same turn, with a recommendation and a reason. Newest IDs are at the top.
 
-Priority: P1 blocks launch or reworks built work; P2 is needed before the next milestone; P3 is later.
-
-## Open decisions
-
-### P1: decide soon
-
-1. **Push the Windows test fix to PR 119.** One local commit (a test compared `/pack` with `\pack`). **Explainer:** every push runs GitHub builds, which cost Actions minutes, so pushes are held until the work is tested. **Recommendation:** push once the DDTree 27B and LTX-2.5 runs are done and committed, so CI runs once. **Why:** the other two platforms already pass; nothing else is blocked on it.
-2. **When to re-tag `v0.9.9`.** The tag still points at an old commit and the release workflow reuses the existing draft. **Recommendation:** re-tag only after PR 119 is merged and CI is green; commands are in [status](status.md) history. **Why:** one 30-minute build instead of two.
-
-3a. ~~How to ship the Linux ARM64 / DGX Spark beta~~ **Decided and done 2026-11-03:** [v0.9.10-beta.1](https://github.com/cryptopoly/ChaosEngineAI/releases/tag/v0.9.10-beta.1) is a GitHub pre-release with the Linux ARM64 and x86_64 deb and AppImage plus `SHA256SUMS.txt`, built by the manual Build workflow with `linux_release_mode`. No `latest.json`, so the updater ignores it; checked after publishing: `releases/latest` is still v0.9.9 and its `latest.json` says 0.9.9. Pre-release tags (`v*-*`) no longer start `release.yml` (its run on the beta tag was skipped). The version files say `0.9.10-beta.1` on `release/v0.9.10`; set them to `0.9.10` before the real release. The Windows MSI cannot take a `-beta.1` version, so the manual Build's Windows job fails while the version carries it.
-3b. **Recruiting Spark testers.** **Recommendation:** ask the user who requested it first, then a pinned "Call for Linux ARM64 / DGX Spark testers" issue with `scripts/linux-gpu-check.sh`, then posts on the NVIDIA developer forum (DGX Spark) and r/LocalLLaMA. **Why:** the report script turns a tester's afternoon into numbers we can act on; each post needs your OK.
-
-3c. ~~How to get a standalone ARM64 package to test~~ **Decided 2026-11-03: (a).** `build.yml` gains a `linux_release_mode` input that stages the Linux packages in release mode (embedded Python, pinned constraints); Linux artifacts are now named per architecture (`ChaosEngineAI-linux-aarch64`, `-x86_64`). No tag or release is created.
-
-### P2: before the next milestone
-
-3. **Other apps' names that remain after the import-panel rename.** The import panel now labels groups by folder and the two string keys are gone ([FU-119](tracker/open.md)). Still naming other apps: the import API field names (`ollama`, `lmstudio`) and code identifiers, and the Server tab label "Ollama-compatible apps" (it names an API protocol clients speak). **Recommendation:** keep the protocol label (users need it to connect their tools) but reword it as "Apps that speak the Ollama API"; rename the API fields and identifiers in a later cleanup. **Why:** the editorial rule is about comparing against other products, not about naming a wire protocol; renaming API fields is churn with no user benefit.
-
-4. **Speculative decoding slows creative prose 2 to 4 times** ([FU-134](tracker/open.md)). Found by the 27B-class bench: code and reasoning gain up to 1.7 times, prose loses. **Recommendation:** add a launch-modal note now, an acceptance gate (fall back to plain steps when acceptance is low) in our own DDTree loop next, upstream's adaptive block with the dflash-mlx migration later. **Why:** a note is free and honest; the gate is about a day and measurable.
-
-
-### P3: later
-
-5. **oMLX as an MLX engine lane** ([FU-132](tracker/open.md)). An Apache-2.0 MLX server with continuous batching and an SSD-persistent KV cache, over HTTP only. **Explainer:** it already works as a remote provider (Settings, OpenAI-compatible base URL) with no code; a real lane means another MLX stack in its own venv and it cannot use our DFlash or TurboQuant. **Recommendation:** do not build a lane yet; measure it against our MLX lane first (needs your yes to install it in an isolated venv, about 45 minutes). **Why:** our MLX path already reuses prompt caches; the SSD cache and concurrent requests are the only clear gains, and they matter more for agents and the API server than for one chat.
-6. **Local agents building a game through the app** ([FU-126](tracker/open.md)). Banked by you; revisit when a local coding model clearly matches a hosted frontier model. No action now.
-
-7. **Agent bridge for the Image, Video and Voice APIs (MCP server or skill).** Raised 2026-11-06 after an agent made a 30 s advert and 10 posters through the local API with no source access ([example](https://github.com/cryptopoly/ChaosEngineAI/tree/docs/agent-ad-demo/docs/examples/agent-ad-demo)). **Recommendation:** build a thin MCP server (about 1 to 2 days, same scope as the [FU-126](tracker/open.md) idea) that exposes generate-image, generate-video, speak, list-models and job status, with one-job-at-a-time and a free-memory check built in. **Why:** the API already works for any agent that can run HTTP calls; the missing part is discoverability and a guard against the memory crash seen when jobs were queued together. **Open question:** which auth default the bridge should use (bearer token on by default today).
-
-<details>
-<summary>Decision log (made decisions, newest section last)</summary>
-
-## 2026-10-28 and 2026-10-29
-
-- **LTX-2.5 is the default LTX row.** Measured: 128 s against 155 s for LTX-2.3 on the same clip, 17 GB, clean output ([FU-128](tracker/closed.md)). It is gated, so a first download needs the licence accepted and a token with gated-repo access; the download error says so. Claude's call on the "newer and faster" rule, after the live clip.
-- **Build the Models page merge (FU-129), fit badges and recommended settings (FU-133) and per-model size limits now, with a team of agents, in the same release if they pass the gate.** Decided by Dan ("I have the creds"). Claude's guard: the work is on branch `feat/models-fit`, stacked on PR 119, so PR 119 can ship alone if the gate fails; the gate and the file ownership are in [docs/plans/models-fit.md](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/docs/plans/models-fit.md). The 2048 px cap goes (per-model limits instead).
-- **DFlash on hybrid Qwen models: fixed, not switched off.** The cause was found the same day (the adapter read the output head from the wrong object under mlx-lm 0.32, [FU-135](tracker/open.md)); a load-time self-check now protects the lane. Claude's call, within the "no null results" brief.
-- **Prefer newer and faster models when choosing defaults.** Your rule of thumb. Saved to memory and used for the LTX and Wan choices.
-- **Wan 2.2 TI2V 5B is replaced by LTX-2.3 on its own MLX engine** (`ltx-2-mlx`), on Claude's recommendation. The 5B family and its caches are removed; Wan 2.2 A14B and Wan 2.1 rows stay. See [FU-128](tracker/closed.md).
-- **Agent game-dev idea is banked** ([FU-126](tracker/open.md)). Decided by Dan.
-- **Linear DFlash block size 8 on MLX** (was 16). Decided by Dan on Claude's recommendation; checked on Qwen3-4B, to be re-checked on a 27B target.
-- **Sound in Video Studio: no toggle; show the sound** (icon, unmuted result window, prompt hint). Decided by Dan on Claude's recommendation ([FU-130](tracker/open.md)).
-- **A project hub for ChaosEngineAI, generated from `CLAUDE.md` and `docs/`** ([FU-131](tracker/open.md)). Decided by Dan on Claude's recommendation.
-- **LTX-2.5 licence accepted on Hugging Face** by Dan; Claude adds the engine and catalog support.
-- **Re-tag `v0.9.9` is held** until PR 119 merges. Decided by Dan ("hold pushes until tested").
-
-</details>
+| ID | Decision | ELI5 | Question for Dan | Recommendation | Status | Date | Links |
+|---|---|---|---|---|---|---|---|
+| D-21 | Agent bridge (MCP tools for image, video and voice): build it | Let other AI assistants press the app's "make a picture / video / voice" buttons through a proper, labelled control panel instead of guessing. | Go ahead and build v1 (about 3 days)? | Yes, after v0.9.10 ships: an in-app `/mcp` endpoint, a small stdio relay and a one-page skill. | open | 2026-11-06 | [plan](https://github.com/cryptopoly/ChaosEngineAI/blob/release/v0.9.10/docs/plans/agent-bridge.md), [PR 127](https://github.com/cryptopoly/ChaosEngineAI/pull/127), [FU-126](tracker/open.md) |
+| D-20 | Agent bridge: app and agent jobs share one queue | Only one big job runs at a time, whoever asked for it, so the computer doesn't fall over. | | Yes. | decided | 2026-11-06 | [plan](https://github.com/cryptopoly/ChaosEngineAI/blob/release/v0.9.10/docs/plans/agent-bridge.md) |
+| D-19 | Agent bridge: off until the user turns it on | The door for assistants starts locked; the user unlocks it in Settings. A locked door still answers "it's locked, here's how to open it". | | Off by default, one switch in Settings; when off, every tool answers with how to turn it on. | decided | 2026-11-06 | [plan](https://github.com/cryptopoly/ChaosEngineAI/blob/release/v0.9.10/docs/plans/agent-bridge.md) |
+| D-18 | Agent bridge: no downloads in v1, recommendations instead | The assistant can say "you have no video model; this one fits your computer, get it from the Models page", but cannot start a 30 GB download or accept a licence for you. | | No download tool in v1; add `recommend_models` (uses the fit ratings). A confirmed download tool is v2. | decided | 2026-11-06 | [plan](https://github.com/cryptopoly/ChaosEngineAI/blob/release/v0.9.10/docs/plans/agent-bridge.md) |
+| D-17 | Where the project hub lives (banked) | These planning pages are in the public code repo; they could live somewhere private instead. Dan will decide this across all his open-source projects at once. | Move the hub (and the tracker in `CLAUDE.md`) to a private repo, and rewrite git history too? | Move both to a private repo from now on; skip the history rewrite (it found only the username `dan` in paths: no emails, no real IP addresses) unless something sensitive turns up. | banked | 2026-11-06 | |
+| D-16 | Recruit DGX Spark testers | Find people with the special NVIDIA computer to try the test build and report back. | OK to post: the user who asked first, then a pinned GitHub issue, the NVIDIA forum, r/LocalLLaMA? | Yes, in that order; each post needs your OK. | open | 2026-11-03 | [beta](https://github.com/cryptopoly/ChaosEngineAI/releases/tag/v0.9.10-beta.1), [FU-137](tracker/open.md) |
+| D-15 | How to ship the Linux ARM64 / DGX Spark beta | A test version for one kind of Linux computer, which normal users are not offered as an update. | | GitHub pre-release `v0.9.10-beta.1`, no `latest.json`. Version files go back to `0.9.10` before the real release. | done | 2026-11-03 | [beta](https://github.com/cryptopoly/ChaosEngineAI/releases/tag/v0.9.10-beta.1) |
+| D-14 | How to get a standalone ARM64 test package | Make the test build include everything it needs to run. | | The manual Build workflow gets a `linux_release_mode` input. | decided | 2026-11-03 | [FU-137](tracker/open.md) |
+| D-13 | Speculative decoding slows creative prose 2 to 4 times | The "guess ahead" speed trick helps code but slows stories, because the guesses are usually wrong. | | A note in the launch window now; an automatic fallback in our own loop next; upstream's adaptive block later. | open | 2026-10-29 | [FU-134](tracker/open.md) |
+| D-12 | Other apps' names left after the import-panel rename | A few labels still mention other apps by name. | Reword the Server tab label, rename API fields later? | Keep the protocol label but reword it to "Apps that speak the Ollama API"; rename API fields in a later cleanup. | open | 2026-10-29 | [FU-119](tracker/open.md) |
+| D-11 | oMLX as an MLX engine lane | Another engine for Apple computers that can keep long chats in its memory between restarts. | Install it in an isolated venv to measure it (about 45 minutes)? | Don't build a lane yet; measure it against ours first. | open | 2026-10-29 | [FU-132](tracker/open.md) |
+| D-10 | Push the Windows test fix to PR 119 | Send one small test fix to GitHub. | | Done: PR 119 merged 2026-10-31. | done | 2026-10-31 | |
+| D-09 | When to re-tag `v0.9.9` | Re-label the release so it points at the right code. | | Done: v0.9.9 released 2026-11-02. | done | 2026-11-02 | [v0.9.9](https://github.com/cryptopoly/ChaosEngineAI/releases/tag/v0.9.9) |
+| D-08 | LTX-2.5 is the default LTX video model | The newer video model is faster and looks as good, so it is picked first. | | Measured 128 s against 155 s for LTX-2.3, 17 GB. | decided | 2026-10-29 | [FU-128](tracker/closed.md) |
+| D-07 | Build the one-page Models screens, fit badges and size limits now | Merge the "find models" and "my models" pages, and mark which models fit this computer. | | Built by a team of agents on `feat/models-fit`, behind the test gate. | decided | 2026-10-29 | [FU-129](tracker/open.md), [FU-133](tracker/open.md) |
+| D-06 | DFlash on hybrid Qwen models: fix, don't switch off | A speed trick produced gibberish on some models; the cause was found and fixed. | | Fixed, with a self-check at load. | decided | 2026-10-29 | [FU-135](tracker/open.md) |
+| D-05 | Prefer newer and faster models for defaults | When two models do the same job, start with the newer, quicker one. | | Your rule of thumb; used for the LTX and Wan choices. | decided | 2026-10-29 | |
+| D-04 | Wan 2.2 TI2V 5B replaced by LTX on its own MLX engine | Swap a slow, glitchy video model for a better one. | | Done; Wan 2.2 A14B and Wan 2.1 stay. | decided | 2026-10-29 | [FU-128](tracker/closed.md) |
+| D-03 | Agent game-dev idea is banked | Park the "AI builds a whole game in the app" idea until local models are strong enough. | | Banked; revisit when a local coding model matches a hosted one. | banked | 2026-10-29 | [FU-126](tracker/open.md) |
+| D-02 | Linear DFlash block size 8 on MLX | Guess 8 words ahead instead of 16; fewer wasted guesses. | | Checked on 4B and 27B-class models. | decided | 2026-10-29 | [FU-112](tracker/open.md) |
+| D-01 | Sound in Video Studio: no toggle, show the sound | Videos with sound get a speaker icon; no on/off switch. | | Done. | decided | 2026-10-29 | [FU-130](tracker/open.md) |
+| D-00 | A project hub generated from `CLAUDE.md` and `docs/` | One set of web pages that shows where the project is. | | Done; see D-17 for where it lives. | decided | 2026-10-29 | [FU-131](tracker/open.md) |

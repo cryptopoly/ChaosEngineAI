@@ -8,7 +8,6 @@
     "recentOutputsTitle": "Recent Outputs",
     "prompt": "Prompt",
     "negativePrompt": "Negative prompt",
-    "enhancePrompt": "Enhance",
     "width": "Width",
     "height": "Height",
     "steps": "Steps",
@@ -126,12 +125,6 @@
     "title": "Advanced",
     "show": "Show advanced settings",
     "hide": "Hide advanced settings"
-  },
-  "enhance": {
-    "label": "Enhance",
-    "busy": "Enhancing...",
-    "tooltip": "Enhance this prompt locally",
-    "error": "Enhancer error: {message}"
   },
   "runtimeBanner": {
     "loadingModel": "Loading model into memory...",
@@ -479,10 +472,6 @@
       "ltxRefiner": {
         "label": "LTX two-stage spatial upscale",
         "tooltip": "Renders the base sample at the requested resolution, then refines through Lightricks/LTX-Video-0.9.5-spatial-upscaler at 2× spatial resolution. Frame budget grows ~1.5×. Sharper micro-detail and cleaner motion edges; off by default because the wall-time hit is real."
-      },
-      "enhancePrompt": {
-        "label": "Auto-enhance short prompts",
-        "tooltip": "Appends model-tuned structural hints (cinematic descriptors, lighting, camera direction) when the prompt is under 25 words. Diffusion video models train on 50-100-word prompts and under-condition on shorter inputs. Long custom prompts are sent verbatim — the threshold is the safeguard."
       },
       "cfgDecay": {
         "label": "CFG decay",
@@ -904,5 +893,27 @@
       "previewVae": "Preview VAE",
       "fp8LayerwiseCasting": "FP8 layerwise"
     }
+  },
+  "inputImage": {
+    "chooseFile": "Choose file",
+    "fromGallery": "From gallery",
+    "remove": "Remove",
+    "pickFailed": "The file picker is not available here. Pick from the gallery instead.",
+    "referenceLabel": "Reference image",
+    "referenceLabelMany": "Reference images",
+    "referenceHintOne": "Starts the picture from this image. Strength: higher stays closer to it.",
+    "referenceHintMany": "Up to {max} images. The model edits or re-draws them from your prompt, to keep a subject or style.",
+    "strength": "Strength",
+    "startLabel": "Start image",
+    "startHint": "The clip begins on this image.",
+    "endLabel": "End image (optional)",
+    "endHint": "The clip ends on this image. Use it alone and the prompt moves toward this image."
+  },
+  "sizePresets": {
+    "aspect": "Aspect ratio",
+    "size": "Size",
+    "resolution": "Resolution",
+    "overLimit": "Above this model's size limit.",
+    "current": "Current size: {width} x {height} ({megapixels} MP)"
   }
 }

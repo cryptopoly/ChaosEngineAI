@@ -19,11 +19,11 @@ Two layers:
      setup-install / setup-refresh / longlive-install / wan-install
      cuda-torch-install / gpu-bundle-install / turbo-update-check
      diagnostics-snapshot / diagnostics-log-tail / diagnostics-reextract
-     gpu-status / cache-preview / prompts-list / prompts-enhance
+     gpu-status / cache-preview / prompts-list
      settings-get / settings-patch / workspaces-list
      plugins-list / plugins-enable / plugins-disable / tools-list / adapters-list
      finetuning-start / finetuning-status / metrics-gpu / compare
-     routes / openapi
+     routes / openapi / mcp (stdio relay for MCP clients)
 
 All structured output → stdout as JSON (composable with ``jq``); errors → stderr.
 Exit 0 on success, non-zero on failure.
@@ -1025,16 +1025,6 @@ def cmd_prompts_delete(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_prompts_enhance(args: argparse.Namespace) -> int:
-    body = {"prompt": args.text}
-    if args.family:
-        body["family"] = args.family
-    if args.model:
-        body["model"] = args.model
-    _ok(_hit_post(args, "/api/prompt/enhance", body=body, timeout=args.timeout))
-    return 0
-
-
 def cmd_settings_get(args: argparse.Namespace) -> int:
     _ok(_hit_get(args, "/api/settings", timeout=10.0))
     return 0
@@ -1418,6 +1408,102 @@ def cmd_v1_models(args: argparse.Namespace) -> int:
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# MCP stdio relay (agent bridge)
+# ---------------------------------------------------------------------------
+
+_NOT_RUNNING = "ChaosEngineAI is not running. Start ChaosEngineAI, then try again."
+_MCP_INSTRUCTIONS = (
+    "Make images, video clips, speech and transcripts with the local ChaosEngineAI app. "
+    "Start ChaosEngineAI first; tools appear once it runs."
+)
+
+
+def _mcp_token(args: argparse.Namespace) -> str | None:
+    """CHAOSENGINE_API_TOKEN if set, else the app's loopback session token (accepted by /mcp)."""
+    explicit = os.environ.get("CHAOSENGINE_API_TOKEN", "").strip()
+    if explicit:
+        return explicit
+    status, payload = _request("GET", f"{_base_url(args)}/api/auth/session", timeout=5.0)
+    if status == 200 and isinstance(payload, dict):
+        return str(payload.get("apiToken") or "") or None
+    return None
+
+
+def _mcp_forward(args: argparse.Namespace, message: Any, state: dict[str, Any]) -> tuple[int, Any]:
+    """POST one JSON-RPC message to /mcp. Refreshes the token once on 401."""
+    url = f"{_base_url(args)}/mcp"
+    for attempt in (0, 1):
+        if state.get("token") is None:
+            state["token"] = _mcp_token(args)
+        data = json.dumps(message).encode("utf-8")
+        headers = {"Content-Type": "application/json", "Accept": "application/json, text/event-stream"}
+        if state.get("token"):
+            headers["Authorization"] = f"Bearer {state['token']}"
+        req = urllib.request.Request(url, data=data, method="POST", headers=headers)
+        try:
+            with urllib.request.urlopen(req, timeout=120.0) as resp:
+                raw = resp.read().decode("utf-8", errors="replace")
+                return resp.status, (json.loads(raw) if raw.strip() else None)
+        except urllib.error.HTTPError as exc:
+            if exc.code == 401 and attempt == 0:
+                state["token"] = None
+                continue
+            return exc.code, None
+        except (urllib.error.URLError, OSError):
+            return 0, None
+    return 401, None
+
+
+def _mcp_answer_down(message: Any) -> Any:
+    """What the relay says on its own while the app is not reachable."""
+    if not isinstance(message, dict) or message.get("id") is None:
+        return None
+    rpc_id, method = message["id"], message.get("method")
+    if method == "initialize":
+        asked = str((message.get("params") or {}).get("protocolVersion") or "2025-03-26")
+        return {"jsonrpc": "2.0", "id": rpc_id, "result": {
+            "protocolVersion": asked,
+            "capabilities": {"tools": {"listChanged": False}},
+            "serverInfo": {"name": "chaosengine", "version": "1"},
+            "instructions": _MCP_INSTRUCTIONS,
+        }}
+    if method == "ping":
+        return {"jsonrpc": "2.0", "id": rpc_id, "result": {}}
+    if method == "tools/call":
+        return {"jsonrpc": "2.0", "id": rpc_id, "result": {
+            "content": [{"type": "text", "text": _NOT_RUNNING}], "isError": True}}
+    return {"jsonrpc": "2.0", "id": rpc_id, "error": {"code": -32000, "message": _NOT_RUNNING}}
+
+
+def cmd_mcp(args: argparse.Namespace) -> int:
+    """Relay MCP over stdio (one JSON message per line) to the running app's /mcp endpoint."""
+    state: dict[str, Any] = {"token": None}
+    for line in sys.stdin:
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            message = json.loads(line)
+        except json.JSONDecodeError:
+            reply: Any = {"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": "Parse error."}}
+        else:
+            status, reply = _mcp_forward(args, message, state)
+            if status == 0:
+                reply = _mcp_answer_down(message)
+            elif status == 401:
+                reply = _mcp_answer_down(message) if message.get("id") is None else {
+                    "jsonrpc": "2.0", "id": message.get("id"),
+                    "error": {"code": -32000, "message": "ChaosEngineAI refused the token. Restart the agent or check Settings > Integrations > Agent access."}}
+            elif status >= 400:
+                reply = {"jsonrpc": "2.0", "id": message.get("id"),
+                         "error": {"code": -32000, "message": f"ChaosEngineAI answered HTTP {status}."}}
+        if reply is not None:
+            sys.stdout.write(json.dumps(reply, separators=(",", ":")) + "\n")
+            sys.stdout.flush()
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="chaosengine-cli",
@@ -1427,6 +1513,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--host", default=_DEFAULT_HOST)
     parser.add_argument("--port", type=int, default=_DEFAULT_PORT)
     sub = parser.add_subparsers(dest="cmd", required=True)
+
+    sub.add_parser("mcp", help="Relay MCP over stdio to the running app (agent bridge).").set_defaults(func=cmd_mcp)
 
     # -- Generic --
     s = sub.add_parser("call", help="Generic HTTP dispatcher — every route reachable.")
@@ -1662,7 +1750,6 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("prompts-list").set_defaults(func=cmd_prompts_list)
     s = sub.add_parser("prompts-create"); s.add_argument("--body", default=None); s.add_argument("--file", default=None); s.set_defaults(func=cmd_prompts_create)
     s = sub.add_parser("prompts-delete"); s.add_argument("template_id"); s.set_defaults(func=cmd_prompts_delete)
-    s = sub.add_parser("prompts-enhance"); s.add_argument("text"); s.add_argument("--family", default=None); s.add_argument("--model", default=None); s.add_argument("--timeout", type=float, default=120.0); s.set_defaults(func=cmd_prompts_enhance)
     sub.add_parser("settings-get").set_defaults(func=cmd_settings_get)
     s = sub.add_parser("settings-patch"); s.add_argument("--body", default=None); s.add_argument("--file", default=None); s.set_defaults(func=cmd_settings_patch)
     sub.add_parser("settings-storage-get").set_defaults(func=cmd_settings_storage_get)

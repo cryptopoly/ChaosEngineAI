@@ -33,6 +33,7 @@ Extracted from ``inference.py`` as part of the v0.8.0 refactor.
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 import tempfile
@@ -67,6 +68,7 @@ from backend_service.inference.base import (
     RepeatedLineGuard,
     StreamChunk,
 )
+from backend_service.helpers.gpu import nvidia_shared_memory
 from backend_service.helpers.request_guards import friendly_llama_error, llama_error
 from backend_service.reasoning_split import (
     ThinkingTokenFilter,
@@ -607,6 +609,14 @@ class LlamaCppEngine(BaseInferenceEngine):
         # on binary support so older llama-server builds are unaffected.
         if _llama_server_supports(binary, "--cache-reuse"):
             command.extend(["--cache-reuse", "256"])
+        # On a GPU that shares system memory (DGX Spark, GH200) loading through
+        # mmap is slow; read the file in instead. CHAOSENGINE_LLAMA_MMAP=1 keeps mmap.
+        if (
+            os.environ.get("CHAOSENGINE_LLAMA_MMAP") != "1"
+            and nvidia_shared_memory()
+            and _llama_server_supports(binary, "--no-mmap")
+        ):
+            command.append("--no-mmap")
         # Honour the user's fused-attention toggle. It was plumbed into
         # load_model + stored on LoadedModelInfo but never emitted as a
         # flag. Flash attention is a large decode + KV-memory win on Metal

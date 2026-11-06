@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta:__legacy__"
 
 [project]
 name = "chaosengine-ai"
-version = "0.9.9"
+version = "0.9.10-beta.1"
 description = "Local AI model runner with pluggable cache/compression strategies"
 readme = "README.md"
 license = {text = "Apache-2.0"}
@@ -100,6 +100,10 @@ diffusion-accel = [
 # new model entries (Wan2.2-Distill, LTX-2.3, etc.) land without needing a
 # PyPI release every time.
 mlx-video = ["mlx-video @ git+https://github.com/Blaizzy/mlx-video.git"]
+# Pinned ffmpeg for joining and mixing films (home-studio plan). imageio-ffmpeg ships a static ffmpeg
+# binary per platform; that binary is a GPL build (see THIRD_PARTY_NOTICES.md), so it is an opt-in
+# extra rather than part of the base install. It was only a transitive dependency of mlx-video before.
+ffmpeg = ["imageio-ffmpeg>=0.6.0"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

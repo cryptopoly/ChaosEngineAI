@@ -177,13 +177,6 @@ Plugin system (cache strategies, engines, tools, ...)
 | POST | `/api/plugins/{plugin_id}/disable` | Disable Plugin |
 | POST | `/api/plugins/{plugin_id}/enable` | Enable Plugin |
 
-### /api/prompt
-Prompt enhancer (Apple Silicon Qwen2.5-0.5B rewriter)
-
-| Method | Path | Operation |
-|---|---|---|
-| POST | `/api/prompt/enhance` | Enhance Prompt |
-
 ### /api/prompts
 Prompt library (templates)
 

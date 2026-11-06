@@ -63,12 +63,6 @@ The right rail collects every input the runtime needs:
   TaylorSeer, MagCache, PAB, FasterCache. Strategy availability filters
   to whatever the loaded model's pipeline supports.
 
-The **Enhance** pill next to the Prompt label runs the active prompt
-through a local Qwen2.5-0.5B-Instruct-4bit rewriter that anchors the
-phrasing to the loaded DiT's training distribution (per-family system
-prompts for FLUX / Wan / LTX / HunyuanVideo / SDXL / SD3). On non-Apple-
-Silicon platforms it falls back to a deterministic template suffix.
-
 ## Live progress
 
 While the pipeline runs:

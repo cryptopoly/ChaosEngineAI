@@ -57,8 +57,17 @@ else
   git checkout --detach "refs/tags/$LLAMA_CPP_REF"
 fi
 
-echo "==> configure (Metal ON)"
-cmake -B build -DGGML_METAL=ON -DCMAKE_BUILD_TYPE=Release
+CMAKE_ARGS=(-DCMAKE_BUILD_TYPE=Release)
+if [[ "$(uname -s)" == "Darwin" ]]; then
+  echo "==> configure (Metal ON)"
+  CMAKE_ARGS+=(-DGGML_METAL=ON)
+elif command -v nvcc >/dev/null 2>&1; then
+  echo "==> configure (CUDA ON)"
+  CMAKE_ARGS+=(-DGGML_CUDA=ON)
+else
+  echo "==> configure (CPU only: nvcc not found)"
+fi
+cmake -B build "${CMAKE_ARGS[@]}"
 
 echo "==> build llama-server + llama-cli"
 cmake --build build --config Release -j --target llama-server llama-cli

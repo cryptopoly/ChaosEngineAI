@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
 import { InfoTooltip } from "../../components/InfoTooltip";
 import { Ltx2EngineBanner } from "../../components/Ltx2EngineBanner";
-import { PromptEnhanceButton } from "../../components/PromptEnhanceButton";
 import { RecommendedSettingsPanel } from "../../components/RecommendedSettingsPanel";
 import {
   DEFAULT_MAX_SIDE,
@@ -21,6 +20,16 @@ import type {
   VideoModelVariant,
   VideoRuntimeStatus,
 } from "../../types";
+import {
+  VIDEO_ASPECTS,
+  VIDEO_RESOLUTIONS,
+  fitsLimit,
+  nearestAspect,
+  nearestVideoResolution,
+  sizeForShortEdge,
+} from "../../utils/sizePresets";
+import { InputImagePicker, type InputImage } from "../../components/InputImagePicker";
+import type { ImageOutputArtifact } from "../../types/image";
 import type { NativeBackendStatus } from "../../types/server";
 import type { SystemStats } from "../../types/system";
 import {
@@ -42,11 +51,9 @@ import {
   videoSecondarySizeLabel,
 } from "../../utils";
 import {
-  ASPECT_RATIOS,
   KNOWN_INSTALLABLE_VIDEO_DEPS,
   MLX_VIDEO_SUPPORTED_REPOS,
   QUALITY_PRESETS,
-  type VideoAspectRatio,
   type VideoQualityPreset,
   displayNumber,
   isLtx2DistilledRepo,
@@ -86,6 +93,11 @@ export interface VideoStudioTabProps {
   videoPrompt: string;
   onVideoPromptChange: (value: string) => void;
   videoNegativePrompt: string;
+  videoStartImage: InputImage | null;
+  onVideoStartImageChange: (next: InputImage | null) => void;
+  videoEndImage: InputImage | null;
+  onVideoEndImageChange: (next: InputImage | null) => void;
+  imageGallery: ImageOutputArtifact[];
   onVideoNegativePromptChange: (value: string) => void;
   videoUseRandomSeed: boolean;
   onVideoUseRandomSeedChange: (value: boolean) => void;
@@ -107,8 +119,6 @@ export interface VideoStudioTabProps {
   onVideoUseNf4Change: (value: boolean) => void;
   videoEnableLtxRefiner: boolean;
   onVideoEnableLtxRefinerChange: (value: boolean) => void;
-  videoEnhancePrompt: boolean;
-  onVideoEnhancePromptChange: (value: boolean) => void;
   videoCfgDecay: boolean;
   onVideoCfgDecayChange: (value: boolean) => void;
   /** FU-018: TAESD/TAEHV preview-decode VAE swap. Off by default. */
@@ -199,6 +209,11 @@ export function VideoStudioTab({
   videoPrompt,
   onVideoPromptChange,
   videoNegativePrompt,
+  videoStartImage,
+  onVideoStartImageChange,
+  videoEndImage,
+  onVideoEndImageChange,
+  imageGallery,
   onVideoNegativePromptChange,
   videoUseRandomSeed,
   onVideoUseRandomSeedChange,
@@ -220,8 +235,6 @@ export function VideoStudioTab({
   onVideoUseNf4Change,
   videoEnableLtxRefiner,
   onVideoEnableLtxRefinerChange,
-  videoEnhancePrompt,
-  onVideoEnhancePromptChange,
   videoCfgDecay,
   onVideoCfgDecayChange,
   videoPreviewVae,
@@ -492,9 +505,12 @@ export function VideoStudioTab({
   // CUDA-only controls (NF4, FP8) need an NVIDIA GPU: hidden on a Mac and on a PC without one.
   const showCudaControls = hostSystem ? hasNvidiaGpu(hostSystem) : !isAppleSiliconHost;
   // Per-model size limit (``maxSide`` from the catalog; 4096 when the backend sends none).
+  const activeVideoAspect = nearestAspect(videoWidth, videoHeight, VIDEO_ASPECTS);
+  const activeVideoResolution = nearestVideoResolution(videoWidth, videoHeight);
   const videoMaxSide = selectedVideoVariant?.maxSide && selectedVideoVariant.maxSide > 0
     ? selectedVideoVariant.maxSide
     : DEFAULT_MAX_SIDE;
+  const videoSizeLimit = { maxSide: videoMaxSide, maxPixels: selectedVideoVariant?.maxPixels ?? null };
   useEffect(() => {
     const fitted = fitStudioSize(videoWidth, videoHeight, { maxSide: videoMaxSide });
     if (fitted.width !== videoWidth) onVideoWidthChange(fitted.width);
@@ -901,11 +917,6 @@ export function VideoStudioTab({
           <label>
             <span className="prompt-label-row">
               {t("videoStudio.prompt.label", { defaultValue: "Prompt" })}
-              <PromptEnhanceButton
-                prompt={videoPrompt}
-                repo={selectedVideoVariant?.repo ?? ""}
-                onEnhanced={onVideoPromptChange}
-              />
             </span>
             <textarea
               className="text-input"
@@ -955,6 +966,27 @@ export function VideoStudioTab({
                 })}
               />
             </label>
+          ) : null}
+
+          {selectedVideoVariant?.acceptsImageInput ? (
+            <>
+              <InputImagePicker
+                label={t("inputImage.startLabel")}
+                hint={t("inputImage.startHint")}
+                images={videoStartImage ? [videoStartImage] : []}
+                max={1}
+                onChange={(next) => onVideoStartImageChange(next[0] ?? null)}
+                gallery={imageGallery}
+              />
+              <InputImagePicker
+                label={t("inputImage.endLabel")}
+                hint={t("inputImage.endHint")}
+                images={videoEndImage ? [videoEndImage] : []}
+                max={1}
+                onChange={(next) => onVideoEndImageChange(next[0] ?? null)}
+                gallery={imageGallery}
+              />
+            </>
           ) : null}
 
           {/*
@@ -1058,29 +1090,54 @@ export function VideoStudioTab({
             tested envelope — safer than letting users pick arbitrary W×H.
           */}
           <div className="preset-row">
-            <span className="preset-row-label">
-              {t("video.aspectRatio", { defaultValue: "Aspect ratio" })}
-              <InfoTooltip text={t("videoStudio.aspectRatio.tooltip", {
-                defaultValue:
-                  "Sets Width and Height to a common video shape. All presets are safe on every supported model (≤1024 on the long edge, divisible by 8). Edit Width/Height below for finer control.",
-              })} />
-            </span>
-            {(Object.keys(ASPECT_RATIOS) as VideoAspectRatio[]).map((key) => {
-              const ratio = ASPECT_RATIOS[key];
-              const active =
-                videoWidth === ratio.width && videoHeight === ratio.height;
+            <span className="preset-row-label">{t("sizePresets.aspect")}</span>
+            {VIDEO_ASPECTS.map((aspect) => {
+              const shortEdge = nearestVideoResolution(videoWidth, videoHeight)?.shortEdge ?? Math.min(videoWidth, videoHeight);
+              const size = sizeForShortEdge(aspect, shortEdge);
+              const ok = fitsLimit(size, videoSizeLimit);
               return (
                 <button
-                  key={key}
+                  key={aspect.id}
                   type="button"
-                  className={`preset-pill ${active ? "active" : ""}`.trim()}
+                  className={`preset-pill ${activeVideoAspect?.id === aspect.id ? "active" : ""}`.trim()}
+                  disabled={!ok}
+                  title={ok ? `${size.width} x ${size.height}` : t("sizePresets.overLimit")}
                   onClick={() => {
-                    onVideoWidthChange(ratio.width);
-                    onVideoHeightChange(ratio.height);
+                    onVideoWidthChange(size.width);
+                    onVideoHeightChange(size.height);
                   }}
                 >
-                  <span className="preset-pill-label">{key}</span>
-                  <span className="preset-pill-sub">{ratio.width}×{ratio.height}</span>
+                  <span className="preset-pill-label">{aspect.label}</span>
+                </button>
+              );
+            })}
+          </div>
+          <div className="preset-row">
+            <span className="preset-row-label">
+              {t("sizePresets.resolution")}
+              <InfoTooltip text={t("videoStudio.aspectRatio.tooltip", {
+                defaultValue:
+                  "Sets Width and Height from a common name such as HD or 4K, in the aspect ratio chosen above. Sizes past this model's limits are greyed out. A large size also needs a lot of memory: the Studio refuses a run that would not fit.",
+              })} />
+            </span>
+            {VIDEO_RESOLUTIONS.map((resolution) => {
+              const aspect = activeVideoAspect ?? VIDEO_ASPECTS[0];
+              const size = sizeForShortEdge(aspect, resolution.shortEdge);
+              const ok = fitsLimit(size, videoSizeLimit);
+              return (
+                <button
+                  key={resolution.id}
+                  type="button"
+                  className={`preset-pill ${activeVideoResolution?.id === resolution.id ? "active" : ""}`.trim()}
+                  disabled={!ok}
+                  title={ok ? `${size.width} x ${size.height}` : t("sizePresets.overLimit")}
+                  onClick={() => {
+                    onVideoWidthChange(size.width);
+                    onVideoHeightChange(size.height);
+                  }}
+                >
+                  <span className="preset-pill-label">{resolution.label}</span>
+                  <span className="preset-pill-sub">{resolution.sub} · {size.width}×{size.height}</span>
                 </button>
               );
             })}
@@ -1341,25 +1398,6 @@ export function VideoStudioTab({
                 <InfoTooltip text={t("videoStudio.toggles.ltxRefiner.tooltip", {
                   defaultValue:
                     "Renders the base sample at the requested resolution, then refines through Lightricks/LTX-Video-0.9.5-spatial-upscaler at 2× spatial resolution. Frame budget grows ~1.5×. Sharper micro-detail and cleaner motion edges; off by default because the wall-time hit is real.",
-                })} />
-              </span>
-            </label>
-          ) : null}
-
-          {!fixedSampler ? (
-            <label className="checkbox-row">
-              <input
-                type="checkbox"
-                checked={videoEnhancePrompt}
-                onChange={(event) => onVideoEnhancePromptChange(event.target.checked)}
-              />
-              <span>
-                <strong>{t("videoStudio.toggles.enhancePrompt.label", {
-                  defaultValue: "Auto-enhance short prompts",
-                })}</strong>
-                <InfoTooltip text={t("videoStudio.toggles.enhancePrompt.tooltip", {
-                  defaultValue:
-                    "Appends model-tuned structural hints (cinematic descriptors, lighting, camera direction) when the prompt is under 25 words. Diffusion video models train on 50-100-word prompts and under-condition on shorter inputs. Long custom prompts are sent verbatim — the threshold is the safeguard.",
                 })} />
               </span>
             </label>

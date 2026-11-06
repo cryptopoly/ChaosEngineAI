@@ -66,6 +66,7 @@ import type {
   ImageDiscoverAccessFilter,
 } from "../types/image";
 import { compareDiscoverVariants } from "../utils";
+import type { InputImage } from "../components/InputImagePicker";
 
 // Human-friendly label for the GPU bundle install progress. Picks the most
 // actionable sentence from the job state so the "Installing..." text in
@@ -89,6 +90,8 @@ export function useImageState(
   const [selectedImageModelId, setSelectedImageModelId] = useState("");
   const [imagePrompt, setImagePrompt] = useState("");
   const [imageNegativePrompt, setImageNegativePrompt] = useState("");
+  const [imageReferences, setImageReferences] = useState<InputImage[]>([]);
+  const [imageReferenceStrength, setImageReferenceStrength] = useState(0.4);
   const [imageQualityPreset, setImageQualityPreset] = useState<ImageQualityPreset>("balanced");
   const [imageDraftMode, setImageDraftMode] = useState(false);
   const [imageSampler, setImageSampler] = useState<ImageSamplerId>("default");
@@ -463,6 +466,8 @@ export function useImageState(
     const selectedVariantForRequest =
       findImageVariantById(imageCatalog, modelId) ??
       (selectedImageVariant?.id === modelId ? selectedImageVariant : null);
+    const referenceLimit = selectedVariantForRequest?.maxReferenceImages ?? 0;
+    const referencePaths = imageReferences.slice(0, referenceLimit).map((image) => image.path);
     const requestNeedsPipelineLoad =
       !!selectedVariantForRequest &&
       selectedVariantForRequest.availableLocally &&
@@ -497,6 +502,8 @@ export function useImageState(
         steps: overrides?.steps ?? imageSteps,
         guidance: overrides?.guidance ?? imageGuidance,
         batchSize: overrides?.batchSize ?? imageBatchSize,
+        referenceImagePaths: referencePaths.length > 0 ? referencePaths : undefined,
+        imageStrength: referencePaths.length > 0 && referenceLimit === 1 ? imageReferenceStrength : undefined,
         qualityPreset: overrides?.qualityPreset ?? imageQualityPreset,
         draftMode: imageDraftMode,
         sampler: imageSampler === "default" ? null : imageSampler,
@@ -713,6 +720,10 @@ export function useImageState(
     imagePrompt,
     setImagePrompt,
     imageNegativePrompt,
+    imageReferences,
+    setImageReferences,
+    imageReferenceStrength,
+    setImageReferenceStrength,
     setImageNegativePrompt,
     imageQualityPreset,
     imageDraftMode,

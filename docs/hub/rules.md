@@ -27,7 +27,7 @@ How Claude and its team of agents work on ChaosEngineAI. The generic rules come 
 - Markdown is the source of truth; HTML is the readable view and opens from disk with no server.
 - A one-screen [status and handover](status.md) page is read first in every session.
 - [Decisions](decisions.md) hold open items with a recommendation on top and a collapsed dated log below.
-- The hub is rebuilt after every batch of changes, by `python3 tools/hub_tracker.py && python3 tools/build_hub.py`, never by hand. The follow-up rows live in `CLAUDE.md` (see [tracker](tracker/README.md)); everything else lives in this folder.
+- The hub is rebuilt after every batch of changes, by `python3 tools/hub_tracker.py && python3 tools/build_hub.py`, never by hand. The follow-up rows live in `FOLLOW_UPS.md` (see [tracker](tracker/README.md)); everything else lives in this folder.
 
 ## 4. Decisions and questions
 

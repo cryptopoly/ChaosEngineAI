@@ -146,7 +146,7 @@ _INSTALLABLE_PIP_PACKAGES: dict[str, str] = {
     # needing a PyPI release every time.
     # to native MLX kernels instead of diffusers+MPS. The capability probe
     # gates this package on Apple Silicon — installer hides it elsewhere.
-    # See FU-009 in CLAUDE.md.
+    # See FU-009 in FOLLOW_UPS.md.
     "mlx-video": "mlx-video @ git+https://github.com/Blaizzy/mlx-video.git",
     # Voice / STT backends
     "mlx-whisper": "mlx-whisper",
@@ -423,6 +423,7 @@ from backend_service.routes.setup.llama_server import router as _llama_server_ro
 from backend_service.routes.setup.longlive import router as _longlive_router
 from backend_service.routes.setup.mflux import router as _mflux_router
 from backend_service.routes.setup.ltx2 import router as _ltx2_router
+from backend_service.routes.setup.llama_cuda import router as _llama_cuda_router
 from backend_service.routes.setup.mtplx import router as _mtplx_router
 from backend_service.routes.setup.tensorfold import router as _tensorfold_router
 from backend_service.routes.setup.torch_upgrade import router as _torch_upgrade_router
@@ -437,6 +438,7 @@ router.include_router(_llama_server_router)
 router.include_router(_longlive_router)
 router.include_router(_mflux_router)
 router.include_router(_ltx2_router)
+router.include_router(_llama_cuda_router)
 router.include_router(_mtplx_router)
 router.include_router(_tensorfold_router)
 router.include_router(_torch_upgrade_router)

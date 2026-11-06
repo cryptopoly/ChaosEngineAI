@@ -664,6 +664,8 @@
     "thumbnailAlt": "실시간 디노이즈 미리보기",
     "thumbnailCaption": "실시간 미리보기 · TAESD 디코드",
     "stepCounter": "{current} / {total} 단계",
+    "waitingForAgent": null,
+    "waitingInQueue": null,
     "inProgress": "진행 중…",
     "finalizing": "완료 중…",
     "phaseTiming": "{elapsed}초 / ~{estimated}초"
@@ -882,6 +884,17 @@
       "tokenStoredPlaceholder": "•••• 저장됨 ••••",
       "tokenPlaceholder": "hf_...",
       "helpText": "로컬에 저장됩니다. Hugging Face에서 게이트 모델을 가져올 때 MLX 변환에서 사용됩니다."
+    },
+    "agentAccess": {
+      "title": null,
+      "subtitle": null,
+      "switch": null,
+      "hint": null,
+      "claudeCode": null,
+      "stdio": null,
+      "otherClients": null,
+      "rotate": null,
+      "rotateHint": null
     },
     "integrations": {
       "title": "통합",

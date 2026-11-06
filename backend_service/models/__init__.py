@@ -370,6 +370,11 @@ class ImageGenerationRequest(BaseModel):
     guidance: float = Field(default=5.5, ge=1.0, le=20.0)
     seed: int | None = Field(default=None, ge=0, le=2147483647)
     batchSize: int = Field(default=1, ge=1, le=4)
+    # Reference images (absolute paths on this machine). Only some mflux models take
+    # them; the route refuses the rest. ``imageStrength`` applies to single-image
+    # start images (FLUX.1, FLUX.2 Klein, Qwen); higher stays closer to the image.
+    referenceImagePaths: list[str] | None = Field(default=None, max_length=4)
+    imageStrength: float | None = Field(default=None, ge=0.05, le=1.0)
     qualityPreset: str | None = Field(default=None, max_length=32)
     draftMode: bool = Field(default=False)
     sampler: str | None = Field(default=None, max_length=32)
@@ -455,13 +460,6 @@ class VideoGenerationRequest(BaseModel):
     # LTX-Video two-stage spatial upscale via LTXLatentUpsamplePipeline.
     # Frame budget grows ~1.5×; runtimeNote surfaces the substitution.
     enableLtxRefiner: bool = Field(default=False)
-    # Phase E1: append model-specific structural hints to short prompts
-    # (< 25 words). Diffusion video models train against detailed prompts;
-    # short user prompts under-condition the model and drift. Default on
-    # so the typical short-prompt user gets quality uplift; explicit
-    # ``false`` opts out for users who've crafted a long custom prompt
-    # and want it sent verbatim.
-    enhancePrompt: bool = Field(default=True)
     # Phase E2: CFG decay schedule. Flow-match video models (LTX-Video,
     # Wan, HunyuanVideo) benefit from higher CFG early in sampling
     # (locks semantic structure) and lower CFG late (preserves fine
@@ -491,3 +489,9 @@ class VideoGenerationRequest(BaseModel):
     nunchakuFile: str | None = Field(default=None, min_length=1, max_length=200)
     # FU-024 FP8 layerwise casting (CUDA SM 8.9+ Ada/Hopper/Blackwell).
     fp8LayerwiseCasting: bool = Field(default=False)
+    # Image-to-video (LTX-2 only): a local image file the clip starts on, and
+    # optionally one it ends on. ``imageStrength`` 1.0 follows the image
+    # closely, lower lets the model move away from it.
+    startImagePath: str | None = Field(default=None, max_length=1024)
+    endImagePath: str | None = Field(default=None, max_length=1024)
+    imageStrength: float = Field(default=1.0, ge=0.1, le=1.0)

@@ -664,6 +664,8 @@
     "thumbnailAlt": "Vista previa de eliminación de ruido en vivo",
     "thumbnailCaption": "Vista previa en vivo · Decodificación TAESD",
     "stepCounter": "paso {current} / {total}",
+    "waitingForAgent": null,
+    "waitingInQueue": null,
     "inProgress": "en curso…",
     "finalizing": "finalizando…",
     "phaseTiming": "{elapsed}s / ~{estimated}s"
@@ -882,6 +884,17 @@
       "tokenStoredPlaceholder": "•••• almacenado ••••",
       "tokenPlaceholder": "hf_...",
       "helpText": "Se almacena localmente. Usado por la conversión MLX al obtener modelos restringidos de Hugging Face."
+    },
+    "agentAccess": {
+      "title": null,
+      "subtitle": null,
+      "switch": null,
+      "hint": null,
+      "claudeCode": null,
+      "stdio": null,
+      "otherClients": null,
+      "rotate": null,
+      "rotateHint": null
     },
     "integrations": {
       "title": "Integraciones",

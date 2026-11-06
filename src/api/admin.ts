@@ -143,7 +143,7 @@ export async function fetchStorageTop(limit = 20): Promise<StorageTopResponse> {
   // HF caches (997 GB across 14 repos on the dev box ≈ 4 s with cycle
   // protection). 30 s timeout is enough headroom for a TB-scale scan.
   return await fetchJson<StorageTopResponse>(
-    `/api/diagnostics/storage-top?limit=${encodeURIComponent(limit)}`,
+    `/api/diagnostics/storage-top?limit=${encodeURIComponent(limit)}&_=${Date.now()}`,
     30000,
   );
 }
@@ -154,7 +154,7 @@ export async function deleteHfRepo(repo: string): Promise<{ deleted: string; fre
 
 export async function fetchStorageChildren(path: string): Promise<StorageTopEntry[]> {
   const res = await fetchJson<{ entries: StorageTopEntry[] }>(
-    `/api/diagnostics/storage-children?path=${encodeURIComponent(path)}`,
+    `/api/diagnostics/storage-children?path=${encodeURIComponent(path)}&_=${Date.now()}`,
     30000,
   );
   return res.entries;
@@ -226,4 +226,24 @@ export async function startModelMove(
 
 export async function getModelMoveStatus(): Promise<ModelMoveJobState> {
   return await fetchJson<ModelMoveJobState>("/api/settings/storage/move/status", 10000);
+}
+
+// ---------------------------------------------------------------------------
+// Agent access (the MCP bridge switch and token)
+// ---------------------------------------------------------------------------
+
+export interface AgentAccess {
+  enabled: boolean;
+  token: string;
+  mcpUrl: string;
+  /** Command that starts the stdio relay, or null when the CLI script is not installed. */
+  stdioCommand: string[] | null;
+}
+
+export async function getAgentAccess(): Promise<AgentAccess> {
+  return await fetchJson<AgentAccess>("/api/agent/access");
+}
+
+export async function updateAgentAccess(patch: { enabled?: boolean; rotateToken?: boolean }): Promise<AgentAccess> {
+  return await postJson<AgentAccess>("/api/agent/access", patch);
 }

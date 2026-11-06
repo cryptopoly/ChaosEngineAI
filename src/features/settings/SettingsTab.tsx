@@ -1,6 +1,7 @@
 import { useState, type SetStateAction } from "react";
 import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
+import { AgentAccessPanel } from "./AgentAccessPanel";
 import { AcceleratorsPanel, DiagnosticsPanel, DiskUsagePanel } from "./DiagnosticsPanel";
 import { LanguagePanel } from "./LanguagePanel";
 import { ModelStoragePanel } from "./ModelStoragePanel";
@@ -580,6 +581,7 @@ export function SettingsTab({
 
   const integrationPanels = (
     <div className="content-grid settings-section-grid">
+      <AgentAccessPanel backendOnline={backendOnline} onCopyText={onCopyText} />
       <Panel
         title={t("settingsTab.integrations.title", { defaultValue: "Integrations" })}
         subtitle={t("settingsTab.integrations.subtitle", {

@@ -279,6 +279,12 @@ class Ltx2MlxVideoEngine:
         output: Path,
     ) -> list[str]:
         gemma_args = ["--gemma", str(gemma)] if gemma is not None else []
+        # Image-to-video: --image PATH FRAME_IDX STRENGTH, repeated for the start and the end frame.
+        image_args: list[str] = []
+        if config.startImagePath:
+            image_args += ["--image", config.startImagePath, "0", f"{config.imageStrength:g}"]
+        if config.endImagePath:
+            image_args += ["--image", config.endImagePath, str(max(1, config.numFrames - 1)), f"{config.imageStrength:g}"]
         return [
             str(LTX2_VENV_DIR / "bin" / "ltx-2-mlx"),
             "generate",
@@ -291,6 +297,7 @@ class Ltx2MlxVideoEngine:
             "--frames", str(config.numFrames),
             "--frame-rate", f"{config.fps:g}",
             "--seed", str(seed),
+            *image_args,
             "--output", str(output),
         ]
 

@@ -16,4 +16,6 @@ export interface GenerationProgressSnapshot {
   // decoded step. Capped at 192 px on the long edge backend-side.
   thumbnail?: string | null;
   cancelRequested?: boolean;
+  /** Shared job queue: set while this request waits behind another heavy job. */
+  queue?: { waiting: boolean; position: number; agentAhead: boolean };
 }

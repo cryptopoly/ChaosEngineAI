@@ -17,6 +17,7 @@ import {
   type StorageTopResponse,
 } from "../../api";
 import { AcceleratorsBoostPack } from "./AcceleratorsBoostPack";
+import { LlamaCudaPanel } from "./LlamaCudaPanel";
 import type { SystemStats } from "../../types/system";
 import { WslBridgePanel } from "./WslBridgePanel";
 
@@ -181,6 +182,7 @@ export function DiagnosticsPanel({ backendOnline, onRestartServer, busyAction }:
 
   return (
     <Panel
+      className="panel-scroll"
       title={t("title", { defaultValue: "Diagnostics" })}
       subtitle={t("subtitleSnapshot", {
         defaultValue: "System snapshot for troubleshooting. Copy-paste the markdown to share with support when something misbehaves.",
@@ -438,12 +440,14 @@ export function AcceleratorsPanel({
   const { t } = useTranslation("diagnostics");
   return (
     <Panel
+      className="panel-scroll"
       title={t("accelerators.title", { defaultValue: "Accelerators" })}
       subtitle={t("accelerators.subtitle", {
         defaultValue: "Optional speed-ups for image, video and chat inference, and the Windows WSL bridge.",
       })}
     >
       <AcceleratorsBoostPack backendOnline={backendOnline} hostSystem={hostSystem} />
+      <LlamaCudaPanel backendOnline={backendOnline} />
       <WslBridgePanel backendOnline={backendOnline} />
     </Panel>
   );
@@ -454,6 +458,7 @@ export function DiskUsagePanel({ backendOnline }: { backendOnline: boolean }) {
   const { t } = useTranslation("diagnostics");
   return (
     <Panel
+      className="panel-scroll"
       title={t("diskUsage.title", { defaultValue: "Disk usage" })}
       subtitle={t("diskUsage.subtitle", { defaultValue: "Which model repos take the space, so you know what to delete." })}
     >

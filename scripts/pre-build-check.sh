@@ -69,7 +69,7 @@ if [[ -f "THIRD_PARTY_NOTICES.md" ]] && [[ -s "THIRD_PARTY_NOTICES.md" ]]; then
   # FU-030 dropped vendored ChaosEngine; FU-028 added mtplx — keep this
   # list in sync with THIRD_PARTY_NOTICES.md section headings so any new
   # runtime dep is flagged at build time if it's missing notice attribution.
-  for dep in "llama.cpp" "llama-cpp-turboquant" "dflash-mlx" "turboquant" "mtplx" "mlx-video"; do
+  for dep in "llama.cpp" "llama-cpp-turboquant" "dflash-mlx" "turboquant" "mtplx" "mlx-video" "imageio-ffmpeg"; do
     if ! grep -qi "$dep" THIRD_PARTY_NOTICES.md; then
       missing="$missing $dep"
     fi

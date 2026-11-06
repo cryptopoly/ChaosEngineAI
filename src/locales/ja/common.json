@@ -664,6 +664,8 @@
     "thumbnailAlt": "ライブのノイズ除去プレビュー",
     "thumbnailCaption": "ライブプレビュー · TAESD デコード",
     "stepCounter": "ステップ {current} / {total}",
+    "waitingForAgent": null,
+    "waitingInQueue": null,
     "inProgress": "進行中…",
     "finalizing": "最終処理中…",
     "phaseTiming": "{elapsed} 秒 / 約 {estimated} 秒"
@@ -882,6 +884,17 @@
       "tokenStoredPlaceholder": "•••• 保存済み ••••",
       "tokenPlaceholder": "hf_...",
       "helpText": "ローカルに保存されます。Hugging Face からゲート付きモデルを取得する際の MLX 変換で使用されます。"
+    },
+    "agentAccess": {
+      "title": null,
+      "subtitle": null,
+      "switch": null,
+      "hint": null,
+      "claudeCode": null,
+      "stdio": null,
+      "otherClients": null,
+      "rotate": null,
+      "rotateHint": null
     },
     "integrations": {
       "title": "連携",

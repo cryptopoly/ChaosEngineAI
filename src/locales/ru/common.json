@@ -664,6 +664,8 @@
     "thumbnailAlt": "Предпросмотр denoise в реальном времени",
     "thumbnailCaption": "Предпросмотр · декодирование TAESD",
     "stepCounter": "шаг {current} / {total}",
+    "waitingForAgent": null,
+    "waitingInQueue": null,
     "inProgress": "в процессе…",
     "finalizing": "завершение…",
     "phaseTiming": "{elapsed}с / ~{estimated}с"
@@ -882,6 +884,17 @@
       "tokenStoredPlaceholder": "•••• сохранён ••••",
       "tokenPlaceholder": "hf_...",
       "helpText": "Хранится локально. Используется MLX-конвертацией при получении закрытых моделей с Hugging Face."
+    },
+    "agentAccess": {
+      "title": null,
+      "subtitle": null,
+      "switch": null,
+      "hint": null,
+      "claudeCode": null,
+      "stdio": null,
+      "otherClients": null,
+      "rotate": null,
+      "rotateHint": null
     },
     "integrations": {
       "title": "Интеграции",

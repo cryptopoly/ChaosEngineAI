@@ -152,6 +152,7 @@ impl BackendManager {
                 .current_dir(&workspace_root)
                 .env("CHAOSENGINE_HOST", bind_host)
                 .env("CHAOSENGINE_PORT", inner.info.port.to_string())
+                .env("HF_HUB_DISABLE_TELEMETRY", "1")
                 .env("CHAOSENGINE_MLX_PYTHON", python_executable.as_os_str());
 
             // Make the persistent extras site-packages path visible to the

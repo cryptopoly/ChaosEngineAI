@@ -85,6 +85,10 @@ class ImageGenerationConfig:
     # mflux only: weight quantization bits (3-8) applied while loading, to fit
     # smaller Macs. ``None`` runs the checkpoint as published.
     mfluxQuantize: int | None = None
+    # mflux only: absolute paths of reference images, and how close to stay to a
+    # single start image (mflux ``--image PATH STRENGTH``; ``None`` = mflux default).
+    referenceImagePaths: list[str] | None = None
+    imageStrength: float | None = None
     # Runtime selector. Default (None / "diffusers") uses the
     # cross-platform diffusers pipeline; "mflux" routes to the native
     # Apple Silicon MLX path for FLUX, which is noticeably faster on

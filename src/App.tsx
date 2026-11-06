@@ -2,16 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import { useTranslation } from "react-i18next";
 import {
   checkBackend,
-  checkModelMemory,
   convertModel,
-  deleteSessionDocument,
   getVoiceRuntime,
   saveVoiceSettings,
-  loadModel,
-  getWorkspace,
   resolveApiToken,
-  stopIdleModelProcesses,
-  stopModelProcess,
   updateSession,
   updateSettings as updateSettingsApi,
 } from "./api";
@@ -25,37 +19,31 @@ import {
 } from "./features/app/conversionActions";
 import { performDeleteModel, performUnloadModel } from "./features/app/modelActions";
 import { threadPatchFromVariant } from "./features/app/variantPayloads";
-import { LaunchModal } from "./components/LaunchModal";
-import { sanitizeSpeculativeSelection } from "./components/runtimeSupport";
-import { ImageGenerationModal } from "./components/ImageGenerationModal";
-import { VideoGenerationModal } from "./components/VideoGenerationModal";
+import { } from "./components/LaunchModal";
+import { } from "./components/runtimeSupport";
+import { } from "./components/ImageGenerationModal";
+import { } from "./components/VideoGenerationModal";
 import { Sidebar } from "./components/Sidebar";
 import { StartupProgressPanel } from "./components/StartupProgressPanel";
 import { SubtabBar } from "./components/SubtabBar";
-import { LogsTab } from "./features/logs/LogsTab";
-import { SettingsTab } from "./features/settings/SettingsTab";
-import { DashboardTab } from "./features/dashboard/DashboardTab";
 import { ErrorBoundary } from "./components/ErrorBoundary";
-import { ServerTab } from "./features/server/ServerTab";
-import { ChatTab } from "./features/chat/ChatTab";
-import { CompareView } from "./features/chat/CompareView";
-import { HtmlChallengeTab } from "./features/chat/HtmlChallengeTab";
-import { FineTuningTab } from "./features/finetuning/FineTuningTab";
-import { PromptLibraryTab } from "./features/prompts/PromptLibraryTab";
-import { PluginsTab } from "./features/plugins/PluginsTab";
-import { ConversionTab } from "./features/conversion/ConversionTab";
-import { BenchmarkRunTab } from "./features/benchmarks/BenchmarkRunTab";
-import { BenchmarkHistoryTab } from "./features/benchmarks/BenchmarkHistoryTab";
-import { ChatModelsPage } from "./features/models/ChatModelsPage";
-import { ImageModelsPage } from "./features/images/ImageModelsPage";
-import { ImageStudioTab } from "./features/images/ImageStudioTab";
-import { ImageGalleryTab } from "./features/images/ImageGalleryTab";
-import { VideoModelsPage } from "./features/video/VideoModelsPage";
-import { VideoStudioTab } from "./features/video/VideoStudioTab";
-import { VideoGalleryTab } from "./features/video/VideoGalleryTab";
-import { VoiceStudioTab } from "./features/voice/VoiceStudioTab";
-import { VoiceModelsTab } from "./features/voice/VoiceModelsTab";
-import { VoiceLibraryTab } from "./features/voice/VoiceLibraryTab";
+import { tabViewFor } from "./app/tabViews";
+import { deriveModelSelections } from "./app/modelSelections";
+import { WorkspaceHeader } from "./app/WorkspaceHeader";
+import { StatusBanners } from "./app/StatusBanners";
+import { LaunchModalHost, GenerationModals } from "./app/AppModals";
+import { FamilyDetailModal } from "./app/FamilyDetailModal";
+import { DataDirRestartModal } from "./app/DataDirRestartModal";
+import type { AppTabContext, LoadModelPayload } from "./app/context";
+import { buildLibraryChatOptions } from "./app/libraryChatOptions";
+import { performLoadModel } from "./app/loadModelAction";
+import {
+  normalizePreselectedKey,
+  performConfirmLaunch,
+  sanitizeSpeculativeForSystem,
+  type SpeculativeParams,
+} from "./app/launchActions";
+
 import type { OpenRequest as VoiceOpenRequest } from "./features/voice/VoiceStudioTab";
 import { VoiceProvider, type VoiceContextValue } from "./features/voice/VoiceContext";
 import type {
@@ -67,36 +55,25 @@ import type {
   VoiceRuntime,
 } from "./types";
 import type { ChatModelOption } from "./types/chat";
-import { modelsAreaForTab, modelsPageRequest, resolveTabRequest, tabs } from "./constants";
+import { modelsAreaForTab, resolveTabRequest, tabs } from "./constants";
 import type { TabRequest } from "./constants";
 import type { ModelAvailabilityFilter, ModelsArea } from "./components/models/modelEntry";
-import { CapabilityStrip } from "./components/CapabilityStrip";
 import {
-  number,
-  sizeLabel,
   firstDirectVariant,
   findVariantById,
   findVariantForReference,
   findLibraryItemForVariant,
   findCatalogVariantForLibraryItem,
-  libraryItemFormat,
-  libraryItemQuantization,
   libraryItemBackend,
   inferHfRepoFromLocalPath,
   isChatLibraryItem,
-  resolveCapabilities,
-  downloadProgressLabel,
-  syncRuntime,
   settingsDraftFromWorkspace,
   estimateParamsBFromDisk,
   previewModelControls,
   samePreviewModel,
   detectBitsPerWeight,
-  serverOriginFromBase,
   isUnsavedEmptySession,
   isAppleSiliconHost,
-  isVariantCompatibleWithHost,
-  chatVariantPlatformGate,
 } from "./utils";
 import {
   useWorkspace,
@@ -236,28 +213,11 @@ export default function App() {
     preview, setPreview,
     previewControls, setPreviewControls,
     dataDirRestartPrompt, setDataDirRestartPrompt,
-    newDirectoryLabel, setNewDirectoryLabel,
-    newDirectoryPath, setNewDirectoryPath,
     conversionDraft, setConversionDraft,
-    lastConversion, setLastConversion,
-    systemPrompt, setSystemPrompt,
+    setLastConversion,
+    systemPrompt,
     serverModelKey, setServerModelKey,
-    installingPackage,
-    installLogs,
-    updateLaunchSetting,
     updateConversionDraft,
-    handleAddDirectory,
-    handleToggleDirectory,
-    handleRemoveDirectory,
-    handleUpdateDirectoryPath,
-    pickDirectory,
-    handlePickDataDirectory,
-    handlePickImageOutputsDirectory,
-    handlePickVideoOutputsDirectory,
-    handleSaveSettings,
-    handleStopServer,
-    handleRestartServer,
-    handleInstallPackage,
   } = settings;
 
   // ── Models (search, downloads) ─────────────────────────────
@@ -269,28 +229,10 @@ export default function App() {
     async (preferredChatId?: string) => { await refreshWorkspace(preferredChatId); },
   );
   const {
-    searchInput, setSearchInput,
+    searchInput,
     searchResults,
-    hubResults,
-    searchError,
-    expandedHubId,
-    hubFileCache,
-    hubFileLoading,
-    hubFileError,
-    detailFamilyId, setDetailFamilyId,
     selectedFamilyId,
     selectedVariantId,
-    activeDownloads,
-    discoverCapFilter, setDiscoverCapFilter,
-    discoverFormatFilter, setDiscoverFormatFilter,
-    discoverAccelFilter, setDiscoverAccelFilter,
-    chatModelsBackendFilter, setChatModelsBackendFilter,
-    chatModelsSort, setChatModelsSort,
-    chatModelsSortDir, setChatModelsSortDir,
-    handleDownloadModel,
-    handleCancelModelDownload,
-    handleDeleteModelDownload,
-    toggleHubExpand,
   } = models;
 
   // ── Derived model values ───────────────────────────────────
@@ -316,50 +258,7 @@ export default function App() {
   }, [chatLibrary, searchInput, workspace.featuredModels]);
 
   // ── Chat model options ─────────────────────────────────────
-  // Only list models present in the local library — catalog-only entries
-  // would let the user pick a model that isn't downloaded yet, which then
-  // 500s on Load. Discover tab is the place to pull a new model.
-  //
-  // FU-056 follow-up: also filter by host platform. MLX-backed chat
-  // options (``backend === "mlx"``) only run on Apple Silicon; vLLM
-  // options (``backend === "vllm"``) only on CUDA hosts. Without this
-  // filter, Windows users see MLX rows in every model picker that
-  // would error on load.
-  const libraryChatOptions: ChatModelOption[] = chatLibrary
-    .filter((item) => !item.broken)
-    .map((item) => {
-      const matched = findCatalogVariantForLibraryItem(workspace.featuredModels, item);
-      const displayFormat = libraryItemFormat(item, matched);
-      const displayQuantization = libraryItemQuantization(item, matched);
-      const canonicalRepo = matched?.repo ?? inferHfRepoFromLocalPath(item.path);
-      return {
-        key: `library:${item.path}`,
-        label: item.name,
-        detail: `${displayFormat} / ${number(item.loadSizeGb ?? item.sizeGb)} GB`,
-        group: "Local library",
-        model: item.name,
-        modelRef: item.name,
-        canonicalRepo,
-        source: "library",
-        path: item.path,
-        backend: libraryItemBackend(item, matched),
-        paramsB: matched?.paramsB,
-        sizeGb: item.loadSizeGb ?? item.sizeGb,
-        contextWindow: matched?.contextWindow,
-        format: displayFormat,
-        quantization: displayQuantization ?? undefined,
-        maxContext: item.maxContext ?? matched?.maxContext ?? null,
-        // Phase 2.11: resolve typed capabilities so the picker can show
-        // capability badges per option without re-deriving in each view.
-        capabilities: resolveCapabilities(canonicalRepo ?? item.name, matched?.capabilities ?? null),
-      };
-    })
-    .filter((option) =>
-      isVariantCompatibleWithHost(
-        chatVariantPlatformGate(option),
-        workspace.system,
-      ),
-    );
+  const libraryChatOptions: ChatModelOption[] = buildLibraryChatOptions(chatLibrary, workspace.featuredModels, workspace.system);
 
   const threadModelOptions = libraryChatOptions;
 
@@ -381,129 +280,22 @@ export default function App() {
     job: tensorfoldJob,
   };
 
-  function sanitizeSpeculativeForModel(params: {
-    backend: string;
-    modelRef: string;
-    canonicalRepo?: string | null;
-    modelName: string;
-    speculativeDecoding: boolean;
-    treeBudget: number;
-  }) {
-    return sanitizeSpeculativeSelection({
-      dflashInfo: workspace.system.dflash,
-      tensorfoldInfo: workspace.system.tensorfold,
-      selectedBackend: params.backend,
-      modelRef: params.modelRef,
-      canonicalRepo: params.canonicalRepo ?? null,
-      modelName: params.modelName,
-      speculativeDecoding: params.speculativeDecoding,
-      treeBudget: params.treeBudget,
-    });
+  function sanitizeSpeculativeForModel(params: SpeculativeParams) {
+    return sanitizeSpeculativeForSystem(workspace.system, params);
   }
 
   // ── Load model handler (stays in App — cross-domain) ───────
-  async function handleLoadModel(payload: {
-    modelRef: string;
-    modelName?: string;
-    canonicalRepo?: string | null;
-    source?: string;
-    backend?: string;
-    path?: string;
-    nextTab?: TabId;
-    busyLabel?: string;
-    cacheBits?: number;
-    fp16Layers?: number;
-    fusedAttention?: boolean;
-    cacheStrategy?: string;
-    fitModelInMemory?: boolean;
-    contextTokens?: number;
-    speculativeDecoding?: boolean;
-    treeBudget?: number;
-    kvBudget?: number;
-  }): Promise<LoadModelActionResult> {
-    setError(null);
-    setBusyAction(payload.busyLabel ?? "Loading model...");
-    try {
-      const sanitizedSpeculative = sanitizeSpeculativeForModel({
-        backend: payload.backend ?? "auto",
-        modelRef: payload.modelRef,
-        canonicalRepo: payload.canonicalRepo ?? undefined,
-        modelName: payload.modelName ?? payload.modelRef,
-        speculativeDecoding: payload.speculativeDecoding ?? launchSettings.speculativeDecoding,
-        treeBudget: payload.treeBudget ?? launchSettings.treeBudget,
-      });
-      const loadPayload = {
-        modelRef: payload.modelRef,
-        modelName: payload.modelName,
-        canonicalRepo: payload.canonicalRepo ?? undefined,
-        source: payload.source ?? "catalog",
-        backend: payload.backend ?? "auto",
-        path: payload.path,
-        cacheBits: payload.cacheBits ?? launchSettings.cacheBits,
-        fp16Layers: payload.fp16Layers ?? launchSettings.fp16Layers,
-        fusedAttention: payload.fusedAttention ?? launchSettings.fusedAttention,
-        cacheStrategy: payload.cacheStrategy ?? launchSettings.cacheStrategy,
-        fitModelInMemory: payload.fitModelInMemory ?? launchSettings.fitModelInMemory,
-        contextTokens: payload.contextTokens ?? launchSettings.contextTokens,
-        speculativeDecoding: sanitizedSpeculative.speculativeDecoding,
-        treeBudget: sanitizedSpeculative.treeBudget,
-        kvBudget: payload.kvBudget ?? launchSettings.kvBudget,
-      };
-
-      let loadSucceeded = false;
-      let loadErrorMessage: string | null = null;
-      let loadedRuntime: LoadModelActionResult["runtime"];
-      try {
-        const runtime = await loadModel(loadPayload);
-        setWorkspace((current) => syncRuntime(current, runtime));
-        loadSucceeded = true;
-        loadedRuntime = runtime;
-      } catch (loadErr) {
-        loadErrorMessage = loadErr instanceof Error ? loadErr.message : String(loadErr);
-        // If the error is a definitive failure (server returned 500, backend
-        // unavailable, etc.), show it immediately — don't poll for 15 minutes.
-        // Only poll when the error looks like a timeout (the load may still be
-        // progressing in the background).
-        const isTimeout = /timed?\s*out|timeout|abort/i.test(loadErrorMessage);
-        if (isTimeout) {
-          for (let attempt = 0; attempt < 450; attempt++) {
-            await new Promise((r) => setTimeout(r, 2000));
-            try {
-              const ws = await getWorkspace();
-              if (ws.runtime.loadedModel?.ref === payload.modelRef || ws.runtime.loadedModel?.runtimeTarget === payload.path) {
-                setWorkspace(ws);
-                loadSucceeded = true;
-                loadErrorMessage = null;
-                loadedRuntime = ws.runtime;
-                break;
-              }
-              if (ws.server.loading) { setWorkspace(ws); continue; }
-              break;
-            } catch { /* backend unreachable */ }
-          }
-          if (loadSucceeded) {
-            // Let the shared success path below refresh the workspace and tab state.
-          }
-        }
-      }
-
-      if (loadSucceeded) {
-        await refreshWorkspace(chat.activeChatId || undefined);
-        if (payload.nextTab) setActiveTab(payload.nextTab);
-        return { ok: true, runtime: loadedRuntime };
-      } else {
-        const detail = loadErrorMessage || "The model could not be loaded. Check the server logs for details.";
-        setError(`Failed to load ${payload.modelName ?? payload.modelRef}: ${detail}`);
-        return { ok: false, error: detail };
-      }
-    } catch (actionError) {
-      const detail = actionError instanceof Error ? actionError.message : "Unknown error";
-      console.error("[handleLoadModel] Load failed for", payload.modelRef, "—", detail, actionError);
-      setError(`Failed to load ${payload.modelName ?? payload.modelRef}: ${detail}`);
-      return { ok: false, error: detail };
-    } finally {
-      setBusyAction(null);
-    }
+  async function handleLoadModel(payload: LoadModelPayload): Promise<LoadModelActionResult> {
+    return performLoadModel(payload, {
+      setError,
+      setBusyAction,
+      setWorkspace,
+      refreshWorkspace,
+      setActiveTab,
+      launchSettings,
+      sanitizeSpeculativeForModel,
+      activeChatId: chat.activeChatId,
+    });
   }
 
   // ── Chat ───────────────────────────────────────────────────
@@ -523,23 +315,12 @@ export default function App() {
   );
   const {
     activeChatId, setActiveChatId,
-    threadTitleDraft, setThreadTitleDraft,
-    draftMessage, setDraftMessage,
+    setThreadTitleDraft,
     chatBusySessionId,
-    pendingImages, setPendingImages,
     chatScrollRef,
-    sortedChatSessions,
     activeChat,
-    activeThinkingMode,
-    activeRuntimeProfileMatchesLaunchSettings,
     sessionModelPayload,
     persistSessionChanges,
-    handleCreateSession,
-    handleRenameActiveThread,
-    handleToggleThreadPin,
-    handleThinkingModeChange,
-    handleDeleteSession,
-    sendMessage,
   } = chat;
 
   // ── Benchmarks ─────────────────────────────────────────────
@@ -552,15 +333,6 @@ export default function App() {
   const {
     benchmarkDraft, setBenchmarkDraft,
     benchmarkModelKey, setBenchmarkModelKey,
-    selectedBenchmarkId, setSelectedBenchmarkId,
-    compareBenchmarkId, setCompareBenchmarkId,
-    benchmarkModelFilter, setBenchmarkModelFilter,
-    benchmarkViewMode, setBenchmarkViewMode,
-    benchmarkPromptId, setBenchmarkPromptId,
-    benchmarkStartedAt, benchmarkError,
-    showBenchmarkPicker, setShowBenchmarkPicker,
-    showBenchmarkModal, setShowBenchmarkModal,
-    updateBenchmarkDraft,
     selectedBenchmark, compareBenchmark,
   } = benchmarks;
 
@@ -628,11 +400,6 @@ export default function App() {
   // the system probe — falls to ``false`` on early paint before the
   // probe lands, which is the safe default (don't flash MLX UI).
   const isAppleSilicon = isAppleSiliconHost(workspace.system);
-  const filteredLogs = workspace.logs.filter((entry) => {
-    const haystack = `${entry.ts} ${entry.source} ${entry.level} ${entry.message}`.toLowerCase();
-    return haystack.includes(logQuery.toLowerCase());
-  });
-  const serverLogEntries = workspace.logs.slice(0, 120).reverse();
   const previewSavings = Math.max(0, preview.baselineCacheGb - preview.optimizedCacheGb);
   const conversionReady = Boolean(nativeBackends?.converterAvailable ?? workspace.system.mlxLmAvailable);
   const enabledDirectoryCount = (workspace.settings?.modelDirectories ?? []).filter((directory) => directory.enabled).length;
@@ -640,42 +407,19 @@ export default function App() {
     workspace.system.platform === "Darwin" ? tCommon("fileReveal.finder", { defaultValue: "Show in Finder" }) :
     workspace.system.platform === "Windows" ? tCommon("fileReveal.explorer", { defaultValue: "Show in Explorer" }) : tCommon("fileReveal.files", { defaultValue: "Show in Files" });
 
-  const activeThreadOption =
-    threadModelOptions.find((option) => option.modelRef === activeChat?.modelRef && option.path === (activeChat?.modelPath ?? undefined)) ??
-    threadModelOptions.find((option) => option.modelRef === activeChat?.modelRef) ??
-    null;
+  const {
+    activeThreadOption,
+    loadedModelOption,
+    selectedServerOption,
+    convertibleLibrary,
+    conversionSource,
+    conversionVariant,
+    benchmarkOption,
+  } = deriveModelSelections({
+    workspace, chatLibrary, threadModelOptions, libraryChatOptions, activeChat,
+    serverModelKey, benchmarkModelKey, benchmarkDraft, conversionDraft,
+  });
   const serverOptionKeySignature = threadModelOptions.map((option) => option.key).join("|");
-  const loadedModelOption =
-    threadModelOptions.find(
-      (option) =>
-        option.modelRef === workspace.runtime.loadedModel?.ref &&
-        option.path === (workspace.runtime.loadedModel?.path ?? undefined),
-    ) ??
-    threadModelOptions.find((option) => option.modelRef === workspace.runtime.loadedModel?.ref) ??
-    null;
-  const selectedServerOptionBase =
-    threadModelOptions.find((option) => option.key === serverModelKey) ?? loadedModelOption ?? activeThreadOption ?? null;
-  const selectedServerOption = (() => {
-    if (!selectedServerOptionBase || selectedServerOptionBase.source !== "catalog") return selectedServerOptionBase;
-    const variant = findVariantForReference(workspace.featuredModels, selectedServerOptionBase.modelRef, selectedServerOptionBase.model);
-    if (!variant) return selectedServerOptionBase;
-    const localItem = findLibraryItemForVariant(chatLibrary, variant);
-    if (!localItem) return selectedServerOptionBase;
-    return libraryChatOptions.find((option) => option.path === localItem.path) ?? selectedServerOptionBase;
-  })();
-  const convertibleLibrary = chatLibrary.filter((item) => libraryItemFormat(item) !== "MLX");
-  const conversionSource = convertibleLibrary.find((item) => item.path === conversionDraft.path) ?? null;
-  const conversionVariant =
-    (conversionSource ? findCatalogVariantForLibraryItem(workspace.featuredModels, conversionSource) : null) ??
-    findVariantForReference(workspace.featuredModels, conversionDraft.modelRef, conversionDraft.modelRef) ??
-    null;
-  const benchmarkOption =
-    threadModelOptions.find((option) => option.key === benchmarkModelKey) ??
-    threadModelOptions.find((option) => option.modelRef === benchmarkDraft.modelRef && option.path === benchmarkDraft.path) ??
-    activeThreadOption ??
-    loadedModelOption ??
-    threadModelOptions[0] ??
-    null;
   const previewVariant =
     activeTab === "server"
       ? findVariantForReference(workspace.featuredModels, selectedServerOption?.modelRef ?? workspace.runtime.loadedModel?.ref, selectedServerOption?.model ?? workspace.runtime.loadedModel?.name) ??
@@ -687,24 +431,9 @@ export default function App() {
           findVariantForReference(workspace.featuredModels, selectedServerOption?.modelRef ?? workspace.runtime.loadedModel?.ref, selectedServerOption?.model ?? workspace.runtime.loadedModel?.name) ?? defaultChatVariant
         : selectedVariant ?? findVariantForReference(workspace.featuredModels, activeChat?.modelRef, activeChat?.model) ?? defaultChatVariant;
 
-  const remoteAccessRequested = settingsDraft.allowRemoteConnections;
-  const remoteAccessActive = workspace.server.remoteAccessActive ?? false;
-  const serverLanUrls = workspace.server.lanUrls ?? [];
-  const localServerUrl = workspace.server.localhostUrl ?? workspace.server.baseUrl;
-  const localServerOrigin = serverOriginFromBase(localServerUrl);
-  const primaryLanUrl = serverLanUrls[0] ?? null;
-  const primaryLanOrigin = primaryLanUrl ? serverOriginFromBase(primaryLanUrl) : null;
   const bindingSettingsDirty =
     settingsDraft.preferredServerPort !== (workspace.settings?.preferredServerPort ?? 8876) ||
     settingsDraft.allowRemoteConnections !== (workspace.settings?.allowRemoteConnections ?? false);
-  const preferredPortUnavailable = workspace.server.port !== (workspace.settings?.preferredServerPort ?? 8876);
-  const authHeaderFlag = apiToken
-    ? ` -H 'Authorization: Bearer ${apiToken}'`
-    : " -H 'Authorization: Bearer <chaosengine-api-token>'";
-  const localHealthCurl = `curl -sS ${localServerOrigin}/api/health`;
-  const localModelsCurl = `curl -sS ${localServerUrl}/models${authHeaderFlag}`;
-  const remoteHealthCurl = primaryLanOrigin ? `curl -sS ${primaryLanOrigin}/api/health` : null;
-  const remoteModelsCurl = primaryLanUrl ? `curl -sS ${primaryLanUrl}/models${authHeaderFlag}` : null;
 
   // ── Cross-domain effects ───────────────────────────────────
 
@@ -1043,109 +772,31 @@ export default function App() {
 
   function openModelSelector(action: "chat" | "server" | "thread", preselectedKey?: string) {
     setLaunchModelSearch("");
-    let normalizedKey = preselectedKey;
-    if (normalizedKey?.startsWith("catalog:")) {
-      const modelRef = normalizedKey.slice("catalog:".length);
-      const variant = findVariantForReference(workspace.featuredModels, modelRef, undefined);
-      const localItem = variant ? findLibraryItemForVariant(chatLibrary, variant) : null;
-      if (localItem) normalizedKey = `library:${localItem.path}`;
-    }
-    // If no key given, or the key references a model no longer in the options
-    // (e.g. deleted/broken), fall back to the currently loaded model.
-    if ((!normalizedKey || !threadModelOptions.some((o) => o.key === normalizedKey)) && loadedModelOption) {
-      normalizedKey = loadedModelOption.key;
-    }
+    const normalizedKey = normalizePreselectedKey(preselectedKey, {
+      featuredModels: workspace.featuredModels,
+      chatLibrary,
+      threadModelOptions,
+      loadedModelOption,
+    });
     setPendingLaunch({ action, preselectedKey: normalizedKey });
   }
 
   async function confirmLaunch(selectedKey: string) {
-    if (!pendingLaunch) return;
-    const option = threadModelOptions.find((o) => o.key === selectedKey);
-    if (!option) return;
-    // Advisory memory check: ask before loading a model that may not fit,
-    // never refuse. A failed check never blocks the load.
-    if (option.sizeGb && option.sizeGb > 0) {
-      const contextTokens = option.maxContext
-        ? Math.min(launchSettings.contextTokens, option.maxContext)
-        : launchSettings.contextTokens;
-      const check = await checkModelMemory({
-        weightsGb: option.sizeGb,
-        contextTokens,
-        bits: launchSettings.cacheBits,
-        fp16Layers: launchSettings.fp16Layers,
-        strategy: launchSettings.cacheStrategy,
-        paramsB: option.paramsB ?? previewControls.paramsB,
-        numLayers: previewControls.numLayers,
-        numHeads: previewControls.numHeads,
-        numKvHeads: previewControls.numKvHeads,
-        hiddenSize: previewControls.hiddenSize,
-        modelPath: option.path ?? null,
-        modelRepo: option.canonicalRepo ?? (option.modelRef.includes("/") ? option.modelRef : null),
-      });
-      if (check?.verdict === "may_not_fit" && check.message) {
-        const proceed = window.confirm(`${check.message}\n\nLoad it anyway?`);
-        if (!proceed) return;
-      }
-    }
-    const { action } = pendingLaunch;
-    setPendingLaunch(null);
-    setError(null);
-    if (action === "chat" || action === "thread") setActiveTab("chat");
-    else if (action === "server") setActiveTab("server");
-    if (action === "thread") {
-      const variant = findVariantForReference(workspace.featuredModels, option.modelRef, option.model);
-      if (variant) { await handleStartThreadWithVariant(variant); }
-      else {
-        await handleLoadModel({
-          modelRef: option.modelRef,
-          modelName: option.model,
-          canonicalRepo: option.canonicalRepo,
-          source: option.source,
-          backend: option.backend,
-          path: option.path ?? undefined,
-        });
-      }
-    } else if (action === "chat") {
-      if (activeChat) {
-        const sanitizedSpeculative = sanitizeSpeculativeForModel({
-          backend: option.backend,
-          modelRef: option.modelRef,
-          canonicalRepo: option.canonicalRepo ?? null,
-          modelName: option.model,
-          speculativeDecoding: activeChat.speculativeDecoding ?? launchSettings.speculativeDecoding,
-          treeBudget: activeChat.treeBudget ?? launchSettings.treeBudget,
-        });
-        await persistSessionChanges(activeChat.id, {
-          model: option.model,
-          modelRef: option.modelRef,
-          canonicalRepo: option.canonicalRepo ?? null,
-          modelSource: option.source,
-          modelPath: option.path ?? null,
-          modelBackend: option.backend,
-          speculativeDecoding: sanitizedSpeculative.speculativeDecoding,
-          dflashDraftModel: null,
-          treeBudget: sanitizedSpeculative.treeBudget,
-          updatedAt: new Date().toLocaleString(),
-        });
-      }
-      await handleLoadModel({
-        modelRef: option.modelRef,
-        modelName: option.model,
-        canonicalRepo: option.canonicalRepo,
-        source: option.source,
-        backend: option.backend,
-        path: option.path ?? undefined,
-      });
-    } else if (action === "server") {
-      await handleLoadModel({
-        modelRef: option.modelRef,
-        modelName: option.model,
-        canonicalRepo: option.canonicalRepo,
-        source: option.source,
-        backend: option.backend,
-        path: option.path ?? undefined,
-      });
-    }
+    return performConfirmLaunch(selectedKey, {
+      pendingLaunch,
+      threadModelOptions,
+      launchSettings,
+      previewControls,
+      featuredModels: workspace.featuredModels,
+      activeChat,
+      setPendingLaunch,
+      setError,
+      setActiveTab,
+      handleStartThreadWithVariant,
+      handleLoadModel,
+      persistSessionChanges,
+      sanitizeSpeculativeForModel,
+    });
   }
 
   function copyText(text: string) {
@@ -1154,701 +805,28 @@ export default function App() {
 
   const { handleDetailsToggle } = useDetailsWindowResize();
 
+  // ── Tab context ────────────────────────────────────────────
+  const ctx: AppTabContext = {
+    workspace, backendOnline, tauriBackend, busy, busyAction, setError, refreshWorkspace, setActiveTab,
+    imgState, videoState, models, chat, benchmarks, settings, sidebarPrefs, uiScalePrefs,
+    mtplxJob, installingMtplx, handleInstallMtplx, tensorfoldControls,
+    installingCudaTorch, cudaTorchRawResult, handleInstallCudaTorch,
+    chatLibrary, libraryChatOptions, threadModelOptions, activeThreadOption, selectedServerOption,
+    benchmarkOption, convertibleLibrary, conversionSource, conversionVariant,
+    modelsAvailability, setAreaAvailability, nativeBackends, isAppleSilicon, enabledDirectoryCount,
+    fileRevealLabel, conversionReady, launchCacheLabel,
+    handleRevealPath, handleOpenFilePath, handleOpenExternalUrl, handleLoadModel, handleUnloadModel,
+    handleUnloadWarmModel, handleDeleteModel, prepareCatalogConversion, prepareLibraryConversion,
+    handleConvertModel, handlePickConversionOutputDir, openModelSelector, handleDetailsToggle, copyText,
+    conversionStartedAt, conversionError, showConversionPicker, setShowConversionPicker,
+    showConversionModal, setShowConversionModal,
+    apiToken, showRemoteTest, setShowRemoteTest, testModelId, setTestModelId, logQuery, setLogQuery,
+    voiceRuntime, voiceOpenRequest, setVoiceOpenRequest, refreshVoiceRuntime,
+  };
 
   // ── Tab content ────────────────────────────────────────────
-  let content = <DashboardTab
-    system={workspace.system}
-    recommendation={workspace.recommendation}
-    runtime={workspace.runtime}
-    activity={workspace.activity}
-    backendOnline={backendOnline}
-    onStopProcess={async (pid) => {
-      try {
-        await stopModelProcess(pid);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Could not stop that process.");
-      }
-      await refreshWorkspace();
-    }}
-    onStopIdleProcesses={async () => {
-      try {
-        await stopIdleModelProcesses();
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Could not stop idle processes.");
-      }
-      await refreshWorkspace();
-    }}
-  />;
-  if (activeTab === "chat-models") {
-    content = (
-      <ChatModelsPage
-        families={workspace.featuredModels}
-        library={chatLibrary}
-        activeDownloads={activeDownloads}
-        searchInput={searchInput}
-        onSearchInputChange={setSearchInput}
-        searchError={searchError}
-        hubResults={hubResults}
-        expandedHubId={expandedHubId}
-        onToggleHubExpand={(repo) => void toggleHubExpand(repo)}
-        hubFileCache={hubFileCache}
-        hubFileLoading={hubFileLoading}
-        hubFileError={hubFileError}
-        capFilter={discoverCapFilter}
-        onCapFilterChange={setDiscoverCapFilter}
-        formatFilter={discoverFormatFilter}
-        onFormatFilterChange={setDiscoverFormatFilter}
-        accelFilter={discoverAccelFilter}
-        onAccelFilterChange={setDiscoverAccelFilter}
-        backendFilter={chatModelsBackendFilter}
-        onBackendFilterChange={setChatModelsBackendFilter}
-        sort={chatModelsSort}
-        sortDir={chatModelsSortDir}
-        onSortChange={(sort, dir) => {
-          setChatModelsSort(sort);
-          setChatModelsSortDir(dir);
-        }}
-        availability={modelsAvailability.chat}
-        onAvailabilityChange={(value) => setAreaAvailability("chat", value)}
-        accelCompat={{
-          dflashModels: workspace.system.dflash?.supportedModels ?? [],
-          mtplxModels: workspace.system.mtplx?.supportedModels ?? [],
-          tensorfoldModels: workspace.system.tensorfold?.supportedModels ?? [],
-          turboInstalled: Boolean(workspace.system.llamaServerTurboPath),
-          turboquantMlxAvailable: workspace.system.availableCacheStrategies?.some((s) => s.id === "turboquant" && s.available) ?? false,
-          appleSilicon: isAppleSilicon,
-        }}
-        hostSystem={workspace.system}
-        loadedModel={workspace.runtime.loadedModel}
-        availableMemoryGb={workspace.system.availableMemoryGb}
-        enabledDirectoryCount={enabledDirectoryCount}
-        fileRevealLabel={fileRevealLabel}
-        favoriteModelRefs={workspace.settings?.favoriteModelRefs ?? []}
-        onToggleFavoriteModel={(ref) => {
-          const current = workspace.settings?.favoriteModelRefs ?? [];
-          const next = current.includes(ref)
-            ? current.filter((r) => r !== ref)
-            : [...current, ref];
-          void updateSettingsApi({ favoriteModelRefs: next }).then(() => {
-            void refreshWorkspace();
-          });
-        }}
-        onDownloadModel={(repo) => void handleDownloadModel(repo)}
-        onCancelModelDownload={(repo) => void handleCancelModelDownload(repo)}
-        onDeleteModelDownload={(repo) => void handleDeleteModelDownload(repo)}
-        onDeleteModel={(item) => void handleDeleteModel(item)}
-        onPrepareCatalogConversion={prepareCatalogConversion}
-        onOpenModelSelector={openModelSelector}
-        onOpenFamilyDetails={setDetailFamilyId}
-        onOpenExternalUrl={(url) => void handleOpenExternalUrl(url)}
-        onRevealPath={(path) => void handleRevealPath(path)}
-      />
-    );
-  } else if (activeTab === "image-models") {
-    content = (
-      <ImageModelsPage
-        catalog={imgState.imageCatalog}
-        latest={imgState.latestImageDiscoverResults}
-        searchInput={imgState.imageDiscoverSearchInput}
-        onSearchInputChange={imgState.setImageDiscoverSearchInput}
-        taskFilter={imgState.imageDiscoverTaskFilter}
-        onTaskFilterChange={imgState.setImageDiscoverTaskFilter}
-        accessFilter={imgState.imageDiscoverAccessFilter}
-        onAccessFilterChange={imgState.setImageDiscoverAccessFilter}
-        sort={imgState.imageDiscoverSort}
-        onSortChange={imgState.setImageDiscoverSort}
-        availability={modelsAvailability.image}
-        onAvailabilityChange={(value) => setAreaAvailability("image", value)}
-        activeImageDownloads={imgState.activeImageDownloads}
-        selectedImageVariant={imgState.selectedImageVariant}
-        loadedImageRepo={imgState.imageRuntimeStatus.loadedModelRepo ?? null}
-        fileRevealLabel={fileRevealLabel}
-        nativeBackends={nativeBackends}
-        hostSystem={workspace.system}
-        onActiveTabChange={setActiveTab}
-        onOpenImageStudio={imgState.openImageStudio}
-        onImageDownload={(repo) => void imgState.handleImageDownload(repo)}
-        onCancelImageDownload={(repo) => void imgState.handleCancelImageDownload(repo)}
-        onDeleteImageDownload={(repo) => void imgState.handleDeleteImageDownload(repo)}
-        onOpenExternalUrl={(url) => void handleOpenExternalUrl(url)}
-        onRevealPath={(path) => void handleRevealPath(path)}
-      />
-    );
-  } else if (activeTab === "image-studio") {
-    content = (
-      <ImageStudioTab
-        imageCatalog={imgState.imageCatalogWithLatest}
-        residentChatModelGb={workspace.runtime.residentModelGb}
-        selectedImageModelId={imgState.selectedImageModelId}
-        onSelectedImageModelIdChange={imgState.setSelectedImageModelId}
-        selectedImageVariant={imgState.selectedImageVariant}
-        selectedImageFamily={imgState.selectedImageFamily}
-        selectedImageLoaded={imgState.selectedImageLoaded}
-        selectedImageWillLoadOnGenerate={imgState.selectedImageWillLoadOnGenerate}
-        imageRuntimeLoadedDifferentModel={imgState.imageRuntimeLoadedDifferentModel}
-        loadedImageVariant={imgState.loadedImageVariant}
-        imageRuntimeStatus={imgState.imageRuntimeStatus}
-        tauriBackend={tauriBackend}
-        busy={busy}
-        busyAction={busyAction}
-        imageBusy={imgState.imageBusy}
-        imageBusyLabel={imgState.imageBusyLabel}
-        backendOnline={backendOnline}
-        nativeBackends={nativeBackends}
-        activeImageDownloads={imgState.activeImageDownloads}
-        imagePrompt={imgState.imagePrompt}
-        onImagePromptChange={imgState.setImagePrompt}
-        imageNegativePrompt={imgState.imageNegativePrompt}
-        onImageNegativePromptChange={imgState.setImageNegativePrompt}
-        imageQualityPreset={imgState.imageQualityPreset}
-        imageDraftMode={imgState.imageDraftMode}
-        onImageDraftModeChange={imgState.setImageDraftMode}
-        imageSampler={imgState.imageSampler}
-        onImageSamplerChange={imgState.setImageSampler}
-        imageCacheStrategy={imgState.imageCacheStrategy}
-        onImageCacheStrategyChange={imgState.setImageCacheStrategy}
-        imageCacheRelL1Thresh={imgState.imageCacheRelL1Thresh}
-        onImageCacheRelL1ThreshChange={imgState.setImageCacheRelL1Thresh}
-        imageCfgDecay={imgState.imageCfgDecay}
-        onImageCfgDecayChange={imgState.setImageCfgDecay}
-        imagePreviewVae={imgState.imagePreviewVae}
-        onImagePreviewVaeChange={imgState.setImagePreviewVae}
-        imageFp8LayerwiseCasting={imgState.imageFp8LayerwiseCasting}
-        onImageFp8LayerwiseCastingChange={imgState.setImageFp8LayerwiseCasting}
-        isAppleSiliconHost={isAppleSilicon}
-        hostSystem={workspace.system}
-        imageRatioId={imgState.imageRatioId}
-        imageWidth={imgState.imageWidth}
-        onImageWidthChange={imgState.setImageWidth}
-        imageHeight={imgState.imageHeight}
-        onImageHeightChange={imgState.setImageHeight}
-        imageSteps={imgState.imageSteps}
-        onImageStepsChange={imgState.setImageSteps}
-        imageGuidance={imgState.imageGuidance}
-        onImageGuidanceChange={imgState.setImageGuidance}
-        imageBatchSize={imgState.imageBatchSize}
-        onImageBatchSizeChange={imgState.setImageBatchSize}
-        imageUseRandomSeed={imgState.imageUseRandomSeed}
-        onImageUseRandomSeedChange={imgState.setImageUseRandomSeed}
-        imageSeedInput={imgState.imageSeedInput}
-        onImageSeedInputChange={imgState.setImageSeedInput}
-        imageOutputs={imgState.imageOutputs}
-        recentImageOutputs={imgState.recentImageOutputs}
-        onActiveTabChange={setActiveTab}
-        onOpenImageStudio={imgState.openImageStudio}
-        onOpenImageGallery={imgState.openImageGallery}
-        onSubmitImageGeneration={() => void imgState.submitImageGeneration()}
-        onApplyImageRatioPreset={imgState.applyImageRatioPreset}
-        onApplyImageQuality={imgState.applyImageQuality}
-        onPreloadImageModel={(variant) => void imgState.handlePreloadImageModel(variant)}
-        onUnloadImageModel={(variant) => void imgState.handleUnloadImageModel(variant)}
-        onInstallImageRuntime={() => imgState.handleInstallImageRuntime()}
-        onInstallCudaTorch={() => void handleInstallCudaTorch()}
-        installingCudaTorch={installingCudaTorch}
-        cudaTorchResult={cudaTorchRawResult}
-        gpuBundleJob={imgState.gpuBundleJob}
-        onImageDownload={(repo) => void imgState.handleImageDownload(repo)}
-        onCancelImageDownload={(repo) => void imgState.handleCancelImageDownload(repo)}
-        onDeleteImageDownload={(repo) => void imgState.handleDeleteImageDownload(repo)}
-        onOpenExternalUrl={(url) => void handleOpenExternalUrl(url)}
-        onRestartServer={() => void handleRestartServer()}
-        onUseSameImageSettings={imgState.handleUseSameImageSettings}
-        onVaryImageSeed={(a) => void imgState.handleVaryImageSeed(a)}
-        onRevealPath={(path) => void handleRevealPath(path)}
-        onDeleteImageArtifact={(id) => void imgState.handleDeleteImageArtifact(id)}
-      />
-    );
-  } else if (activeTab === "image-gallery") {
-    content = (
-      <ImageGalleryTab
-        imageOutputs={imgState.imageOutputs}
-        filteredImageOutputs={imgState.filteredImageOutputs}
-        imageCatalog={imgState.imageCatalog}
-        imageBusy={imgState.imageBusy}
-        imageGallerySearchInput={imgState.imageGallerySearchInput}
-        onImageGallerySearchInputChange={imgState.setImageGallerySearchInput}
-        imageGalleryModelFilter={imgState.imageGalleryModelFilter}
-        onImageGalleryModelFilterChange={imgState.setImageGalleryModelFilter}
-        imageGalleryRuntimeFilter={imgState.imageGalleryRuntimeFilter}
-        onImageGalleryRuntimeFilterChange={imgState.setImageGalleryRuntimeFilter}
-        imageGalleryOrientationFilter={imgState.imageGalleryOrientationFilter}
-        onImageGalleryOrientationFilterChange={imgState.setImageGalleryOrientationFilter}
-        imageGallerySort={imgState.imageGallerySort}
-        onImageGallerySortChange={imgState.setImageGallerySort}
-        imageGalleryModelOptions={imgState.imageGalleryModelOptions}
-        imageGalleryModelCount={imgState.imageGalleryModelCount}
-        imageGalleryRealCount={imgState.imageGalleryRealCount}
-        imageGalleryPlaceholderCount={imgState.imageGalleryPlaceholderCount}
-        imageGalleryWarningCount={imgState.imageGalleryWarningCount}
-        imageGalleryHasActiveFilters={imgState.imageGalleryHasActiveFilters}
-        onActiveTabChange={setActiveTab}
-        onOpenImageStudio={imgState.openImageStudio}
-        onResetImageGalleryFilters={imgState.resetImageGalleryFilters}
-        onOpenExternalUrl={(url) => void handleOpenExternalUrl(url)}
-        onUseSameImageSettings={imgState.handleUseSameImageSettings}
-        onVaryImageSeed={(a) => void imgState.handleVaryImageSeed(a)}
-        onRevealPath={(path) => void handleRevealPath(path)}
-        onDeleteImageArtifact={(id) => void imgState.handleDeleteImageArtifact(id)}
-      />
-    );
-  } else if (activeTab === "video-models") {
-    content = (
-      <VideoModelsPage
-        catalog={videoState.videoCatalog}
-        latest={videoState.latestVideoDiscoverResults}
-        searchInput={videoState.videoDiscoverSearchInput}
-        onSearchInputChange={videoState.setVideoDiscoverSearchInput}
-        taskFilter={videoState.videoDiscoverTaskFilter}
-        onTaskFilterChange={videoState.setVideoDiscoverTaskFilter}
-        sort={videoState.videoDiscoverSort}
-        onSortChange={videoState.setVideoDiscoverSort}
-        availability={modelsAvailability.video}
-        onAvailabilityChange={(value) => setAreaAvailability("video", value)}
-        activeVideoDownloads={videoState.activeVideoDownloads}
-        selectedVideoVariant={videoState.selectedVideoVariant}
-        // The runtime reports a repo; several rows can share one. The row
-        // selected in the Studio is the one that was loaded when its repo
-        // matches, otherwise the first row with that repo (as before).
-        loadedVideoVariantId={
-          videoState.selectedVideoLoaded
-            ? videoState.selectedVideoVariant?.id ?? null
-            : videoState.loadedVideoVariant?.id ?? null
-        }
-        fileRevealLabel={fileRevealLabel}
-        nativeBackends={nativeBackends}
-        hostSystem={workspace.system}
-        longLiveStatus={videoState.longLiveStatus}
-        installingLongLive={videoState.installingLongLive}
-        longLiveJob={videoState.longLiveJob}
-        onActiveTabChange={setActiveTab}
-        onOpenVideoStudio={videoState.openVideoStudio}
-        onVideoDownload={(repo, modelId) => void videoState.handleVideoDownload(repo, modelId)}
-        onCancelVideoDownload={(repo) => void videoState.handleCancelVideoDownload(repo)}
-        onDeleteVideoDownload={(repo) => void videoState.handleDeleteVideoDownload(repo)}
-        onOpenExternalUrl={(url) => void handleOpenExternalUrl(url)}
-        onRevealPath={(path) => void handleRevealPath(path)}
-        onRefreshLongLiveStatus={() => void videoState.refreshLongLiveStatus()}
-        onInstallLongLive={() => videoState.handleInstallLongLive()}
-      />
-    );
-  } else if (activeTab === "video-studio") {
-    content = (
-      <VideoStudioTab
-        videoCatalog={videoState.videoCatalogWithLatest}
-        residentChatModelGb={workspace.runtime.residentModelGb}
-        hostSystem={workspace.system}
-        selectedVideoModelId={videoState.selectedVideoModelId}
-        onSelectedVideoModelIdChange={videoState.setSelectedVideoModelId}
-        selectedVideoVariant={videoState.selectedVideoVariant}
-        selectedVideoFamily={videoState.selectedVideoFamily}
-        selectedVideoLoaded={videoState.selectedVideoLoaded}
-        selectedVideoWillLoadOnGenerate={videoState.selectedVideoWillLoadOnGenerate}
-        videoRuntimeLoadedDifferentModel={videoState.videoRuntimeLoadedDifferentModel}
-        loadedVideoVariant={videoState.loadedVideoVariant}
-        videoRuntimeStatus={videoState.videoRuntimeStatus}
-        tauriBackend={tauriBackend}
-        nativeBackends={nativeBackends}
-        busy={busy}
-        busyAction={busyAction}
-        videoBusy={videoState.videoBusy}
-        videoBusyLabel={videoState.videoBusyLabel}
-        backendOnline={backendOnline}
-        activeVideoDownloads={videoState.activeVideoDownloads}
-        videoPrompt={videoState.videoPrompt}
-        onVideoPromptChange={videoState.setVideoPrompt}
-        videoNegativePrompt={videoState.videoNegativePrompt}
-        onVideoNegativePromptChange={videoState.setVideoNegativePrompt}
-        videoUseRandomSeed={videoState.videoUseRandomSeed}
-        onVideoUseRandomSeedChange={videoState.setVideoUseRandomSeed}
-        videoSeedInput={videoState.videoSeedInput}
-        onVideoSeedInputChange={videoState.setVideoSeedInput}
-        videoWidth={videoState.videoWidth}
-        onVideoWidthChange={videoState.setVideoWidth}
-        videoHeight={videoState.videoHeight}
-        onVideoHeightChange={videoState.setVideoHeight}
-        videoNumFrames={videoState.videoNumFrames}
-        onVideoNumFramesChange={videoState.setVideoNumFrames}
-        videoFps={videoState.videoFps}
-        onVideoFpsChange={videoState.setVideoFps}
-        videoSteps={videoState.videoSteps}
-        onVideoStepsChange={videoState.setVideoSteps}
-        videoGuidance={videoState.videoGuidance}
-        onVideoGuidanceChange={videoState.setVideoGuidance}
-        videoUseNf4={videoState.videoUseNf4}
-        onVideoUseNf4Change={videoState.setVideoUseNf4}
-        videoEnableLtxRefiner={videoState.videoEnableLtxRefiner}
-        onVideoEnableLtxRefinerChange={videoState.setVideoEnableLtxRefiner}
-        videoEnhancePrompt={videoState.videoEnhancePrompt}
-        onVideoEnhancePromptChange={videoState.setVideoEnhancePrompt}
-        videoCfgDecay={videoState.videoCfgDecay}
-        onVideoCfgDecayChange={videoState.setVideoCfgDecay}
-        videoPreviewVae={videoState.videoPreviewVae}
-        onVideoPreviewVaeChange={videoState.setVideoPreviewVae}
-        videoFp8LayerwiseCasting={videoState.videoFp8LayerwiseCasting}
-        onVideoFp8LayerwiseCastingChange={videoState.setVideoFp8LayerwiseCasting}
-        videoCacheStrategy={videoState.videoCacheStrategy}
-        onVideoCacheStrategyChange={videoState.setVideoCacheStrategy}
-        videoCacheRelL1Thresh={videoState.videoCacheRelL1Thresh}
-        onVideoCacheRelL1ThreshChange={videoState.setVideoCacheRelL1Thresh}
-        videoStgScale={videoState.videoStgScale}
-        onVideoStgScaleChange={videoState.setVideoStgScale}
-        videoFastPreview={videoState.videoFastPreview}
-        onVideoFastPreviewChange={videoState.setVideoFastPreview}
-        onActiveTabChange={setActiveTab}
-        onPreloadVideoModel={(variant) => void videoState.handlePreloadVideoModel(variant)}
-        onUnloadVideoModel={(variant) => void videoState.handleUnloadVideoModel(variant)}
-        onVideoDownload={(repo, modelId) => void videoState.handleVideoDownload(repo, modelId)}
-        onGenerateVideo={() => void videoState.handleVideoGenerate()}
-        onOpenExternalUrl={(url) => void handleOpenExternalUrl(url)}
-        onRestartServer={() => void handleRestartServer()}
-        onInstallVideoOutputDeps={(packages) => videoState.handleInstallVideoOutputDeps(packages)}
-        onInstallVideoGpuRuntime={() => videoState.handleInstallVideoGpuRuntime()}
-        onInstallCudaTorch={() => void handleInstallCudaTorch()}
-        installingCudaTorch={installingCudaTorch}
-        cudaTorchResult={cudaTorchRawResult}
-        longLiveStatus={videoState.longLiveStatus}
-        installingLongLive={videoState.installingLongLive}
-        onRefreshLongLiveStatus={() => void videoState.refreshLongLiveStatus()}
-        onInstallLongLive={() => videoState.handleInstallLongLive()}
-        longLiveJob={videoState.longLiveJob}
-        mlxVideoStatus={videoState.mlxVideoStatus}
-        installingMlxVideo={videoState.installingMlxVideo}
-        onRefreshMlxVideoStatus={() => void videoState.refreshMlxVideoStatus()}
-        onInstallMlxVideo={() => videoState.handleInstallMlxVideo()}
-        gpuBundleJob={videoState.gpuBundleJob}
-      />
-    );
-  } else if (activeTab === "video-gallery") {
-    content = (
-      <VideoGalleryTab
-        videoOutputs={videoState.videoOutputs}
-        videoBusy={videoState.videoBusy}
-        onActiveTabChange={setActiveTab}
-        onOpenVideoStudio={(modelId) => videoState.openVideoStudio(modelId)}
-        onRevealPath={(path) => void handleRevealPath(path)}
-        onDeleteVideoArtifact={(id) => void videoState.handleDeleteVideoOutput(id)}
-      />
-    );
-  } else if (activeTab === "voice-studio") {
-    content = (
-      <VoiceStudioTab
-        voiceRuntime={voiceRuntime}
-        backendOnline={backendOnline}
-        openRequest={voiceOpenRequest}
-        onSendToChat={(text) => {
-          // Append rather than overwrite so a half-typed draft survives.
-          setDraftMessage((current) => (current.trim() ? `${current}\n${text}` : text));
-          void setActiveTab("chat");
-        }}
-        onTabChange={setActiveTab}
-      />
-    );
-  } else if (activeTab === "voice-models") {
-    content = (
-      <VoiceModelsTab
-        voiceRuntime={voiceRuntime}
-        backendOnline={backendOnline}
-        onRefreshVoiceRuntime={refreshVoiceRuntime}
-      />
-    );
-  } else if (activeTab === "voice-gallery") {
-    content = (
-      <VoiceLibraryTab
-        backendOnline={backendOnline}
-        onOpenTranscript={(id) => {
-          setVoiceOpenRequest({ id, nonce: Date.now() });
-          void setActiveTab("voice-studio");
-        }}
-      />
-    );
-  } else if (activeTab === "conversion") {
-    content = (
-      <ConversionTab
-        conversionSource={conversionSource}
-        conversionVariant={conversionVariant}
-        conversionDraft={conversionDraft}
-        lastConversion={lastConversion}
-        conversionReady={conversionReady}
-        convertibleLibrary={convertibleLibrary}
-        nativeBackends={nativeBackends}
-        preview={preview}
-        workspace={{ system: workspace.system, library: chatLibrary }}
-        launchCacheLabel={launchCacheLabel}
-        busy={busy}
-        busyAction={busyAction}
-        conversionStartedAt={conversionStartedAt}
-        conversionError={conversionError}
-        showConversionPicker={showConversionPicker}
-        showConversionModal={showConversionModal}
-        fileRevealLabel={fileRevealLabel}
-        onConversionDraftChange={updateConversionDraft}
-        onConversionDraftReset={() =>
-          setConversionDraft({
-            modelRef: "", path: "", hfRepo: "", outputPath: "",
-            quantize: true, qBits: 4, qGroupSize: 64, dtype: "float16",
-          })
-        }
-        onConvertModel={() => void handleConvertModel()}
-        onPickConversionOutputDir={() => void handlePickConversionOutputDir()}
-        onShowConversionPickerChange={setShowConversionPicker}
-        onShowConversionModalChange={setShowConversionModal}
-        onPrepareLibraryConversion={prepareLibraryConversion}
-        onRevealPath={(path) => void handleRevealPath(path)}
-      />
-    );
-  } else if (activeTab === "chat") {
-    content = (
-      <ChatTab
-        sortedChatSessions={sortedChatSessions}
-        activeChat={activeChat}
-        activeChatId={activeChatId}
-        threadTitleDraft={threadTitleDraft}
-        draftMessage={draftMessage}
-        pendingImages={pendingImages}
-        chatBusySessionId={chatBusySessionId}
-        busy={busy}
-        busyAction={busyAction}
-        chatScrollRef={chatScrollRef}
-        serverLoading={workspace.server.loading}
-        loadedModelRef={workspace.runtime.loadedModel?.ref}
-        loadedModelCapabilities={workspace.runtime.loadedModel?.capabilities ?? null}
-        loadedModelEngine={workspace.runtime.loadedModel?.engine ?? null}
-        engineLabel={workspace.runtime.engineLabel}
-        launchSettings={launchSettings}
-        warmModels={workspace.runtime.warmModels ?? []}
-        activeThreadOptionKey={activeThreadOption?.key}
-        onSetActiveChatId={setActiveChatId}
-        onThreadTitleDraftChange={setThreadTitleDraft}
-        thinkingMode={activeThinkingMode}
-        runtimeProfileReady={activeRuntimeProfileMatchesLaunchSettings}
-        onThinkingModeChange={handleThinkingModeChange}
-        onDraftMessageChange={setDraftMessage}
-        onPendingImagesChange={setPendingImages}
-        onCreateSession={handleCreateSession}
-        onToggleThreadPin={handleToggleThreadPin}
-        onDeleteSession={handleDeleteSession}
-        onRenameActiveThread={handleRenameActiveThread}
-        onOpenModelSelector={openModelSelector}
-        onUnloadModel={() => void handleUnloadModel()}
-        onLoadModel={handleLoadModel}
-        onChatFileDrop={chat.handleChatFileDrop}
-        onDeleteSessionDocument={deleteSessionDocument}
-        onRefreshWorkspace={async (id?: string) => { await refreshWorkspace(id); }}
-        onCopyMessage={chat.handleCopyMessage}
-        onRetryMessage={chat.handleRetryMessage}
-        onDeleteMessage={chat.handleDeleteMessage}
-        onForkAtMessage={chat.handleForkAtMessage}
-        onAddVariant={chat.handleAddVariant}
-        onDelveMessage={chat.handleDelveMessage}
-        onDetailsToggle={handleDetailsToggle}
-        onSendMessage={sendMessage}
-        onSetError={setError}
-        enableTools={chat.enableTools}
-        onToggleTools={chat.setEnableTools}
-        onCancelGeneration={chat.cancelGeneration}
-        oneTurnOverride={chat.oneTurnOverride}
-        onOneTurnOverrideChange={chat.setOneTurnOverride}
-        availableCacheStrategies={workspace.system.availableCacheStrategies}
-        dflashInfo={workspace.system.dflash}
-        loadedModelCanonicalRepo={workspace.runtime.loadedModel?.canonicalRepo ?? null}
-        loadedModelName={workspace.runtime.loadedModel?.name ?? null}
-        onInstallPackage={handleInstallPackage}
-        installingPackage={installingPackage}
-        noChatModelsInstalled={libraryChatOptions.length === 0}
-        onBrowseDiscover={() => setActiveTab(modelsPageRequest("chat", "available"))}
-        onOpenModels={() => setActiveTab(modelsPageRequest("chat", "installed"))}
-      />
-    );
-  } else if (activeTab === "chat-compare") {
-    content = (
-      <CompareView
-        modelOptions={libraryChatOptions}
-        onBack={() => setActiveTab("chat")}
-        launchSettings={launchSettings}
-        availableMemoryGb={workspace.system.availableMemoryGb}
-        totalMemoryGb={workspace.system.totalMemoryGb}
-        gpuVramTotalGb={workspace.system.gpuVramTotalGb}
-        availableCacheStrategies={workspace.system.availableCacheStrategies}
-        dflashInfo={workspace.system.dflash}
-        turboInstalled={Boolean(workspace.system.llamaServerTurboPath)}
-        mtplxSystemInfo={workspace.system.mtplx}
-        onInstallMtplx={() => void handleInstallMtplx()}
-        installingMtplx={installingMtplx}
-        mtplxJob={mtplxJob}
-        tensorfold={tensorfoldControls}
-        isAppleSilicon={isAppleSilicon}
-        onInstallPackage={handleInstallPackage}
-        installingPackage={installingPackage}
-        installLogs={installLogs}
-      />
-    );
-  } else if (activeTab === "html-challenge") {
-    content = (
-      <HtmlChallengeTab
-        modelOptions={libraryChatOptions}
-        launchSettings={launchSettings}
-        availableMemoryGb={workspace.system.availableMemoryGb}
-        totalMemoryGb={workspace.system.totalMemoryGb}
-        gpuVramTotalGb={workspace.system.gpuVramTotalGb}
-        availableCacheStrategies={workspace.system.availableCacheStrategies}
-        dflashInfo={workspace.system.dflash}
-        turboInstalled={Boolean(workspace.system.llamaServerTurboPath)}
-        mtplxSystemInfo={workspace.system.mtplx}
-        onInstallMtplx={() => void handleInstallMtplx()}
-        installingMtplx={installingMtplx}
-        mtplxJob={mtplxJob}
-        tensorfold={tensorfoldControls}
-        isAppleSilicon={isAppleSilicon}
-        onInstallPackage={handleInstallPackage}
-        installingPackage={installingPackage}
-        installLogs={installLogs}
-        fileRevealLabel={fileRevealLabel}
-        onRevealPath={(path) => void handleRevealPath(path)}
-        onOpenFilePath={(path) => void handleOpenFilePath(path)}
-      />
-    );
-  } else if (activeTab === "server") {
-    content = (
-      <ServerTab
-        serverStatus={workspace.server.status}
-        serverPort={workspace.server.port}
-        localServerUrl={localServerUrl}
-        primaryLanUrl={primaryLanUrl}
-        primaryLanOrigin={primaryLanOrigin}
-        remoteAccessActive={remoteAccessActive}
-        remoteAccessRequested={remoteAccessRequested}
-        preferredPortUnavailable={preferredPortUnavailable}
-        busyAction={busyAction}
-        busy={busy}
-        backendOnline={backendOnline}
-        warmModels={workspace.runtime.warmModels ?? []}
-        serverLoading={workspace.server.loading}
-        requestsServed={workspace.server.requestsServed}
-        activeConnections={workspace.server.activeConnections}
-        engineLabel={workspace.runtime.engineLabel}
-        settingsDraft={settingsDraft}
-        serverLogEntries={serverLogEntries}
-        showRemoteTest={showRemoteTest}
-        testModelId={testModelId}
-        apiToken={apiToken}
-        localHealthCurl={localHealthCurl}
-        localModelsCurl={localModelsCurl}
-        remoteHealthCurl={remoteHealthCurl}
-        remoteModelsCurl={remoteModelsCurl}
-        recentOrphanedWorkers={workspace.server.recentOrphanedWorkers ?? []}
-        selectedServerOptionKey={selectedServerOption?.key}
-        onOpenModelSelector={openModelSelector}
-        onRestartServer={handleRestartServer}
-        onStopServer={handleStopServer}
-        onLoadModel={handleLoadModel}
-        onUnloadWarmModel={handleUnloadWarmModel}
-        onSaveSettings={handleSaveSettings}
-        onSettingsDraftChange={setSettingsDraft}
-        onShowRemoteTestChange={setShowRemoteTest}
-        onTestModelIdChange={setTestModelId}
-      />
-    );
-  } else if (activeTab === "benchmarks") {
-    content = (
-      <BenchmarkRunTab
-        workspace={{
-          benchmarks: workspace.benchmarks,
-          library: chatLibrary,
-          system: {
-            availableMemoryGb: workspace.system.availableMemoryGb,
-            totalMemoryGb: workspace.system.totalMemoryGb,
-            availableCacheStrategies: workspace.system.availableCacheStrategies,
-            llamaServerTurboPath: workspace.system.llamaServerTurboPath,
-            dflash: workspace.system.dflash,
-            mtplx: workspace.system.mtplx,
-          },
-        }}
-        threadModelOptions={threadModelOptions}
-        benchmarkDraft={benchmarkDraft}
-        benchmarkOption={benchmarkOption}
-        benchmarkPromptId={benchmarkPromptId}
-        preview={preview}
-        busy={busy}
-        busyAction={busyAction}
-        benchmarkStartedAt={benchmarkStartedAt}
-        benchmarkError={benchmarkError}
-        showBenchmarkPicker={showBenchmarkPicker}
-        showBenchmarkModal={showBenchmarkModal}
-        installingPackage={installingPackage}
-        installLogs={installLogs}
-        onInstallMtplx={() => void handleInstallMtplx()}
-        installingMtplx={installingMtplx}
-        mtplxJob={mtplxJob}
-        tensorfold={tensorfoldControls}
-        isAppleSilicon={isAppleSilicon}
-        onBenchmarkDraftChange={updateBenchmarkDraft}
-        onBenchmarkPromptIdChange={setBenchmarkPromptId}
-        onBenchmarkModelKeyChange={setBenchmarkModelKey}
-        onBenchmarkDraftUpdate={setBenchmarkDraft}
-        onRunBenchmark={() => void benchmarks.handleRunBenchmark(benchmarkOption)}
-        onCancelBenchmark={benchmarks.handleCancelBenchmark}
-        onShowBenchmarkPickerChange={setShowBenchmarkPicker}
-        onShowBenchmarkModalChange={setShowBenchmarkModal}
-        onSelectedBenchmarkIdChange={setSelectedBenchmarkId}
-        onCompareBenchmarkIdChange={setCompareBenchmarkId}
-        onActiveTabChange={(tab) => setActiveTab(tab as TabId)}
-        onInstallPackage={handleInstallPackage}
-      />
-    );
-  } else if (activeTab === "benchmark-history") {
-    content = (
-      <BenchmarkHistoryTab
-        benchmarks={workspace.benchmarks}
-        benchmarkModelFilter={benchmarkModelFilter}
-        benchmarkViewMode={benchmarkViewMode}
-        selectedBenchmarkId={selectedBenchmarkId}
-        compareBenchmarkId={compareBenchmarkId}
-        onBenchmarkModelFilterChange={setBenchmarkModelFilter}
-        onBenchmarkViewModeChange={setBenchmarkViewMode}
-        onSelectedBenchmarkIdChange={setSelectedBenchmarkId}
-        onCompareBenchmarkIdChange={setCompareBenchmarkId}
-      />
-    );
-  } else if (activeTab === "finetuning") {
-    content = <FineTuningTab backendOnline={backendOnline} />;
-  } else if (activeTab === "prompt-library") {
-    content = <PromptLibraryTab backendOnline={backendOnline} onApplyTemplate={(prompt) => { setSystemPrompt(prompt); setActiveTab("chat"); }} />;
-  } else if (activeTab === "plugins") {
-    content = <PluginsTab backendOnline={backendOnline} />;
-  } else if (activeTab === "logs") {
-    content = <LogsTab filteredLogs={filteredLogs} logQuery={logQuery} onLogQueryChange={setLogQuery} />;
-  } else if (activeTab === "settings") {
-    content = <SettingsTab
-      hostSystem={workspace.system}
-      settingsDraft={settingsDraft}
-      onSettingsDraftChange={setSettingsDraft}
-      newDirectoryLabel={newDirectoryLabel}
-      onNewDirectoryLabelChange={setNewDirectoryLabel}
-      newDirectoryPath={newDirectoryPath}
-      onNewDirectoryPathChange={setNewDirectoryPath}
-      onPickDataDirectory={handlePickDataDirectory}
-      onPickImageOutputsDirectory={handlePickImageOutputsDirectory}
-      onPickVideoOutputsDirectory={handlePickVideoOutputsDirectory}
-      onSaveSettings={handleSaveSettings}
-      onPickDirectory={pickDirectory}
-      onAddDirectory={handleAddDirectory}
-      onUpdateDirectoryPath={handleUpdateDirectoryPath}
-      onToggleDirectory={handleToggleDirectory}
-      onRemoveDirectory={handleRemoveDirectory}
-      onCopyText={copyText}
-      serverLocalhostUrl={workspace.server.localhostUrl}
-      serverPort={workspace.server.port}
-      loadedModelName={workspace.runtime.loadedModel?.name}
-      apiToken={apiToken}
-      sidebarMode={sidebarPrefs.mode}
-      onSidebarModeChange={sidebarPrefs.setMode}
-      uiScale={uiScalePrefs.uiScale}
-      onUiScaleChange={uiScalePrefs.setUiScale}
-      backendOnline={backendOnline}
-      onRestartServer={() => void handleRestartServer()}
-      busyAction={busyAction}
-    />;
-  }
+  const ActiveView = tabViewFor(activeTab);
+  const content = <ActiveView ctx={ctx} />;
 
   return (
     <div
@@ -1883,130 +861,23 @@ export default function App() {
 
 
       <main className="workspace">
-        <header className="workspace-header">
-          <div>
-            <span className="eyebrow">{tCommon("app.workspace", { defaultValue: "Workspace" })}</span>
-            <h2>
-              {(() => {
-                const tab = tabs.find((entry) => entry.id === activeTab);
-                if (!tab) return null;
-                return tCommon(tab.labelKey, { defaultValue: tab.label });
-              })()}
-            </h2>
-            <p>
-              {(() => {
-                const tab = tabs.find((entry) => entry.id === activeTab);
-                if (!tab) return null;
-                return tCommon(tab.captionKey, { defaultValue: tab.caption });
-              })()}
-            </p>
-          </div>
-          <div className="header-badges">
-            <span className="badge muted">{workspace.system.platform}</span>
-            <span className="badge muted">{workspace.system.arch}</span>
-            <span className="badge accent">{workspace.runtime.loadedModel ? loadedModelCacheLabel : launchCacheLabel}</span>
-          </div>
-        </header>
+        <WorkspaceHeader
+          activeTab={activeTab}
+          system={workspace.system}
+          cacheLabel={workspace.runtime.loadedModel ? loadedModelCacheLabel : launchCacheLabel}
+        />
 
-        <div className="workspace-status-stack">
-          {gpuStatus.showBanner && gpuStatus.status ? (
-            <div className="notice-banner warn-banner">
-              <span>
-                <strong>{tCommon("gpuBanner.runningOnCpu", { defaultValue: "Running on CPU." })}</strong>{" "}
-                {gpuStatus.status.recommendation ??
-                  tCommon("gpuBanner.recommendationFallback", {
-                    defaultValue: "An NVIDIA GPU is visible but torch can't reach CUDA — image and video generation will be very slow.",
-                  })}
-                {cudaTorchResult?.ok ? (
-                  <>
-                    {" "}
-                    <strong>
-                      {tCommon("gpuBanner.cudaInstalled", {
-                        defaultValue: "CUDA torch installed{source}{python}. Restart the app to use the GPU.",
-                        source: cudaTorchResult.indexUrl
-                          ? tCommon("gpuBanner.cudaInstalledSource", {
-                            defaultValue: " from {index}",
-                            index: cudaTorchResult.indexUrl.replace("https://download.pytorch.org/whl/", ""),
-                          })
-                          : "",
-                        python: cudaTorchResult.pythonVersion
-                          ? tCommon("gpuBanner.cudaInstalledPython", {
-                            defaultValue: " into bundled Python {version}",
-                            version: cudaTorchResult.pythonVersion,
-                          })
-                          : "",
-                      })}
-                    </strong>
-                  </>
-                ) : cudaTorchResult && !cudaTorchResult.ok ? (
-                  <>
-                    {" "}
-                    {cudaTorchResult.noWheelForPython ? (
-                      <>
-                        <strong>
-                          {tCommon("gpuBanner.noWheel", {
-                            defaultValue: "No CUDA torch wheel for Python{version}.",
-                            version: cudaTorchResult.pythonVersion
-                              ? ` ${cudaTorchResult.pythonVersion}`
-                              : tCommon("gpuBanner.noWheelBundledVenv", { defaultValue: " (bundled venv)" }),
-                          })}
-                        </strong>{" "}
-                        {tCommon("gpuBanner.noWheelDetail", {
-                          defaultValue: "PyTorch currently ships CUDA wheels for Python 3.9–3.13. Reinstall the app with a supported Python on PATH (e.g. 3.12 or 3.13) and try again.",
-                        })}
-                      </>
-                    ) : (
-                      <>
-                        <strong>{tCommon("gpuBanner.installFailed", { defaultValue: "Install failed:" })}</strong>{" "}
-                        <span className="mono-text">{cudaTorchResult.message}</span>
-                      </>
-                    )}
-                  </>
-                ) : installingCudaTorch ? (
-                  <>
-                    {" "}
-                    <em>{tCommon("gpuBanner.downloading", {
-                      defaultValue: "Downloading ~2.5 GB CUDA wheel into the app's bundled Python — this can take several minutes.",
-                    })}</em>
-                  </>
-                ) : null}
-              </span>
-              <button
-                className="primary-button"
-                type="button"
-                disabled={installingCudaTorch || cudaTorchResult?.ok === true}
-                onClick={() => void handleInstallCudaTorch()}
-              >
-                {installingCudaTorch
-                  ? tCommon("gpuBanner.installing", { defaultValue: "Installing CUDA torch..." })
-                  : cudaTorchResult?.ok
-                    ? tCommon("status.installed", { defaultValue: "Installed" })
-                    : tCommon("gpuBanner.install", { defaultValue: "Install CUDA torch" })}
-              </button>
-              <button className="secondary-button" type="button" onClick={gpuStatus.dismiss}>
-                {tCommon("actions.dismiss", { defaultValue: "Dismiss" })}
-              </button>
-            </div>
-          ) : null}
-          {error ? (
-            <div className="notice-banner error-banner">
-              <span>{error}</span>
-              {error.includes("update-llama-cpp.sh") ? (
-                <button className="primary-button" type="button" disabled={rebuildingLlama} onClick={() => void handleRebuildLlamaCpp()}>
-                  {rebuildingLlama
-                    ? tCommon("llamaRebuild.rebuilding", { defaultValue: "Rebuilding llama.cpp..." })
-                    : tCommon("llamaRebuild.rebuild", { defaultValue: "Rebuild llama.cpp" })}
-                </button>
-              ) : null}
-            </div>
-          ) : null}
-          {rebuildOutput ? (
-            <div className="notice-banner">
-              <pre className="mono-text rebuild-output">{rebuildOutput.slice(-2000)}</pre>
-              <button className="secondary-button" type="button" onClick={() => setRebuildOutput(null)}>{tCommon("actions.dismiss", { defaultValue: "Dismiss" })}</button>
-            </div>
-          ) : null}
-        </div>
+        <StatusBanners
+          gpuStatus={gpuStatus}
+          cudaTorchResult={cudaTorchResult}
+          installingCudaTorch={installingCudaTorch}
+          handleInstallCudaTorch={handleInstallCudaTorch}
+          error={error}
+          rebuildingLlama={rebuildingLlama}
+          handleRebuildLlamaCpp={handleRebuildLlamaCpp}
+          rebuildOutput={rebuildOutput}
+          setRebuildOutput={setRebuildOutput}
+        />
 
         {sidebarPrefs.mode === "tabs" ? (
           <SubtabBar
@@ -2035,228 +906,25 @@ export default function App() {
           )}
         </div>
       </main>
-      <LaunchModal
+      <LaunchModalHost
+        ctx={ctx}
         pendingLaunch={pendingLaunch}
         launchModelSearch={launchModelSearch}
-        libraryChatOptions={libraryChatOptions}
-        threadModelOptions={threadModelOptions}
-        launchSettings={launchSettings}
-        preview={preview}
-        availableMemoryGb={workspace.system.availableMemoryGb}
-        totalMemoryGb={workspace.system.totalMemoryGb}
-        gpuVramTotalGb={workspace.system.gpuVramTotalGb}
-        availableCacheStrategies={workspace.system.availableCacheStrategies}
-        dflashInfo={workspace.system.dflash}
-        installingPackage={installingPackage}
-        installLogs={installLogs}
-        turboInstalled={Boolean(workspace.system.llamaServerTurboPath)}
-        mtplxSystemInfo={workspace.system.mtplx}
-        onInstallMtplx={() => void handleInstallMtplx()}
-        installingMtplx={installingMtplx}
-        mtplxJob={mtplxJob}
-        tensorfold={tensorfoldControls}
-        isAppleSilicon={isAppleSilicon}
-        onPendingLaunchChange={setPendingLaunch}
-        onLaunchModelSearchChange={setLaunchModelSearch}
-        onLaunchSettingChange={updateLaunchSetting}
-        onConfirmLaunch={(key) => void confirmLaunch(key)}
-        onInstallPackage={handleInstallPackage}
+        setPendingLaunch={setPendingLaunch}
+        setLaunchModelSearch={setLaunchModelSearch}
+        confirmLaunch={confirmLaunch}
       />
-      <ImageGenerationModal
-        showImageGenerationModal={imgState.showImageGenerationModal}
-        imageBusy={imgState.imageBusy}
-        imageGenerationStartedAt={imgState.imageGenerationStartedAt}
-        imageGenerationError={imgState.imageGenerationError}
-        imageGenerationCancelled={imgState.imageGenerationCancelled}
-        imageGenerationCancelling={imgState.imageGenerationCancelling}
-        imageGenerationArtifacts={imgState.imageGenerationArtifacts}
-        selectedImageGenerationArtifact={imgState.selectedImageGenerationArtifact}
-        imageGenerationRunInfo={imgState.imageGenerationRunInfo}
-        imageCatalog={imgState.imageCatalog}
-        imageSteps={imgState.imageSteps}
-        selectedImageVariant={imgState.selectedImageVariant}
-        onShowImageGenerationModalChange={imgState.setShowImageGenerationModal}
-        onSelectedImageGenerationArtifactIdChange={imgState.setSelectedImageGenerationArtifactId}
-        onActiveTabChange={setActiveTab}
-        onUseSameSettings={imgState.handleUseSameImageSettings}
-        onVarySeed={(a) => void imgState.handleVaryImageSeed(a)}
-        onOpenExternalUrl={(url) => void handleOpenExternalUrl(url)}
-        onRevealPath={(path) => void handleRevealPath(path)}
-        onDeleteArtifact={(id) => void imgState.handleDeleteImageArtifact(id)}
-        onCancelGeneration={() => void imgState.handleCancelImageGeneration()}
+      <GenerationModals ctx={ctx} />
+      <FamilyDetailModal ctx={ctx} />
+      <DataDirRestartModal
+        dataDirRestartPrompt={dataDirRestartPrompt}
+        setDataDirRestartPrompt={setDataDirRestartPrompt}
+        setBusyAction={setBusyAction}
+        setBackendOnline={setBackendOnline}
+        setError={setError}
+        refreshWorkspace={refreshWorkspace}
+        activeChatId={activeChatId}
       />
-      <VideoGenerationModal
-        showVideoGenerationModal={videoState.showVideoGenerationModal}
-        videoBusy={videoState.videoBusy}
-        videoGenerationStartedAt={videoState.videoGenerationStartedAt}
-        videoGenerationError={videoState.videoGenerationError}
-        videoGenerationCancelled={videoState.videoGenerationCancelled}
-        videoGenerationCancelling={videoState.videoGenerationCancelling}
-        videoGenerationArtifact={videoState.videoGenerationArtifact}
-        videoGenerationRunInfo={videoState.videoGenerationRunInfo}
-        selectedVideoVariant={videoState.selectedVideoVariant}
-        onShowVideoGenerationModalChange={videoState.setShowVideoGenerationModal}
-        onActiveTabChange={setActiveTab}
-        onRevealPath={(path) => void handleRevealPath(path)}
-        onDeleteArtifact={(id) => void videoState.handleDeleteVideoOutput(id)}
-        onCancelGeneration={() => void videoState.handleCancelVideoGeneration()}
-      />
-      {(() => {
-        if (!detailFamilyId) return null;
-        const family = workspace.featuredModels.find((f) => f.id === detailFamilyId);
-        if (!family) return null;
-        const localCount = family.variants.filter((v) => v.availableLocally).length;
-        return (
-          <div className="modal-overlay" onClick={() => setDetailFamilyId(null)}>
-            <div className="modal-content modal-wide detail-modal" onClick={(e) => e.stopPropagation()}>
-              <div className="modal-header">
-                <div className="detail-header-main">
-                  <h3>{family.name}</h3>
-                  <div className="detail-header-badges">
-                    <span className="badge muted">{family.provider}</span>
-                    {family.variants.map((v) => v.format).filter((f, i, a) => a.indexOf(f) === i).map((f) => (
-                      <span key={f} className="badge muted">{f}</span>
-                    ))}
-                    {localCount > 0 ? <span className="badge success">{tCommon("discoverModal.downloadedCount", { count: localCount, defaultValue: "{count} downloaded" })}</span> : null}
-                    <span className="badge muted">{family.updatedLabel}</span>
-                  </div>
-                  <p className="muted-text">{family.headline}</p>
-                </div>
-              </div>
-              <div className="modal-body detail-modal-body">
-                <p className="discover-summary">{family.summary}</p>
-                <CapabilityStrip capabilities={family.capabilities} max={12} />
-                <div className="detail-variants">
-                  <span className="eyebrow">{tCommon("discoverModal.variants", { count: family.variants.length, defaultValue: "Variants ({count})" })}</span>
-                  {family.variants.map((variant) => {
-                    const matchedLocal = findLibraryItemForVariant(chatLibrary, variant);
-                    const downloadState = activeDownloads[variant.repo];
-                    const isDownloading = downloadState?.state === "downloading";
-                    const isDownloadPaused = downloadState?.state === "cancelled";
-                    const isDownloadFailed = downloadState?.state === "failed";
-                    const isDownloadComplete = downloadState?.state === "completed";
-                    return (
-                      <div key={variant.id} className={`detail-variant${variant.availableLocally || isDownloadComplete ? " downloaded" : ""}`}>
-                        <div className="detail-variant-info">
-                          <strong>{variant.name}</strong>
-                          <div className="detail-variant-meta">
-                            <span>{variant.format}</span>
-                            <span>{variant.quantization}</span>
-                            <span>{number(variant.paramsB)}B params</span>
-                            <span>{sizeLabel(variant.sizeGb)}</span>
-                            <span>~{number(variant.estimatedMemoryGb ?? 0)} GB RAM</span>
-                            <span>{variant.contextWindow} ctx</span>
-                          </div>
-                          {variant.note ? <p className="detail-variant-note">{variant.note}</p> : null}
-                        </div>
-                        <div className="detail-variant-actions">
-                          {variant.availableLocally ? (
-                            <>
-                              {variant.launchMode === "convert" ? (
-                                <button className="primary-button action-convert" type="button" onClick={() => { prepareCatalogConversion(variant); setDetailFamilyId(null); }}>{tCommon("discoverModal.convert", { defaultValue: "Convert" })}</button>
-                              ) : null}
-                              <button className="primary-button action-chat" type="button" onClick={() => { openModelSelector("thread", matchedLocal ? `library:${matchedLocal.path}` : `catalog:${variant.id}`); setDetailFamilyId(null); }}>{tCommon("discoverModal.chat", { defaultValue: "Chat" })}</button>
-                              <button className="primary-button action-server" type="button" onClick={() => { openModelSelector("server", matchedLocal ? `library:${matchedLocal.path}` : `catalog:${variant.id}`); setDetailFamilyId(null); }}>{tCommon("discoverModal.server", { defaultValue: "Server" })}</button>
-                            </>
-                          ) : isDownloading ? (
-                            <>
-                              <span className="badge accent">{downloadProgressLabel(downloadState)}</span>
-                              <button className="secondary-button" type="button" onClick={() => void handleCancelModelDownload(variant.repo)}>{tCommon("discoverModal.pause", { defaultValue: "Pause" })}</button>
-                              <button className="secondary-button danger-button" type="button" onClick={() => void handleDeleteModelDownload(variant.repo)}>{tCommon("actions.cancel", { defaultValue: "Cancel" })}</button>
-                            </>
-                          ) : isDownloadPaused ? (
-                            <>
-                              <span className="badge warning">{downloadProgressLabel(downloadState)}</span>
-                              <button className="secondary-button" type="button" onClick={() => void handleDownloadModel(variant.repo)}>{tCommon("discoverModal.resume", { defaultValue: "Resume" })}</button>
-                              <button className="secondary-button danger-button" type="button" onClick={() => void handleDeleteModelDownload(variant.repo)}>{tCommon("actions.delete", { defaultValue: "Delete" })}</button>
-                            </>
-                          ) : isDownloadFailed ? (
-                            <>
-                              <span className="badge warning">{tCommon("discoverModal.downloadFailed", { defaultValue: "Download failed" })}</span>
-                              <button className="secondary-button" type="button" onClick={() => void handleDownloadModel(variant.repo)}>{tCommon("actions.retry", { defaultValue: "Retry" })}</button>
-                              <button className="secondary-button danger-button" type="button" onClick={() => void handleDeleteModelDownload(variant.repo)}>{tCommon("actions.delete", { defaultValue: "Delete" })}</button>
-                            </>
-                          ) : isDownloadComplete ? (
-                            <span className="badge success">{tCommon("discoverModal.downloadComplete", { defaultValue: "Download complete" })}</span>
-                          ) : (
-                            <button className="secondary-button" type="button" onClick={() => void handleDownloadModel(variant.repo)}>{tCommon("actions.download", { defaultValue: "Download" })}</button>
-                          )}
-                          <a
-                            className="text-link"
-                            href={variant.link}
-                            target="_blank"
-                            rel="noreferrer"
-                            onClick={(event) => { event.preventDefault(); void handleOpenExternalUrl(variant.link); }}
-                          >
-                            HF ↗
-                          </a>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                {family.readme && family.readme.length > 0 ? (
-                  <div className="detail-readme">
-                    <span className="eyebrow">{tCommon("discoverModal.overview", { defaultValue: "Overview" })}</span>
-                    {family.readme.map((line, i) => <p key={i}>{line}</p>)}
-                  </div>
-                ) : null}
-              </div>
-              <div className="modal-footer">
-                <button className="primary-button" type="button" onClick={() => setDetailFamilyId(null)}>{tCommon("actions.close", { defaultValue: "Close" })}</button>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
-      {dataDirRestartPrompt ? (
-        <div className="modal-overlay" onClick={() => setDataDirRestartPrompt(null)}>
-          <div className="modal-content" onClick={(event) => event.stopPropagation()}>
-            <div className="modal-header"><h3>{tCommon("dataDirRestart.title", { defaultValue: "Restart required" })}</h3></div>
-            <div className="modal-body">
-              <p>{tCommon("dataDirRestart.body", { defaultValue: "The data directory has been changed. ChaosEngineAI needs to restart the backend to start reading and writing files in the new location." })}</p>
-              {dataDirRestartPrompt.migration ? (
-                <div className="control-stack">
-                  <p className="mono-text">{tCommon("dataDirRestart.from", { path: dataDirRestartPrompt.migration.from, defaultValue: "From: {path}" })}</p>
-                  <p className="mono-text">{tCommon("dataDirRestart.to", { path: dataDirRestartPrompt.migration.to, defaultValue: "To: {path}" })}</p>
-                  {dataDirRestartPrompt.migration.copied.length > 0 ? <p>{tCommon("dataDirRestart.copied", { items: dataDirRestartPrompt.migration.copied.join(", "), defaultValue: "Copied: {items}" })}</p> : null}
-                  {dataDirRestartPrompt.migration.skipped.length > 0 ? <p>{tCommon("dataDirRestart.skipped", { items: dataDirRestartPrompt.migration.skipped.join(", "), defaultValue: "Skipped (already present at destination): {items}" })}</p> : null}
-                </div>
-              ) : null}
-            </div>
-            <div className="modal-footer">
-              <button className="secondary-button" type="button" onClick={() => setDataDirRestartPrompt(null)}>{tCommon("dataDirRestart.notNow", { defaultValue: "Not now" })}</button>
-              <button className="primary-button" type="button" onClick={async () => {
-                setDataDirRestartPrompt(null);
-                setBusyAction(tCommon("dataDirRestart.restarting", { defaultValue: "Restarting backend..." }));
-                try {
-                  const { invoke: tauriInvoke } = await import("@tauri-apps/api/core");
-                  await tauriInvoke("restart_backend_sidecar");
-                  // Backend may still be starting — retry until healthy.
-                  let online = await checkBackend();
-                  if (!online) {
-                    for (let i = 0; i < 5; i++) {
-                      await new Promise((r) => setTimeout(r, 2000));
-                      online = await checkBackend();
-                      if (online) break;
-                    }
-                  }
-                  if (online) {
-                    setBackendOnline(true);
-                    await refreshWorkspace(activeChatId || undefined);
-                  } else {
-                    setError(tCommon("dataDirRestart.notBackOnline", { defaultValue: "Backend did not come back online after restart." }));
-                  }
-                } catch (err) {
-                  setError(err instanceof Error ? err.message : tCommon("dataDirRestart.failed", { defaultValue: "Failed to restart backend." }));
-                } finally {
-                  setBusyAction(null);
-                }
-              }}>{tCommon("dataDirRestart.confirm", { defaultValue: "OK, restart now" })}</button>
-            </div>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }

@@ -8,7 +8,6 @@
     "recentOutputsTitle": "最近の出力",
     "prompt": "プロンプト",
     "negativePrompt": "ネガティブプロンプト",
-    "enhancePrompt": "強化",
     "width": "幅",
     "height": "高さ",
     "steps": "ステップ",
@@ -126,12 +125,6 @@
     "title": "詳細",
     "show": "詳細設定を表示",
     "hide": "詳細設定を非表示"
-  },
-  "enhance": {
-    "label": "強化",
-    "busy": "強化中...",
-    "tooltip": "このプロンプトをローカルで強化",
-    "error": "エンハンサーエラー:{message}"
   },
   "runtimeBanner": {
     "loadingModel": "モデルをメモリに読み込み中...",
@@ -479,10 +472,6 @@
       "ltxRefiner": {
         "label": "LTX 2 段階空間アップスケール",
         "tooltip": "要求された解像度でベースサンプルをレンダリングし、その後 Lightricks/LTX-Video-0.9.5-spatial-upscaler を通して 2 倍の空間解像度でリファインします。フレーム予算が ~1.5 倍増加します。シャープなマイクロディテールとクリーンなモーションエッジ。実時間への影響が大きいためデフォルトはオフです。"
-      },
-      "enhancePrompt": {
-        "label": "短いプロンプトを自動強化",
-        "tooltip": "プロンプトが 25 ワード未満の場合、モデルにチューニングされた構造的ヒント(映画的な記述子、ライティング、カメラの向き)を追加します。拡散動画モデルは 50-100 ワードのプロンプトで学習されており、短い入力では十分に条件付けされません。長いカスタムプロンプトはそのまま送信されます — しきい値はセーフガードです。"
       },
       "cfgDecay": {
         "label": "CFG ディケイ",
@@ -904,5 +893,27 @@
       "previewVae": "プレビュー VAE",
       "fp8LayerwiseCasting": "FP8 レイヤーワイズ"
     }
+  },
+  "inputImage": {
+    "chooseFile": null,
+    "fromGallery": null,
+    "remove": null,
+    "pickFailed": null,
+    "referenceLabel": null,
+    "referenceLabelMany": null,
+    "referenceHintOne": null,
+    "referenceHintMany": null,
+    "strength": null,
+    "startLabel": null,
+    "startHint": null,
+    "endLabel": null,
+    "endHint": null
+  },
+  "sizePresets": {
+    "aspect": null,
+    "size": null,
+    "resolution": null,
+    "overLimit": null,
+    "current": null
   }
 }

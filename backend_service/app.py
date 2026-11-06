@@ -16,6 +16,11 @@ from starlette.responses import JSONResponse
 
 from backend_service.runtime_paths import ensure_extras_on_sys_path, guard_overlay_against_bundle
 
+# The Hugging Face libraries add library and version details to their requests
+# unless this is set. Set before any of them is imported; every worker and
+# installer subprocess copies this environment. A user can still export 0.
+os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
+
 guard_overlay_against_bundle()
 ensure_extras_on_sys_path()
 
@@ -467,6 +472,8 @@ def _generate_image_artifacts(
             sdcppAux=(variant.get("sdcppAux") or None),
             sdcppArgs=(variant.get("sdcppArgs") or None),
             mfluxQuantize=(variant.get("mfluxQuantize") or None),
+            referenceImagePaths=(request.referenceImagePaths or None),
+            imageStrength=request.imageStrength,
             runtime=(variant.get("engine") or None),
             cacheStrategy=request.cacheStrategy,
             cacheRelL1Thresh=request.cacheRelL1Thresh,
@@ -517,6 +524,8 @@ def _generate_image_artifacts(
             "runtimeNote": " · ".join(part for part in (rendered.runtimeNote, size_note) if part) or None,
             "qualityPreset": request.qualityPreset,
             "draftMode": request.draftMode,
+            "referenceImagePaths": request.referenceImagePaths or None,
+            "imageStrength": request.imageStrength if request.referenceImagePaths else None,
         }
         artifacts.append(_save_image_artifact(artifact))
     return artifacts, runtime_status
@@ -592,7 +601,6 @@ def _generate_video_artifact(
             scheduler=request.scheduler,
             useNf4=request.useNf4,
             enableLtxRefiner=request.enableLtxRefiner,
-            enhancePrompt=request.enhancePrompt,
             cfgDecay=request.cfgDecay,
             stgScale=request.stgScale,
             previewVae=request.previewVae,
@@ -615,6 +623,9 @@ def _generate_video_artifact(
             nunchakuRepo=(variant.get("nunchakuRepo") or None),
             nunchakuFile=(variant.get("nunchakuFile") or None),
             fp8LayerwiseCasting=request.fp8LayerwiseCasting,
+            startImagePath=request.startImagePath,
+            endImagePath=request.endImagePath,
+            imageStrength=request.imageStrength,
         )
     )
 
@@ -643,6 +654,11 @@ def _generate_video_artifact(
         "runtimeNote": " · ".join([*request_notes, *([video.runtimeNote] if video.runtimeNote else [])]) or None,
         "hasAudio": video.extension == "mp4" and mp4_has_audio_bytes(video.bytes),
     }
+    if request.startImagePath:
+        artifact["startImagePath"] = request.startImagePath
+        artifact["imageStrength"] = request.imageStrength
+    if request.endImagePath:
+        artifact["endImagePath"] = request.endImagePath
     return _save_video_artifact(artifact), runtime_status
 
 

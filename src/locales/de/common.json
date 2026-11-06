@@ -664,6 +664,8 @@
     "thumbnailAlt": "Live-Entrausch-Vorschau",
     "thumbnailCaption": "Live-Vorschau · TAESD-Decode",
     "stepCounter": "Schritt {current} / {total}",
+    "waitingForAgent": null,
+    "waitingInQueue": null,
     "inProgress": "läuft…",
     "finalizing": "wird abgeschlossen…",
     "phaseTiming": "{elapsed}s / ~{estimated}s"
@@ -882,6 +884,17 @@
       "tokenStoredPlaceholder": "•••• gespeichert ••••",
       "tokenPlaceholder": "hf_...",
       "helpText": "Lokal gespeichert. Wird von der MLX-Konvertierung beim Abrufen gated-Modelle von Hugging Face verwendet."
+    },
+    "agentAccess": {
+      "title": null,
+      "subtitle": null,
+      "switch": null,
+      "hint": null,
+      "claudeCode": null,
+      "stdio": null,
+      "otherClients": null,
+      "rotate": null,
+      "rotateHint": null
     },
     "integrations": {
       "title": "Integrationen",

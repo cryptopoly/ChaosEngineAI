@@ -26,6 +26,8 @@ or no FLUX weights are on disk.
 | 5 | Video Studio | Same shape as Phase 4 — catalog, library, mlx-runtime probes. Generation runs against any installed video model. |
 | 6 | Setup probes (read-only) | `mtplx-status`, `tensorfold-status`, `longlive-status`, `wan-status/inventory`, `gpu-bundle-info/status`, `turbo-update-check`. Destructive install actions are intentionally NOT run (too slow + side-effecty for a routine suite). |
 | 7 | Diagnostics + cleanup | `diagnostics-snapshot` + `log-tail` return data. No orphan MLX / llama-server / MTPLX / TensorFold subprocesses left dangling. Runtime returns to `idle` or `loaded` (not `error`). |
+| 8 | Voice I/O | Voice runtime, STT/TTS lanes, synthesize, transcribe, library. |
+| 9 | Agent bridge | `/mcp`: the off answer names the Settings path, `tools/list` has the 12 tools, `system_status` and `recommend_models` answer, the stdio relay (`chaosengine-cli mcp`) forwards, and with an installed image model `generate_image` + `wait_for_job` ends in a PNG that carries its settings. Switches Agent access on for the run and restores the previous state. A last check sends a reference image to a model that cannot take one (image and video routes) and expects a 400 that says why; another uploads an image (bad bytes refused), refuses a path outside the output folders, and fetches the image job's output with a matching checksum. Run alone: `--phases 9`. |
 
 ## Pass criteria
 

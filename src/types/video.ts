@@ -17,6 +17,8 @@ export type VideoCacheStrategyId =
 export type VideoModelTask = "txt2video" | "img2video" | "video2video";
 
 export interface VideoModelVariant {
+  /** True for LTX-2 (ltx-2-mlx): the clip can start and end on an image. */
+  acceptsImageInput?: boolean;
   /** Few-step distilled rows (CausVid, lightx2v, LTX distilled): the steps and guidance the Studio starts from. */
   defaultSteps?: number | null;
   cfgOverride?: number | null;
@@ -184,6 +186,9 @@ export interface VideoOutputArtifact {
 }
 
 export interface VideoGenerationPayload {
+  /** Absolute image paths; only for variants with ``acceptsImageInput``. */
+  startImagePath?: string;
+  endImagePath?: string;
   modelId: string;
   prompt: string;
   negativePrompt?: string;
@@ -196,7 +201,6 @@ export interface VideoGenerationPayload {
   seed?: number | null;
   useNf4?: boolean;
   enableLtxRefiner?: boolean;
-  enhancePrompt?: boolean;
   cfgDecay?: boolean;
   stgScale?: number;
   /** FU-018: TAESD/TAEHV preview-decode VAE swap. Preview-only

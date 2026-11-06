@@ -95,6 +95,13 @@ def _which_with_fallbacks(name: str) -> str | None:
 
 
 def _resolve_llama_server() -> str | None:
+    # A CUDA build the user installed from Setup (Linux + NVIDIA) wins over the
+    # bundled portable build, but only when it actually sees a CUDA device.
+    from backend_service.helpers import llama_cuda
+
+    cuda = llama_cuda.usable_binary()
+    if cuda:
+        return cuda
     override = os.getenv("CHAOSENGINE_LLAMA_SERVER")
     if override:
         return override

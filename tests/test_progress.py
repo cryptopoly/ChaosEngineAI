@@ -274,7 +274,7 @@ class ProgressEndpointTests(unittest.TestCase):
         snap = payload["progress"]
         self.assertEqual(snap["kind"], "image")
         self.assertFalse(snap["active"])
-        self.assertEqual(set(snap.keys()), _REQUIRED_SNAPSHOT_KEYS)
+        self.assertEqual(set(snap.keys()), _REQUIRED_SNAPSHOT_KEYS | {"queue"})
 
     def test_video_progress_endpoint_returns_idle_by_default(self):
         response = self.client.get("/api/video/progress")
@@ -284,7 +284,7 @@ class ProgressEndpointTests(unittest.TestCase):
         snap = payload["progress"]
         self.assertEqual(snap["kind"], "video")
         self.assertFalse(snap["active"])
-        self.assertEqual(set(snap.keys()), _REQUIRED_SNAPSHOT_KEYS)
+        self.assertEqual(set(snap.keys()), _REQUIRED_SNAPSHOT_KEYS | {"queue"})
 
     def test_image_progress_endpoint_reflects_live_singleton(self):
         # Drive the singleton the same way the runtime would — the endpoint

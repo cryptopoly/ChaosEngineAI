@@ -245,19 +245,19 @@ class ImageInputsTests(unittest.TestCase):
     def test_a_distilled_mflux_model_takes_neither_guidance_nor_a_negative_prompt(self):
         self.assertEqual(
             _image_variant_inputs({"engine": "mflux", "repo": "speridlabs/iris-3b"}),
-            {"acceptsGuidance": False, "acceptsNegativePrompt": False},
+            {"acceptsGuidance": False, "acceptsNegativePrompt": False, "maxReferenceImages": 0},
         )
 
     def test_qwen_image_takes_a_negative_prompt_but_no_guidance(self):
         self.assertEqual(
             _image_variant_inputs({"engine": "mflux", "repo": "Qwen/Qwen-Image-2.1"}),
-            {"acceptsGuidance": False, "acceptsNegativePrompt": True},
+            {"acceptsGuidance": False, "acceptsNegativePrompt": True, "maxReferenceImages": 1},
         )
 
     def test_other_engines_take_both(self):
         self.assertEqual(
             _image_variant_inputs({"repo": "stabilityai/stable-diffusion-xl-base-1.0"}),
-            {"acceptsGuidance": True, "acceptsNegativePrompt": True},
+            {"acceptsGuidance": True, "acceptsNegativePrompt": True, "maxReferenceImages": 0},
         )
 
 

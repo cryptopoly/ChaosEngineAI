@@ -118,12 +118,12 @@ export interface ChatModelsPageProps {
 
 const CHAT_GRID =
   "minmax(240px, 1.9fr) minmax(90px, 0.85fr) minmax(80px, 0.75fr) minmax(76px, 0.7fr) " +
-  "minmax(112px, 1fr) minmax(84px, 0.75fr) minmax(64px, 0.6fr) minmax(56px, 0.3fr) 240px";
+  "minmax(112px, 1fr) minmax(84px, 0.75fr) minmax(64px, 0.6fr) minmax(84px, 0.7fr) minmax(56px, 0.3fr) 240px";
 // Below 1440 px the Backend, Compressed and Context columns (3, 6, 7) are left out so the rest
 // fits at 1100 px.
 const CHAT_GRID_NARROW =
   "minmax(200px, 1.7fr) minmax(80px, 0.8fr) minmax(70px, 0.65fr) minmax(112px, 0.9fr) " +
-  "minmax(56px, 0.35fr) 232px";
+  "minmax(84px, 0.7fr) minmax(56px, 0.35fr) 232px";
 
 function directionLabel(dir: SortDir, t: TFunction<"library">): string {
   return dir === "asc"
@@ -480,6 +480,7 @@ export function ChatModelsPage({
     { id: "ram", label: t("myModels.column.ram", { defaultValue: "RAM" }), sortId: "ram" },
     { id: "compressed", label: t("myModels.column.compressed", { defaultValue: "Compressed" }), sortId: "compressed" },
     { id: "context", label: t("myModels.column.context", { defaultValue: "Context" }), sortId: "context" },
+    { id: "released", label: t("myModels.column.released", { defaultValue: "Released" }), sortId: "release" },
     { id: "status", label: t("myModels.column.status", { defaultValue: "Status" }), sortId: "status" },
   ];
 
@@ -616,6 +617,7 @@ export function ChatModelsPage({
         {source.compressedGb != null ? `~${number(source.compressedGb)} GB` : "?"}
       </span>,
       <>{source.contextWindow ?? ""}</>,
+      <>{entry.releaseLabel ?? "-"}</>,
     ];
 
     const { launch, overflow } = chatLaunchActions(entry, onOpenModelSelector, t);

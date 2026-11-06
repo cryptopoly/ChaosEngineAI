@@ -19,6 +19,7 @@ from backend_service.i18n import localized_detail
 
 from backend_service.routes.setup._install_helpers import (
     _CUDA_TORCH_INDEXES,
+    cuda_torch_indexes,
     _all_attempts_lack_wheel,
     _extras_site_packages,
     _purge_broken_distributions,
@@ -107,7 +108,7 @@ def install_cuda_torch(request: Request) -> dict[str, Any]:
     winning_output = ""
     winning_index: str | None = None
 
-    for index_url in _CUDA_TORCH_INDEXES:
+    for index_url in cuda_torch_indexes():
         state.add_log("server", "info", f"Installing CUDA torch from {index_url}")
         # Two-pass install into extras (via --target in _run_pip_install):
         #   Pass 1: --force-reinstall --no-deps swaps the torch wheel even

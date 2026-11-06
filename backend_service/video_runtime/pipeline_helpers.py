@@ -3,7 +3,7 @@
 Seven helpers lifted out of ``video_runtime/__init__.py``:
 
 * ``finalize_config`` — apply per-model defaults + frame alignment +
-  scheduler resolution + Phase E1 prompt enhancement + Phase E2 CFG
+  scheduler resolution + Phase E2 CFG
   decay note. Returns a frozen config + per-run notes.
 * ``swap_scheduler`` — replace the pipeline's scheduler class with the
   one named in ``_SCHEDULER_CLASSES``.
@@ -43,7 +43,6 @@ from backend_service.video_runtime.defaults import (
 from backend_service.video_runtime.repos import (
     PIPELINE_REGISTRY,
     _LTX_DEFAULT_NEGATIVE_PROMPT,
-    _enhance_prompt,
 )
 from backend_service.video_runtime.types import VideoGenerationConfig
 
@@ -94,15 +93,6 @@ def finalize_config(
             f"guidance_rescale=0.7."
         )
 
-    # Phase E1 — auto-enhance short prompts. Default-on; opt-out via
-    # config.enhancePrompt=False. Only fires below the word-count
-    # threshold so a long custom prompt is never modified.
-    enhanced_prompt = config.prompt
-    if config.enhancePrompt:
-        enhanced_prompt, enhance_note = _enhance_prompt(config.repo, config.prompt)
-        if enhance_note:
-            notes.append(enhance_note)
-
     # Phase E2 — CFG decay note. Only surfaces when decay actually
     # has somewhere to ramp (initial CFG > 1.5 — the floor that
     # keeps classifier-free guidance enabled throughout the loop).
@@ -119,7 +109,7 @@ def finalize_config(
     return (
         replace(
             config,
-            prompt=enhanced_prompt,
+            prompt=config.prompt,
             steps=steps,
             guidance=guidance,
             numFrames=aligned_frames,

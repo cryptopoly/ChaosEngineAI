@@ -147,6 +147,17 @@ export function LiveProgress({
         </div>
       )}
 
+      {realProgress?.queue?.waiting ? (
+        <div className="live-progress__subtitle">
+          {realProgress.queue.agentAhead
+            ? t("liveProgress.waitingForAgent", { defaultValue: "Waiting for an agent job to finish" })
+            : t("liveProgress.waitingInQueue", {
+                defaultValue: "Waiting for another job to finish (position {position})",
+                position: realProgress.queue.position,
+              })}
+        </div>
+      ) : null}
+
       <div className="live-progress__bar">
         <div
           className={`live-progress__bar-fill${overrunning ? " live-progress__bar-fill--indeterminate" : ""}`}

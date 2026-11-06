@@ -1,4 +1,5 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
+import { friendlyValidationDetail } from "./validationErrors";
 import type {
   AppSettings,
   BenchmarkRunPayload,
@@ -163,6 +164,8 @@ export async function readErrorDetail(response: Response, fallback: string): Pro
       } else {
         detail = JSON.stringify(errorBody.detail);
       }
+    } else if (friendlyValidationDetail(errorBody?.detail)) {
+      detail = friendlyValidationDetail(errorBody.detail) as string;
     } else if (errorBody?.detail) {
       detail = typeof errorBody.detail === "string" ? errorBody.detail : JSON.stringify(errorBody.detail);
     } else if (errorBody?.error) {
@@ -567,7 +570,6 @@ export {
 export {
   checkTorchUpgradeAvailable,
   checkTurboUpdate,
-  enhancePromptViaLLM,
   fetchGpuBundleInfo,
   getGpuBundleStatus,
   getLongLiveInstallStatus,
@@ -575,6 +577,8 @@ export {
   getMtplxStatus,
   getEmbeddingModelInstallStatus,
   getRagStatus,
+  getLlamaCudaInstallStatus,
+  getLlamaCudaStatus,
   getLtx2InstallStatus,
   getLtx2Status,
   getMfluxInstallStatus,
@@ -592,6 +596,7 @@ export {
   startEmbeddingModelInstall,
   startGpuBundleInstall,
   startLongLiveInstall,
+  startLlamaCudaInstall,
   startLtx2Install,
   startMfluxInstall,
   startMtplxInstall,
@@ -614,11 +619,12 @@ export type {
   MtplxAttempt,
   MtplxJobState,
   MtplxStatus,
-  PromptEnhanceResult,
   RagStatus,
   TensorfoldAttempt,
   TensorfoldExtra,
   Ltx2JobState,
+  LlamaCudaJobState,
+  LlamaCudaStatus,
   Ltx2Status,
   MfluxJobState,
   MfluxStatus,
@@ -646,12 +652,15 @@ export {
   fetchStorageChildren,
   fetchStorageTop,
   getModelMoveStatus,
+  getAgentAccess,
   getStorageSettings,
   reextractRuntime,
+  updateAgentAccess,
   startModelMove,
   updateHfCachePath,
 } from "./admin";
 export type {
+  AgentAccess,
   DiagnosticsLogTail,
   DiagnosticsSnapshot,
   ModelMoveJobState,

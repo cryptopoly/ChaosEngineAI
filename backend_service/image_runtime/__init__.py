@@ -985,7 +985,8 @@ class ImageRuntimeManager:
                 except GenerationCancelled:
                     raise
                 except Exception as exc:
-                    if config.repo in _NO_DIFFUSERS_PIPELINE:
+                    # Another engine would drop the reference image silently.
+                    if config.repo in _NO_DIFFUSERS_PIPELINE or config.referenceImagePaths:
                         raise
                     status = self._diffusers.probe()
                     note = (
@@ -997,7 +998,7 @@ class ImageRuntimeManager:
                 else:
                     _mflux_fallback_note = None
             else:
-                if config.repo in _NO_DIFFUSERS_PIPELINE:
+                if config.repo in _NO_DIFFUSERS_PIPELINE or config.referenceImagePaths:
                     raise RuntimeError(probe.get("reason") or "mflux unavailable")
                 _mflux_fallback_note = probe.get("reason") or "mflux unavailable"
         else:

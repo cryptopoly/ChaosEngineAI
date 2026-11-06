@@ -25,6 +25,10 @@ env:
 
 jobs:
   create-release:
+    # A pre-release tag (v0.9.10-beta.1) is published by hand as a GitHub
+    # pre-release from a Build run's packages; pushing it must not start the
+    # full release, which would attach every platform and a latest.json.
+    if: github.event_name == 'workflow_dispatch' || !contains(github.ref_name, '-')
     runs-on: ubuntu-22.04
     outputs:
       release_id: ${{ steps.find-or-create.outputs.result }}
@@ -117,6 +121,12 @@ jobs:
           - os: ubuntu-22.04
             platform: linux
             arch: x86_64
+            bundle_targets: appimage,deb
+          # Linux ARM64 (NVIDIA DGX Spark class). Same Ubuntu 22.04 baseline as
+          # the x86_64 job so the AppImage runs on the same glibc range.
+          - os: ubuntu-22.04-arm
+            platform: linux
+            arch: aarch64
             bundle_targets: appimage,deb
           - os: windows-latest
             platform: windows

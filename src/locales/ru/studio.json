@@ -8,7 +8,6 @@
     "recentOutputsTitle": "Недавние выводы",
     "prompt": "Промпт",
     "negativePrompt": "Негативный промпт",
-    "enhancePrompt": "Улучшить",
     "width": "Ширина",
     "height": "Высота",
     "steps": "Шаги",
@@ -126,12 +125,6 @@
     "title": "Дополнительно",
     "show": "Показать дополнительные настройки",
     "hide": "Скрыть дополнительные настройки"
-  },
-  "enhance": {
-    "label": "Улучшить",
-    "busy": "Улучшение...",
-    "tooltip": "Улучшить этот промпт локально",
-    "error": "Ошибка улучшителя: {message}"
   },
   "runtimeBanner": {
     "loadingModel": "Загрузка модели в память...",
@@ -479,10 +472,6 @@
       "ltxRefiner": {
         "label": "LTX двухэтапное пространственное увеличение",
         "tooltip": "Рендерит базовый сэмпл в запрошенном разрешении, затем уточняет через Lightricks/LTX-Video-0.9.5-spatial-upscaler в 2× пространственном разрешении. Бюджет кадров растёт ~1.5×. Резче микродетализация и чище границы движения; по умолчанию выключено, потому что удар по времени реален."
-      },
-      "enhancePrompt": {
-        "label": "Авто-улучшение коротких промптов",
-        "tooltip": "Добавляет настроенные под модель структурные подсказки (кинематографические дескрипторы, освещение, направление камеры), когда промпт меньше 25 слов. Видеомодели диффузии обучаются на промптах 50–100 слов и недоформируют условия на коротких входах. Длинные пользовательские промпты передаются дословно — порог служит защитой."
       },
       "cfgDecay": {
         "label": "Затухание CFG",
@@ -904,5 +893,27 @@
       "previewVae": "Предпросмотровый VAE",
       "fp8LayerwiseCasting": "FP8 послойно"
     }
+  },
+  "inputImage": {
+    "chooseFile": null,
+    "fromGallery": null,
+    "remove": null,
+    "pickFailed": null,
+    "referenceLabel": null,
+    "referenceLabelMany": null,
+    "referenceHintOne": null,
+    "referenceHintMany": null,
+    "strength": null,
+    "startLabel": null,
+    "startHint": null,
+    "endLabel": null,
+    "endHint": null
+  },
+  "sizePresets": {
+    "aspect": null,
+    "size": null,
+    "resolution": null,
+    "overLimit": null,
+    "current": null
   }
 }

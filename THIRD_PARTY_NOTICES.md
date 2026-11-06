@@ -385,6 +385,22 @@ environment, `~/.chaosengine/voice-venv`; not bundled with the app. Run by
   — Apache-2.0. ONNX file from `csukuangfj/speaker-embedding-models`,
   downloaded at a pinned revision.
 
+### imageio-ffmpeg and its ffmpeg binary (joining, mixing, tagging)
+
+- **Upstream:** <https://github.com/imageio/imageio-ffmpeg> (the Python wrapper) and <https://ffmpeg.org> (the program).
+- **Licence of the wrapper:** BSD-2-Clause.
+- **Licence of the binary it downloads or ships:** the macOS build we checked (ffmpeg 7.1, `ffmpeg-macos-aarch64-v7.1`)
+  reports `--enable-gpl` with `libx264` and `libx265`, so the binary as a whole is licensed under the
+  **GNU General Public License, version 2 or later**, not the LGPL. The build is the one imageio-ffmpeg 0.6.0
+  provides; its configuration line is printed by `ffmpeg -version`.
+- **Source:** FFmpeg source for the same version is at <https://ffmpeg.org/releases/>; x264 and x265 sources are at
+  <https://code.videolan.org/videolan/x264> and <https://bitbucket.org/multicoreware/x265_git>. On request we will
+  provide the exact corresponding source offer for the binary shipped with a given release (open an issue).
+- **Usage:** run as a separate program (never linked into our code) to write metadata into outputs and, in
+  planned releases, to join and mix clips. Calling it as a separate program keeps our own code under its own licence.
+- **Status:** this entry was added on 2026-11-06 after the notice was found to be missing (decision D-35 chooses between
+  keeping the GPL build with this notice and moving to an LGPL build).
+
 ### PyAV (audio decoding)
 
 - **Upstream:** <https://github.com/PyAV-Org/PyAV>

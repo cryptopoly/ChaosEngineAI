@@ -8,7 +8,6 @@
     "recentOutputsTitle": "Aktuelle Ausgaben",
     "prompt": "Prompt",
     "negativePrompt": "Negativer Prompt",
-    "enhancePrompt": "Verbessern",
     "width": "Breite",
     "height": "Höhe",
     "steps": "Schritte",
@@ -126,12 +125,6 @@
     "title": "Erweitert",
     "show": "Erweiterte Einstellungen anzeigen",
     "hide": "Erweiterte Einstellungen ausblenden"
-  },
-  "enhance": {
-    "label": "Verbessern",
-    "busy": "Wird verbessert...",
-    "tooltip": "Diesen Prompt lokal verbessern",
-    "error": "Enhancer-Fehler: {message}"
   },
   "runtimeBanner": {
     "loadingModel": "Modell wird in den Speicher geladen...",
@@ -479,10 +472,6 @@
       "ltxRefiner": {
         "label": "LTX zweistufiges räumliches Upscaling",
         "tooltip": "Rendert das Basis-Sample bei der angeforderten Auflösung und verfeinert dann über Lightricks/LTX-Video-0.9.5-spatial-upscaler bei 2× räumlicher Auflösung. Frame-Budget wächst ~1,5×. Schärfere Mikro-Details und sauberere Bewegungskanten; standardmäßig aus, weil der Geschwindigkeitsverlust real ist."
-      },
-      "enhancePrompt": {
-        "label": "Kurze Prompts automatisch verbessern",
-        "tooltip": "Hängt modell-abgestimmte strukturelle Hinweise an (cinematische Deskriptoren, Beleuchtung, Kameraführung), wenn der Prompt unter 25 Wörtern liegt. Diffusion-Videomodelle werden auf 50-100-Wörter-Prompts trainiert und sind bei kürzeren Eingaben unterkonditioniert. Lange benutzerdefinierte Prompts werden wortwörtlich gesendet — die Schwelle ist die Schutzmaßnahme."
       },
       "cfgDecay": {
         "label": "CFG-Decay",
@@ -904,5 +893,27 @@
       "previewVae": "Preview-VAE",
       "fp8LayerwiseCasting": "FP8 layerwise"
     }
+  },
+  "inputImage": {
+    "chooseFile": null,
+    "fromGallery": null,
+    "remove": null,
+    "pickFailed": null,
+    "referenceLabel": null,
+    "referenceLabelMany": null,
+    "referenceHintOne": null,
+    "referenceHintMany": null,
+    "strength": null,
+    "startLabel": null,
+    "startHint": null,
+    "endLabel": null,
+    "endHint": null
+  },
+  "sizePresets": {
+    "aspect": null,
+    "size": null,
+    "resolution": null,
+    "overLimit": null,
+    "current": null
   }
 }

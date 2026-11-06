@@ -14,7 +14,7 @@ export const KNOWN_INSTALLABLE_VIDEO_DEPS: ReadonlySet<string> = new Set([
 // Repos the mlx-video Apple Silicon engine supports natively. Mirrors
 // _SUPPORTED_REPOS in backend_service/mlx_video_runtime.py — kept here
 // so the Studio can decide when to surface the mlx-video chip without
-// an extra capabilities round-trip. See FU-009 in CLAUDE.md.
+// an extra capabilities round-trip. See FU-009 in FOLLOW_UPS.md.
 //
 // Today: LTX-2 prince-canuma pre-converted MLX repos only. Wan2.1/2.2
 // require an explicit ``mlx_video.models.wan_2.convert`` step on raw HF

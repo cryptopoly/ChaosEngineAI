@@ -13,6 +13,7 @@ import uvicorn
 
 from backend_service.app import create_app
 from backend_service.mcp_bridge import access
+from backend_service.mcp_bridge.tools import TOOLS
 
 CLI = Path(__file__).resolve().parents[1] / "scripts" / "chaosengine-cli"
 LINES = [
@@ -66,7 +67,7 @@ class McpRelayTests(unittest.TestCase):
         self.assertTrue(server.started)
 
         off = relay(port)
-        self.assertEqual(len(off[1]["result"]["tools"]), 12)
+        self.assertEqual(len(off[1]["result"]["tools"]), len(TOOLS))
         self.assertIn("Agent access is off", off[2]["result"]["content"][0]["text"])
 
         access.set_enabled(True)

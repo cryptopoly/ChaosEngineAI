@@ -297,7 +297,7 @@ def generate(
     ``request`` keys: model, caption, lyrics, instrumental, seconds, variations, bpm, key, seed,
     vocalLanguage, timeSignature, title, source. ``progress`` is a ``ProgressTracker``.
     """
-    from backend_service.music_client import generate_timeout_s, get_worker
+    from backend_service.music_client import generate_timeout_s, get_worker, stall_limits
 
     variant = resolve_variant(request.get("model"))
     _prepare(variant)
@@ -328,7 +328,8 @@ def generate(
     try:
         reply = worker.request(
             "generate",
-            timeout=generate_timeout_s(seconds, variations),
+            timeout=generate_timeout_s(seconds, variations, variant["id"]),
+            stall_limits=stall_limits(seconds, variations, variant["id"]),
             on_event=on_event,
             cancel_check=cancel_check,
             job=job,

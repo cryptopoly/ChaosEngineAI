@@ -278,6 +278,7 @@ def warm_worker_wanted() -> bool:
 
     return (
         warm_workers_enabled()
+        and os.environ.get("CHAOSENGINE_WARM_LTX", "").strip().lower() in ("1", "true", "yes", "on")  # opt-in: ~4 % per clip for 12 GB held (D-43 measurement)
         and total_memory_gb() >= WARM_MIN_MEMORY_GB
         and _WORKER_SCRIPT.exists()
         and can_start(_WORKER, WARM_START_AVAILABLE_GB)

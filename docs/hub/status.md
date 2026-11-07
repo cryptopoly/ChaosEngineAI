@@ -9,6 +9,21 @@ summary: Read this first in every session.
 
 Newest dated update first. Each update has the same sections: Done, Open for Claude, Open for Dan.
 
+## Update 2026-11-07, music backend (P1) on `feat/music-backend`
+
+**Done** (not pushed; backend only, the Music screens are P2)
+
+- **ACE-Step 1.5 wired end to end:** catalog rows (turbo default, XL opt-in for 64 GB Macs) with licence, makes, platforms and the spike's measured estimates; fit for kind `music`; isolated music venv with plain pip and the pinned commit; JSON-lines worker with real step progress, cooperative cancel and a 3 s hard kill; Music Library with FLAC 24-bit tags (`machine_generated`, D-34 switch `musicEmbedTag`); routes on the shared queue with a memory gate; `make_music` agent tool (18 tools); E2E phase 11. See [music](https://github.com/cryptopoly/ChaosEngineAI/blob/feat/music-backend/docs/features/music.md).
+- **Real check on this Mac** (spike venv and weights): 30 s instrumental 2.8 s warm (11 s cold), 60 s song with lyrics 5.1 s at 22.9 GB peak, 2 x 60 s in 10.6 s, cancel in diffusion 1.5 s (worker kept) and in decode 3.4 s (worker stopped, next run byte-identical), music and an image job ran one after the other, idle stop freed 15.6 GB.
+
+**Open for Claude:** the Music UI (P2); the CUDA lane (FU-139).
+
+**Open for Dan**
+
+- `pytorch-wavelets` licence (FU-138): its PyPI page says "Free To Use But Restricted" although the parts ACE-Step uses are MIT. Read its LICENSE before a release ships the music pack.
+- Keep the library's -1 dBFS peak normalisation for stand-alone tracks (current default), or write the raw level and leave loudness to the mixer?
+- Listen to the real-check tracks (lyrics, BPM, key); quality was not judged by ear.
+
 ## Update 2026-11-06 (overnight), home studio build on `feat/home-studio`
 
 **Done** (all merged into `feat/home-studio`, pushed, full suite 2693 passed)

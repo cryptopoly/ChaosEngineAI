@@ -1,6 +1,5 @@
-import { useTranslation } from "react-i18next";
-import { Panel } from "../components/Panel";
 import { BoardTab } from "../features/storyboard/BoardTab";
+import { MixerTab } from "../features/storyboard/mixer/MixerTab";
 import { ProjectsTab } from "../features/storyboard/ProjectsTab";
 import { writeOpenProjectId } from "../features/storyboard/storyboardLogic";
 import { useStoryboard } from "../features/storyboard/useStoryboard";
@@ -40,16 +39,15 @@ export function StoryBoardView({ ctx }: { ctx: AppTabContext }) {
   );
 }
 
-/** The Mixer is built separately; until then this tab says what is coming. */
-export function StoryMixerView(_props: { ctx: AppTabContext }) {
-  const { t } = useTranslation("common");
+export function StoryMixerView({ ctx }: { ctx: AppTabContext }) {
+  const story = useStoryboard(ctx.backendOnline);
   return (
-    <div className="content-grid">
-      <Panel title={t("tabs.storyMixer", { defaultValue: "Mixer" })} className="span-2">
-        <div className="empty-state">
-          <p className="muted-text">{t("comingSoon.storyboard", { defaultValue: "Storyboard is coming soon." })}</p>
-        </div>
-      </Panel>
-    </div>
+    <MixerTab
+      backendOnline={ctx.backendOnline}
+      story={story}
+      dataDirectory={ctx.settings.settingsDraft.dataDirectory}
+      onOpenProjects={() => void ctx.setActiveTab("story-projects")}
+      onOpenBoard={() => void ctx.setActiveTab("story-board")}
+    />
   );
 }

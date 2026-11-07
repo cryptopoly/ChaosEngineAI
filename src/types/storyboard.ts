@@ -180,8 +180,28 @@ export interface StoryboardBatchStatus {
   revision: number;
 }
 
-/** One render job as the backend describes it (the Mixer reads the fields it needs). */
-export type StoryboardRenderJob = Record<string, unknown>;
+export type StoryboardRenderState = "running" | "done" | "failed" | "cancelled";
+
+/** One render job as the backend describes it (`RenderJob.describe`). */
+export interface StoryboardRenderJob {
+  renderId: string;
+  projectId: string;
+  preview: boolean;
+  state: StoryboardRenderState;
+  /** 0 to 1. */
+  progress: number;
+  /** The assembler's current stage: shots, join, measure or mix. */
+  message: string;
+  /** Project-relative path of the finished film (`exports/...`), when done. */
+  file?: string;
+  error?: string;
+}
+
+/** Waveform peaks of one project file: 0 to 1 per bucket (empty when the file has no sound). */
+export interface StoryboardPeaks {
+  peaks: number[];
+  durationS: number;
+}
 
 export interface StoryboardShotFields {
   title?: string;

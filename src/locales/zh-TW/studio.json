@@ -1200,5 +1200,136 @@
     "offline": null,
     "pathPlaceholder": null,
     "pickUnavailable": null
+  },
+  "mixer": {
+    "add": {
+      "cloned": null
+    },
+    "addAudioTo": null,
+    "addButton": null,
+    "addFromLibrary": null,
+    "block": {
+      "ariaLabel": null
+    },
+    "board": null,
+    "captions": {
+      "burnIn": null,
+      "label": null,
+      "soon": null,
+      "srt": null
+    },
+    "clip": {
+      "ariaLabel": null,
+      "missing": null,
+      "reading": null,
+      "relink": null
+    },
+    "crossfade": null,
+    "empty": null,
+    "export": {
+      "button": null,
+      "cancel": null,
+      "cancelled": null,
+      "copied": null,
+      "copiedShort": null,
+      "copyPath": null,
+      "details": null,
+      "done": null,
+      "download": null,
+      "exporting": null,
+      "failedShort": null,
+      "loudness": null,
+      "loudnessHint": null,
+      "loudnessOff": null,
+      "phase": {
+        "encode": null,
+        "join": null,
+        "mix": null,
+        "normalise": null
+      },
+      "pixels": null,
+      "preset": {
+        "landscape": null,
+        "portrait": null,
+        "square": null
+      },
+      "reframeNote": null,
+      "retry": null,
+      "reveal": null,
+      "shape": null,
+      "title": null
+    },
+    "importAudio": null,
+    "importAudioPath": null,
+    "inspector": {
+      "absolute": null,
+      "anchor": null,
+      "anchorShot": null,
+      "anchorSummary": null,
+      "anchorTo": null,
+      "duck": null,
+      "duckTitle": null,
+      "empty": null,
+      "fadeIn": null,
+      "fadeOut": null,
+      "gain": null,
+      "loop": null,
+      "name": null,
+      "nativeLevel": null,
+      "offset": null,
+      "remove": null,
+      "shotSpan": null,
+      "shotTitle": null,
+      "start": null,
+      "title": null,
+      "trim": null,
+      "trimIn": null,
+      "trimOut": null
+    },
+    "lane": {
+      "music": null,
+      "native": null,
+      "picture": null,
+      "sfx": null,
+      "voice": null
+    },
+    "leftOut": null,
+    "noLibraryYet": null,
+    "noProjectTitle": null,
+    "openBoard": null,
+    "openOnBoard": null,
+    "preview": {
+      "cancel": null,
+      "failed": null,
+      "none": null,
+      "render": null,
+      "rendering": null,
+      "stale": null
+    },
+    "relinkFor": null,
+    "ruler": null,
+    "subtitle": null,
+    "timeline": null,
+    "title": null,
+    "transitionsNote": null,
+    "transport": {
+      "keys": null,
+      "label": null,
+      "loop": null,
+      "needPreview": null,
+      "pause": null,
+      "play": null,
+      "stop": null,
+      "timeOf": null,
+      "zoomIn": null,
+      "zoomOut": null
+    }
+  },
+  "aiLabel": {
+    "endCard": null,
+    "forced": null,
+    "metadata": null,
+    "metadataTitle": null,
+    "title": null
   }
 }

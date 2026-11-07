@@ -1138,7 +1138,37 @@
       "loaded": null,
       "notInstalled": null
     },
-    "title": null
+    "title": null,
+    "studioMode": {
+      "label": null,
+      "music": null,
+      "sounds": null
+    },
+    "sounds": {
+      "loopBadge": null,
+      "needLicence": null,
+      "needDownload": null,
+      "needTextEncoder": null,
+      "needPack": null,
+      "prompt": null,
+      "placeholder": null,
+      "english": null,
+      "loop": null,
+      "make": null,
+      "making": null,
+      "running": null,
+      "empty": null,
+      "issue": {
+        "captionEmpty": null,
+        "captionTooLong": null,
+        "secondsRange": null
+      },
+      "error": {
+        "memory": null,
+        "invalid": null,
+        "generic": null
+      }
+    }
   },
   "audioPlayer": {
     "timeOf": null
@@ -1582,7 +1612,8 @@
       "repo": null,
       "requires": null,
       "size": null,
-      "speed": null
+      "speed": null,
+      "attribution": null
     },
     "downloadFailed": null,
     "downloadStatusLost": null,
@@ -1635,7 +1666,15 @@
       "statusSummary": null
     },
     "title": null,
-    "unavailable": null
+    "unavailable": null,
+    "sounds": {
+      "pack": {
+        "failedTitle": null,
+        "title": null,
+        "body": null,
+        "install": null
+      }
+    }
   },
   "videoTools": {
     "title": null,

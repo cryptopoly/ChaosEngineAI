@@ -18,6 +18,11 @@ export interface MusicLicence {
   gated: boolean;
   summaryLines?: string[];
   url?: string;
+  /** A line the licence asks you to show where the sounds are shared ("Powered by Stability AI"). */
+  attribution?: string;
+  /** Yearly revenue (US$) above which the free commercial licence ends. */
+  revenueCapUsd?: number;
+  note?: string;
 }
 
 export interface MusicEstimates {
@@ -44,6 +49,10 @@ export interface MusicDefaultSettings {
 
 export interface MusicModelVariant {
   id: string;
+  /** `sound` rows (Stable Audio Open) make short effects and loops in the Studio's Sounds mode. */
+  kind?: "music" | "sound";
+  /** Which pack runs it: the music pack by default, or the separate sounds pack. */
+  pack?: "music" | "sound";
   familyId: string;
   familyName?: string;
   name: string;
@@ -74,12 +83,14 @@ export interface MusicModelVariant {
   availableLocally?: boolean;
   missingRequires?: string[];
   packInstalled?: boolean;
+  textEncoderReady?: boolean;
   ready?: boolean;
   fit?: ModelFit;
 }
 
 export interface MusicModelFamily {
   id: string;
+  kind?: "music" | "sound";
   name: string;
   provider: string;
   headline?: string;
@@ -112,7 +123,19 @@ export interface MusicSettings {
   idleUnloadMinutes: number;
 }
 
+/** The sounds pack and worker (Stable Audio Open), reported next to the music ones. */
+export interface MusicSoundRuntime {
+  lane: string;
+  unavailableReason: string | null;
+  installed: boolean;
+  engine: string;
+  workerRunning: boolean;
+  loadedModel: string | null;
+  install: MusicInstallJob;
+}
+
 export interface MusicRuntimeStatus {
+  sound?: MusicSoundRuntime;
   lane: string;
   unavailableReason: string | null;
   installed: boolean;
@@ -179,9 +202,23 @@ export interface MusicGeneratePayload {
   title?: string | null;
 }
 
+export interface MusicSoundPayload {
+  modelId?: string | null;
+  caption: string;
+  seconds: number;
+  loop?: boolean;
+  variations?: 1 | 2 | 4;
+  seed?: number | null;
+  title?: string | null;
+}
+
 export interface MusicLibraryItem {
   id: string;
   kind: "track" | "sound";
+  /** Sounds only: made as a seamless loop. */
+  loop?: boolean;
+  /** Sounds only: the licence and attribution line of the model that made it. */
+  licence?: string;
   title: string;
   caption: string;
   lyrics: string;

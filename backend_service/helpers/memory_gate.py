@@ -403,6 +403,7 @@ def gate_music_generation(
     model_name: str | None = None,
     large: bool = False,
     max_pressure_percent: float = MUSIC_MAX_PRESSURE_PERCENT,
+    noun: str = "music",
 ) -> dict[str, Any] | None:
     """Pre-flight check for a music generation. Returns a refusal (``code``, ``message``, ``fix``) or None.
 
@@ -421,7 +422,7 @@ def gate_music_generation(
         return {
             "code": "memory_gate_music_low_available",
             "message": (
-                f"{label} needs about {need:.0f} GB of free memory to make music, but only "
+                f"{label} needs about {need:.0f} GB of free memory to make {noun}, but only "
                 f"{available_gb:.1f} GB is available. {fix}"
             ),
             "fix": "use-turbo" if large else "unload-models",
@@ -432,7 +433,7 @@ def gate_music_generation(
         return {
             "code": "memory_gate_music_high_pressure",
             "message": (
-                f"Memory pressure is {pressure_percent:.0f}%; making music now would risk swapping. "
+                f"Memory pressure is {pressure_percent:.0f}%; making {noun} now would risk swapping. "
                 "Unload a model or close other apps, then try again."
             ),
             "fix": "unload-models",

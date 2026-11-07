@@ -13186,6 +13186,17 @@ button.licence-chip:focus-visible {
   flex-wrap: wrap;
   align-self: flex-start;
 }
+.music-studio__studio-modes {
+  flex-wrap: wrap;
+}
+.music-studio__loop {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 8px;
+  font-size: 0.9rem;
+  color: var(--muted-strong);
+}
 .music-studio__field {
   display: flex;
   flex-direction: column;

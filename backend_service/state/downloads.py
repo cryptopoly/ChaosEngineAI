@@ -57,6 +57,7 @@ from backend_service.helpers.video import (
 )
 from backend_service.helpers.music import (
     music_download_validation_error,
+    music_repo_allow_patterns,
     music_repo_revision,
 )
 from backend_service.state._helpers import _read_text_tail, _spawn_snapshot_download
@@ -132,6 +133,7 @@ def start_download(
         allow_patterns
         or _video_repo_allow_patterns(repo)
         or _image_repo_allow_patterns(repo)
+        or music_repo_allow_patterns(repo)
         or text_patterns
     )
     downloaded_gb = _bytes_to_gb(_hf_repo_downloaded_bytes(repo, scope_patterns))
@@ -211,6 +213,7 @@ def start_download(
                 effective_allow_patterns = allow_patterns or (
                     _video_repo_allow_patterns(repo)
                     or _image_repo_allow_patterns(repo)
+                    or music_repo_allow_patterns(repo)
                     or text_patterns
                 )
                 # Leave out stale shard sets no index file uses (38 GB on
@@ -507,6 +510,7 @@ def cancel_download(state: ChaosEngineState, repo: str) -> dict[str, Any]:
     scope_patterns = (
         _video_repo_allow_patterns(repo)
         or _image_repo_allow_patterns(repo)
+        or music_repo_allow_patterns(repo)
         or text_repo_allow_patterns(repo)
     )
     downloaded_gb = _bytes_to_gb(_hf_repo_downloaded_bytes(repo, scope_patterns))

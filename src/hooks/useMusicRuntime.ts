@@ -7,15 +7,18 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   cancelMusicDownload,
   cancelMusicInstall,
+  cancelSoundInstall,
   deleteMusicDownload,
   downloadMusicModel,
   getMusicCatalog,
   getMusicDownloadStatus,
   getMusicInstallStatus,
   getMusicRuntime,
+  getSoundInstallStatus,
   saveMusicEmbedTag,
   saveMusicSettings,
   startMusicInstall,
+  startSoundInstall,
 } from "../api";
 import type { DownloadStatus } from "../api";
 import type { MusicInstallJob, MusicModelFamily, MusicRuntimeStatus } from "../types";
@@ -35,6 +38,7 @@ export function useMusicRuntime(backendOnline: boolean, setErrorProp: (message: 
   const [runtime, setRuntime] = useState<MusicRuntimeStatus | null>(null);
   const [downloads, setDownloads] = useState<Record<string, DownloadStatus>>({});
   const [installJob, setInstallJob] = useState<MusicInstallJob | null>(null);
+  const [soundInstallJob, setSoundInstallJob] = useState<MusicInstallJob | null>(null);
   const [catalogLoaded, setCatalogLoaded] = useState(false);
   const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
   const downloadingRef = useRef(false);
@@ -46,6 +50,7 @@ export function useMusicRuntime(backendOnline: boolean, setErrorProp: (message: 
       const next = await getMusicRuntime();
       setRuntime(next);
       setInstallJob((previous) => (previous?.running ? previous : next.install));
+      if (next.sound) setSoundInstallJob((previous) => (previous?.running ? previous : next.sound?.install ?? null));
     } catch (err) {
       setError(message(err));
     }
@@ -141,8 +146,12 @@ export function useMusicRuntime(backendOnline: boolean, setErrorProp: (message: 
     return () => window.clearInterval(timer);
   }, [installRunning, refreshMusicData]);
 
-  const variants = useMemo(() => flattenVariants(families), [families]);
-  const defaultVariant = useMemo(() => pickDefaultVariant(families), [families]);
+  // Sound rows (Stable Audio Open) have their own mode, pack and model picker: the music lists leave them out.
+  const musicFamilies = useMemo(() => families.filter((family) => family.kind !== "sound"), [families]);
+  const soundVariants = useMemo(() => flattenVariants(families.filter((family) => family.kind === "sound")), [families]);
+  const soundVariant = soundVariants[0] ?? null;
+  const variants = useMemo(() => flattenVariants(musicFamilies), [musicFamilies]);
+  const defaultVariant = useMemo(() => pickDefaultVariant(musicFamilies), [musicFamilies]);
   const selectedVariant = useMemo(
     () => variants.find((variant) => variant.id === selectedModelId) ?? defaultVariant,
     [variants, selectedModelId, defaultVariant],
@@ -151,6 +160,37 @@ export function useMusicRuntime(backendOnline: boolean, setErrorProp: (message: 
     () => variants.filter((variant) => variant.availableLocally && (variant.missingRequires ?? []).length === 0),
     [variants],
   );
+
+  // Poll the sounds pack install while it runs, like the music pack's.
+  const soundInstallRunning = Boolean(soundInstallJob?.running);
+  useEffect(() => {
+    if (!soundInstallRunning) return;
+    const timer = window.setInterval(() => {
+      void getSoundInstallStatus()
+        .then((job) => {
+          setSoundInstallJob(job);
+          if (!job.running) void refreshMusicData();
+        })
+        .catch(() => undefined);
+    }, INSTALL_POLL_MS);
+    return () => window.clearInterval(timer);
+  }, [soundInstallRunning, refreshMusicData]);
+
+  const startSoundPackInstall = useCallback(async () => {
+    try {
+      setSoundInstallJob(await startSoundInstall());
+    } catch (err) {
+      setError(message(err));
+    }
+  }, [setError]);
+
+  const cancelSoundPackInstall = useCallback(async () => {
+    try {
+      setSoundInstallJob(await cancelSoundInstall());
+    } catch (err) {
+      setError(message(err));
+    }
+  }, [setError]);
 
   const startInstall = useCallback(async () => {
     try {
@@ -241,6 +281,11 @@ export function useMusicRuntime(backendOnline: boolean, setErrorProp: (message: 
     downloads,
     downloadPollError,
     installJob,
+    soundInstallJob,
+    soundVariants,
+    soundVariant,
+    startSoundPackInstall,
+    cancelSoundPackInstall,
     catalogLoaded,
     selectedModelId,
     setSelectedModelId,

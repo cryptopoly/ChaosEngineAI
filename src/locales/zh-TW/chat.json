@@ -413,8 +413,8 @@
     "copy": "複製"
   },
   "busy": {
-    "slowerTitle": null,
-    "riskyTitle": null,
-    "dismiss": null
+    "slowerTitle": "裝置正忙",
+    "riskyTitle": "兩者的記憶體不足",
+    "dismiss": "關閉"
   }
 }

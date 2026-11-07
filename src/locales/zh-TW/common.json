@@ -37,12 +37,12 @@
     "voiceModels": "語音模型",
     "voiceLibrary": "語音資料庫",
     "chatModels": "對話模型",
-    "musicModels": null,
-    "musicStudio": null,
-    "musicLibrary": null,
-    "storyProjects": null,
-    "storyBoard": null,
-    "storyMixer": null
+    "musicModels": "音樂模型",
+    "musicStudio": "音樂工作室",
+    "musicLibrary": "音樂庫",
+    "storyProjects": "專案",
+    "storyBoard": "分鏡板",
+    "storyMixer": "混音台"
   },
   "tabCaptions": {
     "dashboard": "系統概覽",
@@ -74,12 +74,12 @@
     "chatModels": "尋找、下載並管理語言模型",
     "imageModelsPage": "尋找、下載並管理影像模型",
     "videoModelsPage": "尋找、下載並管理影片模型",
-    "musicModels": null,
-    "musicStudio": null,
-    "musicLibrary": null,
-    "storyProjects": null,
-    "storyBoard": null,
-    "storyMixer": null
+    "musicModels": "尋找、下載及管理音樂與音效模型",
+    "musicStudio": "製作曲目和音效",
+    "musicLibrary": "你製作的曲目和音效",
+    "storyProjects": "你的影片，每部一個資料夾",
+    "storyBoard": "鏡頭、版本和提示詞",
+    "storyMixer": "畫面、聲音和匯出"
   },
   "tabShortLabels": {
     "chat": "對話",
@@ -105,11 +105,11 @@
     "voiceModels": "我的模型",
     "voiceLibrary": "資料庫",
     "models": "模型",
-    "musicStudio": null,
-    "musicLibrary": null,
-    "storyProjects": null,
-    "storyBoard": null,
-    "storyMixer": null
+    "musicStudio": "工作室",
+    "musicLibrary": "庫",
+    "storyProjects": "專案",
+    "storyBoard": "分鏡板",
+    "storyMixer": "混音台"
   },
   "tabGroups": {
     "chat": "對話",
@@ -119,8 +119,8 @@
     "benchmarks": "基準測試",
     "tools": "工具",
     "voice": "語音",
-    "music": null,
-    "storyboard": null
+    "music": "音樂",
+    "storyboard": "分鏡"
   },
   "tabsCount": "{count, plural, other {# 個分頁}}",
   "sidebar": {
@@ -129,8 +129,8 @@
     "noModelLoaded": "未載入模型",
     "groupTabsAriaLabel": "{group} 分頁",
     "primaryNavAriaLabel": "主導覽",
-    "sectionMake": null,
-    "sectionRun": null
+    "sectionMake": "創作",
+    "sectionRun": "執行"
   },
   "slashCommands": {
     "menuAriaLabel": "斜線命令"
@@ -685,8 +685,8 @@
     "thumbnailAlt": "即時去噪預覽",
     "thumbnailCaption": "即時預覽 · TAESD 解碼",
     "stepCounter": "第 {current} / {total} 步",
-    "waitingForAgent": null,
-    "waitingInQueue": null,
+    "waitingForAgent": "正在等待代理程式工作完成",
+    "waitingInQueue": "正在等待另一項工作完成（第 {position} 位）",
     "inProgress": "進行中…",
     "finalizing": "正在完成…",
     "phaseTiming": "{elapsed} 秒 / 約 {estimated} 秒"
@@ -852,8 +852,8 @@
       "sidebarTabsHelp": "保持側邊欄精簡:群組像單一按鈕一樣運作,點擊跳至上次使用的分頁,內容上方有子分頁列。",
       "uiScaleAria": "UI 縮放",
       "uiScaleHelp": "UI 縮放會立即改變應用程式介面的密度。媒體預覽會保留自身的長寬比尺寸。",
-      "keepGroupsOpen": null,
-      "keepGroupsOpenHelp": null
+      "keepGroupsOpen": "保持所有側邊欄群組展開",
+      "keepGroupsOpenHelp": "預設關閉：只有你正在使用的群組保持展開。開啟後所有群組都會展開。"
     },
     "dataDirectory": {
       "title": "資料目錄",
@@ -909,23 +909,23 @@
       "helpText": "儲存於本地。MLX 轉換從 Hugging Face 取得受管制模型時會使用。"
     },
     "agentAccess": {
-      "title": null,
-      "subtitle": null,
-      "switch": null,
-      "hint": null,
-      "claudeCode": null,
-      "stdio": null,
-      "otherClients": null,
-      "rotate": null,
-      "rotateHint": null,
-      "permissions": null,
-      "permissionsHint": null,
-      "scopeClone": null,
-      "remoteClone": null,
-      "readTokenMake": null,
-      "readTokenRemove": null,
-      "readTokenHint": null,
-      "readTokenLabel": null
+      "title": "代理程式存取",
+      "subtitle": "允許 AI 代理程式（Claude Code、Cursor 等）在此產生影像、影片、語音和轉錄文字。",
+      "switch": "允許代理程式使用 ChaosEngineAI",
+      "hint": "預設關閉。代理程式一次只執行一個工作，只能在這台電腦上使用，並且需要下方的權杖。它們只能使用你已下載的模型。",
+      "claudeCode": "Claude Code",
+      "stdio": "只能啟動本機程式的用戶端（stdio）",
+      "otherClients": "其他 MCP 用戶端（JSON）",
+      "rotate": "產生新權杖",
+      "rotateHint": "舊權杖會立即失效。代理程式需要使用新的那一行。",
+      "permissions": "權限",
+      "permissionsHint": "主權杖可以讀取、產生內容和移動檔案。除非你勾選，否則沒有其他權限。",
+      "scopeClone": "允許聲音複製",
+      "remoteClone": "同時允許從其他電腦進行複製",
+      "readTokenMake": "產生唯讀權杖",
+      "readTokenRemove": "移除唯讀權杖",
+      "readTokenHint": "用於儀表板或監看程式：可以查看狀態和工作，但不能建立或變更任何內容。",
+      "readTokenLabel": "唯讀權杖（Claude Code）"
     },
     "integrations": {
       "title": "整合",
@@ -973,7 +973,7 @@
     "emptyState": "沒有模型符合您的搜尋。",
     "launchSettings": "啟動設定",
     "cancelButton": "取消",
-    "busyConfirm": null
+    "busyConfirm": "仍然載入"
   },
   "modelPicker": {
     "weightFileTitle": "選擇權重檔案: {name}",
@@ -1297,33 +1297,33 @@
     "files": "在「檔案」中顯示"
   },
   "comingSoon": {
-    "music": null,
-    "storyboard": null
+    "music": "音樂功能即將推出。",
+    "storyboard": "分鏡功能即將推出。"
   },
   "llamaCuda": {
-    "description": null,
-    "inUse": null,
-    "install": null,
-    "installedNoDevice": null,
-    "notInstalled": null,
-    "reinstall": null,
-    "title": null
+    "description": "使用 CUDA {cuda} 在你的 NVIDIA GPU 上執行 GGUF 聊天模型（llama.cpp {tag}）。下載約 680 MB，含 CUDA 執行階段（磁碟佔用 0.9 GB）。",
+    "inUse": "使用中：GGUF 模型在 NVIDIA GPU 上執行。",
+    "install": "安裝",
+    "installedNoDevice": "已安裝，但找不到 CUDA 裝置。請檢查 NVIDIA 驅動程式（nvidia-smi）。",
+    "notInstalled": "未安裝。GGUF 模型使用內建版本。",
+    "reinstall": "重新安裝",
+    "title": "CUDA llama-server（NVIDIA）"
   },
   "terms": {
-    "title": null,
-    "intro": null,
-    "agree": null,
-    "quit": null,
-    "close": null,
-    "read": null,
-    "acceptedOn": null,
-    "notAccepted": null,
+    "title": "使用條款",
+    "intro": "開始之前請先閱讀。",
+    "agree": "我同意",
+    "quit": "結束",
+    "close": "關閉",
+    "read": "閱讀條款",
+    "acceptedOn": "已於 {date} 接受。",
+    "notAccepted": "尚未接受。",
     "points": {
-      "responsibility": null,
-      "disclosure": null,
-      "impersonation": null,
-      "voices": null,
-      "licences": null
+      "responsibility": "你需對自己產生的內容及其用途負責。",
+      "disclosure": "在法律或平台要求的情況下，請說明內容由 AI 產生（例如歐盟《人工智慧法案》第 50 條和平台標示規則）。",
+      "impersonation": "未經本人同意，不得使用 ChaosEngineAI 冒充真實人物。",
+      "voices": "只有在說話者同意的情況下，才能複製其聲音。",
+      "licences": "每個模型都有自己的授權條款。使用輸出內容前請先查看。"
     }
   }
 }

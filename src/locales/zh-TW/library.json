@@ -95,7 +95,7 @@
       "compressed": "壓縮後",
       "context": "上下文",
       "status": "狀態",
-      "released": null
+      "released": "發布時間"
     },
     "status": {
       "downloading": "下載中",

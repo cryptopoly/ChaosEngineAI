@@ -95,7 +95,7 @@
       "compressed": "压缩后",
       "context": "上下文",
       "status": "状态",
-      "released": null
+      "released": "发布时间"
     },
     "status": {
       "downloading": "下载中",

@@ -413,8 +413,8 @@
     "copy": "复制"
   },
   "busy": {
-    "slowerTitle": null,
-    "riskyTitle": null,
-    "dismiss": null
+    "slowerTitle": "设备正忙",
+    "riskyTitle": "两者的内存不够",
+    "dismiss": "关闭"
   }
 }

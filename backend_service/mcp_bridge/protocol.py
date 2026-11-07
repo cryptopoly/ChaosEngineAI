@@ -7,7 +7,7 @@ from typing import Any
 
 from backend_service.mcp_bridge import access
 from backend_service.mcp_bridge.jobs import CURRENT_OWNER, STORE, JobLimitError
-from backend_service.mcp_bridge.scopes import ALIASES, JOB_TOOLS, lowest_scope, required_scope, scope_error
+from backend_service.mcp_bridge.scopes import ALIASES, lowest_scope, required_scope, scope_error, starts_job
 from backend_service.mcp_bridge.tools import HANDLERS, TOOLS, ToolError, make_context, validate
 
 SUPPORTED_VERSIONS = ("2025-06-18", "2025-03-26", "2024-11-05")
@@ -19,8 +19,10 @@ INSTRUCTIONS = (
     "it is done, then use the file in its output (output.download for another machine). list_jobs finds a job "
     "id you lost; jobs survive an app restart as 'interrupted'. If list_models is empty, call recommend_models "
     "and tell the user what to download; you cannot download. Music: make_music. Films: storyboard_project, "
-    "storyboard_shot, storyboard_audio, storyboard_generate, storyboard_render (pass the revision from the last "
-    "answer). Send files in with upload_file. A token may lack a scope; the error says what to ask the user."
+    "storyboard_shot, storyboard_audio, storyboard_captions, storyboard_generate, storyboard_render, "
+    "storyboard_export_otio (pass the revision from the last answer). music_library manages tracks. Cloned voices: "
+    "list_cloned_voices and speak_cloned only, never create one. Resources and prompts are listed for reading "
+    "films and starting common jobs. Send files in with upload_file. A token may lack a scope; the error says what to ask the user."
 )
 
 
@@ -50,7 +52,8 @@ def handle_message(message: Any, request: Any) -> dict[str, Any] | None:
             "id": rpc_id,
             "result": {
                 "protocolVersion": version,
-                "capabilities": {"tools": {"listChanged": False}},
+                "capabilities": {"tools": {"listChanged": False}, "resources": {"subscribe": False, "listChanged": False},
+                                 "prompts": {"listChanged": False}},
                 "serverInfo": SERVER_INFO,
                 "instructions": INSTRUCTIONS,
             },
@@ -63,7 +66,38 @@ def handle_message(message: Any, request: Any) -> dict[str, Any] | None:
         return {"jsonrpc": "2.0", "id": rpc_id, "result": {"tools": tools}}
     if method == "tools/call":
         return {"jsonrpc": "2.0", "id": rpc_id, "result": _call_tool(params, request)}
+    if method in _ROOT_METHODS:
+        return _resources_call(rpc_id, method, params, request)
     return _error(rpc_id, -32601, f"Method not found: {method}")
+
+
+_ROOT_METHODS = ("resources/list", "resources/templates/list", "resources/read", "prompts/list", "prompts/get")
+
+
+def _resources_call(rpc_id: Any, method: str, params: Any, request: Any) -> dict[str, Any]:
+    """Resources and prompts: read-only, so every token may use them while access is on."""
+    from backend_service.mcp_bridge import resources
+
+    if not access.is_enabled():
+        return _error(rpc_id, -32001, access.OFF_MESSAGE)
+    if not isinstance(params, dict):
+        return _error(rpc_id, -32602, "params must be an object.")
+    try:
+        if method == "resources/list":
+            result = resources.list_resources(params)
+        elif method == "resources/templates/list":
+            result = resources.list_templates(params)
+        elif method == "resources/read":
+            result = resources.read_resource(params, make_context(request))
+        elif method == "prompts/list":
+            result = resources.list_prompts(params)
+        else:
+            result = resources.get_prompt(params)
+    except resources.ResourceError as exc:
+        return _error(rpc_id, exc.code, str(exc))
+    except Exception as exc:  # noqa: BLE001 - never crash the endpoint
+        return _error(rpc_id, -32603, f"{method} failed: {type(exc).__name__}: {exc}")
+    return {"jsonrpc": "2.0", "id": rpc_id, "result": result}
 
 
 def _principal(request: Any) -> access.Principal | None:
@@ -90,7 +124,7 @@ def _call_tool(params: dict[str, Any], request: Any) -> dict[str, Any]:
             return _tool_result(scope_error(name, scope), True)
     token = CURRENT_OWNER.set(principal.owner if principal is not None else "app")
     try:
-        if name in JOB_TOOLS:
+        if starts_job(name, args):
             STORE.check_capacity()
         return _tool_result(handler(make_context(request), args))
     except (ToolError, JobLimitError) as exc:

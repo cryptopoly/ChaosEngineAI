@@ -1,7 +1,8 @@
 """Agent tools for cloned voices: ``list_cloned_voices`` and ``speak_cloned`` (bodies only).
 
-Not registered yet: the agent-bridge stream adds ``CLONE_TOOLS`` / ``CLONE_HANDLERS`` to the registry in
-``tools.py`` and may swap ``clone_allowed`` for its token scopes. Agents cannot make a cloned voice:
+Registered in ``tools.py`` behind the ``clone`` token scope (``scopes.required_scope``); the scope check runs first,
+then ``clone_allowed`` here. Over ``/mcp`` the origin is always "agent", so even the app's own token needs
+Voice > Settings > Allow agents to use cloned voices. Agents cannot make a cloned voice:
 that needs a person reading the consent sentence in the app. They can only speak with a voice that
 already has a stored consent record (its id is the consent reference, D-28), and only after the person
 turned on Voice > Settings > Allow agents to use cloned voices. Output is tagged, saved to the Voice
@@ -18,14 +19,14 @@ from backend_service.mcp_bridge.tools import ToolError, _obj, _submitted
 CLONE_TOOLS: list[dict[str, Any]] = [
     {
         "name": "list_cloned_voices",
-        "description": "Cloned voices the person made in the app with recorded consent, with their ids. "
-        "Empty, or refused, unless they allowed agents to use cloned voices.",
+        "description": "Read: cloned voices the person made in the app with recorded consent, with ids. "
+        "Refused unless they allowed agents to use cloned voices.",
         "inputSchema": _obj({}),
     },
     {
         "name": "speak_cloned",
-        "description": "Start a speech job in a cloned voice (returns a job id). voice_id must come from list_cloned_voices; "
-        "it is tied to that voice's consent record. Output is tagged as AI-made and saved to the Voice Library.",
+        "description": "Make: start a speech job in a cloned voice (returns a job id). voice_id comes from list_cloned_voices and is "
+        "tied to its consent record. Output is tagged and watermarked as AI-made.",
         "inputSchema": _obj(
             {
                 "voice_id": {"type": "string", "minLength": 1, "maxLength": 40, "description": "Id from list_cloned_voices."},

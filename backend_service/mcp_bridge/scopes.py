@@ -12,7 +12,17 @@ _FILE_TOOLS = {"upload_file", "upload_image"}
 _READ_ACTIONS = {"list", "get"}
 
 # Tools that start a job and so count against the per-token cap.
-JOB_TOOLS = {"generate_image", "generate_video", "speak", "transcribe", "make_music", "storyboard_generate", "storyboard_render"}
+JOB_TOOLS = {"generate_image", "generate_video", "speak", "transcribe", "make_music", "storyboard_generate", "storyboard_render",
+             "speak_cloned"}
+_CLONE_TOOLS = {"list_cloned_voices", "speak_cloned"}
+
+
+def starts_job(name: str, args: dict[str, Any] | None = None) -> bool:
+    """True when this call queues a job (counts against the per-token cap). Caption generation does; export_srt does not."""
+    name = ALIASES.get(name, name)
+    if name == "storyboard_captions":
+        return (args or {}).get("action") == "generate"
+    return name in JOB_TOOLS
 
 ALIASES = {"upload_image": "upload_file"}
 
@@ -23,6 +33,14 @@ def required_scope(name: str, args: dict[str, Any] | None = None) -> str:
         return "read"
     if name == "upload_file":
         return "files"
+    if name in _CLONE_TOOLS:
+        return "clone"
+    if name == "storyboard_export_otio":
+        return "files"  # the answer is a download link
+    if name == "storyboard_captions":
+        return "files" if (args or {}).get("action") == "export_srt" else "generate"
+    if name == "music_library":
+        return "read" if (args or {}).get("action") in _READ_ACTIONS else "generate"
     if name == "storyboard_project":
         action = (args or {}).get("action")
         if action in _READ_ACTIONS:
@@ -34,7 +52,7 @@ def required_scope(name: str, args: dict[str, Any] | None = None) -> str:
 
 def lowest_scope(name: str) -> str:
     """The scope that shows a tool in tools/list (storyboard_project has read actions)."""
-    return "read" if name == "storyboard_project" else required_scope(name)
+    return "read" if name in ("storyboard_project", "music_library") else required_scope(name)
 
 
 def scope_error(name: str, scope: str) -> str:
@@ -70,6 +88,11 @@ ANNOTATIONS: dict[str, dict[str, Any]] = {
     "storyboard_audio": _ann("Storyboard audio", destructive=True),
     "storyboard_generate": _ann("Storyboard generate"),
     "storyboard_render": _ann("Storyboard render"),
+    "storyboard_captions": _ann("Storyboard captions", destructive=True),
+    "storyboard_export_otio": _ann("Export timeline (OTIO)", idempotent=True),
+    "music_library": _ann("Music library", destructive=True),
+    "list_cloned_voices": _ann("List cloned voices", read_only=True, idempotent=True),
+    "speak_cloned": _ann("Speak in a cloned voice"),
 }
 
 

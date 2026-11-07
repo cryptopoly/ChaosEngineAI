@@ -58,7 +58,7 @@ class CatalogTests(unittest.TestCase):
         for needle in ("US$1 million", "Powered by Stability AI", "foundation model", "register"):
             self.assertIn(needle, text)
         self.assertIn("/blob/" + row["revision"] + "/LICENSE", licence["url"])
-        self.assertEqual(row["estimates"]["basis"], "estimated")  # not measured: gated weights, no token in the build run
+        self.assertEqual(row["estimates"]["basis"], "measured")  # first real run on an M4 Max, 2026-11-07
 
     def test_only_the_needed_files_are_fetched(self) -> None:
         patterns = music_helpers.music_repo_allow_patterns(SOUND)
@@ -163,8 +163,10 @@ class SoundEnvTests(_SoundEnvBox):
 
     def test_text_encoder_is_mirrored_from_the_cache(self) -> None:
         row = _row()
-        self.assertFalse(music_sound_env.text_encoder_ready(row))
         cache = Path(self.tmp.name) / "hub"
+        # The real Hub cache may already hold the encoder (it does once the model is downloaded).
+        with mock.patch("backend_service.helpers.hf_cache_paths._hf_repo_cache_dir", lambda repo: cache / "models--google-t5--t5-base"):
+            self.assertFalse(music_sound_env.text_encoder_ready(row))
         snapshot = cache / "models--google-t5--t5-base" / "snapshots" / row["textEncoder"]["revision"]
         snapshot.mkdir(parents=True)
         for name in row["textEncoder"]["files"]:
@@ -342,7 +344,7 @@ class SoundRouteTests(_SoundBox):
     def test_estimate_is_per_model_range(self) -> None:
         ok = self.client.post("/api/music/estimate", json={"modelId": SOUND, "seconds": 5})
         self.assertEqual(ok.status_code, 200, ok.text)
-        self.assertEqual(ok.json()["estimate"]["basis"], "estimated")
+        self.assertEqual(ok.json()["estimate"]["basis"], "measured")
         self.assertEqual(self.client.post("/api/music/estimate", json={"modelId": SOUND, "seconds": 30}).status_code, 400)
         self.assertEqual(self.client.post("/api/music/estimate", json={"modelId": "ACE-Step/Ace-Step1.5", "seconds": 5}).status_code, 400)
 

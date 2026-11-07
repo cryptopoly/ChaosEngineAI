@@ -799,3 +799,13 @@ export {
   storyboardOps,
   undoStoryboard,
 } from "./storyboard";
+
+export {
+  cancelFfmpegDownload,
+  chooseFfmpegFile,
+  getFfmpegJob,
+  getFfmpegStatus,
+  removeFfmpegDownload,
+  startFfmpegDownload,
+} from "./ffmpeg";
+export type { FfmpegJob, FfmpegPin, FfmpegStatus } from "./ffmpeg";

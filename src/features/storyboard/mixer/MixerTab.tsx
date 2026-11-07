@@ -63,6 +63,8 @@ import {
   type LaneId,
 } from "./timelineGeometry";
 import { Transport } from "./Transport";
+import { VideoToolsPrompt } from "../../videotools/VideoToolsPrompt";
+import { useVideoTools } from "../../videotools/useVideoTools";
 
 function clipById(project: StoryboardProject, id: string) {
   return project.audio.find((clip) => clip.id === id) ?? null;
@@ -166,6 +168,7 @@ function MixerScreen({ story, project, timeline, dataDirectory, onOpenProjects, 
   const { t } = useTranslation("studio");
   const { busy } = story;
   const render = useStoryboardRender(project.id, true, () => void story.reload());
+  const videoTools = useVideoTools(true, () => render.clearError());
   const [zoomIndex, setZoomIndex] = useState(DEFAULT_ZOOM_INDEX);
   const [playheadS, setPlayheadS] = useState(0);
   const [playing, setPlaying] = useState(false);
@@ -715,7 +718,17 @@ function MixerScreen({ story, project, timeline, dataDirectory, onOpenProjects, 
                     {previewJob.error ? <p className="muted-text">{previewJob.error}</p> : null}
                   </div>
                 ) : null}
-                {render.error ? (
+                <VideoToolsPrompt
+                  status={videoTools.status}
+                  busy={videoTools.busy}
+                  percent={videoTools.percent}
+                  error={videoTools.error}
+                  forced={render.needsVideoTools}
+                  onInstall={() => void videoTools.install()}
+                  onChooseFile={(path) => void videoTools.chooseFile(path)}
+                  onDismissError={videoTools.clearError}
+                />
+                {render.error && !render.needsVideoTools ? (
                   <div className="callout warning" role="alert">
                     <p>{render.error}</p>
                     <button type="button" className="secondary-button" onClick={render.clearError}>

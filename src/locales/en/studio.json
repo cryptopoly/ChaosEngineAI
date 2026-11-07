@@ -1633,5 +1633,34 @@
     },
     "title": "Music Models",
     "unavailable": "Music needs an Apple Silicon Mac for now."
+  },
+  "videoTools": {
+    "title": "Video tools are needed",
+    "body": "Joining and exporting video uses FFmpeg, a free helper program. It installs as a package for this app only.",
+    "install": "Install video tools",
+    "installing": "Installing video tools...",
+    "failed": "Video tools did not install: {error}",
+    "chooseLabel": "Offline? Use an ffmpeg file you already have",
+    "use": "Use this file",
+    "row": {
+      "label": "Video tools (FFmpeg)",
+      "checking": "Checking...",
+      "installed": "{version} from {source}{licence}",
+      "notInstalled": "Not installed",
+      "encoder": "H.264 encoder: {encoder}",
+      "licence": "Licence",
+      "download": "Download LGPL build ({size} MB)",
+      "cancel": "Cancel",
+      "remove": "Remove",
+      "source": {
+        "download": "downloaded LGPL build",
+        "imageio": "imageio-ffmpeg package",
+        "custom": "a file you chose (not verified)",
+        "env": "CHAOSENGINE_FFMPEG",
+        "path": "system PATH",
+        "unknown": "unknown",
+        "link": "Source"
+      }
+    }
   }
 }

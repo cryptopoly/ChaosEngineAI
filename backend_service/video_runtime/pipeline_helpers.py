@@ -29,6 +29,7 @@ of the v0.8.0 Phase 1c-14 refactor.
 from __future__ import annotations
 
 import importlib
+import os
 import tempfile
 from dataclasses import replace
 from pathlib import Path
@@ -409,7 +410,17 @@ def encode_frames_to_mp4(frames: list[Any], fps: int) -> bytes:
             import numpy as np  # type: ignore
             import imageio  # type: ignore
 
-            writer = imageio.get_writer(tmp_path, fps=fps, codec="libx264", quality=8)
+            # One ffmpeg lookup for the app: point imageio at it and use the encoder it has.
+            from backend_service.storyboard import ffmpeg_bin
+
+            found = ffmpeg_bin.find_ffmpeg(allow_path=True)
+            if found is not None:
+                os.environ.setdefault("IMAGEIO_FFMPEG_EXE", found[0])
+            try:
+                codec = ffmpeg_bin.h264_encoder() if found is not None else "libx264"
+            except RuntimeError:
+                codec = "libx264"
+            writer = imageio.get_writer(tmp_path, fps=fps, codec=codec, quality=8)
             try:
                 for frame in frames:
                     array = np.asarray(frame)

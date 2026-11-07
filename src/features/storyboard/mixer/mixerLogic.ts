@@ -284,7 +284,9 @@ export function addAudioArgs(
 ): AddAudioArgs {
   const position: PositionPatch = dropToAnchor(playheadS, spans, false);
   const args: AddAudioArgs = { kind: lane, path: picked.path.trim(), ...position };
-  if (picked.name) args.label = picked.name.replace(/\.[^.]+$/, "").slice(0, 200);
+  const name = picked.name ?? picked.path.trim().split(/[\\/]/).pop() ?? "";
+  const label = name.replace(/\.[^.]+$/, "").replace(/[\u0000-\u001f\u007f]/g, "").slice(0, 200);
+  if (label) args.label = label;
   if (lane === "voice" && clonedVoice) args.clonedVoice = true;
   return args;
 }

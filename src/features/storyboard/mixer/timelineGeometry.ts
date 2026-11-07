@@ -14,8 +14,8 @@ import type {
 
 // ---- zoom ----
 /** Pixels per second at each zoom level. */
-export const ZOOM_LEVELS = [8, 16, 32, 64, 128, 256] as const;
-export const DEFAULT_ZOOM_INDEX = 2;
+export const ZOOM_LEVELS = [8, 12, 18, 27, 40, 60, 90, 135, 200, 300] as const;
+export const DEFAULT_ZOOM_INDEX = 4;
 
 export function clampZoom(index: number): number {
   return Math.max(0, Math.min(ZOOM_LEVELS.length - 1, Math.round(index)));
@@ -78,12 +78,13 @@ export function rulerTicks(durationS: number, pps: number): RulerTick[] {
 
 /** `mm:ss` for whole-second ticks, `mm:ss.s` otherwise. */
 export function formatTimecode(timeS: number, tenths = true): string {
-  const total = Math.max(0, timeS);
-  const whole = Math.floor(total);
-  const minutes = Math.floor(whole / 60);
+  // Count in tenths with a small allowance, so 32.4 does not show as 32.3 after float error.
+  const allTenths = Math.floor(Math.max(0, timeS) * 10 + 1e-6);
+  const whole = Math.floor(allTenths / 10);
+  const minutes = String(Math.floor(whole / 60)).padStart(2, "0");
   const seconds = String(whole % 60).padStart(2, "0");
-  const base = `${String(minutes).padStart(2, "0")}:${seconds}`;
-  return tenths ? `${base}.${Math.floor((total - whole) * 10)}` : base;
+  const base = `${minutes}:${seconds}`;
+  return tenths ? `${base}.${allTenths % 10}` : base;
 }
 
 export function tickLabel(timeS: number, step: number): string {

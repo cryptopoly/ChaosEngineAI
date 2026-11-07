@@ -189,6 +189,18 @@ class RenderPlanTests(unittest.TestCase):
         with self.assertRaises(PlanError):
             RenderPlan.from_dict(self.plan(captions_srt=str(self.root / "a.mp4")))
 
+    def test_anchor_fields_round_trip_and_are_checked(self):
+        audio = {"id": "v", "kind": "voice", "path": str(self.root / "voice.wav"), "start": 1.0,
+                 "anchor_shot": "a", "anchor_offset": -0.5}
+        plan = RenderPlan.from_dict(self.plan(audio=[audio]))
+        self.assertEqual((plan.audio[0].anchor_shot, plan.audio[0].anchor_offset), ("a", -0.5))
+        self.assertEqual(RenderPlan.from_dict(plan.to_dict()), plan)
+        plain = RenderPlan.from_dict(self.plan(audio=[{"id": "m", "kind": "music", "path": str(self.root / "music.wav")}]))
+        self.assertNotIn("anchor_shot", plain.to_dict()["audio"][0])  # an old-style plan dict stays the same
+        for over in ({"anchor_shot": "nope"}, {"anchor_shot": "a;b"}, {"anchor_offset": float("nan")}):
+            with self.subTest(over=over), self.assertRaises(PlanError):
+                RenderPlan.from_dict(self.plan(audio=[dict(audio, **over)]))
+
     def test_bad_values_rejected(self):
         shot = {"id": "a", "video": str(self.root / "a.mp4"), "hash": "h"}
         cases = [
@@ -354,6 +366,15 @@ class RenderTests(unittest.TestCase):
         ratio = self.rms(samples, 0.3, 0.9) / self.rms(samples, 1.3, 1.9)
         self.assertAlmostEqual(ratio, 1.0, delta=0.2)
 
+    def test_anchored_voice_is_placed_from_the_shot_it_follows(self):
+        self.need("bandpass")
+        # The absolute start is wrong on purpose (0); the anchor says 0.2 s into the second shot (at 2 s).
+        audio = [{"id": "v", "kind": "voice", "path": str(self.root / "voice.wav"), "start": 0.0,
+                  "anchor_shot": "c", "anchor_offset": 0.2}]
+        result = render(self.plan([self.shot("a"), self.shot("c", "c.mp4")], audio=audio))
+        samples = self.decode(result.path, "bandpass=f=2500:width_type=q:w=8")
+        self.assertGreater(self.rms(samples, 2.4, 2.9), 4 * self.rms(samples, 0.2, 1.8))
+
     def test_loop_and_trim(self):
         self.need("aloop")
         audio = [{"id": "m", "kind": "music", "path": str(self.root / "music1s.wav"), "loop": True},
@@ -489,6 +510,17 @@ class GraphBuilderTests(unittest.TestCase):
         self.assertIn("setpts=PTS/3", graph)
         self.assertIn("atempo=2,atempo=1.5", graph)
         self.assertIn("volume=0", graph)
+
+    def test_anchored_audio_follows_the_rendered_shot_starts(self):
+        clips = [AudioInput(id="v", kind="voice", path="/v.wav", start=4.0, anchor_shot="b", anchor_offset=0.25),
+                 AudioInput(id="early", kind="sfx", path="/s.wav", start=0.0, anchor_shot="a", anchor_offset=-1.0),
+                 AudioInput(id="m", kind="music", path="/m.wav", start=1.5)]
+        # Shot a rendered at 97 frames (4.0417 s) though the timeline said 4.0333 s.
+        placed = assemble.anchored_audio(clips, ["a", "b"], [0.0, 97 / 24])
+        self.assertAlmostEqual(placed[0].start, 97 / 24 + 0.25, places=6)
+        self.assertEqual(placed[1].start, 0.0)  # before the film: starts at 0 (its trim already accounts for it)
+        self.assertEqual(placed[2].start, 1.5)  # not anchored: absolute start as given
+        self.assertEqual(clips[0].start, 4.0, "the plan itself is not changed")
 
     def test_mix_graph_ducks_only_with_voice(self):
         def lane(kind, idx, duck=False):

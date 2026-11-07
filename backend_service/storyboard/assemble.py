@@ -12,6 +12,7 @@ process working directory set to ``work_dir``, so no plan path or text is ever s
 
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 import json
 import math
@@ -300,6 +301,22 @@ def build_mix_graph(lanes: Sequence[Lane], total_samples: int, loudnorm: str | N
     return ";\n".join(lines) + "\n", warnings
 
 
+def anchored_audio(clips: Sequence[AudioInput], shot_ids: Sequence[str], starts: Sequence[float]) -> list[AudioInput]:
+    """The clips with each anchored one's ``start`` taken from its shot's rendered start plus the offset.
+
+    The rendered starts come from whole frames, so they can differ from the timeline's seconds by a few
+    milliseconds per shot; anchoring here keeps a voice line on its shot however long the film is. A start
+    before 0 becomes 0 (the plan's ``trim_in`` already skips the part before the film).
+    """
+    index = {shot_id: i for i, shot_id in enumerate(shot_ids)}
+    out: list[AudioInput] = []
+    for clip in clips:
+        if clip.anchor_shot is not None and clip.anchor_shot in index:
+            clip = dataclasses.replace(clip, start=max(0.0, starts[index[clip.anchor_shot]] + clip.anchor_offset))
+        out.append(clip)
+    return out
+
+
 def concat_list(names: Sequence[str]) -> str:
     """A concat-demuxer list of file names relative to the list (safe under ``-safe 1``)."""
     out = []
@@ -570,7 +587,8 @@ def render(plan: RenderPlan, progress_cb: ProgressCb | None = None,
         # Stage 2b: one audio mix graph over the joined film and the lanes.
         lane_args: list[str] = []
         lanes: list[Lane] = []
-        for n, clip in enumerate(plan.audio):
+        placed = anchored_audio(plan.audio, [s.id for s in plan.shots], timing.starts[:len(plan.shots)])
+        for n, clip in enumerate(placed):
             info = ffmpeg_bin.probe(clip.path)
             if not info["has_audio"]:
                 raise RenderError(f"audio {clip.id}: the file has no audio stream")

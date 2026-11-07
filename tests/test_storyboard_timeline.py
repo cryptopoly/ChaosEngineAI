@@ -112,7 +112,9 @@ class RenderPlanTests(unittest.TestCase):
         plan = build_render_plan(p, preview=False, folder=self.folder)
         self.assertEqual(set(plan), PLAN_KEYS)
         self.assertEqual(set(plan["shots"][0]), SHOT_KEYS)
-        self.assertEqual(set(plan["audio"][0]), AUDIO_KEYS)
+        # Anchored audio also names its shot, so the assembler places it on its own per-shot starts.
+        self.assertEqual(set(plan["audio"][0]), AUDIO_KEYS | {"anchor_shot", "anchor_offset"})
+        self.assertEqual((plan["audio"][0]["anchor_shot"], plan["audio"][0]["anchor_offset"]), ("b", 1.0))
         for path in [plan["out_path"], plan["work_dir"], plan["shots"][0]["video"], plan["audio"][0]["path"]]:
             self.assertTrue(Path(path).is_absolute(), path)
             self.assertTrue(Path(path).resolve().is_relative_to(self.folder.resolve()))

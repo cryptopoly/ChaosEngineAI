@@ -33,6 +33,16 @@ class MessageTests(unittest.TestCase):
         self.assertIn("audioseal==0.2.1", voice_env.WATERMARK_PACKAGES)
         self.assertEqual(set(voice_env.WATERMARK_FILES), {"generator", "detector"})
 
+    def test_package_presence_is_read_from_the_venv(self) -> None:
+        from unittest import mock
+
+        with tempfile.TemporaryDirectory() as folder, mock.patch.object(voice_env, "VOICE_VENV_DIR", Path(folder)):
+            self.assertFalse(voice_env._watermark_package_present())
+            (Path(folder) / "lib/python3.11/site-packages/audioseal-0.1.9.dist-info").mkdir(parents=True)
+            self.assertFalse(voice_env._watermark_package_present())  # another version does not count
+            (Path(folder) / "lib/python3.11/site-packages/audioseal-0.2.1.dist-info").mkdir(parents=True)
+            self.assertTrue(voice_env._watermark_package_present())
+
 
 @unittest.skipIf(torch is None, "torch not installed")
 class PlumbingTests(unittest.TestCase):

@@ -41,6 +41,7 @@ class SettingsRequest(BaseModel):
     vadSilenceMs: int | None = Field(default=None, ge=300, le=3000)
     bargeIn: bool | None = None
     idleUnloadMinutes: int | None = Field(default=None, ge=0, le=240)
+    allowAgentCloning: bool | None = None
 
 
 class VadRequest(BaseModel):
@@ -124,8 +125,15 @@ def get_settings(request: Request) -> dict[str, Any]:
 
 @router.post("/api/voice/settings")
 def put_settings(request: Request, body: SettingsRequest) -> dict[str, Any]:
+    from backend_service.voice_clone_safety import audit, request_origin  # noqa: PLC0415
     from backend_service.voice_runtime import save_settings  # noqa: PLC0415
 
+    if body.allowAgentCloning is not None:
+        # An agent must never be able to grant itself cloning.
+        origin = request_origin(request)
+        if origin != "ui":
+            raise HTTPException(status_code=403, detail="This setting can only be changed in the ChaosEngineAI window.")
+        audit("setting", allowAgentCloning=body.allowAgentCloning, origin=origin)
     return save_settings(body.model_dump())
 
 
@@ -345,11 +353,15 @@ def save_speech(
 ) -> dict[str, Any]:
     from backend_service import voice_library  # noqa: PLC0415
 
+    from backend_service.voice_clone_safety import read_wav_tag  # noqa: PLC0415
+
     tmp_path, suffix = _receive_upload(audio)
     try:
+        # Speech from a cloned voice keeps its flag when saved again (the tag is in the file).
+        cloned = bool((read_wav_tag(tmp_path) or {}).get("clonedVoice")) if suffix == ".wav" else False
         return voice_library.create(
             "speech",
-            {"text": text, "voice": voice or None, "speed": speed, "title": title or None},
+            {"text": text, "voice": voice or None, "speed": speed, "title": title or None, "clonedVoice": cloned or None},
             audio_file=tmp_path,
             audio_ext=suffix,
         )
@@ -431,12 +443,24 @@ def encode_audio(request: Request, audio: UploadFile, format: str = Form(default
 
 
 def _mp3_response(source: Path) -> Response:
+    from backend_service.voice_clone_safety import TAG_PREFIX, read_wav_tag  # noqa: PLC0415
     from backend_service.voice_runtime import encode_mp3  # noqa: PLC0415
 
+    # A cloned voice's AI tag goes with it into the MP3.
+    tag = read_wav_tag(source) if source.suffix.lower() == ".wav" else None
     with tempfile.TemporaryDirectory(prefix="chaosengine-mp3-") as folder:
         target = Path(folder) / "out.mp3"
         try:
-            encode_mp3(source, target)
+            if tag:
+                encode_mp3(source, target, comment=TAG_PREFIX + json.dumps(tag, separators=(",", ":")))
+            else:
+                encode_mp3(source, target)
         except Exception as exc:  # noqa: BLE001
             raise _worker_error(exc) from exc
         return Response(content=target.read_bytes(), media_type="audio/mpeg")
+
+
+# Voice cloning lives in its own module; included here so routes/__init__.py stays unchanged.
+from backend_service.routes.voice_clone import router as _clone_router  # noqa: E402
+
+router.include_router(_clone_router)

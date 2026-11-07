@@ -304,12 +304,41 @@ def _load_tts(engine: str, source: str) -> Any:
     return model
 
 
+def synthesize_cloned(model: Any, text: str, ref_audio_path: str, ref_text: str):
+    """Qwen3-TTS Base voice cloning: speaker from ``ref_audio_path``, its words in ``ref_text``.
+
+    No ``voice`` is passed: a speaker name and ``ref_audio`` together conflict in mlx-audio. The
+    reference is decoded here with PyAV at the model's rate, so no ffmpeg command is needed.
+    """
+    import mlx.core as mx  # type: ignore[import-untyped]
+    import numpy as np
+
+    sample_rate = int(getattr(model, "sample_rate", 24_000))
+    reference = mx.array(decode_audio(ref_audio_path, sample_rate))
+    parts = [
+        np.asarray(result.audio, dtype=np.float32).reshape(-1)
+        for result in model.generate(text, ref_audio=reference, ref_text=ref_text)
+    ]
+    if not parts:
+        raise RuntimeError("The speech model produced no audio.")
+    return np.concatenate(parts), sample_rate
+
+
 def synthesize(request: dict[str, Any]) -> dict[str, Any]:
     import numpy as np
 
     engine = str(request["engine"])
     model = _load_tts(engine, str(request["source"]))
     text = str(request["text"])
+    if request.get("refAudioPath"):
+        if engine != "mlx-audio":
+            raise ValueError("Voice cloning needs the mlx-audio engine.")
+        samples, sample_rate = synthesize_cloned(model, text, str(request["refAudioPath"]), str(request.get("refText") or ""))
+        return {
+            "wavB64": base64.b64encode(wav_bytes(samples, sample_rate)).decode("ascii"),
+            "sampleRate": sample_rate,
+            "durationS": round(len(samples) / sample_rate, 2),
+        }
     voice = str(request.get("voice") or "af_heart")
     speed = float(request.get("speed") or 1.0)
     prefix = voice[:1] if voice[:1] in KOKORO_ONNX_LANG else "a"
@@ -432,6 +461,9 @@ def encode(request: dict[str, Any]) -> dict[str, Any]:
             raise ValueError("The file has no audio track.")
         rate = source.streams.audio[0].rate or 24_000
         with av.open(str(request["out"]), "w", format="mp3") as target:
+            # The AI tag of a cloned voice travels into the MP3's ID3 comment.
+            if request.get("comment"):
+                target.metadata["comment"] = str(request["comment"])
             stream = target.add_stream("libmp3lame", rate=rate, layout="mono")
             stream.bit_rate = 128_000
             resampler = av.AudioResampler(format=stream.format.name, layout="mono", rate=rate)
@@ -451,8 +483,29 @@ def encode(request: dict[str, Any]) -> dict[str, Any]:
 # Loop
 # ---------------------------------------------------------------------------
 
+def _watermark_module():
+    # Run as a script in the voice venv the sibling is importable by name; imported in tests through the package.
+    try:
+        import voice_worker_watermark as module  # type: ignore[import-not-found]
+    except ImportError:
+        from backend_service import voice_worker_watermark as module
+    return module
+
+
+def watermark(request: dict[str, Any]) -> dict[str, Any]:
+    """Add the AudioSeal watermark to a WAV (cloned voices, D-47)."""
+    return _watermark_module().embed(request, decode_audio, wav_bytes)
+
+
+def detect_watermark(request: dict[str, Any]) -> dict[str, Any]:
+    return _watermark_module().detect(request, decode_audio)
+
+
 def unload(request: dict[str, Any]) -> dict[str, Any]:
     what = request.get("what") or "all"
+    loaded = {"voice_worker_watermark", "backend_service.voice_worker_watermark"} & set(sys.modules)
+    if what in ("watermark", "all") and loaded:
+        _watermark_module().unload()
     if what in ("stt", "all"):
         _stt["key"], _stt["model"] = None, None
     if what in ("tts", "all"):
@@ -487,6 +540,8 @@ _COMMANDS = {
     "vad": vad,
     "diarize": diarize,
     "encode": encode,
+    "watermark": watermark,
+    "detectWatermark": detect_watermark,
     "unload": unload,
 }
 

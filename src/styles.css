@@ -10318,6 +10318,46 @@ html[lang="ko"] select {
   width: 100%;
 }
 
+/* Clone a voice (collapsed section under Speak) */
+.voice-clone {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+
+.voice-clone > summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.voice-clone__statement,
+.voice-clone__sentence {
+  margin: 8px 0;
+}
+
+.voice-clone__sentence {
+  padding: 8px 12px;
+  border-left: 3px solid var(--accent);
+  font-size: 1.05em;
+}
+
+.voice-clone__basis {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+
+.voice-clone__voices {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .voice-segments ol {
   margin: 8px 0 0;
   padding-left: 22px;

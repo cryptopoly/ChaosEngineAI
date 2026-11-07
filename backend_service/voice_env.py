@@ -60,6 +60,15 @@ DIARIZE_FILES = {
     ),
 }
 
+# Hidden watermark for cloned-voice output (D-47): Meta's AudioSeal, code and weights MIT
+# (checked 2026-11-07: PyPI classifier and README "full MIT license (including the license for the
+# model weights)", Hub card licence mit, not gated). Installed into the voice venv on demand, the
+# first time a cloning model is downloaded; never part of the base pack.
+WATERMARK_PACKAGES = ["audioseal==0.2.1", "omegaconf>=2.3,<2.4", "einops>=0.8,<0.9"]
+WATERMARK_REPO = "facebook/audioseal"
+WATERMARK_REVISION = "3c19eba53390776cf2cc9ed5f6c9ac67ce72ecba"
+WATERMARK_FILES = {"generator": "generator_base.pth", "detector": "detector_base.pth"}
+
 # What this version of the pack provides; an older pack lacks some and the
 # Models page offers an update.
 FEATURES = ["vad", "speakers"]
@@ -242,6 +251,43 @@ def missing_features() -> list[str]:
         return []
     have = set((read_marker() or {}).get("features", []))
     return [name for name in FEATURES if name not in have]
+
+
+def watermark_model_paths() -> dict[str, Path] | None:
+    """The pinned AudioSeal generator and detector in the Hugging Face cache, if downloaded."""
+    from backend_service.helpers.hf_cache_paths import _hf_repo_cache_dir
+
+    base = _hf_repo_cache_dir(WATERMARK_REPO) / "snapshots" / WATERMARK_REVISION
+    paths = {role: base / name for role, name in WATERMARK_FILES.items()}
+    return paths if all(p.is_file() for p in paths.values()) else None
+
+
+def watermark_installed() -> bool:
+    marker = read_marker() or {}
+    return is_installed() and bool(marker.get("watermark")) and watermark_model_paths() is not None
+
+
+def install_watermark() -> None:
+    """Install AudioSeal into the voice venv and fetch its pinned weights; records it in the marker.
+
+    Blocking (a few minutes on a slow line); called from the cloning model download thread.
+    """
+    if not is_installed():
+        raise RuntimeError("The voice pack is not installed. Install it from Voice > Models.")
+    if not (read_marker() or {}).get("watermark"):
+        result = subprocess.run(
+            [str(venv_python()), "-m", "pip", "install", "--quiet", *WATERMARK_PACKAGES],
+            capture_output=True, text=True, encoding="utf-8", errors="replace", env=worker_env(),
+        )
+        if result.returncode != 0:
+            raise RuntimeError(f"Installing the watermark component failed: {result.stdout[-400:]}{result.stderr[-400:]}")
+    from huggingface_hub import hf_hub_download
+
+    for name in WATERMARK_FILES.values():
+        hf_hub_download(WATERMARK_REPO, name, revision=WATERMARK_REVISION)
+    marker = read_marker() or {}
+    marker["watermark"] = WATERMARK_PACKAGES[0]
+    _MARKER.write_text(json.dumps(marker), encoding="utf-8")
 
 
 def tts_data_installed() -> bool:

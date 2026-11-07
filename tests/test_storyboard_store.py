@@ -223,6 +223,42 @@ class UndoRedoTests(StoreCase):
         self.assertEqual(p.shot(sid).title, "one")
 
 
+class ReplaceRetryTests(StoreCase):
+    def _flaky(self, failures):
+        real = os.replace
+        calls = []
+
+        def replace(src, dst):  # Windows refuses to replace a file another thread is reading
+            calls.append(dst)
+            if len(calls) <= failures:
+                raise PermissionError(13, "Access is denied", str(dst))
+            return real(src, dst)
+
+        return replace, calls
+
+    def test_project_json_is_written_although_a_reader_holds_it_briefly(self):
+        p = self.new(shots=1)
+        replace, calls = self._flaky(2)
+        with mock.patch("backend_service.storyboard.media.os.replace", replace), \
+                mock.patch("backend_service.storyboard.media.time.sleep"):
+            p = self.op(p, "edit_shot", shotId=p.shots[0].id, title="saved")
+        self.assertEqual(self.store.load(p.id).shots[0].title, "saved")
+        self.assertGreaterEqual(len(calls), 3)
+
+    def test_a_file_that_stays_locked_is_still_an_error(self):
+        from backend_service.storyboard import media
+
+        target = self.base / "locked.json"
+        target.write_text("old")
+        replace, _ = self._flaky(1000)
+        with mock.patch("backend_service.storyboard.media.os.replace", replace), \
+                mock.patch("backend_service.storyboard.media.time.sleep"), self.assertRaises(PermissionError):
+            store_module.atomic_write(target, b"new")
+        self.assertEqual(target.read_text(), "old")
+        self.assertEqual([p.name for p in self.base.iterdir() if p.name.startswith(".tmp-")], [])
+        self.assertTrue(callable(media.replace_file))
+
+
 class HostileInputTests(StoreCase):
     def test_bad_paths_in_project_json_are_refused(self):
         bad = ["/etc/passwd", "../x.png", "media/../../x.png", "C:/x.png", "c:x.png", "file:///etc/x", "http://x/y.mp4",

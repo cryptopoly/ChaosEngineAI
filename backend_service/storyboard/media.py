@@ -15,6 +15,7 @@ import os
 import re
 import shutil
 import subprocess
+import time
 from pathlib import Path
 
 from backend_service.storyboard.ffmpeg_bin import PROTOCOLS
@@ -85,6 +86,26 @@ def inside(folder: Path, rel: str, must_exist: bool = True) -> Path:
     if must_exist and not real.is_file():
         raise MediaError(f"Not a file: {rel}")
     return real
+
+
+REPLACE_ATTEMPTS = 20
+REPLACE_WAIT_S = 0.05
+
+
+def replace_file(src: Path | str, dst: Path | str) -> None:
+    """``os.replace`` that waits briefly while another thread or program has ``dst`` open.
+
+    On Windows a file being read (a GET of project.json, a preview being served) cannot be replaced and
+    ``os.replace`` raises PermissionError; it is retried for about a second before the error is raised.
+    """
+    for attempt in range(REPLACE_ATTEMPTS):
+        try:
+            os.replace(src, dst)
+            return
+        except PermissionError:
+            if attempt == REPLACE_ATTEMPTS - 1:
+                raise
+            time.sleep(REPLACE_WAIT_S)
 
 
 def sha256_file(path: Path) -> str:

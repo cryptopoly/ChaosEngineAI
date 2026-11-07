@@ -29,6 +29,7 @@ from pathlib import Path
 from typing import Any, Callable, Sequence
 
 from backend_service.storyboard import ffmpeg_bin
+from backend_service.storyboard.media import replace_file
 from backend_service.storyboard.render_plan import AudioInput, RenderPlan, ShotInput, Transition
 
 ENGINE_VERSION = "1"
@@ -647,7 +648,7 @@ def render(plan: RenderPlan, progress_cb: ProgressCb | None = None,
         if loudness is not None and loudness["passes"] == 2:
             second = parse_loudnorm(stderr)
             loudness["normalization_type"] = (second or {}).get("normalization_type")
-        os.replace(out_tmp, out)
+        replace_file(out_tmp, out)  # the old film may be being served (Windows): retried briefly
         duration = ffmpeg_bin.probe(out)["duration"]
         return RenderResult(path=str(out), duration_s=duration, shots_rendered=rendered,
                             shots_cached=cached, ffmpeg_version=ffmpeg_bin.ffmpeg_version(),

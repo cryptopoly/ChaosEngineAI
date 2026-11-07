@@ -28,14 +28,8 @@ def _families(state: Any, kind: str) -> list[dict[str, Any]]:
 
 
 def _text_to_media(variant: dict[str, Any], kind: str) -> bool:
-    """v1 tools start from a prompt; skip models that need an input image or audio.
-
-    Image-to-video models stay (make_video and storyboard clips pass a start image)."""
+    """v1 tools start from a prompt only; skip models that need an input image or audio."""
     tasks = [str(t) for t in variant.get("taskSupport") or []]
-    if kind == "video" and "img2video" in tasks:
-        from backend_service.helpers.video_image_input import accepts_image_input
-
-        return accepts_image_input(variant)
     return not tasks or _TEXT_TASK[kind] in tasks
 
 
@@ -107,10 +101,9 @@ def _row(family: dict[str, Any], variant: dict[str, Any], kind: str) -> dict[str
             else "Any frame count works."
         )
         row["defaultSeconds"] = variant.get("defaultDurationSeconds")
-        from backend_service.helpers.video_image_input import accepts_image_input, requires_start_image
+        from backend_service.ltx2_mlx_runtime import _is_ltx2_mlx_repo
 
-        row["acceptsImageInput"] = accepts_image_input(variant)
-        row["requiresStartImage"] = requires_start_image(variant)
+        row["acceptsImageInput"] = _is_ltx2_mlx_repo(repo)
     return row
 
 
@@ -206,6 +199,6 @@ def recommend(state: Any, kind: str, limit: int = 3) -> dict[str, Any]:
 
 def default_model(state: Any, kind: str) -> dict[str, Any] | None:
     """The installed model to use when the agent names none: the catalog's best fit, else the newest that fits."""
-    rows = [r for r in installed_models(state, kind) if not r.get("requiresStartImage")]
+    rows = installed_models(state, kind)
     fitting = [r for r in rows if r.get("fit") == "fits"] or rows
     return fitting[0] if fitting else None

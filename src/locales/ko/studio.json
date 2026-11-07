@@ -160,14 +160,12 @@
   },
   "imageStudio": {
     "generateTitle": {
-      "dangerBlocked": "위험 수준 구성 — 진행하려면 안전 경고 아래의 확인란을 체크하세요.",
+      "dangerBlocked": null,
       "generating": "생성 중...",
       "selectModel": "먼저 모델을 선택하세요.",
       "ready": "이 이미지를 생성합니다."
     },
     "actions": {
-      "discover": "모델 찾기",
-      "installed": "설치됨",
       "gallery": "갤러리"
     },
     "hero": {
@@ -250,11 +248,9 @@
     "safety": {
       "dangerTitle": "백엔드가 충돌할 가능성이 있음",
       "warningTitle": "주의 — 이 기기에서 어려움이 있을 수 있음",
-      "resourceEstimate": "모델 ≈ {model} · 이 실행 피크 ≈ 총 ~{total} 중 {peak}.",
       "applyTitle": "{label} 적용",
       "useSafer": "더 안전한 설정 사용 ({label})",
       "browseSmaller": "더 작은 모델 둘러보기",
-      "overrideAck": "그래도 생성 — 백엔드가 충돌할 수 있음을 수용합니다.",
       "reasonDangerOver": "모델은 가중치 + 텍스트 인코더만 저장하는 데 ~{model} GB가 필요합니다. 총 {total} GB의 {platform}에서 추정 작업 세트는 ~{working} GB이므로 모델만으로도 이미 초과합니다. 작은 이미지조차 백엔드가 크래시할 가능성이 높습니다. 더 작은 모델(SD 1.5는 ~4 GB, SDXL은 ~13 GB) 또는 더 많은 메모리를 갖춘 머신을 시도하세요.",
       "reasonDangerNear": "모델은 가중치 + 텍스트 인코더만 저장하는 데 ~{model} GB가 필요하며, 이 실행은 약 ~{peak} GB에서 정점을 찍습니다. 총 {total} GB의 {platform}에서 이는 고위험 임계값(~{highRisk} GB)을 초과하고 추정 작업 세트(~{working} GB)에 근접합니다. 생성 시 백엔드가 크래시할 가능성이 높으니 해상도를 낮추거나 더 작은 모델을 선택하세요.",
       "reasonCaution": "모델은 가중치 + 텍스트 인코더만 저장하는 데 ~{model} GB가 필요합니다. 총 {total} GB의 {platform}에서 이는 보수적 안정 목표(~{comfort} GB)를 초과하지만 추정 작업 세트(~{working} GB) 아래입니다. 생성이 느리거나 실패할 수 있으니 불안정해지면 해상도를 낮추세요."
@@ -369,33 +365,18 @@
       "noPrompt": "생성하기 전에 프롬프트를 작성하세요.",
       "backendOffline": "백엔드가 오프라인입니다.",
       "busy": "사용 중…",
-      "dangerLevel": "이 구성은 백엔드가 충돌할 가능성이 있습니다. 경고를 검토한 후 아래의 \\\"고위험 생성 허용\\\"을 체크하거나 해상도/프레임/모델을 낮추세요."
+      "dangerLevel": null
     },
     "generateTitle": "이 클립 생성을 시작합니다.",
-    "device": {
-      "gpuDetected": "GPU (감지됨)",
-      "cpuDetected": "CPU (감지됨)",
-      "appleDetected": "Apple Silicon (감지됨)",
-      "appleMlx": "Apple Silicon (MLX)",
-      "gpu": "GPU",
-      "apple": "Apple Silicon"
-    },
     "memory": {
       "defaultFallback": "~{value} (기본값 — 실제 감지를 위해 백엔드 재시작)"
     },
-    "capacityLine": {
-      "withModel": "{device} · 총 {memory} · 모델 ≈ {model}, 이 실행 피크 ≈ {peak}",
-      "short": "{device} · 총 {memory} · 이 실행 피크 ≈ {peak}"
-    },
     "subtitle": "시작하려면 비디오 모델을 선택하세요",
     "actions": {
-      "browseCatalog": "모델 찾기",
-      "installedModels": "설치됨",
       "downloadModel": "모델 다운로드",
       "loadIntoMemory": "메모리에 로드",
       "unload": "언로드",
-      "unloadNamed": "{name} 언로드",
-      "modelCard": "모델 카드"
+      "unloadNamed": "{name} 언로드"
     },
     "modelOption": {
       "installed": "설치됨",
@@ -505,13 +486,11 @@
       "applyTitle": "{label} 적용",
       "useSafer": "더 안전한 설정 사용 ({label})",
       "browseSmaller": "더 작은 모델 둘러보기",
-      "overrideAck": "고위험 생성 허용 — 백엔드가 충돌하고 내 기기를 다시 시작해야 할 수 있음을 수용합니다.",
       "reasonDangerOver": "모델은 표준 배치에서 상주하는 데 ~{model} GB가 필요하지만, 총 {total} GB의 {platform}에는 ~{working} GB만 안전하게 사용 가능합니다. 런타임은 순차적 CPU 오프로드로 자동 폴백합니다 — 생성은 성공하지만 서브모듈이 매 패스마다 CPU와 {offloadDevice} 메모리 간을 스왑하므로 각 스텝이 몇 배 느려집니다. 풀 스피드 생성을 위해서는 더 작은 모델(LTX-Video는 ~2 GB 상주) 또는 더 많은 메모리를 갖춘 머신을 선택하세요.",
       "reasonDangerNear": "모델은 상주하는 데 ~{model} GB가 필요하며 이 실행은 약 ~{peak} GB에서 정점을 찍습니다. 총 {total} GB의 {platform}에서 이는 고위험 임계값(~{highRisk} GB)을 초과하고 추정 작업 세트(~{working} GB)에 근접합니다. 런타임이 CPU 오프로드를 활성화해 맞출 수 있습니다 — 풀 스피드 생성을 원한다면 설정을 낮추거나 더 작은 모델을 선택하세요.",
       "reasonCaution": "모델은 상주하는 데 ~{model} GB가 필요합니다. 총 {total} GB의 {platform}에서 이는 보수적 안정 목표(~{comfort} GB)를 초과하지만 추정 작업 세트(~{working} GB) 아래입니다. 생성은 맞을 수 있으니 불안정해지면 설정을 낮추세요."
     },
     "disabledHint": "생성 비활성화: {reason}",
-    "willLoadHint": "선택한 모델은 다음 생성 시 메모리에 로드됩니다. 큰 변형의 경우 첫 로드에 1분이 걸릴 수 있습니다.",
     "cacheStrategies": {
       "none": {
         "label": "끄기",
@@ -1346,5 +1325,18 @@
     "start": null,
     "untitled": null,
     "use": null
+  },
+  "studioKit": {
+    "models": null,
+    "moreActions": null,
+    "modelCard": null,
+    "summary": {
+      "labelValue": null,
+      "size": null,
+      "framesFps": null,
+      "negativeSet": null,
+      "negativeEdited": null,
+      "endImageSet": null
+    }
   }
 }

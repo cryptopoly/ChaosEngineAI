@@ -160,14 +160,12 @@
   },
   "imageStudio": {
     "generateTitle": {
-      "dangerBlocked": "Configuración de nivel peligroso — marca la confirmación bajo el aviso de seguridad para continuar.",
+      "dangerBlocked": null,
       "generating": "Generando...",
       "selectModel": "Selecciona primero un modelo.",
       "ready": "Genera esta imagen."
     },
     "actions": {
-      "discover": "Buscar modelos",
-      "installed": "Instalados",
       "gallery": "Galería"
     },
     "hero": {
@@ -250,11 +248,9 @@
     "safety": {
       "dangerTitle": "Probable que rompa el backend",
       "warningTitle": "Atención — puede costarle a este dispositivo",
-      "resourceEstimate": "Modelo ≈ {model} · pico de esta ejecución ≈ {peak} de ~{total} total.",
       "applyTitle": "Aplicar {label}",
       "useSafer": "Usar ajustes más seguros ({label})",
       "browseSmaller": "Explorar modelos más pequeños",
-      "overrideAck": "Generar igualmente — acepto que el backend puede romperse.",
       "reasonDangerOver": "El modelo necesita ~{model} GB solo para mantener sus pesos + codificador de texto. En {platform} con {total} GB totales, el conjunto de trabajo estimado es ~{working} GB, así que el modelo por sí solo ya supera ese límite. Incluso imágenes pequeñas probablemente romperían el backend. Prueba un modelo más pequeño (SD 1.5 es ~4 GB, SDXL ~13 GB) o una máquina con más memoria.",
       "reasonDangerNear": "El modelo necesita ~{model} GB solo para mantener sus pesos + codificador de texto, y esta ejecución alcanza un pico de ~{peak} GB. En {platform} con {total} GB totales, eso está por encima del umbral de alto riesgo (~{highRisk} GB) y cerca del conjunto de trabajo estimado (~{working} GB). Es probable que la generación rompa el backend; reduce la resolución o elige un modelo más pequeño.",
       "reasonCaution": "El modelo necesita ~{model} GB solo para mantener sus pesos + codificador de texto. En {platform} con {total} GB totales, eso está por encima del objetivo de comodidad conservador (~{comfort} GB) pero por debajo del conjunto de trabajo estimado (~{working} GB). La generación puede ser lenta o fallar; reduce la resolución si se vuelve inestable."
@@ -369,33 +365,18 @@
       "noPrompt": "Escribe un prompt antes de generar.",
       "backendOffline": "El backend está desconectado.",
       "busy": "Ocupado…",
-      "dangerLevel": "Es probable que esta configuración rompa el backend. Marca \\\"Permitir generación de alto riesgo\\\" abajo tras revisar el aviso, o baja resolución/fotogramas/modelo."
+      "dangerLevel": null
     },
     "generateTitle": "Empezar a generar este clip.",
-    "device": {
-      "gpuDetected": "GPU (detectado)",
-      "cpuDetected": "CPU (detectada)",
-      "appleDetected": "Apple Silicon (detectado)",
-      "appleMlx": "Apple Silicon (MLX)",
-      "gpu": "GPU",
-      "apple": "Apple Silicon"
-    },
     "memory": {
       "defaultFallback": "~{value} (por defecto — reinicia el backend para detección real)"
     },
-    "capacityLine": {
-      "withModel": "{device} · {memory} total · modelo ≈ {model}, pico de esta ejecución ≈ {peak}",
-      "short": "{device} · {memory} total · pico de esta ejecución ≈ {peak}"
-    },
     "subtitle": "Elige un modelo de video para empezar",
     "actions": {
-      "browseCatalog": "Buscar modelos",
-      "installedModels": "Instalados",
       "downloadModel": "Descargar modelo",
       "loadIntoMemory": "Cargar en memoria",
       "unload": "Descargar",
-      "unloadNamed": "Descargar {name}",
-      "modelCard": "Ficha del modelo"
+      "unloadNamed": "Descargar {name}"
     },
     "modelOption": {
       "installed": "instalado",
@@ -505,13 +486,11 @@
       "applyTitle": "Aplicar {label}",
       "useSafer": "Usar ajustes más seguros ({label})",
       "browseSmaller": "Explorar modelos más pequeños",
-      "overrideAck": "Permitir generación de alto riesgo — acepto que el backend puede romperse y que mi equipo puede necesitar reinicio.",
       "reasonDangerOver": "El modelo necesita ~{model} GB residentes con la colocación estándar, pero {platform} con {total} GB totales solo tiene ~{working} GB disponibles con seguridad. El runtime recurrirá automáticamente al CPU offload secuencial -- la generación tendrá éxito pero cada paso será varias veces más lento porque los submódulos se intercambiarán entre la memoria de la CPU y la de {offloadDevice} en cada pasada. Para generación a máxima velocidad, elige un modelo más pequeño (LTX-Video es ~2 GB residentes) o una máquina con más memoria.",
       "reasonDangerNear": "El modelo necesita ~{model} GB residentes y esta ejecución alcanza un pico de ~{peak} GB. En {platform} con {total} GB totales, eso está por encima del umbral de alto riesgo (~{highRisk} GB) y cerca del conjunto de trabajo estimado (~{working} GB). El runtime puede activar CPU offload para hacerlo encajar -- reduce los ajustes o elige un modelo más pequeño si quieres generación a máxima velocidad.",
       "reasonCaution": "El modelo necesita ~{model} GB residentes. En {platform} con {total} GB totales, eso está por encima del objetivo de comodidad conservador (~{comfort} GB) pero por debajo del conjunto de trabajo estimado (~{working} GB). La generación debería caber; reduce los ajustes si se vuelve inestable."
     },
     "disabledHint": "Generación desactivada: {reason}",
-    "willLoadHint": "El modelo seleccionado se cargará en memoria en la próxima generación. La primera carga puede tardar un minuto para las variantes más grandes.",
     "cacheStrategies": {
       "none": {
         "label": "Desactivado",
@@ -1346,5 +1325,18 @@
     "start": null,
     "untitled": null,
     "use": null
+  },
+  "studioKit": {
+    "models": null,
+    "moreActions": null,
+    "modelCard": null,
+    "summary": {
+      "labelValue": null,
+      "size": null,
+      "framesFps": null,
+      "negativeSet": null,
+      "negativeEdited": null,
+      "endImageSet": null
+    }
   }
 }

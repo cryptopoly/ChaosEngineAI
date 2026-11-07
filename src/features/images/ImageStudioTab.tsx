@@ -5,11 +5,17 @@ import { InfoTooltip } from "../../components/InfoTooltip";
 import { ImageOutputCard } from "../../components/ImageOutputCard";
 import { MfluxEngineBanner } from "../../components/MfluxEngineBanner";
 import { RecommendedSettingsPanel } from "../../components/RecommendedSettingsPanel";
+import { ActionMenu, type ActionMenuItem } from "../../components/ActionMenu";
+import { Disclosure } from "../../components/Disclosure";
+import { RunEstimateStrip } from "../../components/RunEstimateStrip";
+import { DisclosureMemoryContext, useDisclosureMemory } from "../../components/studioDisclosureMemory";
+import { runEstimateBasis, summaryLine } from "../../components/studioSummary";
 import {
   DEFAULT_MAX_SIDE,
   DEFAULT_MIN_SIDE,
   clampStudioSide,
   fitStudioSize,
+  recommendationRows,
   type RecommendationAppliers,
   type RecommendationCurrent,
 } from "../../components/recommendedSettings";
@@ -505,7 +511,7 @@ export function ImageStudioTab({
     imageBusy || !selectedImageVariant || imageGenerateBlockedByDanger;
   const imageGenerateTitle = imageGenerateBlockedByDanger
     ? t("imageStudio.generateTitle.dangerBlocked", {
-        defaultValue: "Danger-level configuration — tick the acknowledgement below the safety callout to proceed.",
+        defaultValue: "Danger-level configuration — tick the acknowledgement in the run estimate to proceed.",
       })
     : imageBusy
       ? t("imageStudio.generateTitle.generating", { defaultValue: "Generating..." })
@@ -548,10 +554,96 @@ export function ImageStudioTab({
         availableImageCacheStrategies.find((s) => s.id === id)?.hint ?? "",
     });
 
-  const formatImageGb = (gb: number): string =>
-    gb >= 10 ? `${gb.toFixed(0)} GB` : `${gb.toFixed(1)} GB`;
+  const disclosureMemory = useDisclosureMemory("image");
+
+  // Run estimate: the basis chip reads the same rows the recommended-settings panel shows.
+  const estimateRows = recommendationRows(
+    selectedImageVariant?.availableLocally ? selectedImageVariant.recommendedSettings : null,
+    recommendationAppliers,
+    recommendationCurrent,
+  );
+  const estimateBasis = runEstimateBasis(estimateRows, selectedImageVariant?.estimatedGenerationSeconds != null);
+
+  // Value summaries on the Options / Expert disclosures: only what differs from the defaults.
+  const labelValue = (label: string, value: string | number): string =>
+    t("studioKit.summary.labelValue", { defaultValue: "{label} {value}", label, value });
+  const onOff = (on: boolean): string =>
+    on ? t("recommended.on", { defaultValue: "On" }) : t("recommended.off", { defaultValue: "Off" });
+  const toggleTooltip = (label: string, description: string, detail: string): string => `${label}: ${description} ${detail}`;
+  const expertSummary = summaryLine(
+    [
+      showSampler && imageSampler !== "default" && labelValue(t("image.sampler", { defaultValue: "Sampler" }), samplerLabelFor(imageSampler)),
+      showDiffusionCache && imageCacheStrategy !== "none"
+        && labelValue(
+          t("image.diffusionCache", { defaultValue: "Diffusion cache" }),
+          imageCacheRelL1Thresh != null
+            ? t("recommended.cacheValue", {
+                defaultValue: "{name}, threshold {threshold}",
+                name: cacheStrategyLabelFor(imageCacheStrategy),
+                threshold: imageCacheRelL1Thresh,
+              })
+            : cacheStrategyLabelFor(imageCacheStrategy),
+        ),
+      showCfgDecay && imageCfgDecay && labelValue(t("imageStudio.toggles.cfgDecay.label", { defaultValue: "CFG decay" }), onOff(true)),
+      showPreviewVae && imagePreviewVae && labelValue(t("imageStudio.toggles.previewVae.label", { defaultValue: "Preview VAE" }), onOff(true)),
+      showFp8 && imageFp8LayerwiseCasting
+        && labelValue(t("imageStudio.toggles.fp8Layerwise.label", { defaultValue: "FP8 layerwise (CUDA Ada+)" }), onOff(true)),
+      imageSteps !== selectedQuality.steps && labelValue(t("imageStudio.fields.steps", { defaultValue: "Steps" }), imageSteps),
+      acceptsGuidance && imageGuidance !== selectedQuality.guidance
+        && labelValue(t("imageStudio.fields.guidance", { defaultValue: "Guidance" }), imageGuidance),
+    ],
+    t("disclosure.defaults", { defaultValue: "Model defaults" }),
+  );
+  const optionsSummary = summaryLine([
+    t("studioKit.summary.size", { defaultValue: "{width} × {height}", width: imageWidth, height: imageHeight }),
+    labelValue(t("imageStudio.fields.images", { defaultValue: "Images" }), imageBatchSize),
+    imageUseRandomSeed
+      ? t("imageStudio.fields.randomSeed", { defaultValue: "Random seed" })
+      : labelValue(t("imageStudio.fields.seed", { defaultValue: "Seed" }), imageSeedInput || "?"),
+    imageNegativePrompt.trim().length > 0 && t("studioKit.summary.negativeSet", { defaultValue: "Negative prompt set" }),
+    selectedImageVariant?.maxReferenceImages === 1 && imageReferences.length > 0
+      && labelValue(t("inputImage.strength"), imageReferenceStrength.toFixed(2)),
+  ]);
+
+  // The less-used model actions live in one menu (the header keeps Models and Gallery).
+  const imageMenuDisabled = imageBusy || busy || !backendOnline;
+  const headerMenuItems: ActionMenuItem[] = [];
+  if (selectedImageVariant) {
+    headerMenuItems.push({
+      id: "model-card",
+      label: t("studioKit.modelCard", { defaultValue: "Model card" }),
+      onSelect: () => onOpenExternalUrl(selectedImageVariant.link),
+    });
+    if (bannerRuntimeStatus.realGenerationAvailable) {
+      if (selectedImageVariant.availableLocally && !selectedImageLoaded) {
+        headerMenuItems.push({
+          id: "load",
+          label: t("runtimeBanner.preloadModel", { defaultValue: "Preload Model" }),
+          onSelect: () => onPreloadImageModel(selectedImageVariant),
+          disabled: imageMenuDisabled,
+        });
+      }
+      if (selectedImageLoaded) {
+        headerMenuItems.push({
+          id: "unload",
+          label: t("runtimeBanner.unloadModel", { defaultValue: "Unload Model" }),
+          onSelect: () => onUnloadImageModel(selectedImageVariant),
+          disabled: imageMenuDisabled,
+        });
+      }
+      if (!selectedImageLoaded && loadedImageVariant) {
+        headerMenuItems.push({
+          id: "unload-named",
+          label: t("runtimeBanner.unloadNamed", { name: loadedImageVariant.name, defaultValue: "Unload {name}" }),
+          onSelect: () => onUnloadImageModel(),
+          disabled: imageMenuDisabled,
+        });
+      }
+    }
+  }
 
   return (
+    <DisclosureMemoryContext.Provider value={disclosureMemory}>
     <div className="content-grid image-page-grid">
       <Panel
         title={t("image.title")}
@@ -561,15 +653,15 @@ export function ImageStudioTab({
         className="span-2"
         actions={
           <div className="button-row">
-            <button className="secondary-button" type="button" onClick={() => onActiveTabChange(modelsPageRequest("image", "available"))}>
-              {t("imageStudio.actions.discover", { defaultValue: "Find models" })}
-            </button>
-            <button className="secondary-button" type="button" onClick={() => onActiveTabChange(modelsPageRequest("image", "installed"))}>
-              {t("imageStudio.actions.installed", { defaultValue: "Installed" })}
+            <button className="secondary-button" type="button" onClick={() => onActiveTabChange(modelsPageRequest("image"))}>
+              {t("studioKit.models", { defaultValue: "Models" })}
             </button>
             <button className="secondary-button" type="button" onClick={() => onOpenImageGallery()}>
               {t("imageStudio.actions.gallery", { defaultValue: "Gallery" })}
             </button>
+            {headerMenuItems.length > 0 ? (
+              <ActionMenu label={t("studioKit.moreActions", { defaultValue: "More actions" })} items={headerMenuItems} />
+            ) : null}
           </div>
         }
       >
@@ -604,8 +696,6 @@ export function ImageStudioTab({
           imageBusy={imageBusy}
           backendOnline={backendOnline}
           onRestartServer={onRestartServer}
-          onPreloadImageModel={onPreloadImageModel}
-          onUnloadImageModel={onUnloadImageModel}
           onInstallCudaTorch={onInstallCudaTorch}
           installingCudaTorch={installingCudaTorch}
           cudaTorchResult={cudaTorchResult}
@@ -622,19 +712,6 @@ export function ImageStudioTab({
           defaultValue: "Choose a model, set the aspect ratio and quality, then generate into the local gallery.",
         })}
         className="image-studio-form-panel"
-        actions={
-          <button
-            className="primary-button"
-            type="button"
-            onClick={() => onSubmitImageGeneration()}
-            disabled={imageGenerateDisabled}
-            title={imageGenerateTitle}
-          >
-            {imageBusy
-              ? t("image.generating", { defaultValue: "Generating..." })
-              : t("image.generate", { defaultValue: "Generate" })}
-          </button>
-        }
       >
         <div className="image-form-stack">
           <label>
@@ -664,6 +741,7 @@ export function ImageStudioTab({
           <MfluxEngineBanner
             modelNeedsMflux={Boolean(selectedImageVariant?.runtime?.toLowerCase().includes("mflux"))}
           />
+
 
           {!hasInstalledImageModels ? (
             <div className="callout image-callout">
@@ -796,66 +874,19 @@ export function ImageStudioTab({
             />
           </label>
 
-          {selectedImageVariant?.acceptsNegativePrompt !== false ? (
-            <label>
-              {t("image.negativePrompt", { defaultValue: "Negative prompt" })}
-              <textarea
-                className="text-input prompt-area prompt-area--secondary"
-                rows={3}
-                placeholder={t("imageStudio.negativePrompt.placeholder", {
-                  defaultValue: "blurry, deformed hands, extra limbs, overexposed",
-                })}
-                value={imageNegativePrompt}
-                onChange={(event) => onImageNegativePromptChange(event.target.value)}
-              />
-            </label>
-          ) : null}
-
           {(selectedImageVariant?.maxReferenceImages ?? 0) > 0 ? (
-            <>
-              <InputImagePicker
-                label={t(
-                  (selectedImageVariant?.maxReferenceImages ?? 0) > 1 ? "inputImage.referenceLabelMany" : "inputImage.referenceLabel",
-                                  )}
-                hint={t(
-                  (selectedImageVariant?.maxReferenceImages ?? 0) > 1 ? "inputImage.referenceHintMany" : "inputImage.referenceHintOne",
-                  { max: selectedImageVariant?.maxReferenceImages ?? 1 },
-                )}
-                images={imageReferences}
-                max={selectedImageVariant?.maxReferenceImages ?? 1}
-                onChange={onImageReferencesChange}
-                gallery={imageOutputs}
-                disabled={imageBusy}
-              />
-              {selectedImageVariant?.maxReferenceImages === 1 && imageReferences.length > 0 ? (
-                <label>
-                  {t("inputImage.strength")} ({imageReferenceStrength.toFixed(2)})
-                  <input
-                    type="range"
-                    min={0.05}
-                    max={1}
-                    step={0.05}
-                    value={imageReferenceStrength}
-                    disabled={imageBusy}
-                    onChange={(event) => onImageReferenceStrengthChange(Number(event.target.value))}
-                  />
-                </label>
-              ) : null}
-            </>
-          ) : null}
-
-          {selectedImageVariant?.availableLocally ? (
-            <RecommendedSettingsPanel
-              recommendation={selectedImageVariant.recommendedSettings}
-              appliers={recommendationAppliers}
-              current={recommendationCurrent}
-              labelFor={(kind, id) =>
-                kind === "sampler"
-                  ? samplerLabelFor(id)
-                  : kind === "cacheStrategy"
-                    ? cacheStrategyLabelFor(id)
-                    : qualityLabelFor(id)
-              }
+            <InputImagePicker
+              label={t(
+                (selectedImageVariant?.maxReferenceImages ?? 0) > 1 ? "inputImage.referenceLabelMany" : "inputImage.referenceLabel",
+                                )}
+              hint={t(
+                (selectedImageVariant?.maxReferenceImages ?? 0) > 1 ? "inputImage.referenceHintMany" : "inputImage.referenceHintOne",
+                { max: selectedImageVariant?.maxReferenceImages ?? 1 },
+              )}
+              images={imageReferences}
+              max={selectedImageVariant?.maxReferenceImages ?? 1}
+              onChange={onImageReferencesChange}
+              gallery={imageOutputs}
               disabled={imageBusy}
             />
           ) : null}
@@ -948,261 +979,6 @@ export function ImageStudioTab({
             </div>
           </div>
 
-          {showSampler ? (
-            <div className="control-stack">
-              <span className="eyebrow">
-                {t("image.sampler", { defaultValue: "Sampler" })}
-                <InfoTooltip text={t("imageStudio.sampler.tooltip", {
-                  defaultValue:
-                    "Scheduler / sampler algorithm used during denoising. ‘Model default’ keeps whatever the pipeline shipped with. AYS DPM++ 2M (SD1.5 / SDXL) uses NVIDIA’s Align Your Steps schedule — wins detail at 7-10 steps where Karras / Euler look soft. Hidden for FLUX, SD3, Qwen-Image, Sana and HiDream — those flow-matching pipelines ship locked schedulers and swapping produces noise.",
-                })} />
-              </span>
-              <select
-                className="text-input"
-                value={imageSampler}
-                onChange={(event) => onImageSamplerChange(event.target.value as ImageSamplerId)}
-              >
-                {IMAGE_SAMPLERS.map((sampler) => (
-                  <option key={sampler.id} value={sampler.id}>
-                    {samplerLabelFor(sampler.id)} · {samplerHintFor(sampler.id)}
-                  </option>
-                ))}
-              </select>
-            </div>
-          ) : null}
-
-          {/*
-            FU-015: diffusion cache strategy. Cross-platform — runs on
-            macOS (MPS), Windows (CUDA / DirectML) and Linux (CUDA / CPU)
-            because both FBCache and TeaCache attach to the diffusers
-            transformer regardless of device. Hidden for the placeholder
-            engine and for variants that lack a transformer attribute
-            (UNet-based SD1.5/SDXL fall through gracefully on the
-            backend with a runtimeNote).
-          */}
-          {showDiffusionCache ? (
-            <div className="control-stack">
-              <span className="eyebrow">
-                {t("image.diffusionCache", { defaultValue: "Diffusion cache" })}
-                <InfoTooltip text={t("imageStudio.diffusionCache.tooltip", {
-                  defaultValue:
-                    "Speed up generation by reusing transformer block outputs between similar sampling steps. First Block Cache is the cross-platform default and works on every DiT pipeline (FLUX, SD3, Qwen-Image, Sana, HiDream, Z-Image, ERNIE-Image, GLM-Image) on macOS / Windows / Linux — typical 1.5-2× wall-time win at default threshold with imperceptible quality drift. TeaCache only ships calibrated forwards for the FLUX family on the image side — hidden for other DiTs so the dropdown reflects what the backend will actually apply. Hidden entirely for UNet pipelines (SDXL / SD1.5 / SD2) which lack the transformer attachment point.",
-                })} />
-              </span>
-              <select
-                className="text-input"
-                value={imageCacheStrategy}
-                onChange={(event) =>
-                  onImageCacheStrategyChange(event.target.value as ImageCacheStrategyId)
-                }
-              >
-                {availableImageCacheStrategies.map((strategy) => (
-                  <option key={strategy.id} value={strategy.id}>
-                    {cacheStrategyLabelFor(strategy.id)} · {cacheStrategyHintFor(strategy.id)}
-                  </option>
-                ))}
-              </select>
-              {availableImageCacheStrategies.length === 2 ? (
-                <span className="muted-text" style={{ fontSize: 11 }}>
-                  {t("imageStudio.diffusionCache.teaCacheHidden", {
-                    defaultValue:
-                      "TeaCache hidden — its image-side calibration only covers the FLUX family. First Block Cache works on every DiT pipeline shipped today (cross-platform).",
-                  })}
-                </span>
-              ) : null}
-              {imageCacheStrategy !== "none" ? (
-                <label className="control-stack-inline">
-                  <span className="muted-text">
-                    {t("imageStudio.diffusionCache.threshold", {
-                      defaultValue: "Threshold ({value})",
-                      value: imageCacheRelL1Thresh ??
-                        IMAGE_CACHE_STRATEGY_DEFAULT_THRESH[imageCacheStrategy],
-                    })}
-                    <InfoTooltip text={t("imageStudio.diffusionCache.thresholdTooltip", {
-                      defaultValue:
-                        "Relative L1 distance between consecutive block-cache states. Lower = stricter (less speedup, less drift). Higher = more aggressive caching (more speedup, may shimmer fine detail). Defaults: First Block Cache 0.12, TeaCache 0.4 — both calibrated against the diffusers blog / upstream papers for negligible quality loss on FLUX.1-dev.",
-                    })} />
-                  </span>
-                  <input
-                    className="text-input"
-                    type="number"
-                    min={0.01}
-                    max={0.6}
-                    step={0.01}
-                    value={
-                      imageCacheRelL1Thresh ??
-                      IMAGE_CACHE_STRATEGY_DEFAULT_THRESH[imageCacheStrategy]
-                    }
-                    onChange={(event) => {
-                      const value = Number(event.target.value);
-                      onImageCacheRelL1ThreshChange(
-                        Number.isFinite(value) && value > 0 ? value : null,
-                      );
-                    }}
-                  />
-                </label>
-              ) : null}
-            </div>
-          ) : null}
-
-          {/*
-            FU-021: opt-in CFG decay schedule. Applies only to
-            flow-match models (FLUX, SD3, Qwen-Image, Sana, HiDream)
-            where late-step high CFG drifts toward oversaturation.
-            Backend gates non-flow-match repos automatically; we hide
-            the toggle for SD1.5/SDXL so the UI matches behaviour.
-          */}
-          {showCfgDecay ? (
-            <label className="checkbox-row">
-              <input
-                type="checkbox"
-                checked={imageCfgDecay}
-                onChange={(event) => onImageCfgDecayChange(event.target.checked)}
-              />
-              <span>
-                <strong>{t("imageStudio.toggles.cfgDecay.label", { defaultValue: "CFG decay" })}</strong>
-                {" "}— {t("imageStudio.toggles.cfgDecay.description", {
-                  defaultValue:
-                    "linearly relax guidance from your slider value toward 1.5 across the schedule. Reduces oversaturation on late steps without changing semantics from early steps. Off by default; backend ignores this on SD1.5 / SDXL.",
-                })}
-                <InfoTooltip text={t("imageStudio.toggles.cfgDecay.tooltip", {
-                  defaultValue:
-                    "Flow-match models (FLUX, SD3, Qwen-Image, Sana, HiDream) tend to ‘burn’ highlights when classifier-free guidance stays high through every step. Decaying lets early steps lock semantics (high CFG) while late steps preserve fine detail (low CFG). Floor stays at 1.5 — dropping to 1.0 mid-schedule swaps the pipeline from 2-batch to 1-batch shape and crashes diffusers. Same shape as the video runtime knob you already use.",
-                })} />
-              </span>
-            </label>
-          ) : null}
-
-          {/*
-            FU-018: TAESD preview-decode VAE swap. Off by default —
-            image users typically want full fidelity. Backend maps
-            the loaded repo to the matching tiny VAE
-            (taef1/taef2/taesd3/taesdxl/taesd/taeqwenimage); unmapped
-            repos no-op silently.
-          */}
-          {showPreviewVae ? (
-          <label className="checkbox-row">
-            <input
-              type="checkbox"
-              checked={imagePreviewVae}
-              onChange={(event) => onImagePreviewVaeChange(event.target.checked)}
-            />
-            <span>
-              <strong>{t("imageStudio.toggles.previewVae.label", { defaultValue: "Preview VAE" })}</strong>
-              {" "}— {t("imageStudio.toggles.previewVae.description", {
-                defaultValue:
-                  "swap the full VAE for the matching tiny VAE (TAESD / TAEHV) so each step decodes in a fraction of the wall-time. Trades final fidelity for iteration speed. Off by default.",
-              })}
-              <InfoTooltip text={t("imageStudio.toggles.previewVae.tooltip", {
-                defaultValue:
-                  "Tiny VAEs (madebyollin/taef1, taef2, taesd3, taesdxl, taesd, taeqwenimage) are 1-2 order of magnitude faster than the full VAE but lose some fine-detail fidelity. Best for fast iteration / drafting; flip off when you're ready to ship the final image. Backend silently no-ops on repos without a mapped tiny VAE so you can leave it on without surprises.",
-              })} />
-            </span>
-          </label>
-          ) : null}
-
-          {/*
-            FU-024: FP8 layerwise casting on CUDA SM 8.9+ (Ada/Hopper/
-            Blackwell). Halves transformer VRAM by storing fp8 weights +
-            promoting to bf16 inside the matmul. Hidden entirely on
-            Apple Silicon — there's no CUDA path so the toggle would be
-            unreachable. Still rendered on Linux / Windows where backend
-            checks compute capability + skips on pre-Ada hardware.
-          */}
-          {showFp8 ? (
-            <label className="checkbox-row">
-              <input
-                type="checkbox"
-                checked={imageFp8LayerwiseCasting}
-                onChange={(event) => onImageFp8LayerwiseCastingChange(event.target.checked)}
-              />
-              <span>
-                <strong>{t("imageStudio.toggles.fp8Layerwise.label", { defaultValue: "FP8 layerwise (CUDA Ada+)" })}</strong>
-                {" "}— {t("imageStudio.toggles.fp8Layerwise.description", {
-                  defaultValue:
-                    "store transformer weights in fp8 + promote to bf16 inside the matmul. Halves VRAM with negligible quality drift on modern GPUs. Apple Silicon / pre-Ada GPUs no-op cleanly.",
-                })}
-                <InfoTooltip text={t("imageStudio.toggles.fp8Layerwise.tooltip", {
-                  defaultValue:
-                    "diffusers' enable_layerwise_casting. Family-correct dtype: E5M2 for HunyuanVideo, E4M3 for FLUX / Wan / Qwen-Image / SD3 / LTX. Backend checks GPU compute capability before applying — pre-Ada (SM <8.9) lacks hardware fp8 and skips with a runtimeNote. Best stacked with Nunchaku INT4 for the smallest footprint.",
-                })} />
-              </span>
-            </label>
-          ) : null}
-
-          <div className="field-grid image-field-grid">
-            <label>
-              {t("imageStudio.fields.width", { defaultValue: "Width" })}
-              <input
-                className="text-input"
-                type="number"
-                min={imageMinSide}
-                max={imageMaxSide}
-                step={64}
-                value={imageWidth}
-                onChange={(event) => onImageWidthChange(Number(event.target.value) || 1024)}
-                onBlur={() => onImageWidthChange(clampStudioSide(imageWidth, { maxSide: imageMaxSide, minSide: imageMinSide }, 1024))}
-              />
-            </label>
-            <label>
-              {t("imageStudio.fields.height", { defaultValue: "Height" })}
-              <input
-                className="text-input"
-                type="number"
-                min={imageMinSide}
-                max={imageMaxSide}
-                step={64}
-                value={imageHeight}
-                onChange={(event) => onImageHeightChange(Number(event.target.value) || 1024)}
-                onBlur={() => onImageHeightChange(clampStudioSide(imageHeight, { maxSide: imageMaxSide, minSide: imageMinSide }, 1024))}
-              />
-            </label>
-            <label>
-              {t("imageStudio.fields.steps", { defaultValue: "Steps" })}
-              <input
-                className="text-input"
-                type="number"
-                min={1}
-                max={100}
-                value={imageSteps}
-                onChange={(event) => onImageStepsChange(Math.min(100, Math.max(1, Math.round(Number(event.target.value)) || 24)))}
-              />
-            </label>
-            {acceptsGuidance ? (
-              <label>
-                {t("imageStudio.fields.guidance", { defaultValue: "Guidance" })}
-                <input
-                  className="text-input"
-                  type="number"
-                  min={1}
-                  max={20}
-                  step={0.5}
-                  value={imageGuidance}
-                  onChange={(event) => onImageGuidanceChange(Number(event.target.value) || 6)}
-                />
-              </label>
-            ) : null}
-            <label>
-              {t("imageStudio.fields.images", { defaultValue: "Images" })}
-              <input
-                className="text-input"
-                type="number"
-                min={1}
-                max={4}
-                value={imageBatchSize}
-                onChange={(event) => onImageBatchSizeChange(Math.max(1, Math.min(4, Number(event.target.value) || 1)))}
-              />
-            </label>
-            <label className="checkbox-card">
-              <span className="checkbox-card-label">{t("imageStudio.fields.randomSeed", { defaultValue: "Random seed" })}</span>
-              <input
-                type="checkbox"
-                checked={imageUseRandomSeed}
-                onChange={(event) => onImageUseRandomSeedChange(event.target.checked)}
-              />
-            </label>
-          </div>
-
           {selectedImageVariant?.maxPixels
             && Number.isFinite(imageWidth) && Number.isFinite(imageHeight)
             && imageWidth * imageHeight > selectedImageVariant.maxPixels ? (
@@ -1217,16 +993,10 @@ export function ImageStudioTab({
           ) : null}
 
           {/*
-            Pre-flight memory callout. Same structure as the video studio's
-            safety callout. Shows for caution AND danger, but only the
-            danger level blocks Generate — caution just warns. The
-            checkbox below the warning text is the explicit override for
-            danger runs (auto-resets on variant / width / height change).
-
-            We keep this above the Seed input (below the field-grid) so
-            users who just edited W/H see the consequence right there
-            instead of having to hunt at the bottom of the form. Mirrors
-            the video tab's placement.
+            Pre-flight memory callout. Shows for caution AND danger, but only
+            the danger level blocks Generate — caution just warns. The
+            override checkbox for danger runs lives in the run estimate strip
+            below (auto-resets on variant / width / height change).
           */}
           {imageSafety.riskLevel !== "safe" && selectedImageVariant ? (
             <div
@@ -1244,17 +1014,6 @@ export function ImageStudioTab({
                 </strong>{" "}
                 {imageSafety.reason}
               </p>
-              {imageSafety.modelFootprintGb > 0 ? (
-                <p className="muted-text">
-                  {t("imageStudio.safety.resourceEstimate", {
-                    defaultValue:
-                      "Model ≈ {model} · this run peak ≈ {peak} of ~{total} total.",
-                    model: formatImageGb(imageSafety.modelFootprintGb),
-                    peak: formatImageGb(imageSafety.estimatedPeakGb),
-                    total: formatImageGb(imageSafety.deviceMemoryGb),
-                  })}
-                </p>
-              ) : null}
               {imageSafety.suggestion ? (
                 <div className="button-row">
                   <button
@@ -1285,39 +1044,366 @@ export function ImageStudioTab({
                   </button>
                 </div>
               )}
-              {imageSafety.riskLevel === "danger" ? (
-                <label
-                  className="inline-label"
-                  style={{ display: "flex", alignItems: "center", gap: ".4rem", marginTop: ".6rem" }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={dangerOverrideAck}
-                    onChange={(event) => setDangerOverrideAck(event.target.checked)}
-                  />
-                  <span>
-                    {t("imageStudio.safety.overrideAck", {
-                      defaultValue: "Generate anyway — I accept that the backend may crash.",
-                    })}
-                  </span>
-                </label>
-              ) : null}
             </div>
           ) : null}
 
-          {!imageUseRandomSeed ? (
-            <label>
-              {t("imageStudio.fields.seed", { defaultValue: "Seed" })}
-              <input
-                className="text-input"
-                type="number"
-                min={0}
-                max={2147483647}
-                value={imageSeedInput}
-                onChange={(event) => onImageSeedInputChange(event.target.value)}
-              />
-            </label>
-          ) : null}
+          <div className="studio-shell__estimate">
+            <RunEstimateStrip
+              seconds={selectedImageVariant?.estimatedGenerationSeconds ?? null}
+              peakGb={selectedImageVariant && imageSafety.modelFootprintGb > 0 ? imageSafety.estimatedPeakGb : null}
+              totalGb={selectedImageVariant && imageSafety.modelFootprintGb > 0 ? imageSafety.deviceMemoryGb : null}
+              diskMb={null}
+              basis={estimateBasis}
+              risk={selectedImageVariant ? imageSafety.riskLevel : "safe"}
+              ack={{ checked: dangerOverrideAck, onChange: setDangerOverrideAck }}
+              action={
+                <button
+                  className="primary-button"
+                  type="button"
+                  onClick={() => onSubmitImageGeneration()}
+                  disabled={imageGenerateDisabled}
+                  title={imageGenerateTitle}
+                >
+                  {imageBusy
+                    ? t("image.generating", { defaultValue: "Generating..." })
+                    : t("image.generate", { defaultValue: "Generate" })}
+                </button>
+              }
+            />
+          </div>
+
+          <div className="studio-shell__options">
+            <Disclosure id="options" title={t("disclosure.options", { defaultValue: "Options" })} summary={optionsSummary}>
+              {selectedImageVariant?.acceptsNegativePrompt !== false ? (
+                <label>
+                  {t("image.negativePrompt", { defaultValue: "Negative prompt" })}
+                  <textarea
+                    className="text-input prompt-area prompt-area--secondary"
+                    rows={3}
+                    placeholder={t("imageStudio.negativePrompt.placeholder", {
+                      defaultValue: "blurry, deformed hands, extra limbs, overexposed",
+                    })}
+                    value={imageNegativePrompt}
+                    onChange={(event) => onImageNegativePromptChange(event.target.value)}
+                  />
+                </label>
+              ) : null}
+
+              {selectedImageVariant?.maxReferenceImages === 1 && imageReferences.length > 0 ? (
+                <label>
+                  {t("inputImage.strength")} ({imageReferenceStrength.toFixed(2)})
+                  <input
+                    type="range"
+                    min={0.05}
+                    max={1}
+                    step={0.05}
+                    value={imageReferenceStrength}
+                    disabled={imageBusy}
+                    onChange={(event) => onImageReferenceStrengthChange(Number(event.target.value))}
+                  />
+                </label>
+              ) : null}
+
+              <div className="field-grid image-field-grid">
+                <label>
+                  {t("imageStudio.fields.width", { defaultValue: "Width" })}
+                  <input
+                    className="text-input"
+                    type="number"
+                    min={imageMinSide}
+                    max={imageMaxSide}
+                    step={64}
+                    value={imageWidth}
+                    onChange={(event) => onImageWidthChange(Number(event.target.value) || 1024)}
+                    onBlur={() => onImageWidthChange(clampStudioSide(imageWidth, { maxSide: imageMaxSide, minSide: imageMinSide }, 1024))}
+                  />
+                </label>
+                <label>
+                  {t("imageStudio.fields.height", { defaultValue: "Height" })}
+                  <input
+                    className="text-input"
+                    type="number"
+                    min={imageMinSide}
+                    max={imageMaxSide}
+                    step={64}
+                    value={imageHeight}
+                    onChange={(event) => onImageHeightChange(Number(event.target.value) || 1024)}
+                    onBlur={() => onImageHeightChange(clampStudioSide(imageHeight, { maxSide: imageMaxSide, minSide: imageMinSide }, 1024))}
+                  />
+                </label>
+                <label>
+                  {t("imageStudio.fields.images", { defaultValue: "Images" })}
+                  <input
+                    className="text-input"
+                    type="number"
+                    min={1}
+                    max={4}
+                    value={imageBatchSize}
+                    onChange={(event) => onImageBatchSizeChange(Math.max(1, Math.min(4, Number(event.target.value) || 1)))}
+                  />
+                </label>
+                <label className="checkbox-card">
+                  <span className="checkbox-card-label">{t("imageStudio.fields.randomSeed", { defaultValue: "Random seed" })}</span>
+                  <input
+                    type="checkbox"
+                    checked={imageUseRandomSeed}
+                    onChange={(event) => onImageUseRandomSeedChange(event.target.checked)}
+                  />
+                </label>
+              </div>
+
+              {!imageUseRandomSeed ? (
+                <label>
+                  {t("imageStudio.fields.seed", { defaultValue: "Seed" })}
+                  <input
+                    className="text-input"
+                    type="number"
+                    min={0}
+                    max={2147483647}
+                    value={imageSeedInput}
+                    onChange={(event) => onImageSeedInputChange(event.target.value)}
+                  />
+                </label>
+              ) : null}
+            </Disclosure>
+
+            <Disclosure id="expert" title={t("disclosure.expert", { defaultValue: "Expert" })} summary={expertSummary}>
+              {selectedImageVariant?.availableLocally ? (
+                <RecommendedSettingsPanel
+                  recommendation={selectedImageVariant.recommendedSettings}
+                  appliers={recommendationAppliers}
+                  current={recommendationCurrent}
+                  labelFor={(kind, id) =>
+                    kind === "sampler"
+                      ? samplerLabelFor(id)
+                      : kind === "cacheStrategy"
+                        ? cacheStrategyLabelFor(id)
+                        : qualityLabelFor(id)
+                  }
+                  disabled={imageBusy}
+                />
+              ) : null}
+
+              <div className="field-grid image-field-grid">
+                <label>
+                  {t("imageStudio.fields.steps", { defaultValue: "Steps" })}
+                  <input
+                    className="text-input"
+                    type="number"
+                    min={1}
+                    max={100}
+                    value={imageSteps}
+                    onChange={(event) => onImageStepsChange(Math.min(100, Math.max(1, Math.round(Number(event.target.value)) || 24)))}
+                  />
+                </label>
+                {acceptsGuidance ? (
+                  <label>
+                    {t("imageStudio.fields.guidance", { defaultValue: "Guidance" })}
+                    <input
+                      className="text-input"
+                      type="number"
+                      min={1}
+                      max={20}
+                      step={0.5}
+                      value={imageGuidance}
+                      onChange={(event) => onImageGuidanceChange(Number(event.target.value) || 6)}
+                    />
+                  </label>
+                ) : null}
+              </div>
+
+              {showSampler ? (
+                <div className="control-stack">
+                  <span className="eyebrow">
+                    {t("image.sampler", { defaultValue: "Sampler" })}
+                    <InfoTooltip text={t("imageStudio.sampler.tooltip", {
+                      defaultValue:
+                        "Scheduler / sampler algorithm used during denoising. ‘Model default’ keeps whatever the pipeline shipped with. AYS DPM++ 2M (SD1.5 / SDXL) uses NVIDIA’s Align Your Steps schedule — wins detail at 7-10 steps where Karras / Euler look soft. Hidden for FLUX, SD3, Qwen-Image, Sana and HiDream — those flow-matching pipelines ship locked schedulers and swapping produces noise.",
+                    })} />
+                  </span>
+                  <select
+                    className="text-input"
+                    value={imageSampler}
+                    onChange={(event) => onImageSamplerChange(event.target.value as ImageSamplerId)}
+                  >
+                    {IMAGE_SAMPLERS.map((sampler) => (
+                      <option key={sampler.id} value={sampler.id}>
+                        {samplerLabelFor(sampler.id)} · {samplerHintFor(sampler.id)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : null}
+
+              {/*
+                FU-015: diffusion cache strategy. Cross-platform — runs on
+                macOS (MPS), Windows (CUDA / DirectML) and Linux (CUDA / CPU)
+                because both FBCache and TeaCache attach to the diffusers
+                transformer regardless of device. Hidden for the placeholder
+                engine and for variants that lack a transformer attribute
+                (UNet-based SD1.5/SDXL fall through gracefully on the
+                backend with a runtimeNote).
+              */}
+              {showDiffusionCache ? (
+                <div className="control-stack">
+                  <span className="eyebrow">
+                    {t("image.diffusionCache", { defaultValue: "Diffusion cache" })}
+                    <InfoTooltip text={t("imageStudio.diffusionCache.tooltip", {
+                      defaultValue:
+                        "Speed up generation by reusing transformer block outputs between similar sampling steps. First Block Cache is the cross-platform default and works on every DiT pipeline (FLUX, SD3, Qwen-Image, Sana, HiDream, Z-Image, ERNIE-Image, GLM-Image) on macOS / Windows / Linux — typical 1.5-2× wall-time win at default threshold with imperceptible quality drift. TeaCache only ships calibrated forwards for the FLUX family on the image side — hidden for other DiTs so the dropdown reflects what the backend will actually apply. Hidden entirely for UNet pipelines (SDXL / SD1.5 / SD2) which lack the transformer attachment point.",
+                    })} />
+                  </span>
+                  <select
+                    className="text-input"
+                    value={imageCacheStrategy}
+                    onChange={(event) =>
+                      onImageCacheStrategyChange(event.target.value as ImageCacheStrategyId)
+                    }
+                  >
+                    {availableImageCacheStrategies.map((strategy) => (
+                      <option key={strategy.id} value={strategy.id}>
+                        {cacheStrategyLabelFor(strategy.id)} · {cacheStrategyHintFor(strategy.id)}
+                      </option>
+                    ))}
+                  </select>
+                  {availableImageCacheStrategies.length === 2 ? (
+                    <span className="muted-text" style={{ fontSize: 11 }}>
+                      {t("imageStudio.diffusionCache.teaCacheHidden", {
+                        defaultValue:
+                          "TeaCache hidden — its image-side calibration only covers the FLUX family. First Block Cache works on every DiT pipeline shipped today (cross-platform).",
+                      })}
+                    </span>
+                  ) : null}
+                  {imageCacheStrategy !== "none" ? (
+                    <label className="control-stack-inline">
+                      <span className="muted-text">
+                        {t("imageStudio.diffusionCache.threshold", {
+                          defaultValue: "Threshold ({value})",
+                          value: imageCacheRelL1Thresh ??
+                            IMAGE_CACHE_STRATEGY_DEFAULT_THRESH[imageCacheStrategy],
+                        })}
+                        <InfoTooltip text={t("imageStudio.diffusionCache.thresholdTooltip", {
+                          defaultValue:
+                            "Relative L1 distance between consecutive block-cache states. Lower = stricter (less speedup, less drift). Higher = more aggressive caching (more speedup, may shimmer fine detail). Defaults: First Block Cache 0.12, TeaCache 0.4 — both calibrated against the diffusers blog / upstream papers for negligible quality loss on FLUX.1-dev.",
+                        })} />
+                      </span>
+                      <input
+                        className="text-input"
+                        type="number"
+                        min={0.01}
+                        max={0.6}
+                        step={0.01}
+                        value={
+                          imageCacheRelL1Thresh ??
+                          IMAGE_CACHE_STRATEGY_DEFAULT_THRESH[imageCacheStrategy]
+                        }
+                        onChange={(event) => {
+                          const value = Number(event.target.value);
+                          onImageCacheRelL1ThreshChange(
+                            Number.isFinite(value) && value > 0 ? value : null,
+                          );
+                        }}
+                      />
+                    </label>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {/*
+                FU-021: opt-in CFG decay schedule. Applies only to
+                flow-match models (FLUX, SD3, Qwen-Image, Sana, HiDream)
+                where late-step high CFG drifts toward oversaturation.
+                Backend gates non-flow-match repos automatically; we hide
+                the toggle for SD1.5/SDXL so the UI matches behaviour.
+              */}
+              {showCfgDecay ? (
+                <label className="checkbox-row">
+                  <input
+                    type="checkbox"
+                    checked={imageCfgDecay}
+                    onChange={(event) => onImageCfgDecayChange(event.target.checked)}
+                  />
+                  <span>
+                    <strong>{t("imageStudio.toggles.cfgDecay.label", { defaultValue: "CFG decay" })}</strong>
+                    <InfoTooltip text={toggleTooltip(
+                      t("imageStudio.toggles.cfgDecay.label", { defaultValue: "CFG decay" }),
+                      t("imageStudio.toggles.cfgDecay.description", {
+                        defaultValue:
+                          "linearly relax guidance from your slider value toward 1.5 across the schedule. Reduces oversaturation on late steps without changing semantics from early steps. Off by default; backend ignores this on SD1.5 / SDXL.",
+                      }),
+                      t("imageStudio.toggles.cfgDecay.tooltip", {
+                        defaultValue:
+                          "Flow-match models (FLUX, SD3, Qwen-Image, Sana, HiDream) tend to ‘burn’ highlights when classifier-free guidance stays high through every step. Decaying lets early steps lock semantics (high CFG) while late steps preserve fine detail (low CFG). Floor stays at 1.5 — dropping to 1.0 mid-schedule swaps the pipeline from 2-batch to 1-batch shape and crashes diffusers. Same shape as the video runtime knob you already use.",
+                      }),
+                    )} />
+                  </span>
+                </label>
+              ) : null}
+
+              {/*
+                FU-018: TAESD preview-decode VAE swap. Off by default —
+                image users typically want full fidelity. Backend maps
+                the loaded repo to the matching tiny VAE
+                (taef1/taef2/taesd3/taesdxl/taesd/taeqwenimage); unmapped
+                repos no-op silently.
+              */}
+              {showPreviewVae ? (
+                <label className="checkbox-row">
+                  <input
+                    type="checkbox"
+                    checked={imagePreviewVae}
+                    onChange={(event) => onImagePreviewVaeChange(event.target.checked)}
+                  />
+                  <span>
+                    <strong>{t("imageStudio.toggles.previewVae.label", { defaultValue: "Preview VAE" })}</strong>
+                    <InfoTooltip text={toggleTooltip(
+                      t("imageStudio.toggles.previewVae.label", { defaultValue: "Preview VAE" }),
+                      t("imageStudio.toggles.previewVae.description", {
+                        defaultValue:
+                          "swap the full VAE for the matching tiny VAE (TAESD / TAEHV) so each step decodes in a fraction of the wall-time. Trades final fidelity for iteration speed. Off by default.",
+                      }),
+                      t("imageStudio.toggles.previewVae.tooltip", {
+                        defaultValue:
+                          "Tiny VAEs (madebyollin/taef1, taef2, taesd3, taesdxl, taesd, taeqwenimage) are 1-2 order of magnitude faster than the full VAE but lose some fine-detail fidelity. Best for fast iteration / drafting; flip off when you're ready to ship the final image. Backend silently no-ops on repos without a mapped tiny VAE so you can leave it on without surprises.",
+                      }),
+                    )} />
+                  </span>
+                </label>
+              ) : null}
+
+              {/*
+                FU-024: FP8 layerwise casting on CUDA SM 8.9+ (Ada/Hopper/
+                Blackwell). Halves transformer VRAM by storing fp8 weights +
+                promoting to bf16 inside the matmul. Hidden entirely on
+                Apple Silicon — there's no CUDA path so the toggle would be
+                unreachable. Still rendered on Linux / Windows where backend
+                checks compute capability + skips on pre-Ada hardware.
+              */}
+              {showFp8 ? (
+                <label className="checkbox-row">
+                  <input
+                    type="checkbox"
+                    checked={imageFp8LayerwiseCasting}
+                    onChange={(event) => onImageFp8LayerwiseCastingChange(event.target.checked)}
+                  />
+                  <span>
+                    <strong>{t("imageStudio.toggles.fp8Layerwise.label", { defaultValue: "FP8 layerwise (CUDA Ada+)" })}</strong>
+                    <InfoTooltip text={toggleTooltip(
+                      t("imageStudio.toggles.fp8Layerwise.label", { defaultValue: "FP8 layerwise (CUDA Ada+)" }),
+                      t("imageStudio.toggles.fp8Layerwise.description", {
+                        defaultValue:
+                          "store transformer weights in fp8 + promote to bf16 inside the matmul. Halves VRAM with negligible quality drift on modern GPUs. Apple Silicon / pre-Ada GPUs no-op cleanly.",
+                      }),
+                      t("imageStudio.toggles.fp8Layerwise.tooltip", {
+                        defaultValue:
+                          "diffusers' enable_layerwise_casting. Family-correct dtype: E5M2 for HunyuanVideo, E4M3 for FLUX / Wan / Qwen-Image / SD3 / LTX. Backend checks GPU compute capability before applying — pre-Ada (SM <8.9) lacks hardware fp8 and skips with a runtimeNote. Best stacked with Nunchaku INT4 for the smallest footprint.",
+                      }),
+                    )} />
+                  </span>
+                </label>
+              ) : null}
+            </Disclosure>
+          </div>
 
           {imageBusyLabel ? (
             <p className="busy-indicator"><span className="busy-dot" />{imageBusyLabel}</p>
@@ -1376,5 +1462,6 @@ export function ImageStudioTab({
         ) : null}
       </Panel>
     </div>
+    </DisclosureMemoryContext.Provider>
   );
 }

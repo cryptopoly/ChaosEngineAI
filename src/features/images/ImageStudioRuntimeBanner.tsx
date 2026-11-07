@@ -32,8 +32,6 @@ export interface ImageStudioRuntimeBannerProps {
   imageBusy: boolean;
   backendOnline: boolean;
   onRestartServer: () => void;
-  onPreloadImageModel: (variant: ImageModelVariant) => void;
-  onUnloadImageModel: (variant?: ImageModelVariant) => void;
   onInstallCudaTorch?: () => void;
   installingCudaTorch?: boolean;
   cudaTorchResult?: CudaTorchInstallResult | null;
@@ -63,8 +61,6 @@ export function ImageStudioRuntimeBanner(props: ImageStudioRuntimeBannerProps) {
     imageBusy,
     backendOnline,
     onRestartServer,
-    onPreloadImageModel,
-    onUnloadImageModel,
     onInstallCudaTorch,
     installingCudaTorch,
     cudaTorchResult,
@@ -225,40 +221,6 @@ export function ImageStudioRuntimeBanner(props: ImageStudioRuntimeBannerProps) {
           </p>
           {imageBusy && selectedImageWillLoadOnGenerate ? (
             <p className="busy-indicator"><span className="busy-dot" />{t("runtimeBanner.loadingModel", { defaultValue: "Loading model into memory..." })}</p>
-          ) : null}
-          {(selectedImageVariant.availableLocally || loadedImageVariant) ? (
-            <div className="button-row image-runtime-control-row">
-              {selectedImageVariant.availableLocally && !selectedImageLoaded ? (
-                <button
-                  className="secondary-button"
-                  type="button"
-                  onClick={() => onPreloadImageModel(selectedImageVariant)}
-                  disabled={imageBusy || busy || !backendOnline}
-                >
-                  {t("runtimeBanner.preloadModel", { defaultValue: "Preload Model" })}
-                </button>
-              ) : null}
-              {selectedImageLoaded ? (
-                <button
-                  className="secondary-button"
-                  type="button"
-                  onClick={() => onUnloadImageModel(selectedImageVariant)}
-                  disabled={imageBusy || busy || !backendOnline}
-                >
-                  {t("runtimeBanner.unloadModel", { defaultValue: "Unload Model" })}
-                </button>
-              ) : null}
-              {!selectedImageLoaded && loadedImageVariant ? (
-                <button
-                  className="secondary-button"
-                  type="button"
-                  onClick={() => onUnloadImageModel()}
-                  disabled={imageBusy || busy || !backendOnline}
-                >
-                  {t("runtimeBanner.unloadNamed", { name: loadedImageVariant.name, defaultValue: "Unload {name}" })}
-                </button>
-              ) : null}
-            </div>
           ) : null}
         </div>
       ) : null}

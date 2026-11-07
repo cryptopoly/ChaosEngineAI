@@ -115,6 +115,12 @@
       "cancelGeneration": "Cancelar generación",
       "close": "Cerrar",
       "done": "Listo"
+    },
+    "ltx2": {
+      "install": null,
+      "installing": null,
+      "notInstalled": null,
+      "retry": null
     }
   },
   "progress": {
@@ -253,7 +259,8 @@
       "browseSmaller": "Explorar modelos más pequeños",
       "reasonDangerOver": "El modelo necesita ~{model} GB solo para mantener sus pesos + codificador de texto. En {platform} con {total} GB totales, el conjunto de trabajo estimado es ~{working} GB, así que el modelo por sí solo ya supera ese límite. Incluso imágenes pequeñas probablemente romperían el backend. Prueba un modelo más pequeño (SD 1.5 es ~4 GB, SDXL ~13 GB) o una máquina con más memoria.",
       "reasonDangerNear": "El modelo necesita ~{model} GB solo para mantener sus pesos + codificador de texto, y esta ejecución alcanza un pico de ~{peak} GB. En {platform} con {total} GB totales, eso está por encima del umbral de alto riesgo (~{highRisk} GB) y cerca del conjunto de trabajo estimado (~{working} GB). Es probable que la generación rompa el backend; reduce la resolución o elige un modelo más pequeño.",
-      "reasonCaution": "El modelo necesita ~{model} GB solo para mantener sus pesos + codificador de texto. En {platform} con {total} GB totales, eso está por encima del objetivo de comodidad conservador (~{comfort} GB) pero por debajo del conjunto de trabajo estimado (~{working} GB). La generación puede ser lenta o fallar; reduce la resolución si se vuelve inestable."
+      "reasonCaution": "El modelo necesita ~{model} GB solo para mantener sus pesos + codificador de texto. En {platform} con {total} GB totales, eso está por encima del objetivo de comodidad conservador (~{comfort} GB) pero por debajo del conjunto de trabajo estimado (~{working} GB). La generación puede ser lenta o fallar; reduce la resolución si se vuelve inestable.",
+      "resourceEstimate": null
     },
     "recent": {
       "subtitle": "{recent} más recientes de {total} generaciones guardadas",
@@ -439,7 +446,8 @@
       "guidanceLtxWarning": "LTX-Video es un modelo flow-matching — CFG por encima de ~3,5 sobresatura y produce salida borrosa / arcoíris. Baja a 3 para los resultados más limpios.",
       "randomSeed": "Semilla aleatoria",
       "seedPlaceholder": "Semilla (entero)",
-      "maxPixelsNote": "{name} renderiza como máximo {megapixels} megapíxeles por fotograma; este tamaño se reduce para ajustarse, manteniendo su proporción."
+      "maxPixelsNote": "{name} renderiza como máximo {megapixels} megapíxeles por fotograma; este tamaño se reduce para ajustarse, manteniendo su proporción.",
+      "seed": null
     },
     "clipLength": {
       "line": "Duración del clip: {seconds}s ({frames} fotogramas ÷ {fps} fps)"
@@ -534,7 +542,23 @@
     "sound": {
       "badge": "Sonido",
       "badgeTooltip": "Este clip tiene sonido. Actívalo con el control de volumen del reproductor."
-    }
+    },
+    "capacityLine": {
+      "short": null,
+      "withModel": null
+    },
+    "device": {
+      "apple": null,
+      "appleDetected": null,
+      "appleMlx": null,
+      "cpuDetected": null,
+      "gpu": null,
+      "gpuDetected": null
+    },
+    "ltx2": {
+      "engineMessage": null
+    },
+    "willLoadHint": null
   },
   "imageGallery": {
     "subtitle": {

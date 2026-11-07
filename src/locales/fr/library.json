@@ -94,7 +94,8 @@
       "ram": "RAM",
       "compressed": "Compressé",
       "context": "Contexte",
-      "status": "Statut"
+      "status": "Statut",
+      "released": null
     },
     "status": {
       "downloading": "Téléchargement",

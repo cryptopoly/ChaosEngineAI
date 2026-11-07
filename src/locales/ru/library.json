@@ -94,7 +94,8 @@
       "ram": "RAM",
       "compressed": "Сжато",
       "context": "Контекст",
-      "status": "Статус"
+      "status": "Статус",
+      "released": null
     },
     "status": {
       "downloading": "Скачивается",

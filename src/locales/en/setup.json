@@ -39,7 +39,8 @@
       "mtplx": "MTPLX install",
       "tensorfold": "TensorFold install",
       "mflux": "mflux install",
-      "vllmWsl": "vLLM-in-WSL install"
+      "vllmWsl": "vLLM-in-WSL install",
+      "ltx2": "LTX-2.3 engine install"
     },
     "status": {
       "failed": "{noun} failed — see log",

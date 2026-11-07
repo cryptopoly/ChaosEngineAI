@@ -4,7 +4,7 @@
  * `--timeline-w`): their pixel values come from the zoom level and the project's times, so they cannot
  * be classes. Everything else is classes on the shared tokens.
  */
-import { useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent, type Ref } from "react";
+import { useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent, type Ref } from "react";
 import { useTranslation } from "react-i18next";
 import { PlusIcon } from "../../../components/icons/ActionIcons";
 import { WaveformCanvas } from "../../../components/WaveformCanvas";
@@ -17,6 +17,7 @@ import {
   formatTimecode,
   levelFraction,
   peaksForBlock,
+  rulerKeyTime,
   rulerTicks,
   seekFromPointer,
   tickLabel,
@@ -34,11 +35,13 @@ const TRACK_PAD_PX = 48;
 // ---- ruler ----
 export interface TimeRulerProps {
   durationS: number;
+  /** The playhead, for the slider value. */
+  timeS: number;
   pxPerSecond: number;
   onSeek: (timeS: number) => void;
 }
 
-export function TimeRuler({ durationS, pxPerSecond, onSeek }: TimeRulerProps) {
+export function TimeRuler({ durationS, timeS, pxPerSecond, onSeek }: TimeRulerProps) {
   const { t } = useTranslation("studio");
   const ref = useRef<HTMLDivElement>(null);
   const scrubbing = useRef(false);
@@ -52,11 +55,20 @@ export function TimeRuler({ durationS, pxPerSecond, onSeek }: TimeRulerProps) {
       ref={ref}
       className="time-ruler"
       role="slider"
-      tabIndex={-1}
+      tabIndex={0}
       aria-label={t("mixer.ruler", { defaultValue: "Timeline ruler. Click to move the playhead." })}
       aria-valuemin={0}
       aria-valuemax={Math.round(durationS * 10) / 10}
-      aria-valuenow={0}
+      aria-valuenow={Math.round(timeS * 10) / 10}
+      aria-valuetext={formatTimecode(timeS)}
+      onKeyDown={(event) => {
+        if (event.metaKey || event.ctrlKey || event.altKey) return;
+        const next = rulerKeyTime(event.key, event.shiftKey, timeS, durationS);
+        if (next === null) return;
+        event.preventDefault();
+        event.stopPropagation();
+        onSeek(next);
+      }}
       onPointerDown={(event) => {
         scrubbing.current = true;
         event.currentTarget.setPointerCapture?.(event.pointerId);
@@ -110,11 +122,17 @@ export interface TimelineClipProps {
 function ClipWave({ projectId, model, pxPerSecond }: { projectId: string; model: ClipModel; pxPerSecond: number }) {
   const { t } = useTranslation("studio");
   const state = usePeaks(projectId, model.missing ? null : model.sourcePath, model.sourceKey, bucketsFor(model.sourceLength));
-  if (!model.sourcePath || model.missing) return null;
-  if (state.loading) return <span className="timeline__reading">{t("mixer.clip.reading", { defaultValue: "Reading…" })}</span>;
   const sourceLength = state.peaks?.durationS || model.sourceLength || 0;
   const shown = model.type === "shot" && model.span ? model.span.source_out - model.span.source_in : model.duration;
-  const peaks = state.peaks ? peaksForBlock(state.peaks.peaks, sourceLength, model.trimIn, shown, !!model.clip?.loop) : [];
+  const loop = !!model.clip?.loop;
+  const allPeaks = state.peaks?.peaks;
+  // One array per clip until its peaks, trim or length change, so a playing film does not redraw every canvas each frame.
+  const peaks = useMemo(
+    () => (allPeaks ? peaksForBlock(allPeaks, sourceLength, model.trimIn, shown, loop) : []),
+    [allPeaks, sourceLength, model.trimIn, shown, loop],
+  );
+  if (!model.sourcePath || model.missing) return null;
+  if (state.loading) return <span className="timeline__reading">{t("mixer.clip.reading", { defaultValue: "Reading…" })}</span>;
   if (peaks.length === 0) return <span className="timeline__reading timeline__reading--silent" aria-hidden="true" />;
   return (
     <div className="timeline__wave" data-width={Math.round(model.duration * pxPerSecond)}>
@@ -207,6 +225,7 @@ export function TimelineClip(props: TimelineClipProps) {
       aria-label={label}
       aria-current={selected ? "true" : undefined}
       data-clip-id={model.id}
+      data-clip-type={model.type}
       style={{ "--clip-x": x, "--clip-w": width } as CSSProperties /* block position: computed from time and zoom */}
       onClick={() => !drag.current && onSelect(model)}
       onKeyDown={(event) => onKeyDown(event, model)}
@@ -362,6 +381,8 @@ export interface TimelineProps {
   onSeek: (timeS: number) => void;
   onClearSelection: () => void;
   scrollRef?: Ref<HTMLDivElement>;
+  /** The element that carries `--playhead-x`, so the playing screen can move the line without a render. */
+  innerRef?: Ref<HTMLDivElement>;
 }
 
 export function Timeline(props: TimelineProps) {
@@ -378,6 +399,7 @@ export function Timeline(props: TimelineProps) {
     <div className="timeline" aria-label={t("mixer.timeline", { defaultValue: "Timeline" })}>
       <div className="timeline__scroll" ref={props.scrollRef}>
         <div
+          ref={props.innerRef}
           className="timeline__inner"
           style={{ "--timeline-w": widthPx, "--playhead-x": playheadS * pxPerSecond } as CSSProperties /* track width and playhead: computed from time and zoom */}
           onClick={(event) => {
@@ -391,7 +413,7 @@ export function Timeline(props: TimelineProps) {
               <span className="timeline__clock" aria-hidden="true">{formatTimecode(playheadS)}</span>
             </div>
             <div className="timeline__track">
-              <TimeRuler durationS={farthest} pxPerSecond={pxPerSecond} onSeek={props.onSeek} />
+              <TimeRuler durationS={farthest} timeS={playheadS} pxPerSecond={pxPerSecond} onSeek={props.onSeek} />
             </div>
           </div>
           {lanes.map((lane) => (

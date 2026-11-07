@@ -291,7 +291,7 @@ describe("AiLabelNotice and ExportPanel", () => {
 function story(overrides: Partial<UseStoryboardResult> = {}): UseStoryboardResult {
   return {
     projectId: "abc", project: project(), timeline: timeline(), loading: false, error: null, notFound: false, notice: null, dismissNotice: noop,
-    busy: false, batch: null, open: noop, reload: asyncNoop as never, op: asyncNoop as never, undo: asyncNoop as never, redo: asyncNoop as never,
+    busy: false, batch: null, opFrom: asyncNoop as never, reload: asyncNoop as never, op: asyncNoop as never, undo: asyncNoop as never, redo: asyncNoop as never,
     startBatch: asyncNoop as never, cancelBatch: asyncNoop as never, ...overrides,
   };
 }

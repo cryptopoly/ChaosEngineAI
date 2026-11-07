@@ -13,7 +13,7 @@ import type {
   VoiceLibrarySummary,
 } from "../../../types";
 import type { AudioLibraryChoice } from "../../../components/InputAudioPicker";
-import { dropToAnchor, type AudioLaneId, type PositionPatch } from "./timelineGeometry";
+import { dropToAnchor, shiftPosition, type AudioLaneId, type PositionPatch } from "./timelineGeometry";
 
 // ---- export presets ----
 export const EXPORT_PRESET_ORDER: StoryboardExportPreset[] = ["16:9", "9:16", "1:1"];
@@ -142,6 +142,47 @@ export function previewIsStale(renderedRevision: number | null, currentRevision:
   return renderedRevision !== null && renderedRevision !== currentRevision;
 }
 
+// ---- which revision the preview shows ----
+type RevisionStore = Pick<Storage, "getItem" | "setItem">;
+
+const renderedKey = (projectId: string) => `chaosengine.storyboard.previewRevision.${projectId}`;
+
+function sessionStore(): RevisionStore | null {
+  try {
+    return typeof sessionStorage === "undefined" ? null : sessionStorage;
+  } catch {
+    return null;
+  }
+}
+
+/** The project revision the last finished preview was rendered from, remembered for the session. */
+export function readRenderedRevision(projectId: string, store: RevisionStore | null = sessionStore()): number | null {
+  try {
+    const raw = store?.getItem(renderedKey(projectId));
+    if (raw == null) return null;
+    const value = Number(raw);
+    return Number.isInteger(value) ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+export function writeRenderedRevision(projectId: string, revision: number, store: RevisionStore | null = sessionStore()): void {
+  try {
+    store?.setItem(renderedKey(projectId), String(revision));
+  } catch {
+    // storage is only a convenience
+  }
+}
+
+// ---- playhead readout ----
+export const PLAYHEAD_READOUT_MS = 100;
+
+/** The numeric playhead is redrawn at most ten times a second while the film plays. */
+export function readoutDue(lastPublishedMs: number, nowMs: number): boolean {
+  return nowMs - lastPublishedMs >= PLAYHEAD_READOUT_MS;
+}
+
 export function readyShotCount(timeline: StoryboardTimeline | null): number {
   return timeline ? timeline.shots.filter((s) => s.ready).length : 0;
 }
@@ -194,7 +235,10 @@ export interface MixerKeyInput {
   mod: boolean;
   /** What has focus: a form control or button (keys are theirs), a clip, or anything else on the screen. */
   target: TargetKind;
-  clipSelected: boolean;
+  /** The audio clip selected on the timeline, if any. */
+  selectedClipId: string | null;
+  /** The timeline block that has focus (`data-clip-id`), if one does. */
+  focusedClipId: string | null;
   fps: number;
 }
 
@@ -203,8 +247,11 @@ export const SEEK_JKL_S = 5;
 
 /** What a key does on the Mixer, or null when it is not ours. */
 export function mixerKeyAction(input: MixerKeyInput): MixerKeyAction | null {
-  const { key, shift, alt, mod, target, clipSelected, fps } = input;
+  const { key, shift, alt, mod, target, selectedClipId, focusedClipId, fps } = input;
   if (target === "control") return null;
+  const clipSelected = selectedClipId !== null;
+  // Nudge and Delete belong to the focused block, so they act only when that block is the selected clip.
+  const onSelectedClip = target === "clip" && clipSelected && focusedClipId === selectedClipId;
   const lower = key.length === 1 ? key.toLowerCase() : key;
   if (mod) {
     if (lower === "z") return { type: shift ? "redo" : "undo" };
@@ -222,7 +269,7 @@ export function mixerKeyAction(input: MixerKeyInput): MixerKeyAction | null {
     case "ArrowLeft":
     case "ArrowRight": {
       const sign = lower === "ArrowLeft" ? -1 : 1;
-      if (target === "clip" && clipSelected) return { type: "nudge-clip", deltaS: sign * (shift ? 1 : 0.1) };
+      if (onSelectedClip) return { type: "nudge-clip", deltaS: sign * (shift ? 1 : 0.1) };
       const step = alt ? 1 / Math.max(1, fps) : shift ? SEEK_BIG_S : 1;
       return { type: "seek", deltaS: sign * step };
     }
@@ -238,7 +285,7 @@ export function mixerKeyAction(input: MixerKeyInput): MixerKeyAction | null {
       return { type: "zoom", direction: -1 };
     case "Delete":
     case "Backspace":
-      return target === "clip" && clipSelected ? { type: "remove-clip" } : null;
+      return onSelectedClip ? { type: "remove-clip" } : null;
     case "[":
       return clipSelected ? { type: "trim", side: "in" } : null;
     case "]":
@@ -255,7 +302,35 @@ export function seekedTime(current: number, deltaS: number, durationS: number): 
   return Math.max(0, Math.min(durationS, Math.round((current + deltaS) * 1000) / 1000));
 }
 
+// ---- nudging ----
+export interface PendingNudge {
+  clipId: string;
+  /** Seconds, summed over the key presses since the last send. */
+  delta: number;
+}
+
+/** Add one key press to the pending nudge; a press on another clip hands back the old one to send first. */
+export function accumulateNudge(
+  pending: PendingNudge | null,
+  clipId: string,
+  delta: number,
+): { pending: PendingNudge; flush: PendingNudge | null } {
+  if (pending && pending.clipId === clipId) return { pending: { clipId, delta: pending.delta + delta }, flush: null };
+  return { pending: { clipId, delta }, flush: pending };
+}
+
+/**
+ * The `edit_audio` arguments for a pending nudge, worked out from the project as it is when the request
+ * runs, so two nudges sent back to back add up instead of both starting from the same old position.
+ * Null when the clip is gone.
+ */
+export function nudgeArgs(project: Pick<StoryboardProject, "audio">, pending: PendingNudge) {
+  const clip = project.audio.find((c) => c.id === pending.clipId);
+  return clip ? { clipId: clip.id, ...shiftPosition(clip, pending.delta) } : null;
+}
+
 // ---- adding sound ----
+/** Last resort only: the data folder can be moved, so a pick asks the server for the real path first. */
 export const VOICE_LIBRARY_DIR = "~/.chaosengine/voice/library";
 
 /** Voice Library speech clips that have audio, as picker choices. The path is the file in the library folder. */
@@ -263,6 +338,11 @@ export function voiceLibraryChoices(items: VoiceLibrarySummary[]): AudioLibraryC
   return items
     .filter((item) => item.kind === "speech" && item.audio)
     .map((item) => ({ id: item.id, title: item.title || item.id, path: `${VOICE_LIBRARY_DIR}/${item.id}${item.audio}` }));
+}
+
+/** The file to add for a library pick: the absolute path the server reports, else the default folder guess. */
+export function resolveLibraryPath(audioPath: string | null | undefined, fallback: string): string {
+  return audioPath && audioPath.trim() ? audioPath : fallback;
 }
 
 export interface AddAudioArgs {

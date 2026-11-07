@@ -3,6 +3,7 @@ import type { StoryboardProject, StoryboardRenderJob, StoryboardTimeline, VoiceL
 import {
   EXPORT_PRESET_ORDER,
   RENDER_PHASES,
+  accumulateNudge,
   addAudioArgs,
   aiLabelPatch,
   aiLabelState,
@@ -13,10 +14,15 @@ import {
   isRenderRunning,
   leftOutShotCount,
   mixerKeyAction,
+  nudgeArgs,
   parseLoudness,
   presetPatch,
   previewIsStale,
   projectFilePath,
+  readRenderedRevision,
+  readoutDue,
+  resolveLibraryPath,
+  writeRenderedRevision,
   renderPercent,
   renderPhase,
   renderUiState,
@@ -178,7 +184,7 @@ describe("render state", () => {
 });
 
 function key(extra: Partial<MixerKeyInput>): MixerKeyInput {
-  return { key: "", shift: false, alt: false, mod: false, target: "other", clipSelected: false, fps: 24, ...extra };
+  return { key: "", shift: false, alt: false, mod: false, target: "other", selectedClipId: null, focusedClipId: null, fps: 24, ...extra };
 }
 
 describe("keyboard map", () => {
@@ -200,11 +206,22 @@ describe("keyboard map", () => {
   });
 
   it("arrows nudge the selected clip 0.1 s, Shift 1 s, when a clip has focus", () => {
-    expect(mixerKeyAction(key({ key: "ArrowRight", target: "clip", clipSelected: true }))).toEqual({ type: "nudge-clip", deltaS: 0.1 });
-    expect(mixerKeyAction(key({ key: "ArrowLeft", target: "clip", clipSelected: true, shift: true }))).toEqual({ type: "nudge-clip", deltaS: -1 });
+    expect(mixerKeyAction(key({ key: "ArrowRight", target: "clip", selectedClipId: "a", focusedClipId: "a" }))).toEqual({ type: "nudge-clip", deltaS: 0.1 });
+    expect(mixerKeyAction(key({ key: "ArrowLeft", target: "clip", selectedClipId: "a", focusedClipId: "a", shift: true }))).toEqual({ type: "nudge-clip", deltaS: -1 });
     // a clip that is not selected, or focus elsewhere, moves the playhead
-    expect(mixerKeyAction(key({ key: "ArrowRight", target: "clip", clipSelected: false }))).toEqual({ type: "seek", deltaS: 1 });
-    expect(mixerKeyAction(key({ key: "ArrowRight", target: "other", clipSelected: true }))).toEqual({ type: "seek", deltaS: 1 });
+    expect(mixerKeyAction(key({ key: "ArrowRight", target: "clip", selectedClipId: null }))).toEqual({ type: "seek", deltaS: 1 });
+    expect(mixerKeyAction(key({ key: "ArrowRight", target: "other", selectedClipId: "a", focusedClipId: "a" }))).toEqual({ type: "seek", deltaS: 1 });
+  });
+
+  it("Delete and the arrows act on the focused clip only when it is the selected one", () => {
+    // clip M is selected, Tab moved focus to clip V
+    const onOther = { target: "clip" as const, selectedClipId: "m", focusedClipId: "v" };
+    expect(mixerKeyAction(key({ key: "Delete", ...onOther }))).toBeNull();
+    expect(mixerKeyAction(key({ key: "Backspace", ...onOther }))).toBeNull();
+    expect(mixerKeyAction(key({ key: "ArrowRight", ...onOther }))).toEqual({ type: "seek", deltaS: 1 });
+    // a picture block has focus (no audio clip id)
+    expect(mixerKeyAction(key({ key: "Delete", target: "clip", selectedClipId: "m", focusedClipId: null }))).toBeNull();
+    expect(mixerKeyAction(key({ key: "ArrowLeft", target: "clip", selectedClipId: "m", focusedClipId: null }))).toEqual({ type: "seek", deltaS: -1 });
   });
 
   it("Home and End jump to the ends, + and - zoom", () => {
@@ -216,15 +233,15 @@ describe("keyboard map", () => {
   });
 
   it("Delete removes only from a focused, selected clip", () => {
-    expect(mixerKeyAction(key({ key: "Delete", target: "clip", clipSelected: true }))).toEqual({ type: "remove-clip" });
-    expect(mixerKeyAction(key({ key: "Backspace", target: "clip", clipSelected: true }))).toEqual({ type: "remove-clip" });
-    expect(mixerKeyAction(key({ key: "Delete", target: "other", clipSelected: true }))).toBeNull();
-    expect(mixerKeyAction(key({ key: "Delete", target: "clip", clipSelected: false }))).toBeNull();
+    expect(mixerKeyAction(key({ key: "Delete", target: "clip", selectedClipId: "a", focusedClipId: "a" }))).toEqual({ type: "remove-clip" });
+    expect(mixerKeyAction(key({ key: "Backspace", target: "clip", selectedClipId: "a", focusedClipId: "a" }))).toEqual({ type: "remove-clip" });
+    expect(mixerKeyAction(key({ key: "Delete", target: "other", selectedClipId: "a", focusedClipId: "a" }))).toBeNull();
+    expect(mixerKeyAction(key({ key: "Delete", target: "clip", selectedClipId: null }))).toBeNull();
   });
 
   it("[ and ] trim the selected clip at the playhead", () => {
-    expect(mixerKeyAction(key({ key: "[", clipSelected: true }))).toEqual({ type: "trim", side: "in" });
-    expect(mixerKeyAction(key({ key: "]", clipSelected: true }))).toEqual({ type: "trim", side: "out" });
+    expect(mixerKeyAction(key({ key: "[", selectedClipId: "a", focusedClipId: "a" }))).toEqual({ type: "trim", side: "in" });
+    expect(mixerKeyAction(key({ key: "]", selectedClipId: "a", focusedClipId: "a" }))).toEqual({ type: "trim", side: "out" });
     expect(mixerKeyAction(key({ key: "[" }))).toBeNull();
   });
 
@@ -236,7 +253,7 @@ describe("keyboard map", () => {
 
   it("leaves every key to a form control or button that has focus", () => {
     for (const k of [" ", "ArrowLeft", "Home", "Delete", "z", "-", "j"]) {
-      expect(mixerKeyAction(key({ key: k, target: "control", clipSelected: true, mod: k === "z" }))).toBeNull();
+      expect(mixerKeyAction(key({ key: k, target: "control", selectedClipId: "a", focusedClipId: "a", mod: k === "z" }))).toBeNull();
     }
   });
 
@@ -286,5 +303,68 @@ describe("adding sound", () => {
       { id: "1_a", title: "At dusk", path: "~/.chaosengine/voice/library/1_a.wav" },
       { id: "2_b", title: "2_b", path: "~/.chaosengine/voice/library/2_b.mp3" },
     ]);
+  });
+});
+
+describe("nudges", () => {
+  const audio = (start: number) => ({
+    id: "m", kind: "music" as const,
+    source: { path: "p.wav", hash: "h", measuredSeconds: 10, clonedVoice: false, label: "" },
+    anchor: null, start, trimIn: 0, trimOut: null, gainDb: 0, fadeIn: 0, fadeOut: 0, duck: false, loop: false, status: "ok" as const,
+  });
+
+  it("sums presses on the same clip and hands back the old one when the clip changes", () => {
+    let state = accumulateNudge(null, "m", 0.1);
+    for (let i = 0; i < 4; i += 1) state = accumulateNudge(state.pending, "m", 0.1);
+    expect(state.flush).toBeNull();
+    expect(state.pending.delta).toBeCloseTo(0.5);
+    const next = accumulateNudge(state.pending, "v", 0.1);
+    expect(next.flush).toEqual(state.pending);
+    expect(next.pending).toEqual({ clipId: "v", delta: 0.1 });
+  });
+
+  it("works out each send from the project as it is, so quick nudges add up to +0.8", () => {
+    let project = { audio: [audio(2)] };
+    // flush 1 (+0.5) lands, then flush 2 (+0.3) is built from the newest project
+    for (const delta of [0.5, 0.3]) {
+      const args = nudgeArgs(project, { clipId: "m", delta });
+      expect(args).not.toBeNull();
+      project = { audio: [audio((args as { start: number }).start)] };
+    }
+    expect(project.audio[0].start).toBeCloseTo(2.8);
+  });
+
+  it("skips a clip that is gone", () => {
+    expect(nudgeArgs({ audio: [] }, { clipId: "m", delta: 0.1 })).toBeNull();
+  });
+});
+
+describe("preview freshness and playhead readout", () => {
+  it("remembers the rendered revision per project and survives a missing store", () => {
+    const data = new Map<string, string>();
+    const store = { getItem: (k: string) => data.get(k) ?? null, setItem: (k: string, v: string) => void data.set(k, v) };
+    expect(readRenderedRevision("p1", store)).toBeNull();
+    writeRenderedRevision("p1", 7, store);
+    expect(readRenderedRevision("p1", store)).toBe(7);
+    expect(readRenderedRevision("p2", store)).toBeNull();
+    expect(previewIsStale(readRenderedRevision("p1", store), 9)).toBe(true);
+    const broken = { getItem: () => { throw new Error("blocked"); }, setItem: () => { throw new Error("blocked"); } };
+    expect(readRenderedRevision("p1", broken)).toBeNull();
+    expect(() => writeRenderedRevision("p1", 1, broken)).not.toThrow();
+    expect(readRenderedRevision("p1", null)).toBeNull();
+  });
+
+  it("publishes the number at most ten times a second", () => {
+    expect(readoutDue(0, 99)).toBe(false);
+    expect(readoutDue(0, 100)).toBe(true);
+    expect(readoutDue(1000, 1050)).toBe(false);
+  });
+});
+
+describe("library path", () => {
+  it("uses the server's real path, and the default folder only as a last resort", () => {
+    expect(resolveLibraryPath("/Volumes/data/voice/library/1_a.wav", "~/.chaosengine/voice/library/1_a.wav")).toBe("/Volumes/data/voice/library/1_a.wav");
+    expect(resolveLibraryPath(null, "~/x.wav")).toBe("~/x.wav");
+    expect(resolveLibraryPath("  ", "~/x.wav")).toBe("~/x.wav");
   });
 });

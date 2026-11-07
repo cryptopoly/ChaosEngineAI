@@ -23,7 +23,7 @@ import type {
   StoryboardProjectPayload,
   StoryboardTimeline,
 } from "../../types";
-import { classifyFailure, isBatchRunning, readOpenProjectId, writeOpenProjectId } from "./storyboardLogic";
+import { classifyFailure, isBatchRunning, readOpenProjectId } from "./storyboardLogic";
 
 export const BATCH_POLL_MS = 1500;
 
@@ -43,9 +43,16 @@ export interface UseStoryboardResult {
   /** True while an op, undo or redo is in flight. */
   busy: boolean;
   batch: StoryboardBatchRecord | null;
-  open: (id: string | null) => void;
   reload: () => Promise<void>;
   op: <K extends StoryboardOpName>(name: K, args: StoryboardOpArgs[K]) => Promise<boolean>;
+  /**
+   * Like `op`, but the arguments are worked out from the newest project once the earlier changes have
+   * landed (so relative edits add up). Returning null skips the request.
+   */
+  opFrom: <K extends StoryboardOpName>(
+    name: K,
+    build: (project: StoryboardProject) => StoryboardOpArgs[K] | null,
+  ) => Promise<boolean>;
   undo: () => Promise<void>;
   redo: () => Promise<void>;
   startBatch: (what: StoryboardBatchWhat, shotIds?: string[], force?: boolean) => Promise<boolean>;
@@ -87,7 +94,9 @@ export function useStoryboard(enabled: boolean): UseStoryboardResult {
     const id = idRef.current;
     if (!id) return;
     try {
-      adopt(await getStoryboardProject(id));
+      const payload = await getStoryboardProject(id);
+      if (idRef.current !== id) return;
+      adopt(payload);
       setError(null);
       setNotFound(false);
     } catch (err) {
@@ -102,19 +111,6 @@ export function useStoryboard(enabled: boolean): UseStoryboardResult {
       }
     }
   }, [adopt]);
-
-  const open = useCallback((id: string | null) => {
-    writeOpenProjectId(id);
-    idRef.current = id;
-    projectRef.current = null;
-    setProjectId(id);
-    setProject(null);
-    setTimeline(null);
-    setBatch(null);
-    setError(null);
-    setNotFound(false);
-    setNotice(null);
-  }, []);
 
   useEffect(() => {
     if (!enabled || !projectId) return;
@@ -146,14 +142,16 @@ export function useStoryboard(enabled: boolean): UseStoryboardResult {
 
   /** Run one change after the previous one finished, always against the newest revision. */
   const mutate = useCallback(
-    (run: (id: string, revision: number) => Promise<StoryboardProjectPayload>): Promise<boolean> => {
+    (run: (id: string, revision: number, project: StoryboardProject) => Promise<StoryboardProjectPayload> | null): Promise<boolean> => {
       const task = queue.current.then(async () => {
         const id = idRef.current;
         const current = projectRef.current;
         if (!id || !current) return false;
+        const request = run(id, current.revision, current);
+        if (!request) return false;
         setBusy(true);
         try {
-          adopt(await run(id, current.revision));
+          adopt(await request);
           setError(null);
           return true;
         } catch (err) {
@@ -172,6 +170,15 @@ export function useStoryboard(enabled: boolean): UseStoryboardResult {
   const op = useCallback(
     <K extends StoryboardOpName>(name: K, args: StoryboardOpArgs[K]) =>
       mutate((id, revision) => runStoryboardOp(id, revision, name, args)),
+    [mutate],
+  );
+
+  const opFrom = useCallback(
+    <K extends StoryboardOpName>(name: K, build: (project: StoryboardProject) => StoryboardOpArgs[K] | null) =>
+      mutate((id, revision, project) => {
+        const args = build(project);
+        return args ? runStoryboardOp(id, revision, name, args) : null;
+      }),
     [mutate],
   );
 
@@ -247,9 +254,9 @@ export function useStoryboard(enabled: boolean): UseStoryboardResult {
     dismissNotice: () => setNotice(null),
     busy,
     batch,
-    open,
     reload,
     op,
+    opFrom,
     undo,
     redo,
     startBatch,

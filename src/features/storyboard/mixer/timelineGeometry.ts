@@ -452,6 +452,18 @@ export function seekFromPointer(clientX: number, trackLeft: number, pps: number,
   return Math.max(0, Math.min(durationS, round(pxToTime(clientX - trackLeft, pps), 3)));
 }
 
+/** Where a key on the focused ruler moves the playhead: arrows 1 s, Shift 5 s, Home and End the ends; null for other keys. */
+export function rulerKeyTime(key: string, shift: boolean, currentS: number, durationS: number): number | null {
+  const step = shift ? 5 : 1;
+  let next: number;
+  if (key === "ArrowLeft" || key === "ArrowDown") next = currentS - step;
+  else if (key === "ArrowRight" || key === "ArrowUp") next = currentS + step;
+  else if (key === "Home") next = 0;
+  else if (key === "End") next = durationS;
+  else return null;
+  return Math.max(0, Math.min(durationS, round(next, 3)));
+}
+
 /**
  * The position fields when the user picks what a clip hangs on: a shot (the clip stays where it is,
  * the offset is worked out from the shot's start) or nothing (an absolute start at its current time).

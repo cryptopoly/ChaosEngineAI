@@ -6,10 +6,10 @@
  */
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { getLibrary } from "../../../api";
+import { getLibrary, getLibraryItem } from "../../../api";
 import { InputAudioPicker, type AudioLibraryChoice, type InputAudio } from "../../../components/InputAudioPicker";
 import type { AudioLaneId } from "./timelineGeometry";
-import { voiceLibraryChoices } from "./mixerLogic";
+import { resolveLibraryPath, voiceLibraryChoices } from "./mixerLogic";
 
 export interface AddAudioPanelProps {
   lane: AudioLaneId;
@@ -45,9 +45,20 @@ export function AddAudioPanel({ lane, laneLabel, disabled, onAdd, onClose }: Add
     };
   }, [lane]);
 
-  function picked(next: InputAudio[]) {
+  async function picked(next: InputAudio[]) {
     const last = next[next.length - 1];
-    if (last) onAdd({ path: last.path, name: last.name }, cloned);
+    if (!last) return;
+    // A Voice Library pick is added by the file's real location, which moves with the data folder.
+    const choice = library.find((item) => item.path === last.path);
+    let path = last.path;
+    if (choice) {
+      try {
+        path = resolveLibraryPath((await getLibraryItem(choice.id)).audioPath, last.path);
+      } catch {
+        // keep the default folder path
+      }
+    }
+    onAdd({ path, name: last.name }, cloned);
   }
 
   function submitTyped() {
@@ -70,7 +81,7 @@ export function AddAudioPanel({ lane, laneLabel, disabled, onAdd, onClose }: Add
         hint={lane === "voice" ? undefined : t("mixer.noLibraryYet", { defaultValue: "The Music Library is not available yet. Choose a file or type its path." })}
         audio={[]}
         max={1}
-        onChange={picked}
+        onChange={(next) => void picked(next)}
         library={library}
         disabled={disabled}
       />

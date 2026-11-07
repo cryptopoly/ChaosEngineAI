@@ -11,6 +11,8 @@ Newest dated update first. Each update has the same sections: Done, Open for Cla
 
 ## Update 2026-11-07 (v0.10.0 prep): Music and Storyboard are always on; version bumped to 0.10.0; DGX Spark code ships untested (D-53, D-54). Nothing merged to release, staging or main yet.
 
+- **Voice cloning form (D-55), branch `voice/clone-permission-tick`, not merged:** Voice Studio > Clone takes whose voice, the speaker's name, a voice sample (uploaded WAV, MP3, M4A, FLAC or OGG, or a microphone recording; 3 to 30 s) and one permission tick. Agents' `speak_cloned` requires `permission_confirmed: true`. Label, watermark, detect route, spoken disclaimer, agent switch and audit log unchanged. Open for Dan: a real clone run with a real sample and microphone, and listening to it.
+
 ## Update 2026-11-09
 
 - Browser E2E (Playwright, `npm run e2e`, about 1 min, 32 pass plus one pinned known failure): libraries and project dropdown, Music|Sounds and licence screen, Storyboard, busy advice, voice clone, settings and terms, 375 px. Findings in `docs/research/e2e-findings.md` (F-1 Music Models overflows at 375 px, F-2 project card copy). `HOME_STUDIO_ENABLED` now reads `VITE_CHAOSENGINE_HOME_STUDIO` so tests can reach the studio; normal builds stay off.
@@ -28,7 +30,7 @@ Newest dated update first. Each update has the same sections: Done, Open for Cla
 - **Owner decisions applied:** end card removed, first-run terms screen (D-34/D-41), Chat back on top (D-42), loudness kept at -1 dBFS (D-36), `pytorch-wavelets` dropped and music verified without it (D-37), ffmpeg light path with no own build or hosting (D-35/D-49), watermark on cloned voices (D-47), sound effects opt-in (D-27).
 - **Storyboard v2:** captions (Whisper, SRT, burn-in), resumable renders with keep-awake and a notification, OpenTimelineIO export, lane stems, project films list.
 - **Agent bridge v2:** 24 tools with MCP hints, scopes (read, generate, files, download, clone), persisted jobs and `list_jobs`, queue in `system_status`, resources and prompts, progress events, clone tools behind the `clone` scope, `make_sound`, a real 401 bug on agent uploads fixed.
-- **Voice cloning:** Qwen3-TTS with spoken consent code, consent stored with the voice, audit log, forced AI tag, AudioSeal watermark proven (WAV, MP3, AAC detected; embed 0.19 s). Nobody has listened to the output.
+- **Voice cloning:** Qwen3-TTS from a voice sample (uploaded file or microphone) with one permission tick, permission record stored with the voice, audit log, forced AI tag, AudioSeal watermark proven (WAV, MP3, AAC detected; embed 0.19 s). Nobody has listened to the output.
 - **Speed:** timing split on every image and video job; warm mflux worker 23 to 41 % faster for stills (byte-identical output); warm LTX worker built but off (4 % gain).
 - **Busy guard and gallery labels (D-50):** "slower" and "risky" notices for chat and model loads; "From project X" chip and filter in the Image and Video galleries.
 - **Sound effects (D-27):** Stable Audio Open Small as a Sounds mode, licence screen, never bundled. Wiring proven with a random-weight model only; real weights are gated.

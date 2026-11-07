@@ -48,7 +48,7 @@ EXAMPLES = {
     "storyboard_export_otio": {"project_id": "p"},
     "music_library": {"action": "rename", "track_id": "t", "title": "New"},
     "list_cloned_voices": {},
-    "speak_cloned": {"voice_id": "v", "text": "Hello"},
+    "speak_cloned": {"voice_id": "v", "text": "Hello", "permission_confirmed": True},
 }
 
 

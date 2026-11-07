@@ -1,4 +1,5 @@
-"""Voice cloning: consent check, AI tag, watermark hook, audit log, agent guard, store, worker branch, routes, agent tool."""
+"""Voice cloning: sample and permission checks, AI tag, watermark hook, audit log, agent guard, store, worker branch,
+routes, agent tool."""
 
 from __future__ import annotations
 
@@ -8,7 +9,6 @@ import json
 import re
 import sys
 import tempfile
-import time
 import types
 import unittest
 import wave
@@ -16,7 +16,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
 
-from backend_service import voice_clone, voice_clone_consent, voice_clone_safety, voice_env, voice_library, voice_runtime
+from backend_service import voice_clone, voice_clone_safety, voice_env, voice_library, voice_runtime
 from backend_service.catalog import voice_models
 
 
@@ -48,37 +48,6 @@ class _DataDir(unittest.TestCase):
     def audit_lines(self) -> list[dict]:
         path = voice_clone_safety.audit_path()
         return [json.loads(line) for line in path.read_text().splitlines()] if path.exists() else []
-
-
-class ConsentTests(unittest.TestCase):
-    def test_spoken_digits_reads_digits_and_number_words(self) -> None:
-        for said in ("my code is 4 7 2 1", "four seven two one", "forty-seven twenty one", "4721",
-                     "four thousand seven hundred twenty one"):
-            self.assertIn("4721", voice_clone_consent.spoken_digits(said), said)
-        self.assertEqual(voice_clone_consent.spoken_digits("one oh five"), "105")
-
-    def test_verify_needs_code_and_agreement_words(self) -> None:
-        good = "I, Dan, agree that my voice may be copied by AI on this computer. My code is four seven two one."
-        self.assertIsNone(voice_clone_consent.verify(good, "4721"))
-        self.assertIn("4 7 2 1", voice_clone_consent.verify(good.replace("four", "five"), "4721"))
-        self.assertIn("words", voice_clone_consent.verify("my code is 4 7 2 1", "4721"))
-
-    def test_challenge_is_random_single_use_and_expires(self) -> None:
-        a = voice_clone_consent.start("  Dan   Smith ", "own")
-        b = voice_clone_consent.start("Dan", "permission")
-        self.assertRegex(a["code"], r"^\d{4}$")
-        self.assertNotEqual(a["id"], b["id"])
-        self.assertEqual(a["speakerName"], "Dan Smith")
-        self.assertIn(" ".join(a["code"]), a["sentence"])
-        self.assertIsNotNone(voice_clone_consent.peek(a["id"]))
-        voice_clone_consent.consume(a["id"])
-        self.assertIsNone(voice_clone_consent.peek(a["id"]))
-        with mock.patch.object(time, "time", return_value=time.time() + voice_clone_consent.CHALLENGE_TTL_S + 1):
-            self.assertIsNone(voice_clone_consent.peek(b["id"]))
-        with self.assertRaises(ValueError):
-            voice_clone_consent.start("", "own")
-        with self.assertRaises(ValueError):
-            voice_clone_consent.start("Dan", "celebrity")
 
 
 class CatalogTests(unittest.TestCase):
@@ -155,61 +124,62 @@ class SafetyTests(_DataDir):
 
 
 class StoreTests(_DataDir):
-    def _challenge(self) -> dict:
-        return voice_clone_consent.start("Dan", "own")
-
-    def _create(self, challenge: dict, heard: str | None = None, duration: float = 8.0, **kwargs):
-        consent_file = self.data / "consent.webm"
-        consent_file.write_bytes(b"consent-audio")
-        said = heard if heard is not None else f"I Dan agree that my voice may be copied. My code is {' '.join(challenge['code'])}"
-        transcribe = mock.Mock(return_value={"text": said, "durationS": duration})
-        args = dict(challenge_id=challenge["id"], name="My voice", consent_audio=consent_file, consent_ext=".webm",
-                    reference_audio=None, reference_ext=None, reference_text=None, statement_accepted=True,
-                    origin="ui", transcribe=transcribe)
+    def _create(self, heard: str = "Hello, this is my voice sample.", duration: float = 8.0, **kwargs):
+        sample = self.data / "sample.m4a"
+        sample.write_bytes(b"sample-audio")
+        transcribe = mock.Mock(return_value={"text": heard, "durationS": duration})
+        args = dict(speaker_name="  Dan   Smith ", basis="own", name="My voice", sample_audio=sample, sample_ext=".m4a",
+                    sample_text=None, permission_confirmed=True, origin="ui", transcribe=transcribe)
         args.update(kwargs)
         return voice_clone.create_voice(**args)
 
-    def test_create_stores_consent_with_the_voice_and_delete_removes_all(self) -> None:
-        challenge = self._challenge()
-        voice = self._create(challenge)
+    def test_create_stores_the_permission_record_with_the_voice_and_delete_removes_all(self) -> None:
+        voice = self._create()
         item = voice_library.get(voice["id"])
         record = item["consent"]
-        self.assertEqual((item["kind"], record["speakerName"], record["basis"], record["code"]), ("clone", "Dan", "own", challenge["code"]))
+        self.assertEqual((item["kind"], item["title"], item["text"]), ("clone", "My voice", "Hello, this is my voice sample."))
+        self.assertEqual((record["speakerName"], record["basis"], record["permissionConfirmed"]), ("Dan Smith", "own", True))
         self.assertRegex(record["referenceSha256"], r"^[0-9a-f]{64}$")
         self.assertIn("appVersion", record)
-        consent_copy = voice_library.library_dir() / f"{voice['id']}.consent.webm"
-        self.assertEqual(consent_copy.read_bytes(), b"consent-audio")
-        self.assertEqual(voice_library.audio_path(voice["id"]).read_bytes(), b"consent-audio")
+        self.assertIn("consentedAt", record)
+        self.assertEqual(set(voice["consent"]), {"speakerName", "basis", "consentedAt", "appVersion"})
+        self.assertEqual(voice_library.audio_path(voice["id"]).read_bytes(), b"sample-audio")
         # Not in the normal Library list; listed by kind.
         self.assertEqual(voice_library.list_items(), [])
         self.assertEqual([v["id"] for v in voice_clone.list_voices()], [voice["id"]])
-        # The challenge is single use.
-        with self.assertRaises(ValueError):
-            self._create(challenge)
         self.assertTrue(voice_clone.delete_voice(voice["id"]))
         self.assertEqual(list(voice_library.library_dir().iterdir()), [])
         self.assertEqual([l["event"] for l in self.audit_lines()], ["create", "delete"])
 
-    def test_mismatch_and_bad_samples_are_refused_plainly(self) -> None:
-        with self.assertRaisesRegex(ValueError, "code"):
-            self._create(self._challenge(), heard="I agree my voice may be copied, code 0000")
-        with self.assertRaisesRegex(ValueError, "3 to 30 seconds"):
-            self._create(self._challenge(), duration=1.5)
-        with self.assertRaisesRegex(ValueError, "3 to 30 seconds"):
-            self._create(self._challenge(), duration=45)
-        with self.assertRaisesRegex(ValueError, "permission"):
-            self._create(self._challenge(), statement_accepted=False)
-        with self.assertRaisesRegex(ValueError, "expired"):
-            self._create({"id": "nope", "code": "1234"})
-        self.assertEqual(voice_clone.list_voices(), [])
-        self.assertIn("consent-rejected", [l["event"] for l in self.audit_lines()])
+    def test_typed_sample_words_win_and_the_voice_name_falls_back_to_the_speaker(self) -> None:
+        voice = self._create(sample_text="  Typed   words ", name=" ", basis="permission")
+        self.assertEqual((voice["name"], voice["referenceText"], voice["consent"]["basis"]), ("Dan Smith", "Typed words", "permission"))
 
-    def test_library_refuses_a_clone_without_consent(self) -> None:
+    def test_bad_samples_and_missing_details_are_refused_plainly(self) -> None:
+        with self.assertRaisesRegex(ValueError, "3 to 30 seconds"):
+            self._create(duration=1.5)
+        with self.assertRaisesRegex(ValueError, "3 to 30 seconds"):
+            self._create(duration=45)
+        with self.assertRaisesRegex(ValueError, "No speech"):
+            self._create(heard="  ")
+        with self.assertRaisesRegex(ValueError, "permission"):
+            self._create(permission_confirmed=False)
+        with self.assertRaisesRegex(ValueError, "speaker's name"):
+            self._create(speaker_name="   ")
+        with self.assertRaisesRegex(ValueError, "whose voice"):
+            self._create(basis="celebrity")
+        with self.assertRaisesRegex(ValueError, "WAV, MP3, M4A, FLAC or OGG"):
+            self._create(sample_ext=".webm")
+        self.assertEqual(voice_clone.list_voices(), [])
+
+    def test_library_refuses_a_clone_without_its_record_or_sample(self) -> None:
         with self.assertRaises(ValueError):
             voice_library.create("clone", {"text": "x"})
+        with self.assertRaises(ValueError):
+            voice_library.create("clone", {"text": "x", "consent": {"speakerName": "Dan"}})
 
     def test_speak_tags_saves_and_logs(self) -> None:
-        voice = self._create(self._challenge())
+        voice = self._create()
         snapshot = self.data / "snap"
         worker = mock.Mock()
         worker.request.return_value = {"wavB64": base64.b64encode(make_wav()).decode(), "durationS": 0.1, "seconds": 1.0}
@@ -238,7 +208,11 @@ class StoreTests(_DataDir):
     def test_speak_needs_a_stored_voice_and_the_model(self) -> None:
         with self.assertRaises(LookupError):
             voice_clone.speak("1234567890_deadbeef", "Hi", "", disclaimer=False, origin="ui")
-        voice = self._create(self._challenge())
+        voice = self._create()
+        # Agents and other computers must confirm the speaker's permission on every call.
+        for origin in ("agent", "remote"):
+            with self.assertRaisesRegex(ValueError, "permission_confirmed"):
+                voice_clone.speak(voice["id"], "Hi", "", disclaimer=False, origin=origin)
         with mock.patch.object(voice_clone, "snapshot_dir", return_value=None), \
              mock.patch.object(voice_clone, "available_here", return_value=True), \
              mock.patch.object(voice_env, "is_installed", return_value=True):
@@ -350,26 +324,35 @@ class RouteTests(unittest.TestCase):
         self.assertTrue(body["allowedHere"])
         self.assertTrue(all(re.fullmatch(r"[0-9a-f]{40}", m["revision"]) for m in body["models"]))
 
-    def test_consent_and_create_through_the_api(self) -> None:
-        challenge = self.client.post("/api/voice/clone/consent", json={"speakerName": "Dan", "basis": "own"}).json()
-        self.assertEqual(set(challenge), {"id", "code", "sentence", "speakerName", "basis"})
-        self.assertEqual(self.client.post("/api/voice/clone/consent", json={"speakerName": "Dan", "basis": "star"}).status_code, 422)
-        said = {"text": f"I agree that my voice may be copied. My code is {' '.join(challenge['code'])}.", "durationS": 6.0}
-        wrong = {"text": "I agree my voice may be copied. My code is 1 1 1 1.", "durationS": 6.0}
-        files = {"consent": ("consent.wav", make_wav(), "audio/wav")}
-        with mock.patch.object(voice_runtime, "transcribe_file", return_value=wrong):
-            refused = self.client.post("/api/voice/clone/voices", files=files,
-                                       data={"challengeId": challenge["id"], "statementAccepted": "true"})
-        self.assertEqual(refused.status_code, 400)
-        self.assertIn("code", refused.json()["detail"])
-        with mock.patch.object(voice_runtime, "transcribe_file", return_value=said):
-            no_statement = self.client.post("/api/voice/clone/voices", files=files, data={"challengeId": challenge["id"]})
-            created = self.client.post("/api/voice/clone/voices", files=files,
-                                       data={"challengeId": challenge["id"], "statementAccepted": "true", "name": "Me"})
-        self.assertEqual(no_statement.status_code, 400)
+    def test_create_through_the_api_with_an_upload_or_a_recording(self) -> None:
+        fields = {"speakerName": "Dan", "basis": "own", "permissionConfirmed": "true", "name": "Me"}
+        heard = {"text": "Hello, this is my voice sample.", "durationS": 6.0}
+        recording = {"sample": ("sample.wav", make_wav(), "audio/wav")}
+        upload = {"sample": ("interview.mp3", b"ID3-fake-mp3", "audio/mpeg")}
+        with mock.patch.object(voice_runtime, "transcribe_file", return_value=heard) as transcribe:
+            no_tick = self.client.post("/api/voice/clone/voices", files=recording, data={**fields, "permissionConfirmed": "false"})
+            bad_basis = self.client.post("/api/voice/clone/voices", files=recording, data={**fields, "basis": "star"})
+            no_name = self.client.post("/api/voice/clone/voices", files=recording, data={**fields, "speakerName": ""})
+            no_sample = self.client.post("/api/voice/clone/voices", data=fields)
+            webm = self.client.post("/api/voice/clone/voices", files={"sample": ("s.webm", b"x", "audio/webm")}, data=fields)
+            transcribe.assert_not_called()
+            from_upload = self.client.post("/api/voice/clone/voices", files=upload, data={**fields, "basis": "permission"})
+            created = self.client.post("/api/voice/clone/voices", files=recording, data=fields)
+        self.assertEqual(no_tick.status_code, 400)
+        self.assertIn("permission", no_tick.json()["detail"])
+        self.assertEqual((bad_basis.status_code, no_name.status_code, no_sample.status_code), (422, 422, 422))
+        self.assertEqual(webm.status_code, 400)
+        self.assertIn("WAV, MP3, M4A, FLAC or OGG", webm.json()["detail"])
+        self.assertEqual(from_upload.status_code, 200, from_upload.text)
+        self.assertEqual(from_upload.json()["consent"]["basis"], "permission")
         self.assertEqual(created.status_code, 200, created.text)
         voice = created.json()
         self.assertEqual((voice["name"], voice["consent"]["speakerName"]), ("Me", "Dan"))
+        with mock.patch.object(voice_runtime, "transcribe_file", return_value={"text": "hi", "durationS": 31.0}):
+            too_long = self.client.post("/api/voice/clone/voices", files=recording, data=fields)
+        self.assertEqual(too_long.status_code, 400)
+        self.assertIn("3 to 30 seconds", too_long.json()["detail"])
+        self.client.delete(f"/api/voice/clone/voices/{from_upload.json()['id']}")
         self.assertEqual([v["id"] for v in self.client.get("/api/voice/clone/voices").json()["voices"]], [voice["id"]])
         self.assertEqual(self.client.delete(f"/api/voice/clone/voices/{voice['id']}").json(), {"deleted": True})
         self.assertEqual(self.client.delete(f"/api/voice/clone/voices/{voice['id']}").status_code, 404)
@@ -379,13 +362,20 @@ class RouteTests(unittest.TestCase):
             headers = {"x-chaosengine-token": "agent-token"}
             speak = {"voiceId": "1234567890_deadbeef", "text": "Hi"}
             self.assertEqual(self.client.post("/api/voice/clone/speak", json=speak, headers=headers).status_code, 403)
-            self.assertEqual(self.client.post("/api/voice/clone/consent", json={"speakerName": "A", "basis": "own"}, headers=headers).status_code, 403)
+            create = {"speakerName": "A", "basis": "own", "permissionConfirmed": "true"}
+            sample = {"sample": ("s.wav", make_wav(), "audio/wav")}
+            self.assertEqual(self.client.post("/api/voice/clone/voices", files=sample, data=create, headers=headers).status_code, 403)
             self.assertEqual(self.client.get("/api/voice/clone/voices", headers=headers).status_code, 403)
             # An agent cannot grant itself cloning.
             self.assertEqual(self.client.post("/api/voice/settings", json={"allowAgentCloning": True}, headers=headers).status_code, 403)
         self.assertTrue(self.client.post("/api/voice/settings", json={"allowAgentCloning": True}).json()["allowAgentCloning"])
         with mock.patch("backend_service.mcp_bridge.access.token_ok", return_value=True):
             self.assertEqual(self.client.get("/api/voice/clone/voices", headers=headers).status_code, 200)
+            # Allowed now, but speaking still needs the permission confirmation on each call.
+            with mock.patch.object(voice_clone, "get_voice", return_value={"id": "1234567890_deadbeef"}):
+                unconfirmed = self.client.post("/api/voice/clone/speak", json=speak, headers=headers)
+            self.assertEqual(unconfirmed.status_code, 400)
+            self.assertIn("permission_confirmed", unconfirmed.json()["detail"])
         events = [json.loads(l)["event"] for l in voice_clone_safety.audit_path().read_text().splitlines()]
         self.assertIn("refused", events)
         self.assertIn("setting", events)
@@ -422,11 +412,16 @@ class AgentToolTests(_DataDir):
             voice_clone_tool.list_cloned_voices(ctx, {})
         voice_runtime.save_settings({"allowAgentCloning": True})
         self.assertEqual(voice_clone_tool.list_cloned_voices(ctx, {}), {"voices": []})
-        with self.assertRaises(ToolError):
-            voice_clone_tool.speak_cloned(ctx, {"voice_id": "1234567890_deadbeef", "text": "Hi"})
+        args = {"voice_id": "1234567890_deadbeef", "text": "Hi", "permission_confirmed": True}
+        with self.assertRaisesRegex(ToolError, "not found"):
+            voice_clone_tool.speak_cloned(ctx, args)
         with mock.patch.object(voice_clone, "get_voice", return_value={"id": "1234567890_deadbeef"}), \
              mock.patch.object(voice_clone_tool.STORE, "submit", return_value=SimpleNamespace(describe=lambda: {"jobId": "job-1"})) as submit:
-            reply = voice_clone_tool.speak_cloned(ctx, {"voice_id": "1234567890_deadbeef", "text": "Hi"})
+            for unconfirmed in (False, None):
+                with self.assertRaisesRegex(ToolError, "permission_confirmed"):
+                    voice_clone_tool.speak_cloned(ctx, {**args, "permission_confirmed": unconfirmed})
+            submit.assert_not_called()
+            reply = voice_clone_tool.speak_cloned(ctx, args)
         self.assertEqual(reply["jobId"], "job-1")
         self.assertEqual(submit.call_args.args[0], "voice")
         self.assertEqual({t["name"] for t in voice_clone_tool.CLONE_TOOLS}, set(voice_clone_tool.CLONE_HANDLERS))
@@ -435,8 +430,9 @@ class AgentToolTests(_DataDir):
         from backend_service.mcp_bridge import tools, voice_clone_tool
 
         schema = voice_clone_tool.CLONE_TOOLS[1]["inputSchema"]
-        self.assertIsNone(tools.validate(schema, {"voice_id": "x", "text": "Hi"}))
-        self.assertIsNotNone(tools.validate(schema, {"text": "Hi"}))
+        self.assertIsNone(tools.validate(schema, {"voice_id": "x", "text": "Hi", "permission_confirmed": True}))
+        self.assertIn("permission_confirmed", tools.validate(schema, {"voice_id": "x", "text": "Hi"}))
+        self.assertIsNotNone(tools.validate(schema, {"text": "Hi", "permission_confirmed": True}))
 
 
 if __name__ == "__main__":

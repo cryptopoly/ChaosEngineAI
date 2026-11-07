@@ -41,7 +41,7 @@ Traces contain request bodies and headers; do not share them from a run that use
 - `04-music-sounds-licence`: Music | Sounds switch, the Stable Audio Open licence screen and its "Powered by Stability AI" line (the backend's own catalog).
 - `05-storyboard`: create a project, add shots, takes and lock, captions panel, export panel (forced AI tag, run estimate, Film list). Projects are seeded with a tiny still and a tone; nothing is rendered.
 - `06-busy-advice`: `/api/busy-advice` mocked for ok, slower and risky: the Chat load dialog ("Load anyway" gating) and the Music Studio estimate strip.
-- `07-voice-clone`: the clone statement, consent gates, consent sentence with code, no save without a recording, AI label on cloned speech.
+- `07-voice-clone`: the clone statement, the new-voice form (whose voice, speaker's name, permission tick, a sample from an uploaded file or the microphone through Chromium's fake device, wrong file type and a too-short recording refused, the fields sent), AI label and spoken disclaimer on cloned speech, the form at 375 px.
 - `08-settings-terms`: Settings terms panel (read only), and an older accepted version bringing the terms back.
 - `09-mobile`: 375 px wide, no sideways scroll, a full-page screenshot per screen in `e2e/screenshots/` (git-ignored). One known failure is marked `test.fail` (F-1 in [docs/research/e2e-findings.md](../docs/research/e2e-findings.md)).
 

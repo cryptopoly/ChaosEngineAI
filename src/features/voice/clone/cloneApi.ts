@@ -30,15 +30,8 @@ export interface ClonedVoice {
   createdAt: number;
   durationS: number | null;
   referenceText: string;
-  consent: { speakerName: string; basis: "own" | "permission"; consentedAt: string; appVersion: string; code: string };
-}
-
-export interface ConsentChallenge {
-  id: string;
-  code: string;
-  sentence: string;
-  speakerName: string;
-  basis: "own" | "permission";
+  /** The permission record: who, on what basis, when, and the app version. */
+  consent: { speakerName: string; basis: "own" | "permission"; consentedAt: string; appVersion: string };
 }
 
 export async function getCloneModels(): Promise<CloneModels> {
@@ -53,24 +46,22 @@ export async function listClonedVoices(): Promise<ClonedVoice[]> {
   return (await fetchJson<{ voices: ClonedVoice[] }>("/api/voice/clone/voices", 15000)).voices;
 }
 
-export async function startConsent(speakerName: string, basis: "own" | "permission"): Promise<ConsentChallenge> {
-  return await postJson<ConsentChallenge>("/api/voice/clone/consent", { speakerName, basis });
-}
-
 export async function createClonedVoice(fields: {
-  challengeId: string;
+  speakerName: string;
+  basis: "own" | "permission";
   name: string;
-  consent: Blob;
-  reference?: File | null;
+  /** An uploaded file, or the microphone recording (WAV). */
+  sample: Blob;
+  sampleName: string;
   referenceText?: string;
 }): Promise<ClonedVoice> {
   const form = new FormData();
-  form.append("consent", fields.consent, "consent.wav");
-  form.append("challengeId", fields.challengeId);
+  form.append("sample", fields.sample, fields.sampleName);
+  form.append("speakerName", fields.speakerName);
+  form.append("basis", fields.basis);
   form.append("name", fields.name);
-  // The user ticked the statement; the panel cannot get this far otherwise.
-  form.append("statementAccepted", "true");
-  if (fields.reference) form.append("reference", fields.reference, fields.reference.name);
+  // The user ticked the permission box; the form cannot be saved otherwise.
+  form.append("permissionConfirmed", "true");
   if (fields.referenceText) form.append("referenceText", fields.referenceText);
   const response = await apiFetch("/api/voice/clone/voices", { method: "POST", body: form });
   if (!response.ok) throw new Error(await readErrorDetail(response, `Saving the voice failed with status ${response.status}`));

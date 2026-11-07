@@ -1,27 +1,87 @@
 import { test, expect } from "./fixtures";
-import type { Page } from "@playwright/test";
+import type { Page, Route } from "@playwright/test";
 import { goTo } from "./helpers";
 
-// Voice cloning flow in Voice Studio > Clone: the standing statement, the consent gates, the consent
-// sentence with its code, no way to save without a recording, and the AI label on everything made with
-// a cloned voice. The voice pack is patched to look installed; no model runs and no microphone is used.
+// Voice cloning flow in Voice Studio > Clone: the standing statement, the new-voice form (whose voice, the
+// speaker's name, a voice sample from a file or the microphone, one permission tick), what the form sends,
+// and the AI label on everything made with a cloned voice. The voice pack and the cloning model are patched
+// to look installed; no model runs. The microphone test uses Chromium's fake audio device, not a real one.
 
-async function openClonePanel(page: Page) {
+const MODELS = {
+  available: true,
+  allowedHere: true,
+  models: [
+    {
+      key: "mock-clone",
+      name: "Mock cloning model",
+      summary: "Mock.",
+      repo: "mock/clone",
+      revision: "0",
+      sizeGb: 1,
+      languages: "10 languages",
+      default: true,
+      licence: { id: "apache-2.0", name: "Apache 2.0", url: "https://example.invalid/licence" },
+      supported: true,
+      installed: true,
+      download: { state: "done", error: null, phase: null },
+    },
+  ],
+};
+
+const ADA = {
+  id: "voice-1",
+  name: "Ada",
+  createdAt: 1_790_000_000,
+  durationS: 12,
+  referenceText: "",
+  consent: { speakerName: "Ada Example", basis: "own", consentedAt: "2026-11-01T10:00:00Z", appVersion: "0.0.0" },
+};
+
+/** Mock the clone routes; returns the multipart body of each voice the form saves (as latin1 text). */
+async function mockClone(page: Page, voices: unknown[] = []): Promise<string[]> {
+  const saved: string[] = [];
   await page.route("**/api/voice/runtime", async (route) => {
     const response = await route.fetch();
     const body = await response.json();
     Object.assign(body.runtime ?? body, { installed: true });
     await route.fulfill({ response, json: body });
   });
+  await page.route("**/api/voice/clone/models", (route) => route.fulfill({ json: MODELS }));
+  await page.route("**/api/voice/clone/voices", (route: Route) => {
+    if (route.request().method() === "POST") {
+      saved.push(route.request().postDataBuffer()?.toString("latin1") ?? "");
+      return route.fulfill({ json: { ...ADA, id: "voice-2", name: "Grace" } });
+    }
+    return route.fulfill({ json: { voices } });
+  });
+  return saved;
+}
+
+async function openClonePanel(page: Page) {
   await goTo(page, "Voice", "Studio");
   await page.getByRole("tab", { name: "Clone" }).click();
   await expect(page.locator(".voice-clone__statement")).toBeVisible();
 }
 
+/** The value of one multipart text field. */
+function field(body: string, name: string): string | undefined {
+  return body.match(new RegExp(`name="${name}"\\r\\n\\r\\n([^\\r]*)\\r\\n`))?.[1];
+}
+
+async function fillDetails(page: Page) {
+  await page.getByRole("radio", { name: "Someone who gave me permission" }).check();
+  await page.getByLabel("Speaker's name").fill("Grace Example");
+  await page.getByLabel("Name for this voice (optional)").fill("Grace");
+}
+
+const confirmBox = (page: Page) =>
+  page.getByRole("checkbox", { name: "This is my own voice, or the speaker has given me permission to clone it." });
+
 test("clone panel states the rules, and the AI label cannot be turned off", async ({ page }) => {
+  await mockClone(page);
   await openClonePanel(page);
   const statement = page.locator(".voice-clone__statement");
-  await expect(statement).toContainText("Only copy your own voice");
+  await expect(statement).toContainText("Only clone your own voice or the voice of someone who has given you permission");
   await expect(statement).toContainText("Not public figures, children or people who have died");
   await expect(statement).toContainText("labelled as AI-made inside the file");
   await expect(statement).toContainText("neither can be turned off");
@@ -30,83 +90,91 @@ test("clone panel states the rules, and the AI label cannot be turned off", asyn
   await expect(page.getByRole("button", { name: "New cloned voice" })).toBeVisible();
 });
 
-test("consent gates: the sentence needs a basis, a name and the confirmation; saving needs a recording", async ({ page }) => {
+test("an uploaded sample: Save needs whose voice, a name, the tick and a supported file, and sends them all", async ({ page }) => {
+  const saved = await mockClone(page);
   await openClonePanel(page);
   await page.getByRole("button", { name: "New cloned voice" }).click();
-  const getSentence = page.getByRole("button", { name: "Get the consent sentence" });
-  await expect(getSentence).toBeDisabled();
-
-  await page.getByRole("radio", { name: "My own voice" }).check();
-  await expect(getSentence).toBeDisabled();
-  await page.getByLabel("Speaker's name").fill("Ada Example");
-  await expect(getSentence).toBeDisabled();
-  const confirm = page.getByRole("checkbox", { name: /This is my own voice, or the speaker has given me permission/ });
-  await confirm.check();
-  await expect(getSentence).toBeEnabled();
-  // Taking the confirmation back closes the gate again.
-  await confirm.uncheck();
-  await expect(getSentence).toBeDisabled();
-  await confirm.check();
-
-  await getSentence.click();
-  const sentence = page.locator(".voice-clone__sentence");
-  await expect(sentence).toBeVisible();
-  await expect(page.getByText("Ada Example reads this sentence aloud, including the code one digit at a time:")).toBeVisible();
-  const hint = page.getByText(/^Code: \d( \d)+\./);
-  await expect(hint).toBeVisible();
-  // The spoken sentence carries the same digits as the hint.
-  const digits = ((await hint.textContent()) ?? "").match(/Code: ([\d ]+)\./)?.[1].replace(/ /g, "") ?? "";
-  expect(digits.length).toBeGreaterThanOrEqual(4);
-  expect(((await sentence.textContent()) ?? "").replace(/\D/g, "")).toContain(digits);
-
-  // No recording, so the voice cannot be saved; the form is still cancellable.
+  const save = page.getByRole("button", { name: "Save voice" });
+  await expect(save).toBeDisabled();
   await expect(page.getByRole("button", { name: "Record" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Check and save voice" })).toBeDisabled();
-  await page.getByRole("button", { name: "Cancel" }).click();
+
+  await fillDetails(page);
+  await expect(save).toBeDisabled();
+  await confirmBox(page).check();
+  await expect(save).toBeDisabled(); // still no sample
+
+  const sampleInput = page.getByLabel("Voice sample file");
+  await sampleInput.setInputFiles({ name: "clip.webm", mimeType: "audio/webm", buffer: Buffer.from("not used") });
+  await expect(page.getByText("Choose a WAV, MP3, M4A, FLAC or OGG file.")).toBeVisible();
+  await expect(save).toBeDisabled();
+
+  await sampleInput.setInputFiles({ name: "grace.mp3", mimeType: "audio/mpeg", buffer: Buffer.from("ID3 fake mp3 bytes") });
+  await expect(page.getByText("Choose a WAV, MP3, M4A, FLAC or OGG file.")).toHaveCount(0);
+  await expect(save).toBeEnabled();
+  // Taking the tick back closes the gate again.
+  await confirmBox(page).uncheck();
+  await expect(save).toBeDisabled();
+  await confirmBox(page).check();
+
+  await save.click();
   await expect(page.getByRole("button", { name: "New cloned voice" })).toBeVisible();
+  expect(saved).toHaveLength(1);
+  const body = saved[0];
+  expect(body).toContain('name="sample"; filename="grace.mp3"');
+  expect(body).toContain("ID3 fake mp3 bytes");
+  expect(field(body, "speakerName")).toBe("Grace Example");
+  expect(field(body, "basis")).toBe("permission");
+  expect(field(body, "name")).toBe("Grace");
+  expect(field(body, "permissionConfirmed")).toBe("true");
+});
+
+// Chromium's fake microphone (a tone) for the recording tests; the other tests never open the microphone.
+test.use({
+  launchOptions: { args: ["--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream"] },
+  permissions: ["microphone"],
+});
+
+test.describe("microphone sample (Chromium fake audio device)", () => {
+  test("a recording of 3 s or more is the sample and is sent as WAV", async ({ page }) => {
+    const saved = await mockClone(page);
+    await openClonePanel(page);
+    await page.getByRole("button", { name: "New cloned voice" }).click();
+    await page.getByRole("radio", { name: "My own voice" }).check();
+    await page.getByLabel("Speaker's name").fill("Ada Example");
+    await confirmBox(page).check();
+
+    await page.getByRole("button", { name: "Record" }).click();
+    await expect(page.getByRole("button", { name: "Stop recording" })).toBeVisible();
+    await page.waitForTimeout(3600);
+    await page.getByRole("button", { name: "Stop recording" }).click();
+    await expect(page.getByRole("button", { name: "Record again" })).toBeVisible();
+    await expect(page.getByLabel("Your recording")).toBeVisible();
+    await page.getByRole("button", { name: "Save voice" }).click();
+    await expect(page.getByRole("button", { name: "New cloned voice" })).toBeVisible();
+    expect(saved).toHaveLength(1);
+    expect(saved[0]).toContain('name="sample"; filename="recording.wav"');
+    expect(saved[0]).toContain("RIFF");
+    expect(field(saved[0], "basis")).toBe("own");
+    expect(field(saved[0], "name")).toBe("Ada Example");
+  });
+
+  test("a recording under 3 s is refused before saving", async ({ page }) => {
+    await mockClone(page);
+    await openClonePanel(page);
+    await page.getByRole("button", { name: "New cloned voice" }).click();
+    await page.getByRole("radio", { name: "My own voice" }).check();
+    await page.getByLabel("Speaker's name").fill("Ada Example");
+    await confirmBox(page).check();
+    await page.getByRole("button", { name: "Record" }).click();
+    await page.waitForTimeout(800);
+    await page.getByRole("button", { name: "Stop recording" }).click();
+    await expect(page.getByText("The recording is shorter than 3 seconds. Record a little more.")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Save voice" })).toBeDisabled();
+  });
 });
 
 test("a cloned voice speaks with the AI label shown and the optional spoken disclaimer is sent", async ({ page }) => {
-  await page.route("**/api/voice/clone/models", (route) =>
-    route.fulfill({
-      json: {
-        available: true,
-        allowedHere: true,
-        models: [
-          {
-            key: "mock-clone",
-            name: "Mock cloning model",
-            summary: "Mock.",
-            repo: "mock/clone",
-            revision: "0",
-            sizeGb: 1,
-            languages: "10 languages",
-            default: true,
-            licence: { id: "apache-2.0", name: "Apache 2.0", url: "https://example.invalid/licence" },
-            supported: true,
-            installed: true,
-            download: { state: "done", error: null, phase: null },
-          },
-        ],
-      },
-    }),
-  );
-  await page.route("**/api/voice/clone/voices", (route) =>
-    route.fulfill({
-      json: {
-        voices: [
-          {
-            id: "voice-1",
-            name: "Ada",
-            createdAt: 1_790_000_000,
-            durationS: 12,
-            referenceText: "",
-            consent: { speakerName: "Ada Example", basis: "own", consentedAt: "2026-11-01T10:00:00Z", appVersion: "0.0.0", code: "4721" },
-          },
-        ],
-      },
-    }),
-  );
+  await mockClone(page, [ADA]);
   let spoken: Record<string, unknown> | null = null;
   await page.route("**/api/voice/clone/speak", (route) => {
     spoken = route.request().postDataJSON() as Record<string, unknown>;
@@ -128,7 +196,7 @@ test("a cloned voice speaks with the AI label shown and the optional spoken disc
   await page.route("**/api/voice/library/speech-1/audio*", (route) => route.fulfill({ status: 200, contentType: "audio/wav", body: Buffer.alloc(64) }));
   await openClonePanel(page);
 
-  await expect(page.getByText("own voice, consent recorded 2026-11-01")).toBeVisible();
+  await expect(page.getByText("own voice, confirmed 2026-11-01")).toBeVisible();
   const generate = page.locator(".voice-clone").getByRole("button", { name: "Generate audio" });
   await expect(generate).toBeDisabled();
   await page.getByPlaceholder("Text to say in the cloned voice.").fill("Hello there");
@@ -139,4 +207,31 @@ test("a cloned voice speaks with the AI label shown and the optional spoken disc
   await expect(page.getByText("Labelled as AI-made")).toBeVisible();
   await expect(page.getByText("Saved to Library")).toBeVisible();
   expect(spoken).toMatchObject({ voiceId: "voice-1", text: "Hello there", model: "mock-clone", disclaimer: true });
+});
+
+test.describe("375 px", () => {
+  test.use({ viewport: { width: 375, height: 812 } });
+
+  test("the clone panel and the new-voice form fit the width", async ({ page }) => {
+    await mockClone(page, [ADA]);
+    await openClonePanel(page);
+    await page.getByRole("button", { name: "New cloned voice" }).click();
+    await fillDetails(page);
+    await page.getByLabel("Voice sample file").setInputFiles({ name: "grace.wav", mimeType: "audio/wav", buffer: Buffer.from("RIFF") });
+    await confirmBox(page).check();
+    await expect(page.getByRole("button", { name: "Save voice" })).toBeEnabled();
+    const { sideways, wide } = await page.evaluate(() => {
+      const width = window.innerWidth;
+      const wide = [...document.querySelectorAll(".voice-clone *")]
+        .filter((el) => {
+          const box = el.getBoundingClientRect();
+          return box.width > 0 && box.right > width + 1 && getComputedStyle(el).visibility !== "hidden";
+        })
+        .slice(0, 5)
+        .map((el) => `${el.tagName.toLowerCase()}.${String(el.className).slice(0, 40)} right=${Math.round(el.getBoundingClientRect().right)}`);
+      return { sideways: document.documentElement.scrollWidth - width, wide };
+    });
+    expect(sideways, `page scrolls sideways (${wide.join("; ")})`).toBeLessThanOrEqual(0);
+    expect(wide, "clone form elements stick out past the right edge").toEqual([]);
+  });
 });

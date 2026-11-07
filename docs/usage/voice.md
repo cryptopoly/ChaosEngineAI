@@ -47,22 +47,24 @@ as WAV or MP3.
 
 ### Clone a voice
 
-Under Speak, **Clone a voice** (closed until you open it) makes a voice from
-your own recording, or from someone who has given you permission. Apple
-Silicon Macs only for now. It uses Qwen3-TTS Base (0.6B is faster, 1.7B
-closer; Apache 2.0), downloaded from the same section.
+Voice Studio > **Clone** makes a voice from your own voice, or from someone
+who has given you permission. Apple Silicon Macs only for now. It uses
+Qwen3-TTS Base (0.6B is faster, 1.7B closer; Apache 2.0), downloaded from
+the same tab.
 
-1. Choose whose voice it is, type the speaker's name and tick the statement.
-   Public figures, children and people who have died are not allowed.
-2. The speaker reads a sentence on the microphone that contains a random
-   4-digit code. The app checks the words and the code with its own
-   speech-to-text and refuses the voice if they do not match.
-3. That recording (3 to 30 seconds) is the voice sample, unless you add a
-   different sample from a file.
+1. Click **New cloned voice**, choose whose voice it is and type the
+   speaker's name. Public figures, children and people who have died are not
+   allowed.
+2. Add a voice sample: 3 to 30 seconds of the same person speaking clearly
+   (10 to 20 seconds works best). Upload a WAV, MP3, M4A, FLAC or OGG file,
+   or record it with the microphone.
+3. Tick "This is my own voice, or the speaker has given me permission to
+   clone it." and click **Save voice**.
 
-The consent record (name, date, code, a hash of the sample, app version) and
-the consent recording are kept with the voice. **Delete** removes all of it.
-There is no import from web links and there are no celebrity voices.
+The permission record (speaker's name, own voice or permission, date, a hash
+of the sample, app version) is kept with the voice. **Delete** removes the
+voice, its sample and the record. There is no import from web links and there
+are no celebrity voices.
 
 Every clip made with a cloned voice is saved to the Voice Library, labelled
 as AI-made inside the file (WAV and MP3), and carries an inaudible watermark
@@ -76,7 +78,9 @@ never uploaded.
 
 Agents (the agent bridge) and other computers cannot use cloned voices unless
 you tick **Allow agents and other computers to use cloned voices**, which only
-this window can change. Agents can never make a new cloned voice.
+this window can change. Agents can never make a new cloned voice, and each
+time they speak with one they must confirm that the speaker's permission
+covers that use; the confirmation goes into the local log.
 
 ## Voice Library
 

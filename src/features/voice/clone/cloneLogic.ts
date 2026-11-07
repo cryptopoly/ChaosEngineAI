@@ -4,23 +4,31 @@ import type { CloneModel } from "./cloneApi";
 
 export type CloneBasis = "own" | "permission";
 
-export interface ConsentForm {
+export interface NewVoiceDetails {
   basis: CloneBasis | null;
   speakerName: string;
   voiceName: string;
-  /** "This is my voice, or the speaker gave me permission." */
+  /** "This is my own voice, or the speaker has given me permission to clone it." */
   confirmed: boolean;
 }
 
 export const MIN_SAMPLE_S = 3;
 export const MAX_SAMPLE_S = 30;
+/** File types the voice sample upload takes (the microphone recording is WAV). */
+export const SAMPLE_EXTENSIONS = [".wav", ".mp3", ".m4a", ".flac", ".ogg"] as const;
 
-/** The consent sentence can only be asked for once whose voice it is, a name and the statement are given. */
-export function canStartConsent(form: ConsentForm): boolean {
-  return form.basis !== null && form.speakerName.trim().length > 0 && form.confirmed;
+/** Whether a file name has one of the sample types. */
+export function isSampleFile(name: string): boolean {
+  const lower = name.toLowerCase();
+  return SAMPLE_EXTENSIONS.some((ext) => lower.endsWith(ext));
 }
 
-/** A recording of the consent sentence (or a separate sample) must be 3 to 30 seconds. */
+/** A voice can be saved once whose voice it is, the speaker's name, the tick and a usable sample are given. */
+export function canSaveVoice(details: NewVoiceDetails, hasSample: boolean): boolean {
+  return details.basis !== null && details.speakerName.trim().length > 0 && details.confirmed && hasSample;
+}
+
+/** A microphone recording must be 3 to 30 seconds (an uploaded file is measured by the backend). */
 export function sampleLengthProblem(seconds: number | null): "short" | "long" | null {
   if (seconds == null) return null;
   if (seconds < MIN_SAMPLE_S) return "short";
@@ -43,9 +51,4 @@ export function pickCloneModel(models: CloneModel[]): CloneModel | null {
     usable[0] ??
     null
   );
-}
-
-/** "4721" -> "4 7 2 1", read one digit at a time. */
-export function spacedCode(code: string): string {
-  return code.split("").join(" ");
 }

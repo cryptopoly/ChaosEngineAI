@@ -75,16 +75,17 @@ class CloneToolTests(_Base):
         voice_runtime.save_settings({"allowAgentCloning": True})
         self.assertEqual(self.call("list_cloned_voices"), {"voices": []})
 
-    def test_speak_cloned_needs_an_existing_consented_voice_and_never_creates_one(self):
+    def test_speak_cloned_needs_an_existing_voice_and_the_permission_flag_and_never_creates_one(self):
         access.set_scopes(["read", "generate", "files", "clone"])
         voice_runtime.save_settings({"allowAgentCloning": True})
-        self.assertIn("not found", self.call("speak_cloned", {"voice_id": "1234567890_deadbeef", "text": "Hi"}, error=True))
+        self.assertIn("not found", self.call("speak_cloned", {"voice_id": "1234567890_deadbeef", "text": "Hi", "permission_confirmed": True}, error=True))
+        self.assertIn("permission_confirmed", self.call("speak_cloned", {"voice_id": "1234567890_deadbeef", "text": "Hi"}, error=True))
         self.assertFalse(hasattr(voice_clone, "create_voice_from_agent"))
         names = {t["name"] for t in self.rpc("tools/list").json()["result"]["tools"]}
         self.assertFalse({n for n in names if "clone" in n and n not in ("list_cloned_voices", "speak_cloned")})
         with mock.patch.object(voice_clone, "get_voice", return_value={"id": "1234567890_deadbeef"}), \
              mock.patch.object(voice_clone, "speak", side_effect=RuntimeError("no worker in tests")):
-            job = self.call("speak_cloned", {"voice_id": "1234567890_deadbeef", "text": "Hi"})
+            job = self.call("speak_cloned", {"voice_id": "1234567890_deadbeef", "text": "Hi", "permission_confirmed": True})
             self.assertEqual(job["kind"], "voice")
             self.assertTrue(STORE.get(job["jobId"]).done.wait(10))
 

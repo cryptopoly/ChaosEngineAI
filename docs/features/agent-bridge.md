@@ -53,7 +53,7 @@ job waits for a running agent job (the progress panel says "Waiting for an agent
 | `storyboard_captions` | `generate` (a job: transcribes the voice clips), `set`, `add`, `edit`, `remove` (revision needed), `export_srt` (a `download`). Burn-in, SRT and stems are switched with `storyboard_project` edit `fields.export` (`captionsBurn`, `captionsSrt`, `stems`). |
 | `storyboard_export_otio` | An OpenTimelineIO file of the cut for Resolve or Premiere: `file`, `download`, `warnings`. |
 | `music_library` | `list` (query, tag, paging), `get` (adds a `download`), `rename` (title and tags), `delete` (permanent). `list` and `get` need only `read`. |
-| `list_cloned_voices`, `speak_cloned` | Voices the person cloned in the app (with a spoken consent record) and speech in one of them. Need the `clone` scope **and** the Voice setting "Allow agents to use cloned voices". Agents cannot create a cloned voice. The output carries the AI tag and the watermark. |
+| `list_cloned_voices`, `speak_cloned` | Voices the person cloned in the app (each with a stored permission record) and speech in one of them. Need the `clone` scope **and** the Voice setting "Allow agents to use cloned voices". `speak_cloned` requires `permission_confirmed: true` (recorded in the audit log). Agents cannot create a cloned voice. The output carries the AI tag and the watermark. |
 
 A finished job returns the **absolute path** of the PNG, MP4, WAV or FLAC, plus width, height, duration and
 `hasAudio`. `generate_image` can also return the PNG as base64 (`include_preview`). Every PNG and MP4
@@ -128,7 +128,7 @@ Edit, Send, Stop). `tests/test_mcp_contract.py` checks all of this and a golden 
 
 A token carries scopes. `read`: status, lists, job status, storyboard `list` / `get`. `generate`: every make
 tool, storyboard edits, `cancel_job`. `files`: `upload_file`, `POST /api/agent/uploads`, `GET /api/agent/files`,
-storyboard `export`. `download` (confirmed model download, not built yet) and `clone` (`list_cloned_voices`, `speak_cloned`) are never in a token unless ticked. Cloning has three locks: the token scope, the Voice setting "Allow agents to use cloned voices" (off by default, only the app window can change it) and a stored consent record on the voice. Any call that arrives with an agent token (main or read-only) lacking `clone` is refused by the voice routes too, even when the setting is on. The app's own token on `/mcp` is still treated as an agent for cloning. An older token becomes read, generate and files. Under Settings >
+storyboard `export`. `download` (confirmed model download, not built yet) and `clone` (`list_cloned_voices`, `speak_cloned`) are never in a token unless ticked. Cloning has three locks: the token scope, the Voice setting "Allow agents to use cloned voices" (off by default, only the app window can change it) and a stored permission record on the voice; `speak_cloned` also requires `permission_confirmed: true` on every call. Any call that arrives with an agent token (main or read-only) lacking `clone` is refused by the voice routes too, even when the setting is on. The app's own token on `/mcp` is still treated as an agent for cloning. An older token becomes read, generate and files. Under Settings >
 Integrations > Agent access, **Permissions** lets you tick cloning and make a **read-only token** (a second
 token for a dashboard or watcher). A caller that is not on this computer never gets `clone` unless you also
 tick "Also allow cloning from other computers". A tool a token cannot use is left out of `tools/list`, and

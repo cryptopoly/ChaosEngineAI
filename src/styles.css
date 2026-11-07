@@ -10343,15 +10343,8 @@ html[lang="ko"] select {
   font-weight: 600;
 }
 
-.voice-clone__statement,
-.voice-clone__sentence {
+.voice-clone__statement {
   margin: 8px 0;
-}
-
-.voice-clone__sentence {
-  padding: 8px 12px;
-  border-left: 3px solid var(--accent);
-  font-size: 1.05em;
 }
 
 .voice-clone__basis {

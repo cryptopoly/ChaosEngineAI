@@ -30,10 +30,9 @@ Scope: Storyboard (Board, Mixer, FilmList), Music Studio (Music | Sounds, licenc
 |---|---|---|---|
 | 1 | Medium | Timeline clips can be moved and trimmed only with the pointer or via the inspector. Arrow-key nudging on a focused clip (and Shift for coarse steps, Alt+Arrow to trim) would be faster for keyboard users. | In `MixerTab` `onKeyDown`, map Arrow keys to the same `commitClip` call the pointer path uses (0.1 s fine, 1 s with Shift), announce the new start through the existing polite announcer. The inspector already meets 2.5.7, so this is an efficiency gain, not a blocker. About a day with tests. |
 | 2 | Low | Preset pills in the project dialog and Export panel are `role="radio"` but each is its own Tab stop and ignores arrow keys. | Reuse `nextTakeIndex` and roving tabindex as in `TakesStrip`. |
-| 3 | Low | After "Get the consent sentence" in the clone flow the focused button unmounts, so focus falls to the page. | Move focus to the sentence block (give it `tabIndex={-1}`) after the challenge loads. |
-| 4 | Low | Sub tab bar tabs have no `aria-controls` / tabpanel because the panel is a whole screen. | Either name the main region by the active tab, or switch the bar to a nav with `aria-current`. The e2e smoke spec looks tabs up by role, so change both together. |
-| 5 | Low (app-wide) | Input and button borders (`--border` #27303a) are 1.2 to 1.4:1 against the panels, under the 3:1 for UI component boundaries (1.4.11). Text and focus rings pass. | Needs a theme decision (a stronger `--border-control` token for fields). Not changed here: it would retheme the app. |
-| 6 | Low | Voice call overlay and a few older modals (`ModelLaunchModal`, `ImageGenerationModal`) were out of scope and do not use `useDialogFocus`. | Adopt the hook one by one. |
+| 3 | Low | Sub tab bar tabs have no `aria-controls` / tabpanel because the panel is a whole screen. | Either name the main region by the active tab, or switch the bar to a nav with `aria-current`. The e2e smoke spec looks tabs up by role, so change both together. |
+| 4 | Low (app-wide) | Input and button borders (`--border` #27303a) are 1.2 to 1.4:1 against the panels, under the 3:1 for UI component boundaries (1.4.11). Text and focus rings pass. | Needs a theme decision (a stronger `--border-control` token for fields). Not changed here: it would retheme the app. |
+| 5 | Low | Voice call overlay and a few older modals (`ModelLaunchModal`, `ImageGenerationModal`) were out of scope and do not use `useDialogFocus`. | Adopt the hook one by one. |
 | 7 | Info | Dropped files on Transcribe and drag-to-reorder have button alternatives; checked by reading only. | Cover in the Playwright pass with axe once the e2e work lands. |
 
 ## Not verified

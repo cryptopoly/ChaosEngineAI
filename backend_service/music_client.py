@@ -74,7 +74,12 @@ def stall_limits(seconds: float, variations: int, model: str | None = None) -> d
 
 
 class MusicWorker:
-    def __init__(self) -> None:
+    """One worker process. ``pack`` is the module that owns its venv (``music_env`` by default, or
+    ``music_sound_env`` for the sounds worker): it provides ``is_installed``, ``venv_python`` and ``worker_env``."""
+
+    def __init__(self, pack: Any = None, log_name: str = "worker.log", label: str = "music") -> None:
+        self._pack = pack
+        self._label = label
         self._process: subprocess.Popen[str] | None = None
         self._start_lock = threading.Lock()
         self._write_lock = threading.Lock()
@@ -85,7 +90,7 @@ class MusicWorker:
         self._heavy = 0  # load and generate requests in flight (status polls do not count)
         self._last_used = time.monotonic()
         self.idle_minutes = 10.0
-        self._log_path = music_env.MUSIC_DATA_DIR / "worker.log"
+        self._log_path = music_env.MUSIC_DATA_DIR / log_name
         threading.Thread(target=self._idle_watch, daemon=True).start()
 
     # -- lifecycle -----------------------------------------------------
@@ -103,8 +108,9 @@ class MusicWorker:
             if self._process is not None and self._process.poll() is None:
                 return
             self._kill()
-            if not music_env.is_installed():
-                raise MusicWorkerError("The music pack is not installed. Install it from Music > Models.")
+            pack = self._pack or music_env
+            if not pack.is_installed():
+                raise MusicWorkerError(f"The {self._label} pack is not installed. Install it from Music > Models.")
             self._log_path.parent.mkdir(parents=True, exist_ok=True)
             log = open(self._log_path, "a", encoding="utf-8")  # noqa: SIM115 - owned by the process
             log.write(f"\n--- music worker start {time.strftime('%Y-%m-%d %H:%M:%S')} ---\n")
@@ -113,14 +119,14 @@ class MusicWorker:
             with self._pending_lock:
                 self._pending[None] = ready
             self._process = subprocess.Popen(
-                [str(music_env.venv_python()), str(_WORKER_SCRIPT)],
+                [str(pack.venv_python()), str(_WORKER_SCRIPT)],
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=log,
                 text=True,
                 encoding="utf-8",
                 bufsize=1,
-                env=music_env.worker_env(),
+                env=pack.worker_env(),
                 cwd=str(music_env.MUSIC_DATA_DIR),
             )
             log.close()
@@ -347,9 +353,25 @@ def get_worker() -> MusicWorker:
         return _WORKER
 
 
+_SOUND_WORKER: MusicWorker | None = None
+
+
+def get_sound_worker() -> MusicWorker:
+    """The sounds worker: the same worker script in the sounds venv (``music_sound_env``)."""
+    global _SOUND_WORKER
+    with _WORKER_LOCK:
+        if _SOUND_WORKER is None:
+            from backend_service import music_sound_env
+
+            _SOUND_WORKER = MusicWorker(pack=music_sound_env, log_name="sound-worker.log", label="sounds")
+            atexit.register(_SOUND_WORKER.stop)
+        return _SOUND_WORKER
+
+
 def stop_all() -> None:
-    if _WORKER is not None:
-        _WORKER.stop()
+    for worker in (_WORKER, _SOUND_WORKER):
+        if worker is not None:
+            worker.stop()
 
 
 def worker_pid() -> int | None:

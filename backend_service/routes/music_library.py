@@ -129,6 +129,27 @@ def cancel_install(request: Request) -> dict[str, Any]:
     return music_env.cancel_install()
 
 
+@router.post("/api/music/sound/install")
+def start_sound_install(request: Request) -> dict[str, Any]:
+    from backend_service import music_sound_env
+
+    return music_sound_env.start_install()
+
+
+@router.get("/api/music/sound/install/status")
+def sound_install_status(request: Request) -> dict[str, Any]:
+    from backend_service import music_sound_env
+
+    return music_sound_env.job_status()
+
+
+@router.post("/api/music/sound/install/cancel")
+def cancel_sound_install(request: Request) -> dict[str, Any]:
+    from backend_service import music_sound_env
+
+    return music_sound_env.cancel_install()
+
+
 @router.get("/api/music/settings")
 def get_settings(request: Request) -> dict[str, Any]:
     from backend_service.music_runtime import load_settings

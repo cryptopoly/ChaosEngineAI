@@ -31,6 +31,7 @@ import {
 import { buildMusicEntries, measuredSpeed, musicEntryMatchesQuery, type MusicModelEntry } from "../../components/models/adapters/music";
 import type { UseMusicState } from "../../hooks/useMusicState";
 import { MusicPackBanner } from "./MusicPackBanner";
+import { SoundPackNotice } from "./SoundPackNotice";
 import { isLicenceAccepted, rememberLicenceAccepted } from "./musicLicence";
 
 export interface MusicModelsPageProps {
@@ -116,6 +117,7 @@ export function MusicModelsPage({ music, backendOnline, availability, onAvailabi
         { value: "all", label: t("musicModels.filter.makesAll", { defaultValue: "Everything" }) },
         { value: "songs", label: t("models.makes.songs", { defaultValue: "Songs with vocals" }) },
         { value: "instrumental", label: t("models.makes.instrumental", { defaultValue: "Instrumental" }) },
+        { value: "sfx", label: t("models.makes.sfx", { defaultValue: "Sound effects" }) },
       ],
       onChange: setMakesFilter,
       predicate: (entry, value) => entry.source.makes.includes(value as never),
@@ -269,6 +271,9 @@ export function MusicModelsPage({ music, backendOnline, availability, onAvailabi
                 }
               : null,
             variant.sizeNote ? { label: t("musicModels.detail.size", { defaultValue: "Download" }), value: variant.sizeNote } : null,
+            variant.licence?.attribution
+              ? { label: t("musicModels.detail.attribution", { defaultValue: "Attribution" }), value: variant.licence.attribution }
+              : null,
             (variant.requires ?? []).length > 0
               ? { label: t("musicModels.detail.requires", { defaultValue: "Also needs" }), value: (variant.requires ?? []).join(", ") }
               : null,
@@ -290,16 +295,27 @@ export function MusicModelsPage({ music, backendOnline, availability, onAvailabi
       </>
     );
 
-    const callouts =
+    const downloadCallout =
       status.state === "failed" && download?.error ? (
         <div className="media-model-row-detail callout error">
           <p>{t("musicModels.downloadFailed", { defaultValue: "The download did not finish." })}</p>
+          <p className="muted-text">{download.error}</p>
           <details className="debug-details">
             <summary>{t("error.technicalDetails", { defaultValue: "Technical details" })}</summary>
             <pre className="install-log-terminal">{download.error}</pre>
           </details>
         </div>
       ) : null;
+    // A sound row also needs the separate sounds pack, offered once the licence is accepted (or the weights exist).
+    const callouts =
+      variant.kind === "sound" && !needsLicence ? (
+        <>
+          {downloadCallout}
+          <SoundPackNotice music={music} />
+        </>
+      ) : (
+        downloadCallout
+      );
 
     return (
       <ModelCard
@@ -318,7 +334,7 @@ export function MusicModelsPage({ music, backendOnline, availability, onAvailabi
     );
   }
 
-  const installedCount = entries.filter((entry) => entry.availableLocally).length;
+  const installedCount = entries.filter((entry) => entry.availableLocally && entry.source.kind !== "sound").length;
   const recommended = music.selectedVariant;
   const firstRun =
     backendOnline && music.catalogLoaded && !unavailable && installedCount === 0 && recommended && !downloads[recommended.repo] ? (

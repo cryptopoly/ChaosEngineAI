@@ -73,6 +73,30 @@ def weights_source(variant: dict[str, Any]) -> str | None:
     return None
 
 
+def music_repo_allow_patterns(repo: str) -> list[str] | None:
+    """The files a catalog row needs from its repo (``downloadPatterns``), else ``None`` (the whole repo)."""
+    variant = next((v for v in music_variants() if v["repo"] == repo), None)
+    patterns = (variant or {}).get("downloadPatterns")
+    return [str(p) for p in patterns] if patterns else None
+
+
+def gated_music_message(repo: str, error: str) -> str | None:
+    """The plain licence message for a refused download of a gated music repo, else ``None``.
+
+    Only a refusal (HTTP 401 / 403, "gated", "restricted") is rewritten; any other failure keeps its own text.
+    """
+    variant = next((v for v in music_variants() if v["repo"] == repo), None)
+    if variant is None or not (variant.get("licence") or {}).get("gated"):
+        return None
+    lowered = str(error).lower()
+    if not any(k in lowered for k in ("401", "403", "gated", "restricted", "refused access", "authentication", "not authorized")):
+        return None
+    return (
+        f"{variant['name']} is gated. Open huggingface.co/{repo} while signed in, read and accept the licence "
+        "there, save your Hugging Face token in Settings, then download again."
+    )
+
+
 def music_download_validation_error(repo: str) -> str | None:
     """A readable reason a finished music download is unusable, or ``None`` (also for other repos)."""
     variant = next((v for v in music_variants() if v["repo"] == repo), None)
@@ -94,7 +118,14 @@ def _annotate(variant: dict[str, Any], installed: dict[str, bool]) -> dict[str, 
     row["weightsSource"] = source
     row["availableLocally"] = source is not None
     row["missingRequires"] = [repo for repo in variant.get("requires") or [] if not installed.get(repo)]
-    row["packInstalled"] = music_env.is_installed()
+    if variant.get("kind") == "sound":
+        from backend_service import music_sound_env
+
+        row["packInstalled"] = music_sound_env.is_installed()
+        row["textEncoderReady"] = music_sound_env.text_encoder_ready(variant)
+        row["availableLocally"] = bool(row["availableLocally"] and row["textEncoderReady"])
+    else:
+        row["packInstalled"] = music_env.is_installed()
     row["ready"] = bool(row["availableLocally"] and not row["missingRequires"] and row["packInstalled"])
     return row
 

@@ -179,7 +179,7 @@ export function MusicLibraryTab({ music, backendOnline, onTabChange }: MusicLibr
   }
 
   function onDragStart(event: DragEvent<HTMLElement>, item: MusicLibraryItem) {
-    event.dataTransfer.setData("application/x-chaos-media", JSON.stringify({ kind: "music", id: item.id }));
+    event.dataTransfer.setData("application/x-chaos-media", JSON.stringify({ kind: item.kind === "sound" ? "sfx" : "music", id: item.id }));
     event.dataTransfer.effectAllowed = "copy";
   }
 
@@ -226,7 +226,7 @@ export function MusicLibraryTab({ music, backendOnline, onTabChange }: MusicLibr
       <div className={`music-library__grid${layout === "list" ? " music-library__grid--list" : ""}`} role="list">
         {items.map((item) => {
           const sendItem = {
-            kind: "music" as const,
+            kind: item.kind === "sound" ? ("sfx" as const) : ("music" as const),
             path: itemFilePath(runtime?.libraryDir, item),
             label: item.title,
             seconds: item.durationS ?? null,

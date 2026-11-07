@@ -1,7 +1,7 @@
 /** Storyboard Board: write, generate and arrange the shots (UX spec D.5). */
 import { useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { PlusIcon, RedoIcon, UndoIcon } from "../../components/icons/ActionIcons";
+import { CloseIcon, PlusIcon, RedoIcon, UndoIcon } from "../../components/icons/ActionIcons";
 import { Panel } from "../../components/Panel";
 import { RunEstimateStrip } from "../../components/RunEstimateStrip";
 import { StudioShell } from "../../components/StudioShell";
@@ -15,6 +15,7 @@ import { ShotEditorDrawer } from "./ShotEditorDrawer";
 import {
   effectiveShotStatus,
   filmSeconds,
+  isBareKey,
   isBatchRunning,
   liveShotStates,
   missingShotIds,
@@ -132,6 +133,7 @@ export function BoardTab({
   function onListKey(event: KeyboardEvent<HTMLDivElement>) {
     const card = event.target as HTMLElement;
     if (!card.matches?.("article.shot-card")) return;
+    if (!isBareKey(event)) return;
     const id = card.dataset.shotId as string;
     const index = ids.indexOf(id);
     const shot = shots[index];
@@ -189,7 +191,7 @@ export function BoardTab({
               aria-label={t("storyboard.dismiss", { defaultValue: "Dismiss" })}
               onClick={story.dismissNotice}
             >
-              ×
+              <CloseIcon aria-hidden="true" />
             </button>
           </span>
         ) : null}

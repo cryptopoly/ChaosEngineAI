@@ -342,3 +342,39 @@ export function relativeTime(epochSeconds: number, nowMs: number, locale?: strin
   if (abs < 86400) return fmt.format(Math.round(diff / 3600), "hour");
   return fmt.format(Math.round(diff / 86400), "day");
 }
+
+// ---- keys and focus in the Board's drawers and cards ----
+
+/** Plain keys only: a shortcut with Cmd, Ctrl or Alt held belongs to the app or the browser (Cmd+R reloads). */
+export function isBareKey(event: { metaKey: boolean; ctrlKey: boolean; altKey: boolean }): boolean {
+  return !event.metaKey && !event.ctrlKey && !event.altKey;
+}
+
+export type DrawerEscape = "close" | "ask" | "none";
+
+/**
+ * What Escape does in the shot editor: nothing inside an input-method composition (it cancels the
+ * composition) or while the discard question is open, otherwise it closes, asking first when there are
+ * unsaved edits.
+ */
+export function drawerEscapeAction(input: {
+  key: string;
+  isComposing: boolean;
+  dirty: boolean;
+  confirming: boolean;
+}): DrawerEscape {
+  if (input.key !== "Escape" || input.isComposing || input.confirming) return "none";
+  return input.dirty ? "ask" : "close";
+}
+
+/**
+ * Where Tab goes in a focus trap of `count` stops when focus is on stop `active` (-1 = the container
+ * itself): the stop to move to when Tab would leave the trap, or null to let the browser move on.
+ */
+export function trapTabTarget(count: number, active: number, shift: boolean): number | null {
+  if (count <= 0) return null;
+  if (active < 0) return shift ? count - 1 : 0;
+  if (shift && active === 0) return count - 1;
+  if (!shift && active === count - 1) return 0;
+  return null;
+}

@@ -1111,6 +1111,9 @@
     "defaultsSummary": null,
     "defaultsTitle": null,
     "editor": {
+      "discard": null,
+      "discardBody": null,
+      "discardTitle": null,
       "fromImageGallery": null,
       "fromVideoGallery": null,
       "import": null,

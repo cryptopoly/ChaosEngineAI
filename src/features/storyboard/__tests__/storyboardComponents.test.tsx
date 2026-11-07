@@ -1,12 +1,13 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import type { StoryboardBatchRecord, StoryboardShot, StoryboardTake } from "../../../types";
+import type { StoryboardBatchRecord, StoryboardProject, StoryboardShot, StoryboardTake } from "../../../types";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn(), isTauri: vi.fn(() => false) }));
 
 import { BatchBar, batchProgressText } from "../BatchBar";
 import { lastFailure } from "../BoardTab";
 import { ShotCard, type ShotCardProps } from "../ShotCard";
+import { ShotEditorDrawer } from "../ShotEditorDrawer";
 import { TakesStrip } from "../TakesStrip";
 
 function take(id: string): StoryboardTake {
@@ -143,5 +144,22 @@ describe("lastFailure", () => {
     expect(lastFailure(batches, "s_1")).toBe("out of memory");
     expect(lastFailure(batches, "s_2")).toBeNull();
     expect(lastFailure([], "s_1")).toBeNull();
+  });
+});
+
+describe("ShotEditorDrawer", () => {
+  it("is a modal dialog, with no discard question until there are edits to lose", () => {
+    const project = {
+      references: { characters: [], places: [] },
+    } as unknown as StoryboardProject;
+    const html = renderToStaticMarkup(
+      <ShotEditorDrawer
+        project={project} shot={shot()} index={0} imageGallery={[]} videoGallery={[]}
+        busy={false} batchRunning={false} op={async () => true} onMake={noop} onClose={noop}
+      />,
+    );
+    expect(html).toContain('role="dialog"');
+    expect(html).toContain('aria-modal="true"');
+    expect(html).not.toContain("alertdialog");
   });
 });

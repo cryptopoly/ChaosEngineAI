@@ -11893,13 +11893,23 @@ button.licence-chip:focus-visible {
   gap: 6px;
 }
 .conflict-chip__dismiss {
+  display: inline-flex;
+  align-items: center;
   border: 0;
   background: transparent;
   color: inherit;
-  font-size: 1rem;
   line-height: 1;
   cursor: pointer;
   padding: 0 2px;
+}
+.conflict-chip__dismiss svg {
+  width: 14px;
+  height: 14px;
+}
+.error-text {
+  margin: 0;
+  color: var(--danger);
+  font-size: 0.88rem;
 }
 .conflict-chip__dismiss:focus-visible {
   outline: 2px solid var(--accent);

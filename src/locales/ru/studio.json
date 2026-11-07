@@ -971,12 +971,114 @@
     "result": {
       "loop": null,
       "play": null,
-      "stop": null
+      "stop": null,
+      "again": null,
+      "againTitle": null,
+      "audioFailed": null,
+      "audioLoading": null,
+      "done": null,
+      "doneIn": null,
+      "openLibrary": null,
+      "seed": null,
+      "vary": null,
+      "varyTitle": null
     },
     "options": {
       "reference": null,
-      "referenceRights": null
-    }
+      "referenceRights": null,
+      "auto": null,
+      "bpm": null,
+      "key": null,
+      "randomSeed": null,
+      "seed": null,
+      "summaryBpm": null,
+      "summaryKey": null,
+      "summarySeed": null,
+      "summaryVariations": null,
+      "tempoKey": null,
+      "variations": null,
+      "variationsCost": null,
+      "variationsTotal": null
+    },
+    "artistWarning": null,
+    "cancel": null,
+    "cancelling": null,
+    "empty": null,
+    "error": {
+      "cancelled": null,
+      "generic": null,
+      "invalid": null,
+      "memory": null,
+      "notReady": null,
+      "offline": null,
+      "useShorter": null
+    },
+    "expert": {
+      "aiTagNote": null,
+      "idleUnload": null,
+      "model": null,
+      "output": null,
+      "summaryIdle": null,
+      "summaryTagOff": null
+    },
+    "issue": {
+      "bpmRange": null,
+      "captionEmpty": null,
+      "captionTooLong": null,
+      "lyricsEmpty": null,
+      "lyricsTooLong": null,
+      "secondsRange": null,
+      "seedRange": null,
+      "variations": null
+    },
+    "latest": null,
+    "length": {
+      "custom": null,
+      "customLabel": null,
+      "label": null,
+      "minutes": null,
+      "range": null,
+      "seconds": null
+    },
+    "library": null,
+    "loading": null,
+    "lyrics": {
+      "label": null,
+      "placeholder": null,
+      "rights": null
+    },
+    "make": null,
+    "making": null,
+    "mode": {
+      "instrumental": null,
+      "label": null,
+      "song": null
+    },
+    "noModel": null,
+    "noModelSize": null,
+    "offline": null,
+    "openLibrary": null,
+    "openModels": null,
+    "packMissing": null,
+    "progress": {
+      "compose": null,
+      "decode": null,
+      "encode": null,
+      "load": null,
+      "save": null
+    },
+    "prompt": {
+      "label": null,
+      "placeholder": null
+    },
+    "queued": null,
+    "running": null,
+    "status": {
+      "installed": null,
+      "loaded": null,
+      "notInstalled": null
+    },
+    "title": null
   },
   "audioPlayer": {
     "timeOf": null
@@ -1338,5 +1440,117 @@
       "negativeEdited": null,
       "endImageSet": null
     }
+  },
+  "musicLibrary": {
+    "addTag": null,
+    "clearFilters": null,
+    "confirmDelete": null,
+    "confirmDeleteMany": null,
+    "delete": null,
+    "deleteSelected": null,
+    "empty": null,
+    "filter": {
+      "anyTag": null,
+      "tag": null
+    },
+    "kind": {
+      "sound": null,
+      "track": null
+    },
+    "layout": {
+      "grid": null,
+      "label": null,
+      "list": null
+    },
+    "loading": null,
+    "makeAnother": null,
+    "noMatch": null,
+    "openStudio": null,
+    "removeTag": null,
+    "rename": null,
+    "search": null,
+    "select": null,
+    "sort": {
+      "label": null,
+      "longest": null,
+      "newest": null,
+      "oldest": null
+    },
+    "subtitle": null,
+    "title": null
+  },
+  "musicModels": {
+    "action": {
+      "openHuggingFace": null,
+      "openInStudio": null
+    },
+    "column": {
+      "fit": null,
+      "licence": null,
+      "makes": null,
+      "model": null,
+      "size": null,
+      "status": null
+    },
+    "detail": {
+      "fit": null,
+      "licence": null,
+      "openModelCard": null,
+      "repo": null,
+      "requires": null,
+      "size": null,
+      "speed": null
+    },
+    "downloadFailed": null,
+    "empty": {
+      "attention": null,
+      "catalog": null,
+      "downloading": null,
+      "firstRun": null,
+      "firstRunAction": null,
+      "installed": null
+    },
+    "filter": {
+      "commercialOnly": null,
+      "licence": null,
+      "licenceAny": null,
+      "makes": null,
+      "makesAll": null
+    },
+    "intro": null,
+    "memory": {
+      "pending": null,
+      "pendingTitle": null
+    },
+    "openStudio": null,
+    "pack": {
+      "body": null,
+      "cancel": null,
+      "failedBody": null,
+      "failedTitle": null,
+      "install": null,
+      "log": null,
+      "title": null,
+      "working": null
+    },
+    "platform": {
+      "appleSilicon": null,
+      "cpu": null,
+      "cuda": null
+    },
+    "search": null,
+    "sort": {
+      "fit": null,
+      "fitSummary": null,
+      "largestFirst": null,
+      "name": null,
+      "nameSummary": null,
+      "size": null,
+      "smallestFirst": null,
+      "status": null,
+      "statusSummary": null
+    },
+    "title": null,
+    "unavailable": null
   }
 }

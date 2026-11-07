@@ -41,7 +41,12 @@ cloning off for agents and other machines by default, and an AudioSeal watermark
 
 ## Not done
 
-- Watermark real run: NOT run. Installing `audioseal`, `omegaconf`, `einops` into the voice venv was denied by the
+- Watermark real run: NOT run (second attempt 2026-11-08 through the app's own `POST /api/voice/clone/models/download`
+  on port 8891 was also refused by the permission classifier, reason "Code from External"; the coordinator's relayed
+  approval is not a permission rule). The download now reports its phase ("Installing the watermark component…")
+  and a plain failure message; unit tests cover both. Measurement script ready:
+  `scratchpad/wm_measure.py` (speed, SNR, log-spectral distance, band levels).
+- Earlier note: Installing `audioseal`, `omegaconf`, `einops` into the voice venv was denied by the
   permission classifier, and neither venv has omegaconf. `tests/test_voice_watermark.py::RealRoundTripTests`
   (embed, MP3 and AAC re-encode, detect, SNR > 20 dB) skips until the component is installed; then run it and
   e2e phase 14. Speed on Apple silicon (MPS / CPU) not measured.

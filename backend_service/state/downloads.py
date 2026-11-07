@@ -126,6 +126,15 @@ def start_download(
         pinned_bytes = matched_size_bytes(hub_files, text_patterns)
         if pinned_bytes > 0:
             total_gb = _bytes_to_gb(pinned_bytes)
+    # A music or sound row fetches only its listed files, not the whole repo (the Stable Audio repo is
+    # 6 GB, the files it needs about 1.6 GB, so the bar sat near 26 % when the download was done).
+    music_patterns = None if allow_patterns else music_repo_allow_patterns(repo)
+    if music_patterns:
+        from backend_service.helpers.text_gguf import matched_size_bytes
+
+        music_bytes = matched_size_bytes(_hub_repo_files(repo).get("files") or [], music_patterns)
+        if music_bytes > 0:
+            total_gb = _bytes_to_gb(music_bytes)
 
     # The files this download fetches: progress counts only those, not other
     # quants of the repo that an earlier download left in the cache.

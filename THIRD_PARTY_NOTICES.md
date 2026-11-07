@@ -404,8 +404,10 @@ environment, `~/.chaosengine/voice-venv`; not bundled with the app. Run by
 ### PyAV (audio decoding)
 
 - **Upstream:** <https://github.com/PyAV-Org/PyAV>
-- **Licence:** BSD-3-Clause; its wheels bundle FFmpeg libraries under the
-  LGPL-2.1-or-later.
+- **Licence:** BSD-3-Clause for PyAV itself. Its PyPI wheels bundle FFmpeg libraries built with `--enable-gpl`
+  (libx264 and libx265; checked on the macOS arm64 wheel of av 14.1.0, where libavutil reports "GPL version 3 or later"),
+  so treat the bundled libraries as **GPL-3.0-or-later**, not LGPL. They are installed from PyPI on the user's machine
+  (voice venv), not shipped by us. Sources: <https://github.com/PyAV-Org/pyav-ffmpeg>.
 - **Usage:** Decodes recordings and dropped audio / video files, so no
   `ffmpeg` command is needed.
 
@@ -453,7 +455,11 @@ huggingface-hub (Apache-2.0), numpy (BSD-3-Clause), soundfile (BSD-3-Clause; bun
 gradio, lightning, peft, torchao and modelscope (Apache-2.0 or BSD; pulled in by the library, not used for
 inference). All are MIT, BSD or Apache except the one below.
 
-- **pytorch-wavelets 1.3.0: to be confirmed.** Its PyPI classifier says "Free To Use But Restricted". Its LICENSE
-  file says the DWT parts are MIT (Fergal Cotter, 2020) and the DTCWT parts may carry the original MATLAB toolbox's
-  restrictions. ACE-Step uses only the DWT (Haar) correction, and the MLX path computes Haar natively. Open for the
-  owner before a release ships the music pack (FOLLOW_UPS FU-138).
+- **pytorch-wavelets 1.3.0: licence read, recommendation is to drop it (2026-11-07).** PyPI says "Free To Use But Restricted".
+  Its LICENSE file is MIT (copyright 2020 Fergal Cotter) for the parts that are new, and says "The DWT sections come under
+  this license". The dual-tree (DTCWT) parts derive from Nick Kingsbury's MATLAB toolbox, whose README text says "supplied
+  free of charge for research purposes only"; we use none of those parts. ACE-Step imports only `DWT1DForward` and
+  `DWT1DInverse`, lazily, for the optional DCW correction, and skips DCW cleanly when the package is missing; the MLX path
+  computes Haar natively. We plan to remove it from `music_requirements.txt` (see `docs/research/licences-wavelets-ffmpeg.md`,
+  FU-138). If it stays, it is installed on demand into the music venv, never bundled, and the DWT code is used under MIT.
+  PyWavelets (MIT AND BSD-3-Clause) stays.

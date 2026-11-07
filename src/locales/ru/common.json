@@ -972,7 +972,8 @@
     "contextDetected": "Обнаружен {contextLabel}",
     "emptyState": "Ни одна модель не соответствует вашему поиску.",
     "launchSettings": "Настройки запуска",
-    "cancelButton": "Отмена"
+    "cancelButton": "Отмена",
+    "busyConfirm": null
   },
   "modelPicker": {
     "weightFileTitle": "Выбрать файл весов: {name}",

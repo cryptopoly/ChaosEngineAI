@@ -309,10 +309,13 @@ def generate(state: ChaosEngineState, request: GenerateRequest) -> dict[str, Any
         state.add_activity("Chat completion", session["title"])
         state._persist_sessions()
 
+        from backend_service.helpers.busy_advice import current_advice
+
         return {
             "session": session,
             "assistant": assistant_message,
             "runtime": state.runtime.status(active_requests=state.active_requests, requests_served=state.requests_served),
+            "advice": current_advice(),
         }
 
 
@@ -561,6 +564,14 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest):
                 "chat", "warning",
                 f"[{model_tag}] Memory gate skipped due to error: {exc}",
             )
+
+        # The machine is busy (a heavy job runs) or about to run short of memory: say so once, before
+        # the first token. Advice only; the gate above is the one that refuses.
+        from backend_service.helpers.busy_advice import current_advice
+
+        advice = current_advice()
+        if advice is not None and advice["level"] != "ok":
+            yield f"data: {json.dumps({'advice': advice})}\n\n"
 
         yield f"data: {json.dumps({'phase': 'prompt_eval'})}\n\n"
 

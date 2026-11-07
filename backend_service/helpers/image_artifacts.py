@@ -113,6 +113,9 @@ def _hydrate_image_artifact(payload: dict[str, Any]) -> dict[str, Any]:
         "qualityPreset": str(payload.get("qualityPreset") or "") or None,
         "draftMode": bool(payload.get("draftMode")),
         "referenceImagePaths": list(payload.get("referenceImagePaths") or []) or None,
+        "projectId": str(payload.get("projectId") or "") or None,
+        "projectName": str(payload.get("projectName") or "") or None,
+        "shotId": str(payload.get("shotId") or "") or None,
     }
 
 
@@ -126,6 +129,9 @@ def _with_settings(data: bytes, artifact: dict[str, Any]) -> bytes:
 
 
 def _save_image_artifact(artifact: dict[str, Any], image_outputs_dir: Path) -> dict[str, Any]:
+    from backend_service.helpers.provenance import stamp
+
+    artifact = stamp(artifact)
     created_at = str(artifact.get("createdAt") or datetime.utcnow().replace(microsecond=0).isoformat() + "Z")
     output_dir = _image_output_directory(image_outputs_dir, created_at)
     artifact_id = str(artifact["artifactId"])

@@ -972,7 +972,8 @@
     "contextDetected": "{contextLabel} を検出",
     "emptyState": "検索条件に一致するモデルはありません。",
     "launchSettings": "起動設定",
-    "cancelButton": "キャンセル"
+    "cancelButton": "キャンセル",
+    "busyConfirm": null
   },
   "modelPicker": {
     "weightFileTitle": "重みファイルを選択:{name}",

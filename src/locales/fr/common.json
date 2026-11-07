@@ -972,7 +972,8 @@
     "contextDetected": "{contextLabel} détecté",
     "emptyState": "Aucun modèle ne correspond à votre recherche.",
     "launchSettings": "Paramètres de lancement",
-    "cancelButton": "Annuler"
+    "cancelButton": "Annuler",
+    "busyConfirm": null
   },
   "modelPicker": {
     "weightFileTitle": "Sélectionner le fichier de poids : {name}",

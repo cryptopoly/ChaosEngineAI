@@ -1343,7 +1343,10 @@
     "dismiss": "Dismiss",
     "offline": "Waiting for the backend…",
     "pathPlaceholder": "/path/to/file",
-    "pickUnavailable": "The file picker is not available here. Type the path instead."
+    "pickUnavailable": "The file picker is not available here. Type the path instead.",
+    "films": {
+      "title": "Film"
+    }
   },
   "mixer": {
     "add": {
@@ -1662,5 +1665,10 @@
         "link": "Source"
       }
     }
+  },
+  "galleryProject": {
+    "filter": "Project",
+    "all": "All projects",
+    "chip": "From project {name}"
   }
 }

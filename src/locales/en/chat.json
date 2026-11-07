@@ -411,5 +411,10 @@
     "copied": "Copied",
     "copyCode": "Copy code",
     "copy": "Copy"
+  },
+  "busy": {
+    "slowerTitle": "Machine is busy",
+    "riskyTitle": "Not enough memory for both",
+    "dismiss": "Dismiss"
   }
 }

@@ -175,6 +175,10 @@ export interface ImageOutputArtifact {
   runtimeNote?: string | null;
   qualityPreset?: ImageQualityPreset | null;
   draftMode?: boolean | null;
+  /** Set when a Storyboard batch made it: the project and shot it belongs to. */
+  projectId?: string | null;
+  projectName?: string | null;
+  shotId?: string | null;
 }
 
 export interface ImageGenerationPayload {

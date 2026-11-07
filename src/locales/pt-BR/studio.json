@@ -1343,7 +1343,10 @@
     "dismiss": null,
     "offline": null,
     "pathPlaceholder": null,
-    "pickUnavailable": null
+    "pickUnavailable": null,
+    "films": {
+      "title": null
+    }
   },
   "mixer": {
     "add": {
@@ -1662,5 +1665,10 @@
         "link": null
       }
     }
+  },
+  "galleryProject": {
+    "filter": null,
+    "all": null,
+    "chip": null
   }
 }

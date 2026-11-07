@@ -8,12 +8,14 @@ and the batch's own Cancel reaches its running and waiting tickets. Heavy import
 
 from __future__ import annotations
 
+import shutil
 import subprocess
 import tempfile
 from pathlib import Path
 from typing import Any, Callable
 
 from backend_service.storyboard import media
+from backend_service.storyboard.ffmpeg_bin import PROTOCOLS
 from backend_service.storyboard.models import Project, Shot
 
 
@@ -144,13 +146,18 @@ def _no_image_input(variant: dict[str, Any]) -> str:
 
 
 def last_frame(clip: Path) -> Path:
-    """The clip's final frame as a PNG (bundled ffmpeg), for ``startFrom: previous-shot``."""
+    """The clip's final frame as a PNG in a new temp folder (bundled ffmpeg), for ``startFrom: previous-shot``.
+
+    The batch removes the PNG and the folder once the clip that starts from it is made.
+    """
     exe = media.ffmpeg_exe()
     if not exe:
         raise RuntimeError("the bundled ffmpeg is not available")
     out = Path(tempfile.mkdtemp(prefix="chaosengine-frame-")) / f"{clip.parent.name}-last.png"
-    result = subprocess.run([exe, "-hide_banner", "-nostdin", "-loglevel", "error", "-sseof", "-1", "-i", str(clip),
+    result = subprocess.run([exe, "-hide_banner", "-nostdin", "-loglevel", "error", "-protocol_whitelist", PROTOCOLS,
+                             "-sseof", "-1", "-i", str(clip),
                              "-update", "1", "-frames:v", "1000", "-y", str(out)], capture_output=True, timeout=120)
     if result.returncode != 0 or not out.is_file():
+        shutil.rmtree(out.parent, ignore_errors=True)
         raise RuntimeError("could not read the previous clip's last frame")
     return out

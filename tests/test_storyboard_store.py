@@ -6,6 +6,7 @@ import threading
 import time
 import unittest
 import zipfile
+from pathlib import Path
 from unittest import mock
 
 from backend_service.storyboard import bundle, store as store_module
@@ -368,6 +369,32 @@ class MediaTests(StoreCase):
             self.op(stale, "import_take", shotId="s_00000000", clip=str(fake_mp4(self.src / "d.mp4")))
         self.assertEqual(self._media_files(stale), before)
 
+    def test_every_ffmpeg_call_reads_local_files_only(self):
+        import subprocess
+
+        from backend_service.storyboard import generators, media
+
+        calls = []
+
+        def fake_run(args, **kwargs):
+            calls.append(args)
+            if args[-1].endswith(".png"):
+                Path(args[-1]).write_bytes(b"png")
+            return subprocess.CompletedProcess(args, 0, b"", b"frame=   97\nStream: Video: h264, 24 fps")
+
+        clip = fake_mp4(self.src / "c.mp4")
+        with mock.patch.object(media, "ffmpeg_exe", return_value="ffmpeg"), \
+                mock.patch("backend_service.storyboard.media.subprocess.run", fake_run), \
+                mock.patch("backend_service.storyboard.generators.subprocess.run", fake_run):
+            media.probe_seconds(clip)
+            frame = generators.last_frame(clip)
+        frame.unlink()
+        for args in calls:
+            self.assertIn("-protocol_whitelist", args)
+            index = args.index("-protocol_whitelist")
+            self.assertEqual(args[index + 1], "file,pipe")
+            self.assertLess(index, args.index("-i"))
+
     def test_a_real_97_frame_clip_measures_4_0417_seconds(self):
         import subprocess
 
@@ -546,6 +573,25 @@ class DepsAndBatchTests(StoreCase):
             self.assertIn("LTX-2.3", str(caught.exception))
         with mock.patch.object(generators, "_variant", return_value=ltx):
             self.assertIsNone(generators.studio_generators(mock.Mock(), "b_1", self.folder(p))["clip_image_refusal"](p))
+
+    def test_chained_clips_leave_no_last_frame_folders(self):
+        import tempfile
+
+        p, ids = self._film()
+        gens = FakeGenerators(self.src)
+        frames = []
+
+        def last_frame(clip):  # like generators.last_frame: a new temp folder per chained clip
+            folder = Path(tempfile.mkdtemp(prefix="chaosengine-frame-"))
+            frames.append(folder)
+            return png(folder / "last.png")
+
+        batch = Batch(self.store, p.id, "both", gens.make_still, gens.make_clip, gens.unload, last_frame)
+        batch.start(p.revision)
+        batch.run()
+        self.assertEqual(len(frames), 2)  # D and E continue from the shot before
+        self.assertEqual([f for f in frames if f.exists()], [])
+        self.assertTrue(all(s.status == "done" for s in self.store.load(p.id).shots))
 
     def test_a_failed_step_is_recorded_without_paths(self):
         p = self.new(shots=2)

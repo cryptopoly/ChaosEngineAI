@@ -17,6 +17,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
+from backend_service.storyboard.ffmpeg_bin import PROTOCOLS
 from backend_service.storyboard.models import check_rel_path
 
 IMAGE_EXTS = frozenset({".png", ".jpg", ".jpeg", ".webp"})
@@ -162,7 +163,7 @@ def probe_seconds(path: Path) -> float | None:
     if not exe:
         return None
     is_video = kind_of(path) == "video"
-    args = [exe, "-hide_banner", "-nostdin", "-i", str(path)]
+    args = [exe, "-hide_banner", "-nostdin", "-protocol_whitelist", PROTOCOLS, "-i", str(path)]
     args += ["-map", "0:v:0", "-c", "copy", "-f", "null", "-"] if is_video else ["-map", "0:a:0", "-f", "null", "-"]
     try:
         result = subprocess.run(args, capture_output=True, timeout=120)

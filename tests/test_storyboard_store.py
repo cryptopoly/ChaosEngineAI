@@ -311,6 +311,63 @@ class MediaTests(StoreCase):
         self.assertEqual((p.shots[0].status, p.audio[0].status), ("done", "ok"))
         self.assertEqual(p.shots[0].active().hashes["clip"], sha256_file(replacement))
 
+    def _media_files(self, p):
+        folder = self.folder(p)
+        return sorted(str(f.relative_to(folder)) for f in folder.rglob("*")
+                      if f.is_file() and f.parts[-2] != "history" and f.name != "project.json")
+
+    def test_copy_hash_and_probe_run_outside_the_project_lock(self):
+        p = self.new(shots=1)
+        lock = self.store.lock(p.id)
+        seen = []
+
+        def lock_free():
+            got = []
+
+            def probe():
+                got.append(lock.acquire(blocking=False))
+                if got[0]:
+                    lock.release()
+
+            thread = threading.Thread(target=probe)
+            thread.start()
+            thread.join(5)
+            return bool(got and got[0])
+
+        from backend_service.storyboard import media
+
+        real_hash = media.sha256_file
+
+        def hashing(path):
+            seen.append(("hash", lock_free()))
+            return real_hash(path)
+
+        def probing(path):
+            seen.append(("probe", lock_free()))
+            return 4.0
+
+        with mock.patch("backend_service.storyboard.media.sha256_file", hashing), \
+                mock.patch("backend_service.storyboard.media.probe_seconds", probing):
+            p = self.op(p, "import_take", shotId=p.shots[0].id, clip=str(fake_mp4(self.src / "c.mp4")))
+        self.assertEqual(p.shots[0].active().measuredSeconds, 4.0)
+        self.assertTrue(seen)
+        self.assertTrue(all(free for _, free in seen), seen)
+
+    def test_a_failed_import_leaves_no_copied_file(self):
+        p = self.new(shots=1)
+        sid = p.shots[0].id
+        before = self._media_files(p)
+        with self.assertRaises(OpError):  # a good still, then a clip that is not there
+            self.op(p, "import_take", shotId=sid, still=str(png(self.src / "s.png")), clip=str(self.src / "nope.mp4"))
+        self.assertEqual(self._media_files(p), before)
+        stale = self.op(p, "edit_shot", shotId=sid, title="moved on")
+        with self.assertRaises(RevisionConflict):  # the copy is made before the revision check under the lock
+            self.op(p, "import_take", shotId=sid, clip=str(fake_mp4(self.src / "c.mp4")))
+        self.assertEqual(self._media_files(stale), before)
+        with self.assertRaises(OpError):  # the op itself refuses after the file came in
+            self.op(stale, "import_take", shotId="s_00000000", clip=str(fake_mp4(self.src / "d.mp4")))
+        self.assertEqual(self._media_files(stale), before)
+
     def test_a_real_97_frame_clip_measures_4_0417_seconds(self):
         import subprocess
 

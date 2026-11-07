@@ -11443,6 +11443,27 @@ html[lang="ko"] select {
   }
 }
 
+/* Phones: the column header row goes (the sort menu above the table still sorts) and each row wraps,
+   name on its own line, the other cells and the actions below it. */
+@media (max-width: 760px) {
+  .models-table .media-model-head {
+    display: none;
+  }
+  .models-table .media-model-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 8px 16px;
+  }
+  .models-table .media-model-row > :first-child {
+    flex: 1 1 100%;
+  }
+  .models-table .media-model-row > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+}
+
 /* Column headers and cells in long languages. */
 .models-table .sort-header {
   min-width: 0;

@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import type { ChatMessage } from "../../../types";
+import { MicSettingsButton } from "../MicSettingsButton";
 import { useVoice } from "../VoiceContext";
 import { useVoiceCall, type CallPhase } from "./useVoiceCall";
 
@@ -59,6 +60,7 @@ export function VoiceCallOverlay({ messages, modelName, send, cancel, onEnd }: V
             {call.error}
           </div>
         ) : null}
+        <MicSettingsButton error={call.error} platform={platform} />
         <div className="voice-call__captions">
           {call.userText ? (
             <p className="voice-call__line">

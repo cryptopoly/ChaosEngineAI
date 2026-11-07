@@ -4,6 +4,8 @@ Things the Playwright run in `e2e/` turned up. Each has a file, a repro and a st
 
 ## F-1: Music Models table keeps its desktop width on a phone (page scrolls sideways)
 
+- Status: fixed. Below 760 px the header row is hidden and each row wraps (`.models-table` in `src/styles.css`); the `test.fail` pin is gone.
+
 - Where: `src/features/music/MusicModelsPage.tsx:47-50` (`MUSIC_GRID`, `MUSIC_GRID_NARROW`) with the shared table in `src/components/models/ModelsPage.tsx:216` and `src/styles.css:11421-11441` (`.models-table`). The narrow template only helps down to about 1100 px; its columns have minimums that add up to about 650 px, plus the sidebar stacking above on a phone.
 - Repro: open the app at 375 px wide, Music > Models. `document.documentElement.scrollWidth` is 626 px (251 px too wide); `.media-model-head` and `.media-model-rows` end at x=653.
 - Impact: low. The desktop window cannot normally be that narrow. It shows up in a narrow window or a future mobile or web build.
@@ -12,6 +14,8 @@ Things the Playwright run in `e2e/` turned up. Each has a file, a repro and a st
 - Not checked: the Image, Video and Chat Models tables at 375 px (a probe of Image Models read 375 px, but it may have been measured before the rows rendered).
 
 ## F-2: Project card says "no shots yet" for a project that has shots without takes
+
+- Status: fixed. The card shows "no shots yet", "no pictures yet" or "no preview" (`emptyThumbState` in `storyboardLogic.ts`).
 
 - Where: `src/features/storyboard/ProjectCard.tsx:45-47`, string `storyProjects.card.noShots`.
 - Repro: create a project, add two shots, do not make anything, go to Storyboard > Projects. The card meta says "2 shots · 8 s" and the thumbnail area says "no shots yet".

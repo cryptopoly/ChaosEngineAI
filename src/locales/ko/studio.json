@@ -824,6 +824,7 @@
     "micError": {
       "blockedMac": "마이크 접근이 차단되어 있습니다. 시스템 설정 > 개인정보 보호 및 보안 > 마이크에서 ChaosEngineAI를 허용한 후 다시 시도하세요.",
       "blockedWindows": "마이크 접근이 차단되어 있습니다. 설정 > 개인 정보 및 보안 > 마이크에서 데스크톱 앱의 마이크 사용을 허용한 후 다시 시도하세요.",
+      "openSettings": null,
       "blocked": "마이크 접근이 차단되어 있습니다. 데스크톱의 개인정보 설정과 다른 앱이 마이크를 사용 중인지 확인하세요.",
       "notFound": "마이크를 찾을 수 없습니다. 마이크를 연결한 후 다시 시도하세요.",
       "inUse": "다른 앱이 마이크를 사용 중이거나 마이크를 열 수 없습니다.",
@@ -1343,6 +1344,8 @@
       "edited": null,
       "meta": null,
       "noShots": null,
+      "noTakes": null,
+      "noPreview": null,
       "stale": null,
       "zeroShots": null
     },

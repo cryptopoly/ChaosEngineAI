@@ -824,6 +824,7 @@
     "micError": {
       "blockedMac": "L'accès au micro est bloqué. Autorisez ChaosEngineAI dans Réglages Système > Confidentialité et sécurité > Micro, puis réessayez.",
       "blockedWindows": "L'accès au micro est bloqué. Autorisez les applications de bureau à utiliser le micro dans Paramètres > Confidentialité et sécurité > Microphone, puis réessayez.",
+      "openSettings": null,
       "blocked": "L'accès au micro est bloqué. Vérifiez les paramètres de confidentialité de votre bureau et qu'aucune autre application n'utilise le micro.",
       "notFound": "Aucun micro trouvé. Branchez-en un et réessayez.",
       "inUse": "Le micro est utilisé par une autre application ou n'a pas pu être ouvert.",
@@ -1343,6 +1344,8 @@
       "edited": null,
       "meta": null,
       "noShots": null,
+      "noTakes": null,
+      "noPreview": null,
       "stale": null,
       "zeroShots": null
     },

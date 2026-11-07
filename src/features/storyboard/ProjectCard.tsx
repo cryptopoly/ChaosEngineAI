@@ -1,8 +1,9 @@
 /** One project on the Projects screen: up to three stills, the numbers, and its actions. */
+import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import { ActionMenu } from "../../components/ActionMenu";
 import { ProjectImage, ProjectVideo } from "./ProjectMedia";
-import { filmSeconds, relativeTime, staleCount, thumbnailOf } from "./storyboardLogic";
+import { emptyThumbState, filmSeconds, relativeTime, staleCount, thumbnailOf } from "./storyboardLogic";
 import type { ProjectCardData } from "./useStoryboardProjects";
 
 export interface ProjectCardProps {
@@ -13,6 +14,12 @@ export interface ProjectCardProps {
   onRename: () => void;
   onDelete: () => void;
   exporting?: boolean;
+}
+
+function emptyThumbText(t: TFunction<"studio">, state: ReturnType<typeof emptyThumbState>): string {
+  if (state === "noShots") return t("storyProjects.card.noShots", { defaultValue: "no shots yet" });
+  if (state === "noTakes") return t("storyProjects.card.noTakes", { defaultValue: "no pictures yet" });
+  return t("storyProjects.card.noPreview", { defaultValue: "no preview" });
 }
 
 export function ProjectCard({ card, now, onOpen, onExport, onRename, onDelete, exporting }: ProjectCardProps) {
@@ -43,7 +50,7 @@ export function ProjectCard({ card, now, onOpen, onExport, onRename, onDelete, e
     <article className="project-card" aria-label={card.name}>
       <div className="project-card__thumbs" aria-hidden="true">
         {thumbs.length === 0 ? (
-          <span className="project-card__thumb-empty">{t("storyProjects.card.noShots", { defaultValue: "no shots yet" })}</span>
+          <span className="project-card__thumb-empty">{emptyThumbText(t, emptyThumbState(project))}</span>
         ) : (
           thumbs.map(({ shot, thumb }) =>
             thumb?.kind === "clip" ? (

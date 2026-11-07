@@ -2711,10 +2711,7 @@ def phase_17(cap: Capability) -> PhaseResult:
 PHASES = {
     0: phase_0, 1: phase_1, 2: phase_2, 3: phase_3,
     4: phase_4, 5: phase_5, 6: phase_6, 7: phase_7, 8: phase_8, 9: phase_9, 10: phase_10,
-    11: phase_11,
-    16: phase_16,
-
-    11: phase_11, 17: phase_17,
+    11: phase_11, 16: phase_16, 17: phase_17,
 }
 
 # Stream phases live in scripts/e2e_phases/ (one file each); scripts/ is this file's folder.

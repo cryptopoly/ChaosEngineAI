@@ -90,9 +90,9 @@ def _token_lacks_clone_scope(request: Any) -> bool:
 
 
 def clone_allowed(request: Any) -> bool:
-    if request_origin(request) == "ui":
-        return True
-    return agent_cloning_enabled() and not _token_lacks_clone_scope(request)
+    if _token_lacks_clone_scope(request):
+        return False  # an agent token without the scope, whatever the setting says
+    return request_origin(request) == "ui" or agent_cloning_enabled()
 
 
 REFUSED_MESSAGE = (

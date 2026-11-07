@@ -133,6 +133,7 @@ EXEMPT_AUTH_PATHS = frozenset({
     "/api/auth/session",
     "/api/system/gpu-status",
 })
+AGENT_FILE_PATHS = frozenset({"/api/agent/uploads", "/api/agent/files"})
 
 
 # ---------------------------------------------------------------------------
@@ -764,6 +765,9 @@ def create_app(
         if (
             request.method == "OPTIONS"
             or path in EXEMPT_AUTH_PATHS
+            # The agent file routes check the Agent access token and its scopes themselves (routes/agent.py
+            # _require_agent); the app-token check here would refuse every agent token over HTTP.
+            or path in AGENT_FILE_PATHS
             or not (path.startswith("/api/") or path.startswith("/v1/"))
             or not getattr(app.state, "chaosengine_require_api_auth", True)
         ):

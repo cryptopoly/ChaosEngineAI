@@ -22,7 +22,7 @@ STORYBOARD_TOOLS: list[dict[str, Any]] = [
     {
         "name": "storyboard_project",
         "description": "Edit: film projects. create(name), list, get (shots, takes, timeline, revision), edit(fields: name, "
-        "defaults, export{aiLabel, loudnessLufs, captionsSrt, captionsBurn, stems}), undo, redo, delete, export (.chaosfilm), import.",
+        "defaults, export{captionsSrt, captionsBurn, stems, ...}), undo, redo, delete, export (.chaosfilm), import.",
         "inputSchema": _obj({
             "action": {"type": "string", "enum": ["create", "list", "get", "edit", "undo", "redo", "delete", "export", "import"]},
             "project_id": _PID, "revision": _REV,

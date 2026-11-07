@@ -36,22 +36,30 @@ Pass the path of an earlier output as an input image. Only models with `acceptsI
 - Poster to clip: `generate_video` with `start_image` set to the poster path (LTX-2 models). Add `end_image` to land on a second image.
 - Same subject in new scenes: `generate_image` with `reference_images` set to the earlier image (FLUX 3 Klein takes up to four; FLUX.1, FLUX.2 Klein and Qwen take one, with `image_strength` where higher stays closer).
 - Leave width and height out and the output takes the image's shape.
-- Voice cloning is not available.
+- Cloned voices: `list_cloned_voices` then `speak_cloned` (needs the `clone` scope and the person's "Allow agents to use cloned voices" switch). You can only use a voice the person already made in the app with their spoken consent; you cannot create one. The output is tagged and watermarked as AI-made, and a film clip made from it is marked automatically. If refused, tell the user what the error says.
 - On another machine, paths in a job result are not readable from here: send inputs with `upload_file` (use the `upload:` handle as the path) and fetch a result from `output.download.url` with the same token.
 
 ## Making a short film (storyboard)
 
 `storyboard_project` create, then `storyboard_shot` add one shot per beat (`stillPrompt`, `motionPrompt`, `seconds`; `startFrom: previous-shot` continues from the last frame). Every edit needs the `revision` from the last answer; if it is refused, call `storyboard_project` get and retry. `storyboard_generate` makes new takes (stills first, then clips); `wait_for_job`, then `get` to check statuses. To redo shots, `storyboard_shot` redo them and generate again: other shots are untouched, and shots that continue from a redone one turn `stale`. Add sound with `storyboard_audio` (anchor voice to its shot), then `storyboard_render` with `preview` true; render the final with `preview` false and give the user the path.
 
+## Captions, stems and editor export
+
+`storyboard_project` edit with `fields.export` `{captionsSrt, captionsBurn, stems}` (booleans) sets what a render writes next to the film; the render output lists them in `extras` (each with a `download`) and any `warnings`. `storyboard_captions`: `generate` (a job: transcribes the voice clips), `set` / `add` / `edit` / `remove` to fix cues by hand (times in seconds, `revision` needed), `export_srt` for a download. `storyboard_export_otio` gives an OpenTimelineIO file for Resolve or Premiere. Pass `notify: true` to `storyboard_render` for a system banner when a long render ends. A failed or interrupted render says how many shots are done: call `storyboard_render` again to resume.
+
 ## Music
 
-`list_models` kind `music`, then `make_music` with a style `caption` (genre, instruments, mood, voice) and `lyrics` with `[verse]` / `[chorus]` tags, or `instrumental: true`; `seconds` 10 to 600; the same `seed` gives the same track. `variations` 2 or 4 gives takes with seeds `seed`, `seed+1`, ... in `output.tracks`. The result is a FLAC in the Music Library. Write your own lyrics; do not name an artist in the caption, describe the sound. When a storyboard has a music lane, ask for clips with "no music" in the prompt so the clip's own sound does not fight the soundtrack.
+`list_models` kind `music`, then `make_music` with a style `caption` (genre, instruments, mood, voice) and `lyrics` with `[verse]` / `[chorus]` tags, or `instrumental: true`; `seconds` 10 to 600; the same `seed` gives the same track. `variations` 2 or 4 gives takes with seeds `seed`, `seed+1`, ... in `output.tracks`. The result is a FLAC in the Music Library; `music_library` lists, gets (with a download), renames or tags, and deletes tracks (delete is permanent: ask the user first). Write your own lyrics; do not name an artist in the caption, describe the sound. When a storyboard has a music lane, ask for clips with "no music" in the prompt so the clip's own sound does not fight the soundtrack.
 
 ## Film with music
 
 1. `make_music` (instrumental or with lyrics), `wait_for_job`; note `output.tracks[0].path`.
 2. Build the film with `storyboard_*`, asking clips for "no music" in the prompt.
 3. `storyboard_audio` add with `kind: "music"` and that path (or an `upload:` handle), then `storyboard_render`.
+
+## Resources, prompts and progress
+
+`resources/list` shows the system status, the music library, recent outputs and each film (`chaosengine://storyboard/{id}`); `resources/read` reads one. `prompts/list` offers `short_film_from_brief`, `poster_set` and `soundtrack_for_project`. If your client sends a `progressToken` with `wait_for_job`, it gets `notifications/progress` while waiting; without one the answer is plain JSON.
 
 ## Errors and recovery
 

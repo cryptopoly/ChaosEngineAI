@@ -138,6 +138,60 @@ def run(cap: Any, suite: Any):
             return "fail", f"request_model_download should not exist yet: {text!r}", {}
         return "pass", "", {"note": "no download tool and no download scope by default"}
 
+    def second_wave_tools():
+        names = {t["name"] for t in mcp("tools/list")[1]["result"]["tools"]}
+        need = {"music_library", "storyboard_captions", "storyboard_export_otio"}
+        if not need <= names:
+            return "fail", f"missing tools: {sorted(need - names)}", {}
+        # The default token has no clone scope: the clone tools are hidden from it.
+        access = api("GET", "/api/agent/access")[1]
+        listed = {t["name"] for t in mcp("tools/list", token=access["token"])[1]["result"]["tools"]}
+        if "clone" not in access["scopes"] and ({"speak_cloned", "list_cloned_voices"} & listed):
+            return "fail", "clone tools listed for a token without the clone scope", {}
+        is_error, out = tool("music_library", {"action": "list", "limit": 3})
+        if is_error or "tracks" not in out:
+            return "fail", f"music_library list: {out!r}", {}
+        is_error, text = tool("music_library", {"action": "delete", "track_id": "0_00000000"}, token=state["read_token"])
+        if not is_error or "scope" not in str(text):
+            return "fail", f"read-only token could call music_library delete: {text!r}", {}
+        return "pass", "", {"tools": len(names)}
+
+    def resources_and_prompts():
+        code, body = mcp("resources/list")
+        uris = [r["uri"] for r in body.get("result", {}).get("resources", [])]
+        if code != 200 or "chaosengine://system/status" not in uris:
+            return "fail", f"resources/list: {uris}", {}
+        read = mcp("resources/read", {"uri": "chaosengine://system/status"})[1]["result"]["contents"][0]
+        if "queue" not in json.loads(read["text"]):
+            return "fail", "system status resource has no queue", {}
+        if "error" not in mcp("resources/read", {"uri": "chaosengine://storyboard/..%2F..%2Fetc"})[1]:
+            return "fail", "a path-like resource id was not refused", {}
+        prompts = [p["name"] for p in mcp("prompts/list")[1]["result"]["prompts"]]
+        if prompts != ["short_film_from_brief", "poster_set", "soundtrack_for_project"]:
+            return "fail", f"prompts: {prompts}", {}
+        got = mcp("prompts/get", {"name": "poster_set", "arguments": {"subject": "a lighthouse"}})[1]["result"]
+        if "lighthouse" not in got["messages"][0]["content"]["text"]:
+            return "fail", "prompt did not use its argument", {}
+        return "pass", "", {"resources": len(uris)}
+
+    def progress_stream():
+        token = api("GET", "/api/agent/access")[1]["token"]
+        headers = {"Content-Type": "application/json", "Authorization": f"Bearer {token}"}
+        message = {"jsonrpc": "2.0", "id": 9, "method": "tools/call",
+                   "params": {"name": "list_jobs", "arguments": {"limit": 1}, "_meta": {"progressToken": "e2e"}}}
+        request = urllib.request.Request(f"{base}/mcp", data=json.dumps(message).encode(), method="POST", headers=headers)
+        with urllib.request.urlopen(request, timeout=30) as resp:
+            kind, text = resp.headers.get("content-type", ""), resp.read().decode()
+        events = [json.loads(line[6:]) for line in text.splitlines() if line.startswith("data: ")]
+        if not kind.startswith("text/event-stream") or not events or events[-1].get("id") != 9:
+            return "fail", f"with a progressToken: {kind!r} {text[:120]!r}", {}
+        message["params"] = {"name": "list_jobs", "arguments": {}}
+        plain = urllib.request.Request(f"{base}/mcp", data=json.dumps(message).encode(), method="POST", headers=headers)
+        with urllib.request.urlopen(plain, timeout=30) as resp:
+            if not resp.headers.get("content-type", "").startswith("application/json"):
+                return "fail", "without a progressToken the answer is not plain JSON", {}
+        return "pass", "", {}
+
     try:
         for name, fn in [
             ("every tool has the four annotations; upload_file replaces upload_image", annotations),
@@ -146,6 +200,9 @@ def run(cap: Any, suite: Any):
             ("list_jobs, queue view in system_status, unknown job hint", jobs_and_queue),
             ("old upload_image name still works", old_upload_name),
             ("no download tool or scope by default", download_refusal),
+            ("music_library, captions and OTIO tools; clone tools hidden without the scope", second_wave_tools),
+            ("resources and prompts list and read; bad ids refused", resources_and_prompts),
+            ("progress stream only with a progressToken", progress_stream),
         ]:
             phase.checks.append(suite._check(name, fn))
     finally:

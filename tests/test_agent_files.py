@@ -73,6 +73,41 @@ class AgentFilesTests(unittest.TestCase):
                 mock.patch("backend_service.mcp_bridge.files.MAX_INPUT_IMAGE_BYTES", 100):
             self.assertEqual(self.client.post("/api/agent/uploads", content=_image_bytes(), headers=self.headers).status_code, 413)
 
+    def test_sound_and_video_uploads_are_typed_from_their_bytes(self):
+        samples = {
+            ".wav": b"RIFF\x00\x00\x00\x00WAVEfmt " + b"\x00" * 64,
+            ".mp3": b"ID3\x04\x00" + b"\x00" * 64,
+            ".flac": b"fLaC" + b"\x00" * 64,
+            ".ogg": b"OggS" + b"\x00" * 64,
+            ".m4a": b"\x00\x00\x00\x20ftypM4A " + b"\x00" * 64,
+            ".mp4": b"\x00\x00\x00\x18ftypmp42" + b"\x00" * 64,
+            ".mov": b"\x00\x00\x00\x14ftypqt  " + b"\x00" * 64,
+            ".webm": b"\x1a\x45\xdf\xa3" + b"\x00" * 64,
+        }
+        for extension, data in samples.items():
+            response = self.client.post("/api/agent/uploads", content=data, headers=self.headers)
+            self.assertEqual(response.status_code, 200, extension)
+            handle = response.json()["handle"]
+            self.assertEqual(files.resolve_handle(handle, files.UPLOAD_EXTENSIONS).suffix, extension)
+            with self.assertRaises(InputImageError):  # an image input never takes a sound or video handle
+                resolve_input_image(handle)
+        self.assertEqual([p.name for p in self._inbox().iterdir() if p.name.startswith(".part-")], [])
+
+    def test_each_type_has_its_own_size_cap(self):
+        wav = b"RIFF\x00\x00\x00\x00WAVE" + b"\x00" * 200
+        mp4 = b"\x00\x00\x00\x18ftypmp42" + b"\x00" * 200
+        with mock.patch.object(files, "MAX_AUDIO_UPLOAD_BYTES", 100):
+            self.assertEqual(self.client.post("/api/agent/uploads", content=wav, headers=self.headers).status_code, 413)
+            self.assertEqual(self.client.post("/api/agent/uploads", content=mp4, headers=self.headers).status_code, 200)
+            with self.assertRaises(InputImageError):
+                files.save_upload(wav)
+        with mock.patch.object(files, "MAX_VIDEO_UPLOAD_BYTES", 100):
+            self.assertEqual(self.client.post("/api/agent/uploads", content=mp4, headers=self.headers).status_code, 413)
+        self.assertEqual(files.max_upload_bytes(".png"), 30 * 1024 * 1024)
+        self.assertEqual(files.max_upload_bytes(".flac"), 200 * 1024 * 1024)
+        self.assertEqual(files.max_upload_bytes(".mov"), 1024 * 1024 * 1024)
+        self.assertEqual([p.name for p in self._inbox().iterdir() if p.name.startswith(".part-")], [])
+
     def test_upload_needs_the_token_and_access_on(self):
         self.assertEqual(self.client.post("/api/agent/uploads", content=_image_bytes()).status_code, 401)
         access.set_enabled(False)

@@ -50,7 +50,8 @@ You are responsible for rights in lyrics you type. Describe a sound instead of n
   no hook, the worker is stopped after 3 s and the next track starts it again.
 - The memory gate asks for 23 GB free before a generation (8 GB when the model is already loaded) and says what to
   unload. An idle music worker is stopped when an image or video job needs the memory, and after 10 minutes unused
-  (`POST /api/music/settings` with `idleUnloadMinutes`). `POST /api/music/unload` frees it at once.
+  (`POST /api/music/settings` with `idleUnloadMinutes`). `POST /api/music/unload` frees it at once; while a track
+  is being made or a model loads it answers 409 (cancel the job first), so a job is never cut off as a failure.
 - Agents: `make_music` on the agent bridge (see [agent bridge](agent-bridge.md)).
 
 ## Licence

@@ -40,16 +40,16 @@ job waits for a running agent job (the progress panel says "Waiting for an agent
 | `list_voices` | Voices that are ready, with language. |
 | `generate_image` | Prompt, model, size, steps, seed, optional `reference_images` and `image_strength`. Returns a job id. Sizes are snapped to what the model supports; corrections appear in the job notes. |
 | `generate_video` | Prompt, model, size, `seconds` (or `frames`), fps, seed, optional `start_image`, `end_image`, `image_strength`. Returns a job id. Seconds are converted to the model's frame rule. |
-| `upload_image` | A small image as base64. Returns a handle (`upload:...`) for the image inputs above; for an agent on another machine. |
+| `upload_image` | A small image, sound or video as base64. Returns a handle (`upload:...`) for the image inputs above (image handles only) and for storyboard imports; for an agent on another machine. |
 | `speak` | Text, voice, speed. Returns a job id. |
 | `transcribe` | Path to an audio or video file the app can read. Returns a job id. |
 | `make_music` | Style `caption`, `lyrics` (or `instrumental`), `seconds` 10 to 600, `bpm`, `key`, `seed`, `variations` 1, 2 or 4, `model`. Returns a job id; the result has the FLAC path of each take in the Music Library and a `download`. `cancel_job` stops it through the music worker. See [Music](music.md). |
 | `job_status`, `wait_for_job`, `cancel_job` | Poll, wait up to 60 s, cancel. |
-| `storyboard_project` | Film projects: `create`, `list`, `get` (shots, takes, timeline, revision), `edit` (name, defaults, export), `undo`, `redo`, `delete`, `export` (a `.chaosfilm` bundle with a `download`), `import`. |
-| `storyboard_shot` | `add`, `edit`, `remove`, `reorder`, `lock`, `unlock`, `pick_take`, `redo` (marks a shot for the next generate), `import` (a clip or still file). |
-| `storyboard_audio` | `add`, `edit`, `remove` audio clips; anchor one to a shot so it follows the shot. |
+| `storyboard_project` | Film projects: `create`, `list`, `get` (shots, takes, timeline, revision), `edit` (name, defaults, export), `undo`, `redo`, `delete`, `export` (the bundle's `file` name and a `download`), `import` (`project_id` and that `file`, or a `path` in an exports folder). |
+| `storyboard_shot` | `add`, `edit`, `remove`, `reorder`, `lock`, `unlock`, `pick_take`, `redo` (marks a shot for the next generate), `import` (a clip or still: an `upload:` handle or a file in the app's output folders). |
+| `storyboard_audio` | `add`, `edit`, `remove` audio clips (`add` takes an `upload:` handle or a file in the app's output folders); anchor one to a shot so it follows the shot. |
 | `storyboard_generate` | New takes for the shots that need work (or `shot_ids`; `what` is `still`, `clip` or `both`): all stills, then all clips. Locked shots are skipped; naming one needs `force`. Returns a job id; `cancel_job` stops the whole batch. |
-| `storyboard_render` | Render the film to MP4 (`preview` is small and fast). Returns a job id; the finished output has the path and `download`. |
+| `storyboard_render` | Render the film to MP4 (`preview` is small and fast). Returns a job id; the finished output has the film's `file` name and a `download` (no local path). |
 
 A finished job returns the **absolute path** of the PNG, MP4, WAV or FLAC, plus width, height, duration and
 `hasAudio`. `generate_image` can also return the PNG as base64 (`include_preview`). Every PNG and MP4
@@ -79,17 +79,23 @@ Not in the first version: model downloads, chat (the OpenAI-compatible API cover
 An agent can drive a ChaosEngineAI running on a different computer, for example a PC with an NVIDIA GPU on
 your home network. The paths in a job result belong to that PC, so files move over HTTP:
 
-- **Send an image in.** `upload_image` takes a small image as base64; larger files: `POST` the raw bytes to
-  `/api/agent/uploads` with the Agent access token. Either returns a handle like `upload:ab12cd34ef56`. Use the
-  handle wherever a tool takes an image path (`start_image`, `end_image`, `reference_images`). The type is read
-  from the bytes, the size cap is 30 MB, and handles are removed after 24 hours.
+- **Send a file in.** `upload_image` takes a small image, sound or video as base64; larger files: `POST` the raw
+  bytes to `/api/agent/uploads` with the Agent access token. Either returns a handle like `upload:ab12cd34ef56`.
+  Use an image handle wherever a tool takes an image path (`start_image`, `end_image`, `reference_images`), and
+  any handle for `storyboard_shot import` and `storyboard_audio add`. The type is read from the bytes: PNG, JPEG
+  or WebP images (30 MB), WAV, MP3, FLAC, M4A or OGG sound (200 MB), MP4, MOV or WebM video (1 GB). Handles are
+  removed after 24 hours.
+- **Storyboard imports from an agent.** `storyboard_shot import`, `storyboard_audio add` and
+  `storyboard_project import` take only an `upload:` handle or a file inside the app's output folders (the same
+  folders downloads come from). Any other path is refused, so an export cannot carry out a file the app did not
+  make or the agent did not send. The app's own Storyboard screen can still import from any path you pick.
 - **Get an output back.** A finished job's `output.download` has `url` (relative to the app's address), `bytes`
   and `sha256`. `GET` that URL with the token. Only files inside the app's own image, video and voice folders can
   be fetched, plus each storyboard project's `exports/` folder (films and bundles); any other path answers 404.
 - **Reach the app.** The backend must listen on the network (`--host`, for example `0.0.0.0`) and the firewall
   must allow its port on private networks. The traffic is plain HTTP with a bearer token, which is fine on a home
   network nobody else can join; use a VPN or SSH tunnel anywhere else.
-- Audio for `transcribe` is not uploaded yet.
+- `transcribe` still takes a local path only; it does not accept upload handles yet.
 
 ## Safety
 

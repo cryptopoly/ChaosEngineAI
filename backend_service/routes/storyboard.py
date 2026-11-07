@@ -78,7 +78,7 @@ def _http(exc: Exception) -> HTTPException:
                                                       "project": dump(exc.current)})
     if isinstance(exc, store_module.ProjectNotFound):
         return HTTPException(status_code=404, detail=str(exc))
-    if isinstance(exc, RenderBusy):
+    if isinstance(exc, (RenderBusy, store_module.ProjectBusy)):
         return HTTPException(status_code=409, detail=str(exc))
     if isinstance(exc, (store_module.StoreError, MediaError, ValueError)):
         return HTTPException(status_code=400, detail=str(exc))
@@ -107,6 +107,7 @@ def start_batch(request: Request, project_id: str, revision: int | None, what: s
     wiring = studio_generators(request, batch.id, folder)
     batch.make_still, batch.make_clip = wiring["make_still"], wiring["make_clip"]
     batch.unload, batch.last_frame, batch.stop_running = wiring["unload"], wiring["last_frame"], wiring["stop_running"]
+    batch.clip_image_refusal = wiring.get("clip_image_refusal")
     batch.start(revision)
     batch.start_thread()
     return batch
@@ -150,8 +151,7 @@ def get_project(project_id: str) -> dict[str, Any]:
 
 @router.delete("/api/storyboard/projects/{project_id}")
 def delete_project(project_id: str, revision: int) -> dict[str, Any]:
-    _guard(get_store().delete, project_id, revision)
-    return {"deleted": project_id}
+    return _guard(get_store().delete, project_id, revision)
 
 
 @router.post("/api/storyboard/projects/{project_id}/ops")
@@ -232,7 +232,10 @@ async def import_bundle(request: Request) -> dict[str, Any]:
 
     store = get_store()
     if request.headers.get("content-type", "").startswith("application/json"):
-        body = ImportRequest.model_validate(await request.json())
+        try:
+            body = ImportRequest.model_validate(await request.json())
+        except ValueError as exc:  # bad JSON or the wrong shape (a pydantic ValidationError is a ValueError)
+            raise HTTPException(status_code=400, detail='Send {"path": "<a .chaosfilm file>"} or the bundle bytes.') from exc
         try:
             src = Path(body.path).expanduser().resolve(strict=True)
         except (OSError, RuntimeError):

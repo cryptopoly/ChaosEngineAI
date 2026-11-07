@@ -10,9 +10,9 @@ from unittest import mock
 from fastapi.testclient import TestClient
 
 from backend_service.app import create_app
-from backend_service.mcp_bridge import access
+from backend_service.mcp_bridge import access, files
 from backend_service.mcp_bridge.storyboard_tools import STORYBOARD_TOOLS
-from tests.storyboard_fixtures import FakeGenerators, fake_mp4, fake_wav
+from tests.storyboard_fixtures import FakeGenerators, fake_mp4, fake_wav, png
 from tests.test_storyboard_routes import fake_wiring
 
 
@@ -26,6 +26,9 @@ class StoryboardToolTests(unittest.TestCase):
         patches = [
             mock.patch.dict(os.environ, {"CHAOSENGINE_STORYBOARDS_DIR": str(self.base / "storyboards")}),
             mock.patch.object(access, "_path", lambda: self.base / "agent_access.json"),
+            # The test's source folder stands in for the app's output folders (agents may import only from those).
+            mock.patch.object(files, "output_roots", lambda: [p.resolve() for p in (self.src, *files._storyboard_exports())]),
+            mock.patch.object(files, "inbox_dir", self._inbox),
         ]
         for patcher in patches:
             patcher.start()
@@ -33,6 +36,11 @@ class StoryboardToolTests(unittest.TestCase):
         self.client = TestClient(create_app(api_token="app-token"))
         access.set_enabled(True)
         self.headers = {"Authorization": f"Bearer {access.get_token()}"}
+
+    def _inbox(self):
+        path = self.base / "agent-inbox"
+        path.mkdir(exist_ok=True)
+        return path
 
     def call(self, name, arguments, error=False):
         body = {"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": name, "arguments": arguments}}
@@ -68,8 +76,12 @@ class StoryboardToolTests(unittest.TestCase):
         self.assertEqual((project["defaults"]["fps"], project["export"]["aiLabel"]["endCard"]), (25, True))
         exported = self.call("storyboard_project", {"action": "export", "project_id": pid})
         self.assertIn("/api/agent/files?path=", exported["download"]["url"])
-        imported = self.call("storyboard_project", {"action": "import", "path": exported["path"]})
+        self.assertNotIn("path", exported)  # the agent gets the file name and the download, not a local path
+        self.assertTrue(exported["file"].endswith(".chaosfilm") and "/" not in exported["file"])
+        imported = self.call("storyboard_project", {"action": "import", "project_id": pid, "file": exported["file"]})
         self.assertNotEqual(imported["projectId"], pid)
+        text = self.call("storyboard_project", {"action": "import", "project_id": pid, "file": "../../project.json"}, error=True)
+        self.assertIn("not an export", text)
         self.call("storyboard_project", {"action": "delete", "project_id": pid, "revision": info["revision"]})
 
     def test_shot_and_audio_verbs(self):
@@ -106,11 +118,18 @@ class StoryboardToolTests(unittest.TestCase):
             ("storyboard_shot", {"action": "edit", "project_id": pid, "revision": info["revision"], "shot_id": sid,
                                  "fields": {"speed": 99}}, "speed"),
             ("storyboard_shot", {"action": "import", "project_id": pid, "revision": info["revision"], "shot_id": sid,
-                                 "path": "/etc/hosts"}, "not a"),
+                                 "path": "/etc/hosts"}, "upload_image"),
+            ("storyboard_shot", {"action": "import", "project_id": pid, "revision": info["revision"], "shot_id": sid,
+                                 "path": str(self._text_file())}, "not a"),
             ("storyboard_project", {"action": "get", "project_id": "../x"}, "Unknown project"),
             ("storyboard_shot", {"action": "edit", "project_id": pid, "revision": 1, "fields": "x"}, "must be object"),
         ):
             self.assertIn(needle, self.call(name, arguments, error=True), arguments)
+
+    def _text_file(self):
+        path = self.src / "notes.txt"
+        path.write_text("hi")
+        return path
 
     def test_generate_is_a_job_and_respects_locks(self):
         info = self.project(shots=2)
@@ -145,6 +164,9 @@ class StoryboardToolTests(unittest.TestCase):
             job = self.call("storyboard_render", {"project_id": pid, "revision": info["revision"], "preview": False})
             done = self.call("wait_for_job", {"job_id": job["jobId"], "timeout_seconds": 10})
         self.assertEqual(done["state"], "done", done)
+        self.assertNotIn("path", done["output"])
+        self.assertNotIn(str(self.base), json.dumps({k: v for k, v in done["output"].items() if k != "download"}))
+        self.assertTrue(done["output"]["file"].endswith(".mp4"))
         download = done["output"]["download"]
         fetched = self.client.get(download["url"], headers=self.headers)
         self.assertEqual(fetched.content, b"the film")
@@ -152,6 +174,50 @@ class StoryboardToolTests(unittest.TestCase):
         folder = self.base / "storyboards" / pid
         self.assertEqual(self.client.get("/api/agent/files", params={"path": str(folder / media)}, headers=self.headers).status_code, 404)
         self.assertEqual(self.client.get("/api/agent/files", params={"path": str(folder / "project.json")}, headers=self.headers).status_code, 404)
+
+
+    def test_agent_imports_from_outside_the_output_folders_are_refused(self):
+        info = self.project(shots=1)
+        pid, sid = info["projectId"], info["shots"][0]["id"]
+        private = self.base / "elsewhere"
+        clip, sound, still = fake_mp4(private / "home.mp4"), fake_wav(private / "x.wav"), png(private / "private.png")
+        self.call("storyboard_project", {"action": "export", "project_id": pid})
+        outside_bundle = private / "copy.chaosfilm"
+        outside_bundle.write_bytes(next((self.base / "storyboards" / pid / "exports").glob("*.chaosfilm")).read_bytes())
+        for name, arguments in (
+            ("storyboard_shot", {"action": "import", "shot_id": sid, "path": str(still)}),
+            ("storyboard_shot", {"action": "import", "shot_id": sid, "path": str(clip)}),
+            ("storyboard_shot", {"action": "import", "shot_id": sid, "path": "~/../../etc/hosts"}),
+            ("storyboard_audio", {"action": "add", "kind": "music", "path": str(sound)}),
+            ("storyboard_audio", {"action": "add", "kind": "music", "path": str(self.src / ".." / "elsewhere" / "x.wav")}),
+            ("storyboard_project", {"action": "import", "path": str(outside_bundle)}),
+        ):
+            text = self.call(name, {"project_id": pid, "revision": info["revision"], **arguments}, error=True)
+            self.assertIn("upload_image", text, arguments)
+            self.assertIn("upload: handle", text, arguments)
+        project = self.call("storyboard_project", {"action": "get", "project_id": pid})["project"]
+        self.assertEqual((project["shots"][0]["takes"], project["audio"]), ([], []))
+
+    def test_agent_imports_upload_handles_for_stills_clips_and_sound(self):
+        info = self.project(shots=1)
+        pid, sid = info["projectId"], info["shots"][0]["id"]
+        private = self.base / "elsewhere"
+        mp4 = b"\x00\x00\x00\x18ftypmp42" + b"\x00" * 200
+        handles = {}
+        for kind, data in (("still", png(private / "a.png").read_bytes()), ("clip", mp4),
+                           ("sound", fake_wav(private / "b.wav").read_bytes())):
+            response = self.client.post("/api/agent/uploads", content=data, headers=self.headers)
+            self.assertEqual(response.status_code, 200, response.text)
+            handles[kind] = response.json()["handle"]
+        info = self.call("storyboard_shot", {"action": "import", "project_id": pid, "revision": info["revision"],
+                                             "shot_id": sid, "path": handles["still"]})
+        info = self.call("storyboard_shot", {"action": "import", "project_id": pid, "revision": info["revision"],
+                                             "shot_id": sid, "path": handles["clip"]})
+        info = self.call("storyboard_audio", {"action": "add", "project_id": pid, "revision": info["revision"],
+                                              "kind": "voice", "path": handles["sound"]})
+        takes = self.call("storyboard_project", {"action": "get", "project_id": pid})["project"]["shots"][0]["takes"]
+        self.assertTrue(takes[0]["still"].endswith(".png") and takes[1]["clip"].endswith(".mp4"))
+        self.assertEqual(len(info["audio"]), 1)
 
 
 if __name__ == "__main__":

@@ -142,6 +142,32 @@ class HeavyJobQueueTests(unittest.TestCase):
         self.assertEqual(queue.cancel_batch("b_9", lambda kind: True), 0)
         queue.release(running)
 
+    def test_cancel_batch_never_stops_a_studio_job_that_starts_meanwhile(self):
+        queue = HeavyJobQueue()
+        mine = queue.enqueue("image", "storyboard", "shot still", batch="b_1")
+        queue.wait_turn(mine)
+        studio = queue.enqueue("image", "ui", "studio image")
+        studio_started = threading.Event()
+        running_when_stopped = []
+
+        def finish_batch_step_and_start_studio():
+            queue.release(mine)  # the batch's step ends at the worst moment
+            queue.wait_turn(studio)
+            studio_started.set()
+
+        def stop_running(kind):
+            # The interleaving the review found: the batch's ticket ends and the Studio job starts after
+            # cancel_batch read the running ticket but before it stops the (global) tracker.
+            threading.Thread(target=finish_batch_step_and_start_studio, daemon=True).start()
+            studio_started.wait(0.5)
+            running_when_stopped.append(queue._running)
+            return True
+
+        self.assertEqual(queue.cancel_batch("b_1", stop_running), 1)
+        self.assertEqual(running_when_stopped, [mine], "stop_running must act while the batch still owns the slot")
+        self.assertTrue(studio_started.wait(5))  # and the Studio job then runs normally
+        queue.release(studio)
+
     def test_studio_cancel_leaves_a_storyboard_batch_alone(self):
         queue = HeavyJobQueue()
         running = queue.enqueue("image", "storyboard", "shot 1", batch="b_1")

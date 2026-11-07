@@ -8,12 +8,14 @@ and the batch's own Cancel reaches its running and waiting tickets. Heavy import
 
 from __future__ import annotations
 
+import shutil
 import subprocess
 import tempfile
 from pathlib import Path
 from typing import Any, Callable
 
 from backend_service.storyboard import media
+from backend_service.storyboard.ffmpeg_bin import PROTOCOLS
 from backend_service.storyboard.models import Project, Shot
 
 
@@ -91,6 +93,8 @@ def studio_generators(request: Any, batch_id: str, folder: Path) -> dict[str, Ca
                 fields["startImagePath"] = str(still)
             if shot.endImage:
                 fields["endImagePath"] = str(media.inside(folder, shot.endImage))
+        elif still is not None or shot.startFrom in ("generate", "previous-shot"):
+            raise RuntimeError(_no_image_input(variant))  # never a silent text-to-video for a shot that asked for an image
         if shot.seed is not None:
             fields["seed"] = shot.seed
         for key in ("steps", "guidance"):
@@ -108,6 +112,15 @@ def studio_generators(request: Any, batch_id: str, folder: Path) -> dict[str, Ca
                 "frames": n, "fps": rate, "width": art.get("width"), "height": art.get("height")}
         return str(art["videoPath"]), {"settings": info, "measuredSeconds": round(n / rate, 4) if rate else None}
 
+    def clip_image_refusal(project: Project) -> str | None:
+        from backend_service.ltx2_mlx_runtime import _is_ltx2_mlx_repo
+
+        try:
+            variant = _variant(request, "video", project.defaults.videoModel)
+        except RuntimeError:
+            return None  # no model yet: the clip step fails with the readable pick error
+        return None if _is_ltx2_mlx_repo(str(variant.get("repo") or "")) else _no_image_input(variant)
+
     def unload(kind: str) -> None:
         state = request.app.state.chaosengine
         try:
@@ -123,17 +136,28 @@ def studio_generators(request: Any, batch_id: str, folder: Path) -> dict[str, Ca
         return bool(tracker and tracker.request_cancel())
 
     return {"make_still": make_still, "make_clip": make_clip, "unload": unload,
-            "last_frame": last_frame, "stop_running": stop_running}
+            "last_frame": last_frame, "stop_running": stop_running, "clip_image_refusal": clip_image_refusal}
+
+
+def _no_image_input(variant: dict[str, Any]) -> str:
+    return (f"{variant.get('name') or variant.get('id') or 'This video model'} cannot start a clip from an image, so it "
+            "would ignore this shot's still or the previous shot. Pick LTX-2.3 or LTX-2.5 (the models with "
+            "acceptsImageInput) as the project's video model, or import a clip.")
 
 
 def last_frame(clip: Path) -> Path:
-    """The clip's final frame as a PNG (bundled ffmpeg), for ``startFrom: previous-shot``."""
+    """The clip's final frame as a PNG in a new temp folder (bundled ffmpeg), for ``startFrom: previous-shot``.
+
+    The batch removes the PNG and the folder once the clip that starts from it is made.
+    """
     exe = media.ffmpeg_exe()
     if not exe:
         raise RuntimeError("the bundled ffmpeg is not available")
     out = Path(tempfile.mkdtemp(prefix="chaosengine-frame-")) / f"{clip.parent.name}-last.png"
-    result = subprocess.run([exe, "-hide_banner", "-nostdin", "-loglevel", "error", "-sseof", "-1", "-i", str(clip),
+    result = subprocess.run([exe, "-hide_banner", "-nostdin", "-loglevel", "error", "-protocol_whitelist", PROTOCOLS,
+                             "-sseof", "-1", "-i", str(clip),
                              "-update", "1", "-frames:v", "1000", "-y", str(out)], capture_output=True, timeout=120)
     if result.returncode != 0 or not out.is_file():
+        shutil.rmtree(out.parent, ignore_errors=True)
         raise RuntimeError("could not read the previous clip's last frame")
     return out

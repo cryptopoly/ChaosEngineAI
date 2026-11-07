@@ -3,12 +3,16 @@
 Each op has a strict pydantic argument model and a function that changes the project in place; the store
 runs it under the project lock with the caller's ``revision`` and records it in the history. Imports copy
 the file into ``media/`` (hard link on the same disk) with a sha256 and a measured duration, so the
-project never depends on a Studio output staying where it was.
+project never depends on a Studio output staying where it was. The copy, the hash and the probe run
+before the lock is taken (``cache/incoming``); under the lock the op only renames the staged file into
+place, and a refusal or a revision conflict removes whatever was staged or placed.
 """
 
 from __future__ import annotations
 
+import threading
 import time
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Literal
 
@@ -174,17 +178,95 @@ def _set_fields(target: BaseModel, args: BaseModel, skip: set[str]) -> None:
             raise OpError(f"{key}: {exc.errors()[0]['msg']}") from exc
 
 
+@dataclass
+class _Staged:
+    src: Path
+    path: Path
+    digest: str
+    seconds: float | None
+
+
+@dataclass
+class _Staging:
+    """Files an op will import, copied, hashed and measured before the project lock is taken."""
+
+    files: dict[str, _Staged] = field(default_factory=dict)  # raw argument -> staged file not yet used
+    placed: dict[str, _Staged] = field(default_factory=dict)  # project-relative path -> what was moved there
+
+    def drop_unused(self) -> None:
+        for item in self.files.values():
+            item.path.unlink(missing_ok=True)
+        self.files.clear()
+
+    def undo(self, folder: Path) -> None:
+        """The op or its commit failed: remove the staged files and those already moved into ``media/``."""
+        self.drop_unused()
+        for rel in self.placed:
+            try:
+                media.inside(folder, rel).unlink(missing_ok=True)
+            except (media.MediaError, OSError):
+                pass
+
+
+_STAGING = threading.local()
+
+# op -> (argument field, kinds it may be) for every file the op imports
+_FILE_ARGS: dict[str, tuple[tuple[str, set[str]], ...]] = {
+    "add_reference": (("image", {"image"}),),
+    "edit_reference": (("image", {"image"}),),
+    "import_take": (("still", {"image"}), ("clip", {"video"})),
+    "relink": (("path", {"image", "video", "audio"}),),
+    "add_audio": (("path", {"audio", "video"}),),
+}
+
+
+def _stage(op: str, parsed: Any, folder: Path) -> _Staging:
+    staging = _Staging()
+    try:
+        for name, allowed in _FILE_ARGS.get(op, ()):
+            raw = getattr(parsed, name, None)
+            if not raw or raw in staging.files:
+                continue
+            src = media.resolve_source(raw, allowed)
+            path = media.stage(folder, src)
+            staging.files[raw] = _Staged(src, path, "", None)
+            staging.files[raw].digest = media.sha256_file(path)
+            if media.kind_of(src) in ("video", "audio"):
+                staging.files[raw].seconds = media.probe_seconds(path)
+    except media.MediaError as exc:
+        staging.undo(folder)
+        raise OpError(str(exc)) from exc
+    except BaseException:
+        staging.undo(folder)
+        raise
+    return staging
+
+
 def _import(folder: Path, raw: str, allowed: set[str], rel_stem: str) -> tuple[str, str, Path]:
     """Copy a source file in; returns (project-relative path, sha256, real source path)."""
+    staging: _Staging | None = getattr(_STAGING, "current", None)
+    item = staging.files.get(raw) if staging is not None else None
     try:
-        src = media.resolve_source(raw, allowed)
-        rel = f"{rel_stem}{src.suffix.lower()}"
-        return rel, media.ingest(folder, src, rel), src
+        if item is None:
+            src = media.resolve_source(raw, allowed)
+            rel = f"{rel_stem}{src.suffix.lower()}"
+            return rel, media.ingest(folder, src, rel), src
+        if media.kind_of(item.src) not in allowed:
+            raise media.MediaError(f"'{item.src.suffix or 'no extension'}' is not a {' or '.join(sorted(allowed))} file: {item.src.name}")
+        rel = f"{rel_stem}{item.src.suffix.lower()}"
+        media.adopt(folder, item.path, rel)
+        assert staging is not None
+        del staging.files[raw]
+        staging.placed[rel] = item
+        return rel, item.digest, item.src
     except media.MediaError as exc:
         raise OpError(str(exc)) from exc
 
 
 def _seconds(folder: Path, rel: str) -> float | None:
+    staging: _Staging | None = getattr(_STAGING, "current", None)
+    if staging is not None and rel in staging.placed:
+        return staging.placed[rel].seconds
     return media.probe_seconds(media.inside(folder, rel))
 
 
@@ -417,4 +499,18 @@ def run_op(store: ProjectStore, project_id: str, revision: int, op: str, args: d
     """Validate the args, then apply the op under the project lock against ``revision``."""
     parsed = parse_args(op, args)
     _, change, reversible = OPS[op]
-    return store.mutate(project_id, revision, lambda p, folder: change(p, folder, parsed), op, reversible)
+    if op not in _FILE_ARGS:
+        return store.mutate(project_id, revision, lambda p, folder: change(p, folder, parsed), op, reversible)
+    folder = store.folder(project_id)
+    store.load(project_id)  # an unknown project is refused before anything is copied
+    staging = _stage(op, parsed, folder)  # the slow copy, hash and probe: outside the lock
+    _STAGING.current = staging
+    try:
+        project = store.mutate(project_id, revision, lambda p, f: change(p, f, parsed), op, reversible)
+    except BaseException:
+        staging.undo(folder)
+        raise
+    finally:
+        _STAGING.current = None
+    staging.drop_unused()
+    return project

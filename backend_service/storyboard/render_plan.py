@@ -1,7 +1,7 @@
 """The render plan: everything the assemble engine needs to make one film, already resolved.
 
 The project store turns a project folder into a ``RenderPlan`` (absolute paths, absolute audio start
-times, measured nothing yet); the engine in ``assemble.py`` turns the plan into an MP4. The plan is
+times plus, for anchored audio, the shot and offset the assembler places it by); the engine in ``assemble.py`` turns the plan into an MP4. The plan is
 plain dataclasses with ``from_dict`` / ``to_dict`` so it can cross a process or a JSON file. Every
 value is checked here, at the boundary, because a plan can be built from a ``project.json`` that came
 from another machine or an agent: input paths must be absolute local regular files (never URLs, never
@@ -215,6 +215,10 @@ class AudioInput:
     fade_out: float = 0.0
     duck: bool = False
     loop: bool = False
+    # Audio anchored to a shot: the assembler starts it at that shot's rendered start plus the offset
+    # (frame-exact), so it cannot drift from the picture; ``start`` is the fallback.
+    anchor_shot: str | None = None
+    anchor_offset: float = 0.0
 
     @classmethod
     def from_dict(cls, data: Any, where: str = "audio") -> "AudioInput":
@@ -237,14 +241,19 @@ class AudioInput:
             fade_out=_num(data.get("fade_out", 0.0), f"{where}.fade_out", lo=0.0, hi=600.0),
             duck=_bool(data.get("duck", kind == "music"), f"{where}.duck"),
             loop=_bool(data.get("loop", False), f"{where}.loop"),
+            anchor_shot=_ident(data["anchor_shot"], f"{where}.anchor_shot") if data.get("anchor_shot") is not None else None,
+            anchor_offset=_num(data.get("anchor_offset", 0.0), f"{where}.anchor_offset", lo=-3600.0, hi=24 * 3600),
         )
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        out = {
             "id": self.id, "kind": self.kind, "path": self.path, "start": self.start,
             "duration": self.duration, "trim_in": self.trim_in, "gain_db": self.gain_db,
             "fade_in": self.fade_in, "fade_out": self.fade_out, "duck": self.duck, "loop": self.loop,
         }
+        if self.anchor_shot is not None:
+            out["anchor_shot"], out["anchor_offset"] = self.anchor_shot, self.anchor_offset
+        return out
 
 
 @dataclass
@@ -298,6 +307,10 @@ class RenderPlan:
             ids = [item.id for item in items]
             if len(ids) != len(set(ids)):
                 raise _fail(label, "ids must be unique")
+        shot_ids = {shot.id for shot in shots}
+        for i, clip in enumerate(audio):
+            if clip.anchor_shot is not None and clip.anchor_shot not in shot_ids:
+                raise _fail(f"audio[{i}].anchor_shot", "must name a shot in the plan")
         loudness = data.get("loudness_lufs", -16.0)
         if loudness is not None:
             loudness = _num(loudness, "loudness_lufs", lo=-70.0, hi=-5.0)

@@ -606,7 +606,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
         ),
         "updatedLabel": "Planned — first wave",
         "badges": ["Balanced", "Quality", "Apache 2.0"],
-        "defaultVariantId": "Wan-AI/Wan2.2-I2V-A14B-Diffusers-distill-fp8",
+        "defaultVariantId": "Wan-AI/Wan2.2-I2V-A14B-Diffusers-distill-gguf-q4km",
         "variants": [
             {
                 "id": "Wan-AI/Wan2.2-T2V-A14B-Diffusers",

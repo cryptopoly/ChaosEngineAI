@@ -656,10 +656,15 @@
       "cancel": "Cancel",
       "update": "Update voice pack",
       "install": "Install voice pack",
-      "reinstall": "Repair / reinstall",
       "done": "Voice pack installed.",
       "log": "Install log",
-      "updateFeatures": "Update the voice pack for voice calls in Chat and speaker labels on transcripts (adds about 40 MB of models; a minute or two)."
+      "updateFeatures": "Update the voice pack for voice calls in Chat and speaker labels on transcripts (adds about 40 MB of models; a minute or two).",
+      "checkedOk": "Installed, checked OK",
+      "checkedOkAt": "Installed, checked OK ({time})",
+      "repair": "Repair voice pack",
+      "troubleshoot": "Troubleshooting",
+      "troubleshootBody": "Only needed if voice features stop working. This runs the whole install again.",
+      "reinstallSmall": "Reinstall"
     },
     "models": {
       "recommended": "Recommended",
@@ -674,7 +679,8 @@
     "voices": {
       "title": "Voices",
       "subtitle": "Kokoro: 54 voices in 9 languages. Pick the one chat reads aloud with.",
-      "needsChinese": "Tick Mandarin Chinese voices in the voice pack.",
+      "needsChineseAddon": "Mandarin voices need a small extra add-on.",
+      "addChinese": "Add Mandarin Chinese voices",
       "notYet": "Not available on this computer yet.",
       "useVoice": "Use this voice",
       "preview": "Preview"

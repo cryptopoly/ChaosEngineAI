@@ -1,0 +1,30 @@
+import { describe, expect, it } from "vitest";
+import { chineseAddonPending, voicePackMode } from "./voicePackState";
+
+const healthy = { installed: true, updateAvailable: false, vadAvailable: true, ttsModelInstalled: true, jobPhase: "done" };
+
+describe("voicePackMode", () => {
+  it("leads with install when the pack is missing", () => {
+    expect(voicePackMode({ ...healthy, installed: false })).toBe("install");
+  });
+  it("leads with update when the pack lacks features", () => {
+    expect(voicePackMode({ ...healthy, updateAvailable: true })).toBe("update");
+    expect(voicePackMode({ ...healthy, vadAvailable: false })).toBe("update");
+  });
+  it("leads with repair after a failed run or when the voice model is missing", () => {
+    expect(voicePackMode({ ...healthy, jobPhase: "error" })).toBe("repair");
+    expect(voicePackMode({ ...healthy, ttsModelInstalled: false })).toBe("repair");
+  });
+  it("is healthy otherwise, including right after a successful install", () => {
+    expect(voicePackMode(healthy)).toBe("healthy");
+    expect(voicePackMode({ ...healthy, jobPhase: "idle" })).toBe("healthy");
+  });
+});
+
+describe("chineseAddonPending", () => {
+  it("is true only for an uninstalled chinese extra", () => {
+    expect(chineseAddonPending([{ id: "chinese", installed: false }])).toBe(true);
+    expect(chineseAddonPending([{ id: "chinese", installed: true }])).toBe(false);
+    expect(chineseAddonPending([])).toBe(false);
+  });
+});

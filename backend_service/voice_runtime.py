@@ -303,6 +303,7 @@ def get_voice_capabilities() -> dict[str, Any]:
             for name, (lanes, _specs, label) in voice_env.EXTRAS.items()
             if lane in lanes
         ],
+        "installedAt": marker.get("installedAt") if installed else None,
         "workerPid": worker_pid(),
         "install": voice_env.job_status(),
     }

@@ -81,6 +81,8 @@ export interface VoiceRuntime {
   cuda: boolean;
   nvidiaGpu: boolean;
   extras: VoiceExtra[];
+  /** When the voice pack install last passed its check (local time, ISO), if known. */
+  installedAt?: string | null;
   workerPid: number | null;
   install: VoiceInstallJob;
   sttModels: SttModel[];

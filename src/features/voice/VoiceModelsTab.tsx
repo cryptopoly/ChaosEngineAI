@@ -14,6 +14,7 @@ import type { DownloadStatus } from "../../api";
 import type { SttModel, TtsVoice, VoiceInstallJob, VoiceRuntime } from "../../types";
 import { speechPlayer, useSpeechPlayer } from "./speechPlayer";
 import { useVoice } from "./VoiceContext";
+import { chineseAddonPending, voicePackMode } from "./voicePackState";
 
 export interface VoiceModelsTabProps {
   voiceRuntime: VoiceRuntime | null;
@@ -79,10 +80,8 @@ function laneDescription(runtime: VoiceRuntime): string {
   return i18next.t("studio:voice.lane.cpu", { defaultValue: "Whisper on the CPU, Kokoro voices" });
 }
 
-function VoicePackPanel({ runtime, onChanged }: { runtime: VoiceRuntime; onChanged: () => void }) {
-  const { t } = useTranslation("studio");
+function useVoicePackJob(runtime: VoiceRuntime, onChanged: () => void) {
   const [job, setJob] = useState<VoiceInstallJob>(runtime.install);
-  const [extras, setExtras] = useState<string[]>(runtime.extras.filter((e) => e.installed).map((e) => e.id));
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -91,6 +90,7 @@ function VoicePackPanel({ runtime, onChanged }: { runtime: VoiceRuntime; onChang
       void getVoiceInstallStatus()
         .then((next) => {
           setJob(next);
+          // The runtime status (installed, extras, voices) changed under us: fetch it again.
           if (!next.running) onChanged();
         })
         .catch(() => {});
@@ -98,20 +98,79 @@ function VoicePackPanel({ runtime, onChanged }: { runtime: VoiceRuntime; onChang
     return () => window.clearInterval(timer);
   }, [job.running, onChanged]);
 
-  const install = async () => {
+  // Extras already in the pack are kept by the backend; `add` names the ones to add.
+  const start = async (add: string[] = []) => {
     setError(null);
     try {
-      setJob(await startVoiceInstall(extras));
+      const installedExtras = runtime.extras.filter((e) => e.installed).map((e) => e.id);
+      setJob(await startVoiceInstall([...new Set([...installedExtras, ...add])]));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
   };
+  const cancel = () => void cancelVoiceInstall().then(setJob);
+  return { job, error, start, cancel };
+}
 
-  const extrasChanged =
-    runtime.installed &&
-    runtime.extras.some((extra) => extra.installed !== extras.includes(extra.id));
-  // Older voice packs lack the turn detector (voice calls) or speaker labels.
-  const needsUpdate = extrasChanged || (runtime.installed && (runtime.updateAvailable || !runtime.vadAvailable));
+type VoicePackJob = ReturnType<typeof useVoicePackJob>;
+
+function formatInstalledAt(value: string | null | undefined): string {
+  if (!value) return "";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "" : date.toLocaleString(i18next.language);
+}
+
+function InstallProgress({ pack }: { pack: VoicePackJob }) {
+  const { t } = useTranslation("studio");
+  const { job } = pack;
+  return (
+    <div className="progress-row">
+      <div className="progress-meta">
+        <span>
+          {job.phaseLabel} ({job.phaseIndex}/{job.phaseTotal})
+        </span>
+        <button type="button" className="secondary-button" onClick={pack.cancel}>
+          {t("voice.pack.cancel", { defaultValue: "Cancel" })}
+        </button>
+      </div>
+      <div className="progress-track">
+        <div className="progress-fill" style={{ width: `${Math.max(4, job.percent)}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function InstallLog({ pack }: { pack: VoicePackJob }) {
+  const { t } = useTranslation("studio");
+  const { job, error } = pack;
+  return (
+    <>
+      {job.phase === "error" || job.phase === "cancelled" || error ? (
+        <p className="voice-error" role="alert">
+          {error ?? job.error}
+        </p>
+      ) : null}
+      {job.log.length > 0 ? (
+        <details className="install-log-panel">
+          <summary className="install-log-summary">{t("voice.pack.log", { defaultValue: "Install log" })}</summary>
+          <pre className="install-log-terminal">{job.log.join("\n")}</pre>
+        </details>
+      ) : null}
+    </>
+  );
+}
+
+function VoicePackPanel({ runtime, pack }: { runtime: VoiceRuntime; pack: VoicePackJob }) {
+  const { t } = useTranslation("studio");
+  const { job, start } = pack;
+  const mode = voicePackMode({
+    installed: runtime.installed,
+    updateAvailable: runtime.updateAvailable,
+    vadAvailable: runtime.vadAvailable,
+    ttsModelInstalled: runtime.ttsModelInstalled,
+    jobPhase: job.phase,
+  });
+  const installedAt = formatInstalledAt(runtime.installedAt);
 
   return (
     <Panel
@@ -121,7 +180,13 @@ function VoicePackPanel({ runtime, onChanged }: { runtime: VoiceRuntime; onChang
     >
       <div className="voice-pack">
         <div className="voice-pack__status">
-          {runtime.installed ? (
+          {mode === "healthy" ? (
+            <span className="badge success">
+              {installedAt
+                ? t("voice.pack.checkedOkAt", { defaultValue: "Installed, checked OK ({time})", time: installedAt })
+                : t("voice.pack.checkedOk", { defaultValue: "Installed, checked OK" })}
+            </span>
+          ) : runtime.installed ? (
             <span className="badge success">{t("voice.pack.installed", { defaultValue: "Installed" })}</span>
           ) : (
             <span className="badge muted">{t("voice.pack.notInstalled", { defaultValue: "Not installed" })}</span>
@@ -134,57 +199,33 @@ function VoicePackPanel({ runtime, onChanged }: { runtime: VoiceRuntime; onChang
           </span>
         </div>
 
-        {runtime.extras.length > 0 ? (
-          <div className="voice-pack__extras">
-            {runtime.extras.map((extra) => (
-              <label key={extra.id} className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={extras.includes(extra.id)}
-                  disabled={job.running}
-                  onChange={(event) =>
-                    setExtras((current) =>
-                      event.target.checked ? [...current, extra.id] : current.filter((id) => id !== extra.id),
-                    )
-                  }
-                />
-                {extra.label}
-              </label>
-            ))}
-          </div>
-        ) : null}
-
         {job.running ? (
-          <div className="progress-row">
-            <div className="progress-meta">
-              <span>
-                {job.phaseLabel} ({job.phaseIndex}/{job.phaseTotal})
-              </span>
-              <button type="button" className="secondary-button" onClick={() => void cancelVoiceInstall().then(setJob)}>
-                {t("voice.pack.cancel", { defaultValue: "Cancel" })}
-              </button>
-            </div>
-            <div className="progress-track">
-              <div className="progress-fill" style={{ width: `${Math.max(4, job.percent)}%` }} />
-            </div>
+          <InstallProgress pack={pack} />
+        ) : mode !== "healthy" ? (
+          <div className="button-row">
+            <button type="button" className="primary-button" onClick={() => void start()}>
+              {mode === "install"
+                ? t("voice.pack.install", { defaultValue: "Install voice pack" })
+                : mode === "update"
+                  ? t("voice.pack.update", { defaultValue: "Update voice pack" })
+                  : t("voice.pack.repair", { defaultValue: "Repair voice pack" })}
+            </button>
           </div>
         ) : (
-          <div className="button-row">
-            {!runtime.installed || needsUpdate ? (
-              <button type="button" className="primary-button" onClick={() => void install()}>
-                {runtime.installed
-                  ? t("voice.pack.update", { defaultValue: "Update voice pack" })
-                  : t("voice.pack.install", { defaultValue: "Install voice pack" })}
-              </button>
-            ) : (
-              <button type="button" className="secondary-button" onClick={() => void install()}>
-                {t("voice.pack.reinstall", { defaultValue: "Repair / reinstall" })}
-              </button>
-            )}
-          </div>
+          <details className="voice-pack__troubleshoot">
+            <summary className="muted-text">{t("voice.pack.troubleshoot", { defaultValue: "Troubleshooting" })}</summary>
+            <p className="muted-text">
+              {t("voice.pack.troubleshootBody", {
+                defaultValue: "Only needed if voice features stop working. This runs the whole install again.",
+              })}
+            </p>
+            <button type="button" className="secondary-button" onClick={() => void start()}>
+              {t("voice.pack.reinstallSmall", { defaultValue: "Reinstall" })}
+            </button>
+          </details>
         )}
 
-        {runtime.installed && (runtime.updateAvailable || !runtime.vadAvailable) && !job.running ? (
+        {mode === "update" && !job.running ? (
           <p className="muted-text">
             {t("voice.pack.updateFeatures", {
               defaultValue:
@@ -192,20 +233,7 @@ function VoicePackPanel({ runtime, onChanged }: { runtime: VoiceRuntime; onChang
             })}
           </p>
         ) : null}
-        {job.phase === "error" || job.phase === "cancelled" || error ? (
-          <p className="voice-error" role="alert">
-            {error ?? job.error}
-          </p>
-        ) : null}
-        {job.phase === "done" && !job.running ? (
-          <p className="muted-text">{t("voice.pack.done", { defaultValue: "Voice pack installed." })}</p>
-        ) : null}
-        {job.log.length > 0 ? (
-          <details className="install-log-panel">
-            <summary className="install-log-summary">{t("voice.pack.log", { defaultValue: "Install log" })}</summary>
-            <pre className="install-log-terminal">{job.log.join("\n")}</pre>
-          </details>
-        ) : null}
+        <InstallLog pack={pack} />
       </div>
     </Panel>
   );
@@ -287,9 +315,10 @@ function SttModelCard({
   );
 }
 
-function VoicesPanel({ voices }: { voices: TtsVoice[] }) {
+function VoicesPanel({ voices, pack }: { voices: TtsVoice[]; pack: VoicePackJob }) {
   const { t } = useTranslation("studio");
   const { settings, saveSettings, runtime } = useVoice();
+  const addonPending = chineseAddonPending(runtime?.extras ?? []);
   const player = useSpeechPlayer();
   const groups = useMemo(() => {
     const byLanguage = new Map<string, TtsVoice[]>();
@@ -311,14 +340,27 @@ function VoicesPanel({ voices }: { voices: TtsVoice[] }) {
           <section key={language} className="voice-group">
             <h4 className="voice-group__title">
               {language}
-              {list[0]?.available === false ? (
+              {list[0]?.available === false && !(list[0].language === "zh" && addonPending) ? (
                 <span className="muted-text voice-group__note">
-                  {list[0].language === "zh"
-                    ? t("voice.voices.needsChinese", { defaultValue: "Tick Mandarin Chinese voices in the voice pack." })
-                    : t("voice.voices.notYet", { defaultValue: "Not available on this computer yet." })}
+                  {t("voice.voices.notYet", { defaultValue: "Not available on this computer yet." })}
                 </span>
               ) : null}
             </h4>
+            {list[0]?.available === false && list[0].language === "zh" && addonPending ? (
+              <div className="voice-group__addon">
+                <span className="muted-text voice-group__note">
+                  {t("voice.voices.needsChineseAddon", { defaultValue: "Mandarin voices need a small extra add-on." })}
+                </span>
+                {pack.job.running ? (
+                  <InstallProgress pack={pack} />
+                ) : (
+                  <button type="button" className="secondary-button" onClick={() => void pack.start(["chinese"])}>
+                    {t("voice.voices.addChinese", { defaultValue: "Add Mandarin Chinese voices" })}
+                  </button>
+                )}
+                {pack.job.extras.includes("chinese") || pack.error ? <InstallLog pack={pack} /> : null}
+              </div>
+            ) : null}
             <div className="voice-chips">
               {list.map((voice) => {
                 const previewId = `preview-${voice.id}`;
@@ -452,7 +494,6 @@ function SettingsPanel({ runtime }: { runtime: VoiceRuntime }) {
 
 export function VoiceModelsTab({ voiceRuntime, backendOnline, onRefreshVoiceRuntime }: VoiceModelsTabProps) {
   const { t } = useTranslation("studio");
-  const { settings, saveSettings } = useVoice();
 
   if (!backendOnline || !voiceRuntime) {
     return (
@@ -466,13 +507,20 @@ export function VoiceModelsTab({ voiceRuntime, backendOnline, onRefreshVoiceRunt
     );
   }
 
+  return <VoiceModelsBody voiceRuntime={voiceRuntime} onRefreshVoiceRuntime={onRefreshVoiceRuntime} />;
+}
+
+function VoiceModelsBody({ voiceRuntime, onRefreshVoiceRuntime }: { voiceRuntime: VoiceRuntime; onRefreshVoiceRuntime: () => void }) {
+  const { t } = useTranslation("studio");
+  const { settings, saveSettings } = useVoice();
+  const pack = useVoicePackJob(voiceRuntime, onRefreshVoiceRuntime);
   const selectedModel =
     voiceRuntime.sttModels.find((m) => m.id === settings.sttModel || m.key === settings.sttModel)?.id ??
     voiceRuntime.sttModels.find((m) => m.default)?.id;
 
   return (
     <div className="content-grid discover-page voice-page">
-      <VoicePackPanel runtime={voiceRuntime} onChanged={onRefreshVoiceRuntime} />
+      <VoicePackPanel runtime={voiceRuntime} pack={pack} />
       {voiceRuntime.installed ? (
         <>
           <Panel
@@ -492,7 +540,7 @@ export function VoiceModelsTab({ voiceRuntime, backendOnline, onRefreshVoiceRunt
               ))}
             </div>
           </Panel>
-          <VoicesPanel voices={voiceRuntime.ttsVoices} />
+          <VoicesPanel voices={voiceRuntime.ttsVoices} pack={pack} />
           <SettingsPanel runtime={voiceRuntime} />
         </>
       ) : null}

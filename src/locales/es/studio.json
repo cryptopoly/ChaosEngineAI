@@ -656,10 +656,15 @@
       "cancel": "Cancelar",
       "update": "Actualizar paquete de voz",
       "install": "Instalar paquete de voz",
-      "reinstall": "Reparar / reinstalar",
       "done": "Paquete de voz instalado.",
       "log": "Registro de instalación",
-      "updateFeatures": "Actualiza el paquete de voz para las llamadas de voz en el chat y la identificación de hablantes (unos 40 MB de modelos; uno o dos minutos)."
+      "updateFeatures": "Actualiza el paquete de voz para las llamadas de voz en el chat y la identificación de hablantes (unos 40 MB de modelos; uno o dos minutos).",
+      "checkedOk": null,
+      "checkedOkAt": null,
+      "repair": null,
+      "troubleshoot": null,
+      "troubleshootBody": null,
+      "reinstallSmall": null
     },
     "models": {
       "recommended": "Recomendado",
@@ -674,7 +679,8 @@
     "voices": {
       "title": "Voces",
       "subtitle": "Kokoro: 54 voces en 9 idiomas. Elige la que usa el chat para leer en voz alta.",
-      "needsChinese": "Marca las voces de chino mandarín en el paquete de voz.",
+      "needsChineseAddon": null,
+      "addChinese": null,
       "notYet": "Aún no disponible en este equipo.",
       "useVoice": "Usar esta voz",
       "preview": "Vista previa"

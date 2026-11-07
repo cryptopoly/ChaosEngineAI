@@ -656,10 +656,15 @@
       "cancel": "取消",
       "update": "更新語音包",
       "install": "安裝語音包",
-      "reinstall": "修復 / 重新安裝",
       "done": "語音包已安裝。",
       "log": "安裝記錄",
-      "updateFeatures": "更新語音包以在聊天中使用語音通話並為逐字稿區分說話者（約 40 MB 模型，一兩分鐘）。"
+      "updateFeatures": "更新語音包以在聊天中使用語音通話並為逐字稿區分說話者（約 40 MB 模型，一兩分鐘）。",
+      "checkedOk": null,
+      "checkedOkAt": null,
+      "repair": null,
+      "troubleshoot": null,
+      "troubleshootBody": null,
+      "reinstallSmall": null
     },
     "models": {
       "recommended": "推薦",
@@ -674,7 +679,8 @@
     "voices": {
       "title": "聲音",
       "subtitle": "Kokoro：9 種語言共 54 種聲音。選擇聊天朗讀時使用的聲音。",
-      "needsChinese": "請在語音包中勾選華語（國語）語音。",
+      "needsChineseAddon": null,
+      "addChinese": null,
       "notYet": "這台電腦上尚無法使用。",
       "useVoice": "使用這個聲音",
       "preview": "試聽"

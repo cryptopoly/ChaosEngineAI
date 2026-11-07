@@ -656,10 +656,15 @@
       "cancel": "キャンセル",
       "update": "音声パックを更新",
       "install": "音声パックをインストール",
-      "reinstall": "修復 / 再インストール",
       "done": "音声パックをインストールしました。",
       "log": "インストールログ",
-      "updateFeatures": "チャットの音声通話と文字起こしの話者区別のために音声パックを更新してください（約 40 MB のモデル、1〜2 分）。"
+      "updateFeatures": "チャットの音声通話と文字起こしの話者区別のために音声パックを更新してください（約 40 MB のモデル、1〜2 分）。",
+      "checkedOk": null,
+      "checkedOkAt": null,
+      "repair": null,
+      "troubleshoot": null,
+      "troubleshootBody": null,
+      "reinstallSmall": null
     },
     "models": {
       "recommended": "おすすめ",
@@ -674,7 +679,8 @@
     "voices": {
       "title": "ボイス",
       "subtitle": "Kokoro: 9 言語・54 種類のボイス。チャットの読み上げに使うものを選んでください。",
-      "needsChinese": "音声パックで中国語（普通話）のボイスにチェックを入れてください。",
+      "needsChineseAddon": null,
+      "addChinese": null,
       "notYet": "このコンピューターではまだ利用できません。",
       "useVoice": "このボイスを使用",
       "preview": "試聴"

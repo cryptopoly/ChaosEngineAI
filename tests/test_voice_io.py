@@ -166,6 +166,12 @@ class InstalledMarkerTests(unittest.TestCase):
         self.assertTrue(voice_env.is_installed())
         self.assertEqual(voice_env.installed_extras(), ["chinese"])
 
+    def test_capabilities_report_when_the_pack_passed_its_check(self) -> None:
+        (self.venv / "chaosengine-voice.json").write_text(
+            json.dumps({"schema": 1, "lane": "portable", "installedAt": "2026-11-07T20:00:00"}), encoding="utf-8"
+        )
+        self.assertEqual(voice_runtime.get_voice_capabilities()["installedAt"], "2026-11-07T20:00:00")
+
     def test_a_corrupt_marker_is_not_installed(self) -> None:
         (self.venv / "chaosengine-voice.json").write_text("{nope", encoding="utf-8")
         self.assertFalse(voice_env.is_installed())

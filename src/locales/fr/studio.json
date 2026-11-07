@@ -656,10 +656,15 @@
       "cancel": "Annuler",
       "update": "Mettre à jour le pack vocal",
       "install": "Installer le pack vocal",
-      "reinstall": "Réparer / réinstaller",
       "done": "Pack vocal installé.",
       "log": "Journal d'installation",
-      "updateFeatures": "Mettez à jour le pack vocal pour les appels vocaux dans le chat et l'identification des locuteurs (environ 40 Mo de modèles ; une à deux minutes)."
+      "updateFeatures": "Mettez à jour le pack vocal pour les appels vocaux dans le chat et l'identification des locuteurs (environ 40 Mo de modèles ; une à deux minutes).",
+      "checkedOk": null,
+      "checkedOkAt": null,
+      "repair": null,
+      "troubleshoot": null,
+      "troubleshootBody": null,
+      "reinstallSmall": null
     },
     "models": {
       "recommended": "Recommandé",
@@ -674,7 +679,8 @@
     "voices": {
       "title": "Voix",
       "subtitle": "Kokoro : 54 voix dans 9 langues. Choisissez celle avec laquelle le chat lit à voix haute.",
-      "needsChinese": "Cochez les voix en mandarin dans le pack vocal.",
+      "needsChineseAddon": null,
+      "addChinese": null,
       "notYet": "Pas encore disponible sur cet ordinateur.",
       "useVoice": "Utiliser cette voix",
       "preview": "Aperçu"

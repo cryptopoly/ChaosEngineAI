@@ -10172,6 +10172,20 @@ html[lang="ko"] select {
   font-size: 0.8rem;
 }
 
+.voice-group__addon,
+.voice-pack__troubleshoot {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  max-width: 100%;
+}
+
+.voice-pack__troubleshoot > summary {
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
 .voice-chips {
   display: flex;
   flex-wrap: wrap;

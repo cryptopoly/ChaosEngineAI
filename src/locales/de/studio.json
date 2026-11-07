@@ -656,10 +656,15 @@
       "cancel": "Abbrechen",
       "update": "Sprachpaket aktualisieren",
       "install": "Sprachpaket installieren",
-      "reinstall": "Reparieren / neu installieren",
       "done": "Sprachpaket installiert.",
       "log": "Installations-Log",
-      "updateFeatures": "Aktualisiere das Sprachpaket für Sprachanrufe im Chat und Sprecherkennzeichnung in Transkripten (etwa 40 MB Modelle; ein bis zwei Minuten)."
+      "updateFeatures": "Aktualisiere das Sprachpaket für Sprachanrufe im Chat und Sprecherkennzeichnung in Transkripten (etwa 40 MB Modelle; ein bis zwei Minuten).",
+      "checkedOk": null,
+      "checkedOkAt": null,
+      "repair": null,
+      "troubleshoot": null,
+      "troubleshootBody": null,
+      "reinstallSmall": null
     },
     "models": {
       "recommended": "Empfohlen",
@@ -674,7 +679,8 @@
     "voices": {
       "title": "Stimmen",
       "subtitle": "Kokoro: 54 Stimmen in 9 Sprachen. Wähle die Stimme, mit der der Chat vorliest.",
-      "needsChinese": "Hake im Sprachpaket die Mandarin-Stimmen an.",
+      "needsChineseAddon": null,
+      "addChinese": null,
       "notYet": "Auf diesem Computer noch nicht verfügbar.",
       "useVoice": "Diese Stimme verwenden",
       "preview": "Vorschau"

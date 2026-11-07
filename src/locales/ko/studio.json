@@ -656,10 +656,15 @@
       "cancel": "취소",
       "update": "음성 팩 업데이트",
       "install": "음성 팩 설치",
-      "reinstall": "복구 / 재설치",
       "done": "음성 팩이 설치되었습니다.",
       "log": "설치 로그",
-      "updateFeatures": "채팅 음성 통화와 받아쓰기 화자 구분을 위해 음성 팩을 업데이트하세요 (모델 약 40 MB, 1~2분)."
+      "updateFeatures": "채팅 음성 통화와 받아쓰기 화자 구분을 위해 음성 팩을 업데이트하세요 (모델 약 40 MB, 1~2분).",
+      "checkedOk": null,
+      "checkedOkAt": null,
+      "repair": null,
+      "troubleshoot": null,
+      "troubleshootBody": null,
+      "reinstallSmall": null
     },
     "models": {
       "recommended": "권장",
@@ -674,7 +679,8 @@
     "voices": {
       "title": "음성",
       "subtitle": "Kokoro: 9개 언어, 54개 음성. 채팅이 소리 내어 읽을 음성을 선택하세요.",
-      "needsChinese": "음성 팩에서 중국어(표준 중국어) 음성을 선택하세요.",
+      "needsChineseAddon": null,
+      "addChinese": null,
       "notYet": "이 컴퓨터에서는 아직 사용할 수 없습니다.",
       "useVoice": "이 음성 사용",
       "preview": "미리 듣기"

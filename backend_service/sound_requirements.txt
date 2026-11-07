@@ -4,9 +4,13 @@
 # sentencepiece and PyWavelets, so it is installed afterwards with --no-deps --ignore-requires-python).
 # Checked: import stable_audio_tools, generate_diffusion_cond and create_model_from_config work, MPS is available.
 # Bump together with music_sound_env.SAT_VERSION; never edit by hand.
+aiohappyeyeballs==2.7.1
+aiohttp==3.14.5
+aiosignal==1.4.0
 alias-free-torch==0.0.6
 annotated-doc==0.0.5
 anyio==4.16.0
+attrs==26.1.0
 certifi==2026.10.23
 cffi==2.1.1
 charset-normalizer==3.5.2
@@ -17,6 +21,7 @@ einops-exts==0.0.4
 einx==0.4.3
 filelock==4.2.9
 frozendict==2.5.1
+frozenlist==1.8.0
 fsspec==2026.9.0
 ftfy==6.3.1
 h11==0.16.0
@@ -27,18 +32,22 @@ huggingface_hub==2.4.0
 idna==3.20
 importlib_resources==7.1.0
 Jinja2==3.1.6
+lightning-utilities==0.15.3
 loguru==0.7.3
 markdown-it-py==4.2.0
 MarkupSafe==3.0.4
 mdurl==0.1.2
 mpmath==1.3.0
+multidict==7.2.1
 networkx==3.7
 nnaudio==0.3.4
 numpy==2.5.4
 packaging==26.3
 pillow==13.0.0
+propcache==0.5.4
 pycparser==3.12
 Pygments==2.21.0
+pytorch-lightning==2.5.5
 PyWavelets==1.10.0
 PyYAML==6.0.3
 regex==2026.11.7
@@ -56,6 +65,7 @@ tokenizers==0.23.3
 torch==2.7.1
 torch-einops-utils==0.2.6
 torchaudio==2.7.1
+torchmetrics==1.9.0
 torchsde==0.2.6
 torchvision==0.22.1
 tqdm==4.70.1
@@ -68,3 +78,4 @@ urllib3==2.8.0
 v-diffusion-pytorch==0.0.2
 vector-quantize-pytorch==1.32.2
 wcwidth==0.9.4
+yarl==1.25.1

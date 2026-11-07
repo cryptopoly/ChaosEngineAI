@@ -67,10 +67,16 @@ def _hydrate_video_artifact(payload: dict[str, Any]) -> dict[str, Any]:
         "hasAudio": _artifact_has_audio(payload),
         "startImagePath": str(payload.get("startImagePath") or "") or None,
         "endImagePath": str(payload.get("endImagePath") or "") or None,
+        "projectId": str(payload.get("projectId") or "") or None,
+        "projectName": str(payload.get("projectName") or "") or None,
+        "shotId": str(payload.get("shotId") or "") or None,
     }
 
 
 def _save_video_artifact(artifact: dict[str, Any], video_outputs_dir: Path) -> dict[str, Any]:
+    from backend_service.helpers.provenance import stamp
+
+    artifact = stamp(artifact)
     created_at = str(
         artifact.get("createdAt") or datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
     )

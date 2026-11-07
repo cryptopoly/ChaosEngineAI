@@ -41,6 +41,7 @@ def studio_generators(request: Any, batch_id: str, folder: Path) -> dict[str, Ca
 
         from backend_service.mcp_bridge.tools import _recommended
         from backend_service.models import ImageGenerationRequest
+        from backend_service.helpers.provenance import provenance
         from backend_service.routes.images import _generate_image_locked
 
         prompt = shot.stillPrompt or shot.title
@@ -61,7 +62,8 @@ def studio_generators(request: Any, batch_id: str, folder: Path) -> dict[str, Ca
             fields["referenceImagePaths"] = paths
         body = ImageGenerationRequest(**fields)
         try:
-            with HEAVY_JOBS.slot("image", "storyboard", f"{project.name}: {shot.id} still", batch=batch_id):
+            with HEAVY_JOBS.slot("image", "storyboard", f"{project.name}: {shot.id} still", batch=batch_id), \
+                    provenance(project.id, project.name, shot.id):
                 result = _generate_image_locked(request, body)
         except HTTPException as exc:
             raise _readable(exc) from exc
@@ -77,6 +79,7 @@ def studio_generators(request: Any, batch_id: str, folder: Path) -> dict[str, Ca
         from backend_service.ltx2_mlx_runtime import _is_ltx2_mlx_repo
         from backend_service.mcp_bridge.tools import _recommended
         from backend_service.models import VideoGenerationRequest
+        from backend_service.helpers.provenance import provenance
         from backend_service.routes.video import _generate_video_locked
 
         prompt = shot.motionPrompt or shot.stillPrompt or shot.title
@@ -102,7 +105,8 @@ def studio_generators(request: Any, batch_id: str, folder: Path) -> dict[str, Ca
                 fields[key] = settings[key]
         body = VideoGenerationRequest(**fields)
         try:
-            with HEAVY_JOBS.slot("video", "storyboard", f"{project.name}: {shot.id} clip", batch=batch_id):
+            with HEAVY_JOBS.slot("video", "storyboard", f"{project.name}: {shot.id} clip", batch=batch_id), \
+                    provenance(project.id, project.name, shot.id):
                 result = _generate_video_locked(request, body)
         except HTTPException as exc:
             raise _readable(exc) from exc

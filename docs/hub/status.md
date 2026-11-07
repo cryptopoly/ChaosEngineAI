@@ -9,6 +9,23 @@ summary: Read this first in every session.
 
 Newest dated update first. Each update has the same sections: Done, Open for Claude, Open for Dan.
 
+## Update 2026-11-08, v2 streams merged into `feat/home-studio` (still behind the switch, nothing merged to release)
+
+**Done (all on `feat/home-studio`, pushed; pytest exit 0, 1225 vitest, tsc and i18n clean):**
+
+- **Owner decisions applied:** end card removed, first-run terms screen (D-34/D-41), Chat back on top (D-42), loudness kept at -1 dBFS (D-36), `pytorch-wavelets` dropped and music verified without it (D-37), ffmpeg light path with no own build or hosting (D-35/D-49), watermark on cloned voices (D-47), sound effects opt-in (D-27).
+- **Storyboard v2:** captions (Whisper, SRT, burn-in), resumable renders with keep-awake and a notification, OpenTimelineIO export, lane stems, project films list.
+- **Agent bridge v2:** 24 tools with MCP hints, scopes (read, generate, files, download, clone), persisted jobs and `list_jobs`, queue in `system_status`, resources and prompts, progress events, clone tools behind the `clone` scope, `make_sound`, a real 401 bug on agent uploads fixed.
+- **Voice cloning:** Qwen3-TTS with spoken consent code, consent stored with the voice, audit log, forced AI tag, AudioSeal watermark proven (WAV, MP3, AAC detected; embed 0.19 s). Nobody has listened to the output.
+- **Speed:** timing split on every image and video job; warm mflux worker 23 to 41 % faster for stills (byte-identical output); warm LTX worker built but off (4 % gain).
+- **Busy guard and gallery labels (D-50):** "slower" and "risky" notices for chat and model loads; "From project X" chip and filter in the Image and Video galleries.
+- **Sound effects (D-27):** Stable Audio Open Small as a Sounds mode, licence screen, never bundled. Wiring proven with a random-weight model only; real weights are gated.
+- **Research and plans:** `docs/research/` (M4 Max timings, licences, ffmpeg, new video models, voice cloning), `docs/plans/{speed-quality,ffmpeg-download,remaining-and-v2}.md`.
+
+**Open for Claude:** Wan 2.2 benchmark against LTX-2.5 (branch `feat/wan-i2v`, D-48); browser E2E for the new screens; translations (about 550 null strings per locale); accessibility pass; packaged-app run; release workflow; the perf gate must learn to skip labels a run skipped.
+
+**Open for Dan:** nothing urgent. When ready: say go on the v0.9.10 merge, approve a browser test tool (Playwright), run the Windows checklist on the 4090 PC (see `docs/plans/remaining-and-v2.md` section 1.4), supply a Hugging Face token to test Stable Audio Open for real, and listen to the music, voice and film outputs.
+
 ## Update 2026-11-07 (morning), the home studio is built behind a switch; read this first
 
 **State:** everything below is on `feat/home-studio` (pushed). Nothing is merged into `release/v0.9.10`, `main` or `staging`. Music and Storyboard are built but **hidden** behind `HOME_STUDIO_ENABLED = false` in `src/constants/features.ts`. Flip it to `true` to see them; no other change is needed.

@@ -12,7 +12,7 @@
 import type { AcceleratorId } from "../acceleratorCatalog";
 import type { Fit } from "./fit";
 
-export type ModelsArea = "chat" | "image" | "video";
+export type ModelsArea = "chat" | "image" | "video" | "music";
 
 /** What is on disk / in flight for one row. ``loaded`` is not a state: it
  * is a flag on an installed row (``ResolvedModelStatus.loaded``). */

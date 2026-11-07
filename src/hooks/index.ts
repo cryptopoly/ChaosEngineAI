@@ -12,3 +12,4 @@ export { useGpuStatus } from "./useGpuStatus";
 export { useCudaTorchInstall } from "./useCudaTorchInstall";
 export { useFileActions } from "./useFileActions";
 export { useDetailsWindowResize } from "./useDetailsWindowResize";
+export { useMusicState } from "./useMusicState";

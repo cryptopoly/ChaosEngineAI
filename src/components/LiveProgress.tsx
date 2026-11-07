@@ -76,7 +76,7 @@ export function LiveProgress({
   // bar moves in lockstep with the model. Outside of the diffusion phase, fall
   // back to the time-based estimate so we still get *some* movement.
   const realStepFraction =
-    realProgress?.active && realProgress.phase === "diffusing" && realProgress.totalSteps > 0
+    realProgress?.active && (realProgress.phase === "diffusing" || realProgress.phase === "compose") && realProgress.totalSteps > 0
       ? Math.min(1, realProgress.step / realProgress.totalSteps)
       : null;
 

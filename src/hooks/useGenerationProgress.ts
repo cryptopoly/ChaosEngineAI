@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import { getImageGenerationProgress, getVideoGenerationProgress } from "../api";
+import { getImageGenerationProgress, getMusicProgress, getVideoGenerationProgress } from "../api";
 import type { GenerationProgressSnapshot } from "../types";
 
 const POLL_INTERVAL_MS = 500;
+/** Music runs for tens of seconds and its phases are coarse, so it polls once a second. */
+const MUSIC_POLL_INTERVAL_MS = 1000;
 
 /**
- * Polls the backend's image / video progress endpoint while a generation is
+ * Polls the backend's image / video / music progress endpoint while a generation is
  * in flight. The poll only runs while ``active`` is true so we don't pester
  * the backend in the idle case — the modal flips ``active`` on as soon as it
  * fires the generation request, and off again after the response lands.
@@ -14,7 +16,7 @@ const POLL_INTERVAL_MS = 500;
  * LiveProgress component knows to fall back to its time-based estimates.
  */
 export function useGenerationProgress(
-  kind: "image" | "video",
+  kind: "image" | "video" | "music",
   active: boolean,
 ): GenerationProgressSnapshot | null {
   const [snapshot, setSnapshot] = useState<GenerationProgressSnapshot | null>(null);
@@ -29,7 +31,9 @@ export function useGenerationProgress(
       return;
     }
 
-    const fetcher = kind === "image" ? getImageGenerationProgress : getVideoGenerationProgress;
+    const fetcher =
+      kind === "image" ? getImageGenerationProgress : kind === "music" ? getMusicProgress : getVideoGenerationProgress;
+    const interval = kind === "music" ? MUSIC_POLL_INTERVAL_MS : POLL_INTERVAL_MS;
     let timer: number | null = null;
 
     const poll = async () => {
@@ -37,7 +41,8 @@ export function useGenerationProgress(
       try {
         const next = await fetcher();
         if (cancelledRef.current) return;
-        setSnapshot(next.active ? next : null);
+        // A music request that waits behind another heavy job is not active yet but has a queue position to show.
+        setSnapshot(next.active || (kind === "music" && next.queue?.waiting) ? next : null);
       } catch {
         // Transient network errors are common during a heavy generation —
         // the worker thread can pause Python's event loop just long enough
@@ -45,7 +50,7 @@ export function useGenerationProgress(
         // than blanking the bar.
       }
       if (cancelledRef.current) return;
-      timer = window.setTimeout(poll, POLL_INTERVAL_MS);
+      timer = window.setTimeout(poll, interval);
     };
 
     void poll();

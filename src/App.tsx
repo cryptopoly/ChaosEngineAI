@@ -121,6 +121,7 @@ export default function App() {
     chat: "all",
     image: "all",
     video: "all",
+    music: "all",
   });
   const setAreaAvailability = useCallback((area: ModelsArea, value: ModelAvailabilityFilter) => {
     setModelsAvailability((previous) => (previous[area] === value ? previous : { ...previous, [area]: value }));

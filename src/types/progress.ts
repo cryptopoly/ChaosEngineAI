@@ -1,7 +1,7 @@
 export interface GenerationProgressSnapshot {
-  kind: "image" | "video";
+  kind: "image" | "video" | "music";
   active: boolean;
-  phase: "idle" | "loading" | "encoding" | "diffusing" | "decoding" | "saving";
+  phase: "idle" | "loading" | "encoding" | "diffusing" | "decoding" | "saving" | "load" | "encode" | "compose" | "decode" | "save";
   message: string;
   step: number;
   totalSteps: number;

@@ -7,6 +7,10 @@ audio extensions come from a fixed list, so file paths built from an item
 are always inside the library folder.
 
 Items saved by the old Gallery (``voice/gallery``) move here on first use.
+
+Cloned voices are items of kind ``clone`` (reference audio, its transcript and the consent record),
+with the consent recording beside them as ``<id>.consent<ext>``. They are left out of the normal
+list unless asked for by kind, and deleting one deletes the consent recording too.
 """
 
 from __future__ import annotations
@@ -27,7 +31,7 @@ AUDIO_EXTENSIONS = {
     ".wav", ".mp3", ".m4a", ".aac", ".flac", ".ogg", ".oga", ".opus", ".webm",
     ".mp4", ".mov", ".mkv", ".m4v", ".aiff", ".aif", ".caf",
 }
-KINDS = ("transcript", "speech")
+KINDS = ("transcript", "speech", "clone")
 _EDITABLE = ("title", "text", "segments", "speakers")
 _PREVIEW_CHARS = 300
 _LOCK = threading.Lock()
@@ -108,13 +112,18 @@ def create(
     fields: dict[str, Any],
     audio_file: Path | None = None,
     audio_ext: str | None = None,
+    consent_file: Path | None = None,
+    consent_ext: str | None = None,
 ) -> dict[str, Any]:
-    """Save a new item; ``audio_file`` is moved into the library."""
+    """Save a new item; ``audio_file`` (and a clone's ``consent_file``) are moved into the library."""
     if kind not in KINDS:
         raise ValueError(f"Unknown item kind {kind!r}.")
     ext = (audio_ext or "").lower()
     if audio_file is not None and ext not in AUDIO_EXTENSIONS:
         raise ValueError(f"Unsupported audio type {ext!r}.")
+    consent_ext = (consent_ext or "").lower()
+    if kind == "clone" and (consent_file is None or consent_ext not in AUDIO_EXTENSIONS or not fields.get("consent")):
+        raise ValueError("A cloned voice needs its consent recording and record.")
     now = int(time.time())
     text = str(fields.get("text") or "")
     item: dict[str, Any] = {
@@ -128,13 +137,16 @@ def create(
         "segments": fields.get("segments") or [],
         "speakers": fields.get("speakers") or {},
     }
-    for key in ("language", "model", "voice", "durationS", "source", "task", "speed"):
+    for key in ("language", "model", "voice", "durationS", "source", "task", "speed", "clonedVoice", "cloneVoiceId"):
         if fields.get(key) is not None:
             item[key] = fields[key]
     with _LOCK:
         if audio_file is not None:
             shutil.move(str(audio_file), str(library_dir() / f"{item['id']}{ext}"))
             item["audio"] = ext
+        if kind == "clone" and consent_file is not None:
+            shutil.move(str(consent_file), str(library_dir() / f"{item['id']}.consent{consent_ext}"))
+            item["consent"] = {**fields["consent"], "audio": consent_ext}
         _write(item)
     return item
 
@@ -165,6 +177,8 @@ def list_items(query: str = "", kind: str = "") -> list[dict[str, Any]]:
         except (OSError, ValueError):
             continue
         if kind and meta.get("kind") != kind:
+            continue
+        if not kind and meta.get("kind") == "clone":
             continue
         if needle and needle not in f"{meta.get('title', '')}\n{meta.get('text', '')}".lower():
             continue
@@ -200,8 +214,16 @@ def delete(item_id: str) -> bool:
         meta_path = _meta_path(item_id)
         if not meta_path.is_file():
             return False
+        meta = get(item_id) or {}
         path = audio_path(item_id)
         if path is not None:
             path.unlink(missing_ok=True)
+        consent_ext = str((meta.get("consent") or {}).get("audio") or "")
+        if consent_ext in AUDIO_EXTENSIONS:
+            (library_dir() / f"{item_id}.consent{consent_ext}").unlink(missing_ok=True)
         meta_path.unlink()
+    if meta.get("kind") == "clone":
+        from backend_service.voice_clone_safety import audit  # noqa: PLC0415
+
+        audit("delete", voiceId=item_id)
     return True

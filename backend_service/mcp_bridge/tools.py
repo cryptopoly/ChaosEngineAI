@@ -21,30 +21,28 @@ def _obj(properties: dict[str, Any], required: list[str] | None = None) -> dict[
 
 
 _KIND = {"type": "string", "enum": ["image", "video", "voice", "stt", "music"]}
-_JOB_ID = {"type": "string", "description": "Job id returned by a generate, speak, make_music or transcribe tool."}
+_JOB_ID = {"type": "string", "description": "Job id from a tool that starts a job, or list_jobs."}
 
 TOOLS: list[dict[str, Any]] = [
     {
         "name": "system_status",
-        "description": "Free memory, platform, the running job and the job queue. Call before heavy work.",
+        "description": "Read: free memory, platform and the whole job queue with positions and estimated times. Call first.",
         "inputSchema": _obj({}),
     },
     {
         "name": "recommend_models",
-        "description": "Best models that are NOT installed yet and fit this machine. Read only: tell the user "
-        "which to download from ChaosEngineAI > Models. Use when list_models has nothing suitable.",
+        "description": "Read: best models not installed yet that fit this machine. You cannot download them; tell the user which to get.",
         "inputSchema": _obj({"kind": _KIND, "limit": {"type": "integer", "minimum": 1, "maximum": 10}}, ["kind"]),
     },
     {
         "name": "list_models",
-        "description": "Installed models of a kind with id, size, fit, size limits and frame rules.",
+        "description": "Read: installed models of a kind with id, size, fit, limits and frame rules.",
         "inputSchema": _obj({"kind": _KIND}, ["kind"]),
     },
-    {"name": "list_voices", "description": "Text-to-speech voices that are ready, with language.", "inputSchema": _obj({})},
+    {"name": "list_voices", "description": "Read: ready text-to-speech voices with language.", "inputSchema": _obj({})},
     {
         "name": "generate_image",
-        "description": "Start an image job (returns a job id). Sizes are snapped to what the model supports; "
-        "corrections are listed in the job notes. Poll with wait_for_job.",
+        "description": "Make: start an image job (returns a job id). Sizes snap to what the model supports; see the job notes.",
         "inputSchema": _obj(
             {
                 "prompt": {"type": "string", "minLength": 1, "maxLength": 4000},
@@ -54,9 +52,7 @@ TOOLS: list[dict[str, Any]] = [
                 "steps": {"type": "integer", "minimum": 1, "maximum": 100},
                 "reference_images": {
                     "type": "array", "items": {"type": "string"}, "maxItems": 4,
-                    "description": "Absolute paths or upload: handles of reference images. Only for models with acceptsImageInput in list_models: "
-                    "FLUX.1, FLUX.2 Klein and Qwen take one start image; FLUX 3 Klein takes up to four to edit or re-draw. "
-                    "If width and height are not given, the image follows the first reference's shape.",
+                    "description": "Paths or upload: handles. Only for models with acceptsImageInput (list_models); some take one, FLUX 3 Klein up to four.",
                 },
                 "image_strength": {"type": "number", "minimum": 0.05, "maximum": 1.0, "description": "Single start image only: higher stays closer to it (mflux default 0.4)."},
                 "seed": {"type": "integer", "minimum": 0, "maximum": 2147483647},
@@ -67,8 +63,7 @@ TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "generate_video",
-        "description": "Start a video job (returns a job id). Give seconds; frames are converted to the model's "
-        "frame rule. A clip takes minutes: poll with wait_for_job.",
+        "description": "Make: start a video job (returns a job id). Give seconds; frames follow the model's rule. Takes minutes.",
         "inputSchema": _obj(
             {
                 "prompt": {"type": "string", "minLength": 1, "maxLength": 4000},
@@ -77,8 +72,8 @@ TOOLS: list[dict[str, Any]] = [
                 "height": {"type": "integer", "minimum": 256, "maximum": 4096},
                 "seconds": {"type": "number", "minimum": 0.5, "maximum": 20},
                 "frames": {"type": "integer", "minimum": 8, "maximum": 257},
-                "start_image": {"type": "string", "description": "Absolute path (or upload: handle) of an image the clip starts on (image-to-video). Only for models with acceptsImageInput in list_models. If width and height are not given, the clip follows the image's shape."},
-                "end_image": {"type": "string", "description": "Absolute path (or upload: handle) of an image the clip ends on. Can be used alone: the prompt then moves toward this image."},
+                "start_image": {"type": "string", "description": "Path or upload: handle of the first frame. Only for models with acceptsImageInput (list_models)."},
+                "end_image": {"type": "string", "description": "Path or upload: handle of the last frame. May be used alone."},
                 "image_strength": {"type": "number", "minimum": 0.1, "maximum": 1.0, "description": "1.0 follows the image closely (default); lower lets the clip drift."},
                 "fps": {"type": "integer", "minimum": 1, "maximum": 60},
                 "steps": {"type": "integer", "minimum": 1, "maximum": 100},
@@ -89,7 +84,7 @@ TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "speak",
-        "description": "Start a text-to-speech job (returns a job id; short text often finishes before you poll).",
+        "description": "Make: start a text-to-speech job (returns a job id). Cancellable while running.",
         "inputSchema": _obj(
             {
                 "text": {"type": "string", "minLength": 1, "maxLength": 20000},
@@ -100,10 +95,9 @@ TOOLS: list[dict[str, Any]] = [
         ),
     },
     {
-        "name": "upload_image",
-        "description": "Send a small image, sound or video (up to about 8 MB) to the machine running ChaosEngineAI. Returns a "
-        "handle like upload:ab12cd34ef56 that image inputs (images only) and storyboard imports accept in place of a path. "
-        "Handles last 24 hours. Larger files: POST the raw bytes to /api/agent/uploads with the same token.",
+        "name": "upload_file",
+        "description": "Send: a small image, sound or video (about 8 MB) as base64. Returns an upload: handle to use in place "
+        "of a path; lasts 24 hours. Larger files: POST the bytes to /api/agent/uploads.",
         "inputSchema": _obj(
             {"data_base64": {"type": "string", "minLength": 1, "maxLength": 12_000_000, "description": "The file, base64."}},
             ["data_base64"],
@@ -111,19 +105,25 @@ TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "transcribe",
-        "description": "Start a speech-to-text job for an audio or video file the backend user can read.",
+        "description": "Make: start a speech-to-text job for a file on the machine running the app. Cancellable while running.",
         "inputSchema": _obj(
             {"path": {"type": "string", "description": "Absolute path of the file."}, "language": {"type": "string"}},
             ["path"],
         ),
     },
-    {"name": "job_status", "description": "State, progress, queue position, notes and output of a job.", "inputSchema": _obj({"job_id": _JOB_ID}, ["job_id"])},
+    {"name": "job_status", "description": "Read: state, progress, queue position, notes and output of a job.", "inputSchema": _obj({"job_id": _JOB_ID}, ["job_id"])},
     {
         "name": "wait_for_job",
-        "description": "Like job_status, but waits up to timeout_seconds (max 60) for the job to finish. Call again if not done.",
+        "description": "Read: like job_status, but waits up to timeout_seconds (max 60). Call again if not finished.",
         "inputSchema": _obj({"job_id": _JOB_ID, "timeout_seconds": {"type": "number", "minimum": 1, "maximum": 60}}, ["job_id"]),
     },
-    {"name": "cancel_job", "description": "Cancel a queued or running job.", "inputSchema": _obj({"job_id": _JOB_ID}, ["job_id"])},
+    {
+        "name": "list_jobs",
+        "description": "Read: recent jobs (newest first), kept 7 days and across restarts. Use to find a lost job id.",
+        "inputSchema": _obj({"state": {"type": "string", "enum": ["queued", "running", "done", "failed", "cancelled", "interrupted"]},
+                             "limit": {"type": "integer", "minimum": 1, "maximum": 100}}),
+    },
+    {"name": "cancel_job", "description": "Stop: cancel a queued or running job (image, video, music, speech, transcript, storyboard).", "inputSchema": _obj({"job_id": _JOB_ID}, ["job_id"])},
 ]
 
 _TYPES = {"string": str, "integer": int, "number": (int, float), "boolean": bool, "array": list, "object": dict}
@@ -177,7 +177,6 @@ def _state(ctx: Any) -> Any:
 def system_status(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
     import platform
 
-    from backend_service.helpers.job_queue import HEAVY_JOBS
     from backend_service.helpers.memory_gate import snapshot_memory_signals
 
     free_gb, pressure = snapshot_memory_signals()
@@ -186,7 +185,7 @@ def system_status(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
         "freeMemoryGb": round(free_gb, 1),
         "memoryPressurePercent": round(pressure),
         "agentAccess": True,
-        "queue": HEAVY_JOBS.snapshot(),
+        "queue": STORE.queue_view(),
         "advice": "One heavy job runs at a time. Start a job, then wait_for_job; do not start several at once.",
     }
 
@@ -307,7 +306,8 @@ def generate_image(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
             output["previewBase64"] = base64.b64encode(Path(art["imagePath"]).read_bytes()).decode("ascii")
         return output, notes + _artifact_notes(art)
 
-    return _submitted(STORE.submit("image", str(variant.get("name") or variant["id"]), run))
+    return _submitted(STORE.submit("image", str(variant.get("name") or variant["id"]), run,
+                                   estimate_seconds=variant.get("estimatedGenerationSeconds")))
 
 
 def generate_video(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
@@ -391,7 +391,8 @@ def generate_video(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
         }
         return output, notes + _artifact_notes(art)
 
-    return _submitted(STORE.submit("video", str(variant.get("name") or variant["id"]), run))
+    return _submitted(STORE.submit("video", str(variant.get("name") or variant["id"]), run,
+                                   estimate_seconds=variant.get("estimatedGenerationSeconds")))
 
 
 def speak(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
@@ -421,7 +422,7 @@ def speak(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
     return _submitted(STORE.submit("voice", "speech", run))
 
 
-def upload_image(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
+def upload_file(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
     from backend_service.helpers.media_input import InputImageError
     from backend_service.mcp_bridge.files import save_upload
 
@@ -461,7 +462,7 @@ def _submitted(job: Any) -> dict[str, Any]:
 def _job(args: dict[str, Any]) -> Any:
     job = STORE.get(str(args["job_id"]))
     if job is None:
-        raise ToolError(f"Unknown job '{args['job_id']}'. Jobs are forgotten after the app restarts.")
+        raise ToolError(f"Unknown job '{args['job_id']}'. Call list_jobs to see recent jobs (kept 7 days).")
     return job
 
 
@@ -478,6 +479,11 @@ def wait_for_job(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
     return info
 
 
+def list_jobs(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
+    jobs = STORE.list(args.get("state"), int(args.get("limit", 20)))
+    return {"jobs": [j.describe() for j in jobs]}
+
+
 def cancel_job(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
     job = _job(args)
     return {"cancelRequested": STORE.cancel(job), **job.describe()}
@@ -491,7 +497,9 @@ HANDLERS: dict[str, Callable[[Any, dict[str, Any]], dict[str, Any]]] = {
     "generate_image": generate_image,
     "generate_video": generate_video,
     "speak": speak,
-    "upload_image": upload_image,
+    "upload_file": upload_file,
+    "upload_image": upload_file,  # old name, kept so existing setups keep working
+    "list_jobs": list_jobs,
     "transcribe": transcribe,
     "job_status": job_status,
     "wait_for_job": wait_for_job,
@@ -513,3 +521,8 @@ from backend_service.mcp_bridge.music_tools import MUSIC_HANDLERS, MUSIC_TOOLS  
 
 TOOLS.extend(MUSIC_TOOLS)
 HANDLERS.update(MUSIC_HANDLERS)
+
+
+from backend_service.mcp_bridge.scopes import apply_annotations  # noqa: E402
+
+apply_annotations(TOOLS)

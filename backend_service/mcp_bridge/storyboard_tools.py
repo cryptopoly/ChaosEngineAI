@@ -21,7 +21,7 @@ _FIELDS = {"type": "object", "description": "Fields to set, as in the project JS
 STORYBOARD_TOOLS: list[dict[str, Any]] = [
     {
         "name": "storyboard_project",
-        "description": "Film projects. create(name), list, get (shots, takes, timeline, revision), edit(fields: name, "
+        "description": "Edit: film projects. create(name), list, get (shots, takes, timeline, revision), edit(fields: name, "
         "defaults, export), undo, redo, delete, export (.chaosfilm bundle), import(project_id+file, or path).",
         "inputSchema": _obj({
             "action": {"type": "string", "enum": ["create", "list", "get", "edit", "undo", "redo", "delete", "export", "import"]},
@@ -34,7 +34,7 @@ STORYBOARD_TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "storyboard_shot",
-        "description": "Edit shots. add(fields), edit(shot_id, fields), remove, reorder(order), lock, unlock, "
+        "description": "Edit: shots. add(fields), edit(shot_id, fields), remove, reorder(order), lock, unlock, "
         "pick_take(take_id), redo (marks for the next generate), import(path of a clip or still).",
         "inputSchema": _obj({
             "action": {"type": "string", "enum": ["add", "edit", "remove", "reorder", "lock", "unlock", "pick_take", "redo", "import"]},
@@ -48,7 +48,7 @@ STORYBOARD_TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "storyboard_audio",
-        "description": "Audio lanes. add(kind, path, fields), edit(clip_id, fields), remove(clip_id). Anchor to a shot "
+        "description": "Edit: audio lanes. add(kind, path, fields), edit(clip_id, fields), remove(clip_id). Anchor to a shot "
         "with fields.anchor {shotId, offset} so the sound follows it.",
         "inputSchema": _obj({
             "action": {"type": "string", "enum": ["add", "edit", "remove"]},
@@ -60,7 +60,7 @@ STORYBOARD_TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "storyboard_generate",
-        "description": "Make new takes: all stills, then all clips. Default: shots that need work, skipping locked. "
+        "description": "Make: new takes: all stills, then all clips. Default: shots that need work, skipping locked. "
         "Returns a job id for wait_for_job.",
         "inputSchema": _obj({
             "project_id": _PID, "revision": _REV,
@@ -71,7 +71,7 @@ STORYBOARD_TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "storyboard_render",
-        "description": "Render the film to MP4 (preview: small and fast). Returns a job id; the output has the file name and download.",
+        "description": "Make: render the film to MP4 (preview: small and fast). Returns a job id; the output has the file name and download.",
         "inputSchema": _obj({"project_id": _PID, "revision": _REV, "preview": {"type": "boolean"}}, ["project_id", "revision"]),
     },
 ]
@@ -127,7 +127,7 @@ def _op(args: dict[str, Any], op: str, op_args: dict[str, Any]) -> Any:
 
 
 _OUTSIDE = ("Agents can import only an upload: handle or a file inside the app's own output folders (images, videos, "
-            "voice and music libraries, storyboard exports). Send other files with upload_image or POST /api/agent/uploads "
+            "voice and music libraries, storyboard exports). Send other files with upload_file or POST /api/agent/uploads "
             "and pass the handle.")
 
 

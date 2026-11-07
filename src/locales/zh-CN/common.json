@@ -917,7 +917,15 @@
       "stdio": null,
       "otherClients": null,
       "rotate": null,
-      "rotateHint": null
+      "rotateHint": null,
+      "permissions": null,
+      "permissionsHint": null,
+      "scopeClone": null,
+      "remoteClone": null,
+      "readTokenMake": null,
+      "readTokenRemove": null,
+      "readTokenHint": null,
+      "readTokenLabel": null
     },
     "integrations": {
       "title": "集成",

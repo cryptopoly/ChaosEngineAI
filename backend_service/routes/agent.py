@@ -13,6 +13,7 @@ from pydantic import BaseModel
 
 from backend_service.mcp_bridge import access
 from backend_service.mcp_bridge.protocol import handle_message
+from backend_service.mcp_bridge.scopes import scope_error
 
 router = APIRouter()
 
@@ -20,6 +21,9 @@ router = APIRouter()
 class AgentAccessUpdate(BaseModel):
     enabled: bool | None = None
     rotateToken: bool = False
+    scopes: list[str] | None = None  # scopes of the main token ("read" is always kept)
+    remoteClone: bool | None = None  # let callers on other computers use "clone" when the token has it
+    readToken: bool | None = None  # True makes (or replaces) the read-only token, False removes it
 
 
 def _bearer(request: Request) -> str:
@@ -29,12 +33,26 @@ def _bearer(request: Request) -> str:
     return request.headers.get("x-chaosengine-token", "").strip()
 
 
-def _authorized(request: Request) -> bool:
+def _is_loopback(request: Request) -> bool:
+    host = request.client.host if request.client else ""
+    return host in ("127.0.0.1", "::1", "localhost") or host.startswith("::ffff:127.")
+
+
+def _principal(request: Request) -> access.Principal | None:
+    """Who is calling: the app's own token (everything), the agent token, or the read-only token."""
     provided = _bearer(request)
     if not provided:
-        return False
+        return None
     app_token = str(getattr(request.app.state, "chaosengine_api_token", "") or "")
-    return access.token_ok(provided) or (bool(app_token) and secrets.compare_digest(provided, app_token))
+    if app_token and secrets.compare_digest(provided, app_token):
+        return access.Principal(access.ALL_SCOPES, "app")
+    return access.principal_for(provided, _is_loopback(request))
+
+
+def _authorized(request: Request) -> bool:
+    principal = _principal(request)
+    request.state.agent_principal = principal
+    return principal is not None
 
 
 @router.post("/mcp")
@@ -68,11 +86,13 @@ def mcp_get() -> Response:
     return Response(status_code=405, headers={"Allow": "POST"})
 
 
-def _require_agent(request: Request) -> None:
+def _require_agent(request: Request, scope: str = "files") -> None:
     if not access.is_enabled():
         raise HTTPException(status_code=403, detail=access.OFF_MESSAGE)
     if not _authorized(request):
         raise HTTPException(status_code=401, detail="Unauthorized. Send the Agent access token as a Bearer token.")
+    if scope not in request.state.agent_principal.scopes:
+        raise HTTPException(status_code=403, detail=scope_error("this route", scope))
 
 
 @router.post("/api/agent/uploads")
@@ -134,6 +154,9 @@ def get_agent_access(request: Request) -> dict[str, Any]:
         "token": access.get_token(),
         "mcpUrl": f"http://127.0.0.1:{port}/mcp",
         "stdioCommand": _stdio_command(port),
+        "scopes": access.get_scopes(),
+        "remoteClone": access.remote_clone_allowed(),
+        "readToken": access.get_read_token(),
     }
 
 
@@ -143,4 +166,12 @@ def update_agent_access(request: Request, body: AgentAccessUpdate) -> dict[str, 
         access.set_enabled(body.enabled)
     if body.rotateToken:
         access.rotate_token()
+    if body.scopes is not None:
+        access.set_scopes(body.scopes)
+    if body.remoteClone is not None:
+        access.set_remote_clone(body.remoteClone)
+    if body.readToken is True:
+        access.make_read_token()
+    elif body.readToken is False:
+        access.revoke_read_token()
     return get_agent_access(request)

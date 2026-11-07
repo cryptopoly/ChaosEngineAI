@@ -118,7 +118,7 @@ class StoryboardToolTests(unittest.TestCase):
             ("storyboard_shot", {"action": "edit", "project_id": pid, "revision": info["revision"], "shot_id": sid,
                                  "fields": {"speed": 99}}, "speed"),
             ("storyboard_shot", {"action": "import", "project_id": pid, "revision": info["revision"], "shot_id": sid,
-                                 "path": "/etc/hosts"}, "upload_image"),
+                                 "path": "/etc/hosts"}, "upload_file"),
             ("storyboard_shot", {"action": "import", "project_id": pid, "revision": info["revision"], "shot_id": sid,
                                  "path": str(self._text_file())}, "not a"),
             ("storyboard_project", {"action": "get", "project_id": "../x"}, "Unknown project"),
@@ -193,7 +193,7 @@ class StoryboardToolTests(unittest.TestCase):
             ("storyboard_project", {"action": "import", "path": str(outside_bundle)}),
         ):
             text = self.call(name, {"project_id": pid, "revision": info["revision"], **arguments}, error=True)
-            self.assertIn("upload_image", text, arguments)
+            self.assertIn("upload_file", text, arguments)
             self.assertIn("upload: handle", text, arguments)
         project = self.call("storyboard_project", {"action": "get", "project_id": pid})["project"]
         self.assertEqual((project["shots"][0]["takes"], project["audio"]), ([], []))

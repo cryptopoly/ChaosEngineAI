@@ -228,6 +228,20 @@ def _delete_image_output(artifact_id: str) -> bool:
     return _delete_image_output_impl(artifact_id, _current_image_outputs_dir())
 
 
+def _last_timings(kind: str) -> dict[str, Any] | None:
+    """C1: the phase split the progress tracker measured, for engines that report none themselves."""
+    import time as _time
+
+    from backend_service.progress import IMAGE_PROGRESS, VIDEO_PROGRESS
+
+    tracker = IMAGE_PROGRESS if kind == "image" else VIDEO_PROGRESS
+    snapshot = tracker.snapshot()
+    # Only a run that just finished: an engine that never touched the tracker must not get a stale split.
+    if snapshot.get("active") or _time.time() - float(snapshot.get("updatedAt") or 0.0) > 30.0:
+        return None
+    return tracker.last_timings()
+
+
 def _load_video_outputs() -> list[dict[str, Any]]:
     return _load_video_outputs_impl(_current_video_outputs_dir())
 
@@ -519,6 +533,7 @@ def _generate_image_artifacts(
             "seed": rendered.seed,
             "createdAt": created_at,
             "durationSeconds": rendered.durationSeconds,
+            "timings": rendered.timings or _last_timings("image"),
             "imageBytes": rendered.bytes,
             "imageMimeType": rendered.mimeType,
             "imageExtension": rendered.extension,
@@ -648,6 +663,7 @@ def _generate_video_artifact(
         "seed": video.seed,
         "createdAt": created_at,
         "durationSeconds": video.durationSeconds,
+        "timings": video.timings or _last_timings("video"),
         "clipDurationSeconds": clip_duration,
         "videoBytes": video.bytes,
         "videoMimeType": video.mimeType,

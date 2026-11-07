@@ -194,3 +194,5 @@ class GeneratedVideo:
     runtimeNote: str | None = None
     effectiveSteps: int | None = None
     effectiveGuidance: float | None = None
+    # C1 timing split (loadSeconds, encodeSeconds, denoiseSeconds, decodeSeconds, totalSeconds, warm).
+    timings: dict[str, Any] | None = None

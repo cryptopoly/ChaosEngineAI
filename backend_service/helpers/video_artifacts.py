@@ -57,6 +57,7 @@ def _hydrate_video_artifact(payload: dict[str, Any]) -> dict[str, Any]:
             payload.get("createdAt") or datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
         ),
         "durationSeconds": float(payload.get("durationSeconds") or 0.0),
+        "timings": payload.get("timings") if isinstance(payload.get("timings"), dict) else None,
         "clipDurationSeconds": float(payload.get("clipDurationSeconds") or 0.0),
         "videoPath": str(payload.get("videoPath") or "") or None,
         "metadataPath": str(payload.get("metadataPath") or "") or None,

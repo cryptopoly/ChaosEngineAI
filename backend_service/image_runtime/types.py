@@ -166,3 +166,5 @@ class GeneratedImage:
     durationSeconds: float
     runtimeLabel: str
     runtimeNote: str | None = None
+    # C1 timing split (loadSeconds, encodeSeconds, denoiseSeconds, decodeSeconds, totalSeconds, warm).
+    timings: dict[str, Any] | None = None

@@ -37,6 +37,7 @@ _SETTING_KEYS = (
     "imageStrength",
     "referenceImagePaths",
     "createdAt",
+    "timings",  # C1 phase split in seconds (numbers only, nothing identifying)
 )
 
 

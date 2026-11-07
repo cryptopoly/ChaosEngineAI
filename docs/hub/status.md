@@ -11,6 +11,10 @@ Newest dated update first. Each update has the same sections: Done, Open for Cla
 
 ## Update 2026-11-09
 
+- Browser E2E (Playwright, `npm run e2e`, about 1 min, 32 pass plus one pinned known failure): libraries and project dropdown, Music|Sounds and licence screen, Storyboard, busy advice, voice clone, settings and terms, 375 px. Findings in `docs/research/e2e-findings.md` (F-1 Music Models overflows at 375 px, F-2 project card copy). `HOME_STUDIO_ENABLED` now reads `VITE_CHAOSENGINE_HOME_STUDIO` so tests can reach the studio; normal builds stay off.
+- Accessibility pass merged (dialog focus, progress announcements, sidebar and sub-tab keys). Deferred items in `docs/research/a11y-findings.md`; field border contrast is a design decision for the owner.
+- Voice: Clone is its own Studio tab, sample upload always visible; venv import checks run isolated (a local `coverage/` folder broke Repair).
+- Sound effects tested with real weights: 5 GB peak, under 1 s warm; owner listened, sounds good.
 - Wan 2.2 image-to-video benchmarked (D-48) then removed on the owner's decision: a 2 s Wan clip takes as long as a 4 s LTX clip at lower resolution. Benchmark kept in `docs/research/wan-vs-ltx-bench.md`. Older Wan catalog rows still present: owner to decide.
 - Gallery project dropdown merged (Image, Video, Music, Voice), with project header and bridge `project_id` / `project_name` arguments. Fable UI review fixes applied. Seen only in a mock harness, not the full app.
 - Playwright security research done (D-51): approve with conditions, owner decision open.

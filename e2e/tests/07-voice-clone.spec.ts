@@ -2,7 +2,7 @@ import { test, expect } from "./fixtures";
 import type { Page } from "@playwright/test";
 import { goTo } from "./helpers";
 
-// Voice cloning flow in Voice Studio > Speak: the standing statement, the consent gates, the consent
+// Voice cloning flow in Voice Studio > Clone: the standing statement, the consent gates, the consent
 // sentence with its code, no way to save without a recording, and the AI label on everything made with
 // a cloned voice. The voice pack is patched to look installed; no model runs and no microphone is used.
 
@@ -14,8 +14,7 @@ async function openClonePanel(page: Page) {
     await route.fulfill({ response, json: body });
   });
   await goTo(page, "Voice", "Studio");
-  await page.getByRole("tab", { name: "Speak" }).click();
-  await page.locator(".voice-clone > summary").click();
+  await page.getByRole("tab", { name: "Clone" }).click();
   await expect(page.locator(".voice-clone__statement")).toBeVisible();
 }
 

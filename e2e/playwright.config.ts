@@ -5,11 +5,13 @@ import { defineConfig } from "@playwright/test";
 // Local-only E2E: Vite dev server on 8909, backend on 8910, throwaway HOME so
 // the run never touches ~/.chaosengine, dummy token, headless sandboxed Chromium.
 // See docs/research/playwright-security.md for the conditions this follows.
-const WEB_PORT = 8909;
-const API_PORT = 8910;
+// E2E_WEB_PORT / E2E_API_PORT let a second run (another worktree) use other ports.
+const WEB_PORT = Number(process.env.E2E_WEB_PORT ?? 8909);
+const API_PORT = Number(process.env.E2E_API_PORT ?? 8910);
 const TOKEN = "e2e-dummy-token";
 const repoRoot = path.resolve(__dirname, "..");
 const home = path.join(__dirname, ".run", "home");
+
 
 function pythonBin(): string {
   if (process.env.E2E_PYTHON) return process.env.E2E_PYTHON;
@@ -56,6 +58,8 @@ export default defineConfig({
       env: {
         VITE_CHAOSENGINE_API_BASE: `http://127.0.0.1:${API_PORT}`,
         VITE_CHAOSENGINE_API_TOKEN: TOKEN,
+        // Music and Storyboard stay hidden in a normal build; the run turns them on.
+        VITE_CHAOSENGINE_HOME_STUDIO: "1",
       },
       url: `http://127.0.0.1:${WEB_PORT}`,
       reuseExistingServer: false,

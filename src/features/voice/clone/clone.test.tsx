@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn(), isTauri: vi.fn(() => false) }));
 
 import type { CloneModel } from "./cloneApi";
-import { canStartConsent, pickCloneModel, sampleLengthProblem, spacedCode, wavSeconds } from "./cloneLogic";
+import { canSaveVoice, isSampleFile, pickCloneModel, sampleLengthProblem, wavSeconds } from "./cloneLogic";
 import { ClonePanel, CloneStatement } from "./ClonePanel";
 import { NewVoiceForm } from "./NewVoiceForm";
 
@@ -27,12 +27,18 @@ function model(over: Partial<CloneModel> = {}): CloneModel {
 }
 
 describe("clone logic", () => {
-  it("asks for the consent sentence only with basis, name and the statement", () => {
-    const form = { basis: "own" as const, speakerName: "Dan", voiceName: "", confirmed: true };
-    expect(canStartConsent(form)).toBe(true);
-    expect(canStartConsent({ ...form, basis: null })).toBe(false);
-    expect(canStartConsent({ ...form, speakerName: "  " })).toBe(false);
-    expect(canStartConsent({ ...form, confirmed: false })).toBe(false);
+  it("saves only with basis, name, the permission tick and a sample", () => {
+    const details = { basis: "own" as const, speakerName: "Dan", voiceName: "", confirmed: true };
+    expect(canSaveVoice(details, true)).toBe(true);
+    expect(canSaveVoice(details, false)).toBe(false);
+    expect(canSaveVoice({ ...details, basis: null }, true)).toBe(false);
+    expect(canSaveVoice({ ...details, speakerName: "  " }, true)).toBe(false);
+    expect(canSaveVoice({ ...details, confirmed: false }, true)).toBe(false);
+  });
+
+  it("takes WAV, MP3, M4A, FLAC and OGG samples", () => {
+    for (const name of ["a.wav", "b.MP3", "c.m4a", "d.flac", "e.ogg"]) expect(isSampleFile(name)).toBe(true);
+    for (const name of ["a.webm", "b.mp4", "wav", "c.wav.txt"]) expect(isSampleFile(name)).toBe(false);
   });
 
   it("checks the 3 to 30 second sample length", () => {
@@ -51,7 +57,6 @@ describe("clone logic", () => {
     expect(pickCloneModel([model({ installed: true }), big])?.key).toBe("qwen3-tts-0.6b");
     expect(pickCloneModel([small, model({ key: "x", default: false })])?.key).toBe("qwen3-tts-0.6b");
     expect(pickCloneModel([model({ supported: false })])).toBeNull();
-    expect(spacedCode("4721")).toBe("4 7 2 1");
   });
 });
 
@@ -61,7 +66,7 @@ describe("clone components", () => {
     expect(html).toContain("<details");
     expect(html).not.toContain("open=\"\"");
     expect(html).toContain("Clone a voice");
-    expect(html).toContain("Only copy your own voice");
+    expect(html).toContain("Only clone your own voice");
     expect(html).toContain("inaudible watermark");
     expect(html).toContain("can be turned off");
     // The body (models, voices) is not mounted while collapsed.
@@ -74,11 +79,16 @@ describe("clone components", () => {
     expect(html).toContain("Not public figures, children or people who have died");
   });
 
-  it("starts the new-voice form with the consent button disabled", () => {
+  it("starts the new-voice form on one screen with Save disabled", () => {
     const html = renderToStaticMarkup(<NewVoiceForm onCreated={() => {}} onCancel={() => {}} />);
     expect(html).toContain("Whose voice is it?");
     expect(html).toContain("My own voice");
-    expect(html).toMatch(/<button[^>]*disabled=""[^>]*>Get the consent sentence/);
+    expect(html).toContain("Someone who gave me permission");
+    expect(html).toContain("Voice sample");
+    expect(html).toMatch(/type="file"[^>]*accept=".wav,.mp3,.m4a,.flac,.ogg"|accept=".wav,.mp3,.m4a,.flac,.ogg"[^>]*type="file"/);
+    expect(html).toContain(">Record<");
+    expect(html).toContain("This is my own voice, or the speaker has given me permission to clone it.");
+    expect(html).toMatch(/<button[^>]*disabled=""[^>]*>Save voice/);
     // No URL field: samples come only from the microphone or a local file.
     expect(html).not.toMatch(/type="url"/);
   });

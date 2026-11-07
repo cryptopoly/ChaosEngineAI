@@ -28,7 +28,7 @@ export function CloneStatement() {
     <p className="voice-clone__statement">
       {t("voice.clone.statement", {
         defaultValue:
-          "Only copy your own voice, or the voice of someone who has given you permission and reads the consent sentence themselves. Not public figures, children or people who have died. Every clip made with a cloned voice is labelled as AI-made inside the file and carries an inaudible watermark; neither can be turned off.",
+          "Only clone your own voice or the voice of someone who has given you permission. Not public figures, children or people who have died. Every clip made with a cloned voice is labelled as AI-made inside the file and carries an inaudible watermark; neither can be turned off.",
       })}
     </p>
   );
@@ -136,7 +136,7 @@ function CloneBody({ onTabChange }: { onTabChange?: (tab: TabId) => void }) {
 
   const remove = async (voice: ClonedVoice) => {
     const ask = t("voice.clone.deleteConfirm", {
-      defaultValue: "Delete the voice \"{name}\"? Its sample and consent record are deleted too. This cannot be undone.",
+      defaultValue: "Delete the voice \"{name}\"? Its sample and permission record are deleted too. This cannot be undone.",
       name: voice.name,
     });
     if (!window.confirm(ask)) return;
@@ -217,9 +217,9 @@ function CloneBody({ onTabChange }: { onTabChange?: (tab: TabId) => void }) {
                 <span className="muted-text">
                   {" "}
                   {voice.consent.basis === "own"
-                    ? t("voice.clone.consentOwn", { defaultValue: "own voice, consent recorded {date}", date: voice.consent.consentedAt.slice(0, 10) })
+                    ? t("voice.clone.consentOwn", { defaultValue: "own voice, confirmed {date}", date: voice.consent.consentedAt.slice(0, 10) })
                     : t("voice.clone.consentPermission", {
-                        defaultValue: "{name} gave consent on {date}",
+                        defaultValue: "{name} gave permission, confirmed {date}",
                         name: voice.consent.speakerName,
                         date: voice.consent.consentedAt.slice(0, 10),
                       })}

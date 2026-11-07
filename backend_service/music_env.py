@@ -7,7 +7,9 @@ spike proved both work), from ``music_requirements.txt`` (exported once from the
 and the pinned ACE-Step commit. Weights come through the app's Hugging Face downloader into the standard
 cache; ``prepare_checkpoints`` mirrors them into ``<data>/checkpoints`` in the layout the library reads
 (``ACESTEP_CHECKPOINTS_DIR``): small files are copied (the library rewrites its model code there, which
-must never reach the cache), weight files are linked. Only the MLX lane (Apple Silicon) exists today.
+must never reach the cache), weight files are linked. A dangling or wrong link is re-made, and
+``checkpoints/.mirror.json`` records the revision mirrored per repo so a catalog revision bump re-mirrors.
+Only the MLX lane (Apple Silicon) exists today.
 """
 
 from __future__ import annotations
@@ -130,34 +132,76 @@ def worker_env() -> dict[str, str]:
 # Weights layout
 # ---------------------------------------------------------------------------
 
-def _place(source: Path, target: Path) -> None:
-    """Link a large file (symlink, else hard link, else copy); copy a small one. Never overwrites."""
-    if target.exists() or target.is_symlink():
-        return
-    target.parent.mkdir(parents=True, exist_ok=True)
+def _place(source: Path, target: Path, refresh: bool = False) -> bool:
+    """Link a large file (symlink, else hard link, else copy); copy a small one. Returns True when placed.
+
+    An existing file is kept (the library rewrites its small model files in the layout), except: a symlink
+    that dangles or points anywhere but this snapshot file is re-linked, and ``refresh`` (the pinned
+    revision changed) replaces everything.
+    """
     real = source.resolve()
+    if target.is_symlink():
+        try:
+            current = target.resolve(strict=True)
+        except (OSError, RuntimeError):
+            current = None  # dangling: the cache was cleared or downloaded again
+        if current == real and not refresh:
+            return False
+        target.unlink()
+    elif target.exists():
+        if not refresh:
+            return False
+        target.unlink()
+    target.parent.mkdir(parents=True, exist_ok=True)
     if real.stat().st_size >= _LINK_MIN_BYTES:
         for link in (os.symlink, os.link):
             try:
                 link(real, target)
-                return
+                return True
             except OSError:
                 continue
     shutil.copyfile(real, target)
+    return True
 
 
-def mirror_tree(source: Path, target: Path) -> int:
+def mirror_tree(source: Path, target: Path, refresh: bool = False) -> int:
     """Mirror ``source`` (a Hub snapshot) into ``target``; returns files placed. Hidden entries skipped."""
     placed = 0
     for path in sorted(source.rglob("*")):
         relative = path.relative_to(source)
         if any(part.startswith(".") for part in relative.parts) or not path.is_file():
             continue
-        destination = target / relative
-        if not destination.exists():
-            _place(path, destination)
+        if _place(path, target / relative, refresh):
             placed += 1
     return placed
+
+
+def _manifest_path() -> Path:
+    return checkpoints_dir() / ".mirror.json"
+
+
+def read_mirror_manifest() -> dict[str, str]:
+    """repo -> the revision mirrored into the checkpoints layout."""
+    try:
+        data = json.loads(_manifest_path().read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return {str(k): str(v) for k, v in data.items()} if isinstance(data, dict) else {}
+
+
+def _write_mirror_manifest(manifest: dict[str, str]) -> None:
+    path = _manifest_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(json.dumps(manifest, indent=1, sort_keys=True), encoding="utf-8")
+    os.replace(tmp, path)
+
+
+def mirrored_revision_ok(variant: dict[str, Any]) -> bool:
+    """False when the layout holds another revision of this repo than the catalog pins (an older install
+    without a manifest entry is accepted)."""
+    found = read_mirror_manifest().get(str(variant["repo"]))
+    return found is None or found == str(variant["revision"])
 
 
 def has_weights(folder: Path) -> bool:
@@ -179,13 +223,18 @@ def prepare_checkpoints(variants: list[dict[str, Any]]) -> list[str]:
     """Mirror every downloaded variant into the checkpoints layout; returns the repos placed."""
     placed: list[str] = []
     root = checkpoints_dir()
+    manifest = read_mirror_manifest()
     for variant in variants:
-        snapshot = hf_snapshot(str(variant["repo"]), str(variant["revision"]))
+        repo, revision = str(variant["repo"]), str(variant["revision"])
+        snapshot = hf_snapshot(repo, revision)
         if snapshot is None:
             continue
         target = root / variant["checkpointSubdir"] if variant.get("checkpointSubdir") else root
-        mirror_tree(snapshot, target)
-        placed.append(str(variant["repo"]))
+        mirror_tree(snapshot, target, refresh=manifest.get(repo) not in (None, revision))
+        if manifest.get(repo) != revision:
+            manifest[repo] = revision
+            _write_mirror_manifest(manifest)
+        placed.append(repo)
     return placed
 
 
@@ -196,6 +245,9 @@ def remove_checkpoints(variant: dict[str, Any]) -> None:
         target = (checkpoints_dir() / folder).resolve()
         if target != root and root in target.parents and target.is_dir():
             shutil.rmtree(target, ignore_errors=True)
+    manifest = read_mirror_manifest()
+    if manifest.pop(str(variant.get("repo")), None) is not None:
+        _write_mirror_manifest(manifest)
 
 
 # ---------------------------------------------------------------------------
@@ -348,7 +400,11 @@ def _run_install() -> None:
             raise RuntimeError(f"Only {free_gb:.1f} GB free; the music pack needs about {_MIN_FREE_GB:.0f} GB.")
 
         _set_phase("creating-venv")
-        if MUSIC_VENV_DIR.exists() and not venv_python().exists():
+        if MUSIC_VENV_DIR.exists() and not venv_python().exists() and any(MUSIC_VENV_DIR.iterdir()):
+            if not (MUSIC_VENV_DIR / "pyvenv.cfg").is_file():
+                # Not a venv (CHAOSENGINE_MUSIC_VENV may name a folder with other files): never delete it.
+                raise RuntimeError(f"{MUSIC_VENV_DIR} is not empty and is not a Python environment, so it was left "
+                                   "alone. Point CHAOSENGINE_MUSIC_VENV at a new or empty folder.")
             shutil.rmtree(MUSIC_VENV_DIR, ignore_errors=True)  # a broken earlier attempt
         if not venv_python().exists():
             from backend_service.voice_env import _base_python

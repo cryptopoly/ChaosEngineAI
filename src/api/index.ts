@@ -744,6 +744,34 @@ export {
 export type { TranscribeOptions, TranscribeResult, SpokenSentence } from "./voice";
 
 export {
+  MusicApiError,
+  cancelMusicDownload,
+  cancelMusicGeneration,
+  cancelMusicInstall,
+  deleteMusicDownload,
+  deleteMusicLibraryItems,
+  downloadMusicModel,
+  estimateMusicRun,
+  fetchMusicAudioBlob,
+  generateMusic,
+  getMusicCatalog,
+  getMusicDownloadStatus,
+  getMusicInstallStatus,
+  getMusicLibrary,
+  getMusicLibraryItem,
+  getMusicProgress,
+  getMusicRuntime,
+  getMusicSettings,
+  musicAudioPath,
+  preloadMusicModel,
+  saveMusicEmbedTag,
+  saveMusicSettings,
+  startMusicInstall,
+  unloadMusicModel,
+  updateMusicLibraryItem,
+} from "./music";
+
+export {
   cancelStoryboardBatch,
   cancelStoryboardRender,
   createStoryboardProject,

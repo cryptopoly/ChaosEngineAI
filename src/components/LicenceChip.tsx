@@ -17,6 +17,8 @@ export interface ModelLicence {
   summary: string;
   /** Bullet lines for the licence screen. */
   summaryLines?: string[];
+  /** The full licence text on the web. */
+  url?: string;
   /** Extra note shown on the licence screen (for example a provenance note). */
   note?: string;
 }

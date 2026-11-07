@@ -4,6 +4,7 @@ export * from "./chat";
 export * from "./hub";
 export * from "./image";
 export * from "./models";
+export * from "./music";
 export * from "./observability";
 export * from "./progress";
 export * from "./server";

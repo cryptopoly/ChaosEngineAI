@@ -245,3 +245,5 @@ export type {
 } from "./types/voice";
 
 export type * from "./types/storyboard";
+
+export type * from "./types/music";

@@ -88,6 +88,8 @@ export interface SettingsUpdateResponse {
 }
 
 export interface UpdateSettingsPayload {
+  /** D-34: write the machine-generated tag into music files (on by default). */
+  musicEmbedTag?: boolean;
   modelDirectories?: ModelDirectorySetting[];
   preferredServerPort?: number;
   allowRemoteConnections?: boolean;

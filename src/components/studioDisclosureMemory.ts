@@ -3,7 +3,7 @@
  * localStorage under `chaos.studio.<id>.disclosures`. Every storage access
  * is wrapped: storage can be missing or throw (private mode, previews).
  */
-import { createContext } from "react";
+import { createContext, useCallback, useMemo, useRef } from "react";
 
 export type DisclosureState = Record<string, boolean>;
 
@@ -40,4 +40,27 @@ export function writeDisclosures(studioId: string, state: DisclosureState): void
   } catch {
     /* quota or privacy mode: the screen still works, it just forgets */
   }
+}
+
+/** The memory object for one Studio: reads storage once per `studioId`, writes on every change. */
+export function useDisclosureMemory(studioId: string): DisclosureMemory {
+  const stored = useRef<{ id: string; state: DisclosureState } | null>(null);
+  const read = useCallback((): DisclosureState => {
+    if (!stored.current || stored.current.id !== studioId) {
+      stored.current = { id: studioId, state: readDisclosures(studioId) };
+    }
+    return stored.current.state;
+  }, [studioId]);
+
+  return useMemo<DisclosureMemory>(
+    () => ({
+      isOpen: (id) => read()[id],
+      setOpen: (id, open) => {
+        const next = { ...read(), [id]: open };
+        stored.current = { id: studioId, state: next };
+        writeDisclosures(studioId, next);
+      },
+    }),
+    [read, studioId],
+  );
 }

@@ -1,0 +1,13 @@
+{
+  "name": "chaosengine-e2e",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Browser E2E tests (Playwright). Separate from the app package so the app lockfile and release build never see it.",
+  "scripts": {
+    "test": "playwright test",
+    "install-browser": "playwright install chromium"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.65.0"
+  }
+}

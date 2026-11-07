@@ -231,6 +231,16 @@ text encoder) is under the Gemma terms of use. Neither is bundled.
   once an mlx-lm release carries the architecture. The weights keep their own
   licence (LFM Open License v1.0, Liquid AI).
 
+## Test tooling (dev only, never shipped)
+
+### Playwright (browser E2E)
+
+- **@playwright/test 1.65.0** (with `playwright` and `playwright-core`, same version) - Apache 2.0 (Microsoft)
+- **Source:** <https://github.com/microsoft/playwright>
+- **Location:** `e2e/` sub-package only (own `package.json` and lockfile); the app's `package.json`, lockfile and
+  release bundle do not include it. A headless Chromium is downloaded on demand by `npx playwright install chromium`
+  into the user cache, and is not redistributed. Security review: `docs/research/playwright-security.md`.
+
 ## Internationalization (FU-042)
 
 ### i18next (frontend i18n framework)

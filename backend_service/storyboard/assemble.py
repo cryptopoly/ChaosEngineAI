@@ -22,6 +22,7 @@ import shutil
 import subprocess
 import sys
 import threading
+import time
 import uuid
 from collections import deque
 from dataclasses import dataclass, field
@@ -162,6 +163,35 @@ def _inp(path: str, *pre: str) -> list[str]:
     return ["-protocol_whitelist", ffmpeg_bin.PROTOCOLS, *pre, "-i", path]
 
 
+PRUNE_AFTER_S = 7 * 24 * 3600
+# Cached intermediates and the scratch files of a run (``<run id>-...``), the only names this engine writes.
+_WORK_NAME = re.compile(r"(?:(?:shot|card)-[0-9a-f]{32}\.mov|[0-9a-f]{10}-.+)")
+
+
+def prune_intermediates(work: Path, keep: set[str], now: float | None = None) -> list[str]:
+    """Remove intermediates this plan does not use that were last used more than 7 days ago.
+
+    Every trim, speed or size change makes a new intermediate, so without this ``work_dir`` only grows.
+    The age is the file's own time (when it was made); one the current plan uses is always kept.
+    """
+    cutoff = (now if now is not None else time.time()) - PRUNE_AFTER_S
+    removed: list[str] = []
+    try:
+        entries = list(work.iterdir())
+    except OSError:
+        return removed
+    for path in entries:
+        try:
+            if (path.name in keep or not _WORK_NAME.fullmatch(path.name) or path.is_symlink()
+                    or not path.is_file() or path.stat().st_mtime >= cutoff):
+                continue
+            path.unlink()
+            removed.append(path.name)
+        except OSError:
+            pass
+    return removed
+
+
 def _unlink(path: Path) -> None:
     try:
         path.unlink()
@@ -202,6 +232,7 @@ def render(plan: RenderPlan, progress_cb: ProgressCb | None = None,
     warnings: list[str] = []
     work = Path(plan.work_dir)
     work.mkdir(parents=True, exist_ok=True)
+    prune_intermediates(work, {f"shot-{shot_cache_key(s, plan)[:32]}.mov" for s in plan.shots})
     out = Path(plan.out_path)
     inputs = {str(Path(s.video)) for s in plan.shots} | {a.path for a in plan.audio}
     if plan.captions_srt:

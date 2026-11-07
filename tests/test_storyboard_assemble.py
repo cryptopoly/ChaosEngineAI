@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import array
 import math
+import os
 import shutil
 import subprocess
 import tempfile
@@ -521,6 +522,34 @@ class GraphBuilderTests(unittest.TestCase):
         self.assertEqual(placed[1].start, 0.0)  # before the film: starts at 0 (its trim already accounts for it)
         self.assertEqual(placed[2].start, 1.5)  # not anchored: absolute start as given
         self.assertEqual(clips[0].start, 4.0, "the plan itself is not changed")
+
+    def test_graph_builders_are_re_exported_from_assemble(self):
+        from backend_service.storyboard import assemble_graphs
+
+        for name in ("build_mix_graph", "build_shot_graph", "compute_join_offsets", "anchored_audio", "Lane"):
+            self.assertIs(getattr(assemble, name), getattr(assemble_graphs, name))
+
+    def test_old_unused_intermediates_are_pruned(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            now = time.time()
+            old = now - assemble.PRUNE_AFTER_S - 60
+            files = {
+                "shot-" + "a" * 32 + ".mov": old,    # old and not in this plan: goes
+                "shot-" + "b" * 32 + ".mov": old,    # old but this plan uses it: stays
+                "shot-" + "c" * 32 + ".mov": now,    # recent: stays (another project state may want it)
+                "card-" + "d" * 32 + ".mov": old,    # an old end card: goes
+                "0123456789-shot0.txt": old,         # scratch of a render that was killed: goes
+                "notes.txt": old,                    # not ours: stays
+            }
+            for name, mtime in files.items():
+                (work / name).write_bytes(b"x")
+                os.utime(work / name, (mtime, mtime))
+            removed = assemble.prune_intermediates(work, {"shot-" + "b" * 32 + ".mov"}, now=now)
+            self.assertEqual(sorted(removed), sorted(["shot-" + "a" * 32 + ".mov", "card-" + "d" * 32 + ".mov",
+                                                      "0123456789-shot0.txt"]))
+            self.assertEqual(sorted(p.name for p in work.iterdir()),
+                             sorted(["shot-" + "b" * 32 + ".mov", "shot-" + "c" * 32 + ".mov", "notes.txt"]))
 
     def test_mix_graph_ducks_only_with_voice(self):
         def lane(kind, idx, duck=False):

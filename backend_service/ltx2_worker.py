@@ -6,11 +6,12 @@ nothing from ``backend_service`` (the protocol loop is ``warm_worker_base.py``, 
 A ``generate`` request carries the same ``generate --distilled ...`` argument list the CLI path runs
 (``Ltx2MlxVideoEngine._build_command``). It goes through ltx-2-mlx's own parser, and the call below
 mirrors the CLI's distilled branch (``ltx_pipelines_mlx.cli._cmd_generate``, ltx-2-mlx 0.18.0) with one
-change: ``low_memory=False``. With the CLI's ``low_memory=True`` the pipeline frees the text encoder, the
-transformer and the decoders inside every call, so nothing would stay loaded; with ``False`` they stay
-resident and the next clip skips the loads (spike 2026-11-07, docs/hub/progress/v-speed.md: output
-bit-identical, resident footprint about 29 GB for LTX-2.5 q4). Re-check this file when
-``scripts/install-ltx2-mlx.sh`` moves ``LTX2_MLX_REF``.
+change: the transformer is kept between clips. The CLI's ``low_memory=True`` frees the text encoder, the
+transformer and the decoders inside every call. Keeping everything (``low_memory=False``) held about
+29 GB, peaked at 38.6 GB and made the denoise about 20 % slower at 768x448 on a 64 GB Mac; keeping only
+the transformer (11.3 GB) peaked at 23.6 GB and was about 4 % faster per clip, bit-identical
+(docs/hub/progress/v-speed.md). Re-check this file when ``scripts/install-ltx2-mlx.sh`` moves
+``LTX2_MLX_REF``.
 
 The pipeline's phase lines and tqdm bars (stderr) are forwarded as ``line`` events, so the backend reads
 progress and the timing split with the same parser it uses for the CLI. Cancel works by raising from the
@@ -41,6 +42,35 @@ BASE = _base()
 BASE.strip_own_dir(__file__)
 
 
+
+def _pipeline_class(base: type) -> type:
+    """``base`` with a transformer that survives the pipeline's own ``self.dit = None`` frees.
+
+    The pipeline (``low_memory=True``, as the CLI) frees the text encoder, VAE encoder, upsampler and
+    decoders inside each call, and the transformer before the VAE decode; ``load()`` brings back
+    whatever is ``None``. Ignoring only the transformer frees keeps the biggest load warm while the
+    resident set stays near the transformer's size.
+    """
+
+    class KeepTransformer(base):  # type: ignore[misc, valid-type]
+        _keep_dit = False
+
+        @property
+        def dit(self):  # noqa: ANN202
+            return self.__dict__.get("_kept_dit")
+
+        @dit.setter
+        def dit(self, value) -> None:  # noqa: ANN001
+            if value is None and self._keep_dit and self.__dict__.get("_kept_dit") is not None:
+                return
+            self.__dict__["_kept_dit"] = value
+
+        def drop_transformer(self) -> None:
+            self.__dict__["_kept_dit"] = None
+
+    return KeepTransformer
+
+
 class Ltx2Engine:
     def __init__(self) -> None:
         self._key: tuple[Any, ...] | None = None
@@ -50,6 +80,8 @@ class Ltx2Engine:
         return {"model": self._key[0] if self._key else None}
 
     def unload(self) -> None:
+        if self._pipe is not None and hasattr(self._pipe, "drop_transformer"):
+            self._pipe.drop_transformer()
         self._pipe, self._key = None, None
         gc.collect()
         try:
@@ -91,13 +123,14 @@ class Ltx2Engine:
 
             self.unload()
             hooks.stage("load")
-            self._pipe = DistilledPipeline(
+            self._pipe = _pipeline_class(DistilledPipeline)(
                 model_dir=args.model,
                 gemma_model_id=args.gemma,
-                low_memory=not keep_resident,
+                low_memory=True,  # the CLI's memory behaviour: Gemma and the decoders come and go per clip
                 low_ram_streaming=getattr(args, "low_ram", False),
                 tile_count=tile,
             )
+            self._pipe._keep_dit = keep_resident
             if lora_paths:
                 self._pipe._pending_loras = lora_paths
             self._key = key

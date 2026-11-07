@@ -3,7 +3,7 @@
 ltx-2-mlx (MIT) is a pure MLX port of Lightricks LTX-2.3 / 2.5: text-to-video
 with stereo sound on the Apple GPU, no PyTorch. It lives in its own venv
 (``~/.chaosengine/ltx2-venv``, built by ``scripts/install-ltx2-mlx.sh``). On a
-Mac with 64 GB or more the pipeline stays loaded between clips in a warm worker
+Mac with 64 GB or more the transformer stays loaded between clips in a warm worker
 process (``ltx2_worker.py``, V1); otherwise, when ``CHAOSENGINE_WARM_WORKERS=0``
 or when the worker fails, the engine runs one ``ltx-2-mlx generate --distilled``
 command per clip. Either way the weights live outside the backend, and a stuck
@@ -90,11 +90,12 @@ _PHASE_DONE_RE = re.compile(r"^\[(.+?)\] done in ([\d.]+)s$")
 
 _WORKER_SCRIPT = Path(__file__).resolve().parent / "ltx2_worker.py"
 _WORKER_LOG = Path.home() / ".chaosengine" / "logs" / "ltx2-worker.log"
-# The resident pipeline (LTX-2.5 q4) holds about 29 GB between clips and peaked at 38.6 GB of Metal
-# memory decoding 768x448x49 (the CLI peaks near 17 GB; v-speed.md), so it is kept only on Macs that
-# report about 64 GB, and a new worker starts only with 40 GB free; otherwise the clip runs as a CLI process.
+# The worker keeps only the transformer (LTX-2.5 q4: 11.3 GB) between clips; the decode peaked at
+# 23.6 GB of Metal memory at 768x448x49 against about 17 GB for the CLI (v-speed.md). Measured only on a
+# 64 GB Mac, so it is used there and above, and a new worker starts only with 28 GB free; otherwise the
+# clip runs as a CLI process.
 WARM_MIN_MEMORY_GB = 60.0
-WARM_START_AVAILABLE_GB = 40.0
+WARM_START_AVAILABLE_GB = 28.0
 _WORKER_TIMEOUT_S = 7200.0
 _WORKER_STALL_S = 900.0  # load and VAE decode send no step lines
 _WORKER_HARD_CANCEL_S = 20.0  # a stage-2 step at full size can take ~15 s before the next write

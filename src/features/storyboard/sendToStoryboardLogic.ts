@@ -153,12 +153,17 @@ export function planSend(item: SendItem, project: Pick<StoryboardProject, "shots
   ];
 }
 
-/** Fills in the id of the shot the previous step created (a new shot goes last). */
-export function resolveStep(step: PlannedStep, project: Pick<StoryboardProject, "shots">): PlannedStep {
+/** The id that appeared when a shot was added: the first in `after` that `before` did not have. */
+export function newShotId(before: readonly string[], after: readonly string[]): string | null {
+  const known = new Set(before);
+  return after.find((id) => !known.has(id)) ?? null;
+}
+
+/** Fills in the id of the shot the add_shot step created (found by comparing the shot lists, not by position). */
+export function resolveStep(step: PlannedStep, createdShotId: string | null): PlannedStep {
   if (step.op !== "import_take" || step.args.shotId !== NEW_SHOT) return step;
-  const last = project.shots[project.shots.length - 1];
-  if (!last) throw new Error("The new shot is missing");
-  return { op: "import_take", args: { ...step.args, shotId: last.id } };
+  if (!createdShotId) throw new Error("The new shot is missing");
+  return { op: "import_take", args: { ...step.args, shotId: createdShotId } };
 }
 
 export type RunStep = (step: PlannedStep, revision: number) => Promise<StoryboardProjectPayload>;
@@ -174,12 +179,15 @@ export async function applyPlan(
   run: RunStep,
 ): Promise<Pick<StoryboardProject, "revision" | "shots">> {
   let current: Pick<StoryboardProject, "revision" | "shots"> = start;
+  let created: string | null = null;
   for (const step of steps) {
     let retried = false;
     for (;;) {
-      const resolved = resolveStep(step, current);
+      const resolved = resolveStep(step, created);
+      const before = current.shots.map((shot) => shot.id);
       try {
         current = (await run(resolved, current.revision)).project;
+        if (step.op === "add_shot") created = newShotId(before, current.shots.map((shot) => shot.id));
         break;
       } catch (err) {
         if (err instanceof StoryboardRevisionConflict && !retried) {
@@ -215,4 +223,42 @@ export function menuKeyAction(key: string, index: number, count: number): MenuKe
     default:
       return null;
   }
+}
+
+/** The server calls a send needs; the hook passes the real ones and the tests fakes. */
+export interface SendApi {
+  create: (name: string) => Promise<StoryboardProjectPayload>;
+  get: (id: string) => Promise<StoryboardProjectPayload>;
+  run: (projectId: string, step: PlannedStep, revision: number) => Promise<StoryboardProjectPayload>;
+  remove: (projectId: string, revision: number) => Promise<unknown>;
+}
+
+/**
+ * Puts `item` (its `path` known) into a project: the one given, or a new one named from the item. If the
+ * send fails after making a new project, that project is deleted again so a failed send (or each retry)
+ * leaves nothing behind. Returns the project's id.
+ */
+export async function sendIntoProject(
+  item: SendItem,
+  projectId: string | null,
+  target: SendTarget,
+  untitledName: string,
+  api: SendApi,
+): Promise<string> {
+  const madeHere = projectId === null;
+  const fresh = (await (projectId ? api.get(projectId) : api.create(projectNameFor(item, untitledName)))).project;
+  try {
+    await applyPlan(fresh, planSend(item, fresh, target), (step, revision) => api.run(fresh.id, step, revision));
+  } catch (err) {
+    if (madeHere) {
+      try {
+        // Its revision moved with the steps that did land, so read it again.
+        await api.remove(fresh.id, (await api.get(fresh.id)).project.revision);
+      } catch {
+        // the original failure is the one to report
+      }
+    }
+    throw err;
+  }
+  return fresh.id;
 }

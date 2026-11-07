@@ -8,16 +8,15 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { createStoryboardProject, getStoryboardProject, listStoryboardProjects, runStoryboardOp } from "../../api";
+import { createStoryboardProject, deleteStoryboardProject, getStoryboardProject, listStoryboardProjects, runStoryboardOp } from "../../api";
 import { HOME_STUDIO_ENABLED } from "../../constants/features";
 import type { TabId } from "../../types";
 import {
-  applyPlan,
   destinationTab,
   pickRecentProjects,
-  planSend,
-  projectNameFor,
+  sendIntoProject,
   sendProjectFrom,
+  type PlannedStep,
   type SendItem,
   type SendProject,
   type SendTarget,
@@ -31,6 +30,18 @@ let cache: { at: number; projects: SendProject[] } | null = null;
 
 export function clearSendProjectCache(): void {
   cache = null;
+}
+
+/** Runs one planned step; each branch keeps the op name and its arguments matched. */
+function runPlannedStep(projectId: string, revision: number, step: PlannedStep) {
+  switch (step.op) {
+    case "add_shot":
+      return runStoryboardOp(projectId, revision, "add_shot", step.args);
+    case "import_take":
+      return runStoryboardOp(projectId, revision, "import_take", step.args);
+    case "add_audio":
+      return runStoryboardOp(projectId, revision, "add_audio", step.args);
+  }
 }
 
 export interface UseSendToStoryboard {
@@ -102,13 +113,14 @@ export function useSendToStoryboard(
         const path = item.path ?? (await item.resolvePath?.());
         if (!path) throw new Error(t("sendToStoryboard.noFile", { defaultValue: "This item has no file to send." }));
         const ready = { ...item, path };
-        const fresh = projectId
-          ? (await getStoryboardProject(projectId)).project
-          : (await createStoryboardProject(projectNameFor(ready, t("sendToStoryboard.untitled", { defaultValue: "Untitled storyboard" })))).project;
-        const steps = planSend(ready, fresh, target);
-        await applyPlan(fresh, steps, async (step, revision) => runStoryboardOp(fresh.id, revision, step.op, step.args as never));
+        const openedId = await sendIntoProject(ready, projectId, target, t("sendToStoryboard.untitled", { defaultValue: "Untitled storyboard" }), {
+          create: (name) => createStoryboardProject(name),
+          get: getStoryboardProject,
+          run: (id, step, revision) => runPlannedStep(id, revision, step),
+          remove: deleteStoryboardProject,
+        });
         cache = null;
-        writeOpenProjectId(fresh.id);
+        writeOpenProjectId(openedId);
         onNavigate(destinationTab(item.kind));
         return true;
       } catch (err) {

@@ -288,6 +288,19 @@ def release_warm_worker(reason: str = "unloaded") -> bool:
     return _WORKER.stop_if_idle(reason) if _WORKER is not None else False
 
 
+_WARM_REPO: str | None = None
+
+
+def warm_loaded_repo() -> str | None:
+    """The repo whose pipeline the warm worker holds, so memory gates count it as resident."""
+    return _WARM_REPO if _WORKER is not None and _WORKER.running() else None
+
+
+def _remember_warm_repo(repo: str) -> None:
+    global _WARM_REPO
+    _WARM_REPO = repo
+
+
 class Ltx2MlxVideoEngine:
     runtime_label = "LTX-2.3 (MLX native)"
 
@@ -376,6 +389,7 @@ class Ltx2MlxVideoEngine:
                 if warm_worker_wanted():
                     try:
                         timings = self._run_warm(args, output)
+                        _remember_warm_repo(config.repo)
                     except WarmFallback as exc:
                         notes.append(f"the warm worker failed ({exc}), so this clip ran as a one-off process")
                         timings = None

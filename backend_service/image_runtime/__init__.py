@@ -40,6 +40,7 @@ from backend_service.image_runtime.mflux_engine import (
     MfluxImageEngine,
     _mflux_name_for_repo,
     supported_repos,
+    warm_loaded_repo,
 )
 from backend_service.image_runtime.placeholder_engine import (
     MAX_IMAGE_SEED,
@@ -951,11 +952,14 @@ class ImageRuntimeManager:
 
     @property
     def loaded_repo(self) -> str | None:
-        """Repo of the pipeline currently resident in memory, if any."""
-        return self._diffusers.loaded_repo
+        """Repo of the pipeline currently resident in memory, if any (a warm mflux model counts)."""
+        return self._diffusers.loaded_repo or warm_loaded_repo()
 
     def capabilities(self) -> dict[str, Any]:
-        return self._diffusers.probe().to_dict()
+        status = self._diffusers.probe().to_dict()
+        if not status.get("loadedModelRepo"):
+            status["loadedModelRepo"] = warm_loaded_repo()
+        return status
 
     def preload(self, repo: str) -> dict[str, Any]:
         with self._lock:

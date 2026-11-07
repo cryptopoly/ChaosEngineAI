@@ -75,7 +75,7 @@ def list_models() -> list[dict[str, Any]]:
             "supported": lane in row["lanes"],
             # Ready means the weights and the watermark component; Download installs both.
             "installed": snapshot_dir(row) is not None and voice_env.watermark_installed(),
-            "download": {"state": job.get("state", "idle"), "error": job.get("error")},
+            "download": {"state": job.get("state", "idle"), "error": job.get("error"), "phase": job.get("phase")},
         })
     return rows
 
@@ -93,13 +93,16 @@ def start_download(key: str) -> dict[str, Any]:
         try:
             from huggingface_hub import snapshot_download  # noqa: PLC0415
 
+            _DOWNLOADS[row["key"]]["phase"] = "weights"
             snapshot_download(row["repo"], revision=row["revision"])
             # Cloned output is always watermarked, so the component comes with the model.
             if not voice_env.watermark_installed():
+                _DOWNLOADS[row["key"]]["phase"] = "watermark"
                 voice_env.install_watermark()
             _DOWNLOADS[row["key"]] = {"state": "done", "error": None}
         except Exception as exc:  # noqa: BLE001 - shown on the panel
-            _DOWNLOADS[row["key"]] = {"state": "failed", "error": str(exc)}
+            step = "the watermark component" if _DOWNLOADS[row["key"]].get("phase") == "watermark" else row["name"]
+            _DOWNLOADS[row["key"]] = {"state": "failed", "error": f"Downloading {step} failed: {exc}"}
 
     threading.Thread(target=run, daemon=True, name=f"clone-download-{row['key']}").start()
     return dict(_DOWNLOADS[row["key"]])

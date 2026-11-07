@@ -158,8 +158,6 @@ shows the real total. Renders run one at a time.
 
 - **Add a machine-readable AI tag.** On by default. A tag in the MP4 metadata with the app version, "machine
   generated", model names and a hash of the project id and name. It holds no prompts and no folder names.
-- **Add an AI-generated end card.** Off by default. Adds a visible end card (the text defaults to "Made with
-  AI", 2 seconds).
 - **A clip marked as a cloned voice forces the tag on.** When you add a voice clip you can tick **This clip uses
   a cloned voice**. The project then says "This project uses a cloned voice, so the AI tag is always written."
   The app does not clone voices itself yet; the box is a label you set.

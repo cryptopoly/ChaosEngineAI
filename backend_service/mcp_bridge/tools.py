@@ -20,8 +20,8 @@ def _obj(properties: dict[str, Any], required: list[str] | None = None) -> dict[
     return {"type": "object", "properties": properties, "required": required or [], "additionalProperties": False}
 
 
-_KIND = {"type": "string", "enum": ["image", "video", "voice", "stt"]}
-_JOB_ID = {"type": "string", "description": "Job id returned by a generate, speak or transcribe tool."}
+_KIND = {"type": "string", "enum": ["image", "video", "voice", "stt", "music"]}
+_JOB_ID = {"type": "string", "description": "Job id returned by a generate, speak, make_music or transcribe tool."}
 
 TOOLS: list[dict[str, Any]] = [
     {
@@ -508,3 +508,8 @@ from backend_service.mcp_bridge.storyboard_tools import STORYBOARD_HANDLERS, STO
 
 TOOLS.extend(STORYBOARD_TOOLS)
 HANDLERS.update(STORYBOARD_HANDLERS)
+
+from backend_service.mcp_bridge.music_tools import MUSIC_HANDLERS, MUSIC_TOOLS  # noqa: E402
+
+TOOLS.extend(MUSIC_TOOLS)
+HANDLERS.update(MUSIC_HANDLERS)

@@ -37,12 +37,12 @@
     "voiceModels": "Modelos de voz",
     "voiceLibrary": "Biblioteca de voz",
     "chatModels": "Modelos de chat",
-    "musicModels": null,
-    "musicStudio": null,
-    "musicLibrary": null,
-    "storyProjects": null,
-    "storyBoard": null,
-    "storyMixer": null
+    "musicModels": "Modelos de música",
+    "musicStudio": "Estúdio de música",
+    "musicLibrary": "Biblioteca de música",
+    "storyProjects": "Projetos",
+    "storyBoard": "Quadro",
+    "storyMixer": "Mixer"
   },
   "tabCaptions": {
     "dashboard": "Visão geral do sistema",
@@ -74,12 +74,12 @@
     "chatModels": "Encontre, baixe e gerencie modelos de linguagem",
     "imageModelsPage": "Encontre, baixe e gerencie modelos de imagem",
     "videoModelsPage": "Encontre, baixe e gerencie modelos de vídeo",
-    "musicModels": null,
-    "musicStudio": null,
-    "musicLibrary": null,
-    "storyProjects": null,
-    "storyBoard": null,
-    "storyMixer": null
+    "musicModels": "Encontre, baixe e gerencie modelos de música e som",
+    "musicStudio": "Crie faixas e efeitos sonoros",
+    "musicLibrary": "As faixas e sons que você criou",
+    "storyProjects": "Seus filmes, uma pasta para cada",
+    "storyBoard": "Planos, takes e prompts",
+    "storyMixer": "Imagem, som e exportação"
   },
   "tabShortLabels": {
     "chat": "Chat",
@@ -105,11 +105,11 @@
     "voiceModels": "Meus modelos",
     "voiceLibrary": "Biblioteca",
     "models": "Modelos",
-    "musicStudio": null,
-    "musicLibrary": null,
-    "storyProjects": null,
-    "storyBoard": null,
-    "storyMixer": null
+    "musicStudio": "Estúdio",
+    "musicLibrary": "Biblioteca",
+    "storyProjects": "Projetos",
+    "storyBoard": "Quadro",
+    "storyMixer": "Mixer"
   },
   "tabGroups": {
     "chat": "Chat",
@@ -119,8 +119,8 @@
     "benchmarks": "Benchmarks",
     "tools": "Ferramentas",
     "voice": "Voz",
-    "music": null,
-    "storyboard": null
+    "music": "Música",
+    "storyboard": "Storyboard"
   },
   "tabsCount": "{count, plural, one {# aba} other {# abas}}",
   "sidebar": {
@@ -129,8 +129,8 @@
     "noModelLoaded": "Nenhum modelo carregado",
     "groupTabsAriaLabel": "Abas {group}",
     "primaryNavAriaLabel": "Principal",
-    "sectionMake": null,
-    "sectionRun": null
+    "sectionMake": "Criar",
+    "sectionRun": "Executar"
   },
   "slashCommands": {
     "menuAriaLabel": "Comandos de barra"
@@ -685,8 +685,8 @@
     "thumbnailAlt": "Pré-visualização ao vivo do denoise",
     "thumbnailCaption": "Pré-visualização ao vivo · decodificação TAESD",
     "stepCounter": "passo {current} / {total}",
-    "waitingForAgent": null,
-    "waitingInQueue": null,
+    "waitingForAgent": "Aguardando a conclusão de um trabalho de agente",
+    "waitingInQueue": "Aguardando a conclusão de outro trabalho (posição {position})",
     "inProgress": "em andamento…",
     "finalizing": "finalizando…",
     "phaseTiming": "{elapsed}s / ~{estimated}s"
@@ -852,8 +852,8 @@
       "sidebarTabsHelp": "mantém a barra lateral compacta: grupos se comportam como botões únicos que vão para a última aba usada, com uma barra de subabas acima do conteúdo.",
       "uiScaleAria": "Escala da interface",
       "uiScaleHelp": "A escala da interface muda a densidade do cromo do app imediatamente. As pré-visualizações de mídia mantêm seu próprio dimensionamento por proporção.",
-      "keepGroupsOpen": null,
-      "keepGroupsOpenHelp": null
+      "keepGroupsOpen": "Manter todos os grupos da barra lateral abertos",
+      "keepGroupsOpenHelp": "Desativado por padrão: só o grupo em que você está trabalhando fica aberto. Ative para manter todos os grupos expandidos."
     },
     "dataDirectory": {
       "title": "Diretório de dados",
@@ -909,23 +909,23 @@
       "helpText": "Armazenado localmente. Usado pela conversão MLX ao buscar modelos com acesso restrito no Hugging Face."
     },
     "agentAccess": {
-      "title": null,
-      "subtitle": null,
-      "switch": null,
-      "hint": null,
-      "claudeCode": null,
-      "stdio": null,
-      "otherClients": null,
-      "rotate": null,
-      "rotateHint": null,
-      "permissions": null,
-      "permissionsHint": null,
-      "scopeClone": null,
-      "remoteClone": null,
-      "readTokenMake": null,
-      "readTokenRemove": null,
-      "readTokenHint": null,
-      "readTokenLabel": null
+      "title": "Acesso de agentes",
+      "subtitle": "Permita que um agente de IA (Claude Code, Cursor e outros) crie aqui imagens, vídeo, voz e transcrições.",
+      "switch": "Permitir que agentes usem o ChaosEngineAI",
+      "hint": "Desativado por padrão. Os agentes executam um trabalho por vez, somente neste computador, e precisam do token abaixo. Eles só podem usar modelos que você já baixou.",
+      "claudeCode": "Claude Code",
+      "stdio": "Clientes que só iniciam programas locais (stdio)",
+      "otherClients": "Outros clientes MCP (JSON)",
+      "rotate": "Gerar um novo token",
+      "rotateHint": "O token antigo deixa de funcionar na hora. Os agentes precisam da nova linha.",
+      "permissions": "Permissões",
+      "permissionsHint": "O token principal pode ler, criar conteúdo e mover arquivos. Nada além disso, a menos que você marque.",
+      "scopeClone": "Permitir a clonagem de voz",
+      "remoteClone": "Permitir também a clonagem de outros computadores",
+      "readTokenMake": "Gerar um token somente leitura",
+      "readTokenRemove": "Remover o token somente leitura",
+      "readTokenHint": "Para um painel ou um monitor: pode ver o status e os trabalhos, mas não pode criar nem alterar nada.",
+      "readTokenLabel": "Token somente leitura (Claude Code)"
     },
     "integrations": {
       "title": "Integrações",
@@ -973,7 +973,7 @@
     "emptyState": "Nenhum modelo corresponde à sua busca.",
     "launchSettings": "Configurações de inicialização",
     "cancelButton": "Cancelar",
-    "busyConfirm": null
+    "busyConfirm": "Carregar mesmo assim"
   },
   "modelPicker": {
     "weightFileTitle": "Selecionar arquivo de pesos: {name}",
@@ -1297,33 +1297,33 @@
     "files": "Mostrar em Arquivos"
   },
   "comingSoon": {
-    "music": null,
-    "storyboard": null
+    "music": "A música chegará em breve.",
+    "storyboard": "O storyboard chegará em breve."
   },
   "llamaCuda": {
-    "description": null,
-    "inUse": null,
-    "install": null,
-    "installedNoDevice": null,
-    "notInstalled": null,
-    "reinstall": null,
-    "title": null
+    "description": "Executa modelos de chat GGUF na sua GPU NVIDIA com CUDA {cuda} (llama.cpp {tag}). O download tem cerca de 680 MB, incluindo o runtime do CUDA (0,9 GB em disco).",
+    "inUse": "Em uso: os modelos GGUF rodam na GPU NVIDIA.",
+    "install": "Instalar",
+    "installedNoDevice": "Instalado, mas nenhum dispositivo CUDA foi encontrado. Verifique o driver da NVIDIA (nvidia-smi).",
+    "notInstalled": "Não instalado. Os modelos GGUF usam a versão incluída.",
+    "reinstall": "Reinstalar",
+    "title": "CUDA llama-server (NVIDIA)"
   },
   "terms": {
-    "title": null,
-    "intro": null,
-    "agree": null,
-    "quit": null,
-    "close": null,
-    "read": null,
-    "acceptedOn": null,
-    "notAccepted": null,
+    "title": "Termos de uso",
+    "intro": "Leia isto antes de começar.",
+    "agree": "Concordo",
+    "quit": "Sair",
+    "close": "Fechar",
+    "read": "Ler os termos",
+    "acceptedOn": "Aceito em {date}.",
+    "notAccepted": "Ainda não aceito.",
     "points": {
-      "responsibility": null,
-      "disclosure": null,
-      "impersonation": null,
-      "voices": null,
-      "licences": null
+      "responsibility": "Você é responsável pelo que gera e por como usa.",
+      "disclosure": "Informe que o conteúdo foi gerado por IA sempre que a lei ou uma plataforma exigir (por exemplo, o Artigo 50 da Lei de IA da UE e as regras de rotulagem das plataformas).",
+      "impersonation": "Não use o ChaosEngineAI para se passar por uma pessoa real sem o consentimento dela.",
+      "voices": "Só clone uma voz com o consentimento de quem fala.",
+      "licences": "Cada modelo tem sua própria licença. Confira-a antes de usar o resultado."
     }
   }
 }

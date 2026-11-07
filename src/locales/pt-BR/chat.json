@@ -413,8 +413,8 @@
     "copy": "Copiar"
   },
   "busy": {
-    "slowerTitle": null,
-    "riskyTitle": null,
-    "dismiss": null
+    "slowerTitle": "A máquina está ocupada",
+    "riskyTitle": "Memória insuficiente para ambos",
+    "dismiss": "Fechar"
   }
 }

@@ -95,7 +95,7 @@
       "compressed": "Comprimido",
       "context": "Contexto",
       "status": "Status",
-      "released": null
+      "released": "Lançado"
     },
     "status": {
       "downloading": "Baixando",

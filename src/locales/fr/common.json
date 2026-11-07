@@ -37,12 +37,12 @@
     "voiceModels": "Modèles vocaux",
     "voiceLibrary": "Bibliothèque vocale",
     "chatModels": "Modèles de discussion",
-    "musicModels": null,
-    "musicStudio": null,
-    "musicLibrary": null,
-    "storyProjects": null,
-    "storyBoard": null,
-    "storyMixer": null
+    "musicModels": "Modèles musique",
+    "musicStudio": "Studio musique",
+    "musicLibrary": "Bibliothèque musique",
+    "storyProjects": "Projets",
+    "storyBoard": "Tableau",
+    "storyMixer": "Mixeur"
   },
   "tabCaptions": {
     "dashboard": "Vue d'ensemble du système",
@@ -74,12 +74,12 @@
     "chatModels": "Trouver, télécharger et gérer des modèles de langage",
     "imageModelsPage": "Trouver, télécharger et gérer des modèles d'images",
     "videoModelsPage": "Trouver, télécharger et gérer des modèles vidéo",
-    "musicModels": null,
-    "musicStudio": null,
-    "musicLibrary": null,
-    "storyProjects": null,
-    "storyBoard": null,
-    "storyMixer": null
+    "musicModels": "Trouver, télécharger et gérer les modèles de musique et de sons",
+    "musicStudio": "Créer des morceaux et des effets sonores",
+    "musicLibrary": "Les morceaux et sons que vous avez créés",
+    "storyProjects": "Vos films, un dossier chacun",
+    "storyBoard": "Plans, prises et prompts",
+    "storyMixer": "Image, son et export"
   },
   "tabShortLabels": {
     "chat": "Discussion",
@@ -105,11 +105,11 @@
     "voiceModels": "Mes modèles",
     "voiceLibrary": "Bibliothèque",
     "models": "Modèles",
-    "musicStudio": null,
-    "musicLibrary": null,
-    "storyProjects": null,
-    "storyBoard": null,
-    "storyMixer": null
+    "musicStudio": "Studio",
+    "musicLibrary": "Bibliothèque",
+    "storyProjects": "Projets",
+    "storyBoard": "Tableau",
+    "storyMixer": "Mixeur"
   },
   "tabGroups": {
     "chat": "Discussion",
@@ -119,8 +119,8 @@
     "benchmarks": "Benchmarks",
     "tools": "Outils",
     "voice": "Voix",
-    "music": null,
-    "storyboard": null
+    "music": "Musique",
+    "storyboard": "Storyboard"
   },
   "tabsCount": "{count, plural, one {# onglet} other {# onglets}}",
   "sidebar": {
@@ -129,8 +129,8 @@
     "noModelLoaded": "Aucun modèle chargé",
     "groupTabsAriaLabel": "Onglets {group}",
     "primaryNavAriaLabel": "Principale",
-    "sectionMake": null,
-    "sectionRun": null
+    "sectionMake": "Créer",
+    "sectionRun": "Exécuter"
   },
   "slashCommands": {
     "menuAriaLabel": "Commandes barre oblique"
@@ -685,8 +685,8 @@
     "thumbnailAlt": "Aperçu de débruitage en direct",
     "thumbnailCaption": "Aperçu en direct · décodage TAESD",
     "stepCounter": "étape {current} / {total}",
-    "waitingForAgent": null,
-    "waitingInQueue": null,
+    "waitingForAgent": "En attente de la fin d'une tâche d'agent",
+    "waitingInQueue": "En attente de la fin d'une autre tâche (position {position})",
     "inProgress": "en cours…",
     "finalizing": "finalisation…",
     "phaseTiming": "{elapsed} s / ~{estimated} s"
@@ -852,8 +852,8 @@
       "sidebarTabsHelp": "garde la barre latérale compacte : les groupes se comportent comme des boutons uniques qui basculent sur leur dernier onglet utilisé, avec une barre de sous-onglets au-dessus du contenu.",
       "uiScaleAria": "Échelle de l'interface",
       "uiScaleHelp": "L'échelle de l'interface change la densité du chrome de l'app immédiatement. Les aperçus média conservent leur propre dimensionnement par ratio.",
-      "keepGroupsOpen": null,
-      "keepGroupsOpenHelp": null
+      "keepGroupsOpen": "Garder tous les groupes de la barre latérale ouverts",
+      "keepGroupsOpenHelp": "Désactivé par défaut : seul le groupe dans lequel vous travaillez reste ouvert. Activez pour garder tous les groupes déployés."
     },
     "dataDirectory": {
       "title": "Répertoire de données",
@@ -909,23 +909,23 @@
       "helpText": "Stocké localement. Utilisé par la conversion MLX lors de la récupération de modèles à accès restreint depuis Hugging Face."
     },
     "agentAccess": {
-      "title": null,
-      "subtitle": null,
-      "switch": null,
-      "hint": null,
-      "claudeCode": null,
-      "stdio": null,
-      "otherClients": null,
-      "rotate": null,
-      "rotateHint": null,
-      "permissions": null,
-      "permissionsHint": null,
-      "scopeClone": null,
-      "remoteClone": null,
-      "readTokenMake": null,
-      "readTokenRemove": null,
-      "readTokenHint": null,
-      "readTokenLabel": null
+      "title": "Accès des agents",
+      "subtitle": "Laissez un agent IA (Claude Code, Cursor et autres) créer ici des images, des vidéos, de la voix et des transcriptions.",
+      "switch": "Autoriser les agents à utiliser ChaosEngineAI",
+      "hint": "Désactivé par défaut. Les agents exécutent une seule tâche à la fois, uniquement sur cet ordinateur, et ont besoin du jeton ci-dessous. Ils ne peuvent utiliser que les modèles que vous avez déjà téléchargés.",
+      "claudeCode": "Claude Code",
+      "stdio": "Clients qui ne savent que lancer des programmes locaux (stdio)",
+      "otherClients": "Autres clients MCP (JSON)",
+      "rotate": "Générer un nouveau jeton",
+      "rotateHint": "L'ancien jeton cesse de fonctionner immédiatement. Les agents ont besoin de la nouvelle ligne.",
+      "permissions": "Autorisations",
+      "permissionsHint": "Le jeton principal peut lire, créer du contenu et déplacer des fichiers. Rien d'autre, sauf si vous le cochez.",
+      "scopeClone": "Autoriser le clonage de voix",
+      "remoteClone": "Autoriser aussi le clonage depuis d'autres ordinateurs",
+      "readTokenMake": "Générer un jeton en lecture seule",
+      "readTokenRemove": "Retirer le jeton en lecture seule",
+      "readTokenHint": "Pour un tableau de bord ou un observateur : il peut consulter l'état et les tâches, mais ne peut rien créer ni modifier.",
+      "readTokenLabel": "Jeton en lecture seule (Claude Code)"
     },
     "integrations": {
       "title": "Intégrations",
@@ -973,7 +973,7 @@
     "emptyState": "Aucun modèle ne correspond à votre recherche.",
     "launchSettings": "Paramètres de lancement",
     "cancelButton": "Annuler",
-    "busyConfirm": null
+    "busyConfirm": "Charger quand même"
   },
   "modelPicker": {
     "weightFileTitle": "Sélectionner le fichier de poids : {name}",
@@ -1297,33 +1297,33 @@
     "files": "Afficher dans Fichiers"
   },
   "comingSoon": {
-    "music": null,
-    "storyboard": null
+    "music": "La musique arrive bientôt.",
+    "storyboard": "Le storyboard arrive bientôt."
   },
   "llamaCuda": {
-    "description": null,
-    "inUse": null,
-    "install": null,
-    "installedNoDevice": null,
-    "notInstalled": null,
-    "reinstall": null,
-    "title": null
+    "description": "Exécute les modèles de chat GGUF sur votre GPU NVIDIA avec CUDA {cuda} (llama.cpp {tag}). Téléchargement d'environ 680 Mo, runtime CUDA inclus (0,9 Go sur le disque).",
+    "inUse": "Utilisé : les modèles GGUF s'exécutent sur le GPU NVIDIA.",
+    "install": "Installer",
+    "installedNoDevice": "Installé, mais aucun appareil CUDA n'a été trouvé. Vérifiez le pilote NVIDIA (nvidia-smi).",
+    "notInstalled": "Non installé. Les modèles GGUF utilisent la version intégrée.",
+    "reinstall": "Réinstaller",
+    "title": "CUDA llama-server (NVIDIA)"
   },
   "terms": {
-    "title": null,
-    "intro": null,
-    "agree": null,
-    "quit": null,
-    "close": null,
-    "read": null,
-    "acceptedOn": null,
-    "notAccepted": null,
+    "title": "Conditions d'utilisation",
+    "intro": "Veuillez lire ceci avant de commencer.",
+    "agree": "J'accepte",
+    "quit": "Quitter",
+    "close": "Fermer",
+    "read": "Lire les conditions",
+    "acceptedOn": "Accepté le {date}.",
+    "notAccepted": "Pas encore accepté.",
     "points": {
-      "responsibility": null,
-      "disclosure": null,
-      "impersonation": null,
-      "voices": null,
-      "licences": null
+      "responsibility": "Vous êtes responsable de ce que vous générez et de la façon dont vous l'utilisez.",
+      "disclosure": "Indiquez que le contenu est généré par IA partout où la loi ou une plateforme l'exige (par exemple l'article 50 du règlement européen sur l'IA et les règles d'étiquetage des plateformes).",
+      "impersonation": "N'utilisez pas ChaosEngineAI pour usurper l'identité d'une personne réelle sans son consentement.",
+      "voices": "Ne clonez une voix qu'avec le consentement de la personne qui parle.",
+      "licences": "Chaque modèle a sa propre licence. Vérifiez-la avant d'utiliser le résultat."
     }
   }
 }

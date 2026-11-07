@@ -147,7 +147,22 @@ class Ltx2WorkerTests(unittest.TestCase):
     def test_unload_stops_an_idle_worker(self) -> None:
         ltx2.Ltx2MlxVideoEngine().generate(_config())
         self.assertTrue(self.worker.running())
+        self.assertEqual(ltx2.warm_loaded_repo(), "dgrauet/ltx-2.5-mlx-q4")
         ltx2.Ltx2MlxVideoEngine().unload()
+        self.assertFalse(self.worker.running())
+        self.assertIsNone(ltx2.warm_loaded_repo())
+
+    def test_the_manager_reports_and_frees_the_warm_pipeline(self) -> None:
+        from backend_service.video_runtime import VideoRuntimeManager
+
+        manager = VideoRuntimeManager()
+        manager._engine = mock.Mock()
+        manager._engine.probe.return_value.to_dict.return_value = {"loadedModelRepo": None}
+        manager._engine.unload.return_value.to_dict.return_value = {}
+        manager._ltx2_mlx = ltx2.Ltx2MlxVideoEngine()
+        manager._ltx2_mlx.generate(_config())
+        self.assertEqual(manager.capabilities()["loadedModelRepo"], "dgrauet/ltx-2.5-mlx-q4")
+        manager.unload()  # what the image route and music XL call before their own work
         self.assertFalse(self.worker.running())
 
     def test_the_worker_rejects_anything_but_the_distilled_pipeline(self) -> None:

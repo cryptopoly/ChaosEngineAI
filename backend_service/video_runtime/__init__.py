@@ -976,7 +976,12 @@ class VideoRuntimeManager:
         return _is_sdcpp_video_repo(repo)
 
     def capabilities(self) -> dict[str, Any]:
-        return self._engine.probe().to_dict()
+        status = self._engine.probe().to_dict()
+        if not status.get("loadedModelRepo") and self._ltx2_mlx is not None:
+            from backend_service.ltx2_mlx_runtime import warm_loaded_repo
+
+            status["loadedModelRepo"] = warm_loaded_repo()  # a warm ltx-2-mlx pipeline counts as loaded
+        return status
 
     def longlive_capabilities(self) -> dict[str, Any]:
         """Probe the LongLive engine separately so the Studio can surface install state."""

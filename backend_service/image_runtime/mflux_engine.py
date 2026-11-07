@@ -204,6 +204,19 @@ def release_warm_worker(reason: str = "unloaded") -> bool:
     return _WORKER.stop_if_idle(reason) if _WORKER is not None else False
 
 
+_WARM_REPO: str | None = None
+
+
+def warm_loaded_repo() -> str | None:
+    """The repo whose model the warm worker holds, so memory gates count it as resident."""
+    return _WARM_REPO if _WORKER is not None and _WORKER.running() else None
+
+
+def _remember_warm_repo(repo: str) -> None:
+    global _WARM_REPO
+    _WARM_REPO = repo
+
+
 class WarmFallback(RuntimeError):
     """The warm worker could not make this image; the CLI path makes it instead."""
 
@@ -273,6 +286,7 @@ class MfluxImageEngine:
                 if use_worker:
                     try:
                         peak_gb, timings = self._run_warm(args, output_path)
+                        _remember_warm_repo(config.repo)
                     except WarmFallback as exc:
                         use_worker = False  # the rest of the batch goes the CLI way too
                         fallback = str(exc)

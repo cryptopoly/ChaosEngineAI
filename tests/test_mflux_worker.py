@@ -236,6 +236,21 @@ class EngineTests(_WorkerCase):
         self.assertIn("peak 1.5 GB", images[0].runtimeNote)
         self.assertFalse(IMAGE_PROGRESS.snapshot()["active"])
 
+    def test_a_warm_model_counts_as_loaded_for_the_memory_gate(self) -> None:
+        from backend_service.image_runtime import ImageRuntimeManager
+
+        MfluxImageEngine().generate(_config())
+        self.assertEqual(mflux_engine.warm_loaded_repo(), "speridlabs/iris-3b")
+        manager = ImageRuntimeManager()
+        manager._diffusers = mock.Mock(loaded_repo=None)
+        manager._diffusers.probe.return_value.to_dict.return_value = {"loadedModelRepo": None}
+        self.assertEqual(manager.loaded_repo, "speridlabs/iris-3b")
+        self.assertEqual(manager.capabilities()["loadedModelRepo"], "speridlabs/iris-3b")
+        manager._diffusers.unload.return_value.to_dict.return_value = {}
+        manager.unload()  # the Unload button frees the warm model
+        self.assertFalse(self.worker.running())
+        self.assertIsNone(mflux_engine.warm_loaded_repo())
+
     def test_a_crashed_worker_falls_back_to_the_cli(self) -> None:
         def cli(args, out):
             out.write_bytes(b"cli")

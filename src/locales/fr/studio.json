@@ -372,8 +372,7 @@
       "noPrompt": "Écrivez une invite avant de générer.",
       "backendOffline": "Le backend est hors ligne.",
       "busy": "Occupé…",
-      "dangerLevel": null,
-      "needsStartImage": null
+      "dangerLevel": null
     },
     "generateTitle": "Démarrer la génération de ce clip.",
     "memory": {

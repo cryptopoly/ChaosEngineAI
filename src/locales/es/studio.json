@@ -372,8 +372,7 @@
       "noPrompt": "Escribe un prompt antes de generar.",
       "backendOffline": "El backend está desconectado.",
       "busy": "Ocupado…",
-      "dangerLevel": null,
-      "needsStartImage": null
+      "dangerLevel": null
     },
     "generateTitle": "Empezar a generar este clip.",
     "memory": {

@@ -372,8 +372,7 @@
       "noPrompt": "在生成之前编写一个提示词。",
       "backendOffline": "后端离线。",
       "busy": "繁忙…",
-      "dangerLevel": null,
-      "needsStartImage": null
+      "dangerLevel": null
     },
     "generateTitle": "开始生成此视频片段。",
     "memory": {

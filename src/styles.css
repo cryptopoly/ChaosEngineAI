@@ -12397,6 +12397,7 @@ button.licence-chip:focus-visible {
   display: flex;
   flex-direction: column;
   gap: var(--panel-gap);
+  min-width: 0;
 }
 .mixer-tab__header {
   display: flex;
@@ -12421,6 +12422,7 @@ button.licence-chip:focus-visible {
   display: flex;
   align-items: center;
   justify-content: center;
+  align-self: flex-start;
   height: 300px;
   max-width: 100%;
   aspect-ratio: var(--stage-w) / var(--stage-h);
@@ -12495,6 +12497,8 @@ button.licence-chip:focus-visible {
 /* Timeline */
 .timeline {
   --timeline-label-w: 120px;
+  min-width: 0;
+  max-width: 100%;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background: var(--panel-alt);
@@ -12606,6 +12610,7 @@ button.licence-chip:focus-visible {
   outline-offset: 1px;
 }
 .timeline__clip--missing {
+  min-width: 112px;
   border-style: dashed;
   border-color: var(--danger);
   background: repeating-linear-gradient(
@@ -12962,6 +12967,10 @@ button.licence-chip:focus-visible {
     --timeline-label-w: 72px;
   }
   .timeline__lane-label {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 2px;
     padding: 0 4px;
     font-size: 0.74rem;
   }
@@ -12976,7 +12985,7 @@ button.licence-chip:focus-visible {
     right: 0;
     bottom: 0;
     z-index: 90;
-    max-height: 62vh;
+    max-height: 50vh;
     overflow-y: auto;
     border-top: 1px solid var(--border);
     background: var(--panel);

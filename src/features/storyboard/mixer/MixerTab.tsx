@@ -576,6 +576,7 @@ function MixerScreen({ story, project, timeline, dataDirectory, onOpenProjects, 
                       onPause={() => setPlaying(false)}
                       onEnded={() => setPlaying(false)}
                       onSeeked={(event) => setPlayheadS(event.currentTarget.currentTime)}
+                      onTimeUpdate={(event) => setPlayheadS(event.currentTarget.currentTime)}
                     />
                   ) : (
                     <p className="mixer__stage-empty muted-text">

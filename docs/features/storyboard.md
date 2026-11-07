@@ -55,7 +55,7 @@ cloned-voice clip is always tagged. `export.aiLabel.endCard` adds a visible end 
 ## API and agent tools
 
 - HTTP: `/api/storyboard/projects` (list, create, get, delete), `/projects/{id}/ops` (`{revision, op, args}`),
-  `/undo`, `/redo`, `/batches`, `/render`, `/bundle`, `/files?path=media/...|exports/...`, and
+  `/undo`, `/redo`, `/batches`, `/render`, `/bundle`, `/files?path=media/...|exports/...`, `/peaks?path=...&buckets=32..4000` (waveform peaks for the Mixer, cached in `cache/peaks/`), and
   `/api/storyboard/import` (a local path or the bundle bytes).
 - Agent tools: `storyboard_project`, `storyboard_shot`, `storyboard_audio`, `storyboard_generate`,
   `storyboard_render` (see [Agent bridge](agent-bridge.md)).

@@ -109,8 +109,8 @@ export interface TimelineClipProps {
 
 function ClipWave({ projectId, model, pxPerSecond }: { projectId: string; model: ClipModel; pxPerSecond: number }) {
   const { t } = useTranslation("studio");
-  const state = usePeaks(projectId, model.sourcePath, model.sourceKey, bucketsFor(model.sourceLength));
-  if (!model.sourcePath) return null;
+  const state = usePeaks(projectId, model.missing ? null : model.sourcePath, model.sourceKey, bucketsFor(model.sourceLength));
+  if (!model.sourcePath || model.missing) return null;
   if (state.loading) return <span className="timeline__reading">{t("mixer.clip.reading", { defaultValue: "Reading…" })}</span>;
   const sourceLength = state.peaks?.durationS || model.sourceLength || 0;
   const shown = model.type === "shot" && model.span ? model.span.source_out - model.span.source_in : model.duration;

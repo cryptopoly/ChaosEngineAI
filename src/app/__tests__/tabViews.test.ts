@@ -6,11 +6,11 @@ import { DashboardView } from "../SystemTabs";
 import { HOME_STUDIO_TABS } from "../../constants/features";
 
 describe("tabViewFor and the home studio flag", () => {
-  it("sends Music and Storyboard ids to the dashboard while the flag is off", () => {
+  it("sends Music and Storyboard ids to the dashboard when passed false (the default is on)", () => {
     for (const tab of HOME_STUDIO_TABS) {
       expect(tabViewFor(tab, false)).toBe(DashboardView);
     }
-    expect(tabViewFor("music-studio")).toBe(DashboardView);
+    expect(tabViewFor("music-studio")).not.toBe(DashboardView);
   });
 
   it("renders the placeholder views when the flag is on", () => {

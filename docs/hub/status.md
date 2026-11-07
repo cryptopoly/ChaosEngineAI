@@ -9,6 +9,8 @@ summary: Read this first in every session.
 
 Newest dated update first. Each update has the same sections: Done, Open for Claude, Open for Dan.
 
+## Update 2026-11-07 (v0.10.0 prep): Music and Storyboard are always on; version bumped to 0.10.0; DGX Spark code ships untested (D-53, D-54). Nothing merged to release, staging or main yet.
+
 ## Update 2026-11-09
 
 - Browser E2E (Playwright, `npm run e2e`, about 1 min, 32 pass plus one pinned known failure): libraries and project dropdown, Music|Sounds and licence screen, Storyboard, busy advice, voice clone, settings and terms, 375 px. Findings in `docs/research/e2e-findings.md` (F-1 Music Models overflows at 375 px, F-2 project card copy). `HOME_STUDIO_ENABLED` now reads `VITE_CHAOSENGINE_HOME_STUDIO` so tests can reach the studio; normal builds stay off.

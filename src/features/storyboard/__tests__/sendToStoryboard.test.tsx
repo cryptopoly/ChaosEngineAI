@@ -267,8 +267,7 @@ describe("SendToStoryboardMenu", () => {
     expect(sendMenuVisible(true, { kind: "voice", resolvePath: async () => "/x.wav" })).toBe(true);
   });
 
-  it("renders nothing while the Home Studio areas are off (the shipped default)", () => {
-    expect(renderToStaticMarkup(<SendToStoryboardMenu item={image} projects={projects} onSend={noop} />)).toBe("");
+  it("renders nothing when the Home Studio areas are switched off", () => {
     expect(renderToStaticMarkup(<SendToStoryboardMenu item={image} projects={projects} enabled={false} onSend={noop} />)).toBe("");
   });
 

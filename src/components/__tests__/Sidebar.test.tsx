@@ -29,8 +29,8 @@ function openGroupIds(html: string): string[] {
 }
 
 describe("home studio visibility", () => {
-  it("ships with the flag off", () => {
-    expect(HOME_STUDIO_ENABLED).toBe(false);
+  it("ships with the flag on", () => {
+    expect(HOME_STUDIO_ENABLED).toBe(true);
   });
 
   it("hides Music and Storyboard when the flag is false", () => {

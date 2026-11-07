@@ -57,12 +57,12 @@ export function useSendToStoryboard(
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const alive = useRef(true);
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    alive.current = true; // set again on a remount (React strict mode runs the cleanup first)
+    return () => {
       alive.current = false;
-    },
-    [],
-  );
+    };
+  }, []);
 
   const untitled = useCallback((n: number) => t("board.shot.untitled", { defaultValue: "Shot {n}", n }), [t]);
 

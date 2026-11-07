@@ -63,6 +63,7 @@ export function SendToStoryboardMenu({
   const [projectId, setProjectId] = useState<string | null>(initialProjectId);
   // The notice belongs to the menu whose send failed, not to every card on the page.
   const [failed, setFailed] = useState(false);
+  const [mine, setMine] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
   const rows = useRef<(HTMLButtonElement | null)[]>([]);
@@ -101,7 +102,10 @@ export function SendToStoryboardMenu({
 
   const run = async (id: string | null, target: SendTarget) => {
     setFailed(false);
-    setFailed((await onSend(id, target)) === false);
+    setMine(true);
+    const result = await onSend(id, target);
+    setMine(false);
+    setFailed(result === false);
   };
   const pick = (id: string | null, target: SendTarget) => {
     close(true);
@@ -190,7 +194,7 @@ export function SendToStoryboardMenu({
         onClick={onButtonClick}
       >
         <SendIcon />
-        {busy ? t("sendToStoryboard.sending", { defaultValue: "Sending…" }) : label}
+        {busy && mine ? t("sendToStoryboard.sending", { defaultValue: "Sending…" }) : label}
       </button>
       {open ? (
         <div className="send-to-menu__list" role="menu" aria-label={label} onKeyDown={onListKey}>

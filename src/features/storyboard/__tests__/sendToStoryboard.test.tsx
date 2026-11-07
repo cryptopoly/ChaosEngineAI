@@ -284,9 +284,9 @@ describe("SendToStoryboardMenu", () => {
     expect(html).not.toContain("Could not add this");
   });
 
-  it("keeps the button reachable and disabled while sending", () => {
+  it("disables the button while any send is running, and only the sending menu says so", () => {
     const html = renderToStaticMarkup(<SendToStoryboardMenu item={image} projects={projects} enabled busy onSend={noop} />);
     expect(html).toContain("disabled");
-    expect(html).toContain("Sending…");
+    expect(html).toContain("Use in storyboard");
   });
 });

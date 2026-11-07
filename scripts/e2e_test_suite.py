@@ -2377,6 +2377,9 @@ def phase_9(cap: Capability) -> PhaseResult:
                                           "referenceImagePaths": ["/no/such.png"]}, "not found"),
                 ("/api/video/generate", {"modelId": "Lightricks/LTX-Video", "prompt": "x",
                                          "startImagePath": str(png)}, "LTX-2"),
+                # D-48: Wan 2.2 I2V makes clips from a start image only.
+                ("/api/video/generate", {"modelId": "Wan-AI/Wan2.2-I2V-A14B-Diffusers-distill-gguf-q4km",
+                                         "prompt": "x"}, "start image"),
             ]
             for path, payload, needle in cases:
                 code, body = _json_call("POST", path, payload, timeout=30.0)

@@ -615,6 +615,7 @@ def _generate_video_artifact(
             seed=request.seed,
             ggufRepo=(variant.get("ggufRepo") or None),
             ggufFile=(variant.get("ggufFile") or None),
+            ggufFile2=(variant.get("ggufFile2") or None),
             interpolationFactor=request.interpolationFactor,
             scheduler=request.scheduler,
             useNf4=request.useNf4,

@@ -234,11 +234,38 @@ def build_pipeline_kwargs(
         kwargs["guidance_rescale"] = 0.7
         if not kwargs.get("negative_prompt"):
             kwargs["negative_prompt"] = _LTX_DEFAULT_NEGATIVE_PROMPT
+    # Wan 2.2 I2V: the start image is required, the end image optional.
+    if pipeline_cls == "WanImageToVideoPipeline":
+        if not config.startImagePath:
+            raise RuntimeError(f"{config.modelName} needs a start image.")
+        kwargs["image"] = load_frame_image(config.startImagePath, config.width, config.height)
+        if config.endImagePath:
+            kwargs["last_image"] = load_frame_image(config.endImagePath, config.width, config.height)
     # Private kwargs consumed by ``invoke_pipeline`` — pop'd before
     # passing to the diffusers pipeline.
     kwargs["__cfg_decay"] = bool(config.cfgDecay)
     kwargs["__preview_vae"] = bool(config.previewVae)
     return kwargs
+
+
+def load_frame_image(path: str, width: int, height: int) -> Any:
+    """Open a start / end frame and fit it to the clip: centre crop to the
+    clip's aspect, then resize. The pipeline would otherwise stretch it."""
+    from PIL import Image
+
+    with Image.open(path) as source:
+        image = source.convert("RGB")
+    src_w, src_h = image.size
+    target_ratio = width / height
+    if src_w / src_h > target_ratio:
+        crop_w = round(src_h * target_ratio)
+        left = (src_w - crop_w) // 2
+        image = image.crop((left, 0, left + crop_w, src_h))
+    else:
+        crop_h = round(src_w / target_ratio)
+        top = (src_h - crop_h) // 2
+        image = image.crop((0, top, src_w, top + crop_h))
+    return image.resize((width, height), Image.LANCZOS)
 
 
 def make_step_callback(

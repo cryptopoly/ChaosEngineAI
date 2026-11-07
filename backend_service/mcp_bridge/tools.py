@@ -334,9 +334,9 @@ def generate_video(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
     image_fields: dict[str, Any] = {}
     if args.get("start_image") or args.get("end_image"):
         from backend_service.helpers.media_input import InputImageError, image_size, resolve_input_image
-        from backend_service.ltx2_mlx_runtime import _is_ltx2_mlx_repo
+        from backend_service.helpers.video_image_input import accepts_image_input
 
-        if not _is_ltx2_mlx_repo(str(variant.get("repo") or "")):
+        if not accepts_image_input(variant):
             raise ToolError(f"{variant.get('name')} cannot start from an image. Use a model with acceptsImageInput in list_models.")
         try:
             start = resolve_input_image(args["start_image"]) if args.get("start_image") else None

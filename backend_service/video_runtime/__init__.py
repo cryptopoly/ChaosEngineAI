@@ -292,6 +292,7 @@ class DiffusersVideoEngine:
                 config.repo,
                 gguf_repo=config.ggufRepo,
                 gguf_file=config.ggufFile,
+                gguf_file2=config.ggufFile2,
                 use_nf4=config.useNf4,
                 lora_repo=config.loraRepo,
                 lora_file=config.loraFile,
@@ -583,6 +584,7 @@ class DiffusersVideoEngine:
         repo: str,
         gguf_repo: str | None = None,
         gguf_file: str | None = None,
+        gguf_file2: str | None = None,
         use_nf4: bool = False,
         lora_repo: str | None = None,
         lora_file: str | None = None,
@@ -659,6 +661,25 @@ class DiffusersVideoEngine:
                         gguf_note
                         or f"Could not load requested GGUF transformer {gguf_file}."
                     )
+                if gguf_file2:
+                    # Wan 2.2 A14B: the low-noise expert is a second GGUF.
+                    VIDEO_PROGRESS.set_phase(
+                        PHASE_LOADING,
+                        message=f"Loading GGUF transformer {gguf_file2}",
+                    )
+                    second_transformer, second_note = self._try_load_gguf_transformer(
+                        repo=repo,
+                        gguf_repo=gguf_repo or repo,
+                        gguf_file=gguf_file2,
+                        torch=torch,
+                        subfolder="transformer_2",
+                    )
+                    if second_transformer is None:
+                        raise RuntimeError(
+                            second_note
+                            or f"Could not load requested GGUF transformer {gguf_file2}."
+                        )
+                    pipeline_kwargs["transformer_2"] = second_transformer
             elif use_nf4:
                 VIDEO_PROGRESS.set_phase(
                     PHASE_LOADING,
@@ -799,7 +820,19 @@ class DiffusersVideoEngine:
                     hasattr(pipeline, "transformer_2")
                     and getattr(pipeline, "transformer_2", None) is not None
                 )
-                if is_moe and hasattr(pipeline, "enable_sequential_cpu_offload"):
+                if is_moe and gguf_file2:
+                    # Quantized experts (two Q4 GGUFs, ~19 GB together) fit
+                    # whole. On a Mac, CPU offload buys nothing (one pool of
+                    # unified memory) and costs a copy per step; CUDA cards
+                    # keep one expert on the GPU at a time.
+                    if device == "mps":
+                        pipeline = pipeline.to(device)
+                        _release_mps_cache_before_vae(pipeline, torch)
+                    elif hasattr(pipeline, "enable_model_cpu_offload"):
+                        pipeline.enable_model_cpu_offload()
+                    else:
+                        pipeline = pipeline.to(device)
+                elif is_moe and hasattr(pipeline, "enable_sequential_cpu_offload"):
                     _LOG.info(
                         "video.placement: MoE pipeline detected (transformer + transformer_2) — "
                         "engaging enable_sequential_cpu_offload() proactively to keep peak under "
@@ -831,8 +864,9 @@ class DiffusersVideoEngine:
         gguf_repo: str,
         gguf_file: str,
         torch: Any,
+        subfolder: str = "transformer",
     ) -> tuple[Any, str | None]:
-        return try_load_gguf_transformer(repo, gguf_repo, gguf_file, torch)
+        return try_load_gguf_transformer(repo, gguf_repo, gguf_file, torch, subfolder=subfolder)
 
     def _try_load_bnb_nf4_transformer(
         self,
@@ -893,6 +927,30 @@ class DiffusersVideoEngine:
 
     def _preferred_torch_dtype(self, torch: Any, device: str) -> Any:
         return preferred_torch_dtype(torch, device)
+
+
+def _release_mps_cache_before_vae(pipeline: Any, torch: Any) -> None:
+    """Hand the MPS allocator's cached blocks back before each VAE encode / decode.
+
+    Wan 2.2 A14B with both GGUF experts resident sits at about 31 GB; the Wan VAE
+    then adds a short spike of up to about 20 GB on MPS. Without this the cache
+    kept from the denoise loop stacks on top of that spike (measured: 54 GB peak
+    at 480 x 272 x 33 frames on a 64 GB M4 Max with it).
+    """
+    vae = getattr(pipeline, "vae", None)
+    empty_cache = getattr(getattr(torch, "mps", None), "empty_cache", None)
+    if vae is None or empty_cache is None:
+        return
+    for name in ("encode", "decode"):
+        original = getattr(vae, name, None)
+        if original is None:
+            continue
+
+        def wrapped(*args: Any, _original: Any = original, **kwargs: Any) -> Any:
+            empty_cache()
+            return _original(*args, **kwargs)
+
+        setattr(vae, name, wrapped)
 
 
 def _is_longlive_repo(repo: str | None) -> bool:

@@ -28,7 +28,7 @@ export function CloneStatement() {
     <p className="voice-clone__statement">
       {t("voice.clone.statement", {
         defaultValue:
-          "Only copy your own voice, or the voice of someone who has given you permission and reads the consent sentence themselves. Not public figures, children or people who have died. Every clip made with a cloned voice is labelled as AI-made inside the file, and that label cannot be turned off.",
+          "Only copy your own voice, or the voice of someone who has given you permission and reads the consent sentence themselves. Not public figures, children or people who have died. Every clip made with a cloned voice is labelled as AI-made inside the file and carries an inaudible watermark; neither can be turned off.",
       })}
     </p>
   );

@@ -10,7 +10,7 @@ Updated: 2026-11-07 10:10. Owner: agent. Branch: `feat/voice-cloning` (off `feat
 
 Voice cloning with Qwen3-TTS Base through mlx-audio in the voice worker, a spoken consent step checked by our STT,
 the consent record stored and deleted with the voice, a forced AI tag on every cloned output, a local audit log, and
-cloning off for agents and other machines by default. No watermark (D-47 pending).
+cloning off for agents and other machines by default, and an AudioSeal watermark on every cloned output (D-47).
 
 ## Done
 
@@ -31,13 +31,25 @@ cloning off for agents and other machines by default. No watermark (D-47 pending
 - Real run: Kokoro read the consent sentence, Parakeet heard the code, the wrong code was refused, 0.6B spoke a
   sentence (3.4 s audio in about 4 s), WAV and MP3 carried the tag, STT read the cloned clip back word for word.
 
+- D-47 watermark (owner yes, relayed by the coordinator): AudioSeal 0.2.1 (Meta; code MIT, weights MIT per the
+  README "full MIT license (including the license for the model weights)" and Hub card `license: mit`, not gated),
+  weights `facebook/audioseal` pinned at 3c19eba (generator_base 59 MB, detector_base 35 MB). Chosen over PerTh
+  1.0.1 (MIT wheel with bundled weights, but pulls pydub, pyrubberband, matplotlib, torchaudio and marks presence
+  only). `voice_worker_watermark.py` embeds a fixed 16-bit message 0xCE5A at 16 kHz and adds the mark to the
+  original-rate audio; `detect_watermark` and `GET /api/voice/clone/watermark/{id}`. Installed on demand with the
+  cloning model download; cloned speech is refused without it. Tag records `watermark: audioseal-0.2.1:CE5A`.
+
 ## Not done
+
+- Watermark real run: NOT run. Installing `audioseal`, `omegaconf`, `einops` into the voice venv was denied by the
+  permission classifier, and neither venv has omegaconf. `tests/test_voice_watermark.py::RealRoundTripTests`
+  (embed, MP3 and AAC re-encode, detect, SNR > 20 dB) skips until the component is installed; then run it and
+  e2e phase 14. Speed on Apple silicon (MPS / CPU) not measured.
 
 - CUDA / Windows / Linux cloning (`qwen-tts` / transformers): follow-up.
 - Optional speaker match between consent recording and a separately uploaded sample (biometric; needs a decision).
 - Mic capture records at 16 kHz; Qwen3-TTS works at 24 kHz. A higher-rate capture for samples may improve likeness.
 - The disclaimer line is English only.
-- Watermark: waits for D-47; the hook is `voice_clone_safety.apply_watermark`.
 - Nobody has listened to the cloned output.
 
 ## How to resume

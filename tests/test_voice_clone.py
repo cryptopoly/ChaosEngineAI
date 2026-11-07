@@ -111,13 +111,24 @@ class SafetyTests(_DataDir):
         self.assertIsNone(voice_clone_safety.read_wav_tag(raw))
         self.assertIsNone(voice_clone_safety.read_wav_tag(b"not a wav"))
 
-    def test_apply_watermark_is_a_documented_no_op(self) -> None:
+    def test_apply_watermark_refuses_without_the_component_and_calls_the_worker(self) -> None:
         path = self.data / "a.wav"
         path.write_bytes(make_wav())
-        before = path.read_bytes()
-        self.assertFalse(voice_clone_safety.apply_watermark(path))
-        self.assertEqual(path.read_bytes(), before)
-        self.assertIn("D-47", voice_clone_safety.apply_watermark.__doc__)
+        with mock.patch.object(voice_env, "watermark_model_paths", return_value=None):
+            with self.assertRaisesRegex(RuntimeError, "watermark"):
+                voice_clone_safety.apply_watermark(path)
+        worker = mock.Mock()
+        worker.request.return_value = {"probability": 0.99, "message": "CE5A", "matches": True, "seconds": 0.1}
+        models = {"generator": Path("/g.pth"), "detector": Path("/d.pth")}
+        with mock.patch.object(voice_env, "watermark_model_paths", return_value=models), \
+             mock.patch.object(voice_env, "watermark_installed", return_value=True), \
+             mock.patch("backend_service.voice_client.get_worker", return_value=worker):
+            self.assertTrue(voice_clone_safety.apply_watermark(path))
+            self.assertEqual(worker.request.call_args.args[0], "watermark")
+            self.assertEqual(worker.request.call_args.kwargs["generator"], "/g.pth")
+            found = voice_clone_safety.detect_watermark(path)
+        self.assertEqual(found, {"probability": 0.99, "message": "CE5A", "matches": True})
+        self.assertEqual(worker.request.call_args.args[0], "detectWatermark")
 
     def test_audit_appends_json_lines_locally(self) -> None:
         voice_clone_safety.audit("speak", voiceId="1_abcdef12", textLength=5)
@@ -205,8 +216,9 @@ class StoreTests(_DataDir):
         with mock.patch.object(voice_clone, "snapshot_dir", return_value=snapshot), \
              mock.patch.object(voice_clone, "available_here", return_value=True), \
              mock.patch.object(voice_env, "is_installed", return_value=True), \
+             mock.patch.object(voice_env, "watermark_installed", return_value=True), \
              mock.patch("backend_service.voice_client.get_worker", return_value=worker), \
-             mock.patch.object(voice_clone_safety, "apply_watermark", wraps=voice_clone_safety.apply_watermark) as mark:
+             mock.patch.object(voice_clone_safety, "apply_watermark", return_value=True) as mark:
             item = voice_clone.speak(voice["id"], "Hello there.", "", disclaimer=True, origin="ui")
         kwargs = worker.request.call_args.kwargs
         self.assertEqual(kwargs["source"], str(snapshot))
@@ -231,6 +243,13 @@ class StoreTests(_DataDir):
              mock.patch.object(voice_clone, "available_here", return_value=True), \
              mock.patch.object(voice_env, "is_installed", return_value=True):
             with self.assertRaisesRegex(RuntimeError, "not downloaded"):
+                voice_clone.speak(voice["id"], "Hi", "", disclaimer=False, origin="ui")
+        # No watermark component, no cloned speech: there is no way to switch it off.
+        with mock.patch.object(voice_clone, "snapshot_dir", return_value=self.data), \
+             mock.patch.object(voice_clone, "available_here", return_value=True), \
+             mock.patch.object(voice_env, "is_installed", return_value=True), \
+             mock.patch.object(voice_env, "watermark_installed", return_value=False):
+            with self.assertRaisesRegex(RuntimeError, "watermark"):
                 voice_clone.speak(voice["id"], "Hi", "", disclaimer=False, origin="ui")
 
 

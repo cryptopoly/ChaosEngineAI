@@ -6,8 +6,9 @@
   to this one helper later.
 * ``tag_wav``: a RIFF ``LIST/INFO`` chunk with ``ICMT=chaosengine:{json}`` (``machine_generated`` and
   ``clonedVoice`` always true) and ``ISFT``. Cloned output always gets it; there is no switch.
-* ``apply_watermark(path)``: a deliberate no-op until the owner decides D-47 (PerTh or AudioSeal).
-  Every cloned output already passes through it, so turning it on is a change to this one function.
+* ``apply_watermark(path)``: Meta's AudioSeal (MIT code and weights) adds an inaudible watermark in the
+  voice worker (D-47); it cannot be switched off and cloned speech is refused without it.
+  ``detect_watermark(path)`` reads it back.
 * ``audit``: one JSON line per event in ``~/.chaosengine/voice/clone-audit.jsonl``. Local only, never
   uploaded; it records ids, hashes and lengths, never the text spoken.
 """
@@ -144,17 +145,39 @@ def read_wav_tag(source: Path | bytes) -> dict[str, Any] | None:
 
 
 # ---------------------------------------------------------------------------
-# Watermark hook (D-47 pending)
+# Hidden watermark (D-47: yes, cloned voices only, always on)
 # ---------------------------------------------------------------------------
 
-def apply_watermark(path: Path) -> bool:
-    """Hook for an imperceptible watermark on cloned-voice audio. A no-op today; returns False.
+WATERMARK_MISSING = (
+    "Cloned voices need the watermark component. Download the cloning model again in Clone a voice "
+    "to install it."
+)
 
-    The owner has not yet chosen whether to add one (D-47: PerTh or AudioSeal, cloned voices only).
-    Every cloned output is written to ``path`` and passed here before it is tagged and saved, so the
-    watermark lands in one place when it is approved.
+
+def apply_watermark(path: Path) -> bool:
+    """Add the inaudible AudioSeal watermark to the WAV at ``path``, in place. Returns True.
+
+    Every cloned output passes through here before it is tagged and saved. There is no switch: when
+    the watermark component is missing this raises, and the cloned speech is not saved.
     """
-    return False
+    from backend_service.voice_client import get_worker  # noqa: PLC0415
+
+    models = voice_env.watermark_model_paths()
+    if models is None or not voice_env.watermark_installed():
+        raise RuntimeError(WATERMARK_MISSING)
+    get_worker().request("watermark", timeout=600.0, path=str(path), generator=str(models["generator"]))
+    return True
+
+
+def detect_watermark(path: Path) -> dict[str, Any]:
+    """``{"probability", "message", "matches"}`` for any audio file (WAV, MP3, AAC ...)."""
+    from backend_service.voice_client import get_worker  # noqa: PLC0415
+
+    models = voice_env.watermark_model_paths()
+    if models is None or not voice_env.watermark_installed():
+        raise RuntimeError(WATERMARK_MISSING)
+    reply = get_worker().request("detectWatermark", timeout=600.0, path=str(path), detector=str(models["detector"]))
+    return {k: reply.get(k) for k in ("probability", "message", "matches")}
 
 
 # ---------------------------------------------------------------------------

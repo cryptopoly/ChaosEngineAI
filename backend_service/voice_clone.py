@@ -3,7 +3,7 @@
 A cloned voice is a Voice Library item of kind ``clone``: the reference recording, its transcript and
 the consent record (who, when, basis, code, hashes, app version) with the consent recording beside it.
 Deleting the voice deletes all of it. Speech made with a cloned voice goes through ``apply_watermark``
-(a no-op until D-47), gets the AI tag in the WAV, is saved to the Library as ``speech`` with
+(AudioSeal, inaudible, always on, D-47), gets the AI tag in the WAV, is saved to the Library as ``speech`` with
 ``clonedVoice: true``, and is written to the local audit log.
 """
 
@@ -73,7 +73,8 @@ def list_models() -> list[dict[str, Any]]:
             "default": row["default"],
             "licence": CLONE_LICENCE,
             "supported": lane in row["lanes"],
-            "installed": snapshot_dir(row) is not None,
+            # Ready means the weights and the watermark component; Download installs both.
+            "installed": snapshot_dir(row) is not None and voice_env.watermark_installed(),
             "download": {"state": job.get("state", "idle"), "error": job.get("error")},
         })
     return rows
@@ -93,6 +94,9 @@ def start_download(key: str) -> dict[str, Any]:
             from huggingface_hub import snapshot_download  # noqa: PLC0415
 
             snapshot_download(row["repo"], revision=row["revision"])
+            # Cloned output is always watermarked, so the component comes with the model.
+            if not voice_env.watermark_installed():
+                voice_env.install_watermark()
             _DOWNLOADS[row["key"]] = {"state": "done", "error": None}
         except Exception as exc:  # noqa: BLE001 - shown on the panel
             _DOWNLOADS[row["key"]] = {"state": "failed", "error": str(exc)}
@@ -242,6 +246,8 @@ def speak(voice_id: str, text: str, model_key: str | None, *, disclaimer: bool, 
     folder = snapshot_dir(row)
     if folder is None:
         raise RuntimeError(f"{row['name']} is not downloaded. Download it in Clone a voice first.")
+    if not voice_env.watermark_installed():
+        raise RuntimeError(safety.WATERMARK_MISSING)
     reference = voice_library.audio_path(voice_id)
     if reference is None:
         raise RuntimeError("This voice's sample is missing. Delete the voice and make it again.")
@@ -267,7 +273,7 @@ def speak(voice_id: str, text: str, model_key: str | None, *, disclaimer: bool, 
             out.read_bytes(),
             {"appVersion": version, "model": row["repo"], "engine": row["engine"],
              "createdAt": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "voiceId": voice_id,
-             "disclaimer": bool(disclaimer)},
+             "disclaimer": bool(disclaimer), "watermark": "audioseal-0.2.1:CE5A"},
             f"ChaosEngineAI {version}",
         )
         out.write_bytes(tagged)

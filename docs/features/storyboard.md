@@ -55,6 +55,39 @@ video or music job runs, so both are slower then. Render intermediates in `cache
 current film does not use are removed when a render starts, once they are more than 7 days old.
 A project cannot be deleted while one of its batches or renders runs (409).
 
+## Captions, resume, OTIO and stems (v2)
+
+- **Captions.** `project.captions[]` (`Caption {id, clipId?, start, end, text}`; with `clipId` the times are
+  seconds in that clip's source, so a caption follows its clip; without, timeline seconds). Ops: `set_captions`
+  (replace one clip's captions), `add_caption`, `edit_caption`, `remove_caption`; all undoable; removing a clip
+  removes its captions. `POST .../captions/generate` runs `voice_runtime.transcribe_file` (the function behind
+  `/api/voice/transcribe`) on each voice clip under the heavy-job slot, outside the project lock, then commits
+  one `set_captions` per clip. `captions.cues()` maps rows to timeline seconds (trim and start applied);
+  `to_srt` strips `{}`, `-->` and blank lines so libass reads plain text. `POST .../captions/export` writes
+  `exports/<slug>-captions.srt`. Schema version 2 (migration 1 to 2 adds `captions: []`).
+- **Burn-in.** `export.captionsBurn` writes `cache/render/captions.srt` and passes `captions_srt` in the plan; the
+  mix stage draws it with the `subtitles` filter (pinned ffmpeg 7.1 macOS build has `subtitles`, `drawtext`,
+  libass, fontconfig). If a build lacks `subtitles` the render drops burn-in, adds a warning and still writes
+  the sidecar. Sidecar `.srt` (`export.captionsSrt`) is written by the render manager once the film exists.
+- **Resumable render.** Per-shot intermediates are cached by content hash (unchanged). A manifest
+  `cache/render/manifest-<preview|export>.json` records state, progress and the intermediate names. A manifest
+  that says `running` with no live job in this process reads as `interrupted`; `describe()` then carries
+  `resumable`, `shotsReady`, `shotsTotal`. Starting a render again is the resume. At the start of every render
+  `assemble.remove_leftovers` deletes run-id scratch files and `.partial` outputs of a killed run. The render
+  thread holds `longrun.keep_awake` (`caffeinate -w <pid>` on macOS, `SetThreadExecutionState` on Windows,
+  `systemd-inhibit` on Linux) and a render of 30 s or more sends `longrun.notify` (`osascript` or
+  `notify-send`, text passed as arguments). The Tauri shell has no notification plugin; if one is added the
+  banner should move there.
+- **OpenTimelineIO.** `otio_export.py` writes the JSON itself (no dependency; OTIO is Apache-2.0). `Timeline.1`,
+  `Stack.1`, `Track.1`, `Clip.1` with `ExternalReference.1`, `Gap.1`, `Transition.1` (`SMPTE_Dissolve`, offsets
+  half the fade, neighbours shortened by half the fade so the track equals the rendered film), `LinearTimeWarp.1`
+  for speed. Gain, fades, duck and loop are in `metadata.chaosengine`.
+- **Stems.** `export.stems` adds `stems_base` to the plan; after the film, `assemble._write_stems` renders the
+  shots' own sound (from the joined film) and each lane kind through `build_mix_graph` with a silent first input,
+  no loudness and no ducking, to `<film>-stem-<lane>.wav`. A stem failure is a warning, not a failed render.
+- Routes: `POST /projects/{id}/captions/generate`, `/captions/export`, `/otio`; `/render` takes `notify`
+  (default true; agent calls default to false) and `GET /render` falls back to the manifest after a restart.
+
 ## AI label (D-34)
 
 The MP4 carries a prompt-free comment tag (app version, "machine generated", model names, a hash of the

@@ -12,6 +12,7 @@ vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn(), isTauri: vi.fn(() => f
 
 import type { UseStoryboardResult } from "../../useStoryboard";
 import { ClipInspector, ShotInspector } from "../ClipInspector";
+import { CaptionsPanel } from "../CaptionsPanel";
 import { AiLabelNotice, ExportPanel, RenderProgress, type ExportPanelProps } from "../ExportPanel";
 import { MixerTab } from "../MixerTab";
 import { Timeline } from "../Timeline";
@@ -46,7 +47,8 @@ function project(extra: Partial<StoryboardProject> = {}): StoryboardProject {
     references: { characters: [], places: [] },
     shots: [shot("s1", "Arrival"), shot("s2", "")],
     audio: [clip()],
-    export: { aiLabel: { embedTag: true }, loudnessLufs: -14 },
+    export: { aiLabel: { embedTag: true }, loudnessLufs: -14, captionsSrt: false, captionsBurn: false, stems: false },
+    captions: [],
     batches: [], undoStack: [], redoStack: [], ...extra,
   };
 }
@@ -223,7 +225,7 @@ describe("AiLabelNotice and ExportPanel", () => {
   function panel(overrides: Partial<ExportPanelProps> = {}) {
     const props: ExportPanelProps = {
       project: project(), filmSeconds: 8, empty: false, rendering: false, exportJob: null, startedAt: 0, result: null, disabled: false,
-      revealLabel: "Download", copied: false, onPreset: noop, onAiLabel: noop, onLoudness: noop, onExport: noop, onCancel: noop, onReveal: noop, onCopyPath: noop,
+      revealLabel: "Download", copied: false, onPreset: noop, onAiLabel: noop, onLoudness: noop, onExport: noop, onCaptionOptions: noop, editor: { busy: false, file: null, warnings: [], error: null }, onEditorExport: noop, onCancel: noop, onReveal: noop, onCopyPath: noop,
       ...overrides,
     };
     return renderToStaticMarkup(<ExportPanel {...props} />);
@@ -238,14 +240,41 @@ describe("AiLabelNotice and ExportPanel", () => {
     expect(panel({ project: project({ defaults: { ...project().defaults, exportPreset: "9:16" } }) })).toContain("720 × 1280 px.");
   });
 
-  it("shows the loudness target, captions disabled with a note, and an unknown run estimate", () => {
+  it("shows the loudness target, the caption and stem switches, and an unknown run estimate", () => {
     const html = panel();
     expect(html).toContain('value="-14"');
     expect(html).toContain("LUFS");
-    expect(html).toMatch(/<fieldset class="export-panel__captions" disabled="">/);
-    expect(html).toContain("Captions are coming");
+    expect(html).toMatch(/<fieldset class="export-panel__captions">/);
+    expect(html).toContain("SRT file");
+    expect(html).toContain("Burn in");
+    expect(html).toContain("Audio lanes as separate files");
+    expect(html).not.toContain("Captions are coming");
+    expect(html).toContain("Export for an editor (.otio)");
     expect(html).toContain("Time: unknown until the first run");
     expect(html).toContain("Export MP4");
+  });
+
+  it("offers to resume an interrupted export and says how many shots are kept", () => {
+    const interrupted: StoryboardRenderJob = {
+      renderId: "r", projectId: "abc", preview: false, state: "interrupted", progress: 0.4, message: "shots",
+      resumable: true, shotsReady: 2, shotsTotal: 3,
+    };
+    const html = panel({ exportJob: interrupted });
+    expect(html).toContain("The export was interrupted.");
+    expect(html).toContain("2 of 3 shots are already done and will be reused.");
+    expect(html).toContain("Resume export");
+    expect(panel({ exportJob: { ...interrupted, resumable: false } })).not.toContain("Resume export");
+  });
+
+  it("lists the files written next to a finished export", () => {
+    const done: StoryboardRenderJob = {
+      renderId: "r", projectId: "abc", preview: false, state: "done", progress: 1, message: "", file: "exports/film.mp4",
+      extras: ["exports/film.srt", "exports/film-stem-voice.wav"], warnings: ["Captions were not burned in."],
+    };
+    const html = panel({ result: { job: done, bytes: 1000 } });
+    expect(html).toContain("film-stem-voice.wav");
+    expect(html).toContain("film.srt");
+    expect(html).toContain("Captions were not burned in.");
   });
 
   it("cannot export an empty film or while a render runs", () => {
@@ -341,6 +370,38 @@ describe("MixerTab states", () => {
   it("disables Undo and Redo with an empty history and shows the changed-elsewhere notice", () => {
     const html = render(story({ notice: "conflict" }));
     expect(html).toContain("Changed elsewhere; showing the latest");
-    expect(html.match(/<button type="button" class="secondary-button" disabled="">/g)?.length).toBe(2);
+    // Undo, Redo, and the two caption buttons that need a voice clip or a caption.
+    expect(html.match(/<button type="button" class="secondary-button" disabled="">/g)?.length).toBe(4);
+  });
+});
+
+describe("CaptionsPanel", () => {
+  const base = {
+    state: { busy: false, notes: [], error: null, file: null }, disabled: false, playheadS: 0, revealLabel: "Reveal",
+    onGenerate: noop, onAdd: noop, onEditText: noop, onRemove: noop, onExportSrt: noop, onReveal: noop,
+  };
+
+  it("is a closed disclosure with the count, and asks for speech when there is no voice clip", () => {
+    const html = renderToStaticMarkup(<CaptionsPanel {...base} project={project()} timeline={timeline()} />);
+    expect(html).toContain('<details class="captions-panel">');
+    expect(html).not.toContain("open");
+    expect(html).toContain("Captions (0)");
+    expect(html).toContain("Add speech to the voice lane");
+    expect(html).toMatch(/disabled="">Make from voice/);
+  });
+
+  it("lists captions with their timeline times and enables Make from voice for a voice clip", () => {
+    const voice = clip({ id: "v1", kind: "voice" });
+    const p = project({
+      audio: [voice],
+      captions: [{ id: "c1", clipId: "v1", start: 0.5, end: 2, text: "Hello there" }],
+    });
+    const tl = timeline();
+    tl.audio = [{ id: "v1", start: 3, duration: 5, trim_in: 0, end: 8 }];
+    const html = renderToStaticMarkup(<CaptionsPanel {...base} project={p} timeline={tl} />);
+    expect(html).toContain("Captions (1)");
+    expect(html).toContain('value="Hello there"');
+    expect(html).toContain("00:03.5 – 00:05.0");
+    expect(html).not.toMatch(/disabled="">Make from voice/);
   });
 });

@@ -146,10 +146,15 @@ The export panel has:
 - **Shape:** 16:9, 9:16 or 1:1. The pixel size shows beside it, taken from the project's size. A different
   shape is reframed at export; shots are not regenerated.
 - **Loudness target:** -16 LUFS by default, which suits web video. Empty leaves the mix as it is.
-- **Captions:** shown but disabled ("Captions are coming").
+- **Captions:** **SRT file** writes the captions next to the film; **Burn in** draws them into the picture.
+  Both are off until you tick them (see Captions below).
+- **Audio lanes as separate files** (stems): off until you tick it.
 - **AI label** (below).
 - **Export MP4.** Progress runs through Normalise shots, Join, Mix sound and Encode. **Cancel export** stops it
-  and writes nothing. When it finishes you see the size and length, with **Reveal file** or **Copy path**.
+  and writes nothing. When it finishes you see the size and length, with **Reveal file** or **Copy path**, and
+  the other files it wrote (the .srt and the stems).
+- **Export for an editor (.otio).** Writes the cut as an OpenTimelineIO file for DaVinci Resolve, Premiere and
+  other editors (see below).
 
 The film is made from each take's measured length. Transitions shorten the film by their length; the ruler
 shows the real total. Renders run one at a time.
@@ -161,6 +166,50 @@ shows the real total. Renders run one at a time.
 - **A clip marked as a cloned voice forces the tag on.** When you add a voice clip you can tick **This clip uses
   a cloned voice**. The project then says "This project uses a cloned voice, so the AI tag is always written."
   The app does not clone voices itself yet; the box is a label you set.
+
+### Captions
+
+Open **Captions** above the export panel (it starts closed).
+
+- **Make from voice** listens to your voice clips with the Voice Studio's speech model (the default one for
+  this Mac, or Whisper elsewhere) and writes one caption per sentence. Long sentences are split in two lines of
+  at most 84 characters. It needs a speech model installed (Voice > Models) and takes a few seconds per
+  minute of speech. Running it again replaces the captions of those clips; captions you added by hand stay.
+- Captions made from a clip **move with that clip**: move, trim or re-anchor the voice clip and its captions
+  follow. A caption whose words you trimmed away shows **Trimmed away** and is left out.
+- Edit the wording in the box (it saves when you leave it), **Remove** a caption, or **Add at playhead** for a
+  line of your own (two seconds long; it is placed on the film's timeline).
+- **Write .srt** saves `exports/<project>-captions.srt` right away, without a render.
+- **Burn in** needs the `subtitles` filter in the bundled ffmpeg. If a build lacks it, the film is made
+  without burned-in captions, the .srt is still written, and the export says so.
+
+All of it can be undone with Undo.
+
+### Resuming a long export
+
+While an export runs the app asks the system not to sleep, and a long one (30 seconds or more) ends with a
+system banner. If the app is closed or crashes mid-export, or you cancel it, the Export panel shows
+**The export was interrupted** (or **did not finish**) with how many shots are already done, and **Resume
+export**. Resume starts the export again and reuses every finished shot; only the rest is made. A shot you
+changed in between is made again. Half-written files from the interrupted run are deleted when the next one
+starts. Previews are quick and are not offered for resume.
+
+### Exporting for an editor
+
+**Export for an editor (.otio)** writes `exports/<project>.otio`: a picture track, a track of each shot's own
+sound, and a track per lane (voice, music, effects, imported; a lane gets a second track only where its clips
+overlap). Crossfades become dissolves. Each clip links to the file in your project folder, so the file opens on
+this computer; to open it elsewhere, copy the project's `media/` folder and relink. Gain, fades and ducking
+are written as notes on each clip, because the format has no field for them. A shot with a speed change
+carries a speed effect that editors read differently; the app warns about it. Check the result in your
+editor: this version has not been opened in Resolve or Premiere yet.
+
+### Lane stems
+
+With **Audio lanes as separate files** ticked, a full export also writes `<film>-stem-shot-sound.wav`,
+`-stem-voice.wav`, `-stem-music.wav`, `-stem-sfx.wav` and `-stem-import.wav` (only lanes that have clips), each
+as long as the film, 48 kHz stereo. A stem has its clips' gain, fades, trims and positions, but no ducking
+and no loudness change. The shot-sound stem includes the crossfades. Stems are not made for previews.
 
 ## Bundles for sharing and backup
 
@@ -185,11 +234,11 @@ it up. Paths inside are relative to the folder.
 
 ## Limits and what is not done yet
 
-- **Captions** in the Mixer are not built.
+- **Captions** have one style (white text with an outline at the bottom); there are no fonts or position
+  settings yet, and times are not edited by hand (move the clip, or remove and add the caption).
 - **Music cannot be sent as a sound effect** yet. Music Library items go to the Music lane.
 - **Cloned voices** are not made by the app yet.
-- **Renders are not resumable.** A render that is cancelled or interrupted starts again from the beginning. The
-  cached shot intermediates make a second render faster.
+- **Resume** reuses finished shots only. The join and the sound mix are done again, which is the shorter part.
 - A project can hold up to 500 shots, 500 audio clips and 50 takes per shot.
 - After a restart, shots that were queued or running go back to idle, and an unfinished batch shows as
   interrupted.

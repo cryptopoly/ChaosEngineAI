@@ -223,6 +223,7 @@ def capabilities() -> dict[str, Any]:
         "footprintGb": (status or {}).get("footprint_gb"),
         "idleUnloadMinutes": worker.idle_minutes,
         "embedTag": embed_tag_enabled(),
+        "libraryDir": str(music_env.library_dir()),
         "settings": load_settings(),
         "install": music_env.job_status(),
     }

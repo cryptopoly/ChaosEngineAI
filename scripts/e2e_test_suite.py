@@ -2302,7 +2302,7 @@ def phase_9(cap: Capability) -> PhaseResult:
         )) + "\n"
         rc, out, err = _cli("mcp", stdin=lines, timeout=60.0)
         replies = [json.loads(line) for line in out.splitlines() if line.strip()]
-        if rc != 0 or len(replies) != 2 or len(replies[1].get("result", {}).get("tools", [])) < 17:
+        if rc != 0 or len(replies) != 2 or len(replies[1].get("result", {}).get("tools", [])) < 18:
             return "fail", f"stdio relay rc={rc} out={out[:160]!r} err={err[:120]!r}", {}
         return "pass", "", {}
 
@@ -2543,6 +2543,150 @@ def phase_10(cap: Capability) -> PhaseResult:
     return phase
 
 
+def phase_11(cap: Capability) -> PhaseResult:
+    """Music: runtime and catalog shape, estimate, validation, library CRUD on a synthetic item, and a
+    real 20 s generation that skips unless the music pack and the turbo weights are installed."""
+    import uuid
+
+    phase = PhaseResult(phase=11, name="Music")
+    if not cap.backend_reachable:
+        phase.status = "skip"
+        phase.checks.append(CheckResult("phase 11", "skip", reason="backend not reachable"))
+        return phase
+
+    def _call(method: str, path: str, payload: Any = None, timeout: float = 60.0) -> tuple[int, Any]:
+        body = json.dumps(payload).encode("utf-8") if payload is not None else None
+        code, data = _voice_http(method, f"/api/music{path}", body=body,
+                                 content_type="application/json" if body else None, timeout=timeout)
+        try:
+            return code, json.loads(data.decode("utf-8")) if data.strip() else None
+        except (ValueError, UnicodeDecodeError):
+            return code, data
+
+    def _ranged(path: str, first: int, last: int) -> tuple[int, bytes, str]:
+        base = f"http://{_HOST}:{_PORT}"
+        with urllib.request.urlopen(f"{base}/api/auth/session", timeout=5.0) as resp:
+            token = (json.loads(resp.read().decode("utf-8")) or {}).get("apiToken")
+        request = urllib.request.Request(f"{base}/api/music{path}")
+        request.add_header("Range", f"bytes={first}-{last}")
+        if token:
+            request.add_header("Authorization", f"Bearer {token}")
+        with urllib.request.urlopen(request, timeout=30.0) as resp:
+            return resp.status, resp.read(), resp.headers.get("Content-Range", "")
+
+    code, runtime = _call("GET", "/runtime")
+    if code == 404:
+        phase.status = "skip"
+        phase.checks.append(CheckResult("phase 11", "skip", reason="music not present in this build"))
+        return phase
+    runtime = (runtime or {}).get("runtime") or {}
+    state: dict[str, Any] = {"cleanup": []}
+
+    def _runtime_shape():
+        missing = [k for k in ("lane", "installed", "workerRunning", "loadedModel", "install", "engineVersion",
+                               "libraryDir") if k not in runtime]
+        return ("fail", f"runtime is missing {missing}", {}) if missing else ("pass", "", {"lane": runtime["lane"]})
+
+    def _catalog():
+        code, body = _call("GET", "/catalog")
+        rows = {v["id"]: v for f in (body or {}).get("families", []) for v in f["variants"]}
+        turbo = rows.get("ACE-Step/Ace-Step1.5")
+        if code != 200 or turbo is None:
+            return "fail", f"catalog HTTP {code} without the turbo row", {}
+        licence = turbo.get("licence") or {}
+        if (licence.get("name"), licence.get("commercial"), licence.get("gated")) != ("MIT", "yes", False) \
+                or not licence.get("summaryLines") or not licence.get("url"):
+            return "fail", f"licence fields wrong: {licence}", {}
+        for key in ("makes", "platforms", "taskSupport", "estimates", "fit", "defaultSettings"):
+            if key not in turbo:
+                return "fail", f"turbo row has no {key}", {}
+        state["turbo"] = turbo
+        return "pass", "", {"fit": turbo["fit"]["status"], "available": turbo.get("availableLocally")}
+
+    def _estimate_and_validation():
+        code, body = _call("POST", "/estimate", {"seconds": 60, "variations": 2})
+        estimate = (body or {}).get("estimate") or {}
+        if code != 200 or not estimate.get("seconds") or estimate.get("basis") not in ("measured", "estimated"):
+            return "fail", f"estimate: HTTP {code} {str(body)[:160]}", {}
+        for payload in ({"caption": "x", "instrumental": True, "seconds": 5},
+                        {"caption": "x", "instrumental": True, "seconds": 30, "variations": 3},
+                        {"caption": "x", "seconds": 30},
+                        {"caption": "x", "instrumental": True, "seconds": 30, "reference_audio": "/tmp/a.wav"}):
+            code, _ = _call("POST", "/generate", payload)
+            if code != 422:
+                return "fail", f"generate {payload} answered {code}, wanted 422", {}
+        return "pass", "", {"estimateSeconds": estimate["seconds"]}
+
+    def _library_crud():
+        folder = Path(str(runtime.get("libraryDir") or ""))
+        if not folder.is_absolute():
+            return "skip", "runtime did not report the library folder", {}
+        folder.mkdir(parents=True, exist_ok=True)
+        item_id = f"{int(time.time())}_{uuid.uuid4().hex[:8]}"
+        audio = b"fLaC" + bytes(range(256)) * 4
+        (folder / f"{item_id}.flac").write_bytes(audio)
+        (folder / f"{item_id}.json").write_text(json.dumps({
+            "id": item_id, "kind": "track", "title": "E2E synthetic", "caption": "e2e", "tags": [],
+            "createdAt": int(time.time()), "updatedAt": int(time.time()), "audio": ".flac"}), encoding="utf-8")
+        state["cleanup"].append(item_id)
+        code, listed = _call("GET", "/library?q=E2E%20synthetic")
+        if code != 200 or item_id not in [i["id"] for i in listed["items"]]:
+            return "fail", "the synthetic item is not listed", {}
+        code, updated = _call("POST", f"/library/{item_id}", {"title": "E2E renamed", "tags": ["e2e"]})
+        if code != 200 or (updated["title"], updated["tags"]) != ("E2E renamed", ["e2e"]):
+            return "fail", f"rename / tag: HTTP {code} {updated}", {}
+        status, part, content_range = _ranged(f"/library/{item_id}/audio", 4, 103)
+        if status != 206 or part != audio[4:104] or not content_range.startswith("bytes 4-103/"):
+            return "fail", f"Range: HTTP {status}, {len(part)} bytes, {content_range!r}", {}
+        if _call("GET", "/library/..%2F..%2Fetc/audio")[0] not in (400, 404) or _call("GET", "/library/1_x")[0] != 400:
+            return "fail", "a bad id was not refused", {}
+        code, _ = _call("DELETE", f"/library/{item_id}")
+        if code != 200 or (folder / f"{item_id}.flac").exists():
+            return "fail", f"delete: HTTP {code}", {}
+        state["cleanup"].remove(item_id)
+        return "pass", "", {}
+
+    def _real_generation():
+        turbo = state.get("turbo") or {}
+        if not runtime.get("installed") or not turbo.get("availableLocally"):
+            return "skip", "music pack or ACE-Step 1.5 turbo weights not installed", {}
+        started = time.perf_counter()
+        code, body = _call("POST", "/generate", {"caption": "e2e check, soft piano", "instrumental": True,
+                                                 "seconds": 20, "seed": 7, "title": "E2E music"}, timeout=600.0)
+        if code != 200 or not (body or {}).get("items"):
+            return "fail", f"generate: HTTP {code} {str(body)[:200]}", {}
+        item = body["items"][0]
+        state["cleanup"].append(item["id"])
+        code, data = _voice_http("GET", f"/api/music/library/{item['id']}/audio", timeout=60.0)
+        if code != 200 or not data.startswith(b"fLaC"):
+            return "fail", f"audio: HTTP {code}", {}
+        if item.get("tagged") and b"chaosengine:{" not in data[:65536]:
+            return "fail", "the FLAC has no chaosengine tag", {}
+        if (item.get("sampleRate"), item.get("channels")) != (48000, 2) or abs(float(item.get("durationS") or 0) - 20) > 0.1:
+            return "fail", f"track facts wrong: {item}", {}
+        peak = body.get("peakFootprintGb")
+        if isinstance(peak, (int, float)) and peak > 26:
+            return "fail", f"peak footprint {peak} GB is above the 26 GB guard", {}
+        return "pass", "", {"wallSeconds": round(time.perf_counter() - started, 1), "jobSeconds": body.get("seconds"),
+                            "peakFootprintGb": peak, "bytes": len(data)}
+
+    try:
+        for name, fn in [
+            ("runtime route shape", _runtime_shape),
+            ("catalog row carries the licence and UI fields", _catalog),
+            ("estimate answers; out-of-range requests are refused", _estimate_and_validation),
+            ("library list, rename, tag, Range audio and delete on a synthetic item", _library_crud),
+            ("a real 20 s instrumental (skips without the music pack)", _real_generation),
+        ]:
+            phase.checks.append(_check(name, fn))
+    finally:
+        for item_id in state["cleanup"]:
+            _call("DELETE", f"/library/{item_id}")
+    fails = [c for c in phase.checks if c.status == "fail"]
+    phase.status = "fail" if fails else ("skip" if all(c.status == "skip" for c in phase.checks) else "pass")
+    return phase
+
+
 # ---------------------------------------------------------------------------
 # Driver
 # ---------------------------------------------------------------------------
@@ -2551,6 +2695,7 @@ def phase_10(cap: Capability) -> PhaseResult:
 PHASES = {
     0: phase_0, 1: phase_1, 2: phase_2, 3: phase_3,
     4: phase_4, 5: phase_5, 6: phase_6, 7: phase_7, 8: phase_8, 9: phase_9, 10: phase_10,
+    11: phase_11,
 }
 
 

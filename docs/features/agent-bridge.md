@@ -35,7 +35,7 @@ job waits for a running agent job (the progress panel says "Waiting for an agent
 | Tool | What it does |
 |---|---|
 | `system_status` | Free memory, platform, the running job, the queue. |
-| `recommend_models` | For `image`, `video`, `voice` or `stt`, the best models **not installed** that fit this machine, with size and gated / non-commercial flags. The agent tells you what to download. |
+| `recommend_models` | For `image`, `video`, `voice`, `stt` or `music`, the best models **not installed** that fit this machine, with size and gated / non-commercial flags. The agent tells you what to download. |
 | `list_models` | Installed models with id, size, fit, size limits and frame rules. |
 | `list_voices` | Voices that are ready, with language. |
 | `generate_image` | Prompt, model, size, steps, seed, optional `reference_images` and `image_strength`. Returns a job id. Sizes are snapped to what the model supports; corrections appear in the job notes. |
@@ -43,6 +43,7 @@ job waits for a running agent job (the progress panel says "Waiting for an agent
 | `upload_image` | A small image as base64. Returns a handle (`upload:...`) for the image inputs above; for an agent on another machine. |
 | `speak` | Text, voice, speed. Returns a job id. |
 | `transcribe` | Path to an audio or video file the app can read. Returns a job id. |
+| `make_music` | Style `caption`, `lyrics` (or `instrumental`), `seconds` 10 to 600, `bpm`, `key`, `seed`, `variations` 1, 2 or 4, `model`. Returns a job id; the result has the FLAC path of each take in the Music Library and a `download`. `cancel_job` stops it through the music worker. See [Music](music.md). |
 | `job_status`, `wait_for_job`, `cancel_job` | Poll, wait up to 60 s, cancel. |
 | `storyboard_project` | Film projects: `create`, `list`, `get` (shots, takes, timeline, revision), `edit` (name, defaults, export), `undo`, `redo`, `delete`, `export` (a `.chaosfilm` bundle with a `download`), `import`. |
 | `storyboard_shot` | `add`, `edit`, `remove`, `reorder`, `lock`, `unlock`, `pick_take`, `redo` (marks a shot for the next generate), `import` (a clip or still file). |
@@ -50,7 +51,7 @@ job waits for a running agent job (the progress panel says "Waiting for an agent
 | `storyboard_generate` | New takes for the shots that need work (or `shot_ids`): all stills, then all clips. Locked shots are skipped; naming one needs `force`. Returns a job id; `cancel_job` stops the whole batch. |
 | `storyboard_render` | Render the film to MP4 (`preview` is small and fast). Returns a job id; the finished output has the path and `download`. |
 
-A finished job returns the **absolute path** of the PNG, MP4 or WAV, plus width, height, duration and
+A finished job returns the **absolute path** of the PNG, MP4, WAV or FLAC, plus width, height, duration and
 `hasAudio`. `generate_image` can also return the PNG as base64 (`include_preview`). Every PNG and MP4
 carries its prompt, model, seed, steps, guidance, size and app version inside the file.
 

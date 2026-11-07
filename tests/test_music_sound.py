@@ -392,12 +392,11 @@ class SoundRouteTests(_SoundBox):
 
 
 class MakeSoundToolTests(_SoundBox):
-    """``make_sound`` is not registered (the bridge stream does that); a test registers it for its own scope."""
+    """``make_sound`` is registered in the bridge (generate scope, counts as a job)."""
 
     def setUp(self) -> None:
         super().setUp()
-        from backend_service.mcp_bridge import access, protocol, scopes, tools
-        from backend_service.mcp_bridge.sound_tool import SOUND_HANDLERS, SOUND_TOOLS
+        from backend_service.mcp_bridge import access
 
         access_tmp = tempfile.TemporaryDirectory()
         self.addCleanup(access_tmp.cleanup)
@@ -406,16 +405,6 @@ class MakeSoundToolTests(_SoundBox):
         self.addCleanup(patcher.stop)
         access.set_enabled(True)
         self.headers = {"Authorization": f"Bearer {access.get_token()}"}
-        all_tools = [*tools.TOOLS, *SOUND_TOOLS]
-        all_handlers = {**tools.HANDLERS, **SOUND_HANDLERS}
-        job_tools = {*scopes.JOB_TOOLS, "make_sound"}
-        for target, name, value in (
-            (tools, "TOOLS", all_tools), (tools, "HANDLERS", all_handlers), (scopes, "JOB_TOOLS", job_tools),
-            (protocol, "TOOLS", all_tools), (protocol, "HANDLERS", all_handlers), (protocol, "JOB_TOOLS", job_tools),
-        ):
-            patcher = mock.patch.object(target, name, value)
-            patcher.start()
-            self.addCleanup(patcher.stop)
 
     def _call(self, name: str, arguments: dict) -> tuple[bool, object]:
         body = {"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": name, "arguments": arguments}}
@@ -454,11 +443,14 @@ class MakeSoundToolTests(_SoundBox):
         self.assertTrue(is_error)
         self.assertIn("not an installed music model", str(text))
 
-    def test_the_tool_description_is_short_and_not_in_the_default_registry(self) -> None:
+    def test_the_tool_description_is_short_and_registered(self) -> None:
         from backend_service.mcp_bridge.sound_tool import SOUND_TOOLS
 
         self.assertLess(len(SOUND_TOOLS[0]["description"]), 330)
         self.assertEqual(SOUND_TOOLS[0]["inputSchema"]["required"], ["caption"])
+        from backend_service.mcp_bridge import tools
+
+        self.assertIn("make_sound", tools.HANDLERS)
 
 
 if __name__ == "__main__":

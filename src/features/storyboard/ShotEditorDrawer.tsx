@@ -1,20 +1,25 @@
 /** The side drawer for one shot: prompts, length, seed, trims, references, and importing footage. */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { CloseIcon } from "../../components/icons/ActionIcons";
 import { RunEstimateStrip } from "../../components/RunEstimateStrip";
+import { ConfirmDialog } from "./ConfirmDialog";
 import type { ImageOutputArtifact, StoryboardProject, StoryboardShot, VideoOutputArtifact } from "../../types";
 import { PathField } from "./PathField";
 import type { RunOp } from "./ReferencesPanel";
 import {
   draftFromShot,
+  drawerEscapeAction,
   importKindOf,
   shotPatchFromDraft,
   toggleReference,
+  trapTabTarget,
   type ShotDraft,
 } from "./storyboardLogic";
 
 const GALLERY_LIMIT = 8;
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 export interface ShotEditorDrawerProps {
   project: StoryboardProject;
@@ -35,23 +40,50 @@ export function ShotEditorDrawer({
   const { t } = useTranslation("studio");
   const [draft, setDraft] = useState<ShotDraft>(() => draftFromShot(shot));
   const [importError, setImportError] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  const opener = useRef<HTMLElement | null>(null);
   const root = useRef<HTMLElement>(null);
   const references = [...project.references.characters, ...project.references.places];
   const patch = shotPatchFromDraft(shot, draft);
   const dirty = Object.keys(patch).length > 0;
   const number = index + 1;
 
+  // Focus goes into the drawer, and back to the card that opened it when it closes.
   useEffect(() => {
+    opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     root.current?.focus();
+    return () => {
+      const back = opener.current;
+      if (back && back.isConnected) back.focus();
+    };
   }, []);
+
+  /** Close, but ask first when there are edits that were not saved. */
+  function requestClose() {
+    if (dirty) setConfirming(true);
+    else onClose();
+  }
+  const closeRef = useRef(requestClose);
+  closeRef.current = requestClose;
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
+      const action = drawerEscapeAction({ key: event.key, isComposing: event.isComposing || event.keyCode === 229, dirty, confirming });
+      if (action !== "none") closeRef.current();
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [dirty, confirming]);
+
+  /** Tab stays inside the drawer. */
+  function trapTab(event: ReactKeyboardEvent<HTMLElement>) {
+    if (event.key !== "Tab" || !root.current) return;
+    const stops = Array.from(root.current.querySelectorAll<HTMLElement>(FOCUSABLE));
+    const next = trapTabTarget(stops.length, stops.indexOf(document.activeElement as HTMLElement), event.shiftKey);
+    if (next === null) return;
+    event.preventDefault();
+    stops[next]?.focus();
+  }
 
   function set<K extends keyof ShotDraft>(key: K, value: ShotDraft[K]) {
     setDraft((current) => ({ ...current, [key]: value }));
@@ -86,12 +118,15 @@ export function ShotEditorDrawer({
   const clipGallery = videoGallery.filter((item) => item.videoPath).slice(0, GALLERY_LIMIT);
 
   return (
+    <>
     <aside
       className="drawer shot-editor"
       ref={root}
       tabIndex={-1}
       role="dialog"
+      aria-modal="true"
       aria-labelledby="shot-editor-title"
+      onKeyDown={trapTab}
     >
       <div className="drawer__head">
         <h3 id="shot-editor-title">{t("board.editor.title", { defaultValue: "Shot {n}", n: number })}</h3>
@@ -100,7 +135,7 @@ export function ShotEditorDrawer({
           className="secondary-button icon-button"
           aria-label={t("storyboard.close", { defaultValue: "Close" })}
           title={t("storyboard.close", { defaultValue: "Close" })}
-          onClick={onClose}
+          onClick={requestClose}
         >
           <CloseIcon />
         </button>
@@ -283,5 +318,19 @@ export function ShotEditorDrawer({
         />
       </div>
     </aside>
+    {confirming ? (
+      <ConfirmDialog
+        title={t("board.editor.discardTitle", { defaultValue: "Discard your changes?" })}
+        body={<p>{t("board.editor.discardBody", { defaultValue: "This shot has edits that were not saved. Closing now throws them away." })}</p>}
+        confirmLabel={t("board.editor.discard", { defaultValue: "Discard changes" })}
+        danger
+        onConfirm={() => {
+          setConfirming(false);
+          onClose();
+        }}
+        onCancel={() => setConfirming(false)}
+      />
+    ) : null}
+    </>
   );
 }

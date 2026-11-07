@@ -5,8 +5,10 @@ import {
   batchProgress,
   classifyFailure,
   draftFromShot,
+  drawerEscapeAction,
   effectiveShotStatus,
   importKindOf,
+  isBareKey,
   liveShotStates,
   missingShotIds,
   moveItem,
@@ -22,6 +24,7 @@ import {
   thumbnailOf,
   toggleReference,
   transitionWith,
+  trapTabTarget,
   unlockedShotIds,
 } from "../storyboardLogic";
 
@@ -254,5 +257,32 @@ describe("failed requests", () => {
 describe("project ordering", () => {
   it("sorts the most recently changed first", () => {
     expect(sortByRecent([{ recency: 1, n: "a" }, { recency: 9, n: "b" }, { recency: 5, n: "c" }]).map((x) => x.n)).toEqual(["b", "c", "a"]);
+  });
+});
+
+describe("shot editor keys", () => {
+  it("Escape asks before it throws away edits and does nothing mid-composition", () => {
+    const base = { key: "Escape", isComposing: false, dirty: false, confirming: false };
+    expect(drawerEscapeAction(base)).toBe("close");
+    expect(drawerEscapeAction({ ...base, dirty: true })).toBe("ask");
+    expect(drawerEscapeAction({ ...base, dirty: true, isComposing: true })).toBe("none");
+    expect(drawerEscapeAction({ ...base, dirty: true, confirming: true })).toBe("none");
+    expect(drawerEscapeAction({ ...base, key: "a" })).toBe("none");
+  });
+
+  it("keeps Tab inside the drawer", () => {
+    expect(trapTabTarget(5, 4, false)).toBe(0);
+    expect(trapTabTarget(5, 0, true)).toBe(4);
+    expect(trapTabTarget(5, 2, false)).toBeNull();
+    expect(trapTabTarget(5, -1, false)).toBe(0);
+    expect(trapTabTarget(5, -1, true)).toBe(4);
+    expect(trapTabTarget(0, -1, false)).toBeNull();
+  });
+
+  it("ignores card shortcuts that carry Cmd, Ctrl or Alt", () => {
+    expect(isBareKey({ metaKey: false, ctrlKey: false, altKey: false })).toBe(true);
+    expect(isBareKey({ metaKey: true, ctrlKey: false, altKey: false })).toBe(false);
+    expect(isBareKey({ metaKey: false, ctrlKey: true, altKey: false })).toBe(false);
+    expect(isBareKey({ metaKey: false, ctrlKey: false, altKey: true })).toBe(false);
   });
 });

@@ -1111,6 +1111,9 @@
     "defaultsSummary": "{aspect} · {fps} fps · {imageModel} · {videoModel} · voice {voice}",
     "defaultsTitle": "Project defaults",
     "editor": {
+      "discard": "Discard changes",
+      "discardBody": "This shot has edits that were not saved. Closing now throws them away.",
+      "discardTitle": "Discard your changes?",
       "fromImageGallery": "From the Image Gallery",
       "fromVideoGallery": "From the Video Gallery",
       "import": "Import",

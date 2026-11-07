@@ -13,6 +13,7 @@ from fastapi.testclient import TestClient
 
 from backend_service.app import create_app
 from backend_service.mcp_bridge import files
+from backend_service.storyboard import store as store_module
 from tests.storyboard_fixtures import FakeGenerators, fake_mp4, png
 
 H = {"Authorization": "Bearer app-token"}
@@ -81,6 +82,10 @@ class ProjectRouteTests(StoryboardRouteCase):
         self.assertEqual(self.client.delete(f"/api/storyboard/projects/{pid}", headers=H).status_code, 422)
         self.assertEqual(self.client.delete(f"/api/storyboard/projects/{pid}", params={"revision": 1}, headers=H).status_code, 409)
         rev = got["project"]["revision"]
+        busy = store_module.ProjectBusy("A render is running for this project. Cancel it or wait, then delete.")
+        with mock.patch.object(store_module.ProjectStore, "delete", side_effect=busy):
+            response = self.client.delete(f"/api/storyboard/projects/{pid}", params={"revision": rev}, headers=H)
+        self.assertEqual((response.status_code, response.json()["detail"]), (409, str(busy)))
         self.assertEqual(self.client.delete(f"/api/storyboard/projects/{pid}", params={"revision": rev}, headers=H).status_code, 200)
         self.get(f"/projects/{pid}", code=404)
         self.get("/projects/..%2F..%2Fetc", code=404)

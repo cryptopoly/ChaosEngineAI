@@ -50,6 +50,10 @@ class ProjectNotFound(StoreError):
     pass
 
 
+class ProjectBusy(StoreError):
+    """The project has a batch or render running; the caller should wait or cancel it (HTTP 409)."""
+
+
 class RevisionConflict(Exception):
     def __init__(self, current: Project) -> None:
         super().__init__(f"The project changed (now revision {current.revision}). Reload and try again.")
@@ -298,15 +302,39 @@ class ProjectStore:
         _RECOVERED.add(str(folder.resolve()))
         return project
 
-    def delete(self, project_id: str, expected_revision: int) -> None:
+    def delete(self, project_id: str, expected_revision: int) -> dict[str, Any]:
+        """Delete the project folder. Refused while a batch or render runs. ``project.json`` goes first,
+        so a file another program holds open (Windows) cannot leave a half-project; such files are
+        counted in ``leftover`` and named in ``message``."""
+        from backend_service.storyboard.render_adapter import RENDERS
+
         folder = self.folder(project_id)
         with self.lock(project_id):
             current = self.load(project_id)
             if current.revision != expected_revision:
                 raise RevisionConflict(current)
+            if any(b.id in LIVE_BATCHES and b.state in ("queued", "running") for b in current.batches):
+                raise ProjectBusy("A batch is running for this project. Cancel it or wait, then delete.")
+            job = RENDERS.status(project_id)
+            if job is not None and not job.done.is_set():
+                raise ProjectBusy("A render is running for this project. Cancel it or wait, then delete.")
             if folder.is_symlink() or not folder.resolve().is_relative_to(self.root.resolve()):
                 raise StoreError("Refused: the project folder is not inside the storyboards folder.")
-            shutil.rmtree(folder)
+            try:
+                (folder / PROJECT_FILE).unlink()
+            except OSError as exc:
+                raise StoreError(f"Could not delete the project: project.json is in use ({exc.strerror or exc}). "
+                                 "Close what is using it and try again.") from exc
+            _RECOVERED.discard(str(folder.resolve()))
+            failed: list[str] = []
+            # Count files only: their folders then fail to go too (``rmdir`` of a non-empty folder).
+            shutil.rmtree(folder, onerror=lambda fn, path, info: None if getattr(fn, "__name__", "") == "rmdir"
+                          else failed.append(Path(path).name))
+        result: dict[str, Any] = {"deleted": project_id, "leftover": len(failed)}
+        if failed:
+            result["message"] = (f"The project was deleted, but {len(failed)} file(s) could not be removed "
+                                 f"(probably in use), for example {failed[0]}. They are in {folder}; remove them later.")
+        return result
 
     def mutate(
         self,

@@ -9,6 +9,12 @@ summary: Read this first in every session.
 
 Newest dated update first. Each update has the same sections: Done, Open for Claude, Open for Dan.
 
+## Update 2026-11-09
+
+- Wan 2.2 image-to-video benchmarked (D-48) then removed on the owner's decision: a 2 s Wan clip takes as long as a 4 s LTX clip at lower resolution. Benchmark kept in `docs/research/wan-vs-ltx-bench.md`. Older Wan catalog rows still present: owner to decide.
+- Gallery project dropdown merged (Image, Video, Music, Voice), with project header and bridge `project_id` / `project_name` arguments. Fable UI review fixes applied. Seen only in a mock harness, not the full app.
+- Playwright security research done (D-51): approve with conditions, owner decision open.
+
 ## Update 2026-11-08, v2 streams merged into `feat/home-studio` (still behind the switch, nothing merged to release)
 
 **Done (all on `feat/home-studio`, pushed; pytest exit 0, 1225 vitest, tsc and i18n clean):**

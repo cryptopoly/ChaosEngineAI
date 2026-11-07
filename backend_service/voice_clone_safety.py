@@ -165,7 +165,9 @@ def apply_watermark(path: Path) -> bool:
     models = voice_env.watermark_model_paths()
     if models is None or not voice_env.watermark_installed():
         raise RuntimeError(WATERMARK_MISSING)
-    get_worker().request("watermark", timeout=600.0, path=str(path), generator=str(models["generator"]))
+    # The worker reads the mark back before writing and raises if it does not; then nothing is saved.
+    get_worker().request("watermark", timeout=600.0, path=str(path),
+                         generator=str(models["generator"]), detector=str(models["detector"]))
     return True
 
 

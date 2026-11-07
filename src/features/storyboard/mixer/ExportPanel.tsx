@@ -26,6 +26,7 @@ import {
   type RenderPhaseId,
 } from "./mixerLogic";
 import { formatTimecode } from "./timelineGeometry";
+import { FilmList } from "../FilmList";
 
 // ---- AI label ----
 export interface AiLabelNoticeProps {
@@ -406,6 +407,7 @@ export function ExportPanel(props: ExportPanelProps) {
         ) : null}
         {props.editor.error ? <p className="callout error" role="alert">{props.editor.error}</p> : null}
       </div>
+      <FilmList projectId={project.id} version={result?.job?.file ?? null} revealLabel={props.revealLabel} onReveal={props.onReveal} />
     </section>
   );
 }

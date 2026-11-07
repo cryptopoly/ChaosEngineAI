@@ -449,7 +449,7 @@
       "readOnlyHint": false,
       "title": "Storyboard project"
     },
-    "description": "Edit: film projects. create(name), list, get (shots, takes, timeline, revision), edit(fields: name, defaults, export{aiLabel, loudnessLufs, captionsSrt, captionsBurn, stems}), undo, redo, delete, export (.chaosfilm), import.",
+    "description": "Edit: film projects. create(name), list, get (shots, takes, timeline, revision), edit(fields: name, defaults, export{captionsSrt, captionsBurn, stems, ...}), undo, redo, delete, export (.chaosfilm), import.",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {

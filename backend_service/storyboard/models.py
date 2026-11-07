@@ -204,7 +204,7 @@ class AiLabel(_Model):
 
 class ExportSettings(_Model):
     aiLabel: AiLabel = Field(default_factory=AiLabel)
-    loudnessLufs: float | None = Field(-14.0, ge=-40, le=-5)
+    loudnessLufs: float | None = Field(-16.0, ge=-40, le=-5)
     endCardText: Line = "Made with AI"
     endCardSeconds: float = Field(2.0, ge=0.5, le=10)
 

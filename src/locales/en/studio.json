@@ -1166,7 +1166,7 @@
     "sounds": {
       "loopBadge": "Loop",
       "needLicence": "Sound effects use Stable Audio Open, which asks you to accept its licence first. Open Music Models to read it.",
-      "needDownload": "Download Stable Audio Open Small from Music Models (about {size} GB). Accept the licence on Hugging Face first.",
+      "needDownload": "Download {name} from Music Models (about {size} GB). Accept the licence on Hugging Face first.",
       "needTextEncoder": "The sound model is missing its text encoder. Download it again from Music Models.",
       "needPack": "Sounds also need a small pack (about 1 GB). Install it from Music Models.",
       "prompt": "Describe the sound",
@@ -1186,7 +1186,9 @@
         "memory": "There is not enough free memory for this sound. Free some memory and try again.",
         "invalid": "The sound could not be started with these settings.",
         "generic": "The sound could not be made."
-      }
+      },
+      "lengthSlider": "Length in seconds",
+      "modelPicker": "Sound model"
     }
   },
   "audioPlayer": {

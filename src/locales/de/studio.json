@@ -1166,7 +1166,7 @@
     "sounds": {
       "loopBadge": "Loop",
       "needLicence": "Soundeffekte nutzen Stable Audio Open, dessen Lizenz du zuerst akzeptieren musst. Öffne „Musikmodelle“, um sie zu lesen.",
-      "needDownload": "Lade Stable Audio Open Small unter „Musikmodelle“ herunter (etwa {size} GB). Akzeptiere zuerst die Lizenz auf Hugging Face.",
+      "needDownload": "Lade {name} unter „Musikmodelle“ herunter (etwa {size} GB). Akzeptiere zuerst die Lizenz auf Hugging Face.",
       "needTextEncoder": "Dem Soundmodell fehlt sein Text-Encoder. Lade es unter „Musikmodelle“ erneut herunter.",
       "needPack": "Für Sounds brauchst du außerdem ein kleines Paket (etwa 1 GB). Installiere es unter „Musikmodelle“.",
       "prompt": "Beschreibe den Sound",
@@ -1186,7 +1186,9 @@
         "memory": "Nicht genug freier Speicher für diesen Sound. Gib etwas Speicher frei und versuche es erneut.",
         "invalid": "Der Sound konnte mit diesen Einstellungen nicht gestartet werden.",
         "generic": "Der Sound konnte nicht erstellt werden."
-      }
+      },
+      "lengthSlider": null,
+      "modelPicker": null
     }
   },
   "audioPlayer": {

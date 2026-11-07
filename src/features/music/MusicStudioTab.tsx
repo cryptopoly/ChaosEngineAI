@@ -118,7 +118,23 @@ export function MusicStudioTab({ music, backendOnline, onTabChange }: MusicStudi
         ) : null}
         {soundsMode ? (
           <div className="music-studio__status" role="status">
-            <span className="music-studio__model">{music.soundVariant?.name}</span>
+            {(music.installedSoundVariants?.length ?? 0) > 1 ? (
+              <select
+                className="text-input music-studio__model-picker"
+                aria-label={t("musicStudio.sounds.modelPicker", { defaultValue: "Sound model" })}
+                value={music.soundVariant?.id ?? ""}
+                disabled={music.sounds.running}
+                onChange={(event) => music.setSelectedSoundModelId(event.target.value)}
+              >
+                {music.installedSoundVariants.map((variant) => (
+                  <option key={variant.id} value={variant.id}>
+                    {variant.name}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <span className="music-studio__model">{music.soundVariant?.name}</span>
+            )}
             {music.soundVariant?.licence?.attribution ? <span className="muted-text">{music.soundVariant.licence.attribution}</span> : null}
           </div>
         ) : (

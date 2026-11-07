@@ -13,8 +13,11 @@ import {
   INITIAL_SOUND_RUN,
   SOUND_CAPTION_MAX,
   buildSoundPayload,
+  clampSoundSeconds,
   defaultSoundForm,
   soundBlocker,
+  soundLengthPresets,
+  soundLimits,
   soundFormFromItem,
   soundRunReducer,
   validateSoundForm,
@@ -181,6 +184,61 @@ describe("sounds form", () => {
   });
 });
 
+function fullSound(over: Partial<MusicModelVariant> = {}): MusicModelVariant {
+  return soundVariant({
+    id: "stabilityai/stable-audio-open-1.0",
+    name: "Stable Audio Open 1.0",
+    repo: "stabilityai/stable-audio-open-1.0",
+    link: "https://huggingface.co/stabilityai/stable-audio-open-1.0",
+    engineModel: "stable-audio-open-1.0",
+    sizeGb: 5.72,
+    maxSeconds: 47,
+    estimates: { basis: "estimated", peakGb: 10 },
+    defaultSettings: { seconds: 10, loop: false, steps: 100 },
+    ...over,
+  });
+}
+
+describe("sound length follows the selected model", () => {
+  it("reads each row's own range, with Small's as the fallback", () => {
+    expect(soundLimits(soundVariant())).toEqual({ min: 1, max: 11 });
+    expect(soundLimits(fullSound())).toEqual({ min: 1, max: 47 });
+    expect(soundLimits(null)).toEqual({ min: 1, max: 11 });
+    expect(soundLimits({ minSeconds: 0, maxSeconds: Number.NaN })).toEqual({ min: 1, max: 11 });
+  });
+
+  it("offers Small's familiar pills and a longer ladder ending at 47 for the full model", () => {
+    expect(soundLengthPresets(soundVariant())).toEqual([2, 4, 6, 8, 11]);
+    expect(soundLengthPresets(null)).toEqual([2, 4, 6, 8, 11]);
+    expect(soundLengthPresets(fullSound())).toEqual([5, 10, 20, 30, 47]);
+  });
+
+  it("clamps a length into the model's range", () => {
+    expect(clampSoundSeconds(40, soundVariant())).toBe(11);
+    expect(clampSoundSeconds(40, fullSound())).toBe(40);
+    expect(clampSoundSeconds(90, fullSound())).toBe(47);
+    expect(clampSoundSeconds(0.2, fullSound())).toBe(1);
+    expect(clampSoundSeconds(Number.NaN, soundVariant({ maxSeconds: 3 }))).toBe(3);
+  });
+
+  it("validates and defaults against the selected model", () => {
+    const form = { ...defaultSoundForm(fullSound()), caption: "rain" };
+    expect(form.seconds).toBe(10);
+    expect(validateSoundForm({ ...form, seconds: 45 }, fullSound())).toEqual([]);
+    expect(validateSoundForm({ ...form, seconds: 45 }, soundVariant())).toEqual(["secondsRange"]);
+    expect(validateSoundForm({ ...form, seconds: 48 }, fullSound())).toEqual(["secondsRange"]);
+    expect(defaultSoundForm(soundVariant({ defaultSettings: { seconds: 30 } })).seconds).toBe(5);
+    expect(defaultSoundForm(fullSound({ defaultSettings: { seconds: 30 } })).seconds).toBe(30);
+  });
+
+  it("remakes a 40 s library sound at 40 s on the full model and clamps it on Small", () => {
+    const item = { id: "1_a", kind: "sound", title: "t", caption: "rain", lyrics: "", tags: [], createdAt: 0, updatedAt: 0, audio: ".flac", durationS: 40.2, seed: 9 } as MusicLibraryItem;
+    expect(soundFormFromItem(item, fullSound()).seconds).toBe(40);
+    expect(soundFormFromItem(item, soundVariant()).seconds).toBe(11);
+    expect(soundFormFromItem(item).seconds).toBe(11);
+  });
+});
+
 describe("sound readiness", () => {
   const base = { catalogLoaded: true, variant: soundVariant(), packInstalled: false, unavailableReason: null, licenceAccepted: false };
 
@@ -293,6 +351,46 @@ describe("Music Studio with Sounds", () => {
     const html = renderStudio(music);
     expect(html).toContain("Making your sound");
     expect(html).toContain("Cancel");
+  });
+});
+
+describe("Sounds studio with two sound models", () => {
+  const both = (selected: MusicModelVariant, installed: MusicModelVariant[]) =>
+    fakeMusic(selected, { runtime: readyRuntime(), soundVariants: installed, installedSoundVariants: installed, setSelectedSoundModelId: noop });
+  const readyFull = () => fullSound({ availableLocally: true, packInstalled: true, textEncoderReady: true, weightsSource: "checkpoints" });
+  const slider = (html: string) => /<input[^>]*type="range"[^>]*>/.exec(html)?.[0] ?? "";
+
+  it("the length slider and pills end at the selected model's maximum", () => {
+    acceptLicence();
+    rememberLicenceAccepted("stabilityai/stable-audio-open-1.0", "stability-community");
+    const small = renderStudio(both(readySound(), [readySound()]));
+    expect(slider(small)).toContain('max="11"');
+    expect(slider(small)).toContain('min="1"');
+    expect(small).not.toContain("47 s");
+    const full = renderStudio(both(readyFull(), [readyFull()]));
+    expect(slider(full)).toContain('max="47"');
+    for (const n of [5, 10, 20, 30, 47]) expect(full).toContain(`${n} s`);
+    expect(full).toContain("Stable Audio Open 1.0");
+  });
+
+  it("shows a model picker only when two sound models are installed", () => {
+    acceptLicence();
+    const one = renderStudio(both(readySound(), [readySound()]));
+    expect(one).not.toContain('aria-label="Sound model"');
+    const two = renderStudio(both(readySound(), [readySound(), readyFull()]));
+    expect(two).toContain('aria-label="Sound model"');
+    expect(two).toContain("Stable Audio Open 1.0");
+    expect(two).toContain("Stable Audio Open Small");
+  });
+
+  it("the licence gate and the next step use the selected model's name and size", () => {
+    vi.stubGlobal("window", { localStorage: { getItem: () => null, setItem: noop } });
+    const gate = renderStudio(fakeMusic(fullSound(), { soundVariants: [soundVariant(), fullSound()] }));
+    expect(gate).toContain("accept its licence first");
+    expect(gate).not.toContain("Make sound");
+    vi.stubGlobal("window", { localStorage: { getItem: (k: string) => (k === "chaos.music.licences" ? JSON.stringify({ "stabilityai/stable-audio-open-1.0::stability-community": "x" }) : null), setItem: noop } });
+    const next = renderStudio(fakeMusic(fullSound()));
+    expect(next).toContain("Download Stable Audio Open 1.0 from Music Models (about 5.7 GB)");
   });
 });
 

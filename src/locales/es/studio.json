@@ -1166,7 +1166,7 @@
     "sounds": {
       "loopBadge": "Bucle",
       "needLicence": "Los efectos de sonido usan Stable Audio Open, que te pide aceptar primero su licencia. Abre «Modelos de música» para leerla.",
-      "needDownload": "Descarga Stable Audio Open Small desde «Modelos de música» (unos {size} GB). Acepta primero la licencia en Hugging Face.",
+      "needDownload": "Descarga {name} desde «Modelos de música» (unos {size} GB). Acepta primero la licencia en Hugging Face.",
       "needTextEncoder": "Al modelo de sonido le falta su codificador de texto. Vuelve a descargarlo desde «Modelos de música».",
       "needPack": "Los sonidos también necesitan un paquete pequeño (unos 1 GB). Instálalo desde «Modelos de música».",
       "prompt": "Describe el sonido",
@@ -1186,7 +1186,9 @@
         "memory": "No hay suficiente memoria libre para este sonido. Libera algo de memoria y vuelve a intentarlo.",
         "invalid": "No se pudo iniciar el sonido con estos ajustes.",
         "generic": "No se pudo crear el sonido."
-      }
+      },
+      "lengthSlider": null,
+      "modelPicker": null
     }
   },
   "audioPlayer": {

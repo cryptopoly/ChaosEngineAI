@@ -8,10 +8,10 @@ import { cancelMusicGeneration, estimateMusicRun, generateSound, MusicApiError }
 import type { MusicEstimateResponse, MusicLibraryItem, MusicModelVariant, MusicRuntimeStatus } from "../types";
 import {
   INITIAL_SOUND_RUN,
-  SOUND_SECONDS_MAX,
-  SOUND_SECONDS_MIN,
   buildSoundPayload,
+  clampSoundSeconds,
   defaultSoundForm,
+  soundLimits,
   soundRunReducer,
   validateSoundForm,
   type SoundForm,
@@ -35,9 +35,20 @@ export function useSoundsStudio({ backendOnline, variant, runtime, refreshRuntim
   const progress = useGenerationProgress("music", run.running);
   const formTouched = useRef(false);
   const variantId = variant?.id ?? null;
+  const limits = soundLimits(variant);
 
+  // A new model (or the catalog arriving) resets an untouched form; a touched one keeps its text and settings but its
+  // length is brought inside the model's own range (Small stops at 11 s, the full model at 47 s).
   useEffect(() => {
-    if (!formTouched.current && variant) setFormState(defaultSoundForm(variant));
+    if (!variant) return;
+    if (!formTouched.current) {
+      setFormState(defaultSoundForm(variant));
+      return;
+    }
+    setFormState((previous) => {
+      const seconds = clampSoundSeconds(previous.seconds, variant);
+      return seconds === previous.seconds ? previous : { ...previous, seconds };
+    });
   }, [variant]);
 
   const setForm = useCallback((patch: Partial<SoundForm>) => {
@@ -58,7 +69,7 @@ export function useSoundsStudio({ backendOnline, variant, runtime, refreshRuntim
     setEstimate(null);
   }, [variantId]);
   useEffect(() => {
-    if (!backendOnline || !variantId || run.running || !(seconds >= SOUND_SECONDS_MIN && seconds <= SOUND_SECONDS_MAX)) return;
+    if (!backendOnline || !variantId || run.running || !(seconds >= limits.min && seconds <= limits.max)) return;
     const controller = new AbortController();
     const timer = window.setTimeout(() => {
       estimateMusicRun(variantId, seconds, variations, controller.signal)
@@ -71,12 +82,12 @@ export function useSoundsStudio({ backendOnline, variant, runtime, refreshRuntim
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [backendOnline, variantId, seconds, variations, loadedModel, run.running]);
+  }, [backendOnline, variantId, seconds, variations, loadedModel, run.running, limits.min, limits.max]);
 
   const generate = useCallback(
     async (formOverride?: SoundForm) => {
       const next = formOverride ?? form;
-      if (!variantId || validateSoundForm(next).length > 0 || run.running) return;
+      if (!variantId || validateSoundForm(next, variant).length > 0 || run.running) return;
       dispatch({ type: "start", at: Date.now(), form: next });
       try {
         const response = await generateSound(buildSoundPayload(next, variantId));
@@ -90,7 +101,7 @@ export function useSoundsStudio({ backendOnline, variant, runtime, refreshRuntim
       void refreshLibrary();
       void refreshRuntime();
     },
-    [form, variantId, run.running, refreshLibrary, refreshRuntime],
+    [form, variant, variantId, run.running, refreshLibrary, refreshRuntime],
   );
 
   const cancel = useCallback(async () => {

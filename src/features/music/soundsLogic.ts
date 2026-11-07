@@ -1,15 +1,46 @@
 /**
  * Sounds mode of the Music Studio: the form and its limits, validation, the request, the plain readiness
- * answer ("what stands between you and a sound"), and the run state. Sounds are short (1 to 11 s) clips from
- * Stable Audio Open; the model is gated, so readiness also asks whether the licence was accepted.
+ * answer ("what stands between you and a sound"), and the run state. Sounds are short clips from Stable Audio
+ * Open (Small: 1 to 11 s, 1.0: 1 to 47 s; each catalog row carries its own limits); the models are gated, so
+ * readiness also asks whether the licence was accepted.
  */
 import type { MusicLibraryItem, MusicModelVariant, MusicResult, MusicSoundPayload } from "../../types";
 import { classifyMusicError, SEED_MAX, type MusicErrorInfo } from "./musicLogic";
 
+/** Limits used when no model row is known yet (Small's, the default sound model). */
 export const SOUND_SECONDS_MIN = 1;
 export const SOUND_SECONDS_MAX = 11;
 export const SOUND_CAPTION_MAX = 300;
-export const SOUND_LENGTH_PRESETS = [2, 4, 6, 8, 11] as const;
+
+type SoundRange = Partial<Pick<MusicModelVariant, "minSeconds" | "maxSeconds">> | null | undefined;
+
+export interface SoundLimits {
+  min: number;
+  max: number;
+}
+
+/** The selected model's own length range (`minSeconds` / `maxSeconds` of its catalog row). */
+export function soundLimits(variant?: SoundRange): SoundLimits {
+  const min = Number(variant?.minSeconds);
+  const max = Number(variant?.maxSeconds);
+  return {
+    min: Number.isFinite(min) && min > 0 ? min : SOUND_SECONDS_MIN,
+    max: Number.isFinite(max) && max > 0 ? max : SOUND_SECONDS_MAX,
+  };
+}
+
+/** Length pills for a model: Small's familiar set, and a longer ladder ending at the maximum for longer models. */
+export function soundLengthPresets(variant?: SoundRange): number[] {
+  const { min, max } = soundLimits(variant);
+  const ladder = max <= 12 ? [2, 4, 6, 8] : [5, 10, 20, 30];
+  return [...ladder.filter((n) => n >= min && n < max), max];
+}
+
+export function clampSoundSeconds(seconds: number, variant?: SoundRange): number {
+  const { min, max } = soundLimits(variant);
+  if (!Number.isFinite(seconds)) return Math.min(5, max);
+  return Math.min(max, Math.max(min, seconds));
+}
 export const SOUND_VARIATION_CHOICES = [1, 2, 4] as const;
 /** Pack size shown on the Models page (the install is about 0.9 GB of Python packages). */
 export const SOUNDS_PACK_GB = 1;
@@ -25,22 +56,24 @@ export interface SoundForm {
 
 export type SoundIssue = "captionEmpty" | "captionTooLong" | "secondsRange" | "seedRange" | "variations";
 
-export function defaultSoundForm(variant?: Pick<MusicModelVariant, "defaultSettings"> | null): SoundForm {
+export function defaultSoundForm(variant?: (Pick<MusicModelVariant, "defaultSettings"> & SoundRange) | null): SoundForm {
   const seconds = Number(variant?.defaultSettings?.seconds);
+  const { min, max } = soundLimits(variant);
   return {
     caption: "",
-    seconds: Number.isFinite(seconds) && seconds >= SOUND_SECONDS_MIN && seconds <= SOUND_SECONDS_MAX ? seconds : 5,
+    seconds: Number.isFinite(seconds) && seconds >= min && seconds <= max ? seconds : Math.min(5, max),
     loop: Boolean(variant?.defaultSettings?.loop),
     variations: 1,
     seed: null,
   };
 }
 
-export function validateSoundForm(form: SoundForm): SoundIssue[] {
+export function validateSoundForm(form: SoundForm, variant?: SoundRange): SoundIssue[] {
+  const { min, max } = soundLimits(variant);
   const issues: SoundIssue[] = [];
   if (!form.caption.trim()) issues.push("captionEmpty");
   else if (form.caption.length > SOUND_CAPTION_MAX) issues.push("captionTooLong");
-  if (!Number.isFinite(form.seconds) || form.seconds < SOUND_SECONDS_MIN || form.seconds > SOUND_SECONDS_MAX) issues.push("secondsRange");
+  if (!Number.isFinite(form.seconds) || form.seconds < min || form.seconds > max) issues.push("secondsRange");
   if (form.seed !== null && (!Number.isInteger(form.seed) || form.seed < 0 || form.seed > SEED_MAX)) issues.push("seedRange");
   if (!(SOUND_VARIATION_CHOICES as readonly number[]).includes(form.variations)) issues.push("variations");
   return issues;
@@ -59,8 +92,8 @@ export function buildSoundPayload(form: SoundForm, modelId: string | null): Musi
 }
 
 /** "Make another like this" for a sound in the Library. */
-export function soundFormFromItem(item: MusicLibraryItem): SoundForm {
-  const seconds = Math.min(SOUND_SECONDS_MAX, Math.max(SOUND_SECONDS_MIN, Math.round(item.durationS ?? 5)));
+export function soundFormFromItem(item: MusicLibraryItem, variant?: SoundRange): SoundForm {
+  const seconds = clampSoundSeconds(Math.round(item.durationS ?? 5), variant);
   return { caption: item.caption ?? "", seconds, loop: Boolean(item.loop), variations: 1, seed: item.seed ?? null };
 }
 

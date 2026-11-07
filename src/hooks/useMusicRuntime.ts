@@ -41,6 +41,7 @@ export function useMusicRuntime(backendOnline: boolean, setErrorProp: (message: 
   const [soundInstallJob, setSoundInstallJob] = useState<MusicInstallJob | null>(null);
   const [catalogLoaded, setCatalogLoaded] = useState(false);
   const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
+  const [selectedSoundModelId, setSelectedSoundModelId] = useState<string | null>(null);
   const downloadingRef = useRef(false);
   /** Set when the download status stopped answering and polling gave up. */
   const [downloadPollError, setDownloadPollError] = useState<string | null>(null);
@@ -149,7 +150,13 @@ export function useMusicRuntime(backendOnline: boolean, setErrorProp: (message: 
   // Sound rows (Stable Audio Open) have their own mode, pack and model picker: the music lists leave them out.
   const musicFamilies = useMemo(() => families.filter((family) => family.kind !== "sound"), [families]);
   const soundVariants = useMemo(() => flattenVariants(families.filter((family) => family.kind === "sound")), [families]);
-  const soundVariant = soundVariants[0] ?? null;
+  const installedSoundVariants = useMemo(() => soundVariants.filter((variant) => variant.availableLocally), [soundVariants]);
+  // The chosen sound model, else the first one that is downloaded (so a person who only has the full model gets
+  // it), else the catalog's first (the small default).
+  const soundVariant = useMemo(
+    () => soundVariants.find((variant) => variant.id === selectedSoundModelId) ?? installedSoundVariants[0] ?? soundVariants[0] ?? null,
+    [soundVariants, installedSoundVariants, selectedSoundModelId],
+  );
   const variants = useMemo(() => flattenVariants(musicFamilies), [musicFamilies]);
   const defaultVariant = useMemo(() => pickDefaultVariant(musicFamilies), [musicFamilies]);
   const selectedVariant = useMemo(
@@ -283,7 +290,9 @@ export function useMusicRuntime(backendOnline: boolean, setErrorProp: (message: 
     installJob,
     soundInstallJob,
     soundVariants,
+    installedSoundVariants,
     soundVariant,
+    setSelectedSoundModelId,
     startSoundPackInstall,
     cancelSoundPackInstall,
     catalogLoaded,

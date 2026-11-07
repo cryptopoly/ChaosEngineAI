@@ -1166,7 +1166,7 @@
     "sounds": {
       "loopBadge": "循环",
       "needLicence": "音效使用 Stable Audio Open，需要你先接受其许可证。请打开“音乐模型”阅读。",
-      "needDownload": "请从“音乐模型”下载 Stable Audio Open Small（约 {size} GB）。请先在 Hugging Face 上接受许可证。",
+      "needDownload": "请从“音乐模型”下载 {name}（约 {size} GB）。请先在 Hugging Face 上接受许可证。",
       "needTextEncoder": "音效模型缺少文本编码器。请从“音乐模型”重新下载。",
       "needPack": "音效还需要一个小型组件包（约 1 GB）。请从“音乐模型”安装。",
       "prompt": "描述这个声音",
@@ -1186,7 +1186,9 @@
         "memory": "可用内存不足，无法制作这个音效。请释放一些内存后重试。",
         "invalid": "无法使用这些设置开始制作音效。",
         "generic": "无法制作该音效。"
-      }
+      },
+      "lengthSlider": null,
+      "modelPicker": null
     }
   },
   "audioPlayer": {

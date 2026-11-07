@@ -1166,7 +1166,7 @@
     "sounds": {
       "loopBadge": "Boucle",
       "needLicence": "Les effets sonores utilisent Stable Audio Open, dont il faut d'abord accepter la licence. Ouvrez « Modèles musique » pour la lire.",
-      "needDownload": "Téléchargez Stable Audio Open Small depuis « Modèles musique » (environ {size} Go). Acceptez d'abord la licence sur Hugging Face.",
+      "needDownload": "Téléchargez {name} depuis « Modèles musique » (environ {size} Go). Acceptez d'abord la licence sur Hugging Face.",
       "needTextEncoder": "Le modèle de sons n'a pas son encodeur de texte. Téléchargez-le à nouveau depuis « Modèles musique ».",
       "needPack": "Les sons nécessitent aussi un petit pack (environ 1 Go). Installez-le depuis « Modèles musique ».",
       "prompt": "Décrivez le son",
@@ -1186,7 +1186,9 @@
         "memory": "Pas assez de mémoire libre pour ce son. Libérez de la mémoire et réessayez.",
         "invalid": "Le son n'a pas pu être lancé avec ces réglages.",
         "generic": "Le son n'a pas pu être créé."
-      }
+      },
+      "lengthSlider": null,
+      "modelPicker": null
     }
   },
   "audioPlayer": {

@@ -1166,7 +1166,7 @@
     "sounds": {
       "loopBadge": "ループ",
       "needLicence": "効果音には Stable Audio Open を使います。先にライセンスへの同意が必要です。「ミュージックモデル」を開いて内容を読んでください。",
-      "needDownload": "「ミュージックモデル」から Stable Audio Open Small をダウンロードしてください（約 {size} GB）。先に Hugging Face でライセンスに同意してください。",
+      "needDownload": "「ミュージックモデル」から {name} をダウンロードしてください（約 {size} GB）。先に Hugging Face でライセンスに同意してください。",
       "needTextEncoder": "サウンドモデルにテキストエンコーダーがありません。「ミュージックモデル」からもう一度ダウンロードしてください。",
       "needPack": "サウンドには小さなパック（約 1 GB）も必要です。「ミュージックモデル」からインストールしてください。",
       "prompt": "サウンドを説明",
@@ -1186,7 +1186,9 @@
         "memory": "このサウンドを作るための空きメモリが足りません。メモリを空けてからもう一度お試しください。",
         "invalid": "この設定ではサウンドの作成を開始できませんでした。",
         "generic": "サウンドを作成できませんでした。"
-      }
+      },
+      "lengthSlider": null,
+      "modelPicker": null
     }
   },
   "audioPlayer": {

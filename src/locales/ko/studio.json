@@ -1166,7 +1166,7 @@
     "sounds": {
       "loopBadge": "루프",
       "needLicence": "효과음은 Stable Audio Open을 사용하며, 먼저 라이선스에 동의해야 합니다. '음악 모델'을 열어 읽어 보세요.",
-      "needDownload": "'음악 모델'에서 Stable Audio Open Small을 다운로드하세요(약 {size} GB). 먼저 Hugging Face에서 라이선스에 동의해야 합니다.",
+      "needDownload": "'음악 모델'에서 {name}을 다운로드하세요(약 {size} GB). 먼저 Hugging Face에서 라이선스에 동의해야 합니다.",
       "needTextEncoder": "사운드 모델에 텍스트 인코더가 없습니다. '음악 모델'에서 다시 다운로드하세요.",
       "needPack": "사운드에는 작은 팩(약 1 GB)도 필요합니다. '음악 모델'에서 설치하세요.",
       "prompt": "사운드 설명",
@@ -1186,7 +1186,9 @@
         "memory": "이 사운드를 만들기에 여유 메모리가 부족합니다. 메모리를 확보한 뒤 다시 시도하세요.",
         "invalid": "이 설정으로는 사운드를 시작할 수 없었습니다.",
         "generic": "사운드를 만들 수 없었습니다."
-      }
+      },
+      "lengthSlider": null,
+      "modelPicker": null
     }
   },
   "audioPlayer": {

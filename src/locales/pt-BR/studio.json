@@ -1166,7 +1166,7 @@
     "sounds": {
       "loopBadge": "Loop",
       "needLicence": "Os efeitos sonoros usam o Stable Audio Open, que pede que você aceite a licença primeiro. Abra \"Modelos de música\" para lê-la.",
-      "needDownload": "Baixe o Stable Audio Open Small em \"Modelos de música\" (cerca de {size} GB). Aceite primeiro a licença no Hugging Face.",
+      "needDownload": "Baixe o {name} em \"Modelos de música\" (cerca de {size} GB). Aceite primeiro a licença no Hugging Face.",
       "needTextEncoder": "O modelo de som está sem o codificador de texto. Baixe-o novamente em \"Modelos de música\".",
       "needPack": "Os sons também precisam de um pacote pequeno (cerca de 1 GB). Instale-o em \"Modelos de música\".",
       "prompt": "Descreva o som",
@@ -1186,7 +1186,9 @@
         "memory": "Não há memória livre suficiente para este som. Libere um pouco de memória e tente novamente.",
         "invalid": "Não foi possível iniciar o som com essas configurações.",
         "generic": "Não foi possível criar o som."
-      }
+      },
+      "lengthSlider": null,
+      "modelPicker": null
     }
   },
   "audioPlayer": {

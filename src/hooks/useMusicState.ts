@@ -23,7 +23,7 @@ export function useMusicState(
 ) {
   const runtimeState = useMusicRuntime(backendOnline, setError);
   const library = useMusicLibrary(backendOnline, setError);
-  const { selectedVariant, refreshRuntime, setSelectedModelId } = runtimeState;
+  const { selectedVariant, refreshRuntime, setSelectedModelId, setSelectedSoundModelId } = runtimeState;
   const studio = useMusicStudio({
     backendOnline,
     variant: selectedVariant,
@@ -45,21 +45,26 @@ export function useMusicState(
   /** Music Models > "Open in Studio": select the model (a sound row opens the Sounds mode) and go. */
   const openStudio = useCallback(
     (modelId?: string) => {
-      if (modelId && runtimeState.soundVariants.some((variant) => variant.id === modelId)) setStudioMode("sounds");
-      else {
+      if (modelId && runtimeState.soundVariants.some((variant) => variant.id === modelId)) {
+        setSelectedSoundModelId(modelId);
+        setStudioMode("sounds");
+      } else {
         if (modelId) setSelectedModelId(modelId);
         setStudioMode("music");
       }
       setActiveTab("music-studio");
     },
-    [setSelectedModelId, setActiveTab, runtimeState.soundVariants],
+    [setSelectedModelId, setSelectedSoundModelId, setActiveTab, runtimeState.soundVariants],
   );
 
   /** Music Library > "Make another like this": the item's settings in the Studio form. */
   const makeAnotherLike = useCallback(
     (item: MusicLibraryItem) => {
       if (item.kind === "sound") {
-        replaceSoundForm(soundFormFromItem(item));
+        // The sound's own model (when it is still in the catalog), so a 40 s clip keeps its length.
+        const soundModel = runtimeState.soundVariants.find((entry) => entry.id === item.model) ?? runtimeState.soundVariant;
+        if (soundModel) setSelectedSoundModelId(soundModel.id);
+        replaceSoundForm(soundFormFromItem(item, soundModel));
         setStudioMode("sounds");
         setActiveTab("music-studio");
         return;
@@ -70,7 +75,7 @@ export function useMusicState(
       replaceForm(formFromItem(item, variant));
       setActiveTab("music-studio");
     },
-    [runtimeState.variants, selectedVariant, setSelectedModelId, replaceForm, replaceSoundForm, setActiveTab],
+    [runtimeState.variants, runtimeState.soundVariants, runtimeState.soundVariant, selectedVariant, setSelectedModelId, setSelectedSoundModelId, replaceForm, replaceSoundForm, setActiveTab],
   );
 
   /** Groups the sidebar opens on their ready child: Music once a music model is installed. */

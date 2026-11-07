@@ -13388,6 +13388,15 @@ button.licence-chip:focus-visible {
   font-size: 0.9rem;
   color: var(--muted-strong);
 }
+.music-studio__length-slider {
+  flex: 1 1 140px;
+  min-width: 120px;
+  max-width: 280px;
+  accent-color: var(--accent, currentColor);
+}
+.music-studio__model-picker {
+  max-width: 100%;
+}
 .music-studio__field {
   display: flex;
   flex-direction: column;

@@ -1,8 +1,9 @@
 /**
- * Music Studio > Sounds: describe a sound, pick a length of 1 to 11 s, press Make sound. The default view is
- * the description, the length pills, a Loop switch and one action; the run estimate sits above the action;
- * variations and seed are in Options. Sounds come from Stable Audio Open Small, a gated model: until the
- * licence is accepted, the model downloaded and the sounds pack installed, the Studio says which step is next
+ * Music Studio > Sounds: describe a sound, pick a length (1 s up to the selected model's maximum: 11 s for Small,
+ * 47 s for the full 1.0 model), press Make sound. The default view is the description, the length pills and
+ * slider, a Loop switch and one action; the run estimate sits above the action; variations and seed are in
+ * Options. Sounds come from Stable Audio Open, a gated model: until the licence is accepted, the model
+ * downloaded and the sounds pack installed, the Studio says which step is next
  * in one sentence and opens Music Models. "Powered by Stability AI" is shown under the results, as the licence
  * asks. States: offline, loading, not ready, ready, queued, running, done, error.
  */
@@ -23,12 +24,11 @@ import { clock, isQueued, itemFilePath, megabytes, stripFromEstimate } from "./m
 import { isLicenceAccepted } from "./musicLicence";
 import {
   SOUND_CAPTION_MAX,
-  SOUND_LENGTH_PRESETS,
-  SOUND_SECONDS_MAX,
-  SOUND_SECONDS_MIN,
   SOUND_VARIATION_CHOICES,
   againSoundForm,
   soundBlocker,
+  soundLengthPresets,
+  soundLimits,
   validateSoundForm,
   varySoundForm,
   soundFormFromItem,
@@ -47,6 +47,8 @@ export interface SoundsStudioProps {
 
 const SOUND_PHASE_IDS = ["load", "encode", "compose", "decode", "save"] as const;
 const SOUND_PHASE_SECONDS: Record<(typeof SOUND_PHASE_IDS)[number], number> = { load: 20, encode: 1, compose: 3, decode: 2, save: 1 };
+/** Rough seconds per phase; the compose step takes as long as the model's run estimate says (minutes for the full model). */
+const COMPOSE_MIN_SECONDS = 3;
 
 function SoundResultCard({
   result,
@@ -135,7 +137,9 @@ export function SoundsStudio({ music, backendOnline, onTabChange, header }: Soun
   const { sounds: studio, runtime, soundVariant } = music;
   const { form, run, running, progress, estimate } = studio;
   const storyboard = useSendToStoryboard((tab) => onTabChange(tab));
-  const issues = validateSoundForm(form);
+  const issues = validateSoundForm(form, soundVariant);
+  const limits = soundLimits(soundVariant);
+  const presetSeconds = soundLengthPresets(soundVariant);
   const queued = isQueued(progress);
   const licence = soundVariant?.licence ?? null;
   const blocker = soundBlocker({
@@ -189,7 +193,8 @@ export function SoundsStudio({ music, backendOnline, onTabChange, header }: Soun
         defaultValue: "Sound effects use Stable Audio Open, which asks you to accept its licence first. Open Music Models to read it.",
       }),
       download: t("musicStudio.sounds.needDownload", {
-        defaultValue: "Download Stable Audio Open Small from Music Models (about {size} GB). Accept the licence on Hugging Face first.",
+        defaultValue: "Download {name} from Music Models (about {size} GB). Accept the licence on Hugging Face first.",
+        name: soundVariant?.name ?? "Stable Audio Open Small",
         size: (soundVariant?.sizeGb ?? 2.6).toFixed(1),
       }),
       textEncoder: t("musicStudio.sounds.needTextEncoder", { defaultValue: "The sound model is missing its text encoder. Download it again from Music Models." }),
@@ -217,7 +222,7 @@ export function SoundsStudio({ music, backendOnline, onTabChange, header }: Soun
   const phases: LiveProgressPhase[] = SOUND_PHASE_IDS.map((id) => ({
     id,
     label: t(`musicStudio.progress.${id}`, { defaultValue: id }),
-    estimatedSeconds: SOUND_PHASE_SECONDS[id],
+    estimatedSeconds: id === "compose" ? Math.max(COMPOSE_MIN_SECONDS, Math.round(estimate?.estimate.seconds ?? SOUND_PHASE_SECONDS.compose)) : SOUND_PHASE_SECONDS[id],
   }));
 
   function runFrom(next: SoundForm) {
@@ -253,7 +258,7 @@ export function SoundsStudio({ music, backendOnline, onTabChange, header }: Soun
   const presets = (
     <div className="preset-row music-studio__length" role="group" aria-label={t("musicStudio.length.label", { defaultValue: "Length" })}>
       <span className="preset-row-label">{t("musicStudio.length.label", { defaultValue: "Length" })}</span>
-      {SOUND_LENGTH_PRESETS.map((seconds) => (
+      {presetSeconds.map((seconds) => (
         <button
           key={seconds}
           type="button"
@@ -265,6 +270,18 @@ export function SoundsStudio({ music, backendOnline, onTabChange, header }: Soun
           <span className="preset-pill-label">{t("musicStudio.length.seconds", { defaultValue: "{n} s", n: seconds })}</span>
         </button>
       ))}
+      <input
+        type="range"
+        className="music-studio__length-slider"
+        aria-label={t("musicStudio.sounds.lengthSlider", { defaultValue: "Length in seconds" })}
+        aria-valuetext={t("musicStudio.length.seconds", { defaultValue: "{n} s", n: form.seconds })}
+        min={limits.min}
+        max={limits.max}
+        step={1}
+        value={Math.min(limits.max, Math.max(limits.min, Math.round(form.seconds)))}
+        disabled={running}
+        onChange={(event) => studio.setForm({ seconds: Number(event.target.value) })}
+      />
       <label className="music-studio__loop">
         <input type="checkbox" checked={form.loop} disabled={running} onChange={(event) => studio.setForm({ loop: event.target.checked })} />
         <span>{t("musicStudio.sounds.loop", { defaultValue: "Make it a seamless loop" })}</span>
@@ -276,7 +293,7 @@ export function SoundsStudio({ music, backendOnline, onTabChange, header }: Soun
   const hintText: Record<SoundIssue, string> = {
     captionEmpty: t("musicStudio.sounds.issue.captionEmpty", { defaultValue: "Describe the sound to make it." }),
     captionTooLong: t("musicStudio.sounds.issue.captionTooLong", { defaultValue: "The description is longer than {max} characters.", max: SOUND_CAPTION_MAX }),
-    secondsRange: t("musicStudio.sounds.issue.secondsRange", { defaultValue: "Length must be {min} to {max} seconds.", min: SOUND_SECONDS_MIN, max: SOUND_SECONDS_MAX }),
+    secondsRange: t("musicStudio.sounds.issue.secondsRange", { defaultValue: "Length must be {min} to {max} seconds.", min: limits.min, max: limits.max }),
     seedRange: t("musicStudio.issue.seedRange", { defaultValue: "The seed must be a whole number from 0 up." }),
     variations: t("musicStudio.issue.variations", { defaultValue: "Variations must be 1, 2 or 4." }),
   };

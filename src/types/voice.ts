@@ -126,6 +126,8 @@ export interface VoiceLibrarySummary {
 export interface VoiceLibraryItem extends Omit<VoiceLibrarySummary, "preview" | "speakerCount"> {
   text: string;
   segments: TranscriptSegment[];
+  /** Where the audio file is on this machine (null when the item has none); only the single-item route sends it. */
+  audioPath?: string | null;
 }
 
 export interface VoiceLibraryPatch {

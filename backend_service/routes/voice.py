@@ -374,7 +374,9 @@ def get_library_item(request: Request, item_id: str) -> dict[str, Any]:
     item = voice_library.get(_library_id(item_id))
     if item is None:
         raise HTTPException(status_code=404, detail="Item not found.")
-    return item
+    # Where the audio lives on this machine, so other areas (the storyboard) can import the file.
+    audio = voice_library.audio_path(item["id"])
+    return {**item, "audioPath": str(audio) if audio is not None else None}
 
 
 @router.post("/api/voice/library/{item_id}")

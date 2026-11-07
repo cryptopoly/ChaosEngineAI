@@ -36,7 +36,7 @@ Pass the path of an earlier output as an input image. Only models with `acceptsI
 - Poster to clip: `generate_video` with `start_image` set to the poster path (LTX-2 models). Add `end_image` to land on a second image.
 - Same subject in new scenes: `generate_image` with `reference_images` set to the earlier image (FLUX 3 Klein takes up to four; FLUX.1, FLUX.2 Klein and Qwen take one, with `image_strength` where higher stays closer).
 - Leave width and height out and the output takes the image's shape.
-- Cloned voices: `list_cloned_voices` then `speak_cloned` (needs the `clone` scope and the person's "Allow agents to use cloned voices" switch). You can only use a voice the person already made in the app with their spoken consent; you cannot create one. The output is tagged and watermarked as AI-made, and a film clip made from it is marked automatically. If refused, tell the user what the error says.
+- Cloned voices: `list_cloned_voices` then `speak_cloned` (needs the `clone` scope and the person's "Allow agents to use cloned voices" switch). You can only use a voice the person already made in the app (it has a stored permission record); you cannot create one. Pass `permission_confirmed: true` only when this is the person's own voice or the speaker's permission covers this use; it is recorded in the audit log. The output is tagged and watermarked as AI-made, and a film clip made from it is marked automatically. If refused, tell the user what the error says.
 - On another machine, paths in a job result are not readable from here: send inputs with `upload_file` (use the `upload:` handle as the path) and fetch a result from `output.download.url` with the same token.
 
 ## Making a short film (storyboard)

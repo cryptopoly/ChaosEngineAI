@@ -33,7 +33,7 @@ Not in scope: A5 (confirmed download), A10 (remote routing).
 
 ## Not done / not verified
 
-- No real cloned speech through an agent (no consented voice or watermark component on this machine).
+- No real cloned speech through an agent (no cloned voice or watermark component on this machine).
 - Progress stream tested with the test client and a raw urllib read, not with a real MCP client.
 - OTIO and captions tools tested against fake clips, not a real film.
 - Gallery resource lists files by modification time only (no prompts or ids).

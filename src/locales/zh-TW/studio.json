@@ -372,7 +372,8 @@
       "noPrompt": "請在生成前撰寫提示詞。",
       "backendOffline": "後端已離線。",
       "busy": "忙碌中…",
-      "dangerLevel": null
+      "dangerLevel": null,
+      "needsStartImage": null
     },
     "generateTitle": "開始生成此片段。",
     "memory": {

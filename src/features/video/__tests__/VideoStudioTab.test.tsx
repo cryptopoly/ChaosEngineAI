@@ -207,6 +207,15 @@ describe("Video Studio danger gate", () => {
     expect(html).not.toContain("Run anyway");
     expect(generateButton(html)).not.toContain("disabled");
   });
+
+  it("keeps Generate off for an image-to-video model until a start image is set", () => {
+    const wan = { acceptsImageInput: true, requiresStartImage: true };
+    const html = render({}, wan);
+    expect(generateButton(html)).toContain("disabled");
+    expect(html).toContain("This model starts from an image. Add a start image.");
+    const withImage = render({ videoStartImage: { path: "/tmp/start.png", name: "start.png" } }, wan);
+    expect(generateButton(withImage)).not.toContain("disabled");
+  });
 });
 
 describe("Video Studio controls moved into Options and Expert", () => {

@@ -197,16 +197,30 @@ class AudioClip(_Model):
         return self
 
 
+def _drop_legacy(data: Any, keys: tuple[str, ...]) -> Any:
+    """Projects saved before the end card was removed still carry its fields; ignore them."""
+    if isinstance(data, dict) and any(k in data for k in keys):
+        return {k: v for k, v in data.items() if k not in keys}
+    return data
+
+
 class AiLabel(_Model):
     embedTag: bool = True
-    endCard: bool = False
+
+    @model_validator(mode="before")
+    @classmethod
+    def _drop_end_card(cls, data: Any) -> Any:
+        return _drop_legacy(data, ("endCard",))
 
 
 class ExportSettings(_Model):
     aiLabel: AiLabel = Field(default_factory=AiLabel)
     loudnessLufs: float | None = Field(-16.0, ge=-40, le=-5)
-    endCardText: Line = "Made with AI"
-    endCardSeconds: float = Field(2.0, ge=0.5, le=10)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _drop_end_card(cls, data: Any) -> Any:
+        return _drop_legacy(data, ("endCardText", "endCardSeconds"))
 
 
 class BatchResult(_Model):

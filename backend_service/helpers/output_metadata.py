@@ -37,6 +37,9 @@ _SETTING_KEYS = (
     "imageStrength",
     "referenceImagePaths",
     "createdAt",
+    "projectId",
+    "projectName",
+    "shotId",
 )
 
 

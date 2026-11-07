@@ -44,6 +44,27 @@ _TURBO_DEFAULTS: dict[str, Any] = {
     "channels": 2,
 }
 
+# Stability AI Community Licence (last updated 2024-07-05), read on 2026-11-07 from the LICENSE file of
+# stabilityai/stable-audio-open-small at the pinned revision. Plain-language lines, not legal advice.
+_STABILITY_LICENCE: dict[str, Any] = {
+    "id": "stability-community",
+    "name": "Stability AI Community Licence",
+    "commercial": "limited",
+    "gated": True,
+    "attribution": "Powered by Stability AI",
+    "revenueCapUsd": 1_000_000,
+    "summaryLines": [
+        "Free for research, personal use and commercial use while you and your affiliates earn under US$1 million a "
+        "year. Over that, the licence ends and you need one from Stability AI.",
+        "Commercial use means registering with Stability AI (stability.ai/community-license).",
+        "If you share the model or a product built on it, you must show \"Powered by Stability AI\" and keep its notice file.",
+        "You own the sounds you make, but may not use the model or its output to train another foundation model.",
+        "Use must follow Stability's acceptable use policy. The model is gated: you accept the terms on Hugging Face first.",
+    ],
+    "note": "The weights are never bundled with ChaosEngineAI. You download them from Hugging Face under your own account.",
+    "url": "https://huggingface.co/stabilityai/stable-audio-open-small/blob/ea2772170fc06f80dfd02bea6e57a44d9d4bc9d3/LICENSE",
+}
+
 MUSIC_MODEL_FAMILIES: list[dict[str, Any]] = [
     {
         "id": "ace-step-1.5",
@@ -145,6 +166,89 @@ MUSIC_MODEL_FAMILIES: list[dict[str, Any]] = [
                 },
                 "defaultSettings": dict(_TURBO_DEFAULTS),
                 "note": "Opt-in large model for 64 GB Macs. About 2x slower than turbo; 47 GB peak, so everything else is unloaded first.",
+            },
+        ],
+    },
+    {
+        "id": "stable-audio-open",
+        "name": "Stable Audio Open",
+        "kind": "sound",
+        "provider": "Stability AI",
+        "headline": "Short sound effects and loops up to 11 s. Not songs, not vocals.",
+        "summary": "Text to sound: footsteps, doors, ambience, drum loops. Runs on PyTorch (Apple GPU, else CPU) in its own pack.",
+        "badges": ["Gated", "Sounds"],
+        "defaultVariantId": "stabilityai/stable-audio-open-small",
+        "variants": [
+            {
+                "id": "stabilityai/stable-audio-open-small",
+                "familyId": "stable-audio-open",
+                "kind": "sound",
+                "pack": "sound",
+                "name": "Stable Audio Open Small",
+                "provider": "Stability AI",
+                "repo": "stabilityai/stable-audio-open-small",
+                "revision": "ea2772170fc06f80dfd02bea6e57a44d9d4bc9d3",
+                "link": "https://huggingface.co/stabilityai/stable-audio-open-small",
+                "engine": "stableaudio",
+                "engineModel": "stable-audio-open-small",
+                "runtime": "stable-audio-tools on PyTorch (isolated sounds environment)",
+                "makes": ["sfx", "loops"],
+                "platforms": ["apple-silicon"],
+                "taskSupport": ["txt2sound"],
+                "sizeGb": 2.57,
+                "sizeNote": "The 1.7 GB model plus the 0.9 GB T5-base text encoder (Apache 2.0) it reads prompts with.",
+                "requires": [],
+                "checkpointSubdir": "stable-audio-open-small",
+                "weightFolders": ["stable-audio-open-small"],
+                # Only these files are fetched (the repo also holds a second 1.7 GB checkpoint copy,
+                # the base model and 1.4 GB of mobile builds we do not use).
+                "downloadPatterns": ["model.safetensors", "model_config.json", "LICENSE", "README.md"],
+                "downloadCompanions": [
+                    {"repo": "google-t5/t5-base",
+                     "patterns": ["config.json", "model.safetensors", "spiece.model", "tokenizer.json"]},
+                ],
+                "textEncoder": {
+                    "repo": "google-t5/t5-base",
+                    "revision": "a9723ea7f1b39c1eae772870f3b547bf6ef7e6c1",
+                    "checkpointSubdir": "t5-base",
+                    "files": ["config.json", "model.safetensors", "spiece.model", "tokenizer.json"],
+                },
+                "large": False,
+                "minMemoryGb": None,
+                "unloadsOthers": False,
+                "maxSeconds": 11,
+                "minSeconds": 1,
+                "estimatedGenerationSeconds": 6.0,
+                "licence": _STABILITY_LICENCE,
+                "estimates": {
+                    # Not measured: the weights are gated and no Hugging Face token was available for the
+                    # build run, so these are catalog estimates (fp32 weights 1.7 GB + T5 0.9 GB + activations).
+                    # Replace with a measured row after the first real run (docs/hub/progress/v-audio.md).
+                    "basis": "estimated",
+                    "wallSecondsAt": [[2, 3.0], [6, 4.0], [11, 6.0]],
+                    "secondsPer10sAudio": 5.0,
+                    "coldStartSeconds": 20.0,
+                    "vaeSecondsPerAudioSecond": 0.1,
+                    "peakGb": 6.0,
+                    "idleGb": 4.0,
+                    "diskGb": 2.57,
+                    # 44.1 kHz stereo FLAC 24-bit, noisy material.
+                    "outputMbPerMinute": 14.0,
+                    "cuda": {"peakGb": None, "basis": "estimated", "source": "not measured; the CUDA sound lane is not built yet"},
+                },
+                "defaultSettings": {
+                    "seconds": 5,
+                    "variations": 1,
+                    "steps": 8,
+                    "cfgScale": 1.0,
+                    "sampler": "pingpong",
+                    "loop": False,
+                    "normalizePeakDb": -1.0,
+                    "format": "flac24",
+                    "sampleRate": 44100,
+                    "channels": 2,
+                },
+                "note": "Opt-in sound effects model. English prompts, 1 to 11 s, stereo 44.1 kHz. Gated: accept the licence on Hugging Face.",
             },
         ],
     },

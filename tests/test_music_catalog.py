@@ -31,8 +31,9 @@ XL = "ACE-Step/acestep-v15-xl-turbo"
 
 class CatalogRowTests(unittest.TestCase):
     def test_only_integrated_models_with_the_ui_fields(self) -> None:
-        self.assertEqual([v["id"] for v in music_variants()], [TURBO, XL])
-        for variant in music_variants():
+        music_rows = [v for v in music_variants() if v.get("kind") != "sound"]
+        self.assertEqual([v["id"] for v in music_rows], [TURBO, XL])
+        for variant in music_rows:
             licence = variant["licence"]
             self.assertEqual((licence["id"], licence["name"], licence["commercial"], licence["gated"]), ("mit", "MIT", "yes", False))
             self.assertTrue(licence["url"].startswith("https://github.com/ace-step/ACE-Step-1.5/"))

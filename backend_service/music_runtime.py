@@ -18,12 +18,12 @@ import uuid
 from pathlib import Path
 from typing import Any, Callable
 
-from backend_service import music_env
+from backend_service import music_env, music_sound_env
 
 # Worker stage -> progress phase the Music Studio shows.
 STAGE_PHASES = {"load": "load", "encode": "encode", "diffusion": "compose", "decode": "decode", "write": "save"}
 PHASE_MESSAGES = {
-    "load": "Loading the music model",
+    "load": "Loading the model",
     "encode": "Reading the prompt",
     "compose": "Composing",
     "decode": "Decoding audio",
@@ -68,7 +68,9 @@ def save_settings(patch: dict[str, Any]) -> dict[str, Any]:
         path.write_text(json.dumps(settings, indent=2), encoding="utf-8")
     from backend_service.music_client import get_worker
 
-    get_worker().idle_minutes = float(settings["idleUnloadMinutes"])
+    from backend_service.music_client import get_sound_worker
+
+    get_worker().idle_minutes = get_sound_worker().idle_minutes = float(settings["idleUnloadMinutes"])
     return settings
 
 
@@ -134,10 +136,33 @@ def estimate_run(model: str | None, seconds: float, variations: int = 1, warm: b
 # Readiness, load, unload
 # ---------------------------------------------------------------------------
 
+def is_sound(variant: dict[str, Any]) -> bool:
+    """A sound-effects row (Stable Audio Open): its own pack, worker and library kind."""
+    return variant.get("kind") == "sound"
+
+
+def _worker_for(variant: dict[str, Any]) -> Any:
+    from backend_service.music_client import get_sound_worker, get_worker
+
+    return get_sound_worker() if is_sound(variant) else get_worker()
+
+
 def readiness_error(variant: dict[str, Any]) -> str | None:
     """The plain reason this row cannot run now, with the fix; ``None`` when it can."""
     from backend_service.helpers.music import find_music_variant, weights_source
 
+    if is_sound(variant):
+        reason = music_sound_env.lane_unavailable_reason()
+        if reason:
+            return reason
+        if not music_sound_env.is_installed():
+            return "The sounds pack is not installed. Install it from Music > Models."
+        if weights_source(variant) is None:
+            return (f"{variant['name']} is not downloaded yet ({variant['sizeGb']:.1f} GB). Accept its licence on "
+                    "Hugging Face, then download it from Music > Models.")
+        if not music_sound_env.text_encoder_ready(variant):
+            return f"{variant['name']} is missing its text encoder. Download the model again from Music > Models."
+        return None
     reason = music_env.lane_unavailable_reason()
     if reason:
         return reason
@@ -159,27 +184,32 @@ def _prepare(variant: dict[str, Any]) -> None:
     if error:
         raise MusicNotReady(error)
     music_env.prepare_checkpoints(music_variants())
+    if is_sound(variant):
+        if not music_sound_env.prepare_text_encoder(variant):
+            raise MusicNotReady(f"{variant['name']} could not set up its text encoder. Download the model again.")
+        free_idle_worker(None, variant["name"], keep="sound")
+    else:
+        free_idle_worker(None, variant["name"], keep="music")
 
 
-def worker_status() -> dict[str, Any] | None:
+def worker_status(variant: dict[str, Any] | None = None) -> dict[str, Any] | None:
     from backend_service.music_client import get_worker
 
-    return get_worker().status()
+    return (_worker_for(variant) if variant else get_worker()).status()
 
 
-def loaded_model() -> str | None:
-    status = worker_status()
+def loaded_model(variant: dict[str, Any] | None = None) -> str | None:
+    status = worker_status(variant)
     return str(status["model"]) if status and status.get("model") else None
 
 
 def load(model_id: str | None) -> dict[str, Any]:
-    from backend_service.music_client import get_worker
-
     variant = resolve_variant(model_id)
     _prepare(variant)
-    reply = get_worker().request("load", timeout=LOAD_TIMEOUT_S, engine="acestep", model=variant["engineModel"], lm=None)
+    reply = _worker_for(variant).request("load", timeout=LOAD_TIMEOUT_S, engine=variant["engine"],
+                                         model=variant["engineModel"], lm=None)
     return {"model": variant["id"], "engineModel": variant["engineModel"], "loadSeconds": reply.get("load_s"),
-            "footprintGb": reply.get("footprint_gb"), "stepHook": reply.get("step_hook")}
+            "footprintGb": reply.get("footprint_gb"), "stepHook": reply.get("step_hook"), "device": reply.get("device")}
 
 
 class MusicBusy(RuntimeError):
@@ -192,34 +222,51 @@ def unload() -> dict[str, Any]:
     Refused with ``MusicBusy`` while a load or a generation runs: killing the worker then would end that
     job as a failure, not a cancel.
     """
-    from backend_service.music_client import get_worker
+    from backend_service.music_client import get_sound_worker, get_worker
 
-    worker = get_worker()
-    if worker.busy():
-        raise MusicBusy("Music is being made or a music model is loading. Cancel it first, then unload.")
-    was_running = worker.running()
-    worker.stop()
+    workers = (get_worker(), get_sound_worker())
+    if any(worker.busy() for worker in workers):
+        raise MusicBusy("Music or a sound is being made, or a model is loading. Cancel it first, then unload.")
+    was_running = any(worker.running() for worker in workers)
+    for worker in workers:
+        worker.stop()
     return {"stopped": was_running}
 
 
-def free_idle_worker(state: Any = None, why: str = "another job") -> bool:
-    """Stop an idle music worker (about 15 GB) so image or video work gets the memory."""
+def free_idle_worker(state: Any = None, why: str = "another job", keep: str | None = None) -> bool:
+    """Stop idle music and sounds workers so another job gets the memory (``keep`` names one to leave running)."""
     from backend_service import music_client
 
-    worker = music_client._WORKER
-    if worker is None or not worker.stop_if_idle():
-        return False
-    if state is not None:
-        state.add_log("music", "info", f"Stopped the idle music worker to free memory for {why}.")
-    return True
+    stopped = False
+    for name, worker in (("music", music_client._WORKER), ("sound", music_client._SOUND_WORKER)):
+        if name == keep or worker is None or not worker.stop_if_idle():
+            continue
+        stopped = True
+        if state is not None:
+            state.add_log("music", "info", f"Stopped the idle {name} worker to free memory for {why}.")
+    return stopped
 
 
 def capabilities() -> dict[str, Any]:
-    from backend_service.music_client import get_worker
+    from backend_service.music_client import get_sound_worker, get_worker
 
     worker = get_worker()
+    sound_worker = get_sound_worker()
+    sound_status = sound_worker.status() if sound_worker.running() else None
     status = worker.status() if worker.running() else None
     return {
+        "sound": {
+            "lane": music_sound_env.lane(),
+            "unavailableReason": music_sound_env.lane_unavailable_reason(),
+            "installed": music_sound_env.is_installed(),
+            "engine": "stableaudio",
+            "engineVersion": music_sound_env.ENGINE_VERSION,
+            "workerRunning": sound_worker.running(),
+            "loadedModel": (sound_status or {}).get("model"),
+            "busy": (sound_status or {}).get("busy"),
+            "footprintGb": (sound_status or {}).get("footprint_gb"),
+            "install": music_sound_env.job_status(),
+        },
         "lane": music_env.lane(),
         "unavailableReason": music_env.lane_unavailable_reason(),
         "installed": music_env.is_installed(),
@@ -246,6 +293,8 @@ def capabilities() -> dict[str, Any]:
 def _encoder_label(variant: dict[str, Any]) -> str:
     from backend_service.helpers.system_hardware import _resolve_app_version
 
+    if is_sound(variant):
+        return f"ChaosEngineAI {_resolve_app_version()} / Stable Audio Open Small ({music_sound_env.ENGINE_VERSION})"
     return f"ChaosEngineAI {_resolve_app_version()} / ACE-Step 1.5 ({music_env.ENGINE_VERSION}, {variant['engineModel']})"
 
 
@@ -310,6 +359,8 @@ def generate(
     from backend_service.music_client import generate_timeout_s, get_worker, stall_limits
 
     variant = resolve_variant(request.get("model"))
+    if is_sound(variant):
+        raise ValueError(f"{variant['name']} makes sound effects. Use the Sounds mode, not the music request.")
     _prepare(variant)
     worker = get_worker()
     seed = request.get("seed")
@@ -371,6 +422,144 @@ def generate(
             progress.set_phase("save", PHASE_MESSAGES["save"])
         tag = embed_tag_enabled()
         items = [_save_track(t, i, variant, request, reply, tag) for i, t in enumerate(reply.get("tracks") or [])]
+    finally:
+        shutil.rmtree(out_dir, ignore_errors=True)
+    return {
+        "items": items,
+        "seed": seed,
+        "jobId": job,
+        "model": variant["id"],
+        "seconds": reply.get("seconds"),
+        "timings": reply.get("timings") or {},
+        "peakFootprintGb": reply.get("peak_footprint_gb"),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Sound effects (Stable Audio Open): same worker protocol, its own worker and library kind
+# ---------------------------------------------------------------------------
+
+def licence_note(variant: dict[str, Any]) -> str:
+    """The one line written into a sound's tags and library item: licence name and the attribution."""
+    licence = variant.get("licence") or {}
+    attribution = licence.get("attribution")
+    return f"{licence.get('name', 'Unknown licence')}" + (f"; {attribution}" if attribution else "")
+
+
+def _save_sound(track: dict[str, Any], index: int, variant: dict[str, Any], request: dict[str, Any],
+                reply: dict[str, Any], tag: bool) -> dict[str, Any]:
+    from backend_service import music_library
+    from backend_service.helpers.audio_metadata import embed_flac_tags
+    from backend_service.helpers.system_hardware import _resolve_app_version
+
+    path = Path(str(track["path"]))
+    count = int(request.get("variations") or 1)
+    tagged = False
+    if tag:
+        tagged = embed_flac_tags(path, {
+            "appVersion": _resolve_app_version(),
+            "kind": "sound",
+            "model": variant["id"],
+            "modelName": variant["name"],
+            "engine": music_sound_env.ENGINE_VERSION,
+            "seed": track.get("seed"),
+            "durationSeconds": track.get("duration_s"),
+            "prompt": request.get("caption"),
+            "loop": bool(request.get("loop")),
+            "licence": licence_note(variant),
+            "variation": index + 1 if count > 1 else None,
+        }, _encoder_label(variant))
+    title = request.get("title") or None
+    if title and count > 1:
+        title = f"{title} ({index + 1})"
+    return music_library.create({
+        "kind": "sound",
+        "title": title,
+        "caption": request.get("caption"),
+        "model": variant["id"],
+        "modelName": variant["name"],
+        "engine": "stableaudio",
+        "seed": track.get("seed"),
+        "durationS": track.get("duration_s"),
+        "sampleRate": track.get("sample_rate"),
+        "channels": track.get("channels"),
+        "loop": bool(request.get("loop")),
+        "licence": licence_note(variant),
+        "variation": index + 1,
+        "jobSeconds": reply.get("seconds"),
+        "peakFootprintGb": reply.get("peak_footprint_gb"),
+        "source": request.get("source") or "ui",
+        "tagged": tagged,
+    }, path, ".flac")
+
+
+def generate_sound(
+    request: dict[str, Any],
+    *,
+    progress: Any = None,
+    cancel_check: Callable[[], bool] | None = None,
+) -> dict[str, Any]:
+    """Run one text-to-sound request; returns the saved library items, the seed and the timings.
+
+    ``request`` keys: model, caption, seconds, loop, variations, seed, title, source.
+    """
+    from backend_service.music_client import generate_timeout_s, get_sound_worker, stall_limits
+
+    variant = resolve_variant(request.get("model"))
+    if not is_sound(variant):
+        raise ValueError(f"{variant['name']} makes music. Use the Music mode, not the sound request.")
+    _prepare(variant)
+    worker = get_sound_worker()
+    seed = request.get("seed")
+    seed = int(seed) if seed is not None else random.randint(0, MAX_SEED)
+    seconds = float(request["seconds"])
+    variations = int(request.get("variations") or 1)
+    defaults = variant.get("defaultSettings") or {}
+
+    def on_event(event: dict[str, Any]) -> None:
+        if progress is None:
+            return
+        if event.get("event") == "stage":
+            phase = STAGE_PHASES.get(str(event.get("stage")), str(event.get("stage")))
+            progress.set_phase(phase, PHASE_MESSAGES.get(phase, ""))
+        elif event.get("event") == "step":
+            progress.set_step(int(event.get("step") or 0), int(event.get("total") or 0))
+
+    status = worker.status()
+    if not status or status.get("model") != variant["engineModel"]:
+        if progress is not None:
+            progress.set_phase("load", PHASE_MESSAGES["load"])
+        worker.request("load", timeout=LOAD_TIMEOUT_S, cancel_check=cancel_check, engine=variant["engine"],
+                       model=variant["engineModel"], lm=None)
+    job = f"snd_{uuid.uuid4().hex[:12]}"
+    out_dir = music_env.tmp_dir() / job
+    try:
+        reply = worker.request(
+            "generate",
+            timeout=generate_timeout_s(seconds, variations, variant["id"]),
+            stall_limits=stall_limits(seconds, variations, variant["id"]),
+            on_event=on_event,
+            cancel_check=cancel_check,
+            job=job,
+            engine=variant["engine"],
+            model=variant["engineModel"],
+            task="text2sound",
+            caption=request.get("caption") or "",
+            seconds=seconds,
+            loop=bool(request.get("loop")),
+            seed=seed,
+            variations=variations,
+            steps=int(defaults.get("steps") or 8),
+            cfg_scale=float(defaults.get("cfgScale") or 1.0),
+            sampler=str(defaults.get("sampler") or "pingpong"),
+            out_dir=str(out_dir.resolve()),
+            format="flac24",
+            normalize_peak_db=defaults.get("normalizePeakDb", -1.0),
+        )
+        if progress is not None:
+            progress.set_phase("save", PHASE_MESSAGES["save"])
+        tag = embed_tag_enabled()
+        items = [_save_sound(t, i, variant, request, reply, tag) for i, t in enumerate(reply.get("tracks") or [])]
     finally:
         shutil.rmtree(out_dir, ignore_errors=True)
     return {

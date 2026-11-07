@@ -13,6 +13,7 @@ from typing import Any, Literal
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from backend_service.catalog.music_models import sound_max_seconds
 from backend_service.progress import MUSIC_PROGRESS, GenerationCancelled
 
 router = APIRouter()
@@ -60,13 +61,15 @@ class MusicGenerateRequest(BaseModel):
 
 
 class SoundGenerateRequest(BaseModel):
-    """Text to sound effect: a short clip (1 to 11 s), optionally made into a seamless loop."""
+    """Text to sound effect: a short clip, optionally made into a seamless loop.
+
+    ``seconds`` is held to the widest sound model here; the chosen model's own range is checked once it is known."""
 
     model_config = ConfigDict(extra="forbid")
 
     modelId: str | None = Field(default=None, max_length=128)
     caption: str = Field(min_length=1, max_length=300)
-    seconds: float = Field(default=5, ge=1, le=11)
+    seconds: float = Field(default=5, ge=1, le=sound_max_seconds())
     loop: bool = False
     variations: Literal[1, 2, 4] = 1
     seed: int | None = Field(default=None, ge=0, le=MAX_SEED)
@@ -314,6 +317,13 @@ def _sound_variant_or_400(model_id: str | None) -> dict[str, Any]:
     return variant
 
 
+def check_sound_seconds(variant: dict[str, Any], seconds: float) -> None:
+    """A 400 naming the model's own range when the clip is longer (or shorter) than that model makes."""
+    low, high = float(variant.get("minSeconds") or 1), float(variant.get("maxSeconds") or sound_max_seconds())
+    if not low <= seconds <= high:
+        raise HTTPException(status_code=400, detail=f"{variant['name']} makes sounds of {low:g} to {high:g} seconds.")
+
+
 @router.post("/api/music/sound/generate")
 def generate_sound(request: Request, body: SoundGenerateRequest) -> dict[str, Any]:
     from backend_service.helpers.job_queue import HEAVY_JOBS
@@ -334,6 +344,7 @@ def generate_sound_locked(request: Request, body: SoundGenerateRequest, source: 
 
     state = request.app.state.chaosengine
     variant = _sound_variant_or_400(body.modelId)
+    check_sound_seconds(variant, body.seconds)
     not_ready = music_runtime.readiness_error(variant)
     if not_ready:
         raise HTTPException(status_code=409, detail=not_ready)
@@ -357,7 +368,8 @@ def generate_sound_locked(request: Request, body: SoundGenerateRequest, source: 
         raise HTTPException(status_code=503, detail=refusal["message"])
 
     fields = {**body.model_dump(), "model": variant["id"], "source": source}
-    MUSIC_PROGRESS.begin(run_label=f"{body.seconds:g} s sound · {variant['name']}", total_steps=8,
+    MUSIC_PROGRESS.begin(run_label=f"{body.seconds:g} s sound · {variant['name']}",
+                         total_steps=int((variant.get("defaultSettings") or {}).get("steps") or 8),
                          phase="encode", message="Starting")
     try:
         result = music_runtime.generate_sound(fields, progress=MUSIC_PROGRESS, cancel_check=MUSIC_PROGRESS.is_cancelled)

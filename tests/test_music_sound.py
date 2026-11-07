@@ -253,7 +253,9 @@ class AudioHelperTests(unittest.TestCase):
         self.assertIs(self.engine.normalise_peak(quiet, None), quiet)
 
     def test_the_engine_declares_what_the_worker_checks(self) -> None:
-        self.assertEqual((self.engine.SECONDS_RANGE, self.engine.TASKS), ((1, 11), ("text2sound",)))
+        self.assertEqual((self.engine.SECONDS_RANGE, self.engine.TASKS), ((1, 47), ("text2sound",)))
+        self.assertEqual({k: v["max_seconds"] for k, v in self.engine.MODEL_PROFILES.items()},
+                         {"stable-audio-open-small": 11, "stable-audio-open-1.0": 47})
 
 
 class _SoundBox(unittest.TestCase):
@@ -323,7 +325,7 @@ class SoundRouteTests(_SoundBox):
         self.assertEqual(kinds, ["sound", "track"])
 
     def test_validation(self) -> None:
-        for body in ({"caption": "x", "seconds": 12}, {"caption": "x", "seconds": 0.5}, {"caption": "  "}, {"caption": "x", "bpm": 90},
+        for body in ({"caption": "x", "seconds": 48}, {"caption": "x", "seconds": 0.5}, {"caption": "  "}, {"caption": "x", "bpm": 90},
                      {"caption": "x", "variations": 3}, {"caption": "x" * 301}):
             self.assertEqual(self.client.post("/api/music/sound/generate", json=body).status_code, 422, body)
 
@@ -433,7 +435,7 @@ class MakeSoundToolTests(_SoundBox):
         self.assertEqual(self._call("make_sound", {"caption": "x", "variations": 3}), (True, "variations must be 1, 2 or 4."))
         is_error, text = self._call("make_sound", {"caption": "x", "seconds": 30})
         self.assertTrue(is_error)
-        self.assertIn("between 1 and 11", str(text))
+        self.assertIn("1 to 11 seconds", str(text))
         with mock.patch.object(music_runtime, "readiness_error", lambda v: "The sounds pack is not installed. Install it from Music > Models."):
             is_error, text = self._call("make_sound", {"caption": "x"})
         self.assertTrue(is_error)

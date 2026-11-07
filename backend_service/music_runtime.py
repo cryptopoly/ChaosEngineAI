@@ -294,7 +294,7 @@ def _encoder_label(variant: dict[str, Any]) -> str:
     from backend_service.helpers.system_hardware import _resolve_app_version
 
     if is_sound(variant):
-        return f"ChaosEngineAI {_resolve_app_version()} / Stable Audio Open Small ({music_sound_env.ENGINE_VERSION})"
+        return f"ChaosEngineAI {_resolve_app_version()} / {variant['name']} ({music_sound_env.ENGINE_VERSION})"
     return f"ChaosEngineAI {_resolve_app_version()} / ACE-Step 1.5 ({music_env.ENGINE_VERSION}, {variant['engineModel']})"
 
 

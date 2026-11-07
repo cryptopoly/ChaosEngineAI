@@ -995,7 +995,7 @@
       "readOnlyHint": false,
       "title": "Make sound effect"
     },
-    "description": "Make: start a sound-effect job (returns a job id): footsteps, doors, ambience, a loop. 1 to 11 s, English prompt, FLAC in the Music Library. Not songs or speech. Needs the gated Stable Audio Open model the user installed.",
+    "description": "Make: start a sound-effect job (returns a job id): footsteps, doors, ambience, a loop. 1 to 11 s, or up to 47 s with the slower 1.0 model (modelId). English prompt, FLAC in the Music Library. Not songs or speech. Needs a gated Stable Audio Open model.",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
@@ -1009,6 +1009,11 @@
           "description": "Make the clip a seamless loop (ambience, beats).",
           "type": "boolean"
         },
+        "modelId": {
+          "description": "Sound model: 'stabilityai/stable-audio-open-small' (default, up to 11 s) or 'stabilityai/stable-audio-open-1.0' (up to 47 s, slower).",
+          "maxLength": 128,
+          "type": "string"
+        },
         "project_id": {
           "description": "Optional. Storyboard project this output belongs to; the gallery and library group it there.",
           "type": "string"
@@ -1019,7 +1024,8 @@
           "type": "string"
         },
         "seconds": {
-          "maximum": 11,
+          "description": "Length; the chosen model's own maximum applies (11 s Small, 47 s 1.0).",
+          "maximum": 47,
           "minimum": 1,
           "type": "number"
         },

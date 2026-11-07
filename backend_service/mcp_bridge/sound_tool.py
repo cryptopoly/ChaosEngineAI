@@ -11,18 +11,21 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
+from backend_service.catalog.music_models import sound_max_seconds
 from backend_service.mcp_bridge.jobs import STORE
 from backend_service.mcp_bridge.tools import ToolError, _PROJECT_PROPS, _obj, _submitted, project_scope
 
 SOUND_TOOLS: list[dict[str, Any]] = [
     {
         "name": "make_sound",
-        "description": "Make: start a sound-effect job (returns a job id): footsteps, doors, ambience, a loop. 1 to 11 s, "
-        "English prompt, FLAC in the Music Library. Not songs or speech. Needs the gated Stable Audio Open model the user installed.",
+        "description": "Make: start a sound-effect job (returns a job id): footsteps, doors, ambience, a loop. 1 to 11 s, or up to "
+        "47 s with the slower 1.0 model (modelId). English prompt, FLAC in the Music Library. Not songs or speech. Needs a gated "
+        "Stable Audio Open model.",
         "inputSchema": _obj(
             {
                 "caption": {"type": "string", "minLength": 1, "maxLength": 300, "description": "The sound: 'heavy wooden door creaking open, close mic'."},
-                "seconds": {"type": "number", "minimum": 1, "maximum": 11},
+                "modelId": {"type": "string", "maxLength": 128, "description": "Sound model: 'stabilityai/stable-audio-open-small' (default, up to 11 s) or 'stabilityai/stable-audio-open-1.0' (up to 47 s, slower)."},
+                "seconds": {"type": "number", "minimum": 1, "maximum": sound_max_seconds(), "description": "Length; the chosen model's own maximum applies (11 s Small, 47 s 1.0)."},
                 "loop": {"type": "boolean", "description": "Make the clip a seamless loop (ambience, beats)."},
                 "seed": {"type": "integer", "minimum": 0, "maximum": 2147483647},
                 "variations": {"type": "integer", "minimum": 1, "maximum": 4, "description": "1, 2 or 4 takes with seeds seed, seed+1, ..."},
@@ -43,9 +46,21 @@ def make_sound(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
 
     if int(args.get("variations", 1)) not in (1, 2, 4):
         raise ToolError("variations must be 1, 2 or 4.")
-    variant = next((v for v in music_variants() if music_runtime.is_sound(v)), None)
+    wanted = args.get("modelId")
+    if wanted:
+        try:
+            variant = music_runtime.resolve_variant(str(wanted))
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
+        if not music_runtime.is_sound(variant):
+            raise ToolError(f"{variant['name']} makes music, not sound effects. Use make_music.")
+    else:
+        variant = next((v for v in music_variants() if music_runtime.is_sound(v)), None)
     if variant is None:
         raise ToolError("No sound model is available in this build.")
+    low, high = float(variant.get("minSeconds") or 1), float(variant.get("maxSeconds") or sound_max_seconds())
+    if "seconds" in args and not low <= float(args["seconds"]) <= high:
+        raise ToolError(f"{variant['name']} makes sounds of {low:g} to {high:g} seconds.")
     not_ready = music_runtime.readiness_error(variant)
     if not_ready:
         raise ToolError(not_ready)

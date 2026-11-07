@@ -18,13 +18,25 @@ import os
 from pathlib import Path
 from typing import Any
 
-# What ``music_worker.check_generate`` validates a request against for this engine.
-SECONDS_RANGE = (1, 11)
+# What each model needs that the catalog row does not carry: its folder under ``checkpoints``, its longest clip
+# (the catalog's ``maxSeconds`` is the user-facing limit; this is the engine's own guard), whether its
+# conditioning also takes ``seconds_start`` (1.0 does, Small does not), and extra sampler arguments (1.0's
+# k-diffusion sampler takes the sigma range from its model card; Small's pingpong sampler takes none).
+MODEL_PROFILES: dict[str, dict[str, Any]] = {
+    "stable-audio-open-small": {"dir": "stable-audio-open-small", "max_seconds": 11, "seconds_start": False, "sampler_kwargs": {}},
+    "stable-audio-open-1.0": {
+        "dir": "stable-audio-open-1.0", "max_seconds": 47, "seconds_start": True,
+        "sampler_kwargs": {"sigma_min": 0.3, "sigma_max": 500},
+    },
+}
+
+# What ``music_worker.check_generate`` validates a request against for this engine: the widest model's range;
+# ``generate`` then holds the clip to the loaded model's own maximum.
+SECONDS_RANGE = (1, max(int(p["max_seconds"]) for p in MODEL_PROFILES.values()))
 TASKS = ("text2sound",)
 
-MODEL_DIR = "stable-audio-open-small"
 ENCODER_DIR = "t5-base"
-ENGINE_MODEL = "stable-audio-open-small"
+ENGINE_MODEL = "stable-audio-open-small"  # the default when a request names no model
 LOOP_FADE_SECONDS = 0.08
 EDGE_FADE_SECONDS = 0.008
 DECODE_SECONDS_PER_AUDIO_SECOND = 0.1
@@ -105,9 +117,9 @@ class StableAudioEngine:
             return "mps"
         return "cuda" if torch.cuda.is_available() else "cpu"
 
-    def _model_files(self) -> tuple[Path, Path, Path]:
+    def _model_files(self, model: str) -> tuple[Path, Path, Path]:
         root = self.data_dir / "checkpoints"
-        folder = root / MODEL_DIR
+        folder = root / MODEL_PROFILES[model]["dir"]
         return folder / "model_config.json", folder / "model.safetensors", root / ENCODER_DIR
 
     def _build(self, config: dict[str, Any], weights: Path) -> Any:
@@ -120,12 +132,12 @@ class StableAudioEngine:
         return model
 
     def load(self, model: str, lm: str | None = None) -> dict[str, Any]:
-        if model != ENGINE_MODEL:
+        if model not in MODEL_PROFILES:
             raise ValueError(f"Unknown sound model {model!r}.")
         if self.model is not None and self.name == model:
             return {"model": model, "lm": None, "already_loaded": True, "device": self.device}
         self.unload()
-        config_path, weights, encoder = self._model_files()
+        config_path, weights, encoder = self._model_files(model)
         for needed in (config_path, weights, encoder / "model.safetensors"):
             if not needed.exists():
                 raise FileNotFoundError(f"{needed.name} is missing from {needed.parent}. Download the model from Music > Models.")
@@ -158,7 +170,11 @@ class StableAudioEngine:
         import torch
         from stable_audio_tools.inference.generation import generate_diffusion_cond
 
+        profile = MODEL_PROFILES[self.name or ENGINE_MODEL]
         steps = int(request.get("steps") or 8)
+        conditioning: dict[str, Any] = {"prompt": str(request.get("caption") or ""), "seconds_total": seconds}
+        if profile["seconds_start"]:
+            conditioning["seconds_start"] = 0
 
         def callback(info: Any) -> None:
             done = int(info["i"]) + 1 if isinstance(info, dict) else 0
@@ -173,7 +189,7 @@ class StableAudioEngine:
                 self.model,
                 steps=steps,
                 cfg_scale=float(request.get("cfg_scale") or 1.0),
-                conditioning=[{"prompt": str(request.get("caption") or ""), "seconds_total": seconds}],
+                conditioning=[conditioning],
                 sample_size=self.sample_size,
                 sample_rate=self.sample_rate,
                 sampler_type=str(request.get("sampler") or "pingpong"),
@@ -181,6 +197,7 @@ class StableAudioEngine:
                 seed=seed,
                 batch_size=1,
                 callback=callback,
+                **profile["sampler_kwargs"],
             )
         return audio
 
@@ -207,6 +224,9 @@ class StableAudioEngine:
         hooks.check_cancel()
         hooks.stage("encode")
         seconds = float(request["seconds"])
+        limit = float(MODEL_PROFILES[model]["max_seconds"])
+        if seconds > limit:
+            raise ValueError(f"{model} makes clips of up to {limit:g} s; {seconds:g} s was asked for.")
         variations = int(request.get("variations") or 1)
         base_seed = int(request["seed"])
         loop = bool(request.get("loop"))

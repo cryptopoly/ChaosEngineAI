@@ -46,24 +46,34 @@ _TURBO_DEFAULTS: dict[str, Any] = {
 
 # Stability AI Community Licence (last updated 2024-07-05), read on 2026-11-07 from the LICENSE file of
 # stabilityai/stable-audio-open-small at the pinned revision. Plain-language lines, not legal advice.
-_STABILITY_LICENCE: dict[str, Any] = {
-    "id": "stability-community",
-    "name": "Stability AI Community Licence",
-    "commercial": "limited",
-    "gated": True,
-    "attribution": "Powered by Stability AI",
-    "revenueCapUsd": 1_000_000,
-    "summaryLines": [
-        "Free for research, personal use and commercial use while you and your affiliates earn under US$1 million a "
-        "year. Over that, the licence ends and you need one from Stability AI.",
-        "Commercial use means registering with Stability AI (stability.ai/community-license).",
-        "If you share the model or a product built on it, you must show \"Powered by Stability AI\" and keep its notice file.",
-        "You own the sounds you make, but may not use the model or its output to train another foundation model.",
-        "Use must follow Stability's acceptable use policy. The model is gated: you accept the terms on Hugging Face first.",
-    ],
-    "note": "The weights are never bundled with ChaosEngineAI. You download them from Hugging Face under your own account.",
-    "url": "https://huggingface.co/stabilityai/stable-audio-open-small/blob/ea2772170fc06f80dfd02bea6e57a44d9d4bc9d3/LICENSE",
-}
+# Stable Audio Open 1.0 uses the same agreement (its model card says "Stability AI Community License");
+# the licence file of that gated repo could not be read without accepting it, so its lines are the Small
+# row's, checked against the public text at stability.ai/community-license-agreement (same date).
+def _stability_licence(repo: str, revision: str, filename: str) -> dict[str, Any]:
+    return {
+        "id": "stability-community",
+        "name": "Stability AI Community Licence",
+        "commercial": "limited",
+        "gated": True,
+        "attribution": "Powered by Stability AI",
+        "revenueCapUsd": 1_000_000,
+        "summaryLines": [
+            "Free for research, personal use and commercial use while you and your affiliates earn under US$1 million a "
+            "year. Over that, the licence ends and you need one from Stability AI.",
+            "Commercial use means registering with Stability AI (stability.ai/community-license).",
+            "If you share the model or a product built on it, you must show \"Powered by Stability AI\" and keep its notice file.",
+            "You own the sounds you make, but may not use the model or its output to train another foundation model.",
+            "Use must follow Stability's acceptable use policy. The model is gated: you accept the terms on Hugging Face first.",
+        ],
+        "note": "The weights are never bundled with ChaosEngineAI. You download them from Hugging Face under your own account.",
+        "url": f"https://huggingface.co/{repo}/blob/{revision}/{filename}",
+    }
+
+
+_STABILITY_LICENCE = _stability_licence(
+    "stabilityai/stable-audio-open-small", "ea2772170fc06f80dfd02bea6e57a44d9d4bc9d3", "LICENSE")
+_STABILITY_LICENCE_1_0 = _stability_licence(
+    "stabilityai/stable-audio-open-1.0", "f21265c1e2710b3bd2386596943f0007f55f802e", "LICENSE.md")
 
 MUSIC_MODEL_FAMILIES: list[dict[str, Any]] = [
     {
@@ -174,7 +184,7 @@ MUSIC_MODEL_FAMILIES: list[dict[str, Any]] = [
         "name": "Stable Audio Open",
         "kind": "sound",
         "provider": "Stability AI",
-        "headline": "Short sound effects and loops up to 11 s. Not songs, not vocals.",
+        "headline": "Sound effects and loops: Small up to 11 s, the full 1.0 model up to 47 s. Not songs, not vocals.",
         "summary": "Text to sound: footsteps, doors, ambience, drum loops. Runs on PyTorch (Apple GPU, else CPU) in its own pack.",
         "badges": ["Gated", "Sounds"],
         "defaultVariantId": "stabilityai/stable-audio-open-small",
@@ -250,6 +260,86 @@ MUSIC_MODEL_FAMILIES: list[dict[str, Any]] = [
                 },
                 "note": "Opt-in sound effects model. English prompts, 1 to 11 s, stereo 44.1 kHz. Gated: accept the licence on Hugging Face.",
             },
+            {
+                "id": "stabilityai/stable-audio-open-1.0",
+                "familyId": "stable-audio-open",
+                "kind": "sound",
+                "pack": "sound",
+                "name": "Stable Audio Open 1.0",
+                "provider": "Stability AI",
+                "repo": "stabilityai/stable-audio-open-1.0",
+                # Head of the repo on 2026-11-07 (last modified 2025-06-19).
+                "revision": "f21265c1e2710b3bd2386596943f0007f55f802e",
+                "link": "https://huggingface.co/stabilityai/stable-audio-open-1.0",
+                "engine": "stableaudio",
+                "engineModel": "stable-audio-open-1.0",
+                "runtime": "stable-audio-tools on PyTorch (isolated sounds environment)",
+                "makes": ["sfx", "loops"],
+                "platforms": ["apple-silicon"],
+                "taskSupport": ["txt2sound"],
+                "sizeGb": 5.72,
+                "sizeNote": "The 4.85 GB model plus the 0.9 GB T5-base text encoder (Apache 2.0) it reads prompts with; "
+                            "the encoder is shared with Stable Audio Open Small, so it is fetched once.",
+                "requires": [],
+                "checkpointSubdir": "stable-audio-open-1.0",
+                "weightFolders": ["stable-audio-open-1.0"],
+                # model.safetensors is the stable-audio-tools checkpoint (diffusion model + autoencoder). The repo also
+                # holds the same weights as model.ckpt (4.85 GB), a diffusers copy (5.5 GB), a separate VAE
+                # checkpoint and 52 MB of dataset attribution CSVs; none of those are fetched.
+                "downloadPatterns": ["model.safetensors", "model_config.json", "LICENSE.md", "README.md"],
+                "downloadCompanions": [
+                    {"repo": "google-t5/t5-base",
+                     "patterns": ["config.json", "model.safetensors", "spiece.model", "tokenizer.json"]},
+                ],
+                "textEncoder": {
+                    "repo": "google-t5/t5-base",
+                    "revision": "a9723ea7f1b39c1eae772870f3b547bf6ef7e6c1",
+                    "checkpointSubdir": "t5-base",
+                    "files": ["config.json", "model.safetensors", "spiece.model", "tokenizer.json"],
+                },
+                "large": False,
+                "minMemoryGb": None,
+                "unloadsOthers": False,
+                # Model card: "variable-length (up to 47s) stereo audio at 44.1kHz". The config's sample_size
+                # is fixed, so every clip costs the same to make whatever length is asked for.
+                "maxSeconds": 47,
+                "minSeconds": 1,
+                "estimatedGenerationSeconds": 120.0,
+                "licence": _STABILITY_LICENCE_1_0,
+                "estimates": {
+                    # ESTIMATES, NOT MEASUREMENTS (2026-11-07): nobody has run this model in this app yet; the repo is
+                    # gated. Time is scaled from Small's measured 0.7 s (8 steps, no guidance): about 3x the
+                    # parameters, 4x the sequence length, 100 steps with guidance. Memory is the 4.85 GB float32
+                    # checkpoint plus the 0.9 GB encoder plus working memory. The owner's real test
+                    # (scripts/real-test-sound-1.0.py) replaces every number here and flips basis to "measured".
+                    "basis": "estimated",
+                    "measuredOn": None,
+                    "wallSecondsAt": [[10, 120.0], [47, 120.0]],
+                    "secondsPer10sAudio": None,
+                    "coldStartSeconds": 15.0,
+                    "vaeSecondsPerAudioSecond": 0.1,
+                    "peakGb": 10.0,
+                    "idleGb": 6.5,
+                    "diskGb": 5.72,
+                    "outputMbPerMinute": 14.0,
+                    "cuda": {"peakGb": None, "basis": "estimated", "source": "not measured; the CUDA sound lane is not built yet"},
+                },
+                # Model card example for stable-audio-tools: 100 steps, cfg 7, dpmpp-3m-sde, sigma 0.3 to 500.
+                "defaultSettings": {
+                    "seconds": 10,
+                    "variations": 1,
+                    "steps": 100,
+                    "cfgScale": 7.0,
+                    "sampler": "dpmpp-3m-sde",
+                    "loop": False,
+                    "normalizePeakDb": -1.0,
+                    "format": "flac24",
+                    "sampleRate": 44100,
+                    "channels": 2,
+                },
+                "note": "Opt-in, larger and slower sound effects model: clips up to 47 s with better detail, about 5 GB on disk "
+                        "and minutes per clip. English prompts, stereo 44.1 kHz. Gated: accept the licence on Hugging Face.",
+            },
         ],
     },
 ]
@@ -258,3 +348,8 @@ MUSIC_MODEL_FAMILIES: list[dict[str, Any]] = [
 def music_variants() -> list[dict[str, Any]]:
     """Every music variant, flat (catalog order)."""
     return [variant for family in MUSIC_MODEL_FAMILIES for variant in family["variants"]]
+
+
+def sound_max_seconds() -> int:
+    """The longest clip any sound row makes (the widest request limit; each row's own ``maxSeconds`` is the real one)."""
+    return max(int(v["maxSeconds"]) for v in music_variants() if v.get("kind") == "sound")

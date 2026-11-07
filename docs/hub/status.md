@@ -21,6 +21,8 @@ Newest dated update first. Each update has the same sections: Done, Open for Cla
 - **Calmer existing Studios (visible now, not behind the switch):** Image and Video Studio have Expert and Options disclosures, one run estimate strip, one Models button and a more-actions menu; first-load controls fell from 28 to 33 to 20 to 27 (the two installed image models and the LTX video model already hide most knobs; a diffusers model would show a bigger drop). The sidebar is an accordion with Make and Run sections (Settings switch keeps every group open).
 - **Tests:** 2791 Python and 1108 vitest pass; `tsc`, `i18n:validate` and `npm run build` clean.
 
+**Review round (done before this note):** two Opus reviewers (backend, frontend) read the overnight code adversarially; every finding was fixed with a test. The serious ones: undo could lose a shot's takes after a batch (reproduced, fixed); an agent could copy any file out through a project export (closed, D-38); Video Studio had lost its load and unload feedback (restored); Mixer keys acted on the selected clip, not the focused one (fixed); nudges could be lost (fixed). Final counts: 2826 Python tests and 1155 vitest tests pass.
+
 **Decisions for Dan**
 
 1. **Switch the home studio on?** And for which release (plan: v0.10.0; merge `feat/agent-bridge` and `feat/media-input` as v0.9.10 first, D-32).
@@ -28,7 +30,8 @@ Newest dated update first. Each update has the same sections: Done, Open for Cla
 3. **D-36 loudness of a stand-alone music track:** keep the -1 dBFS peak normalisation (current), or write the raw level and leave loudness to the mixer?
 4. **D-37 `pytorch-wavelets` licence:** PyPI says "Free To Use But Restricted" although the parts ACE-Step uses are MIT. Needs your confirmation before shipping.
 5. **ffmpeg in the release bundle (D-35 follow-up):** the release workflow does not install `imageio-ffmpeg`, so a packaged app has no pinned ffmpeg for the Mixer. Adding it ships a GPL binary (about 47 MB on macOS).
-6. **Listen to the music samples** in `~/ChaosEngineAI-demos/music-spike/` (22 files, including XL) and the three films; nobody has judged quality by ear.
+6. **D-40:** Storyboard clips only work with LTX-2.3 / 2.5 (other video models are skipped with a reason). Accept for the first release?
+7. **Listen to the music samples** in `~/ChaosEngineAI-demos/music-spike/` (22 files, including XL) and the three films; nobody has judged quality by ear.
 
 **Not done / not verified**
 

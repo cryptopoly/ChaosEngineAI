@@ -56,7 +56,7 @@ Static evidence says yes. I did **not** run a generation with it removed (no thr
 2. **If a test fails and we must ship it:** it is acceptable to install on demand into the isolated music venv, never bundled, under this wording: the DWT part is MIT; the DTCWT part is unused. Notice text is already in `THIRD_PARTY_NOTICES.md` (updated in this commit). Residual risk is the ambiguous DTCWT wording; asking Fergal Cotter by GitHub issue for a clear MIT statement would settle it.
 3. Not legal advice. If the music pack becomes a paid or bundled feature, have a lawyer read the two files above.
 
-**Next step (needs a throwaway venv, about 10 minutes):** build the music venv without the line, run one 10 s Turbo generation with default DCW on MLX, and check the log shows "MLX-native Haar" and no `ImportError`. Not done in this research.
+**Done 2026-11-07 (D-37):** removed from `music_requirements.txt`; fresh venv from the new file, 20 s instrumental on MLX with default DCW passed. The worker log shows `DCW enabled ... wavelet=haar, backend=MLX-native Haar` and no wavelet warning (the skip warning only appears on the torch path). FU-138 closed.
 
 ## Job 2: ffmpeg
 

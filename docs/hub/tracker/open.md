@@ -1,7 +1,7 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 60 rows with work, decisions or watch items still open, newest first.
+summary: 59 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
@@ -15,15 +15,6 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 **Status or trigger:** **Open (2026-11-07): not built; XL on CUDA unmeasured.**
 
 **Notes:** P1 ships the MLX lane only: [music_env.py](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/backend_service/music_env.py) refuses the install off Apple Silicon with a plain reason, and [music_worker_acestep.py](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/backend_service/music_worker_acestep.py) answers "engine unavailable" there. The catalog marks both ACE-Step rows `platforms: ["apple-silicon", "cuda"]` per the model cards, and the fit badge on CUDA says "not measured" (XL: about 20 GB from the card's "20 GB or more without offload"; the 2B has no card figure, so its badge is "unknown"). **To build:** the PyTorch CUDA index (`--extra-index-url https://download.pytorch.org/whl/cu128`, the `uv.lock` markers already name `+cu128` / `+cu130` wheels), the torch DiT path instead of the MLX one (no MLX VAE chunk, cache limit or decoder drop; cancel then needs another hook than `dit_generate.tqdm`), and `proc_pid_rusage` replaced by an NVIDIA memory read. **Measure** on the 4090 (P7): speed and peak for the 2B and XL at 30, 60 and 180 s, then put the numbers into `estimates.cuda` in [music_models.py](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/backend_service/catalog/music_models.py).
-
-</details>
-
-<details>
-<summary>FU-138 · pytorch-wavelets licence in the music pack — Open (2026-11-07): to be confirmed by the owner before a release ships the music pack.</summary>
-
-**Status or trigger:** **Open (2026-11-07): to be confirmed by the owner before a release ships the music pack.**
-
-**Notes:** The music pack (P1, [music_env.py](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/backend_service/music_env.py)) installs `pytorch-wavelets` 1.3.0 from ACE-Step's pinned `uv.lock` ([music_requirements.txt](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/backend_service/music_requirements.txt)). Its PyPI classifier says "Free To Use But Restricted"; its LICENSE says the DWT parts are MIT (Fergal Cotter, 2020) while the DTCWT parts may carry the original MATLAB toolbox's restrictions. ACE-Step uses only the DWT (Haar) correction, and on the MLX path the Haar step runs natively. It is installed on demand into its own venv, never bundled. **Options:** (a) accept it as MIT for the parts used, with the note in [THIRD_PARTY_NOTICES.md](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/THIRD_PARTY_NOTICES.md) (written as "to be confirmed" today); (b) drop it from our requirements export and check the MLX path still runs (untested; the library may import it at module load); (c) ask upstream. **Recommendation:** (b) as a quick test, else (a) once the owner has read the LICENSE file.
 
 </details>
 

@@ -58,5 +58,5 @@ You are responsible for rights in lyrics you type. Describe a sound instead of n
 
 ACE-Step 1.5 code and weights are MIT and not gated. The authors state the model was trained on legally compliant
 data and that output may be used commercially. You are responsible for checking that your output does not copy
-existing works. One dependency of the pack, `pytorch-wavelets`, has a licence question still open (see
-`THIRD_PARTY_NOTICES.md`).
+existing works. The pack leaves out `pytorch-wavelets` (restricted wording on PyPI); the optional DCW correction runs natively on
+MLX without it (see `THIRD_PARTY_NOTICES.md`).

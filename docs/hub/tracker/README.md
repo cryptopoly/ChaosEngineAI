@@ -8,15 +8,15 @@ summary: Every FU row from FOLLOW_UPS.md, split into open and closed.
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here.
 
-- [Open and live follow-ups](open.md): **60** rows.
-- [Closed follow-ups](closed.md): **77** rows.
+- [Open and live follow-ups](open.md): **59** rows.
+- [Closed follow-ups](closed.md): **78** rows.
 
 ## Newest ten
 
 | Row | Item | Status |
 |---|---|---|
 | [FU-139](open.md) | Music on CUDA (Windows and Linux) and XL on CUDA | Open (2026-11-07): not built |
-| [FU-138](open.md) | pytorch-wavelets licence in the music pack | Open (2026-11-07): to be confirmed by the owner before a release ships the music pack. |
+| [FU-138](closed.md) | pytorch-wavelets licence in the music pack | Shipped 2026-11-07 (D-37): dropped. |
 | [FU-137](open.md) | Linux ARM64 build (NVIDIA DGX Spark class) | Phase 1 coded 2026-11-02 on release/v0.9.10, not yet built in CI |
 | [FU-136](open.md) | Boot-time MLX probe that fails once switched MLX off for the whole session | Fixed 2026-10-30 (cause of the one failure not found) |
 | [FU-135](open.md) | DFlash on hybrid Qwen3.5 / 3.6 / Next targets produced garbage text on the release MLX sta | Fixed 2026-10-29 (root cause found, patched, self-checked at load) |

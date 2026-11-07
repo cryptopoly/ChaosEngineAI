@@ -21,6 +21,7 @@ Extracted as part of the v0.8.0 Phase 1a-8 refactor.
 from __future__ import annotations
 
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -106,6 +107,8 @@ def settings_payload(
         "hfCachePath": str(state.settings.get("hfCachePath") or ""),
         "favoriteModelRefs": list(state.settings.get("favoriteModelRefs") or []),
         "musicEmbedTag": bool(state.settings.get("musicEmbedTag", True)),
+        "termsAcceptedVersion": int(state.settings.get("termsAcceptedVersion") or 0),
+        "termsAcceptedAt": str(state.settings.get("termsAcceptedAt") or ""),
     }
 
 
@@ -146,6 +149,11 @@ def update_settings(
         next_settings["musicEmbedTag"] = bool(state.settings.get("musicEmbedTag", True))
         if request.musicEmbedTag is not None:
             next_settings["musicEmbedTag"] = request.musicEmbedTag
+        next_settings["termsAcceptedVersion"] = int(state.settings.get("termsAcceptedVersion") or 0)
+        next_settings["termsAcceptedAt"] = str(state.settings.get("termsAcceptedAt") or "")
+        if request.termsAcceptedVersion is not None:
+            next_settings["termsAcceptedVersion"] = request.termsAcceptedVersion
+            next_settings["termsAcceptedAt"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
         if request.modelDirectories is not None:
             next_settings["modelDirectories"] = _normalize_model_directories(

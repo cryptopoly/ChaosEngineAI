@@ -1299,5 +1299,22 @@
     "notInstalled": null,
     "reinstall": null,
     "title": null
+  },
+  "terms": {
+    "title": null,
+    "intro": null,
+    "agree": null,
+    "quit": null,
+    "close": null,
+    "read": null,
+    "acceptedOn": null,
+    "notAccepted": null,
+    "points": {
+      "responsibility": null,
+      "disclosure": null,
+      "impersonation": null,
+      "voices": null,
+      "licences": null
+    }
   }
 }

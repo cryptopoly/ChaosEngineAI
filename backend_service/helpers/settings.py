@@ -42,6 +42,12 @@ DEFAULT_LAUNCH_PREFERENCES = {
 }
 
 
+def _int_or_zero(value: Any) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        return 0
+    return value
+
+
 def _load_data_location(bootstrap_path: Path, bootstrap_dir: Path) -> Path:
     """Read the bootstrap pointer file. Falls back to ``bootstrap_dir``."""
     if not bootstrap_path.exists():
@@ -260,6 +266,9 @@ def _default_settings(default_port: int, data_dir: Path) -> dict[str, Any]:
         # D-34: generated music carries a machine-readable "made with AI" tag (FLAC Vorbis comment).
         # On by default; the switch is for private use.
         "musicEmbedTag": True,
+        # First-run terms of use: 0 = never accepted; the time is ISO 8601 UTC.
+        "termsAcceptedVersion": 0,
+        "termsAcceptedAt": "",
     }
 
 
@@ -370,6 +379,9 @@ def _load_settings(path: Path, default_port: int, data_dir: Path) -> dict[str, A
     # Phase 3.3: advanced-mode logprobs toggle.
     settings["advancedLogprobs"] = bool(payload.get("advancedLogprobs", False))
     settings["musicEmbedTag"] = bool(payload.get("musicEmbedTag", True))
+    settings["termsAcceptedVersion"] = _int_or_zero(payload.get("termsAcceptedVersion"))
+    terms_at = payload.get("termsAcceptedAt")
+    settings["termsAcceptedAt"] = terms_at.strip()[:40] if isinstance(terms_at, str) else ""
 
     settings["launchPreferences"] = _normalize_launch_preferences(payload.get("launchPreferences"))
 

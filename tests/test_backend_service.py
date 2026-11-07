@@ -2550,6 +2550,19 @@ class ChaosEngineBackendTests(unittest.TestCase):
         self.assertEqual(settings["launchPreferences"]["cacheStrategy"], "native")
         self.assertEqual(settings["modelDirectories"][0]["label"], "AI Models")
 
+    def test_settings_record_terms_acceptance_with_a_server_time(self):
+        first = self.client.get("/api/settings").json()["settings"]
+        self.assertEqual((first["termsAcceptedVersion"], first["termsAcceptedAt"]), (0, ""))
+        response = self.client.patch("/api/settings", json={"termsAcceptedVersion": 1})
+        self.assertEqual(response.status_code, 200)
+        settings = response.json()["settings"]
+        self.assertEqual(settings["termsAcceptedVersion"], 1)
+        self.assertRegex(settings["termsAcceptedAt"], r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
+        # An unrelated update keeps the acceptance; a bad version is refused.
+        kept = self.client.patch("/api/settings", json={"preferredServerPort": 8898}).json()["settings"]
+        self.assertEqual(kept["termsAcceptedVersion"], 1)
+        self.assertEqual(self.client.patch("/api/settings", json={"termsAcceptedVersion": 0}).status_code, 422)
+
     def test_settings_change_of_remote_provider_base_requires_new_key(self):
         seeded = self.client.patch(
             "/api/settings",

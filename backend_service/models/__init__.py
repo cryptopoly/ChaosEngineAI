@@ -255,6 +255,8 @@ class UpdateSettingsRequest(BaseModel):
     favoriteModelRefs: list[str] | None = None
     # D-34: the machine-generated tag in music files (on by default).
     musicEmbedTag: bool | None = None
+    # First-run terms of use: the version the user accepted. The server stamps the time itself.
+    termsAcceptedVersion: int | None = Field(default=None, ge=1, le=10_000)
 
 
 class OpenAIMessage(BaseModel):

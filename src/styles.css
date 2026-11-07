@@ -12242,6 +12242,9 @@ button.licence-chip:focus-visible {
   gap: 12px;
   padding: var(--panel-padding);
 }
+.drawer__body > * {
+  flex-shrink: 0;
+}
 .drawer__foot {
   padding: var(--panel-padding);
   border-top: 1px solid var(--border);
@@ -12358,7 +12361,7 @@ button.licence-chip:focus-visible {
     grid-template-columns: minmax(0, 1fr);
   }
   .shot-card__body {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: minmax(0, 260px) minmax(0, 1fr);
   }
   .shot-editor__grid {
     grid-template-columns: minmax(0, 1fr);

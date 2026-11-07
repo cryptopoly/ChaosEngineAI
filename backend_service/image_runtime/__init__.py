@@ -39,6 +39,7 @@ from backend_service.image_runtime.device import (
 from backend_service.image_runtime.mflux_engine import (
     MfluxImageEngine,
     _mflux_name_for_repo,
+    supported_repos,
 )
 from backend_service.image_runtime.placeholder_engine import (
     MAX_IMAGE_SEED,
@@ -965,6 +966,8 @@ class ImageRuntimeManager:
 
     def unload(self, repo: str | None = None) -> dict[str, Any]:
         with self._lock:
+            if repo is None or repo in supported_repos():
+                self._mflux.release("unloaded")  # the warm mflux worker, when it idles
             return self._diffusers.unload(repo).to_dict()
 
     def generate(self, config: ImageGenerationConfig) -> tuple[list[GeneratedImage], dict[str, Any]]:
@@ -1003,6 +1006,8 @@ class ImageRuntimeManager:
                 _mflux_fallback_note = probe.get("reason") or "mflux unavailable"
         else:
             _mflux_fallback_note = None
+        # Another engine is about to load its own weights: free the warm mflux model first.
+        self._mflux.release("another image engine is loading")
 
         # FU-008 image subset: sd.cpp path. Routed when the catalog
         # variant declares ``engine="sdcpp"`` (which app.py threads onto

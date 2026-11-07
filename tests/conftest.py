@@ -50,6 +50,9 @@ _INSERTED = ensure_extras_on_sys_path()
 # Surface what we wired in via ``-v -s`` so CI logs and local
 # debugging make it obvious which extras dir the run pulled from.
 # Silent in the default ``-q`` output so it doesn't add noise.
+# Tests never start a real warm mflux / ltx-2-mlx worker unless they ask for one.
+os.environ.setdefault("CHAOSENGINE_WARM_WORKERS", "0")
+
 if _INSERTED and os.environ.get("CHAOSENGINE_TEST_TRACE_EXTRAS"):
     print(
         f"[conftest] appended extras to sys.path: {[str(p) for p in _INSERTED]}",

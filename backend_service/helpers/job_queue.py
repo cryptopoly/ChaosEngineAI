@@ -47,6 +47,11 @@ class HeavyJobQueue:
         self._waiting: list[_Ticket] = []
         self._running: _Ticket | None = None
         self._ids = itertools.count(1)
+        self._start_listeners: list[Callable[[str], Any]] = []
+
+    def add_start_listener(self, listener: Callable[[str], Any]) -> None:
+        """Call ``listener(kind)`` when a job starts (warm workers of other kinds then free their memory)."""
+        self._start_listeners.append(listener)
 
     @contextmanager
     def slot(self, kind: str, source: str = "ui", label: str = "", batch: str | None = None) -> Iterator[_Ticket]:
@@ -73,8 +78,13 @@ class HeavyJobQueue:
                     self._waiting.pop(0)
                     ticket.started_at = time.time()
                     self._running = ticket
-                    return
+                    break
                 self._cond.wait(timeout=1.0)
+        for listener in list(self._start_listeners):  # outside the lock: a listener may stop a process
+            try:
+                listener(ticket.kind)
+            except Exception:  # noqa: BLE001 - a listener never blocks the job
+                pass
 
     def release(self, ticket: _Ticket) -> None:
         with self._cond:

@@ -290,6 +290,9 @@ def _generate_image_locked(request: Request, body: ImageGenerationRequest) -> di
     # Free an idle video model first, so the memory it held counts as free
     # in the gate below.
     _unload_idle_video_runtime_for_image(request, "image generation")
+    from backend_service.music_runtime import free_idle_worker
+
+    free_idle_worker(state, "image generation")
     # Phase 2.0.5-H: pre-flight memory gate. Refuse before invoking the
     # diffusion pipeline if the host is already memory-starved — image
     # gen on a swap-thrashing laptop typically takes minutes to recover

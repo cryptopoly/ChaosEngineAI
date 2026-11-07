@@ -253,6 +253,8 @@ class UpdateSettingsRequest(BaseModel):
     # starred from the Chat → My Models tab. ``None`` means "leave the
     # current list alone"; an empty list clears all favourites.
     favoriteModelRefs: list[str] | None = None
+    # D-34: the machine-generated tag in music files (on by default).
+    musicEmbedTag: bool | None = None
 
 
 class OpenAIMessage(BaseModel):

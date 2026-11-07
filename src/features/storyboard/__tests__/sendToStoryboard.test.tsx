@@ -11,14 +11,17 @@ import {
   applyPlan,
   destinationTab,
   menuKeyAction,
+  newShotId,
   pickRecentProjects,
   planSend,
   projectNameFor,
   resolveStep,
+  sendIntoProject,
   sendMenuVisible,
   shotTitleFrom,
   targetsFor,
   type PlannedStep,
+  type SendApi,
   type SendItem,
   type SendProject,
 } from "../sendToStoryboardLogic";
@@ -161,10 +164,37 @@ describe("applyPlan", () => {
     expect(run).toHaveBeenCalledTimes(1);
   });
 
-  it("resolves the new shot to the last one in the project", () => {
-    const step = resolveStep(steps[1], twoShots);
-    expect(step.args).toMatchObject({ shotId: "s_2" });
-    expect(() => resolveStep(steps[1], noShots)).toThrow();
+  it("names the new shot by the id that appeared, not by its position", async () => {
+    // the server puts the new shot first, so "the last shot" would be somebody else's
+    const calls: (string | undefined)[] = [];
+    const run = async (step: PlannedStep, revision: number) => {
+      calls.push((step.args as { shotId?: string }).shotId);
+      return payload(revision + 1, ["s_new", "s_old"]);
+    };
+    await applyPlan({ revision: 4, shots: [{ id: "s_old" }] as never }, steps, run);
+    expect(calls).toEqual([undefined, "s_new"]);
+  });
+
+  it("finds the new id after a conflict retry too", async () => {
+    let first = true;
+    const calls: (string | undefined)[] = [];
+    const run = async (step: PlannedStep, revision: number) => {
+      calls.push((step.args as { shotId?: string }).shotId);
+      if (first) {
+        first = false;
+        throw new StoryboardRevisionConflict("changed", payload(9, ["s_other"]).project);
+      }
+      return payload(revision + 1, ["s_new", "s_other"]);
+    };
+    await applyPlan({ revision: 4, shots: [] }, steps, run);
+    expect(calls).toEqual([undefined, undefined, "s_new"]);
+  });
+
+  it("resolves a step with the created id, and refuses when there is none", () => {
+    expect(resolveStep(steps[1], "s_2").args).toMatchObject({ shotId: "s_2" });
+    expect(newShotId(["a", "b"], ["x", "a", "b"])).toBe("x");
+    expect(newShotId(["a"], ["a"])).toBeNull();
+    expect(() => resolveStep(steps[1], null)).toThrow();
   });
 });
 
@@ -288,5 +318,53 @@ describe("SendToStoryboardMenu", () => {
     const html = renderToStaticMarkup(<SendToStoryboardMenu item={image} projects={projects} enabled busy onSend={noop} />);
     expect(html).toContain("disabled");
     expect(html).toContain("Use in storyboard");
+  });
+});
+
+describe("sendIntoProject", () => {
+  function api(overrides: Partial<SendApi> = {}): SendApi & { removed: [string, number][] } {
+    const removed: [string, number][] = [];
+    const made = { ...payload(1, []), project: { ...payload(1, []).project, id: "p_new" } as StoryboardProject };
+    return {
+      removed,
+      create: vi.fn(async () => made),
+      get: vi.fn(async () => ({ ...made, project: { ...made.project, revision: 2 } as StoryboardProject })),
+      run: vi.fn(async (_id: string, step: PlannedStep, revision: number) => payload(revision + 1, ["s_new"])),
+      remove: vi.fn(async (id: string, revision: number) => {
+        removed.push([id, revision]);
+      }),
+      ...overrides,
+    };
+  }
+
+  it("deletes the project it made when a step fails, using its newest revision", async () => {
+    const fake = api({
+      run: vi.fn(async (_id: string, step: PlannedStep, revision: number) => {
+        if (step.op === "import_take") throw new Error("File not found");
+        return payload(revision + 1, ["s_new"]);
+      }),
+    });
+    await expect(sendIntoProject({ ...image }, null, { type: "new-shot" }, "Untitled", fake)).rejects.toThrow("File not found");
+    expect(fake.removed).toEqual([["p_new", 2]]);
+  });
+
+  it("leaves an existing project alone when a step fails", async () => {
+    const fake = api({ run: vi.fn(async () => { throw new Error("nope"); }) });
+    await expect(sendIntoProject({ ...image }, "p_old", { type: "new-shot" }, "Untitled", fake)).rejects.toThrow("nope");
+    expect(fake.remove).not.toHaveBeenCalled();
+  });
+
+  it("still reports the send's own failure when the clean-up fails", async () => {
+    const fake = api({
+      run: vi.fn(async () => { throw new Error("first failure"); }),
+      remove: vi.fn(async () => { throw new Error("cannot delete"); }),
+    });
+    await expect(sendIntoProject({ ...image }, null, { type: "new-shot" }, "Untitled", fake)).rejects.toThrow("first failure");
+  });
+
+  it("returns the id of the project the item went into", async () => {
+    const fake = api();
+    await expect(sendIntoProject({ ...image }, null, { type: "new-shot" }, "Untitled", fake)).resolves.toBe("p_new");
+    expect(fake.remove).not.toHaveBeenCalled();
   });
 });

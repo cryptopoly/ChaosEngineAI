@@ -53,6 +53,13 @@ class BatchRequest(_Body):
 class RenderRequest(_Body):
     revision: int
     preview: bool = True
+    notify: bool = True  # a system banner when a long export ends
+
+
+class CaptionsRequest(_Body):
+    revision: int
+    clipIds: list[str] | None = Field(None, max_length=200)
+    language: str = Field("", max_length=16)
 
 
 class ImportRequest(_Body):
@@ -113,7 +120,7 @@ def start_batch(request: Request, project_id: str, revision: int | None, what: s
     return batch
 
 
-def start_render(project_id: str, revision: int | None, preview: bool) -> Any:
+def start_render(project_id: str, revision: int | None, preview: bool, notify: bool = False) -> Any:
     from backend_service.storyboard.render_adapter import RENDERS
     from backend_service.storyboard.timeline import build_render_plan
 
@@ -122,7 +129,7 @@ def start_render(project_id: str, revision: int | None, preview: bool) -> Any:
     if revision is not None and project.revision != revision:
         raise store_module.RevisionConflict(project)
     plan = build_render_plan(project, preview, store.folder(project_id))
-    return RENDERS.start(project_id, plan)
+    return RENDERS.start(project_id, plan, notify)
 
 
 def _batch_info(project_id: str, batch_id: str) -> dict[str, Any]:
@@ -196,14 +203,15 @@ def cancel_batch(project_id: str, batch_id: str) -> dict[str, Any]:
 # ---- renders ----
 @router.post("/api/storyboard/projects/{project_id}/render")
 def render(project_id: str, body: RenderRequest) -> dict[str, Any]:
-    return {"render": _guard(start_render, project_id, body.revision, body.preview).describe()}
+    return {"render": _guard(start_render, project_id, body.revision, body.preview, body.notify).describe()}
 
 
 @router.get("/api/storyboard/projects/{project_id}/render")
 def render_status(project_id: str) -> dict[str, Any]:
     from backend_service.storyboard.render_adapter import RENDERS
 
-    job = RENDERS.status(_guard(get_store().folder, project_id).name)
+    folder = _guard(get_store().folder, project_id)
+    job = RENDERS.status(folder.name, folder)
     return {"render": job.describe() if job else None}
 
 
@@ -212,6 +220,45 @@ def cancel_render(project_id: str) -> dict[str, Any]:
     from backend_service.storyboard.render_adapter import RENDERS
 
     return {"cancelled": RENDERS.cancel(project_id)}
+
+
+# ---- captions, timeline export ----
+@router.post("/api/storyboard/projects/{project_id}/captions/generate")
+def generate_captions(project_id: str, body: CaptionsRequest) -> dict[str, Any]:
+    """Transcribe the voice clips (or the named ones) and store the result as captions."""
+    from backend_service.storyboard import captions
+
+    project, notes = _guard(captions.generate, get_store(), project_id, body.revision, body.clipIds, body.language)
+    return {**_payload(project), "notes": notes}
+
+
+@router.post("/api/storyboard/projects/{project_id}/captions/export")
+def export_captions(project_id: str) -> dict[str, Any]:
+    """Write the captions as an .srt in the project's ``exports/`` folder."""
+    from backend_service.storyboard import captions
+    from backend_service.storyboard.timeline import compute_timeline
+
+    store = get_store()
+    project = _guard(store.load, project_id)
+    items = captions.cues(project, compute_timeline(project, ready_only=True))
+    if not items:
+        raise HTTPException(status_code=400, detail="There are no captions to export.")
+    path = captions.write_srt(project, store.folder(project_id), items)
+    return {"file": f"exports/{path.name}", "cues": len(items)}
+
+
+@router.post("/api/storyboard/projects/{project_id}/otio")
+def export_otio(project_id: str) -> dict[str, Any]:
+    """Write the cut as an OpenTimelineIO (.otio) file in ``exports/``, for Resolve, Premiere and other editors."""
+    from backend_service.storyboard import otio_export
+
+    store = get_store()
+    project = _guard(store.load, project_id)
+    try:
+        path, warnings = otio_export.write_otio(project, store.folder(project_id))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"file": f"exports/{path.name}", "warnings": warnings}
 
 
 # ---- bundles ----

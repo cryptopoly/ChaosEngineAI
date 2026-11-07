@@ -31,10 +31,13 @@ PROJECT_FILE = "project.json"
 MAX_PROJECT_BYTES = 16 * 1024 * 1024
 HISTORY_KEEP = 500
 _TOP_KEYS = ("name", "defaults", "references", "export")
-_LIST_KEYS = ("shots", "audio")
+_LIST_KEYS = ("shots", "audio", "captions")
 
 # schemaVersion n -> function turning an n dict into an n+1 dict. Add one entry per format change.
-MIGRATIONS: dict[int, Callable[[dict[str, Any]], dict[str, Any]]] = {}
+MIGRATIONS: dict[int, Callable[[dict[str, Any]], dict[str, Any]]] = {
+    # 1 -> 2: captions and the export switches for captions and stems (all default off / empty).
+    1: lambda data: {**data, "captions": data.get("captions", [])},
+}
 
 _LOCKS: dict[str, threading.RLock] = {}
 _LOCKS_GUARD = threading.Lock()

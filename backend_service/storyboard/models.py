@@ -14,10 +14,11 @@ from typing import Annotated, Any, Literal, Union
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, model_validator
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 MAX_SHOTS = 500
 MAX_AUDIO = 500
 MAX_TAKES = 50
+MAX_CAPTIONS = 2000
 
 _ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
 PROJECT_ID_RE = re.compile(r"^[0-9a-f]{16}$")
@@ -216,11 +217,31 @@ class AiLabel(_Model):
 class ExportSettings(_Model):
     aiLabel: AiLabel = Field(default_factory=AiLabel)
     loudnessLufs: float | None = Field(-16.0, ge=-40, le=-5)
+    captionsSrt: bool = False  # write the captions as an .srt next to the film
+    captionsBurn: bool = False  # draw the captions into the picture
+    stems: bool = False  # also write each audio lane as its own .wav
 
     @model_validator(mode="before")
     @classmethod
     def _drop_end_card(cls, data: Any) -> Any:
         return _drop_legacy(data, ("endCardText", "endCardSeconds"))
+
+
+class Caption(_Model):
+    """One caption. With ``clipId`` the times are seconds in that audio clip's source (so the caption follows
+    the clip when it moves or is trimmed); without it they are seconds on the film's timeline."""
+
+    id: Id
+    clipId: Id | None = None
+    start: Annotated[float, Field(ge=0, le=36000)]
+    end: Annotated[float, Field(ge=0, le=36000)]
+    text: Annotated[str, Field(min_length=1, max_length=500), AfterValidator(check_text)]
+
+    @model_validator(mode="after")
+    def _ordered(self) -> "Caption":
+        if self.end <= self.start:
+            raise ValueError("a caption must end after it starts")
+        return self
 
 
 class BatchResult(_Model):
@@ -252,6 +273,7 @@ class Project(_Model):
     shots: list[Shot] = Field(default_factory=list, max_length=MAX_SHOTS)
     audio: list[AudioClip] = Field(default_factory=list, max_length=MAX_AUDIO)
     export: ExportSettings = Field(default_factory=ExportSettings)
+    captions: list[Caption] = Field(default_factory=list, max_length=MAX_CAPTIONS)
     batches: list[BatchRecord] = Field(default_factory=list, max_length=50)
     undoStack: list[int] = Field(default_factory=list, max_length=200)
     redoStack: list[int] = Field(default_factory=list, max_length=200)
@@ -261,6 +283,8 @@ class Project(_Model):
         for label, ids in (("shot", [s.id for s in self.shots]), ("audio clip", [a.id for a in self.audio])):
             if len(ids) != len(set(ids)):
                 raise ValueError(f"duplicate {label} id")
+        if len({c.id for c in self.captions}) != len(self.captions):
+            raise ValueError("duplicate caption id")
         for shot in self.shots:
             if len({t.id for t in shot.takes}) != len(shot.takes):
                 raise ValueError(f"duplicate take id in shot {shot.id}")

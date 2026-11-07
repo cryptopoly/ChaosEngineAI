@@ -69,11 +69,11 @@ class StoryboardToolTests(unittest.TestCase):
         got = self.call("storyboard_project", {"action": "get", "project_id": pid})
         self.assertEqual(got["project"]["shots"][0]["title"], "s0")
         info = self.call("storyboard_project", {"action": "edit", "project_id": pid, "revision": info["revision"],
-                                                "fields": {"defaults": {"fps": 25}, "export": {"aiLabel": {"endCard": True}}}})
+                                                "fields": {"defaults": {"fps": 25}, "export": {"aiLabel": {"embedTag": False}}}})
         info = self.call("storyboard_project", {"action": "undo", "project_id": pid, "revision": info["revision"]})
         info = self.call("storyboard_project", {"action": "redo", "project_id": pid, "revision": info["revision"]})
         project = self.call("storyboard_project", {"action": "get", "project_id": pid})["project"]
-        self.assertEqual((project["defaults"]["fps"], project["export"]["aiLabel"]["endCard"]), (25, True))
+        self.assertEqual((project["defaults"]["fps"], project["export"]["aiLabel"]["embedTag"]), (25, False))
         exported = self.call("storyboard_project", {"action": "export", "project_id": pid})
         self.assertIn("/api/agent/files?path=", exported["download"]["url"])
         self.assertNotIn("path", exported)  # the agent gets the file name and the download, not a local path

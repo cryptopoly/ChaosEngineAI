@@ -26,6 +26,14 @@ def _minimal(**extra):
 
 
 class LayoutAndRevisionTests(StoreCase):
+    def test_old_project_with_end_card_fields_still_loads(self):
+        data = _minimal(export={"aiLabel": {"embedTag": False, "endCard": True},
+                                "endCardText": "Made with AI", "endCardSeconds": 2.0})
+        project = parse_project(data)
+        self.assertFalse(project.export.aiLabel.embedTag)
+        self.assertNotIn("endCard", project.export.aiLabel.model_dump())
+        self.assertNotIn("endCardText", project.export.model_dump())
+
     def test_create_makes_a_self_contained_folder(self):
         project = self.new()
         folder = self.folder(project)

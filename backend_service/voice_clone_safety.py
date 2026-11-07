@@ -63,8 +63,36 @@ def agent_cloning_enabled() -> bool:
     return bool(load_settings().get("allowAgentCloning"))
 
 
+def _bearer(request: Any) -> str:
+    headers = getattr(request, "headers", None) or {}
+    header = str(headers.get("authorization", "") or "").strip()
+    return header[7:].strip() if header.lower().startswith("bearer ") else str(headers.get("x-chaosengine-token", "") or "").strip()
+
+
+def _token_lacks_clone_scope(request: Any) -> bool:
+    """True when the caller holds an agent token (main or read-only) whose scopes do not include ``clone``.
+
+    This closes the gap between the setting and the token: ticking "Allow agents to use cloned voices" is not
+    enough for an agent whose token was not given the ``clone`` scope. The app's own token is not an agent token.
+    """
+    provided = _bearer(request)
+    if not provided:
+        return False
+    try:
+        from backend_service.mcp_bridge import access  # noqa: PLC0415
+
+        client = getattr(request, "client", None)
+        host = str(getattr(client, "host", "") or "")
+        principal = access.principal_for(provided, not host or host in _LOOPBACK or host.startswith("::ffff:127."))
+    except Exception:  # noqa: BLE001 - no settings dir in some tests: not an agent token
+        return False
+    return principal is not None and "clone" not in principal.scopes
+
+
 def clone_allowed(request: Any) -> bool:
-    return request_origin(request) == "ui" or agent_cloning_enabled()
+    if request_origin(request) == "ui":
+        return True
+    return agent_cloning_enabled() and not _token_lacks_clone_scope(request)
 
 
 REFUSED_MESSAGE = (

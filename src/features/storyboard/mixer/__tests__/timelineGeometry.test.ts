@@ -34,6 +34,7 @@ import {
   trimEndPatch,
   trimStartPatch,
   voiceIntervals,
+  rulerKeyTime,
 } from "../timelineGeometry";
 
 const spans = [
@@ -368,5 +369,16 @@ describe("waveform slice and buckets", () => {
     expect(levelFraction(12)).toBe(1);
     expect(levelFraction(0)).toBeCloseTo(60 / 72);
     expect(levelFraction(-99)).toBe(0);
+  });
+});
+
+describe("ruler keys", () => {
+  it("arrows seek 1 s, Shift 5 s, Home and End the ends, inside the film", () => {
+    expect(rulerKeyTime("ArrowRight", false, 3, 20)).toBe(4);
+    expect(rulerKeyTime("ArrowLeft", true, 3, 20)).toBe(0);
+    expect(rulerKeyTime("ArrowRight", true, 18, 20)).toBe(20);
+    expect(rulerKeyTime("Home", false, 9, 20)).toBe(0);
+    expect(rulerKeyTime("End", false, 9, 20)).toBe(20);
+    expect(rulerKeyTime("a", false, 9, 20)).toBeNull();
   });
 });

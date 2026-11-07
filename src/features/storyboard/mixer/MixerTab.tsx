@@ -3,7 +3,7 @@ import { isTauri } from "@tauri-apps/api/core";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { fetchStoryboardFileBlobUrl, fetchStoryboardFileSize, storyboardFilePath } from "../../../api";
-import { RedoIcon, UndoIcon } from "../../../components/icons/ActionIcons";
+import { CloseIcon, RedoIcon, UndoIcon } from "../../../components/icons/ActionIcons";
 import { Panel } from "../../../components/Panel";
 import type { StoryboardExportPreset, StoryboardProject, StoryboardTimeline } from "../../../types";
 import { PathField } from "../PathField";
@@ -13,6 +13,7 @@ import { ClipInspector, ShotInspector } from "./ClipInspector";
 import { AddAudioPanel } from "./AddAudioPanel";
 import { ExportPanel, RenderProgress, type ExportResult } from "./ExportPanel";
 import {
+  accumulateNudge,
   aiLabelPatch,
   canRender,
   exportSize,
@@ -20,12 +21,17 @@ import {
   isRenderRunning,
   leftOutShotCount,
   mixerKeyAction,
+  nudgeArgs,
   presetPatch,
   previewIsStale,
   projectFilePath,
+  readRenderedRevision,
+  readoutDue,
   seekedTime,
   addAudioArgs,
+  writeRenderedRevision,
   type MixerKeyAction,
+  type PendingNudge,
   type TargetKind,
 } from "./mixerLogic";
 import { Timeline, type ClipCommit } from "./Timeline";
@@ -38,7 +44,6 @@ import {
   dropToAnchor,
   fitZoomIndex,
   pxPerSecond,
-  shiftPosition,
   snapEdges,
   snapRange,
   trimAtPlayhead,
@@ -133,6 +138,13 @@ interface MixerScreenProps {
   onOpenBoard: () => void;
 }
 
+/** The id of the audio clip block that holds focus, if one does. */
+function focusedClipIdOf(target: EventTarget | null): string | null {
+  const el = target as HTMLElement | null;
+  const block = el?.closest?.('.timeline__clip[data-clip-type="audio"]');
+  return block?.getAttribute("data-clip-id") ?? null;
+}
+
 function targetKindOf(target: EventTarget | null): TargetKind {
   const el = target as HTMLElement | null;
   if (!el || !el.closest) return "other";
@@ -153,7 +165,7 @@ function MixerScreen({ story, project, timeline, dataDirectory, onOpenProjects, 
   const [addLane, setAddLane] = useState<AudioLaneId | null>(null);
   const [relinkId, setRelinkId] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [previewRevision, setPreviewRevision] = useState<number | null>(null);
+  const [previewRevision, setPreviewRevision] = useState<number | null>(() => readRenderedRevision(project.id));
   const [exportBytes, setExportBytes] = useState<{ id: string; bytes: number | null } | null>(null);
   const [copied, setCopied] = useState(false);
   const [announce, setAnnounce] = useState("");
@@ -164,9 +176,16 @@ function MixerScreen({ story, project, timeline, dataDirectory, onOpenProjects, 
   const projectRef = useRef(project);
   projectRef.current = project;
   const selectNew = useRef<number | null>(null);
-  const nudge = useRef<{ clipId: string; delta: number; timer: ReturnType<typeof setTimeout> } | null>(null);
+  const nudge = useRef<{ pending: PendingNudge; timer: ReturnType<typeof setTimeout> } | null>(null);
+  const playheadRef = useRef(0);
+  const readoutAt = useRef(0);
+  const ppsRef = useRef(0);
+  const timelineInner = useRef<HTMLDivElement>(null);
+  const previewOwned = useRef<string | null>(null);
+  const startedRevision = useRef<number | null>(null);
 
   const pps = pxPerSecond(zoomIndex);
+  ppsRef.current = pps;
   const spans = timeline.shots;
   const untitled = t("board.shot.untitled", { defaultValue: "Shot {n}", n: "{n}" });
   const lanes = useMemo(() => buildLanes(project, timeline, untitled), [project, timeline, untitled]);
@@ -196,24 +215,41 @@ function MixerScreen({ story, project, timeline, dataDirectory, onOpenProjects, 
   }, [total]);
 
   // The preview file: load it when a render finishes, and once on arrival if one is already there.
+  // A failed refetch keeps the preview that is already showing.
   useEffect(() => {
     let cancelled = false;
-    let made: string | null = null;
     fetchStoryboardFileBlobUrl(project.id, PREVIEW_FILE)
       .then((url) => {
         if (cancelled) URL.revokeObjectURL(url);
-        else {
-          made = url;
-          setPreviewUrl(url);
-        }
+        else setPreviewUrl(url);
       })
       .catch(() => {
         if (!cancelled && render.previewVersion === 0) setPreviewUrl(null);
       });
     return () => {
       cancelled = true;
-      if (made) URL.revokeObjectURL(made);
     };
+  }, [project.id, render.previewVersion]);
+
+  // This screen owns the blob URLs it made: one is released once the player has moved on from it.
+  useEffect(() => {
+    const before = previewOwned.current;
+    previewOwned.current = previewUrl;
+    if (before && before !== previewUrl) URL.revokeObjectURL(before);
+  }, [previewUrl]);
+  useEffect(
+    () => () => {
+      if (previewOwned.current) URL.revokeObjectURL(previewOwned.current);
+    },
+    [],
+  );
+
+  // The revision a preview shows is whatever the project was when that render started, noted only once it finished.
+  useEffect(() => {
+    if (render.previewVersion === 0 || startedRevision.current === null) return;
+    setPreviewRevision(startedRevision.current);
+    writeRenderedRevision(project.id, startedRevision.current);
+    startedRevision.current = null;
   }, [project.id, render.previewVersion]);
 
   // Export size for the result card.
@@ -230,18 +266,32 @@ function MixerScreen({ story, project, timeline, dataDirectory, onOpenProjects, 
     };
   }, [project.id, exportedId, exportedFile]);
 
+  /**
+   * The playhead line moves every frame through a CSS variable, with no render; the number and everything
+   * else that reads the playhead catch up at most ten times a second (at once when it is not playing).
+   */
+  const movePlayhead = useCallback((timeS: number, immediate: boolean) => {
+    playheadRef.current = timeS;
+    timelineInner.current?.style.setProperty("--playhead-x", String(timeS * ppsRef.current));
+    const now = performance.now();
+    if (immediate || readoutDue(readoutAt.current, now)) {
+      readoutAt.current = now;
+      setPlayheadS(timeS);
+    }
+  }, []);
+
   // The playhead follows the video while it plays.
   useEffect(() => {
     if (!playing) return;
     let frame = 0;
     const tick = () => {
       const el = video.current;
-      if (el) setPlayheadS(el.currentTime);
+      if (el) movePlayhead(el.currentTime, false);
       frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [playing]);
+  }, [playing, movePlayhead]);
 
   // Keep the playhead on screen while it moves.
   useEffect(() => {
@@ -271,11 +321,11 @@ function MixerScreen({ story, project, timeline, dataDirectory, onOpenProjects, 
   const seek = useCallback(
     (timeS: number) => {
       const next = Math.max(0, Math.min(total, timeS));
-      setPlayheadS(next);
+      movePlayhead(next, true);
       const el = video.current;
       if (el && Number.isFinite(el.duration)) el.currentTime = Math.min(next, el.duration);
     },
-    [total],
+    [total, movePlayhead],
   );
 
   const togglePlay = useCallback(async () => {
@@ -300,15 +350,15 @@ function MixerScreen({ story, project, timeline, dataDirectory, onOpenProjects, 
       el.currentTime = 0;
     }
     setPlaying(false);
-    setPlayheadS(0);
-  }, []);
+    movePlayhead(0, true);
+  }, [movePlayhead]);
 
   const zoom = useCallback((direction: 1 | -1) => setZoomIndex((z) => clampZoom(z + direction)), []);
 
   async function startRender(isPreview: boolean) {
     const ok = await render.start(project.revision, isPreview);
     if (ok && isPreview) {
-      setPreviewRevision(project.revision);
+      startedRevision.current = project.revision;
       stop();
     }
   }
@@ -330,32 +380,37 @@ function MixerScreen({ story, project, timeline, dataDirectory, onOpenProjects, 
     }
   }
 
-  function flushNudge() {
-    const pending = nudge.current;
-    if (!pending) return;
+  // A nudge is sent as a relative change, worked out when its turn comes in the edit queue, so presses
+  // sent while an earlier nudge is still on its way add to it instead of starting from the old position.
+  const flushNudge = useCallback(() => {
+    const queued = nudge.current;
+    if (!queued) return;
     nudge.current = null;
-    const clip = clipById(projectRef.current, pending.clipId);
-    if (clip) void story.op("edit_audio", { clipId: clip.id, ...shiftPosition(clip, pending.delta) });
-  }
+    clearTimeout(queued.timer);
+    void story.opFrom("edit_audio", (current) => nudgeArgs(current, queued.pending));
+  }, [story]);
+  const flushRef = useRef(flushNudge);
+  flushRef.current = flushNudge;
 
   function nudgeClip(clipId: string, delta: number) {
-    const pending = nudge.current;
-    if (pending && pending.clipId === clipId) {
-      clearTimeout(pending.timer);
-      pending.delta += delta;
-      pending.timer = setTimeout(flushNudge, NUDGE_DEBOUNCE_MS);
-      return;
-    }
-    flushNudge();
-    nudge.current = { clipId, delta, timer: setTimeout(flushNudge, NUDGE_DEBOUNCE_MS) };
+    const { pending, flush } = accumulateNudge(nudge.current?.pending ?? null, clipId, delta);
+    if (flush) flushNudge();
+    if (nudge.current) clearTimeout(nudge.current.timer);
+    nudge.current = { pending, timer: setTimeout(() => flushRef.current(), NUDGE_DEBOUNCE_MS) };
   }
 
-  useEffect(
-    () => () => {
-      if (nudge.current) clearTimeout(nudge.current.timer);
-    },
-    [],
-  );
+  // Leaving the screen sends what is still waiting.
+  useEffect(() => () => flushRef.current(), []);
+
+  /** Undo and redo run after any nudge still waiting, never before it. */
+  function undoNow() {
+    flushNudge();
+    void story.undo();
+  }
+  function redoNow() {
+    flushNudge();
+    void story.redo();
+  }
 
   function runAction(action: MixerKeyAction) {
     switch (action.type) {
@@ -363,7 +418,7 @@ function MixerScreen({ story, project, timeline, dataDirectory, onOpenProjects, 
         if (hasPreview) void togglePlay();
         break;
       case "seek":
-        seek(seekedTime(playheadS, action.deltaS, total));
+        seek(seekedTime(playheadRef.current, action.deltaS, total));
         break;
       case "seek-to":
         seek(action.where === "start" ? 0 : total);
@@ -382,15 +437,15 @@ function MixerScreen({ story, project, timeline, dataDirectory, onOpenProjects, 
         break;
       case "trim":
         if (selectedClip) {
-          const patch = trimAtPlayhead(selectedClip, clipSpan(selectedClip, timeline, spans), playheadS, action.side);
+          const patch = trimAtPlayhead(selectedClip, clipSpan(selectedClip, timeline, spans), playheadRef.current, action.side);
           if (patch) void story.op("edit_audio", { clipId: selectedClip.id, ...patch });
         }
         break;
       case "undo":
-        void story.undo();
+        undoNow();
         break;
       case "redo":
-        void story.redo();
+        redoNow();
         break;
       case "deselect":
         setSelection(null);
@@ -408,7 +463,8 @@ function MixerScreen({ story, project, timeline, dataDirectory, onOpenProjects, 
       alt: event.altKey,
       mod: event.metaKey || event.ctrlKey,
       target: targetKindOf(event.target),
-      clipSelected: selectedClip !== null,
+      selectedClipId: selectedClip?.id ?? null,
+      focusedClipId: focusedClipIdOf(event.target),
       fps: project.defaults.fps,
     });
     if (!action) return;
@@ -443,7 +499,7 @@ function MixerScreen({ story, project, timeline, dataDirectory, onOpenProjects, 
 
   async function addAudio(lane: AudioLaneId, picked: { path: string; name?: string }, cloned: boolean) {
     selectNew.current = project.audio.length;
-    const ok = await story.op("add_audio", addAudioArgs(lane, picked, playheadS, spans, cloned));
+    const ok = await story.op("add_audio", addAudioArgs(lane, picked, playheadRef.current, spans, cloned));
     if (ok) setAddLane(null);
     else selectNew.current = null;
   }
@@ -527,14 +583,14 @@ function MixerScreen({ story, project, timeline, dataDirectory, onOpenProjects, 
                   aria-label={t("storyboard.dismiss", { defaultValue: "Dismiss" })}
                   onClick={story.dismissNotice}
                 >
-                  ×
+                  <CloseIcon aria-hidden="true" />
                 </button>
               </span>
             ) : null}
-            <button type="button" className="secondary-button" disabled={busy || project.undoStack.length === 0} onClick={() => void story.undo()}>
+            <button type="button" className="secondary-button" disabled={busy || project.undoStack.length === 0} onClick={undoNow}>
               <UndoIcon /> {t("board.undo", { defaultValue: "Undo" })}
             </button>
-            <button type="button" className="secondary-button" disabled={busy || project.redoStack.length === 0} onClick={() => void story.redo()}>
+            <button type="button" className="secondary-button" disabled={busy || project.redoStack.length === 0} onClick={redoNow}>
               <RedoIcon /> {t("board.redo", { defaultValue: "Redo" })}
             </button>
             <button type="button" className="secondary-button" onClick={onOpenBoard}>
@@ -573,10 +629,13 @@ function MixerScreen({ story, project, timeline, dataDirectory, onOpenProjects, 
                       playsInline
                       preload="auto"
                       onPlay={() => setPlaying(true)}
-                      onPause={() => setPlaying(false)}
+                      onPause={(event) => {
+                        setPlaying(false);
+                        movePlayhead(event.currentTarget.currentTime, true);
+                      }}
                       onEnded={() => setPlaying(false)}
-                      onSeeked={(event) => setPlayheadS(event.currentTarget.currentTime)}
-                      onTimeUpdate={(event) => setPlayheadS(event.currentTarget.currentTime)}
+                      onSeeked={(event) => movePlayhead(event.currentTarget.currentTime, true)}
+                      onTimeUpdate={(event) => movePlayhead(event.currentTarget.currentTime, false)}
                     />
                   ) : (
                     <p className="mixer__stage-empty muted-text">
@@ -699,6 +758,7 @@ function MixerScreen({ story, project, timeline, dataDirectory, onOpenProjects, 
               onSeek={seek}
               onClearSelection={() => setSelection(null)}
               scrollRef={scroller}
+              innerRef={timelineInner}
             />
             <div className="mixer__links">
               <button type="button" className="mixer__link" onClick={onOpenBoard}>

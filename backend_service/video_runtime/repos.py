@@ -30,6 +30,10 @@ PIPELINE_REGISTRY: dict[str, dict[str, str]] = {
     # Wan 2.2 TI2V-5B is a dense text+image-to-video model — uses the
     # standard WanPipeline loader (no dual-expert routing like A14B).
     "Wan-AI/Wan2.2-TI2V-5B-Diffusers": {"class_name": "WanPipeline", "task": "txt2video"},
+    # Wan 2.2 I2V A14B: image-to-video with an optional last frame
+    # (``image=`` / ``last_image=``). MoE with ``transformer`` (high noise)
+    # and ``transformer_2`` (low noise).
+    "Wan-AI/Wan2.2-I2V-A14B-Diffusers": {"class_name": "WanImageToVideoPipeline", "task": "img2video"},
     # Community-maintained diffusers port of tencent/HunyuanVideo.
     "hunyuanvideo-community/HunyuanVideo": {"class_name": "HunyuanVideoPipeline", "task": "txt2video"},
     # CogVideoX 2B and 5B share the same diffusers pipeline class — the
@@ -53,6 +57,7 @@ _GGUF_VIDEO_TRANSFORMER_CLASSES: dict[str, str] = {
     "Wan-AI/Wan2.1-T2V-14B-Diffusers": "WanTransformer3DModel",
     "Wan-AI/Wan2.2-T2V-A14B-Diffusers": "WanTransformer3DModel",
     "Wan-AI/Wan2.2-TI2V-5B-Diffusers": "WanTransformer3DModel",
+    "Wan-AI/Wan2.2-I2V-A14B-Diffusers": "WanTransformer3DModel",
     "hunyuanvideo-community/HunyuanVideo": "HunyuanVideoTransformer3DModel",
 }
 
@@ -108,6 +113,11 @@ _VIDEO_PIPELINE_DEFAULTS: dict[str, dict[str, Any]] = {
     "Wan-AI/Wan2.1-T2V-14B-Diffusers": {"steps": 30, "guidance": 5.0, "scheduler": "unipc"},
     "Wan-AI/Wan2.2-TI2V-5B-Diffusers": {"steps": 20, "guidance": 5.0, "scheduler": "unipc"},
     "Wan-AI/Wan2.2-T2V-A14B-Diffusers": {"steps": 30, "guidance": 4.0, "scheduler": "unipc"},
+    # I2V A14B card: 40 steps, CFG 3.5. The catalog rows are 4-step distills
+    # that override both (defaultSteps / cfgOverride). "unipc" keeps the
+    # repo's UniPC on CUDA and becomes flow-match Euler on MPS (see
+    # ``swap_scheduler``: UniPC drifts on MPS).
+    "Wan-AI/Wan2.2-I2V-A14B-Diffusers": {"steps": 40, "guidance": 3.5, "scheduler": "unipc"},
     "hunyuanvideo-community/HunyuanVideo": {"steps": 50, "guidance": 6.0, "scheduler": None},
     "genmo/mochi-1-preview": {"steps": 64, "guidance": 4.5, "scheduler": None},
     "THUDM/CogVideoX-2b": {"steps": 50, "guidance": 6.0, "scheduler": None},

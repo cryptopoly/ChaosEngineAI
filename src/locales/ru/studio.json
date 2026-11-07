@@ -372,7 +372,8 @@
       "noPrompt": "Напишите промпт перед генерацией.",
       "backendOffline": "Бэкенд не в сети.",
       "busy": "Занято…",
-      "dangerLevel": null
+      "dangerLevel": null,
+      "needsStartImage": null
     },
     "generateTitle": "Начать генерацию этого клипа.",
     "memory": {

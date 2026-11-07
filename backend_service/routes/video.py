@@ -398,16 +398,25 @@ def generate_video(request: Request, body: VideoGenerationRequest) -> dict[str, 
 
 
 def _checked_input_images(body: VideoGenerationRequest, variant: dict[str, Any]) -> VideoGenerationRequest:
-    """Resolve start / end image paths; only LTX-2 models take them. 400 with a readable message otherwise."""
+    """Resolve start / end image paths for the models that take them (LTX-2, Wan 2.2 I2V).
+
+    400 with a readable message when a model cannot take an image, or needs a start image and got none.
+    """
+    from backend_service.helpers.video_image_input import accepts_image_input, requires_start_image
+
+    if requires_start_image(variant) and not body.startImagePath:
+        raise HTTPException(
+            status_code=400,
+            detail=f"{variant.get('name')} makes a clip from a start image. Add a start image.",
+        )
     if not (body.startImagePath or body.endImagePath):
         return body
     from backend_service.helpers.media_input import InputImageError, resolve_input_image
-    from backend_service.ltx2_mlx_runtime import _is_ltx2_mlx_repo
 
-    if not _is_ltx2_mlx_repo(str(variant.get("repo") or "")):
+    if not accepts_image_input(variant):
         raise HTTPException(
             status_code=400,
-            detail=f"{variant.get('name')} cannot start from an image. Pick an LTX-2 model (ltx-2-mlx).",
+            detail=f"{variant.get('name')} cannot start from an image. Pick LTX-2 or Wan 2.2 I2V.",
         )
     try:
         return body.model_copy(update={
@@ -507,6 +516,8 @@ def download_video_model(request: Request, body: DownloadModelRequest) -> dict[s
         gguf_file = str(variant.get("ggufFile") or "")
         if not gguf_repo or not gguf_file:
             raise HTTPException(status_code=400, detail=f"GGUF metadata is incomplete for {variant['name']}.")
+        # Two-expert rows (Wan 2.2 A14B) pin the low-noise expert in ggufFile2.
+        gguf_files = [name for name in (gguf_file, str(variant.get("ggufFile2") or "")) if name]
         base_repo = str(variant["repo"])
         base_download = None
         gguf_download = None
@@ -522,7 +533,7 @@ def download_video_model(request: Request, body: DownloadModelRequest) -> dict[s
             state.add_log("video", "info", f"Video download requested: {variant['name']} GGUF ({gguf_repo}/{gguf_file})")
             gguf_download = state.start_download(
                 gguf_repo,
-                allow_patterns=[gguf_file, "*.md", "LICENSE*"],
+                allow_patterns=[*gguf_files, "*.md", "LICENSE*"],
             )
         if base_download is not None:
             return {"download": base_download}
@@ -532,7 +543,7 @@ def download_video_model(request: Request, body: DownloadModelRequest) -> dict[s
         return {
             "download": state.start_download(
                 gguf_repo,
-                allow_patterns=[gguf_file, "*.md", "LICENSE*"],
+                allow_patterns=[*gguf_files, "*.md", "LICENSE*"],
             )
         }
 

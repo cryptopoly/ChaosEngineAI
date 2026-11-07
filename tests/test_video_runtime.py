@@ -1608,44 +1608,19 @@ class DistillTransformerSwapTests(unittest.TestCase):
         self.assertEqual(captured["dtypes"], ["fp8", "fp8"])
 
 
-class Wan22DistillCatalogTests(unittest.TestCase):
-    """Catalog shape contract — Wan2.2 distill variant dicts must carry
-    the distillTransformer* keys plus ``defaultSteps`` + ``cfgOverride``
-    so the runtime knows which experts to swap and the default-substitution
-    path can lock the 4-step schedule."""
+class Wan22CatalogTests(unittest.TestCase):
+    """The Wan 2.2 I2V distill rows had no working pipeline and needed the
+    126 GB base download; they were removed, and the family default must
+    point at a row that still exists."""
 
-    def test_wan22_distill_variants_have_distill_keys(self):
+    def test_family_default_is_a_listed_variant_and_no_dead_distill_rows(self):
         from backend_service.catalog.video_models import VIDEO_MODEL_FAMILIES
 
-        wan22 = next(
-            (f for f in VIDEO_MODEL_FAMILIES if f.get("id") == "wan-2-2"),
-            None,
-        )
-        self.assertIsNotNone(wan22, "wan-2-2 family missing from catalog")
-        distill_variants = [
-            v for v in wan22.get("variants", [])
-            if v.get("distillTransformerRepo")
-        ]
-        self.assertGreaterEqual(len(distill_variants), 2)
-        for variant in distill_variants:
-            self.assertEqual(
-                variant.get("distillTransformerRepo"),
-                "lightx2v/Wan2.2-Distill-Models",
-            )
-            self.assertTrue(variant.get("distillTransformerHighNoiseFile"))
-            self.assertTrue(variant.get("distillTransformerLowNoiseFile"))
-            self.assertIn(
-                variant.get("distillTransformerPrecision"),
-                {"bf16", "fp8_e4m3", "int8"},
-            )
-            self.assertEqual(variant.get("defaultSteps"), 4)
-            self.assertEqual(variant.get("cfgOverride"), 1.0)
-            # Distill targets the I2V-A14B base repo for the MoE
-            # transformer + transformer_2 layout to line up.
-            self.assertEqual(
-                variant.get("repo"),
-                "Wan-AI/Wan2.2-I2V-A14B-Diffusers",
-            )
+        wan22 = next(f for f in VIDEO_MODEL_FAMILIES if f.get("id") == "wan-2-2")
+        ids = {v["id"] for v in wan22["variants"]}
+        self.assertIn(wan22["defaultVariantId"], ids)
+        self.assertFalse([i for i in ids if "distill" in i])
+
 
 
 class VideoWarmCacheVariantKeyTests(unittest.TestCase):

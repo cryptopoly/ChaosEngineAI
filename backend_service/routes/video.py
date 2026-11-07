@@ -443,6 +443,9 @@ def _generate_video_locked(request: Request, body: VideoGenerationRequest) -> di
         raise HTTPException(status_code=409, detail=detail)
 
     _unload_idle_image_runtime_for_video(request, "video generation")
+    from backend_service.music_runtime import free_idle_worker
+
+    free_idle_worker(state, "video generation")
     _video_memory_gate(request, variant, "video generation", body)
     try:
         artifact, runtime = _generate_video_artifact(body, variant, state.video_runtime)

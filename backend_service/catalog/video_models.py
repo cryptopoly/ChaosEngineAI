@@ -606,7 +606,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
         ),
         "updatedLabel": "Planned — first wave",
         "badges": ["Balanced", "Quality", "Apache 2.0"],
-        "defaultVariantId": "Wan-AI/Wan2.2-I2V-A14B-Diffusers-distill-gguf-q4km",
+        "defaultVariantId": "Wan-AI/Wan2.2-I2V-A14B-Diffusers-distill-fp8",
         "variants": [
             {
                 "id": "Wan-AI/Wan2.2-T2V-A14B-Diffusers",
@@ -649,44 +649,6 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "estimatedGenerationSeconds": 300.0,
                 "availableLocally": False,
                 "releaseDate": "2025-07",
-            },
-            # D-48: the Mac-sized Wan image-to-video row. Both lightx2v
-            # 4-step distilled experts as Q4_K_M GGUFs (9.66 GB each) plus
-            # the UMT5 text encoder and VAE from the base repo (transformer
-            # configs only). Start image required, end image optional.
-            {
-                "id": "Wan-AI/Wan2.2-I2V-A14B-Diffusers-distill-gguf-q4km",
-                "familyId": "wan-2-2",
-                "name": "Wan 2.2 I2V A14B · Distill 4-step GGUF Q4_K_M",
-                "provider": "Alibaba · lightx2v",
-                "repo": "Wan-AI/Wan2.2-I2V-A14B-Diffusers",
-                "ggufRepo": "jayn7/WAN2.2-I2V_A14B-DISTILL-LIGHTX2V-4STEP-GGUF",
-                "ggufFile": "high_noise/wan2.2_i2v_A14b_high_noise_lightx2v_4step-Q4_K_M.gguf",
-                "ggufFile2": "low_noise/wan2.2_i2v_A14b_low_noise_lightx2v_4step-Q4_K_M.gguf",
-                "defaultSteps": 4,
-                "cfgOverride": 1.0,
-                "link": "https://huggingface.co/jayn7/WAN2.2-I2V_A14B-DISTILL-LIGHTX2V-4STEP-GGUF",
-                "runtime": "diffusers WanImageToVideoPipeline + lightx2v distill (GGUF Q4_K_M)",
-                "styleTags": ["i2v", "general", "fast", "motion", "distill", "gguf"],
-                "taskSupport": ["img2video"],
-                "sizeGb": 31.2,
-                # Measured on a 64 GB M4 Max (docs/research/wan-vs-ltx-bench.md):
-                # 31 GB resident, 53-55 GB peak at 480 x 272 x 33 frames (the VAE
-                # spikes); 768 x 448 did not fit. The size is the Mac one; CUDA
-                # cards get 832 x 480 from the recommended settings.
-                "runtimeFootprintGb": 31.0,
-                "runtimeFootprintMpsGb": 54.0,
-                "recommendedResolution": "480x272",
-                "defaultDurationSeconds": 2.0,
-                "note": (
-                    "Starts from an image and can end on a second one. lightx2v 4-step "
-                    "distill of Wan 2.2 A14B I2V, both experts as Q4_K_M GGUF, CFG-free. "
-                    "No sound. On a 64 GB Mac: about 100 s for 33 frames at 480 x 272 "
-                    "and 53 GB peak; larger sizes do not fit. Best on CUDA."
-                ),
-                "estimatedGenerationSeconds": 105.0,
-                "availableLocally": False,
-                "releaseDate": "2025-10",
             },
             # Phase 3 / Wan2.2-Distill 4-step (lightx2v): drops the A14B
             # I2V schedule from ~30 to 4 steps with CFG-free sampling. The

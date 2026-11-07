@@ -372,8 +372,7 @@
       "noPrompt": "生成する前にプロンプトを入力してください。",
       "backendOffline": "バックエンドはオフラインです。",
       "busy": "ビジー…",
-      "dangerLevel": null,
-      "needsStartImage": null
+      "dangerLevel": null
     },
     "generateTitle": "このクリップの生成を開始します。",
     "memory": {

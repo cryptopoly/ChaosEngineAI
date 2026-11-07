@@ -44,3 +44,7 @@ then wire Wan start / end images into Studio, the storyboard and the agent bridg
   image-to-video model with its measured 480 x 272 cost, and as the stronger choice on CUDA. Reason: memory, not
   speed (Wan needs 53-55 GB at a third of LTX's picture size).
 - Optional: time an MLX Wan port (start image only) before ruling out Wan on Macs for good.
+
+## Removed
+
+Wan 2.2 I2V was removed from the product after the owner decided it is not worth shipping (a 2 s Wan clip takes as long as a 4 s LTX clip, at lower resolution). This file, the bench script and docs/research/wan-vs-ltx-bench.md stay as the record.

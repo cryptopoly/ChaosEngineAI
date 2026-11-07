@@ -2,7 +2,7 @@
 title: "Progress: V-voice (voice cloning)"
 status: review
 ---
-# Progress: V-voice (voice cloning, D-28 / D-45 / D-55)
+# Progress: V-voice (voice cloning, D-28 / D-56)
 
 Updated: 2026-11-07. Owner: agent. Branch: `voice/clone-permission-tick` (off `feat/home-studio`).
 

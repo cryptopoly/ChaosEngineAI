@@ -11,7 +11,7 @@ Newest dated update first. Each update has the same sections: Done, Open for Cla
 
 ## Update 2026-11-07 (v0.10.0 prep): Music and Storyboard are always on; version bumped to 0.10.0; DGX Spark code ships untested (D-53, D-54). Nothing merged to release, staging or main yet.
 
-- **Voice cloning form (D-55), branch `voice/clone-permission-tick`, not merged:** Voice Studio > Clone takes whose voice, the speaker's name, a voice sample (uploaded WAV, MP3, M4A, FLAC or OGG, or a microphone recording; 3 to 30 s) and one permission tick. Agents' `speak_cloned` requires `permission_confirmed: true`. Label, watermark, detect route, spoken disclaimer, agent switch and audit log unchanged. Open for Dan: a real clone run with a real sample and microphone, and listening to it.
+- **Voice cloning form (D-56):** Voice Studio > Clone takes whose voice, the speaker's name, a voice sample (uploaded WAV, MP3, M4A, FLAC or OGG, or a microphone recording; 3 to 30 s) and one permission tick. Agents' `speak_cloned` requires `permission_confirmed: true`. Label, watermark, detect route, spoken disclaimer, agent switch and audit log unchanged. Open for Dan: a real clone run with a real sample and microphone, and listening to it.
 
 ## Update 2026-11-09
 

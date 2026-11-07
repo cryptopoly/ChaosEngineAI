@@ -670,16 +670,21 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "styleTags": ["i2v", "general", "fast", "motion", "distill", "gguf"],
                 "taskSupport": ["img2video"],
                 "sizeGb": 31.2,
+                # Measured on a 64 GB M4 Max (docs/research/wan-vs-ltx-bench.md):
+                # 31 GB resident, 53-55 GB peak at 480 x 272 x 33 frames (the VAE
+                # spikes); 768 x 448 did not fit. The size is the Mac one; CUDA
+                # cards get 832 x 480 from the recommended settings.
                 "runtimeFootprintGb": 31.0,
-                "runtimeFootprintMpsGb": 34.0,
-                "recommendedResolution": "832x480",
+                "runtimeFootprintMpsGb": 54.0,
+                "recommendedResolution": "480x272",
                 "defaultDurationSeconds": 2.0,
                 "note": (
                     "Starts from an image and can end on a second one. lightx2v 4-step "
                     "distill of Wan 2.2 A14B I2V, both experts as Q4_K_M GGUF, CFG-free. "
-                    "No sound."
+                    "No sound. On a 64 GB Mac: about 100 s for 33 frames at 480 x 272 "
+                    "and 53 GB peak; larger sizes do not fit. Best on CUDA."
                 ),
-                "estimatedGenerationSeconds": 300.0,
+                "estimatedGenerationSeconds": 105.0,
                 "availableLocally": False,
                 "releaseDate": "2025-10",
             },

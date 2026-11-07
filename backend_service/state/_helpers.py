@@ -251,6 +251,7 @@ def _spawn_snapshot_download(
     env: dict[str, str],
     log_handle: Any,
     allow_patterns: list[str] | None = None,
+    revision: str | None = None,
 ) -> subprocess.Popen[str]:
     from backend_service.app import HF_SNAPSHOT_DOWNLOAD_HELPER
 
@@ -261,6 +262,9 @@ def _spawn_snapshot_download(
     # repo ships legacy standalone checkpoints alongside the pipeline
     # layout.
     args.append(json.dumps(allow_patterns) if allow_patterns else "")
+    # A pinned revision (music repos) fetches that commit, not the branch head.
+    if revision:
+        args.append(revision)
     return subprocess.Popen(
         args,
         stdout=log_handle,

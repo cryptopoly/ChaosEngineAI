@@ -21,6 +21,10 @@ def _obj(properties: dict[str, Any], required: list[str] | None = None) -> dict[
 
 
 _KIND = {"type": "string", "enum": ["image", "video", "voice", "stt", "music"]}
+_PROJECT_PROPS: dict[str, Any] = {
+    "project_id": {"type": "string", "description": "Optional. Storyboard project this output belongs to; the gallery and library group it there."},
+    "project_name": {"type": "string", "maxLength": 120, "description": "Optional label for project_id when the project is not in the Storyboard."},
+}
 _JOB_ID = {"type": "string", "description": "Job id from a tool that starts a job, or list_jobs."}
 
 TOOLS: list[dict[str, Any]] = [
@@ -57,6 +61,7 @@ TOOLS: list[dict[str, Any]] = [
                 "image_strength": {"type": "number", "minimum": 0.05, "maximum": 1.0, "description": "Single start image only: higher stays closer to it (mflux default 0.4)."},
                 "seed": {"type": "integer", "minimum": 0, "maximum": 2147483647},
                 "include_preview": {"type": "boolean", "description": "Also return the PNG as base64."},
+                **_PROJECT_PROPS,
             },
             ["prompt"],
         ),
@@ -78,6 +83,7 @@ TOOLS: list[dict[str, Any]] = [
                 "fps": {"type": "integer", "minimum": 1, "maximum": 60},
                 "steps": {"type": "integer", "minimum": 1, "maximum": 100},
                 "seed": {"type": "integer", "minimum": 0, "maximum": 2147483647},
+                **_PROJECT_PROPS,
             },
             ["prompt"],
         ),
@@ -90,6 +96,7 @@ TOOLS: list[dict[str, Any]] = [
                 "text": {"type": "string", "minLength": 1, "maxLength": 20000},
                 "voice": {"type": "string", "description": "Voice id from list_voices."},
                 "speed": {"type": "number", "minimum": 0.5, "maximum": 2.0},
+                **_PROJECT_PROPS,
             },
             ["text"],
         ),
@@ -290,9 +297,11 @@ def generate_image(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
         raise ToolError(f"Invalid image request: {exc.errors()[0]['msg']}") from exc
     preview = bool(args.get("include_preview"))
     request = ctx.request
+    scope = project_scope(args)
 
     def run() -> tuple[dict[str, Any], list[str]]:
-        result = _generate_image_locked(request, body)
+        with scope:
+            result = _generate_image_locked(request, body)
         art = result["artifacts"][0]
         output: dict[str, Any] = {
             "path": art.get("imagePath"),
@@ -374,9 +383,11 @@ def generate_video(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
     except ValidationError as exc:
         raise ToolError(f"Invalid video request: {exc.errors()[0]['msg']}") from exc
     request = ctx.request
+    scope = project_scope(args)
 
     def run() -> tuple[dict[str, Any], list[str]]:
-        result = _generate_video_locked(request, body)
+        with scope:
+            result = _generate_video_locked(request, body)
         art = result["artifact"]
         output = {
             "path": art.get("videoPath"),
@@ -405,17 +416,19 @@ def speak(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
     ready = {v["id"] for v in bridge_models.list_voices()}
     if args.get("voice") and voice not in ready:
         raise ToolError(f"Voice '{voice}' is not available. Call list_voices.")
+    scope = project_scope(args)
 
     def run() -> tuple[dict[str, Any], list[str]]:
         wav, duration = voice_runtime.synthesize(text, voice, speed)
         with tempfile.NamedTemporaryFile(prefix="chaosengine-agent-", suffix=".wav", delete=False) as tmp:
             tmp.write(wav)
-        item = voice_library.create(
-            "speech",
-            {"text": text, "voice": voice, "speed": speed, "durationS": duration},
-            audio_file=Path(tmp.name),
-            audio_ext=".wav",
-        )
+        with scope:
+            item = voice_library.create(
+                "speech",
+                {"text": text, "voice": voice, "speed": speed, "durationS": duration},
+                audio_file=Path(tmp.name),
+                audio_ext=".wav",
+            )
         path = voice_library.audio_path(item["id"])
         return {"path": str(path) if path else None, "durationSeconds": round(duration, 2), "voice": voice}, []
 
@@ -507,6 +520,28 @@ def list_jobs(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
 def cancel_job(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
     job = _job(args)
     return {"cancelRequested": STORE.cancel(job), **job.describe()}
+
+
+def project_scope(args: dict[str, Any]) -> Any:
+    """Context that tags what a job saves with the project in ``project_id`` / ``project_name`` (a no-op without them)."""
+    from contextlib import nullcontext
+
+    from backend_service.helpers.provenance import provenance
+
+    pid = str(args.get("project_id") or "").strip()
+    if not pid:
+        if args.get("project_name"):
+            raise ToolError("project_name needs project_id.")
+        return nullcontext()
+    name = str(args.get("project_name") or "").strip()
+    if not name:
+        try:
+            from backend_service.routes.storyboard import get_store
+
+            name = get_store().load(pid).name
+        except Exception:  # noqa: BLE001 - an unknown id is kept as given
+            name = pid
+    return provenance(pid, name)
 
 
 HANDLERS: dict[str, Callable[[Any, dict[str, Any]], dict[str, Any]]] = {

@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
-import { ProjectChip, ProjectFilter } from "../../components/ProjectFilter";
-import { ALL_PROJECTS, filterByProject, projectOptions } from "../../utils/galleryProject";
+import { ProjectChip, ProjectFilter, ProjectHeader } from "../../components/ProjectFilter";
+import { ALL_PROJECTS, filterByProject, projectOptions, untaggedCount, type ProjectTagged } from "../../utils/galleryProject";
+import { writeOpenProjectId } from "../storyboard/storyboardLogic";
 import { SendToStoryboardMenu } from "../../components/SendToStoryboardMenu";
 import { SoundBadge } from "../../components/SoundBadge";
 import { VideoSoundToggle } from "../../components/VideoSoundToggle";
@@ -15,6 +16,8 @@ import { modelsPageRequest, type TabRequest } from "../../constants/tabRedirects
 
 export interface VideoGalleryTabProps {
   videoOutputs: VideoOutputArtifact[];
+  /** Saved stills, only to count a project's stills in its header. */
+  imageOutputs?: ProjectTagged[];
   videoBusy: boolean;
   onActiveTabChange: (tab: TabRequest) => void;
   onOpenVideoStudio: (modelId?: string) => void;
@@ -24,6 +27,7 @@ export interface VideoGalleryTabProps {
 
 export function VideoGalleryTab({
   videoOutputs,
+  imageOutputs = [],
   videoBusy,
   onActiveTabChange,
   onOpenVideoStudio,
@@ -37,6 +41,8 @@ export function VideoGalleryTab({
   const storyboard = useSendToStoryboard((tab) => onActiveTabChange(tab));
   const [projectFilter, setProjectFilter] = useState(ALL_PROJECTS);
   const visibleOutputs = filterByProject(videoOutputs, projectFilter);
+  const projects = useMemo(() => projectOptions(videoOutputs), [videoOutputs]);
+  const picked = projects.find((project) => project.id === projectFilter) ?? null;
   const expandedArtifact = visibleOutputs.find((artifact) => artifact.artifactId === expandedArtifactId) ?? null;
   const displayedArtifacts = expandedArtifact ? [expandedArtifact] : visibleOutputs;
 
@@ -61,7 +67,13 @@ export function VideoGalleryTab({
         className="span-2"
         actions={
           <div className="button-row video-gallery-actions">
-            <ProjectFilter options={projectOptions(videoOutputs)} value={projectFilter} onChange={setProjectFilter} />
+            <ProjectFilter
+              options={projects}
+              value={projectFilter}
+              onChange={setProjectFilter}
+              untagged={untaggedCount(videoOutputs)}
+              total={videoOutputs.length}
+            />
             <label className="video-gallery-autoplay-toggle">
               <input
                 type="checkbox"
@@ -79,6 +91,20 @@ export function VideoGalleryTab({
           </div>
         }
       >
+        {picked ? (
+          <ProjectHeader
+            name={picked.name}
+            counts={{ stills: imageOutputs.filter((still) => still.projectId === picked.id).length, clips: picked.count }}
+            onOpen={
+              storyboard.enabled
+                ? () => {
+                    writeOpenProjectId(picked.id);
+                    void onActiveTabChange("story-board");
+                  }
+                : undefined
+            }
+          />
+        ) : null}
         {videoOutputs.length === 0 ? (
           <div className="empty-state image-empty-state">
             <p>

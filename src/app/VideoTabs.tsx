@@ -176,6 +176,7 @@ export function VideoGalleryView({ ctx }: { ctx: AppTabContext }) {
   return (
     <VideoGalleryTab
       videoOutputs={videoState.videoOutputs}
+      imageOutputs={ctx.imgState.imageOutputs}
       videoBusy={videoState.videoBusy}
       onActiveTabChange={setActiveTab}
       onOpenVideoStudio={(modelId) => videoState.openVideoStudio(modelId)}

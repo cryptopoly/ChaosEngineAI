@@ -129,6 +129,15 @@
           "description": "Model id from list_models. Default: best installed fit.",
           "type": "string"
         },
+        "project_id": {
+          "description": "Optional. Storyboard project this output belongs to; the gallery and library group it there.",
+          "type": "string"
+        },
+        "project_name": {
+          "description": "Optional label for project_id when the project is not in the Storyboard.",
+          "maxLength": 120,
+          "type": "string"
+        },
         "prompt": {
           "maxLength": 4000,
           "minLength": 1,
@@ -206,6 +215,15 @@
           "description": "Model id from list_models. Default: best installed fit.",
           "type": "string"
         },
+        "project_id": {
+          "description": "Optional. Storyboard project this output belongs to; the gallery and library group it there.",
+          "type": "string"
+        },
+        "project_name": {
+          "description": "Optional label for project_id when the project is not in the Storyboard.",
+          "maxLength": 120,
+          "type": "string"
+        },
         "prompt": {
           "maxLength": 4000,
           "minLength": 1,
@@ -255,6 +273,15 @@
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
+        "project_id": {
+          "description": "Optional. Storyboard project this output belongs to; the gallery and library group it there.",
+          "type": "string"
+        },
+        "project_name": {
+          "description": "Optional label for project_id when the project is not in the Storyboard.",
+          "maxLength": 120,
+          "type": "string"
+        },
         "speed": {
           "maximum": 2.0,
           "minimum": 0.5,
@@ -858,6 +885,15 @@
           "description": "Model id from list_models kind music. Default: ACE-Step 1.5 turbo.",
           "type": "string"
         },
+        "project_id": {
+          "description": "Optional. Storyboard project this output belongs to; the gallery and library group it there.",
+          "type": "string"
+        },
+        "project_name": {
+          "description": "Optional label for project_id when the project is not in the Storyboard.",
+          "maxLength": 120,
+          "type": "string"
+        },
         "seconds": {
           "maximum": 600,
           "minimum": 10,
@@ -922,6 +958,15 @@
           ],
           "type": "string"
         },
+        "project_id": {
+          "description": "Optional. Storyboard project this output belongs to; the gallery and library group it there.",
+          "type": "string"
+        },
+        "project_name": {
+          "description": "Optional label for project_id when the project is not in the Storyboard.",
+          "maxLength": 120,
+          "type": "string"
+        },
         "text": {
           "maxLength": 5000,
           "minLength": 1,
@@ -963,6 +1008,15 @@
         "loop": {
           "description": "Make the clip a seamless loop (ambience, beats).",
           "type": "boolean"
+        },
+        "project_id": {
+          "description": "Optional. Storyboard project this output belongs to; the gallery and library group it there.",
+          "type": "string"
+        },
+        "project_name": {
+          "description": "Optional label for project_id when the project is not in the Storyboard.",
+          "maxLength": 120,
+          "type": "string"
         },
         "seconds": {
           "maximum": 11,

@@ -203,7 +203,7 @@ Separate epic. Done already: network listening works, the token works, remote up
 | Qwen3-TTS (Apache) | Notices entry; consent checkbox; machine-generated tag |
 | Anything gated or non-commercial | Not default; behind an explicit accept step; never bundled |
 | All generated audio | Tag "machine generated" in the file metadata |
-| Exported MP4 | Machine-readable marker in the MP4 metadata (`embed_mp4_settings` exists) and an optional visible "AI-generated" end card; ask the owner about an audio watermark. Tags are easy to strip, so EU AI Act Art. 50 style labelling is treated as a requirement to design for, not a tag |
+| Exported MP4 | Machine-readable marker in the MP4 metadata (`embed_mp4_settings` exists) (a visible end card was considered and dropped); ask the owner about an audio watermark. Tags are easy to strip, so EU AI Act Art. 50 style labelling is treated as a requirement to design for, not a tag |
 | Voice cloning over `/mcp` | The UI checkbox is not enough: consent is a required tool argument, recorded with the sample, and cloning is off for remote agents by default |
 | Lyrics, cover and reference-audio modes | UI copy: you are responsible for rights in lyrics you type and audio you supply; warn when an artist name is in the style prompt; the same notice for stem separation |
 | Bundled ffmpeg | The `imageio-ffmpeg` build is `--enable-gpl` with x264 and x265, and `THIRD_PARTY_NOTICES.md` has no entry for it today (this exists now, not only for the plan): add the GPL notice and a source offer, or switch to an LGPL build |
@@ -261,7 +261,7 @@ Critical path: P-1, then P3, then P4, then the definition-of-done run. Music (P0
 | D-31 | Project format | **Decided.** Portable folder: `project.json` with `schemaVersion` and `revision`, media copied in, no database; plus a single-file `.chaosfilm` bundle for sharing |
 | D-32 | Release and branch order | Merge agent bridge and media input as v0.9.10 first (owner's call, on hold); Music and Storyboard as v0.10.0 |
 | D-33 | Storyboard before music | Yes: P3 runs beside the music spike, not after music |
-| D-34 | AI labelling | **Decided.** Metadata tag on by default with a Settings switch for private use; cloned-voice output always tagged; optional visible end card; no hidden watermark yet. Voluntary EU-style compliance (owner is UK-based); a legal check of Art. 50 timing and scope is still open |
+| D-34 | AI labelling | **Decided.** Metadata tag on by default with a Settings switch for private use; cloned-voice output always tagged; no visible end card (dropped); no hidden watermark yet. Voluntary EU-style compliance (owner is UK-based); a legal check of Art. 50 timing and scope is still open |
 | D-35 | ffmpeg licence | Add a GPL notice and source offer now, or move to an LGPL build; owner to choose |
 
 ## 10. Definition of done for the first "home studio" release

@@ -59,7 +59,7 @@ A project cannot be deleted while one of its batches or renders runs (409).
 
 The MP4 carries a prompt-free comment tag (app version, "machine generated", model names, a hash of the
 project id and name; never a folder path) unless `export.aiLabel.embedTag` is off. A project with any
-cloned-voice clip is always tagged. `export.aiLabel.endCard` adds a visible end card.
+cloned-voice clip is always tagged. There is no visible end card; disclosure on screen is up to the author.
 
 ## API and agent tools
 

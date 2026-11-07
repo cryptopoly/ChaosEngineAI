@@ -388,7 +388,7 @@ Effects          [ thunder ▅▇▅ ]       [ gull ▁▂ ]
 Music    [ lo-fi piano ▁▂▃▅▆▅▃▂▁▂▃▅▇▅▃▁ ... (ducked under voice: shaded) ...  ]
                                                                  [+ Add from library ▾] [Import audio]
 ──────────────────────────────────────────────────────────────────────────────
-Captions [ ] burn in   [x] SRT file        AI label  [x] file metadata  [ ] visible end card
+Captions [ ] burn in   [x] SRT file        AI label  [x] file metadata
 Export  [16:9 1080p] [9:16 1080p] [1:1 1080p] [Custom]     About 2 min · Writes 48 MB   [ Export MP4 ]
 ```
 
@@ -398,7 +398,7 @@ Ducking: a lane-level toggle on Music ("Duck under voice"), shown in the inspect
 
 Transport: Play / Stop, time, loop toggle, zoom. Preview is the low-resolution cached render (plan 5.4); when a shot's intermediate is missing, the picture lane block shows "Rendering preview…" and plays black with sound.
 
-Export panel: presets 16:9 / 9:16 / 1:1 (a change reframes at export, the note says so: "Reframed at export; shots are not regenerated"), captions (SRT sidecar on by default, burn-in off), AI label options per D-34 (metadata on by default with a Settings switch for private use; visible end card off; cloned-voice projects force the metadata on and say so), estimate strip, Export. After export: "Exported · 47 MB · 00:32" [Reveal file] [Open]. Long renders keep the machine awake and notify on finish (plan 5.5).
+Export panel: presets 16:9 / 9:16 / 1:1 (a change reframes at export, the note says so: "Reframed at export; shots are not regenerated"), captions (SRT sidecar on by default, burn-in off), AI label options per D-34 (metadata on by default with a Settings switch for private use; cloned-voice projects force the metadata on and say so), estimate strip, Export. After export: "Exported · 47 MB · 00:32" [Reveal file] [Open]. Long renders keep the machine awake and notify on finish (plan 5.5).
 
 States: empty (no shots: "Nothing to mix yet. Make shots on the Board first." [Open Board]); loading waveforms (clip shows a muted bar "Reading…"); preview rendering (progress on the transport line); exporting (`LiveProgress`, phases Normalise shots → Join → Mix sound → Encode; queue line; Cancel); done; failed ("Export failed while mixing sound. Nothing was written." [Retry] [Technical details]); missing media (clip hatched with "Missing" and a Relink button); offline.
 
@@ -475,7 +475,7 @@ Each state is one `.empty-state` with one sentence and one primary button; no il
 | `Transport` | `playing, timeS, durationS, loop, onPlay, onStop, onLoop, onZoom` | D.6 transport row; keyboard handlers live here | `.transport` |
 | `ClipInspector` | `clip, shots, onChange, onRemove` | gain, fades, trim, duck, loop, anchor | `.clip-inspector`, `__row` |
 | `ExportPanel` | `presets, value, captions, aiLabel, estimate, onExport, result?` | D.6 export row | `.export-panel`, `__presets`, `__options`, `__result` |
-| `AiLabelNotice` | `metadata: boolean, endCard: boolean, forced: boolean, onChange` | the AI-label options with the D-34 copy | `.ai-label-notice` |
+| `AiLabelNotice` | `metadata: boolean, forced: boolean, onChange` | the AI-label options with the D-34 copy | `.ai-label-notice` |
 
 ### E.3 Tokens and new CSS
 
@@ -501,7 +501,7 @@ Today: four single tabs (Dashboard, Server, Logs, Settings) and six groups (Chat
 Proposal, in order of least change:
 
 1. **Accordion by default.** `Sidebar.tsx` already keeps `collapsedGroups` and opens the group with the active tab. Make "only the active group open" the default state (a Settings switch "Keep all sidebar groups open" restores today's behaviour). Result at 800 px: 4 singles + 8 group headers + 3 children = 15 rows.
-2. **Two thin section labels** (`.nav-section-label`, uppercase muted eyebrow, not clickable): "Make" above Images (Images, Video, Voice, Music, Storyboard) and "Run" above Chat and Benchmarks (Chat, Benchmarks, Tools). Dashboard stays first; Server, Logs, Settings stay last.
+2. **Two thin section labels** (`.nav-section-label`, uppercase muted eyebrow, not clickable): "Make" above Images (Images, Video, Voice, Music, Storyboard) and "Run" above Benchmarks and Tools. Chat sits above Make with no label (owner decision 2026-11-07). Dashboard stays first; Server, Logs, Settings stay last.
 3. **Not now, but logged:** move Benchmarks under Tools (saves a group header).
 
 Group order within Make: Images, Video, Voice, Music, Storyboard (the pipeline order: stills → clips → speech → music → assemble).
@@ -655,7 +655,7 @@ mixer.export.button "Export MP4" · mixer.export.exporting "Exporting…" · mix
 mixer.export.phase.normalise "Normalise shots" · mixer.export.phase.join "Join" · mixer.export.phase.mix "Mix sound" · mixer.export.phase.encode "Encode"
 mixer.export.failed "Export failed while {phase}. Nothing was written." · mixer.export.keepAwake "The computer stays awake until the export finishes." · mixer.export.notify "You will be notified when it is done."
 mixer.empty "Nothing to mix yet. Make shots on the Board first." · mixer.openBoard "Open Board"
-aiLabel.title "AI label" · aiLabel.metadata "Mark the file as AI-generated (metadata)" · aiLabel.metadataTitle "A machine-readable tag in the MP4 and audio metadata. On by default; a Settings switch turns it off for private use." · aiLabel.endCard "Add a visible 'AI-generated' end card" · aiLabel.forced "This project uses a cloned voice, so the AI tag is always written." · aiLabel.settingsLink "AI label settings"
+aiLabel.title "AI label" · aiLabel.metadata "Mark the file as AI-generated (metadata)" · aiLabel.metadataTitle "A machine-readable tag in the MP4 and audio metadata. On by default; a Settings switch turns it off for private use." · aiLabel.forced "This project uses a cloned voice, so the AI tag is always written." · aiLabel.settingsLink "AI label settings"
 voiceClone.consent "I have the right to clone this voice." · voiceClone.consentNote "Consent is recorded with the sample. Cloned speech is always tagged as machine generated."
 ```
 
@@ -689,7 +689,7 @@ Order to build when the time comes: 2, 1, 6 (one PR, presentation only), then 3,
 | 2 | Add the two section labels "Make" and "Run" to the sidebar? | Yes, as plain eyebrows; no new behaviour. Drop them if the accordion alone reads clearly in a screenshot. |
 | 3 | Apply the machine recommendation automatically on first model pick (with Undo), in Music now and in Image / Video later (H.5)? | Yes for Music from day one (no existing habits to break); Image / Video after H.1 to H.3 land. |
 | 4 | Sound effects: a mode inside Music Studio (segmented, as drawn) or its own tab "Sounds"? | Mode. One screen, one anatomy; the model and licence differ, the form barely does. |
-| 5 | AI label defaults in the export panel: metadata on, end card off, per D-34? | Yes. Remember the end-card choice per project; force metadata on for cloned-voice projects and say so. |
+| 5 | AI label defaults in the export panel: metadata on, per D-34? | Yes. Force metadata on for cloned-voice projects and say so. |
 | 6 | Mixer first version: four fixed audio lanes (Shot sound, Voice, Effects, Music) or free "add lane"? | Fixed. Free lanes make every mix rule (ducking, loudness, stems) conditional; add later behind P6. |
 | 7 | Time estimates: ship with the static table from the model cards and switch to per-machine measurement after the first run, or wait for measured numbers before showing a time at all? | Show the estimate with the `Estimated` chip from day one and replace it with `Measured` after the first run per model and preset. An honest estimate beats a blank. |
 | 8 | Narrow layouts: at 760 px, is the Mixer usable with a drawer inspector, or should the Mixer require 900 px and show a "widen the window" note below that? | Drawer at 760. The Board and Studios are fine at 760; only the Mixer is tight, and a note that blocks work is worse than a cramped but working timeline. |

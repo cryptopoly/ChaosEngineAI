@@ -46,7 +46,7 @@ function project(extra: Partial<StoryboardProject> = {}): StoryboardProject {
     references: { characters: [], places: [] },
     shots: [shot("s1", "Arrival"), shot("s2", "")],
     audio: [clip()],
-    export: { aiLabel: { embedTag: true, endCard: false }, loudnessLufs: -14, endCardText: "Made with AI", endCardSeconds: 2 },
+    export: { aiLabel: { embedTag: true }, loudnessLufs: -14 },
     batches: [], undoStack: [], redoStack: [], ...extra,
   };
 }
@@ -205,17 +205,17 @@ describe("ClipInspector", () => {
 });
 
 describe("AiLabelNotice and ExportPanel", () => {
-  it("shows the tag switch on and the end card off by default", () => {
-    const html = renderToStaticMarkup(<AiLabelNotice metadata endCard={false} forced={false} onChange={noop} />);
+  it("shows the tag switch on by default", () => {
+    const html = renderToStaticMarkup(<AiLabelNotice metadata forced={false} onChange={noop} />);
     expect(html).toContain("Add a machine-readable AI tag");
-    expect(html).toContain("Add an AI-generated end card");
+    expect(html).not.toContain("end card");
     expect(html).toContain('role="switch"');
     expect(html).toMatch(/role="switch" checked=""/);
     expect(html).not.toContain("cloned voice");
   });
 
   it("locks the tag on and says why when a cloned voice is in the project", () => {
-    const html = renderToStaticMarkup(<AiLabelNotice metadata endCard={false} forced onChange={noop} />);
+    const html = renderToStaticMarkup(<AiLabelNotice metadata forced onChange={noop} />);
     expect(html).toMatch(/role="switch" disabled="" checked=""/);
     expect(html).toContain("This project uses a cloned voice, so the AI tag is always written.");
   });

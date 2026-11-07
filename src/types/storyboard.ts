@@ -93,10 +93,8 @@ export interface StoryboardAudioClip {
 }
 
 export interface StoryboardExportSettings {
-  aiLabel: { embedTag: boolean; endCard: boolean };
+  aiLabel: { embedTag: boolean };
   loudnessLufs: number | null;
-  endCardText: string;
-  endCardSeconds: number;
 }
 
 export type StoryboardBatchState = "queued" | "running" | "done" | "failed" | "cancelled" | "interrupted";

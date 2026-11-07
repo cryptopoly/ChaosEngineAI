@@ -28,6 +28,8 @@ export interface RunEstimateStripProps {
   queue?: RunEstimateQueue | null;
   /** Shown only at `danger`: the user must accept before running. */
   ack?: { checked: boolean; onChange: (checked: boolean) => void };
+  /** Longer facts behind the memory figure (device, model size), shown as its tooltip. */
+  memoryTitle?: string;
   action: ReactNode;
 }
 
@@ -67,7 +69,7 @@ export function formatDisk(t: TFn, mb: number): string {
   return t("estimate.size.mb", { defaultValue: "{n} MB", n: Math.max(1, Math.round(mb)) });
 }
 
-export function RunEstimateStrip({ seconds, peakGb, totalGb, diskMb, basis, risk, queue, ack, action }: RunEstimateStripProps) {
+export function RunEstimateStrip({ seconds, peakGb, totalGb, diskMb, basis, risk, queue, ack, memoryTitle, action }: RunEstimateStripProps) {
   const { t } = useTranslation("studio");
   const tf = t as unknown as TFn;
   const memoryBand = memoryRisk(peakGb, totalGb, risk);
@@ -101,11 +103,11 @@ export function RunEstimateStrip({ seconds, peakGb, totalGb, diskMb, basis, risk
   }
 
   return (
-    <div className={`run-estimate run-estimate--${risk}`} aria-live="polite">
+    <div className={`run-estimate run-estimate--${risk}`}>
       <div className="run-estimate__row">
-        <div className="run-estimate__items">
+        <div className="run-estimate__items" aria-live="polite">
           <span className="run-estimate__item run-estimate__item--time">{timeText}</span>
-          <span className={`run-estimate__item run-estimate__item--memory run-estimate__item--${memoryBand}`}>{memoryText}</span>
+          <span className={`run-estimate__item run-estimate__item--memory run-estimate__item--${memoryBand}`} title={memoryTitle}>{memoryText}</span>
           <span className="run-estimate__item run-estimate__item--disk">{diskText}</span>
           {basis ? (
             <span
@@ -124,7 +126,7 @@ export function RunEstimateStrip({ seconds, peakGb, totalGb, diskMb, basis, risk
         </div>
         <div className="run-estimate__action">{action}</div>
       </div>
-      {queueText ? <p className="run-estimate__queue">{queueText}</p> : null}
+      {queueText ? <p className="run-estimate__queue" aria-live="polite">{queueText}</p> : null}
       {risk === "danger" && ack ? (
         <label className="check-row run-estimate__ack">
           <input type="checkbox" checked={ack.checked} onChange={(event) => ack.onChange(event.target.checked)} />

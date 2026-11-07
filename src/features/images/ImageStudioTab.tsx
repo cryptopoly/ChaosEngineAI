@@ -10,6 +10,8 @@ import { Disclosure } from "../../components/Disclosure";
 import { RunEstimateStrip } from "../../components/RunEstimateStrip";
 import { DisclosureMemoryContext, useDisclosureMemory } from "../../components/studioDisclosureMemory";
 import { runEstimateBasis, summaryLine } from "../../components/studioSummary";
+import { imageMenuItems } from "./imageMenu";
+import { NO_ACK, ackKey, dangerBlocked, isAcked, type DangerAck } from "../../components/studioGating";
 import {
   DEFAULT_MAX_SIDE,
   DEFAULT_MIN_SIDE,
@@ -268,7 +270,9 @@ export function ImageStudioTab({
   // panic the Mac), but FLUX dev at 2K on a 32 GB Mac is still a reliable
   // way to nuke the backend — worth a conscious "I know what I'm doing"
   // step. Resets whenever variant / width / height change.
-  const [dangerOverrideAck, setDangerOverrideAck] = useState(false);
+  const [dangerAck, setDangerAck] = useState<DangerAck>(NO_ACK);
+  const dangerKey = ackKey([selectedImageVariant?.id, imageWidth, imageHeight]);
+  const dangerOverrideAck = isAcked(dangerAck, dangerKey);
 
   async function handleInstallImageRuntime() {
     if (installingImageRuntime) return;
@@ -399,10 +403,6 @@ export function ImageStudioTab({
     ],
   );
 
-  useEffect(() => {
-    setDangerOverrideAck(false);
-  }, [selectedImageVariant?.id, imageWidth, imageHeight]);
-
   // FU-015: image cache strategy filter. Match the video-side gating —
   // hide TeaCache for non-FLUX DiTs (calibrated forward exists for
   // FLUX only) and hide both strategies entirely for UNet pipelines
@@ -505,8 +505,9 @@ export function ImageStudioTab({
     onImageHeightChange(suggestion.height);
   }
 
-  const imageGenerateBlockedByDanger =
-    imageSafety.riskLevel === "danger" && !dangerOverrideAck;
+  const formatImageGb = (gb: number): string => (gb >= 10 ? `${gb.toFixed(0)} GB` : `${gb.toFixed(1)} GB`);
+
+  const imageGenerateBlockedByDanger = dangerBlocked(imageSafety.riskLevel, dangerOverrideAck);
   const imageGenerateDisabled =
     imageBusy || !selectedImageVariant || imageGenerateBlockedByDanger;
   const imageGenerateTitle = imageGenerateBlockedByDanger
@@ -607,40 +608,17 @@ export function ImageStudioTab({
 
   // The less-used model actions live in one menu (the header keeps Models and Gallery).
   const imageMenuDisabled = imageBusy || busy || !backendOnline;
-  const headerMenuItems: ActionMenuItem[] = [];
-  if (selectedImageVariant) {
-    headerMenuItems.push({
-      id: "model-card",
-      label: t("studioKit.modelCard", { defaultValue: "Model card" }),
-      onSelect: () => onOpenExternalUrl(selectedImageVariant.link),
-    });
-    if (bannerRuntimeStatus.realGenerationAvailable) {
-      if (selectedImageVariant.availableLocally && !selectedImageLoaded) {
-        headerMenuItems.push({
-          id: "load",
-          label: t("runtimeBanner.preloadModel", { defaultValue: "Preload Model" }),
-          onSelect: () => onPreloadImageModel(selectedImageVariant),
-          disabled: imageMenuDisabled,
-        });
-      }
-      if (selectedImageLoaded) {
-        headerMenuItems.push({
-          id: "unload",
-          label: t("runtimeBanner.unloadModel", { defaultValue: "Unload Model" }),
-          onSelect: () => onUnloadImageModel(selectedImageVariant),
-          disabled: imageMenuDisabled,
-        });
-      }
-      if (!selectedImageLoaded && loadedImageVariant) {
-        headerMenuItems.push({
-          id: "unload-named",
-          label: t("runtimeBanner.unloadNamed", { name: loadedImageVariant.name, defaultValue: "Unload {name}" }),
-          onSelect: () => onUnloadImageModel(),
-          disabled: imageMenuDisabled,
-        });
-      }
-    }
-  }
+  const headerMenuItems: ActionMenuItem[] = imageMenuItems(
+    t as unknown as (key: string, options: Record<string, unknown>) => string,
+    {
+      selected: selectedImageVariant,
+      loadedVariant: loadedImageVariant,
+      selectedLoaded: selectedImageLoaded,
+      realGenerationAvailable: bannerRuntimeStatus.realGenerationAvailable,
+      menuDisabled: imageMenuDisabled,
+    },
+    { openLink: onOpenExternalUrl, preload: onPreloadImageModel, unload: onUnloadImageModel },
+  );
 
   return (
     <DisclosureMemoryContext.Provider value={disclosureMemory}>
@@ -1014,6 +992,16 @@ export function ImageStudioTab({
                 </strong>{" "}
                 {imageSafety.reason}
               </p>
+              {imageSafety.modelFootprintGb > 0 ? (
+                <p className="muted-text">
+                  {t("imageStudio.safety.resourceEstimate", {
+                    defaultValue: "Model ≈ {model} · this run peak ≈ {peak} of ~{total} total.",
+                    model: formatImageGb(imageSafety.modelFootprintGb),
+                    peak: formatImageGb(imageSafety.estimatedPeakGb),
+                    total: formatImageGb(imageSafety.deviceMemoryGb),
+                  })}
+                </p>
+              ) : null}
               {imageSafety.suggestion ? (
                 <div className="button-row">
                   <button
@@ -1055,7 +1043,7 @@ export function ImageStudioTab({
               diskMb={null}
               basis={estimateBasis}
               risk={selectedImageVariant ? imageSafety.riskLevel : "safe"}
-              ack={{ checked: dangerOverrideAck, onChange: setDangerOverrideAck }}
+              ack={{ checked: dangerOverrideAck, onChange: (checked) => setDangerAck({ key: dangerKey, checked }) }}
               action={
                 <button
                   className="primary-button"
@@ -1070,6 +1058,9 @@ export function ImageStudioTab({
                 </button>
               }
             />
+            {imageBusyLabel ? (
+              <p className="busy-indicator" role="status"><span className="busy-dot" />{imageBusyLabel}</p>
+            ) : null}
           </div>
 
           <div className="studio-shell__options">
@@ -1405,9 +1396,6 @@ export function ImageStudioTab({
             </Disclosure>
           </div>
 
-          {imageBusyLabel ? (
-            <p className="busy-indicator"><span className="busy-dot" />{imageBusyLabel}</p>
-          ) : null}
         </div>
       </Panel>
 

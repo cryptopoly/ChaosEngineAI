@@ -90,9 +90,11 @@ _PHASE_DONE_RE = re.compile(r"^\[(.+?)\] done in ([\d.]+)s$")
 
 _WORKER_SCRIPT = Path(__file__).resolve().parent / "ltx2_worker.py"
 _WORKER_LOG = Path.home() / ".chaosengine" / "logs" / "ltx2-worker.log"
-# The resident pipeline (LTX-2.5 q4) holds about 29 GB between clips and peaks near 34 GB at 512x320
-# (spike, v-speed.md), so it is kept only on Macs that report about 64 GB.
+# The resident pipeline (LTX-2.5 q4) holds about 29 GB between clips and peaked at 38.6 GB of Metal
+# memory decoding 768x448x49 (the CLI peaks near 17 GB; v-speed.md), so it is kept only on Macs that
+# report about 64 GB, and a new worker starts only with 40 GB free; otherwise the clip runs as a CLI process.
 WARM_MIN_MEMORY_GB = 60.0
+WARM_START_AVAILABLE_GB = 40.0
 _WORKER_TIMEOUT_S = 7200.0
 _WORKER_STALL_S = 900.0  # load and VAE decode send no step lines
 _WORKER_HARD_CANCEL_S = 20.0  # a stage-2 step at full size can take ~15 s before the next write
@@ -271,9 +273,14 @@ def warm_worker() -> Any:
 
 
 def warm_worker_wanted() -> bool:
-    from backend_service.warm_worker_client import total_memory_gb, warm_workers_enabled
+    from backend_service.warm_worker_client import can_start, total_memory_gb, warm_workers_enabled
 
-    return warm_workers_enabled() and total_memory_gb() >= WARM_MIN_MEMORY_GB and _WORKER_SCRIPT.exists()
+    return (
+        warm_workers_enabled()
+        and total_memory_gb() >= WARM_MIN_MEMORY_GB
+        and _WORKER_SCRIPT.exists()
+        and can_start(_WORKER, WARM_START_AVAILABLE_GB)
+    )
 
 
 def release_warm_worker(reason: str = "unloaded") -> bool:

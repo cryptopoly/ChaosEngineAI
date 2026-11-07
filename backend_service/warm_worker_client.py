@@ -331,6 +331,25 @@ class WarmWorker:
             return None
 
 
+def available_memory_gb() -> float | None:
+    try:
+        from backend_service.helpers.memory_gate import snapshot_memory_signals
+
+        available_gb, _pressure = snapshot_memory_signals()
+    except Exception:  # noqa: BLE001
+        return None
+    return float(available_gb) if available_gb is not None else None
+
+
+def can_start(worker: "WarmWorker | None", min_available_gb: float) -> bool:
+    """A running worker already holds its memory; a new one starts only with this much free memory
+    (its resident set plus its peak above the CLI's), so it never pushes a busy Mac into swap."""
+    if worker is not None and worker.running():
+        return True
+    available = available_memory_gb()
+    return available is None or available >= min_available_gb
+
+
 def memory_is_low() -> bool:
     try:
         from backend_service.helpers.memory_gate import snapshot_memory_signals

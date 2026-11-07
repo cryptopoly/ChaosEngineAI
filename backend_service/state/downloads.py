@@ -56,6 +56,7 @@ from backend_service.helpers.video import (
     _video_repo_allow_patterns,
 )
 from backend_service.helpers.music import (
+    is_music_repo,
     music_download_validation_error,
     music_repo_allow_patterns,
     music_repo_revision,
@@ -65,6 +66,19 @@ from backend_service.state._helpers import _read_text_tail, _spawn_snapshot_down
 
 if TYPE_CHECKING:
     from backend_service.state import ChaosEngineState
+
+
+def _music_companions(repo: str) -> list[tuple[str, list[str]]]:
+    """The companion repos of a music row (empty for any other repo)."""
+    from backend_service.helpers.companions import companion_downloads
+
+    return companion_downloads(repo) if is_music_repo(repo) else []
+
+
+def _music_companion_downloaded_bytes(repo: str) -> int:
+    from backend_service.helpers.huggingface import _hf_repo_downloaded_bytes
+
+    return sum(_hf_repo_downloaded_bytes(c_repo, c_patterns) for c_repo, c_patterns in _music_companions(repo))
 
 
 def start_download(
@@ -145,7 +159,22 @@ def start_download(
         or music_repo_allow_patterns(repo)
         or text_patterns
     )
-    downloaded_gb = _bytes_to_gb(_hf_repo_downloaded_bytes(repo, scope_patterns))
+    # A music row's companion repo (Stable Audio's T5 text encoder) is fetched after the model itself, so
+    # the bar counts it too: otherwise it sat at 99 % while the last 0.9 GB came down.
+    companion_total_bytes = 0
+    for companion_repo, companion_patterns in _music_companions(repo):
+        try:
+            companion_total_bytes += matched_size_bytes(_hub_repo_files(companion_repo).get("files") or [], companion_patterns)
+        except Exception:
+            companion_total_bytes = 0
+            break
+    if companion_total_bytes > 0 and isinstance(total_gb, (int, float)) and total_gb > 0:
+        total_gb = float(total_gb) + _bytes_to_gb(companion_total_bytes)
+
+    def _scoped_downloaded_bytes() -> int:
+        return _hf_repo_downloaded_bytes(repo, scope_patterns) + _music_companion_downloaded_bytes(repo)
+
+    downloaded_gb = _bytes_to_gb(_scoped_downloaded_bytes())
     initial_progress = 0.0
     if isinstance(total_gb, (int, float)) and total_gb > 0 and downloaded_gb > 0:
         initial_progress = min(0.99, downloaded_gb / float(total_gb))
@@ -175,7 +204,7 @@ def start_download(
 
         def _progress_worker() -> None:
             while not stop_progress.wait(1.0):
-                downloaded_bytes = _hf_repo_downloaded_bytes(repo, scope_patterns)
+                downloaded_bytes = _scoped_downloaded_bytes()
                 downloaded_gb_local = _bytes_to_gb(downloaded_bytes)
                 with state._lock:
                     current = state._downloads.get(repo)
@@ -282,7 +311,7 @@ def start_download(
                     return
                 cancelled = state._download_cancel.get(repo, False)
             if cancelled:
-                downloaded_gb_local = _bytes_to_gb(_hf_repo_downloaded_bytes(repo, scope_patterns))
+                downloaded_gb_local = _bytes_to_gb(_scoped_downloaded_bytes())
                 with state._lock:
                     current = state._downloads.get(repo)
                     if current is None or state._download_tokens.get(repo) != download_token:
@@ -353,7 +382,7 @@ def start_download(
                     state._downloads[repo]["error"] = validation_error
                     state.add_log("library", "error", validation_error)
                 return
-            downloaded_gb_local = _bytes_to_gb(_hf_repo_downloaded_bytes(repo, scope_patterns))
+            downloaded_gb_local = _bytes_to_gb(_scoped_downloaded_bytes())
             with state._lock:
                 if state._download_tokens.get(repo) != download_token:
                     return
@@ -522,7 +551,7 @@ def cancel_download(state: ChaosEngineState, repo: str) -> dict[str, Any]:
         or music_repo_allow_patterns(repo)
         or text_repo_allow_patterns(repo)
     )
-    downloaded_gb = _bytes_to_gb(_hf_repo_downloaded_bytes(repo, scope_patterns))
+    downloaded_gb = _bytes_to_gb(_hf_repo_downloaded_bytes(repo, scope_patterns) + _music_companion_downloaded_bytes(repo))
     with state._lock:
         current = state._downloads.get(repo)
         if current is None:

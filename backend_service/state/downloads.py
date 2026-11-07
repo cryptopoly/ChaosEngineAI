@@ -449,7 +449,10 @@ def unload_repo_from_runtimes(
         if variant is not None:
             from backend_service import music_env, music_runtime
 
-            music_runtime.unload()
+            try:
+                music_runtime.unload()
+            except music_runtime.MusicBusy:
+                pass  # a running job keeps the weights it loaded; the mirror is dropped all the same
             music_env.remove_checkpoints(variant)
     except Exception:
         pass

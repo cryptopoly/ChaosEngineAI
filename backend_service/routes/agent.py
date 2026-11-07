@@ -77,20 +77,33 @@ def _require_agent(request: Request) -> None:
 
 @router.post("/api/agent/uploads")
 async def upload_input_image(request: Request) -> dict[str, Any]:
-    """Raw image bytes in the body; returns a handle for ``start_image`` / ``reference_images``."""
-    _require_agent(request)
-    from backend_service.helpers.media_input import MAX_INPUT_IMAGE_BYTES, InputImageError
-    from backend_service.mcp_bridge.files import save_upload
+    """Raw image, sound or video bytes in the body; returns a handle tools accept in place of a path.
 
-    data = bytearray()
-    async for chunk in request.stream():
-        data.extend(chunk)
-        if len(data) > MAX_INPUT_IMAGE_BYTES:
-            raise HTTPException(status_code=413, detail=f"The upload is larger than {MAX_INPUT_IMAGE_BYTES // (1024 * 1024)} MB.")
+    The body is streamed into the inbox; the type is read from its first bytes and the size cap for that
+    type is enforced while it arrives.
+    """
+    _require_agent(request)
+    from backend_service.helpers.media_input import InputImageError
+    from backend_service.mcp_bridge import files
+
+    part = files.begin_upload()
     try:
-        return save_upload(bytes(data))
+        head, cap, size = b"", None, 0
+        with part.open("wb") as handle:
+            async for chunk in request.stream():
+                size += len(chunk)
+                if cap is None:
+                    head += chunk[:64]
+                    if len(head) >= 16:
+                        cap = files.max_upload_bytes(files.sniff(head))
+                if cap is not None and size > cap:
+                    raise HTTPException(status_code=413, detail=f"The upload is larger than {cap // (1024 * 1024)} MB.")
+                handle.write(chunk)
+        return files.finish_upload(part)
     except InputImageError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    finally:
+        part.unlink(missing_ok=True)
 
 
 @router.get("/api/agent/files")

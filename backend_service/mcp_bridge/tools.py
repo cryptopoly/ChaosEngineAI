@@ -101,11 +101,11 @@ TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "upload_image",
-        "description": "Send a small image (up to about 8 MB) to the machine running ChaosEngineAI, for an agent on another "
-        "machine. Returns a handle like upload:ab12cd34ef56 that start_image, end_image and reference_images accept in place "
-        "of a path. Handles last 24 hours. Larger files: POST the raw bytes to /api/agent/uploads with the same token.",
+        "description": "Send a small image, sound or video (up to about 8 MB) to the machine running ChaosEngineAI. Returns a "
+        "handle like upload:ab12cd34ef56 that image inputs (images only) and storyboard imports accept in place of a path. "
+        "Handles last 24 hours. Larger files: POST the raw bytes to /api/agent/uploads with the same token.",
         "inputSchema": _obj(
-            {"data_base64": {"type": "string", "minLength": 1, "maxLength": 12_000_000, "description": "The image file, base64."}},
+            {"data_base64": {"type": "string", "minLength": 1, "maxLength": 12_000_000, "description": "The file, base64."}},
             ["data_base64"],
         ),
     },

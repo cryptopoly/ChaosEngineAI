@@ -182,11 +182,21 @@ def load(model_id: str | None) -> dict[str, Any]:
             "footprintGb": reply.get("footprint_gb"), "stepHook": reply.get("step_hook")}
 
 
+class MusicBusy(RuntimeError):
+    """Unload was asked while a model load or a generation runs (the caller should cancel first)."""
+
+
 def unload() -> dict[str, Any]:
-    """Stop the worker: process exit frees all of its memory (an in-process unload leaves about 1 GB)."""
+    """Stop the worker: process exit frees all of its memory (an in-process unload leaves about 1 GB).
+
+    Refused with ``MusicBusy`` while a load or a generation runs: killing the worker then would end that
+    job as a failure, not a cancel.
+    """
     from backend_service.music_client import get_worker
 
     worker = get_worker()
+    if worker.busy():
+        raise MusicBusy("Music is being made or a music model is loading. Cancel it first, then unload.")
     was_running = worker.running()
     worker.stop()
     return {"stopped": was_running}
@@ -297,7 +307,7 @@ def generate(
     ``request`` keys: model, caption, lyrics, instrumental, seconds, variations, bpm, key, seed,
     vocalLanguage, timeSignature, title, source. ``progress`` is a ``ProgressTracker``.
     """
-    from backend_service.music_client import generate_timeout_s, get_worker
+    from backend_service.music_client import generate_timeout_s, get_worker, stall_limits
 
     variant = resolve_variant(request.get("model"))
     _prepare(variant)
@@ -328,7 +338,8 @@ def generate(
     try:
         reply = worker.request(
             "generate",
-            timeout=generate_timeout_s(seconds, variations),
+            timeout=generate_timeout_s(seconds, variations, variant["id"]),
+            stall_limits=stall_limits(seconds, variations, variant["id"]),
             on_event=on_event,
             cancel_check=cancel_check,
             job=job,

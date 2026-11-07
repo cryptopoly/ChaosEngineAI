@@ -6,6 +6,7 @@ import threading
 import time
 import unittest
 import zipfile
+from pathlib import Path
 from unittest import mock
 
 from backend_service.storyboard import bundle, store as store_module
@@ -160,6 +161,103 @@ class UndoRedoTests(StoreCase):
             fresh = self.new()
             self.store.undo(fresh.id, fresh.revision)
 
+    def _run_batch(self, p, what="clip"):
+        gens = FakeGenerators(self.src)
+        batch = Batch(self.store, p.id, what, gens.make_still, gens.make_clip, gens.unload, gens.last_frame,
+                      shot_ids=[s.id for s in p.shots], force=True)
+        batch.start(p.revision)
+        batch.run()
+        return self.store.load(p.id)
+
+    def test_undo_of_an_edit_keeps_the_pick_a_later_batch_made(self):
+        p = self.new(shots=1)
+        sid = p.shots[0].id
+        p = self._run_batch(p)
+        p = self.op(p, "edit_shot", shotId=sid, title="renamed")
+        p = self._run_batch(p)
+        second = p.shot(sid).activeTake
+        self.assertEqual(len(p.shot(sid).takes), 2)
+        p = self.store.undo(p.id, p.revision)
+        self.assertEqual(p.shot(sid).title, "shot 0")
+        self.assertEqual(p.shot(sid).activeTake, second)
+        self.assertEqual(len(p.shot(sid).takes), 2)
+
+    def test_undo_of_an_earlier_edit_keeps_a_relinked_clip(self):
+        p = self.new(shots=1)
+        sid = p.shots[0].id
+        p = self.op(p, "import_take", shotId=sid, clip=str(fake_mp4(self.src / "c.mp4")))
+        p = self.op(p, "edit_shot", shotId=sid, title="renamed")
+        (self.folder(p) / p.shots[0].active().clip).unlink()
+        p = self.store.load(p.id)
+        p = self.op(p, "relink", id=sid, path=str(fake_mp4(self.src / "found.mp4")))
+        relinked = p.shot(sid).active().clip
+        p = self.store.undo(p.id, p.revision)
+        self.assertEqual(p.shot(sid).title, "shot 0")
+        self.assertEqual(p.shot(sid).active().clip, relinked)
+        self.assertEqual(p.shot(sid).status, "done")
+
+    def test_undo_of_an_edit_keeps_a_relinked_audio_source(self):
+        p = self.new(shots=1)
+        p = self.op(p, "add_audio", kind="music", path=str(fake_wav(self.src / "m.wav")))
+        cid = p.audio[0].id
+        p = self.op(p, "edit_audio", clipId=cid, gainDb=-6)
+        p = self.op(p, "relink", id=cid, path=str(fake_wav(self.src / "m2.wav")))
+        relinked = p.clip(cid).source.path
+        p = self.store.undo(p.id, p.revision)
+        self.assertEqual(p.clip(cid).gainDb, 0)
+        self.assertEqual(p.clip(cid).source.path, relinked)
+
+    def test_undo_then_redo_of_add_shot_brings_back_its_batch_takes(self):
+        p = self.new()
+        p = self.op(p, "add_shot", title="one")
+        sid = p.shots[0].id
+        p = self._run_batch(p)
+        take = p.shot(sid).activeTake
+        self.assertIsNotNone(take)
+        p = self.store.undo(p.id, p.revision)
+        self.assertIsNone(p.shot(sid))
+        p = self.store.redo(p.id, p.revision)
+        self.assertEqual(len(p.shot(sid).takes), 1)
+        self.assertEqual(p.shot(sid).activeTake, take)
+        self.assertEqual(p.shot(sid).status, "done")
+        self.assertEqual(p.shot(sid).title, "one")
+
+
+class ReplaceRetryTests(StoreCase):
+    def _flaky(self, failures):
+        real = os.replace
+        calls = []
+
+        def replace(src, dst):  # Windows refuses to replace a file another thread is reading
+            calls.append(dst)
+            if len(calls) <= failures:
+                raise PermissionError(13, "Access is denied", str(dst))
+            return real(src, dst)
+
+        return replace, calls
+
+    def test_project_json_is_written_although_a_reader_holds_it_briefly(self):
+        p = self.new(shots=1)
+        replace, calls = self._flaky(2)
+        with mock.patch("backend_service.storyboard.media.os.replace", replace), \
+                mock.patch("backend_service.storyboard.media.time.sleep"):
+            p = self.op(p, "edit_shot", shotId=p.shots[0].id, title="saved")
+        self.assertEqual(self.store.load(p.id).shots[0].title, "saved")
+        self.assertGreaterEqual(len(calls), 3)
+
+    def test_a_file_that_stays_locked_is_still_an_error(self):
+        from backend_service.storyboard import media
+
+        target = self.base / "locked.json"
+        target.write_text("old")
+        replace, _ = self._flaky(1000)
+        with mock.patch("backend_service.storyboard.media.os.replace", replace), \
+                mock.patch("backend_service.storyboard.media.time.sleep"), self.assertRaises(PermissionError):
+            store_module.atomic_write(target, b"new")
+        self.assertEqual(target.read_text(), "old")
+        self.assertEqual([p.name for p in self.base.iterdir() if p.name.startswith(".tmp-")], [])
+        self.assertTrue(callable(media.replace_file))
+
 
 class HostileInputTests(StoreCase):
     def test_bad_paths_in_project_json_are_refused(self):
@@ -249,6 +347,89 @@ class MediaTests(StoreCase):
         p = self.op(p, "relink", id=p.audio[0].id, path=str(fake_wav(self.src / "m2.wav")))
         self.assertEqual((p.shots[0].status, p.audio[0].status), ("done", "ok"))
         self.assertEqual(p.shots[0].active().hashes["clip"], sha256_file(replacement))
+
+    def _media_files(self, p):
+        folder = self.folder(p)
+        return sorted(str(f.relative_to(folder)) for f in folder.rglob("*")
+                      if f.is_file() and f.parts[-2] != "history" and f.name != "project.json")
+
+    def test_copy_hash_and_probe_run_outside_the_project_lock(self):
+        p = self.new(shots=1)
+        lock = self.store.lock(p.id)
+        seen = []
+
+        def lock_free():
+            got = []
+
+            def probe():
+                got.append(lock.acquire(blocking=False))
+                if got[0]:
+                    lock.release()
+
+            thread = threading.Thread(target=probe)
+            thread.start()
+            thread.join(5)
+            return bool(got and got[0])
+
+        from backend_service.storyboard import media
+
+        real_hash = media.sha256_file
+
+        def hashing(path):
+            seen.append(("hash", lock_free()))
+            return real_hash(path)
+
+        def probing(path):
+            seen.append(("probe", lock_free()))
+            return 4.0
+
+        with mock.patch("backend_service.storyboard.media.sha256_file", hashing), \
+                mock.patch("backend_service.storyboard.media.probe_seconds", probing):
+            p = self.op(p, "import_take", shotId=p.shots[0].id, clip=str(fake_mp4(self.src / "c.mp4")))
+        self.assertEqual(p.shots[0].active().measuredSeconds, 4.0)
+        self.assertTrue(seen)
+        self.assertTrue(all(free for _, free in seen), seen)
+
+    def test_a_failed_import_leaves_no_copied_file(self):
+        p = self.new(shots=1)
+        sid = p.shots[0].id
+        before = self._media_files(p)
+        with self.assertRaises(OpError):  # a good still, then a clip that is not there
+            self.op(p, "import_take", shotId=sid, still=str(png(self.src / "s.png")), clip=str(self.src / "nope.mp4"))
+        self.assertEqual(self._media_files(p), before)
+        stale = self.op(p, "edit_shot", shotId=sid, title="moved on")
+        with self.assertRaises(RevisionConflict):  # the copy is made before the revision check under the lock
+            self.op(p, "import_take", shotId=sid, clip=str(fake_mp4(self.src / "c.mp4")))
+        self.assertEqual(self._media_files(stale), before)
+        with self.assertRaises(OpError):  # the op itself refuses after the file came in
+            self.op(stale, "import_take", shotId="s_00000000", clip=str(fake_mp4(self.src / "d.mp4")))
+        self.assertEqual(self._media_files(stale), before)
+
+    def test_every_ffmpeg_call_reads_local_files_only(self):
+        import subprocess
+
+        from backend_service.storyboard import generators, media
+
+        calls = []
+
+        def fake_run(args, **kwargs):
+            calls.append(args)
+            if args[-1].endswith(".png"):
+                Path(args[-1]).write_bytes(b"png")
+            return subprocess.CompletedProcess(args, 0, b"", b"frame=   97\nStream: Video: h264, 24 fps")
+
+        clip = fake_mp4(self.src / "c.mp4")
+        with mock.patch.object(media, "ffmpeg_exe", return_value="ffmpeg"), \
+                mock.patch("backend_service.storyboard.media.subprocess.run", fake_run), \
+                mock.patch("backend_service.storyboard.generators.subprocess.run", fake_run):
+            media.probe_seconds(clip)
+            frame = generators.last_frame(clip)
+        frame.unlink()
+        for args in calls:
+            self.assertIn("-protocol_whitelist", args)
+            index = args.index("-protocol_whitelist")
+            self.assertEqual(args[index + 1], "file,pipe")
+            self.assertLess(index, args.index("-i"))
 
     def test_a_real_97_frame_clip_measures_4_0417_seconds(self):
         import subprocess
@@ -384,6 +565,70 @@ class DepsAndBatchTests(StoreCase):
         self.assertEqual([r.state for r in p.batches[-1].results], ["cancelled"] * 3)
         self.assertTrue(all(s.status == "idle" for s in p.shots))
 
+    def test_a_video_model_without_image_input_skips_stills_and_chains_with_a_reason(self):
+        p, ids = self._film()  # A..F, D and E continue from the shot before
+        p = self.op(p, "edit_shot", shotId=ids[5], startFrom="upload")
+        gens = FakeGenerators(self.src)
+        reason = "Wan 2.1 cannot start a clip from an image; pick LTX-2.3 or LTX-2.5 in the project defaults."
+        batch = Batch(self.store, p.id, "both", gens.make_still, gens.make_clip, gens.unload, gens.last_frame,
+                      clip_image_refusal=lambda project: reason)
+        with self.assertRaises(BatchRefused) as caught:  # nothing it could do would honour the shots
+            batch.start(p.revision)
+        self.assertIn("LTX-2.3", str(caught.exception))
+        self.assertEqual(gens.calls, [])
+        batch = Batch(self.store, p.id, "still", gens.make_still, gens.make_clip, gens.unload, gens.last_frame,
+                      clip_image_refusal=lambda project: reason)
+        batch.start(p.revision)  # stills alone are fine: no clip will ignore them
+        batch.run()
+        self.assertEqual([c[0] for c in gens.calls], ["still"] * 3)  # A, B, C; D and E chain, F is an upload
+        p = self.store.load(p.id)
+        gens.calls.clear()
+        batch = Batch(self.store, p.id, "clip", gens.make_still, gens.make_clip, gens.unload, gens.last_frame,
+                      clip_image_refusal=lambda project: reason, shot_ids=ids[:5], force=True)
+        with self.assertRaises(BatchRefused):
+            batch.start(p.revision)
+        record = self.store.load(p.id)
+        self.assertEqual(gens.calls, [])
+        self.assertTrue(all(s.status != "queued" for s in record.shots))
+        steps = Batch(self.store, p.id, "both", gens.make_still, gens.make_clip,
+                      clip_image_refusal=lambda project: reason).plan(record)
+        self.assertTrue(all(r == reason for s, k, r in steps if s in ids[:5]), steps)
+
+    def test_studio_wiring_refuses_image_input_for_models_without_it(self):
+        from backend_service.storyboard import generators
+
+        p = self.new(shots=1)
+        wan = {"id": "wan", "name": "Wan 2.1", "repo": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers"}
+        ltx = {"id": "ltx", "name": "LTX-2.3", "repo": "dgrauet/ltx-2.3-mlx-q4"}
+        with mock.patch.object(generators, "_variant", return_value=wan), \
+                mock.patch("backend_service.mcp_bridge.tools._recommended", return_value={}):
+            wiring = generators.studio_generators(mock.Mock(), "b_1", self.folder(p))
+            self.assertIn("Wan 2.1 cannot start a clip from an image", wiring["clip_image_refusal"](p))
+            with self.assertRaises(RuntimeError) as caught:  # the step itself refuses too, before any model runs
+                wiring["make_clip"](p.shots[0], p, None)
+            self.assertIn("LTX-2.3", str(caught.exception))
+        with mock.patch.object(generators, "_variant", return_value=ltx):
+            self.assertIsNone(generators.studio_generators(mock.Mock(), "b_1", self.folder(p))["clip_image_refusal"](p))
+
+    def test_chained_clips_leave_no_last_frame_folders(self):
+        import tempfile
+
+        p, ids = self._film()
+        gens = FakeGenerators(self.src)
+        frames = []
+
+        def last_frame(clip):  # like generators.last_frame: a new temp folder per chained clip
+            folder = Path(tempfile.mkdtemp(prefix="chaosengine-frame-"))
+            frames.append(folder)
+            return png(folder / "last.png")
+
+        batch = Batch(self.store, p.id, "both", gens.make_still, gens.make_clip, gens.unload, last_frame)
+        batch.start(p.revision)
+        batch.run()
+        self.assertEqual(len(frames), 2)  # D and E continue from the shot before
+        self.assertEqual([f for f in frames if f.exists()], [])
+        self.assertTrue(all(s.status == "done" for s in self.store.load(p.id).shots))
+
     def test_a_failed_step_is_recorded_without_paths(self):
         p = self.new(shots=2)
         gens = FakeGenerators(self.src)
@@ -402,6 +647,47 @@ class DepsAndBatchTests(StoreCase):
         self.assertIn("x.safetensors", error)
         self.assertNotIn("/Users/me", error)
         self.assertEqual(p.batches[-1].state, "failed")
+
+
+class DeleteTests(StoreCase):
+    def test_delete_is_refused_while_a_batch_or_render_runs(self):
+        from backend_service.storyboard.render_adapter import RENDERS, RenderJob
+
+        p = self.new(shots=1)
+        gens = FakeGenerators(self.src)
+        batch = Batch(self.store, p.id, "still", gens.make_still, gens.make_clip)
+        p = batch.start(p.revision)  # recorded and live, not run yet
+        with self.assertRaises(store_module.ProjectBusy) as caught:
+            self.store.delete(p.id, p.revision)
+        self.assertIn("batch", str(caught.exception))
+        batch.run()
+        p = self.store.load(p.id)
+        job = RenderJob(p.id, {"out_path": str(self.folder(p) / "exports" / "x.mp4"), "work_dir": "w"})
+        with mock.patch.dict(RENDERS.last, {p.id: job}):
+            with self.assertRaises(store_module.ProjectBusy) as caught:
+                self.store.delete(p.id, p.revision)
+            self.assertIn("render", str(caught.exception))
+            job.done.set()
+            self.store.delete(p.id, p.revision)
+        self.assertFalse(self.folder(p).exists())
+
+    def test_a_file_that_cannot_be_removed_gives_a_clear_message(self):
+        p = self.new(shots=1)
+        p = self.op(p, "import_take", shotId=p.shots[0].id, clip=str(fake_mp4(self.src / "c.mp4")))
+        real_unlink = os.unlink
+
+        def busy_unlink(path, *args, **kwargs):  # what Windows does to a file another process has open
+            if str(path).endswith(".mp4"):
+                raise PermissionError(13, "The process cannot access the file", str(path))
+            return real_unlink(path, *args, **kwargs)
+
+        with mock.patch("shutil.os.unlink", busy_unlink), mock.patch("os.unlink", busy_unlink):
+            result = self.store.delete(p.id, p.revision)
+        self.assertEqual(result["leftover"], 1)
+        self.assertIn("could not be removed", result["message"])
+        with self.assertRaises(store_module.ProjectNotFound):  # the project itself is gone
+            self.store.load(p.id)
+        self.assertNotIn(p.id, [row["id"] for row in self.store.list()])
 
 
 class BundleTests(StoreCase):
@@ -458,6 +744,21 @@ class BundleTests(StoreCase):
             with self.assertRaises(StoreError, msg=path.name):
                 bundle.import_bundle(self.store, path)
         self.assertFalse((self.base / "evil.txt").exists())
+        self.assertEqual([p.name for p in self.root.iterdir()] if self.root.exists() else [], [])
+
+    def test_a_failed_export_leaves_no_partial_file(self):
+        p = self._project_with_media()
+        with mock.patch("zipfile.ZipFile.write", side_effect=OSError("disk full")), self.assertRaises(OSError):
+            bundle.export_bundle(self.store, p.id)
+        self.assertEqual(list((self.folder(p) / "exports").iterdir()), [])
+
+    def test_a_file_and_a_folder_with_the_same_name_is_an_unsafe_bundle(self):
+        for entries in ([("media/x/a.mp4", b"x"), ("media/x/a.mp4/b.mp4", b"y")],
+                        [("media/x/a.mp4/b.mp4", b"y"), ("media/x/a.mp4", b"x")],
+                        [("media/x/A.mp4", b"x"), ("media/x/a.mp4", b"y")]):
+            with self.subTest(entries=entries), self.assertRaises(StoreError) as caught:
+                bundle.import_bundle(self.store, self._zip(entries))
+            self.assertIn("unsafe bundle", str(caught.exception))
         self.assertEqual([p.name for p in self.root.iterdir()] if self.root.exists() else [], [])
 
     def test_size_and_count_caps(self):

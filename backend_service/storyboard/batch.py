@@ -58,6 +58,15 @@ def _clean_settings(raw: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
+def _remove_frame(frame: Path) -> None:
+    """Delete an extracted last frame and its folder when that folder is now empty (never anything else)."""
+    try:
+        frame.unlink(missing_ok=True)
+        frame.parent.rmdir()
+    except OSError:
+        pass
+
+
 class Batch:
     def __init__(
         self,
@@ -71,6 +80,7 @@ class Batch:
         stop_running: Callable[[str], bool] | None = None,
         shot_ids: list[str] | None = None,
         force: bool = False,
+        clip_image_refusal: Callable[[Project], str | None] | None = None,
     ) -> None:
         if what not in ("still", "clip", "both"):
             raise BatchRefused("what must be still, clip or both.")
@@ -79,6 +89,9 @@ class Batch:
         self.make_still, self.make_clip, self.unload = make_still, make_clip, unload
         self.last_frame, self.stop_running = last_frame, stop_running
         self.shot_ids, self.force = shot_ids, force
+        # Why the project's video model cannot start a clip from an image (None when it can or is unknown).
+        self.clip_image_refusal = clip_image_refusal
+        self._refusal: tuple[str | None, str | None] | None = None  # (video model, reason) cache
         self.cancel_event = threading.Event()
         self.done = threading.Event()
         self.steps: list[tuple[str, str]] = []  # (shot id, still|clip), stills first
@@ -97,16 +110,27 @@ class Batch:
             shots = [s for s in project.shots if s.id in set(self.shot_ids)]
         else:
             shots = [s for s in project.shots if needs_work(s) and (self.force or not s.locked)]
+        refusal = self._image_refusal(project) if self.what in ("clip", "both") else None
         stills, clips = [], []
         for shot in shots:
+            # A clip that would ignore its still or its chain is refused, and its still is not made for nothing.
+            blocked = refusal if shot.startFrom in ("generate", "previous-shot") else None
             if self.what in ("still", "both"):
                 if shot.startFrom == "generate":
-                    stills.append((shot.id, "still", None))
+                    stills.append((shot.id, "still", blocked))
                 elif self.what == "still":
                     stills.append((shot.id, "still", f"starts from {shot.startFrom}; no still to make"))
             if self.what in ("clip", "both"):
-                clips.append((shot.id, "clip", "upload shot; import a clip" if shot.startFrom == "upload" else None))
+                clips.append((shot.id, "clip", "upload shot; import a clip" if shot.startFrom == "upload" else blocked))
         return stills + clips
+
+    def _image_refusal(self, project: Project) -> str | None:
+        if self.clip_image_refusal is None:
+            return None
+        model = project.defaults.videoModel
+        if self._refusal is None or self._refusal[0] != model:
+            self._refusal = (model, self.clip_image_refusal(project))
+        return self._refusal[1]
 
     def start(self, expected_revision: int | None) -> Project:
         """Record the batch and mark its shots queued (revision-checked); then call ``run`` (or ``start_thread``)."""
@@ -114,6 +138,9 @@ class Batch:
         def change(p: Project, folder: Path) -> None:
             steps = self.plan(p)
             if not any(reason is None for _, _, reason in steps):
+                refusal = self._image_refusal(p) if self.what in ("clip", "both") else None
+                if refusal and any(reason == refusal for _, _, reason in steps):
+                    raise BatchRefused(refusal)
                 raise BatchRefused("Nothing to generate: every shot is done, locked or an upload.")
             results = [BatchResult(shotId=s, kind=k, state="skipped" if r else "queued", error=r) for s, k, r in steps]  # type: ignore[arg-type]
             self.steps = [(s, k) for s, k, r in steps if r is None]
@@ -123,6 +150,8 @@ class Batch:
                                  createdAt=time.time(), results=results)
             p.batches = (p.batches + [record])[-KEEP_BATCHES:]
 
+        if self.what in ("clip", "both"):
+            self._image_refusal(self.store.load(self.project_id))  # look the model up before taking the lock
         LIVE_BATCHES.add(self.id)
         try:
             project = self.store.mutate(self.project_id, expected_revision, change, "batch start", reversible=False)
@@ -206,7 +235,12 @@ class Batch:
             if kind == "still":
                 path, info = _split(self.make_still(shot, project))
             else:
-                path, info = _split(self.make_clip(shot, project, self._start_image(project, shot)))
+                start = self._start_image(project, shot)
+                try:
+                    path, info = _split(self.make_clip(shot, project, start))
+                finally:
+                    if start is not None and shot.startFrom == "previous-shot":
+                        _remove_frame(start)
             self._update(lambda p, folder: self._store_output(p, folder, shot_id, kind, path, info))
             return True
         except GenerationCancelled:

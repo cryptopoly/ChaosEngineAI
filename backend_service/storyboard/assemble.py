@@ -8,6 +8,7 @@ crossfades are ``xfade`` / ``acrossfade`` between those runs; then one audio gra
 own sound with the voice, effect and music lanes (music ducked under voice), normalises loudness and
 writes the MP4. Every ffmpeg call is an argument list with its filter graph in a script file and the
 process working directory set to ``work_dir``, so no plan path or text is ever spliced into a filter.
+The pure graph builders and timing maths live in ``assemble_graphs`` (re-exported here).
 """
 
 from __future__ import annotations
@@ -21,17 +22,36 @@ import shutil
 import subprocess
 import sys
 import threading
+import time
 import uuid
 from collections import deque
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Sequence
+from typing import Any, Callable
 
 from backend_service.storyboard import ffmpeg_bin
-from backend_service.storyboard.render_plan import AudioInput, RenderPlan, ShotInput, Transition
+from backend_service.storyboard.assemble_graphs import (  # noqa: F401 - re-exported for callers and tests
+    ENGINE_VERSION,
+    SAMPLE_RATE,
+    JoinTiming,
+    Lane,
+    _f,
+    _samples,
+    anchored_audio,
+    atempo_chain,
+    build_card_graph,
+    build_mix_graph,
+    build_shot_graph,
+    build_xfade_graphs,
+    compute_join_offsets,
+    concat_list,
+    parse_loudnorm,
+    shot_cache_key,
+    shot_frames,
+)
+from backend_service.storyboard.media import replace_file
+from backend_service.storyboard.render_plan import RenderPlan, Transition
 
-ENGINE_VERSION = "1"
-SAMPLE_RATE = 48000
 META_PREFIX = "chaosengine"  # same tag convention as helpers/output_metadata.py
 
 ProgressCb = Callable[[str, float], None]
@@ -59,269 +79,6 @@ class RenderResult:
     ffmpeg_version: str
     warnings: list[str] = field(default_factory=list)
     loudness: dict[str, Any] | None = None
-
-
-@dataclass
-class JoinTiming:
-    starts: list[float]  # where each shot starts on the final timeline
-    total: float
-
-
-# ---------------------------------------------------------------------------------------------
-# Pure helpers (unit-tested without ffmpeg)
-
-
-def _f(value: float) -> str:
-    text = f"{value:.6f}".rstrip("0").rstrip(".")
-    return "0" if text in ("", "-0") else text
-
-
-def atempo_chain(speed: float) -> list[float]:
-    """``atempo`` factors whose product is ``speed``, each within atempo's 0.5 to 2.0 range."""
-    if not (speed > 0 and math.isfinite(speed)):
-        raise ValueError("speed must be a positive number")
-    factors: list[float] = []
-    rest = speed
-    while rest > 2.0:
-        factors.append(2.0)
-        rest /= 2.0
-    while rest < 0.5:
-        factors.append(0.5)
-        rest /= 0.5
-    if abs(rest - 1.0) > 1e-9:
-        factors.append(rest)
-    return factors
-
-
-def compute_join_offsets(durations: Sequence[float], transitions: Sequence[float | Transition]) -> JoinTiming:
-    """Start time of every shot and the film length when shot i joins shot i-1 by ``transitions[i]``.
-
-    A transition is the crossfade length in seconds (0 for a cut) or a ``Transition``; the first is
-    ignored. A crossfade overlaps the two shots, so each one shortens the film by its length, and the
-    next ``xfade`` offset is measured on that shortened film: ``offset_i = length_so_far - d_i``.
-    """
-    if len(durations) != len(transitions):
-        raise ValueError("durations and transitions must have the same length")
-    fades = [float(t.seconds if isinstance(t, Transition) else t) for t in transitions]
-    if not durations:
-        return JoinTiming([], 0.0)
-    for index, length in enumerate(durations):
-        if not length > 0:
-            raise ValueError(f"shot {index} has no length")
-        fade_in = fades[index] if index > 0 else 0.0
-        fade_out = fades[index + 1] if index + 1 < len(fades) else 0.0
-        if fade_in < 0 or fade_out < 0:
-            raise ValueError(f"shot {index}: transition seconds must not be negative")
-        if fade_in + fade_out > length + 1e-9:
-            raise ValueError(f"shot {index} ({length:.2f} s) is shorter than its crossfades "
-                             f"({fade_in:.2f} s in + {fade_out:.2f} s out)")
-    starts = [0.0]
-    total = float(durations[0])
-    for index in range(1, len(durations)):
-        start = total - fades[index]
-        starts.append(start)
-        total = start + float(durations[index])
-    return JoinTiming(starts, total)
-
-
-def shot_cache_key(shot: ShotInput, plan: RenderPlan) -> str:
-    payload = json.dumps([
-        ENGINE_VERSION, shot.hash, plan.width, plan.height, plan.fps, plan.preview, shot.trim_in,
-        shot.trim_out, shot.speed, "-inf" if shot.native_sound_db == -math.inf else shot.native_sound_db,
-    ], separators=(",", ":"))
-    return hashlib.sha256(payload.encode()).hexdigest()
-
-
-def shot_frames(shot: ShotInput, source_duration: float, fps: int) -> tuple[int, float, float]:
-    """(frames, source in, source out) for a shot after trims and speed."""
-    src_in = shot.trim_in
-    src_out = source_duration if shot.trim_out is None else min(shot.trim_out, source_duration)
-    if src_out - src_in <= 1e-6:
-        raise ValueError(f"shot {shot.id}: trim leaves nothing of a {source_duration:.2f} s clip")
-    frames = max(1, round((src_out - src_in) / shot.speed * fps))
-    return frames, src_in, src_out
-
-
-def _samples(frames: int, fps: int) -> int:
-    return round(frames * SAMPLE_RATE / fps)
-
-
-def _scale_chain(plan: RenderPlan) -> str:
-    w, h = plan.width, plan.height
-    return (f"fps={plan.fps},scale={w}:{h}:force_original_aspect_ratio=decrease,"
-            f"pad={w}:{h}:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1,format=yuv420p,settb=AVTB")
-
-
-def build_shot_graph(shot: ShotInput, plan: RenderPlan, has_audio: bool, frames: int,
-                     src_in: float, src_out: float) -> str:
-    samples = _samples(frames, plan.fps)
-    trim = f"start={_f(src_in)}:end={_f(src_out)}"
-    video = f"[0:v]trim={trim},setpts=PTS-STARTPTS"
-    if shot.speed != 1.0:
-        video += f",setpts=PTS/{_f(shot.speed)}"
-    video += (f",{_scale_chain(plan)},tpad=stop_mode=clone:stop={frames},trim=end_frame={frames},"
-              f"setpts=N/(FRAME_RATE*TB)[v]")
-    if has_audio:
-        audio = f"[0:a]atrim={trim},asetpts=PTS-STARTPTS"
-        for factor in atempo_chain(shot.speed):
-            audio += f",atempo={_f(factor)}"
-        audio += f",aresample={SAMPLE_RATE},aformat=sample_fmts=s16:channel_layouts=stereo"
-        if shot.native_sound_db == -math.inf:
-            audio += ",volume=0"
-        elif shot.native_sound_db != 0:
-            audio += f",volume={_f(shot.native_sound_db)}dB"
-    else:
-        audio = f"anullsrc=channel_layout=stereo:sample_rate={SAMPLE_RATE},aformat=sample_fmts=s16"
-    audio += f",apad=whole_len={samples},atrim=end_sample={samples},asetpts=N/SR/TB[a]"
-    return f"{video};\n{audio}\n"
-
-
-def build_card_graph(plan: RenderPlan, frames: int, font_name: str | None, text_name: str | None) -> str:
-    seconds = frames / plan.fps
-    video = f"color=c=black:s={plan.width}x{plan.height}:r={plan.fps}:d={_f(seconds + 1)},format=yuv420p"
-    if font_name and text_name:
-        size = max(8, plan.height // 12)
-        video += (f",drawtext=fontfile={font_name}:textfile={text_name}:expansion=none:fontcolor=white:"
-                  f"fontsize={size}:line_spacing={size // 3}:x=(w-text_w)/2:y=(h-text_h)/2")
-    video += f",setsar=1,settb=AVTB,trim=end_frame={frames},setpts=N/(FRAME_RATE*TB)[v]"
-    samples = _samples(frames, plan.fps)
-    audio = (f"anullsrc=channel_layout=stereo:sample_rate={SAMPLE_RATE},aformat=sample_fmts=s16,"
-             f"atrim=end_sample={samples},asetpts=N/SR/TB[a]")
-    return f"{video};\n{audio}\n"
-
-
-def build_xfade_graphs(group_frames: Sequence[int], fades: Sequence[int], starts: Sequence[float],
-                       fps: int) -> tuple[str, str]:
-    """Video and audio graphs that crossfade the inputs pairwise: ``fades[g]`` frames into group g,
-    which starts at ``starts[g]`` on the (already shortened) film. They run as two ffmpeg calls:
-    with many inputs, one call carrying both ``xfade`` and ``acrossfade`` can end the audio output
-    before its first frame (seen with ffmpeg 7.1), while each half on its own is reliable."""
-    video_lines = [f"[{g}:v]settb=AVTB,format=yuv420p[v{g}]" for g in range(len(group_frames))]
-    audio_lines: list[str] = []
-    video, audio = "v0", "0:a"
-    for g in range(1, len(group_frames)):
-        out_v, out_a = f"x{g}", f"y{g}"
-        video_lines.append(f"[{video}][v{g}]xfade=transition=fade:duration={_f(fades[g] / fps)}:"
-                           f"offset={_f(starts[g])}[{out_v}]")
-        audio_lines.append(f"[{audio}][{g}:a]acrossfade=ns={_samples(fades[g], fps)}:c1=tri:c2=tri[{out_a}]")
-        video, audio = out_v, out_a
-    video_lines.append(f"[{video}]null[vout]")
-    audio_lines.append(f"[{audio}]anull[aout]")
-    return ";\n".join(video_lines) + "\n", ";\n".join(audio_lines) + "\n"
-
-
-@dataclass
-class Lane:
-    clip: AudioInput
-    input_index: int
-    source_seconds: float
-
-
-def build_mix_graph(lanes: Sequence[Lane], total_samples: int, loudnorm: str | None,
-                    captions_name: str | None = None) -> tuple[str, list[str]]:
-    """The audio graph (plus captions burn-in when asked). Returns (graph, warnings)."""
-    total = total_samples / SAMPLE_RATE
-    warnings: list[str] = []
-    lines = [f"[0:a]aresample={SAMPLE_RATE},aformat=sample_fmts=fltp:channel_layouts=stereo,"
-             f"apad=whole_len={total_samples},atrim=end_sample={total_samples}[nat]"]
-    voice, ducked, plain = [], [], []
-    for n, lane in enumerate(lanes):
-        clip = lane.clip
-        available = lane.source_seconds - clip.trim_in
-        if available <= 0.01:
-            warnings.append(f"audio {clip.id}: trim_in is past the end of the clip; skipped")
-            continue
-        room = total - clip.start
-        if room <= 0.01:
-            warnings.append(f"audio {clip.id}: starts after the film ends; skipped")
-            continue
-        if clip.loop:
-            length = clip.duration if clip.duration is not None else room
-        else:
-            length = min(clip.duration if clip.duration is not None else available, available)
-        length = min(length, room)
-        chain = (f"[{lane.input_index}:a]atrim=start={_f(clip.trim_in)},asetpts=PTS-STARTPTS,"
-                 f"aresample={SAMPLE_RATE},aformat=sample_fmts=fltp:channel_layouts=stereo")
-        if clip.loop:
-            chain += f",aloop=loop=-1:size={max(1, round(available * SAMPLE_RATE))}"
-        chain += f",atrim=duration={_f(length)},asetpts=N/SR/TB"
-        if clip.gain_db != 0:
-            chain += f",volume={_f(clip.gain_db)}dB"
-        if clip.fade_in > 0:
-            chain += f",afade=t=in:st=0:d={_f(min(clip.fade_in, length))}"
-        if clip.fade_out > 0:
-            fade = min(clip.fade_out, length)
-            chain += f",afade=t=out:st={_f(length - fade)}:d={_f(fade)}"
-        delay = round(clip.start * SAMPLE_RATE)
-        if delay > 0:
-            chain += f",adelay=delays={delay}S:all=1"
-        chain += f",apad=whole_len={total_samples},atrim=end_sample={total_samples}[l{n}]"
-        lines.append(chain)
-        label = f"l{n}"
-        if clip.kind == "voice":
-            voice.append(label)
-        elif clip.duck:
-            ducked.append(label)
-        else:
-            plain.append(label)
-
-    def bus(labels: list[str], name: str) -> str:
-        if len(labels) == 1:
-            lines.append(f"[{labels[0]}]anull[{name}]")
-        else:
-            joined = "".join(f"[{x}]" for x in labels)
-            lines.append(f"{joined}amix=inputs={len(labels)}:normalize=0:duration=longest[{name}]")
-        return name
-
-    mix_inputs = ["nat"]
-    if voice:
-        voice_bus = bus(voice, "vbus")
-        if ducked:
-            lines.append(f"[{voice_bus}]asplit=2[vmix][vkey]")
-            music = bus(ducked, "dbus")
-            lines.append(f"[{music}][vkey]sidechaincompress=threshold=0.02:ratio=10:attack=10:"
-                         f"release=300:makeup=1[ducked]")
-            mix_inputs += ["vmix", "ducked"]
-        else:
-            mix_inputs.append(voice_bus)
-    else:
-        plain = ducked + plain
-    mix_inputs += plain
-    tail = f"aresample={SAMPLE_RATE},atrim=end_sample={total_samples}[aout]"
-    if loudnorm:
-        tail = f"{loudnorm},{tail}"
-    if len(mix_inputs) == 1:
-        lines.append(f"[nat]{tail}")
-    else:
-        joined = "".join(f"[{x}]" for x in mix_inputs)
-        lines.append(f"{joined}amix=inputs={len(mix_inputs)}:normalize=0:duration=first,{tail}")
-    if captions_name:
-        lines.append(f"[0:v]subtitles=filename={captions_name}[vout]")
-    return ";\n".join(lines) + "\n", warnings
-
-
-def concat_list(names: Sequence[str]) -> str:
-    """A concat-demuxer list of file names relative to the list (safe under ``-safe 1``)."""
-    out = []
-    for name in names:
-        if not re.fullmatch(r"[A-Za-z0-9_][A-Za-z0-9_.-]*", name):
-            raise ValueError(f"unsafe concat entry {name!r}")
-        out.append(f"file '{name}'")
-    return "\n".join(out) + "\n"
-
-
-_LOUDNORM_JSON = re.compile(r"\{[^{}]*\"input_i\"[^{}]*\}", re.DOTALL)
-
-
-def parse_loudnorm(stderr: str) -> dict[str, str] | None:
-    found = _LOUDNORM_JSON.findall(stderr)
-    if not found:
-        return None
-    try:
-        data = json.loads(found[-1])
-    except ValueError:
-        return None
-    return {str(k): str(v) for k, v in data.items()}
 
 
 def find_font() -> Path | None:
@@ -406,6 +163,35 @@ def _inp(path: str, *pre: str) -> list[str]:
     return ["-protocol_whitelist", ffmpeg_bin.PROTOCOLS, *pre, "-i", path]
 
 
+PRUNE_AFTER_S = 7 * 24 * 3600
+# Cached intermediates and the scratch files of a run (``<run id>-...``), the only names this engine writes.
+_WORK_NAME = re.compile(r"(?:(?:shot|card)-[0-9a-f]{32}\.mov|[0-9a-f]{10}-.+)")
+
+
+def prune_intermediates(work: Path, keep: set[str], now: float | None = None) -> list[str]:
+    """Remove intermediates this plan does not use that were last used more than 7 days ago.
+
+    Every trim, speed or size change makes a new intermediate, so without this ``work_dir`` only grows.
+    The age is the file's own time (when it was made); one the current plan uses is always kept.
+    """
+    cutoff = (now if now is not None else time.time()) - PRUNE_AFTER_S
+    removed: list[str] = []
+    try:
+        entries = list(work.iterdir())
+    except OSError:
+        return removed
+    for path in entries:
+        try:
+            if (path.name in keep or not _WORK_NAME.fullmatch(path.name) or path.is_symlink()
+                    or not path.is_file() or path.stat().st_mtime >= cutoff):
+                continue
+            path.unlink()
+            removed.append(path.name)
+        except OSError:
+            pass
+    return removed
+
+
 def _unlink(path: Path) -> None:
     try:
         path.unlink()
@@ -446,6 +232,7 @@ def render(plan: RenderPlan, progress_cb: ProgressCb | None = None,
     warnings: list[str] = []
     work = Path(plan.work_dir)
     work.mkdir(parents=True, exist_ok=True)
+    prune_intermediates(work, {f"shot-{shot_cache_key(s, plan)[:32]}.mov" for s in plan.shots})
     out = Path(plan.out_path)
     inputs = {str(Path(s.video)) for s in plan.shots} | {a.path for a in plan.audio}
     if plan.captions_srt:
@@ -570,7 +357,8 @@ def render(plan: RenderPlan, progress_cb: ProgressCb | None = None,
         # Stage 2b: one audio mix graph over the joined film and the lanes.
         lane_args: list[str] = []
         lanes: list[Lane] = []
-        for n, clip in enumerate(plan.audio):
+        placed = anchored_audio(plan.audio, [s.id for s in plan.shots], timing.starts[:len(plan.shots)])
+        for n, clip in enumerate(placed):
             info = ffmpeg_bin.probe(clip.path)
             if not info["has_audio"]:
                 raise RenderError(f"audio {clip.id}: the file has no audio stream")
@@ -629,7 +417,7 @@ def render(plan: RenderPlan, progress_cb: ProgressCb | None = None,
         if loudness is not None and loudness["passes"] == 2:
             second = parse_loudnorm(stderr)
             loudness["normalization_type"] = (second or {}).get("normalization_type")
-        os.replace(out_tmp, out)
+        replace_file(out_tmp, out)  # the old film may be being served (Windows): retried briefly
         duration = ffmpeg_bin.probe(out)["duration"]
         return RenderResult(path=str(out), duration_s=duration, shots_rendered=rendered,
                             shots_cached=cached, ffmpeg_version=ffmpeg_bin.ffmpeg_version(),

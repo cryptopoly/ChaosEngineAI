@@ -2,7 +2,8 @@
 
 They run the same store, ops, batch and render code as ``/api/storyboard``. Edits carry the project's
 ``revision``; a stale one is a readable error with the current number. ``storyboard_generate`` and
-``storyboard_render`` return a job id for ``wait_for_job``; a finished render carries ``download``.
+``storyboard_render`` return a job id for ``wait_for_job``; a finished render carries ``download``. Export
+and render answers name the file and its ``download``, never a local path (the UI routes keep paths).
 Descriptions are short on purpose: each one costs an agent tokens on every call.
 """
 
@@ -21,13 +22,14 @@ STORYBOARD_TOOLS: list[dict[str, Any]] = [
     {
         "name": "storyboard_project",
         "description": "Film projects. create(name), list, get (shots, takes, timeline, revision), edit(fields: name, "
-        "defaults, export), undo, redo, delete, export (.chaosfilm bundle), import(path).",
+        "defaults, export), undo, redo, delete, export (.chaosfilm bundle), import(project_id+file, or path).",
         "inputSchema": _obj({
             "action": {"type": "string", "enum": ["create", "list", "get", "edit", "undo", "redo", "delete", "export", "import"]},
             "project_id": _PID, "revision": _REV,
             "name": {"type": "string", "minLength": 1, "maxLength": 200},
             "fields": _FIELDS,
-            "path": {"type": "string", "description": "Absolute path of a .chaosfilm file (import)."},
+            "path": {"type": "string", "description": "Path of a .chaosfilm file in a storyboard exports folder (import)."},
+            "file": {"type": "string", "description": "Bundle file name an export returned, with its project_id (import)."},
         }, ["action"]),
     },
     {
@@ -41,7 +43,7 @@ STORYBOARD_TOOLS: list[dict[str, Any]] = [
             "fields": {**_FIELDS, "description": "title, stillPrompt, motionPrompt, startFrom (generate|upload|previous-shot), "
                        "seconds, seed, trimIn, trimOut, speed, transition{type,seconds}, nativeSoundDb, index."},
             "order": {"type": "array", "items": {"type": "string"}, "maxItems": 500},
-            "path": {"type": "string", "description": "Absolute path or upload: handle."},
+            "path": {"type": "string", "description": "upload: handle, or a file in the app's output folders."},
         }, ["action", "project_id", "revision"]),
     },
     {
@@ -52,7 +54,7 @@ STORYBOARD_TOOLS: list[dict[str, Any]] = [
             "action": {"type": "string", "enum": ["add", "edit", "remove"]},
             "project_id": _PID, "revision": _REV, "clip_id": {"type": "string"},
             "kind": {"type": "string", "enum": ["music", "sfx", "voice", "import"]},
-            "path": {"type": "string", "description": "Absolute path of the audio file."},
+            "path": {"type": "string", "description": "upload: handle, or a file in the app's output folders."},
             "fields": {**_FIELDS, "description": "anchor{shotId,offset} or start, trimIn, trimOut, gainDb, fadeIn, fadeOut, duck, loop, label."},
         }, ["action", "project_id", "revision"]),
     },
@@ -69,7 +71,7 @@ STORYBOARD_TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "storyboard_render",
-        "description": "Render the film to MP4 (preview: small and fast). Returns a job id; the output has the path and download.",
+        "description": "Render the film to MP4 (preview: small and fast). Returns a job id; the output has the file name and download.",
         "inputSchema": _obj({"project_id": _PID, "revision": _REV, "preview": {"type": "boolean"}}, ["project_id", "revision"]),
     },
 ]
@@ -124,6 +126,28 @@ def _op(args: dict[str, Any], op: str, op_args: dict[str, Any]) -> Any:
     return _run(lambda: run_op(_store(), str(args["project_id"]), int(args["revision"]), op, op_args))
 
 
+_OUTSIDE = ("Agents can import only an upload: handle or a file inside the app's own output folders (images, videos, "
+            "voice and music libraries, storyboard exports). Send other files with upload_image or POST /api/agent/uploads "
+            "and pass the handle.")
+
+
+def _agent_source(raw: Any) -> str:
+    """An agent-named input: an ``upload:`` handle, or a file inside ``output_roots()``; anything else is refused.
+
+    The HTTP routes (the user at the UI) may import from any path; an agent may not, or a later export would
+    hand it a copy of any media file on the machine.
+    """
+    from backend_service.mcp_bridge.files import HANDLE_PREFIX, fetchable
+
+    text = str(raw or "").strip()
+    if text.startswith(HANDLE_PREFIX):
+        return text
+    real = fetchable(text) if text else None
+    if real is None:
+        raise ToolError(_OUTSIDE)
+    return str(real)
+
+
 def _added(before: Any, after: Any, attr: str) -> str | None:
     old = {x.id for x in getattr(before, attr)}
     return next((x.id for x in getattr(after, attr) if x.id not in old), None)
@@ -142,13 +166,20 @@ def storyboard_project(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
         _need(args, "name")
         return _summary(_run(lambda: store.create(str(args["name"]), (args.get("fields") or {}).get("defaults"))))
     if action == "import":
-        _need(args, "path")
         from pathlib import Path
 
-        try:
-            src = Path(str(args["path"])).expanduser().resolve(strict=True)
-        except (OSError, RuntimeError) as exc:
-            raise ToolError("Bundle not found.") from exc
+        if "file" in args:  # a bundle an earlier export made: that project's exports/<file>
+            _need(args, "project_id")
+            name = str(args["file"])
+            exports = _run(lambda: store.folder(str(args["project_id"]))) / "exports"
+            if Path(name).name != name or not name.endswith(bundle.BUNDLE_SUFFIX) or not (exports / name).is_file():
+                raise ToolError(f"'{name[:80]}' is not an export of that project. Use the file name storyboard_project export returned.")
+            src = exports / name
+        else:
+            _need(args, "path")
+            if str(args["path"]).startswith("upload:"):
+                raise ToolError("A .chaosfilm bundle cannot be uploaded; import one from a storyboard exports folder.")
+            src = Path(_agent_source(args["path"]))
         return _summary(_run(lambda: bundle.import_bundle(store, src)))
     _need(args, "project_id")
     pid = str(args["project_id"])
@@ -157,7 +188,7 @@ def storyboard_project(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
         return {"project": dump(project), "timeline": compute_timeline(project).as_dict()}
     if action == "export":
         path = _run(lambda: bundle.export_bundle(store, pid))
-        return {"path": str(path), "download": download_info(path)}
+        return {"file": path.name, "download": download_info(path)}  # no local path for the agent
     _need(args, "revision")
     rev = int(args["revision"])
     if action == "edit":
@@ -166,8 +197,7 @@ def storyboard_project(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
         return _summary(_run(lambda: store.undo(pid, rev)))
     if action == "redo":
         return _summary(_run(lambda: store.redo(pid, rev)))
-    _run(lambda: store.delete(pid, rev))
-    return {"deleted": pid}
+    return _run(lambda: store.delete(pid, rev))
 
 
 def storyboard_shot(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
@@ -196,8 +226,18 @@ def storyboard_shot(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
     _need(args, "path")
     from backend_service.storyboard.media import IMAGE_EXTS
 
-    is_image = any(str(args["path"]).lower().endswith(e) for e in IMAGE_EXTS) or str(args["path"]).startswith("upload:")
-    return _summary(_op(args, "import_take", {**shot, ("still" if is_image else "clip"): args["path"]}))
+    source = _agent_source(args["path"])
+    if source.startswith("upload:"):
+        from backend_service.helpers.media_input import InputImageError
+        from backend_service.mcp_bridge.files import UPLOAD_EXTENSIONS, resolve_handle
+
+        try:
+            is_image = resolve_handle(source, UPLOAD_EXTENSIONS).suffix in IMAGE_EXTS
+        except InputImageError as exc:
+            raise ToolError(str(exc)) from exc
+    else:
+        is_image = any(source.lower().endswith(e) for e in IMAGE_EXTS)
+    return _summary(_op(args, "import_take", {**shot, ("still" if is_image else "clip"): source}))
 
 
 def storyboard_audio(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
@@ -206,7 +246,7 @@ def storyboard_audio(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
     if action == "add":
         _need(args, "kind", "path")
         before = _run(lambda: _store().load(str(args["project_id"])))
-        after = _op(args, "add_audio", {**fields, "kind": args["kind"], "path": args["path"]})
+        after = _op(args, "add_audio", {**fields, "kind": args["kind"], "path": _agent_source(args["path"])})
         return _summary(after, {"clipId": _added(before, after, "audio")})
     _need(args, "clip_id")
     if action == "edit":
@@ -245,7 +285,11 @@ def storyboard_render(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
             raise GenerationCancelled("render cancelled")
         if job.state != "done":
             raise RuntimeError(job.error or f"render {job.state}")
-        return {"path": str(job.out_path), "preview": job.preview, "projectId": pid}, []
+        from backend_service.mcp_bridge.files import download_info
+
+        # The file name and the download, not the local path (the job store adds download only for "path").
+        return {"file": job.out_path.name, "preview": job.preview, "projectId": pid,
+                "download": download_info(job.out_path)}, []
 
     return _submitted(STORE.submit("storyboard", f"render {pid}", run, cancel=lambda: RENDERS.cancel(pid)))
 

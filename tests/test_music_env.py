@@ -111,6 +111,52 @@ class MirrorTests(_EnvBox):
         self.assertEqual(music_env.mirror_tree(source, target), 0)
         self.assertEqual(copied.read_text(), "synced by the library")
 
+    def _snapshot(self, name: str, payload: bytes) -> Path:
+        source = Path(self.tmp.name) / "hub" / name
+        source.mkdir(parents=True)
+        big = source / "model.safetensors"
+        with big.open("wb") as handle:
+            handle.write(payload)
+            handle.truncate(music_env._LINK_MIN_BYTES)
+        (source / "config.json").write_text(name)
+        return source
+
+    def _variant(self, revision: str) -> dict:
+        return {"repo": "ACE-Step/test", "revision": revision, "checkpointSubdir": "dit-model", "weightFolders": ["dit-model"]}
+
+    def test_a_revision_bump_re_mirrors_and_is_recorded(self) -> None:
+        from backend_service.helpers.music import weights_in_checkpoints
+
+        old, new = self._snapshot("rev-old", b"old"), self._snapshot("rev-new", b"new")
+        snapshots = {"rev-old": old, "rev-new": new}
+        with mock.patch.object(music_env, "hf_snapshot", side_effect=lambda repo, rev: snapshots.get(rev)):
+            music_env.prepare_checkpoints([self._variant("rev-old")])
+            link = self.data / "checkpoints" / "dit-model" / "model.safetensors"
+            self.assertEqual(link.resolve(), (old / "model.safetensors").resolve())
+            self.assertEqual(music_env.read_mirror_manifest(), {"ACE-Step/test": "rev-old"})
+            # The catalog pins a new revision that is not downloaded: the old layout must not count as ready.
+            self.assertFalse(weights_in_checkpoints(self._variant("rev-new")))
+            music_env.prepare_checkpoints([self._variant("rev-new")])
+            self.assertEqual(link.resolve(), (new / "model.safetensors").resolve())
+            self.assertEqual((link.parent / "config.json").read_text(), "rev-new")
+            self.assertEqual(music_env.read_mirror_manifest(), {"ACE-Step/test": "rev-new"})
+            self.assertTrue(weights_in_checkpoints(self._variant("rev-new")))
+
+    def test_a_dangling_link_is_repaired(self) -> None:
+        source = self._snapshot("rev-a", b"a")
+        with mock.patch.object(music_env, "hf_snapshot", return_value=source):
+            music_env.prepare_checkpoints([self._variant("rev-a")])
+        link = self.data / "checkpoints" / "dit-model" / "model.safetensors"
+        # The cache is cleared outside the app and downloaded again to another place.
+        moved = source.with_name("rev-a-again")
+        source.rename(moved)
+        self.assertFalse(link.exists())
+        self.assertTrue(link.is_symlink())
+        with mock.patch.object(music_env, "hf_snapshot", return_value=moved):
+            music_env.prepare_checkpoints([self._variant("rev-a")])
+        self.assertTrue(link.exists())
+        self.assertEqual(link.resolve(), (moved / "model.safetensors").resolve())
+
 
 class InstallJobTests(_EnvBox):
     def _wait(self) -> dict:
@@ -181,6 +227,35 @@ class InstallJobTests(_EnvBox):
             status = self._wait()
         self.assertEqual((status["phase"], status["error"]), ("error", "pip exited with code 1"))
         self.assertFalse(music_env.is_installed())
+
+    def test_a_folder_that_is_not_a_venv_is_never_deleted(self) -> None:
+        self.venv.mkdir(parents=True)
+        (self.venv / "notes.txt").write_text("keep me")
+        with self._lane(), mock.patch.object(music_env, "_run") as run:
+            music_env.start_install()
+            status = self._wait()
+        self.assertEqual(status["phase"], "error")
+        self.assertIn("not a Python environment", status["error"])
+        self.assertEqual((self.venv / "notes.txt").read_text(), "keep me")
+        run.assert_not_called()
+
+    def test_a_broken_venv_is_rebuilt(self) -> None:
+        self.venv.mkdir(parents=True)
+        (self.venv / "pyvenv.cfg").write_text("home = /usr/bin")
+        (self.venv / "lib").mkdir()
+
+        def fake_run(command: list[str]) -> str:
+            if command[1:3] == ["-m", "venv"]:
+                self.assertFalse((self.venv / "lib").exists())  # the broken attempt was cleared first
+                python = music_env.venv_python()
+                python.parent.mkdir(parents=True, exist_ok=True)
+                python.write_text("")
+            return '{"torch": "2.10.0"}'
+
+        with self._lane(), mock.patch.object(music_env, "_run", side_effect=fake_run), \
+                mock.patch("backend_service.voice_env._base_python", return_value="/usr/bin/python3"):
+            music_env.start_install()
+            self.assertEqual(self._wait()["phase"], "done")
 
     def test_status_shape(self) -> None:
         status = music_env.job_status()

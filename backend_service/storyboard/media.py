@@ -1,6 +1,6 @@
 """Media files for a storyboard project: check an incoming file, copy it in, hash it and measure it.
 
-Incoming files are local paths (or ``upload:`` handles for images) that a user or agent names, so they
+Incoming files are local paths (or ``upload:`` handles) that a user or agent names, so they
 are resolved, must be regular files with an allowed extension and a size cap. Paths inside a project are
 always resolved against the project folder and must stay inside it. Files enter ``media/`` by hard link
 when the source is on the same disk, else by copy, and are recorded with a sha256. Durations come from
@@ -15,8 +15,10 @@ import os
 import re
 import shutil
 import subprocess
+import time
 from pathlib import Path
 
+from backend_service.storyboard.ffmpeg_bin import PROTOCOLS
 from backend_service.storyboard.models import check_rel_path
 
 IMAGE_EXTS = frozenset({".png", ".jpg", ".jpeg", ".webp"})
@@ -47,10 +49,10 @@ def resolve_source(raw: str, allowed: set[str]) -> Path:
         raise MediaError("The file path is empty.")
     if text.startswith("upload:"):
         from backend_service.helpers.media_input import InputImageError
-        from backend_service.mcp_bridge.files import resolve_handle
+        from backend_service.mcp_bridge.files import UPLOAD_EXTENSIONS, resolve_handle
 
         try:
-            text = str(resolve_handle(text))
+            text = str(resolve_handle(text, UPLOAD_EXTENSIONS))
         except InputImageError as exc:
             raise MediaError(str(exc)) from exc
     try:
@@ -86,6 +88,26 @@ def inside(folder: Path, rel: str, must_exist: bool = True) -> Path:
     return real
 
 
+REPLACE_ATTEMPTS = 20
+REPLACE_WAIT_S = 0.05
+
+
+def replace_file(src: Path | str, dst: Path | str) -> None:
+    """``os.replace`` that waits briefly while another thread or program has ``dst`` open.
+
+    On Windows a file being read (a GET of project.json, a preview being served) cannot be replaced and
+    ``os.replace`` raises PermissionError; it is retried for about a second before the error is raised.
+    """
+    for attempt in range(REPLACE_ATTEMPTS):
+        try:
+            os.replace(src, dst)
+            return
+        except PermissionError:
+            if attempt == REPLACE_ATTEMPTS - 1:
+                raise
+            time.sleep(REPLACE_WAIT_S)
+
+
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
@@ -94,12 +116,7 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
-def ingest(folder: Path, src: Path, rel_dest: str) -> str:
-    """Hard-link (same disk) or copy ``src`` to ``folder/rel_dest``; returns its sha256."""
-    dest = inside(folder, rel_dest, must_exist=False)
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    if not dest.parent.resolve().is_relative_to(folder.resolve()):
-        raise MediaError(f"Refused path '{rel_dest}': it leaves the project folder.")
+def _link_or_copy(src: Path, dest: Path) -> None:
     tmp = dest.with_name(dest.name + ".part")
     if tmp.exists():
         tmp.unlink()
@@ -113,7 +130,37 @@ def ingest(folder: Path, src: Path, rel_dest: str) -> str:
     if not linked:
         shutil.copyfile(src, tmp)
     os.replace(tmp, dest)
+
+
+def _media_dest(folder: Path, rel_dest: str) -> Path:
+    dest = inside(folder, rel_dest, must_exist=False)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    if not dest.parent.resolve().is_relative_to(folder.resolve()):
+        raise MediaError(f"Refused path '{rel_dest}': it leaves the project folder.")
+    return dest
+
+
+def ingest(folder: Path, src: Path, rel_dest: str) -> str:
+    """Hard-link (same disk) or copy ``src`` to ``folder/rel_dest``; returns its sha256."""
+    dest = _media_dest(folder, rel_dest)
+    _link_or_copy(src, dest)
     return sha256_file(dest)
+
+
+def stage(folder: Path, src: Path) -> Path:
+    """Link or copy ``src`` into ``folder/cache/incoming`` (the slow part of an import, done without the lock)."""
+    incoming = folder / "cache" / "incoming"
+    incoming.mkdir(parents=True, exist_ok=True)
+    dest = incoming / f"{os.urandom(8).hex()}{src.suffix.lower()}"
+    _link_or_copy(src, dest)
+    return dest
+
+
+def adopt(folder: Path, staged: Path, rel_dest: str) -> Path:
+    """Move a staged file to ``folder/rel_dest`` (a rename inside the project folder: quick)."""
+    dest = _media_dest(folder, rel_dest)
+    os.replace(staged, dest)
+    return dest
 
 
 def ffmpeg_exe() -> str | None:
@@ -137,7 +184,7 @@ def probe_seconds(path: Path) -> float | None:
     if not exe:
         return None
     is_video = kind_of(path) == "video"
-    args = [exe, "-hide_banner", "-nostdin", "-i", str(path)]
+    args = [exe, "-hide_banner", "-nostdin", "-protocol_whitelist", PROTOCOLS, "-i", str(path)]
     args += ["-map", "0:v:0", "-c", "copy", "-f", "null", "-"] if is_video else ["-map", "0:a:0", "-f", "null", "-"]
     try:
         result = subprocess.run(args, capture_output=True, timeout=120)

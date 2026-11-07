@@ -219,11 +219,14 @@ def build_render_plan(project: Project, preview: bool, folder: Path | None = Non
     for span in timeline.audio:
         clip = project.clip(span.id)
         assert clip is not None
-        audio.append({
+        entry = {
             "id": clip.id, "kind": clip.kind, "path": str(inside(folder, clip.source.path)),
             "start": round(span.start, 4), "duration": round(span.duration, 4), "trim_in": round(span.trim_in, 4),
             "gain_db": clip.gainDb, "fade_in": clip.fadeIn, "fade_out": clip.fadeOut, "duck": clip.duck, "loop": clip.loop,
-        })
+        }
+        if clip.anchor is not None:  # placed by the assembler on its own frame-exact shot starts
+            entry["anchor_shot"], entry["anchor_offset"] = clip.anchor.shotId, clip.anchor.offset
+        audio.append(entry)
     name = "preview.mp4" if preview else f"{_slug(project.name)}-{time.strftime('%Y%m%d-%H%M%S')}.mp4"
     label = project.export.aiLabel
     return {

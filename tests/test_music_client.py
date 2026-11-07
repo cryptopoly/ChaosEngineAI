@@ -1,5 +1,5 @@
 """The music client against the real worker and the fake engine: events, status while busy, timeouts,
-cooperative and hard cancel, restart after a kill, idle stop, and the spike's generate timeout."""
+cooperative and hard cancel, restart after a kill, idle stop, the generate timeout and the stall watchdog."""
 
 from __future__ import annotations
 
@@ -107,9 +107,38 @@ class MusicClientTests(unittest.TestCase):
         self.assertTrue(self.worker.stop_if_idle())
         self.assertIsNone(self.worker.pid)
 
-    def test_generate_timeout_follows_the_spike(self) -> None:
-        self.assertEqual(music_client.generate_timeout_s(60, 1), 48.0)
-        self.assertEqual(music_client.generate_timeout_s(600, 4), 30.0 + 0.3 * 600 * 4)
+    def test_generate_timeout_scales_with_the_model_estimate(self) -> None:
+        from backend_service.music_runtime import estimate_run
+
+        for model in ("ACE-Step/Ace-Step1.5", "ACE-Step/acestep-v15-xl-turbo"):
+            for seconds, variations in ((60, 1), (600, 1), (600, 4)):
+                warm = estimate_run(model, seconds, variations)["seconds"]
+                cold = estimate_run(model, seconds, variations, warm=False)["coldStartSeconds"]
+                timeout = music_client.generate_timeout_s(seconds, variations, model)
+                self.assertGreaterEqual(timeout, 3 * warm + cold, (model, seconds, variations))
+        # XL is slower than turbo, so it gets longer: the old 210 s for XL 600 s was a 1.27x margin.
+        self.assertGreater(music_client.generate_timeout_s(600, 1, "ACE-Step/acestep-v15-xl-turbo"),
+                           music_client.generate_timeout_s(600, 1, "ACE-Step/Ace-Step1.5"))
+        self.assertGreaterEqual(music_client.generate_timeout_s(600, 1, "ACE-Step/acestep-v15-xl-turbo"), 3 * 165.0)
+
+    def test_stall_watchdog_kills_a_job_with_no_events(self) -> None:
+        started = time.monotonic()
+        with self.assertRaisesRegex(music_client.MusicWorkerError, "no progress"):
+            _generate(self.worker, self.box, "mus_10", "stubborn", timeout=60.0,
+                      stall_limits={"decode": 1.0, "default": 30.0})
+        self.assertLess(time.monotonic() - started, 10.0)
+        self.assertIsNone(self.worker.pid)
+
+    def test_stall_watchdog_leaves_a_slow_job_that_keeps_reporting(self) -> None:
+        reply = _generate(self.worker, self.box, "mus_11", "delay=0.3", steps=8, timeout=60.0,
+                          stall_limits={"default": 1.5, "decode": 1.5})
+        self.assertTrue(reply["ok"])
+
+    def test_stall_limits_are_generous_for_decode(self) -> None:
+        limits = music_client.stall_limits(600, 4, "ACE-Step/acestep-v15-xl-turbo")
+        self.assertGreaterEqual(limits["decode"], 3 * 0.08 * 600 * 4)
+        self.assertGreater(limits["decode"], limits["default"])
+        self.assertGreaterEqual(limits["load"], 30.0 * 3)
 
 
 if __name__ == "__main__":

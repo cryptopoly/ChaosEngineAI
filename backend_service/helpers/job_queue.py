@@ -118,7 +118,11 @@ class HeavyJobQueue:
     def cancel_batch(self, batch_id: str, stop_running: Callable[[str], bool] | None = None) -> int:
         """Cancel every waiting ticket of one batch and, if its ticket runs, ask ``stop_running(kind)`` to stop it.
 
-        Returns how many tickets were hit. Nothing outside the batch is touched.
+        Returns how many tickets were hit. Nothing outside the batch is touched: ``stop_running`` is called
+        with the queue lock held, so the batch's ticket cannot be released and another job (a Studio job on
+        the same global progress tracker) cannot start between the ownership check and the stop. It must
+        be quick and must not call back into this queue from another thread it waits on (setting a cancel
+        flag is all it does).
         """
         count = 0
         with self._cond:
@@ -128,9 +132,9 @@ class HeavyJobQueue:
                     self._waiting.remove(ticket)
                     count += 1
             running = self._running if self._running is not None and self._running.batch == batch_id else None
+            if running is not None and stop_running is not None and stop_running(running.kind):
+                count += 1
             self._cond.notify_all()
-        if running is not None and stop_running is not None and stop_running(running.kind):
-            count += 1
         return count
 
     def position(self, ticket: _Ticket) -> int:

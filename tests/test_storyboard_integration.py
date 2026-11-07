@@ -73,6 +73,10 @@ class StoryboardIntegrationTests(unittest.TestCase):
                 break
             time.sleep(0.3)
         self.assertEqual(state.get("state"), "done", state)
+        from backend_service.storyboard.render_adapter import RENDERS
+
+        voice = RENDERS.status(pid).plan["audio"][0]  # placed by the assembler from the shot it follows
+        self.assertEqual((voice["anchor_shot"], voice["anchor_offset"]), (first, 0.2))
 
         folder = self.base / "storyboards" / pid / "exports"
         outputs = sorted(folder.glob("*.mp4"))

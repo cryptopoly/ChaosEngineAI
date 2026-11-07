@@ -47,6 +47,8 @@ def weights_in_checkpoints(variant: dict[str, Any]) -> bool:
     from backend_service import music_env
 
     root = music_env.checkpoints_dir()
+    if not music_env.mirrored_revision_ok(variant):
+        return False  # another revision is mirrored: the pinned one must come from the cache
     return all(music_env.has_weights(root / folder) for folder in variant.get("weightFolders") or [])
 
 

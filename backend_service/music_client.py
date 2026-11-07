@@ -3,7 +3,9 @@
 One worker per backend. Every request gets an id; a reader thread routes each reply line (and every
 ``stage`` / ``step`` event) to the request it belongs to, so ``status`` and ``cancel`` reach the worker
 while a ``generate`` is running. A request that does not answer in time kills the worker (``generate``:
-30 s + 0.3 x seconds x variations, from the spike). Cancel is two-step: the cancel flag first, and if the
+the model's own run estimate times ``SAFETY_FACTOR`` plus its cold start, so a slower Mac or the XL model is
+not cut off). A stall watchdog kills sooner when no stage or step event has come for the current stage's
+limit (``stall_limits``; generous for VAE decode, which sends none). Cancel is two-step: the cancel flag first, and if the
 job has not ended 3 s later (it is in VAE decode, which has no hook) the worker is killed. The worker is
 stopped after ``idle_minutes`` without use, which frees all of its memory.
 """
@@ -37,9 +39,38 @@ class MusicCancelled(RuntimeError):
     """The job was cancelled (cooperatively or by stopping the worker)."""
 
 
-def generate_timeout_s(seconds: float, variations: int) -> float:
-    """How long a ``generate`` may take before the worker is killed (spike section 6.3)."""
-    return 30.0 + 0.3 * float(seconds) * max(1, int(variations))
+SAFETY_FACTOR = 4.0  # the estimates come from an M4 Max; a slower Mac may take several times as long
+_BASE_S = 30.0
+STALL_DEFAULT_S = 180.0  # load, encode, diffusion steps and write all send events well inside this
+
+
+def _estimate(model: str | None, seconds: float, variations: int) -> tuple[float, float, dict[str, Any]]:
+    """(warm wall seconds, cold-start seconds, the row's estimates) from the catalog row."""
+    from backend_service.music_runtime import estimate_run, resolve_variant
+
+    run = estimate_run(model, seconds, variations, warm=False)
+    return run["seconds"] - run["coldStartSeconds"], run["coldStartSeconds"], resolve_variant(model)["estimates"]
+
+
+def generate_timeout_s(seconds: float, variations: int, model: str | None = None) -> float:
+    """How long a ``generate`` may take in all before the worker is killed: estimate x safety + cold start."""
+    warm, cold, _ = _estimate(model, seconds, variations)
+    return round(_BASE_S + SAFETY_FACTOR * warm + cold, 1)
+
+
+def stall_limits(seconds: float, variations: int, model: str | None = None) -> dict[str, float]:
+    """Seconds without any event before a ``generate`` counts as stuck, per stage.
+
+    ``load`` covers a model load inside the job (and the time before the first event); ``decode`` is the
+    VAE decode, which sends no events and grows with the audio length; every other stage sends events.
+    """
+    _, cold, est = _estimate(model, seconds, variations)
+    decode = float(est.get("vaeSecondsPerAudioSecond") or 0.1) * float(seconds) * max(1, int(variations))
+    return {
+        "load": round(max(STALL_DEFAULT_S, SAFETY_FACTOR * cold + 60.0), 1),
+        "decode": round(max(STALL_DEFAULT_S, SAFETY_FACTOR * decode + 60.0), 1),
+        "default": STALL_DEFAULT_S,
+    }
 
 
 class MusicWorker:
@@ -51,6 +82,7 @@ class MusicWorker:
         self._pending_lock = threading.Lock()
         self._ids = itertools.count(1)
         self._in_flight = 0
+        self._heavy = 0  # load and generate requests in flight (status polls do not count)
         self._last_used = time.monotonic()
         self.idle_minutes = 10.0
         self._log_path = music_env.MUSIC_DATA_DIR / "worker.log"
@@ -158,6 +190,11 @@ class MusicWorker:
         self.stop()
         return True
 
+    def busy(self) -> bool:
+        """A model load or a generation is running in the worker."""
+        with self._pending_lock:
+            return self._heavy > 0
+
     def _idle_watch(self) -> None:
         while True:
             time.sleep(30)
@@ -192,6 +229,7 @@ class MusicWorker:
         cancel_check: Callable[[], bool] | None = None,
         start: bool = True,
         touch: bool = True,
+        stall_limits: dict[str, float] | None = None,
         **payload: Any,
     ) -> dict[str, Any]:
         """Send one command and wait for its final reply; events go to ``on_event``.
@@ -199,6 +237,8 @@ class MusicWorker:
         ``cancel_check`` is polled while waiting: when it turns true a ``cancel`` is sent for the job,
         and the worker is killed if the job has not ended ``HARD_CANCEL_AFTER_S`` later. ``touch=False``
         (status polls) leaves the idle clock alone, so a UI that polls never keeps the worker alive.
+        ``stall_limits`` (stage -> seconds, with ``default``; ``load`` until the first stage) kills the
+        worker when no event has arrived for that long.
         """
         if start:
             self._ensure_started()
@@ -206,19 +246,22 @@ class MusicWorker:
             raise MusicWorkerError("The music worker is not running.")
         request_id = next(self._ids)
         replies: queue.Queue[dict[str, Any]] = queue.Queue()
+        heavy = cmd in ("load", "generate")
         with self._pending_lock:
             self._pending[request_id] = replies
             self._in_flight += 1
+            self._heavy += heavy
         if touch:
             self._last_used = time.monotonic()
         try:
             self._send({"id": request_id, "cmd": cmd, **payload})
-            return self._wait(request_id, replies, timeout, payload.get("job"), on_event, cancel_check)
+            return self._wait(request_id, replies, timeout, payload.get("job"), on_event, cancel_check, stall_limits)
         finally:
             if touch:
                 self._last_used = time.monotonic()
             with self._pending_lock:
                 self._in_flight -= 1
+                self._heavy -= heavy
                 self._pending.pop(request_id, None)
 
     def _wait(
@@ -229,11 +272,18 @@ class MusicWorker:
         job: Any,
         on_event: Callable[[dict[str, Any]], None] | None,
         cancel_check: Callable[[], bool] | None,
+        stall: dict[str, float] | None = None,
     ) -> dict[str, Any]:
         deadline = time.monotonic() + timeout
         cancel_sent_at: float | None = None
+        last_event, stage = time.monotonic(), "load"
         while True:
             now = time.monotonic()
+            if stall is not None and cancel_sent_at is None:
+                limit = stall.get(stage, stall.get("default", timeout))
+                if now - last_event > limit:
+                    self.stop()
+                    raise MusicWorkerError(f"The music worker stopped: no progress for {int(limit)} s ({stage}). See {self._log_path}.")
             if cancel_check is not None and cancel_sent_at is None and cancel_check():
                 cancel_sent_at = now
                 if job:
@@ -253,6 +303,11 @@ class MusicWorker:
                     raise MusicCancelled("Cancelled.")
                 raise MusicWorkerError(f"The music worker exited. See {self._log_path}.")
             if line.get("event"):
+                last_event = time.monotonic()
+                if line.get("event") == "stage":
+                    stage = str(line.get("stage") or stage)
+                elif line.get("event") == "step":
+                    stage = "diffusion"
                 if on_event is not None:
                     on_event(line)
                 continue

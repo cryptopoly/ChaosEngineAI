@@ -194,6 +194,27 @@ class MusicRouteTests(_RouteBox):
         self.assertTrue(self.client.post("/api/music/unload").json()["stopped"])
         self.assertFalse(self.worker.running())
 
+    def test_unload_while_a_track_is_made_is_refused_and_the_job_finishes(self) -> None:
+        result: dict = {}
+
+        def make() -> None:
+            response = self.client.post("/api/music/generate", json={**INSTRUMENTAL, "caption": "slow delay=0.25"})
+            result["status"] = response.status_code
+
+        thread = threading.Thread(target=make)
+        thread.start()
+        deadline = time.monotonic() + 20
+        while not self.worker.busy() and time.monotonic() < deadline:
+            time.sleep(0.05)
+        self.assertTrue(self.worker.busy())
+        response = self.client.post("/api/music/unload")
+        self.assertEqual(response.status_code, 409)
+        self.assertIn("Cancel it first", response.json()["detail"])
+        thread.join(timeout=30)
+        self.assertEqual(result.get("status"), 200)  # not reported as "worker exited"
+        self.assertTrue(self.worker.running())
+        self.assertTrue(self.client.post("/api/music/unload").json()["stopped"])  # idle: unload works
+
     def test_install_and_download_routes(self) -> None:
         with mock.patch.object(music_env, "start_install", return_value={"phase": "preflight"}):
             self.assertEqual(self.client.post("/api/music/install").json()["phase"], "preflight")

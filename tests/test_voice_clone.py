@@ -253,6 +253,37 @@ class StoreTests(_DataDir):
                 voice_clone.speak(voice["id"], "Hi", "", disclaimer=False, origin="ui")
 
 
+class DownloadTests(unittest.TestCase):
+    def _run(self, install_error: Exception | None):
+        class SyncThread:
+            def __init__(self, target, **_kwargs):
+                self.target = target
+
+            def start(self):
+                self.target()
+
+        install = mock.Mock(side_effect=install_error)
+        with mock.patch.object(voice_clone, "available_here", return_value=True), \
+             mock.patch("huggingface_hub.snapshot_download") as weights, \
+             mock.patch.object(voice_env, "watermark_installed", return_value=False), \
+             mock.patch.object(voice_env, "install_watermark", install), \
+             mock.patch.object(voice_clone.threading, "Thread", SyncThread):
+            voice_clone._DOWNLOADS.clear()
+            voice_clone.start_download("qwen3-tts-0.6b")
+        row = voice_models.clone_model("qwen3-tts-0.6b")
+        weights.assert_called_once_with(row["repo"], revision=row["revision"])
+        install.assert_called_once()
+        return voice_clone._DOWNLOADS["qwen3-tts-0.6b"]
+
+    def test_download_installs_the_watermark_component_automatically(self) -> None:
+        self.assertEqual(self._run(None)["state"], "done")
+
+    def test_a_failed_component_install_says_so_plainly(self) -> None:
+        job = self._run(RuntimeError("pip exited 1"))
+        self.assertEqual(job["state"], "failed")
+        self.assertTrue(job["error"].startswith("Downloading the watermark component failed"), job)
+
+
 class WorkerTests(unittest.TestCase):
     def test_synthesize_routes_reference_audio_to_the_clone_branch(self) -> None:
         from backend_service import voice_worker

@@ -861,7 +861,8 @@
       "tooShort": "The recording is shorter than 3 seconds. Read the whole sentence.",
       "tooLong": "The recording is longer than 30 seconds. Record just the sentence.",
       "checking": "Checking the recording…",
-      "save": "Check and save voice"
+      "save": "Check and save voice",
+      "installingWatermark": "Installing the watermark component…"
     }
   },
   "residentChatModelNote": "A loaded chat model holds about {gb} GB of this memory; unloading it frees that.",

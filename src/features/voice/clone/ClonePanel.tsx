@@ -161,7 +161,11 @@ function CloneBody({ onTabChange }: { onTabChange?: (tab: TabId) => void }) {
             {model.installed ? (
               <span className="badge success">{t("voice.models.downloaded", { defaultValue: "Downloaded" })}</span>
             ) : model.download.state === "downloading" ? (
-              <span className="muted-text">{t("voice.clone.downloading", { defaultValue: "Downloading…" })}</span>
+              <span className="muted-text" aria-live="polite">
+                {model.download.phase === "watermark"
+                  ? t("voice.clone.installingWatermark", { defaultValue: "Installing the watermark component…" })
+                  : t("voice.clone.downloading", { defaultValue: "Downloading…" })}
+              </span>
             ) : (
               <button type="button" className="secondary-button" onClick={() => void downloadCloneModel(model.key).then(refresh)}>
                 {t("voice.models.download", { defaultValue: "Download" })}

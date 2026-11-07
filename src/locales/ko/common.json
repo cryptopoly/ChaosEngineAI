@@ -972,7 +972,8 @@
     "contextDetected": "{contextLabel} 감지됨",
     "emptyState": "검색과 일치하는 모델이 없습니다.",
     "launchSettings": "시작 설정",
-    "cancelButton": "취소"
+    "cancelButton": "취소",
+    "busyConfirm": null
   },
   "modelPicker": {
     "weightFileTitle": "가중치 파일 선택: {name}",

@@ -21,6 +21,8 @@ import { VoiceCallOverlay } from "../voice/conversation/VoiceCallOverlay";
 import { cancelChatGeneration } from "../../api";
 import type { SendMessageOptions } from "../../hooks/useChat";
 import { ChatComposer } from "./ChatComposer";
+import { BusyAdviceNotice } from "../../components/BusyAdviceNotice";
+import { pickChatAdvice } from "../../components/busyAdvice";
 import { readSamplerOverrides, writeSamplerOverrides } from "./samplerOverrides";
 import { matchSlashCommands, type SlashCommand, type SlashCommandContext } from "./slashCommands";
 
@@ -203,6 +205,7 @@ export function ChatTab({
   const { t } = useTranslation("chat");
   const voice = useVoice();
   const [callOpen, setCallOpen] = useState(false);
+  const [dismissedAdviceKey, setDismissedAdviceKey] = useState<string | null>(null);
   const voiceRuntime = voice.runtime;
   const callRequirements = [
     { label: t("header.callNeedModel", { defaultValue: "a chat model loaded" }), ready: Boolean(loadedModelRef) },
@@ -424,6 +427,10 @@ export function ChatTab({
     writeKvStrategyOverride(activeChat?.id, override);
   }, [activeChat?.id]);
 
+  const busyNotice = activeChat
+    ? pickChatAdvice(activeChat.id, activeChat.messages, chatBusySessionId === activeChat.id)
+    : null;
+
   return (
     <div className={`chat-layout-2col${sidebarCollapsed ? " chat-layout-2col--sidebar-collapsed" : ""}`}>
       {!sidebarCollapsed ? (
@@ -531,6 +538,9 @@ export function ChatTab({
           onOpenModels={onOpenModels}
         />
         <SpeechPlayerBar />
+        {busyNotice && busyNotice.key !== dismissedAdviceKey ? (
+          <BusyAdviceNotice advice={busyNotice.advice} onDismiss={() => setDismissedAdviceKey(busyNotice.key)} />
+        ) : null}
         <ChatComposer
           draftMessage={draftMessage}
           pendingImages={pendingImages}

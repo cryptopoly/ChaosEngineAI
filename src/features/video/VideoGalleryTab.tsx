@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
+import { ProjectChip, ProjectFilter } from "../../components/ProjectFilter";
+import { ALL_PROJECTS, filterByProject, projectOptions } from "../../utils/galleryProject";
 import { SendToStoryboardMenu } from "../../components/SendToStoryboardMenu";
 import { SoundBadge } from "../../components/SoundBadge";
 import { VideoSoundToggle } from "../../components/VideoSoundToggle";
@@ -33,8 +35,10 @@ export function VideoGalleryTab({
   const [expandedArtifactId, setExpandedArtifactId] = useState<string | null>(null);
   const [autoPlayVideos, setAutoPlayVideos] = useState(true);
   const storyboard = useSendToStoryboard((tab) => onActiveTabChange(tab));
-  const expandedArtifact = videoOutputs.find((artifact) => artifact.artifactId === expandedArtifactId) ?? null;
-  const displayedArtifacts = expandedArtifact ? [expandedArtifact] : videoOutputs;
+  const [projectFilter, setProjectFilter] = useState(ALL_PROJECTS);
+  const visibleOutputs = filterByProject(videoOutputs, projectFilter);
+  const expandedArtifact = visibleOutputs.find((artifact) => artifact.artifactId === expandedArtifactId) ?? null;
+  const displayedArtifacts = expandedArtifact ? [expandedArtifact] : visibleOutputs;
 
   useEffect(() => {
     if (expandedArtifactId && !videoOutputs.some((artifact) => artifact.artifactId === expandedArtifactId)) {
@@ -57,6 +61,7 @@ export function VideoGalleryTab({
         className="span-2"
         actions={
           <div className="button-row video-gallery-actions">
+            <ProjectFilter options={projectOptions(videoOutputs)} value={projectFilter} onChange={setProjectFilter} />
             <label className="video-gallery-autoplay-toggle">
               <input
                 type="checkbox"
@@ -288,8 +293,9 @@ function VideoOutputCard({
           <strong>{artifact.modelName}</strong>
           <span className="badge muted">{formatImageTimestamp(artifact.createdAt, locale)}</span>
         </div>
-        {artifact.runtimeLabel || artifact.hasAudio ? (
+        {artifact.runtimeLabel || artifact.hasAudio || artifact.projectName ? (
           <div className="chip-row">
+            <ProjectChip name={artifact.projectName} />
             {artifact.runtimeLabel ? <span className="badge subtle">{artifact.runtimeLabel}</span> : null}
             {artifact.runtimeLabel ? (
               <span className="badge muted">

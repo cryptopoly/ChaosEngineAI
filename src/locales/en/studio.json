@@ -1632,5 +1632,10 @@
     },
     "title": "Music Models",
     "unavailable": "Music needs an Apple Silicon Mac for now."
+  },
+  "galleryProject": {
+    "filter": "Project",
+    "all": "All projects",
+    "chip": "From project {name}"
   }
 }

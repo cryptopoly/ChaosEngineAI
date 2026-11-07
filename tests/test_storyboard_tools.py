@@ -58,7 +58,8 @@ class StoryboardToolTests(unittest.TestCase):
 
     def test_descriptions_stay_short_and_names_are_grouped(self):
         self.assertEqual([t["name"] for t in STORYBOARD_TOOLS],
-                         ["storyboard_project", "storyboard_shot", "storyboard_audio", "storyboard_generate", "storyboard_render"])
+                         ["storyboard_project", "storyboard_shot", "storyboard_audio", "storyboard_generate", "storyboard_render",
+                          "storyboard_captions", "storyboard_export_otio"])
         for tool in STORYBOARD_TOOLS:
             self.assertLess(len(tool["description"]), 220, tool["name"])
 

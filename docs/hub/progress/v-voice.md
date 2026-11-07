@@ -38,18 +38,19 @@ cloning off for agents and other machines by default, and an AudioSeal watermark
   only). `voice_worker_watermark.py` embeds a fixed 16-bit message 0xCE5A at 16 kHz and adds the mark to the
   original-rate audio; `detect_watermark` and `GET /api/voice/clone/watermark/{id}`. Installed on demand with the
   cloning model download; cloned speech is refused without it. Tag records `watermark: audioseal-0.2.1:CE5A`.
+- Watermark real run (2026-11-08, after the main session installed AudioSeal into the voice venv):
+  - Fix: AudioSeal's Moshi layers use `torch.compile`; Inductor's Metal kernels fail on MPS ("CeilToInt").
+    The worker sets `NO_TORCH_COMPILE=1` and `TORCHDYNAMO_DISABLE=1` before import and runs on CPU.
+  - Safe failure: the worker reads the mark back before writing; if it does not match, it raises and nothing is saved.
+  - Installed state is read from the venv on disk (any install route counts), plus the pinned weights.
+  - `tests/test_voice_watermark.py` real round trip passes (not skipped): WAV, MP3 96k and AAC 96k all detect
+    probability 1.0, message CE5A; unmarked clip 0.0; SNR 32.9 dB on the synthetic speech-like signal.
+  - Measured on a 10.1 s cloned-speech clip: CPU embed 0.19 s, detect 0.10 s; MPS (eager) 0.16 s / 0.12 s;
+    load 0.14 s + 0.04 s. SNR 25.2 dB; difference RMS -46.5 dBFS against a -21.4 dBFS clip; peak difference 0.044;
+    log-spectral distance 2.7 dB; band levels change by at most 0.03 dB (500-2000 Hz). Nobody listened.
+  - e2e phase 14 on port 8891 with the real data dir: 4/4 pass; installed:true; the spoken clip detected at 1.0, CE5A.
 
 ## Not done
-
-- Watermark real run: NOT run (second attempt 2026-11-08 through the app's own `POST /api/voice/clone/models/download`
-  on port 8891 was also refused by the permission classifier, reason "Code from External"; the coordinator's relayed
-  approval is not a permission rule). The download now reports its phase ("Installing the watermark component…")
-  and a plain failure message; unit tests cover both. Measurement script ready:
-  `scratchpad/wm_measure.py` (speed, SNR, log-spectral distance, band levels).
-- Earlier note: Installing `audioseal`, `omegaconf`, `einops` into the voice venv was denied by the
-  permission classifier, and neither venv has omegaconf. `tests/test_voice_watermark.py::RealRoundTripTests`
-  (embed, MP3 and AAC re-encode, detect, SNR > 20 dB) skips until the component is installed; then run it and
-  e2e phase 14. Speed on Apple silicon (MPS / CPU) not measured.
 
 - CUDA / Windows / Linux cloning (`qwen-tts` / transformers): follow-up.
 - Optional speaker match between consent recording and a separately uploaded sample (biometric; needs a decision).

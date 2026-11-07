@@ -160,14 +160,12 @@
   },
   "imageStudio": {
     "generateTitle": {
-      "dangerBlocked": "Konfiguration mit Risikostufe — die Bestätigung unter dem Sicherheitshinweis aktivieren, um fortzufahren.",
+      "dangerBlocked": null,
       "generating": "Wird generiert...",
       "selectModel": "Erst ein Modell auswählen.",
       "ready": "Dieses Bild generieren."
     },
     "actions": {
-      "discover": "Modelle finden",
-      "installed": "Installiert",
       "gallery": "Galerie"
     },
     "hero": {
@@ -250,11 +248,9 @@
     "safety": {
       "dangerTitle": "Wird das Backend wahrscheinlich zum Absturz bringen",
       "warningTitle": "Achtung — könnte auf diesem Gerät Probleme bereiten",
-      "resourceEstimate": "Modell ≈ {model} · Spitze dieses Laufs ≈ {peak} von insgesamt ~{total}.",
       "applyTitle": "{label} anwenden",
       "useSafer": "Sicherere Einstellungen verwenden ({label})",
       "browseSmaller": "Kleinere Modelle durchsuchen",
-      "overrideAck": "Trotzdem generieren — ich akzeptiere, dass das Backend abstürzen kann.",
       "reasonDangerOver": "Das Modell benötigt ~{model} GB allein, um seine Gewichte + den Text-Encoder zu halten. Auf {platform} mit insgesamt {total} GB liegt das geschätzte Working Set bei ~{working} GB, sodass das Modell allein bereits darüber liegt. Selbst kleine Bilder würden das Backend wahrscheinlich zum Absturz bringen. Probiere ein kleineres Modell (SD 1.5 ist ~4 GB, SDXL ~13 GB) oder einen Rechner mit mehr Speicher.",
       "reasonDangerNear": "Das Modell benötigt ~{model} GB allein, um seine Gewichte + den Text-Encoder zu halten, und dieser Lauf erreicht eine Spitze von ~{peak} GB. Auf {platform} mit insgesamt {total} GB liegt das über der Hochrisiko-Schwelle (~{highRisk} GB) und nahe am geschätzten Working Set (~{working} GB). Die Generierung wird das Backend wahrscheinlich zum Absturz bringen; senke die Auflösung oder wähle ein kleineres Modell.",
       "reasonCaution": "Das Modell benötigt ~{model} GB allein, um seine Gewichte + den Text-Encoder zu halten. Auf {platform} mit insgesamt {total} GB liegt das über dem konservativen Komfort-Ziel (~{comfort} GB), aber unter dem geschätzten Working Set (~{working} GB). Die Generierung kann langsam laufen oder fehlschlagen; senke die Auflösung, falls es instabil wird."
@@ -369,33 +365,18 @@
       "noPrompt": "Schreibe einen Prompt, bevor du generierst.",
       "backendOffline": "Backend ist offline.",
       "busy": "Beschäftigt…",
-      "dangerLevel": "Diese Konfiguration wird das Backend wahrscheinlich zum Absturz bringen. Aktiviere unten „Hochrisiko-Generierung erlauben“, nachdem du die Warnung gelesen hast, oder reduziere Auflösung/Bilder/Modell."
+      "dangerLevel": null
     },
     "generateTitle": "Diesen Clip generieren.",
-    "device": {
-      "gpuDetected": "GPU (erkannt)",
-      "cpuDetected": "CPU (erkannt)",
-      "appleDetected": "Apple Silicon (erkannt)",
-      "appleMlx": "Apple Silicon (MLX)",
-      "gpu": "GPU",
-      "apple": "Apple Silicon"
-    },
     "memory": {
       "defaultFallback": "~{value} (Standard — Backend für echte Erkennung neu starten)"
     },
-    "capacityLine": {
-      "withModel": "{device} · {memory} insgesamt · Modell ≈ {model}, Spitze dieses Laufs ≈ {peak}",
-      "short": "{device} · {memory} insgesamt · Spitze dieses Laufs ≈ {peak}"
-    },
     "subtitle": "Wähle ein Videomodell, um zu beginnen",
     "actions": {
-      "browseCatalog": "Modelle finden",
-      "installedModels": "Installiert",
       "downloadModel": "Modell herunterladen",
       "loadIntoMemory": "In Speicher laden",
       "unload": "Entladen",
-      "unloadNamed": "{name} entladen",
-      "modelCard": "Modellkarte"
+      "unloadNamed": "{name} entladen"
     },
     "modelOption": {
       "installed": "installiert",
@@ -505,13 +486,11 @@
       "applyTitle": "{label} anwenden",
       "useSafer": "Sicherere Einstellungen verwenden ({label})",
       "browseSmaller": "Kleinere Modelle durchsuchen",
-      "overrideAck": "Hochrisiko-Generierung erlauben — ich akzeptiere, dass das Backend abstürzen kann und mein Rechner möglicherweise neu gestartet werden muss.",
       "reasonDangerOver": "Das Modell benötigt ~{model} GB resident an der Standardposition, aber {platform} mit insgesamt {total} GB hat nur ~{working} GB sicher verfügbar. Die Laufzeit fällt automatisch auf sequentielles CPU-Offload zurück — die Generierung gelingt, aber jeder Schritt wird einige Male langsamer, weil Submodule pro Durchgang zwischen CPU- und {offloadDevice}-Speicher wechseln. Für Generierung mit voller Geschwindigkeit wähle ein kleineres Modell (LTX-Video ist ~2 GB resident) oder einen Rechner mit mehr Speicher.",
       "reasonDangerNear": "Das Modell benötigt ~{model} GB resident und dieser Lauf erreicht eine Spitze von ~{peak} GB. Auf {platform} mit insgesamt {total} GB liegt das über der Hochrisiko-Schwelle (~{highRisk} GB) und nahe am geschätzten Working Set (~{working} GB). Die Laufzeit aktiviert möglicherweise CPU-Offload, damit es passt — senke die Einstellungen oder wähle ein kleineres Modell, wenn du Generierung mit voller Geschwindigkeit möchtest.",
       "reasonCaution": "Das Modell benötigt ~{model} GB resident. Auf {platform} mit insgesamt {total} GB liegt das über dem konservativen Komfort-Ziel (~{comfort} GB), aber unter dem geschätzten Working Set (~{working} GB). Die Generierung sollte passen; senke die Einstellungen, falls es instabil wird."
     },
     "disabledHint": "Generieren deaktiviert: {reason}",
-    "willLoadHint": "Das ausgewählte Modell wird bei der nächsten Generierung in den Speicher geladen. Der erste Ladevorgang kann bei größeren Varianten eine Minute dauern.",
     "cacheStrategies": {
       "none": {
         "label": "Aus",
@@ -1331,5 +1310,18 @@
     "metadata": null,
     "metadataTitle": null,
     "title": null
+  },
+  "studioKit": {
+    "models": null,
+    "moreActions": null,
+    "modelCard": null,
+    "summary": {
+      "labelValue": null,
+      "size": null,
+      "framesFps": null,
+      "negativeSet": null,
+      "negativeEdited": null,
+      "endImageSet": null
+    }
   }
 }

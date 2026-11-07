@@ -448,6 +448,12 @@ class MakeSoundToolTests(_SoundBox):
         self.assertTrue(is_error)
         self.assertIn("sounds pack", str(text))
 
+    def test_make_music_does_not_see_the_sound_model(self) -> None:
+        with mock.patch.object(music_sound_env, "text_encoder_ready", lambda v: True):
+            is_error, text = self._call("make_music", {"caption": "x", "instrumental": True, "model": SOUND})
+        self.assertTrue(is_error)
+        self.assertIn("not an installed music model", str(text))
+
     def test_the_tool_description_is_short_and_not_in_the_default_registry(self) -> None:
         from backend_service.mcp_bridge.sound_tool import SOUND_TOOLS
 

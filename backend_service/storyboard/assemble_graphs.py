@@ -131,20 +131,6 @@ def build_shot_graph(shot: ShotInput, plan: RenderPlan, has_audio: bool, frames:
     return f"{video};\n{audio}\n"
 
 
-def build_card_graph(plan: RenderPlan, frames: int, font_name: str | None, text_name: str | None) -> str:
-    seconds = frames / plan.fps
-    video = f"color=c=black:s={plan.width}x{plan.height}:r={plan.fps}:d={_f(seconds + 1)},format=yuv420p"
-    if font_name and text_name:
-        size = max(8, plan.height // 12)
-        video += (f",drawtext=fontfile={font_name}:textfile={text_name}:expansion=none:fontcolor=white:"
-                  f"fontsize={size}:line_spacing={size // 3}:x=(w-text_w)/2:y=(h-text_h)/2")
-    video += f",setsar=1,settb=AVTB,trim=end_frame={frames},setpts=N/(FRAME_RATE*TB)[v]"
-    samples = _samples(frames, plan.fps)
-    audio = (f"anullsrc=channel_layout=stereo:sample_rate={SAMPLE_RATE},aformat=sample_fmts=s16,"
-             f"atrim=end_sample={samples},asetpts=N/SR/TB[a]")
-    return f"{video};\n{audio}\n"
-
-
 def build_xfade_graphs(group_frames: Sequence[int], fades: Sequence[int], starts: Sequence[float],
                        fps: int) -> tuple[str, str]:
     """Video and audio graphs that crossfade the inputs pairwise: ``fades[g]`` frames into group g,

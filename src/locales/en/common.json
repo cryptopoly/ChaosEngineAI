@@ -1299,5 +1299,22 @@
     "notInstalled": "Not installed. GGUF models use the bundled build.",
     "reinstall": "Reinstall",
     "title": "CUDA llama-server (NVIDIA)"
+  },
+  "terms": {
+    "title": "Terms of use",
+    "intro": "Please read this before you start.",
+    "agree": "I agree",
+    "quit": "Quit",
+    "close": "Close",
+    "read": "Read the terms",
+    "acceptedOn": "Accepted on {date}.",
+    "notAccepted": "Not accepted yet.",
+    "points": {
+      "responsibility": "You are responsible for what you generate and how you use it.",
+      "disclosure": "Say when content is AI-generated wherever the law or a platform requires it (for example Article 50 of the EU AI Act and platform labelling rules).",
+      "impersonation": "Do not use ChaosEngineAI to impersonate a real person without their consent.",
+      "voices": "Only clone a voice with the speaker's consent.",
+      "licences": "Each model comes with its own licence. Check it before you use the output."
+    }
   }
 }

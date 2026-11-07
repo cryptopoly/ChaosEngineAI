@@ -11,7 +11,7 @@ from backend_service.storyboard.timeline import build_render_plan, compute_timel
 SHOT_KEYS = {"id", "video", "hash", "trim_in", "trim_out", "speed", "native_sound_db", "transition_in"}
 AUDIO_KEYS = {"id", "kind", "path", "start", "duration", "trim_in", "gain_db", "fade_in", "fade_out", "duck", "loop"}
 PLAN_KEYS = {"width", "height", "fps", "preview", "loudness_lufs", "out_path", "work_dir", "shots", "audio",
-             "metadata", "end_card", "captions_srt"}
+             "metadata", "captions_srt"}
 
 
 def shot(sid, measured=4.0, **fields):
@@ -128,15 +128,12 @@ class RenderPlanTests(unittest.TestCase):
         self.assertEqual(json.loads(plan["metadata"]["models"]), ["LTX-2.3"])
         for leak in ("SECRET PROMPT", "My Film", str(self.folder)):
             self.assertNotIn(leak, meta)
-        self.assertIsNone(plan["end_card"])
 
     def test_ai_label_switch_and_cloned_voice_rule(self):
         p = self._files(project([shot("a")]))
         p.export.aiLabel.embedTag = False
-        p.export.aiLabel.endCard = True
         plan = build_render_plan(p, preview=False, folder=self.folder)
         self.assertEqual(plan["metadata"], {})
-        self.assertEqual(plan["end_card"]["text"], "Made with AI")
         cloned = AudioClip(id="c", kind="voice", start=0.0,
                            source=AudioSource(path="media/audio/c.wav", measuredSeconds=1.0, clonedVoice=True))
         p.audio.append(cloned)

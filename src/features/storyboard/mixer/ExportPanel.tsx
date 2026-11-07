@@ -26,14 +26,13 @@ import { formatTimecode } from "./timelineGeometry";
 // ---- AI label ----
 export interface AiLabelNoticeProps {
   metadata: boolean;
-  endCard: boolean;
   /** A cloned voice is in the project: the tag cannot be turned off. */
   forced: boolean;
   disabled?: boolean;
-  onChange: (change: { metadata?: boolean; endCard?: boolean }) => void;
+  onChange: (change: { metadata?: boolean }) => void;
 }
 
-export function AiLabelNotice({ metadata, endCard, forced, disabled, onChange }: AiLabelNoticeProps) {
+export function AiLabelNotice({ metadata, forced, disabled, onChange }: AiLabelNoticeProps) {
   const { t } = useTranslation("studio");
   return (
     <fieldset className="ai-label-notice">
@@ -58,10 +57,6 @@ export function AiLabelNotice({ metadata, endCard, forced, disabled, onChange }:
           {t("aiLabel.forced", { defaultValue: "This project uses a cloned voice, so the AI tag is always written." })}
         </p>
       ) : null}
-      <label className="check-row">
-        <input type="checkbox" checked={endCard} disabled={disabled} onChange={(event) => onChange({ endCard: event.target.checked })} />
-        {t("aiLabel.endCard", { defaultValue: "Add an AI-generated end card" })}
-      </label>
     </fieldset>
   );
 }
@@ -173,7 +168,7 @@ export interface ExportPanelProps {
   /** The path was just copied. */
   copied: boolean;
   onPreset: (preset: StoryboardExportPreset) => void;
-  onAiLabel: (change: { metadata?: boolean; endCard?: boolean }) => void;
+  onAiLabel: (change: { metadata?: boolean }) => void;
   onLoudness: (lufs: number | null) => void;
   onExport: () => void;
   onCancel: () => void;
@@ -225,7 +220,6 @@ export function ExportPanel(props: ExportPanelProps) {
       <div className="export-panel__options">
         <AiLabelNotice
           metadata={ai.metadata}
-          endCard={ai.endCard}
           forced={ai.forced}
           disabled={disabled || rendering}
           onChange={props.onAiLabel}

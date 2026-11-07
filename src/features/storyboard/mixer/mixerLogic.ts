@@ -67,7 +67,6 @@ export interface AiLabelState {
   metadata: boolean;
   /** A cloned voice forces the tag on; the switch is locked. */
   forced: boolean;
-  endCard: boolean;
 }
 
 export function hasClonedVoice(project: Pick<StoryboardProject, "audio">): boolean {
@@ -76,17 +75,16 @@ export function hasClonedVoice(project: Pick<StoryboardProject, "audio">): boole
 
 export function aiLabelState(project: Pick<StoryboardProject, "audio" | "export">): AiLabelState {
   const forced = hasClonedVoice(project);
-  return { metadata: forced || project.export.aiLabel.embedTag, forced, endCard: project.export.aiLabel.endCard };
+  return { metadata: forced || project.export.aiLabel.embedTag, forced };
 }
 
 /** The `edit_project` arguments for one AI-label change; null when it would change nothing (a locked tag). */
 export function aiLabelPatch(
   project: Pick<StoryboardProject, "audio" | "export">,
-  change: { metadata?: boolean; endCard?: boolean },
-): { export: { aiLabel: { embedTag?: boolean; endCard?: boolean } } } | null {
-  const aiLabel: { embedTag?: boolean; endCard?: boolean } = {};
+  change: { metadata?: boolean },
+): { export: { aiLabel: { embedTag?: boolean } } } | null {
+  const aiLabel: { embedTag?: boolean } = {};
   if (change.metadata !== undefined && !hasClonedVoice(project)) aiLabel.embedTag = change.metadata;
-  if (change.endCard !== undefined) aiLabel.endCard = change.endCard;
   return Object.keys(aiLabel).length > 0 ? { export: { aiLabel } } : null;
 }
 

@@ -39,7 +39,6 @@ from backend_service.storyboard.assemble_graphs import (  # noqa: F401 - re-expo
     _samples,
     anchored_audio,
     atempo_chain,
-    build_card_graph,
     build_mix_graph,
     build_shot_graph,
     build_xfade_graphs,
@@ -79,23 +78,6 @@ class RenderResult:
     ffmpeg_version: str
     warnings: list[str] = field(default_factory=list)
     loudness: dict[str, Any] | None = None
-
-
-def find_font() -> Path | None:
-    """A plain sans font for the end card, from the operating system's own font folder."""
-    if sys.platform == "darwin":
-        candidates = [Path("/System/Library/Fonts/Supplemental/Arial.ttf"),
-                      Path("/System/Library/Fonts/Helvetica.ttc"), Path("/Library/Fonts/Arial.ttf")]
-    elif os.name == "nt":
-        fonts = Path(os.environ.get("WINDIR", "C:\\Windows")) / "Fonts"
-        candidates = [fonts / "arial.ttf", fonts / "segoeui.ttf", fonts / "calibri.ttf"]
-    else:
-        candidates = [Path(p) for p in (
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", "/usr/share/fonts/dejavu/DejaVuSans.ttf",
-            "/usr/share/fonts/TTF/DejaVuSans.ttf",
-            "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
-            "/usr/share/fonts/noto/NotoSans-Regular.ttf")]
-    return next((p for p in candidates if p.is_file()), None)
 
 
 # ---------------------------------------------------------------------------------------------
@@ -291,14 +273,6 @@ def render(plan: RenderPlan, progress_cb: ProgressCb | None = None,
             rendered += 1
         transitions = [s.transition_in for s in plan.shots]
 
-        # Optional end card, appended as one more hard cut.
-        if plan.end_card is not None:
-            card = _render_card(plan, work, run_id, script, scratch, warnings, cancel_event)
-            if card is not None:
-                names.append(card[0])
-                frames_list.append(card[1])
-                transitions.append(Transition())
-
         # Stage 2a: group runs of cuts; crossfade between groups.
         fade_frames = [0] + [_fade_frames(t, plan.fps) for t in transitions[1:]]
         timing = compute_join_offsets([f / plan.fps for f in frames_list],
@@ -427,26 +401,6 @@ def render(plan: RenderPlan, progress_cb: ProgressCb | None = None,
         for path in scratch:
             _unlink(path)
 
-
-def _render_card(plan: RenderPlan, work: Path, run_id: str, script: Callable[[str, str], str],
-                 scratch: list[Path], warnings: list[str],
-                 cancel_event: threading.Event | None) -> tuple[str, int] | None:
-    """Render (or reuse) the end card intermediate. Returns (file name, frames) or None if skipped."""
-    card = plan.end_card
-    assert card is not None
-    frames = max(1, round(card.seconds * plan.fps))
-    filters = ffmpeg_bin.ffmpeg_filters()
-    font = find_font() if "drawtext" in filters else None
-    if "color" not in filters or font is None:
-        reason = "drawtext filter missing" if "drawtext" not in filters else "no system font found"
-        warnings.append(f"end card skipped: {reason}")
-        return None
-    key = hashlib.sha256(json.dumps([ENGINE_VERSION, "card", card.text, frames, plan.width, plan.height,
-                                     plan.fps, plan.preview, str(font)]).encode()).hexdigest()[:32]
-    name = f"card-{key}.mov"
-    target = work / name
-    if target.is_file() and target.stat().st_size > 0:
-        return name, frames
     font_name = f"{run_id}-font{font.suffix.lower()}"
     shutil.copyfile(font, work / font_name)
     scratch.append(work / font_name)

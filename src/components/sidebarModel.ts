@@ -52,9 +52,9 @@ export function buildItems(visibleTabs: TabConfig[]): SidebarItem[] {
 }
 
 /**
- * Dashboard first, then the Make groups, then the Run groups (each under a
- * thin section label), then the remaining single tabs (Server, Logs,
- * Settings). Group order inside a section follows `sidebarGroups`.
+ * Dashboard first, then Chat (a group with no section label), then the Make
+ * groups, then the Run groups (each under a thin section label), then the
+ * remaining single tabs (Server, Logs, Settings). Group order inside a section follows `sidebarGroups`.
  */
 export function arrangeRows(items: SidebarItem[]): SidebarRow[] {
   const groups = items.filter((i): i is Extract<SidebarItem, { kind: "group" }> => i.kind === "group");
@@ -64,12 +64,12 @@ export function arrangeRows(items: SidebarItem[]): SidebarRow[] {
   const rows: SidebarRow[] = [];
   const lead = singles.filter((i) => i.kind === "tab" && i.tab.id === "dashboard");
   rows.push(...lead);
+  rows.push(...groups.filter((g) => !g.section).sort(order));
   for (const section of ["make", "run"] as const) {
     const inSection = groups.filter((g) => g.section === section).sort(order);
     if (inSection.length === 0) continue;
     rows.push({ kind: "section", section }, ...inSection);
   }
-  rows.push(...groups.filter((g) => !g.section).sort(order));
   rows.push(...singles.filter((i) => !lead.includes(i)));
   return rows;
 }

@@ -166,8 +166,7 @@ class RenderPlanTests(unittest.TestCase):
         plan = RenderPlan.from_dict(self.plan(
             audio=[{"id": "m", "kind": "music", "path": str(self.root / "music.wav")}],
             shots=[{"id": "a", "video": str(self.root / "a.mp4"), "hash": "h", "native_sound_db": "-inf",
-                    "transition_in": {"type": "crossfade", "seconds": 0.5}}],
-            end_card={"text": "AI-generated", "seconds": 2}))
+                    "transition_in": {"type": "crossfade", "seconds": 0.5}}]))
         self.assertTrue(plan.audio[0].duck, "music ducks by default")
         self.assertEqual(plan.shots[0].native_sound_db, -math.inf)
         again = RenderPlan.from_dict(plan.to_dict())
@@ -213,8 +212,7 @@ class RenderPlanTests(unittest.TestCase):
             {"shots": [dict(shot, transition_in={"type": "crossfade", "seconds": 0})]},
             {"shots": [dict(shot, native_sound_db=float("nan"))]},
             {"audio": [{"id": "m", "kind": "drums", "path": str(self.root / "music.wav")}]},
-            {"end_card": {"text": "bad\x1b[2J", "seconds": 2}}, {"end_card": {"text": "x" * 201}},
-            {"end_card": {"text": "  "}}, {"metadata": {"k": 1}}, {"loudness_lufs": 3},
+            {"metadata": {"k": 1}}, {"loudness_lufs": 3},
         ]
         for over in cases:
             with self.subTest(over=over), self.assertRaises(PlanError):
@@ -445,28 +443,6 @@ class RenderTests(unittest.TestCase):
                              "graphs go in a script file, not argv")
             # Far under Windows' 32 KB command-line limit even with 20 shots.
             self.assertLess(sum(len(a) + 1 for a in args), 8000)
-
-    def test_end_card(self):
-        self.need("drawtext", "color")
-        plan = self.plan([self.shot("a")], end_card={"text": "AI-generated: it's 100% {fake}", "seconds": 1})
-        result = render(plan)
-        self.assertEqual(result.warnings, [])
-        self.assertAlmostEqual(result.duration_s, 3.0, delta=0.1)
-
-    def test_end_card_skipped_without_drawtext(self):
-        no_drawtext = frozenset(self.filters - {"drawtext"})
-        plan = self.plan([self.shot("a")], end_card={"text": "AI-generated", "seconds": 1})
-        with mock.patch.object(ffmpeg_bin, "ffmpeg_filters", return_value=no_drawtext):
-            result = render(plan)
-        self.assertEqual(len(result.warnings), 1)
-        self.assertIn("drawtext", result.warnings[0])
-        self.assertAlmostEqual(result.duration_s, 2.0, delta=0.1)
-
-    def test_end_card_skipped_without_font(self):
-        plan = self.plan([self.shot("a")], end_card={"text": "AI-generated", "seconds": 1})
-        with mock.patch.object(assemble, "find_font", return_value=None):
-            result = render(plan)
-        self.assertIn("font", result.warnings[0])
 
     def test_missing_filter_is_a_readable_error(self):
         fade = {"type": "crossfade", "seconds": 0.5}

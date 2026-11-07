@@ -240,6 +240,5 @@ def build_render_plan(project: Project, preview: bool, folder: Path | None = Non
         "shots": shots,
         "audio": audio,
         "metadata": _string_metadata(provenance(project)),
-        "end_card": {"text": project.export.endCardText, "seconds": project.export.endCardSeconds} if label.endCard else None,
         "captions_srt": None,
     }

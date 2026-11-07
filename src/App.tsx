@@ -10,6 +10,8 @@ import {
   updateSettings as updateSettingsApi,
 } from "./api";
 import { FirstLaunchLocaleBanner } from "./components/FirstLaunchLocaleBanner";
+import { TermsGate } from "./features/terms/TermsOfUse";
+import { TERMS_VERSION } from "./features/terms/termsLogic";
 import { changeLocale, normaliseLocale, SUPPORTED_LOCALES, type SupportedLocale } from "./i18n";
 import {
   performConvertModel,
@@ -829,6 +831,38 @@ export default function App() {
     voiceRuntime, voiceOpenRequest, setVoiceOpenRequest, refreshVoiceRuntime,
   };
 
+  // ── First-run terms of use ─────────────────────────────────
+  const [termsBusy, setTermsBusy] = useState(false);
+  const [termsError, setTermsError] = useState<string | null>(null);
+  const acceptTerms = async () => {
+    setTermsBusy(true);
+    setTermsError(null);
+    try {
+      const saved = await updateSettingsApi({ termsAcceptedVersion: TERMS_VERSION });
+      setWorkspace((current) => ({
+        ...current,
+        settings: {
+          ...current.settings,
+          termsAcceptedVersion: saved.settings.termsAcceptedVersion,
+          termsAcceptedAt: saved.settings.termsAcceptedAt,
+        },
+      }));
+    } catch (err) {
+      setTermsError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setTermsBusy(false);
+    }
+  };
+  const quitApp = async () => {
+    // Desktop build only; the web / dev build keeps the screen.
+    try {
+      const { exit } = await import("@tauri-apps/plugin-process");
+      await exit(0);
+    } catch {
+      // Not running inside the desktop shell.
+    }
+  };
+
   // ── Tab content ────────────────────────────────────────────
   const ActiveView = tabViewFor(activeTab);
   const content = <ActiveView ctx={ctx} />;
@@ -838,6 +872,15 @@ export default function App() {
       className="app-shell"
       style={{ "--ui-scale": uiScalePrefs.uiScale } as CSSProperties}
     >
+      {!loading ? (
+        <TermsGate
+          settings={workspace.settings}
+          onAgree={() => void acceptTerms()}
+          onQuit={() => void quitApp()}
+          busy={termsBusy}
+          error={termsError}
+        />
+      ) : null}
       <FirstLaunchLocaleBanner
         persistedLocale={workspace.settings?.locale}
         onPersistLocale={(locale) => {

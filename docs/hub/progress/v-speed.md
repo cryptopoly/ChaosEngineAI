@@ -5,7 +5,7 @@ status: built, in review
 # Progress: V-speed
 
 Updated: 2026-11-07. Owner: Claude (Opus agent). Branch: `feat/speed-warm-workers` (from `feat/home-studio`).
-Plan: [remaining-and-v2.md](../../plans/remaining-and-v2.md) section 2.3, [speed-quality.md](../../plans/speed-quality.md) C1, V1, I1, C2, C5, C3.
+Plan: [remaining-and-v2.md](https://github.com/cryptopoly/ChaosEngineAI/blob/feat/speed-warm-workers/docs/plans/remaining-and-v2.md) section 2.3, [speed-quality.md](https://github.com/cryptopoly/ChaosEngineAI/blob/feat/speed-warm-workers/docs/plans/speed-quality.md) C1, V1, I1, C2, C5, C3.
 
 ## Goal
 

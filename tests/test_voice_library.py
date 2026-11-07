@@ -294,6 +294,12 @@ class LibraryRouteTests(unittest.TestCase):
         self.assertEqual(sorted(deleted["deleted"]), sorted([speech["id"], transcript["id"]]))
         self.assertEqual(self.client.get("/api/voice/library").json()["items"], [])
 
+    def test_single_item_reports_where_its_audio_is(self) -> None:
+        item = self.client.post("/api/voice/library/speech", files={"audio": ("s.wav", b"RIFF", "audio/wav")}).json()
+        full = self.client.get(f"/api/voice/library/{item['id']}").json()
+        self.assertTrue(Path(full["audioPath"]).is_file())
+        self.assertNotIn("audioPath", self.client.get("/api/voice/library").json()["items"][0])
+
     def test_ids_and_missing_items(self) -> None:
         self.assertEqual(self.client.get("/api/voice/library/not-an-id").status_code, 400)
         self.assertEqual(self.client.get("/api/voice/library/1234567890_deadbeef").status_code, 404)

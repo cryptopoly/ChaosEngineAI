@@ -22,7 +22,7 @@ STORYBOARD_TOOLS: list[dict[str, Any]] = [
     {
         "name": "storyboard_project",
         "description": "Edit: film projects. create(name), list, get (shots, takes, timeline, revision), edit(fields: name, "
-        "defaults, export), undo, redo, delete, export (.chaosfilm bundle), import(project_id+file, or path).",
+        "defaults, export{aiLabel, loudnessLufs, captionsSrt, captionsBurn, stems}), undo, redo, delete, export (.chaosfilm), import.",
         "inputSchema": _obj({
             "action": {"type": "string", "enum": ["create", "list", "get", "edit", "undo", "redo", "delete", "export", "import"]},
             "project_id": _PID, "revision": _REV,
@@ -71,8 +71,32 @@ STORYBOARD_TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "storyboard_render",
-        "description": "Make: render the film to MP4 (preview: small and fast). Returns a job id; the output has the file name and download.",
-        "inputSchema": _obj({"project_id": _PID, "revision": _REV, "preview": {"type": "boolean"}}, ["project_id", "revision"]),
+        "description": "Make: render the film to MP4 (preview: small and fast). Returns a job id; the output has the file, download, "
+        "warnings and extras (captions, stems). A failed render can be resumed by calling again.",
+        "inputSchema": _obj({"project_id": _PID, "revision": _REV, "preview": {"type": "boolean"},
+                             "notify": {"type": "boolean", "description": "Show a system banner on this computer when it ends."}},
+                            ["project_id", "revision"]),
+    },
+    {
+        "name": "storyboard_captions",
+        "description": "Edit: captions. generate(clip_ids, language; transcribes voice clips, a job), export_srt (download), "
+        "set(clip_id, cues), add(start, end, text), edit(caption_id), remove(caption_id).",
+        "inputSchema": _obj({
+            "action": {"type": "string", "enum": ["generate", "export_srt", "set", "add", "edit", "remove"]},
+            "project_id": _PID, "revision": _REV,
+            "clip_ids": {"type": "array", "items": {"type": "string"}, "maxItems": 200, "description": "generate: voice clips (default all)."},
+            "language": {"type": "string", "maxLength": 16},
+            "clip_id": {"type": "string", "description": "set, add: the audio clip the captions belong to (none: the timeline's own)."},
+            "caption_id": {"type": "string", "maxLength": 64},
+            "cues": {"type": "array", "maxItems": 500, "items": {"type": "object"}, "description": "set: [{start, end, text}] seconds."},
+            "start": {"type": "number", "minimum": 0}, "end": {"type": "number", "minimum": 0},
+            "text": {"type": "string", "minLength": 1, "maxLength": 500},
+        }, ["action", "project_id"]),
+    },
+    {
+        "name": "storyboard_export_otio",
+        "description": "Make: write the cut as an OpenTimelineIO file for Resolve or Premiere. Returns the file, download and warnings.",
+        "inputSchema": _obj({"project_id": _PID}, ["project_id"]),
     },
 ]
 
@@ -270,12 +294,20 @@ def storyboard_generate(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
     return _submitted(STORE.submit("storyboard", f"storyboard {batch.id}", run, cancel=batch.cancel))
 
 
+def _extras(pid: str, files: list[str]) -> list[dict[str, Any]]:
+    """Files a render wrote next to the film (captions, stems): name plus download, never a local path."""
+    from backend_service.mcp_bridge.files import download_info
+
+    folder = _store().folder(pid)
+    return [{"file": rel, "download": download_info(folder / rel)} for rel in files if (folder / rel).is_file()]
+
+
 def storyboard_render(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
     from backend_service.routes.storyboard import start_render
     from backend_service.storyboard.render_adapter import RENDERS
 
     pid = str(args["project_id"])
-    job = _run(lambda: start_render(pid, int(args["revision"]), bool(args.get("preview", True))))
+    job = _run(lambda: start_render(pid, int(args["revision"]), bool(args.get("preview", True)), bool(args.get("notify", False))))
 
     def run() -> tuple[dict[str, Any], list[str]]:
         job.done.wait()
@@ -284,14 +316,67 @@ def storyboard_render(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
 
             raise GenerationCancelled("render cancelled")
         if job.state != "done":
-            raise RuntimeError(job.error or f"render {job.state}")
+            info = job.describe()
+            resume = (f" {info['shotsReady']} of {info['shotsTotal']} shots are rendered; call storyboard_render again to resume."
+                      if info.get("resumable") else "")
+            raise RuntimeError((job.error or f"render {job.state}") + resume)
         from backend_service.mcp_bridge.files import download_info
 
         # The file name and the download, not the local path (the job store adds download only for "path").
-        return {"file": job.out_path.name, "preview": job.preview, "projectId": pid,
-                "download": download_info(job.out_path)}, []
+        output: dict[str, Any] = {"file": job.out_path.name, "preview": job.preview, "projectId": pid,
+                                  "download": download_info(job.out_path), "extras": _extras(pid, job.extras)}
+        if job.warnings:
+            output["warnings"] = list(job.warnings)
+        return output, list(job.warnings)
 
     return _submitted(STORE.submit("storyboard", f"render {pid}", run, cancel=lambda: RENDERS.cancel(pid)))
+
+
+def storyboard_captions(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
+    from backend_service.mcp_bridge.files import download_info
+    from backend_service.storyboard import captions
+    from backend_service.storyboard.timeline import compute_timeline
+
+    action, pid, store = args["action"], str(args["project_id"]), _store()
+    if action == "export_srt":
+        project = _run(lambda: store.load(pid))
+        items = captions.cues(project, compute_timeline(project, ready_only=True))
+        if not items:
+            raise ToolError("There are no captions to export. Call storyboard_captions generate first.")
+        path = _run(lambda: captions.write_srt(project, store.folder(pid), items))
+        return {"file": path.name, "cues": len(items), "download": download_info(path)}
+    _need(args, "revision")
+    rev = int(args["revision"])
+    clip = {"clipId": args["clip_id"]} if "clip_id" in args else {}
+    if action == "generate":
+        language, clip_ids = str(args.get("language") or ""), list(args["clip_ids"]) if "clip_ids" in args else None
+
+        def run() -> tuple[dict[str, Any], list[str]]:
+            project, notes = captions.generate(store, pid, rev, clip_ids, language)
+            return {"projectId": pid, "revision": project.revision, "captions": len(project.captions)}, list(notes)
+
+        return _submitted(STORE.submit("voice", f"captions {pid}", run))
+    if action == "set":
+        _need(args, "cues")
+        return _summary(_op(args, "set_captions", {"cues": list(args["cues"]), **clip}))
+    if action == "add":
+        _need(args, "start", "end", "text")
+        return _summary(_op(args, "add_caption", {k: args[k] for k in ("start", "end", "text")} | clip))
+    _need(args, "caption_id")
+    if action == "edit":
+        changes = {k: args[k] for k in ("start", "end", "text") if k in args}
+        return _summary(_op(args, "edit_caption", {"captionId": args["caption_id"], **changes}))
+    return _summary(_op(args, "remove_caption", {"captionId": args["caption_id"]}))
+
+
+def storyboard_export_otio(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
+    from backend_service.mcp_bridge.files import download_info
+    from backend_service.storyboard import otio_export
+
+    pid, store = str(args["project_id"]), _store()
+    project = _run(lambda: store.load(pid))
+    path, warnings = _run(lambda: otio_export.write_otio(project, store.folder(pid)))
+    return {"file": path.name, "download": download_info(path), "warnings": warnings}
 
 
 STORYBOARD_HANDLERS: dict[str, Callable[[Any, dict[str, Any]], dict[str, Any]]] = {
@@ -300,4 +385,6 @@ STORYBOARD_HANDLERS: dict[str, Callable[[Any, dict[str, Any]], dict[str, Any]]] 
     "storyboard_audio": storyboard_audio,
     "storyboard_generate": storyboard_generate,
     "storyboard_render": storyboard_render,
+    "storyboard_captions": storyboard_captions,
+    "storyboard_export_otio": storyboard_export_otio,
 }

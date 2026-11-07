@@ -471,8 +471,28 @@ def job_status(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
 
 
 def wait_for_job(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
+    import time
+
+    from backend_service.mcp_bridge import progress
+
     job = _job(args)
-    job.done.wait(timeout=min(60.0, float(args.get("timeout_seconds", 30))))
+    deadline = time.monotonic() + min(60.0, float(args.get("timeout_seconds", 30)))
+    started = time.monotonic()
+    # With a progressToken the wait is cut into 1 s steps that each send a notification; without one it is one wait.
+    while not job.done.is_set() and (left := deadline - time.monotonic()) > 0:
+        if progress.PROGRESS.get() is None:
+            job.done.wait(timeout=left)
+            break
+        job.done.wait(timeout=min(1.0, left))
+        snap = job.describe().get("progress") or {}
+        step, total = snap.get("step"), snap.get("totalSteps")
+        text = f"{job.state}" + (f", {snap['phase']}" if snap.get("phase") else "")
+        if job.state == "queued":
+            text += f", position {job.describe().get('queuePosition', 0)}"
+        if isinstance(step, (int, float)) and isinstance(total, (int, float)) and total:
+            progress.report(float(step), float(total), text)
+        else:
+            progress.report(round(time.monotonic() - started, 1), None, text)
     info = job.describe()
     if not job.done.is_set():
         info["next"] = "Not finished. Call wait_for_job again."
@@ -521,6 +541,16 @@ from backend_service.mcp_bridge.music_tools import MUSIC_HANDLERS, MUSIC_TOOLS  
 
 TOOLS.extend(MUSIC_TOOLS)
 HANDLERS.update(MUSIC_HANDLERS)
+
+from backend_service.mcp_bridge.voice_clone_tool import CLONE_HANDLERS, CLONE_TOOLS  # noqa: E402
+
+TOOLS.extend(CLONE_TOOLS)
+HANDLERS.update(CLONE_HANDLERS)
+
+from backend_service.mcp_bridge.library_tools import LIBRARY_HANDLERS, LIBRARY_TOOLS  # noqa: E402
+
+TOOLS.extend(LIBRARY_TOOLS)
+HANDLERS.update(LIBRARY_HANDLERS)
 
 
 from backend_service.mcp_bridge.scopes import apply_annotations  # noqa: E402

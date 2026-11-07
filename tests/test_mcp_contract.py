@@ -42,7 +42,12 @@ EXAMPLES = {
     "storyboard_shot": {"action": "lock", "project_id": "p", "revision": 1, "shot_id": "s"},
     "storyboard_audio": {"action": "remove", "project_id": "p", "revision": 1, "clip_id": "c"},
     "storyboard_generate": {"project_id": "p", "revision": 1},
-    "storyboard_render": {"project_id": "p", "revision": 1, "preview": True},
+    "storyboard_render": {"project_id": "p", "revision": 1, "preview": True, "notify": False},
+    "storyboard_captions": {"action": "add", "project_id": "p", "revision": 1, "start": 0, "end": 1, "text": "Hi"},
+    "storyboard_export_otio": {"project_id": "p"},
+    "music_library": {"action": "rename", "track_id": "t", "title": "New"},
+    "list_cloned_voices": {},
+    "speak_cloned": {"voice_id": "v", "text": "Hello"},
 }
 
 
@@ -108,7 +113,7 @@ class ToolContractTests(unittest.TestCase):
 
     def test_every_tool_has_a_scope(self):
         for tool in TOOLS:
-            self.assertIn(scopes.required_scope(tool["name"], EXAMPLES[tool["name"]]), ("read", "generate", "files"))
+            self.assertIn(scopes.required_scope(tool["name"], EXAMPLES[tool["name"]]), ("read", "generate", "files", "clone"))
 
     def test_instructions_name_music_and_storyboard(self):
         for word in ("music", "storyboard", "list_jobs", "upload_file"):

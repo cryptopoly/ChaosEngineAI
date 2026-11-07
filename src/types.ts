@@ -243,3 +243,5 @@ export type {
   VoiceLibraryPatch,
   VoiceLibrarySummary,
 } from "./types/voice";
+
+export type * from "./types/storyboard";

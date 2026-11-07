@@ -742,3 +742,27 @@ export {
   stopVoiceWorker,
 } from "./voice";
 export type { TranscribeOptions, TranscribeResult, SpokenSentence } from "./voice";
+
+export {
+  cancelStoryboardBatch,
+  cancelStoryboardRender,
+  createStoryboardProject,
+  deleteStoryboardProject,
+  exportStoryboardBundle,
+  fetchStoryboardFileBlobUrl,
+  getStoryboardBatch,
+  getStoryboardProject,
+  getStoryboardRender,
+  importStoryboardBundle,
+  listStoryboardProjects,
+  parseRevisionConflict,
+  redoStoryboard,
+  runStoryboardOp,
+  startStoryboardBatch,
+  startStoryboardRender,
+  StoryboardApiError,
+  StoryboardRevisionConflict,
+  storyboardFilePath,
+  storyboardOps,
+  undoStoryboard,
+} from "./storyboard";

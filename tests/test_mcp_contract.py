@@ -29,7 +29,7 @@ EXAMPLES = {
     "list_models": {"kind": "video"},
     "list_voices": {},
     "list_jobs": {"state": "done", "limit": 5},
-    "generate_image": {"prompt": "a red cube", "width": 512, "height": 512, "seed": 1},
+    "generate_image": {"prompt": "a red cube", "width": 512, "height": 512, "seed": 1, "project_id": "p", "project_name": "Harbour"},
     "generate_video": {"prompt": "waves", "seconds": 3},
     "speak": {"text": "Hello", "speed": 1.0},
     "upload_file": {"data_base64": "iVBORw0KGgo="},

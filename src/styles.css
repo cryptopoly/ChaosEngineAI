@@ -13149,6 +13149,125 @@ button.licence-chip:focus-visible {
   color: var(--danger);
 }
 
+/* Project dropdown and header over the galleries and libraries. */
+.project-filter {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.project-filter__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 160px;
+  max-width: 260px;
+  cursor: pointer;
+  text-align: left;
+}
+.project-filter__current {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.project-filter__panel {
+  position: fixed;
+  z-index: 1000;
+  min-width: 240px;
+  max-width: 320px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--panel-alt);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+.project-filter__search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px 6px;
+  color: var(--muted);
+}
+.project-filter__search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  outline: none;
+}
+.project-filter__list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  max-height: 280px;
+  overflow-y: auto;
+}
+.project-filter__option {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.project-filter__option:hover,
+.project-filter__option:focus-visible,
+.project-filter__option.active {
+  background: var(--panel);
+  outline: none;
+}
+.project-filter__option:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--accent, currentColor);
+}
+.project-card-badge {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-transform: none;
+  letter-spacing: normal;
+  vertical-align: bottom;
+}
+.project-filter__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.project-filter__empty {
+  margin: 0;
+  padding: 7px 10px;
+  font-size: 0.85rem;
+}
+.project-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--panel-alt);
+}
+.project-header__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
 /* ---------------------------------------------------------------- *
  * Music: Models, Studio and Library. Tokens only; the layouts fold   *
  * at 820 px like the other Studios.                                  *

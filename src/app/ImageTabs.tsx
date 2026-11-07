@@ -166,6 +166,7 @@ export function ImageGalleryView({ ctx }: { ctx: AppTabContext }) {
   return (
     <ImageGalleryTab
       imageOutputs={imgState.imageOutputs}
+      videoOutputs={ctx.videoState.videoOutputs}
       filteredImageOutputs={imgState.filteredImageOutputs}
       imageCatalog={imgState.imageCatalog}
       imageBusy={imgState.imageBusy}

@@ -118,6 +118,9 @@ def create(
     """Save a new item; ``audio_file`` (and a clone's ``consent_file``) are moved into the library."""
     if kind not in KINDS:
         raise ValueError(f"Unknown item kind {kind!r}.")
+    from backend_service.helpers.provenance import stamp
+
+    fields = stamp(fields)
     ext = (audio_ext or "").lower()
     if audio_file is not None and ext not in AUDIO_EXTENSIONS:
         raise ValueError(f"Unsupported audio type {ext!r}.")
@@ -137,7 +140,8 @@ def create(
         "segments": fields.get("segments") or [],
         "speakers": fields.get("speakers") or {},
     }
-    for key in ("language", "model", "voice", "durationS", "source", "task", "speed", "clonedVoice", "cloneVoiceId"):
+    for key in ("language", "model", "voice", "durationS", "source", "task", "speed", "clonedVoice", "cloneVoiceId",
+                "projectId", "projectName", "shotId"):
         if fields.get(key) is not None:
             item[key] = fields[key]
     with _LOCK:

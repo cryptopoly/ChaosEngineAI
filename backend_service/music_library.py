@@ -70,6 +70,9 @@ def _title_from(text: str, fallback: str = "Untitled track") -> str:
 
 def create(fields: dict[str, Any], audio_file: Path, audio_ext: str = ".flac") -> dict[str, Any]:
     """Save a new track; ``audio_file`` (written by the worker) is moved into the library."""
+    from backend_service.helpers.provenance import stamp
+
+    fields = stamp(fields)
     ext = audio_ext.lower()
     if ext not in AUDIO_EXTENSIONS:
         raise ValueError(f"Unsupported audio type {ext!r}.")
@@ -88,7 +91,7 @@ def create(fields: dict[str, Any], audio_file: Path, audio_ext: str = ".flac") -
         "audio": ext,
     }
     for key in ("model", "modelName", "engine", "seed", "durationS", "sampleRate", "channels", "bpm", "key",
-                "instrumental", "variation", "jobSeconds", "peakFootprintGb", "source", "sizeBytes", "tagged", "loop", "licence"):
+                "instrumental", "variation", "jobSeconds", "peakFootprintGb", "source", "sizeBytes", "tagged", "loop", "licence", "projectId", "projectName", "shotId"):
         if fields.get(key) is not None:
             item[key] = fields[key]
     with _LOCK:

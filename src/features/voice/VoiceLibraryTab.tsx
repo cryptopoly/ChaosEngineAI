@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { MediaLibraryCard } from "../../components/MediaLibraryCard";
+import { ProjectFilter, ProjectHeader } from "../../components/ProjectFilter";
 import { SendToStoryboardMenu } from "../../components/SendToStoryboardMenu";
 import { Panel } from "../../components/Panel";
 import { deleteLibraryItems, getLibrary, getLibraryAudio, getLibraryItem } from "../../api";
 import type { TabId, VoiceLibraryKind, VoiceLibrarySummary } from "../../types";
 import type { SendItem } from "../storyboard/sendToStoryboardLogic";
 import { useSendToStoryboard, type UseSendToStoryboard } from "../storyboard/useSendToStoryboard";
+import { ALL_PROJECTS, filterByProject, projectOptions, untaggedCount } from "../../utils/galleryProject";
+import { writeOpenProjectId } from "../storyboard/storyboardLogic";
 import { downloadBlob, formatClock } from "./audio";
 import { exportTranscript, speakerNamer, type ExportFormat } from "./studio/transcript";
 
@@ -84,6 +87,7 @@ function LibraryCard({
     item.durationS != null ? formatClock(item.durationS) : null,
     item.speakerCount > 0 ? t("voice.library.speakers", { defaultValue: "{n} speakers", n: item.speakerCount }) : null,
     item.kind === "speech" && item.voice ? item.voice : null,
+    item.projectName ? t("galleryProject.chip", { defaultValue: "From project {name}", name: item.projectName }) : null,
   ].filter(Boolean);
 
   // Saved speech is the voice-over a film can use; the file path comes from the server when it is sent.
@@ -177,6 +181,7 @@ export function VoiceLibraryTab({ backendOnline, onOpenTranscript, onTabChange }
   const [loaded, setLoaded] = useState(false);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("");
+  const [projectFilter, setProjectFilter] = useState(ALL_PROJECTS);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const request = useRef(0);
@@ -216,6 +221,10 @@ export function VoiceLibraryTab({ backendOnline, onOpenTranscript, onTabChange }
       setError(err instanceof Error ? err.message : String(err));
     }
   };
+
+  const projects = useMemo(() => projectOptions(items), [items]);
+  const picked = projects.find((project) => project.id === projectFilter) ?? null;
+  const shownItems = filterByProject(items, projectFilter);
 
   const filters = useMemo(
     () =>
@@ -263,6 +272,14 @@ export function VoiceLibraryTab({ backendOnline, onOpenTranscript, onTabChange }
                   </button>
                 ))}
               </div>
+              <ProjectFilter
+                options={projects}
+                value={projectFilter}
+                onChange={setProjectFilter}
+                untagged={untaggedCount(items)}
+                total={items.length}
+                showLabel={false}
+              />
               {selected.size > 0 ? (
                 <button type="button" className="secondary-button" onClick={() => void remove([...selected])}>
                   {t("voice.library.deleteSelected", { defaultValue: "Delete selected ({n})", n: selected.size })}
@@ -274,19 +291,36 @@ export function VoiceLibraryTab({ backendOnline, onOpenTranscript, onTabChange }
                 {error}
               </p>
             ) : null}
+            {picked ? (
+              <ProjectHeader
+                name={picked.name}
+                counts={{
+                  speech: shownItems.filter((item) => item.kind === "speech").length,
+                  transcripts: shownItems.filter((item) => item.kind === "transcript").length,
+                }}
+                onOpen={
+                  storyboard.enabled
+                    ? () => {
+                        writeOpenProjectId(picked.id);
+                        onTabChange?.("story-board");
+                      }
+                    : undefined
+                }
+              />
+            ) : null}
             {!loaded ? (
               <p className="muted-text">{t("voice.library.loading", { defaultValue: "Loading…" })}</p>
-            ) : items.length === 0 ? (
+            ) : shownItems.length === 0 ? (
               <div className="empty-state">
                 <p className="muted-text">
-                  {query || filter
+                  {query || filter || projectFilter !== ALL_PROJECTS
                     ? t("voice.library.noMatch", { defaultValue: "Nothing matches." })
                     : t("voice.library.empty", { defaultValue: "Nothing here yet. Transcripts made in Voice Studio are kept here, and so is speech you save." })}
                 </p>
               </div>
             ) : (
               <div className="voice-library__grid">
-                {items.map((item) => (
+                {shownItems.map((item) => (
                   <LibraryCard
                     key={item.id}
                     item={item}

@@ -2717,6 +2717,12 @@ PHASES = {
     11: phase_11, 17: phase_17,
 }
 
+# Stream phases live in scripts/e2e_phases/ (one file each); scripts/ is this file's folder.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from e2e_phases.phase_14 import phase_14  # noqa: E402
+
+PHASES[14] = phase_14
+
 
 def _write_reports(report_dir: Path, started: datetime, ended: datetime,
                     phases: list[PhaseResult], cap: Capability) -> tuple[Path, Path]:

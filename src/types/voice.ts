@@ -38,6 +38,8 @@ export interface VoiceSettings {
   /** Conversation mode: speaking over the model interrupts it. */
   bargeIn: boolean;
   idleUnloadMinutes: number;
+  /** Agents and other machines may use cloned voices (off by default; only this window can change it). */
+  allowAgentCloning?: boolean;
 }
 
 export interface VoiceInstallJob {

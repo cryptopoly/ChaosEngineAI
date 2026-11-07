@@ -2692,10 +2692,17 @@ def phase_11(cap: Capability) -> PhaseResult:
 # ---------------------------------------------------------------------------
 
 
+def phase_17(cap: Capability) -> PhaseResult:
+    """Agent bridge v2; the checks live in scripts/e2e_phases/phase_17.py."""
+    from e2e_phases.phase_17 import run
+
+    return run(cap, sys.modules[__name__])
+
+
 PHASES = {
     0: phase_0, 1: phase_1, 2: phase_2, 3: phase_3,
     4: phase_4, 5: phase_5, 6: phase_6, 7: phase_7, 8: phase_8, 9: phase_9, 10: phase_10,
-    11: phase_11,
+    11: phase_11, 17: phase_17,
 }
 
 

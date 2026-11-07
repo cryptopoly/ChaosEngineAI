@@ -257,6 +257,9 @@ def _default_settings(default_port: int, data_dir: Path) -> dict[str, Any]:
         # to the top and so the user has a durable "don't delete this one"
         # signal across app restarts.
         "favoriteModelRefs": [],
+        # D-34: generated music carries a machine-readable "made with AI" tag (FLAC Vorbis comment).
+        # On by default; the switch is for private use.
+        "musicEmbedTag": True,
     }
 
 
@@ -366,6 +369,7 @@ def _load_settings(path: Path, default_port: int, data_dir: Path) -> dict[str, A
     settings["autoStartServer"] = bool(payload.get("autoStartServer", False))
     # Phase 3.3: advanced-mode logprobs toggle.
     settings["advancedLogprobs"] = bool(payload.get("advancedLogprobs", False))
+    settings["musicEmbedTag"] = bool(payload.get("musicEmbedTag", True))
 
     settings["launchPreferences"] = _normalize_launch_preferences(payload.get("launchPreferences"))
 

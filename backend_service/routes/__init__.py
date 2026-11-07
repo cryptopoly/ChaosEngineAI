@@ -31,6 +31,8 @@ def register_routes(app: FastAPI) -> None:
     from .voice import router as voice_router
     from .agent import router as agent_router
     from .storyboard import router as storyboard_router
+    from .music import router as music_router
+    from .music_library import router as music_library_router
 
     app.include_router(auth_router)
     app.include_router(health_router)
@@ -57,3 +59,5 @@ def register_routes(app: FastAPI) -> None:
     app.include_router(voice_router)
     app.include_router(agent_router)
     app.include_router(storyboard_router)
+    app.include_router(music_router)
+    app.include_router(music_library_router)

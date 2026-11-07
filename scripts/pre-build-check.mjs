@@ -166,6 +166,8 @@ console.log("[4/9] Licence notices...");
       "dflash-mlx",
       "turboquant",
       "imageio-ffmpeg",
+      "ACE-Step-1.5",
+      "pytorch-wavelets",
     ];
     const missing = required.filter((dep) => !content.includes(dep.toLowerCase()));
     if (missing.length === 0) {

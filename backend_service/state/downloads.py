@@ -55,6 +55,10 @@ from backend_service.helpers.video import (
     _video_download_validation_error,
     _video_repo_allow_patterns,
 )
+from backend_service.helpers.music import (
+    music_download_validation_error,
+    music_repo_revision,
+)
 from backend_service.state._helpers import _read_text_tail, _spawn_snapshot_download
 
 
@@ -227,11 +231,13 @@ def start_download(
                         "library", "info",
                         f"Skipping {_bytes_to_gb(skipped_bytes):.1f} GB of weight shards no index uses in {repo}.",
                     )
+                # Music repos (third branch after image and video) are pinned to a revision.
                 process = _spawn_snapshot_download(
                     repo,
                     env,
                     process_log,
                     allow_patterns=effective_allow_patterns,
+                    revision=music_repo_revision(repo),
                 )
                 with state._lock:
                     if state._download_tokens.get(repo) == download_token:
@@ -322,7 +328,11 @@ def start_download(
                 if validation_error_fn is not None
                 else _video_download_validation_error(repo)
             )
-            validation_error = _image_download_validation_error(repo) or video_validation_error
+            validation_error = (
+                _image_download_validation_error(repo)
+                or video_validation_error
+                or music_download_validation_error(repo)
+            )
             if validation_error:
                 with state._lock:
                     if state._download_tokens.get(repo) != download_token:
@@ -428,6 +438,19 @@ def unload_repo_from_runtimes(
 
     try:
         state.video_runtime.unload(repo)
+    except Exception:
+        pass
+
+    # Music: stop the worker (it may hold the weights) and drop the checkpoints mirror of this repo.
+    try:
+        from backend_service.helpers.music import find_music_variant
+
+        variant = find_music_variant(repo)
+        if variant is not None:
+            from backend_service import music_env, music_runtime
+
+            music_runtime.unload()
+            music_env.remove_checkpoints(variant)
     except Exception:
         pass
 

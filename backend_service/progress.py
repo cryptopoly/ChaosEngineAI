@@ -234,3 +234,7 @@ class GenerationCancelled(RuntimeError):
 # ``ChaosEngineState`` constructor signatures.
 IMAGE_PROGRESS = ProgressTracker(kind="image")
 VIDEO_PROGRESS = ProgressTracker(kind="video")
+# Music phases, in order (the Music Studio's LiveProgress): load the model, read the prompt,
+# compose (diffusion steps), decode audio, save into the library.
+MUSIC_PHASES = ("load", "encode", "compose", "decode", "save")
+MUSIC_PROGRESS = ProgressTracker(kind="music")

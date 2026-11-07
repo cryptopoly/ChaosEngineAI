@@ -8,9 +8,12 @@ import time
 from typing import Any, Callable
 
 from backend_service.helpers.job_queue import HEAVY_JOBS
-from backend_service.progress import GenerationCancelled, IMAGE_PROGRESS, VIDEO_PROGRESS
+from backend_service.progress import GenerationCancelled, IMAGE_PROGRESS, MUSIC_PROGRESS, VIDEO_PROGRESS
 
 MAX_KEPT = 100
+# Kinds whose running job can be cancelled through their progress tracker (music: the worker's
+# cancel, then a kill after 3 s).
+_TRACKERS = {"image": IMAGE_PROGRESS, "video": VIDEO_PROGRESS, "music": MUSIC_PROGRESS}
 # A runner returns (output, notes).
 Runner = Callable[[], tuple[dict[str, Any], list[str]]]
 
@@ -41,7 +44,7 @@ class Job:
         if self.state == "queued" and self.ticket is not None:
             info["queuePosition"] = max(HEAVY_JOBS.position(self.ticket), 0)
         if self.state == "running":
-            tracker = {"image": IMAGE_PROGRESS, "video": VIDEO_PROGRESS}.get(self.kind)
+            tracker = _TRACKERS.get(self.kind)
             if tracker is not None:
                 snap = tracker.snapshot()
                 info["progress"] = {
@@ -113,7 +116,7 @@ class JobStore:
             return bool(job.cancel_fn())
         if job.state == "queued":
             return HEAVY_JOBS.cancel_waiting(ticket_id=job.ticket.id) > 0
-        tracker = {"image": IMAGE_PROGRESS, "video": VIDEO_PROGRESS}.get(job.kind)
+        tracker = _TRACKERS.get(job.kind)
         return bool(tracker and tracker.request_cancel())
 
 

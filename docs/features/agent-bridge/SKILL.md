@@ -1,6 +1,6 @@
 ---
 name: chaosengine
-description: Make images, video clips, speech and transcripts with the local ChaosEngineAI app through its MCP tools (generate_image, generate_video, speak, transcribe). Use when the user asks for a picture, poster, clip, voiceover or transcript made locally, or mentions ChaosEngineAI.
+description: Make images, video clips, speech, music and transcripts with the local ChaosEngineAI app through its MCP tools (generate_image, generate_video, speak, make_music, transcribe). Use when the user asks for a picture, poster, clip, voiceover, song, soundtrack or transcript made locally, or mentions ChaosEngineAI.
 ---
 
 # ChaosEngineAI tools
@@ -18,7 +18,7 @@ open ChaosEngineAI > Settings > Integrations > Agent access, switch it on, and r
 4. Use `seconds` for video, not frames. Read the job `notes`: they list every size or frame correction.
 5. A finished job gives a file path. Use that path for editing, sharing or placing in a project. Tell the
    user the path.
-6. Video takes minutes. Image takes seconds to a minute. Speech is quick.
+6. Video takes minutes. Image takes seconds to a minute. Speech is quick. Music takes about 1 s per 10 s of audio once loaded (about 25 s more the first time).
 7. If a job fails with a memory message, report the numbers to the user. Do not retry in a loop.
 
 ## Typical flow
@@ -42,3 +42,7 @@ Pass the path of an earlier output as an input image. Only models with `acceptsI
 ## Making a short film (storyboard)
 
 `storyboard_project` create, then `storyboard_shot` add one shot per beat (`stillPrompt`, `motionPrompt`, `seconds`; `startFrom: previous-shot` continues from the last frame). Every edit needs the `revision` from the last answer; if it is refused, call `storyboard_project` get and retry. `storyboard_generate` makes new takes (stills first, then clips); `wait_for_job`, then `get` to check statuses. To redo shots, `storyboard_shot` redo them and generate again: other shots are untouched, and shots that continue from a redone one turn `stale`. Add sound with `storyboard_audio` (anchor voice to its shot), then `storyboard_render` with `preview` true; render the final with `preview` false and give the user the path.
+
+## Music
+
+`list_models` kind `music`, then `make_music` with a style `caption` (genre, instruments, mood, voice) and `lyrics` with `[verse]` / `[chorus]` tags, or `instrumental: true`; `seconds` 10 to 600; the same `seed` gives the same track. `variations` 2 or 4 gives takes with seeds `seed`, `seed+1`, ... in `output.tracks`. The result is a FLAC in the Music Library. Write your own lyrics; do not name an artist in the caption, describe the sound. When a storyboard has a music lane, ask for clips with "no music" in the prompt so the clip's own sound does not fight the soundtrack.

@@ -115,6 +115,12 @@
       "cancelGeneration": "Cancelar geração",
       "close": "Fechar",
       "done": "Concluído"
+    },
+    "ltx2": {
+      "install": null,
+      "installing": null,
+      "notInstalled": null,
+      "retry": null
     }
   },
   "progress": {
@@ -253,7 +259,8 @@
       "browseSmaller": "Navegar por modelos menores",
       "reasonDangerOver": "O modelo precisa de ~{model} GB só para manter seus pesos + text encoder. Em {platform} com {total} GB no total, o working set estimado é ~{working} GB, então o modelo sozinho já ultrapassa esse valor. Mesmo imagens pequenas provavelmente travariam o backend. Tente um modelo menor (SD 1.5 ~4 GB, SDXL ~13 GB) ou uma máquina com mais memória.",
       "reasonDangerNear": "O modelo precisa de ~{model} GB só para manter seus pesos + text encoder, e esta execução tem pico em torno de ~{peak} GB. Em {platform} com {total} GB no total, isso está acima do limiar de alto risco (~{highRisk} GB) e próximo do working set estimado (~{working} GB). A geração provavelmente travará o backend; reduza a resolução ou escolha um modelo menor.",
-      "reasonCaution": "O modelo precisa de ~{model} GB só para manter seus pesos + text encoder. Em {platform} com {total} GB no total, isso está acima do alvo conservador de conforto (~{comfort} GB) mas abaixo do working set estimado (~{working} GB). A geração pode rodar lentamente ou falhar; reduza a resolução se ficar instável."
+      "reasonCaution": "O modelo precisa de ~{model} GB só para manter seus pesos + text encoder. Em {platform} com {total} GB no total, isso está acima do alvo conservador de conforto (~{comfort} GB) mas abaixo do working set estimado (~{working} GB). A geração pode rodar lentamente ou falhar; reduza a resolução se ficar instável.",
+      "resourceEstimate": null
     },
     "recent": {
       "subtitle": "{recent} mais recentes de {total} gerações salvas",
@@ -439,7 +446,8 @@
       "guidanceLtxWarning": "LTX-Video é um modelo flow-matching — CFG acima de ~3,5 supersatura e produz saída borrada / arco-íris. Diminua para 3 para os resultados mais limpos.",
       "randomSeed": "Seed aleatória",
       "seedPlaceholder": "Seed (inteiro)",
-      "maxPixelsNote": "{name} renderiza no máximo {megapixels} megapixels por quadro; este tamanho é reduzido para caber, mantendo a proporção."
+      "maxPixelsNote": "{name} renderiza no máximo {megapixels} megapixels por quadro; este tamanho é reduzido para caber, mantendo a proporção.",
+      "seed": null
     },
     "clipLength": {
       "line": "Duração do clipe: {seconds}s ({frames} quadros ÷ {fps} fps)"
@@ -534,7 +542,23 @@
     "sound": {
       "badge": "Som",
       "badgeTooltip": "Este clipe tem som. Ative-o com o controle de volume do player."
-    }
+    },
+    "capacityLine": {
+      "short": null,
+      "withModel": null
+    },
+    "device": {
+      "apple": null,
+      "appleDetected": null,
+      "appleMlx": null,
+      "cpuDetected": null,
+      "gpu": null,
+      "gpuDetected": null
+    },
+    "ltx2": {
+      "engineMessage": null
+    },
+    "willLoadHint": null
   },
   "imageGallery": {
     "subtitle": {

@@ -115,6 +115,12 @@
       "cancelGeneration": "取消生成",
       "close": "關閉",
       "done": "完成"
+    },
+    "ltx2": {
+      "install": null,
+      "installing": null,
+      "notInstalled": null,
+      "retry": null
     }
   },
   "progress": {
@@ -253,7 +259,8 @@
       "browseSmaller": "瀏覽較小型的模型",
       "reasonDangerOver": "模型光是要保存權重 + 文字編碼器就需要約 {model} GB。在 {platform} 上,總共 {total} GB,估計工作集約為 {working} GB,因此光是模型本身就已超出。即使是小型影像也可能讓後端崩潰。請嘗試較小型的模型 (SD 1.5 約 4 GB、SDXL 約 13 GB) 或記憶體較多的機器。",
       "reasonDangerNear": "模型光是要保存權重 + 文字編碼器就需要約 {model} GB,此次執行峰值約 {peak} GB。在 {platform} 上,總共 {total} GB,這已超過高風險閾值 (約 {highRisk} GB),並接近估計的工作集 (約 {working} GB)。生成可能會讓後端崩潰;請降低解析度或選擇較小型的模型。",
-      "reasonCaution": "模型光是要保存權重 + 文字編碼器就需要約 {model} GB。在 {platform} 上,總共 {total} GB,這已超過保守的舒適目標 (約 {comfort} GB),但仍低於估計的工作集 (約 {working} GB)。生成可能會緩慢或失敗;若變得不穩定請降低解析度。"
+      "reasonCaution": "模型光是要保存權重 + 文字編碼器就需要約 {model} GB。在 {platform} 上,總共 {total} GB,這已超過保守的舒適目標 (約 {comfort} GB),但仍低於估計的工作集 (約 {working} GB)。生成可能會緩慢或失敗;若變得不穩定請降低解析度。",
+      "resourceEstimate": null
     },
     "recent": {
       "subtitle": "已儲存 {total} 個生成,顯示最新 {recent} 個",
@@ -439,7 +446,8 @@
       "guidanceLtxWarning": "LTX-Video 是 flow-matching 模型 — CFG 高於約 3.5 會過度飽和,產生模糊 / 彩虹色輸出。降至 3 以取得最乾淨的結果。",
       "randomSeed": "隨機種子",
       "seedPlaceholder": "種子 (整數)",
-      "maxPixelsNote": "{name} 每幀最多渲染 {megapixels} 百萬像素；此尺寸會依比例縮小以符合上限。"
+      "maxPixelsNote": "{name} 每幀最多渲染 {megapixels} 百萬像素；此尺寸會依比例縮小以符合上限。",
+      "seed": null
     },
     "clipLength": {
       "line": "片段長度:{seconds} 秒 ({frames} 幀 ÷ {fps} fps)"
@@ -534,7 +542,23 @@
     "sound": {
       "badge": "聲音",
       "badgeTooltip": "此片段帶有聲音。請用播放器的音量控制開啟。"
-    }
+    },
+    "capacityLine": {
+      "short": null,
+      "withModel": null
+    },
+    "device": {
+      "apple": null,
+      "appleDetected": null,
+      "appleMlx": null,
+      "cpuDetected": null,
+      "gpu": null,
+      "gpuDetected": null
+    },
+    "ltx2": {
+      "engineMessage": null
+    },
+    "willLoadHint": null
   },
   "imageGallery": {
     "subtitle": {

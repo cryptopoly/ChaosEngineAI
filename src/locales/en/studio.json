@@ -115,6 +115,12 @@
       "cancelGeneration": "Cancel generation",
       "close": "Close",
       "done": "Done"
+    },
+    "ltx2": {
+      "install": "Install LTX-2.3 engine",
+      "installing": "Installing…",
+      "notInstalled": "This model runs on the LTX-2.3 MLX engine, which is not installed yet. It installs into its own environment (about 1 GB) and does not change the app's packages.",
+      "retry": "Retry install"
     }
   },
   "progress": {
@@ -253,7 +259,8 @@
       "browseSmaller": "Browse smaller models",
       "reasonDangerOver": "The model needs ~{model} GB just to hold its weights + text encoder. On {platform} with {total} GB total, the estimated working set is ~{working} GB, so the model alone is already over that. Even small images would likely crash the backend. Try a smaller model (SD 1.5 is ~4 GB, SDXL ~13 GB) or a machine with more memory.",
       "reasonDangerNear": "The model needs ~{model} GB just to hold its weights + text encoder, and this run peaks around ~{peak} GB. On {platform} with {total} GB total, that is above the high-risk threshold (~{highRisk} GB) and close to the estimated working set (~{working} GB). Generation is likely to crash the backend; lower the resolution or choose a smaller model.",
-      "reasonCaution": "The model needs ~{model} GB just to hold its weights + text encoder. On {platform} with {total} GB total, that is above the conservative comfort target (~{comfort} GB) but below the estimated working set (~{working} GB). Generation may run slowly or fail; lower the resolution if it becomes unstable."
+      "reasonCaution": "The model needs ~{model} GB just to hold its weights + text encoder. On {platform} with {total} GB total, that is above the conservative comfort target (~{comfort} GB) but below the estimated working set (~{working} GB). Generation may run slowly or fail; lower the resolution if it becomes unstable.",
+      "resourceEstimate": "Model ≈ {model} · this run peak ≈ {peak} of ~{total} total."
     },
     "recent": {
       "subtitle": "{recent} newest of {total} saved generations",
@@ -439,7 +446,8 @@
       "guidanceLtxWarning": "LTX-Video is a flow-matching model — CFG above ~3.5 over-saturates and produces blurred / rainbow output. Lower to 3 for the cleanest results.",
       "randomSeed": "Random seed",
       "seedPlaceholder": "Seed (integer)",
-      "maxPixelsNote": "{name} renders at most {megapixels} megapixels per frame; this size is reduced to fit, keeping its shape."
+      "maxPixelsNote": "{name} renders at most {megapixels} megapixels per frame; this size is reduced to fit, keeping its shape.",
+      "seed": "Seed"
     },
     "clipLength": {
       "line": "Clip length: {seconds}s ({frames} frames ÷ {fps} fps)"
@@ -534,7 +542,23 @@
     "sound": {
       "badge": "Sound",
       "badgeTooltip": "This clip has sound. Turn it on with the volume control on the player."
-    }
+    },
+    "capacityLine": {
+      "short": "{device} · {memory} total · this run peak ≈ {peak}",
+      "withModel": "{device} · {memory} total · model ≈ {model}, this run peak ≈ {peak}"
+    },
+    "device": {
+      "apple": "Apple Silicon",
+      "appleDetected": "Apple Silicon (detected)",
+      "appleMlx": "Apple Silicon (MLX)",
+      "cpuDetected": "CPU (detected)",
+      "gpu": "GPU",
+      "gpuDetected": "GPU (detected)"
+    },
+    "ltx2": {
+      "engineMessage": "This model runs on its own MLX engine (ltx-2-mlx) on the Apple GPU, with sound."
+    },
+    "willLoadHint": "The selected model will be loaded into memory on the next generate. First load can take a minute for the larger variants."
   },
   "imageGallery": {
     "subtitle": {

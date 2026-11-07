@@ -94,7 +94,8 @@
       "ram": "内存",
       "compressed": "压缩后",
       "context": "上下文",
-      "status": "状态"
+      "status": "状态",
+      "released": null
     },
     "status": {
       "downloading": "下载中",

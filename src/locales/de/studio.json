@@ -115,6 +115,12 @@
       "cancelGeneration": "Generierung abbrechen",
       "close": "Schließen",
       "done": "Fertig"
+    },
+    "ltx2": {
+      "install": null,
+      "installing": null,
+      "notInstalled": null,
+      "retry": null
     }
   },
   "progress": {
@@ -253,7 +259,8 @@
       "browseSmaller": "Kleinere Modelle durchsuchen",
       "reasonDangerOver": "Das Modell benötigt ~{model} GB allein, um seine Gewichte + den Text-Encoder zu halten. Auf {platform} mit insgesamt {total} GB liegt das geschätzte Working Set bei ~{working} GB, sodass das Modell allein bereits darüber liegt. Selbst kleine Bilder würden das Backend wahrscheinlich zum Absturz bringen. Probiere ein kleineres Modell (SD 1.5 ist ~4 GB, SDXL ~13 GB) oder einen Rechner mit mehr Speicher.",
       "reasonDangerNear": "Das Modell benötigt ~{model} GB allein, um seine Gewichte + den Text-Encoder zu halten, und dieser Lauf erreicht eine Spitze von ~{peak} GB. Auf {platform} mit insgesamt {total} GB liegt das über der Hochrisiko-Schwelle (~{highRisk} GB) und nahe am geschätzten Working Set (~{working} GB). Die Generierung wird das Backend wahrscheinlich zum Absturz bringen; senke die Auflösung oder wähle ein kleineres Modell.",
-      "reasonCaution": "Das Modell benötigt ~{model} GB allein, um seine Gewichte + den Text-Encoder zu halten. Auf {platform} mit insgesamt {total} GB liegt das über dem konservativen Komfort-Ziel (~{comfort} GB), aber unter dem geschätzten Working Set (~{working} GB). Die Generierung kann langsam laufen oder fehlschlagen; senke die Auflösung, falls es instabil wird."
+      "reasonCaution": "Das Modell benötigt ~{model} GB allein, um seine Gewichte + den Text-Encoder zu halten. Auf {platform} mit insgesamt {total} GB liegt das über dem konservativen Komfort-Ziel (~{comfort} GB), aber unter dem geschätzten Working Set (~{working} GB). Die Generierung kann langsam laufen oder fehlschlagen; senke die Auflösung, falls es instabil wird.",
+      "resourceEstimate": null
     },
     "recent": {
       "subtitle": "{recent} neueste von {total} gespeicherten Generierungen",
@@ -439,7 +446,8 @@
       "guidanceLtxWarning": "LTX-Video ist ein Flow-Matching-Modell — CFG über ~3,5 übersättigt und erzeugt verschwommene / regenbogenartige Ausgaben. Senke auf 3 für die saubersten Ergebnisse.",
       "randomSeed": "Zufalls-Seed",
       "seedPlaceholder": "Seed (Ganzzahl)",
-      "maxPixelsNote": "{name} rendert pro Bild höchstens {megapixels} Megapixel; diese Größe wird unter Beibehaltung des Seitenverhältnisses verkleinert."
+      "maxPixelsNote": "{name} rendert pro Bild höchstens {megapixels} Megapixel; diese Größe wird unter Beibehaltung des Seitenverhältnisses verkleinert.",
+      "seed": null
     },
     "clipLength": {
       "line": "Cliplänge: {seconds}s ({frames} Bilder ÷ {fps} fps)"
@@ -534,7 +542,23 @@
     "sound": {
       "badge": "Ton",
       "badgeTooltip": "Dieser Clip hat Ton. Schalte ihn mit der Lautstärkeregelung des Players ein."
-    }
+    },
+    "capacityLine": {
+      "short": null,
+      "withModel": null
+    },
+    "device": {
+      "apple": null,
+      "appleDetected": null,
+      "appleMlx": null,
+      "cpuDetected": null,
+      "gpu": null,
+      "gpuDetected": null
+    },
+    "ltx2": {
+      "engineMessage": null
+    },
+    "willLoadHint": null
   },
   "imageGallery": {
     "subtitle": {

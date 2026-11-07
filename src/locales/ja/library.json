@@ -94,7 +94,8 @@
       "ram": "RAM",
       "compressed": "圧縮後",
       "context": "コンテキスト",
-      "status": "ステータス"
+      "status": "ステータス",
+      "released": null
     },
     "status": {
       "downloading": "ダウンロード中",

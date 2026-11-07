@@ -115,6 +115,12 @@
       "cancelGeneration": "생성 취소",
       "close": "닫기",
       "done": "완료"
+    },
+    "ltx2": {
+      "install": null,
+      "installing": null,
+      "notInstalled": null,
+      "retry": null
     }
   },
   "progress": {
@@ -253,7 +259,8 @@
       "browseSmaller": "더 작은 모델 둘러보기",
       "reasonDangerOver": "모델은 가중치 + 텍스트 인코더만 저장하는 데 ~{model} GB가 필요합니다. 총 {total} GB의 {platform}에서 추정 작업 세트는 ~{working} GB이므로 모델만으로도 이미 초과합니다. 작은 이미지조차 백엔드가 크래시할 가능성이 높습니다. 더 작은 모델(SD 1.5는 ~4 GB, SDXL은 ~13 GB) 또는 더 많은 메모리를 갖춘 머신을 시도하세요.",
       "reasonDangerNear": "모델은 가중치 + 텍스트 인코더만 저장하는 데 ~{model} GB가 필요하며, 이 실행은 약 ~{peak} GB에서 정점을 찍습니다. 총 {total} GB의 {platform}에서 이는 고위험 임계값(~{highRisk} GB)을 초과하고 추정 작업 세트(~{working} GB)에 근접합니다. 생성 시 백엔드가 크래시할 가능성이 높으니 해상도를 낮추거나 더 작은 모델을 선택하세요.",
-      "reasonCaution": "모델은 가중치 + 텍스트 인코더만 저장하는 데 ~{model} GB가 필요합니다. 총 {total} GB의 {platform}에서 이는 보수적 안정 목표(~{comfort} GB)를 초과하지만 추정 작업 세트(~{working} GB) 아래입니다. 생성이 느리거나 실패할 수 있으니 불안정해지면 해상도를 낮추세요."
+      "reasonCaution": "모델은 가중치 + 텍스트 인코더만 저장하는 데 ~{model} GB가 필요합니다. 총 {total} GB의 {platform}에서 이는 보수적 안정 목표(~{comfort} GB)를 초과하지만 추정 작업 세트(~{working} GB) 아래입니다. 생성이 느리거나 실패할 수 있으니 불안정해지면 해상도를 낮추세요.",
+      "resourceEstimate": null
     },
     "recent": {
       "subtitle": "{total}개의 저장된 생성물 중 최신 {recent}개",
@@ -439,7 +446,8 @@
       "guidanceLtxWarning": "LTX-Video는 flow-matching 모델입니다 — CFG가 ~3.5를 초과하면 과포화되고 흐릿한/무지개색 출력이 생성됩니다. 가장 깔끔한 결과를 위해 3으로 낮추세요.",
       "randomSeed": "랜덤 시드",
       "seedPlaceholder": "시드 (정수)",
-      "maxPixelsNote": "{name}의 프레임당 최대 렌더링 크기는 {megapixels}메가픽셀입니다. 이 크기는 비율을 유지한 채 줄여서 맞춥니다."
+      "maxPixelsNote": "{name}의 프레임당 최대 렌더링 크기는 {megapixels}메가픽셀입니다. 이 크기는 비율을 유지한 채 줄여서 맞춥니다.",
+      "seed": null
     },
     "clipLength": {
       "line": "클립 길이: {seconds}초 ({frames} 프레임 ÷ {fps} fps)"
@@ -534,7 +542,23 @@
     "sound": {
       "badge": "소리",
       "badgeTooltip": "이 클립에는 소리가 있습니다. 플레이어의 볼륨 컨트롤로 켜세요."
-    }
+    },
+    "capacityLine": {
+      "short": null,
+      "withModel": null
+    },
+    "device": {
+      "apple": null,
+      "appleDetected": null,
+      "appleMlx": null,
+      "cpuDetected": null,
+      "gpu": null,
+      "gpuDetected": null
+    },
+    "ltx2": {
+      "engineMessage": null
+    },
+    "willLoadHint": null
   },
   "imageGallery": {
     "subtitle": {

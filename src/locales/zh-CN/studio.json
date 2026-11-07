@@ -115,6 +115,12 @@
       "cancelGeneration": "取消生成",
       "close": "关闭",
       "done": "完成"
+    },
+    "ltx2": {
+      "install": null,
+      "installing": null,
+      "notInstalled": null,
+      "retry": null
     }
   },
   "progress": {
@@ -253,7 +259,8 @@
       "browseSmaller": "浏览更小的模型",
       "reasonDangerOver": "模型仅加载权重 + 文本编码器就需要约 {model} GB。在 {platform} 上共有 {total} GB,估算工作集为约 {working} GB,因此仅模型本身就已超出。即便生成小图像也可能使后端崩溃。请尝试更小的模型(SD 1.5 约 4 GB,SDXL 约 13 GB)或内存更大的机器。",
       "reasonDangerNear": "模型仅加载权重 + 文本编码器就需要约 {model} GB,本次运行峰值约 {peak} GB。在 {platform} 上共有 {total} GB,这超过了高风险阈值(约 {highRisk} GB)且接近估算工作集(约 {working} GB)。生成很可能使后端崩溃;请降低分辨率或选择更小的模型。",
-      "reasonCaution": "模型仅加载权重 + 文本编码器就需要约 {model} GB。在 {platform} 上共有 {total} GB,这超过了保守舒适目标(约 {comfort} GB),但仍低于估算工作集(约 {working} GB)。生成可能较慢或失败;如果不稳定请降低分辨率。"
+      "reasonCaution": "模型仅加载权重 + 文本编码器就需要约 {model} GB。在 {platform} 上共有 {total} GB,这超过了保守舒适目标(约 {comfort} GB),但仍低于估算工作集(约 {working} GB)。生成可能较慢或失败;如果不稳定请降低分辨率。",
+      "resourceEstimate": null
     },
     "recent": {
       "subtitle": "{total} 个已保存生成中最新的 {recent} 个",
@@ -439,7 +446,8 @@
       "guidanceLtxWarning": "LTX-Video 是流匹配模型 — CFG 超过约 3.5 会导致过饱和并产生模糊 / 彩虹色输出。降低至 3 以获得最干净的结果。",
       "randomSeed": "随机种子",
       "seedPlaceholder": "种子(整数)",
-      "maxPixelsNote": "{name} 每帧最多渲染 {megapixels} 百万像素；此尺寸会按比例缩小以适配。"
+      "maxPixelsNote": "{name} 每帧最多渲染 {megapixels} 百万像素；此尺寸会按比例缩小以适配。",
+      "seed": null
     },
     "clipLength": {
       "line": "片段长度:{seconds} 秒({frames} 帧 ÷ {fps} fps)"
@@ -534,7 +542,23 @@
     "sound": {
       "badge": "声音",
       "badgeTooltip": "此片段带有声音。请用播放器的音量控件开启。"
-    }
+    },
+    "capacityLine": {
+      "short": null,
+      "withModel": null
+    },
+    "device": {
+      "apple": null,
+      "appleDetected": null,
+      "appleMlx": null,
+      "cpuDetected": null,
+      "gpu": null,
+      "gpuDetected": null
+    },
+    "ltx2": {
+      "engineMessage": null
+    },
+    "willLoadHint": null
   },
   "imageGallery": {
     "subtitle": {

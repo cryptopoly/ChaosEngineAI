@@ -39,7 +39,8 @@
       "mtplx": "Установка MTPLX",
       "tensorfold": "Установка TensorFold",
       "mflux": "Установка mflux",
-      "vllmWsl": "Установка vLLM в WSL"
+      "vllmWsl": "Установка vLLM в WSL",
+      "ltx2": null
     },
     "status": {
       "failed": "{noun} не удалась — см. журнал",

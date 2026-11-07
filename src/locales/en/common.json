@@ -1290,5 +1290,14 @@
   "comingSoon": {
     "music": "Music is coming soon.",
     "storyboard": "Storyboard is coming soon."
+  },
+  "llamaCuda": {
+    "description": "Runs GGUF chat models on your NVIDIA GPU with CUDA {cuda} (llama.cpp {tag}). Downloads about 680 MB, including the CUDA runtime (0.9 GB on disk).",
+    "inUse": "In use: GGUF models run on the NVIDIA GPU.",
+    "install": "Install",
+    "installedNoDevice": "Installed, but it found no CUDA device. Check the NVIDIA driver (nvidia-smi).",
+    "notInstalled": "Not installed. GGUF models use the bundled build.",
+    "reinstall": "Reinstall",
+    "title": "CUDA llama-server (NVIDIA)"
   }
 }

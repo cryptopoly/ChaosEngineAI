@@ -107,6 +107,7 @@ def start_batch(request: Request, project_id: str, revision: int | None, what: s
     wiring = studio_generators(request, batch.id, folder)
     batch.make_still, batch.make_clip = wiring["make_still"], wiring["make_clip"]
     batch.unload, batch.last_frame, batch.stop_running = wiring["unload"], wiring["last_frame"], wiring["stop_running"]
+    batch.clip_image_refusal = wiring.get("clip_image_refusal")
     batch.start(revision)
     batch.start_thread()
     return batch

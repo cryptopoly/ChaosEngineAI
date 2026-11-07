@@ -8,6 +8,7 @@ export * from "./observability";
 export * from "./progress";
 export * from "./server";
 export * from "./settings";
+export * from "./storyboard";
 export * from "./system";
 export * from "./video";
 export * from "./voice";

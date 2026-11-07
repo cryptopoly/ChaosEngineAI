@@ -11,6 +11,7 @@ import {
   startStoryboardRender,
 } from "../../api";
 import type { StoryboardRenderJob } from "../../types";
+import { isMissingVideoTools } from "../videotools/videoToolsLogic";
 
 export const RENDER_POLL_MS = 1000;
 
@@ -21,6 +22,8 @@ export interface UseStoryboardRenderResult {
   startedAt: number;
   starting: boolean;
   error: string | null;
+  /** The last start failed for want of ffmpeg: the screen shows the "Video tools are needed" prompt. */
+  needsVideoTools: boolean;
   /** The last finished preview / export, kept while a newer job of the other kind runs. */
   preview: StoryboardRenderJob | null;
   exported: StoryboardRenderJob | null;
@@ -45,6 +48,7 @@ export function useStoryboardRender(
   const [startedAt, setStartedAt] = useState(() => Date.now());
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [needsVideoTools, setNeedsVideoTools] = useState(false);
   const [preview, setPreview] = useState<StoryboardRenderJob | null>(null);
   const [exported, setExported] = useState<StoryboardRenderJob | null>(null);
   const [previewVersion, setPreviewVersion] = useState(0);
@@ -119,6 +123,7 @@ export function useStoryboardRender(
       if (!projectId) return false;
       setStarting(true);
       setError(null);
+      setNeedsVideoTools(false);
       try {
         const started = await startStoryboardRender(projectId, revision, isPreview);
         seen.current = null;
@@ -126,6 +131,7 @@ export function useStoryboardRender(
         return true;
       } catch (err) {
         if (err instanceof StoryboardRevisionConflict) staleRef.current?.();
+        if (isMissingVideoTools(err)) setNeedsVideoTools(true);
         setError(message(err));
         return false;
       } finally {
@@ -151,11 +157,15 @@ export function useStoryboardRender(
     startedAt,
     starting,
     error,
+    needsVideoTools,
     preview,
     exported,
     previewVersion,
     start,
     cancel,
-    clearError: () => setError(null),
+    clearError: () => {
+      setError(null);
+      setNeedsVideoTools(false);
+    },
   };
 }

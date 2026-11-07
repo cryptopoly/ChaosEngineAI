@@ -78,8 +78,11 @@ def _payload(project: Any) -> dict[str, Any]:
 
 def _http(exc: Exception) -> HTTPException:
     from backend_service.storyboard.media import MediaError
+    from backend_service.storyboard.ffmpeg_bin import FfmpegMissing
     from backend_service.storyboard.render_adapter import RenderBusy
 
+    if isinstance(exc, FfmpegMissing):
+        return HTTPException(status_code=409, detail={"code": exc.action, "message": str(exc)})
     if isinstance(exc, store_module.RevisionConflict):
         return HTTPException(status_code=409, detail={"message": str(exc), "revision": exc.current.revision,
                                                       "project": dump(exc.current)})
@@ -129,6 +132,9 @@ def start_render(project_id: str, revision: int | None, preview: bool, notify: b
     if revision is not None and project.revision != revision:
         raise store_module.RevisionConflict(project)
     plan = build_render_plan(project, preview, store.folder(project_id))
+    from backend_service.storyboard import ffmpeg_bin
+
+    ffmpeg_bin.ffmpeg_exe()  # FfmpegMissing now, so the app can offer the install before a job exists
     return RENDERS.start(project_id, plan, notify)
 
 
@@ -344,5 +350,9 @@ def get_peaks(project_id: str, path: str, buckets: int = Query(400, ge=32, le=40
         return peaks.peaks_for(folder, real, buckets)
     except peaks.PeaksError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except RuntimeError as exc:  # the bundled ffmpeg is missing
+    except RuntimeError as exc:  # ffmpeg is missing (409 with the install code) or failed to run (503)
+        from backend_service.storyboard.ffmpeg_bin import FfmpegMissing
+
+        if isinstance(exc, FfmpegMissing):
+            raise _http(exc) from exc
         raise HTTPException(status_code=503, detail=str(exc)) from exc

@@ -136,10 +136,9 @@ def _run(args: list[str], *, cwd: Path, expected_s: float, report: Callable[[flo
     return stderr
 
 
-def _codec_args(preview: bool) -> list[str]:
-    if preview:
-        return ["-c:v", "libx264", "-preset", "ultrafast", "-crf", "28", "-pix_fmt", "yuv420p"]
-    return ["-c:v", "libx264", "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p"]
+def _codec_args(plan: RenderPlan) -> list[str]:
+    """H.264 arguments for the chosen encoder (libx264 when the binary has it, else a platform encoder)."""
+    return ffmpeg_bin.h264_args(plan.preview, width=plan.width, height=plan.height, fps=plan.fps)
 
 
 def _inp(path: str, *pre: str) -> list[str]:
@@ -350,7 +349,7 @@ def render(plan: RenderPlan, progress_cb: ProgressCb | None = None,
             tmp = work / f"{run_id}-{name}"
             scratch.append(tmp)
             _run([*_inp(shot.video), "-filter_complex_script", graph, "-map", "[v]", "-map", "[a]",
-                  *_codec_args(plan.preview), "-c:a", "pcm_s16le", "-map_metadata", "-1", "-f", "mov",
+                  *_codec_args(plan), "-c:a", "pcm_s16le", "-map_metadata", "-1", "-f", "mov",
                   tmp.name], cwd=work, expected_s=frames / plan.fps, report=report,
                  cancel_event=cancel_event)
             os.replace(tmp, target)
@@ -399,7 +398,7 @@ def render(plan: RenderPlan, progress_cb: ProgressCb | None = None,
             joined_v, joined_a, joined = (work / f"{run_id}-join{part}.mov" for part in ("v", "a", ""))
             scratch += [joined_v, joined_a, joined]
             _run([*args, "-filter_complex_script", script("xfade-v.txt", video_graph), "-map", "[vout]",
-                  *_codec_args(plan.preview), "-f", "mov", joined_v.name],
+                  *_codec_args(plan), "-f", "mov", joined_v.name],
                  cwd=work, expected_s=timing.total, report=lambda f: progress("join", 0.2 + 0.6 * f),
                  cancel_event=cancel_event)
             _run([*args, "-filter_complex_script", script("xfade-a.txt", audio_graph), "-map", "[aout]",
@@ -460,7 +459,7 @@ def render(plan: RenderPlan, progress_cb: ProgressCb | None = None,
         graph_text, mix_warnings = build_mix_graph(lanes, total_samples, loudnorm, captions_name)
         warnings += mix_warnings
         graph = script("mix.txt", graph_text)
-        video_args = (["-map", "[vout]", *_codec_args(plan.preview)] if captions_name
+        video_args = (["-map", "[vout]", *_codec_args(plan)] if captions_name
                       else ["-map", "0:v", "-c:v", "copy"])
         meta_args = []
         if plan.metadata:

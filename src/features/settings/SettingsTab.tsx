@@ -4,6 +4,8 @@ import { Panel } from "../../components/Panel";
 import { AgentAccessPanel } from "./AgentAccessPanel";
 import { AcceleratorsPanel, DiagnosticsPanel, DiskUsagePanel } from "./DiagnosticsPanel";
 import { LanguagePanel } from "./LanguagePanel";
+import { TermsDialog, TermsOfUsePanel } from "../terms/TermsOfUse";
+import type { TermsSettings } from "../terms/termsLogic";
 import { ModelStoragePanel } from "./ModelStoragePanel";
 import type { SettingsDraft } from "../../types/chat";
 import type { SidebarMode } from "../../types";
@@ -11,6 +13,7 @@ import type { SystemStats } from "../../types/system";
 import type { UiScale } from "../../hooks";
 
 export interface SettingsTabProps {
+  terms?: TermsSettings | null;
   settingsDraft: SettingsDraft;
   onSettingsDraftChange: (action: SetStateAction<SettingsDraft>) => void;
   newDirectoryLabel: string;
@@ -75,6 +78,7 @@ const SETTINGS_SECTIONS: SettingsSectionDef[] = [
 ];
 
 export function SettingsTab({
+  terms,
   settingsDraft,
   onSettingsDraftChange,
   newDirectoryLabel,
@@ -113,6 +117,7 @@ export function SettingsTab({
   // or persist it across reloads (the user lands on "General" each time,
   // which matches the macOS Settings idiom of opening to the first pane).
   const [activeSection, setActiveSection] = useState<SettingsSectionId>("general");
+  const [readingTerms, setReadingTerms] = useState(false);
 
   // Resolve the effective paths for the delivery folders so we can show the
   // real value in each input rather than a placeholder-flavoured hint. The
@@ -217,6 +222,8 @@ export function SettingsTab({
         onSettingsDraftChange={onSettingsDraftChange}
         onCopyText={onCopyText}
       />
+      <TermsOfUsePanel settings={terms} onRead={() => setReadingTerms(true)} />
+      {readingTerms ? <TermsDialog mode="read" onClose={() => setReadingTerms(false)} /> : null}
     </div>
   );
 

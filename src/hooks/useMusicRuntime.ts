@@ -19,9 +19,8 @@ import {
 } from "../api";
 import type { DownloadStatus } from "../api";
 import type { MusicInstallJob, MusicModelFamily, MusicRuntimeStatus } from "../types";
-import { flattenVariants, pickDefaultVariant } from "../features/music/musicLogic";
+import { DOWNLOAD_POLL_MS, MAX_POLL_FAILURES, flattenVariants, pickDefaultVariant, pollDelay } from "../features/music/musicLogic";
 
-const DOWNLOAD_POLL_MS = 2000;
 const INSTALL_POLL_MS = 1500;
 
 function message(err: unknown): string {
@@ -39,6 +38,8 @@ export function useMusicRuntime(backendOnline: boolean, setErrorProp: (message: 
   const [catalogLoaded, setCatalogLoaded] = useState(false);
   const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
   const downloadingRef = useRef(false);
+  /** Set when the download status stopped answering and polling gave up. */
+  const [downloadPollError, setDownloadPollError] = useState<string | null>(null);
 
   const refreshRuntime = useCallback(async () => {
     try {
@@ -70,7 +71,19 @@ export function useMusicRuntime(backendOnline: boolean, setErrorProp: (message: 
     }
   }, []);
 
+  /** One poll that reports whether the status endpoint answered. */
+  const pollDownloads = useCallback(async (): Promise<string | null> => {
+    try {
+      const rows = await getMusicDownloadStatus();
+      setDownloads(Object.fromEntries(rows.map((row) => [row.repo, row])));
+      return null;
+    } catch (err) {
+      return message(err);
+    }
+  }, []);
+
   const refreshMusicData = useCallback(async () => {
+    setDownloadPollError(null);
     await Promise.all([refreshCatalog(), refreshRuntime(), refreshDownloads()]);
   }, [refreshCatalog, refreshRuntime, refreshDownloads]);
 
@@ -90,9 +103,28 @@ export function useMusicRuntime(backendOnline: boolean, setErrorProp: (message: 
       return;
     }
     downloadingRef.current = true;
-    const timer = window.setInterval(() => void refreshDownloads(), DOWNLOAD_POLL_MS);
-    return () => window.clearInterval(timer);
-  }, [anyDownloading, refreshDownloads, refreshCatalog, refreshRuntime]);
+    if (downloadPollError) return; // gave up; a manual refresh clears this and polling resumes
+    // Each failed poll waits longer (2, 4, 8 ... 30 s); after a run of failures it stops and says so.
+    let failures = 0;
+    let timer: number | undefined;
+    let stopped = false;
+    const tick = async () => {
+      const failure = await pollDownloads();
+      if (stopped) return;
+      failures = failure === null ? 0 : failures + 1;
+      if (failure === null) setDownloadPollError(null);
+      if (failures >= MAX_POLL_FAILURES) {
+        setDownloadPollError(failure);
+        return;
+      }
+      timer = window.setTimeout(() => void tick(), pollDelay(failures));
+    };
+    timer = window.setTimeout(() => void tick(), pollDelay(0));
+    return () => {
+      stopped = true;
+      window.clearTimeout(timer);
+    };
+  }, [anyDownloading, downloadPollError, pollDownloads, refreshCatalog, refreshRuntime]);
 
   // Poll the install job while it runs; a finished job re-reads the runtime and catalog.
   const installRunning = Boolean(installJob?.running);
@@ -207,6 +239,7 @@ export function useMusicRuntime(backendOnline: boolean, setErrorProp: (message: 
     variants,
     runtime,
     downloads,
+    downloadPollError,
     installJob,
     catalogLoaded,
     selectedModelId,

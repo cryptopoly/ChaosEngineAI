@@ -369,6 +369,12 @@ export function MusicModelsPage({ music, backendOnline, availability, onAvailabi
               </div>
             ) : null}
             {!unavailable ? <MusicPackBanner music={music} /> : null}
+            {music.downloadPollError ? (
+              <div className="callout warning" role="alert">
+                <p>{t("musicModels.downloadStatusLost", { defaultValue: "Download progress can no longer be read. Reopen this page to check again." })}</p>
+                <p className="muted-text">{music.downloadPollError}</p>
+              </div>
+            ) : null}
             {firstRun}
           </>
         }

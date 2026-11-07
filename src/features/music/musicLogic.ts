@@ -461,3 +461,13 @@ export function itemFilePath(libraryDir: string | null | undefined, item: Pick<M
   const separator = libraryDir.includes("\\") && !libraryDir.includes("/") ? "\\" : "/";
   return `${libraryDir.replace(/[\\/]+$/, "")}${separator}${item.id}${item.audio}`;
 }
+
+// ---- polling ----
+export const DOWNLOAD_POLL_MS = 2000;
+export const POLL_MAX_MS = 30_000;
+export const MAX_POLL_FAILURES = 6;
+
+/** Wait before the next status poll: 2 s while it answers, then 4, 8, 16 and at most 30 s after each failure. */
+export function pollDelay(failures: number, baseMs = DOWNLOAD_POLL_MS): number {
+  return Math.min(POLL_MAX_MS, baseMs * 2 ** Math.max(0, failures));
+}

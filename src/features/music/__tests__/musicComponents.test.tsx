@@ -7,7 +7,7 @@ vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn(), isTauri: vi.fn(() => f
 import { buildMusicEntries, measuredSpeed, musicEntryMatchesQuery } from "../../../components/models/adapters/music";
 import type { UseMusicState } from "../../../hooks/useMusicState";
 import { INITIAL_GENERATION, classifyMusicError, defaultForm, generationReducer } from "../musicLogic";
-import { MusicLibraryTab } from "../MusicLibraryTab";
+import { LibraryPlayer, MusicLibraryTab } from "../MusicLibraryTab";
 import { MusicModelsPage } from "../MusicModelsPage";
 import { MusicPackBanner } from "../MusicPackBanner";
 import { MusicStudioTab } from "../MusicStudioTab";
@@ -389,5 +389,12 @@ describe("MusicLibraryTab", () => {
     expect(html).toContain("Newest first");
     expect(html).toContain("Longest first");
     expect(html).toContain('draggable="true"');
+  });
+
+  it("loads no audio until the user shows interest, and announces nothing card by card", () => {
+    const html = renderToStaticMarkup(<LibraryPlayer item={item()} />);
+    expect(html).toContain("Load the audio");
+    expect(html).not.toContain("<audio");
+    expect(html).not.toContain('role="status"');
   });
 });

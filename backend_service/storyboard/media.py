@@ -94,12 +94,7 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
-def ingest(folder: Path, src: Path, rel_dest: str) -> str:
-    """Hard-link (same disk) or copy ``src`` to ``folder/rel_dest``; returns its sha256."""
-    dest = inside(folder, rel_dest, must_exist=False)
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    if not dest.parent.resolve().is_relative_to(folder.resolve()):
-        raise MediaError(f"Refused path '{rel_dest}': it leaves the project folder.")
+def _link_or_copy(src: Path, dest: Path) -> None:
     tmp = dest.with_name(dest.name + ".part")
     if tmp.exists():
         tmp.unlink()
@@ -113,7 +108,37 @@ def ingest(folder: Path, src: Path, rel_dest: str) -> str:
     if not linked:
         shutil.copyfile(src, tmp)
     os.replace(tmp, dest)
+
+
+def _media_dest(folder: Path, rel_dest: str) -> Path:
+    dest = inside(folder, rel_dest, must_exist=False)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    if not dest.parent.resolve().is_relative_to(folder.resolve()):
+        raise MediaError(f"Refused path '{rel_dest}': it leaves the project folder.")
+    return dest
+
+
+def ingest(folder: Path, src: Path, rel_dest: str) -> str:
+    """Hard-link (same disk) or copy ``src`` to ``folder/rel_dest``; returns its sha256."""
+    dest = _media_dest(folder, rel_dest)
+    _link_or_copy(src, dest)
     return sha256_file(dest)
+
+
+def stage(folder: Path, src: Path) -> Path:
+    """Link or copy ``src`` into ``folder/cache/incoming`` (the slow part of an import, done without the lock)."""
+    incoming = folder / "cache" / "incoming"
+    incoming.mkdir(parents=True, exist_ok=True)
+    dest = incoming / f"{os.urandom(8).hex()}{src.suffix.lower()}"
+    _link_or_copy(src, dest)
+    return dest
+
+
+def adopt(folder: Path, staged: Path, rel_dest: str) -> Path:
+    """Move a staged file to ``folder/rel_dest`` (a rename inside the project folder: quick)."""
+    dest = _media_dest(folder, rel_dest)
+    os.replace(staged, dest)
+    return dest
 
 
 def ffmpeg_exe() -> str | None:

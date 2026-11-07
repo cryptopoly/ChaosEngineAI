@@ -746,6 +746,21 @@ class BundleTests(StoreCase):
         self.assertFalse((self.base / "evil.txt").exists())
         self.assertEqual([p.name for p in self.root.iterdir()] if self.root.exists() else [], [])
 
+    def test_a_failed_export_leaves_no_partial_file(self):
+        p = self._project_with_media()
+        with mock.patch("zipfile.ZipFile.write", side_effect=OSError("disk full")), self.assertRaises(OSError):
+            bundle.export_bundle(self.store, p.id)
+        self.assertEqual(list((self.folder(p) / "exports").iterdir()), [])
+
+    def test_a_file_and_a_folder_with_the_same_name_is_an_unsafe_bundle(self):
+        for entries in ([("media/x/a.mp4", b"x"), ("media/x/a.mp4/b.mp4", b"y")],
+                        [("media/x/a.mp4/b.mp4", b"y"), ("media/x/a.mp4", b"x")],
+                        [("media/x/A.mp4", b"x"), ("media/x/a.mp4", b"y")]):
+            with self.subTest(entries=entries), self.assertRaises(StoreError) as caught:
+                bundle.import_bundle(self.store, self._zip(entries))
+            self.assertIn("unsafe bundle", str(caught.exception))
+        self.assertEqual([p.name for p in self.root.iterdir()] if self.root.exists() else [], [])
+
     def test_size_and_count_caps(self):
         path = self._zip([("media/a.mp4", b"x" * 1000), ("media/b.mp4", b"y")])
         with mock.patch.object(bundle, "MAX_TOTAL_BYTES", 500), self.assertRaises(StoreError):

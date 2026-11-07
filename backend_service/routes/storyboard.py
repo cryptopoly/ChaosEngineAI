@@ -232,7 +232,10 @@ async def import_bundle(request: Request) -> dict[str, Any]:
 
     store = get_store()
     if request.headers.get("content-type", "").startswith("application/json"):
-        body = ImportRequest.model_validate(await request.json())
+        try:
+            body = ImportRequest.model_validate(await request.json())
+        except ValueError as exc:  # bad JSON or the wrong shape (a pydantic ValidationError is a ValueError)
+            raise HTTPException(status_code=400, detail='Send {"path": "<a .chaosfilm file>"} or the bundle bytes.') from exc
         try:
             src = Path(body.path).expanduser().resolve(strict=True)
         except (OSError, RuntimeError):

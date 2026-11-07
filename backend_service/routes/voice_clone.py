@@ -146,6 +146,24 @@ def delete_cloned_voice(request: Request, voice_id: str) -> dict[str, Any]:
     return {"deleted": True}
 
 
+@router.get("/api/voice/clone/watermark/{item_id}")
+def detect_library_watermark(request: Request, item_id: str) -> dict[str, Any]:
+    """Whether a Library item's audio carries the cloned-voice watermark (probability, message)."""
+    from backend_service import voice_clone_safety as safety  # noqa: PLC0415
+    from backend_service import voice_library  # noqa: PLC0415
+    from backend_service.routes.voice import _worker_error  # noqa: PLC0415
+
+    if not voice_library.is_valid_id(item_id):
+        raise HTTPException(status_code=400, detail="Invalid item id.")
+    path = voice_library.audio_path(item_id)
+    if path is None:
+        raise HTTPException(status_code=404, detail="Audio not found.")
+    try:
+        return safety.detect_watermark(path)
+    except Exception as exc:  # noqa: BLE001
+        raise _worker_error(exc) from exc
+
+
 @router.post("/api/voice/clone/speak")
 def speak_cloned(request: Request, body: CloneSpeakRequest) -> dict[str, Any]:
     """Speech in a cloned voice, tagged and saved to the Library; returns the Library item."""

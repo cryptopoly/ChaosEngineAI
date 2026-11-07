@@ -62,7 +62,8 @@ describe("clone components", () => {
     expect(html).not.toContain("open=\"\"");
     expect(html).toContain("Clone a voice");
     expect(html).toContain("Only copy your own voice");
-    expect(html).toContain("cannot be turned off");
+    expect(html).toContain("inaudible watermark");
+    expect(html).toContain("can be turned off");
     // The body (models, voices) is not mounted while collapsed.
     expect(html).not.toContain("Cloning model");
   });

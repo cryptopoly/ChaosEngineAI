@@ -483,8 +483,29 @@ def encode(request: dict[str, Any]) -> dict[str, Any]:
 # Loop
 # ---------------------------------------------------------------------------
 
+def _watermark_module():
+    # Run as a script in the voice venv the sibling is importable by name; imported in tests through the package.
+    try:
+        import voice_worker_watermark as module  # type: ignore[import-not-found]
+    except ImportError:
+        from backend_service import voice_worker_watermark as module
+    return module
+
+
+def watermark(request: dict[str, Any]) -> dict[str, Any]:
+    """Add the AudioSeal watermark to a WAV (cloned voices, D-47)."""
+    return _watermark_module().embed(request, decode_audio, wav_bytes)
+
+
+def detect_watermark(request: dict[str, Any]) -> dict[str, Any]:
+    return _watermark_module().detect(request, decode_audio)
+
+
 def unload(request: dict[str, Any]) -> dict[str, Any]:
     what = request.get("what") or "all"
+    loaded = {"voice_worker_watermark", "backend_service.voice_worker_watermark"} & set(sys.modules)
+    if what in ("watermark", "all") and loaded:
+        _watermark_module().unload()
     if what in ("stt", "all"):
         _stt["key"], _stt["model"] = None, None
     if what in ("tts", "all"):
@@ -519,6 +540,8 @@ _COMMANDS = {
     "vad": vad,
     "diarize": diarize,
     "encode": encode,
+    "watermark": watermark,
+    "detectWatermark": detect_watermark,
     "unload": unload,
 }
 

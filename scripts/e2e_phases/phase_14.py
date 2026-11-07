@@ -5,7 +5,8 @@ Checks, against a running backend:
 2. the Agent access token cannot reach the cloning routes;
 3. a consent recording with the wrong code is refused (needs Kokoro + STT);
 4. full run when a cloning model is downloaded: Kokoro reads the consent sentence, the voice is
-   saved, one sentence is spoken, the WAV and the MP3 carry the AI tag, then the voice, the speech
+   saved, one sentence is spoken, the WAV and the MP3 carry the AI tag, the AudioSeal watermark is
+   detected (a model counts as installed only with the watermark component), then the voice, the speech
    and the worker are cleaned up. Nothing is downloaded by this phase.
 """
 
@@ -141,7 +142,10 @@ def phase_14(cap: Any):
             mp3_tagged = code_mp3 == 200 and b'"clonedVoice":true' in mp3
             if not (item.get("clonedVoice") and wav_tagged and mp3_tagged):
                 return "fail", f"AI tag missing (item={item.get('clonedVoice')}, wav={wav_tagged}, mp3={mp3_tagged})", {}
-            return "pass", "", {"model": model, "durationS": item.get("durationS")}
+            code, mark = _json("GET", f"/api/voice/clone/watermark/{speech_id}", timeout=300.0)
+            if code != 200 or not mark.get("matches"):
+                return "fail", f"watermark not detected: HTTP {code} {mark}", {}
+            return "pass", "", {"model": model, "durationS": item.get("durationS"), "watermark": mark}
         finally:
             if speech_id:
                 http("DELETE", f"/api/voice/library/{speech_id}")

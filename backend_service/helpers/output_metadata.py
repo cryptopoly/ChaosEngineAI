@@ -112,15 +112,10 @@ def read_png_settings(png_bytes: bytes) -> dict[str, Any] | None:
 
 
 def _ffmpeg_exe() -> str | None:
-    found = shutil.which("ffmpeg")
-    if found:
-        return found
-    try:
-        import imageio_ffmpeg
+    """Tagging can use any ffmpeg, so a program on PATH is the last resort here."""
+    from backend_service.storyboard import ffmpeg_bin
 
-        return str(imageio_ffmpeg.get_ffmpeg_exe())
-    except Exception:
-        return None
+    return ffmpeg_bin.optional_ffmpeg_exe(allow_path=True)
 
 
 def embed_mp4_settings(path: Path, settings: dict[str, Any]) -> bool:

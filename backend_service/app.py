@@ -89,6 +89,8 @@ HF_SNAPSHOT_DOWNLOAD_HELPER = (
     "kwargs = {'repo_id': repo_id, 'resume_download': True}\n"
     "if allow_patterns:\n"
     "    kwargs['allow_patterns'] = allow_patterns\n"
+    "if len(sys.argv) > 3 and sys.argv[3]:\n"
+    "    kwargs['revision'] = sys.argv[3]\n"
     "snapshot_download(**kwargs)\n"
 )
 DEFAULT_PORT = int(os.getenv("CHAOSENGINE_PORT", "8876"))

@@ -1,4 +1,4 @@
-"""Will this model fit on this machine? One answer for the chat, image and video catalogs.
+"""Will this model fit on this machine? One answer for the chat, image, video and music catalogs.
 
 ``variant_fit`` turns a catalog variant and a ``HardwareClass`` into the ``fit`` dict the
 Models pages show as a badge::
@@ -16,6 +16,7 @@ The number compared against the machine is the memory the model needs once loade
   on the Hub from here (a catalog request must not wait on 100 network calls), so its cache comes
   from a parameter-count table. A row that states its own ``estimatedMemoryGb`` replaces the
   weights-plus-runtime part.
+* Music: the catalog's measured generation peak (``helpers.music_fit``).
 * Image and video: the catalog's runtime footprint for this hardware (``runtimeFootprintMpsGb`` on a
   Mac, ``runtimeFootprintCudaGb`` on an NVIDIA GPU, else ``runtimeFootprintGb``), falling back to the
   download size x 1.3.
@@ -341,11 +342,16 @@ def variant_fit(
     explicit_memory_gb: float | None = None,
     context_tokens: int = DEFAULT_CHAT_CONTEXT_TOKENS,
 ) -> dict[str, Any]:
-    """The ``fit`` dict for one catalog variant (``kind`` is ``chat``, ``image`` or ``video``).
+    """The ``fit`` dict for one catalog variant (``kind`` is ``chat``, ``image``, ``video`` or ``music``).
 
     ``arch`` is the model's attention layout when known (chat only); ``explicit_memory_gb`` is a chat
-    row's own memory figure, which replaces the weights-plus-runtime part.
+    row's own memory figure, which replaces the weights-plus-runtime part. Music is judged on the
+    catalog's generation peak and the row's ``platforms`` and ``minMemoryGb``.
     """
+    if kind == "music":
+        from backend_service.helpers.music_fit import music_fit
+
+        return music_fit(variant, hardware)
     gap = _platform_gap_reason(platform_gate(variant, kind), hardware)
     if gap:
         return _unknown(hardware, gap)

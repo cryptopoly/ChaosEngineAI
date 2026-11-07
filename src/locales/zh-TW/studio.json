@@ -862,7 +862,8 @@
       "tooLong": null,
       "checking": null,
       "save": null,
-      "installingWatermark": null
+      "installingWatermark": null,
+      "tab": null
     }
   },
   "residentChatModelNote": "已載入的聊天模型佔用了其中約 {gb} GB 記憶體；卸載它即可釋放這部分記憶體。",

@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
 import type { TabId, VoiceRuntime } from "../../types";
 import { SpeakPanel } from "./studio/SpeakPanel";
+import { ClonePanel } from "./clone/ClonePanel";
 import { TranscribePanel, type OpenRequest } from "./studio/TranscribePanel";
 
 export { pickDefaultSttModel } from "./studio/TranscribePanel";
@@ -17,7 +18,7 @@ export interface VoiceStudioTabProps {
   onTabChange: (tab: TabId) => void;
 }
 
-type StudioMode = "transcribe" | "speak";
+type StudioMode = "transcribe" | "speak" | "clone";
 
 export function VoiceStudioTab({ voiceRuntime, backendOnline, openRequest, onSendToChat, onTabChange }: VoiceStudioTabProps) {
   const { t } = useTranslation("studio");
@@ -61,7 +62,7 @@ export function VoiceStudioTab({ voiceRuntime, backendOnline, openRequest, onSen
   return (
     <div className="content-grid discover-page voice-page voice-studio-page">
       <div className="segmented voice-studio__modes span-2" role="tablist" aria-label={t("voice.studio.title", { defaultValue: "Voice Studio" })}>
-        {(["transcribe", "speak"] as const).map((value) => (
+        {(["transcribe", "speak", "clone"] as const).map((value) => (
           <button
             key={value}
             type="button"
@@ -70,11 +71,15 @@ export function VoiceStudioTab({ voiceRuntime, backendOnline, openRequest, onSen
             className={mode === value ? "segment active" : "segment"}
             onClick={() => setMode(value)}
           >
-            {value === "transcribe" ? t("voice.transcribe.title", { defaultValue: "Transcribe" }) : t("voice.speak.title", { defaultValue: "Speak" })}
+            {value === "transcribe"
+              ? t("voice.transcribe.title", { defaultValue: "Transcribe" })
+              : value === "speak"
+                ? t("voice.speak.title", { defaultValue: "Speak" })
+                : t("voice.clone.tab", { defaultValue: "Clone" })}
           </button>
         ))}
       </div>
-      {/* Both stay mounted so a running queue or generation survives a switch. */}
+      {/* All three stay mounted so a running queue or generation survives a switch. */}
       <div className={`voice-studio__pane span-2${mode === "transcribe" ? "" : " voice-studio__pane--hidden"}`}>
         <TranscribePanel
           runtime={voiceRuntime}
@@ -85,6 +90,9 @@ export function VoiceStudioTab({ voiceRuntime, backendOnline, openRequest, onSen
       </div>
       <div className={`voice-studio__pane span-2${mode === "speak" ? "" : " voice-studio__pane--hidden"}`}>
         <SpeakPanel runtime={voiceRuntime} onTabChange={onTabChange} />
+      </div>
+      <div className={`voice-studio__pane span-2${mode === "clone" ? "" : " voice-studio__pane--hidden"}`}>
+        <ClonePanel standalone onTabChange={onTabChange} />
       </div>
     </div>
   );

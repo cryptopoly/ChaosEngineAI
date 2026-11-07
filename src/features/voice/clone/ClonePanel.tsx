@@ -34,10 +34,28 @@ export function CloneStatement() {
   );
 }
 
-/** Clone a voice: collapsed by default inside Speak, so the Studio stays simple for everyone else. */
-export function ClonePanel({ onTabChange, defaultOpen = false }: { onTabChange?: (tab: TabId) => void; defaultOpen?: boolean }) {
+/** Clone a voice: its own Studio tab (standalone), or collapsed when embedded. */
+export function ClonePanel({
+  onTabChange,
+  defaultOpen = false,
+  standalone = false,
+}: {
+  onTabChange?: (tab: TabId) => void;
+  defaultOpen?: boolean;
+  /** Own tab in the Studio: no collapsing wrapper, the form is always there. */
+  standalone?: boolean;
+}) {
   const { t } = useTranslation("studio");
   const [open, setOpen] = useState(defaultOpen);
+  if (standalone) {
+    return (
+      <section className="voice-clone">
+        <h3>{t("voice.clone.title", { defaultValue: "Clone a voice" })}</h3>
+        <CloneStatement />
+        <CloneBody onTabChange={onTabChange} />
+      </section>
+    );
+  }
   return (
     <details className="voice-clone" open={open} onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}>
       <summary>{t("voice.clone.title", { defaultValue: "Clone a voice" })}</summary>

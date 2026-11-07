@@ -862,7 +862,8 @@
       "tooLong": null,
       "checking": null,
       "save": null,
-      "installingWatermark": null
+      "installingWatermark": null,
+      "tab": null
     }
   },
   "residentChatModelNote": "Um modelo de chat carregado ocupa cerca de {gb} GB dessa memória; descarregá-lo libera esse espaço.",

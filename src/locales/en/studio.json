@@ -853,16 +853,17 @@
       "confirm": "This is my own voice, or the speaker has given me permission to copy it. It is not a public figure, a child or someone who has died.",
       "getSentence": "Get the consent sentence",
       "readThis": "{name} reads this sentence aloud, including the code one digit at a time:",
-      "codeHint": "Code: {code}. The recording is also used as the voice sample unless you add one below.",
+      "codeHint": "Code: {code}. The recording is also used as the voice sample unless you upload one below.",
       "recordAgain": "Record again",
-      "sampleTitle": "Use a different voice sample (optional)",
+      "sampleTitle": "Upload a voice sample (optional)",
       "sampleHelp": "3 to 30 seconds of the same person speaking clearly, from a file on this computer. 10 to 20 seconds works best.",
       "sampleText": "Words spoken in the sample (optional; filled in automatically)",
       "tooShort": "The recording is shorter than 3 seconds. Read the whole sentence.",
       "tooLong": "The recording is longer than 30 seconds. Record just the sentence.",
       "checking": "Checking the recording…",
       "save": "Check and save voice",
-      "installingWatermark": "Installing the watermark component…"
+      "installingWatermark": "Installing the watermark component…",
+      "tab": "Clone"
     }
   },
   "residentChatModelNote": "A loaded chat model holds about {gb} GB of this memory; unloading it frees that.",

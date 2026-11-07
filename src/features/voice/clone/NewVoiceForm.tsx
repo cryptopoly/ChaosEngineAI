@@ -145,8 +145,8 @@ export function NewVoiceForm({ onCreated, onCancel }: { onCreated: (voice: Clone
               </>
             ) : null}
           </div>
-          <details className="voice-clone__sample">
-            <summary>{t("voice.clone.sampleTitle", { defaultValue: "Use a different voice sample (optional)" })}</summary>
+          <div className="voice-clone__sample">
+            <h4>{t("voice.clone.sampleTitle", { defaultValue: "Upload a voice sample (optional)" })}</h4>
             <p className="muted-text">
               {t("voice.clone.sampleHelp", {
                 defaultValue: "3 to 30 seconds of the same person speaking clearly, from a file on this computer. 10 to 20 seconds works best.",
@@ -157,7 +157,7 @@ export function NewVoiceForm({ onCreated, onCancel }: { onCreated: (voice: Clone
               <span>{t("voice.clone.sampleText", { defaultValue: "Words spoken in the sample (optional; filled in automatically)" })}</span>
               <input className="text-input" maxLength={2000} value={sampleText} onChange={(e) => setSampleText(e.target.value)} />
             </label>
-          </details>
+          </div>
           {lengthProblem ? (
             <p className="voice-error" role="alert">
               {lengthProblem === "short"

@@ -218,6 +218,8 @@ export function queueForStrip(
 export function stripFromEstimate(
   response: MusicEstimateResponse | null | undefined,
   progressQueue?: MusicProgressSnapshot["queue"] | null,
+  /** This Studio has a run in flight: its progress panel shows the queue, so the strip shows none. */
+  running = false,
 ): StripModel {
   if (!response) return { ...EMPTY_STRIP, queue: queueForStrip(null, progressQueue) };
   const { estimate, fit, totalGb } = response;
@@ -232,7 +234,8 @@ export function stripFromEstimate(
     diskMb: positive(estimate.writesMb),
     basis: seconds == null && peakGb == null ? null : estimate.basis === "measured" ? "measured" : "estimated",
     risk: memoryRisk(peakGb, total, fallback),
-    queue: queueForStrip(response.queue, progressQueue),
+    // While this Studio runs, the progress panel owns the queue line (and the snapshot lists our own job).
+    queue: running ? null : queueForStrip(response.queue, progressQueue),
   };
 }
 

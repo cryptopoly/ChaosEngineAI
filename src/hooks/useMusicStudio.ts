@@ -43,13 +43,16 @@ export function useMusicStudio({ backendOnline, variant, runtime, refreshRuntime
     if (!formTouched.current && variant) setFormState(defaultForm(variant));
   }, [variant]);
 
+  // An error from the last run goes away with the next edit (it described the old settings).
   const setForm = useCallback((patch: Partial<MusicForm>) => {
     formTouched.current = true;
+    dispatch({ type: "dismiss" });
     setFormState((previous) => ({ ...previous, ...patch }));
   }, []);
 
   const replaceForm = useCallback((next: MusicForm) => {
     formTouched.current = true;
+    dispatch({ type: "dismiss" });
     setFormState(next);
   }, []);
 
@@ -58,7 +61,7 @@ export function useMusicStudio({ backendOnline, variant, runtime, refreshRuntime
   const variations = form.variations;
   const loadedModel = runtime?.loadedModel ?? null;
   useEffect(() => {
-    if (!backendOnline || !variantId || !(seconds >= SECONDS_MIN && seconds <= SECONDS_MAX)) return;
+    if (!backendOnline || !variantId || running || !(seconds >= SECONDS_MIN && seconds <= SECONDS_MAX)) return;
     const controller = new AbortController();
     const timer = window.setTimeout(() => {
       estimateMusicRun(variantId, seconds, variations, controller.signal)
@@ -69,7 +72,7 @@ export function useMusicStudio({ backendOnline, variant, runtime, refreshRuntime
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [backendOnline, variantId, seconds, variations, loadedModel, generation.phase]);
+  }, [backendOnline, variantId, seconds, variations, loadedModel, running]);
 
   const generate = useCallback(
     async (formOverride?: MusicForm) => {

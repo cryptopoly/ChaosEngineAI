@@ -62,7 +62,7 @@ export function MusicStudioTab({ music, backendOnline, onTabChange }: MusicStudi
   const installed = Boolean(runtime?.installed);
   const ready = installed && music.hasInstalledModel && !runtime?.unavailableReason && Boolean(selectedVariant?.availableLocally);
   const canMake = ready && issues.length === 0 && !running;
-  const strip = stripFromEstimate(estimate, progress?.queue ?? null);
+  const strip = stripFromEstimate(estimate, progress?.queue ?? null, running);
   const fit = readFit(estimate?.fit ?? selectedVariant?.fit);
 
   // Leaving a finished run's error up while the user edits is noise: it goes with the next edit.
@@ -324,6 +324,32 @@ export function MusicStudioTab({ music, backendOnline, onTabChange }: MusicStudi
         }
       />
       {hint && !running ? <p className="muted-text music-studio__hint">{hintText[hint]}</p> : null}
+      {running ? (
+        <div className="music-studio__running">
+          <LiveProgress
+            title={t("musicStudio.running", { defaultValue: "Making your track" })}
+            subtitle={progress?.runLabel ?? undefined}
+            phases={phases}
+            startedAt={startedAt}
+            accent="audio"
+            // Waiting behind another job: the snapshot may be that job's, so show only the queue line and estimates.
+            realProgress={queued && progress ? { ...progress, active: false } : progress}
+          />
+          <div className="button-row">
+            <button type="button" className="secondary-button" disabled={generation.cancelling} onClick={() => void studio.cancel()}>
+              {generation.cancelling
+                ? t("musicStudio.cancelling", { defaultValue: "Cancelling…" })
+                : t("musicStudio.cancel", { defaultValue: "Cancel" })}
+            </button>
+          </div>
+          {queued ? (
+            <p className="muted-text" role="status">
+              {t("musicStudio.queued", { defaultValue: "Queued: yours starts after the job ahead of it." })}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
     </>
   );
 
@@ -363,31 +389,6 @@ export function MusicStudioTab({ music, backendOnline, onTabChange }: MusicStudi
 
   const results = (
     <>
-      {running ? (
-        <div className="music-studio__running">
-          <LiveProgress
-            title={t("musicStudio.running", { defaultValue: "Making your track" })}
-            subtitle={progress?.runLabel ?? undefined}
-            phases={phases}
-            startedAt={startedAt}
-            accent="audio"
-            realProgress={progress}
-          />
-          <div className="button-row">
-            <button type="button" className="secondary-button" disabled={generation.cancelling} onClick={() => void studio.cancel()}>
-              {generation.cancelling
-                ? t("musicStudio.cancelling", { defaultValue: "Cancelling…" })
-                : t("musicStudio.cancel", { defaultValue: "Cancel" })}
-            </button>
-          </div>
-          {queued ? (
-            <p className="muted-text" role="status">
-              {t("musicStudio.queued", { defaultValue: "Queued: yours starts after the job ahead of it." })}
-            </p>
-          ) : null}
-        </div>
-      ) : null}
-
       {error && !running ? (
         <div className={`callout ${error.kind === "cancelled" ? "quiet" : "error"} music-studio__error`} role={error.kind === "cancelled" ? "status" : "alert"}>
           <p>{headline[error.kind]}</p>

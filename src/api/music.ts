@@ -20,6 +20,7 @@ import type {
   MusicProgressSnapshot,
   MusicRuntimeStatus,
   MusicSettings,
+  MusicSoundPayload,
 } from "../types";
 
 export class MusicApiError extends Error {
@@ -103,6 +104,25 @@ export async function unloadMusicModel(): Promise<MusicRuntimeStatus> {
 /** Makes the track(s); resolves when the run is finished (a long call), rejects with `detail` otherwise. */
 export async function generateMusic(payload: MusicGeneratePayload): Promise<MusicGenerateResponse> {
   return await request<MusicGenerateResponse>("POST", "/api/music/generate", payload, 30 * 60 * 1000);
+}
+
+/** Makes the sound effect(s) of the Sounds mode; resolves when the run is finished. */
+export async function generateSound(payload: MusicSoundPayload): Promise<MusicGenerateResponse> {
+  return await request<MusicGenerateResponse>("POST", "/api/music/sound/generate", payload, 30 * 60 * 1000);
+}
+
+// The sounds pack (Stable Audio Open runs in its own environment)
+
+export async function startSoundInstall(): Promise<MusicInstallJob> {
+  return await request<MusicInstallJob>("POST", "/api/music/sound/install", {}, 20000);
+}
+
+export async function getSoundInstallStatus(): Promise<MusicInstallJob> {
+  return await request<MusicInstallJob>("GET", "/api/music/sound/install/status", undefined, 10000);
+}
+
+export async function cancelSoundInstall(): Promise<MusicInstallJob> {
+  return await request<MusicInstallJob>("POST", "/api/music/sound/install/cancel", {}, 10000);
 }
 
 // Library

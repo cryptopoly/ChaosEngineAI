@@ -42,6 +42,9 @@ _WORKER_SCRIPT = Path(__file__).resolve().parent.parent / "mflux_worker.py"
 _WORKER_LOG = Path.home() / ".chaosengine" / "logs" / "mflux-worker.log"
 # Below this much memory the worker's resident model (text encoders included) costs more than the reload.
 WARM_MIN_MEMORY_GB = 32.0
+# Resident between images: Iris-3B about 15 GB, FLUX 3 Klein edit about 21 GB (v-speed.md). A new worker
+# starts only with this much free memory; otherwise the image runs as a CLI process.
+WARM_START_AVAILABLE_GB = 24.0
 _WORKER_TIMEOUT_S = 3600.0
 _WORKER_STALL_S = 600.0  # a big model's load sends no event until it is done
 
@@ -186,9 +189,14 @@ def warm_worker() -> Any:
 
 
 def warm_worker_wanted() -> bool:
-    from backend_service.warm_worker_client import total_memory_gb, warm_workers_enabled
+    from backend_service.warm_worker_client import can_start, total_memory_gb, warm_workers_enabled
 
-    return warm_workers_enabled() and total_memory_gb() >= WARM_MIN_MEMORY_GB and _WORKER_SCRIPT.exists()
+    return (
+        warm_workers_enabled()
+        and total_memory_gb() >= WARM_MIN_MEMORY_GB
+        and _WORKER_SCRIPT.exists()
+        and can_start(_WORKER, WARM_START_AVAILABLE_GB)
+    )
 
 
 def release_warm_worker(reason: str = "unloaded") -> bool:

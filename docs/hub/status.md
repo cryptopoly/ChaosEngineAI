@@ -9,6 +9,36 @@ summary: Read this first in every session.
 
 Newest dated update first. Each update has the same sections: Done, Open for Claude, Open for Dan.
 
+## Update 2026-11-07 (morning), the home studio is built behind a switch; read this first
+
+**State:** everything below is on `feat/home-studio` (pushed). Nothing is merged into `release/v0.9.10`, `main` or `staging`. Music and Storyboard are built but **hidden** behind `HOME_STUDIO_ENABLED = false` in `src/constants/features.ts`. Flip it to `true` to see them; no other change is needed.
+
+**Built and verified (real runs on this Mac, numbers from the runs):**
+
+- **Music** (ACE-Step 1.5, MIT): Models, Studio, Library, agent tool `make_music`. 30 s instrumental in 3 s warm; 60 s song with vocals in 5 s; 10 s for a 40 s track cold start; peak about 21 to 23 GB; cancel, queue behaviour (one heavy job at a time, music and image tested together), unload and idle stop all checked.
+- **Storyboard:** Projects, Board (takes, locks, stale marking, transitions, undo/redo, batches by kind with one cancel), Mixer (lanes, waveforms, ducking, preview, export 16:9 / 9:16 / 1:1, AI label, end card), `.chaosfilm` bundles, "Use in storyboard" from the image and video galleries, voice library and music library.
+- **Acceptance run through the HTTP API only:** the 8 lighthouse clips, the voiceover and a generated 40 s music bed (ducked under the voice) became a 32.9 s, 1280x720 film in 7.8 s, loudness -16.0 LUFS, AI tag and end card on. Files: `~/ChaosEngineAI-demos/lighthouse-keeper/lighthouse-keeper-with-music.mp4` (also `lighthouse-keeper.mp4` and `lighthouse-keeper-v2.mp4`). I have not listened to any of them; please do.
+- **Calmer existing Studios (visible now, not behind the switch):** Image and Video Studio have Expert and Options disclosures, one run estimate strip, one Models button and a more-actions menu; first-load controls fell from 28 to 33 to 20 to 27 (the two installed image models and the LTX video model already hide most knobs; a diffusers model would show a bigger drop). The sidebar is an accordion with Make and Run sections (Settings switch keeps every group open).
+- **Tests:** 2791 Python and 1108 vitest pass; `tsc`, `i18n:validate` and `npm run build` clean.
+
+**Decisions for Dan**
+
+1. **Switch the home studio on?** And for which release (plan: v0.10.0; merge `feat/agent-bridge` and `feat/media-input` as v0.9.10 first, D-32).
+2. **Sidebar order:** Chat now sits under Images / Video / Voice / Music / Storyboard (the "Make" and "Run" sections). Keep, or Chat on top?
+3. **D-36 loudness of a stand-alone music track:** keep the -1 dBFS peak normalisation (current), or write the raw level and leave loudness to the mixer?
+4. **D-37 `pytorch-wavelets` licence:** PyPI says "Free To Use But Restricted" although the parts ACE-Step uses are MIT. Needs your confirmation before shipping.
+5. **ffmpeg in the release bundle (D-35 follow-up):** the release workflow does not install `imageio-ffmpeg`, so a packaged app has no pinned ffmpeg for the Mixer. Adding it ships a GPL binary (about 47 MB on macOS).
+6. **Listen to the music samples** in `~/ChaosEngineAI-demos/music-spike/` (22 files, including XL) and the three films; nobody has judged quality by ear.
+
+**Not done / not verified**
+
+- Sound effects (Stable Audio Open, gated), voice cloning (Qwen3-TTS), video-to-sound, captions in the Mixer, resumable renders, upload of audio and video for remote agents, the CUDA lane for music, Windows and Linux for all of it.
+- No E2E checks for the new screens (they sit behind the switch; CLAUDE.md wants them before it flips).
+- The packaged desktop app was never run with any of this (Tauri dialogs: Choose file, Reveal).
+- Stale marking for imported takes (no fingerprint), "select on arrival" after "Use in storyboard", per-job ids in the music progress route.
+
+**Open for Claude:** sound effects and voice cloning (P5), the quality pack (P6), remote 4090 (P7), E2E for the UI, then release prep (P8).
+
 ## Update 2026-11-07, music backend (P1) on `feat/music-backend`
 
 **Done** (not pushed; backend only, the Music screens are P2)

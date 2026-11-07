@@ -1,6 +1,6 @@
 /** One project on the Projects screen: up to three stills, the numbers, and its actions. */
 import { useTranslation } from "react-i18next";
-import { ActionMenu } from "./ActionMenu";
+import { ActionMenu } from "../../components/ActionMenu";
 import { ProjectImage, ProjectVideo } from "./ProjectMedia";
 import { filmSeconds, relativeTime, staleCount, thumbnailOf } from "./storyboardLogic";
 import type { ProjectCardData } from "./useStoryboardProjects";

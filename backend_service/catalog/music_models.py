@@ -93,8 +93,9 @@ MUSIC_MODEL_FAMILIES: list[dict[str, Any]] = [
                     "peakGb": 22.9,
                     "idleGb": 15.2,
                     "diskGb": 10.09,
-                    # FLAC 24-bit 48 kHz stereo written by the worker (refined by the real check).
-                    "outputMbPerMinute": 15.0,
+                    # FLAC 24-bit 48 kHz stereo as the worker writes it: 8.9 MB/min (lo-fi) to 11.5
+                    # (orchestral) measured in the P1 real check, 2026-11-07; the higher figure is used.
+                    "outputMbPerMinute": 11.5,
                     # No CUDA lane yet and no peak figure on the card for the 2B: fit says "unknown" there.
                     "cuda": {"peakGb": None, "basis": "estimated", "source": "not measured; no peak figure on the model card"},
                 },
@@ -138,7 +139,7 @@ MUSIC_MODEL_FAMILIES: list[dict[str, Any]] = [
                     "peakGb": 47.0,
                     "idleGb": 40.2,
                     "diskGb": 19.95,
-                    "outputMbPerMinute": 15.0,
+                    "outputMbPerMinute": 11.5,
                     # Supported by the model card on CUDA ("20 GB or more without offload"); not measured.
                     "cuda": {"peakGb": 20.0, "basis": "estimated", "source": "ACE-Step XL model card"},
                 },

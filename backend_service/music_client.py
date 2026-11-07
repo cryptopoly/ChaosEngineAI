@@ -191,12 +191,14 @@ class MusicWorker:
         on_event: Callable[[dict[str, Any]], None] | None = None,
         cancel_check: Callable[[], bool] | None = None,
         start: bool = True,
+        touch: bool = True,
         **payload: Any,
     ) -> dict[str, Any]:
         """Send one command and wait for its final reply; events go to ``on_event``.
 
         ``cancel_check`` is polled while waiting: when it turns true a ``cancel`` is sent for the job,
-        and the worker is killed if the job has not ended ``HARD_CANCEL_AFTER_S`` later.
+        and the worker is killed if the job has not ended ``HARD_CANCEL_AFTER_S`` later. ``touch=False``
+        (status polls) leaves the idle clock alone, so a UI that polls never keeps the worker alive.
         """
         if start:
             self._ensure_started()
@@ -207,12 +209,14 @@ class MusicWorker:
         with self._pending_lock:
             self._pending[request_id] = replies
             self._in_flight += 1
-        self._last_used = time.monotonic()
+        if touch:
+            self._last_used = time.monotonic()
         try:
             self._send({"id": request_id, "cmd": cmd, **payload})
             return self._wait(request_id, replies, timeout, payload.get("job"), on_event, cancel_check)
         finally:
-            self._last_used = time.monotonic()
+            if touch:
+                self._last_used = time.monotonic()
             with self._pending_lock:
                 self._in_flight -= 1
                 self._pending.pop(request_id, None)
@@ -270,7 +274,7 @@ class MusicWorker:
         if not self.running():
             return None
         try:
-            return self.request("status", timeout=5.0, start=False)
+            return self.request("status", timeout=5.0, start=False, touch=False)
         except MusicWorkerError:
             return None
 

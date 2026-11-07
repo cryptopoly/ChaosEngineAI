@@ -38,10 +38,11 @@ _MIN_FREE_GB = 4.0
 _LINK_MIN_BYTES = 16 * 1024 * 1024
 
 _VERIFY_CODE = (
-    "import json, torch, soundfile, mlx.core as mx, acestep.handler, acestep.inference, "
+    "import json, sys, torch, soundfile, mlx.core as mx, acestep.handler, acestep.inference, "
     "acestep.models.mlx.dit_generate as dg\n"
     "assert hasattr(dg, 'tqdm'), 'dit_generate.tqdm missing'\n"
-    "print(json.dumps({'torch': torch.__version__, 'mlx': mx.__version__}))\n"
+    "print(json.dumps({'torch': torch.__version__, 'mlx': mx.__version__, "
+    "'python': '.'.join(map(str, sys.version_info[:3]))}))\n"
 )
 
 

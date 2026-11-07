@@ -1,6 +1,7 @@
 /** New project (name, shape, frame rate) and Rename (name only), on the shared modal classes. */
-import { useEffect, useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useDialogFocus } from "../../hooks/useDialogFocus";
 import type { StoryboardExportPreset } from "../../types";
 import { EXPORT_PRESETS, FPS_CHOICES } from "./storyboardLogic";
 
@@ -26,13 +27,8 @@ export function ProjectDialog({ mode, initialName = "", busy, error, onSubmit, o
   const [fps, setFps] = useState<number>(24);
   const trimmed = name.trim();
 
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onCancel();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onCancel]);
+  const dialog = useRef<HTMLFormElement>(null);
+  useDialogFocus(dialog, { onEscape: onCancel });
 
   const title =
     mode === "create"
@@ -42,6 +38,7 @@ export function ProjectDialog({ mode, initialName = "", busy, error, onSubmit, o
   return (
     <div className="modal-overlay" onMouseDown={(event) => event.target === event.currentTarget && onCancel()}>
       <form
+        ref={dialog}
         className="modal-content project-dialog"
         role="dialog"
         aria-modal="true"
@@ -61,7 +58,7 @@ export function ProjectDialog({ mode, initialName = "", busy, error, onSubmit, o
               type="text"
               value={name}
               maxLength={200}
-              autoFocus
+              data-autofocus=""
               onChange={(event) => setName(event.target.value)}
             />
           </label>
@@ -106,7 +103,7 @@ export function ProjectDialog({ mode, initialName = "", busy, error, onSubmit, o
               </div>
             </>
           ) : null}
-          {error ? <p className="error-text">{error}</p> : null}
+          {error ? <p className="error-text" role="alert">{error}</p> : null}
         </div>
         <div className="modal-footer">
           <button type="button" className="secondary-button" onClick={onCancel}>

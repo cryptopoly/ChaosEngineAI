@@ -5,10 +5,11 @@
  *
  * Gated and not yet accepted: Read / Open on Hugging Face, Not now,
  * I have accepted. Anything else (already accepted, or not gated): a plain
- * notice with OK only. Escape = Not now; focus stays inside the dialog.
+ * notice with OK only. Escape = Not now; focus stays inside the dialog and returns to the opener.
  */
-import { useEffect, useId, useRef } from "react";
+import { useId, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import { useDialogFocus } from "../hooks/useDialogFocus";
 import type { ModelLicence } from "./LicenceChip";
 
 export interface LicenceScreenProps {
@@ -21,43 +22,14 @@ export interface LicenceScreenProps {
   onOpenFull: () => void;
 }
 
-const FOCUSABLE = "button:not([disabled]), a[href], input:not([disabled])";
-
 export function LicenceScreen({ entry, licence, accepted, onAccept, onDismiss, onOpenHub, onOpenFull }: LicenceScreenProps) {
   const { t } = useTranslation("studio");
   const titleId = useId();
   const descId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
-  const dismissRef = useRef(onDismiss);
-  dismissRef.current = onDismiss;
   const needsAccept = licence.gated && !accepted;
   const lines = licence.summaryLines ?? [];
-
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    dialog?.querySelector<HTMLElement>(FOCUSABLE)?.focus();
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        dismissRef.current();
-        return;
-      }
-      if (event.key !== "Tab" || !dialog) return;
-      const items = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE));
-      if (items.length === 0) return;
-      const first = items[0];
-      const last = items[items.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, []);
+  useDialogFocus(dialogRef, { onEscape: onDismiss });
 
   return (
     <div className="modal-overlay" role="presentation" onClick={onDismiss}>

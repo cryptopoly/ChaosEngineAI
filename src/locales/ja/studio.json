@@ -742,7 +742,8 @@
       "listen": "試聴",
       "progress": "{total} 中 {done} 番目",
       "generateParts": "音声を生成（{n} パート）",
-      "encoding": "エンコード中…"
+      "encoding": "エンコード中…",
+      "textLabel": null
     },
     "stop": "停止",
     "studio": {
@@ -777,7 +778,8 @@
       "empty": "音声が見つかりませんでした。",
       "editHint": "ダブルクリックで編集",
       "edit": "行を編集",
-      "export": "書き出し"
+      "export": "書き出し",
+      "lineLabel": null
     },
     "handoff": {
       "summary": "チャットで要約",
@@ -862,7 +864,12 @@
       "tooLong": null,
       "checking": null,
       "save": null,
-      "installingWatermark": null
+      "installingWatermark": null,
+      "voices": null,
+      "deleteVoice": null,
+      "textLabel": null,
+      "sampleFile": null,
+      "recordingPlayback": null
     }
   },
   "residentChatModelNote": "読み込み済みのチャットモデルがこのメモリのうち約 {gb} GB を使用しています。アンロードするとその分が解放されます。",
@@ -977,6 +984,10 @@
     "size": {
       "gb": null,
       "mb": null
+    },
+    "band": {
+      "caution": null,
+      "danger": null
     }
   },
   "disclosure": {

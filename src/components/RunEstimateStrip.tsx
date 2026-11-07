@@ -1,7 +1,7 @@
 /**
  * Cost before the click: time, peak memory of total, and disk written, with
  * a Measured / Estimated basis, sitting directly above a Studio's primary
- * action. Updates are announced politely. An unknown value reads as a
+ * action. Updates (and the queue and busy lines) are announced politely. An unknown value reads as a
  * sentence, never as a blank.
  */
 import type { ReactNode } from "react";
@@ -110,7 +110,17 @@ export function RunEstimateStrip({ seconds, peakGb, totalGb, diskMb, basis, risk
       <div className="run-estimate__row">
         <div className="run-estimate__items" aria-live="polite">
           <span className="run-estimate__item run-estimate__item--time">{timeText}</span>
-          <span className={`run-estimate__item run-estimate__item--memory run-estimate__item--${memoryBand}`} title={memoryTitle}>{memoryText}</span>
+          <span className={`run-estimate__item run-estimate__item--memory run-estimate__item--${memoryBand}`} title={memoryTitle}>
+            {memoryText}
+            {memoryBand !== "safe" ? (
+              <span className="sr-only">
+                {" "}
+                {memoryBand === "danger"
+                  ? t("estimate.band.danger", { defaultValue: "(danger: may not fit)" })
+                  : t("estimate.band.caution", { defaultValue: "(caution: close to the limit)" })}
+              </span>
+            ) : null}
+          </span>
           <span className="run-estimate__item run-estimate__item--disk">{diskText}</span>
           {basis ? (
             <span
@@ -129,8 +139,11 @@ export function RunEstimateStrip({ seconds, peakGb, totalGb, diskMb, basis, risk
         </div>
         <div className="run-estimate__action">{action}</div>
       </div>
-      {queueText ? <p className="run-estimate__queue" aria-live="polite">{queueText}</p> : null}
-      {busy && busy.level !== "ok" && busy.message ? <p className="run-estimate__queue run-estimate__busy" aria-live="polite">{busy.message}</p> : null}
+      {/* The live region is always mounted: a region that appears with its text already in it is not announced. */}
+      <div className="run-estimate__notes" aria-live="polite">
+        {queueText ? <p className="run-estimate__queue">{queueText}</p> : null}
+        {busy && busy.level !== "ok" && busy.message ? <p className="run-estimate__queue run-estimate__busy">{busy.message}</p> : null}
+      </div>
       {risk === "danger" && ack ? (
         <label className="check-row run-estimate__ack">
           <input type="checkbox" checked={ack.checked} onChange={(event) => ack.onChange(event.target.checked)} />

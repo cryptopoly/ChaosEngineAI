@@ -282,7 +282,7 @@ function SttModelCard({
           {t("voice.models.firstUse", { defaultValue: "Downloads on first use if you skip this." })}
         </p>
       ) : null}
-      {status?.state === "failed" ? <p className="voice-error">{status.error}</p> : null}
+      {status?.state === "failed" ? <p className="voice-error" role="alert">{status.error}</p> : null}
     </article>
   );
 }

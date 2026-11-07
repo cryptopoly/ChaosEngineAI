@@ -175,7 +175,7 @@ function CloneBody({ onTabChange }: { onTabChange?: (tab: TabId) => void }) {
           </span>
         ) : null}
       </div>
-      {model?.download.error ? <p className="voice-error">{model.download.error}</p> : null}
+      {model?.download.error ? <p className="voice-error" role="alert">{model.download.error}</p> : null}
 
       {!models.allowedHere ? (
         <p className="muted-text">{t("voice.clone.notHere", { defaultValue: "Cloned voices can only be used from the ChaosEngineAI window on this computer." })}</p>
@@ -190,7 +190,7 @@ function CloneBody({ onTabChange }: { onTabChange?: (tab: TabId) => void }) {
         />
       ) : (
         <>
-          <ul className="voice-clone__voices">
+          <ul className="voice-clone__voices" role="radiogroup" aria-label={t("voice.clone.voices", { defaultValue: "Cloned voices" })}>
             {voices.map((voice) => (
               <li key={voice.id}>
                 <label>
@@ -206,7 +206,12 @@ function CloneBody({ onTabChange }: { onTabChange?: (tab: TabId) => void }) {
                         date: voice.consent.consentedAt.slice(0, 10),
                       })}
                 </span>{" "}
-                <button type="button" className="secondary-button" onClick={() => void remove(voice)}>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  aria-label={t("voice.clone.deleteVoice", { defaultValue: "Delete the voice {name}", name: voice.name })}
+                  onClick={() => void remove(voice)}
+                >
                   {t("voice.clone.delete", { defaultValue: "Delete" })}
                 </button>
               </li>
@@ -221,6 +226,7 @@ function CloneBody({ onTabChange }: { onTabChange?: (tab: TabId) => void }) {
                 className="text-input voice-textarea"
                 value={text}
                 maxLength={MAX_CHARS}
+                aria-label={t("voice.clone.textLabel", { defaultValue: "Text to say in the cloned voice" })}
                 onChange={(e) => setText(e.target.value)}
                 placeholder={t("voice.clone.placeholder", { defaultValue: "Text to say in the cloned voice." })}
               />

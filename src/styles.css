@@ -11573,6 +11573,9 @@ html[lang="ko"] select {
   padding: 4px 12px 12px;
 }
 
+.run-estimate__notes {
+  display: contents;
+}
 .run-estimate {
   display: flex;
   flex-direction: column;
@@ -11961,6 +11964,9 @@ button.licence-chip:focus-visible {
 .conflict-chip__dismiss {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  min-height: 24px;
   border: 0;
   background: transparent;
   color: inherit;
@@ -13546,5 +13552,21 @@ select.music-library__select {
   }
   .music-library__toolbar .segmented {
     flex-wrap: wrap;
+  }
+}
+
+/* Studio progress and recording indicators: still, not looping, for people who ask for less motion. */
+@media (prefers-reduced-motion: reduce) {
+  .live-progress__phase-dot,
+  .live-progress__bar-fill,
+  .live-progress__wave-dot,
+  .live-progress__qgrid-cell,
+  .live-progress__mosaic-cell,
+  .composer-mic__button--recording,
+  .voice-record--active {
+    animation: none !important;
+  }
+  .live-progress__bar-fill {
+    transition: none;
   }
 }

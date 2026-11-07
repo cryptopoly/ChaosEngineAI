@@ -353,7 +353,7 @@ def _run(command: list[str]) -> str:
 
 def _verify() -> dict[str, Any]:
     """Import the engine in the venv; returns the versions it reports."""
-    output = _run([str(venv_python()), "-c", _VERIFY_CODE])
+    output = _run([str(venv_python()), "-I", "-c", _VERIFY_CODE])
     for line in reversed(output.splitlines()):
         try:
             found = json.loads(line)

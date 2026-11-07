@@ -248,7 +248,7 @@ def _run(command: list[str]) -> str:
 
 
 def _verify() -> dict[str, Any]:
-    output = _run([str(venv_python()), "-c", _VERIFY_CODE])
+    output = _run([str(venv_python()), "-I", "-c", _VERIFY_CODE])
     for line in reversed(output.splitlines()):
         try:
             found = json.loads(line)

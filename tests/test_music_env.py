@@ -205,7 +205,7 @@ class InstallJobTests(_EnvBox):
             status = self._wait()
         self.assertEqual(status["phase"], "done")
         self.assertEqual(len(commands), 1)  # the import check only: no pip, nothing written into the venv
-        self.assertEqual(commands[0][1], "-c")
+        self.assertEqual(commands[0][2], "-c")
 
     def test_off_apple_silicon_the_install_explains_and_stops(self) -> None:
         with self._lane("unsupported"), mock.patch.object(music_env, "_run") as run:

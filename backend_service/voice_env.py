@@ -469,7 +469,7 @@ def _run_install(extras: list[str]) -> None:
 
         _set_phase("verifying")
         modules = ", ".join(_VERIFY_IMPORTS[lane_name])
-        _run([str(venv_python()), "-c", f"import {modules}; print('voice pack ok')"])
+        _run([str(venv_python()), "-I", "-c", f"import {modules}; print('voice pack ok')"])
 
         _MARKER.write_text(
             json.dumps(

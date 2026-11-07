@@ -1718,6 +1718,7 @@
     "clips": "{count, plural, one {# clip} other {# clips}}",
     "tracks": "{count, plural, one {# track} other {# tracks}}",
     "sounds": "{count, plural, one {# sound} other {# sounds}}",
-    "speech": "{count, plural, one {# speech item} other {# speech items}}"
+    "speech": "{count, plural, one {# speech item} other {# speech items}}",
+    "transcripts": "{count, plural, one {# transcript} other {# transcripts}}"
   }
 }

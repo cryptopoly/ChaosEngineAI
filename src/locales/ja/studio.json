@@ -1718,6 +1718,7 @@
     "clips": null,
     "tracks": null,
     "sounds": null,
-    "speech": null
+    "speech": null,
+    "transcripts": null
   }
 }

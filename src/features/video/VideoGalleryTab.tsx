@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
 import { ProjectChip, ProjectFilter, ProjectHeader } from "../../components/ProjectFilter";
@@ -41,7 +41,7 @@ export function VideoGalleryTab({
   const storyboard = useSendToStoryboard((tab) => onActiveTabChange(tab));
   const [projectFilter, setProjectFilter] = useState(ALL_PROJECTS);
   const visibleOutputs = filterByProject(videoOutputs, projectFilter);
-  const projects = projectOptions(videoOutputs);
+  const projects = useMemo(() => projectOptions(videoOutputs), [videoOutputs]);
   const picked = projects.find((project) => project.id === projectFilter) ?? null;
   const expandedArtifact = visibleOutputs.find((artifact) => artifact.artifactId === expandedArtifactId) ?? null;
   const displayedArtifacts = expandedArtifact ? [expandedArtifact] : visibleOutputs;

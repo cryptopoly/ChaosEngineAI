@@ -13172,16 +13172,15 @@ button.licence-chip:focus-visible {
   white-space: nowrap;
 }
 .project-filter__panel {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  z-index: 40;
+  position: fixed;
+  z-index: 1000;
   min-width: 240px;
   max-width: 320px;
   padding: 4px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  background: var(--panel);
+  background: var(--panel-alt);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
 }
 .project-filter__search {
   display: flex;
@@ -13199,7 +13198,8 @@ button.licence-chip:focus-visible {
   outline: none;
 }
 .project-filter__list {
-  list-style: none;
+  display: flex;
+  flex-direction: column;
   margin: 0;
   padding: 0;
   max-height: 280px;
@@ -13223,8 +13223,21 @@ button.licence-chip:focus-visible {
 .project-filter__option:hover,
 .project-filter__option:focus-visible,
 .project-filter__option.active {
-  background: var(--panel-alt);
+  background: var(--panel);
   outline: none;
+}
+.project-filter__option:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--accent, currentColor);
+}
+.project-card-badge {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-transform: none;
+  letter-spacing: normal;
+  vertical-align: bottom;
 }
 .project-filter__name {
   overflow: hidden;
@@ -13232,6 +13245,7 @@ button.licence-chip:focus-visible {
   white-space: nowrap;
 }
 .project-filter__empty {
+  margin: 0;
   padding: 7px 10px;
   font-size: 0.85rem;
 }

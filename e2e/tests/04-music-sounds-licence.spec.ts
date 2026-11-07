@@ -30,11 +30,12 @@ test("Music | Sounds switch shows the sound model with its attribution and the n
 
 test("Stable Audio Open licence screen: terms, attribution, Not now and I have accepted", async ({ page }) => {
   await goTo(page, "Music", "Models");
-  const row = page.getByText("Stable Audio Open Small").first();
-  await expect(row).toBeVisible();
-  await expect(page.getByText("NEEDS LICENCE", { exact: false }).first()).toBeVisible();
+  // Two sound models are listed (Small and 1.0), each with its own licence gate: act on Small's row.
+  const smallRow = page.locator('[data-model-id="stabilityai/stable-audio-open-small"]');
+  await expect(smallRow).toBeVisible();
+  await expect(smallRow.getByText("NEEDS LICENCE", { exact: false }).first()).toBeVisible();
 
-  await page.getByRole("button", { name: "Accept licence" }).click();
+  await smallRow.getByRole("button", { name: "Accept licence" }).click();
   const dialog = page.getByRole("dialog", { name: /Stable Audio Open Small/ });
   await expect(dialog).toBeVisible();
   await expect(dialog).toContainText("Stability AI Community Licence");
@@ -48,13 +49,15 @@ test("Stable Audio Open licence screen: terms, attribution, Not now and I have a
   // Not now leaves it unaccepted.
   await dialog.getByRole("button", { name: "Not now" }).click();
   await expect(dialog).toBeHidden();
-  await expect(page.getByRole("button", { name: "Accept licence" })).toBeVisible();
+  await expect(smallRow.getByRole("button", { name: "Accept licence" })).toBeVisible();
 
   // Accepting is remembered in this browser and the Studio's next step moves on to the download.
-  await page.getByRole("button", { name: "Accept licence" }).click();
+  await smallRow.getByRole("button", { name: "Accept licence" }).click();
   await page.getByRole("dialog").getByRole("button", { name: "I have accepted" }).click();
   await expect(page.getByRole("dialog")).toBeHidden();
-  await expect(page.getByRole("button", { name: "Accept licence" })).toHaveCount(0);
+  await expect(smallRow.getByRole("button", { name: "Accept licence" })).toHaveCount(0);
+  // Acceptance is per model: 1.0 still asks.
+  await expect(page.locator('[data-model-id="stabilityai/stable-audio-open-1.0"]').getByRole("button", { name: "Accept licence" })).toBeVisible();
 
   await openTab(page, "Music", "Studio");
   await page.getByRole("group", { name: "Music or sound effects" }).getByRole("button", { name: "Sounds", exact: true }).click();

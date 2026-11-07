@@ -4,7 +4,7 @@ Checks, against a running backend:
 1. the catalog lists the sound row: gated, pinned 40-character revisions, the "Powered by Stability AI" line;
 2. the runtime reports the sounds pack next to the music pack;
 3. a sound model is refused as a music model, and a music model as a sound model;
-4. a sound longer than 11 s is refused before anything loads;
+4. a sound longer than the model's own maximum (11 s Small, 47 s 1.0) is refused before anything loads;
 5. while the pack or the gated weights are missing, the request answers 409 with the plain fix;
 6. full run when the sounds pack and the weights are installed: a 3 s seamless loop is made, saved to the
    Music Library as kind ``sound`` with the loop flag, and its FLAC carries the machine-generated tag, the
@@ -68,6 +68,31 @@ def phase_15(cap: Any):
             return "fail", ", ".join(problems), {}
         return "pass", "", {"installed": bool(row.get("availableLocally")), "packInstalled": bool(row.get("packInstalled"))}
 
+    def _full_model_row():
+        code, body = _json("GET", "/api/music/catalog")
+        rows = [v for f in (body or {}).get("families") or [] for v in f.get("variants") or [] if v.get("kind") == "sound"]
+        full = next((v for v in rows if v.get("repo") == "stabilityai/stable-audio-open-1.0"), None)
+        if code != 200 or not rows:
+            return "skip", "no sound models in this build's catalog", {}
+        if full is None:
+            return "fail", "Stable Audio Open 1.0 is not in the catalog", {}
+        problems = []
+        if int(full.get("maxSeconds") or 0) != 47:
+            problems.append(f"maxSeconds {full.get('maxSeconds')}")
+        if not (full.get("licence") or {}).get("gated"):
+            problems.append("not gated")
+        if not re.fullmatch(r"[0-9a-f]{40}", str(full.get("revision", ""))):
+            problems.append("revision not pinned")
+        if (full.get("estimates") or {}).get("basis") == "measured" and not (full.get("estimates") or {}).get("measuredOn"):
+            problems.append("measured without a measuredOn")
+        code, body = _json("POST", "/api/music/estimate", {"modelId": full["id"], "seconds": 40})
+        if code != 200:
+            problems.append(f"estimate HTTP {code}")
+        code, _ = _json("POST", "/api/music/estimate", {"modelId": rows[0]["id"], "seconds": 40})
+        if rows[0]["id"] != full["id"] and code != 400:
+            problems.append(f"Small accepted 40 s (HTTP {code})")
+        return ("fail", ", ".join(problems), {}) if problems else ("pass", "", {"installed": bool(full.get("availableLocally"))})
+
     def _runtime():
         if "row" not in state:
             return "skip", "no sound row", {}
@@ -91,8 +116,14 @@ def phase_15(cap: Any):
     def _too_long():
         if "row" not in state:
             return "skip", "no sound row", {}
-        code, _ = _json("POST", "/api/music/sound/generate", {"caption": "x", "seconds": 12})
-        return ("pass", "", {}) if code == 422 else ("fail", f"expected 422 for 12 s, got {code}", {})
+        # One second over the row's own maximum is a 400 naming the model's range (the request model only holds a
+        # clip to the widest sound model's maximum, which is a 422).
+        over = int(state["row"].get("maxSeconds") or 11) + 1
+        code, _ = _json("POST", "/api/music/sound/generate", {"caption": "x", "seconds": over, "modelId": state["row"]["id"]})
+        if code not in (400, 422):
+            return "fail", f"expected 400 for {over} s on {state['row']['id']}, got {code}", {}
+        code, _ = _json("POST", "/api/music/sound/generate", {"caption": "x", "seconds": 600})
+        return ("pass", "", {}) if code == 422 else ("fail", f"expected 422 for 600 s, got {code}", {})
 
     def _ready() -> bool:
         row = state.get("row") or {}
@@ -139,8 +170,9 @@ def phase_15(cap: Any):
             _json("DELETE", f"/api/music/library/{item['id']}")
             _json("POST", "/api/music/unload", {})
 
-    for name, fn in (("sound row pinned and gated", _catalog), ("sounds pack in runtime", _runtime),
-                     ("music and sound models not mixed", _cross_refusals), ("over 11 s refused", _too_long),
+    for name, fn in (("sound row pinned and gated", _catalog), ("Stable Audio Open 1.0 row and 47 s limit", _full_model_row),
+                     ("sounds pack in runtime", _runtime),
+                     ("music and sound models not mixed", _cross_refusals), ("over the maximum refused", _too_long),
                      ("missing pack or weights is a plain 409", _missing_is_plain), ("loop made, tagged, saved", _full_run)):
         phase.checks.append(suite._check(name, fn))
     statuses = {c.status for c in phase.checks}

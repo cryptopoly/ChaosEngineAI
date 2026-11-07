@@ -494,6 +494,16 @@ inference). All are MIT, BSD or Apache except the one below.
 - **Powered by Stability AI.** The model is gated: the user accepts the licence on their own Hugging Face account.
   Free for individuals and organisations with annual revenue under US$1,000,000; commercial use requires registration with
   Stability AI; outputs may not be used to train other foundation models. Not redistributed by ChaosEngineAI.
+### Stable Audio Open 1.0 (downloaded by the user, not bundled)
+
+- **Source:** <https://huggingface.co/stabilityai/stable-audio-open-1.0> (pinned revision `f21265c1e2710b3bd2386596943f0007f55f802e`)
+- **Licence:** Stability AI Community License (the model card's wording; the same agreement as above, last updated July 5,
+  2024, <https://stability.ai/community-license-agreement>). The repo's own `LICENSE.md` is behind the gate and was not read
+  by us; the owner's real test reads it once the licence is accepted. Same terms handled as for Small: gated, **Powered by
+  Stability AI**, free under US$1,000,000 annual revenue, no training other foundation models on outputs, not redistributed.
+- Trained on CC0, CC BY and CC Sampling+ audio (Freesound, Free Music Archive); attribution lists are in the model repo and are
+  not fetched by the app.
+
 - **stable-audio-tools 0.0.20** - MIT (Stability AI), installed on demand into the isolated sounds environment.
 - **T5-base** (`google-t5/t5-base`) - Apache 2.0, downloaded on demand as the text encoder.
 - Sounds-pack dependencies are installed on demand (versions in `backend_service/sound_requirements.txt`): PyTorch and

@@ -64,3 +64,7 @@ Verdict: none are silent, none clip, the peak normaliser lands on -1.0 dBFS, dur
 
 - Only the bottle clip (419 KB) is saved in `docs/research/media/sound-samples/`: the repo's pre-commit hook rejects files over 500 KB.
 - The others stay in the Music Library: door creaking (536 KB) `/Users/dan/.chaosengine/music/library/1794062989_fe35e693.flac`, rain loop (1.83 MB) `/Users/dan/.chaosengine/music/library/1794062990_7a6af2b3.flac`, footsteps (1.10 MB) `/Users/dan/.chaosengine/music/library/1794062991_dfa24268.flac`.
+
+## Stable Audio Open 1.0
+
+Not run yet. Opt-in real test for the owner (after accepting the licence on Hugging Face): `scripts/real-test-sound-1.0.py`, which downloads through the app, makes a 20 s and a 45 s clip and prints a report in the format above. Until then the catalog row is labelled `estimated`.

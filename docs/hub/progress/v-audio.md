@@ -74,3 +74,9 @@ storyboard's effects lane, and an agent tool body `make_sound` (not registered h
 
 - Keep the sounds pack separate from the music pack (own venv, 1 GB), so a songs-only user never installs Stability code.
 - Revisit an MLX build when Stability or a licensed community package ships one for Small (Stable Audio 3 has MLX).
+
+## Update 2026-11-07: Stable Audio Open 1.0 (D-55)
+
+- Second sound row `stabilityai/stable-audio-open-1.0` (pinned revision `f21265c1e271`, up to 47 s, 100 steps, cfg 7, dpmpp-3m-sde, loader is the same stable-audio-tools engine as Small). The worker has one profile per model (folder, own length cap, `seconds_start` conditioning, sampler sigma range). Request limits, estimate route, `make_sound` (new `modelId`), the Sounds studio length slider and pills, and a model picker (when two are installed) follow the selected row.
+- Estimates for the row are labelled `estimated`, `measuredOn` and `secondsPer10sAudio` are empty. Nothing was downloaded or run. Real test for the owner: `scripts/real-test-sound-1.0.py` (see its header), then copy the measured numbers into the catalog row.
+- Not verified: the licence file of the gated repo, MPS behaviour of the k-diffusion sampler, real speed and memory.

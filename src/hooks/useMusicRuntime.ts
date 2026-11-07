@@ -28,7 +28,10 @@ function message(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
-export function useMusicRuntime(backendOnline: boolean, setError: (message: string | null) => void) {
+export function useMusicRuntime(backendOnline: boolean, setErrorProp: (message: string | null) => void) {
+  const errorRef = useRef(setErrorProp);
+  errorRef.current = setErrorProp;
+  const setError = useCallback((text: string | null) => errorRef.current(text), []);
   const [families, setFamilies] = useState<MusicModelFamily[]>([]);
   const [runtime, setRuntime] = useState<MusicRuntimeStatus | null>(null);
   const [downloads, setDownloads] = useState<Record<string, DownloadStatus>>({});

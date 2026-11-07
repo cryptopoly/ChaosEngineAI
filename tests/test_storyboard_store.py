@@ -613,6 +613,47 @@ class DepsAndBatchTests(StoreCase):
         self.assertEqual(p.batches[-1].state, "failed")
 
 
+class DeleteTests(StoreCase):
+    def test_delete_is_refused_while_a_batch_or_render_runs(self):
+        from backend_service.storyboard.render_adapter import RENDERS, RenderJob
+
+        p = self.new(shots=1)
+        gens = FakeGenerators(self.src)
+        batch = Batch(self.store, p.id, "still", gens.make_still, gens.make_clip)
+        p = batch.start(p.revision)  # recorded and live, not run yet
+        with self.assertRaises(store_module.ProjectBusy) as caught:
+            self.store.delete(p.id, p.revision)
+        self.assertIn("batch", str(caught.exception))
+        batch.run()
+        p = self.store.load(p.id)
+        job = RenderJob(p.id, {"out_path": str(self.folder(p) / "exports" / "x.mp4"), "work_dir": "w"})
+        with mock.patch.dict(RENDERS.last, {p.id: job}):
+            with self.assertRaises(store_module.ProjectBusy) as caught:
+                self.store.delete(p.id, p.revision)
+            self.assertIn("render", str(caught.exception))
+            job.done.set()
+            self.store.delete(p.id, p.revision)
+        self.assertFalse(self.folder(p).exists())
+
+    def test_a_file_that_cannot_be_removed_gives_a_clear_message(self):
+        p = self.new(shots=1)
+        p = self.op(p, "import_take", shotId=p.shots[0].id, clip=str(fake_mp4(self.src / "c.mp4")))
+        real_unlink = os.unlink
+
+        def busy_unlink(path, *args, **kwargs):  # what Windows does to a file another process has open
+            if str(path).endswith(".mp4"):
+                raise PermissionError(13, "The process cannot access the file", str(path))
+            return real_unlink(path, *args, **kwargs)
+
+        with mock.patch("shutil.os.unlink", busy_unlink), mock.patch("os.unlink", busy_unlink):
+            result = self.store.delete(p.id, p.revision)
+        self.assertEqual(result["leftover"], 1)
+        self.assertIn("could not be removed", result["message"])
+        with self.assertRaises(store_module.ProjectNotFound):  # the project itself is gone
+            self.store.load(p.id)
+        self.assertNotIn(p.id, [row["id"] for row in self.store.list()])
+
+
 class BundleTests(StoreCase):
     def _project_with_media(self):
         p = self.new(shots=1)

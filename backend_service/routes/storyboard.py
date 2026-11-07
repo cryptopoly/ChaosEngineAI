@@ -78,7 +78,7 @@ def _http(exc: Exception) -> HTTPException:
                                                       "project": dump(exc.current)})
     if isinstance(exc, store_module.ProjectNotFound):
         return HTTPException(status_code=404, detail=str(exc))
-    if isinstance(exc, RenderBusy):
+    if isinstance(exc, (RenderBusy, store_module.ProjectBusy)):
         return HTTPException(status_code=409, detail=str(exc))
     if isinstance(exc, (store_module.StoreError, MediaError, ValueError)):
         return HTTPException(status_code=400, detail=str(exc))
@@ -151,8 +151,7 @@ def get_project(project_id: str) -> dict[str, Any]:
 
 @router.delete("/api/storyboard/projects/{project_id}")
 def delete_project(project_id: str, revision: int) -> dict[str, Any]:
-    _guard(get_store().delete, project_id, revision)
-    return {"deleted": project_id}
+    return _guard(get_store().delete, project_id, revision)
 
 
 @router.post("/api/storyboard/projects/{project_id}/ops")

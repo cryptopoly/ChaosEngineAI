@@ -187,8 +187,7 @@ def storyboard_project(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
         return _summary(_run(lambda: store.undo(pid, rev)))
     if action == "redo":
         return _summary(_run(lambda: store.redo(pid, rev)))
-    _run(lambda: store.delete(pid, rev))
-    return {"deleted": pid}
+    return _run(lambda: store.delete(pid, rev))
 
 
 def storyboard_shot(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:

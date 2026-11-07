@@ -80,15 +80,18 @@ def export_bundle(store: ProjectStore, project_id: str) -> Path:
     slug = "".join(c if c.isalnum() else "-" for c in project.name).strip("-")[:40] or "film"
     out = exports / f"{slug}-{time.strftime('%Y%m%d-%H%M%S')}{BUNDLE_SUFFIX}"
     tmp = out.with_name(out.name + ".part")
-    with zipfile.ZipFile(tmp, "w", allowZip64=True) as zf:
-        zf.writestr(PROJECT_FILE, json.dumps(portable(project), indent=1, ensure_ascii=False), zipfile.ZIP_DEFLATED)
-        for rel in sorted(referenced(project)):
-            try:
-                real = media.inside(folder, rel)
-            except media.MediaError:
-                continue  # missing here, missing there
-            zf.write(real, rel, zipfile.ZIP_STORED)
-    os.replace(tmp, out)
+    try:
+        with zipfile.ZipFile(tmp, "w", allowZip64=True) as zf:
+            zf.writestr(PROJECT_FILE, json.dumps(portable(project), indent=1, ensure_ascii=False), zipfile.ZIP_DEFLATED)
+            for rel in sorted(referenced(project)):
+                try:
+                    real = media.inside(folder, rel)
+                except media.MediaError:
+                    continue  # missing here, missing there
+                zf.write(real, rel, zipfile.ZIP_STORED)
+        os.replace(tmp, out)
+    finally:
+        tmp.unlink(missing_ok=True)  # a failed export leaves nothing in the (downloadable) exports folder
     return out
 
 
@@ -103,6 +106,21 @@ def _check_entry(info: zipfile.ZipInfo) -> None:
         check_rel_path(name.rstrip("/") if info.is_dir() else name)
     except ValueError as exc:
         raise BundleError(f"Refused bundle entry '{name[:80]}': {exc}") from exc
+
+
+def _check_no_clash(infos: list[zipfile.ZipInfo]) -> None:
+    """Refuse a file that is also a folder (``media/a`` and ``media/a/b``), or two names that differ only
+    in case (one disk folder on macOS and Windows)."""
+    files = [i.filename.casefold() for i in infos if not i.is_dir()]
+    taken = set(files)
+    if len(taken) != len(files):
+        raise BundleError("Refused: unsafe bundle (two entries differ only in upper and lower case).")
+    for info in infos:
+        name = info.filename.rstrip("/").casefold()
+        parents = name.split("/")[:-1]
+        clash = (info.is_dir() and name in taken) or any("/".join(parents[:n]) in taken for n in range(1, len(parents) + 1))
+        if clash:
+            raise BundleError(f"Refused: unsafe bundle ('{info.filename[:80]}' is inside a name that is also a file).")
 
 
 def import_bundle(store: ProjectStore, src: Path) -> Project:
@@ -121,6 +139,7 @@ def import_bundle(store: ProjectStore, src: Path) -> Project:
             raise BundleError("Refused bundle: duplicate entry names.")
         for info in infos:
             _check_entry(info)
+        _check_no_clash(infos)
         if sum(i.file_size for i in infos) > MAX_TOTAL_BYTES:
             raise BundleError(f"Refused bundle: larger than {MAX_TOTAL_BYTES // 1024**3} GB unpacked.")
         if PROJECT_FILE not in names:

@@ -3,7 +3,7 @@
 Upload: an image goes into an inbox folder next to settings.json and comes back as a handle
 (``upload:<id>``) that image and video tools accept wherever they accept a path. Download: a
 finished job's output can be fetched over HTTP, but only files inside the app's own output
-folders (images, videos, voice library, storyboard exports), never an arbitrary path. Inbox files are removed after a day.
+folders (images, videos, voice library, music library, storyboard exports), never an arbitrary path. Inbox files are removed after a day.
 """
 
 from __future__ import annotations
@@ -81,10 +81,16 @@ def resolve_handle(raw: str) -> Path:
 
 def output_roots() -> list[Path]:
     """Folders a finished job's files may be fetched from."""
-    from backend_service import voice_library
+    from backend_service import music_env, voice_library
     from backend_service.app import _current_image_outputs_dir, _current_video_outputs_dir
 
-    roots = [_current_image_outputs_dir(), _current_video_outputs_dir(), voice_library.library_dir(), *_storyboard_exports()]
+    roots = [
+        _current_image_outputs_dir(),
+        _current_video_outputs_dir(),
+        voice_library.library_dir(),
+        music_env.library_dir(),
+        *_storyboard_exports(),
+    ]
     resolved: list[Path] = []
     for root in roots:
         try:

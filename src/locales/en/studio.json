@@ -1331,5 +1331,20 @@
     "metadata": "Add a machine-readable AI tag",
     "metadataTitle": "A machine-readable tag in the MP4 metadata. It holds no prompts or folder names.",
     "title": "AI label"
+  },
+  "sendToStoryboard": {
+    "back": "Back to projects",
+    "conflict": "The project changed while sending. Try again.",
+    "dismiss": "Dismiss",
+    "failed": "Could not add this to the storyboard: {detail}",
+    "newProject": "New project…",
+    "newShot": "New shot",
+    "newTake": "Shot {n} (new take)",
+    "noFile": "This item has no file to send.",
+    "send": "Send to storyboard",
+    "sending": "Sending…",
+    "start": "Start a storyboard with this",
+    "untitled": "Untitled storyboard",
+    "use": "Use in storyboard"
   }
 }

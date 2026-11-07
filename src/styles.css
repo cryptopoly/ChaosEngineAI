@@ -13012,3 +13012,63 @@ button.licence-chip:focus-visible {
     width: 100%;
   }
 }
+
+/* Use in storyboard menu */
+.send-to-menu {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+.send-to-menu__button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.send-to-menu__list {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 40;
+  min-width: 200px;
+  max-width: 280px;
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+.send-to-menu__heading {
+  margin: 0;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.send-to-menu__item {
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  font-size: 0.9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.send-to-menu__item:hover,
+.send-to-menu__item:focus-visible {
+  background: var(--panel-alt);
+  outline: none;
+}
+.send-to-menu__notice {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--danger);
+}

@@ -413,8 +413,8 @@
     "copy": "Копировать"
   },
   "busy": {
-    "slowerTitle": null,
-    "riskyTitle": null,
-    "dismiss": null
+    "slowerTitle": "Компьютер занят",
+    "riskyTitle": "Не хватает памяти на оба",
+    "dismiss": "Закрыть"
   }
 }

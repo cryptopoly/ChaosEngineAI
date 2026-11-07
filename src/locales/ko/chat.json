@@ -413,8 +413,8 @@
     "copy": "복사"
   },
   "busy": {
-    "slowerTitle": null,
-    "riskyTitle": null,
-    "dismiss": null
+    "slowerTitle": "컴퓨터가 사용 중입니다",
+    "riskyTitle": "둘 다 실행하기엔 메모리가 부족합니다",
+    "dismiss": "닫기"
   }
 }

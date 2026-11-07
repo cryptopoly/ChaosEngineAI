@@ -40,7 +40,7 @@
       "tensorfold": "TensorFold-Installation",
       "mflux": "mflux-Installation",
       "vllmWsl": "vLLM-in-WSL-Installation",
-      "ltx2": null
+      "ltx2": "LTX-2.3-Engine-Installation"
     },
     "status": {
       "failed": "{noun} fehlgeschlagen — Log einsehen",

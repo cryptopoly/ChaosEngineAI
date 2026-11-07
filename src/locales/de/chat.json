@@ -413,8 +413,8 @@
     "copy": "Kopieren"
   },
   "busy": {
-    "slowerTitle": null,
-    "riskyTitle": null,
-    "dismiss": null
+    "slowerTitle": "Rechner ist ausgelastet",
+    "riskyTitle": "Nicht genug Speicher für beides",
+    "dismiss": "Schließen"
   }
 }

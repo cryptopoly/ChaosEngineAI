@@ -11753,6 +11753,10 @@ button.licence-chip:focus-visible {
   position: relative;
   display: inline-flex;
 }
+/* The menu list hangs below the header; a short panel must not cut it off. */
+.panel:has(.action-menu) {
+  overflow: visible;
+}
 .action-menu__list {
   position: absolute;
   top: calc(100% + 4px);

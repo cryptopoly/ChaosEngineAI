@@ -58,6 +58,15 @@ def _clean_settings(raw: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
+def _remove_frame(frame: Path) -> None:
+    """Delete an extracted last frame and its folder when that folder is now empty (never anything else)."""
+    try:
+        frame.unlink(missing_ok=True)
+        frame.parent.rmdir()
+    except OSError:
+        pass
+
+
 class Batch:
     def __init__(
         self,
@@ -226,7 +235,12 @@ class Batch:
             if kind == "still":
                 path, info = _split(self.make_still(shot, project))
             else:
-                path, info = _split(self.make_clip(shot, project, self._start_image(project, shot)))
+                start = self._start_image(project, shot)
+                try:
+                    path, info = _split(self.make_clip(shot, project, start))
+                finally:
+                    if start is not None and shot.startFrom == "previous-shot":
+                        _remove_frame(start)
             self._update(lambda p, folder: self._store_output(p, folder, shot_id, kind, path, info))
             return True
         except GenerationCancelled:

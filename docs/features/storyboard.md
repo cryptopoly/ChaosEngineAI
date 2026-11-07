@@ -1,7 +1,7 @@
 # Storyboard: a film as a project of shots, takes and audio lanes
 
 A storyboard project is one folder you can move, back up, zip or send to another machine. This page
-covers the backend (P3 in `docs/plans/home-studio.md`); the Board and Mixer UI come later.
+covers the backend. For the Projects, Board and Mixer screens, see [Storyboard](../usage/storyboard.md).
 
 ## The folder
 

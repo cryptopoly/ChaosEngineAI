@@ -742,7 +742,8 @@
       "listen": "Listen",
       "progress": "Part {done} of {total}",
       "generateParts": "Generate audio ({n} parts)",
-      "encoding": "Encoding…"
+      "encoding": "Encoding…",
+      "textLabel": "Text to speak"
     },
     "stop": "Stop",
     "studio": {
@@ -777,7 +778,8 @@
       "empty": "No speech was found.",
       "editHint": "Double-click to edit",
       "edit": "Edit line",
-      "export": "Export"
+      "export": "Export",
+      "lineLabel": "Edit the line at {time}"
     },
     "handoff": {
       "summary": "Summarise in chat",
@@ -863,7 +865,12 @@
       "checking": "Checking the recording…",
       "save": "Check and save voice",
       "installingWatermark": "Installing the watermark component…",
-      "tab": "Clone"
+      "tab": "Clone",
+      "voices": "Cloned voices",
+      "deleteVoice": "Delete the voice {name}",
+      "textLabel": "Text to say in the cloned voice",
+      "sampleFile": "Voice sample file",
+      "recordingPlayback": "Your recording"
     }
   },
   "residentChatModelNote": "A loaded chat model holds about {gb} GB of this memory; unloading it frees that.",
@@ -978,6 +985,10 @@
     "size": {
       "gb": "{n} GB",
       "mb": "{n} MB"
+    },
+    "band": {
+      "caution": "(caution: close to the limit)",
+      "danger": "(danger: may not fit)"
     }
   },
   "disclosure": {

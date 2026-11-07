@@ -140,7 +140,7 @@ export function NewVoiceForm({ onCreated, onCancel }: { onCreated: (voice: Clone
             </button>
             {recording ? (
               <>
-                <audio controls src={recording.url} />
+                <audio controls src={recording.url} aria-label={t("voice.clone.recordingPlayback", { defaultValue: "Your recording" })} />
                 <span className="muted-text">{formatClock(recording.seconds)}</span>
               </>
             ) : null}
@@ -152,7 +152,7 @@ export function NewVoiceForm({ onCreated, onCancel }: { onCreated: (voice: Clone
                 defaultValue: "3 to 30 seconds of the same person speaking clearly, from a file on this computer. 10 to 20 seconds works best.",
               })}
             </p>
-            <input type="file" accept="audio/*,.wav,.mp3,.m4a,.flac,.ogg" onChange={(e) => setSample(e.target.files?.[0] ?? null)} />
+            <input type="file" aria-label={t("voice.clone.sampleFile", { defaultValue: "Voice sample file" })} accept="audio/*,.wav,.mp3,.m4a,.flac,.ogg" onChange={(e) => setSample(e.target.files?.[0] ?? null)} />
             <label className="voice-settings__field">
               <span>{t("voice.clone.sampleText", { defaultValue: "Words spoken in the sample (optional; filled in automatically)" })}</span>
               <input className="text-input" maxLength={2000} value={sampleText} onChange={(e) => setSampleText(e.target.value)} />

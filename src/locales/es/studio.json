@@ -742,7 +742,8 @@
       "listen": "Escuchar",
       "progress": "Parte {done} de {total}",
       "generateParts": "Generar audio ({n} partes)",
-      "encoding": "Codificando…"
+      "encoding": "Codificando…",
+      "textLabel": null
     },
     "stop": "Detener",
     "studio": {
@@ -777,7 +778,8 @@
       "empty": "No se encontró voz.",
       "editHint": "Doble clic para editar",
       "edit": "Editar línea",
-      "export": "Exportar"
+      "export": "Exportar",
+      "lineLabel": null
     },
     "handoff": {
       "summary": "Resumir en el chat",
@@ -863,7 +865,12 @@
       "checking": null,
       "save": null,
       "installingWatermark": null,
-      "tab": null
+      "tab": null,
+      "voices": null,
+      "deleteVoice": null,
+      "textLabel": null,
+      "sampleFile": null,
+      "recordingPlayback": null
     }
   },
   "residentChatModelNote": "Un modelo de chat cargado ocupa unos {gb} GB de esta memoria; descargarlo la libera.",
@@ -978,6 +985,10 @@
     "size": {
       "gb": null,
       "mb": null
+    },
+    "band": {
+      "caution": null,
+      "danger": null
     }
   },
   "disclosure": {

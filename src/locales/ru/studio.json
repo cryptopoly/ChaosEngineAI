@@ -742,7 +742,8 @@
       "listen": "Прослушать",
       "progress": "Часть {done} из {total}",
       "generateParts": "Создать аудио (частей: {n})",
-      "encoding": "Кодирование…"
+      "encoding": "Кодирование…",
+      "textLabel": null
     },
     "stop": "Остановить",
     "studio": {
@@ -777,7 +778,8 @@
       "empty": "Речь не найдена.",
       "editHint": "Дважды щёлкните, чтобы изменить",
       "edit": "Изменить строку",
-      "export": "Экспорт"
+      "export": "Экспорт",
+      "lineLabel": null
     },
     "handoff": {
       "summary": "Кратко изложить в чате",
@@ -863,7 +865,12 @@
       "checking": null,
       "save": null,
       "installingWatermark": null,
-      "tab": null
+      "tab": null,
+      "voices": null,
+      "deleteVoice": null,
+      "textLabel": null,
+      "sampleFile": null,
+      "recordingPlayback": null
     }
   },
   "residentChatModelNote": "Загруженная чат-модель занимает около {gb} ГБ этой памяти; выгрузка модели освободит её.",
@@ -978,6 +985,10 @@
     "size": {
       "gb": null,
       "mb": null
+    },
+    "band": {
+      "caution": null,
+      "danger": null
     }
   },
   "disclosure": {

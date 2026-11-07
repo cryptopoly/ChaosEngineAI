@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import type { SidebarGroupId, TabId } from "../types";
 import type { TabConfig } from "../constants";
 import { sidebarGroups, tabs as allTabs } from "../constants";
+import { tabKeyTarget } from "../utils/keyboard";
 
 interface SubtabBarProps {
   activeTab: TabId;
@@ -50,7 +51,7 @@ export function SubtabBar({ activeTab, onTabChange, platform, onRememberLastChil
         defaultValue: "{{group}} tabs",
       })}
     >
-      {children.map((child) => {
+      {children.map((child, index) => {
         const isActive = activeTab === child.id;
         return (
           <button
@@ -58,8 +59,17 @@ export function SubtabBar({ activeTab, onTabChange, platform, onRememberLastChil
             type="button"
             role="tab"
             aria-selected={isActive}
+            tabIndex={isActive ? 0 : -1}
             className={isActive ? "subtab active" : "subtab"}
             onClick={() => handleClick(child)}
+            onKeyDown={(event) => {
+              const next = tabKeyTarget(index, children.length, event.key);
+              if (next === null) return;
+              event.preventDefault();
+              handleClick(children[next]);
+              const tabButtons = event.currentTarget.parentElement?.querySelectorAll<HTMLElement>('[role="tab"]');
+              tabButtons?.[next]?.focus();
+            }}
           >
             {childLabel(child)}
           </button>

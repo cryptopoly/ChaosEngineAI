@@ -742,7 +742,8 @@
       "listen": "듣기",
       "progress": "{total}개 중 {done}번째",
       "generateParts": "오디오 생성 ({n}개 부분)",
-      "encoding": "인코딩 중…"
+      "encoding": "인코딩 중…",
+      "textLabel": null
     },
     "stop": "중지",
     "studio": {
@@ -777,7 +778,8 @@
       "empty": "음성을 찾지 못했습니다.",
       "editHint": "더블클릭하여 편집",
       "edit": "줄 편집",
-      "export": "내보내기"
+      "export": "내보내기",
+      "lineLabel": null
     },
     "handoff": {
       "summary": "채팅에서 요약",
@@ -863,7 +865,12 @@
       "checking": null,
       "save": null,
       "installingWatermark": null,
-      "tab": null
+      "tab": null,
+      "voices": null,
+      "deleteVoice": null,
+      "textLabel": null,
+      "sampleFile": null,
+      "recordingPlayback": null
     }
   },
   "residentChatModelNote": "로드된 채팅 모델이 이 메모리의 약 {gb} GB를 차지하며, 언로드하면 해제됩니다.",
@@ -978,6 +985,10 @@
     "size": {
       "gb": null,
       "mb": null
+    },
+    "band": {
+      "caution": null,
+      "danger": null
     }
   },
   "disclosure": {

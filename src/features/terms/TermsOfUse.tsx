@@ -1,4 +1,6 @@
+import { useRef } from "react";
 import { useTranslation } from "react-i18next";
+import { useDialogFocus } from "../../hooks/useDialogFocus";
 import { Panel } from "../../components/Panel";
 import { TERMS_POINT_IDS, formatAcceptedDate, termsNeedAcceptance, type TermsSettings } from "./termsLogic";
 
@@ -23,21 +25,32 @@ export interface TermsDialogProps {
 
 export function TermsDialog({ mode, onAgree, onQuit, onClose, busy, error }: TermsDialogProps) {
   const { t } = useTranslation("common");
+  const dialog = useRef<HTMLDivElement>(null);
+  // First run must be answered, so Escape only closes the read-only view. Focus starts on the dialog so the title and points are read first.
+  useDialogFocus(dialog, { initialFocus: "container", onEscape: mode === "read" ? onClose : undefined });
   return (
-    <div className="modal-overlay terms-overlay" role="dialog" aria-modal="true" aria-labelledby="terms-title">
-      <div className="modal-content terms-dialog">
+    <div className="modal-overlay terms-overlay">
+      <div
+        ref={dialog}
+        className="modal-content terms-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="terms-title"
+        aria-describedby="terms-points"
+        tabIndex={-1}
+      >
         <div className="modal-header">
           <h3 id="terms-title">{t("terms.title", { defaultValue: "Terms of use" })}</h3>
           {mode === "accept" ? (
             <p className="muted-text">{t("terms.intro", { defaultValue: "Please read this before you start." })}</p>
           ) : null}
         </div>
-        <ul className="terms-points">
+        <ul id="terms-points" className="terms-points">
           {TERMS_POINT_IDS.map((id) => (
             <li key={id}>{t(`terms.points.${id}`, { defaultValue: POINT_DEFAULTS[id] })}</li>
           ))}
         </ul>
-        {error ? <p className="error-text">{error}</p> : null}
+        {error ? <p className="error-text" role="alert">{error}</p> : null}
         <div className="terms-actions">
           {mode === "accept" ? (
             <>

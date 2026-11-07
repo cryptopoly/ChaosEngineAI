@@ -87,7 +87,7 @@ export function Sidebar({
     <aside className="sidebar">
       <div className="brand-block">
         <div className="brand-title-row">
-          <img src="/logo.svg" alt={t("app.name", { defaultValue: "ChaosEngineAI" })} className="brand-logo" />
+          <img src="/logo.svg" alt="" className="brand-logo" />
           <h1>{t("app.name", { defaultValue: "ChaosEngineAI" })}</h1>
         </div>
         <span className="brand-kicker">
@@ -115,6 +115,7 @@ export function Sidebar({
                 key={item.tab.id}
                 className={isActive ? "nav-button active" : "nav-button"}
                 type="button"
+                aria-current={isActive ? "page" : undefined}
                 onClick={() => handleTabClick(item.tab)}
               >
                 {Icon ? <Icon className="nav-icon" /> : null}
@@ -137,6 +138,7 @@ export function Sidebar({
                 key={item.id}
                 type="button"
                 className={hasActiveChild ? "nav-button active" : "nav-button"}
+                aria-current={hasActiveChild ? "page" : undefined}
                 onClick={() => handleGroupTabsClick(item.id, item.children)}
               >
                 {GroupIcon ? <GroupIcon className="nav-icon" /> : null}
@@ -176,7 +178,7 @@ export function Sidebar({
                 <ChevronIcon open={isOpen} className="nav-group-chevron" />
               </button>
               {isOpen ? (
-                <div className="nav-group-children" id={`nav-group-${item.id}`} role="group">
+                <div className="nav-group-children" id={`nav-group-${item.id}`} role="group" aria-label={localizedGroupLabel}>
                   {item.children.map((child) => {
                     const isActive = activeTab === child.id;
                     return (
@@ -184,6 +186,7 @@ export function Sidebar({
                         key={child.id}
                         className={isActive ? "nav-child-button active" : "nav-child-button"}
                         type="button"
+                        aria-current={isActive ? "page" : undefined}
                         onClick={() => handleTabClick(child)}
                       >
                         <span className="nav-child-dot" aria-hidden />

@@ -742,7 +742,8 @@
       "listen": "试听",
       "progress": "第 {done} 部分，共 {total} 部分",
       "generateParts": "生成音频（{n} 部分）",
-      "encoding": "正在编码…"
+      "encoding": "正在编码…",
+      "textLabel": null
     },
     "stop": "停止",
     "studio": {
@@ -777,7 +778,8 @@
       "empty": "没有找到语音。",
       "editHint": "双击编辑",
       "edit": "编辑这一行",
-      "export": "导出"
+      "export": "导出",
+      "lineLabel": null
     },
     "handoff": {
       "summary": "在聊天中总结",
@@ -863,7 +865,12 @@
       "checking": null,
       "save": null,
       "installingWatermark": null,
-      "tab": null
+      "tab": null,
+      "voices": null,
+      "deleteVoice": null,
+      "textLabel": null,
+      "sampleFile": null,
+      "recordingPlayback": null
     }
   },
   "residentChatModelNote": "已加载的聊天模型占用了其中约 {gb} GB 内存；卸载它即可释放这部分内存。",
@@ -978,6 +985,10 @@
     "size": {
       "gb": null,
       "mb": null
+    },
+    "band": {
+      "caution": null,
+      "danger": null
     }
   },
   "disclosure": {

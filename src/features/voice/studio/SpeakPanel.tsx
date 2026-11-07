@@ -137,6 +137,7 @@ export function SpeakPanel({ runtime, onTabChange }: { runtime: VoiceRuntime; on
           className="text-input voice-textarea voice-textarea--long"
           value={text}
           maxLength={MAX_CHARS}
+          aria-label={t("voice.speak.textLabel", { defaultValue: "Text to speak" })}
           onChange={(e) => setText(e.target.value)}
           placeholder={t("voice.speak.placeholder", { defaultValue: "Type or paste text. Markdown and code are tidied up before speaking." })}
         />

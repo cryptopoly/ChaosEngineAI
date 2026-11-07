@@ -57,6 +57,7 @@ import type {
 import type { ChatModelOption } from "./types/chat";
 import { modelsAreaForTab, resolveTabRequest, tabs } from "./constants";
 import type { TabRequest } from "./constants";
+import { HOME_STUDIO_ENABLED } from "./constants/features";
 import type { ModelAvailabilityFilter, ModelsArea } from "./components/models/modelEntry";
 import {
   firstDirectVariant,
@@ -81,6 +82,7 @@ import {
   useChat,
   useImageState,
   useVideoState,
+  useMusicState,
   useBenchmarks,
   useSettings,
   useSidebarPrefs,
@@ -161,6 +163,8 @@ export default function App() {
   // ── Settings / Server / Preview ────────────────────────────
   const imgState = useImageState(backendOnline, setError, setActiveTab);
   const videoState = useVideoState(backendOnline, setError, setActiveTab);
+  // Music reads its catalog, runtime and library only while the area is switched on.
+  const musicState = useMusicState(backendOnline && HOME_STUDIO_ENABLED, setError, setActiveTab);
   const {
     mtplxJob,
     installingMtplx,
@@ -809,7 +813,7 @@ export default function App() {
   // ── Tab context ────────────────────────────────────────────
   const ctx: AppTabContext = {
     workspace, backendOnline, tauriBackend, busy, busyAction, setError, refreshWorkspace, setActiveTab,
-    imgState, videoState, models, chat, benchmarks, settings, sidebarPrefs, uiScalePrefs,
+    imgState, videoState, musicState, models, chat, benchmarks, settings, sidebarPrefs, uiScalePrefs,
     mtplxJob, installingMtplx, handleInstallMtplx, tensorfoldControls,
     installingCudaTorch, cudaTorchRawResult, handleInstallCudaTorch,
     chatLibrary, libraryChatOptions, threadModelOptions, activeThreadOption, selectedServerOption,
@@ -859,6 +863,7 @@ export default function App() {
         onToggleGroupCollapsed={sidebarPrefs.toggleGroupCollapsed}
         lastChildByGroup={sidebarPrefs.lastChildByGroup}
         onRememberLastChild={sidebarPrefs.rememberLastChild}
+        readyGroups={musicState.readyGroups}
       />
 
 

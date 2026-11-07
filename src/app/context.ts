@@ -21,6 +21,7 @@ import type {
   useFileActions,
   useImageState,
   useModels,
+  useMusicState,
   useSettings,
   useSidebarPrefs,
   useUiScale,
@@ -72,6 +73,7 @@ export interface AppTabContext {
   // Hook result objects
   imgState: ReturnType<typeof useImageState>;
   videoState: ReturnType<typeof useVideoState>;
+  musicState: ReturnType<typeof useMusicState>;
   models: ReturnType<typeof useModels>;
   chat: ReturnType<typeof useChat>;
   benchmarks: ReturnType<typeof useBenchmarks>;

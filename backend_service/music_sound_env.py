@@ -39,6 +39,7 @@ _VERIFY_CODE = (
     "import json, sys, torch, soundfile, transformers, stable_audio_tools\n"
     "from stable_audio_tools.inference.generation import generate_diffusion_cond\n"
     "from stable_audio_tools.models.factory import create_model_from_config\n"
+    "import stable_audio_tools.models.diffusion  # the model-building imports (pytorch_lightning) only load here\n"
     "print(json.dumps({'torch': torch.__version__, 'transformers': transformers.__version__, "
     "'mps': bool(getattr(torch.backends, 'mps', None) and torch.backends.mps.is_available()), "
     "'python': '.'.join(map(str, sys.version_info[:3]))}))\n"

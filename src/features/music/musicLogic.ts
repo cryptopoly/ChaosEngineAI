@@ -6,6 +6,7 @@
 
 import type { EstimateBasis, EstimateRisk, RunEstimateQueue } from "../../components/RunEstimateStrip";
 import { memoryRisk } from "../../components/RunEstimateStrip";
+import { ALL_PROJECTS, filterByProject } from "../../utils/galleryProject";
 import type {
   MusicEstimateResponse,
   MusicGeneratePayload,
@@ -410,14 +411,16 @@ export interface LibraryFilter {
   /** Empty = any tag. */
   tag: string;
   sort: LibrarySort;
+  /** ALL_PROJECTS, NO_PROJECT or a project id. */
+  project?: string;
 }
 
-export const DEFAULT_LIBRARY_FILTER: LibraryFilter = { query: "", tag: "", sort: "newest" };
+export const DEFAULT_LIBRARY_FILTER: LibraryFilter = { query: "", tag: "", sort: "newest", project: ALL_PROJECTS };
 
 export function filterLibrary(items: MusicLibraryItem[], filter: LibraryFilter): MusicLibraryItem[] {
   const needle = filter.query.trim().toLowerCase();
   const tag = filter.tag.trim().toLowerCase();
-  const kept = items.filter((item) => {
+  const kept = filterByProject(items, filter.project ?? ALL_PROJECTS).filter((item) => {
     if (tag && !item.tags.some((entry) => entry.toLowerCase() === tag)) return false;
     if (!needle) return true;
     const haystack = `${item.title}\n${item.caption}\n${item.tags.join(" ")}`.toLowerCase();

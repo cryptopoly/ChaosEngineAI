@@ -1709,6 +1709,15 @@
   "galleryProject": {
     "filter": null,
     "all": null,
-    "chip": null
+    "chip": null,
+    "none": null,
+    "search": null,
+    "noMatch": null,
+    "open": null,
+    "stills": null,
+    "clips": null,
+    "tracks": null,
+    "sounds": null,
+    "speech": null
   }
 }

@@ -238,6 +238,9 @@ export interface MusicLibraryItem {
   jobSeconds?: number;
   sizeBytes?: number;
   tagged?: boolean;
+  /** The Storyboard project it was made for (set by the backend, absent otherwise). */
+  projectId?: string | null;
+  projectName?: string | null;
 }
 
 export interface MusicGenerateResponse {

@@ -11,10 +11,13 @@ import { AudioPlayer } from "../../components/AudioPlayer";
 import { CloseIcon, PlusIcon } from "../../components/icons/ActionIcons";
 import { MediaLibraryCard } from "../../components/MediaLibraryCard";
 import { Panel } from "../../components/Panel";
+import { ProjectFilter, ProjectHeader } from "../../components/ProjectFilter";
 import { SendToStoryboardMenu } from "../../components/SendToStoryboardMenu";
 import type { UseMusicState } from "../../hooks/useMusicState";
 import type { MusicLibraryItem } from "../../types";
+import { ALL_PROJECTS, projectOptions, untaggedCount } from "../../utils/galleryProject";
 import { ConfirmDialog } from "../storyboard/ConfirmDialog";
+import { writeOpenProjectId } from "../storyboard/storyboardLogic";
 import { useSendToStoryboard } from "../storyboard/useSendToStoryboard";
 import {
   DEFAULT_LIBRARY_FILTER,
@@ -160,6 +163,9 @@ export function MusicLibraryTab({ music, backendOnline, onTabChange }: MusicLibr
   const items = useMemo(() => filterLibrary(library.items, filter), [library.items, filter]);
   const tags = useMemo(() => allTags(library.items), [library.items]);
   const counts = libraryCounts(library.items);
+  const projects = useMemo(() => projectOptions(library.items), [library.items]);
+  const picked = projects.find((project) => project.id === filter.project) ?? null;
+  const pickedItems = picked ? library.items.filter((item) => item.projectId === picked.id) : [];
 
   function toggle(id: string, on: boolean) {
     setSelected((previous) => {
@@ -233,7 +239,7 @@ export function MusicLibraryTab({ music, backendOnline, onTabChange }: MusicLibr
           };
           const size = megabytes(item.sizeBytes);
           const date = new Date(item.createdAt * 1000).toLocaleDateString(undefined, { day: "numeric", month: "short" });
-          const meta = [clock(item.durationS), item.modelName, size, date, item.seed != null ? t("musicStudio.result.seed", { defaultValue: "seed {seed}", seed: item.seed }) : null]
+          const meta = [clock(item.durationS), item.modelName, size, date, item.seed != null ? t("musicStudio.result.seed", { defaultValue: "seed {seed}", seed: item.seed }) : null, item.projectName ? t("galleryProject.chip", { defaultValue: "From project {name}", name: item.projectName }) : null]
             .filter(Boolean)
             .join(" · ");
           return (
@@ -299,6 +305,13 @@ export function MusicLibraryTab({ music, backendOnline, onTabChange }: MusicLibr
           aria-label={t("musicLibrary.search", { defaultValue: "Search titles, prompts, tags" })}
           onChange={(event) => setFilter({ ...filter, query: event.target.value })}
         />
+        <ProjectFilter
+          options={projects}
+          value={filter.project ?? ALL_PROJECTS}
+          onChange={(project) => setFilter({ ...filter, project })}
+          untagged={untaggedCount(library.items)}
+          total={library.items.length}
+        />
         <select
           className="text-input music-library__select"
           value={filter.tag}
@@ -358,6 +371,23 @@ export function MusicLibraryTab({ music, backendOnline, onTabChange }: MusicLibr
         }
       >
         {toolbar}
+        {picked ? (
+          <ProjectHeader
+            name={picked.name}
+            counts={{
+              tracks: pickedItems.filter((item) => item.kind !== "sound").length,
+              sounds: pickedItems.filter((item) => item.kind === "sound").length,
+            }}
+            onOpen={
+              storyboard.enabled
+                ? () => {
+                    writeOpenProjectId(picked.id);
+                    onTabChange("story-board");
+                  }
+                : undefined
+            }
+          />
+        ) : null}
         {body}
       </Panel>
       {pendingDelete ? (

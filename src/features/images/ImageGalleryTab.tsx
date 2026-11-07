@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ProjectFilter } from "../../components/ProjectFilter";
-import { ALL_PROJECTS, filterByProject, projectOptions } from "../../utils/galleryProject";
+import { ProjectFilter, ProjectHeader } from "../../components/ProjectFilter";
+import { ALL_PROJECTS, filterByProject, projectOptions, untaggedCount, type ProjectTagged } from "../../utils/galleryProject";
+import { writeOpenProjectId } from "../storyboard/storyboardLogic";
 import { Panel } from "../../components/Panel";
 import { ImageOutputCard } from "../../components/ImageOutputCard";
 import { SendToStoryboardMenu } from "../../components/SendToStoryboardMenu";
@@ -20,6 +21,8 @@ import { modelsPageRequest, type TabRequest } from "../../constants/tabRedirects
 
 export interface ImageGalleryTabProps {
   imageOutputs: ImageOutputArtifact[];
+  /** Saved clips, only to count a project's clips in its header. */
+  videoOutputs?: ProjectTagged[];
   filteredImageOutputs: ImageOutputArtifact[];
   imageCatalog: ImageModelFamily[];
   imageBusy: boolean;
@@ -56,6 +59,7 @@ function imageItem(artifact: ImageOutputArtifact): SendItem {
 
 export function ImageGalleryTab({
   imageOutputs,
+  videoOutputs = [],
   filteredImageOutputs: hookFilteredImageOutputs,
   imageCatalog,
   imageBusy,
@@ -90,6 +94,8 @@ export function ImageGalleryTab({
   const [projectFilter, setProjectFilter] = useState(ALL_PROJECTS);
   const filteredImageOutputs = filterByProject(hookFilteredImageOutputs, projectFilter);
   const imageGalleryHasActiveFilters = hookHasActiveFilters || projectFilter !== ALL_PROJECTS;
+  const projects = projectOptions(imageOutputs);
+  const picked = projects.find((project) => project.id === projectFilter) ?? null;
   const onResetImageGalleryFilters = () => {
     setProjectFilter(ALL_PROJECTS);
     resetHookFilters();
@@ -249,7 +255,13 @@ export function ImageGalleryTab({
               </option>
             </select>
           </label>
-          <ProjectFilter options={projectOptions(imageOutputs)} value={projectFilter} onChange={setProjectFilter} />
+          <ProjectFilter
+            options={projects}
+            value={projectFilter}
+            onChange={setProjectFilter}
+            untagged={untaggedCount(imageOutputs)}
+            total={imageOutputs.length}
+          />
           <label>
             {tStudio("imageGallery.toolbar.sort", { defaultValue: "Sort" })}
             <select
@@ -266,6 +278,21 @@ export function ImageGalleryTab({
             </select>
           </label>
         </div>
+
+        {picked ? (
+          <ProjectHeader
+            name={picked.name}
+            counts={{ stills: picked.count, clips: videoOutputs.filter((clip) => clip.projectId === picked.id).length }}
+            onOpen={
+              storyboard.enabled
+                ? () => {
+                    writeOpenProjectId(picked.id);
+                    void onActiveTabChange("story-board");
+                  }
+                : undefined
+            }
+          />
+        ) : null}
 
         {imageGalleryHasActiveFilters ? (
           <div className="button-row image-gallery-toolbar-actions">

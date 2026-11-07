@@ -1709,6 +1709,15 @@
   "galleryProject": {
     "filter": "Project",
     "all": "All projects",
-    "chip": "From project {name}"
+    "chip": "From project {name}",
+    "none": "No project",
+    "search": "Search projects",
+    "noMatch": "No project matches.",
+    "open": "Open in Storyboard",
+    "stills": "{count, plural, one {# still} other {# stills}}",
+    "clips": "{count, plural, one {# clip} other {# clips}}",
+    "tracks": "{count, plural, one {# track} other {# tracks}}",
+    "sounds": "{count, plural, one {# sound} other {# sounds}}",
+    "speech": "{count, plural, one {# speech item} other {# speech items}}"
   }
 }

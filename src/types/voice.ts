@@ -123,6 +123,9 @@ export interface VoiceLibrarySummary {
   durationS?: number | null;
   source?: string | null;
   task?: "transcribe" | "translate";
+  /** The Storyboard project it was made for (set by the backend, absent otherwise). */
+  projectId?: string | null;
+  projectName?: string | null;
 }
 
 export interface VoiceLibraryItem extends Omit<VoiceLibrarySummary, "preview" | "speakerCount"> {

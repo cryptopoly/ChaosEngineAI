@@ -12,7 +12,7 @@ from __future__ import annotations
 from typing import Any, Callable
 
 from backend_service.mcp_bridge.jobs import STORE
-from backend_service.mcp_bridge.tools import ToolError, _obj, _submitted
+from backend_service.mcp_bridge.tools import ToolError, _PROJECT_PROPS, _obj, _submitted, project_scope
 
 SOUND_TOOLS: list[dict[str, Any]] = [
     {
@@ -26,6 +26,7 @@ SOUND_TOOLS: list[dict[str, Any]] = [
                 "loop": {"type": "boolean", "description": "Make the clip a seamless loop (ambience, beats)."},
                 "seed": {"type": "integer", "minimum": 0, "maximum": 2147483647},
                 "variations": {"type": "integer", "minimum": 1, "maximum": 4, "description": "1, 2 or 4 takes with seeds seed, seed+1, ..."},
+                **_PROJECT_PROPS,
             },
             ["caption"],
         ),
@@ -57,11 +58,13 @@ def make_sound(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
     except ValidationError as exc:
         raise ToolError(f"Invalid sound request: {exc.errors()[0]['msg']}") from exc
     request = ctx.request
+    scope = project_scope(args)
 
     def run() -> tuple[dict[str, Any], list[str]]:
         from backend_service import music_library
 
-        result = generate_sound_locked(request, body, source="agent")
+        with scope:
+            result = generate_sound_locked(request, body, source="agent")
         tracks = []
         for item in result["items"]:
             path = music_library.audio_path(item["id"])

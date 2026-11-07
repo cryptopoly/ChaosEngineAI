@@ -221,16 +221,16 @@ MUSIC_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "estimatedGenerationSeconds": 6.0,
                 "licence": _STABILITY_LICENCE,
                 "estimates": {
-                    # Not measured: the weights are gated and no Hugging Face token was available for the
-                    # build run, so these are catalog estimates (fp32 weights 1.7 GB + T5 0.9 GB + activations).
-                    # Replace with a measured row after the first real run (docs/hub/progress/v-audio.md).
-                    "basis": "estimated",
-                    "wallSecondsAt": [[2, 3.0], [6, 4.0], [11, 6.0]],
-                    "secondsPer10sAudio": 5.0,
-                    "coldStartSeconds": 20.0,
+                    # Measured 2026-11-07 (docs/research/sound-effects-real-test.md): warm worker, 8 steps, MPS,
+                    # one variation. peakGb is the footprint the worker reported while generating.
+                    "basis": "measured",
+                    "measuredOn": "Apple M4 Max, 64 GB, 2026-11-07",
+                    "wallSecondsAt": [[3, 0.7], [6, 0.7], [10, 0.7]],
+                    "secondsPer10sAudio": 0.7,
+                    "coldStartSeconds": 8.0,
                     "vaeSecondsPerAudioSecond": 0.1,
-                    "peakGb": 6.0,
-                    "idleGb": 4.0,
+                    "peakGb": 5.0,
+                    "idleGb": 3.8,
                     "diskGb": 2.57,
                     # 44.1 kHz stereo FLAC 24-bit, noisy material.
                     "outputMbPerMinute": 14.0,

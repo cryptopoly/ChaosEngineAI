@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { StoryboardProject, StoryboardRenderJob, StoryboardTimeline, VoiceLibrarySummary } from "../../../../types";
 import {
+  captionRows,
+  captionsExportPatch,
+  resumeProgress,
   EXPORT_PRESET_ORDER,
   RENDER_PHASES,
   accumulateNudge,
@@ -36,7 +39,7 @@ type Parts = Pick<StoryboardProject, "audio" | "export">;
 function parts(cloned = false, embedTag = true): Parts {
   return {
     audio: [{ source: { clonedVoice: cloned } }] as unknown as StoryboardProject["audio"],
-    export: { aiLabel: { embedTag }, loudnessLufs: -14 },
+    export: { aiLabel: { embedTag }, loudnessLufs: -14, captionsSrt: false, captionsBurn: false, stems: false },
   };
 }
 
@@ -365,5 +368,41 @@ describe("library path", () => {
     expect(resolveLibraryPath("/Volumes/data/voice/library/1_a.wav", "~/.chaosengine/voice/library/1_a.wav")).toBe("/Volumes/data/voice/library/1_a.wav");
     expect(resolveLibraryPath(null, "~/x.wav")).toBe("~/x.wav");
     expect(resolveLibraryPath("  ", "~/x.wav")).toBe("~/x.wav");
+  });
+});
+
+describe("captions, stems and resuming", () => {
+  it("builds the export patch only for what changed", () => {
+    expect(captionsExportPatch({})).toBeNull();
+    expect(captionsExportPatch({ burn: true })).toEqual({ export: { captionsBurn: true } });
+    expect(captionsExportPatch({ srt: false, stems: true })).toEqual({ export: { captionsSrt: false, stems: true } });
+  });
+
+  it("places a clip's captions on the timeline by the clip's start and trim, and flags trimmed-away ones", () => {
+    const tl = { total: 10, shots: [], problems: [], audio: [{ id: "v1", start: 4, duration: 3, trim_in: 1, end: 7 }] } as unknown as StoryboardTimeline;
+    const rows = captionRows(
+      {
+        captions: [
+          { id: "late", clipId: "v1", start: 2, end: 3, text: "b" },
+          { id: "gone", clipId: "v1", start: 0, end: 0.5, text: "x" },
+          { id: "hand", clipId: null, start: 1, end: 2, text: "a" },
+          { id: "cut", clipId: "v1", start: 0.5, end: 1.5, text: "c" },
+        ],
+      },
+      tl,
+    );
+    expect(rows.map((r) => r.id)).toEqual(["hand", "cut", "late", "gone"]);
+    expect(rows.find((r) => r.id === "late")).toMatchObject({ start: 5, end: 6, fromClip: true });
+    expect(rows.find((r) => r.id === "cut")).toMatchObject({ start: 4, end: 4.5 });
+    expect(rows.find((r) => r.id === "gone")).toMatchObject({ start: null, end: null });
+  });
+
+  it("reports how many shots an interrupted render keeps, and nothing for a running or finished one", () => {
+    const job = { renderId: "r", projectId: "p", preview: false, state: "interrupted", progress: 0.3, message: "", resumable: true, shotsReady: 5, shotsTotal: 4 } as StoryboardRenderJob;
+    expect(resumeProgress(job)).toEqual([4, 4]);
+    expect(resumeProgress({ ...job, state: "running" })).toBeNull();
+    expect(resumeProgress({ ...job, state: "done" })).toBeNull();
+    expect(resumeProgress({ ...job, resumable: false })).toBeNull();
+    expect(resumeProgress(null)).toBeNull();
   });
 });

@@ -1321,10 +1321,19 @@
     },
     "board": null,
     "captions": {
+      "add": null,
       "burnIn": null,
+      "exportSrt": null,
+      "generate": null,
+      "generating": null,
       "label": null,
-      "soon": null,
-      "srt": null
+      "needVoice": null,
+      "newText": null,
+      "remove": null,
+      "srt": null,
+      "textLabel": null,
+      "title": null,
+      "trimmedAway": null
     },
     "clip": {
       "ariaLabel": null,
@@ -1344,8 +1353,12 @@
       "details": null,
       "done": null,
       "download": null,
+      "editor": null,
+      "editorNote": null,
       "exporting": null,
+      "extras": null,
       "failedShort": null,
+      "interrupted": null,
       "loudness": null,
       "loudnessHint": null,
       "loudnessOff": null,
@@ -1362,9 +1375,13 @@
         "square": null
       },
       "reframeNote": null,
+      "resume": null,
+      "resumeNote": null,
       "retry": null,
       "reveal": null,
       "shape": null,
+      "stems": null,
+      "stopped": null,
       "title": null
     },
     "importAudio": null,

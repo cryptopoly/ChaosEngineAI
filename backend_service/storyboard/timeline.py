@@ -227,8 +227,22 @@ def build_render_plan(project: Project, preview: bool, folder: Path | None = Non
         if clip.anchor is not None:  # placed by the assembler on its own frame-exact shot starts
             entry["anchor_shot"], entry["anchor_offset"] = clip.anchor.shotId, clip.anchor.offset
         audio.append(entry)
-    name = "preview.mp4" if preview else f"{_slug(project.name)}-{time.strftime('%Y%m%d-%H%M%S')}.mp4"
-    label = project.export.aiLabel
+    stamp = time.strftime("%Y%m%d-%H%M%S")
+    name = "preview.mp4" if preview else f"{_slug(project.name)}-{stamp}.mp4"
+    work_dir = folder / "cache" / "render"
+    captions_srt, sidecar = None, None
+    from backend_service.storyboard import captions as captions_module
+
+    srt_text = captions_module.to_srt(captions_module.cues(project, compute_timeline(project, ready_only=True)))
+    if srt_text and project.export.captionsBurn:
+        work_dir.mkdir(parents=True, exist_ok=True)
+        captions_srt = work_dir / "captions.srt"
+        captions_srt.write_text(srt_text, encoding="utf-8")
+    if srt_text and project.export.captionsSrt and not preview:
+        sidecar = {"path": str(folder / "exports" / f"{Path(name).stem}.srt"), "text": srt_text}
+    stems_base = None
+    if project.export.stems and not preview and project.audio:
+        stems_base = str(folder / "exports" / Path(name).stem)
     return {
         "width": width,
         "height": height,
@@ -236,9 +250,11 @@ def build_render_plan(project: Project, preview: bool, folder: Path | None = Non
         "preview": preview,
         "loudness_lufs": project.export.loudnessLufs,
         "out_path": str(folder / "exports" / name),
-        "work_dir": str(folder / "cache" / "render"),
+        "work_dir": str(work_dir),
         "shots": shots,
         "audio": audio,
         "metadata": _string_metadata(provenance(project)),
-        "captions_srt": None,
+        "captions_srt": str(captions_srt) if captions_srt else None,
+        "stems_base": stems_base,
+        "sidecar_srt": sidecar,  # not read by RenderPlan: the render manager writes it once the film exists
     }

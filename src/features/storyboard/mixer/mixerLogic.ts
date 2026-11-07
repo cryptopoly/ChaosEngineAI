@@ -119,7 +119,7 @@ export function renderPhase(message: string | undefined): RenderPhaseId {
   return STAGE_TO_PHASE[(message ?? "").trim().toLowerCase()] ?? "normalise";
 }
 
-export type RenderUiState = "idle" | "running" | "done" | "failed" | "cancelled";
+export type RenderUiState = "idle" | "running" | "done" | "failed" | "cancelled" | "interrupted";
 
 export function renderUiState(job: StoryboardRenderJob | null, starting = false): RenderUiState {
   if (starting) return "running";
@@ -367,4 +367,63 @@ export function addAudioArgs(
   if (label) args.label = label;
   if (lane === "voice" && clonedVoice) args.clonedVoice = true;
   return args;
+}
+
+// ---- captions, stems and resuming ----
+export interface CaptionsExportChange {
+  srt?: boolean;
+  burn?: boolean;
+  stems?: boolean;
+}
+
+/** The `edit_project` patch for the Export panel's caption and stem switches, or null when nothing changed. */
+export function captionsExportPatch(
+  change: CaptionsExportChange,
+): { export: { captionsSrt?: boolean; captionsBurn?: boolean; stems?: boolean } } | null {
+  const patch: { captionsSrt?: boolean; captionsBurn?: boolean; stems?: boolean } = {};
+  if (change.srt !== undefined) patch.captionsSrt = change.srt;
+  if (change.burn !== undefined) patch.captionsBurn = change.burn;
+  if (change.stems !== undefined) patch.stems = change.stems;
+  return Object.keys(patch).length > 0 ? { export: patch } : null;
+}
+
+export interface CaptionRow {
+  id: string;
+  text: string;
+  /** Seconds on the film's timeline; null when the caption's clip is trimmed away or not in the film. */
+  start: number | null;
+  end: number | null;
+  /** Tied to a voice clip (it moves with the clip) rather than placed by hand. */
+  fromClip: boolean;
+}
+
+/** Captions in time order with their timeline positions: a clip's captions follow the clip's start and trim. */
+export function captionRows(project: Pick<StoryboardProject, "captions">, timeline: StoryboardTimeline): CaptionRow[] {
+  const spans = new Map(timeline.audio.map((span) => [span.id, span]));
+  const rows = (project.captions ?? []).map((caption): CaptionRow => {
+    if (caption.clipId == null) {
+      return { id: caption.id, text: caption.text, start: caption.start, end: caption.end, fromClip: false };
+    }
+    const span = spans.get(caption.clipId);
+    if (!span) return { id: caption.id, text: caption.text, start: null, end: null, fromClip: true };
+    const lo = span.trim_in;
+    const hi = span.trim_in + span.duration;
+    if (caption.end <= lo || caption.start >= hi) return { id: caption.id, text: caption.text, start: null, end: null, fromClip: true };
+    return {
+      id: caption.id,
+      text: caption.text,
+      start: span.start + Math.max(caption.start, lo) - lo,
+      end: span.start + Math.min(caption.end, hi) - lo,
+      fromClip: true,
+    };
+  });
+  return rows.sort((a, b) => (a.start ?? Infinity) - (b.start ?? Infinity));
+}
+
+/** How many shots of an interrupted render are already finished, as `[ready, total]`; null when it cannot resume. */
+export function resumeProgress(job: StoryboardRenderJob | null): [number, number] | null {
+  if (!job || !job.resumable || job.state === "running" || job.state === "done") return null;
+  const total = job.shotsTotal ?? 0;
+  if (total <= 0) return null;
+  return [Math.max(0, Math.min(total, job.shotsReady ?? 0)), total];
 }

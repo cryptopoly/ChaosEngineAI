@@ -2,7 +2,14 @@
 import { isTauri } from "@tauri-apps/api/core";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { fetchStoryboardFileBlobUrl, fetchStoryboardFileSize, storyboardFilePath } from "../../../api";
+import {
+  exportStoryboardCaptions,
+  exportStoryboardOtio,
+  fetchStoryboardFileBlobUrl,
+  fetchStoryboardFileSize,
+  generateStoryboardCaptions,
+  storyboardFilePath,
+} from "../../../api";
 import { CloseIcon, RedoIcon, UndoIcon } from "../../../components/icons/ActionIcons";
 import { Panel } from "../../../components/Panel";
 import type { StoryboardExportPreset, StoryboardProject, StoryboardTimeline } from "../../../types";
@@ -11,11 +18,13 @@ import type { UseStoryboardResult } from "../useStoryboard";
 import { useStoryboardRender } from "../useStoryboardRender";
 import { ClipInspector, ShotInspector } from "./ClipInspector";
 import { AddAudioPanel } from "./AddAudioPanel";
-import { ExportPanel, RenderProgress, type ExportResult } from "./ExportPanel";
+import { CaptionsPanel, type CaptionsState } from "./CaptionsPanel";
+import { ExportPanel, RenderProgress, type EditorExportState, type ExportResult } from "./ExportPanel";
 import {
   accumulateNudge,
   aiLabelPatch,
   canRender,
+  captionsExportPatch,
   exportSize,
   fileNameOf,
   isRenderRunning,
@@ -169,6 +178,8 @@ function MixerScreen({ story, project, timeline, dataDirectory, onOpenProjects, 
   const [exportBytes, setExportBytes] = useState<{ id: string; bytes: number | null } | null>(null);
   const [copied, setCopied] = useState(false);
   const [announce, setAnnounce] = useState("");
+  const [captionsState, setCaptionsState] = useState<CaptionsState>({ busy: false, notes: [], error: null, file: null });
+  const [editorExport, setEditorExport] = useState<EditorExportState>({ busy: false, file: null, warnings: [], error: null });
   const video = useRef<HTMLVideoElement>(null);
   const root = useRef<HTMLDivElement>(null);
   const scroller = useRef<HTMLDivElement>(null);
@@ -360,6 +371,38 @@ function MixerScreen({ story, project, timeline, dataDirectory, onOpenProjects, 
     if (ok && isPreview) {
       startedRevision.current = project.revision;
       stop();
+    }
+  }
+
+  // ---- captions and the export for an editor ----
+  async function makeCaptions() {
+    setCaptionsState((s) => ({ ...s, busy: true, error: null, notes: [] }));
+    try {
+      const done = await generateStoryboardCaptions(project.id, project.revision);
+      setCaptionsState((s) => ({ ...s, busy: false, notes: done.notes }));
+    } catch (err) {
+      setCaptionsState((s) => ({ ...s, busy: false, error: err instanceof Error ? err.message : String(err) }));
+    }
+    await story.reload();
+  }
+
+  async function writeSrt() {
+    setCaptionsState((s) => ({ ...s, error: null }));
+    try {
+      const done = await exportStoryboardCaptions(project.id);
+      setCaptionsState((s) => ({ ...s, file: done.file }));
+    } catch (err) {
+      setCaptionsState((s) => ({ ...s, error: err instanceof Error ? err.message : String(err) }));
+    }
+  }
+
+  async function writeOtio() {
+    setEditorExport({ busy: true, file: null, warnings: [], error: null });
+    try {
+      const done = await exportStoryboardOtio(project.id);
+      setEditorExport({ busy: false, file: done.file, warnings: done.warnings, error: null });
+    } catch (err) {
+      setEditorExport({ busy: false, file: null, warnings: [], error: err instanceof Error ? err.message : String(err) });
     }
   }
 
@@ -792,6 +835,22 @@ function MixerScreen({ story, project, timeline, dataDirectory, onOpenProjects, 
               </div>
             ) : null}
 
+            <CaptionsPanel
+              project={project}
+              timeline={timeline}
+              state={captionsState}
+              disabled={disabled || rendering}
+              playheadS={playheadS}
+              revealLabel={isTauri() ? t("mixer.export.reveal", { defaultValue: "Reveal file" }) : t("mixer.export.download", { defaultValue: "Download" })}
+              onGenerate={() => void makeCaptions()}
+              onAdd={(startS) =>
+                void story.op("add_caption", { start: startS, end: startS + 2, text: t("mixer.captions.newText", { defaultValue: "New caption" }) })
+              }
+              onEditText={(id, text) => void story.op("edit_caption", { captionId: id, text })}
+              onRemove={(id) => void story.op("remove_caption", { captionId: id })}
+              onExportSrt={() => void writeSrt()}
+              onReveal={(file) => void chooseReveal(file)}
+            />
             <ExportPanel
               project={project}
               filmSeconds={total}
@@ -810,6 +869,12 @@ function MixerScreen({ story, project, timeline, dataDirectory, onOpenProjects, 
               }}
               onLoudness={(lufs) => void story.op("edit_project", { export: { loudnessLufs: lufs } })}
               onExport={() => void startRender(false)}
+              onCaptionOptions={(change) => {
+                const patch = captionsExportPatch(change);
+                if (patch) void story.op("edit_project", patch);
+              }}
+              editor={editorExport}
+              onEditorExport={() => void writeOtio()}
               onCancel={() => void render.cancel()}
               onReveal={(file) => void chooseReveal(file)}
               onCopyPath={(file) => void copyPath(file)}

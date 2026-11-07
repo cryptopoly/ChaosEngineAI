@@ -153,6 +153,10 @@ export const storyboardOps = {
   addAudio: wrap("add_audio"),
   editAudio: wrap("edit_audio"),
   removeAudio: wrap("remove_audio"),
+  setCaptions: wrap("set_captions"),
+  addCaption: wrap("add_caption"),
+  editCaption: wrap("edit_caption"),
+  removeCaption: wrap("remove_caption"),
 };
 
 export async function undoStoryboard(projectId: string, revision: number): Promise<StoryboardProjectPayload> {
@@ -186,7 +190,26 @@ export async function startStoryboardRender(
   revision: number,
   preview = true,
 ): Promise<{ render: StoryboardRenderJob }> {
-  return await request("POST", `${base(projectId)}/render`, { revision, preview });
+  return await request("POST", `${base(projectId)}/render`, { revision, preview, notify: !preview });
+}
+
+/** Transcribe the voice clips (or the named ones) into captions. Slow: it runs the speech model. */
+export async function generateStoryboardCaptions(
+  projectId: string,
+  revision: number,
+  options: { clipIds?: string[]; language?: string } = {},
+): Promise<StoryboardProjectPayload & { notes: string[] }> {
+  return await request("POST", `${base(projectId)}/captions/generate`, { revision, ...options }, 1800000);
+}
+
+/** Write the captions as an .srt in the project's exports folder. */
+export async function exportStoryboardCaptions(projectId: string): Promise<{ file: string; cues: number }> {
+  return await request("POST", `${base(projectId)}/captions/export`);
+}
+
+/** Write the cut as an OpenTimelineIO file for an editor. */
+export async function exportStoryboardOtio(projectId: string): Promise<{ file: string; warnings: string[] }> {
+  return await request("POST", `${base(projectId)}/otio`);
 }
 
 export async function getStoryboardRender(projectId: string): Promise<{ render: StoryboardRenderJob | null }> {

@@ -13,7 +13,7 @@ The pure graph builders and timing maths live in ``assemble_graphs`` (re-exporte
 
 from __future__ import annotations
 
-import hashlib
+import dataclasses
 import json
 import math
 import os
@@ -78,6 +78,7 @@ class RenderResult:
     ffmpeg_version: str
     warnings: list[str] = field(default_factory=list)
     loudness: dict[str, Any] | None = None
+    stems: list[str] = field(default_factory=list)  # file names written next to the film
 
 
 # ---------------------------------------------------------------------------------------------
@@ -174,6 +175,32 @@ def prune_intermediates(work: Path, keep: set[str], now: float | None = None) ->
     return removed
 
 
+_SCRATCH_NAME = re.compile(r"[0-9a-f]{10}-.+")
+_PARTIAL_NAME = re.compile(r"\..+\.partial-[0-9a-f]{6,10}(?:-\w+)?\.(?:mp4|wav)")
+
+
+def remove_leftovers(work: Path, exports: Path) -> list[str]:
+    """Delete what a killed render left behind: its run-id scratch files and half-written ``.partial`` outputs.
+
+    Call it only when no render of this project is running (the render manager runs one at a time). The
+    finished per-shot intermediates (``shot-<hash>.mov``) are kept: they are what a resumed render reuses.
+    """
+    removed: list[str] = []
+    for folder, pattern in ((work, _SCRATCH_NAME), (exports, _PARTIAL_NAME)):
+        try:
+            entries = list(folder.iterdir())
+        except OSError:
+            continue
+        for path in entries:
+            try:
+                if pattern.fullmatch(path.name) and path.is_file() and not path.is_symlink():
+                    path.unlink()
+                    removed.append(path.name)
+            except OSError:
+                pass
+    return removed
+
+
 def _unlink(path: Path) -> None:
     try:
         path.unlink()
@@ -207,6 +234,59 @@ def _required_filters(plan: RenderPlan, has_voice_duck: bool) -> set[str]:
     return needed
 
 
+def intermediate_names(plan: RenderPlan) -> list[str]:
+    """The cached per-shot file name of every shot, in order (the resume manifest lists these)."""
+    return [f"shot-{shot_cache_key(s, plan)[:32]}.mov" for s in plan.shots]
+
+
+STEMS = (("voice", "voice"), ("music", "music"), ("sfx", "sfx"), ("import", "import"))
+
+
+def _write_stems(plan: RenderPlan, work: Path, film_input: list[str], lanes: list[Lane], total_samples: int,
+                 total: float, progress: ProgressCb, cancel_event: threading.Event | None,
+                 warnings: list[str]) -> list[str]:
+    """Each audio lane as its own 48 kHz stereo WAV the length of the film, plus the shots' own sound.
+
+    A stem is the lane's clips with their gain, fades, trims, loops and positions, and nothing else: no
+    ducking (that depends on the voice lane), no loudness normalisation. A lane with no clips has no file.
+    """
+    assert plan.stems_base
+    base = Path(plan.stems_base)
+    jobs: list[tuple[str, list[str]]] = [("shot-sound", [*film_input, "-map", "0:a"])]
+    scripts: list[Path] = []
+    for kind, name in STEMS:
+        mine = [lane for lane in lanes if lane.clip.kind == kind]
+        if not mine:
+            continue
+        renumbered = [Lane(lane.clip, n + 1, lane.source_seconds) for n, lane in enumerate(mine)]
+        graph_text, mix_warnings = build_mix_graph(renumbered, total_samples, None)
+        warnings += [f"{name} stem: {w}" for w in mix_warnings]
+        graph = work / f"{uuid.uuid4().hex[:10]}-stem-{name}.txt"
+        graph.write_text(graph_text, encoding="utf-8")
+        scripts.append(graph)
+        args = ["-f", "lavfi", "-i", f"anullsrc=channel_layout=stereo:sample_rate={SAMPLE_RATE}"]
+        for lane in renumbered:
+            args += _inp(lane.clip.path)
+        jobs.append((name, [*args, "-filter_complex_script", graph.name, "-map", "[aout]"]))
+    written: list[str] = []
+    try:
+        for index, (name, args) in enumerate(jobs):
+            final = base.with_name(f"{base.name}-stem-{name}.wav")
+            tmp = base.with_name(f".{base.name}-stem-{name}.partial-{uuid.uuid4().hex[:6]}.wav")
+            try:
+                _run([*args, "-c:a", "pcm_s16le", "-ar", str(SAMPLE_RATE), "-ac", "2", "-map_metadata", "-1",
+                      "-t", _f(total), "-f", "wav", str(tmp)], cwd=work, expected_s=total,
+                     report=lambda f, i=index: progress("stems", (i + f) / len(jobs)), cancel_event=cancel_event)
+                os.replace(tmp, final)
+                written.append(final.name)
+            finally:
+                _unlink(tmp)
+    finally:
+        for path in scripts:
+            _unlink(path)
+    return written
+
+
 def render(plan: RenderPlan, progress_cb: ProgressCb | None = None,
            cancel_event: threading.Event | None = None) -> RenderResult:
     plan = plan.validate()
@@ -214,7 +294,11 @@ def render(plan: RenderPlan, progress_cb: ProgressCb | None = None,
     warnings: list[str] = []
     work = Path(plan.work_dir)
     work.mkdir(parents=True, exist_ok=True)
-    prune_intermediates(work, {f"shot-{shot_cache_key(s, plan)[:32]}.mov" for s in plan.shots})
+    prune_intermediates(work, set(intermediate_names(plan)))
+    if plan.captions_srt and "subtitles" not in ffmpeg_bin.ffmpeg_filters():
+        warnings.append("Captions were not burned in: this build of ffmpeg has no 'subtitles' filter. "
+                        "The .srt file is still written.")
+        plan = dataclasses.replace(plan, captions_srt=None)
     out = Path(plan.out_path)
     inputs = {str(Path(s.video)) for s in plan.shots} | {a.path for a in plan.audio}
     if plan.captions_srt:
@@ -393,23 +477,17 @@ def render(plan: RenderPlan, progress_cb: ProgressCb | None = None,
             loudness["normalization_type"] = (second or {}).get("normalization_type")
         replace_file(out_tmp, out)  # the old film may be being served (Windows): retried briefly
         duration = ffmpeg_bin.probe(out)["duration"]
+        stems: list[str] = []
+        if plan.stems_base and not plan.preview:
+            try:
+                stems = _write_stems(plan, work, film_input, lanes, total_samples, timing.total, progress,
+                                     cancel_event, warnings)
+            except RenderError as exc:  # the film is done; say the stems are not
+                warnings.append(f"Stems were not written: {exc}")
         return RenderResult(path=str(out), duration_s=duration, shots_rendered=rendered,
                             shots_cached=cached, ffmpeg_version=ffmpeg_bin.ffmpeg_version(),
-                            warnings=warnings, loudness=loudness)
+                            warnings=warnings, loudness=loudness, stems=stems)
     finally:
         _unlink(out_tmp)
         for path in scratch:
             _unlink(path)
-
-    font_name = f"{run_id}-font{font.suffix.lower()}"
-    shutil.copyfile(font, work / font_name)
-    scratch.append(work / font_name)
-    text_name = script("card.txt", card.text)
-    graph = script("cardgraph.txt", build_card_graph(plan, frames, font_name, text_name))
-    tmp = work / f"{run_id}-{name}"
-    scratch.append(tmp)
-    _run(["-filter_complex_script", graph, "-map", "[v]", "-map", "[a]", *_codec_args(plan.preview),
-          "-c:a", "pcm_s16le", "-f", "mov", tmp.name], cwd=work, expected_s=frames / plan.fps,
-         report=lambda f: None, cancel_event=cancel_event)
-    os.replace(tmp, target)
-    return name, frames

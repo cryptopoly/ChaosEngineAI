@@ -1,7 +1,8 @@
 /**
  * The Mixer's export strip (UX spec D.6): shape presets with the pixels they give, the AI-label options
- * (D-34), the loudness target, captions (not built yet, shown disabled), the run estimate with the
- * Export button, render progress, and the result card of the last export.
+ * (D-34), the loudness target, the caption and stem switches, the run estimate with the Export button,
+ * render progress, a resume card for an interrupted export, the result card of the last export with the
+ * files written next to it, and the export for an editor (OpenTimelineIO).
  */
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -13,12 +14,15 @@ import {
   LOUDNESS_SUGGESTED,
   RENDER_PHASES,
   aiLabelState,
+  captionsExportPatch,
   exportSize,
   fileNameOf,
   formatBytes,
   parseLoudness,
   renderPercent,
   renderPhase,
+  resumeProgress,
+  type CaptionsExportChange,
   type RenderPhaseId,
 } from "./mixerLogic";
 import { formatTimecode } from "./timelineGeometry";
@@ -99,6 +103,31 @@ export function RenderProgress({ job, startedAt, filmSeconds, title }: RenderPro
   return <LiveProgress title={title} accent="storyboard" phases={phases} startedAt={startedAt} realProgress={snapshot} />;
 }
 
+// ---- resume ----
+function ResumeCard({ job, disabled, onResume }: { job: StoryboardRenderJob; disabled: boolean; onResume: () => void }) {
+  const { t } = useTranslation("studio");
+  const progress = resumeProgress(job);
+  if (!progress) return null;
+  const [ready, total] = progress;
+  return (
+    <div className="callout export-panel__resume" role="status">
+      <p>
+        {job.state === "interrupted"
+          ? t("mixer.export.interrupted", { defaultValue: "The export was interrupted." })
+          : t("mixer.export.stopped", { defaultValue: "The export did not finish." })}{" "}
+        {t("mixer.export.resumeNote", {
+          defaultValue: "{ready} of {total} shots are already done and will be reused.",
+          ready,
+          total,
+        })}
+      </p>
+      <button type="button" className="primary-button" disabled={disabled} onClick={onResume}>
+        {t("mixer.export.resume", { defaultValue: "Resume export" })}
+      </button>
+    </div>
+  );
+}
+
 // ---- loudness ----
 function LoudnessField({ value, disabled, onCommit }: { value: number | null; disabled: boolean; onCommit: (lufs: number | null) => void }) {
   const { t } = useTranslation("studio");
@@ -152,6 +181,14 @@ export interface ExportResult {
   bytes: number | null;
 }
 
+/** The state of the "for an editor" (.otio) export. */
+export interface EditorExportState {
+  busy: boolean;
+  file: string | null;
+  warnings: string[];
+  error: string | null;
+}
+
 export interface ExportPanelProps {
   project: StoryboardProject;
   filmSeconds: number;
@@ -171,6 +208,9 @@ export interface ExportPanelProps {
   onAiLabel: (change: { metadata?: boolean }) => void;
   onLoudness: (lufs: number | null) => void;
   onExport: () => void;
+  onCaptionOptions: (change: CaptionsExportChange) => void;
+  editor: EditorExportState;
+  onEditorExport: () => void;
   onCancel: () => void;
   onReveal: (file: string) => void;
   onCopyPath: (file: string) => void;
@@ -224,15 +264,32 @@ export function ExportPanel(props: ExportPanelProps) {
           disabled={disabled || rendering}
           onChange={props.onAiLabel}
         />
-        <fieldset className="export-panel__captions" disabled>
+        <fieldset className="export-panel__captions" disabled={disabled || rendering}>
           <legend className="eyebrow">{t("mixer.captions.label", { defaultValue: "Captions" })}</legend>
           <label className="check-row">
-            <input type="checkbox" disabled /> {t("mixer.captions.srt", { defaultValue: "SRT file" })}
+            <input
+              type="checkbox"
+              checked={project.export.captionsSrt}
+              onChange={(event) => props.onCaptionOptions({ srt: event.target.checked })}
+            />{" "}
+            {t("mixer.captions.srt", { defaultValue: "SRT file" })}
           </label>
           <label className="check-row">
-            <input type="checkbox" disabled /> {t("mixer.captions.burnIn", { defaultValue: "Burn in" })}
+            <input
+              type="checkbox"
+              checked={project.export.captionsBurn}
+              onChange={(event) => props.onCaptionOptions({ burn: event.target.checked })}
+            />{" "}
+            {t("mixer.captions.burnIn", { defaultValue: "Burn in" })}
           </label>
-          <p className="muted-text">{t("mixer.captions.soon", { defaultValue: "Captions are coming" })}</p>
+          <label className="check-row">
+            <input
+              type="checkbox"
+              checked={project.export.stems}
+              onChange={(event) => props.onCaptionOptions({ stems: event.target.checked })}
+            />{" "}
+            {t("mixer.export.stems", { defaultValue: "Audio lanes as separate files" })}
+          </label>
         </fieldset>
       </div>
 
@@ -279,8 +336,17 @@ export function ExportPanel(props: ExportPanelProps) {
           </button>
         </div>
       ) : null}
-      {exportJob?.state === "cancelled" ? (
+      {exportJob && resumeProgress(exportJob) ? <ResumeCard job={exportJob} disabled={disabled || rendering || empty} onResume={props.onExport} /> : null}
+      {exportJob?.state === "cancelled" && !resumeProgress(exportJob) ? (
         <p className="muted-text">{t("mixer.export.cancelled", { defaultValue: "Export cancelled. Nothing was written." })}</p>
+      ) : null}
+
+      {result?.job.warnings?.length ? (
+        <ul className="muted-text export-panel__warnings">
+          {result.job.warnings.map((warning) => (
+            <li key={warning}>{warning}</li>
+          ))}
+        </ul>
       ) : null}
 
       {result?.job.file ? (
@@ -301,8 +367,45 @@ export function ExportPanel(props: ExportPanelProps) {
               {props.copied ? t("mixer.export.copiedShort", { defaultValue: "Copied" }) : t("mixer.export.copyPath", { defaultValue: "Copy path" })}
             </button>
           </div>
+          {result.job.extras?.length ? (
+            <ul className="export-panel__extras" aria-label={t("mixer.export.extras", { defaultValue: "Also written" })}>
+              {result.job.extras.map((file) => (
+                <li key={file}>
+                  <span className="muted-text" title={file}>{fileNameOf(file)}</span>{" "}
+                  <button type="button" className="secondary-button" onClick={() => props.onReveal(file)}>
+                    {props.revealLabel}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </div>
       ) : null}
+
+      <div className="export-panel__editor">
+        <button type="button" className="secondary-button" disabled={disabled || empty || props.editor.busy} onClick={props.onEditorExport}>
+          {t("mixer.export.editor", { defaultValue: "Export for an editor (.otio)" })}
+        </button>
+        <p className="muted-text">
+          {t("mixer.export.editorNote", { defaultValue: "Opens in DaVinci Resolve or Premiere with the project's media linked on this computer." })}
+        </p>
+        {props.editor.file ? (
+          <p className="muted-text" role="status">
+            {fileNameOf(props.editor.file)}{" "}
+            <button type="button" className="secondary-button" onClick={() => props.onReveal(props.editor.file as string)}>
+              {props.revealLabel}
+            </button>
+          </p>
+        ) : null}
+        {props.editor.warnings.length ? (
+          <ul className="muted-text">
+            {props.editor.warnings.map((warning) => (
+              <li key={warning}>{warning}</li>
+            ))}
+          </ul>
+        ) : null}
+        {props.editor.error ? <p className="callout error" role="alert">{props.editor.error}</p> : null}
+      </div>
     </section>
   );
 }

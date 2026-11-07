@@ -95,6 +95,21 @@ export interface StoryboardAudioClip {
 export interface StoryboardExportSettings {
   aiLabel: { embedTag: boolean };
   loudnessLufs: number | null;
+  /** Write the captions as an .srt next to the film. */
+  captionsSrt: boolean;
+  /** Draw the captions into the picture. */
+  captionsBurn: boolean;
+  /** Also write each audio lane as its own .wav. */
+  stems: boolean;
+}
+
+/** One caption. With `clipId` the times are seconds in that clip's source; without, seconds on the timeline. */
+export interface StoryboardCaption {
+  id: string;
+  clipId: string | null;
+  start: number;
+  end: number;
+  text: string;
 }
 
 export type StoryboardBatchState = "queued" | "running" | "done" | "failed" | "cancelled" | "interrupted";
@@ -128,6 +143,7 @@ export interface StoryboardProject {
   shots: StoryboardShot[];
   audio: StoryboardAudioClip[];
   export: StoryboardExportSettings;
+  captions: StoryboardCaption[];
   batches: StoryboardBatchRecord[];
   undoStack: number[];
   redoStack: number[];
@@ -178,7 +194,7 @@ export interface StoryboardBatchStatus {
   revision: number;
 }
 
-export type StoryboardRenderState = "running" | "done" | "failed" | "cancelled";
+export type StoryboardRenderState = "running" | "done" | "failed" | "cancelled" | "interrupted";
 
 /** One render job as the backend describes it (`RenderJob.describe`). */
 export interface StoryboardRenderJob {
@@ -193,6 +209,15 @@ export interface StoryboardRenderJob {
   /** Project-relative path of the finished film (`exports/...`), when done. */
   file?: string;
   error?: string;
+  /** Epoch seconds. */
+  startedAt?: number;
+  /** Files written next to the film (project-relative): the caption file and the lane stems. */
+  extras?: string[];
+  warnings?: string[];
+  /** An interrupted, failed or cancelled render can be started again; finished shots are reused. */
+  resumable?: boolean;
+  shotsReady?: number;
+  shotsTotal?: number;
 }
 
 /** Waveform peaks of one project file: 0 to 1 per bucket (empty when the file has no sound). */
@@ -251,6 +276,10 @@ export interface StoryboardOpArgs {
   };
   edit_audio: StoryboardAudioFields & { clipId: string };
   remove_audio: { clipId: string };
+  set_captions: { clipId?: string | null; cues: { start: number; end: number; text: string }[] };
+  add_caption: { start: number; end: number; text: string; clipId?: string | null };
+  edit_caption: { captionId: string; start?: number; end?: number; text?: string };
+  remove_caption: { captionId: string };
 }
 
 export type StoryboardOpName = keyof StoryboardOpArgs;

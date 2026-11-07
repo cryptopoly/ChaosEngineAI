@@ -256,6 +256,7 @@ class RenderPlan:
     audio: list[AudioInput] = field(default_factory=list)
     metadata: dict[str, str] = field(default_factory=dict)
     captions_srt: str | None = None
+    stems_base: str | None = None  # write each audio lane as ``<stems_base>-stem-<lane>.wav`` (a full render only)
 
     @classmethod
     def from_dict(cls, data: Any) -> "RenderPlan":
@@ -296,6 +297,9 @@ class RenderPlan:
             captions = check_input_file(captions, "captions_srt")
             if Path(captions).suffix.lower() != ".srt":
                 raise _fail("captions_srt", "must be an .srt file")
+        stems_base = data.get("stems_base")
+        if stems_base is not None:
+            check_output_path(f"{stems_base}-stem.wav", "stems_base", ".wav")
         return cls(
             width=width,
             height=height,
@@ -308,6 +312,7 @@ class RenderPlan:
             audio=audio,
             metadata=dict(metadata),
             captions_srt=captions,
+            stems_base=stems_base,
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -318,6 +323,7 @@ class RenderPlan:
             "audio": [clip.to_dict() for clip in self.audio],
             "metadata": dict(self.metadata),
             "captions_srt": self.captions_srt,
+            "stems_base": self.stems_base,
         }
 
     def validate(self) -> "RenderPlan":

@@ -2,7 +2,8 @@
 
 They run the same store, ops, batch and render code as ``/api/storyboard``. Edits carry the project's
 ``revision``; a stale one is a readable error with the current number. ``storyboard_generate`` and
-``storyboard_render`` return a job id for ``wait_for_job``; a finished render carries ``download``.
+``storyboard_render`` return a job id for ``wait_for_job``; a finished render carries ``download``. Export
+and render answers name the file and its ``download``, never a local path (the UI routes keep paths).
 Descriptions are short on purpose: each one costs an agent tokens on every call.
 """
 
@@ -21,13 +22,14 @@ STORYBOARD_TOOLS: list[dict[str, Any]] = [
     {
         "name": "storyboard_project",
         "description": "Film projects. create(name), list, get (shots, takes, timeline, revision), edit(fields: name, "
-        "defaults, export), undo, redo, delete, export (.chaosfilm bundle), import(path).",
+        "defaults, export), undo, redo, delete, export (.chaosfilm bundle), import(project_id+file, or path).",
         "inputSchema": _obj({
             "action": {"type": "string", "enum": ["create", "list", "get", "edit", "undo", "redo", "delete", "export", "import"]},
             "project_id": _PID, "revision": _REV,
             "name": {"type": "string", "minLength": 1, "maxLength": 200},
             "fields": _FIELDS,
             "path": {"type": "string", "description": "Path of a .chaosfilm file in a storyboard exports folder (import)."},
+            "file": {"type": "string", "description": "Bundle file name an export returned, with its project_id (import)."},
         }, ["action"]),
     },
     {
@@ -69,7 +71,7 @@ STORYBOARD_TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "storyboard_render",
-        "description": "Render the film to MP4 (preview: small and fast). Returns a job id; the output has the path and download.",
+        "description": "Render the film to MP4 (preview: small and fast). Returns a job id; the output has the file name and download.",
         "inputSchema": _obj({"project_id": _PID, "revision": _REV, "preview": {"type": "boolean"}}, ["project_id", "revision"]),
     },
 ]
@@ -164,12 +166,20 @@ def storyboard_project(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
         _need(args, "name")
         return _summary(_run(lambda: store.create(str(args["name"]), (args.get("fields") or {}).get("defaults"))))
     if action == "import":
-        _need(args, "path")
         from pathlib import Path
 
-        if str(args["path"]).startswith("upload:"):
-            raise ToolError("A .chaosfilm bundle cannot be uploaded; import one from a storyboard exports folder.")
-        src = Path(_agent_source(args["path"]))
+        if "file" in args:  # a bundle an earlier export made: that project's exports/<file>
+            _need(args, "project_id")
+            name = str(args["file"])
+            exports = _run(lambda: store.folder(str(args["project_id"]))) / "exports"
+            if Path(name).name != name or not name.endswith(bundle.BUNDLE_SUFFIX) or not (exports / name).is_file():
+                raise ToolError(f"'{name[:80]}' is not an export of that project. Use the file name storyboard_project export returned.")
+            src = exports / name
+        else:
+            _need(args, "path")
+            if str(args["path"]).startswith("upload:"):
+                raise ToolError("A .chaosfilm bundle cannot be uploaded; import one from a storyboard exports folder.")
+            src = Path(_agent_source(args["path"]))
         return _summary(_run(lambda: bundle.import_bundle(store, src)))
     _need(args, "project_id")
     pid = str(args["project_id"])
@@ -178,7 +188,7 @@ def storyboard_project(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
         return {"project": dump(project), "timeline": compute_timeline(project).as_dict()}
     if action == "export":
         path = _run(lambda: bundle.export_bundle(store, pid))
-        return {"path": str(path), "download": download_info(path)}
+        return {"file": path.name, "download": download_info(path)}  # no local path for the agent
     _need(args, "revision")
     rev = int(args["revision"])
     if action == "edit":
@@ -275,7 +285,11 @@ def storyboard_render(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
             raise GenerationCancelled("render cancelled")
         if job.state != "done":
             raise RuntimeError(job.error or f"render {job.state}")
-        return {"path": str(job.out_path), "preview": job.preview, "projectId": pid}, []
+        from backend_service.mcp_bridge.files import download_info
+
+        # The file name and the download, not the local path (the job store adds download only for "path").
+        return {"file": job.out_path.name, "preview": job.preview, "projectId": pid,
+                "download": download_info(job.out_path)}, []
 
     return _submitted(STORE.submit("storyboard", f"render {pid}", run, cancel=lambda: RENDERS.cancel(pid)))
 

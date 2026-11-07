@@ -3,7 +3,7 @@
  * Library screen filters and sorts it in the browser (`filterLibrary`), so typing in the search box never
  * waits for the backend.
  */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { deleteMusicLibraryItems, getMusicLibrary, updateMusicLibraryItem } from "../api";
 import type { MusicLibraryItem } from "../types";
 
@@ -11,7 +11,10 @@ function message(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
-export function useMusicLibrary(backendOnline: boolean, setError: (message: string | null) => void) {
+export function useMusicLibrary(backendOnline: boolean, setErrorProp: (message: string | null) => void) {
+  const errorRef = useRef(setErrorProp);
+  errorRef.current = setErrorProp;
+  const setError = useCallback((text: string | null) => errorRef.current(text), []);
   const [items, setItems] = useState<MusicLibraryItem[]>([]);
   const [diskBytes, setDiskBytes] = useState(0);
   const [loaded, setLoaded] = useState(false);

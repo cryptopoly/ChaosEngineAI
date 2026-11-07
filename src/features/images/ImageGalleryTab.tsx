@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ProjectFilter, ProjectHeader } from "../../components/ProjectFilter";
 import { ALL_PROJECTS, filterByProject, projectOptions, untaggedCount, type ProjectTagged } from "../../utils/galleryProject";
@@ -94,7 +94,7 @@ export function ImageGalleryTab({
   const [projectFilter, setProjectFilter] = useState(ALL_PROJECTS);
   const filteredImageOutputs = filterByProject(hookFilteredImageOutputs, projectFilter);
   const imageGalleryHasActiveFilters = hookHasActiveFilters || projectFilter !== ALL_PROJECTS;
-  const projects = projectOptions(imageOutputs);
+  const projects = useMemo(() => projectOptions(imageOutputs), [imageOutputs]);
   const picked = projects.find((project) => project.id === projectFilter) ?? null;
   const onResetImageGalleryFilters = () => {
     setProjectFilter(ALL_PROJECTS);

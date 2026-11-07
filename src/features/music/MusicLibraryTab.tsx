@@ -311,6 +311,7 @@ export function MusicLibraryTab({ music, backendOnline, onTabChange }: MusicLibr
           onChange={(project) => setFilter({ ...filter, project })}
           untagged={untaggedCount(library.items)}
           total={library.items.length}
+          showLabel={false}
         />
         <select
           className="text-input music-library__select"

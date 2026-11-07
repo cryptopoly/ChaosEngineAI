@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { RunEstimateStrip } from "../RunEstimateStrip";
-import { ProjectChip, ProjectFilter, ProjectHeader } from "../ProjectFilter";
+import { ProjectChip, ProjectFilter, ProjectHeader, ProjectList, projectRows } from "../ProjectFilter";
 import { ALL_PROJECTS, NO_PROJECT, filterByProject, projectOptions, searchProjects, untaggedCount } from "../../utils/galleryProject";
 
 const items = [
@@ -19,6 +19,15 @@ describe("gallery project helpers", () => {
       { id: "p1", name: "Harbour", count: 2, latest: Date.parse("2026-11-02T00:00:00Z") },
     ]);
     expect(projectOptions([{}])).toEqual([]);
+  });
+
+  it("names a project as on its newest output", () => {
+    const rows = [
+      { projectId: "a", projectName: "Old name", createdAt: "2026-11-01T00:00:00Z" },
+      { projectId: "a", projectName: "New name", createdAt: "2026-11-03T00:00:00Z" },
+      { projectId: "a", projectName: "Middle", createdAt: "2026-11-02T00:00:00Z" },
+    ];
+    expect(projectOptions(rows)[0].name).toBe("New name");
   });
 
   it("reads unix seconds (music, voice) as well as ISO text, and falls back to name order", () => {
@@ -58,21 +67,29 @@ describe("ProjectFilter and ProjectChip", () => {
     expect(renderToStaticMarkup(<ProjectFilter options={[]} value="all" onChange={() => {}} />)).toBe("");
   });
 
-  it("lists All projects, No project and each project with its count when open", () => {
-    const html = renderToStaticMarkup(
-      <ProjectFilter options={projectOptions(items)} value="all" onChange={() => {}} untagged={2} total={5} initialOpen />,
-    );
-    expect(html).toContain("All projects");
-    expect(html).toContain("No project");
+  it("lists All projects, No project and each project with its count in the open list", () => {
+    const rows = projectRows(projectOptions(items), "", { all: "All projects", none: "No project" }, 5, 2);
+    expect(rows.map((r) => [r.id, r.count])).toEqual([["all", 5], ["__none__", 2], ["p2", 1], ["p1", 2]]);
+    const html = renderToStaticMarkup(<ProjectList id="l" rows={rows} value="p1" searchable={false} query="" onQuery={() => {}} onPick={() => {}} />);
+    expect(html).toContain('role="listbox"');
+    expect(html).toContain('<button type="button" role="option" aria-selected="true"');
     expect(html.indexOf("Alpine")).toBeLessThan(html.indexOf("Harbour"));
-    expect(html).toContain(">2</span>");
     expect(html).not.toContain('type="search"');
   });
 
-  it("leaves out No project when nothing is untagged and adds a search box for many projects", () => {
-    expect(renderToStaticMarkup(<ProjectFilter options={projectOptions(items)} value="all" onChange={() => {}} initialOpen />)).not.toContain("No project");
-    const many = Array.from({ length: 9 }, (_, i) => ({ id: `p${i}`, name: `Project ${i}`, count: 1, latest: i }));
-    expect(renderToStaticMarkup(<ProjectFilter options={many} value="all" onChange={() => {}} initialOpen />)).toContain('type="search"');
+  it("leaves out No project when nothing is untagged, hides All and None while searching, and adds a search box on request", () => {
+    const labels = { all: "All projects", none: "No project" };
+    expect(projectRows(projectOptions(items), "", labels, 5, 0).map((r) => r.id)).toEqual(["all", "p2", "p1"]);
+    expect(projectRows(projectOptions(items), "harb", labels, 5, 2).map((r) => r.id)).toEqual(["p1"]);
+    const html = renderToStaticMarkup(<ProjectList id="l" rows={[]} value="all" searchable query="zz" onQuery={() => {}} onPick={() => {}} />);
+    expect(html).toContain('type="search"');
+    expect(html).toContain("No project matches.");
+  });
+
+  it("can drop the visible label and keeps an accessible name", () => {
+    const html = renderToStaticMarkup(<ProjectFilter options={projectOptions(items)} value="p1" onChange={() => {}} showLabel={false} />);
+    expect(html).not.toContain("project-filter__label");
+    expect(html).toContain('aria-label="Project: Harbour"');
   });
 
   it("header shows the name, the counts and the Storyboard link only when given a handler", () => {
@@ -81,8 +98,9 @@ describe("ProjectFilter and ProjectChip", () => {
     expect(withLink).toContain("3 stills");
     expect(withLink).toContain("1 clip");
     expect(withLink).toContain("Open in Storyboard");
-    const without = renderToStaticMarkup(<ProjectHeader name="Harbour" counts={{ stills: 0, tracks: 2 }} />);
+    const without = renderToStaticMarkup(<ProjectHeader name="Harbour" counts={{ stills: 0, tracks: 2, transcripts: 1 }} />);
     expect(without).toContain("2 tracks");
+    expect(without).toContain("1 transcript");
     expect(without).not.toContain("still");
     expect(without).not.toContain("Open in Storyboard");
   });

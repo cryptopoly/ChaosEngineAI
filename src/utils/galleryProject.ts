@@ -26,7 +26,7 @@ function millis(value: string | number | null | undefined): number {
   return Number.isNaN(parsed) ? 0 : parsed;
 }
 
-/** One option per project that has outputs, the one with the newest output first, then by name. */
+/** One option per project that has outputs (named as on its newest output), the one with the newest output first, then by name. */
 export function projectOptions(items: ProjectTagged[]): ProjectOption[] {
   const byId = new Map<string, ProjectOption>();
   for (const item of items) {
@@ -35,7 +35,10 @@ export function projectOptions(items: ProjectTagged[]): ProjectOption[] {
     const entry = byId.get(item.projectId);
     if (entry) {
       entry.count += 1;
-      entry.latest = Math.max(entry.latest, at);
+      if (at > entry.latest) {
+        entry.latest = at;
+        entry.name = item.projectName || entry.name;
+      }
     } else byId.set(item.projectId, { id: item.projectId, name: item.projectName || item.projectId, count: 1, latest: at });
   }
   return [...byId.values()].sort((a, b) => b.latest - a.latest || a.name.localeCompare(b.name));

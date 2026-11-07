@@ -278,6 +278,7 @@ export function VoiceLibraryTab({ backendOnline, onOpenTranscript, onTabChange }
                 onChange={setProjectFilter}
                 untagged={untaggedCount(items)}
                 total={items.length}
+                showLabel={false}
               />
               {selected.size > 0 ? (
                 <button type="button" className="secondary-button" onClick={() => void remove([...selected])}>
@@ -293,7 +294,10 @@ export function VoiceLibraryTab({ backendOnline, onOpenTranscript, onTabChange }
             {picked ? (
               <ProjectHeader
                 name={picked.name}
-                counts={{ speech: shownItems.length }}
+                counts={{
+                  speech: shownItems.filter((item) => item.kind === "speech").length,
+                  transcripts: shownItems.filter((item) => item.kind === "transcript").length,
+                }}
                 onOpen={
                   storyboard.enabled
                     ? () => {

@@ -696,6 +696,12 @@ export function VideoStudioTab({
   // "could generate but we think it will crash your computer". If the user
   // has ticked the override, we allow the generate — same UX pattern as
   // destructive-operation confirmations elsewhere in the app.
+  // Image-to-video only (Wan 2.2 I2V): no clip from text alone.
+  if (generateDisabledReason === null && selectedVideoVariant?.requiresStartImage && videoStartImage == null) {
+    generateDisabledReason = t("videoStudio.disabled.needsStartImage", {
+      defaultValue: "This model starts from an image. Add a start image.",
+    });
+  }
   if (generateDisabledReason === null && dangerBlocked(generationSafety.riskLevel, dangerOverrideAck)) {
     generateDisabledReason = t("videoStudio.disabled.dangerLevel", {
       defaultValue:

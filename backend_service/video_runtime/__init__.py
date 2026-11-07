@@ -292,6 +292,7 @@ class DiffusersVideoEngine:
                 config.repo,
                 gguf_repo=config.ggufRepo,
                 gguf_file=config.ggufFile,
+                gguf_file2=config.ggufFile2,
                 use_nf4=config.useNf4,
                 lora_repo=config.loraRepo,
                 lora_file=config.loraFile,
@@ -583,6 +584,7 @@ class DiffusersVideoEngine:
         repo: str,
         gguf_repo: str | None = None,
         gguf_file: str | None = None,
+        gguf_file2: str | None = None,
         use_nf4: bool = False,
         lora_repo: str | None = None,
         lora_file: str | None = None,
@@ -659,6 +661,25 @@ class DiffusersVideoEngine:
                         gguf_note
                         or f"Could not load requested GGUF transformer {gguf_file}."
                     )
+                if gguf_file2:
+                    # Wan 2.2 A14B: the low-noise expert is a second GGUF.
+                    VIDEO_PROGRESS.set_phase(
+                        PHASE_LOADING,
+                        message=f"Loading GGUF transformer {gguf_file2}",
+                    )
+                    second_transformer, second_note = self._try_load_gguf_transformer(
+                        repo=repo,
+                        gguf_repo=gguf_repo or repo,
+                        gguf_file=gguf_file2,
+                        torch=torch,
+                        subfolder="transformer_2",
+                    )
+                    if second_transformer is None:
+                        raise RuntimeError(
+                            second_note
+                            or f"Could not load requested GGUF transformer {gguf_file2}."
+                        )
+                    pipeline_kwargs["transformer_2"] = second_transformer
             elif use_nf4:
                 VIDEO_PROGRESS.set_phase(
                     PHASE_LOADING,
@@ -799,7 +820,18 @@ class DiffusersVideoEngine:
                     hasattr(pipeline, "transformer_2")
                     and getattr(pipeline, "transformer_2", None) is not None
                 )
-                if is_moe and hasattr(pipeline, "enable_sequential_cpu_offload"):
+                if is_moe and gguf_file2:
+                    # Quantized experts (two Q4 GGUFs, ~19 GB together) fit
+                    # whole. On a Mac, CPU offload buys nothing (one pool of
+                    # unified memory) and costs a copy per step; CUDA cards
+                    # keep one expert on the GPU at a time.
+                    if device == "mps":
+                        pipeline = pipeline.to(device)
+                    elif hasattr(pipeline, "enable_model_cpu_offload"):
+                        pipeline.enable_model_cpu_offload()
+                    else:
+                        pipeline = pipeline.to(device)
+                elif is_moe and hasattr(pipeline, "enable_sequential_cpu_offload"):
                     _LOG.info(
                         "video.placement: MoE pipeline detected (transformer + transformer_2) — "
                         "engaging enable_sequential_cpu_offload() proactively to keep peak under "
@@ -831,8 +863,9 @@ class DiffusersVideoEngine:
         gguf_repo: str,
         gguf_file: str,
         torch: Any,
+        subfolder: str = "transformer",
     ) -> tuple[Any, str | None]:
-        return try_load_gguf_transformer(repo, gguf_repo, gguf_file, torch)
+        return try_load_gguf_transformer(repo, gguf_repo, gguf_file, torch, subfolder=subfolder)
 
     def _try_load_bnb_nf4_transformer(
         self,

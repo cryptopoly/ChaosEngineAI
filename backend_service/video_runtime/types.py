@@ -82,6 +82,10 @@ class VideoGenerationConfig:
     # can coexist without evicting each other.
     ggufRepo: str | None = None
     ggufFile: str | None = None
+    # Mixture-of-experts GGUF rows (Wan 2.2 I2V A14B): ``ggufFile`` is the
+    # high-noise expert (``transformer``), this one the low-noise expert
+    # (``transformer_2``), both from ``ggufRepo``.
+    ggufFile2: str | None = None
     # Post-processing frame interpolation. Factor of 1 means disabled;
     # 2 or 4 insert interpolated frames between each generated frame
     # and bump the reported fps by the same factor, producing smoother
@@ -158,7 +162,8 @@ class VideoGenerationConfig:
     # inside the matmul. E5M2 for HunyuanVideo, E4M3 for Wan / LTX / FLUX
     # / Qwen-Image. Default off; opt-in.
     fp8LayerwiseCasting: bool = False
-    # Image-to-video (ltx-2-mlx only); absolute, already-validated paths.
+    # Image-to-video (ltx-2-mlx and the Wan 2.2 I2V diffusers rows); absolute,
+    # already-validated paths.
     startImagePath: str | None = None
     endImagePath: str | None = None
     imageStrength: float = 1.0

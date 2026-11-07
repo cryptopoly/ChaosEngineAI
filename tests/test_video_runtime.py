@@ -236,14 +236,27 @@ class PipelineRegistryTests(unittest.TestCase):
             # CogVideoXPipeline class as the 5B base.
             "THUDM/CogVideoX1.5-5B",
         }
-        self.assertEqual(set(PIPELINE_REGISTRY.keys()), expected)
-        for entry in PIPELINE_REGISTRY.values():
+        image_to_video = {"Wan-AI/Wan2.2-I2V-A14B-Diffusers"}
+        self.assertEqual(set(PIPELINE_REGISTRY.keys()), expected | image_to_video)
+        for repo, entry in PIPELINE_REGISTRY.items():
             self.assertIn("class_name", entry)
-            self.assertEqual(entry["task"], "txt2video")
+            self.assertEqual(entry["task"], "img2video" if repo in image_to_video else "txt2video")
+
+    def test_image_to_video_registry_matches_input_rule(self):
+        """The repos the route, storyboard and bridge let take a start image are the img2video rows."""
+        from backend_service.helpers.video_image_input import WAN_I2V_REPOS
+
+        img2video = {repo for repo, entry in PIPELINE_REGISTRY.items() if entry["task"] == "img2video"}
+        self.assertEqual(img2video, set(WAN_I2V_REPOS))
+        for repo in img2video:
+            self.assertEqual(PIPELINE_REGISTRY[repo]["class_name"], "WanImageToVideoPipeline")
 
     def test_wan_variants_all_route_to_wanpipeline(self):
-        """Wan 2.1 and 2.2 use the same pipeline class — version difference is in the weights."""
-        wan_repos = [repo for repo in PIPELINE_REGISTRY if repo.startswith("Wan-AI/")]
+        """Wan 2.1 and 2.2 text-to-video use the same pipeline class — version difference is in the weights."""
+        wan_repos = [
+            repo for repo, entry in PIPELINE_REGISTRY.items()
+            if repo.startswith("Wan-AI/") and entry["task"] == "txt2video"
+        ]
         self.assertGreaterEqual(len(wan_repos), 3, "expected 1.3B, 14B, and A14B Wan entries")
         for repo in wan_repos:
             self.assertEqual(PIPELINE_REGISTRY[repo]["class_name"], "WanPipeline")

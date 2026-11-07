@@ -40,6 +40,8 @@ _VIDEO_MODEL_FOOTPRINT_BF16_GB: dict[str, float] = {
     "Wan-AI/Wan2.1-T2V-14B-Diffusers": 28.0,
     "Wan-AI/Wan2.2-TI2V-5B-Diffusers": 11.0,
     "Wan-AI/Wan2.2-T2V-A14B-Diffusers": 28.0,
+    # Both experts resident (the GGUF rows keep both on the device).
+    "Wan-AI/Wan2.2-I2V-A14B-Diffusers": 60.0,
     "hunyuanvideo-community/HunyuanVideo": 26.0,
     "genmo/mochi-1-preview": 22.0,
     "THUDM/CogVideoX-2b": 19.0,

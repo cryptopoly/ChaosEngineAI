@@ -372,8 +372,7 @@
       "noPrompt": "Write a prompt before generating.",
       "backendOffline": "Backend is offline.",
       "busy": "Busy…",
-      "dangerLevel": "This configuration is likely to crash the backend. Tick \"Run anyway\" in the run estimate after reviewing the warning, or lower resolution/frames/model.",
-      "needsStartImage": "This model starts from an image. Add a start image."
+      "dangerLevel": "This configuration is likely to crash the backend. Tick \"Run anyway\" in the run estimate after reviewing the warning, or lower resolution/frames/model."
     },
     "generateTitle": "Start generating this clip.",
     "memory": {

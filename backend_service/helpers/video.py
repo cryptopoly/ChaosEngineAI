@@ -94,11 +94,10 @@ def _video_model_payloads(
             # Merge live metadata first so curated fields (releaseDate,
             # familyName) still win when both exist.
             enriched = {**enriched, **live_metadata, **size_limit_fields(enriched)}
-            # Studio shows the start / end image pickers only for these (ltx-2-mlx, Wan 2.2 I2V).
-            from backend_service.helpers.video_image_input import accepts_image_input, requires_start_image
+            # Studio shows the start / end image pickers only for these (ltx-2-mlx).
+            from backend_service.ltx2_mlx_runtime import _is_ltx2_mlx_repo
 
-            enriched["acceptsImageInput"] = accepts_image_input(enriched)
-            enriched["requiresStartImage"] = requires_start_image(enriched)
+            enriched["acceptsImageInput"] = _is_ltx2_mlx_repo(str(enriched.get("repo") or ""))
             validation_error = _video_variant_validation_error(enriched)
             local_data_repos = _video_variant_local_data_repos(enriched)
             enriched["availableLocally"] = validation_error is None
@@ -484,30 +483,26 @@ def _video_variant_gguf_validation_error(variant: dict[str, Any]) -> str | None:
             f"{variant.get('name') or 'This GGUF video variant'} is missing "
             "its GGUF repository metadata."
         )
-    # Two-expert rows (Wan 2.2 A14B) also pin the low-noise expert.
-    for name in (gguf_file, str(variant.get("ggufFile2") or "").strip()):
-        if not name:
-            continue
-        try:
-            from huggingface_hub import hf_hub_download  # type: ignore
+    try:
+        from huggingface_hub import hf_hub_download  # type: ignore
 
-            local_path = hf_hub_download(
-                repo_id=gguf_repo,
-                filename=name,
-                local_files_only=True,
-            )
-        except Exception:
-            return (
-                "The base diffusers snapshot is installed, but the selected GGUF "
-                f"transformer file is missing: {gguf_repo}/{name}. Download "
-                "the GGUF variant before generating so the app does not fall back "
-                "to the full BF16 transformer."
-            )
-        if not Path(local_path).exists():
-            return (
-                "The selected GGUF transformer resolved to a cache path that does "
-                f"not exist: {gguf_repo}/{name}. Retry the GGUF download."
-            )
+        local_path = hf_hub_download(
+            repo_id=gguf_repo,
+            filename=gguf_file,
+            local_files_only=True,
+        )
+    except Exception:
+        return (
+            "The base diffusers snapshot is installed, but the selected GGUF "
+            f"transformer file is missing: {gguf_repo}/{gguf_file}. Download "
+            "the GGUF variant before generating so the app does not fall back "
+            "to the full BF16 transformer."
+        )
+    if not Path(local_path).exists():
+        return (
+            "The selected GGUF transformer resolved to a cache path that does "
+            f"not exist: {gguf_repo}/{gguf_file}. Retry the GGUF download."
+        )
     return None
 
 

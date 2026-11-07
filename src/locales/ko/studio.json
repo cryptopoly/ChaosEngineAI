@@ -372,8 +372,7 @@
       "noPrompt": "생성하기 전에 프롬프트를 작성하세요.",
       "backendOffline": "백엔드가 오프라인입니다.",
       "busy": "사용 중…",
-      "dangerLevel": null,
-      "needsStartImage": null
+      "dangerLevel": null
     },
     "generateTitle": "이 클립 생성을 시작합니다.",
     "memory": {

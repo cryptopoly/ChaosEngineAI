@@ -15,6 +15,7 @@ import type {
   StoryboardOpArgs,
   StoryboardOpName,
   StoryboardProject,
+  StoryboardPeaks,
   StoryboardProjectPayload,
   StoryboardRenderJob,
 } from "../types";
@@ -228,4 +229,23 @@ export async function fetchStoryboardFileBlobUrl(projectId: string, rel: string)
     throw new StoryboardApiError(`Failed to load ${rel} (${response.status})`, response.status);
   }
   return URL.createObjectURL(await response.blob());
+}
+
+/** Peak buckets are bounded by the server (32 to 4000). */
+export const PEAKS_MIN_BUCKETS = 32;
+export const PEAKS_MAX_BUCKETS = 4000;
+
+/** Waveform peaks of a project file (an audio clip, or a shot's clip for its own sound). */
+export async function getStoryboardPeaks(projectId: string, rel: string, buckets = 400): Promise<StoryboardPeaks> {
+  const count = Math.max(PEAKS_MIN_BUCKETS, Math.min(PEAKS_MAX_BUCKETS, Math.round(buckets)));
+  return await request("GET", `${base(projectId)}/peaks?path=${encodeURIComponent(rel)}&buckets=${count}`, undefined, 120000);
+}
+
+/** The size in bytes of a project file, from a one-byte range request (falls back to reading it all). */
+export async function fetchStoryboardFileSize(projectId: string, rel: string): Promise<number> {
+  const response = await apiFetch(storyboardFilePath(projectId, rel), { method: "GET", headers: { Range: "bytes=0-0" } });
+  if (!response.ok) throw new StoryboardApiError(`Failed to read ${rel} (${response.status})`, response.status);
+  const total = /\/(\d+)$/.exec(response.headers.get("Content-Range") ?? "");
+  if (total) return Number(total[1]);
+  return (await response.blob()).size;
 }

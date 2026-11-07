@@ -917,7 +917,15 @@
       "stdio": "Clients that only start local programs (stdio)",
       "otherClients": "Other MCP clients (JSON)",
       "rotate": "Make a new token",
-      "rotateHint": "The old token stops working at once. Agents need the new line."
+      "rotateHint": "The old token stops working at once. Agents need the new line.",
+      "permissions": "Permissions",
+      "permissionsHint": "The main token can read, make things and move files. Nothing else unless you tick it.",
+      "scopeClone": "Allow voice cloning",
+      "remoteClone": "Also allow cloning from other computers",
+      "readTokenMake": "Make a read-only token",
+      "readTokenRemove": "Remove the read-only token",
+      "readTokenHint": "For a dashboard or watcher: it can look at status and jobs but cannot make or change anything.",
+      "readTokenLabel": "Read-only token (Claude Code)"
     },
     "integrations": {
       "title": "Integrations",

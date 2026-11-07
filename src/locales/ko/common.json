@@ -37,12 +37,12 @@
     "voiceModels": "음성 모델",
     "voiceLibrary": "음성 라이브러리",
     "chatModels": "채팅 모델",
-    "musicModels": null,
-    "musicStudio": null,
-    "musicLibrary": null,
-    "storyProjects": null,
-    "storyBoard": null,
-    "storyMixer": null
+    "musicModels": "음악 모델",
+    "musicStudio": "음악 스튜디오",
+    "musicLibrary": "음악 라이브러리",
+    "storyProjects": "프로젝트",
+    "storyBoard": "보드",
+    "storyMixer": "믹서"
   },
   "tabCaptions": {
     "dashboard": "시스템 개요",
@@ -74,12 +74,12 @@
     "chatModels": "언어 모델 찾기, 다운로드 및 관리",
     "imageModelsPage": "이미지 모델 찾기, 다운로드 및 관리",
     "videoModelsPage": "비디오 모델 찾기, 다운로드 및 관리",
-    "musicModels": null,
-    "musicStudio": null,
-    "musicLibrary": null,
-    "storyProjects": null,
-    "storyBoard": null,
-    "storyMixer": null
+    "musicModels": "음악 및 사운드 모델 찾기, 다운로드, 관리",
+    "musicStudio": "트랙과 효과음 만들기",
+    "musicLibrary": "직접 만든 트랙과 사운드",
+    "storyProjects": "내 영상, 영상마다 폴더 하나",
+    "storyBoard": "샷, 테이크, 프롬프트",
+    "storyMixer": "화면, 소리, 내보내기"
   },
   "tabShortLabels": {
     "chat": "채팅",
@@ -105,11 +105,11 @@
     "voiceModels": "내 모델",
     "voiceLibrary": "라이브러리",
     "models": "모델",
-    "musicStudio": null,
-    "musicLibrary": null,
-    "storyProjects": null,
-    "storyBoard": null,
-    "storyMixer": null
+    "musicStudio": "스튜디오",
+    "musicLibrary": "라이브러리",
+    "storyProjects": "프로젝트",
+    "storyBoard": "보드",
+    "storyMixer": "믹서"
   },
   "tabGroups": {
     "chat": "채팅",
@@ -119,8 +119,8 @@
     "benchmarks": "벤치마크",
     "tools": "도구",
     "voice": "음성",
-    "music": null,
-    "storyboard": null
+    "music": "음악",
+    "storyboard": "스토리보드"
   },
   "tabsCount": "{count, plural, other {탭 #개}}",
   "sidebar": {
@@ -129,8 +129,8 @@
     "noModelLoaded": "로드된 모델 없음",
     "groupTabsAriaLabel": "{group} 탭",
     "primaryNavAriaLabel": "기본",
-    "sectionMake": null,
-    "sectionRun": null
+    "sectionMake": "만들기",
+    "sectionRun": "실행"
   },
   "slashCommands": {
     "menuAriaLabel": "슬래시 명령"
@@ -685,8 +685,8 @@
     "thumbnailAlt": "실시간 디노이즈 미리보기",
     "thumbnailCaption": "실시간 미리보기 · TAESD 디코드",
     "stepCounter": "{current} / {total} 단계",
-    "waitingForAgent": null,
-    "waitingInQueue": null,
+    "waitingForAgent": "에이전트 작업이 끝나기를 기다리는 중",
+    "waitingInQueue": "다른 작업이 끝나기를 기다리는 중({position}번째)",
     "inProgress": "진행 중…",
     "finalizing": "완료 중…",
     "phaseTiming": "{elapsed}초 / ~{estimated}초"
@@ -852,8 +852,8 @@
       "sidebarTabsHelp": "사이드바를 컴팩트하게 유지합니다: 그룹은 마지막 사용 탭으로 이동하는 단일 버튼처럼 동작하며, 콘텐츠 위에 하위 탭 바가 표시됩니다.",
       "uiScaleAria": "UI 배율",
       "uiScaleHelp": "UI 배율은 앱 크롬 밀도를 즉시 변경합니다. 미디어 미리보기는 자체 종횡비 크기를 유지합니다.",
-      "keepGroupsOpen": null,
-      "keepGroupsOpenHelp": null
+      "keepGroupsOpen": "사이드바 그룹을 모두 펼쳐 두기",
+      "keepGroupsOpenHelp": "기본값은 꺼짐: 작업 중인 그룹만 펼쳐져 있습니다. 켜면 모든 그룹이 펼쳐진 상태로 유지됩니다."
     },
     "dataDirectory": {
       "title": "데이터 디렉터리",
@@ -909,23 +909,23 @@
       "helpText": "로컬에 저장됩니다. Hugging Face에서 게이트 모델을 가져올 때 MLX 변환에서 사용됩니다."
     },
     "agentAccess": {
-      "title": null,
-      "subtitle": null,
-      "switch": null,
-      "hint": null,
-      "claudeCode": null,
-      "stdio": null,
-      "otherClients": null,
-      "rotate": null,
-      "rotateHint": null,
-      "permissions": null,
-      "permissionsHint": null,
-      "scopeClone": null,
-      "remoteClone": null,
-      "readTokenMake": null,
-      "readTokenRemove": null,
-      "readTokenHint": null,
-      "readTokenLabel": null
+      "title": "에이전트 접근",
+      "subtitle": "AI 에이전트(Claude Code, Cursor 등)가 여기에서 이미지, 비디오, 음성, 받아쓰기를 만들 수 있게 합니다.",
+      "switch": "에이전트가 ChaosEngineAI를 사용하도록 허용",
+      "hint": "기본값은 꺼짐입니다. 에이전트는 한 번에 작업 하나만, 이 컴퓨터에서만 실행하며 아래 토큰이 필요합니다. 이미 다운로드한 모델만 사용할 수 있습니다.",
+      "claudeCode": "Claude Code",
+      "stdio": "로컬 프로그램만 실행할 수 있는 클라이언트(stdio)",
+      "otherClients": "기타 MCP 클라이언트(JSON)",
+      "rotate": "새 토큰 만들기",
+      "rotateHint": "이전 토큰은 즉시 사용할 수 없게 됩니다. 에이전트에는 새 줄이 필요합니다.",
+      "permissions": "권한",
+      "permissionsHint": "기본 토큰은 읽기, 만들기, 파일 이동을 할 수 있습니다. 체크하지 않으면 그 외에는 할 수 없습니다.",
+      "scopeClone": "음성 복제 허용",
+      "remoteClone": "다른 컴퓨터에서의 복제도 허용",
+      "readTokenMake": "읽기 전용 토큰 만들기",
+      "readTokenRemove": "읽기 전용 토큰 제거",
+      "readTokenHint": "대시보드나 감시 도구용: 상태와 작업은 볼 수 있지만 무언가를 만들거나 바꿀 수는 없습니다.",
+      "readTokenLabel": "읽기 전용 토큰(Claude Code)"
     },
     "integrations": {
       "title": "통합",
@@ -973,7 +973,7 @@
     "emptyState": "검색과 일치하는 모델이 없습니다.",
     "launchSettings": "시작 설정",
     "cancelButton": "취소",
-    "busyConfirm": null
+    "busyConfirm": "그래도 불러오기"
   },
   "modelPicker": {
     "weightFileTitle": "가중치 파일 선택: {name}",
@@ -1297,33 +1297,33 @@
     "files": "파일에서 보기"
   },
   "comingSoon": {
-    "music": null,
-    "storyboard": null
+    "music": "음악 기능이 곧 제공됩니다.",
+    "storyboard": "스토리보드 기능이 곧 제공됩니다."
   },
   "llamaCuda": {
-    "description": null,
-    "inUse": null,
-    "install": null,
-    "installedNoDevice": null,
-    "notInstalled": null,
-    "reinstall": null,
-    "title": null
+    "description": "CUDA {cuda}로 NVIDIA GPU에서 GGUF 채팅 모델을 실행합니다(llama.cpp {tag}). 다운로드 크기는 약 680 MB이며 CUDA 런타임이 포함됩니다(디스크에서는 0.9 GB).",
+    "inUse": "사용 중: GGUF 모델이 NVIDIA GPU에서 실행됩니다.",
+    "install": "설치",
+    "installedNoDevice": "설치되었지만 CUDA 장치를 찾지 못했습니다. NVIDIA 드라이버(nvidia-smi)를 확인하세요.",
+    "notInstalled": "설치되지 않음. GGUF 모델은 내장 빌드를 사용합니다.",
+    "reinstall": "다시 설치",
+    "title": "CUDA llama-server(NVIDIA)"
   },
   "terms": {
-    "title": null,
-    "intro": null,
-    "agree": null,
-    "quit": null,
-    "close": null,
-    "read": null,
-    "acceptedOn": null,
-    "notAccepted": null,
+    "title": "이용 약관",
+    "intro": "시작하기 전에 읽어 주세요.",
+    "agree": "동의합니다",
+    "quit": "종료",
+    "close": "닫기",
+    "read": "약관 읽기",
+    "acceptedOn": "{date}에 동의함.",
+    "notAccepted": "아직 동의하지 않음.",
     "points": {
-      "responsibility": null,
-      "disclosure": null,
-      "impersonation": null,
-      "voices": null,
-      "licences": null
+      "responsibility": "생성한 콘텐츠와 그 사용 방식에 대한 책임은 사용자에게 있습니다.",
+      "disclosure": "법이나 플랫폼에서 요구하는 경우 AI가 생성한 콘텐츠임을 밝히세요(예: EU AI법 제50조, 플랫폼 표시 규정).",
+      "impersonation": "본인의 동의 없이 ChaosEngineAI로 실존 인물을 사칭하지 마세요.",
+      "voices": "화자의 동의가 있는 경우에만 음성을 복제하세요.",
+      "licences": "모델마다 고유한 라이선스가 있습니다. 결과물을 사용하기 전에 확인하세요."
     }
   }
 }

@@ -95,7 +95,7 @@
       "compressed": "Сжато",
       "context": "Контекст",
       "status": "Статус",
-      "released": null
+      "released": "Выпущено"
     },
     "status": {
       "downloading": "Скачивается",

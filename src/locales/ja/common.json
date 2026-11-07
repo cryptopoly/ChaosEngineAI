@@ -37,12 +37,12 @@
     "voiceModels": "音声モデル",
     "voiceLibrary": "ボイスライブラリ",
     "chatModels": "チャットモデル",
-    "musicModels": null,
-    "musicStudio": null,
-    "musicLibrary": null,
-    "storyProjects": null,
-    "storyBoard": null,
-    "storyMixer": null
+    "musicModels": "ミュージックモデル",
+    "musicStudio": "ミュージックスタジオ",
+    "musicLibrary": "ミュージックライブラリ",
+    "storyProjects": "プロジェクト",
+    "storyBoard": "ボード",
+    "storyMixer": "ミキサー"
   },
   "tabCaptions": {
     "dashboard": "システム概要",
@@ -74,12 +74,12 @@
     "chatModels": "言語モデルを検索・ダウンロード・管理",
     "imageModelsPage": "画像モデルを検索・ダウンロード・管理",
     "videoModelsPage": "動画モデルを検索・ダウンロード・管理",
-    "musicModels": null,
-    "musicStudio": null,
-    "musicLibrary": null,
-    "storyProjects": null,
-    "storyBoard": null,
-    "storyMixer": null
+    "musicModels": "音楽・サウンドモデルを探して、ダウンロード・管理",
+    "musicStudio": "曲と効果音を作成",
+    "musicLibrary": "作成した曲と効果音",
+    "storyProjects": "あなたの映像作品（1作品につき1フォルダ）",
+    "storyBoard": "ショット、テイク、プロンプト",
+    "storyMixer": "映像、音声、書き出し"
   },
   "tabShortLabels": {
     "chat": "チャット",
@@ -105,11 +105,11 @@
     "voiceModels": "マイモデル",
     "voiceLibrary": "ライブラリ",
     "models": "モデル",
-    "musicStudio": null,
-    "musicLibrary": null,
-    "storyProjects": null,
-    "storyBoard": null,
-    "storyMixer": null
+    "musicStudio": "スタジオ",
+    "musicLibrary": "ライブラリ",
+    "storyProjects": "プロジェクト",
+    "storyBoard": "ボード",
+    "storyMixer": "ミキサー"
   },
   "tabGroups": {
     "chat": "チャット",
@@ -119,8 +119,8 @@
     "benchmarks": "ベンチマーク",
     "tools": "ツール",
     "voice": "音声",
-    "music": null,
-    "storyboard": null
+    "music": "ミュージック",
+    "storyboard": "ストーリーボード"
   },
   "tabsCount": "{count, plural, other {# 個のタブ}}",
   "sidebar": {
@@ -129,8 +129,8 @@
     "noModelLoaded": "モデルが読み込まれていません",
     "groupTabsAriaLabel": "{group} タブ",
     "primaryNavAriaLabel": "メイン",
-    "sectionMake": null,
-    "sectionRun": null
+    "sectionMake": "作成",
+    "sectionRun": "実行"
   },
   "slashCommands": {
     "menuAriaLabel": "スラッシュコマンド"
@@ -685,8 +685,8 @@
     "thumbnailAlt": "ライブのノイズ除去プレビュー",
     "thumbnailCaption": "ライブプレビュー · TAESD デコード",
     "stepCounter": "ステップ {current} / {total}",
-    "waitingForAgent": null,
-    "waitingInQueue": null,
+    "waitingForAgent": "エージェントのジョブが終わるのを待っています",
+    "waitingInQueue": "別のジョブの完了を待っています（{position} 番目）",
     "inProgress": "進行中…",
     "finalizing": "最終処理中…",
     "phaseTiming": "{elapsed} 秒 / 約 {estimated} 秒"
@@ -852,8 +852,8 @@
       "sidebarTabsHelp": "サイドバーをコンパクトに保ちます:グループは最後に使ったタブにジャンプする単一ボタンとして振る舞い、コンテンツの上にサブタブバーが表示されます。",
       "uiScaleAria": "UI スケール",
       "uiScaleHelp": "UI スケールはアプリのクロームの密度を即座に変更します。メディアプレビューは独自のアスペクト比に基づくサイズを維持します。",
-      "keepGroupsOpen": null,
-      "keepGroupsOpenHelp": null
+      "keepGroupsOpen": "サイドバーのグループをすべて開いたままにする",
+      "keepGroupsOpenHelp": "デフォルトはオフ：作業中のグループだけが開いたままになります。オンにすると、すべてのグループが展開されます。"
     },
     "dataDirectory": {
       "title": "データディレクトリ",
@@ -909,23 +909,23 @@
       "helpText": "ローカルに保存されます。Hugging Face からゲート付きモデルを取得する際の MLX 変換で使用されます。"
     },
     "agentAccess": {
-      "title": null,
-      "subtitle": null,
-      "switch": null,
-      "hint": null,
-      "claudeCode": null,
-      "stdio": null,
-      "otherClients": null,
-      "rotate": null,
-      "rotateHint": null,
-      "permissions": null,
-      "permissionsHint": null,
-      "scopeClone": null,
-      "remoteClone": null,
-      "readTokenMake": null,
-      "readTokenRemove": null,
-      "readTokenHint": null,
-      "readTokenLabel": null
+      "title": "エージェントアクセス",
+      "subtitle": "AIエージェント（Claude Code、Cursor など）が、ここで画像、動画、音声、文字起こしを作れるようにします。",
+      "switch": "エージェントによる ChaosEngineAI の利用を許可",
+      "hint": "デフォルトはオフ。エージェントは一度に1つのジョブだけを、このコンピュータ上でのみ実行し、下のトークンが必要です。ダウンロード済みのモデルしか使えません。",
+      "claudeCode": "Claude Code",
+      "stdio": "ローカルプログラムしか起動できないクライアント（stdio）",
+      "otherClients": "その他の MCP クライアント（JSON）",
+      "rotate": "新しいトークンを作成",
+      "rotateHint": "古いトークンはすぐに使えなくなります。エージェントには新しい行が必要です。",
+      "permissions": "権限",
+      "permissionsHint": "メイントークンでは、読み取り、作成、ファイルの移動ができます。チェックを入れない限り、それ以外はできません。",
+      "scopeClone": "ボイスクローンを許可",
+      "remoteClone": "他のコンピュータからのクローンも許可",
+      "readTokenMake": "読み取り専用トークンを作成",
+      "readTokenRemove": "読み取り専用トークンを削除",
+      "readTokenHint": "ダッシュボードや監視ツール向け：ステータスとジョブは見られますが、作成や変更はできません。",
+      "readTokenLabel": "読み取り専用トークン（Claude Code）"
     },
     "integrations": {
       "title": "連携",
@@ -973,7 +973,7 @@
     "emptyState": "検索条件に一致するモデルはありません。",
     "launchSettings": "起動設定",
     "cancelButton": "キャンセル",
-    "busyConfirm": null
+    "busyConfirm": "そのまま読み込む"
   },
   "modelPicker": {
     "weightFileTitle": "重みファイルを選択:{name}",
@@ -1297,33 +1297,33 @@
     "files": "ファイルで表示"
   },
   "comingSoon": {
-    "music": null,
-    "storyboard": null
+    "music": "ミュージックは近日公開です。",
+    "storyboard": "ストーリーボードは近日公開です。"
   },
   "llamaCuda": {
-    "description": null,
-    "inUse": null,
-    "install": null,
-    "installedNoDevice": null,
-    "notInstalled": null,
-    "reinstall": null,
-    "title": null
+    "description": "CUDA {cuda} を使い、NVIDIA GPU で GGUF チャットモデルを実行します（llama.cpp {tag}）。ダウンロードは約 680 MB で、CUDA ランタイムを含みます（ディスク上では 0.9 GB）。",
+    "inUse": "使用中：GGUF モデルは NVIDIA GPU で実行されます。",
+    "install": "インストール",
+    "installedNoDevice": "インストール済みですが、CUDA デバイスが見つかりませんでした。NVIDIA ドライバー（nvidia-smi）を確認してください。",
+    "notInstalled": "未インストール。GGUF モデルは付属のビルドを使用します。",
+    "reinstall": "再インストール",
+    "title": "CUDA llama-server（NVIDIA）"
   },
   "terms": {
-    "title": null,
-    "intro": null,
-    "agree": null,
-    "quit": null,
-    "close": null,
-    "read": null,
-    "acceptedOn": null,
-    "notAccepted": null,
+    "title": "利用規約",
+    "intro": "始める前にお読みください。",
+    "agree": "同意する",
+    "quit": "終了",
+    "close": "閉じる",
+    "read": "規約を読む",
+    "acceptedOn": "{date} に同意しました。",
+    "notAccepted": "まだ同意していません。",
     "points": {
-      "responsibility": null,
-      "disclosure": null,
-      "impersonation": null,
-      "voices": null,
-      "licences": null
+      "responsibility": "生成したものと、その使い方については、あなた自身が責任を負います。",
+      "disclosure": "法律やプラットフォームで求められる場合は、AI が生成したコンテンツであることを明示してください（例：EU AI 法第 50 条、プラットフォームの表示ルール）。",
+      "impersonation": "本人の同意なしに、ChaosEngineAI を使って実在の人物になりすまさないでください。",
+      "voices": "声のクローンは、話者本人の同意がある場合にのみ作成してください。",
+      "licences": "モデルごとに独自のライセンスがあります。出力を使う前に確認してください。"
     }
   }
 }

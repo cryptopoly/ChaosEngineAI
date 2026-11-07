@@ -40,7 +40,7 @@
       "tensorfold": "TensorFold インストール",
       "mflux": "mflux インストール",
       "vllmWsl": "vLLM-in-WSL インストール",
-      "ltx2": null
+      "ltx2": "LTX-2.3 エンジンのインストール"
     },
     "status": {
       "failed": "{noun}失敗 — ログを参照",

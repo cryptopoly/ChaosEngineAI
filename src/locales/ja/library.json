@@ -95,7 +95,7 @@
       "compressed": "圧縮後",
       "context": "コンテキスト",
       "status": "ステータス",
-      "released": null
+      "released": "リリース日"
     },
     "status": {
       "downloading": "ダウンロード中",

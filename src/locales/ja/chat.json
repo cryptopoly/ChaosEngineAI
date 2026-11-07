@@ -413,8 +413,8 @@
     "copy": "コピー"
   },
   "busy": {
-    "slowerTitle": null,
-    "riskyTitle": null,
-    "dismiss": null
+    "slowerTitle": "マシンがビジー状態です",
+    "riskyTitle": "両方を動かすにはメモリが足りません",
+    "dismiss": "閉じる"
   }
 }

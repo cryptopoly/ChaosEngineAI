@@ -1,6 +1,6 @@
 """Media files for a storyboard project: check an incoming file, copy it in, hash it and measure it.
 
-Incoming files are local paths (or ``upload:`` handles for images) that a user or agent names, so they
+Incoming files are local paths (or ``upload:`` handles) that a user or agent names, so they
 are resolved, must be regular files with an allowed extension and a size cap. Paths inside a project are
 always resolved against the project folder and must stay inside it. Files enter ``media/`` by hard link
 when the source is on the same disk, else by copy, and are recorded with a sha256. Durations come from
@@ -47,10 +47,10 @@ def resolve_source(raw: str, allowed: set[str]) -> Path:
         raise MediaError("The file path is empty.")
     if text.startswith("upload:"):
         from backend_service.helpers.media_input import InputImageError
-        from backend_service.mcp_bridge.files import resolve_handle
+        from backend_service.mcp_bridge.files import UPLOAD_EXTENSIONS, resolve_handle
 
         try:
-            text = str(resolve_handle(text))
+            text = str(resolve_handle(text, UPLOAD_EXTENSIONS))
         except InputImageError as exc:
             raise MediaError(str(exc)) from exc
     try:

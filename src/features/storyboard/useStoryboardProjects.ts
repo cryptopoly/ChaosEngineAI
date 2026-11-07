@@ -2,7 +2,17 @@
 import { useCallback, useEffect, useState } from "react";
 import { getStoryboardProject, listStoryboardProjects } from "../../api";
 import type { StoryboardProject, StoryboardTimeline } from "../../types";
-import { projectRecency, sortByRecent } from "./storyboardLogic";
+import { mapWithLimit, projectRecency, sortByRecent } from "./storyboardLogic";
+
+/** How many project files are read at once when the list opens. */
+export const PROJECT_READ_LIMIT = 3;
+
+/** Cards already read this session, kept while the project is still at the revision the list reports. */
+const readCards = new Map<string, { revision: number; card: ProjectCardData }>();
+
+export function clearProjectCardCache(): void {
+  readCards.clear();
+}
 
 export interface ProjectCardData {
   id: string;
@@ -23,14 +33,18 @@ export function useStoryboardProjects(enabled: boolean) {
     setLoading(true);
     try {
       const rows = await listStoryboardProjects();
-      const loaded = await Promise.all(
-        rows.map(async (row): Promise<ProjectCardData> => {
+      const loaded = await mapWithLimit(
+        rows,
+        PROJECT_READ_LIMIT,
+        async (row): Promise<ProjectCardData> => {
           if (row.error !== undefined) {
             return { id: row.id, name: row.id, project: null, timeline: null, error: row.error, recency: 0 };
           }
+          const known = readCards.get(row.id);
+          if (known && known.revision === row.revision) return known.card;
           try {
             const payload = await getStoryboardProject(row.id);
-            return {
+            const card: ProjectCardData = {
               id: row.id,
               name: payload.project.name,
               project: payload.project,
@@ -38,6 +52,8 @@ export function useStoryboardProjects(enabled: boolean) {
               error: null,
               recency: projectRecency(payload.project),
             };
+            readCards.set(row.id, { revision: payload.project.revision, card });
+            return card;
           } catch (err) {
             return {
               id: row.id,
@@ -48,7 +64,7 @@ export function useStoryboardProjects(enabled: boolean) {
               recency: row.createdAt,
             };
           }
-        }),
+        },
       );
       setCards(sortByRecent(loaded));
       setError(null);

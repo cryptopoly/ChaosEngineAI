@@ -4,7 +4,7 @@
  * newest, oldest or longest. Cards are draggable (`application/x-chaos-media`); the keyboard path is the
  * Send to storyboard menu.
  */
-import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
+import { useEffect, useMemo, useState, type DragEvent } from "react";
 import { useTranslation } from "react-i18next";
 import type { TabRequest } from "../../constants";
 import { AudioPlayer } from "../../components/AudioPlayer";
@@ -37,38 +37,27 @@ export interface MusicLibraryTabProps {
   onTabChange: (request: TabRequest) => void;
 }
 
-/** Loads a card's audio only once the card is near the screen, so a long library opens quickly. */
-function LibraryPlayer({ item }: { item: MusicLibraryItem }) {
+/**
+ * A card fetches and decodes its audio only when the user shows interest (hover, focus or a press), not when it
+ * scrolls into view, so a long library opens without reading every file.
+ */
+export function LibraryPlayer({ item }: { item: MusicLibraryItem }) {
   const { t } = useTranslation("studio");
-  const holder = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
-  useEffect(() => {
-    const node = holder.current;
-    if (!node || visible) return;
-    if (typeof IntersectionObserver === "undefined") {
-      setVisible(true);
-      return;
-    }
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) setVisible(true);
-      },
-      { rootMargin: "240px" },
-    );
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, [visible]);
-  const audio = useTrackAudio(item.id, item.durationS ?? 0, visible);
+  const [engaged, setEngaged] = useState(false);
+  const audio = useTrackAudio(item.id, item.durationS ?? 0, engaged);
+  const engage = () => setEngaged(true);
   return (
-    <div ref={holder} className="music-library__player">
+    <div className="music-library__player" onPointerEnter={engage} onFocusCapture={engage}>
       {audio.url ? (
         <AudioPlayer src={audio.url} durationS={item.durationS ?? 0} peaks={audio.peaks} label={item.title} />
+      ) : audio.failed ? (
+        <p className="muted-text">{t("musicStudio.result.audioFailed", { defaultValue: "The audio file could not be loaded." })}</p>
+      ) : engaged ? (
+        <p className="muted-text">{t("musicStudio.result.audioLoading", { defaultValue: "Loading the audio…" })}</p>
       ) : (
-        <p className="muted-text" role="status">
-          {audio.failed
-            ? t("musicStudio.result.audioFailed", { defaultValue: "The audio file could not be loaded." })
-            : t("musicStudio.result.audioLoading", { defaultValue: "Loading the audio…" })}
-        </p>
+        <button type="button" className="secondary-button" onClick={engage}>
+          {t("musicLibrary.loadAudio", { defaultValue: "Load the audio" })}
+        </button>
       )}
     </div>
   );

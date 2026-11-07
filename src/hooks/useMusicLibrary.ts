@@ -3,7 +3,7 @@
  * Library screen filters and sorts it in the browser (`filterLibrary`), so typing in the search box never
  * waits for the backend.
  */
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { deleteMusicLibraryItems, getMusicLibrary, updateMusicLibraryItem } from "../api";
 import type { MusicLibraryItem } from "../types";
 
@@ -30,9 +30,7 @@ export function useMusicLibrary(backendOnline: boolean, setErrorProp: (message: 
     }
   }, [setError]);
 
-  useEffect(() => {
-    if (backendOnline) void refreshLibrary();
-  }, [backendOnline, refreshLibrary]);
+  // No fetch on mount: the Library screen reads the list when it opens, and a run or a delete refreshes it.
 
   const patchItem = useCallback(
     async (id: string, patch: { title?: string; tags?: string[] }) => {

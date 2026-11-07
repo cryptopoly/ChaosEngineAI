@@ -23,6 +23,8 @@ import {
   libraryCounts,
   megabytes,
   pickDefaultVariant,
+  pollDelay,
+  MAX_POLL_FAILURES,
   queueForStrip,
   shorterSeconds,
   stripFromEstimate,
@@ -428,5 +430,12 @@ describe("waveform peaks", () => {
     expect(peaksFromChannel(new Float32Array(0), 10)).toEqual([]);
     expect(peaksFromChannel(new Float32Array(8), 4)).toEqual([0, 0, 0, 0]);
     expect(peaksFromChannel(new Float32Array([0.5, 0.5]), 10)).toHaveLength(2);
+  });
+});
+
+describe("poll back-off", () => {
+  it("waits 2 s while all is well, then doubles after each failure up to 30 s", () => {
+    expect([0, 1, 2, 3, 4, 5, 6, 7].map((failures) => pollDelay(failures))).toEqual([2000, 4000, 8000, 16000, 30000, 30000, 30000, 30000]);
+    expect(MAX_POLL_FAILURES).toBeGreaterThan(1);
   });
 });

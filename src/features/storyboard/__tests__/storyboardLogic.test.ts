@@ -10,6 +10,7 @@ import {
   importKindOf,
   isBareKey,
   liveShotStates,
+  mapWithLimit,
   missingShotIds,
   moveItem,
   nextTakeIndex,
@@ -284,5 +285,22 @@ describe("shot editor keys", () => {
     expect(isBareKey({ metaKey: true, ctrlKey: false, altKey: false })).toBe(false);
     expect(isBareKey({ metaKey: false, ctrlKey: true, altKey: false })).toBe(false);
     expect(isBareKey({ metaKey: false, ctrlKey: false, altKey: true })).toBe(false);
+  });
+});
+
+describe("mapWithLimit", () => {
+  it("never runs more than the limit at once and keeps the order", async () => {
+    let running = 0;
+    let peak = 0;
+    const out = await mapWithLimit([1, 2, 3, 4, 5, 6, 7], 3, async (n) => {
+      running += 1;
+      peak = Math.max(peak, running);
+      await new Promise((resolve) => setTimeout(resolve, 2));
+      running -= 1;
+      return n * 10;
+    });
+    expect(out).toEqual([10, 20, 30, 40, 50, 60, 70]);
+    expect(peak).toBe(3);
+    expect(await mapWithLimit([], 3, async (n) => n)).toEqual([]);
   });
 });

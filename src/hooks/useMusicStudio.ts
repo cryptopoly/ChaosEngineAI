@@ -60,13 +60,20 @@ export function useMusicStudio({ backendOnline, variant, runtime, refreshRuntime
   const seconds = form.seconds;
   const variations = form.variations;
   const loadedModel = runtime?.loadedModel ?? null;
+  // Another model's estimate is not this model's: drop it until the new one comes back.
+  useEffect(() => {
+    setEstimate(null);
+  }, [variantId]);
   useEffect(() => {
     if (!backendOnline || !variantId || running || !(seconds >= SECONDS_MIN && seconds <= SECONDS_MAX)) return;
     const controller = new AbortController();
     const timer = window.setTimeout(() => {
       estimateMusicRun(variantId, seconds, variations, controller.signal)
         .then(setEstimate)
-        .catch(() => undefined);
+        .catch(() => {
+          // No estimate then ("unknown until the first run"), never the last one's.
+          if (!controller.signal.aborted) setEstimate(null);
+        });
     }, ESTIMATE_DEBOUNCE_MS);
     return () => {
       window.clearTimeout(timer);

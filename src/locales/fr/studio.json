@@ -1465,6 +1465,7 @@
       "label": null,
       "list": null
     },
+    "loadAudio": null,
     "loading": null,
     "makeAnother": null,
     "noMatch": null,
@@ -1505,6 +1506,7 @@
       "speed": null
     },
     "downloadFailed": null,
+    "downloadStatusLost": null,
     "empty": {
       "attention": null,
       "catalog": null,

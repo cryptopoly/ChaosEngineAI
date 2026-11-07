@@ -124,6 +124,7 @@ describe("storyboard api client", () => {
     expect(JSON.parse(requestTo(fetchMock, "/api/storyboard/projects/abc/render").body as string)).toEqual({
       revision: 3,
       preview: false,
+      notify: true,
     });
   });
 

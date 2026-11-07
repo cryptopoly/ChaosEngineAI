@@ -13,7 +13,7 @@ import secrets
 from pathlib import Path
 from typing import Any, Literal
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -281,3 +281,18 @@ def project_file(project_id: str, rel: str) -> Path:
 def get_file(project_id: str, path: str) -> FileResponse:
     real = project_file(project_id, path)
     return FileResponse(real, filename=real.name)
+
+
+@router.get("/api/storyboard/projects/{project_id}/peaks")
+def get_peaks(project_id: str, path: str, buckets: int = Query(400, ge=32, le=4000)) -> dict[str, Any]:
+    """Waveform peaks (0 to 1) and the length of one project file's audio, cached under ``cache/peaks/``."""
+    from backend_service.storyboard import peaks
+
+    real = project_file(project_id, path)
+    folder = _guard(get_store().folder, project_id)
+    try:
+        return peaks.peaks_for(folder, real, buckets)
+    except peaks.PeaksError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except RuntimeError as exc:  # the bundled ffmpeg is missing
+        raise HTTPException(status_code=503, detail=str(exc)) from exc

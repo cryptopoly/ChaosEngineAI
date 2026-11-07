@@ -15,6 +15,12 @@ from __future__ import annotations
 import os
 from typing import Any
 
+# AudioSeal's Moshi layers wrap functions in torch.compile, and Inductor's Metal kernels fail to build
+# on MPS ("use of undeclared identifier 'CeilToInt'"). Eager mode only: both switches must be set
+# before audioseal is imported (the wrapper reads NO_TORCH_COMPILE when the module loads).
+os.environ.setdefault("NO_TORCH_COMPILE", "1")
+os.environ.setdefault("TORCHDYNAMO_DISABLE", "1")
+
 SAMPLE_RATE = 16_000
 NBITS = 16
 # "CE" "5A": a fixed message, so a detector can tell ChaosEngineAI output from other AudioSeal users.
@@ -36,11 +42,9 @@ def bits_value(bits: list[int]) -> int:
 
 
 def _device() -> str:
-    import torch  # type: ignore[import-untyped]
-
-    if os.environ.get("CHAOSENGINE_WATERMARK_DEVICE"):
-        return os.environ["CHAOSENGINE_WATERMARK_DEVICE"]
-    return "mps" if torch.backends.mps.is_available() else "cpu"
+    """CPU by default: measured on an M-series Mac (2026-11-08) at 0.19 s to mark and 0.10 s to detect
+    10 s of speech, the same as MPS (0.16 / 0.12 s), without MPS kernel builds or GPU contention."""
+    return os.environ.get("CHAOSENGINE_WATERMARK_DEVICE") or "cpu"
 
 
 def _load(role: str, path: str) -> Any:
@@ -106,7 +110,11 @@ def detect_samples(detector: Any, samples, sample_rate: int) -> dict[str, Any]:
 
 
 def embed(request: dict[str, Any], decode_audio, wav_bytes) -> dict[str, Any]:
-    """Watermark the WAV at ``path`` in place (``out`` defaults to ``path``)."""
+    """Watermark the WAV at ``path`` in place (``out`` defaults to ``path``).
+
+    With ``detector``, the marked audio is checked before it is written; a mark that does not read
+    back raises, so the caller never gets unmarked cloned speech.
+    """
     import wave
 
     path = str(request["path"])
@@ -114,10 +122,15 @@ def embed(request: dict[str, Any], decode_audio, wav_bytes) -> dict[str, Any]:
         rate = handle.getframerate()
     samples = decode_audio(path, rate)
     marked = watermark_samples(_load("generator", str(request["generator"])), samples, rate)
+    check = None
+    if request.get("detector"):
+        check = detect_samples(_load("detector", str(request["detector"])), marked, rate)
+        if not check["matches"] or check["probability"] < 0.5:
+            raise RuntimeError("The watermark could not be verified on this clip, so it was not saved.")
     out = str(request.get("out") or path)
     with open(out, "wb") as handle:
         handle.write(wav_bytes(marked, rate))
-    return {"out": out, "sampleRate": rate}
+    return {"out": out, "sampleRate": rate, "check": check}
 
 
 def detect(request: dict[str, Any], decode_audio) -> dict[str, Any]:

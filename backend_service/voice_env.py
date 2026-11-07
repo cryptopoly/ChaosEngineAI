@@ -262,9 +262,15 @@ def watermark_model_paths() -> dict[str, Path] | None:
     return paths if all(p.is_file() for p in paths.values()) else None
 
 
+def _watermark_package_present() -> bool:
+    """The pinned AudioSeal is in the venv (checked on disk, so an install by any route counts)."""
+    version = WATERMARK_PACKAGES[0].split("==")[1]
+    patterns = (f"lib/python3*/site-packages/audioseal-{version}.dist-info", f"Lib/site-packages/audioseal-{version}.dist-info")
+    return any(any(VOICE_VENV_DIR.glob(pattern)) for pattern in patterns)
+
+
 def watermark_installed() -> bool:
-    marker = read_marker() or {}
-    return is_installed() and bool(marker.get("watermark")) and watermark_model_paths() is not None
+    return is_installed() and _watermark_package_present() and watermark_model_paths() is not None
 
 
 def install_watermark() -> None:
@@ -274,7 +280,7 @@ def install_watermark() -> None:
     """
     if not is_installed():
         raise RuntimeError("The voice pack is not installed. Install it from Voice > Models.")
-    if not (read_marker() or {}).get("watermark"):
+    if not _watermark_package_present():
         result = subprocess.run(
             [str(venv_python()), "-m", "pip", "install", "--quiet", *WATERMARK_PACKAGES],
             capture_output=True, text=True, encoding="utf-8", errors="replace", env=worker_env(),

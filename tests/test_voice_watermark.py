@@ -33,6 +33,16 @@ class MessageTests(unittest.TestCase):
         self.assertIn("audioseal==0.2.1", voice_env.WATERMARK_PACKAGES)
         self.assertEqual(set(voice_env.WATERMARK_FILES), {"generator", "detector"})
 
+    def test_package_presence_is_read_from_the_venv(self) -> None:
+        from unittest import mock
+
+        with tempfile.TemporaryDirectory() as folder, mock.patch.object(voice_env, "VOICE_VENV_DIR", Path(folder)):
+            self.assertFalse(voice_env._watermark_package_present())
+            (Path(folder) / "lib/python3.11/site-packages/audioseal-0.1.9.dist-info").mkdir(parents=True)
+            self.assertFalse(voice_env._watermark_package_present())  # another version does not count
+            (Path(folder) / "lib/python3.11/site-packages/audioseal-0.2.1.dist-info").mkdir(parents=True)
+            self.assertTrue(voice_env._watermark_package_present())
+
 
 @unittest.skipIf(torch is None, "torch not installed")
 class PlumbingTests(unittest.TestCase):
@@ -67,6 +77,30 @@ class PlumbingTests(unittest.TestCase):
         found = wm.detect_samples(Detector(), np.zeros(16_000, dtype=np.float32), 16_000)
         self.assertEqual(found, {"probability": 0.97, "message": "CE5A", "matches": True})
 
+    def test_embed_refuses_to_write_a_mark_that_does_not_read_back(self) -> None:
+        from unittest import mock
+
+        from backend_service import voice_worker
+
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "clip.wav"
+            path.write_bytes(voice_worker.wav_bytes(np.zeros(24_000, dtype=np.float32), 24_000))
+            before = path.read_bytes()
+            with mock.patch.object(wm, "_load", return_value=object()), \
+                 mock.patch.object(wm, "watermark_samples", return_value=np.full(24_000, 0.01, dtype=np.float32)), \
+                 mock.patch.object(wm, "detect_samples", return_value={"probability": 0.1, "message": "0000", "matches": False}):
+                with self.assertRaisesRegex(RuntimeError, "not saved"):
+                    wm.embed({"path": str(path), "generator": "g", "detector": "d"},
+                             lambda _p, _r: np.zeros(24_000, dtype=np.float32), voice_worker.wav_bytes)
+            self.assertEqual(path.read_bytes(), before)
+
+    def test_compile_is_off_before_audioseal_loads(self) -> None:
+        import os
+
+        self.assertEqual(os.environ.get("NO_TORCH_COMPILE"), "1")
+        self.assertEqual(os.environ.get("TORCHDYNAMO_DISABLE"), "1")
+        self.assertEqual(wm._device(), os.environ.get("CHAOSENGINE_WATERMARK_DEVICE") or "cpu")
+
 
 _ROUND_TRIP = textwrap.dedent(
     """
@@ -89,7 +123,7 @@ _ROUND_TRIP = textwrap.dedent(
     plain = folder + "/plain.wav"
     open(plain, "wb").write(w.wav_bytes(clip, rate))
     marked = folder + "/marked.wav"
-    wm.embed({"path": plain, "out": marked, "generator": gen}, w.decode_audio, w.wav_bytes)
+    wm.embed({"path": plain, "out": marked, "generator": gen, "detector": det}, w.decode_audio, w.wav_bytes)
 
     def reencode(src, dst, fmt, codec):
         with av.open(src) as s, av.open(dst, "w", format=fmt) as d:
@@ -142,6 +176,7 @@ class RealRoundTripTests(unittest.TestCase):
             )
             self.assertEqual(run.returncode, 0, run.stderr[-2000:])
             result = json.loads((Path(folder) / "result.json").read_text())
+        print("watermark round trip:", json.dumps(result))
         self.assertFalse(result["plain"]["matches"] and result["plain"]["probability"] > 0.5, result)
         for name in ("wav", "mp3", "aac"):
             self.assertGreater(result[name]["probability"], 0.8, (name, result))

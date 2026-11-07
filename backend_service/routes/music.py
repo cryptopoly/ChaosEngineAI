@@ -187,9 +187,12 @@ def preload_music(request: Request, body: MusicModelRequest) -> dict[str, Any]:
 
 @router.post("/api/music/unload")
 def unload_music(request: Request) -> dict[str, Any]:
-    from backend_service.music_runtime import capabilities, unload
+    from backend_service.music_runtime import MusicBusy, capabilities, unload
 
-    result = unload()
+    try:
+        result = unload()
+    except MusicBusy as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     if result["stopped"]:
         request.app.state.chaosengine.add_activity("Music model unloaded", "Music worker stopped")
     return {**result, "runtime": capabilities()}

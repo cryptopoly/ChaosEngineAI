@@ -82,6 +82,7 @@ class MusicWorker:
         self._pending_lock = threading.Lock()
         self._ids = itertools.count(1)
         self._in_flight = 0
+        self._heavy = 0  # load and generate requests in flight (status polls do not count)
         self._last_used = time.monotonic()
         self.idle_minutes = 10.0
         self._log_path = music_env.MUSIC_DATA_DIR / "worker.log"
@@ -189,6 +190,11 @@ class MusicWorker:
         self.stop()
         return True
 
+    def busy(self) -> bool:
+        """A model load or a generation is running in the worker."""
+        with self._pending_lock:
+            return self._heavy > 0
+
     def _idle_watch(self) -> None:
         while True:
             time.sleep(30)
@@ -240,9 +246,11 @@ class MusicWorker:
             raise MusicWorkerError("The music worker is not running.")
         request_id = next(self._ids)
         replies: queue.Queue[dict[str, Any]] = queue.Queue()
+        heavy = cmd in ("load", "generate")
         with self._pending_lock:
             self._pending[request_id] = replies
             self._in_flight += 1
+            self._heavy += heavy
         if touch:
             self._last_used = time.monotonic()
         try:
@@ -253,6 +261,7 @@ class MusicWorker:
                 self._last_used = time.monotonic()
             with self._pending_lock:
                 self._in_flight -= 1
+                self._heavy -= heavy
                 self._pending.pop(request_id, None)
 
     def _wait(

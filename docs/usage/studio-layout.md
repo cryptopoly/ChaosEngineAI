@@ -64,10 +64,10 @@ Studio), plus an unload entry for another loaded model.
 
 ## The sidebar
 
-The sidebar groups the tabs under two small labels.
+Chat sits at the top, under Dashboard. The rest of the tabs are grouped under two small labels.
 
 - **Make:** Images, Video, Voice, Music and Storyboard.
-- **Run:** Chat, Benchmarks and Tools.
+- **Run:** Benchmarks and Tools.
 
 Dashboard stays first. Server, Logs and Settings stay last. Music and Storyboard appear once those areas are
 switched on.

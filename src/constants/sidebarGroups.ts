@@ -12,7 +12,7 @@ export interface SidebarGroup {
 }
 
 export const sidebarGroups: SidebarGroup[] = [
-  { id: "chat", label: "Chat", caption: "Chat, compare, and language models", defaultChild: "chat", section: "run" },
+  { id: "chat", label: "Chat", caption: "Chat, compare, and language models", defaultChild: "chat" },
   { id: "images", label: "Images", caption: "Image generation", defaultChild: "image-models", section: "make" },
   { id: "video", label: "Video", caption: "Video generation", defaultChild: "video-models", section: "make" },
   { id: "voice", label: "Voice", caption: "STT, TTS, and voice chat", defaultChild: "voice-studio", section: "make" },

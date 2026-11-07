@@ -7,7 +7,8 @@
 import type { DragEventHandler, ReactNode } from "react";
 
 export interface MediaLibraryCardProps {
-  title: string;
+  /** Usually a string; the Music Library passes an inline rename field. */
+  title: ReactNode;
   /** Kind label shown before the meta line, e.g. "Transcript". */
   badge?: string;
   /** Pre-joined meta line, e.g. "2 Nov 2026 · 0:30". */
@@ -18,6 +19,8 @@ export interface MediaLibraryCardProps {
   /** Accessible name of the select box. */
   selectLabel: string;
   tags?: string[];
+  /** Replaces the plain tag list (the Music Library edits tags in place). */
+  tagsSlot?: ReactNode;
   player?: ReactNode;
   error?: string | null;
   actions: ReactNode;
@@ -34,6 +37,7 @@ export function MediaLibraryCard({
   onSelect,
   selectLabel,
   tags,
+  tagsSlot,
   player,
   error,
   actions,
@@ -58,7 +62,8 @@ export function MediaLibraryCard({
         </div>
       </div>
       {preview ? <p className="media-library-card__preview">{preview}</p> : null}
-      {tags && tags.length > 0 ? (
+      {tagsSlot ?? null}
+      {!tagsSlot && tags && tags.length > 0 ? (
         <ul className="media-library-card__tags">
           {tags.map((tag) => (
             <li key={tag} className="badge subtle">

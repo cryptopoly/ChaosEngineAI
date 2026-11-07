@@ -1,32 +1,26 @@
-import { useTranslation } from "react-i18next";
-import { Panel } from "../components/Panel";
+import { MusicLibraryTab } from "../features/music/MusicLibraryTab";
+import { MusicModelsPage } from "../features/music/MusicModelsPage";
+import { MusicStudioTab } from "../features/music/MusicStudioTab";
 import type { AppTabContext } from "./context";
 
-/**
- * Placeholder for the Music tabs. Only reachable when HOME_STUDIO_ENABLED is
- * true; the real screens replace these when the Music backend lands.
- */
-function MusicPlaceholder({ titleKey, title }: { titleKey: string; title: string }) {
-  const { t } = useTranslation("common");
+/** The three Music screens. Only reachable when HOME_STUDIO_ENABLED is true. */
+export function MusicModelsView({ ctx }: { ctx: AppTabContext }) {
+  const { musicState, backendOnline, modelsAvailability, setAreaAvailability, handleOpenExternalUrl } = ctx;
   return (
-    <div className="content-grid">
-      <Panel title={t(titleKey, { defaultValue: title })} className="span-2">
-        <div className="empty-state">
-          <p className="muted-text">{t("comingSoon.music", { defaultValue: "Music is coming soon." })}</p>
-        </div>
-      </Panel>
-    </div>
+    <MusicModelsPage
+      music={musicState}
+      backendOnline={backendOnline}
+      availability={modelsAvailability.music}
+      onAvailabilityChange={(value) => setAreaAvailability("music", value)}
+      onOpenExternalUrl={(url) => void handleOpenExternalUrl(url)}
+    />
   );
 }
 
-export function MusicModelsView(_props: { ctx: AppTabContext }) {
-  return <MusicPlaceholder titleKey="tabs.musicModels" title="Music Models" />;
+export function MusicStudioView({ ctx }: { ctx: AppTabContext }) {
+  return <MusicStudioTab music={ctx.musicState} backendOnline={ctx.backendOnline} onTabChange={ctx.setActiveTab} />;
 }
 
-export function MusicStudioView(_props: { ctx: AppTabContext }) {
-  return <MusicPlaceholder titleKey="tabs.musicStudio" title="Music Studio" />;
-}
-
-export function MusicLibraryView(_props: { ctx: AppTabContext }) {
-  return <MusicPlaceholder titleKey="tabs.musicLibrary" title="Music Library" />;
+export function MusicLibraryView({ ctx }: { ctx: AppTabContext }) {
+  return <MusicLibraryTab music={ctx.musicState} backendOnline={ctx.backendOnline} onTabChange={ctx.setActiveTab} />;
 }

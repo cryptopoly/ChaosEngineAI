@@ -13,6 +13,8 @@ import {
   getMusicDownloadStatus,
   getMusicInstallStatus,
   getMusicRuntime,
+  saveMusicEmbedTag,
+  saveMusicSettings,
   startMusicInstall,
 } from "../api";
 import type { DownloadStatus } from "../api";
@@ -131,6 +133,31 @@ export function useMusicRuntime(backendOnline: boolean, setError: (message: stri
     }
   }, [setError]);
 
+  /** D-34: the AI tag in new files. Lives in the app settings; the runtime reports it back. */
+  const setEmbedTag = useCallback(
+    async (on: boolean) => {
+      try {
+        await saveMusicEmbedTag(on);
+        await refreshRuntime();
+      } catch (err) {
+        setError(message(err));
+      }
+    },
+    [setError, refreshRuntime],
+  );
+
+  const setIdleMinutes = useCallback(
+    async (minutes: number) => {
+      try {
+        await saveMusicSettings({ idleUnloadMinutes: minutes });
+        await refreshRuntime();
+      } catch (err) {
+        setError(message(err));
+      }
+    },
+    [setError, refreshRuntime],
+  );
+
   const startDownload = useCallback(
     async (repo: string) => {
       try {
@@ -189,6 +216,8 @@ export function useMusicRuntime(backendOnline: boolean, setError: (message: stri
     refreshCatalog,
     startInstall,
     cancelInstall,
+    setEmbedTag,
+    setIdleMinutes,
     startDownload,
     pauseDownload,
     deleteDownload,

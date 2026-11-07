@@ -264,6 +264,30 @@ _ENTRIES: tuple[_Entry, ...] = (
     ),
     _Entry(
         "video",
+        ("Wan-AI/Wan2.2-I2V-A14B-Diffusers-distill-gguf-q4km",),
+        {"steps": 4, "guidance": 1.0, "width": 832, "height": 480, "numFrames": 81, "fps": 16},
+        {
+            "steps": "4 steps is the lightx2v distill schedule; more steps do not help a distilled model.",
+            "guidance": "The distill runs without classifier-free guidance (1.0), which also halves the work per step.",
+            "width": "832 x 480 is the Wan 2.2 480p size the model was trained at.",
+            "height": "832 x 480 is the Wan 2.2 480p size the model was trained at.",
+            "numFrames": "81 frames at 16 fps is the 5 s clip on the Wan-AI model card.",
+            "fps": "Wan 2.2 A14B was trained at 16 fps.",
+        },
+    ),
+    _Entry(
+        "video",
+        ("Wan-AI/Wan2.2-I2V-A14B-Diffusers-distill-gguf-q4km",),
+        {"width": 480, "height": 272, "numFrames": 33},
+        {
+            "width": "On a Mac this is the size that fits: 768 x 448 needed more than 57 GB and was stopped (docs/research/wan-vs-ltx-bench.md).",
+            "height": "On a Mac this is the size that fits: 768 x 448 needed more than 57 GB and was stopped.",
+            "numFrames": "33 frames (2 s at 16 fps) is the length timed on a Mac; memory grows with frames.",
+        },
+        hardware="apple",
+    ),
+    _Entry(
+        "video",
         ("hunyuanvideo-community/HunyuanVideo",),
         {"steps": 50, "guidance": 6.0, "cfgDecay": True, "cacheStrategy": "fbcache", "cacheThreshold": 0.08},
         {
@@ -356,6 +380,19 @@ _MEASURED: dict[str, tuple[_Measurement, ...]] = {
                 "height": "768 x 512: a 4 s clip in 135-138 s here, 15 GB peak (2 prompts).",
                 "numFrames": "97 frames (4 s at 24 fps): 135-138 s here against 55 s for the Studio's default 33 frames (1.4 s); both coherent, memory the same.",
                 "fps": "LTX-2.3 was trained at 24 fps; the clips above were timed at 24.",
+            },
+        ),
+    ),
+    "Wan-AI/Wan2.2-I2V-A14B-Diffusers-distill-gguf-q4km": (
+        _Measurement(
+            "apple-64",
+            _M4_MAX,
+            frozenset({"width", "height", "numFrames", "steps"}),
+            {
+                "width": "480 x 272 x 33 frames: 98-114 s here (5 runs, start only and start + end), 53-55 GB peak. 768 x 448 was stopped above 57 GB.",
+                "height": "480 x 272: 98-114 s here, 53-55 GB peak (5 runs).",
+                "numFrames": "33 frames (2 s at 16 fps): 98-114 s here; the four steps take about 20 s each.",
+                "steps": "4 distilled steps, about 20 s each at 480 x 272 here.",
             },
         ),
     ),

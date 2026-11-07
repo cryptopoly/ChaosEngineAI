@@ -827,6 +827,7 @@ class DiffusersVideoEngine:
                     # keep one expert on the GPU at a time.
                     if device == "mps":
                         pipeline = pipeline.to(device)
+                        _release_mps_cache_before_vae(pipeline, torch)
                     elif hasattr(pipeline, "enable_model_cpu_offload"):
                         pipeline.enable_model_cpu_offload()
                     else:
@@ -926,6 +927,30 @@ class DiffusersVideoEngine:
 
     def _preferred_torch_dtype(self, torch: Any, device: str) -> Any:
         return preferred_torch_dtype(torch, device)
+
+
+def _release_mps_cache_before_vae(pipeline: Any, torch: Any) -> None:
+    """Hand the MPS allocator's cached blocks back before each VAE encode / decode.
+
+    Wan 2.2 A14B with both GGUF experts resident sits at about 31 GB; the Wan VAE
+    then adds a short spike of up to about 20 GB on MPS. Without this the cache
+    kept from the denoise loop stacks on top of that spike (measured: 54 GB peak
+    at 480 x 272 x 33 frames on a 64 GB M4 Max with it).
+    """
+    vae = getattr(pipeline, "vae", None)
+    empty_cache = getattr(getattr(torch, "mps", None), "empty_cache", None)
+    if vae is None or empty_cache is None:
+        return
+    for name in ("encode", "decode"):
+        original = getattr(vae, name, None)
+        if original is None:
+            continue
+
+        def wrapped(*args: Any, _original: Any = original, **kwargs: Any) -> Any:
+            empty_cache()
+            return _original(*args, **kwargs)
+
+        setattr(vae, name, wrapped)
 
 
 def _is_longlive_repo(repo: str | None) -> bool:

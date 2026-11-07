@@ -41,6 +41,7 @@ import {
 } from "./musicLogic";
 import { MusicExpertBody, MusicOptionsBody, expertSummary, optionsSummary } from "./MusicStudioOptions";
 import { MusicResultCard } from "./MusicResultCard";
+import { SoundsStudio } from "./SoundsStudio";
 
 export interface MusicStudioTabProps {
   music: UseMusicState;
@@ -49,6 +50,7 @@ export interface MusicStudioTabProps {
 }
 
 const MODES: MusicMode[] = ["song", "instrumental"];
+const STUDIO_MODES = ["music", "sounds"] as const;
 
 export function MusicStudioTab({ music, backendOnline, onTabChange }: MusicStudioTabProps) {
   const { t } = useTranslation("studio");
@@ -86,10 +88,38 @@ export function MusicStudioTab({ music, backendOnline, onTabChange }: MusicStudi
     }
   }
 
+  const studioMode = music.soundVariant ? music.studioMode : "music";
+  const soundsMode = studioMode === "sounds";
+  const modeLabels2: Record<(typeof STUDIO_MODES)[number], string> = {
+    music: t("musicStudio.studioMode.music", { defaultValue: "Music" }),
+    sounds: t("musicStudio.studioMode.sounds", { defaultValue: "Sounds" }),
+  };
   const header = (
     <>
       <div className="music-studio__title">
         <h2>{t("musicStudio.title", { defaultValue: "Music Studio" })}</h2>
+        {music.soundVariant ? (
+          <div className="segmented music-studio__studio-modes" role="group" aria-label={t("musicStudio.studioMode.label", { defaultValue: "Music or sound effects" })}>
+            {STUDIO_MODES.map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                className={`segment${studioMode === mode ? " active" : ""}`}
+                aria-pressed={studioMode === mode}
+                disabled={running || music.sounds.running}
+                onClick={() => music.setStudioMode(mode)}
+              >
+                {modeLabels2[mode]}
+              </button>
+            ))}
+          </div>
+        ) : null}
+        {soundsMode ? (
+          <div className="music-studio__status" role="status">
+            <span className="music-studio__model">{music.soundVariant?.name}</span>
+            {music.soundVariant?.licence?.attribution ? <span className="muted-text">{music.soundVariant.licence.attribution}</span> : null}
+          </div>
+        ) : (
         <div className="music-studio__status" role="status">
           {selectedVariant ? <span className="music-studio__model">{selectedVariant.name}</span> : null}
           {selectedVariant && ready ? (
@@ -104,6 +134,7 @@ export function MusicStudioTab({ music, backendOnline, onTabChange }: MusicStudi
           ) : null}
           <FitBadge fit={fit} />
         </div>
+        )}
       </div>
       <div className="button-row">
         <button type="button" className="secondary-button" onClick={() => onTabChange("music-models")}>
@@ -128,6 +159,10 @@ export function MusicStudioTab({ music, backendOnline, onTabChange }: MusicStudi
         </section>
       </div>
     );
+  }
+
+  if (soundsMode) {
+    return <SoundsStudio music={music} backendOnline={backendOnline} onTabChange={onTabChange} header={header} />;
   }
 
   // Not ready: one sentence and one button (nothing to fill in yet).

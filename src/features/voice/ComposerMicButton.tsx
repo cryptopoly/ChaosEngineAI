@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { transcribeBlob } from "../../api";
+import { MicSettingsButton } from "./MicSettingsButton";
 import { formatClock, micErrorMessage, startMicCapture, type MicCapture } from "./audio";
 import { useVoice } from "./VoiceContext";
 
@@ -167,6 +168,7 @@ export function ComposerMicButton({ onTranscript, onAutoSend, disabled = false }
           {error}
         </span>
       ) : null}
+      <MicSettingsButton error={error} platform={platform} />
     </div>
   );
 }

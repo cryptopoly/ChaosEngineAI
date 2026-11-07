@@ -824,6 +824,7 @@
     "micError": {
       "blockedMac": "麦克风访问被阻止。请在“系统设置 > 隐私与安全性 > 麦克风”中允许 ChaosEngineAI，然后重试。",
       "blockedWindows": "麦克风访问被阻止。请在“设置 > 隐私和安全性 > 麦克风”中允许桌面应用使用麦克风，然后重试。",
+      "openSettings": "打开麦克风设置",
       "blocked": "麦克风访问被阻止。请检查桌面的隐私设置，并确认没有其他应用占用麦克风。",
       "notFound": "未找到麦克风。请连接麦克风后重试。",
       "inUse": "麦克风正被其他应用使用，或无法打开。",
@@ -1343,6 +1344,8 @@
       "edited": "编辑于 {when}",
       "meta": "{shots, plural, other {# 个镜头}} · {seconds} 秒 · {aspect}",
       "noShots": "还没有镜头",
+      "noTakes": "还没有画面",
+      "noPreview": "暂无预览",
       "stale": "{n} 个已过期",
       "zeroShots": "0 个镜头"
     },

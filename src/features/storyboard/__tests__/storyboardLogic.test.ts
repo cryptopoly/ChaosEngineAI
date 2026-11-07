@@ -7,6 +7,7 @@ import {
   draftFromShot,
   drawerEscapeAction,
   effectiveShotStatus,
+  emptyThumbState,
   importKindOf,
   isBareKey,
   liveShotStates,
@@ -302,5 +303,13 @@ describe("mapWithLimit", () => {
     expect(out).toEqual([10, 20, 30, 40, 50, 60, 70]);
     expect(peak).toBe(3);
     expect(await mapWithLimit([], 3, async (n) => n)).toEqual([]);
+  });
+});
+
+describe("emptyThumbState", () => {
+  it("tells no shots, shots without takes, and shots with takes apart", () => {
+    expect(emptyThumbState({ shots: [] })).toBe("noShots");
+    expect(emptyThumbState({ shots: [shot("a"), shot("b")] })).toBe("noTakes");
+    expect(emptyThumbState({ shots: [shot("a"), shot("b", { takes: [take("t")] })] })).toBe("noPreview");
   });
 });

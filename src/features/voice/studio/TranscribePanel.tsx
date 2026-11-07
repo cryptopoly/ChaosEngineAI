@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Panel } from "../../../components/Panel";
 import { getLibraryAudio, getLibraryItem, transcribeBlob } from "../../../api";
 import type { VoiceLibraryItem, SttModel, VoiceRuntime } from "../../../types";
+import { MicSettingsButton } from "../MicSettingsButton";
 import { formatClock, micErrorMessage, startMicCapture, type MicCapture } from "../audio";
 import { useVoice } from "../VoiceContext";
 import { VOICE_LANGUAGES, voiceLanguageName } from "../VoiceModelsTab";
@@ -386,6 +387,7 @@ export function TranscribePanel({ runtime, openRequest, onSendToChat, onOpenMode
               {error}
             </p>
           ) : null}
+          <MicSettingsButton error={error} platform={platform} />
 
           {jobs.length > 0 ? (
             <ul className="voice-queue" aria-label={t("voice.queue.title", { defaultValue: "Queue" })}>

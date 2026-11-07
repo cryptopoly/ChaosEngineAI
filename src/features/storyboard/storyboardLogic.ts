@@ -96,6 +96,12 @@ export function activeTakeOf(shot: StoryboardShot) {
   return shot.takes.find((take) => take.id === shot.activeTake) ?? null;
 }
 
+/** Why a project card has no thumbnails: no shots at all, shots nobody has made a picture for, or neither. */
+export function emptyThumbState(project: Pick<StoryboardProject, "shots">): "noShots" | "noTakes" | "noPreview" {
+  if (project.shots.length === 0) return "noShots";
+  return project.shots.some((shot) => shot.takes.length > 0) ? "noPreview" : "noTakes";
+}
+
 /** The file to show as the card thumbnail: the still when there is one, else the clip. */
 export function thumbnailOf(shot: StoryboardShot): { kind: "still" | "clip"; path: string } | null {
   const take = activeTakeOf(shot);

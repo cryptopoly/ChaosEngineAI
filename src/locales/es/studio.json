@@ -824,6 +824,7 @@
     "micError": {
       "blockedMac": "El acceso al micrófono está bloqueado. Permite ChaosEngineAI en Ajustes del Sistema > Privacidad y seguridad > Micrófono y vuelve a intentarlo.",
       "blockedWindows": "El acceso al micrófono está bloqueado. Permite que las aplicaciones de escritorio usen el micrófono en Configuración > Privacidad y seguridad > Micrófono y vuelve a intentarlo.",
+      "openSettings": "Abrir los ajustes del micrófono",
       "blocked": "El acceso al micrófono está bloqueado. Revisa la configuración de privacidad de tu escritorio y que ninguna otra aplicación esté usando el micrófono.",
       "notFound": "No se encontró ningún micrófono. Conecta uno y vuelve a intentarlo.",
       "inUse": "Otra aplicación está usando el micrófono o no se pudo abrir.",
@@ -1343,6 +1344,8 @@
       "edited": "editado {when}",
       "meta": "{shots, plural, one {# plano} other {# planos}} · {seconds} s · {aspect}",
       "noShots": "aún no hay planos",
+      "noTakes": "aún no hay imágenes",
+      "noPreview": "sin vista previa",
       "stale": "{n} obsoleto(s)",
       "zeroShots": "0 planos"
     },

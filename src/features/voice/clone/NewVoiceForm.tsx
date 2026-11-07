@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { MicSettingsButton } from "../MicSettingsButton";
 import { formatClock, micErrorMessage, startMicCapture, type MicCapture } from "../audio";
 import { useVoice } from "../VoiceContext";
 import { createClonedVoice, startConsent, type ClonedVoice, type ConsentChallenge } from "./cloneApi";
@@ -180,6 +181,7 @@ export function NewVoiceForm({ onCreated, onCancel }: { onCreated: (voice: Clone
           {error}
         </p>
       ) : null}
+      <MicSettingsButton error={error} platform={platform} />
     </div>
   );
 }

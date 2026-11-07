@@ -824,6 +824,7 @@
     "micError": {
       "blockedMac": "麥克風存取遭到封鎖。請在「系統設定 > 隱私權與安全性 > 麥克風」中允許 ChaosEngineAI，然後再試一次。",
       "blockedWindows": "麥克風存取遭到封鎖。請在「設定 > 隱私權與安全性 > 麥克風」中允許桌面應用程式使用麥克風，然後再試一次。",
+      "openSettings": "開啟麥克風設定",
       "blocked": "麥克風存取遭到封鎖。請檢查桌面的隱私權設定，並確認沒有其他應用程式占用麥克風。",
       "notFound": "找不到麥克風。請連接麥克風後再試一次。",
       "inUse": "麥克風正被其他應用程式使用，或無法開啟。",
@@ -1343,6 +1344,8 @@
       "edited": "編輯於 {when}",
       "meta": "{shots, plural, other {# 個鏡頭}} · {seconds} 秒 · {aspect}",
       "noShots": "還沒有鏡頭",
+      "noTakes": "還沒有畫面",
+      "noPreview": "暫無預覽",
       "stale": "{n} 個已過期",
       "zeroShots": "0 個鏡頭"
     },

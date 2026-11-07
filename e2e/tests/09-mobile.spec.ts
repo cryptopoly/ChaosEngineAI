@@ -54,10 +54,8 @@ test("375 px: Storyboard projects, board and mixer", async ({ page, request }) =
   await look(page, "storyboard-mixer");
 });
 
-// Known layout bug F-1 (docs/research/e2e-findings.md): the Models table keeps its desktop width on a
-// phone and the page scrolls sideways. Marked as an expected failure so this goes red the day it is fixed.
+// F-1 (docs/research/e2e-findings.md): the Models table used to keep its desktop width on a phone.
 test("375 px: Music Models fits the width", async ({ page }) => {
-  test.fail(true, "F-1: .models-table overflows below ~700 px");
   await goTo(page, "Music", "Models");
   await expect(page.getByText("Stable Audio Open Small").first()).toBeVisible();
   await look(page, "music-models");

@@ -2692,10 +2692,21 @@ def phase_11(cap: Capability) -> PhaseResult:
 # ---------------------------------------------------------------------------
 
 
+def phase_16(cap: Capability) -> PhaseResult:
+    """Storyboard v2 (captions, OTIO, stems, resumable render): the checks live in ``scripts/e2e_phases/phase_16.py``."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("e2e_phase_16", Path(__file__).parent / "e2e_phases" / "phase_16.py")
+    module = importlib.util.module_from_spec(spec)  # type: ignore[arg-type]
+    spec.loader.exec_module(module)  # type: ignore[union-attr]
+    return module.run(sys.modules[__name__], cap)
+
+
 PHASES = {
     0: phase_0, 1: phase_1, 2: phase_2, 3: phase_3,
     4: phase_4, 5: phase_5, 6: phase_6, 7: phase_7, 8: phase_8, 9: phase_9, 10: phase_10,
     11: phase_11,
+    16: phase_16,
 }
 
 

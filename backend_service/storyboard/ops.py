@@ -23,10 +23,12 @@ from backend_service.storyboard.models import (
     Anchor,
     AudioClip,
     AudioSource,
+    Caption,
     Defaults,
     ExportSettings,
     Id,
     Line,
+    MAX_CAPTIONS,
     Project,
     Prompt,
     Reference,
@@ -153,6 +155,37 @@ class EditAudio(AudioFields):
 
 class ClipRef(_Args):
     clipId: Id
+
+
+class CueArg(_Args):
+    start: float = Field(ge=0, le=36000)
+    end: float = Field(ge=0, le=36000)
+    text: str = Field(min_length=1, max_length=500)
+
+
+class SetCaptions(_Args):
+    """Replace the captions of one audio clip (``clipId``) or the timeline's own captions (no ``clipId``)."""
+
+    clipId: Id | None = None
+    cues: list[CueArg] = Field(max_length=500)
+
+
+class AddCaption(_Args):
+    start: float = Field(ge=0, le=36000)
+    end: float = Field(ge=0, le=36000)
+    text: str = Field(min_length=1, max_length=500)
+    clipId: Id | None = None
+
+
+class EditCaption(_Args):
+    captionId: Id
+    start: float | None = Field(None, ge=0, le=36000)
+    end: float | None = Field(None, ge=0, le=36000)
+    text: str | None = Field(None, min_length=1, max_length=500)
+
+
+class CaptionRef(_Args):
+    captionId: Id
 
 
 # ---- helpers ----
@@ -461,6 +494,52 @@ def edit_audio(p: Project, folder: Path, a: EditAudio) -> None:
 def remove_audio(p: Project, folder: Path, a: ClipRef) -> None:
     _clip(p, a.clipId)
     p.audio = [c for c in p.audio if c.id != a.clipId]
+    p.captions = [c for c in p.captions if c.clipId != a.clipId]
+
+
+def _caption(p: Project, caption_id: str) -> Caption:
+    caption = next((c for c in p.captions if c.id == caption_id), None)
+    if caption is None:
+        raise OpError(f"Unknown caption '{caption_id}'.")
+    return caption
+
+
+def _new_caption(p: Project, clip_id: str | None, start: float, end: float, text: str) -> Caption:
+    if clip_id is not None:
+        _clip(p, clip_id)
+    try:
+        return Caption(id=new_id("c"), clipId=clip_id, start=start, end=end, text=text)
+    except ValidationError as exc:
+        raise OpError(f"caption: {exc.errors()[0]['msg']}") from exc
+
+
+def set_captions(p: Project, folder: Path, a: SetCaptions) -> None:
+    fresh = [_new_caption(p, a.clipId, cue.start, cue.end, cue.text) for cue in a.cues]
+    kept = [c for c in p.captions if c.clipId != a.clipId]
+    if len(kept) + len(fresh) > MAX_CAPTIONS:
+        raise OpError(f"At most {MAX_CAPTIONS} captions per film.")
+    p.captions = kept + fresh
+
+
+def add_caption(p: Project, folder: Path, a: AddCaption) -> None:
+    if len(p.captions) >= MAX_CAPTIONS:
+        raise OpError(f"At most {MAX_CAPTIONS} captions per film.")
+    p.captions = [*p.captions, _new_caption(p, a.clipId, a.start, a.end, a.text)]
+
+
+def edit_caption(p: Project, folder: Path, a: EditCaption) -> None:
+    caption = _caption(p, a.captionId)
+    changes = {k: getattr(a, k) for k in ("start", "end", "text") if getattr(a, k) is not None}
+    try:
+        updated = Caption(**{**caption.model_dump(), **changes})
+    except ValidationError as exc:
+        raise OpError(f"caption: {exc.errors()[0]['msg']}") from exc
+    p.captions = [updated if c.id == a.captionId else c for c in p.captions]
+
+
+def remove_caption(p: Project, folder: Path, a: CaptionRef) -> None:
+    _caption(p, a.captionId)
+    p.captions = [c for c in p.captions if c.id != a.captionId]
 
 
 # name -> (argument model, change function, reversible)
@@ -481,6 +560,10 @@ OPS: dict[str, tuple[type[_Args], Callable[[Project, Path, Any], None], bool]] =
     "add_audio": (AddAudio, add_audio, True),
     "edit_audio": (EditAudio, edit_audio, True),
     "remove_audio": (ClipRef, remove_audio, True),
+    "set_captions": (SetCaptions, set_captions, True),
+    "add_caption": (AddCaption, add_caption, True),
+    "edit_caption": (EditCaption, edit_caption, True),
+    "remove_caption": (CaptionRef, remove_caption, True),
 }
 
 

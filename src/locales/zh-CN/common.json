@@ -972,7 +972,8 @@
     "contextDetected": "检测到 {contextLabel}",
     "emptyState": "没有模型匹配您的搜索。",
     "launchSettings": "启动设置",
-    "cancelButton": "取消"
+    "cancelButton": "取消",
+    "busyConfirm": null
   },
   "modelPicker": {
     "weightFileTitle": "选择权重文件：{name}",

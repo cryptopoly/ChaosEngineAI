@@ -972,7 +972,8 @@
     "contextDetected": "{contextLabel} detected",
     "emptyState": "No models match your search.",
     "launchSettings": "Launch settings",
-    "cancelButton": "Cancel"
+    "cancelButton": "Cancel",
+    "busyConfirm": "Load anyway"
   },
   "modelPicker": {
     "weightFileTitle": "Select weight file: {name}",

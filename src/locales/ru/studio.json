@@ -1632,5 +1632,10 @@
     },
     "title": null,
     "unavailable": null
+  },
+  "galleryProject": {
+    "filter": null,
+    "all": null,
+    "chip": null
   }
 }

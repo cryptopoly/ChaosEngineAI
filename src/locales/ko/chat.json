@@ -411,5 +411,10 @@
     "copied": "복사됨",
     "copyCode": "코드 복사",
     "copy": "복사"
+  },
+  "busy": {
+    "slowerTitle": null,
+    "riskyTitle": null,
+    "dismiss": null
   }
 }

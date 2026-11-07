@@ -411,5 +411,10 @@
     "copied": "Copiado",
     "copyCode": "Copiar código",
     "copy": "Copiar"
+  },
+  "busy": {
+    "slowerTitle": null,
+    "riskyTitle": null,
+    "dismiss": null
   }
 }

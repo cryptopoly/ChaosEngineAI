@@ -12,6 +12,7 @@ import { runEstimateBasis, summaryLine } from "../../components/studioSummary";
 import { NO_ACK, ackKey, dangerBlocked, isAcked, type DangerAck } from "../../components/studioGating";
 import { videoMenuItems } from "./videoMenu";
 import { capacityLine as buildCapacityLine, formatCapacityGb } from "./videoCapacity";
+import { useBusyAdvice } from "../../hooks/useBusyAdvice";
 import { DEFAULT_VIDEO_NEGATIVE_PROMPT, DEFAULT_VIDEO_STEPS, recommendedGuidanceForRepo } from "../../hooks/videoStateDefaults";
 import {
   DEFAULT_MAX_SIDE,
@@ -808,6 +809,8 @@ export function VideoStudioTab({
     onVideoNumFramesChange(suggestion.numFrames);
   }
 
+  const busyAdvice = useBusyAdvice(selectedVideoVariant ? generationSafety.estimatedPeakGb : null);
+
   return (
     <DisclosureMemoryContext.Provider value={disclosureMemory}>
     <div className="content-grid image-page-grid">
@@ -1218,6 +1221,7 @@ export function VideoStudioTab({
               diskMb={null}
               basis={estimateBasis}
               risk={selectedVideoVariant ? generationSafety.riskLevel : "safe"}
+              busy={busyAdvice}
               ack={{ checked: dangerOverrideAck, onChange: (checked) => setDangerAck({ key: dangerKey, checked }) }}
               memoryTitle={selectedVideoVariant ? capacityLine : undefined}
               action={

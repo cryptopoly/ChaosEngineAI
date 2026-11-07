@@ -861,7 +861,8 @@
       "tooShort": null,
       "tooLong": null,
       "checking": null,
-      "save": null
+      "save": null,
+      "installingWatermark": null
     }
   },
   "residentChatModelNote": "Загруженная чат-модель занимает около {gb} ГБ этой памяти; выгрузка модели освободит её.",

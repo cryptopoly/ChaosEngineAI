@@ -861,7 +861,8 @@
       "tooShort": null,
       "tooLong": null,
       "checking": null,
-      "save": null
+      "save": null,
+      "installingWatermark": null
     }
   },
   "residentChatModelNote": "読み込み済みのチャットモデルがこのメモリのうち約 {gb} GB を使用しています。アンロードするとその分が解放されます。",

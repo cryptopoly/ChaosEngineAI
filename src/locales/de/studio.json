@@ -861,7 +861,8 @@
       "tooShort": null,
       "tooLong": null,
       "checking": null,
-      "save": null
+      "save": null,
+      "installingWatermark": null
     }
   },
   "residentChatModelNote": "Ein geladenes Chat-Modell belegt etwa {gb} GB dieses Speichers; beim Entladen wird er freigegeben.",

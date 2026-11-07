@@ -861,7 +861,8 @@
       "tooShort": null,
       "tooLong": null,
       "checking": null,
-      "save": null
+      "save": null,
+      "installingWatermark": null
     }
   },
   "residentChatModelNote": "로드된 채팅 모델이 이 메모리의 약 {gb} GB를 차지하며, 언로드하면 해제됩니다.",

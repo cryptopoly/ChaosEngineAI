@@ -15,7 +15,7 @@ export interface CloneModel {
   licence: { id: string; name: string; url: string };
   supported: boolean;
   installed: boolean;
-  download: { state: "idle" | "downloading" | "done" | "failed"; error: string | null };
+  download: { state: "idle" | "downloading" | "done" | "failed"; error: string | null; phase?: "weights" | "watermark" | null };
 }
 
 export interface CloneModels {

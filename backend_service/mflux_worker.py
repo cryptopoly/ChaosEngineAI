@@ -66,6 +66,12 @@ class _Timer:
         self.marks: dict[str, float] = {}
 
     def call_before_loop(self, seed, prompt, latents, config, canny_image=None, depth_image=None, control_images=None):
+        # The CLI's MemorySaver frees the text encoder here and clears the MLX cache; the text encoder
+        # stays loaded in the warm worker, but the encode's freed buffers go back as on the CLI.
+        import mlx.core as mx
+
+        gc.collect()
+        mx.clear_cache()
         self.marks["loop_start"] = time.perf_counter()
         if self.hooks is not None:
             self.hooks.check_cancel()

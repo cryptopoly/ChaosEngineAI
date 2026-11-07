@@ -28,9 +28,8 @@ Newest dated update first. Each update has the same sections: Done, Open for Cla
 1. **Switch the home studio on?** And for which release (plan: v0.10.0; merge `feat/agent-bridge` and `feat/media-input` as v0.9.10 first, D-32).
 2. **Sidebar order:** Chat now sits under Images / Video / Voice / Music / Storyboard (the "Make" and "Run" sections). Keep, or Chat on top?
 3. **D-36 loudness of a stand-alone music track:** keep the -1 dBFS peak normalisation (current), or write the raw level and leave loudness to the mixer?
-4. **D-37 `pytorch-wavelets` licence:** PyPI says "Free To Use But Restricted" although the parts ACE-Step uses are MIT. Needs your confirmation before shipping.
-5. **ffmpeg in the release bundle (D-35 follow-up):** the release workflow does not install `imageio-ffmpeg`, so a packaged app has no pinned ffmpeg for the Mixer. Adding it ships a GPL binary (about 47 MB on macOS).
-6. **D-40:** Storyboard clips only work with LTX-2.3 / 2.5 (other video models are skipped with a reason). Accept for the first release?
+4. **ffmpeg in the release bundle (D-35 follow-up):** the release workflow does not install `imageio-ffmpeg`, so a packaged app has no pinned ffmpeg for the Mixer. Adding it ships a GPL binary (about 47 MB on macOS).
+5. **D-40:** Storyboard clips only work with LTX-2.3 / 2.5 (other video models are skipped with a reason). Accept for the first release?
 7. **Listen to the music samples** in `~/ChaosEngineAI-demos/music-spike/` (22 files, including XL) and the three films; nobody has judged quality by ear.
 
 **Not done / not verified**
@@ -53,7 +52,6 @@ Newest dated update first. Each update has the same sections: Done, Open for Cla
 
 **Open for Dan**
 
-- `pytorch-wavelets` licence (FU-138): its PyPI page says "Free To Use But Restricted" although the parts ACE-Step uses are MIT. Read its LICENSE before a release ships the music pack.
 - Keep the library's -1 dBFS peak normalisation for stand-alone tracks (current default), or write the raw level and leave loudness to the mixer?
 - Listen to the real-check tracks (lyrics, BPM, key); quality was not judged by ear.
 

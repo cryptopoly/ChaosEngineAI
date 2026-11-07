@@ -86,6 +86,8 @@ class LaneAndMarkerTests(_EnvBox):
         self.assertIn("\ntorch==2.10.0 ;", text)
         self.assertIn("\nmlx==0.30.6 ;", text)
         self.assertNotIn("\n./", text)
+        self.assertNotIn("\npytorch-wavelets", text)  # D-37: dropped on purpose (licence)
+        self.assertIn("\npywavelets==", text)
 
 
 class MirrorTests(_EnvBox):

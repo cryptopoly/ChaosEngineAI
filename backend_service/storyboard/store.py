@@ -24,7 +24,7 @@ from typing import Any, Callable
 from pydantic import ValidationError
 
 from backend_service.storyboard import deps
-from backend_service.storyboard.media import MediaError, inside
+from backend_service.storyboard.media import MediaError, inside, replace_file
 from backend_service.storyboard.models import PROJECT_ID_RE, SCHEMA_VERSION, Defaults, Project, dump, new_project_id
 
 PROJECT_FILE = "project.json"
@@ -110,7 +110,7 @@ def atomic_write(path: Path, data: bytes) -> None:
             handle.write(data)
             handle.flush()
             os.fsync(handle.fileno())
-        os.replace(tmp, path)
+        replace_file(tmp, path)  # retried while a reader holds the file (Windows)
     except BaseException:
         try:
             os.unlink(tmp)

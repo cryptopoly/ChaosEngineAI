@@ -160,6 +160,67 @@ class UndoRedoTests(StoreCase):
             fresh = self.new()
             self.store.undo(fresh.id, fresh.revision)
 
+    def _run_batch(self, p, what="clip"):
+        gens = FakeGenerators(self.src)
+        batch = Batch(self.store, p.id, what, gens.make_still, gens.make_clip, gens.unload, gens.last_frame,
+                      shot_ids=[s.id for s in p.shots], force=True)
+        batch.start(p.revision)
+        batch.run()
+        return self.store.load(p.id)
+
+    def test_undo_of_an_edit_keeps_the_pick_a_later_batch_made(self):
+        p = self.new(shots=1)
+        sid = p.shots[0].id
+        p = self._run_batch(p)
+        p = self.op(p, "edit_shot", shotId=sid, title="renamed")
+        p = self._run_batch(p)
+        second = p.shot(sid).activeTake
+        self.assertEqual(len(p.shot(sid).takes), 2)
+        p = self.store.undo(p.id, p.revision)
+        self.assertEqual(p.shot(sid).title, "shot 0")
+        self.assertEqual(p.shot(sid).activeTake, second)
+        self.assertEqual(len(p.shot(sid).takes), 2)
+
+    def test_undo_of_an_earlier_edit_keeps_a_relinked_clip(self):
+        p = self.new(shots=1)
+        sid = p.shots[0].id
+        p = self.op(p, "import_take", shotId=sid, clip=str(fake_mp4(self.src / "c.mp4")))
+        p = self.op(p, "edit_shot", shotId=sid, title="renamed")
+        (self.folder(p) / p.shots[0].active().clip).unlink()
+        p = self.store.load(p.id)
+        p = self.op(p, "relink", id=sid, path=str(fake_mp4(self.src / "found.mp4")))
+        relinked = p.shot(sid).active().clip
+        p = self.store.undo(p.id, p.revision)
+        self.assertEqual(p.shot(sid).title, "shot 0")
+        self.assertEqual(p.shot(sid).active().clip, relinked)
+        self.assertEqual(p.shot(sid).status, "done")
+
+    def test_undo_of_an_edit_keeps_a_relinked_audio_source(self):
+        p = self.new(shots=1)
+        p = self.op(p, "add_audio", kind="music", path=str(fake_wav(self.src / "m.wav")))
+        cid = p.audio[0].id
+        p = self.op(p, "edit_audio", clipId=cid, gainDb=-6)
+        p = self.op(p, "relink", id=cid, path=str(fake_wav(self.src / "m2.wav")))
+        relinked = p.clip(cid).source.path
+        p = self.store.undo(p.id, p.revision)
+        self.assertEqual(p.clip(cid).gainDb, 0)
+        self.assertEqual(p.clip(cid).source.path, relinked)
+
+    def test_undo_then_redo_of_add_shot_brings_back_its_batch_takes(self):
+        p = self.new()
+        p = self.op(p, "add_shot", title="one")
+        sid = p.shots[0].id
+        p = self._run_batch(p)
+        take = p.shot(sid).activeTake
+        self.assertIsNotNone(take)
+        p = self.store.undo(p.id, p.revision)
+        self.assertIsNone(p.shot(sid))
+        p = self.store.redo(p.id, p.revision)
+        self.assertEqual(len(p.shot(sid).takes), 1)
+        self.assertEqual(p.shot(sid).activeTake, take)
+        self.assertEqual(p.shot(sid).status, "done")
+        self.assertEqual(p.shot(sid).title, "one")
+
 
 class HostileInputTests(StoreCase):
     def test_bad_paths_in_project_json_are_refused(self):

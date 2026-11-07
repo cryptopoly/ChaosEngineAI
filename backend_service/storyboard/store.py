@@ -4,7 +4,8 @@ Projects live in ``<app data>/storyboards/<project-id>/`` next to settings.json.
 project's process-wide lock, checks ``expected_revision`` (a stale caller gets ``RevisionConflict`` with
 the current project), applies the change, bumps ``revision``, writes ``project.json`` atomically (temp
 file in the same folder, then ``os.replace``) and appends one small diff file to ``history/``. Undo and
-redo replay those diffs for the reversible ops; takes added since are kept. On the first load in a
+redo replay those diffs for the reversible ops, field by field: work done since by non-undoable ops
+(batch picks and takes, relinked files) is kept, and a shot an undo removes keeps its takes for redo. On the first load in a
 process, shots left ``queued`` / ``running`` go back to ``idle`` and unfinished batches are marked
 ``interrupted``; on every load, a shot or audio clip whose file is gone shows ``missing``.
 """
@@ -158,7 +159,37 @@ def _diff(before: dict[str, Any], after: dict[str, Any]) -> tuple[dict[str, Any]
     return old, new
 
 
-def _apply_side(data: dict[str, Any], side: dict[str, Any]) -> None:
+def _merge_item(key: str, current: dict[str, Any], target: dict[str, Any], other: dict[str, Any] | None) -> dict[str, Any]:
+    """Replay only the fields the history entry changed, and only where nothing else changed them since.
+
+    ``target`` is the side being restored, ``other`` the side the entry left. A field is set back when the
+    entry changed it (target != other) and it still holds what the entry left (current == other); work
+    that is not undoable (a batch's pick, ``redo=False``, a relinked file) stays. Takes are never dropped:
+    the current takes, with their current contents, plus any the target names that are gone.
+    """
+    merged = json.loads(json.dumps(current))
+    for field, value in target.items():
+        if field in ("takes", "status"):
+            continue
+        left = other.get(field) if other is not None else None
+        if other is not None and value == left:
+            continue  # the entry did not change this field
+        if other is not None and current.get(field) != left:
+            continue  # changed since by work that is not undoable; keep it
+        merged[field] = json.loads(json.dumps(value))
+    if key == "shots":
+        known = {t["id"] for t in merged.get("takes", [])}
+        merged["takes"] = merged.get("takes", []) + [json.loads(json.dumps(t)) for t in target.get("takes", []) if t["id"] not in known]
+        ids = {t["id"] for t in merged["takes"]}
+        if merged.get("activeTake") is not None and merged["activeTake"] not in ids:
+            merged["activeTake"] = current.get("activeTake")
+    return merged
+
+
+def _apply_side(data: dict[str, Any], side: dict[str, Any], other: dict[str, Any] | None = None,
+                stash: dict[str, Any] | None = None) -> None:
+    """Replay one side of a history entry onto ``data``. ``stash`` holds shots an undo removed, as they were."""
+    other = other or {}
     for key in _TOP_KEYS:
         if key in side:
             data[key] = side[key]
@@ -166,19 +197,20 @@ def _apply_side(data: dict[str, Any], side: dict[str, Any]) -> None:
         if key not in side:
             continue
         current = {item["id"]: item for item in data.get(key, [])}
+        others = (other.get(key) or {}).get("items", {})
         for item_id, item in side[key]["items"].items():
             if item is None:
                 current.pop(item_id, None)
                 continue
+            if item_id in current:
+                current[item_id] = _merge_item(key, current[item_id], item, others.get(item_id))
+                continue
             item = json.loads(json.dumps(item))
-            if key == "shots" and item_id in current:
-                # Keep takes made since (a batch result is not undone by undoing an edit).
-                known = {t["id"] for t in item.get("takes", [])}
-                item["takes"] += [t for t in current[item_id].get("takes", []) if t["id"] not in known]
-                ids = {t["id"] for t in item["takes"]}
-                if item.get("activeTake") is not None and item["activeTake"] not in ids:
-                    item["activeTake"] = current[item_id].get("activeTake")
-                item["status"] = current[item_id].get("status", item.get("status"))
+            kept = (stash or {}).get(item_id) if key == "shots" else None
+            if kept is not None:  # a redo of a shot an undo removed: bring back the takes it had then
+                item = _merge_item(key, kept, item, None)
+                item["activeTake"] = kept.get("activeTake")
+                item["status"] = kept.get("status", item.get("status"))
             current[item_id] = item
         order = [i for i in side[key]["order"] if i in current]
         order += [i for i in current if i not in order]
@@ -301,7 +333,7 @@ class ProjectStore:
             return self._commit(project, folder, before, op, reversible)
 
     def _commit(self, project: Project, folder: Path, before: dict[str, Any], op: str, reversible: bool,
-                stacks: Callable[[Project], None] | None = None) -> Project:
+                stacks: Callable[[Project], None] | None = None, extra: dict[str, Any] | None = None) -> Project:
         project.revision += 1
         old, new = _diff(before, dump(project))
         if stacks is not None:
@@ -311,7 +343,8 @@ class ProjectStore:
             project.redoStack = []
         history = folder / "history"
         history.mkdir(exist_ok=True)
-        entry = {"revision": project.revision, "op": op, "at": time.time(), "reversible": reversible, "before": old, "after": new}
+        entry = {"revision": project.revision, "op": op, "at": time.time(), "reversible": reversible, "before": old, "after": new,
+                 **(extra or {})}
         atomic_write(history / f"{project.revision:08d}.json", json.dumps(entry, ensure_ascii=False).encode("utf-8"))
         atomic_write(folder / PROJECT_FILE, _encode(project))
         if project.revision % 50 == 0:
@@ -356,7 +389,8 @@ class ProjectStore:
             entry = self._history_entry(folder, target)
             before = dump(project)
             data = dump(project)
-            _apply_side(data, entry["before"] if undo else entry["after"])
+            side, other = (entry["before"], entry["after"]) if undo else (entry["after"], entry["before"])
+            _apply_side(data, side, other, None if undo else self._removed_by_undo(folder, project.revision, target))
             try:
                 replayed = Project.model_validate(data)
             except ValidationError as exc:
@@ -373,7 +407,22 @@ class ProjectStore:
                     p.undoStack = (p.undoStack + [target])[-200:]
 
             return self._commit(replayed, folder, before, f"{'undo' if undo else 'redo'} {entry.get('op', '')}".strip(),
-                                reversible=False, stacks=stacks)
+                                reversible=False, stacks=stacks, extra={"undid": target} if undo else None)
+
+    def _removed_by_undo(self, folder: Path, revision: int, target: int) -> dict[str, Any]:
+        """Shots, as they were, that the latest undo of ``target`` removed (its ``before`` side keeps them whole)."""
+        for rev in range(revision, target, -1):
+            path = folder / "history" / f"{rev:08d}.json"
+            try:
+                entry = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                continue
+            if isinstance(entry, dict) and entry.get("undid") == target:
+                before = (entry.get("before") or {}).get("shots") or {}
+                after = (entry.get("after") or {}).get("shots") or {}
+                return {i: item for i, item in (before.get("items") or {}).items()
+                        if isinstance(item, dict) and (after.get("items") or {}).get(i, "x") is None}
+        return {}
 
 
 _DEFAULT: dict[str, ProjectStore] = {}

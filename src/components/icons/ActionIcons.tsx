@@ -179,3 +179,14 @@ export function MinusIcon(props: IconProps) {
     </svg>
   );
 }
+
+/** An arrow leaving a frame: send this to another area. */
+export function SendIcon(props: IconProps) {
+  return (
+    <svg {...baseProps} {...props}>
+      <path d="M14 4h6v6" />
+      <line x1="20" y1="4" x2="11" y2="13" />
+      <path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />
+    </svg>
+  );
+}

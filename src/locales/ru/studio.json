@@ -1331,5 +1331,20 @@
     "metadata": null,
     "metadataTitle": null,
     "title": null
+  },
+  "sendToStoryboard": {
+    "back": null,
+    "conflict": null,
+    "dismiss": null,
+    "failed": null,
+    "newProject": null,
+    "newShot": null,
+    "newTake": null,
+    "noFile": null,
+    "send": null,
+    "sending": null,
+    "start": null,
+    "untitled": null,
+    "use": null
   }
 }

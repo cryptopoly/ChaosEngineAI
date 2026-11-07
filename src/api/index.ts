@@ -678,6 +678,7 @@ export {
   delveMessage,
   deleteSession,
   deleteSessionDocument,
+  fetchBusyAdvice,
   forkChatSession,
   generateChat,
   generateChatStream,

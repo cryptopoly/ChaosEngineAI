@@ -411,5 +411,10 @@
     "copied": "コピーしました",
     "copyCode": "コードをコピー",
     "copy": "コピー"
+  },
+  "busy": {
+    "slowerTitle": null,
+    "riskyTitle": null,
+    "dismiss": null
   }
 }

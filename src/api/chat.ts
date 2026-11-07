@@ -14,6 +14,7 @@
 
 import { apiFetch, fetchJson, patchJson, postJson, readErrorDetail } from "./index";
 import type {
+  BusyAdvice,
   ChatSession,
   CreateSessionResponse,
   GeneratePayload,
@@ -152,8 +153,21 @@ export interface StreamCallbacks {
     logprob: number | null;
     alternatives: Array<{ token: string | null; logprob: number | null }>;
   }>) => void;
+  /** The machine is busy or tight on memory: emitted once, before the first token, only when not "ok". */
+  onAdvice?: (advice: BusyAdvice) => void;
   onDone: (response: GenerateResponse) => void;
   onError: (error: string) => void;
+}
+
+/** Busy-machine advice for loading a model of this size (or starting a Studio job); null when unreadable. */
+export async function fetchBusyAdvice(footprintGb?: number | null): Promise<BusyAdvice | null> {
+  const query = footprintGb != null && footprintGb > 0 ? `?footprintGb=${encodeURIComponent(String(footprintGb))}` : "";
+  try {
+    const result = await fetchJson<{ advice: BusyAdvice | null }>(`/api/busy-advice${query}`, 5000);
+    return result.advice ?? null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -238,6 +252,9 @@ export async function generateChatStream(
           }
           if (event.reasoningDone) {
             callbacks.onReasoningDone?.();
+          }
+          if (event.advice && typeof event.advice === "object" && typeof event.advice.message === "string") {
+            callbacks.onAdvice?.(event.advice as BusyAdvice);
           }
           if (event.cancelled) {
             callbacks.onCancelled?.();

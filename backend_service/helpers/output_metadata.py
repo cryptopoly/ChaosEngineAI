@@ -38,6 +38,9 @@ _SETTING_KEYS = (
     "referenceImagePaths",
     "createdAt",
     "timings",  # C1 phase split in seconds (numbers only, nothing identifying)
+    "projectId",
+    "projectName",
+    "shotId",
 )
 
 

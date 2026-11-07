@@ -411,5 +411,10 @@
     "copied": "Скопировано",
     "copyCode": "Копировать код",
     "copy": "Копировать"
+  },
+  "busy": {
+    "slowerTitle": null,
+    "riskyTitle": null,
+    "dismiss": null
   }
 }

@@ -6,6 +6,7 @@
  */
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import type { BusyAdvice } from "../types";
 
 export type EstimateBasis = "measured" | "estimated";
 export type EstimateRisk = "safe" | "caution" | "danger";
@@ -26,6 +27,8 @@ export interface RunEstimateStripProps {
   basis: EstimateBasis | null;
   risk: EstimateRisk;
   queue?: RunEstimateQueue | null;
+  /** The machine is short of memory for this run beside what is already loaded (advice only). */
+  busy?: BusyAdvice | null;
   /** Shown only at `danger`: the user must accept before running. */
   ack?: { checked: boolean; onChange: (checked: boolean) => void };
   /** Longer facts behind the memory figure (device, model size), shown as its tooltip. */
@@ -69,7 +72,7 @@ export function formatDisk(t: TFn, mb: number): string {
   return t("estimate.size.mb", { defaultValue: "{n} MB", n: Math.max(1, Math.round(mb)) });
 }
 
-export function RunEstimateStrip({ seconds, peakGb, totalGb, diskMb, basis, risk, queue, ack, memoryTitle, action }: RunEstimateStripProps) {
+export function RunEstimateStrip({ seconds, peakGb, totalGb, diskMb, basis, risk, queue, busy, ack, memoryTitle, action }: RunEstimateStripProps) {
   const { t } = useTranslation("studio");
   const tf = t as unknown as TFn;
   const memoryBand = memoryRisk(peakGb, totalGb, risk);
@@ -127,6 +130,7 @@ export function RunEstimateStrip({ seconds, peakGb, totalGb, diskMb, basis, risk
         <div className="run-estimate__action">{action}</div>
       </div>
       {queueText ? <p className="run-estimate__queue" aria-live="polite">{queueText}</p> : null}
+      {busy && busy.level !== "ok" && busy.message ? <p className="run-estimate__queue run-estimate__busy" aria-live="polite">{busy.message}</p> : null}
       {risk === "danger" && ack ? (
         <label className="check-row run-estimate__ack">
           <input type="checkbox" checked={ack.checked} onChange={(event) => ack.onChange(event.target.checked)} />

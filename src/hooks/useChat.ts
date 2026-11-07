@@ -898,6 +898,21 @@ export function useChat(
             }),
           }));
         },
+        onAdvice: (advice) => {
+          if (!streamingChatId) return;
+          setWorkspace((current) => ({
+            ...current,
+            chatSessions: current.chatSessions.map((s) => {
+              if (s.id !== streamingChatId) return s;
+              const msgs = [...s.messages];
+              const last = msgs[msgs.length - 1];
+              if (last?.role === "assistant") {
+                msgs[msgs.length - 1] = { ...last, busyAdvice: advice };
+              }
+              return { ...s, messages: msgs };
+            }),
+          }));
+        },
         onPanic: (signal) => {
           // Phase 2.0.5-G: stash the panic signal on the streaming
           // assistant message so ChatTab can render a non-blocking

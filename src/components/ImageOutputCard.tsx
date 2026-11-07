@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { ProjectChip } from "./ProjectFilter";
 import type { ImageModelFamily, ImageOutputArtifact } from "../types";
 import {
   findImageVariantById,
@@ -54,6 +55,11 @@ export function ImageOutputCard({
           <div className="chip-row">
             <span className="badge subtle">{artifact.runtimeLabel}</span>
             <span className="badge muted">{imageOrientation(artifact.width, artifact.height)}</span>
+          </div>
+        ) : null}
+        {artifact.projectName ? (
+          <div className="chip-row">
+            <ProjectChip name={artifact.projectName} />
           </div>
         ) : null}
         <p className="image-output-prompt">{artifact.prompt}</p>

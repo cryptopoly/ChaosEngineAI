@@ -13,6 +13,7 @@ import { FitBadge } from "../../components/models";
 import { readFit } from "../../components/models/fit";
 import { RunEstimateStrip } from "../../components/RunEstimateStrip";
 import { StudioShell } from "../../components/StudioShell";
+import { useBusyAdvice } from "../../hooks/useBusyAdvice";
 import type { UseMusicState } from "../../hooks/useMusicState";
 import type { MusicResult } from "../../types";
 import { useSendToStoryboard } from "../storyboard/useSendToStoryboard";
@@ -63,6 +64,7 @@ export function MusicStudioTab({ music, backendOnline, onTabChange }: MusicStudi
   const ready = installed && music.hasInstalledModel && !runtime?.unavailableReason && Boolean(selectedVariant?.availableLocally);
   const canMake = ready && issues.length === 0 && !running;
   const strip = stripFromEstimate(estimate, progress?.queue ?? null, running);
+  const busyAdvice = useBusyAdvice(strip.peakGb);
   const fit = readFit(estimate?.fit ?? selectedVariant?.fit);
 
   // Leaving a finished run's error up while the user edits is noise: it goes with the next edit.
@@ -315,6 +317,7 @@ export function MusicStudioTab({ music, backendOnline, onTabChange }: MusicStudi
         basis={strip.basis}
         risk={strip.risk}
         queue={strip.queue}
+        busy={busyAdvice}
         action={
           <button type="button" className="primary-button" disabled={!canMake} onClick={make}>
             {running

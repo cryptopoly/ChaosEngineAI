@@ -232,6 +232,20 @@ storyboards/<project-id>/
 The folder is in the app's data folder, next to the settings. It is self-contained: you can move, zip or back
 it up. Paths inside are relative to the folder.
 
+## Where your files go
+
+- **Stills and clips** a batch makes are saved by the same code as the Image and Video Studios, so each one also
+  appears in the **Image gallery** or **Video gallery** as an ordinary item. Each is marked **From project X**,
+  and the galleries' **Project** filter shows only one project's items. The project name, project id and shot id
+  are also written into the file's own settings (the PNG text chunk, the MP4 comment) as names only, no folder
+  paths. Items made outside a project have no label.
+- **Copies in the project.** The project keeps its own copy of every still and clip under `media/`, so deleting
+  an item from a gallery does not break the project, and the other way round.
+- **Finished films** are written to the project's `exports/` folder and stay there; they are not added to the
+  Video gallery. The project lists them under **Film**, newest first, each with a Reveal button.
+- **Agents.** Outputs an agent makes through the Studios' tools land in the galleries like your own, without a
+  project label unless a Storyboard batch made them.
+
 ## Limits and what is not done yet
 
 - **Captions** have one style (white text with an outline at the bottom); there are no fonts or position

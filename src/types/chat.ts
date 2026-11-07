@@ -76,6 +76,18 @@ export interface ChatThermalWarning {
   message: string;
 }
 
+/** Advice about a busy machine (a heavy job is running, or memory would run short). Never a refusal. */
+export interface BusyAdvice {
+  level: "ok" | "slower" | "risky";
+  /** Plain-English sentence naming the running job and the numbers; empty at "ok". */
+  message: string;
+  jobs: Array<{ kind: string | null; label: string; source: string }>;
+  combinedPeakGb: number;
+  totalGb: number;
+  availableGb: number;
+  footprintGb: number;
+}
+
 export interface ChatMessage {
   role: "user" | "assistant";
   text: string;
@@ -103,6 +115,8 @@ export interface ChatMessage {
    * the host is throttling. Renders a non-blocking warning banner.
    */
   thermalWarning?: ChatThermalWarning | null;
+  /** A heavy job was running (or memory was tight) when this turn started; shown above the composer. */
+  busyAdvice?: BusyAdvice | null;
   /** Phase 2.5: alternate responses from other models for the same prompt. */
   variants?: ChatMessageVariant[];
   /**
@@ -279,6 +293,7 @@ export interface GenerateResponse {
   session: ChatSession;
   assistant: ChatMessage;
   runtime: RuntimeStatus;
+  advice?: BusyAdvice | null;
 }
 
 

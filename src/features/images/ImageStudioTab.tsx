@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
+import { useBusyAdvice } from "../../hooks/useBusyAdvice";
 import { InfoTooltip } from "../../components/InfoTooltip";
 import { ImageOutputCard } from "../../components/ImageOutputCard";
 import { MfluxEngineBanner } from "../../components/MfluxEngineBanner";
@@ -620,6 +621,8 @@ export function ImageStudioTab({
     { openLink: onOpenExternalUrl, preload: onPreloadImageModel, unload: onUnloadImageModel },
   );
 
+  const busyAdvice = useBusyAdvice(selectedImageVariant && imageSafety.modelFootprintGb > 0 ? imageSafety.estimatedPeakGb : null);
+
   return (
     <DisclosureMemoryContext.Provider value={disclosureMemory}>
     <div className="content-grid image-page-grid">
@@ -1043,6 +1046,7 @@ export function ImageStudioTab({
               diskMb={null}
               basis={estimateBasis}
               risk={selectedImageVariant ? imageSafety.riskLevel : "safe"}
+              busy={busyAdvice}
               ack={{ checked: dangerOverrideAck, onChange: (checked) => setDangerAck({ key: dangerKey, checked }) }}
               action={
                 <button

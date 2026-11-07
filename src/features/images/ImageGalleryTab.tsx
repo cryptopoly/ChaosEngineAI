@@ -1,4 +1,7 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ProjectFilter } from "../../components/ProjectFilter";
+import { ALL_PROJECTS, filterByProject, projectOptions } from "../../utils/galleryProject";
 import { Panel } from "../../components/Panel";
 import { ImageOutputCard } from "../../components/ImageOutputCard";
 import { SendToStoryboardMenu } from "../../components/SendToStoryboardMenu";
@@ -53,7 +56,7 @@ function imageItem(artifact: ImageOutputArtifact): SendItem {
 
 export function ImageGalleryTab({
   imageOutputs,
-  filteredImageOutputs,
+  filteredImageOutputs: hookFilteredImageOutputs,
   imageCatalog,
   imageBusy,
   imageGallerySearchInput,
@@ -71,10 +74,10 @@ export function ImageGalleryTab({
   imageGalleryRealCount,
   imageGalleryPlaceholderCount,
   imageGalleryWarningCount,
-  imageGalleryHasActiveFilters,
+  imageGalleryHasActiveFilters: hookHasActiveFilters,
   onActiveTabChange,
   onOpenImageStudio,
-  onResetImageGalleryFilters,
+  onResetImageGalleryFilters: resetHookFilters,
   onOpenExternalUrl,
   onUseSameImageSettings,
   onVaryImageSeed,
@@ -84,6 +87,13 @@ export function ImageGalleryTab({
   const { t } = useTranslation("common");
   const { t: tStudio } = useTranslation("studio");
   const storyboard = useSendToStoryboard((tab) => onActiveTabChange(tab));
+  const [projectFilter, setProjectFilter] = useState(ALL_PROJECTS);
+  const filteredImageOutputs = filterByProject(hookFilteredImageOutputs, projectFilter);
+  const imageGalleryHasActiveFilters = hookHasActiveFilters || projectFilter !== ALL_PROJECTS;
+  const onResetImageGalleryFilters = () => {
+    setProjectFilter(ALL_PROJECTS);
+    resetHookFilters();
+  };
   return (
     <div className="content-grid image-page-grid">
       <Panel
@@ -239,6 +249,7 @@ export function ImageGalleryTab({
               </option>
             </select>
           </label>
+          <ProjectFilter options={projectOptions(imageOutputs)} value={projectFilter} onChange={setProjectFilter} />
           <label>
             {tStudio("imageGallery.toolbar.sort", { defaultValue: "Sort" })}
             <select

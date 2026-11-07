@@ -183,6 +183,10 @@ export interface VideoOutputArtifact {
   runtimeNote?: string | null;
   /** True when the mp4 has an audio track (LTX-2 clips); older backends omit it. */
   hasAudio?: boolean;
+  /** Set when a Storyboard batch made it: the project and shot it belongs to. */
+  projectId?: string | null;
+  projectName?: string | null;
+  shotId?: string | null;
 }
 
 export interface VideoGenerationPayload {

@@ -34,6 +34,7 @@ export type {
 
 import type { ChatMessage, ChatSession } from "./types/chat";
 export type {
+  BusyAdvice,
   ChatMessage,
   ChatMessageVariant,
   ChatPanicSignal,

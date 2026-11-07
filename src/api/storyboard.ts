@@ -22,10 +22,13 @@ import type {
 
 export class StoryboardApiError extends Error {
   readonly status: number;
-  constructor(message: string, status: number) {
+  /** A machine-readable reason from the backend, e.g. "install-ffmpeg" when video tools are missing. */
+  readonly code: string | null;
+  constructor(message: string, status: number, code: string | null = null) {
     super(message);
     this.name = "StoryboardApiError";
     this.status = status;
+    this.code = code;
   }
 }
 
@@ -77,6 +80,13 @@ async function request<T>(
   }
 }
 
+/** The ``detail.code`` of an error body, when the backend sent one. */
+export function errorCodeOf(body: unknown): string | null {
+  const detail = body && typeof body === "object" ? (body as { detail?: unknown }).detail : null;
+  const code = detail && typeof detail === "object" ? (detail as { code?: unknown }).code : null;
+  return typeof code === "string" ? code : null;
+}
+
 async function readResponse<T>(response: Response): Promise<T> {
   if (response.ok) return (await response.json()) as T;
   let parsed: unknown = null;
@@ -90,6 +100,7 @@ async function readResponse<T>(response: Response): Promise<T> {
   throw new StoryboardApiError(
     await readErrorDetail(response, `Request failed with status ${response.status}`),
     response.status,
+    errorCodeOf(parsed),
   );
 }
 

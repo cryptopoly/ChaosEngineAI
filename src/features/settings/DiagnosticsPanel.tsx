@@ -1,3 +1,4 @@
+import { VideoToolsRow } from "../videotools/VideoToolsRow";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
@@ -446,6 +447,7 @@ export function AcceleratorsPanel({
         defaultValue: "Optional speed-ups for image, video and chat inference, and the Windows WSL bridge.",
       })}
     >
+      <VideoToolsRow backendOnline={backendOnline} />
       <AcceleratorsBoostPack backendOnline={backendOnline} hostSystem={hostSystem} />
       <LlamaCudaPanel backendOnline={backendOnline} />
       <WslBridgePanel backendOnline={backendOnline} />

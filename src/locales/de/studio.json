@@ -1632,5 +1632,34 @@
     },
     "title": null,
     "unavailable": null
+  },
+  "videoTools": {
+    "title": null,
+    "body": null,
+    "install": null,
+    "installing": null,
+    "failed": null,
+    "chooseLabel": null,
+    "use": null,
+    "row": {
+      "label": null,
+      "checking": null,
+      "installed": null,
+      "notInstalled": null,
+      "encoder": null,
+      "licence": null,
+      "download": null,
+      "cancel": null,
+      "remove": null,
+      "source": {
+        "download": null,
+        "imageio": null,
+        "custom": null,
+        "env": null,
+        "path": null,
+        "unknown": null,
+        "link": null
+      }
+    }
   }
 }

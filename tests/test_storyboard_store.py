@@ -445,6 +445,51 @@ class DepsAndBatchTests(StoreCase):
         self.assertEqual([r.state for r in p.batches[-1].results], ["cancelled"] * 3)
         self.assertTrue(all(s.status == "idle" for s in p.shots))
 
+    def test_a_video_model_without_image_input_skips_stills_and_chains_with_a_reason(self):
+        p, ids = self._film()  # A..F, D and E continue from the shot before
+        p = self.op(p, "edit_shot", shotId=ids[5], startFrom="upload")
+        gens = FakeGenerators(self.src)
+        reason = "Wan 2.1 cannot start a clip from an image; pick LTX-2.3 or LTX-2.5 in the project defaults."
+        batch = Batch(self.store, p.id, "both", gens.make_still, gens.make_clip, gens.unload, gens.last_frame,
+                      clip_image_refusal=lambda project: reason)
+        with self.assertRaises(BatchRefused) as caught:  # nothing it could do would honour the shots
+            batch.start(p.revision)
+        self.assertIn("LTX-2.3", str(caught.exception))
+        self.assertEqual(gens.calls, [])
+        batch = Batch(self.store, p.id, "still", gens.make_still, gens.make_clip, gens.unload, gens.last_frame,
+                      clip_image_refusal=lambda project: reason)
+        batch.start(p.revision)  # stills alone are fine: no clip will ignore them
+        batch.run()
+        self.assertEqual([c[0] for c in gens.calls], ["still"] * 3)  # A, B, C; D and E chain, F is an upload
+        p = self.store.load(p.id)
+        gens.calls.clear()
+        batch = Batch(self.store, p.id, "clip", gens.make_still, gens.make_clip, gens.unload, gens.last_frame,
+                      clip_image_refusal=lambda project: reason, shot_ids=ids[:5], force=True)
+        with self.assertRaises(BatchRefused):
+            batch.start(p.revision)
+        record = self.store.load(p.id)
+        self.assertEqual(gens.calls, [])
+        self.assertTrue(all(s.status != "queued" for s in record.shots))
+        steps = Batch(self.store, p.id, "both", gens.make_still, gens.make_clip,
+                      clip_image_refusal=lambda project: reason).plan(record)
+        self.assertTrue(all(r == reason for s, k, r in steps if s in ids[:5]), steps)
+
+    def test_studio_wiring_refuses_image_input_for_models_without_it(self):
+        from backend_service.storyboard import generators
+
+        p = self.new(shots=1)
+        wan = {"id": "wan", "name": "Wan 2.1", "repo": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers"}
+        ltx = {"id": "ltx", "name": "LTX-2.3", "repo": "dgrauet/ltx-2.3-mlx-q4"}
+        with mock.patch.object(generators, "_variant", return_value=wan), \
+                mock.patch("backend_service.mcp_bridge.tools._recommended", return_value={}):
+            wiring = generators.studio_generators(mock.Mock(), "b_1", self.folder(p))
+            self.assertIn("Wan 2.1 cannot start a clip from an image", wiring["clip_image_refusal"](p))
+            with self.assertRaises(RuntimeError) as caught:  # the step itself refuses too, before any model runs
+                wiring["make_clip"](p.shots[0], p, None)
+            self.assertIn("LTX-2.3", str(caught.exception))
+        with mock.patch.object(generators, "_variant", return_value=ltx):
+            self.assertIsNone(generators.studio_generators(mock.Mock(), "b_1", self.folder(p))["clip_image_refusal"](p))
+
     def test_a_failed_step_is_recorded_without_paths(self):
         p = self.new(shots=2)
         gens = FakeGenerators(self.src)

@@ -23,7 +23,8 @@ covers the backend. For the Projects, Board and Mixer screens, see [Storyboard](
 - **Revisions.** One writer per project at a time; every write is atomic and carries the `revision` the
   caller saw. An old revision answers 409 with the current project, so the UI and an agent can edit at once.
 - **Undo and redo** cover shot edits, reorder, lock, pick take, add and remove shot, and audio edits.
-  Takes made since are kept.
+  They put back only the fields the change made: takes, picks made by a batch and relinked files made
+  since are kept, and a shot brought back by redo keeps the takes it had.
 - **Restart.** Shots left `queued` or `running` go back to `idle`; an unfinished batch shows `interrupted`.
 
 ## Shots, takes and dependencies
@@ -31,6 +32,10 @@ covers the backend. For the Projects, Board and Mixer screens, see [Storyboard](
 A redo adds a take; picking another take is an edit. A shot with `startFrom: previous-shot` continues from
 the previous shot's active take. Re-picking or redoing that take, or changing a reference or a picture
 default, marks the shots that depend on it `stale`. Nothing regenerates by itself.
+
+A clip that starts from a still or from the previous shot needs a video model that takes an image
+(LTX-2.3 or LTX-2.5, `acceptsImageInput`). With any other video model the batch skips those shots with a
+plain reason, and does not make their stills either: it never quietly makes a text-to-video clip instead.
 
 ## Timing
 

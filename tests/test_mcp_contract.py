@@ -35,6 +35,7 @@ EXAMPLES = {
     "upload_file": {"data_base64": "iVBORw0KGgo="},
     "transcribe": {"path": "/tmp/a.wav"},
     "make_music": {"caption": "calm piano", "instrumental": True, "seconds": 30},
+    "make_sound": {"caption": "door creaking", "seconds": 4, "loop": False},
     "job_status": {"job_id": "job-1"},
     "wait_for_job": {"job_id": "job-1", "timeout_seconds": 5},
     "cancel_job": {"job_id": "job-1"},

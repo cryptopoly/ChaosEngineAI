@@ -547,6 +547,11 @@ from backend_service.mcp_bridge.voice_clone_tool import CLONE_HANDLERS, CLONE_TO
 TOOLS.extend(CLONE_TOOLS)
 HANDLERS.update(CLONE_HANDLERS)
 
+from backend_service.mcp_bridge.sound_tool import SOUND_HANDLERS, SOUND_TOOLS  # noqa: E402
+
+TOOLS.extend(SOUND_TOOLS)
+HANDLERS.update(SOUND_HANDLERS)
+
 from backend_service.mcp_bridge.library_tools import LIBRARY_HANDLERS, LIBRARY_TOOLS  # noqa: E402
 
 TOOLS.extend(LIBRARY_TOOLS)

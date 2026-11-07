@@ -944,6 +944,52 @@
   },
   {
     "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Make sound effect"
+    },
+    "description": "Make: start a sound-effect job (returns a job id): footsteps, doors, ambience, a loop. 1 to 11 s, English prompt, FLAC in the Music Library. Not songs or speech. Needs the gated Stable Audio Open model the user installed.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "caption": {
+          "description": "The sound: 'heavy wooden door creaking open, close mic'.",
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "loop": {
+          "description": "Make the clip a seamless loop (ambience, beats).",
+          "type": "boolean"
+        },
+        "seconds": {
+          "maximum": 11,
+          "minimum": 1,
+          "type": "number"
+        },
+        "seed": {
+          "maximum": 2147483647,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "variations": {
+          "description": "1, 2 or 4 takes with seeds seed, seed+1, ...",
+          "maximum": 4,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "caption"
+      ],
+      "type": "object"
+    },
+    "name": "make_sound"
+  },
+  {
+    "annotations": {
       "destructiveHint": true,
       "idempotentHint": false,
       "openWorldHint": false,

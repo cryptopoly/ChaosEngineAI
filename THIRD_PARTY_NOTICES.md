@@ -472,3 +472,28 @@ inference). All are MIT, BSD or Apache except the one below.
   uses it only for the optional DCW correction, which the MLX path computes natively (Haar), so we removed it from
   `music_requirements.txt` and verified a generation without it (`docs/research/licences-wavelets-ffmpeg.md`).
   PyWavelets (MIT AND BSD-3-Clause) stays.
+
+## Sound effects (Stable Audio Open Small, optional)
+
+### Stable Audio Open Small (downloaded by the user, not bundled)
+
+- **Source:** <https://huggingface.co/stabilityai/stable-audio-open-small>
+- **Licence:** Stability AI Community License Agreement (last updated July 5, 2024),
+  <https://huggingface.co/stabilityai/stable-audio-open-small/blob/ea2772170fc06f80dfd02bea6e57a44d9d4bc9d3/LICENSE>
+- "This Stability AI Model is licensed under the Stability AI Community License, Copyright (c) Stability AI Ltd. All Rights Reserved."
+- **Powered by Stability AI.** The model is gated: the user accepts the licence on their own Hugging Face account.
+  Free for individuals and organisations with annual revenue under US$1,000,000; commercial use requires registration with
+  Stability AI; outputs may not be used to train other foundation models. Not redistributed by ChaosEngineAI.
+- **stable-audio-tools 0.0.20** - MIT (Stability AI), installed on demand into the isolated sounds environment.
+- **T5-base** (`google-t5/t5-base`) - Apache 2.0, downloaded on demand as the text encoder.
+- Sounds-pack dependencies are installed on demand (versions in `backend_service/sound_requirements.txt`): PyTorch and
+  torchaudio (BSD-3), transformers and huggingface_hub (Apache 2.0), pytorch-lightning (Apache 2.0), einops, einops-exts,
+  vector-quantize-pytorch, nnAudio, v-diffusion-pytorch, alias-free-torch (MIT), torchsde (Apache 2.0). Licences of the other
+  pinned packages in that file are still to be confirmed one by one (FU row to add).
+
+## Voice cloning and watermark (optional, on demand)
+
+- **Qwen3-TTS 12Hz Base 0.6B / 1.7B** (Alibaba Qwen; MLX conversions by mlx-community) - Apache 2.0, downloaded on demand.
+- **AudioSeal 0.2.1** (Meta Platforms) - MIT licence for code and model weights (`facebook/audioseal`, revision
+  `3c19eba53390776cf2cc9ed5f6c9ac67ce72ecba`); installed on demand into the voice venv for the cloned-voice watermark.
+  omegaconf 2.3 and antlr4-python3-runtime 4.9 - BSD-3-Clause; einops 0.8 - MIT.

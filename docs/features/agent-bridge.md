@@ -34,17 +34,17 @@ job waits for a running agent job (the progress panel says "Waiting for an agent
 
 | Tool | What it does |
 |---|---|
-| `system_status` | Free memory, platform, the running job, the queue. |
+| `system_status` | Free memory, platform and the whole job queue: each entry has kind, source, label, position, and an `estimatedSeconds` / `estimatedStartInSeconds` taken from the model catalogue (labelled estimated: a first run is slower). |
 | `recommend_models` | For `image`, `video`, `voice`, `stt` or `music`, the best models **not installed** that fit this machine, with size and gated / non-commercial flags. The agent tells you what to download. |
 | `list_models` | Installed models with id, size, fit, size limits and frame rules. |
 | `list_voices` | Voices that are ready, with language. |
 | `generate_image` | Prompt, model, size, steps, seed, optional `reference_images` and `image_strength`. Returns a job id. Sizes are snapped to what the model supports; corrections appear in the job notes. |
 | `generate_video` | Prompt, model, size, `seconds` (or `frames`), fps, seed, optional `start_image`, `end_image`, `image_strength`. Returns a job id. Seconds are converted to the model's frame rule. |
-| `upload_image` | A small image, sound or video as base64. Returns a handle (`upload:...`) for the image inputs above (image handles only) and for storyboard imports; for an agent on another machine. |
+| `upload_file` | A small image, sound or video as base64 (the old name `upload_image` still works). Returns a handle (`upload:...`) for the image inputs above (image handles only) and for storyboard imports; for an agent on another machine. |
 | `speak` | Text, voice, speed. Returns a job id. |
 | `transcribe` | Path to an audio or video file the app can read. Returns a job id. |
 | `make_music` | Style `caption`, `lyrics` (or `instrumental`), `seconds` 10 to 600, `bpm`, `key`, `seed`, `variations` 1, 2 or 4, `model`. Returns a job id; the result has the FLAC path of each take in the Music Library and a `download`. `cancel_job` stops it through the music worker. See [Music](music.md). |
-| `job_status`, `wait_for_job`, `cancel_job` | Poll, wait up to 60 s, cancel. |
+| `job_status`, `wait_for_job`, `cancel_job`, `list_jobs` | Poll, wait up to 60 s, cancel (queued or running; speech and transcripts too), list recent jobs. |
 | `storyboard_project` | Film projects: `create`, `list`, `get` (shots, takes, timeline, revision), `edit` (name, defaults, export), `undo`, `redo`, `delete`, `export` (the bundle's `file` name and a `download`), `import` (`project_id` and that `file`, or a `path` in an exports folder). |
 | `storyboard_shot` | `add`, `edit`, `remove`, `reorder`, `lock`, `unlock`, `pick_take`, `redo` (marks a shot for the next generate), `import` (a clip or still: an `upload:` handle or a file in the app's output folders). |
 | `storyboard_audio` | `add`, `edit`, `remove` audio clips (`add` takes an `upload:` handle or a file in the app's output folders); anchor one to a shot so it follows the shot. |
@@ -79,7 +79,7 @@ Not in the first version: model downloads, chat (the OpenAI-compatible API cover
 An agent can drive a ChaosEngineAI running on a different computer, for example a PC with an NVIDIA GPU on
 your home network. The paths in a job result belong to that PC, so files move over HTTP:
 
-- **Send a file in.** `upload_image` takes a small image, sound or video as base64; larger files: `POST` the raw
+- **Send a file in.** `upload_file` takes a small image, sound or video as base64; larger files: `POST` the raw
   bytes to `/api/agent/uploads` with the Agent access token. Either returns a handle like `upload:ab12cd34ef56`.
   Use an image handle wherever a tool takes an image path (`start_image`, `end_image`, `reference_images`), and
   any handle for `storyboard_shot import` and `storyboard_audio add`. The type is read from the bytes: PNG, JPEG
@@ -96,6 +96,34 @@ your home network. The paths in a job result belong to that PC, so files move ov
   must allow its port on private networks. The traffic is plain HTTP with a bearer token, which is fine on a home
   network nobody else can join; use a VPN or SSH tunnel anywhere else.
 - `transcribe` still takes a local path only; it does not accept upload handles yet.
+
+## Jobs survive a restart
+
+Each job writes a small record (`agent_jobs/job-N.json` next to `settings.json`) and keeps it 7 days.
+After the app restarts, a job that was queued or running reads `interrupted` with the reason; finished jobs
+keep their output. `list_jobs` (newest first, optional `state` and `limit`) finds a job id an agent lost.
+Each token may have **20 unfinished jobs**; the 21st is refused with a plain message until some finish or are
+cancelled. Cancelling a running speech or transcript job stops the voice worker (it restarts on the next
+voice job).
+
+## Tool annotations
+
+Every tool carries the MCP hints `readOnlyHint`, `destructiveHint`, `idempotentHint` and `openWorldHint`
+(always false: the bridge only talks to this computer) and a `title`, so clients can auto-allow the read
+tools and warn before `cancel_job` or a storyboard delete. Descriptions start with a verb (Read, Make,
+Edit, Send, Stop). `tests/test_mcp_contract.py` checks all of this and a golden snapshot
+(`tests/golden/mcp_tools_list.json`); after a deliberate change run it with `UPDATE_MCP_GOLDEN=1`.
+
+## Scopes
+
+A token carries scopes. `read`: status, lists, job status, storyboard `list` / `get`. `generate`: every make
+tool, storyboard edits, `cancel_job`. `files`: `upload_file`, `POST /api/agent/uploads`, `GET /api/agent/files`,
+storyboard `export`. `download` (confirmed model download, not built yet) and `clone` (voice cloning, no tool
+yet) are never in a token unless ticked. An older token becomes read, generate and files. Under Settings >
+Integrations > Agent access, **Permissions** lets you tick cloning and make a **read-only token** (a second
+token for a dashboard or watcher). A caller that is not on this computer never gets `clone` unless you also
+tick "Also allow cloning from other computers". A tool a token cannot use is left out of `tools/list`, and
+calling it answers which scope is missing.
 
 ## Safety
 

@@ -11,7 +11,7 @@ open ChaosEngineAI > Settings > Integrations > Agent access, switch it on, and r
 ## Rules
 
 1. Call `system_status` first. Note free memory and whether a job is running.
-2. Run **one job at a time**. Start a job, call `wait_for_job` with its `jobId`, repeat until `state` is
+2. Run **one job at a time** (each token may hold 20 unfinished jobs). Start a job, call `wait_for_job` with its `jobId`, repeat until `state` is
    `done`, `failed` or `cancelled`. Do not start the next job before that.
 3. Call `list_models` for the kind you need. If it is empty, call `recommend_models`, tell the user which
    model to download from ChaosEngineAI > Models and why, and stop. Never try to download anything.
@@ -37,7 +37,7 @@ Pass the path of an earlier output as an input image. Only models with `acceptsI
 - Same subject in new scenes: `generate_image` with `reference_images` set to the earlier image (FLUX 3 Klein takes up to four; FLUX.1, FLUX.2 Klein and Qwen take one, with `image_strength` where higher stays closer).
 - Leave width and height out and the output takes the image's shape.
 - Voice cloning is not available.
-- On another machine, paths in a job result are not readable from here: send inputs with `upload_image` (use the `upload:` handle as the path) and fetch a result from `output.download.url` with the same token.
+- On another machine, paths in a job result are not readable from here: send inputs with `upload_file` (use the `upload:` handle as the path) and fetch a result from `output.download.url` with the same token.
 
 ## Making a short film (storyboard)
 
@@ -46,3 +46,25 @@ Pass the path of an earlier output as an input image. Only models with `acceptsI
 ## Music
 
 `list_models` kind `music`, then `make_music` with a style `caption` (genre, instruments, mood, voice) and `lyrics` with `[verse]` / `[chorus]` tags, or `instrumental: true`; `seconds` 10 to 600; the same `seed` gives the same track. `variations` 2 or 4 gives takes with seeds `seed`, `seed+1`, ... in `output.tracks`. The result is a FLAC in the Music Library. Write your own lyrics; do not name an artist in the caption, describe the sound. When a storyboard has a music lane, ask for clips with "no music" in the prompt so the clip's own sound does not fight the soundtrack.
+
+## Film with music
+
+1. `make_music` (instrumental or with lyrics), `wait_for_job`; note `output.tracks[0].path`.
+2. Build the film with `storyboard_*`, asking clips for "no music" in the prompt.
+3. `storyboard_audio` add with `kind: "music"` and that path (or an `upload:` handle), then `storyboard_render`.
+
+## Errors and recovery
+
+- **Revision refused** ("The project is at revision N now"): call `storyboard_project` get, redo the edit with the new `revision`. Do not loop blind.
+- **"does not have the 'X' scope"**: the token is limited (for example read-only). Tell the user to change it in Settings > Integrations > Agent access; do not try another route.
+- **"unfinished jobs (the limit)"**: wait for or `cancel_job` some jobs first.
+- **Lost job id, or the app restarted**: `list_jobs`. A job that was running shows `interrupted`; start it again.
+- **A job fails on memory**: report the numbers to the user; no retry loop.
+
+## Using an app on another machine
+
+Paths in results belong to that machine. Send inputs with `upload_file`, fetch outputs from `output.download.url` with the same token, and check `output.download.sha256`. Transcribing needs a path on that machine. Models cannot be downloaded by you: use `recommend_models` and tell the user. A request-and-approve download flow is planned; until it exists, never try to install anything.
+
+## Estimating the wait
+
+`system_status` lists the whole queue with positions and estimated times (labelled estimated; a first run of a model loads weights and is slower). Tell the user the wait before starting a long job when others are queued.

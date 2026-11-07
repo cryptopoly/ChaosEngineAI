@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { getAgentAccess, updateAgentAccess } from "../../api";
 import type { AgentAccess } from "../../api";
+import type { AgentAccessPatch } from "../../api/admin";
 import { Panel } from "../../components/Panel";
 
 interface AgentAccessPanelProps {
@@ -14,8 +15,8 @@ function shellQuote(value: string): string {
   return `"${value.replace(/(["\\$`])/g, "\\$1")}"`;
 }
 
-export function agentConfigLine(access: AgentAccess): string {
-  return `claude mcp add --transport http chaosengine ${access.mcpUrl} --header ${shellQuote(`Authorization: Bearer ${access.token}`)}`;
+export function agentConfigLine(access: AgentAccess, token: string = access.token): string {
+  return `claude mcp add --transport http chaosengine ${access.mcpUrl} --header ${shellQuote(`Authorization: Bearer ${token}`)}`;
 }
 
 export function agentStdioLine(access: AgentAccess): string | null {
@@ -60,7 +61,7 @@ export function AgentAccessPanel({ backendOnline, onCopyText }: AgentAccessPanel
     };
   }, [backendOnline]);
 
-  const apply = useCallback(async (patch: { enabled?: boolean; rotateToken?: boolean }) => {
+  const apply = useCallback(async (patch: AgentAccessPatch) => {
     setBusy(true);
     setError(null);
     try {
@@ -128,6 +129,61 @@ export function AgentAccessPanel({ backendOnline, onCopyText }: AgentAccessPanel
                 <pre className="integration-snippet">{agentStdioLine(access)}</pre>
               </div>
             ) : null}
+            <details className="integration-card">
+              <summary>{t("settingsTab.agentAccess.permissions", { defaultValue: "Permissions" })}</summary>
+              <p className="muted-text">
+                {t("settingsTab.agentAccess.permissionsHint", {
+                  defaultValue: "The main token can read, make things and move files. Nothing else unless you tick it.",
+                })}
+              </p>
+              <label className="check-row">
+                <input
+                  type="checkbox"
+                  checked={access.scopes.includes("clone")}
+                  disabled={busy}
+                  onChange={(event) =>
+                    void apply({
+                      scopes: event.target.checked ? [...access.scopes, "clone"] : access.scopes.filter((s) => s !== "clone"),
+                    })
+                  }
+                />
+                {t("settingsTab.agentAccess.scopeClone", { defaultValue: "Allow voice cloning" })}
+              </label>
+              {access.scopes.includes("clone") ? (
+                <label className="check-row">
+                  <input
+                    type="checkbox"
+                    checked={access.remoteClone}
+                    disabled={busy}
+                    onChange={(event) => void apply({ remoteClone: event.target.checked })}
+                  />
+                  {t("settingsTab.agentAccess.remoteClone", { defaultValue: "Also allow cloning from other computers" })}
+                </label>
+              ) : null}
+              <p className="muted-text">
+                {t("settingsTab.agentAccess.readTokenHint", {
+                  defaultValue: "For a dashboard or watcher: it can look at status and jobs but cannot make or change anything.",
+                })}
+              </p>
+              {access.readToken ? (
+                <>
+                  <div className="integration-card-header">
+                    <strong>{t("settingsTab.agentAccess.readTokenLabel", { defaultValue: "Read-only token (Claude Code)" })}</strong>
+                    <button className="secondary-button" type="button" onClick={() => onCopyText(agentConfigLine(access, access.readToken ?? ""))}>
+                      {t("settingsTab.integrations.copyButton", { defaultValue: "Copy" })}
+                    </button>
+                  </div>
+                  <pre className="integration-snippet">{agentConfigLine(access, access.readToken)}</pre>
+                  <button className="secondary-button" type="button" disabled={busy} onClick={() => void apply({ readToken: false })}>
+                    {t("settingsTab.agentAccess.readTokenRemove", { defaultValue: "Remove the read-only token" })}
+                  </button>
+                </>
+              ) : (
+                <button className="secondary-button" type="button" disabled={busy} onClick={() => void apply({ readToken: true })}>
+                  {t("settingsTab.agentAccess.readTokenMake", { defaultValue: "Make a read-only token" })}
+                </button>
+              )}
+            </details>
             <div>
               <button className="secondary-button" type="button" disabled={busy} onClick={() => void apply({ rotateToken: true })}>
                 {t("settingsTab.agentAccess.rotate", { defaultValue: "Make a new token" })}

@@ -1,0 +1,775 @@
+[
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true,
+      "title": "System status"
+    },
+    "description": "Read: free memory, platform and the whole job queue with positions and estimated times. Call first.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {},
+      "required": [],
+      "type": "object"
+    },
+    "name": "system_status"
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true,
+      "title": "Recommend models"
+    },
+    "description": "Read: best models not installed yet that fit this machine. You cannot download them; tell the user which to get.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "image",
+            "video",
+            "voice",
+            "stt",
+            "music"
+          ],
+          "type": "string"
+        },
+        "limit": {
+          "maximum": 10,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    "name": "recommend_models"
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true,
+      "title": "List models"
+    },
+    "description": "Read: installed models of a kind with id, size, fit, limits and frame rules.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "image",
+            "video",
+            "voice",
+            "stt",
+            "music"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    "name": "list_models"
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true,
+      "title": "List voices"
+    },
+    "description": "Read: ready text-to-speech voices with language.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {},
+      "required": [],
+      "type": "object"
+    },
+    "name": "list_voices"
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Generate image"
+    },
+    "description": "Make: start an image job (returns a job id). Sizes snap to what the model supports; see the job notes.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "height": {
+          "maximum": 4096,
+          "minimum": 256,
+          "type": "integer"
+        },
+        "image_strength": {
+          "description": "Single start image only: higher stays closer to it (mflux default 0.4).",
+          "maximum": 1.0,
+          "minimum": 0.05,
+          "type": "number"
+        },
+        "include_preview": {
+          "description": "Also return the PNG as base64.",
+          "type": "boolean"
+        },
+        "model": {
+          "description": "Model id from list_models. Default: best installed fit.",
+          "type": "string"
+        },
+        "prompt": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "reference_images": {
+          "description": "Paths or upload: handles. Only for models with acceptsImageInput (list_models); some take one, FLUX 3 Klein up to four.",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 4,
+          "type": "array"
+        },
+        "seed": {
+          "maximum": 2147483647,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "steps": {
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "width": {
+          "maximum": 4096,
+          "minimum": 256,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "prompt"
+      ],
+      "type": "object"
+    },
+    "name": "generate_image"
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Generate video"
+    },
+    "description": "Make: start a video job (returns a job id). Give seconds; frames follow the model's rule. Takes minutes.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "end_image": {
+          "description": "Path or upload: handle of the last frame. May be used alone.",
+          "type": "string"
+        },
+        "fps": {
+          "maximum": 60,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "frames": {
+          "maximum": 257,
+          "minimum": 8,
+          "type": "integer"
+        },
+        "height": {
+          "maximum": 4096,
+          "minimum": 256,
+          "type": "integer"
+        },
+        "image_strength": {
+          "description": "1.0 follows the image closely (default); lower lets the clip drift.",
+          "maximum": 1.0,
+          "minimum": 0.1,
+          "type": "number"
+        },
+        "model": {
+          "description": "Model id from list_models. Default: best installed fit.",
+          "type": "string"
+        },
+        "prompt": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "seconds": {
+          "maximum": 20,
+          "minimum": 0.5,
+          "type": "number"
+        },
+        "seed": {
+          "maximum": 2147483647,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "start_image": {
+          "description": "Path or upload: handle of the first frame. Only for models with acceptsImageInput (list_models).",
+          "type": "string"
+        },
+        "steps": {
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "width": {
+          "maximum": 4096,
+          "minimum": 256,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "prompt"
+      ],
+      "type": "object"
+    },
+    "name": "generate_video"
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Speak text"
+    },
+    "description": "Make: start a text-to-speech job (returns a job id). Cancellable while running.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "speed": {
+          "maximum": 2.0,
+          "minimum": 0.5,
+          "type": "number"
+        },
+        "text": {
+          "maxLength": 20000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "voice": {
+          "description": "Voice id from list_voices.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "type": "object"
+    },
+    "name": "speak"
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Upload file"
+    },
+    "description": "Send: a small image, sound or video (about 8 MB) as base64. Returns an upload: handle to use in place of a path; lasts 24 hours. Larger files: POST the bytes to /api/agent/uploads.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "data_base64": {
+          "description": "The file, base64.",
+          "maxLength": 12000000,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "data_base64"
+      ],
+      "type": "object"
+    },
+    "name": "upload_file"
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Transcribe audio"
+    },
+    "description": "Make: start a speech-to-text job for a file on the machine running the app. Cancellable while running.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "language": {
+          "type": "string"
+        },
+        "path": {
+          "description": "Absolute path of the file.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "type": "object"
+    },
+    "name": "transcribe"
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true,
+      "title": "Job status"
+    },
+    "description": "Read: state, progress, queue position, notes and output of a job.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "job_id": {
+          "description": "Job id from a tool that starts a job, or list_jobs.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "job_id"
+      ],
+      "type": "object"
+    },
+    "name": "job_status"
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true,
+      "title": "Wait for job"
+    },
+    "description": "Read: like job_status, but waits up to timeout_seconds (max 60). Call again if not finished.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "job_id": {
+          "description": "Job id from a tool that starts a job, or list_jobs.",
+          "type": "string"
+        },
+        "timeout_seconds": {
+          "maximum": 60,
+          "minimum": 1,
+          "type": "number"
+        }
+      },
+      "required": [
+        "job_id"
+      ],
+      "type": "object"
+    },
+    "name": "wait_for_job"
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true,
+      "title": "List jobs"
+    },
+    "description": "Read: recent jobs (newest first), kept 7 days and across restarts. Use to find a lost job id.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "limit": {
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "state": {
+          "enum": [
+            "queued",
+            "running",
+            "done",
+            "failed",
+            "cancelled",
+            "interrupted"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [],
+      "type": "object"
+    },
+    "name": "list_jobs"
+  },
+  {
+    "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Cancel job"
+    },
+    "description": "Stop: cancel a queued or running job (image, video, music, speech, transcript, storyboard).",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "job_id": {
+          "description": "Job id from a tool that starts a job, or list_jobs.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "job_id"
+      ],
+      "type": "object"
+    },
+    "name": "cancel_job"
+  },
+  {
+    "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Storyboard project"
+    },
+    "description": "Edit: film projects. create(name), list, get (shots, takes, timeline, revision), edit(fields: name, defaults, export), undo, redo, delete, export (.chaosfilm bundle), import(project_id+file, or path).",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "enum": [
+            "create",
+            "list",
+            "get",
+            "edit",
+            "undo",
+            "redo",
+            "delete",
+            "export",
+            "import"
+          ],
+          "type": "string"
+        },
+        "fields": {
+          "description": "Fields to set, as in the project JSON.",
+          "type": "object"
+        },
+        "file": {
+          "description": "Bundle file name an export returned, with its project_id (import).",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "path": {
+          "description": "Path of a .chaosfilm file in a storyboard exports folder (import).",
+          "type": "string"
+        },
+        "project_id": {
+          "description": "Project id.",
+          "type": "string"
+        },
+        "revision": {
+          "description": "Project revision you last saw (from get).",
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "action"
+      ],
+      "type": "object"
+    },
+    "name": "storyboard_project"
+  },
+  {
+    "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Storyboard shot"
+    },
+    "description": "Edit: shots. add(fields), edit(shot_id, fields), remove, reorder(order), lock, unlock, pick_take(take_id), redo (marks for the next generate), import(path of a clip or still).",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "enum": [
+            "add",
+            "edit",
+            "remove",
+            "reorder",
+            "lock",
+            "unlock",
+            "pick_take",
+            "redo",
+            "import"
+          ],
+          "type": "string"
+        },
+        "fields": {
+          "description": "title, stillPrompt, motionPrompt, startFrom (generate|upload|previous-shot), seconds, seed, trimIn, trimOut, speed, transition{type,seconds}, nativeSoundDb, index.",
+          "type": "object"
+        },
+        "order": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 500,
+          "type": "array"
+        },
+        "path": {
+          "description": "upload: handle, or a file in the app's output folders.",
+          "type": "string"
+        },
+        "project_id": {
+          "description": "Project id.",
+          "type": "string"
+        },
+        "revision": {
+          "description": "Project revision you last saw (from get).",
+          "minimum": 1,
+          "type": "integer"
+        },
+        "shot_id": {
+          "type": "string"
+        },
+        "take_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "action",
+        "project_id",
+        "revision"
+      ],
+      "type": "object"
+    },
+    "name": "storyboard_shot"
+  },
+  {
+    "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Storyboard audio"
+    },
+    "description": "Edit: audio lanes. add(kind, path, fields), edit(clip_id, fields), remove(clip_id). Anchor to a shot with fields.anchor {shotId, offset} so the sound follows it.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "enum": [
+            "add",
+            "edit",
+            "remove"
+          ],
+          "type": "string"
+        },
+        "clip_id": {
+          "type": "string"
+        },
+        "fields": {
+          "description": "anchor{shotId,offset} or start, trimIn, trimOut, gainDb, fadeIn, fadeOut, duck, loop, label.",
+          "type": "object"
+        },
+        "kind": {
+          "enum": [
+            "music",
+            "sfx",
+            "voice",
+            "import"
+          ],
+          "type": "string"
+        },
+        "path": {
+          "description": "upload: handle, or a file in the app's output folders.",
+          "type": "string"
+        },
+        "project_id": {
+          "description": "Project id.",
+          "type": "string"
+        },
+        "revision": {
+          "description": "Project revision you last saw (from get).",
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "action",
+        "project_id",
+        "revision"
+      ],
+      "type": "object"
+    },
+    "name": "storyboard_audio"
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Storyboard generate"
+    },
+    "description": "Make: new takes: all stills, then all clips. Default: shots that need work, skipping locked. Returns a job id for wait_for_job.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "force": {
+          "description": "Also run locked shots.",
+          "type": "boolean"
+        },
+        "project_id": {
+          "description": "Project id.",
+          "type": "string"
+        },
+        "revision": {
+          "description": "Project revision you last saw (from get).",
+          "minimum": 1,
+          "type": "integer"
+        },
+        "shot_ids": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 500,
+          "type": "array"
+        },
+        "what": {
+          "enum": [
+            "still",
+            "clip",
+            "both"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "project_id",
+        "revision"
+      ],
+      "type": "object"
+    },
+    "name": "storyboard_generate"
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Storyboard render"
+    },
+    "description": "Make: render the film to MP4 (preview: small and fast). Returns a job id; the output has the file name and download.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "preview": {
+          "type": "boolean"
+        },
+        "project_id": {
+          "description": "Project id.",
+          "type": "string"
+        },
+        "revision": {
+          "description": "Project revision you last saw (from get).",
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "project_id",
+        "revision"
+      ],
+      "type": "object"
+    },
+    "name": "storyboard_render"
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Make music"
+    },
+    "description": "Make: start a music job (returns a job id): a song with lyrics, or instrumental=true. 10 to 600 s, FLAC into the Music Library. Cancellable while running.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "bpm": {
+          "maximum": 300,
+          "minimum": 30,
+          "type": "integer"
+        },
+        "caption": {
+          "description": "Style: genre, instruments, mood, voice.",
+          "maxLength": 512,
+          "minLength": 1,
+          "type": "string"
+        },
+        "instrumental": {
+          "type": "boolean"
+        },
+        "key": {
+          "description": "For example 'A minor' or 'F# major'.",
+          "maxLength": 16,
+          "type": "string"
+        },
+        "lyrics": {
+          "description": "Lyrics with [verse] / [chorus] tags. Needed unless instrumental.",
+          "maxLength": 4096,
+          "type": "string"
+        },
+        "model": {
+          "description": "Model id from list_models kind music. Default: ACE-Step 1.5 turbo.",
+          "type": "string"
+        },
+        "seconds": {
+          "maximum": 600,
+          "minimum": 10,
+          "type": "number"
+        },
+        "seed": {
+          "maximum": 2147483647,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "variations": {
+          "description": "1, 2 or 4 takes with seeds seed, seed+1, ...",
+          "maximum": 4,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "caption"
+      ],
+      "type": "object"
+    },
+    "name": "make_music"
+  }
+]

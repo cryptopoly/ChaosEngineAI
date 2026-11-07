@@ -238,12 +238,27 @@ export interface AgentAccess {
   mcpUrl: string;
   /** Command that starts the stdio relay, or null when the CLI script is not installed. */
   stdioCommand: string[] | null;
+  /** Scopes of the main token: read, generate, files, download, clone. */
+  scopes: string[];
+  /** Let callers on other computers use "clone" when the token has it. */
+  remoteClone: boolean;
+  /** A second token that can only read, or null. */
+  readToken: string | null;
+}
+
+export interface AgentAccessPatch {
+  enabled?: boolean;
+  rotateToken?: boolean;
+  scopes?: string[];
+  remoteClone?: boolean;
+  /** true makes (or replaces) the read-only token, false removes it. */
+  readToken?: boolean;
 }
 
 export async function getAgentAccess(): Promise<AgentAccess> {
   return await fetchJson<AgentAccess>("/api/agent/access");
 }
 
-export async function updateAgentAccess(patch: { enabled?: boolean; rotateToken?: boolean }): Promise<AgentAccess> {
+export async function updateAgentAccess(patch: AgentAccessPatch): Promise<AgentAccess> {
   return await postJson<AgentAccess>("/api/agent/access", patch);
 }

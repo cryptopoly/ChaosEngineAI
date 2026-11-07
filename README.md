@@ -39,6 +39,9 @@ ChaosEngineAI is a desktop control plane for running large language models local
 - **Prompting + evaluation.** Built-in prompt templates, side-by-side compare mode, and benchmark modes for throughput, perplexity, and task accuracy keep experimentation in one place.
 - **Agent tools.** Built-in web search, calculator, code executor, and file reader tools that models can call during conversations.
 - **Voice, all on your machine.** Dictate into the chat box, have replies read aloud, or press Call and talk to the model out loud; transcribe recordings with speaker labels in Voice Studio. Nothing is uploaded.
+- **Music** *(planned for v0.10.0)*. Make songs with lyrics, or instrumentals, from 10 seconds to 10 minutes with ACE-Step 1.5 on Apple Silicon. A Library keeps every track. Nothing is uploaded.
+- **Storyboard** *(planned for v0.10.0)*. A film is a project folder of shots, takes and audio lanes: redo one shot without redoing the rest, lock the shots you like, mix voice, effects and music in the Mixer, and export an MP4 with an optional AI label. Share a project as one `.chaosfilm` file.
+- **Agent bridge** *(planned for v0.10.0)*. Let an AI agent such as Claude Code make images, video, speech, music and storyboards through MCP tools, one job at a time on the same queue as the Studios.
 - **Knows what your machine can run.** Every model row says whether it fits (Fits, Tight, Won't fit), marks each family's best fit, and the Image and Video Studios suggest settings for your hardware.
 - **Built for power users.** Live runtime telemetry, structured logs, side-by-side benchmark history with model filtering and red/green delta comparisons, and granular launch preferences.
 - **Polished, fast UI.** A focused dark workspace that gets out of the way and never blocks on the backend.

@@ -455,11 +455,9 @@ huggingface-hub (Apache-2.0), numpy (BSD-3-Clause), soundfile (BSD-3-Clause; bun
 gradio, lightning, peft, torchao and modelscope (Apache-2.0 or BSD; pulled in by the library, not used for
 inference). All are MIT, BSD or Apache except the one below.
 
-- **pytorch-wavelets 1.3.0: licence read, recommendation is to drop it (2026-11-07).** PyPI says "Free To Use But Restricted".
-  Its LICENSE file is MIT (copyright 2020 Fergal Cotter) for the parts that are new, and says "The DWT sections come under
-  this license". The dual-tree (DTCWT) parts derive from Nick Kingsbury's MATLAB toolbox, whose README text says "supplied
-  free of charge for research purposes only"; we use none of those parts. ACE-Step imports only `DWT1DForward` and
-  `DWT1DInverse`, lazily, for the optional DCW correction, and skips DCW cleanly when the package is missing; the MLX path
-  computes Haar natively. We plan to remove it from `music_requirements.txt` (see `docs/research/licences-wavelets-ffmpeg.md`,
-  FU-138). If it stays, it is installed on demand into the music venv, never bundled, and the DWT code is used under MIT.
+- **pytorch-wavelets 1.3.0: not installed (dropped 2026-11-07, D-37, FU-138).** PyPI says "Free To Use But Restricted".
+  Its LICENSE file is MIT (copyright 2020 Fergal Cotter) for the parts that are new, but the dual-tree (DTCWT) parts derive
+  from Nick Kingsbury's MATLAB toolbox ("for research purposes only"), and importing the package loads that code. ACE-Step
+  uses it only for the optional DCW correction, which the MLX path computes natively (Haar), so we removed it from
+  `music_requirements.txt` and verified a generation without it (`docs/research/licences-wavelets-ffmpeg.md`).
   PyWavelets (MIT AND BSD-3-Clause) stays.

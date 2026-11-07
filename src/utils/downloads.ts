@@ -62,3 +62,16 @@ export function downloadSizeTooltip(download?: DownloadStatus | null): string {
   if (downloadedGb > 0) return i18next.t("library:download.sizeDownloadedGb", { size: number(downloadedGb), defaultValue: "{size} GB downloaded" });
   return "";
 }
+
+/** The row progress bar: a filled share (0 to 100) when the total size is known, else `null` (an indeterminate bar). */
+export function downloadProgressPercent(download?: DownloadStatus | null): number | null {
+  if (!download) return null;
+  const totalGb = typeof download.totalGb === "number" && download.totalGb > 0 ? download.totalGb : null;
+  if (totalGb === null) return null;
+  const downloadedGb = Math.max(0, download.downloadedGb ?? 0);
+  const raw = Number.isFinite(download.progress) ? download.progress : downloadedGb / totalGb;
+  const pct = Math.round(Math.min(1, Math.max(0, raw)) * 100);
+  if (download.state === "completed") return 100;
+  // A started download shows at least 1 %; only a finished one shows 100 %.
+  return Math.min(99, Math.max(downloadedGb > 0 ? 1 : 0, pct));
+}

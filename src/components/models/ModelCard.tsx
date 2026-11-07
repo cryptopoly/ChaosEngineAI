@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import type { ModelEntry, ModelMemoryEstimate } from "./modelEntry";
 import type { ResolvedModelStatus } from "./modelStatus";
 import { ModelStatusChip } from "./ModelStatusChip";
+import { ModelDownloadProgress } from "./ModelDownloadProgress";
 import { BestFitRibbon, FitBadge } from "./FitBadge";
 import type { Fit } from "./fit";
 
@@ -128,6 +129,7 @@ export function ModelCard({
         <span className="models-card__status">{statusCell ?? <ModelStatusChip status={status} reason={entry.broken?.reason} />}</span>
         {actions}
       </div>
+      <ModelDownloadProgress status={status} />
       {expanded && detail ? (
         <div className="models-card__detail">{typeof detail === "function" ? detail() : detail}</div>
       ) : null}

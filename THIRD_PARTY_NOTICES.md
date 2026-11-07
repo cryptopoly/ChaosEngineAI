@@ -385,21 +385,32 @@ environment, `~/.chaosengine/voice-venv`; not bundled with the app. Run by
   — Apache-2.0. ONNX file from `csukuangfj/speaker-embedding-models`,
   downloaded at a pinned revision.
 
-### imageio-ffmpeg and its ffmpeg binary (joining, mixing, tagging)
+### FFmpeg video tools (joining, mixing, tagging)
 
-- **Upstream:** <https://github.com/imageio/imageio-ffmpeg> (the Python wrapper) and <https://ffmpeg.org> (the program).
-- **Licence of the wrapper:** BSD-2-Clause.
-- **Licence of the binary it downloads or ships:** the macOS build we checked (ffmpeg 7.1, `ffmpeg-macos-aarch64-v7.1`)
-  reports `--enable-gpl` with `libx264` and `libx265`, so the binary as a whole is licensed under the
-  **GNU General Public License, version 2 or later**, not the LGPL. The build is the one imageio-ffmpeg 0.6.0
-  provides; its configuration line is printed by `ffmpeg -version`.
-- **Source:** FFmpeg source for the same version is at <https://ffmpeg.org/releases/>; x264 and x265 sources are at
-  <https://code.videolan.org/videolan/x264> and <https://bitbucket.org/multicoreware/x265_git>. On request we will
-  provide the exact corresponding source offer for the binary shipped with a given release (open an issue).
-- **Usage:** run as a separate program (never linked into our code) to write metadata into outputs and, in
-  planned releases, to join and mix clips. Calling it as a separate program keeps our own code under its own licence.
-- **Status:** this entry was added on 2026-11-06 after the notice was found to be missing (decision D-35 chooses between
-  keeping the GPL build with this notice and moving to an LGPL build).
+FFmpeg is **not bundled** with ChaosEngineAI and we host no FFmpeg build (decision D-49). The app finds it in this
+order: a file the user chose, a download the app made, the `imageio-ffmpeg` package, and (for tagging only) a program
+on the system `PATH`. The app runs it as a separate program and never links it into our code. Its Setup row and the
+"Video tools are needed" prompt install it on request.
+
+- **imageio-ffmpeg** (all systems, the one-click install). Upstream: <https://github.com/imageio/imageio-ffmpeg>
+  (the Python wrapper, BSD-2-Clause) and <https://ffmpeg.org> (the program). The user's machine installs it from PyPI
+  when they choose Install video tools; we distribute nothing. The macOS build we checked (ffmpeg 7.1,
+  `ffmpeg-macos-aarch64-v7.1`, imageio-ffmpeg 0.6.0) reports `--enable-gpl` with `libx264` and `libx265`, so the
+  binary as a whole is licensed under the **GNU General Public License, version 2 or later**; its configuration line
+  is printed by `ffmpeg -version`. Source: <https://ffmpeg.org/releases/>, x264 at
+  <https://code.videolan.org/videolan/x264>, x265 at <https://bitbucket.org/multicoreware/x265_git>. The ltx-2-mlx
+  environment keeps its own libx264 ffmpeg and is not affected by this entry.
+- **BtbN LGPL builds** (Windows and Linux, optional, on request in Setup). Upstream:
+  <https://github.com/BtbN/FFmpeg-Builds>, release `autobuild-2026-10-31-12-59` (ffmpeg n9.0.2, `lgpl` variant, built
+  without `--enable-gpl` and `--enable-nonfree`; licence **LGPL-2.1-or-later**; source and build scripts at the
+  release page and in that repository). The app downloads the pinned file from that release, checks its SHA-256
+  against a value stored in the app, and runs it only after the check. The `lgpl` variant includes libass (ISC),
+  FreeType (FTL: "Portions of this software are copyright The FreeType Project"), HarfBuzz (MIT), FriBidi (LGPL-2.1),
+  libvpx (BSD-3-Clause) and openh264 (BSD-2-Clause, compiled from source by the builder; Cisco's patent licence
+  covers only Cisco's own binary); the full list is in the build's `ffmpeg -buildconf`. BtbN, not us, distributes
+  these files. This software uses code of FFmpeg licensed under the LGPLv2.1.
+- **H.264 encoding:** libx264 when the ffmpeg in use has it, otherwise the system's encoder (VideoToolbox on macOS;
+  NVENC, AMF or Quick Sync where the machine has them; openh264 as a last resort).
 
 ### PyAV (audio decoding)
 

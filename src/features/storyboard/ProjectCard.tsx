@@ -1,7 +1,7 @@
 /** One project on the Projects screen: up to three stills, the numbers, and its actions. */
 import { useTranslation } from "react-i18next";
 import { ActionMenu } from "./ActionMenu";
-import { ProjectImage } from "./ProjectMedia";
+import { ProjectImage, ProjectVideo } from "./ProjectMedia";
 import { filmSeconds, relativeTime, staleCount, thumbnailOf } from "./storyboardLogic";
 import type { ProjectCardData } from "./useStoryboardProjects";
 
@@ -34,7 +34,7 @@ export function ProjectCard({ card, now, onOpen, onExport, onRename, onDelete, e
 
   const thumbs = project.shots
     .map((shot) => ({ shot, thumb: thumbnailOf(shot) }))
-    .filter((entry) => entry.thumb?.kind === "still")
+    .filter((entry) => entry.thumb !== null)
     .slice(0, 3);
   const stale = staleCount(project);
   const shots = project.shots.length;
@@ -45,15 +45,25 @@ export function ProjectCard({ card, now, onOpen, onExport, onRename, onDelete, e
         {thumbs.length === 0 ? (
           <span className="project-card__thumb-empty">{t("storyProjects.card.noShots", { defaultValue: "no shots yet" })}</span>
         ) : (
-          thumbs.map(({ shot, thumb }) => (
-            <ProjectImage
-              key={shot.id}
-              projectId={project.id}
-              rel={thumb?.path ?? null}
-              version={shot.activeTake}
-              className="project-card__thumb"
-            />
-          ))
+          thumbs.map(({ shot, thumb }) =>
+            thumb?.kind === "clip" ? (
+              <ProjectVideo
+                key={shot.id}
+                projectId={project.id}
+                rel={thumb.path}
+                version={shot.activeTake}
+                className="project-card__thumb"
+              />
+            ) : (
+              <ProjectImage
+                key={shot.id}
+                projectId={project.id}
+                rel={thumb?.path ?? null}
+                version={shot.activeTake}
+                className="project-card__thumb"
+              />
+            ),
+          )
         )}
       </div>
       <h3 className="project-card__title" title={card.name}>{card.name}</h3>

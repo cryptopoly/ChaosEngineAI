@@ -164,13 +164,10 @@ def adopt(folder: Path, staged: Path, rel_dest: str) -> Path:
 
 
 def ffmpeg_exe() -> str | None:
-    """The pinned bundled ffmpeg, never one on PATH (section 5.4)."""
-    try:
-        import imageio_ffmpeg
+    """The ffmpeg Storyboard uses (``ffmpeg_bin`` lookup, never PATH), or None when none is installed."""
+    from backend_service.storyboard import ffmpeg_bin
 
-        return str(imageio_ffmpeg.get_ffmpeg_exe())
-    except Exception:
-        return None
+    return ffmpeg_bin.optional_ffmpeg_exe(allow_path=False)
 
 
 _FRAME_RE = re.compile(r"frame=\s*(\d+)")

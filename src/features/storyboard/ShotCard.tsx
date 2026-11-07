@@ -11,7 +11,7 @@ import {
   UnlockIcon,
 } from "../../components/icons/ActionIcons";
 import type { StoryboardShot, StoryboardShotStatus, StoryboardTransition } from "../../types";
-import { ActionMenu } from "./ActionMenu";
+import { ActionMenu } from "../../components/ActionMenu";
 import { ProjectImage, ProjectVideo } from "./ProjectMedia";
 import { StaleBadge, TransitionPicker } from "./ShotParts";
 import { TakesStrip } from "./TakesStrip";

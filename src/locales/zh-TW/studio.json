@@ -160,14 +160,12 @@
   },
   "imageStudio": {
     "generateTitle": {
-      "dangerBlocked": "危險等級配置 — 請勾選安全提示下方的確認項以繼續。",
+      "dangerBlocked": null,
       "generating": "生成中...",
       "selectModel": "請先選擇模型。",
       "ready": "生成此影像。"
     },
     "actions": {
-      "discover": "尋找模型",
-      "installed": "已安裝",
       "gallery": "圖庫"
     },
     "hero": {
@@ -250,11 +248,9 @@
     "safety": {
       "dangerTitle": "可能導致後端崩潰",
       "warningTitle": "請注意 — 此裝置可能會吃力",
-      "resourceEstimate": "模型約 {model} · 此次執行峰值約 {peak},總計約 {total}。",
       "applyTitle": "套用 {label}",
       "useSafer": "使用較安全的設定 ({label})",
       "browseSmaller": "瀏覽較小型的模型",
-      "overrideAck": "仍然生成 — 我接受後端可能崩潰。",
       "reasonDangerOver": "模型光是要保存權重 + 文字編碼器就需要約 {model} GB。在 {platform} 上,總共 {total} GB,估計工作集約為 {working} GB,因此光是模型本身就已超出。即使是小型影像也可能讓後端崩潰。請嘗試較小型的模型 (SD 1.5 約 4 GB、SDXL 約 13 GB) 或記憶體較多的機器。",
       "reasonDangerNear": "模型光是要保存權重 + 文字編碼器就需要約 {model} GB,此次執行峰值約 {peak} GB。在 {platform} 上,總共 {total} GB,這已超過高風險閾值 (約 {highRisk} GB),並接近估計的工作集 (約 {working} GB)。生成可能會讓後端崩潰;請降低解析度或選擇較小型的模型。",
       "reasonCaution": "模型光是要保存權重 + 文字編碼器就需要約 {model} GB。在 {platform} 上,總共 {total} GB,這已超過保守的舒適目標 (約 {comfort} GB),但仍低於估計的工作集 (約 {working} GB)。生成可能會緩慢或失敗;若變得不穩定請降低解析度。"
@@ -369,33 +365,18 @@
       "noPrompt": "請在生成前撰寫提示詞。",
       "backendOffline": "後端已離線。",
       "busy": "忙碌中…",
-      "dangerLevel": "此配置可能導致後端崩潰。檢視警告後請勾選下方的「允許高風險生成」,或降低解析度 / 幀數 / 模型大小。"
+      "dangerLevel": null
     },
     "generateTitle": "開始生成此片段。",
-    "device": {
-      "gpuDetected": "GPU (已偵測)",
-      "cpuDetected": "CPU (已偵測)",
-      "appleDetected": "Apple Silicon (已偵測)",
-      "appleMlx": "Apple Silicon (MLX)",
-      "gpu": "GPU",
-      "apple": "Apple Silicon"
-    },
     "memory": {
       "defaultFallback": "約 {value} (預設 — 重新啟動後端以進行實際偵測)"
     },
-    "capacityLine": {
-      "withModel": "{device} · {memory} 總計 · 模型約 {model},此次執行峰值約 {peak}",
-      "short": "{device} · {memory} 總計 · 此次執行峰值約 {peak}"
-    },
     "subtitle": "選擇影片模型以開始",
     "actions": {
-      "browseCatalog": "尋找模型",
-      "installedModels": "已安裝",
       "downloadModel": "下載模型",
       "loadIntoMemory": "載入記憶體",
       "unload": "卸載",
-      "unloadNamed": "卸載 {name}",
-      "modelCard": "模型卡"
+      "unloadNamed": "卸載 {name}"
     },
     "modelOption": {
       "installed": "已安裝",
@@ -505,13 +486,11 @@
       "applyTitle": "套用 {label}",
       "useSafer": "使用較安全的設定 ({label})",
       "browseSmaller": "瀏覽較小型的模型",
-      "overrideAck": "允許高風險生成 — 我接受後端可能崩潰,且我的機器可能需要重新啟動。",
       "reasonDangerOver": "模型在標準放置下需要約 {model} GB 常駐,但 {platform} 上總共 {total} GB,只有約 {working} GB 可安全使用。執行環境會自動回退至循序 CPU 卸載 -- 生成會成功,但每步都會慢上數倍,因為子模組會在每次傳遞時於 CPU 與 {offloadDevice} 記憶體之間交換。若要全速生成,請選擇較小型的模型 (LTX-Video 約 2 GB 常駐) 或記憶體較多的機器。",
       "reasonDangerNear": "模型需要約 {model} GB 常駐,此次執行峰值約 {peak} GB。在 {platform} 上,總共 {total} GB,這已超過高風險閾值 (約 {highRisk} GB),並接近估計的工作集 (約 {working} GB)。執行環境可能啟用 CPU 卸載以容納 -- 若要全速生成,請降低設定或選擇較小型的模型。",
       "reasonCaution": "模型需要約 {model} GB 常駐。在 {platform} 上,總共 {total} GB,這已超過保守的舒適目標 (約 {comfort} GB),但仍低於估計的工作集 (約 {working} GB)。生成應該可以容納;若變得不穩定請降低設定。"
     },
     "disabledHint": "生成已停用:{reason}",
-    "willLoadHint": "選定的模型將在下次生成時載入記憶體。較大的變體首次載入可能需要一分鐘。",
     "cacheStrategies": {
       "none": {
         "label": "關閉",
@@ -1346,5 +1325,18 @@
     "start": null,
     "untitled": null,
     "use": null
+  },
+  "studioKit": {
+    "models": null,
+    "moreActions": null,
+    "modelCard": null,
+    "summary": {
+      "labelValue": null,
+      "size": null,
+      "framesFps": null,
+      "negativeSet": null,
+      "negativeEdited": null,
+      "endImageSet": null
+    }
   }
 }

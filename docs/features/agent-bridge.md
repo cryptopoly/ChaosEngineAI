@@ -1,7 +1,7 @@
 # Agent bridge: let an AI agent make images, video and voice
 
 The agent bridge lets an AI agent that speaks MCP (the Model Context Protocol), such as Claude Code,
-make images, video clips, speech and transcripts with ChaosEngineAI. The agent calls typed tools and
+make images, video clips, speech, music, transcripts and short films with ChaosEngineAI. The agent calls typed tools and
 gets file paths back. It does not need to read our source or docs, and it cannot start two heavy jobs
 at once.
 
@@ -48,7 +48,7 @@ job waits for a running agent job (the progress panel says "Waiting for an agent
 | `storyboard_project` | Film projects: `create`, `list`, `get` (shots, takes, timeline, revision), `edit` (name, defaults, export), `undo`, `redo`, `delete`, `export` (a `.chaosfilm` bundle with a `download`), `import`. |
 | `storyboard_shot` | `add`, `edit`, `remove`, `reorder`, `lock`, `unlock`, `pick_take`, `redo` (marks a shot for the next generate), `import` (a clip or still file). |
 | `storyboard_audio` | `add`, `edit`, `remove` audio clips; anchor one to a shot so it follows the shot. |
-| `storyboard_generate` | New takes for the shots that need work (or `shot_ids`): all stills, then all clips. Locked shots are skipped; naming one needs `force`. Returns a job id; `cancel_job` stops the whole batch. |
+| `storyboard_generate` | New takes for the shots that need work (or `shot_ids`; `what` is `still`, `clip` or `both`): all stills, then all clips. Locked shots are skipped; naming one needs `force`. Returns a job id; `cancel_job` stops the whole batch. |
 | `storyboard_render` | Render the film to MP4 (`preview` is small and fast). Returns a job id; the finished output has the path and `download`. |
 
 A finished job returns the **absolute path** of the PNG, MP4, WAV or FLAC, plus width, height, duration and

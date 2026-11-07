@@ -20,7 +20,9 @@ function strip(overrides: Partial<RunEstimateStripProps> = {}) {
 describe("RunEstimateStrip", () => {
   it("reads time, memory of total and disk in that order, announced politely", () => {
     const html = strip();
-    expect(html).toContain('aria-live="polite"');
+    // the live region is the figures only, not the action slot (a button label that changes would be read out)
+    expect(html).toContain('<div class="run-estimate__items" aria-live="polite">');
+    expect(html).not.toMatch(/<div class="run-estimate run-estimate--\w+" aria-live/);
     const time = html.indexOf("About 40 s");
     const memory = html.indexOf("Peak 9 GB of 64 GB");
     const disk = html.indexOf("Writes 12 MB");

@@ -9,6 +9,9 @@ import { Disclosure } from "../../components/Disclosure";
 import { RunEstimateStrip } from "../../components/RunEstimateStrip";
 import { DisclosureMemoryContext, useDisclosureMemory } from "../../components/studioDisclosureMemory";
 import { runEstimateBasis, summaryLine } from "../../components/studioSummary";
+import { NO_ACK, ackKey, dangerBlocked, isAcked, type DangerAck } from "../../components/studioGating";
+import { videoMenuItems } from "./videoMenu";
+import { capacityLine as buildCapacityLine, formatCapacityGb } from "./videoCapacity";
 import { DEFAULT_VIDEO_NEGATIVE_PROMPT, DEFAULT_VIDEO_STEPS, recommendedGuidanceForRepo } from "../../hooks/videoStateDefaults";
 import {
   DEFAULT_MAX_SIDE,
@@ -289,7 +292,9 @@ export function VideoStudioTab({
   // M4 Max running Wan 2.2 A14B. The checkbox resets whenever the chosen
   // model, resolution, or frame count change so it's a per-configuration
   // override, not a permanent bypass.
-  const [dangerOverrideAck, setDangerOverrideAck] = useState(false);
+  const [dangerAck, setDangerAck] = useState<DangerAck>(NO_ACK);
+  const dangerKey = ackKey([selectedVideoVariant?.id, videoWidth, videoHeight, videoNumFrames]);
+  const dangerOverrideAck = isAcked(dangerAck, dangerKey);
   const missingDependencies = videoRuntimeStatus.missingDependencies ?? [];
   // imageio + imageio-ffmpeg are the two pip packages diffusers video
   // pipelines need to export mp4s. Everything else we surface as a badge;
@@ -412,14 +417,9 @@ export function VideoStudioTab({
     if (fallback?.id) onSelectedVideoModelIdChange(fallback.id);
   }, [selectedVideoModelId, videoCatalog, studioFamilies, onSelectedVideoModelIdChange]);
 
-  // Clear the danger-override acknowledgement whenever any input feeding
-  // the safety heuristic changes. A user who ticked "generate anyway" for
-  // a 720×480 × 33-frame Wan 2.2 run should not have that override still
-  // armed when they then bump frames to 161 — the new configuration has
-  // its own risk profile and needs its own conscious decision.
-  useEffect(() => {
-    setDangerOverrideAck(false);
-  }, [selectedVideoVariant?.id, videoWidth, videoHeight, videoNumFrames]);
+  // The danger-override acknowledgement belongs to one configuration (see ``dangerKey``): a user who
+  // ticked "generate anyway" for a 720×480 × 33-frame Wan 2.2 run does not keep it when they bump
+  // frames to 161, because the new configuration has its own risk profile.
 
   // Probe LongLive install state whenever the user selects a LongLive
   // variant so the Studio can surface an install callout without the
@@ -696,7 +696,7 @@ export function VideoStudioTab({
   // "could generate but we think it will crash your computer". If the user
   // has ticked the override, we allow the generate — same UX pattern as
   // destructive-operation confirmations elsewhere in the app.
-  if (generateDisabledReason === null && generationSafety.riskLevel === "danger" && !dangerOverrideAck) {
+  if (generateDisabledReason === null && dangerBlocked(generationSafety.riskLevel, dangerOverrideAck)) {
     generateDisabledReason = t("videoStudio.disabled.dangerLevel", {
       defaultValue:
         "This configuration is likely to crash the backend. Tick \"Run anyway\" in the run estimate after reviewing the warning, or lower resolution/frames/model.",
@@ -707,7 +707,7 @@ export function VideoStudioTab({
 
   // Format GB with one decimal for small numbers so 2.3 GB / 7.5 GB read
   // clearly, but drop the decimal once we're at 10+ (no user needs "14.0 GB").
-  const formatGb = (gb: number): string => (gb >= 10 ? `${gb.toFixed(0)} GB` : `${gb.toFixed(1)} GB`);
+  const formatGb = formatCapacityGb;
 
   // Whether the backend reported the device memory; when it did not, the strip's total is a
   // default and a one-line note under the strip says so.
@@ -715,6 +715,16 @@ export function VideoStudioTab({
     selectedVideoRuntimeStatus.deviceMemoryGb != null
     && Number.isFinite(selectedVideoRuntimeStatus.deviceMemoryGb)
     && selectedVideoRuntimeStatus.deviceMemoryGb > 0;
+  // The device and capacity facts the old always-on line carried, now the memory item's tooltip.
+  const capacityLine = buildCapacityLine(t as unknown as (key: string, options: Record<string, unknown>) => string, {
+    device: selectedVideoRuntimeStatus.device,
+    activeEngine: selectedVideoRuntimeStatus.activeEngine,
+    effectiveDevice: generationSafety.effectiveDevice,
+    deviceMemoryGb: generationSafety.deviceMemoryGb,
+    memoryReported: backendReportedMemory,
+    modelFootprintGb: generationSafety.modelFootprintGb,
+    estimatedPeakGb: generationSafety.estimatedPeakGb,
+  });
 
   const disclosureMemory = useDisclosureMemory("video");
 
@@ -777,38 +787,18 @@ export function VideoStudioTab({
   ]);
 
   // The less-used model actions live in one menu (the header keeps Models).
-  const headerMenuItems: ActionMenuItem[] = [];
-  if (selectedVideoVariant) {
-    headerMenuItems.push({
-      id: "model-card",
-      label: t("studioKit.modelCard", { defaultValue: "Model card" }),
-      onSelect: () => onOpenExternalUrl(selectedVideoVariant.link),
-    });
-    if (isDownloaded && !selectedVideoLoaded) {
-      headerMenuItems.push({
-        id: "load",
-        label: t("videoStudio.actions.loadIntoMemory", { defaultValue: "Load into memory" }),
-        onSelect: () => onPreloadVideoModel(selectedVideoVariant),
-        disabled: videoBusy || !videoRuntimeStatus.realGenerationAvailable,
-      });
-    }
-    if (selectedVideoLoaded) {
-      headerMenuItems.push({
-        id: "unload",
-        label: t("videoStudio.actions.unload", { defaultValue: "Unload" }),
-        onSelect: () => onUnloadVideoModel(selectedVideoVariant),
-        disabled: videoBusy,
-      });
-    }
-    if (!selectedVideoLoaded && loadedVideoVariant) {
-      headerMenuItems.push({
-        id: "unload-named",
-        label: t("videoStudio.actions.unloadNamed", { defaultValue: "Unload {name}", name: loadedVideoVariant.name }),
-        onSelect: () => onUnloadVideoModel(),
-        disabled: videoBusy,
-      });
-    }
-  }
+  const headerMenuItems: ActionMenuItem[] = videoMenuItems(
+    t as unknown as (key: string, options: Record<string, unknown>) => string,
+    {
+      selected: selectedVideoVariant,
+      loadedVariant: loadedVideoVariant,
+      isDownloaded,
+      selectedLoaded: selectedVideoLoaded,
+      videoBusy,
+      realGenerationAvailable: videoRuntimeStatus.realGenerationAvailable,
+    },
+    { openLink: onOpenExternalUrl, preload: onPreloadVideoModel, unload: onUnloadVideoModel },
+  );
 
   function handleApplySafeSettings(): void {
     const suggestion = generationSafety.suggestion;
@@ -1228,7 +1218,8 @@ export function VideoStudioTab({
               diskMb={null}
               basis={estimateBasis}
               risk={selectedVideoVariant ? generationSafety.riskLevel : "safe"}
-              ack={{ checked: dangerOverrideAck, onChange: setDangerOverrideAck }}
+              ack={{ checked: dangerOverrideAck, onChange: (checked) => setDangerAck({ key: dangerKey, checked }) }}
+              memoryTitle={selectedVideoVariant ? capacityLine : undefined}
               action={
                 <>
                   {selectedVideoVariant && !isDownloaded && !isDownloading ? (
@@ -1253,6 +1244,20 @@ export function VideoStudioTab({
                 </>
               }
             />
+            {videoBusy && videoBusyLabel ? (
+              <p className="busy-indicator" role="status">
+                <span className="busy-dot" />
+                {videoBusyLabel}
+              </p>
+            ) : null}
+            {selectedVideoWillLoadOnGenerate ? (
+              <p className="muted-text">
+                {t("videoStudio.willLoadHint", {
+                  defaultValue:
+                    "The selected model will be loaded into memory on the next generate. First load can take a minute for the larger variants.",
+                })}
+              </p>
+            ) : null}
             {selectedVideoVariant && !backendReportedMemory ? (
               <p className="muted-text">
                 {t("videoStudio.memory.defaultFallback", {

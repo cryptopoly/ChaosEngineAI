@@ -6,9 +6,11 @@ the PyTorch MPS backend cannot match on the large ones.
 
 mflux pins an mlx / torch generation newer than the one the app runs, so it
 lives in its own venv (``~/.chaosengine/mflux-venv``, built by
-``scripts/install-mflux.sh``). The engine runs one ``mflux-generate-*`` command
-per image: the weights are freed when the command exits and a stuck run can be
-killed without touching the backend.
+``scripts/install-mflux.sh``). On a Mac with enough memory the engine keeps the
+model loaded between images in a warm worker process (``mflux_worker.py``, I1);
+otherwise, when ``CHAOSENGINE_WARM_WORKERS=0`` or when the worker fails, it runs
+one ``mflux-generate-*`` command per image. Either way the weights live outside
+the backend, and a stuck run is killed without touching it.
 
 The engine is a quiet no-op elsewhere: ``probe()`` reports unavailability and
 the manager falls back to the diffusers pipeline.
@@ -20,7 +22,9 @@ import platform
 import re
 import subprocess
 import tempfile
+import threading
 import time
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -33,6 +37,16 @@ from backend_service.image_runtime.types import (
 
 MFLUX_VENV_DIR = Path.home() / ".chaosengine" / "mflux-venv"
 MFLUX_VERSION_FILE = Path.home() / ".chaosengine" / "bin" / "mflux.version"
+
+_WORKER_SCRIPT = Path(__file__).resolve().parent.parent / "mflux_worker.py"
+_WORKER_LOG = Path.home() / ".chaosengine" / "logs" / "mflux-worker.log"
+# Below this much memory the worker's resident model (text encoders included) costs more than the reload.
+WARM_MIN_MEMORY_GB = 32.0
+# Resident between images: Iris-3B about 15 GB, FLUX 3 Klein edit about 21 GB (v-speed.md). A new worker
+# starts only with this much free memory; otherwise the image runs as a CLI process.
+WARM_START_AVAILABLE_GB = 24.0
+_WORKER_TIMEOUT_S = 3600.0
+_WORKER_STALL_S = 600.0  # a big model's load sends no event until it is done
 
 _LAST_OUTPUT_LINES = 60
 # tqdm prints ``  25%|##5       | 1/4 [00:11<00:33, 11.23s/it]``.
@@ -147,8 +161,70 @@ def read_version() -> str | None:
     return lines[0].strip() if lines and lines[0].strip() else None
 
 
+_WORKER: Any = None
+_WORKER_LOCK = threading.Lock()
+
+
+def _worker_env() -> dict[str, str]:
+    from backend_service.inference._utils import _isolated_child_env
+
+    return dict(_isolated_child_env())
+
+
+def warm_worker() -> Any:
+    """The one warm mflux worker of this backend (created on first use, started on first image)."""
+    global _WORKER
+    from backend_service.warm_worker_client import WarmWorker
+
+    with _WORKER_LOCK:
+        if _WORKER is None:
+            _WORKER = WarmWorker(
+                name="mflux",
+                kind="image",
+                command=lambda: [str(MFLUX_VENV_DIR / "bin" / "python"), str(_WORKER_SCRIPT)],
+                env=_worker_env,
+                log_path=_WORKER_LOG,
+            )
+        return _WORKER
+
+
+def warm_worker_wanted() -> bool:
+    from backend_service.warm_worker_client import can_start, total_memory_gb, warm_workers_enabled
+
+    return (
+        warm_workers_enabled()
+        and total_memory_gb() >= WARM_MIN_MEMORY_GB
+        and _WORKER_SCRIPT.exists()
+        and can_start(_WORKER, WARM_START_AVAILABLE_GB)
+    )
+
+
+def release_warm_worker(reason: str = "unloaded") -> bool:
+    """Stop the warm worker if it idles (never kills a running image)."""
+    return _WORKER.stop_if_idle(reason) if _WORKER is not None else False
+
+
+_WARM_REPO: str | None = None
+
+
+def warm_loaded_repo() -> str | None:
+    """The repo whose model the warm worker holds, so memory gates count it as resident."""
+    return _WARM_REPO if _WORKER is not None and _WORKER.running() else None
+
+
+def _remember_warm_repo(repo: str) -> None:
+    global _WARM_REPO
+    _WARM_REPO = repo
+
+
+class WarmFallback(RuntimeError):
+    """The warm worker could not make this image; the CLI path makes it instead."""
+
+
 class MfluxImageEngine:
     runtime_label = "mflux (MLX native)"
+    # Timing split of the last CLI run (C1), filled by ``_run``.
+    _cli_timings: dict[str, Any] | None = None
 
     def probe(self) -> dict[str, Any]:
         if not _apple_silicon():
@@ -197,17 +273,34 @@ class MfluxImageEngine:
         batch: int,
         images: list[GeneratedImage],
     ) -> None:
+        use_worker = warm_worker_wanted()
         for index in range(batch):
             seed = base_seed + index
             started = time.perf_counter()
+            fallback: str | None = None
+            timings: dict[str, Any] | None = None
             with tempfile.TemporaryDirectory(prefix="chaosengine-mflux-") as tmpdir:
                 output_path = Path(tmpdir) / f"mflux-{seed}.png"
                 args = self._build_command(family, config, seed=seed, output_path=output_path)
-                peak_gb = self._run(args, output_path)
+                peak_gb: float | None = None
+                if use_worker:
+                    try:
+                        peak_gb, timings = self._run_warm(args, output_path)
+                        _remember_warm_repo(config.repo)
+                    except WarmFallback as exc:
+                        use_worker = False  # the rest of the batch goes the CLI way too
+                        fallback = str(exc)
+                if timings is None:
+                    peak_gb = self._run(args, output_path)
+                    timings = dict(self._cli_timings or {}) or None
                 data = output_path.read_bytes()
             note = f"MLX native ({family.model}, mflux {probe.get('version') or '?'})"
             if peak_gb is not None:
                 note += f", peak {peak_gb:g} GB"
+            if timings and timings.get("warm"):
+                note += ", model kept loaded"
+            if fallback:
+                note += f"; the warm worker failed ({fallback}), so this image ran as a one-off process"
             images.append(
                 GeneratedImage(
                     seed=seed,
@@ -217,8 +310,64 @@ class MfluxImageEngine:
                     durationSeconds=round(max(0.1, time.perf_counter() - started), 1),
                     runtimeLabel=self.runtime_label,
                     runtimeNote=note,
+                    timings=timings,
                 )
             )
+
+    def _run_warm(self, args: list[str], output_path: Path) -> tuple[float | None, dict[str, Any]]:
+        """One image through the warm worker. Raises ``WarmFallback`` when the CLI should run it instead."""
+        from backend_service.progress import (
+            IMAGE_PROGRESS,
+            PHASE_DECODING,
+            PHASE_DIFFUSING,
+            PHASE_ENCODING,
+            PHASE_LOADING,
+            PHASE_SAVING,
+            GenerationCancelled,
+        )
+        from backend_service.warm_worker_client import WarmWorkerCancelled
+
+        phases = {"load": (PHASE_LOADING, "Loading model"), "encode": (PHASE_ENCODING, "Encoding prompt"),
+                  "denoise": (PHASE_DIFFUSING, "Diffusing"), "decode": (PHASE_DECODING, "Decoding image"),
+                  "write": (PHASE_SAVING, "Saving image")}
+
+        def on_event(event: dict[str, Any]) -> None:
+            if event.get("event") == "stage" and event.get("stage") in phases:
+                IMAGE_PROGRESS.set_phase(*phases[event["stage"]])
+            elif event.get("event") == "step":
+                IMAGE_PROGRESS.set_step(int(event.get("step") or 0), total=int(event.get("total") or 0) or None)
+
+        worker = warm_worker()
+        command = Path(args[0]).name
+        try:
+            reply = worker.request(
+                "generate",
+                timeout=_WORKER_TIMEOUT_S,
+                stall_s=_WORKER_STALL_S,
+                on_event=on_event,
+                cancel_check=IMAGE_PROGRESS.is_cancelled,
+                job=f"img-{uuid.uuid4().hex[:12]}",
+                command=command,
+                argv=args[1:],
+            )
+        except WarmWorkerCancelled as exc:
+            raise GenerationCancelled("Image generation cancelled by user") from exc
+        except Exception as exc:  # noqa: BLE001 - any worker failure falls back to the CLI
+            if IMAGE_PROGRESS.is_cancelled():
+                raise GenerationCancelled("Image generation cancelled by user") from exc
+            worker.stop_if_idle("it failed a request")
+            raise WarmFallback(f"{type(exc).__name__}: {exc}") from exc
+        if not output_path.exists():
+            worker.stop_if_idle("it wrote no image")
+            raise WarmFallback("the worker wrote no image")
+        worker.after_job(reply)
+        timings = dict(reply.get("timings") or {})
+        timings.setdefault("warm", bool(reply.get("warm")))
+        peak = reply.get("peak_mlx_gb")
+        return (float(peak) if peak is not None else None), timings
+
+    def release(self, reason: str = "unloaded") -> bool:
+        return release_warm_worker(reason)
 
     def _build_command(
         self,
@@ -274,6 +423,13 @@ class MfluxImageEngine:
         )
         tail: list[str] = []
         peak_gb: float | None = None
+        # C1: the CLI prints no phases, so the split is read off the tqdm bar: everything before the
+        # bar is process start, imports, load and prompt encoding together ("loadSeconds"), the bar is
+        # the denoise, and what follows is decode, save and exit ("decodeSeconds").
+        started = time.perf_counter()
+        bar_start: float | None = None
+        bar_end: float | None = None
+        self._cli_timings = None
         try:
             assert proc.stdout is not None
             # tqdm redraws with carriage returns; text mode turns those into lines.
@@ -285,6 +441,10 @@ class MfluxImageEngine:
                 del tail[:-_LAST_OUTPUT_LINES]
                 step = _STEP_RE.search(stripped)
                 if step:
+                    now = time.perf_counter()
+                    bar_start = bar_start if bar_start is not None else now
+                    if int(step.group(1)) >= int(step.group(2)) and bar_end is None:
+                        bar_end = now
                     if int(step.group(1)) <= 1:
                         IMAGE_PROGRESS.set_phase(PHASE_DIFFUSING, message="Diffusing")
                     IMAGE_PROGRESS.set_step(int(step.group(1)), total=int(step.group(2)))
@@ -307,4 +467,15 @@ class MfluxImageEngine:
             raise RuntimeError(f"mflux exited with code {code}.\nLast output:\n" + "\n".join(tail[-15:]))
         if not output_path.exists():
             raise RuntimeError("mflux finished without writing an image.\nLast output:\n" + "\n".join(tail[-10:]))
+        finished = time.perf_counter()
+        bar_start = bar_start if bar_start is not None else finished
+        bar_end = bar_end if bar_end is not None else bar_start
+        self._cli_timings = {
+            "loadSeconds": round(bar_start - started, 2),
+            "encodeSeconds": None,  # inside loadSeconds on this path
+            "denoiseSeconds": round(bar_end - bar_start, 2),
+            "decodeSeconds": round(finished - bar_end, 2),
+            "totalSeconds": round(finished - started, 2),
+            "warm": False,
+        }
         return peak_gb

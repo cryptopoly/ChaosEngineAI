@@ -104,6 +104,7 @@ def _hydrate_image_artifact(payload: dict[str, Any]) -> dict[str, Any]:
         "seed": seed,
         "createdAt": str(payload.get("createdAt") or datetime.utcnow().replace(microsecond=0).isoformat() + "Z"),
         "durationSeconds": float(payload.get("durationSeconds") or 0.0),
+        "timings": payload.get("timings") if isinstance(payload.get("timings"), dict) else None,
         "previewUrl": preview_url,
         "imagePath": image_path or None,
         "metadataPath": metadata_path or None,

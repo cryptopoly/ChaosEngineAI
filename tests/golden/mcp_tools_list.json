@@ -926,7 +926,7 @@
       "readOnlyHint": true,
       "title": "List cloned voices"
     },
-    "description": "Read: cloned voices the person made in the app with recorded consent, with ids. Refused unless they allowed agents to use cloned voices.",
+    "description": "Read: cloned voices the person made in the app with a stored permission record, with ids. Refused unless they allowed agents to use cloned voices.",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {},
@@ -943,7 +943,7 @@
       "readOnlyHint": false,
       "title": "Speak in a cloned voice"
     },
-    "description": "Make: start a speech job in a cloned voice (returns a job id). voice_id comes from list_cloned_voices and is tied to its consent record. Output is tagged and watermarked as AI-made.",
+    "description": "Make: start a speech job in a cloned voice (returns a job id). voice_id comes from list_cloned_voices and is tied to its permission record. permission_confirmed must be true. Output is tagged and watermarked as AI-made.",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
@@ -957,6 +957,10 @@
             "qwen3-tts-1.7b"
           ],
           "type": "string"
+        },
+        "permission_confirmed": {
+          "description": "true: this is the person's own voice, or the speaker's permission covers this use. Recorded in the audit log.",
+          "type": "boolean"
         },
         "project_id": {
           "description": "Optional. Storyboard project this output belongs to; the gallery and library group it there.",
@@ -981,7 +985,8 @@
       },
       "required": [
         "voice_id",
-        "text"
+        "text",
+        "permission_confirmed"
       ],
       "type": "object"
     },

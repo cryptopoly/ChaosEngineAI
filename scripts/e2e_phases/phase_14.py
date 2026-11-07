@@ -3,11 +3,11 @@
 Checks, against a running backend:
 1. the cloning model rows are listed with pinned 40-character revisions;
 2. the Agent access token cannot reach the cloning routes;
-3. a consent recording with the wrong code is refused (needs Kokoro + STT);
-4. full run when a cloning model is downloaded: Kokoro reads the consent sentence, the voice is
-   saved, one sentence is spoken, the WAV and the MP3 carry the AI tag, the AudioSeal watermark is
-   detected (a model counts as installed only with the watermark component), then the voice, the speech
-   and the worker are cleaned up. Nothing is downloaded by this phase.
+3. a voice sample without the permission tick, or of an unsupported type, is refused;
+4. full run when a cloning model is downloaded: Kokoro speaks a short voice sample, the voice is
+   saved with the permission tick, one sentence is spoken, the WAV and the MP3 carry the AI tag, the
+   AudioSeal watermark is detected (a model counts as installed only with the watermark component), then
+   the voice, the speech and the worker are cleaned up. Nothing is downloaded by this phase.
 """
 
 from __future__ import annotations
@@ -95,22 +95,20 @@ def phase_14(cap: Any):
             return "cloning not supported on this machine"
         return None
 
-    def _wrong_code_refused():
-        reason = _voice_ready()
-        if reason:
-            return "skip", reason, {}
-        code, challenge = _json("POST", "/api/voice/clone/consent", {"speakerName": "Test Speaker", "basis": "own"})
-        if code != 200:
-            return "fail", f"consent start HTTP {code}", {}
-        wrong = "".join(str((int(d) + 1) % 10) for d in challenge["code"])
-        wav = _say(challenge["sentence"].replace(" ".join(challenge["code"]), " ".join(wrong)))
-        if wav is None:
-            return "fail", "Kokoro could not read the sentence", {}
-        body, ctype = _multipart({"challengeId": challenge["id"], "statementAccepted": "true"}, {"consent": ("c.wav", wav)})
-        code, raw = http("POST", "/api/voice/clone/voices", body=body, content_type=ctype, timeout=300.0)
-        if code == 400 and b"code" in raw:
-            return "pass", "", {}
-        return "fail", f"expected 400 about the code, got {code}: {raw[:160]!r}", {}
+    def _unconfirmed_refused():
+        if not (state.get("models") or {}).get("available"):
+            return "skip", "cloning not supported on this machine", {}
+        fields = {"speakerName": "Test Speaker", "basis": "own"}
+        problems = []
+        body, ctype = _multipart(fields, {"sample": ("s.wav", b"RIFF-not-checked")})
+        code, raw = http("POST", "/api/voice/clone/voices", body=body, content_type=ctype, timeout=60.0)
+        if code != 400 or b"permission" not in raw:
+            problems.append(f"no tick: {code} {raw[:120]!r}")
+        body, ctype = _multipart({**fields, "permissionConfirmed": "true"}, {"sample": ("s.webm", b"x")})
+        code, raw = http("POST", "/api/voice/clone/voices", body=body, content_type=ctype, timeout=60.0)
+        if code != 400 or b"WAV, MP3" not in raw:
+            problems.append(f"webm sample: {code} {raw[:120]!r}")
+        return ("fail", "; ".join(problems), {}) if problems else ("pass", "", {})
 
     def _full_clone():
         reason = _voice_ready()
@@ -120,12 +118,11 @@ def phase_14(cap: Any):
         if not installed:
             return "skip", "no cloning model downloaded (won't pull 2.5 GB in a test run)", {}
         model = installed[0]["key"]
-        code, challenge = _json("POST", "/api/voice/clone/consent", {"speakerName": "Test Speaker", "basis": "own"})
-        wav = _say(challenge["sentence"])
+        wav = _say("Hello, this is a short voice sample for the end to end check. It runs for a few seconds.")
         if wav is None:
-            return "fail", "Kokoro could not read the sentence", {}
-        body, ctype = _multipart({"challengeId": challenge["id"], "statementAccepted": "true", "name": "E2E voice"},
-                                 {"consent": ("c.wav", wav)})
+            return "fail", "Kokoro could not speak the sample", {}
+        body, ctype = _multipart({"speakerName": "Test Speaker", "basis": "own", "permissionConfirmed": "true",
+                                  "name": "E2E voice"}, {"sample": ("sample.wav", wav)})
         code, raw = http("POST", "/api/voice/clone/voices", body=body, content_type=ctype, timeout=300.0)
         if code != 200:
             return "fail", f"create HTTP {code}: {raw[:200]!r}", {}
@@ -153,7 +150,7 @@ def phase_14(cap: Any):
             http("POST", "/api/voice/worker/stop")
 
     for name, fn in (("clone models pinned", _models), ("agent token refused", _agent_refused),
-                     ("wrong consent code refused", _wrong_code_refused), ("clone, speak, AI tag", _full_clone)):
+                     ("unconfirmed or unsupported sample refused", _unconfirmed_refused), ("clone, speak, AI tag", _full_clone)):
         phase.checks.append(suite._check(name, fn))
     statuses = {c.status for c in phase.checks}
     phase.status = "fail" if "fail" in statuses else ("pass" if "pass" in statuses else "skip")

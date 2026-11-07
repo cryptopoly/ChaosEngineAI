@@ -7,6 +7,7 @@ Plain ``def`` routes: the work happens in the voice worker.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Form, HTTPException, Request, UploadFile
@@ -19,16 +20,13 @@ class ModelDownloadRequest(BaseModel):
     key: str = Field(min_length=1, max_length=64)
 
 
-class ConsentStartRequest(BaseModel):
-    speakerName: str = Field(min_length=1, max_length=60)
-    basis: str = Field(pattern=r"^(own|permission)$")
-
-
 class CloneSpeakRequest(BaseModel):
     voiceId: str = Field(min_length=1, max_length=40)
     text: str = Field(min_length=1, max_length=5_000)
     model: str = Field(default="", max_length=64)
     disclaimer: bool = False
+    # Required from agents and other computers; the app window confirmed it when the voice was made.
+    permissionConfirmed: bool = False
 
 
 def _guard(request: Request) -> str:
@@ -72,55 +70,42 @@ def list_cloned_voices(request: Request) -> dict[str, Any]:
     return {"voices": voice_clone.list_voices()}
 
 
-@router.post("/api/voice/clone/consent")
-def start_consent(request: Request, body: ConsentStartRequest) -> dict[str, Any]:
-    from backend_service import voice_clone_consent  # noqa: PLC0415
-
-    _guard(request)
-    try:
-        challenge = voice_clone_consent.start(body.speakerName, body.basis)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return {k: challenge[k] for k in ("id", "code", "sentence", "speakerName", "basis")}
-
-
 @router.post("/api/voice/clone/voices")
 def create_cloned_voice(
     request: Request,
-    consent: UploadFile,
-    challengeId: str = Form(min_length=1, max_length=40),
+    sample: UploadFile,
+    speakerName: str = Form(min_length=1, max_length=60),
+    basis: str = Form(pattern=r"^(own|permission)$"),
+    permissionConfirmed: bool = Form(default=False),
     name: str = Form(default="", max_length=80),
-    statementAccepted: bool = Form(default=False),
     referenceText: str = Form(default="", max_length=2_000),
-    reference: UploadFile | None = None,
 ) -> dict[str, Any]:
-    """Check the spoken consent with our STT, then save the voice with its consent record."""
+    """Save a voice from its sample (an uploaded file or a microphone recording) with its permission record."""
     from backend_service import voice_clone  # noqa: PLC0415
     from backend_service.helpers.job_queue import HEAVY_JOBS  # noqa: PLC0415
     from backend_service.routes.voice import _receive_upload, _worker_error  # noqa: PLC0415
     from backend_service.voice_runtime import transcribe_file  # noqa: PLC0415
 
     origin = _guard(request)
-    consent_path, consent_ext = _receive_upload(consent)
-    reference_path, reference_ext = (None, None)
+    if not permissionConfirmed:
+        raise HTTPException(status_code=400, detail="Confirm that this is your own voice or that the speaker gave permission.")
+    if Path(sample.filename or "").suffix.lower() not in voice_clone.SAMPLE_EXTENSIONS:
+        raise HTTPException(status_code=400, detail="The voice sample must be a WAV, MP3, M4A, FLAC or OGG file.")
+    sample_path, sample_ext = _receive_upload(sample)
     try:
-        if reference is not None and reference.filename:
-            reference_path, reference_ext = _receive_upload(reference)
-
         def transcribe(path):
             return transcribe_file(path, "", None)
 
         try:
-            with HEAVY_JOBS.slot("voice", "ui" if origin == "ui" else "agent", "voice consent"):
+            with HEAVY_JOBS.slot("voice", "ui" if origin == "ui" else "agent", "voice sample"):
                 return voice_clone.create_voice(
-                    challenge_id=challengeId,
+                    speaker_name=speakerName,
+                    basis=basis,
                     name=name,
-                    consent_audio=consent_path,
-                    consent_ext=consent_ext,
-                    reference_audio=reference_path,
-                    reference_ext=reference_ext,
-                    reference_text=referenceText,
-                    statement_accepted=statementAccepted,
+                    sample_audio=sample_path,
+                    sample_ext=sample_ext,
+                    sample_text=referenceText,
+                    permission_confirmed=permissionConfirmed,
                     origin=origin,
                     transcribe=transcribe,
                 )
@@ -131,9 +116,7 @@ def create_cloned_voice(
         except Exception as exc:  # noqa: BLE001
             raise _worker_error(exc) from exc
     finally:
-        consent_path.unlink(missing_ok=True)
-        if reference_path is not None:
-            reference_path.unlink(missing_ok=True)
+        sample_path.unlink(missing_ok=True)
 
 
 @router.delete("/api/voice/clone/voices/{voice_id}")
@@ -174,7 +157,8 @@ def speak_cloned(request: Request, body: CloneSpeakRequest) -> dict[str, Any]:
     origin = _guard(request)
     try:
         with HEAVY_JOBS.slot("voice", "ui" if origin == "ui" else "agent", "cloned speech"):
-            return voice_clone.speak(body.voiceId, body.text, body.model, disclaimer=body.disclaimer, origin=origin)
+            return voice_clone.speak(body.voiceId, body.text, body.model, disclaimer=body.disclaimer, origin=origin,
+                                     permission_confirmed=body.permissionConfirmed)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:

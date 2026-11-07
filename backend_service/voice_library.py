@@ -8,9 +8,8 @@ are always inside the library folder.
 
 Items saved by the old Gallery (``voice/gallery``) move here on first use.
 
-Cloned voices are items of kind ``clone`` (reference audio, its transcript and the consent record),
-with the consent recording beside them as ``<id>.consent<ext>``. They are left out of the normal
-list unless asked for by kind, and deleting one deletes the consent recording too.
+Cloned voices are items of kind ``clone`` (the voice sample, its transcript and the permission record
+under ``consent``). They are left out of the normal list unless asked for by kind.
 """
 
 from __future__ import annotations
@@ -112,10 +111,8 @@ def create(
     fields: dict[str, Any],
     audio_file: Path | None = None,
     audio_ext: str | None = None,
-    consent_file: Path | None = None,
-    consent_ext: str | None = None,
 ) -> dict[str, Any]:
-    """Save a new item; ``audio_file`` (and a clone's ``consent_file``) are moved into the library."""
+    """Save a new item; ``audio_file`` is moved into the library."""
     if kind not in KINDS:
         raise ValueError(f"Unknown item kind {kind!r}.")
     from backend_service.helpers.provenance import stamp
@@ -124,9 +121,8 @@ def create(
     ext = (audio_ext or "").lower()
     if audio_file is not None and ext not in AUDIO_EXTENSIONS:
         raise ValueError(f"Unsupported audio type {ext!r}.")
-    consent_ext = (consent_ext or "").lower()
-    if kind == "clone" and (consent_file is None or consent_ext not in AUDIO_EXTENSIONS or not fields.get("consent")):
-        raise ValueError("A cloned voice needs its consent recording and record.")
+    if kind == "clone" and (audio_file is None or not fields.get("consent")):
+        raise ValueError("A cloned voice needs its voice sample and permission record.")
     now = int(time.time())
     text = str(fields.get("text") or "")
     item: dict[str, Any] = {
@@ -148,9 +144,8 @@ def create(
         if audio_file is not None:
             shutil.move(str(audio_file), str(library_dir() / f"{item['id']}{ext}"))
             item["audio"] = ext
-        if kind == "clone" and consent_file is not None:
-            shutil.move(str(consent_file), str(library_dir() / f"{item['id']}.consent{consent_ext}"))
-            item["consent"] = {**fields["consent"], "audio": consent_ext}
+        if kind == "clone":
+            item["consent"] = dict(fields["consent"])
         _write(item)
     return item
 
@@ -222,9 +217,6 @@ def delete(item_id: str) -> bool:
         path = audio_path(item_id)
         if path is not None:
             path.unlink(missing_ok=True)
-        consent_ext = str((meta.get("consent") or {}).get("audio") or "")
-        if consent_ext in AUDIO_EXTENSIONS:
-            (library_dir() / f"{item_id}.consent{consent_ext}").unlink(missing_ok=True)
         meta_path.unlink()
     if meta.get("kind") == "clone":
         from backend_service.voice_clone_safety import audit  # noqa: PLC0415

@@ -15,8 +15,8 @@ from backend_service.mcp_bridge.tools import ToolError, _obj, _submitted
 MUSIC_TOOLS: list[dict[str, Any]] = [
     {
         "name": "make_music",
-        "description": "Start a music job (returns a job id): a song with lyrics, or instrumental=true. 10 to 600 s; "
-        "about 1 s per 10 s of audio once loaded. Tracks land in the Music Library as FLAC. Poll with wait_for_job.",
+        "description": "Make: start a music job (returns a job id): a song with lyrics, or instrumental=true. 10 to 600 s, "
+        "FLAC into the Music Library. Cancellable while running.",
         "inputSchema": _obj(
             {
                 "caption": {"type": "string", "minLength": 1, "maxLength": 512, "description": "Style: genre, instruments, mood, voice."},
@@ -86,7 +86,9 @@ def make_music(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
         return output, notes
 
     label = f"{int(body.seconds)} s {'instrumental' if body.instrumental else 'song'}"
-    return _submitted(STORE.submit("music", label, run))
+    per_10s = (variant.get("estimates") or {}).get("secondsPer10sAudio")
+    estimate = round(body.seconds / 10 * per_10s) if per_10s else None
+    return _submitted(STORE.submit("music", label, run, estimate_seconds=estimate))
 
 
 MUSIC_HANDLERS: dict[str, Callable[[Any, dict[str, Any]], dict[str, Any]]] = {"make_music": make_music}

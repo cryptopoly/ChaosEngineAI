@@ -22,7 +22,7 @@ from backend_service import music_env
 _ID_PATTERN = re.compile(r"^\d+_[0-9a-f]{8}$")
 _TAG_PATTERN = re.compile(r"^[^\x00-\x1f]{1,40}$")
 AUDIO_EXTENSIONS = (".flac", ".wav")
-KINDS = ("track",)
+KINDS = ("track", "sound")
 MAX_TAGS = 20
 _LOCK = threading.Lock()
 
@@ -64,8 +64,8 @@ def clean_tags(tags: list[Any]) -> list[str]:
     return seen[:MAX_TAGS]
 
 
-def _title_from(text: str) -> str:
-    return " ".join(text.split())[:60].strip() or "Untitled track"
+def _title_from(text: str, fallback: str = "Untitled track") -> str:
+    return " ".join(text.split())[:60].strip() or fallback
 
 
 def create(fields: dict[str, Any], audio_file: Path, audio_ext: str = ".flac") -> dict[str, Any]:
@@ -75,10 +75,11 @@ def create(fields: dict[str, Any], audio_file: Path, audio_ext: str = ".flac") -
         raise ValueError(f"Unsupported audio type {ext!r}.")
     now = int(time.time())
     caption = str(fields.get("caption") or "")
+    kind = fields.get("kind") if fields.get("kind") in KINDS else "track"
     item: dict[str, Any] = {
         "id": _new_id(),
-        "kind": "track",
-        "title": str(fields.get("title") or _title_from(caption))[:200],
+        "kind": kind,
+        "title": str(fields.get("title") or _title_from(caption, "Untitled sound" if kind == "sound" else "Untitled track"))[:200],
         "caption": caption,
         "lyrics": str(fields.get("lyrics") or ""),
         "tags": clean_tags(list(fields.get("tags") or [])),
@@ -87,7 +88,7 @@ def create(fields: dict[str, Any], audio_file: Path, audio_ext: str = ".flac") -
         "audio": ext,
     }
     for key in ("model", "modelName", "engine", "seed", "durationS", "sampleRate", "channels", "bpm", "key",
-                "instrumental", "variation", "jobSeconds", "peakFootprintGb", "source", "sizeBytes", "tagged"):
+                "instrumental", "variation", "jobSeconds", "peakFootprintGb", "source", "sizeBytes", "tagged", "loop", "licence"):
         if fields.get(key) is not None:
             item[key] = fields[key]
     with _LOCK:

@@ -46,6 +46,11 @@ def _friendly_hf_download_error(repo_id: str, error: str) -> str:
     # rather than a network or repo error. Translate it into actionable
     # guidance (open Setup → install pyyaml) instead of a cryptic Python
     # traceback rendered as the download status.
+    from backend_service.helpers.music import gated_music_message
+
+    gated_message = gated_music_message(repo_id, error)
+    if gated_message is not None:
+        return gated_message
     if "no module named 'yaml" in lowered or "no module named yaml" in lowered:
         return (
             "The backend Python is missing PyYAML, which huggingface_hub needs "

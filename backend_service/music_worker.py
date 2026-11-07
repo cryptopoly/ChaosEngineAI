@@ -44,7 +44,8 @@ sys.path[:] = [entry for entry in sys.path if not _same_dir(entry)]
 ENGINE_MODULE_ENV = "CHAOSENGINE_MUSIC_ENGINE_MODULE"  # tests point this at a fake engine file
 DATA_DIR = Path(os.environ.get("CHAOSENGINE_MUSIC_DATA") or Path.home() / ".chaosengine" / "music").resolve()
 ENGINE_VERSION = os.environ.get("CHAOSENGINE_MUSIC_ENGINE_VERSION", "unknown")
-TASKS = ("text2music",)
+TASKS = ("text2music",)  # an engine file may declare its own ``TASKS`` and ``SECONDS_RANGE``
+SECONDS_RANGE = (10, 600)
 _JOB_ID = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 _PATH_FIELDS = ("out_dir", "src_audio", "reference_audio")
 # VAE decode has no hook; it takes about 0.05 to 0.07 s per second of audio (spike section 6.1).
@@ -170,11 +171,14 @@ def _load_engine_module() -> Any:
 
 
 _engine_cache: dict[str, Any] = {}
+_engine_module_cache: dict[str, Any] = {}
 
 
 def engine() -> Any:
     if "engine" not in _engine_cache:
-        _engine_cache["engine"] = _load_engine_module().create_engine(DATA_DIR)
+        module = _engine_module_cache.get("module") or _load_engine_module()
+        _engine_module_cache["module"] = module
+        _engine_cache["engine"] = module.create_engine(DATA_DIR)
     return _engine_cache["engine"]
 
 
@@ -198,11 +202,23 @@ def _inside_data_dir(raw: Any, name: str) -> None:
         raise ValueError(f"{name} must be inside the music data folder.")
 
 
+def _engine_limits() -> tuple[tuple[str, ...], tuple[float, float]]:
+    """(tasks, (min seconds, max seconds)) the loaded engine file allows; the music defaults without one."""
+    module = _engine_module_cache.get("module")
+    if module is None:
+        try:
+            module = _engine_module_cache["module"] = _load_engine_module()
+        except Exception:  # noqa: BLE001 - a broken engine file is reported by engine_unavailable()
+            return TASKS, SECONDS_RANGE
+    return tuple(getattr(module, "TASKS", TASKS)), tuple(getattr(module, "SECONDS_RANGE", SECONDS_RANGE))  # type: ignore[return-value]
+
+
 def check_generate(request: dict[str, Any]) -> None:
     job = str(request.get("job") or "")
     if not _JOB_ID.fullmatch(job):
         raise ValueError("job must be 1 to 64 letters, digits, '-' or '_'.")
-    if request.get("task", "text2music") not in TASKS:
+    tasks, (min_seconds, max_seconds) = _engine_limits()
+    if request.get("task", tasks[0]) not in tasks:
         raise ValueError(f"Task {request.get('task')!r} is not supported yet.")
     if not request.get("out_dir"):
         raise ValueError("out_dir is required.")
@@ -210,8 +226,8 @@ def check_generate(request: dict[str, Any]) -> None:
         if request.get(name):
             _inside_data_dir(request[name], name)
     seconds = float(request.get("seconds") or 0)
-    if not 10 <= seconds <= 600:
-        raise ValueError("seconds must be between 10 and 600.")
+    if not min_seconds <= seconds <= max_seconds:
+        raise ValueError(f"seconds must be between {min_seconds:g} and {max_seconds:g}.")
     if int(request.get("variations") or 1) not in (1, 2, 4):
         raise ValueError("variations must be 1, 2 or 4.")
     if request.get("seed") is None:

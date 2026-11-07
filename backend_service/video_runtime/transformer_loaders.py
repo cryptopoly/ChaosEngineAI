@@ -36,8 +36,12 @@ def try_load_gguf_transformer(
     gguf_repo: str,
     gguf_file: str,
     torch: Any,
+    subfolder: str = "transformer",
 ) -> tuple[Any, str | None]:
     """Load a video DiT from a single ``.gguf`` file via diffusers.
+
+    ``subfolder`` names the base repo folder whose ``config.json`` shapes the
+    model: ``transformer_2`` for the low-noise expert of a Wan 2.2 A14B row.
 
     Mirrors the image-side loader: GGUF weights cover the DiT only;
     VAE and text encoders are loaded from the base ``repo`` snapshot.
@@ -102,7 +106,7 @@ def try_load_gguf_transformer(
             ),
             torch_dtype=torch.bfloat16,
             config=repo,
-            subfolder="transformer",
+            subfolder=subfolder,
         )
         return transformer, f"Transformer loaded from GGUF ({gguf_file})"
     except Exception as exc:  # noqa: BLE001 — any failure → fall back

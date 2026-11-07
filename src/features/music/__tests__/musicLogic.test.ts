@@ -339,6 +339,13 @@ describe("library filter and sort", () => {
     expect(filterLibrary(items, { ...base, sort: "longest" }).map((i) => i.title)).toEqual(["Rain", "Drive", "Lo-fi piano"]);
   });
 
+  it("filters by project, with a no-project choice", () => {
+    const tagged = [{ ...items[0], projectId: "p1", projectName: "Harbour" }, items[1], items[2]];
+    expect(filterLibrary(tagged, { ...base, project: "p1" }).map((i) => i.title)).toEqual(["Rain"]);
+    expect(filterLibrary(tagged, { ...base, project: "__none__" }).map((i) => i.title)).toEqual(["Drive", "Lo-fi piano"]);
+    expect(filterLibrary(tagged, { ...base, project: "all" })).toHaveLength(3);
+  });
+
   it("filters by text over title, prompt and tags, and by tag without regard to case", () => {
     expect(filterLibrary(items, { ...base, query: "rain" }).map((i) => i.title)).toEqual(["Rain"]);
     expect(filterLibrary(items, { ...base, query: "synthwave" }).map((i) => i.title)).toEqual(["Drive"]);

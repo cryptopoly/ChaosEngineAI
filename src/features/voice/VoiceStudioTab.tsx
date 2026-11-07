@@ -84,7 +84,7 @@ export function VoiceStudioTab({ voiceRuntime, backendOnline, openRequest, onSen
         />
       </div>
       <div className={`voice-studio__pane span-2${mode === "speak" ? "" : " voice-studio__pane--hidden"}`}>
-        <SpeakPanel runtime={voiceRuntime} />
+        <SpeakPanel runtime={voiceRuntime} onTabChange={onTabChange} />
       </div>
     </div>
   );

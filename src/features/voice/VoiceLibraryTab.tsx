@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { MediaLibraryCard } from "../../components/MediaLibraryCard";
+import { SendToStoryboardMenu } from "../../components/SendToStoryboardMenu";
 import { Panel } from "../../components/Panel";
 import { deleteLibraryItems, getLibrary, getLibraryAudio, getLibraryItem } from "../../api";
-import type { VoiceLibraryKind, VoiceLibrarySummary } from "../../types";
+import type { TabId, VoiceLibraryKind, VoiceLibrarySummary } from "../../types";
+import type { SendItem } from "../storyboard/sendToStoryboardLogic";
+import { useSendToStoryboard, type UseSendToStoryboard } from "../storyboard/useSendToStoryboard";
 import { downloadBlob, formatClock } from "./audio";
 import { exportTranscript, speakerNamer, type ExportFormat } from "./studio/transcript";
 
@@ -11,6 +14,8 @@ export interface VoiceLibraryTabProps {
   backendOnline: boolean;
   /** Open a transcript in Voice Studio's editor. */
   onOpenTranscript: (id: string) => void;
+  /** Moves to another tab; used by Send to storyboard. */
+  onTabChange?: (tab: TabId) => void;
 }
 
 type Filter = "" | VoiceLibraryKind;
@@ -25,12 +30,14 @@ function LibraryCard({
   onSelect,
   onOpen,
   onDelete,
+  storyboard,
 }: {
   item: VoiceLibrarySummary;
   selected: boolean;
   onSelect: (on: boolean) => void;
   onOpen: () => void;
   onDelete: () => void;
+  storyboard: UseSendToStoryboard;
 }) {
   const { t } = useTranslation("studio");
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
@@ -78,6 +85,20 @@ function LibraryCard({
     item.speakerCount > 0 ? t("voice.library.speakers", { defaultValue: "{n} speakers", n: item.speakerCount }) : null,
     item.kind === "speech" && item.voice ? item.voice : null,
   ].filter(Boolean);
+
+  // Saved speech is the voice-over a film can use; the file path comes from the server when it is sent.
+  const sendItem: SendItem | null =
+    item.kind === "speech" && item.audio
+      ? {
+          kind: "voice",
+          label: item.title,
+          resolvePath: async () => {
+            const path = (await getLibraryItem(item.id)).audioPath;
+            if (!path) throw new Error(t("sendToStoryboard.noFile", { defaultValue: "This item has no file to send." }));
+            return path;
+          },
+        }
+      : null;
 
   return (
     <MediaLibraryCard
@@ -132,14 +153,26 @@ function LibraryCard({
           <button type="button" className="secondary-button" onClick={onDelete}>
             {t("voice.library.delete", { defaultValue: "Delete" })}
           </button>
+          <SendToStoryboardMenu
+            item={sendItem}
+            projects={storyboard.projects}
+            loaded={storyboard.loaded}
+            busy={storyboard.busy}
+            notice={storyboard.notice}
+            enabled={storyboard.enabled}
+            onOpen={() => void storyboard.loadProjects()}
+            onDismissNotice={storyboard.dismissNotice}
+            onSend={(projectId, target) => storyboard.send(sendItem as SendItem, projectId, target)}
+          />
         </>
       }
     />
   );
 }
 
-export function VoiceLibraryTab({ backendOnline, onOpenTranscript }: VoiceLibraryTabProps) {
+export function VoiceLibraryTab({ backendOnline, onOpenTranscript, onTabChange }: VoiceLibraryTabProps) {
   const { t } = useTranslation("studio");
+  const storyboard = useSendToStoryboard((tab) => onTabChange?.(tab));
   const [items, setItems] = useState<VoiceLibrarySummary[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [query, setQuery] = useState("");
@@ -268,6 +301,7 @@ export function VoiceLibraryTab({ backendOnline, onOpenTranscript }: VoiceLibrar
                     }
                     onOpen={() => onOpenTranscript(item.id)}
                     onDelete={() => void remove([item.id])}
+                    storyboard={storyboard}
                   />
                 ))}
               </div>

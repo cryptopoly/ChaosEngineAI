@@ -1,11 +1,14 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
+import { SendToStoryboardMenu } from "../../components/SendToStoryboardMenu";
 import { SoundBadge } from "../../components/SoundBadge";
 import { VideoSoundToggle } from "../../components/VideoSoundToggle";
 import { fetchVideoOutputBlobUrl } from "../../api";
 import type { VideoOutputArtifact } from "../../types";
 import { formatImageTimestamp, number } from "../../utils";
+import type { SendItem } from "../storyboard/sendToStoryboardLogic";
+import { useSendToStoryboard } from "../storyboard/useSendToStoryboard";
 import { modelsPageRequest, type TabRequest } from "../../constants/tabRedirects";
 
 export interface VideoGalleryTabProps {
@@ -29,6 +32,7 @@ export function VideoGalleryTab({
   const { t: tStudio, i18n } = useTranslation("studio");
   const [expandedArtifactId, setExpandedArtifactId] = useState<string | null>(null);
   const [autoPlayVideos, setAutoPlayVideos] = useState(true);
+  const storyboard = useSendToStoryboard((tab) => onActiveTabChange(tab));
   const expandedArtifact = videoOutputs.find((artifact) => artifact.artifactId === expandedArtifactId) ?? null;
   const displayedArtifacts = expandedArtifact ? [expandedArtifact] : videoOutputs;
 
@@ -99,6 +103,19 @@ export function VideoGalleryTab({
                 }}
                 onRevealPath={onRevealPath}
                 onDelete={onDeleteVideoArtifact}
+                extraActions={
+                  <SendToStoryboardMenu
+                    item={artifact.videoPath ? clipItem(artifact) : null}
+                    projects={storyboard.projects}
+                    loaded={storyboard.loaded}
+                    busy={storyboard.busy}
+                    notice={storyboard.notice}
+                    enabled={storyboard.enabled}
+                    onOpen={() => void storyboard.loadProjects()}
+                    onDismissNotice={storyboard.dismissNotice}
+                    onSend={(projectId, target) => storyboard.send(clipItem(artifact), projectId, target)}
+                  />
+                }
               />
             ))}
           </div>
@@ -106,6 +123,11 @@ export function VideoGalleryTab({
       </Panel>
     </div>
   );
+}
+
+/** What the Use in storyboard menu sends for a saved clip. */
+function clipItem(artifact: VideoOutputArtifact): SendItem {
+  return { kind: "video", path: artifact.videoPath as string, prompt: artifact.prompt, seconds: artifact.clipDurationSeconds };
 }
 
 const CLIP_UNMUTED_EVENT = "chaosengine:gallery-clip-unmuted";
@@ -119,6 +141,8 @@ interface VideoOutputCardProps {
   onToggleExpanded: (artifactId: string) => void;
   onRevealPath: (path: string) => void;
   onDelete: (artifactId: string) => void;
+  /** Extra buttons at the end of the action row (the Use in storyboard menu). */
+  extraActions?: ReactNode;
 }
 
 /**
@@ -137,6 +161,7 @@ function VideoOutputCard({
   onToggleExpanded,
   onRevealPath,
   onDelete,
+  extraActions,
 }: VideoOutputCardProps) {
   const { t: tStudio } = useTranslation("studio");
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
@@ -344,6 +369,7 @@ function VideoOutputCard({
           >
             {tStudio("videoGallery.card.delete", { defaultValue: "Delete" })}
           </button>
+          {extraActions}
         </div>
       </div>
     </article>

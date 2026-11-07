@@ -168,6 +168,11 @@ export function MusicStudioTab({ music, backendOnline, onTabChange }: MusicStudi
     );
   }
 
+  // i18n-extract: musicStudio.progress.load
+  // i18n-extract: musicStudio.progress.encode
+  // i18n-extract: musicStudio.progress.compose
+  // i18n-extract: musicStudio.progress.decode
+  // i18n-extract: musicStudio.progress.save
   const phases: LiveProgressPhase[] = MUSIC_PHASE_IDS.map((id) => ({
     id,
     label: t(`musicStudio.progress.${id}`, { defaultValue: id }),

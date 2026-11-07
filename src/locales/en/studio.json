@@ -971,12 +971,114 @@
     "result": {
       "loop": "Loop",
       "play": "Play {title}, {seconds} seconds",
-      "stop": "Stop"
+      "stop": "Stop",
+      "again": "Again",
+      "againTitle": "Same settings, a new random seed.",
+      "audioFailed": "The audio file could not be loaded.",
+      "audioLoading": "Loading the audio…",
+      "done": "Done",
+      "doneIn": "Done in {time}",
+      "openLibrary": "Open in Library",
+      "seed": "seed {seed}",
+      "vary": "Vary",
+      "varyTitle": "Same settings, the next seed ({seed})."
     },
     "options": {
       "reference": "Reference audio",
-      "referenceRights": "You are responsible for rights in audio you supply."
-    }
+      "referenceRights": "You are responsible for rights in audio you supply.",
+      "auto": "Auto",
+      "bpm": "BPM",
+      "key": "Key",
+      "randomSeed": "Random seed",
+      "seed": "Seed",
+      "summaryBpm": "BPM {value}",
+      "summaryKey": "Key {value}",
+      "summarySeed": "Seed {n}",
+      "summaryVariations": "{n, plural, one {# variation} other {# variations}}",
+      "tempoKey": "Tempo and key",
+      "variations": "Variations",
+      "variationsCost": "Each variation adds the same time again.",
+      "variationsTotal": "About {time} for {n}."
+    },
+    "artistWarning": "Naming an artist can produce a copy of their style. Describe the sound instead.",
+    "cancel": "Cancel",
+    "cancelling": "Cancelling…",
+    "empty": "No music yet. Describe a track and press Make track.",
+    "error": {
+      "cancelled": "Cancelled.",
+      "generic": "The track could not be made.",
+      "invalid": "The track could not be started with these settings.",
+      "memory": "There is not enough free memory for this track. Try a shorter length.",
+      "notReady": "The music model is not ready to run.",
+      "offline": "The backend did not answer. Check that it is running, then try again.",
+      "useShorter": "Use a shorter length"
+    },
+    "expert": {
+      "aiTagNote": "A machine-readable tag in the audio file. It is on by default; switch it off for private use.",
+      "idleUnload": "Unload the model after this many idle minutes (0 keeps it loaded)",
+      "model": "Model",
+      "output": "Output: FLAC, 24-bit, 48 kHz, stereo.",
+      "summaryIdle": "Unload after {n} min",
+      "summaryTagOff": "AI tag off"
+    },
+    "issue": {
+      "bpmRange": "BPM must be 30 to 300, or Auto.",
+      "captionEmpty": "Describe the music to make a track.",
+      "captionTooLong": "The description is longer than {max} characters.",
+      "lyricsEmpty": "Add lyrics, or switch to Instrumental.",
+      "lyricsTooLong": "The lyrics are longer than {max} characters.",
+      "secondsRange": "Length must be {min} to {max} seconds.",
+      "seedRange": "The seed must be a whole number from 0 up.",
+      "variations": "Variations must be 1, 2 or 4."
+    },
+    "latest": "Latest",
+    "length": {
+      "custom": "Custom",
+      "customLabel": "Length in seconds",
+      "label": "Length",
+      "minutes": "{n} min",
+      "range": "{min} to {max} s",
+      "seconds": "{n} s"
+    },
+    "library": "Library",
+    "loading": "Loading the music models…",
+    "lyrics": {
+      "label": "Lyrics",
+      "placeholder": "[verse] ... [chorus] ...",
+      "rights": "You are responsible for rights in lyrics you type."
+    },
+    "make": "Make track",
+    "making": "Making…",
+    "mode": {
+      "instrumental": "Instrumental",
+      "label": "Kind of track",
+      "song": "Song"
+    },
+    "noModel": "No music model installed yet.",
+    "noModelSize": "{name} is about {size} GB.",
+    "offline": "Waiting for the backend…",
+    "openLibrary": "Open Library",
+    "openModels": "Open Music Models",
+    "packMissing": "The music pack is not installed yet. Install it from Music Models (about 1.6 GB).",
+    "progress": {
+      "compose": "Compose",
+      "decode": "Decode audio",
+      "encode": "Encode",
+      "load": "Load model",
+      "save": "Save"
+    },
+    "prompt": {
+      "label": "Describe the music",
+      "placeholder": "warm lo-fi hip hop, vinyl crackle, mellow piano, 85 bpm"
+    },
+    "queued": "Queued: yours starts after the job ahead of it.",
+    "running": "Making your track",
+    "status": {
+      "installed": "Installed",
+      "loaded": "Loaded",
+      "notInstalled": "Not installed"
+    },
+    "title": "Music Studio"
   },
   "audioPlayer": {
     "timeOf": "{current} of {total}"
@@ -1338,5 +1440,117 @@
       "negativeEdited": "Negative prompt edited",
       "endImageSet": "End image set"
     }
+  },
+  "musicLibrary": {
+    "addTag": "Add tag",
+    "clearFilters": "Clear filters",
+    "confirmDelete": "Delete this item and its audio? This cannot be undone.",
+    "confirmDeleteMany": "Delete {n} items and their audio? This cannot be undone.",
+    "delete": "Delete",
+    "deleteSelected": "Delete selected ({n})",
+    "empty": "No music yet. Describe a track and press Make track.",
+    "filter": {
+      "anyTag": "Any tag",
+      "tag": "Tag"
+    },
+    "kind": {
+      "sound": "Sound",
+      "track": "Track"
+    },
+    "layout": {
+      "grid": "Grid",
+      "label": "Layout",
+      "list": "List"
+    },
+    "loading": "Loading your library…",
+    "makeAnother": "Make another like this",
+    "noMatch": "Nothing matches.",
+    "openStudio": "Open Studio",
+    "removeTag": "Remove tag {tag}",
+    "rename": "Rename",
+    "search": "Search titles, prompts, tags",
+    "select": "Select {title}",
+    "sort": {
+      "label": "Sort",
+      "longest": "Longest first",
+      "newest": "Newest first",
+      "oldest": "Oldest first"
+    },
+    "subtitle": "{tracks, plural, one {# track} other {# tracks}} · {sounds, plural, one {# sound} other {# sounds}} · {size} on disk",
+    "title": "Music Library"
+  },
+  "musicModels": {
+    "action": {
+      "openHuggingFace": "Open on Hugging Face",
+      "openInStudio": "Open in Studio"
+    },
+    "column": {
+      "fit": "Fit",
+      "licence": "Licence",
+      "makes": "Makes",
+      "model": "Model",
+      "size": "Size",
+      "status": "Status"
+    },
+    "detail": {
+      "fit": "Fit on this machine",
+      "licence": "Licence",
+      "openModelCard": "Open model card",
+      "repo": "Repository",
+      "requires": "Also needs",
+      "size": "Download",
+      "speed": "Speed"
+    },
+    "downloadFailed": "The download did not finish.",
+    "empty": {
+      "attention": "No music model needs attention.",
+      "catalog": "No music models in the catalog yet.",
+      "downloading": "No music model is downloading.",
+      "firstRun": "Pick a music model to start. {name} ({size}, {licence}) fits this machine.",
+      "firstRunAction": "Download {name}",
+      "installed": "No music models installed yet. Pick one from the available models to download it."
+    },
+    "filter": {
+      "commercialOnly": "Commercial use ok",
+      "licence": "Licence",
+      "licenceAny": "Any licence",
+      "makes": "Makes",
+      "makesAll": "Everything"
+    },
+    "intro": "Music models run on this computer. Download one, then open the Studio to make a track.",
+    "memory": {
+      "pending": "not estimated",
+      "pendingTitle": "No memory figure for this model yet."
+    },
+    "openStudio": "Open Studio",
+    "pack": {
+      "body": "The pack runs the music models. About {size} GB, installed once.",
+      "cancel": "Cancel",
+      "failedBody": "The details are below. You can try again.",
+      "failedTitle": "The music pack could not be installed.",
+      "install": "Install the music pack",
+      "log": "Install log",
+      "title": "Install the music pack",
+      "working": "Working…"
+    },
+    "platform": {
+      "appleSilicon": "Apple Silicon",
+      "cpu": "CPU",
+      "cuda": "CUDA"
+    },
+    "search": "Search models, licence, what they make",
+    "sort": {
+      "fit": "Best fit first",
+      "fitSummary": "best fit first",
+      "largestFirst": "largest first",
+      "name": "Name",
+      "nameSummary": "name A-Z",
+      "size": "Size",
+      "smallestFirst": "smallest first",
+      "status": "Status",
+      "statusSummary": "installed first"
+    },
+    "title": "Music Models",
+    "unavailable": "Music needs an Apple Silicon Mac for now."
   }
 }

@@ -7,6 +7,7 @@ import type { TabId, TtsVoice, VoiceRuntime } from "../../../types";
 import { shotTitleFrom, type SendItem } from "../../storyboard/sendToStoryboardLogic";
 import { useSendToStoryboard } from "../../storyboard/useSendToStoryboard";
 import { downloadBlob, formatClock } from "../audio";
+import { ClonePanel } from "../clone/ClonePanel";
 import { speechPlayer, useSpeechPlayer } from "../speechPlayer";
 import { useVoice } from "../VoiceContext";
 import { joinWavs, splitSpeech } from "./speech";
@@ -233,6 +234,7 @@ export function SpeakPanel({ runtime, onTabChange }: { runtime: VoiceRuntime; on
             </div>
           </div>
         ) : null}
+        <ClonePanel onTabChange={onTabChange} />
       </div>
     </Panel>
   );

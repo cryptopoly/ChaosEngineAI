@@ -58,13 +58,13 @@ describe("home studio visibility", () => {
 });
 
 describe("sidebar sections and accordion", () => {
-  it("lists Make then Run section labels around the groups", () => {
+  it("puts Chat on top, then Make and Run section labels around the groups", () => {
     const rows = arrangeRows(buildItems(visibleSidebarTabs(tabs, "Darwin", true)));
     const names = rows.map((row) => (row.kind === "section" ? `#${row.section}` : row.kind === "group" ? row.id : row.tab.id));
     expect(names).toEqual([
-      "dashboard",
+      "dashboard", "chat",
       "#make", "images", "video", "voice", "music", "storyboard",
-      "#run", "chat", "benchmarks", "tools",
+      "#run", "benchmarks", "tools",
       "server", "logs", "settings",
     ]);
   });

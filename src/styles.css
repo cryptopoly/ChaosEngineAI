@@ -2539,6 +2539,28 @@ select.text-input {
   gap: 16px;
 }
 
+.terms-overlay {
+  z-index: 1000;
+}
+
+.terms-dialog {
+  width: min(560px, 92vw);
+}
+
+.terms-points {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.terms-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .conversion-result-modal .modal-content {
   width: min(640px, 92vw);
 }

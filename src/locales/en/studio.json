@@ -1434,7 +1434,6 @@
     }
   },
   "aiLabel": {
-    "endCard": "Add an AI-generated end card",
     "forced": "This project uses a cloned voice, so the AI tag is always written.",
     "metadata": "Add a machine-readable AI tag",
     "metadataTitle": "A machine-readable tag in the MP4 metadata. It holds no prompts or folder names.",

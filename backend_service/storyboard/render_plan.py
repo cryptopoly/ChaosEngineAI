@@ -24,7 +24,6 @@ _ID = re.compile(r"^[A-Za-z0-9_.:-]{1,128}$")
 # A URL or protocol prefix ("http:", "concat:", "file:"). One letter is a Windows drive ("C:\\").
 _SCHEME = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]+:")
 
-MAX_END_CARD_CHARS = 200
 MAX_METADATA_BYTES = 8192
 
 
@@ -120,18 +119,6 @@ def _bool(value: Any, where: str) -> bool:
 def _mapping(value: Any, where: str) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise _fail(where, "must be an object")
-    return value
-
-
-def check_card_text(value: Any, where: str) -> str:
-    """Printable text, up to 200 characters; line breaks allowed, other control characters not."""
-    if not isinstance(value, str) or not value.strip():
-        raise _fail(where, "must be non-empty text")
-    if len(value) > MAX_END_CARD_CHARS:
-        raise _fail(where, f"must be at most {MAX_END_CARD_CHARS} characters")
-    for ch in value:
-        if ch != "\n" and (ord(ch) < 32 or 0x7F <= ord(ch) < 0xA0 or ch in "\u2028\u2029"):
-            raise _fail(where, "must not contain control characters")
     return value
 
 
@@ -257,21 +244,6 @@ class AudioInput:
 
 
 @dataclass
-class EndCard:
-    text: str
-    seconds: float = 3.0
-
-    @classmethod
-    def from_dict(cls, data: Any, where: str = "end_card") -> "EndCard":
-        data = _mapping(data, where)
-        return cls(text=check_card_text(data.get("text"), f"{where}.text"),
-                   seconds=_num(data.get("seconds", 3.0), f"{where}.seconds", lo=0.5, hi=30.0))
-
-    def to_dict(self) -> dict[str, Any]:
-        return {"text": self.text, "seconds": self.seconds}
-
-
-@dataclass
 class RenderPlan:
     width: int
     height: int
@@ -283,7 +255,6 @@ class RenderPlan:
     loudness_lufs: float | None = -16.0
     audio: list[AudioInput] = field(default_factory=list)
     metadata: dict[str, str] = field(default_factory=dict)
-    end_card: EndCard | None = None
     captions_srt: str | None = None
 
     @classmethod
@@ -320,7 +291,6 @@ class RenderPlan:
                 raise _fail("metadata", "keys and values must be strings")
         if sum(len(k.encode()) + len(v.encode()) for k, v in metadata.items()) > MAX_METADATA_BYTES:
             raise _fail("metadata", f"must be at most {MAX_METADATA_BYTES} bytes")
-        end_card = data.get("end_card")
         captions = data.get("captions_srt")
         if captions is not None:
             captions = check_input_file(captions, "captions_srt")
@@ -337,7 +307,6 @@ class RenderPlan:
             shots=shots,
             audio=audio,
             metadata=dict(metadata),
-            end_card=EndCard.from_dict(end_card) if end_card is not None else None,
             captions_srt=captions,
         )
 
@@ -348,7 +317,6 @@ class RenderPlan:
             "shots": [shot.to_dict() for shot in self.shots],
             "audio": [clip.to_dict() for clip in self.audio],
             "metadata": dict(self.metadata),
-            "end_card": self.end_card.to_dict() if self.end_card else None,
             "captions_srt": self.captions_srt,
         }
 

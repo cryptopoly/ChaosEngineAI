@@ -33,10 +33,10 @@ import {
 
 type Parts = Pick<StoryboardProject, "audio" | "export">;
 
-function parts(cloned = false, embedTag = true, endCard = false): Parts {
+function parts(cloned = false, embedTag = true): Parts {
   return {
     audio: [{ source: { clonedVoice: cloned } }] as unknown as StoryboardProject["audio"],
-    export: { aiLabel: { embedTag, endCard }, loudnessLufs: -14, endCardText: "", endCardSeconds: 2 },
+    export: { aiLabel: { embedTag }, loudnessLufs: -14 },
   };
 }
 
@@ -75,13 +75,13 @@ describe("export presets", () => {
 });
 
 describe("AI label rules (D-34)", () => {
-  it("is on by default and the end card is off", () => {
-    expect(aiLabelState(parts())).toEqual({ metadata: true, forced: false, endCard: false });
+  it("is on by default", () => {
+    expect(aiLabelState(parts())).toEqual({ metadata: true, forced: false });
   });
 
   it("a cloned voice locks the tag on whatever the switch says", () => {
     const state = aiLabelState(parts(true, false));
-    expect(state).toEqual({ metadata: true, forced: true, endCard: false });
+    expect(state).toEqual({ metadata: true, forced: true });
     expect(hasClonedVoice(parts(true))).toBe(true);
     expect(hasClonedVoice(parts(false))).toBe(false);
   });
@@ -91,9 +91,8 @@ describe("AI label rules (D-34)", () => {
     expect(aiLabelState(parts(false, false)).metadata).toBe(false);
   });
 
-  it("refuses to change the tag of a cloned-voice project but still takes the end card", () => {
+  it("refuses to change the tag of a cloned-voice project", () => {
     expect(aiLabelPatch(parts(true), { metadata: false })).toBeNull();
-    expect(aiLabelPatch(parts(true), { metadata: false, endCard: true })).toEqual({ export: { aiLabel: { endCard: true } } });
   });
 
   it("sends nothing when nothing changed", () => {

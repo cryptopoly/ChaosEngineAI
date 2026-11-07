@@ -128,6 +128,7 @@ export function SettingsView({ ctx }: { ctx: AppTabContext }) {
     handleRestartServer,
   } = ctx.settings;
   return <SettingsTab
+    terms={workspace.settings}
     hostSystem={workspace.system}
     settingsDraft={settingsDraft}
     onSettingsDraftChange={setSettingsDraft}

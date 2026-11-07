@@ -1200,5 +1200,136 @@
     "offline": "Waiting for the backend…",
     "pathPlaceholder": "/path/to/file",
     "pickUnavailable": "The file picker is not available here. Type the path instead."
+  },
+  "mixer": {
+    "add": {
+      "cloned": "This clip uses a cloned voice"
+    },
+    "addAudioTo": "Add audio to {lane}",
+    "addButton": "Add",
+    "addFromLibrary": "Add from library",
+    "block": {
+      "ariaLabel": "{lane}, {name}, from {start} to {end} seconds"
+    },
+    "board": "Board",
+    "captions": {
+      "burnIn": "Burn in",
+      "label": "Captions",
+      "soon": "Captions are coming",
+      "srt": "SRT file"
+    },
+    "clip": {
+      "ariaLabel": "{lane}, {name}, from {start} to {end} seconds, {gain} dB",
+      "missing": "Missing",
+      "reading": "Reading…",
+      "relink": "Relink"
+    },
+    "crossfade": "Crossfade {seconds} s",
+    "empty": "Nothing to mix yet. Make shots on the Board first.",
+    "export": {
+      "button": "Export MP4",
+      "cancel": "Cancel export",
+      "cancelled": "Export cancelled. Nothing was written.",
+      "copied": "Path copied",
+      "copiedShort": "Copied",
+      "copyPath": "Copy path",
+      "details": "Technical details",
+      "done": "Exported · {size} · {duration}",
+      "download": "Download",
+      "exporting": "Exporting…",
+      "failedShort": "Export failed. Nothing was written.",
+      "loudness": "Loudness target",
+      "loudnessHint": "{target} LUFS suits web video. Empty leaves the mix as it is.",
+      "loudnessOff": "Off",
+      "phase": {
+        "encode": "Encode",
+        "join": "Join",
+        "mix": "Mix sound",
+        "normalise": "Normalise shots"
+      },
+      "pixels": "{width} × {height} px.",
+      "preset": {
+        "landscape": "16:9",
+        "portrait": "9:16",
+        "square": "1:1"
+      },
+      "reframeNote": "Reframed at export; shots are not regenerated.",
+      "retry": "Retry",
+      "reveal": "Reveal file",
+      "shape": "Shape",
+      "title": "Export"
+    },
+    "importAudio": "Import audio",
+    "importAudioPath": "Path of the audio file",
+    "inspector": {
+      "absolute": "Film time (not anchored)",
+      "anchor": "Anchor",
+      "anchorShot": "Shot {n}: {name}",
+      "anchorSummary": "Moves with shot {n}. Offset {offset} s.",
+      "anchorTo": "Anchored to",
+      "duck": "Duck under voice",
+      "duckTitle": "Lowers this clip while someone speaks (sidechain compression).",
+      "empty": "Select a clip on the timeline to edit its sound.",
+      "fadeIn": "Fade in",
+      "fadeOut": "Fade out",
+      "gain": "Gain",
+      "loop": "Loop to fill",
+      "name": "Name",
+      "nativeLevel": "Shot sound level for shot {n}",
+      "offset": "Offset",
+      "remove": "Remove from lane",
+      "shotSpan": "From {start} s, {length} s long",
+      "shotTitle": "Selected shot",
+      "start": "Starts at",
+      "title": "Selected clip",
+      "trim": "Trim",
+      "trimIn": "in",
+      "trimOut": "out"
+    },
+    "lane": {
+      "music": "Music",
+      "native": "Shot sound",
+      "picture": "Picture",
+      "sfx": "Effects",
+      "voice": "Voice"
+    },
+    "leftOut": "{n, plural, one {# shot has no clip yet and is left out of the preview and the export.} other {# shots have no clip yet and are left out of the preview and the export.}}",
+    "noLibraryYet": "The Music Library is not available yet. Choose a file or type its path.",
+    "noProjectTitle": "Mixer",
+    "openBoard": "Open Board",
+    "openOnBoard": "Open on Board",
+    "preview": {
+      "cancel": "Cancel",
+      "failed": "The preview did not render.",
+      "none": "No preview yet. Render one to watch and hear the film.",
+      "render": "Render preview",
+      "rendering": "Rendering preview…",
+      "stale": "Out of date. Render again to hear your latest changes."
+    },
+    "relinkFor": "Find the file for {name}",
+    "ruler": "Timeline ruler. Click to move the playhead.",
+    "subtitle": "{seconds} s · {aspect} · preview {width} × {height}",
+    "timeline": "Timeline",
+    "title": "{project} · Mixer",
+    "transitionsNote": "Transitions shorten the film by their length; the ruler shows the real total.",
+    "transport": {
+      "keys": "Space or K: play / pause. J and L: 5 s back / forward. Left and Right: 1 s (Shift 10 s, Alt one frame). Home / End. + and -: zoom.",
+      "label": "Transport",
+      "loop": "Loop",
+      "needPreview": "Render a preview to play the film.",
+      "pause": "Pause",
+      "play": "Play",
+      "stop": "Stop",
+      "timeOf": "{current} of {total}",
+      "zoomIn": "Zoom in",
+      "zoomOut": "Zoom out"
+    }
+  },
+  "aiLabel": {
+    "endCard": "Add an AI-generated end card",
+    "forced": "This project uses a cloned voice, so the AI tag is always written.",
+    "metadata": "Add a machine-readable AI tag",
+    "metadataTitle": "A machine-readable tag in the MP4 metadata. It holds no prompts or folder names.",
+    "title": "AI label"
   }
 }

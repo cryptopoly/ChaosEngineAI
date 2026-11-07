@@ -15,6 +15,7 @@ import type {
   StoryboardOpArgs,
   StoryboardOpName,
   StoryboardProject,
+  StoryboardPeaks,
   StoryboardProjectPayload,
   StoryboardRenderJob,
 } from "../types";
@@ -228,4 +229,30 @@ export async function fetchStoryboardFileBlobUrl(projectId: string, rel: string)
     throw new StoryboardApiError(`Failed to load ${rel} (${response.status})`, response.status);
   }
   return URL.createObjectURL(await response.blob());
+}
+
+/** Peak buckets are bounded by the server (32 to 4000). */
+export const PEAKS_MIN_BUCKETS = 32;
+export const PEAKS_MAX_BUCKETS = 4000;
+
+/** Waveform peaks of a project file (an audio clip, or a shot's clip for its own sound). */
+export async function getStoryboardPeaks(projectId: string, rel: string, buckets = 400): Promise<StoryboardPeaks> {
+  const count = Math.max(PEAKS_MIN_BUCKETS, Math.min(PEAKS_MAX_BUCKETS, Math.round(buckets)));
+  return await request("GET", `${base(projectId)}/peaks?path=${encodeURIComponent(rel)}&buckets=${count}`, undefined, 120000);
+}
+
+/**
+ * The size in bytes of a project file. A one-byte range request answers it when the response header is
+ * readable (it is hidden from cross-origin pages unless the server exposes it); otherwise the file is read.
+ */
+export async function fetchStoryboardFileSize(projectId: string, rel: string): Promise<number> {
+  const path = storyboardFilePath(projectId, rel);
+  const probe = await apiFetch(path, { method: "GET", headers: { Range: "bytes=0-0" } });
+  if (!probe.ok) throw new StoryboardApiError(`Failed to read ${rel} (${probe.status})`, probe.status);
+  const total = /\/(\d+)$/.exec(probe.headers.get("Content-Range") ?? "");
+  if (total) return Number(total[1]);
+  if (probe.status !== 206) return (await probe.blob()).size;
+  const full = await apiFetch(path, { method: "GET" });
+  if (!full.ok) throw new StoryboardApiError(`Failed to read ${rel} (${full.status})`, full.status);
+  return (await full.blob()).size;
 }

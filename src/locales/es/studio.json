@@ -1342,7 +1342,10 @@
     "dismiss": null,
     "offline": null,
     "pathPlaceholder": null,
-    "pickUnavailable": null
+    "pickUnavailable": null,
+    "films": {
+      "title": null
+    }
   },
   "mixer": {
     "add": {

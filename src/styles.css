@@ -13275,7 +13275,7 @@ button.licence-chip:focus-visible {
 .music-library__toolbar {
   align-items: center;
 }
-.music-library__select {
+select.music-library__select {
   width: auto;
   min-width: 130px;
 }

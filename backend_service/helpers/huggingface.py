@@ -11,7 +11,7 @@ from hashlib import sha256
 from datetime import datetime, timezone
 from typing import Any
 
-from backend_service.catalog import MODEL_FAMILIES, IMAGE_MODEL_FAMILIES, VIDEO_MODEL_FAMILIES
+from backend_service.catalog import MODEL_FAMILIES, IMAGE_MODEL_FAMILIES, MUSIC_MODEL_FAMILIES, VIDEO_MODEL_FAMILIES
 from backend_service.helpers.formatting import _bytes_to_gb
 from backend_service.helpers.discovery import _path_size_bytes
 from backend_service.helpers.hf_cache_paths import (
@@ -404,7 +404,7 @@ def _known_repo_size_gb(repo_id: str) -> float | None:
             if size_gb > 0:
                 return size_gb
 
-    for family in VIDEO_MODEL_FAMILIES:
+    for family in (*VIDEO_MODEL_FAMILIES, *MUSIC_MODEL_FAMILIES):
         for variant in family["variants"]:
             if str(variant.get("repo") or "") != repo_id:
                 continue

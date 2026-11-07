@@ -121,6 +121,9 @@ _NON_CHAT_PATH_KEYWORDS = (
 _NON_CHAT_NAME_KEYWORDS = (
     "text_encoder", "text-encoder", "kokoro", "whisper", "parakeet",
     "dinov", "siglip", "clip-vit",
+    # ACE-Step music packs: the main repo carries a Qwen3 planner LM and a text encoder that look
+    # like chat checkpoints but only the music worker can use them.
+    "ace-step", "acestep",
 )
 
 # ``config.json`` model types that carry a "ConditionalGeneration" or

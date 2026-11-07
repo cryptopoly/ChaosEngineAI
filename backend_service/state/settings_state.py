@@ -105,6 +105,7 @@ def settings_payload(
         # models are actually landing.
         "hfCachePath": str(state.settings.get("hfCachePath") or ""),
         "favoriteModelRefs": list(state.settings.get("favoriteModelRefs") or []),
+        "musicEmbedTag": bool(state.settings.get("musicEmbedTag", True)),
     }
 
 
@@ -142,6 +143,9 @@ def update_settings(
         next_settings["favoriteModelRefs"] = list(
             state.settings.get("favoriteModelRefs") or []
         )
+        next_settings["musicEmbedTag"] = bool(state.settings.get("musicEmbedTag", True))
+        if request.musicEmbedTag is not None:
+            next_settings["musicEmbedTag"] = request.musicEmbedTag
 
         if request.modelDirectories is not None:
             next_settings["modelDirectories"] = _normalize_model_directories(

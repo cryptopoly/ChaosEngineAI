@@ -4,23 +4,57 @@ from __future__ import annotations
 
 from typing import Any
 
-KINDS = ("image", "video", "voice", "stt")
+KINDS = ("image", "video", "voice", "stt", "music")
+_TEXT_TASK = {"image": "txt2img", "video": "txt2video", "music": "txt2music"}
 
 
 def _families(state: Any, kind: str) -> list[dict[str, Any]]:
+    """Catalog families of a generating kind with ``fit``; any other kind is an error, never video."""
     from backend_service.helpers.fit import annotate_fit
-    from backend_service.helpers.images import _image_model_payloads
-    from backend_service.helpers.video import _video_model_payloads
 
-    library = state._library()
-    families = _image_model_payloads(library) if kind == "image" else _video_model_payloads(library)
-    return annotate_fit(families, kind)
+    if kind == "image":
+        from backend_service.helpers.images import _image_model_payloads
+
+        return annotate_fit(_image_model_payloads(state._library()), kind)
+    if kind == "video":
+        from backend_service.helpers.video import _video_model_payloads
+
+        return annotate_fit(_video_model_payloads(state._library()), kind)
+    if kind == "music":
+        from backend_service.helpers.music import music_model_payloads
+
+        return music_model_payloads()
+    raise ValueError(f"Unknown model kind '{kind}'.")
 
 
 def _text_to_media(variant: dict[str, Any], kind: str) -> bool:
-    """v1 tools start from a prompt only; skip models that need an input image."""
+    """v1 tools start from a prompt only; skip models that need an input image or audio."""
     tasks = [str(t) for t in variant.get("taskSupport") or []]
-    return not tasks or ("txt2img" if kind == "image" else "txt2video") in tasks
+    return not tasks or _TEXT_TASK[kind] in tasks
+
+
+def _music_row(variant: dict[str, Any]) -> dict[str, Any]:
+    fit = variant.get("fit") or {}
+    licence = variant.get("licence") or {}
+    estimates = variant.get("estimates") or {}
+    return {
+        "id": variant.get("id"),
+        "name": variant.get("name"),
+        "sizeGb": variant.get("sizeGb"),
+        "installed": bool(variant.get("availableLocally") and not variant.get("missingRequires")),
+        "packInstalled": bool(variant.get("packInstalled")),
+        "fit": fit.get("status"),
+        "fitReason": fit.get("reason"),
+        "makes": variant.get("makes"),
+        "maxSeconds": variant.get("maxSeconds"),
+        "secondsPer10sAudio": estimates.get("secondsPer10sAudio"),
+        "peakGb": estimates.get("peakGb"),
+        "licence": licence.get("name"),
+        "commercial": licence.get("commercial"),
+        "gated": bool(licence.get("gated")),
+        "nonCommercial": licence.get("commercial") == "no",
+        "note": variant.get("note"),
+    }
 
 
 def _licence_hints(family: dict[str, Any], variant: dict[str, Any]) -> dict[str, Any]:
@@ -74,6 +108,17 @@ def _row(family: dict[str, Any], variant: dict[str, Any], kind: str) -> dict[str
 
 
 def installed_models(state: Any, kind: str) -> list[dict[str, Any]]:
+    if kind not in KINDS:
+        raise ValueError(f"Unknown model kind '{kind}'.")
+    if kind == "music":
+        return [
+            _music_row(variant)
+            for family in _families(state, kind)
+            for variant in family.get("variants") or []
+            if variant.get("availableLocally") and not variant.get("missingRequires")
+            and _text_to_media(variant, kind)
+            and (variant.get("fit") or {}).get("status") != "wont-fit"
+        ]
     if kind in ("image", "video"):
         return [
             _row(family, variant, kind)
@@ -87,6 +132,7 @@ def installed_models(state: Any, kind: str) -> list[dict[str, Any]]:
 
     if kind == "stt":
         return [m for m in voice_runtime.list_stt_models() if m.get("installed")]
+    # kind == "voice"
     return [
         {"id": "kokoro", "name": "Kokoro", "voices": len([v for v in voice_runtime.list_tts_voices() if v["available"]])}
     ]
@@ -115,6 +161,20 @@ def recommend(state: Any, kind: str, limit: int = 3) -> dict[str, Any]:
 
         rows = [m for m in voice_runtime.list_stt_models() if not m.get("installed")]
         return {"kind": kind, "models": rows[:limit]}
+    if kind == "music":
+        rows = [
+            _music_row(v) for family in _families(state, kind) for v in family.get("variants") or []
+            if not v.get("availableLocally") and (v.get("fit") or {}).get("status") in ("fits", "tight")
+        ]
+        rows.sort(key=lambda r: (r["fit"] != "fits", r["sizeGb"] or 0))
+        return {
+            "kind": kind,
+            "models": rows[:limit],
+            "howToGet": "Ask the user to open ChaosEngineAI > Music > Models, install the music pack and "
+            "download a model.",
+        }
+    if kind not in ("image", "video"):
+        raise ValueError(f"Unknown model kind '{kind}'.")
     from backend_service.helpers.fit import best_fit_variant_id
 
     picks: list[dict[str, Any]] = []

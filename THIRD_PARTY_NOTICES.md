@@ -421,3 +421,39 @@ Installed individually from the Setup page, instead of `misaki[ja]` — see the 
   OpenJTalk components under their modified-BSD licence)
 - **unidic-lite** — <https://github.com/polm/unidic-lite> — MIT wrapper
   (bundled UniDic dictionary data under the BSD-style UniDic licence)
+
+## Music (ACE-Step 1.5)
+
+Installed on demand by "Install music pack" (Music > Models) into a separate environment,
+`~/.chaosengine/music-venv`; not bundled with the app. Run by `backend_service/music_worker.py`.
+Weights are downloaded by the user into the Hugging Face cache at pinned revisions; none ship with the app.
+
+### ACE-Step 1.5 (code)
+
+- **Upstream:** <https://github.com/ace-step/ACE-Step-1.5>, pinned to commit
+  `ca1e85fe9430179831e6bc6be790c332190a3866` (package `ace-step` 1.5.0).
+- **Licence:** MIT ("Copyright (c) 2026 ACEStep").
+- **Usage:** text-to-music library driven through its Python API by our worker. The library copies its own
+  model code into the checkpoint folder before loading, so the code that runs is from the pinned commit.
+
+### ACE-Step 1.5 weights
+
+- `ACE-Step/Ace-Step1.5` (revision `19671f406d603126926c1b7e2adc169acbcade22`: 2B turbo DiT, VAE,
+  Qwen3-Embedding-0.6B text encoder, 1.7B planner LM) and `ACE-Step/acestep-v15-xl-turbo`
+  (revision `d4a0b288b83ebb7e25a8c0b32c573c22e134e8ee`).
+- **Licence:** MIT on every model card (`license: mit`), not gated. The authors state the model was trained on
+  legally compliant data and that generated music may be used commercially; the README asks users to check that
+  a track is original, to disclose AI involvement and to get permission when adapting protected material.
+
+### Packages the music pack installs (not bundled)
+
+`backend_service/music_requirements.txt` (exported from the pinned `uv.lock`) installs, among others: PyTorch and
+torchaudio (BSD-3-Clause), torchcodec (BSD-3-Clause), MLX and mlx-lm (MIT), transformers, diffusers, accelerate and
+huggingface-hub (Apache-2.0), numpy (BSD-3-Clause), soundfile (BSD-3-Clause; bundles libsndfile, LGPL-2.1),
+gradio, lightning, peft, torchao and modelscope (Apache-2.0 or BSD; pulled in by the library, not used for
+inference). All are MIT, BSD or Apache except the one below.
+
+- **pytorch-wavelets 1.3.0: to be confirmed.** Its PyPI classifier says "Free To Use But Restricted". Its LICENSE
+  file says the DWT parts are MIT (Fergal Cotter, 2020) and the DTCWT parts may carry the original MATLAB toolbox's
+  restrictions. ACE-Step uses only the DWT (Haar) correction, and the MLX path computes Haar natively. Open for the
+  owner before a release ships the music pack (FOLLOW_UPS FU-138).

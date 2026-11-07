@@ -13,14 +13,20 @@ from __future__ import annotations
 
 def companion_downloads(repo_id: str) -> list[tuple[str, list[str]]]:
     """``(repo, allow patterns)`` pairs to fetch after ``repo_id`` itself."""
-    from backend_service.catalog import IMAGE_MODEL_FAMILIES, VIDEO_MODEL_FAMILIES  # noqa: PLC0415
+    from backend_service.catalog import (  # noqa: PLC0415
+        IMAGE_MODEL_FAMILIES,
+        MUSIC_MODEL_FAMILIES,
+        VIDEO_MODEL_FAMILIES,
+    )
     from backend_service.helpers.text_gguf import pinned_drafter  # noqa: PLC0415
 
     found: list[tuple[str, list[str]]] = []
     drafter = pinned_drafter(repo_id)
     if drafter is not None:
         found.append((drafter[0], [drafter[1]]))
-    for family in (*IMAGE_MODEL_FAMILIES, *VIDEO_MODEL_FAMILIES):
+    # Music rows name the packs they need in ``requires`` (separate catalog rows the user downloads
+    # with their own progress), so they carry no companions today; the branch keeps that explicit.
+    for family in (*IMAGE_MODEL_FAMILIES, *VIDEO_MODEL_FAMILIES, *MUSIC_MODEL_FAMILIES):
         for variant in family["variants"]:
             if str(variant.get("repo") or "") != repo_id:
                 continue

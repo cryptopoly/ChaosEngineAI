@@ -1,6 +1,9 @@
 import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
 import { ImageOutputCard } from "../../components/ImageOutputCard";
+import { SendToStoryboardMenu } from "../../components/SendToStoryboardMenu";
+import type { SendItem } from "../storyboard/sendToStoryboardLogic";
+import { useSendToStoryboard } from "../storyboard/useSendToStoryboard";
 import type {
   ImageModelFamily,
   ImageOutputArtifact,
@@ -43,6 +46,11 @@ export interface ImageGalleryTabProps {
   onDeleteImageArtifact: (id: string) => void;
 }
 
+/** What the Use in storyboard menu sends for a saved image. */
+function imageItem(artifact: ImageOutputArtifact): SendItem {
+  return { kind: "image", path: artifact.imagePath as string, prompt: artifact.prompt };
+}
+
 export function ImageGalleryTab({
   imageOutputs,
   filteredImageOutputs,
@@ -75,6 +83,7 @@ export function ImageGalleryTab({
 }: ImageGalleryTabProps) {
   const { t } = useTranslation("common");
   const { t: tStudio } = useTranslation("studio");
+  const storyboard = useSendToStoryboard((tab) => onActiveTabChange(tab));
   return (
     <div className="content-grid image-page-grid">
       <Panel
@@ -321,6 +330,21 @@ export function ImageGalleryTab({
                 onRevealPath={(path) => onRevealPath(path)}
                 onDelete={(id) => onDeleteImageArtifact(id)}
                 onNavigateSettings={() => onActiveTabChange("settings")}
+                extraActions={
+                  <SendToStoryboardMenu
+                    item={artifact.imagePath ? imageItem(artifact) : null}
+                    projects={storyboard.projects}
+                    loaded={storyboard.loaded}
+                    busy={storyboard.busy}
+                    notice={storyboard.notice}
+                    enabled={storyboard.enabled}
+                    onOpen={() => void storyboard.loadProjects()}
+                    onDismissNotice={storyboard.dismissNotice}
+                    onSend={(projectId, target) =>
+                      storyboard.send(imageItem(artifact), projectId, target)
+                    }
+                  />
+                }
               />
             ))}
           </div>

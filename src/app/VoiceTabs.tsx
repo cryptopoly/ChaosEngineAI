@@ -57,6 +57,7 @@ export function VoiceLibraryView({ ctx }: { ctx: AppTabContext }) {
         setVoiceOpenRequest({ id, nonce: Date.now() });
         void setActiveTab("voice-studio");
       }}
+      onTabChange={setActiveTab}
     />
   );
 }

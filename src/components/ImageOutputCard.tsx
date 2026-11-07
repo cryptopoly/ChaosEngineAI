@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { ImageModelFamily, ImageOutputArtifact } from "../types";
 import {
@@ -21,6 +22,8 @@ export interface ImageOutputCardProps {
   onRevealPath: (path: string) => void;
   onDelete: (artifactId: string) => void;
   onNavigateSettings: () => void;
+  /** Extra buttons at the end of the last row (the Use in storyboard menu). */
+  extraActions?: ReactNode;
 }
 
 export function ImageOutputCard({
@@ -33,6 +36,7 @@ export function ImageOutputCard({
   onRevealPath,
   onDelete,
   onNavigateSettings,
+  extraActions,
 }: ImageOutputCardProps) {
   const { t } = useTranslation("common");
   const artifactVariant = findImageVariantById(imageCatalog, artifact.modelId);
@@ -97,6 +101,7 @@ export function ImageOutputCard({
           <button className="secondary-button danger-button" type="button" onClick={() => onDelete(artifact.artifactId)}>
             {t("imageOutputCard.delete", { defaultValue: "Delete" })}
           </button>
+          {extraActions}
         </div>
       </div>
     </article>

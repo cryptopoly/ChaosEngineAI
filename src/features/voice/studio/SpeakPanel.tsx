@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Panel } from "../../../components/Panel";
-import { encodeMp3, saveSpeech, synthesizeSpeech } from "../../../api";
-import type { TtsVoice, VoiceRuntime } from "../../../types";
+import { SendToStoryboardMenu } from "../../../components/SendToStoryboardMenu";
+import { encodeMp3, getLibraryItem, saveSpeech, synthesizeSpeech } from "../../../api";
+import type { TabId, TtsVoice, VoiceRuntime } from "../../../types";
+import { shotTitleFrom, type SendItem } from "../../storyboard/sendToStoryboardLogic";
+import { useSendToStoryboard } from "../../storyboard/useSendToStoryboard";
 import { downloadBlob, formatClock } from "../audio";
 import { speechPlayer, useSpeechPlayer } from "../speechPlayer";
 import { useVoice } from "../VoiceContext";
@@ -24,8 +27,9 @@ const PREVIEW_LINES: Record<string, string> = {
   zh: "你好！这是我的声音。",
 };
 
-export function SpeakPanel({ runtime }: { runtime: VoiceRuntime }) {
+export function SpeakPanel({ runtime, onTabChange }: { runtime: VoiceRuntime; onTabChange?: (tab: TabId) => void }) {
   const { t } = useTranslation("studio");
+  const storyboard = useSendToStoryboard((tab) => onTabChange?.(tab));
   const { settings } = useVoice();
   const player = useSpeechPlayer();
   const [text, setText] = useState("");
@@ -103,6 +107,24 @@ export function SpeakPanel({ runtime }: { runtime: VoiceRuntime }) {
       setError(err instanceof Error ? err.message : String(err));
     }
   };
+
+  // The result only exists in the browser, so sending it saves it to the Library first and reads the file's place.
+  const sendItem: SendItem | null = result
+    ? {
+        kind: "voice",
+        label: shotTitleFrom(result.text),
+        resolvePath: async () => {
+          let id = savedId;
+          if (!id) {
+            id = (await saveSpeech(result.blob, { text: result.text, voice, speed })).id;
+            setSavedId(id);
+          }
+          const path = (await getLibraryItem(id)).audioPath;
+          if (!path) throw new Error(t("sendToStoryboard.noFile", { defaultValue: "This item has no file to send." }));
+          return path;
+        },
+      }
+    : null;
 
   return (
     <Panel
@@ -197,6 +219,17 @@ export function SpeakPanel({ runtime }: { runtime: VoiceRuntime }) {
               <button type="button" className="secondary-button" disabled={savedId != null} onClick={() => void save()}>
                 {savedId ? t("voice.savedToLibrary", { defaultValue: "Saved to Library" }) : t("voice.saveToLibrary", { defaultValue: "Save to Library" })}
               </button>
+              <SendToStoryboardMenu
+                item={sendItem}
+                projects={storyboard.projects}
+                loaded={storyboard.loaded}
+                busy={storyboard.busy}
+                notice={storyboard.notice}
+                enabled={storyboard.enabled}
+                onOpen={() => void storyboard.loadProjects()}
+                onDismissNotice={storyboard.dismissNotice}
+                onSend={(projectId, target) => storyboard.send(sendItem as SendItem, projectId, target)}
+              />
             </div>
           </div>
         ) : null}

@@ -49,7 +49,11 @@ job waits for a running agent job (the progress panel says "Waiting for an agent
 | `storyboard_shot` | `add`, `edit`, `remove`, `reorder`, `lock`, `unlock`, `pick_take`, `redo` (marks a shot for the next generate), `import` (a clip or still: an `upload:` handle or a file in the app's output folders). |
 | `storyboard_audio` | `add`, `edit`, `remove` audio clips (`add` takes an `upload:` handle or a file in the app's output folders); anchor one to a shot so it follows the shot. |
 | `storyboard_generate` | New takes for the shots that need work (or `shot_ids`; `what` is `still`, `clip` or `both`): all stills, then all clips. Locked shots are skipped; naming one needs `force`. Returns a job id; `cancel_job` stops the whole batch. |
-| `storyboard_render` | Render the film to MP4 (`preview` is small and fast). Returns a job id; the finished output has the film's `file` name and a `download` (no local path). |
+| `storyboard_render` | Render the film to MP4 (`preview` is small and fast; `notify` shows a system banner at the end). Returns a job id; the finished output has the film's `file` name, a `download` (no local path), `warnings` and `extras` (captions, stems, each with a `download`). A failed or interrupted render names how many shots are done; call again to resume. |
+| `storyboard_captions` | `generate` (a job: transcribes the voice clips), `set`, `add`, `edit`, `remove` (revision needed), `export_srt` (a `download`). Burn-in, SRT and stems are switched with `storyboard_project` edit `fields.export` (`captionsBurn`, `captionsSrt`, `stems`). |
+| `storyboard_export_otio` | An OpenTimelineIO file of the cut for Resolve or Premiere: `file`, `download`, `warnings`. |
+| `music_library` | `list` (query, tag, paging), `get` (adds a `download`), `rename` (title and tags), `delete` (permanent). `list` and `get` need only `read`. |
+| `list_cloned_voices`, `speak_cloned` | Voices the person cloned in the app (with a spoken consent record) and speech in one of them. Need the `clone` scope **and** the Voice setting "Allow agents to use cloned voices". Agents cannot create a cloned voice. The output carries the AI tag and the watermark. |
 
 A finished job returns the **absolute path** of the PNG, MP4, WAV or FLAC, plus width, height, duration and
 `hasAudio`. `generate_image` can also return the PNG as base64 (`include_preview`). Every PNG and MP4
@@ -106,6 +110,12 @@ Each token may have **20 unfinished jobs**; the 21st is refused with a plain mes
 cancelled. Cancelling a running speech or transcript job stops the voice worker (it restarts on the next
 voice job).
 
+## Resources, prompts and progress
+
+Besides tools, `/mcp` serves read-only **resources** (`resources/list`, `resources/templates/list`, `resources/read`; every token): `chaosengine://system/status`, `chaosengine://music/library`, `chaosengine://music/{id}`, `chaosengine://gallery/recent` (newest images and videos with download links) and `chaosengine://storyboard/{id}` for each film. Lists page with a `cursor` (50 per page). **Prompts** (`prompts/list`, `prompts/get`): `short_film_from_brief`, `poster_set`, `soundtrack_for_project`; each returns a message that tells the agent which tools to call.
+
+**Progress.** When a `tools/call` carries `_meta.progressToken`, the answer is a short `text/event-stream`: `notifications/progress` events (from `wait_for_job`, one a second: step and total when the job reports them, otherwise seconds waited), then the normal response. Without a token the answer is one plain JSON body, as before.
+
 ## Tool annotations
 
 Every tool carries the MCP hints `readOnlyHint`, `destructiveHint`, `idempotentHint` and `openWorldHint`
@@ -118,8 +128,7 @@ Edit, Send, Stop). `tests/test_mcp_contract.py` checks all of this and a golden 
 
 A token carries scopes. `read`: status, lists, job status, storyboard `list` / `get`. `generate`: every make
 tool, storyboard edits, `cancel_job`. `files`: `upload_file`, `POST /api/agent/uploads`, `GET /api/agent/files`,
-storyboard `export`. `download` (confirmed model download, not built yet) and `clone` (voice cloning, no tool
-yet) are never in a token unless ticked. An older token becomes read, generate and files. Under Settings >
+storyboard `export`. `download` (confirmed model download, not built yet) and `clone` (`list_cloned_voices`, `speak_cloned`) are never in a token unless ticked. Cloning has three locks: the token scope, the Voice setting "Allow agents to use cloned voices" (off by default, only the app window can change it) and a stored consent record on the voice. Any call that arrives with an agent token (main or read-only) lacking `clone` is refused by the voice routes too, even when the setting is on. The app's own token on `/mcp` is still treated as an agent for cloning. An older token becomes read, generate and files. Under Settings >
 Integrations > Agent access, **Permissions** lets you tick cloning and make a **read-only token** (a second
 token for a dashboard or watcher). A caller that is not on this computer never gets `clone` unless you also
 tick "Also allow cloning from other computers". A tool a token cannot use is left out of `tools/list`, and

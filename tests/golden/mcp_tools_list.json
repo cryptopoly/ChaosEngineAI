@@ -449,7 +449,7 @@
       "readOnlyHint": false,
       "title": "Storyboard project"
     },
-    "description": "Edit: film projects. create(name), list, get (shots, takes, timeline, revision), edit(fields: name, defaults, export), undo, redo, delete, export (.chaosfilm bundle), import(project_id+file, or path).",
+    "description": "Edit: film projects. create(name), list, get (shots, takes, timeline, revision), edit(fields: name, defaults, export{captionsSrt, captionsBurn, stems, ...}), undo, redo, delete, export (.chaosfilm), import.",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
@@ -683,10 +683,14 @@
       "readOnlyHint": false,
       "title": "Storyboard render"
     },
-    "description": "Make: render the film to MP4 (preview: small and fast). Returns a job id; the output has the file name and download.",
+    "description": "Make: render the film to MP4 (preview: small and fast). Returns a job id; the output has the file, download, warnings and extras (captions, stems). A failed render can be resumed by calling again.",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
+        "notify": {
+          "description": "Show a system banner on this computer when it ends.",
+          "type": "boolean"
+        },
         "preview": {
           "type": "boolean"
         },
@@ -707,6 +711,112 @@
       "type": "object"
     },
     "name": "storyboard_render"
+  },
+  {
+    "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Storyboard captions"
+    },
+    "description": "Edit: captions. generate(clip_ids, language; transcribes voice clips, a job), export_srt (download), set(clip_id, cues), add(start, end, text), edit(caption_id), remove(caption_id).",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "enum": [
+            "generate",
+            "export_srt",
+            "set",
+            "add",
+            "edit",
+            "remove"
+          ],
+          "type": "string"
+        },
+        "caption_id": {
+          "maxLength": 64,
+          "type": "string"
+        },
+        "clip_id": {
+          "description": "set, add: the audio clip the captions belong to (none: the timeline's own).",
+          "type": "string"
+        },
+        "clip_ids": {
+          "description": "generate: voice clips (default all).",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 200,
+          "type": "array"
+        },
+        "cues": {
+          "description": "set: [{start, end, text}] seconds.",
+          "items": {
+            "type": "object"
+          },
+          "maxItems": 500,
+          "type": "array"
+        },
+        "end": {
+          "minimum": 0,
+          "type": "number"
+        },
+        "language": {
+          "maxLength": 16,
+          "type": "string"
+        },
+        "project_id": {
+          "description": "Project id.",
+          "type": "string"
+        },
+        "revision": {
+          "description": "Project revision you last saw (from get).",
+          "minimum": 1,
+          "type": "integer"
+        },
+        "start": {
+          "minimum": 0,
+          "type": "number"
+        },
+        "text": {
+          "maxLength": 500,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "action",
+        "project_id"
+      ],
+      "type": "object"
+    },
+    "name": "storyboard_captions"
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Export timeline (OTIO)"
+    },
+    "description": "Make: write the cut as an OpenTimelineIO file for Resolve or Premiere. Returns the file, download and warnings.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "project_id": {
+          "description": "Project id.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "project_id"
+      ],
+      "type": "object"
+    },
+    "name": "storyboard_export_otio"
   },
   {
     "annotations": {
@@ -771,5 +881,130 @@
       "type": "object"
     },
     "name": "make_music"
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true,
+      "title": "List cloned voices"
+    },
+    "description": "Read: cloned voices the person made in the app with recorded consent, with ids. Refused unless they allowed agents to use cloned voices.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {},
+      "required": [],
+      "type": "object"
+    },
+    "name": "list_cloned_voices"
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Speak in a cloned voice"
+    },
+    "description": "Make: start a speech job in a cloned voice (returns a job id). voice_id comes from list_cloned_voices and is tied to its consent record. Output is tagged and watermarked as AI-made.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "disclaimer": {
+          "description": "Say 'This voice was generated by AI.' first.",
+          "type": "boolean"
+        },
+        "model": {
+          "enum": [
+            "qwen3-tts-0.6b",
+            "qwen3-tts-1.7b"
+          ],
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 5000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "voice_id": {
+          "description": "Id from list_cloned_voices.",
+          "maxLength": 40,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "voice_id",
+        "text"
+      ],
+      "type": "object"
+    },
+    "name": "speak_cloned"
+  },
+  {
+    "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Music library"
+    },
+    "description": "Edit: the Music Library. list(query, tag, limit, offset), get(track_id; adds a download link), rename(track_id, title and/or tags), delete(track_id; permanent).",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "enum": [
+            "list",
+            "get",
+            "rename",
+            "delete"
+          ],
+          "type": "string"
+        },
+        "limit": {
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "offset": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "query": {
+          "description": "list: matches title, caption and tags.",
+          "maxLength": 200,
+          "type": "string"
+        },
+        "tag": {
+          "maxLength": 64,
+          "type": "string"
+        },
+        "tags": {
+          "description": "rename: replaces the tags.",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 20,
+          "type": "array"
+        },
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "track_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "action"
+      ],
+      "type": "object"
+    },
+    "name": "music_library"
   }
 ]

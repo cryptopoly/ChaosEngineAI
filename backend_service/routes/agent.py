@@ -73,6 +73,14 @@ async def mcp_endpoint(request: Request) -> Response:
         )
     import anyio
 
+    from backend_service.mcp_bridge import progress
+
+    token = progress.token_of(payload)
+    if token is not None:  # the client asked for progress: a short event stream, then the answer
+        from fastapi.responses import StreamingResponse
+
+        return StreamingResponse(progress.stream(handle_message, payload, request, token), media_type="text/event-stream",
+                                 headers={"Cache-Control": "no-cache"})
     if isinstance(payload, list):
         responses = [r for r in [await anyio.to_thread.run_sync(handle_message, m, request) for m in payload] if r]
         return JSONResponse(responses) if responses else Response(status_code=202)

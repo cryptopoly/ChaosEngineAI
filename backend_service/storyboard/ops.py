@@ -466,8 +466,12 @@ def add_audio(p: Project, folder: Path, a: AddAudio) -> None:
         _shot(p, a.anchor.shotId)
     clip_id = new_id("a")
     rel, digest, _ = _import(folder, a.path, {"audio", "video"}, f"media/audio/{clip_id}")
+    from backend_service import voice_clone_safety  # noqa: PLC0415
+
+    # A clip carrying the cloned-voice tag is always marked, whatever the caller said (D-28 / D-47).
+    cloned = a.clonedVoice or bool((voice_clone_safety.read_wav_tag(folder / rel) or {}).get("clonedVoice"))
     source = AudioSource(path=rel, hash=digest, measuredSeconds=_seconds(folder, rel),
-                         clonedVoice=a.clonedVoice, label=a.label or "")
+                         clonedVoice=cloned, label=a.label or "")
     clip = AudioClip(id=clip_id, kind=a.kind, source=source, anchor=a.anchor,
                      start=a.start if a.anchor is None else None)
     if clip.anchor is None and clip.start is None:

@@ -4,7 +4,7 @@ status: review
 ---
 # Progress: V-audio (sound effects, D-27)
 
-Updated: 2026-11-07 11:20. Owner: agent. Branch: `feat/sound-effects` (off `feat/home-studio`).
+Updated: 2026-11-07 11:30. Owner: agent. Branch: `feat/sound-effects` (off `feat/home-studio`).
 
 ## Goal
 
@@ -30,6 +30,11 @@ storyboard's effects lane, and an agent tool body `make_sound` (not registered h
   real model was **not run**. The engine was run end to end with a random-weight mini model built from a hand-written
   config through the real worker (CPU and MPS, 8 steps, loop and plain, step events, range check). The mini model
   proves wiring, not sound quality or speed.
+- Live on port 8903 (throw-away HOME): the app's own sounds-pack install job ran to the end in 180 s on Python 3.11
+  (it first failed on a requirements file frozen on 3.12: `networkx 3.7` needs 3.12; re-frozen on 3.11, which also
+  resolves on 3.12). With the mini model placed in the checkpoints layout, e2e phase 15 passed all 6 checks including
+  the full run (HTTP, queue slot, memory gate, worker in the sounds venv, real stable-audio-tools engine, tagged FLAC
+  in the Music Library, audio route). A real download without a token answered with the plain gated message.
 
 ## Done
 
@@ -44,7 +49,7 @@ storyboard's effects lane, and an agent tool body `make_sound` (not registered h
   `SoundPackNotice` under the model row, licence chip and screen reused, "Use in storyboard" sends kind `sfx`.
 - `mcp_bridge/sound_tool.py` (`make_sound`), not registered.
 - Tests: `tests/test_music_sound.py`, `src/features/music/__tests__/sounds.test.tsx`; e2e phase 15
-  (`scripts/e2e_phases/phase_15.py`) passed live on port 8903 (full run skipped: gated weights).
+  (`scripts/e2e_phases/phase_15.py`) passed live on port 8903.
 
 ## Not done
 

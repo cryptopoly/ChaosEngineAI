@@ -50,6 +50,10 @@ A batch makes all stills, then all clips, and unloads the image model in between
 skipped; naming one needs `force`. It runs on the shared heavy-job queue as source `storyboard` with its
 own batch id: the Studio's Cancel never touches it, and the batch's one Cancel stops all of it. Results
 are kept in `project.json`. A render runs one at a time in the background (preview: small and fast).
+A render does not take a heavy-queue slot: it is ffmpeg work on the CPU and can run while an image,
+video or music job runs, so both are slower then. Render intermediates in `cache/render/` that the
+current film does not use are removed when a render starts, once they are more than 7 days old.
+A project cannot be deleted while one of its batches or renders runs (409).
 
 ## AI label (D-34)
 

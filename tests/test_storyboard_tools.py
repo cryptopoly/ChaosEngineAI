@@ -76,8 +76,12 @@ class StoryboardToolTests(unittest.TestCase):
         self.assertEqual((project["defaults"]["fps"], project["export"]["aiLabel"]["endCard"]), (25, True))
         exported = self.call("storyboard_project", {"action": "export", "project_id": pid})
         self.assertIn("/api/agent/files?path=", exported["download"]["url"])
-        imported = self.call("storyboard_project", {"action": "import", "path": exported["path"]})
+        self.assertNotIn("path", exported)  # the agent gets the file name and the download, not a local path
+        self.assertTrue(exported["file"].endswith(".chaosfilm") and "/" not in exported["file"])
+        imported = self.call("storyboard_project", {"action": "import", "project_id": pid, "file": exported["file"]})
         self.assertNotEqual(imported["projectId"], pid)
+        text = self.call("storyboard_project", {"action": "import", "project_id": pid, "file": "../../project.json"}, error=True)
+        self.assertIn("not an export", text)
         self.call("storyboard_project", {"action": "delete", "project_id": pid, "revision": info["revision"]})
 
     def test_shot_and_audio_verbs(self):
@@ -160,6 +164,9 @@ class StoryboardToolTests(unittest.TestCase):
             job = self.call("storyboard_render", {"project_id": pid, "revision": info["revision"], "preview": False})
             done = self.call("wait_for_job", {"job_id": job["jobId"], "timeout_seconds": 10})
         self.assertEqual(done["state"], "done", done)
+        self.assertNotIn("path", done["output"])
+        self.assertNotIn(str(self.base), json.dumps({k: v for k, v in done["output"].items() if k != "download"}))
+        self.assertTrue(done["output"]["file"].endswith(".mp4"))
         download = done["output"]["download"]
         fetched = self.client.get(download["url"], headers=self.headers)
         self.assertEqual(fetched.content, b"the film")

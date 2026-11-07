@@ -45,11 +45,11 @@ job waits for a running agent job (the progress panel says "Waiting for an agent
 | `transcribe` | Path to an audio or video file the app can read. Returns a job id. |
 | `make_music` | Style `caption`, `lyrics` (or `instrumental`), `seconds` 10 to 600, `bpm`, `key`, `seed`, `variations` 1, 2 or 4, `model`. Returns a job id; the result has the FLAC path of each take in the Music Library and a `download`. `cancel_job` stops it through the music worker. See [Music](music.md). |
 | `job_status`, `wait_for_job`, `cancel_job` | Poll, wait up to 60 s, cancel. |
-| `storyboard_project` | Film projects: `create`, `list`, `get` (shots, takes, timeline, revision), `edit` (name, defaults, export), `undo`, `redo`, `delete`, `export` (a `.chaosfilm` bundle with a `download`), `import`. |
+| `storyboard_project` | Film projects: `create`, `list`, `get` (shots, takes, timeline, revision), `edit` (name, defaults, export), `undo`, `redo`, `delete`, `export` (the bundle's `file` name and a `download`), `import` (`project_id` and that `file`, or a `path` in an exports folder). |
 | `storyboard_shot` | `add`, `edit`, `remove`, `reorder`, `lock`, `unlock`, `pick_take`, `redo` (marks a shot for the next generate), `import` (a clip or still: an `upload:` handle or a file in the app's output folders). |
 | `storyboard_audio` | `add`, `edit`, `remove` audio clips (`add` takes an `upload:` handle or a file in the app's output folders); anchor one to a shot so it follows the shot. |
 | `storyboard_generate` | New takes for the shots that need work (or `shot_ids`; `what` is `still`, `clip` or `both`): all stills, then all clips. Locked shots are skipped; naming one needs `force`. Returns a job id; `cancel_job` stops the whole batch. |
-| `storyboard_render` | Render the film to MP4 (`preview` is small and fast). Returns a job id; the finished output has the path and `download`. |
+| `storyboard_render` | Render the film to MP4 (`preview` is small and fast). Returns a job id; the finished output has the film's `file` name and a `download` (no local path). |
 
 A finished job returns the **absolute path** of the PNG, MP4, WAV or FLAC, plus width, height, duration and
 `hasAudio`. `generate_image` can also return the PNG as base64 (`include_preview`). Every PNG and MP4

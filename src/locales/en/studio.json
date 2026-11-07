@@ -1321,10 +1321,19 @@
     },
     "board": "Board",
     "captions": {
+      "add": "Add at playhead",
       "burnIn": "Burn in",
+      "exportSrt": "Write .srt",
+      "generate": "Make from voice",
+      "generating": "Listening…",
       "label": "Captions",
-      "soon": "Captions are coming",
-      "srt": "SRT file"
+      "needVoice": "Add speech to the voice lane to make captions from it.",
+      "newText": "New caption",
+      "remove": "Remove",
+      "srt": "SRT file",
+      "textLabel": "Caption text",
+      "title": "Captions ({count})",
+      "trimmedAway": "Trimmed away"
     },
     "clip": {
       "ariaLabel": "{lane}, {name}, from {start} to {end} seconds, {gain} dB",
@@ -1344,8 +1353,12 @@
       "details": "Technical details",
       "done": "Exported · {size} · {duration}",
       "download": "Download",
+      "editor": "Export for an editor (.otio)",
+      "editorNote": "Opens in DaVinci Resolve or Premiere with the project's media linked on this computer.",
       "exporting": "Exporting…",
+      "extras": "Also written",
       "failedShort": "Export failed. Nothing was written.",
+      "interrupted": "The export was interrupted.",
       "loudness": "Loudness target",
       "loudnessHint": "{target} LUFS suits web video. Empty leaves the mix as it is.",
       "loudnessOff": "Off",
@@ -1362,9 +1375,13 @@
         "square": "1:1"
       },
       "reframeNote": "Reframed at export; shots are not regenerated.",
+      "resume": "Resume export",
+      "resumeNote": "{ready} of {total} shots are already done and will be reused.",
       "retry": "Retry",
       "reveal": "Reveal file",
       "shape": "Shape",
+      "stems": "Audio lanes as separate files",
+      "stopped": "The export did not finish.",
       "title": "Export"
     },
     "importAudio": "Import audio",

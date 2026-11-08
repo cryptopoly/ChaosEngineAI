@@ -2306,6 +2306,26 @@ def phase_9(cap: Capability) -> PhaseResult:
             return "fail", f"stdio relay rc={rc} out={out[:160]!r} err={err[:120]!r}", {}
         return "pass", "", {}
 
+    def _agent_guide():
+        # D-61: one guide, three ways in. Every real tool must be named in it, and the three copies must agree.
+        code, raw = _voice_http("GET", "/api/agent/guide")
+        if code != 200:
+            return "fail", f"GET /api/agent/guide HTTP {code}", {}
+        guide = raw.decode("utf-8")
+        tools = [t["name"] for t in _mcp("tools/list")["result"]["tools"]]
+        missing = [name for name in tools if f"`{name}`" not in guide]
+        if missing:
+            return "fail", f"the guide does not name these tools: {missing}", {}
+        content = _mcp("resources/read", {"uri": "chaosengine://guide"})["result"]["contents"][0]
+        if content.get("text") != guide:
+            return "fail", "chaosengine://guide differs from /api/agent/guide", {}
+        prompt = _mcp("prompts/get", {"name": "start_here"})["result"]["messages"][0]["content"]["text"]
+        if "chaosengine://guide" not in prompt:
+            return "fail", f"start_here does not point at the guide: {prompt[:120]!r}", {}
+        if "chaosengine://guide" not in _mcp("initialize", {"protocolVersion": "2025-06-18"})["result"]["instructions"]:
+            return "fail", "the initialize instructions do not point at the guide", {}
+        return "pass", "", {"guideChars": len(guide), "tools": len(tools)}
+
     fetched: dict[str, Any] = {}
 
     def _image_job():
@@ -2391,6 +2411,7 @@ def phase_9(cap: Capability) -> PhaseResult:
             ("tools/list has the v1 tools", _tools_list),
             ("system_status and recommend_models", _status_and_recommend),
             ("stdio relay forwards to the app", _relay),
+            ("agent guide: route, resource and start prompt", _agent_guide),
             ("image job to a file with embedded settings", _image_job),
             ("image and video input refuses the wrong model clearly", _input_refusals),
             ("upload a file and fetch an output over HTTP", _upload_and_fetch),

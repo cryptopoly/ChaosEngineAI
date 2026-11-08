@@ -21,6 +21,9 @@ at once.
 4. Ask the agent for something: "make a poster of a lighthouse at dusk, then a 3 second clip of waves
    and a one-line voiceover".
 
+The agent guide ([`AGENTS.md`](../../AGENTS.md) at the repo root, shipped inside the app) tells an agent everything
+below in one read; see [Agent guide](#agent-guide).
+
 Optional: copy [`SKILL.md`](agent-bridge/SKILL.md) into `~/.claude/skills/chaosengine/` so Claude knows
 when to use the tools and the one rule below.
 
@@ -110,9 +113,19 @@ Each token may have **20 unfinished jobs**; the 21st is refused with a plain mes
 cancelled. Cancelling a running speech or transcript job stops the voice worker (it restarts on the next
 voice job).
 
+## Agent guide
+
+`AGENTS.md` is the one file an outside agent reads to learn how to use the app: connecting, every tool, the film
+workflow, the Chat plan-approval gate, memory and time limits (measured numbers, unmeasured ones marked) and common
+mistakes. It is served three ways, all the same text: `GET /api/agent/guide` (any valid token), the MCP resource
+`chaosengine://guide` and the MCP prompt `start_here` (which tells the agent to read it first). The server's
+`initialize` instructions also point at it. The file is staged into the packaged backend by `scripts/stage-runtime.mjs`.
+`tests/test_agent_guide.py` fails when a tool named in the guide's Tools section does not exist or a real tool is missing from it,
+so change the guide in the same commit as any tool change.
+
 ## Resources, prompts and progress
 
-Besides tools, `/mcp` serves read-only **resources** (`resources/list`, `resources/templates/list`, `resources/read`; every token): `chaosengine://system/status`, `chaosengine://music/library`, `chaosengine://music/{id}`, `chaosengine://gallery/recent` (newest images and videos with download links) and `chaosengine://storyboard/{id}` for each film. Lists page with a `cursor` (50 per page). **Prompts** (`prompts/list`, `prompts/get`): `short_film_from_brief`, `poster_set`, `soundtrack_for_project`; each returns a message that tells the agent which tools to call.
+Besides tools, `/mcp` serves read-only **resources** (`resources/list`, `resources/templates/list`, `resources/read`; every token): `chaosengine://guide`, `chaosengine://system/status`, `chaosengine://music/library`, `chaosengine://music/{id}`, `chaosengine://gallery/recent` (newest images and videos with download links) and `chaosengine://storyboard/{id}` for each film. Lists page with a `cursor` (50 per page). **Prompts** (`prompts/list`, `prompts/get`): `start_here`, `short_film_from_brief`, `poster_set`, `soundtrack_for_project`; each returns a message that tells the agent which tools to call.
 
 **Progress.** When a `tools/call` carries `_meta.progressToken`, the answer is a short `text/event-stream`: `notifications/progress` events (from `wait_for_job`, one a second: step and total when the job reports them, otherwise seconds waited), then the normal response. Without a token the answer is one plain JSON body, as before.
 

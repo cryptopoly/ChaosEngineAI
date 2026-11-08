@@ -159,6 +159,8 @@ class _Collector:
             return
         if len(self.files) >= MAX_FILES:
             raise SkillImportError(f"The skill has more than {MAX_FILES} text files.")
+        if any(existing.lower() == rel.lower() for existing in self.files):
+            raise SkillImportError(f"{rel} appears twice (names differing only in case).")
         self.files[rel] = text
         self.total += len(data)
 

@@ -187,6 +187,10 @@ class ZipImportTests(SkillsTempCase):
         with self.assertRaisesRegex(SkillImportError, "not a valid"):
             importer.from_zip(bad)
 
+    def test_names_differing_only_in_case_reject(self):
+        with self.assertRaisesRegex(SkillImportError, "appears twice"):
+            importer.from_zip(self.zip([("SKILL.md", SKILL_MD), ("Notes.md", "a"), ("notes.md", "b")]))
+
     def test_no_skill_md_in_zip(self):
         with self.assertRaisesRegex(SkillImportError, "No SKILL.md"):
             importer.from_zip(self.zip([("a/README.md", "x"), ("b/SKILL.md", SKILL_MD)]))

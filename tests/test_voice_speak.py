@@ -225,8 +225,13 @@ class AudioTests(unittest.TestCase):
         from backend_service.storyboard import ffmpeg_bin
 
         seen = {}
+        real_run = voice_speak.subprocess.run
 
         def fake_run(command, **kwargs):
+            # ``subprocess.run`` is patched for the whole process: a background thread's call (the memory check's
+            # ``sysctl -n kern.memorystatus_level``) must not be answered by writing a WAV under its last argument.
+            if command[0] != "/bin/ffmpeg":
+                return real_run(command, **kwargs)
             seen["command"], seen["kwargs"] = command, kwargs
             Path(command[-1]).write_bytes(tone_wav(0.25))
             return mock.Mock(returncode=0, stderr="")

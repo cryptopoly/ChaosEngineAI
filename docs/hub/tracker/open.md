@@ -1,13 +1,67 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 62 rows with work, decisions or watch items still open, newest first.
+summary: 68 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-148 · Qwen3-TTS 0.6B models: keep or hide — Open (2026-11-08): measured, owner has not decided.</summary>
+
+**Status or trigger:** **Open (2026-11-08): measured, owner has not decided.**
+
+**Notes:** The 0.6B models are not faster than 1.7B on the M4 Max (about 2.5 to 4 s per 10 s of speech) and cannot take a style instruction. Memory is lower. Option: hide them from the speak picker, keep them in Voice Models.
+
+</details>
+
+<details>
+<summary>FU-147 · Size caps: useChat.ts and generation.py — Open (2026-11-08): not started</summary>
+
+**Status or trigger:** **Open (2026-11-08): not started.** Trigger: next change to either file.
+
+**Notes:** Both are over the soft caps in CLAUDE.md. Extract before adding.
+
+</details>
+
+<details>
+<summary>FU-146 · Play a sample of cloned and designed voices — Open (2026-11-08): not started.</summary>
+
+**Status or trigger:** **Open (2026-11-08): not started.**
+
+**Notes:** Built-in voices have a play-sample button; cloned and designed voices do not.
+
+</details>
+
+<details>
+<summary>FU-145 · Verify per-model native frame rates — Open (2026-11-08): not started</summary>
+
+**Status or trigger:** **Open (2026-11-08): not started.** Trigger: RTX 4090 test run (docs/plans/rtx4090-test.md).
+
+**Notes:** The values in `backend_service/size_limits.py` came from memory sizes, not model cards. Check each against its model card or a real render, fix the hint text.
+
+</details>
+
+<details>
+<summary>FU-144 · Chat thread pane very short at 375 px — Open (2026-11-08): not started.</summary>
+
+**Status or trigger:** **Open (2026-11-08): not started.**
+
+**Notes:** On a phone-width window the app's own scroll box for the thread is short. Give it a minimum height; add a 375 px check to the Chat e2e.
+
+</details>
+
+<details>
+<summary>FU-143 · Chat studio tools: batch a whole job into one plan — Open (2026-11-08): not started</summary>
+
+**Status or trigger:** **Open (2026-11-08): not started.** Models make one plan card per render.
+
+**Notes:** Add a line to the studio tool descriptions and the agent guide (D-61) telling the model to put every render for a job in one plan, then check with a real model.
+
+</details>
 
 <details>
 <summary>FU-142 · Frame interpolation at export for 48 / 50 / 60 fps (D-43, D-64) — Open (2026-11-08): not built</summary>

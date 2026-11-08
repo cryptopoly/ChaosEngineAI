@@ -1,13 +1,40 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 68 rows with work, decisions or watch items still open, newest first.
+summary: 71 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-152 · Flaky timing test test_mflux_worker.py::CliTimingTests::test_the_cli_split_is_read_off_the_bar — Open (2026-11-08).</summary>
+
+**Status or trigger:** **Open (2026-11-08).**
+
+**Notes:** Failed once in a full run (decode 0.12 s against a 0.15 s floor), passed 3 of 3 alone: it measures wall time and is sensitive to machine load. Loosen the bound or fake the clock.
+
+</details>
+
+<details>
+<summary>FU-151 · Hard-coded English strings found by the Klingon pass — Open (2026-11-08): not started.</summary>
+
+**Status or trigger:** **Open (2026-11-08): not started.**
+
+**Notes:** Strings in components or backend text that no locale can translate: Idle, Refreshing..., Copy diagnostics, Gathering system info..., Settings updated, Recommended target text, '0 models discovered' text, DFlash row text, yes/no values. Backend `messages.pot` has never been extracted; about 68 call sites pass `str(exc)`. Two English strings name other apps (`serverTab.connect.ollamaApps`, `agentAccess.subtitle`) and need rewording per the editorial rules.
+
+</details>
+
+<details>
+<summary>FU-150 · Klingon locale: re-sync and speaker review — Open (2026-11-08)</summary>
+
+**Status or trigger:** **Open (2026-11-08).** Trigger: each time English strings change; before any launch post.
+
+**Notes:** Translate new `null` keys in `src/locales/tlh/` (52 in studio.json now); have a Klingon speaker review the coined terms listed in docs/plans/klingon/glossary.md and qa.md (three words for 'random' to unify).
+
+</details>
 
 <details>
 <summary>FU-149 · Better speech models than Kokoro and Qwen3-TTS presets — Open (2026-11-08): decided as D-70 (owner wants VoxCPM2, Chatterbox and Turbo, Orpheus 3B)</summary>

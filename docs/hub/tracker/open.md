@@ -10,9 +10,9 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 
 
 <details>
-<summary>FU-149 · Better speech models than Kokoro and Qwen3-TTS presets — Open (2026-11-08): banked</summary>
+<summary>FU-149 · Better speech models than Kokoro and Qwen3-TTS presets — Open (2026-11-08): decided as D-70 (owner wants VoxCPM2, Chatterbox and Turbo, Orpheus 3B)</summary>
 
-**Status or trigger:** **Open (2026-11-08): banked.** Trigger: after the voice UX build (D-67).
+**Status or trigger:** **Open (2026-11-08): decided as D-70 (owner wants VoxCPM2, Chatterbox and Turbo, Orpheus 3B); research plan first, build after the voice UX packages.**
 
 **Notes:** Candidates from docs/plans/voice-rework/research-models.md: VoxCPM2 (permissive licence, voice design and cloning, 48 kHz), Chatterbox and Chatterbox-Turbo (emotion dial, laugh tags), Orpheus 3B (most natural English presets, heavy, use the community mirror). Measure each on the M4 Max and the 4090 before adding a catalog row. Kokoro stays as the fast lane.
 

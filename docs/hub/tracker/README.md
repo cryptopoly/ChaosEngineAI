@@ -15,7 +15,7 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 
 | Row | Item | Status |
 |---|---|---|
-| [FU-149](open.md) | Better speech models than Kokoro and Qwen3-TTS presets | Open (2026-11-08): banked |
+| [FU-149](open.md) | Better speech models than Kokoro and Qwen3-TTS presets | Open (2026-11-08): decided as D-70 (owner wants VoxCPM2, Chatterbox and Turbo, Orpheus 3B) |
 | [FU-148](closed.md) | Qwen3-TTS 0.6B models: keep or hide | Dropped (owner 2026-11-08): the only saving is disk space, which few users will lack |
 | [FU-147](open.md) | Size caps: useChat.ts and generation.py | Open (2026-11-08): not started |
 | [FU-146](open.md) | Play a sample of cloned and designed voices | Open (2026-11-08): not started. |

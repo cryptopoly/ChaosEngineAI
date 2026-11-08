@@ -1,13 +1,22 @@
 ---
 title: Closed follow-ups
 order: 3
-summary: 78 shipped, obsoleted or dropped rows, newest first.
+summary: 79 shipped, obsoleted or dropped rows, newest first.
 ---
 
 # Closed follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Shipped, obsoleted or dropped rows (struck through, or marked shipped with no open points left). Kept as the history of why things are the way they are.
 
+
+<details>
+<summary>FU-148 · Qwen3-TTS 0.6B models: keep or hide — Dropped (owner 2026-11-08): the only saving is disk space, which few users will lack</summary>
+
+**Status or trigger:** **Dropped (owner 2026-11-08):** the only saving is disk space, which few users will lack. Both sizes stay listed.
+
+**Notes:** Measured: the 0.6B models are not faster than 1.7B and cannot take a style instruction; memory is lower.
+
+</details>
 
 <details>
 <summary>FU-138 · pytorch-wavelets dependency in the music pack — Shipped 2026-11-07 (D-37): dropped.</summary>

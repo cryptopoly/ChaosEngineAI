@@ -1,22 +1,13 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 68 rows with work, decisions or watch items still open, newest first.
+summary: 67 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
-
-<details>
-<summary>FU-148 · Qwen3-TTS 0.6B models: keep or hide — Open (2026-11-08): measured, owner has not decided.</summary>
-
-**Status or trigger:** **Open (2026-11-08): measured, owner has not decided.**
-
-**Notes:** The 0.6B models are not faster than 1.7B on the M4 Max (about 2.5 to 4 s per 10 s of speech) and cannot take a style instruction. Memory is lower. Option: hide them from the speak picker, keep them in Voice Models.
-
-</details>
 
 <details>
 <summary>FU-147 · Size caps: useChat.ts and generation.py — Open (2026-11-08): not started</summary>

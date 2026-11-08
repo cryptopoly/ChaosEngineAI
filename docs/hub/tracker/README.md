@@ -8,14 +8,14 @@ summary: Every FU row from FOLLOW_UPS.md, split into open and closed.
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here.
 
-- [Open and live follow-ups](open.md): **68** rows.
-- [Closed follow-ups](closed.md): **78** rows.
+- [Open and live follow-ups](open.md): **67** rows.
+- [Closed follow-ups](closed.md): **79** rows.
 
 ## Newest ten
 
 | Row | Item | Status |
 |---|---|---|
-| [FU-148](open.md) | Qwen3-TTS 0.6B models: keep or hide | Open (2026-11-08): measured, owner has not decided. |
+| [FU-148](closed.md) | Qwen3-TTS 0.6B models: keep or hide | Dropped (owner 2026-11-08): the only saving is disk space, which few users will lack |
 | [FU-147](open.md) | Size caps: useChat.ts and generation.py | Open (2026-11-08): not started |
 | [FU-146](open.md) | Play a sample of cloned and designed voices | Open (2026-11-08): not started. |
 | [FU-145](open.md) | Verify per-model native frame rates | Open (2026-11-08): not started |

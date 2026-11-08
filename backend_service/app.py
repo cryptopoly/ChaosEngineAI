@@ -133,7 +133,7 @@ EXEMPT_AUTH_PATHS = frozenset({
     "/api/auth/session",
     "/api/system/gpu-status",
 })
-AGENT_FILE_PATHS = frozenset({"/api/agent/uploads", "/api/agent/files"})
+AGENT_FILE_PATHS = frozenset({"/api/agent/uploads", "/api/agent/files", "/api/agent/guide"})
 
 
 # ---------------------------------------------------------------------------

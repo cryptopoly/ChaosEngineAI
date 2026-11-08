@@ -53,6 +53,10 @@ const BUNDLED_INSTALL_SCRIPTS = [
 // Agent access card can show a command that works in a packaged app. Python standard library only.
 const BUNDLED_CLI_SCRIPTS = ["chaosengine-cli"];
 
+// The agent guide, staged at the backend root (next to ``backend_service``) where
+// backend_service/mcp_bridge/guide.py finds it for GET /api/agent/guide and the chaosengine://guide resource.
+const BUNDLED_ROOT_DOCS = ["AGENTS.md"];
+
 // The llama.cpp release whose prebuilt binaries are bundled. Pinned (not
 // "latest") and kept equal to LLAMA_CPP_REF in scripts/update-llama-cpp.sh, which
 // tests/test_stage_runtime_scripts.py checks. The v0.9.8 build asked GitHub for
@@ -94,7 +98,7 @@ function main() {
   for (const relativePath of ["backend_service", "cache_compression", "dflash", "turboquant_mlx"]) {
     copyTree(path.join(workspaceRoot, relativePath), path.join(backendDest, relativePath));
   }
-  for (const relativeFile of ["README.md", "pyproject.toml"]) {
+  for (const relativeFile of ["README.md", "pyproject.toml", ...BUNDLED_ROOT_DOCS]) {
     copyFile(path.join(workspaceRoot, relativeFile), path.join(backendDest, relativeFile));
   }
   for (const script of [...BUNDLED_INSTALL_SCRIPTS, ...BUNDLED_CLI_SCRIPTS]) {

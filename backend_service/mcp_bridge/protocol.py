@@ -14,7 +14,7 @@ SUPPORTED_VERSIONS = ("2025-06-18", "2025-03-26", "2024-11-05")
 SERVER_INFO = {"name": "chaosengine", "version": "1"}
 INSTRUCTIONS = (
     "Make images, video clips, speech, music, transcripts and short films (storyboards) with the local "
-    "ChaosEngineAI app. Call system_status first: it shows free memory and the whole job queue with estimated "
+    "ChaosEngineAI app. Read the guide first: resource chaosengine://guide (or prompt start_here). Then call system_status: it shows free memory and the whole job queue with estimated "
     "times. Jobs run one at a time and each token may have 20 unfinished: start a job, call wait_for_job until "
     "it is done, then use the file in its output (output.download for another machine). list_jobs finds a job "
     "id you lost; jobs survive an app restart as 'interrupted'. If list_models is empty, call recommend_models "

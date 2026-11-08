@@ -146,6 +146,16 @@ def download_output_file(request: Request, path: str) -> FileResponse:
     return FileResponse(real, filename=real.name)
 
 
+@router.get("/api/agent/guide")
+def agent_guide(request: Request) -> Response:
+    """The agent guide (AGENTS.md) as Markdown. Static text, so any valid token works, with access on or off."""
+    if not _authorized(request):
+        raise HTTPException(status_code=401, detail="Unauthorized. Send the Agent access token as a Bearer token.")
+    from backend_service.mcp_bridge.guide import guide_text
+
+    return Response(guide_text(), media_type="text/markdown; charset=utf-8")
+
+
 def _stdio_command(port: int) -> list[str] | None:
     """Command for MCP clients that only start local programs: this Python running the CLI relay."""
     cli = Path(__file__).resolve().parents[2] / "scripts" / "chaosengine-cli"

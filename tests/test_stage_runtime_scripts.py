@@ -54,6 +54,16 @@ class BundledCliTests(unittest.TestCase):
         self.assertTrue((ROOT / "scripts" / "chaosengine-cli").is_file())
 
 
+class BundledAgentGuideTests(unittest.TestCase):
+    def test_the_agent_guide_is_staged_at_the_backend_root(self) -> None:
+        source = (ROOT / "scripts" / "stage-runtime.mjs").read_text(encoding="utf-8")
+        match = re.search(r"const BUNDLED_ROOT_DOCS = \[(.*?)\];", source, re.S)
+        self.assertTrue(match, "stage-runtime.mjs lost its BUNDLED_ROOT_DOCS list")
+        self.assertIn('"AGENTS.md"', match.group(1))
+        self.assertIn("...BUNDLED_ROOT_DOCS", source)
+        self.assertTrue((ROOT / "AGENTS.md").is_file())
+
+
 class BundledLlamaCppTests(unittest.TestCase):
     def test_the_bundled_llama_cpp_tag_matches_the_update_script_pin(self) -> None:
         stage = (ROOT / "scripts" / "stage-runtime.mjs").read_text(encoding="utf-8")

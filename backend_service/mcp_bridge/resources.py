@@ -1,15 +1,16 @@
-"""MCP resources and prompts (A8). Read-only views of the app, plus three starter prompts.
+"""MCP resources and prompts (A8). Read-only views of the app, plus four starter prompts.
 
 Resources (all need only the ``read`` scope, answered as JSON text, never a bare local path):
 
+* ``chaosengine://guide``               the agent guide (AGENTS.md), Markdown; read it first
 * ``chaosengine://system/status``       free memory and the job queue
 * ``chaosengine://music/library``       tracks (paged); ``chaosengine://music/{id}`` one track
 * ``chaosengine://gallery/recent``      the newest image and video outputs
 * ``chaosengine://storyboard/{id}``     one film project (shots, takes, timeline, revision)
 
 ``resources/list`` pages with an opaque cursor (an offset); the storyboard projects come after the fixed
-resources. ``prompts/list`` and ``prompts/get`` serve ``short_film_from_brief``, ``poster_set`` and
-``soundtrack_for_project``: each returns a user message that tells the agent which tools to call.
+resources. ``prompts/list`` and ``prompts/get`` serve ``short_film_from_brief``, ``poster_set``,
+``soundtrack_for_project`` and ``start_here``: each returns a user message that tells the agent which tools to call.
 """
 
 from __future__ import annotations
@@ -19,6 +20,8 @@ import re
 from pathlib import Path
 from typing import Any
 
+from backend_service.mcp_bridge.guide import GUIDE_URI, guide_text
+
 PAGE = 50
 GALLERY_LIMIT = 30
 _ID = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
@@ -27,6 +30,7 @@ _FIXED = [
     ("chaosengine://system/status", "System status", "Free memory and the job queue with estimated times."),
     ("chaosengine://music/library", "Music library", "Tracks in the Music Library, newest first (first 50; use music_library to page)."),
     ("chaosengine://gallery/recent", "Recent outputs", "The newest images and videos the app made."),
+    (GUIDE_URI, "Agent guide", "How to use ChaosEngineAI: connect, every tool, the film workflow, limits and common mistakes. Read first."),
 ]
 TEMPLATES = [
     {"uriTemplate": "chaosengine://storyboard/{id}", "name": "Storyboard project", "mimeType": "application/json",
@@ -60,7 +64,8 @@ def _cursor(params: dict[str, Any]) -> int:
 def list_resources(params: dict[str, Any]) -> dict[str, Any]:
     from backend_service.routes.storyboard import get_store
 
-    rows = [{"uri": u, "name": n, "description": d, "mimeType": "application/json"} for u, n, d in _FIXED]
+    rows = [{"uri": u, "name": n, "description": d, "mimeType": "text/markdown" if u == GUIDE_URI else "application/json"}
+            for u, n, d in _FIXED]
     try:
         projects = [p for p in get_store().list() if "name" in p]
     except Exception:  # noqa: BLE001 - no storyboard folder is an empty list, not an error
@@ -109,6 +114,8 @@ def read_resource(params: dict[str, Any], ctx: Any) -> dict[str, Any]:
     from backend_service.mcp_bridge import library_tools, tools
 
     uri = str(params.get("uri") or "")
+    if uri == GUIDE_URI:
+        return {"contents": [{"uri": uri, "mimeType": "text/markdown", "text": guide_text()}]}
     if uri == "chaosengine://system/status":
         return _json(uri, tools.system_status(ctx, {}))
     if uri == "chaosengine://music/library":
@@ -149,6 +156,9 @@ PROMPTS: list[dict[str, Any]] = [
      "description": "Make music that fits a storyboard project and add it to the film's audio lane.",
      "arguments": [_ARG("project_id", "Storyboard project id (see the chaosengine://storyboard resources)."),
                    _ARG("mood", "Mood or genre.", False)]},
+    {"name": "start_here", "title": "Start here: read the guide",
+     "description": "Tells the agent to read the ChaosEngineAI guide first, then do the task.",
+     "arguments": [_ARG("task", "What you want made (optional).", False)]},
 ]
 
 
@@ -175,7 +185,13 @@ def get_prompt(params: dict[str, Any]) -> dict[str, Any]:
     missing = [a["name"] for a in prompt["arguments"] if a["required"] and not str(args.get(a["name"], "")).strip()]
     if missing:
         raise ResourceError(f"Missing argument: {', '.join(missing)}.", -32602)
-    if name == "short_film_from_brief":
+    if name == "start_here":
+        task = f"\n\nThen do this: {_clip(args['task'])}" if str(args.get("task", "")).strip() else ""
+        text = (f"Before you call any tool, read the ChaosEngineAI guide: read the MCP resource {GUIDE_URI} "
+                "(also served at GET /api/agent/guide). It lists every tool, the film workflow, memory and time limits and the "
+                "common mistakes. Follow it: call system_status first, run one job at a time with wait_for_job, and tell me "
+                f"which models to download if one is missing.{task}")
+    elif name == "short_film_from_brief":
         secs = _clip(args.get("seconds") or "30", 8)
         text = (f"Make a short film of about {secs} seconds from this brief: {_clip(args['brief'])}\n\n"
                 "1. Call system_status, then list_models for image and video; if one is missing, call recommend_models and tell me.\n"

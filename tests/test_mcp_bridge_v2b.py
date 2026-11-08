@@ -269,7 +269,7 @@ class ResourcesAndPromptsTests(_Base):
 
     def test_prompts(self):
         names = [p["name"] for p in self.rpc("prompts/list").json()["result"]["prompts"]]
-        self.assertEqual(names, ["short_film_from_brief", "poster_set", "soundtrack_for_project"])
+        self.assertEqual(names, ["short_film_from_brief", "poster_set", "soundtrack_for_project", "start_here"])
         got = self.rpc("prompts/get", {"name": "poster_set", "arguments": {"subject": "a lighthouse", "count": "4"}}).json()["result"]
         text = got["messages"][0]["content"]["text"]
         self.assertIn("lighthouse", text)

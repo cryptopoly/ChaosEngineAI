@@ -196,6 +196,31 @@ _LANGUAGES = {
 
 DEFAULT_VOICE = "af_heart"
 
+# Overall grades from the model author's VOICES.md (hexgrad/Kokoro-82M, checked 2026-11-08). Spanish and Portuguese
+# voices are ungraded there and stay None. The Speak screen shortlists by these (D-67).
+_KOKORO_GRADES = {
+    "af_heart": "A", "af_alloy": "C", "af_aoede": "C+", "af_bella": "A-", "af_jessica": "D", "af_kore": "C+",
+    "af_nicole": "B-", "af_nova": "C", "af_river": "D", "af_sarah": "C+", "af_sky": "C-",
+    "am_adam": "F+", "am_echo": "D", "am_eric": "D", "am_fenrir": "C+", "am_liam": "D", "am_michael": "C+",
+    "am_onyx": "D", "am_puck": "C+", "am_santa": "D-",
+    "bf_alice": "D", "bf_emma": "B-", "bf_isabella": "C", "bf_lily": "D",
+    "bm_daniel": "D", "bm_fable": "C", "bm_george": "C", "bm_lewis": "D+",
+    "jf_alpha": "C+", "jf_gongitsune": "C", "jf_nezumi": "C-", "jf_tebukuro": "C", "jm_kumo": "C-",
+    "zf_xiaobei": "D", "zf_xiaoni": "D", "zf_xiaoxiao": "D", "zf_xiaoyi": "D",
+    "zm_yunjian": "D", "zm_yunxi": "D", "zm_yunxia": "D", "zm_yunyang": "D",
+    "ff_siwis": "B-", "hf_alpha": "C", "hf_beta": "C", "hm_omega": "C", "hm_psi": "C", "if_sara": "C", "im_nicola": "C",
+}
+
+
+def _voice_addon(prefix: str) -> str | None:
+    """The voice pack add-on a language needs on this lane, or None."""
+    return "chinese" if prefix == "z" and voice_env.lane() == "mlx" else None
+
+
+def _voice_never_available(prefix: str) -> bool:
+    """Japanese can never be used on the MLX lane (its dictionary is not offered), unlike Chinese, which has an add-on."""
+    return prefix == "j" and voice_env.lane() == "mlx"
+
 
 def _voice_language_ready(prefix: str) -> bool:
     """mlx-audio needs extra front-ends for Japanese and Chinese."""
@@ -218,6 +243,10 @@ def list_tts_voices() -> list[dict[str, Any]]:
             "language": language,
             "languageLabel": language_label,
             "available": _voice_language_ready(prefix),
+            "grade": _KOKORO_GRADES.get(voice_id),
+            # "chinese" when the Mandarin add-on unlocks it; ``neverAvailable`` when nothing can on this lane.
+            "addon": _voice_addon(prefix),
+            "neverAvailable": _voice_never_available(prefix),
         })
     return voices
 
@@ -230,6 +259,8 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "sttModel": "",
     "language": "",
     "ttsVoice": DEFAULT_VOICE,
+    # The voice last used on the Speak screen, kept apart from the chat voice; "" until Speak has run once.
+    "speakVoice": "",
     "speed": 1.0,
     "autoSend": False,
     "autoRead": False,

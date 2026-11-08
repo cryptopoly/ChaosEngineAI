@@ -34,12 +34,19 @@ export function VoiceModelsView({ ctx }: { ctx: AppTabContext }) {
     voiceRuntime,
     backendOnline,
     refreshVoiceRuntime,
+    setVoiceOpenRequest,
+    setActiveTab,
   } = ctx;
   return (
     <VoiceModelsTab
       voiceRuntime={voiceRuntime}
       backendOnline={backendOnline}
       onRefreshVoiceRuntime={refreshVoiceRuntime}
+      onOpenStudio={(target) => {
+        // No target: the Studio opens on the mode it remembers. Use in Speak names the mode and the voice.
+        if (target) setVoiceOpenRequest({ ...target, nonce: Date.now() });
+        void setActiveTab("voice-studio");
+      }}
     />
   );
 }

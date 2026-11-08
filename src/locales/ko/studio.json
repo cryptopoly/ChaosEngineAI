@@ -684,7 +684,21 @@
         "style": "스타일",
         "clone": "복제",
         "design": "디자인"
-      }
+      },
+      "cost": {
+        "download": null,
+        "memory": null,
+        "peak": null,
+        "speed": null,
+        "per10s": null,
+        "coldStart": null,
+        "seconds": null,
+        "measuredOn": null,
+        "notMeasured": null
+      },
+      "browseVoices": null,
+      "useInSpeak": null,
+      "openStudio": null
     },
     "voices": {
       "title": "음성",
@@ -822,13 +836,18 @@
         "excited": null,
         "whisper": null,
         "calm": null
-      }
+      },
+      "modelKokoroCost": null,
+      "modelReadyCost": null,
+      "modelNeedsCost": null,
+      "manageInModels": null
     },
     "stop": "중지",
     "studio": {
       "title": "Voice Studio",
       "needsPack": "음성 기능은 이 컴퓨터에서 실행되며 음성 팩(약 2 GB)이 필요합니다. 음성 > 모델에서 한 번만 설치하세요.",
-      "openModels": "음성 모델 열기"
+      "openModels": "음성 모델 열기",
+      "library": null
     },
     "savedToLibrary": "라이브러리에 저장됨",
     "saveToLibrary": "라이브러리에 저장",
@@ -889,7 +908,8 @@
       "deleteSelected": "선택 항목 삭제 ({n})",
       "loading": "불러오는 중…",
       "noMatch": "일치하는 항목이 없습니다.",
-      "empty": "아직 아무것도 없습니다. Voice Studio에서 만든 받아쓰기와 저장한 음성이 여기에 보관됩니다."
+      "empty": "아직 아무것도 없습니다. Voice Studio에서 만든 받아쓰기와 저장한 음성이 여기에 보관됩니다.",
+      "openStudio": null
     },
     "languages": {
       "auto": "자동 감지"
@@ -948,6 +968,46 @@
       "recordingPlayback": "내 녹음",
       "saving": null,
       "sampleType": null
+    },
+    "cost": {
+      "kokoroChip": null,
+      "chip": null,
+      "unmeasuredChip": null,
+      "kokoroDetail": null,
+      "detail": null,
+      "unmeasuredDetail": null,
+      "download": null
+    },
+    "install": {
+      "title": null,
+      "body": null,
+      "cost": null,
+      "notNow": null
+    },
+    "picker": {
+      "addMandarin": null,
+      "addMandarinDetail": null,
+      "naturalDetail": null,
+      "designDetail": null,
+      "quickDetail": null,
+      "recommended": null,
+      "recommendedNote": null,
+      "quick": null,
+      "quickNote": null,
+      "fewer": null,
+      "allVoices": null,
+      "cloned": null,
+      "clonedNote": null,
+      "newClone": null,
+      "newCloneDetail": null,
+      "newCloneOpen": null,
+      "designed": null,
+      "designedNote": null,
+      "more": null,
+      "moreNote": null,
+      "getMore": null,
+      "getMoreDetail": null,
+      "openModels": null
     }
   },
   "residentChatModelNote": "로드된 채팅 모델이 이 메모리의 약 {gb} GB를 차지하며, 언로드하면 해제됩니다.",

@@ -502,6 +502,16 @@ class VoiceRouteTests(unittest.TestCase):
             self.assertEqual(self.client.post("/api/voice/settings", json={"autoSend": True}).json()["autoSend"], True)
             self.assertTrue(self.client.get("/api/voice/settings").json()["autoSend"])
 
+    def test_speak_voice_is_its_own_setting_and_takes_a_cloned_voice_id(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(voice_env, "VOICE_DATA_DIR", Path(tmp)):
+            fresh = self.client.get("/api/voice/settings").json()
+            self.assertEqual(fresh["speakVoice"], "")
+            saved = self.client.post("/api/voice/settings", json={"speakVoice": "clone:voice-1234567890abcdef"}).json()
+            self.assertEqual(saved["speakVoice"], "clone:voice-1234567890abcdef")
+            self.assertEqual(saved["ttsVoice"], fresh["ttsVoice"])  # the chat voice is untouched
+            self.assertEqual(self.client.get("/api/voice/settings").json()["speakVoice"], "clone:voice-1234567890abcdef")
+            self.assertEqual(self.client.post("/api/voice/settings", json={"speakVoice": "x" * 65}).status_code, 422)
+
 
 if __name__ == "__main__":
     unittest.main()

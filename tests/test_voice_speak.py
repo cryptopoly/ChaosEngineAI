@@ -117,14 +117,26 @@ class CatalogTests(unittest.TestCase):
 
 
 class PlanTests(unittest.TestCase):
-    def test_style_picks_the_1_7b_model_and_sends_the_instruction(self) -> None:
+    def test_the_installed_style_model_runs_with_or_without_style_text(self) -> None:
+        # No model swap (a reload) when the style box gets text: the 1.7B model runs both times (D-67 W2).
         with Machine(), mock.patch.object(voice_clone, "snapshot_dir", installed("qwen3-tts-custom-0.6b", "qwen3-tts-custom-1.7b")):
             plain = voice_speak.build_plan("qwen3:Ryan")
             styled = voice_speak.build_plan("qwen3:ryan", style="  Very   happy ")
-        self.assertEqual(plain.model_key, "qwen3-tts-custom-0.6b")
+            listed = next(v for v in voice_speak.list_voices(include_clones=False) if v["id"] == "qwen3:Ryan")
+        self.assertEqual(plain.model_key, "qwen3-tts-custom-1.7b")
         self.assertNotIn("instruct", plain.extra)
         self.assertEqual(styled.model_key, "qwen3-tts-custom-1.7b")
         self.assertEqual(styled.extra, {"mode": "preset", "speaker": "Ryan", "language": "auto", "instruct": "Very happy"})
+        self.assertEqual(listed["model"], "qwen3-tts-custom-1.7b")
+
+    def test_the_0_6b_model_runs_only_when_it_is_the_only_one_installed(self) -> None:
+        with Machine(), mock.patch.object(voice_clone, "snapshot_dir", installed("qwen3-tts-custom-0.6b")):
+            plain = voice_speak.build_plan("qwen3:Ryan")
+            listed = next(v for v in voice_speak.list_voices(include_clones=False) if v["id"] == "qwen3:Ryan")
+        self.assertEqual(plain.model_key, "qwen3-tts-custom-0.6b")
+        self.assertEqual(listed["model"], "qwen3-tts-custom-0.6b")
+        with Machine(), mock.patch.object(voice_clone, "snapshot_dir", installed("qwen3-tts-custom-1.7b")):
+            self.assertEqual(voice_speak.build_plan("qwen3:Ryan").model_key, "qwen3-tts-custom-1.7b")
 
     def test_the_0_6b_model_never_gets_the_style_text(self) -> None:
         with Machine(), mock.patch.object(voice_clone, "snapshot_dir", installed("qwen3-tts-custom-0.6b")):
@@ -413,7 +425,7 @@ class VoiceListTests(unittest.TestCase):
         for v in voices:
             by_kind.setdefault(v["kind"], []).append(v)
         self.assertEqual(set(by_kind), {"builtin", "preset", "design", "clone"})
-        self.assertEqual(len(by_kind["builtin"]), 54)
+        self.assertEqual(len(by_kind["builtin"]), 49)  # 54 Kokoro voices less the five Japanese ones (never on MLX)
         self.assertEqual(len(by_kind["preset"]), 9)
         fields = {"id", "name", "kind", "language", "model", "capabilities"}
         self.assertTrue(all(fields <= set(v) for v in voices))

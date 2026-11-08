@@ -14,11 +14,16 @@ import {
   STYLE_CHIPS,
   canGenerate,
   cloneRequestText,
+  costLabel,
   cloneTextTooLong,
   installedCloneModels,
   modelNote,
+  recommendedNaturalModel,
+  showInstallCard,
   styleState,
 } from "./speakLogic";
+import { InstallVoiceCard } from "./InstallVoiceCard";
+import { useCostText } from "./costText";
 import type { VoiceCatalog } from "./useVoiceCatalog";
 import { useVoiceSample } from "./useVoiceSample";
 
@@ -44,11 +49,14 @@ export function SpeakScreen({
   voiceId,
   onVoiceChange,
   onTabChange,
+  onNewClone,
 }: {
   catalog: VoiceCatalog;
   voiceId: string;
   onVoiceChange: (id: string) => void;
   onTabChange?: (tab: TabId) => void;
+  /** Open the new cloned voice form (the Voices tab). */
+  onNewClone?: () => void;
 }) {
   const { t } = useTranslation("studio");
   const { settings } = useVoice();
@@ -66,6 +74,7 @@ export function SpeakScreen({
   const cancelRef = useRef(false);
   const abortRef = useRef<AbortController | null>(null);
   const sample = useVoiceSample(speed);
+  const costs = useCostText();
 
   useEffect(
     () => () => {
@@ -81,7 +90,8 @@ export function SpeakScreen({
   const designing = voice?.kind === "design";
   const styleInfo = styleState(voice, catalog.models);
   const activeStyle = styleInfo.enabled ? style.trim() : "";
-  const note = modelNote(voice, catalog.models, activeStyle !== "", cloneModelKey);
+  const note = modelNote(voice, catalog.models, cloneModelKey);
+  const installModel = showInstallCard(catalog.models, catalog.modelsAvailable) ? recommendedNaturalModel(catalog.models) : null;
   const cloneChoices = installedCloneModels(voice, catalog.models);
   const parts: SpeechPart[] = cloned ? (text.trim() ? [{ text: cloneRequestText(text), gapAfter: 0 }] : []) : splitSpeech(text);
   const tooLong = cloned && cloneTextTooLong(text);
@@ -184,12 +194,17 @@ export function SpeakScreen({
 
         <VoicePicker
           voices={catalog.voices}
+          models={catalog.models}
+          lead={installModel ? <InstallVoiceCard model={installModel} onDownload={() => void catalog.download(installModel.key)} /> : null}
           selectedId={voiceId}
           onSelect={onVoiceChange}
           modelsAvailable={catalog.modelsAvailable}
           isPlaying={sample.isPlaying}
           isLoading={sample.isLoading}
           onSample={(entry) => void sample.play(entry)}
+          onNewClone={catalog.cloneAllowed ? onNewClone : undefined}
+          onGetMore={onTabChange ? () => onTabChange("voice-models") : undefined}
+          onAddonInstalled={() => void catalog.refresh()}
         />
         {cloned ? <CloneStatement /> : null}
 
@@ -280,15 +295,15 @@ export function SpeakScreen({
           {voice == null
             ? ""
             : note.model == null && voice.kind === "builtin"
-              ? t("voice.speak.modelKokoro", { defaultValue: "Runs with Kokoro, part of the voice pack." })
+              ? t("voice.speak.modelKokoroCost", { defaultValue: "Runs with Kokoro, {detail}.", detail: costs.detail(costLabel(null)) })
               : note.model
                 ? note.model.installed
-                  ? t("voice.speak.modelReady", { defaultValue: "Runs with {name}." , name: note.model.name })
+                  ? t("voice.speak.modelReadyCost", { defaultValue: "Runs with {name}: {detail}.", name: note.model.name, detail: costs.detail(costLabel(note.model)) })
                   : note.downloading
                     ? note.model.download.phase === "watermark"
                       ? t("voice.clone.installingWatermark", { defaultValue: "Installing the watermark component…" })
                       : t("voice.speak.modelDownloading", { defaultValue: "Downloading {name}…", name: note.model.name })
-                    : t("voice.speak.modelNeeds", { defaultValue: "Needs {name} ({gb} GB), not downloaded yet.", name: note.model.name, gb: note.model.sizeGb })
+                    : `${t("voice.speak.modelNeeds", { defaultValue: "Needs {name} ({gb} GB), not downloaded yet.", name: note.model.name, gb: note.model.sizeGb })} ${t("voice.speak.modelNeedsCost", { defaultValue: "Once downloaded: {detail}.", detail: costs.detail(costLabel(note.model)) })}`
                 : (voice.needs ?? "")}{" "}
           {note.model && !note.model.installed && !note.downloading ? (
             <button type="button" className="secondary-button" onClick={() => void catalog.download(note.model!.key)}>
@@ -299,6 +314,14 @@ export function SpeakScreen({
             <button type="button" className="secondary-button" onClick={() => void catalog.download(styleInfo.unlockWith!.key)}>
               {t("voice.speak.downloadForStyle", { defaultValue: "Download {name} for style", name: styleInfo.unlockWith.name })}
             </button>
+          ) : null}
+          {voice && onTabChange ? (
+            <>
+              {" "}
+              <button type="button" className="link-button" onClick={() => onTabChange("voice-models")}>
+                {t("voice.speak.manageInModels", { defaultValue: "Manage in Models" })}
+              </button>
+            </>
           ) : null}
         </p>
 

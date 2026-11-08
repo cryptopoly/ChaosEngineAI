@@ -684,7 +684,21 @@
         "style": "风格",
         "clone": "克隆",
         "design": "设计"
-      }
+      },
+      "cost": {
+        "download": null,
+        "memory": null,
+        "peak": null,
+        "speed": null,
+        "per10s": null,
+        "coldStart": null,
+        "seconds": null,
+        "measuredOn": null,
+        "notMeasured": null
+      },
+      "browseVoices": null,
+      "useInSpeak": null,
+      "openStudio": null
     },
     "voices": {
       "title": "声音",
@@ -822,13 +836,18 @@
         "excited": null,
         "whisper": null,
         "calm": null
-      }
+      },
+      "modelKokoroCost": null,
+      "modelReadyCost": null,
+      "modelNeedsCost": null,
+      "manageInModels": null
     },
     "stop": "停止",
     "studio": {
       "title": "Voice Studio",
       "needsPack": "语音功能在这台电脑上运行，需要语音包（约 2 GB）。请在“语音 > 模型”中安装一次。",
-      "openModels": "打开语音模型"
+      "openModels": "打开语音模型",
+      "library": null
     },
     "savedToLibrary": "已保存到资料库",
     "saveToLibrary": "保存到资料库",
@@ -889,7 +908,8 @@
       "deleteSelected": "删除所选（{n}）",
       "loading": "正在加载…",
       "noMatch": "没有匹配项。",
-      "empty": "这里还没有内容。在 Voice Studio 中制作的转写稿和你保存的语音都会放在这里。"
+      "empty": "这里还没有内容。在 Voice Studio 中制作的转写稿和你保存的语音都会放在这里。",
+      "openStudio": null
     },
     "languages": {
       "auto": "自动检测"
@@ -948,6 +968,46 @@
       "recordingPlayback": "你的录音",
       "saving": null,
       "sampleType": null
+    },
+    "cost": {
+      "kokoroChip": null,
+      "chip": null,
+      "unmeasuredChip": null,
+      "kokoroDetail": null,
+      "detail": null,
+      "unmeasuredDetail": null,
+      "download": null
+    },
+    "install": {
+      "title": null,
+      "body": null,
+      "cost": null,
+      "notNow": null
+    },
+    "picker": {
+      "addMandarin": null,
+      "addMandarinDetail": null,
+      "naturalDetail": null,
+      "designDetail": null,
+      "quickDetail": null,
+      "recommended": null,
+      "recommendedNote": null,
+      "quick": null,
+      "quickNote": null,
+      "fewer": null,
+      "allVoices": null,
+      "cloned": null,
+      "clonedNote": null,
+      "newClone": null,
+      "newCloneDetail": null,
+      "newCloneOpen": null,
+      "designed": null,
+      "designedNote": null,
+      "more": null,
+      "moreNote": null,
+      "getMore": null,
+      "getMoreDetail": null,
+      "openModels": null
     }
   },
   "residentChatModelNote": "已加载的聊天模型占用了其中约 {gb} GB 内存；卸载它即可释放这部分内存。",

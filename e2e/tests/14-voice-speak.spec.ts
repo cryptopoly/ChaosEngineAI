@@ -26,11 +26,12 @@ async function mockSpeak(page: Page): Promise<Array<Record<string, unknown>>> {
 }
 
 test("a quick voice has no style: the box and chips are greyed out with a note, and the request carries no style", async ({ page }) => {
-  await mockVoiceApi(page);
+  await mockVoiceApi(page, { speakVoice: "af_heart" });
   const bodies = await mockSpeak(page);
   await openSpeak(page);
 
-  await expect(page.getByRole("radio", { name: /^Heart/ })).toHaveAttribute("aria-checked", "true");
+  // The voice last used in Speak wins over the natural voice the rule would pick.
+  await expect(page.getByRole("radio", { name: /^Heart/ }).first()).toHaveAttribute("aria-checked", "true");
   await expect(styleBox(page)).toBeDisabled();
   for (const chip of ["Neutral", "Angry", "Sad", "Excited", "Whisper", "Calm"]) {
     await expect(page.getByRole("button", { name: chip, exact: true })).toBeDisabled();
@@ -47,11 +48,88 @@ test("a quick voice has no style: the box and chips are greyed out with a note, 
   expect(bodies[0]).toMatchObject({ text: "Hello world.", voice: "af_heart", style: "", speed: 1, pitch: 0, seed: null });
 });
 
+test("first run with no natural voice: Speak starts on the best quick voice and offers to install a better one in place", async ({ page }) => {
+  const seen = await mockVoiceApi(page, { installed: ["qwen3-tts-0.6b"] });
+  await openSpeak(page);
+  await expect(page.getByRole("radio", { name: /^Heart/ }).first()).toHaveAttribute("aria-checked", "true");
+  const card = page.locator(".voice-install-card");
+  await expect(card.getByRole("heading", { name: "Install a better voice" })).toBeVisible();
+  await expect(card).toContainText("Qwen3-TTS 1.7B CustomVoice adds natural prosody");
+  await expect(card).toContainText("Download 3.08 GB; 3.5 GB in memory, about 2.5 s per 10 s of speech (measured on Apple M4 Max, 64 GB, 2026-11-08).");
+  await card.getByRole("button", { name: "Download 3.08 GB" }).click();
+  await expect.poll(() => seen.downloads).toEqual(["qwen3-tts-custom-1.7b"]);
+  expect(seen.speakVoices).toEqual([]); // the rule's choice is not saved as the person's own
+
+  // Once the model is there, Speak starts on the natural voice for the UI language and the card is gone.
+  await page.unrouteAll({ behavior: "ignoreErrors" });
+  await mockVoiceApi(page, { installed: ["qwen3-tts-0.6b", "qwen3-tts-custom-1.7b"] });
+  await openSpeak(page);
+  await expect(page.getByRole("radio", { name: /^Ryan/ }).first()).toHaveAttribute("aria-checked", "true");
+  await expect(page.locator(".voice-install-card")).toHaveCount(0);
+});
+
+test("Not now hides the install card, and a picked voice is saved as the Speak voice", async ({ page }) => {
+  const seen = await mockVoiceApi(page, { installed: ["qwen3-tts-0.6b"] });
+  await openSpeak(page);
+  await page.locator(".voice-install-card").getByRole("button", { name: "Not now" }).click();
+  await expect(page.locator(".voice-install-card")).toHaveCount(0);
+  await page.getByRole("radio", { name: /^Bella/ }).first().click();
+  await expect.poll(() => seen.speakVoices).toEqual(["af_bella"]);
+});
+
+test("picker groups: Recommended, a graded Quick shortlist with an expander, Cloned, Designed, More", async ({ page }) => {
+  await mockVoiceApi(page, { clones: [ADA], installed: [...BOTH_CUSTOM, "qwen3-tts-design-1.7b"], speakVoice: "af_heart" });
+  const installs: unknown[] = [];
+  await page.route("**/api/voice/install", (route) => {
+    installs.push(route.request().postDataJSON());
+    return route.fulfill({ json: { phase: "installing", phaseLabel: "Installing", phaseIndex: 1, phaseTotal: 5, percent: 10, message: "", error: null, log: [], startedAt: 0, finishedAt: 0, running: true, extras: ["chinese"] } });
+  });
+  await openSpeak(page);
+  const picker = page.locator(".voice-picker");
+  const titles = picker.locator(".voice-group__head > .voice-group__title");
+  await expect(titles).toHaveText(["Recommended", "Quick", "Cloned", "Designed", "More"]);
+
+  const recommended = picker.locator(".voice-picker__group--recommended .voice-card__title");
+  await expect(recommended).toHaveText(["Ryan", "Heart", "Ada", "Design a voice from a description"]);
+
+  const quick = picker.locator(".voice-picker__group--quick");
+  await expect(quick).toContainText("Kokoro, part of the voice pack. Fast, under 1 GB, speed only. 22 voices in 2 languages.");
+  await expect(quick.locator(".voice-card__title")).toHaveText(["Heart", "Bella", "Nicole", "Fenrir", "Michael", "Puck"]);
+  await quick.getByRole("button", { name: "All 20 American English voices" }).click();
+  await expect(quick.locator(".voice-card__title")).toHaveCount(20);
+  await quick.getByRole("button", { name: "Show the shortlist" }).click();
+  await expect(quick.locator(".voice-card__title")).toHaveCount(6);
+
+  // Mandarin needs the add-on here: the card installs it in place.
+  await quick.getByLabel("Language").selectOption("Chinese (Mandarin)");
+  await expect(quick.locator(".voice-card__main")).toHaveCount(0);
+  await quick.getByRole("button", { name: "Add Mandarin Chinese voices" }).click();
+  await expect.poll(() => installs.length).toBe(1);
+  expect((installs[0] as { extras: string[] }).extras).toContain("chinese");
+
+  await expect(picker.locator(".voice-picker__group--more .voice-card__title")).toContainText(["Aiden", "Get more voices"]);
+  await expect(picker.locator(".voice-picker__group--clones")).toContainText("Every clip is labelled as AI-made and watermarked.");
+  await picker.locator(".voice-picker__group--clones").getByRole("button", { name: "Open the form" }).click();
+  await expect(page.getByRole("tab", { name: "Voices" })).toHaveAttribute("aria-selected", "true");
+});
+
+test("typing a style never swaps the model: the installed style model runs throughout", async ({ page }) => {
+  await mockVoiceApi(page, { installed: BOTH_CUSTOM });
+  await openSpeak(page);
+  await expect(page.getByRole("radio", { name: /^Ryan/ }).first()).toHaveAttribute("aria-checked", "true");
+  const line = page.locator(".voice-speak__model");
+  await expect(line).toContainText("Runs with Qwen3-TTS 1.7B CustomVoice:");
+  await styleBox(page).fill("Slow and gentle.");
+  await expect(line).toContainText("Runs with Qwen3-TTS 1.7B CustomVoice:");
+  await styleBox(page).fill("");
+  await expect(line).toContainText("Runs with Qwen3-TTS 1.7B CustomVoice:");
+});
+
 test("a cloned voice runs with the installed cloning model, and two installed models give a choice", async ({ page }) => {
   await mockVoiceApi(page, { clones: [ADA], installed: ["qwen3-tts-1.7b"] });
   const bodies = await mockSpeak(page);
   await openSpeak(page);
-  await page.getByRole("radio", { name: /^Ada\b/ }).click();
+  await page.getByRole("radio", { name: /^Ada\b/ }).first().click();
   await expect(page.getByText("Runs with Qwen3-TTS 1.7B Base")).toBeVisible();
   await expect(page.getByLabel("Cloning model")).toHaveCount(0);
   await page.getByLabel("Text to speak").fill("Hello world.");
@@ -64,7 +142,7 @@ test("with both cloning models installed a select picks which one runs", async (
   await mockVoiceApi(page, { clones: [ADA], installed: ["qwen3-tts-0.6b", "qwen3-tts-1.7b"] });
   const bodies = await mockSpeak(page);
   await openSpeak(page);
-  await page.getByRole("radio", { name: /^Ada\b/ }).click();
+  await page.getByRole("radio", { name: /^Ada\b/ }).first().click();
   await expect(page.getByLabel("Cloning model")).toHaveValue("qwen3-tts-0.6b");
   await page.getByLabel("Cloning model").selectOption("qwen3-tts-1.7b");
   await page.getByLabel("Text to speak").fill("Hello world.");
@@ -98,7 +176,7 @@ test("Cancel tells the backend to stop, and the next Generate works at once", as
 test("the small model ignores style: greyed out with a way to download the style model", async ({ page }) => {
   const seen = await mockVoiceApi(page);
   await openSpeak(page);
-  await page.getByRole("radio", { name: /^Ryan/ }).click();
+  await page.getByRole("radio", { name: /^Ryan/ }).first().click();
   await expect(styleBox(page)).toBeDisabled();
   await expect(page.getByText("The small model ignores style.")).toBeVisible();
   await page.getByRole("button", { name: "Download Qwen3-TTS 1.7B CustomVoice for style" }).click();
@@ -109,13 +187,16 @@ test("a preset with the style model: chips fill the box, speed, pitch and seed a
   await mockVoiceApi(page, { installed: BOTH_CUSTOM });
   const bodies = await mockSpeak(page);
   await openSpeak(page);
-  await page.getByRole("radio", { name: /^Ryan/ }).click();
+  await page.getByRole("radio", { name: /^Ryan/ }).first().click();
 
   const style = styleBox(page);
   await expect(style).toBeEnabled();
   await page.getByRole("button", { name: "Angry", exact: true }).click();
   await expect(style).toHaveValue("Speak in an angry tone.");
-  await expect(page.getByText("Runs with Qwen3-TTS 1.7B CustomVoice.")).toBeVisible();
+  await expect(page.locator(".voice-speak__model")).toContainText(
+    "Runs with Qwen3-TTS 1.7B CustomVoice: 3.5 GB in memory, about 2.5 s per 10 s of speech (measured on Apple M4 Max, 64 GB, 2026-11-08).",
+  );
+  await expect(page.getByRole("radio", { name: /^Ryan/ }).first()).toContainText("3.5 GB, 2.5 s per 10 s");
 
   await page.getByLabel(/^Pitch/).fill("3");
   await page.getByLabel(/^Speed/).fill("1.5");
@@ -133,16 +214,16 @@ test("a missing model stops Generate and offers Download; the design voice needs
   const bodies = await mockSpeak(page);
   await openSpeak(page);
   await page.getByLabel("Text to speak").fill("Hello.");
-  await page.getByRole("radio", { name: /^Ryan/ }).click();
-  await expect(page.getByText(/Needs Qwen3-TTS 0.6B CustomVoice .*not downloaded yet/)).toBeVisible();
+  await page.getByRole("radio", { name: /^Ryan/ }).first().click();
+  await expect(page.getByText(/Needs Qwen3-TTS 1.7B CustomVoice .*not downloaded yet/)).toBeVisible();
   await expect(page.getByRole("button", { name: "Generate audio" })).toBeDisabled();
   await page.locator(".voice-speak__model").getByRole("button", { name: "Download", exact: true }).click();
-  await expect.poll(() => seen.downloads).toEqual(["qwen3-tts-custom-0.6b"]);
+  await expect.poll(() => seen.downloads).toEqual(["qwen3-tts-custom-1.7b"]);
 
   await page.unroute("**/api/voice/models");
   await mockVoiceApi(page, { installed: ["qwen3-tts-0.6b", "qwen3-tts-design-1.7b"] });
   await openSpeak(page);
-  await page.getByRole("radio", { name: /Design a voice from a description/ }).click();
+  await page.getByRole("radio", { name: /Design a voice from a description/ }).first().click();
   await page.getByLabel("Text to speak").fill("Hello.");
   await expect(page.getByLabel("Describe the voice")).toBeEnabled();
   await expect(page.getByRole("button", { name: "Generate audio" })).toBeDisabled();
@@ -173,11 +254,11 @@ test("Voices lists built-in and cloned voices, filters them, Use jumps to Speak,
 
   await list.locator("li", { hasText: "Aiden" }).getByRole("button", { name: "Use" }).click();
   await expect(page.getByLabel("Text to speak")).toBeVisible();
-  await expect(page.getByRole("radio", { name: /^Aiden/ })).toHaveAttribute("aria-checked", "true");
+  await expect(page.getByRole("radio", { name: /^Aiden/ }).first()).toHaveAttribute("aria-checked", "true");
 
   await page.getByRole("tab", { name: "Voices" }).click();
   await page.locator(".voice-newcards").getByRole("button", { name: "Describe a voice" }).click();
-  await expect(page.getByRole("radio", { name: /Design a voice from a description/ })).toHaveAttribute("aria-checked", "true");
+  await expect(page.getByRole("radio", { name: /Design a voice from a description/ }).first()).toHaveAttribute("aria-checked", "true");
 
   await page.getByRole("tab", { name: "Voices" }).click();
   page.once("dialog", (dialog) => dialog.dismiss());
@@ -196,12 +277,43 @@ test("Voice Models lists the speech models with what each can do, and keeps the 
   const row = page.locator(".voice-tts-row", { hasText: "Qwen3-TTS 1.7B CustomVoice" });
   await expect(row.getByText("Style", { exact: true })).toBeVisible();
   await expect(row.getByText("Speak", { exact: true })).toBeVisible();
-  await expect(row.getByText("3.08 GB", { exact: false })).toBeVisible();
+  await expect(row.getByText("3.08 GB", { exact: false }).first()).toBeVisible();
+  await expect(row.getByText("3.5 GB peak")).toBeVisible();
+  await expect(row.getByText("2.5 s per 10 s")).toBeVisible();
+  await expect(row.getByText("Apple M4 Max, 64 GB, 2026-11-08")).toBeVisible();
   await expect(page.locator(".voice-tts-row", { hasText: "0.6B Base" }).getByText("Clone", { exact: true })).toBeVisible();
   await expect(page.locator(".voice-tts-row", { hasText: "VoiceDesign" }).getByText("Design", { exact: true })).toBeVisible();
   await expect(page.locator(".voice-tts-row", { hasText: "0.6B CustomVoice" }).getByText("Downloaded")).toBeVisible();
   await row.getByRole("button", { name: "Download" }).click();
   await expect.poll(() => seen.downloads).toEqual(["qwen3-tts-custom-1.7b"]);
+});
+
+test("Voice Studio opens on Speak, then on the mode used last", async ({ page }) => {
+  await mockVoiceApi(page);
+  await goTo(page, "Voice", "Studio");
+  await expect(page.getByRole("tab", { name: "Speak" })).toHaveAttribute("aria-selected", "true");
+  await page.getByRole("tab", { name: "Transcribe" }).click();
+  await page.locator(".studio-shell__header").getByRole("button", { name: "Models" }).click();
+  await expect(page.getByRole("heading", { name: "Speech models" })).toBeVisible();
+  await page.getByRole("button", { name: "Open Studio" }).click();
+  await expect(page.getByRole("tab", { name: "Transcribe" })).toHaveAttribute("aria-selected", "true");
+});
+
+test("Models > Use in Speak lands on Speak with that model's voice; a cloning model opens Voices", async ({ page }) => {
+  await mockVoiceApi(page, { installed: [...BOTH_CUSTOM, "qwen3-tts-design-1.7b"], speakVoice: "af_heart" });
+  await goTo(page, "Voice", "Models");
+  await page.locator(".voice-tts-row", { hasText: "1.7B CustomVoice" }).getByRole("button", { name: "Use in Speak" }).click();
+  await expect(page.getByRole("tab", { name: "Speak" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("radio", { name: /^Ryan/ }).first()).toHaveAttribute("aria-checked", "true");
+  await expect(page.locator(".voice-speak__model").getByRole("button", { name: "Manage in Models" })).toBeVisible();
+
+  await page.locator(".voice-speak__model").getByRole("button", { name: "Manage in Models" }).click();
+  await page.locator(".voice-tts-row", { hasText: "VoiceDesign" }).getByRole("button", { name: "Use in Speak" }).click();
+  await expect(page.getByRole("radio", { name: /Design a voice/ }).first()).toHaveAttribute("aria-checked", "true");
+
+  await page.locator(".studio-shell__header").getByRole("button", { name: "Models" }).click();
+  await page.locator(".voice-tts-row", { hasText: "0.6B Base" }).getByRole("button", { name: "Browse voices" }).click();
+  await expect(page.getByRole("tab", { name: "Voices" })).toHaveAttribute("aria-selected", "true");
 });
 
 test.describe("375 px", () => {
@@ -226,7 +338,12 @@ test.describe("375 px", () => {
   test("Speak, Voices and Voice Models fit the width", async ({ page }) => {
     await mockVoiceApi(page, { clones: [ADA], installed: BOTH_CUSTOM });
     await openSpeak(page);
-    await page.getByRole("radio", { name: /^Ryan/ }).click();
+    await page.getByRole("radio", { name: /^Ryan/ }).first().click();
+    await expectFits(page, ".voice-speak");
+    await expectFits(page, ".studio-shell__header");
+    // All 20 quick voices open at once still fit.
+    await page.locator(".voice-picker__group--quick").getByRole("button", { name: /^All 20/ }).click();
+    await expect(page.locator(".voice-picker__group--quick .voice-card__main")).toHaveCount(20);
     await expectFits(page, ".voice-speak");
     await page.getByRole("tab", { name: "Voices" }).click();
     await expect(page.locator(".voice-list")).toBeVisible();

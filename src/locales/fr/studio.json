@@ -684,7 +684,21 @@
         "style": "Style",
         "clone": "Cloner",
         "design": "Concevoir"
-      }
+      },
+      "cost": {
+        "download": null,
+        "memory": null,
+        "peak": null,
+        "speed": null,
+        "per10s": null,
+        "coldStart": null,
+        "seconds": null,
+        "measuredOn": null,
+        "notMeasured": null
+      },
+      "browseVoices": null,
+      "useInSpeak": null,
+      "openStudio": null
     },
     "voices": {
       "title": "Voix",
@@ -822,13 +836,18 @@
         "excited": null,
         "whisper": null,
         "calm": null
-      }
+      },
+      "modelKokoroCost": null,
+      "modelReadyCost": null,
+      "modelNeedsCost": null,
+      "manageInModels": null
     },
     "stop": "Arrêter",
     "studio": {
       "title": "Voice Studio",
       "needsPack": "La voix s'exécute sur cet ordinateur et nécessite le pack vocal (environ 2 Go). Installez-le une fois depuis Voix > Modèles.",
-      "openModels": "Ouvrir Modèles vocaux"
+      "openModels": "Ouvrir Modèles vocaux",
+      "library": null
     },
     "savedToLibrary": "Enregistré dans la bibliothèque",
     "saveToLibrary": "Enregistrer dans la bibliothèque",
@@ -889,7 +908,8 @@
       "deleteSelected": "Supprimer la sélection ({n})",
       "loading": "Chargement…",
       "noMatch": "Aucun résultat.",
-      "empty": "Rien pour l'instant. Les transcriptions faites dans Voice Studio sont conservées ici, ainsi que la parole que vous enregistrez."
+      "empty": "Rien pour l'instant. Les transcriptions faites dans Voice Studio sont conservées ici, ainsi que la parole que vous enregistrez.",
+      "openStudio": null
     },
     "languages": {
       "auto": "Détecter automatiquement"
@@ -948,6 +968,46 @@
       "recordingPlayback": "Votre enregistrement",
       "saving": null,
       "sampleType": null
+    },
+    "cost": {
+      "kokoroChip": null,
+      "chip": null,
+      "unmeasuredChip": null,
+      "kokoroDetail": null,
+      "detail": null,
+      "unmeasuredDetail": null,
+      "download": null
+    },
+    "install": {
+      "title": null,
+      "body": null,
+      "cost": null,
+      "notNow": null
+    },
+    "picker": {
+      "addMandarin": null,
+      "addMandarinDetail": null,
+      "naturalDetail": null,
+      "designDetail": null,
+      "quickDetail": null,
+      "recommended": null,
+      "recommendedNote": null,
+      "quick": null,
+      "quickNote": null,
+      "fewer": null,
+      "allVoices": null,
+      "cloned": null,
+      "clonedNote": null,
+      "newClone": null,
+      "newCloneDetail": null,
+      "newCloneOpen": null,
+      "designed": null,
+      "designedNote": null,
+      "more": null,
+      "moreNote": null,
+      "getMore": null,
+      "getMoreDetail": null,
+      "openModels": null
     }
   },
   "residentChatModelNote": "Un modèle de chat chargé occupe environ {gb} Go de cette mémoire ; le décharger la libère.",

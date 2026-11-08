@@ -54,6 +54,8 @@ class SettingsRequest(BaseModel):
     sttModel: str | None = Field(default=None, max_length=128)
     language: str | None = Field(default=None, max_length=8)
     ttsVoice: str | None = Field(default=None, max_length=32)
+    # The voice last used on the Speak screen (any voice id, ``clone:<id>`` included); "" means none yet.
+    speakVoice: str | None = Field(default=None, max_length=64)
     speed: float | None = Field(default=None, ge=0.5, le=2.0)
     autoSend: bool | None = None
     autoRead: bool | None = None

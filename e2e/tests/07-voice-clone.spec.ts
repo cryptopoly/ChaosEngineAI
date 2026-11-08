@@ -154,7 +154,7 @@ test("a cloned voice speaks from the Speak screen with the AI label shown", asyn
   await goTo(page, "Voice", "Studio");
   await page.getByRole("tab", { name: "Speak" }).click();
 
-  await page.getByRole("radio", { name: /^Ada(?!m)/ }).click();
+  await page.getByRole("radio", { name: /^Ada(?!m)/ }).first().click();
   await expect(page.getByText("own voice, confirmed 2026-11-01").first()).toBeVisible();
   await expect(page.locator(".voice-speak").getByText("Only clone your own voice")).toBeVisible();
   const generate = page.getByRole("button", { name: "Generate audio" });

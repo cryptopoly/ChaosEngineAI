@@ -30,6 +30,8 @@ export interface VoiceSettings {
   sttModel: string;
   language: string;
   ttsVoice: string;
+  /** The voice last used on the Speak screen, apart from the chat voice; "" until Speak has been used. */
+  speakVoice?: string;
   speed: number;
   autoSend: boolean;
   autoRead: boolean;
@@ -169,9 +171,27 @@ export interface VoiceEntry {
   models: string[];
   capabilities: VoiceCapabilities;
   available: boolean;
+  /** Quick (Kokoro) voices: the model author's quality grade ("A", "B-", ...); null when ungraded. */
+  grade?: string | null;
+  /** Quick voices that need a voice pack add-on to run here ("chinese"); null otherwise. */
+  addon?: string | null;
   /** Plain words for why it cannot be used yet. */
   needs?: string | null;
   consent?: { speakerName: string; basis: "own" | "permission"; consentedAt: string; appVersion?: string };
+}
+
+/** Speed and memory of a speech model from the catalog; ``basis`` says whether it was measured, and where. */
+export interface VoiceModelEstimates {
+  basis: "measured" | "estimate";
+  /** Machine and date of the run, e.g. "Apple M4 Max, 64 GB, 2026-11-08". */
+  measuredOn?: string;
+  coldStartSeconds?: number;
+  /** Wall seconds to make 10 s of speech. */
+  secondsPer10sAudio?: number;
+  wallSecondsShortLine?: number;
+  /** Worker memory while speaking and after it finished. */
+  peakGb?: number;
+  idleGb?: number;
 }
 
 /** One row of ``GET /api/voice/models``: a Qwen3-TTS model with its install state. */
@@ -185,6 +205,8 @@ export interface VoiceModelRow {
   default: boolean;
   kind: "base" | "custom" | "design";
   capabilities: VoiceCapabilities;
+  /** Null (or missing) when the model has not been measured. */
+  estimates?: VoiceModelEstimates | null;
   supported: boolean;
   installed: boolean;
   licence?: { id: string; name: string; url: string };

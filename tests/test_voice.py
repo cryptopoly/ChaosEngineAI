@@ -25,6 +25,55 @@ from backend_service import voice_kokoro_onnx
 # ---------------------------------------------------------------------------
 
 
+class KokoroGradeTests(unittest.TestCase):
+    """Quick-voice grades and the voices the Speak picker leaves out (D-67 W3)."""
+
+    def _voices(self, lane: str, extras: list[str] | None = None) -> dict:
+        from backend_service import voice_env, voice_runtime  # noqa: PLC0415
+
+        with mock.patch.object(voice_env, "lane", return_value=lane), \
+                mock.patch.object(voice_env, "installed_extras", return_value=extras or []):
+            return {v["id"]: v for v in voice_runtime.list_tts_voices()}
+
+    def test_every_voice_carries_the_model_authors_grade(self) -> None:
+        voices = self._voices("mlx")
+        self.assertEqual(voices["af_heart"]["grade"], "A")
+        self.assertEqual(voices["af_bella"]["grade"], "A-")
+        self.assertEqual(voices["af_nicole"]["grade"], "B-")
+        self.assertEqual(voices["am_adam"]["grade"], "F+")
+        self.assertEqual(voices["ff_siwis"]["grade"], "B-")
+        self.assertIsNone(voices["ef_dora"]["grade"])  # ungraded upstream: no guess
+        graded = [v["grade"] for v in voices.values() if v["grade"]]
+        self.assertEqual(len(graded), 48)
+        self.assertTrue(set(graded) <= {"A", "A-", "B-", "C+", "C", "C-", "D+", "D", "D-", "F+"})
+
+    def test_japanese_is_never_available_on_mlx_and_chinese_names_its_add_on(self) -> None:
+        mlx = self._voices("mlx")
+        self.assertTrue(mlx["jf_alpha"]["neverAvailable"])
+        self.assertFalse(mlx["zf_xiaobei"]["neverAvailable"])
+        self.assertEqual(mlx["zf_xiaobei"]["addon"], "chinese")
+        self.assertIsNone(mlx["af_heart"]["addon"])
+        portable = self._voices("portable")
+        self.assertFalse(portable["jf_alpha"]["neverAvailable"])
+        self.assertIsNone(portable["zf_xiaobei"]["addon"])
+
+    def test_speak_list_hides_japanese_on_mlx_and_passes_grade_and_add_on(self) -> None:
+        from backend_service import voice_clone, voice_env, voice_speak  # noqa: PLC0415
+
+        with mock.patch.object(voice_env, "lane", return_value="mlx"), \
+                mock.patch.object(voice_env, "installed_extras", return_value=[]), \
+                mock.patch.object(voice_clone, "snapshot_dir", return_value=None):
+            builtin = {v["id"]: v for v in voice_speak.list_voices(include_clones=False) if v["kind"] == "builtin"}
+        self.assertFalse(any(key.startswith("j") for key in builtin))
+        self.assertEqual(len(builtin), 49)
+        self.assertEqual(builtin["af_heart"]["grade"], "A")
+        self.assertEqual(builtin["zm_yunxi"]["addon"], "chinese")
+        self.assertFalse(builtin["zm_yunxi"]["available"])
+        with mock.patch.object(voice_env, "lane", return_value="portable"), \
+                mock.patch.object(voice_clone, "snapshot_dir", return_value=None):
+            self.assertIn("jf_alpha", {v["id"] for v in voice_speak.list_voices(include_clones=False)})
+
+
 # ---------------------------------------------------------------------------
 # voice_kokoro_onnx unit tests (non-Apple TTS lane, FU-083)
 # ---------------------------------------------------------------------------

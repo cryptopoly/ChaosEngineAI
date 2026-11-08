@@ -684,7 +684,21 @@
         "style": "Stil",
         "clone": "Klonen",
         "design": "Entwerfen"
-      }
+      },
+      "cost": {
+        "download": null,
+        "memory": null,
+        "peak": null,
+        "speed": null,
+        "per10s": null,
+        "coldStart": null,
+        "seconds": null,
+        "measuredOn": null,
+        "notMeasured": null
+      },
+      "browseVoices": null,
+      "useInSpeak": null,
+      "openStudio": null
     },
     "voices": {
       "title": "Stimmen",
@@ -822,13 +836,18 @@
         "excited": null,
         "whisper": null,
         "calm": null
-      }
+      },
+      "modelKokoroCost": null,
+      "modelReadyCost": null,
+      "modelNeedsCost": null,
+      "manageInModels": null
     },
     "stop": "Stoppen",
     "studio": {
       "title": "Voice Studio",
       "needsPack": "Sprachfunktionen laufen auf diesem Computer und benötigen das Sprachpaket (etwa 2 GB). Installiere es einmalig unter Sprache > Modelle.",
-      "openModels": "Sprachmodelle öffnen"
+      "openModels": "Sprachmodelle öffnen",
+      "library": null
     },
     "savedToLibrary": "In der Bibliothek gespeichert",
     "saveToLibrary": "In der Bibliothek speichern",
@@ -889,7 +908,8 @@
       "deleteSelected": "Ausgewählte löschen ({n})",
       "loading": "Wird geladen…",
       "noMatch": "Keine Treffer.",
-      "empty": "Noch nichts hier. In Voice Studio erstellte Transkripte landen hier, ebenso gespeicherte Sprache."
+      "empty": "Noch nichts hier. In Voice Studio erstellte Transkripte landen hier, ebenso gespeicherte Sprache.",
+      "openStudio": null
     },
     "languages": {
       "auto": "Automatisch erkennen"
@@ -948,6 +968,46 @@
       "recordingPlayback": "Deine Aufnahme",
       "saving": null,
       "sampleType": null
+    },
+    "cost": {
+      "kokoroChip": null,
+      "chip": null,
+      "unmeasuredChip": null,
+      "kokoroDetail": null,
+      "detail": null,
+      "unmeasuredDetail": null,
+      "download": null
+    },
+    "install": {
+      "title": null,
+      "body": null,
+      "cost": null,
+      "notNow": null
+    },
+    "picker": {
+      "addMandarin": null,
+      "addMandarinDetail": null,
+      "naturalDetail": null,
+      "designDetail": null,
+      "quickDetail": null,
+      "recommended": null,
+      "recommendedNote": null,
+      "quick": null,
+      "quickNote": null,
+      "fewer": null,
+      "allVoices": null,
+      "cloned": null,
+      "clonedNote": null,
+      "newClone": null,
+      "newCloneDetail": null,
+      "newCloneOpen": null,
+      "designed": null,
+      "designedNote": null,
+      "more": null,
+      "moreNote": null,
+      "getMore": null,
+      "getMoreDetail": null,
+      "openModels": null
     }
   },
   "residentChatModelNote": "Ein geladenes Chat-Modell belegt etwa {gb} GB dieses Speichers; beim Entladen wird er freigegeben.",

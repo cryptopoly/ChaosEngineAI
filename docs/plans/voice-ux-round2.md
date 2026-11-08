@@ -4,6 +4,9 @@ Date: 2026-11-08. Branch `docs/voice-ux-round2`, cut from `release/v0.10.0` (`e8
 
 Line numbers are from this branch's working tree.
 
+D-67 progress:
+- 2026-11-08: W1-W4 built on feat/voice-ux-a.
+
 ## 1. What is true today, per complaint
 
 ### 1.1 "Speak offers only Kokoro voices and defaults to Kokoro"

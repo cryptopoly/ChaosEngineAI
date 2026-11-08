@@ -684,7 +684,21 @@
         "style": "風格",
         "clone": "複製",
         "design": "設計"
-      }
+      },
+      "cost": {
+        "download": null,
+        "memory": null,
+        "peak": null,
+        "speed": null,
+        "per10s": null,
+        "coldStart": null,
+        "seconds": null,
+        "measuredOn": null,
+        "notMeasured": null
+      },
+      "browseVoices": null,
+      "useInSpeak": null,
+      "openStudio": null
     },
     "voices": {
       "title": "聲音",
@@ -822,13 +836,18 @@
         "excited": null,
         "whisper": null,
         "calm": null
-      }
+      },
+      "modelKokoroCost": null,
+      "modelReadyCost": null,
+      "modelNeedsCost": null,
+      "manageInModels": null
     },
     "stop": "停止",
     "studio": {
       "title": "Voice Studio",
       "needsPack": "語音功能在這台電腦上執行，需要語音包（約 2 GB）。請在「語音 > 模型」中安裝一次。",
-      "openModels": "開啟語音模型"
+      "openModels": "開啟語音模型",
+      "library": null
     },
     "savedToLibrary": "已儲存到資料庫",
     "saveToLibrary": "儲存到資料庫",
@@ -889,7 +908,8 @@
       "deleteSelected": "刪除所選（{n}）",
       "loading": "正在載入…",
       "noMatch": "沒有符合的項目。",
-      "empty": "這裡還沒有內容。在 Voice Studio 中製作的逐字稿和你儲存的語音都會放在這裡。"
+      "empty": "這裡還沒有內容。在 Voice Studio 中製作的逐字稿和你儲存的語音都會放在這裡。",
+      "openStudio": null
     },
     "languages": {
       "auto": "自動偵測"
@@ -948,6 +968,46 @@
       "recordingPlayback": "你的錄音",
       "saving": null,
       "sampleType": null
+    },
+    "cost": {
+      "kokoroChip": null,
+      "chip": null,
+      "unmeasuredChip": null,
+      "kokoroDetail": null,
+      "detail": null,
+      "unmeasuredDetail": null,
+      "download": null
+    },
+    "install": {
+      "title": null,
+      "body": null,
+      "cost": null,
+      "notNow": null
+    },
+    "picker": {
+      "addMandarin": null,
+      "addMandarinDetail": null,
+      "naturalDetail": null,
+      "designDetail": null,
+      "quickDetail": null,
+      "recommended": null,
+      "recommendedNote": null,
+      "quick": null,
+      "quickNote": null,
+      "fewer": null,
+      "allVoices": null,
+      "cloned": null,
+      "clonedNote": null,
+      "newClone": null,
+      "newCloneDetail": null,
+      "newCloneOpen": null,
+      "designed": null,
+      "designedNote": null,
+      "more": null,
+      "moreNote": null,
+      "getMore": null,
+      "getMoreDetail": null,
+      "openModels": null
     }
   },
   "residentChatModelNote": "已載入的聊天模型佔用了其中約 {gb} GB 記憶體；卸載它即可釋放這部分記憶體。",

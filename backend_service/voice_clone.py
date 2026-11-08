@@ -85,6 +85,8 @@ def list_models(*, every_model: bool = False) -> list[dict[str, Any]]:
             "licence": CLONE_LICENCE,
             "kind": row["kind"],
             "capabilities": dict(row["capabilities"]),
+            # Speed and memory from the catalog, with its basis and where it was measured; None when not measured.
+            "estimates": dict(row["estimates"]) if row.get("estimates") else None,
             "supported": lane in row["lanes"],
             # Ready means the weights, and for a cloning model the watermark component; Download installs both.
             "installed": _ready(row),

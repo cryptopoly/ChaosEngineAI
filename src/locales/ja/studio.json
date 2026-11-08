@@ -684,7 +684,21 @@
         "style": "スタイル",
         "clone": "クローン",
         "design": "デザイン"
-      }
+      },
+      "cost": {
+        "download": null,
+        "memory": null,
+        "peak": null,
+        "speed": null,
+        "per10s": null,
+        "coldStart": null,
+        "seconds": null,
+        "measuredOn": null,
+        "notMeasured": null
+      },
+      "browseVoices": null,
+      "useInSpeak": null,
+      "openStudio": null
     },
     "voices": {
       "title": "ボイス",
@@ -822,13 +836,18 @@
         "excited": null,
         "whisper": null,
         "calm": null
-      }
+      },
+      "modelKokoroCost": null,
+      "modelReadyCost": null,
+      "modelNeedsCost": null,
+      "manageInModels": null
     },
     "stop": "停止",
     "studio": {
       "title": "Voice Studio",
       "needsPack": "音声機能はこのコンピューター上で動作し、音声パック（約 2 GB）が必要です。音声 > モデル から一度だけインストールしてください。",
-      "openModels": "音声モデルを開く"
+      "openModels": "音声モデルを開く",
+      "library": null
     },
     "savedToLibrary": "ライブラリに保存しました",
     "saveToLibrary": "ライブラリに保存",
@@ -889,7 +908,8 @@
       "deleteSelected": "選択項目を削除（{n}）",
       "loading": "読み込み中…",
       "noMatch": "一致する項目はありません。",
-      "empty": "まだ何もありません。Voice Studio で作った文字起こしと、保存した音声がここに保存されます。"
+      "empty": "まだ何もありません。Voice Studio で作った文字起こしと、保存した音声がここに保存されます。",
+      "openStudio": null
     },
     "languages": {
       "auto": "自動検出"
@@ -948,6 +968,46 @@
       "recordingPlayback": "録音した音声",
       "saving": null,
       "sampleType": null
+    },
+    "cost": {
+      "kokoroChip": null,
+      "chip": null,
+      "unmeasuredChip": null,
+      "kokoroDetail": null,
+      "detail": null,
+      "unmeasuredDetail": null,
+      "download": null
+    },
+    "install": {
+      "title": null,
+      "body": null,
+      "cost": null,
+      "notNow": null
+    },
+    "picker": {
+      "addMandarin": null,
+      "addMandarinDetail": null,
+      "naturalDetail": null,
+      "designDetail": null,
+      "quickDetail": null,
+      "recommended": null,
+      "recommendedNote": null,
+      "quick": null,
+      "quickNote": null,
+      "fewer": null,
+      "allVoices": null,
+      "cloned": null,
+      "clonedNote": null,
+      "newClone": null,
+      "newCloneDetail": null,
+      "newCloneOpen": null,
+      "designed": null,
+      "designedNote": null,
+      "more": null,
+      "moreNote": null,
+      "getMore": null,
+      "getMoreDetail": null,
+      "openModels": null
     }
   },
   "residentChatModelNote": "読み込み済みのチャットモデルがこのメモリのうち約 {gb} GB を使用しています。アンロードするとその分が解放されます。",

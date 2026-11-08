@@ -1,4 +1,4 @@
-"""The hub's generated tracker pages must match CLAUDE.md, and the hub must build."""
+"""The hub's generated tracker pages must match FOLLOW_UPS.md, and the hub must build."""
 import subprocess
 import sys
 import unittest
@@ -12,12 +12,12 @@ import hub_tracker  # noqa: E402
 
 class HubTrackerTests(unittest.TestCase):
     def test_every_follow_up_row_is_parsed(self) -> None:
-        rows = hub_tracker.parse((ROOT / "CLAUDE.md").read_text(encoding="utf-8"))
-        text = (ROOT / "CLAUDE.md").read_text(encoding="utf-8")
+        rows = text = hub_tracker.SOURCE.read_text(encoding="utf-8")
+        rows = hub_tracker.parse(text)
         expected = sum(1 for line in text.splitlines() if hub_tracker._ROW_START.match(line))
         self.assertEqual(len(rows), expected)
         self.assertGreater(len(rows), 100)
-        self.assertEqual(len({row.fu for row in rows}), len(rows), "duplicate FU ids in CLAUDE.md")
+        self.assertEqual(len({row.fu for row in rows}), len(rows), "duplicate FU ids in FOLLOW_UPS.md")
 
     def test_committed_tracker_pages_are_current(self) -> None:
         stale = [

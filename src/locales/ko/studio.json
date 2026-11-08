@@ -8,7 +8,6 @@
     "recentOutputsTitle": "최근 출력",
     "prompt": "프롬프트",
     "negativePrompt": "네거티브 프롬프트",
-    "enhancePrompt": "향상",
     "width": "너비",
     "height": "높이",
     "steps": "단계",
@@ -116,6 +115,12 @@
       "cancelGeneration": "생성 취소",
       "close": "닫기",
       "done": "완료"
+    },
+    "ltx2": {
+      "install": "LTX-2.3 엔진 설치",
+      "installing": "설치 중…",
+      "notInstalled": "이 모델은 아직 설치되지 않은 LTX-2.3 MLX 엔진에서 실행됩니다. 별도 환경에 설치되며(약 1 GB) 앱의 패키지는 바뀌지 않습니다.",
+      "retry": "설치 재시도"
     }
   },
   "progress": {
@@ -126,12 +131,6 @@
     "title": "고급",
     "show": "고급 설정 표시",
     "hide": "고급 설정 숨기기"
-  },
-  "enhance": {
-    "label": "향상",
-    "busy": "향상 중...",
-    "tooltip": "이 프롬프트를 로컬에서 향상",
-    "error": "향상기 오류: {message}"
   },
   "runtimeBanner": {
     "loadingModel": "모델을 메모리에 로드 중...",
@@ -167,14 +166,12 @@
   },
   "imageStudio": {
     "generateTitle": {
-      "dangerBlocked": "위험 수준 구성 — 진행하려면 안전 경고 아래의 확인란을 체크하세요.",
+      "dangerBlocked": "위험 수준 설정입니다. 계속하려면 실행 예상치에서 확인란에 체크하세요.",
       "generating": "생성 중...",
       "selectModel": "먼저 모델을 선택하세요.",
       "ready": "이 이미지를 생성합니다."
     },
     "actions": {
-      "discover": "모델 찾기",
-      "installed": "설치됨",
       "gallery": "갤러리"
     },
     "hero": {
@@ -257,14 +254,13 @@
     "safety": {
       "dangerTitle": "백엔드가 충돌할 가능성이 있음",
       "warningTitle": "주의 — 이 기기에서 어려움이 있을 수 있음",
-      "resourceEstimate": "모델 ≈ {model} · 이 실행 피크 ≈ 총 ~{total} 중 {peak}.",
       "applyTitle": "{label} 적용",
       "useSafer": "더 안전한 설정 사용 ({label})",
       "browseSmaller": "더 작은 모델 둘러보기",
-      "overrideAck": "그래도 생성 — 백엔드가 충돌할 수 있음을 수용합니다.",
       "reasonDangerOver": "모델은 가중치 + 텍스트 인코더만 저장하는 데 ~{model} GB가 필요합니다. 총 {total} GB의 {platform}에서 추정 작업 세트는 ~{working} GB이므로 모델만으로도 이미 초과합니다. 작은 이미지조차 백엔드가 크래시할 가능성이 높습니다. 더 작은 모델(SD 1.5는 ~4 GB, SDXL은 ~13 GB) 또는 더 많은 메모리를 갖춘 머신을 시도하세요.",
       "reasonDangerNear": "모델은 가중치 + 텍스트 인코더만 저장하는 데 ~{model} GB가 필요하며, 이 실행은 약 ~{peak} GB에서 정점을 찍습니다. 총 {total} GB의 {platform}에서 이는 고위험 임계값(~{highRisk} GB)을 초과하고 추정 작업 세트(~{working} GB)에 근접합니다. 생성 시 백엔드가 크래시할 가능성이 높으니 해상도를 낮추거나 더 작은 모델을 선택하세요.",
-      "reasonCaution": "모델은 가중치 + 텍스트 인코더만 저장하는 데 ~{model} GB가 필요합니다. 총 {total} GB의 {platform}에서 이는 보수적 안정 목표(~{comfort} GB)를 초과하지만 추정 작업 세트(~{working} GB) 아래입니다. 생성이 느리거나 실패할 수 있으니 불안정해지면 해상도를 낮추세요."
+      "reasonCaution": "모델은 가중치 + 텍스트 인코더만 저장하는 데 ~{model} GB가 필요합니다. 총 {total} GB의 {platform}에서 이는 보수적 안정 목표(~{comfort} GB)를 초과하지만 추정 작업 세트(~{working} GB) 아래입니다. 생성이 느리거나 실패할 수 있으니 불안정해지면 해상도를 낮추세요.",
+      "resourceEstimate": "모델 ≈ {model} · 이번 실행 최대치 ≈ {peak} / 전체 약 {total}."
     },
     "recent": {
       "subtitle": "{total}개의 저장된 생성물 중 최신 {recent}개",
@@ -376,33 +372,18 @@
       "noPrompt": "생성하기 전에 프롬프트를 작성하세요.",
       "backendOffline": "백엔드가 오프라인입니다.",
       "busy": "사용 중…",
-      "dangerLevel": "이 구성은 백엔드가 충돌할 가능성이 있습니다. 경고를 검토한 후 아래의 \\\"고위험 생성 허용\\\"을 체크하거나 해상도/프레임/모델을 낮추세요."
+      "dangerLevel": "이 설정은 백엔드가 중단될 가능성이 높습니다. 경고를 확인한 뒤 실행 예상치에서 \"그래도 실행\"에 체크하거나 해상도, 프레임 수, 모델을 낮추세요."
     },
     "generateTitle": "이 클립 생성을 시작합니다.",
-    "device": {
-      "gpuDetected": "GPU (감지됨)",
-      "cpuDetected": "CPU (감지됨)",
-      "appleDetected": "Apple Silicon (감지됨)",
-      "appleMlx": "Apple Silicon (MLX)",
-      "gpu": "GPU",
-      "apple": "Apple Silicon"
-    },
     "memory": {
       "defaultFallback": "~{value} (기본값 — 실제 감지를 위해 백엔드 재시작)"
     },
-    "capacityLine": {
-      "withModel": "{device} · 총 {memory} · 모델 ≈ {model}, 이 실행 피크 ≈ {peak}",
-      "short": "{device} · 총 {memory} · 이 실행 피크 ≈ {peak}"
-    },
     "subtitle": "시작하려면 비디오 모델을 선택하세요",
     "actions": {
-      "browseCatalog": "모델 찾기",
-      "installedModels": "설치됨",
       "downloadModel": "모델 다운로드",
       "loadIntoMemory": "메모리에 로드",
       "unload": "언로드",
-      "unloadNamed": "{name} 언로드",
-      "modelCard": "모델 카드"
+      "unloadNamed": "{name} 언로드"
     },
     "modelOption": {
       "installed": "설치됨",
@@ -465,7 +446,8 @@
       "guidanceLtxWarning": "LTX-Video는 flow-matching 모델입니다 — CFG가 ~3.5를 초과하면 과포화되고 흐릿한/무지개색 출력이 생성됩니다. 가장 깔끔한 결과를 위해 3으로 낮추세요.",
       "randomSeed": "랜덤 시드",
       "seedPlaceholder": "시드 (정수)",
-      "maxPixelsNote": "{name}의 프레임당 최대 렌더링 크기는 {megapixels}메가픽셀입니다. 이 크기는 비율을 유지한 채 줄여서 맞춥니다."
+      "maxPixelsNote": "{name}의 프레임당 최대 렌더링 크기는 {megapixels}메가픽셀입니다. 이 크기는 비율을 유지한 채 줄여서 맞춥니다.",
+      "seed": "시드"
     },
     "clipLength": {
       "line": "클립 길이: {seconds}초 ({frames} 프레임 ÷ {fps} fps)"
@@ -479,10 +461,6 @@
       "ltxRefiner": {
         "label": "LTX 2단계 공간 업스케일",
         "tooltip": "요청된 해상도에서 기본 샘플을 렌더링한 다음 2배 공간 해상도에서 Lightricks/LTX-Video-0.9.5-spatial-upscaler를 통해 정제합니다. 프레임 예산은 ~1.5배 증가합니다. 더 선명한 미시 디테일과 더 깔끔한 모션 가장자리; 실제 시간 영향이 실제이므로 기본적으로 꺼져 있습니다."
-      },
-      "enhancePrompt": {
-        "label": "짧은 프롬프트 자동 향상",
-        "tooltip": "프롬프트가 25단어 미만일 때 모델 조정 구조적 힌트(시네마틱 설명자, 조명, 카메라 방향)를 추가합니다. 디퓨전 비디오 모델은 50-100단어 프롬프트에서 훈련되며 더 짧은 입력에서는 충분히 조건화되지 않습니다. 긴 사용자 정의 프롬프트는 그대로 전송됩니다 — 임계값이 안전 장치입니다."
       },
       "cfgDecay": {
         "label": "CFG 감쇠",
@@ -516,13 +494,11 @@
       "applyTitle": "{label} 적용",
       "useSafer": "더 안전한 설정 사용 ({label})",
       "browseSmaller": "더 작은 모델 둘러보기",
-      "overrideAck": "고위험 생성 허용 — 백엔드가 충돌하고 내 기기를 다시 시작해야 할 수 있음을 수용합니다.",
       "reasonDangerOver": "모델은 표준 배치에서 상주하는 데 ~{model} GB가 필요하지만, 총 {total} GB의 {platform}에는 ~{working} GB만 안전하게 사용 가능합니다. 런타임은 순차적 CPU 오프로드로 자동 폴백합니다 — 생성은 성공하지만 서브모듈이 매 패스마다 CPU와 {offloadDevice} 메모리 간을 스왑하므로 각 스텝이 몇 배 느려집니다. 풀 스피드 생성을 위해서는 더 작은 모델(LTX-Video는 ~2 GB 상주) 또는 더 많은 메모리를 갖춘 머신을 선택하세요.",
       "reasonDangerNear": "모델은 상주하는 데 ~{model} GB가 필요하며 이 실행은 약 ~{peak} GB에서 정점을 찍습니다. 총 {total} GB의 {platform}에서 이는 고위험 임계값(~{highRisk} GB)을 초과하고 추정 작업 세트(~{working} GB)에 근접합니다. 런타임이 CPU 오프로드를 활성화해 맞출 수 있습니다 — 풀 스피드 생성을 원한다면 설정을 낮추거나 더 작은 모델을 선택하세요.",
       "reasonCaution": "모델은 상주하는 데 ~{model} GB가 필요합니다. 총 {total} GB의 {platform}에서 이는 보수적 안정 목표(~{comfort} GB)를 초과하지만 추정 작업 세트(~{working} GB) 아래입니다. 생성은 맞을 수 있으니 불안정해지면 설정을 낮추세요."
     },
     "disabledHint": "생성 비활성화: {reason}",
-    "willLoadHint": "선택한 모델은 다음 생성 시 메모리에 로드됩니다. 큰 변형의 경우 첫 로드에 1분이 걸릴 수 있습니다.",
     "cacheStrategies": {
       "none": {
         "label": "끄기",
@@ -566,7 +542,23 @@
     "sound": {
       "badge": "소리",
       "badgeTooltip": "이 클립에는 소리가 있습니다. 플레이어의 볼륨 컨트롤로 켜세요."
-    }
+    },
+    "capacityLine": {
+      "short": "{device} · 전체 {memory} · 이번 실행 최대치 ≈ {peak}",
+      "withModel": "{device} · 전체 {memory} · 모델 ≈ {model}, 이번 실행 최대치 ≈ {peak}"
+    },
+    "device": {
+      "apple": "Apple Silicon",
+      "appleDetected": "Apple Silicon(감지됨)",
+      "appleMlx": "Apple Silicon(MLX)",
+      "cpuDetected": "CPU(감지됨)",
+      "gpu": "GPU",
+      "gpuDetected": "GPU(감지됨)"
+    },
+    "ltx2": {
+      "engineMessage": "이 모델은 Apple GPU에서 자체 MLX 엔진(ltx-2-mlx)으로 실행되며 소리도 함께 만듭니다."
+    },
+    "willLoadHint": "선택한 모델은 다음 생성 때 메모리에 불러옵니다. 큰 버전은 처음 불러올 때 1분쯤 걸릴 수 있습니다."
   },
   "imageGallery": {
     "subtitle": {
@@ -664,10 +656,15 @@
       "cancel": "취소",
       "update": "음성 팩 업데이트",
       "install": "음성 팩 설치",
-      "reinstall": "복구 / 재설치",
       "done": "음성 팩이 설치되었습니다.",
       "log": "설치 로그",
-      "updateFeatures": "채팅 음성 통화와 받아쓰기 화자 구분을 위해 음성 팩을 업데이트하세요 (모델 약 40 MB, 1~2분)."
+      "updateFeatures": "채팅 음성 통화와 받아쓰기 화자 구분을 위해 음성 팩을 업데이트하세요 (모델 약 40 MB, 1~2분).",
+      "checkedOk": null,
+      "checkedOkAt": null,
+      "repair": null,
+      "troubleshoot": "문제 해결",
+      "troubleshootBody": null,
+      "reinstallSmall": "다시 설치"
     },
     "models": {
       "recommended": "권장",
@@ -677,15 +674,51 @@
       "firstUse": "건너뛰면 처음 사용할 때 다운로드됩니다.",
       "title": "음성",
       "sttTitle": "음성 인식 모델",
-      "sttSubtitle": "채팅의 마이크와 Voice Studio에서 사용합니다."
+      "sttSubtitle": "채팅의 마이크와 Voice Studio에서 사용합니다.",
+      "capabilities": null,
+      "ttsTitle": "음성 모델",
+      "ttsSubtitle": null,
+      "ttsNone": null,
+      "caps": {
+        "speak": "말하기",
+        "style": "스타일",
+        "clone": "복제",
+        "design": "디자인"
+      }
     },
     "voices": {
       "title": "음성",
       "subtitle": "Kokoro: 9개 언어, 54개 음성. 채팅이 소리 내어 읽을 음성을 선택하세요.",
-      "needsChinese": "음성 팩에서 중국어(표준 중국어) 음성을 선택하세요.",
+      "needsChineseAddon": null,
+      "addChinese": null,
       "notYet": "이 컴퓨터에서는 아직 사용할 수 없습니다.",
       "useVoice": "이 음성 사용",
-      "preview": "미리 듣기"
+      "preview": "미리 듣기",
+      "listTitle": "음성",
+      "listSubtitle": null,
+      "cloneCard": null,
+      "cloneDetail": null,
+      "designCard": null,
+      "designDetail": null,
+      "designAction": null,
+      "moreCard": null,
+      "moreDetail": null,
+      "moreAction": null,
+      "filter": "보기",
+      "allLanguages": "모든 언어",
+      "noneMine": null,
+      "none": null,
+      "kindClone": "복제됨",
+      "kindPreset": null,
+      "kindBuiltin": null,
+      "playSample": null,
+      "use": "사용",
+      "tab": null,
+      "filters": {
+        "all": "전체",
+        "mine": "내 것",
+        "builtin": "기본 제공"
+      }
     },
     "settings": {
       "title": "음성 설정",
@@ -750,7 +783,46 @@
       "listen": "듣기",
       "progress": "{total}개 중 {done}번째",
       "generateParts": "오디오 생성 ({n}개 부분)",
-      "encoding": "인코딩 중…"
+      "encoding": "인코딩 중…",
+      "textLabel": "말할 텍스트",
+      "styleBuiltin": null,
+      "styleClone": null,
+      "styleSmall": null,
+      "cloneLimit": null,
+      "describe": null,
+      "style": null,
+      "describePlaceholder": null,
+      "stylePlaceholder": null,
+      "styleChips": null,
+      "pitch": "음높이",
+      "advanced": "고급",
+      "seed": null,
+      "modelKokoro": null,
+      "modelReady": null,
+      "modelDownloading": null,
+      "modelNeeds": null,
+      "downloadForStyle": null,
+      "cloneTooLong": null,
+      "describeFirst": null,
+      "appleOnly": null,
+      "language": "언어",
+      "sampleOf": null,
+      "sampleLoading": null,
+      "cloneModel": null,
+      "cloneKind": null,
+      "yourVoices": null,
+      "presets": null,
+      "designCard": null,
+      "designDetail": null,
+      "quickVoices": null,
+      "chips": {
+        "neutral": null,
+        "angry": null,
+        "sad": null,
+        "excited": null,
+        "whisper": null,
+        "calm": null
+      }
     },
     "stop": "중지",
     "studio": {
@@ -785,7 +857,8 @@
       "empty": "음성을 찾지 못했습니다.",
       "editHint": "더블클릭하여 편집",
       "edit": "줄 편집",
-      "export": "내보내기"
+      "export": "내보내기",
+      "lineLabel": "{time}의 줄 편집"
     },
     "handoff": {
       "summary": "채팅에서 요약",
@@ -830,11 +903,51 @@
     "micError": {
       "blockedMac": "마이크 접근이 차단되어 있습니다. 시스템 설정 > 개인정보 보호 및 보안 > 마이크에서 ChaosEngineAI를 허용한 후 다시 시도하세요.",
       "blockedWindows": "마이크 접근이 차단되어 있습니다. 설정 > 개인 정보 및 보안 > 마이크에서 데스크톱 앱의 마이크 사용을 허용한 후 다시 시도하세요.",
+      "openSettings": "마이크 설정 열기",
       "blocked": "마이크 접근이 차단되어 있습니다. 데스크톱의 개인정보 설정과 다른 앱이 마이크를 사용 중인지 확인하세요.",
       "notFound": "마이크를 찾을 수 없습니다. 마이크를 연결한 후 다시 시도하세요.",
       "inUse": "다른 앱이 마이크를 사용 중이거나 마이크를 열 수 없습니다.",
       "unsupported": "이 창에서는 마이크를 사용할 수 없습니다(미디어 장치 미지원).",
       "generic": "마이크를 열 수 없습니다."
+    },
+    "clone": {
+      "statement": null,
+      "title": "음성 복제",
+      "loading": "불러오는 중…",
+      "macOnly": "음성 복제는 현재 Apple Silicon Mac에서만 실행됩니다.",
+      "deleteConfirm": null,
+      "model": "복제 모델",
+      "downloading": "다운로드 중…",
+      "notHere": "복제한 음성은 이 컴퓨터의 ChaosEngineAI 창에서만 사용할 수 있습니다.",
+      "consentOwn": null,
+      "consentPermission": null,
+      "delete": "삭제",
+      "new": "새 복제 음성",
+      "placeholder": "복제한 음성으로 말할 텍스트.",
+      "tagged": "AI 제작 표시됨",
+      "allowAgents": "에이전트와 다른 컴퓨터가 복제한 음성을 사용하도록 허용(기본값은 꺼짐)",
+      "whose": "누구의 음성인가요?",
+      "basisOwn": "내 음성",
+      "basisPermission": null,
+      "speakerName": "화자 이름",
+      "voiceName": "이 음성의 이름(선택)",
+      "confirm": null,
+      "recordAgain": "다시 녹음",
+      "sampleTitle": null,
+      "sampleHelp": null,
+      "sampleText": "샘플에서 말한 내용(선택, 자동으로 채워짐)",
+      "tooShort": null,
+      "tooLong": null,
+      "save": null,
+      "installingWatermark": "워터마크 구성 요소 설치 중…",
+      "tab": "복제",
+      "voices": "복제한 음성",
+      "deleteVoice": "음성 {name} 삭제",
+      "textLabel": "복제한 음성으로 말할 텍스트",
+      "sampleFile": "음성 샘플 파일",
+      "recordingPlayback": "내 녹음",
+      "saving": null,
+      "sampleType": null
     }
   },
   "residentChatModelNote": "로드된 채팅 모델이 이 메모리의 약 {gb} GB를 차지하며, 언로드하면 해제됩니다.",
@@ -904,5 +1017,1155 @@
       "previewVae": "미리보기 VAE",
       "fp8LayerwiseCasting": "FP8 레이어별"
     }
+  },
+  "inputImage": {
+    "chooseFile": "파일 선택",
+    "fromGallery": "갤러리에서 선택",
+    "remove": "제거",
+    "pickFailed": "여기서는 파일 선택기를 사용할 수 없습니다. 대신 갤러리에서 선택하세요.",
+    "referenceLabel": "참조 이미지",
+    "referenceLabelMany": "참조 이미지",
+    "referenceHintOne": "이 이미지에서 그림을 시작합니다. 강도가 높을수록 이 이미지에 가깝게 유지됩니다.",
+    "referenceHintMany": "최대 {max}장. 모델이 프롬프트에 따라 이미지를 편집하거나 다시 그려서 피사체나 스타일을 유지합니다.",
+    "strength": "강도",
+    "startLabel": "시작 이미지",
+    "startHint": "클립이 이 이미지에서 시작됩니다.",
+    "endLabel": "끝 이미지(선택)",
+    "endHint": "클립이 이 이미지에서 끝납니다. 이것만 사용하면 프롬프트가 이 이미지를 향해 움직입니다."
+  },
+  "sizePresets": {
+    "aspect": "종횡비",
+    "size": "크기",
+    "resolution": "해상도",
+    "overLimit": "이 모델의 크기 한도를 넘었습니다.",
+    "current": "현재 크기: {width} x {height}({megapixels} MP)"
+  },
+  "estimate": {
+    "time": "약 {time}",
+    "timeUnknown": "시간: 첫 실행 전에는 알 수 없음",
+    "memory": "최대 {peak} / 전체 {total}",
+    "memoryUnknown": "메모리: 예상치 없음",
+    "disk": "{size} 기록",
+    "diskUnknown": "디스크: 예상치 없음",
+    "measured": "측정값",
+    "estimated": "추정값",
+    "measuredTitle": "이 컴퓨터에서 이 모델과 프리셋으로 직접 측정한 값입니다.",
+    "estimatedTitle": "모델 카드 또는 비슷한 컴퓨터의 값이며, 여기서는 아직 측정하지 않았습니다.",
+    "queueRunning": "{what} 실행 중이며 약 {time} 남았습니다. 내 작업은 그다음에 시작됩니다.",
+    "queuePosition": "다른 작업이 끝나기를 기다리는 중({position}번째)",
+    "dangerAck": "그래도 실행합니다. 백엔드가 중단될 수 있음을 받아들입니다.",
+    "duration": {
+      "seconds": "{n}초",
+      "minutes": "{n}분",
+      "minutesSeconds": "{m}분 {s}초"
+    },
+    "size": {
+      "gb": "{n} GB",
+      "mb": "{n} MB"
+    },
+    "band": {
+      "caution": "(주의: 한도에 가까움)",
+      "danger": "(위험: 맞지 않을 수 있음)"
+    },
+    "unknownChip": "예상: 첫 실행 전에는 알 수 없음"
+  },
+  "disclosure": {
+    "options": "옵션",
+    "expert": "전문가",
+    "defaults": "모델 기본값"
+  },
+  "preset": {
+    "custom": "사용자 지정",
+    "customTitle": "값을 직접 바꿨습니다. 프리셋을 고르면 되돌아갑니다."
+  },
+  "error": {
+    "technicalDetails": "기술 세부 정보",
+    "retry": "재시도"
+  },
+  "licence": {
+    "chip": {
+      "commercial": "{name} · 상업적 이용 가능",
+      "limited": "{name} · 상업적 이용 제한",
+      "noCommercial": "{name} · 상업적 이용 불가",
+      "gated": "제한"
+    },
+    "screen": {
+      "asks": "이 라이선스가 요구하는 사항",
+      "gatedNote": "이 모델은 접근이 제한되어 있습니다. Hugging Face에서 약관에 동의한 뒤 토큰으로 여기서 다운로드하세요(환경설정 > Hugging Face).",
+      "readFull": "라이선스 전문 읽기",
+      "openHub": "Hugging Face에서 열기",
+      "notNow": "나중에",
+      "accepted": "동의했습니다",
+      "ok": "확인"
+    },
+    "status": {
+      "needs": "라이선스 필요"
+    },
+    "action": {
+      "accept": "라이선스 동의"
+    }
+  },
+  "models": {
+    "makes": {
+      "songs": "보컬이 있는 노래",
+      "instrumental": "연주곡",
+      "sfx": "효과음",
+      "loops": "루프"
+    },
+    "speed": {
+      "measured": "이 컴퓨터에서 초당 약 {rate}초 분량의 오디오",
+      "unknown": "속도를 아직 측정하지 않았습니다"
+    }
+  },
+  "musicStudio": {
+    "result": {
+      "loop": "반복",
+      "play": "{title} 재생, {seconds}초",
+      "stop": "정지",
+      "again": "다시",
+      "againTitle": "같은 설정에 새 랜덤 시드를 사용합니다.",
+      "audioFailed": "오디오 파일을 불러오지 못했습니다.",
+      "audioLoading": "오디오 불러오는 중…",
+      "done": "완료",
+      "doneIn": "{time} 만에 완료",
+      "openLibrary": "라이브러리에서 열기",
+      "seed": "시드 {seed}",
+      "vary": "변형",
+      "varyTitle": "같은 설정에 다음 시드({seed})를 사용합니다."
+    },
+    "options": {
+      "reference": "참조 오디오",
+      "referenceRights": "제공하는 오디오의 권리에 대한 책임은 사용자에게 있습니다.",
+      "auto": "자동",
+      "bpm": "BPM",
+      "key": "조성",
+      "randomSeed": "랜덤 시드",
+      "seed": "시드",
+      "summaryBpm": "BPM {value}",
+      "summaryKey": "조성 {value}",
+      "summarySeed": "시드 {n}",
+      "summaryVariations": "{n, plural, other {변형 #개}}",
+      "tempoKey": "템포와 조성",
+      "variations": "변형 수",
+      "variationsCost": "변형이 하나 늘 때마다 같은 시간이 더 걸립니다.",
+      "variationsTotal": "{n}개에 약 {time}."
+    },
+    "artistWarning": "아티스트 이름을 넣으면 그 스타일을 베낀 결과가 나올 수 있습니다. 대신 소리를 묘사하세요.",
+    "cancel": "취소",
+    "cancelling": "취소 중…",
+    "empty": "아직 음악이 없습니다. 트랙을 설명하고 '트랙 만들기'를 누르세요.",
+    "error": {
+      "cancelled": "취소되었습니다.",
+      "generic": "트랙을 만들 수 없었습니다.",
+      "invalid": "이 설정으로는 트랙을 시작할 수 없었습니다.",
+      "memory": "이 트랙을 만들기에 여유 메모리가 부족합니다. 더 짧은 길이를 시도해 보세요.",
+      "notReady": "음악 모델을 아직 실행할 수 없습니다.",
+      "offline": "백엔드가 응답하지 않았습니다. 실행 중인지 확인한 뒤 다시 시도하세요.",
+      "useShorter": "더 짧은 길이 사용"
+    },
+    "expert": {
+      "aiTagNote": "오디오 파일에 들어가는 기계 판독용 태그입니다. 기본값은 켜짐이며, 개인용이라면 끌 수 있습니다.",
+      "idleUnload": "이 시간(분) 동안 유휴 상태이면 모델 언로드(0이면 계속 로드된 상태 유지)",
+      "model": "모델",
+      "output": "출력: FLAC, 24비트, 48 kHz, 스테레오.",
+      "summaryIdle": "{n}분 후 언로드",
+      "summaryTagOff": "AI 태그 꺼짐"
+    },
+    "issue": {
+      "bpmRange": "BPM은 30~300 또는 자동이어야 합니다.",
+      "captionEmpty": "트랙을 만들려면 음악을 설명하세요.",
+      "captionTooLong": "설명이 {max}자를 넘습니다.",
+      "lyricsEmpty": "가사를 추가하거나 연주곡으로 바꾸세요.",
+      "lyricsTooLong": "가사가 {max}자를 넘습니다.",
+      "secondsRange": "길이는 {min}~{max}초여야 합니다.",
+      "seedRange": "시드는 0 이상의 정수여야 합니다.",
+      "variations": "변형 수는 1, 2 또는 4여야 합니다."
+    },
+    "latest": "최신",
+    "length": {
+      "custom": "사용자 지정",
+      "customLabel": "길이(초)",
+      "label": "길이",
+      "minutes": "{n}분",
+      "range": "{min}~{max}초",
+      "seconds": "{n}초"
+    },
+    "library": "라이브러리",
+    "loading": "음악 모델 불러오는 중…",
+    "lyrics": {
+      "label": "가사",
+      "placeholder": "[verse] ... [chorus] ...",
+      "rights": "입력하는 가사의 권리에 대한 책임은 사용자에게 있습니다."
+    },
+    "make": "트랙 만들기",
+    "making": "만드는 중…",
+    "mode": {
+      "instrumental": "연주곡",
+      "label": "트랙 종류",
+      "song": "노래"
+    },
+    "noModel": "아직 설치된 음악 모델이 없습니다.",
+    "noModelSize": "{name}은(는) 약 {size} GB입니다.",
+    "offline": "백엔드를 기다리는 중…",
+    "openLibrary": "라이브러리 열기",
+    "openModels": "음악 모델 열기",
+    "packMissing": "음악 팩이 아직 설치되지 않았습니다. '음악 모델'에서 설치하세요(약 1.6 GB).",
+    "progress": {
+      "compose": "작곡",
+      "decode": "오디오 디코딩",
+      "encode": "인코딩",
+      "load": "모델 불러오기",
+      "save": "저장"
+    },
+    "prompt": {
+      "label": "음악 설명",
+      "placeholder": "따뜻한 lo-fi 힙합, 바이닐 지직 소리, 부드러운 피아노, 85 bpm"
+    },
+    "queued": "대기 중: 앞선 작업이 끝나면 시작됩니다.",
+    "running": "트랙을 만드는 중",
+    "status": {
+      "installed": "설치됨",
+      "loaded": "로드됨",
+      "notInstalled": "미설치"
+    },
+    "title": "음악 스튜디오",
+    "studioMode": {
+      "label": "음악 또는 효과음",
+      "music": "음악",
+      "sounds": "사운드"
+    },
+    "sounds": {
+      "loopBadge": "루프",
+      "needLicence": "효과음은 Stable Audio Open을 사용하며, 먼저 라이선스에 동의해야 합니다. '음악 모델'을 열어 읽어 보세요.",
+      "needDownload": "'음악 모델'에서 {name}을 다운로드하세요(약 {size} GB). 먼저 Hugging Face에서 라이선스에 동의해야 합니다.",
+      "needTextEncoder": "사운드 모델에 텍스트 인코더가 없습니다. '음악 모델'에서 다시 다운로드하세요.",
+      "needPack": "사운드에는 작은 팩(약 1 GB)도 필요합니다. '음악 모델'에서 설치하세요.",
+      "prompt": "사운드 설명",
+      "placeholder": "묵직한 나무 문이 삐걱거리며 열림, 근접 마이크",
+      "english": "영어가 가장 잘 맞습니다. 효과음과 루프용이며 노래나 음성에는 맞지 않습니다.",
+      "loop": "끊김 없는 루프로 만들기",
+      "make": "사운드 만들기",
+      "making": "만드는 중…",
+      "running": "사운드를 만드는 중",
+      "empty": "아직 사운드가 없습니다. 하나를 설명하고 '사운드 만들기'를 누르세요.",
+      "issue": {
+        "captionEmpty": "사운드를 만들려면 설명을 입력하세요.",
+        "captionTooLong": "설명이 {max}자를 넘습니다.",
+        "secondsRange": "길이는 {min}~{max}초여야 합니다."
+      },
+      "error": {
+        "memory": "이 사운드를 만들기에 여유 메모리가 부족합니다. 메모리를 확보한 뒤 다시 시도하세요.",
+        "invalid": "이 설정으로는 사운드를 시작할 수 없었습니다.",
+        "generic": "사운드를 만들 수 없었습니다."
+      },
+      "lengthSlider": "길이(초)",
+      "modelPicker": "사운드 모델",
+      "cpuFallback": null,
+      "cpuOnly": null
+    }
+  },
+  "audioPlayer": {
+    "timeOf": "{current} / {total}"
+  },
+  "inputAudio": {
+    "chooseFile": "파일 선택",
+    "fromLibrary": "라이브러리에서 선택",
+    "remove": "제거",
+    "pickFailed": "여기서는 파일 선택기를 사용할 수 없습니다. 대신 라이브러리에서 선택하세요."
+  },
+  "board": {
+    "addShot": "샷 추가",
+    "batch": {
+      "cancel": "일괄 작업 취소",
+      "count": "{done} / {total} 완료",
+      "kind": {
+        "clips": "클립",
+        "stills": "정지 이미지"
+      },
+      "shotOf": "샷 {n} / {total}",
+      "starting": "시작 중…",
+      "stillsThenClips": "{kind}, 그다음 클립",
+      "title": "샷 만드는 중"
+    },
+    "conflictNotice": "다른 곳에서 변경됨. 최신 내용을 표시합니다",
+    "defaults": {
+      "automatic": "자동(설치된 모델)",
+      "automaticShort": "자동",
+      "automaticName": "자동",
+      "noVoice": "없음"
+    },
+    "defaultsSummary": null,
+    "defaultsTitle": "프로젝트 기본값",
+    "editor": {
+      "discard": "변경 내용 버리기",
+      "discardBody": "이 샷에 저장되지 않은 편집 내용이 있습니다. 지금 닫으면 모두 사라집니다.",
+      "discardTitle": "변경 내용을 버릴까요?",
+      "fromImageGallery": "이미지 갤러리에서",
+      "fromVideoGallery": "비디오 갤러리에서",
+      "import": "가져오기",
+      "importFailed": "해당 파일을 가져올 수 없었습니다.",
+      "importFile": "이미지 또는 비디오 파일",
+      "importHint": "파일이나 갤러리에서 새 테이크를 추가합니다. 아무것도 덮어쓰지 않습니다.",
+      "importKind": "이미지(png, jpg, webp) 또는 비디오(mp4, mov, webm)를 선택하세요.",
+      "length": "길이(초)",
+      "motionPrompt": "모션 프롬프트",
+      "nativeSound": "샷 소리 레벨(dB)",
+      "noReferences": "이 프로젝트에는 아직 참조가 없습니다. '참조' 패널에서 추가하세요.",
+      "references": "참조",
+      "relinkHint": "없어진 테이크를 새 파일에 연결합니다.",
+      "revert": "되돌리기",
+      "save": "변경 내용 저장",
+      "saveFirst": "먼저 변경 내용을 저장하세요.",
+      "seed": "시드",
+      "seedRandom": "랜덤",
+      "speed": "속도",
+      "startFrom": "시작 방식",
+      "startFromGenerate": "새 정지 이미지",
+      "startFromPrevious": "이전 샷의 마지막 프레임",
+      "startFromUpload": "내 이미지",
+      "stillPrompt": "정지 이미지 프롬프트",
+      "title": "샷 {n}",
+      "trimIn": "시작 트림(초)",
+      "trimOut": "끝 트림(초)",
+      "trimOutEnd": "테이크 끝",
+      "useClip": "클립으로 사용",
+      "noCast": null
+    },
+    "empty": "아직 샷이 없습니다. 샷을 추가한 뒤 프롬프트를 입력하거나 영상을 가져오세요.",
+    "estimate": {
+      "need": "{n, plural, other {샷 #개에 새 테이크가 필요합니다}}",
+      "none": "잠기지 않은 모든 샷에 테이크가 있습니다."
+    },
+    "loading": "프로젝트 불러오는 중…",
+    "makeAll": "잠기지 않은 샷 모두 만들기",
+    "makeAllTitle": "잠기지 않은 모든 샷에 새 테이크를 추가합니다. 아무것도 덮어쓰지 않습니다.",
+    "makeMissing": "없는 샷 만들기",
+    "makeOne": "이 샷 만들기",
+    "mixer": "믹서",
+    "noProject": "열려 있는 프로젝트가 없습니다. '프로젝트'에서 열거나 새로 만드세요.",
+    "noProjectTitle": "보드",
+    "notFound": "이 프로젝트는 더 이상 없습니다. 다른 프로젝트를 선택하세요.",
+    "openProjects": "프로젝트 열기",
+    "projects": "프로젝트",
+    "redo": "다시 실행",
+    "references": {
+      "addCharacter": "캐릭터 추가",
+      "addPlace": "장소 추가",
+      "characters": "캐릭터",
+      "description": "외형 설명",
+      "image": "참조 이미지",
+      "name": "이름",
+      "none": "아직 없음.",
+      "places": "장소",
+      "remove": "참조 제거",
+      "setImage": "이미지 설정",
+      "summary": "{characters, plural, other {캐릭터 #명}} · {places, plural, other {장소 #곳}}",
+      "title": "참조"
+    },
+    "reload": "새로고침",
+    "removeBody": "{name}이(가) 영상에서 빠집니다. 테이크는 프로젝트 폴더에 남아 있으며, 실행 취소로 되돌릴 수 있습니다.",
+    "removeTitle": "이 샷을 삭제할까요?",
+    "shot": {
+      "drag": "끌어서 순서 바꾸기",
+      "failedNote": "샷이 렌더링되지 않았습니다. 다시 시도하거나 프롬프트를 수정하세요.",
+      "keep": "유지",
+      "lock": "이 샷 잠그기",
+      "lockedNote": "잠긴 샷은 '샷 만들기'에서 건너뜁니다.",
+      "menu": {
+        "delete": "삭제",
+        "down": "아래로 이동",
+        "edit": "프롬프트 편집",
+        "import": "영상 가져오기",
+        "up": "위로 이동",
+        "useAsReference": "스틸을 참조로 사용"
+      },
+      "missingNote": "테이크 파일이 없습니다. 다시 연결하거나 새 테이크를 만드세요.",
+      "moreActions": "샷 {n}의 추가 작업",
+      "moved": "샷 {n}을(를) {position}번째로 옮겼습니다",
+      "play": "클립 재생",
+      "redoLabel": "다시 만들기",
+      "redoMarked": "다시 만들기로 표시됨",
+      "redoTitle": "다시 만들기로 표시: 다음 '샷 만들기' 때 새 테이크가 추가됩니다. 아무것도 덮어쓰지 않습니다.",
+      "relink": "다시 연결",
+      "rerun": "다시 실행",
+      "seed": "시드 {seed}",
+      "staleTitle": "샷 {n}에 새 테이크가 생겼으며, 이 샷은 그 마지막 프레임에서 시작합니다.",
+      "staleTitleGeneric": "이 샷이 의존하는 내용이 바뀌었습니다.",
+      "status": {
+        "done": "완료 · {seconds}초",
+        "doneNoLength": "완료",
+        "failed": "실패",
+        "idle": "아직 만들지 않음",
+        "locked": "잠김",
+        "missing": "테이크 파일 없음",
+        "queued": "대기 중 · {position}",
+        "running": "만드는 중…",
+        "stale": "오래됨 · 샷 {n} 이후",
+        "staleNoShot": "오래됨",
+        "stillOnly": "스틸만 있음"
+      },
+      "titleLabel": "샷 {n} 제목",
+      "transitionLabel": "전환",
+      "transitionSeconds": "크로스페이드 길이(초)",
+      "transitionType": {
+        "crossfade": "크로스페이드",
+        "cut": "컷"
+      },
+      "unlock": "이 샷 잠금 해제",
+      "untitled": "샷 {n}",
+      "castLabel": "이 샷의 등장인물",
+      "newTake": "새 테이크",
+      "newTakeMarked": "다음 실행 때 새 테이크",
+      "newTakeTitle": null,
+      "noPrompt": "아직 프롬프트가 없습니다. Enter를 누르거나 프롬프트 편집을 사용하세요.",
+      "makeClip": "클립 만들기",
+      "makeClipTitle": "이 샷의 스틸로 클립을 만듭니다.",
+      "referenceAdded": "{name}을(를) 이 스틸로 등장인물에 추가했습니다."
+    },
+    "shots": "샷",
+    "subtitle": "{shots, plural, other {샷 #개}} · {seconds}초 · 오래됨 {stale}개",
+    "takes": {
+      "active": "사용 중인 테이크",
+      "label": "테이크",
+      "pick": "이 테이크 사용",
+      "take": "테이크 {n}"
+    },
+    "title": "{project} · 보드",
+    "undo": "실행 취소",
+    "emptyNoCast": null,
+    "subtitleShots": null,
+    "lengthStrip": "샷 길이",
+    "lengthStripPart": "샷 {n} · {seconds}초"
+  },
+  "storyProjects": {
+    "card": {
+      "edited": "{when}에 편집됨",
+      "meta": "{shots, plural, other {샷 #개}} · {seconds}초 · {aspect}",
+      "noShots": "아직 샷 없음",
+      "noTakes": "아직 이미지 없음",
+      "noPreview": "미리 보기 없음",
+      "stale": "오래됨 {n}개",
+      "zeroShots": "샷 0개",
+      "metaFormat": null,
+      "zeroShotsFormat": null
+    },
+    "deleteBody": "{name}과(와) 그 폴더에 있는 모든 테이크, 정지 이미지, 사운드가 삭제됩니다. 되돌릴 수 없습니다.",
+    "deleteFailed": "프로젝트를 삭제할 수 없었습니다.",
+    "deleteTitle": "이 프로젝트를 삭제할까요?",
+    "dialog": {
+      "aspect": "화면 비율",
+      "create": "만들기",
+      "fps": "프레임 속도",
+      "imageModel": "이미지 모델",
+      "name": "이름",
+      "resolution": "해상도",
+      "save": "저장",
+      "videoModel": "비디오 모델",
+      "voice": "음성",
+      "models": "모델"
+    },
+    "empty": "아직 프로젝트가 없습니다. 프로젝트는 샷, 테이크, 소리를 폴더 하나에 담아 두며, 옮기거나 백업할 수 있습니다.",
+    "exportBundle": "번들 내보내기",
+    "exportFailed": "번들을 내보낼 수 없었습니다.",
+    "exported": "{name} 내보냄 · {size}",
+    "exporting": "내보내는 중…",
+    "import": "번들 가져오기",
+    "importFailed": "이 파일은 ChaosEngineAI 프로젝트 번들이 아닙니다.",
+    "imported": "{name} 가져옴",
+    "loading": "프로젝트 불러오는 중…",
+    "menu": {
+      "delete": "삭제",
+      "rename": "이름 바꾸기"
+    },
+    "missing": "이 프로젝트의 폴더가 이동되었거나 삭제되었습니다.",
+    "moreActions": "추가 작업",
+    "new": "새 프로젝트",
+    "open": "열기",
+    "subtitle": "{count, plural, other {프로젝트 #개}}",
+    "title": "스토리보드 프로젝트",
+    "format": {
+      "fit": {
+        "safe": "충분함",
+        "tight": "빠듯함",
+        "wontfit": "부족함"
+      },
+      "note": {
+        "capped": null,
+        "cost": "해상도가 높을수록 렌더링이 느리고 메모리를 더 씁니다.",
+        "fpsConvert": null,
+        "noModel": null,
+        "safe": null,
+        "tight": null,
+        "wontfit": null,
+        "estimated": null
+      }
+    },
+    "openNamed": null,
+    "moreActionsFor": null
+  },
+  "storyboard": {
+    "cancel": "취소",
+    "close": "닫기",
+    "dismiss": "닫기",
+    "offline": "백엔드를 기다리는 중…",
+    "pathPlaceholder": "/path/to/file",
+    "pickUnavailable": "여기서는 파일 선택기를 사용할 수 없습니다. 대신 경로를 입력하세요.",
+    "films": {
+      "title": "영상",
+      "none": "아직 영상이 없습니다. 내보내면 여기에 저장됩니다."
+    }
+  },
+  "mixer": {
+    "add": {
+      "cloned": "이 클립은 복제한 음성을 사용합니다"
+    },
+    "addAudioTo": "{lane}에 오디오 추가",
+    "addButton": "추가",
+    "addFromLibrary": "라이브러리에서 추가",
+    "block": {
+      "ariaLabel": "{lane}, {name}, {start}초부터 {end}초까지"
+    },
+    "board": "보드",
+    "captions": {
+      "add": "재생 헤드 위치에 추가",
+      "burnIn": "영상에 입히기",
+      "exportSrt": ".srt 쓰기",
+      "generate": "음성으로 만들기",
+      "generating": "듣는 중…",
+      "label": "자막",
+      "needVoice": "자막을 만들려면 음성 레인에 음성을 추가하세요.",
+      "newText": "새 자막",
+      "remove": "제거",
+      "srt": "SRT 파일",
+      "textLabel": "자막 텍스트",
+      "title": "자막({count})",
+      "trimmedAway": "트림되어 제외됨"
+    },
+    "clip": {
+      "ariaLabel": "{lane}, {name}, {start}초부터 {end}초까지, {gain} dB",
+      "missing": "없음",
+      "reading": "읽는 중…",
+      "relink": "다시 연결"
+    },
+    "crossfade": "크로스페이드 {seconds}초",
+    "empty": "아직 믹스할 것이 없습니다. 먼저 보드에서 샷을 만드세요.",
+    "export": {
+      "aspect": "화면 비율",
+      "button": "MP4 내보내기",
+      "cancel": "내보내기 취소",
+      "cancelled": "내보내기가 취소되었습니다. 아무것도 기록되지 않았습니다.",
+      "copied": "경로를 복사했습니다",
+      "copiedShort": "복사됨",
+      "copyPath": "경로 복사",
+      "details": "기술 세부 정보",
+      "done": "내보냄 · {size} · {duration}",
+      "download": "다운로드",
+      "editor": "편집기용으로 내보내기(.otio)",
+      "editorNote": "DaVinci Resolve 또는 Premiere에서 열 수 있으며, 프로젝트 미디어는 이 컴퓨터의 파일에 연결됩니다.",
+      "exporting": "내보내는 중…",
+      "extras": "함께 기록됨",
+      "failedShort": "내보내기에 실패했습니다. 아무것도 기록되지 않았습니다.",
+      "interrupted": "내보내기가 중단되었습니다.",
+      "loudness": "음량 목표",
+      "loudnessHint": "{target} LUFS는 웹 영상에 적합합니다. 비워 두면 믹스를 그대로 둡니다.",
+      "loudnessOff": "꺼짐",
+      "phase": {
+        "encode": "인코딩",
+        "join": "결합",
+        "mix": "소리 믹스",
+        "normalise": "샷 노멀라이즈"
+      },
+      "pixels": "{width} × {height}px.",
+      "preset": {
+        "landscape": "16:9",
+        "portrait": "9:16",
+        "square": "1:1"
+      },
+      "reframeNote": "내보낼 때 화면 구성을 바꿉니다. 샷은 다시 생성되지 않습니다.",
+      "resume": "내보내기 이어서 하기",
+      "resumeNote": "샷 {total}개 중 {ready}개가 이미 완료되어 재사용됩니다.",
+      "retry": "재시도",
+      "reveal": "파일 보기",
+      "stems": "오디오 레인을 별도 파일로",
+      "stopped": "내보내기가 끝나지 않았습니다.",
+      "title": "내보내기",
+      "upscale": "업스케일",
+      "upscale1440": "1440p",
+      "upscale2160": "2160p (4K)",
+      "upscaleNone": "같은 크기",
+      "upscaleNote": null,
+      "upscaleSame": null,
+      "more": "더 보기",
+      "whyBusy": null,
+      "whyEmpty": null
+    },
+    "importAudio": "오디오 가져오기",
+    "importAudioPath": "오디오 파일 경로",
+    "inspector": {
+      "absolute": "영상 시간(고정 안 됨)",
+      "anchor": "앵커",
+      "anchorShot": "샷 {n}: {name}",
+      "anchorSummary": "샷 {n}과(와) 함께 움직입니다. 오프셋 {offset}초.",
+      "anchorTo": "앵커 대상",
+      "duck": "음성이 나오면 줄이기",
+      "duckTitle": "누군가 말하는 동안 이 클립의 소리를 줄입니다(사이드체인 컴프레션).",
+      "empty": "타임라인에서 클립을 선택하면 소리를 편집할 수 있습니다.",
+      "fadeIn": "페이드 인",
+      "fadeOut": "페이드 아웃",
+      "gain": "게인",
+      "loop": "반복해서 채우기",
+      "name": "이름",
+      "nativeLevel": "샷 {n}의 샷 소리 레벨",
+      "offset": "오프셋",
+      "remove": "레인에서 제거",
+      "shotSpan": "{start}초부터, 길이 {length}초",
+      "shotTitle": "선택한 샷",
+      "start": "시작 위치",
+      "title": "선택한 클립",
+      "trim": "트림",
+      "trimIn": "시작",
+      "trimOut": "끝"
+    },
+    "lane": {
+      "music": "음악",
+      "native": "샷 소리",
+      "picture": "화면",
+      "sfx": "효과",
+      "voice": "음성"
+    },
+    "leftOut": "{n, plural, other {샷 #개에 아직 클립이 없어 미리 보기와 내보내기에서 제외됩니다.}}",
+    "noLibraryYet": "음악 라이브러리를 아직 사용할 수 없습니다. 파일을 선택하거나 경로를 입력하세요.",
+    "noProjectTitle": "믹서",
+    "openBoard": "보드 열기",
+    "openOnBoard": "보드에서 열기",
+    "preview": {
+      "cancel": "취소",
+      "failed": "미리 보기가 렌더링되지 않았습니다.",
+      "none": "아직 미리 보기가 없습니다. 렌더링하면 영상을 보고 들을 수 있습니다.",
+      "render": "미리 보기 렌더링",
+      "rendering": "미리 보기 렌더링 중…",
+      "stale": "오래되었습니다. 최신 변경 내용을 들으려면 다시 렌더링하세요."
+    },
+    "relinkFor": "{name}의 파일 찾기",
+    "ruler": "타임라인 눈금자. 클릭하면 재생 헤드가 이동합니다.",
+    "subtitle": "{seconds}초 · {aspect} · 미리 보기 {width} × {height}",
+    "timeline": "타임라인",
+    "title": "{project} · 믹서",
+    "transitionsNote": "전환은 그 길이만큼 영상을 짧게 만듭니다. 눈금자에는 실제 전체 길이가 표시됩니다.",
+    "transport": {
+      "keys": "Space 또는 K: 재생 / 일시정지. J와 L: 5초 뒤로 / 앞으로. 왼쪽/오른쪽: 1초(Shift 10초, Alt 한 프레임). Home / End. + 와 -: 확대/축소.",
+      "label": "재생 컨트롤",
+      "loop": "반복",
+      "needPreview": "영상을 재생하려면 먼저 미리 보기를 렌더링하세요.",
+      "pause": "일시정지",
+      "play": "재생",
+      "stop": "정지",
+      "timeOf": "{current} / {total}",
+      "zoomIn": "확대",
+      "zoomOut": "축소"
+    },
+    "emptyShots": "아직 믹스할 것이 없습니다. 먼저 스토리보드 탭에서 샷을 만드세요.",
+    "openInStoryboard": "스토리보드에서 열기",
+    "openStoryboard": "스토리보드 열기"
+  },
+  "aiLabel": {
+    "forced": "이 프로젝트는 복제한 음성을 사용하므로 AI 태그가 항상 기록됩니다.",
+    "metadata": "기계 판독용 AI 태그 추가",
+    "metadataTitle": "MP4 메타데이터에 들어가는 기계 판독용 태그입니다. 프롬프트나 폴더 이름은 담기지 않습니다.",
+    "title": "AI 라벨"
+  },
+  "sendToStoryboard": {
+    "back": "프로젝트로 돌아가기",
+    "conflict": "보내는 동안 프로젝트가 바뀌었습니다. 다시 시도하세요.",
+    "dismiss": "닫기",
+    "failed": "이 항목을 스토리보드에 추가할 수 없었습니다: {detail}",
+    "newProject": "새 프로젝트…",
+    "newShot": "새 샷",
+    "newTake": "샷 {n}(새 테이크)",
+    "noFile": "이 항목에는 보낼 파일이 없습니다.",
+    "send": "스토리보드로 보내기",
+    "sending": "보내는 중…",
+    "start": "이것으로 스토리보드 시작",
+    "untitled": "제목 없는 스토리보드",
+    "use": "스토리보드에서 사용",
+    "newTakeNamed": null
+  },
+  "studioKit": {
+    "models": "모델",
+    "moreActions": "추가 작업",
+    "modelCard": "모델 카드",
+    "summary": {
+      "labelValue": "{label} {value}",
+      "size": "{width} × {height}",
+      "framesFps": "{frames}프레임, {fps} fps",
+      "negativeSet": "네거티브 프롬프트 설정됨",
+      "negativeEdited": "네거티브 프롬프트 수정됨",
+      "endImageSet": "끝 이미지 설정됨"
+    }
+  },
+  "musicLibrary": {
+    "addTag": "태그 추가",
+    "clearFilters": "필터 지우기",
+    "confirmDelete": "이 항목과 오디오를 삭제할까요? 되돌릴 수 없습니다.",
+    "confirmDeleteMany": "항목 {n}개와 오디오를 삭제할까요? 되돌릴 수 없습니다.",
+    "delete": "삭제",
+    "deleteSelected": "선택 항목 삭제({n})",
+    "empty": "아직 음악이 없습니다. 트랙을 설명하고 '트랙 만들기'를 누르세요.",
+    "emptySounds": null,
+    "emptyTracks": null,
+    "filter": {
+      "anyTag": "모든 태그",
+      "tag": "태그"
+    },
+    "kind": {
+      "sound": "사운드",
+      "track": "트랙"
+    },
+    "kindFilter": {
+      "all": null,
+      "label": "보기",
+      "music": null,
+      "sounds": null
+    },
+    "layout": {
+      "grid": "그리드",
+      "label": "레이아웃",
+      "list": "목록"
+    },
+    "loadAudio": "오디오 불러오기",
+    "loading": "라이브러리 불러오는 중…",
+    "makeAnother": "이와 비슷한 것 하나 더 만들기",
+    "noMatch": "일치하는 항목이 없습니다.",
+    "openStudio": "스튜디오 열기",
+    "removeTag": "태그 {tag} 제거",
+    "rename": "이름 바꾸기",
+    "search": "제목, 프롬프트, 태그 검색",
+    "select": "{title} 선택",
+    "sort": {
+      "label": "정렬",
+      "longest": "긴 순",
+      "newest": "최신순",
+      "oldest": "오래된 순"
+    },
+    "subtitle": "{tracks, plural, other {트랙 #개}} · {sounds, plural, other {사운드 #개}} · 디스크 {size}",
+    "title": "음악 라이브러리"
+  },
+  "musicModels": {
+    "action": {
+      "openHuggingFace": "Hugging Face에서 열기",
+      "openInStudio": "스튜디오에서 열기"
+    },
+    "column": {
+      "fit": "적합도",
+      "licence": "라이선스",
+      "makes": "만들 수 있는 것",
+      "model": "모델",
+      "size": "크기",
+      "status": "상태"
+    },
+    "detail": {
+      "fit": "이 컴퓨터에서의 적합도",
+      "licence": "라이선스",
+      "openModelCard": "모델 카드 열기",
+      "repo": "저장소",
+      "requires": "추가로 필요한 것",
+      "size": "다운로드",
+      "speed": "속도",
+      "attribution": "출처 표기"
+    },
+    "downloadFailed": "다운로드가 끝나지 않았습니다.",
+    "downloadStatusLost": "다운로드 진행 상황을 더 이상 읽을 수 없습니다. 이 페이지를 다시 열어 확인하세요.",
+    "empty": {
+      "attention": "확인이 필요한 음악 모델이 없습니다.",
+      "catalog": "카탈로그에 아직 음악 모델이 없습니다.",
+      "downloading": "다운로드 중인 음악 모델이 없습니다.",
+      "firstRun": "시작하려면 음악 모델을 고르세요. {name}({size}, {licence})이(가) 이 컴퓨터에 맞습니다.",
+      "firstRunAction": "{name} 다운로드",
+      "installed": "아직 설치된 음악 모델이 없습니다. 사용 가능한 모델에서 하나를 골라 다운로드하세요."
+    },
+    "filter": {
+      "commercialOnly": "상업적 이용 가능",
+      "licence": "라이선스",
+      "licenceAny": "모든 라이선스",
+      "makes": "만들 수 있는 것",
+      "makesAll": "전체"
+    },
+    "intro": "음악 모델은 이 컴퓨터에서 실행됩니다. 하나를 다운로드한 뒤 스튜디오를 열어 트랙을 만드세요.",
+    "memory": {
+      "pending": "예상치 없음",
+      "pendingTitle": "이 모델의 메모리 수치가 아직 없습니다."
+    },
+    "openStudio": "스튜디오 열기",
+    "pack": {
+      "body": "이 팩이 음악 모델을 실행합니다. 약 {size} GB이며 한 번만 설치합니다.",
+      "cancel": "취소",
+      "failedBody": "자세한 내용은 아래에 있습니다. 다시 시도할 수 있습니다.",
+      "failedTitle": "음악 팩을 설치할 수 없었습니다.",
+      "install": "음악 팩 설치",
+      "log": "설치 로그",
+      "title": "음악 팩 설치",
+      "working": "작업 중…"
+    },
+    "platform": {
+      "appleSilicon": "Apple Silicon",
+      "cpu": "CPU",
+      "cuda": "CUDA"
+    },
+    "search": "모델, 라이선스, 만들 수 있는 것 검색",
+    "sort": {
+      "fit": "적합도 높은 순",
+      "fitSummary": "적합도 높은 순",
+      "largestFirst": "큰 순",
+      "name": "이름",
+      "nameSummary": "이름 A-Z",
+      "size": "크기",
+      "smallestFirst": "작은 순",
+      "status": "상태",
+      "statusSummary": "설치된 것 먼저"
+    },
+    "title": "음악 모델",
+    "unavailable": "음악 기능은 현재 Apple Silicon Mac이 필요합니다.",
+    "sounds": {
+      "pack": {
+        "failedTitle": "사운드 팩을 설치할 수 없었습니다.",
+        "title": "사운드 팩 설치",
+        "body": "효과음은 전용 작은 팩에서 실행됩니다. 약 {size} GB이며 한 번만 설치합니다.",
+        "install": "사운드 팩 설치"
+      }
+    }
+  },
+  "videoTools": {
+    "title": "비디오 도구가 필요합니다",
+    "body": "비디오를 합치고 내보내려면 무료 보조 프로그램인 FFmpeg가 필요합니다. 이 앱 전용 패키지로 설치됩니다.",
+    "install": "비디오 도구 설치",
+    "installing": "비디오 도구 설치 중...",
+    "failed": "비디오 도구를 설치하지 못했습니다: {error}",
+    "chooseLabel": "오프라인인가요? 이미 가지고 있는 ffmpeg 파일 사용",
+    "use": "이 파일 사용",
+    "row": {
+      "label": "비디오 도구(FFmpeg)",
+      "checking": "확인 중...",
+      "installed": "{version}, 출처: {source}{licence}",
+      "notInstalled": "설치되지 않음",
+      "encoder": "H.264 인코더: {encoder}",
+      "licence": "라이선스",
+      "download": "LGPL 빌드 다운로드({size} MB)",
+      "cancel": "취소",
+      "remove": "제거",
+      "source": {
+        "download": "다운로드한 LGPL 빌드",
+        "imageio": "imageio-ffmpeg 패키지",
+        "custom": "직접 고른 파일(검증되지 않음)",
+        "env": "CHAOSENGINE_FFMPEG",
+        "path": "시스템 PATH",
+        "unknown": "알 수 없음",
+        "link": "출처"
+      }
+    }
+  },
+  "galleryProject": {
+    "filter": "프로젝트",
+    "all": "모든 프로젝트",
+    "chip": "프로젝트 {name}에서",
+    "none": "프로젝트 없음",
+    "search": "프로젝트 검색",
+    "noMatch": "일치하는 프로젝트가 없습니다.",
+    "open": "스토리보드에서 열기",
+    "stills": "{count, plural, other {정지 이미지 #개}}",
+    "clips": "{count, plural, other {클립 #개}}",
+    "tracks": "{count, plural, other {트랙 #개}}",
+    "sounds": "{count, plural, other {사운드 #개}}",
+    "speech": "{count, plural, other {음성 #개}}",
+    "transcripts": "{count, plural, other {받아쓰기 #개}}"
+  },
+  "cast": {
+    "addPicture": "사진 추가",
+    "addPictureFor": null,
+    "dropHint": null,
+    "none": null,
+    "pickerTitle": null,
+    "pictureAlt": null,
+    "remove": null,
+    "removePicture": null,
+    "room": null,
+    "small": "작은 사진입니다. 결과가 달라질 수 있습니다.",
+    "subtitle": null,
+    "title": "등장인물과 장소",
+    "unnamed": "이름 없음",
+    "usedBy": null,
+    "noneShort": "아직 없습니다."
+  },
+  "exportTab": {
+    "bundleBody": null,
+    "bundleTitle": "프로젝트 번들",
+    "openStoryboard": "스토리보드에서 열기",
+    "stale": null,
+    "before": "내보내기 전에",
+    "line": {
+      "captions": null,
+      "clipsAll": null,
+      "clipsNone": "클립이 있는 샷이 아직 없어 내보낼 것이 없습니다.",
+      "clipsSome": null,
+      "cloned": "복제된 음성을 사용하므로 AI 태그가 항상 기록됩니다.",
+      "noCaptions": "자막 없음.",
+      "preview": "미리보기가 오래되었습니다(내보내기는 가능합니다).",
+      "aiTagOff": "AI 태그를 기록하지 않습니다.",
+      "aiTagOn": "기계가 읽을 수 있는 AI 태그를 파일에 기록합니다.",
+      "captionsBoth": null,
+      "captionsBurn": null,
+      "captionsSrt": null,
+      "captionsUnused": null,
+      "format": "영상은 {format}입니다.",
+      "loudness": "소리를 {lufs} LUFS로 맞춥니다.",
+      "loudnessOff": "소리는 믹스한 그대로입니다(목표 음량 없음).",
+      "upscale": "마지막에 {size}로 확대합니다. 픽셀은 늘지만 디테일은 늘지 않습니다."
+    },
+    "openMixer": "믹서 열기"
+  },
+  "overview": {
+    "addCast": "등장인물 추가(선택)",
+    "cast": null,
+    "noSound": "아직 소리 없음",
+    "progress": null,
+    "settingsTitle": "프로젝트 설정",
+    "sheet": "샷",
+    "sound": null,
+    "staleBadge": "오래됨",
+    "startBody": null,
+    "startTitle": "여기서 시작",
+    "writeShots": "샷 작성",
+    "check": {
+      "cast": "등장인물(선택)",
+      "doneLabel": "완료",
+      "export": "내보내기",
+      "format": "이름과 형식",
+      "preview": "미리보기",
+      "shots": "샷",
+      "sound": "소리(선택)",
+      "takes": "모든 샷에 클립",
+      "todoLabel": "남음"
+    },
+    "checklist": "단계",
+    "next": {
+      "addSound": {
+        "body": null,
+        "button": "믹서 열기",
+        "title": "음성이나 음악 추가"
+      },
+      "done": {
+        "body": "변경한 뒤 다시 내보내거나 원하는 샷의 새 테이크를 만드세요.",
+        "button": "내보내기 열기",
+        "title": "완료"
+      },
+      "export": {
+        "body": null,
+        "button": "내보내기 열기",
+        "title": "영상 내보내기"
+      },
+      "makeClips": {
+        "body": null,
+        "button": "스토리보드 열기",
+        "title": "스틸을 클립으로 만들기"
+      },
+      "makeMissing": {
+        "body": null,
+        "button": null,
+        "title": null,
+        "bodyStills": null
+      },
+      "making": "샷 만드는 중",
+      "makingProgress": null,
+      "renderPreview": {
+        "body": "내보내기 전에 영상 전체를 보고 들어 보세요.",
+        "button": "믹서 열기",
+        "title": "미리보기 렌더링"
+      },
+      "writeShots": {
+        "body": null,
+        "button": "샷 작성",
+        "title": "샷 작성"
+      }
+    },
+    "nextStep": "다음 단계",
+    "progressClips": null,
+    "activity": {
+      "cancelled": "일괄 작업 취소 · {when}",
+      "done": null,
+      "exported": "이번 세션에서 영상 내보냄",
+      "failed": "일괄 작업 실패 · {when}",
+      "interrupted": "일괄 작업 중단(앱 종료) · {when}",
+      "partly": null,
+      "preview": "이번 세션에서 미리보기 렌더링",
+      "title": "최근 활동"
+    }
+  },
+  "picker": {
+    "adding": "사진 추가 중…",
+    "dropHint": "여기에 사진을 놓거나 붙여 넣으세요(PNG, JPEG, WebP).",
+    "galleryEmpty": "일치하는 저장 이미지가 없습니다.",
+    "noStills": "스틸이 있는 샷이 아직 없습니다.",
+    "notPicture": "PNG, JPEG, WebP 사진을 고르세요.",
+    "pastePath": "대신 경로 붙여 넣기",
+    "pathLabel": "사진 경로",
+    "searchGallery": "이미지 갤러리 검색",
+    "shotTake": null,
+    "source": {
+      "file": "파일 선택",
+      "gallery": "이미지 갤러리",
+      "shot": "샷에서",
+      "computer": "이 컴퓨터"
+    },
+    "sources": "사진 출처",
+    "useImage": null,
+    "usePath": "이 사진 사용",
+    "chooseFile": "파일 선택",
+    "clipboardBlocked": null,
+    "clipboardEmpty": null,
+    "pasteClipboard": "클립보드에서 붙여 넣기",
+    "pasteHere": "여기를 클릭한 뒤 사진을 붙여 넣으세요(Cmd+V)",
+    "pasteHereLabel": "여기에 사진 붙여 넣기",
+    "showMore": "더 보기"
+  },
+  "projectList": {
+    "noMatch": null,
+    "search": "프로젝트 검색",
+    "sort": {
+      "created": "만든 날짜",
+      "edited": "최근 편집",
+      "length": "길이",
+      "name": "이름"
+    },
+    "sortLabel": "정렬",
+    "title": "프로젝트",
+    "dropHint": "또는 .chaosfilm 파일을 여기에 놓으세요."
+  },
+  "projectShell": {
+    "back": "프로젝트",
+    "backToList": "프로젝트 목록으로",
+    "formatTitle": "프로젝트 설정",
+    "nameLabel": "프로젝트 이름",
+    "notFound": "이 프로젝트는 더 이상 없습니다.",
+    "rename": "이름 바꾸기",
+    "tab": {
+      "cast": "등장인물",
+      "export": "내보내기",
+      "mixer": "믹서",
+      "overview": "개요",
+      "storyboard": "스토리보드"
+    },
+    "tabsLabel": "프로젝트"
+  },
+  "templates": {
+    "ad30": "30초 광고",
+    "blank": "빈 프로젝트",
+    "broll": "장면 / B롤",
+    "empty": "샷 없음",
+    "meta": null,
+    "shots": {
+      "adBenefit": {
+        "prompt": "같은 일이 쉬워지고 편안한 미소",
+        "title": "장점"
+      },
+      "adCall": {
+        "prompt": "메시지를 넣을 빈 공간이 있는 제품",
+        "title": "행동 유도"
+      },
+      "adHook": {
+        "prompt": "스크롤을 멈추게 하는 강렬한 클로즈업",
+        "title": "후킹"
+      },
+      "adProblem": {
+        "prompt": "일상적인 일로 애쓰는 사람",
+        "title": "문제"
+      },
+      "adProduct": {
+        "prompt": "부드러운 빛 아래 깨끗한 테이블 위의 제품",
+        "title": "제품"
+      },
+      "adProof": {
+        "prompt": "여러 곳에서 제품을 쓰며 만족하는 사람들",
+        "title": "증거"
+      },
+      "brollCrowd": {
+        "prompt": "화려한 조명 아래 움직이는 나이트클럽 인파",
+        "title": "인파"
+      },
+      "brollDetail": {
+        "prompt": "네온이 비치는 창문의 빗방울, 클로즈업",
+        "title": "디테일"
+      },
+      "brollWide": {
+        "prompt": "해 질 녘 붐비는 도시 거리, 와이드 샷",
+        "title": "넓은 거리"
+      },
+      "socialEnd": {
+        "prompt": "만족스러운 마지막 반전",
+        "title": "마무리"
+      },
+      "socialHook": {
+        "prompt": "화면을 채우는 과감한 근접 순간",
+        "title": "후킹"
+      },
+      "socialShow": {
+        "prompt": "핵심 아이디어를 한 장면으로",
+        "title": "보여 주기"
+      },
+      "storyEnd": {
+        "prompt": "조용히 뒤돌아보는 마지막 장면",
+        "title": "엔딩"
+      },
+      "storyMeet": {
+        "prompt": "이른 아침 일하는 주인공",
+        "title": "주인공 소개"
+      },
+      "storyOpen": {
+        "prompt": "이야기가 펼쳐지는 곳의 넓은 장면",
+        "title": "오프닝"
+      },
+      "storyPeak": {
+        "prompt": "모든 것이 걸린 순간",
+        "title": "절정"
+      },
+      "storyTurn": {
+        "prompt": "뜻밖의 일이 생긴다",
+        "title": "전환"
+      }
+    },
+    "startFrom": "시작 방법",
+    "story": "짧은 이야기",
+    "vertical": "세로 소셜",
+    "metaFormat": null,
+    "sets": "{name}이(가) 형식을 {aspect}, {resolution}, {fps}fps로 설정했습니다. 아래에서 바꿀 수 있습니다."
+  },
+  "voicePicker": {
+    "automatic": "음성 없음(자동)",
+    "change": "음성 바꾸기",
+    "cloneNote": "복제된 음성의 클립에는 항상 AI 태그가 붙습니다.",
+    "close": "닫기",
+    "group": {
+      "builtin": "기본 제공",
+      "clone": "복제됨",
+      "design": "디자인",
+      "preset": "프리셋"
+    },
+    "loading": "음성 불러오는 중…",
+    "needsModel": "모델이 필요합니다",
+    "none": "일치하는 음성이 없습니다.",
+    "play": null,
+    "sampleText": "안녕하세요. 당신의 영상에서 저는 이렇게 들려요.",
+    "search": "음성 검색",
+    "stop": null,
+    "typeLabel": "음성 ID",
+    "typeLink": "대신 음성 ID 입력",
+    "typePlaceholder": "에이전트나 다른 앱이 부르는 음성 ID",
+    "useTyped": "이 음성 사용"
+  },
+  "runBar": {
+    "label": "샷 만들기",
+    "make": "빠진 {n}개 만들기",
+    "makeNone": "빠진 것 만들기",
+    "makeTimed": "빠진 {n}개 만들기 · 약 {time}",
+    "needStills": null,
+    "stale": "{n}개 오래됨"
   }
 }

@@ -1,4 +1,6 @@
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { ProjectChip } from "./ProjectFilter";
 import type { ImageModelFamily, ImageOutputArtifact } from "../types";
 import {
   findImageVariantById,
@@ -21,6 +23,8 @@ export interface ImageOutputCardProps {
   onRevealPath: (path: string) => void;
   onDelete: (artifactId: string) => void;
   onNavigateSettings: () => void;
+  /** Extra buttons at the end of the last row (the Use in storyboard menu). */
+  extraActions?: ReactNode;
 }
 
 export function ImageOutputCard({
@@ -33,6 +37,7 @@ export function ImageOutputCard({
   onRevealPath,
   onDelete,
   onNavigateSettings,
+  extraActions,
 }: ImageOutputCardProps) {
   const { t } = useTranslation("common");
   const artifactVariant = findImageVariantById(imageCatalog, artifact.modelId);
@@ -50,6 +55,11 @@ export function ImageOutputCard({
           <div className="chip-row">
             <span className="badge subtle">{artifact.runtimeLabel}</span>
             <span className="badge muted">{imageOrientation(artifact.width, artifact.height)}</span>
+          </div>
+        ) : null}
+        {artifact.projectName ? (
+          <div className="chip-row">
+            <ProjectChip name={artifact.projectName} />
           </div>
         ) : null}
         <p className="image-output-prompt">{artifact.prompt}</p>
@@ -97,6 +107,7 @@ export function ImageOutputCard({
           <button className="secondary-button danger-button" type="button" onClick={() => onDelete(artifact.artifactId)}>
             {t("imageOutputCard.delete", { defaultValue: "Delete" })}
           </button>
+          {extraActions}
         </div>
       </div>
     </article>

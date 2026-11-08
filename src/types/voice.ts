@@ -38,6 +38,8 @@ export interface VoiceSettings {
   /** Conversation mode: speaking over the model interrupts it. */
   bargeIn: boolean;
   idleUnloadMinutes: number;
+  /** Agents and other machines may use cloned voices (off by default; only this window can change it). */
+  allowAgentCloning?: boolean;
 }
 
 export interface VoiceInstallJob {
@@ -79,6 +81,8 @@ export interface VoiceRuntime {
   cuda: boolean;
   nvidiaGpu: boolean;
   extras: VoiceExtra[];
+  /** When the voice pack install last passed its check (local time, ISO), if known. */
+  installedAt?: string | null;
   workerPid: number | null;
   install: VoiceInstallJob;
   sttModels: SttModel[];
@@ -121,11 +125,16 @@ export interface VoiceLibrarySummary {
   durationS?: number | null;
   source?: string | null;
   task?: "transcribe" | "translate";
+  /** The Storyboard project it was made for (set by the backend, absent otherwise). */
+  projectId?: string | null;
+  projectName?: string | null;
 }
 
 export interface VoiceLibraryItem extends Omit<VoiceLibrarySummary, "preview" | "speakerCount"> {
   text: string;
   segments: TranscriptSegment[];
+  /** Where the audio file is on this machine (null when the item has none); only the single-item route sends it. */
+  audioPath?: string | null;
 }
 
 export interface VoiceLibraryPatch {
@@ -133,4 +142,77 @@ export interface VoiceLibraryPatch {
   text?: string;
   segments?: TranscriptSegment[];
   speakers?: Record<string, string>;
+}
+
+/** What a voice's model can do (set by the catalog). */
+export interface VoiceCapabilities {
+  speak: boolean;
+  style: boolean;
+  clone: boolean;
+  design: boolean;
+}
+
+export type VoiceEntryKind = "builtin" | "preset" | "design" | "clone";
+
+/** One row of ``GET /api/voice/voices``: built-in, preset, designed or cloned. */
+export interface VoiceEntry {
+  id: string;
+  name: string;
+  kind: VoiceEntryKind;
+  language: string;
+  languageLabel?: string;
+  gender?: "female" | "male" | null;
+  about?: string;
+  /** Catalog key of the model used by default (``kokoro`` for built-ins). */
+  model: string;
+  /** Every catalog key that can speak this voice. */
+  models: string[];
+  capabilities: VoiceCapabilities;
+  available: boolean;
+  /** Plain words for why it cannot be used yet. */
+  needs?: string | null;
+  consent?: { speakerName: string; basis: "own" | "permission"; consentedAt: string; appVersion?: string };
+}
+
+/** One row of ``GET /api/voice/models``: a Qwen3-TTS model with its install state. */
+export interface VoiceModelRow {
+  key: string;
+  name: string;
+  summary: string;
+  repo: string;
+  sizeGb: number;
+  languages: string;
+  default: boolean;
+  kind: "base" | "custom" | "design";
+  capabilities: VoiceCapabilities;
+  supported: boolean;
+  installed: boolean;
+  licence?: { id: string; name: string; url: string };
+  download: { state: "idle" | "downloading" | "done" | "failed"; error: string | null; phase?: "weights" | "watermark" | null };
+}
+
+/** Body of ``POST /api/voice/speak``. */
+export interface SpeakBody {
+  text: string;
+  voice: string;
+  style?: string;
+  speed?: number;
+  pitch?: number;
+  seed?: number | null;
+  model?: string;
+}
+
+/** Answer of ``POST /api/voice/speak``. */
+export interface SpeakResult {
+  /** Base64 WAV. */
+  audio: string;
+  durationS: number;
+  chunks: number;
+  voice: string;
+  kind: VoiceEntryKind;
+  model: string;
+  modelName: string;
+  clonedVoice: boolean;
+  libraryId: string | null;
+  notes: string[];
 }

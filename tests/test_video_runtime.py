@@ -931,117 +931,6 @@ class FinalizeConfigTests(unittest.TestCase):
         self.assertFalse(any("LTX-Video auto-tuned" in n for n in notes))
 
 
-class EnhancePromptTests(unittest.TestCase):
-    """Phase E1: template-based prompt enhancer.
-
-    Short prompts (< 25 words) get a per-model structural suffix appended.
-    Long prompts pass through untouched. ``enhancePrompt=False`` skips
-    the enhancer entirely. The enhancer is idempotent — a second call on
-    an already-enhanced prompt is a no-op.
-    """
-
-    def test_short_ltx_prompt_gets_enhanced(self):
-        from backend_service.video_runtime import _enhance_prompt
-        out, note = _enhance_prompt("Lightricks/LTX-Video", "cartoon llama eating straw")
-        self.assertNotEqual(out, "cartoon llama eating straw")
-        self.assertIn("cartoon llama eating straw", out)
-        self.assertIn("cinematic", out.lower())
-        self.assertIsNotNone(note)
-        self.assertIn("Auto-enhanced", note)
-
-    def test_short_wan_prompt_gets_enhanced(self):
-        from backend_service.video_runtime import _enhance_prompt
-        out, _ = _enhance_prompt("Wan-AI/Wan2.1-T2V-1.3B-Diffusers", "a cat in snow")
-        self.assertIn("a cat in snow", out)
-        self.assertIn("35mm", out)
-
-    def test_long_prompt_skips_enhancement(self):
-        from backend_service.video_runtime import _enhance_prompt
-        long_prompt = " ".join(["word"] * 30)
-        out, note = _enhance_prompt("Lightricks/LTX-Video", long_prompt)
-        self.assertEqual(out, long_prompt)
-        self.assertIsNone(note)
-
-    def test_unknown_repo_returns_unchanged(self):
-        from backend_service.video_runtime import _enhance_prompt
-        out, note = _enhance_prompt("not/a-real-repo", "short prompt")
-        self.assertEqual(out, "short prompt")
-        self.assertIsNone(note)
-
-    def test_empty_prompt_returns_unchanged(self):
-        from backend_service.video_runtime import _enhance_prompt
-        out, note = _enhance_prompt("Lightricks/LTX-Video", "")
-        self.assertEqual(out, "")
-        self.assertIsNone(note)
-
-    def test_idempotent_when_suffix_already_present(self):
-        # Second call must not double-append the suffix.
-        from backend_service.video_runtime import _enhance_prompt
-        first, _ = _enhance_prompt("Lightricks/LTX-Video", "cartoon llama")
-        second, note = _enhance_prompt("Lightricks/LTX-Video", first)
-        self.assertEqual(first, second)
-        self.assertIsNone(note)
-
-    def test_finalize_config_appends_when_enhance_enabled(self):
-        # End-to-end: short LTX prompt with enhancePrompt=True should
-        # land on the resolved config with the suffix attached and a
-        # run-log note generated.
-        engine = DiffusersVideoEngine()
-        cfg = VideoGenerationConfig(
-            modelId="x",
-            modelName="LTX-Video",
-            repo="Lightricks/LTX-Video",
-            prompt="cartoon llama",
-            negativePrompt="",
-            width=768,
-            height=512,
-            numFrames=25,
-            fps=24,
-            steps=30,
-            guidance=3.0,
-            enhancePrompt=True,
-        )
-        resolved, notes = engine._finalize_config(cfg)
-        self.assertNotEqual(resolved.prompt, "cartoon llama")
-        self.assertIn("cartoon llama", resolved.prompt)
-        self.assertTrue(any("Auto-enhanced" in n for n in notes))
-
-    def test_finalize_config_skips_when_enhance_disabled(self):
-        engine = DiffusersVideoEngine()
-        cfg = VideoGenerationConfig(
-            modelId="x",
-            modelName="LTX-Video",
-            repo="Lightricks/LTX-Video",
-            prompt="cartoon llama",
-            negativePrompt="",
-            width=768,
-            height=512,
-            numFrames=25,
-            fps=24,
-            steps=30,
-            guidance=3.0,
-            enhancePrompt=False,
-        )
-        resolved, notes = engine._finalize_config(cfg)
-        self.assertEqual(resolved.prompt, "cartoon llama")
-        self.assertFalse(any("Auto-enhanced" in n for n in notes))
-
-    def test_short_ltx2_prompt_gets_enhanced(self):
-        # Phase E2.1: prince-canuma/LTX-2-* now in enhancer dict.
-        from backend_service.video_runtime import _enhance_prompt
-        out, note = _enhance_prompt("prince-canuma/LTX-2-distilled", "drone shot")
-        self.assertNotEqual(out, "drone shot")
-        self.assertIn("drone shot", out)
-        self.assertIn("cinematic", out.lower())
-        self.assertIsNotNone(note)
-
-    def test_short_ltx2_3_prompt_gets_enhanced(self):
-        from backend_service.video_runtime import _enhance_prompt
-        out, _ = _enhance_prompt("prince-canuma/LTX-2.3-distilled", "skater in tokyo")
-        self.assertIn("skater in tokyo", out)
-        self.assertIn("cinematic", out.lower())
-
-
 class CfgDecayTests(unittest.TestCase):
     """Phase E2.2: linear CFG decay across the sampling schedule.
 
@@ -1719,44 +1608,19 @@ class DistillTransformerSwapTests(unittest.TestCase):
         self.assertEqual(captured["dtypes"], ["fp8", "fp8"])
 
 
-class Wan22DistillCatalogTests(unittest.TestCase):
-    """Catalog shape contract — Wan2.2 distill variant dicts must carry
-    the distillTransformer* keys plus ``defaultSteps`` + ``cfgOverride``
-    so the runtime knows which experts to swap and the default-substitution
-    path can lock the 4-step schedule."""
+class Wan22CatalogTests(unittest.TestCase):
+    """The Wan 2.2 I2V distill rows had no working pipeline and needed the
+    126 GB base download; they were removed, and the family default must
+    point at a row that still exists."""
 
-    def test_wan22_distill_variants_have_distill_keys(self):
+    def test_family_default_is_a_listed_variant_and_no_dead_distill_rows(self):
         from backend_service.catalog.video_models import VIDEO_MODEL_FAMILIES
 
-        wan22 = next(
-            (f for f in VIDEO_MODEL_FAMILIES if f.get("id") == "wan-2-2"),
-            None,
-        )
-        self.assertIsNotNone(wan22, "wan-2-2 family missing from catalog")
-        distill_variants = [
-            v for v in wan22.get("variants", [])
-            if v.get("distillTransformerRepo")
-        ]
-        self.assertGreaterEqual(len(distill_variants), 2)
-        for variant in distill_variants:
-            self.assertEqual(
-                variant.get("distillTransformerRepo"),
-                "lightx2v/Wan2.2-Distill-Models",
-            )
-            self.assertTrue(variant.get("distillTransformerHighNoiseFile"))
-            self.assertTrue(variant.get("distillTransformerLowNoiseFile"))
-            self.assertIn(
-                variant.get("distillTransformerPrecision"),
-                {"bf16", "fp8_e4m3", "int8"},
-            )
-            self.assertEqual(variant.get("defaultSteps"), 4)
-            self.assertEqual(variant.get("cfgOverride"), 1.0)
-            # Distill targets the I2V-A14B base repo for the MoE
-            # transformer + transformer_2 layout to line up.
-            self.assertEqual(
-                variant.get("repo"),
-                "Wan-AI/Wan2.2-I2V-A14B-Diffusers",
-            )
+        wan22 = next(f for f in VIDEO_MODEL_FAMILIES if f.get("id") == "wan-2-2")
+        ids = {v["id"] for v in wan22["variants"]}
+        self.assertIn(wan22["defaultVariantId"], ids)
+        self.assertFalse([i for i in ids if "distill" in i])
+
 
 
 class VideoWarmCacheVariantKeyTests(unittest.TestCase):

@@ -411,5 +411,80 @@
     "copied": "Kopiert",
     "copyCode": "Code kopieren",
     "copy": "Kopieren"
+  },
+  "busy": {
+    "slowerTitle": "Rechner ist ausgelastet",
+    "riskyTitle": "Nicht genug Speicher für beides",
+    "dismiss": "Schließen"
+  },
+  "studioChat": {
+    "switch": {
+      "label": null,
+      "on": null,
+      "onTooltip": null,
+      "offTooltip": null
+    },
+    "plan": {
+      "title": null,
+      "subtitle": null,
+      "unanswered": null,
+      "edited": null,
+      "decided": null,
+      "sent": null,
+      "time": null,
+      "memory": null,
+      "approved": null,
+      "declined": null,
+      "approveThis": null,
+      "alwaysAllow": null,
+      "approveAll": null,
+      "approve": null,
+      "deny": null,
+      "edit": null,
+      "frames": null,
+      "fps": null,
+      "steps": null,
+      "variations": null,
+      "instrumental": null,
+      "shots": null,
+      "what": null,
+      "preview": null,
+      "force": null,
+      "timeRecommended": null,
+      "inputs": null,
+      "more": null,
+      "less": null,
+      "memoryLoaded": null,
+      "memoryFree": null,
+      "approveThisLabel": null
+    },
+    "job": {
+      "declined": null,
+      "queued": null,
+      "runningPhase": null,
+      "running": null,
+      "done": null,
+      "cancelled": null,
+      "failed": null,
+      "cancel": null,
+      "openProject": null,
+      "openLibrary": null,
+      "interrupted": null
+    },
+    "kind": {
+      "image": null,
+      "video": null,
+      "speech": null,
+      "music": null,
+      "sound": null,
+      "storyboard": null,
+      "film": null,
+      "captions": null
+    },
+    "auto": {
+      "label": null,
+      "tooltip": null,
+      "off": null
+    }
   }
 }

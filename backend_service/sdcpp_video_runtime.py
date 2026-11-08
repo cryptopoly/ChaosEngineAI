@@ -98,7 +98,7 @@ class SdCppVideoEngine:
 
     Phase C scaffold — probe + routing only. ``generate()`` is staged
     behind ``NotImplementedError`` until the CLI arg builders and stdout
-    progress parser land. See FU-008 in CLAUDE.md.
+    progress parser land. See FU-008 in FOLLOW_UPS.md.
     """
 
     runtime_label = "stable-diffusion.cpp"
@@ -118,7 +118,7 @@ class SdCppVideoEngine:
                     "stable-diffusion.cpp binary not staged. Run "
                     "``./scripts/build-sdcpp.sh`` (or set "
                     "CHAOSENGINE_SDCPP_BIN) to build and install. "
-                    "See FU-008 in CLAUDE.md."
+                    "See FU-008 in FOLLOW_UPS.md."
                 ),
             )
         device = "mps" if platform.system() == "Darwin" else "cuda"

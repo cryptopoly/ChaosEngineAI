@@ -57,6 +57,7 @@ def _hydrate_video_artifact(payload: dict[str, Any]) -> dict[str, Any]:
             payload.get("createdAt") or datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
         ),
         "durationSeconds": float(payload.get("durationSeconds") or 0.0),
+        "timings": payload.get("timings") if isinstance(payload.get("timings"), dict) else None,
         "clipDurationSeconds": float(payload.get("clipDurationSeconds") or 0.0),
         "videoPath": str(payload.get("videoPath") or "") or None,
         "metadataPath": str(payload.get("metadataPath") or "") or None,
@@ -65,10 +66,18 @@ def _hydrate_video_artifact(payload: dict[str, Any]) -> dict[str, Any]:
         "runtimeLabel": str(payload.get("runtimeLabel") or ""),
         "runtimeNote": str(payload.get("runtimeNote") or "") or None,
         "hasAudio": _artifact_has_audio(payload),
+        "startImagePath": str(payload.get("startImagePath") or "") or None,
+        "endImagePath": str(payload.get("endImagePath") or "") or None,
+        "projectId": str(payload.get("projectId") or "") or None,
+        "projectName": str(payload.get("projectName") or "") or None,
+        "shotId": str(payload.get("shotId") or "") or None,
     }
 
 
 def _save_video_artifact(artifact: dict[str, Any], video_outputs_dir: Path) -> dict[str, Any]:
+    from backend_service.helpers.provenance import stamp
+
+    artifact = stamp(artifact)
     created_at = str(
         artifact.get("createdAt") or datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
     )
@@ -89,6 +98,10 @@ def _save_video_artifact(artifact: dict[str, Any], video_outputs_dir: Path) -> d
                 "— check the backend log for this generation."
             )
         video_path.write_bytes(bytes(video_bytes))
+        if extension.lower() == "mp4":
+            from backend_service.helpers.output_metadata import embed_mp4_settings, generation_settings
+
+            embed_mp4_settings(video_path, generation_settings(artifact))
     else:
         raise ValueError(
             f"Cannot persist video artifact '{artifact_id}': no raw bytes "

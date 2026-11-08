@@ -36,7 +36,14 @@
     "voiceStudio": "语音工作室",
     "voiceModels": "语音模型",
     "voiceLibrary": "语音资料库",
-    "chatModels": "对话模型"
+    "chatModels": "对话模型",
+    "musicModels": "音乐模型",
+    "musicStudio": "音乐工作室",
+    "musicLibrary": "音乐库",
+    "storyProjects": "项目",
+    "storyBoard": "分镜板",
+    "storyMixer": "混音台",
+    "projects": "项目"
   },
   "tabCaptions": {
     "dashboard": "系统概览",
@@ -67,7 +74,14 @@
     "voiceLibrary": "你创建的转写和语音",
     "chatModels": "查找、下载和管理语言模型",
     "imageModelsPage": "查找、下载和管理图像模型",
-    "videoModelsPage": "查找、下载和管理视频模型"
+    "videoModelsPage": "查找、下载和管理视频模型",
+    "musicModels": "查找、下载和管理音乐与音效模型",
+    "musicStudio": "制作曲目和音效",
+    "musicLibrary": "你制作的曲目和音效",
+    "storyProjects": "你的影片，每部一个文件夹",
+    "storyBoard": "镜头、版本和提示词",
+    "storyMixer": "画面、声音和导出",
+    "projects": "故事板影片：镜头、声音、导出"
   },
   "tabShortLabels": {
     "chat": "对话",
@@ -92,7 +106,12 @@
     "voiceStudio": "工作室",
     "voiceModels": "我的模型",
     "voiceLibrary": "资料库",
-    "models": "模型"
+    "models": "模型",
+    "musicStudio": "工作室",
+    "musicLibrary": "库",
+    "storyProjects": "项目",
+    "storyBoard": "分镜板",
+    "storyMixer": "混音台"
   },
   "tabGroups": {
     "chat": "对话",
@@ -101,7 +120,9 @@
     "video": "视频",
     "benchmarks": "基准测试",
     "tools": "工具",
-    "voice": "语音"
+    "voice": "语音",
+    "music": "音乐",
+    "storyboard": "分镜"
   },
   "tabsCount": "{count, plural, other {# 个标签页}}",
   "sidebar": {
@@ -109,7 +130,9 @@
     "backendOffline": "离线",
     "noModelLoaded": "未加载模型",
     "groupTabsAriaLabel": "{group} 标签页",
-    "primaryNavAriaLabel": "主导航"
+    "primaryNavAriaLabel": "主导航",
+    "sectionMake": "创作",
+    "sectionRun": "运行"
   },
   "slashCommands": {
     "menuAriaLabel": "斜杠命令"
@@ -664,6 +687,8 @@
     "thumbnailAlt": "实时去噪预览",
     "thumbnailCaption": "实时预览 · TAESD 解码",
     "stepCounter": "第 {current} / {total} 步",
+    "waitingForAgent": "正在等待智能体任务完成",
+    "waitingInQueue": "正在等待另一个任务完成（第 {position} 位）",
     "inProgress": "进行中…",
     "finalizing": "正在完成…",
     "phaseTiming": "{elapsed} 秒 / ~{estimated} 秒"
@@ -828,7 +853,9 @@
       "sidebarCollapsibleHelp": "显示所有分组并展开，子项内联列出 — 每个目标一次点击。",
       "sidebarTabsHelp": "保持侧边栏紧凑：分组的行为类似单个按钮，跳转到上次使用的标签页，并在内容上方显示子标签页栏。",
       "uiScaleAria": "界面缩放",
-      "uiScaleHelp": "界面缩放会立即更改应用界面的密度。媒体预览保持各自的纵横比尺寸。"
+      "uiScaleHelp": "界面缩放会立即更改应用界面的密度。媒体预览保持各自的纵横比尺寸。",
+      "keepGroupsOpen": "保持所有侧边栏分组展开",
+      "keepGroupsOpenHelp": "默认关闭：只有你正在使用的分组保持展开。开启后所有分组都会展开。"
     },
     "dataDirectory": {
       "title": "数据目录",
@@ -883,6 +910,25 @@
       "tokenPlaceholder": "hf_...",
       "helpText": "存储在本地。MLX 转换在从 Hugging Face 拉取受限模型时使用。"
     },
+    "agentAccess": {
+      "title": "智能体访问",
+      "subtitle": "允许 AI 智能体（Claude Code、Cursor 等）在此生成图像、视频、语音和转写文本。",
+      "switch": "允许智能体使用 ChaosEngineAI",
+      "hint": "默认关闭。智能体一次只运行一个任务，只能在这台电脑上使用，并且需要下方的令牌。它们只能使用你已下载的模型。",
+      "claudeCode": "Claude Code",
+      "stdio": "只能启动本地程序的客户端（stdio）",
+      "otherClients": "其他 MCP 客户端（JSON）",
+      "rotate": "生成新令牌",
+      "rotateHint": "旧令牌会立即失效。智能体需要使用新的那一行。",
+      "permissions": "权限",
+      "permissionsHint": "主令牌可以读取、生成内容和移动文件。除非你勾选，否则没有其他权限。",
+      "scopeClone": "允许声音克隆",
+      "remoteClone": "同时允许从其他电脑进行克隆",
+      "readTokenMake": "生成只读令牌",
+      "readTokenRemove": "移除只读令牌",
+      "readTokenHint": "用于仪表板或监视程序：可以查看状态和任务，但不能创建或更改任何内容。",
+      "readTokenLabel": "只读令牌（Claude Code）"
+    },
     "integrations": {
       "title": "集成",
       "subtitle": "将外部工具连接到 ChaosEngineAI 的 OpenAI 兼容 API。",
@@ -928,7 +974,8 @@
     "contextDetected": "检测到 {contextLabel}",
     "emptyState": "没有模型匹配您的搜索。",
     "launchSettings": "启动设置",
-    "cancelButton": "取消"
+    "cancelButton": "取消",
+    "busyConfirm": "仍然加载"
   },
   "modelPicker": {
     "weightFileTitle": "选择权重文件：{name}",
@@ -1250,5 +1297,35 @@
     "finder": "在 Finder 中显示",
     "explorer": "在资源管理器中显示",
     "files": "在“文件”中显示"
+  },
+  "comingSoon": {
+    "music": "音乐功能即将推出。",
+    "storyboard": "分镜功能即将推出。"
+  },
+  "llamaCuda": {
+    "description": "使用 CUDA {cuda} 在你的 NVIDIA GPU 上运行 GGUF 聊天模型（llama.cpp {tag}）。下载约 680 MB，含 CUDA 运行时（磁盘占用 0.9 GB）。",
+    "inUse": "使用中：GGUF 模型在 NVIDIA GPU 上运行。",
+    "install": "安装",
+    "installedNoDevice": "已安装，但未找到 CUDA 设备。请检查 NVIDIA 驱动程序（nvidia-smi）。",
+    "notInstalled": "未安装。GGUF 模型使用内置版本。",
+    "reinstall": "重新安装",
+    "title": "CUDA llama-server（NVIDIA）"
+  },
+  "terms": {
+    "title": "使用条款",
+    "intro": "开始之前请先阅读。",
+    "agree": "我同意",
+    "quit": "退出",
+    "close": "关闭",
+    "read": "阅读条款",
+    "acceptedOn": "已于 {date} 接受。",
+    "notAccepted": "尚未接受。",
+    "points": {
+      "responsibility": "你需对自己生成的内容及其用途负责。",
+      "disclosure": "在法律或平台要求的情况下，请说明内容由 AI 生成（例如欧盟《人工智能法案》第 50 条和平台标注规则）。",
+      "impersonation": "未经本人同意，不得使用 ChaosEngineAI 冒充真实人物。",
+      "voices": "只有在说话者同意的情况下，才能克隆其声音。",
+      "licences": "每个模型都有自己的许可证。使用输出内容前请先查看。"
+    }
   }
 }

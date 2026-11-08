@@ -1,4 +1,5 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
+import { friendlyValidationDetail } from "./validationErrors";
 import type {
   AppSettings,
   BenchmarkRunPayload,
@@ -163,6 +164,8 @@ export async function readErrorDetail(response: Response, fallback: string): Pro
       } else {
         detail = JSON.stringify(errorBody.detail);
       }
+    } else if (friendlyValidationDetail(errorBody?.detail)) {
+      detail = friendlyValidationDetail(errorBody.detail) as string;
     } else if (errorBody?.detail) {
       detail = typeof errorBody.detail === "string" ? errorBody.detail : JSON.stringify(errorBody.detail);
     } else if (errorBody?.error) {
@@ -567,7 +570,6 @@ export {
 export {
   checkTorchUpgradeAvailable,
   checkTurboUpdate,
-  enhancePromptViaLLM,
   fetchGpuBundleInfo,
   getGpuBundleStatus,
   getLongLiveInstallStatus,
@@ -575,6 +577,8 @@ export {
   getMtplxStatus,
   getEmbeddingModelInstallStatus,
   getRagStatus,
+  getLlamaCudaInstallStatus,
+  getLlamaCudaStatus,
   getLtx2InstallStatus,
   getLtx2Status,
   getMfluxInstallStatus,
@@ -592,6 +596,7 @@ export {
   startEmbeddingModelInstall,
   startGpuBundleInstall,
   startLongLiveInstall,
+  startLlamaCudaInstall,
   startLtx2Install,
   startMfluxInstall,
   startMtplxInstall,
@@ -614,11 +619,12 @@ export type {
   MtplxAttempt,
   MtplxJobState,
   MtplxStatus,
-  PromptEnhanceResult,
   RagStatus,
   TensorfoldAttempt,
   TensorfoldExtra,
   Ltx2JobState,
+  LlamaCudaJobState,
+  LlamaCudaStatus,
   Ltx2Status,
   MfluxJobState,
   MfluxStatus,
@@ -646,12 +652,15 @@ export {
   fetchStorageChildren,
   fetchStorageTop,
   getModelMoveStatus,
+  getAgentAccess,
   getStorageSettings,
   reextractRuntime,
+  updateAgentAccess,
   startModelMove,
   updateHfCachePath,
 } from "./admin";
 export type {
+  AgentAccess,
   DiagnosticsLogTail,
   DiagnosticsSnapshot,
   ModelMoveJobState,
@@ -665,10 +674,15 @@ export type {
 export {
   addMessageVariant,
   cancelChatGeneration,
+  cancelStudioJob,
   createSession,
+  decideStudioPlan,
   delveMessage,
   deleteSession,
   deleteSessionDocument,
+  fetchBusyAdvice,
+  fetchStudioJob,
+  fetchStudioJobMedia,
   forkChatSession,
   generateChat,
   generateChatStream,
@@ -680,6 +694,7 @@ export type {
   ChatStreamPhase,
   SessionDocument,
   StreamCallbacks,
+  StudioPlanDecisionBody,
 } from "./chat";
 
 export {
@@ -724,6 +739,10 @@ export {
   encodeMp3,
   transcribeBlob,
   speakStream,
+  speakVoice,
+  cancelSpeak,
+  getVoices,
+  getVoiceModels,
   detectSpeech,
   getVoiceSettings,
   saveVoiceSettings,
@@ -733,3 +752,76 @@ export {
   stopVoiceWorker,
 } from "./voice";
 export type { TranscribeOptions, TranscribeResult, SpokenSentence } from "./voice";
+
+export {
+  MusicApiError,
+  cancelMusicDownload,
+  cancelMusicGeneration,
+  cancelMusicInstall,
+  cancelSoundInstall,
+  deleteMusicDownload,
+  deleteMusicLibraryItems,
+  downloadMusicModel,
+  estimateMusicRun,
+  fetchMusicAudioBlob,
+  generateMusic,
+  generateSound,
+  getMusicCatalog,
+  getMusicDownloadStatus,
+  getMusicInstallStatus,
+  getMusicLibrary,
+  getMusicLibraryItem,
+  getMusicProgress,
+  getMusicRuntime,
+  getMusicSettings,
+  getSoundInstallStatus,
+  musicAudioPath,
+  preloadMusicModel,
+  saveMusicEmbedTag,
+  saveMusicSettings,
+  startMusicInstall,
+  startSoundInstall,
+  unloadMusicModel,
+  updateMusicLibraryItem,
+} from "./music";
+
+export {
+  cancelStoryboardBatch,
+  cancelStoryboardRender,
+  createStoryboardProject,
+  deleteStoryboardProject,
+  exportStoryboardBundle,
+  exportStoryboardCaptions,
+  exportStoryboardOtio,
+  fetchStoryboardFileBlobUrl,
+  fetchStoryboardFileSize,
+  getStoryboardBatch,
+  getStoryboardPeaks,
+  getStoryboardProject,
+  generateStoryboardCaptions,
+  getStoryboardRender,
+  importStoryboardBundle,
+  uploadStoryboardPicture,
+  estimateStoryboardBatch,
+  listStoryboardProjects,
+  parseRevisionConflict,
+  redoStoryboard,
+  runStoryboardOp,
+  startStoryboardBatch,
+  startStoryboardRender,
+  StoryboardApiError,
+  StoryboardRevisionConflict,
+  storyboardFilePath,
+  storyboardOps,
+  undoStoryboard,
+} from "./storyboard";
+
+export {
+  cancelFfmpegDownload,
+  chooseFfmpegFile,
+  getFfmpegJob,
+  getFfmpegStatus,
+  removeFfmpegDownload,
+  startFfmpegDownload,
+} from "./ffmpeg";
+export type { FfmpegJob, FfmpegPin, FfmpegStatus } from "./ffmpeg";

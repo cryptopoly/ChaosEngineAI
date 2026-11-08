@@ -39,7 +39,8 @@
       "mtplx": "Instalação do MTPLX",
       "tensorfold": "Instalação do TensorFold",
       "mflux": "Instalação do mflux",
-      "vllmWsl": "Instalação do vLLM no WSL"
+      "vllmWsl": "Instalação do vLLM no WSL",
+      "ltx2": "Instalação do mecanismo LTX-2.3"
     },
     "status": {
       "failed": "Falha na {noun} — ver log",

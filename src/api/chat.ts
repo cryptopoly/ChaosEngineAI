@@ -14,10 +14,14 @@
 
 import { apiFetch, fetchJson, patchJson, postJson, readErrorDetail } from "./index";
 import type {
+  BusyAdvice,
   ChatSession,
   CreateSessionResponse,
   GeneratePayload,
   GenerateResponse,
+  StudioJob,
+  StudioPlan,
+  ToolCallInfo,
   UpdateSessionPayload,
 } from "../types";
 
@@ -152,8 +156,26 @@ export interface StreamCallbacks {
     logprob: number | null;
     alternatives: Array<{ token: string | null; logprob: number | null }>;
   }>) => void;
+  /** The machine is busy or tight on memory: emitted once, before the first token, only when not "ok". */
+  onAdvice?: (advice: BusyAdvice) => void;
+  /** A tool finished (streamed as it happens, so studio job cards show before the turn ends). */
+  onToolCallResult?: (toolCall: ToolCallInfo) => void;
+  /** D-60: the model asked for renders; the plan card waits for the user's click. */
+  onStudioPlan?: (plan: StudioPlan) => void;
+  onStudioPlanResolved?: (plan: StudioPlan) => void;
   onDone: (response: GenerateResponse) => void;
   onError: (error: string) => void;
+}
+
+/** Busy-machine advice for loading a model of this size (or starting a Studio job); null when unreadable. */
+export async function fetchBusyAdvice(footprintGb?: number | null): Promise<BusyAdvice | null> {
+  const query = footprintGb != null && footprintGb > 0 ? `?footprintGb=${encodeURIComponent(String(footprintGb))}` : "";
+  try {
+    const result = await fetchJson<{ advice: BusyAdvice | null }>(`/api/busy-advice${query}`, 5000);
+    return result.advice ?? null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -175,7 +197,14 @@ export async function generateChatStream(
   abortSignal?: AbortController,
 ): Promise<void> {
   const controller = abortSignal ?? new AbortController();
-  const timer = setTimeout(() => controller.abort(), 300000);
+  let timer = setTimeout(() => controller.abort(), 300000);
+  // With studio tools a turn can wait on the plan card and on long jobs, so the 5 minutes count from the
+  // last thing the backend sent (it sends a keepalive while a plan waits), not from the start.
+  const bumpTimer = () => {
+    if (!payload.studioTools) return;
+    clearTimeout(timer);
+    timer = setTimeout(() => controller.abort(), 300000);
+  };
 
   try {
     const response = await apiFetch("/api/chat/generate/stream", {
@@ -211,6 +240,7 @@ export async function generateChatStream(
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
+      bumpTimer();
 
       buffer += decoder.decode(value, { stream: true });
       const lines = buffer.split("\n");
@@ -239,8 +269,29 @@ export async function generateChatStream(
           if (event.reasoningDone) {
             callbacks.onReasoningDone?.();
           }
+          if (event.advice && typeof event.advice === "object" && typeof event.advice.message === "string") {
+            callbacks.onAdvice?.(event.advice as BusyAdvice);
+          }
           if (event.cancelled) {
             callbacks.onCancelled?.();
+          }
+          if (event.toolCallResult && typeof event.toolCallResult === "object") {
+            const tc = event.toolCallResult;
+            callbacks.onToolCallResult?.({
+              id: String(tc.id ?? ""),
+              name: String(tc.name ?? "tool"),
+              arguments: tc.arguments && typeof tc.arguments === "object" ? tc.arguments : {},
+              result: String(tc.result ?? ""),
+              elapsed: typeof tc.elapsed === "number" ? tc.elapsed : 0,
+              renderAs: tc.renderAs ?? null,
+              data: tc.data ?? null,
+            });
+          }
+          if (event.studioPlan && Array.isArray(event.studioPlan.items)) {
+            callbacks.onStudioPlan?.(event.studioPlan as StudioPlan);
+          }
+          if (event.studioPlanResolved && Array.isArray(event.studioPlanResolved.items)) {
+            callbacks.onStudioPlanResolved?.(event.studioPlanResolved as StudioPlan);
           }
           if (event.phase === "prompt_eval" || event.phase === "generating") {
             const ttft = typeof event.ttftSeconds === "number" ? event.ttftSeconds : undefined;
@@ -284,6 +335,39 @@ export async function generateChatStream(
   } finally {
     clearTimeout(timer);
   }
+}
+
+// ---------------------------------------------------------------------------
+// D-60: studio tools in Chat (plan decisions, job cards)
+// ---------------------------------------------------------------------------
+
+export interface StudioPlanDecisionBody {
+  decisions: Record<string, "approve" | "deny">;
+  edit?: boolean;
+  alwaysAllow?: boolean;
+}
+
+export async function decideStudioPlan(planId: string, body: StudioPlanDecisionBody): Promise<void> {
+  await postJson(`/api/chat/studio/plans/${encodeURIComponent(planId)}/decision`, body, 10000);
+}
+
+export async function fetchStudioJob(jobId: string): Promise<StudioJob> {
+  const result = await fetchJson<{ job: StudioJob }>(`/api/chat/studio/jobs/${encodeURIComponent(jobId)}`, 10000);
+  return result.job;
+}
+
+export async function cancelStudioJob(jobId: string): Promise<StudioJob> {
+  const result = await postJson<{ job: StudioJob }>(`/api/chat/studio/jobs/${encodeURIComponent(jobId)}/cancel`, {}, 10000);
+  return result.job;
+}
+
+/** The file a finished chat job made, as a Blob (the route needs the bearer token). */
+export async function fetchStudioJobMedia(jobId: string, track = 0): Promise<Blob> {
+  const response = await apiFetch(`/api/chat/studio/jobs/${encodeURIComponent(jobId)}/media?track=${track}`);
+  if (!response.ok) {
+    throw new Error(await readErrorDetail(response, `Loading the file failed with status ${response.status}`));
+  }
+  return await response.blob();
 }
 
 // ---------------------------------------------------------------------------

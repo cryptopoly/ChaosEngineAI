@@ -36,7 +36,16 @@ import {
 import { readReasoningEffort } from "../features/chat/reasoningEffort";
 import { readSamplerOverrides, samplerPayload } from "../features/chat/samplerOverrides";
 import { readTemperatureOverride } from "../features/chat/temperatureOverride";
+import {
+  readStudioAutoApprove,
+  readStudioToolsEnabled,
+  upsertPlan,
+  upsertToolCall,
+  writeStudioAutoApprove,
+  writeStudioToolsEnabled,
+} from "../features/chat/studioChat";
 import type {
+  ChatMessage,
   ChatSession,
   ChatThinkingMode,
   LaunchPreferences,
@@ -102,6 +111,12 @@ export function useChat(
   const [chatBusySessionId, setChatBusySessionId] = useState<string | null>(null);
   const [pendingImages, setPendingImages] = useState<string[]>([]);
   const [enableTools, setEnableTools] = useState(false);
+  // D-60: the Studio tools switch, remembered across launches (off by default).
+  const [studioTools, setStudioToolsState] = useState(readStudioToolsEnabled);
+  const setStudioTools = (enabled: boolean) => {
+    writeStudioToolsEnabled(enabled);
+    setStudioToolsState(enabled);
+  };
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const streamAbortRef = useRef<AbortController | null>(null);
   // Phase 2.12: one-turn model override. Survives across re-renders so
@@ -345,6 +360,7 @@ export function useChat(
   async function handleDeleteSession(sessionId: string) {
     try {
       await deleteSession(sessionId);
+      writeStudioAutoApprove(sessionId, false);
       setWorkspace((current) => ({
         ...current,
         chatSessions: current.chatSessions.filter((s) => s.id !== sessionId),
@@ -766,6 +782,8 @@ export function useChat(
         speculativeDecoding: activeRuntimeProfile.speculativeDecoding,
         treeBudget: activeRuntimeProfile.treeBudget,
         enableTools: enableTools || undefined,
+        studioTools: studioTools || undefined,
+        studioAutoApprove: studioTools && readStudioAutoApprove(sessionId ?? sendingSessionId) ? true : undefined,
       };
 
       const streamingChatId = sessionId ?? sendingSessionId;
@@ -776,7 +794,29 @@ export function useChat(
       const streamAbort = new AbortController();
       streamAbortRef.current = streamAbort;
       streamStarted = true;
+      const patchStreamingAssistant = (patch: (message: ChatMessage) => ChatMessage) => {
+        if (!streamingChatId) return;
+        setWorkspace((current) => ({
+          ...current,
+          chatSessions: current.chatSessions.map((s) => {
+            if (s.id !== streamingChatId) return s;
+            const msgs = [...s.messages];
+            const last = msgs[msgs.length - 1];
+            if (last?.role === "assistant") msgs[msgs.length - 1] = patch(last);
+            return { ...s, messages: msgs };
+          }),
+        }));
+      };
       await generateChatStream(streamPayload, {
+        onToolCallResult: (toolCall) => {
+          patchStreamingAssistant((m) => ({ ...m, toolCalls: upsertToolCall(m.toolCalls, toolCall) }));
+        },
+        onStudioPlan: (plan) => {
+          patchStreamingAssistant((m) => ({ ...m, studioPlans: upsertPlan(m.studioPlans, plan) }));
+        },
+        onStudioPlanResolved: (plan) => {
+          patchStreamingAssistant((m) => ({ ...m, studioPlans: upsertPlan(m.studioPlans, plan) }));
+        },
         onToken: (token) => {
           if (streamingChatId) {
             setWorkspace((current) => ({
@@ -893,6 +933,21 @@ export function useChat(
               const last = msgs[msgs.length - 1];
               if (last?.role === "assistant") {
                 msgs[msgs.length - 1] = { ...last, streamPhase: phase };
+              }
+              return { ...s, messages: msgs };
+            }),
+          }));
+        },
+        onAdvice: (advice) => {
+          if (!streamingChatId) return;
+          setWorkspace((current) => ({
+            ...current,
+            chatSessions: current.chatSessions.map((s) => {
+              if (s.id !== streamingChatId) return s;
+              const msgs = [...s.messages];
+              const last = msgs[msgs.length - 1];
+              if (last?.role === "assistant") {
+                msgs[msgs.length - 1] = { ...last, busyAdvice: advice };
               }
               return { ...s, messages: msgs };
             }),
@@ -1052,6 +1107,8 @@ export function useChat(
     setPendingImages,
     enableTools,
     setEnableTools,
+    studioTools,
+    setStudioTools,
     chatScrollRef,
     sortedChatSessions,
     activeChat,

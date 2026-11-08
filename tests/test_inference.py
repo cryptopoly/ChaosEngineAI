@@ -69,6 +69,26 @@ class LlamaCppCommandTests(unittest.TestCase):
         self.assertIn("--reasoning", command)
         self.assertIn("off", command)
 
+    def test_build_command_turns_off_mmap_on_a_shared_memory_nvidia_gpu(self):
+        engine = LlamaCppEngine(self._capabilities())
+
+        def build(shared: bool, env: dict[str, str]) -> list[str]:
+            with (
+                mock.patch("backend_service.inference._find_open_port", return_value=9999),
+                mock.patch("backend_service.inference.llama_cpp_engine._llama_server_supports", return_value=True),
+                mock.patch("backend_service.inference.llama_cpp_engine.nvidia_shared_memory", return_value=shared),
+                mock.patch.dict("os.environ", env),
+            ):
+                command, _note, _, _mmproj = engine._build_command(
+                    path="/tmp/model.gguf", runtime_target=None, cache_strategy="native",
+                    cache_bits=0, context_tokens=8192, fit_enabled=True, is_fallback=False,
+                )
+            return command
+
+        self.assertIn("--no-mmap", build(True, {}))
+        self.assertNotIn("--no-mmap", build(False, {}))
+        self.assertNotIn("--no-mmap", build(True, {"CHAOSENGINE_LLAMA_MMAP": "1"}))
+
     def test_build_command_skips_reasoning_flags_when_unsupported(self):
         engine = LlamaCppEngine(self._capabilities())
 

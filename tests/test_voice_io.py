@@ -92,8 +92,13 @@ class LaneTests(unittest.TestCase):
         self.assertTrue(any(p.startswith("faster-whisper") for p in portable))
         self.assertFalse(any("mlx" in p for p in portable))
         self.assertFalse(any(p.startswith("nvidia-") for p in portable))
-        with mock.patch.object(voice_env, "has_nvidia_gpu", return_value=True):
+        with mock.patch.object(voice_env, "has_nvidia_gpu", return_value=True), \
+                mock.patch.object(voice_env.platform, "machine", return_value="x86_64"):
             self.assertTrue(any(p.startswith("nvidia-cudnn") for p in voice_env.packages_for("portable")))
+        # Linux ARM64 (DGX Spark): CTranslate2's aarch64 wheel is CPU-only, so no CUDA libraries.
+        with mock.patch.object(voice_env, "has_nvidia_gpu", return_value=True), \
+                mock.patch.object(voice_env.platform, "machine", return_value="aarch64"):
+            self.assertFalse(any(p.startswith("nvidia-") for p in voice_env.packages_for("portable")))
         # Conversation mode's VAD runs on onnxruntime on both lanes.
         self.assertTrue(any(p.startswith("onnxruntime") for p in mlx))
         self.assertTrue(any(p.startswith("onnxruntime") for p in portable))
@@ -160,6 +165,12 @@ class InstalledMarkerTests(unittest.TestCase):
         )
         self.assertTrue(voice_env.is_installed())
         self.assertEqual(voice_env.installed_extras(), ["chinese"])
+
+    def test_capabilities_report_when_the_pack_passed_its_check(self) -> None:
+        (self.venv / "chaosengine-voice.json").write_text(
+            json.dumps({"schema": 1, "lane": "portable", "installedAt": "2026-11-07T20:00:00"}), encoding="utf-8"
+        )
+        self.assertEqual(voice_runtime.get_voice_capabilities()["installedAt"], "2026-11-07T20:00:00")
 
     def test_a_corrupt_marker_is_not_installed(self) -> None:
         (self.venv / "chaosengine-voice.json").write_text("{nope", encoding="utf-8")

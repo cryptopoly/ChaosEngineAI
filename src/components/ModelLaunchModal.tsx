@@ -2,9 +2,11 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { RuntimeControls } from "./RuntimeControls";
 import { number, sizeLabel } from "../utils";
-import type { LaunchPreferences, ModelCapabilities, PreviewMetrics, StrategyInstallLog, SystemStats } from "../types";
+import type { BusyAdvice, LaunchPreferences, ModelCapabilities, PreviewMetrics, StrategyInstallLog, SystemStats } from "../types";
 import type { ChatModelOption } from "../types/chat";
-import type { MtplxJobState } from "../api";
+import { fetchBusyAdvice, type MtplxJobState } from "../api";
+import { BusyAdviceNotice } from "./BusyAdviceNotice";
+import { isVisibleAdvice, needsConfirmation } from "./busyAdvice";
 import { candidateKeys } from "./runtimeSupport";
 import { tensorfoldLaunchInfoFor, type TensorfoldLaunchControls } from "./tensorfoldSupport";
 
@@ -138,6 +140,25 @@ export function ModelLaunchModal({
       onSettingChange("contextTokens", maxContext);
     }
   }, [open, options, selectedKey, settings.contextTokens, onSettingChange]);
+
+  // Busy-machine advice for the selected model, read when the dialog opens or the selection changes.
+  const sizeGbForAdvice = (options.find((option) => option.key === selectedKey) ?? options[0])?.sizeGb;
+  const [busyAdvice, setBusyAdvice] = useState<BusyAdvice | null>(null);
+  const [busyConfirmed, setBusyConfirmed] = useState(false);
+  useEffect(() => {
+    setBusyConfirmed(false);
+    if (!open) {
+      setBusyAdvice(null);
+      return;
+    }
+    let live = true;
+    void fetchBusyAdvice(sizeGbForAdvice).then((advice) => {
+      if (live) setBusyAdvice(isVisibleAdvice(advice) ? advice : null);
+    });
+    return () => {
+      live = false;
+    };
+  }, [open, sizeGbForAdvice]);
 
   if (!open) return null;
 
@@ -288,11 +309,22 @@ export function ModelLaunchModal({
             />
           </div>
         </div>
+        {busyAdvice ? (
+          <div className="modal-busy-advice">
+            <BusyAdviceNotice advice={busyAdvice} />
+            {needsConfirmation(busyAdvice) ? (
+              <label className="check-row">
+                <input type="checkbox" checked={busyConfirmed} onChange={(event) => setBusyConfirmed(event.target.checked)} />
+                {t("modelLaunchModal.busyConfirm", { defaultValue: "Load anyway" })}
+              </label>
+            ) : null}
+          </div>
+        ) : null}
         <div className="modal-footer">
           <button
             className="primary-button"
             type="button"
-            disabled={!resolvedSelectedKey}
+            disabled={!resolvedSelectedKey || (needsConfirmation(busyAdvice) && !busyConfirmed)}
             onClick={() => onConfirm(resolvedSelectedKey)}
           >
             {confirmLabel}

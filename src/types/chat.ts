@@ -9,7 +9,68 @@ import type { ModelCapabilities, RuntimeStatus } from "./server";
  * chart. Tools that don't override `execute_structured` send `null`
  * and the frontend falls back to the legacy collapsible-JSON view.
  */
-export type ToolRenderAs = "table" | "code" | "markdown" | "image" | "chart" | "json";
+export type ToolRenderAs = "table" | "code" | "markdown" | "image" | "chart" | "json" | "studio";
+
+/** D-60: one render the chat model asked for, as the plan card lists it. */
+export interface StudioPlanItem {
+  callId: string;
+  tool: string;
+  kind: string;
+  prompt: string;
+  /** The whole prompt when the short one was cut. */
+  promptFull?: string | null;
+  model?: string | null;
+  size?: string | null;
+  estimatedSeconds?: number | null;
+  /** The time was measured at the model's recommended size, not the size or length asked for. */
+  estimateAtRecommended?: boolean;
+  peakGb?: number | null;
+  /** Input images by file name (or upload: handle). */
+  inputs?: string[];
+  variations?: number;
+  frames?: number;
+  steps?: number;
+  fps?: number;
+  lyrics?: string;
+  instrumental?: boolean;
+  project?: string | null;
+  what?: string;
+  force?: boolean;
+  preview?: boolean;
+  /** Storyboard: shots this generate will work on, or a render will join. */
+  shots?: number | null;
+}
+
+/** D-60: the plan card. Approval is a click in the app, never chat text. */
+export interface StudioPlan {
+  planId: string;
+  sessionId?: string | null;
+  items: StudioPlanItem[];
+  memory?: {
+    chatModel?: string | null;
+    freeGb?: number;
+    totalGb?: number;
+    peakGb?: number | null;
+    level?: "ok" | "slower" | "risky";
+    advice?: string | null;
+  } | null;
+  status: "pending" | "decided" | "edit" | "unanswered";
+  decisions?: Record<string, "approve" | "deny">;
+  alwaysAllow?: boolean;
+}
+
+/** D-60: a chat job as the job card polls it (trimmed: paths and short notes). */
+export interface StudioJob {
+  jobId: string;
+  kind: string;
+  label: string;
+  state: "queued" | "running" | "done" | "failed" | "cancelled" | "interrupted";
+  queuePosition?: number;
+  progress?: { phase?: string | null; step?: number | null; totalSteps?: number | null; elapsedSeconds?: number | null };
+  output?: Record<string, unknown>;
+  error?: string;
+  notes?: string[];
+}
 
 export interface ToolCallInfo {
   id: string;
@@ -76,6 +137,18 @@ export interface ChatThermalWarning {
   message: string;
 }
 
+/** Advice about a busy machine (a heavy job is running, or memory would run short). Never a refusal. */
+export interface BusyAdvice {
+  level: "ok" | "slower" | "risky";
+  /** Plain-English sentence naming the running job and the numbers; empty at "ok". */
+  message: string;
+  jobs: Array<{ kind: string | null; label: string; source: string }>;
+  combinedPeakGb: number;
+  totalGb: number;
+  availableGb: number;
+  footprintGb: number;
+}
+
 export interface ChatMessage {
   role: "user" | "assistant";
   text: string;
@@ -85,6 +158,8 @@ export interface ChatMessage {
   metrics?: import("../types").GenerationMetrics | null;
   toolCalls?: ToolCallInfo[];
   citations?: CitationInfo[];
+  /** D-60: plan cards shown in this turn (studio tools). */
+  studioPlans?: StudioPlan[];
   /**
    * Live phase tracker for the streaming assistant message (Phase 2.0).
    * Cleared once the message finalises via the backend's done event. Used
@@ -103,6 +178,8 @@ export interface ChatMessage {
    * the host is throttling. Renders a non-blocking warning banner.
    */
   thermalWarning?: ChatThermalWarning | null;
+  /** A heavy job was running (or memory was tight) when this turn started; shown above the composer. */
+  busyAdvice?: BusyAdvice | null;
   /** Phase 2.5: alternate responses from other models for the same prompt. */
   variants?: ChatMessageVariant[];
   /**
@@ -237,6 +314,9 @@ export interface GeneratePayload {
   // Agent tool-use
   enableTools?: boolean;
   availableTools?: string[];
+  /** D-60: offer the studio tools; renders wait for the plan card unless studioAutoApprove. */
+  studioTools?: boolean;
+  studioAutoApprove?: boolean;
   /**
    * Phase 2.12: when true, the model selectors in this payload override
    * the loaded runtime for THIS turn only — the session's stored
@@ -279,6 +359,7 @@ export interface GenerateResponse {
   session: ChatSession;
   assistant: ChatMessage;
   runtime: RuntimeStatus;
+  advice?: BusyAdvice | null;
 }
 
 

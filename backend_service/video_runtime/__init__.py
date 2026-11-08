@@ -71,13 +71,10 @@ from backend_service.video_runtime.repos import (
     _BNB_NF4_VIDEO_TRANSFORMER_CLASSES,
     _GGUF_VIDEO_TRANSFORMER_CLASSES,
     _LTX_DEFAULT_NEGATIVE_PROMPT,
-    _PROMPT_ENHANCE_MIN_WORDS,
-    _PROMPT_ENHANCEMENT_SUFFIXES,
     _REQUEST_DEFAULT_GUIDANCE,
     _REQUEST_DEFAULT_STEPS,
     _VIDEO_PIPELINE_DEFAULTS,
     _bnb_nf4_transformer_class_for_repo,
-    _enhance_prompt,
     _gguf_video_transformer_class_for_repo,
 )
 from backend_service.video_runtime.pipeline_helpers import (
@@ -342,7 +339,7 @@ class DiffusersVideoEngine:
             # where TeaCache pays off most (1.6–2.1× on HunyuanVideo,
             # ~1.3–2× on Wan). NotImplementedError is swallowed by the
             # helper when the pipeline class has no vendored patch yet;
-            # see FU-007 in CLAUDE.md.
+            # see FU-007 in FOLLOW_UPS.md.
             from cache_compression import apply_diffusion_cache_strategy
 
             apply_diffusion_cache_strategy(
@@ -979,7 +976,12 @@ class VideoRuntimeManager:
         return _is_sdcpp_video_repo(repo)
 
     def capabilities(self) -> dict[str, Any]:
-        return self._engine.probe().to_dict()
+        status = self._engine.probe().to_dict()
+        if not status.get("loadedModelRepo") and self._ltx2_mlx is not None:
+            from backend_service.ltx2_mlx_runtime import warm_loaded_repo
+
+            status["loadedModelRepo"] = warm_loaded_repo()  # a warm ltx-2-mlx pipeline counts as loaded
+        return status
 
     def longlive_capabilities(self) -> dict[str, Any]:
         """Probe the LongLive engine separately so the Studio can surface install state."""
@@ -1034,6 +1036,8 @@ class VideoRuntimeManager:
                 return self._get_ltx2_mlx().unload(repo).to_dict()
             if self._is_mlx_video_repo(repo):
                 return self._get_mlx_video().unload(repo).to_dict()
+            if repo is None and self._ltx2_mlx is not None:
+                self._ltx2_mlx.release("unloaded")  # the warm ltx-2-mlx worker, when it idles
             return self._engine.unload(repo).to_dict()
 
     def generate(self, config: VideoGenerationConfig) -> tuple[GeneratedVideo, dict[str, Any]]:
@@ -1066,6 +1070,10 @@ class VideoRuntimeManager:
                 video = ltx2.generate(config)
                 runtime = ltx2.probe().to_dict()
             return video, runtime
+
+        # Another engine is about to load its own weights: free the warm LTX pipeline first.
+        if self._ltx2_mlx is not None:
+            self._ltx2_mlx.release("another video engine is loading")
 
         if self._is_mlx_video_repo(config.repo):
             mlx = self._get_mlx_video()

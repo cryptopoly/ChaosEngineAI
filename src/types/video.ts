@@ -17,6 +17,8 @@ export type VideoCacheStrategyId =
 export type VideoModelTask = "txt2video" | "img2video" | "video2video";
 
 export interface VideoModelVariant {
+  /** True for LTX-2 (ltx-2-mlx): the clip can start and end on an image. */
+  acceptsImageInput?: boolean;
   /** Few-step distilled rows (CausVid, lightx2v, LTX distilled): the steps and guidance the Studio starts from. */
   defaultSteps?: number | null;
   cfgOverride?: number | null;
@@ -108,6 +110,8 @@ export interface VideoModelVariant {
   maxPixels?: number;
   /** Edge the model was trained at. */
   nativeSide?: number;
+  /** Frame rate the model is trained or documented for (catalog); absent when no card states one. */
+  nativeFps?: number;
   /** Smallest edge the model renders cleanly at (the backend raises smaller sizes). */
   minSide?: number | null;
 }
@@ -181,9 +185,16 @@ export interface VideoOutputArtifact {
   runtimeNote?: string | null;
   /** True when the mp4 has an audio track (LTX-2 clips); older backends omit it. */
   hasAudio?: boolean;
+  /** Set when a Storyboard batch made it: the project and shot it belongs to. */
+  projectId?: string | null;
+  projectName?: string | null;
+  shotId?: string | null;
 }
 
 export interface VideoGenerationPayload {
+  /** Absolute image paths; only for variants with ``acceptsImageInput``. */
+  startImagePath?: string;
+  endImagePath?: string;
   modelId: string;
   prompt: string;
   negativePrompt?: string;
@@ -196,7 +207,6 @@ export interface VideoGenerationPayload {
   seed?: number | null;
   useNf4?: boolean;
   enableLtxRefiner?: boolean;
-  enhancePrompt?: boolean;
   cfgDecay?: boolean;
   stgScale?: number;
   /** FU-018: TAESD/TAEHV preview-decode VAE swap. Preview-only

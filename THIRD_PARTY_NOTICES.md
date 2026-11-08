@@ -231,6 +231,16 @@ text encoder) is under the Gemma terms of use. Neither is bundled.
   once an mlx-lm release carries the architecture. The weights keep their own
   licence (LFM Open License v1.0, Liquid AI).
 
+## Test tooling (dev only, never shipped)
+
+### Playwright (browser E2E)
+
+- **@playwright/test 1.65.0** (with `playwright` and `playwright-core`, same version) - Apache 2.0 (Microsoft)
+- **Source:** <https://github.com/microsoft/playwright>
+- **Location:** `e2e/` sub-package only (own `package.json` and lockfile); the app's `package.json`, lockfile and
+  release bundle do not include it. A headless Chromium is downloaded on demand by `npx playwright install chromium`
+  into the user cache, and is not redistributed. Security review: `docs/research/playwright-security.md`.
+
 ## Internationalization (FU-042)
 
 ### i18next (frontend i18n framework)
@@ -385,11 +395,40 @@ environment, `~/.chaosengine/voice-venv`; not bundled with the app. Run by
   — Apache-2.0. ONNX file from `csukuangfj/speaker-embedding-models`,
   downloaded at a pinned revision.
 
+### FFmpeg video tools (joining, mixing, tagging)
+
+FFmpeg is **not bundled** with ChaosEngineAI and we host no FFmpeg build (decision D-49). The app finds it in this
+order: a file the user chose, a download the app made, the `imageio-ffmpeg` package, and (for tagging only) a program
+on the system `PATH`. The app runs it as a separate program and never links it into our code. Its Setup row and the
+"Video tools are needed" prompt install it on request.
+
+- **imageio-ffmpeg** (all systems, the one-click install). Upstream: <https://github.com/imageio/imageio-ffmpeg>
+  (the Python wrapper, BSD-2-Clause) and <https://ffmpeg.org> (the program). The user's machine installs it from PyPI
+  when they choose Install video tools; we distribute nothing. The macOS build we checked (ffmpeg 7.1,
+  `ffmpeg-macos-aarch64-v7.1`, imageio-ffmpeg 0.6.0) reports `--enable-gpl` with `libx264` and `libx265`, so the
+  binary as a whole is licensed under the **GNU General Public License, version 2 or later**; its configuration line
+  is printed by `ffmpeg -version`. Source: <https://ffmpeg.org/releases/>, x264 at
+  <https://code.videolan.org/videolan/x264>, x265 at <https://bitbucket.org/multicoreware/x265_git>. The ltx-2-mlx
+  environment keeps its own libx264 ffmpeg and is not affected by this entry.
+- **BtbN LGPL builds** (Windows and Linux, optional, on request in Setup). Upstream:
+  <https://github.com/BtbN/FFmpeg-Builds>, release `autobuild-2026-10-31-12-59` (ffmpeg n9.0.2, `lgpl` variant, built
+  without `--enable-gpl` and `--enable-nonfree`; licence **LGPL-2.1-or-later**; source and build scripts at the
+  release page and in that repository). The app downloads the pinned file from that release, checks its SHA-256
+  against a value stored in the app, and runs it only after the check. The `lgpl` variant includes libass (ISC),
+  FreeType (FTL: "Portions of this software are copyright The FreeType Project"), HarfBuzz (MIT), FriBidi (LGPL-2.1),
+  libvpx (BSD-3-Clause) and openh264 (BSD-2-Clause, compiled from source by the builder; Cisco's patent licence
+  covers only Cisco's own binary); the full list is in the build's `ffmpeg -buildconf`. BtbN, not us, distributes
+  these files. This software uses code of FFmpeg licensed under the LGPLv2.1.
+- **H.264 encoding:** libx264 when the ffmpeg in use has it, otherwise the system's encoder (VideoToolbox on macOS;
+  NVENC, AMF or Quick Sync where the machine has them; openh264 as a last resort).
+
 ### PyAV (audio decoding)
 
 - **Upstream:** <https://github.com/PyAV-Org/PyAV>
-- **Licence:** BSD-3-Clause; its wheels bundle FFmpeg libraries under the
-  LGPL-2.1-or-later.
+- **Licence:** BSD-3-Clause for PyAV itself. Its PyPI wheels bundle FFmpeg libraries built with `--enable-gpl`
+  (libx264 and libx265; checked on the macOS arm64 wheel of av 14.1.0, where libavutil reports "GPL version 3 or later"),
+  so treat the bundled libraries as **GPL-3.0-or-later**, not LGPL. They are installed from PyPI on the user's machine
+  (voice venv), not shipped by us. Sources: <https://github.com/PyAV-Org/pyav-ffmpeg>.
 - **Usage:** Decodes recordings and dropped audio / video files, so no
   `ffmpeg` command is needed.
 
@@ -405,3 +444,76 @@ Installed individually from the Setup page, instead of `misaki[ja]` — see the 
   OpenJTalk components under their modified-BSD licence)
 - **unidic-lite** — <https://github.com/polm/unidic-lite> — MIT wrapper
   (bundled UniDic dictionary data under the BSD-style UniDic licence)
+
+## Music (ACE-Step 1.5)
+
+Installed on demand by "Install music pack" (Music > Models) into a separate environment,
+`~/.chaosengine/music-venv`; not bundled with the app. Run by `backend_service/music_worker.py`.
+Weights are downloaded by the user into the Hugging Face cache at pinned revisions; none ship with the app.
+
+### ACE-Step 1.5 (code)
+
+- **Upstream:** <https://github.com/ace-step/ACE-Step-1.5>, pinned to commit
+  `ca1e85fe9430179831e6bc6be790c332190a3866` (package `ace-step` 1.5.0).
+- **Licence:** MIT ("Copyright (c) 2026 ACEStep").
+- **Usage:** text-to-music library driven through its Python API by our worker. The library copies its own
+  model code into the checkpoint folder before loading, so the code that runs is from the pinned commit.
+
+### ACE-Step 1.5 weights
+
+- `ACE-Step/Ace-Step1.5` (revision `19671f406d603126926c1b7e2adc169acbcade22`: 2B turbo DiT, VAE,
+  Qwen3-Embedding-0.6B text encoder, 1.7B planner LM) and `ACE-Step/acestep-v15-xl-turbo`
+  (revision `d4a0b288b83ebb7e25a8c0b32c573c22e134e8ee`).
+- **Licence:** MIT on every model card (`license: mit`), not gated. The authors state the model was trained on
+  legally compliant data and that generated music may be used commercially; the README asks users to check that
+  a track is original, to disclose AI involvement and to get permission when adapting protected material.
+
+### Packages the music pack installs (not bundled)
+
+`backend_service/music_requirements.txt` (exported from the pinned `uv.lock`) installs, among others: PyTorch and
+torchaudio (BSD-3-Clause), torchcodec (BSD-3-Clause), MLX and mlx-lm (MIT), transformers, diffusers, accelerate and
+huggingface-hub (Apache-2.0), numpy (BSD-3-Clause), soundfile (BSD-3-Clause; bundles libsndfile, LGPL-2.1),
+gradio, lightning, peft, torchao and modelscope (Apache-2.0 or BSD; pulled in by the library, not used for
+inference). All are MIT, BSD or Apache except the one below.
+
+- **pytorch-wavelets 1.3.0: not installed (dropped 2026-11-07, D-37, FU-138).** PyPI says "Free To Use But Restricted".
+  Its LICENSE file is MIT (copyright 2020 Fergal Cotter) for the parts that are new, but the dual-tree (DTCWT) parts derive
+  from Nick Kingsbury's MATLAB toolbox ("for research purposes only"), and importing the package loads that code. ACE-Step
+  uses it only for the optional DCW correction, which the MLX path computes natively (Haar), so we removed it from
+  `music_requirements.txt` and verified a generation without it.
+  PyWavelets (MIT AND BSD-3-Clause) stays.
+
+## Sound effects (Stable Audio Open Small, optional)
+
+### Stable Audio Open Small (downloaded by the user, not bundled)
+
+- **Source:** <https://huggingface.co/stabilityai/stable-audio-open-small>
+- **Licence:** Stability AI Community License Agreement (last updated July 5, 2024),
+  <https://huggingface.co/stabilityai/stable-audio-open-small/blob/ea2772170fc06f80dfd02bea6e57a44d9d4bc9d3/LICENSE>
+- "This Stability AI Model is licensed under the Stability AI Community License, Copyright (c) Stability AI Ltd. All Rights Reserved."
+- **Powered by Stability AI.** The model is gated: the user accepts the licence on their own Hugging Face account.
+  Free for individuals and organisations with annual revenue under US$1,000,000; commercial use requires registration with
+  Stability AI; outputs may not be used to train other foundation models. Not redistributed by ChaosEngineAI.
+### Stable Audio Open 1.0 (downloaded by the user, not bundled)
+
+- **Source:** <https://huggingface.co/stabilityai/stable-audio-open-1.0> (pinned revision `f21265c1e2710b3bd2386596943f0007f55f802e`)
+- **Licence:** Stability AI Community License (the model card's wording; the same agreement as above, last updated July 5,
+  2024, <https://stability.ai/community-license-agreement>). The repo's own `LICENSE.md` is behind the gate and was not read
+  by us; the owner's real test reads it once the licence is accepted. Same terms handled as for Small: gated, **Powered by
+  Stability AI**, free under US$1,000,000 annual revenue, no training other foundation models on outputs, not redistributed.
+- Trained on CC0, CC BY and CC Sampling+ audio (Freesound, Free Music Archive); attribution lists are in the model repo and are
+  not fetched by the app.
+
+- **stable-audio-tools 0.0.20** - MIT (Stability AI), installed on demand into the isolated sounds environment.
+- **T5-base** (`google-t5/t5-base`) - Apache 2.0, downloaded on demand as the text encoder.
+- Sounds-pack dependencies are installed on demand (versions in `backend_service/sound_requirements.txt`): PyTorch and
+  torchaudio (BSD-3), transformers and huggingface_hub (Apache 2.0), pytorch-lightning (Apache 2.0), einops, einops-exts,
+  vector-quantize-pytorch, nnAudio, v-diffusion-pytorch, alias-free-torch (MIT), torchsde (Apache 2.0). Licences of the other
+  pinned packages in that file are still to be confirmed one by one (FU row to add).
+
+## Voice cloning and watermark (optional, on demand)
+
+- **Qwen3-TTS 12Hz Base 0.6B / 1.7B** (Alibaba Qwen; MLX conversions by mlx-community) - Apache 2.0, downloaded on demand.
+- **AudioSeal 0.2.1** (Meta Platforms) - MIT licence for code and model weights (`facebook/audioseal`, revision
+  `3c19eba53390776cf2cc9ed5f6c9ac67ce72ecba`); installed on demand into the voice venv for the cloned-voice watermark.
+  omegaconf 2.3 and antlr4-python3-runtime 4.9 - BSD-3-Clause; einops 0.8 - MIT.

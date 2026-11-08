@@ -39,7 +39,8 @@
       "mtplx": "MTPLX 설치",
       "tensorfold": "TensorFold 설치",
       "mflux": "mflux 설치",
-      "vllmWsl": "WSL에 vLLM 설치"
+      "vllmWsl": "WSL에 vLLM 설치",
+      "ltx2": "LTX-2.3 엔진 설치"
     },
     "status": {
       "failed": "{noun} 실패 — 로그 확인",

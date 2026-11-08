@@ -5,7 +5,7 @@
  * progress-poll: pip / system packages, CUDA torch install with index
  * walk, GPU bundle background job, LongLive (FU-003) + mlx-video Wan
  * (FU-025) async installs, llama-server-turbo update probe,
- * capability refresh, FU-022 prompt enhancer.
+ * capability refresh.
  *
  * Re-exported from ``./index`` so existing
  * ``import { startGpuBundleInstall } from "../api"`` paths keep
@@ -572,6 +572,49 @@ export async function getLtx2InstallStatus(): Promise<Ltx2JobState> {
   return await fetchJson<Ltx2JobState>("/api/setup/install-ltx2/status", 10000);
 }
 
+// ---- CUDA llama-server (Linux x86_64 / ARM64 with an NVIDIA driver) ----
+
+export interface LlamaCudaStatus {
+  /** True on Linux x86_64 / ARM64 when nvidia-smi answers. */
+  supported: boolean;
+  arch: "x64" | "arm64" | null;
+  driverMajor: number | null;
+  cudaVersion: string | null;
+  tag: string;
+  installed: boolean;
+  installedCuda: string | null;
+  path: string | null;
+  /** True when GGUF models run on this build now (it lists a CUDA device). */
+  inUse: boolean;
+  /** CHAOSENGINE_LLAMA_CUDA=0 switches it off. */
+  disabled: boolean;
+}
+
+export interface LlamaCudaJobState {
+  id: string;
+  phase: "idle" | "preflight" | "downloading" | "verifying" | "done" | "error";
+  message: string;
+  packageCurrent: string | null;
+  percent: number;
+  error: string | null;
+  startedAt: number;
+  finishedAt: number;
+  log: string[];
+  done: boolean;
+}
+
+export async function getLlamaCudaStatus(): Promise<LlamaCudaStatus> {
+  return await fetchJson<LlamaCudaStatus>("/api/setup/llama-cuda-status", 15000);
+}
+
+export async function startLlamaCudaInstall(): Promise<LlamaCudaJobState> {
+  return await postJson<LlamaCudaJobState>("/api/setup/install-llama-cuda", {}, 15000);
+}
+
+export async function getLlamaCudaInstallStatus(): Promise<LlamaCudaJobState> {
+  return await fetchJson<LlamaCudaJobState>("/api/setup/install-llama-cuda/status", 10000);
+}
+
 export interface TorchUpgradeJobState {
   id: string;
   /** Lifecycle: idle (no run yet) -> preflight -> upgrading -> verifying -> done | error */
@@ -640,43 +683,6 @@ export async function checkTurboUpdate(): Promise<TurboUpdateInfo> {
 export async function refreshCapabilities(): Promise<Record<string, unknown>> {
   const result = await postJson<{ capabilities: Record<string, unknown> }>("/api/setup/refresh-capabilities");
   return result.capabilities;
-}
-
-// ---------------------------------------------------------------------------
-// FU-022 LLM-based prompt enhancer
-// ---------------------------------------------------------------------------
-
-/**
- * FU-022: LLM-based prompt enhancer. Rewrites a short user prompt into
- * the structured format the requested image / video model was trained
- * on. Apple Silicon path uses mlx_lm with a small instruct model
- * (default mlx-community/Qwen2.5-0.5B-Instruct-4bit, ~700 MB). Other
- * platforms use the backend's deterministic template fallback.
- */
-export interface PromptEnhanceResult {
-  enhanced: string;
-  note: string | null;
-  modelUsed: string | null;
-  family: string;
-}
-
-export async function enhancePromptViaLLM(payload: {
-  prompt: string;
-  repo: string;
-  modelId?: string;
-  maxTokens?: number;
-}): Promise<PromptEnhanceResult> {
-  // Long timeout: the first call materialises the model (~2-3s on
-  // M-series cold cache), subsequent calls are sub-second. 30s is
-  // enough headroom for first-call without waiting forever if the
-  // model fails to load.
-  const body = {
-    prompt: payload.prompt,
-    repo: payload.repo,
-    modelId: payload.modelId ?? null,
-    maxTokens: payload.maxTokens ?? 256,
-  };
-  return await postJson<PromptEnhanceResult>("/api/prompt/enhance", body, 30000);
 }
 
 // ---------------------------------------------------------------------------

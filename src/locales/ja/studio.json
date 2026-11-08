@@ -8,7 +8,6 @@
     "recentOutputsTitle": "最近の出力",
     "prompt": "プロンプト",
     "negativePrompt": "ネガティブプロンプト",
-    "enhancePrompt": "強化",
     "width": "幅",
     "height": "高さ",
     "steps": "ステップ",
@@ -116,6 +115,12 @@
       "cancelGeneration": "生成をキャンセル",
       "close": "閉じる",
       "done": "完了"
+    },
+    "ltx2": {
+      "install": "LTX-2.3 エンジンをインストール",
+      "installing": "インストール中…",
+      "notInstalled": "このモデルは LTX-2.3 MLX エンジンで動作しますが、まだインストールされていません。専用の環境にインストールされ（約 1 GB）、アプリのパッケージは変更されません。",
+      "retry": "インストールを再試行"
     }
   },
   "progress": {
@@ -126,12 +131,6 @@
     "title": "詳細",
     "show": "詳細設定を表示",
     "hide": "詳細設定を非表示"
-  },
-  "enhance": {
-    "label": "強化",
-    "busy": "強化中...",
-    "tooltip": "このプロンプトをローカルで強化",
-    "error": "エンハンサーエラー:{message}"
   },
   "runtimeBanner": {
     "loadingModel": "モデルをメモリに読み込み中...",
@@ -167,14 +166,12 @@
   },
   "imageStudio": {
     "generateTitle": {
-      "dangerBlocked": "危険レベルの設定 — 続行するには、安全コールアウト下の承認にチェックを入れてください。",
+      "dangerBlocked": "危険レベルの設定です：続行するには、実行見積もりの確認チェックボックスをオンにしてください。",
       "generating": "生成中...",
       "selectModel": "最初にモデルを選択してください。",
       "ready": "この画像を生成します。"
     },
     "actions": {
-      "discover": "モデルを探す",
-      "installed": "インストール済み",
       "gallery": "ギャラリー"
     },
     "hero": {
@@ -257,14 +254,13 @@
     "safety": {
       "dangerTitle": "バックエンドがクラッシュする可能性が高い",
       "warningTitle": "注意 — このデバイスでは厳しいかもしれません",
-      "resourceEstimate": "モデル ≈ {model} · この実行のピーク ≈ {peak} / 合計 ~{total}。",
       "applyTitle": "{label} を適用",
       "useSafer": "より安全な設定を使用({label})",
       "browseSmaller": "より小さいモデルを閲覧",
-      "overrideAck": "それでも生成する — バックエンドがクラッシュする可能性を受け入れます。",
       "reasonDangerOver": "モデルは重み + テキストエンコーダを保持するだけで約 {model} GB を必要とします。{platform}(合計 {total} GB)では推定ワーキングセットは約 {working} GB なので、モデル単独ですでにそれを超えています。小さな画像でもバックエンドがクラッシュする可能性が高いです。より小さなモデル(SD 1.5 は約 4 GB、SDXL は約 13 GB)、またはメモリの大きいマシンを試してください。",
       "reasonDangerNear": "モデルは重み + テキストエンコーダを保持するだけで約 {model} GB を必要とし、この実行は約 {peak} GB がピークです。{platform}(合計 {total} GB)では、これは高リスク閾値(約 {highRisk} GB)を超え、推定ワーキングセット(約 {working} GB)に近接しています。生成によりバックエンドがクラッシュする可能性が高いです。解像度を下げるか、より小さなモデルを選択してください。",
-      "reasonCaution": "モデルは重み + テキストエンコーダを保持するだけで約 {model} GB を必要とします。{platform}(合計 {total} GB)では、これは保守的な快適目標(約 {comfort} GB)を超えていますが、推定ワーキングセット(約 {working} GB)以下です。生成は遅くなったり失敗したりする可能性があります。不安定になった場合は解像度を下げてください。"
+      "reasonCaution": "モデルは重み + テキストエンコーダを保持するだけで約 {model} GB を必要とします。{platform}(合計 {total} GB)では、これは保守的な快適目標(約 {comfort} GB)を超えていますが、推定ワーキングセット(約 {working} GB)以下です。生成は遅くなったり失敗したりする可能性があります。不安定になった場合は解像度を下げてください。",
+      "resourceEstimate": "モデル ≈ {model} · 今回の実行のピーク ≈ {peak}（合計 約 {total}）。"
     },
     "recent": {
       "subtitle": "保存された {total} 個の生成のうち最新 {recent} 個",
@@ -376,33 +372,18 @@
       "noPrompt": "生成する前にプロンプトを入力してください。",
       "backendOffline": "バックエンドはオフラインです。",
       "busy": "ビジー…",
-      "dangerLevel": "この設定はバックエンドをクラッシュさせる可能性が高いです。警告を確認した上で下の「ハイリスク生成を許可」にチェックを入れるか、解像度 / フレーム数 / モデルを下げてください。"
+      "dangerLevel": "この設定ではバックエンドがクラッシュする可能性が高いです。警告を確認したうえで、実行見積もりの「それでも実行」にチェックを入れるか、解像度・フレーム数・モデルを下げてください。"
     },
     "generateTitle": "このクリップの生成を開始します。",
-    "device": {
-      "gpuDetected": "GPU(検出済み)",
-      "cpuDetected": "CPU(検出済み)",
-      "appleDetected": "Apple Silicon(検出済み)",
-      "appleMlx": "Apple Silicon(MLX)",
-      "gpu": "GPU",
-      "apple": "Apple Silicon"
-    },
     "memory": {
       "defaultFallback": "~{value}(デフォルト — 実際の検出にはバックエンドを再起動してください)"
     },
-    "capacityLine": {
-      "withModel": "{device} · {memory} 合計 · モデル ≈ {model}、この実行のピーク ≈ {peak}",
-      "short": "{device} · {memory} 合計 · この実行のピーク ≈ {peak}"
-    },
     "subtitle": "開始するには動画モデルを選択してください",
     "actions": {
-      "browseCatalog": "モデルを探す",
-      "installedModels": "インストール済み",
       "downloadModel": "モデルをダウンロード",
       "loadIntoMemory": "メモリに読み込み",
       "unload": "アンロード",
-      "unloadNamed": "{name} をアンロード",
-      "modelCard": "モデルカード"
+      "unloadNamed": "{name} をアンロード"
     },
     "modelOption": {
       "installed": "インストール済み",
@@ -465,7 +446,8 @@
       "guidanceLtxWarning": "LTX-Video はフローマッチングモデル — CFG が ~3.5 を超えると過飽和となり、ぼやけた / 虹色の出力を生成します。最もクリーンな結果を得るには 3 に下げてください。",
       "randomSeed": "ランダムシード",
       "seedPlaceholder": "シード(整数)",
-      "maxPixelsNote": "{name} が 1 フレームあたり描画できるのは最大 {megapixels} メガピクセルです。このサイズは縦横比を保ったまま縮小されます。"
+      "maxPixelsNote": "{name} が 1 フレームあたり描画できるのは最大 {megapixels} メガピクセルです。このサイズは縦横比を保ったまま縮小されます。",
+      "seed": "シード"
     },
     "clipLength": {
       "line": "クリップ長:{seconds} 秒({frames} フレーム ÷ {fps} fps)"
@@ -479,10 +461,6 @@
       "ltxRefiner": {
         "label": "LTX 2 段階空間アップスケール",
         "tooltip": "要求された解像度でベースサンプルをレンダリングし、その後 Lightricks/LTX-Video-0.9.5-spatial-upscaler を通して 2 倍の空間解像度でリファインします。フレーム予算が ~1.5 倍増加します。シャープなマイクロディテールとクリーンなモーションエッジ。実時間への影響が大きいためデフォルトはオフです。"
-      },
-      "enhancePrompt": {
-        "label": "短いプロンプトを自動強化",
-        "tooltip": "プロンプトが 25 ワード未満の場合、モデルにチューニングされた構造的ヒント(映画的な記述子、ライティング、カメラの向き)を追加します。拡散動画モデルは 50-100 ワードのプロンプトで学習されており、短い入力では十分に条件付けされません。長いカスタムプロンプトはそのまま送信されます — しきい値はセーフガードです。"
       },
       "cfgDecay": {
         "label": "CFG ディケイ",
@@ -516,13 +494,11 @@
       "applyTitle": "{label} を適用",
       "useSafer": "より安全な設定を使用({label})",
       "browseSmaller": "より小さいモデルを閲覧",
-      "overrideAck": "ハイリスク生成を許可 — バックエンドがクラッシュしてマシンの再起動が必要になる可能性を受け入れます。",
       "reasonDangerOver": "モデルは標準配置で約 {model} GB の常駐を必要としますが、{platform}(合計 {total} GB)で安全に利用できるのは約 {working} GB のみです。ランタイムは自動的にシーケンシャル CPU オフロードにフォールバックします — 生成は成功しますが、各ステップごとにサブモジュールが CPU と {offloadDevice} メモリの間で入れ替わるため、数倍遅くなります。フルスピード生成にはより小さなモデル(LTX-Video は約 2 GB 常駐)、またはメモリの大きいマシンを選択してください。",
       "reasonDangerNear": "モデルは約 {model} GB の常駐を必要とし、この実行は約 {peak} GB がピークです。{platform}(合計 {total} GB)では、これは高リスク閾値(約 {highRisk} GB)を超え、推定ワーキングセット(約 {working} GB)に近接しています。ランタイムは収めるために CPU オフロードを使用する可能性があります — フルスピード生成にしたい場合は設定を下げるかより小さなモデルを選択してください。",
       "reasonCaution": "モデルは約 {model} GB の常駐を必要とします。{platform}(合計 {total} GB)では、これは保守的な快適目標(約 {comfort} GB)を超えていますが、推定ワーキングセット(約 {working} GB)以下です。生成は収まるはずですが、不安定になった場合は設定を下げてください。"
     },
     "disabledHint": "生成は無効:{reason}",
-    "willLoadHint": "次の生成時に選択されたモデルがメモリに読み込まれます。大きなバリアントの初回読み込みは 1 分程度かかることがあります。",
     "cacheStrategies": {
       "none": {
         "label": "オフ",
@@ -566,7 +542,23 @@
     "sound": {
       "badge": "サウンド",
       "badgeTooltip": "このクリップには音声があります。プレーヤーの音量コントロールでオンにしてください。"
-    }
+    },
+    "capacityLine": {
+      "short": "{device} · 合計 {memory} · 今回の実行のピーク ≈ {peak}",
+      "withModel": "{device} · 合計 {memory} · モデル ≈ {model}、今回の実行のピーク ≈ {peak}"
+    },
+    "device": {
+      "apple": "Apple シリコン",
+      "appleDetected": "Apple シリコン（検出済み）",
+      "appleMlx": "Apple シリコン（MLX）",
+      "cpuDetected": "CPU（検出済み）",
+      "gpu": "GPU",
+      "gpuDetected": "GPU（検出済み）"
+    },
+    "ltx2": {
+      "engineMessage": "このモデルは Apple GPU 上の専用 MLX エンジン（ltx-2-mlx）で動作し、音声付きで生成します。"
+    },
+    "willLoadHint": "選択したモデルは、次回の生成時にメモリに読み込まれます。大きいバリアントは、初回の読み込みに1分ほどかかることがあります。"
   },
   "imageGallery": {
     "subtitle": {
@@ -664,10 +656,15 @@
       "cancel": "キャンセル",
       "update": "音声パックを更新",
       "install": "音声パックをインストール",
-      "reinstall": "修復 / 再インストール",
       "done": "音声パックをインストールしました。",
       "log": "インストールログ",
-      "updateFeatures": "チャットの音声通話と文字起こしの話者区別のために音声パックを更新してください（約 40 MB のモデル、1〜2 分）。"
+      "updateFeatures": "チャットの音声通話と文字起こしの話者区別のために音声パックを更新してください（約 40 MB のモデル、1〜2 分）。",
+      "checkedOk": null,
+      "checkedOkAt": null,
+      "repair": null,
+      "troubleshoot": "トラブルシューティング",
+      "troubleshootBody": null,
+      "reinstallSmall": "再インストール"
     },
     "models": {
       "recommended": "おすすめ",
@@ -677,15 +674,51 @@
       "firstUse": "ここでダウンロードしなくても、初回使用時にダウンロードされます。",
       "title": "音声",
       "sttTitle": "音声認識モデル",
-      "sttSubtitle": "チャットのマイクと Voice Studio で使用されます。"
+      "sttSubtitle": "チャットのマイクと Voice Studio で使用されます。",
+      "capabilities": null,
+      "ttsTitle": "音声モデル",
+      "ttsSubtitle": null,
+      "ttsNone": null,
+      "caps": {
+        "speak": "読み上げ",
+        "style": "スタイル",
+        "clone": "クローン",
+        "design": "デザイン"
+      }
     },
     "voices": {
       "title": "ボイス",
       "subtitle": "Kokoro: 9 言語・54 種類のボイス。チャットの読み上げに使うものを選んでください。",
-      "needsChinese": "音声パックで中国語（普通話）のボイスにチェックを入れてください。",
+      "needsChineseAddon": null,
+      "addChinese": null,
       "notYet": "このコンピューターではまだ利用できません。",
       "useVoice": "このボイスを使用",
-      "preview": "試聴"
+      "preview": "試聴",
+      "listTitle": "音声",
+      "listSubtitle": null,
+      "cloneCard": null,
+      "cloneDetail": null,
+      "designCard": null,
+      "designDetail": null,
+      "designAction": null,
+      "moreCard": null,
+      "moreDetail": null,
+      "moreAction": null,
+      "filter": "表示",
+      "allLanguages": "すべての言語",
+      "noneMine": null,
+      "none": null,
+      "kindClone": "クローン",
+      "kindPreset": null,
+      "kindBuiltin": null,
+      "playSample": null,
+      "use": "使う",
+      "tab": null,
+      "filters": {
+        "all": "すべて",
+        "mine": "自分の",
+        "builtin": "内蔵"
+      }
     },
     "settings": {
       "title": "音声設定",
@@ -750,7 +783,46 @@
       "listen": "試聴",
       "progress": "{total} 中 {done} 番目",
       "generateParts": "音声を生成（{n} パート）",
-      "encoding": "エンコード中…"
+      "encoding": "エンコード中…",
+      "textLabel": "読み上げるテキスト",
+      "styleBuiltin": null,
+      "styleClone": null,
+      "styleSmall": null,
+      "cloneLimit": null,
+      "describe": null,
+      "style": null,
+      "describePlaceholder": null,
+      "stylePlaceholder": null,
+      "styleChips": null,
+      "pitch": "ピッチ",
+      "advanced": "詳細設定",
+      "seed": null,
+      "modelKokoro": null,
+      "modelReady": null,
+      "modelDownloading": null,
+      "modelNeeds": null,
+      "downloadForStyle": null,
+      "cloneTooLong": null,
+      "describeFirst": null,
+      "appleOnly": null,
+      "language": "言語",
+      "sampleOf": null,
+      "sampleLoading": null,
+      "cloneModel": null,
+      "cloneKind": null,
+      "yourVoices": null,
+      "presets": null,
+      "designCard": null,
+      "designDetail": null,
+      "quickVoices": null,
+      "chips": {
+        "neutral": null,
+        "angry": null,
+        "sad": null,
+        "excited": null,
+        "whisper": null,
+        "calm": null
+      }
     },
     "stop": "停止",
     "studio": {
@@ -785,7 +857,8 @@
       "empty": "音声が見つかりませんでした。",
       "editHint": "ダブルクリックで編集",
       "edit": "行を編集",
-      "export": "書き出し"
+      "export": "書き出し",
+      "lineLabel": "{time} の行を編集"
     },
     "handoff": {
       "summary": "チャットで要約",
@@ -830,11 +903,51 @@
     "micError": {
       "blockedMac": "マイクへのアクセスがブロックされています。システム設定 > プライバシーとセキュリティ > マイク で ChaosEngineAI を許可してから、もう一度お試しください。",
       "blockedWindows": "マイクへのアクセスがブロックされています。設定 > プライバシーとセキュリティ > マイク でデスクトップ アプリのマイク使用を許可してから、もう一度お試しください。",
+      "openSettings": "マイクの設定を開く",
       "blocked": "マイクへのアクセスがブロックされています。デスクトップのプライバシー設定と、ほかのアプリがマイクを使用していないかを確認してください。",
       "notFound": "マイクが見つかりません。マイクを接続してからもう一度お試しください。",
       "inUse": "マイクがほかのアプリで使用中か、開けませんでした。",
       "unsupported": "このウィンドウではマイクを使用できません（メディアデバイスに対応していません）。",
       "generic": "マイクを開けませんでした。"
+    },
+    "clone": {
+      "statement": null,
+      "title": "声をクローンする",
+      "loading": "読み込み中…",
+      "macOnly": "ボイスクローンは、今のところ Apple シリコンの Mac でのみ動作します。",
+      "deleteConfirm": null,
+      "model": "クローン用モデル",
+      "downloading": "ダウンロード中…",
+      "notHere": "クローンボイスは、このコンピュータ上の ChaosEngineAI のウィンドウからのみ使えます。",
+      "consentOwn": null,
+      "consentPermission": null,
+      "delete": "削除",
+      "new": "新しいクローンボイス",
+      "placeholder": "クローンボイスで話すテキスト。",
+      "tagged": "AI 作成のラベル付き",
+      "allowAgents": "エージェントや他のコンピュータによるクローンボイスの利用を許可（デフォルトはオフ）",
+      "whose": "誰の声ですか？",
+      "basisOwn": "自分の声",
+      "basisPermission": null,
+      "speakerName": "話者の名前",
+      "voiceName": "このボイスの名前（任意）",
+      "confirm": null,
+      "recordAgain": "録音し直す",
+      "sampleTitle": null,
+      "sampleHelp": null,
+      "sampleText": "サンプルで話している言葉（任意。自動で入力されます）",
+      "tooShort": null,
+      "tooLong": null,
+      "save": null,
+      "installingWatermark": "透かしコンポーネントをインストール中…",
+      "tab": "クローン",
+      "voices": "クローンボイス",
+      "deleteVoice": "ボイス {name} を削除",
+      "textLabel": "クローンボイスで話すテキスト",
+      "sampleFile": "ボイスサンプルファイル",
+      "recordingPlayback": "録音した音声",
+      "saving": null,
+      "sampleType": null
     }
   },
   "residentChatModelNote": "読み込み済みのチャットモデルがこのメモリのうち約 {gb} GB を使用しています。アンロードするとその分が解放されます。",
@@ -904,5 +1017,1155 @@
       "previewVae": "プレビュー VAE",
       "fp8LayerwiseCasting": "FP8 レイヤーワイズ"
     }
+  },
+  "inputImage": {
+    "chooseFile": "ファイルを選択",
+    "fromGallery": "ギャラリーから選ぶ",
+    "remove": "削除",
+    "pickFailed": "ここではファイルピッカーを使えません。代わりにギャラリーから選んでください。",
+    "referenceLabel": "参照画像",
+    "referenceLabelMany": "参照画像",
+    "referenceHintOne": "この画像から描き始めます。強度を上げるほど、この画像に近くなります。",
+    "referenceHintMany": "最大 {max} 枚。モデルがプロンプトに従ってこれらを編集または描き直し、被写体やスタイルを保ちます。",
+    "strength": "強度",
+    "startLabel": "開始画像",
+    "startHint": "クリップはこの画像から始まります。",
+    "endLabel": "終了画像（任意）",
+    "endHint": "クリップはこの画像で終わります。これだけを使うと、プロンプトはこの画像に向かって動きます。"
+  },
+  "sizePresets": {
+    "aspect": "アスペクト比",
+    "size": "サイズ",
+    "resolution": "解像度",
+    "overLimit": "このモデルのサイズ上限を超えています。",
+    "current": "現在のサイズ：{width} x {height}（{megapixels} MP）"
+  },
+  "estimate": {
+    "time": "約 {time}",
+    "timeUnknown": "時間：初回の実行後にわかります",
+    "memory": "ピーク {peak}（合計 {total}）",
+    "memoryUnknown": "メモリ：未見積もり",
+    "disk": "{size} を書き込み",
+    "diskUnknown": "ディスク：未見積もり",
+    "measured": "実測",
+    "estimated": "推定",
+    "measuredTitle": "このコンピュータで、このモデルとプリセットで実際に計測した値です。",
+    "estimatedTitle": "モデルカード、または似たマシンの値です。ここではまだ計測していません。",
+    "queueRunning": "{what} を実行中で、残り約 {time} です。あなたのジョブはその後に始まります。",
+    "queuePosition": "別のジョブの完了を待っています（{position} 番目）",
+    "dangerAck": "それでも実行する。バックエンドがクラッシュする可能性を了承します。",
+    "duration": {
+      "seconds": "{n} 秒",
+      "minutes": "{n} 分",
+      "minutesSeconds": "{m} 分 {s} 秒"
+    },
+    "size": {
+      "gb": "{n} GB",
+      "mb": "{n} MB"
+    },
+    "band": {
+      "caution": "（注意：上限に近い）",
+      "danger": "（危険：収まらない可能性あり）"
+    },
+    "unknownChip": "見積もり: 最初の実行まで不明"
+  },
+  "disclosure": {
+    "options": "オプション",
+    "expert": "エキスパート",
+    "defaults": "モデルのデフォルト"
+  },
+  "preset": {
+    "custom": "カスタム",
+    "customTitle": "値が手動で変更されました。プリセットを選ぶと元に戻ります。"
+  },
+  "error": {
+    "technicalDetails": "技術的な詳細",
+    "retry": "再試行"
+  },
+  "licence": {
+    "chip": {
+      "commercial": "{name} · 商用可",
+      "limited": "{name} · 商用は制限あり",
+      "noCommercial": "{name} · 商用不可",
+      "gated": "ゲート付き"
+    },
+    "screen": {
+      "asks": "このライセンスがあなたに求めること",
+      "gatedNote": "このモデルはゲート付きです。先に Hugging Face で規約に同意し、その後トークンを使ってここからダウンロードしてください（設定 > Hugging Face）。",
+      "readFull": "ライセンス全文を読む",
+      "openHub": "Hugging Face で開く",
+      "notNow": "今はしない",
+      "accepted": "同意しました",
+      "ok": "OK"
+    },
+    "status": {
+      "needs": "ライセンスへの同意が必要"
+    },
+    "action": {
+      "accept": "ライセンスに同意"
+    }
+  },
+  "models": {
+    "makes": {
+      "songs": "ボーカル入りの曲",
+      "instrumental": "インストゥルメンタル",
+      "sfx": "効果音",
+      "loops": "ループ"
+    },
+    "speed": {
+      "measured": "このマシンでは1秒あたり約 {rate} 秒分の音声",
+      "unknown": "速度はまだ測定されていません"
+    }
+  },
+  "musicStudio": {
+    "result": {
+      "loop": "ループ",
+      "play": "{title} を再生、{seconds} 秒",
+      "stop": "停止",
+      "again": "もう一度",
+      "againTitle": "同じ設定で、新しいランダムシードを使います。",
+      "audioFailed": "音声ファイルを読み込めませんでした。",
+      "audioLoading": "音声を読み込み中…",
+      "done": "完了",
+      "doneIn": "{time} で完了",
+      "openLibrary": "ライブラリで開く",
+      "seed": "シード {seed}",
+      "vary": "バリエーション",
+      "varyTitle": "同じ設定で、次のシード（{seed}）を使います。"
+    },
+    "options": {
+      "reference": "参照オーディオ",
+      "referenceRights": "提供する音声の権利については、あなた自身が責任を負います。",
+      "auto": "自動",
+      "bpm": "BPM",
+      "key": "キー",
+      "randomSeed": "ランダムシード",
+      "seed": "シード",
+      "summaryBpm": "BPM {value}",
+      "summaryKey": "キー {value}",
+      "summarySeed": "シード {n}",
+      "summaryVariations": "{n, plural, other {# 件のバリエーション}}",
+      "tempoKey": "テンポとキー",
+      "variations": "バリエーション数",
+      "variationsCost": "バリエーションを1つ増やすごとに、同じだけ時間がかかります。",
+      "variationsTotal": "{n} 件で約 {time}。"
+    },
+    "artistWarning": "アーティスト名を入れると、そのスタイルのコピーになることがあります。代わりに音そのものを描写してください。",
+    "cancel": "キャンセル",
+    "cancelling": "キャンセル中…",
+    "empty": "まだ音楽がありません。曲を説明して「曲を作成」を押してください。",
+    "error": {
+      "cancelled": "キャンセルしました。",
+      "generic": "曲を作成できませんでした。",
+      "invalid": "この設定では曲の作成を開始できませんでした。",
+      "memory": "この曲を作るための空きメモリが足りません。もっと短い長さを試してください。",
+      "notReady": "ミュージックモデルはまだ実行できる状態ではありません。",
+      "offline": "バックエンドが応答しませんでした。起動していることを確認して、もう一度お試しください。",
+      "useShorter": "もっと短い長さにする"
+    },
+    "expert": {
+      "aiTagNote": "音声ファイルに埋め込まれる機械可読のタグです。デフォルトはオンで、個人利用ならオフにできます。",
+      "idleUnload": "アイドル状態がこの分数続いたらモデルをアンロード（0 なら読み込んだまま）",
+      "model": "モデル",
+      "output": "出力：FLAC、24 ビット、48 kHz、ステレオ。",
+      "summaryIdle": "{n} 分後にアンロード",
+      "summaryTagOff": "AI タグ オフ"
+    },
+    "issue": {
+      "bpmRange": "BPM は 30〜300 か「自動」にしてください。",
+      "captionEmpty": "曲を作るには、音楽の説明を入力してください。",
+      "captionTooLong": "説明が {max} 文字を超えています。",
+      "lyricsEmpty": "歌詞を追加するか、インストゥルメンタルに切り替えてください。",
+      "lyricsTooLong": "歌詞が {max} 文字を超えています。",
+      "secondsRange": "長さは {min}〜{max} 秒にしてください。",
+      "seedRange": "シードは 0 以上の整数にしてください。",
+      "variations": "バリエーション数は 1、2、4 のいずれかにしてください。"
+    },
+    "latest": "最新",
+    "length": {
+      "custom": "カスタム",
+      "customLabel": "長さ（秒）",
+      "label": "長さ",
+      "minutes": "{n} 分",
+      "range": "{min}〜{max} 秒",
+      "seconds": "{n} 秒"
+    },
+    "library": "ライブラリ",
+    "loading": "ミュージックモデルを読み込み中…",
+    "lyrics": {
+      "label": "歌詞",
+      "placeholder": "[verse] ... [chorus] ...",
+      "rights": "入力する歌詞の権利については、あなた自身が責任を負います。"
+    },
+    "make": "曲を作成",
+    "making": "作成中…",
+    "mode": {
+      "instrumental": "インストゥルメンタル",
+      "label": "曲の種類",
+      "song": "ソング"
+    },
+    "noModel": "ミュージックモデルがまだインストールされていません。",
+    "noModelSize": "{name} は約 {size} GB です。",
+    "offline": "バックエンドを待っています…",
+    "openLibrary": "ライブラリを開く",
+    "openModels": "ミュージックモデルを開く",
+    "packMissing": "ミュージックパックがまだインストールされていません。「ミュージックモデル」からインストールしてください（約 1.6 GB）。",
+    "progress": {
+      "compose": "作曲",
+      "decode": "音声をデコード",
+      "encode": "エンコード",
+      "load": "モデルを読み込み",
+      "save": "保存"
+    },
+    "prompt": {
+      "label": "音楽を説明",
+      "placeholder": "温かみのある lo-fi ヒップホップ、レコードのノイズ、穏やかなピアノ、85 bpm"
+    },
+    "queued": "待機中：前のジョブが終わると始まります。",
+    "running": "曲を作成中",
+    "status": {
+      "installed": "インストール済み",
+      "loaded": "読み込み済み",
+      "notInstalled": "未インストール"
+    },
+    "title": "ミュージックスタジオ",
+    "studioMode": {
+      "label": "音楽か効果音か",
+      "music": "音楽",
+      "sounds": "サウンド"
+    },
+    "sounds": {
+      "loopBadge": "ループ",
+      "needLicence": "効果音には Stable Audio Open を使います。先にライセンスへの同意が必要です。「ミュージックモデル」を開いて内容を読んでください。",
+      "needDownload": "「ミュージックモデル」から {name} をダウンロードしてください（約 {size} GB）。先に Hugging Face でライセンスに同意してください。",
+      "needTextEncoder": "サウンドモデルにテキストエンコーダーがありません。「ミュージックモデル」からもう一度ダウンロードしてください。",
+      "needPack": "サウンドには小さなパック（約 1 GB）も必要です。「ミュージックモデル」からインストールしてください。",
+      "prompt": "サウンドを説明",
+      "placeholder": "重い木のドアがきしみながら開く、近接マイク",
+      "english": "英語が最も適しています。効果音とループ向けで、歌や音声には向きません。",
+      "loop": "シームレスなループにする",
+      "make": "サウンドを作成",
+      "making": "作成中…",
+      "running": "サウンドを作成中",
+      "empty": "まだサウンドがありません。説明を入力して「サウンドを作成」を押してください。",
+      "issue": {
+        "captionEmpty": "サウンドを作るには、説明を入力してください。",
+        "captionTooLong": "説明が {max} 文字を超えています。",
+        "secondsRange": "長さは {min}〜{max} 秒にしてください。"
+      },
+      "error": {
+        "memory": "このサウンドを作るための空きメモリが足りません。メモリを空けてからもう一度お試しください。",
+        "invalid": "この設定ではサウンドの作成を開始できませんでした。",
+        "generic": "サウンドを作成できませんでした。"
+      },
+      "lengthSlider": "長さ (秒)",
+      "modelPicker": "サウンドモデル",
+      "cpuFallback": null,
+      "cpuOnly": null
+    }
+  },
+  "audioPlayer": {
+    "timeOf": "{current} / {total}"
+  },
+  "inputAudio": {
+    "chooseFile": "ファイルを選択",
+    "fromLibrary": "ライブラリから選ぶ",
+    "remove": "削除",
+    "pickFailed": "ここではファイルピッカーを使えません。代わりにライブラリから選んでください。"
+  },
+  "board": {
+    "addShot": "ショットを追加",
+    "batch": {
+      "cancel": "バッチをキャンセル",
+      "count": "{done} / {total} 完了",
+      "kind": {
+        "clips": "クリップ",
+        "stills": "静止画"
+      },
+      "shotOf": "ショット {n} / {total}",
+      "starting": "開始中…",
+      "stillsThenClips": "{kind}、その後クリップ",
+      "title": "ショットを作成中"
+    },
+    "conflictNotice": "他の場所で変更されました。最新の内容を表示しています",
+    "defaults": {
+      "automatic": "自動（インストール済みのモデル）",
+      "automaticShort": "自動",
+      "automaticName": "自動",
+      "noVoice": "なし"
+    },
+    "defaultsSummary": null,
+    "defaultsTitle": "プロジェクトのデフォルト",
+    "editor": {
+      "discard": "変更を破棄",
+      "discardBody": "このショットには保存されていない変更があります。今閉じると破棄されます。",
+      "discardTitle": "変更を破棄しますか？",
+      "fromImageGallery": "画像ギャラリーから",
+      "fromVideoGallery": "動画ギャラリーから",
+      "import": "インポート",
+      "importFailed": "そのファイルをインポートできませんでした。",
+      "importFile": "画像または動画ファイル",
+      "importHint": "ファイルまたはギャラリーから新しいテイクを追加します。何も上書きされません。",
+      "importKind": "画像（png、jpg、webp）または動画（mp4、mov、webm）を選んでください。",
+      "length": "長さ（秒）",
+      "motionPrompt": "モーションプロンプト",
+      "nativeSound": "ショットの音量（dB）",
+      "noReferences": "このプロジェクトにはまだ参照がありません。「参照」パネルで追加してください。",
+      "references": "参照",
+      "relinkHint": "見つからないテイクを新しいファイルに関連付けます。",
+      "revert": "元に戻す",
+      "save": "変更を保存",
+      "saveFirst": "先に変更を保存してください。",
+      "seed": "シード",
+      "seedRandom": "ランダム",
+      "speed": "速度",
+      "startFrom": "開始方法",
+      "startFromGenerate": "新しい静止画",
+      "startFromPrevious": "前のショットの最後のフレーム",
+      "startFromUpload": "自分の画像",
+      "stillPrompt": "静止画プロンプト",
+      "title": "ショット {n}",
+      "trimIn": "イン点（秒）",
+      "trimOut": "アウト点（秒）",
+      "trimOutEnd": "テイクの終わり",
+      "useClip": "クリップとして使う",
+      "noCast": null
+    },
+    "empty": "まだショットがありません。ショットを追加して、プロンプトを入力するか素材をインポートしてください。",
+    "estimate": {
+      "need": "{n, plural, other {# 件のショットに新しいテイクが必要です}}",
+      "none": "ロックされていないショットはすべてテイクがあります。"
+    },
+    "loading": "プロジェクトを読み込み中…",
+    "makeAll": "ロックされていないショットをすべて作成",
+    "makeAllTitle": "ロックされていないすべてのショットに新しいテイクを追加します。何も上書きされません。",
+    "makeMissing": "未作成のショットを作成",
+    "makeOne": "このショットを作成",
+    "mixer": "ミキサー",
+    "noProject": "開いているプロジェクトがありません。「プロジェクト」から開くか、新しく作成してください。",
+    "noProjectTitle": "ボード",
+    "notFound": "このプロジェクトはもう存在しません。別のプロジェクトを選んでください。",
+    "openProjects": "プロジェクトを開く",
+    "projects": "プロジェクト",
+    "redo": "やり直す",
+    "references": {
+      "addCharacter": "キャラクターを追加",
+      "addPlace": "場所を追加",
+      "characters": "キャラクター",
+      "description": "見た目の説明",
+      "image": "参照画像",
+      "name": "名前",
+      "none": "まだありません。",
+      "places": "場所",
+      "remove": "参照を削除",
+      "setImage": "画像を設定",
+      "summary": "{characters, plural, other {# 人のキャラクター}} · {places, plural, other {# か所の場所}}",
+      "title": "参照"
+    },
+    "reload": "再読み込み",
+    "removeBody": "{name} は作品から取り除かれます。テイクはプロジェクトフォルダに残り、元に戻すと復元できます。",
+    "removeTitle": "このショットを削除しますか？",
+    "shot": {
+      "drag": "ドラッグして並べ替え",
+      "failedNote": "このショットはレンダリングされませんでした。もう一度試すか、プロンプトを編集してください。",
+      "keep": "残す",
+      "lock": "このショットをロック",
+      "lockedNote": "ロックされたショットは「ショットを作成」の対象外になります。",
+      "menu": {
+        "delete": "削除",
+        "down": "下へ移動",
+        "edit": "プロンプトを編集",
+        "import": "素材をインポート",
+        "up": "上へ移動",
+        "useAsReference": "静止画を参照に使う"
+      },
+      "missingNote": "テイクのファイルが見つかりません。再リンクするか、新しいテイクを作成してください。",
+      "moreActions": "ショット {n} のその他の操作",
+      "moved": "ショット {n} を {position} 番目に移動しました",
+      "play": "クリップを再生",
+      "redoLabel": "やり直す",
+      "redoMarked": "やり直しにマーク済み",
+      "redoTitle": "やり直しにマーク：次の「ショットを作成」で新しいテイクが追加されます。何も上書きされません。",
+      "relink": "再リンク",
+      "rerun": "再実行",
+      "seed": "シード {seed}",
+      "staleTitle": "ショット {n} に新しいテイクができました。このショットはその最後のフレームから始まります。",
+      "staleTitleGeneric": "このショットが依存している内容が変更されました。",
+      "status": {
+        "done": "完了 · {seconds} 秒",
+        "doneNoLength": "完了",
+        "failed": "失敗",
+        "idle": "未作成",
+        "locked": "ロック中",
+        "missing": "テイクのファイルが見つかりません",
+        "queued": "待機中 · {position}",
+        "running": "作成中…",
+        "stale": "期限切れ · ショット {n} の後",
+        "staleNoShot": "期限切れ",
+        "stillOnly": "静止画のみ"
+      },
+      "titleLabel": "ショット {n} のタイトル",
+      "transitionLabel": "トランジション",
+      "transitionSeconds": "クロスフェードの長さ（秒）",
+      "transitionType": {
+        "crossfade": "クロスフェード",
+        "cut": "カット"
+      },
+      "unlock": "このショットのロックを解除",
+      "untitled": "ショット {n}",
+      "castLabel": "このショットのキャスト",
+      "newTake": "新しいテイク",
+      "newTakeMarked": "次の実行で新しいテイク",
+      "newTakeTitle": null,
+      "noPrompt": "まだプロンプトがありません。Enter を押すか、プロンプトを編集してください。",
+      "makeClip": "クリップを作る",
+      "makeClipTitle": "このショットのクリップを静止画から作ります。",
+      "referenceAdded": "{name} をこの静止画でキャストに追加しました。"
+    },
+    "shots": "ショット",
+    "subtitle": "{shots, plural, other {# 件のショット}} · {seconds} 秒 · 期限切れ {stale} 件",
+    "takes": {
+      "active": "現在のテイク",
+      "label": "テイク",
+      "pick": "このテイクを使う",
+      "take": "テイク {n}"
+    },
+    "title": "{project} · ボード",
+    "undo": "元に戻す",
+    "emptyNoCast": null,
+    "subtitleShots": null,
+    "lengthStrip": "ショットの長さ",
+    "lengthStripPart": "ショット {n} · {seconds} 秒"
+  },
+  "storyProjects": {
+    "card": {
+      "edited": "{when} に編集",
+      "meta": "{shots, plural, other {# 件のショット}} · {seconds} 秒 · {aspect}",
+      "noShots": "ショットなし",
+      "noTakes": "まだ画像なし",
+      "noPreview": "プレビューなし",
+      "stale": "期限切れ {n} 件",
+      "zeroShots": "0 件のショット",
+      "metaFormat": null,
+      "zeroShotsFormat": null
+    },
+    "deleteBody": "{name} と、そのフォルダ内のすべてのテイク、静止画、サウンドが削除されます。この操作は取り消せません。",
+    "deleteFailed": "プロジェクトを削除できませんでした。",
+    "deleteTitle": "このプロジェクトを削除しますか？",
+    "dialog": {
+      "aspect": "アスペクト比",
+      "create": "作成",
+      "fps": "フレームレート",
+      "imageModel": "画像モデル",
+      "name": "名前",
+      "resolution": "解像度",
+      "save": "保存",
+      "videoModel": "動画モデル",
+      "voice": "ボイス",
+      "models": "モデル"
+    },
+    "empty": "まだプロジェクトがありません。プロジェクトは、ショット、テイク、サウンドを1つのフォルダにまとめたもので、移動やバックアップができます。",
+    "exportBundle": "バンドルを書き出す",
+    "exportFailed": "バンドルを書き出せませんでした。",
+    "exported": "{name} を書き出しました · {size}",
+    "exporting": "書き出し中…",
+    "import": "バンドルをインポート",
+    "importFailed": "このファイルは ChaosEngineAI のプロジェクトバンドルではありません。",
+    "imported": "{name} をインポートしました",
+    "loading": "プロジェクトを読み込み中…",
+    "menu": {
+      "delete": "削除",
+      "rename": "名前を変更"
+    },
+    "missing": "このプロジェクトのフォルダは移動または削除されました。",
+    "moreActions": "その他の操作",
+    "new": "新規プロジェクト",
+    "open": "開く",
+    "subtitle": "{count, plural, other {# 件のプロジェクト}}",
+    "title": "ストーリーボードプロジェクト",
+    "format": {
+      "fit": {
+        "safe": "収まる",
+        "tight": "ぎりぎり",
+        "wontfit": "収まらない"
+      },
+      "note": {
+        "capped": null,
+        "cost": "高い解像度ほどレンダリングが遅く、メモリを多く使います。",
+        "fpsConvert": null,
+        "noModel": null,
+        "safe": null,
+        "tight": null,
+        "wontfit": null,
+        "estimated": null
+      }
+    },
+    "openNamed": null,
+    "moreActionsFor": null
+  },
+  "storyboard": {
+    "cancel": "キャンセル",
+    "close": "閉じる",
+    "dismiss": "閉じる",
+    "offline": "バックエンドを待っています…",
+    "pathPlaceholder": "/path/to/file",
+    "pickUnavailable": "ここではファイルピッカーを使えません。代わりにパスを入力してください。",
+    "films": {
+      "title": "映像作品",
+      "none": "まだ映画はありません。書き出すとここに保存されます。"
+    }
+  },
+  "mixer": {
+    "add": {
+      "cloned": "このクリップはクローンボイスを使っています"
+    },
+    "addAudioTo": "{lane} にオーディオを追加",
+    "addButton": "追加",
+    "addFromLibrary": "ライブラリから追加",
+    "block": {
+      "ariaLabel": "{lane}、{name}、{start} 秒から {end} 秒"
+    },
+    "board": "ボード",
+    "captions": {
+      "add": "再生ヘッドの位置に追加",
+      "burnIn": "映像に焼き込む",
+      "exportSrt": ".srt を書き出す",
+      "generate": "音声から作成",
+      "generating": "聞き取り中…",
+      "label": "字幕",
+      "needVoice": "字幕を作るには、まずボイスレーンに音声を追加してください。",
+      "newText": "新しい字幕",
+      "remove": "削除",
+      "srt": "SRT ファイル",
+      "textLabel": "字幕テキスト",
+      "title": "字幕（{count}）",
+      "trimmedAway": "トリムで除外"
+    },
+    "clip": {
+      "ariaLabel": "{lane}、{name}、{start} 秒から {end} 秒、{gain} dB",
+      "missing": "見つかりません",
+      "reading": "読み取り中…",
+      "relink": "再リンク"
+    },
+    "crossfade": "クロスフェード {seconds} 秒",
+    "empty": "ミックスするものがまだありません。先にボードでショットを作成してください。",
+    "export": {
+      "aspect": "アスペクト比",
+      "button": "MP4 を書き出す",
+      "cancel": "書き出しをキャンセル",
+      "cancelled": "書き出しをキャンセルしました。何も書き込まれていません。",
+      "copied": "パスをコピーしました",
+      "copiedShort": "コピーしました",
+      "copyPath": "パスをコピー",
+      "details": "技術的な詳細",
+      "done": "書き出し完了 · {size} · {duration}",
+      "download": "ダウンロード",
+      "editor": "編集ソフト用に書き出す（.otio）",
+      "editorNote": "DaVinci Resolve や Premiere で開けます。プロジェクトのメディアは、このコンピュータ上のファイルにリンクされます。",
+      "exporting": "書き出し中…",
+      "extras": "あわせて書き出されるもの",
+      "failedShort": "書き出しに失敗しました。何も書き込まれていません。",
+      "interrupted": "書き出しが中断されました。",
+      "loudness": "ラウドネス目標",
+      "loudnessHint": "{target} LUFS はウェブ動画に向いています。空欄ならミックスをそのままにします。",
+      "loudnessOff": "オフ",
+      "phase": {
+        "encode": "エンコード",
+        "join": "結合",
+        "mix": "サウンドをミックス",
+        "normalise": "ショットを正規化"
+      },
+      "pixels": "{width} × {height} px。",
+      "preset": {
+        "landscape": "16:9",
+        "portrait": "9:16",
+        "square": "1:1"
+      },
+      "reframeNote": "書き出し時にリフレームします。ショットは再生成されません。",
+      "resume": "書き出しを再開",
+      "resumeNote": "{total} 件中 {ready} 件のショットはすでに完了しており、再利用されます。",
+      "retry": "再試行",
+      "reveal": "ファイルを表示",
+      "stems": "オーディオレーンを個別のファイルとして書き出す",
+      "stopped": "書き出しが完了しませんでした。",
+      "title": "書き出し",
+      "upscale": "アップスケール",
+      "upscale1440": "1440p",
+      "upscale2160": "2160p (4K)",
+      "upscaleNone": "同じサイズ",
+      "upscaleNote": null,
+      "upscaleSame": null,
+      "more": "その他",
+      "whyBusy": null,
+      "whyEmpty": null
+    },
+    "importAudio": "オーディオをインポート",
+    "importAudioPath": "オーディオファイルのパス",
+    "inspector": {
+      "absolute": "作品の時間（アンカーなし）",
+      "anchor": "アンカー",
+      "anchorShot": "ショット {n}：{name}",
+      "anchorSummary": "ショット {n} と一緒に動きます。オフセット {offset} 秒。",
+      "anchorTo": "アンカー先",
+      "duck": "ボイスの下で音量を下げる",
+      "duckTitle": "誰かが話している間、このクリップの音量を下げます（サイドチェーン・コンプレッション）。",
+      "empty": "タイムラインでクリップを選ぶと、その音を編集できます。",
+      "fadeIn": "フェードイン",
+      "fadeOut": "フェードアウト",
+      "gain": "ゲイン",
+      "loop": "ループで埋める",
+      "name": "名前",
+      "nativeLevel": "ショット {n} のショット音量",
+      "offset": "オフセット",
+      "remove": "レーンから削除",
+      "shotSpan": "{start} 秒から、長さ {length} 秒",
+      "shotTitle": "選択中のショット",
+      "start": "開始位置",
+      "title": "選択中のクリップ",
+      "trim": "トリム",
+      "trimIn": "イン",
+      "trimOut": "アウト"
+    },
+    "lane": {
+      "music": "音楽",
+      "native": "ショットの音",
+      "picture": "映像",
+      "sfx": "効果音",
+      "voice": "ボイス"
+    },
+    "leftOut": "{n, plural, other {# 件のショットにはまだクリップがなく、プレビューと書き出しから除外されます。}}",
+    "noLibraryYet": "ミュージックライブラリはまだ使えません。ファイルを選ぶか、パスを入力してください。",
+    "noProjectTitle": "ミキサー",
+    "openBoard": "ボードを開く",
+    "openOnBoard": "ボードで開く",
+    "preview": {
+      "cancel": "キャンセル",
+      "failed": "プレビューをレンダリングできませんでした。",
+      "none": "まだプレビューがありません。レンダリングすると、映像と音を確認できます。",
+      "render": "プレビューをレンダリング",
+      "rendering": "プレビューをレンダリング中…",
+      "stale": "古くなっています。最新の変更を聞くには、もう一度レンダリングしてください。"
+    },
+    "relinkFor": "{name} のファイルを探す",
+    "ruler": "タイムラインのルーラー。クリックすると再生ヘッドが動きます。",
+    "subtitle": "{seconds} 秒 · {aspect} · プレビュー {width} × {height}",
+    "timeline": "タイムライン",
+    "title": "{project} · ミキサー",
+    "transitionsNote": "トランジションの長さの分だけ作品が短くなります。ルーラーには実際の合計時間が表示されます。",
+    "transport": {
+      "keys": "Space または K：再生 / 一時停止。J と L：5 秒戻る / 進む。左右キー：1 秒（Shift で 10 秒、Alt で 1 フレーム）。Home / End。+ と -：ズーム。",
+      "label": "トランスポート",
+      "loop": "ループ",
+      "needPreview": "映像を再生するには、先にプレビューをレンダリングしてください。",
+      "pause": "一時停止",
+      "play": "再生",
+      "stop": "停止",
+      "timeOf": "{current} / {total}",
+      "zoomIn": "拡大",
+      "zoomOut": "縮小"
+    },
+    "emptyShots": "まだミックスするものがありません。先にストーリーボードタブでショットを作ってください。",
+    "openInStoryboard": "ストーリーボードで開く",
+    "openStoryboard": "ストーリーボードを開く"
+  },
+  "aiLabel": {
+    "forced": "このプロジェクトはクローンボイスを使っているため、AI タグは必ず書き込まれます。",
+    "metadata": "機械可読の AI タグを追加",
+    "metadataTitle": "MP4 のメタデータに入る機械可読のタグです。プロンプトやフォルダ名は含まれません。",
+    "title": "AI ラベル"
+  },
+  "sendToStoryboard": {
+    "back": "プロジェクトに戻る",
+    "conflict": "送信中にプロジェクトが変更されました。もう一度お試しください。",
+    "dismiss": "閉じる",
+    "failed": "これをストーリーボードに追加できませんでした：{detail}",
+    "newProject": "新規プロジェクト…",
+    "newShot": "新しいショット",
+    "newTake": "ショット {n}（新しいテイク）",
+    "noFile": "この項目には送信できるファイルがありません。",
+    "send": "ストーリーボードに送る",
+    "sending": "送信中…",
+    "start": "これでストーリーボードを始める",
+    "untitled": "無題のストーリーボード",
+    "use": "ストーリーボードで使う",
+    "newTakeNamed": null
+  },
+  "studioKit": {
+    "models": "モデル",
+    "moreActions": "その他の操作",
+    "modelCard": "モデルカード",
+    "summary": {
+      "labelValue": "{label} {value}",
+      "size": "{width} × {height}",
+      "framesFps": "{frames} フレーム、{fps} fps",
+      "negativeSet": "ネガティブプロンプトを設定済み",
+      "negativeEdited": "ネガティブプロンプトを編集済み",
+      "endImageSet": "終了画像を設定済み"
+    }
+  },
+  "musicLibrary": {
+    "addTag": "タグを追加",
+    "clearFilters": "フィルターをクリア",
+    "confirmDelete": "この項目とそのオーディオを削除しますか？この操作は取り消せません。",
+    "confirmDeleteMany": "{n} 件の項目とそのオーディオを削除しますか？この操作は取り消せません。",
+    "delete": "削除",
+    "deleteSelected": "選択項目を削除（{n}）",
+    "empty": "まだ音楽がありません。曲を説明して「曲を作成」を押してください。",
+    "emptySounds": null,
+    "emptyTracks": null,
+    "filter": {
+      "anyTag": "すべてのタグ",
+      "tag": "タグ"
+    },
+    "kind": {
+      "sound": "サウンド",
+      "track": "トラック"
+    },
+    "kindFilter": {
+      "all": null,
+      "label": "表示",
+      "music": null,
+      "sounds": null
+    },
+    "layout": {
+      "grid": "グリッド",
+      "label": "レイアウト",
+      "list": "リスト"
+    },
+    "loadAudio": "オーディオを読み込む",
+    "loading": "ライブラリを読み込み中…",
+    "makeAnother": "これと似たものをもう1つ作る",
+    "noMatch": "一致するものがありません。",
+    "openStudio": "スタジオを開く",
+    "removeTag": "タグ {tag} を削除",
+    "rename": "名前を変更",
+    "search": "タイトル、プロンプト、タグを検索",
+    "select": "{title} を選択",
+    "sort": {
+      "label": "並べ替え",
+      "longest": "長い順",
+      "newest": "新しい順",
+      "oldest": "古い順"
+    },
+    "subtitle": "{tracks, plural, other {# 曲}} · {sounds, plural, other {# 個のサウンド}} · ディスク使用量 {size}",
+    "title": "ミュージックライブラリ"
+  },
+  "musicModels": {
+    "action": {
+      "openHuggingFace": "Hugging Face で開く",
+      "openInStudio": "スタジオで開く"
+    },
+    "column": {
+      "fit": "適合度",
+      "licence": "ライセンス",
+      "makes": "作れるもの",
+      "model": "モデル",
+      "size": "サイズ",
+      "status": "ステータス"
+    },
+    "detail": {
+      "fit": "このマシンでの適合度",
+      "licence": "ライセンス",
+      "openModelCard": "モデルカードを開く",
+      "repo": "リポジトリ",
+      "requires": "あわせて必要なもの",
+      "size": "ダウンロード",
+      "speed": "速度",
+      "attribution": "クレジット表記"
+    },
+    "downloadFailed": "ダウンロードが完了しませんでした。",
+    "downloadStatusLost": "ダウンロードの進行状況を読み取れなくなりました。このページを開き直して確認してください。",
+    "empty": {
+      "attention": "対応が必要なミュージックモデルはありません。",
+      "catalog": "カタログにはまだミュージックモデルがありません。",
+      "downloading": "ダウンロード中のミュージックモデルはありません。",
+      "firstRun": "ミュージックモデルを選んで始めましょう。{name}（{size}、{licence}）はこのマシンに合っています。",
+      "firstRunAction": "{name} をダウンロード",
+      "installed": "ミュージックモデルがまだインストールされていません。利用可能なモデルから選んでダウンロードしてください。"
+    },
+    "filter": {
+      "commercialOnly": "商用可",
+      "licence": "ライセンス",
+      "licenceAny": "すべてのライセンス",
+      "makes": "作れるもの",
+      "makesAll": "すべて"
+    },
+    "intro": "ミュージックモデルはこのコンピュータ上で動作します。1つダウンロードしてから、スタジオを開いて曲を作成しましょう。",
+    "memory": {
+      "pending": "未見積もり",
+      "pendingTitle": "このモデルにはまだメモリの数値がありません。"
+    },
+    "openStudio": "スタジオを開く",
+    "pack": {
+      "body": "このパックでミュージックモデルを動かします。約 {size} GB で、インストールは1回だけです。",
+      "cancel": "キャンセル",
+      "failedBody": "詳細は下に表示されています。もう一度お試しください。",
+      "failedTitle": "ミュージックパックをインストールできませんでした。",
+      "install": "ミュージックパックをインストール",
+      "log": "インストールログ",
+      "title": "ミュージックパックをインストール",
+      "working": "処理中…"
+    },
+    "platform": {
+      "appleSilicon": "Apple シリコン",
+      "cpu": "CPU",
+      "cuda": "CUDA"
+    },
+    "search": "モデル、ライセンス、作れるものを検索",
+    "sort": {
+      "fit": "適合度の高い順",
+      "fitSummary": "適合度の高い順",
+      "largestFirst": "大きい順",
+      "name": "名前",
+      "nameSummary": "名前 A-Z",
+      "size": "サイズ",
+      "smallestFirst": "小さい順",
+      "status": "ステータス",
+      "statusSummary": "インストール済みを先に"
+    },
+    "title": "ミュージックモデル",
+    "unavailable": "ミュージックは今のところ Apple シリコンの Mac が必要です。",
+    "sounds": {
+      "pack": {
+        "failedTitle": "サウンドパックをインストールできませんでした。",
+        "title": "サウンドパックをインストール",
+        "body": "効果音は専用の小さなパックで動作します。約 {size} GB で、インストールは1回だけです。",
+        "install": "サウンドパックをインストール"
+      }
+    }
+  },
+  "videoTools": {
+    "title": "動画ツールが必要です",
+    "body": "動画の結合と書き出しには、無料の補助プログラム FFmpeg を使います。このアプリ専用のパッケージとしてインストールされます。",
+    "install": "動画ツールをインストール",
+    "installing": "動画ツールをインストール中...",
+    "failed": "動画ツールをインストールできませんでした：{error}",
+    "chooseLabel": "オフラインですか？お手持ちの ffmpeg ファイルを使う",
+    "use": "このファイルを使う",
+    "row": {
+      "label": "動画ツール（FFmpeg）",
+      "checking": "確認中...",
+      "installed": "{version}（{source}から）{licence}",
+      "notInstalled": "未インストール",
+      "encoder": "H.264 エンコーダー：{encoder}",
+      "licence": "ライセンス",
+      "download": "LGPL ビルドをダウンロード（{size} MB）",
+      "cancel": "キャンセル",
+      "remove": "削除",
+      "source": {
+        "download": "ダウンロードした LGPL ビルド",
+        "imageio": "imageio-ffmpeg パッケージ",
+        "custom": "選択したファイル（未検証）",
+        "env": "CHAOSENGINE_FFMPEG",
+        "path": "システムの PATH",
+        "unknown": "不明",
+        "link": "ソース"
+      }
+    }
+  },
+  "galleryProject": {
+    "filter": "プロジェクト",
+    "all": "すべてのプロジェクト",
+    "chip": "プロジェクト {name} から",
+    "none": "プロジェクトなし",
+    "search": "プロジェクトを検索",
+    "noMatch": "一致するプロジェクトがありません。",
+    "open": "ストーリーボードで開く",
+    "stills": "{count, plural, other {# 枚の静止画}}",
+    "clips": "{count, plural, other {# 件のクリップ}}",
+    "tracks": "{count, plural, other {# 曲}}",
+    "sounds": "{count, plural, other {# 個のサウンド}}",
+    "speech": "{count, plural, other {# 件の音声}}",
+    "transcripts": "{count, plural, other {# 件の文字起こし}}"
+  },
+  "cast": {
+    "addPicture": "画像を追加",
+    "addPictureFor": null,
+    "dropHint": null,
+    "none": null,
+    "pickerTitle": null,
+    "pictureAlt": null,
+    "remove": null,
+    "removePicture": null,
+    "room": null,
+    "small": "小さい画像です。結果がぶれることがあります。",
+    "subtitle": null,
+    "title": "キャラクターと場所",
+    "unnamed": "名前なし",
+    "usedBy": null,
+    "noneShort": "まだありません。"
+  },
+  "exportTab": {
+    "bundleBody": null,
+    "bundleTitle": "プロジェクトバンドル",
+    "openStoryboard": "ストーリーボードで開く",
+    "stale": null,
+    "before": "書き出す前に",
+    "line": {
+      "captions": null,
+      "clipsAll": null,
+      "clipsNone": "クリップのあるショットがまだないため、書き出すものがありません。",
+      "clipsSome": null,
+      "cloned": "クローン音声を使っているため、AI タグは常に書き込まれます。",
+      "noCaptions": "字幕なし。",
+      "preview": "プレビューが古くなっています (書き出しは可能です)。",
+      "aiTagOff": "AI タグは書き込まれません。",
+      "aiTagOn": "機械可読な AI タグをファイルに書き込みます。",
+      "captionsBoth": null,
+      "captionsBurn": null,
+      "captionsSrt": null,
+      "captionsUnused": null,
+      "format": "映画は {format} です。",
+      "loudness": "音声は {lufs} LUFS に揃えます。",
+      "loudnessOff": "音声はミックスのままです (ラウドネス目標なし)。",
+      "upscale": "最後に {size} へ拡大します。画素は増えますが、細部は増えません。"
+    },
+    "openMixer": "ミキサーを開く"
+  },
+  "overview": {
+    "addCast": "キャストを追加 (任意)",
+    "cast": null,
+    "noSound": "まだ音声なし",
+    "progress": null,
+    "settingsTitle": "プロジェクト設定",
+    "sheet": "ショット",
+    "sound": null,
+    "staleBadge": "古い",
+    "startBody": null,
+    "startTitle": "ここから始める",
+    "writeShots": "ショットを書く",
+    "check": {
+      "cast": "キャスト (任意)",
+      "doneLabel": "完了",
+      "export": "書き出し",
+      "format": "名前と形式",
+      "preview": "プレビュー",
+      "shots": "ショット",
+      "sound": "サウンド (任意)",
+      "takes": "すべてのショットにクリップ",
+      "todoLabel": "未完了"
+    },
+    "checklist": "手順",
+    "next": {
+      "addSound": {
+        "body": null,
+        "button": "ミキサーを開く",
+        "title": "声や音楽を追加"
+      },
+      "done": {
+        "body": "変更後にもう一度書き出すか、任意のショットの新しいテイクを作ってください。",
+        "button": "書き出しを開く",
+        "title": "完了"
+      },
+      "export": {
+        "body": null,
+        "button": "書き出しを開く",
+        "title": "映画を書き出す"
+      },
+      "makeClips": {
+        "body": null,
+        "button": "ストーリーボードを開く",
+        "title": "静止画をクリップにする"
+      },
+      "makeMissing": {
+        "body": null,
+        "button": null,
+        "title": null,
+        "bodyStills": null
+      },
+      "making": "ショットを作成中",
+      "makingProgress": null,
+      "renderPreview": {
+        "body": "書き出す前に映画全体を見て聞いてください。",
+        "button": "ミキサーを開く",
+        "title": "プレビューをレンダリング"
+      },
+      "writeShots": {
+        "body": null,
+        "button": "ショットを書く",
+        "title": "ショットを書く"
+      }
+    },
+    "nextStep": "次のステップ",
+    "progressClips": null,
+    "activity": {
+      "cancelled": "バッチをキャンセル · {when}",
+      "done": null,
+      "exported": "このセッションで映画を書き出しました",
+      "failed": "バッチ失敗 · {when}",
+      "interrupted": "バッチ中断 (アプリが終了) · {when}",
+      "partly": null,
+      "preview": "このセッションでプレビューをレンダリングしました",
+      "title": "最近のアクティビティ"
+    }
+  },
+  "picker": {
+    "adding": "画像を追加しています…",
+    "dropHint": "ここに画像をドロップするか貼り付けてください (PNG、JPEG、WebP)。",
+    "galleryEmpty": "一致する保存画像がありません。",
+    "noStills": "静止画のあるショットがまだありません。",
+    "notPicture": "PNG、JPEG、WebP の画像を選んでください。",
+    "pastePath": "代わりにパスを貼り付ける",
+    "pathLabel": "画像のパス",
+    "searchGallery": "画像ギャラリーを検索",
+    "shotTake": null,
+    "source": {
+      "file": "ファイルを選択",
+      "gallery": "画像ギャラリー",
+      "shot": "ショットから",
+      "computer": "このコンピューター"
+    },
+    "sources": "画像の取得元",
+    "useImage": null,
+    "usePath": "この画像を使う",
+    "chooseFile": "ファイルを選択",
+    "clipboardBlocked": null,
+    "clipboardEmpty": null,
+    "pasteClipboard": "クリップボードから貼り付け",
+    "pasteHere": "ここをクリックして画像を貼り付け (Cmd+V)",
+    "pasteHereLabel": "ここに画像を貼り付け",
+    "showMore": "さらに表示"
+  },
+  "projectList": {
+    "noMatch": null,
+    "search": "プロジェクトを検索",
+    "sort": {
+      "created": "作成日",
+      "edited": "最終編集",
+      "length": "長さ",
+      "name": "名前"
+    },
+    "sortLabel": "並べ替え",
+    "title": "プロジェクト",
+    "dropHint": "または .chaosfilm ファイルをここにドロップしてください。"
+  },
+  "projectShell": {
+    "back": "プロジェクト",
+    "backToList": "プロジェクト一覧に戻る",
+    "formatTitle": "プロジェクト設定",
+    "nameLabel": "プロジェクト名",
+    "notFound": "このプロジェクトはもうありません。",
+    "rename": "名前を変更",
+    "tab": {
+      "cast": "キャスト",
+      "export": "書き出し",
+      "mixer": "ミキサー",
+      "overview": "概要",
+      "storyboard": "ストーリーボード"
+    },
+    "tabsLabel": "プロジェクト"
+  },
+  "templates": {
+    "ad30": "30 秒広告",
+    "blank": "空白",
+    "broll": "シーン / Bロール",
+    "empty": "ショットなし",
+    "meta": null,
+    "shots": {
+      "adBenefit": {
+        "prompt": "同じ作業が簡単になり、リラックスした笑顔",
+        "title": "メリット"
+      },
+      "adCall": {
+        "prompt": "メッセージ用の余白がある製品",
+        "title": "行動の呼びかけ"
+      },
+      "adHook": {
+        "prompt": "スクロールを止める印象的なクローズアップ",
+        "title": "つかみ"
+      },
+      "adProblem": {
+        "prompt": "日常の作業に苦労している人",
+        "title": "問題"
+      },
+      "adProduct": {
+        "prompt": "柔らかな光の中、きれいなテーブルの上の製品",
+        "title": "製品"
+      },
+      "adProof": {
+        "prompt": "さまざまな場所で使って満足している人たち",
+        "title": "証拠"
+      },
+      "brollCrowd": {
+        "prompt": "色とりどりの照明の下で動くナイトクラブの群衆",
+        "title": "群衆"
+      },
+      "brollDetail": {
+        "prompt": "ネオンが映る窓の雨、クローズアップ",
+        "title": "ディテール"
+      },
+      "brollWide": {
+        "prompt": "夕暮れのにぎやかな街の通り、ロングショット",
+        "title": "通りのロングショット"
+      },
+      "socialEnd": {
+        "prompt": "満足感のある最後の種明かし",
+        "title": "オチ"
+      },
+      "socialHook": {
+        "prompt": "画面いっぱいの大胆な近いショット",
+        "title": "つかみ"
+      },
+      "socialShow": {
+        "prompt": "要点をひとつの明快な画で",
+        "title": "見せる"
+      },
+      "storyEnd": {
+        "prompt": "静かに振り返る最後の一瞬",
+        "title": "エンディング"
+      },
+      "storyMeet": {
+        "prompt": "早朝、仕事をする主人公",
+        "title": "主人公の登場"
+      },
+      "storyOpen": {
+        "prompt": "物語の舞台を見渡すロングショット",
+        "title": "オープニング"
+      },
+      "storyPeak": {
+        "prompt": "すべてがかかった瞬間",
+        "title": "クライマックス"
+      },
+      "storyTurn": {
+        "prompt": "思いがけないことが起きる",
+        "title": "転換"
+      }
+    },
+    "startFrom": "開始方法",
+    "story": "短編",
+    "vertical": "縦型ソーシャル",
+    "metaFormat": null,
+    "sets": "{name} が形式を {aspect}、{resolution}、{fps} fps に設定しました。下で変更できます。"
+  },
+  "voicePicker": {
+    "automatic": "音声なし (自動)",
+    "change": "音声を変更",
+    "cloneNote": "クローン音声のクリップには常に AI タグが付きます。",
+    "close": "閉じる",
+    "group": {
+      "builtin": "内蔵",
+      "clone": "クローン",
+      "design": "デザイン",
+      "preset": "プリセット"
+    },
+    "loading": "音声を読み込み中…",
+    "needsModel": "モデルが必要です",
+    "none": "一致する音声がありません。",
+    "play": null,
+    "sampleText": "こんにちは。あなたの映画ではこんな声になります。",
+    "search": "音声を検索",
+    "stop": null,
+    "typeLabel": "音声 ID",
+    "typeLink": "代わりに音声 ID を入力",
+    "typePlaceholder": "エージェントや他のアプリが使う名前の音声 ID",
+    "useTyped": "この音声を使う"
+  },
+  "runBar": {
+    "label": "ショットを作る",
+    "make": "不足分 {n} 件を作る",
+    "makeNone": "不足分を作る",
+    "makeTimed": "不足分 {n} 件を作る · 約 {time}",
+    "needStills": null,
+    "stale": "{n} 件が古い"
   }
 }

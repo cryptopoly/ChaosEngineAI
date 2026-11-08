@@ -55,11 +55,30 @@ from backend_service.helpers.video import (
     _video_download_validation_error,
     _video_repo_allow_patterns,
 )
+from backend_service.helpers.music import (
+    is_music_repo,
+    music_download_validation_error,
+    music_repo_allow_patterns,
+    music_repo_revision,
+)
 from backend_service.state._helpers import _read_text_tail, _spawn_snapshot_download
 
 
 if TYPE_CHECKING:
     from backend_service.state import ChaosEngineState
+
+
+def _music_companions(repo: str) -> list[tuple[str, list[str]]]:
+    """The companion repos of a music row (empty for any other repo)."""
+    from backend_service.helpers.companions import companion_downloads
+
+    return companion_downloads(repo) if is_music_repo(repo) else []
+
+
+def _music_companion_downloaded_bytes(repo: str) -> int:
+    from backend_service.helpers.huggingface import _hf_repo_downloaded_bytes
+
+    return sum(_hf_repo_downloaded_bytes(c_repo, c_patterns) for c_repo, c_patterns in _music_companions(repo))
 
 
 def start_download(
@@ -121,6 +140,15 @@ def start_download(
         pinned_bytes = matched_size_bytes(hub_files, text_patterns)
         if pinned_bytes > 0:
             total_gb = _bytes_to_gb(pinned_bytes)
+    # A music or sound row fetches only its listed files, not the whole repo (the Stable Audio repo is
+    # 6 GB, the files it needs about 1.6 GB, so the bar sat near 26 % when the download was done).
+    music_patterns = None if allow_patterns else music_repo_allow_patterns(repo)
+    if music_patterns:
+        from backend_service.helpers.text_gguf import matched_size_bytes
+
+        music_bytes = matched_size_bytes(_hub_repo_files(repo).get("files") or [], music_patterns)
+        if music_bytes > 0:
+            total_gb = _bytes_to_gb(music_bytes)
 
     # The files this download fetches: progress counts only those, not other
     # quants of the repo that an earlier download left in the cache.
@@ -128,9 +156,25 @@ def start_download(
         allow_patterns
         or _video_repo_allow_patterns(repo)
         or _image_repo_allow_patterns(repo)
+        or music_repo_allow_patterns(repo)
         or text_patterns
     )
-    downloaded_gb = _bytes_to_gb(_hf_repo_downloaded_bytes(repo, scope_patterns))
+    # A music row's companion repo (Stable Audio's T5 text encoder) is fetched after the model itself, so
+    # the bar counts it too: otherwise it sat at 99 % while the last 0.9 GB came down.
+    companion_total_bytes = 0
+    for companion_repo, companion_patterns in _music_companions(repo):
+        try:
+            companion_total_bytes += matched_size_bytes(_hub_repo_files(companion_repo).get("files") or [], companion_patterns)
+        except Exception:
+            companion_total_bytes = 0
+            break
+    if companion_total_bytes > 0 and isinstance(total_gb, (int, float)) and total_gb > 0:
+        total_gb = float(total_gb) + _bytes_to_gb(companion_total_bytes)
+
+    def _scoped_downloaded_bytes() -> int:
+        return _hf_repo_downloaded_bytes(repo, scope_patterns) + _music_companion_downloaded_bytes(repo)
+
+    downloaded_gb = _bytes_to_gb(_scoped_downloaded_bytes())
     initial_progress = 0.0
     if isinstance(total_gb, (int, float)) and total_gb > 0 and downloaded_gb > 0:
         initial_progress = min(0.99, downloaded_gb / float(total_gb))
@@ -160,7 +204,7 @@ def start_download(
 
         def _progress_worker() -> None:
             while not stop_progress.wait(1.0):
-                downloaded_bytes = _hf_repo_downloaded_bytes(repo, scope_patterns)
+                downloaded_bytes = _scoped_downloaded_bytes()
                 downloaded_gb_local = _bytes_to_gb(downloaded_bytes)
                 with state._lock:
                     current = state._downloads.get(repo)
@@ -207,6 +251,7 @@ def start_download(
                 effective_allow_patterns = allow_patterns or (
                     _video_repo_allow_patterns(repo)
                     or _image_repo_allow_patterns(repo)
+                    or music_repo_allow_patterns(repo)
                     or text_patterns
                 )
                 # Leave out stale shard sets no index file uses (38 GB on
@@ -227,11 +272,13 @@ def start_download(
                         "library", "info",
                         f"Skipping {_bytes_to_gb(skipped_bytes):.1f} GB of weight shards no index uses in {repo}.",
                     )
+                # Music repos (third branch after image and video) are pinned to a revision.
                 process = _spawn_snapshot_download(
                     repo,
                     env,
                     process_log,
                     allow_patterns=effective_allow_patterns,
+                    revision=music_repo_revision(repo),
                 )
                 with state._lock:
                     if state._download_tokens.get(repo) == download_token:
@@ -264,7 +311,7 @@ def start_download(
                     return
                 cancelled = state._download_cancel.get(repo, False)
             if cancelled:
-                downloaded_gb_local = _bytes_to_gb(_hf_repo_downloaded_bytes(repo, scope_patterns))
+                downloaded_gb_local = _bytes_to_gb(_scoped_downloaded_bytes())
                 with state._lock:
                     current = state._downloads.get(repo)
                     if current is None or state._download_tokens.get(repo) != download_token:
@@ -322,7 +369,11 @@ def start_download(
                 if validation_error_fn is not None
                 else _video_download_validation_error(repo)
             )
-            validation_error = _image_download_validation_error(repo) or video_validation_error
+            validation_error = (
+                _image_download_validation_error(repo)
+                or video_validation_error
+                or music_download_validation_error(repo)
+            )
             if validation_error:
                 with state._lock:
                     if state._download_tokens.get(repo) != download_token:
@@ -331,7 +382,7 @@ def start_download(
                     state._downloads[repo]["error"] = validation_error
                     state.add_log("library", "error", validation_error)
                 return
-            downloaded_gb_local = _bytes_to_gb(_hf_repo_downloaded_bytes(repo, scope_patterns))
+            downloaded_gb_local = _bytes_to_gb(_scoped_downloaded_bytes())
             with state._lock:
                 if state._download_tokens.get(repo) != download_token:
                     return
@@ -431,6 +482,22 @@ def unload_repo_from_runtimes(
     except Exception:
         pass
 
+    # Music: stop the worker (it may hold the weights) and drop the checkpoints mirror of this repo.
+    try:
+        from backend_service.helpers.music import find_music_variant
+
+        variant = find_music_variant(repo)
+        if variant is not None:
+            from backend_service import music_env, music_runtime
+
+            try:
+                music_runtime.unload()
+            except music_runtime.MusicBusy:
+                pass  # a running job keeps the weights it loaded; the mirror is dropped all the same
+            music_env.remove_checkpoints(variant)
+    except Exception:
+        pass
+
     warm_pool = getattr(state.runtime, "_warm_pool", None)
     if not isinstance(warm_pool, dict):
         return
@@ -481,9 +548,10 @@ def cancel_download(state: ChaosEngineState, repo: str) -> dict[str, Any]:
     scope_patterns = (
         _video_repo_allow_patterns(repo)
         or _image_repo_allow_patterns(repo)
+        or music_repo_allow_patterns(repo)
         or text_repo_allow_patterns(repo)
     )
-    downloaded_gb = _bytes_to_gb(_hf_repo_downloaded_bytes(repo, scope_patterns))
+    downloaded_gb = _bytes_to_gb(_hf_repo_downloaded_bytes(repo, scope_patterns) + _music_companion_downloaded_bytes(repo))
     with state._lock:
         current = state._downloads.get(repo)
         if current is None:

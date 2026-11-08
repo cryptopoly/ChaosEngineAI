@@ -13,7 +13,7 @@ interface LiveProgressProps {
   subtitle?: string;
   phases: LiveProgressPhase[];
   startedAt: number;
-  accent?: "convert" | "benchmark" | "image";
+  accent?: "convert" | "benchmark" | "image" | "audio" | "storyboard";
   /**
    * Optional real-time progress snapshot from the backend tracker. When
    * present and ``active=true`` it overrides the time-based estimates: the
@@ -30,6 +30,11 @@ function formatElapsed(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
   return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+}
+
+/** Whole-number percent for the progress bar, or undefined while the length is unknown (the bar is indeterminate). */
+export function progressValueNow(fillPct: number, overrunning: boolean): number | undefined {
+  return overrunning ? undefined : Math.max(0, Math.min(100, Math.round(fillPct)));
 }
 
 export function LiveProgress({
@@ -76,7 +81,7 @@ export function LiveProgress({
   // bar moves in lockstep with the model. Outside of the diffusion phase, fall
   // back to the time-based estimate so we still get *some* movement.
   const realStepFraction =
-    realProgress?.active && realProgress.phase === "diffusing" && realProgress.totalSteps > 0
+    realProgress?.active && (realProgress.phase === "diffusing" || realProgress.phase === "compose") && realProgress.totalSteps > 0
       ? Math.min(1, realProgress.step / realProgress.totalSteps)
       : null;
 
@@ -101,18 +106,30 @@ export function LiveProgress({
   const cumulativeBeforeActive = phases.slice(0, activeIndex).reduce((acc, p) => acc + p.estimatedSeconds, 0);
   const phaseElapsed = Math.max(0, elapsedSec - cumulativeBeforeActive);
 
+  const waitingText = realProgress?.queue?.waiting
+    ? realProgress.queue.agentAhead
+      ? t("liveProgress.waitingForAgent", { defaultValue: "Waiting for an agent job to finish" })
+      : t("liveProgress.waitingInQueue", {
+          defaultValue: "Waiting for another job to finish (position {position})",
+          position: realProgress.queue.position,
+        })
+    : null;
+  // Read out the phase, not the 250 ms clock: this text changes only when the phase or the queue changes.
+  const announcement = waitingText ?? `${title}: ${phases[activeIndex]?.label ?? ""}`;
+
   return (
     <div className={`live-progress live-progress--${accent}`}>
+      <p className="sr-only" role="status">{announcement}</p>
       <div className="live-progress__header">
         <div>
           <div className="live-progress__title">{title}</div>
           {subtitle ? <div className="live-progress__subtitle">{subtitle}</div> : null}
         </div>
-        <div className="live-progress__elapsed">{formatElapsed(elapsedSec)}</div>
+        <div className="live-progress__elapsed" aria-hidden="true">{formatElapsed(elapsedSec)}</div>
       </div>
 
       {accent === "convert" ? (
-        <div className="live-progress__qgrid">
+        <div className="live-progress__qgrid" aria-hidden="true">
           {Array.from({ length: 48 }).map((_, i) => (
             <div
               key={i}
@@ -122,7 +139,7 @@ export function LiveProgress({
           ))}
         </div>
       ) : accent === "image" ? (
-        <div className="live-progress__mosaic">
+        <div className="live-progress__mosaic" aria-hidden="true">
           {Array.from({ length: 40 }).map((_, i) => (
             <div
               key={i}
@@ -132,7 +149,7 @@ export function LiveProgress({
           ))}
         </div>
       ) : (
-        <div className="live-progress__waveform">
+        <div className="live-progress__waveform" aria-hidden="true">
           {[0, 1, 2].map((row) => (
             <div className="live-progress__wave-row" key={row}>
               {Array.from({ length: 28 }).map((_, i) => (
@@ -147,7 +164,16 @@ export function LiveProgress({
         </div>
       )}
 
-      <div className="live-progress__bar">
+      {waitingText ? <div className="live-progress__subtitle">{waitingText}</div> : null}
+
+      <div
+        className="live-progress__bar"
+        role="progressbar"
+        aria-label={title}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={progressValueNow(fillPct, overrunning)}
+      >
         <div
           className={`live-progress__bar-fill${overrunning ? " live-progress__bar-fill--indeterminate" : ""}`}
           style={overrunning ? undefined : { width: `${fillPct}%` }}
@@ -175,7 +201,7 @@ export function LiveProgress({
             && realProgress.phase === phase.id
             && realProgress.totalSteps > 0;
           return (
-            <div key={phase.id} className={`live-progress__phase live-progress__phase--${state}`}>
+            <div key={phase.id} className={`live-progress__phase live-progress__phase--${state}`} aria-current={state === "active" ? "step" : undefined}>
               <span className="live-progress__phase-dot" />
               <span className="live-progress__phase-label">{phase.label}</span>
               {state === "active" ? (
@@ -203,7 +229,7 @@ export function LiveProgress({
                   </span>
                 )
               ) : null}
-              {state === "done" ? <span className="live-progress__phase-check">✓</span> : null}
+              {state === "done" ? <span className="live-progress__phase-check" aria-hidden="true">✓</span> : null}
             </div>
           );
         })}

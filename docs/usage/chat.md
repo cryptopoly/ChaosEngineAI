@@ -72,6 +72,59 @@ Tool results render in dedicated cards above the assistant text — tables,
 code blocks, markdown, or inline image previews depending on the tool's
 returned shape.
 
+### Studio tools (D-60)
+
+The **Studio** switch next to **Tools** (off by default, remembered) lets the
+chat model use the studios: `generate_image`, `generate_video`, `speak` (voice,
+style, pitch), `make_music`, `make_sound`, the `storyboard_*` tools,
+`music_library`, `list_models`, `list_voices`, `system_status` and the job
+tools (`wait_for_job`, `job_status`, `list_jobs`, `cancel_job`). They are the
+agent bridge's own tools, run inside the app with fixed permissions: no
+downloads, no settings changes, no cloned voices, no file exports, and no
+project or track deletes (do those in the app). Removing a shot, an audio clip
+or a caption is allowed and can be undone (`storyboard_project` undo). Input
+images (reference images, start and end frames) must be files the app made or
+`upload:` handles, never any file on the disk. The job tools only see and act
+on the jobs this chat started. The Agent access switch does not need to be
+on. A short hint tells the model to state a plan, put every render of the plan
+in one reply, and wait for each job.
+
+**Nothing renders without your click.** When the model calls a tool that
+renders (image, video, speech, music, sound, Storyboard generate or render,
+caption transcription), Chat shows a **Plan to approve** card instead: what
+will be made, the prompt (the whole prompt behind **more**), model, size, and
+every argument that changes the result or its cost: input images by file name,
+frames, steps, takes (music and sounds), and for Storyboard how many shots will
+be made and whether locked shots are included. The estimated time and memory
+come from the catalog where it has them (a video time is marked "at the
+recommended size" when another size or length is asked for), plus a memory line such as "Qwen3.8-27B stays loaded:
+about 30 GB free" and the busy-machine advice when memory is tight. The chat
+model is not unloaded.
+
+- **Approve all** (or **Approve** for one item) runs the listed calls.
+- **Approve this** runs that one item and declines the rest (each row's
+  button names its item for screen readers).
+- **Deny** declines them all; the model is told nothing was made.
+- **Edit by chat** declines them all, puts the cursor in the message box, and
+  the model asks what to change.
+- **Always allow renders in this chat** (off by default) skips the card for
+  later renders of this chat, on later turns too. While it is on, a
+  **Renders auto-approved** chip next to the Studio switch has a **Turn off**
+  button. It ends on its own after 2 hours, when the app restarts, when the
+  chat is deleted, or when the Studio switch is turned off.
+
+Without "Always allow", an approval covers the listed calls of that turn only.
+Reading tools (`system_status`, `list_models`, `list_jobs`, a Storyboard `get`)
+and edits run without a card. A card left unanswered for 30 minutes, a stopped
+turn, or a closed window counts as declined. A run that falls back to the
+placeholder engine (no real model ran) ends as a failed job with the reason.
+
+Each started job gets a card in the thread: queued (with its place in the
+queue) or running (with the job's own progress), a **Cancel** button, and when
+done the image, audio player or video with **Open in Library** (Storyboard
+jobs: **Open in Project**). Jobs share the heavy-job queue with the studios
+and agents, one at a time.
+
 ## Reasoning traces
 
 For models that support thinking mode (gpt-oss, Qwen3.6, DeepSeek R1), an

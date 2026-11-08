@@ -71,6 +71,51 @@ Run-to-run variance ~15-20% on micro-gens this small. Phase 5 gate compares medi
 
 For reference (FU-009 entry, 2026-05-04 mlx-video path): T5 encode 14.1s + transformer load 0.2s (4-bit q) + denoise 2.9s @ 1.4 it/s + VAE decode 1.3s = **19.6s total**, 383 KB .mp4. The diffusers path benchmarked here is a different code-path (CPU/MPS bf16, not 4-bit MLX), so don't directly compare.
 
+## V-speed additions (2026-11-07, branch `feat/speed-warm-workers`)
+
+Captured on the owner's MacBook Pro M4 Max (40-core GPU, 64 GB), macOS 27.3, mflux 0.24.0, ltx-2-mlx 0.18.0, nothing else heavy running. Details and raw runs: [docs/hub/progress/v-speed.md](docs/hub/progress/v-speed.md).
+
+Every image and video label now reports the C1 split (`load_seconds`, `encode_seconds`, `denoise_seconds`, `decode_seconds`) next to `gen_seconds`. The engine labels run one cold CLI job, then three warm-worker jobs; `gen_seconds` is the **median of the warm runs** (the gated number) and `cold_seconds` is kept for context. `same_output_as_cold` must stay `true` (the warm worker is bit-identical for the same seed).
+
+### Image — Iris-3B Turbo through mflux (`--only image-mflux`)
+
+| Metric | Value |
+|---|---|
+| Size, steps | 768×512, 4 |
+| Cold (one CLI process), script capture | 6.3 s (load+encode 2.9, denoise 3.1, decode+save 0.3) |
+| Worker first run (start + load) | 5.5 s |
+| **Warm worker, `gen_seconds` floor** | **4.3 s** (median of 3.9 / 4.9 / 4.3) |
+| Same output as cold | yes (SHA-256 equal per seed) |
+
+Run-to-run spread on this laptop is large: an earlier hand run measured cold 9.8 s and warm 5.8 s for the same job. Gate on the median of 3 captures, as the text label.
+
+FLUX 3 Image Klein edit with one reference, 768×512, 8 steps (not a script label, measured by hand): cold 38.2 s, warm 29.4 s, same bytes.
+
+### Video — LTX-2.5 q4 distilled through ltx-2-mlx (`--only video-ltx2mlx`)
+
+| Metric | Value |
+|---|---|
+| Size, frames | 768×448, 49 frames, text only |
+| Cold (one CLI process), script capture | 73.8 s (load 4.0, encode 5.8, denoise 59.8, decode 4.1); 67.8 and 69.2 s in two earlier captures |
+| Worker first run (start + load) | 68.2 s |
+| **Warm worker, `gen_seconds` floor** | **70.8 s** (median of 69.7 / 70.8 / 71.2) |
+| Same output as cold | yes (SHA-256 equal per seed) |
+
+The warm gain on clips is small (about 4 %, inside the run-to-run spread of the cold path): the worker keeps only the transformer (11.3 GB), because keeping the whole pipeline made the denoise about 20 % slower on 64 GB. See v-speed.md.
+
+### Music — ACE-Step 1.5 turbo, 60 s with lyrics (`--only music`)
+
+Not captured on this branch: the music pack is not installed on the capture Mac (the label reports `skipped`). Reference from `backend_service/catalog/music_models.py`: 5.1 to 5.9 s warm, about 25 s more on a cold start. Capture the floor with `--only music` on a Mac with the pack.
+
+### Storyboard render — four 4 s clips, crossfades, music bed (`--only storyboard-render`)
+
+| Metric | Value |
+|---|---|
+| Film | 768×448, 24 fps, 4 shots, about 14.5 s |
+| **`gen_seconds` floor** | **1.44 s** (median of 1.48 / 1.40 / 1.44) |
+
+These floors are not in `scripts/perf-gate.py` yet: the gate fails on a missing metric, and these labels skip on a Mac without the models. Gate them once the gate learns to skip labels the run skipped.
+
 ## Phase gates
 
 | Phase | Gate |

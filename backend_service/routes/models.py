@@ -109,12 +109,25 @@ def search_models(request: Request, query: str = Query("", alias="q", min_length
     return {"query": query, "results": results, "hubResults": hub_results}
 
 
+@router.get("/api/busy-advice")
+def busy_advice_route(footprintGb: float | None = Query(default=None, ge=0, le=4096)) -> dict[str, Any]:
+    """Is the machine busy, and would a model of this size fit beside the running job? Advice only."""
+    from backend_service.helpers.busy_advice import current_advice
+
+    return {"advice": current_advice(footprintGb)}
+
+
 @router.post("/api/models/load")
 def load_model(request: Request, body: LoadModelRequest) -> dict[str, Any]:
     state = request.app.state.chaosengine
     try:
+        from backend_service.helpers.busy_advice import current_advice
+
+        entry = state._find_library_entry(body.path, body.modelRef)
+        size = entry.get("sizeGb") if isinstance(entry, dict) else None
+        advice = current_advice(float(size) if isinstance(size, (int, float)) else None)
         runtime = state.load_model(body)
-        return {"runtime": runtime}
+        return {"runtime": runtime, "advice": advice}
     except HTTPException:
         raise
     except Exception as exc:

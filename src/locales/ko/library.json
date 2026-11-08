@@ -94,7 +94,8 @@
       "ram": "RAM",
       "compressed": "압축됨",
       "context": "컨텍스트",
-      "status": "상태"
+      "status": "상태",
+      "released": "출시일"
     },
     "status": {
       "downloading": "다운로드 중",

@@ -7,6 +7,9 @@ audio extensions come from a fixed list, so file paths built from an item
 are always inside the library folder.
 
 Items saved by the old Gallery (``voice/gallery``) move here on first use.
+
+Cloned voices are items of kind ``clone`` (the voice sample, its transcript and the permission record
+under ``consent``). They are left out of the normal list unless asked for by kind.
 """
 
 from __future__ import annotations
@@ -27,7 +30,7 @@ AUDIO_EXTENSIONS = {
     ".wav", ".mp3", ".m4a", ".aac", ".flac", ".ogg", ".oga", ".opus", ".webm",
     ".mp4", ".mov", ".mkv", ".m4v", ".aiff", ".aif", ".caf",
 }
-KINDS = ("transcript", "speech")
+KINDS = ("transcript", "speech", "clone")
 _EDITABLE = ("title", "text", "segments", "speakers")
 _PREVIEW_CHARS = 300
 _LOCK = threading.Lock()
@@ -112,9 +115,14 @@ def create(
     """Save a new item; ``audio_file`` is moved into the library."""
     if kind not in KINDS:
         raise ValueError(f"Unknown item kind {kind!r}.")
+    from backend_service.helpers.provenance import stamp
+
+    fields = stamp(fields)
     ext = (audio_ext or "").lower()
     if audio_file is not None and ext not in AUDIO_EXTENSIONS:
         raise ValueError(f"Unsupported audio type {ext!r}.")
+    if kind == "clone" and (audio_file is None or not fields.get("consent")):
+        raise ValueError("A cloned voice needs its voice sample and permission record.")
     now = int(time.time())
     text = str(fields.get("text") or "")
     item: dict[str, Any] = {
@@ -128,13 +136,16 @@ def create(
         "segments": fields.get("segments") or [],
         "speakers": fields.get("speakers") or {},
     }
-    for key in ("language", "model", "voice", "durationS", "source", "task", "speed"):
+    for key in ("language", "model", "voice", "durationS", "source", "task", "speed", "clonedVoice", "cloneVoiceId",
+                "projectId", "projectName", "shotId"):
         if fields.get(key) is not None:
             item[key] = fields[key]
     with _LOCK:
         if audio_file is not None:
             shutil.move(str(audio_file), str(library_dir() / f"{item['id']}{ext}"))
             item["audio"] = ext
+        if kind == "clone":
+            item["consent"] = dict(fields["consent"])
         _write(item)
     return item
 
@@ -165,6 +176,8 @@ def list_items(query: str = "", kind: str = "") -> list[dict[str, Any]]:
         except (OSError, ValueError):
             continue
         if kind and meta.get("kind") != kind:
+            continue
+        if not kind and meta.get("kind") == "clone":
             continue
         if needle and needle not in f"{meta.get('title', '')}\n{meta.get('text', '')}".lower():
             continue
@@ -200,8 +213,13 @@ def delete(item_id: str) -> bool:
         meta_path = _meta_path(item_id)
         if not meta_path.is_file():
             return False
+        meta = get(item_id) or {}
         path = audio_path(item_id)
         if path is not None:
             path.unlink(missing_ok=True)
         meta_path.unlink()
+    if meta.get("kind") == "clone":
+        from backend_service.voice_clone_safety import audit  # noqa: PLC0415
+
+        audit("delete", voiceId=item_id)
     return True

@@ -41,7 +41,7 @@ For tagged releases see the
 ## Tracking follow-ups
 
 Deferred work and upstream conditions to re-check periodically are tracked
-in CLAUDE.md's [Follow-Ups Tracker](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/CLAUDE.md).
+in the [Follow-Ups Tracker](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/FOLLOW_UPS.md).
 The tracker is the canonical "what's queued, what's done" record. Items are
 deleted once shipped (with a strikethrough preserved for archaeology) or
 declared no longer relevant.

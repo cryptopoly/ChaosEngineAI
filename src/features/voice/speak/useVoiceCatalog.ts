@@ -1,0 +1,65 @@
+import { useCallback, useEffect, useState } from "react";
+import { downloadCloneModel, getCloneModels } from "../clone/cloneApi";
+import { getVoiceModels, getVoices } from "../../../api";
+import type { VoiceEntry, VoiceModelRow } from "../../../types";
+
+export interface VoiceCatalog {
+  voices: VoiceEntry[];
+  models: VoiceModelRow[];
+  /** Preset, designed and cloned voices run on Apple Silicon Macs for now. */
+  modelsAvailable: boolean;
+  /** Cloned voices can be listed and used from this window. */
+  cloneAllowed: boolean;
+  loaded: boolean;
+  error: string | null;
+  refresh: () => Promise<void>;
+  download: (key: string) => Promise<void>;
+}
+
+/** Voices and Qwen3-TTS models for the Speak and Voices screens; polls while a model downloads. */
+export function useVoiceCatalog(enabled = true): VoiceCatalog {
+  const [voices, setVoices] = useState<VoiceEntry[]>([]);
+  const [models, setModels] = useState<VoiceModelRow[]>([]);
+  const [modelsAvailable, setModelsAvailable] = useState(false);
+  const [cloneAllowed, setCloneAllowed] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    const [voiceList, modelList, clone] = await Promise.allSettled([getVoices(), getVoiceModels(), getCloneModels()]);
+    if (voiceList.status === "fulfilled") setVoices(voiceList.value);
+    if (modelList.status === "fulfilled") {
+      setModels(modelList.value.models);
+      setModelsAvailable(modelList.value.available);
+    }
+    if (clone.status === "fulfilled") setCloneAllowed(clone.value.available && clone.value.allowedHere);
+    const failed = [voiceList, modelList].find((r) => r.status === "rejected");
+    setError(failed && failed.status === "rejected" ? (failed.reason instanceof Error ? failed.reason.message : String(failed.reason)) : null);
+    setLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    if (enabled) void refresh();
+  }, [enabled, refresh]);
+
+  const downloading = models.some((m) => m.download.state === "downloading");
+  useEffect(() => {
+    if (!downloading) return;
+    const timer = window.setInterval(() => void refresh(), 3000);
+    return () => window.clearInterval(timer);
+  }, [downloading, refresh]);
+
+  const download = useCallback(
+    async (key: string) => {
+      try {
+        await downloadCloneModel(key);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err));
+      }
+      await refresh();
+    },
+    [refresh],
+  );
+
+  return { voices, models, modelsAvailable, cloneAllowed, loaded, error, refresh, download };
+}

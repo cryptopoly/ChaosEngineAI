@@ -194,6 +194,7 @@ export function TranscriptEditor({ item, audioUrl, onSaved, onSendToChat }: Tran
                   <textarea
                     className="text-input voice-editor__input"
                     value={draft}
+                    aria-label={t("voice.editor.lineLabel", { defaultValue: "Edit the line at {time}", time: formatClock(segment.start) })}
                     autoFocus
                     onChange={(e) => setDraft(e.target.value)}
                     onBlur={commitEdit}

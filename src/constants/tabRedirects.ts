@@ -1,5 +1,5 @@
 /**
- * One redirect map for the tab ids that the Models pages replaced.
+ * One redirect map for tab ids that no longer exist.
  *
  * Discover and My Models became one Models page per area. The old ids
  * are no longer tabs; anything that still asks for one (a stale caller,
@@ -8,6 +8,10 @@
  * old buttons keep their meaning: an old Discover id opens the page on
  * "Available", an old My Models id on "Installed".
  *
+ * The Storyboard's Projects, Board and Mixer became one Projects entry
+ * (D-65). Their ids open that entry with a route: the list, or the last
+ * open project on its Storyboard or Mixer tab.
+ *
  * App applies ``resolveTabRequest`` in the single wrapper around its tab
  * setter, and ``useSidebarPrefs`` applies ``normalizeStoredTabId`` when it
  * reads ``lastChildByGroup`` from localStorage.
@@ -15,17 +19,34 @@
 
 import type { TabId } from "../types";
 import type { ModelsArea } from "../components/models/modelEntry";
+import type { ProjectTabId } from "../features/storyboard/projectRoute";
 
 /** Tab ids that no longer exist. */
-export type LegacyTabId = "online-models" | "my-models" | "image-discover" | "video-discover";
+export type LegacyTabId =
+  | "online-models"
+  | "my-models"
+  | "image-discover"
+  | "video-discover"
+  | "story-projects"
+  | "story-board"
+  | "story-mixer";
 
 /** Availability filter a navigation can preset on a Models page. */
 export type ModelsPreset = "installed" | "available";
+
+/** Where the Projects entry opens: a project (null: the list) and one of its tabs (D-65). */
+export interface StoryboardNavigation {
+  /** Omitted: the last open project, or the list when none. Null: the list. */
+  projectId?: string | null;
+  tab?: ProjectTabId;
+}
 
 export interface TabNavigation {
   tab: TabId;
   /** Applied to the target Models page's availability filter. */
   modelsPreset?: ModelsPreset;
+  /** Applied to the Projects view's route before it shows. */
+  storyboard?: StoryboardNavigation;
 }
 
 /** What a tab setter accepts: a tab id, a legacy id, or an explicit
@@ -36,6 +57,7 @@ export const MODELS_TAB_BY_AREA: Record<ModelsArea, TabId> = {
   chat: "chat-models",
   image: "image-models",
   video: "video-models",
+  music: "music-models",
 };
 
 export const LEGACY_TAB_REDIRECTS: Record<LegacyTabId, TabNavigation> = {
@@ -43,6 +65,9 @@ export const LEGACY_TAB_REDIRECTS: Record<LegacyTabId, TabNavigation> = {
   "my-models": { tab: "chat-models", modelsPreset: "installed" },
   "image-discover": { tab: "image-models", modelsPreset: "available" },
   "video-discover": { tab: "video-models", modelsPreset: "available" },
+  "story-projects": { tab: "storyboard", storyboard: { projectId: null } },
+  "story-board": { tab: "storyboard", storyboard: { tab: "storyboard" } },
+  "story-mixer": { tab: "storyboard", storyboard: { tab: "mixer" } },
 };
 
 export function isLegacyTabId(value: unknown): value is LegacyTabId {
@@ -59,11 +84,19 @@ export function modelsAreaForTab(tab: TabId): ModelsArea | null {
   if (tab === "chat-models") return "chat";
   if (tab === "image-models") return "image";
   if (tab === "video-models") return "video";
+  if (tab === "music-models") return "music";
   return null;
 }
 
+function navigation(tab: TabId, modelsPreset?: ModelsPreset, storyboard?: StoryboardNavigation): TabNavigation {
+  const result: TabNavigation = { tab };
+  if (modelsPreset) result.modelsPreset = modelsPreset;
+  if (storyboard) result.storyboard = { ...storyboard };
+  return result;
+}
+
 /** Resolve whatever a caller passed into a real tab plus an optional
- * preset. Legacy ids redirect; ``null`` / empty input resolves to
+ * preset or route. Legacy ids redirect; ``null`` / empty input resolves to
  * ``null``. Unknown strings pass through as tab ids (the caller's type
  * already says they are). */
 export function resolveTabRequest(request: TabRequest | null | undefined): TabNavigation | null {
@@ -74,11 +107,14 @@ export function resolveTabRequest(request: TabRequest | null | undefined): TabNa
     const tab: string = request.tab;
     if (isLegacyTabId(tab)) {
       const redirect = LEGACY_TAB_REDIRECTS[tab];
-      return { tab: redirect.tab, modelsPreset: request.modelsPreset ?? redirect.modelsPreset };
+      return navigation(redirect.tab, request.modelsPreset ?? redirect.modelsPreset, request.storyboard ?? redirect.storyboard);
     }
-    return request.modelsPreset ? { tab: request.tab, modelsPreset: request.modelsPreset } : { tab: request.tab };
+    return navigation(request.tab, request.modelsPreset, request.storyboard);
   }
-  if (isLegacyTabId(request)) return { ...LEGACY_TAB_REDIRECTS[request] };
+  if (isLegacyTabId(request)) {
+    const redirect = LEGACY_TAB_REDIRECTS[request];
+    return navigation(redirect.tab, redirect.modelsPreset, redirect.storyboard);
+  }
   return { tab: request };
 }
 
@@ -91,13 +127,17 @@ export function normalizeStoredTabId(value: unknown): string | null {
   return value;
 }
 
-/** ``lastChildByGroup`` with every legacy id mapped. */
+/** Groups that no longer exist; what they remembered is dropped. */
+const RETIRED_GROUPS: ReadonlySet<string> = new Set(["storyboard"]);
+
+/** ``lastChildByGroup`` with every legacy id mapped and retired groups dropped. */
 export function migrateLastChildByGroup<K extends string>(
   stored: Partial<Record<K, unknown>> | null | undefined,
 ): Partial<Record<K, string>> {
   const result: Partial<Record<K, string>> = {};
   if (!stored || typeof stored !== "object") return result;
   for (const [group, value] of Object.entries(stored) as Array<[K, unknown]>) {
+    if (RETIRED_GROUPS.has(group)) continue;
     const normalized = normalizeStoredTabId(value);
     if (normalized) result[group] = normalized;
   }

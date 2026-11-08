@@ -39,6 +39,8 @@ from backend_service.image_runtime.device import (
 from backend_service.image_runtime.mflux_engine import (
     MfluxImageEngine,
     _mflux_name_for_repo,
+    supported_repos,
+    warm_loaded_repo,
 )
 from backend_service.image_runtime.placeholder_engine import (
     MAX_IMAGE_SEED,
@@ -950,11 +952,14 @@ class ImageRuntimeManager:
 
     @property
     def loaded_repo(self) -> str | None:
-        """Repo of the pipeline currently resident in memory, if any."""
-        return self._diffusers.loaded_repo
+        """Repo of the pipeline currently resident in memory, if any (a warm mflux model counts)."""
+        return self._diffusers.loaded_repo or warm_loaded_repo()
 
     def capabilities(self) -> dict[str, Any]:
-        return self._diffusers.probe().to_dict()
+        status = self._diffusers.probe().to_dict()
+        if not status.get("loadedModelRepo"):
+            status["loadedModelRepo"] = warm_loaded_repo()
+        return status
 
     def preload(self, repo: str) -> dict[str, Any]:
         with self._lock:
@@ -965,6 +970,8 @@ class ImageRuntimeManager:
 
     def unload(self, repo: str | None = None) -> dict[str, Any]:
         with self._lock:
+            if repo is None or repo in supported_repos():
+                self._mflux.release("unloaded")  # the warm mflux worker, when it idles
             return self._diffusers.unload(repo).to_dict()
 
     def generate(self, config: ImageGenerationConfig) -> tuple[list[GeneratedImage], dict[str, Any]]:
@@ -985,7 +992,8 @@ class ImageRuntimeManager:
                 except GenerationCancelled:
                     raise
                 except Exception as exc:
-                    if config.repo in _NO_DIFFUSERS_PIPELINE:
+                    # Another engine would drop the reference image silently.
+                    if config.repo in _NO_DIFFUSERS_PIPELINE or config.referenceImagePaths:
                         raise
                     status = self._diffusers.probe()
                     note = (
@@ -997,11 +1005,13 @@ class ImageRuntimeManager:
                 else:
                     _mflux_fallback_note = None
             else:
-                if config.repo in _NO_DIFFUSERS_PIPELINE:
+                if config.repo in _NO_DIFFUSERS_PIPELINE or config.referenceImagePaths:
                     raise RuntimeError(probe.get("reason") or "mflux unavailable")
                 _mflux_fallback_note = probe.get("reason") or "mflux unavailable"
         else:
             _mflux_fallback_note = None
+        # Another engine is about to load its own weights: free the warm mflux model first.
+        self._mflux.release("another image engine is loading")
 
         # FU-008 image subset: sd.cpp path. Routed when the catalog
         # variant declares ``engine="sdcpp"`` (which app.py threads onto

@@ -16,8 +16,8 @@ The remaining codebase — backend service, desktop app, inference engines, mode
 
 Models now run through native llama.cpp and mlx-lm runtimes. A pluggable cache strategy interface (`cache_compression/`) allows optional third-party compression backends (TriAttention, TurboQuant) to be installed and selected at runtime without any upstream code being bundled in this repository.
 
-## Compliance
+## Files
 
 - `LICENSE` — Apache-2.0 (project's own licence)
 - `THIRD_PARTY_NOTICES.md` — documents optional third-party dependencies
-- No upstream-derived source remains in-tree; attribution obligations are satisfied
+- No upstream-derived source remains in-tree

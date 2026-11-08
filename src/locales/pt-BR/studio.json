@@ -8,7 +8,6 @@
     "recentOutputsTitle": "Saídas recentes",
     "prompt": "Prompt",
     "negativePrompt": "Prompt negativo",
-    "enhancePrompt": "Aprimorar",
     "width": "Largura",
     "height": "Altura",
     "steps": "Passos",
@@ -116,6 +115,12 @@
       "cancelGeneration": "Cancelar geração",
       "close": "Fechar",
       "done": "Concluído"
+    },
+    "ltx2": {
+      "install": "Instalar o mecanismo LTX-2.3",
+      "installing": "Instalando…",
+      "notInstalled": "Este modelo roda no mecanismo LTX-2.3 MLX, que ainda não está instalado. Ele é instalado em seu próprio ambiente (cerca de 1 GB) e não altera os pacotes do app.",
+      "retry": "Tentar instalar novamente"
     }
   },
   "progress": {
@@ -126,12 +131,6 @@
     "title": "Avançado",
     "show": "Mostrar configurações avançadas",
     "hide": "Ocultar configurações avançadas"
-  },
-  "enhance": {
-    "label": "Aprimorar",
-    "busy": "Aprimorando...",
-    "tooltip": "Aprimorar este prompt localmente",
-    "error": "Erro do aprimorador: {message}"
   },
   "runtimeBanner": {
     "loadingModel": "Carregando modelo na memória...",
@@ -167,14 +166,12 @@
   },
   "imageStudio": {
     "generateTitle": {
-      "dangerBlocked": "Configuração de nível perigoso — marque a confirmação abaixo do aviso de segurança para prosseguir.",
+      "dangerBlocked": "Configuração de nível de perigo: marque a confirmação na estimativa da execução para continuar.",
       "generating": "Gerando...",
       "selectModel": "Selecione um modelo primeiro.",
       "ready": "Gerar esta imagem."
     },
     "actions": {
-      "discover": "Buscar modelos",
-      "installed": "Instalados",
       "gallery": "Galeria"
     },
     "hero": {
@@ -257,14 +254,13 @@
     "safety": {
       "dangerTitle": "Provável travar o backend",
       "warningTitle": "Atenção — pode ter dificuldades neste dispositivo",
-      "resourceEstimate": "Modelo ≈ {model} · pico desta execução ≈ {peak} de ~{total} no total.",
       "applyTitle": "Aplicar {label}",
       "useSafer": "Usar configurações mais seguras ({label})",
       "browseSmaller": "Navegar por modelos menores",
-      "overrideAck": "Gerar mesmo assim — aceito que o backend pode travar.",
       "reasonDangerOver": "O modelo precisa de ~{model} GB só para manter seus pesos + text encoder. Em {platform} com {total} GB no total, o working set estimado é ~{working} GB, então o modelo sozinho já ultrapassa esse valor. Mesmo imagens pequenas provavelmente travariam o backend. Tente um modelo menor (SD 1.5 ~4 GB, SDXL ~13 GB) ou uma máquina com mais memória.",
       "reasonDangerNear": "O modelo precisa de ~{model} GB só para manter seus pesos + text encoder, e esta execução tem pico em torno de ~{peak} GB. Em {platform} com {total} GB no total, isso está acima do limiar de alto risco (~{highRisk} GB) e próximo do working set estimado (~{working} GB). A geração provavelmente travará o backend; reduza a resolução ou escolha um modelo menor.",
-      "reasonCaution": "O modelo precisa de ~{model} GB só para manter seus pesos + text encoder. Em {platform} com {total} GB no total, isso está acima do alvo conservador de conforto (~{comfort} GB) mas abaixo do working set estimado (~{working} GB). A geração pode rodar lentamente ou falhar; reduza a resolução se ficar instável."
+      "reasonCaution": "O modelo precisa de ~{model} GB só para manter seus pesos + text encoder. Em {platform} com {total} GB no total, isso está acima do alvo conservador de conforto (~{comfort} GB) mas abaixo do working set estimado (~{working} GB). A geração pode rodar lentamente ou falhar; reduza a resolução se ficar instável.",
+      "resourceEstimate": "Modelo ≈ {model} · pico desta execução ≈ {peak} de ~{total} no total."
     },
     "recent": {
       "subtitle": "{recent} mais recentes de {total} gerações salvas",
@@ -376,33 +372,18 @@
       "noPrompt": "Escreva um prompt antes de gerar.",
       "backendOffline": "O backend está offline.",
       "busy": "Ocupado…",
-      "dangerLevel": "Esta configuração provavelmente travará o backend. Marque \\\"Permitir geração de alto risco\\\" abaixo após revisar o aviso, ou reduza resolução/quadros/modelo."
+      "dangerLevel": "É provável que esta configuração derrube o backend. Depois de revisar o aviso, marque \"Executar mesmo assim\" na estimativa da execução, ou reduza a resolução, os quadros ou o modelo."
     },
     "generateTitle": "Iniciar a geração deste clipe.",
-    "device": {
-      "gpuDetected": "GPU (detectada)",
-      "cpuDetected": "CPU (detectada)",
-      "appleDetected": "Apple Silicon (detectado)",
-      "appleMlx": "Apple Silicon (MLX)",
-      "gpu": "GPU",
-      "apple": "Apple Silicon"
-    },
     "memory": {
       "defaultFallback": "~{value} (padrão — reinicie o backend para detecção real)"
     },
-    "capacityLine": {
-      "withModel": "{device} · {memory} no total · modelo ≈ {model}, pico desta execução ≈ {peak}",
-      "short": "{device} · {memory} no total · pico desta execução ≈ {peak}"
-    },
     "subtitle": "Escolha um modelo de vídeo para começar",
     "actions": {
-      "browseCatalog": "Buscar modelos",
-      "installedModels": "Instalados",
       "downloadModel": "Baixar modelo",
       "loadIntoMemory": "Carregar na memória",
       "unload": "Descarregar",
-      "unloadNamed": "Descarregar {name}",
-      "modelCard": "Ficha do modelo"
+      "unloadNamed": "Descarregar {name}"
     },
     "modelOption": {
       "installed": "instalado",
@@ -465,7 +446,8 @@
       "guidanceLtxWarning": "LTX-Video é um modelo flow-matching — CFG acima de ~3,5 supersatura e produz saída borrada / arco-íris. Diminua para 3 para os resultados mais limpos.",
       "randomSeed": "Seed aleatória",
       "seedPlaceholder": "Seed (inteiro)",
-      "maxPixelsNote": "{name} renderiza no máximo {megapixels} megapixels por quadro; este tamanho é reduzido para caber, mantendo a proporção."
+      "maxPixelsNote": "{name} renderiza no máximo {megapixels} megapixels por quadro; este tamanho é reduzido para caber, mantendo a proporção.",
+      "seed": "Seed"
     },
     "clipLength": {
       "line": "Duração do clipe: {seconds}s ({frames} quadros ÷ {fps} fps)"
@@ -479,10 +461,6 @@
       "ltxRefiner": {
         "label": "Upscale espacial LTX em duas etapas",
         "tooltip": "Renderiza a amostra base na resolução solicitada, depois refina através de Lightricks/LTX-Video-0.9.5-spatial-upscaler em 2× resolução espacial. O orçamento de quadros cresce ~1,5×. Detalhes micro mais nítidos e bordas de movimento mais limpas; desativado por padrão porque o impacto no tempo total é real."
-      },
-      "enhancePrompt": {
-        "label": "Aprimorar automaticamente prompts curtos",
-        "tooltip": "Anexa dicas estruturais ajustadas ao modelo (descritores cinematográficos, iluminação, direção de câmera) quando o prompt tem menos de 25 palavras. Modelos de vídeo de difusão treinam em prompts de 50-100 palavras e sub-condicionam em entradas mais curtas. Prompts customizados longos são enviados literalmente — o limiar é a salvaguarda."
       },
       "cfgDecay": {
         "label": "Decaimento de CFG",
@@ -516,13 +494,11 @@
       "applyTitle": "Aplicar {label}",
       "useSafer": "Usar configurações mais seguras ({label})",
       "browseSmaller": "Navegar por modelos menores",
-      "overrideAck": "Permitir geração de alto risco — aceito que o backend pode travar e minha máquina pode precisar ser reiniciada.",
       "reasonDangerOver": "O modelo precisa de ~{model} GB residentes no posicionamento padrão, mas {platform} com {total} GB no total tem apenas ~{working} GB disponíveis com segurança. O runtime fará fallback automático para CPU offload sequencial -- a geração será bem-sucedida mas cada passo será algumas vezes mais lento porque submódulos trocam entre CPU e memória {offloadDevice} a cada passagem. Para geração em velocidade máxima, escolha um modelo menor (LTX-Video é ~2 GB residente) ou uma máquina com mais memória.",
       "reasonDangerNear": "O modelo precisa de ~{model} GB residentes e esta execução tem pico em torno de ~{peak} GB. Em {platform} com {total} GB no total, isso está acima do limiar de alto risco (~{highRisk} GB) e próximo do working set estimado (~{working} GB). O runtime pode acionar CPU offload para encaixar -- reduza as configurações ou escolha um modelo menor se quiser geração em velocidade máxima.",
       "reasonCaution": "O modelo precisa de ~{model} GB residentes. Em {platform} com {total} GB no total, isso está acima do alvo conservador de conforto (~{comfort} GB) mas abaixo do working set estimado (~{working} GB). A geração deve caber; reduza as configurações se ficar instável."
     },
     "disabledHint": "Gerar desativado: {reason}",
-    "willLoadHint": "O modelo selecionado será carregado na memória na próxima geração. O primeiro carregamento pode levar um minuto para as variantes maiores.",
     "cacheStrategies": {
       "none": {
         "label": "Desligado",
@@ -566,7 +542,23 @@
     "sound": {
       "badge": "Som",
       "badgeTooltip": "Este clipe tem som. Ative-o com o controle de volume do player."
-    }
+    },
+    "capacityLine": {
+      "short": "{device} · {memory} no total · pico desta execução ≈ {peak}",
+      "withModel": "{device} · {memory} no total · modelo ≈ {model}, pico desta execução ≈ {peak}"
+    },
+    "device": {
+      "apple": "Apple Silicon",
+      "appleDetected": "Apple Silicon (detectado)",
+      "appleMlx": "Apple Silicon (MLX)",
+      "cpuDetected": "CPU (detectada)",
+      "gpu": "GPU",
+      "gpuDetected": "GPU (detectada)"
+    },
+    "ltx2": {
+      "engineMessage": "Este modelo roda em seu próprio mecanismo MLX (ltx-2-mlx) na GPU da Apple, com som."
+    },
+    "willLoadHint": "O modelo selecionado será carregado na memória na próxima geração. O primeiro carregamento pode levar um minuto nas variantes maiores."
   },
   "imageGallery": {
     "subtitle": {
@@ -664,10 +656,15 @@
       "cancel": "Cancelar",
       "update": "Atualizar pacote de voz",
       "install": "Instalar pacote de voz",
-      "reinstall": "Reparar / reinstalar",
       "done": "Pacote de voz instalado.",
       "log": "Log de instalação",
-      "updateFeatures": "Atualize o pacote de voz para chamadas de voz no chat e identificação de falantes (cerca de 40 MB de modelos; um ou dois minutos)."
+      "updateFeatures": "Atualize o pacote de voz para chamadas de voz no chat e identificação de falantes (cerca de 40 MB de modelos; um ou dois minutos).",
+      "checkedOk": null,
+      "checkedOkAt": null,
+      "repair": null,
+      "troubleshoot": "Solução de problemas",
+      "troubleshootBody": null,
+      "reinstallSmall": "Reinstalar"
     },
     "models": {
       "recommended": "Recomendado",
@@ -677,15 +674,51 @@
       "firstUse": "Se você pular, será baixado no primeiro uso.",
       "title": "Voz",
       "sttTitle": "Modelos de reconhecimento de fala",
-      "sttSubtitle": "Usado pelo microfone no chat e pelo Voice Studio."
+      "sttSubtitle": "Usado pelo microfone no chat e pelo Voice Studio.",
+      "capabilities": null,
+      "ttsTitle": "Modelos de fala",
+      "ttsSubtitle": null,
+      "ttsNone": null,
+      "caps": {
+        "speak": "Falar",
+        "style": "Estilo",
+        "clone": "Clonar",
+        "design": "Criar"
+      }
     },
     "voices": {
       "title": "Vozes",
       "subtitle": "Kokoro: 54 vozes em 9 idiomas. Escolha a que o chat usa para ler em voz alta.",
-      "needsChinese": "Marque as vozes de chinês mandarim no pacote de voz.",
+      "needsChineseAddon": null,
+      "addChinese": null,
       "notYet": "Ainda não disponível neste computador.",
       "useVoice": "Usar esta voz",
-      "preview": "Ouvir"
+      "preview": "Ouvir",
+      "listTitle": "Vozes",
+      "listSubtitle": null,
+      "cloneCard": null,
+      "cloneDetail": null,
+      "designCard": null,
+      "designDetail": null,
+      "designAction": null,
+      "moreCard": null,
+      "moreDetail": null,
+      "moreAction": null,
+      "filter": "Mostrar",
+      "allLanguages": "Todos os idiomas",
+      "noneMine": null,
+      "none": null,
+      "kindClone": "Clonada",
+      "kindPreset": null,
+      "kindBuiltin": null,
+      "playSample": null,
+      "use": "Usar",
+      "tab": null,
+      "filters": {
+        "all": "Todas",
+        "mine": "Minhas",
+        "builtin": "Integrada"
+      }
     },
     "settings": {
       "title": "Preferências de voz",
@@ -750,7 +783,46 @@
       "listen": "Ouvir",
       "progress": "Parte {done} de {total}",
       "generateParts": "Gerar áudio ({n} partes)",
-      "encoding": "Codificando…"
+      "encoding": "Codificando…",
+      "textLabel": "Texto para falar",
+      "styleBuiltin": null,
+      "styleClone": null,
+      "styleSmall": null,
+      "cloneLimit": null,
+      "describe": null,
+      "style": null,
+      "describePlaceholder": null,
+      "stylePlaceholder": null,
+      "styleChips": null,
+      "pitch": "Tom",
+      "advanced": "Avançado",
+      "seed": null,
+      "modelKokoro": null,
+      "modelReady": null,
+      "modelDownloading": null,
+      "modelNeeds": null,
+      "downloadForStyle": null,
+      "cloneTooLong": null,
+      "describeFirst": null,
+      "appleOnly": null,
+      "language": "Idioma",
+      "sampleOf": null,
+      "sampleLoading": null,
+      "cloneModel": null,
+      "cloneKind": null,
+      "yourVoices": null,
+      "presets": null,
+      "designCard": null,
+      "designDetail": null,
+      "quickVoices": null,
+      "chips": {
+        "neutral": null,
+        "angry": null,
+        "sad": null,
+        "excited": null,
+        "whisper": null,
+        "calm": null
+      }
     },
     "stop": "Parar",
     "studio": {
@@ -785,7 +857,8 @@
       "empty": "Nenhuma fala encontrada.",
       "editHint": "Clique duas vezes para editar",
       "edit": "Editar linha",
-      "export": "Exportar"
+      "export": "Exportar",
+      "lineLabel": "Editar a linha em {time}"
     },
     "handoff": {
       "summary": "Resumir no chat",
@@ -830,11 +903,51 @@
     "micError": {
       "blockedMac": "O acesso ao microfone está bloqueado. Permita o ChaosEngineAI em Ajustes do Sistema > Privacidade e Segurança > Microfone e tente de novo.",
       "blockedWindows": "O acesso ao microfone está bloqueado. Permita que apps da área de trabalho usem o microfone em Configurações > Privacidade e segurança > Microfone e tente de novo.",
+      "openSettings": "Abrir as configurações do microfone",
       "blocked": "O acesso ao microfone está bloqueado. Verifique as configurações de privacidade do seu desktop e se nenhum outro app está usando o microfone.",
       "notFound": "Nenhum microfone encontrado. Conecte um e tente de novo.",
       "inUse": "O microfone está em uso por outro app ou não pôde ser aberto.",
       "unsupported": "Esta janela não pode usar o microfone (sem suporte a dispositivos de mídia).",
       "generic": "Não foi possível abrir o microfone."
+    },
+    "clone": {
+      "statement": null,
+      "title": "Clonar uma voz",
+      "loading": "Carregando…",
+      "macOnly": "A clonagem de voz por enquanto só roda em Macs com Apple Silicon.",
+      "deleteConfirm": null,
+      "model": "Modelo de clonagem",
+      "downloading": "Baixando…",
+      "notHere": "Vozes clonadas só podem ser usadas na janela do ChaosEngineAI deste computador.",
+      "consentOwn": null,
+      "consentPermission": null,
+      "delete": "Excluir",
+      "new": "Nova voz clonada",
+      "placeholder": "Texto para falar com a voz clonada.",
+      "tagged": "Rotulado como feito por IA",
+      "allowAgents": "Permitir que agentes e outros computadores usem vozes clonadas (desativado por padrão)",
+      "whose": "De quem é a voz?",
+      "basisOwn": "Minha própria voz",
+      "basisPermission": null,
+      "speakerName": "Nome de quem fala",
+      "voiceName": "Nome desta voz (opcional)",
+      "confirm": null,
+      "recordAgain": "Gravar de novo",
+      "sampleTitle": null,
+      "sampleHelp": null,
+      "sampleText": "Palavras ditas na amostra (opcional; preenchidas automaticamente)",
+      "tooShort": null,
+      "tooLong": null,
+      "save": null,
+      "installingWatermark": "Instalando o componente de marca d'água…",
+      "tab": "Clonar",
+      "voices": "Vozes clonadas",
+      "deleteVoice": "Excluir a voz {name}",
+      "textLabel": "Texto para falar com a voz clonada",
+      "sampleFile": "Arquivo de amostra de voz",
+      "recordingPlayback": "Sua gravação",
+      "saving": null,
+      "sampleType": null
     }
   },
   "residentChatModelNote": "Um modelo de chat carregado ocupa cerca de {gb} GB dessa memória; descarregá-lo libera esse espaço.",
@@ -904,5 +1017,1155 @@
       "previewVae": "VAE de pré-visualização",
       "fp8LayerwiseCasting": "FP8 por camada"
     }
+  },
+  "inputImage": {
+    "chooseFile": "Escolher arquivo",
+    "fromGallery": "Da galeria",
+    "remove": "Remover",
+    "pickFailed": "O seletor de arquivos não está disponível aqui. Escolha na galeria.",
+    "referenceLabel": "Imagem de referência",
+    "referenceLabelMany": "Imagens de referência",
+    "referenceHintOne": "Parte desta imagem para criar a nova. Intensidade: quanto maior, mais próximo dela.",
+    "referenceHintMany": "Até {max} imagens. O modelo as edita ou redesenha de acordo com o seu prompt, para manter um assunto ou estilo.",
+    "strength": "Intensidade",
+    "startLabel": "Imagem inicial",
+    "startHint": "O clipe começa com esta imagem.",
+    "endLabel": "Imagem final (opcional)",
+    "endHint": "O clipe termina com esta imagem. Usada sozinha, o prompt se move em direção a ela."
+  },
+  "sizePresets": {
+    "aspect": "Proporção",
+    "size": "Tamanho",
+    "resolution": "Resolução",
+    "overLimit": "Acima do limite de tamanho deste modelo.",
+    "current": "Tamanho atual: {width} x {height} ({megapixels} MP)"
+  },
+  "estimate": {
+    "time": "Cerca de {time}",
+    "timeUnknown": "Tempo: desconhecido até a primeira execução",
+    "memory": "Pico de {peak} de {total}",
+    "memoryUnknown": "Memória: não estimada",
+    "disk": "Grava {size}",
+    "diskUnknown": "Disco: não estimado",
+    "measured": "Medido",
+    "estimated": "Estimado",
+    "measuredTitle": "Medido neste computador para este modelo e predefinição.",
+    "estimatedTitle": "Da ficha do modelo ou de uma máquina parecida; ainda não medido aqui.",
+    "queueRunning": "{what} está em execução, faltam cerca de {time}. O seu trabalho começa depois.",
+    "queuePosition": "Aguardando a conclusão de outro trabalho (posição {position})",
+    "dangerAck": "Executar mesmo assim. Aceito que o backend possa travar.",
+    "duration": {
+      "seconds": "{n} s",
+      "minutes": "{n} min",
+      "minutesSeconds": "{m} min {s} s"
+    },
+    "size": {
+      "gb": "{n} GB",
+      "mb": "{n} MB"
+    },
+    "band": {
+      "caution": "(atenção: perto do limite)",
+      "danger": "(perigo: pode não caber)"
+    },
+    "unknownChip": "Estimativa: desconhecida até a primeira execução"
+  },
+  "disclosure": {
+    "options": "Opções",
+    "expert": "Especialista",
+    "defaults": "Padrões do modelo"
+  },
+  "preset": {
+    "custom": "Personalizado",
+    "customTitle": "Um valor foi alterado manualmente. Escolha uma predefinição para voltar."
+  },
+  "error": {
+    "technicalDetails": "Detalhes técnicos",
+    "retry": "Tentar novamente"
+  },
+  "licence": {
+    "chip": {
+      "commercial": "{name} · comercial",
+      "limited": "{name} · uso comercial limitado",
+      "noCommercial": "{name} · sem uso comercial",
+      "gated": "Restrito"
+    },
+    "screen": {
+      "asks": "O que esta licença exige de você",
+      "gatedNote": "Este modelo tem acesso restrito: aceite os termos no Hugging Face e depois baixe aqui com o seu token (Preferências > Hugging Face).",
+      "readFull": "Ler a licença completa",
+      "openHub": "Abrir no Hugging Face",
+      "notNow": "Agora não",
+      "accepted": "Já aceitei",
+      "ok": "OK"
+    },
+    "status": {
+      "needs": "Requer licença"
+    },
+    "action": {
+      "accept": "Aceitar a licença"
+    }
+  },
+  "models": {
+    "makes": {
+      "songs": "Músicas com vocais",
+      "instrumental": "Instrumental",
+      "sfx": "Efeitos sonoros",
+      "loops": "Loops"
+    },
+    "speed": {
+      "measured": "Cerca de {rate} s de áudio por segundo neste computador",
+      "unknown": "Velocidade ainda não medida"
+    }
+  },
+  "musicStudio": {
+    "result": {
+      "loop": "Loop",
+      "play": "Reproduzir {title}, {seconds} segundos",
+      "stop": "Parar",
+      "again": "De novo",
+      "againTitle": "Mesmas configurações, uma nova seed aleatória.",
+      "audioFailed": "Não foi possível carregar o arquivo de áudio.",
+      "audioLoading": "Carregando o áudio…",
+      "done": "Concluído",
+      "doneIn": "Concluído em {time}",
+      "openLibrary": "Abrir na biblioteca",
+      "seed": "seed {seed}",
+      "vary": "Variar",
+      "varyTitle": "Mesmas configurações, a próxima seed ({seed})."
+    },
+    "options": {
+      "reference": "Áudio de referência",
+      "referenceRights": "Você é responsável pelos direitos do áudio que fornecer.",
+      "auto": "Auto",
+      "bpm": "BPM",
+      "key": "Tom",
+      "randomSeed": "Seed aleatória",
+      "seed": "Seed",
+      "summaryBpm": "BPM {value}",
+      "summaryKey": "Tom {value}",
+      "summarySeed": "Seed {n}",
+      "summaryVariations": "{n, plural, one {# variação} other {# variações}}",
+      "tempoKey": "Andamento e tom",
+      "variations": "Variações",
+      "variationsCost": "Cada variação acrescenta o mesmo tempo novamente.",
+      "variationsTotal": "Cerca de {time} para {n}."
+    },
+    "artistWarning": "Citar um artista pode gerar uma cópia do estilo dele. Descreva o som.",
+    "cancel": "Cancelar",
+    "cancelling": "Cancelando…",
+    "empty": "Ainda não há música. Descreva uma faixa e clique em \"Criar faixa\".",
+    "error": {
+      "cancelled": "Cancelado.",
+      "generic": "Não foi possível criar a faixa.",
+      "invalid": "Não foi possível iniciar a faixa com essas configurações.",
+      "memory": "Não há memória livre suficiente para esta faixa. Tente uma duração mais curta.",
+      "notReady": "O modelo de música não está pronto para rodar.",
+      "offline": "O backend não respondeu. Verifique se ele está em execução e tente novamente.",
+      "useShorter": "Usar uma duração mais curta"
+    },
+    "expert": {
+      "aiTagNote": "Uma tag legível por máquina no arquivo de áudio. Vem ativada por padrão; desative-a para uso privado.",
+      "idleUnload": "Descarregar o modelo após estes minutos ociosos (0 mantém carregado)",
+      "model": "Modelo",
+      "output": "Saída: FLAC, 24 bits, 48 kHz, estéreo.",
+      "summaryIdle": "Descarregar após {n} min",
+      "summaryTagOff": "Tag de IA desativada"
+    },
+    "issue": {
+      "bpmRange": "O BPM deve ficar entre 30 e 300, ou em Auto.",
+      "captionEmpty": "Descreva a música para criar uma faixa.",
+      "captionTooLong": "A descrição tem mais de {max} caracteres.",
+      "lyricsEmpty": "Adicione a letra ou mude para instrumental.",
+      "lyricsTooLong": "A letra tem mais de {max} caracteres.",
+      "secondsRange": "A duração deve ficar entre {min} e {max} segundos.",
+      "seedRange": "A seed deve ser um número inteiro a partir de 0.",
+      "variations": "As variações devem ser 1, 2 ou 4."
+    },
+    "latest": "Mais recentes",
+    "length": {
+      "custom": "Personalizada",
+      "customLabel": "Duração em segundos",
+      "label": "Duração",
+      "minutes": "{n} min",
+      "range": "{min} a {max} s",
+      "seconds": "{n} s"
+    },
+    "library": "Biblioteca",
+    "loading": "Carregando os modelos de música…",
+    "lyrics": {
+      "label": "Letra",
+      "placeholder": "[verse] ... [chorus] ...",
+      "rights": "Você é responsável pelos direitos da letra que digitar."
+    },
+    "make": "Criar faixa",
+    "making": "Criando…",
+    "mode": {
+      "instrumental": "Instrumental",
+      "label": "Tipo de faixa",
+      "song": "Música"
+    },
+    "noModel": "Nenhum modelo de música instalado ainda.",
+    "noModelSize": "{name} tem cerca de {size} GB.",
+    "offline": "Aguardando o backend…",
+    "openLibrary": "Abrir a biblioteca",
+    "openModels": "Abrir os modelos de música",
+    "packMissing": "O pacote de música ainda não está instalado. Instale-o em \"Modelos de música\" (cerca de 1,6 GB).",
+    "progress": {
+      "compose": "Compor",
+      "decode": "Decodificar áudio",
+      "encode": "Codificar",
+      "load": "Carregar modelo",
+      "save": "Salvar"
+    },
+    "prompt": {
+      "label": "Descreva a música",
+      "placeholder": "hip hop lo-fi aconchegante, chiado de vinil, piano suave, 85 bpm"
+    },
+    "queued": "Na fila: o seu trabalho começa depois do anterior.",
+    "running": "Criando sua faixa",
+    "status": {
+      "installed": "Instalado",
+      "loaded": "Carregado",
+      "notInstalled": "Não instalado"
+    },
+    "title": "Estúdio de música",
+    "studioMode": {
+      "label": "Música ou efeitos sonoros",
+      "music": "Música",
+      "sounds": "Sons"
+    },
+    "sounds": {
+      "loopBadge": "Loop",
+      "needLicence": "Os efeitos sonoros usam o Stable Audio Open, que pede que você aceite a licença primeiro. Abra \"Modelos de música\" para lê-la.",
+      "needDownload": "Baixe o {name} em \"Modelos de música\" (cerca de {size} GB). Aceite primeiro a licença no Hugging Face.",
+      "needTextEncoder": "O modelo de som está sem o codificador de texto. Baixe-o novamente em \"Modelos de música\".",
+      "needPack": "Os sons também precisam de um pacote pequeno (cerca de 1 GB). Instale-o em \"Modelos de música\".",
+      "prompt": "Descreva o som",
+      "placeholder": "pesada porta de madeira rangendo ao abrir, microfone próximo",
+      "english": "O inglês funciona melhor. Efeitos e loops, não músicas nem fala.",
+      "loop": "Criar um loop contínuo",
+      "make": "Criar som",
+      "making": "Criando…",
+      "running": "Criando seu som",
+      "empty": "Ainda não há sons. Descreva um e clique em \"Criar som\".",
+      "issue": {
+        "captionEmpty": "Descreva o som para criá-lo.",
+        "captionTooLong": "A descrição tem mais de {max} caracteres.",
+        "secondsRange": "A duração deve ficar entre {min} e {max} segundos."
+      },
+      "error": {
+        "memory": "Não há memória livre suficiente para este som. Libere um pouco de memória e tente novamente.",
+        "invalid": "Não foi possível iniciar o som com essas configurações.",
+        "generic": "Não foi possível criar o som."
+      },
+      "lengthSlider": "Duração em segundos",
+      "modelPicker": "Modelo de som",
+      "cpuFallback": null,
+      "cpuOnly": null
+    }
+  },
+  "audioPlayer": {
+    "timeOf": "{current} de {total}"
+  },
+  "inputAudio": {
+    "chooseFile": "Escolher arquivo",
+    "fromLibrary": "Da biblioteca",
+    "remove": "Remover",
+    "pickFailed": "O seletor de arquivos não está disponível aqui. Escolha na biblioteca."
+  },
+  "board": {
+    "addShot": "Adicionar plano",
+    "batch": {
+      "cancel": "Cancelar o lote",
+      "count": "{done} de {total} concluídos",
+      "kind": {
+        "clips": "clipes",
+        "stills": "imagens estáticas"
+      },
+      "shotOf": "Plano {n} de {total}",
+      "starting": "Iniciando…",
+      "stillsThenClips": "{kind}, depois clipes",
+      "title": "Criando planos"
+    },
+    "conflictNotice": "Alterado em outro lugar; mostrando a versão mais recente",
+    "defaults": {
+      "automatic": "Automático (um modelo instalado)",
+      "automaticShort": "auto",
+      "automaticName": "Automático",
+      "noVoice": "nenhuma"
+    },
+    "defaultsSummary": null,
+    "defaultsTitle": "Padrões do projeto",
+    "editor": {
+      "discard": "Descartar alterações",
+      "discardBody": "Este plano tem edições não salvas. Fechar agora as descarta.",
+      "discardTitle": "Descartar suas alterações?",
+      "fromImageGallery": "Da galeria de imagens",
+      "fromVideoGallery": "Da galeria de vídeos",
+      "import": "Importar",
+      "importFailed": "Não foi possível importar esse arquivo.",
+      "importFile": "Arquivo de imagem ou vídeo",
+      "importHint": "Adiciona um novo take a partir de um arquivo ou das suas galerias. Nada é sobrescrito.",
+      "importKind": "Escolha uma imagem (png, jpg, webp) ou um vídeo (mp4, mov, webm).",
+      "length": "Duração (s)",
+      "motionPrompt": "Prompt de movimento",
+      "nativeSound": "Nível de som do plano (dB)",
+      "noReferences": "Ainda não há referências neste projeto. Adicione-as no painel Referências.",
+      "references": "Referências",
+      "relinkHint": "Aponte o take ausente para um novo arquivo.",
+      "revert": "Reverter",
+      "save": "Salvar alterações",
+      "saveFirst": "Salve suas alterações primeiro.",
+      "seed": "Seed",
+      "seedRandom": "Aleatório",
+      "speed": "Velocidade",
+      "startFrom": "Começar de",
+      "startFromGenerate": "Uma nova imagem estática",
+      "startFromPrevious": "Último quadro do plano anterior",
+      "startFromUpload": "Minha imagem",
+      "stillPrompt": "Prompt da imagem estática",
+      "title": "Plano {n}",
+      "trimIn": "Corte do início (s)",
+      "trimOut": "Corte do fim (s)",
+      "trimOutEnd": "Fim do take",
+      "useClip": "Usar como clipe",
+      "noCast": null
+    },
+    "empty": "Ainda não há planos. Adicione um plano e dê a ele um prompt ou importe filmagens.",
+    "estimate": {
+      "need": "{n, plural, one {# plano precisa de um novo take} other {# planos precisam de um novo take}}",
+      "none": "Todos os planos desbloqueados têm um take."
+    },
+    "loading": "Carregando o projeto…",
+    "makeAll": "Criar todos os desbloqueados",
+    "makeAllTitle": "Adiciona um novo take a cada plano desbloqueado. Nada é sobrescrito.",
+    "makeMissing": "Criar os que faltam",
+    "makeOne": "Criar este plano",
+    "mixer": "Mixer",
+    "noProject": "Nenhum projeto está aberto. Abra um em Projetos ou comece um novo.",
+    "noProjectTitle": "Quadro",
+    "notFound": "Este projeto não existe mais. Escolha outro.",
+    "openProjects": "Abrir projetos",
+    "projects": "Projetos",
+    "redo": "Refazer",
+    "references": {
+      "addCharacter": "Adicionar personagem",
+      "addPlace": "Adicionar local",
+      "characters": "Personagens",
+      "description": "Como é a aparência",
+      "image": "Imagem de referência",
+      "name": "Nome",
+      "none": "Nenhum ainda.",
+      "places": "Locais",
+      "remove": "Remover a referência",
+      "setImage": "Definir imagem",
+      "summary": "{characters, plural, one {# personagem} other {# personagens}} · {places, plural, one {# local} other {# locais}}",
+      "title": "Referências"
+    },
+    "reload": "Recarregar",
+    "removeBody": "{name} sai do filme. Os takes continuam na pasta do projeto, e Desfazer o traz de volta.",
+    "removeTitle": "Excluir este plano?",
+    "shot": {
+      "drag": "Arraste para reordenar",
+      "failedNote": "O plano não foi renderizado. Tente novamente ou edite os prompts.",
+      "keep": "Manter",
+      "lock": "Bloquear este plano",
+      "lockedNote": "Planos bloqueados são ignorados ao criar planos.",
+      "menu": {
+        "delete": "Excluir",
+        "down": "Mover para baixo",
+        "edit": "Editar prompts",
+        "import": "Importar filmagens",
+        "up": "Mover para cima",
+        "useAsReference": "Usar a imagem como referência"
+      },
+      "missingNote": "Arquivo do take ausente. Revincule ou crie um novo take.",
+      "moreActions": "Mais ações para o plano {n}",
+      "moved": "O plano {n} foi movido para a posição {position}",
+      "play": "Reproduzir clipe",
+      "redoLabel": "Refazer",
+      "redoMarked": "Marcado para refazer",
+      "redoTitle": "Marcar para refazer: na próxima criação de planos, um novo take será adicionado. Nada é sobrescrito.",
+      "relink": "Revincular",
+      "rerun": "Executar novamente",
+      "seed": "seed {seed}",
+      "staleTitle": "O plano {n} ganhou um novo take; este plano começa a partir do último quadro dele.",
+      "staleTitleGeneric": "Algo de que este plano depende foi alterado.",
+      "status": {
+        "done": "Concluído · {seconds} s",
+        "doneNoLength": "Concluído",
+        "failed": "Falhou",
+        "idle": "Ainda não criado",
+        "locked": "Bloqueado",
+        "missing": "Arquivo do take ausente",
+        "queued": "Na fila · {position}",
+        "running": "Criando…",
+        "stale": "Desatualizado · após o plano {n}",
+        "staleNoShot": "Desatualizado",
+        "stillOnly": "Só imagem"
+      },
+      "titleLabel": "Título do plano {n}",
+      "transitionLabel": "Transição",
+      "transitionSeconds": "Duração do crossfade em segundos",
+      "transitionType": {
+        "crossfade": "Crossfade",
+        "cut": "Corte"
+      },
+      "unlock": "Desbloquear este plano",
+      "untitled": "Plano {n}",
+      "castLabel": "Elenco desta cena",
+      "newTake": "Nova tomada",
+      "newTakeMarked": "Nova tomada na próxima execução",
+      "newTakeTitle": null,
+      "noPrompt": "Ainda sem prompt. Pressione Enter ou Editar prompts.",
+      "makeClip": "Criar o clipe",
+      "makeClipTitle": "Criar o clipe desta cena a partir da sua imagem.",
+      "referenceAdded": "{name} foi adicionado ao elenco com esta imagem."
+    },
+    "shots": "Planos",
+    "subtitle": "{shots, plural, one {# plano} other {# planos}} · {seconds} s · {stale} desatualizado(s)",
+    "takes": {
+      "active": "Take ativo",
+      "label": "Takes",
+      "pick": "Usar este take",
+      "take": "Take {n}"
+    },
+    "title": "{project} · Quadro",
+    "undo": "Desfazer",
+    "emptyNoCast": null,
+    "subtitleShots": null,
+    "lengthStrip": "Duração das cenas",
+    "lengthStripPart": "Cena {n} · {seconds} s"
+  },
+  "storyProjects": {
+    "card": {
+      "edited": "editado {when}",
+      "meta": "{shots, plural, one {# plano} other {# planos}} · {seconds} s · {aspect}",
+      "noShots": "ainda sem planos",
+      "noTakes": "ainda sem imagens",
+      "noPreview": "sem prévia",
+      "stale": "{n} desatualizado(s)",
+      "zeroShots": "0 planos",
+      "metaFormat": null,
+      "zeroShotsFormat": null
+    },
+    "deleteBody": "{name} e todos os takes, imagens estáticas e sons da pasta dele serão excluídos. Isso não pode ser desfeito.",
+    "deleteFailed": "Não foi possível excluir o projeto.",
+    "deleteTitle": "Excluir este projeto?",
+    "dialog": {
+      "aspect": "Proporção",
+      "create": "Criar",
+      "fps": "Taxa de quadros",
+      "imageModel": "Modelo de imagem",
+      "name": "Nome",
+      "resolution": "Resolução",
+      "save": "Salvar",
+      "videoModel": "Modelo de vídeo",
+      "voice": "Voz",
+      "models": "Modelos"
+    },
+    "empty": "Ainda não há projetos. Um projeto guarda seus planos, takes e som em uma única pasta que você pode mover ou copiar para backup.",
+    "exportBundle": "Exportar pacote",
+    "exportFailed": "Não foi possível exportar o pacote.",
+    "exported": "{name} exportado · {size}",
+    "exporting": "Exportando…",
+    "import": "Importar pacote",
+    "importFailed": "Este arquivo não é um pacote de projeto do ChaosEngineAI.",
+    "imported": "{name} importado",
+    "loading": "Carregando seus projetos…",
+    "menu": {
+      "delete": "Excluir",
+      "rename": "Renomear"
+    },
+    "missing": "A pasta deste projeto foi movida ou excluída.",
+    "moreActions": "Mais ações",
+    "new": "Novo projeto",
+    "open": "Abrir",
+    "subtitle": "{count, plural, one {# projeto} other {# projetos}}",
+    "title": "Projetos de Storyboard",
+    "format": {
+      "fit": {
+        "safe": "Cabe",
+        "tight": "Justo",
+        "wontfit": "Não cabe"
+      },
+      "note": {
+        "capped": null,
+        "cost": "Resoluções maiores renderizam mais devagar e usam mais memória.",
+        "fpsConvert": null,
+        "noModel": null,
+        "safe": null,
+        "tight": null,
+        "wontfit": null,
+        "estimated": null
+      }
+    },
+    "openNamed": null,
+    "moreActionsFor": null
+  },
+  "storyboard": {
+    "cancel": "Cancelar",
+    "close": "Fechar",
+    "dismiss": "Fechar",
+    "offline": "Aguardando o backend…",
+    "pathPlaceholder": "/path/to/file",
+    "pickUnavailable": "O seletor de arquivos não está disponível aqui. Digite o caminho.",
+    "films": {
+      "title": "Filme",
+      "none": "Ainda sem filmes. Uma exportação grava um aqui."
+    }
+  },
+  "mixer": {
+    "add": {
+      "cloned": "Este clipe usa uma voz clonada"
+    },
+    "addAudioTo": "Adicionar áudio a {lane}",
+    "addButton": "Adicionar",
+    "addFromLibrary": "Adicionar da biblioteca",
+    "block": {
+      "ariaLabel": "{lane}, {name}, de {start} a {end} segundos"
+    },
+    "board": "Quadro",
+    "captions": {
+      "add": "Adicionar na posição de reprodução",
+      "burnIn": "Gravar no vídeo",
+      "exportSrt": "Gravar .srt",
+      "generate": "Criar a partir da voz",
+      "generating": "Ouvindo…",
+      "label": "Legendas",
+      "needVoice": "Adicione fala à faixa de voz para criar legendas a partir dela.",
+      "newText": "Nova legenda",
+      "remove": "Remover",
+      "srt": "Arquivo SRT",
+      "textLabel": "Texto da legenda",
+      "title": "Legendas ({count})",
+      "trimmedAway": "Cortado"
+    },
+    "clip": {
+      "ariaLabel": "{lane}, {name}, de {start} a {end} segundos, {gain} dB",
+      "missing": "Ausente",
+      "reading": "Lendo…",
+      "relink": "Revincular"
+    },
+    "crossfade": "Crossfade {seconds} s",
+    "empty": "Ainda não há nada para mixar. Crie planos primeiro no quadro.",
+    "export": {
+      "aspect": "Proporção",
+      "button": "Exportar MP4",
+      "cancel": "Cancelar a exportação",
+      "cancelled": "Exportação cancelada. Nada foi gravado.",
+      "copied": "Caminho copiado",
+      "copiedShort": "Copiado",
+      "copyPath": "Copiar caminho",
+      "details": "Detalhes técnicos",
+      "done": "Exportado · {size} · {duration}",
+      "download": "Baixar",
+      "editor": "Exportar para um editor (.otio)",
+      "editorNote": "Abre no DaVinci Resolve ou no Premiere, com a mídia do projeto vinculada neste computador.",
+      "exporting": "Exportando…",
+      "extras": "Também gravado",
+      "failedShort": "A exportação falhou. Nada foi gravado.",
+      "interrupted": "A exportação foi interrompida.",
+      "loudness": "Meta de loudness",
+      "loudnessHint": "{target} LUFS serve para vídeo na web. Vazio mantém a mixagem como está.",
+      "loudnessOff": "Desligado",
+      "phase": {
+        "encode": "Codificação",
+        "join": "Junção",
+        "mix": "Mixagem do som",
+        "normalise": "Normalização dos planos"
+      },
+      "pixels": "{width} × {height} px.",
+      "preset": {
+        "landscape": "16:9",
+        "portrait": "9:16",
+        "square": "1:1"
+      },
+      "reframeNote": "Reenquadrado na exportação; os planos não são gerados de novo.",
+      "resume": "Retomar a exportação",
+      "resumeNote": "{ready} de {total} planos já estão prontos e serão reaproveitados.",
+      "retry": "Tentar novamente",
+      "reveal": "Mostrar arquivo",
+      "stems": "Faixas de áudio como arquivos separados",
+      "stopped": "A exportação não foi concluída.",
+      "title": "Exportar",
+      "upscale": "Ampliar",
+      "upscale1440": "1440p",
+      "upscale2160": "2160p (4K)",
+      "upscaleNone": "Mesmo tamanho",
+      "upscaleNote": null,
+      "upscaleSame": null,
+      "more": "Mais",
+      "whyBusy": null,
+      "whyEmpty": null
+    },
+    "importAudio": "Importar áudio",
+    "importAudioPath": "Caminho do arquivo de áudio",
+    "inspector": {
+      "absolute": "Tempo do filme (sem âncora)",
+      "anchor": "Âncora",
+      "anchorShot": "Plano {n}: {name}",
+      "anchorSummary": "Acompanha o plano {n}. Deslocamento {offset} s.",
+      "anchorTo": "Ancorado a",
+      "duck": "Abaixar sob a voz",
+      "duckTitle": "Abaixa este clipe enquanto alguém fala (compressão sidechain).",
+      "empty": "Selecione um clipe na linha do tempo para editar o som dele.",
+      "fadeIn": "Fade in",
+      "fadeOut": "Fade out",
+      "gain": "Ganho",
+      "loop": "Repetir para preencher",
+      "name": "Nome",
+      "nativeLevel": "Nível de som do plano {n}",
+      "offset": "Deslocamento",
+      "remove": "Remover da faixa",
+      "shotSpan": "A partir de {start} s, com {length} s de duração",
+      "shotTitle": "Plano selecionado",
+      "start": "Começa em",
+      "title": "Clipe selecionado",
+      "trim": "Corte",
+      "trimIn": "início",
+      "trimOut": "fim"
+    },
+    "lane": {
+      "music": "Música",
+      "native": "Som do plano",
+      "picture": "Imagem",
+      "sfx": "Efeitos",
+      "voice": "Voz"
+    },
+    "leftOut": "{n, plural, one {# plano ainda não tem clipe e fica de fora da prévia e da exportação.} other {# planos ainda não têm clipe e ficam de fora da prévia e da exportação.}}",
+    "noLibraryYet": "A biblioteca de música ainda não está disponível. Escolha um arquivo ou digite o caminho dele.",
+    "noProjectTitle": "Mixer",
+    "openBoard": "Abrir o quadro",
+    "openOnBoard": "Abrir no quadro",
+    "preview": {
+      "cancel": "Cancelar",
+      "failed": "A prévia não foi renderizada.",
+      "none": "Ainda não há prévia. Renderize uma para ver e ouvir o filme.",
+      "render": "Renderizar prévia",
+      "rendering": "Renderizando a prévia…",
+      "stale": "Desatualizada. Renderize de novo para ouvir suas alterações mais recentes."
+    },
+    "relinkFor": "Localizar o arquivo de {name}",
+    "ruler": "Régua da linha do tempo. Clique para mover a posição de reprodução.",
+    "subtitle": "{seconds} s · {aspect} · prévia {width} × {height}",
+    "timeline": "Linha do tempo",
+    "title": "{project} · Mixer",
+    "transitionsNote": "As transições encurtam o filme pela duração delas; a régua mostra o total real.",
+    "transport": {
+      "keys": "Espaço ou K: reproduzir / pausar. J e L: 5 s para trás / para frente. Esquerda e Direita: 1 s (Shift 10 s, Alt um quadro). Home / End. + e -: zoom.",
+      "label": "Transporte",
+      "loop": "Repetir",
+      "needPreview": "Renderize uma prévia para reproduzir o filme.",
+      "pause": "Pausar",
+      "play": "Reproduzir",
+      "stop": "Parar",
+      "timeOf": "{current} de {total}",
+      "zoomIn": "Ampliar",
+      "zoomOut": "Reduzir"
+    },
+    "emptyShots": "Nada para mixar ainda. Crie cenas na aba Storyboard primeiro.",
+    "openInStoryboard": "Abrir no Storyboard",
+    "openStoryboard": "Abrir Storyboard"
+  },
+  "aiLabel": {
+    "forced": "Este projeto usa uma voz clonada, então a tag de IA é sempre gravada.",
+    "metadata": "Adicionar uma tag de IA legível por máquina",
+    "metadataTitle": "Uma tag legível por máquina nos metadados do MP4. Ela não contém prompts nem nomes de pastas.",
+    "title": "Rótulo de IA"
+  },
+  "sendToStoryboard": {
+    "back": "Voltar aos projetos",
+    "conflict": "O projeto mudou durante o envio. Tente novamente.",
+    "dismiss": "Fechar",
+    "failed": "Não foi possível adicionar isto ao storyboard: {detail}",
+    "newProject": "Novo projeto…",
+    "newShot": "Novo plano",
+    "newTake": "Plano {n} (novo take)",
+    "noFile": "Este item não tem arquivo para enviar.",
+    "send": "Enviar para o storyboard",
+    "sending": "Enviando…",
+    "start": "Começar um storyboard com isto",
+    "untitled": "Storyboard sem título",
+    "use": "Usar no storyboard",
+    "newTakeNamed": null
+  },
+  "studioKit": {
+    "models": "Modelos",
+    "moreActions": "Mais ações",
+    "modelCard": "Ficha do modelo",
+    "summary": {
+      "labelValue": "{label} {value}",
+      "size": "{width} × {height}",
+      "framesFps": "{frames} quadros a {fps} fps",
+      "negativeSet": "Prompt negativo definido",
+      "negativeEdited": "Prompt negativo editado",
+      "endImageSet": "Imagem final definida"
+    }
+  },
+  "musicLibrary": {
+    "addTag": "Adicionar tag",
+    "clearFilters": "Limpar filtros",
+    "confirmDelete": "Excluir este item e o áudio dele? Isso não pode ser desfeito.",
+    "confirmDeleteMany": "Excluir {n} itens e o áudio deles? Isso não pode ser desfeito.",
+    "delete": "Excluir",
+    "deleteSelected": "Excluir selecionados ({n})",
+    "empty": "Ainda não há música. Descreva uma faixa e clique em \"Criar faixa\".",
+    "emptySounds": null,
+    "emptyTracks": null,
+    "filter": {
+      "anyTag": "Qualquer tag",
+      "tag": "Tag"
+    },
+    "kind": {
+      "sound": "Som",
+      "track": "Faixa"
+    },
+    "kindFilter": {
+      "all": null,
+      "label": "Mostrar",
+      "music": null,
+      "sounds": null
+    },
+    "layout": {
+      "grid": "Grade",
+      "label": "Layout",
+      "list": "Lista"
+    },
+    "loadAudio": "Carregar o áudio",
+    "loading": "Carregando sua biblioteca…",
+    "makeAnother": "Criar outro como este",
+    "noMatch": "Nada corresponde.",
+    "openStudio": "Abrir o estúdio",
+    "removeTag": "Remover a tag {tag}",
+    "rename": "Renomear",
+    "search": "Pesquisar títulos, prompts, tags",
+    "select": "Selecionar {title}",
+    "sort": {
+      "label": "Ordenar",
+      "longest": "Mais longos primeiro",
+      "newest": "Mais recentes primeiro",
+      "oldest": "Mais antigos primeiro"
+    },
+    "subtitle": "{tracks, plural, one {# faixa} other {# faixas}} · {sounds, plural, one {# som} other {# sons}} · {size} em disco",
+    "title": "Biblioteca de música"
+  },
+  "musicModels": {
+    "action": {
+      "openHuggingFace": "Abrir no Hugging Face",
+      "openInStudio": "Abrir no estúdio"
+    },
+    "column": {
+      "fit": "Compatibilidade",
+      "licence": "Licença",
+      "makes": "Gera",
+      "model": "Modelo",
+      "size": "Tamanho",
+      "status": "Status"
+    },
+    "detail": {
+      "fit": "Compatibilidade com este computador",
+      "licence": "Licença",
+      "openModelCard": "Abrir a ficha do modelo",
+      "repo": "Repositório",
+      "requires": "Também precisa de",
+      "size": "Download",
+      "speed": "Velocidade",
+      "attribution": "Atribuição"
+    },
+    "downloadFailed": "O download não foi concluído.",
+    "downloadStatusLost": "Não é mais possível ler o progresso do download. Reabra esta página para verificar de novo.",
+    "empty": {
+      "attention": "Nenhum modelo de música precisa de atenção.",
+      "catalog": "Ainda não há modelos de música no catálogo.",
+      "downloading": "Nenhum modelo de música está sendo baixado.",
+      "firstRun": "Escolha um modelo de música para começar. {name} ({size}, {licence}) combina com este computador.",
+      "firstRunAction": "Baixar {name}",
+      "installed": "Nenhum modelo de música instalado ainda. Escolha um dos modelos disponíveis para baixá-lo."
+    },
+    "filter": {
+      "commercialOnly": "Uso comercial permitido",
+      "licence": "Licença",
+      "licenceAny": "Qualquer licença",
+      "makes": "Gera",
+      "makesAll": "Tudo"
+    },
+    "intro": "Os modelos de música rodam neste computador. Baixe um e abra o estúdio para criar uma faixa.",
+    "memory": {
+      "pending": "não estimado",
+      "pendingTitle": "Ainda não há valor de memória para este modelo."
+    },
+    "openStudio": "Abrir o estúdio",
+    "pack": {
+      "body": "O pacote executa os modelos de música. Cerca de {size} GB, instalado uma única vez.",
+      "cancel": "Cancelar",
+      "failedBody": "Os detalhes estão abaixo. Você pode tentar novamente.",
+      "failedTitle": "Não foi possível instalar o pacote de música.",
+      "install": "Instalar o pacote de música",
+      "log": "Log de instalação",
+      "title": "Instalar o pacote de música",
+      "working": "Trabalhando…"
+    },
+    "platform": {
+      "appleSilicon": "Apple Silicon",
+      "cpu": "CPU",
+      "cuda": "CUDA"
+    },
+    "search": "Pesquisar modelos, licença, o que eles geram",
+    "sort": {
+      "fit": "Melhor compatibilidade primeiro",
+      "fitSummary": "melhor compatibilidade primeiro",
+      "largestFirst": "maiores primeiro",
+      "name": "Nome",
+      "nameSummary": "nome A-Z",
+      "size": "Tamanho",
+      "smallestFirst": "menores primeiro",
+      "status": "Status",
+      "statusSummary": "instalados primeiro"
+    },
+    "title": "Modelos de música",
+    "unavailable": "A música por enquanto precisa de um Mac com Apple Silicon.",
+    "sounds": {
+      "pack": {
+        "failedTitle": "Não foi possível instalar o pacote de sons.",
+        "title": "Instalar o pacote de sons",
+        "body": "Os efeitos sonoros rodam em um pacote pequeno próprio. Cerca de {size} GB, instalado uma única vez.",
+        "install": "Instalar o pacote de sons"
+      }
+    }
+  },
+  "videoTools": {
+    "title": "Ferramentas de vídeo são necessárias",
+    "body": "Juntar e exportar vídeo usa o FFmpeg, um programa auxiliar gratuito. Ele é instalado como um pacote só para este app.",
+    "install": "Instalar ferramentas de vídeo",
+    "installing": "Instalando ferramentas de vídeo...",
+    "failed": "As ferramentas de vídeo não foram instaladas: {error}",
+    "chooseLabel": "Sem conexão? Use um arquivo ffmpeg que você já tem",
+    "use": "Usar este arquivo",
+    "row": {
+      "label": "Ferramentas de vídeo (FFmpeg)",
+      "checking": "Verificando...",
+      "installed": "{version} de {source}{licence}",
+      "notInstalled": "Não instalado",
+      "encoder": "Codificador H.264: {encoder}",
+      "licence": "Licença",
+      "download": "Baixar a versão LGPL ({size} MB)",
+      "cancel": "Cancelar",
+      "remove": "Remover",
+      "source": {
+        "download": "versão LGPL baixada",
+        "imageio": "pacote imageio-ffmpeg",
+        "custom": "um arquivo que você escolheu (não verificado)",
+        "env": "CHAOSENGINE_FFMPEG",
+        "path": "PATH do sistema",
+        "unknown": "desconhecido",
+        "link": "Origem"
+      }
+    }
+  },
+  "galleryProject": {
+    "filter": "Projeto",
+    "all": "Todos os projetos",
+    "chip": "Do projeto {name}",
+    "none": "Sem projeto",
+    "search": "Pesquisar projetos",
+    "noMatch": "Nenhum projeto corresponde.",
+    "open": "Abrir no storyboard",
+    "stills": "{count, plural, one {# imagem estática} other {# imagens estáticas}}",
+    "clips": "{count, plural, one {# clipe} other {# clipes}}",
+    "tracks": "{count, plural, one {# faixa} other {# faixas}}",
+    "sounds": "{count, plural, one {# som} other {# sons}}",
+    "speech": "{count, plural, one {# item de fala} other {# itens de fala}}",
+    "transcripts": "{count, plural, one {# transcrição} other {# transcrições}}"
+  },
+  "cast": {
+    "addPicture": "Adicionar imagem",
+    "addPictureFor": null,
+    "dropHint": null,
+    "none": null,
+    "pickerTitle": null,
+    "pictureAlt": null,
+    "remove": null,
+    "removePicture": null,
+    "room": null,
+    "small": "Imagem pequena; o resultado pode variar.",
+    "subtitle": null,
+    "title": "Personagens e lugares",
+    "unnamed": "Sem nome",
+    "usedBy": null,
+    "noneShort": "Nenhum ainda."
+  },
+  "exportTab": {
+    "bundleBody": null,
+    "bundleTitle": "Pacote do projeto",
+    "openStoryboard": "Abrir no Storyboard",
+    "stale": null,
+    "before": "Antes de exportar",
+    "line": {
+      "captions": null,
+      "clipsAll": null,
+      "clipsNone": "Nenhuma cena tem um clipe ainda, então não há nada para exportar.",
+      "clipsSome": null,
+      "cloned": "Uma voz clonada é usada, então a etiqueta de IA é sempre gravada.",
+      "noCaptions": "Sem legendas.",
+      "preview": "A prévia está desatualizada (isso não impede a exportação).",
+      "aiTagOff": "Nenhuma etiqueta de IA é gravada.",
+      "aiTagOn": "Uma etiqueta de IA legível por máquina é gravada no arquivo.",
+      "captionsBoth": null,
+      "captionsBurn": null,
+      "captionsSrt": null,
+      "captionsUnused": null,
+      "format": "O filme é {format}.",
+      "loudness": "O som é nivelado em {lufs} LUFS.",
+      "loudnessOff": "O som fica como foi mixado (sem alvo de volume).",
+      "upscale": "É ampliado para {size} no final: mais pixels, não mais detalhes."
+    },
+    "openMixer": "Abrir o Mixer"
+  },
+  "overview": {
+    "addCast": "Adicionar elenco (opcional)",
+    "cast": null,
+    "noSound": "ainda sem som",
+    "progress": null,
+    "settingsTitle": "Configurações do projeto",
+    "sheet": "Cenas",
+    "sound": null,
+    "staleBadge": "Desatualizada",
+    "startBody": null,
+    "startTitle": "Comece aqui",
+    "writeShots": "Escreva suas cenas",
+    "check": {
+      "cast": "Elenco (opcional)",
+      "doneLabel": "feito",
+      "export": "Exportar",
+      "format": "Nome e formato",
+      "preview": "Prévia",
+      "shots": "Cenas",
+      "sound": "Som (opcional)",
+      "takes": "Um clipe para cada cena",
+      "todoLabel": "a fazer"
+    },
+    "checklist": "Etapas",
+    "next": {
+      "addSound": {
+        "body": null,
+        "button": "Abrir o Mixer",
+        "title": "Adicionar voz ou música"
+      },
+      "done": {
+        "body": "Exporte de novo após uma mudança, ou faça uma nova tomada de qualquer cena.",
+        "button": "Abrir Exportar",
+        "title": "Pronto"
+      },
+      "export": {
+        "body": null,
+        "button": "Abrir Exportar",
+        "title": "Exportar o filme"
+      },
+      "makeClips": {
+        "body": null,
+        "button": "Abrir o Storyboard",
+        "title": "Transformar as imagens em clipes"
+      },
+      "makeMissing": {
+        "body": null,
+        "button": null,
+        "title": null,
+        "bodyStills": null
+      },
+      "making": "Criando cenas",
+      "makingProgress": null,
+      "renderPreview": {
+        "body": "Veja e ouça o filme inteiro antes de exportar.",
+        "button": "Abrir o Mixer",
+        "title": "Renderizar uma prévia"
+      },
+      "writeShots": {
+        "body": null,
+        "button": "Escreva suas cenas",
+        "title": "Escreva suas cenas"
+      }
+    },
+    "nextStep": "Próximo passo",
+    "progressClips": null,
+    "activity": {
+      "cancelled": "Lote cancelado · {when}",
+      "done": null,
+      "exported": "Filme exportado nesta sessão",
+      "failed": "Lote falhou · {when}",
+      "interrupted": "Lote interrompido (o app foi fechado) · {when}",
+      "partly": null,
+      "preview": "Prévia renderizada nesta sessão",
+      "title": "Atividade recente"
+    }
+  },
+  "picker": {
+    "adding": "Adicionando a imagem…",
+    "dropHint": "Solte uma imagem aqui ou cole uma (PNG, JPEG ou WebP).",
+    "galleryEmpty": "Nenhuma imagem salva corresponde.",
+    "noStills": "Nenhuma cena tem uma imagem ainda.",
+    "notPicture": "Escolha uma imagem PNG, JPEG ou WebP.",
+    "pastePath": "Colar um caminho em vez disso",
+    "pathLabel": "Caminho da imagem",
+    "searchGallery": "Buscar na galeria de imagens",
+    "shotTake": null,
+    "source": {
+      "file": "Escolher arquivo",
+      "gallery": "Galeria de imagens",
+      "shot": "De uma cena",
+      "computer": "Este computador"
+    },
+    "sources": "De onde vem a imagem",
+    "useImage": null,
+    "usePath": "Usar esta imagem",
+    "chooseFile": "Escolher arquivo",
+    "clipboardBlocked": null,
+    "clipboardEmpty": null,
+    "pasteClipboard": "Colar da área de transferência",
+    "pasteHere": "Clique aqui e cole uma imagem (Cmd+V)",
+    "pasteHereLabel": "Cole uma imagem aqui",
+    "showMore": "Mostrar mais"
+  },
+  "projectList": {
+    "noMatch": null,
+    "search": "Buscar projetos",
+    "sort": {
+      "created": "Criado",
+      "edited": "Última edição",
+      "length": "Duração",
+      "name": "Nome"
+    },
+    "sortLabel": "Ordenar",
+    "title": "Projetos",
+    "dropHint": "Ou solte um arquivo .chaosfilm aqui."
+  },
+  "projectShell": {
+    "back": "Projetos",
+    "backToList": "Voltar aos projetos",
+    "formatTitle": "Configurações do projeto",
+    "nameLabel": "Nome do projeto",
+    "notFound": "Este projeto não está mais aqui.",
+    "rename": "Renomear",
+    "tab": {
+      "cast": "Elenco",
+      "export": "Exportar",
+      "mixer": "Mixer",
+      "overview": "Visão geral",
+      "storyboard": "Storyboard"
+    },
+    "tabsLabel": "Projeto"
+  },
+  "templates": {
+    "ad30": "Anúncio de 30 s",
+    "blank": "Em branco",
+    "broll": "Cena / imagens de apoio",
+    "empty": "Sem cenas",
+    "meta": null,
+    "shots": {
+      "adBenefit": {
+        "prompt": "A mesma tarefa ficou fácil, um sorriso tranquilo",
+        "title": "O benefício"
+      },
+      "adCall": {
+        "prompt": "O produto com espaço livre para uma mensagem",
+        "title": "Chamada para ação"
+      },
+      "adHook": {
+        "prompt": "Um close marcante que faz parar a rolagem",
+        "title": "Gancho"
+      },
+      "adProblem": {
+        "prompt": "Alguém lutando com uma tarefa do dia a dia",
+        "title": "O problema"
+      },
+      "adProduct": {
+        "prompt": "O produto numa mesa limpa com luz suave",
+        "title": "O produto"
+      },
+      "adProof": {
+        "prompt": "Várias pessoas felizes usando em lugares diferentes",
+        "title": "Prova"
+      },
+      "brollCrowd": {
+        "prompt": "Uma multidão numa balada sob luzes coloridas",
+        "title": "Multidão"
+      },
+      "brollDetail": {
+        "prompt": "Chuva numa janela com reflexos de neon, close",
+        "title": "Detalhe"
+      },
+      "brollWide": {
+        "prompt": "Uma rua movimentada ao entardecer, plano aberto",
+        "title": "Rua em plano aberto"
+      },
+      "socialEnd": {
+        "prompt": "Uma revelação final satisfatória",
+        "title": "Desfecho"
+      },
+      "socialHook": {
+        "prompt": "Um momento ousado e próximo que enche o quadro",
+        "title": "Gancho"
+      },
+      "socialShow": {
+        "prompt": "A ideia principal numa imagem clara",
+        "title": "Mostre"
+      },
+      "storyEnd": {
+        "prompt": "Um último olhar calmo para trás",
+        "title": "Final"
+      },
+      "storyMeet": {
+        "prompt": "O personagem principal trabalhando, de manhã cedo",
+        "title": "O protagonista"
+      },
+      "storyOpen": {
+        "prompt": "Uma vista ampla de onde a história acontece",
+        "title": "Abertura"
+      },
+      "storyPeak": {
+        "prompt": "O momento em que tudo está em jogo",
+        "title": "O clímax"
+      },
+      "storyTurn": {
+        "prompt": "Algo inesperado chega",
+        "title": "A virada"
+      }
+    },
+    "startFrom": "Começar com",
+    "story": "Conto curto",
+    "vertical": "Vertical para redes",
+    "metaFormat": null,
+    "sets": "{name} definiu o formato como {aspect}, {resolution}, {fps} fps. Altere abaixo."
+  },
+  "voicePicker": {
+    "automatic": "Sem voz (automático)",
+    "change": "Trocar voz",
+    "cloneNote": "Uma voz clonada sempre leva a etiqueta de IA nos seus clipes.",
+    "close": "Fechar",
+    "group": {
+      "builtin": "Integrada",
+      "clone": "Clonada",
+      "design": "Criada",
+      "preset": "Predefinida"
+    },
+    "loading": "Carregando vozes…",
+    "needsModel": "Precisa do modelo",
+    "none": "Nenhuma voz corresponde.",
+    "play": null,
+    "sampleText": "Olá. É assim que eu soo no seu filme.",
+    "search": "Buscar vozes",
+    "stop": null,
+    "typeLabel": "ID da voz",
+    "typeLink": "Digitar um ID de voz",
+    "typePlaceholder": "Um ID de voz, como um agente ou outro app o chama",
+    "useTyped": "Usar esta voz"
+  },
+  "runBar": {
+    "label": "Criar cenas",
+    "make": "Criar {n} faltando",
+    "makeNone": "Criar faltando",
+    "makeTimed": "Criar {n} faltando · cerca de {time}",
+    "needStills": null,
+    "stale": "{n} desatualizadas"
   }
 }

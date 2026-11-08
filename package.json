@@ -1,7 +1,7 @@
 {
   "name": "chaosengine-desktop",
   "private": true,
-  "version": "0.9.9",
+  "version": "0.10.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,6 +10,7 @@
     "stage:runtime": "node ./scripts/stage-runtime.mjs --mode=development",
     "stage:runtime:release": "node ./scripts/stage-runtime.mjs --mode=release",
     "test": "vitest run",
+    "e2e": "npm --prefix e2e test",
     "preview": "vite preview",
     "pre-build-check": "node ./scripts/pre-build-check.mjs",
     "tauri:dev": "npm run stage:runtime && tauri dev",

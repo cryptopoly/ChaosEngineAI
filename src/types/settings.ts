@@ -74,6 +74,9 @@ export interface AppSettings {
    * favourites recorded.
    */
   favoriteModelRefs?: string[];
+  /** First-run terms of use: accepted version (0 = never) and when (ISO 8601 UTC). */
+  termsAcceptedVersion?: number;
+  termsAcceptedAt?: string;
 }
 
 export interface SettingsUpdateResponse {
@@ -88,6 +91,10 @@ export interface SettingsUpdateResponse {
 }
 
 export interface UpdateSettingsPayload {
+  /** D-34: write the machine-generated tag into music files (on by default). */
+  musicEmbedTag?: boolean;
+  /** First-run terms of use: the version the user accepted (the server stamps the time). */
+  termsAcceptedVersion?: number;
   modelDirectories?: ModelDirectorySetting[];
   preferredServerPort?: number;
   allowRemoteConnections?: boolean;

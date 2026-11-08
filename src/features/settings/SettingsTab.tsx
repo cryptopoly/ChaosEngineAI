@@ -1,8 +1,11 @@
 import { useState, type SetStateAction } from "react";
 import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
+import { AgentAccessPanel } from "./AgentAccessPanel";
 import { AcceleratorsPanel, DiagnosticsPanel, DiskUsagePanel } from "./DiagnosticsPanel";
 import { LanguagePanel } from "./LanguagePanel";
+import { TermsDialog, TermsOfUsePanel } from "../terms/TermsOfUse";
+import type { TermsSettings } from "../terms/termsLogic";
 import { ModelStoragePanel } from "./ModelStoragePanel";
 import type { SettingsDraft } from "../../types/chat";
 import type { SidebarMode } from "../../types";
@@ -10,6 +13,7 @@ import type { SystemStats } from "../../types/system";
 import type { UiScale } from "../../hooks";
 
 export interface SettingsTabProps {
+  terms?: TermsSettings | null;
   settingsDraft: SettingsDraft;
   onSettingsDraftChange: (action: SetStateAction<SettingsDraft>) => void;
   newDirectoryLabel: string;
@@ -32,6 +36,8 @@ export interface SettingsTabProps {
   apiToken: string | null;
   sidebarMode: SidebarMode;
   onSidebarModeChange: (mode: SidebarMode) => void;
+  sidebarKeepAllOpen: boolean;
+  onSidebarKeepAllOpenChange: (value: boolean) => void;
   uiScale: UiScale;
   onUiScaleChange: (scale: UiScale) => void;
   // Diagnostics subtab needs the same online/restart wiring the rest of
@@ -72,6 +78,7 @@ const SETTINGS_SECTIONS: SettingsSectionDef[] = [
 ];
 
 export function SettingsTab({
+  terms,
   settingsDraft,
   onSettingsDraftChange,
   newDirectoryLabel,
@@ -94,6 +101,8 @@ export function SettingsTab({
   apiToken,
   sidebarMode,
   onSidebarModeChange,
+  sidebarKeepAllOpen,
+  onSidebarKeepAllOpenChange,
   uiScale,
   onUiScaleChange,
   backendOnline,
@@ -108,6 +117,7 @@ export function SettingsTab({
   // or persist it across reloads (the user lands on "General" each time,
   // which matches the macOS Settings idiom of opening to the first pane).
   const [activeSection, setActiveSection] = useState<SettingsSectionId>("general");
+  const [readingTerms, setReadingTerms] = useState(false);
 
   // Resolve the effective paths for the delivery folders so we can show the
   // real value in each input rather than a placeholder-flavoured hint. The
@@ -167,6 +177,20 @@ export function SettingsTab({
                 "keeps the sidebar compact: groups behave like single buttons that jump to their last-used tab, with a sub-tab bar above the content.",
             })}
           </p>
+          <label className="check-row">
+            <input
+              type="checkbox"
+              checked={sidebarKeepAllOpen}
+              onChange={(event) => onSidebarKeepAllOpenChange(event.target.checked)}
+            />
+            {t("settingsTab.appearance.keepGroupsOpen", { defaultValue: "Keep all sidebar groups open" })}
+          </label>
+          <p className="muted-text">
+            {t("settingsTab.appearance.keepGroupsOpenHelp", {
+              defaultValue:
+                "Off by default: only the group you are working in stays open. Turn it on to keep every group expanded.",
+            })}
+          </p>
           <div
             className="segmented"
             role="radiogroup"
@@ -198,6 +222,8 @@ export function SettingsTab({
         onSettingsDraftChange={onSettingsDraftChange}
         onCopyText={onCopyText}
       />
+      <TermsOfUsePanel settings={terms} onRead={() => setReadingTerms(true)} />
+      {readingTerms ? <TermsDialog mode="read" onClose={() => setReadingTerms(false)} /> : null}
     </div>
   );
 
@@ -580,6 +606,7 @@ export function SettingsTab({
 
   const integrationPanels = (
     <div className="content-grid settings-section-grid">
+      <AgentAccessPanel backendOnline={backendOnline} onCopyText={onCopyText} />
       <Panel
         title={t("settingsTab.integrations.title", { defaultValue: "Integrations" })}
         subtitle={t("settingsTab.integrations.subtitle", {

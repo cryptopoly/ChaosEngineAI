@@ -309,15 +309,21 @@ def generate(state: ChaosEngineState, request: GenerateRequest) -> dict[str, Any
         state.add_activity("Chat completion", session["title"])
         state._persist_sessions()
 
+        from backend_service.helpers.busy_advice import current_advice
+
         return {
             "session": session,
             "assistant": assistant_message,
             "runtime": state.runtime.status(active_requests=state.active_requests, requests_served=state.requests_served),
+            "advice": current_advice(),
         }
 
 
-def generate_stream(state: ChaosEngineState, request: GenerateRequest):
-    """SSE streaming version of generate(). Returns a StreamingResponse."""
+def generate_stream(state: ChaosEngineState, request: GenerateRequest, app_request: Any = None):
+    """SSE streaming version of generate(). Returns a StreamingResponse.
+
+    ``app_request`` (the route's Request) is what the studio tools run with when ``studioTools`` is on.
+    """
     with state._lock:
         session = state._ensure_session(request.sessionId, request.title)
         launch_preferences = state._launch_preferences()
@@ -502,6 +508,24 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest):
     # generation isn't aborted before it starts.
     chaosengine.clear_chat_cancel(session["id"])
     session_id_for_cancel = session["id"]
+    # D-60: studio tools for this turn, with the approve-the-plan gate.
+    studio_registry = None
+    studio_gate = None
+    if request.studioTools and app_request is not None:
+        from backend_service.tools import registry as _base_registry
+        from backend_service.tools.studio import STUDIO_HINT, studio_registry as _studio_registry
+        from backend_service.tools.studio_gate import StudioGate
+
+        studio_registry = _studio_registry(app_request, _base_registry, available_tools if enable_tools else [])
+        studio_gate = StudioGate(
+            session_id_for_cancel,
+            auto_approve=request.studioAutoApprove,
+            is_cancelled=lambda: chaosengine.is_chat_cancel_requested(session_id_for_cancel),
+            state=chaosengine,
+        )
+        effective_system_prompt = f"{effective_system_prompt}\n\n{STUDIO_HINT}" if effective_system_prompt else STUDIO_HINT
+        enable_tools = True
+        available_tools = None
 
     def _sse_stream():
         full_text = ""
@@ -561,6 +585,14 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest):
                 "chat", "warning",
                 f"[{model_tag}] Memory gate skipped due to error: {exc}",
             )
+
+        # The machine is busy (a heavy job runs) or about to run short of memory: say so once, before
+        # the first token. Advice only; the gate above is the one that refuses.
+        from backend_service.helpers.busy_advice import current_advice
+
+        advice = current_advice()
+        if advice is not None and advice["level"] != "ok":
+            yield f"data: {json.dumps({'advice': advice})}\n\n"
 
         yield f"data: {json.dumps({'phase': 'prompt_eval'})}\n\n"
 
@@ -654,6 +686,8 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest):
                     max_tokens=request.maxTokens, temperature=request.temperature,
                     images=request.images,
                     available_tools=available_tools,
+                    **({"tool_registry": studio_registry, "gate": studio_gate, "max_iterations": 30}
+                       if studio_registry is not None else {}),
                 ):
                     if chaosengine.is_chat_cancel_requested(session_id_for_cancel):
                         cancelled = True
@@ -695,6 +729,19 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest):
                             yield _f
                         agent_tool_calls.append(event["tool_call_result"])
                         yield f"data: {json.dumps({'toolCallResult': event['tool_call_result']})}\n\n"
+                    elif "studio_plan" in event:
+                        # Leave prompt_eval: the app's 60 s prefill watchdog must not cancel a plan the user is reading.
+                        phase_event = _maybe_emit_generating_phase()
+                        if phase_event:
+                            yield phase_event
+                        _f = _flush_tokens()
+                        if _f:
+                            yield _f
+                        yield f"data: {json.dumps({'studioPlan': event['studio_plan']})}\n\n"
+                    elif "studio_plan_resolved" in event:
+                        yield f"data: {json.dumps({'studioPlanResolved': event['studio_plan_resolved']})}\n\n"
+                    elif event.get("keepalive"):
+                        yield ": keepalive\n\n"  # SSE comment: keeps the stream open while the plan waits
                     elif event.get("done"):
                         # Agent loop finished — handled below
                         pass
@@ -944,6 +991,8 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest):
                 assistant_message["reasoning"] = full_reasoning
             if agent_tool_calls:
                 assistant_message["toolCalls"] = agent_tool_calls
+            if studio_gate is not None and studio_gate.resolved:
+                assistant_message["studioPlans"] = studio_gate.resolved
             if stream_rag_citations:
                 assistant_message["citations"] = stream_rag_citations
             session["messages"].append(assistant_message)
@@ -968,8 +1017,16 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest):
                 done_payload["cancelled"] = True
         yield f"data: {json.dumps(done_payload)}\n\n"
 
+    def _studio_guarded_stream():
+        # D-60: a closed stream (window reload, lost connection) ends a plan's wait instead of letting it sit 30 min.
+        try:
+            yield from _sse_stream()
+        except GeneratorExit:
+            chaosengine.request_cancel_chat(session_id_for_cancel)
+            raise
+
     return StreamingResponse(
-        _sse_stream(),
+        _studio_guarded_stream() if studio_gate is not None else _sse_stream(),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
     )

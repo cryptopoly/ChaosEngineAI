@@ -16,6 +16,8 @@ from fastapi import APIRouter, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, Response, StreamingResponse
 from pydantic import BaseModel, Field
 
+from backend_service.progress import GenerationCancelled
+
 router = APIRouter()
 
 MAX_UPLOAD_BYTES = 500 * 1024 * 1024
@@ -31,6 +33,23 @@ class SynthesizeRequest(BaseModel):
     speed: float = Field(default=1.0, ge=0.5, le=2.0)
 
 
+class SpeakRequest(BaseModel):
+    """One request for every voice: Kokoro, a preset speaker, a designed voice or a cloned voice."""
+
+    text: str = Field(min_length=1, max_length=20_000)
+    voice: str = Field(default="af_heart", min_length=1, max_length=64)
+    # A style instruction (1.7B CustomVoice), or the written description of the voice for ``design``.
+    style: str = Field(default="", max_length=500)
+    speed: float = Field(default=1.0, ge=0.5, le=2.0)
+    # Semitones; applied as a post-processing step on every model.
+    pitch: float = Field(default=0.0, ge=-12.0, le=12.0)
+    seed: int | None = Field(default=None, ge=0, le=2**31 - 1)
+    # Catalog key of a specific model; empty lets the backend choose from the voice.
+    model: str = Field(default="", max_length=64)
+    # Required from agents and other computers for cloned voices.
+    permissionConfirmed: bool = False
+
+
 class SettingsRequest(BaseModel):
     sttModel: str | None = Field(default=None, max_length=128)
     language: str | None = Field(default=None, max_length=8)
@@ -41,6 +60,7 @@ class SettingsRequest(BaseModel):
     vadSilenceMs: int | None = Field(default=None, ge=300, le=3000)
     bargeIn: bool | None = None
     idleUnloadMinutes: int | None = Field(default=None, ge=0, le=240)
+    allowAgentCloning: bool | None = None
 
 
 class VadRequest(BaseModel):
@@ -124,8 +144,15 @@ def get_settings(request: Request) -> dict[str, Any]:
 
 @router.post("/api/voice/settings")
 def put_settings(request: Request, body: SettingsRequest) -> dict[str, Any]:
+    from backend_service.voice_clone_safety import audit, request_origin  # noqa: PLC0415
     from backend_service.voice_runtime import save_settings  # noqa: PLC0415
 
+    if body.allowAgentCloning is not None:
+        # An agent must never be able to grant itself cloning.
+        origin = request_origin(request)
+        if origin != "ui":
+            raise HTTPException(status_code=403, detail="This setting can only be changed in the ChaosEngineAI window.")
+        audit("setting", allowAgentCloning=body.allowAgentCloning, origin=origin)
     return save_settings(body.model_dump())
 
 
@@ -186,16 +213,19 @@ def transcribe(
 
     tmp_path, suffix = _receive_upload(audio)
     try:
+        from backend_service.helpers.job_queue import HEAVY_JOBS  # noqa: PLC0415
+
         try:
-            result = transcribe_file(
-                tmp_path,
-                model,
-                language.strip() or None,
-                task=task,
-                words=words,
-                speakers=speakers,
-                speaker_count=speakerCount,
-            )
+            with HEAVY_JOBS.slot("voice", "ui", "transcript"):
+                result = transcribe_file(
+                    tmp_path,
+                    model,
+                    language.strip() or None,
+                    task=task,
+                    words=words,
+                    speakers=speakers,
+                    speaker_count=speakerCount,
+                )
         except HTTPException:
             raise
         except Exception as exc:  # noqa: BLE001 - mapped to 400 / 503
@@ -254,16 +284,87 @@ def voice_activity(request: Request, body: VadRequest) -> dict[str, Any]:
 
 @router.post("/api/voice/synthesize")
 def synthesize(request: Request, body: SynthesizeRequest) -> Response:
-    """Whole text in one WAV (Studio)."""
-    from backend_service.voice_runtime import synthesize as run  # noqa: PLC0415
+    """Whole text in one WAV with a built-in voice. Kept for older callers; ``/api/voice/speak`` is the general route."""
+    from backend_service import voice_speak  # noqa: PLC0415
+    from backend_service.helpers.job_queue import HEAVY_JOBS  # noqa: PLC0415
 
     if not body.text.strip():
         raise HTTPException(status_code=400, detail="Text is required.")
+    if body.voice.strip().startswith(voice_speak.CLONE_PREFIX):
+        raise HTTPException(status_code=400, detail="Cloned voices speak through /api/voice/speak.")
     try:
-        wav, _duration = run(body.text, body.voice, body.speed)
+        with HEAVY_JOBS.slot("voice", "ui", "speech"):
+            result = voice_speak.speak(body.text, body.voice, speed=body.speed, origin="ui")
     except Exception as exc:  # noqa: BLE001
         raise _worker_error(exc) from exc
-    return Response(content=wav, media_type="audio/wav")
+    return Response(content=result["wav"], media_type="audio/wav")
+
+
+@router.post("/api/voice/speak/cancel")
+def speak_cancel(request: Request) -> dict[str, Any]:
+    """The Speak screen's Cancel: stop the screen's own running speech job and drop its waiting ones.
+
+    An agent's job is left alone. Returns ``{cancelled}``: whether anything was stopped or dropped.
+    """
+    from backend_service import voice_speak  # noqa: PLC0415
+    from backend_service.helpers.job_queue import HEAVY_JOBS  # noqa: PLC0415
+
+    def stop_running() -> bool:
+        # Only while a screen job runs: the worker is shared with transcription and chat voice.
+        return HEAVY_JOBS.running_source("voice") == "ui" and voice_speak.request_cancel()
+
+    return {"cancelled": HEAVY_JOBS.cancel_studio("voice", stop_running)}
+
+
+@router.post("/api/voice/speak")
+def speak(request: Request, body: SpeakRequest) -> dict[str, Any]:
+    """Speak with any voice. The backend picks the model from the voice.
+
+    Returns ``{audio (base64 WAV), durationS, seconds, chunks, voice, kind, model, modelName, clonedVoice,
+    libraryId, notes}``. A cloned voice is checked like ``/api/voice/clone/speak`` (permission record, agent
+    switch, ``permissionConfirmed`` from agents), tagged, watermarked and saved to the Library
+    (``libraryId``); other voices are not saved here.
+    """
+    from backend_service import voice_speak  # noqa: PLC0415
+    from backend_service import voice_clone_safety as safety  # noqa: PLC0415
+    from backend_service.helpers.job_queue import HEAVY_JOBS  # noqa: PLC0415
+
+    origin = "ui"
+    if body.voice.strip().startswith(voice_speak.CLONE_PREFIX):
+        origin = safety.request_origin(request)
+        if not safety.clone_allowed(request):
+            safety.audit("refused", origin=origin, path=str(request.url.path))
+            raise HTTPException(status_code=403, detail=safety.REFUSED_MESSAGE)
+    try:
+        with HEAVY_JOBS.slot("voice", "ui" if origin == "ui" else "agent", "speech"):
+            result = voice_speak.speak(
+                body.text, body.voice, style=body.style, speed=body.speed, pitch=body.pitch, seed=body.seed,
+                model=body.model, origin=origin, permission_confirmed=body.permissionConfirmed,
+            )
+    except GenerationCancelled as exc:
+        raise HTTPException(status_code=499, detail="Speech was cancelled.") from exc
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001
+        raise _worker_error(exc) from exc
+    return {"audio": base64.b64encode(result["wav"]).decode("ascii"), **{k: v for k, v in result.items() if k != "wav"}}
+
+
+@router.get("/api/voice/voices")
+def list_voices(request: Request) -> dict[str, Any]:
+    """Built-in, preset, designed and cloned voices in one list (cloned ones only where cloning is allowed)."""
+    from backend_service import voice_clone_safety as safety  # noqa: PLC0415
+    from backend_service import voice_speak  # noqa: PLC0415
+
+    return {"voices": voice_speak.list_voices(include_clones=safety.clone_allowed(request))}
+
+
+@router.get("/api/voice/models")
+def list_voice_models(request: Request) -> dict[str, Any]:
+    """Every Qwen3-TTS model (speak, style, clone, design) with install state and capabilities."""
+    from backend_service import voice_clone  # noqa: PLC0415
+
+    return {"models": voice_clone.list_models(every_model=True), "available": voice_clone.available_here()}
 
 
 @router.post("/api/voice/speak/stream")
@@ -339,11 +440,15 @@ def save_speech(
 ) -> dict[str, Any]:
     from backend_service import voice_library  # noqa: PLC0415
 
+    from backend_service.voice_clone_safety import read_wav_tag  # noqa: PLC0415
+
     tmp_path, suffix = _receive_upload(audio)
     try:
+        # Speech from a cloned voice keeps its flag when saved again (the tag is in the file).
+        cloned = bool((read_wav_tag(tmp_path) or {}).get("clonedVoice")) if suffix == ".wav" else False
         return voice_library.create(
             "speech",
-            {"text": text, "voice": voice or None, "speed": speed, "title": title or None},
+            {"text": text, "voice": voice or None, "speed": speed, "title": title or None, "clonedVoice": cloned or None},
             audio_file=tmp_path,
             audio_ext=suffix,
         )
@@ -368,7 +473,9 @@ def get_library_item(request: Request, item_id: str) -> dict[str, Any]:
     item = voice_library.get(_library_id(item_id))
     if item is None:
         raise HTTPException(status_code=404, detail="Item not found.")
-    return item
+    # Where the audio lives on this machine, so other areas (the storyboard) can import the file.
+    audio = voice_library.audio_path(item["id"])
+    return {**item, "audioPath": str(audio) if audio is not None else None}
 
 
 @router.post("/api/voice/library/{item_id}")
@@ -423,12 +530,24 @@ def encode_audio(request: Request, audio: UploadFile, format: str = Form(default
 
 
 def _mp3_response(source: Path) -> Response:
+    from backend_service.voice_clone_safety import TAG_PREFIX, read_wav_tag  # noqa: PLC0415
     from backend_service.voice_runtime import encode_mp3  # noqa: PLC0415
 
+    # A cloned voice's AI tag goes with it into the MP3.
+    tag = read_wav_tag(source) if source.suffix.lower() == ".wav" else None
     with tempfile.TemporaryDirectory(prefix="chaosengine-mp3-") as folder:
         target = Path(folder) / "out.mp3"
         try:
-            encode_mp3(source, target)
+            if tag:
+                encode_mp3(source, target, comment=TAG_PREFIX + json.dumps(tag, separators=(",", ":")))
+            else:
+                encode_mp3(source, target)
         except Exception as exc:  # noqa: BLE001
             raise _worker_error(exc) from exc
         return Response(content=target.read_bytes(), media_type="audio/mpeg")
+
+
+# Voice cloning lives in its own module; included here so routes/__init__.py stays unchanged.
+from backend_service.routes.voice_clone import router as _clone_router  # noqa: E402
+
+router.include_router(_clone_router)

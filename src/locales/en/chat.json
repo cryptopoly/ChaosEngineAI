@@ -411,5 +411,80 @@
     "copied": "Copied",
     "copyCode": "Copy code",
     "copy": "Copy"
+  },
+  "busy": {
+    "slowerTitle": "Machine is busy",
+    "riskyTitle": "Not enough memory for both",
+    "dismiss": "Dismiss"
+  },
+  "studioChat": {
+    "switch": {
+      "label": "Studio",
+      "on": "Studio ON",
+      "onTooltip": "Studio tools on: the model can plan images, video, speech and music. Nothing renders until you approve the plan.",
+      "offTooltip": "Offer the studio tools (images, video, speech, music, Storyboard) to this model"
+    },
+    "plan": {
+      "title": "Plan to approve",
+      "subtitle": "Nothing renders until you approve. This covers these items in this turn only.",
+      "unanswered": "Not answered. Nothing was made.",
+      "edited": "You asked to change the plan. Nothing was made.",
+      "decided": "Approved {approved} of {total}.",
+      "sent": "Sent. Waiting for the model...",
+      "time": "about {time}",
+      "memory": "about {gb} GB",
+      "approved": "Approved",
+      "declined": "Declined",
+      "approveThis": "Approve this",
+      "alwaysAllow": "Always allow renders in this chat",
+      "approveAll": "Approve all",
+      "approve": "Approve",
+      "deny": "Deny",
+      "edit": "Edit by chat",
+      "frames": "{count} frames",
+      "fps": "{fps} fps",
+      "steps": "{count} steps",
+      "variations": "{count} takes",
+      "instrumental": "instrumental",
+      "shots": "{count} shots",
+      "what": "makes: {what}",
+      "preview": "preview",
+      "force": "includes locked shots",
+      "timeRecommended": "about {time} at the recommended size",
+      "inputs": "input images: {files}",
+      "more": "more",
+      "less": "less",
+      "memoryLoaded": "{model} stays loaded: about {gb} GB free.",
+      "memoryFree": "About {gb} GB free.",
+      "approveThisLabel": "Approve only this {kind}: {prompt}"
+    },
+    "job": {
+      "declined": "Declined. Nothing was made.",
+      "queued": "Queued (position {position})",
+      "runningPhase": "Running: {phase}",
+      "running": "Running",
+      "done": "Done",
+      "cancelled": "Cancelled",
+      "failed": "Failed",
+      "cancel": "Cancel",
+      "openProject": "Open in Project",
+      "openLibrary": "Open in Library",
+      "interrupted": "Interrupted (the app restarted)"
+    },
+    "kind": {
+      "image": "Image",
+      "video": "Video",
+      "speech": "Speech",
+      "music": "Music",
+      "sound": "Sound",
+      "storyboard": "Storyboard",
+      "film": "Film",
+      "captions": "Captions"
+    },
+    "auto": {
+      "label": "Renders auto-approved",
+      "tooltip": "Renders in this chat run without a plan card. This ends after {hours} hours or when the app restarts.",
+      "off": "Turn off"
+    }
   }
 }

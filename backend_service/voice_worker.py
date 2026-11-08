@@ -283,11 +283,27 @@ def transcribe(request: dict[str, Any]) -> dict[str, Any]:
 # Text-to-speech
 # ---------------------------------------------------------------------------
 
+def _free_tts() -> None:
+    had_model = _tts["model"] is not None
+    _tts["key"], _tts["model"] = None, None
+    if not had_model:
+        return
+    try:
+        import gc
+
+        gc.collect()
+        import mlx.core as mx  # type: ignore[import-untyped]
+
+        mx.clear_cache()
+    except Exception:  # noqa: BLE001 - mlx absent on Windows / Linux
+        pass
+
+
 def _load_tts(engine: str, source: str) -> Any:
     key = (engine, source)
     if _tts["key"] == key:
         return _tts["model"]
-    _tts["key"], _tts["model"] = None, None
+    _free_tts()  # the old model leaves memory before the next one is mapped in
     _short_espeak_data_path()
     if engine == "mlx-audio":
         from mlx_audio.tts.utils import load_model  # type: ignore[import-untyped]
@@ -304,12 +320,99 @@ def _load_tts(engine: str, source: str) -> Any:
     return model
 
 
+def synthesize_cloned(model: Any, text: str, ref_audio_path: str, ref_text: str):
+    """Qwen3-TTS Base voice cloning: speaker from ``ref_audio_path``, its words in ``ref_text``.
+
+    No ``voice`` is passed: a speaker name and ``ref_audio`` together conflict in mlx-audio. The
+    reference is decoded here with PyAV at the model's rate, so no ffmpeg command is needed.
+    """
+    import mlx.core as mx  # type: ignore[import-untyped]
+    import numpy as np
+
+    sample_rate = int(getattr(model, "sample_rate", 24_000))
+    reference = mx.array(decode_audio(ref_audio_path, sample_rate))
+    parts = [
+        np.asarray(result.audio, dtype=np.float32).reshape(-1)
+        for result in model.generate(text, ref_audio=reference, ref_text=ref_text)
+    ]
+    if not parts:
+        raise RuntimeError("The speech model produced no audio.")
+    return np.concatenate(parts), sample_rate
+
+
+def _collect(results: Any, sample_rate: int):
+    import numpy as np
+
+    parts = [np.asarray(result.audio, dtype=np.float32).reshape(-1) for result in results]
+    if not parts:
+        raise RuntimeError("The speech model produced no audio.")
+    return np.concatenate(parts), sample_rate
+
+
+def _seed(seed: Any) -> None:
+    if seed is None:
+        return
+    import mlx.core as mx  # type: ignore[import-untyped]
+
+    mx.random.seed(int(seed))
+
+
+def synthesize_preset(model: Any, text: str, speaker: str, instruct: str | None, language: str, seed: Any = None):
+    """Qwen3-TTS CustomVoice: one of the model's preset speakers, with an optional style instruction.
+
+    The 0.6B model ignores ``instruct`` (mlx-audio drops it), so the backend only sends it to 1.7B.
+    """
+    _seed(seed)
+    sample_rate = int(getattr(model, "sample_rate", 24_000))
+    return _collect(
+        model.generate_custom_voice(text=text, speaker=speaker, language=language or "auto", instruct=instruct or None),
+        sample_rate,
+    )
+
+
+def synthesize_design(model: Any, text: str, description: str, language: str, seed: Any = None):
+    """Qwen3-TTS VoiceDesign: a voice made from a written description."""
+    _seed(seed)
+    sample_rate = int(getattr(model, "sample_rate", 24_000))
+    return _collect(
+        model.generate_voice_design(text=text, instruct=description, language=language or "auto"), sample_rate
+    )
+
+
+def _wav_reply(samples: Any, sample_rate: int) -> dict[str, Any]:
+    return {
+        "wavB64": base64.b64encode(wav_bytes(samples, sample_rate)).decode("ascii"),
+        "sampleRate": sample_rate,
+        "durationS": round(len(samples) / sample_rate, 2),
+    }
+
+
 def synthesize(request: dict[str, Any]) -> dict[str, Any]:
     import numpy as np
 
     engine = str(request["engine"])
     model = _load_tts(engine, str(request["source"]))
     text = str(request["text"])
+    mode = str(request.get("mode") or "")
+    if mode in ("preset", "design"):
+        if engine != "mlx-audio":
+            raise ValueError("Preset and designed voices need the mlx-audio engine.")
+        language = str(request.get("language") or "auto")
+        if mode == "preset":
+            samples, sample_rate = synthesize_preset(
+                model, text, str(request["speaker"]), request.get("instruct"), language, request.get("seed")
+            )
+        else:
+            samples, sample_rate = synthesize_design(
+                model, text, str(request["instruct"]), language, request.get("seed")
+            )
+        return _wav_reply(samples, sample_rate)
+    if request.get("refAudioPath"):
+        if engine != "mlx-audio":
+            raise ValueError("Voice cloning needs the mlx-audio engine.")
+        _seed(request.get("seed"))
+        samples, sample_rate = synthesize_cloned(model, text, str(request["refAudioPath"]), str(request.get("refText") or ""))
+        return _wav_reply(samples, sample_rate)
     voice = str(request.get("voice") or "af_heart")
     speed = float(request.get("speed") or 1.0)
     prefix = voice[:1] if voice[:1] in KOKORO_ONNX_LANG else "a"
@@ -325,11 +428,7 @@ def synthesize(request: dict[str, Any]) -> dict[str, Any]:
         sample_rate = int(getattr(model, "sample_rate", 24_000))
     else:
         samples, sample_rate = model.create(text, voice=voice, speed=speed, lang=KOKORO_ONNX_LANG[prefix])
-    return {
-        "wavB64": base64.b64encode(wav_bytes(samples, sample_rate)).decode("ascii"),
-        "sampleRate": sample_rate,
-        "durationS": round(len(samples) / sample_rate, 2),
-    }
+    return _wav_reply(samples, sample_rate)
 
 
 # ---------------------------------------------------------------------------
@@ -432,6 +531,9 @@ def encode(request: dict[str, Any]) -> dict[str, Any]:
             raise ValueError("The file has no audio track.")
         rate = source.streams.audio[0].rate or 24_000
         with av.open(str(request["out"]), "w", format="mp3") as target:
+            # The AI tag of a cloned voice travels into the MP3's ID3 comment.
+            if request.get("comment"):
+                target.metadata["comment"] = str(request["comment"])
             stream = target.add_stream("libmp3lame", rate=rate, layout="mono")
             stream.bit_rate = 128_000
             resampler = av.AudioResampler(format=stream.format.name, layout="mono", rate=rate)
@@ -451,12 +553,33 @@ def encode(request: dict[str, Any]) -> dict[str, Any]:
 # Loop
 # ---------------------------------------------------------------------------
 
+def _watermark_module():
+    # Run as a script in the voice venv the sibling is importable by name; imported in tests through the package.
+    try:
+        import voice_worker_watermark as module  # type: ignore[import-not-found]
+    except ImportError:
+        from backend_service import voice_worker_watermark as module
+    return module
+
+
+def watermark(request: dict[str, Any]) -> dict[str, Any]:
+    """Add the AudioSeal watermark to a WAV (cloned voices, D-47)."""
+    return _watermark_module().embed(request, decode_audio, wav_bytes)
+
+
+def detect_watermark(request: dict[str, Any]) -> dict[str, Any]:
+    return _watermark_module().detect(request, decode_audio)
+
+
 def unload(request: dict[str, Any]) -> dict[str, Any]:
     what = request.get("what") or "all"
+    loaded = {"voice_worker_watermark", "backend_service.voice_worker_watermark"} & set(sys.modules)
+    if what in ("watermark", "all") and loaded:
+        _watermark_module().unload()
     if what in ("stt", "all"):
         _stt["key"], _stt["model"] = None, None
     if what in ("tts", "all"):
-        _tts["key"], _tts["model"] = None, None
+        _free_tts()
     if what in ("speakers", "all"):
         _diarizer["key"], _diarizer["model"] = None, None
     try:
@@ -487,6 +610,8 @@ _COMMANDS = {
     "vad": vad,
     "diarize": diarize,
     "encode": encode,
+    "watermark": watermark,
+    "detectWatermark": detect_watermark,
     "unload": unload,
 }
 

@@ -127,16 +127,9 @@ class GPUMonitor:
                 timeout=10,
                 **_SUBPROCESS_KWARGS,
             )
-            parts = [p.strip() for p in out.strip().split(",")]
-            if len(parts) >= 6:
-                return {
-                    "gpu_name": parts[0],
-                    "vram_total_gb": round(float(parts[1]) / 1024, 2),
-                    "vram_used_gb": round(float(parts[2]) / 1024, 2),
-                    "utilization_pct": float(parts[3]),
-                    "temperature_c": float(parts[4]),
-                    "power_w": float(parts[5]),
-                }
+            parsed = _parse_nvidia_smi(out)
+            if parsed is not None:
+                return parsed
         except (FileNotFoundError, subprocess.SubprocessError, ValueError):
             pass
 
@@ -297,6 +290,77 @@ def get_gpu_metrics() -> dict[str, Any]:
 # to spawn on Windows. Cleared by ``reset_vram_total_cache()`` for tests.
 _VRAM_TOTAL_LOCK = threading.Lock()
 _VRAM_TOTAL_CACHE: dict[str, float | None] = {}
+
+
+def _nvidia_number(text: str) -> float | None:
+    """A number from an nvidia-smi CSV field, or None for ``[N/A]`` / ``Not Supported``."""
+    try:
+        return float(text.strip())
+    except ValueError:
+        return None
+
+
+def _parse_nvidia_smi(output: str) -> dict[str, Any] | None:
+    """Parse the first GPU line of the ``--query-gpu=name,memory.total,...`` CSV.
+
+    A GPU that shares system memory (DGX Spark's GB10, GH200, Jetson) reports
+    ``[N/A]`` for memory.total; its usable memory is the system RAM, so the
+    totals come from psutil and ``unified_memory`` is set.
+    """
+    lines = [line for line in output.strip().splitlines() if line.strip()]
+    if not lines:
+        return None
+    parts = [p.strip() for p in lines[0].split(",")]
+    if len(parts) < 6 or not parts[0]:
+        return None
+    total = _nvidia_number(parts[1])
+    used = _nvidia_number(parts[2])
+    unified = total is None
+    if unified:
+        import psutil
+
+        memory = psutil.virtual_memory()
+        total_gb = round(memory.total / 1024**3, 2)
+        used_gb = round((memory.total - memory.available) / 1024**3, 2)
+    else:
+        total_gb = round(total / 1024, 2)
+        used_gb = round(used / 1024, 2) if used is not None else None
+    return {
+        "gpu_name": parts[0],
+        "vram_total_gb": total_gb,
+        "vram_used_gb": used_gb,
+        "utilization_pct": _nvidia_number(parts[3]),
+        "temperature_c": _nvidia_number(parts[4]),
+        "power_w": _nvidia_number(parts[5]),
+        "unified_memory": unified,
+    }
+
+
+_SHARED_MEMORY_NVIDIA: dict[str, bool] = {}
+
+
+def nvidia_shared_memory() -> bool:
+    """True on a Linux NVIDIA GPU with no memory of its own (DGX Spark, GH200, Jetson).
+
+    nvidia-smi reports ``memory.total`` as ``[N/A]`` / ``Not Supported`` there.
+    Checked once per process; False wherever nvidia-smi is missing.
+    """
+    if "value" in _SHARED_MEMORY_NVIDIA:
+        return _SHARED_MEMORY_NVIDIA["value"]
+    value = False
+    if sys.platform.startswith("linux") and shutil.which("nvidia-smi"):
+        try:
+            out = subprocess.run(
+                ["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader,nounits"],
+                capture_output=True, text=True, timeout=10,
+            ).stdout
+            first = next((line for line in out.splitlines() if line.strip()), "")
+            name, _, total = first.partition(",")
+            value = bool(name.strip()) and _nvidia_number(total) is None
+        except (OSError, subprocess.SubprocessError):
+            value = False
+    _SHARED_MEMORY_NVIDIA["value"] = value
+    return value
 
 
 def get_device_vram_total_gb() -> float | None:

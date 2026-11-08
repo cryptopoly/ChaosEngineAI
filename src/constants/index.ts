@@ -1,5 +1,6 @@
 export { tabs } from "./tabs";
 export type { TabConfig } from "./tabs";
+export { HOME_STUDIO_ENABLED, HOME_STUDIO_GROUPS, HOME_STUDIO_TABS, isHomeStudioTab } from "./features";
 export { sidebarGroups } from "./sidebarGroups";
 export {
   LEGACY_TAB_REDIRECTS,
@@ -11,7 +12,7 @@ export {
   normalizeStoredTabId,
   resolveTabRequest,
 } from "./tabRedirects";
-export type { LegacyTabId, ModelsPreset, TabNavigation, TabRequest } from "./tabRedirects";
+export type { LegacyTabId, ModelsPreset, StoryboardNavigation, TabNavigation, TabRequest } from "./tabRedirects";
 export type { SidebarGroup } from "./sidebarGroups";
 export { CAPABILITY_META } from "./capabilities";
 export {

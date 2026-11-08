@@ -3,7 +3,7 @@
 Seven helpers lifted out of ``video_runtime/__init__.py``:
 
 * ``finalize_config`` — apply per-model defaults + frame alignment +
-  scheduler resolution + Phase E1 prompt enhancement + Phase E2 CFG
+  scheduler resolution + Phase E2 CFG
   decay note. Returns a frozen config + per-run notes.
 * ``swap_scheduler`` — replace the pipeline's scheduler class with the
   one named in ``_SCHEDULER_CLASSES``.
@@ -29,6 +29,7 @@ of the v0.8.0 Phase 1c-14 refactor.
 from __future__ import annotations
 
 import importlib
+import os
 import tempfile
 from dataclasses import replace
 from pathlib import Path
@@ -43,7 +44,6 @@ from backend_service.video_runtime.defaults import (
 from backend_service.video_runtime.repos import (
     PIPELINE_REGISTRY,
     _LTX_DEFAULT_NEGATIVE_PROMPT,
-    _enhance_prompt,
 )
 from backend_service.video_runtime.types import VideoGenerationConfig
 
@@ -94,15 +94,6 @@ def finalize_config(
             f"guidance_rescale=0.7."
         )
 
-    # Phase E1 — auto-enhance short prompts. Default-on; opt-out via
-    # config.enhancePrompt=False. Only fires below the word-count
-    # threshold so a long custom prompt is never modified.
-    enhanced_prompt = config.prompt
-    if config.enhancePrompt:
-        enhanced_prompt, enhance_note = _enhance_prompt(config.repo, config.prompt)
-        if enhance_note:
-            notes.append(enhance_note)
-
     # Phase E2 — CFG decay note. Only surfaces when decay actually
     # has somewhere to ramp (initial CFG > 1.5 — the floor that
     # keeps classifier-free guidance enabled throughout the loop).
@@ -119,7 +110,7 @@ def finalize_config(
     return (
         replace(
             config,
-            prompt=enhanced_prompt,
+            prompt=config.prompt,
             steps=steps,
             guidance=guidance,
             numFrames=aligned_frames,
@@ -419,7 +410,17 @@ def encode_frames_to_mp4(frames: list[Any], fps: int) -> bytes:
             import numpy as np  # type: ignore
             import imageio  # type: ignore
 
-            writer = imageio.get_writer(tmp_path, fps=fps, codec="libx264", quality=8)
+            # One ffmpeg lookup for the app: point imageio at it and use the encoder it has.
+            from backend_service.storyboard import ffmpeg_bin
+
+            found = ffmpeg_bin.find_ffmpeg(allow_path=True)
+            if found is not None:
+                os.environ.setdefault("IMAGEIO_FFMPEG_EXE", found[0])
+            try:
+                codec = ffmpeg_bin.h264_encoder() if found is not None else "libx264"
+            except RuntimeError:
+                codec = "libx264"
+            writer = imageio.get_writer(tmp_path, fps=fps, codec=codec, quality=8)
             try:
                 for frame in frames:
                     array = np.asarray(frame)

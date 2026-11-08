@@ -10,6 +10,11 @@ on:
   pull_request:
     branches: [main, staging]
   workflow_dispatch:
+    inputs:
+      linux_release_mode:
+        description: "Stage the Linux packages in release mode (embedded Python runtime, pinned constraints) so they run on their own"
+        type: boolean
+        default: false
 
 # A new push to the same branch or PR cancels the run it supersedes.
 concurrency:
@@ -32,6 +37,12 @@ jobs:
             shell: bash
             venv-activate: source .venv/bin/activate
             advisory: false
+          # Linux ARM64 (DGX Spark class, FU-137). Advisory until it has
+          # passed on a few pushes; then make it required like the others.
+          - os: ubuntu-24.04-arm
+            shell: bash
+            venv-activate: source .venv/bin/activate
+            advisory: true
           - os: macos-latest
             shell: bash
             venv-activate: source .venv/bin/activate
@@ -56,7 +67,7 @@ jobs:
           python-version: "3.12"
       - uses: dtolnay/rust-toolchain@stable
       - name: Linux system deps for Tauri
-        if: matrix.os == 'ubuntu-latest'
+        if: startsWith(matrix.os, 'ubuntu')
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -87,6 +98,15 @@ jobs:
           python -m pytest tests/ -v --tb=short \
             --cov=backend_service --cov=cache_compression --cov=dflash \
             --cov-report=term --cov-report=json:coverage.json
+      - name: Linux ARM64 and x86_64 wheels exist for every pinned package
+        # Proves the Linux venv, the portable voice pack, the GPU runtime and
+        # vLLM all resolve from wheels on both architectures (FU-137).
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
+        run: |
+          ${{ matrix.venv-activate }}
+          python scripts/check-platform-wheels.py --arch aarch64
+          python scripts/check-platform-wheels.py --arch x86_64
       - name: Coverage gate vs baseline
         # Linux is the canonical baseline runner; macOS/Windows numbers
         # may differ slightly because some platform-gated branches only
@@ -121,6 +141,10 @@ jobs:
           - os: ubuntu-22.04
             platform: linux
             arch: x86_64
+            bundle_targets: deb,appimage
+          - os: ubuntu-22.04-arm
+            platform: linux
+            arch: aarch64
             bundle_targets: deb,appimage
           - os: windows-latest
             platform: windows
@@ -234,7 +258,11 @@ jobs:
         run: |
           python -m venv .venv
           .venv/bin/pip install --upgrade pip
-          .venv/bin/pip install fastapi psutil uvicorn "pypdf>=6.21.4" python-multipart huggingface_hub
+          if [ "${{ inputs.linux_release_mode }}" = "true" ]; then
+            .venv/bin/pip install -c release-constraints.txt fastapi psutil uvicorn "pypdf>=6.21.4" python-multipart huggingface_hub babel
+          else
+            .venv/bin/pip install fastapi psutil uvicorn "pypdf>=6.21.4" python-multipart huggingface_hub
+          fi
 
       - name: Create Python venv (Windows)
         if: matrix.platform == 'windows'
@@ -254,7 +282,10 @@ jobs:
 
       # Use dev mode staging to skip llama.cpp binary requirement.
       # To enable llama.cpp, build the binaries and set CHAOSENGINE_LLAMA_BIN_DIR.
+      # linux_release_mode keeps the release staging on Linux so the packages
+      # carry the embedded runtime and can be installed and run on their own.
       - name: Override bundle command to dev mode staging
+        if: ${{ !(inputs.linux_release_mode && matrix.platform == 'linux') }}
         shell: bash
         run: |
           node -e "
@@ -265,6 +296,12 @@ jobs:
           "
 
       # ── Build ──────────────────────────────────────────────────
+      # src-tauri/target is restored from the cache, bundle outputs included, so
+      # without this the artifacts also carried packages from an older version.
+      - name: Remove bundles left by the cache
+        shell: bash
+        run: rm -rf src-tauri/target/release/bundle
+
       - name: Build Tauri app (macOS, signed)
         if: matrix.platform == 'darwin'
         env:
@@ -280,6 +317,7 @@ jobs:
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          CHAOSENGINE_RELEASE_ALLOW_NO_LLAMA: "1"
         run: npx tauri build --bundles ${{ matrix.bundle_targets }}
 
       # ── Upload artifacts ───────────────────────────────────────
@@ -296,7 +334,7 @@ jobs:
         if: matrix.platform == 'linux'
         uses: actions/upload-artifact@v7
         with:
-          name: ChaosEngineAI-linux
+          name: ChaosEngineAI-linux-${{ matrix.arch }}
           path: |
             src-tauri/target/release/bundle/deb/*.deb
             src-tauri/target/release/bundle/appimage/*.AppImage

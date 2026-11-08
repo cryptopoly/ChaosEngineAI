@@ -114,7 +114,7 @@ def mlx_video_runtime_status(request: Request) -> dict[str, Any]:
     Apple Silicon hosts. Reports unavailable on non-Apple platforms with a
     platform-mismatch message; the frontend hides the chip when
     ``activeEngine == "mlx-video"`` and ``device is None`` (gate signal).
-    See FU-009 in CLAUDE.md.
+    See FU-009 in FOLLOW_UPS.md.
     """
     state = request.app.state.chaosengine
     return {"runtime": state.video_runtime.mlx_video_capabilities()}
@@ -128,7 +128,9 @@ def video_generation_progress() -> dict[str, Any]:
     client code. Returns ``active=false`` when nothing is running so the UI
     falls back to its estimate-driven view.
     """
-    return {"progress": VIDEO_PROGRESS.snapshot()}
+    from backend_service.helpers.job_queue import HEAVY_JOBS
+
+    return {"progress": {**VIDEO_PROGRESS.snapshot(), "queue": HEAVY_JOBS.queue_state("video")}}
 
 
 @router.post("/api/video/cancel")
@@ -140,8 +142,10 @@ def cancel_video_generation(request: Request) -> dict[str, Any]:
     and raises ``GenerationCancelled``, which the generate handler turns
     into a 409 response.
     """
+    from backend_service.helpers.job_queue import HEAVY_JOBS
+
     state = request.app.state.chaosengine
-    signalled = VIDEO_PROGRESS.request_cancel()
+    signalled = HEAVY_JOBS.cancel_studio("video", VIDEO_PROGRESS.request_cancel)
     if signalled:
         state.add_log("video", "info", "Cancel signal sent to running video generation.")
     return {"cancelled": signalled}
@@ -384,6 +388,37 @@ def delete_video_output_endpoint(request: Request, artifact_id: str) -> dict[str
 
 @router.post("/api/video/generate")
 def generate_video(request: Request, body: VideoGenerationRequest) -> dict[str, Any]:
+    from backend_service.helpers.job_queue import HEAVY_JOBS
+
+    try:
+        with HEAVY_JOBS.slot("video", "ui", body.modelId):
+            return _generate_video_locked(request, body)
+    except GenerationCancelled:
+        raise HTTPException(status_code=409, detail="cancelled") from None
+
+
+def _checked_input_images(body: VideoGenerationRequest, variant: dict[str, Any]) -> VideoGenerationRequest:
+    """Resolve start / end image paths; only LTX-2 models take them. 400 with a readable message otherwise."""
+    if not (body.startImagePath or body.endImagePath):
+        return body
+    from backend_service.helpers.media_input import InputImageError, resolve_input_image
+    from backend_service.ltx2_mlx_runtime import _is_ltx2_mlx_repo
+
+    if not _is_ltx2_mlx_repo(str(variant.get("repo") or "")):
+        raise HTTPException(
+            status_code=400,
+            detail=f"{variant.get('name')} cannot start from an image. Pick an LTX-2 model (ltx-2-mlx).",
+        )
+    try:
+        return body.model_copy(update={
+            "startImagePath": str(resolve_input_image(body.startImagePath)) if body.startImagePath else None,
+            "endImagePath": str(resolve_input_image(body.endImagePath)) if body.endImagePath else None,
+        })
+    except InputImageError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+def _generate_video_locked(request: Request, body: VideoGenerationRequest) -> dict[str, Any]:
     import traceback as _tb
     from backend_service.app import _generate_video_artifact, _load_video_outputs
 
@@ -401,12 +436,16 @@ def generate_video(request: Request, body: VideoGenerationRequest) -> dict[str, 
             status_code=404,
             detail=f"Unknown video model '{body.modelId}'. The model isn't in the curated catalog.",
         )
+    body = _checked_input_images(body, variant)
     if not _video_variant_available_locally(variant):
         validation_error = _video_variant_validation_error(variant)
         detail = validation_error or f"{variant['name']} is not installed locally yet."
         raise HTTPException(status_code=409, detail=detail)
 
     _unload_idle_image_runtime_for_video(request, "video generation")
+    from backend_service.music_runtime import free_idle_worker
+
+    free_idle_worker(state, "video generation")
     _video_memory_gate(request, variant, "video generation", body)
     try:
         artifact, runtime = _generate_video_artifact(body, variant, state.video_runtime)

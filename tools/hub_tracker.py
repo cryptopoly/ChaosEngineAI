@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Generate docs/hub/tracker/*.md from the Follow-Ups Tracker table in CLAUDE.md.
+"""Generate docs/hub/tracker/*.md from the Follow-Ups Tracker table in FOLLOW_UPS.md.
 
-CLAUDE.md stays the source of truth for the FU-### rows; this script only reads it.
+FOLLOW_UPS.md is the source of truth for the FU-### rows; this script only reads it.
 The generated pages are committed, so a fresh clone builds the hub without running
-anything first, and tests/test_hub_tracker.py fails when they drift from CLAUDE.md.
+anything first, and tests/test_hub_tracker.py fails when they drift from FOLLOW_UPS.md.
 
   python3 tools/hub_tracker.py            rewrite docs/hub/tracker/
   python3 tools/hub_tracker.py --check    exit 1 when the committed pages are out of date
@@ -19,7 +19,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-CLAUDE_MD = ROOT / "CLAUDE.md"
+SOURCE = ROOT / "FOLLOW_UPS.md"
 OUT_DIR = ROOT / "docs" / "hub" / "tracker"
 BLOB = "https://github.com/cryptopoly/ChaosEngineAI/blob/staging/"
 TREE = "https://github.com/cryptopoly/ChaosEngineAI/tree/staging/"
@@ -121,13 +121,13 @@ def _page(title: str, order: int, summary: str, intro: str, rows: list[Row]) -> 
 
 
 def build() -> dict[str, str]:
-    rows = parse(CLAUDE_MD.read_text(encoding="utf-8"))
+    rows = parse(SOURCE.read_text(encoding="utf-8"))
     if not rows:
-        raise SystemExit("no FU rows found in CLAUDE.md")
+        raise SystemExit("no FU rows found in FOLLOW_UPS.md")
     ordered = sorted(rows, key=lambda r: -_number(r.fu))
     open_rows = [r for r in ordered if not r.closed]
     closed_rows = [r for r in ordered if r.closed]
-    generated = "Generated from the Follow-Ups Tracker in `CLAUDE.md` by `tools/hub_tracker.py`; edit the row there, not here."
+    generated = "Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here."
     pages = {
         "open.md": _page(
             "Open and live follow-ups", 2,
@@ -144,7 +144,7 @@ def build() -> dict[str, str]:
         ),
     }
     index = [
-        "---\ntitle: Follow-up tracker\norder: 1\nsummary: Every FU row from CLAUDE.md, split into open and closed.\n---\n",
+        "---\ntitle: Follow-up tracker\norder: 1\nsummary: Every FU row from FOLLOW_UPS.md, split into open and closed.\n---\n",
         "# Follow-up tracker\n",
         f"{generated}\n",
         f"- [Open and live follow-ups](open.md): **{len(open_rows)}** rows.",

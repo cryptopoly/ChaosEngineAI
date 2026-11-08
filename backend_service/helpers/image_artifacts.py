@@ -104,6 +104,7 @@ def _hydrate_image_artifact(payload: dict[str, Any]) -> dict[str, Any]:
         "seed": seed,
         "createdAt": str(payload.get("createdAt") or datetime.utcnow().replace(microsecond=0).isoformat() + "Z"),
         "durationSeconds": float(payload.get("durationSeconds") or 0.0),
+        "timings": payload.get("timings") if isinstance(payload.get("timings"), dict) else None,
         "previewUrl": preview_url,
         "imagePath": image_path or None,
         "metadataPath": metadata_path or None,
@@ -111,10 +112,26 @@ def _hydrate_image_artifact(payload: dict[str, Any]) -> dict[str, Any]:
         "runtimeNote": str(payload.get("runtimeNote") or "") or None,
         "qualityPreset": str(payload.get("qualityPreset") or "") or None,
         "draftMode": bool(payload.get("draftMode")),
+        "referenceImagePaths": list(payload.get("referenceImagePaths") or []) or None,
+        "projectId": str(payload.get("projectId") or "") or None,
+        "projectName": str(payload.get("projectName") or "") or None,
+        "shotId": str(payload.get("shotId") or "") or None,
     }
 
 
+def _with_settings(data: bytes, artifact: dict[str, Any]) -> bytes:
+    from backend_service.helpers.output_metadata import embed_png_settings, generation_settings
+
+    try:
+        return embed_png_settings(data, generation_settings(artifact))
+    except Exception:
+        return data
+
+
 def _save_image_artifact(artifact: dict[str, Any], image_outputs_dir: Path) -> dict[str, Any]:
+    from backend_service.helpers.provenance import stamp
+
+    artifact = stamp(artifact)
     created_at = str(artifact.get("createdAt") or datetime.utcnow().replace(microsecond=0).isoformat() + "Z")
     output_dir = _image_output_directory(image_outputs_dir, created_at)
     artifact_id = str(artifact["artifactId"])
@@ -135,7 +152,7 @@ def _save_image_artifact(artifact: dict[str, Any], image_outputs_dir: Path) -> d
                 "returned zero image bytes. The engine likely failed silently "
                 "— check the backend log for this generation."
             )
-        image_path.write_bytes(bytes(image_bytes))
+        image_path.write_bytes(_with_settings(bytes(image_bytes), artifact))
     elif preview_url.startswith("data:image/svg+xml"):
         image_path.write_text(
             urllib.parse.unquote(preview_url.split(",", 1)[1]),
@@ -149,7 +166,7 @@ def _save_image_artifact(artifact: dict[str, Any], image_outputs_dir: Path) -> d
                 f"Cannot persist image artifact '{artifact_id}': decoded "
                 "preview data was empty."
             )
-        image_path.write_bytes(decoded)
+        image_path.write_bytes(_with_settings(decoded, artifact))
     else:
         raise ValueError(
             f"Cannot persist image artifact '{artifact_id}': no image bytes "

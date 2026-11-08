@@ -27,3 +27,10 @@ site/
 
 # Project hub (generated site; docs/hub is the source)
 docs/site/
+
+# Playwright E2E (e2e/): run data, reports, traces
+e2e/node_modules/
+e2e/.run/
+e2e/test-results/
+e2e/playwright-report/
+e2e/screenshots/

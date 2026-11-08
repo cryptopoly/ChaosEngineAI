@@ -128,7 +128,7 @@ def _snapshot_on_disk_bytes(snapshot_dir: Path | None) -> int | None:
     return total or None
 
 
-def _image_variant_inputs(variant: dict[str, Any]) -> dict[str, bool]:
+def _image_variant_inputs(variant: dict[str, Any]) -> dict[str, Any]:
     """Which Studio inputs the variant's engine reads; the Studio hides the others.
 
     An mflux checkpoint takes the arguments its family table lists (the distilled
@@ -137,10 +137,16 @@ def _image_variant_inputs(variant: dict[str, Any]) -> dict[str, bool]:
     if variant.get("engine") == "mflux":
         from backend_service.image_runtime.mflux_engine import mflux_family_for_repo
 
+        from backend_service.image_runtime.mflux_engine import reference_image_limit
+
         family = mflux_family_for_repo(str(variant.get("repo") or ""))
         if family is not None:
-            return {"acceptsGuidance": family.takes_guidance, "acceptsNegativePrompt": family.takes_negative_prompt}
-    return {"acceptsGuidance": True, "acceptsNegativePrompt": True}
+            return {
+                "acceptsGuidance": family.takes_guidance,
+                "acceptsNegativePrompt": family.takes_negative_prompt,
+                "maxReferenceImages": reference_image_limit(str(variant.get("repo") or "")),
+            }
+    return {"acceptsGuidance": True, "acceptsNegativePrompt": True, "maxReferenceImages": 0}
 
 
 def _image_model_payloads(

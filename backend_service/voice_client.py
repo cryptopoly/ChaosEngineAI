@@ -116,6 +116,18 @@ class VoiceWorker:
         with self._lock:
             self._kill()
 
+    def interrupt(self) -> None:
+        """End a running request now. ``stop`` waits for the request lock; this does not.
+
+        The reader sees the worker exit, so the waiting ``request`` raises and cleans up; the next request starts a fresh worker.
+        """
+        process = self._process
+        if process is not None and process.poll() is None:
+            try:
+                process.terminate()
+            except OSError:
+                pass
+
     def _idle_watch(self) -> None:
         while True:
             time.sleep(30)
@@ -190,6 +202,12 @@ def stop_all() -> None:
     for worker in (_WORKER, _VAD_WORKER):
         if worker is not None:
             worker.stop()
+
+
+def interrupt_all() -> None:
+    for worker in (_WORKER,):
+        if worker is not None:
+            worker.interrupt()
 
 
 def worker_pid() -> int | None:

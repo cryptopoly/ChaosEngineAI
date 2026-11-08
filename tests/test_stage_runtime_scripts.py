@@ -45,6 +45,15 @@ class InstallScriptStagingTests(unittest.TestCase):
             self.assertTrue((ROOT / "scripts" / name).is_file(), name)
 
 
+class BundledCliTests(unittest.TestCase):
+    def test_the_cli_is_staged_for_the_agent_bridge_relay(self) -> None:
+        source = (ROOT / "scripts" / "stage-runtime.mjs").read_text(encoding="utf-8")
+        match = re.search(r"const BUNDLED_CLI_SCRIPTS = \[(.*?)\];", source, re.S)
+        self.assertTrue(match, "stage-runtime.mjs lost its BUNDLED_CLI_SCRIPTS list")
+        self.assertIn('"chaosengine-cli"', match.group(1))
+        self.assertTrue((ROOT / "scripts" / "chaosengine-cli").is_file())
+
+
 class BundledLlamaCppTests(unittest.TestCase):
     def test_the_bundled_llama_cpp_tag_matches_the_update_script_pin(self) -> None:
         stage = (ROOT / "scripts" / "stage-runtime.mjs").read_text(encoding="utf-8")

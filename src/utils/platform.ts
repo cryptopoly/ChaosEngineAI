@@ -18,7 +18,8 @@ import type { SystemStats } from "../types";
  *     any of these are noise + an install attempt would silently no-op
  *     on Windows / Linux / Intel Mac.
  *
- *   - ``isCudaHost`` — Windows or Linux (x86_64). vLLM, nunchaku,
+ *   - ``isCudaHost`` — Windows x86_64, or Linux x86_64 / ARM64 (DGX Spark,
+ *     GH200). vLLM, nunchaku,
  *     sageattention, dflash (CUDA package), triattention, kvpress,
  *     LongLive all need a CUDA-class GPU. macOS hosts can't reach
  *     these regardless of GPU brand (no CUDA drivers on macOS).
@@ -50,14 +51,15 @@ export function isAppleSiliconHost(system: SystemLike): boolean {
   return platform === "darwin" && (arch === "arm64" || arch === "aarch64");
 }
 
-/** True when ``system`` describes a Windows or Linux x86_64 host.
- * Used to gate CUDA-only install affordances (vLLM, nunchaku, etc.). */
+/** True when ``system`` describes a host NVIDIA CUDA can run on: Windows
+ * x86_64, or Linux x86_64 / ARM64 (DGX Spark, GH200). Windows on ARM has no
+ * CUDA. Used to gate CUDA-only install affordances (vLLM, nunchaku, etc.). */
 export function isCudaHost(system: SystemLike): boolean {
   if (!system) return false;
   const platform = normalize(system.platform);
-  if (platform !== "windows" && platform !== "linux") return false;
   const arch = normalize(system.arch);
-  return arch === "x86_64" || arch === "amd64";
+  if (arch === "x86_64" || arch === "amd64") return platform === "windows" || platform === "linux";
+  return platform === "linux" && (arch === "aarch64" || arch === "arm64");
 }
 
 /** True when ``system`` describes a host that can run CUDA: Windows or Linux

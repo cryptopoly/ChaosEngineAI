@@ -1,5 +1,32 @@
 # Changelog
 
+## Unreleased (planned v0.10.0)
+
+Music and Storyboard are built but not yet switched on in the app (`HOME_STUDIO_ENABLED` in `src/constants/features.ts`).
+
+### Added
+
+- **Agent bridge**: an MCP endpoint (`/mcp`) so an agent such as Claude Code can make images, video, speech, music and storyboards with 18 tools on the same queue as the Studios. Switch it on in Settings > Integrations > Agent access. Agent jobs and Studio jobs run one at a time; files can be sent in and fetched out for an agent on another machine.
+- **Image and video from images**: reference images in Image Studio (FLUX.1, FLUX.2 Klein, Qwen Image 2.1, FLUX 3 Klein) and a start image and optional end image in Video Studio (LTX-2.3 and LTX-2.5); the same inputs on the agent tools.
+- **Music** (planned for v0.10.0): songs with lyrics and instrumentals, 10 to 600 s, with ACE-Step 1.5 turbo (XL turbo for 64 GB Macs) on Apple Silicon. A music pack in its own environment, Music Models, Music Studio (Options and Expert), a Music Library with rename, tags, filter and "Make another like this", and a prompt-free AI tag in the FLAC file with a switch for private use.
+- **Storyboard** (planned for v0.10.0): a film as a project folder of shots, takes and audio lanes. The Board adds shots, imports or makes takes, locks and redoes shots, marks stale shots, sets cuts and crossfades, and has undo and redo and "Make missing". The Mixer has lanes with moving and trimming, ducking, an inspector, a preview and MP4 export at 16:9, 9:16 or 1:1 with a -16 LUFS loudness default. An AI label (a metadata tag, forced when a clip is marked as a cloned voice) and `.chaosfilm` bundles for sharing and backup. "Use in storyboard" from the Image and Video Galleries, the Voice Library and Music.
+- **Calmer Image and Video Studios**: the default view holds what a first-time user needs; **Options** and **Expert** folds, a run estimate strip (time, memory, disk, Measured or Estimated) above Generate, one **Models** button and a **More actions** menu.
+- **Sidebar**: an accordion where only the active group stays open, with **Make** and **Run** section labels; a Settings switch keeps every group open.
+- **Standard size buttons**: an aspect row and size row in Image Studio (0.5 to 8 MP) and an aspect row and named resolutions in Video Studio; buttons past a model's limit are greyed out with a reason.
+- **ffmpeg notice**: `THIRD_PARTY_NOTICES.md` lists the GPL ffmpeg build from imageio-ffmpeg with a source offer.
+
+### Changed
+
+- A Studio's Cancel stops only its own job. An agent's running or waiting job is left alone; an agent cancels its own with `cancel_job`.
+
+### Removed
+
+- **Enhance** (the button, the auto-enhance switch and the prompt enhancer). Video prompts are sent as typed.
+
+### Fixed
+
+- Privacy: images and videos made from an input image carried the full local path, including the account name, in their embedded settings. They now carry the file name only.
+
 ## v0.9.9 - 2026-10
 
 Full notes in [RELEASE_NOTES_v0.9.9.md](RELEASE_NOTES_v0.9.9.md).

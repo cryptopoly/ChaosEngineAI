@@ -8,7 +8,6 @@
     "recentOutputsTitle": "最近的输出",
     "prompt": "提示词",
     "negativePrompt": "反向提示词",
-    "enhancePrompt": "增强",
     "width": "宽度",
     "height": "高度",
     "steps": "步数",
@@ -116,6 +115,12 @@
       "cancelGeneration": "取消生成",
       "close": "关闭",
       "done": "完成"
+    },
+    "ltx2": {
+      "install": "安装 LTX-2.3 引擎",
+      "installing": "正在安装…",
+      "notInstalled": "此模型在 LTX-2.3 MLX 引擎上运行，该引擎尚未安装。它会安装到独立的环境中（约 1 GB），不会更改应用的软件包。",
+      "retry": "重试安装"
     }
   },
   "progress": {
@@ -126,12 +131,6 @@
     "title": "高级",
     "show": "显示高级设置",
     "hide": "隐藏高级设置"
-  },
-  "enhance": {
-    "label": "增强",
-    "busy": "增强中...",
-    "tooltip": "在本地增强此提示词",
-    "error": "增强器错误:{message}"
   },
   "runtimeBanner": {
     "loadingModel": "正在将模型加载到内存中...",
@@ -167,14 +166,12 @@
   },
   "imageStudio": {
     "generateTitle": {
-      "dangerBlocked": "危险级配置 — 请在下方安全提示中勾选确认后继续。",
+      "dangerBlocked": "危险级配置：请在运行估算中勾选确认项后再继续。",
       "generating": "生成中...",
       "selectModel": "请先选择一个模型。",
       "ready": "生成此图像。"
     },
     "actions": {
-      "discover": "查找模型",
-      "installed": "已安装",
       "gallery": "图库"
     },
     "hero": {
@@ -257,14 +254,13 @@
     "safety": {
       "dangerTitle": "可能导致后端崩溃",
       "warningTitle": "注意 — 在此设备上可能会吃力",
-      "resourceEstimate": "模型 ≈ {model} · 本次运行峰值 ≈ {peak} / 总 ~{total}。",
       "applyTitle": "应用 {label}",
       "useSafer": "使用更安全的设置 ({label})",
       "browseSmaller": "浏览更小的模型",
-      "overrideAck": "仍要生成 — 我接受后端可能会崩溃。",
       "reasonDangerOver": "模型仅加载权重 + 文本编码器就需要约 {model} GB。在 {platform} 上共有 {total} GB,估算工作集为约 {working} GB,因此仅模型本身就已超出。即便生成小图像也可能使后端崩溃。请尝试更小的模型(SD 1.5 约 4 GB,SDXL 约 13 GB)或内存更大的机器。",
       "reasonDangerNear": "模型仅加载权重 + 文本编码器就需要约 {model} GB,本次运行峰值约 {peak} GB。在 {platform} 上共有 {total} GB,这超过了高风险阈值(约 {highRisk} GB)且接近估算工作集(约 {working} GB)。生成很可能使后端崩溃;请降低分辨率或选择更小的模型。",
-      "reasonCaution": "模型仅加载权重 + 文本编码器就需要约 {model} GB。在 {platform} 上共有 {total} GB,这超过了保守舒适目标(约 {comfort} GB),但仍低于估算工作集(约 {working} GB)。生成可能较慢或失败;如果不稳定请降低分辨率。"
+      "reasonCaution": "模型仅加载权重 + 文本编码器就需要约 {model} GB。在 {platform} 上共有 {total} GB,这超过了保守舒适目标(约 {comfort} GB),但仍低于估算工作集(约 {working} GB)。生成可能较慢或失败;如果不稳定请降低分辨率。",
+      "resourceEstimate": "模型约 {model} · 本次运行峰值约 {peak}，总共约 {total}。"
     },
     "recent": {
       "subtitle": "{total} 个已保存生成中最新的 {recent} 个",
@@ -376,33 +372,18 @@
       "noPrompt": "在生成之前编写一个提示词。",
       "backendOffline": "后端离线。",
       "busy": "繁忙…",
-      "dangerLevel": "此配置可能导致后端崩溃。在审阅警告后勾选下方\\\"允许高风险生成\\\",或降低分辨率 / 帧数 / 模型。"
+      "dangerLevel": "此配置很可能导致后端崩溃。请查看警告后在运行估算中勾选“仍然运行”，或降低分辨率/帧数/模型。"
     },
     "generateTitle": "开始生成此视频片段。",
-    "device": {
-      "gpuDetected": "GPU(已检测)",
-      "cpuDetected": "CPU(已检测)",
-      "appleDetected": "Apple Silicon(已检测)",
-      "appleMlx": "Apple Silicon (MLX)",
-      "gpu": "GPU",
-      "apple": "Apple Silicon"
-    },
     "memory": {
       "defaultFallback": "~{value}(默认 — 重启后端以进行真实检测)"
     },
-    "capacityLine": {
-      "withModel": "{device} · 总 {memory} · 模型 ≈ {model},本次运行峰值 ≈ {peak}",
-      "short": "{device} · 总 {memory} · 本次运行峰值 ≈ {peak}"
-    },
     "subtitle": "选择一个视频模型以开始",
     "actions": {
-      "browseCatalog": "查找模型",
-      "installedModels": "已安装",
       "downloadModel": "下载模型",
       "loadIntoMemory": "加载到内存",
       "unload": "卸载",
-      "unloadNamed": "卸载 {name}",
-      "modelCard": "模型卡片"
+      "unloadNamed": "卸载 {name}"
     },
     "modelOption": {
       "installed": "已安装",
@@ -465,7 +446,8 @@
       "guidanceLtxWarning": "LTX-Video 是流匹配模型 — CFG 超过约 3.5 会导致过饱和并产生模糊 / 彩虹色输出。降低至 3 以获得最干净的结果。",
       "randomSeed": "随机种子",
       "seedPlaceholder": "种子(整数)",
-      "maxPixelsNote": "{name} 每帧最多渲染 {megapixels} 百万像素；此尺寸会按比例缩小以适配。"
+      "maxPixelsNote": "{name} 每帧最多渲染 {megapixels} 百万像素；此尺寸会按比例缩小以适配。",
+      "seed": "种子"
     },
     "clipLength": {
       "line": "片段长度:{seconds} 秒({frames} 帧 ÷ {fps} fps)"
@@ -479,10 +461,6 @@
       "ltxRefiner": {
         "label": "LTX 两阶段空间放大",
         "tooltip": "以请求的分辨率渲染基础样本,然后通过 Lightricks/LTX-Video-0.9.5-spatial-upscaler 以 2 倍空间分辨率精炼。帧预算增长 ~1.5 倍。微细节更清晰、运动边缘更干净;默认关闭,因为耗时代价真实存在。"
-      },
-      "enhancePrompt": {
-        "label": "自动增强短提示词",
-        "tooltip": "当提示词少于 25 个词时,附加模型调优的结构提示(电影感描述符、灯光、摄影指导)。扩散视频模型基于 50-100 个词的提示词训练,在较短输入上条件化不足。较长的自定义提示词原样发送 — 此阈值是保护措施。"
       },
       "cfgDecay": {
         "label": "CFG 衰减",
@@ -516,13 +494,11 @@
       "applyTitle": "应用 {label}",
       "useSafer": "使用更安全的设置 ({label})",
       "browseSmaller": "浏览更小的模型",
-      "overrideAck": "允许高风险生成 — 我接受后端可能崩溃,并且我的机器可能需要重启。",
       "reasonDangerOver": "模型在标准放置下需要约 {model} GB 常驻,但 {platform} 上共有 {total} GB,仅约 {working} GB 可安全使用。运行时将自动回退到顺序 CPU offload — 生成会成功,但每一步会慢几倍,因为子模块每次都要在 CPU 和 {offloadDevice} 内存之间交换。要获得全速生成,请选择更小的模型(LTX-Video 常驻约 2 GB)或内存更大的机器。",
       "reasonDangerNear": "模型需要约 {model} GB 常驻,本次运行峰值约 {peak} GB。在 {platform} 上共有 {total} GB,这超过了高风险阈值(约 {highRisk} GB)且接近估算工作集(约 {working} GB)。运行时可能会启用 CPU offload 以使其装下 — 如果你想要全速生成,请降低设置或选择更小的模型。",
       "reasonCaution": "模型需要约 {model} GB 常驻。在 {platform} 上共有 {total} GB,这超过了保守舒适目标(约 {comfort} GB),但仍低于估算工作集(约 {working} GB)。生成应能装下;如果不稳定请降低设置。"
     },
     "disabledHint": "生成已禁用:{reason}",
-    "willLoadHint": "所选模型将在下次生成时加载到内存。大型变体的首次加载可能需要一分钟。",
     "cacheStrategies": {
       "none": {
         "label": "关闭",
@@ -566,7 +542,23 @@
     "sound": {
       "badge": "声音",
       "badgeTooltip": "此片段带有声音。请用播放器的音量控件开启。"
-    }
+    },
+    "capacityLine": {
+      "short": "{device} · 总计 {memory} · 本次运行峰值约 {peak}",
+      "withModel": "{device} · 总计 {memory} · 模型约 {model}，本次运行峰值约 {peak}"
+    },
+    "device": {
+      "apple": "Apple 芯片",
+      "appleDetected": "Apple 芯片（已检测到）",
+      "appleMlx": "Apple 芯片（MLX）",
+      "cpuDetected": "CPU（已检测到）",
+      "gpu": "GPU",
+      "gpuDetected": "GPU（已检测到）"
+    },
+    "ltx2": {
+      "engineMessage": "此模型在 Apple GPU 上通过自己的 MLX 引擎（ltx-2-mlx）运行，并带有声音。"
+    },
+    "willLoadHint": "所选模型将在下次生成时载入内存。较大的版本首次载入可能需要一分钟。"
   },
   "imageGallery": {
     "subtitle": {
@@ -664,10 +656,15 @@
       "cancel": "取消",
       "update": "更新语音包",
       "install": "安装语音包",
-      "reinstall": "修复 / 重新安装",
       "done": "语音包已安装。",
       "log": "安装日志",
-      "updateFeatures": "更新语音包以在聊天中使用语音通话并为转写稿区分说话人（约 40 MB 模型，一两分钟）。"
+      "updateFeatures": "更新语音包以在聊天中使用语音通话并为转写稿区分说话人（约 40 MB 模型，一两分钟）。",
+      "checkedOk": null,
+      "checkedOkAt": null,
+      "repair": null,
+      "troubleshoot": "故障排除",
+      "troubleshootBody": null,
+      "reinstallSmall": "重新安装"
     },
     "models": {
       "recommended": "推荐",
@@ -677,15 +674,51 @@
       "firstUse": "如果跳过此步，将在首次使用时下载。",
       "title": "语音",
       "sttTitle": "语音转文字模型",
-      "sttSubtitle": "供聊天中的麦克风和 Voice Studio 使用。"
+      "sttSubtitle": "供聊天中的麦克风和 Voice Studio 使用。",
+      "capabilities": null,
+      "ttsTitle": "语音模型",
+      "ttsSubtitle": null,
+      "ttsNone": null,
+      "caps": {
+        "speak": "朗读",
+        "style": "风格",
+        "clone": "克隆",
+        "design": "设计"
+      }
     },
     "voices": {
       "title": "声音",
       "subtitle": "Kokoro：9 种语言共 54 种声音。选择聊天朗读时使用的声音。",
-      "needsChinese": "请在语音包中勾选普通话语音。",
+      "needsChineseAddon": null,
+      "addChinese": null,
       "notYet": "这台电脑上暂不可用。",
       "useVoice": "使用这个声音",
-      "preview": "试听"
+      "preview": "试听",
+      "listTitle": "声音",
+      "listSubtitle": null,
+      "cloneCard": null,
+      "cloneDetail": null,
+      "designCard": null,
+      "designDetail": null,
+      "designAction": null,
+      "moreCard": null,
+      "moreDetail": null,
+      "moreAction": null,
+      "filter": "显示",
+      "allLanguages": "所有语言",
+      "noneMine": null,
+      "none": null,
+      "kindClone": "已克隆",
+      "kindPreset": null,
+      "kindBuiltin": null,
+      "playSample": null,
+      "use": "使用",
+      "tab": null,
+      "filters": {
+        "all": "全部",
+        "mine": "我的",
+        "builtin": "内置"
+      }
     },
     "settings": {
       "title": "语音设置",
@@ -750,7 +783,46 @@
       "listen": "试听",
       "progress": "第 {done} 部分，共 {total} 部分",
       "generateParts": "生成音频（{n} 部分）",
-      "encoding": "正在编码…"
+      "encoding": "正在编码…",
+      "textLabel": "要朗读的文字",
+      "styleBuiltin": null,
+      "styleClone": null,
+      "styleSmall": null,
+      "cloneLimit": null,
+      "describe": null,
+      "style": null,
+      "describePlaceholder": null,
+      "stylePlaceholder": null,
+      "styleChips": null,
+      "pitch": "音高",
+      "advanced": "高级",
+      "seed": null,
+      "modelKokoro": null,
+      "modelReady": null,
+      "modelDownloading": null,
+      "modelNeeds": null,
+      "downloadForStyle": null,
+      "cloneTooLong": null,
+      "describeFirst": null,
+      "appleOnly": null,
+      "language": "语言",
+      "sampleOf": null,
+      "sampleLoading": null,
+      "cloneModel": null,
+      "cloneKind": null,
+      "yourVoices": null,
+      "presets": null,
+      "designCard": null,
+      "designDetail": null,
+      "quickVoices": null,
+      "chips": {
+        "neutral": null,
+        "angry": null,
+        "sad": null,
+        "excited": null,
+        "whisper": null,
+        "calm": null
+      }
     },
     "stop": "停止",
     "studio": {
@@ -785,7 +857,8 @@
       "empty": "没有找到语音。",
       "editHint": "双击编辑",
       "edit": "编辑这一行",
-      "export": "导出"
+      "export": "导出",
+      "lineLabel": "编辑 {time} 处的这一句"
     },
     "handoff": {
       "summary": "在聊天中总结",
@@ -830,11 +903,51 @@
     "micError": {
       "blockedMac": "麦克风访问被阻止。请在“系统设置 > 隐私与安全性 > 麦克风”中允许 ChaosEngineAI，然后重试。",
       "blockedWindows": "麦克风访问被阻止。请在“设置 > 隐私和安全性 > 麦克风”中允许桌面应用使用麦克风，然后重试。",
+      "openSettings": "打开麦克风设置",
       "blocked": "麦克风访问被阻止。请检查桌面的隐私设置，并确认没有其他应用占用麦克风。",
       "notFound": "未找到麦克风。请连接麦克风后重试。",
       "inUse": "麦克风正被其他应用使用，或无法打开。",
       "unsupported": "此窗口无法使用麦克风（不支持媒体设备）。",
       "generic": "无法打开麦克风。"
+    },
+    "clone": {
+      "statement": null,
+      "title": "克隆声音",
+      "loading": "加载中…",
+      "macOnly": "声音克隆目前仅支持 Apple 芯片的 Mac。",
+      "deleteConfirm": null,
+      "model": "克隆模型",
+      "downloading": "下载中…",
+      "notHere": "克隆声音只能在这台电脑上的 ChaosEngineAI 窗口中使用。",
+      "consentOwn": null,
+      "consentPermission": null,
+      "delete": "删除",
+      "new": "新建克隆声音",
+      "placeholder": "要用克隆声音朗读的文字。",
+      "tagged": "已标注为 AI 生成",
+      "allowAgents": "允许智能体和其他电脑使用克隆声音（默认关闭）",
+      "whose": "这是谁的声音？",
+      "basisOwn": "我自己的声音",
+      "basisPermission": null,
+      "speakerName": "说话者姓名",
+      "voiceName": "此声音的名称（可选）",
+      "confirm": null,
+      "recordAgain": "重新录制",
+      "sampleTitle": null,
+      "sampleHelp": null,
+      "sampleText": "样本中说出的文字（可选；会自动填写）",
+      "tooShort": null,
+      "tooLong": null,
+      "save": null,
+      "installingWatermark": "正在安装水印组件…",
+      "tab": "克隆",
+      "voices": "克隆声音",
+      "deleteVoice": "删除声音 {name}",
+      "textLabel": "要用克隆声音朗读的文字",
+      "sampleFile": "声音样本文件",
+      "recordingPlayback": "你的录音",
+      "saving": null,
+      "sampleType": null
     }
   },
   "residentChatModelNote": "已加载的聊天模型占用了其中约 {gb} GB 内存；卸载它即可释放这部分内存。",
@@ -904,5 +1017,1155 @@
       "previewVae": "预览 VAE",
       "fp8LayerwiseCasting": "FP8 逐层"
     }
+  },
+  "inputImage": {
+    "chooseFile": "选择文件",
+    "fromGallery": "从图库选择",
+    "remove": "移除",
+    "pickFailed": "此处无法使用文件选择器。请改从图库中选择。",
+    "referenceLabel": "参考图像",
+    "referenceLabelMany": "参考图像",
+    "referenceHintOne": "以此图像作为画面的起点。强度越高，越贴近该图像。",
+    "referenceHintMany": "最多 {max} 张图像。模型会根据你的提示词编辑或重绘它们，以保持主体或风格。",
+    "strength": "强度",
+    "startLabel": "起始图像",
+    "startHint": "视频片段从这张图像开始。",
+    "endLabel": "结束图像（可选）",
+    "endHint": "视频片段在这张图像上结束。单独使用时，提示词会朝这张图像演变。"
+  },
+  "sizePresets": {
+    "aspect": "纵横比",
+    "size": "尺寸",
+    "resolution": "分辨率",
+    "overLimit": "超出此模型的尺寸上限。",
+    "current": "当前尺寸：{width} x {height}（{megapixels} MP）"
+  },
+  "estimate": {
+    "time": "约 {time}",
+    "timeUnknown": "时间：首次运行后才能知道",
+    "memory": "峰值 {peak}，总共 {total}",
+    "memoryUnknown": "内存：未估算",
+    "disk": "写入 {size}",
+    "diskUnknown": "磁盘：未估算",
+    "measured": "实测",
+    "estimated": "估算",
+    "measuredTitle": "在这台电脑上针对此模型和预设实际计时得出。",
+    "estimatedTitle": "来自模型卡或类似的电脑；尚未在这里计时。",
+    "queueRunning": "{what} 正在运行，还剩约 {time}。你的任务在它之后开始。",
+    "queuePosition": "正在等待另一个任务完成（第 {position} 位）",
+    "dangerAck": "仍然运行。我接受后端可能崩溃。",
+    "duration": {
+      "seconds": "{n} 秒",
+      "minutes": "{n} 分钟",
+      "minutesSeconds": "{m} 分 {s} 秒"
+    },
+    "size": {
+      "gb": "{n} GB",
+      "mb": "{n} MB"
+    },
+    "band": {
+      "caution": "（注意：接近上限）",
+      "danger": "（危险：可能放不下）"
+    },
+    "unknownChip": "估计：首次运行前未知"
+  },
+  "disclosure": {
+    "options": "选项",
+    "expert": "专家",
+    "defaults": "模型默认值"
+  },
+  "preset": {
+    "custom": "自定义",
+    "customTitle": "有数值被手动更改。选择一个预设即可恢复。"
+  },
+  "error": {
+    "technicalDetails": "技术细节",
+    "retry": "重试"
+  },
+  "licence": {
+    "chip": {
+      "commercial": "{name} · 可商用",
+      "limited": "{name} · 有限商用",
+      "noCommercial": "{name} · 禁止商用",
+      "gated": "受限"
+    },
+    "screen": {
+      "asks": "此许可证对你的要求",
+      "gatedNote": "此模型为受限模型：请先在 Hugging Face 上接受条款，然后使用你的令牌在此下载（设置 > Hugging Face）。",
+      "readFull": "阅读完整许可证",
+      "openHub": "在 Hugging Face 上打开",
+      "notNow": "以后再说",
+      "accepted": "我已接受",
+      "ok": "确定"
+    },
+    "status": {
+      "needs": "需要接受许可证"
+    },
+    "action": {
+      "accept": "接受许可证"
+    }
+  },
+  "models": {
+    "makes": {
+      "songs": "带人声的歌曲",
+      "instrumental": "纯音乐",
+      "sfx": "音效",
+      "loops": "循环音频"
+    },
+    "speed": {
+      "measured": "在这台电脑上每秒约生成 {rate} 秒音频",
+      "unknown": "速度尚未测量"
+    }
+  },
+  "musicStudio": {
+    "result": {
+      "loop": "循环",
+      "play": "播放 {title}，{seconds} 秒",
+      "stop": "停止",
+      "again": "再来一次",
+      "againTitle": "相同设置，使用新的随机种子。",
+      "audioFailed": "无法加载该音频文件。",
+      "audioLoading": "正在加载音频…",
+      "done": "完成",
+      "doneIn": "用时 {time} 完成",
+      "openLibrary": "在库中打开",
+      "seed": "种子 {seed}",
+      "vary": "变奏",
+      "varyTitle": "相同设置，使用下一个种子（{seed}）。"
+    },
+    "options": {
+      "reference": "参考音频",
+      "referenceRights": "你需对自己提供的音频的权利负责。",
+      "auto": "自动",
+      "bpm": "BPM",
+      "key": "调",
+      "randomSeed": "随机种子",
+      "seed": "种子",
+      "summaryBpm": "BPM {value}",
+      "summaryKey": "调 {value}",
+      "summarySeed": "种子 {n}",
+      "summaryVariations": "{n, plural, other {# 个变体}}",
+      "tempoKey": "速度与调性",
+      "variations": "变体数量",
+      "variationsCost": "每多一个变体，就会再多花一次同样的时间。",
+      "variationsTotal": "{n} 个约需 {time}。"
+    },
+    "artistWarning": "写出艺术家的名字可能会生成其风格的仿作。请改为描述声音本身。",
+    "cancel": "取消",
+    "cancelling": "正在取消…",
+    "empty": "还没有音乐。描述一首曲目，然后按“制作曲目”。",
+    "error": {
+      "cancelled": "已取消。",
+      "generic": "无法制作该曲目。",
+      "invalid": "无法使用这些设置开始制作曲目。",
+      "memory": "可用内存不足，无法制作这首曲目。请尝试更短的时长。",
+      "notReady": "音乐模型尚未准备好运行。",
+      "offline": "后端没有响应。请确认它正在运行，然后重试。",
+      "useShorter": "使用更短的时长"
+    },
+    "expert": {
+      "aiTagNote": "音频文件中的机器可读标签。默认开启；仅供私人使用时可以关闭。",
+      "idleUnload": "空闲这么多分钟后卸载模型（0 表示一直保持加载）",
+      "model": "模型",
+      "output": "输出：FLAC，24 位，48 kHz，立体声。",
+      "summaryIdle": "{n} 分钟后卸载",
+      "summaryTagOff": "AI 标签已关闭"
+    },
+    "issue": {
+      "bpmRange": "BPM 必须在 30 到 300 之间，或选择自动。",
+      "captionEmpty": "请先描述音乐，再制作曲目。",
+      "captionTooLong": "描述超过了 {max} 个字符。",
+      "lyricsEmpty": "请添加歌词，或切换到纯音乐。",
+      "lyricsTooLong": "歌词超过了 {max} 个字符。",
+      "secondsRange": "时长必须为 {min} 到 {max} 秒。",
+      "seedRange": "种子必须是从 0 开始的整数。",
+      "variations": "变体数量必须是 1、2 或 4。"
+    },
+    "latest": "最新",
+    "length": {
+      "custom": "自定义",
+      "customLabel": "时长（秒）",
+      "label": "时长",
+      "minutes": "{n} 分钟",
+      "range": "{min} 到 {max} 秒",
+      "seconds": "{n} 秒"
+    },
+    "library": "库",
+    "loading": "正在加载音乐模型…",
+    "lyrics": {
+      "label": "歌词",
+      "placeholder": "[verse] ... [chorus] ...",
+      "rights": "你需对自己输入的歌词的权利负责。"
+    },
+    "make": "制作曲目",
+    "making": "制作中…",
+    "mode": {
+      "instrumental": "纯音乐",
+      "label": "曲目类型",
+      "song": "歌曲"
+    },
+    "noModel": "尚未安装音乐模型。",
+    "noModelSize": "{name} 约 {size} GB。",
+    "offline": "正在等待后端…",
+    "openLibrary": "打开库",
+    "openModels": "打开音乐模型",
+    "packMissing": "音乐组件包尚未安装。请在“音乐模型”中安装（约 1.6 GB）。",
+    "progress": {
+      "compose": "作曲",
+      "decode": "解码音频",
+      "encode": "编码",
+      "load": "加载模型",
+      "save": "保存"
+    },
+    "prompt": {
+      "label": "描述音乐",
+      "placeholder": "温暖的 lo-fi 嘻哈，黑胶唱片噼啪声，柔和的钢琴，85 bpm"
+    },
+    "queued": "已排队：排在前面的任务完成后开始。",
+    "running": "正在制作你的曲目",
+    "status": {
+      "installed": "已安装",
+      "loaded": "已加载",
+      "notInstalled": "未安装"
+    },
+    "title": "音乐工作室",
+    "studioMode": {
+      "label": "音乐或音效",
+      "music": "音乐",
+      "sounds": "音效"
+    },
+    "sounds": {
+      "loopBadge": "循环",
+      "needLicence": "音效使用 Stable Audio Open，需要你先接受其许可证。请打开“音乐模型”阅读。",
+      "needDownload": "请从“音乐模型”下载 {name}（约 {size} GB）。请先在 Hugging Face 上接受许可证。",
+      "needTextEncoder": "音效模型缺少文本编码器。请从“音乐模型”重新下载。",
+      "needPack": "音效还需要一个小型组件包（约 1 GB）。请从“音乐模型”安装。",
+      "prompt": "描述这个声音",
+      "placeholder": "沉重的木门吱呀作响地打开，近距离麦克风",
+      "english": "英文效果最好。适合音效和循环音频，不适合歌曲或语音。",
+      "loop": "制作无缝循环",
+      "make": "制作音效",
+      "making": "制作中…",
+      "running": "正在制作你的音效",
+      "empty": "还没有音效。描述一个，然后按“制作音效”。",
+      "issue": {
+        "captionEmpty": "请先描述声音，再制作。",
+        "captionTooLong": "描述超过了 {max} 个字符。",
+        "secondsRange": "时长必须为 {min} 到 {max} 秒。"
+      },
+      "error": {
+        "memory": "可用内存不足，无法制作这个音效。请释放一些内存后重试。",
+        "invalid": "无法使用这些设置开始制作音效。",
+        "generic": "无法制作该音效。"
+      },
+      "lengthSlider": "时长（秒）",
+      "modelPicker": "声音模型",
+      "cpuFallback": null,
+      "cpuOnly": null
+    }
+  },
+  "audioPlayer": {
+    "timeOf": "{current} / {total}"
+  },
+  "inputAudio": {
+    "chooseFile": "选择文件",
+    "fromLibrary": "从库中选择",
+    "remove": "移除",
+    "pickFailed": "此处无法使用文件选择器。请改从库中选择。"
+  },
+  "board": {
+    "addShot": "添加镜头",
+    "batch": {
+      "cancel": "取消批量任务",
+      "count": "已完成 {done} / {total}",
+      "kind": {
+        "clips": "视频片段",
+        "stills": "静态图"
+      },
+      "shotOf": "第 {n} 个镜头，共 {total} 个",
+      "starting": "正在开始…",
+      "stillsThenClips": "{kind}，然后是视频片段",
+      "title": "正在制作镜头"
+    },
+    "conflictNotice": "已在别处更改；显示的是最新版本",
+    "defaults": {
+      "automatic": "自动（已安装的模型）",
+      "automaticShort": "自动",
+      "automaticName": "自动",
+      "noVoice": "无"
+    },
+    "defaultsSummary": null,
+    "defaultsTitle": "项目默认设置",
+    "editor": {
+      "discard": "放弃更改",
+      "discardBody": "此镜头有未保存的修改。现在关闭会丢弃这些修改。",
+      "discardTitle": "放弃你的更改？",
+      "fromImageGallery": "从图像图库选择",
+      "fromVideoGallery": "从视频图库选择",
+      "import": "导入",
+      "importFailed": "无法导入该文件。",
+      "importFile": "图像或视频文件",
+      "importHint": "从文件或你的图库中添加一个新版本。不会覆盖任何内容。",
+      "importKind": "选择图像（png、jpg、webp）或视频（mp4、mov、webm）。",
+      "length": "时长（秒）",
+      "motionPrompt": "动作提示词",
+      "nativeSound": "镜头声音电平（dB）",
+      "noReferences": "此项目还没有参考。请在“参考”面板中添加。",
+      "references": "参考",
+      "relinkHint": "将缺失的版本指向新文件。",
+      "revert": "还原",
+      "save": "保存更改",
+      "saveFirst": "请先保存你的更改。",
+      "seed": "种子",
+      "seedRandom": "随机",
+      "speed": "速度",
+      "startFrom": "起始方式",
+      "startFromGenerate": "新的静态图",
+      "startFromPrevious": "上一个镜头的最后一帧",
+      "startFromUpload": "我的图像",
+      "stillPrompt": "静态图提示词",
+      "title": "镜头 {n}",
+      "trimIn": "入点（秒）",
+      "trimOut": "出点（秒）",
+      "trimOutEnd": "版本结尾",
+      "useClip": "用作视频片段",
+      "noCast": null
+    },
+    "empty": "还没有镜头。添加一个镜头，然后写提示词或导入素材。",
+    "estimate": {
+      "need": "{n, plural, other {# 个镜头需要新版本}}",
+      "none": "每个未锁定的镜头都有版本。"
+    },
+    "loading": "正在加载项目…",
+    "makeAll": "制作所有未锁定的镜头",
+    "makeAllTitle": "为每个未锁定的镜头添加一个新版本。不会覆盖任何内容。",
+    "makeMissing": "制作缺失的镜头",
+    "makeOne": "制作此镜头",
+    "mixer": "混音台",
+    "noProject": "没有打开的项目。请从“项目”中打开一个，或新建一个。",
+    "noProjectTitle": "分镜板",
+    "notFound": "此项目已不存在。请选择另一个。",
+    "openProjects": "打开项目",
+    "projects": "项目",
+    "redo": "重做",
+    "references": {
+      "addCharacter": "添加角色",
+      "addPlace": "添加场景",
+      "characters": "角色",
+      "description": "外观描述",
+      "image": "参考图像",
+      "name": "名称",
+      "none": "暂无。",
+      "places": "场景",
+      "remove": "移除参考",
+      "setImage": "设置图像",
+      "summary": "{characters, plural, other {# 个角色}} · {places, plural, other {# 个场景}}",
+      "title": "参考"
+    },
+    "reload": "重新加载",
+    "removeBody": "{name} 将从影片中移除。它的版本会保留在项目文件夹中，撤销即可恢复。",
+    "removeTitle": "删除这个镜头？",
+    "shot": {
+      "drag": "拖动以重新排序",
+      "failedNote": "该镜头未能渲染。请重试或编辑提示词。",
+      "keep": "保留",
+      "lock": "锁定此镜头",
+      "lockedNote": "“制作镜头”会跳过已锁定的镜头。",
+      "menu": {
+        "delete": "删除",
+        "down": "下移",
+        "edit": "编辑提示词",
+        "import": "导入素材",
+        "up": "上移",
+        "useAsReference": "将静帧用作参考"
+      },
+      "missingNote": "版本文件缺失。请重新链接或制作新版本。",
+      "moreActions": "镜头 {n} 的更多操作",
+      "moved": "镜头 {n} 已移到第 {position} 位",
+      "play": "播放视频片段",
+      "redoLabel": "重做",
+      "redoMarked": "已标记为重做",
+      "redoTitle": "标记为重做：下次“制作镜头”会添加一个新版本。不会覆盖任何内容。",
+      "relink": "重新链接",
+      "rerun": "重新运行",
+      "seed": "种子 {seed}",
+      "staleTitle": "镜头 {n} 有了新版本；此镜头从它的最后一帧开始。",
+      "staleTitleGeneric": "此镜头依赖的内容已更改。",
+      "status": {
+        "done": "完成 · {seconds} 秒",
+        "doneNoLength": "完成",
+        "failed": "失败",
+        "idle": "尚未制作",
+        "locked": "已锁定",
+        "missing": "版本文件缺失",
+        "queued": "已排队 · {position}",
+        "running": "制作中…",
+        "stale": "已过期 · 在镜头 {n} 之后",
+        "staleNoShot": "已过期",
+        "stillOnly": "仅静帧"
+      },
+      "titleLabel": "镜头 {n} 的标题",
+      "transitionLabel": "转场",
+      "transitionSeconds": "交叉淡化时长（秒）",
+      "transitionType": {
+        "crossfade": "交叉淡化",
+        "cut": "硬切"
+      },
+      "unlock": "解锁此镜头",
+      "untitled": "镜头 {n}",
+      "castLabel": "此镜头中的角色",
+      "newTake": "新拍一条",
+      "newTakeMarked": "下次运行时新拍一条",
+      "newTakeTitle": null,
+      "noPrompt": "还没有提示词。按回车或编辑提示词。",
+      "makeClip": "生成片段",
+      "makeClipTitle": "用此镜头的静帧生成片段。",
+      "referenceAdded": "已用此静帧将 {name} 加入角色。"
+    },
+    "shots": "镜头",
+    "subtitle": "{shots, plural, other {# 个镜头}} · {seconds} 秒 · {stale} 个已过期",
+    "takes": {
+      "active": "当前版本",
+      "label": "版本",
+      "pick": "使用此版本",
+      "take": "版本 {n}"
+    },
+    "title": "{project} · 分镜板",
+    "undo": "撤销",
+    "emptyNoCast": null,
+    "subtitleShots": null,
+    "lengthStrip": "镜头时长",
+    "lengthStripPart": "镜头 {n} · {seconds} 秒"
+  },
+  "storyProjects": {
+    "card": {
+      "edited": "编辑于 {when}",
+      "meta": "{shots, plural, other {# 个镜头}} · {seconds} 秒 · {aspect}",
+      "noShots": "还没有镜头",
+      "noTakes": "还没有画面",
+      "noPreview": "暂无预览",
+      "stale": "{n} 个已过期",
+      "zeroShots": "0 个镜头",
+      "metaFormat": null,
+      "zeroShotsFormat": null
+    },
+    "deleteBody": "{name} 以及其文件夹中的所有版本、静态图和声音都将被删除。此操作无法撤销。",
+    "deleteFailed": "无法删除该项目。",
+    "deleteTitle": "删除这个项目？",
+    "dialog": {
+      "aspect": "画面比例",
+      "create": "创建",
+      "fps": "帧率",
+      "imageModel": "图像模型",
+      "name": "名称",
+      "resolution": "分辨率",
+      "save": "保存",
+      "videoModel": "视频模型",
+      "voice": "声音",
+      "models": "模型"
+    },
+    "empty": "还没有项目。一个项目把你的镜头、版本和声音放在同一个文件夹里，方便你移动或备份。",
+    "exportBundle": "导出项目包",
+    "exportFailed": "无法导出项目包。",
+    "exported": "已导出 {name} · {size}",
+    "exporting": "正在导出…",
+    "import": "导入项目包",
+    "importFailed": "这个文件不是 ChaosEngineAI 项目包。",
+    "imported": "已导入 {name}",
+    "loading": "正在加载你的项目…",
+    "menu": {
+      "delete": "删除",
+      "rename": "重命名"
+    },
+    "missing": "此项目的文件夹已被移动或删除。",
+    "moreActions": "更多操作",
+    "new": "新建项目",
+    "open": "打开",
+    "subtitle": "{count, plural, other {# 个项目}}",
+    "title": "分镜项目",
+    "format": {
+      "fit": {
+        "safe": "可以",
+        "tight": "勉强",
+        "wontfit": "放不下"
+      },
+      "note": {
+        "capped": null,
+        "cost": "分辨率越高，渲染越慢，占用内存越多。",
+        "fpsConvert": null,
+        "noModel": null,
+        "safe": null,
+        "tight": null,
+        "wontfit": null,
+        "estimated": null
+      }
+    },
+    "openNamed": null,
+    "moreActionsFor": null
+  },
+  "storyboard": {
+    "cancel": "取消",
+    "close": "关闭",
+    "dismiss": "关闭",
+    "offline": "正在等待后端…",
+    "pathPlaceholder": "/path/to/file",
+    "pickUnavailable": "此处无法使用文件选择器。请改为输入路径。",
+    "films": {
+      "title": "影片",
+      "none": "还没有影片。导出后会保存在这里。"
+    }
+  },
+  "mixer": {
+    "add": {
+      "cloned": "此片段使用了克隆声音"
+    },
+    "addAudioTo": "向 {lane} 添加音频",
+    "addButton": "添加",
+    "addFromLibrary": "从库中添加",
+    "block": {
+      "ariaLabel": "{lane}，{name}，从 {start} 到 {end} 秒"
+    },
+    "board": "分镜板",
+    "captions": {
+      "add": "在播放头处添加",
+      "burnIn": "嵌入画面",
+      "exportSrt": "写入 .srt",
+      "generate": "根据声音生成",
+      "generating": "正在聆听…",
+      "label": "字幕",
+      "needVoice": "请先在声音轨道中添加语音，才能据此生成字幕。",
+      "newText": "新字幕",
+      "remove": "移除",
+      "srt": "SRT 文件",
+      "textLabel": "字幕文字",
+      "title": "字幕（{count}）",
+      "trimmedAway": "已被裁掉"
+    },
+    "clip": {
+      "ariaLabel": "{lane}，{name}，从 {start} 到 {end} 秒，{gain} dB",
+      "missing": "缺失",
+      "reading": "读取中…",
+      "relink": "重新链接"
+    },
+    "crossfade": "交叉淡化 {seconds} 秒",
+    "empty": "还没有可混音的内容。请先在分镜板上制作镜头。",
+    "export": {
+      "aspect": "画面比例",
+      "button": "导出 MP4",
+      "cancel": "取消导出",
+      "cancelled": "导出已取消。未写入任何内容。",
+      "copied": "路径已复制",
+      "copiedShort": "已复制",
+      "copyPath": "复制路径",
+      "details": "技术细节",
+      "done": "已导出 · {size} · {duration}",
+      "download": "下载",
+      "editor": "导出给剪辑软件（.otio）",
+      "editorNote": "可在 DaVinci Resolve 或 Premiere 中打开，项目的媒体会链接到这台电脑上的文件。",
+      "exporting": "正在导出…",
+      "extras": "同时写入",
+      "failedShort": "导出失败。未写入任何内容。",
+      "interrupted": "导出被中断。",
+      "loudness": "响度目标",
+      "loudnessHint": "{target} LUFS 适合网络视频。留空则保持混音原样。",
+      "loudnessOff": "关闭",
+      "phase": {
+        "encode": "编码",
+        "join": "合并",
+        "mix": "混合声音",
+        "normalise": "统一镜头音量"
+      },
+      "pixels": "{width} × {height} 像素。",
+      "preset": {
+        "landscape": "16:9",
+        "portrait": "9:16",
+        "square": "1:1"
+      },
+      "reframeNote": "导出时重新取景；镜头不会重新生成。",
+      "resume": "继续导出",
+      "resumeNote": "{total} 个镜头中已有 {ready} 个完成，将被复用。",
+      "retry": "重试",
+      "reveal": "显示文件",
+      "stems": "音频轨道另存为单独文件",
+      "stopped": "导出未完成。",
+      "title": "导出",
+      "upscale": "放大",
+      "upscale1440": "1440p",
+      "upscale2160": "2160p (4K)",
+      "upscaleNone": "相同尺寸",
+      "upscaleNote": null,
+      "upscaleSame": null,
+      "more": "更多",
+      "whyBusy": null,
+      "whyEmpty": null
+    },
+    "importAudio": "导入音频",
+    "importAudioPath": "音频文件路径",
+    "inspector": {
+      "absolute": "影片时间（未锚定）",
+      "anchor": "锚点",
+      "anchorShot": "镜头 {n}：{name}",
+      "anchorSummary": "随镜头 {n} 移动。偏移 {offset} 秒。",
+      "anchorTo": "锚定到",
+      "duck": "人声出现时压低",
+      "duckTitle": "有人说话时降低此片段的音量（侧链压缩）。",
+      "empty": "在时间线上选择一个片段来编辑它的声音。",
+      "fadeIn": "淡入",
+      "fadeOut": "淡出",
+      "gain": "增益",
+      "loop": "循环填满",
+      "name": "名称",
+      "nativeLevel": "镜头 {n} 的镜头声音电平",
+      "offset": "偏移",
+      "remove": "从轨道中移除",
+      "shotSpan": "从 {start} 秒开始，长 {length} 秒",
+      "shotTitle": "所选镜头",
+      "start": "开始于",
+      "title": "所选片段",
+      "trim": "裁剪",
+      "trimIn": "入",
+      "trimOut": "出"
+    },
+    "lane": {
+      "music": "音乐",
+      "native": "镜头声音",
+      "picture": "画面",
+      "sfx": "效果",
+      "voice": "声音"
+    },
+    "leftOut": "{n, plural, other {# 个镜头还没有片段，预览和导出时会被略过。}}",
+    "noLibraryYet": "音乐库暂不可用。请选择文件或输入其路径。",
+    "noProjectTitle": "混音台",
+    "openBoard": "打开分镜板",
+    "openOnBoard": "在分镜板中打开",
+    "preview": {
+      "cancel": "取消",
+      "failed": "预览未能渲染。",
+      "none": "还没有预览。渲染一个预览，即可观看并聆听影片。",
+      "render": "渲染预览",
+      "rendering": "正在渲染预览…",
+      "stale": "已过期。请重新渲染以听到你最新的更改。"
+    },
+    "relinkFor": "查找 {name} 的文件",
+    "ruler": "时间线标尺。点击以移动播放头。",
+    "subtitle": "{seconds} 秒 · {aspect} · 预览 {width} × {height}",
+    "timeline": "时间线",
+    "title": "{project} · 混音台",
+    "transitionsNote": "转场会按其时长缩短影片；标尺显示真实总时长。",
+    "transport": {
+      "keys": "空格或 K：播放 / 暂停。J 和 L：后退 / 前进 5 秒。左右方向键：1 秒（Shift 为 10 秒，Alt 为一帧）。Home / End。+ 和 -：缩放。",
+      "label": "播放控制",
+      "loop": "循环",
+      "needPreview": "请先渲染预览，再播放影片。",
+      "pause": "暂停",
+      "play": "播放",
+      "stop": "停止",
+      "timeOf": "{current} / {total}",
+      "zoomIn": "放大",
+      "zoomOut": "缩小"
+    },
+    "emptyShots": "还没有可混音的内容。请先在故事板标签页中制作镜头。",
+    "openInStoryboard": "在故事板中打开",
+    "openStoryboard": "打开故事板"
+  },
+  "aiLabel": {
+    "forced": "此项目使用了克隆声音，因此始终会写入 AI 标签。",
+    "metadata": "添加机器可读的 AI 标签",
+    "metadataTitle": "MP4 元数据中的机器可读标签。其中不包含提示词或文件夹名称。",
+    "title": "AI 标签"
+  },
+  "sendToStoryboard": {
+    "back": "返回项目",
+    "conflict": "发送过程中项目已更改。请重试。",
+    "dismiss": "关闭",
+    "failed": "无法将此内容添加到分镜：{detail}",
+    "newProject": "新建项目…",
+    "newShot": "新镜头",
+    "newTake": "镜头 {n}（新版本）",
+    "noFile": "此项目没有可发送的文件。",
+    "send": "发送到分镜",
+    "sending": "正在发送…",
+    "start": "以此内容开始一个分镜",
+    "untitled": "未命名分镜",
+    "use": "用于分镜",
+    "newTakeNamed": null
+  },
+  "studioKit": {
+    "models": "模型",
+    "moreActions": "更多操作",
+    "modelCard": "模型卡",
+    "summary": {
+      "labelValue": "{label} {value}",
+      "size": "{width} × {height}",
+      "framesFps": "{frames} 帧，{fps} fps",
+      "negativeSet": "已设置负面提示词",
+      "negativeEdited": "已修改负面提示词",
+      "endImageSet": "已设置结束图像"
+    }
+  },
+  "musicLibrary": {
+    "addTag": "添加标签",
+    "clearFilters": "清除筛选",
+    "confirmDelete": "删除此项目及其音频吗？此操作无法撤销。",
+    "confirmDeleteMany": "删除 {n} 个项目及其音频吗？此操作无法撤销。",
+    "delete": "删除",
+    "deleteSelected": "删除所选（{n}）",
+    "empty": "还没有音乐。描述一首曲目，然后按“制作曲目”。",
+    "emptySounds": null,
+    "emptyTracks": null,
+    "filter": {
+      "anyTag": "任意标签",
+      "tag": "标签"
+    },
+    "kind": {
+      "sound": "音效",
+      "track": "曲目"
+    },
+    "kindFilter": {
+      "all": null,
+      "label": "显示",
+      "music": null,
+      "sounds": null
+    },
+    "layout": {
+      "grid": "网格",
+      "label": "布局",
+      "list": "列表"
+    },
+    "loadAudio": "加载音频",
+    "loading": "正在加载你的库…",
+    "makeAnother": "再制作一个类似的",
+    "noMatch": "没有匹配项。",
+    "openStudio": "打开工作室",
+    "removeTag": "移除标签 {tag}",
+    "rename": "重命名",
+    "search": "搜索标题、提示词、标签",
+    "select": "选择 {title}",
+    "sort": {
+      "label": "排序",
+      "longest": "最长优先",
+      "newest": "最新优先",
+      "oldest": "最旧优先"
+    },
+    "subtitle": "{tracks, plural, other {# 首曲目}} · {sounds, plural, other {# 个音效}} · 磁盘占用 {size}",
+    "title": "音乐库"
+  },
+  "musicModels": {
+    "action": {
+      "openHuggingFace": "在 Hugging Face 上打开",
+      "openInStudio": "在工作室中打开"
+    },
+    "column": {
+      "fit": "适配度",
+      "licence": "许可证",
+      "makes": "可制作",
+      "model": "模型",
+      "size": "大小",
+      "status": "状态"
+    },
+    "detail": {
+      "fit": "在这台电脑上的适配情况",
+      "licence": "许可证",
+      "openModelCard": "打开模型卡",
+      "repo": "仓库",
+      "requires": "还需要",
+      "size": "下载",
+      "speed": "速度",
+      "attribution": "署名"
+    },
+    "downloadFailed": "下载未完成。",
+    "downloadStatusLost": "无法再读取下载进度。请重新打开此页面再查看。",
+    "empty": {
+      "attention": "没有需要关注的音乐模型。",
+      "catalog": "目录中还没有音乐模型。",
+      "downloading": "没有正在下载的音乐模型。",
+      "firstRun": "选一个音乐模型开始。{name}（{size}，{licence}）适合这台电脑。",
+      "firstRunAction": "下载 {name}",
+      "installed": "还没有安装音乐模型。请从可用模型中选一个下载。"
+    },
+    "filter": {
+      "commercialOnly": "可商用",
+      "licence": "许可证",
+      "licenceAny": "任意许可证",
+      "makes": "可制作",
+      "makesAll": "全部"
+    },
+    "intro": "音乐模型在这台电脑上运行。先下载一个，再打开工作室制作曲目。",
+    "memory": {
+      "pending": "未估算",
+      "pendingTitle": "此模型暂无内存数据。"
+    },
+    "openStudio": "打开工作室",
+    "pack": {
+      "body": "该组件包用于运行音乐模型。约 {size} GB，只需安装一次。",
+      "cancel": "取消",
+      "failedBody": "详细信息见下方。你可以重试。",
+      "failedTitle": "无法安装音乐组件包。",
+      "install": "安装音乐组件包",
+      "log": "安装日志",
+      "title": "安装音乐组件包",
+      "working": "处理中…"
+    },
+    "platform": {
+      "appleSilicon": "Apple 芯片",
+      "cpu": "CPU",
+      "cuda": "CUDA"
+    },
+    "search": "搜索模型、许可证、可制作的内容",
+    "sort": {
+      "fit": "最适配优先",
+      "fitSummary": "最适配优先",
+      "largestFirst": "最大优先",
+      "name": "名称",
+      "nameSummary": "名称 A-Z",
+      "size": "大小",
+      "smallestFirst": "最小优先",
+      "status": "状态",
+      "statusSummary": "已安装的优先"
+    },
+    "title": "音乐模型",
+    "unavailable": "音乐功能目前需要 Apple 芯片的 Mac。",
+    "sounds": {
+      "pack": {
+        "failedTitle": "无法安装音效组件包。",
+        "title": "安装音效组件包",
+        "body": "音效在自己专用的小型组件包中运行。约 {size} GB，只需安装一次。",
+        "install": "安装音效组件包"
+      }
+    }
+  },
+  "videoTools": {
+    "title": "需要视频工具",
+    "body": "合并和导出视频需要用到 FFmpeg，一个免费的辅助程序。它会作为仅供本应用使用的软件包安装。",
+    "install": "安装视频工具",
+    "installing": "正在安装视频工具...",
+    "failed": "视频工具安装失败：{error}",
+    "chooseLabel": "离线？使用你已有的 ffmpeg 文件",
+    "use": "使用此文件",
+    "row": {
+      "label": "视频工具（FFmpeg）",
+      "checking": "正在检查...",
+      "installed": "{version}，来自 {source}{licence}",
+      "notInstalled": "未安装",
+      "encoder": "H.264 编码器：{encoder}",
+      "licence": "许可证",
+      "download": "下载 LGPL 版本（{size} MB）",
+      "cancel": "取消",
+      "remove": "移除",
+      "source": {
+        "download": "已下载的 LGPL 版本",
+        "imageio": "imageio-ffmpeg 软件包",
+        "custom": "你选择的文件（未验证）",
+        "env": "CHAOSENGINE_FFMPEG",
+        "path": "系统 PATH",
+        "unknown": "未知",
+        "link": "来源"
+      }
+    }
+  },
+  "galleryProject": {
+    "filter": "项目",
+    "all": "所有项目",
+    "chip": "来自项目 {name}",
+    "none": "无项目",
+    "search": "搜索项目",
+    "noMatch": "没有匹配的项目。",
+    "open": "在分镜中打开",
+    "stills": "{count, plural, other {# 张静态图}}",
+    "clips": "{count, plural, other {# 个视频片段}}",
+    "tracks": "{count, plural, other {# 首曲目}}",
+    "sounds": "{count, plural, other {# 个音效}}",
+    "speech": "{count, plural, other {# 条语音}}",
+    "transcripts": "{count, plural, other {# 份转写文本}}"
+  },
+  "cast": {
+    "addPicture": "添加图片",
+    "addPictureFor": null,
+    "dropHint": null,
+    "none": null,
+    "pickerTitle": null,
+    "pictureAlt": null,
+    "remove": null,
+    "removePicture": null,
+    "room": null,
+    "small": "图片较小，结果可能有偏差。",
+    "subtitle": null,
+    "title": "角色和地点",
+    "unnamed": "未命名",
+    "usedBy": null,
+    "noneShort": "还没有。"
+  },
+  "exportTab": {
+    "bundleBody": null,
+    "bundleTitle": "项目包",
+    "openStoryboard": "在故事板中打开",
+    "stale": null,
+    "before": "导出之前",
+    "line": {
+      "captions": null,
+      "clipsAll": null,
+      "clipsNone": "还没有镜头有片段，所以没有可导出的内容。",
+      "clipsSome": null,
+      "cloned": "使用了克隆声音，因此始终写入 AI 标记。",
+      "noCaptions": "没有字幕。",
+      "preview": "预览已过时（不影响导出）。",
+      "aiTagOff": "不写入 AI 标记。",
+      "aiTagOn": "文件中写入机器可读的 AI 标记。",
+      "captionsBoth": null,
+      "captionsBurn": null,
+      "captionsSrt": null,
+      "captionsUnused": null,
+      "format": "影片为 {format}。",
+      "loudness": "声音统一到 {lufs} LUFS。",
+      "loudnessOff": "声音保持混音原样（无响度目标）。",
+      "upscale": "最后放大到 {size}：像素更多，细节不会增加。"
+    },
+    "openMixer": "打开混音器"
+  },
+  "overview": {
+    "addCast": "添加角色（可选）",
+    "cast": null,
+    "noSound": "还没有声音",
+    "progress": null,
+    "settingsTitle": "项目设置",
+    "sheet": "镜头",
+    "sound": null,
+    "staleBadge": "已过时",
+    "startBody": null,
+    "startTitle": "从这里开始",
+    "writeShots": "写下你的镜头",
+    "check": {
+      "cast": "角色（可选）",
+      "doneLabel": "完成",
+      "export": "导出",
+      "format": "名称和格式",
+      "preview": "预览",
+      "shots": "镜头",
+      "sound": "声音（可选）",
+      "takes": "每个镜头都有片段",
+      "todoLabel": "待办"
+    },
+    "checklist": "步骤",
+    "next": {
+      "addSound": {
+        "body": null,
+        "button": "打开混音器",
+        "title": "添加人声或音乐"
+      },
+      "done": {
+        "body": "修改后再次导出，或为任意镜头新拍一条。",
+        "button": "打开导出",
+        "title": "完成"
+      },
+      "export": {
+        "body": null,
+        "button": "打开导出",
+        "title": "导出影片"
+      },
+      "makeClips": {
+        "body": null,
+        "button": "打开故事板",
+        "title": "把静帧变成片段"
+      },
+      "makeMissing": {
+        "body": null,
+        "button": null,
+        "title": null,
+        "bodyStills": null
+      },
+      "making": "正在制作镜头",
+      "makingProgress": null,
+      "renderPreview": {
+        "body": "导出前先完整地看一遍、听一遍。",
+        "button": "打开混音器",
+        "title": "渲染预览"
+      },
+      "writeShots": {
+        "body": null,
+        "button": "写下你的镜头",
+        "title": "写下你的镜头"
+      }
+    },
+    "nextStep": "下一步",
+    "progressClips": null,
+    "activity": {
+      "cancelled": "批量已取消 · {when}",
+      "done": null,
+      "exported": "本次已导出影片",
+      "failed": "批量失败 · {when}",
+      "interrupted": "批量中断（应用已关闭）· {when}",
+      "partly": null,
+      "preview": "本次已渲染预览",
+      "title": "最近活动"
+    }
+  },
+  "picker": {
+    "adding": "正在添加图片…",
+    "dropHint": "把图片拖到这里，或粘贴一张（PNG、JPEG 或 WebP）。",
+    "galleryEmpty": "没有匹配的已保存图片。",
+    "noStills": "还没有镜头有静帧。",
+    "notPicture": "请选择 PNG、JPEG 或 WebP 图片。",
+    "pastePath": "改为粘贴路径",
+    "pathLabel": "图片路径",
+    "searchGallery": "搜索图片库",
+    "shotTake": null,
+    "source": {
+      "file": "选择文件",
+      "gallery": "图片库",
+      "shot": "来自镜头",
+      "computer": "本机"
+    },
+    "sources": "图片来源",
+    "useImage": null,
+    "usePath": "使用这张图片",
+    "chooseFile": "选择文件",
+    "clipboardBlocked": null,
+    "clipboardEmpty": null,
+    "pasteClipboard": "从剪贴板粘贴",
+    "pasteHere": "点击这里，然后粘贴图片（Cmd+V）",
+    "pasteHereLabel": "在这里粘贴图片",
+    "showMore": "显示更多"
+  },
+  "projectList": {
+    "noMatch": null,
+    "search": "搜索项目",
+    "sort": {
+      "created": "创建时间",
+      "edited": "最近编辑",
+      "length": "时长",
+      "name": "名称"
+    },
+    "sortLabel": "排序",
+    "title": "项目",
+    "dropHint": "或把 .chaosfilm 文件拖到这里。"
+  },
+  "projectShell": {
+    "back": "项目",
+    "backToList": "返回项目列表",
+    "formatTitle": "项目设置",
+    "nameLabel": "项目名称",
+    "notFound": "这个项目已经不在了。",
+    "rename": "重命名",
+    "tab": {
+      "cast": "角色",
+      "export": "导出",
+      "mixer": "混音器",
+      "overview": "概览",
+      "storyboard": "故事板"
+    },
+    "tabsLabel": "项目"
+  },
+  "templates": {
+    "ad30": "30 秒广告",
+    "blank": "空白",
+    "broll": "场景 / 空镜",
+    "empty": "没有镜头",
+    "meta": null,
+    "shots": {
+      "adBenefit": {
+        "prompt": "同样的事变得轻松，一个放松的微笑",
+        "title": "好处"
+      },
+      "adCall": {
+        "prompt": "留出文字空间的产品画面",
+        "title": "行动号召"
+      },
+      "adHook": {
+        "prompt": "让人停止滑动的醒目特写",
+        "title": "开场钩子"
+      },
+      "adProblem": {
+        "prompt": "有人在为日常小事发愁",
+        "title": "问题"
+      },
+      "adProduct": {
+        "prompt": "柔光下干净桌面上的产品",
+        "title": "产品"
+      },
+      "adProof": {
+        "prompt": "不同地方的几个人愉快地使用它",
+        "title": "证明"
+      },
+      "brollCrowd": {
+        "prompt": "彩色灯光下涌动的夜店人群",
+        "title": "人群"
+      },
+      "brollDetail": {
+        "prompt": "窗上的雨滴映着霓虹，特写",
+        "title": "细节"
+      },
+      "brollWide": {
+        "prompt": "黄昏时繁忙的城市街道，远景",
+        "title": "街道远景"
+      },
+      "socialEnd": {
+        "prompt": "令人满意的结尾揭晓",
+        "title": "收尾"
+      },
+      "socialHook": {
+        "prompt": "一个大胆、充满画面的近景",
+        "title": "开场钩子"
+      },
+      "socialShow": {
+        "prompt": "用一个清晰画面表达主旨",
+        "title": "展示"
+      },
+      "storyEnd": {
+        "prompt": "安静地回头看最后一眼",
+        "title": "结尾"
+      },
+      "storyMeet": {
+        "prompt": "清晨工作中的主角",
+        "title": "主角登场"
+      },
+      "storyOpen": {
+        "prompt": "故事发生地的全景",
+        "title": "开场"
+      },
+      "storyPeak": {
+        "prompt": "一切悬而未决的时刻",
+        "title": "高潮"
+      },
+      "storyTurn": {
+        "prompt": "意外发生了",
+        "title": "转折"
+      }
+    },
+    "startFrom": "起点",
+    "story": "短篇故事",
+    "vertical": "竖屏社交",
+    "metaFormat": null,
+    "sets": "{name} 已将格式设为 {aspect}、{resolution}、{fps} fps。可在下方更改。"
+  },
+  "voicePicker": {
+    "automatic": "无声音（自动）",
+    "change": "更换声音",
+    "cloneNote": "克隆声音的片段始终带有 AI 标记。",
+    "close": "关闭",
+    "group": {
+      "builtin": "内置",
+      "clone": "已克隆",
+      "design": "设计",
+      "preset": "预设"
+    },
+    "loading": "正在加载声音…",
+    "needsModel": "需要该模型",
+    "none": "没有匹配的声音。",
+    "play": null,
+    "sampleText": "你好。这就是我在你的影片中的声音。",
+    "search": "搜索声音",
+    "stop": null,
+    "typeLabel": "声音 ID",
+    "typeLink": "改为输入声音 ID",
+    "typePlaceholder": "声音 ID，即智能体或其他应用使用的名称",
+    "useTyped": "使用这个声音"
+  },
+  "runBar": {
+    "label": "制作镜头",
+    "make": "生成缺少的 {n} 个",
+    "makeNone": "生成缺少的",
+    "makeTimed": "生成缺少的 {n} 个 · 约 {time}",
+    "needStills": null,
+    "stale": "{n} 个已过时"
   }
 }

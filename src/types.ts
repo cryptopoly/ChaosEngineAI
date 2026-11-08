@@ -34,6 +34,7 @@ export type {
 
 import type { ChatMessage, ChatSession } from "./types/chat";
 export type {
+  BusyAdvice,
   ChatMessage,
   ChatMessageVariant,
   ChatPanicSignal,
@@ -48,6 +49,9 @@ export type {
   GenerateResponse,
   SamplerOverrides,
   SessionDocument,
+  StudioJob,
+  StudioPlan,
+  StudioPlanItem,
   TokenLogprob,
   ToolCallInfo,
   ToolRenderAs,
@@ -242,4 +246,14 @@ export type {
   VoiceLibraryKind,
   VoiceLibraryPatch,
   VoiceLibrarySummary,
+  VoiceCapabilities,
+  VoiceEntry,
+  VoiceEntryKind,
+  VoiceModelRow,
+  SpeakBody,
+  SpeakResult,
 } from "./types/voice";
+
+export type * from "./types/storyboard";
+
+export type * from "./types/music";

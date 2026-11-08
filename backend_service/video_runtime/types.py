@@ -113,9 +113,6 @@ class VideoGenerationConfig:
     # (Lightricks/LTX-Video-0.9.5-spatial-upscaler). Frame budget grows
     # ~1.5×; the ``runtimeNote`` surfaces the substitution to users.
     enableLtxRefiner: bool = False
-    # Phase E1: opt-in template-based prompt enhancement for short prompts
-    # (< 25 words). See ``_enhance_prompt`` for the per-model suffixes.
-    enhancePrompt: bool = True
     # FU-018: TAESD / TAEHV preview-decode VAE swap. Preview-only quality
     # knob — when True the engine swaps ``pipeline.vae`` for the matching
     # tiny VAE (taew2_2 for Wan, taeltx2_3_wide for LTX, taehv1_5 for
@@ -161,6 +158,10 @@ class VideoGenerationConfig:
     # inside the matmul. E5M2 for HunyuanVideo, E4M3 for Wan / LTX / FLUX
     # / Qwen-Image. Default off; opt-in.
     fp8LayerwiseCasting: bool = False
+    # Image-to-video (ltx-2-mlx only); absolute, already-validated paths.
+    startImagePath: str | None = None
+    endImagePath: str | None = None
+    imageStrength: float = 1.0
     # FU-019 distill LoRAs: when the catalog variant pins a LoRA
     # (lightx2v Wan2.1 CausVid, Wan2.2-Distill-Models, FastWan), the
     # engine fuses it into the pipeline transformer at load time so
@@ -193,3 +194,5 @@ class GeneratedVideo:
     runtimeNote: str | None = None
     effectiveSteps: int | None = None
     effectiveGuidance: float | None = None
+    # C1 timing split (loadSeconds, encodeSeconds, denoiseSeconds, decodeSeconds, totalSeconds, warm).
+    timings: dict[str, Any] | None = None

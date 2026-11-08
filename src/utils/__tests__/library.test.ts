@@ -144,6 +144,14 @@ describe("isChatLibraryItem()", () => {
     expect(isChatLibraryItem(makeItem({ name: "dinov3-encoder", path: "/models/dinov3.safetensors", modelType: "other" }))).toBe(false);
   });
 
+  it("keeps speech, transcription and image-only models out of the chat list", () => {
+    for (const repo of ["mlx-community/Qwen3-TTS-12Hz-0.6B-Base-bf16", "prince-canuma/Kokoro-82M", "mlx-community/whisper-small-mlx", "speridlabs/iris-3b"]) {
+      const dir = repo.replace("/", "--");
+      expect(isChatLibraryItem(makeItem({ name: repo, path: `/hf/models--${dir}/snapshots/1`, modelType: null })), repo).toBe(false);
+    }
+    expect(isChatLibraryItem(makeItem({ name: "Vontra/Qwen3.8-27B-MLX-4bit", path: "/hf/models--Vontra--Qwen3.8-27B-MLX-4bit/snapshots/1" }))).toBe(true);
+  });
+
   it("filters legacy cached LTX-2 entries without modelType", () => {
     expect(isChatLibraryItem(makeItem({
       name: "prince-canuma/LTX-2.3-dev",

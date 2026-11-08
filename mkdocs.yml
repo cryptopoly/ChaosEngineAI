@@ -83,11 +83,17 @@ nav:
       - usage/image-studio.md
       - usage/video-studio.md
       - usage/voice.md
+      - usage/music.md
+      - usage/storyboard.md
+      - usage/studio-layout.md
       - usage/server-mode.md
       - usage/benchmarks.md
   - Features:
       - features/mtplx.md
       - features/tensorfold.md
+      - features/agent-bridge.md
+      - features/music.md
+      - features/storyboard.md
       - features/dflash.md
       - features/cache-strategies.md
       - features/fused-attention.md

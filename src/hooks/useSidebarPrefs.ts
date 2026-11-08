@@ -7,12 +7,15 @@ const STORAGE_KEY = "chaosengine.sidebar.prefs.v1";
 interface StoredPrefs {
   mode?: SidebarMode;
   collapsedGroups?: SidebarGroupId[];
+  keepAllOpen?: boolean;
   lastChildByGroup?: Partial<Record<SidebarGroupId, string>>;
 }
 
 interface SidebarPrefs {
   mode: SidebarMode;
   collapsedGroups: Set<SidebarGroupId>;
+  keepAllOpen: boolean;
+  setKeepAllOpen: (value: boolean) => void;
   lastChildByGroup: Partial<Record<SidebarGroupId, string>>;
   toggleGroupCollapsed: (group: SidebarGroupId) => void;
   setMode: (mode: SidebarMode) => void;
@@ -47,6 +50,7 @@ export function useSidebarPrefs(): SidebarPrefs {
   const [collapsedGroups, setCollapsedGroups] = useState<Set<SidebarGroupId>>(
     () => new Set(readStoredSidebarPrefs().collapsedGroups ?? []),
   );
+  const [keepAllOpen, setKeepAllOpen] = useState<boolean>(() => readStoredSidebarPrefs().keepAllOpen === true);
   const [lastChildByGroup, setLastChildByGroup] = useState<Partial<Record<SidebarGroupId, string>>>(
     () => readStoredSidebarPrefs().lastChildByGroup ?? {},
   );
@@ -55,9 +59,10 @@ export function useSidebarPrefs(): SidebarPrefs {
     writeStored({
       mode,
       collapsedGroups: Array.from(collapsedGroups),
+      keepAllOpen,
       lastChildByGroup,
     });
-  }, [mode, collapsedGroups, lastChildByGroup]);
+  }, [mode, collapsedGroups, keepAllOpen, lastChildByGroup]);
 
   const toggleGroupCollapsed = useCallback((group: SidebarGroupId) => {
     setCollapsedGroups((prev) => {
@@ -79,6 +84,8 @@ export function useSidebarPrefs(): SidebarPrefs {
   return {
     mode,
     collapsedGroups,
+    keepAllOpen,
+    setKeepAllOpen,
     lastChildByGroup,
     toggleGroupCollapsed,
     setMode,

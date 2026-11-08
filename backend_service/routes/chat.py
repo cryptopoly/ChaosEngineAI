@@ -1,8 +1,10 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException, Request, UploadFile, File
+from fastapi.responses import FileResponse
+from pydantic import BaseModel, Field
 
 from backend_service.i18n import localized_detail
 from backend_service.models import (
@@ -130,7 +132,7 @@ def generate(request: Request, body: GenerateRequest) -> dict[str, Any]:
 @router.post("/api/chat/generate/stream")
 def generate_stream(request: Request, body: GenerateRequest):
     state = request.app.state.chaosengine
-    return state.generate_stream(body)
+    return state.generate_stream(body, app_request=request)
 
 
 @router.post("/api/chat/generate/{session_id}/cancel")
@@ -186,3 +188,66 @@ def list_tools() -> dict[str, Any]:
             for t in tools
         ],
     }
+
+
+# ---------------------------------------------------------------------------
+# D-60: studio tools in Chat. The plan card's decision, and the job cards' status, cancel and media.
+# These sit under /api/, so only the app's own token reaches them (never an agent token).
+# ---------------------------------------------------------------------------
+
+
+class StudioPlanDecision(BaseModel):
+    decisions: dict[str, Literal["approve", "deny"]] = Field(default_factory=dict)
+    edit: bool = False  # "Edit by chat": decline everything, the model asks what to change
+    alwaysAllow: bool = False  # "Always allow renders in this chat"
+
+
+@router.post("/api/chat/studio/plans/{plan_id}/decision")
+def decide_studio_plan(request: Request, plan_id: str, body: StudioPlanDecision) -> dict[str, Any]:
+    from backend_service.tools.studio_gate import decide
+
+    plan = decide(plan_id, dict(body.decisions), edit=body.edit, always_allow=body.alwaysAllow)
+    if plan is None:
+        raise HTTPException(status_code=404, detail=localized_detail(
+            request, "This plan is no longer waiting (answered, cancelled or timed out)."))
+    return {"planId": plan.id, "decisions": plan.decisions, "edit": plan.edit, "alwaysAllow": plan.always_allow}
+
+
+def _chat_job(request: Request, job_id: str) -> Any:
+    from backend_service.mcp_bridge.jobs import STORE
+    from backend_service.tools.studio import CHAT_OWNER
+
+    job = STORE.get(job_id)
+    if job is None or job.owner != CHAT_OWNER:
+        raise HTTPException(status_code=404, detail=localized_detail(request, "Unknown chat job."))
+    return job
+
+
+@router.get("/api/chat/studio/jobs/{job_id}")
+def studio_job_status(request: Request, job_id: str) -> dict[str, Any]:
+    from backend_service.tools.studio import trim_result
+
+    return {"job": trim_result(_chat_job(request, job_id).describe())}
+
+
+@router.post("/api/chat/studio/jobs/{job_id}/cancel")
+def cancel_studio_job(request: Request, job_id: str) -> dict[str, Any]:
+    from backend_service.mcp_bridge.jobs import STORE
+    from backend_service.tools.studio import trim_result
+
+    job = _chat_job(request, job_id)
+    return {"cancelRequested": STORE.cancel(job), "job": trim_result(job.describe())}
+
+
+@router.get("/api/chat/studio/jobs/{job_id}/media")
+def studio_job_media(request: Request, job_id: str, track: int = 0) -> FileResponse:
+    """The file a finished chat job made: its own output path, and only inside the app's output folders."""
+    from backend_service.mcp_bridge.files import fetchable
+
+    job = _chat_job(request, job_id)
+    output = job.output or {}
+    paths = [t.get("path") for t in output.get("tracks") or [] if isinstance(t, dict)] or [output.get("path")]
+    real = fetchable(str(paths[track])) if job.state == "done" and 0 <= track < len(paths) and paths[track] else None
+    if real is None:
+        raise HTTPException(status_code=404, detail=localized_detail(request, "This job has no file to show."))
+    return FileResponse(real)

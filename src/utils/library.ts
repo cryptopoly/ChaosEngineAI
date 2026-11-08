@@ -95,6 +95,22 @@ const IMAGE_LIBRARY_KEYWORDS = [
   "z-image",
   "hidream",
   "glm-image",
+  "iris-3b",
+];
+
+// Speech, transcription and audio models share the Hugging Face cache with chat models but are not chat models.
+const AUDIO_LIBRARY_KEYWORDS = [
+  "qwen3-tts",
+  "kokoro",
+  "whisper",
+  "parakeet",
+  "nemotron-3.5-asr",
+  "silero",
+  "audioseal",
+  "ace-step",
+  "stable-audio",
+  "pyannote",
+  "speaker-embedding",
 ];
 
 export function isChatLibraryItem(item: LibraryItem): boolean {
@@ -105,6 +121,7 @@ export function isChatLibraryItem(item: LibraryItem): boolean {
   const haystack = `${item.name} ${item.path} ${repo ?? ""}`.toLowerCase();
   if (VIDEO_LIBRARY_KEYWORDS.some((keyword) => haystack.includes(keyword))) return false;
   if (IMAGE_LIBRARY_KEYWORDS.some((keyword) => haystack.includes(keyword))) return false;
+  if (AUDIO_LIBRARY_KEYWORDS.some((keyword) => haystack.includes(keyword))) return false;
   return true;
 }
 

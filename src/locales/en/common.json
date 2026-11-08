@@ -36,7 +36,14 @@
     "voiceStudio": "Voice Studio",
     "voiceModels": "Voice Models",
     "voiceLibrary": "Voice Library",
-    "chatModels": "Chat Models"
+    "chatModels": "Chat Models",
+    "musicModels": "Music and Audio Models",
+    "musicStudio": "Music and Audio Studio",
+    "musicLibrary": "Music and Audio Library",
+    "storyProjects": "Projects",
+    "storyBoard": "Board",
+    "storyMixer": "Mixer",
+    "projects": "Projects"
   },
   "tabCaptions": {
     "dashboard": "System overview",
@@ -67,7 +74,14 @@
     "voiceLibrary": "Transcripts and speech you made",
     "chatModels": "Find, download and manage language models",
     "imageModelsPage": "Find, download and manage image models",
-    "videoModelsPage": "Find, download and manage video models"
+    "videoModelsPage": "Find, download and manage video models",
+    "musicModels": "Find, download and manage music and sound models",
+    "musicStudio": "Make tracks and sound effects",
+    "musicLibrary": "Tracks and sounds you made",
+    "storyProjects": "Your films, one folder each",
+    "storyBoard": "Shots, takes and prompts",
+    "storyMixer": "Picture, sound and export",
+    "projects": "Storyboard films: shots, sound, export"
   },
   "tabShortLabels": {
     "chat": "Chat",
@@ -92,7 +106,12 @@
     "voiceStudio": "Studio",
     "voiceModels": "My Models",
     "voiceLibrary": "Library",
-    "models": "Models"
+    "models": "Models",
+    "musicStudio": "Studio",
+    "musicLibrary": "Library",
+    "storyProjects": "Projects",
+    "storyBoard": "Board",
+    "storyMixer": "Mixer"
   },
   "tabGroups": {
     "chat": "Chat",
@@ -101,7 +120,9 @@
     "video": "Video",
     "benchmarks": "Benchmarks",
     "tools": "Tools",
-    "voice": "Voice"
+    "voice": "Voice",
+    "music": "Music and Audio",
+    "storyboard": "Storyboard"
   },
   "tabsCount": "{count, plural, one {# tab} other {# tabs}}",
   "sidebar": {
@@ -109,7 +130,9 @@
     "backendOffline": "Offline",
     "noModelLoaded": "No model loaded",
     "groupTabsAriaLabel": "{group} tabs",
-    "primaryNavAriaLabel": "Primary"
+    "primaryNavAriaLabel": "Primary",
+    "sectionMake": "Make",
+    "sectionRun": "Run"
   },
   "slashCommands": {
     "menuAriaLabel": "Slash commands"
@@ -664,6 +687,8 @@
     "thumbnailAlt": "Live denoise preview",
     "thumbnailCaption": "Live preview · TAESD decode",
     "stepCounter": "step {current} / {total}",
+    "waitingForAgent": "Waiting for an agent job to finish",
+    "waitingInQueue": "Waiting for another job to finish (position {position})",
     "inProgress": "in progress…",
     "finalizing": "finalizing…",
     "phaseTiming": "{elapsed}s / ~{estimated}s"
@@ -828,7 +853,9 @@
       "sidebarCollapsibleHelp": "shows all groups expanded with children listed inline — one click per destination.",
       "sidebarTabsHelp": "keeps the sidebar compact: groups behave like single buttons that jump to their last-used tab, with a sub-tab bar above the content.",
       "uiScaleAria": "UI scale",
-      "uiScaleHelp": "UI scale changes the app chrome density immediately. Media previews keep their own aspect-ratio sizing."
+      "uiScaleHelp": "UI scale changes the app chrome density immediately. Media previews keep their own aspect-ratio sizing.",
+      "keepGroupsOpen": "Keep all sidebar groups open",
+      "keepGroupsOpenHelp": "Off by default: only the group you are working in stays open. Turn it on to keep every group expanded."
     },
     "dataDirectory": {
       "title": "Data Directory",
@@ -883,6 +910,25 @@
       "tokenPlaceholder": "hf_...",
       "helpText": "Stored locally. Used by MLX conversion when fetching gated models from Hugging Face."
     },
+    "agentAccess": {
+      "title": "Agent access",
+      "subtitle": "Let an AI agent (Claude Code, Cursor and others) make images, video, speech and transcripts here.",
+      "switch": "Allow agents to use ChaosEngineAI",
+      "hint": "Off by default. Agents run one job at a time, only on this computer, and need the token below. They can only use models you have already downloaded.",
+      "claudeCode": "Claude Code",
+      "stdio": "Clients that only start local programs (stdio)",
+      "otherClients": "Other MCP clients (JSON)",
+      "rotate": "Make a new token",
+      "rotateHint": "The old token stops working at once. Agents need the new line.",
+      "permissions": "Permissions",
+      "permissionsHint": "The main token can read, make things and move files. Nothing else unless you tick it.",
+      "scopeClone": "Allow voice cloning",
+      "remoteClone": "Also allow cloning from other computers",
+      "readTokenMake": "Make a read-only token",
+      "readTokenRemove": "Remove the read-only token",
+      "readTokenHint": "For a dashboard or watcher: it can look at status and jobs but cannot make or change anything.",
+      "readTokenLabel": "Read-only token (Claude Code)"
+    },
     "integrations": {
       "title": "Integrations",
       "subtitle": "Connect external tools to ChaosEngineAI's OpenAI-compatible API.",
@@ -928,7 +974,8 @@
     "contextDetected": "{contextLabel} detected",
     "emptyState": "No models match your search.",
     "launchSettings": "Launch settings",
-    "cancelButton": "Cancel"
+    "cancelButton": "Cancel",
+    "busyConfirm": "Load anyway"
   },
   "modelPicker": {
     "weightFileTitle": "Select weight file: {name}",
@@ -1250,5 +1297,35 @@
     "finder": "Show in Finder",
     "explorer": "Show in Explorer",
     "files": "Show in Files"
+  },
+  "comingSoon": {
+    "music": "Music is coming soon.",
+    "storyboard": "Storyboard is coming soon."
+  },
+  "llamaCuda": {
+    "description": "Runs GGUF chat models on your NVIDIA GPU with CUDA {cuda} (llama.cpp {tag}). Downloads about 680 MB, including the CUDA runtime (0.9 GB on disk).",
+    "inUse": "In use: GGUF models run on the NVIDIA GPU.",
+    "install": "Install",
+    "installedNoDevice": "Installed, but it found no CUDA device. Check the NVIDIA driver (nvidia-smi).",
+    "notInstalled": "Not installed. GGUF models use the bundled build.",
+    "reinstall": "Reinstall",
+    "title": "CUDA llama-server (NVIDIA)"
+  },
+  "terms": {
+    "title": "Terms of use",
+    "intro": "Please read this before you start.",
+    "agree": "I agree",
+    "quit": "Quit",
+    "close": "Close",
+    "read": "Read the terms",
+    "acceptedOn": "Accepted on {date}.",
+    "notAccepted": "Not accepted yet.",
+    "points": {
+      "responsibility": "You are responsible for what you generate and how you use it.",
+      "disclosure": "Say when content is AI-generated wherever the law or a platform requires it (for example Article 50 of the EU AI Act and platform labelling rules).",
+      "impersonation": "Do not use ChaosEngineAI to impersonate a real person without their consent.",
+      "voices": "Only clone a voice with the speaker's consent.",
+      "licences": "Each model comes with its own licence. Check it before you use the output."
+    }
   }
 }

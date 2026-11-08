@@ -36,7 +36,14 @@
     "voiceStudio": "Estudio de voz",
     "voiceModels": "Modelos de voz",
     "voiceLibrary": "Biblioteca de voz",
-    "chatModels": "Modelos de chat"
+    "chatModels": "Modelos de chat",
+    "musicModels": "Modelos de música",
+    "musicStudio": "Estudio de música",
+    "musicLibrary": "Biblioteca de música",
+    "storyProjects": "Proyectos",
+    "storyBoard": "Tablero",
+    "storyMixer": "Mezclador",
+    "projects": "Proyectos"
   },
   "tabCaptions": {
     "dashboard": "Resumen del sistema",
@@ -67,7 +74,14 @@
     "voiceLibrary": "Tus transcripciones y audios generados",
     "chatModels": "Buscar, descargar y gestionar modelos de lenguaje",
     "imageModelsPage": "Buscar, descargar y gestionar modelos de imagen",
-    "videoModelsPage": "Buscar, descargar y gestionar modelos de video"
+    "videoModelsPage": "Buscar, descargar y gestionar modelos de video",
+    "musicModels": "Busca, descarga y gestiona modelos de música y sonido",
+    "musicStudio": "Crea pistas y efectos de sonido",
+    "musicLibrary": "Las pistas y sonidos que has creado",
+    "storyProjects": "Tus películas, una carpeta cada una",
+    "storyBoard": "Planos, tomas y prompts",
+    "storyMixer": "Imagen, sonido y exportación",
+    "projects": "Películas de storyboard: planos, sonido, exportación"
   },
   "tabShortLabels": {
     "chat": "Chat",
@@ -92,7 +106,12 @@
     "voiceStudio": "Estudio",
     "voiceModels": "Mis modelos",
     "voiceLibrary": "Biblioteca",
-    "models": "Modelos"
+    "models": "Modelos",
+    "musicStudio": "Estudio",
+    "musicLibrary": "Biblioteca",
+    "storyProjects": "Proyectos",
+    "storyBoard": "Tablero",
+    "storyMixer": "Mezclador"
   },
   "tabGroups": {
     "chat": "Chat",
@@ -101,7 +120,9 @@
     "video": "Video",
     "benchmarks": "Benchmarks",
     "tools": "Herramientas",
-    "voice": "Voz"
+    "voice": "Voz",
+    "music": "Música",
+    "storyboard": "Storyboard"
   },
   "tabsCount": "{count, plural, one {# pestaña} other {# pestañas}}",
   "sidebar": {
@@ -109,7 +130,9 @@
     "backendOffline": "Sin conexión",
     "noModelLoaded": "Ningún modelo cargado",
     "groupTabsAriaLabel": "Pestañas {group}",
-    "primaryNavAriaLabel": "Principal"
+    "primaryNavAriaLabel": "Principal",
+    "sectionMake": "Crear",
+    "sectionRun": "Ejecutar"
   },
   "slashCommands": {
     "menuAriaLabel": "Comandos de barra"
@@ -664,6 +687,8 @@
     "thumbnailAlt": "Vista previa de eliminación de ruido en vivo",
     "thumbnailCaption": "Vista previa en vivo · Decodificación TAESD",
     "stepCounter": "paso {current} / {total}",
+    "waitingForAgent": "Esperando a que termine un trabajo de un agente",
+    "waitingInQueue": "Esperando a que termine otro trabajo (posición {position})",
     "inProgress": "en curso…",
     "finalizing": "finalizando…",
     "phaseTiming": "{elapsed}s / ~{estimated}s"
@@ -828,7 +853,9 @@
       "sidebarCollapsibleHelp": "muestra todos los grupos expandidos con los elementos hijos listados en línea — un clic por destino.",
       "sidebarTabsHelp": "mantiene la barra lateral compacta: los grupos se comportan como botones únicos que saltan a su última pestaña usada, con una barra de subpestañas arriba del contenido.",
       "uiScaleAria": "Escala de la interfaz",
-      "uiScaleHelp": "La escala de la interfaz cambia la densidad del cromo de la app inmediatamente. Las vistas previas de medios conservan su propio dimensionamiento por relación de aspecto."
+      "uiScaleHelp": "La escala de la interfaz cambia la densidad del cromo de la app inmediatamente. Las vistas previas de medios conservan su propio dimensionamiento por relación de aspecto.",
+      "keepGroupsOpen": "Mantener abiertos todos los grupos de la barra lateral",
+      "keepGroupsOpenHelp": "Desactivado por defecto: solo el grupo en el que trabajas permanece abierto. Actívalo para mantener todos los grupos expandidos."
     },
     "dataDirectory": {
       "title": "Directorio de datos",
@@ -883,6 +910,25 @@
       "tokenPlaceholder": "hf_...",
       "helpText": "Se almacena localmente. Usado por la conversión MLX al obtener modelos restringidos de Hugging Face."
     },
+    "agentAccess": {
+      "title": "Acceso de agentes",
+      "subtitle": "Permite que un agente de IA (Claude Code, Cursor y otros) cree aquí imágenes, video, voz y transcripciones.",
+      "switch": "Permitir que los agentes usen ChaosEngineAI",
+      "hint": "Desactivado por defecto. Los agentes ejecutan un trabajo a la vez, solo en este equipo, y necesitan el token de abajo. Solo pueden usar modelos que ya hayas descargado.",
+      "claudeCode": "Claude Code",
+      "stdio": "Clientes que solo inician programas locales (stdio)",
+      "otherClients": "Otros clientes MCP (JSON)",
+      "rotate": "Crear un token nuevo",
+      "rotateHint": "El token anterior deja de funcionar de inmediato. Los agentes necesitan la línea nueva.",
+      "permissions": "Permisos",
+      "permissionsHint": "El token principal puede leer, crear contenido y mover archivos. Nada más, salvo que lo marques.",
+      "scopeClone": "Permitir la clonación de voz",
+      "remoteClone": "Permitir también la clonación desde otros equipos",
+      "readTokenMake": "Crear un token de solo lectura",
+      "readTokenRemove": "Quitar el token de solo lectura",
+      "readTokenHint": "Para un panel o un vigilante: puede ver el estado y los trabajos, pero no puede crear ni cambiar nada.",
+      "readTokenLabel": "Token de solo lectura (Claude Code)"
+    },
     "integrations": {
       "title": "Integraciones",
       "subtitle": "Conecta herramientas externas a la API compatible con OpenAI de ChaosEngineAI.",
@@ -928,7 +974,8 @@
     "contextDetected": "{contextLabel} detectado",
     "emptyState": "Ningún modelo coincide con tu búsqueda.",
     "launchSettings": "Configuración de lanzamiento",
-    "cancelButton": "Cancelar"
+    "cancelButton": "Cancelar",
+    "busyConfirm": "Cargar de todos modos"
   },
   "modelPicker": {
     "weightFileTitle": "Seleccionar archivo de pesos: {name}",
@@ -1250,5 +1297,35 @@
     "finder": "Mostrar en el Finder",
     "explorer": "Mostrar en el Explorador",
     "files": "Mostrar en Archivos"
+  },
+  "comingSoon": {
+    "music": "La música llegará pronto.",
+    "storyboard": "El storyboard llegará pronto."
+  },
+  "llamaCuda": {
+    "description": "Ejecuta modelos de chat GGUF en tu GPU NVIDIA con CUDA {cuda} (llama.cpp {tag}). La descarga pesa unos 680 MB, con el runtime de CUDA incluido (0,9 GB en disco).",
+    "inUse": "En uso: los modelos GGUF se ejecutan en la GPU NVIDIA.",
+    "install": "Instalar",
+    "installedNoDevice": "Instalado, pero no se encontró ningún dispositivo CUDA. Revisa el controlador de NVIDIA (nvidia-smi).",
+    "notInstalled": "No instalado. Los modelos GGUF usan la versión incluida.",
+    "reinstall": "Reinstalar",
+    "title": "CUDA llama-server (NVIDIA)"
+  },
+  "terms": {
+    "title": "Términos de uso",
+    "intro": "Léelo antes de empezar.",
+    "agree": "Acepto",
+    "quit": "Salir",
+    "close": "Cerrar",
+    "read": "Leer los términos",
+    "acceptedOn": "Aceptado el {date}.",
+    "notAccepted": "Aún no aceptado.",
+    "points": {
+      "responsibility": "Eres responsable de lo que generas y de cómo lo usas.",
+      "disclosure": "Indica que el contenido está generado por IA dondequiera que la ley o una plataforma lo exija (por ejemplo, el artículo 50 de la Ley de IA de la UE y las normas de etiquetado de las plataformas).",
+      "impersonation": "No uses ChaosEngineAI para suplantar a una persona real sin su consentimiento.",
+      "voices": "Clona una voz solo con el consentimiento de quien habla.",
+      "licences": "Cada modelo tiene su propia licencia. Revísala antes de usar el resultado."
+    }
   }
 }

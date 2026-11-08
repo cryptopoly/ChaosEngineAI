@@ -1,8 +1,9 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { SidebarGroupId, SidebarMode, TabId } from "../types";
 import type { TabConfig } from "../constants";
-import { sidebarGroups, tabs as allTabs } from "../constants";
+import { HOME_STUDIO_ENABLED, tabs as allTabs } from "../constants";
+import { arrangeRows, buildItems, resolveGroupTarget, visibleSidebarTabs } from "./sidebarModel";
 import { ChevronIcon, groupIcon, standaloneTabIcon } from "./icons/SidebarIcons";
 
 interface SidebarProps {
@@ -18,52 +19,12 @@ interface SidebarProps {
   onToggleGroupCollapsed: (group: SidebarGroupId) => void;
   lastChildByGroup: Partial<Record<SidebarGroupId, string>>;
   onRememberLastChild: (group: SidebarGroupId, tabId: string) => void;
-}
-
-type SidebarItem =
-  | { kind: "tab"; tab: TabConfig }
-  | { kind: "group"; id: SidebarGroupId; label: string; children: TabConfig[] };
-
-function buildItems(visibleTabs: TabConfig[]): SidebarItem[] {
-  const items: SidebarItem[] = [];
-  const groupsSeen = new Set<SidebarGroupId>();
-
-  for (const tab of visibleTabs) {
-    if (!tab.group) {
-      items.push({ kind: "tab", tab });
-      continue;
-    }
-    if (groupsSeen.has(tab.group)) continue;
-    groupsSeen.add(tab.group);
-
-    const groupDef = sidebarGroups.find((g) => g.id === tab.group);
-    if (!groupDef) {
-      items.push({ kind: "tab", tab });
-      continue;
-    }
-    const children = visibleTabs.filter((t) => t.group === tab.group);
-    items.push({ kind: "group", id: groupDef.id, label: groupDef.label, children });
-  }
-
-  return items;
-}
-
-function resolveGroupTarget(
-  groupId: SidebarGroupId,
-  children: TabConfig[],
-  lastChildByGroup: Partial<Record<SidebarGroupId, string>>,
-): TabId | null {
-  const remembered = lastChildByGroup[groupId];
-  if (remembered) {
-    const match = children.find((c) => c.id === remembered);
-    if (match) return match.id;
-  }
-  const groupDef = sidebarGroups.find((g) => g.id === groupId);
-  if (groupDef) {
-    const defaultChild = children.find((c) => c.id === groupDef.defaultChild);
-    if (defaultChild) return defaultChild.id;
-  }
-  return children[0]?.id ?? null;
+  /** Off (default): only the active group is open. On: every group stays open unless collapsed. */
+  keepAllOpen?: boolean;
+  /** Groups whose "ready" child should be the click target (model installed, project open). */
+  readyGroups?: ReadonlySet<SidebarGroupId>;
+  /** Show the Music and Storyboard groups. Defaults to the build-time flag. */
+  homeStudioEnabled?: boolean;
 }
 
 export function Sidebar({
@@ -79,19 +40,24 @@ export function Sidebar({
   onToggleGroupCollapsed,
   lastChildByGroup,
   onRememberLastChild,
+  keepAllOpen = false,
+  readyGroups,
+  homeStudioEnabled = HOME_STUDIO_ENABLED,
 }: SidebarProps) {
   const { t } = useTranslation("common");
   const visibleTabs = useMemo(
-    () =>
-      allTabs.filter((tab) => {
-        if (tab.id === "conversion" && platform && platform !== "Darwin") return false;
-        return true;
-      }),
-    [platform],
+    () => visibleSidebarTabs(allTabs, platform, homeStudioEnabled),
+    [platform, homeStudioEnabled],
   );
 
-  const items = useMemo(() => buildItems(visibleTabs), [visibleTabs]);
+  const rows = useMemo(() => arrangeRows(buildItems(visibleTabs)), [visibleTabs]);
   const activeGroup = visibleTabs.find((t) => t.id === activeTab)?.group;
+  // Accordion: one group is open at a time. It follows the active tab, and a
+  // header click moves it. Not persisted; the setting only picks the style.
+  const [openGroup, setOpenGroup] = useState<SidebarGroupId | null>(activeGroup ?? null);
+  useEffect(() => {
+    if (activeGroup) setOpenGroup(activeGroup);
+  }, [activeGroup]);
   // FU-042: resolve tab labels / captions through i18next at render
   // time with the English literal as ``defaultValue`` so the source
   // stays usable when a translation hasn't been authored yet.
@@ -110,7 +76,7 @@ export function Sidebar({
   }
 
   function handleGroupTabsClick(groupId: SidebarGroupId, children: TabConfig[]) {
-    const target = resolveGroupTarget(groupId, children, lastChildByGroup);
+    const target = resolveGroupTarget(groupId, children, lastChildByGroup, readyGroups);
     if (target) {
       onRememberLastChild(groupId, target);
       onTabChange(target);
@@ -121,7 +87,7 @@ export function Sidebar({
     <aside className="sidebar">
       <div className="brand-block">
         <div className="brand-title-row">
-          <img src="/logo.svg" alt={t("app.name", { defaultValue: "ChaosEngineAI" })} className="brand-logo" />
+          <img src="/logo.svg" alt="" className="brand-logo" />
           <h1>{t("app.name", { defaultValue: "ChaosEngineAI" })}</h1>
         </div>
         <span className="brand-kicker">
@@ -131,7 +97,16 @@ export function Sidebar({
       </div>
 
       <nav className="nav-list" aria-label={t("sidebar.primaryNavAriaLabel", { defaultValue: "Primary" })}>
-        {items.map((item) => {
+        {rows.map((item) => {
+          if (item.kind === "section") {
+            return (
+              <div key={`section-${item.section}`} className="nav-section-label">
+                {item.section === "make"
+                  ? t("sidebar.sectionMake", { defaultValue: "Make" })
+                  : t("sidebar.sectionRun", { defaultValue: "Run" })}
+              </div>
+            );
+          }
           if (item.kind === "tab") {
             const Icon = standaloneTabIcon[item.tab.id];
             const isActive = activeTab === item.tab.id;
@@ -140,6 +115,7 @@ export function Sidebar({
                 key={item.tab.id}
                 className={isActive ? "nav-button active" : "nav-button"}
                 type="button"
+                aria-current={isActive ? "page" : undefined}
                 onClick={() => handleTabClick(item.tab)}
               >
                 {Icon ? <Icon className="nav-icon" /> : null}
@@ -162,6 +138,7 @@ export function Sidebar({
                 key={item.id}
                 type="button"
                 className={hasActiveChild ? "nav-button active" : "nav-button"}
+                aria-current={hasActiveChild ? "page" : undefined}
                 onClick={() => handleGroupTabsClick(item.id, item.children)}
               >
                 {GroupIcon ? <GroupIcon className="nav-icon" /> : null}
@@ -179,8 +156,13 @@ export function Sidebar({
           }
 
           // Collapsible mode: group header toggles; children render inline
-          const userCollapsed = collapsedGroups.has(item.id);
-          const isOpen = hasActiveChild || !userCollapsed;
+          const isOpen = keepAllOpen
+            ? hasActiveChild || !collapsedGroups.has(item.id)
+            : openGroup === item.id;
+          const toggleGroup = () => {
+            if (keepAllOpen) onToggleGroupCollapsed(item.id);
+            else setOpenGroup((current) => (current === item.id && !hasActiveChild ? null : item.id));
+          };
 
           return (
             <div key={item.id} className={`nav-group ${isOpen ? "open" : "closed"}`}>
@@ -189,14 +171,14 @@ export function Sidebar({
                 className="nav-group-header"
                 aria-expanded={isOpen}
                 aria-controls={`nav-group-${item.id}`}
-                onClick={() => onToggleGroupCollapsed(item.id)}
+                onClick={toggleGroup}
               >
                 {GroupIcon ? <GroupIcon className="nav-icon" /> : null}
                 <span className="nav-group-label">{localizedGroupLabel}</span>
                 <ChevronIcon open={isOpen} className="nav-group-chevron" />
               </button>
               {isOpen ? (
-                <div className="nav-group-children" id={`nav-group-${item.id}`} role="group">
+                <div className="nav-group-children" id={`nav-group-${item.id}`} role="group" aria-label={localizedGroupLabel}>
                   {item.children.map((child) => {
                     const isActive = activeTab === child.id;
                     return (
@@ -204,6 +186,7 @@ export function Sidebar({
                         key={child.id}
                         className={isActive ? "nav-child-button active" : "nav-child-button"}
                         type="button"
+                        aria-current={isActive ? "page" : undefined}
                         onClick={() => handleTabClick(child)}
                       >
                         <span className="nav-child-dot" aria-hidden />

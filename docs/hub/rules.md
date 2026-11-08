@@ -17,7 +17,7 @@ How Claude and its team of agents work on ChaosEngineAI. The generic rules come 
 ## 2. Start of every project
 
 1. **Landscape brief** (one page, sources and confidence tags): comparable products, what users praise and complain about, pricing, gaps to own.
-2. **Questions**, one batch of at most 8, ranked, each with a recommended default so work can start meanwhile. Cover audience, goals and success measures, style, scope, platforms, architecture limits, budget and deadline, legal and licence limits, accessibility, and what to avoid.
+2. **Questions**, one batch of at most 8, ranked, each with a recommended default so work can start meanwhile. Cover audience, goals and success measures, style, scope, platforms, architecture limits, budget and deadline, dependency limits, accessibility, and what to avoid.
 3. **Tools check:** search for skills, plugins and MCP servers that help, listing source, purpose and risk. They run with our permissions, so they are proposed and **never installed without the owner's yes**. Prefer official sources and pinned versions.
 4. **Scaffold the hub** and a decision log before any real work, and record the answers to the questions.
 
@@ -27,7 +27,7 @@ How Claude and its team of agents work on ChaosEngineAI. The generic rules come 
 - Markdown is the source of truth; HTML is the readable view and opens from disk with no server.
 - A one-screen [status and handover](status.md) page is read first in every session.
 - [Decisions](decisions.md) hold open items with a recommendation on top and a collapsed dated log below.
-- The hub is rebuilt after every batch of changes, by `python3 tools/hub_tracker.py && python3 tools/build_hub.py`, never by hand. The follow-up rows live in `CLAUDE.md` (see [tracker](tracker/README.md)); everything else lives in this folder.
+- The hub is rebuilt after every batch of changes, by `python3 tools/hub_tracker.py && python3 tools/build_hub.py`, never by hand. The follow-up rows live in `FOLLOW_UPS.md` (see [tracker](tracker/README.md)); everything else lives in this folder.
 
 ## 4. Decisions and questions
 
@@ -75,7 +75,7 @@ How Claude and its team of agents work on ChaosEngineAI. The generic rules come 
 4. **Scope control:** a freeze point; new ideas go to the vault unless the owner promotes them.
 5. **Risk and assumptions log** in [risks](risks.md).
 6. **Retro after each phase** (five lines): what worked, what failed, one rule to change.
-7. **Human checkpoints** (playtest or usability session, listening pass, native-speaker review, legal and tax advice) are scheduled and listed as reminders in the [backlog](backlog.md), because agents cannot judge feel, language accuracy or legal standing.
+7. **Human checkpoints** (playtest or usability session, listening pass, native-speaker review) are scheduled and listed as reminders in the [backlog](backlog.md), because agents cannot judge feel or language accuracy.
 
 ## 10. Lessons, written as rules
 

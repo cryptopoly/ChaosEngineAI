@@ -46,6 +46,15 @@ PHASE_DIFFUSING = "diffusing"
 PHASE_DECODING = "decoding"
 PHASE_SAVING = "saving"
 
+# C1 timing split: which ``timings`` key each phase's seconds add up into.
+_PHASE_TIMING_KEYS = {
+    PHASE_LOADING: "loadSeconds",
+    PHASE_ENCODING: "encodeSeconds",
+    PHASE_DIFFUSING: "denoiseSeconds",
+    PHASE_DECODING: "decodeSeconds",
+    PHASE_SAVING: "saveSeconds",
+}
+
 
 class ProgressTracker:
     """Thread-safe scratchpad for one in-flight generation at a time.
@@ -85,6 +94,17 @@ class ProgressTracker:
         # want the set-from-request-thread → read-from-pipeline-thread
         # synchronisation the stdlib primitive gives us for free.
         self._cancel_event = Event()
+        # C1 timing split: seconds spent in each phase of the current run, and
+        # the split of the last finished run (``last_timings``).
+        self._phase_seconds: dict[str, float] = {}
+        self._phase_mark = 0.0
+        self._last_timings: dict[str, Any] | None = None
+        self._warning: str | None = None
+
+    def _close_phase(self, now: float) -> None:
+        if self._active and self._phase_mark:
+            self._phase_seconds[self._phase] = self._phase_seconds.get(self._phase, 0.0) + max(0.0, now - self._phase_mark)
+        self._phase_mark = now
 
     def begin(
         self,
@@ -105,6 +125,9 @@ class ProgressTracker:
             self._updated_at = now
             self._run_label = run_label
             self._thumbnail = None
+            self._warning = None
+            self._phase_seconds = {}
+            self._phase_mark = now
             # Clear any cancel flag from a previous run — otherwise a user
             # who cancelled yesterday's gen would have today's first click
             # abort before it started.
@@ -125,6 +148,9 @@ class ProgressTracker:
                 self._step = 0
                 self._total_steps = 0
                 self._run_label = None
+                self._phase_seconds = {}
+                self._phase_mark = self._started_at
+            self._close_phase(time.time())
             self._phase = phase
             self._message = message
             self._step = 0
@@ -137,6 +163,12 @@ class ProgressTracker:
             self._step = max(0, int(step))
             if total is not None:
                 self._total_steps = max(0, int(total))
+            self._updated_at = time.time()
+
+    def set_warning(self, code: str | None) -> None:
+        """A code the UI turns into a notice while the run goes on (``cpu``, ``cpu-fallback``)."""
+        with self._lock:
+            self._warning = code
             self._updated_at = time.time()
 
     def set_message(self, message: str) -> None:
@@ -166,6 +198,16 @@ class ProgressTracker:
 
     def finish(self, *, message: str = "") -> None:
         with self._lock:
+            if self._active:
+                now = time.time()
+                self._close_phase(now)
+                timings: dict[str, Any] = {}
+                for phase, seconds in self._phase_seconds.items():
+                    key = _PHASE_TIMING_KEYS.get(phase)
+                    if key:
+                        timings[key] = round(timings.get(key, 0.0) + seconds, 2)
+                timings["totalSeconds"] = round(max(0.0, now - self._started_at), 2)
+                self._last_timings = timings
             self._active = False
             self._phase = PHASE_IDLE
             self._message = message
@@ -178,6 +220,12 @@ class ProgressTracker:
             # able to check whether the just-finished run was cancelled so
             # it can return the right status. ``begin()`` clears it for the
             # next run.
+
+    def last_timings(self) -> dict[str, Any] | None:
+        """Seconds per phase of the last finished run: ``loadSeconds``, ``encodeSeconds``,
+        ``denoiseSeconds``, ``decodeSeconds`` (and ``saveSeconds``) as seen, plus ``totalSeconds``."""
+        with self._lock:
+            return dict(self._last_timings) if self._last_timings else None
 
     def request_cancel(self) -> bool:
         """Signal the running pipeline to abort at the next step boundary.
@@ -217,6 +265,7 @@ class ProgressTracker:
                 "runLabel": self._run_label,
                 "cancelRequested": self._cancel_event.is_set(),
                 "thumbnail": self._thumbnail,
+                "warning": self._warning,
             }
 
 
@@ -234,3 +283,7 @@ class GenerationCancelled(RuntimeError):
 # ``ChaosEngineState`` constructor signatures.
 IMAGE_PROGRESS = ProgressTracker(kind="image")
 VIDEO_PROGRESS = ProgressTracker(kind="video")
+# Music phases, in order (the Music Studio's LiveProgress): load the model, read the prompt,
+# compose (diffusion steps), decode audio, save into the library.
+MUSIC_PHASES = ("load", "encode", "compose", "decode", "save")
+MUSIC_PROGRESS = ProgressTracker(kind="music")

@@ -36,7 +36,14 @@
     "voiceStudio": "Sprachstudio",
     "voiceModels": "Sprachmodelle",
     "voiceLibrary": "Sprachbibliothek",
-    "chatModels": "Chat-Modelle"
+    "chatModels": "Chat-Modelle",
+    "musicModels": "Musikmodelle",
+    "musicStudio": "Musikstudio",
+    "musicLibrary": "Musikbibliothek",
+    "storyProjects": "Projekte",
+    "storyBoard": "Board",
+    "storyMixer": "Mixer",
+    "projects": "Projekte"
   },
   "tabCaptions": {
     "dashboard": "Systemübersicht",
@@ -67,7 +74,14 @@
     "voiceLibrary": "Deine Transkripte und Sprachausgaben",
     "chatModels": "Sprachmodelle finden, herunterladen und verwalten",
     "imageModelsPage": "Bildmodelle finden, herunterladen und verwalten",
-    "videoModelsPage": "Videomodelle finden, herunterladen und verwalten"
+    "videoModelsPage": "Videomodelle finden, herunterladen und verwalten",
+    "musicModels": "Musik- und Soundmodelle finden, laden und verwalten",
+    "musicStudio": "Tracks und Soundeffekte erstellen",
+    "musicLibrary": "Deine erstellten Tracks und Sounds",
+    "storyProjects": "Deine Filme, je ein Ordner",
+    "storyBoard": "Einstellungen, Takes und Prompts",
+    "storyMixer": "Bild, Ton und Export",
+    "projects": "Storyboard-Filme: Einstellungen, Ton, Export"
   },
   "tabShortLabels": {
     "chat": "Chat",
@@ -92,7 +106,12 @@
     "voiceStudio": "Studio",
     "voiceModels": "Meine Modelle",
     "voiceLibrary": "Bibliothek",
-    "models": "Modelle"
+    "models": "Modelle",
+    "musicStudio": "Studio",
+    "musicLibrary": "Bibliothek",
+    "storyProjects": "Projekte",
+    "storyBoard": "Board",
+    "storyMixer": "Mixer"
   },
   "tabGroups": {
     "chat": "Chat",
@@ -101,7 +120,9 @@
     "video": "Video",
     "benchmarks": "Benchmarks",
     "tools": "Werkzeuge",
-    "voice": "Sprache"
+    "voice": "Sprache",
+    "music": "Musik",
+    "storyboard": "Storyboard"
   },
   "tabsCount": "{count, plural, one {# Tab} other {# Tabs}}",
   "sidebar": {
@@ -109,7 +130,9 @@
     "backendOffline": "Offline",
     "noModelLoaded": "Kein Modell geladen",
     "groupTabsAriaLabel": "{group}-Tabs",
-    "primaryNavAriaLabel": "Primär"
+    "primaryNavAriaLabel": "Primär",
+    "sectionMake": "Erstellen",
+    "sectionRun": "Ausführen"
   },
   "slashCommands": {
     "menuAriaLabel": "Slash-Befehle"
@@ -664,6 +687,8 @@
     "thumbnailAlt": "Live-Entrausch-Vorschau",
     "thumbnailCaption": "Live-Vorschau · TAESD-Decode",
     "stepCounter": "Schritt {current} / {total}",
+    "waitingForAgent": "Warten, bis ein Agent-Auftrag fertig ist",
+    "waitingInQueue": "Warten, bis ein anderer Auftrag fertig ist (Position {position})",
     "inProgress": "läuft…",
     "finalizing": "wird abgeschlossen…",
     "phaseTiming": "{elapsed}s / ~{estimated}s"
@@ -828,7 +853,9 @@
       "sidebarCollapsibleHelp": "zeigt alle Gruppen aufgeklappt mit den enthaltenen Tabs inline — ein Klick pro Ziel.",
       "sidebarTabsHelp": "hält die Seitenleiste kompakt: Gruppen verhalten sich wie einzelne Schaltflächen, die zum zuletzt verwendeten Tab springen, mit einer Unter-Tab-Leiste über dem Inhalt.",
       "uiScaleAria": "UI-Skalierung",
-      "uiScaleHelp": "Die UI-Skalierung ändert die Dichte der App-Chrome sofort. Medien-Vorschauen behalten ihre eigene Seitenverhältnis-Anpassung."
+      "uiScaleHelp": "Die UI-Skalierung ändert die Dichte der App-Chrome sofort. Medien-Vorschauen behalten ihre eigene Seitenverhältnis-Anpassung.",
+      "keepGroupsOpen": "Alle Seitenleistengruppen geöffnet lassen",
+      "keepGroupsOpenHelp": "Standardmäßig aus: Nur die Gruppe, in der du arbeitest, bleibt offen. Einschalten, um jede Gruppe aufgeklappt zu lassen."
     },
     "dataDirectory": {
       "title": "Datenverzeichnis",
@@ -883,6 +910,25 @@
       "tokenPlaceholder": "hf_...",
       "helpText": "Lokal gespeichert. Wird von der MLX-Konvertierung beim Abrufen gated-Modelle von Hugging Face verwendet."
     },
+    "agentAccess": {
+      "title": "Agent-Zugriff",
+      "subtitle": "Lass einen KI-Agenten (Claude Code, Cursor und andere) hier Bilder, Videos, Sprache und Transkripte erstellen.",
+      "switch": "Agenten die Nutzung von ChaosEngineAI erlauben",
+      "hint": "Standardmäßig aus. Agenten führen jeweils nur einen Auftrag aus, nur auf diesem Computer, und brauchen das Token unten. Sie können nur Modelle nutzen, die du schon heruntergeladen hast.",
+      "claudeCode": "Claude Code",
+      "stdio": "Clients, die nur lokale Programme starten (stdio)",
+      "otherClients": "Andere MCP-Clients (JSON)",
+      "rotate": "Neues Token erzeugen",
+      "rotateHint": "Das alte Token funktioniert sofort nicht mehr. Agenten brauchen die neue Zeile.",
+      "permissions": "Berechtigungen",
+      "permissionsHint": "Das Haupt-Token kann lesen, Inhalte erstellen und Dateien verschieben. Mehr nur, wenn du es ankreuzt.",
+      "scopeClone": "Stimmenklonen erlauben",
+      "remoteClone": "Klonen auch von anderen Computern erlauben",
+      "readTokenMake": "Schreibgeschütztes Token erzeugen",
+      "readTokenRemove": "Schreibgeschütztes Token entfernen",
+      "readTokenHint": "Für ein Dashboard oder einen Watcher: Es kann Status und Aufträge einsehen, aber nichts erstellen oder ändern.",
+      "readTokenLabel": "Schreibgeschütztes Token (Claude Code)"
+    },
     "integrations": {
       "title": "Integrationen",
       "subtitle": "Verbinde externe Werkzeuge mit der OpenAI-kompatiblen API von ChaosEngineAI.",
@@ -928,7 +974,8 @@
     "contextDetected": "{contextLabel} erkannt",
     "emptyState": "Keine Modelle entsprechen deiner Suche.",
     "launchSettings": "Starteinstellungen",
-    "cancelButton": "Abbrechen"
+    "cancelButton": "Abbrechen",
+    "busyConfirm": "Trotzdem laden"
   },
   "modelPicker": {
     "weightFileTitle": "Gewichtsdatei auswählen: {name}",
@@ -1250,5 +1297,35 @@
     "finder": "Im Finder anzeigen",
     "explorer": "Im Explorer anzeigen",
     "files": "In Dateien anzeigen"
+  },
+  "comingSoon": {
+    "music": "Musik kommt bald.",
+    "storyboard": "Storyboard kommt bald."
+  },
+  "llamaCuda": {
+    "description": "Führt GGUF-Chatmodelle mit CUDA {cuda} auf deiner NVIDIA-GPU aus (llama.cpp {tag}). Download etwa 680 MB, einschließlich CUDA-Laufzeit (0,9 GB auf der Festplatte).",
+    "inUse": "In Benutzung: GGUF-Modelle laufen auf der NVIDIA-GPU.",
+    "install": "Installieren",
+    "installedNoDevice": "Installiert, aber es wurde kein CUDA-Gerät gefunden. Prüfe den NVIDIA-Treiber (nvidia-smi).",
+    "notInstalled": "Nicht installiert. GGUF-Modelle nutzen die mitgelieferte Version.",
+    "reinstall": "Neu installieren",
+    "title": "CUDA llama-server (NVIDIA)"
+  },
+  "terms": {
+    "title": "Nutzungsbedingungen",
+    "intro": "Bitte lies das, bevor du anfängst.",
+    "agree": "Ich stimme zu",
+    "quit": "Beenden",
+    "close": "Schließen",
+    "read": "Bedingungen lesen",
+    "acceptedOn": "Akzeptiert am {date}.",
+    "notAccepted": "Noch nicht akzeptiert.",
+    "points": {
+      "responsibility": "Du bist für das verantwortlich, was du erzeugst, und dafür, wie du es verwendest.",
+      "disclosure": "Kennzeichne KI-generierte Inhalte überall dort, wo Gesetz oder Plattform das verlangen (zum Beispiel Artikel 50 des EU-KI-Gesetzes und Kennzeichnungsregeln der Plattformen).",
+      "impersonation": "Verwende ChaosEngineAI nicht, um dich ohne Einwilligung als eine reale Person auszugeben.",
+      "voices": "Klone eine Stimme nur mit Einwilligung der sprechenden Person.",
+      "licences": "Jedes Modell hat eine eigene Lizenz. Prüfe sie, bevor du die Ausgabe verwendest."
+    }
   }
 }

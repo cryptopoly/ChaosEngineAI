@@ -1,6 +1,13 @@
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ProjectFilter, ProjectHeader } from "../../components/ProjectFilter";
+import { ALL_PROJECTS, filterByProject, projectOptions, untaggedCount, type ProjectTagged } from "../../utils/galleryProject";
+import { openProjectAt } from "../storyboard/projectRoute";
 import { Panel } from "../../components/Panel";
 import { ImageOutputCard } from "../../components/ImageOutputCard";
+import { SendToStoryboardMenu } from "../../components/SendToStoryboardMenu";
+import type { SendItem } from "../storyboard/sendToStoryboardLogic";
+import { useSendToStoryboard } from "../storyboard/useSendToStoryboard";
 import type {
   ImageModelFamily,
   ImageOutputArtifact,
@@ -14,6 +21,8 @@ import { modelsPageRequest, type TabRequest } from "../../constants/tabRedirects
 
 export interface ImageGalleryTabProps {
   imageOutputs: ImageOutputArtifact[];
+  /** Saved clips, only to count a project's clips in its header. */
+  videoOutputs?: ProjectTagged[];
   filteredImageOutputs: ImageOutputArtifact[];
   imageCatalog: ImageModelFamily[];
   imageBusy: boolean;
@@ -43,9 +52,15 @@ export interface ImageGalleryTabProps {
   onDeleteImageArtifact: (id: string) => void;
 }
 
+/** What the Use in storyboard menu sends for a saved image. */
+function imageItem(artifact: ImageOutputArtifact): SendItem {
+  return { kind: "image", path: artifact.imagePath as string, prompt: artifact.prompt };
+}
+
 export function ImageGalleryTab({
   imageOutputs,
-  filteredImageOutputs,
+  videoOutputs = [],
+  filteredImageOutputs: hookFilteredImageOutputs,
   imageCatalog,
   imageBusy,
   imageGallerySearchInput,
@@ -63,10 +78,10 @@ export function ImageGalleryTab({
   imageGalleryRealCount,
   imageGalleryPlaceholderCount,
   imageGalleryWarningCount,
-  imageGalleryHasActiveFilters,
+  imageGalleryHasActiveFilters: hookHasActiveFilters,
   onActiveTabChange,
   onOpenImageStudio,
-  onResetImageGalleryFilters,
+  onResetImageGalleryFilters: resetHookFilters,
   onOpenExternalUrl,
   onUseSameImageSettings,
   onVaryImageSeed,
@@ -75,6 +90,16 @@ export function ImageGalleryTab({
 }: ImageGalleryTabProps) {
   const { t } = useTranslation("common");
   const { t: tStudio } = useTranslation("studio");
+  const storyboard = useSendToStoryboard((tab) => onActiveTabChange(tab));
+  const [projectFilter, setProjectFilter] = useState(ALL_PROJECTS);
+  const filteredImageOutputs = filterByProject(hookFilteredImageOutputs, projectFilter);
+  const imageGalleryHasActiveFilters = hookHasActiveFilters || projectFilter !== ALL_PROJECTS;
+  const projects = useMemo(() => projectOptions(imageOutputs), [imageOutputs]);
+  const picked = projects.find((project) => project.id === projectFilter) ?? null;
+  const onResetImageGalleryFilters = () => {
+    setProjectFilter(ALL_PROJECTS);
+    resetHookFilters();
+  };
   return (
     <div className="content-grid image-page-grid">
       <Panel
@@ -230,6 +255,13 @@ export function ImageGalleryTab({
               </option>
             </select>
           </label>
+          <ProjectFilter
+            options={projects}
+            value={projectFilter}
+            onChange={setProjectFilter}
+            untagged={untaggedCount(imageOutputs)}
+            total={imageOutputs.length}
+          />
           <label>
             {tStudio("imageGallery.toolbar.sort", { defaultValue: "Sort" })}
             <select
@@ -246,6 +278,21 @@ export function ImageGalleryTab({
             </select>
           </label>
         </div>
+
+        {picked ? (
+          <ProjectHeader
+            name={picked.name}
+            counts={{ stills: picked.count, clips: videoOutputs.filter((clip) => clip.projectId === picked.id).length }}
+            onOpen={
+              storyboard.enabled
+                ? () => {
+                    openProjectAt(picked.id, "storyboard");
+                    void onActiveTabChange("storyboard");
+                  }
+                : undefined
+            }
+          />
+        ) : null}
 
         {imageGalleryHasActiveFilters ? (
           <div className="button-row image-gallery-toolbar-actions">
@@ -321,6 +368,21 @@ export function ImageGalleryTab({
                 onRevealPath={(path) => onRevealPath(path)}
                 onDelete={(id) => onDeleteImageArtifact(id)}
                 onNavigateSettings={() => onActiveTabChange("settings")}
+                extraActions={
+                  <SendToStoryboardMenu
+                    item={artifact.imagePath ? imageItem(artifact) : null}
+                    projects={storyboard.projects}
+                    loaded={storyboard.loaded}
+                    busy={storyboard.busy}
+                    notice={storyboard.notice}
+                    enabled={storyboard.enabled}
+                    onOpen={() => void storyboard.loadProjects()}
+                    onDismissNotice={storyboard.dismissNotice}
+                    onSend={(projectId, target) =>
+                      storyboard.send(imageItem(artifact), projectId, target)
+                    }
+                  />
+                }
               />
             ))}
           </div>

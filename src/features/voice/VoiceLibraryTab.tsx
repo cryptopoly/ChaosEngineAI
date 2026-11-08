@@ -1,8 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { MediaLibraryCard } from "../../components/MediaLibraryCard";
+import { ProjectFilter, ProjectHeader } from "../../components/ProjectFilter";
+import { SendToStoryboardMenu } from "../../components/SendToStoryboardMenu";
 import { Panel } from "../../components/Panel";
 import { deleteLibraryItems, getLibrary, getLibraryAudio, getLibraryItem } from "../../api";
-import type { VoiceLibraryKind, VoiceLibrarySummary } from "../../types";
+import type { TabId, VoiceLibraryKind, VoiceLibrarySummary } from "../../types";
+import type { SendItem } from "../storyboard/sendToStoryboardLogic";
+import { useSendToStoryboard, type UseSendToStoryboard } from "../storyboard/useSendToStoryboard";
+import { ALL_PROJECTS, filterByProject, projectOptions, untaggedCount } from "../../utils/galleryProject";
+import { openProjectAt } from "../storyboard/projectRoute";
 import { downloadBlob, formatClock } from "./audio";
 import { exportTranscript, speakerNamer, type ExportFormat } from "./studio/transcript";
 
@@ -10,6 +17,8 @@ export interface VoiceLibraryTabProps {
   backendOnline: boolean;
   /** Open a transcript in Voice Studio's editor. */
   onOpenTranscript: (id: string) => void;
+  /** Moves to another tab; used by Send to storyboard. */
+  onTabChange?: (tab: TabId) => void;
 }
 
 type Filter = "" | VoiceLibraryKind;
@@ -24,12 +33,14 @@ function LibraryCard({
   onSelect,
   onOpen,
   onDelete,
+  storyboard,
 }: {
   item: VoiceLibrarySummary;
   selected: boolean;
   onSelect: (on: boolean) => void;
   onOpen: () => void;
   onDelete: () => void;
+  storyboard: UseSendToStoryboard;
 }) {
   const { t } = useTranslation("studio");
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
@@ -76,86 +87,101 @@ function LibraryCard({
     item.durationS != null ? formatClock(item.durationS) : null,
     item.speakerCount > 0 ? t("voice.library.speakers", { defaultValue: "{n} speakers", n: item.speakerCount }) : null,
     item.kind === "speech" && item.voice ? item.voice : null,
+    item.projectName ? t("galleryProject.chip", { defaultValue: "From project {name}", name: item.projectName }) : null,
   ].filter(Boolean);
 
+  // Saved speech is the voice-over a film can use; the file path comes from the server when it is sent.
+  const sendItem: SendItem | null =
+    item.kind === "speech" && item.audio
+      ? {
+          kind: "voice",
+          label: item.title,
+          resolvePath: async () => {
+            const path = (await getLibraryItem(item.id)).audioPath;
+            if (!path) throw new Error(t("sendToStoryboard.noFile", { defaultValue: "This item has no file to send." }));
+            return path;
+          },
+        }
+      : null;
+
   return (
-    <article className={`voice-library-card${selected ? " voice-library-card--selected" : ""}`}>
-      <div className="voice-library-card__head">
-        <input
-          type="checkbox"
-          checked={selected}
-          onChange={(e) => onSelect(e.target.checked)}
-          aria-label={t("voice.library.select", { defaultValue: "Select {title}", title: item.title })}
-        />
-        <div className="voice-library-card__title">
-          <strong>{item.title}</strong>
-          <span className="muted-text">
-            <span className="badge subtle">
-              {item.kind === "transcript" ? t("voice.library.transcript", { defaultValue: "Transcript" }) : t("voice.library.speech", { defaultValue: "Speech" })}
-            </span>{" "}
-            {meta.join(" · ")}
-          </span>
-        </div>
-      </div>
-      {item.preview ? <p className="voice-library-card__preview">{item.preview}</p> : null}
-      {audioUrl ? <audio controls autoPlay src={audioUrl} /> : null}
-      {error ? (
-        <p className="voice-error" role="alert">
-          {error}
-        </p>
-      ) : null}
-      <div className="button-row">
-        {item.kind === "transcript" ? (
-          <button type="button" className="secondary-button" onClick={onOpen}>
-            {t("voice.queue.open", { defaultValue: "Open" })}
-          </button>
-        ) : null}
-        {item.audio && !audioUrl ? (
-          <button type="button" className="secondary-button" disabled={busy} onClick={() => void play()}>
-            {t("voice.library.play", { defaultValue: "Play" })}
-          </button>
-        ) : null}
-        <select
-          className="text-input voice-library-card__export"
-          value=""
-          disabled={busy}
-          aria-label={t("voice.editor.export", { defaultValue: "Export" })}
-          onChange={(e) => {
-            const value = e.target.value;
-            if (value === "audio") void exportAudio("");
-            else if (value === "mp3") void exportAudio("mp3");
-            else if (value) void exportTranscriptAs(value as ExportFormat);
-          }}
-        >
-          <option value="">{busy ? t("voice.library.working", { defaultValue: "Working…" }) : t("voice.editor.export", { defaultValue: "Export" })}</option>
-          {item.kind === "transcript"
-            ? (["txt", "md", "srt", "vtt", "json"] as const).map((f) => (
-                <option key={f} value={f}>
-                  {f.toUpperCase()}
-                </option>
-              ))
-            : null}
-          {item.audio ? (
-            <option value="audio">
-              {t("voice.library.originalAudio", { defaultValue: "Audio ({ext})", ext: item.audio.replace(".", "").toUpperCase() })}
-            </option>
+    <MediaLibraryCard
+      title={item.title}
+      badge={item.kind === "transcript" ? t("voice.library.transcript", { defaultValue: "Transcript" }) : t("voice.library.speech", { defaultValue: "Speech" })}
+      meta={meta.join(" · ")}
+      preview={item.preview || undefined}
+      selected={selected}
+      onSelect={onSelect}
+      selectLabel={t("voice.library.select", { defaultValue: "Select {title}", title: item.title })}
+      player={audioUrl ? <audio controls autoPlay src={audioUrl} /> : null}
+      error={error}
+      actions={
+        <>
+          {item.kind === "transcript" ? (
+            <button type="button" className="secondary-button" onClick={onOpen}>
+              {t("voice.queue.open", { defaultValue: "Open" })}
+            </button>
           ) : null}
-          {item.audio && item.audio !== ".mp3" ? <option value="mp3">MP3</option> : null}
-        </select>
-        <button type="button" className="secondary-button" onClick={onDelete}>
-          {t("voice.library.delete", { defaultValue: "Delete" })}
-        </button>
-      </div>
-    </article>
+          {item.audio && !audioUrl ? (
+            <button type="button" className="secondary-button" disabled={busy} onClick={() => void play()}>
+              {t("voice.library.play", { defaultValue: "Play" })}
+            </button>
+          ) : null}
+          <select
+            className="text-input voice-library-card__export"
+            value=""
+            disabled={busy}
+            aria-label={t("voice.editor.export", { defaultValue: "Export" })}
+            onChange={(e) => {
+              const value = e.target.value;
+              if (value === "audio") void exportAudio("");
+              else if (value === "mp3") void exportAudio("mp3");
+              else if (value) void exportTranscriptAs(value as ExportFormat);
+            }}
+          >
+            <option value="">{busy ? t("voice.library.working", { defaultValue: "Working…" }) : t("voice.editor.export", { defaultValue: "Export" })}</option>
+            {item.kind === "transcript"
+              ? (["txt", "md", "srt", "vtt", "json"] as const).map((f) => (
+                  <option key={f} value={f}>
+                    {f.toUpperCase()}
+                  </option>
+                ))
+              : null}
+            {item.audio ? (
+              <option value="audio">
+                {t("voice.library.originalAudio", { defaultValue: "Audio ({ext})", ext: item.audio.replace(".", "").toUpperCase() })}
+              </option>
+            ) : null}
+            {item.audio && item.audio !== ".mp3" ? <option value="mp3">MP3</option> : null}
+          </select>
+          <button type="button" className="secondary-button" onClick={onDelete}>
+            {t("voice.library.delete", { defaultValue: "Delete" })}
+          </button>
+          <SendToStoryboardMenu
+            item={sendItem}
+            projects={storyboard.projects}
+            loaded={storyboard.loaded}
+            busy={storyboard.busy}
+            notice={storyboard.notice}
+            enabled={storyboard.enabled}
+            onOpen={() => void storyboard.loadProjects()}
+            onDismissNotice={storyboard.dismissNotice}
+            onSend={(projectId, target) => storyboard.send(sendItem as SendItem, projectId, target)}
+          />
+        </>
+      }
+    />
   );
 }
 
-export function VoiceLibraryTab({ backendOnline, onOpenTranscript }: VoiceLibraryTabProps) {
+export function VoiceLibraryTab({ backendOnline, onOpenTranscript, onTabChange }: VoiceLibraryTabProps) {
   const { t } = useTranslation("studio");
+  const storyboard = useSendToStoryboard((tab) => onTabChange?.(tab));
   const [items, setItems] = useState<VoiceLibrarySummary[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("");
+  const [projectFilter, setProjectFilter] = useState(ALL_PROJECTS);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const request = useRef(0);
@@ -195,6 +221,10 @@ export function VoiceLibraryTab({ backendOnline, onOpenTranscript }: VoiceLibrar
       setError(err instanceof Error ? err.message : String(err));
     }
   };
+
+  const projects = useMemo(() => projectOptions(items), [items]);
+  const picked = projects.find((project) => project.id === projectFilter) ?? null;
+  const shownItems = filterByProject(items, projectFilter);
 
   const filters = useMemo(
     () =>
@@ -242,6 +272,14 @@ export function VoiceLibraryTab({ backendOnline, onOpenTranscript }: VoiceLibrar
                   </button>
                 ))}
               </div>
+              <ProjectFilter
+                options={projects}
+                value={projectFilter}
+                onChange={setProjectFilter}
+                untagged={untaggedCount(items)}
+                total={items.length}
+                showLabel={false}
+              />
               {selected.size > 0 ? (
                 <button type="button" className="secondary-button" onClick={() => void remove([...selected])}>
                   {t("voice.library.deleteSelected", { defaultValue: "Delete selected ({n})", n: selected.size })}
@@ -253,19 +291,36 @@ export function VoiceLibraryTab({ backendOnline, onOpenTranscript }: VoiceLibrar
                 {error}
               </p>
             ) : null}
+            {picked ? (
+              <ProjectHeader
+                name={picked.name}
+                counts={{
+                  speech: shownItems.filter((item) => item.kind === "speech").length,
+                  transcripts: shownItems.filter((item) => item.kind === "transcript").length,
+                }}
+                onOpen={
+                  storyboard.enabled
+                    ? () => {
+                        openProjectAt(picked.id, "storyboard");
+                        onTabChange?.("storyboard");
+                      }
+                    : undefined
+                }
+              />
+            ) : null}
             {!loaded ? (
               <p className="muted-text">{t("voice.library.loading", { defaultValue: "Loading…" })}</p>
-            ) : items.length === 0 ? (
+            ) : shownItems.length === 0 ? (
               <div className="empty-state">
                 <p className="muted-text">
-                  {query || filter
+                  {query || filter || projectFilter !== ALL_PROJECTS
                     ? t("voice.library.noMatch", { defaultValue: "Nothing matches." })
                     : t("voice.library.empty", { defaultValue: "Nothing here yet. Transcripts made in Voice Studio are kept here, and so is speech you save." })}
                 </p>
               </div>
             ) : (
               <div className="voice-library__grid">
-                {items.map((item) => (
+                {shownItems.map((item) => (
                   <LibraryCard
                     key={item.id}
                     item={item}
@@ -280,6 +335,7 @@ export function VoiceLibraryTab({ backendOnline, onOpenTranscript }: VoiceLibrar
                     }
                     onOpen={() => onOpenTranscript(item.id)}
                     onDelete={() => void remove([item.id])}
+                    storyboard={storyboard}
                   />
                 ))}
               </div>

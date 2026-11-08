@@ -121,6 +121,26 @@ export function MicrophoneIcon(props: IconProps) {
   );
 }
 
+export function MusicIcon(props: IconProps) {
+  return (
+    <svg {...baseProps} {...props}>
+      <path d="M9 18V5l12-2v13" />
+      <circle cx="6" cy="18" r="3" />
+      <circle cx="18" cy="16" r="3" />
+    </svg>
+  );
+}
+
+export function StoryboardIcon(props: IconProps) {
+  return (
+    <svg {...baseProps} {...props}>
+      <rect x="2" y="3" width="6" height="18" rx="1" />
+      <rect x="9" y="3" width="6" height="18" rx="1" />
+      <rect x="16" y="3" width="6" height="18" rx="1" />
+    </svg>
+  );
+}
+
 export function ChevronIcon(props: IconProps & { open?: boolean }) {
   const { open, style, ...rest } = props;
   return (
@@ -149,12 +169,14 @@ export const groupIcon: Record<SidebarGroupId, ComponentType<IconProps>> = {
   images: ImagesIcon,
   video: VideoIcon,
   voice: MicrophoneIcon,
+  music: MusicIcon,
   benchmarks: BenchmarksIcon,
   tools: ToolsIcon,
 };
 
 export const standaloneTabIcon: Partial<Record<TabId, ComponentType<IconProps>>> = {
   dashboard: DashboardIcon,
+  storyboard: StoryboardIcon,
   server: ServerIcon,
   logs: LogsIcon,
   settings: SettingsIcon,

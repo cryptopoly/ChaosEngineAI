@@ -1,13 +1,22 @@
 ---
 title: Closed follow-ups
 order: 3
-summary: 77 shipped, obsoleted or dropped rows, newest first.
+summary: 78 shipped, obsoleted or dropped rows, newest first.
 ---
 
 # Closed follow-ups
 
-Generated from the Follow-Ups Tracker in `CLAUDE.md` by `tools/hub_tracker.py`; edit the row there, not here. Shipped, obsoleted or dropped rows (struck through, or marked shipped with no open points left). Kept as the history of why things are the way they are.
+Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Shipped, obsoleted or dropped rows (struck through, or marked shipped with no open points left). Kept as the history of why things are the way they are.
 
+
+<details>
+<summary>FU-138 · pytorch-wavelets dependency in the music pack — Shipped 2026-11-07 (D-37): dropped.</summary>
+
+**Status or trigger:** **Shipped 2026-11-07 (D-37): dropped.**
+
+**Notes:** Removed `pytorch-wavelets` 1.3.0 from [music_requirements.txt](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/backend_service/music_requirements.txt); `pywavelets` (MIT AND BSD-3-Clause) stays. Proof: music venv built from the new file in a temp data dir (no `pytorch_wavelets`, no `dtcwt`), 20 s instrumental through the real worker with default settings gave a valid 48 kHz stereo FLAC in 2.7 s; the log shows `DCW enabled (... wavelet=haar, backend=MLX-native Haar)` and no wavelet warning or error, because the MLX path computes Haar itself. Re-apply the removal after every re-export of the requirements (note in the file header; `test_music_env.py` guards it). Not tested: CUDA/CPU lanes (not built), a non-Haar wavelet.
+
+</details>
 
 <details>
 <summary>FU-125 · Better video model than Wan 2.2 TI2V 5B for a 64 GB Mac (research; nothing removed) — Shipped 2026-10-29 as option 1 (FU-128)</summary>

@@ -291,6 +291,33 @@ def _execute_tool_call(
     )
 
 
+def _declined_tool_call(tool_call: dict[str, Any], text: str) -> ToolCallResult:
+    """The result a call gets when the user declined it at the plan card: nothing ran."""
+    func = tool_call.get("function", {})
+    name = func.get("name", "unknown")
+    return ToolCallResult(
+        tool_call_id=tool_call["id"],
+        tool_name=name,
+        arguments=_coerce_arguments(func.get("arguments")),
+        result=text,
+        elapsed_seconds=0.0,
+        render_as="studio",
+        data={"tool": name, "declined": True, "message": text},
+    )
+
+
+def _coerce_arguments(raw_args: Any) -> dict[str, Any]:
+    if isinstance(raw_args, dict):
+        return raw_args
+    if isinstance(raw_args, str) and raw_args.strip():
+        try:
+            parsed = json.loads(raw_args)
+        except json.JSONDecodeError:
+            return {"raw": raw_args}
+        return parsed if isinstance(parsed, dict) else {"raw": parsed}
+    return {}
+
+
 def run_agent_loop(
     *,
     generate_fn: Any,
@@ -449,6 +476,7 @@ def run_agent_loop_streaming(
     tool_registry: ToolRegistry | None = None,
     max_iterations: int = _DEFAULT_MAX_ITERATIONS,
     available_tools: list[str] | None = None,
+    gate: Any = None,
 ) -> Iterator[dict[str, Any]]:
     """Streaming version of the agent loop.
 
@@ -457,6 +485,9 @@ def run_agent_loop_streaming(
     - {"tool_call_start": {...}} when a tool execution begins
     - {"tool_call_result": {...}} when a tool execution completes
     - {"done": True, ...} when the loop finishes
+
+    ``gate`` (Chat's studio approval, ``tools.studio_gate.StudioGate``) sees each reply's tool calls
+    before they run; its events pass through and the calls it declines get its text as their result.
     """
     reg = tool_registry or default_registry
 
@@ -535,11 +566,21 @@ def run_agent_loop_streaming(
             return
 
         # Execute tool calls
+        # Every call gets its own id: a missing or repeated id would let one approval cover two calls.
+        seen_ids: set[str] = set()
+        for tc in tool_calls:
+            if not tc.get("id") or tc["id"] in seen_ids:
+                tc["id"] = f"call_{uuid.uuid4().hex[:12]}"
+            seen_ids.add(tc["id"])
         messages.append({
             "role": "assistant",
             "text": result.text or "",
             "tool_calls": tool_calls,
         })
+
+        denials: dict[str, str] = {}
+        if gate is not None:
+            denials = yield from gate.review(tool_calls)
 
         for tc in tool_calls:
             func = tc.get("function", {})
@@ -551,13 +592,17 @@ def run_agent_loop_streaming(
                 },
             }
 
-            tc_result = _execute_tool_call(tc, reg)
+            if tc["id"] in denials:
+                tc_result = _declined_tool_call(tc, denials[tc["id"]])
+            else:
+                tc_result = _execute_tool_call(tc, reg)
             all_tool_results.append(tc_result)
 
             yield {
                 "tool_call_result": {
                     "id": tc_result.tool_call_id,
                     "name": tc_result.tool_name,
+                    "arguments": tc_result.arguments,
                     "result": tc_result.result[:2000],  # Cap for streaming
                     "elapsed": tc_result.elapsed_seconds,
                     # Phase 2.8: stream the structured shape so the

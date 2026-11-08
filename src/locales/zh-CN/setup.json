@@ -39,7 +39,8 @@
       "mtplx": "MTPLX 安装",
       "tensorfold": "TensorFold 安装",
       "mflux": "mflux 安装",
-      "vllmWsl": "vLLM-in-WSL 安装"
+      "vllmWsl": "vLLM-in-WSL 安装",
+      "ltx2": "LTX-2.3 引擎安装"
     },
     "status": {
       "failed": "{noun}失败 — 查看日志",

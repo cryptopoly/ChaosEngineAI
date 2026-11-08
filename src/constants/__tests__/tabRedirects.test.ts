@@ -78,6 +78,13 @@ describe("persisted sidebar ids", () => {
     expect(normalizeStoredTabId("image-discover")).toBe("image-models");
     expect(normalizeStoredTabId("my-models")).toBe("chat-models");
     expect(normalizeStoredTabId("voice-models")).toBe("voice-models");
+    // Music ids are real tabs. The Storyboard's three ids became the one Projects entry (D-65).
+    expect(normalizeStoredTabId("music-studio")).toBe("music-studio");
+    expect(normalizeStoredTabId("story-board")).toBe("storyboard");
+    expect(normalizeStoredTabId("story-mixer")).toBe("storyboard");
+    expect(normalizeStoredTabId("story-projects")).toBe("storyboard");
+    // The retired storyboard group's memory is dropped.
+    expect(migrateLastChildByGroup({ music: "music-library", storyboard: "story-board" })).toEqual({ music: "music-library" });
     expect(normalizeStoredTabId(42)).toBeNull();
     expect(normalizeStoredTabId("")).toBeNull();
   });

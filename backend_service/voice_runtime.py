@@ -238,6 +238,9 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "vadSilenceMs": 700,
     "bargeIn": True,
     "idleUnloadMinutes": 10,
+    # Cloned voices from agents (/mcp, the Agent access token) or other machines. Off by default;
+    # only the app's own window on this computer can turn it on (routes/voice.py).
+    "allowAgentCloning": False,
 }
 _SETTINGS_LOCK = threading.Lock()
 
@@ -300,6 +303,7 @@ def get_voice_capabilities() -> dict[str, Any]:
             for name, (lanes, _specs, label) in voice_env.EXTRAS.items()
             if lane in lanes
         ],
+        "installedAt": marker.get("installedAt") if installed else None,
         "workerPid": worker_pid(),
         "install": voice_env.job_status(),
     }
@@ -408,10 +412,11 @@ def diarize_file(path: Path, speaker_count: int = 0) -> dict[str, Any]:
     return {"turns": reply.get("turns", []), "seconds": reply.get("seconds", 0.0)}
 
 
-def encode_mp3(source: Path, target: Path) -> None:
+def encode_mp3(source: Path, target: Path, comment: str | None = None) -> None:
+    """``comment`` (a cloned voice's AI tag) goes into the MP3's ID3 comment."""
     from backend_service.voice_client import get_worker  # noqa: PLC0415
 
-    get_worker().request("encode", timeout=600.0, path=str(source), out=str(target), format="mp3")
+    get_worker().request("encode", timeout=600.0, path=str(source), out=str(target), format="mp3", comment=comment)
 
 
 def synthesize(text: str, voice: str, speed: float) -> tuple[bytes, float]:

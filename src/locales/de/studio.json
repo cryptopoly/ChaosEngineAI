@@ -8,7 +8,6 @@
     "recentOutputsTitle": "Aktuelle Ausgaben",
     "prompt": "Prompt",
     "negativePrompt": "Negativer Prompt",
-    "enhancePrompt": "Verbessern",
     "width": "Breite",
     "height": "Höhe",
     "steps": "Schritte",
@@ -116,6 +115,12 @@
       "cancelGeneration": "Generierung abbrechen",
       "close": "Schließen",
       "done": "Fertig"
+    },
+    "ltx2": {
+      "install": "LTX-2.3-Engine installieren",
+      "installing": "Wird installiert…",
+      "notInstalled": "Dieses Modell läuft auf der LTX-2.3-MLX-Engine, die noch nicht installiert ist. Sie wird in einer eigenen Umgebung installiert (etwa 1 GB) und ändert die Pakete der App nicht.",
+      "retry": "Installation wiederholen"
     }
   },
   "progress": {
@@ -126,12 +131,6 @@
     "title": "Erweitert",
     "show": "Erweiterte Einstellungen anzeigen",
     "hide": "Erweiterte Einstellungen ausblenden"
-  },
-  "enhance": {
-    "label": "Verbessern",
-    "busy": "Wird verbessert...",
-    "tooltip": "Diesen Prompt lokal verbessern",
-    "error": "Enhancer-Fehler: {message}"
   },
   "runtimeBanner": {
     "loadingModel": "Modell wird in den Speicher geladen...",
@@ -167,14 +166,12 @@
   },
   "imageStudio": {
     "generateTitle": {
-      "dangerBlocked": "Konfiguration mit Risikostufe — die Bestätigung unter dem Sicherheitshinweis aktivieren, um fortzufahren.",
+      "dangerBlocked": "Konfiguration auf Gefahrenstufe: Setze in der Ausführungsschätzung das Häkchen bei der Bestätigung, um fortzufahren.",
       "generating": "Wird generiert...",
       "selectModel": "Erst ein Modell auswählen.",
       "ready": "Dieses Bild generieren."
     },
     "actions": {
-      "discover": "Modelle finden",
-      "installed": "Installiert",
       "gallery": "Galerie"
     },
     "hero": {
@@ -257,14 +254,13 @@
     "safety": {
       "dangerTitle": "Wird das Backend wahrscheinlich zum Absturz bringen",
       "warningTitle": "Achtung — könnte auf diesem Gerät Probleme bereiten",
-      "resourceEstimate": "Modell ≈ {model} · Spitze dieses Laufs ≈ {peak} von insgesamt ~{total}.",
       "applyTitle": "{label} anwenden",
       "useSafer": "Sicherere Einstellungen verwenden ({label})",
       "browseSmaller": "Kleinere Modelle durchsuchen",
-      "overrideAck": "Trotzdem generieren — ich akzeptiere, dass das Backend abstürzen kann.",
       "reasonDangerOver": "Das Modell benötigt ~{model} GB allein, um seine Gewichte + den Text-Encoder zu halten. Auf {platform} mit insgesamt {total} GB liegt das geschätzte Working Set bei ~{working} GB, sodass das Modell allein bereits darüber liegt. Selbst kleine Bilder würden das Backend wahrscheinlich zum Absturz bringen. Probiere ein kleineres Modell (SD 1.5 ist ~4 GB, SDXL ~13 GB) oder einen Rechner mit mehr Speicher.",
       "reasonDangerNear": "Das Modell benötigt ~{model} GB allein, um seine Gewichte + den Text-Encoder zu halten, und dieser Lauf erreicht eine Spitze von ~{peak} GB. Auf {platform} mit insgesamt {total} GB liegt das über der Hochrisiko-Schwelle (~{highRisk} GB) und nahe am geschätzten Working Set (~{working} GB). Die Generierung wird das Backend wahrscheinlich zum Absturz bringen; senke die Auflösung oder wähle ein kleineres Modell.",
-      "reasonCaution": "Das Modell benötigt ~{model} GB allein, um seine Gewichte + den Text-Encoder zu halten. Auf {platform} mit insgesamt {total} GB liegt das über dem konservativen Komfort-Ziel (~{comfort} GB), aber unter dem geschätzten Working Set (~{working} GB). Die Generierung kann langsam laufen oder fehlschlagen; senke die Auflösung, falls es instabil wird."
+      "reasonCaution": "Das Modell benötigt ~{model} GB allein, um seine Gewichte + den Text-Encoder zu halten. Auf {platform} mit insgesamt {total} GB liegt das über dem konservativen Komfort-Ziel (~{comfort} GB), aber unter dem geschätzten Working Set (~{working} GB). Die Generierung kann langsam laufen oder fehlschlagen; senke die Auflösung, falls es instabil wird.",
+      "resourceEstimate": "Modell ≈ {model} · Spitze dieses Laufs ≈ {peak} von ~{total} gesamt."
     },
     "recent": {
       "subtitle": "{recent} neueste von {total} gespeicherten Generierungen",
@@ -376,33 +372,18 @@
       "noPrompt": "Schreibe einen Prompt, bevor du generierst.",
       "backendOffline": "Backend ist offline.",
       "busy": "Beschäftigt…",
-      "dangerLevel": "Diese Konfiguration wird das Backend wahrscheinlich zum Absturz bringen. Aktiviere unten „Hochrisiko-Generierung erlauben“, nachdem du die Warnung gelesen hast, oder reduziere Auflösung/Bilder/Modell."
+      "dangerLevel": "Diese Konfiguration führt wahrscheinlich zum Absturz des Backends. Prüfe die Warnung und setze dann in der Ausführungsschätzung das Häkchen bei „Trotzdem ausführen“, oder verringere Auflösung, Bildanzahl oder Modell."
     },
     "generateTitle": "Diesen Clip generieren.",
-    "device": {
-      "gpuDetected": "GPU (erkannt)",
-      "cpuDetected": "CPU (erkannt)",
-      "appleDetected": "Apple Silicon (erkannt)",
-      "appleMlx": "Apple Silicon (MLX)",
-      "gpu": "GPU",
-      "apple": "Apple Silicon"
-    },
     "memory": {
       "defaultFallback": "~{value} (Standard — Backend für echte Erkennung neu starten)"
     },
-    "capacityLine": {
-      "withModel": "{device} · {memory} insgesamt · Modell ≈ {model}, Spitze dieses Laufs ≈ {peak}",
-      "short": "{device} · {memory} insgesamt · Spitze dieses Laufs ≈ {peak}"
-    },
     "subtitle": "Wähle ein Videomodell, um zu beginnen",
     "actions": {
-      "browseCatalog": "Modelle finden",
-      "installedModels": "Installiert",
       "downloadModel": "Modell herunterladen",
       "loadIntoMemory": "In Speicher laden",
       "unload": "Entladen",
-      "unloadNamed": "{name} entladen",
-      "modelCard": "Modellkarte"
+      "unloadNamed": "{name} entladen"
     },
     "modelOption": {
       "installed": "installiert",
@@ -465,7 +446,8 @@
       "guidanceLtxWarning": "LTX-Video ist ein Flow-Matching-Modell — CFG über ~3,5 übersättigt und erzeugt verschwommene / regenbogenartige Ausgaben. Senke auf 3 für die saubersten Ergebnisse.",
       "randomSeed": "Zufalls-Seed",
       "seedPlaceholder": "Seed (Ganzzahl)",
-      "maxPixelsNote": "{name} rendert pro Bild höchstens {megapixels} Megapixel; diese Größe wird unter Beibehaltung des Seitenverhältnisses verkleinert."
+      "maxPixelsNote": "{name} rendert pro Bild höchstens {megapixels} Megapixel; diese Größe wird unter Beibehaltung des Seitenverhältnisses verkleinert.",
+      "seed": "Seed"
     },
     "clipLength": {
       "line": "Cliplänge: {seconds}s ({frames} Bilder ÷ {fps} fps)"
@@ -479,10 +461,6 @@
       "ltxRefiner": {
         "label": "LTX zweistufiges räumliches Upscaling",
         "tooltip": "Rendert das Basis-Sample bei der angeforderten Auflösung und verfeinert dann über Lightricks/LTX-Video-0.9.5-spatial-upscaler bei 2× räumlicher Auflösung. Frame-Budget wächst ~1,5×. Schärfere Mikro-Details und sauberere Bewegungskanten; standardmäßig aus, weil der Geschwindigkeitsverlust real ist."
-      },
-      "enhancePrompt": {
-        "label": "Kurze Prompts automatisch verbessern",
-        "tooltip": "Hängt modell-abgestimmte strukturelle Hinweise an (cinematische Deskriptoren, Beleuchtung, Kameraführung), wenn der Prompt unter 25 Wörtern liegt. Diffusion-Videomodelle werden auf 50-100-Wörter-Prompts trainiert und sind bei kürzeren Eingaben unterkonditioniert. Lange benutzerdefinierte Prompts werden wortwörtlich gesendet — die Schwelle ist die Schutzmaßnahme."
       },
       "cfgDecay": {
         "label": "CFG-Decay",
@@ -516,13 +494,11 @@
       "applyTitle": "{label} anwenden",
       "useSafer": "Sicherere Einstellungen verwenden ({label})",
       "browseSmaller": "Kleinere Modelle durchsuchen",
-      "overrideAck": "Hochrisiko-Generierung erlauben — ich akzeptiere, dass das Backend abstürzen kann und mein Rechner möglicherweise neu gestartet werden muss.",
       "reasonDangerOver": "Das Modell benötigt ~{model} GB resident an der Standardposition, aber {platform} mit insgesamt {total} GB hat nur ~{working} GB sicher verfügbar. Die Laufzeit fällt automatisch auf sequentielles CPU-Offload zurück — die Generierung gelingt, aber jeder Schritt wird einige Male langsamer, weil Submodule pro Durchgang zwischen CPU- und {offloadDevice}-Speicher wechseln. Für Generierung mit voller Geschwindigkeit wähle ein kleineres Modell (LTX-Video ist ~2 GB resident) oder einen Rechner mit mehr Speicher.",
       "reasonDangerNear": "Das Modell benötigt ~{model} GB resident und dieser Lauf erreicht eine Spitze von ~{peak} GB. Auf {platform} mit insgesamt {total} GB liegt das über der Hochrisiko-Schwelle (~{highRisk} GB) und nahe am geschätzten Working Set (~{working} GB). Die Laufzeit aktiviert möglicherweise CPU-Offload, damit es passt — senke die Einstellungen oder wähle ein kleineres Modell, wenn du Generierung mit voller Geschwindigkeit möchtest.",
       "reasonCaution": "Das Modell benötigt ~{model} GB resident. Auf {platform} mit insgesamt {total} GB liegt das über dem konservativen Komfort-Ziel (~{comfort} GB), aber unter dem geschätzten Working Set (~{working} GB). Die Generierung sollte passen; senke die Einstellungen, falls es instabil wird."
     },
     "disabledHint": "Generieren deaktiviert: {reason}",
-    "willLoadHint": "Das ausgewählte Modell wird bei der nächsten Generierung in den Speicher geladen. Der erste Ladevorgang kann bei größeren Varianten eine Minute dauern.",
     "cacheStrategies": {
       "none": {
         "label": "Aus",
@@ -566,7 +542,23 @@
     "sound": {
       "badge": "Ton",
       "badgeTooltip": "Dieser Clip hat Ton. Schalte ihn mit der Lautstärkeregelung des Players ein."
-    }
+    },
+    "capacityLine": {
+      "short": "{device} · {memory} gesamt · Spitze dieses Laufs ≈ {peak}",
+      "withModel": "{device} · {memory} gesamt · Modell ≈ {model}, Spitze dieses Laufs ≈ {peak}"
+    },
+    "device": {
+      "apple": "Apple Silicon",
+      "appleDetected": "Apple Silicon (erkannt)",
+      "appleMlx": "Apple Silicon (MLX)",
+      "cpuDetected": "CPU (erkannt)",
+      "gpu": "GPU",
+      "gpuDetected": "GPU (erkannt)"
+    },
+    "ltx2": {
+      "engineMessage": "Dieses Modell läuft mit einer eigenen MLX-Engine (ltx-2-mlx) auf der Apple-GPU, mit Ton."
+    },
+    "willLoadHint": "Das ausgewählte Modell wird beim nächsten Erzeugen in den Speicher geladen. Das erste Laden kann bei größeren Varianten eine Minute dauern."
   },
   "imageGallery": {
     "subtitle": {
@@ -664,10 +656,15 @@
       "cancel": "Abbrechen",
       "update": "Sprachpaket aktualisieren",
       "install": "Sprachpaket installieren",
-      "reinstall": "Reparieren / neu installieren",
       "done": "Sprachpaket installiert.",
       "log": "Installations-Log",
-      "updateFeatures": "Aktualisiere das Sprachpaket für Sprachanrufe im Chat und Sprecherkennzeichnung in Transkripten (etwa 40 MB Modelle; ein bis zwei Minuten)."
+      "updateFeatures": "Aktualisiere das Sprachpaket für Sprachanrufe im Chat und Sprecherkennzeichnung in Transkripten (etwa 40 MB Modelle; ein bis zwei Minuten).",
+      "checkedOk": null,
+      "checkedOkAt": null,
+      "repair": null,
+      "troubleshoot": "Fehlerbehebung",
+      "troubleshootBody": null,
+      "reinstallSmall": "Neu installieren"
     },
     "models": {
       "recommended": "Empfohlen",
@@ -677,15 +674,51 @@
       "firstUse": "Wird bei der ersten Verwendung heruntergeladen, wenn du das überspringst.",
       "title": "Voice",
       "sttTitle": "Modelle für die Spracherkennung",
-      "sttSubtitle": "Werden vom Mikrofon im Chat und von Voice Studio verwendet."
+      "sttSubtitle": "Werden vom Mikrofon im Chat und von Voice Studio verwendet.",
+      "capabilities": null,
+      "ttsTitle": "Sprachmodelle",
+      "ttsSubtitle": null,
+      "ttsNone": null,
+      "caps": {
+        "speak": "Sprechen",
+        "style": "Stil",
+        "clone": "Klonen",
+        "design": "Entwerfen"
+      }
     },
     "voices": {
       "title": "Stimmen",
       "subtitle": "Kokoro: 54 Stimmen in 9 Sprachen. Wähle die Stimme, mit der der Chat vorliest.",
-      "needsChinese": "Hake im Sprachpaket die Mandarin-Stimmen an.",
+      "needsChineseAddon": null,
+      "addChinese": null,
       "notYet": "Auf diesem Computer noch nicht verfügbar.",
       "useVoice": "Diese Stimme verwenden",
-      "preview": "Vorschau"
+      "preview": "Vorschau",
+      "listTitle": "Stimmen",
+      "listSubtitle": null,
+      "cloneCard": null,
+      "cloneDetail": null,
+      "designCard": null,
+      "designDetail": null,
+      "designAction": null,
+      "moreCard": null,
+      "moreDetail": null,
+      "moreAction": null,
+      "filter": "Anzeigen",
+      "allLanguages": "Alle Sprachen",
+      "noneMine": null,
+      "none": null,
+      "kindClone": "Geklont",
+      "kindPreset": null,
+      "kindBuiltin": null,
+      "playSample": null,
+      "use": "Verwenden",
+      "tab": null,
+      "filters": {
+        "all": "Alle",
+        "mine": "Meine",
+        "builtin": "Integriert"
+      }
     },
     "settings": {
       "title": "Spracheinstellungen",
@@ -750,7 +783,46 @@
       "listen": "Anhören",
       "progress": "Teil {done} von {total}",
       "generateParts": "Audio erzeugen ({n} Teile)",
-      "encoding": "Wird kodiert…"
+      "encoding": "Wird kodiert…",
+      "textLabel": "Zu sprechender Text",
+      "styleBuiltin": null,
+      "styleClone": null,
+      "styleSmall": null,
+      "cloneLimit": null,
+      "describe": null,
+      "style": null,
+      "describePlaceholder": null,
+      "stylePlaceholder": null,
+      "styleChips": null,
+      "pitch": "Tonhöhe",
+      "advanced": "Erweitert",
+      "seed": null,
+      "modelKokoro": null,
+      "modelReady": null,
+      "modelDownloading": null,
+      "modelNeeds": null,
+      "downloadForStyle": null,
+      "cloneTooLong": null,
+      "describeFirst": null,
+      "appleOnly": null,
+      "language": "Sprache",
+      "sampleOf": null,
+      "sampleLoading": null,
+      "cloneModel": null,
+      "cloneKind": null,
+      "yourVoices": null,
+      "presets": null,
+      "designCard": null,
+      "designDetail": null,
+      "quickVoices": null,
+      "chips": {
+        "neutral": null,
+        "angry": null,
+        "sad": null,
+        "excited": null,
+        "whisper": null,
+        "calm": null
+      }
     },
     "stop": "Stoppen",
     "studio": {
@@ -785,7 +857,8 @@
       "empty": "Keine Sprache gefunden.",
       "editHint": "Doppelklick zum Bearbeiten",
       "edit": "Zeile bearbeiten",
-      "export": "Exportieren"
+      "export": "Exportieren",
+      "lineLabel": "Zeile bei {time} bearbeiten"
     },
     "handoff": {
       "summary": "Im Chat zusammenfassen",
@@ -830,11 +903,51 @@
     "micError": {
       "blockedMac": "Der Mikrofonzugriff ist blockiert. Erlaube ChaosEngineAI unter Systemeinstellungen > Datenschutz & Sicherheit > Mikrofon und versuche es dann erneut.",
       "blockedWindows": "Der Mikrofonzugriff ist blockiert. Erlaube Desktop-Apps den Mikrofonzugriff unter Einstellungen > Datenschutz und Sicherheit > Mikrofon und versuche es dann erneut.",
+      "openSettings": "Mikrofoneinstellungen öffnen",
       "blocked": "Der Mikrofonzugriff ist blockiert. Prüfe die Datenschutzeinstellungen deines Desktops und ob eine andere App das Mikrofon belegt.",
       "notFound": "Kein Mikrofon gefunden. Schließe eines an und versuche es erneut.",
       "inUse": "Das Mikrofon wird von einer anderen App verwendet oder konnte nicht geöffnet werden.",
       "unsupported": "Dieses Fenster kann das Mikrofon nicht nutzen (keine Unterstützung für Mediengeräte).",
       "generic": "Das Mikrofon konnte nicht geöffnet werden."
+    },
+    "clone": {
+      "statement": null,
+      "title": "Stimme klonen",
+      "loading": "Wird geladen…",
+      "macOnly": "Das Klonen von Stimmen läuft vorerst nur auf Macs mit Apple Silicon.",
+      "deleteConfirm": null,
+      "model": "Klonmodell",
+      "downloading": "Wird heruntergeladen…",
+      "notHere": "Geklonte Stimmen können nur im ChaosEngineAI-Fenster auf diesem Computer verwendet werden.",
+      "consentOwn": null,
+      "consentPermission": null,
+      "delete": "Löschen",
+      "new": "Neue geklonte Stimme",
+      "placeholder": "Text, der mit der geklonten Stimme gesprochen wird.",
+      "tagged": "Als KI-erzeugt gekennzeichnet",
+      "allowAgents": "Agenten und anderen Computern die Nutzung geklonter Stimmen erlauben (standardmäßig aus)",
+      "whose": "Wessen Stimme ist es?",
+      "basisOwn": "Meine eigene Stimme",
+      "basisPermission": null,
+      "speakerName": "Name der sprechenden Person",
+      "voiceName": "Name für diese Stimme (optional)",
+      "confirm": null,
+      "recordAgain": "Erneut aufnehmen",
+      "sampleTitle": null,
+      "sampleHelp": null,
+      "sampleText": "Im Sample gesprochene Wörter (optional; wird automatisch ausgefüllt)",
+      "tooShort": null,
+      "tooLong": null,
+      "save": null,
+      "installingWatermark": "Wasserzeichen-Komponente wird installiert…",
+      "tab": "Klonen",
+      "voices": "Geklonte Stimmen",
+      "deleteVoice": "Stimme {name} löschen",
+      "textLabel": "Text für die geklonte Stimme",
+      "sampleFile": "Stimm-Sample-Datei",
+      "recordingPlayback": "Deine Aufnahme",
+      "saving": null,
+      "sampleType": null
     }
   },
   "residentChatModelNote": "Ein geladenes Chat-Modell belegt etwa {gb} GB dieses Speichers; beim Entladen wird er freigegeben.",
@@ -904,5 +1017,1155 @@
       "previewVae": "Preview-VAE",
       "fp8LayerwiseCasting": "FP8 layerwise"
     }
+  },
+  "inputImage": {
+    "chooseFile": "Datei auswählen",
+    "fromGallery": "Aus der Galerie",
+    "remove": "Entfernen",
+    "pickFailed": "Die Dateiauswahl ist hier nicht verfügbar. Wähle stattdessen aus der Galerie.",
+    "referenceLabel": "Referenzbild",
+    "referenceLabelMany": "Referenzbilder",
+    "referenceHintOne": "Startet das Bild von diesem Bild aus. Stärke: Höher bleibt näher daran.",
+    "referenceHintMany": "Bis zu {max} Bilder. Das Modell bearbeitet oder zeichnet sie nach deinem Prompt neu, um ein Motiv oder einen Stil beizubehalten.",
+    "strength": "Stärke",
+    "startLabel": "Startbild",
+    "startHint": "Der Clip beginnt mit diesem Bild.",
+    "endLabel": "Endbild (optional)",
+    "endHint": "Der Clip endet mit diesem Bild. Allein verwendet, bewegt sich der Prompt auf dieses Bild zu."
+  },
+  "sizePresets": {
+    "aspect": "Seitenverhältnis",
+    "size": "Größe",
+    "resolution": "Auflösung",
+    "overLimit": "Über der Größengrenze dieses Modells.",
+    "current": "Aktuelle Größe: {width} x {height} ({megapixels} MP)"
+  },
+  "estimate": {
+    "time": "Etwa {time}",
+    "timeUnknown": "Zeit: unbekannt bis zum ersten Lauf",
+    "memory": "Spitze {peak} von {total}",
+    "memoryUnknown": "Speicher: nicht geschätzt",
+    "disk": "Schreibt {size}",
+    "diskUnknown": "Festplatte: nicht geschätzt",
+    "measured": "Gemessen",
+    "estimated": "Geschätzt",
+    "measuredTitle": "Auf diesem Rechner für dieses Modell und diese Voreinstellung gemessen.",
+    "estimatedTitle": "Aus der Modellkarte oder von einem ähnlichen Rechner; hier noch nicht gemessen.",
+    "queueRunning": "{what} läuft, noch etwa {time}. Dein Auftrag startet danach.",
+    "queuePosition": "Warten, bis ein anderer Auftrag fertig ist (Position {position})",
+    "dangerAck": "Trotzdem ausführen. Ich akzeptiere, dass das Backend abstürzen kann.",
+    "duration": {
+      "seconds": "{n} s",
+      "minutes": "{n} Min.",
+      "minutesSeconds": "{m} Min. {s} s"
+    },
+    "size": {
+      "gb": "{n} GB",
+      "mb": "{n} MB"
+    },
+    "band": {
+      "caution": "(Vorsicht: nahe am Limit)",
+      "danger": "(Gefahr: passt möglicherweise nicht)"
+    },
+    "unknownChip": "Schätzung: unbekannt bis zum ersten Lauf"
+  },
+  "disclosure": {
+    "options": "Optionen",
+    "expert": "Experte",
+    "defaults": "Modell-Standardwerte"
+  },
+  "preset": {
+    "custom": "Benutzerdefiniert",
+    "customTitle": "Ein Wert wurde von Hand geändert. Wähle eine Voreinstellung, um zurückzugehen."
+  },
+  "error": {
+    "technicalDetails": "Technische Details",
+    "retry": "Erneut versuchen"
+  },
+  "licence": {
+    "chip": {
+      "commercial": "{name} · kommerziell",
+      "limited": "{name} · eingeschränkt kommerziell",
+      "noCommercial": "{name} · keine kommerzielle Nutzung",
+      "gated": "Gated"
+    },
+    "screen": {
+      "asks": "Was diese Lizenz von dir verlangt",
+      "gatedNote": "Dieses Modell ist gesperrt (gated): Akzeptiere die Bedingungen auf Hugging Face und lade es dann hier mit deinem Token herunter (Einstellungen > Hugging Face).",
+      "readFull": "Vollständige Lizenz lesen",
+      "openHub": "Auf Hugging Face öffnen",
+      "notNow": "Jetzt nicht",
+      "accepted": "Ich habe akzeptiert",
+      "ok": "OK"
+    },
+    "status": {
+      "needs": "Lizenz erforderlich"
+    },
+    "action": {
+      "accept": "Lizenz akzeptieren"
+    }
+  },
+  "models": {
+    "makes": {
+      "songs": "Songs mit Gesang",
+      "instrumental": "Instrumental",
+      "sfx": "Soundeffekte",
+      "loops": "Loops"
+    },
+    "speed": {
+      "measured": "Etwa {rate} s Audio pro Sekunde auf diesem Rechner",
+      "unknown": "Geschwindigkeit noch nicht gemessen"
+    }
+  },
+  "musicStudio": {
+    "result": {
+      "loop": "Loop",
+      "play": "{title} abspielen, {seconds} Sekunden",
+      "stop": "Stopp",
+      "again": "Nochmal",
+      "againTitle": "Gleiche Einstellungen, neuer zufälliger Seed.",
+      "audioFailed": "Die Audiodatei konnte nicht geladen werden.",
+      "audioLoading": "Audio wird geladen…",
+      "done": "Fertig",
+      "doneIn": "Fertig in {time}",
+      "openLibrary": "In der Bibliothek öffnen",
+      "seed": "Seed {seed}",
+      "vary": "Variieren",
+      "varyTitle": "Gleiche Einstellungen, nächster Seed ({seed})."
+    },
+    "options": {
+      "reference": "Referenzaudio",
+      "referenceRights": "Du bist für die Rechte an Audio verantwortlich, das du bereitstellst.",
+      "auto": "Auto",
+      "bpm": "BPM",
+      "key": "Tonart",
+      "randomSeed": "Zufälliger Seed",
+      "seed": "Seed",
+      "summaryBpm": "BPM {value}",
+      "summaryKey": "Tonart {value}",
+      "summarySeed": "Seed {n}",
+      "summaryVariations": "{n, plural, one {# Variante} other {# Varianten}}",
+      "tempoKey": "Tempo und Tonart",
+      "variations": "Variationen",
+      "variationsCost": "Jede Variation braucht noch einmal dieselbe Zeit.",
+      "variationsTotal": "Etwa {time} für {n}."
+    },
+    "artistWarning": "Wenn du einen Künstler nennst, kann eine Kopie seines Stils entstehen. Beschreibe stattdessen den Klang.",
+    "cancel": "Abbrechen",
+    "cancelling": "Wird abgebrochen…",
+    "empty": "Noch keine Musik. Beschreibe einen Track und drücke auf „Track erstellen“.",
+    "error": {
+      "cancelled": "Abgebrochen.",
+      "generic": "Der Track konnte nicht erstellt werden.",
+      "invalid": "Der Track konnte mit diesen Einstellungen nicht gestartet werden.",
+      "memory": "Nicht genug freier Speicher für diesen Track. Versuche eine kürzere Länge.",
+      "notReady": "Das Musikmodell ist noch nicht bereit.",
+      "offline": "Das Backend hat nicht geantwortet. Prüfe, ob es läuft, und versuche es dann erneut.",
+      "useShorter": "Kürzere Länge verwenden"
+    },
+    "expert": {
+      "aiTagNote": "Ein maschinenlesbares Tag in der Audiodatei. Standardmäßig an; für den privaten Gebrauch kannst du es abschalten.",
+      "idleUnload": "Modell nach so vielen Minuten Leerlauf entladen (0 lässt es geladen)",
+      "model": "Modell",
+      "output": "Ausgabe: FLAC, 24 Bit, 48 kHz, Stereo.",
+      "summaryIdle": "Nach {n} Min. entladen",
+      "summaryTagOff": "KI-Tag aus"
+    },
+    "issue": {
+      "bpmRange": "BPM muss zwischen 30 und 300 liegen oder auf Auto stehen.",
+      "captionEmpty": "Beschreibe die Musik, um einen Track zu erstellen.",
+      "captionTooLong": "Die Beschreibung ist länger als {max} Zeichen.",
+      "lyricsEmpty": "Füge Songtext hinzu oder wechsle zu Instrumental.",
+      "lyricsTooLong": "Der Songtext ist länger als {max} Zeichen.",
+      "secondsRange": "Die Länge muss {min} bis {max} Sekunden betragen.",
+      "seedRange": "Der Seed muss eine ganze Zahl ab 0 sein.",
+      "variations": "Variationen müssen 1, 2 oder 4 sein."
+    },
+    "latest": "Neueste",
+    "length": {
+      "custom": "Benutzerdefiniert",
+      "customLabel": "Länge in Sekunden",
+      "label": "Länge",
+      "minutes": "{n} Min.",
+      "range": "{min} bis {max} s",
+      "seconds": "{n} s"
+    },
+    "library": "Bibliothek",
+    "loading": "Musikmodelle werden geladen…",
+    "lyrics": {
+      "label": "Songtext",
+      "placeholder": "[verse] ... [chorus] ...",
+      "rights": "Du bist für die Rechte an Songtexten verantwortlich, die du eingibst."
+    },
+    "make": "Track erstellen",
+    "making": "Wird erstellt…",
+    "mode": {
+      "instrumental": "Instrumental",
+      "label": "Art des Tracks",
+      "song": "Song"
+    },
+    "noModel": "Noch kein Musikmodell installiert.",
+    "noModelSize": "{name} ist etwa {size} GB groß.",
+    "offline": "Warten auf das Backend…",
+    "openLibrary": "Bibliothek öffnen",
+    "openModels": "Musikmodelle öffnen",
+    "packMissing": "Das Musikpaket ist noch nicht installiert. Installiere es unter „Musikmodelle“ (etwa 1,6 GB).",
+    "progress": {
+      "compose": "Komponieren",
+      "decode": "Audio dekodieren",
+      "encode": "Kodieren",
+      "load": "Modell laden",
+      "save": "Speichern"
+    },
+    "prompt": {
+      "label": "Beschreibe die Musik",
+      "placeholder": "warmer Lo-Fi-Hip-Hop, Vinylknistern, sanftes Klavier, 85 bpm"
+    },
+    "queued": "In der Warteschlange: Dein Auftrag startet nach dem vorherigen.",
+    "running": "Dein Track wird erstellt",
+    "status": {
+      "installed": "Installiert",
+      "loaded": "Geladen",
+      "notInstalled": "Nicht installiert"
+    },
+    "title": "Musikstudio",
+    "studioMode": {
+      "label": "Musik oder Soundeffekte",
+      "music": "Musik",
+      "sounds": "Sounds"
+    },
+    "sounds": {
+      "loopBadge": "Loop",
+      "needLicence": "Soundeffekte nutzen Stable Audio Open, dessen Lizenz du zuerst akzeptieren musst. Öffne „Musikmodelle“, um sie zu lesen.",
+      "needDownload": "Lade {name} unter „Musikmodelle“ herunter (etwa {size} GB). Akzeptiere zuerst die Lizenz auf Hugging Face.",
+      "needTextEncoder": "Dem Soundmodell fehlt sein Text-Encoder. Lade es unter „Musikmodelle“ erneut herunter.",
+      "needPack": "Für Sounds brauchst du außerdem ein kleines Paket (etwa 1 GB). Installiere es unter „Musikmodelle“.",
+      "prompt": "Beschreibe den Sound",
+      "placeholder": "schwere Holztür knarrt auf, Nahmikrofon",
+      "english": "Englisch funktioniert am besten. Effekte und Loops, keine Songs oder Sprache.",
+      "loop": "Nahtlosen Loop erstellen",
+      "make": "Sound erstellen",
+      "making": "Wird erstellt…",
+      "running": "Dein Sound wird erstellt",
+      "empty": "Noch keine Sounds. Beschreibe einen und drücke auf „Sound erstellen“.",
+      "issue": {
+        "captionEmpty": "Beschreibe den Sound, um ihn zu erstellen.",
+        "captionTooLong": "Die Beschreibung ist länger als {max} Zeichen.",
+        "secondsRange": "Die Länge muss {min} bis {max} Sekunden betragen."
+      },
+      "error": {
+        "memory": "Nicht genug freier Speicher für diesen Sound. Gib etwas Speicher frei und versuche es erneut.",
+        "invalid": "Der Sound konnte mit diesen Einstellungen nicht gestartet werden.",
+        "generic": "Der Sound konnte nicht erstellt werden."
+      },
+      "lengthSlider": "Länge in Sekunden",
+      "modelPicker": "Soundmodell",
+      "cpuFallback": null,
+      "cpuOnly": null
+    }
+  },
+  "audioPlayer": {
+    "timeOf": "{current} von {total}"
+  },
+  "inputAudio": {
+    "chooseFile": "Datei auswählen",
+    "fromLibrary": "Aus der Bibliothek",
+    "remove": "Entfernen",
+    "pickFailed": "Die Dateiauswahl ist hier nicht verfügbar. Wähle stattdessen aus der Bibliothek."
+  },
+  "board": {
+    "addShot": "Einstellung hinzufügen",
+    "batch": {
+      "cancel": "Stapel abbrechen",
+      "count": "{done} von {total} fertig",
+      "kind": {
+        "clips": "Clips",
+        "stills": "Standbilder"
+      },
+      "shotOf": "Einstellung {n} von {total}",
+      "starting": "Wird gestartet…",
+      "stillsThenClips": "{kind}, danach Clips",
+      "title": "Einstellungen werden erstellt"
+    },
+    "conflictNotice": "Anderswo geändert; die neueste Version wird angezeigt",
+    "defaults": {
+      "automatic": "Automatisch (ein installiertes Modell)",
+      "automaticShort": "auto",
+      "automaticName": "Automatisch",
+      "noVoice": "keine"
+    },
+    "defaultsSummary": null,
+    "defaultsTitle": "Projektstandards",
+    "editor": {
+      "discard": "Änderungen verwerfen",
+      "discardBody": "Diese Einstellung hat ungespeicherte Änderungen. Wenn du jetzt schließt, gehen sie verloren.",
+      "discardTitle": "Deine Änderungen verwerfen?",
+      "fromImageGallery": "Aus der Bildgalerie",
+      "fromVideoGallery": "Aus der Videogalerie",
+      "import": "Importieren",
+      "importFailed": "Diese Datei konnte nicht importiert werden.",
+      "importFile": "Bild- oder Videodatei",
+      "importHint": "Fügt einen neuen Take aus einer Datei oder deinen Galerien hinzu. Nichts wird überschrieben.",
+      "importKind": "Wähle ein Bild (png, jpg, webp) oder ein Video (mp4, mov, webm).",
+      "length": "Länge (s)",
+      "motionPrompt": "Bewegungs-Prompt",
+      "nativeSound": "Einstellungs-Tonpegel (dB)",
+      "noReferences": "In diesem Projekt gibt es noch keine Referenzen. Füge sie im Bereich „Referenzen“ hinzu.",
+      "references": "Referenzen",
+      "relinkHint": "Verweise den fehlenden Take auf eine neue Datei.",
+      "revert": "Zurücksetzen",
+      "save": "Änderungen speichern",
+      "saveFirst": "Speichere zuerst deine Änderungen.",
+      "seed": "Seed",
+      "seedRandom": "Zufällig",
+      "speed": "Geschwindigkeit",
+      "startFrom": "Start mit",
+      "startFromGenerate": "Neues Standbild",
+      "startFromPrevious": "Letztes Bild der vorherigen Einstellung",
+      "startFromUpload": "Mein Bild",
+      "stillPrompt": "Standbild-Prompt",
+      "title": "Einstellung {n}",
+      "trimIn": "Anfang kürzen (s)",
+      "trimOut": "Ende kürzen (s)",
+      "trimOutEnd": "Ende des Takes",
+      "useClip": "Als Clip verwenden",
+      "noCast": null
+    },
+    "empty": "Noch keine Einstellungen. Füge eine Einstellung hinzu und gib ihr einen Prompt oder importiere Material.",
+    "estimate": {
+      "need": "{n, plural, one {# Einstellung braucht einen neuen Take} other {# Einstellungen brauchen einen neuen Take}}",
+      "none": "Jede nicht gesperrte Einstellung hat einen Take."
+    },
+    "loading": "Projekt wird geladen…",
+    "makeAll": "Alle nicht gesperrten erstellen",
+    "makeAllTitle": "Fügt jeder nicht gesperrten Einstellung einen neuen Take hinzu. Nichts wird überschrieben.",
+    "makeMissing": "Fehlende erstellen",
+    "makeOne": "Diese Einstellung erstellen",
+    "mixer": "Mixer",
+    "noProject": "Es ist kein Projekt geöffnet. Öffne eines unter „Projekte“ oder starte ein neues.",
+    "noProjectTitle": "Board",
+    "notFound": "Dieses Projekt gibt es nicht mehr. Wähle ein anderes.",
+    "openProjects": "Projekte öffnen",
+    "projects": "Projekte",
+    "redo": "Wiederholen",
+    "references": {
+      "addCharacter": "Figur hinzufügen",
+      "addPlace": "Ort hinzufügen",
+      "characters": "Figuren",
+      "description": "Wie es aussieht",
+      "image": "Referenzbild",
+      "name": "Name",
+      "none": "Noch keine.",
+      "places": "Orte",
+      "remove": "Referenz entfernen",
+      "setImage": "Bild festlegen",
+      "summary": "{characters, plural, one {# Figur} other {# Figuren}} · {places, plural, one {# Ort} other {# Orte}}",
+      "title": "Referenzen"
+    },
+    "reload": "Neu laden",
+    "removeBody": "{name} wird aus dem Film entfernt. Die Takes bleiben im Projektordner, und mit „Rückgängig“ ist es wieder da.",
+    "removeTitle": "Diese Einstellung löschen?",
+    "shot": {
+      "drag": "Zum Umsortieren ziehen",
+      "failedNote": "Die Einstellung wurde nicht gerendert. Versuche es erneut oder bearbeite die Prompts.",
+      "keep": "Behalten",
+      "lock": "Diese Einstellung sperren",
+      "lockedNote": "Gesperrte Einstellungen werden beim Erstellen übersprungen.",
+      "menu": {
+        "delete": "Löschen",
+        "down": "Nach unten",
+        "edit": "Prompts bearbeiten",
+        "import": "Material importieren",
+        "up": "Nach oben",
+        "useAsReference": "Standbild als Referenz verwenden"
+      },
+      "missingNote": "Take-Datei fehlt. Neu verknüpfen oder neuen Take erstellen.",
+      "moreActions": "Weitere Aktionen für Einstellung {n}",
+      "moved": "Einstellung {n} auf Position {position} verschoben",
+      "play": "Clip abspielen",
+      "redoLabel": "Wiederholen",
+      "redoMarked": "Zum Wiederholen markiert",
+      "redoTitle": "Zum Wiederholen markieren: Beim nächsten Erstellen kommt ein neuer Take dazu. Nichts wird überschrieben.",
+      "relink": "Neu verknüpfen",
+      "rerun": "Erneut ausführen",
+      "seed": "Seed {seed}",
+      "staleTitle": "Einstellung {n} hat einen neuen Take; diese Einstellung beginnt mit deren letztem Bild.",
+      "staleTitleGeneric": "Etwas, wovon diese Einstellung abhängt, hat sich geändert.",
+      "status": {
+        "done": "Fertig · {seconds} s",
+        "doneNoLength": "Fertig",
+        "failed": "Fehlgeschlagen",
+        "idle": "Noch nicht erstellt",
+        "locked": "Gesperrt",
+        "missing": "Take-Datei fehlt",
+        "queued": "In Warteschlange · {position}",
+        "running": "Wird erstellt…",
+        "stale": "Veraltet · nach Einstellung {n}",
+        "staleNoShot": "Veraltet",
+        "stillOnly": "Nur Standbild"
+      },
+      "titleLabel": "Titel von Einstellung {n}",
+      "transitionLabel": "Übergang",
+      "transitionSeconds": "Länge der Überblendung in Sekunden",
+      "transitionType": {
+        "crossfade": "Überblendung",
+        "cut": "Schnitt"
+      },
+      "unlock": "Diese Einstellung entsperren",
+      "untitled": "Einstellung {n}",
+      "castLabel": "Besetzung in dieser Einstellung",
+      "newTake": "Neue Aufnahme",
+      "newTakeMarked": "Neue Aufnahme beim nächsten Lauf",
+      "newTakeTitle": null,
+      "noPrompt": "Noch kein Prompt. Drücke Enter oder Prompts bearbeiten.",
+      "makeClip": "Clip erstellen",
+      "makeClipTitle": "Den Clip dieser Einstellung aus ihrem Standbild erstellen.",
+      "referenceAdded": "{name} wurde mit diesem Standbild zur Besetzung hinzugefügt."
+    },
+    "shots": "Einstellungen",
+    "subtitle": "{shots, plural, one {# Einstellung} other {# Einstellungen}} · {seconds} s · {stale} veraltet",
+    "takes": {
+      "active": "Aktiver Take",
+      "label": "Takes",
+      "pick": "Diesen Take verwenden",
+      "take": "Take {n}"
+    },
+    "title": "{project} · Board",
+    "undo": "Rückgängig",
+    "emptyNoCast": null,
+    "subtitleShots": null,
+    "lengthStrip": "Längen der Einstellungen",
+    "lengthStripPart": "Einstellung {n} · {seconds} s"
+  },
+  "storyProjects": {
+    "card": {
+      "edited": "bearbeitet {when}",
+      "meta": "{shots, plural, one {# Einstellung} other {# Einstellungen}} · {seconds} s · {aspect}",
+      "noShots": "noch keine Einstellungen",
+      "noTakes": "noch keine Bilder",
+      "noPreview": "keine Vorschau",
+      "stale": "{n} veraltet",
+      "zeroShots": "0 Einstellungen",
+      "metaFormat": null,
+      "zeroShotsFormat": null
+    },
+    "deleteBody": "{name} und alle Takes, Standbilder und Sounds in seinem Ordner werden gelöscht. Das lässt sich nicht rückgängig machen.",
+    "deleteFailed": "Das Projekt konnte nicht gelöscht werden.",
+    "deleteTitle": "Dieses Projekt löschen?",
+    "dialog": {
+      "aspect": "Seitenverhältnis",
+      "create": "Erstellen",
+      "fps": "Bildrate",
+      "imageModel": "Bildmodell",
+      "name": "Name",
+      "resolution": "Auflösung",
+      "save": "Speichern",
+      "videoModel": "Videomodell",
+      "voice": "Stimme",
+      "models": "Modelle"
+    },
+    "empty": "Noch keine Projekte. Ein Projekt enthält deine Einstellungen, Takes und Sounds in einem Ordner, den du verschieben oder sichern kannst.",
+    "exportBundle": "Bundle exportieren",
+    "exportFailed": "Das Bundle konnte nicht exportiert werden.",
+    "exported": "{name} exportiert · {size}",
+    "exporting": "Wird exportiert…",
+    "import": "Bundle importieren",
+    "importFailed": "Diese Datei ist kein ChaosEngineAI-Projektbundle.",
+    "imported": "{name} importiert",
+    "loading": "Deine Projekte werden geladen…",
+    "menu": {
+      "delete": "Löschen",
+      "rename": "Umbenennen"
+    },
+    "missing": "Der Ordner dieses Projekts wurde verschoben oder gelöscht.",
+    "moreActions": "Weitere Aktionen",
+    "new": "Neues Projekt",
+    "open": "Öffnen",
+    "subtitle": "{count, plural, one {# Projekt} other {# Projekte}}",
+    "title": "Storyboard-Projekte",
+    "format": {
+      "fit": {
+        "safe": "Passt",
+        "tight": "Knapp",
+        "wontfit": "Passt nicht"
+      },
+      "note": {
+        "capped": null,
+        "cost": "Höhere Auflösungen rendern langsamer und brauchen mehr Speicher.",
+        "fpsConvert": null,
+        "noModel": null,
+        "safe": null,
+        "tight": null,
+        "wontfit": null,
+        "estimated": null
+      }
+    },
+    "openNamed": null,
+    "moreActionsFor": null
+  },
+  "storyboard": {
+    "cancel": "Abbrechen",
+    "close": "Schließen",
+    "dismiss": "Schließen",
+    "offline": "Warten auf das Backend…",
+    "pathPlaceholder": "/path/to/file",
+    "pickUnavailable": "Die Dateiauswahl ist hier nicht verfügbar. Gib stattdessen den Pfad ein.",
+    "films": {
+      "title": "Film",
+      "none": "Noch keine Filme. Ein Export legt hier einen ab."
+    }
+  },
+  "mixer": {
+    "add": {
+      "cloned": "Dieser Clip verwendet eine geklonte Stimme"
+    },
+    "addAudioTo": "Audio zu {lane} hinzufügen",
+    "addButton": "Hinzufügen",
+    "addFromLibrary": "Aus der Bibliothek hinzufügen",
+    "block": {
+      "ariaLabel": "{lane}, {name}, von {start} bis {end} Sekunden"
+    },
+    "board": "Board",
+    "captions": {
+      "add": "An der Abspielposition hinzufügen",
+      "burnIn": "Einbrennen",
+      "exportSrt": ".srt schreiben",
+      "generate": "Aus der Stimme erstellen",
+      "generating": "Hört zu…",
+      "label": "Untertitel",
+      "needVoice": "Füge der Stimmspur Sprache hinzu, um daraus Untertitel zu erstellen.",
+      "newText": "Neuer Untertitel",
+      "remove": "Entfernen",
+      "srt": "SRT-Datei",
+      "textLabel": "Untertiteltext",
+      "title": "Untertitel ({count})",
+      "trimmedAway": "Weggeschnitten"
+    },
+    "clip": {
+      "ariaLabel": "{lane}, {name}, von {start} bis {end} Sekunden, {gain} dB",
+      "missing": "Fehlt",
+      "reading": "Wird gelesen…",
+      "relink": "Neu verknüpfen"
+    },
+    "crossfade": "Überblendung {seconds} s",
+    "empty": "Noch nichts zum Mischen. Erstelle zuerst Einstellungen auf dem Board.",
+    "export": {
+      "aspect": "Seitenverhältnis",
+      "button": "MP4 exportieren",
+      "cancel": "Export abbrechen",
+      "cancelled": "Export abgebrochen. Es wurde nichts geschrieben.",
+      "copied": "Pfad kopiert",
+      "copiedShort": "Kopiert",
+      "copyPath": "Pfad kopieren",
+      "details": "Technische Details",
+      "done": "Exportiert · {size} · {duration}",
+      "download": "Herunterladen",
+      "editor": "Für einen Editor exportieren (.otio)",
+      "editorNote": "Öffnet sich in DaVinci Resolve oder Premiere, wobei die Medien des Projekts auf diesem Computer verknüpft sind.",
+      "exporting": "Wird exportiert…",
+      "extras": "Außerdem geschrieben",
+      "failedShort": "Export fehlgeschlagen. Es wurde nichts geschrieben.",
+      "interrupted": "Der Export wurde unterbrochen.",
+      "loudness": "Lautheitsziel",
+      "loudnessHint": "{target} LUFS passt für Web-Video. Leer lässt den Mix unverändert.",
+      "loudnessOff": "Aus",
+      "phase": {
+        "encode": "Kodieren",
+        "join": "Zusammenfügen",
+        "mix": "Ton mischen",
+        "normalise": "Einstellungen normalisieren"
+      },
+      "pixels": "{width} × {height} px.",
+      "preset": {
+        "landscape": "16:9",
+        "portrait": "9:16",
+        "square": "1:1"
+      },
+      "reframeNote": "Beim Export neu zugeschnitten; Einstellungen werden nicht neu erzeugt.",
+      "resume": "Export fortsetzen",
+      "resumeNote": "{ready} von {total} Einstellungen sind schon fertig und werden wiederverwendet.",
+      "retry": "Erneut versuchen",
+      "reveal": "Datei anzeigen",
+      "stems": "Audiospuren als separate Dateien",
+      "stopped": "Der Export wurde nicht abgeschlossen.",
+      "title": "Export",
+      "upscale": "Hochskalieren",
+      "upscale1440": "1440p",
+      "upscale2160": "2160p (4K)",
+      "upscaleNone": "Gleiche Größe",
+      "upscaleNote": null,
+      "upscaleSame": null,
+      "more": "Mehr",
+      "whyBusy": null,
+      "whyEmpty": null
+    },
+    "importAudio": "Audio importieren",
+    "importAudioPath": "Pfad der Audiodatei",
+    "inspector": {
+      "absolute": "Filmzeit (nicht verankert)",
+      "anchor": "Anker",
+      "anchorShot": "Einstellung {n}: {name}",
+      "anchorSummary": "Bewegt sich mit Einstellung {n}. Versatz {offset} s.",
+      "anchorTo": "Verankert an",
+      "duck": "Unter Stimme absenken",
+      "duckTitle": "Senkt diesen Clip ab, solange jemand spricht (Sidechain-Kompression).",
+      "empty": "Wähle auf der Timeline einen Clip, um seinen Ton zu bearbeiten.",
+      "fadeIn": "Einblenden",
+      "fadeOut": "Ausblenden",
+      "gain": "Pegel",
+      "loop": "Zum Füllen wiederholen",
+      "name": "Name",
+      "nativeLevel": "Einstellungs-Tonpegel für Einstellung {n}",
+      "offset": "Versatz",
+      "remove": "Aus der Spur entfernen",
+      "shotSpan": "Ab {start} s, {length} s lang",
+      "shotTitle": "Ausgewählte Einstellung",
+      "start": "Beginnt bei",
+      "title": "Ausgewählter Clip",
+      "trim": "Kürzen",
+      "trimIn": "Anfang",
+      "trimOut": "Ende"
+    },
+    "lane": {
+      "music": "Musik",
+      "native": "Einstellungston",
+      "picture": "Bild",
+      "sfx": "Effekte",
+      "voice": "Stimme"
+    },
+    "leftOut": "{n, plural, one {# Einstellung hat noch keinen Clip und wird in Vorschau und Export ausgelassen.} other {# Einstellungen haben noch keinen Clip und werden in Vorschau und Export ausgelassen.}}",
+    "noLibraryYet": "Die Musikbibliothek ist noch nicht verfügbar. Wähle eine Datei oder gib ihren Pfad ein.",
+    "noProjectTitle": "Mixer",
+    "openBoard": "Board öffnen",
+    "openOnBoard": "Im Board öffnen",
+    "preview": {
+      "cancel": "Abbrechen",
+      "failed": "Die Vorschau wurde nicht gerendert.",
+      "none": "Noch keine Vorschau. Rendere eine, um den Film zu sehen und zu hören.",
+      "render": "Vorschau rendern",
+      "rendering": "Vorschau wird gerendert…",
+      "stale": "Veraltet. Rendere erneut, um deine letzten Änderungen zu hören."
+    },
+    "relinkFor": "Datei für {name} suchen",
+    "ruler": "Timeline-Lineal. Klicken, um die Abspielposition zu verschieben.",
+    "subtitle": "{seconds} s · {aspect} · Vorschau {width} × {height}",
+    "timeline": "Timeline",
+    "title": "{project} · Mixer",
+    "transitionsNote": "Übergänge verkürzen den Film um ihre Länge; das Lineal zeigt die tatsächliche Gesamtdauer.",
+    "transport": {
+      "keys": "Leertaste oder K: Wiedergabe / Pause. J und L: 5 s zurück / vor. Links und Rechts: 1 s (Umschalt 10 s, Alt ein Bild). Pos1 / Ende. + und -: zoomen.",
+      "label": "Transport",
+      "loop": "Wiederholen",
+      "needPreview": "Rendere eine Vorschau, um den Film abzuspielen.",
+      "pause": "Pause",
+      "play": "Wiedergabe",
+      "stop": "Stopp",
+      "timeOf": "{current} von {total}",
+      "zoomIn": "Vergrößern",
+      "zoomOut": "Verkleinern"
+    },
+    "emptyShots": "Noch nichts zu mischen. Erstelle zuerst Einstellungen im Tab Storyboard.",
+    "openInStoryboard": "Im Storyboard öffnen",
+    "openStoryboard": "Storyboard öffnen"
+  },
+  "aiLabel": {
+    "forced": "Dieses Projekt verwendet eine geklonte Stimme, daher wird das KI-Tag immer geschrieben.",
+    "metadata": "Maschinenlesbares KI-Tag hinzufügen",
+    "metadataTitle": "Ein maschinenlesbares Tag in den MP4-Metadaten. Es enthält weder Prompts noch Ordnernamen.",
+    "title": "KI-Kennzeichnung"
+  },
+  "sendToStoryboard": {
+    "back": "Zurück zu den Projekten",
+    "conflict": "Das Projekt hat sich beim Senden geändert. Versuche es erneut.",
+    "dismiss": "Schließen",
+    "failed": "Konnte dem Storyboard nicht hinzugefügt werden: {detail}",
+    "newProject": "Neues Projekt…",
+    "newShot": "Neue Einstellung",
+    "newTake": "Einstellung {n} (neuer Take)",
+    "noFile": "Dieser Eintrag hat keine Datei zum Senden.",
+    "send": "An Storyboard senden",
+    "sending": "Wird gesendet…",
+    "start": "Storyboard damit beginnen",
+    "untitled": "Unbenanntes Storyboard",
+    "use": "Im Storyboard verwenden",
+    "newTakeNamed": null
+  },
+  "studioKit": {
+    "models": "Modelle",
+    "moreActions": "Weitere Aktionen",
+    "modelCard": "Modellkarte",
+    "summary": {
+      "labelValue": "{label} {value}",
+      "size": "{width} × {height}",
+      "framesFps": "{frames} Bilder bei {fps} fps",
+      "negativeSet": "Negativ-Prompt gesetzt",
+      "negativeEdited": "Negativ-Prompt bearbeitet",
+      "endImageSet": "Endbild gesetzt"
+    }
+  },
+  "musicLibrary": {
+    "addTag": "Tag hinzufügen",
+    "clearFilters": "Filter zurücksetzen",
+    "confirmDelete": "Diesen Eintrag und sein Audio löschen? Das lässt sich nicht rückgängig machen.",
+    "confirmDeleteMany": "{n} Einträge und ihr Audio löschen? Das lässt sich nicht rückgängig machen.",
+    "delete": "Löschen",
+    "deleteSelected": "Ausgewählte löschen ({n})",
+    "empty": "Noch keine Musik. Beschreibe einen Track und drücke auf „Track erstellen“.",
+    "emptySounds": null,
+    "emptyTracks": null,
+    "filter": {
+      "anyTag": "Beliebiger Tag",
+      "tag": "Tag"
+    },
+    "kind": {
+      "sound": "Sound",
+      "track": "Track"
+    },
+    "kindFilter": {
+      "all": null,
+      "label": "Anzeigen",
+      "music": null,
+      "sounds": null
+    },
+    "layout": {
+      "grid": "Raster",
+      "label": "Layout",
+      "list": "Liste"
+    },
+    "loadAudio": "Audio laden",
+    "loading": "Deine Bibliothek wird geladen…",
+    "makeAnother": "Noch einen wie diesen erstellen",
+    "noMatch": "Keine Treffer.",
+    "openStudio": "Studio öffnen",
+    "removeTag": "Tag {tag} entfernen",
+    "rename": "Umbenennen",
+    "search": "Titel, Prompts, Tags durchsuchen",
+    "select": "{title} auswählen",
+    "sort": {
+      "label": "Sortieren",
+      "longest": "Längste zuerst",
+      "newest": "Neueste zuerst",
+      "oldest": "Älteste zuerst"
+    },
+    "subtitle": "{tracks, plural, one {# Track} other {# Tracks}} · {sounds, plural, one {# Sound} other {# Sounds}} · {size} auf der Festplatte",
+    "title": "Musikbibliothek"
+  },
+  "musicModels": {
+    "action": {
+      "openHuggingFace": "Auf Hugging Face öffnen",
+      "openInStudio": "Im Studio öffnen"
+    },
+    "column": {
+      "fit": "Eignung",
+      "licence": "Lizenz",
+      "makes": "Erzeugt",
+      "model": "Modell",
+      "size": "Größe",
+      "status": "Status"
+    },
+    "detail": {
+      "fit": "Eignung auf diesem Rechner",
+      "licence": "Lizenz",
+      "openModelCard": "Modellkarte öffnen",
+      "repo": "Repository",
+      "requires": "Benötigt außerdem",
+      "size": "Download",
+      "speed": "Geschwindigkeit",
+      "attribution": "Namensnennung"
+    },
+    "downloadFailed": "Der Download wurde nicht abgeschlossen.",
+    "downloadStatusLost": "Der Download-Fortschritt kann nicht mehr gelesen werden. Öffne diese Seite erneut, um nachzusehen.",
+    "empty": {
+      "attention": "Kein Musikmodell braucht Aufmerksamkeit.",
+      "catalog": "Noch keine Musikmodelle im Katalog.",
+      "downloading": "Es wird kein Musikmodell heruntergeladen.",
+      "firstRun": "Wähle ein Musikmodell, um zu starten. {name} ({size}, {licence}) passt zu diesem Rechner.",
+      "firstRunAction": "{name} herunterladen",
+      "installed": "Noch keine Musikmodelle installiert. Wähle eines aus den verfügbaren Modellen, um es herunterzuladen."
+    },
+    "filter": {
+      "commercialOnly": "Kommerzielle Nutzung ok",
+      "licence": "Lizenz",
+      "licenceAny": "Jede Lizenz",
+      "makes": "Erzeugt",
+      "makesAll": "Alles"
+    },
+    "intro": "Musikmodelle laufen auf diesem Computer. Lade eines herunter und öffne dann das Studio, um einen Track zu erstellen.",
+    "memory": {
+      "pending": "nicht geschätzt",
+      "pendingTitle": "Für dieses Modell gibt es noch keine Speicherangabe."
+    },
+    "openStudio": "Studio öffnen",
+    "pack": {
+      "body": "Das Paket führt die Musikmodelle aus. Etwa {size} GB, wird einmal installiert.",
+      "cancel": "Abbrechen",
+      "failedBody": "Die Details stehen unten. Du kannst es erneut versuchen.",
+      "failedTitle": "Das Musikpaket konnte nicht installiert werden.",
+      "install": "Musikpaket installieren",
+      "log": "Installationsprotokoll",
+      "title": "Musikpaket installieren",
+      "working": "Wird bearbeitet…"
+    },
+    "platform": {
+      "appleSilicon": "Apple Silicon",
+      "cpu": "CPU",
+      "cuda": "CUDA"
+    },
+    "search": "Modelle, Lizenz, Erzeugtes durchsuchen",
+    "sort": {
+      "fit": "Beste Eignung zuerst",
+      "fitSummary": "beste Eignung zuerst",
+      "largestFirst": "größte zuerst",
+      "name": "Name",
+      "nameSummary": "Name A-Z",
+      "size": "Größe",
+      "smallestFirst": "kleinste zuerst",
+      "status": "Status",
+      "statusSummary": "installierte zuerst"
+    },
+    "title": "Musikmodelle",
+    "unavailable": "Musik braucht vorerst einen Mac mit Apple Silicon.",
+    "sounds": {
+      "pack": {
+        "failedTitle": "Das Sound-Paket konnte nicht installiert werden.",
+        "title": "Sound-Paket installieren",
+        "body": "Soundeffekte laufen in einem eigenen kleinen Paket. Etwa {size} GB, wird einmal installiert.",
+        "install": "Sound-Paket installieren"
+      }
+    }
+  },
+  "videoTools": {
+    "title": "Videotools werden benötigt",
+    "body": "Zum Zusammenfügen und Exportieren von Videos wird FFmpeg verwendet, ein kostenloses Hilfsprogramm. Es wird als Paket nur für diese App installiert.",
+    "install": "Videotools installieren",
+    "installing": "Videotools werden installiert...",
+    "failed": "Videotools wurden nicht installiert: {error}",
+    "chooseLabel": "Offline? Nutze eine ffmpeg-Datei, die du schon hast",
+    "use": "Diese Datei verwenden",
+    "row": {
+      "label": "Videotools (FFmpeg)",
+      "checking": "Wird geprüft...",
+      "installed": "{version} aus {source}{licence}",
+      "notInstalled": "Nicht installiert",
+      "encoder": "H.264-Encoder: {encoder}",
+      "licence": "Lizenz",
+      "download": "LGPL-Build herunterladen ({size} MB)",
+      "cancel": "Abbrechen",
+      "remove": "Entfernen",
+      "source": {
+        "download": "heruntergeladener LGPL-Build",
+        "imageio": "imageio-ffmpeg-Paket",
+        "custom": "eine von dir gewählte Datei (nicht geprüft)",
+        "env": "CHAOSENGINE_FFMPEG",
+        "path": "System-PATH",
+        "unknown": "unbekannt",
+        "link": "Quelle"
+      }
+    }
+  },
+  "galleryProject": {
+    "filter": "Projekt",
+    "all": "Alle Projekte",
+    "chip": "Aus Projekt {name}",
+    "none": "Kein Projekt",
+    "search": "Projekte durchsuchen",
+    "noMatch": "Kein Projekt passt.",
+    "open": "Im Storyboard öffnen",
+    "stills": "{count, plural, one {# Standbild} other {# Standbilder}}",
+    "clips": "{count, plural, one {# Clip} other {# Clips}}",
+    "tracks": "{count, plural, one {# Track} other {# Tracks}}",
+    "sounds": "{count, plural, one {# Sound} other {# Sounds}}",
+    "speech": "{count, plural, one {# Sprachelement} other {# Sprachelemente}}",
+    "transcripts": "{count, plural, one {# Transkript} other {# Transkripte}}"
+  },
+  "cast": {
+    "addPicture": "Bild hinzufügen",
+    "addPictureFor": null,
+    "dropHint": null,
+    "none": null,
+    "pickerTitle": null,
+    "pictureAlt": null,
+    "remove": null,
+    "removePicture": null,
+    "room": null,
+    "small": "Kleines Bild; Ergebnisse können abweichen.",
+    "subtitle": null,
+    "title": "Figuren und Orte",
+    "unnamed": "Ohne Namen",
+    "usedBy": null,
+    "noneShort": "Noch keine."
+  },
+  "exportTab": {
+    "bundleBody": null,
+    "bundleTitle": "Projektpaket",
+    "openStoryboard": "Im Storyboard öffnen",
+    "stale": null,
+    "before": "Vor dem Export",
+    "line": {
+      "captions": null,
+      "clipsAll": null,
+      "clipsNone": "Noch keine Einstellung hat einen Clip, also gibt es nichts zu exportieren.",
+      "clipsSome": null,
+      "cloned": "Eine geklonte Stimme wird verwendet, daher wird das KI-Tag immer geschrieben.",
+      "noCaptions": "Keine Untertitel.",
+      "preview": "Die Vorschau ist veraltet (das verhindert keinen Export).",
+      "aiTagOff": "Es wird kein KI-Tag geschrieben.",
+      "aiTagOn": "Ein maschinenlesbares KI-Tag wird in die Datei geschrieben.",
+      "captionsBoth": null,
+      "captionsBurn": null,
+      "captionsSrt": null,
+      "captionsUnused": null,
+      "format": "Der Film hat {format}.",
+      "loudness": "Der Ton wird auf {lufs} LUFS angeglichen.",
+      "loudnessOff": "Der Ton bleibt wie gemischt (kein Lautheitsziel).",
+      "upscale": "Am Ende wird auf {size} hochskaliert: mehr Pixel, nicht mehr Details."
+    },
+    "openMixer": "Mixer öffnen"
+  },
+  "overview": {
+    "addCast": "Besetzung hinzufügen (optional)",
+    "cast": null,
+    "noSound": "noch kein Ton",
+    "progress": null,
+    "settingsTitle": "Projekteinstellungen",
+    "sheet": "Einstellungen",
+    "sound": null,
+    "staleBadge": "Veraltet",
+    "startBody": null,
+    "startTitle": "Hier beginnen",
+    "writeShots": "Einstellungen schreiben",
+    "check": {
+      "cast": "Besetzung (optional)",
+      "doneLabel": "erledigt",
+      "export": "Export",
+      "format": "Name und Format",
+      "preview": "Vorschau",
+      "shots": "Einstellungen",
+      "sound": "Ton (optional)",
+      "takes": "Ein Clip für jede Einstellung",
+      "todoLabel": "offen"
+    },
+    "checklist": "Schritte",
+    "next": {
+      "addSound": {
+        "body": null,
+        "button": "Mixer öffnen",
+        "title": "Stimme oder Musik hinzufügen"
+      },
+      "done": {
+        "body": "Nach einer Änderung erneut exportieren oder eine neue Aufnahme einer Einstellung machen.",
+        "button": "Export öffnen",
+        "title": "Fertig"
+      },
+      "export": {
+        "body": null,
+        "button": "Export öffnen",
+        "title": "Film exportieren"
+      },
+      "makeClips": {
+        "body": null,
+        "button": "Storyboard öffnen",
+        "title": "Standbilder zu Clips machen"
+      },
+      "makeMissing": {
+        "body": null,
+        "button": null,
+        "title": null,
+        "bodyStills": null
+      },
+      "making": "Einstellungen werden erstellt",
+      "makingProgress": null,
+      "renderPreview": {
+        "body": "Sieh und höre den ganzen Film, bevor du ihn exportierst.",
+        "button": "Mixer öffnen",
+        "title": "Vorschau rendern"
+      },
+      "writeShots": {
+        "body": null,
+        "button": "Einstellungen schreiben",
+        "title": "Einstellungen schreiben"
+      }
+    },
+    "nextStep": "Nächster Schritt",
+    "progressClips": null,
+    "activity": {
+      "cancelled": "Durchlauf abgebrochen · {when}",
+      "done": null,
+      "exported": "In dieser Sitzung exportierter Film",
+      "failed": "Durchlauf fehlgeschlagen · {when}",
+      "interrupted": "Durchlauf unterbrochen (App geschlossen) · {when}",
+      "partly": null,
+      "preview": "In dieser Sitzung gerenderte Vorschau",
+      "title": "Letzte Aktivität"
+    }
+  },
+  "picker": {
+    "adding": "Bild wird hinzugefügt…",
+    "dropHint": "Lege hier ein Bild ab oder füge eines ein (PNG, JPEG oder WebP).",
+    "galleryEmpty": "Keine gespeicherten Bilder passen.",
+    "noStills": "Noch keine Einstellung hat ein Standbild.",
+    "notPicture": "Wähle ein PNG-, JPEG- oder WebP-Bild.",
+    "pastePath": "Stattdessen einen Pfad einfügen",
+    "pathLabel": "Bildpfad",
+    "searchGallery": "Bildergalerie durchsuchen",
+    "shotTake": null,
+    "source": {
+      "file": "Datei auswählen",
+      "gallery": "Bildergalerie",
+      "shot": "Aus einer Einstellung",
+      "computer": "Dieser Computer"
+    },
+    "sources": "Woher das Bild kommt",
+    "useImage": null,
+    "usePath": "Dieses Bild verwenden",
+    "chooseFile": "Datei auswählen",
+    "clipboardBlocked": null,
+    "clipboardEmpty": null,
+    "pasteClipboard": "Aus der Zwischenablage einfügen",
+    "pasteHere": "Hier klicken, dann ein Bild einfügen (Cmd+V)",
+    "pasteHereLabel": "Bild hier einfügen",
+    "showMore": "Mehr anzeigen"
+  },
+  "projectList": {
+    "noMatch": null,
+    "search": "Projekte durchsuchen",
+    "sort": {
+      "created": "Erstellt",
+      "edited": "Zuletzt bearbeitet",
+      "length": "Länge",
+      "name": "Name"
+    },
+    "sortLabel": "Sortieren",
+    "title": "Projekte",
+    "dropHint": "Oder lege hier eine .chaosfilm-Datei ab."
+  },
+  "projectShell": {
+    "back": "Projekte",
+    "backToList": "Zurück zu den Projekten",
+    "formatTitle": "Projekteinstellungen",
+    "nameLabel": "Projektname",
+    "notFound": "Dieses Projekt ist nicht mehr da.",
+    "rename": "Umbenennen",
+    "tab": {
+      "cast": "Besetzung",
+      "export": "Export",
+      "mixer": "Mixer",
+      "overview": "Übersicht",
+      "storyboard": "Storyboard"
+    },
+    "tabsLabel": "Projekt"
+  },
+  "templates": {
+    "ad30": "30-s-Spot",
+    "blank": "Leer",
+    "broll": "Szene / B-Roll",
+    "empty": "Keine Einstellungen",
+    "meta": null,
+    "shots": {
+      "adBenefit": {
+        "prompt": "Dieselbe Aufgabe ganz leicht, ein entspanntes Lächeln",
+        "title": "Der Nutzen"
+      },
+      "adCall": {
+        "prompt": "Das Produkt mit freiem Platz für eine Botschaft",
+        "title": "Aufruf zum Handeln"
+      },
+      "adHook": {
+        "prompt": "Eine auffällige Nahaufnahme, die beim Scrollen innehalten lässt",
+        "title": "Aufhänger"
+      },
+      "adProblem": {
+        "prompt": "Jemand kämpft mit einer alltäglichen Aufgabe",
+        "title": "Das Problem"
+      },
+      "adProduct": {
+        "prompt": "Das Produkt auf einem sauberen Tisch in weichem Licht",
+        "title": "Das Produkt"
+      },
+      "adProof": {
+        "prompt": "Mehrere zufriedene Menschen nutzen es an verschiedenen Orten",
+        "title": "Beweis"
+      },
+      "brollCrowd": {
+        "prompt": "Eine Clubmenge in bunten Lichtern",
+        "title": "Menge"
+      },
+      "brollDetail": {
+        "prompt": "Regen an einem Fenster mit Neonspiegelungen, Nahaufnahme",
+        "title": "Detail"
+      },
+      "brollWide": {
+        "prompt": "Eine belebte Stadtstraße in der Dämmerung, Totale",
+        "title": "Weite Straße"
+      },
+      "socialEnd": {
+        "prompt": "Eine befriedigende Auflösung am Schluss",
+        "title": "Pointe"
+      },
+      "socialHook": {
+        "prompt": "Ein mutiger, naher Moment, der das Bild füllt",
+        "title": "Aufhänger"
+      },
+      "socialShow": {
+        "prompt": "Die Hauptidee in einem klaren Bild",
+        "title": "Zeig es"
+      },
+      "storyEnd": {
+        "prompt": "Ein stiller letzter Blick zurück",
+        "title": "Ende"
+      },
+      "storyMeet": {
+        "prompt": "Die Hauptfigur bei der Arbeit, früh am Morgen",
+        "title": "Die Hauptfigur"
+      },
+      "storyOpen": {
+        "prompt": "Ein weiter Blick auf den Ort der Geschichte",
+        "title": "Anfang"
+      },
+      "storyPeak": {
+        "prompt": "Der Moment, in dem alles auf dem Spiel steht",
+        "title": "Der Höhepunkt"
+      },
+      "storyTurn": {
+        "prompt": "Etwas Unerwartetes kommt",
+        "title": "Die Wende"
+      }
+    },
+    "startFrom": "Beginnen mit",
+    "story": "Kurzgeschichte",
+    "vertical": "Hochformat Social",
+    "metaFormat": null,
+    "sets": "{name} hat das Format auf {aspect}, {resolution}, {fps} fps gesetzt. Du kannst alles unten ändern."
+  },
+  "voicePicker": {
+    "automatic": "Keine Stimme (automatisch)",
+    "change": "Stimme ändern",
+    "cloneNote": "Eine geklonte Stimme trägt in ihren Clips immer das KI-Tag.",
+    "close": "Schließen",
+    "group": {
+      "builtin": "Integriert",
+      "clone": "Geklont",
+      "design": "Entworfen",
+      "preset": "Vorgabe"
+    },
+    "loading": "Stimmen werden geladen…",
+    "needsModel": "Braucht das Modell",
+    "none": "Keine Stimme passt.",
+    "play": null,
+    "sampleText": "Hallo. So klinge ich in deinem Film.",
+    "search": "Stimmen durchsuchen",
+    "stop": null,
+    "typeLabel": "Stimmen-ID",
+    "typeLink": "Stattdessen eine Stimmen-ID eingeben",
+    "typePlaceholder": "Eine Stimmen-ID, wie ein Agent oder eine andere App sie nennt",
+    "useTyped": "Diese Stimme verwenden"
+  },
+  "runBar": {
+    "label": "Einstellungen erstellen",
+    "make": "{n} fehlende erstellen",
+    "makeNone": "Fehlende erstellen",
+    "makeTimed": "{n} fehlende erstellen · etwa {time}",
+    "needStills": null,
+    "stale": "{n} veraltet"
   }
 }

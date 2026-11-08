@@ -49,6 +49,10 @@ const BUNDLED_INSTALL_SCRIPTS = [
   "install-tensorfold.sh",
 ];
 
+// The agent bridge's stdio relay (``chaosengine-cli mcp``), staged beside the installers so the
+// Agent access card can show a command that works in a packaged app. Python standard library only.
+const BUNDLED_CLI_SCRIPTS = ["chaosengine-cli"];
+
 // The llama.cpp release whose prebuilt binaries are bundled. Pinned (not
 // "latest") and kept equal to LLAMA_CPP_REF in scripts/update-llama-cpp.sh, which
 // tests/test_stage_runtime_scripts.py checks. The v0.9.8 build asked GitHub for
@@ -93,7 +97,7 @@ function main() {
   for (const relativeFile of ["README.md", "pyproject.toml"]) {
     copyFile(path.join(workspaceRoot, relativeFile), path.join(backendDest, relativeFile));
   }
-  for (const script of BUNDLED_INSTALL_SCRIPTS) {
+  for (const script of [...BUNDLED_INSTALL_SCRIPTS, ...BUNDLED_CLI_SCRIPTS]) {
     copyFile(path.join(workspaceRoot, "scripts", script), path.join(backendDest, "scripts", script));
   }
 
@@ -630,6 +634,7 @@ function llamaPlatformKey() {
   if (plat === "darwin" && arch === "arm64") return "macos-arm64";
   if (plat === "darwin" && arch === "x64") return "macos-x64";
   if (plat === "linux" && arch === "x64") return "linux-x64";
+  if (plat === "linux" && arch === "arm64") return "linux-arm64";
   return null;
 }
 
@@ -662,6 +667,14 @@ function pickLlamaAsset(assets, platformKey) {
       /^llama-.*-bin-ubuntu-vulkan-x64\.(?:zip|tar\.gz)$/i,
       /^llama-.*-bin-ubuntu-x64\.(?:zip|tar\.gz)$/i,
       /^llama-.*-bin-linux-x64\.(?:zip|tar\.gz)$/i,
+    ],
+    // Upstream also ships ``ubuntu-cuda-13.4-arm64`` (plus a separate cudart
+    // archive) for DGX Spark class machines. The bundle stages the CPU build
+    // because the CUDA one fails to start on an ARM host without a CUDA 13
+    // driver; GPU use on ARM needs ``update-llama-cpp.sh`` (builds with CUDA
+    // when nvcc exists) and CHAOSENGINE_LLAMA_SERVER.
+    "linux-arm64": [
+      /^llama-.*-bin-ubuntu-arm64\.(?:zip|tar\.gz)$/i,
     ],
   };
   for (const pattern of preferencePatterns[platformKey] || []) {

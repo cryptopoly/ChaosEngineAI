@@ -18,10 +18,35 @@ export interface SpeechPart {
   gapAfter: number;
 }
 
-/** Cut ``text`` at sentence ends into pieces of at most ``max`` characters. */
+const FENCE_RE = /(```[\s\S]*?```)/;
+
+/** Whether a line opens or closes a fenced code block (an odd number of fences on it). */
+const togglesFence = (line: string) => (line.match(/```/g) ?? []).length % 2 === 1;
+
+/** Paragraphs split at blank lines, except inside a fenced code block (it stays whole). */
+function splitParagraphs(text: string): string[] {
+  const out: string[] = [];
+  let current: string[] = [];
+  let inFence = false;
+  for (const line of text.split("\n")) {
+    if (togglesFence(line)) inFence = !inFence;
+    if (!inFence && line.trim() === "") {
+      if (current.length > 0) out.push(current.join("\n"));
+      current = [];
+    } else {
+      current.push(line);
+    }
+  }
+  if (current.length > 0) out.push(current.join("\n"));
+  return out;
+}
+
+/** Cut ``text`` at sentence ends into pieces of at most ``max`` characters. A fenced code block is never cut. */
 function cutLong(text: string, max: number): string[] {
   if (text.length <= max) return [text];
-  const sentences = text.match(/[^.!?。！？]+[.!?。！？]*\s*/g) ?? [text];
+  const sentences = text
+    .split(FENCE_RE)
+    .flatMap((seg) => (seg.startsWith("```") && seg.endsWith("```") && seg.length >= 6 ? [seg] : seg.match(/[^.!?。！？]+[.!?。！？]*\s*/g) ?? (seg ? [seg] : [])));
   const out: string[] = [];
   let current = "";
   for (const sentence of sentences) {
@@ -33,12 +58,14 @@ function cutLong(text: string, max: number): string[] {
   }
   if (current.trim()) out.push(current.trim());
   // A single sentence longer than ``max`` is cut where it must be.
-  return out.flatMap((piece) => (piece.length > max ? piece.match(new RegExp(`[\\s\\S]{1,${max}}`, "g")) ?? [] : [piece]));
+  return out.flatMap((piece) =>
+    piece.length > max && !piece.includes("```") ? piece.match(new RegExp(`[\\s\\S]{1,${max}}`, "g")) ?? [] : [piece],
+  );
 }
 
 export function splitSpeech(text: string): SpeechPart[] {
   const parts: SpeechPart[] = [];
-  for (const paragraph of text.split(/\n\s*\n/)) {
+  for (const paragraph of splitParagraphs(text)) {
     const pieces = paragraph.split(PAUSE_RE);
     pieces.forEach((piece, index) => {
       const clean = piece.trim();

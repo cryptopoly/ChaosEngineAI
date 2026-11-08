@@ -1662,7 +1662,7 @@ def phase_5(cap: Capability) -> PhaseResult:
             return "fail", f"the last frame looks burnt: {clipped:.0%} of pixels clipped to white, mean luma {luma:.0f}", {}
         return "pass", "", {"clippedShare": round(clipped, 4), "meanLuma": round(luma, 1)}
 
-    # LTX-2.3 on its own MLX engine (ltx-2-mlx, own venv). The catalog row must
+    # LTX-2.5 on its own MLX engine (ltx-2-mlx, own venv). The catalog row must
     # route there, the engine status must answer, and, when the engine and the
     # weights are present, a clip must render with the sizes snapped to 64.
     def _ltx2_engine():
@@ -1670,21 +1670,21 @@ def phase_5(cap: Capability) -> PhaseResult:
 
         rc, payload, _ = _cli_json("video-catalog", timeout=15.0)
         variants = [v for f in ((payload or {}).get("families") or []) for v in (f.get("variants") or [])]
-        row = next((v for v in variants if v.get("id") == "dgrauet/ltx-2.3-mlx-q4"), None)
+        row = next((v for v in variants if v.get("id") == "dgrauet/ltx-2.5-mlx-q4"), None)
         if row is None or "ltx-2-mlx" not in str(row.get("runtime") or ""):
-            return "fail", "dgrauet/ltx-2.3-mlx-q4 is missing from the video catalog or not routed to ltx-2-mlx", {}
+            return "fail", "dgrauet/ltx-2.5-mlx-q4 is missing from the video catalog or not routed to ltx-2-mlx", {}
         rc, status, _ = _cli_json("ltx2-status", timeout=15.0)
         if rc != 0 or not isinstance(status, dict):
             return "fail", "ltx2-status failed", {}
         if not (sys.platform == "darwin" and platform.machine() == "arm64"):
             return "skip", "ltx-2-mlx needs Apple Silicon", {}
         if not status.get("installed"):
-            return "skip", "the LTX-2.3 MLX engine is not installed", {}
+            return "skip", "the LTX MLX engine is not installed", {}
         if not row.get("availableLocally"):
-            return "skip", "LTX-2.3 q4 pack (and its Gemma text encoder) not downloaded", {}
+            return "skip", "LTX-2.5 q4 pack not downloaded", {}
         rc, payload, err = _cli_json(
             "video-generate", "a red fox running through fresh snow, soft morning light",
-            "--model", "dgrauet/ltx-2.3-mlx-q4", "--width", "500", "--height", "330", "--frames", "26",
+            "--model", "dgrauet/ltx-2.5-mlx-q4", "--width", "500", "--height", "330", "--frames", "26",
             "--seed", "7", "--timeout", "2400",
         )
         if rc != 0:
@@ -1704,7 +1704,7 @@ def phase_5(cap: Capability) -> PhaseResult:
 
     for name, fn in [("catalog", _catalog), ("library", _library),
                       ("mlx-runtime", _mlx_runtime), ("generate", _generate),
-                      ("LTX-2.3 on ltx-2-mlx (routing + live)", _ltx2_engine),
+                      ("LTX-2.5 on ltx-2-mlx (routing + live)", _ltx2_engine),
                       ("Wan is not burnt on MPS (FU-102)", _wan_not_burnt)]:
         phase.checks.append(_check(name, fn))
     fails = [c for c in phase.checks if c.status == "fail"]
@@ -2228,15 +2228,540 @@ def phase_8(cap: Capability) -> PhaseResult:
     return phase
 
 
+def phase_9(cap: Capability) -> PhaseResult:
+    """Agent bridge: /mcp tools, the off answer, the stdio relay, and one real image job."""
+    phase = PhaseResult(phase=9, name="Agent bridge")
+    if not cap.backend_reachable:
+        phase.status = "skip"
+        phase.checks.append(CheckResult("phase 9", "skip", reason="backend not reachable"))
+        return phase
+
+    def _json_call(method: str, path: str, payload: dict[str, Any] | None = None, headers: dict[str, str] | None = None,
+                   timeout: float = 90.0) -> tuple[int, Any]:
+        body = json.dumps(payload).encode("utf-8") if payload is not None else None
+        code, raw = _voice_http(method, path, body=body, content_type="application/json" if body else None, timeout=timeout)
+        try:
+            return code, json.loads(raw.decode("utf-8")) if raw.strip() else None
+        except ValueError:
+            return code, raw
+
+    def _mcp(method: str, params: dict[str, Any] | None = None, timeout: float = 90.0) -> dict[str, Any]:
+        message = {"jsonrpc": "2.0", "id": 1, "method": method, **({"params": params} if params is not None else {})}
+        code, body = _json_call("POST", "/mcp", message, timeout=timeout)
+        if code != 200 or not isinstance(body, dict):
+            raise RuntimeError(f"/mcp {method} HTTP {code}: {str(body)[:160]}")
+        return body
+
+    def _tool(name: str, arguments: dict[str, Any] | None = None, timeout: float = 90.0) -> tuple[bool, Any]:
+        result = _mcp("tools/call", {"name": name, "arguments": arguments or {}}, timeout)["result"]
+        text = result["content"][0]["text"]
+        try:
+            return bool(result["isError"]), json.loads(text)
+        except ValueError:
+            return bool(result["isError"]), text
+
+    code, access_before = _json_call("GET", "/api/agent/access")
+    if code == 404:
+        phase.status = "skip"
+        phase.checks.append(CheckResult("phase 9", "skip", reason="agent bridge not present in this build"))
+        return phase
+    was_enabled = bool(isinstance(access_before, dict) and access_before.get("enabled"))
+
+    def _set_access(enabled: bool) -> None:
+        _json_call("POST", "/api/agent/access", {"enabled": enabled})
+
+    def _off_answer():
+        _set_access(False)
+        is_error, text = _tool("system_status")
+        if not is_error or "Settings > Integrations > Agent access" not in str(text):
+            return "fail", f"off state did not explain how to turn it on: {text!r}", {}
+        return "pass", "", {}
+
+    def _tools_list():
+        _set_access(True)
+        tools = {t["name"] for t in _mcp("tools/list")["result"]["tools"]}
+        wanted = {"system_status", "recommend_models", "list_models", "list_voices", "generate_image",
+                  "generate_video", "speak", "transcribe", "job_status", "wait_for_job", "cancel_job"}
+        if wanted - tools:
+            return "fail", f"tools missing: {sorted(wanted - tools)}", {}
+        return "pass", "", {"tools": len(tools)}
+
+    def _status_and_recommend():
+        is_error, status = _tool("system_status")
+        if is_error or "freeMemoryGb" not in status:
+            return "fail", f"system_status: {status!r}", {}
+        is_error, rec = _tool("recommend_models", {"kind": "video"})
+        if is_error or "models" not in rec:
+            return "fail", f"recommend_models: {rec!r}", {}
+        return "pass", "", {"freeMemoryGb": status["freeMemoryGb"], "recommended": len(rec["models"])}
+
+    def _relay():
+        lines = "\n".join(json.dumps(m) for m in (
+            {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2025-03-26"}},
+            {"jsonrpc": "2.0", "id": 2, "method": "tools/list"},
+        )) + "\n"
+        rc, out, err = _cli("mcp", stdin=lines, timeout=60.0)
+        replies = [json.loads(line) for line in out.splitlines() if line.strip()]
+        if rc != 0 or len(replies) != 2 or len(replies[1].get("result", {}).get("tools", [])) < 18:
+            return "fail", f"stdio relay rc={rc} out={out[:160]!r} err={err[:120]!r}", {}
+        return "pass", "", {}
+
+    fetched: dict[str, Any] = {}
+
+    def _image_job():
+        is_error, models = _tool("list_models", {"kind": "image"})
+        rows = [m for m in (models.get("models") if isinstance(models, dict) else None) or [] if m.get("fit") != "wont-fit"]
+        if not rows:
+            return "skip", "no image model installed (the suite never downloads one)", {}
+        smallest = min(rows, key=lambda m: m.get("sizeGb") or 1e9)
+        is_error, job = _tool("generate_image", {"prompt": "a red cube on a white table", "model": smallest["id"],
+                                                 "width": 512, "height": 512, "seed": 1})
+        if is_error:
+            return "fail", f"generate_image refused: {job!r}", {}
+        deadline = time.time() + 600
+        while True:
+            is_error, job = _tool("wait_for_job", {"job_id": job["jobId"], "timeout_seconds": 30}, timeout=60.0)
+            if job.get("state") in ("done", "failed", "cancelled") or time.time() > deadline:
+                break
+        if job.get("state") != "done":
+            return "fail", f"image job ended {job.get('state')}: {job.get('error')}", {}
+        path = Path(str((job.get("output") or {}).get("path") or ""))
+        if not path.is_file() or path.stat().st_size == 0:
+            return "fail", f"job output path missing: {path}", {}
+        if b"chaosengine" not in path.read_bytes():  # the tEXt chunk sits just before IEND
+            return "fail", "PNG has no embedded generation settings", {}
+        fetched["output"] = job.get("output") or {}
+        return "pass", "", {"model": smallest["id"], "path": str(path), "notes": job.get("notes")}
+
+    def _upload_and_fetch():
+        # What an agent on another machine uses: send an image in, get an output back, nothing else readable.
+        import hashlib
+        import tempfile
+
+        from PIL import Image
+
+        with tempfile.TemporaryDirectory() as tmp:
+            png = Path(tmp) / "in.png"
+            Image.new("RGB", (64, 64), "blue").save(png)
+            code, raw = _voice_http("POST", "/api/agent/uploads", body=png.read_bytes(), content_type="application/octet-stream")
+        body = json.loads(raw.decode("utf-8")) if raw.strip() else {}
+        if code != 200 or not str(body.get("handle", "")).startswith("upload:"):
+            return "fail", f"upload: HTTP {code} {raw[:120]!r}", {}
+        code, _ = _voice_http("POST", "/api/agent/uploads", body=b"not an image", content_type="application/octet-stream")
+        if code != 400:
+            return "fail", f"a non-image upload answered HTTP {code}, wanted 400", {}
+        code, _ = _voice_http("GET", "/api/agent/files?path=%2Fetc%2Fhosts")
+        if code != 404:
+            return "fail", f"a path outside the output folders answered HTTP {code}, wanted 404", {}
+        download = (fetched.get("output") or {}).get("download")
+        if not download:
+            return "pass", "", {"handle": body["handle"], "download": "skipped (no image job ran)"}
+        code, data = _voice_http("GET", download["url"])
+        if code != 200 or hashlib.sha256(data).hexdigest() != download["sha256"]:
+            return "fail", f"fetching the job output: HTTP {code}, checksum mismatch or missing", {}
+        return "pass", "", {"handle": body["handle"], "fetchedBytes": len(data)}
+
+    def _input_refusals():
+        # Cheap: the route refuses before any model loads. A wrong model must say why, not ignore the image.
+        import tempfile
+
+        from PIL import Image
+
+        with tempfile.TemporaryDirectory() as tmp:
+            png = Path(tmp) / "ref.png"
+            Image.new("RGB", (64, 64), "red").save(png)
+            cases = [
+                ("/api/images/generate", {"modelId": "speridlabs/iris-3b-mflux", "prompt": "x",
+                                          "referenceImagePaths": [str(png)]}, "cannot take a reference image"),
+                ("/api/images/generate", {"modelId": "black-forest-labs/FLUX.1-dev-mflux", "prompt": "x",
+                                          "referenceImagePaths": ["/no/such.png"]}, "not found"),
+                ("/api/video/generate", {"modelId": "Lightricks/LTX-Video", "prompt": "x",
+                                         "startImagePath": str(png)}, "LTX-2"),
+            ]
+            for path, payload, needle in cases:
+                code, body = _json_call("POST", path, payload, timeout=30.0)
+                detail = str((body or {}).get("detail") if isinstance(body, dict) else body)
+                if code != 400 or needle not in detail:
+                    return "fail", f"{payload['modelId']}: HTTP {code} {detail[:160]!r}, wanted 400 with {needle!r}", {}
+        return "pass", "", {}
+
+    try:
+        for name, fn in [
+            ("off answer explains how to turn it on", _off_answer),
+            ("tools/list has the v1 tools", _tools_list),
+            ("system_status and recommend_models", _status_and_recommend),
+            ("stdio relay forwards to the app", _relay),
+            ("image job to a file with embedded settings", _image_job),
+            ("image and video input refuses the wrong model clearly", _input_refusals),
+            ("upload a file and fetch an output over HTTP", _upload_and_fetch),
+        ]:
+            phase.checks.append(_check(name, fn))
+    finally:
+        _set_access(was_enabled)
+    fails = [c for c in phase.checks if c.status == "fail"]
+    phase.status = "fail" if fails else (
+        "skip" if all(c.status == "skip" for c in phase.checks) else "pass"
+    )
+    return phase
+
+
+def phase_10(cap: Capability) -> PhaseResult:
+    """Storyboard core: project, shots, edits, revisions, takes, bundle round trip, hostile input. No model runs."""
+    import io
+    import tempfile
+    import urllib.parse
+    import zipfile
+
+    phase = PhaseResult(phase=10, name="Storyboard")
+    if not cap.backend_reachable:
+        phase.status = "skip"
+        phase.checks.append(CheckResult("phase 10", "skip", reason="backend not reachable"))
+        return phase
+
+    def _call(method: str, path: str, payload: Any = None, raw: bytes | None = None) -> tuple[int, Any]:
+        body = raw if raw is not None else (json.dumps(payload).encode("utf-8") if payload is not None else None)
+        kind = "application/zip" if raw is not None else ("application/json" if body else None)
+        code, data = _voice_http(method, f"/api/storyboard{path}", body=body, content_type=kind, timeout=60.0)
+        try:
+            return code, json.loads(data.decode("utf-8")) if data.strip() else None
+        except ValueError:
+            return code, data
+
+    code, _ = _call("GET", "/projects")
+    if code == 404:
+        phase.status = "skip"
+        phase.checks.append(CheckResult("phase 10", "skip", reason="storyboard not present in this build"))
+        return phase
+    state: dict[str, Any] = {"cleanup": []}
+    tmp = tempfile.TemporaryDirectory()
+
+    def _op(op: str, args: dict[str, Any], want: int = 200) -> Any:
+        code, body = _call("POST", f"/projects/{state['id']}/ops", {"revision": state["rev"], "op": op, "args": args})
+        if code != want:
+            raise RuntimeError(f"{op}: HTTP {code} {str(body)[:160]}")
+        if code == 200:
+            state["rev"] = body["project"]["revision"]
+        return body
+
+    def _create():
+        code, body = _call("POST", "/projects", {"name": "E2E mini film"})
+        if code != 200:
+            return "fail", f"create: HTTP {code} {str(body)[:160]}", {}
+        state["id"], state["rev"] = body["project"]["id"], body["project"]["revision"]
+        state["cleanup"].append(state["id"])
+        return "pass", "", {"projectId": state["id"]}
+
+    def _shots():
+        for index in range(3):
+            body = _op("add_shot", {"title": f"shot {index + 1}", "stillPrompt": "a lighthouse", "seconds": 3})
+        state["shots"] = [s["id"] for s in body["project"]["shots"]]
+        body = _op("edit_shot", {"shotId": state["shots"][1], "startFrom": "previous-shot", "trimIn": 0.5})
+        if abs(body["timeline"]["total"] - 8.5) > 1e-6:
+            return "fail", f"timeline total {body['timeline']['total']}, wanted 8.5", {}
+        current = state["rev"]
+        state["rev"] = current - 1  # a writer that missed the last change
+        conflict = _op("lock", {"shotId": state["shots"][0]}, want=409)
+        state["rev"] = current
+        if conflict["detail"]["revision"] != state["rev"]:
+            return "fail", "the 409 did not carry the current revision", {}
+        return "pass", "", {"shots": len(state["shots"])}
+
+    def _takes():
+        sid = state["shots"][0]
+        takes = []
+        for name in ("a.mp4", "b.mp4"):
+            path = Path(tmp.name) / name
+            path.write_bytes(b"\x00\x00\x00\x18ftypmp42" + name.encode() * 64)
+            body = _op("import_take", {"shotId": sid, "clip": str(path)})
+            takes.append(body["project"]["shots"][0]["activeTake"])
+        body = _op("pick_take", {"shotId": sid, "takeId": takes[0]})
+        if body["project"]["shots"][0]["activeTake"] != takes[0]:
+            return "fail", "pick_take did not switch the active take", {}
+        code, body = _call("POST", f"/projects/{state['id']}/undo", {"revision": state["rev"]})
+        if code != 200 or body["project"]["shots"][0]["activeTake"] != takes[1]:
+            return "fail", f"undo of pick_take: HTTP {code}", {}
+        state["rev"] = body["project"]["revision"]
+        return "pass", "", {"takes": len(takes)}
+
+    def _cast():
+        # D-65: a character holds up to four pictures; the UI sends them through the picture upload route.
+        png = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==")
+        handles = []
+        for _ in range(2):
+            code, body = _call("POST", "/uploads", raw=png)
+            if code != 200 or not str(body.get("handle", "")).startswith("upload:"):
+                return "fail", f"picture upload: HTTP {code} {str(body)[:160]}", {}
+            handles.append(body["handle"])
+        code, _ = _call("POST", "/uploads", raw=b"not a picture at all, just text")
+        if code != 400:
+            return "fail", f"a non-picture upload answered HTTP {code}, wanted 400", {}
+        body = _op("add_reference", {"kind": "character", "name": "Keeper", "images": handles})
+        ref = body["project"]["references"]["characters"][0]
+        if len(ref["images"]) != 2:
+            return "fail", f"the character has {len(ref['images'])} pictures, wanted 2", {}
+        body = _op("edit_reference", {"refId": ref["id"], "removeImage": 0})
+        if len(body["project"]["references"]["characters"][0]["images"]) != 1:
+            return "fail", "removeImage did not drop the picture", {}
+        return "pass", "", {"pictures": 2}
+
+    def _estimate():
+        # D-65 phase 3: an estimate answers even without a model (it then names what is missing).
+        code, body = _call("POST", f"/projects/{state['id']}/estimate", {"what": "both"})
+        if code != 200 or not isinstance(body, dict):
+            return "fail", f"estimate: HTTP {code} {str(body)[:160]}", {}
+        if not {"seconds", "peakGb", "diskMb", "basis", "missing", "stills", "clips"} <= body.keys():
+            return "fail", f"estimate is missing fields: {sorted(body)}", {}
+        if body["seconds"] is None and not body["missing"] and body["stills"] + body["clips"] > 0:
+            return "fail", "no time and nothing named as missing", {}
+        return "pass", "", {"seconds": body["seconds"], "basis": body["basis"]}
+
+    def _bundle():
+        code, body = _call("POST", f"/projects/{state['id']}/bundle")
+        if code != 200:
+            return "fail", f"bundle export: HTTP {code} {str(body)[:160]}", {}
+        code, raw = _voice_http("GET", f"/api/storyboard/projects/{state['id']}/files?path={urllib.parse.quote(body['file'])}")
+        if code != 200 or len(raw) != body["bytes"]:
+            return "fail", f"bundle fetch: HTTP {code}", {}
+        code, imported = _call("POST", "/import", raw=raw)
+        if code != 200 or imported["project"]["id"] == state["id"]:
+            return "fail", f"bundle import: HTTP {code} {str(imported)[:160]}", {}
+        state["cleanup"].append(imported["project"]["id"])
+        if [s["status"] for s in imported["project"]["shots"]][0] != "done":
+            return "fail", "the imported take did not come back", {}
+        return "pass", "", {"bytes": len(raw)}
+
+    def _hostile():
+        cases = {
+            "absolute path": {"schemaVersion": 1, "revision": 1, "id": "0123456789abcdef", "name": "x",
+                              "audio": [{"id": "a_1", "kind": "voice", "source": {"path": "/etc/passwd"}, "start": 0}]},
+            "newer format": {"schemaVersion": 999, "revision": 1, "id": "0123456789abcdef", "name": "x"},
+        }
+        for label, project in cases.items():
+            buffer = io.BytesIO()
+            with zipfile.ZipFile(buffer, "w") as zf:
+                zf.writestr("project.json", json.dumps(project))
+            code, body = _call("POST", "/import", raw=buffer.getvalue())
+            if code != 400:
+                return "fail", f"{label}: HTTP {code}, wanted 400", {}
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w") as zf:
+            zf.writestr("project.json", json.dumps(cases["newer format"]))
+            zf.writestr("../../evil.txt", "x")
+        code, _ = _call("POST", "/import", raw=buffer.getvalue())
+        if code != 400:
+            return "fail", f"zip-slip entry: HTTP {code}, wanted 400", {}
+        return "pass", "", {}
+
+    try:
+        for name, fn in [
+            ("create a project", _create),
+            ("add and edit shots; a stale revision answers 409", _shots),
+            ("import two takes, pick one, undo", _takes),
+            ("a character with two uploaded pictures, then one removed", _cast),
+            ("the batch estimate answers, naming any missing model", _estimate),
+            ("export a .chaosfilm bundle and import it again", _bundle),
+            ("a hostile project.json or bundle is refused", _hostile),
+        ]:
+            if "id" not in state and name != "create a project":
+                phase.checks.append(CheckResult(name, "skip", reason="no project"))
+                continue
+            phase.checks.append(_check(name, fn))
+    finally:
+        for project_id in state["cleanup"]:
+            code, body = _call("GET", f"/projects/{project_id}")
+            if code == 200:
+                _voice_http("DELETE", f"/api/storyboard/projects/{project_id}?revision={body['project']['revision']}")
+        tmp.cleanup()
+    fails = [c for c in phase.checks if c.status == "fail"]
+    phase.status = "fail" if fails else ("skip" if all(c.status == "skip" for c in phase.checks) else "pass")
+    return phase
+
+
+def phase_11(cap: Capability) -> PhaseResult:
+    """Music: runtime and catalog shape, estimate, validation, library CRUD on a synthetic item, and a
+    real 20 s generation that skips unless the music pack and the turbo weights are installed."""
+    import uuid
+
+    phase = PhaseResult(phase=11, name="Music")
+    if not cap.backend_reachable:
+        phase.status = "skip"
+        phase.checks.append(CheckResult("phase 11", "skip", reason="backend not reachable"))
+        return phase
+
+    def _call(method: str, path: str, payload: Any = None, timeout: float = 60.0) -> tuple[int, Any]:
+        body = json.dumps(payload).encode("utf-8") if payload is not None else None
+        code, data = _voice_http(method, f"/api/music{path}", body=body,
+                                 content_type="application/json" if body else None, timeout=timeout)
+        try:
+            return code, json.loads(data.decode("utf-8")) if data.strip() else None
+        except (ValueError, UnicodeDecodeError):
+            return code, data
+
+    def _ranged(path: str, first: int, last: int) -> tuple[int, bytes, str]:
+        base = f"http://{_HOST}:{_PORT}"
+        with urllib.request.urlopen(f"{base}/api/auth/session", timeout=5.0) as resp:
+            token = (json.loads(resp.read().decode("utf-8")) or {}).get("apiToken")
+        request = urllib.request.Request(f"{base}/api/music{path}")
+        request.add_header("Range", f"bytes={first}-{last}")
+        if token:
+            request.add_header("Authorization", f"Bearer {token}")
+        with urllib.request.urlopen(request, timeout=30.0) as resp:
+            return resp.status, resp.read(), resp.headers.get("Content-Range", "")
+
+    code, runtime = _call("GET", "/runtime")
+    if code == 404:
+        phase.status = "skip"
+        phase.checks.append(CheckResult("phase 11", "skip", reason="music not present in this build"))
+        return phase
+    runtime = (runtime or {}).get("runtime") or {}
+    state: dict[str, Any] = {"cleanup": []}
+
+    def _runtime_shape():
+        missing = [k for k in ("lane", "installed", "workerRunning", "loadedModel", "install", "engineVersion",
+                               "libraryDir") if k not in runtime]
+        return ("fail", f"runtime is missing {missing}", {}) if missing else ("pass", "", {"lane": runtime["lane"]})
+
+    def _catalog():
+        code, body = _call("GET", "/catalog")
+        rows = {v["id"]: v for f in (body or {}).get("families", []) for v in f["variants"]}
+        turbo = rows.get("ACE-Step/Ace-Step1.5")
+        if code != 200 or turbo is None:
+            return "fail", f"catalog HTTP {code} without the turbo row", {}
+        licence = turbo.get("licence") or {}
+        if (licence.get("name"), licence.get("commercial"), licence.get("gated")) != ("MIT", "yes", False) \
+                or not licence.get("summaryLines") or not licence.get("url"):
+            return "fail", f"licence fields wrong: {licence}", {}
+        for key in ("makes", "platforms", "taskSupport", "estimates", "fit", "defaultSettings"):
+            if key not in turbo:
+                return "fail", f"turbo row has no {key}", {}
+        state["turbo"] = turbo
+        return "pass", "", {"fit": turbo["fit"]["status"], "available": turbo.get("availableLocally")}
+
+    def _estimate_and_validation():
+        code, body = _call("POST", "/estimate", {"seconds": 60, "variations": 2})
+        estimate = (body or {}).get("estimate") or {}
+        if code != 200 or not estimate.get("seconds") or estimate.get("basis") not in ("measured", "estimated"):
+            return "fail", f"estimate: HTTP {code} {str(body)[:160]}", {}
+        for payload in ({"caption": "x", "instrumental": True, "seconds": 5},
+                        {"caption": "x", "instrumental": True, "seconds": 30, "variations": 3},
+                        {"caption": "x", "seconds": 30},
+                        {"caption": "x", "instrumental": True, "seconds": 30, "reference_audio": "/tmp/a.wav"}):
+            code, _ = _call("POST", "/generate", payload)
+            if code != 422:
+                return "fail", f"generate {payload} answered {code}, wanted 422", {}
+        return "pass", "", {"estimateSeconds": estimate["seconds"]}
+
+    def _library_crud():
+        folder = Path(str(runtime.get("libraryDir") or ""))
+        if not folder.is_absolute():
+            return "skip", "runtime did not report the library folder", {}
+        folder.mkdir(parents=True, exist_ok=True)
+        item_id = f"{int(time.time())}_{uuid.uuid4().hex[:8]}"
+        audio = b"fLaC" + bytes(range(256)) * 4
+        (folder / f"{item_id}.flac").write_bytes(audio)
+        (folder / f"{item_id}.json").write_text(json.dumps({
+            "id": item_id, "kind": "track", "title": "E2E synthetic", "caption": "e2e", "tags": [],
+            "createdAt": int(time.time()), "updatedAt": int(time.time()), "audio": ".flac"}), encoding="utf-8")
+        state["cleanup"].append(item_id)
+        code, listed = _call("GET", "/library?q=E2E%20synthetic")
+        if code != 200 or item_id not in [i["id"] for i in listed["items"]]:
+            return "fail", "the synthetic item is not listed", {}
+        code, updated = _call("POST", f"/library/{item_id}", {"title": "E2E renamed", "tags": ["e2e"]})
+        if code != 200 or (updated["title"], updated["tags"]) != ("E2E renamed", ["e2e"]):
+            return "fail", f"rename / tag: HTTP {code} {updated}", {}
+        status, part, content_range = _ranged(f"/library/{item_id}/audio", 4, 103)
+        if status != 206 or part != audio[4:104] or not content_range.startswith("bytes 4-103/"):
+            return "fail", f"Range: HTTP {status}, {len(part)} bytes, {content_range!r}", {}
+        if _call("GET", "/library/..%2F..%2Fetc/audio")[0] not in (400, 404) or _call("GET", "/library/1_x")[0] != 400:
+            return "fail", "a bad id was not refused", {}
+        code, _ = _call("DELETE", f"/library/{item_id}")
+        if code != 200 or (folder / f"{item_id}.flac").exists():
+            return "fail", f"delete: HTTP {code}", {}
+        state["cleanup"].remove(item_id)
+        return "pass", "", {}
+
+    def _real_generation():
+        turbo = state.get("turbo") or {}
+        if not runtime.get("installed") or not turbo.get("availableLocally"):
+            return "skip", "music pack or ACE-Step 1.5 turbo weights not installed", {}
+        started = time.perf_counter()
+        code, body = _call("POST", "/generate", {"caption": "e2e check, soft piano", "instrumental": True,
+                                                 "seconds": 20, "seed": 7, "title": "E2E music"}, timeout=600.0)
+        if code != 200 or not (body or {}).get("items"):
+            return "fail", f"generate: HTTP {code} {str(body)[:200]}", {}
+        item = body["items"][0]
+        state["cleanup"].append(item["id"])
+        code, data = _voice_http("GET", f"/api/music/library/{item['id']}/audio", timeout=60.0)
+        if code != 200 or not data.startswith(b"fLaC"):
+            return "fail", f"audio: HTTP {code}", {}
+        if item.get("tagged") and b"chaosengine:{" not in data[:65536]:
+            return "fail", "the FLAC has no chaosengine tag", {}
+        if (item.get("sampleRate"), item.get("channels")) != (48000, 2) or abs(float(item.get("durationS") or 0) - 20) > 0.1:
+            return "fail", f"track facts wrong: {item}", {}
+        peak = body.get("peakFootprintGb")
+        if isinstance(peak, (int, float)) and peak > 26:
+            return "fail", f"peak footprint {peak} GB is above the 26 GB guard", {}
+        return "pass", "", {"wallSeconds": round(time.perf_counter() - started, 1), "jobSeconds": body.get("seconds"),
+                            "peakFootprintGb": peak, "bytes": len(data)}
+
+    try:
+        for name, fn in [
+            ("runtime route shape", _runtime_shape),
+            ("catalog row carries the licence and UI fields", _catalog),
+            ("estimate answers; out-of-range requests are refused", _estimate_and_validation),
+            ("library list, rename, tag, Range audio and delete on a synthetic item", _library_crud),
+            ("a real 20 s instrumental (skips without the music pack)", _real_generation),
+        ]:
+            phase.checks.append(_check(name, fn))
+    finally:
+        for item_id in state["cleanup"]:
+            _call("DELETE", f"/library/{item_id}")
+    fails = [c for c in phase.checks if c.status == "fail"]
+    phase.status = "fail" if fails else ("skip" if all(c.status == "skip" for c in phase.checks) else "pass")
+    return phase
+
+
 # ---------------------------------------------------------------------------
 # Driver
 # ---------------------------------------------------------------------------
 
 
+def phase_16(cap: Capability) -> PhaseResult:
+    """Storyboard v2 (captions, OTIO, stems, resumable render): the checks live in ``scripts/e2e_phases/phase_16.py``."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("e2e_phase_16", Path(__file__).parent / "e2e_phases" / "phase_16.py")
+    module = importlib.util.module_from_spec(spec)  # type: ignore[arg-type]
+    spec.loader.exec_module(module)  # type: ignore[union-attr]
+    return module.run(sys.modules[__name__], cap)
+
+def phase_17(cap: Capability) -> PhaseResult:
+    """Agent bridge v2; the checks live in scripts/e2e_phases/phase_17.py."""
+    from e2e_phases.phase_17 import run
+
+    return run(cap, sys.modules[__name__])
+
+
+def phase_18(cap: Capability) -> PhaseResult:
+    """Video tools (ffmpeg): the checks live in scripts/e2e_phases/phase_18.py."""
+    from e2e_phases.phase_18 import run
+
+    return run(cap, sys.modules[__name__])
+
+
 PHASES = {
     0: phase_0, 1: phase_1, 2: phase_2, 3: phase_3,
-    4: phase_4, 5: phase_5, 6: phase_6, 7: phase_7, 8: phase_8,
+    4: phase_4, 5: phase_5, 6: phase_6, 7: phase_7, 8: phase_8, 9: phase_9, 10: phase_10,
+    11: phase_11, 16: phase_16, 17: phase_17, 18: phase_18,
 }
+
+# Stream phases live in scripts/e2e_phases/ (one file each); scripts/ is this file's folder.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from e2e_phases.phase_14 import phase_14  # noqa: E402
+from e2e_phases.phase_15 import phase_15  # noqa: E402
+
+PHASES[14] = phase_14
+PHASES[15] = phase_15
 
 
 def _write_reports(report_dir: Path, started: datetime, ended: datetime,

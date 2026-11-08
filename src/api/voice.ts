@@ -14,6 +14,10 @@ import type {
   VoiceInstallJob,
   VoiceRuntime,
   VoiceSettings,
+  VoiceEntry,
+  VoiceModelRow,
+  SpeakBody,
+  SpeakResult,
 } from "../types";
 
 export async function getVoiceRuntime(): Promise<VoiceRuntime> {
@@ -230,4 +234,27 @@ export async function encodeMp3(audio: Blob): Promise<Blob> {
     throw new Error(await readErrorDetail(response, `MP3 export failed with status ${response.status}`));
   }
   return await response.blob();
+}
+
+/** Speak with any voice (built-in, preset, designed or cloned); the backend picks the model from the voice. */
+export async function speakVoice(body: SpeakBody, signal?: AbortSignal): Promise<SpeakResult> {
+  // Loading a model and speaking can take a few minutes the first time.
+  return await postJson<SpeakResult>("/api/voice/speak", body, 900000, signal);
+}
+
+/** Stop the Speak screen's running speech job on the backend (the fetch abort alone leaves it running). */
+export async function cancelSpeak(): Promise<void> {
+  try {
+    await postJson<{ cancelled: boolean }>("/api/voice/speak/cancel", {}, 15000);
+  } catch {
+    // The job may already be done; nothing to stop.
+  }
+}
+
+export async function getVoices(): Promise<VoiceEntry[]> {
+  return (await fetchJson<{ voices: VoiceEntry[] }>("/api/voice/voices", 20000)).voices;
+}
+
+export async function getVoiceModels(): Promise<{ models: VoiceModelRow[]; available: boolean }> {
+  return await fetchJson<{ models: VoiceModelRow[]; available: boolean }>("/api/voice/models", 15000);
 }

@@ -56,6 +56,8 @@ _REQUIRED_SNAPSHOT_KEYS = {
     # FU-018 part 2: live denoise thumbnail (base64 PNG, ``None`` when
     # previewVae is off or the swap didn't apply).
     "thumbnail",
+    # A notice code for the run (the sound worker is on the CPU), ``None`` otherwise.
+    "warning",
 }
 
 
@@ -80,6 +82,13 @@ class ProgressTrackerTests(unittest.TestCase):
     def test_snapshot_keys_are_complete(self):
         # Lock the contract: any key removal here is a frontend break.
         self.assertEqual(set(self.tracker.snapshot().keys()), _REQUIRED_SNAPSHOT_KEYS)
+
+    def test_warning_is_set_and_a_new_run_clears_it(self):
+        self.tracker.begin()
+        self.tracker.set_warning("cpu")
+        self.assertEqual(self.tracker.snapshot()["warning"], "cpu")
+        self.tracker.begin()
+        self.assertIsNone(self.tracker.snapshot()["warning"])
 
     def test_kind_round_trips_on_snapshot(self):
         video = ProgressTracker(kind="video")
@@ -274,7 +283,7 @@ class ProgressEndpointTests(unittest.TestCase):
         snap = payload["progress"]
         self.assertEqual(snap["kind"], "image")
         self.assertFalse(snap["active"])
-        self.assertEqual(set(snap.keys()), _REQUIRED_SNAPSHOT_KEYS)
+        self.assertEqual(set(snap.keys()), _REQUIRED_SNAPSHOT_KEYS | {"queue"})
 
     def test_video_progress_endpoint_returns_idle_by_default(self):
         response = self.client.get("/api/video/progress")
@@ -284,7 +293,7 @@ class ProgressEndpointTests(unittest.TestCase):
         snap = payload["progress"]
         self.assertEqual(snap["kind"], "video")
         self.assertFalse(snap["active"])
-        self.assertEqual(set(snap.keys()), _REQUIRED_SNAPSHOT_KEYS)
+        self.assertEqual(set(snap.keys()), _REQUIRED_SNAPSHOT_KEYS | {"queue"})
 
     def test_image_progress_endpoint_reflects_live_singleton(self):
         # Drive the singleton the same way the runtime would — the endpoint

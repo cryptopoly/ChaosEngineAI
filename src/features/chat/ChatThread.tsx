@@ -13,6 +13,9 @@ import { LogprobSummary } from "../../components/LogprobSummary";
 import { SubstrateRoutingBadge } from "../../components/SubstrateRoutingBadge";
 import { ToolCallCard } from "../../components/ToolCallCard";
 import { ChatEmptyStateBanner } from "./ChatEmptyStateBanner";
+import { StudioJobCard } from "./StudioJobCard";
+import { StudioPlanCard } from "./StudioPlanCard";
+import { studioJobId } from "./studioChat";
 import type { ChatSession, ChatMessageVariant, LaunchPreferences, ModelLoadingState, WarmModel } from "../../types";
 import { number } from "../../utils";
 import { VariantPickerButton } from "./VariantPickerButton";
@@ -304,11 +307,23 @@ export function ChatThread({
               ) : (
                 <p>{message.text}</p>
               )}
+              {message.studioPlans?.length ? (
+                <div className="studio-plan-stack">
+                  {message.studioPlans.map((plan) => (
+                    <StudioPlanCard key={plan.planId} plan={plan} sessionId={activeChat?.id}
+                      onEditByChat={() => document.querySelector<HTMLTextAreaElement>(".composer textarea")?.focus()} />
+                  ))}
+                </div>
+              ) : null}
               {message.toolCalls?.length ? (
                 <div style={{ margin: "4px 0" }}>
-                  {message.toolCalls.map((tc) => (
-                    <ToolCallCard key={tc.id} toolCall={tc} />
-                  ))}
+                  {message.toolCalls.map((tc) =>
+                    tc.renderAs === "studio" && (studioJobId(tc) || tc.data?.declined) ? (
+                      <StudioJobCard key={tc.id} toolCall={tc} />
+                    ) : (
+                      <ToolCallCard key={tc.id} toolCall={tc} />
+                    ),
+                  )}
                 </div>
               ) : null}
               {message.citations?.length ? (

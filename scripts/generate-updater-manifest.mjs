@@ -74,6 +74,28 @@ async function main() {
     missing.push(`${linuxDebAssetName} / ${linuxDebSigName}`);
   }
 
+  // Linux ARM64 is optional: a release built before the ARM job existed has
+  // none of these assets and must not report them as missing. Tauri names the
+  // AppImage after the Rust arch (aarch64) and the deb after the Debian arch
+  // (arm64); accept either spelling for both.
+  const linuxArmBundles = [
+    { kind: "appimage", names: [`ChaosEngineAI_${version}_aarch64.AppImage`, `ChaosEngineAI_${version}_arm64.AppImage`] },
+    { kind: "deb", names: [`ChaosEngineAI_${version}_arm64.deb`, `ChaosEngineAI_${version}_aarch64.deb`] },
+  ];
+  for (const bundle of linuxArmBundles) {
+    const assetName = bundle.names.find((name) => byName.has(name));
+    if (!assetName) continue;
+    const sigAsset = byName.get(`${assetName}.sig`);
+    if (!sigAsset) {
+      missing.push(`${assetName}.sig`);
+      continue;
+    }
+    const signature = await downloadAssetText(sigAsset.id);
+    const url = `${downloadBase}/${encodeURIComponent(assetName)}`;
+    platforms[`linux-aarch64-${bundle.kind}`] = { signature, url };
+    if (bundle.kind === "appimage") platforms["linux-aarch64"] = { signature, url };
+  }
+
   const windowsAssetName = `ChaosEngineAI_${version}_x64-setup.exe`;
   const windowsSigName = `${windowsAssetName}.sig`;
   const windowsAsset = byName.get(windowsAssetName);

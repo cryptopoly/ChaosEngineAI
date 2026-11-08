@@ -9,6 +9,7 @@ import { MidThreadSwapMenu } from "./MidThreadSwapMenu";
 import type { KvStrategyOverride } from "./kvStrategyOverride";
 import type { SlashCommand } from "./slashCommands";
 import { ChatComposerDflashHint } from "./ChatComposerDflashHint";
+import { AUTO_APPROVE_HOURS, useStudioAutoApprove, writeStudioAutoApprove } from "./studioChat";
 
 /**
  * Phase 2.1: extracted from ChatTab.tsx. The composer area — image
@@ -32,6 +33,9 @@ export interface ChatComposerProps {
   thinkingMode: ChatThinkingMode;
   reasoningEffort: ReasoningEffortLevel;
   enableTools: boolean;
+  /** D-60: studio tools for the chat model; renders wait for the plan card. */
+  studioTools?: boolean;
+  onToggleStudioTools?: (enabled: boolean) => void;
   chatBusySessionId: string | null;
   activeChat: ChatSession | undefined;
   warmModels: WarmModel[];
@@ -86,6 +90,8 @@ export function ChatComposer({
   thinkingMode,
   reasoningEffort,
   enableTools,
+  studioTools = false,
+  onToggleStudioTools,
   chatBusySessionId,
   activeChat,
   warmModels,
@@ -128,6 +134,8 @@ export function ChatComposer({
   const { t } = useTranslation("chat");
   // The dictated draft, for auto-send (the draft prop updates a render later).
   const dictatedRef = useRef("");
+  // D-60: "Always allow renders in this chat" is visible while on, with a way to turn it off.
+  const studioAutoApprove = useStudioAutoApprove(activeChat?.id);
   // Phase 2.11: when capabilities are known, hide affordances the loaded
   // model can't honour. When capabilities are absent (unknown model or
   // freshly downloaded HF entry without a catalog mapping) all
@@ -398,6 +406,41 @@ export function ChatComposer({
                 ? t("tools.toggleOn", { defaultValue: "Tools ON" })
                 : t("tools.toggleLabel", { defaultValue: "Tools" })}
             </button>
+          ) : null}
+          {showToolsToggle && onToggleStudioTools ? (
+            <button
+              className={`secondary-button composer-studio-toggle${studioTools ? " active-toggle" : ""}`}
+              type="button"
+              role="switch"
+              aria-checked={studioTools}
+              onClick={() => onToggleStudioTools(!studioTools)}
+              title={
+                studioTools
+                  ? t("studioChat.switch.onTooltip", {
+                      defaultValue: "Studio tools on: the model can plan images, video, speech and music. Nothing renders until you approve the plan.",
+                    })
+                  : t("studioChat.switch.offTooltip", {
+                      defaultValue: "Offer the studio tools (images, video, speech, music, Storyboard) to this model",
+                    })
+              }
+            >
+              {studioTools
+                ? t("studioChat.switch.on", { defaultValue: "Studio ON" })
+                : t("studioChat.switch.label", { defaultValue: "Studio" })}
+            </button>
+          ) : null}
+          {showToolsToggle && studioTools && studioAutoApprove ? (
+            <span className="composer-studio-auto" role="status">
+              <span title={t("studioChat.auto.tooltip", {
+                hours: AUTO_APPROVE_HOURS,
+                defaultValue: "Renders in this chat run without a plan card. This ends after {hours} hours or when the app restarts.",
+              })}>
+                {t("studioChat.auto.label", { defaultValue: "Renders auto-approved" })}
+              </span>
+              <button type="button" className="composer-studio-auto__off" onClick={() => writeStudioAutoApprove(activeChat?.id, false)}>
+                {t("studioChat.auto.off", { defaultValue: "Turn off" })}
+              </button>
+            </span>
           ) : null}
         </div>
         <div className="composer-button-group composer-button-group--right">

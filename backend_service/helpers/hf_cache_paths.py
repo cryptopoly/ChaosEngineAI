@@ -56,9 +56,32 @@ def _hf_repo_downloaded_bytes(repo_id: str, allow_patterns: list[str] | None = N
     except OSError:
         return 0
     try:
-        return _path_size_bytes(cache_dir)
+        every, live = _incomplete_sizes(cache_dir)
+        return max(0, _path_size_bytes(cache_dir) - every + live)
     except OSError:
         return 0
+
+
+def _incomplete_sizes(cache_dir: Path) -> tuple[int, int]:
+    """(all ``.incomplete`` bytes, bytes of the largest ``.incomplete`` part per blob).
+
+    A download that was stopped and restarted leaves older partial files for the same blob next to the new
+    one; only the largest is the live copy, so the progress bar must not add the stale ones.
+    """
+    every = 0
+    largest: dict[str, int] = {}
+    try:
+        for blob in (cache_dir / "blobs").glob("*.incomplete"):
+            try:
+                size = blob.stat().st_size
+            except OSError:
+                continue
+            every += size
+            key = blob.name.split(".", 1)[0]
+            largest[key] = max(largest.get(key, 0), size)
+    except OSError:
+        pass
+    return every, sum(largest.values())
 
 
 def _matching_cache_bytes(cache_dir: Path, allow_patterns: list[str]) -> int:
@@ -81,14 +104,9 @@ def _matching_cache_bytes(cache_dir: Path, allow_patterns: list[str]) -> int:
                 total += real.stat().st_size
             except OSError:
                 continue
-        for blob in (cache_dir / "blobs").glob("*.incomplete"):
-            try:
-                total += blob.stat().st_size
-            except OSError:
-                continue
     except OSError:
         return total
-    return total
+    return total + _incomplete_sizes(cache_dir)[1]
 
 
 def _hf_repo_snapshot_dir(repo_id: str) -> Path | None:

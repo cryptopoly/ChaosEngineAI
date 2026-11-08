@@ -1,0 +1,83 @@
+---
+title: "Progress: V-voice (voice cloning)"
+status: review
+---
+# Progress: V-voice (voice cloning, D-28 / D-56)
+
+Updated: 2026-11-07. Owner: agent. Branch: `voice/clone-permission-tick` (off `feat/home-studio`).
+
+## Goal
+
+Voice cloning with Qwen3-TTS Base through mlx-audio in the voice worker. A person makes a voice in Voice Studio >
+Clone from a voice sample and one permission tick; the permission record is stored and deleted with the voice. Every
+cloned output gets a forced AI tag and an AudioSeal watermark (D-47), every action goes to a local audit log, and
+cloning is off for agents and other machines by default.
+
+## The flow
+
+- **New cloned voice:** whose voice (own voice, or someone who gave permission), the speaker's name, an optional
+  name for the voice, and a voice sample: an uploaded file (WAV, MP3, M4A, FLAC or OGG) or an in-app microphone
+  recording (16 kHz WAV). One of the two is required. Then one tick: "This is my own voice, or the speaker has given
+  me permission to clone it." Save stays disabled until all of that is there.
+- **Checks:** the backend refuses the save without the tick, with another file type, or when the sample is not 3 to
+  30 seconds (measured by STT, which also fills in the sample's words when none were typed). Uploads are capped at
+  500 MB. A recording under 3 s or over 30 s is refused in the form before it is sent.
+- **Stored with the voice** (Library item of kind `clone`, field `consent`): speaker's name, basis, time
+  (`consentedAt`), sample SHA-256, app version, `permissionConfirmed`, origin.
+- **Speaking:** watermark, AI tag in the WAV (and the MP3 ID3 comment), Library item with `clonedVoice: true`, audit
+  line. Detect route
+  `GET /api/voice/clone/watermark/{id}`.
+- **Agents and other computers:** refused unless the person ticks "Allow agents and other computers to use cloned
+  voices" (`allowAgentCloning`, only the app window can change it) and the token has the `clone` scope. Agents cannot
+  make a voice. `speak_cloned` requires `permission_confirmed: true` (as does `POST /api/voice/clone/speak` from a
+  non-UI caller as `permissionConfirmed`); it is written to the audit log.
+
+## Done
+
+- Catalog `backend_service/catalog/voice_models.py`: Qwen3-TTS 12Hz 0.6B and 1.7B Base, `mlx-community/*-Base-bf16`,
+  revisions pinned (1eccf1c..., a6eb4f6...), checked on the Hub 2026-11-07, Apache 2.0, not gated.
+- Worker: `synthesize()` branch with `refAudioPath` + `refText` (`synthesize_cloned`, no `voice` passed);
+  `encode` writes the AI tag into the MP3 ID3 comment.
+- `voice_clone_safety.py` (`clone_allowed(request)`, WAV `LIST/INFO` tag, `apply_watermark(path)`, JSONL audit log),
+  `voice_clone.py` (pinned download, create from a sample, list, delete, speak), library kind `clone`.
+- Routes `/api/voice/clone/*` in `routes/voice_clone.py` (models, download, voices list / create / delete, speak,
+  watermark), included from `routes/voice.py`.
+- Agent tools `mcp_bridge/voice_clone_tool.py` (`list_cloned_voices`, `speak_cloned`), registered behind the `clone`
+  scope.
+- UI: Voice Studio > Clone tab (`src/features/voice/clone/`): standing statement, model download, voice list, the
+  new-voice form on one screen, speak, the agents switch.
+- Tests: `tests/test_voice_clone.py`, `tests/test_mcp_bridge_v2b.py`, golden `tests/golden/mcp_tools_list.json`,
+  `src/features/voice/clone/clone.test.tsx`, browser E2E `e2e/tests/07-voice-clone.spec.ts` (upload path, microphone
+  path with Chromium's fake device, short recording refused, speak, 375 px), backend E2E phase 14
+  (`scripts/e2e_phases/phase_14.py`: models pinned, agent token refused, no tick or unsupported type refused, full
+  clone and speak with tag and watermark when a cloning model is downloaded).
+- D-47 watermark: AudioSeal 0.2.1 (Meta; code and weights MIT, not gated), weights `facebook/audioseal` pinned at
+  3c19eba (generator_base 59 MB, detector_base 35 MB). `voice_worker_watermark.py` embeds a fixed 16-bit message
+  0xCE5A at 16 kHz and adds the mark to the original-rate audio. Installed with the cloning model download; cloned
+  speech is refused without it. Tag records `watermark: audioseal-0.2.1:CE5A`.
+  - AudioSeal's Moshi layers use `torch.compile`; Inductor's Metal kernels fail on MPS ("CeilToInt"). The worker
+    sets `NO_TORCH_COMPILE=1` and `TORCHDYNAMO_DISABLE=1` before import and runs on CPU.
+  - The worker reads the mark back before writing; if it does not match, it raises and nothing is saved.
+  - `tests/test_voice_watermark.py` real round trip: WAV, MP3 96k and AAC 96k all detect probability 1.0, message
+    CE5A; unmarked clip 0.0.
+  - Measured on a 10.1 s cloned-speech clip: CPU embed 0.19 s, detect 0.10 s; SNR 25.2 dB; band levels change by
+    at most 0.03 dB (500-2000 Hz).
+
+## Not done
+
+- No real cloning run of the current form: a real sample, a real microphone and a downloaded cloning model have not
+  been tried together; the browser E2E mocks the backend and uses a fake microphone.
+- CUDA / Windows / Linux cloning (`qwen-tts` / transformers): follow-up.
+- Mic capture records at 16 kHz; Qwen3-TTS works at 24 kHz. A higher-rate capture for samples may improve likeness.
+- Nobody has listened to the cloned output.
+
+## How to resume
+
+1. `git switch voice/clone-permission-tick` (or `feat/home-studio` once merged).
+2. `.venv/bin/python -m pytest tests/test_voice_clone.py tests/test_mcp_bridge_v2b.py tests/test_mcp_contract.py -q`,
+   `npx vitest run src/features/voice` and `npm run e2e`.
+3. Next step: a real clone run on the Mac (upload and microphone), then listen to the output.
+
+## Decisions to propose
+
+- Re-show the first-run terms (bump `TERMS_VERSION`) once the terms gain a cloning paragraph.

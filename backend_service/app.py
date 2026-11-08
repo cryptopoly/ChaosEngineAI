@@ -16,6 +16,11 @@ from starlette.responses import JSONResponse
 
 from backend_service.runtime_paths import ensure_extras_on_sys_path, guard_overlay_against_bundle
 
+# The Hugging Face libraries add library and version details to their requests
+# unless this is set. Set before any of them is imported; every worker and
+# installer subprocess copies this environment. A user can still export 0.
+os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
+
 guard_overlay_against_bundle()
 ensure_extras_on_sys_path()
 
@@ -84,6 +89,8 @@ HF_SNAPSHOT_DOWNLOAD_HELPER = (
     "kwargs = {'repo_id': repo_id, 'resume_download': True}\n"
     "if allow_patterns:\n"
     "    kwargs['allow_patterns'] = allow_patterns\n"
+    "if len(sys.argv) > 3 and sys.argv[3]:\n"
+    "    kwargs['revision'] = sys.argv[3]\n"
     "snapshot_download(**kwargs)\n"
 )
 DEFAULT_PORT = int(os.getenv("CHAOSENGINE_PORT", "8876"))
@@ -126,6 +133,7 @@ EXEMPT_AUTH_PATHS = frozenset({
     "/api/auth/session",
     "/api/system/gpu-status",
 })
+AGENT_FILE_PATHS = frozenset({"/api/agent/uploads", "/api/agent/files"})
 
 
 # ---------------------------------------------------------------------------
@@ -219,6 +227,20 @@ def _find_image_output(artifact_id: str) -> dict[str, Any] | None:
 
 def _delete_image_output(artifact_id: str) -> bool:
     return _delete_image_output_impl(artifact_id, _current_image_outputs_dir())
+
+
+def _last_timings(kind: str) -> dict[str, Any] | None:
+    """C1: the phase split the progress tracker measured, for engines that report none themselves."""
+    import time as _time
+
+    from backend_service.progress import IMAGE_PROGRESS, VIDEO_PROGRESS
+
+    tracker = IMAGE_PROGRESS if kind == "image" else VIDEO_PROGRESS
+    snapshot = tracker.snapshot()
+    # Only a run that just finished: an engine that never touched the tracker must not get a stale split.
+    if snapshot.get("active") or _time.time() - float(snapshot.get("updatedAt") or 0.0) > 30.0:
+        return None
+    return tracker.last_timings()
 
 
 def _load_video_outputs() -> list[dict[str, Any]]:
@@ -467,6 +489,8 @@ def _generate_image_artifacts(
             sdcppAux=(variant.get("sdcppAux") or None),
             sdcppArgs=(variant.get("sdcppArgs") or None),
             mfluxQuantize=(variant.get("mfluxQuantize") or None),
+            referenceImagePaths=(request.referenceImagePaths or None),
+            imageStrength=request.imageStrength,
             runtime=(variant.get("engine") or None),
             cacheStrategy=request.cacheStrategy,
             cacheRelL1Thresh=request.cacheRelL1Thresh,
@@ -510,6 +534,7 @@ def _generate_image_artifacts(
             "seed": rendered.seed,
             "createdAt": created_at,
             "durationSeconds": rendered.durationSeconds,
+            "timings": rendered.timings or _last_timings("image"),
             "imageBytes": rendered.bytes,
             "imageMimeType": rendered.mimeType,
             "imageExtension": rendered.extension,
@@ -517,6 +542,8 @@ def _generate_image_artifacts(
             "runtimeNote": " · ".join(part for part in (rendered.runtimeNote, size_note) if part) or None,
             "qualityPreset": request.qualityPreset,
             "draftMode": request.draftMode,
+            "referenceImagePaths": request.referenceImagePaths or None,
+            "imageStrength": request.imageStrength if request.referenceImagePaths else None,
         }
         artifacts.append(_save_image_artifact(artifact))
     return artifacts, runtime_status
@@ -592,7 +619,6 @@ def _generate_video_artifact(
             scheduler=request.scheduler,
             useNf4=request.useNf4,
             enableLtxRefiner=request.enableLtxRefiner,
-            enhancePrompt=request.enhancePrompt,
             cfgDecay=request.cfgDecay,
             stgScale=request.stgScale,
             previewVae=request.previewVae,
@@ -615,6 +641,9 @@ def _generate_video_artifact(
             nunchakuRepo=(variant.get("nunchakuRepo") or None),
             nunchakuFile=(variant.get("nunchakuFile") or None),
             fp8LayerwiseCasting=request.fp8LayerwiseCasting,
+            startImagePath=request.startImagePath,
+            endImagePath=request.endImagePath,
+            imageStrength=request.imageStrength,
         )
     )
 
@@ -635,6 +664,7 @@ def _generate_video_artifact(
         "seed": video.seed,
         "createdAt": created_at,
         "durationSeconds": video.durationSeconds,
+        "timings": video.timings or _last_timings("video"),
         "clipDurationSeconds": clip_duration,
         "videoBytes": video.bytes,
         "videoMimeType": video.mimeType,
@@ -643,6 +673,11 @@ def _generate_video_artifact(
         "runtimeNote": " · ".join([*request_notes, *([video.runtimeNote] if video.runtimeNote else [])]) or None,
         "hasAudio": video.extension == "mp4" and mp4_has_audio_bytes(video.bytes),
     }
+    if request.startImagePath:
+        artifact["startImagePath"] = request.startImagePath
+        artifact["imageStrength"] = request.imageStrength
+    if request.endImagePath:
+        artifact["endImagePath"] = request.endImagePath
     return _save_video_artifact(artifact), runtime_status
 
 
@@ -746,6 +781,9 @@ def create_app(
         if (
             request.method == "OPTIONS"
             or path in EXEMPT_AUTH_PATHS
+            # The agent file routes check the Agent access token and its scopes themselves (routes/agent.py
+            # _require_agent); the app-token check here would refuse every agent token over HTTP.
+            or path in AGENT_FILE_PATHS
             or not (path.startswith("/api/") or path.startswith("/v1/"))
             or not getattr(app.state, "chaosengine_require_api_auth", True)
         ):

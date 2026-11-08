@@ -2,10 +2,12 @@
 
 ltx-2-mlx (MIT) is a pure MLX port of Lightricks LTX-2.3 / 2.5: text-to-video
 with stereo sound on the Apple GPU, no PyTorch. It lives in its own venv
-(``~/.chaosengine/ltx2-venv``, built by ``scripts/install-ltx2-mlx.sh``) and the
-engine runs one ``ltx-2-mlx generate --distilled`` command per clip, so the
-weights are freed when the command exits and a stuck run can be killed without
-touching the backend.
+(``~/.chaosengine/ltx2-venv``, built by ``scripts/install-ltx2-mlx.sh``). On a
+Mac with 64 GB or more the transformer stays loaded between clips in a warm worker
+process (``ltx2_worker.py``, V1); otherwise, when ``CHAOSENGINE_WARM_WORKERS=0``
+or when the worker fails, the engine runs one ``ltx-2-mlx generate --distilled``
+command per clip. Either way the weights live outside the backend, and a stuck
+run is killed without touching it.
 
 Only the distilled pipeline is wired: eight denoise passes at half size, a
 neural 2x upscale and three refine passes, no CFG. Guidance, steps and the
@@ -26,7 +28,9 @@ import re
 import shutil
 import subprocess
 import tempfile
+import threading
 import time
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -81,6 +85,79 @@ _LAST_OUTPUT_LINES = 60
 # tqdm prints ``Denoising (stage 1):  25%|##5 | 2/8 [00:11<00:33, 11.23s/it]``.
 _STEP_RE = re.compile(r"\|\s*(\d+)/(\d+)\s*\[")
 _PHASE_RE = re.compile(r"^\[(.+?)\] \.\.\.$")
+# ltx-2-mlx closes each phase with ``[Encoding prompt] done in 3.7s``.
+_PHASE_DONE_RE = re.compile(r"^\[(.+?)\] done in ([\d.]+)s$")
+
+_WORKER_SCRIPT = Path(__file__).resolve().parent / "ltx2_worker.py"
+_WORKER_LOG = Path.home() / ".chaosengine" / "logs" / "ltx2-worker.log"
+# The worker keeps only the transformer (LTX-2.5 q4: 11.3 GB) between clips; the decode peaked at
+# 23.6 GB of Metal memory at 768x448x49 against about 17 GB for the CLI (v-speed.md). Measured only on a
+# 64 GB Mac, so it is used there and above, and a new worker starts only with 28 GB free; otherwise the
+# clip runs as a CLI process.
+WARM_MIN_MEMORY_GB = 60.0
+WARM_START_AVAILABLE_GB = 28.0
+_WORKER_TIMEOUT_S = 7200.0
+_WORKER_STALL_S = 900.0  # load and VAE decode send no step lines
+_WORKER_HARD_CANCEL_S = 20.0  # a stage-2 step at full size can take ~15 s before the next write
+
+
+class Ltx2OutputParser:
+    """Reads ltx-2-mlx output lines (CLI stdout or the warm worker's ``line`` events): progress into
+    ``VIDEO_PROGRESS`` and the C1 timing split from the ``[phase] done in Xs`` lines."""
+
+    def __init__(self) -> None:
+        self.tail: list[str] = []
+        self._completed_steps = 0
+        self._last_n = 0
+        self._last_total = 0
+        self.phase_seconds = {"load": 0.0, "encode": 0.0, "decode": 0.0}
+
+    def feed(self, stripped: str) -> None:
+        from backend_service.progress import PHASE_DECODING, PHASE_DIFFUSING, PHASE_ENCODING, VIDEO_PROGRESS
+
+        self.tail.append(stripped)
+        del self.tail[:-_LAST_OUTPUT_LINES]
+        step = _STEP_RE.search(stripped)
+        if step:
+            n, total = int(step.group(1)), int(step.group(2))
+            # The second stage starts a new bar; carry the finished steps over.
+            if total != self._last_total or n < self._last_n:
+                self._completed_steps += self._last_n if self._last_total else 0
+                VIDEO_PROGRESS.set_phase(PHASE_DIFFUSING, message="Denoising")
+            self._last_n, self._last_total = n, total
+            VIDEO_PROGRESS.set_step(min(DISTILLED_STEPS, self._completed_steps + n), total=DISTILLED_STEPS)
+            return
+        done = _PHASE_DONE_RE.match(stripped)
+        if done:
+            label, seconds = done.group(1).lower(), float(done.group(2))
+            if label.startswith("loading"):
+                self.phase_seconds["load"] += seconds
+            elif "encod" in label and "prompt" in label:
+                self.phase_seconds["encode"] += seconds
+            elif "decod" in label:
+                self.phase_seconds["decode"] += seconds
+            return
+        phase = _PHASE_RE.match(stripped)
+        if phase:
+            label = phase.group(1).lower()
+            if ("encod" in label and "text" in label) or "gemma" in label or ("encod" in label and "prompt" in label):
+                VIDEO_PROGRESS.set_phase(PHASE_ENCODING, message="Encoding prompt")
+            elif "decod" in label or "vae" in label or "audio" in label:
+                VIDEO_PROGRESS.set_phase(PHASE_DECODING, message="Decoding video")
+
+    def timings(self, total_s: float, startup_s: float = 0.0, warm: bool = False) -> dict[str, Any]:
+        """``startup_s``: process start and imports before the first line (CLI only), counted as load.
+        Denoise is the rest: both stages, the latent upscale and the image conditioning."""
+        load = self.phase_seconds["load"] + startup_s
+        encode, decode = self.phase_seconds["encode"], self.phase_seconds["decode"]
+        return {
+            "loadSeconds": round(load, 2),
+            "encodeSeconds": round(encode, 2),
+            "denoiseSeconds": round(max(0.0, total_s - load - encode - decode), 2),
+            "decodeSeconds": round(decode, 2),
+            "totalSeconds": round(total_s, 2),
+            "warm": warm,
+        }
 
 
 def _apple_silicon() -> bool:
@@ -170,6 +247,62 @@ def _ffmpeg_path_dir() -> str | None:
     return str(_FFMPEG_SHIM_DIR)
 
 
+class WarmFallback(RuntimeError):
+    """The warm worker could not make this clip; the CLI path makes it instead."""
+
+
+_WORKER: Any = None
+_WORKER_LOCK = threading.Lock()
+
+
+def warm_worker() -> Any:
+    """The one warm ltx-2-mlx worker of this backend (created on first use, started on first clip)."""
+    global _WORKER
+    from backend_service.warm_worker_client import WarmWorker
+
+    with _WORKER_LOCK:
+        if _WORKER is None:
+            _WORKER = WarmWorker(
+                name="ltx-2-mlx",
+                kind="video",
+                command=lambda: [str(LTX2_VENV_DIR / "bin" / "python"), str(_WORKER_SCRIPT)],
+                env=Ltx2MlxVideoEngine._child_env,
+                log_path=_WORKER_LOG,
+                hard_cancel_after_s=_WORKER_HARD_CANCEL_S,
+            )
+        return _WORKER
+
+
+def warm_worker_wanted() -> bool:
+    from backend_service.warm_worker_client import can_start, total_memory_gb, warm_workers_enabled
+
+    return (
+        warm_workers_enabled()
+        and os.environ.get("CHAOSENGINE_WARM_LTX", "").strip().lower() in ("1", "true", "yes", "on")  # opt-in: ~4 % per clip for 12 GB held (D-43 measurement)
+        and total_memory_gb() >= WARM_MIN_MEMORY_GB
+        and _WORKER_SCRIPT.exists()
+        and can_start(_WORKER, WARM_START_AVAILABLE_GB)
+    )
+
+
+def release_warm_worker(reason: str = "unloaded") -> bool:
+    """Stop the warm worker if it idles (never kills a running clip)."""
+    return _WORKER.stop_if_idle(reason) if _WORKER is not None else False
+
+
+_WARM_REPO: str | None = None
+
+
+def warm_loaded_repo() -> str | None:
+    """The repo whose pipeline the warm worker holds, so memory gates count it as resident."""
+    return _WARM_REPO if _WORKER is not None and _WORKER.running() else None
+
+
+def _remember_warm_repo(repo: str) -> None:
+    global _WARM_REPO
+    _WARM_REPO = repo
+
+
 class Ltx2MlxVideoEngine:
     runtime_label = "LTX-2.3 (MLX native)"
 
@@ -193,12 +326,19 @@ class Ltx2MlxVideoEngine:
             device="mlx",
         )
 
+    # Timing split of the last CLI run (C1), filled by ``_run``.
+    _cli_timings: dict[str, Any] | None = None
+
     def preload(self, repo: str) -> VideoRuntimeStatus:
-        # One process per clip: nothing stays resident between runs.
+        # The warm worker loads on the first clip (its load is the first clip's own phase).
         return self.probe()
 
     def unload(self, repo: str | None = None) -> VideoRuntimeStatus:
+        release_warm_worker("unloaded")
         return self.probe()
+
+    def release(self, reason: str = "unloaded") -> bool:
+        return release_warm_worker(reason)
 
     def generate(self, config: VideoGenerationConfig) -> GeneratedVideo:
         status = self.probe()
@@ -243,11 +383,23 @@ class Ltx2MlxVideoEngine:
             message=f"Loading {config.modelName}",
         )
         started = time.perf_counter()
+        timings: dict[str, Any] | None = None
         try:
             with tempfile.TemporaryDirectory(prefix="chaosengine-ltx2-") as tmpdir:
                 output = Path(tmpdir) / "clip.mp4"
                 args = self._build_command(config, pack, gemma, width, height, seed, output)
-                self._run(args, output)
+                if warm_worker_wanted():
+                    try:
+                        timings = self._run_warm(args, output)
+                        _remember_warm_repo(config.repo)
+                    except WarmFallback as exc:
+                        notes.append(f"the warm worker failed ({exc}), so this clip ran as a one-off process")
+                        timings = None
+                if timings is None:
+                    self._run(args, output)
+                    timings = dict(self._cli_timings or {}) or None
+                elif timings.get("warm"):
+                    notes.append("pipeline kept loaded from the previous clip")
                 data = output.read_bytes()
         finally:
             VIDEO_PROGRESS.finish()
@@ -266,6 +418,7 @@ class Ltx2MlxVideoEngine:
             runtimeNote="; ".join(notes) + ".",
             effectiveSteps=DISTILLED_STEPS,
             effectiveGuidance=1.0,
+            timings=timings,
         )
 
     @staticmethod
@@ -279,6 +432,12 @@ class Ltx2MlxVideoEngine:
         output: Path,
     ) -> list[str]:
         gemma_args = ["--gemma", str(gemma)] if gemma is not None else []
+        # Image-to-video: --image PATH FRAME_IDX STRENGTH, repeated for the start and the end frame.
+        image_args: list[str] = []
+        if config.startImagePath:
+            image_args += ["--image", config.startImagePath, "0", f"{config.imageStrength:g}"]
+        if config.endImagePath:
+            image_args += ["--image", config.endImagePath, str(max(1, config.numFrames - 1)), f"{config.imageStrength:g}"]
         return [
             str(LTX2_VENV_DIR / "bin" / "ltx-2-mlx"),
             "generate",
@@ -291,6 +450,7 @@ class Ltx2MlxVideoEngine:
             "--frames", str(config.numFrames),
             "--frame-rate", f"{config.fps:g}",
             "--seed", str(seed),
+            *image_args,
             "--output", str(output),
         ]
 
@@ -308,14 +468,9 @@ class Ltx2MlxVideoEngine:
 
     def _run(self, args: list[str], output: Path) -> None:
         """Run one command and stream its progress into ``VIDEO_PROGRESS``."""
-        from backend_service.progress import (
-            PHASE_DECODING,
-            PHASE_DIFFUSING,
-            PHASE_ENCODING,
-            VIDEO_PROGRESS,
-            GenerationCancelled,
-        )
+        from backend_service.progress import VIDEO_PROGRESS, GenerationCancelled
 
+        started = time.perf_counter()
         proc = subprocess.Popen(
             args,
             stdout=subprocess.PIPE,
@@ -324,10 +479,10 @@ class Ltx2MlxVideoEngine:
             bufsize=1,
             env=self._child_env(),
         )
-        tail: list[str] = []
-        completed_steps = 0
-        last_n = 0
-        last_total = 0
+        parser = Ltx2OutputParser()
+        tail = parser.tail
+        first_line_at: float | None = None
+        self._cli_timings = None
         try:
             assert proc.stdout is not None
             # tqdm redraws with carriage returns; text mode turns those into lines.
@@ -335,25 +490,9 @@ class Ltx2MlxVideoEngine:
                 stripped = line.rstrip()
                 if not stripped:
                     continue
-                tail.append(stripped)
-                del tail[:-_LAST_OUTPUT_LINES]
-                step = _STEP_RE.search(stripped)
-                if step:
-                    n, total = int(step.group(1)), int(step.group(2))
-                    # The second stage starts a new bar; carry the finished steps over.
-                    if total != last_total or n < last_n:
-                        completed_steps += last_n if last_total else 0
-                        VIDEO_PROGRESS.set_phase(PHASE_DIFFUSING, message="Denoising")
-                    last_n, last_total = n, total
-                    VIDEO_PROGRESS.set_step(min(DISTILLED_STEPS, completed_steps + n), total=DISTILLED_STEPS)
-                else:
-                    phase = _PHASE_RE.match(stripped)
-                    if phase:
-                        label = phase.group(1).lower()
-                        if ("encod" in label and "text" in label) or "gemma" in label:
-                            VIDEO_PROGRESS.set_phase(PHASE_ENCODING, message="Encoding prompt")
-                        elif "decod" in label or "vae" in label or "audio" in label:
-                            VIDEO_PROGRESS.set_phase(PHASE_DECODING, message="Decoding video")
+                if first_line_at is None:
+                    first_line_at = time.perf_counter()
+                parser.feed(stripped)
                 if VIDEO_PROGRESS.is_cancelled():
                     proc.terminate()
                     try:
@@ -370,6 +509,45 @@ class Ltx2MlxVideoEngine:
             raise RuntimeError(f"ltx-2-mlx exited with code {code}.\nLast output:\n" + "\n".join(tail[-15:]))
         if not output.exists():
             raise RuntimeError("ltx-2-mlx finished without writing a video.\nLast output:\n" + "\n".join(tail[-10:]))
+        total = time.perf_counter() - started
+        self._cli_timings = parser.timings(total, startup_s=(first_line_at or started) - started)
+
+    def _run_warm(self, args: list[str], output: Path) -> dict[str, Any]:
+        """One clip through the warm worker; returns its timing split. ``WarmFallback`` = use the CLI."""
+        from backend_service.progress import VIDEO_PROGRESS, GenerationCancelled
+        from backend_service.warm_worker_client import WarmWorkerCancelled
+
+        parser = Ltx2OutputParser()
+
+        def on_event(event: dict[str, Any]) -> None:
+            if event.get("event") == "line" and event.get("text"):
+                parser.feed(str(event["text"]))
+
+        worker = warm_worker()
+        started = time.perf_counter()
+        try:
+            reply = worker.request(
+                "generate",
+                timeout=_WORKER_TIMEOUT_S,
+                stall_s=_WORKER_STALL_S,
+                on_event=on_event,
+                cancel_check=VIDEO_PROGRESS.is_cancelled,
+                job=f"vid-{uuid.uuid4().hex[:12]}",
+                argv=args[1:],
+                keep_resident=True,
+            )
+        except WarmWorkerCancelled as exc:
+            raise GenerationCancelled("Video generation cancelled by user") from exc
+        except Exception as exc:  # noqa: BLE001 - any worker failure falls back to the CLI
+            if VIDEO_PROGRESS.is_cancelled():
+                raise GenerationCancelled("Video generation cancelled by user") from exc
+            worker.stop_if_idle("it failed a request")
+            raise WarmFallback(f"{type(exc).__name__}: {exc}") from exc
+        if not output.exists():
+            worker.stop_if_idle("it wrote no video")
+            raise WarmFallback("the worker wrote no video")
+        worker.after_job(reply)
+        return parser.timings(time.perf_counter() - started, warm=bool(reply.get("warm")))
 
 
 def status_payload() -> dict[str, Any]:

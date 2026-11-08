@@ -126,6 +126,18 @@ VIDEO_FAMILY_LIMITS: dict[str, SizeRow] = {
     "longlive": SizeRow(832, 832 * 480, 832),
 }
 
+# Frame rate a family is trained or documented for, from its model card. A family not listed has no stated
+# rate; the Storyboard then says nothing about it. Any other project rate is made by plain ffmpeg frame-rate
+# conversion at join (duplicated or dropped frames, not interpolation).
+VIDEO_NATIVE_FPS: dict[str, int] = {
+    "wan-2-1": 16,  # Wan-Video README: 16 fps
+    "wan-2-2": 16,
+    "ltx-video": 24,  # HF card: 24 fps at 768x512
+    "mochi-1": 30,  # HF card: 30 fps
+    "cogvideox": 8,  # HF card: 8 fps (CogVideoX 1.5 overrides: 16 fps)
+}
+VIDEO_VARIANT_NATIVE_FPS: dict[str, int] = {"THUDM/CogVideoX1.5-5B": 16}
+
 VIDEO_VARIANT_LIMITS: dict[str, SizeRow] = {
     # CogVideoX 1.5 (HF card): text-to-video 1360x768; image-to-video: shorter edge 768, longer 768 to 1360.
     "THUDM/CogVideoX1.5-5B": SizeRow(1360, 1360 * 768, 1360),
@@ -164,3 +176,8 @@ def apply_video_size_limits(families: Iterable[dict[str, Any]]) -> None:
                 or _UNKNOWN_VIDEO
             )
             _write(variant, row)
+            fps = VIDEO_VARIANT_NATIVE_FPS.get(str(variant.get("id"))) or VIDEO_NATIVE_FPS.get(
+                str(variant.get("familyId") or family.get("id"))
+            )
+            if fps:
+                variant.setdefault("nativeFps", fps)

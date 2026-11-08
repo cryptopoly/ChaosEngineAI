@@ -101,7 +101,9 @@ def image_generation_progress() -> dict[str, Any]:
     When ``active`` is false the UI falls back to its own client-side
     estimates rather than freezing the bar at 0%.
     """
-    return {"progress": IMAGE_PROGRESS.snapshot()}
+    from backend_service.helpers.job_queue import HEAVY_JOBS
+
+    return {"progress": {**IMAGE_PROGRESS.snapshot(), "queue": HEAVY_JOBS.queue_state("image")}}
 
 
 @router.post("/api/images/cancel")
@@ -115,8 +117,10 @@ def cancel_image_generation(request: Request) -> dict[str, Any]:
     reads ``IMAGE_PROGRESS.is_cancelled()`` and raises, typically within a
     second of this call returning.
     """
+    from backend_service.helpers.job_queue import HEAVY_JOBS
+
     state = request.app.state.chaosengine
-    signalled = IMAGE_PROGRESS.request_cancel()
+    signalled = HEAVY_JOBS.cancel_studio("image", IMAGE_PROGRESS.request_cancel)
     if signalled:
         state.add_log("images", "info", "Cancel signal sent to running image generation.")
     return {"cancelled": signalled}
@@ -245,6 +249,29 @@ def delete_image_download(request: Request, body: DownloadModelRequest) -> dict[
 
 @router.post("/api/images/generate")
 def generate_image(request: Request, body: ImageGenerationRequest) -> dict[str, Any]:
+    from backend_service.helpers.job_queue import HEAVY_JOBS
+
+    try:
+        with HEAVY_JOBS.slot("image", "ui", body.modelId):
+            return _generate_image_locked(request, body)
+    except GenerationCancelled:
+        raise HTTPException(status_code=409, detail=localized_detail(request, "cancelled")) from None
+
+
+def _checked_reference_images(body: ImageGenerationRequest, variant: dict[str, Any]) -> ImageGenerationRequest:
+    """Resolve reference image paths; 400 with a readable message when the model or a file is wrong."""
+    if not body.referenceImagePaths:
+        return body
+    from backend_service.helpers.media_input import InputImageError, checked_reference_images
+
+    try:
+        paths = checked_reference_images(body.referenceImagePaths, variant)
+    except InputImageError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return body.model_copy(update={"referenceImagePaths": paths})
+
+
+def _generate_image_locked(request: Request, body: ImageGenerationRequest) -> dict[str, Any]:
     import traceback as _tb
     state = request.app.state.chaosengine
     state.add_log("images", "info", f"Image generation requested: modelId='{body.modelId}', {body.width}x{body.height}, {body.steps} steps")
@@ -259,9 +286,13 @@ def generate_image(request: Request, body: ImageGenerationRequest) -> dict[str, 
             ),
         )
     state.add_log("images", "info", f"Resolved variant: {variant.get('name')} (repo={variant.get('repo')})")
+    body = _checked_reference_images(body, variant)
     # Free an idle video model first, so the memory it held counts as free
     # in the gate below.
     _unload_idle_video_runtime_for_image(request, "image generation")
+    from backend_service.music_runtime import free_idle_worker
+
+    free_idle_worker(state, "image generation")
     # Phase 2.0.5-H: pre-flight memory gate. Refuse before invoking the
     # diffusion pipeline if the host is already memory-starved — image
     # gen on a swap-thrashing laptop typically takes minutes to recover

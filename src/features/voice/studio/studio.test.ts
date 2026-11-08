@@ -109,6 +109,17 @@ describe("speech parts", () => {
     expect(huge.map((p) => p.text.length)).toEqual([MAX_PART_CHARS, MAX_PART_CHARS, 5]);
   });
 
+  it("never cuts a fenced code block, wherever the blank lines and the length limit fall", () => {
+    const fence = "```py\nprint(1)\n\nprint(2)\n```";
+    const parts = splitSpeech(`Before it.\n\n${fence}\n\nAfter it.`);
+    expect(parts.map((p) => p.text)).toEqual(["Before it.", fence, "After it."]);
+    const prose = "word ".repeat(150).trim() + ". ";
+    const long = splitSpeech(`${prose.repeat(5)}${fence} ${prose.repeat(5)}`);
+    expect(long.length).toBeGreaterThan(1);
+    expect(long.filter((p) => p.text.includes("```")).every((p) => p.text.includes(fence))).toBe(true);
+    expect(long.every((p) => (p.text.match(/```/g) ?? []).length % 2 === 0)).toBe(true);
+  });
+
   it("joins WAVs with silence between them", async () => {
     const { blob, durationS } = joinWavs([wav([1, 2]), wav([3])], [0.0001, 0]);
     const joined = readWav(await blob.arrayBuffer());

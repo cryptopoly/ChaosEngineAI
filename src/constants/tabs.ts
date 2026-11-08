@@ -21,6 +21,8 @@ export interface TabConfig {
   /** i18n key under ``common.tabCaptions.<key>``. */
   captionKey: string;
   group?: SidebarGroupId;
+  /** Sidebar section a standalone tab (no group) is listed under. */
+  section?: "make" | "run";
   /** Compact label shown in collapsed-tabs mode. */
   shortLabel?: string;
   /** i18n key under ``common.tabShortLabels.<key>``. */
@@ -41,9 +43,15 @@ export const tabs: TabConfig[] = [
   { id: "video-models", label: "Video Models", labelKey: "tabs.videoModels", caption: "Find, download and manage video models", captionKey: "tabCaptions.videoModelsPage", group: "video", shortLabel: "Models", shortLabelKey: "tabShortLabels.models" },
   { id: "video-studio", label: "Video Studio", labelKey: "tabs.videoStudio", caption: "Prompt, generate, and iterate", captionKey: "tabCaptions.videoStudio", group: "video", shortLabel: "Studio", shortLabelKey: "tabShortLabels.videoStudio" },
   { id: "video-gallery", label: "Video Gallery", labelKey: "tabs.videoGallery", caption: "Saved outputs and filters", captionKey: "tabCaptions.videoGallery", group: "video", shortLabel: "Gallery", shortLabelKey: "tabShortLabels.videoGallery" },
-  { id: "voice-studio", label: "Voice Studio", labelKey: "tabs.voiceStudio", caption: "Record, transcribe, and speak", captionKey: "tabCaptions.voiceStudio", group: "voice", shortLabel: "Studio", shortLabelKey: "tabShortLabels.voiceStudio" },
   { id: "voice-models", label: "Voice Models", labelKey: "tabs.voiceModels", caption: "STT and TTS model management", captionKey: "tabCaptions.voiceModels", group: "voice", shortLabel: "Models", shortLabelKey: "tabShortLabels.models" },
+  { id: "voice-studio", label: "Voice Studio", labelKey: "tabs.voiceStudio", caption: "Record, transcribe, and speak", captionKey: "tabCaptions.voiceStudio", group: "voice", shortLabel: "Studio", shortLabelKey: "tabShortLabels.voiceStudio" },
   { id: "voice-gallery", label: "Voice Library", labelKey: "tabs.voiceLibrary", caption: "Transcripts and speech you made", captionKey: "tabCaptions.voiceLibrary", group: "voice", shortLabel: "Library", shortLabelKey: "tabShortLabels.voiceLibrary" },
+  { id: "music-models", label: "Music and Audio Models", labelKey: "tabs.musicModels", caption: "Find, download and manage music and sound models", captionKey: "tabCaptions.musicModels", group: "music", shortLabel: "Models", shortLabelKey: "tabShortLabels.models" },
+  { id: "music-studio", label: "Music and Audio Studio", labelKey: "tabs.musicStudio", caption: "Make tracks and sound effects", captionKey: "tabCaptions.musicStudio", group: "music", shortLabel: "Studio", shortLabelKey: "tabShortLabels.musicStudio" },
+  { id: "music-library", label: "Music and Audio Library", labelKey: "tabs.musicLibrary", caption: "Tracks and sounds you made", captionKey: "tabCaptions.musicLibrary", group: "music", shortLabel: "Library", shortLabelKey: "tabShortLabels.musicLibrary" },
+  // One entry for the film projects (D-65): the list, then a project's own tabs. The old Projects,
+  // Board and Mixer ids redirect through ``tabRedirects.ts``.
+  { id: "storyboard", label: "Projects", labelKey: "tabs.projects", caption: "Storyboard films: shots, sound, export", captionKey: "tabCaptions.projects", section: "make" },
   { id: "server", label: "Server", labelKey: "tabs.server", caption: "OpenAI-compatible local API", captionKey: "tabCaptions.server" },
   { id: "benchmarks", label: "Benchmarks", labelKey: "tabs.benchmarks", caption: "Run a new benchmark", captionKey: "tabCaptions.benchmarks", group: "benchmarks", shortLabel: "Run", shortLabelKey: "tabShortLabels.benchmarks" },
   { id: "benchmark-history", label: "History", labelKey: "tabs.benchmarkHistory", caption: "Compare saved runs", captionKey: "tabCaptions.benchmarkHistory", group: "benchmarks", shortLabel: "History", shortLabelKey: "tabShortLabels.benchmarkHistory" },

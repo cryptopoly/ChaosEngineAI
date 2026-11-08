@@ -1,4 +1,4 @@
-"""Pre-flight memory gates for chat / image / video generation.
+"""Pre-flight memory gates for chat / image / video / music generation.
 
 Phase 2.0.5-B: refuses generation requests when free system memory is below
 a safety floor, before the runtime gets a chance to OOM and wedge the host.
@@ -382,6 +382,63 @@ def gate_video_generation(
                 "generation would likely OOM. Free some memory before "
                 "retrying."
             ),
+        }
+    return None
+
+
+# Music (ACE-Step spike, docs/plans/music-spike.md 4.3): budget 23 GB for a generation and 15 GB
+# for an idle worker; a worker that already holds the model only needs the difference.
+MUSIC_GENERATION_GB = 23.0
+MUSIC_IDLE_GB = 15.0
+MUSIC_MAX_PRESSURE_PERCENT = 95.0
+
+
+def gate_music_generation(
+    available_gb: float,
+    pressure_percent: float,
+    *,
+    peak_gb: float = MUSIC_GENERATION_GB,
+    idle_gb: float = MUSIC_IDLE_GB,
+    resident: bool = False,
+    model_name: str | None = None,
+    large: bool = False,
+    max_pressure_percent: float = MUSIC_MAX_PRESSURE_PERCENT,
+    noun: str = "music",
+) -> dict[str, Any] | None:
+    """Pre-flight check for a music generation. Returns a refusal (``code``, ``message``, ``fix``) or None.
+
+    ``resident`` means the worker already holds this model, so only ``peak_gb - idle_gb`` must be free.
+    Memory hardly changes with the track length (spike 3.2), so the fix is always to free memory, never
+    a shorter track. ``large`` (the XL model) names the 64 GB rule in the message.
+    """
+    label = model_name or "This music model"
+    need = max(0.0, peak_gb - idle_gb) if resident else peak_gb
+    if available_gb < need:
+        fix = (
+            "Everything else was unloaded first; close other apps, or use ACE-Step 1.5 turbo."
+            if large
+            else "Unload the chat, image or video model, or close other apps, then try again."
+        )
+        return {
+            "code": "memory_gate_music_low_available",
+            "message": (
+                f"{label} needs about {need:.0f} GB of free memory to make {noun}, but only "
+                f"{available_gb:.1f} GB is available. {fix}"
+            ),
+            "fix": "use-turbo" if large else "unload-models",
+            "needGb": round(need, 1),
+            "availableGb": round(available_gb, 1),
+        }
+    if pressure_percent > max_pressure_percent:
+        return {
+            "code": "memory_gate_music_high_pressure",
+            "message": (
+                f"Memory pressure is {pressure_percent:.0f}%; making {noun} now would risk swapping. "
+                "Unload a model or close other apps, then try again."
+            ),
+            "fix": "unload-models",
+            "needGb": round(need, 1),
+            "availableGb": round(available_gb, 1),
         }
     return None
 

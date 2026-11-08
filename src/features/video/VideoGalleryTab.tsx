@@ -1,15 +1,23 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
+import { ProjectChip, ProjectFilter, ProjectHeader } from "../../components/ProjectFilter";
+import { ALL_PROJECTS, filterByProject, projectOptions, untaggedCount, type ProjectTagged } from "../../utils/galleryProject";
+import { openProjectAt } from "../storyboard/projectRoute";
+import { SendToStoryboardMenu } from "../../components/SendToStoryboardMenu";
 import { SoundBadge } from "../../components/SoundBadge";
 import { VideoSoundToggle } from "../../components/VideoSoundToggle";
 import { fetchVideoOutputBlobUrl } from "../../api";
 import type { VideoOutputArtifact } from "../../types";
 import { formatImageTimestamp, number } from "../../utils";
+import type { SendItem } from "../storyboard/sendToStoryboardLogic";
+import { useSendToStoryboard } from "../storyboard/useSendToStoryboard";
 import { modelsPageRequest, type TabRequest } from "../../constants/tabRedirects";
 
 export interface VideoGalleryTabProps {
   videoOutputs: VideoOutputArtifact[];
+  /** Saved stills, only to count a project's stills in its header. */
+  imageOutputs?: ProjectTagged[];
   videoBusy: boolean;
   onActiveTabChange: (tab: TabRequest) => void;
   onOpenVideoStudio: (modelId?: string) => void;
@@ -19,6 +27,7 @@ export interface VideoGalleryTabProps {
 
 export function VideoGalleryTab({
   videoOutputs,
+  imageOutputs = [],
   videoBusy,
   onActiveTabChange,
   onOpenVideoStudio,
@@ -29,8 +38,13 @@ export function VideoGalleryTab({
   const { t: tStudio, i18n } = useTranslation("studio");
   const [expandedArtifactId, setExpandedArtifactId] = useState<string | null>(null);
   const [autoPlayVideos, setAutoPlayVideos] = useState(true);
-  const expandedArtifact = videoOutputs.find((artifact) => artifact.artifactId === expandedArtifactId) ?? null;
-  const displayedArtifacts = expandedArtifact ? [expandedArtifact] : videoOutputs;
+  const storyboard = useSendToStoryboard((tab) => onActiveTabChange(tab));
+  const [projectFilter, setProjectFilter] = useState(ALL_PROJECTS);
+  const visibleOutputs = filterByProject(videoOutputs, projectFilter);
+  const projects = useMemo(() => projectOptions(videoOutputs), [videoOutputs]);
+  const picked = projects.find((project) => project.id === projectFilter) ?? null;
+  const expandedArtifact = visibleOutputs.find((artifact) => artifact.artifactId === expandedArtifactId) ?? null;
+  const displayedArtifacts = expandedArtifact ? [expandedArtifact] : visibleOutputs;
 
   useEffect(() => {
     if (expandedArtifactId && !videoOutputs.some((artifact) => artifact.artifactId === expandedArtifactId)) {
@@ -53,6 +67,13 @@ export function VideoGalleryTab({
         className="span-2"
         actions={
           <div className="button-row video-gallery-actions">
+            <ProjectFilter
+              options={projects}
+              value={projectFilter}
+              onChange={setProjectFilter}
+              untagged={untaggedCount(videoOutputs)}
+              total={videoOutputs.length}
+            />
             <label className="video-gallery-autoplay-toggle">
               <input
                 type="checkbox"
@@ -70,6 +91,20 @@ export function VideoGalleryTab({
           </div>
         }
       >
+        {picked ? (
+          <ProjectHeader
+            name={picked.name}
+            counts={{ stills: imageOutputs.filter((still) => still.projectId === picked.id).length, clips: picked.count }}
+            onOpen={
+              storyboard.enabled
+                ? () => {
+                    openProjectAt(picked.id, "storyboard");
+                    void onActiveTabChange("storyboard");
+                  }
+                : undefined
+            }
+          />
+        ) : null}
         {videoOutputs.length === 0 ? (
           <div className="empty-state image-empty-state">
             <p>
@@ -99,6 +134,19 @@ export function VideoGalleryTab({
                 }}
                 onRevealPath={onRevealPath}
                 onDelete={onDeleteVideoArtifact}
+                extraActions={
+                  <SendToStoryboardMenu
+                    item={artifact.videoPath ? clipItem(artifact) : null}
+                    projects={storyboard.projects}
+                    loaded={storyboard.loaded}
+                    busy={storyboard.busy}
+                    notice={storyboard.notice}
+                    enabled={storyboard.enabled}
+                    onOpen={() => void storyboard.loadProjects()}
+                    onDismissNotice={storyboard.dismissNotice}
+                    onSend={(projectId, target) => storyboard.send(clipItem(artifact), projectId, target)}
+                  />
+                }
               />
             ))}
           </div>
@@ -106,6 +154,11 @@ export function VideoGalleryTab({
       </Panel>
     </div>
   );
+}
+
+/** What the Use in storyboard menu sends for a saved clip. */
+function clipItem(artifact: VideoOutputArtifact): SendItem {
+  return { kind: "video", path: artifact.videoPath as string, prompt: artifact.prompt, seconds: artifact.clipDurationSeconds };
 }
 
 const CLIP_UNMUTED_EVENT = "chaosengine:gallery-clip-unmuted";
@@ -119,6 +172,8 @@ interface VideoOutputCardProps {
   onToggleExpanded: (artifactId: string) => void;
   onRevealPath: (path: string) => void;
   onDelete: (artifactId: string) => void;
+  /** Extra buttons at the end of the action row (the Use in storyboard menu). */
+  extraActions?: ReactNode;
 }
 
 /**
@@ -137,6 +192,7 @@ function VideoOutputCard({
   onToggleExpanded,
   onRevealPath,
   onDelete,
+  extraActions,
 }: VideoOutputCardProps) {
   const { t: tStudio } = useTranslation("studio");
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
@@ -263,8 +319,9 @@ function VideoOutputCard({
           <strong>{artifact.modelName}</strong>
           <span className="badge muted">{formatImageTimestamp(artifact.createdAt, locale)}</span>
         </div>
-        {artifact.runtimeLabel || artifact.hasAudio ? (
+        {artifact.runtimeLabel || artifact.hasAudio || artifact.projectName ? (
           <div className="chip-row">
+            <ProjectChip name={artifact.projectName} />
             {artifact.runtimeLabel ? <span className="badge subtle">{artifact.runtimeLabel}</span> : null}
             {artifact.runtimeLabel ? (
               <span className="badge muted">
@@ -344,6 +401,7 @@ function VideoOutputCard({
           >
             {tStudio("videoGallery.card.delete", { defaultValue: "Delete" })}
           </button>
+          {extraActions}
         </div>
       </div>
     </article>

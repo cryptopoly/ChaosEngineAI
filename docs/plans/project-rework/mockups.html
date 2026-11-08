@@ -1,0 +1,918 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Project workspace mockups</title>
+<style>
+  :root {
+    --app-bg: #0f1215; --panel: #15191e; --panel-alt: #1a1f25; --border: #27303a;
+    --text: #f4f6f8; --muted: #9ea8b4; --muted-strong: #ccd4dd;
+    --accent: #8fb4ff; --accent-strong: #d3e1ff; --success: #8fcf9f; --warning: #e4be75; --danger: #e09a9a;
+    --surface: #12161b; --radius-lg: 16px; --radius-md: 12px; --radius-sm: 10px;
+    --lane-voice: color-mix(in srgb, var(--accent) 22%, var(--panel));
+    --lane-sfx: color-mix(in srgb, var(--warning) 18%, var(--panel));
+    --lane-music: color-mix(in srgb, var(--success) 18%, var(--panel));
+    --accent-storyboard: color-mix(in srgb, var(--accent) 60%, var(--warning));
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #0a0c0f; color: var(--text);
+    font: 14px/1.4 "SF Pro Text", Inter, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  h1, h2, h3, h4, p { margin: 0; }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  svg.i { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+  /* mockup chrome */
+  .switcher { position: sticky; top: 0; z-index: 50; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+    padding: 10px 16px; background: #0a0c0f; border-bottom: 1px solid var(--border); }
+  .switcher .label { color: var(--muted); font-size: 12px; margin-right: 6px; }
+  .switcher button { background: transparent; border: 1px solid var(--border); color: var(--muted); border-radius: 999px; padding: 5px 12px; cursor: pointer; }
+  .switcher button.active { color: var(--text); border-color: var(--accent); background: rgba(143,180,255,.1); }
+  .note { color: var(--muted); font-size: 12px; margin-left: auto; }
+
+  /* app frame */
+  .frame { width: min(1280px, 100% - 32px); margin: 16px auto; border: 1px solid var(--border); border-radius: 14px; overflow: hidden;
+    background: var(--app-bg); display: grid; grid-template-columns: 220px 1fr; min-height: 760px; container-type: inline-size; container-name: frame; }
+  .sidebar { background: #11151a; border-right: 1px solid var(--border); padding: 18px 12px; display: flex; flex-direction: column; gap: 12px; }
+  .brand { display: flex; align-items: center; gap: 8px; padding: 0 6px 8px; }
+  .brand .logo { width: 26px; height: 26px; border-radius: 6px; background: linear-gradient(135deg, var(--accent), var(--accent-storyboard)); }
+  .brand h1 { font-size: 15px; letter-spacing: -.03em; }
+  .nav-section { color: var(--muted); font-size: 10.5px; text-transform: uppercase; letter-spacing: .1em; padding: 10px 8px 2px; }
+  .nav { display: flex; flex-direction: column; gap: 2px; }
+  .nav-button { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; background: transparent; border: 1px solid transparent;
+    border-radius: var(--radius-sm); padding: 7px 8px; color: var(--muted-strong); cursor: pointer; }
+  .nav-button .cap { display: block; color: var(--muted); font-size: 11px; }
+  .nav-button strong { font-weight: 600; font-size: 13px; color: var(--text); }
+  .nav-button.active { background: var(--surface); border-color: var(--border); }
+  .nav-button.active strong { color: var(--accent-strong); }
+  .nav-button.dim strong { color: var(--muted-strong); font-weight: 500; }
+  .main { display: flex; flex-direction: column; min-width: 0; }
+  .screen { display: none; flex-direction: column; flex: 1; min-height: 0; }
+  .screen.active { display: flex; }
+
+  /* shared pieces */
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+  .eyebrow { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+  .muted { color: var(--muted); }
+  .muted-strong { color: var(--muted-strong); }
+  .small { font-size: 12px; }
+  .btn { display: inline-flex; align-items: center; gap: 6px; border-radius: var(--radius-sm); padding: 8px 11px; border: 1px solid var(--border);
+    color: var(--text); background: var(--surface); font-size: 13px; line-height: 1.2; cursor: pointer; white-space: nowrap; }
+  .btn:hover { border-color: var(--accent); }
+  .btn.primary { background: var(--accent); color: #0f1215; border-color: var(--accent); font-weight: 600; }
+  .btn.primary:disabled, .btn:disabled { opacity: .5; cursor: default; }
+  .btn.icon { padding: 7px; }
+  .btn.danger { color: var(--danger); }
+  .btn.ghost { background: transparent; border-color: transparent; color: var(--muted-strong); }
+  .btn.ghost:hover { border-color: var(--border); color: var(--text); }
+  .badge { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted-strong);
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: .08em; white-space: nowrap; line-height: 1.2; }
+  .badge.accent { border-color: var(--accent); color: var(--accent-strong); }
+  .badge.success { border-color: var(--success); color: var(--success); }
+  .badge.warning { border-color: var(--warning); color: var(--warning); }
+  .badge.danger { border-color: var(--danger); color: var(--danger); }
+  .badge.subtle { text-transform: none; letter-spacing: 0; }
+  .pill { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 6px 10px; border-radius: 8px;
+    border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.03); font-size: 12px; cursor: pointer; }
+  .pill:hover { border-color: rgba(96,165,250,.45); }
+  .pill.active { border-color: rgba(96,165,250,.75); background: rgba(59,130,246,.18); color: rgb(219,234,254); }
+  .pill b { font-weight: 600; }
+  .pill small { font-size: 10px; color: var(--muted); }
+  .pill.active small { color: rgba(191,219,254,.75); }
+  .pill .hint { font-size: 10px; display: inline-flex; align-items: center; gap: 4px; }
+  .hint.fit { color: var(--success); } .hint.tight { color: var(--warning); } .hint.no { color: var(--danger); } .hint.unknown { color: var(--muted); }
+  .pill-row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+  input[type=text], input[type=search], input[type=number], textarea, select { background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    padding: 7px 9px; color: var(--text); width: 100%; min-width: 0; }
+  textarea { resize: vertical; }
+  .check { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  .check input { width: auto; }
+  .disclosure { border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--panel-alt); }
+  .disclosure > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 10px 12px; }
+  .disclosure > summary::-webkit-details-marker { display: none; }
+  .disclosure > summary .chev { transition: transform .15s; }
+  .disclosure[open] > summary .chev { transform: rotate(90deg); }
+  .disclosure > summary .sum { color: var(--muted); font-size: 12px; margin-left: auto; text-align: right; }
+  .disclosure .body { padding: 4px 12px 12px; display: grid; gap: 12px; }
+  .thumb { background: linear-gradient(135deg, #2a3340, #1b2129); border: 1px solid var(--border); border-radius: 8px; position: relative; overflow: hidden; }
+  .thumb.a { background: linear-gradient(160deg, #3a4656 0%, #1b2129 70%); }
+  .thumb.b { background: linear-gradient(200deg, #4a3f3a 0%, #1b2129 70%); }
+  .thumb.c { background: linear-gradient(120deg, #35463f 0%, #1b2129 70%); }
+  .thumb.d { background: linear-gradient(140deg, #2d3a4f 0%, #141920 70%); }
+  .thumb.empty { background: repeating-linear-gradient(45deg, #171c22 0 6px, #141920 6px 12px); border-style: dashed; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 11px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px 3px 3px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); font-size: 12px; }
+  .chip .thumb { width: 20px; height: 20px; border-radius: 50%; }
+  .callout { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; background: var(--panel-alt); }
+  .callout.warn { border-color: var(--warning); } .callout.err { border-color: var(--danger); }
+  .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .grow { flex: 1 1 auto; min-width: 0; }
+  .list-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .list-head h3 { font-size: 14px; }
+  .pad { padding: 16px 20px; display: flex; flex-direction: column; gap: 14px; overflow: auto; flex: 1; }
+
+  /* project list */
+  .page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .page-head h2 { font-size: 18px; letter-spacing: -.02em; }
+  .search { position: relative; flex: 1 1 260px; max-width: 420px; }
+  .search svg { position: absolute; left: 9px; top: 9px; color: var(--muted); }
+  .search input { padding-left: 30px; }
+  .kbd { font-size: 10.5px; border: 1px solid var(--border); border-radius: 5px; padding: 1px 5px; color: var(--muted); background: var(--surface); }
+  .search .kbd { position: absolute; right: 8px; top: 7px; }
+  .project-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+  .project-card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 10px; display: flex; flex-direction: column; gap: 8px; cursor: pointer; text-align: left; }
+  .project-card:hover, .project-card:focus-visible { border-color: var(--accent); outline: none; }
+  .project-card.new { border-style: dashed; align-items: center; justify-content: center; min-height: 200px; color: var(--muted-strong); gap: 10px; }
+  .project-card.error { opacity: .7; }
+  .poster { aspect-ratio: 16/9; border-radius: 8px; }
+  .poster.v { aspect-ratio: 16/9; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 3px; background: transparent; border: 0; }
+  .poster.v .thumb { border-radius: 6px; }
+  .project-card .title { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .project-card .title b { font-weight: 600; font-size: 14px; }
+  .project-card .meta { color: var(--muted); font-size: 12px; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
+
+  /* shell */
+  .shell-head { padding: 12px 20px 0; display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid var(--border); background: var(--app-bg); }
+  .shell-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .back { display: inline-flex; align-items: center; gap: 4px; color: var(--muted-strong); background: transparent; border: 0; cursor: pointer; padding: 4px 6px 4px 0; }
+  .back:hover { color: var(--text); }
+  .pname { font-size: 18px; font-weight: 600; letter-spacing: -.02em; display: inline-flex; align-items: center; gap: 8px; padding: 2px 6px; border-radius: 6px; border: 1px solid transparent; cursor: text; }
+  .pname:hover { border-color: var(--border); }
+  .pname svg { color: var(--muted); }
+  .meta-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .shell-actions { margin-left: auto; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .ptabs { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; }
+  .ptab { background: transparent; border: 0; border-bottom: 2px solid transparent; color: var(--muted); padding: 8px 12px 10px; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; }
+  .ptab:hover { color: var(--text); }
+  .ptab[aria-selected=true] { color: var(--text); border-bottom-color: var(--accent); }
+  .ptab .count { font-size: 10.5px; border: 1px solid var(--border); border-radius: 999px; padding: 0 6px; color: var(--muted); }
+  .ptab .count.warn { border-color: var(--warning); color: var(--warning); }
+  .ptab .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--danger); }
+  .tabpanel { display: none; flex: 1; min-height: 0; flex-direction: column; }
+  .tabpanel.active { display: flex; }
+  .cols { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 14px; align-items: start; }
+
+  /* overview */
+  .nextstep { border: 1px solid var(--accent); background: rgba(143,180,255,.06); }
+  .steps { display: grid; gap: 6px; }
+  .step { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+  .step .tick { width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--border); display: inline-flex; align-items: center; justify-content: center; color: var(--success); flex: none; }
+  .step.done .tick { border-color: var(--success); }
+  .step.done span.t { color: var(--muted); text-decoration: line-through; }
+  .step.now .tick { border-color: var(--accent); }
+  .step.now span.t { color: var(--accent-strong); font-weight: 600; }
+  .step a { color: var(--muted); font-size: 12px; margin-left: auto; text-decoration: none; }
+  .progress { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; color: var(--muted-strong); }
+  .progress b { color: var(--text); }
+  .sheet { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+  .sheet .cell { position: relative; aspect-ratio: 16/9; cursor: pointer; }
+  .sheet .cell .n { position: absolute; left: 5px; top: 4px; font-size: 11px; color: var(--muted-strong); background: rgba(0,0,0,.5); padding: 0 5px; border-radius: 4px; }
+  .sheet .cell .st { position: absolute; right: 4px; bottom: 4px; }
+  .activity { display: grid; gap: 4px; font-size: 12.5px; color: var(--muted-strong); }
+
+  /* cast */
+  .cast-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; }
+  .ref-card { display: grid; grid-template-columns: 96px 1fr auto; gap: 10px; background: var(--panel-alt); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 10px; position: relative; }
+  .ref-card .thumb { width: 96px; height: 96px; cursor: pointer; }
+  .ref-card .thumb.empty { flex-direction: column; gap: 4px; text-align: center; }
+  .ref-card .fields { display: grid; gap: 6px; }
+  .ref-card .used { color: var(--muted); font-size: 11.5px; }
+  .dropzone { border: 1px dashed var(--border); border-radius: var(--radius-md); padding: 14px; color: var(--muted); text-align: center; font-size: 12.5px; }
+  .popover { position: absolute; z-index: 20; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 12px; width: 380px; box-shadow: 0 12px 40px rgba(0,0,0,.5); display: none; flex-direction: column; gap: 10px; }
+  .popover.open { display: flex; }
+  .popover .seg { display: flex; gap: 2px; padding: 3px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
+  .popover .seg button { flex: 1; background: transparent; border: 1px solid transparent; border-radius: 6px; padding: 5px 4px; color: var(--muted); cursor: pointer; font-size: 12px; }
+  .popover .seg button.active { background: var(--panel-alt); border-color: var(--border); color: var(--text); }
+  .pick-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .pick-grid .thumb { aspect-ratio: 1; cursor: pointer; }
+  .pick-grid .thumb:hover { border-color: var(--accent); }
+  .pick-grid .thumb .lab { position: absolute; left: 4px; bottom: 3px; font-size: 10px; color: var(--muted-strong); background: rgba(0,0,0,.55); padding: 0 4px; border-radius: 3px; }
+  .popover .foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .popover .foot a { color: var(--muted); font-size: 12px; }
+
+  /* storyboard */
+  .shots { display: grid; gap: 10px; padding-bottom: 8px; }
+  .shot { display: grid; grid-template-columns: 22px 170px 1fr auto; gap: 12px; background: var(--panel); border: 1px solid var(--border); border-left-width: 3px; border-radius: var(--radius-md); padding: 10px; }
+  .shot.done { border-left-color: var(--success); } .shot.idle { border-left-color: var(--muted); } .shot.stale { border-left-color: var(--warning); }
+  .shot.running { border-left-color: var(--accent-storyboard); } .shot.failed { border-left-color: var(--danger); } .shot.locked { background: var(--surface); }
+  .shot.ghost { border-style: dashed; grid-template-columns: 1fr; justify-items: center; color: var(--muted-strong); cursor: pointer; padding: 16px; }
+  .shot .handle { color: var(--muted); display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; cursor: grab; }
+  .shot .pic { aspect-ratio: 16/9; display: flex; align-items: center; justify-content: center; color: var(--muted-strong); }
+  .shot .body { display: grid; gap: 7px; min-width: 0; }
+  .shot .title { font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .shot .prompt { color: var(--muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .takes { display: flex; gap: 5px; align-items: center; }
+  .takes .thumb { width: 38px; height: 24px; border-radius: 4px; cursor: pointer; }
+  .takes .thumb.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  .takes .lab { color: var(--muted); font-size: 11px; margin-right: 4px; }
+  .shot .side { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+  .shot .side .row { justify-content: flex-end; }
+  .trans { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted-strong); }
+  .trans select, .trans input { width: auto; padding: 3px 6px; font-size: 12px; }
+  .lenstrip { display: flex; gap: 2px; height: 10px; }
+  .lenstrip span { background: var(--panel-alt); border: 1px solid var(--border); border-radius: 3px; }
+  .lenstrip span.done { background: color-mix(in srgb, var(--success) 35%, var(--panel)); }
+  .lenstrip span.stale { background: color-mix(in srgb, var(--warning) 35%, var(--panel)); }
+  .runbar { position: sticky; bottom: 0; margin: 0 -20px -16px; padding: 12px 20px; background: color-mix(in srgb, var(--app-bg) 92%, transparent); backdrop-filter: blur(8px); border-top: 1px solid var(--border); }
+  .runbar .inner { border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--panel-alt); padding: 10px 12px; display: flex; align-items: center; gap: 10px 16px; flex-wrap: wrap; }
+  .runbar.danger .inner { border-color: var(--danger); }
+  .runbar .need { font-size: 13px; }
+  .runbar .est { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12.5px; color: var(--muted-strong); }
+  .runbar .est .mem { color: var(--success); }
+  .runbar .actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+  .meter { height: 6px; border-radius: 3px; background: var(--surface); border: 1px solid var(--border); flex: 1 1 200px; overflow: hidden; }
+  .meter i { display: block; height: 100%; width: 37%; background: var(--accent-storyboard); }
+  .state-run { display: none; } .runbar.running .state-idle { display: none; } .runbar.running .state-run { display: contents; }
+
+  /* mixer */
+  .preview { aspect-ratio: 16/9; max-height: 260px; width: 100%; display: flex; align-items: center; justify-content: center; }
+  .transport { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .timecode { font-variant-numeric: tabular-nums; color: var(--muted-strong); font-size: 12.5px; }
+  .ruler { height: 18px; border-bottom: 1px solid var(--border); color: var(--muted); font-size: 10px; display: flex; justify-content: space-between; padding: 0 4px; }
+  .lanes { display: grid; gap: 4px; }
+  .lane { display: grid; grid-template-columns: 96px 1fr 28px; gap: 6px; align-items: center; min-height: 36px; }
+  .lane .name { font-size: 12px; color: var(--muted-strong); display: flex; align-items: center; gap: 6px; }
+  .lane .track { position: relative; height: 34px; border-radius: 6px; background: var(--surface); border: 1px solid var(--border); overflow: hidden; }
+  .clip { position: absolute; top: 3px; bottom: 3px; border-radius: 5px; border: 1px solid var(--border); font-size: 11px; padding: 2px 6px; white-space: nowrap; overflow: hidden; color: var(--text); background: var(--panel-alt); cursor: pointer; }
+  .clip.pic { background: var(--panel-alt); } .clip.voice { background: var(--lane-voice); } .clip.sfx { background: var(--lane-sfx); } .clip.music { background: var(--lane-music); }
+  .clip.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  .clip.missing { border-style: dashed; border-color: var(--danger); color: var(--danger); }
+  .clip .wave { position: absolute; left: 0; right: 0; bottom: 0; height: 10px; opacity: .5; background: repeating-linear-gradient(90deg, currentColor 0 1px, transparent 1px 3px); mask: linear-gradient(90deg, transparent, #000 20%, #000 80%, transparent); }
+  .playhead { position: absolute; top: 0; bottom: 0; left: 31%; width: 1px; background: var(--accent-strong); }
+  .inspector { display: grid; gap: 10px; }
+  .inspector .two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+  /* export */
+  .pre { display: grid; gap: 6px; font-size: 13px; }
+  .pre .l { display: flex; align-items: center; gap: 8px; }
+  .pre .l svg { color: var(--success); } .pre .l.w svg { color: var(--warning); } .pre .l.i svg { color: var(--muted); }
+  .pre .l a { color: var(--accent); font-size: 12px; text-decoration: none; margin-left: auto; }
+  .films { display: grid; gap: 6px; font-size: 12.5px; }
+  .films .f { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+  .films .f .btn { margin-left: auto; }
+
+  /* dialog */
+  .overlay { position: absolute; inset: 0; background: rgba(0,0,0,.55); display: none; align-items: center; justify-content: center; z-index: 30; padding: 16px; }
+  .overlay.open { display: flex; }
+  .modal { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-lg); width: min(640px, 100%); max-height: 100%; overflow: auto; display: flex; flex-direction: column; }
+  .modal .mh { padding: 14px 16px; border-bottom: 1px solid var(--border); font-weight: 600; }
+  .modal .mb { padding: 14px 16px; display: grid; gap: 14px; }
+  .modal .mf { padding: 12px 16px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
+  .frame { position: relative; }
+
+  /* voice picker */
+  .voice-list { display: grid; gap: 2px; max-height: 260px; overflow: auto; }
+  .voice-list .g { color: var(--muted); font-size: 10.5px; text-transform: uppercase; letter-spacing: .08em; padding: 6px 6px 2px; }
+  .voice-list .v { display: flex; align-items: center; gap: 8px; padding: 5px 6px; border-radius: 6px; cursor: pointer; }
+  .voice-list .v:hover { background: var(--surface); }
+  .voice-list .v.on { background: rgba(143,180,255,.1); }
+  .voice-list .v .nm { flex: 1; font-size: 13px; }
+  .voice-list .v .lg { color: var(--muted); font-size: 11.5px; }
+
+  /* phone view */
+  .phones { display: flex; gap: 24px; justify-content: center; flex-wrap: wrap; padding: 16px; width: min(1280px, 100% - 32px); margin: 0 auto; }
+  .phone { width: 375px; height: 760px; border: 1px solid var(--border); border-radius: 22px; overflow: hidden; background: var(--app-bg); container-type: inline-size; container-name: frame; display: flex; flex-direction: column; position: relative; }
+  .phone .topbar { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--border); background: #11151a; }
+  .phone .topbar b { font-size: 14px; }
+  .phone .main { flex: 1; min-height: 0; overflow: hidden; }
+  .phone .screen { height: 100%; }
+  .phone .pad { padding: 12px 16px; }
+  .phone .runbar { margin: 0 -16px -12px; padding: 10px 16px; }
+  .phone-caption { text-align: center; color: var(--muted); font-size: 12px; margin-top: 6px; }
+
+  @container frame (max-width: 960px) {
+    .shot { grid-template-columns: 22px 150px 1fr; }
+    .shot .side { grid-column: 2 / -1; flex-direction: row; align-items: center; justify-content: space-between; }
+  }
+  @container frame (max-width: 480px) {
+    .cols { grid-template-columns: 1fr; }
+    .meter { flex: 0 0 auto; width: 100%; }
+    .shell-actions .badge { flex-basis: 100%; }
+    .project-grid { grid-template-columns: 1fr; }
+    .page-head .btn.primary { width: 100%; justify-content: center; }
+    .search { max-width: none; flex-basis: 100%; }
+    .shot { grid-template-columns: 22px 1fr; }
+    .shot .pic { grid-column: 1 / -1; max-height: 140px; }
+    .shot .side { grid-column: 1 / -1; align-items: stretch; }
+    .shot .side .row { justify-content: flex-start; }
+    .runbar .inner { flex-direction: column; align-items: stretch; }
+    .runbar .actions { margin-left: 0; flex-direction: column; }
+    .runbar .actions .btn { width: 100%; justify-content: center; }
+    .shell-top .shell-actions { margin-left: 0; width: 100%; }
+    .cast-grid { grid-template-columns: 1fr; }
+    .sheet { grid-template-columns: repeat(3, 1fr); }
+    .list-head .btn span.t { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+  <symbol id="i-chev-l" viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></symbol>
+  <symbol id="i-chev-r" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+  <symbol id="i-chev-d" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
+  <symbol id="i-redo" viewBox="0 0 24 24"><path d="M20 7v6h-6"/><path d="M20 13a8 8 0 1 0-2.3 5.7"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M4 7v6h6"/><path d="M4 13a8 8 0 1 1 2.3 5.7"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 5v14l12-7z"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1"/></symbol>
+  <symbol id="i-loop" viewBox="0 0 24 24"><path d="M17 3l3 3-3 3"/><path d="M4 12V9a3 3 0 0 1 3-3h13"/><path d="M7 21l-3-3 3-3"/><path d="M20 12v3a3 3 0 0 1-3 3H4"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-drag" viewBox="0 0 24 24"><circle cx="9" cy="6" r="1.2"/><circle cx="15" cy="6" r="1.2"/><circle cx="9" cy="12" r="1.2"/><circle cx="15" cy="12" r="1.2"/><circle cx="9" cy="18" r="1.2"/><circle cx="15" cy="18" r="1.2"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 7"/></symbol>
+  <symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 3 2 20h20z"/><path d="M12 9v5M12 17h.01"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m21 16-5-5-8 8"/></symbol>
+  <symbol id="i-film" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 4v16M17 4v16M3 9h4M3 15h4M17 9h4M17 15h4"/></symbol>
+  <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></symbol>
+  <symbol id="i-music" viewBox="0 0 24 24"><path d="M9 18V6l10-2v12"/><circle cx="6" cy="18" r="3"/><circle cx="16" cy="16" r="3"/></symbol>
+  <symbol id="i-wave" viewBox="0 0 24 24"><path d="M3 12h2l2-6 3 12 3-9 2 6 2-3h4"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V4M6 10l6-6 6 6"/><path d="M4 20h16"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7"/><rect x="13" y="4" width="7" height="7"/><rect x="4" y="13" width="7" height="7"/><rect x="13" y="13" width="7" height="7"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="m3 11 9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><circle cx="17" cy="9" r="2.5"/><path d="M15.5 14.5a5 5 0 0 1 6 5"/></symbol>
+  <symbol id="i-export" viewBox="0 0 24 24"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 15v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></symbol>
+  <symbol id="i-pencil" viewBox="0 0 24 24"><path d="m4 20 4-1L19 8l-3-3L5 16z"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+  <symbol id="i-sparkle" viewBox="0 0 24 24"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2 2M16 16l2 2M6 18l2-2M16 8l2-2"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></symbol>
+  <symbol id="i-dash" viewBox="0 0 24 24"><path d="M4 19h16M6 15l4-5 4 3 4-7"/></symbol>
+</svg>
+
+<div class="switcher" role="tablist" aria-label="Mockup screens">
+  <span class="label">Screen</span>
+  <button data-show="list" class="active">Project list</button>
+  <button data-show="new">New project</button>
+  <button data-show="overview">Overview</button>
+  <button data-show="cast">Cast</button>
+  <button data-show="storyboard">Storyboard</button>
+  <button data-show="mixer">Mixer</button>
+  <button data-show="export">Export</button>
+  <button data-show="phone">375 px</button>
+  <span class="note">D-65 mockups. Dark theme, app tokens. Cards, tabs, pickers and the Make button are clickable.</span>
+</div>
+
+<!-- ======================= DESKTOP FRAME ======================= -->
+<div class="frame" id="desktop">
+  <aside class="sidebar">
+    <div class="brand"><span class="logo"></span><h1>ChaosEngineAI</h1></div>
+    <nav class="nav" aria-label="Main">
+      <button class="nav-button dim"><svg class="i"><use href="#i-dash"/></svg><span><strong>Dashboard</strong><span class="cap">System overview</span></span></button>
+      <button class="nav-button dim"><svg class="i"><use href="#i-chat"/></svg><span><strong>Chat</strong><span class="cap">3 tabs</span></span></button>
+      <div class="nav-section">Make</div>
+      <button class="nav-button dim"><svg class="i"><use href="#i-image"/></svg><span><strong>Images</strong><span class="cap">3 tabs</span></span></button>
+      <button class="nav-button dim"><svg class="i"><use href="#i-film"/></svg><span><strong>Video</strong><span class="cap">3 tabs</span></span></button>
+      <button class="nav-button dim"><svg class="i"><use href="#i-mic"/></svg><span><strong>Voice</strong><span class="cap">3 tabs</span></span></button>
+      <button class="nav-button dim"><svg class="i"><use href="#i-music"/></svg><span><strong>Music and Audio</strong><span class="cap">3 tabs</span></span></button>
+      <button class="nav-button active" data-show="list"><svg class="i"><use href="#i-folder"/></svg><span><strong>Projects</strong><span class="cap">Storyboard films: shots, sound, export</span></span></button>
+      <div class="nav-section">Run</div>
+      <button class="nav-button dim"><svg class="i"><use href="#i-wave"/></svg><span><strong>Benchmarks</strong><span class="cap">2 tabs</span></span></button>
+      <button class="nav-button dim"><svg class="i"><use href="#i-grid"/></svg><span><strong>Tools</strong><span class="cap">4 tabs</span></span></button>
+    </nav>
+  </aside>
+
+  <div class="main">
+
+    <!-- ---------- PROJECT LIST ---------- -->
+    <section class="screen active" id="screen-list" aria-label="Project list">
+      <div class="pad">
+        <div class="page-head">
+          <div>
+            <h2>Projects</h2>
+            <p class="muted small">4 projects · each one a folder you can move or back up</p>
+          </div>
+          <div class="row">
+            <button class="btn" title="Choose a .chaosfilm file, or drop one on this list"><svg class="i"><use href="#i-upload"/></svg> Import bundle</button>
+            <button class="btn primary" data-open="dialog-new"><svg class="i"><use href="#i-plus"/></svg> New project</button>
+          </div>
+        </div>
+        <div class="row">
+          <label class="search"><span class="sr-only">Search projects</span><svg class="i"><use href="#i-search"/></svg><input type="search" placeholder="Search projects"><span class="kbd">/</span></label>
+          <label class="row small muted">Sort <select style="width:auto"><option>Last edited</option><option>Name</option><option>Created</option><option>Length</option></select></label>
+        </div>
+        <div class="project-grid" role="list">
+          <button class="project-card" role="listitem" data-show="overview" aria-label="Open Lighthouse keeper">
+            <div class="poster thumb a"></div>
+            <div class="title"><b>Lighthouse keeper</b><span class="btn icon ghost" title="More actions: Rename, Export bundle, Delete"><svg class="i"><use href="#i-more"/></svg></span></div>
+            <div class="meta"><span>8 shots · 32 s</span><span>16:9 · 1080p · 24 fps</span><span class="badge warning">2 stale</span><span>edited 2 h ago</span></div>
+          </button>
+          <button class="project-card" role="listitem" data-show="overview" aria-label="Open Coffee shop ad">
+            <div class="poster v"><span class="thumb b"></span><span class="thumb c"></span><span class="thumb d"></span></div>
+            <div class="title"><b>Coffee shop ad</b><span class="btn icon ghost" title="More actions"><svg class="i"><use href="#i-more"/></svg></span></div>
+            <div class="meta"><span>4 shots · 15 s</span><span>9:16 · 720p · 30 fps</span><span>edited yesterday</span></div>
+          </button>
+          <button class="project-card" role="listitem" data-show="overview" aria-label="Open Untitled 3">
+            <div class="poster thumb empty">no shots yet</div>
+            <div class="title"><b>Untitled 3</b><span class="btn icon ghost" title="More actions"><svg class="i"><use href="#i-more"/></svg></span></div>
+            <div class="meta"><span>0 shots</span><span>1:1 · 720p · 24 fps</span><span>edited 3 d ago</span></div>
+          </button>
+          <button class="project-card error" role="listitem" aria-label="Autumn walk, folder missing">
+            <div class="poster thumb empty">no preview</div>
+            <div class="title"><b>Autumn walk</b><span class="btn icon ghost" title="More actions: Delete"><svg class="i"><use href="#i-more"/></svg></span></div>
+            <div class="meta"><span class="badge danger">Folder missing</span><span>This project's folder was moved or deleted.</span></div>
+          </button>
+          <button class="project-card new" role="listitem" data-open="dialog-new">
+            <svg class="i" style="width:22px;height:22px"><use href="#i-plus"/></svg>
+            <span>New project</span>
+            <span class="muted small">or drop a .chaosfilm here</span>
+          </button>
+        </div>
+        <p class="muted small">Other states: "Loading your projects…", "Waiting for the backend…", "No project matches {query}.", import failed callout with technical details, status line "Exported Lighthouse keeper.chaosfilm · 640 MB".</p>
+      </div>
+    </section>
+
+    <!-- ---------- PROJECT SHELL ---------- -->
+    <section class="screen" id="screen-project" aria-label="Project">
+      <header class="shell-head">
+        <div class="shell-top">
+          <button class="back" data-show="list"><svg class="i"><use href="#i-chev-l"/></svg> Projects</button>
+          <span class="pname" tabindex="0" title="Click to rename">Lighthouse keeper <svg class="i" style="width:13px;height:13px"><use href="#i-pencil"/></svg></span>
+          <span class="meta-chips"><span class="badge subtle">16:9</span><span class="badge subtle">1080p</span><span class="badge subtle">24 fps</span></span>
+          <div class="shell-actions">
+            <span class="badge warning subtle" role="status">Changed elsewhere; showing the latest <svg class="i" style="width:12px;height:12px;margin-left:6px"><use href="#i-close"/></svg></span>
+            <button class="btn"><svg class="i"><use href="#i-undo"/></svg> Undo</button>
+            <button class="btn" disabled><svg class="i"><use href="#i-redo"/></svg> Redo</button>
+          </div>
+        </div>
+        <div class="ptabs" role="tablist" aria-label="Project tabs">
+          <button class="ptab" role="tab" data-tab="overview" aria-selected="true">Overview</button>
+          <button class="ptab" role="tab" data-tab="cast">Cast <span class="count">3</span></button>
+          <button class="ptab" role="tab" data-tab="storyboard">Storyboard <span class="count warn">2 stale</span></button>
+          <button class="ptab" role="tab" data-tab="mixer">Mixer</button>
+          <button class="ptab" role="tab" data-tab="export">Export <span class="dot" title="The last export was interrupted"></span></button>
+        </div>
+      </header>
+
+      <!-- Overview -->
+      <div class="tabpanel active pad" id="tab-overview" role="tabpanel">
+        <div class="cols">
+          <div style="display:grid;gap:14px">
+            <div class="panel nextstep">
+              <div class="eyebrow">Next step</div>
+              <div class="row">
+                <div class="grow">
+                  <h3 style="font-size:15px">Make 3 shots</h3>
+                  <p class="muted small">3 shots have no take yet and 2 are stale. About 14 min, peak 9 GB of 64 GB.</p>
+                </div>
+                <button class="btn primary" data-tab="storyboard"><svg class="i"><use href="#i-sparkle"/></svg> Make 3 missing · about 14 min</button>
+              </div>
+              <div class="steps" aria-label="Guide">
+                <div class="step done"><span class="tick"><svg class="i" style="width:11px;height:11px"><use href="#i-check"/></svg></span><span class="t">Name and format</span><a href="#">Settings</a></div>
+                <div class="step done"><span class="tick"><svg class="i" style="width:11px;height:11px"><use href="#i-check"/></svg></span><span class="t">Cast and places · 3</span><a href="#">Cast</a></div>
+                <div class="step done"><span class="tick"><svg class="i" style="width:11px;height:11px"><use href="#i-check"/></svg></span><span class="t">Write the shots · 8</span><a href="#">Storyboard</a></div>
+                <div class="step now"><span class="tick"></span><span class="t">Make the takes · 5 of 8</span><a href="#">Storyboard</a></div>
+                <div class="step"><span class="tick"></span><span class="t">Pick a take per shot</span><a href="#">Storyboard</a></div>
+                <div class="step"><span class="tick"></span><span class="t">Add voice, effects or music</span><a href="#">Mixer</a></div>
+                <div class="step"><span class="tick"></span><span class="t">Render a preview, then export</span><a href="#">Export</a></div>
+              </div>
+            </div>
+            <div class="panel">
+              <div class="list-head"><h3>Shots</h3><span class="muted small">click a shot to open it</span></div>
+              <div class="progress"><span><b>8</b> shots</span><span><b>5</b> made</span><span class="badge warning subtle">2 stale</span><span><b>32 s</b></span><span>voice, music</span><span>preview 2 h ago</span></div>
+              <div class="sheet">
+                <div class="cell thumb a" data-tab="storyboard"><span class="n">1</span></div>
+                <div class="cell thumb b" data-tab="storyboard"><span class="n">2</span></div>
+                <div class="cell thumb c" data-tab="storyboard"><span class="n">3</span><span class="st badge warning">stale</span></div>
+                <div class="cell thumb d" data-tab="storyboard"><span class="n">4</span></div>
+                <div class="cell thumb a" data-tab="storyboard"><span class="n">5</span><span class="st badge warning">stale</span></div>
+                <div class="cell thumb empty" data-tab="storyboard"><span class="n">6</span>not made</div>
+                <div class="cell thumb empty" data-tab="storyboard"><span class="n">7</span>not made</div>
+                <div class="cell thumb empty" data-tab="storyboard"><span class="n">8</span>not made</div>
+              </div>
+            </div>
+            <details class="disclosure">
+              <summary><svg class="i chev"><use href="#i-chev-r"/></svg><b>Project settings</b><span class="sum">16:9 · 1080p · 24 fps · FLUX.1-schnell · LTX-2.3 · voice Mara</span></summary>
+              <div class="body">
+                <div class="field"><span class="eyebrow">Aspect ratio</span><div class="pill-row"><span class="pill active"><b>16:9</b><small>1920 × 1080</small></span><span class="pill"><b>9:16</b><small>1080 × 1920</small></span><span class="pill"><b>1:1</b><small>1080 × 1080</small></span></div></div>
+                <div class="field"><span class="eyebrow">Resolution</span><div class="pill-row">
+                  <span class="pill"><b>480p</b><small>854 × 480</small><span class="hint fit">Fits</span></span>
+                  <span class="pill"><b>720p</b><small>1280 × 720</small><span class="hint fit">Fits</span></span>
+                  <span class="pill active"><b>1080p</b><small>1920 × 1080</small><span class="hint fit">Fits · measured</span></span>
+                  <span class="pill"><b>1440p</b><small>2560 × 1440</small><span class="hint tight">Tight · 54 of 64 GB</span></span>
+                  <span class="pill"><b>4K</b><small>3840 × 2160</small><span class="hint no">Will not fit here</span></span>
+                </div><p class="muted small">Advice from the estimators for this Mac; nothing is capped. Sizes above the model's 1920 px maximum are made at the maximum and upscaled at export.</p></div>
+                <div class="field"><span class="eyebrow">Frame rate</span><div class="pill-row"><span class="pill active"><b>24</b></span><span class="pill"><b>25</b></span><span class="pill"><b>30</b></span><span class="pill"><b>48</b><small>resampled from 24</small></span><span class="pill"><b>50</b><small>resampled</small></span><span class="pill"><b>60</b><small>resampled</small></span></div></div>
+                <div class="cols" style="grid-template-columns:1fr 1fr 1fr">
+                  <label class="field"><span class="eyebrow">Image model</span><select><option>FLUX.1-schnell (installed)</option><option>Automatic (an installed model)</option></select></label>
+                  <label class="field"><span class="eyebrow">Video model</span><select><option>LTX-2.3 (installed)</option><option>Automatic (an installed model)</option></select></label>
+                  <div class="field" style="position:relative"><span class="eyebrow">Voice</span>
+                    <button class="btn" data-open="pop-voice" style="justify-content:space-between"><span class="row"><svg class="i"><use href="#i-mic"/></svg> Mara <span class="badge subtle">designed</span></span><svg class="i"><use href="#i-chev-d"/></svg></button>
+                    <div class="popover" id="pop-voice" style="left:0;top:100%;margin-top:4px" role="dialog" aria-label="Pick a voice">
+                      <label class="search" style="max-width:none"><svg class="i"><use href="#i-search"/></svg><input type="search" placeholder="Search voices"></label>
+                      <div class="voice-list">
+                        <div class="v"><span class="nm">No voice (automatic)</span></div>
+                        <div class="g">Built-in</div>
+                        <div class="v"><span class="nm">Nova</span><span class="lg">English</span><button class="btn icon ghost" aria-label="Play sample of Nova"><svg class="i"><use href="#i-play"/></svg></button></div>
+                        <div class="v"><span class="nm">Leo</span><span class="lg">English</span><button class="btn icon ghost" aria-label="Play sample of Leo"><svg class="i"><use href="#i-play"/></svg></button></div>
+                        <div class="g">Preset</div>
+                        <div class="v"><span class="nm">Ryan</span><span class="lg">English, calm</span><button class="btn icon ghost" aria-label="Play sample of Ryan"><svg class="i"><use href="#i-play"/></svg></button></div>
+                        <div class="g">Designed</div>
+                        <div class="v on"><span class="nm">Mara</span><span class="lg">English, warm narrator</span><button class="btn icon ghost" aria-label="Stop sample of Mara"><svg class="i"><use href="#i-pause"/></svg></button></div>
+                        <div class="g">Cloned</div>
+                        <div class="v"><span class="nm">Dan (own voice)</span><span class="badge subtle">cloned</span><button class="btn icon ghost" aria-label="Play sample of Dan"><svg class="i"><use href="#i-play"/></svg></button></div>
+                        <div class="v" style="opacity:.6"><span class="nm">Studio tenor</span><span class="lg">Needs the Qwen3-TTS model</span></div>
+                      </div>
+                      <div class="foot"><span class="muted small">A cloned voice forces the AI tag on voice clips.</span><button class="btn" data-close="pop-voice">Done</button></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="row"><label class="check"><input type="checkbox" checked> Show the guide on this page</label></div>
+              </div>
+            </details>
+          </div>
+          <div style="display:grid;gap:14px">
+            <div class="panel">
+              <h3 style="font-size:14px">Recent activity</h3>
+              <div class="activity">
+                <span>Batch of 3 shots finished · 2 h ago</span>
+                <span>Preview rendered · 2 h ago</span>
+                <span>Export interrupted at shot 5 · yesterday</span>
+              </div>
+            </div>
+            <div class="panel">
+              <h3 style="font-size:14px">Folder</h3>
+              <p class="muted small">640 MB · stills, clips, sound and references, copied in</p>
+              <div class="row"><button class="btn"><svg class="i"><use href="#i-export"/></svg> Export bundle</button><button class="btn ghost">Reveal folder</button></div>
+            </div>
+            <p class="muted small">States: a new project shows the guide at step 2 with "Add your cast (optional)" and an empty contact sheet; during a batch the next-step card reads "Making shot 3 of 8…" with Cancel; offline and not-found are handled by the shell.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cast -->
+      <div class="tabpanel pad" id="tab-cast" role="tabpanel">
+        <div class="list-head">
+          <div><h3>Cast and places</h3><p class="muted small">A name, a few words and one picture. Shots that use it keep the same look.</p></div>
+          <div class="row"><button class="btn"><svg class="i"><use href="#i-plus"/></svg> <span class="t">Add character</span></button><button class="btn"><svg class="i"><use href="#i-plus"/></svg> <span class="t">Add place</span></button></div>
+        </div>
+        <div class="eyebrow">Characters</div>
+        <div class="cast-grid">
+          <div class="ref-card">
+            <div class="thumb a" role="button" tabindex="0" aria-label="Change picture of Ada" data-open="pop-pick"></div>
+            <div class="fields">
+              <input type="text" value="Ada" aria-label="Name">
+              <textarea rows="2" aria-label="What it looks like">Woman in her sixties, grey braid, yellow oilskin coat, weathered face.</textarea>
+              <span class="used">Used by 6 shots</span>
+            </div>
+            <button class="btn icon ghost" aria-label="Remove Ada"><svg class="i"><use href="#i-close"/></svg></button>
+            <div class="popover open" id="pop-pick" style="left:110px;top:0" role="dialog" aria-label="Pick a picture">
+              <div class="seg" role="tablist"><button class="active">From a shot</button><button>Image gallery</button><button>Choose file</button></div>
+              <div class="pick-grid">
+                <span class="thumb a"><span class="lab">Shot 1 · take 2</span></span>
+                <span class="thumb b"><span class="lab">Shot 2 · take 1</span></span>
+                <span class="thumb c"><span class="lab">Shot 3 · take 3</span></span>
+                <span class="thumb d"><span class="lab">Shot 4 · take 1</span></span>
+                <span class="thumb a"><span class="lab">Shot 5 · take 1</span></span>
+                <span class="thumb b"><span class="lab">Shot 1 · take 1</span></span>
+              </div>
+              <div class="dropzone">Drop an image here, or paste one (png, jpg, webp)</div>
+              <div class="foot"><a href="#">Paste a path instead</a><div class="row"><button class="btn" data-close="pop-pick">Cancel</button><button class="btn primary" data-close="pop-pick">Use this picture</button></div></div>
+            </div>
+          </div>
+          <div class="ref-card">
+            <div class="thumb empty" role="button" tabindex="0" aria-label="Add a picture of Tomas"><svg class="i"><use href="#i-image"/></svg>Add picture</div>
+            <div class="fields">
+              <input type="text" value="Tomas" aria-label="Name">
+              <textarea rows="2" aria-label="What it looks like">Boy of ten, red wool hat, too-big boots.</textarea>
+              <span class="used">Used by 2 shots</span>
+            </div>
+            <button class="btn icon ghost" aria-label="Remove Tomas"><svg class="i"><use href="#i-close"/></svg></button>
+          </div>
+        </div>
+        <div class="eyebrow">Places</div>
+        <div class="cast-grid">
+          <div class="ref-card">
+            <div class="thumb d" role="button" tabindex="0" aria-label="Change picture of The lighthouse"></div>
+            <div class="fields">
+              <input type="text" value="The lighthouse" aria-label="Name">
+              <textarea rows="2" aria-label="What it looks like">White tower with a red band, on black rocks, grey sea, low cloud.</textarea>
+              <span class="used">Used by 8 shots · <span class="badge warning subtle">picture changed since 2 takes</span></span>
+            </div>
+            <button class="btn icon ghost" aria-label="Remove The lighthouse"><svg class="i"><use href="#i-close"/></svg></button>
+          </div>
+        </div>
+        <div class="dropzone">Drop image files anywhere on this tab to add a character named after the file</div>
+        <p class="muted small">Empty state: "None yet." with the two Add buttons and the drop zone. A picture under 512 px shows "Small picture; results may drift." Removing a reference clears its chip on shots; Undo brings it back.</p>
+      </div>
+
+      <!-- Storyboard -->
+      <div class="tabpanel pad" id="tab-storyboard" role="tabpanel">
+        <div class="list-head">
+          <div><h3>Shots</h3><p class="muted small">8 shots · 32 s · 2 stale · 3 not made</p></div>
+          <div class="row"><button class="btn ghost"><span class="t">Paste a list</span></button><button class="btn"><svg class="i"><use href="#i-plus"/></svg> <span class="t">Add shot</span></button></div>
+        </div>
+        <div class="lenstrip" aria-label="Shot lengths" title="Click a segment to jump to that shot">
+          <span class="done" style="flex:4"></span><span class="done" style="flex:3"></span><span class="stale" style="flex:5"></span><span class="done" style="flex:4"></span><span class="stale" style="flex:4"></span><span style="flex:4"></span><span style="flex:4"></span><span style="flex:4"></span>
+        </div>
+        <div class="shots" role="list">
+          <article class="shot done locked" role="listitem" tabindex="0">
+            <div class="handle"><svg class="i"><use href="#i-drag"/></svg>1</div>
+            <div class="pic thumb a"><svg class="i" style="width:22px;height:22px"><use href="#i-play"/></svg></div>
+            <div class="body">
+              <div class="title">Ada climbs the stairs <span class="badge success">Done · 4.0 s</span><span class="badge subtle"><svg class="i" style="width:11px;height:11px;margin-right:4px"><use href="#i-lock"/></svg>Locked</span></div>
+              <div class="prompt">Ada climbs the spiral stairs of the lighthouse, lantern light, dusk · slow dolly up</div>
+              <div class="chips"><span class="chip"><span class="thumb a"></span>Ada</span><span class="chip"><span class="thumb d"></span>The lighthouse</span></div>
+              <div class="takes"><span class="lab">Takes</span><span class="thumb a"></span><span class="thumb a on" title="Active take"></span><span class="thumb b"></span></div>
+            </div>
+            <div class="side">
+              <div class="row"><button class="btn icon" aria-label="Unlock this shot"><svg class="i"><use href="#i-lock"/></svg></button><button class="btn icon" aria-label="Mark for redo"><svg class="i"><use href="#i-redo"/></svg></button><button class="btn icon" aria-label="More actions for shot 1"><svg class="i"><use href="#i-more"/></svg></button></div>
+              <label class="trans">Cut <select><option>Cut</option><option>Crossfade</option></select></label>
+            </div>
+          </article>
+          <article class="shot stale" role="listitem" tabindex="0">
+            <div class="handle"><svg class="i"><use href="#i-drag"/></svg>3</div>
+            <div class="pic thumb c"><svg class="i" style="width:22px;height:22px"><use href="#i-play"/></svg></div>
+            <div class="body">
+              <div class="title">The beam turns <span class="badge warning">Stale · after shot 2</span></div>
+              <div class="prompt">Starts from the last frame of shot 2 · the beam sweeps across the sea · pan right</div>
+              <div class="callout warn small">Shot 2 got a new take; this shot starts from its last frame. <span class="row" style="display:inline-flex;margin-left:8px"><button class="btn" style="padding:4px 8px">Re-run</button><button class="btn ghost" style="padding:4px 8px">Keep</button></span></div>
+              <div class="takes"><span class="lab">Takes</span><span class="thumb c on"></span></div>
+            </div>
+            <div class="side">
+              <div class="row"><button class="btn icon" aria-label="Lock this shot"><svg class="i"><use href="#i-lock"/></svg></button><button class="btn icon" aria-label="Mark for redo"><svg class="i"><use href="#i-redo"/></svg></button><button class="btn icon" aria-label="More actions for shot 3"><svg class="i"><use href="#i-more"/></svg></button></div>
+              <label class="trans">Crossfade <select><option>Crossfade</option><option>Cut</option></select><input type="number" value="0.5" step="0.1" aria-label="Seconds"> s</label>
+            </div>
+          </article>
+          <article class="shot running" role="listitem" tabindex="0">
+            <div class="handle"><svg class="i"><use href="#i-drag"/></svg>6</div>
+            <div class="pic thumb empty">Making…</div>
+            <div class="body">
+              <div class="title">Tomas on the rocks <span class="badge accent">Making · still</span></div>
+              <div class="prompt">Tomas waves from the black rocks, spray, wide shot · handheld</div>
+              <div class="chips"><span class="chip"><span class="thumb b"></span>Tomas</span><span class="chip"><span class="thumb d"></span>The lighthouse</span></div>
+              <div class="takes"><span class="lab">Takes</span><span class="muted small">none yet</span></div>
+            </div>
+            <div class="side">
+              <div class="row"><button class="btn icon" aria-label="Lock this shot"><svg class="i"><use href="#i-lock"/></svg></button><button class="btn icon" aria-label="Mark for redo"><svg class="i"><use href="#i-redo"/></svg></button><button class="btn icon" aria-label="More actions for shot 6"><svg class="i"><use href="#i-more"/></svg></button></div>
+              <label class="trans">Cut <select><option>Cut</option><option>Crossfade</option></select></label>
+            </div>
+          </article>
+          <article class="shot idle" role="listitem" tabindex="0">
+            <div class="handle"><svg class="i"><use href="#i-drag"/></svg>7</div>
+            <div class="pic thumb empty">not made yet</div>
+            <div class="body">
+              <div class="title">Shot 7 <span class="badge">Not made yet</span><span class="badge accent subtle">Queued · 2</span></div>
+              <div class="prompt muted">No prompt yet. Press Enter or Edit prompts to write one.</div>
+              <div class="takes"><span class="lab">Takes</span><span class="muted small">none yet</span></div>
+            </div>
+            <div class="side">
+              <div class="row"><button class="btn icon" aria-label="Lock this shot"><svg class="i"><use href="#i-lock"/></svg></button><button class="btn icon" aria-label="Mark for redo"><svg class="i"><use href="#i-redo"/></svg></button><button class="btn icon" aria-label="More actions for shot 7"><svg class="i"><use href="#i-more"/></svg></button></div>
+              <label class="trans">Cut <select><option>Cut</option><option>Crossfade</option></select></label>
+            </div>
+          </article>
+          <article class="shot failed" role="listitem" tabindex="0">
+            <div class="handle"><svg class="i"><use href="#i-drag"/></svg>8</div>
+            <div class="pic thumb empty">failed</div>
+            <div class="body">
+              <div class="title">Dawn over the sea <span class="badge danger">Failed</span></div>
+              <div class="callout err small">The shot did not render. Try again or edit the prompts. <button class="btn" style="padding:4px 8px;margin-left:8px">Retry</button> <a href="#" class="muted">Technical details</a></div>
+              <div class="takes"><span class="lab">Takes</span><span class="muted small">none yet</span></div>
+            </div>
+            <div class="side">
+              <div class="row"><button class="btn icon" aria-label="Lock this shot"><svg class="i"><use href="#i-lock"/></svg></button><button class="btn icon" aria-label="Mark for redo"><svg class="i"><use href="#i-redo"/></svg></button><button class="btn icon" aria-label="More actions for shot 8"><svg class="i"><use href="#i-more"/></svg></button></div>
+              <label class="trans">Cut <select><option>Cut</option><option>Crossfade</option></select></label>
+            </div>
+          </article>
+          <article class="shot ghost" role="listitem" tabindex="0"><span class="row"><svg class="i"><use href="#i-plus"/></svg> Add shot</span></article>
+        </div>
+        <p class="muted small">Shots 2, 4 and 5 omitted here. Menu holds Edit prompts, Import footage, Use still as reference, Move up, Move down, Delete. A missing take file shows "Take file missing" with Relink.</p>
+        <div class="runbar" id="runbar">
+          <div class="inner">
+            <div class="state-idle">
+              <div class="need"><b>3 shots</b> need a take <span class="muted">· 2 stale not included</span></div>
+              <div class="est" aria-live="polite"><span>About 14 min</span><span class="muted">·</span><span class="mem">Peak 9 GB of 64 GB</span><span class="muted">·</span><span>Writes 120 MB</span><span class="badge success subtle">Measured</span></div>
+              <div class="actions">
+                <button class="btn" title="Adds a new take to every unlocked shot. Nothing is overwritten.">Make all unlocked</button>
+                <button class="btn primary" data-run="start"><svg class="i"><use href="#i-sparkle"/></svg> Make 3 missing · about 14 min</button>
+              </div>
+            </div>
+            <div class="state-run">
+              <div class="need"><b>Making shots</b> <span class="muted">· Shot 3 of 8 · stills, then clips</span></div>
+              <div class="meter" role="progressbar" aria-valuenow="37" aria-valuemin="0" aria-valuemax="100"><i></i></div>
+              <div class="actions"><span class="muted small">about 9 min left</span><button class="btn" data-run="stop">Cancel batch</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mixer -->
+      <div class="tabpanel pad" id="tab-mixer" role="tabpanel">
+        <div class="cols">
+          <div style="display:grid;gap:12px">
+            <div class="panel">
+              <div class="list-head"><div><h3>Preview</h3><p class="muted small">32 s · 16:9 · preview 640 × 360</p></div><div class="row"><span class="badge warning subtle">Out of date</span><button class="btn primary">Render preview</button></div></div>
+              <div class="preview thumb a"><svg class="i" style="width:36px;height:36px"><use href="#i-play"/></svg></div>
+              <div class="transport">
+                <button class="btn icon" aria-label="Play"><svg class="i"><use href="#i-play"/></svg></button>
+                <button class="btn icon" aria-label="Stop"><svg class="i"><use href="#i-stop"/></svg></button>
+                <button class="btn icon" aria-label="Loop"><svg class="i"><use href="#i-loop"/></svg></button>
+                <span class="timecode">00:10.2 of 00:32.0</span>
+                <span class="grow"></span>
+                <button class="btn icon" aria-label="Zoom out">−</button><button class="btn icon" aria-label="Zoom in">+</button>
+                <span class="muted small">Space or K play · J and L 5 s · arrows 1 s</span>
+              </div>
+            </div>
+            <div class="panel">
+              <p class="callout warn small">3 shots have no clip yet and are left out of the preview and the export.</p>
+              <div class="ruler"><span>0 s</span><span>8</span><span>16</span><span>24</span><span>32 s</span></div>
+              <div class="lanes">
+                <div class="lane"><span class="name"><svg class="i"><use href="#i-film"/></svg> Picture</span><div class="track"><span class="clip pic" style="left:0;width:12%">1 Ada climbs</span><span class="clip pic" style="left:12.5%;width:9%">2</span><span class="clip pic" style="left:22%;width:15%">3 The beam</span><span class="clip pic" style="left:37.5%;width:12%">4</span><span class="clip pic" style="left:50%;width:12%">5</span><span class="playhead"></span></div><span></span></div>
+                <div class="lane"><span class="name"><svg class="i"><use href="#i-wave"/></svg> Shot sound</span><div class="track"><span class="clip pic" style="left:0;width:12%">−6 dB<span class="wave"></span></span><span class="clip pic" style="left:22%;width:15%">0 dB<span class="wave"></span></span><span class="playhead"></span></div><span></span></div>
+                <div class="lane"><span class="name"><svg class="i"><use href="#i-mic"/></svg> Voice</span><div class="track"><span class="clip voice on" style="left:3%;width:28%">Narration 1 · Mara<span class="wave"></span></span><span class="clip voice" style="left:40%;width:20%">Narration 2<span class="wave"></span></span><span class="playhead"></span></div><button class="btn icon" aria-label="Add audio to Voice: from Voice Library, speak a line, choose file"><svg class="i"><use href="#i-plus"/></svg></button></div>
+                <div class="lane"><span class="name"><svg class="i"><use href="#i-wave"/></svg> Effects</span><div class="track"><span class="clip sfx" style="left:22%;width:6%">Waves<span class="wave"></span></span><span class="clip missing" style="left:50%;width:8%">Missing · Relink</span><span class="playhead"></span></div><button class="btn icon" aria-label="Add audio to Effects"><svg class="i"><use href="#i-plus"/></svg></button></div>
+                <div class="lane"><span class="name"><svg class="i"><use href="#i-music"/></svg> Music</span><div class="track"><span class="clip music" style="left:0;width:62%">Sea theme · loop to fill<span class="wave"></span></span><span class="playhead"></span></div><button class="btn icon" aria-label="Add audio to Music"><svg class="i"><use href="#i-plus"/></svg></button></div>
+              </div>
+              <p class="muted small">Drag a clip to move it, drag its ends to trim. Click a picture block to open that shot in Storyboard.</p>
+            </div>
+            <details class="disclosure">
+              <summary><svg class="i chev"><use href="#i-chev-r"/></svg><b>Captions</b> <span class="count badge subtle">12</span><span class="sum">from 2 voice clips · last made 2 h ago</span></summary>
+              <div class="body">
+                <div class="row"><button class="btn">Make from voice</button><button class="btn ghost">Add at playhead</button><button class="btn ghost">Write .srt</button></div>
+                <div class="films">
+                  <div class="f"><span class="timecode">00:01.2</span><input type="text" value="The light had not failed in forty years." aria-label="Caption text"><button class="btn icon ghost" aria-label="Remove"><svg class="i"><use href="#i-close"/></svg></button></div>
+                  <div class="f"><span class="timecode">00:04.8</span><input type="text" value="Ada meant to keep it that way." aria-label="Caption text"><button class="btn icon ghost" aria-label="Remove"><svg class="i"><use href="#i-close"/></svg></button></div>
+                  <div class="f" style="opacity:.6"><span class="timecode">00:09.0</span><span class="grow muted">Trimmed away</span></div>
+                </div>
+              </div>
+            </details>
+          </div>
+          <div class="panel inspector">
+            <div class="list-head"><h3>Narration 1 · Mara</h3><span class="badge subtle">Voice</span></div>
+            <label class="field"><span class="eyebrow">Name</span><input type="text" value="Narration 1"></label>
+            <div class="two"><label class="field"><span class="eyebrow">Gain (dB)</span><input type="number" value="0"></label><label class="field"><span class="eyebrow">Starts at</span><input type="text" value="Shot 1 + 1.0 s"></label></div>
+            <div class="two"><label class="field"><span class="eyebrow">Fade in (s)</span><input type="number" value="0.2"></label><label class="field"><span class="eyebrow">Fade out (s)</span><input type="number" value="0.5"></label></div>
+            <div class="two"><label class="field"><span class="eyebrow">Trim in (s)</span><input type="number" value="0"></label><label class="field"><span class="eyebrow">Trim out (s)</span><input type="number" placeholder="End of take"></label></div>
+            <label class="field"><span class="eyebrow">Anchor</span><select><option>Moves with shot 1 · offset 1.0 s</option><option>Film time (not anchored)</option></select></label>
+            <label class="check"><input type="checkbox"> Loop to fill</label>
+            <label class="check"><input type="checkbox" checked disabled> This clip uses a cloned voice <span class="muted small">(forces the AI tag)</span></label>
+            <p class="muted small">Duck under voice is not offered on voice clips.</p>
+            <button class="btn danger">Remove from lane</button>
+            <p class="muted small">Selecting a shot shows "Shot sound level for shot n" and "Open in Storyboard". Empty: "Select a clip on the timeline to edit its sound." Nothing to mix: "Make shots in Storyboard first."</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Export -->
+      <div class="tabpanel pad" id="tab-export" role="tabpanel">
+        <div class="cols">
+          <div style="display:grid;gap:12px">
+            <div class="panel">
+              <h3 style="font-size:14px">Before you export</h3>
+              <div class="pre">
+                <div class="l w"><svg class="i"><use href="#i-warn"/></svg> 3 shots have no clip and will be left out <a href="#" data-tab="storyboard">Open in Storyboard</a></div>
+                <div class="l w"><svg class="i"><use href="#i-warn"/></svg> 2 shots are stale <a href="#" data-tab="storyboard">Open in Storyboard</a></div>
+                <div class="l"><svg class="i"><use href="#i-check"/></svg> 12 captions from 2 voice clips <a href="#" data-tab="mixer">Edit in Mixer</a></div>
+                <div class="l i"><svg class="i"><use href="#i-info"/></svg> A cloned voice is used, so the AI tag is always written</div>
+                <div class="l w"><svg class="i"><use href="#i-warn"/></svg> The last export was interrupted · 5 of 8 shots are already done and will be reused</div>
+              </div>
+            </div>
+            <div class="panel">
+              <h3 style="font-size:14px">Format</h3>
+              <div class="field"><span class="eyebrow">Aspect ratio</span><div class="pill-row"><span class="pill active"><b>16:9</b></span><span class="pill"><b>9:16</b></span><span class="pill"><b>1:1</b></span></div><p class="muted small">A different shape is reframed at export; shots are not regenerated.</p></div>
+              <div class="field"><span class="eyebrow">Resolution</span><div class="pill-row"><span class="pill"><b>720p</b><small>1280 × 720</small></span><span class="pill active"><b>1080p</b><small>1920 × 1080 · project</small></span><span class="pill"><b>1440p</b><small>upscaled</small></span><span class="pill"><b>4K</b><small>3840 × 2160 · upscaled</small></span></div></div>
+              <div class="cols" style="grid-template-columns:1fr 1fr 1fr">
+                <label class="field"><span class="eyebrow">Loudness target</span><input type="text" value="-16 LUFS"><span class="muted small">Suits web video. Empty leaves the mix as it is.</span></label>
+                <div class="field"><span class="eyebrow">Captions</span><label class="check"><input type="checkbox" checked> SRT file</label><label class="check"><input type="checkbox"> Burn in</label></div>
+                <div class="field"><span class="eyebrow">More</span><label class="check"><input type="checkbox"> Audio lanes as separate files</label><label class="check"><input type="checkbox" checked disabled> AI label (machine-readable tag)</label></div>
+              </div>
+            </div>
+            <div class="panel">
+              <div class="row">
+                <button class="btn primary"><svg class="i"><use href="#i-export"/></svg> Resume export · about 2 min</button>
+                <button class="btn ghost">Start over</button>
+                <span class="est muted small">Reuses 5 finished shots · Writes about 48 MB</span>
+              </div>
+              <p class="muted small">While running: Normalise shots · Join · Mix sound · Encode, with Cancel export. Done: "Exported · 48 MB · 32 s" [Reveal file] [Copy path], and "Also written: lighthouse-keeper-captions.srt, stem-voice.wav".</p>
+            </div>
+          </div>
+          <div style="display:grid;gap:12px">
+            <div class="panel">
+              <h3 style="font-size:14px">Other exports</h3>
+              <button class="btn" style="justify-content:flex-start">Export for an editor (.otio)</button>
+              <p class="muted small">Opens in a video editor with this project's media linked on this computer. Speed changes carry a warning.</p>
+              <button class="btn" style="justify-content:flex-start">Export bundle (.chaosfilm)</button>
+              <p class="muted small">One file with the project and every media file it uses, for sharing or backup.</p>
+            </div>
+            <div class="panel">
+              <h3 style="font-size:14px">Films</h3>
+              <div class="films">
+                <div class="f"><svg class="i"><use href="#i-film"/></svg><span>lighthouse-keeper.mp4 · 48 MB · 32 s · yesterday</span><button class="btn ghost">Reveal</button></div>
+                <div class="f"><svg class="i"><use href="#i-film"/></svg><span>lighthouse-keeper-2.mp4 · 46 MB · 30 s · 3 d ago</span><button class="btn ghost">Reveal</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- NEW PROJECT DIALOG ---------- -->
+    <div class="overlay" id="dialog-new">
+      <form class="modal" role="dialog" aria-modal="true" aria-label="New project" onsubmit="return false">
+        <div class="mh">New project</div>
+        <div class="mb">
+          <label class="field"><span class="eyebrow">Name</span><input type="text" placeholder="Lighthouse keeper" autofocus></label>
+          <div class="field"><span class="eyebrow">Start from</span><div class="pill-row"><span class="pill active"><b>Blank</b></span><span class="pill"><b>30 s ad</b><small>16:9 · 6 shots</small></span><span class="pill"><b>Vertical social</b><small>9:16 · 30 fps</small></span><span class="pill"><b>Short story</b><small>16:9 · 8 shots</small></span></div></div>
+          <div class="field"><span class="eyebrow">Aspect ratio</span><div class="pill-row"><span class="pill active"><b>16:9</b><small>1280 × 720</small></span><span class="pill"><b>9:16</b><small>720 × 1280</small></span><span class="pill"><b>1:1</b><small>720 × 720</small></span></div></div>
+          <div class="field"><span class="eyebrow">Resolution</span><div class="pill-row">
+            <span class="pill"><b>480p</b><small>854 × 480</small><span class="hint fit">Fits</span></span>
+            <span class="pill active"><b>720p</b><small>1280 × 720</small><span class="hint fit">Fits</span></span>
+            <span class="pill"><b>1080p</b><small>1920 × 1080</small><span class="hint fit">Fits</span></span>
+            <span class="pill"><b>1440p</b><small>2560 × 1440</small><span class="hint tight">Tight · 54 of 64 GB</span></span>
+            <span class="pill"><b>4K</b><small>3840 × 2160</small><span class="hint no">Will not fit here</span></span>
+          </div><p class="muted small">Advice from the estimators for this Mac (Estimated until the first run); nothing is capped. Sizes above the video model's maximum are made at the maximum and upscaled at export.</p></div>
+          <div class="field"><span class="eyebrow">Frame rate</span><div class="pill-row"><span class="pill active"><b>24</b></span><span class="pill"><b>25</b></span><span class="pill"><b>30</b></span><span class="pill"><b>48</b><small>resampled</small></span><span class="pill"><b>50</b><small>resampled</small></span><span class="pill"><b>60</b><small>resampled</small></span></div></div>
+          <details class="disclosure"><summary><svg class="i chev"><use href="#i-chev-r"/></svg><b>Models</b><span class="sum">FLUX.1-schnell · LTX-2.3</span></summary>
+            <div class="body"><div class="two" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><label class="field"><span class="eyebrow">Image model</span><select><option>FLUX.1-schnell (installed)</option><option>Automatic</option></select></label><label class="field"><span class="eyebrow">Video model</span><select><option>LTX-2.3 (installed)</option><option>Automatic</option></select></label></div><p class="muted small">Prefilled from the Studios. Changing the video model recomputes the fit hints.</p></div>
+          </details>
+        </div>
+        <div class="mf"><button class="btn" data-close="dialog-new">Cancel</button><button class="btn primary" data-close="dialog-new" data-show="overview">Create</button></div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ======================= PHONE VIEW ======================= -->
+<div class="phones" id="phones" style="display:none">
+  <div>
+    <div class="phone" id="phone-list">
+      <div class="topbar"><button class="btn icon ghost" aria-label="Menu"><svg class="i"><use href="#i-menu"/></svg></button><b>Projects</b></div>
+      <div class="main"></div>
+    </div>
+    <p class="phone-caption">375 px · Project list: one card per row, full-width search and New project</p>
+  </div>
+  <div>
+    <div class="phone" id="phone-storyboard">
+      <div class="topbar"><button class="btn icon ghost" aria-label="Menu"><svg class="i"><use href="#i-menu"/></svg></button><b>Projects</b></div>
+      <div class="main"></div>
+    </div>
+    <p class="phone-caption">375 px · Storyboard tab: header wraps, tab row scrolls, cards stack, run bar stacks</p>
+  </div>
+</div>
+
+<script>
+(function () {
+  const desktop = document.getElementById('desktop');
+  const phones = document.getElementById('phones');
+  const screens = { list: 'screen-list', project: 'screen-project' };
+  const projectTabs = ['overview', 'cast', 'storyboard', 'mixer', 'export'];
+
+  function setSwitcher(name) {
+    document.querySelectorAll('.switcher button').forEach(b => b.classList.toggle('active', b.dataset.show === name));
+  }
+  function showTab(tab) {
+    document.querySelectorAll('#screen-project .ptab').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === tab)));
+    document.querySelectorAll('#screen-project .tabpanel').forEach(p => p.classList.toggle('active', p.id === 'tab-' + tab));
+  }
+  function show(name) {
+    if (name === 'phone') { desktop.style.display = 'none'; phones.style.display = 'flex'; buildPhones(); setSwitcher('phone'); return; }
+    desktop.style.display = 'grid'; phones.style.display = 'none';
+    if (name === 'new') { show('list'); document.getElementById('dialog-new').classList.add('open'); setSwitcher('new'); return; }
+    const isProject = projectTabs.includes(name);
+    document.getElementById(screens.list).classList.toggle('active', !isProject);
+    document.getElementById(screens.project).classList.toggle('active', isProject);
+    if (isProject) showTab(name);
+    document.querySelectorAll('.overlay').forEach(o => o.classList.remove('open'));
+    setSwitcher(name);
+  }
+  document.addEventListener('click', (e) => {
+    const t = e.target.closest('[data-show],[data-tab],[data-open],[data-close],[data-run]');
+    if (!t) return;
+    if (t.dataset.close) { document.getElementById(t.dataset.close).classList.remove('open'); if (!t.dataset.show) return; }
+    if (t.dataset.open) { e.preventDefault(); document.getElementById(t.dataset.open).classList.add('open'); return; }
+    if (t.dataset.run) { document.getElementById('runbar').classList.toggle('running', t.dataset.run === 'start'); return; }
+    if (t.dataset.tab) { e.preventDefault(); showTab(t.dataset.tab); setSwitcher(t.dataset.tab); return; }
+    if (t.dataset.show) { e.preventDefault(); show(t.dataset.show); }
+  });
+  document.querySelector('#screen-project .ptabs').addEventListener('keydown', (e) => {
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+    const i = projectTabs.indexOf(document.querySelector('.ptab[aria-selected=true]').dataset.tab);
+    const next = projectTabs[(i + (e.key === 'ArrowRight' ? 1 : projectTabs.length - 1)) % projectTabs.length];
+    showTab(next); document.querySelector('.ptab[data-tab=' + next + ']').focus();
+  });
+  let built = false;
+  function buildPhones() {
+    if (built) return; built = true;
+    const list = document.getElementById('screen-list').cloneNode(true);
+    list.classList.add('active'); list.querySelectorAll('[id]').forEach(n => n.removeAttribute('id'));
+    document.querySelector('#phone-list .main').appendChild(list);
+    const proj = document.getElementById('screen-project').cloneNode(true);
+    proj.classList.add('active'); proj.querySelectorAll('[id]').forEach(n => n.removeAttribute('id'));
+    proj.querySelectorAll('.tabpanel').forEach(p => p.classList.toggle('active', p.classList.contains('pad') && p.getAttribute('role') === 'tabpanel' && p.querySelector('.runbar') !== null));
+    proj.querySelectorAll('.ptab').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === 'storyboard')));
+    proj.querySelectorAll('.popover').forEach(p => p.classList.remove('open'));
+    proj.querySelectorAll('.runbar').forEach(r => r.classList.remove('running'));
+    proj.style.overflow = 'hidden';
+    document.querySelector('#phone-storyboard .main').appendChild(proj);
+  }
+})();
+</script>
+</body>
+</html>

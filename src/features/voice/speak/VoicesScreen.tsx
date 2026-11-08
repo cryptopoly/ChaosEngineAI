@@ -6,14 +6,25 @@ import { useVoice } from "../VoiceContext";
 import { deleteClonedVoice } from "../clone/cloneApi";
 import { CloneStatement } from "../clone/CloneStatement";
 import { NewVoiceForm } from "../clone/NewVoiceForm";
-import { matchesFilter, type VoiceFilter } from "./speakLogic";
+import { chineseAddonPending } from "../voicePackState";
+import { ChatCallsPanel } from "./ChatCallsPanel";
+import { MandarinCard } from "./MandarinCard";
+import { groupVoices, managerVoices, matchesFilter, usableInChat, type VoiceFilter } from "./speakLogic";
 import type { VoiceCatalog } from "./useVoiceCatalog";
 import { canPlaySample, useVoiceSample } from "./useVoiceSample";
+import { ActionCard, SampleIcon } from "./VoiceCard";
 
-const FILTERS: VoiceFilter[] = ["all", "mine", "builtin"];
-const FILTER_LABELS: Record<VoiceFilter, string> = { all: "All", mine: "Mine", builtin: "Built-in" };
+const FILTERS: VoiceFilter[] = ["all", "recommended", "quick", "natural", "cloned", "designed"];
+const FILTER_LABELS: Record<VoiceFilter, string> = {
+  all: "All",
+  recommended: "Recommended",
+  quick: "Quick",
+  natural: "Natural",
+  cloned: "Cloned",
+  designed: "Designed",
+};
 
-/** Every voice in one list (built-in and your clones), with ways to make or find more. */
+/** The voice manager: every voice with a sample, Use in Speak and Use in Chat, ways to get more, and how chat speaks. */
 export function VoicesScreen({
   catalog,
   onUse,
@@ -25,20 +36,28 @@ export function VoicesScreen({
   onUse: (id: string) => void;
   /** Jump to Speak with the design voice. */
   onDesign: () => void;
-  /** Open Voice Models, where the voice pack and its add-ons live. */
+  /** Open Voice Models at the speech models. */
   onGetMore: () => void;
 }) {
-  const { t } = useTranslation("studio");
-  const { settings, saveSettings } = useVoice();
+  const { t, i18n } = useTranslation("studio");
+  const { settings, saveSettings, runtime } = useVoice();
   const sample = useVoiceSample(settings.speed);
   const [filter, setFilter] = useState<VoiceFilter>("all");
   const [language, setLanguage] = useState("");
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const listed = useMemo(() => catalog.voices.filter((v) => v.kind !== "design" && (v.kind !== "builtin" || v.available)), [catalog.voices]);
-  const languages = useMemo(() => [...new Set(listed.filter((v) => v.kind !== "clone").map((v) => v.languageLabel ?? v.language))], [listed]);
-  const shown = listed.filter((v) => matchesFilter(v, filter) && (!language || v.kind === "clone" || (v.languageLabel ?? v.language) === language));
+  const listed = useMemo(() => managerVoices(catalog.voices), [catalog.voices]);
+  const recommended = useMemo(
+    () => groupVoices(catalog.voices, i18n.language, catalog.modelsAvailable).recommended.map((v) => v.id),
+    [catalog.voices, i18n.language, catalog.modelsAvailable],
+  );
+  const anyLanguage = (v: VoiceEntry) => v.kind === "clone" || v.kind === "design";
+  const languages = useMemo(() => [...new Set(listed.filter((v) => !anyLanguage(v)).map((v) => v.languageLabel ?? v.language))], [listed]);
+  const shown = listed.filter(
+    (v) => matchesFilter(v, filter, recommended) && (!language || anyLanguage(v) || (v.languageLabel ?? v.language) === language),
+  );
+  const addonPending = chineseAddonPending(runtime?.extras ?? []);
 
   const remove = async (voice: VoiceEntry) => {
     const ask = t("voice.clone.deleteConfirm", {
@@ -55,6 +74,9 @@ export function VoicesScreen({
   };
 
   const detail = (voice: VoiceEntry): string => {
+    if (voice.kind === "design") {
+      return t("voice.voices.designRowDetail", { defaultValue: "Any language. A new voice from your description each run." });
+    }
     if (voice.consent) {
       return voice.consent.basis === "own"
         ? t("voice.clone.consentOwn", { defaultValue: "own voice, confirmed {date}", date: voice.consent.consentedAt.slice(0, 10) })
@@ -68,6 +90,15 @@ export function VoicesScreen({
     return [voice.languageLabel ?? voice.language, gender, voice.about].filter(Boolean).join(", ");
   };
 
+  const kindLabel = (voice: VoiceEntry): string =>
+    voice.kind === "clone"
+      ? t("voice.voices.kindClone", { defaultValue: "Cloned" })
+      : voice.kind === "preset"
+        ? t("voice.voices.kindPreset", { defaultValue: "Natural" })
+        : voice.kind === "design"
+          ? t("voice.voices.kindDesign", { defaultValue: "Designed" })
+          : t("voice.voices.kindBuiltin", { defaultValue: "Quick" });
+
   const cloneNote = !catalog.modelsAvailable
     ? t("voice.clone.macOnly", { defaultValue: "Voice cloning runs on Apple Silicon Macs for now." })
     : t("voice.clone.notHere", { defaultValue: "Cloned voices can only be used from the ChaosEngineAI window on this computer." });
@@ -75,34 +106,36 @@ export function VoicesScreen({
   return (
     <Panel
       title={t("voice.voices.listTitle", { defaultValue: "Voices" })}
-      subtitle={t("voice.voices.listSubtitle", { defaultValue: "Built-in voices and the voices you cloned, in one list." })}
+      subtitle={t("voice.voices.managerSubtitle", { defaultValue: "Every voice in one list: try it, use it in Speak, or make it the chat voice." })}
       className="span-2"
     >
       <div className="voice-studio voice-voices">
         <div className="voice-cards voice-newcards">
-          <div className="voice-card voice-card--action">
-            <span className="voice-card__title">{t("voice.voices.cloneCard", { defaultValue: "Clone a voice" })}</span>
-            <span className="voice-card__detail muted-text">
-              {catalog.cloneAllowed ? t("voice.voices.cloneDetail", { defaultValue: "From a short recording of your own voice, or of someone who gave permission." }) : cloneNote}
-            </span>
+          <ActionCard
+            title={t("voice.voices.cloneCard", { defaultValue: "Clone a voice" })}
+            detail={catalog.cloneAllowed ? t("voice.voices.cloneDetail", { defaultValue: "From a short recording of your own voice, or of someone who gave permission." }) : cloneNote}
+          >
             <button type="button" className="secondary-button" disabled={!catalog.cloneAllowed || adding} onClick={() => setAdding(true)}>
               {t("voice.clone.new", { defaultValue: "New cloned voice" })}
             </button>
-          </div>
-          <div className="voice-card voice-card--action">
-            <span className="voice-card__title">{t("voice.voices.designCard", { defaultValue: "Design a voice" })}</span>
-            <span className="voice-card__detail muted-text">{t("voice.voices.designDetail", { defaultValue: "Describe the voice you want in words." })}</span>
+          </ActionCard>
+          <ActionCard
+            title={t("voice.voices.designCard", { defaultValue: "Design a voice" })}
+            detail={t("voice.voices.designDetail", { defaultValue: "Describe the voice you want in words." })}
+          >
             <button type="button" className="secondary-button" disabled={!catalog.modelsAvailable} onClick={onDesign}>
               {t("voice.voices.designAction", { defaultValue: "Describe a voice" })}
             </button>
-          </div>
-          <div className="voice-card voice-card--action">
-            <span className="voice-card__title">{t("voice.voices.moreCard", { defaultValue: "Get more voices" })}</span>
-            <span className="voice-card__detail muted-text">{t("voice.voices.moreDetail", { defaultValue: "Add Mandarin Chinese voices and more from the voice pack." })}</span>
+          </ActionCard>
+          {addonPending ? <MandarinCard onInstalled={() => void catalog.refresh()} /> : null}
+          <ActionCard
+            title={t("voice.voices.moreCard", { defaultValue: "Get more voices" })}
+            detail={t("voice.picker.getMoreDetail", { defaultValue: "The cloning models and the rest of the speech models." })}
+          >
             <button type="button" className="secondary-button" onClick={onGetMore}>
-              {t("voice.voices.moreAction", { defaultValue: "Open Voice Models" })}
+              {t("voice.picker.openModels", { defaultValue: "Open Models" })}
             </button>
-          </div>
+          </ActionCard>
         </div>
 
         {catalog.cloneAllowed ? <CloneStatement /> : null}
@@ -138,6 +171,9 @@ export function VoicesScreen({
             ))}
           </select>
         </div>
+        <p className="muted-text voice-voices__chat-note">
+          {t("voice.voices.chatQuickOnly", { defaultValue: "Chat reads aloud with quick voices for now. Natural, designed and cloned voices come to Chat later." })}
+        </p>
 
         {error ? (
           <p className="voice-error" role="alert">
@@ -147,47 +183,65 @@ export function VoicesScreen({
         {catalog.error ? <p className="voice-error" role="alert">{catalog.error}</p> : null}
         {shown.length === 0 && catalog.loaded ? (
           <p className="muted-text">
-            {filter === "mine"
-              ? t("voice.voices.noneMine", { defaultValue: "No cloned voices yet. Use Clone a voice above." })
+            {filter === "cloned"
+              ? t("voice.voices.noneCloned", { defaultValue: "No cloned voices yet. Use New cloned voice above." })
               : t("voice.voices.none", { defaultValue: "No voices to show." })}
           </p>
         ) : null}
         <ul className="voice-list">
-          {shown.map((voice) => (
-            <li key={voice.id} className="voice-list__row">
-              <span className="voice-list__name">
-                <strong>{voice.name}</strong>
-                <span className="badge">
-                  {voice.kind === "clone"
-                    ? t("voice.voices.kindClone", { defaultValue: "Cloned" })
-                    : voice.kind === "preset"
-                      ? t("voice.voices.kindPreset", { defaultValue: "Natural" })
-                      : t("voice.voices.kindBuiltin", { defaultValue: "Quick" })}
+          {shown.map((voice) => {
+            const isChatVoice = settings.ttsVoice === voice.id;
+            const chatOk = usableInChat(voice);
+            return (
+              <li key={voice.id} className="voice-list__row">
+                <span className="voice-list__name">
+                  <strong>{voice.kind === "design" ? t("voice.voices.designCard", { defaultValue: "Design a voice" }) : voice.name}</strong>
+                  <span className="badge">{kindLabel(voice)}</span>
+                  {isChatVoice ? <span className="badge success">{t("voice.voices.chatVoice", { defaultValue: "Chat voice" })}</span> : null}
+                  <span className="muted-text">{detail(voice)}</span>
                 </span>
-                <span className="muted-text">{detail(voice)}</span>
-              </span>
-              <span className="voice-list__actions">
-                {canPlaySample(voice) ? (
-                  <button type="button" className="secondary-button" onClick={() => void sample.play(voice)}>
-                    {sample.isPlaying(voice.id) ? t("voice.stop", { defaultValue: "Stop" }) : t("voice.voices.playSample", { defaultValue: "Play sample" })}
+                <span className="voice-list__actions">
+                  {canPlaySample(voice) ? (
+                    <button
+                      type="button"
+                      className="secondary-button voice-list__play"
+                      aria-label={
+                        sample.isPlaying(voice.id)
+                          ? t("voice.voices.stopSample", { defaultValue: "Stop the sample of {name}", name: voice.name })
+                          : t("voice.speak.sampleOf", { defaultValue: "Play a sample of {name}", name: voice.name })
+                      }
+                      aria-busy={sample.isLoading(voice.id)}
+                      onClick={() => void sample.play(voice)}
+                    >
+                      <SampleIcon playing={sample.isPlaying(voice.id)} loading={sample.isLoading(voice.id)} />
+                    </button>
+                  ) : null}
+                  <button type="button" className="primary-button" onClick={() => onUse(voice.id)}>
+                    {t("voice.voices.useInSpeak", { defaultValue: "Use in Speak" })}
                   </button>
-                ) : null}
-                <button type="button" className="primary-button" onClick={() => onUse(voice.id)}>
-                  {t("voice.voices.use", { defaultValue: "Use" })}
-                </button>
-                {voice.kind === "clone" ? (
                   <button
                     type="button"
                     className="secondary-button"
-                    aria-label={t("voice.clone.deleteVoice", { defaultValue: "Delete the voice {name}", name: voice.name })}
-                    onClick={() => void remove(voice)}
+                    disabled={!chatOk || isChatVoice}
+                    title={chatOk ? undefined : t("voice.voices.chatLater", { defaultValue: "Quick voices only in Chat for now." })}
+                    onClick={() => void saveSettings({ ttsVoice: voice.id })}
                   >
-                    {t("voice.clone.delete", { defaultValue: "Delete" })}
+                    {isChatVoice ? t("voice.voices.inChat", { defaultValue: "In use in Chat" }) : t("voice.voices.useInChat", { defaultValue: "Use in Chat" })}
                   </button>
-                ) : null}
-              </span>
-            </li>
-          ))}
+                  {voice.kind === "clone" ? (
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      aria-label={t("voice.clone.deleteVoice", { defaultValue: "Delete the voice {name}", name: voice.name })}
+                      onClick={() => void remove(voice)}
+                    >
+                      {t("voice.clone.delete", { defaultValue: "Delete" })}
+                    </button>
+                  ) : null}
+                </span>
+              </li>
+            );
+          })}
         </ul>
 
         {catalog.cloneAllowed ? (
@@ -196,6 +250,8 @@ export function VoicesScreen({
             {t("voice.clone.allowAgents", { defaultValue: "Allow agents and other computers to use cloned voices (off by default)" })}
           </label>
         ) : null}
+
+        <ChatCallsPanel voices={catalog.voices} />
       </div>
     </Panel>
   );

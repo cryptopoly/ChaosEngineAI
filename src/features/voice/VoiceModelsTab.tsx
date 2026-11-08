@@ -1,15 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import i18next from "i18next";
 import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
 import { downloadModel, getDownloadStatus, stopVoiceWorker } from "../../api";
 import type { DownloadStatus } from "../../api";
-import type { SttModel, TtsVoice, VoiceRuntime } from "../../types";
+import type { SttModel, VoiceRuntime } from "../../types";
 import { TtsModelsPanel } from "./speak/TtsModelsPanel";
-import { speechPlayer, useSpeechPlayer } from "./speechPlayer";
 import { useVoice } from "./VoiceContext";
 import { InstallLog, InstallProgress, VoicePackPanel, useVoicePackJob, type VoicePackJob } from "./VoicePackPanel";
-import { chineseAddonPending } from "./voicePackState";
+import { chineseAddonPending, quickVoiceSummary } from "./voicePackState";
 import type { StudioMode } from "./voiceStudioMode";
 
 export interface VoiceModelsTabProps {
@@ -21,18 +20,6 @@ export interface VoiceModelsTabProps {
 }
 
 export type StudioTarget = { mode: StudioMode; voice?: string };
-
-const PREVIEW_TEXT: Record<string, string> = {
-  "en-US": "Hello! This is how I sound when I read your chats aloud.",
-  "en-GB": "Hello! This is how I sound when I read your chats aloud.",
-  es: "¡Hola! Así sueno cuando leo tus conversaciones en voz alta.",
-  fr: "Bonjour ! Voici ma voix quand je lis vos conversations.",
-  hi: "नमस्ते! जब मैं आपकी बातचीत पढ़ता हूँ तो मेरी आवाज़ ऐसी होती है।",
-  it: "Ciao! Ecco come suono quando leggo le tue conversazioni.",
-  ja: "こんにちは。チャットを読み上げるときの声です。",
-  "pt-BR": "Olá! É assim que eu soo quando leio suas conversas.",
-  zh: "你好！这是我朗读对话时的声音。",
-};
 
 const LANGUAGES: Array<[string, string]> = [
   ["", "Detect automatically"],
@@ -143,108 +130,52 @@ function SttModelCard({
   );
 }
 
-function VoicesPanel({ voices, pack }: { voices: TtsVoice[]; pack: VoicePackJob }) {
+/** One line for the quick voices (they are chosen on Voice Studio > Voices now), the Mandarin add-on, Browse voices. */
+function QuickVoicesPanel({ runtime, pack, onBrowse }: { runtime: VoiceRuntime; pack: VoicePackJob; onBrowse?: () => void }) {
   const { t } = useTranslation("studio");
-  const { settings, saveSettings, runtime } = useVoice();
-  const addonPending = chineseAddonPending(runtime?.extras ?? []);
-  const player = useSpeechPlayer();
-  const groups = useMemo(() => {
-    const byLanguage = new Map<string, TtsVoice[]>();
-    for (const voice of voices) {
-      const key = voice.languageLabel ?? voice.language;
-      byLanguage.set(key, [...(byLanguage.get(key) ?? []), voice]);
-    }
-    return [...byLanguage.entries()];
-  }, [voices]);
-
+  const { count, languages } = quickVoiceSummary(runtime.ttsVoices);
+  const addonPending = chineseAddonPending(runtime.extras ?? []);
   return (
-    <Panel
-      title={t("voice.voices.title", { defaultValue: "Voices" })}
-      subtitle={t("voice.voices.subtitle", { defaultValue: "Kokoro: 54 voices in 9 languages. Pick the one chat reads aloud with." })}
-      className="span-2"
-    >
-      <div className="voice-groups">
-        {groups.map(([language, list]) => (
-          <section key={language} className="voice-group">
-            <h4 className="voice-group__title">
-              {language}
-              {list[0]?.available === false && !(list[0].language === "zh" && addonPending) ? (
-                <span className="muted-text voice-group__note">
-                  {t("voice.voices.notYet", { defaultValue: "Not available on this computer yet." })}
-                </span>
-              ) : null}
-            </h4>
-            {list[0]?.available === false && list[0].language === "zh" && addonPending ? (
-              <div className="voice-group__addon">
-                <span className="muted-text voice-group__note">
-                  {t("voice.voices.needsChineseAddon", { defaultValue: "Mandarin voices need a small extra add-on." })}
-                </span>
-                {pack.job.running ? (
-                  <InstallProgress pack={pack} />
-                ) : (
-                  <button type="button" className="secondary-button" onClick={() => void pack.start(["chinese"])}>
-                    {t("voice.voices.addChinese", { defaultValue: "Add Mandarin Chinese voices" })}
-                  </button>
-                )}
-                {pack.job.extras.includes("chinese") || pack.error ? <InstallLog pack={pack} /> : null}
-              </div>
-            ) : null}
-            <div className="voice-chips">
-              {list.map((voice) => {
-                const previewId = `preview-${voice.id}`;
-                const previewing = player.ownerId === previewId && player.status !== "idle";
-                const selected = settings.ttsVoice === voice.id;
-                return (
-                  <div key={voice.id} className={`voice-chip${selected ? " voice-chip--selected" : ""}`}>
-                    <button
-                      type="button"
-                      className="voice-chip__name"
-                      disabled={voice.available === false}
-                      onClick={() => void saveSettings({ ttsVoice: voice.id })}
-                      title={t("voice.voices.useVoice", { defaultValue: "Use this voice" })}
-                    >
-                      {voice.name}
-                      <span className="voice-chip__gender">{voice.gender === "male" ? "M" : "F"}</span>
-                    </button>
-                    <button
-                      type="button"
-                      className="voice-chip__play"
-                      disabled={voice.available === false || !runtime?.ttsAvailable}
-                      aria-label={t("voice.voices.preview", { defaultValue: "Preview" })}
-                      title={t("voice.voices.preview", { defaultValue: "Preview" })}
-                      onClick={() =>
-                        previewing
-                          ? speechPlayer.stop()
-                          : void speechPlayer.play(previewId, PREVIEW_TEXT[voice.language] ?? PREVIEW_TEXT["en-US"], voice.id, settings.speed)
-                      }
-                    >
-                      {previewing ? "■" : "▶"}
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        ))}
+    <Panel title={t("voice.quickVoices.title", { defaultValue: "Quick voices" })} className="span-2">
+      <div className="voice-quick-line">
+        <span className="muted-text">
+          {t("voice.quickVoices.line", {
+            defaultValue: "Kokoro: {count} voices in {languages} languages, part of the voice pack, under 1 GB.",
+            count,
+            languages,
+          })}
+        </span>
+        {addonPending ? (
+          pack.job.running ? (
+            <InstallProgress pack={pack} />
+          ) : (
+            <button type="button" className="secondary-button" onClick={() => void pack.start(["chinese"])}>
+              {t("voice.picker.addMandarin", { defaultValue: "Add Mandarin voices" })}
+            </button>
+          )
+        ) : null}
+        {onBrowse ? (
+          <button type="button" className="secondary-button" onClick={onBrowse}>
+            {t("voice.quickVoices.browse", { defaultValue: "Browse voices" })}
+          </button>
+        ) : null}
       </div>
+      {pack.job.extras.includes("chinese") || pack.error ? <InstallLog pack={pack} /> : null}
     </Panel>
   );
 }
 
+/** Dictation language and voice memory. How chat speaks lives on Voice Studio > Voices ("Chat and calls"). */
 function SettingsPanel({ runtime }: { runtime: VoiceRuntime }) {
   const { t, i18n } = useTranslation("studio");
   const { settings, saveSettings, refresh } = useVoice();
   return (
-    <Panel title={t("voice.settings.title", { defaultValue: "Voice settings" })} className="span-2">
+    <Panel
+      title={t("voice.settings.runtimeTitle", { defaultValue: "Dictation and memory" })}
+      subtitle={t("voice.settings.chatMoved", { defaultValue: "How chat reads aloud and voice calls: Voice Studio > Voices." })}
+      className="span-2"
+    >
       <div className="voice-settings">
-        <label className="checkbox-label">
-          <input type="checkbox" checked={settings.autoSend} onChange={(e) => void saveSettings({ autoSend: e.target.checked })} />
-          {t("voice.settings.autoSend", { defaultValue: "Send the message as soon as dictation finishes" })}
-        </label>
-        <label className="checkbox-label">
-          <input type="checkbox" checked={settings.autoRead} onChange={(e) => void saveSettings({ autoRead: e.target.checked })} />
-          {t("voice.settings.autoRead", { defaultValue: "Read every chat reply aloud when it finishes" })}
-        </label>
         <label className="voice-settings__field">
           <span>{t("voice.settings.language", { defaultValue: "Dictation language" })}</span>
           <select className="text-input" value={settings.language} onChange={(e) => void saveSettings({ language: e.target.value })}>
@@ -257,40 +188,6 @@ function SettingsPanel({ runtime }: { runtime: VoiceRuntime }) {
           <small className="muted-text">
             {t("voice.settings.languageHint", { defaultValue: "Whisper uses it; Parakeet detects the language itself." })}
           </small>
-        </label>
-        <label className="voice-settings__field">
-          <span>
-            {t("voice.settings.speed", { defaultValue: "Reading speed" })} ({settings.speed.toFixed(1)}×)
-          </span>
-          <input
-            type="range"
-            min={0.5}
-            max={2}
-            step={0.1}
-            value={settings.speed}
-            onChange={(e) => void saveSettings({ speed: parseFloat(e.target.value) })}
-          />
-        </label>
-        <label className="voice-settings__field">
-          <span>
-            {t("voice.settings.silence", { defaultValue: "Voice call: pause that ends your turn" })} (
-            {(settings.vadSilenceMs / 1000).toFixed(1)} s)
-          </span>
-          <input
-            type="range"
-            min={300}
-            max={2000}
-            step={100}
-            value={settings.vadSilenceMs}
-            onChange={(e) => void saveSettings({ vadSilenceMs: Number(e.target.value) })}
-          />
-          <small className="muted-text">
-            {t("voice.settings.silenceHint", { defaultValue: "Shorter replies faster; longer lets you pause to think." })}
-          </small>
-        </label>
-        <label className="checkbox-label">
-          <input type="checkbox" checked={settings.bargeIn} onChange={(e) => void saveSettings({ bargeIn: e.target.checked })} />
-          {t("voice.settings.bargeIn", { defaultValue: "Voice call: interrupt the model by speaking" })}
         </label>
         <label className="voice-settings__field">
           <span>{t("voice.settings.idle", { defaultValue: "Free voice memory after (minutes idle, 0 = never)" })}</span>
@@ -387,7 +284,7 @@ function VoiceModelsBody({
             </div>
           </Panel>
           <TtsModelsPanel onOpenStudio={onOpenStudio} />
-          <VoicesPanel voices={voiceRuntime.ttsVoices} pack={pack} />
+          <QuickVoicesPanel runtime={voiceRuntime} pack={pack} onBrowse={onOpenStudio ? () => onOpenStudio({ mode: "voices" }) : undefined} />
           <SettingsPanel runtime={voiceRuntime} />
         </>
       ) : null}

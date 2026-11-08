@@ -1,11 +1,13 @@
 import { test, expect } from "./fixtures";
 import type { Page } from "@playwright/test";
 import { goTo } from "./helpers";
+import { mockVoiceApi } from "./voiceMocks";
 
 // Voice > Models, voice pack panel and the Mandarin add-on. The pack runtime route is mocked, so nothing
 // is installed: a healthy pack leads with "Installed, checked OK" and only a small Reinstall link inside
-// Troubleshooting; a failed or missing pack leads with the primary button; the Mandarin button sits in the
-// Chinese voice group and starts the install with the chinese extra.
+// Troubleshooting; a failed or missing pack leads with the primary button; the Mandarin button sits on the one
+// quick-voices line (the voices themselves are on Voice Studio > Voices) and on the Voices tab, and both start the
+// install with the chinese extra.
 
 const IDLE_JOB = {
   phase: "idle", phaseLabel: "idle", phaseIndex: 0, phaseTotal: 5, percent: 0,
@@ -55,10 +57,13 @@ async function checkHealthy(page: Page) {
   await expect(page.getByRole("button", { name: "Reinstall" })).toBeHidden();
   await details.locator("summary").click();
   await expect(page.getByRole("button", { name: "Reinstall" })).toBeVisible();
-  // The Mandarin add-on is offered in the Chinese voices group.
-  const group = page.locator(".voice-group", { hasText: "Mandarin Chinese" });
-  await expect(group.getByText("Mandarin voices need a small extra add-on.")).toBeVisible();
-  await expect(group.getByRole("button", { name: "Add Mandarin Chinese voices" })).toBeVisible();
+  // One line for the quick voices, counted (no hard-coded 54), with the Mandarin add-on and Browse voices; no chips.
+  const line = page.locator(".voice-quick-line");
+  await expect(line.getByText("Kokoro: 2 voices in 2 languages, part of the voice pack, under 1 GB.")).toBeVisible();
+  await expect(line.getByRole("button", { name: "Add Mandarin voices" })).toBeVisible();
+  await expect(line.getByRole("button", { name: "Browse voices" })).toBeVisible();
+  await expect(page.locator(".voice-chip")).toHaveCount(0);
+  await expect(page.getByText(/54 voices/)).toHaveCount(0);
   await expect(page.getByText("Tick Mandarin Chinese voices")).toHaveCount(0);
   await expect(page.getByRole("checkbox", { name: "Mandarin Chinese voices" })).toHaveCount(0);
 }
@@ -105,6 +110,18 @@ test("not installed leads with install", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Install voice pack" })).toBeVisible();
 });
 
+test("Models keeps the runtime settings; the chat settings moved to Voices with Browse voices", async ({ page }) => {
+  await openModels(page, {});
+  await expect(page.getByRole("heading", { name: "Dictation and memory" })).toBeVisible();
+  for (const label of ["Dictation language", "Free voice memory after (minutes idle, 0 = never)"]) {
+    await expect(page.getByLabel(label)).toBeVisible();
+  }
+  await expect(page.getByText("Read every chat reply aloud when it finishes")).toHaveCount(0);
+  await page.locator(".voice-quick-line").getByRole("button", { name: "Browse voices" }).click();
+  await expect(page.getByRole("tab", { name: "Voices" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("heading", { name: "Chat and calls" })).toBeVisible();
+});
+
 test("the Mandarin button installs the chinese add-on and the voices refresh when it finishes", async ({ page }) => {
   let installBody: unknown = null;
   let finished = false;
@@ -135,11 +152,30 @@ test("the Mandarin button installs the chinese add-on and the voices refresh whe
     });
     await route.fulfill({ response, json: body });
   });
-  const group = page.locator(".voice-group", { hasText: "Mandarin Chinese" });
-  await group.getByRole("button", { name: "Add Mandarin Chinese voices" }).click();
+  const line = page.locator(".voice-quick-line");
+  await line.getByRole("button", { name: "Add Mandarin voices" }).click();
   expect(installBody).toEqual({ extras: ["chinese"] });
-  await expect(group.getByText("Installing speech packages (3/5)")).toBeVisible();
+  await expect(line.getByText("Installing speech packages (3/5)")).toBeVisible();
   // Polling sees the job finish, refetches the runtime, and the add-on prompt goes away.
-  await expect(group.getByRole("button", { name: "Add Mandarin Chinese voices" })).toHaveCount(0, { timeout: 10_000 });
-  await expect(group.getByRole("button", { name: /Xiaobei/ })).toBeEnabled();
+  await expect(line.getByRole("button", { name: "Add Mandarin voices" })).toHaveCount(0, { timeout: 10_000 });
+});
+
+test("the Mandarin card on Voice Studio > Voices starts the same install", async ({ page }) => {
+  let installBody: unknown = null;
+  await mockVoiceApi(page);
+  await page.route("**/api/voice/install", async (route) => {
+    installBody = route.request().postDataJSON();
+    await route.fulfill({ json: { ...IDLE_JOB, phase: "installing", phaseLabel: "Installing speech packages", phaseIndex: 3, percent: 40, running: true, extras: ["chinese"] } });
+  });
+  await page.route("**/api/voice/install/status", (route) =>
+    route.fulfill({ json: { ...IDLE_JOB, phase: "installing", phaseLabel: "Installing speech packages", phaseIndex: 3, percent: 40, running: true, extras: ["chinese"] } }),
+  );
+  await openModels(page, {});
+  await page.getByRole("button", { name: "Open Studio" }).click();
+  await page.getByRole("tab", { name: "Voices" }).click();
+  const cards = page.locator(".voice-newcards");
+  await expect(cards.getByText("Add Mandarin voices", { exact: true })).toBeVisible();
+  await cards.getByRole("button", { name: "Add Mandarin Chinese voices" }).click();
+  expect(installBody).toEqual({ extras: ["chinese"] });
+  await expect(cards.getByText("Installing speech packages (3/5)")).toBeVisible();
 });

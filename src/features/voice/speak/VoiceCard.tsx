@@ -65,19 +65,27 @@ export function VoiceCard({
           aria-busy={loading}
           onClick={onSample}
         >
-          {loading ? (
-            <svg className="voice-card__spinner" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="8" cy="8" r="5.5" strokeOpacity="0.3" />
-              <path d="M8 2.5a5.5 5.5 0 0 1 5.5 5.5" strokeLinecap="round" />
-            </svg>
-          ) : (
-            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" fill="currentColor">
-              {playing ? <rect x="3" y="3" width="10" height="10" rx="1" /> : <path d="M4 2.5v11l9-5.5z" />}
-            </svg>
-          )}
+          <SampleIcon playing={playing} loading={loading} />
         </button>
       ) : null}
     </div>
+  );
+}
+
+/** The monochrome play / stop / making-a-sample icon on every sample button. */
+export function SampleIcon({ playing, loading }: { playing: boolean; loading: boolean }) {
+  if (loading) {
+    return (
+      <svg className="voice-card__spinner" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2">
+        <circle cx="8" cy="8" r="5.5" strokeOpacity="0.3" />
+        <path d="M8 2.5a5.5 5.5 0 0 1 5.5 5.5" strokeLinecap="round" />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" fill="currentColor">
+      {playing ? <rect x="3" y="3" width="10" height="10" rx="1" /> : <path d="M4 2.5v11l9-5.5z" />}
+    </svg>
   );
 }
 

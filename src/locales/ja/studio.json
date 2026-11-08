@@ -701,41 +701,42 @@
       "openStudio": null
     },
     "voices": {
-      "title": "ボイス",
-      "subtitle": "Kokoro: 9 言語・54 種類のボイス。チャットの読み上げに使うものを選んでください。",
-      "needsChineseAddon": null,
       "addChinese": null,
-      "notYet": "このコンピューターではまだ利用できません。",
-      "useVoice": "このボイスを使用",
-      "preview": "試聴",
       "listTitle": "音声",
-      "listSubtitle": null,
       "cloneCard": null,
       "cloneDetail": null,
       "designCard": null,
       "designDetail": null,
       "designAction": null,
       "moreCard": null,
-      "moreDetail": null,
-      "moreAction": null,
       "filter": "表示",
       "allLanguages": "すべての言語",
-      "noneMine": null,
       "none": null,
       "kindClone": "クローン",
       "kindPreset": null,
       "kindBuiltin": null,
-      "playSample": null,
-      "use": "使う",
       "tab": null,
       "filters": {
         "all": "すべて",
-        "mine": "自分の",
-        "builtin": "内蔵"
-      }
+        "recommended": null,
+        "quick": null,
+        "natural": null,
+        "cloned": null,
+        "designed": null
+      },
+      "managerSubtitle": null,
+      "designRowDetail": null,
+      "kindDesign": null,
+      "chatQuickOnly": null,
+      "noneCloned": null,
+      "chatVoice": null,
+      "stopSample": null,
+      "useInSpeak": null,
+      "useInChat": null,
+      "inChat": null,
+      "chatLater": null
     },
     "settings": {
-      "title": "音声設定",
       "autoSend": "音声入力が終わったらすぐにメッセージを送信",
       "autoRead": "チャットの返信が完了したら毎回読み上げる",
       "language": "音声入力の言語",
@@ -747,7 +748,9 @@
       "unload": "今すぐアンロード",
       "silence": "音声通話: 発話の終わりとみなす無音時間",
       "silenceHint": "短いほど速く応答し、長いほど考える間を取れます。",
-      "bargeIn": "音声通話: 話しかけてモデルを中断する"
+      "bargeIn": "音声通話: 話しかけてモデルを中断する",
+      "runtimeTitle": null,
+      "chatMoved": null
     },
     "offline": "バックエンドを待っています…",
     "copy": "コピー",
@@ -1010,6 +1013,15 @@
       "getMore": null,
       "getMoreDetail": null,
       "openModels": null
+    },
+    "chatCalls": {
+      "title": null,
+      "voice": null
+    },
+    "quickVoices": {
+      "title": null,
+      "line": null,
+      "browse": null
     }
   },
   "residentChatModelNote": "読み込み済みのチャットモデルがこのメモリのうち約 {gb} GB を使用しています。アンロードするとその分が解放されます。",

@@ -701,41 +701,42 @@
       "openStudio": null
     },
     "voices": {
-      "title": "ghogh",
-      "subtitle": "Kokoro: Hut HolDaq 54 ghogh. ja'chuq laDmeH wa' yIwIv.",
-      "needsChineseAddon": "Mandarin ghoghvaD chelwI' mach nISlu'.",
       "addChinese": "Mandarin Chinese ghogh tIchel",
-      "notYet": "De'wI'vamDaq wej tu'lu'.",
-      "useVoice": "ghoghvam yIlo'",
-      "preview": "legh nung",
       "listTitle": "ghogh",
-      "listSubtitle": "ghogh motlh ghogh velqa'lIj je, wa' tetlhDaq.",
       "cloneCard": "ghogh velqa' yIchenmoH",
       "cloneDetail": "ghoghlIj qonghach runvo', pagh chaw' nobpu'bogh ghot ghoghvo'.",
       "designCard": "ghogh yIchenmoH",
       "designDetail": "mu'mey lo'taHvIS ghogh DaneHbogh yIDel.",
       "designAction": "ghogh yIDel",
       "moreCard": "latlh ghogh tISuq",
-      "moreDetail": "Mandarin Chinese ghogh latlh je ghogh ghom janvo' tIchel.",
-      "moreAction": "ghogh yab yIpoSmoH",
       "filter": "yIcha'",
       "allLanguages": "Hoch Hol",
-      "noneMine": "wej ghogh velqa' tu'lu'. Dung ghogh velqa' yIchenmoH yIlo'.",
       "none": "ghogh tu'be'lu'.",
       "kindClone": "velqa'",
       "kindPreset": "na'",
       "kindBuiltin": "nom",
-      "playSample": "waH yIcha'",
-      "use": "yIlo'",
       "tab": "ghogh",
       "filters": {
         "all": "Hoch",
-        "mine": "wIjmey",
-        "builtin": "motlh"
-      }
+        "recommended": null,
+        "quick": null,
+        "natural": null,
+        "cloned": null,
+        "designed": null
+      },
+      "managerSubtitle": null,
+      "designRowDetail": null,
+      "kindDesign": null,
+      "chatQuickOnly": null,
+      "noneCloned": null,
+      "chatVoice": null,
+      "stopSample": null,
+      "useInSpeak": null,
+      "useInChat": null,
+      "inChat": null,
+      "chatLater": null
     },
     "settings": {
-      "title": "ghogh SeHlaw",
       "autoSend": "ghItlhghach rInDI' QIn yIngeH SIbI'",
       "autoRead": "Hoch ja'chuq jang rInDI' yIlaD",
       "language": "ghItlhmeH Hol",
@@ -747,7 +748,9 @@
       "unload": "DaH yIchu'Ha'",
       "silence": "ghogh ja'chuq: tam poH, ghIq jang yab",
       "silenceHint": "run = jang nom; nI' = bIqeltaHvIS bIyevlaH.",
-      "bargeIn": "ghogh ja'chuq: bIjatlhDI' yab yImev"
+      "bargeIn": "ghogh ja'chuq: bIjatlhDI' yab yImev",
+      "runtimeTitle": null,
+      "chatMoved": null
     },
     "offline": "qoD pat loStaH…",
     "copy": "yIqon",
@@ -1010,6 +1013,15 @@
       "getMore": null,
       "getMoreDetail": null,
       "openModels": null
+    },
+    "chatCalls": {
+      "title": null,
+      "voice": null
+    },
+    "quickVoices": {
+      "title": null,
+      "line": null,
+      "browse": null
     }
   },
   "residentChatModelNote": "qawHaqvamvo' ~{gb} GB ghaj chu'lu'ta'bogh ja'chuq yab; chu'Ha'lu'chugh qawHaqvetlh chImchoH.",

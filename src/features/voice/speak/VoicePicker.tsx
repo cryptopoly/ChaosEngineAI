@@ -1,12 +1,11 @@
 import { useMemo, useState, type KeyboardEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import type { VoiceEntry, VoiceModelRow, VoiceRuntime } from "../../../types";
-import { useVoice } from "../VoiceContext";
+import type { VoiceEntry, VoiceModelRow } from "../../../types";
 import { CloneStatement } from "../clone/CloneStatement";
-import { InstallProgress, useVoicePackJob } from "../VoicePackPanel";
 import { useCostText } from "./costText";
 import { DESIGN_VOICE_ID, chooseModel, costLabel, groupVoices, quickLanguage, quickShortlist } from "./speakLogic";
 import { ActionCard, GroupHead, VoiceCard, type CardCost } from "./VoiceCard";
+import { MandarinCard } from "./MandarinCard";
 
 export interface VoicePickerProps {
   voices: VoiceEntry[];
@@ -32,45 +31,6 @@ export interface VoicePickerProps {
 
 function genderLetter(voice: VoiceEntry): string {
   return voice.gender === "male" ? "M" : voice.gender === "female" ? "F" : "";
-}
-
-/** The Mandarin add-on, installed from the Quick group when Chinese is chosen and the add-on is missing. */
-function MandarinCard({ onInstalled }: { onInstalled?: () => void }) {
-  const { runtime, refresh } = useVoice();
-  if (!runtime) return null;
-  return (
-    <MandarinCardBody
-      runtime={runtime}
-      onChanged={() => {
-        refresh();
-        onInstalled?.();
-      }}
-    />
-  );
-}
-
-function MandarinCardBody({ runtime, onChanged }: { runtime: VoiceRuntime; onChanged: () => void }) {
-  const { t } = useTranslation("studio");
-  const pack = useVoicePackJob(runtime, onChanged);
-  return (
-    <ActionCard
-      title={t("voice.picker.addMandarin", { defaultValue: "Add Mandarin voices" })}
-      detail={t("voice.picker.addMandarinDetail", { defaultValue: "Eight quick voices, a small add-on to the voice pack." })}
-    >
-      {pack.job.running ? (
-        <InstallProgress pack={pack} />
-      ) : (
-        <button type="button" className="secondary-button" onClick={() => void pack.start(["chinese"])}>
-          {t("voice.voices.addChinese", { defaultValue: "Add Mandarin Chinese voices" })}
-        </button>
-      )}
-      {pack.error ? (
-        <p className="voice-error" role="alert">
-          {pack.error}
-        </p>
-      ) : null}
-    </ActionCard>
-  );
 }
 
 /** Voice cards in groups: Recommended, Quick (graded shortlist and an expander), Cloned, Designed, More. */
@@ -269,7 +229,7 @@ export function VoicePicker({
       {groups.clones.length > 0 || (modelsAvailable && onNewClone) ? (
         <section className="voice-picker__group voice-picker__group--clones">
           <GroupHead title={t("voice.picker.cloned", { defaultValue: "Cloned" })} />
-          <CloneStatement />
+          <CloneStatement inPicker />
           <div className="voice-cards">
             {groups.clones.map((v) => card(v, "clones"))}
             {modelsAvailable && onNewClone ? (

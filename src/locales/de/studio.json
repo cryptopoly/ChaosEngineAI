@@ -701,41 +701,42 @@
       "openStudio": null
     },
     "voices": {
-      "title": "Stimmen",
-      "subtitle": "Kokoro: 54 Stimmen in 9 Sprachen. Wähle die Stimme, mit der der Chat vorliest.",
-      "needsChineseAddon": null,
       "addChinese": null,
-      "notYet": "Auf diesem Computer noch nicht verfügbar.",
-      "useVoice": "Diese Stimme verwenden",
-      "preview": "Vorschau",
       "listTitle": "Stimmen",
-      "listSubtitle": null,
       "cloneCard": null,
       "cloneDetail": null,
       "designCard": null,
       "designDetail": null,
       "designAction": null,
       "moreCard": null,
-      "moreDetail": null,
-      "moreAction": null,
       "filter": "Anzeigen",
       "allLanguages": "Alle Sprachen",
-      "noneMine": null,
       "none": null,
       "kindClone": "Geklont",
       "kindPreset": null,
       "kindBuiltin": null,
-      "playSample": null,
-      "use": "Verwenden",
       "tab": null,
       "filters": {
         "all": "Alle",
-        "mine": "Meine",
-        "builtin": "Integriert"
-      }
+        "recommended": null,
+        "quick": null,
+        "natural": null,
+        "cloned": null,
+        "designed": null
+      },
+      "managerSubtitle": null,
+      "designRowDetail": null,
+      "kindDesign": null,
+      "chatQuickOnly": null,
+      "noneCloned": null,
+      "chatVoice": null,
+      "stopSample": null,
+      "useInSpeak": null,
+      "useInChat": null,
+      "inChat": null,
+      "chatLater": null
     },
     "settings": {
-      "title": "Spracheinstellungen",
       "autoSend": "Nachricht senden, sobald das Diktat beendet ist",
       "autoRead": "Jede Chat-Antwort nach Abschluss vorlesen",
       "language": "Diktiersprache",
@@ -747,7 +748,9 @@
       "unload": "Jetzt entladen",
       "silence": "Sprachanruf: Pause, die deinen Redebeitrag beendet",
       "silenceHint": "Kürzer antwortet schneller; länger lässt dir Zeit zum Nachdenken.",
-      "bargeIn": "Sprachanruf: Modell durch Sprechen unterbrechen"
+      "bargeIn": "Sprachanruf: Modell durch Sprechen unterbrechen",
+      "runtimeTitle": null,
+      "chatMoved": null
     },
     "offline": "Warte auf das Backend…",
     "copy": "Kopieren",
@@ -1010,6 +1013,15 @@
       "getMore": null,
       "getMoreDetail": null,
       "openModels": null
+    },
+    "chatCalls": {
+      "title": null,
+      "voice": null
+    },
+    "quickVoices": {
+      "title": null,
+      "line": null,
+      "browse": null
     }
   },
   "residentChatModelNote": "Ein geladenes Chat-Modell belegt etwa {gb} GB dieses Speichers; beim Entladen wird er freigegeben.",

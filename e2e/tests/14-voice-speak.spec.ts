@@ -108,7 +108,7 @@ test("picker groups: Recommended, a graded Quick shortlist with an expander, Clo
   expect((installs[0] as { extras: string[] }).extras).toContain("chinese");
 
   await expect(picker.locator(".voice-picker__group--more .voice-card__title")).toContainText(["Aiden", "Get more voices"]);
-  await expect(picker.locator(".voice-picker__group--clones")).toContainText("Every clip is labelled as AI-made and watermarked.");
+  await expect(picker.locator(".voice-picker__group--clones")).toContainText("labelled as AI-made inside the file");
   await picker.locator(".voice-picker__group--clones").getByRole("button", { name: "Open the form" }).click();
   await expect(page.getByRole("tab", { name: "Voices" })).toHaveAttribute("aria-selected", "true");
 });
@@ -233,7 +233,7 @@ test("a missing model stops Generate and offers Download; the design voice needs
   expect(bodies.at(-1)).toMatchObject({ voice: "design", style: "A calm woman in her thirties." });
 });
 
-test("Voices lists built-in and cloned voices, filters them, Use jumps to Speak, Delete asks first", async ({ page }) => {
+test("Voices lists every voice, filters by kind, Use in Speak jumps to Speak, Delete asks first", async ({ page }) => {
   const seen = await mockVoiceApi(page, { clones: [ADA] });
   await goTo(page, "Voice", "Studio");
   await page.getByRole("tab", { name: "Voices" }).click();
@@ -241,18 +241,27 @@ test("Voices lists built-in and cloned voices, filters them, Use jumps to Speak,
   await expect(list.getByText("Heart", { exact: true })).toBeVisible();
   await expect(list.getByText("Ryan", { exact: true })).toBeVisible();
   await expect(list.getByText("Ada", { exact: true })).toBeVisible();
-  for (const card of ["Clone a voice", "Design a voice", "Get more voices"]) {
+  await expect(list.getByText("Design a voice", { exact: true })).toBeVisible();
+  for (const card of ["Clone a voice", "Design a voice", "Add Mandarin voices", "Get more voices"]) {
     await expect(page.locator(".voice-newcards").getByText(card, { exact: true })).toBeVisible();
   }
+  // Every voice that runs has a sample button, cloned and designed ones too (FU-146).
+  await expect(list.getByRole("button", { name: "Play a sample of Ada", exact: true })).toBeVisible();
 
-  await page.getByRole("tab", { name: "Mine" }).click();
+  await page.getByRole("tab", { name: "Cloned" }).click();
   await expect(list.getByText("Heart", { exact: true })).toHaveCount(0);
   await expect(list.getByText("Ada", { exact: true })).toBeVisible();
-  await page.getByRole("tab", { name: "Built-in" }).click();
+  await page.getByRole("tab", { name: "Quick" }).click();
   await expect(list.getByText("Ada", { exact: true })).toHaveCount(0);
-  await page.getByRole("tab", { name: "All" }).click();
+  await expect(list.getByText("Ryan", { exact: true })).toHaveCount(0);
+  await expect(list.getByText("Heart", { exact: true })).toBeVisible();
+  await page.getByRole("tab", { name: "Natural" }).click();
+  await expect(list.locator("li")).toHaveCount(2);
+  await page.getByRole("tab", { name: "Designed" }).click();
+  await expect(list.locator("li")).toHaveCount(1);
+  await page.getByRole("tab", { name: "All", exact: true }).click();
 
-  await list.locator("li", { hasText: "Aiden" }).getByRole("button", { name: "Use" }).click();
+  await list.locator("li", { hasText: "Aiden" }).getByRole("button", { name: "Use in Speak" }).click();
   await expect(page.getByLabel("Text to speak")).toBeVisible();
   await expect(page.getByRole("radio", { name: /^Aiden/ }).first()).toHaveAttribute("aria-checked", "true");
 
@@ -267,6 +276,75 @@ test("Voices lists built-in and cloned voices, filters them, Use jumps to Speak,
   page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Delete the voice Ada" }).click();
   await expect.poll(() => seen.deleted).toEqual(["voice-1"]);
+});
+
+test("Use in Chat sets the chat voice for a quick voice; other voices wait for Chat with a note; Chat and calls holds the chat settings", async ({ page }) => {
+  const seen = await mockVoiceApi(page, { clones: [ADA], installed: BOTH_CUSTOM });
+  await goTo(page, "Voice", "Studio");
+  await page.getByRole("tab", { name: "Voices" }).click();
+  const list = page.locator(".voice-list");
+  const heart = list.locator("li", { hasText: "Heart" }).first();
+  const bella = list.locator("li", { hasText: "Bella" });
+  await expect(heart.getByText("Chat voice", { exact: true })).toBeVisible();
+  await expect(heart.getByRole("button", { name: "In use in Chat" })).toBeDisabled();
+  await bella.getByRole("button", { name: "Use in Chat" }).click();
+  await expect.poll(() => seen.ttsVoices).toEqual(["af_bella"]);
+  await expect(bella.getByText("Chat voice", { exact: true })).toBeVisible();
+  await expect(heart.getByText("Chat voice", { exact: true })).toHaveCount(0);
+  for (const name of ["Ryan", "Ada", "Design a voice"]) {
+    await expect(list.locator("li").filter({ has: page.getByText(name, { exact: true }) }).getByRole("button", { name: "Use in Chat" })).toBeDisabled();
+  }
+  await expect(page.getByText("Chat reads aloud with quick voices for now.")).toBeVisible();
+
+  const panel = page.locator(".voice-chat-calls");
+  await expect(panel.getByRole("heading", { name: "Chat and calls" })).toBeVisible();
+  await expect(panel.getByText("Chat voice: Bella.")).toBeVisible();
+  for (const label of ["Read every chat reply aloud when it finishes", "Send the message as soon as dictation finishes", "Voice call: interrupt the model by speaking"]) {
+    await expect(panel.getByLabel(label)).toBeVisible();
+  }
+  await expect(panel.getByLabel(/^Reading speed/)).toBeVisible();
+  await expect(panel.getByLabel(/^Voice call: pause that ends your turn/)).toBeVisible();
+});
+
+test("a cloned voice's sample is made through speak and not kept in the Library", async ({ page }) => {
+  await mockVoiceApi(page, { clones: [ADA] });
+  const bodies: Array<Record<string, unknown>> = [];
+  const deleted: unknown[] = [];
+  await page.route("**/api/voice/speak", (route) => {
+    bodies.push(route.request().postDataJSON() as Record<string, unknown>);
+    return route.fulfill({ json: speakAnswer({ voice: "clone:voice-1", kind: "clone", clonedVoice: true, libraryId: "1790000000_abcdef12" }) });
+  });
+  await page.route("**/api/voice/library/delete", (route) => {
+    deleted.push(route.request().postDataJSON());
+    return route.fulfill({ json: { deleted: ["1790000000_abcdef12"] } });
+  });
+  await goTo(page, "Voice", "Studio");
+  await page.getByRole("tab", { name: "Voices" }).click();
+  await page.locator(".voice-list").getByRole("button", { name: "Play a sample of Ada", exact: true }).click();
+  await expect.poll(() => bodies.length).toBe(1);
+  expect(bodies[0]).toMatchObject({ voice: "clone:voice-1", text: "Hello! This is how I sound." });
+  await expect.poll(() => deleted).toEqual([{ ids: ["1790000000_abcdef12"] }]);
+});
+
+test("without ffmpeg, Speak says so before Generate when speed or pitch is changed", async ({ page }) => {
+  await mockVoiceApi(page, { installed: BOTH_CUSTOM, speakVoice: "qwen3:Ryan", needsFfmpeg: true });
+  await mockSpeak(page);
+  await openSpeak(page);
+  await page.getByLabel("Text to speak").fill("Hello.");
+  const generate = page.getByRole("button", { name: "Generate audio" });
+  await expect(generate).toBeEnabled();
+  await page.getByLabel(/^Speed/).fill("1.5");
+  await expect(page.getByText("Speed and pitch for this voice need ffmpeg.", { exact: false })).toBeVisible();
+  await expect(generate).toBeDisabled();
+  await page.getByLabel(/^Speed/).fill("1");
+  await expect(generate).toBeEnabled();
+  // A quick voice changes speed itself; only pitch needs ffmpeg.
+  await page.getByRole("radio", { name: /^Heart/ }).first().click();
+  await page.getByLabel(/^Speed/).fill("1.5");
+  await expect(generate).toBeEnabled();
+  await page.getByLabel(/^Pitch/).fill("2");
+  await expect(page.getByText("Changing the pitch needs ffmpeg.", { exact: false })).toBeVisible();
+  await expect(generate).toBeDisabled();
 });
 
 test("Voice Models lists the speech models with what each can do, and keeps the voice pack and settings", async ({ page }) => {
@@ -347,6 +425,7 @@ test.describe("375 px", () => {
     await expectFits(page, ".voice-speak");
     await page.getByRole("tab", { name: "Voices" }).click();
     await expect(page.locator(".voice-list")).toBeVisible();
+    await expect(page.locator(".voice-chat-calls")).toBeVisible();
     await expectFits(page, ".voice-voices");
     await goTo(page, "Voice", "Models");
     await expect(page.getByRole("heading", { name: "Speech models" })).toBeVisible();

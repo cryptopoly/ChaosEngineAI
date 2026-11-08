@@ -24,6 +24,8 @@ export interface TtsVoice {
   languageLabel?: string;
   /** False when this machine needs an extra install for the language. */
   available?: boolean;
+  /** Nothing can make it run on this machine (Japanese on the MLX lane). */
+  neverAvailable?: boolean;
 }
 
 export interface VoiceSettings {

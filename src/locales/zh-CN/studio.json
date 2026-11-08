@@ -701,41 +701,42 @@
       "openStudio": null
     },
     "voices": {
-      "title": "声音",
-      "subtitle": "Kokoro：9 种语言共 54 种声音。选择聊天朗读时使用的声音。",
-      "needsChineseAddon": null,
       "addChinese": null,
-      "notYet": "这台电脑上暂不可用。",
-      "useVoice": "使用这个声音",
-      "preview": "试听",
       "listTitle": "声音",
-      "listSubtitle": null,
       "cloneCard": null,
       "cloneDetail": null,
       "designCard": null,
       "designDetail": null,
       "designAction": null,
       "moreCard": null,
-      "moreDetail": null,
-      "moreAction": null,
       "filter": "显示",
       "allLanguages": "所有语言",
-      "noneMine": null,
       "none": null,
       "kindClone": "已克隆",
       "kindPreset": null,
       "kindBuiltin": null,
-      "playSample": null,
-      "use": "使用",
       "tab": null,
       "filters": {
         "all": "全部",
-        "mine": "我的",
-        "builtin": "内置"
-      }
+        "recommended": null,
+        "quick": null,
+        "natural": null,
+        "cloned": null,
+        "designed": null
+      },
+      "managerSubtitle": null,
+      "designRowDetail": null,
+      "kindDesign": null,
+      "chatQuickOnly": null,
+      "noneCloned": null,
+      "chatVoice": null,
+      "stopSample": null,
+      "useInSpeak": null,
+      "useInChat": null,
+      "inChat": null,
+      "chatLater": null
     },
     "settings": {
-      "title": "语音设置",
       "autoSend": "语音输入结束后立即发送消息",
       "autoRead": "回复完成后自动朗读每条聊天回复",
       "language": "语音输入语言",
@@ -747,7 +748,9 @@
       "unload": "立即卸载",
       "silence": "语音通话：结束你发言的停顿时长",
       "silenceHint": "越短回复越快；越长越方便停下来思考。",
-      "bargeIn": "语音通话：开口说话即可打断模型"
+      "bargeIn": "语音通话：开口说话即可打断模型",
+      "runtimeTitle": null,
+      "chatMoved": null
     },
     "offline": "正在等待后端…",
     "copy": "复制",
@@ -1010,6 +1013,15 @@
       "getMore": null,
       "getMoreDetail": null,
       "openModels": null
+    },
+    "chatCalls": {
+      "title": null,
+      "voice": null
+    },
+    "quickVoices": {
+      "title": null,
+      "line": null,
+      "browse": null
     }
   },
   "residentChatModelNote": "已加载的聊天模型占用了其中约 {gb} GB 内存；卸载它即可释放这部分内存。",

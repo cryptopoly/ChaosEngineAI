@@ -20,6 +20,12 @@ export function voicePackMode(input: VoicePackHealthInput): VoicePackMode {
   return "healthy";
 }
 
+/** How many quick (Kokoro) voices and languages this machine can offer; voices that can never run here are not counted. */
+export function quickVoiceSummary(voices: Array<{ language: string; neverAvailable?: boolean }>): { count: number; languages: number } {
+  const offered = voices.filter((v) => !v.neverAvailable);
+  return { count: offered.length, languages: new Set(offered.map((v) => v.language)).size };
+}
+
 /** The Mandarin add-on is offered only where the backend lists it and it is not installed yet. */
 export function chineseAddonPending(extras: Array<{ id: string; installed: boolean }>): boolean {
   return extras.some((extra) => extra.id === "chinese" && !extra.installed);

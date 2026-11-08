@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { chineseAddonPending, voicePackMode } from "./voicePackState";
+import { chineseAddonPending, quickVoiceSummary, voicePackMode } from "./voicePackState";
+
+describe("quickVoiceSummary", () => {
+  it("counts the quick voices and languages this machine can offer, never the ones that cannot run here", () => {
+    const voices = [{ language: "en-US" }, { language: "en-US" }, { language: "zh" }, { language: "ja", neverAvailable: true }];
+    expect(quickVoiceSummary(voices)).toEqual({ count: 3, languages: 2 });
+  });
+});
 
 const healthy = { installed: true, updateAvailable: false, vadAvailable: true, ttsModelInstalled: true, jobPhase: "done" };
 

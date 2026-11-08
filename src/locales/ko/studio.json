@@ -701,41 +701,42 @@
       "openStudio": null
     },
     "voices": {
-      "title": "음성",
-      "subtitle": "Kokoro: 9개 언어, 54개 음성. 채팅이 소리 내어 읽을 음성을 선택하세요.",
-      "needsChineseAddon": null,
       "addChinese": null,
-      "notYet": "이 컴퓨터에서는 아직 사용할 수 없습니다.",
-      "useVoice": "이 음성 사용",
-      "preview": "미리 듣기",
       "listTitle": "음성",
-      "listSubtitle": null,
       "cloneCard": null,
       "cloneDetail": null,
       "designCard": null,
       "designDetail": null,
       "designAction": null,
       "moreCard": null,
-      "moreDetail": null,
-      "moreAction": null,
       "filter": "보기",
       "allLanguages": "모든 언어",
-      "noneMine": null,
       "none": null,
       "kindClone": "복제됨",
       "kindPreset": null,
       "kindBuiltin": null,
-      "playSample": null,
-      "use": "사용",
       "tab": null,
       "filters": {
         "all": "전체",
-        "mine": "내 것",
-        "builtin": "기본 제공"
-      }
+        "recommended": null,
+        "quick": null,
+        "natural": null,
+        "cloned": null,
+        "designed": null
+      },
+      "managerSubtitle": null,
+      "designRowDetail": null,
+      "kindDesign": null,
+      "chatQuickOnly": null,
+      "noneCloned": null,
+      "chatVoice": null,
+      "stopSample": null,
+      "useInSpeak": null,
+      "useInChat": null,
+      "inChat": null,
+      "chatLater": null
     },
     "settings": {
-      "title": "음성 설정",
       "autoSend": "음성 입력이 끝나면 바로 메시지 보내기",
       "autoRead": "채팅 답변이 끝나면 매번 소리 내어 읽기",
       "language": "음성 입력 언어",
@@ -747,7 +748,9 @@
       "unload": "지금 언로드",
       "silence": "음성 통화: 차례를 끝내는 멈춤 시간",
       "silenceHint": "짧을수록 빨리 답하고, 길수록 생각할 여유가 생깁니다.",
-      "bargeIn": "음성 통화: 말해서 모델 끼어들기"
+      "bargeIn": "음성 통화: 말해서 모델 끼어들기",
+      "runtimeTitle": null,
+      "chatMoved": null
     },
     "offline": "백엔드 대기 중…",
     "copy": "복사",
@@ -1010,6 +1013,15 @@
       "getMore": null,
       "getMoreDetail": null,
       "openModels": null
+    },
+    "chatCalls": {
+      "title": null,
+      "voice": null
+    },
+    "quickVoices": {
+      "title": null,
+      "line": null,
+      "browse": null
     }
   },
   "residentChatModelNote": "로드된 채팅 모델이 이 메모리의 약 {gb} GB를 차지하며, 언로드하면 해제됩니다.",

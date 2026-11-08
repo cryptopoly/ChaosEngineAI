@@ -64,7 +64,7 @@ const AMERICAN_VOICES: Array<[string, string]> = [
   ["am_onyx", "D"], ["am_puck", "C+"], ["am_santa", "D-"],
 ];
 
-export function voiceList(clones: Array<typeof ADA>, installed: string[]) {
+export function voiceList(clones: Array<typeof ADA>, installed: string[], needsFfmpeg = false) {
   const customReady = installed.some((k) => k.startsWith("qwen3-tts-custom"));
   const preset = (id: string, language: string, languageLabel: string, gender: string, about: string) => ({
     id: `qwen3:${id}`,
@@ -95,7 +95,7 @@ export function voiceList(clones: Array<typeof ADA>, installed: string[]) {
     addon: available ? null : "chinese",
     needs: available ? null : `${languageLabel} voices need an extra install.`,
   });
-  return [
+  const list = [
     // All 20 American voices with the model author's grades, so the shortlist and 375 px density are real.
     ...AMERICAN_VOICES.map(([id, grade]) => quick(id, grade)),
     quick("zf_xiaobei", "D", "zh", "Chinese (Mandarin)", false),
@@ -112,6 +112,7 @@ export function voiceList(clones: Array<typeof ADA>, installed: string[]) {
       model: "qwen3-tts-0.6b", models: ["qwen3-tts-0.6b", "qwen3-tts-1.7b"], capabilities: caps({ clone: true }), available: true, needs: null, consent: c.consent,
     })),
   ];
+  return list.map((v) => ({ ...v, needsFfmpeg }));
 }
 
 export interface VoiceMockOptions {
@@ -120,36 +121,48 @@ export interface VoiceMockOptions {
   clones?: Array<typeof ADA>;
   /** The voice last used in Speak; kept in the mock so one test's pick never leaks into the next (the backend is shared). */
   speakVoice?: string;
+  /** ffmpeg looks missing: every voice carries ``needsFfmpeg``. */
+  needsFfmpeg?: boolean;
+  /** The chat voice the runtime reports (``ttsVoice``); kept in the mock like ``speakVoice``. */
+  ttsVoice?: string;
 }
 
 /** Patch the runtime to "pack installed" and mock the voice and model lists plus the clone routes. */
 export async function mockVoiceApi(
   page: Page,
   options: VoiceMockOptions = {},
-): Promise<{ downloads: string[]; deleted: string[]; speakVoices: string[] }> {
+): Promise<{ downloads: string[]; deleted: string[]; speakVoices: string[]; ttsVoices: string[] }> {
   const installed = options.installed ?? ["qwen3-tts-0.6b", "qwen3-tts-custom-0.6b"];
   const clones = options.clones ?? [];
-  const seen = { downloads: [] as string[], deleted: [] as string[], speakVoices: [] as string[] };
+  const seen = { downloads: [] as string[], deleted: [] as string[], speakVoices: [] as string[], ttsVoices: [] as string[] };
   let speakVoice = options.speakVoice ?? "";
+  let ttsVoice = options.ttsVoice ?? "af_heart";
   let lastSettings: Record<string, unknown> = {};
   await page.route("**/api/voice/runtime", async (route) => {
     const response = await route.fetch();
     const body = await response.json();
     const runtime = body.runtime ?? body;
     Object.assign(runtime, { installed: true });
-    runtime.settings = { ...(runtime.settings ?? {}), speakVoice };
+    runtime.settings = { ...(runtime.settings ?? {}), speakVoice, ttsVoice };
     lastSettings = runtime.settings;
     await route.fulfill({ response, json: body });
   });
-  // The Speak voice is answered here; every other setting goes to the backend as before.
+  // The Speak voice and the chat voice are answered here; every other setting goes to the backend as before.
   await page.route("**/api/voice/settings", async (route) => {
     const patch = route.request().method() === "POST" ? (route.request().postDataJSON() as Record<string, unknown>) : {};
-    if (typeof patch.speakVoice !== "string") return route.fallback();
-    speakVoice = patch.speakVoice;
-    seen.speakVoices.push(speakVoice);
-    return route.fulfill({ json: { ...lastSettings, speakVoice } });
+    if (typeof patch.speakVoice === "string") {
+      speakVoice = patch.speakVoice;
+      seen.speakVoices.push(speakVoice);
+    } else if (typeof patch.ttsVoice === "string") {
+      ttsVoice = patch.ttsVoice;
+      seen.ttsVoices.push(ttsVoice);
+    } else {
+      return route.fallback();
+    }
+    lastSettings = { ...lastSettings, speakVoice, ttsVoice };
+    return route.fulfill({ json: lastSettings });
   });
-  await page.route("**/api/voice/voices", (route) => route.fulfill({ json: { voices: voiceList(clones, installed) } }));
+  await page.route("**/api/voice/voices", (route) => route.fulfill({ json: { voices: voiceList(clones, installed, options.needsFfmpeg) } }));
   await page.route("**/api/voice/models", (route) => route.fulfill({ json: { models: ttsModels(installed), available: true } }));
   await page.route("**/api/voice/clone/models", (route) =>
     route.fulfill({ json: { available: true, allowedHere: true, models: ttsModels(installed).filter((m) => m.kind === "base") } }),

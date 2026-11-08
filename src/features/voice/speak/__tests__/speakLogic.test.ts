@@ -11,7 +11,9 @@ import {
   groupVoices,
   installedCloneModels,
   quickShortlist,
+  managerVoices,
   matchesFilter,
+  usableInChat,
   modelNote,
   pickerVoices,
   recommendedNaturalModel,
@@ -162,8 +164,17 @@ describe("text helpers and lists", () => {
       voice({ id: "qwen3:Ryan" }),
     ];
     expect(pickerVoices(voices).map((v) => v.id)).toEqual(["af_heart", "clone:1", "qwen3:Ryan"]);
-    expect(voices.filter((v) => matchesFilter(v, "mine")).map((v) => v.id)).toEqual(["clone:1"]);
-    expect(voices.filter((v) => matchesFilter(v, "builtin")).map((v) => v.id)).toEqual(["af_heart", "jf_alpha", "qwen3:Ryan"]);
+    const withDesign = [...voices, voice({ id: "design", kind: "design" })];
+    const ids = (filter: Parameters<typeof matchesFilter>[1], recommended: string[] = []) =>
+      withDesign.filter((v) => matchesFilter(v, filter, recommended)).map((v) => v.id);
+    expect(ids("all")).toHaveLength(5);
+    expect(ids("cloned")).toEqual(["clone:1"]);
+    expect(ids("quick")).toEqual(["af_heart", "jf_alpha"]);
+    expect(ids("natural")).toEqual(["qwen3:Ryan"]);
+    expect(ids("designed")).toEqual(["design"]);
+    expect(ids("recommended", ["qwen3:Ryan", "design"])).toEqual(["qwen3:Ryan", "design"]);
+    expect(managerVoices(withDesign).map((v) => v.id)).toEqual(["af_heart", "clone:1", "qwen3:Ryan", "design"]);
+    expect(withDesign.filter(usableInChat).map((v) => v.id)).toEqual(["af_heart"]);
     expect(defaultVoice(voices, "qwen3:Ryan", "en")).toBe("qwen3:Ryan");
     expect(defaultVoice(voices, "jf_alpha", "en")).toBe("qwen3:Ryan"); // not usable here: the rule decides
   });

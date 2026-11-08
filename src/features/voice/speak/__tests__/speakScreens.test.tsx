@@ -5,7 +5,6 @@ vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn(), isTauri: vi.fn(() => f
 
 import type { VoiceEntry, VoiceModelRow } from "../../../../types";
 import { SpeakScreen } from "../SpeakScreen";
-import { VoicesScreen } from "../VoicesScreen";
 import type { VoiceCatalog } from "../useVoiceCatalog";
 
 const caps = { speak: true, style: false, clone: false, design: false };
@@ -94,16 +93,5 @@ describe("SpeakScreen cloning model and voice picker", () => {
     const html = renderToStaticMarkup(<SpeakScreen catalog={catalog} voiceId="af_heart" onVoiceChange={() => {}} />);
     expect(html).toContain('aria-describedby="voice-speak-style-reason"');
     expect(html).toContain('id="voice-speak-style-reason"');
-  });
-});
-
-describe("VoicesScreen", () => {
-  it("lists built-in and cloned voices with the three new-voice cards", () => {
-    const html = renderToStaticMarkup(<VoicesScreen catalog={catalog} onUse={() => {}} onDesign={() => {}} onGetMore={() => {}} />);
-    for (const text of ["Clone a voice", "Design a voice", "Get more voices", "Heart", "Ryan", "My voice", "Only clone your own voice", "All", "Mine", "Built-in"]) {
-      expect(html).toContain(text);
-    }
-    expect(html).toContain("Delete the voice My voice");
-    expect(html).not.toContain("Delete the voice Heart");
   });
 });

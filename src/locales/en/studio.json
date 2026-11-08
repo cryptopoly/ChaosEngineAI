@@ -701,41 +701,42 @@
       "openStudio": "Open Studio"
     },
     "voices": {
-      "title": "Voices",
-      "subtitle": "Kokoro: 54 voices in 9 languages. Pick the one chat reads aloud with.",
-      "needsChineseAddon": "Mandarin voices need a small extra add-on.",
       "addChinese": "Add Mandarin Chinese voices",
-      "notYet": "Not available on this computer yet.",
-      "useVoice": "Use this voice",
-      "preview": "Preview",
       "listTitle": "Voices",
-      "listSubtitle": "Built-in voices and the voices you cloned, in one list.",
       "cloneCard": "Clone a voice",
       "cloneDetail": "From a short recording of your own voice, or of someone who gave permission.",
       "designCard": "Design a voice",
       "designDetail": "Describe the voice you want in words.",
       "designAction": "Describe a voice",
       "moreCard": "Get more voices",
-      "moreDetail": "Add Mandarin Chinese voices and more from the voice pack.",
-      "moreAction": "Open Voice Models",
       "filter": "Show",
       "allLanguages": "All languages",
-      "noneMine": "No cloned voices yet. Use Clone a voice above.",
       "none": "No voices to show.",
       "kindClone": "Cloned",
       "kindPreset": "Natural",
       "kindBuiltin": "Quick",
-      "playSample": "Play sample",
-      "use": "Use",
       "tab": "Voices",
       "filters": {
         "all": "All",
-        "mine": "Mine",
-        "builtin": "Built-in"
-      }
+        "recommended": "Recommended",
+        "quick": "Quick",
+        "natural": "Natural",
+        "cloned": "Cloned",
+        "designed": "Designed"
+      },
+      "managerSubtitle": "Every voice in one list: try it, use it in Speak, or make it the chat voice.",
+      "designRowDetail": "Any language. A new voice from your description each run.",
+      "kindDesign": "Designed",
+      "chatQuickOnly": "Chat reads aloud with quick voices for now. Natural, designed and cloned voices come to Chat later.",
+      "noneCloned": "No cloned voices yet. Use New cloned voice above.",
+      "chatVoice": "Chat voice",
+      "stopSample": "Stop the sample of {name}",
+      "useInSpeak": "Use in Speak",
+      "useInChat": "Use in Chat",
+      "inChat": "In use in Chat",
+      "chatLater": "Quick voices only in Chat for now."
     },
     "settings": {
-      "title": "Voice settings",
       "autoSend": "Send the message as soon as dictation finishes",
       "autoRead": "Read every chat reply aloud when it finishes",
       "language": "Dictation language",
@@ -747,7 +748,9 @@
       "unload": "Unload now",
       "silence": "Voice call: pause that ends your turn",
       "silenceHint": "Shorter replies faster; longer lets you pause to think.",
-      "bargeIn": "Voice call: interrupt the model by speaking"
+      "bargeIn": "Voice call: interrupt the model by speaking",
+      "runtimeTitle": "Dictation and memory",
+      "chatMoved": "How chat reads aloud and voice calls: Voice Studio > Voices."
     },
     "offline": "Waiting for the backend…",
     "copy": "Copy",
@@ -1010,6 +1013,15 @@
       "getMore": "Get more voices",
       "getMoreDetail": "The cloning models and the rest of the speech models.",
       "openModels": "Open Models"
+    },
+    "chatCalls": {
+      "title": "Chat and calls",
+      "voice": "Chat voice: {name}. Change it with Use in Chat above."
+    },
+    "quickVoices": {
+      "title": "Quick voices",
+      "line": "Kokoro: {count} voices in {languages} languages, part of the voice pack, under 1 GB.",
+      "browse": "Browse voices"
     }
   },
   "residentChatModelNote": "A loaded chat model holds about {gb} GB of this memory; unloading it frees that.",

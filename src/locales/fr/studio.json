@@ -701,41 +701,42 @@
       "openStudio": null
     },
     "voices": {
-      "title": "Voix",
-      "subtitle": "Kokoro : 54 voix dans 9 langues. Choisissez celle avec laquelle le chat lit à voix haute.",
-      "needsChineseAddon": null,
       "addChinese": null,
-      "notYet": "Pas encore disponible sur cet ordinateur.",
-      "useVoice": "Utiliser cette voix",
-      "preview": "Aperçu",
       "listTitle": "Voix",
-      "listSubtitle": null,
       "cloneCard": null,
       "cloneDetail": null,
       "designCard": null,
       "designDetail": null,
       "designAction": null,
       "moreCard": null,
-      "moreDetail": null,
-      "moreAction": null,
       "filter": "Afficher",
       "allLanguages": "Toutes les langues",
-      "noneMine": null,
       "none": null,
       "kindClone": "Clonée",
       "kindPreset": null,
       "kindBuiltin": null,
-      "playSample": null,
-      "use": "Utiliser",
       "tab": null,
       "filters": {
         "all": "Toutes",
-        "mine": "Les miennes",
-        "builtin": "Intégrée"
-      }
+        "recommended": null,
+        "quick": null,
+        "natural": null,
+        "cloned": null,
+        "designed": null
+      },
+      "managerSubtitle": null,
+      "designRowDetail": null,
+      "kindDesign": null,
+      "chatQuickOnly": null,
+      "noneCloned": null,
+      "chatVoice": null,
+      "stopSample": null,
+      "useInSpeak": null,
+      "useInChat": null,
+      "inChat": null,
+      "chatLater": null
     },
     "settings": {
-      "title": "Préférences vocales",
       "autoSend": "Envoyer le message dès que la dictée est terminée",
       "autoRead": "Lire à voix haute chaque réponse du chat une fois terminée",
       "language": "Langue de dictée",
@@ -747,7 +748,9 @@
       "unload": "Décharger maintenant",
       "silence": "Appel vocal : pause qui termine votre tour",
       "silenceHint": "Plus court répond plus vite ; plus long vous laisse le temps de réfléchir.",
-      "bargeIn": "Appel vocal : interrompre le modèle en parlant"
+      "bargeIn": "Appel vocal : interrompre le modèle en parlant",
+      "runtimeTitle": null,
+      "chatMoved": null
     },
     "offline": "En attente du backend…",
     "copy": "Copier",
@@ -1010,6 +1013,15 @@
       "getMore": null,
       "getMoreDetail": null,
       "openModels": null
+    },
+    "chatCalls": {
+      "title": null,
+      "voice": null
+    },
+    "quickVoices": {
+      "title": null,
+      "line": null,
+      "browse": null
     }
   },
   "residentChatModelNote": "Un modèle de chat chargé occupe environ {gb} Go de cette mémoire ; le décharger la libère.",

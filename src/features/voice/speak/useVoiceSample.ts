@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { speakVoice } from "../../../api";
+import { deleteLibraryItems, speakVoice } from "../../../api";
 import type { VoiceEntry } from "../../../types";
 import { speechPlayer, useSpeechPlayer } from "../speechPlayer";
 
@@ -20,14 +20,18 @@ const SAMPLE_LINES: Record<string, string> = {
   zh: "你好！这是我的声音。",
 };
 
-/** Whether a sample can be played: built-in voices and presets. Designed and cloned voices have none. */
+/** What the designed-voice sample asks for: the design voice has no description of its own until one is typed. */
+export const SAMPLE_DESIGN = "A warm, clear adult voice, calm, at an easy pace.";
+
+/** Whether a sample can be played: every voice that runs here (quick, natural, designed and cloned). */
 export function canPlaySample(voice: VoiceEntry): boolean {
-  return (voice.kind === "builtin" || voice.kind === "preset") && voice.available;
+  return voice.available;
 }
 
 /**
- * Plays a sample line in a voice. Built-in voices stream through the shared read-aloud player; presets make one
- * short speak request (not saved anywhere). One sample plays at a time.
+ * Plays a sample line in a voice. Built-in voices stream through the shared read-aloud player; every other voice
+ * makes one short speak request. A sample is never kept: a cloned voice's clip, which the backend always files in
+ * the Library (labelled and watermarked), is deleted from it again once the audio is here. One sample at a time.
  */
 export function useVoiceSample(speed = 1) {
   const player = useSpeechPlayer();
@@ -67,7 +71,8 @@ export function useVoiceSample(speed = 1) {
     }
     setLoadingId(voice.id);
     try {
-      const result = await speakVoice({ text: line, voice: voice.id, speed });
+      const result = await speakVoice({ text: line, voice: voice.id, speed, ...(voice.kind === "design" ? { style: SAMPLE_DESIGN } : {}) });
+      if (result.libraryId) void deleteLibraryItems([result.libraryId]).catch(() => undefined);
       const audio = new Audio(`data:audio/wav;base64,${result.audio}`);
       audio.onended = () => setPresetId(null);
       audioRef.current = audio;

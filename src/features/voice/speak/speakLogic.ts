@@ -17,7 +17,7 @@ export const STYLE_CHIPS: Array<{ id: string; instruction: string }> = [
   { id: "calm", instruction: "Speak in a calm, relaxed tone." },
 ];
 
-export type VoiceFilter = "all" | "mine" | "builtin";
+export type VoiceFilter = "all" | "recommended" | "quick" | "natural" | "cloned" | "designed";
 
 /** What a voice costs to run, for the card chip, the cost line and the Models rows. Never a guess: an unmeasured model says so. */
 export type CostLabel =
@@ -137,10 +137,32 @@ export function cloneRequestText(text: string): string {
   return text.replace(/\s*\[pause\]\s*/gi, "\n\n").trim();
 }
 
-export function matchesFilter(voice: VoiceEntry, filter: VoiceFilter): boolean {
-  if (filter === "all") return true;
-  if (filter === "builtin") return voice.kind === "builtin" || voice.kind === "preset";
-  return voice.kind === "clone";
+/** The Voices tab's kind filter; ``recommended`` uses the Speak picker's Recommended group. */
+export function matchesFilter(voice: VoiceEntry, filter: VoiceFilter, recommended: string[] = []): boolean {
+  switch (filter) {
+    case "all":
+      return true;
+    case "recommended":
+      return recommended.includes(voice.id);
+    case "quick":
+      return voice.kind === "builtin";
+    case "natural":
+      return voice.kind === "preset";
+    case "cloned":
+      return voice.kind === "clone";
+    case "designed":
+      return voice.kind === "design";
+  }
+}
+
+/** The voices listed on the Voices tab: every voice except quick ones that cannot run here (an add-on card offers those). */
+export function managerVoices(voices: VoiceEntry[]): VoiceEntry[] {
+  return voices.filter((v) => v.kind !== "builtin" || v.available);
+}
+
+/** Chat reads aloud with quick (Kokoro) voices only for now; other voices reach Chat later (D-67 W6). */
+export function usableInChat(voice: VoiceEntry): boolean {
+  return voice.kind === "builtin" && voice.available;
 }
 
 /** Voices shown in the picker: built-in ones that cannot be used here are left out, as before. */

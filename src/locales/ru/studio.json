@@ -701,41 +701,42 @@
       "openStudio": null
     },
     "voices": {
-      "title": "Голоса",
-      "subtitle": "Kokoro: 54 голоса на 9 языках. Выберите голос, которым чат читает вслух.",
-      "needsChineseAddon": null,
       "addChinese": null,
-      "notYet": "Пока недоступно на этом компьютере.",
-      "useVoice": "Использовать этот голос",
-      "preview": "Прослушать",
       "listTitle": "Голоса",
-      "listSubtitle": null,
       "cloneCard": null,
       "cloneDetail": null,
       "designCard": null,
       "designDetail": null,
       "designAction": null,
       "moreCard": null,
-      "moreDetail": null,
-      "moreAction": null,
       "filter": "Показать",
       "allLanguages": "Все языки",
-      "noneMine": null,
       "none": null,
       "kindClone": "Клонированный",
       "kindPreset": null,
       "kindBuiltin": null,
-      "playSample": null,
-      "use": "Использовать",
       "tab": null,
       "filters": {
         "all": "Все",
-        "mine": "Мои",
-        "builtin": "Встроенный"
-      }
+        "recommended": null,
+        "quick": null,
+        "natural": null,
+        "cloned": null,
+        "designed": null
+      },
+      "managerSubtitle": null,
+      "designRowDetail": null,
+      "kindDesign": null,
+      "chatQuickOnly": null,
+      "noneCloned": null,
+      "chatVoice": null,
+      "stopSample": null,
+      "useInSpeak": null,
+      "useInChat": null,
+      "inChat": null,
+      "chatLater": null
     },
     "settings": {
-      "title": "Настройки голоса",
       "autoSend": "Отправлять сообщение сразу после завершения диктовки",
       "autoRead": "Читать вслух каждый ответ в чате по его завершении",
       "language": "Язык диктовки",
@@ -747,7 +748,9 @@
       "unload": "Выгрузить сейчас",
       "silence": "Голосовой звонок: пауза, завершающая вашу реплику",
       "silenceHint": "Короче — ответ быстрее; длиннее — можно подумать.",
-      "bargeIn": "Голосовой звонок: перебивать модель голосом"
+      "bargeIn": "Голосовой звонок: перебивать модель голосом",
+      "runtimeTitle": null,
+      "chatMoved": null
     },
     "offline": "Ожидание бэкенда…",
     "copy": "Копировать",
@@ -1010,6 +1013,15 @@
       "getMore": null,
       "getMoreDetail": null,
       "openModels": null
+    },
+    "chatCalls": {
+      "title": null,
+      "voice": null
+    },
+    "quickVoices": {
+      "title": null,
+      "line": null,
+      "browse": null
     }
   },
   "residentChatModelNote": "Загруженная чат-модель занимает около {gb} ГБ этой памяти; выгрузка модели освободит её.",

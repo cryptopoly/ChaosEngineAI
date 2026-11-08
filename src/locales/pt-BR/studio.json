@@ -701,41 +701,42 @@
       "openStudio": null
     },
     "voices": {
-      "title": "Vozes",
-      "subtitle": "Kokoro: 54 vozes em 9 idiomas. Escolha a que o chat usa para ler em voz alta.",
-      "needsChineseAddon": null,
       "addChinese": null,
-      "notYet": "Ainda não disponível neste computador.",
-      "useVoice": "Usar esta voz",
-      "preview": "Ouvir",
       "listTitle": "Vozes",
-      "listSubtitle": null,
       "cloneCard": null,
       "cloneDetail": null,
       "designCard": null,
       "designDetail": null,
       "designAction": null,
       "moreCard": null,
-      "moreDetail": null,
-      "moreAction": null,
       "filter": "Mostrar",
       "allLanguages": "Todos os idiomas",
-      "noneMine": null,
       "none": null,
       "kindClone": "Clonada",
       "kindPreset": null,
       "kindBuiltin": null,
-      "playSample": null,
-      "use": "Usar",
       "tab": null,
       "filters": {
         "all": "Todas",
-        "mine": "Minhas",
-        "builtin": "Integrada"
-      }
+        "recommended": null,
+        "quick": null,
+        "natural": null,
+        "cloned": null,
+        "designed": null
+      },
+      "managerSubtitle": null,
+      "designRowDetail": null,
+      "kindDesign": null,
+      "chatQuickOnly": null,
+      "noneCloned": null,
+      "chatVoice": null,
+      "stopSample": null,
+      "useInSpeak": null,
+      "useInChat": null,
+      "inChat": null,
+      "chatLater": null
     },
     "settings": {
-      "title": "Preferências de voz",
       "autoSend": "Enviar a mensagem assim que o ditado terminar",
       "autoRead": "Ler cada resposta do chat em voz alta ao terminar",
       "language": "Idioma do ditado",
@@ -747,7 +748,9 @@
       "unload": "Descarregar agora",
       "silence": "Chamada de voz: pausa que encerra sua vez",
       "silenceHint": "Mais curta responde mais rápido; mais longa deixa você pausar para pensar.",
-      "bargeIn": "Chamada de voz: interromper o modelo falando"
+      "bargeIn": "Chamada de voz: interromper o modelo falando",
+      "runtimeTitle": null,
+      "chatMoved": null
     },
     "offline": "Aguardando o backend…",
     "copy": "Copiar",
@@ -1010,6 +1013,15 @@
       "getMore": null,
       "getMoreDetail": null,
       "openModels": null
+    },
+    "chatCalls": {
+      "title": null,
+      "voice": null
+    },
+    "quickVoices": {
+      "title": null,
+      "line": null,
+      "browse": null
     }
   },
   "residentChatModelNote": "Um modelo de chat carregado ocupa cerca de {gb} GB dessa memória; descarregá-lo libera esse espaço.",

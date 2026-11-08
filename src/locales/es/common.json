@@ -836,6 +836,7 @@
       "storage": "Almacenamiento",
       "providers": "Proveedores",
       "integrations": "Integraciones",
+      "skills": null,
       "diagnostics": "Diagnóstico",
       "accelerators": "Aceleradores",
       "disk": "Uso del disco"
@@ -928,6 +929,27 @@
       "readTokenRemove": "Quitar el token de solo lectura",
       "readTokenHint": "Para un panel o un vigilante: puede ver el estado y los trabajos, pero no puede crear ni cambiar nada.",
       "readTokenLabel": "Token de solo lectura (Claude Code)"
+    },
+    "skills": {
+      "title": null,
+      "subtitle": null,
+      "safety": null,
+      "pathPlaceholder": null,
+      "pathLabel": null,
+      "pickTitle": null,
+      "noDialog": null,
+      "chooseFolder": null,
+      "chooseZip": null,
+      "import": null,
+      "imported": null,
+      "empty": null,
+      "listLabel": null,
+      "enabled": null,
+      "files": null,
+      "skippedTitle": null,
+      "confirmDelete": null,
+      "cancel": null,
+      "delete": null
     },
     "integrations": {
       "title": "Integraciones",

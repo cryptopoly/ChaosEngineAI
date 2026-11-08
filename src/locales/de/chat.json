@@ -486,5 +486,13 @@
       "tooltip": null,
       "off": null
     }
+  },
+  "skillsChat": {
+    "switch": {
+      "label": null,
+      "on": null,
+      "onTooltip": null,
+      "offTooltip": null
+    }
   }
 }

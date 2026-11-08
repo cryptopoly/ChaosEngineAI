@@ -317,6 +317,8 @@ export interface GeneratePayload {
   /** D-60: offer the studio tools; renders wait for the plan card unless studioAutoApprove. */
   studioTools?: boolean;
   studioAutoApprove?: boolean;
+  /** D-62: offer the skills switched on in Settings (names in the prompt, load_skill for the text). */
+  skills?: boolean;
   /**
    * Phase 2.12: when true, the model selectors in this payload override
    * the loaded runtime for THIS turn only — the session's stored

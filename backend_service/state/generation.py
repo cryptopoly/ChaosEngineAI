@@ -526,6 +526,15 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest, app_reque
         effective_system_prompt = f"{effective_system_prompt}\n\n{STUDIO_HINT}" if effective_system_prompt else STUDIO_HINT
         enable_tools = True
         available_tools = None
+    chat_registry = studio_registry
+    if request.skills:  # D-62: the enabled skills' names in the prompt, their text through load_skill
+        from backend_service.skills.chat import with_chat_skills
+
+        effective_system_prompt, chat_registry = with_chat_skills(
+            effective_system_prompt, studio_registry, available_tools if enable_tools else [])
+        if chat_registry is not None:
+            enable_tools = True
+            available_tools = None
 
     def _sse_stream():
         full_text = ""
@@ -686,8 +695,8 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest, app_reque
                     max_tokens=request.maxTokens, temperature=request.temperature,
                     images=request.images,
                     available_tools=available_tools,
-                    **({"tool_registry": studio_registry, "gate": studio_gate, "max_iterations": 30}
-                       if studio_registry is not None else {}),
+                    **({"tool_registry": chat_registry, "gate": studio_gate, "max_iterations": 30}
+                       if chat_registry is not None else {}),
                 ):
                     if chaosengine.is_chat_cancel_requested(session_id_for_cancel):
                         cancelled = True

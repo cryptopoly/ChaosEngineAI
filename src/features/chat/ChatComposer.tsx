@@ -10,6 +10,7 @@ import type { KvStrategyOverride } from "./kvStrategyOverride";
 import type { SlashCommand } from "./slashCommands";
 import { ChatComposerDflashHint } from "./ChatComposerDflashHint";
 import { AUTO_APPROVE_HOURS, useStudioAutoApprove, writeStudioAutoApprove } from "./studioChat";
+import { ChatSkillsSwitch } from "./ChatSkillsSwitch";
 
 /**
  * Phase 2.1: extracted from ChatTab.tsx. The composer area — image
@@ -429,6 +430,7 @@ export function ChatComposer({
                 : t("studioChat.switch.label", { defaultValue: "Studio" })}
             </button>
           ) : null}
+          {showToolsToggle ? <ChatSkillsSwitch sessionId={activeChat?.id} /> : null}
           {showToolsToggle && studioTools && studioAutoApprove ? (
             <span className="composer-studio-auto" role="status">
               <span title={t("studioChat.auto.tooltip", {

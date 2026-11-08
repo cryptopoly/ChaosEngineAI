@@ -187,6 +187,9 @@ class GenerateRequest(BaseModel):
     # (the chat's "Always allow renders in this chat" box, off by default).
     studioTools: bool = False
     studioAutoApprove: bool = False
+    # D-62: offer the enabled skills (name and description in the prompt, load_skill / read_skill_file
+    # tools for the full text). Streaming chat only; read-only, no approval card.
+    skills: bool = False
     # Phase 2.12: when True, the modelRef / canonicalRepo / source / etc.
     # in this request are treated as a one-turn override — the model
     # loads (or stays) for this turn, but the session's stored

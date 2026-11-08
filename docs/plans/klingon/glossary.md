@@ -294,3 +294,158 @@ Source kinds: **canon** = a word from Marc Okrand's published vocabulary used in
 ## Coined terms for a speaker to review
 
 `jomHa'` uninstall · `motlhmoH` reset · `legh nung` preview · `yab` model (sense) · `ja'chuq yab` chat model · `mIllogh yab` image model · `mIllogh vIH` video · `mIllogh vIH yab` video model · `ghogh yab` voice model · `QoQ yab` music model · `nav ghom` folder · `polmeH Daq` storage · `pollu'` on disk · `qoD pat` backend · `vumpa'` workspace · `QIn Qo'` negative prompt · `tInghach` size · `QoywI'` microphone · `ghogh velqa'` voice clone · `qonta'ghach` recording · `lut 'echlet` storyboard · `chelwI'` plugin · `ruch` progress · `may'` benchmark run · `'ov` compare · `lI'` download · `lab` upload · `qon` copy · `waH` benchmark · `qeq` train · `nav` file · `ghom` library · `Qu'` project · `lut` film · `ghu'` context · `'ay'` shot · `nID` take · `jabwI'` server · `velqa'` template · `patlh` quality · `chen` aspect ratio · `Hat` temperature · `He` path · `chu'` load · `yabmeywIj` My Models · `DIvI' Hol` English.
+
+## Added during translation (per file, for the speaker review)
+
+Terms the per-file translators needed beyond the table above. Same marking: a canon word in a new sense, or a compound built from canon parts. None is presented as canon in its new sense.
+
+| Klingon | Meaning and source | File |
+|---|---|---|
+| `'ab` | height (canon verb 'have a height of', used as the label) | studio |
+| `'ab tIn` | vertical (tall) | studio |
+| `'ay' choH` | inpaint (canon 'section' + 'change') | library |
+| `'el` | access (canon 'enter') | library |
+| `'IQ` | sad (canon) | studio |
+| `'olghach` | verification | studio |
+| `ABI package` | ABI-dependent package (kept English) | studio |
+| `bombe'` | instrumental (no song / no singing) | chat |
+| `bot` | blocked (canon 'prevent, block') | studio |
+| `buS nIS` | needs attention (needs focus) | library |
+| `cha'ghach` | playback (the displaying) | studio |
+| `chegh nav ghom` | rollback directory (return folder) | studio |
+| `chenmoHghach` | generation (a generating, the act); -ghach on chenmoH, used as the noun 'generation run' | studio |
+| `chenmoHwI' pong` | attribution (maker's name) | studio |
+| `chenta'` | render (the made thing) | chat |
+| `chevwI'` | filter (separator) | studio |
+| `chu'moHghach` | update, upgrade (noun) | studio |
+| `chu'wI'` | playhead / transport (activator); also 'hook' in templates | studio |
+| `Daw'` | random (canon: revolt; used as 'random/unruly') | studio |
+| `De' 'el` | input (data that enters; 'el = enter, canon) | chat |
+| `De' naQ` | technical details (complete data) | studio |
+| `De' nav` | web page (data sheet) | chat |
+| `De' pat` | network (data system), in the LongLive install note | library |
+| `De'wI' wIv` | automatic (computer's choice) | studio |
+| `Delghach` | description | studio |
+| `Do DubwI'` | performance booster (speed improver) | studio |
+| `Dochmeyvam` | these items (Doch = thing, canon) | chat |
+| `DuD choH` | crossfade (mix change) | studio |
+| `DuH` | probability (canon: be possible) | chat |
+| `Dung / bIng` | ascending / descending (canon 'area above' / 'area below') | library |
+| `ghItlh jatlhwI'` | text-to-speech (text speaker) | studio |
+| `ghItlh nap` | draft (simple writing) | studio |
+| `ghItlhghach` | dictation, the act of writing | studio |
+| `ghogh 'el` | voice input / dictation | chat |
+| `ghogh ghom jan` | voice pack (voice collection device) | studio |
+| `ghogh jo` | voice pack (voice resources) | chat |
+| `ghoj Do` | learning rate (learning speed) | chat |
+| `ghom Qu'` | batch (group task) | studio |
+| `ghor` | broken (canon 'break') | library |
+| `ghoS SIbI'` | go straight to | studio |
+| `Hal bejlu'taH` | watching upstream (source is being watched) | library |
+| `Hal Daq` | repository (source place) | studio |
+| `Hap` | file format (canon 'matter, material'; used as the stuff a model file is made of: GGUF, MLX, safetensors) | library |
+| `He (lane)` | lane in the mixer (route) | studio |
+| `Hop puS` | shallow depth of field (short distance) | studio |
+| `Huv` | clear/sharp, 'Huvbe'' blurry (canon 'be clear, not obstructed') | studio |
+| `ja'chuq (session)` | this session (as in activity log) | studio |
+| `jatlh mev tu'wI'` | turn / voice-activity detection (detector of speech stopping) | chat |
+| `jen` | high, tall; portrait orientation, high quality (canon 'be high') | studio |
+| `jo` | pack (canon: resources) | studio |
+| `jo ghom` | bundle (resources group) | studio |
+| `jomghach` | install, installation (noun) | studio |
+| `jonta' wIv A/B waH` | runtime-profile A/B test | chat |
+| `jot` | calm (canon 'be calm') | studio |
+| `juch` | width / landscape (canon verb 'have a width of', used as the label) | studio |
+| `laH 'agh` | tech demo (ability demonstration) | chat |
+| `lajghach` | acknowledgement (the accepting) | studio |
+| `lan (ngoqvo')` | paste (place from the clipboard) | studio |
+| `legh nung` | preview (see first) | studio |
+| `lI'ghach` | download (noun, the act of downloading) | studio |
+| `lI'lu'ta'bogh` | the download (the files that were downloaded), used for 'delete download' | library |
+| `loS reD rap` | square (four equal sides) | studio |
+| `loStaH` | pending (is waiting) | library |
+| `machmoH` | compressed (KV cache) (canon derivation: make small) | library |
+| `mech chaw'` | commercial licence (mech trade + chaw' permit) | studio |
+| `mech QIn` | advertisement (trade message) | studio |
+| `meq` | reasoning (canon 'reason, logic') | library |
+| `mI' SImwI'` | calculator (number computer; SIm = calculate, canon) | chat |
+| `mIr` | sort order (canon: chain) | studio |
+| `mIS ngoQ` | target entropy (confusion goal) | chat |
+| `mIw rIt` | function calling (canon 'procedure' + 'summon') | library |
+| `mugh` | translate (canon) | studio |
+| `nab` | cache strategy (canon 'plan') | library |
+| `nab 'echlet` | plan card (plan panel) | chat |
+| `naDev ja'chuq chu' yItagh` | branch / fork from here (start a new chat here) | chat |
+| `naQbe'` | incomplete (canon 'be whole' + not) | library |
+| `nargh` | released (canon 'appear'; column header for release date) | library |
+| `nav laDwI'` | file reader | chat |
+| `nav wIvwI'` | file picker | studio |
+| `nen` | age, maturity (canon 'mature' - used as noun, review) | studio |
+| `ngI'` | weights (model weights) (canon 'have a weight of') | library |
+| `ngoD` | result / output (canon: fact) | chat |
+| `ngoqmoH` | encode (make into code) | studio |
+| `ngoqwI'` | encoder (code maker) | studio |
+| `ngu'` | identify, label (canon) | studio |
+| `ngutlh` | character, letter (canon) | studio |
+| `nobwI'` | provider (canon derivation: giver) | library |
+| `nommoHwI'` | accelerator, acceleration (canon derivation: thing that makes fast) | library |
+| `nuqneH` | welcome (canon greeting, literally what do you want) | chat |
+| `parHa'` | favourite, like (canon 'like', the undo of par dislike) | library |
+| `pe'` | trim, cut (canon: cut) | studio |
+| `per` | tag, label (canon: label) | studio |
+| `pIH` | expect (canon) | studio |
+| `pImwI'` | variation (thing that differs) | studio |
+| `pixel chenmoH` | decode (make pixels) | studio |
+| `po'wI'` | expert (canon derivation from po' be expert) | studio |
+| `poH He` | timeline (time route) | studio |
+| `pong yIchoH` | rename (change the name); used for Rename session | chat |
+| `poS / ngaQ` | open / gated access (canon 'be open' / 'be locked') | library |
+| `qaD` | challenge (canon noun, used for HTML Challenge) | chat |
+| `qawHaq polwI'` | memory saver | chat |
+| `Qeb` | loop (canon: ring) | studio |
+| `QeH` | angry (canon) | studio |
+| `QIch ghItlhwI'` | speech-to-text (speech writer) | studio |
+| `QIch yajwI'` | speech recognition (speech understander) | chat |
+| `Qob nuD` | security scan (danger inspection) | chat |
+| `Qoj / yIQojmoH` | random / randomise (Qoj = be random, canon) | chat |
+| `qon Daq` | clipboard (recording place) | studio |
+| `qonghach` | recording (noun); used instead of the glossary's qonta'ghach | studio |
+| `qorDu'` | model family (canon 'family') | library |
+| `Qub` | thinking (canon 'think') | library |
+| `Qub mIw` | thinking mode | chat |
+| `ra' tetlh (/)` | slash command menu (command list) | chat |
+| `ratlh` | remain (canon) | studio |
+| `rItlh` | chroma/pigment (canon 'paint, pigment') | studio |
+| `SaHbe'` | random (does not care) | studio |
+| `Say'moH` | tidy up, clean (canon 'make clean') | studio |
+| `Seg` | variant, kind (canon 'type, kind'; used for model variants) | library |
+| `Sor chuq` | tree budget (tree range) | chat |
+| `Sum` | be near (canon) | studio |
+| `tam` | swap (canon 'exchange, substitute') | studio |
+| `tammoH / tammoHHa'` | mute / unmute (make quiet / undo) | chat |
+| `teS QoywI'` | headphones (ear hearer) | chat |
+| `tI'` | repair (canon) | studio |
+| `tlhoS` | tight fit (canon 'almost'; 'almost does not fit') | library |
+| `tlhup` | whisper (canon) | studio |
+| `tujchoHtaHvIS` | while warming up (literal: while becoming hot) | studio |
+| `tujmo' QIt` | thermal throttle (slow because of heat) | chat |
+| `vaQ` | excited (canon 'be vigorous, aggressive, effective'; no canon word for excited) | studio |
+| `veH` | limit, threshold (canon: boundary) | studio |
+| `velqa' mIw` | simulation (replica process) | chat |
+| `veQ` | trash (canon: garbage), .trash folder | chat |
+| `vumpa'` | Studio (glossary workspace term reused for Image Studio / Video Studio: mIllogh vumpa') | library |
+| `wab HoS ngoQ` | loudness target | studio |
+| `web leghwI'` | web browser (web viewer) | chat |
+| `wIv le'` | override (special choice) | chat |
+| `wIy` | overview tab (tactical display) | studio |
+| `wovmoHwI' neon` | neon lights | studio |
+| `wuqghach` | decision (wuq = decide) | studio |
+| `yab HaSta` | Models page (model + display) | library |
+| `yab nav` | model card (model + paper) | library |
+| `yab nung` | draft model (preceding model) | chat |
+| `yap` | fit, be enough (canon) | studio |
+| `yevlu'ta'` | paused (canon 'pause' + passive) | library |
+| `yIbagh / yIbaghHa'` | pin / unpin (bagh = tie, canon) | chat |
+| `yIlaD 'ej yIjatlh` | read aloud (read and speak) | chat |
+
+Also in common.json: `jang pIH mIw` speculative decoding (reply-anticipation method), `mIw cha'DIch` fallback (second method), `yab tuj` warm model, `Daq chIm` headroom, `qawHaq buy'` memory pressure, `HoS polwI'` battery, `wanI' tetlh` activity feed, `De' nav` web page, `qaD` challenge, `laD neH token` read-only token, `Duy 'el` agent access, `He Hal` primary navigation, `ta'` action (column), `raS` table (view), `yIbagh` pin, `nIteb tagh` auto-start, `jabwI'` server, `lu'` OK, `pItlh` done.

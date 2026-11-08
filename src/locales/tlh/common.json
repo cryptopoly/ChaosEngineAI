@@ -258,9 +258,9 @@
     "hide": "yISo'",
     "reveal": "yIcha'",
     "copy": "yIqon",
-    "badgeActive": "QAPTAH",
-    "badgeLoading": "CHU'LI'",
-    "badgeWarm": "TUJ",
+    "badgeActive": "QaptaH",
+    "badgeLoading": "chu'lI'",
+    "badgeWarm": "tuj",
     "modelIdLabel": "yab id: {ref}",
     "activate": "yIchu'",
     "unload": "yIchu'Ha'",
@@ -623,8 +623,8 @@
   "pluginsTab": {
     "discovering": "chelwI' nejlI'...",
     "noPlugins": "chelwI' tu'lu'be'.",
-    "toggleOn": "CHU'",
-    "toggleOff": "CHU'HA'",
+    "toggleOn": "chu'",
+    "toggleOff": "chu'Ha'",
     "externalIntro": "manifest.json ghajbogh chelwI' nav ghom naDev yIlan:",
     "externalManifestHint": "manifest.json poQ chelwI' Hoch; id, name, type, entry_point je ghajnIS.",
     "types": {
@@ -1024,7 +1024,7 @@
     "sizeGb": "{size} GB",
     "contextLarge": "{value}K ghu'",
     "contextSmall": "{value} ghu'",
-    "brokenBadge": "GHOR",
+    "brokenBadge": "ghor",
     "emptyState": "yab tu'lu'be'.",
     "cancelButton": "yIqIl",
     "error": {

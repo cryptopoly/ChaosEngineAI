@@ -129,6 +129,17 @@ class PlanTests(unittest.TestCase):
         self.assertEqual(styled.extra, {"mode": "preset", "speaker": "Ryan", "language": "auto", "instruct": "Very happy"})
         self.assertEqual(listed["model"], "qwen3-tts-custom-1.7b")
 
+    def test_every_voice_says_when_ffmpeg_is_missing(self) -> None:
+        # Pitch (every voice) and speed (all but the built-in ones) are ffmpeg steps: the screen warns before Generate.
+        from backend_service.storyboard import ffmpeg_bin
+
+        for exe, expected in ((None, True), ("/usr/bin/ffmpeg", False)):
+            with Machine(), mock.patch.object(voice_clone, "snapshot_dir", installed("qwen3-tts-custom-1.7b")), \
+                    mock.patch.object(ffmpeg_bin, "optional_ffmpeg_exe", return_value=exe):
+                voices = voice_speak.list_voices(include_clones=False)
+            self.assertTrue(voices)
+            self.assertEqual({v["needsFfmpeg"] for v in voices}, {expected})
+
     def test_the_0_6b_model_runs_only_when_it_is_the_only_one_installed(self) -> None:
         with Machine(), mock.patch.object(voice_clone, "snapshot_dir", installed("qwen3-tts-custom-0.6b")):
             plain = voice_speak.build_plan("qwen3:Ryan")

@@ -177,6 +177,8 @@ export interface VoiceEntry {
   addon?: string | null;
   /** Plain words for why it cannot be used yet. */
   needs?: string | null;
+  /** ffmpeg is missing here: pitch (every voice) and speed (all but quick voices) cannot be changed. */
+  needsFfmpeg?: boolean;
   consent?: { speakerName: string; basis: "own" | "permission"; consentedAt: string; appVersion?: string };
 }
 

@@ -118,6 +118,15 @@ export function canGenerate(voice: VoiceEntry | null, text: string, style: strin
   return true;
 }
 
+/**
+ * Speed or pitch would need ffmpeg, which is missing (``needsFfmpeg`` from the voice list). Pitch is an ffmpeg step on
+ * every voice; speed is one on every voice except the quick (Kokoro) ones, which change speed themselves.
+ */
+export function ffmpegBlocked(voice: VoiceEntry | null, speed: number, pitch: number): boolean {
+  if (!voice?.needsFfmpeg) return false;
+  return pitch !== 0 || (voice.kind !== "builtin" && Math.abs(speed - 1) > 1e-6);
+}
+
 /** Whether a request-sized piece of text is too long for one cloned-voice request. */
 export function cloneTextTooLong(text: string): boolean {
   return text.length > MAX_REQUEST_CHARS;

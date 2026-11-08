@@ -806,7 +806,6 @@
       "describe": "Describe the voice",
       "style": "Style",
       "describePlaceholder": "A warm woman in her thirties, calm and clear, speaking at an easy pace.",
-      "stylePlaceholder": "How should it sound? For example: a tired, gentle bedtime voice.",
       "styleChips": "Style shortcuts",
       "pitch": "Pitch",
       "advanced": "Advanced",
@@ -840,7 +839,11 @@
       "modelKokoroCost": "Runs with Kokoro, {detail}.",
       "modelReadyCost": "Runs with {name}: {detail}.",
       "modelNeedsCost": "Once downloaded: {detail}.",
-      "manageInModels": "Manage in Models"
+      "manageInModels": "Manage in Models",
+      "stylePlaceholderFree": "Tone, pace, accent, in your own words. For example: a tired, gentle bedtime voice, slow, slight Irish accent.",
+      "describeHint": "Say the age, gender, pitch, tone, accent and pace. The voice changes on every run; set a seed under Advanced to keep it.",
+      "ffmpegPitch": "Changing the pitch needs ffmpeg. Install it from Settings, or set pitch back to 0.",
+      "ffmpegSpeedPitch": "Speed and pitch for this voice need ffmpeg. Install it from Settings, or set speed to 1.0 and pitch to 0."
     },
     "stop": "Stop",
     "studio": {
@@ -997,7 +1000,6 @@
       "fewer": "Show the shortlist",
       "allVoices": "All {count} {language} voices",
       "cloned": "Cloned",
-      "clonedNote": "Only your own voice or someone who gave permission. Every clip is labelled as AI-made and watermarked.",
       "newClone": "New cloned voice",
       "newCloneDetail": "From a 10 to 20 s recording. Opens the consent form.",
       "newCloneOpen": "Open the form",

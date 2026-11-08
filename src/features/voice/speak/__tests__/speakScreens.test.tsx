@@ -24,7 +24,7 @@ const catalog: VoiceCatalog = { voices, models, modelsAvailable: true, cloneAllo
 describe("SpeakScreen", () => {
   it("greys the style box and chips for a voice without style, with a note", () => {
     const html = renderToStaticMarkup(<SpeakScreen catalog={catalog} voiceId="af_heart" onVoiceChange={() => {}} />);
-    expect(html).toMatch(/<textarea[^>]*disabled=""[^>]*placeholder="How should it sound/);
+    expect(html).toMatch(/<textarea[^>]*disabled=""[^>]*placeholder="Tone, pace, accent, in your own words/);
     expect(html).toContain("have no style control");
     expect(html).toContain(">Angry<");
     expect(html).toContain("Runs with Kokoro");
@@ -36,6 +36,22 @@ describe("SpeakScreen", () => {
     const html = renderToStaticMarkup(<SpeakScreen catalog={catalog} voiceId="qwen3:Ryan" onVoiceChange={() => {}} />);
     expect(html).toContain("The small model ignores style");
     expect(html).toContain("Download Qwen3-TTS 1.7B CustomVoice for style");
+  });
+
+  it("keeps the standing statement in the Cloned group, the same whichever voice is chosen", () => {
+    const heart = renderToStaticMarkup(<SpeakScreen catalog={catalog} voiceId="af_heart" onVoiceChange={() => {}} />);
+    const clone = renderToStaticMarkup(<SpeakScreen catalog={catalog} voiceId="clone:1" onVoiceChange={() => {}} />);
+    expect(heart.match(/Only clone your own voice/g)).toHaveLength(1);
+    expect(clone.match(/Only clone your own voice/g)).toHaveLength(1);
+    // In the picker, not between the picker and the style box.
+    expect(clone.indexOf("Only clone your own voice")).toBeLessThan(clone.indexOf("voice-picker__group--designed"));
+  });
+
+  it("tells a designed voice what to describe and how to keep it", () => {
+    const html = renderToStaticMarkup(<SpeakScreen catalog={catalog} voiceId="design" onVoiceChange={() => {}} />);
+    expect(html).toContain("Describe the voice");
+    expect(html).toContain("Say the age, gender, pitch, tone, accent and pace");
+    expect(html).toContain("set a seed under Advanced");
   });
 
   it("shows the standing statement for a cloned voice", () => {

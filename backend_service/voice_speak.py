@@ -108,9 +108,15 @@ def list_voices(*, include_clones: bool = True) -> list[dict[str, Any]]:
     voice can be used right now) and ``needs`` (plain words when it cannot). Built-in voices also carry ``grade``
     (the model author's quality grade, None when ungraded) and ``addon`` (the add-on that unlocks them, or None);
     voices that can never run on this lane (Japanese on MLX) are left out.
+
+    ``needsFfmpeg`` is True on every voice when ffmpeg is missing: pitch is always an ffmpeg step, and so is speed
+    for every voice except the built-in ones, so the Speak screen can say so before Generate rather than after.
     """
     from backend_service import voice_runtime  # noqa: PLC0415
     from backend_service.catalog.voice_models import CUSTOM_SPEAKERS  # noqa: PLC0415
+    from backend_service.storyboard import ffmpeg_bin  # noqa: PLC0415
+
+    no_ffmpeg = ffmpeg_bin.optional_ffmpeg_exe() is None
 
     voices: list[dict[str, Any]] = []
     for v in voice_runtime.list_tts_voices():
@@ -156,6 +162,8 @@ def list_voices(*, include_clones: bool = True) -> list[dict[str, Any]]:
                 "available": base_ready, "needs": None if base_ready else f"Download {base['name']} in Voice Models.",
                 "consent": item["consent"],
             })
+    for entry in voices:
+        entry["needsFfmpeg"] = no_ffmpeg
     return voices
 
 

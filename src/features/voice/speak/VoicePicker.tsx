@@ -2,6 +2,7 @@ import { useMemo, useState, type KeyboardEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { VoiceEntry, VoiceModelRow, VoiceRuntime } from "../../../types";
 import { useVoice } from "../VoiceContext";
+import { CloneStatement } from "../clone/CloneStatement";
 import { InstallProgress, useVoicePackJob } from "../VoicePackPanel";
 import { useCostText } from "./costText";
 import { DESIGN_VOICE_ID, chooseModel, costLabel, groupVoices, quickLanguage, quickShortlist } from "./speakLogic";
@@ -267,12 +268,8 @@ export function VoicePicker({
 
       {groups.clones.length > 0 || (modelsAvailable && onNewClone) ? (
         <section className="voice-picker__group voice-picker__group--clones">
-          <GroupHead
-            title={t("voice.picker.cloned", { defaultValue: "Cloned" })}
-            note={t("voice.picker.clonedNote", {
-              defaultValue: "Only your own voice or someone who gave permission. Every clip is labelled as AI-made and watermarked.",
-            })}
-          />
+          <GroupHead title={t("voice.picker.cloned", { defaultValue: "Cloned" })} />
+          <CloneStatement />
           <div className="voice-cards">
             {groups.clones.map((v) => card(v, "clones"))}
             {modelsAvailable && onNewClone ? (

@@ -806,7 +806,6 @@
       "describe": null,
       "style": null,
       "describePlaceholder": null,
-      "stylePlaceholder": null,
       "styleChips": null,
       "pitch": "음높이",
       "advanced": "고급",
@@ -840,7 +839,11 @@
       "modelKokoroCost": null,
       "modelReadyCost": null,
       "modelNeedsCost": null,
-      "manageInModels": null
+      "manageInModels": null,
+      "stylePlaceholderFree": null,
+      "describeHint": null,
+      "ffmpegPitch": null,
+      "ffmpegSpeedPitch": null
     },
     "stop": "중지",
     "studio": {
@@ -997,7 +1000,6 @@
       "fewer": null,
       "allVoices": null,
       "cloned": null,
-      "clonedNote": null,
       "newClone": null,
       "newCloneDetail": null,
       "newCloneOpen": null,

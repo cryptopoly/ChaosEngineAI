@@ -5,7 +5,6 @@ import { cancelSpeak, speakVoice } from "../../../api";
 import type { TabId, VoiceEntry } from "../../../types";
 import { useVoice } from "../VoiceContext";
 import { joinWavs, splitSpeech, type SpeechPart } from "../studio/speech";
-import { CloneStatement } from "../clone/CloneStatement";
 import { SpeakResultRow, type SpeakOutput } from "./SpeakResultRow";
 import { VoicePicker } from "./VoicePicker";
 import {
@@ -16,6 +15,7 @@ import {
   cloneRequestText,
   costLabel,
   cloneTextTooLong,
+  ffmpegBlocked,
   installedCloneModels,
   modelNote,
   recommendedNaturalModel,
@@ -95,7 +95,8 @@ export function SpeakScreen({
   const cloneChoices = installedCloneModels(voice, catalog.models);
   const parts: SpeechPart[] = cloned ? (text.trim() ? [{ text: cloneRequestText(text), gapAfter: 0 }] : []) : splitSpeech(text);
   const tooLong = cloned && cloneTextTooLong(text);
-  const ready = canGenerate(voice, text, activeStyle, note) && !tooLong;
+  const needsFfmpeg = ffmpegBlocked(voice, speed, pitch);
+  const ready = canGenerate(voice, text, activeStyle, note) && !tooLong && !needsFfmpeg;
   const seedValue = seed.trim() === "" ? null : Math.max(0, Math.min(2 ** 31 - 1, Math.floor(Number(seed))));
 
   const generate = async () => {
@@ -206,7 +207,6 @@ export function SpeakScreen({
           onGetMore={onTabChange ? () => onTabChange("voice-models") : undefined}
           onAddonInstalled={() => void catalog.refresh()}
         />
-        {cloned ? <CloneStatement /> : null}
 
         <div className="voice-speak__style">
           <label className="voice-settings__field">
@@ -221,7 +221,7 @@ export function SpeakScreen({
               placeholder={
                 designing
                   ? t("voice.speak.describePlaceholder", { defaultValue: "A warm woman in her thirties, calm and clear, speaking at an easy pace." })
-                  : t("voice.speak.stylePlaceholder", { defaultValue: "How should it sound? For example: a tired, gentle bedtime voice." })
+                  : t("voice.speak.stylePlaceholderFree", { defaultValue: "Tone, pace, accent, in your own words. For example: a tired, gentle bedtime voice, slow, slight Irish accent." })
               }
             />
           </label>
@@ -239,6 +239,13 @@ export function SpeakScreen({
                 </button>
               ))}
             </div>
+          ) : null}
+          {designing ? (
+            <p className="muted-text voice-speak__hint">
+              {t("voice.speak.describeHint", {
+                defaultValue: "Say the age, gender, pitch, tone, accent and pace. The voice changes on every run; set a seed under Advanced to keep it.",
+              })}
+            </p>
           ) : null}
           {styleReason ? (
             <p id="voice-speak-style-reason" className="muted-text voice-speak__hint">
@@ -325,6 +332,15 @@ export function SpeakScreen({
           ) : null}
         </p>
 
+        {needsFfmpeg ? (
+          <p className="voice-error" role="alert">
+            {voice?.kind === "builtin"
+              ? t("voice.speak.ffmpegPitch", { defaultValue: "Changing the pitch needs ffmpeg. Install it from Settings, or set pitch back to 0." })
+              : t("voice.speak.ffmpegSpeedPitch", {
+                  defaultValue: "Speed and pitch for this voice need ffmpeg. Install it from Settings, or set speed to 1.0 and pitch to 0.",
+                })}
+          </p>
+        ) : null}
         {tooLong ? (
           <p className="voice-error" role="alert">
             {t("voice.speak.cloneTooLong", { defaultValue: "This is too long for one cloned-voice clip. Shorten it to {max} characters.", max: MAX_REQUEST_CHARS.toLocaleString() })}

@@ -7,6 +7,7 @@ import {
   cloneTextTooLong,
   costLabel,
   defaultVoice,
+  ffmpegBlocked,
   groupVoices,
   installedCloneModels,
   quickShortlist,
@@ -270,5 +271,25 @@ describe("cost label", () => {
 
   it("names Kokoro for a quick voice (no model row)", () => {
     expect(costLabel(null)).toEqual({ kind: "kokoro" });
+  });
+});
+
+describe("ffmpegBlocked", () => {
+  const quick = { id: "af_heart", name: "Heart", kind: "builtin", language: "en-US", model: "kokoro", models: ["kokoro"], capabilities: caps(), available: true } as VoiceEntry;
+  const preset = { ...quick, id: "qwen3:Ryan", kind: "preset", models: ["c17"] } as VoiceEntry;
+
+  it("never blocks when ffmpeg is there", () => {
+    expect(ffmpegBlocked(preset, 1.5, 3)).toBe(false);
+    expect(ffmpegBlocked(null, 1.5, 3)).toBe(false);
+  });
+
+  it("blocks pitch on every voice and speed on all but quick voices when ffmpeg is missing", () => {
+    const q = { ...quick, needsFfmpeg: true };
+    const p = { ...preset, needsFfmpeg: true };
+    expect(ffmpegBlocked(q, 1.5, 0)).toBe(false);
+    expect(ffmpegBlocked(q, 1, 2)).toBe(true);
+    expect(ffmpegBlocked(p, 1, 0)).toBe(false);
+    expect(ffmpegBlocked(p, 1.2, 0)).toBe(true);
+    expect(ffmpegBlocked(p, 1, -1)).toBe(true);
   });
 });

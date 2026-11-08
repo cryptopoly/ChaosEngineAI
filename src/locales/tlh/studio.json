@@ -806,7 +806,6 @@
       "describe": "ghogh yIDel",
       "style": "mIw",
       "describePlaceholder": "be' tuj, wejmaH DIS loQ, jot 'ej Huv, QIt jatlh.",
-      "stylePlaceholder": "chay' wab? 'e' Dalaj: Doy' 'ej tam, QongmeH ghogh.",
       "styleChips": "mIw wIv nom",
       "pitch": "ghogh jen",
       "advanced": "wIv le'",
@@ -840,7 +839,11 @@
       "modelKokoroCost": null,
       "modelReadyCost": null,
       "modelNeedsCost": null,
-      "manageInModels": null
+      "manageInModels": null,
+      "stylePlaceholderFree": null,
+      "describeHint": null,
+      "ffmpegPitch": null,
+      "ffmpegSpeedPitch": null
     },
     "stop": "yImev",
     "studio": {
@@ -997,7 +1000,6 @@
       "fewer": null,
       "allVoices": null,
       "cloned": null,
-      "clonedNote": null,
       "newClone": null,
       "newCloneDetail": null,
       "newCloneOpen": null,

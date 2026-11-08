@@ -45,7 +45,7 @@ class PhaseNineteenTests(unittest.TestCase):
                                     _check=suite_mod._check, _voice_http=http)
             phase = phase_mod.run(SimpleNamespace(backend_reachable=True), suite)
             self.assertEqual(phase.status, "pass", [(c.name, c.status, c.reason) for c in phase.checks])
-            self.assertEqual(len(phase.checks), 5)
+            self.assertEqual(len(phase.checks), 6)
             self.assertEqual([p.name for p in skills_dir.iterdir()], [])
 
 

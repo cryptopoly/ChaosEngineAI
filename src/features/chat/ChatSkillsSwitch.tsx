@@ -3,13 +3,20 @@
  * Settings; when on, the chat model sees those skills' names and descriptions and can read their text.
  */
 import { useTranslation } from "react-i18next";
-import { useChatSkillsEnabled, useEnabledSkillCount, writeChatSkillsEnabled } from "./skillsChat";
+import { useChatSkillsEnabled, useEnabledSkillSummary, writeChatSkillsEnabled } from "./skillsChat";
 
 export function ChatSkillsSwitch({ sessionId }: { sessionId: string | null | undefined }) {
   const { t } = useTranslation("chat");
   const enabled = useChatSkillsEnabled(sessionId);
-  const count = useEnabledSkillCount();
+  const summary = useEnabledSkillSummary();
+  const { count } = summary;
   if (!sessionId || count === 0) return null;
+  const ratings = t("skillsChat.switch.ratings", {
+    high: summary.high,
+    medium: summary.medium,
+    low: summary.low,
+    defaultValue: "Security scan: {high} High, {medium} Medium, {low} Low.",
+  });
   return (
     <button
       className={`secondary-button composer-studio-toggle${enabled ? " active-toggle" : ""}`}
@@ -17,7 +24,7 @@ export function ChatSkillsSwitch({ sessionId }: { sessionId: string | null | und
       role="switch"
       aria-checked={enabled}
       onClick={() => writeChatSkillsEnabled(sessionId, !enabled)}
-      title={
+      title={`${
         enabled
           ? t("skillsChat.switch.onTooltip", {
               count,
@@ -26,7 +33,7 @@ export function ChatSkillsSwitch({ sessionId }: { sessionId: string | null | und
           : t("skillsChat.switch.offTooltip", {
               defaultValue: "Offer the skills switched on in Settings to the model in this chat",
             })
-      }
+      } ${ratings}`}
     >
       {enabled ? t("skillsChat.switch.on", { defaultValue: "Skills ON" }) : t("skillsChat.switch.label", { defaultValue: "Skills" })}
     </button>

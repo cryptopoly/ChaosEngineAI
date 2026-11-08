@@ -1,10 +1,12 @@
 /**
  * D-62: skills in Chat. The per-chat Skills switch (off by default, remembered per chat) and the count of
- * skills switched on in Settings, which decides whether the switch shows at all. Settings fires
+ * skills switched on in Settings, which decides whether the switch shows at all (with their scan ratings,
+ * D-68, for the switch's tooltip). Settings fires
  * SKILLS_CHANGED_EVENT after an import, a switch or a delete so an open composer follows.
  */
 import { useEffect, useState } from "react";
 import { listSkills } from "../../api/skills";
+import type { Skill } from "../../api/skills";
 
 const KEY_PREFIX = "chaosengine.chat.skills.";
 export const SKILLS_CHANGED_EVENT = "chaosengine:skills-changed";
@@ -54,18 +56,35 @@ export function useChatSkillsEnabled(sessionId: string | null | undefined): bool
   return enabled;
 }
 
-/** How many skills are switched on in Settings (0 while unknown or offline). */
-export function useEnabledSkillCount(): number {
-  const [count, setCount] = useState(0);
+export interface EnabledSkillSummary {
+  /** Skills switched on in Settings (0 while unknown or offline). */
+  count: number;
+  /** How many of them the security scan (D-68) rated low, medium and high. */
+  low: number;
+  medium: number;
+  high: number;
+}
+
+const NO_SKILLS: EnabledSkillSummary = { count: 0, low: 0, medium: 0, high: 0 };
+
+export function summariseEnabledSkills(skills: Skill[]): EnabledSkillSummary {
+  const on = skills.filter((s) => s.enabled);
+  const rated = (rating: string) => on.filter((s) => (s.scan?.rating ?? "low") === rating).length;
+  return { count: on.length, low: rated("low"), medium: rated("medium"), high: rated("high") };
+}
+
+/** The skills switched on in Settings: how many, and their scan ratings. */
+export function useEnabledSkillSummary(): EnabledSkillSummary {
+  const [summary, setSummary] = useState<EnabledSkillSummary>(NO_SKILLS);
   useEffect(() => {
     let cancelled = false;
     const load = () => {
       listSkills()
         .then((skills) => {
-          if (!cancelled) setCount(skills.filter((s) => s.enabled).length);
+          if (!cancelled) setSummary(summariseEnabledSkills(skills));
         })
         .catch(() => {
-          if (!cancelled) setCount(0);
+          if (!cancelled) setSummary(NO_SKILLS);
         });
     };
     load();
@@ -75,5 +94,5 @@ export function useEnabledSkillCount(): number {
       window.removeEventListener(SKILLS_CHANGED_EVENT, load);
     };
   }, []);
-  return count;
+  return summary;
 }

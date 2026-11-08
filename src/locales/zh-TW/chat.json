@@ -492,7 +492,8 @@
       "label": null,
       "on": null,
       "onTooltip": null,
-      "offTooltip": null
+      "offTooltip": null,
+      "ratings": null
     }
   }
 }

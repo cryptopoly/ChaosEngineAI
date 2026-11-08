@@ -3,6 +3,8 @@
 The id is a slug of the skill's name, checked against a fixed pattern before any path is built, and every
 file path is resolved and checked to sit inside its skill's ``files`` folder. A new skill is written to a
 temporary folder and renamed into place, so a failed import leaves nothing behind. Skills start off.
+Each skill carries the result of the rule-based scan (``scan``, D-68); a skill stored under older rules is
+scanned again when listed. A skill rated high is switched on only with ``acknowledged=True``.
 ``CHAOSENGINE_SKILLS_DIR`` moves the folder (tests).
 """
 
@@ -18,6 +20,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+from backend_service.skills import scan
 from backend_service.skills.importer import SKILL_FILE, ImportedSkill, safe_relpath, slugify, SkillImportError
 
 _ID_PATTERN = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$")
@@ -28,6 +31,10 @@ _LOCK = threading.Lock()
 
 class SkillExistsError(ValueError):
     pass
+
+
+class ScanNotAcknowledgedError(ValueError):
+    """Switching on a skill whose scan rated it high, without saying the findings were read."""
 
 
 def skills_dir() -> Path:
@@ -90,6 +97,7 @@ def save(skill: ImportedSkill, source: str = "") -> dict[str, Any]:
                 "source": Path(source).name[:120] if source else "",
                 "files": [{"path": rel, "bytes": len(text.encode("utf-8"))} for rel, text in sorted(skill.files.items())],
                 "skipped": skill.skipped,
+                "scan": scan.scan_skill(skill.name, skill.description, skill.files, skill.skipped, source),
             }
             _write_meta(staging, meta)
             staging.rename(final)
@@ -99,12 +107,29 @@ def save(skill: ImportedSkill, source: str = "") -> dict[str, Any]:
     return meta
 
 
+def _rescan(folder: Path, meta: dict[str, Any]) -> dict[str, Any]:
+    """Scan a stored skill again (its rules version is not the current one) and save the result."""
+    files: dict[str, str] = {}
+    for item in meta.get("files", []):
+        try:
+            files[item["path"]] = read_file(meta["id"], item["path"])
+        except (KeyError, OSError, UnicodeDecodeError):
+            continue
+    meta["scan"] = scan.scan_skill(meta.get("name", ""), meta.get("description", ""), files,
+                                   meta.get("skipped", []), meta.get("source", ""))
+    with _LOCK:
+        _write_meta(folder, meta)
+    return meta
+
+
 def list_skills() -> list[dict[str, Any]]:
     out = []
     for folder in sorted(skills_dir().iterdir()):
         if folder.is_dir() and not folder.is_symlink() and is_valid_id(folder.name):
             meta = _read_meta(folder)
             if meta is not None:
+                if (meta.get("scan") or {}).get("rulesVersion") != scan.RULES_VERSION:
+                    meta = _rescan(folder, meta)
                 out.append(meta)
     return out
 
@@ -117,11 +142,14 @@ def get(skill_id: str) -> dict[str, Any] | None:
     return _read_meta(folder) if folder.is_dir() and not folder.is_symlink() else None
 
 
-def set_enabled(skill_id: str, enabled: bool) -> dict[str, Any] | None:
+def set_enabled(skill_id: str, enabled: bool, acknowledged: bool = False) -> dict[str, Any] | None:
     with _LOCK:
         meta = get(skill_id)
         if meta is None:
             return None
+        if enabled and not acknowledged and (meta.get("scan") or {}).get("rating") == "high":
+            raise ScanNotAcknowledgedError(
+                "The security scan rated this skill High. Read the findings, then confirm to switch it on.")
         meta["enabled"] = bool(enabled)
         _write_meta(_skill_path(skill_id), meta)
     return meta

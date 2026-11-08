@@ -949,7 +949,20 @@
       "skippedTitle": null,
       "confirmDelete": null,
       "cancel": null,
-      "delete": null
+      "delete": null,
+      "scanNote": null,
+      "scan": {
+        "chipTitle": null,
+        "chip": null,
+        "low": null,
+        "medium": null,
+        "high": null,
+        "findings": null,
+        "where": null,
+        "truncated": null,
+        "disclaimer": null,
+        "acknowledge": null
+      }
     },
     "integrations": {
       "title": "Интеграции",

@@ -695,7 +695,10 @@
         "seconds": null,
         "measuredOn": null,
         "notMeasured": null
-      }
+      },
+      "browseVoices": null,
+      "useInSpeak": null,
+      "openStudio": null
     },
     "voices": {
       "title": "Voces",
@@ -836,13 +839,15 @@
       },
       "modelKokoroCost": null,
       "modelReadyCost": null,
-      "modelNeedsCost": null
+      "modelNeedsCost": null,
+      "manageInModels": null
     },
     "stop": "Detener",
     "studio": {
       "title": "Voice Studio",
       "needsPack": "La voz se ejecuta en este equipo y necesita el paquete de voz (unos 2 GB). Instálalo una vez desde Voz > Modelos.",
-      "openModels": "Abrir Modelos de voz"
+      "openModels": "Abrir Modelos de voz",
+      "library": null
     },
     "savedToLibrary": "Guardado en la biblioteca",
     "saveToLibrary": "Guardar en la biblioteca",
@@ -903,7 +908,8 @@
       "deleteSelected": "Eliminar seleccionados ({n})",
       "loading": "Cargando…",
       "noMatch": "No hay coincidencias.",
-      "empty": "Aún no hay nada. Aquí se guardan las transcripciones hechas en Voice Studio y la voz que guardes."
+      "empty": "Aún no hay nada. Aquí se guardan las transcripciones hechas en Voice Studio y la voz que guardes.",
+      "openStudio": null
     },
     "languages": {
       "auto": "Detectar automáticamente"

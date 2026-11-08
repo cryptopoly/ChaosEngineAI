@@ -695,7 +695,10 @@
         "seconds": null,
         "measuredOn": null,
         "notMeasured": null
-      }
+      },
+      "browseVoices": null,
+      "useInSpeak": null,
+      "openStudio": null
     },
     "voices": {
       "title": "Stimmen",
@@ -836,13 +839,15 @@
       },
       "modelKokoroCost": null,
       "modelReadyCost": null,
-      "modelNeedsCost": null
+      "modelNeedsCost": null,
+      "manageInModels": null
     },
     "stop": "Stoppen",
     "studio": {
       "title": "Voice Studio",
       "needsPack": "Sprachfunktionen laufen auf diesem Computer und benötigen das Sprachpaket (etwa 2 GB). Installiere es einmalig unter Sprache > Modelle.",
-      "openModels": "Sprachmodelle öffnen"
+      "openModels": "Sprachmodelle öffnen",
+      "library": null
     },
     "savedToLibrary": "In der Bibliothek gespeichert",
     "saveToLibrary": "In der Bibliothek speichern",
@@ -903,7 +908,8 @@
       "deleteSelected": "Ausgewählte löschen ({n})",
       "loading": "Wird geladen…",
       "noMatch": "Keine Treffer.",
-      "empty": "Noch nichts hier. In Voice Studio erstellte Transkripte landen hier, ebenso gespeicherte Sprache."
+      "empty": "Noch nichts hier. In Voice Studio erstellte Transkripte landen hier, ebenso gespeicherte Sprache.",
+      "openStudio": null
     },
     "languages": {
       "auto": "Automatisch erkennen"

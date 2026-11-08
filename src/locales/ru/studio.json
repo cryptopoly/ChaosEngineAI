@@ -695,7 +695,10 @@
         "seconds": null,
         "measuredOn": null,
         "notMeasured": null
-      }
+      },
+      "browseVoices": null,
+      "useInSpeak": null,
+      "openStudio": null
     },
     "voices": {
       "title": "Голоса",
@@ -836,13 +839,15 @@
       },
       "modelKokoroCost": null,
       "modelReadyCost": null,
-      "modelNeedsCost": null
+      "modelNeedsCost": null,
+      "manageInModels": null
     },
     "stop": "Остановить",
     "studio": {
       "title": "Voice Studio",
       "needsPack": "Голосовые функции работают на этом компьютере и требуют голосового пакета (около 2 ГБ). Установите его один раз в разделе «Голос» > «Модели».",
-      "openModels": "Открыть голосовые модели"
+      "openModels": "Открыть голосовые модели",
+      "library": null
     },
     "savedToLibrary": "Сохранено в библиотеке",
     "saveToLibrary": "Сохранить в библиотеку",
@@ -903,7 +908,8 @@
       "deleteSelected": "Удалить выбранные ({n})",
       "loading": "Загрузка…",
       "noMatch": "Ничего не найдено.",
-      "empty": "Пока пусто. Здесь хранятся расшифровки из Voice Studio и сохранённая речь."
+      "empty": "Пока пусто. Здесь хранятся расшифровки из Voice Studio и сохранённая речь.",
+      "openStudio": null
     },
     "languages": {
       "auto": "Определять автоматически"

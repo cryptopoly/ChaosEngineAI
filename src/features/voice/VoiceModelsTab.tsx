@@ -10,12 +10,17 @@ import { speechPlayer, useSpeechPlayer } from "./speechPlayer";
 import { useVoice } from "./VoiceContext";
 import { InstallLog, InstallProgress, VoicePackPanel, useVoicePackJob, type VoicePackJob } from "./VoicePackPanel";
 import { chineseAddonPending } from "./voicePackState";
+import type { StudioMode } from "./voiceStudioMode";
 
 export interface VoiceModelsTabProps {
   voiceRuntime: VoiceRuntime | null;
   backendOnline: boolean;
   onRefreshVoiceRuntime: () => void;
+  /** Open Voice Studio, optionally on a mode with a voice selected (Use in Speak, Browse voices). */
+  onOpenStudio?: (target?: StudioTarget) => void;
 }
+
+export type StudioTarget = { mode: StudioMode; voice?: string };
 
 const PREVIEW_TEXT: Record<string, string> = {
   "en-US": "Hello! This is how I sound when I read your chats aloud.",
@@ -315,7 +320,7 @@ function SettingsPanel({ runtime }: { runtime: VoiceRuntime }) {
   );
 }
 
-export function VoiceModelsTab({ voiceRuntime, backendOnline, onRefreshVoiceRuntime }: VoiceModelsTabProps) {
+export function VoiceModelsTab({ voiceRuntime, backendOnline, onRefreshVoiceRuntime, onOpenStudio }: VoiceModelsTabProps) {
   const { t } = useTranslation("studio");
 
   if (!backendOnline || !voiceRuntime) {
@@ -330,10 +335,18 @@ export function VoiceModelsTab({ voiceRuntime, backendOnline, onRefreshVoiceRunt
     );
   }
 
-  return <VoiceModelsBody voiceRuntime={voiceRuntime} onRefreshVoiceRuntime={onRefreshVoiceRuntime} />;
+  return <VoiceModelsBody voiceRuntime={voiceRuntime} onRefreshVoiceRuntime={onRefreshVoiceRuntime} onOpenStudio={onOpenStudio} />;
 }
 
-function VoiceModelsBody({ voiceRuntime, onRefreshVoiceRuntime }: { voiceRuntime: VoiceRuntime; onRefreshVoiceRuntime: () => void }) {
+function VoiceModelsBody({
+  voiceRuntime,
+  onRefreshVoiceRuntime,
+  onOpenStudio,
+}: {
+  voiceRuntime: VoiceRuntime;
+  onRefreshVoiceRuntime: () => void;
+  onOpenStudio?: (target?: StudioTarget) => void;
+}) {
   const { t } = useTranslation("studio");
   const { settings, saveSettings } = useVoice();
   const pack = useVoicePackJob(voiceRuntime, onRefreshVoiceRuntime);
@@ -343,7 +356,17 @@ function VoiceModelsBody({ voiceRuntime, onRefreshVoiceRuntime }: { voiceRuntime
 
   return (
     <div className="content-grid discover-page voice-page">
-      <VoicePackPanel runtime={voiceRuntime} pack={pack} />
+      <VoicePackPanel
+        runtime={voiceRuntime}
+        pack={pack}
+        actions={
+          voiceRuntime.installed && onOpenStudio ? (
+            <button type="button" className="primary-button" onClick={() => onOpenStudio()}>
+              {t("voice.models.openStudio", { defaultValue: "Open Studio" })}
+            </button>
+          ) : null
+        }
+      />
       {voiceRuntime.installed ? (
         <>
           <Panel
@@ -363,7 +386,7 @@ function VoiceModelsBody({ voiceRuntime, onRefreshVoiceRuntime }: { voiceRuntime
               ))}
             </div>
           </Panel>
-          <TtsModelsPanel />
+          <TtsModelsPanel onOpenStudio={onOpenStudio} />
           <VoicesPanel voices={voiceRuntime.ttsVoices} pack={pack} />
           <SettingsPanel runtime={voiceRuntime} />
         </>

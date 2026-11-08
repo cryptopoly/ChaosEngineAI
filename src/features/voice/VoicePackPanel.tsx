@@ -2,7 +2,7 @@
  * The voice pack: install, update, repair and cancel, with progress and the install log. The job hook and the
  * progress and log pieces are shared with the Mandarin add-on buttons (Models page and the Speak picker).
  */
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import i18next from "i18next";
 import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
@@ -103,7 +103,7 @@ export function InstallLog({ pack }: { pack: VoicePackJob }) {
   );
 }
 
-export function VoicePackPanel({ runtime, pack }: { runtime: VoiceRuntime; pack: VoicePackJob }) {
+export function VoicePackPanel({ runtime, pack, actions }: { runtime: VoiceRuntime; pack: VoicePackJob; actions?: ReactNode }) {
   const { t } = useTranslation("studio");
   const { job, start } = pack;
   const mode = voicePackMode({
@@ -117,6 +117,7 @@ export function VoicePackPanel({ runtime, pack }: { runtime: VoiceRuntime; pack:
 
   return (
     <Panel
+      actions={actions}
       title={t("voice.pack.title", { defaultValue: "Voice pack" })}
       subtitle={laneDescription(runtime)}
       className="span-2"

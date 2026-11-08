@@ -695,7 +695,10 @@
         "seconds": "{seconds} s",
         "measuredOn": "Measured on",
         "notMeasured": "Not measured yet"
-      }
+      },
+      "browseVoices": "Browse voices",
+      "useInSpeak": "Use in Speak",
+      "openStudio": "Open Studio"
     },
     "voices": {
       "title": "Voices",
@@ -836,13 +839,15 @@
       },
       "modelKokoroCost": "Runs with Kokoro, {detail}.",
       "modelReadyCost": "Runs with {name}: {detail}.",
-      "modelNeedsCost": "Once downloaded: {detail}."
+      "modelNeedsCost": "Once downloaded: {detail}.",
+      "manageInModels": "Manage in Models"
     },
     "stop": "Stop",
     "studio": {
       "title": "Voice Studio",
       "needsPack": "Voice runs on this computer and needs the voice pack (about 2 GB). Install it once from Voice > Models.",
-      "openModels": "Open Voice Models"
+      "openModels": "Open Voice Models",
+      "library": "Library"
     },
     "savedToLibrary": "Saved to Library",
     "saveToLibrary": "Save to Library",
@@ -903,7 +908,8 @@
       "deleteSelected": "Delete selected ({n})",
       "loading": "Loading…",
       "noMatch": "Nothing matches.",
-      "empty": "Nothing here yet. Transcripts made in Voice Studio are kept here, and so is speech you save."
+      "empty": "Nothing here yet. Transcripts made in Voice Studio are kept here, and so is speech you save.",
+      "openStudio": "Open Studio"
     },
     "languages": {
       "auto": "Detect automatically"

@@ -76,6 +76,18 @@ test("healthy pack at 375 px", async ({ page }) => {
   expect(sideways).toBeLessThanOrEqual(0);
 });
 
+test("Open Studio on Models opens Voice Studio on Speak, and the Studio header links back to Models and Library", async ({ page }) => {
+  await openModels(page, {});
+  await page.getByRole("button", { name: "Open Studio" }).click();
+  await expect(page.getByRole("tab", { name: "Speak" })).toHaveAttribute("aria-selected", "true");
+  const header = page.locator(".studio-shell__header");
+  await header.getByRole("button", { name: "Library" }).click();
+  await expect(page.locator("section").getByRole("heading", { name: "Voice Library" })).toBeVisible();
+  await page.getByRole("button", { name: "Open Studio" }).click();
+  await page.locator(".studio-shell__header").getByRole("button", { name: "Models" }).click();
+  await expect(page.getByRole("heading", { name: "Voice pack" })).toBeVisible();
+});
+
 test("failed install leads with the repair button", async ({ page }) => {
   await openModels(page, { install: { ...IDLE_JOB, phase: "error", error: "verify failed", log: ["boom"] } });
   await expect(page.getByRole("button", { name: "Repair voice pack" })).toBeVisible();

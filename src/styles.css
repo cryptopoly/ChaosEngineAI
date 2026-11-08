@@ -10405,6 +10405,28 @@ html[lang="ko"] select {
   justify-self: start;
 }
 
+.voice-studio__shell {
+  min-width: 0;
+}
+
+.voice-studio__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  min-width: 0;
+}
+
+.voice-studio__title h2 {
+  margin: 0;
+}
+
+.voice-studio__links .secondary-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .voice-studio__pane {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);

@@ -242,6 +242,13 @@ export function VoiceLibraryTab({ backendOnline, onOpenTranscript, onTabChange }
         title={t("voice.library.title", { defaultValue: "Voice Library" })}
         subtitle={t("voice.library.subtitle", { defaultValue: "Transcripts and speech you have made, kept on this computer" })}
         className="span-2"
+        actions={
+          onTabChange ? (
+            <button type="button" className="primary-button" onClick={() => onTabChange("voice-studio")}>
+              {t("voice.library.openStudio", { defaultValue: "Open Studio" })}
+            </button>
+          ) : null
+        }
       >
         {!backendOnline ? (
           <div className="empty-state">

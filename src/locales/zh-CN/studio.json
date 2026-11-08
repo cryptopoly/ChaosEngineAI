@@ -695,7 +695,10 @@
         "seconds": null,
         "measuredOn": null,
         "notMeasured": null
-      }
+      },
+      "browseVoices": null,
+      "useInSpeak": null,
+      "openStudio": null
     },
     "voices": {
       "title": "声音",
@@ -836,13 +839,15 @@
       },
       "modelKokoroCost": null,
       "modelReadyCost": null,
-      "modelNeedsCost": null
+      "modelNeedsCost": null,
+      "manageInModels": null
     },
     "stop": "停止",
     "studio": {
       "title": "Voice Studio",
       "needsPack": "语音功能在这台电脑上运行，需要语音包（约 2 GB）。请在“语音 > 模型”中安装一次。",
-      "openModels": "打开语音模型"
+      "openModels": "打开语音模型",
+      "library": null
     },
     "savedToLibrary": "已保存到资料库",
     "saveToLibrary": "保存到资料库",
@@ -903,7 +908,8 @@
       "deleteSelected": "删除所选（{n}）",
       "loading": "正在加载…",
       "noMatch": "没有匹配项。",
-      "empty": "这里还没有内容。在 Voice Studio 中制作的转写稿和你保存的语音都会放在这里。"
+      "empty": "这里还没有内容。在 Voice Studio 中制作的转写稿和你保存的语音都会放在这里。",
+      "openStudio": null
     },
     "languages": {
       "auto": "自动检测"

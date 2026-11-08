@@ -695,7 +695,10 @@
         "seconds": null,
         "measuredOn": null,
         "notMeasured": null
-      }
+      },
+      "browseVoices": null,
+      "useInSpeak": null,
+      "openStudio": null
     },
     "voices": {
       "title": "ボイス",
@@ -836,13 +839,15 @@
       },
       "modelKokoroCost": null,
       "modelReadyCost": null,
-      "modelNeedsCost": null
+      "modelNeedsCost": null,
+      "manageInModels": null
     },
     "stop": "停止",
     "studio": {
       "title": "Voice Studio",
       "needsPack": "音声機能はこのコンピューター上で動作し、音声パック（約 2 GB）が必要です。音声 > モデル から一度だけインストールしてください。",
-      "openModels": "音声モデルを開く"
+      "openModels": "音声モデルを開く",
+      "library": null
     },
     "savedToLibrary": "ライブラリに保存しました",
     "saveToLibrary": "ライブラリに保存",
@@ -903,7 +908,8 @@
       "deleteSelected": "選択項目を削除（{n}）",
       "loading": "読み込み中…",
       "noMatch": "一致する項目はありません。",
-      "empty": "まだ何もありません。Voice Studio で作った文字起こしと、保存した音声がここに保存されます。"
+      "empty": "まだ何もありません。Voice Studio で作った文字起こしと、保存した音声がここに保存されます。",
+      "openStudio": null
     },
     "languages": {
       "auto": "自動検出"

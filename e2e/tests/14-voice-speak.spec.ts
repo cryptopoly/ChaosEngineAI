@@ -252,6 +252,34 @@ test("Voice Models lists the speech models with what each can do, and keeps the 
   await expect.poll(() => seen.downloads).toEqual(["qwen3-tts-custom-1.7b"]);
 });
 
+test("Voice Studio opens on Speak, then on the mode used last", async ({ page }) => {
+  await mockVoiceApi(page);
+  await goTo(page, "Voice", "Studio");
+  await expect(page.getByRole("tab", { name: "Speak" })).toHaveAttribute("aria-selected", "true");
+  await page.getByRole("tab", { name: "Transcribe" }).click();
+  await page.locator(".studio-shell__header").getByRole("button", { name: "Models" }).click();
+  await expect(page.getByRole("heading", { name: "Speech models" })).toBeVisible();
+  await page.getByRole("button", { name: "Open Studio" }).click();
+  await expect(page.getByRole("tab", { name: "Transcribe" })).toHaveAttribute("aria-selected", "true");
+});
+
+test("Models > Use in Speak lands on Speak with that model's voice; a cloning model opens Voices", async ({ page }) => {
+  await mockVoiceApi(page, { installed: [...BOTH_CUSTOM, "qwen3-tts-design-1.7b"], speakVoice: "af_heart" });
+  await goTo(page, "Voice", "Models");
+  await page.locator(".voice-tts-row", { hasText: "1.7B CustomVoice" }).getByRole("button", { name: "Use in Speak" }).click();
+  await expect(page.getByRole("tab", { name: "Speak" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("radio", { name: /^Ryan/ })).toHaveAttribute("aria-checked", "true");
+  await expect(page.locator(".voice-speak__model").getByRole("button", { name: "Manage in Models" })).toBeVisible();
+
+  await page.locator(".voice-speak__model").getByRole("button", { name: "Manage in Models" }).click();
+  await page.locator(".voice-tts-row", { hasText: "VoiceDesign" }).getByRole("button", { name: "Use in Speak" }).click();
+  await expect(page.getByRole("radio", { name: /Design a voice/ })).toHaveAttribute("aria-checked", "true");
+
+  await page.locator(".studio-shell__header").getByRole("button", { name: "Models" }).click();
+  await page.locator(".voice-tts-row", { hasText: "0.6B Base" }).getByRole("button", { name: "Browse voices" }).click();
+  await expect(page.getByRole("tab", { name: "Voices" })).toHaveAttribute("aria-selected", "true");
+});
+
 test.describe("375 px", () => {
   test.use({ viewport: { width: 375, height: 812 } });
 

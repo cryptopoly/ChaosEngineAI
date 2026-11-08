@@ -309,6 +309,14 @@ export function SpeakScreen({
               {t("voice.speak.downloadForStyle", { defaultValue: "Download {name} for style", name: styleInfo.unlockWith.name })}
             </button>
           ) : null}
+          {voice && onTabChange ? (
+            <>
+              {" "}
+              <button type="button" className="link-button" onClick={() => onTabChange("voice-models")}>
+                {t("voice.speak.manageInModels", { defaultValue: "Manage in Models" })}
+              </button>
+            </>
+          ) : null}
         </p>
 
         {tooLong ? (

@@ -210,3 +210,17 @@ test("Voice library: project filter, badge, counts and Open in Storyboard", asyn
   await expect(page.locator(".project-shell").getByRole("heading", { name: PROJECT })).toBeVisible();
   await expect(page.getByRole("tab", { name: /^Storyboard/ })).toHaveAttribute("aria-selected", "true");
 });
+
+test("Voice library: Open Studio goes to Voice Studio", async ({ page }) => {
+  await page.route(/\/api\/voice\/library(\?.*)?$/, (route) => route.fulfill({ json: { items: [speech(1, "speech", false)] } }));
+  await page.route("**/api/voice/runtime", async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    Object.assign(body.runtime ?? body, { installed: true });
+    await route.fulfill({ response, json: body });
+  });
+  await goTo(page, "Voice", "Library");
+  await page.getByRole("button", { name: "Open Studio" }).click();
+  await expect(page.locator(".studio-shell__header").getByRole("heading", { name: "Voice Studio" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Speak" })).toHaveAttribute("aria-selected", "true");
+});

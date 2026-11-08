@@ -695,7 +695,10 @@
         "seconds": null,
         "measuredOn": null,
         "notMeasured": null
-      }
+      },
+      "browseVoices": null,
+      "useInSpeak": null,
+      "openStudio": null
     },
     "voices": {
       "title": "Voix",
@@ -836,13 +839,15 @@
       },
       "modelKokoroCost": null,
       "modelReadyCost": null,
-      "modelNeedsCost": null
+      "modelNeedsCost": null,
+      "manageInModels": null
     },
     "stop": "Arrêter",
     "studio": {
       "title": "Voice Studio",
       "needsPack": "La voix s'exécute sur cet ordinateur et nécessite le pack vocal (environ 2 Go). Installez-le une fois depuis Voix > Modèles.",
-      "openModels": "Ouvrir Modèles vocaux"
+      "openModels": "Ouvrir Modèles vocaux",
+      "library": null
     },
     "savedToLibrary": "Enregistré dans la bibliothèque",
     "saveToLibrary": "Enregistrer dans la bibliothèque",
@@ -903,7 +908,8 @@
       "deleteSelected": "Supprimer la sélection ({n})",
       "loading": "Chargement…",
       "noMatch": "Aucun résultat.",
-      "empty": "Rien pour l'instant. Les transcriptions faites dans Voice Studio sont conservées ici, ainsi que la parole que vous enregistrez."
+      "empty": "Rien pour l'instant. Les transcriptions faites dans Voice Studio sont conservées ici, ainsi que la parole que vous enregistrez.",
+      "openStudio": null
     },
     "languages": {
       "auto": "Détecter automatiquement"

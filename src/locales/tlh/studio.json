@@ -135,7 +135,7 @@
   "runtimeBanner": {
     "loadingModel": "qawHaqDaq yab chu'lI'...",
     "cudaTorchInstalled": "CUDA torch jomlu'ta'.",
-    "cudaTorchRestartHint": "qoD pat QaptaHbogh torch ngo' lo'taH. wheel chu'{index} Dachu' DaneHchugh qoD pat yItaghqa'.",
+    "cudaTorchRestartHint": "qoD pat QaptaHbogh torch ngo' lo'taH. wheel chu''{index} Dachu' DaneHchugh qoD pat yItaghqa'.",
     "gpuNotActive": "GPU chu'lu'be'.",
     "restarting": "taghqa'lI'...",
     "restartBackend": "qoD pat yItaghqa'",
@@ -575,8 +575,8 @@
       "body": "mIllogh vumpa'Daq QIn chenmoHghach je neH yIbuS, ghIq mIllogh ghomDaq mIllogh ngo' yInej, yab tI'ov, 'ej wIv rap lo'taHvIS vumpa'Daq yIcheghqa'."
     },
     "stats": {
-      "saved": "{count, plural, other {# pollu'ta'}}",
-      "modelsUsed": "{count, plural, other {# yab lo'lu'ta'}}",
+      "saved": "{count, plural, other {# pollu'ta''}}",
+      "modelsUsed": "{count, plural, other {# yab lo'lu'ta''}}",
       "realEngine": "{count} jonta' na'",
       "placeholder": "{count} ngeb",
       "withNotes": "{count} ghItlh ghaj"
@@ -1144,7 +1144,7 @@
       "summaryBpm": "BPM {value}",
       "summaryKey": "Key {value}",
       "summarySeed": "Seed {n}",
-      "summaryVariations": "{n, plural, other {# pImwI'}}",
+      "summaryVariations": "{n, plural, other {# pImwI''}}",
       "tempoKey": "Do 'ej key",
       "variations": "pImwI'",
       "variationsCost": "Hoch pImwI' poH rap chel.",
@@ -1333,7 +1333,7 @@
     },
     "empty": "wej 'ay' tu'lu'. 'ay' yIchel, ghIq QIn yInob pagh mIllogh vIH yIqem.",
     "estimate": {
-      "need": "{n, plural, other {nID chu' poQ # 'ay'}}",
+      "need": "{n, plural, other {nID chu' poQ # 'ay''}}",
       "none": "Hoch 'ay' ngaQHa' nID ghaj."
     },
     "loading": "Qu' qemlI'…",
@@ -1423,7 +1423,7 @@
       "referenceAdded": "mIlloghvam lo'taHvIS, ghot ghomDaq chellu'ta' {name}."
     },
     "shots": "'ay'",
-    "subtitle": "{shots, plural, other {# 'ay'}} · {seconds} lup · {stale} ngo'",
+    "subtitle": "{shots, plural, other {# 'ay''}} · {seconds} lup · {stale} ngo'",
     "takes": {
       "active": "nID lo'lu'bogh",
       "label": "nID",
@@ -1433,20 +1433,20 @@
     "title": "{project} · 'echlet",
     "undo": "yIchoHHa'",
     "emptyNoCast": "wej 'ay' tu'lu'. 'ay' yIchel 'ej yIDel, pagh mIllogh vIH yIqem. ghot poQbe' 'ay': He pagh ghom nIteb QaplaH.",
-    "subtitleShots": "{shots, plural, other {# 'ay'}} · {seconds} lup · {stale} ngo'",
+    "subtitleShots": "{shots, plural, other {# 'ay''}} · {seconds} lup · {stale} ngo'",
     "lengthStrip": "'ay' poH",
     "lengthStripPart": "'ay' {n} · {seconds} lup"
   },
   "storyProjects": {
     "card": {
       "edited": "{when} choHlu'ta'",
-      "meta": "{shots, plural, other {# 'ay'}} · {seconds} lup · {aspect}",
+      "meta": "{shots, plural, other {# 'ay''}} · {seconds} lup · {aspect}",
       "noShots": "wej 'ay'",
       "noTakes": "wej mIllogh",
       "noPreview": "legh nung tu'lu'be'",
       "stale": "{n} ngo'",
       "zeroShots": "0 'ay'",
-      "metaFormat": "{shots, plural, other {# 'ay'}} · {seconds} lup · {format}",
+      "metaFormat": "{shots, plural, other {# 'ay''}} · {seconds} lup · {format}",
       "zeroShotsFormat": "0 'ay' · {format}"
     },
     "deleteBody": "{name} 'ej nav ghomDajDaq Hoch nID, mIllogh, wab je Qaw'lu'. choHHa'laHbe'lu'.",
@@ -1481,7 +1481,7 @@
     "moreActions": "latlh Qu'",
     "new": "Qu' chu'",
     "open": "yIpoSmoH",
-    "subtitle": "{count, plural, other {# Qu'}}",
+    "subtitle": "{count, plural, other {# Qu''}}",
     "title": "lut 'echlet Qu'",
     "format": {
       "fit": {
@@ -1892,7 +1892,7 @@
     "subtitle": "wIvlaH. pong, mu' puS, {max} mIllogh 'aqroS je; chen rap pol lo'bogh 'ay'. ghot Hutlhbogh lut Qap je.",
     "title": "ghot ghom Daq je",
     "unnamed": "pongbe'",
-    "usedBy": "{n, plural, =0 {wej 'ay' lo'} other {# 'ay' lo'}}",
+    "usedBy": "{n, plural, =0 {wej 'ay' lo''} other {# 'ay' lo''}}",
     "noneShort": "wej pagh."
   },
   "exportTab": {
@@ -1926,7 +1926,7 @@
     "addCast": "ghot ghom yIchel (wIvlaH)",
     "cast": "{n, plural, =0 {ghot ghom Hutlh} other {ghot ghomDaq #}}",
     "noSound": "wej wab",
-    "progress": "{shots, plural, other {# 'ay'}} · {made} chenmoHlu'ta' · {stale} ngo' · {seconds} lup",
+    "progress": "{shots, plural, other {# 'ay''}} · {made} chenmoHlu'ta' · {stale} ngo' · {seconds} lup",
     "settingsTitle": "Qu' wIv",
     "sheet": "'ay'",
     "sound": "{n, plural, other {# wab}}",
@@ -1987,7 +1987,7 @@
       }
     },
     "nextStep": "mIw veb",
-    "progressClips": "{shots, plural, other {# 'ay'}} · {clips} mIllogh vIH ghaj · {stills} mIllogh neH · {stale} ngo' · {seconds} lup",
+    "progressClips": "{shots, plural, other {# 'ay''}} · {clips} mIllogh vIH ghaj · {stills} mIllogh neH · {stale} ngo' · {seconds} lup",
     "activity": {
       "cancelled": "ghom Qu' qIllu'ta' · {when}",
       "done": "{n, plural, other {# 'ay' ghom Qu' rIn}} · {when}",
@@ -2060,7 +2060,7 @@
     "blank": "chIm",
     "broll": "Daq / b-roll",
     "empty": "'ay' Hutlh",
-    "meta": "{aspect} · {shots, plural, other {# 'ay'}}",
+    "meta": "{aspect} · {shots, plural, other {# 'ay''}}",
     "shots": {
       "adBenefit": {
         "prompt": "Qu' rap, 'ach ngeD; mon jot",
@@ -2134,7 +2134,7 @@
     "startFrom": "tagh Hal",
     "story": "lut run",
     "vertical": "'ab tIn, web",
-    "metaFormat": "{aspect} · {resolution} · {fps} fps · {shots, plural, other {# 'ay'}}",
+    "metaFormat": "{aspect} · {resolution} · {fps} fps · {shots, plural, other {# 'ay''}}",
     "sets": "chen wIvta' {name}: {aspect}, {resolution}, {fps} fps. bIngDaq Hoch DachoHlaH."
   },
   "voicePicker": {
@@ -2165,7 +2165,7 @@
     "make": "Hutlhbogh {n} tIchenmoH",
     "makeNone": "Hutlhbogh tIchenmoH",
     "makeTimed": "Hutlhbogh {n} tIchenmoH · {time} loQ",
-    "needStills": "{n, plural, other {Qu' poQ # 'ay'}}: {stills, plural, other {mIllogh ghaj 'ej mIllogh vIH poQ #}}",
+    "needStills": "{n, plural, other {Qu' poQ # 'ay''}}: {stills, plural, other {mIllogh ghaj 'ej mIllogh vIH poQ #}}",
     "stale": "{n} ngo'"
   }
 }

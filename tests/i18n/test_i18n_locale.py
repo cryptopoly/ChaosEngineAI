@@ -100,6 +100,17 @@ class TranslatorForTests(unittest.TestCase):
         self.assertEqual(tn("1 file", "%d files", 1), "1 file")
         self.assertEqual(tn("1 file", "%d files", 5), "%d files")
 
+    def test_klingon_catalog_is_compiled_and_falls_back(self) -> None:
+        # D-69: ``tlh`` negotiates to itself, its compiled ``.mo`` serves the
+        # literal localized_detail() strings, and anything not in the catalog
+        # comes back as the English source.
+        self.assertEqual(negotiate_locale("tlh,en;q=0.5"), "tlh")
+        self.assertEqual(negotiate_locale(None, override="tlh-Latn"), "tlh")
+        t = translator_for("tlh")
+        self.assertEqual(t("Template not found"), "velqa' tu'lu'be'")
+        self.assertEqual(t("Workspace not found"), "vumpa' tu'lu'be'")
+        self.assertEqual(t("Not in the catalog."), "Not in the catalog.")
+
 
 if __name__ == "__main__":
     unittest.main()

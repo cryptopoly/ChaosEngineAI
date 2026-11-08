@@ -6,13 +6,28 @@
  * through ``I18N_LOCALES_DIR`` so the real catalogs are not involved.
  */
 
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { spawnSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import path from "node:path";
+// The app tsconfig has no Node type definitions (the UI never touches
+// Node APIs); this test drives a Node CLI script, so it declares the few
+// Node bits it uses itself and loads the modules at run time.
+declare const process: { execPath: string; env: Record<string, string | undefined> };
+declare function require(id: string): any;
 
-const SCRIPT = path.resolve(__dirname, "../../../scripts/i18n-validate.mjs");
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
+
+interface RunResult { status: number | null; stdout: string; stderr: string }
+const { spawnSync } = require("node:child_process") as {
+  spawnSync: (cmd: string, args: string[], opts: { env: Record<string, string | undefined>; encoding: string }) => RunResult;
+};
+const { mkdtempSync, mkdirSync, rmSync, writeFileSync } = require("node:fs") as {
+  mkdtempSync: (prefix: string) => string;
+  mkdirSync: (dir: string, opts: { recursive: boolean }) => void;
+  rmSync: (dir: string, opts: { recursive: boolean; force: boolean }) => void;
+  writeFileSync: (file: string, data: string) => void;
+};
+const { tmpdir } = require("node:os") as { tmpdir: () => string };
+const path = require("node:path") as { resolve: (...parts: string[]) => string; join: (...parts: string[]) => string };
+
+const SCRIPT = path.resolve(new URL(".", import.meta.url).pathname, "../../../scripts/i18n-validate.mjs");
 const NAMESPACES = ["common", "chat", "studio", "library", "setup", "diagnostics", "runtime", "errors", "meta", "dashboard"];
 const LOCALES = ["en", "zh-CN", "zh-TW", "ja", "de", "ru", "ko", "fr", "es", "pt-BR", "tlh"];
 
@@ -49,7 +64,7 @@ describe("i18n-validate strict gate", () => {
   it("passes when only the experimental locale is below 95 %", () => {
     writeTree(["tlh"]);
     const res = run(["--strict"]);
-    expect(res.stdout).toContain("tlh     50%");
+    expect(res.stdout).toMatch(/tlh\s+50%/);
     expect(res.stdout).toContain("experimental, outside the strict gate");
     expect(res.status).toBe(0);
   });

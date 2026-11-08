@@ -162,7 +162,7 @@
     "memoryLabel": "qawHaq:",
     "memoryBody": "qawHaq tay' {needed} GB pagh law'.",
     "statusLabel": "Dotlh:",
-    "statusInstalled": "jomlu'ta'{version}; jang pIH mIw wIvlu'DI' Qap.",
+    "statusInstalled": "jomlu'ta''{version}; jang pIH mIw wIvlu'DI' Qap.",
     "statusNotInstalled": "jomlu'be'. patDaj pIm chenmoHmeH TensorFold yIjom yI'uy.",
     "visionLabel": "mIllogh 'el:",
     "visionInstalled": "jomlu'ta' (waHlu'taH); TensorFold wIvlu'taHvIS ja'chuqDaq mIllogh yIrar. mIllogh ghajbogh tlhob KV cache chu' lo'.",

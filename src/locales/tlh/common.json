@@ -217,13 +217,13 @@
     "selectBenchmarkModel": "waH yab yIwIv",
     "benchmarkHistory": "waH qun",
     "loraAdapters": "LoRA chelwI'",
-    "loraAdaptersFound": "{count, plural, other {# chelwI' tu'lu'ta'}}",
+    "loraAdaptersFound": "{count, plural, other {# chelwI' tu'lu'ta''}}",
     "templates": "velqa'",
     "editTemplate": "velqa' yIchoH",
     "newTemplate": "velqa' chu'",
     "selectTemplate": "velqa' yIwIv",
     "pluginSystem": "chelwI' pat",
-    "pluginsRegistered": "{count, plural, other {# chelwI' qonlu'ta'}}",
+    "pluginsRegistered": "{count, plural, other {# chelwI' qonlu'ta''}}",
     "externalPlugins": "Hur chelwI'",
     "installFromDirectory": "nav ghomvo' yIjom",
     "noModelsMatchFilters": "chevwI'vamvaD yab tu'lu'be'",
@@ -495,7 +495,7 @@
     }
   },
   "benchmarkHistory": {
-    "subtitle": "{count, plural, other {# may'}}{filterSuffix}",
+    "subtitle": "{count, plural, other {# may''}}{filterSuffix}",
     "filterSuffix": " {model}vaD",
     "allModels": "Hoch yab",
     "view": {
@@ -574,7 +574,7 @@
     }
   },
   "promptLibrary": {
-    "templatesCount": "{count, plural, other {# velqa'}}",
+    "templatesCount": "{count, plural, other {# velqa''}}",
     "new": "chu'",
     "searchPlaceholder": "velqa' yInej...",
     "editor": {
@@ -593,7 +593,7 @@
     "presetModelTitle": "yab wIvlu'ta'; ja'chuqDaq yIlo' Da'uyDI' lo'lu'",
     "presetLabel": "wIv: {ref}",
     "hasPlaceholders": "mu' Daq ghaj velqa'",
-    "variableCount": "{count, plural, other {# mu'}}",
+    "variableCount": "{count, plural, other {# mu''}}",
     "useInChat": "ja'chuqDaq yIlo'",
     "useInChatWithVars": "ja'chuqDaq yIlo'...",
     "edit": "yIchoH",
@@ -942,7 +942,7 @@
       "chooseFolder": "nav ghom yIwIv",
       "chooseZip": ".zip yIwIv",
       "import": "yIqem",
-      "imported": "{name} qemlu'ta': {files, plural, other {# nav}} pollu', {skipped, plural, =0 {pagh teqlu'} other {# teqlu'}}. Dachu'pa' chu'Ha'.",
+      "imported": "{name} qemlu'ta': {files, plural, other {# nav}} pollu', {skipped, plural, =0 {pagh teqlu''} other {# teqlu''}}. Dachu'pa' chu'Ha'.",
       "empty": "wej laH qemlu'.",
       "listLabel": "laH qemlu'ta'bogh",
       "enabled": "ja'chuqDaq lo'laH",
@@ -958,7 +958,7 @@
         "low": "Low",
         "medium": "Medium",
         "high": "High",
-        "findings": "{count, plural, =0 {ngoD tu'lu'be'} other {# ngoD}}",
+        "findings": "{count, plural, =0 {ngoD tu'lu'be''} other {# ngoD}}",
         "where": "{file}, tlhegh {line}",
         "truncated": "ngoD {count} wa'DIch neH cha'lu'.",
         "disclaimer": "noH 'oH; 'ol 'oHbe': mu' Qob, ngutlh So'lu'bogh, He, ghItlh ngoqlu'ta'bogh, ngoq nav je nej mIw qonlu'ta'bogh. De'wI'vamDaq Qap 'ej pagh mej. Low = mIw Qapbe'; laH QobHa' 'e' 'olbe'.",
@@ -1167,7 +1167,7 @@
   "gpuBanner": {
     "runningOnCpu": "CPUDaq Qap.",
     "recommendationFallback": "NVIDIA GPU leghlu' 'ach CUDA SamlaHbe' torch; QItqu' mIllogh mIllogh vIH je chenmoH.",
-    "cudaInstalled": "CUDA torch jomlu'ta'{source}{python}. GPU lo'meH app yItaghqa'.",
+    "cudaInstalled": "CUDA torch jomlu'ta''{source}{python}. GPU lo'meH app yItaghqa'.",
     "cudaInstalledSource": " ({index}vo')",
     "cudaInstalledPython": " (Python {version} ngaSlu'bogh)",
     "noWheel": "Python{version}vaD CUDA torch wheel tu'lu'be'.",

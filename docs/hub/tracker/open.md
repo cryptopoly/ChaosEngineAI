@@ -1,13 +1,22 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 67 rows with work, decisions or watch items still open, newest first.
+summary: 68 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-149 · Better speech models than Kokoro and Qwen3-TTS presets — Open (2026-11-08): banked</summary>
+
+**Status or trigger:** **Open (2026-11-08): banked.** Trigger: after the voice UX build (D-67).
+
+**Notes:** Candidates from docs/plans/voice-rework/research-models.md: VoxCPM2 (permissive licence, voice design and cloning, 48 kHz), Chatterbox and Chatterbox-Turbo (emotion dial, laugh tags), Orpheus 3B (most natural English presets, heavy, use the community mirror). Measure each on the M4 Max and the 4090 before adding a catalog row. Kokoro stays as the fast lane.
+
+</details>
 
 <details>
 <summary>FU-147 · Size caps: useChat.ts and generation.py — Open (2026-11-08): not started</summary>

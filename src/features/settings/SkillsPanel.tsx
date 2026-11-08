@@ -154,7 +154,7 @@ export function SkillsPanel({ backendOnline }: { backendOnline: boolean }) {
       subtitle={t("settingsTab.skills.subtitle", {
         defaultValue: "Teach the chat model a procedure: a folder with a SKILL.md and optional text files, or a .zip of one.",
       })}
-      className="settings-integrations-panel skills-panel"
+      className="skills-panel"
     >
       <div className="control-stack">
         <p className="muted-text" role="note">

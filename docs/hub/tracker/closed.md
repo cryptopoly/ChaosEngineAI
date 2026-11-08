@@ -1,7 +1,7 @@
 ---
 title: Closed follow-ups
 order: 3
-summary: 79 shipped, obsoleted or dropped rows, newest first.
+summary: 80 shipped, obsoleted or dropped rows, newest first.
 ---
 
 # Closed follow-ups
@@ -15,6 +15,15 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 **Status or trigger:** **Dropped (owner 2026-11-08):** the only saving is disk space, which few users will lack. Both sizes stay listed.
 
 **Notes:** Measured: the 0.6B models are not faster than 1.7B and cannot take a style instruction; memory is lower.
+
+</details>
+
+<details>
+<summary>FU-146 · Play a sample of cloned and designed voices — Shipped 2026-11-08 (D-67 W5, feat/voice-ux-b).</summary>
+
+**Status or trigger:** **Shipped 2026-11-08 (D-67 W5, `feat/voice-ux-b`).**
+
+**Notes:** Every voice that runs has a sample button on Voice Studio > Voices and on the Speak picker cards. Cloned and designed samples go through `POST /api/voice/speak` (request shape unchanged); the designed sample uses a fixed neutral description; a cloned sample, which the backend files in the Library (tagged and watermarked) like any cloned speech, is deleted from the Library straight after, so samples are never kept. Nobody has listened to a real cloned or designed sample yet (mocked in e2e).
 
 </details>
 

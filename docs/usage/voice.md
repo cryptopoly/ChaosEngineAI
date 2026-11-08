@@ -8,12 +8,17 @@ Studio for transcribing and speaking files.
 
 Install the voice pack once from **Voice > Models** (about 2 GB, plus the
 models you choose). It lives in its own folder, so it cannot disturb the rest
-of the app. The same page lists the speech-recognition models, lets you pick
-the one used for dictation, and previews the Kokoro voices that chat reads
-aloud with. Each speech model row shows its download size, peak memory,
+of the app. The same page lists the speech-recognition models and lets you
+pick the one used for dictation. Each speech model row shows its download size, peak memory,
 seconds per 10 s of speech, cold start and the machine it was measured on;
 an installed row has **Use in Speak** (a cloning model has **Browse
 voices**), which opens Voice Studio with that model's voice selected.
+
+The quick (Kokoro) voices have one line here, with how many there are on this
+computer, **Add Mandarin voices** while that add-on is missing, and **Browse
+voices**, which opens Voice Studio > Voices. **Dictation and memory** holds the
+dictation language, how long voice models stay loaded when idle, and **Unload
+now**. How chat reads aloud and voice calls are set on Voice Studio > Voices.
 
 ![Voice > Models](../screenshots/voice-models.png)
 
@@ -31,7 +36,8 @@ The first time you use the microphone, macOS asks for permission.
 
 - **Dictation.** The microphone button in the composer.
 - **Read-aloud.** A speaker button on every reply, or have replies read
-  automatically.
+  automatically. Chat reads with the chat voice, chosen with **Use in Chat**
+  on Voice Studio > Voices (quick voices for now).
 - **Voice calls.** Press **Call** and talk. The app hears when you stop, the
   model answers out loud, and you can talk over it to interrupt. Every turn is
   saved in the chat. An (i) next to Call lists anything still missing.
@@ -61,8 +67,8 @@ as WAV or MP3. The voice picker has five groups:
   Michael, Puck); **All voices** shows the rest. Choosing Chinese offers the
   Mandarin add-on in place when it is missing. Japanese is not listed on
   Apple Silicon, where it cannot run.
-- **Cloned**: your cloned voices, and **New cloned voice**, which opens the
-  form on the Voices tab.
+- **Cloned**: the standing statement on cloning, your cloned voices, and
+  **New cloned voice**, which opens the form on the Voices tab.
 - **Designed**: a voice made from a written description. It changes on every
   run unless you set a seed under Advanced.
 - **More**: the other natural voices, and **Get more voices**, which opens
@@ -75,12 +81,31 @@ model that will run with the same numbers, and **Manage in Models** goes to
 the model list. A model that has not been measured says so instead of
 showing a guess.
 
+The style box takes free text: tone, pace and accent in your own words. For a
+designed voice it is the description (age, gender, pitch, tone, accent, pace).
+Speed and pitch are an ffmpeg step for every voice except quick voices, which
+change speed themselves; when ffmpeg is missing the screen says so before
+Generate.
+
+Every result is saved to the Voice Library with the voice's name; **Saved to
+Library** on the result opens the Library on Speech.
+
 Speak starts on the voice you picked last time in Speak (kept apart from the
 chat voice); before you have picked one, it starts on the best installed
 natural voice for the app's language, else the best-graded quick voice. When
 both CustomVoice models are installed the 1.7B one always runs, so typing a
 style never swaps the model; the 0.6B one runs only when it is the only one
 installed.
+
+**Voices** is the voice manager: every voice in one list, filtered by kind
+(Recommended, Quick, Natural, Cloned, Designed) and language. Each row has a
+sample button (cloned and designed voices too; a sample is never kept),
+**Use in Speak** and **Use in Chat**; cloned voices also have **Delete**. Chat
+uses quick voices for now, so Use in Chat is greyed out on the others. Cards
+at the top make a cloned voice, design one, add the Mandarin voices while
+they are missing, or open Voice Models for more. **Chat and calls** at the
+bottom shows the chat voice and holds reading speed, auto-read, auto-send,
+the call pause and interrupt.
 
 **Transcribe** takes a recording or audio and video files in a queue, with
 speaker labels and translation to English. Edit the transcript, click a word
@@ -89,7 +114,7 @@ VTT or JSON, or send it to a chat.
 
 ### Clone a voice
 
-Voice Studio > **Clone** makes a voice from your own voice, or from someone
+Voice Studio > **Voices** > **Clone a voice** makes a voice from your own voice, or from someone
 who has given you permission. Apple Silicon Macs only for now. It uses
 Qwen3-TTS Base (0.6B is faster, 1.7B closer; Apache 2.0), downloaded from
 the same tab.
@@ -125,5 +150,8 @@ covers that use; the confirmation goes into the local log.
 
 ## Voice Library
 
-The Voice Library keeps every recording, transcript and generated clip. Items
-from the old Gallery move over the first time you open it.
+The Voice Library keeps every recording, transcript and generated clip. Speech
+cards name the voice and its kind (Quick, Natural, Designed, Cloned), mark
+clips made with a cloned voice as AI-made, and have **Speak again**, which
+opens Speak with the clip's text and voice. Items from the old Gallery move
+over the first time you open it.

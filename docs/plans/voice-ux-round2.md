@@ -6,6 +6,7 @@ Line numbers are from this branch's working tree.
 
 D-67 progress:
 - 2026-11-08: W1-W4 built on feat/voice-ux-a.
+- 2026-11-08: W5, W7, W9, W10 built on feat/voice-ux-b.
 
 ## 1. What is true today, per complaint
 

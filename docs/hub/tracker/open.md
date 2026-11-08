@@ -1,7 +1,7 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 71 rows with work, decisions or watch items still open, newest first.
+summary: 70 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
@@ -51,15 +51,6 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 **Status or trigger:** **Open (2026-11-08): not started.** Trigger: next change to either file.
 
 **Notes:** Both are over the soft caps in CLAUDE.md. Extract before adding.
-
-</details>
-
-<details>
-<summary>FU-146 · Play a sample of cloned and designed voices — Open (2026-11-08): not started.</summary>
-
-**Status or trigger:** **Open (2026-11-08): not started.**
-
-**Notes:** Built-in voices have a play-sample button; cloned and designed voices do not.
 
 </details>
 

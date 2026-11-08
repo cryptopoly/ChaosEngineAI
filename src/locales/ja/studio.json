@@ -846,7 +846,8 @@
       "stylePlaceholderFree": null,
       "describeHint": null,
       "ffmpegPitch": null,
-      "ffmpegSpeedPitch": null
+      "ffmpegSpeedPitch": null,
+      "autosaveFailed": null
     },
     "stop": "停止",
     "studio": {
@@ -914,8 +915,10 @@
       "deleteSelected": "選択項目を削除（{n}）",
       "loading": "読み込み中…",
       "noMatch": "一致する項目はありません。",
-      "empty": "まだ何もありません。Voice Studio で作った文字起こしと、保存した音声がここに保存されます。",
-      "openStudio": null
+      "openStudio": null,
+      "emptyAuto": null,
+      "aiMade": null,
+      "speakAgain": null
     },
     "languages": {
       "auto": "自動検出"

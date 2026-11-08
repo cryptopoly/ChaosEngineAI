@@ -1,6 +1,7 @@
 import { test, expect } from "./fixtures";
 import type { Page } from "@playwright/test";
 import { goTo, seedProject } from "./helpers";
+import { mockVoiceApi } from "./voiceMocks";
 
 // Video, Music and Voice libraries with Storyboard projects: the Project dropdown, filtering, the
 // "From project X" badge, the project header and "Open in Storyboard". Library data is mocked at the
@@ -223,4 +224,58 @@ test("Voice library: Open Studio goes to Voice Studio", async ({ page }) => {
   await page.getByRole("button", { name: "Open Studio" }).click();
   await expect(page.locator(".studio-shell__header").getByRole("heading", { name: "Voice Studio" })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Speak" })).toHaveAttribute("aria-selected", "true");
+});
+
+test("Voice library speech cards: voice name and kind, AI-made on cloned speech, Speak again opens Speak with the text and voice", async ({ page }) => {
+  const items = [
+    { ...speech(1, "speech", false), voice: "qwen3:Ryan", voiceName: "Ryan", voiceKind: "preset", preview: "Good evening, everyone." },
+    { ...speech(2, "speech", false), voice: "clone:voice-1", voiceName: "Ada", voiceKind: "clone", clonedVoice: true },
+    // Saved before the voice name was stored: the card works it out from the id.
+    { ...speech(3, "speech", false), voice: "af_heart" },
+  ];
+  await page.route(/\/api\/voice\/library(\?.*)?$/, (route) => route.fulfill({ json: { items } }));
+  await page.route(/\/api\/voice\/library\/v-1$/, (route) =>
+    route.fulfill({ json: { ...items[0], text: "Good evening, everyone. This is the whole text.", segments: [], audioPath: null } }),
+  );
+  await mockVoiceApi(page, { installed: ["qwen3-tts-0.6b", "qwen3-tts-custom-1.7b"], speakVoice: "af_heart" });
+  await goTo(page, "Voice", "Library");
+
+  const ryan = page.locator(".media-library-card", { hasText: "speech 1" });
+  await expect(ryan.getByText("Natural", { exact: true })).toBeVisible();
+  await expect(ryan).toContainText("Ryan · ");
+  await expect(ryan).not.toContainText("qwen3:Ryan");
+  const ada = page.locator(".media-library-card", { hasText: "speech 2" });
+  await expect(ada.getByText("AI-made, cloned voice")).toBeVisible();
+  await expect(ada.getByText("Cloned", { exact: true })).toBeVisible();
+  const old = page.locator(".media-library-card", { hasText: "speech 3" });
+  await expect(old).toContainText("Heart · ");
+  await expect(old.getByText("Quick", { exact: true })).toBeVisible();
+
+  await ryan.getByRole("button", { name: "Speak again" }).click();
+  await expect(page.getByRole("tab", { name: "Speak" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByLabel("Text to speak")).toHaveValue("Good evening, everyone. This is the whole text.");
+  await expect(page.getByRole("radio", { name: /^Ryan/ }).first()).toHaveAttribute("aria-checked", "true");
+});
+
+test.describe("Voice library at 375 px", () => {
+  test.use({ viewport: { width: 375, height: 812 } });
+
+  test("speech cards with badges and Speak again fit the width", async ({ page }) => {
+    const items = [
+      { ...speech(1, "speech", true), voice: "qwen3:Ryan", voiceName: "Ryan", voiceKind: "preset" },
+      { ...speech(2, "speech", false), voice: "clone:voice-1", voiceName: "Ada", voiceKind: "clone", clonedVoice: true },
+    ];
+    await page.route(/\/api\/voice\/library(\?.*)?$/, (route) => route.fulfill({ json: { items } }));
+    await goTo(page, "Voice", "Library");
+    await expect(page.getByText("AI-made, cloned voice")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Speak again" })).toHaveCount(2);
+    const wide = await page.evaluate(() =>
+      [...document.querySelectorAll(".voice-library__grid *")]
+        .filter((el) => el.getBoundingClientRect().right > window.innerWidth + 1)
+        .map((el) => el.tagName),
+    );
+    expect(wide).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
+    await page.screenshot({ path: "test-results/voice-library-375.png", fullPage: true });
+  });
 });

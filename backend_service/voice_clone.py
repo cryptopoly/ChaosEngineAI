@@ -312,7 +312,8 @@ def speak(
         item = voice_library.create(
             "speech",
             {"text": text, "title": f"{voice.get('title')}: {' '.join(text.split())[:40]}",
-             "voice": f"clone:{voice_id}", "model": row["repo"], "durationS": round(duration, 2),
+             "voice": f"clone:{voice_id}", "voiceName": voice.get("title"), "voiceKind": "clone",
+             "model": row["repo"], "durationS": round(duration, 2),
              "speed": speed, "clonedVoice": True, "cloneVoiceId": voice_id},
             audio_file=out,
             audio_ext=".wav",

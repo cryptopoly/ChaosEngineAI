@@ -846,7 +846,8 @@
       "stylePlaceholderFree": null,
       "describeHint": null,
       "ffmpegPitch": null,
-      "ffmpegSpeedPitch": null
+      "ffmpegSpeedPitch": null,
+      "autosaveFailed": null
     },
     "stop": "중지",
     "studio": {
@@ -914,8 +915,10 @@
       "deleteSelected": "선택 항목 삭제 ({n})",
       "loading": "불러오는 중…",
       "noMatch": "일치하는 항목이 없습니다.",
-      "empty": "아직 아무것도 없습니다. Voice Studio에서 만든 받아쓰기와 저장한 음성이 여기에 보관됩니다.",
-      "openStudio": null
+      "openStudio": null,
+      "emptyAuto": null,
+      "aiMade": null,
+      "speakAgain": null
     },
     "languages": {
       "auto": "자동 감지"

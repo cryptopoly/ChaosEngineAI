@@ -846,7 +846,8 @@
       "stylePlaceholderFree": null,
       "describeHint": null,
       "ffmpegPitch": null,
-      "ffmpegSpeedPitch": null
+      "ffmpegSpeedPitch": null,
+      "autosaveFailed": null
     },
     "stop": "停止",
     "studio": {
@@ -914,8 +915,10 @@
       "deleteSelected": "删除所选（{n}）",
       "loading": "正在加载…",
       "noMatch": "没有匹配项。",
-      "empty": "这里还没有内容。在 Voice Studio 中制作的转写稿和你保存的语音都会放在这里。",
-      "openStudio": null
+      "openStudio": null,
+      "emptyAuto": null,
+      "aiMade": null,
+      "speakAgain": null
     },
     "languages": {
       "auto": "自动检测"

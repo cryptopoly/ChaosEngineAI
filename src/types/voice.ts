@@ -126,6 +126,11 @@ export interface VoiceLibrarySummary {
   language?: string | null;
   model?: string;
   voice?: string | null;
+  /** Speech saved since D-67 W7: the voice's display name and kind (older items have only ``voice``). */
+  voiceName?: string | null;
+  voiceKind?: VoiceEntryKind | null;
+  /** Made with a cloned voice: labelled as AI-made and watermarked. */
+  clonedVoice?: boolean | null;
   durationS?: number | null;
   source?: string | null;
   task?: "transcribe" | "translate";

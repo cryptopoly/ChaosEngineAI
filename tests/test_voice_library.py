@@ -294,6 +294,39 @@ class LibraryRouteTests(unittest.TestCase):
         self.assertEqual(sorted(deleted["deleted"]), sorted([speech["id"], transcript["id"]]))
         self.assertEqual(self.client.get("/api/voice/library").json()["items"], [])
 
+    def test_saved_speech_keeps_the_voice_name_and_kind(self) -> None:
+        # Every Speak result is saved (D-67 W7): the card shows "Ryan, Natural", not the id.
+        saved = self.client.post(
+            "/api/voice/library/speech",
+            files={"audio": ("speech.wav", b"RIFF", "audio/wav")},
+            data={"text": "Good evening.", "voice": "qwen3:Ryan", "speed": "1", "voiceName": "  Ryan ", "voiceKind": "preset"},
+        ).json()
+        self.assertEqual((saved["voice"], saved["voiceName"], saved["voiceKind"]), ("qwen3:Ryan", "Ryan", "preset"))
+        listed = self.client.get("/api/voice/library", params={"kind": "speech"}).json()["items"][0]
+        self.assertEqual((listed["voiceName"], listed["voiceKind"], listed["preview"]), ("Ryan", "preset", "Good evening."))
+        full = self.client.get(f"/api/voice/library/{saved['id']}").json()
+        self.assertEqual(full["text"], "Good evening.")
+        # A clone id is longer than the old 32-character cap.
+        long_id = "clone:1790000000_abcdef12"
+        clone = self.client.post(
+            "/api/voice/library/speech", files={"audio": ("c.wav", b"RIFF", "audio/wav")},
+            data={"text": "Hi", "voice": long_id, "voiceName": "Ada", "voiceKind": "clone"},
+        ).json()
+        self.assertEqual(clone["voice"], long_id)
+        bad = self.client.post(
+            "/api/voice/library/speech", files={"audio": ("c.wav", b"RIFF", "audio/wav")}, data={"voiceKind": "robot"},
+        )
+        self.assertEqual(bad.status_code, 422)
+
+    def test_old_speech_without_a_voice_name_still_lists(self) -> None:
+        old = self.client.post(
+            "/api/voice/library/speech", files={"audio": ("s.wav", b"RIFF", "audio/wav")}, data={"text": "x", "voice": "af_heart"},
+        ).json()
+        self.assertNotIn("voiceName", old)
+        self.assertNotIn("voiceKind", old)
+        listed = self.client.get("/api/voice/library").json()["items"]
+        self.assertEqual([i["voice"] for i in listed], ["af_heart"])
+
     def test_single_item_reports_where_its_audio_is(self) -> None:
         item = self.client.post("/api/voice/library/speech", files={"audio": ("s.wav", b"RIFF", "audio/wav")}).json()
         full = self.client.get(f"/api/voice/library/{item['id']}").json()

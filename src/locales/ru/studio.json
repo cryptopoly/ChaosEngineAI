@@ -846,7 +846,8 @@
       "stylePlaceholderFree": null,
       "describeHint": null,
       "ffmpegPitch": null,
-      "ffmpegSpeedPitch": null
+      "ffmpegSpeedPitch": null,
+      "autosaveFailed": null
     },
     "stop": "Остановить",
     "studio": {
@@ -914,8 +915,10 @@
       "deleteSelected": "Удалить выбранные ({n})",
       "loading": "Загрузка…",
       "noMatch": "Ничего не найдено.",
-      "empty": "Пока пусто. Здесь хранятся расшифровки из Voice Studio и сохранённая речь.",
-      "openStudio": null
+      "openStudio": null,
+      "emptyAuto": null,
+      "aiMade": null,
+      "speakAgain": null
     },
     "languages": {
       "auto": "Определять автоматически"

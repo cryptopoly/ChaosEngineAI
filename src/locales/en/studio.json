@@ -846,7 +846,8 @@
       "stylePlaceholderFree": "Tone, pace, accent, in your own words. For example: a tired, gentle bedtime voice, slow, slight Irish accent.",
       "describeHint": "Say the age, gender, pitch, tone, accent and pace. The voice changes on every run; set a seed under Advanced to keep it.",
       "ffmpegPitch": "Changing the pitch needs ffmpeg. Install it from Settings, or set pitch back to 0.",
-      "ffmpegSpeedPitch": "Speed and pitch for this voice need ffmpeg. Install it from Settings, or set speed to 1.0 and pitch to 0."
+      "ffmpegSpeedPitch": "Speed and pitch for this voice need ffmpeg. Install it from Settings, or set speed to 1.0 and pitch to 0.",
+      "autosaveFailed": "The clip could not be saved to the Library ({error}). Use Save to Library to try again."
     },
     "stop": "Stop",
     "studio": {
@@ -914,8 +915,10 @@
       "deleteSelected": "Delete selected ({n})",
       "loading": "Loading…",
       "noMatch": "Nothing matches.",
-      "empty": "Nothing here yet. Transcripts made in Voice Studio are kept here, and so is speech you save.",
-      "openStudio": "Open Studio"
+      "openStudio": "Open Studio",
+      "emptyAuto": "Nothing here yet. Transcripts and speech made in Voice Studio are kept here.",
+      "aiMade": "AI-made, cloned voice",
+      "speakAgain": "Speak again"
     },
     "languages": {
       "auto": "Detect automatically"

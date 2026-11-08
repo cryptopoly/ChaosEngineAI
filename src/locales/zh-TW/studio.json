@@ -846,7 +846,8 @@
       "stylePlaceholderFree": null,
       "describeHint": null,
       "ffmpegPitch": null,
-      "ffmpegSpeedPitch": null
+      "ffmpegSpeedPitch": null,
+      "autosaveFailed": null
     },
     "stop": "停止",
     "studio": {
@@ -914,8 +915,10 @@
       "deleteSelected": "刪除所選（{n}）",
       "loading": "正在載入…",
       "noMatch": "沒有符合的項目。",
-      "empty": "這裡還沒有內容。在 Voice Studio 中製作的逐字稿和你儲存的語音都會放在這裡。",
-      "openStudio": null
+      "openStudio": null,
+      "emptyAuto": null,
+      "aiMade": null,
+      "speakAgain": null
     },
     "languages": {
       "auto": "自動偵測"

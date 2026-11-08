@@ -436,9 +436,12 @@ def save_speech(
     request: Request,
     audio: UploadFile,
     text: str = Form(default="", max_length=200_000),
-    voice: str = Form(default="", max_length=32),
+    voice: str = Form(default="", max_length=64),
     speed: float = Form(default=1.0, ge=0.5, le=2.0),
     title: str = Form(default="", max_length=200),
+    # The voice's display name and kind, so the Library card can say "Ryan, Natural" instead of the id.
+    voiceName: str = Form(default="", max_length=120),
+    voiceKind: str = Form(default="", pattern=r"^(|builtin|preset|design|clone)$"),
 ) -> dict[str, Any]:
     from backend_service import voice_library  # noqa: PLC0415
 
@@ -450,7 +453,8 @@ def save_speech(
         cloned = bool((read_wav_tag(tmp_path) or {}).get("clonedVoice")) if suffix == ".wav" else False
         return voice_library.create(
             "speech",
-            {"text": text, "voice": voice or None, "speed": speed, "title": title or None, "clonedVoice": cloned or None},
+            {"text": text, "voice": voice or None, "speed": speed, "title": title or None, "clonedVoice": cloned or None,
+             "voiceName": " ".join(voiceName.split()) or None, "voiceKind": voiceKind or None},
             audio_file=tmp_path,
             audio_ext=suffix,
         )

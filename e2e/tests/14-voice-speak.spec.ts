@@ -28,6 +28,13 @@ async function mockSpeak(page: Page): Promise<Array<Record<string, unknown>>> {
 test("a quick voice has no style: the box and chips are greyed out with a note, and the request carries no style", async ({ page }) => {
   await mockVoiceApi(page, { speakVoice: "af_heart" });
   const bodies = await mockSpeak(page);
+  const saved: Array<Record<string, string>> = [];
+  await page.route("**/api/voice/library/speech", (route) => {
+    const form = route.request().postData() ?? "";
+    const field = (name: string) => form.match(new RegExp(`name="${name}"\\r\\n\\r\\n([^\\r]*)`))?.[1] ?? "";
+    saved.push({ text: field("text"), voice: field("voice"), voiceName: field("voiceName"), voiceKind: field("voiceKind") });
+    return route.fulfill({ json: { id: "1790000000_abcdef12", kind: "speech", title: "Hello world.", text: "Hello world.", createdAt: 1, updatedAt: 1, audio: ".wav", speakers: {}, segments: [] } });
+  });
   await openSpeak(page);
 
   // The voice last used in Speak wins over the natural voice the rule would pick.
@@ -43,9 +50,14 @@ test("a quick voice has no style: the box and chips are greyed out with a note, 
   await page.getByRole("button", { name: "Generate audio" }).click();
   await expect(page.getByRole("button", { name: "WAV" })).toBeVisible();
   await expect(page.getByRole("button", { name: "MP3" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Save to Library" })).toBeVisible();
   expect(bodies).toHaveLength(1);
   expect(bodies[0]).toMatchObject({ text: "Hello world.", voice: "af_heart", style: "", speed: 1, pitch: 0, seed: null });
+  // Every result is saved to the Library with the voice's name and kind; the row links there.
+  await expect.poll(() => saved).toEqual([{ text: "Hello world.", voice: "af_heart", voiceName: "Heart", voiceKind: "builtin" }]);
+  await expect(page.getByRole("button", { name: "Save to Library" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Saved to Library" }).click();
+  await expect(page.locator("section").getByRole("heading", { name: "Voice Library" })).toBeVisible();
+  await expect(page.getByRole("radio", { name: "Speech" })).toHaveAttribute("aria-checked", "true");
 });
 
 test("first run with no natural voice: Speak starts on the best quick voice and offers to install a better one in place", async ({ page }) => {

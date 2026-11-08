@@ -64,6 +64,10 @@ export function VoiceLibraryView({ ctx }: { ctx: AppTabContext }) {
         setVoiceOpenRequest({ id, nonce: Date.now() });
         void setActiveTab("voice-studio");
       }}
+      onSpeakAgain={({ voice, text }) => {
+        setVoiceOpenRequest({ mode: "speak", voice: voice || undefined, text, nonce: Date.now() });
+        void setActiveTab("voice-studio");
+      }}
       onTabChange={setActiveTab}
     />
   );

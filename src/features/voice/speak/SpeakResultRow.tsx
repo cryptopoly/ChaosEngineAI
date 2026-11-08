@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { SendToStoryboardMenu } from "../../../components/SendToStoryboardMenu";
 import { encodeMp3, getLibraryAudio, getLibraryItem, saveSpeech } from "../../../api";
-import type { TabId } from "../../../types";
+import type { TabId, VoiceEntryKind } from "../../../types";
 import { shotTitleFrom, type SendItem } from "../../storyboard/sendToStoryboardLogic";
 import { useSendToStoryboard } from "../../storyboard/useSendToStoryboard";
 import { downloadBlob, formatClock } from "../audio";
@@ -13,14 +13,33 @@ export interface SpeakOutput {
   durationS: number;
   text: string;
   voice: string;
+  /** Display name and kind, stored with the Library item. */
+  voiceName: string;
+  voiceKind: VoiceEntryKind;
   speed: number;
   /** Made with a cloned voice: labelled as AI-made, watermarked and already in the Library. */
   cloned: boolean;
+  /** Set once the clip is in the Library: every Speak result is saved there automatically. */
   libraryId: string | null;
 }
 
-/** The finished clip: audio, length, WAV, MP3, Save to Library and Send to Storyboard. */
-export function SpeakResultRow({ output, onTabChange, onError }: { output: SpeakOutput; onTabChange?: (tab: TabId) => void; onError: (message: string) => void }) {
+/**
+ * The finished clip: audio, length, WAV, MP3, the Library link and Send to Storyboard. Speak saves every result to
+ * the Library, so this row shows "Saved to Library" as a link to it; Save to Library is only offered again when that
+ * automatic save failed.
+ */
+export function SpeakResultRow({
+  output,
+  onTabChange,
+  onError,
+  onOpenLibrary,
+}: {
+  output: SpeakOutput;
+  onTabChange?: (tab: TabId) => void;
+  onError: (message: string) => void;
+  /** Open the Voice Library on Speech. */
+  onOpenLibrary?: () => void;
+}) {
   const { t } = useTranslation("studio");
   const storyboard = useSendToStoryboard((tab) => onTabChange?.(tab));
   const [savedId, setSavedId] = useState<string | null>(output.libraryId);
@@ -41,7 +60,13 @@ export function SpeakResultRow({ output, onTabChange, onError }: { output: Speak
 
   const ensureSaved = async (): Promise<string> => {
     if (savedId) return savedId;
-    const item = await saveSpeech(output.blob, { text: output.text, voice: output.voice, speed: output.speed });
+    const item = await saveSpeech(output.blob, {
+      text: output.text,
+      voice: output.voice,
+      speed: output.speed,
+      voiceName: output.voiceName,
+      voiceKind: output.voiceKind,
+    });
     setSavedId(item.id);
     return item.id;
   };
@@ -70,9 +95,19 @@ export function SpeakResultRow({ output, onTabChange, onError }: { output: Speak
         <button type="button" className="secondary-button" disabled={busyExport} onClick={() => void exportMp3()}>
           {busyExport ? t("voice.speak.encoding", { defaultValue: "Encoding…" }) : "MP3"}
         </button>
-        <button type="button" className="secondary-button" disabled={savedId != null} onClick={() => void ensureSaved().catch(fail)}>
-          {savedId ? t("voice.savedToLibrary", { defaultValue: "Saved to Library" }) : t("voice.saveToLibrary", { defaultValue: "Save to Library" })}
-        </button>
+        {savedId ? (
+          onOpenLibrary ? (
+            <button type="button" className="link-button" onClick={onOpenLibrary}>
+              {t("voice.savedToLibrary", { defaultValue: "Saved to Library" })}
+            </button>
+          ) : (
+            <span className="muted-text">{t("voice.savedToLibrary", { defaultValue: "Saved to Library" })}</span>
+          )
+        ) : (
+          <button type="button" className="secondary-button" onClick={() => void ensureSaved().catch(fail)}>
+            {t("voice.saveToLibrary", { defaultValue: "Save to Library" })}
+          </button>
+        )}
         <SendToStoryboardMenu
           item={sendItem}
           projects={storyboard.projects}

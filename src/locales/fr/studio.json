@@ -846,7 +846,8 @@
       "stylePlaceholderFree": null,
       "describeHint": null,
       "ffmpegPitch": null,
-      "ffmpegSpeedPitch": null
+      "ffmpegSpeedPitch": null,
+      "autosaveFailed": null
     },
     "stop": "Arrêter",
     "studio": {
@@ -914,8 +915,10 @@
       "deleteSelected": "Supprimer la sélection ({n})",
       "loading": "Chargement…",
       "noMatch": "Aucun résultat.",
-      "empty": "Rien pour l'instant. Les transcriptions faites dans Voice Studio sont conservées ici, ainsi que la parole que vous enregistrez.",
-      "openStudio": null
+      "openStudio": null,
+      "emptyAuto": null,
+      "aiMade": null,
+      "speakAgain": null
     },
     "languages": {
       "auto": "Détecter automatiquement"

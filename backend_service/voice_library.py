@@ -136,8 +136,10 @@ def create(
         "segments": fields.get("segments") or [],
         "speakers": fields.get("speakers") or {},
     }
-    for key in ("language", "model", "voice", "durationS", "source", "task", "speed", "clonedVoice", "cloneVoiceId",
-                "projectId", "projectName", "shotId"):
+    # ``voiceName`` and ``voiceKind`` (builtin / preset / design / clone) name the voice of saved speech; items saved
+    # before they existed have only ``voice`` (the id), and the Library works the name out from it.
+    for key in ("language", "model", "voice", "voiceName", "voiceKind", "durationS", "source", "task", "speed",
+                "clonedVoice", "cloneVoiceId", "projectId", "projectName", "shotId"):
         if fields.get(key) is not None:
             item[key] = fields[key]
     with _LOCK:

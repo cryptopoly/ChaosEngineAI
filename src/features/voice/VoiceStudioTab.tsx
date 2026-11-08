@@ -50,6 +50,7 @@ export function VoiceStudioTab({ voiceRuntime, backendOnline, openRequest, onSen
   const { settings, saveSettings } = useVoice();
   const catalog = useVoiceCatalog(backendOnline && Boolean(voiceRuntime?.installed));
   const [voiceId, setVoiceId] = useState("");
+  const [speakText, setSpeakText] = useState<{ text: string; nonce: number } | null>(null);
   // Until the person picks a voice, Speak follows the default rule, so a natural voice that finishes downloading
   // becomes the starting voice; a chosen voice that disappears (a deleted clone) falls back to the rule too.
   const picked = useRef(false);
@@ -91,6 +92,7 @@ export function VoiceStudioTab({ voiceRuntime, backendOnline, openRequest, onSen
     const wanted = requestedMode(openRequest);
     if (wanted) setMode(wanted);
     if (openRequest.voice) pickVoice(openRequest.voice);
+    if (openRequest.text != null) setSpeakText({ text: openRequest.text, nonce: openRequest.nonce });
     // pickVoice and setMode only set state; the request is what matters here.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openRequest]);
@@ -174,7 +176,14 @@ export function VoiceStudioTab({ voiceRuntime, backendOnline, openRequest, onSen
         />
       </div>
       <div className={`voice-studio__pane${mode === "speak" ? "" : " voice-studio__pane--hidden"}`}>
-        <SpeakScreen catalog={catalog} voiceId={voiceId} onVoiceChange={pickVoice} onTabChange={onTabChange} onNewClone={() => setMode("voices")} />
+        <SpeakScreen
+          catalog={catalog}
+          voiceId={voiceId}
+          onVoiceChange={pickVoice}
+          onTabChange={onTabChange}
+          onNewClone={() => setMode("voices")}
+          textRequest={speakText}
+        />
       </div>
       <div className={`voice-studio__pane${mode === "voices" ? "" : " voice-studio__pane--hidden"}`}>
         <VoicesScreen

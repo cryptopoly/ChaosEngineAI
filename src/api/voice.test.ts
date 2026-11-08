@@ -123,6 +123,11 @@ describe("voice api client", () => {
     await saveSpeech(new Blob(["RIFF"]), { text: "Hello", voice: "af_heart", speed: 1.2 });
     const form = requestTo(fetchMock, "/api/voice/library/speech").body as FormData;
     expect([form.get("text"), form.get("voice"), form.get("speed")]).toEqual(["Hello", "af_heart", "1.2"]);
+    expect([form.get("voiceName"), form.get("voiceKind")]).toEqual([null, null]);
+    fetchMock.mockClear();
+    await saveSpeech(new Blob(["RIFF"]), { text: "Hi", voice: "qwen3:Ryan", speed: 1, voiceName: "Ryan", voiceKind: "preset" });
+    const named = requestTo(fetchMock, "/api/voice/library/speech").body as FormData;
+    expect([named.get("voiceName"), named.get("voiceKind")]).toEqual(["Ryan", "preset"]);
     await expect(deleteLibraryItems(["1_aaaaaaaa"])).resolves.toEqual(["1_aaaaaaaa"]);
     expect(JSON.parse(String(requestTo(fetchMock, "/api/voice/library/delete").body))).toEqual({ ids: ["1_aaaaaaaa"] });
   });

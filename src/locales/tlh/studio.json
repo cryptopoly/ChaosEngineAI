@@ -846,7 +846,8 @@
       "stylePlaceholderFree": null,
       "describeHint": null,
       "ffmpegPitch": null,
-      "ffmpegSpeedPitch": null
+      "ffmpegSpeedPitch": null,
+      "autosaveFailed": null
     },
     "stop": "yImev",
     "studio": {
@@ -914,8 +915,10 @@
       "deleteSelected": "wIvlu'ta'bogh tIQaw' ({n})",
       "loading": "qemlI'…",
       "noMatch": "pagh lugh.",
-      "empty": "wej pagh tu'lu'. ghogh vumpa'Daq ghItlh DachenmoHbogh naDev pollu', 'ej QIch Dapolbogh je.",
-      "openStudio": null
+      "openStudio": null,
+      "emptyAuto": null,
+      "aiMade": null,
+      "speakAgain": null
     },
     "languages": {
       "auto": "Hol yItu' SIbI'"

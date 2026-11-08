@@ -15,6 +15,7 @@ import type {
   VoiceRuntime,
   VoiceSettings,
   VoiceEntry,
+  VoiceEntryKind,
   VoiceModelRow,
   SpeakBody,
   SpeakResult,
@@ -200,7 +201,7 @@ export async function deleteLibraryItems(ids: string[]): Promise<string[]> {
 /** Save generated speech (a WAV) to the Library. */
 export async function saveSpeech(
   audio: Blob,
-  fields: { text: string; voice: string; speed: number; title?: string },
+  fields: { text: string; voice: string; speed: number; title?: string; voiceName?: string; voiceKind?: VoiceEntryKind },
 ): Promise<VoiceLibraryItem> {
   const form = new FormData();
   form.append("audio", audio, "speech.wav");
@@ -208,6 +209,8 @@ export async function saveSpeech(
   form.append("voice", fields.voice);
   form.append("speed", String(fields.speed));
   if (fields.title) form.append("title", fields.title);
+  if (fields.voiceName) form.append("voiceName", fields.voiceName);
+  if (fields.voiceKind) form.append("voiceKind", fields.voiceKind);
   const response = await apiFetch("/api/voice/library/speech", { method: "POST", body: form });
   if (!response.ok) {
     throw new Error(await readErrorDetail(response, `Saving failed with status ${response.status}`));

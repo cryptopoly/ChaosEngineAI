@@ -846,7 +846,8 @@
       "stylePlaceholderFree": null,
       "describeHint": null,
       "ffmpegPitch": null,
-      "ffmpegSpeedPitch": null
+      "ffmpegSpeedPitch": null,
+      "autosaveFailed": null
     },
     "stop": "Parar",
     "studio": {
@@ -914,8 +915,10 @@
       "deleteSelected": "Excluir selecionados ({n})",
       "loading": "Carregando…",
       "noMatch": "Nada encontrado.",
-      "empty": "Nada aqui ainda. Transcrições feitas no Voice Studio ficam aqui, assim como as falas que você salvar.",
-      "openStudio": null
+      "openStudio": null,
+      "emptyAuto": null,
+      "aiMade": null,
+      "speakAgain": null
     },
     "languages": {
       "auto": "Detectar automaticamente"

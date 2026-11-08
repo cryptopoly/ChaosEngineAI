@@ -34,6 +34,8 @@ export interface VoiceStudioRequest {
   mode?: StudioMode;
   /** A voice to select on Speak. */
   voice?: string;
+  /** Text to put in the Speak box (the Library's Speak again). */
+  text?: string;
   /** Changes on every request, so opening the same item twice works. */
   nonce: number;
 }

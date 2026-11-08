@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Panel } from "../../../components/Panel";
-import { cancelSpeak, speakVoice } from "../../../api";
+import { cancelSpeak, saveSpeech, speakVoice } from "../../../api";
 import type { TabId, VoiceEntry } from "../../../types";
 import { useVoice } from "../VoiceContext";
 import { joinWavs, splitSpeech, type SpeechPart } from "../studio/speech";
+import { requestLibraryFilter } from "../libraryVoice";
 import { SpeakResultRow, type SpeakOutput } from "./SpeakResultRow";
 import { VoicePicker } from "./VoicePicker";
 import {
@@ -50,6 +51,7 @@ export function SpeakScreen({
   onVoiceChange,
   onTabChange,
   onNewClone,
+  textRequest,
 }: {
   catalog: VoiceCatalog;
   voiceId: string;
@@ -57,10 +59,12 @@ export function SpeakScreen({
   onTabChange?: (tab: TabId) => void;
   /** Open the new cloned voice form (the Voices tab). */
   onNewClone?: () => void;
+  /** Text to put in the box (the Library's Speak again); a new nonce replaces the text again. */
+  textRequest?: { text: string; nonce: number } | null;
 }) {
   const { t } = useTranslation("studio");
   const { settings } = useVoice();
-  const [text, setText] = useState("");
+  const [text, setText] = useState(textRequest?.text ?? "");
   // Style text is kept per voice, so a preset's "angry" never becomes the description of a designed voice.
   const [styles, setStyles] = useState<Record<string, string>>({});
   const [cloneModelKey, setCloneModelKey] = useState("");
@@ -82,6 +86,12 @@ export function SpeakScreen({
     },
     [output],
   );
+
+  useEffect(() => {
+    if (textRequest) setText(textRequest.text);
+    // Only a new request replaces the text, not every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [textRequest?.nonce]);
 
   const voice: VoiceEntry | null = catalog.voices.find((v) => v.id === voiceId) ?? null;
   const style = styles[voiceId] ?? "";
@@ -135,6 +145,22 @@ export function SpeakScreen({
         wavs.length === 1
           ? { blob: new Blob([wavs[0]], { type: "audio/wav" }), durationS: last.durationS }
           : joinWavs(wavs, parts.map((p) => p.gapAfter));
+      // Every result goes to the Library (cloned speech is filed by the backend already). A failed save keeps the
+      // clip here with Save to Library offered again.
+      const voiceName = voice.kind === "design" ? activeStyle.slice(0, 120) : voice.name;
+      let libraryId = last.libraryId;
+      if (!libraryId) {
+        try {
+          libraryId = (await saveSpeech(joined.blob, { text, voice: voice.id, speed, voiceName, voiceKind: voice.kind })).id;
+        } catch (err) {
+          seen.push(
+            t("voice.speak.autosaveFailed", {
+              defaultValue: "The clip could not be saved to the Library ({error}). Use Save to Library to try again.",
+              error: err instanceof Error ? err.message : String(err),
+            }),
+          );
+        }
+      }
       setNotes(seen);
       setOutput({
         url: URL.createObjectURL(joined.blob),
@@ -142,9 +168,11 @@ export function SpeakScreen({
         durationS: joined.durationS,
         text,
         voice: voice.id,
+        voiceName,
+        voiceKind: voice.kind,
         speed,
         cloned: last.clonedVoice,
-        libraryId: last.libraryId,
+        libraryId,
       });
     } catch (err) {
       if (!cancelRef.current) setError(err instanceof Error ? err.message : String(err));
@@ -378,7 +406,22 @@ export function SpeakScreen({
             </button>
           )}
         </div>
-        {output ? <SpeakResultRow key={output.url} output={output} onTabChange={onTabChange} onError={setError} /> : null}
+        {output ? (
+          <SpeakResultRow
+            key={output.url}
+            output={output}
+            onTabChange={onTabChange}
+            onError={setError}
+            onOpenLibrary={
+              onTabChange
+                ? () => {
+                    requestLibraryFilter("speech");
+                    onTabChange("voice-gallery");
+                  }
+                : undefined
+            }
+          />
+        ) : null}
       </div>
     </Panel>
   );

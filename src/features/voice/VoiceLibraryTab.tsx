@@ -12,6 +12,7 @@ import { ALL_PROJECTS, filterByProject, projectOptions, untaggedCount } from "..
 import { openProjectAt } from "../storyboard/projectRoute";
 import { downloadBlob, formatClock } from "./audio";
 import { exportTranscript, speakerNamer, type ExportFormat } from "./studio/transcript";
+import { clearLibraryFilter, peekLibraryFilter, speechVoice } from "./libraryVoice";
 
 export interface VoiceLibraryTabProps {
   backendOnline: boolean;
@@ -19,6 +20,8 @@ export interface VoiceLibraryTabProps {
   onOpenTranscript: (id: string) => void;
   /** Moves to another tab; used by Send to storyboard. */
   onTabChange?: (tab: TabId) => void;
+  /** Open Speak with a saved clip's text and voice. */
+  onSpeakAgain?: (request: { voice: string; text: string }) => void;
 }
 
 type Filter = "" | VoiceLibraryKind;
@@ -27,12 +30,13 @@ function safeName(title: string): string {
   return (title || "voice").replace(/[\\/:*?"<>|]+/g, "_").slice(0, 80);
 }
 
-function LibraryCard({
+export function LibraryCard({
   item,
   selected,
   onSelect,
   onOpen,
   onDelete,
+  onSpeakAgain,
   storyboard,
 }: {
   item: VoiceLibrarySummary;
@@ -40,6 +44,7 @@ function LibraryCard({
   onSelect: (on: boolean) => void;
   onOpen: () => void;
   onDelete: () => void;
+  onSpeakAgain?: (request: { voice: string; text: string }) => void;
   storyboard: UseSendToStoryboard;
 }) {
   const { t } = useTranslation("studio");
@@ -82,11 +87,29 @@ function LibraryCard({
       downloadBlob(blob, `${safeName(item.title)}${format ? ".mp3" : item.audio ?? ".wav"}`);
     });
 
+  // The full text is read when needed: the list only carries the first 300 characters.
+  const speakAgain = () =>
+    run(async () => {
+      const full = await getLibraryItem(item.id);
+      onSpeakAgain?.({ voice: item.voice ?? "", text: full.text });
+    });
+
+  const voice = item.kind === "speech" ? speechVoice(item) : null;
+  const kindLabel = (kind: string) =>
+    kind === "clone"
+      ? t("voice.voices.kindClone", { defaultValue: "Cloned" })
+      : kind === "preset"
+        ? t("voice.voices.kindPreset", { defaultValue: "Natural" })
+        : kind === "design"
+          ? t("voice.voices.kindDesign", { defaultValue: "Designed" })
+          : t("voice.voices.kindBuiltin", { defaultValue: "Quick" });
+  const cloned = item.kind === "speech" && (item.clonedVoice || voice?.kind === "clone");
+
   const meta = [
+    voice?.name || null,
     new Date(item.createdAt * 1000).toLocaleString(),
     item.durationS != null ? formatClock(item.durationS) : null,
     item.speakerCount > 0 ? t("voice.library.speakers", { defaultValue: "{n} speakers", n: item.speakerCount }) : null,
-    item.kind === "speech" && item.voice ? item.voice : null,
     item.projectName ? t("galleryProject.chip", { defaultValue: "From project {name}", name: item.projectName }) : null,
   ].filter(Boolean);
 
@@ -113,6 +136,14 @@ function LibraryCard({
       selected={selected}
       onSelect={onSelect}
       selectLabel={t("voice.library.select", { defaultValue: "Select {title}", title: item.title })}
+      tagsSlot={
+        voice ? (
+          <ul className="media-library-card__tags">
+            <li className="badge subtle">{kindLabel(voice.kind)}</li>
+            {cloned ? <li className="badge">{t("voice.library.aiMade", { defaultValue: "AI-made, cloned voice" })}</li> : null}
+          </ul>
+        ) : undefined
+      }
       player={audioUrl ? <audio controls autoPlay src={audioUrl} /> : null}
       error={error}
       actions={
@@ -120,6 +151,11 @@ function LibraryCard({
           {item.kind === "transcript" ? (
             <button type="button" className="secondary-button" onClick={onOpen}>
               {t("voice.queue.open", { defaultValue: "Open" })}
+            </button>
+          ) : null}
+          {item.kind === "speech" && onSpeakAgain ? (
+            <button type="button" className="secondary-button" disabled={busy} onClick={() => void speakAgain()}>
+              {t("voice.library.speakAgain", { defaultValue: "Speak again" })}
             </button>
           ) : null}
           {item.audio && !audioUrl ? (
@@ -174,13 +210,15 @@ function LibraryCard({
   );
 }
 
-export function VoiceLibraryTab({ backendOnline, onOpenTranscript, onTabChange }: VoiceLibraryTabProps) {
+export function VoiceLibraryTab({ backendOnline, onOpenTranscript, onTabChange, onSpeakAgain }: VoiceLibraryTabProps) {
   const { t } = useTranslation("studio");
   const storyboard = useSendToStoryboard((tab) => onTabChange?.(tab));
   const [items, setItems] = useState<VoiceLibrarySummary[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState<Filter>("");
+  // Speak's "Saved to Library" link opens on Speech; read once here, then cleared.
+  const [filter, setFilter] = useState<Filter>(peekLibraryFilter);
+  useEffect(() => clearLibraryFilter(), []);
   const [projectFilter, setProjectFilter] = useState(ALL_PROJECTS);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
@@ -322,7 +360,7 @@ export function VoiceLibraryTab({ backendOnline, onOpenTranscript, onTabChange }
                 <p className="muted-text">
                   {query || filter || projectFilter !== ALL_PROJECTS
                     ? t("voice.library.noMatch", { defaultValue: "Nothing matches." })
-                    : t("voice.library.empty", { defaultValue: "Nothing here yet. Transcripts made in Voice Studio are kept here, and so is speech you save." })}
+                    : t("voice.library.emptyAuto", { defaultValue: "Nothing here yet. Transcripts and speech made in Voice Studio are kept here." })}
                 </p>
               </div>
             ) : (
@@ -342,6 +380,7 @@ export function VoiceLibraryTab({ backendOnline, onOpenTranscript, onTabChange }
                     }
                     onOpen={() => onOpenTranscript(item.id)}
                     onDelete={() => void remove([item.id])}
+                    onSpeakAgain={onSpeakAgain}
                     storyboard={storyboard}
                   />
                 ))}

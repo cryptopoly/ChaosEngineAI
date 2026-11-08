@@ -684,7 +684,21 @@
         "style": "mIw",
         "clone": "velqa'",
         "design": "chenmoH"
-      }
+      },
+      "cost": {
+        "download": null,
+        "memory": null,
+        "peak": null,
+        "speed": null,
+        "per10s": null,
+        "coldStart": null,
+        "seconds": null,
+        "measuredOn": null,
+        "notMeasured": null
+      },
+      "browseVoices": null,
+      "useInSpeak": null,
+      "openStudio": null
     },
     "voices": {
       "title": "ghogh",
@@ -822,13 +836,18 @@
         "excited": "vaQ",
         "whisper": "tlhup",
         "calm": "jot"
-      }
+      },
+      "modelKokoroCost": null,
+      "modelReadyCost": null,
+      "modelNeedsCost": null,
+      "manageInModels": null
     },
     "stop": "yImev",
     "studio": {
       "title": "ghogh vumpa'",
       "needsPack": "De'wI'vamDaq Qap ghogh 'ej ghogh ghom jan nIS (2 GB loQ). ghogh > yabvo' wa'logh yIjom.",
-      "openModels": "ghogh yab yIpoSmoH"
+      "openModels": "ghogh yab yIpoSmoH",
+      "library": null
     },
     "savedToLibrary": "ghomDaq pollu'ta'",
     "saveToLibrary": "ghomDaq yIpol",
@@ -889,7 +908,8 @@
       "deleteSelected": "wIvlu'ta'bogh tIQaw' ({n})",
       "loading": "qemlI'…",
       "noMatch": "pagh lugh.",
-      "empty": "wej pagh tu'lu'. ghogh vumpa'Daq ghItlh DachenmoHbogh naDev pollu', 'ej QIch Dapolbogh je."
+      "empty": "wej pagh tu'lu'. ghogh vumpa'Daq ghItlh DachenmoHbogh naDev pollu', 'ej QIch Dapolbogh je.",
+      "openStudio": null
     },
     "languages": {
       "auto": "Hol yItu' SIbI'"
@@ -948,6 +968,46 @@
       "recordingPlayback": "qonghachlIj",
       "saving": "ghogh pollI'…",
       "sampleType": "WAV, MP3, M4A, FLAC pagh OGG nav yIwIv."
+    },
+    "cost": {
+      "kokoroChip": null,
+      "chip": null,
+      "unmeasuredChip": null,
+      "kokoroDetail": null,
+      "detail": null,
+      "unmeasuredDetail": null,
+      "download": null
+    },
+    "install": {
+      "title": null,
+      "body": null,
+      "cost": null,
+      "notNow": null
+    },
+    "picker": {
+      "addMandarin": null,
+      "addMandarinDetail": null,
+      "naturalDetail": null,
+      "designDetail": null,
+      "quickDetail": null,
+      "recommended": null,
+      "recommendedNote": null,
+      "quick": null,
+      "quickNote": null,
+      "fewer": null,
+      "allVoices": null,
+      "cloned": null,
+      "clonedNote": null,
+      "newClone": null,
+      "newCloneDetail": null,
+      "newCloneOpen": null,
+      "designed": null,
+      "designedNote": null,
+      "more": null,
+      "moreNote": null,
+      "getMore": null,
+      "getMoreDetail": null,
+      "openModels": null
     }
   },
   "residentChatModelNote": "qawHaqvamvo' ~{gb} GB ghaj chu'lu'ta'bogh ja'chuq yab; chu'Ha'lu'chugh qawHaqvetlh chImchoH.",
@@ -1605,8 +1665,8 @@
       "absolute": "lut poH (rarbe'lu')",
       "anchor": "rar",
       "anchorShot": "'ay' {n}: {name}",
-      "anchorTo": "rarlu'",
       "anchorSummary": "'ay' {n} tlhej vIH. joj {offset} lup.",
+      "anchorTo": "rarlu'",
       "duck": "ghogh bIngDaq yImachmoH",
       "duckTitle": "jatlhtaHvIS vay', mIllogh vIHvam wab machmoH (sidechain compression).",
       "empty": "wabDaj choHmeH poH HeDaq mIllogh vIH yIwIv.",

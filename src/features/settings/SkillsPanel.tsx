@@ -1,6 +1,8 @@
 /**
  * D-62: Settings > Skills. Import a skill folder or .zip (by path or the desktop file dialog), see its
  * description and files, switch it on for Chat, delete it. New skills start off; scripts never run.
+ * D-68: the import preview and each card show the local security scan; a High rating needs the
+ * "I read the findings" tick before the skill can be switched on (the user decides, nothing is blocked).
  */
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -8,6 +10,7 @@ import { deleteSkill, importSkill, listSkills, setSkillEnabled } from "../../api
 import type { Skill } from "../../api/skills";
 import { Panel } from "../../components/Panel";
 import { notifySkillsChanged } from "../chat/skillsChat";
+import { SkillScanReport } from "./SkillScanReport";
 
 export function formatBytes(bytes: number): string {
   return bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(1)} KB`;
@@ -25,7 +28,7 @@ export interface SkillCardProps {
   skill: Skill;
   busy: boolean;
   confirming: boolean;
-  onToggle: (enabled: boolean) => void;
+  onToggle: (enabled: boolean, acknowledgeFindings: boolean) => void;
   onAskDelete: () => void;
   onCancelDelete: () => void;
   onDelete: () => void;
@@ -34,6 +37,8 @@ export interface SkillCardProps {
 /** One imported skill: name, switch, description, files and skipped files, delete with a confirm step. */
 export function SkillCard({ skill, busy, confirming, onToggle, onAskDelete, onCancelDelete, onDelete }: SkillCardProps) {
   const { t } = useTranslation("common");
+  const [acknowledged, setAcknowledged] = useState(false);
+  const needsAck = skill.scan?.rating === "high" && !skill.enabled;
   return (
     <li className="integration-card skills-card" aria-label={skill.name}>
       <div className="skills-card__head">
@@ -42,13 +47,27 @@ export function SkillCard({ skill, busy, confirming, onToggle, onAskDelete, onCa
           <input
             type="checkbox"
             checked={skill.enabled}
-            disabled={busy}
-            onChange={(event) => onToggle(event.target.checked)}
+            disabled={busy || (needsAck && !acknowledged)}
+            onChange={(event) => onToggle(event.target.checked, acknowledged)}
           />
           {t("settingsTab.skills.enabled", { defaultValue: "Available in Chat" })}
         </label>
       </div>
       <p className="skills-card__description">{skill.description}</p>
+      {skill.scan ? <SkillScanReport scan={skill.scan} open={needsAck} /> : null}
+      {needsAck ? (
+        <label className="check-row skills-scan__ack">
+          <input
+            type="checkbox"
+            checked={acknowledged}
+            disabled={busy}
+            onChange={(event) => setAcknowledged(event.target.checked)}
+          />
+          {t("settingsTab.skills.scan.acknowledge", {
+            defaultValue: "I read the findings. The scan rated this skill High; tick this to be able to switch it on.",
+          })}
+        </label>
+      ) : null}
       <details>
         <summary>
           {t("settingsTab.skills.files", { count: skill.files.length, defaultValue: "{count, plural, one {# file} other {# files}}" })}
@@ -161,6 +180,10 @@ export function SkillsPanel({ backendOnline }: { backendOnline: boolean }) {
           {t("settingsTab.skills.safety", {
             defaultValue:
               "Scripts in a skill are never run. The model only reads a skill's text, as reference. New skills start switched off: read the description and file list before you switch one on.",
+          })}{" "}
+          {t("settingsTab.skills.scanNote", {
+            defaultValue:
+              "Each import gets a security scan rated Low, Medium or High. It is rule-based and runs on this computer; nothing leaves it. It is a heuristic, not a guarantee.",
           })}
         </p>
         <div className="skills-import-row">
@@ -197,6 +220,7 @@ export function SkillsPanel({ backendOnline }: { backendOnline: boolean }) {
             })}
           </p>
         ) : null}
+        {imported?.scan ? <SkillScanReport scan={imported.scan} open={imported.scan.rating !== "low"} /> : null}
         {skills.length === 0 ? (
           <p className="muted-text">{t("settingsTab.skills.empty", { defaultValue: "No skills imported yet." })}</p>
         ) : (
@@ -207,7 +231,7 @@ export function SkillsPanel({ backendOnline }: { backendOnline: boolean }) {
                 skill={skill}
                 busy={busy}
                 confirming={confirmDelete === skill.id}
-                onToggle={(enabled) => void run(async () => { await setSkillEnabled(skill.id, enabled); })}
+                onToggle={(enabled, acknowledge) => void run(async () => { await setSkillEnabled(skill.id, enabled, acknowledge); })}
                 onAskDelete={() => setConfirmDelete(skill.id)}
                 onCancelDelete={() => setConfirmDelete(null)}
                 onDelete={() => void run(async () => { await deleteSkill(skill.id); setConfirmDelete(null); })}

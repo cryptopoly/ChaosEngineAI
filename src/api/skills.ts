@@ -1,6 +1,8 @@
 /**
  * D-62: skills API client (`/api/skills`): list, import from a folder or .zip path, switch on or off,
  * delete. The backend validates the path; errors keep its plain `detail` sentence as the message.
+ * D-68: every skill carries a rule-based security scan; a skill rated high switches on only with
+ * `acknowledgeFindings: true`.
  */
 
 import { deleteJson, fetchJson, postJson } from "./index";
@@ -15,6 +17,26 @@ export interface SkillSkippedFile {
   reason: string;
 }
 
+export type SkillScanRating = "low" | "medium" | "high";
+
+export interface SkillScanFinding {
+  file: string;
+  /** 0 when the finding is about the whole file (a bundled script, the size). */
+  line: number;
+  rule: string;
+  severity: SkillScanRating;
+  message: string;
+  excerpt: string;
+}
+
+export interface SkillScan {
+  rating: SkillScanRating;
+  findings: SkillScanFinding[];
+  truncated?: boolean;
+  scannedAt: string;
+  rulesVersion: number;
+}
+
 export interface Skill {
   id: string;
   name: string;
@@ -24,6 +46,7 @@ export interface Skill {
   source: string;
   files: SkillFile[];
   skipped: SkillSkippedFile[];
+  scan: SkillScan;
 }
 
 export async function listSkills(): Promise<Skill[]> {
@@ -36,8 +59,9 @@ export async function importSkill(path: string): Promise<Skill> {
   return result.skill;
 }
 
-export async function setSkillEnabled(id: string, enabled: boolean): Promise<Skill> {
-  const result = await postJson<{ skill: Skill }>(`/api/skills/${encodeURIComponent(id)}/enabled`, { enabled }, 10000);
+export async function setSkillEnabled(id: string, enabled: boolean, acknowledgeFindings = false): Promise<Skill> {
+  const body = acknowledgeFindings ? { enabled, acknowledgeFindings } : { enabled };
+  const result = await postJson<{ skill: Skill }>(`/api/skills/${encodeURIComponent(id)}/enabled`, body, 10000);
   return result.skill;
 }
 

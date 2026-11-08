@@ -492,7 +492,8 @@
       "label": "Skills",
       "on": "Skills ON",
       "onTooltip": "Skills on for this chat: the model sees the names of {count, plural, one {# skill} other {# skills}} and reads one when it fits. Scripts in skills never run.",
-      "offTooltip": "Offer the skills switched on in Settings to the model in this chat"
+      "offTooltip": "Offer the skills switched on in Settings to the model in this chat",
+      "ratings": "Security scan: {high} High, {medium} Medium, {low} Low."
     }
   }
 }

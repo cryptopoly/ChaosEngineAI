@@ -15147,3 +15147,72 @@ select.music-library__select {
   flex-wrap: wrap;
   gap: 6px;
 }
+
+/* D-68: skills security scan. The label carries the rating; the border colour only repeats it. */
+.skills-scan summary {
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.skills-scan-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 9px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted-strong);
+  font-size: 0.78rem;
+  line-height: 1.3;
+}
+
+.skills-scan-chip__icon {
+  flex: none;
+}
+
+.skills-scan-chip--low {
+  border-color: var(--success);
+}
+
+.skills-scan-chip--medium {
+  border-color: var(--warning);
+}
+
+.skills-scan-chip--high {
+  border-color: var(--danger);
+  border-width: 2px;
+  font-weight: 600;
+}
+
+.skills-scan__findings {
+  list-style: none;
+  margin: 6px 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.skills-scan__finding {
+  min-width: 0;
+}
+
+.skills-scan__severity {
+  font-weight: 600;
+}
+
+.skills-scan__excerpt {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.skills-scan__note {
+  margin: 4px 0 0;
+  font-size: 12px;
+}
+
+.skills-scan__ack {
+  align-items: flex-start;
+}

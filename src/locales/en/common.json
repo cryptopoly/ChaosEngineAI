@@ -949,7 +949,20 @@
       "skippedTitle": "Skipped (not imported):",
       "confirmDelete": "Delete {name} for good",
       "cancel": "Cancel",
-      "delete": "Delete"
+      "delete": "Delete",
+      "scanNote": "Each import gets a security scan rated Low, Medium or High. It is rule-based and runs on this computer; nothing leaves it. It is a heuristic, not a guarantee.",
+      "scan": {
+        "chipTitle": "Security scan by local rules. A heuristic, not a guarantee.",
+        "chip": "Scan: {rating}",
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High",
+        "findings": "{count, plural, =0 {no findings} one {# finding} other {# findings}}",
+        "where": "{file}, line {line}",
+        "truncated": "Only the first {count} findings are shown.",
+        "disclaimer": "A heuristic, not a guarantee: fixed rules look for risky wording, hidden characters, links, encoded text and bundled scripts. It runs on this computer and nothing leaves it. Low means no rule matched, not that the skill is safe.",
+        "acknowledge": "I read the findings. The scan rated this skill High; tick this to be able to switch it on."
+      }
     },
     "integrations": {
       "title": "Integrations",

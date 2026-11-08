@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Voice UX round two: mock-ups</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --panel: #ffffff; --panel-alt: #eef1f5; --border: #d5dbe3; --text: #14181d; --muted: #5d6874;
+    --accent: #2f63d6; --accent-soft: #e3ecff; --success: #2e7d4f; --warning: #9a6b12; --radius: 12px; --radius-sm: 8px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 14px; line-height: 1.45;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #0f1215; --panel: #15191e; --panel-alt: #1a1f25; --border: #27303a; --text: #f4f6f8; --muted: #9ea8b4; --accent: #8fb4ff; --accent-soft: rgba(143,180,255,.14); --success: #8fcf9f; --warning: #e4be75; } }
+  :root[data-theme="dark"] { --bg: #0f1215; --panel: #15191e; --panel-alt: #1a1f25; --border: #27303a; --text: #f4f6f8; --muted: #9ea8b4; --accent: #8fb4ff; --accent-soft: rgba(143,180,255,.14); --success: #8fcf9f; --warning: #e4be75; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); padding: 24px 16px 80px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  h2 { font-size: 17px; margin: 40px 0 10px; }
+  p.lead { color: var(--muted); margin: 0 0 16px; max-width: 70ch; }
+  .toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
+  button, .btn { font: inherit; border: 1px solid var(--border); background: var(--panel); color: var(--text); border-radius: 999px; padding: 6px 12px; cursor: pointer; }
+  .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  :root[data-theme="dark"] .btn-primary, :root:not([data-theme="light"]) .btn-primary { color: #0f1215; }
+  @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) .btn-primary { color: #fff; } }
+  .btn-small { padding: 3px 9px; font-size: 12px; }
+  .frame { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; max-width: 1060px; }
+  .frame.phone { max-width: 375px; padding: 12px; }
+  .shell-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .shell-head h3 { margin: 0; font-size: 16px; }
+  .segmented { display: inline-flex; gap: 4px; }
+  .segmented .seg { padding: 4px 12px; border-radius: 999px; border: 1px solid var(--border); background: var(--panel); }
+  .segmented .seg.on { border-color: var(--accent); color: var(--accent); }
+  .muted { color: var(--muted); }
+  .small { font-size: 12px; }
+  textarea.text { width: 100%; min-height: 96px; border: 1px solid var(--border); background: var(--panel-alt); color: var(--text); border-radius: var(--radius-sm); padding: 10px; font: inherit; resize: vertical; }
+  .group { margin-top: 16px; }
+  .group-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+  .group-head h4 { margin: 0; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
+  .card { position: relative; border: 1px solid var(--border); background: var(--panel-alt); border-radius: var(--radius-sm); padding: 10px 36px 10px 10px; min-height: 84px; }
+  .card.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+  .card .name { font-weight: 600; display: block; }
+  .card .feel { color: var(--muted); font-size: 12px; display: block; }
+  .card .cost { display: inline-block; margin-top: 6px; font-size: 11px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); }
+  .card .cost.ok { border-color: var(--success); color: var(--success); }
+  .card .cost.need { border-color: var(--warning); color: var(--warning); }
+  .card .play { position: absolute; right: 8px; top: 8px; width: 24px; height: 24px; border-radius: 50%; border: 1px solid var(--border); background: var(--panel); display: grid; place-items: center; padding: 0; }
+  .card.install { border-style: dashed; grid-column: span 2; padding-right: 10px; }
+  .card.install .name { font-size: 15px; }
+  .badge { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  .badge.accent { border-color: var(--accent); color: var(--accent); }
+  .badge.ok { border-color: var(--success); color: var(--success); }
+  .row { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 14px; }
+  .row > label { flex: 1 1 240px; display: block; }
+  .row input[type=range] { width: 100%; }
+  .field { margin-top: 14px; }
+  .field > span { display: block; margin-bottom: 4px; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .chips .btn-small.on { border-color: var(--accent); color: var(--accent); }
+  .cost-line { margin-top: 14px; padding: 8px 10px; border-radius: var(--radius-sm); background: var(--panel-alt); border: 1px solid var(--border); display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .cost-line a { color: var(--accent); }
+  .result { margin-top: 14px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .wave { flex: 1 1 220px; height: 28px; border-radius: 999px; background: repeating-linear-gradient(90deg, var(--border) 0 3px, transparent 3px 6px); }
+  .list { list-style: none; margin: 12px 0 0; padding: 0; }
+  .list li { display: flex; justify-content: space-between; gap: 10px; align-items: center; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 10px; margin-bottom: 6px; flex-wrap: wrap; background: var(--panel-alt); }
+  .list .who { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .list .acts { display: flex; gap: 6px; }
+  table { border-collapse: collapse; width: 100%; margin-top: 10px; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--muted); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+  .lib { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; margin-top: 12px; }
+  .lib .item { border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--panel-alt); padding: 10px; }
+  .lib .item h5 { margin: 0 0 4px; font-size: 14px; }
+  .lib .acts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .panel { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px; margin-top: 12px; }
+  .panel h4 { margin: 0 0 4px; font-size: 14px; }
+  .settings label { display: block; margin-top: 8px; }
+  svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vertical-align: -2px; }
+  .note { border-left: 3px solid var(--accent); padding: 6px 10px; color: var(--muted); margin: 8px 0 0; font-size: 13px; }
+  .frame.phone .cards { grid-template-columns: 1fr 1fr; }
+  @media (max-width: 480px) { .cards { grid-template-columns: 1fr 1fr; } .card.install { grid-column: span 2; } }
+</style>
+</head>
+<body>
+<h1>Voice UX round two: mock-ups</h1>
+<p class="lead">Six screens for <code>docs/plans/voice-ux-round2.md</code>. Static HTML, no behaviour beyond the theme switch. Numbers are the catalog's measured rows (M4 Max, 64 GB, 2026-11-08). Icons are inline SVG strokes.</p>
+<div class="toolbar">
+  <span class="muted small">Theme</span>
+  <button class="btn-small" onclick="document.documentElement.dataset.theme='light'">Light</button>
+  <button class="btn-small" onclick="document.documentElement.dataset.theme='dark'">Dark</button>
+  <button class="btn-small" onclick="delete document.documentElement.dataset.theme">System</button>
+</div>
+
+<!-- icon sprite -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-play" viewBox="0 0 24 24"><polygon points="6 4 20 12 6 20 6 4"></polygon></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 3v12"></path><path d="m6 11 6 6 6-6"></path><path d="M4 21h16"></path></symbol>
+  <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0"></path><path d="M12 18v3"></path></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"></path><circle cx="16" cy="7" r="2"></circle><circle cx="10" cy="17" r="2"></circle></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6"></rect><rect x="14" y="4" width="6" height="6"></rect><rect x="4" y="14" width="6" height="6"></rect><rect x="14" y="14" width="6" height="6"></rect></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7h6l2 2h10v10H3z"></path></symbol>
+  <symbol id="i-speak" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.5 8.5a5 5 0 0 1 0 7"></path></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"></path></symbol>
+  <symbol id="i-redo" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0 2 5"></path><path d="M20 4v7h-7"></path></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"></path></symbol>
+</svg>
+
+<h2>1. Speak, installed machine, English UI</h2>
+<p class="lead">Recommended first, then the groups. The cost chip is on every card; the download lives on the card that needs it. The cost line names the model, memory and measured speed and links to Models.</p>
+<div class="frame">
+  <div class="shell-head">
+    <h3>Voice Studio</h3>
+    <div class="segmented"><span class="seg on">Speak</span><span class="seg">Transcribe</span><span class="seg">Voices</span></div>
+    <div><button class="btn-small"><svg><use href="#i-grid"/></svg> Models</button> <button class="btn-small"><svg><use href="#i-folder"/></svg> Library</button></div>
+  </div>
+  <textarea class="text">Good evening. Tonight we look at how a voice is made.
+
+First, the text. [pause] Then the voice.</textarea>
+  <div class="muted small">Blank lines start a new paragraph; [pause] adds a pause. Markdown and code are tidied up before speaking.</div>
+
+  <div class="group">
+    <div class="group-head"><h4>Recommended</h4><span class="muted small">For this Mac and English</span></div>
+    <div class="cards">
+      <div class="card on"><span class="name">Ryan</span><span class="feel">Natural, English, male. Dynamic, strong rhythm. Takes a style instruction.</span><span class="cost ok">3.5 GB, 2.5 s per 10 s</span><button class="play" aria-label="Play a sample of Ryan"><svg><use href="#i-play"/></svg></button></div>
+      <div class="card"><span class="name">Heart</span><span class="feel">Quick, American English, female. Best-graded quick voice.</span><span class="cost">fast, under 1 GB</span><button class="play" aria-label="Play a sample of Heart"><svg><use href="#i-play"/></svg></button></div>
+      <div class="card"><span class="name">Ada</span><span class="feel">Your cloned voice. Own voice, confirmed 2026-11-01.</span><span class="cost ok">4.3 GB, 3.2 s per 10 s</span><button class="play" aria-label="Play a sample of Ada"><svg><use href="#i-play"/></svg></button></div>
+      <div class="card"><span class="name">Design a voice</span><span class="feel">Describe age, gender, tone, accent and pace. A new voice each run unless you set a seed or save it.</span><span class="cost ok">3.5 GB, 2.5 s per 10 s</span></div>
+    </div>
+  </div>
+
+  <div class="group">
+    <div class="group-head"><h4>Quick</h4><span class="muted small">Kokoro, part of the voice pack. Fast, under 1 GB, speed only. 54 voices in 9 languages.</span>
+      <select class="btn btn-small" aria-label="Language"><option>American English</option><option>British English</option><option>Spanish</option><option>French</option><option>Hindi</option><option>Italian</option><option>Portuguese (Brazil)</option><option>Chinese (Mandarin)</option></select></div>
+    <div class="cards">
+      <div class="card"><span class="name">Heart</span><span class="feel">F</span><span class="cost">fast</span><button class="play" aria-label="Play"><svg><use href="#i-play"/></svg></button></div>
+      <div class="card"><span class="name">Bella</span><span class="feel">F</span><span class="cost">fast</span><button class="play" aria-label="Play"><svg><use href="#i-play"/></svg></button></div>
+      <div class="card"><span class="name">Nicole</span><span class="feel">F</span><span class="cost">fast</span><button class="play" aria-label="Play"><svg><use href="#i-play"/></svg></button></div>
+      <div class="card"><span class="name">Michael</span><span class="feel">M</span><span class="cost">fast</span><button class="play" aria-label="Play"><svg><use href="#i-play"/></svg></button></div>
+      <div class="card"><span class="name">Fenrir</span><span class="feel">M</span><span class="cost">fast</span><button class="play" aria-label="Play"><svg><use href="#i-play"/></svg></button></div>
+      <div class="card"><span class="name">Puck</span><span class="feel">M</span><span class="cost">fast</span><button class="play" aria-label="Play"><svg><use href="#i-play"/></svg></button></div>
+    </div>
+    <div style="margin-top:8px"><button class="btn-small">All 20 American English voices</button></div>
+  </div>
+
+  <div class="group">
+    <div class="group-head"><h4>Cloned</h4><span class="muted small">Only your own voice or someone who gave permission. Every clip is labelled as AI-made and watermarked.</span></div>
+    <div class="cards">
+      <div class="card"><span class="name">Ada</span><span class="feel">Own voice, confirmed 2026-11-01</span><span class="cost ok">4.3 GB</span><button class="play" aria-label="Play a sample of Ada"><svg><use href="#i-play"/></svg></button></div>
+      <div class="card"><span class="name"><svg><use href="#i-plus"/></svg> New cloned voice</span><span class="feel">From a 10 to 20 s recording. Opens the consent form.</span></div>
+    </div>
+  </div>
+
+  <div class="group">
+    <div class="group-head"><h4>Designed</h4><span class="muted small">Voices made from a description and kept.</span></div>
+    <div class="cards">
+      <div class="card"><span class="name">Narrator (warm, 40s)</span><span class="feel">Saved design, 2026-11-08</span><span class="cost ok">4.3 GB</span><button class="play" aria-label="Play"><svg><use href="#i-play"/></svg></button></div>
+      <div class="card"><span class="name"><svg><use href="#i-plus"/></svg> Design a voice</span><span class="feel">Describe it in the box below, then save the result as a voice.</span></div>
+    </div>
+  </div>
+
+  <div class="group">
+    <div class="group-head"><h4>More</h4><span class="muted small">Natural voices in other languages, and more to install.</span></div>
+    <div class="cards">
+      <div class="card"><span class="name">Aiden</span><span class="feel">Natural, English, male. Sunny American, clear midrange.</span><span class="cost ok">3.5 GB</span><button class="play" aria-label="Play"><svg><use href="#i-play"/></svg></button></div>
+      <div class="card"><span class="name">Serena</span><span class="feel">Natural, Chinese, female. Warm and gentle.</span><span class="cost ok">3.5 GB</span><button class="play" aria-label="Play"><svg><use href="#i-play"/></svg></button></div>
+      <div class="card"><span class="name">Sohee</span><span class="feel">Natural, Korean, female. Warm, rich emotion.</span><span class="cost ok">3.5 GB</span><button class="play" aria-label="Play"><svg><use href="#i-play"/></svg></button></div>
+      <div class="card"><span class="name">Get more voices</span><span class="feel">Mandarin quick voices (add-on), the cloning models, and the rest of the speech models.</span><button class="btn-small" style="margin-top:6px"><svg><use href="#i-grid"/></svg> Open Models</button></div>
+    </div>
+  </div>
+
+  <div class="field"><span>Style</span>
+    <textarea class="text" style="min-height:56px" placeholder="How should it sound? Tone, pace, accent. For example: a tired, gentle bedtime voice, slow, slight Irish accent."></textarea>
+    <div class="chips"><button class="btn-small">Neutral</button><button class="btn-small on">Angry</button><button class="btn-small">Sad</button><button class="btn-small">Excited</button><button class="btn-small">Whisper</button><button class="btn-small">Calm</button></div>
+  </div>
+  <div class="row">
+    <label><span>Speed (1.0x)</span><input type="range" min="0.5" max="2" step="0.1" value="1"></label>
+    <label><span>Pitch (0)</span><input type="range" min="-12" max="12" step="1" value="0"></label>
+  </div>
+  <details style="margin-top:10px"><summary>Advanced</summary><label class="field"><span>Seed (empty for a different take each time)</span><input class="btn" style="border-radius:8px" type="number" placeholder=""></label></details>
+  <div class="cost-line"><svg><use href="#i-sliders"/></svg><span>Runs with Qwen3-TTS 1.7B CustomVoice: 3.5 GB in memory, about 2.5 s per 10 s of speech on this Mac (measured 2026-11-08). Speed and pitch are applied afterwards with ffmpeg.</span><a href="#">Manage in Models</a></div>
+  <div style="margin-top:12px"><button class="btn btn-primary">Generate audio (3 parts)</button></div>
+  <div class="result"><div class="wave" aria-hidden="true"></div><span class="muted">0:14</span><button class="btn-small">WAV</button><button class="btn-small">MP3</button><a href="#" class="small">Saved to Library</a><button class="btn-small">Send to project</button></div>
+</div>
+
+<h2>2. Speak, first run: pack installed, no speech model downloaded</h2>
+<p class="lead">The default is the best quick voice, and the first card says plainly what a better voice costs and installs it in place.</p>
+<div class="frame">
+  <div class="shell-head"><h3>Voice Studio</h3><div class="segmented"><span class="seg on">Speak</span><span class="seg">Transcribe</span><span class="seg">Voices</span></div><div><button class="btn-small"><svg><use href="#i-grid"/></svg> Models</button> <button class="btn-small"><svg><use href="#i-folder"/></svg> Library</button></div></div>
+  <textarea class="text" placeholder="Type or paste text."></textarea>
+  <div class="group">
+    <div class="group-head"><h4>Recommended</h4></div>
+    <div class="cards">
+      <div class="card install"><span class="name">Install a better voice</span><span class="feel">The quick voices are fast but flat. Qwen3-TTS 1.7B CustomVoice adds natural prosody and a written style instruction (angry, whisper, slow, an accent). Download 3.08 GB; 3.5 GB in memory while it speaks; about 2.5 s per 10 s of speech on this Mac. Apache 2.0.</span><div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap"><button class="btn-small btn-primary"><svg><use href="#i-down"/></svg> Download 3.08 GB</button><button class="btn-small">Not now</button></div></div>
+      <div class="card on"><span class="name">Heart</span><span class="feel">Quick, American English, female. Best-graded quick voice.</span><span class="cost">fast, under 1 GB</span><button class="play" aria-label="Play"><svg><use href="#i-play"/></svg></button></div>
+      <div class="card"><span class="name">Design a voice</span><span class="feel">Describe the voice you want.</span><span class="cost need">needs a 3.08 GB download</span></div>
+    </div>
+  </div>
+  <div class="group">
+    <div class="group-head"><h4>Quick</h4><span class="muted small">Kokoro, part of the voice pack. Fast, under 1 GB, speed only.</span><select class="btn btn-small" aria-label="Language"><option>American English</option></select></div>
+    <div class="cards">
+      <div class="card on"><span class="name">Heart</span><span class="feel">F</span><button class="play" aria-label="Play"><svg><use href="#i-play"/></svg></button></div>
+      <div class="card"><span class="name">Bella</span><span class="feel">F</span><button class="play" aria-label="Play"><svg><use href="#i-play"/></svg></button></div>
+      <div class="card"><span class="name">Nicole</span><span class="feel">F</span><button class="play" aria-label="Play"><svg><use href="#i-play"/></svg></button></div>
+      <div class="card"><span class="name">Michael</span><span class="feel">M</span><button class="play" aria-label="Play"><svg><use href="#i-play"/></svg></button></div>
+    </div>
+    <div style="margin-top:8px"><button class="btn-small">All 20 American English voices</button></div>
+  </div>
+  <div class="group">
+    <div class="group-head"><h4>More</h4></div>
+    <div class="cards">
+      <div class="card"><span class="name">Ryan</span><span class="feel">Natural, English, male.</span><span class="cost need">needs a 3.08 GB download</span></div>
+      <div class="card"><span class="name">Aiden</span><span class="feel">Natural, English, male.</span><span class="cost need">needs a 3.08 GB download</span></div>
+      <div class="card"><span class="name">Get more voices</span><span class="feel">Cloning, Mandarin quick voices, all speech models.</span><button class="btn-small" style="margin-top:6px"><svg><use href="#i-grid"/></svg> Open Models</button></div>
+    </div>
+  </div>
+  <div class="field"><span>Style</span><textarea class="text" style="min-height:56px" disabled placeholder="Quick voices have no style control. Install a natural voice to use it."></textarea></div>
+  <div class="cost-line"><svg><use href="#i-sliders"/></svg><span>Runs with Kokoro, part of the voice pack, under 1 GB.</span></div>
+  <div style="margin-top:12px"><button class="btn btn-primary">Generate audio</button></div>
+</div>
+
+<h2>3. Voices tab: the voice manager</h2>
+<p class="lead">Every voice in one list with Use in Speak and Use in Chat. The chat voice and how chat speaks live here, not on Models.</p>
+<div class="frame">
+  <div class="shell-head"><h3>Voice Studio</h3><div class="segmented"><span class="seg">Speak</span><span class="seg">Transcribe</span><span class="seg on">Voices</span></div><div><button class="btn-small"><svg><use href="#i-grid"/></svg> Models</button> <button class="btn-small"><svg><use href="#i-folder"/></svg> Library</button></div></div>
+  <div class="cards">
+    <div class="card"><span class="name"><svg><use href="#i-mic"/></svg> New cloned voice</span><span class="feel">Your own voice or someone who gave permission.</span></div>
+    <div class="card"><span class="name"><svg><use href="#i-plus"/></svg> Design a voice</span><span class="feel">Describe it; save the result.</span></div>
+    <div class="card"><span class="name"><svg><use href="#i-down"/></svg> Add Mandarin voices</span><span class="feel">8 quick voices, small add-on to the voice pack.</span></div>
+    <div class="card"><span class="name"><svg><use href="#i-grid"/></svg> Get more voices</span><span class="feel">Opens Models at the speech models.</span></div>
+  </div>
+  <div class="toolbar" style="margin-top:12px"><div class="segmented"><span class="seg on">All</span><span class="seg">Recommended</span><span class="seg">Quick</span><span class="seg">Natural</span><span class="seg">Cloned</span><span class="seg">Designed</span></div><select class="btn btn-small" aria-label="Language"><option>All languages</option></select></div>
+  <ul class="list">
+    <li><span class="who"><strong>Ryan</strong><span class="badge accent">Natural</span><span class="muted small">English, M. Dynamic, strong rhythm. Style instruction. 3.5 GB, 2.5 s per 10 s.</span></span><span class="acts"><button class="btn-small"><svg><use href="#i-play"/></svg></button><button class="btn-small btn-primary">Use in Speak</button><button class="btn-small">Use in Chat</button></span></li>
+    <li><span class="who"><strong>Heart</strong><span class="badge">Quick</span><span class="badge ok">Chat voice</span><span class="muted small">American English, F. Fast, under 1 GB.</span></span><span class="acts"><button class="btn-small"><svg><use href="#i-play"/></svg></button><button class="btn-small btn-primary">Use in Speak</button><button class="btn-small" disabled>In use</button></span></li>
+    <li><span class="who"><strong>Ada</strong><span class="badge accent">Cloned</span><span class="muted small">Own voice, confirmed 2026-11-01. 4.3 GB, 3.2 s per 10 s.</span></span><span class="acts"><button class="btn-small"><svg><use href="#i-play"/></svg></button><button class="btn-small btn-primary">Use in Speak</button><button class="btn-small">Use in Chat</button><button class="btn-small">Delete</button></span></li>
+    <li><span class="who"><strong>Narrator (warm, 40s)</strong><span class="badge accent">Designed</span><span class="muted small">Saved 2026-11-08. 4.3 GB.</span></span><span class="acts"><button class="btn-small"><svg><use href="#i-play"/></svg></button><button class="btn-small btn-primary">Use in Speak</button><button class="btn-small">Use in Chat</button><button class="btn-small">Delete</button></span></li>
+    <li><span class="who"><strong>Serena</strong><span class="badge accent">Natural</span><span class="muted small">Chinese, F. Warm and gentle. 3.5 GB.</span></span><span class="acts"><button class="btn-small"><svg><use href="#i-play"/></svg></button><button class="btn-small btn-primary">Use in Speak</button><button class="btn-small">Use in Chat</button></span></li>
+  </ul>
+  <div class="panel settings"><h4><svg><use href="#i-chat"/></svg> Chat and calls</h4>
+    <div class="muted small">Chat voice: Heart (Quick). Change it with Use in Chat above.</div>
+    <label>Reading speed (1.0x) <input type="range" min="0.5" max="2" step="0.1" value="1" style="width:260px; vertical-align:middle"></label>
+    <label><input type="checkbox"> Read every chat reply aloud when it finishes</label>
+    <label><input type="checkbox"> Send the message as soon as dictation finishes</label>
+    <label>Voice call: pause that ends your turn (0.7 s) <input type="range" min="300" max="2000" step="100" value="700" style="width:260px; vertical-align:middle"></label>
+    <label><input type="checkbox" checked> Voice call: interrupt the model by speaking</label>
+    <label><input type="checkbox"> Allow agents and other computers to use cloned voices (off by default)</label>
+  </div>
+</div>
+
+<h2>4. Models page, trimmed</h2>
+<p class="lead">Installs and runtime only. Measured cost per row, a way into Speak from each row, one line for Kokoro.</p>
+<div class="frame">
+  <div class="shell-head"><h3>Voice Models</h3><button class="btn-small btn-primary"><svg><use href="#i-speak"/></svg> Open Studio</button></div>
+  <div class="panel"><h4>Voice pack</h4><span class="badge ok">Installed, checked OK</span> <span class="muted small">Speech-to-text and the quick voices run in their own environment (about 2 GB). Nothing is sent online.</span></div>
+  <div class="panel"><h4>Speech models</h4><span class="muted small">Natural voices, style, voice design and cloning. Measured on this Mac, 2026-11-08.</span>
+    <table>
+      <thead><tr><th>Model</th><th>Does</th><th>Download</th><th>Memory</th><th>Speed</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+        <tr><td><strong>Qwen3-TTS 1.7B CustomVoice</strong><br><span class="muted small">9 preset voices and a written style instruction</span></td><td><span class="badge">Speak</span> <span class="badge">Style</span></td><td>3.08 GB</td><td>3.5 GB peak</td><td>2.5 s per 10 s</td><td><span class="badge ok">Downloaded</span></td><td><button class="btn-small"><svg><use href="#i-speak"/></svg> Use in Speak</button></td></tr>
+        <tr><td><strong>Qwen3-TTS 1.7B VoiceDesign</strong><br><span class="muted small">A voice from a description</span></td><td><span class="badge">Speak</span> <span class="badge">Style</span> <span class="badge">Design</span></td><td>3.08 GB</td><td>3.5 GB peak</td><td>2.5 s per 10 s</td><td><span class="badge ok">Downloaded</span></td><td><button class="btn-small"><svg><use href="#i-speak"/></svg> Use in Speak</button></td></tr>
+        <tr><td><strong>Qwen3-TTS 0.6B Base</strong><br><span class="muted small">Cloning. Good likeness from 10 to 20 s of clean speech</span></td><td><span class="badge">Clone</span></td><td>2.52 GB</td><td>4.3 GB peak</td><td>3.2 s per 10 s</td><td><span class="badge ok">Downloaded</span></td><td><button class="btn-small">Browse voices</button></td></tr>
+        <tr><td><strong>Qwen3-TTS 1.7B Base</strong><br><span class="muted small">Cloning, closer likeness</span></td><td><span class="badge">Clone</span></td><td>4.54 GB</td><td>6.5 GB peak</td><td>3.6 s per 10 s</td><td><span class="muted small">Not downloaded</span></td><td><button class="btn-small"><svg><use href="#i-down"/></svg> Download</button></td></tr>
+        <tr><td><strong>Qwen3-TTS 0.6B CustomVoice</strong><br><span class="muted small">9 preset voices; ignores the style instruction. No quicker than the 1.7B model; for small-memory machines</span></td><td><span class="badge">Speak</span></td><td>2.50 GB</td><td>2.9 GB peak</td><td>2.7 s per 10 s</td><td><span class="muted small">Not downloaded</span></td><td><button class="btn-small"><svg><use href="#i-down"/></svg> Download</button></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="panel"><h4>Quick voices</h4><span class="muted small">Kokoro: 54 voices in 9 languages, part of the voice pack, under 1 GB.</span> <button class="btn-small"><svg><use href="#i-down"/></svg> Add Mandarin voices</button> <button class="btn-small">Browse voices</button></div>
+  <div class="panel"><h4>Speech-to-text models</h4><span class="muted small">Parakeet TDT 0.6B v3 (recommended), Nemotron 3.5 ASR, Whisper. Unchanged cards with Use for dictation and Download.</span></div>
+  <div class="panel settings"><h4>Runtime</h4><label>Dictation language <select class="btn btn-small"><option>Detect automatically</option></select></label><label>Free voice memory after (minutes idle, 0 = never) <input class="btn btn-small" style="border-radius:8px; width:70px" type="number" value="10"></label><div class="muted small" style="margin-top:8px">Voice models are loaded (process 48122). <button class="btn-small">Unload now</button></div></div>
+</div>
+
+<h2>5. Library, speech cards</h2>
+<p class="lead">Voice name and kind instead of an id, the AI-made badge on cloned clips, and Speak again.</p>
+<div class="frame">
+  <div class="shell-head"><h3>Voice Library</h3><div class="segmented"><span class="seg">All</span><span class="seg">Transcripts</span><span class="seg on">Speech</span></div><button class="btn-small btn-primary"><svg><use href="#i-speak"/></svg> Open Studio</button></div>
+  <div class="lib">
+    <div class="item"><h5>Welcome narration</h5><div class="muted small"><span class="badge">Speech</span> Ryan, Natural, angry · 0:42 · 8 Nov 2026</div><p class="small" style="margin:6px 0 0">Good evening. Tonight we look at how a voice is made…</p><div class="acts"><button class="btn-small"><svg><use href="#i-play"/></svg> Play</button><button class="btn-small"><svg><use href="#i-redo"/></svg> Speak again</button><button class="btn-small">Export</button><button class="btn-small">Send to project</button><button class="btn-small">Delete</button></div></div>
+    <div class="item"><h5>Ada reads the intro</h5><div class="muted small"><span class="badge">Speech</span> <span class="badge accent">AI-made, cloned voice</span> Ada · 0:12 · 8 Nov 2026 · From project Short film</div><p class="small" style="margin:6px 0 0">Hello, this is Ada.</p><div class="acts"><button class="btn-small"><svg><use href="#i-play"/></svg> Play</button><button class="btn-small"><svg><use href="#i-redo"/></svg> Speak again</button><button class="btn-small">Export</button><button class="btn-small">Send to project</button><button class="btn-small">Delete</button></div></div>
+    <div class="item"><h5>Bedtime story, part 1</h5><div class="muted small"><span class="badge">Speech</span> Heart, Quick · 3:10 · 7 Nov 2026</div><p class="small" style="margin:6px 0 0">Once upon a time, in a house at the edge of the woods…</p><div class="acts"><button class="btn-small"><svg><use href="#i-play"/></svg> Play</button><button class="btn-small"><svg><use href="#i-redo"/></svg> Speak again</button><button class="btn-small">Export</button><button class="btn-small">Send to project</button><button class="btn-small">Delete</button></div></div>
+  </div>
+</div>
+
+<h2>6. Speak at 375 px</h2>
+<p class="lead">Two cards per row, the shell buttons wrap under the mode switch, the cost line stays above Generate.</p>
+<div class="frame phone">
+  <div class="shell-head"><h3>Voice Studio</h3><div class="segmented"><span class="seg on">Speak</span><span class="seg">Transcribe</span><span class="seg">Voices</span></div><div><button class="btn-small"><svg><use href="#i-grid"/></svg> Models</button> <button class="btn-small"><svg><use href="#i-folder"/></svg> Library</button></div></div>
+  <textarea class="text" style="min-height:72px">Good evening.</textarea>
+  <div class="group"><div class="group-head"><h4>Recommended</h4></div>
+    <div class="cards">
+      <div class="card on"><span class="name">Ryan</span><span class="feel">Natural, English, M</span><span class="cost ok">3.5 GB</span><button class="play" aria-label="Play"><svg><use href="#i-play"/></svg></button></div>
+      <div class="card"><span class="name">Heart</span><span class="feel">Quick, English, F</span><span class="cost">fast</span><button class="play" aria-label="Play"><svg><use href="#i-play"/></svg></button></div>
+      <div class="card"><span class="name">Ada</span><span class="feel">Cloned</span><span class="cost ok">4.3 GB</span><button class="play" aria-label="Play"><svg><use href="#i-play"/></svg></button></div>
+      <div class="card"><span class="name">Design a voice</span><span class="feel">From a description</span><span class="cost ok">3.5 GB</span></div>
+    </div></div>
+  <details class="group"><summary><strong>Quick</strong> <span class="muted small">Kokoro, fast</span></summary></details>
+  <details class="group"><summary><strong>Cloned</strong></summary></details>
+  <details class="group"><summary><strong>Designed</strong></summary></details>
+  <details class="group"><summary><strong>More</strong></summary></details>
+  <div class="field"><span>Style</span><textarea class="text" style="min-height:48px" placeholder="How should it sound?"></textarea><div class="chips"><button class="btn-small">Neutral</button><button class="btn-small">Angry</button><button class="btn-small">Sad</button><button class="btn-small">Whisper</button></div></div>
+  <div class="row"><label><span>Speed (1.0x)</span><input type="range"></label><label><span>Pitch (0)</span><input type="range"></label></div>
+  <div class="cost-line small"><span>Qwen3-TTS 1.7B CustomVoice: 3.5 GB, 2.5 s per 10 s.</span><a href="#">Models</a></div>
+  <div style="margin-top:10px"><button class="btn btn-primary" style="width:100%">Generate audio</button></div>
+</div>
+<p class="note">On a phone the groups below Recommended collapse by default; the chosen voice's group opens.</p>
+</body>
+</html>

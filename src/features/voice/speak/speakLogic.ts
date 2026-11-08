@@ -187,6 +187,58 @@ export function defaultVoice(voices: VoiceEntry[], speakVoice: string, uiLanguag
   );
 }
 
+/** Quick voices graded at least this well make the shortlist (most others sound poor). */
+const SHORTLIST_FLOOR = gradeRank("C");
+const SHORTLIST_PER_GENDER = 3;
+const SHORTLIST_FALLBACK = 6;
+
+/**
+ * The quick voices shown before "All voices": per language, the best graded (C or better), at most three of each
+ * gender, best first. A language with no graded voice (Spanish, Portuguese) or only poor ones (Mandarin) shows its
+ * first six; the expander shows the rest. American English gives Heart, Bella, Nicole, Fenrir, Michael, Puck.
+ */
+export function quickShortlist(voices: VoiceEntry[]): VoiceEntry[] {
+  const ranked = voices.map((v, i) => ({ v, i })).sort((a, b) => gradeRank(a.v.grade) - gradeRank(b.v.grade) || a.i - b.i);
+  const perGender: Record<string, number> = {};
+  const picked = ranked
+    .filter(({ v }) => gradeRank(v.grade) <= SHORTLIST_FLOOR)
+    .filter(({ v }) => {
+      const key = v.gender ?? "other";
+      perGender[key] = (perGender[key] ?? 0) + 1;
+      return perGender[key] <= SHORTLIST_PER_GENDER;
+    })
+    .map(({ v }) => v);
+  return picked.length > 0 ? picked : voices.slice(0, SHORTLIST_FALLBACK);
+}
+
+/** The language label a quick voice is grouped under. */
+export function quickLanguage(voice: VoiceEntry): string {
+  return voice.languageLabel ?? voice.language;
+}
+
+export interface VoiceGroups {
+  /** Best natural voice, top quick voice, newest cloned voice, design card: picked for this machine and UI language. */
+  recommended: VoiceEntry[];
+  /** Kokoro voices that run here, plus those an add-on unlocks (Mandarin), in list order. */
+  quick: VoiceEntry[];
+  clones: VoiceEntry[];
+  design: VoiceEntry | null;
+  /** Natural presets other than the recommended one. */
+  more: VoiceEntry[];
+}
+
+/** The Speak picker's groups, in the order shown: Recommended, Quick, Cloned, Designed, More. */
+export function groupVoices(voices: VoiceEntry[], uiLanguage: string, modelsAvailable: boolean): VoiceGroups {
+  const quick = voices.filter((v) => v.kind === "builtin" && (v.available || Boolean(v.addon)));
+  const clones = voices.filter((v) => v.kind === "clone");
+  const design = voices.find((v) => v.kind === "design") ?? null;
+  const presets = voices.filter((v) => v.kind === "preset");
+  const natural = modelsAvailable ? bestNaturalVoice(presets, uiLanguage) : null;
+  const topQuick = topQuickVoice(quick, uiLanguage);
+  const recommended = [natural, topQuick, clones[0] ?? null, modelsAvailable ? design : null].filter((v): v is VoiceEntry => Boolean(v));
+  return { recommended, quick, clones, design, more: presets.filter((v) => v.id !== natural?.id) };
+}
+
 /** The model the "Install a better voice" card offers: the style-capable CustomVoice model. */
 export function recommendedNaturalModel(models: VoiceModelRow[]): VoiceModelRow | null {
   const custom = models.filter((m) => m.kind === "custom" && m.supported);

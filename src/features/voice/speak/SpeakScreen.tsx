@@ -49,11 +49,14 @@ export function SpeakScreen({
   voiceId,
   onVoiceChange,
   onTabChange,
+  onNewClone,
 }: {
   catalog: VoiceCatalog;
   voiceId: string;
   onVoiceChange: (id: string) => void;
   onTabChange?: (tab: TabId) => void;
+  /** Open the new cloned voice form (the Voices tab). */
+  onNewClone?: () => void;
 }) {
   const { t } = useTranslation("studio");
   const { settings } = useVoice();
@@ -199,6 +202,9 @@ export function SpeakScreen({
           isPlaying={sample.isPlaying}
           isLoading={sample.isLoading}
           onSample={(entry) => void sample.play(entry)}
+          onNewClone={catalog.cloneAllowed ? onNewClone : undefined}
+          onGetMore={onTabChange ? () => onTabChange("voice-models") : undefined}
+          onAddonInstalled={() => void catalog.refresh()}
         />
         {cloned ? <CloneStatement /> : null}
 

@@ -425,7 +425,7 @@ class VoiceListTests(unittest.TestCase):
         for v in voices:
             by_kind.setdefault(v["kind"], []).append(v)
         self.assertEqual(set(by_kind), {"builtin", "preset", "design", "clone"})
-        self.assertEqual(len(by_kind["builtin"]), 54)
+        self.assertEqual(len(by_kind["builtin"]), 49)  # 54 Kokoro voices less the five Japanese ones (never on MLX)
         self.assertEqual(len(by_kind["preset"]), 9)
         fields = {"id", "name", "kind", "language", "model", "capabilities"}
         self.assertTrue(all(fields <= set(v) for v in voices))

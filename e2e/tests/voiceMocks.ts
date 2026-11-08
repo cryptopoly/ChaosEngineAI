@@ -57,6 +57,13 @@ export const ADA = {
   consent: { speakerName: "Ada Example", basis: "own", consentedAt: "2026-11-01T10:00:00Z", appVersion: "0.0.0" },
 };
 
+const AMERICAN_VOICES: Array<[string, string]> = [
+  ["af_heart", "A"], ["af_alloy", "C"], ["af_aoede", "C+"], ["af_bella", "A-"], ["af_jessica", "D"], ["af_kore", "C+"],
+  ["af_nicole", "B-"], ["af_nova", "C"], ["af_river", "D"], ["af_sarah", "C+"], ["af_sky", "C-"],
+  ["am_adam", "F+"], ["am_echo", "D"], ["am_eric", "D"], ["am_fenrir", "C+"], ["am_liam", "D"], ["am_michael", "C+"],
+  ["am_onyx", "D"], ["am_puck", "C+"], ["am_santa", "D-"],
+];
+
 export function voiceList(clones: Array<typeof ADA>, installed: string[]) {
   const customReady = installed.some((k) => k.startsWith("qwen3-tts-custom"));
   const preset = (id: string, language: string, languageLabel: string, gender: string, about: string) => ({
@@ -73,9 +80,26 @@ export function voiceList(clones: Array<typeof ADA>, installed: string[]) {
     available: customReady,
     needs: customReady ? null : "Download Qwen3-TTS 0.6B CustomVoice in Voice Models.",
   });
+  const quick = (id: string, grade: string | null, language = "en-US", languageLabel = "American English", available = true) => ({
+    id,
+    name: id.slice(3).replace(/^./, (c) => c.toUpperCase()),
+    kind: "builtin",
+    language,
+    languageLabel,
+    gender: id[1] === "f" ? "female" : "male",
+    model: "kokoro",
+    models: ["kokoro"],
+    capabilities: caps(),
+    available,
+    grade,
+    addon: available ? null : "chinese",
+    needs: available ? null : `${languageLabel} voices need an extra install.`,
+  });
   return [
-    { id: "af_heart", name: "Heart", kind: "builtin", language: "en-US", languageLabel: "American English", gender: "female", model: "kokoro", models: ["kokoro"], capabilities: caps(), available: true, needs: null },
-    { id: "am_adam", name: "Adam", kind: "builtin", language: "en-US", languageLabel: "American English", gender: "male", model: "kokoro", models: ["kokoro"], capabilities: caps(), available: true, needs: null },
+    // All 20 American voices with the model author's grades, so the shortlist and 375 px density are real.
+    ...AMERICAN_VOICES.map(([id, grade]) => quick(id, grade)),
+    quick("zf_xiaobei", "D", "zh", "Chinese (Mandarin)", false),
+    quick("zm_yunxi", "D", "zh", "Chinese (Mandarin)", false),
     preset("Ryan", "en", "English", "male", "Dynamic, strong rhythm"),
     preset("Aiden", "en", "English", "male", "Sunny American"),
     {

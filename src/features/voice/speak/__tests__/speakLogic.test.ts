@@ -7,7 +7,9 @@ import {
   cloneTextTooLong,
   costLabel,
   defaultVoice,
+  groupVoices,
   installedCloneModels,
+  quickShortlist,
   matchesFilter,
   modelNote,
   pickerVoices,
@@ -188,6 +190,57 @@ describe("cloning model choice", () => {
   it("ignores a pick that is not installed, and a pick for a non-clone voice", () => {
     expect(modelNote(clone, [b06, { ...b17, installed: false }], "b17").model?.key).toBe("b06");
     expect(installedCloneModels(null, [b06, b17])).toEqual([]);
+  });
+});
+
+describe("picker groups and the quick shortlist", () => {
+  // The 20 American voices with the model author's grades, in the backend's order.
+  const AMERICAN: Array<[string, string, string]> = [
+    ["af_heart", "female", "A"], ["af_alloy", "female", "C"], ["af_aoede", "female", "C+"], ["af_bella", "female", "A-"],
+    ["af_jessica", "female", "D"], ["af_kore", "female", "C+"], ["af_nicole", "female", "B-"], ["af_nova", "female", "C"],
+    ["af_river", "female", "D"], ["af_sarah", "female", "C+"], ["af_sky", "female", "C-"],
+    ["am_adam", "male", "F+"], ["am_echo", "male", "D"], ["am_eric", "male", "D"], ["am_fenrir", "male", "C+"],
+    ["am_liam", "male", "D"], ["am_michael", "male", "C+"], ["am_onyx", "male", "D"], ["am_puck", "male", "C+"], ["am_santa", "male", "D-"],
+  ];
+  const american = AMERICAN.map(([id, gender, grade]) =>
+    voice({ id, kind: "builtin", gender: gender as "female" | "male", grade, language: "en-US", languageLabel: "American English" }),
+  );
+
+  it("shortlists the best graded, three of each gender, best first", () => {
+    expect(quickShortlist(american).map((v) => v.id)).toEqual(["af_heart", "af_bella", "af_nicole", "am_fenrir", "am_michael", "am_puck"]);
+  });
+
+  it("shows the first six of a language with no voice good enough or none graded", () => {
+    const mandarin = Array.from({ length: 8 }, (_, i) => voice({ id: `z${i}`, kind: "builtin", grade: "D", language: "zh" }));
+    expect(quickShortlist(mandarin).map((v) => v.id)).toEqual(["z0", "z1", "z2", "z3", "z4", "z5"]);
+    const spanish = [voice({ id: "ef_dora", kind: "builtin", grade: null }), voice({ id: "em_alex", kind: "builtin", grade: null })];
+    expect(quickShortlist(spanish)).toHaveLength(2);
+  });
+
+  it("groups Recommended (natural, top quick, newest clone, design), Quick, Cloned, Designed and More", () => {
+    const ryan = voice({ id: "qwen3:Ryan", language: "en" });
+    const aiden = voice({ id: "qwen3:Aiden", language: "en" });
+    const sohee = voice({ id: "qwen3:Sohee", language: "ko" });
+    const clone = voice({ id: "clone:1", kind: "clone" });
+    const designVoice = voice({ id: "design", kind: "design" });
+    const mandarin = voice({ id: "zf_xiaobei", kind: "builtin", available: false, addon: "chinese", language: "zh" });
+    const neverHere = voice({ id: "x_gone", kind: "builtin", available: false, addon: null });
+    const groups = groupVoices([...american, ryan, aiden, sohee, clone, designVoice, mandarin, neverHere], "en", true);
+    expect(groups.recommended.map((v) => v.id)).toEqual(["qwen3:Ryan", "af_heart", "clone:1", "design"]);
+    expect(groups.quick).toHaveLength(21); // the Mandarin voice stays so its add-on card can show
+    expect(groups.quick.some((v) => v.id === "x_gone")).toBe(false);
+    expect(groups.more.map((v) => v.id)).toEqual(["qwen3:Aiden", "qwen3:Sohee"]);
+    expect(groups.clones.map((v) => v.id)).toEqual(["clone:1"]);
+    expect(groups.design?.id).toBe("design");
+  });
+
+  it("recommends no natural voice or design card where the models cannot run, and none until a model is installed", () => {
+    const ryan = voice({ id: "qwen3:Ryan", language: "en" });
+    expect(groupVoices([american[0], ryan, voice({ id: "design", kind: "design" })], "en", false).recommended.map((v) => v.id)).toEqual(["af_heart"]);
+    const notYet = { ...ryan, available: false };
+    const groups = groupVoices([american[0], notYet], "en", true);
+    expect(groups.recommended.map((v) => v.id)).toEqual(["af_heart"]);
+    expect(groups.more.map((v) => v.id)).toEqual(["qwen3:Ryan"]);
   });
 });
 

@@ -105,17 +105,22 @@ def list_voices(*, include_clones: bool = True) -> list[dict[str, Any]]:
     Fields: ``id``, ``name``, ``kind`` (builtin / preset / design / clone), ``language``, ``languageLabel``,
     ``gender`` (when known), ``model`` (the catalog key used by default, ``kokoro`` for built-ins), ``models``
     (every key that can speak it), ``capabilities`` (speak / style / clone / design), ``available`` (the
-    voice can be used right now) and ``needs`` (plain words when it cannot).
+    voice can be used right now) and ``needs`` (plain words when it cannot). Built-in voices also carry ``grade``
+    (the model author's quality grade, None when ungraded) and ``addon`` (the add-on that unlocks them, or None);
+    voices that can never run on this lane (Japanese on MLX) are left out.
     """
     from backend_service import voice_runtime  # noqa: PLC0415
     from backend_service.catalog.voice_models import CUSTOM_SPEAKERS  # noqa: PLC0415
 
     voices: list[dict[str, Any]] = []
     for v in voice_runtime.list_tts_voices():
+        if v.get("neverAvailable"):
+            continue  # Japanese on the MLX lane: nothing can unlock it, so it is not offered at all
         voices.append({
             "id": v["id"], "name": v["name"], "kind": "builtin", "language": v["language"],
             "languageLabel": v["languageLabel"], "gender": v["gender"], "model": "kokoro", "models": ["kokoro"],
             "capabilities": _caps(speak=True), "available": bool(v["available"]),
+            "grade": v.get("grade"), "addon": None if v["available"] else v.get("addon"),
             "needs": None if v["available"] else f"{v['languageLabel']} voices need an extra install.",
         })
 

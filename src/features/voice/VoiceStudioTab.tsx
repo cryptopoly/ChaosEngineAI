@@ -174,7 +174,7 @@ export function VoiceStudioTab({ voiceRuntime, backendOnline, openRequest, onSen
         />
       </div>
       <div className={`voice-studio__pane${mode === "speak" ? "" : " voice-studio__pane--hidden"}`}>
-        <SpeakScreen catalog={catalog} voiceId={voiceId} onVoiceChange={pickVoice} onTabChange={onTabChange} />
+        <SpeakScreen catalog={catalog} voiceId={voiceId} onVoiceChange={pickVoice} onTabChange={onTabChange} onNewClone={() => setMode("voices")} />
       </div>
       <div className={`voice-studio__pane${mode === "voices" ? "" : " voice-studio__pane--hidden"}`}>
         <VoicesScreen

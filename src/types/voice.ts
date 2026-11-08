@@ -173,6 +173,8 @@ export interface VoiceEntry {
   available: boolean;
   /** Quick (Kokoro) voices: the model author's quality grade ("A", "B-", ...); null when ungraded. */
   grade?: string | null;
+  /** Quick voices that need a voice pack add-on to run here ("chinese"); null otherwise. */
+  addon?: string | null;
   /** Plain words for why it cannot be used yet. */
   needs?: string | null;
   consent?: { speakerName: string; basis: "own" | "permission"; consentedAt: string; appVersion?: string };

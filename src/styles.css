@@ -13681,6 +13681,45 @@ select.music-library__select {
   gap: 8px;
 }
 
+.voice-picker__group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.voice-group__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  min-width: 0;
+}
+
+.voice-group__head > .voice-group__title {
+  margin: 0;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.voice-group__head > .voice-group__note {
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+.voice-group__head > .voice-picker__language {
+  flex: 0 1 auto;
+  width: auto;
+  max-width: 100%;
+}
+
+.voice-picker__expander {
+  align-self: flex-start;
+  font-size: 0.85rem;
+}
+
 .voice-picker__language {
   width: auto;
   max-width: 100%;

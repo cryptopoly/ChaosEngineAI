@@ -971,6 +971,12 @@
       "detail": null,
       "unmeasuredDetail": null,
       "download": null
+    },
+    "install": {
+      "title": null,
+      "body": null,
+      "cost": null,
+      "notNow": null
     }
   },
   "residentChatModelNote": "Un modelo de chat cargado ocupa unos {gb} GB de esta memoria; descargarlo la libera.",

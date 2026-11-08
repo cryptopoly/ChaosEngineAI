@@ -30,6 +30,8 @@ export interface VoiceSettings {
   sttModel: string;
   language: string;
   ttsVoice: string;
+  /** The voice last used on the Speak screen, apart from the chat voice; "" until Speak has been used. */
+  speakVoice?: string;
   speed: number;
   autoSend: boolean;
   autoRead: boolean;
@@ -169,6 +171,8 @@ export interface VoiceEntry {
   models: string[];
   capabilities: VoiceCapabilities;
   available: boolean;
+  /** Quick (Kokoro) voices: the model author's quality grade ("A", "B-", ...); null when ungraded. */
+  grade?: string | null;
   /** Plain words for why it cannot be used yet. */
   needs?: string | null;
   consent?: { speakerName: string; basis: "own" | "permission"; consentedAt: string; appVersion?: string };

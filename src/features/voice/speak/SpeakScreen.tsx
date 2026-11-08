@@ -18,8 +18,11 @@ import {
   cloneTextTooLong,
   installedCloneModels,
   modelNote,
+  recommendedNaturalModel,
+  showInstallCard,
   styleState,
 } from "./speakLogic";
+import { InstallVoiceCard } from "./InstallVoiceCard";
 import { useCostText } from "./costText";
 import type { VoiceCatalog } from "./useVoiceCatalog";
 import { useVoiceSample } from "./useVoiceSample";
@@ -84,7 +87,8 @@ export function SpeakScreen({
   const designing = voice?.kind === "design";
   const styleInfo = styleState(voice, catalog.models);
   const activeStyle = styleInfo.enabled ? style.trim() : "";
-  const note = modelNote(voice, catalog.models, activeStyle !== "", cloneModelKey);
+  const note = modelNote(voice, catalog.models, cloneModelKey);
+  const installModel = showInstallCard(catalog.models, catalog.modelsAvailable) ? recommendedNaturalModel(catalog.models) : null;
   const cloneChoices = installedCloneModels(voice, catalog.models);
   const parts: SpeechPart[] = cloned ? (text.trim() ? [{ text: cloneRequestText(text), gapAfter: 0 }] : []) : splitSpeech(text);
   const tooLong = cloned && cloneTextTooLong(text);
@@ -188,6 +192,7 @@ export function SpeakScreen({
         <VoicePicker
           voices={catalog.voices}
           models={catalog.models}
+          lead={installModel ? <InstallVoiceCard model={installModel} onDownload={() => void catalog.download(installModel.key)} /> : null}
           selectedId={voiceId}
           onSelect={onVoiceChange}
           modelsAvailable={catalog.modelsAvailable}

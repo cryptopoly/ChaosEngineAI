@@ -19,6 +19,7 @@ const DEFAULT_SETTINGS: VoiceSettings = {
   sttModel: "",
   language: "",
   ttsVoice: "af_heart",
+  speakVoice: "",
   speed: 1,
   autoSend: false,
   autoRead: false,

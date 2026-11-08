@@ -971,6 +971,12 @@
       "detail": "{peak} GB in memory, about {seconds} s per 10 s of speech (measured on {machine})",
       "unmeasuredDetail": "speed and memory not measured yet",
       "download": "Download {gb} GB"
+    },
+    "install": {
+      "title": "Install a better voice",
+      "body": "The quick voices are fast but flat. {name} adds natural prosody and a written style instruction (angry, whisper, slow, an accent).",
+      "cost": "Download {gb} GB; {detail}.",
+      "notNow": "Not now"
     }
   },
   "residentChatModelNote": "A loaded chat model holds about {gb} GB of this memory; unloading it frees that.",

@@ -971,6 +971,12 @@
       "detail": null,
       "unmeasuredDetail": null,
       "download": null
+    },
+    "install": {
+      "title": null,
+      "body": null,
+      "cost": null,
+      "notNow": null
     }
   },
   "residentChatModelNote": "Загруженная чат-модель занимает около {gb} ГБ этой памяти; выгрузка модели освободит её.",

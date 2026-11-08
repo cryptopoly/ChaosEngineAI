@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
 import type { TabId, VoiceRuntime } from "../../types";
@@ -24,19 +24,32 @@ export interface VoiceStudioTabProps {
 type StudioMode = "transcribe" | "speak" | "voices";
 
 export function VoiceStudioTab({ voiceRuntime, backendOnline, openRequest, onSendToChat, onTabChange }: VoiceStudioTabProps) {
-  const { t } = useTranslation("studio");
+  const { t, i18n } = useTranslation("studio");
   const [mode, setMode] = useState<StudioMode>("transcribe");
-  const { settings } = useVoice();
+  const { settings, saveSettings } = useVoice();
   const catalog = useVoiceCatalog(backendOnline && Boolean(voiceRuntime?.installed));
-  const [voiceId, setVoiceId] = useState(settings.ttsVoice);
+  const [voiceId, setVoiceId] = useState("");
+  // Until the person picks a voice, Speak follows the default rule, so a natural voice that finishes downloading
+  // becomes the starting voice; a chosen voice that disappears (a deleted clone) falls back to the rule too.
+  const picked = useRef(false);
+  const speakVoice = settings.speakVoice ?? "";
 
-  // Once the voices are listed, fall back to a usable one when the chosen voice is gone (a deleted clone).
   useEffect(() => {
-    if (catalog.loaded && !catalog.voices.some((v) => v.id === voiceId)) setVoiceId(defaultVoice(catalog.voices, settings.ttsVoice));
-  }, [catalog.loaded, catalog.voices, voiceId, settings.ttsVoice]);
+    if (!catalog.loaded) return;
+    if (picked.current && catalog.voices.some((v) => v.id === voiceId)) return;
+    const next = defaultVoice(catalog.voices, speakVoice, i18n.language);
+    if (next && next !== voiceId) setVoiceId(next);
+  }, [catalog.loaded, catalog.voices, voiceId, speakVoice, i18n.language]);
+
+  /** The person chose a voice: it becomes the Speak voice next time too (the chat voice is not touched). */
+  const pickVoice = (id: string) => {
+    picked.current = true;
+    setVoiceId(id);
+    if (id !== speakVoice) void saveSettings({ speakVoice: id });
+  };
 
   const useVoiceInSpeak = (id: string) => {
-    setVoiceId(id);
+    pickVoice(id);
     setMode("speak");
   };
 
@@ -105,7 +118,7 @@ export function VoiceStudioTab({ voiceRuntime, backendOnline, openRequest, onSen
         />
       </div>
       <div className={`voice-studio__pane span-2${mode === "speak" ? "" : " voice-studio__pane--hidden"}`}>
-        <SpeakScreen catalog={catalog} voiceId={voiceId} onVoiceChange={setVoiceId} onTabChange={onTabChange} />
+        <SpeakScreen catalog={catalog} voiceId={voiceId} onVoiceChange={pickVoice} onTabChange={onTabChange} />
       </div>
       <div className={`voice-studio__pane span-2${mode === "voices" ? "" : " voice-studio__pane--hidden"}`}>
         <VoicesScreen

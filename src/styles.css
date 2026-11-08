@@ -13864,6 +13864,32 @@ select.music-library__select {
   color: var(--warning);
 }
 
+.voice-install-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border: 1px dashed color-mix(in srgb, var(--accent) 55%, var(--border));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 6%, var(--panel-alt));
+  min-width: 0;
+}
+
+.voice-install-card__title {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.voice-install-card__body,
+.voice-install-card__cost {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.voice-install-card__cost {
+  font-size: 0.85rem;
+}
+
 .voice-model-row__cost {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));

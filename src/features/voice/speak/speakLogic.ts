@@ -44,19 +44,18 @@ export function costLabel(model: VoiceModelRow | null): CostLabel {
   return { kind: "unmeasured", downloadGb: model.sizeGb };
 }
 
-/** The model that will run: mirrors the backend rule (style needs a style model; installed ones come first). */
-export function chooseModel(
-  voice: VoiceEntry | null,
-  models: VoiceModelRow[],
-  wantsStyle: boolean,
-  preferredKey = "",
-): VoiceModelRow | null {
+/**
+ * The model that will run, mirroring the backend (``voice_speak._pick_custom``): an installed model first, then the
+ * style-capable one, then the smaller. Typing in the style box never changes it, so there is no reload mid-session;
+ * the 0.6B CustomVoice runs only when it is the only one installed (it is no quicker, FU-148).
+ */
+export function chooseModel(voice: VoiceEntry | null, models: VoiceModelRow[], preferredKey = ""): VoiceModelRow | null {
   if (!voice || voice.kind === "builtin") return null;
   const rows = voice.models.map((key) => models.find((m) => m.key === key)).filter((m): m is VoiceModelRow => Boolean(m));
   // A cloning model the person picked, when it is downloaded.
   const preferred = voice.kind === "clone" ? rows.find((m) => m.key === preferredKey && m.installed) : undefined;
   if (preferred) return preferred;
-  const rank = (m: VoiceModelRow) => [wantsStyle && !m.capabilities.style ? 1 : 0, m.sizeGb] as const;
+  const rank = (m: VoiceModelRow) => [m.capabilities.style ? 0 : 1, m.sizeGb] as const;
   const sort = (list: VoiceModelRow[]) =>
     [...list].sort((a, b) => {
       const [ax, as] = rank(a);
@@ -103,8 +102,8 @@ export interface ModelNote {
   downloading: boolean;
 }
 
-export function modelNote(voice: VoiceEntry | null, models: VoiceModelRow[], wantsStyle: boolean, preferredKey = ""): ModelNote {
-  const model = chooseModel(voice, models, wantsStyle, preferredKey);
+export function modelNote(voice: VoiceEntry | null, models: VoiceModelRow[], preferredKey = ""): ModelNote {
+  const model = chooseModel(voice, models, preferredKey);
   return {
     model,
     needsDownload: Boolean(voice && voice.kind !== "builtin" && (!model || !model.installed)),
@@ -140,8 +139,63 @@ export function pickerVoices(voices: VoiceEntry[]): VoiceEntry[] {
   return voices.filter((v) => v.kind !== "builtin" || v.available);
 }
 
-/** Which voice to select first: the chat voice if it is listed, else the first usable one. */
-export function defaultVoice(voices: VoiceEntry[], preferred: string): string {
+const GRADE_ORDER = ["A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D+", "D", "D-", "F+", "F"];
+
+/** Lower is better; an ungraded voice sorts after every graded one. */
+export function gradeRank(grade: string | null | undefined): number {
+  const index = grade ? GRADE_ORDER.indexOf(grade) : -1;
+  return index < 0 ? GRADE_ORDER.length : index;
+}
+
+/** "en" from "en-US", "zh" from "zh-CN". */
+function baseLanguage(code: string): string {
+  return code.toLowerCase().split("-")[0] ?? "";
+}
+
+function sameLanguage(voice: VoiceEntry, uiLanguage: string): boolean {
+  return baseLanguage(voice.language) === baseLanguage(uiLanguage);
+}
+
+/** The best natural voice that runs now: a preset in the UI language, else the first preset that runs. */
+export function bestNaturalVoice(voices: VoiceEntry[], uiLanguage: string): VoiceEntry | null {
+  const ready = voices.filter((v) => v.kind === "preset" && v.available);
+  return ready.find((v) => sameLanguage(v, uiLanguage)) ?? ready[0] ?? null;
+}
+
+/** The top-graded quick (Kokoro) voice for the UI language; the list order breaks ties. */
+export function topQuickVoice(voices: VoiceEntry[], uiLanguage: string): VoiceEntry | null {
+  const quick = voices.filter((v) => v.kind === "builtin" && v.available);
+  const pool = quick.filter((v) => sameLanguage(v, uiLanguage));
+  const ranked = [...(pool.length > 0 ? pool : quick)].map((v, i) => ({ v, i }));
+  ranked.sort((a, b) => gradeRank(a.v.grade) - gradeRank(b.v.grade) || a.i - b.i);
+  return ranked[0]?.v ?? null;
+}
+
+/**
+ * Which voice Speak starts on: the voice last used in Speak (``speakVoice``, apart from the chat voice); else the
+ * best installed natural voice for the UI language; else the top-graded quick voice for the UI language; else the
+ * first usable voice.
+ */
+export function defaultVoice(voices: VoiceEntry[], speakVoice: string, uiLanguage: string): string {
   const list = pickerVoices(voices);
-  return list.find((v) => v.id === preferred)?.id ?? list.find((v) => v.kind === "builtin")?.id ?? list[0]?.id ?? preferred;
+  return (
+    list.find((v) => v.id === speakVoice && speakVoice !== "")?.id ??
+    bestNaturalVoice(list, uiLanguage)?.id ??
+    topQuickVoice(list, uiLanguage)?.id ??
+    list[0]?.id ??
+    ""
+  );
+}
+
+/** The model the "Install a better voice" card offers: the style-capable CustomVoice model. */
+export function recommendedNaturalModel(models: VoiceModelRow[]): VoiceModelRow | null {
+  const custom = models.filter((m) => m.kind === "custom" && m.supported);
+  return custom.find((m) => m.capabilities.style) ?? custom[0] ?? null;
+}
+
+/** The install card shows while no natural (CustomVoice) model is downloaded on a machine that can run one. */
+export function showInstallCard(models: VoiceModelRow[], modelsAvailable: boolean): boolean {
+  if (!modelsAvailable) return false;
+  const custom = models.filter((m) => m.kind === "custom");
+  return custom.length > 0 && !custom.some((m) => m.installed);
 }

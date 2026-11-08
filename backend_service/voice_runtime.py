@@ -230,6 +230,8 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "sttModel": "",
     "language": "",
     "ttsVoice": DEFAULT_VOICE,
+    # The voice last used on the Speak screen, kept apart from the chat voice; "" until Speak has run once.
+    "speakVoice": "",
     "speed": 1.0,
     "autoSend": False,
     "autoRead": False,

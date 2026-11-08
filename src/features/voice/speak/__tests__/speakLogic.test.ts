@@ -11,6 +11,8 @@ import {
   matchesFilter,
   modelNote,
   pickerVoices,
+  recommendedNaturalModel,
+  showInstallCard,
   styleState,
 } from "../speakLogic";
 
@@ -62,24 +64,68 @@ describe("style box gating", () => {
 });
 
 describe("which model runs", () => {
-  it("takes the small installed model for plain speech and the style model for style", () => {
+  it("runs the installed style model whether or not there is style text (no swap, no reload)", () => {
     const models = [{ ...small, installed: true }, { ...big, installed: true }];
-    expect(chooseModel(voice({}), models, false)?.key).toBe("custom-0.6b");
-    expect(chooseModel(voice({}), models, true)?.key).toBe("custom-1.7b");
+    expect(chooseModel(voice({}), models)?.key).toBe("custom-1.7b");
   });
 
-  it("prefers an installed model, else the smallest, and has none for built-in voices", () => {
-    expect(chooseModel(voice({}), [small, { ...big, installed: true }], false)?.key).toBe("custom-1.7b");
-    expect(chooseModel(voice({}), [small, big], false)?.key).toBe("custom-0.6b");
-    expect(chooseModel(voice({ kind: "builtin" }), [small], false)).toBeNull();
+  it("runs the 0.6B model only when it is the only one installed", () => {
+    expect(chooseModel(voice({}), [{ ...small, installed: true }, big])?.key).toBe("custom-0.6b");
+    expect(chooseModel(voice({}), [small, { ...big, installed: true }])?.key).toBe("custom-1.7b");
+  });
+
+  it("names the style model when nothing is installed, and none for built-in voices", () => {
+    expect(chooseModel(voice({}), [small, big])?.key).toBe("custom-1.7b");
+    expect(chooseModel(voice({ kind: "builtin" }), [small])).toBeNull();
   });
 
   it("asks for a download only when a non-built-in voice's model is missing", () => {
-    expect(modelNote(voice({}), [small, big], false).needsDownload).toBe(true);
-    expect(modelNote(voice({}), [{ ...small, installed: true }], false).needsDownload).toBe(false);
-    expect(modelNote(voice({ kind: "builtin" }), [], false).needsDownload).toBe(false);
-    const busy = { ...small, download: { state: "downloading" as const, error: null } };
-    expect(modelNote(voice({}), [busy], false).downloading).toBe(true);
+    expect(modelNote(voice({}), [small, big]).needsDownload).toBe(true);
+    expect(modelNote(voice({}), [{ ...small, installed: true }]).needsDownload).toBe(false);
+    expect(modelNote(voice({ kind: "builtin" }), []).needsDownload).toBe(false);
+    const busy = { ...big, download: { state: "downloading" as const, error: null } };
+    expect(modelNote(voice({}), [small, busy]).downloading).toBe(true);
+  });
+});
+
+describe("default voice", () => {
+  const heart = voice({ id: "af_heart", kind: "builtin", language: "en-US", grade: "A" });
+  const nicole = voice({ id: "af_nicole", kind: "builtin", language: "en-US", grade: "B-" });
+  const emma = voice({ id: "bf_emma", kind: "builtin", language: "en-GB", grade: "B-" });
+  const siwis = voice({ id: "ff_siwis", kind: "builtin", language: "fr", grade: "B-" });
+  const ryan = voice({ id: "qwen3:Ryan", language: "en" });
+  const serena = voice({ id: "qwen3:Serena", language: "zh" });
+  const clone = voice({ id: "clone:1", kind: "clone", language: "auto" });
+
+  it("1. starts on the voice last used in Speak when it is still listed", () => {
+    expect(defaultVoice([nicole, heart, ryan, clone], "clone:1", "en")).toBe("clone:1");
+    expect(defaultVoice([nicole, heart, ryan], "clone:gone", "en")).toBe("qwen3:Ryan");
+  });
+
+  it("2. else the best installed natural voice for the UI language", () => {
+    expect(defaultVoice([heart, serena, ryan], "", "en-GB")).toBe("qwen3:Ryan");
+    expect(defaultVoice([heart, serena, ryan], "", "zh-CN")).toBe("qwen3:Serena");
+    expect(defaultVoice([heart, serena, ryan], "", "de")).toBe("qwen3:Serena"); // no German preset: the first one that runs
+  });
+
+  it("3. else the top-graded quick voice for the UI language, not the chat voice", () => {
+    const notReady = { ...ryan, available: false };
+    expect(defaultVoice([nicole, emma, heart, siwis, notReady], "", "en")).toBe("af_heart");
+    expect(defaultVoice([nicole, emma, heart, siwis, notReady], "", "fr")).toBe("ff_siwis");
+    expect(defaultVoice([nicole, emma, siwis], "", "de")).toBe("af_nicole"); // no voice in the language: the best graded
+  });
+
+  it("4. else the first usable voice", () => {
+    expect(defaultVoice([clone], "", "en")).toBe("clone:1");
+    expect(defaultVoice([], "", "en")).toBe("");
+  });
+
+  it("offers the install card only while no natural model is downloaded on a machine that runs one", () => {
+    expect(showInstallCard([small, big, design], true)).toBe(true);
+    expect(recommendedNaturalModel([small, big])?.key).toBe("custom-1.7b");
+    expect(showInstallCard([{ ...small, installed: true }, big], true)).toBe(false);
+    expect(showInstallCard([small, big], false)).toBe(false);
+    expect(showInstallCard([], true)).toBe(false);
   });
 });
 
@@ -115,8 +161,8 @@ describe("text helpers and lists", () => {
     expect(pickerVoices(voices).map((v) => v.id)).toEqual(["af_heart", "clone:1", "qwen3:Ryan"]);
     expect(voices.filter((v) => matchesFilter(v, "mine")).map((v) => v.id)).toEqual(["clone:1"]);
     expect(voices.filter((v) => matchesFilter(v, "builtin")).map((v) => v.id)).toEqual(["af_heart", "jf_alpha", "qwen3:Ryan"]);
-    expect(defaultVoice(voices, "qwen3:Ryan")).toBe("qwen3:Ryan");
-    expect(defaultVoice(voices, "gone")).toBe("af_heart");
+    expect(defaultVoice(voices, "qwen3:Ryan", "en")).toBe("qwen3:Ryan");
+    expect(defaultVoice(voices, "jf_alpha", "en")).toBe("qwen3:Ryan"); // not usable here: the rule decides
   });
 });
 
@@ -129,18 +175,18 @@ describe("cloning model choice", () => {
 
   it("runs the installed model when only the 1.7B is there, and sends its key", () => {
     const only17 = [{ ...b06, installed: false }, b17];
-    expect(modelNote(clone, only17, false).model?.key).toBe("b17");
+    expect(modelNote(clone, only17).model?.key).toBe("b17");
     expect(installedCloneModels(clone, only17).map((m) => m.key)).toEqual(["b17"]);
   });
 
   it("takes the smaller model by default and the picked one when both are installed", () => {
-    expect(modelNote(clone, [b06, b17], false).model?.key).toBe("b06");
-    expect(modelNote(clone, [b06, b17], false, "b17").model?.key).toBe("b17");
+    expect(modelNote(clone, [b06, b17]).model?.key).toBe("b06");
+    expect(modelNote(clone, [b06, b17], "b17").model?.key).toBe("b17");
     expect(installedCloneModels(clone, [b06, b17])).toHaveLength(2);
   });
 
   it("ignores a pick that is not installed, and a pick for a non-clone voice", () => {
-    expect(modelNote(clone, [b06, { ...b17, installed: false }], false, "b17").model?.key).toBe("b06");
+    expect(modelNote(clone, [b06, { ...b17, installed: false }], "b17").model?.key).toBe("b06");
     expect(installedCloneModels(null, [b06, b17])).toEqual([]);
   });
 });

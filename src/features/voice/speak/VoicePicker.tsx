@@ -1,4 +1,4 @@
-import { useMemo, useState, type KeyboardEvent } from "react";
+import { useMemo, useState, type KeyboardEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { VoiceEntry, VoiceModelRow } from "../../../types";
 import { useCostText } from "./costText";
@@ -9,6 +9,8 @@ export interface VoicePickerProps {
   voices: VoiceEntry[];
   /** The speech models, for each card's cost chip. */
   models: VoiceModelRow[];
+  /** Shown first, above the cards (the "Install a better voice" card). */
+  lead?: ReactNode;
   selectedId: string;
   onSelect: (id: string) => void;
   /** Preset and designed voices run on Apple Silicon Macs for now. */
@@ -96,12 +98,12 @@ function genderLetter(voice: VoiceEntry): string {
 }
 
 /** Voice cards: your clones, presets, the design card and built-in voices by language. */
-export function VoicePicker({ voices, models, selectedId, onSelect, modelsAvailable, isPlaying, isLoading, onSample }: VoicePickerProps) {
+export function VoicePicker({ voices, models, lead, selectedId, onSelect, modelsAvailable, isPlaying, isLoading, onSample }: VoicePickerProps) {
   const { t } = useTranslation("studio");
   const costs = useCostText();
   const costOf = (v: VoiceEntry): { text: string; tone: "ok" | "need" | "plain" } | null => {
     if (v.kind === "builtin") return { text: costs.chip(costLabel(null)), tone: "plain" };
-    const model = chooseModel(v, models, false);
+    const model = chooseModel(v, models);
     if (!model) return null;
     if (!model.installed) return { text: t("voice.cost.download", { defaultValue: "Download {gb} GB", gb: model.sizeGb }), tone: "need" };
     return { text: costs.chip(costLabel(model)), tone: "ok" };
@@ -160,6 +162,7 @@ export function VoicePicker({ voices, models, selectedId, onSelect, modelsAvaila
 
   return (
     <div className="voice-picker" role="radiogroup" aria-label={t("voice.speak.voice", { defaultValue: "Voice" })} onKeyDown={onKeyDown}>
+      {lead}
       {clones.length > 0 ? (
         <section className="voice-picker__group">
           <h4 className="voice-group__title">{t("voice.speak.yourVoices", { defaultValue: "Your voices" })}</h4>

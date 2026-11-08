@@ -971,6 +971,12 @@
       "detail": null,
       "unmeasuredDetail": null,
       "download": null
+    },
+    "install": {
+      "title": null,
+      "body": null,
+      "cost": null,
+      "notNow": null
     }
   },
   "residentChatModelNote": "Ein geladenes Chat-Modell belegt etwa {gb} GB dieses Speichers; beim Entladen wird er freigegeben.",

@@ -26,10 +26,11 @@ async function mockSpeak(page: Page): Promise<Array<Record<string, unknown>>> {
 }
 
 test("a quick voice has no style: the box and chips are greyed out with a note, and the request carries no style", async ({ page }) => {
-  await mockVoiceApi(page);
+  await mockVoiceApi(page, { speakVoice: "af_heart" });
   const bodies = await mockSpeak(page);
   await openSpeak(page);
 
+  // The voice last used in Speak wins over the natural voice the rule would pick.
   await expect(page.getByRole("radio", { name: /^Heart/ })).toHaveAttribute("aria-checked", "true");
   await expect(styleBox(page)).toBeDisabled();
   for (const chip of ["Neutral", "Angry", "Sad", "Excited", "Whisper", "Calm"]) {
@@ -45,6 +46,47 @@ test("a quick voice has no style: the box and chips are greyed out with a note, 
   await expect(page.getByRole("button", { name: "Save to Library" })).toBeVisible();
   expect(bodies).toHaveLength(1);
   expect(bodies[0]).toMatchObject({ text: "Hello world.", voice: "af_heart", style: "", speed: 1, pitch: 0, seed: null });
+});
+
+test("first run with no natural voice: Speak starts on the best quick voice and offers to install a better one in place", async ({ page }) => {
+  const seen = await mockVoiceApi(page, { installed: ["qwen3-tts-0.6b"] });
+  await openSpeak(page);
+  await expect(page.getByRole("radio", { name: /^Heart/ })).toHaveAttribute("aria-checked", "true");
+  const card = page.locator(".voice-install-card");
+  await expect(card.getByRole("heading", { name: "Install a better voice" })).toBeVisible();
+  await expect(card).toContainText("Qwen3-TTS 1.7B CustomVoice adds natural prosody");
+  await expect(card).toContainText("Download 3.08 GB; 3.5 GB in memory, about 2.5 s per 10 s of speech (measured on Apple M4 Max, 64 GB, 2026-11-08).");
+  await card.getByRole("button", { name: "Download 3.08 GB" }).click();
+  await expect.poll(() => seen.downloads).toEqual(["qwen3-tts-custom-1.7b"]);
+  expect(seen.speakVoices).toEqual([]); // the rule's choice is not saved as the person's own
+
+  // Once the model is there, Speak starts on the natural voice for the UI language and the card is gone.
+  await page.unrouteAll({ behavior: "ignoreErrors" });
+  await mockVoiceApi(page, { installed: ["qwen3-tts-0.6b", "qwen3-tts-custom-1.7b"] });
+  await openSpeak(page);
+  await expect(page.getByRole("radio", { name: /^Ryan/ })).toHaveAttribute("aria-checked", "true");
+  await expect(page.locator(".voice-install-card")).toHaveCount(0);
+});
+
+test("Not now hides the install card, and a picked voice is saved as the Speak voice", async ({ page }) => {
+  const seen = await mockVoiceApi(page, { installed: ["qwen3-tts-0.6b"] });
+  await openSpeak(page);
+  await page.locator(".voice-install-card").getByRole("button", { name: "Not now" }).click();
+  await expect(page.locator(".voice-install-card")).toHaveCount(0);
+  await page.getByRole("radio", { name: /^Adam/ }).click();
+  await expect.poll(() => seen.speakVoices).toEqual(["am_adam"]);
+});
+
+test("typing a style never swaps the model: the installed style model runs throughout", async ({ page }) => {
+  await mockVoiceApi(page, { installed: BOTH_CUSTOM });
+  await openSpeak(page);
+  await expect(page.getByRole("radio", { name: /^Ryan/ })).toHaveAttribute("aria-checked", "true");
+  const line = page.locator(".voice-speak__model");
+  await expect(line).toContainText("Runs with Qwen3-TTS 1.7B CustomVoice:");
+  await styleBox(page).fill("Slow and gentle.");
+  await expect(line).toContainText("Runs with Qwen3-TTS 1.7B CustomVoice:");
+  await styleBox(page).fill("");
+  await expect(line).toContainText("Runs with Qwen3-TTS 1.7B CustomVoice:");
 });
 
 test("a cloned voice runs with the installed cloning model, and two installed models give a choice", async ({ page }) => {
@@ -137,10 +179,10 @@ test("a missing model stops Generate and offers Download; the design voice needs
   await openSpeak(page);
   await page.getByLabel("Text to speak").fill("Hello.");
   await page.getByRole("radio", { name: /^Ryan/ }).click();
-  await expect(page.getByText(/Needs Qwen3-TTS 0.6B CustomVoice .*not downloaded yet/)).toBeVisible();
+  await expect(page.getByText(/Needs Qwen3-TTS 1.7B CustomVoice .*not downloaded yet/)).toBeVisible();
   await expect(page.getByRole("button", { name: "Generate audio" })).toBeDisabled();
   await page.locator(".voice-speak__model").getByRole("button", { name: "Download", exact: true }).click();
-  await expect.poll(() => seen.downloads).toEqual(["qwen3-tts-custom-0.6b"]);
+  await expect.poll(() => seen.downloads).toEqual(["qwen3-tts-custom-1.7b"]);
 
   await page.unroute("**/api/voice/models");
   await mockVoiceApi(page, { installed: ["qwen3-tts-0.6b", "qwen3-tts-design-1.7b"] });

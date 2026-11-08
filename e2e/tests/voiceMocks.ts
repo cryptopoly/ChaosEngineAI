@@ -94,18 +94,36 @@ export interface VoiceMockOptions {
   /** Catalog keys that look downloaded. */
   installed?: string[];
   clones?: Array<typeof ADA>;
+  /** The voice last used in Speak; kept in the mock so one test's pick never leaks into the next (the backend is shared). */
+  speakVoice?: string;
 }
 
 /** Patch the runtime to "pack installed" and mock the voice and model lists plus the clone routes. */
-export async function mockVoiceApi(page: Page, options: VoiceMockOptions = {}): Promise<{ downloads: string[]; deleted: string[] }> {
+export async function mockVoiceApi(
+  page: Page,
+  options: VoiceMockOptions = {},
+): Promise<{ downloads: string[]; deleted: string[]; speakVoices: string[] }> {
   const installed = options.installed ?? ["qwen3-tts-0.6b", "qwen3-tts-custom-0.6b"];
   const clones = options.clones ?? [];
-  const seen = { downloads: [] as string[], deleted: [] as string[] };
+  const seen = { downloads: [] as string[], deleted: [] as string[], speakVoices: [] as string[] };
+  let speakVoice = options.speakVoice ?? "";
+  let lastSettings: Record<string, unknown> = {};
   await page.route("**/api/voice/runtime", async (route) => {
     const response = await route.fetch();
     const body = await response.json();
-    Object.assign(body.runtime ?? body, { installed: true });
+    const runtime = body.runtime ?? body;
+    Object.assign(runtime, { installed: true });
+    runtime.settings = { ...(runtime.settings ?? {}), speakVoice };
+    lastSettings = runtime.settings;
     await route.fulfill({ response, json: body });
+  });
+  // The Speak voice is answered here; every other setting goes to the backend as before.
+  await page.route("**/api/voice/settings", async (route) => {
+    const patch = route.request().method() === "POST" ? (route.request().postDataJSON() as Record<string, unknown>) : {};
+    if (typeof patch.speakVoice !== "string") return route.fallback();
+    speakVoice = patch.speakVoice;
+    seen.speakVoices.push(speakVoice);
+    return route.fulfill({ json: { ...lastSettings, speakVoice } });
   });
   await page.route("**/api/voice/voices", (route) => route.fulfill({ json: { voices: voiceList(clones, installed) } }));
   await page.route("**/api/voice/models", (route) => route.fulfill({ json: { models: ttsModels(installed), available: true } }));

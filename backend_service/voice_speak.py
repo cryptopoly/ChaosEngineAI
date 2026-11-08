@@ -125,7 +125,7 @@ def list_voices(*, include_clones: bool = True) -> list[dict[str, Any]]:
         voices.append({
             "id": PRESET_PREFIX + speaker["id"], "name": speaker["id"].replace("_", " "), "kind": "preset",
             "language": speaker["language"], "languageLabel": speaker["languageLabel"], "gender": speaker["gender"],
-            "about": speaker["about"], "model": _pick_custom(customs, False)["key"], "models": [r["key"] for r in customs],
+            "about": speaker["about"], "model": (custom_ready and _pick_custom(custom_ready) or _pick_custom(customs))["key"], "models": [r["key"] for r in customs],
             "capabilities": _caps(speak=True, style=True), "available": bool(custom_ready),
             "needs": None if custom_ready else f"Download {customs[0]['name']} in Voice Models.",
         })
@@ -154,9 +154,10 @@ def list_voices(*, include_clones: bool = True) -> list[dict[str, Any]]:
     return voices
 
 
-def _pick_custom(rows: list[dict[str, Any]], wants_style: bool, installed_only: bool = False) -> dict[str, Any]:
-    """Style needs the 1.7B model; plain speech prefers the faster 0.6B one."""
-    ordered = sorted(rows, key=lambda r: (wants_style and not r["capabilities"]["style"], r["sizeGb"]))
+def _pick_custom(rows: list[dict[str, Any]], installed_only: bool = False) -> dict[str, Any]:
+    """The style-capable model first, whether or not the style box has text, so typing a style never swaps the model
+    (a reload). The 0.6B model is no quicker (FU-148); it runs only when it is the only one installed."""
+    ordered = sorted(rows, key=lambda r: (not r["capabilities"]["style"], r["sizeGb"]))
     if installed_only:
         ordered = [r for r in ordered if _installed(r)]
     if not ordered:
@@ -168,7 +169,7 @@ def _pick_custom(rows: list[dict[str, Any]], wants_style: bool, installed_only: 
 # Plan
 # ---------------------------------------------------------------------------
 
-def _model_for(kind: str, model_key: str, wants_style: bool) -> dict[str, Any]:
+def _model_for(kind: str, model_key: str) -> dict[str, Any]:
     from backend_service.catalog.voice_models import voice_model  # noqa: PLC0415
     from backend_service import voice_clone  # noqa: PLC0415
 
@@ -180,9 +181,9 @@ def _model_for(kind: str, model_key: str, wants_style: bool) -> dict[str, Any]:
         chosen = row
     else:
         try:
-            chosen = _pick_custom(rows, wants_style, installed_only=True)
+            chosen = _pick_custom(rows, installed_only=True)
         except LookupError:
-            chosen = _pick_custom(rows, wants_style)
+            chosen = _pick_custom(rows)
     if not voice_clone.available_here():
         raise ValueError("Preset and designed voices run on Apple Silicon Macs for now. Use a built-in voice here.")
     if not voice_env.is_installed():
@@ -206,7 +207,7 @@ def build_plan(voice: str, style: str = "", model_key: str = "") -> Plan:
         speaker = next((s for s in CUSTOM_SPEAKERS if s["id"].lower() == wanted), None)
         if speaker is None:
             raise ValueError(f"Unknown voice '{voice}'.")
-        row = _model_for("custom", model_key, bool(style))
+        row = _model_for("custom", model_key)
         plan = Plan("preset", voice, row["key"], row["name"], row["engine"], str(voice_clone.snapshot_dir(row)),
                     {"mode": "preset", "speaker": speaker["id"], "language": "auto"})
         if style:
@@ -218,7 +219,7 @@ def build_plan(voice: str, style: str = "", model_key: str = "") -> Plan:
     if voice == DESIGN_VOICE:
         if not style:
             raise ValueError("Describe the voice you want (age, gender, tone, pace) in the style box.")
-        row = _model_for("design", model_key, True)
+        row = _model_for("design", model_key)
         return Plan("design", voice, row["key"], row["name"], row["engine"], str(voice_clone.snapshot_dir(row)),
                     {"mode": "design", "instruct": style, "language": "auto"})
     from backend_service import voice_runtime  # noqa: PLC0415

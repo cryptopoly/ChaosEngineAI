@@ -2,6 +2,7 @@ import { useState, type SetStateAction } from "react";
 import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
 import { AgentAccessPanel } from "./AgentAccessPanel";
+import { SkillsPanel } from "./SkillsPanel";
 import { AcceleratorsPanel, DiagnosticsPanel, DiskUsagePanel } from "./DiagnosticsPanel";
 import { LanguagePanel } from "./LanguagePanel";
 import { TermsDialog, TermsOfUsePanel } from "../terms/TermsOfUse";
@@ -59,7 +60,7 @@ export interface SettingsTabProps {
 // ``sidebarMode`` preference with a side-menu variant for collapsible users
 // but it felt clunky at the viewport widths this app runs at — tabs always,
 // for Settings only.)
-type SettingsSectionId = "general" | "storage" | "providers" | "integrations" | "diagnostics" | "accelerators" | "disk";
+type SettingsSectionId = "general" | "storage" | "providers" | "integrations" | "skills" | "diagnostics" | "accelerators" | "disk";
 
 interface SettingsSectionDef {
   id: SettingsSectionId;
@@ -72,6 +73,7 @@ const SETTINGS_SECTIONS: SettingsSectionDef[] = [
   { id: "storage", labelKey: "settingsTab.sections.storage", labelDefault: "Storage" },
   { id: "providers", labelKey: "settingsTab.sections.providers", labelDefault: "Providers" },
   { id: "integrations", labelKey: "settingsTab.sections.integrations", labelDefault: "Integrations" },
+  { id: "skills", labelKey: "settingsTab.sections.skills", labelDefault: "Skills" },
   { id: "diagnostics", labelKey: "settingsTab.sections.diagnostics", labelDefault: "Diagnostics" },
   { id: "accelerators", labelKey: "settingsTab.sections.accelerators", labelDefault: "Accelerators" },
   { id: "disk", labelKey: "settingsTab.sections.disk", labelDefault: "Disk usage" },
@@ -662,6 +664,8 @@ export function SettingsTab({
           ? providerPanels
           : activeSection === "integrations"
             ? integrationPanels
+            : activeSection === "skills"
+              ? <div className="content-grid settings-section-grid skills-section"><SkillsPanel backendOnline={backendOnline} /></div>
             : activeSection === "accelerators"
               ? <AcceleratorsPanel backendOnline={backendOnline} hostSystem={hostSystem} />
               : activeSection === "disk"

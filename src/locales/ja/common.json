@@ -836,6 +836,7 @@
       "storage": "ストレージ",
       "providers": "プロバイダー",
       "integrations": "連携",
+      "skills": null,
       "diagnostics": "診断",
       "accelerators": "アクセラレータ",
       "disk": "ディスク使用量"
@@ -928,6 +929,27 @@
       "readTokenRemove": "読み取り専用トークンを削除",
       "readTokenHint": "ダッシュボードや監視ツール向け：ステータスとジョブは見られますが、作成や変更はできません。",
       "readTokenLabel": "読み取り専用トークン（Claude Code）"
+    },
+    "skills": {
+      "title": null,
+      "subtitle": null,
+      "safety": null,
+      "pathPlaceholder": null,
+      "pathLabel": null,
+      "pickTitle": null,
+      "noDialog": null,
+      "chooseFolder": null,
+      "chooseZip": null,
+      "import": null,
+      "imported": null,
+      "empty": null,
+      "listLabel": null,
+      "enabled": null,
+      "files": null,
+      "skippedTitle": null,
+      "confirmDelete": null,
+      "cancel": null,
+      "delete": null
     },
     "integrations": {
       "title": "連携",

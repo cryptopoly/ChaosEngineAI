@@ -836,6 +836,7 @@
       "storage": "Stockage",
       "providers": "Fournisseurs",
       "integrations": "Intégrations",
+      "skills": null,
       "diagnostics": "Diagnostic",
       "accelerators": "Accélérateurs",
       "disk": "Utilisation du disque"
@@ -928,6 +929,27 @@
       "readTokenRemove": "Retirer le jeton en lecture seule",
       "readTokenHint": "Pour un tableau de bord ou un observateur : il peut consulter l'état et les tâches, mais ne peut rien créer ni modifier.",
       "readTokenLabel": "Jeton en lecture seule (Claude Code)"
+    },
+    "skills": {
+      "title": null,
+      "subtitle": null,
+      "safety": null,
+      "pathPlaceholder": null,
+      "pathLabel": null,
+      "pickTitle": null,
+      "noDialog": null,
+      "chooseFolder": null,
+      "chooseZip": null,
+      "import": null,
+      "imported": null,
+      "empty": null,
+      "listLabel": null,
+      "enabled": null,
+      "files": null,
+      "skippedTitle": null,
+      "confirmDelete": null,
+      "cancel": null,
+      "delete": null
     },
     "integrations": {
       "title": "Intégrations",

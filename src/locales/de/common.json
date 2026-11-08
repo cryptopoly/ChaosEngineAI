@@ -836,6 +836,7 @@
       "storage": "Speicher",
       "providers": "Anbieter",
       "integrations": "Integrationen",
+      "skills": null,
       "diagnostics": "Diagnose",
       "accelerators": "Beschleuniger",
       "disk": "Speicherplatznutzung"
@@ -928,6 +929,27 @@
       "readTokenRemove": "Schreibgeschütztes Token entfernen",
       "readTokenHint": "Für ein Dashboard oder einen Watcher: Es kann Status und Aufträge einsehen, aber nichts erstellen oder ändern.",
       "readTokenLabel": "Schreibgeschütztes Token (Claude Code)"
+    },
+    "skills": {
+      "title": null,
+      "subtitle": null,
+      "safety": null,
+      "pathPlaceholder": null,
+      "pathLabel": null,
+      "pickTitle": null,
+      "noDialog": null,
+      "chooseFolder": null,
+      "chooseZip": null,
+      "import": null,
+      "imported": null,
+      "empty": null,
+      "listLabel": null,
+      "enabled": null,
+      "files": null,
+      "skippedTitle": null,
+      "confirmDelete": null,
+      "cancel": null,
+      "delete": null
     },
     "integrations": {
       "title": "Integrationen",

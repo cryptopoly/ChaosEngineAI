@@ -836,6 +836,7 @@
       "storage": "存储",
       "providers": "提供商",
       "integrations": "集成",
+      "skills": null,
       "diagnostics": "诊断",
       "accelerators": "加速器",
       "disk": "磁盘占用"
@@ -928,6 +929,27 @@
       "readTokenRemove": "移除只读令牌",
       "readTokenHint": "用于仪表板或监视程序：可以查看状态和任务，但不能创建或更改任何内容。",
       "readTokenLabel": "只读令牌（Claude Code）"
+    },
+    "skills": {
+      "title": null,
+      "subtitle": null,
+      "safety": null,
+      "pathPlaceholder": null,
+      "pathLabel": null,
+      "pickTitle": null,
+      "noDialog": null,
+      "chooseFolder": null,
+      "chooseZip": null,
+      "import": null,
+      "imported": null,
+      "empty": null,
+      "listLabel": null,
+      "enabled": null,
+      "files": null,
+      "skippedTitle": null,
+      "confirmDelete": null,
+      "cancel": null,
+      "delete": null
     },
     "integrations": {
       "title": "集成",

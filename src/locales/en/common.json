@@ -836,6 +836,7 @@
       "storage": "Storage",
       "providers": "Providers",
       "integrations": "Integrations",
+      "skills": "Skills",
       "diagnostics": "Diagnostics",
       "accelerators": "Accelerators",
       "disk": "Disk usage"
@@ -928,6 +929,27 @@
       "readTokenRemove": "Remove the read-only token",
       "readTokenHint": "For a dashboard or watcher: it can look at status and jobs but cannot make or change anything.",
       "readTokenLabel": "Read-only token (Claude Code)"
+    },
+    "skills": {
+      "title": "Skills",
+      "subtitle": "Teach the chat model a procedure: a folder with a SKILL.md and optional text files, or a .zip of one.",
+      "safety": "Scripts in a skill are never run. The model only reads a skill's text, as reference. New skills start switched off: read the description and file list before you switch one on.",
+      "pathPlaceholder": "/path/to/skill-folder or skill.zip",
+      "pathLabel": "Skill folder or .zip path",
+      "pickTitle": "Choose a skill",
+      "noDialog": "The file dialog is not available here. Type the path instead.",
+      "chooseFolder": "Choose folder",
+      "chooseZip": "Choose .zip",
+      "import": "Import",
+      "imported": "Imported {name}: {files, plural, one {# file} other {# files}} kept, {skipped, plural, =0 {nothing skipped} one {# skipped} other {# skipped}}. It is off until you switch it on.",
+      "empty": "No skills imported yet.",
+      "listLabel": "Imported skills",
+      "enabled": "Available in Chat",
+      "files": "{count, plural, one {# file} other {# files}}",
+      "skippedTitle": "Skipped (not imported):",
+      "confirmDelete": "Delete {name} for good",
+      "cancel": "Cancel",
+      "delete": "Delete"
     },
     "integrations": {
       "title": "Integrations",

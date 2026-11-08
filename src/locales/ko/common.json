@@ -836,6 +836,7 @@
       "storage": "저장소",
       "providers": "공급자",
       "integrations": "통합",
+      "skills": null,
       "diagnostics": "진단",
       "accelerators": "가속기",
       "disk": "디스크 사용량"
@@ -928,6 +929,27 @@
       "readTokenRemove": "읽기 전용 토큰 제거",
       "readTokenHint": "대시보드나 감시 도구용: 상태와 작업은 볼 수 있지만 무언가를 만들거나 바꿀 수는 없습니다.",
       "readTokenLabel": "읽기 전용 토큰(Claude Code)"
+    },
+    "skills": {
+      "title": null,
+      "subtitle": null,
+      "safety": null,
+      "pathPlaceholder": null,
+      "pathLabel": null,
+      "pickTitle": null,
+      "noDialog": null,
+      "chooseFolder": null,
+      "chooseZip": null,
+      "import": null,
+      "imported": null,
+      "empty": null,
+      "listLabel": null,
+      "enabled": null,
+      "files": null,
+      "skippedTitle": null,
+      "confirmDelete": null,
+      "cancel": null,
+      "delete": null
     },
     "integrations": {
       "title": "통합",

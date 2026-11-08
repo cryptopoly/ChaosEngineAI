@@ -15096,3 +15096,54 @@ select.music-library__select {
     box-shadow: none;
   }
 }
+
+/* D-62: Settings > Skills */
+.skills-section {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.skills-import-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.skills-import-row input {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.skills-list,
+.skills-files {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.skills-files {
+  gap: 2px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.skills-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.skills-card__description {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.skills-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}

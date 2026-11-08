@@ -44,6 +44,7 @@ import {
   writeStudioAutoApprove,
   writeStudioToolsEnabled,
 } from "../features/chat/studioChat";
+import { readChatSkillsEnabled } from "../features/chat/skillsChat";
 import type {
   ChatMessage,
   ChatSession,
@@ -784,6 +785,7 @@ export function useChat(
         enableTools: enableTools || undefined,
         studioTools: studioTools || undefined,
         studioAutoApprove: studioTools && readStudioAutoApprove(sessionId ?? sendingSessionId) ? true : undefined,
+        skills: readChatSkillsEnabled(sessionId ?? sendingSessionId) || undefined,
       };
 
       const streamingChatId = sessionId ?? sendingSessionId;

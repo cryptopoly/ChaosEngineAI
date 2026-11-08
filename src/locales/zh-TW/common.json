@@ -836,6 +836,7 @@
       "storage": "儲存",
       "providers": "提供者",
       "integrations": "整合",
+      "skills": null,
       "diagnostics": "診斷",
       "accelerators": "加速器",
       "disk": "磁碟用量"
@@ -928,6 +929,27 @@
       "readTokenRemove": "移除唯讀權杖",
       "readTokenHint": "用於儀表板或監看程式：可以查看狀態和工作，但不能建立或變更任何內容。",
       "readTokenLabel": "唯讀權杖（Claude Code）"
+    },
+    "skills": {
+      "title": null,
+      "subtitle": null,
+      "safety": null,
+      "pathPlaceholder": null,
+      "pathLabel": null,
+      "pickTitle": null,
+      "noDialog": null,
+      "chooseFolder": null,
+      "chooseZip": null,
+      "import": null,
+      "imported": null,
+      "empty": null,
+      "listLabel": null,
+      "enabled": null,
+      "files": null,
+      "skippedTitle": null,
+      "confirmDelete": null,
+      "cancel": null,
+      "delete": null
     },
     "integrations": {
       "title": "整合",

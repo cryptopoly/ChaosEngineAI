@@ -2563,6 +2563,21 @@ class ChaosEngineBackendTests(unittest.TestCase):
         self.assertEqual(kept["termsAcceptedVersion"], 1)
         self.assertEqual(self.client.patch("/api/settings", json={"termsAcceptedVersion": 0}).status_code, 422)
 
+    def test_settings_persist_locale_and_clock_format(self):
+        # FU-042 / D-69: the Settings → Language pick must round-trip through
+        # the backend, or it is lost on the next cold start.
+        first = self.client.get("/api/settings").json()["settings"]
+        self.assertEqual((first["locale"], first["clockFormat"]), ("system", "system"))
+        response = self.client.patch("/api/settings", json={"locale": "tlh", "clockFormat": "24h"})
+        self.assertEqual(response.status_code, 200)
+        settings = response.json()["settings"]
+        self.assertEqual((settings["locale"], settings["clockFormat"]), ("tlh", "24h"))
+        # An unrelated update keeps both; a bad clock value is ignored, an empty locale resets.
+        kept = self.client.patch("/api/settings", json={"preferredServerPort": 8898}).json()["settings"]
+        self.assertEqual((kept["locale"], kept["clockFormat"]), ("tlh", "24h"))
+        reset = self.client.patch("/api/settings", json={"locale": "  ", "clockFormat": "13h"}).json()["settings"]
+        self.assertEqual((reset["locale"], reset["clockFormat"]), ("system", "24h"))
+
     def test_settings_change_of_remote_provider_base_requires_new_key(self):
         seeded = self.client.patch(
             "/api/settings",

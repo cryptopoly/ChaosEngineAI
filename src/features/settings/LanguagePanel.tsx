@@ -18,7 +18,7 @@ import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
 import { Panel } from "../../components/Panel";
 import { updateSettings } from "../../api";
-import { changeLocale, SUPPORTED_LOCALES, type SupportedLocale } from "../../i18n";
+import { changeLocale, EXPERIMENTAL_LOCALES, SUPPORTED_LOCALES, type SupportedLocale } from "../../i18n";
 import enMeta from "../../locales/en/meta.json";
 import type { SettingsDraft } from "../../types/chat";
 import type { SetStateAction } from "react";
@@ -62,6 +62,12 @@ export function LanguagePanel({
   const locales: LocaleEntry[] = (enMeta as { supportedLocales: LocaleEntry[] }).supportedLocales;
   const selected = settingsDraft.locale || "system";
   const activeLocale = i18n.language;
+  // D-69: community locales (Klingon) show a one-line note while
+  // picked or active, so nobody mistakes a fan translation for a
+  // reviewed one.
+  const showCommunityNote =
+    EXPERIMENTAL_LOCALES.has(selected as SupportedLocale) ||
+    EXPERIMENTAL_LOCALES.has(activeLocale as SupportedLocale);
 
   // Resolve target GitHub URL for the *currently-active* locale (not the
   // pending dropdown value) — the user sees something to fix in the live
@@ -123,6 +129,13 @@ export function LanguagePanel({
             ))}
           </select>
         </label>
+        {showCommunityNote ? (
+          <p className="help-text" data-testid="language-community-note">
+            {t("languagePanel.communityNote", {
+              defaultValue: "Fan translation, machine-assisted, corrections welcome.",
+            })}
+          </p>
+        ) : null}
         <p className="help-text">
           {t("languagePanel.helpText", {
             defaultValue:

@@ -647,7 +647,8 @@
     "clock24h": "24 Stunden",
     "clockHint": "System folgt dem Standard Ihrer Sprache (12 Stunden für US-Englisch, 24 Stunden sonst). Wählen Sie eine Seite, wenn Sie dies überschreiben möchten.",
     "helpImprove": "Übersetzungen verbessern",
-    "openOnGithub": "{locale} auf GitHub öffnen →"
+    "openOnGithub": "{locale} auf GitHub öffnen →",
+    "communityNote": null
   },
   "imageOutputCard": {
     "huggingFace": "Hugging Face",

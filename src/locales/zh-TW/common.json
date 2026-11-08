@@ -647,7 +647,8 @@
     "clock24h": "24 小時制",
     "clockHint": "系統遵循您語言的預設設定(美式英語為 12 小時制,其他為 24 小時制)。如想覆寫,請選擇其中一項。",
     "helpImprove": "協助改進翻譯",
-    "openOnGithub": "在 GitHub 上開啟 {locale} →"
+    "openOnGithub": "在 GitHub 上開啟 {locale} →",
+    "communityNote": null
   },
   "imageOutputCard": {
     "huggingFace": "Hugging Face",

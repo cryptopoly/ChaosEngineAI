@@ -647,7 +647,8 @@
     "clock24h": "24 時間",
     "clockHint": "システムはお使いの言語のデフォルトに従います(米英語は 12 時間、その他は 24 時間)。上書きしたい場合はどちらかを選んでください。",
     "helpImprove": "翻訳の改善に協力",
-    "openOnGithub": "GitHub で {locale} を開く →"
+    "openOnGithub": "GitHub で {locale} を開く →",
+    "communityNote": null
   },
   "imageOutputCard": {
     "huggingFace": "Hugging Face",

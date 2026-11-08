@@ -647,7 +647,8 @@
     "clock24h": "24 horas",
     "clockHint": "Sistema segue o padrão do seu idioma (12 horas para inglês dos EUA, 24 horas nos demais). Escolha um lado se quiser sobrescrever.",
     "helpImprove": "Ajude a melhorar as traduções",
-    "openOnGithub": "Abrir {locale} no GitHub →"
+    "openOnGithub": "Abrir {locale} no GitHub →",
+    "communityNote": null
   },
   "imageOutputCard": {
     "huggingFace": "Hugging Face",

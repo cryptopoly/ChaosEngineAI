@@ -32,7 +32,10 @@ import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const LOCALES = path.join(ROOT, "src", "locales");
+// I18N_LOCALES_DIR lets the unit test point the validator at a fixture tree.
+const LOCALES = process.env.I18N_LOCALES_DIR
+  ? path.resolve(process.env.I18N_LOCALES_DIR)
+  : path.join(ROOT, "src", "locales");
 
 const ARGS = new Set(process.argv.slice(2));
 const STRICT = ARGS.has("--strict");
@@ -62,7 +65,13 @@ const LOCALES_LIST = [
   "fr",
   "es",
   "pt-BR",
+  "tlh",
 ];
+
+// D-69: community / fan translations.  Parity, ICU and orphan checks
+// still run for them; only the --strict 95 % coverage threshold skips
+// them, and the coverage table marks them.
+export const EXPERIMENTAL_LOCALES = new Set(["tlh"]);
 
 // ``intl-messageformat`` is a transitive dep of ``i18next-icu``; load
 // via createRequire so this CLI script works whether or not the user
@@ -173,8 +182,9 @@ async function main() {
   for (const locale of LOCALES_LIST) {
     const { presentKeys, totalKeys, pct } = coverage[locale];
     const bar = "█".repeat(Math.round(pct / 5));
+    const mark = EXPERIMENTAL_LOCALES.has(locale) ? "  (experimental, outside the strict gate)" : "";
     console.log(
-      `  ${locale.padEnd(6)} ${pct.toString().padStart(5)}%  ${bar.padEnd(20)}  (${presentKeys}/${totalKeys})`,
+      `  ${locale.padEnd(6)} ${pct.toString().padStart(5)}%  ${bar.padEnd(20)}  (${presentKeys}/${totalKeys})${mark}`,
     );
   }
 
@@ -191,7 +201,7 @@ async function main() {
 
   // Coverage gate (strict only)
   const lowCoverage = Object.entries(coverage)
-    .filter(([locale]) => locale !== "en")
+    .filter(([locale]) => locale !== "en" && !EXPERIMENTAL_LOCALES.has(locale))
     .filter(([, c]) => c.pct < MIN_COVERAGE);
   if (STRICT && lowCoverage.length) {
     console.error(`[i18n-validate] ${lowCoverage.length} locale(s) below ${MIN_COVERAGE}% threshold:`);

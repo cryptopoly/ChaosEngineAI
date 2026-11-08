@@ -37,6 +37,7 @@ const LOCALES = [
   "fr",
   "es",
   "pt-BR",
+  "tlh",
 ] as const;
 
 function leafPaths(node: unknown, prefix: string[] = []): string[] {

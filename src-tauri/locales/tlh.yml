@@ -1,0 +1,48 @@
+# D-69 — Klingon (tlhIngan Hol) Tauri shell strings. Okrand's Latin
+# romanisation, case-sensitive. Fan translation, machine-assisted;
+# coined terms are listed in docs/plans/klingon/glossary.md.
+# Missing keys fall back to en.yml at runtime.
+
+menu:
+  file: "nav"
+  edit: "choH"
+  view: "legh"
+  window: "Qorwagh"
+  help: "QaH"
+  quit: "ChaosEngineAI yImej"
+  preferences: "SeHlaw…"
+  about: "ChaosEngineAI Del"
+  checkForUpdates: "chu'moH yInuD…"
+  reload: "yIchu'qa'"
+  toggleDevTools: "DevTools yIchu'/yIchu'Ha'"
+  toggleFullScreen: "HaSta naQ yIchu'/yIchu'Ha'"
+  minimize: "yImachmoH"
+  zoom: "yItInmoH"
+  bringAllToFront: "Hoch 'etDaq yIqem"
+  hideOthers: "latlh tISo'"
+  showAll: "Hoch tIcha'"
+  hide: "ChaosEngineAI yISo'"
+
+tray:
+  show: "ChaosEngineAI yIcha'"
+  hide: "ChaosEngineAI yISo'"
+  quit: "yImej"
+  status:
+    idle: "leStaH"
+    loading: "yab chu'lI'…"
+    busy: "chenmoHlI'…"
+
+updater:
+  available: "ChaosEngineAI chu' tu'lu'."
+  download: "yIlI'"
+  later: "tugh"
+  installing: "chu'moH jomlI'…"
+  restartRequired: "chu'moH lo'meH yItaghqa'."
+
+dialog:
+  ok: "lu'"
+  cancel: "yIqIl"
+  save: "yIpol"
+  open: "yIpoSmoH"
+  yes: "HIja'"
+  no: "ghobe'"

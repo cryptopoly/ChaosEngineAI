@@ -39,6 +39,8 @@ SUPPORTED_LOCALES: tuple[str, ...] = (
     "fr",
     "es",
     "pt-BR",
+    # D-69: Klingon (tlhIngan Hol), Latin romanisation; fan translation.
+    "tlh",
 )
 
 DEFAULT_LOCALE = "en"

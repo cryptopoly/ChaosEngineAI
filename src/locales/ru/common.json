@@ -647,7 +647,8 @@
     "clock24h": "24 часа",
     "clockHint": "Системный использует значение по умолчанию для вашего языка (12 часов для US English, 24 часа в остальных случаях). Выберите вариант, если хотите переопределить.",
     "helpImprove": "Помочь с переводами",
-    "openOnGithub": "Открыть {locale} на GitHub →"
+    "openOnGithub": "Открыть {locale} на GitHub →",
+    "communityNote": null
   },
   "imageOutputCard": {
     "huggingFace": "Hugging Face",

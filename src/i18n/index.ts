@@ -98,9 +98,21 @@ export const SUPPORTED_LOCALES = [
   "fr",
   "es",
   "pt-BR",
+  // D-69: Klingon (tlhIngan Hol), Latin romanisation. A fan translation
+  // outside the 95 % coverage gate (see EXPERIMENTAL_LOCALES); missing
+  // keys fall back to en like every other locale.
+  "tlh",
 ] as const;
 
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
+
+/**
+ * Locales shipped as community / fan translations.  They load, fall
+ * back and validate like the others but are excluded from the strict
+ * coverage gate in ``scripts/i18n-validate.mjs`` and the Settings
+ * picker shows a short note under them.
+ */
+export const EXPERIMENTAL_LOCALES: ReadonlySet<SupportedLocale> = new Set<SupportedLocale>(["tlh"]);
 
 export const NAMESPACES = [
   "common",

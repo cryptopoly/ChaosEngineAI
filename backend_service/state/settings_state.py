@@ -109,6 +109,8 @@ def settings_payload(
         "musicEmbedTag": bool(state.settings.get("musicEmbedTag", True)),
         "termsAcceptedVersion": int(state.settings.get("termsAcceptedVersion") or 0),
         "termsAcceptedAt": str(state.settings.get("termsAcceptedAt") or ""),
+        "locale": str(state.settings.get("locale") or "system"),
+        "clockFormat": str(state.settings.get("clockFormat") or "system"),
     }
 
 
@@ -154,6 +156,14 @@ def update_settings(
         if request.termsAcceptedVersion is not None:
             next_settings["termsAcceptedVersion"] = request.termsAcceptedVersion
             next_settings["termsAcceptedAt"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        next_settings["locale"] = str(state.settings.get("locale") or "system")
+        next_settings["clockFormat"] = str(state.settings.get("clockFormat") or "system")
+        if request.locale is not None:
+            next_settings["locale"] = request.locale.strip() or "system"
+        if request.clockFormat is not None:
+            cleaned_clock = request.clockFormat.strip().lower()
+            if cleaned_clock in {"system", "12h", "24h"}:
+                next_settings["clockFormat"] = cleaned_clock
 
         if request.modelDirectories is not None:
             next_settings["modelDirectories"] = _normalize_model_directories(

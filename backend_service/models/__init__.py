@@ -265,6 +265,11 @@ class UpdateSettingsRequest(BaseModel):
     musicEmbedTag: bool | None = None
     # First-run terms of use: the version the user accepted. The server stamps the time itself.
     termsAcceptedVersion: int | None = Field(default=None, ge=1, le=10_000)
+    # FU-042 / D-69: UI locale ("system" or a BCP-47 tag) and clock format.
+    # Without these the Settings → Language pick was never written to
+    # settings.json, so it did not survive a restart.
+    locale: str | None = Field(default=None, max_length=32)
+    clockFormat: str | None = Field(default=None, max_length=8)
 
 
 class OpenAIMessage(BaseModel):

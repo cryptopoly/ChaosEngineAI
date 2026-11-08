@@ -19,6 +19,7 @@
     { "code": "ko",    "endonym": "한국어",              "rtl": false },
     { "code": "fr",    "endonym": "Français",           "rtl": false },
     { "code": "es",    "endonym": "Español",            "rtl": false },
-    { "code": "pt-BR", "endonym": "Português (Brasil)", "rtl": false }
+    { "code": "pt-BR", "endonym": "Português (Brasil)", "rtl": false },
+    { "code": "tlh",   "endonym": "tlhIngan Hol",       "rtl": false, "experimental": true }
   ]
 }

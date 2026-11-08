@@ -1,0 +1,62 @@
+# Klingon (tlhIngan Hol) translations for ChaosEngineAI backend messages.
+# D-69. Fan translation, machine-assisted; Latin romanisation.
+# The msgids are the 11 literal strings passed to localized_detail();
+# dynamic str(exc) messages are not translatable and stay English.
+msgid ""
+msgstr ""
+"Project-Id-Version: ChaosEngineAI\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-11-08 12:00+0000\n"
+"PO-Revision-Date: 2026-11-08 12:00+0000\n"
+"Last-Translator: \n"
+"Language: tlh\n"
+"Language-Team: tlh\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: hand\n"
+
+#: backend_service/routes/finetuning.py
+msgid "A training run is already in progress."
+msgstr "qeq may' QaptaH."
+
+#: backend_service/routes/setup.py
+msgid "Could not resolve the extras site-packages directory."
+msgstr "extras site-packages nav ghom SamlaHbe'lu'."
+
+#: backend_service/routes/auth.py
+msgid "Origin is not allowed to bootstrap an API session."
+msgstr "API ja'chuq taghmeH Halvam chaw'be'lu'."
+
+#: backend_service/routes/models.py
+msgid "Repo must be in `owner/name` format."
+msgstr "`owner/name` Hap ghajnIS Hal Daq."
+
+#: backend_service/routes/auth.py
+msgid "Session bootstrap is only available from localhost."
+msgstr "localhostvo' neH ja'chuq taghlaH."
+
+#: backend_service/routes/prompts.py
+msgid "Template not found"
+msgstr "velqa' tu'lu'be'"
+
+#: backend_service/routes/chat.py
+msgid "This job has no file to show."
+msgstr "nav Hutlh Qu'vam."
+
+#: backend_service/routes/chat.py
+msgid "Unknown chat job."
+msgstr "ja'chuq Qu' Sovbe'lu'."
+
+#: backend_service/routes/models.py
+msgid "Unknown import source."
+msgstr "qem Hal Sovbe'lu'."
+
+#: backend_service/routes/storage.py
+msgid "Workspace not found"
+msgstr "vumpa' tu'lu'be'"
+
+#: backend_service/routes/chat.py
+msgid "cancelled"
+msgstr "qIllu'ta'"

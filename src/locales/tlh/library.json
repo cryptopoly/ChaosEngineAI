@@ -1,0 +1,786 @@
+{
+  "title": "ghom",
+  "search": "yab yInej…",
+  "filter": {
+    "all": "Hoch",
+    "text": "ghItlh",
+    "image": "mIllogh",
+    "video": "mIllogh vIH",
+    "vision": "legh",
+    "audio": "wab",
+    "installed": "jomlu'ta'",
+    "uninstalled": "jomlu'be'",
+    "favourites": "parHa'"
+  },
+  "card": {
+    "size": "tInghach",
+    "quantization": "quant",
+    "context": "ghu'",
+    "capabilities": "laHmey",
+    "license": "chaw'",
+    "author": "chenmoHwI'",
+    "lastUpdated": "Qav chu'moH"
+  },
+  "download": {
+    "start": "yIlI'",
+    "inProgress": "lI'lI'…",
+    "paused": "yevlu'ta'",
+    "resumed": "taHlu'",
+    "cancelled": "qIllu'ta'",
+    "complete": "rIn",
+    "totalSize": "{size} naQ",
+    "downloaded": "{total}vo' {downloaded}",
+    "preparing": "lI'meH ghuHlI'...",
+    "pausedPercent": "yevlu'ta' {percent}%",
+    "downloadingPercent": "lI'lI' {percent}%",
+    "pausedAtSize": "{size} GBDaq yevlu'ta'",
+    "downloadingSize": "{size} GB lI'lI'",
+    "sizeTotalGb": "{size} GB naQ",
+    "sizeDownloadedGb": "{size} GB lI'lu'ta'"
+  },
+  "details": {
+    "loadModel": "yab yIchu'",
+    "unloadModel": "yab yIchu'Ha'",
+    "viewOnHF": "Hugging FaceDaq yIlegh",
+    "deleteFromDisk": "polmeH Daqvo' yIQaw'"
+  },
+  "myModels": {
+    "subtitle": "{count} yab / {size} pollu' / {dirs} nav ghom",
+    "searchPlaceholder": "pong, He, Hap, quant, qoD pat joq yIchev...",
+    "empty": "pagh yab tu'lu'. naDev yab Samlu'meH SeHlawDaq nav ghom tIchel.",
+    "filter": {
+      "all": "Hoch",
+      "allFormats": "Hoch Hap",
+      "allBackends": "Hoch qoD pat",
+      "allStrategies": "Hoch nab"
+    },
+    "capability": {
+      "title": {
+        "agents": "Duy Qu'mey",
+        "chat": "ja'chuq motlh",
+        "coding": "ngoq QaH",
+        "multilingual": "Hol law'",
+        "reasoning": "meq buS",
+        "thinking": "Qub / QIt meq",
+        "tool-use": "jan lo' / mIw rIt",
+        "video": "mIllogh vIH yaj",
+        "vision": "mIllogh yaj"
+      },
+      "short": {
+        "agents": "Duy",
+        "chat": "ja'chuq",
+        "coding": "ngoq",
+        "multilingual": "Hol",
+        "reasoning": "meq",
+        "thinking": "Qub",
+        "tool-use": "jan",
+        "video": "vIH",
+        "vision": "legh"
+      }
+    },
+    "strategy": {
+      "chip": "{label} ({count})",
+      "compatTooltip": "{label} lo'laHbogh yab tIcha' ({count})",
+      "dflashEmptyTooltip": "yab Hal le'vaD neH tu'lu' DFlash speculative-decode ghItlh nung: Qwen/Qwen3 (4B, 8B), Qwen/Qwen3-Coder (4B, 8B, 30B-A3B, Next), Qwen/Qwen3.5 (4B, 7B, 9B, 14B, 27B, 35B-A3B), Qwen/Qwen3.6-35B-A3B, meta-llama/Llama-3.1-8B-Instruct, gpt-oss (20B, 120B), moonshotai/Kimi-K2.5. motlh rurbe' yab qeqqa'lu'ta'bogh. DFlash Dachu'meH yab HaStavo' yab Hal yIlI'.",
+      "memorySaverLabel": "{label} · qawHaq pol",
+      "memorySaverTooltip": "{label} lo'laHbogh yab tIcha'. KV-cache qawHaq pol 'oH: RAM puSDaq yap ja'chuq nI', 'ach Native pIm, QIt chenmoH ({count})"
+    },
+    "column": {
+      "model": "yab",
+      "format": "Hap",
+      "quant": "quant",
+      "backend": "qoD pat",
+      "size": "tInghach",
+      "ram": "RAM",
+      "compressed": "machmoH",
+      "context": "ghu'",
+      "status": "Dotlh",
+      "released": "nargh"
+    },
+    "status": {
+      "downloading": "lI'lI'",
+      "paused": "yevlu'ta'",
+      "failed": "lujpu'",
+      "incomplete": "naQbe'",
+      "incompleteReason": "naQbe' pagh ghor",
+      "installed": "jomlu'ta'"
+    },
+    "badge": {
+      "activeDownload": "lI'taH",
+      "broken": "ghorqu'"
+    },
+    "tooltip": {
+      "ram": "8K ghu'Daq qawHaq lo' noHlu' (ngI' + KV + jonta')",
+      "compressed": "KV cache machmoHlu'DI' qawHaq lo' noHlu'"
+    },
+    "download": {
+      "failed": "lI' lujpu'.",
+      "failedShort": "lI' lujpu'",
+      "paused": "lI' yevlu'ta'.",
+      "inProgress": "lI'taH.",
+      "downloadedDetail": "{size} lI'lu'ta'."
+    },
+    "action": {
+      "pauseDownload": "lI' yIyev",
+      "retryDownload": "lI' yInIDqa'",
+      "resumeDownload": "lI' yItaH",
+      "cancelDownload": "lI' yIqIl",
+      "deleteDownload": "lI'lu'ta'bogh yIQaw'",
+      "chatWithModel": "yab yIja'chuq",
+      "loadForServer": "jabwI'vaD yIchu'",
+      "deleteModel": "yab yIQaw'",
+      "unstarModel": "parHa' yIteq",
+      "starModel": "yIparHa'"
+    }
+  },
+  "onlineModels": {
+    "subtitle": "{count} yab qorDu' / {downloaded} naDev lI'lu'ta'",
+    "searchPlaceholder": "pong, nobwI', laH joq yInej...",
+    "variantCount": "{count, plural, other {# Seg}}",
+    "filter": {
+      "all": "Hoch",
+      "allFormats": "Hoch Hap",
+      "allAccel": "Hoch nommoHwI'"
+    },
+    "capability": {
+      "title": {
+        "agents": "Duy Qu'mey",
+        "chat": "ja'chuq motlh",
+        "coding": "ngoq QaH",
+        "multilingual": "Hol law'",
+        "reasoning": "meq buS",
+        "thinking": "Qub / QIt meq",
+        "tool-use": "jan lo' / mIw rIt",
+        "video": "mIllogh vIH yaj",
+        "vision": "mIllogh yaj"
+      },
+      "short": {
+        "agents": "Duy",
+        "chat": "ja'chuq",
+        "coding": "ngoq",
+        "multilingual": "Hol",
+        "reasoning": "meq",
+        "thinking": "Qub",
+        "tool-use": "jan",
+        "video": "vIH",
+        "vision": "legh"
+      }
+    },
+    "section": {
+      "curatedAria": "yab qorDu' wIvlu'ta'"
+    },
+    "status": {
+      "countInstalled": "{count} jomlu'ta'",
+      "downloading": "lI'lI'",
+      "paused": "yevlu'ta'",
+      "downloadFailed": "lI' lujpu'",
+      "installed": "jomlu'ta'",
+      "downloadComplete": "lI' rIn",
+      "failed": "lujpu'",
+      "notInstalled": "jomlu'be'"
+    },
+    "column": {
+      "variant": "Seg",
+      "format": "Hap",
+      "backend": "qoD pat",
+      "params": "params",
+      "size": "tInghach",
+      "ram": "RAM",
+      "compressed": "machmoH",
+      "context": "ghu'",
+      "status": "Dotlh"
+    },
+    "memory": {
+      "comfortable": "{available} GB tu'lu'; yapbej",
+      "tight": "{available} GB tu'lu'; tlhoS yapbe', yab Dachu'pa' latlh De'wI' Qu'mey tImev",
+      "over": "{estimated} GB noHlu', 'ach {available} GB neH tu'lu'; quant mach yIwIv",
+      "comfortableLabel": "yap",
+      "tightLabel": "tlhoS",
+      "overLabel": "tInqu'"
+    },
+    "action": {
+      "details": "Del",
+      "detailsTooltip": "Hoch Del yIcha'",
+      "convertModel": "yab yIchoHmoH",
+      "chatWithModel": "yab yIja'chuq",
+      "loadForServer": "jabwI'vaD yIchu'",
+      "pauseDownload": "lI' yIyev",
+      "cancelDownload": "lI' yIqIl",
+      "resumeDownload": "lI' yItaH",
+      "deleteDownload": "lI'lu'ta'bogh yIQaw'",
+      "retryDownload": "lI' yInIDqa'",
+      "downloadModel": "yab yIlI'",
+      "openModelCardHF": "Hugging FaceDaq yab nav yIpoSmoH",
+      "openOnHF": "Hugging FaceDaq yIpoSmoH"
+    },
+    "hub": {
+      "sectionAria": "Hugging Face Hub nej ngoDmey",
+      "header": "HuggingFace Hub",
+      "liveResults": "huggingface.covo' {count, plural, other {# ngoD}} DaH, qen chu'moHlu'pu'bogh wa'DIch",
+      "loading": "Hugging Facevo' nav tetlh qemlI'...",
+      "previewUnavailable": "nung leghlaHbe'lu'",
+      "licenseLabel": "chaw': {license}",
+      "totalGb": "{size} GB naQ",
+      "updatedDate": "{date} chu'moHlu'pu'",
+      "moreTags": "+{count} latlh",
+      "filePreviewUnavailable": "DaH repovamvaD nav leghlaHbe'lu'.",
+      "weightsHeader": "ngI' ({count})",
+      "largestShard": "'ay' tInqu' {size}",
+      "showFiles": "nav tIcha'",
+      "visionTag": "legh",
+      "configAndTokenizer": "config & tokenizer",
+      "otherFiles": "+{count, plural, other {# latlh nav}}"
+    },
+    "searchError": {
+      "fallback": "Qav nej Qapta'bogh ngoD cha'lu'."
+    },
+    "empty": {
+      "capFilter": "\"{cap}\" chevwI' rurbogh yab tu'lu'be'.",
+      "search": "\"{query}\" rurbogh yab tu'lu'be'. latlh mu' yInej.",
+      "prompt": "yab DanejmeH yIghItlh."
+    },
+    "accelFilter": {
+      "memorySaverLabel": "{label} · qawHaq pol",
+      "memorySaverTooltip": "{label} lo'laHbogh yab tIcha'. KV-cache qawHaq pol 'oH: RAM puSDaq yap ja'chuq nI', 'ach Native pIm, QIt chenmoH ({count})",
+      "tooltip": "{label} lo'laHbogh yab tIcha' ({count})"
+    }
+  },
+  "imageModels": {
+    "subtitle": {
+      "withLocal": "{total, plural, other {# yab}}vo' {rows}, naDev De' ghaj",
+      "none": "wej naDev mIllogh yab tu'lu'"
+    },
+    "empty": {
+      "noModels": "mIllogh nejvo' mIllogh yab yIlI', vaj yItagh.",
+      "noMatches": "chevwI' rurbogh mIllogh yab jomlu'ta' tu'lu'be'."
+    },
+    "action": {
+      "browseCatalog": "tetlh yIlegh",
+      "clearFilters": "chevwI' tIchImmoH",
+      "generate": "yIchenmoH",
+      "pauseDownload": "lI' yIyev",
+      "retryDownload": "lI' yInIDqa'",
+      "resumeDownload": "lI' yItaH",
+      "downloadModel": "yab yIlI'",
+      "cancelDownload": "lI' yIqIl",
+      "deleteModel": "yab yIQaw'",
+      "openModelCard": "yab nav yIpoSmoH"
+    },
+    "filter": {
+      "searchLabel": "nej",
+      "searchPlaceholder": "yab, nobwI', repo, Qu', tag joq yIchev...",
+      "taskLabel": "Qu'",
+      "statusLabel": "Dotlh",
+      "sortByLabel": "mIr",
+      "task": {
+        "all": "Hoch Qu'",
+        "txt2img": "ghItlhvo' mIllogh",
+        "img2img": "mIlloghvo' mIllogh",
+        "inpaint": "'ay' choH"
+      },
+      "status": {
+        "all": "Hoch Dotlh",
+        "installed": "jomlu'ta'",
+        "incomplete": "naQbe'",
+        "downloading": "lI'lI'",
+        "paused": "yevlu'ta'",
+        "failed": "lujpu'"
+      }
+    },
+    "sort": {
+      "name": "pong",
+      "provider": "nobwI'",
+      "tasks": "Qu'mey",
+      "newestReleased": "qen narghpu'",
+      "largestSize": "tInghach tInqu'",
+      "highestRamVram": "RAM/VRAM law'qu'",
+      "status": "Dotlh",
+      "direction": {
+        "ascending": "Dung",
+        "descending": "bIng"
+      },
+      "providerDir": "nobwI' {direction}",
+      "tasksDir": "Qu' {direction}",
+      "statusDir": "Dotlh {direction}",
+      "largestFirst": "tInqu' wa'DIch",
+      "smallestFirst": "machqu' wa'DIch",
+      "highestRam": "RAM/VRAM law'qu' wa'DIch",
+      "lowestRam": "RAM/VRAM puSqu' wa'DIch",
+      "nameAsc": "pong A-Z",
+      "nameDesc": "pong Z-A",
+      "newestFirst": "chu'qu' wa'DIch",
+      "oldestFirst": "ngo'qu' wa'DIch"
+    },
+    "summary": {
+      "results": "{count, plural, other {# yab}} · {sortLabel}",
+      "searchChip": "nej: {query}",
+      "taskChip": "Qu': {value}",
+      "statusChip": "Dotlh: {value}"
+    },
+    "column": {
+      "model": "yab",
+      "provider": "nobwI'",
+      "tasks": "Qu'",
+      "size": "tInghach",
+      "ramVram": "RAM/VRAM",
+      "released": "nargh",
+      "status": "Dotlh"
+    },
+    "status": {
+      "installed": "jomlu'ta'",
+      "downloading": "lI'lI'",
+      "paused": "yevlu'ta'",
+      "failed": "lujpu'",
+      "downloadFailed": "lI' lujpu'",
+      "incomplete": "naQbe'"
+    },
+    "memory": {
+      "pending": "loStaH",
+      "pendingTitle": "yab ngI' tInghach Sovlu'pa' RAM/VRAM noHlaHbe'lu'."
+    },
+    "releaseUnknown": "Sovbe'lu'",
+    "sharedRepoTitle": "lI'lu'ta'bogh rap lo' {repo} latlh Seg {count}. tlheghvam DaQaw'chugh navvetlh je Qaw'lu'.",
+    "sharedRepo": "polmeH Daq rap · +{count}"
+  },
+  "videoModels": {
+    "subtitle": {
+      "withLocal": "{total, plural, other {# yab}}vo' {rows}, naDev De' ghaj",
+      "none": "wej naDev mIllogh vIH yab tu'lu'"
+    },
+    "empty": {
+      "noModels": "mIllogh vIH nejvo' mIllogh vIH yab yIlI', vaj yItagh.",
+      "noMatches": "chevwI' rurbogh mIllogh vIH yab jomlu'ta' tu'lu'be'."
+    },
+    "action": {
+      "browseCatalog": "tetlh yIlegh",
+      "clearFilters": "chevwI' tIchImmoH",
+      "generate": "yIchenmoH",
+      "pauseDownload": "lI' yIyev",
+      "retryDownload": "lI' yInIDqa'",
+      "resumeDownload": "lI' yItaH",
+      "downloadModel": "yab yIlI'",
+      "cancelDownload": "lI' yIqIl",
+      "deleteModel": "yab yIQaw'",
+      "openModelCard": "yab nav yIpoSmoH",
+      "deleteSharedGguf": "GGUF rap lI'lu'ta'bogh yIQaw'",
+      "deleteSharedTextEncoder": "text encoder rap lI'lu'ta'bogh yIQaw'",
+      "deleteSharedComponent": "'ay' rap lI'lu'ta'bogh yIQaw'"
+    },
+    "filter": {
+      "searchLabel": "nej",
+      "searchPlaceholder": "yab, nobwI', repo, Qu', tag joq yIchev...",
+      "taskLabel": "Qu'",
+      "statusLabel": "Dotlh",
+      "sortByLabel": "mIr",
+      "task": {
+        "all": "Hoch Qu'",
+        "txt2video": "ghItlhvo' mIllogh vIH",
+        "img2video": "mIlloghvo' mIllogh vIH",
+        "video2video": "mIllogh vIHvo' mIllogh vIH"
+      },
+      "status": {
+        "all": "Hoch Dotlh",
+        "loaded": "qawHaqDaq",
+        "installed": "jomlu'ta'",
+        "incomplete": "naQbe'",
+        "downloading": "lI'lI'",
+        "paused": "yevlu'ta'",
+        "failed": "lujpu'"
+      }
+    },
+    "sort": {
+      "name": "pong",
+      "provider": "nobwI'",
+      "tasks": "Qu'mey",
+      "newestReleased": "qen narghpu'",
+      "largestSize": "tInghach tInqu'",
+      "highestRamVram": "RAM/VRAM law'qu'",
+      "status": "Dotlh",
+      "direction": {
+        "ascending": "Dung",
+        "descending": "bIng"
+      },
+      "providerDir": "nobwI' {direction}",
+      "tasksDir": "Qu' {direction}",
+      "statusDir": "Dotlh {direction}",
+      "largestFirst": "tInqu' wa'DIch",
+      "smallestFirst": "machqu' wa'DIch",
+      "highestRam": "RAM/VRAM law'qu' wa'DIch",
+      "lowestRam": "RAM/VRAM puSqu' wa'DIch",
+      "nameAsc": "pong A-Z",
+      "nameDesc": "pong Z-A",
+      "newestFirst": "chu'qu' wa'DIch",
+      "oldestFirst": "ngo'qu' wa'DIch"
+    },
+    "summary": {
+      "results": "{count, plural, other {# yab}} · {sortLabel}",
+      "searchChip": "nej: {query}",
+      "taskChip": "Qu': {value}",
+      "statusChip": "Dotlh: {value}"
+    },
+    "column": {
+      "model": "yab",
+      "provider": "nobwI'",
+      "tasks": "Qu'",
+      "size": "tInghach",
+      "ramVram": "RAM/VRAM",
+      "released": "nargh",
+      "status": "Dotlh"
+    },
+    "status": {
+      "loaded": "qawHaqDaq chu'lu'ta'",
+      "installed": "jomlu'ta'",
+      "downloading": "lI'lI'",
+      "paused": "yevlu'ta'",
+      "failed": "lujpu'",
+      "downloadFailed": "lI' lujpu'",
+      "incomplete": "naQbe'"
+    },
+    "memory": {
+      "pending": "loStaH",
+      "pendingTitle": "yab ngI' tInghach Sovlu'pa' RAM/VRAM noHlaHbe'lu'."
+    },
+    "releaseUnknown": "Sovbe'lu'",
+    "sharedRepo": "polmeH Daq rap · +{count}",
+    "sharedRepoTitle": "lI'lu'ta'bogh rap lo' {repo} latlh Seg {count}. tlheghvam DaQaw'chugh navvetlh je Qaw'lu'."
+  },
+  "imageDiscover": {
+    "access": {
+      "openOnly": "poS neH",
+      "gatedOnly": "ngaQ neH",
+      "all": "poS + ngaQ",
+      "gated": "ngaQ",
+      "open": "poS"
+    },
+    "memory": {
+      "pending": "loStaH",
+      "pendingTitle": "yab ngI' tInghach Sovlu'pa' RAM/VRAM noHlaHbe'lu'."
+    },
+    "subtitle": "{total} yabvo' {filtered} / Hugging Face De' DaH",
+    "hero": {
+      "heading": "naDev chenmoHmeH mIllogh yab yIlegh 'ej yIlI'.",
+      "body": "mIllogh vumpa'Daq Dalo'meH yab yIlI'. vumpa' 'echletDaq jonta' Dotlh tu'lu'.",
+      "installedModels": "yab jomlu'ta'",
+      "openStudio": "vumpa' yIpoSmoH"
+    },
+    "filter": {
+      "search": "nej",
+      "searchPlaceholder": "FLUX, SDXL, nobwI', Qu', tag, chaw' joq yInej...",
+      "task": "Qu'",
+      "access": "'el",
+      "status": "Dotlh",
+      "sortBy": "mIr",
+      "clear": "chevwI' tIchImmoH"
+    },
+    "task": {
+      "all": "Hoch Qu'",
+      "txt2img": "ghItlhvo' mIllogh",
+      "img2img": "mIlloghvo' mIllogh",
+      "inpaint": "'ay' choH"
+    },
+    "status": {
+      "any": "Hoch Dotlh",
+      "installed": "jomlu'ta'",
+      "notInstalled": "jomlu'be'",
+      "downloading": "lI'lI'",
+      "paused": "yevlu'ta'",
+      "failed": "lujpu'",
+      "incomplete": "naQbe'"
+    },
+    "sort": {
+      "name": "pong",
+      "provider": "nobwI'",
+      "tasks": "Qu'mey",
+      "release": "qen narghpu'",
+      "size": "tInghach tInqu'",
+      "ram": "RAM/VRAM law'qu'",
+      "likes": "parHa' law'qu'",
+      "downloads": "lI' law'qu'",
+      "status": "Dotlh"
+    },
+    "summary": {
+      "count": "{count, plural, other {# yab}} · {sortLabel}",
+      "searchBadge": "nej: {query}",
+      "taskBadge": "Qu': {task}",
+      "accessBadge": "'el: {access}",
+      "statusBadge": "Dotlh: {status}"
+    },
+    "empty": {
+      "body": "chevwI' nej mu' joq tItInmoH."
+    },
+    "column": {
+      "model": "yab",
+      "provider": "nobwI'",
+      "tasks": "Qu'",
+      "size": "tInghach",
+      "ramVram": "RAM/VRAM",
+      "released": "nargh",
+      "status": "Dotlh"
+    },
+    "unknown": "Sovbe'lu'",
+    "action": {
+      "generate": "yIchenmoH",
+      "pauseDownload": "lI' yIyev",
+      "cancelDownload": "lI' yIqIl",
+      "resumeDownload": "lI' yItaH",
+      "deleteDownload": "lI'lu'ta'bogh yIQaw'",
+      "retryDownload": "lI' yInIDqa'",
+      "downloadModel": "yab yIlI'",
+      "deleteModel": "yab yIQaw'",
+      "openHuggingFace": "Hugging FaceDaq yIpoSmoH",
+      "huggingFace": "Hugging Face",
+      "settings": "SeHlaw",
+      "trackedOnly": "bejlu' neH, wej chu'laH"
+    },
+    "trackedOnly": {
+      "tooltip": "Hal bejlu'taH. qorDu'vamvaD wej vumpa' rarlu'. Sovlu'meH neH tetlhDaq 'oH; DalI'chugh vumpa' poSmoHbe'.",
+      "badge": "Hal bejlu'taH"
+    },
+    "sortLabel": {
+      "likes": "parHa' law'qu' wa'DIch",
+      "downloads": "lI' law'qu' wa'DIch"
+    }
+  },
+  "videoDiscover": {
+    "memory": {
+      "pending": "loStaH",
+      "pendingTitle": "yab ngI' tInghach Sovlu'pa' RAM/VRAM noHlaHbe'lu'."
+    },
+    "action": {
+      "cancelDownload": "lI' yIqIl",
+      "deleteModel": "yab yIQaw'",
+      "deleteDownload": "lI'lu'ta'bogh yIQaw'",
+      "generate": "yIchenmoH",
+      "installing": "jomlI'",
+      "install": "yIjom",
+      "pauseDownload": "lI' yIyev",
+      "resumeDownload": "lI' yItaH",
+      "retryDownload": "lI' yInIDqa'",
+      "downloadModel": "yab yIlI'",
+      "openModelCard": "yab nav yIpoSmoH"
+    },
+    "subtitle": "{total} mIllogh vIH yabvo' {filtered} / Hugging Face De' DaH",
+    "hero": {
+      "heading": "naDev chenmoHmeH mIllogh vIH yab yIlegh 'ej yIlI'.",
+      "body": "mIllogh vIH vumpa'Daq Dalo'meH yab yIlI'. vumpa' 'echletDaq jonta' Dotlh tu'lu'.",
+      "installedModels": "yab jomlu'ta'",
+      "openStudio": "vumpa' yIpoSmoH"
+    },
+    "filter": {
+      "search": "nej",
+      "searchPlaceholder": "LTX, Wan, Mochi, nobwI', tag joq yInej...",
+      "task": "Qu'",
+      "status": "Dotlh",
+      "sortBy": "mIr",
+      "clear": "chevwI' tIchImmoH"
+    },
+    "task": {
+      "all": "Hoch Qu'",
+      "txt2video": "ghItlhvo' mIllogh vIH",
+      "img2video": "mIlloghvo' mIllogh vIH",
+      "video2video": "mIllogh vIHvo' mIllogh vIH"
+    },
+    "status": {
+      "any": "Hoch Dotlh",
+      "installed": "jomlu'ta'",
+      "notInstalled": "jomlu'be'",
+      "downloading": "lI'lI'",
+      "paused": "yevlu'ta'",
+      "failed": "lujpu'",
+      "incomplete": "naQbe'",
+      "installing": "jomlI'"
+    },
+    "sort": {
+      "name": "pong",
+      "provider": "nobwI'",
+      "tasks": "Qu'mey",
+      "release": "qen narghpu'",
+      "size": "tInghach tInqu'",
+      "ram": "RAM/VRAM law'qu'",
+      "likes": "parHa' law'qu'",
+      "downloads": "lI' law'qu'",
+      "status": "Dotlh"
+    },
+    "summary": {
+      "count": "{count, plural, other {# yab}} · {sortLabel}",
+      "searchBadge": "nej: {query}",
+      "taskBadge": "Qu': {task}",
+      "statusBadge": "Dotlh: {status}"
+    },
+    "empty": {
+      "body": "chevwI' nej mu' joq tItInmoH."
+    },
+    "column": {
+      "model": "yab",
+      "provider": "nobwI'",
+      "tasks": "Qu'",
+      "size": "tInghach",
+      "ramVram": "RAM/VRAM",
+      "released": "nargh",
+      "status": "Dotlh"
+    },
+    "unknown": "Sovbe'lu'",
+    "longLive": {
+      "installNote": "~/.chaosengine/longliveDaq venv nItebDaq jomlu' LongLive. CUDA neH; 5-15 tup, De' pat Do."
+    },
+    "sortLabel": {
+      "likes": "parHa' law'qu' wa'DIch",
+      "downloads": "lI' law'qu' wa'DIch"
+    }
+  },
+  "models": {
+    "action": {
+      "cancel": "lI' yIqIl",
+      "deleteDownload": "lI'lu'ta'bogh yIQaw'",
+      "deleteModel": "yab yIQaw'",
+      "download": "yab yIlI'",
+      "more": "latlh",
+      "pause": "lI' yIyev",
+      "resume": "lI' yItaH",
+      "retry": "lI' yInIDqa'",
+      "trackedOnly": "bejlu' neH, wej chu'laH"
+    },
+    "availability": {
+      "all": "Hoch",
+      "attention": "buS nIS",
+      "available": "tu'lu'",
+      "downloading": "lI'lI'",
+      "installed": "jomlu'ta'",
+      "label": "yIcha'"
+    },
+    "card": {
+      "collapse": "Del yISo'",
+      "expand": "Del yIcha'",
+      "incompatible": "De'wI'vamDaq QaplaHbe'",
+      "incompatibleTitle": "De'wI'vamDaq Qapbe' jonta'Daj. navmeyDaj DaQaw'laHtaH."
+    },
+    "delete": {
+      "confirmShared": "{count, plural, other {lI'lu'ta'bogh rap lo' # latlh yab}}, 'ej Qaw'lu' je:",
+      "confirmSharedMore": "'ej {count} latlh",
+      "confirmTarget": "polmeH Daqvo' {target} teqlu'. choHHa'laHbe'lu'.",
+      "confirmTitle": "\"{name}\" nav DaQaw''a'?"
+    },
+    "detail": {
+      "engine": "jonta'",
+      "fit": "De'wI'vam yap",
+      "license": "chaw'",
+      "localPath": "pollu'",
+      "openModelCard": "yab nav yIpoSmoH",
+      "repo": "repo",
+      "resolution": "tInghach chuplu'",
+      "sharedWith": "lI'lu'ta'bogh rap lo'",
+      "warning": "qeS",
+      "ggufFile": "GGUF nav",
+      "textEncoder": "text encoder",
+      "catalogSize": "tetlh tInghach"
+    },
+    "empty": {
+      "availability": "chevwI'vam rurbogh yab {bucket} tu'lu'be'.",
+      "catalog": "wej tetlhDaq yab tu'lu'.",
+      "filters": "chevwI' rurbogh yab tu'lu'be'. chevwI' nej mu' joq tItInmoH.",
+      "showAvailable": "yab tu'lu'bogh tIcha'"
+    },
+    "filter": {
+      "clear": "chevwI' tIchImmoH",
+      "search": "nej",
+      "sortBy": "mIr"
+    },
+    "fit": {
+      "bestFit": "wIv QaQqu'",
+      "bestFitTitle": "De'wI'vamvaD qorDu'vam wIv: yapbejbogh yab chu'qu'.",
+      "estimated": "noHlu'",
+      "estimatedNote": "yab tInghachvo' noHlu'; De'wI'vamDaq juvbe'lu'.",
+      "estimatedShort": "noH",
+      "fits": "yap",
+      "measured": "juvlu'",
+      "measuredNote": "De'wI'vamDaq juvlu'.",
+      "numbers": "De'wI'vamDaq {usable} GB lo'laH; {need} GB nIS.",
+      "tight": "tlhoS",
+      "unknown": "De'wI'vamvaD Qapbe'",
+      "wontFit": "yapbe'"
+    },
+    "image": {
+      "emptyAttention": "buS nISbogh mIllogh yab tu'lu'be'.",
+      "emptyCatalog": "wej tetlhDaq mIllogh yab tu'lu'. QaptaH'a' qoD pat? yI'ol.",
+      "emptyDownloading": "lI'lI'bogh mIllogh yab tu'lu'be'.",
+      "emptyInstalled": "wej mIllogh yab jomlu'. yab tu'lu'bogh yIwIv 'ej yIlI'.",
+      "intro": "wa' tetlhDaq Hoch mIllogh yab. mIllogh vumpa'Daq Dalo'meH wa' yIlI'; jomlu'ta'bogh, tu'lu'bogh, lI'lI'bogh joq tIchev."
+    },
+    "sort": {
+      "fewestDownloads": "lI' puSqu' wa'DIch",
+      "leastLiked": "parHa' puSqu' wa'DIch"
+    },
+    "status": {
+      "available": "jomlu'be'",
+      "broken": "ghor",
+      "downloading": "lI'lI'",
+      "failed": "lujpu'",
+      "failedDetail": "lI' lujpu'",
+      "installed": "jomlu'ta'",
+      "loaded": "qawHaqDaq chu'lu'ta'",
+      "partial": "naQbe'",
+      "paused": "yevlu'ta'"
+    },
+    "subtitle": "{total, plural, other {# yab}}vo' {shown} · {installed} jomlu'ta'",
+    "summary": {
+      "availability": "cha'lu': {bucket}",
+      "count": "{count, plural, other {# yab}} · {sortLabel}",
+      "search": "nej: {query}"
+    },
+    "video": {
+      "intro": "wa' tetlhDaq Hoch mIllogh vIH yab. mIllogh vIH vumpa'Daq Dalo'meH wa' yIlI'; jomlu'ta'bogh, tu'lu'bogh, lI'lI'bogh joq tIchev.",
+      "emptyCatalog": "wej tetlhDaq mIllogh vIH yab tu'lu'. QaptaH'a' qoD pat? yI'ol.",
+      "emptyInstalled": "wej mIllogh vIH yab jomlu'. yab tu'lu'bogh yIwIv 'ej yIlI'.",
+      "emptyDownloading": "lI'lI'bogh mIllogh vIH yab tu'lu'be'.",
+      "emptyAttention": "buS nISbogh mIllogh vIH yab tu'lu'be'."
+    },
+    "chat": {
+      "intro": "wa' tetlhDaq Hoch ja'chuq yab: pollu'bogh, tetlh, Hugging Face nej ngoD je. jomlu'ta'bogh, tu'lu'bogh, lI'lI'bogh joq tIchev.",
+      "subtitle": "{total, plural, other {# yab}}vo' {shown} · {installed} jomlu'ta' · {size} pollu' · {dirs, plural, other {# nav ghom}}",
+      "searchPlaceholder": "pong, nobwI', laH, He, Hap joq yInej (Hugging Face je nejlu')...",
+      "newThread": "ja'chuq chu'Daq yIja'chuq",
+      "useInThisChat": "ja'chuqvamDaq yIlo'",
+      "bestFitTitle": "De'wI'vamvaD qorDu'vam wIv: yapbejbogh yab chu'qu'; rap poHDaq narghbogh tInghachmeyvo', yapbogh tInqu'.",
+      "closestMatch": "tetlh mu'tlhegh rurqu': {name}",
+      "sourceDownload": "lI'",
+      "sizeTitle": "{onDisk} pollu'; {catalog} ja' tetlh",
+      "detail": {
+        "released": "nargh",
+        "directory": "nav ghom",
+        "modified": "choHlu'pu'"
+      },
+      "filter": {
+        "capability": "laH",
+        "format": "Hap",
+        "backend": "qoD pat",
+        "acceleration": "nommoHwI'"
+      },
+      "emptyCatalog": "wej tetlhDaq pollu'bogh joq ja'chuq yab tu'lu'. QaptaH'a' qoD pat? yI'ol, pagh SeHlawDaq yab nav ghom tIchel.",
+      "emptyDownloading": "lI'lI'bogh ja'chuq yab tu'lu'be'.",
+      "emptyAttention": "buS nISbogh ja'chuq yab tu'lu'be'.",
+      "emptySearchHub": "\"{query}\" rurbogh yab pollu'bogh tetlhDaq joq tu'lu'be'. bIngDaq Hugging Face ngoDmey.",
+      "sort": {
+        "release": "qen narghpu'",
+        "name": "pong",
+        "format": "Hap",
+        "formatDir": "Hap {direction}",
+        "backend": "qoD pat",
+        "backendDir": "qoD pat {direction}",
+        "size": "tInghach tInqu'",
+        "ram": "RAM law'qu'",
+        "ramDesc": "RAM law'qu' wa'DIch",
+        "ramAsc": "RAM puSqu' wa'DIch",
+        "compressed": "RAM machmoHlu' law'qu'",
+        "compressedDesc": "RAM machmoHlu' law'qu' wa'DIch",
+        "compressedAsc": "RAM machmoHlu' puSqu' wa'DIch",
+        "context": "ghu' nI'qu'",
+        "contextDesc": "ghu' nI'qu' wa'DIch",
+        "contextAsc": "ghu' runqu' wa'DIch",
+        "modified": "qen choHlu'pu'",
+        "modifiedDesc": "qen choHlu'pu' wa'DIch",
+        "modifiedAsc": "ngo'qu' choHlu'pu' wa'DIch",
+        "status": "Dotlh"
+      }
+    }
+  }
+}

@@ -647,7 +647,8 @@
     "clock24h": "24시간",
     "clockHint": "시스템은 언어 기본값(미국 영어는 12시간, 그 외는 24시간)을 따릅니다. 이를 재정의하려면 한쪽을 선택하세요.",
     "helpImprove": "번역 개선에 도움 주기",
-    "openOnGithub": "GitHub에서 {locale} 열기 →"
+    "openOnGithub": "GitHub에서 {locale} 열기 →",
+    "communityNote": null
   },
   "imageOutputCard": {
     "huggingFace": "Hugging Face",

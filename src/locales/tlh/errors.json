@@ -1,0 +1,33 @@
+{
+  "generic": "Qagh tu'lu'.",
+  "network": "De' pat Qagh. De' pat rar yI'ol.",
+  "timeout": "jangpa' poH rIn.",
+  "notFound": "tu'lu'be'.",
+  "permissionDenied": "chaw'be'lu'.",
+  "diskFull": "polmeH Daq yapbe'.",
+  "outOfMemory": "qawHaq yapbe'.",
+  "modelLoadFailed": "yab chu'laHbe'lu': {reason}",
+  "modelNotFound": "yab tu'lu'be': {repo}",
+  "engineNotInstalled": "jonta' jomlu'be': {engine}. jom 'echletDaq yIjom.",
+  "binaryMissing": "binary poQlu'bogh Hutlh: {binary}",
+  "downloadFailed": "lI' luj: {reason}",
+  "downloadCancelled": "lI' qIllu'ta'.",
+  "huggingFaceGated": "ngaQ yabvam. Hugging FaceDaq chaw'Daj yIlaj 'ej yInIDqa'.",
+  "huggingFaceAuthRequired": "ngu'meH De' poQlu'. SeHlawDaq Hugging Face token yIlan.",
+  "incompatibleHardware": "yabvamvaD yapbe' mIqta'lIj.",
+  "platformOnly": "{platform} poQ Dochvam.",
+  "unsupportedFormat": "nav Hap Qapbe': {format}",
+  "validationFailed": "'ol luj: {reason}",
+  "sessionCorrupt": "ja'chuq De' QIHlu'pu'; chu'laHbe'lu'.",
+  "boundaryFallback": "'echletvamDaq Qagh tu'lu'.",
+  "boundaryHint": "yInIDqa', latlh 'echlet yIwIv, pagh nuDmeH Qagh De' yIqon.",
+  "boundary": {
+    "scopeCrashed": "Dej {scope}",
+    "tryAgain": "yInIDqa'",
+    "copyDetails": "De' yIqon",
+    "stackTrace": "Stack trace",
+    "noJsStack": "(JS stack tu'lu'be')",
+    "componentStack": "Component stack",
+    "hint": "webview consoleDaq je nargh HaSta Qagh (release buildDaq nIH yI'uy → Inspect Element, pagh npm run dev yIlo'). nuD 'echletDaq qoD pat QonoS DaleghlaH."
+  }
+}

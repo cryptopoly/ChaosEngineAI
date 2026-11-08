@@ -9876,6 +9876,14 @@ tr.accelerator-card-row.accelerator-card-incompatible {
  * shipped builds stay binary-clean.
  * -------------------------------------------------------------------- */
 
+/* D-69 — Klingon romanisation is case-sensitive (q and Q are different
+ * consonants; I, D, H, S are always capital), so the eyebrow / badge /
+ * section-label uppercase transforms would turn words into other words
+ * (yIchenmoH → YICHENMOH). Letter-spacing stays; only the case does not. */
+html[lang="tlh"] * {
+  text-transform: none !important;
+}
+
 html[lang="zh-CN"] body,
 html[lang="zh-CN"] input,
 html[lang="zh-CN"] textarea,

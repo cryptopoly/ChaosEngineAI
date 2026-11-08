@@ -1,0 +1,247 @@
+{
+  "engines": {
+    "mlx": {
+      "name": "MLX",
+      "description": "Apple Silicon jonta' Hal"
+    },
+    "llamaCpp": {
+      "name": "llama.cpp",
+      "description": "llama-server lo'taHvIS GGUF jonta'"
+    },
+    "vllm": {
+      "name": "vLLM",
+      "description": "CUDA jonta'"
+    }
+  },
+  "cacheStrategies": {
+    "native": {
+      "name": "Native",
+      "description": "cache Seg qoD (f16, q8_0, q4_0, latlh je). Hoch jonta'Daq Qap."
+    },
+    "turboquant": {
+      "name": "TurboQuant",
+      "description": "qawHaq polwI': Hadamard rotation KV quant. cha'logh, loSlogh je mach cache, vaj RAM puSDaq yap ja'chuq nI'; Native chenmoH law', chenmoH puS."
+    },
+    "triattention": {
+      "name": "TriAttention",
+      "description": "ghu' nI'vaD attention machmoHwI'. Apple Silicon + CUDA."
+    },
+    "fbcache": {
+      "name": "First Block Cache",
+      "description": "diffusion cache neH. DiT pipelineDaq tlhoS wa' vI' chorgh logh nom."
+    },
+    "taylorseer": {
+      "name": "TaylorSeer",
+      "description": "diffusion Taylor cache neH. nomqu'; FLUX/SD3."
+    },
+    "magcache": {
+      "name": "MagCache",
+      "description": "diffusion magnitude cache neH. calibration Hutlhchugh FLUX neH."
+    },
+    "pab": {
+      "name": "Pyramid Attention Broadcast",
+      "description": "diffusion neH; timestep law'Daq attention lo'qa'."
+    },
+    "fastercache": {
+      "name": "FasterCache",
+      "description": "diffusion neH; conditional/unconditional lo'qa' cache."
+    }
+  },
+  "controls": {
+    "engine": "jonta'",
+    "cacheStrategy": "cache mIw",
+    "cacheStrategyLockedNote": "(jang pIH mIw QaptaHvIS Native ngaQ)",
+    "cacheType": "cache Seg",
+    "speculativeDecoding": "jang pIH mIw",
+    "draftModel": "yab nung",
+    "contextSize": "ghu' tInghach",
+    "gpuLayers": "GPU layer",
+    "threads": "thread",
+    "fitInMemory": "qawHaqDaq yap",
+    "cacheStrategyTensorfoldNote": "(KV cacheDaj SeH TensorFold)",
+    "moreInfo": "De' law'",
+    "requiresLabel": "poQ:",
+    "installLabel": "jom:"
+  },
+  "notes": {
+    "binaryRequired": "{binary} poQ.",
+    "platformRequired": "{platform} poQ.",
+    "engineIncompatible": "{engine} QapchuqlaHbe'.",
+    "unknownEngine": "jonta' Sovbe'lu'."
+  },
+  "metrics": {
+    "tokensPerSec": "{value} tok/s",
+    "promptTokensPerSec": "{value} QIn tok/s",
+    "firstTokenLatency": "token wa'DIch: {ms} ms",
+    "vramUsed": "VRAM: {used} / {total}"
+  },
+  "fusedAttention": {
+    "label": "attention tay'",
+    "aboutTitle": "attention tay' Del",
+    "body": "jonta' wIvlu'ta'bogh Qapchugh, attention kernel nom lo' attention tay'. Do DublaH 'ej vum puSmoHlaH, 'ach 'op yab jonta' je QapchuqmeH attention motlh maS."
+  },
+  "dflash": {
+    "tooltip": "DFlash jang pIH mIw: wejlogh, vaghlogh je nom chenmoH; patlh choHbe'.",
+    "label": "DFlash",
+    "installing": "jomlI'...",
+    "installButton": "DFlash yIjom",
+    "aboutTitle": "DFlash jang pIH mIw Del",
+    "body": "yab nung mach lo' DFlash: token law' chup, ghIq wa' forward passDaq Hoch 'ol. vaj wejlogh, vaghlogh je nom chenmoH 'ej patlh choHbe'.",
+    "requiresLabel": "poQ:",
+    "requiresBody": "Apple Silicon + dflash-mlx, pagh Linux/CUDA + dflash. ngoQvaD yab nung Qapchuqbogh.",
+    "currentModelLabel": "yab DaH:",
+    "supportedVia": "{model} lo'taHvIS Qap",
+    "compatibilityUnresolved": "wej Qapchuq'a' 'e' Sovlu'.",
+    "composerHint": "DFlash jang pIH mIw lo'chugh, tlhoS cha'logh nom yabvam; patlh choHbe'.",
+    "registeredTargetsLabel": "ngoQ qonlu'ta'bogh:",
+    "targetModelsCount": "{count} ngoQ yab",
+    "ddtreeLabel": "DDTree:",
+    "ddtreeAvailable": "tu'lu'",
+    "ddtreeUnavailable": "wej tu'lu'; DFlash tlhegh Qap.",
+    "installLabel": "jom:",
+    "treeBudgetTooltip": "DDTree: Sor jang pIH mIw. 0 = DFlash tlhegh, >0 = He nung law' tInuD vaj law' laj.",
+    "treeBudgetLabel": "Sor chuq (DDTree)"
+  },
+  "presets": {
+    "quality": {
+      "label": "patlh 'aqroS",
+      "hint": "ngoq, meq je"
+    },
+    "balanced": {
+      "label": "motlh",
+      "hint": "ja'chuq motlh"
+    },
+    "speed": {
+      "label": "Do 'aqroS",
+      "hint": "nom nIDqa'"
+    },
+    "memory": {
+      "label": "qawHaq rav",
+      "hint": "RAM puS"
+    }
+  },
+  "sliders": {
+    "context": "ghu'",
+    "maxTokens": "token 'aqroS",
+    "temperature": "Hat",
+    "fp16Layers": "FP16 layer"
+  },
+  "fitInMemory": {
+    "body": "qawHaqDaq yap wIvlu'chugh, qawHaq tu'lu'bogh yapmeH yab KV cache je jonta' cache mIw je wIv ChaosEngineAI. mIw tIn pagh mIw vaQ DapoQchugh neH yIchu'Ha', 'ej swap pagh chu' luj DalajnIS.",
+    "aboutTitle": "qawHaqDaq yap Del"
+  },
+  "cacheFit": {
+    "mayNotFit": "chaq yapbe'",
+    "modelMayNotFit": "chaq yapbe' yab",
+    "fitsEasily": "yapchu'",
+    "tightFit": "tlhoS yapbe'",
+    "contextMayNotFit": "chaq yapbe' ghu' naQ",
+    "vramWontFit": "GPUDaq yapbe' cache"
+  },
+  "cacheAdvice": {
+    "modelExceedsRam": "RAM lo'laHbogh noHlu'bogh Hop yab ngI' neH. yab mach pagh quant vaQ yIwIv.",
+    "nativeF16TooBig": "chu'laH yab, 'ach ja'chuq buy'DI' pat RAM Hop ghu'vamDaq Native f16 cache naQ. ghu' yImachmoH, pagh cache mIw machmoHlu'bogh yIwIv.",
+    "compressedTooBig": "chu'laH yab, 'ach ja'chuq buy'DI' pat RAM Hop ghu'vamDaq cache wIvlu'ta'bogh. ghu' yImachmoH pagh FP16 layer yIpuSmoH.",
+    "vramNativeF16": "ghu'vamDaq tlhoS {cacheGb} GB Native f16 KV cache naQ; GPU VRAM {vramGb} GB tu'lu'bogh Hop. pat RAMDaq lan llama.cpp (token Hoch PCIe QIt) pagh luj. ghu' yImachmoH, FP16 layer yIteq, pagh TurboQuant qawHaq polwI' yIwIv vaj VRAMDaq yap cache.",
+    "vramSelected": "ghu'vamDaq tlhoS {cacheGb} GB KV cache wIvlu'ta'bogh; GPU VRAM {vramGb} GB tu'lu'bogh Hop. pat RAMDaq lan llama.cpp (token Hoch PCIe QIt) pagh luj. ghu' yImachmoH, FP16 layer yIteq, pagh TurboQuant qawHaq polwI' yIwIv vaj VRAMDaq yap cache."
+  },
+  "tensorfold": {
+    "tooltip": "TensorFold: jang pIH mIw qar. yab MTP head pagh yab nung chupbogh token 'ol yab ngoQ, vaj wa' token mIw jang rap jang; nom neH.",
+    "label": "TensorFold (DFlash 2 / MTP nung)",
+    "requiredNote": "yabvamvaD poQlu'",
+    "installing": "jomlI'...",
+    "installButton": "TensorFold yIjom",
+    "addVisionTitle": "mIllogh rarlu'ta'bogh laDlaH yabvam (waHlu'taH). TensorFold patDaq Pillow, transformers, mlx-vlm je chel.",
+    "addVision": "mIllogh laH yIchel",
+    "imageInputOn": "mIllogh 'el chu'lu' (waHlu'taH)",
+    "aboutTitle": "TensorFold jang pIH mIw Del",
+    "memoryShortfall": "qawHaq {needed} GB pagh law' ghajbogh Mac poQ checkpointvam; {have} GB ghaj Macvam.",
+    "body": "jonta' naDev 'oH TensorFold'e'; yab qorDu' Hoch kernel ghItlhlu'ta'. token law' nung (yab MTP head, 'ej 'op qorDu'vaD yab nung mach), 'ej Hoch nung 'ol yab ngoQ, vaj wa' token mIw jang rap jang.",
+    "requiresLabel": "poQ:",
+    "requiresBody": "Apple Silicon 'ej TensorFold Python pat pIm ('echletvamvo' jomlu'). checkpoint waHlu'ta'bogh neH jab.",
+    "memoryLabel": "qawHaq:",
+    "memoryBody": "qawHaq tay' {needed} GB pagh law'.",
+    "statusLabel": "Dotlh:",
+    "statusInstalled": "jomlu'ta''{version}; jang pIH mIw wIvlu'DI' Qap.",
+    "statusNotInstalled": "jomlu'be'. patDaj pIm chenmoHmeH TensorFold yIjom yI'uy.",
+    "visionLabel": "mIllogh 'el:",
+    "visionInstalled": "jomlu'ta' (waHlu'taH); TensorFold wIvlu'taHvIS ja'chuqDaq mIllogh yIrar. mIllogh ghajbogh tlhob KV cache chu' lo'.",
+    "visionNotInstalled": "jomlu'be'. yab vision towerDaj lo'taHvIS mIllogh laD. Pillow, transformers, mlx-vlm je chel; waHlu'taH 'e' maq TensorFold chenmoHwI'.",
+    "grammarLabel": "ngoD chen:",
+    "grammarInstalled": "jomlu'ta'; sampler 'echletDaq JSON schema wIvlu'chugh pablu'.",
+    "grammarNotInstalled": "jomlu'be'. JSON schema pabmeH poQlu'; Hutlhchugh tlhobmeyvetlh lajQo'lu'. PyTorch chel; tIn lI'vam.",
+    "addGrammar": "ngoD chen yIchel",
+    "exclusiveLabel": "qeS:",
+    "exclusiveBody": "appDaq latlh jonta' chu'laHbe' yabvam, vaj reH TensorFoldDaq Qap; nungDaj neH chu' 'ej chu'Ha' leQ."
+  },
+  "strategyRole": {
+    "memorySaverTitle": "KV cache machmoH vaj qawHaq puSDaq yap ghu' nI'. Native chenmoH law', chenmoH puS.",
+    "memorySaver": "qawHaq polwI'"
+  },
+  "mtplx": {
+    "tooltip": "MTPLX: MTP jang pIH mIw Hal. yabDaq ghItlhlu'ta'bogh prediction head lo'; tlhoS wa' vI' chorgh logh, cha' vI' cha' logh je nom chenmoH; patlh choHbe'.",
+    "label": "MTPLX",
+    "installing": "jomlI'...",
+    "installButton": "MTPLX yIjom",
+    "aboutTitle": "MTPLX jang pIH mIw Del",
+    "body": "yabDaq qeqlu'ta'bogh Multi-Token Prediction (MTP) head lo' MTPLX. forward pass Hoch wa', wej je token nung headmey, 'ej pass rapDaq 'ollu'; yab nung pIm poQbe'. tlhoS wa' vI' chorgh logh, cha' vI' cha' logh je nom chenmoH; patlh choHbe'.",
+    "requiresLabel": "poQ:",
+    "requiresBody": "Apple Silicon + MTPLX venv pIm. MTP head ghajnIS yab (Qwen3.5/3.6, DeepSeek V3/R1, Qwen3-Coder-Next).",
+    "statusLabel": "Dotlh:",
+    "statusInstalled": "jomlu'ta'; jang pIH mIw wIvlu'DI' Qap.",
+    "statusNotInstalled": "jomlu'be'. venv pIm chenmoHmeH MTPLX yIjom yI'uy (tlhoS 500 MB)."
+  },
+  "ggufMtp": {
+    "tooltip": "GGUF MTP jang pIH mIw: llama.cpp --spec-type draft-mtp lo'taHvIS yab MTP head lo'; tlhoS wa' vI' chorgh logh, cha' vI' cha' logh je nom chenmoH; patlh choHbe'.",
+    "label": "GGUF MTP",
+    "body": "Multi-Token Prediction (MTP) head ngaS GGUFvam. --spec-type draft-mtp (PR #22673) lo'taHvIS chu' llama.cpp; jang pIH mIw qar, yab nung pIm Hutlh.",
+    "requiresLabel": "poQ:"
+  },
+  "ggufSpec": {
+    "tooltip": "llama.cpp jang pIH mIw: GGUFvam retlhDaq DFlash / DFlash 2 / EAGLE-3 / MTP nungwI' tu'lu'chugh lo', Hutlhchugh n-gram nej lo'. qar; yab 'ol ngoD.",
+    "label": "jang pIH mIw",
+    "aboutTitle": "llama.cpp jang pIH mIw Del",
+    "body": "yab nav ghomDaq nungwI' nav tu'lu'chugh (mtp-, dflash-, dspark- pagh eagle3-*.gguf; dflash- lo' DFlash 2 nungwI'), nungwI'vetlh lo' llama.cpp. Hutlhchugh ngram-mod lo'; ghItlh rapqa'bogh (ngoq choH, Del run, jangDaq meq rapqa'bogh) lo'qa' 'ej latlh yab poQbe'. token nung Hoch 'ollu', vaj ngoD choHbe'.",
+    "requiresBody": "llama-server DaH (scripts/update-llama-cpp.sh yIchu'). binary ngo' mIw motlh lo' 'ej jonta' qeS cha'."
+  },
+  "strategyInfo": {
+    "native": {
+      "description": "FP16 KV cache naQ. machmoHbe', vaj nomqu' 'ej patlh 'aqroS, 'ej jang pIH mIw Qapchuq. ghu' nI'Daq qawHaq law'qu' lo'. Hoch jonta'Daq Qap.",
+      "requires": "qoD"
+    },
+    "triattention": {
+      "description": "vLLM lo'taHvIS KV cache machmoHwI' So'. Linux + CUDA neH; macOSDaq TriAttention Qapbe' ChaosEngineAI.",
+      "requires": "Linux + CUDA GPU + vLLM jonta'. macOSDaq Qapbe'.",
+      "installHint": "ChaosEngineAI lo'bogh Linux/CUDA patDaq neH yIlo', ghIq app yItaghqa'."
+    },
+    "turboquant": {
+      "description": "qawHaq polwI'. wa' bit, loS bit je KV cache pol (3-bitDaq tlhoS loSlogh, vaghlogh je mach) vaj RAM puSqu'Daq yap ja'chuq nI'. Do tam: Native chenmoH law', chenmoH puS; MLXDaq ja'chuq qun cache lo'qa' chu'Ha' 'ej jang pIH mIw QapchuqlaHbe'. qawHaqDaq yapbe'chugh ghu' nI', yIwIv; yapchugh Native yIratlh. MLXDaq Hadamard rotation + Lloyd-Max codebook lo'; GGUFDaq llama-server-turbo lo'.",
+      "requires": "MLX HevaD Apple Silicon + MLX; GGUF HevaD llama-server-turbo.",
+      "installHint": "MLXvaD: turboquant-mlx-full yIjom. GGUFvaD: scripts/build-llama-turbo.sh yIchu'. ghIq ChaosEngineAI yItaghqa'."
+    }
+  },
+  "installTerminal": {
+    "statusRunning": "QaptaH",
+    "statusComplete": "rIn",
+    "statusFailed": "luj",
+    "statusReady": "ghuH",
+    "noOutputYet": "wej jom ngoD tu'lu'. stdout stderr je naDev qonmeH jomwI' yIchu'.",
+    "title": "{label} jom terminal",
+    "startedAt": "{time} taghta'",
+    "collapsedHint": "motlh SoQ. jom nIDpu'DI' luj nuDmeH yIpoSmoH.",
+    "finishedAt": "{time} rInta'"
+  },
+  "strategyCard": {
+    "turboMissingTooltip": "llama-server-turbo binary poQ. jommeH scripts/build-llama-turbo.sh yIchu'.",
+    "badgeNotApplicable": "N/A",
+    "badgeNoTurbo": "turbo binary Hutlh",
+    "badgeReady": "ghuH",
+    "badgeInstall": "yIjom",
+    "buildingTurbo": "llama-server-turbo chenmoHlI'...",
+    "installing": "jomlI'...",
+    "installNow": "DaH yIjom",
+    "runInTerminal": "terminallIjDaq yIchu', ghIq ChaosEngineAI yItaghqa'.",
+    "updating": "chu'moHlI'...",
+    "updateAvailable": "chu'moH tu'lu'"
+  }
+}

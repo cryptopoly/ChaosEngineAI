@@ -88,6 +88,7 @@ nav:
       - usage/studio-layout.md
       - usage/server-mode.md
       - usage/benchmarks.md
+      - usage/language-klingon.md
   - Features:
       - features/mtplx.md
       - features/tensorfold.md

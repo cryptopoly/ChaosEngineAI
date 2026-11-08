@@ -1,0 +1,99 @@
+{
+  "title": "jom",
+  "subtitle": "mIqta'lIjvaD jonta' tIjom",
+  "sections": {
+    "core": "jonta' Hal",
+    "speculative": "jang pIH mIw",
+    "caching": "cache mIw",
+    "diffusion": "diffusion jonta'",
+    "tools": "jan wIvlaH"
+  },
+  "actions": {
+    "install": "yIjom",
+    "uninstall": "yIjomHa'",
+    "update": "yIchu'moH",
+    "viewLog": "QonoS yIlegh",
+    "showInFinder": "FinderDaq yIcha'"
+  },
+  "states": {
+    "installed": "jomlu'ta'",
+    "available": "tu'lu'",
+    "installing": "jomlI'…",
+    "uninstalling": "jomHa'lI'…",
+    "checking": "nuDlI'…",
+    "unavailable": "patvamDaq tu'lu'be'",
+    "needsRestart": "taghqa' poQlu'"
+  },
+  "messages": {
+    "diskSpaceWarning": "tlhoS {size} lI'lu'.",
+    "requiresNetwork": "De' pat rar poQlu'.",
+    "platformOnly": "{platform}Daq neH tu'lu' Dochvam.",
+    "succeeded": "jom Qapla'.",
+    "failed": "jom luj: {reason}"
+  },
+  "installLog": {
+    "finalStatus": "Dotlh Qav:",
+    "statusNoun": {
+      "longlive": "LongLive jom",
+      "gpuBundle": "jom",
+      "mtplx": "MTPLX jom",
+      "tensorfold": "TensorFold jom",
+      "mflux": "mflux jom",
+      "vllmWsl": "vLLM-in-WSL jom",
+      "ltx2": "LTX-2.3 jonta' jom"
+    },
+    "status": {
+      "failed": "{noun} luj, QonoS yIlegh",
+      "complete": "{noun} rIn, QonoS yIlegh",
+      "starting": "{noun} taghlI'…",
+      "verifyingCuda": "CUDA 'ollI'…",
+      "inProgress": "{noun} ruchtaH",
+      "verifying": "jom 'ollI'…"
+    },
+    "meta": {
+      "target": "ngoQ: {dir}",
+      "python": "Python {version}",
+      "cudaIndex": "CUDA index: {url}",
+      "cudaVerified": "CUDA 'ollu'ta'",
+      "cudaVerificationFailed": "CUDA 'ol luj",
+      "noWheelForPython": "PythonvamvaD CUDA wheel tu'lu'be'",
+      "restartBackend": "chu'meH qoD pat yItaghqa'"
+    },
+    "step": {
+      "waiting": "(loStaH)",
+      "final": "Qav: {done}/{total} package · {percent}%",
+      "current": "mIw {done}/{total}: {current} · {percent}%"
+    },
+    "terminal": {
+      "working": "vumtaH…",
+      "noOutput": "(De' tu'lu'be')"
+    },
+    "attempt": {
+      "verifyCuda": "torch.cuda.is_available() yI'ol",
+      "torchDeps": "torch deps ({url}vo')",
+      "torchCleanup": "torch nav ngo' tIteq",
+      "torchRepair": "CUDA torch wheel yItI'",
+      "constraint": "torch version yIngaQmoH",
+      "torchFromIndex": "torch ({url}vo')",
+      "pipInstall": "pip install {pkg}",
+      "step": "mIw"
+    }
+  },
+  "cudaTorch": {
+    "installComplete": "jom rIn, QonoS yIlegh{index}",
+    "installFailed": "{count, plural, =0 {jom luj, QonoS yIlegh} other {jom luj, QonoS yIlegh (# nID)}}"
+  },
+  "wanRuntime": {
+    "title": "Wan MLX jonta'",
+    "ready": "ghuH",
+    "inventoryError": "Wan tetlh: {error}",
+    "converted": "choHlu'ta' · mlx-video lo'",
+    "rawDownload": "ngI' Hal {size} yIlI' → MLX yIchoH (5-30 tup)",
+    "outputLabel": "ngoD:",
+    "otherRunning": "latlh Wan jom QaptaH ({repo}). yIloS pagh yIqIl.",
+    "installTitle": "ngI' Hal yIlI' 'ej MLX yIchoH",
+    "installing": "jomlI'...",
+    "starting": "taghlI'...",
+    "install": "yIjom"
+  }
+}

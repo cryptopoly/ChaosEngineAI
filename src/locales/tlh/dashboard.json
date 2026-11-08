@@ -1,0 +1,88 @@
+{
+  "liveStats": {
+    "title": "pat Dotlh DaH",
+    "subtitle": "Python sidecarvo' chu'moHlu', vaj yap'a' 'e' noHlaH app.",
+    "runtimeEngine": "jonta'",
+    "noModelLoaded": "yab chu'lu'be'",
+    "inferenceActivity": "yab vum",
+    "activeCount": "{count} vumtaH",
+    "totalServed": "{count} naQ jablu'ta'",
+    "warmPool": "yab tuj ghom",
+    "warmModelCount": "{count, plural, other {# yab}}",
+    "noWarmModels": "yab tuj tu'lu'be'",
+    "modelDisk": "yab polmeH Daq",
+    "diskFree": "{value} GB chIm",
+    "diskTotal": "{value} GB naQ",
+    "spareHeadroom": "Daq chIm",
+    "spareHeadroomValue": "{value} GB",
+    "workingHeadroom": "{value}% vummeH Daq chIm",
+    "memoryInUse": "qawHaq lo'lu'taH",
+    "memoryUsedLabel": "{used} GB / {total} GB",
+    "memoryPressure": "qawHaq buy'",
+    "memoryPressureLabel": "{value}%",
+    "memoryPressureCompressed": "{value}% · {compressed} GB machmoHlu'ta'",
+    "swapUsage": "swap lo'",
+    "swapLabel": "{used} GB",
+    "swapLabelWithTotal": "{used} GB / {total} GB",
+    "cpuLoad": "CPU vum",
+    "cpuLabel": "{value}%",
+    "headroomFor": "{target}vaD Daq chIm",
+    "headroomLabel": "{value}%",
+    "battery": {
+      "eyebrow": "HoS",
+      "charging": "HoS tebtaH",
+      "acPower": "AC HoS",
+      "onBattery": "HoS polwI' lo'taH",
+      "lowNotice": "rarHa'lu'ta'; tujmo' QIt vumlaH yab"
+    },
+    "processes": {
+      "name": "mIw",
+      "owner": "ghajwI'",
+      "memory": "qawHaq",
+      "cpu": "CPU",
+      "active": "vumtaH",
+      "warm": "tuj",
+      "system": "pat",
+      "empty": "LLM mIw vumtaHbogh tu'lu'be'.",
+      "memoryGb": "{value} GB",
+      "cpuPercent": "{value}%",
+      "stopIdleHint": "yab leStaHbogh tIchu'Ha' 'ej yab chu'lu'ta'bogh jabbe'bogh Hoch mIw tImev.",
+      "stopIdle": "leStaHbogh tImev",
+      "stopHint": "yab chu'lu'ta'bogh jabbe'. qawHaqDaj chImmoHmeH yImev.",
+      "stopConfirm": "mIwvam Damev 'ej qawHaqDaj DachImmoH DaneH'a'?",
+      "stop": "yImev"
+    }
+  },
+  "hardwareFit": {
+    "title": "mIqta' yap'a'",
+    "subtitle": "De'wI'vamvaD chuplu'bogh ngoQ bopbogh qeS.",
+    "recommendedTarget": "ngoQ chuplu'bogh",
+    "currentRuntime": "jonta' DaH",
+    "modelLoadedVia": "{model} chu'lu'ta'; {engine} lo'lu'.",
+    "noModelHint": "wej yab chu'lu'. ja'chuqDaq yab yIwIv, pagh ja'chuq > yabDaq qorDu' chu' yInej."
+  },
+  "activityFeed": {
+    "title": "wanI' tetlh",
+    "subtitle": "QonoS nuDbe'taHvIS leghnISlu'bogh wanI'.",
+    "now": "DaH"
+  },
+  "activity": {
+    "libraryScan": {
+      "title": "ghom nuD rIn",
+      "detail": "yab nav ghomDaq {count} De' tu'lu'ta'."
+    },
+    "hardwareProfile": {
+      "title": "mIqta' De' chu'moHlu'ta'"
+    },
+    "backendReadiness": {
+      "title": "qoD pat ghuH",
+      "detail": "MLX jomlu'ta': {mlx} / mlx-lm jomlu'ta': {mlxLm} / MLX lo'laH: {mlxUsable} / GGUF jonta': {gguf}"
+    }
+  },
+  "recommendation": {
+    "mlxTitle": "ngoQ chuplu'bogh: {modelSize} Seg @ {cacheLabel}",
+    "mlxDetail": "{hardware}Daq {modelSize} Seg ngoQ chuplu'bogh bop noHvam; ja'chuq yab wIvlu'ta'bogh bopbe'.",
+    "ggufTitle": "ngoQ chuplu'bogh: {modelSize} GGUF",
+    "ggufDetail": "mIqta' law' QapmeH llama.cpp GGUF maS pat law' mIw."
+  }
+}

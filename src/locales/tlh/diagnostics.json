@@ -1,0 +1,78 @@
+{
+  "title": "nuD",
+  "subtitle": "jonta' Dotlh, GPU Dotlh, QonoS je tInuD",
+  "subtitleSnapshot": "Qagh SammeH pat mIllogh. Qagh qaSDI' QaHwI'vaD ngeHmeH markdown yIqon.",
+  "sections": {
+    "snapshot": "pat mIllogh",
+    "gpu": "GPU",
+    "memory": "qawHaq",
+    "runtime": "jonta'",
+    "binaries": "binary",
+    "extras": "Extras",
+    "logs": "QonoS",
+    "locales": "Hol"
+  },
+  "fields": {
+    "platform": "pat",
+    "architecture": "mIqta' chen",
+    "kernel": "Kernel",
+    "appVersion": "ChaosEngineAI version",
+    "tauriVersion": "Tauri version",
+    "pythonVersion": "Python version",
+    "totalRAM": "RAM naQ",
+    "availableRAM": "RAM lo'laH",
+    "totalVRAM": "VRAM naQ",
+    "freeVRAM": "VRAM chIm",
+    "diskFree": "polmeH Daq chIm"
+  },
+  "logs": {
+    "tail": "Qav",
+    "follow": "yItlha'",
+    "pauseFollow": "tlha' yIyev",
+    "clear": "yIchImmoH",
+    "download": "QonoS yIlI'",
+    "lines": "{count, plural, other {# tlhegh}}",
+    "filterPlaceholder": "yIchev…"
+  },
+  "actions": {
+    "copySnapshot": "pat mIllogh yIqon",
+    "downloadSnapshot": "pat mIllogh yIlI'",
+    "openLogFolder": "QonoS nav ghom yIpoSmoH"
+  },
+  "logsTab": {
+    "title": "QonoS",
+    "subtitle": "sidecar, jonta', jabwI' QonoS je; nejlaH.",
+    "filterPlaceholder": "QonoS yIchev",
+    "emptyFiltered": "chevwI'vamvaD QonoS tlhegh tu'lu'be'."
+  },
+  "accelerators": {
+    "title": "nommoHwI'",
+    "subtitle": "mIllogh, mIllogh vIH, ja'chuq je nommoHmeH wIv, 'ej Windows WSL He."
+  },
+  "diskUsage": {
+    "title": "polmeH Daq lo'",
+    "subtitle": "Daq law' lo'bogh yab Hal Daq; vaj nuq DaQaw' DaSov.",
+    "topTitle": "yab Hal Daq tIn cha'maH",
+    "topHint": "chu'lu'bogh Hoch yab nav ghom nuD 'ej polmeH DaqDaq Hal Daq tIn tetlh cha'. wa'logh neH blob togh (Hugging Face snapshots/ blobs/Daq rar, vaj law'qu' togh nuDwI' motlh).",
+    "scanning": "nuDlI'…",
+    "rescan": "yInuDqa'",
+    "scan": "polmeH Daq lo' yInuD",
+    "total": "chu'lu'bogh Hoch nav ghom naQ:",
+    "shown": "{repos} Hal Daq cha'lu' / {dirs} nav ghom Hal nuDlu'ta'",
+    "freed": "nuDta'DI' {gb} GB chImmoHlu'ta'",
+    "colRepo": "Hal Daq",
+    "colSize": "tInghach",
+    "colSource": "Hal",
+    "colPath": "He",
+    "unknownSize": "tInghach Sovbe'lu'",
+    "deleteConfirm": "{name} ({size}) DaQaw' DaneHbej'a'?\n\npolmeH Daqvo' teqlu' 'ej choHHa'laHbe'lu'.",
+    "collapse": "{name} yISoQmoH",
+    "expand": "{name} yIpoSmoH",
+    "sharedTitle": "Hugging Face pol Daq rap: Hal Daq law' rar",
+    "shared": "rap",
+    "deleting": "Qaw'lI'…",
+    "delete": "yIQaw'",
+    "reading": "laDlI'…",
+    "empty": "chIm"
+  }
+}

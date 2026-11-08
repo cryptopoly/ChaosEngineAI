@@ -19,6 +19,31 @@ export const STYLE_CHIPS: Array<{ id: string; instruction: string }> = [
 
 export type VoiceFilter = "all" | "mine" | "builtin";
 
+/** What a voice costs to run, for the card chip, the cost line and the Models rows. Never a guess: an unmeasured model says so. */
+export type CostLabel =
+  | { kind: "kokoro" }
+  | { kind: "measured"; downloadGb: number; peakGb: number; secondsPer10s: number; coldStartS: number | null; measuredOn: string }
+  | { kind: "unmeasured"; downloadGb: number };
+
+const oneDecimal = (value: number) => Math.round(value * 10) / 10;
+
+/** The cost of ``model``; a null model is a quick (Kokoro) voice, part of the voice pack. */
+export function costLabel(model: VoiceModelRow | null): CostLabel {
+  if (!model) return { kind: "kokoro" };
+  const est = model.estimates;
+  if (est && est.basis === "measured" && est.peakGb != null && est.secondsPer10sAudio != null) {
+    return {
+      kind: "measured",
+      downloadGb: model.sizeGb,
+      peakGb: oneDecimal(est.peakGb),
+      secondsPer10s: oneDecimal(est.secondsPer10sAudio),
+      coldStartS: est.coldStartSeconds != null ? oneDecimal(est.coldStartSeconds) : null,
+      measuredOn: est.measuredOn ?? "",
+    };
+  }
+  return { kind: "unmeasured", downloadGb: model.sizeGb };
+}
+
 /** The model that will run: mirrors the backend rule (style needs a style model; installed ones come first). */
 export function chooseModel(
   voice: VoiceEntry | null,

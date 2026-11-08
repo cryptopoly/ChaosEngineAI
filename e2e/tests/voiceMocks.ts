@@ -5,7 +5,17 @@ import type { Page } from "@playwright/test";
 
 const caps = (over: Record<string, boolean> = {}) => ({ speak: true, style: false, clone: false, design: false, ...over });
 
+// The catalog's measured rows (Apple M4 Max, 64 GB, 2026-11-08): peak memory, seconds per 10 s of speech, cold start.
+const MEASURED: Record<string, [number, number, number]> = {
+  "qwen3-tts-0.6b": [4.3, 3.2, 3.0],
+  "qwen3-tts-1.7b": [6.5, 3.6, 3.6],
+  "qwen3-tts-custom-0.6b": [2.93, 2.65, 2.4],
+  "qwen3-tts-custom-1.7b": [3.5, 2.45, 2.4],
+  "qwen3-tts-design-1.7b": [3.51, 2.46, 2.3],
+};
+
 function model(key: string, name: string, kind: string, sizeGb: number, capabilities: Record<string, boolean>, installed: boolean) {
+  const [peakGb, secondsPer10sAudio, coldStartSeconds] = MEASURED[key] ?? [0, 0, 0];
   return {
     key,
     name,
@@ -17,6 +27,9 @@ function model(key: string, name: string, kind: string, sizeGb: number, capabili
     default: key === "qwen3-tts-custom-0.6b",
     kind,
     capabilities: capabilities,
+    estimates: MEASURED[key]
+      ? { basis: "measured", measuredOn: "Apple M4 Max, 64 GB, 2026-11-08", coldStartSeconds, secondsPer10sAudio, peakGb, idleGb: peakGb - 0.1 }
+      : null,
     supported: true,
     installed,
     licence: { id: "apache-2.0", name: "Apache 2.0", url: "https://example.invalid/licence" },

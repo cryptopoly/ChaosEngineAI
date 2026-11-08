@@ -115,7 +115,10 @@ test("a preset with the style model: chips fill the box, speed, pitch and seed a
   await expect(style).toBeEnabled();
   await page.getByRole("button", { name: "Angry", exact: true }).click();
   await expect(style).toHaveValue("Speak in an angry tone.");
-  await expect(page.getByText("Runs with Qwen3-TTS 1.7B CustomVoice.")).toBeVisible();
+  await expect(page.locator(".voice-speak__model")).toContainText(
+    "Runs with Qwen3-TTS 1.7B CustomVoice: 3.5 GB in memory, about 2.5 s per 10 s of speech (measured on Apple M4 Max, 64 GB, 2026-11-08).",
+  );
+  await expect(page.getByRole("radio", { name: /^Ryan/ })).toContainText("3.5 GB, 2.5 s per 10 s");
 
   await page.getByLabel(/^Pitch/).fill("3");
   await page.getByLabel(/^Speed/).fill("1.5");
@@ -196,7 +199,10 @@ test("Voice Models lists the speech models with what each can do, and keeps the 
   const row = page.locator(".voice-tts-row", { hasText: "Qwen3-TTS 1.7B CustomVoice" });
   await expect(row.getByText("Style", { exact: true })).toBeVisible();
   await expect(row.getByText("Speak", { exact: true })).toBeVisible();
-  await expect(row.getByText("3.08 GB", { exact: false })).toBeVisible();
+  await expect(row.getByText("3.08 GB", { exact: false }).first()).toBeVisible();
+  await expect(row.getByText("3.5 GB peak")).toBeVisible();
+  await expect(row.getByText("2.5 s per 10 s")).toBeVisible();
+  await expect(row.getByText("Apple M4 Max, 64 GB, 2026-11-08")).toBeVisible();
   await expect(page.locator(".voice-tts-row", { hasText: "0.6B Base" }).getByText("Clone", { exact: true })).toBeVisible();
   await expect(page.locator(".voice-tts-row", { hasText: "VoiceDesign" }).getByText("Design", { exact: true })).toBeVisible();
   await expect(page.locator(".voice-tts-row", { hasText: "0.6B CustomVoice" }).getByText("Downloaded")).toBeVisible();

@@ -13843,6 +13843,50 @@ select.music-library__select {
   gap: 6px;
 }
 
+/* Measured cost: the chip on a voice card and the cells on a Models row (D-67 W1). */
+.voice-card__cost {
+  margin-top: 4px;
+  padding: 1px 7px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  overflow-wrap: anywhere;
+}
+
+.voice-card__cost--ok {
+  border-color: color-mix(in srgb, var(--success) 60%, var(--border));
+  color: var(--success);
+}
+
+.voice-card__cost--need {
+  border-color: color-mix(in srgb, var(--warning) 60%, var(--border));
+  color: var(--warning);
+}
+
+.voice-model-row__cost {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 6px 12px;
+  margin: 0;
+}
+
+.voice-model-row__cost > div {
+  min-width: 0;
+}
+
+.voice-model-row__cost dt {
+  color: var(--muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.voice-model-row__cost dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
 /* ===== Projects (D-65): list, project shell, Overview, Cast, picker, voice, Export ===== */
 .project-list__body {
   display: flex;

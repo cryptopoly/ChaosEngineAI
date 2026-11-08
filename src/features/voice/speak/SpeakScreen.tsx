@@ -14,11 +14,13 @@ import {
   STYLE_CHIPS,
   canGenerate,
   cloneRequestText,
+  costLabel,
   cloneTextTooLong,
   installedCloneModels,
   modelNote,
   styleState,
 } from "./speakLogic";
+import { useCostText } from "./costText";
 import type { VoiceCatalog } from "./useVoiceCatalog";
 import { useVoiceSample } from "./useVoiceSample";
 
@@ -66,6 +68,7 @@ export function SpeakScreen({
   const cancelRef = useRef(false);
   const abortRef = useRef<AbortController | null>(null);
   const sample = useVoiceSample(speed);
+  const costs = useCostText();
 
   useEffect(
     () => () => {
@@ -184,6 +187,7 @@ export function SpeakScreen({
 
         <VoicePicker
           voices={catalog.voices}
+          models={catalog.models}
           selectedId={voiceId}
           onSelect={onVoiceChange}
           modelsAvailable={catalog.modelsAvailable}
@@ -280,15 +284,15 @@ export function SpeakScreen({
           {voice == null
             ? ""
             : note.model == null && voice.kind === "builtin"
-              ? t("voice.speak.modelKokoro", { defaultValue: "Runs with Kokoro, part of the voice pack." })
+              ? t("voice.speak.modelKokoroCost", { defaultValue: "Runs with Kokoro, {detail}.", detail: costs.detail(costLabel(null)) })
               : note.model
                 ? note.model.installed
-                  ? t("voice.speak.modelReady", { defaultValue: "Runs with {name}." , name: note.model.name })
+                  ? t("voice.speak.modelReadyCost", { defaultValue: "Runs with {name}: {detail}.", name: note.model.name, detail: costs.detail(costLabel(note.model)) })
                   : note.downloading
                     ? note.model.download.phase === "watermark"
                       ? t("voice.clone.installingWatermark", { defaultValue: "Installing the watermark component…" })
                       : t("voice.speak.modelDownloading", { defaultValue: "Downloading {name}…", name: note.model.name })
-                    : t("voice.speak.modelNeeds", { defaultValue: "Needs {name} ({gb} GB), not downloaded yet.", name: note.model.name, gb: note.model.sizeGb })
+                    : `${t("voice.speak.modelNeeds", { defaultValue: "Needs {name} ({gb} GB), not downloaded yet.", name: note.model.name, gb: note.model.sizeGb })} ${t("voice.speak.modelNeedsCost", { defaultValue: "Once downloaded: {detail}.", detail: costs.detail(costLabel(note.model)) })}`
                 : (voice.needs ?? "")}{" "}
           {note.model && !note.model.installed && !note.downloading ? (
             <button type="button" className="secondary-button" onClick={() => void catalog.download(note.model!.key)}>

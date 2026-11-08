@@ -1,11 +1,14 @@
 import { useMemo, useState, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
-import type { VoiceEntry } from "../../../types";
-import { DESIGN_VOICE_ID, pickerVoices } from "./speakLogic";
+import type { VoiceEntry, VoiceModelRow } from "../../../types";
+import { useCostText } from "./costText";
+import { DESIGN_VOICE_ID, chooseModel, costLabel, pickerVoices } from "./speakLogic";
 import { canPlaySample } from "./useVoiceSample";
 
 export interface VoicePickerProps {
   voices: VoiceEntry[];
+  /** The speech models, for each card's cost chip. */
+  models: VoiceModelRow[];
   selectedId: string;
   onSelect: (id: string) => void;
   /** Preset and designed voices run on Apple Silicon Macs for now. */
@@ -27,10 +30,13 @@ function Card({
   loading,
   tabStop,
   onSample,
+  cost,
 }: {
   voice: VoiceEntry;
   title: string;
   detail: string;
+  /** Cost chip: memory and measured speed, or the download still needed. */
+  cost?: { text: string; tone: "ok" | "need" | "plain" } | null;
   selected: boolean;
   disabled?: boolean;
   onSelect: () => void;
@@ -55,6 +61,7 @@ function Card({
       >
         <span className="voice-card__title">{title}</span>
         <span className="voice-card__detail muted-text">{detail}</span>
+        {cost ? <span className={`voice-card__cost voice-card__cost--${cost.tone}`}>{cost.text}</span> : null}
       </button>
       {canPlaySample(voice) ? (
         <button
@@ -89,8 +96,16 @@ function genderLetter(voice: VoiceEntry): string {
 }
 
 /** Voice cards: your clones, presets, the design card and built-in voices by language. */
-export function VoicePicker({ voices, selectedId, onSelect, modelsAvailable, isPlaying, isLoading, onSample }: VoicePickerProps) {
+export function VoicePicker({ voices, models, selectedId, onSelect, modelsAvailable, isPlaying, isLoading, onSample }: VoicePickerProps) {
   const { t } = useTranslation("studio");
+  const costs = useCostText();
+  const costOf = (v: VoiceEntry): { text: string; tone: "ok" | "need" | "plain" } | null => {
+    if (v.kind === "builtin") return { text: costs.chip(costLabel(null)), tone: "plain" };
+    const model = chooseModel(v, models, false);
+    if (!model) return null;
+    if (!model.installed) return { text: t("voice.cost.download", { defaultValue: "Download {gb} GB", gb: model.sizeGb }), tone: "need" };
+    return { text: costs.chip(costLabel(model)), tone: "ok" };
+  };
   const list = useMemo(() => pickerVoices(voices), [voices]);
   const clones = list.filter((v) => v.kind === "clone");
   const presets = list.filter((v) => v.kind === "preset");
@@ -150,7 +165,7 @@ export function VoicePicker({ voices, selectedId, onSelect, modelsAvailable, isP
           <h4 className="voice-group__title">{t("voice.speak.yourVoices", { defaultValue: "Your voices" })}</h4>
           <div className="voice-cards">
             {clones.map((v) => (
-              <Card key={v.id} voice={v} title={v.name} detail={consent(v)} selected={v.id === selectedId} onSelect={() => onSelect(v.id)} playing={false} loading={false} tabStop={v.id === tabStopId} onSample={() => {}} />
+              <Card key={v.id} voice={v} title={v.name} detail={consent(v)} cost={costOf(v)} selected={v.id === selectedId} onSelect={() => onSelect(v.id)} playing={false} loading={false} tabStop={v.id === tabStopId} onSample={() => {}} />
             ))}
           </div>
         </section>
@@ -168,6 +183,7 @@ export function VoicePicker({ voices, selectedId, onSelect, modelsAvailable, isP
               <Card
                 key={v.id}
                 voice={v}
+                cost={costOf(v)}
                 title={v.name}
                 detail={`${v.languageLabel ?? v.language}${genderLetter(v) ? `, ${genderLetter(v)}` : ""}${v.about ? `: ${v.about}` : ""}`}
                 selected={v.id === selectedId}
@@ -187,6 +203,7 @@ export function VoicePicker({ voices, selectedId, onSelect, modelsAvailable, isP
           <div className="voice-cards">
             <Card
               voice={design}
+              cost={costOf(design)}
               title={t("voice.speak.designCard", { defaultValue: "Design a voice from a description" })}
               detail={t("voice.speak.designDetail", { defaultValue: "Describe age, tone and pace in the style box." })}
               selected={design.id === selectedId || selectedId === DESIGN_VOICE_ID}
@@ -222,6 +239,7 @@ export function VoicePicker({ voices, selectedId, onSelect, modelsAvailable, isP
               <Card
                 key={v.id}
                 voice={v}
+                cost={costOf(v)}
                 title={v.name}
                 detail={genderLetter(v) || (v.languageLabel ?? v.language)}
                 selected={v.id === selectedId}

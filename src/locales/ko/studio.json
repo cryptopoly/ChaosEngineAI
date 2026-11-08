@@ -684,6 +684,17 @@
         "style": "스타일",
         "clone": "복제",
         "design": "디자인"
+      },
+      "cost": {
+        "download": null,
+        "memory": null,
+        "peak": null,
+        "speed": null,
+        "per10s": null,
+        "coldStart": null,
+        "seconds": null,
+        "measuredOn": null,
+        "notMeasured": null
       }
     },
     "voices": {
@@ -822,7 +833,10 @@
         "excited": null,
         "whisper": null,
         "calm": null
-      }
+      },
+      "modelKokoroCost": null,
+      "modelReadyCost": null,
+      "modelNeedsCost": null
     },
     "stop": "중지",
     "studio": {
@@ -948,6 +962,15 @@
       "recordingPlayback": "내 녹음",
       "saving": null,
       "sampleType": null
+    },
+    "cost": {
+      "kokoroChip": null,
+      "chip": null,
+      "unmeasuredChip": null,
+      "kokoroDetail": null,
+      "detail": null,
+      "unmeasuredDetail": null,
+      "download": null
     }
   },
   "residentChatModelNote": "로드된 채팅 모델이 이 메모리의 약 {gb} GB를 차지하며, 언로드하면 해제됩니다.",

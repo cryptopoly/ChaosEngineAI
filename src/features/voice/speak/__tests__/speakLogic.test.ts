@@ -5,6 +5,7 @@ import {
   chooseModel,
   cloneRequestText,
   cloneTextTooLong,
+  costLabel,
   defaultVoice,
   installedCloneModels,
   matchesFilter,
@@ -141,5 +142,34 @@ describe("cloning model choice", () => {
   it("ignores a pick that is not installed, and a pick for a non-clone voice", () => {
     expect(modelNote(clone, [b06, { ...b17, installed: false }], false, "b17").model?.key).toBe("b06");
     expect(installedCloneModels(null, [b06, b17])).toEqual([]);
+  });
+});
+
+describe("cost label", () => {
+  const measured = row({
+    key: "custom-1.7b",
+    sizeGb: 3.08,
+    estimates: { basis: "measured", measuredOn: "Apple M4 Max, 64 GB, 2026-11-08", coldStartSeconds: 2.4, secondsPer10sAudio: 2.45, peakGb: 3.5, idleGb: 3.48 },
+  });
+
+  it("gives the measured memory, speed, cold start and machine", () => {
+    expect(costLabel(measured)).toEqual({
+      kind: "measured",
+      downloadGb: 3.08,
+      peakGb: 3.5,
+      secondsPer10s: 2.5,
+      coldStartS: 2.4,
+      measuredOn: "Apple M4 Max, 64 GB, 2026-11-08",
+    });
+  });
+
+  it("says unmeasured instead of guessing when there is no measured run", () => {
+    expect(costLabel(row({ sizeGb: 2.5 }))).toEqual({ kind: "unmeasured", downloadGb: 2.5 });
+    expect(costLabel(row({ sizeGb: 2.5, estimates: null }))).toEqual({ kind: "unmeasured", downloadGb: 2.5 });
+    expect(costLabel(row({ sizeGb: 2.5, estimates: { basis: "estimate", peakGb: 3, secondsPer10sAudio: 2 } }))).toEqual({ kind: "unmeasured", downloadGb: 2.5 });
+  });
+
+  it("names Kokoro for a quick voice (no model row)", () => {
+    expect(costLabel(null)).toEqual({ kind: "kokoro" });
   });
 });

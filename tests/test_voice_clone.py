@@ -62,6 +62,27 @@ class CatalogTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             voice_models.clone_model("/tmp/some/local/path")
 
+    def test_listed_rows_carry_the_measured_estimates_with_basis_and_machine(self) -> None:
+        with mock.patch.object(voice_clone, "snapshot_dir", return_value=None):
+            rows = voice_clone.list_models(every_model=True)
+        self.assertEqual(len(rows), len(voice_models.VOICE_MODELS))
+        for listed in rows:
+            catalog = voice_models.voice_model(listed["key"])["estimates"]
+            self.assertEqual(listed["estimates"], catalog)
+            self.assertEqual(listed["estimates"]["basis"], "measured")
+            self.assertIn("2026-11-08", listed["estimates"]["measuredOn"])
+            self.assertIn("peakGb", listed["estimates"])
+            self.assertIn("secondsPer10sAudio", listed["estimates"])
+        # A copy: changing the API row never changes the catalog.
+        rows[0]["estimates"]["peakGb"] = 0
+        self.assertNotEqual(voice_models.VOICE_MODELS[0]["estimates"]["peakGb"], 0)
+
+    def test_a_row_without_estimates_lists_none_rather_than_a_guess(self) -> None:
+        bare = {k: v for k, v in voice_models.VOICE_MODELS[0].items() if k != "estimates"}
+        with mock.patch.object(voice_clone, "CLONE_MODELS", [bare]), mock.patch.object(voice_clone, "snapshot_dir", return_value=None):
+            rows = voice_clone.list_models()
+        self.assertIsNone(rows[0]["estimates"])
+
 
 class SafetyTests(_DataDir):
     def test_tag_round_trip_keeps_the_audio(self) -> None:

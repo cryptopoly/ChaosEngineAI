@@ -684,6 +684,17 @@
         "style": "Stil",
         "clone": "Klonen",
         "design": "Entwerfen"
+      },
+      "cost": {
+        "download": null,
+        "memory": null,
+        "peak": null,
+        "speed": null,
+        "per10s": null,
+        "coldStart": null,
+        "seconds": null,
+        "measuredOn": null,
+        "notMeasured": null
       }
     },
     "voices": {
@@ -822,7 +833,10 @@
         "excited": null,
         "whisper": null,
         "calm": null
-      }
+      },
+      "modelKokoroCost": null,
+      "modelReadyCost": null,
+      "modelNeedsCost": null
     },
     "stop": "Stoppen",
     "studio": {
@@ -948,6 +962,15 @@
       "recordingPlayback": "Deine Aufnahme",
       "saving": null,
       "sampleType": null
+    },
+    "cost": {
+      "kokoroChip": null,
+      "chip": null,
+      "unmeasuredChip": null,
+      "kokoroDetail": null,
+      "detail": null,
+      "unmeasuredDetail": null,
+      "download": null
     }
   },
   "residentChatModelNote": "Ein geladenes Chat-Modell belegt etwa {gb} GB dieses Speichers; beim Entladen wird er freigegeben.",

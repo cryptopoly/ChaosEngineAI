@@ -684,6 +684,17 @@
         "style": "Style",
         "clone": "Clone",
         "design": "Design"
+      },
+      "cost": {
+        "download": "Download size",
+        "memory": "Memory",
+        "peak": "{gb} GB peak",
+        "speed": "Speed",
+        "per10s": "{seconds} s per 10 s",
+        "coldStart": "Cold start",
+        "seconds": "{seconds} s",
+        "measuredOn": "Measured on",
+        "notMeasured": "Not measured yet"
       }
     },
     "voices": {
@@ -822,7 +833,10 @@
         "excited": "Excited",
         "whisper": "Whisper",
         "calm": "Calm"
-      }
+      },
+      "modelKokoroCost": "Runs with Kokoro, {detail}.",
+      "modelReadyCost": "Runs with {name}: {detail}.",
+      "modelNeedsCost": "Once downloaded: {detail}."
     },
     "stop": "Stop",
     "studio": {
@@ -948,6 +962,15 @@
       "recordingPlayback": "Your recording",
       "saving": "Saving the voice…",
       "sampleType": "Choose a WAV, MP3, M4A, FLAC or OGG file."
+    },
+    "cost": {
+      "kokoroChip": "fast, under 1 GB",
+      "chip": "{peak} GB, {seconds} s per 10 s",
+      "unmeasuredChip": "{gb} GB, not measured",
+      "kokoroDetail": "part of the voice pack, under 1 GB",
+      "detail": "{peak} GB in memory, about {seconds} s per 10 s of speech (measured on {machine})",
+      "unmeasuredDetail": "speed and memory not measured yet",
+      "download": "Download {gb} GB"
     }
   },
   "residentChatModelNote": "A loaded chat model holds about {gb} GB of this memory; unloading it frees that.",

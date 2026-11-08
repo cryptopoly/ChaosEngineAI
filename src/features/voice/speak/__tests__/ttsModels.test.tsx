@@ -27,6 +27,17 @@ describe("TtsModelRow", () => {
     expect(html).toContain("3.08 GB");
     expect(html).toContain(">Download<");
   });
+  it("shows the measured memory, speed and machine, or says the model is not measured", () => {
+    const estimates = { basis: "measured" as const, measuredOn: "Apple M4 Max, 64 GB, 2026-11-08", coldStartSeconds: 2.4, secondsPer10sAudio: 2.45, peakGb: 3.5, idleGb: 3.48 };
+    const html = renderToStaticMarkup(<TtsModelRow model={{ ...base, estimates }} onDownload={() => {}} />);
+    expect(html).toContain("3.5 GB peak");
+    expect(html).toContain("2.5 s per 10 s");
+    expect(html).toContain("2.4 s");
+    expect(html).toContain("Apple M4 Max, 64 GB, 2026-11-08");
+    const bare = renderToStaticMarkup(<TtsModelRow model={base} onDownload={() => {}} />);
+    expect(bare).toContain("Not measured yet");
+    expect(bare).not.toContain("GB peak");
+  });
   it("shows Downloaded without a button once installed", () => {
     const html = renderToStaticMarkup(<TtsModelRow model={{ ...base, installed: true }} onDownload={() => {}} />);
     expect(html).toContain("Downloaded");

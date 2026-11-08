@@ -174,6 +174,20 @@ export interface VoiceEntry {
   consent?: { speakerName: string; basis: "own" | "permission"; consentedAt: string; appVersion?: string };
 }
 
+/** Speed and memory of a speech model from the catalog; ``basis`` says whether it was measured, and where. */
+export interface VoiceModelEstimates {
+  basis: "measured" | "estimate";
+  /** Machine and date of the run, e.g. "Apple M4 Max, 64 GB, 2026-11-08". */
+  measuredOn?: string;
+  coldStartSeconds?: number;
+  /** Wall seconds to make 10 s of speech. */
+  secondsPer10sAudio?: number;
+  wallSecondsShortLine?: number;
+  /** Worker memory while speaking and after it finished. */
+  peakGb?: number;
+  idleGb?: number;
+}
+
 /** One row of ``GET /api/voice/models``: a Qwen3-TTS model with its install state. */
 export interface VoiceModelRow {
   key: string;
@@ -185,6 +199,8 @@ export interface VoiceModelRow {
   default: boolean;
   kind: "base" | "custom" | "design";
   capabilities: VoiceCapabilities;
+  /** Null (or missing) when the model has not been measured. */
+  estimates?: VoiceModelEstimates | null;
   supported: boolean;
   installed: boolean;
   licence?: { id: string; name: string; url: string };

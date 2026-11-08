@@ -1,10 +1,40 @@
 import { useTranslation } from "react-i18next";
 import { Panel } from "../../../components/Panel";
 import type { VoiceCapabilities, VoiceModelRow } from "../../../types";
+import { costLabel } from "./speakLogic";
 import { useVoiceCatalog } from "./useVoiceCatalog";
 
 const CAPS: Array<keyof VoiceCapabilities> = ["speak", "style", "clone", "design"];
 const CAP_LABELS: Record<keyof VoiceCapabilities, string> = { speak: "Speak", style: "Style", clone: "Clone", design: "Design" };
+
+/** Download, memory, speed, cold start and where it was measured; an unmeasured model says so instead of guessing. */
+function CostCells({ model }: { model: VoiceModelRow }) {
+  const { t } = useTranslation("studio");
+  const cost = costLabel(model);
+  const cells: Array<[string, string]> = [[t("voice.models.cost.download", { defaultValue: "Download size" }), `${model.sizeGb} GB`]];
+  if (cost.kind === "measured") {
+    cells.push(
+      [t("voice.models.cost.memory", { defaultValue: "Memory" }), t("voice.models.cost.peak", { defaultValue: "{gb} GB peak", gb: cost.peakGb })],
+      [t("voice.models.cost.speed", { defaultValue: "Speed" }), t("voice.models.cost.per10s", { defaultValue: "{seconds} s per 10 s", seconds: cost.secondsPer10s })],
+    );
+    if (cost.coldStartS != null) {
+      cells.push([t("voice.models.cost.coldStart", { defaultValue: "Cold start" }), t("voice.models.cost.seconds", { defaultValue: "{seconds} s", seconds: cost.coldStartS })]);
+    }
+    cells.push([t("voice.models.cost.measuredOn", { defaultValue: "Measured on" }), cost.measuredOn]);
+  } else {
+    cells.push([t("voice.models.cost.speed", { defaultValue: "Speed" }), t("voice.models.cost.notMeasured", { defaultValue: "Not measured yet" })]);
+  }
+  return (
+    <dl className="voice-model-row__cost">
+      {cells.map(([label, value]) => (
+        <div key={label}>
+          <dt>{label}</dt>
+          <dd>{value}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
 
 export function TtsModelRow({ model, onDownload }: { model: VoiceModelRow; onDownload: () => void }) {
   const { t } = useTranslation("studio");
@@ -19,6 +49,7 @@ export function TtsModelRow({ model, onDownload }: { model: VoiceModelRow; onDow
       <p className="muted-text voice-model-card__meta">
         {model.sizeGb} GB · {model.languages}. {model.summary}
       </p>
+      <CostCells model={model} />
       <div className="voice-model-row__caps" aria-label={t("voice.models.capabilities", { defaultValue: "What it can do" })}>
         {CAPS.filter((cap) => model.capabilities[cap]).map((cap) => (
           <span key={cap} className="badge accent">

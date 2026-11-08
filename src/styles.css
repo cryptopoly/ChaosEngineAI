@@ -15213,6 +15213,8 @@ select.music-library__select {
   font-size: 12px;
 }
 
-.skills-scan__ack {
+.control-stack label.skills-scan__ack {
+  flex-direction: row;
   align-items: flex-start;
+  gap: 6px;
 }

@@ -1,0 +1,499 @@
+{
+  "composer": {
+    "placeholderReady": "QIn yIghItlh... (ngeHmeH Enter, mu'tlhegh chu'meH Shift+Enter, ra'meH /)",
+    "placeholderNoModel": "yab yIchu' wa'DIch: ja'chuq > yab yIwIv, ghIq CHAT yI'uy.",
+    "send": "yIngeH",
+    "stop": "yImev",
+    "clear": "yIchImmoH",
+    "sendDisabledTooltip": "QIn DangeHpa' yab yIchu'",
+    "sendLoadingTooltip": "yab chu'lu'taH; yIloS"
+  },
+  "thinkingMode": {
+    "label": "Qub",
+    "tooltip": "jangpa' yab Qub 'ar? yIwIv. chu'Ha' = SIbI' jang; puS / motlh / law' = Qub law'choH, yab HoSqu'vaD.",
+    "off": "chu'Ha'",
+    "offTooltip": "Qubbe', SIbI' jang yab",
+    "low": "puS",
+    "lowTooltip": "loQ Qub",
+    "medium": "motlh",
+    "mediumTooltip": "Qub motlh",
+    "high": "law'",
+    "highTooltip": "Qubqu'"
+  },
+  "tools": {
+    "toggleLabel": "jan",
+    "toggleOn": "jan chu'lu'",
+    "enableTooltip": "Duy jan yIchu'",
+    "enabledTooltip": "jan chu'lu'ta' (web nej, ngoq, mI' SImwI', nav laDwI')"
+  },
+  "newSession": "ja'chuq chu'",
+  "newSessionTitle": "ja'chuq pongbe'",
+  "deleteSession": "ja'chuq yIQaw'",
+  "deleteSessionConfirm": "ja'chuqvam DaQaw''a'? choHHa'laHbe'lu'.",
+  "renameSession": "ja'chuq pong yIchoH",
+  "exportSession": "ja'chuq yIngeH",
+  "promptPlaceholder": "QIn yIngeH…",
+  "promptPlaceholderImage": "mIllogh yIDel, pagh ja'chuqmeH mIllogh yIlan…",
+  "stopGeneration": "chenmoH yImev",
+  "regenerateResponse": "jang yIchenmoHqa'",
+  "branchHere": "naDev ja'chuq chu' yItagh",
+  "copyMessage": "QIn yIqon",
+  "copyAsMarkdown": "Markdown yIqon",
+  "tokensUsed": "{count, plural, other {# token}}",
+  "thinking": "QubtaH…",
+  "toolCall": {
+    "label": "jan lo'",
+    "running": "jan QaptaH: {tool}",
+    "succeeded": "jan Qapta': {tool}",
+    "failed": "jan lujta': {tool}",
+    "noArguments": "(De' tu'be'lu')",
+    "input": "De' 'el",
+    "result": "ngoD"
+  },
+  "attachments": {
+    "image": "mIllogh yIchel",
+    "document": "ghItlh yIchel",
+    "code": "ngoq yIchel",
+    "removeAttachment": "nav yIteq",
+    "imageTooLarge": "10MB rav mIllogh"
+  },
+  "modelPicker": {
+    "label": "yab",
+    "noneSelected": "yab chu'lu'be'",
+    "loadModel": "yab yIchu'"
+  },
+  "header": {
+    "expandChatList": "ja'chuq tetlh yIcha'",
+    "chatsLabel": "ja'chuqmey",
+    "threadName": "ja'chuq pong",
+    "selectModel": "yab yIwIv",
+    "exportThread": "ja'chuqvam yIngeH",
+    "export": "yIngeH",
+    "modelCapabilities": "yab laH",
+    "ready": "ghuH",
+    "loadChatModel": "ja'chuqvam yab yIchu'",
+    "loading": "chu'lI'...",
+    "loadModel": "yab yIchu'",
+    "cancelLoadTitle": "chu' yImev 'ej qawHaq yIchImmoH",
+    "unloadTitle": "yab yIchu'Ha' 'ej qawHaqDaj yIchImmoH",
+    "cancelLoad": "chu' yIqIl",
+    "unload": "yIchu'Ha'",
+    "startCall": "ghoghlIjmo' yab yIja'",
+    "call": "ghogh",
+    "callNeedsModel": "ghogh ja'chuq DataghmeH ja'chuq yab yIchu'",
+    "callInfo": "chu'lu'ta'bogh yab yIja', ghogh yIlo'. yIjatlh, yIyev, 'ej ghoghmo' jang. jatlhtaHvIS yIjatlh 'e' DamevmeH. ja'chuqvamDaq Hoch QIn pollu'.",
+    "callNeeds": "poQlu':",
+    "callReady": "ghuH",
+    "callMissing": "Hutlh",
+    "callSetup": "ghogh yI'uy: ghogh yab yIpoSmoH 'ej Hutlhbogh Doch yIjom.",
+    "callNeedModel": "ja'chuq yab chu'lu'ta'",
+    "callNeedStt": "QIch yajwI' (ghogh yab)",
+    "callNeedTts": "jangmeH ghogh (ghogh yab)",
+    "callNeedVad": "jatlh mev tu'wI', ghogh jo 'ay'"
+  },
+  "sidebar": {
+    "title": "ja'chuqmey",
+    "newThread": "ja'chuq chu'",
+    "compare": "yI'ov",
+    "compareTooltip": "cha' yab tI'ov, ret",
+    "collapseChatList": "ja'chuq tetlh yISo'",
+    "searchThreadsPlaceholder": "ja'chuq yInej...",
+    "searchThreadsAriaLabel": "ja'chuq yInej",
+    "clearSearch": "nej yIchImmoH",
+    "noThreadsMatch": "\"{query}\" rurbogh ja'chuq tu'be'lu'.",
+    "unpin": "yIbaghHa'",
+    "pin": "yIbagh",
+    "deleteChat": "ja'chuq yIQaw'",
+    "forkedFrom": "latlh ja'chuqvo' chenta', QIn #{number}",
+    "forkBadge": "⑂ 'ay'",
+    "modelReadyTooltip": "yab chu'lu'ta'; SIbI' jang ja'chuqvam, chu'qa' poQbe'.",
+    "readyBadge": "ghuH"
+  },
+  "swapMenu": {
+    "clearOverride": "wIv le' yIchImmoH",
+    "dialogAriaLabel": "QIn vebvaD yab yIwIv",
+    "sendNextVia": "QIn veb ngeHmeH yab",
+    "oneTurnNote": "wa' QInvaD neH wIv le'.",
+    "noWarmModels": "latlh yab chu'lu'ta' tu'be'lu'. nom tammeH ja'chuq > yab yIlo' 'ej cha'DIch yab yIchu'."
+  },
+  "activeThread": {
+    "title": "ja'chuq Qap",
+    "subtitle": "jang De' So'lu' motlh, 'ach Hoch Duy jangvaD tu'lu'."
+  },
+  "compare": {
+    "latest": "Qav"
+  },
+  "tempChip": {
+    "label": "Hat {value}",
+    "tooltip": "Hat: {value} (tagh wIvvo')",
+    "overrideTooltip": "Hat le': {value} (motlh {defaultValue_})",
+    "dialogAriaLabel": "Hat le'",
+    "overrideLabel": "Hat yIchoH",
+    "reset": "yImotlhmoH",
+    "hint": "puS = buS. law' = chen chu'. tagh wIvvo' motlh {value}."
+  },
+  "thread": {
+    "copyMessageTooltip": "QIn yIqon",
+    "retryTooltip": "jang yInIDqa'",
+    "forkTooltip": "naDev ja'chuq chu' yItagh",
+    "delveTooltip": "yInuDqa': QInvam yIlaDqa', yIQIj, 'ej jang Dub yIchup",
+    "deleteMessageTooltip": "QIn yIQaw'",
+    "loadExactSettingsTooltip": "jangvamvaD lo'lu'ta'bogh yab wIv je tIchu'",
+    "roleAgent": "Duy",
+    "roleUser": "lo'wI'",
+    "thermalThrottleTitle": "tujmo' QIt",
+    "memoryCriticalTitle": "pat qawHaq Qob",
+    "memoryStats": "{available} GB chIm · lo' {pressure}%",
+    "cancel": "yIqIl",
+    "emptyState": "ja'chuq DataghmeH QIn yIngeH.",
+    "reloadSettings": "wIvmeyvam tIchu'qa'",
+    "fitInMemory": {
+      "on": "chu'lu'",
+      "off": "chu'Ha'lu'",
+      "unknown": "Sovbe'lu'"
+    },
+    "variants": {
+      "heading": "jangmey 'ov",
+      "subtitle": "latlh yab chu'lu'ta'bogh lo' QIn rap."
+    },
+    "details": {
+      "summary": "yab De'",
+      "unknown": "Sovbe'lu'",
+      "auto": "nIteb",
+      "dflashAccepted": "DFLASH {value} lajlu' motlh",
+      "model": "yab",
+      "runtime": "jonta'",
+      "cache": "cache",
+      "strategy": "mIw",
+      "cacheBits": "cache bits",
+      "fp16Layers": "FP16 layers",
+      "backend": "qoD pat",
+      "context": "ghu'",
+      "fitInMemory": "qawHaqDaq yap",
+      "tokens": "token",
+      "tokensTotal": "{count} Hoch",
+      "responseTime": "jang poH",
+      "decodeSpeed": "chenmoH Do",
+      "dflashDdtree": "DFlash / DDTree",
+      "requestedCache": "cache tlhoblu'",
+      "requestedFit": "yap tlhoblu'",
+      "requestedDflashDdtree": "DFlash / DDTree tlhoblu'",
+      "runtimeStatus": "jonta' Dotlh",
+      "treeBudget": "Sor chuq",
+      "dflashAcceptance": "DFLASH laj",
+      "avgTokens": "{value} token motlh",
+      "draftModel": "yab nung"
+    }
+  },
+  "htmlChallenge": {
+    "titlePlaceholder": "qaD pong",
+    "promptPlaceholder": "Hoch yab wIvlu'ta'bogh De' nav qaD rap yIngeH...",
+    "openBrowser": "web leghwI' motlhDaq yIpoSmoH",
+    "historyPlaceholder": "qaD nung yInej...",
+    "moveToTrash": "veQDaq yIlan",
+    "moveToTrashAria": "veQDaq \"{title}\" yIlan",
+    "noMatching": "rurbogh qaD tu'be'lu'.",
+    "layoutToggleAria": "HTML qaD chen",
+    "layoutRow": "tlhegh",
+    "thisChallengeFallback": "qaDvam",
+    "deleteConfirm": "nav ghom .trash-Daq \"{title}\" Dalan'a'? DanISchugh polmeH Daqvo' DaqemlaH.",
+    "actions": {
+      "newChallenge": "qaD chu'",
+      "openFolder": "nav ghom yIpoSmoH",
+      "openSettings": "SeHlaw yIpoSmoH",
+      "addModel": "yab yIchel",
+      "cancel": "yIqIl",
+      "usePromptInNewChallenge": "qaD chu'Daq QIn yIlo'",
+      "runChallenge": "qaD yIchu'",
+      "runNewChallenge": "qaD chu' yIchu'",
+      "browsePrompts": "QIn ghom"
+    },
+    "status": {
+      "generating": "chenmoHlI'...",
+      "queuedRetry": "nIDqa' loStaH...",
+      "queuedContinuation": "taH loStaH...",
+      "queuedRepair": "tI' loStaH..."
+    },
+    "errors": {
+      "deleteFailed": "qaD Qaw' lujta'.",
+      "challengeFailed": "qaD lujta'",
+      "retryFailed": "nIDqa' lujta'",
+      "repairFailed": "tI' lujta'"
+    },
+    "modelCard": {
+      "selectAModel": "yab yIwIv",
+      "thinking": "Qub",
+      "thinkingOff": "chu'Ha'",
+      "thinkingLow": "puS",
+      "thinkingMed": "motlh",
+      "thinkingHigh": "law'",
+      "temp": "Hat",
+      "seed": "seed",
+      "seedPlaceholder": "Qoj",
+      "randomize": "yIQojmoH",
+      "remove": "yIteq",
+      "change": "yIchoH",
+      "select": "yIwIv"
+    },
+    "picker": {
+      "title": "yab yIwIv",
+      "titleForSlot": "{slot} yIwIv",
+      "confirm": "yabvam yIlo'",
+      "confirmForSlot": "{slot}vaD yIlo'"
+    },
+    "promptLibrary": {
+      "tabs": {
+        "all": "Hoch"
+      },
+      "title": "QIn ghom",
+      "subtitle": "qaD chenta' yIwIv, pagh yISoQmoH 'ej qaDlIj yIghItlh.",
+      "searchPlaceholder": "QIn yInej (pong, mIw, mu')...",
+      "resultCount": "{count} cha'lu'",
+      "empty": "nejlIj rurbogh QIn tu'be'lu'.",
+      "close": "yIqIl",
+      "categories": {
+        "games": "Quj",
+        "simulations": "velqa' mIw",
+        "tech-demos": "laH 'agh",
+        "creative-tools": "chenmoH jan"
+      }
+    },
+    "slotPanel": {
+      "collapsePreview": "legh nung yISo'",
+      "expandPreview": "legh nung yIcha'",
+      "viewRender": "chenta' yIlegh",
+      "viewHtmlCode": "HTML ngoq yIlegh",
+      "collapse": "yISo'",
+      "latest": "Qav",
+      "changeModel": "yab yIchoH",
+      "continueHtml": "HTML yItaH",
+      "repairHtml": "HTML yItI'",
+      "retry": "yInIDqa'",
+      "fileDeleted": "nav Qaw'lu'ta'",
+      "fileDeletedDetail": "qaDvam nav ghomDaq {filename} tu'be'lu'.",
+      "savedFileFallback": "HTML nav pollu'ta'bogh",
+      "noHtmlOutput": "HTML tu'be'lu'",
+      "noRenderablePage": "rInta' yabvam 'ach HTML nav cha'laHbogh chenmoHbe'.",
+      "noStandaloneDocument": "HTML ghItlh naQ ngaSbe' pollu'ta'bogh De'.",
+      "previewTitle": "{label} HTML legh nung",
+      "loadingModel": "yab chu'lI'...",
+      "waitingFor": "{label} rInmeH loStaH...",
+      "waiting": "loStaH...",
+      "waitingToStart": "taghmeH loStaH..."
+    }
+  },
+  "samplerPanel": {
+    "label": "sampler",
+    "openTooltip": "sampler 'echlet yIpoSmoH",
+    "activeTooltip": "{count, plural, other {# sampler wIv le' Qap}}",
+    "dialogAriaLabel": "sampler wIv le'",
+    "headerTitle": "sampler wIv le'",
+    "resetAll": "Hoch tImotlhmoH",
+    "resetAllTooltip": "qoD pat motlh tIchu'qa'",
+    "useBackendDefault": "qoD pat motlh yIlo'",
+    "reset": "yImotlhmoH",
+    "schemaNotObject": "JSON object 'oHnIS schema'e'",
+    "invalidJson": "JSON muj",
+    "hints": {
+      "topP": "top-p chuq (puS = buS)",
+      "topK": "N token DuHqu' tIpol (0 = chu'Ha')",
+      "minP": "DuH rav chuq",
+      "repeatPenalty": "1.0 = pagh; >1 = mu' rapqa' yIbot",
+      "xtcProbability": "XTC: token DuHqu' woD, pIm chenmeH (0 = chu'Ha')",
+      "xtcThreshold": "XTC: token DuHqu' DuH mI'vam law'chugh neH Qap",
+      "dryMultiplier": "DRY rapqa' bot HoS (0 = chu'Ha'; llama.cpp neH)",
+      "seed": "chenmoH rap reH (mI' naQ 0 pagh law')",
+      "mirostatTau": "mIS ngoQ",
+      "mirostatEta": "ghoj Do"
+    },
+    "placeholderDefault": "motlh",
+    "placeholderOff": "chu'Ha'",
+    "placeholderRandom": "Qoj",
+    "mirostatHint": "wIv choHtaHbogh mIS ngoQ",
+    "jsonSchema": "JSON schema",
+    "jsonSchemaHint": "jang chen botlu' (llama.cpp neH)",
+    "schemaOk": "schema yajlu'ta'; jang veb bot.",
+    "panelHint": "ja'chuqvamvaD neH wIv le'. Hoch lo' llama.cpp; laHDaj neH lo' mlx-lm (top_p / top_k / min_p) 'ej latlh buSHa'. Daq chIm = qoD pat motlh yIlo'."
+  },
+  "kvChip": {
+    "clearOverride": "KV wIv le' yIchImmoH",
+    "revertTooltip": "ja'chuq motlh yIchegh",
+    "dialogAriaLabel": "KV cache mIw",
+    "headingTitle": "QIn vebvaD KV cache",
+    "reloadNote": "DachoHchugh, nISlu'chugh jonta' chu'qa'lu'.",
+    "memorySaverTitle": "KV cache machmoH; vaj qawHaq puSDaq yap ja'chuq nI'. chenmoH QIt law', Native QIt puS.",
+    "memorySaver": "qawHaq polwI'"
+  },
+  "citations": {
+    "sourcesLabel": "Hal:",
+    "pageInfo": "(nav {page})",
+    "chunkLabel": "'ay' {index}"
+  },
+  "modelLoading": {
+    "elapsed": "({seconds} lup)",
+    "loadingWithElapsed": "{name} chu'lI'... {seconds} lup qaSpu'"
+  },
+  "promptPhase": {
+    "processingPrompt": "QIn laDlI'",
+    "generating": "chenmoHlI'"
+  },
+  "slashCommands": {
+    "menuAriaLabel": "ra' tetlh (/)"
+  },
+  "compareView": {
+    "slot": {
+      "a": "yab A",
+      "b": "yab B",
+      "c": "yab C",
+      "d": "yab D"
+    },
+    "selectModel": "yab yIwIv",
+    "removeSlotTitle": "{slot} yIteq",
+    "remove": "yIteq",
+    "change": "yIchoH",
+    "select": "yIwIv",
+    "backToChat": "ja'chuqDaq yIchegh",
+    "title": "yab 'ov",
+    "subtitle": "cha' yab pagh loS yab tItetlh. wa' yab chu'lu', Qap, 'ej chu'Ha'lu', ghIq veb tagh.",
+    "addModel": "yab yIchel",
+    "queued": "{count}/4 loStaH",
+    "duplicateNote": "DaqmeyDaq yab rap wIvlu'ta'; jonta' wIv A/B waHmeH lI'.",
+    "promptPlaceholder": "'ovmeH QIn yIghItlh...",
+    "cancel": "yIqIl",
+    "compareButton": "yI'ov"
+  },
+  "voice": {
+    "heardNothing": "QIch Qoybe'lu'. QoywI' DaSumchoHDI' yInIDqa'.",
+    "installToDictate": "ghogh jo poQ ghogh 'el. jommeH yI'uy.",
+    "stopDictation": "yImev 'ej yIghItlh (qIlmeH Esc)",
+    "transcribing": "ghItlhlI'…",
+    "startDictation": "yIjatlh (yI'uy, pagh jatlhtaHvIS yI'uytaH; Ctrl/Cmd+Shift+M)",
+    "installToRead": "ghogh jo poQ laD jatlh. jommeH yI'uy.",
+    "stopReading": "laD yImev",
+    "readAloud": "yIlaD 'ej yIjatlh",
+    "dismiss": "yISo'",
+    "resume": "yItaH",
+    "pause": "yIyev",
+    "stop": "yImev",
+    "preparing": "QIch chenmoHlI'…"
+  },
+  "voiceCall": {
+    "starting": "QoywI' taghlI'…",
+    "listening": "'IjtaH…",
+    "hearing": "DuQoytaH…",
+    "transcribing": "yajta'…",
+    "thinking": "QubtaH…",
+    "speaking": "jatlhtaH…",
+    "error": "ghogh ja'chuq mevpu'",
+    "muted": "tammoHlu'ta'",
+    "title": "ghogh ja'chuq",
+    "you": "SoH",
+    "model": "yab",
+    "interrupted": "(mevlu'pu')",
+    "muteHint": "QoywI' yItammoH (Space)",
+    "unmute": "yItammoHHa'",
+    "mute": "yItammoH",
+    "endHint": "ghogh ja'chuq yIrInmoH (Esc)",
+    "end": "yIrInmoH",
+    "meta": "ghogh: {voice}",
+    "headphones": "yab DamevmeH teS QoywI' pov"
+  },
+  "emptyBanner": {
+    "welcomeTitle": "👋 ChaosEngineAI ja'chuqDaq nuqneH",
+    "welcomeBody": "DataghmeH ja'chuq > yabvo' ja'chuq yab yIwIv. nIDlIj wa'DIchvaD Qwen3 mach pagh Llama 3 mach wIchup: wa' tup cha' tup joq lI'lu' 'ej Hoch De'wI'Daq Qap.",
+    "browseDiscover": "yab yInej",
+    "noModelLoaded": "bIja'chuqpa' yab chu'lu'nIS. ghomlIjvo' wa' yIwIv 'ej qawHaqDaq yIqem.",
+    "loadModel": "yab yIchu'",
+    "getStartedAriaLabel": "ja'chuq yItagh",
+    "loadModelAriaLabel": "ja'chuqmeH yab yIchu'"
+  },
+  "codeBlock": {
+    "copied": "qonlu'ta'",
+    "copyCode": "ngoq yIqon",
+    "copy": "yIqon"
+  },
+  "busy": {
+    "slowerTitle": "vumtaH De'wI'",
+    "riskyTitle": "cha'vaD qawHaq yapbe'",
+    "dismiss": "yISo'"
+  },
+  "studioChat": {
+    "switch": {
+      "label": "Studio",
+      "on": "Studio chu'lu'",
+      "onTooltip": "Studio jan chu'lu'ta': mIllogh, mIllogh vIH, QIch, QoQ je nablaH yab. nab Dalajpa' pagh chenmoHlu'.",
+      "offTooltip": "yabvamvaD Studio jan tInob (mIllogh, mIllogh vIH, QIch, QoQ, lut 'echlet)"
+    },
+    "plan": {
+      "title": "nab lajmeH",
+      "subtitle": "Dalajpa' pagh chenmoHlu'. QInvamvaD Dochmeyvam neH.",
+      "unanswered": "jangbe'lu'. pagh chenmoHlu'.",
+      "edited": "nab choH Datlhobta'. pagh chenmoHlu'.",
+      "decided": "{total}vo' {approved} lajlu'ta'.",
+      "sent": "ngeHlu'ta'. yab loStaH...",
+      "time": "{time} 'e' noHlu'",
+      "memory": "{gb} GB 'e' noHlu'",
+      "approved": "lajlu'ta'",
+      "declined": "lajQo'lu'ta'",
+      "approveThis": "Dochvam yIlaj",
+      "alwaysAllow": "ja'chuqvamDaq reH chenmoH yIchaw'",
+      "approveAll": "Hoch tIlaj",
+      "approve": "yIlaj",
+      "deny": "yIlajQo'",
+      "edit": "ja'chuqmo' yIchoH",
+      "frames": "{count} mIllogh",
+      "fps": "{fps} fps",
+      "steps": "{count} mIw",
+      "variations": "{count} nID",
+      "instrumental": "bombe'",
+      "shots": "{count} 'ay'",
+      "what": "chenmoH: {what}",
+      "preview": "legh nung",
+      "force": "'ay' ngaQlu'ta' ngaS",
+      "timeRecommended": "tInghach chuplu'bogh: {time} 'e' noHlu'",
+      "inputs": "mIllogh 'el: {files}",
+      "more": "law'",
+      "less": "puS",
+      "memoryLoaded": "chu'lu'taH {model}: {gb} GB chIm 'e' noHlu'.",
+      "memoryFree": "{gb} GB chIm 'e' noHlu'.",
+      "approveThisLabel": "{kind}vam neH yIlaj: {prompt}"
+    },
+    "job": {
+      "declined": "lajQo'lu'ta'. pagh chenmoHlu'.",
+      "queued": "loStaH (Daq {position})",
+      "runningPhase": "QaptaH: {phase}",
+      "running": "QaptaH",
+      "done": "rIn",
+      "cancelled": "qIllu'ta'",
+      "failed": "lujta'",
+      "cancel": "yIqIl",
+      "openProject": "Qu'Daq yIpoSmoH",
+      "openLibrary": "ghomDaq yIpoSmoH",
+      "interrupted": "mevlu'pu' (taghqa'pu' De'wI' pat)"
+    },
+    "kind": {
+      "image": "mIllogh",
+      "video": "mIllogh vIH",
+      "speech": "QIch",
+      "music": "QoQ",
+      "sound": "wab",
+      "storyboard": "lut 'echlet",
+      "film": "lut",
+      "captions": "ghItlh"
+    },
+    "auto": {
+      "label": "chenmoH lajlu' nIteb",
+      "tooltip": "ja'chuqvamDaq nab 'echlet Hutlh chenmoH. {hours} rep qaSpu'DI' pagh taghqa'DI' De'wI' pat rIn.",
+      "off": "yIchu'Ha'"
+    }
+  },
+  "skillsChat": {
+    "switch": {
+      "label": "laH",
+      "on": "laH chu'lu'",
+      "onTooltip": "ja'chuqvamvaD laH chu'lu'ta': {count, plural, other {# laH}} pong legh yab 'ej yapDI' wa' laD. not Qap laH ngoq.",
+      "offTooltip": "SeHlawDaq chu'lu'ta'bogh laH yabvamvaD tInob",
+      "ratings": "Qob nuD: {high} Qob law', {medium} motlh, {low} Qob puS."
+    }
+  }
+}

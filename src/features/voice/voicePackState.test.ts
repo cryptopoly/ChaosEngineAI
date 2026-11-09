@@ -18,9 +18,11 @@ describe("voicePackMode", () => {
     expect(voicePackMode({ ...healthy, updateAvailable: true })).toBe("update");
     expect(voicePackMode({ ...healthy, vadAvailable: false })).toBe("update");
   });
-  it("leads with repair after a failed run or when the voice model is missing", () => {
+  it("leads with repair after a failed run", () => {
     expect(voicePackMode({ ...healthy, jobPhase: "error" })).toBe("repair");
-    expect(voicePackMode({ ...healthy, ttsModelInstalled: false })).toBe("repair");
+  });
+  it("is healthy without Kokoro, an optional add-on (D-75)", () => {
+    expect(voicePackMode({ ...healthy, ttsModelInstalled: false })).toBe("healthy");
   });
   it("is healthy otherwise, including right after a successful install", () => {
     expect(voicePackMode(healthy)).toBe("healthy");

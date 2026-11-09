@@ -26,14 +26,17 @@ const VAD_BATCH = 4;
 const BARGE_IN = { threshold: 0.7, minSpeechMs: 256, preRollMs: 1000 };
 const LISTEN = { threshold: 0.5, minSpeechMs: 160, preRollMs: 400 };
 
-/** The Kokoro voice that speaks when nothing else can (D-72). */
+/** The default fallback voice, Kokoro's Heart; it counts only while Kokoro is installed (D-75). */
 export const FALLBACK_VOICE = "af_heart";
 
 /** The voice a call speaks with: ``callVoice`` when set, else the chat voice, unless that is a cloned voice (never
- * used in calls), in which case the Kokoro voice. */
-export function callVoiceOf(settings: { ttsVoice: string; callVoice?: string }): string {
+ * used in calls), in which case the fallback voice. "" when that is cloned too or none is set: the backend then
+ * answers with its plain "no fallback voice is set" error (D-75). */
+export function callVoiceOf(settings: { ttsVoice: string; callVoice?: string; fallbackVoice?: string }): string {
   if (settings.callVoice) return settings.callVoice;
-  return settings.ttsVoice.startsWith("clone:") ? FALLBACK_VOICE : settings.ttsVoice;
+  if (!settings.ttsVoice.startsWith("clone:")) return settings.ttsVoice;
+  const fallback = settings.fallbackVoice ?? FALLBACK_VOICE;
+  return fallback.startsWith("clone:") ? "" : fallback;
 }
 
 export interface VoiceCallOptions {

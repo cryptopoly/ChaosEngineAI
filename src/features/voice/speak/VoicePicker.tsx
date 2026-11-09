@@ -196,8 +196,8 @@ export function VoicePicker({
         <section className="voice-picker__group voice-picker__group--quick">
           <GroupHead
             title={t("voice.picker.quick", { defaultValue: "Quick" })}
-            note={t("voice.picker.quickNote", {
-              defaultValue: "Kokoro, part of the voice runtime. Fast, under 1 GB, speed only. {count} voices in {languages} languages.",
+            note={t("voice.picker.quickNoteAddon", {
+              defaultValue: "Kokoro, an add-on of the voice runtime. Fast, under 1 GB, speed only. {count} voices in {languages} languages.",
               count: quickCount,
               languages: languages.length,
             })}

@@ -9,8 +9,9 @@ import { getVoices } from "../../api";
 import type { VoiceEntry } from "../../types";
 import { useVoice } from "./VoiceContext";
 import { callVoiceOf } from "./conversation/useVoiceCall";
-import { chatVoiceName } from "./speak/speakLogic";
+import { chatVoiceName, effectiveFallback, fallbackSetting } from "./speak/speakLogic";
 import { voiceKindLabel } from "./speak/VoiceRow";
+import { FallbackNote } from "./speak/FallbackNote";
 import { VOICE_LANGUAGES, voiceLanguageName } from "./voiceLanguages";
 
 export interface VoiceRequirement {
@@ -75,6 +76,9 @@ export function VoicePopover({ requirements, initialOpen = false }: { requiremen
   const speed = Number.isFinite(settings.speed) ? settings.speed : 1;
   const silence = Number.isFinite(settings.vadSilenceMs) ? settings.vadSilenceMs : 700;
   const callId = callVoiceOf(settings);
+  // The fallback in effect (D-75): until the voice list has loaded, the setting itself.
+  const fallback = effectiveFallback(voices, settings);
+  const fallbackId = voices.length > 0 ? (fallback?.id ?? "") : fallbackSetting(settings);
   const sttModel =
     runtime?.sttModels.find((m) => m.id === settings.sttModel || m.key === settings.sttModel) ?? runtime?.sttModels.find((m) => m.default) ?? null;
   const languageLabel = VOICE_LANGUAGES.find(([code]) => code === settings.language)?.[1] ?? settings.language;
@@ -91,7 +95,7 @@ export function VoicePopover({ requirements, initialOpen = false }: { requiremen
       <div className="voice-popover__line">
         <span className="voice-popover__what">{label}</span>
         <span className="voice-popover__who">
-          <strong>{nameOf(id)}</strong>
+          <strong>{id ? nameOf(id) : t("voicePopover.noFallback", { defaultValue: "None set" })}</strong>
           {entry ? <span className="badge">{voiceKindLabel(entry, tf)}</span> : null}
           {note ? <span className="muted-text">{note}</span> : null}
         </span>
@@ -147,11 +151,12 @@ export function VoicePopover({ requirements, initialOpen = false }: { requiremen
                   {t("voicePopover.change", { defaultValue: "Change" })}
                 </button>
               </div>
-              <p className="muted-text voice-popover__fallback">
-                {ts("voice.voices.fallbackNote", {
-                  defaultValue: "If a chosen voice cannot speak (model not downloaded, or it fails to load), Kokoro reads instead and Chat says so.",
-                })}
-              </p>
+              {voiceLine(t("voicePopover.fallback", { defaultValue: "Fallback" }), fallbackId)}
+              {voices.length > 0 ? (
+                <p className="muted-text voice-popover__fallback">
+                  <FallbackNote voice={fallback} />
+                </p>
+              ) : null}
               <label className="checkbox-label">
                 <input type="checkbox" checked={settings.autoRead} onChange={(e) => void saveSettings({ autoRead: e.target.checked })} />
                 {ts("voice.settings.autoRead", { defaultValue: "Read every chat reply aloud when it finishes" })}

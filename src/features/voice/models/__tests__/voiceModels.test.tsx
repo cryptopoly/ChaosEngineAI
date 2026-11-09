@@ -73,14 +73,25 @@ function wrap(node: React.ReactNode, rt = runtime()) {
 describe("Speech models on the shared Models table (D-73 M3b)", () => {
   const html = wrap(<SpeechModelsPanel catalog={catalog} runtime={runtime()} availability="all" onAvailabilityChange={() => {}} onOpenStudio={() => {}} />);
 
-  it("starts with Kokoro, part of the runtime, the voice Chat falls back to, with Browse voices and no Delete", () => {
+  it("starts with Kokoro, an add-on of the runtime, with Browse voices and no Delete", () => {
     const kokoro = html.slice(html.indexOf('data-model-id="kokoro"'), html.indexOf('data-model-id="qwen3-tts-custom-1.7b"'));
     expect(html.indexOf('data-model-id="kokoro"')).toBeLessThan(html.indexOf('data-model-id="qwen3-tts-custom-1.7b"'));
     expect(kokoro).toContain("2 quick voices in 2 languages");
-    expect(kokoro).toContain("the voice Chat falls back to");
+    expect(kokoro).toContain("an add-on of the voice runtime");
+    expect(kokoro).not.toContain("falls back to");
     expect(kokoro).toContain("Part of the runtime");
     expect(kokoro).toContain("Browse voices");
     expect(kokoro).not.toContain("Delete model");
+  });
+
+  it("shows Kokoro as not installed, with where to add it, when it was left out (D-75)", () => {
+    const out = wrap(
+      <SpeechModelsPanel catalog={catalog} runtime={runtime({ ttsModelInstalled: false })} availability="all" onAvailabilityChange={() => {}} onOpenStudio={() => {}} />,
+    );
+    const kokoro = out.slice(out.indexOf('data-model-id="kokoro"'), out.indexOf('data-model-id="qwen3-tts-custom-1.7b"'));
+    expect(kokoro).toContain("Not installed");
+    expect(kokoro).toContain("Tick it under Voice runtime &gt; Add-ons.");
+    expect(kokoro).not.toContain("Browse voices");
   });
 
   it("groups the rows under family headings with their licence", () => {
@@ -155,6 +166,28 @@ describe("Voice runtime panel (D-73 M4, M5)", () => {
   it("ticks an installed add-on", () => {
     const html = wrap(<VoiceRuntimePanel runtime={runtime({ extras: [{ id: "chinese", label: "x", installed: true }] })} pack={pack} />);
     expect(html).toMatch(/<input type="checkbox" checked=""\/>Mandarin Chinese quick voices/);
+  });
+
+  it("offers Kokoro as an add-on ticked by default at install (D-75)", () => {
+    const extras = [
+      { id: "kokoro", label: "Kokoro quick voices", installed: false },
+      { id: "chinese", label: "Mandarin Chinese voices", installed: false },
+    ];
+    const before = wrap(<VoiceRuntimePanel runtime={runtime({ installed: false, parts: [], workerPid: null, extras, ttsModelInstalled: false })} pack={pack} />);
+    expect(before).toMatch(/<input type="checkbox" checked=""\/>Kokoro quick voices \(about 330 MB\)/);
+    expect(before).toMatch(/<input type="checkbox"\/>Mandarin Chinese quick voices/);
+    expect(before).toContain("plus the Kokoro quick voices when ticked below");
+    // Installed without Kokoro: unticked, the runtime is healthy, and the parts line says Kokoro is not installed.
+    const without = wrap(
+      <VoiceRuntimePanel
+        runtime={runtime({ extras, ttsModelInstalled: false, parts: [{ id: "packages", sizeGb: 1.9 }, { id: "kokoro", sizeGb: 0 }, { id: "turns", sizeGb: 0.002 }, { id: "speakers", sizeGb: 0.036 }] })}
+        pack={pack}
+      />,
+    );
+    expect(without).toMatch(/<input type="checkbox"\/>Kokoro quick voices/);
+    expect(without).toContain("the Kokoro quick voices are not installed");
+    expect(without).toContain("Installed, checked OK");
+    expect(without).not.toContain("Repair voice runtime");
   });
 });
 

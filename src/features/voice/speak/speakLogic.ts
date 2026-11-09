@@ -238,15 +238,38 @@ export function usableInChat(voice: VoiceEntry, use: "read" | "call" = "read"): 
   return voice.chatUse ? voice.chatUse[use] : voice.kind === "builtin";
 }
 
-/** The three places a voice can be the main one (D-73 S2): Speak, Chat read-aloud and voice calls. */
-export type VoiceUse = "speak" | "read" | "call";
+/**
+ * The places a voice can be the main one (D-73 S2): Speak, Chat read-aloud and voice calls, plus the fallback voice
+ * that reads when the chosen chat or call voice cannot (D-75).
+ */
+export type VoiceUse = "speak" | "read" | "call" | "fallback";
 
 /** The settings key each use writes; the keys stay the same so Chat, calls, the bridge and the CLI keep working. */
-export const VOICE_USE_SETTING: Record<VoiceUse, "speakVoice" | "ttsVoice" | "callVoice"> = {
+export const VOICE_USE_SETTING: Record<VoiceUse, "speakVoice" | "ttsVoice" | "callVoice" | "fallbackVoice"> = {
   speak: "speakVoice",
   read: "ttsVoice",
   call: "callVoice",
+  fallback: "fallbackVoice",
 };
+
+/** The fallback voice by default, Kokoro's Heart; it counts only while Kokoro is installed (D-75). */
+export const DEFAULT_FALLBACK_VOICE = "af_heart";
+
+/** The ``fallbackVoice`` setting; missing (an older settings file) means Kokoro's Heart. */
+export function fallbackSetting(settings: { fallbackVoice?: string }): string {
+  return settings.fallbackVoice ?? DEFAULT_FALLBACK_VOICE;
+}
+
+/**
+ * The fallback voice in effect for ``use``, or null when none is set or the set one cannot speak there (not
+ * installed, or a cloned voice for calls). Mirrors ``voice_chat.fallback_for`` on the backend.
+ */
+export function effectiveFallback(voices: VoiceEntry[], settings: { fallbackVoice?: string }, use: "read" | "call" = "read"): VoiceEntry | null {
+  const id = fallbackSetting(settings);
+  if (!id) return null;
+  const voice = voices.find((v) => v.id === id);
+  return voice && usableInChat(voice, use) ? voice : null;
+}
 
 /**
  * Why a voice cannot be the main voice for ``use`` (W6's rules, D-72), or null when it can. Speak takes any voice;
@@ -254,7 +277,8 @@ export const VOICE_USE_SETTING: Record<VoiceUse, "speakVoice" | "ttsVoice" | "ca
  */
 export function useBlockReason(voice: VoiceEntry, use: VoiceUse): "design" | "clone" | "unavailable" | "notAllowed" | null {
   if (use === "speak") return null;
-  if (usableInChat(voice, use)) return null;
+  // The fallback follows the read-aloud rules; a cloned fallback is simply not used for calls.
+  if (usableInChat(voice, use === "fallback" ? "read" : use)) return null;
   if (voice.kind === "design") return "design";
   if (use === "call" && voice.kind === "clone") return "clone";
   if (!voice.available) return "unavailable";
@@ -267,11 +291,17 @@ export function voicesForUse(voices: VoiceEntry[], use: VoiceUse): VoiceEntry[] 
 }
 
 /** Which uses a voice is the main voice for, given the settings and the Speak voice in use. */
-export function usesOf(voiceId: string, settings: { ttsVoice: string; callVoice?: string }, speakId: string, callId: string): VoiceUse[] {
+export function usesOf(
+  voiceId: string,
+  settings: { ttsVoice: string; callVoice?: string; fallbackVoice?: string },
+  speakId: string,
+  callId: string,
+): VoiceUse[] {
   const uses: VoiceUse[] = [];
   if (voiceId === speakId) uses.push("speak");
   if (voiceId === settings.ttsVoice) uses.push("read");
   if (voiceId === callId) uses.push("call");
+  if (voiceId === fallbackSetting(settings)) uses.push("fallback");
   return uses;
 }
 

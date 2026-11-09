@@ -110,17 +110,28 @@ def _short_espeak_data_path() -> None:
 
 
 def _add_cuda_dll_dirs() -> None:
-    """Windows: let ctranslate2 find the CUDA libraries pip installed."""
+    """Windows: let ctranslate2 find the CUDA libraries pip installed.
+
+    ``os.add_dll_directory`` covers DLLs that Python's extension loader pulls in, but ctranslate2 loads
+    cuBLAS lazily with a plain ``LoadLibrary``, which searches ``PATH`` and not those folders: without the
+    PATH entry every transcription on an NVIDIA GPU failed with "Library cublas64_12.dll is not found".
+    """
     if os.name != "nt":
         return
+    found: list[str] = []
     for base in sys.path:
         nvidia = Path(base) / "nvidia"
         if nvidia.is_dir():
             for bin_dir in nvidia.glob("*/bin"):
+                found.append(str(bin_dir))
                 try:
                     os.add_dll_directory(str(bin_dir))
                 except OSError:
                     pass
+    current = os.environ.get("PATH", "")
+    missing = [d for d in found if d not in current.split(os.pathsep)]
+    if missing:
+        os.environ["PATH"] = os.pathsep.join([*missing, current] if current else missing)
 
 
 # ---------------------------------------------------------------------------

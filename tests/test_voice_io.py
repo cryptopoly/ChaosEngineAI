@@ -605,3 +605,34 @@ class NemotronLanguageTests(unittest.TestCase):
         self.assertEqual(voice_worker._nemotron_language(model, None), "auto")
         self.assertEqual(voice_worker._nemotron_language(model, "xx"), "auto")
         self.assertEqual(voice_worker._nemotron_language(object(), "de"), "auto")
+
+
+class CudaDllPathTests(unittest.TestCase):
+    """Windows: ctranslate2 loads cuBLAS with plain LoadLibrary, which only searches PATH (RTX 4090 run)."""
+
+    def test_nvidia_bin_folders_go_on_path_as_well_as_the_dll_directories(self) -> None:
+        from backend_service import voice_worker
+
+        with tempfile.TemporaryDirectory() as tmp:
+            bin_dir = Path(tmp) / "nvidia" / "cublas" / "bin"
+            bin_dir.mkdir(parents=True)
+            added: list[str] = []
+            with mock.patch.object(voice_worker.os, "name", "nt"), \
+                 mock.patch.object(voice_worker.os, "add_dll_directory", side_effect=added.append, create=True), \
+                 mock.patch.object(voice_worker.sys, "path", [tmp]), \
+                 mock.patch.dict(voice_worker.os.environ, {"PATH": "C:/Windows"}, clear=False):
+                voice_worker._add_cuda_dll_dirs()
+                voice_worker._add_cuda_dll_dirs()  # a second call must not stack duplicates
+                path = voice_worker.os.environ["PATH"].split(os.pathsep)
+        self.assertIn(str(bin_dir), added)
+        self.assertEqual(path[0], str(bin_dir))
+        self.assertEqual(path.count(str(bin_dir)), 1)
+        self.assertIn("C:/Windows", path)
+
+    def test_nothing_changes_off_windows(self) -> None:
+        from backend_service import voice_worker
+
+        with mock.patch.object(voice_worker.os, "name", "posix"), \
+             mock.patch.dict(voice_worker.os.environ, {"PATH": "/usr/bin"}, clear=False):
+            voice_worker._add_cuda_dll_dirs()
+            self.assertEqual(voice_worker.os.environ["PATH"], "/usr/bin")

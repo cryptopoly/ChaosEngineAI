@@ -239,6 +239,11 @@ def start_download(key: str) -> dict[str, Any]:
         raise ValueError(f"{row['name']} is not offered on this version yet.")
     if not available_here():
         raise ValueError(NOT_HERE)
+    if not runs_here(row):
+        # An Apple-only (MLX) row on Windows/Linux, or a CUDA row on a Mac: its weights cannot load here, so
+        # downloading them only fills the disk (Speak offered "Download" for a Mac-only default voice on Windows).
+        where = "Apple Silicon Macs" if row["lanes"] == ["mlx"] else "computers with an NVIDIA GPU"
+        raise ValueError(f"{row['name']} runs on {where} only, so it cannot be used on this computer.")
     token = uuid.uuid4().hex
     control: dict[str, Any] = {"cancel": threading.Event(), "proc": None}
     with _DOWNLOAD_LOCK:

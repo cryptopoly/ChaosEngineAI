@@ -870,6 +870,7 @@ class DownloadTests(unittest.TestCase):
 
         install = mock.Mock()
         with mock.patch.object(voice_clone, "available_here", return_value=True), \
+             mock.patch.object(voice_clone, "runs_here", return_value=True), \
              mock.patch.object(voice_clone, "_fetch_repo") as weights, \
              mock.patch.object(voice_env, "watermark_installed", return_value=False), \
              mock.patch.object(voice_env, "install_watermark", install), \

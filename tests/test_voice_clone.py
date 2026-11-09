@@ -261,6 +261,7 @@ class DownloadTests(unittest.TestCase):
 
         install = mock.Mock(side_effect=install_error)
         with mock.patch.object(voice_clone, "available_here", return_value=True), \
+             mock.patch.object(voice_env, "speech_lanes", return_value=["mlx"]), \
              mock.patch.object(voice_clone, "_fetch_repo") as weights, \
              mock.patch.object(voice_env, "watermark_installed", return_value=False), \
              mock.patch.object(voice_env, "install_watermark", install), \
@@ -279,6 +280,25 @@ class DownloadTests(unittest.TestCase):
         job = self._run(RuntimeError("pip exited 1"))
         self.assertEqual(job["state"], "failed")
         self.assertTrue(job["error"].startswith("Downloading the watermark component failed"), job)
+
+    def test_a_row_that_cannot_run_here_is_refused_before_any_download(self) -> None:
+        # Windows/Linux with the speech GPU add-on: an Apple-only (MLX) row must not pull weights it cannot load.
+        with mock.patch.object(voice_env, "speech_lanes", return_value=["cuda"]), \
+             mock.patch.object(voice_clone, "_fetch_repo") as weights:
+            voice_clone._DOWNLOADS.clear()
+            with self.assertRaisesRegex(ValueError, "Apple Silicon Macs only"):
+                voice_clone.start_download("qwen3-tts-custom-1.7b")
+        weights.assert_not_called()
+        self.assertNotIn("qwen3-tts-custom-1.7b", voice_clone._DOWNLOADS)
+
+    def test_a_cuda_row_is_refused_on_a_mac(self) -> None:
+        with mock.patch.object(voice_env, "speech_lanes", return_value=["mlx"]), \
+             mock.patch.object(voice_models, "listed_models", return_value=list(voice_models.VOICE_MODELS)), \
+             mock.patch.object(voice_clone, "_fetch_repo") as weights:
+            voice_clone._DOWNLOADS.clear()
+            with self.assertRaisesRegex(ValueError, "NVIDIA GPU only"):
+                voice_clone.start_download("voxcpm2-cuda")
+        weights.assert_not_called()
 
 
 class WorkerTests(unittest.TestCase):

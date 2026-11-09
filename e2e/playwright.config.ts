@@ -60,6 +60,8 @@ export default defineConfig({
         VITE_CHAOSENGINE_API_TOKEN: TOKEN,
         // Music and Storyboard stay hidden in a normal build; the run turns them on.
         VITE_CHAOSENGINE_HOME_STUDIO: "1",
+        // Own dependency cache, so a test run never rewrites the one `npm run tauri:dev` is serving.
+        CHAOSENGINE_VITE_CACHE_DIR: path.join(__dirname, ".run", "vite-cache"),
       },
       url: `http://127.0.0.1:${WEB_PORT}`,
       reuseExistingServer: false,

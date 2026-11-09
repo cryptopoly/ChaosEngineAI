@@ -400,7 +400,7 @@ export function MusicLibraryTab({ music, backendOnline, onTabChange }: MusicLibr
       <Panel
         title={t("musicLibrary.title", { defaultValue: "Music and Audio Library" })}
         subtitle={subtitle}
-        className="span-2 music-library"
+        className="span-2 music-library panel-scroll"
         actions={
           <button type="button" className="primary-button" onClick={() => onTabChange("music-studio")}>
             {t("musicLibrary.openStudio", { defaultValue: "Open Studio" })}

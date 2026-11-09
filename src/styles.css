@@ -10878,6 +10878,35 @@ html[lang="ko"] select {
   font-size: 0.82rem;
 }
 
+/* "Change in Voices" in the call bar: a link, not a button shape. */
+.voice-call__voices-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* The one-line fallback note under read-aloud (the chosen voice could not speak; Kokoro reads). */
+.speech-bar:has(.speech-bar__note) {
+  flex-wrap: wrap;
+}
+
+.speech-bar__note {
+  flex-basis: 100%;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.voice-chat-cost {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+}
+
 /* ==========================================================================
    Models pages (FU-129): one page per area replaces Discover + My Models.
    Shared shell: src/components/models/. Reference port: Images > Models.

@@ -103,11 +103,22 @@ export interface SpokenSentence {
   /** Base64 WAV. */
   audio: string;
   durationS: number;
+  /** The voice that spoke it (the Kokoro voice after a fallback). */
+  voice?: string;
+}
+
+/** Where read-aloud speaks: ``read`` (chat replies) or ``call`` (a voice call; cloned voices are refused). */
+export type SpeechUse = "read" | "call";
+
+export interface SpeakStreamOptions {
+  use?: SpeechUse;
+  /** A one-line note from the backend, e.g. the chosen voice could not speak and the Kokoro voice reads instead. */
+  onNote?: (note: string) => void;
 }
 
 /**
- * Read text aloud: the backend cleans markdown, splits sentences and sends
- * each one as soon as it is synthesized. ``onSentence`` sees them in order.
+ * Read text aloud with any listed voice (D-72): the backend cleans markdown, splits sentences for the voice's
+ * model and sends each one as soon as it is synthesized. ``onSentence`` sees them in order.
  */
 export async function speakStream(
   text: string,
@@ -115,11 +126,13 @@ export async function speakStream(
   speed: number,
   onSentence: (sentence: SpokenSentence) => void,
   signal?: AbortSignal,
+  options: SpeakStreamOptions = {},
 ): Promise<void> {
+  const use = options.use && options.use !== "read" ? { use: options.use } : {};
   const response = await apiFetch("/api/voice/speak/stream", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text, voice, speed }),
+    body: JSON.stringify({ text, voice, speed, ...use }),
     signal,
   });
   if (!response.ok || !response.body) {
@@ -138,9 +151,13 @@ export async function speakStream(
       buffer = buffer.slice(newline + 1);
       newline = buffer.indexOf("\n");
       if (!line) continue;
-      const event = JSON.parse(line) as Partial<SpokenSentence> & { error?: string; done?: boolean };
+      const event = JSON.parse(line) as Partial<SpokenSentence> & { error?: string; done?: boolean; note?: string };
       if (event.error) throw new Error(event.error);
       if (event.done) return;
+      if (event.note) {
+        options.onNote?.(event.note);
+        continue;
+      }
       onSentence(event as SpokenSentence);
     }
   }

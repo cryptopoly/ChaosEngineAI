@@ -18,6 +18,8 @@ import { SpeechPlayerBar } from "../voice/ReadAloud";
 import { speechPlayer } from "../voice/speechPlayer";
 import { useVoice } from "../voice/VoiceContext";
 import { VoiceCallOverlay } from "../voice/conversation/VoiceCallOverlay";
+import { callVoiceOf } from "../voice/conversation/useVoiceCall";
+import { chatVoiceName } from "../voice/speak/speakLogic";
 import { cancelChatGeneration } from "../../api";
 import type { SendMessageOptions } from "../../hooks/useChat";
 import { ChatComposer } from "./ChatComposer";
@@ -492,6 +494,12 @@ export function ChatTab({
               {t("header.callInfo", {
                 defaultValue:
                   "Talk with the loaded model out loud. Speak, pause, and it answers by voice; talk over it to interrupt. Each turn is saved in this chat.",
+              })}
+              <br />
+              <br />
+              {t("header.callVoice", {
+                defaultValue: "Voice: {voice}. Change it in Voice Studio > Voices.",
+                voice: chatVoiceName(callVoiceOf(voice.settings), voiceRuntime?.ttsVoices ?? []),
               })}
               <br />
               <br />

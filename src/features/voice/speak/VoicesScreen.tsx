@@ -7,7 +7,8 @@ import { deleteClonedVoice } from "../clone/cloneApi";
 import { CloneStatement } from "../clone/CloneStatement";
 import { NewVoiceForm } from "../clone/NewVoiceForm";
 import { chineseAddonPending } from "../voicePackState";
-import { ChatCallsPanel } from "./ChatCallsPanel";
+import { callVoiceOf } from "../conversation/useVoiceCall";
+import { ChatCallsPanel, ChatCost } from "./ChatCallsPanel";
 import { MandarinCard } from "./MandarinCard";
 import { groupVoices, managerVoices, matchesFilter, usableInChat, type VoiceFilter } from "./speakLogic";
 import type { VoiceCatalog } from "./useVoiceCatalog";
@@ -172,7 +173,9 @@ export function VoicesScreen({
           </select>
         </div>
         <p className="muted-text voice-voices__chat-note">
-          {t("voice.voices.chatQuickOnly", { defaultValue: "Chat reads aloud with quick voices for now. Natural, designed and cloned voices come to Chat later." })}
+          {t("voice.voices.chatAnyVoice", {
+            defaultValue: "Chat and calls can use any voice that runs here. Cloned voices read chat replies aloud but are not used in calls. The time is how long the first sentence takes.",
+          })}
         </p>
 
         {error ? (
@@ -191,14 +194,22 @@ export function VoicesScreen({
         <ul className="voice-list">
           {shown.map((voice) => {
             const isChatVoice = settings.ttsVoice === voice.id;
-            const chatOk = usableInChat(voice);
+            const isCallVoice = callVoiceOf(settings) === voice.id;
+            const chatOk = usableInChat(voice, "read");
+            const callOk = usableInChat(voice, "call");
+            const notInChat =
+              voice.kind === "design"
+                ? t("voice.voices.designNotInChat", { defaultValue: "Describe a voice needs a description each time, so it cannot be the chat voice." })
+                : (voice.needs ?? undefined);
             return (
               <li key={voice.id} className="voice-list__row">
                 <span className="voice-list__name">
                   <strong>{voice.kind === "design" ? t("voice.voices.designCard", { defaultValue: "Design a voice" }) : voice.name}</strong>
                   <span className="badge">{kindLabel(voice)}</span>
                   {isChatVoice ? <span className="badge success">{t("voice.voices.chatVoice", { defaultValue: "Chat voice" })}</span> : null}
+                  {isCallVoice ? <span className="badge success">{t("voice.voices.callVoice", { defaultValue: "Call voice" })}</span> : null}
                   <span className="muted-text">{detail(voice)}</span>
+                  {chatOk ? <ChatCost cost={voice.chatCost} /> : null}
                 </span>
                 <span className="voice-list__actions">
                   {canPlaySample(voice) ? (
@@ -223,11 +234,28 @@ export function VoicesScreen({
                     type="button"
                     className="secondary-button"
                     disabled={!chatOk || isChatVoice}
-                    title={chatOk ? undefined : t("voice.voices.chatLater", { defaultValue: "Quick voices only in Chat for now." })}
+                    title={chatOk ? undefined : notInChat}
                     onClick={() => void saveSettings({ ttsVoice: voice.id })}
                   >
                     {isChatVoice ? t("voice.voices.inChat", { defaultValue: "In use in Chat" }) : t("voice.voices.useInChat", { defaultValue: "Use in Chat" })}
                   </button>
+                  {voice.kind !== "design" ? (
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      disabled={!callOk || isCallVoice}
+                      title={
+                        callOk
+                          ? undefined
+                          : voice.kind === "clone"
+                            ? t("voice.voices.cloneNotInCalls", { defaultValue: "Cloned voices are not used in voice calls." })
+                            : notInChat
+                      }
+                      onClick={() => void saveSettings({ callVoice: voice.id })}
+                    >
+                      {isCallVoice ? t("voice.voices.inCalls", { defaultValue: "In use for calls" }) : t("voice.voices.useForCalls", { defaultValue: "Use for calls" })}
+                    </button>
+                  ) : null}
                   {voice.kind === "clone" ? (
                     <button
                       type="button"

@@ -751,7 +751,7 @@ export {
   cancelVoiceInstall,
   stopVoiceWorker,
 } from "./voice";
-export type { TranscribeOptions, TranscribeResult, SpokenSentence } from "./voice";
+export type { TranscribeOptions, TranscribeResult, SpokenSentence, SpeechUse } from "./voice";
 
 export {
   MusicApiError,

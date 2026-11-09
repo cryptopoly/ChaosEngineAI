@@ -14,6 +14,8 @@ import {
   managerVoices,
   matchesFilter,
   usableInChat,
+  chatVoiceChoices,
+  chatVoiceName,
   modelNote,
   pickerVoices,
   recommendedNaturalModel,
@@ -25,6 +27,7 @@ import {
   sampleTooShort,
   voiceControls,
 } from "../speakLogic";
+import { callVoiceOf, FALLBACK_VOICE } from "../../conversation/useVoiceCall";
 
 const caps = (over: Partial<VoiceEntry["capabilities"]> = {}) => ({ speak: true, style: false, clone: false, design: false, ...over });
 
@@ -179,7 +182,7 @@ describe("text helpers and lists", () => {
     expect(ids("designed")).toEqual(["design"]);
     expect(ids("recommended", ["qwen3:Ryan", "design"])).toEqual(["qwen3:Ryan", "design"]);
     expect(managerVoices(withDesign).map((v) => v.id)).toEqual(["af_heart", "clone:1", "qwen3:Ryan", "design"]);
-    expect(withDesign.filter(usableInChat).map((v) => v.id)).toEqual(["af_heart"]);
+    expect(withDesign.filter((v) => usableInChat(v)).map((v) => v.id)).toEqual(["af_heart"]);
     expect(defaultVoice(voices, "qwen3:Ryan", "en")).toBe("qwen3:Ryan");
     expect(defaultVoice(voices, "jf_alpha", "en")).toBe("qwen3:Ryan"); // not usable here: the rule decides
   });
@@ -364,5 +367,42 @@ describe("wave-2 models: controls drawn from data", () => {
     expect(sampleTooShort(clone, turbo)).toBe(true);
     expect(sampleTooShort({ ...clone, durationS: 8 }, turbo)).toBe(false);
     expect(sampleTooShort(clone, vox)).toBe(false);
+  });
+});
+
+describe("chat and call voices (D-72)", () => {
+  const base = { language: "en", capabilities: caps(), available: true, models: [] as string[] };
+  const heart: VoiceEntry = { ...base, id: "af_heart", name: "Heart", kind: "builtin", model: "kokoro", chatUse: { read: true, call: true }, chatCost: { firstAudioS: 0.13, slowForCalls: false } };
+  const ryan: VoiceEntry = { ...base, id: "qwen3:Ryan", name: "Ryan", kind: "preset", model: "c17", chatUse: { read: true, call: true }, chatCost: { firstAudioS: 1.3, slowForCalls: false } };
+  const turbo: VoiceEntry = { ...base, id: "chatterbox-turbo", name: "Turbo", kind: "preset", model: "t", chatUse: { read: true, call: true }, chatCost: { firstAudioS: 0.6, slowForCalls: false } };
+  const orpheus: VoiceEntry = { ...base, id: "orpheus:tara", name: "Tara", kind: "preset", model: "o", chatUse: { read: true, call: true }, chatCost: null };
+  const ada: VoiceEntry = { ...base, id: "clone:1", name: "Ada", kind: "clone", model: "b06", chatUse: { read: true, call: false } };
+  const design: VoiceEntry = { ...base, id: "design", name: "Describe a voice", kind: "design", model: "d", chatUse: { read: false, call: false } };
+  const missing: VoiceEntry = { ...ryan, id: "qwen3:Aiden", name: "Aiden", available: false };
+
+  it("usableInChat follows the backend's chatUse and needs the voice to run here", () => {
+    expect([heart, ryan, ada, design, missing].filter((v) => usableInChat(v, "read")).map((v) => v.id)).toEqual(["af_heart", "qwen3:Ryan", "clone:1"]);
+    expect([heart, ryan, ada, design, missing].filter((v) => usableInChat(v, "call")).map((v) => v.id)).toEqual(["af_heart", "qwen3:Ryan"]);
+    // An older backend without chatUse: quick voices only, as before.
+    expect(usableInChat({ ...ryan, chatUse: undefined })).toBe(false);
+    expect(usableInChat({ ...heart, chatUse: undefined })).toBe(true);
+  });
+
+  it("orders choices by measured first audio, unmeasured last", () => {
+    expect(chatVoiceChoices([orpheus, ryan, heart, turbo, ada], "call").map((v) => v.id)).toEqual(["af_heart", "chatterbox-turbo", "qwen3:Ryan", "orpheus:tara"]);
+  });
+
+  it("names a voice without the full list", () => {
+    expect(chatVoiceName("af_heart", [{ id: "af_heart", name: "Heart" }])).toBe("Heart");
+    expect(chatVoiceName("qwen3:Ryan")).toBe("Ryan");
+    expect(chatVoiceName("orpheus:tara")).toBe("Tara");
+    expect(chatVoiceName("chatterbox-turbo")).toBe("Turbo");
+    expect(chatVoiceName("clone:1", [], "Geklonte Stimme")).toBe("Geklonte Stimme");
+  });
+
+  it("a call uses callVoice, else the chat voice, never a cloned one", () => {
+    expect(callVoiceOf({ ttsVoice: "af_heart", callVoice: "qwen3:Ryan" })).toBe("qwen3:Ryan");
+    expect(callVoiceOf({ ttsVoice: "qwen3:Ryan", callVoice: "" })).toBe("qwen3:Ryan");
+    expect(callVoiceOf({ ttsVoice: "clone:1" })).toBe(FALLBACK_VOICE);
   });
 });

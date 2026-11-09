@@ -31,7 +31,10 @@ export interface TtsVoice {
 export interface VoiceSettings {
   sttModel: string;
   language: string;
+  /** Chat read-aloud: any listed voice whose ``chatUse.read`` is true (D-72). */
   ttsVoice: string;
+  /** Voice calls: "" means the chat voice; any listed voice whose ``chatUse.call`` is true. */
+  callVoice?: string;
   /** The voice last used on the Speak screen, apart from the chat voice; "" until Speak has been used. */
   speakVoice?: string;
   speed: number;
@@ -223,6 +226,22 @@ export interface VoiceEntry {
   /** ffmpeg is missing here: pitch (every voice) and speed (all but quick voices) cannot be changed. */
   needsFfmpeg?: boolean;
   consent?: { speakerName: string; basis: "own" | "permission"; consentedAt: string; appVersion?: string };
+  /** Where it may speak in Chat (D-72): read-aloud and calls; cloned voices read aloud only. */
+  chatUse?: { read: boolean; call: boolean };
+  /** Measured first-audio latency and memory for one chat sentence; null when not measured. */
+  chatCost?: VoiceChatCost | null;
+}
+
+/** ``scripts/measure-voice-models.py --chat`` on the catalog row (Kokoro's own constant for quick voices). */
+export interface VoiceChatCost {
+  /** Seconds to the first audio with the model already loaded. */
+  firstAudioS: number;
+  /** Seconds to the first audio when the speech worker has to start and load the model. */
+  firstAudioColdS?: number | null;
+  peakGb?: number | null;
+  measuredOn?: string | null;
+  /** Warm first audio above 2 s: allowed for calls, but labelled. */
+  slowForCalls: boolean;
 }
 
 /** Speed and memory of a speech model from the catalog; ``basis`` says whether it was measured, and where. */

@@ -37,7 +37,7 @@ function model(key: string, name: string, kind: string, sizeGb: number, capabili
   };
 }
 
-export function ttsModels(installed: string[]) {
+export function ttsModels(installed: string[], downloading: string[] = [], cancelled: string[] = []) {
   const rows: Array<[string, string, string, number, Record<string, boolean>]> = [
     ["qwen3-tts-0.6b", "Qwen3-TTS 0.6B Base", "base", 2.52, caps({ clone: true })],
     ["qwen3-tts-1.7b", "Qwen3-TTS 1.7B Base", "base", 3.8, caps({ clone: true })],
@@ -45,7 +45,14 @@ export function ttsModels(installed: string[]) {
     ["qwen3-tts-custom-1.7b", "Qwen3-TTS 1.7B CustomVoice", "custom", 3.08, caps({ style: true })],
     ["qwen3-tts-design-1.7b", "Qwen3-TTS 1.7B VoiceDesign", "design", 3.08, caps({ style: true, design: true })],
   ];
-  return rows.map(([key, name, kind, gb, c]) => model(key, name, kind, gb, c, installed.includes(key)));
+  return rows.map(([key, name, kind, gb, c]) => {
+    const row = model(key, name, kind, gb, c, installed.includes(key));
+    if (downloading.includes(key)) {
+      row.download = { state: "downloading", error: null, phase: "weights", progress: 0.4, downloadedGb: 1, totalGb: gb } as typeof row.download;
+    }
+    if (cancelled.includes(key)) row.download = { state: "cancelled", error: null, phase: null } as typeof row.download;
+    return row;
+  });
 }
 
 export const ADA = {
@@ -137,16 +144,20 @@ export interface VoiceMockOptions {
   callVoice?: string;
   /** Speech, speech-to-text and turn detection all report ready, so Read aloud and Call are enabled. */
   ready?: boolean;
+  /** Catalog keys whose download is running; Cancel on one stops it (the mock records the key in ``cancels``). */
+  downloading?: string[];
 }
 
 /** Patch the runtime to "pack installed" and mock the voice and model lists plus the clone routes. */
 export async function mockVoiceApi(
   page: Page,
   options: VoiceMockOptions = {},
-): Promise<{ downloads: string[]; deleted: string[]; speakVoices: string[]; ttsVoices: string[]; callVoices: string[] }> {
+): Promise<{ downloads: string[]; cancels: string[]; deleted: string[]; speakVoices: string[]; ttsVoices: string[]; callVoices: string[] }> {
   const installed = options.installed ?? ["qwen3-tts-0.6b", "qwen3-tts-custom-0.6b"];
   const clones = options.clones ?? [];
-  const seen = { downloads: [] as string[], deleted: [] as string[], speakVoices: [] as string[], ttsVoices: [] as string[], callVoices: [] as string[] };
+  const downloading = [...(options.downloading ?? [])];
+  const cancelled: string[] = [];
+  const seen = { downloads: [] as string[], cancels: [] as string[], deleted: [] as string[], speakVoices: [] as string[], ttsVoices: [] as string[], callVoices: [] as string[] };
   let speakVoice = options.speakVoice ?? "";
   let ttsVoice = options.ttsVoice ?? "af_heart";
   let callVoice = options.callVoice ?? "";
@@ -180,10 +191,18 @@ export async function mockVoiceApi(
     return route.fulfill({ json: lastSettings });
   });
   await page.route("**/api/voice/voices", (route) => route.fulfill({ json: { voices: voiceList(clones, installed, options.needsFfmpeg) } }));
-  await page.route("**/api/voice/models", (route) => route.fulfill({ json: { models: ttsModels(installed), available: true } }));
+  await page.route("**/api/voice/models", (route) => route.fulfill({ json: { models: ttsModels(installed, downloading, cancelled), available: true } }));
   await page.route("**/api/voice/clone/models", (route) =>
-    route.fulfill({ json: { available: true, allowedHere: true, models: ttsModels(installed).filter((m) => m.kind === "base") } }),
+    route.fulfill({ json: { available: true, allowedHere: true, models: ttsModels(installed, downloading, cancelled).filter((m) => m.kind === "base") } }),
   );
+  await page.route("**/api/voice/clone/models/download/cancel", (route) => {
+    const key = (route.request().postDataJSON() as { key: string }).key;
+    seen.cancels.push(key);
+    const at = downloading.indexOf(key);
+    if (at >= 0) downloading.splice(at, 1);
+    cancelled.push(key);
+    return route.fulfill({ json: { download: { state: "cancelled", error: null } } });
+  });
   await page.route("**/api/voice/clone/models/download", (route) => {
     seen.downloads.push((route.request().postDataJSON() as { key: string }).key);
     return route.fulfill({ json: { state: "downloading", error: null } });

@@ -3,8 +3,8 @@ import { tabs } from "../constants";
 import { projectName, useProjectRoute } from "../features/storyboard/projectRoute";
 import type { TabId, WorkspaceData } from "../types";
 
-/** Tabs whose studio shell carries the page title, so the header does not repeat it. */
-const SHELL_TITLED_TABS = new Set<TabId>(["voice-studio"]);
+/** Tabs whose own page carries the title (Voice Studio's shell, the Voice Library panel), so the header does not repeat it. */
+const SHELL_TITLED_TABS = new Set<TabId>(["voice-studio", "voice-gallery"]);
 
 /** Workspace title, caption and platform / cache badges. */
 export function WorkspaceHeader({
@@ -35,7 +35,7 @@ export function WorkspaceHeader({
       </header>
     );
   }
-  // Voice Studio's shell names the page and holds its modes, so the header keeps only the eyebrow (D-73).
+  // Voice Studio and Voice Library name the page themselves, so the header keeps only the eyebrow (D-73).
   if (SHELL_TITLED_TABS.has(activeTab)) {
     return (
       <header className="workspace-header workspace-header--compact">

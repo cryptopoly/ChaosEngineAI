@@ -10,7 +10,9 @@ import { runtimePartsSummary } from "../../voicePackState";
 import type { VoiceCatalog } from "../../speak/useVoiceCatalog";
 import { DictationModelsPanel } from "../DictationModelsPanel";
 import { SpeechModelsPanel } from "../SpeechModelsPanel";
+import { voiceRowToEntry } from "../../../../components/models/adapters/voice";
 import {
+  collapsedFamilyRows,
   familyHeadingTracker,
   runtimeRemoveConfirmText,
   speechDeleteConfirmText,
@@ -182,6 +184,18 @@ describe("Voice Models rules", () => {
     const rows = [{ id: "a", familyId: "qwen3-tts" }, { id: "b", familyId: "qwen3-tts" }, { id: "c", familyId: "orpheus" }];
     expect(rows.map(first)).toEqual([true, false, true]);
     expect(rows.map(first)).toEqual([true, false, true]);
+  });
+
+  it("collapses a family of three or more to its downloaded, downloading or just-cancelled rows, else its first row", () => {
+    const five = ["a", "b", "c", "d", "e"].map((k) => voiceRowToEntry(model(k, k)));
+    expect([...collapsedFamilyRows(five).get("qwen3-tts")!.shown]).toEqual(["a"]);
+    const some = ["a", "b", "c", "d", "e"].map((k) =>
+      voiceRowToEntry(model(k, k, k === "c" ? { installed: true } : k === "e" ? { download: { state: "downloading", error: null } } : k === "d" ? { download: { state: "cancelled", error: null } } : {})),
+    );
+    const fold = collapsedFamilyRows(some).get("qwen3-tts")!;
+    expect(fold.total).toBe(5);
+    expect([...fold.shown]).toEqual(["c", "d", "e"]);
+    expect(collapsedFamilyRows(five.slice(0, 2)).size).toBe(0);
   });
 
   it("lands Use in Speak on a preset of the model, the design voice, or Voices for a model that only clones", () => {

@@ -85,6 +85,29 @@ export function familyHeadingTracker(): (entry: Pick<VoiceModelEntry, "id" | "fa
   };
 }
 
+/** A family with at least this many rows collapses to its shown rows (the mock-up's "Show 5 sizes"). */
+export const COLLAPSE_FAMILY_FROM = 3;
+
+/**
+ * Rows a collapsed family keeps showing, by family id: every downloaded, downloading, just-cancelled or failed row, or
+ * the first row of the catalog order when none is. Families with fewer than COLLAPSE_FAMILY_FROM rows are absent (never collapsed).
+ */
+export function collapsedFamilyRows(entries: VoiceModelEntry[]): Map<string, { total: number; shown: Set<string> }> {
+  const byFamily = new Map<string, VoiceModelEntry[]>();
+  for (const entry of entries) {
+    if (isKokoro(entry.source)) continue;
+    const key = entry.familyId ?? "";
+    byFamily.set(key, [...(byFamily.get(key) ?? []), entry]);
+  }
+  const result = new Map<string, { total: number; shown: Set<string> }>();
+  for (const [family, members] of byFamily) {
+    if (members.length < COLLAPSE_FAMILY_FROM) continue;
+    const keep = members.filter((m) => !isKokoro(m.source) && (m.source.installed || ["downloading", "cancelled", "failed"].includes(m.source.download.state)));
+    result.set(family, { total: members.length, shown: new Set((keep.length ? keep : [members[0]]).map((m) => m.id)) });
+  }
+  return result;
+}
+
 export function voiceSortOptions(t: T, catalogOrder: string[]): ModelSortOption<VoiceModelEntry>[] {
   const order = (entry: VoiceModelEntry) => (isKokoro(entry.source) ? -1 : catalogOrder.indexOf(entry.id));
   return [

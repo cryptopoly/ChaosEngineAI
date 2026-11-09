@@ -744,7 +744,10 @@
         "status": "Status",
         "statusSummary": "downloaded first"
       },
-      "ttsIntro": "Turn text into speech: Speak, read-aloud and calls. Pick a voice on Studio > Voices."
+      "ttsIntro": "Turn text into speech: Speak, read-aloud and calls. Pick a voice on Studio > Voices.",
+      "cancelDownload": "Cancel",
+      "showSizes": "Show {count} sizes",
+      "hideSizes": "Hide sizes"
     },
     "voices": {
       "addChinese": "Add Mandarin Chinese voices",

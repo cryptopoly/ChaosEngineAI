@@ -15670,3 +15670,15 @@ select.music-library__select {
 .workspace-header--compact {
   padding-bottom: 0;
 }
+
+.voice-models__sizes {
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.8rem;
+  text-decoration: underline;
+}

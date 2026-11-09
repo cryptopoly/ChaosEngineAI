@@ -672,6 +672,26 @@ class SetupRouteTests(unittest.TestCase):
             )
             self.assertEqual(_find_installed_torch_version(root), "2.6.0+cu124")
 
+    def test_find_installed_torch_version_trusts_the_package_over_a_stale_dist_info(self):
+        """A CPU torch that overwrote the CUDA one is reported as CPU, so the repair pass runs.
+
+        pip --target keeps the CUDA wheel's dist-info, which sorts first; seen on Windows, where PyPI's
+        torch is the CPU build.
+        """
+        from backend_service.routes.setup import _find_installed_torch_version, _is_cuda_torch_version
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for name, version in (("torch-2.14.1+cu130.dist-info", "2.14.1+cu130"), ("torch-2.14.1.dist-info", "2.14.1")):
+                (root / name).mkdir()
+                (root / name / "METADATA").write_text(f"Name: torch\nVersion: {version}\n")
+            (root / "torch").mkdir()
+            (root / "torch" / "version.py").write_text(
+                "from typing import Optional\n__version__ = '2.14.1+cpu'\ncuda: Optional[str] = None\n"
+            )
+            self.assertEqual(_find_installed_torch_version(root), "2.14.1+cpu")
+            self.assertFalse(_is_cuda_torch_version(_find_installed_torch_version(root)))
+
     def test_find_installed_torch_version_returns_none_when_missing(self):
         from backend_service.routes.setup import _find_installed_torch_version
 

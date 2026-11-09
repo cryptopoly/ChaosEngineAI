@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import importlib.metadata
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -173,6 +174,18 @@ def _find_installed_torch_version(extras_dir: Path) -> str | None:
     """
     if not extras_dir.is_dir():
         return None
+    # The package's own version.py describes the files that get imported. pip --target leaves the old
+    # dist-info behind when another wheel overwrites torch, and "torch-2.14.1+cu130.dist-info" sorts before
+    # "torch-2.14.1.dist-info", so on Windows a CPU torch from PyPI that clobbered the CUDA one was still
+    # reported as CUDA and the repair pass never ran (RTX 4090 run, v0.10.0).
+    version_py = extras_dir / "torch" / "version.py"
+    if version_py.is_file():
+        try:
+            match = re.search(r"""^__version__\s*=\s*['"]([^'"]+)['"]""", version_py.read_text(errors="ignore"), re.M)
+        except OSError:
+            match = None
+        if match:
+            return match.group(1)
     for entry in extras_dir.iterdir():
         lower = entry.name.lower()
         if not (lower.startswith("torch-") and lower.endswith(".dist-info")):

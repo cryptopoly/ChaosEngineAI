@@ -121,6 +121,15 @@ class MusicClientTests(unittest.TestCase):
                            music_client.generate_timeout_s(600, 1, "ACE-Step/Ace-Step1.5"))
         self.assertGreaterEqual(music_client.generate_timeout_s(600, 1, "ACE-Step/acestep-v15-xl-turbo"), 3 * 165.0)
 
+    def test_fixed_window_sound_row_gets_the_full_timeout_for_a_short_clip(self) -> None:
+        from backend_service.music_runtime import estimate_run
+
+        full = "stabilityai/stable-audio-open-1.0"
+        warm = estimate_run(full, 2, 1)["seconds"]
+        self.assertAlmostEqual(warm, 208.0, delta=1.0)
+        self.assertGreaterEqual(music_client.generate_timeout_s(2, 1, full), 3 * 208.0)
+        self.assertAlmostEqual(estimate_run("stabilityai/stable-audio-open-small", 2, 1)["seconds"], 0.7, places=1)
+
     def test_stall_watchdog_kills_a_job_with_no_events(self) -> None:
         started = time.monotonic()
         with self.assertRaisesRegex(music_client.MusicWorkerError, "no progress"):

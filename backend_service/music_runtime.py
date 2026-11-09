@@ -116,7 +116,9 @@ def estimate_run(model: str | None, seconds: float, variations: int = 1, warm: b
     variant = resolve_variant(model)
     est = variant["estimates"]
     count = max(1, int(variations))
-    wall = _wall_seconds(est["wallSecondsAt"], float(seconds)) * count
+    # A fixed-window row (Stable Audio) works on its whole window whatever length is asked: full cost always.
+    length = max(float(a) for a, _ in est["wallSecondsAt"]) if est.get("fixedWindow") else float(seconds)
+    wall = _wall_seconds(est["wallSecondsAt"], length) * count
     cold = 0.0 if warm else float(est.get("coldStartSeconds") or 0.0)
     return {
         "model": variant["id"],

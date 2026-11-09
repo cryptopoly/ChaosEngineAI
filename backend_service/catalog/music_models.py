@@ -236,6 +236,8 @@ MUSIC_MODEL_FAMILIES: list[dict[str, Any]] = [
                     "basis": "measured",
                     "measuredOn": "Apple M4 Max, 64 GB, 2026-11-07",
                     "wallSecondsAt": [[3, 0.7], [6, 0.7], [10, 0.7]],
+                    # The model works on its whole window whatever length is asked, so the time does not scale down.
+                    "fixedWindow": True,
                     "secondsPer10sAudio": 0.7,
                     "coldStartSeconds": 8.0,
                     "vaeSecondsPerAudioSecond": 0.1,
@@ -312,6 +314,7 @@ MUSIC_MODEL_FAMILIES: list[dict[str, Any]] = [
                     "basis": "measured",
                     "measuredOn": "Apple M4 Max, 64 GB, 2026-11-08",
                     "wallSecondsAt": [[20, 207.7], [45, 208.0]],
+                    "fixedWindow": True,
                     "secondsPer10sAudio": None,
                     "coldStartSeconds": 7.0,
                     "vaeSecondsPerAudioSecond": 0.1,

@@ -29,6 +29,8 @@ export interface MusicEstimates {
   basis: "measured" | "estimated";
   measuredOn?: string;
   wallSecondsAt?: Array<[number, number]>;
+  /** The model works on its whole window whatever length is asked, so every clip costs the same. */
+  fixedWindow?: boolean;
   secondsPer10sAudio?: number;
   coldStartSeconds?: number;
   peakGb?: number | null;

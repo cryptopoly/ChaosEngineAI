@@ -198,6 +198,17 @@ class EstimateTests(unittest.TestCase):
         self.assertEqual(estimate_run(TURBO, 600, 1)["seconds"], 82.4)
         self.assertAlmostEqual(estimate_run(TURBO, 120, 1)["seconds"], 5.9 + (18.1 - 5.9) * 60 / 120, places=1)
         self.assertAlmostEqual(estimate_run(TURBO, 10, 1)["seconds"], 1.2, places=1)
+
+    def test_fixed_window_rows_cost_the_same_for_any_length(self) -> None:
+        from backend_service.music_runtime import estimate_run, resolve_variant
+
+        full, small = "stabilityai/stable-audio-open-1.0", "stabilityai/stable-audio-open-small"
+        for seconds in (1, 2, 20, 47):
+            self.assertAlmostEqual(estimate_run(full, seconds, 1)["seconds"], 208.0, delta=1.0)
+            self.assertAlmostEqual(estimate_run(small, seconds, 1)["seconds"], 0.7, places=1)
+        # Music rows stay proportional: no fixedWindow flag, and 10 s is still cheaper than 60 s.
+        self.assertFalse(resolve_variant(TURBO)["estimates"].get("fixedWindow"))
+        self.assertLess(estimate_run(TURBO, 10, 1)["seconds"], estimate_run(TURBO, 60, 1)["seconds"])
         cold = estimate_run(TURBO, 60, 2, warm=False)
         self.assertEqual(cold["seconds"], round(5.9 * 2 + 25.0, 1))
         self.assertEqual(cold["writesMb"], 23.0)

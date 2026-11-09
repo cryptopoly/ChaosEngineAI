@@ -1,6 +1,7 @@
 /** The sticky bar while a batch runs: where it is, and one Cancel for the whole batch. */
 import { useTranslation } from "react-i18next";
-import type { StoryboardBatchRecord } from "../../types";
+import { JobProgressLine } from "../../components/JobProgressLine";
+import type { JobProgress, StoryboardBatchRecord } from "../../types";
 import { batchProgress, type BatchProgress } from "./storyboardLogic";
 
 type TFn = (key: string, options: Record<string, unknown>) => string;
@@ -23,7 +24,16 @@ export function batchProgressText(t: TFn, progress: BatchProgress): string {
   return `${head} · ${phase}`;
 }
 
-export function BatchBar({ batch, onCancel }: { batch: StoryboardBatchRecord; onCancel: () => void }) {
+export function BatchBar({
+  batch,
+  progress: live = null,
+  onCancel,
+}: {
+  batch: StoryboardBatchRecord;
+  /** Live progress from the backend: "clip 2 of 4", elapsed, time left from the clips made so far. */
+  progress?: JobProgress | null;
+  onCancel: () => void;
+}) {
   const { t } = useTranslation("studio");
   const progress = batchProgress(batch);
   const total = progress?.total ?? 0;
@@ -39,6 +49,7 @@ export function BatchBar({ batch, onCancel }: { batch: StoryboardBatchRecord; on
           </span>
         ) : null}
       </div>
+      <JobProgressLine progress={live} running startedAt={batch.createdAt ? batch.createdAt * 1000 : null} />
       <progress className="batch-bar__meter" max={Math.max(1, total)} value={done} aria-hidden="true" />
       <button type="button" className="secondary-button" onClick={onCancel}>
         {t("board.batch.cancel", { defaultValue: "Cancel batch" })}

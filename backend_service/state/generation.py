@@ -248,7 +248,7 @@ def generate(state: ChaosEngineState, request: GenerateRequest) -> dict[str, Any
                     "arguments": tc.arguments,
                     "result": tc.result,
                     "elapsed": tc.elapsed_seconds,
-                    "startedAt": tc.started_at,
+                    "startedAt": getattr(tc, "started_at", None),
                     # Phase 2.8: forward structured output hint +
                     # data through to the frontend `ToolCallInfo`.
                     # When `render_as` is None the frontend falls

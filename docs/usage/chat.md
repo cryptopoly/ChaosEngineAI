@@ -72,6 +72,13 @@ Tool results render in dedicated cards above the assistant text — tables,
 code blocks, markdown, or inline image previews depending on the tool's
 returned shape.
 
+### Times on messages and tools
+
+Every message shows when it was sent (short local time, with the date when it is not from today; hover for
+the full date and time). Every tool card shows when the call started and how long it has run, and the number
+runs live while the tool works: "started 07:31 · 4 min 12 sec". Chats saved before these times existed simply
+show no time on their old messages.
+
 ### Studio tools (D-60)
 
 The **Studio** switch next to **Tools** (off by default, remembered) lets the
@@ -88,6 +95,15 @@ images (reference images, start and end frames) must be files the app made or
 on the jobs this chat started. The Agent access switch does not need to be
 on. A short hint tells the model to state a plan, put every render of the plan
 in one reply, and wait for each job.
+
+**Waiting for a long job.** In Chat, `wait_for_job` waits until the job is finished (up to 30 minutes in one
+call), and the card updates meanwhile: the step ("clip 2 of 4"), how long it has run, and the time left when
+the app has a basis for it (earlier clips of the same batch, the model's own step pace, or the catalogue's
+estimate, each labelled). With no basis it shows the elapsed time only. A wait does not use up the model's
+tool-use budget, so a 25-minute film no longer ends the turn with "maximum tool-use iterations", and repeated
+waits on one job show as a single card ("3 checks"). **Stop** ends the wait at once; the job itself keeps
+running (use its Cancel to stop it). The external agent bridge is unchanged: there `wait_for_job` waits at most
+60 seconds per call.
 
 **Nothing renders without your click.** When the model calls a tool that
 renders (image, video, speech, music, sound, Storyboard generate or render,

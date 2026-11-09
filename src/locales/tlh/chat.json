@@ -478,7 +478,9 @@
       "etaClips": null,
       "etaCatalog": null,
       "stepOf": null,
-      "tookFor": null
+      "tookFor": null,
+      "clipOf": null,
+      "stillOf": null
     },
     "kind": {
       "image": "mIllogh",

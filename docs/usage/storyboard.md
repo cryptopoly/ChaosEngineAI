@@ -98,6 +98,9 @@ Overview and the cast on Cast.
 
 A batch makes all the stills first, then all the clips, and unloads the image model in between. A bar at the
 top shows progress, for example "Shot 3 of 8", with **Cancel batch**. One Cancel stops the whole batch.
+Under it a line gives the step ("clip 2 of 4"), when the batch started, how long it has run, and, once one clip
+has finished, "about 12 min left (from the clips made so far)": each remaining clip is priced at the average of
+the clips made in this run. While the first clip is still being made there is no estimate, only the elapsed time.
 
 The batch runs on the shared queue, so it waits for other heavy jobs. A Studio's own Cancel never stops it.
 

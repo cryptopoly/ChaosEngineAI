@@ -79,7 +79,7 @@ One line per tool: what it does and the arguments that matter. `*` marks a requi
 - `recommend_models`: models not installed that fit this machine (`kind`*, `limit`). You cannot download them.
 - `list_voices`: ready text-to-speech voices with language.
 - `list_jobs`: recent jobs, newest first (`state`, `limit`).
-- `job_status`: state, progress, queue position, notes and output of one job (`job_id`*).
+- `job_status`: state, progress (`step`, `totalSteps`, `phase`, `elapsedSeconds`; `etaSeconds` with `etaBasis` only when there is a basis), queue position, notes and output of one job (`job_id`*).
 - `wait_for_job`: like `job_status`, waits up to `timeout_seconds` (max 60).
 - `cancel_job`: cancel a queued or running job (`job_id`*).
 

@@ -1,13 +1,22 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 70 rows with work, decisions or watch items still open, newest first.
+summary: 71 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-153 · Chat waits for long jobs, times on messages and tools, job progress with time left — Built 2026-11-09 on feat/chat-time-progress (from release/v0.10.0)</summary>
+
+**Status or trigger:** **Built 2026-11-09 on `feat/chat-time-progress` (from `release/v0.10.0`); tests only, no real model run.**
+
+**Notes:** Found on the M4 Max: a 4-shot storyboard (about 25 min) made Qwen3.8-27B call `wait_for_job` 24 times (60 s each) and the turn ended on "maximum tool-use iterations" with no summary. **Done:** in Chat `wait_for_job` blocks server-side up to 30 min (the plan card's limit; [studio.py](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/backend_service/tools/studio.py) `CHAT_WAIT_CAP_SECONDS`), streams `toolCallProgress` events every 2 s from a worker thread ([agent.py](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/backend_service/agent.py) `_run_tool_call_live`), ends within 0.5 s when Stop is pressed (the job keeps running), and a repeat wait on a job already waited on does not use an iteration (`budget_key`, bounded at 48 free replies). The external `/mcp` tool is unchanged (max 60 s). Messages carry `createdAt` and tool calls `startedAt` (epoch ms; old sessions have none and show no time); the thread shows clock time, full date on hover, live elapsed on tool cards, and one card per waited job. `Job.progress()` ([jobs.py](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/backend_service/mcp_bridge/jobs.py)) gives `phase`, `step`, `totalSteps`, `elapsedSeconds` and `etaSeconds` + `etaBasis` (`clips`, `steps`, `catalog`) only with a basis; storyboard batches price remaining clips from the clips already made in the run ([batch.py](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/backend_service/storyboard/batch.py) `progress`), shown on the chat job card, the Storyboard run bar ([BatchBar.tsx](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/src/features/storyboard/BatchBar.tsx)) and in `job_status` / `wait_for_job`. **Open:** (1) the first clip of a batch shows elapsed only; it could use the catalogue estimate until one clip is measured; (2) the stand-alone Image, Video, Music and Voice studios keep their own progress displays (not changed); (3) a real model run of a long storyboard in Chat has not been done; (4) an assistant message's time is when it finished, so a 25-minute turn shows the end time; (5) `Intl` unit words ("min", "sec") follow the browser's data for the locale, with no hand translation; (6) a chat wait can still end at 30 min with "still running"; the model must call again.
+
+</details>
 
 <details>
 <summary>FU-152 · Flaky timing test test_mflux_worker.py::CliTimingTests::test_the_cli_split_is_read_off_the_bar — Open (2026-11-08).</summary>

@@ -30,9 +30,18 @@ export function JobProgressLine({
 
   const parts: string[] = [];
   if (isValidTime(startedAt)) parts.push(t("studioChat.job.startedAt", { time: formatClock(startedAt, locale), defaultValue: "started {time}" }));
-  if (facts.phase) parts.push(facts.phase);
-  // A phase like "clip 2 of 4" already says the step. A film render reports a percent as step of 100: no step text.
-  const phaseSaysStep = facts.phase !== null && /\d/.test(facts.phase);
+  // A storyboard batch reports its kind and place; the words come from here so they follow the app language.
+  const ofKind = progress?.kind === "clip" || progress?.kind === "still" ? progress.kind : null;
+  const kindText =
+    ofKind && typeof progress?.kindIndex === "number" && typeof progress?.kindTotal === "number"
+      ? ofKind === "clip"
+        ? t("studioChat.job.clipOf", { n: progress.kindIndex, total: progress.kindTotal, defaultValue: "clip {n} of {total}" })
+        : t("studioChat.job.stillOf", { n: progress.kindIndex, total: progress.kindTotal, defaultValue: "still {n} of {total}" })
+      : null;
+  if (kindText) parts.push(kindText);
+  else if (facts.phase) parts.push(facts.phase);
+  // A "clip 2 of 4" already says the step. A film render reports a percent as step of 100: no step text.
+  const phaseSaysStep = kindText !== null || (facts.phase !== null && /\d/.test(facts.phase));
   if (!phaseSaysStep && facts.step !== null && facts.totalSteps !== null && facts.totalSteps > 0 && facts.totalSteps !== 100) {
     parts.push(t("studioChat.job.stepOf", { step: facts.step, total: facts.totalSteps, defaultValue: "step {step} of {total}" }));
   }

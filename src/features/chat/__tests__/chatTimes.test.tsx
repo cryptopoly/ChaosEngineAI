@@ -131,3 +131,38 @@ describe("JobProgressLine", () => {
     expect(renderToStaticMarkup(<JobProgressLine progress={null} running />)).toBe("");
   });
 });
+
+describe("storyboard batch progress", () => {
+  it("names the clip, the elapsed time and the time left from earlier clips", () => {
+    const html = renderToStaticMarkup(
+      <JobProgressLine
+        progress={{ kind: "clip", kindIndex: 2, kindTotal: 4, step: 6, totalSteps: 8, elapsedSeconds: 369, etaSeconds: 738, etaBasis: "clips" }}
+        running
+      />,
+    );
+    expect(html).toContain("clip 2 of 4");
+    expect(html).toContain("6 min 9 sec elapsed");
+    expect(html).toContain("about 12 min 18 sec left (from the clips made so far)");
+    expect(html).not.toContain("step 6 of 8");
+  });
+
+  it("the first clip shows elapsed only: nothing was measured yet", () => {
+    const html = renderToStaticMarkup(<JobProgressLine progress={{ kind: "clip", kindIndex: 1, kindTotal: 4, elapsedSeconds: 120 }} running />);
+    expect(html).toContain("clip 1 of 4");
+    expect(html).toContain("2 min elapsed");
+    expect(html).not.toContain("left");
+  });
+
+  it("the batch bar shows the line under the shot text", async () => {
+    const { BatchBar } = await import("../../storyboard/BatchBar");
+    const html = renderToStaticMarkup(
+      <BatchBar
+        batch={{ id: "b1", what: "both", force: false, state: "running", createdAt: 1_762_000_000, finishedAt: null, results: [] }}
+        progress={{ kind: "clip", kindIndex: 2, kindTotal: 4, elapsedSeconds: 400, etaSeconds: 700, etaBasis: "clips" }}
+        onCancel={() => undefined}
+      />,
+    );
+    expect(html).toContain('data-testid="job-progress-line"');
+    expect(html).toContain("clip 2 of 4");
+  });
+});

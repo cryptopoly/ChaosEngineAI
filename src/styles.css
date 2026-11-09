@@ -15360,3 +15360,8 @@ select.music-library__select {
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
 }
+
+.batch-bar .job-progress-line {
+  flex: 1 1 100%;
+  order: 3;
+}

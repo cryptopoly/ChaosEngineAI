@@ -478,7 +478,9 @@
       "etaClips": "about {eta} left (from the clips made so far)",
       "etaCatalog": "about {eta} left (estimated for this model)",
       "stepOf": "step {step} of {total}",
-      "tookFor": "took {elapsed}"
+      "tookFor": "took {elapsed}",
+      "clipOf": "clip {n} of {total}",
+      "stillOf": "still {n} of {total}"
     },
     "kind": {
       "image": "Image",

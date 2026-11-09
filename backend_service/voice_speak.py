@@ -369,7 +369,7 @@ def _model_for(rows: list[dict[str, Any]], model_key: str, *, pick: Any = None) 
             "Use a built-in voice here."
         )
     if not voice_env.is_installed():
-        raise RuntimeError("The voice pack is not installed. Install it from Voice > Models.")
+        raise RuntimeError("The voice runtime is not installed. Install it from Voice > Models.")
     if voice_clone.snapshot_dir(chosen) is None:
         raise RuntimeError(f"{chosen['name']} is not downloaded. Download it in Voice > Models.")
     return chosen

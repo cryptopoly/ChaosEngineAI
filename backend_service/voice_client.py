@@ -58,7 +58,7 @@ class VoiceWorker:
 
     def _start(self) -> None:
         if not voice_env.is_installed():
-            raise VoiceWorkerError("The voice pack is not installed. Install it from Voice > Models.")
+            raise VoiceWorkerError("The voice runtime is not installed. Install it from Voice > Models.")
         self._log_path.parent.mkdir(parents=True, exist_ok=True)
         log = open(self._log_path, "a", encoding="utf-8")  # noqa: SIM115 - owned by the process
         log.write(f"\n--- voice worker start {time.strftime('%Y-%m-%d %H:%M:%S')} ---\n")

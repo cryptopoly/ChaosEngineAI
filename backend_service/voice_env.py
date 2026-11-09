@@ -352,7 +352,7 @@ def install_watermark() -> None:
     Blocking (a few minutes on a slow line); called from the cloning model download thread.
     """
     if not is_installed():
-        raise RuntimeError("The voice pack is not installed. Install it from Voice > Models.")
+        raise RuntimeError("The voice runtime is not installed. Install it from Voice > Models.")
     if not _watermark_package_present():
         result = subprocess.run(
             [str(venv_python()), "-m", "pip", "install", "--quiet", *WATERMARK_PACKAGES],
@@ -506,10 +506,10 @@ def _run_install(extras: list[str]) -> None:
     lane_name = lane()
     try:
         if sys.version_info < (3, 10):
-            raise RuntimeError("The voice pack needs Python 3.10 or newer.")
+            raise RuntimeError("The voice runtime needs Python 3.10 or newer.")
         free_gb = shutil.disk_usage(Path.home()).free / 1e9
         if free_gb < 4:
-            raise RuntimeError(f"Only {free_gb:.1f} GB free; the voice pack needs about 4 GB.")
+            raise RuntimeError(f"Only {free_gb:.1f} GB free; the voice runtime needs about 4 GB.")
 
         _set_phase("creating-venv")
         if VOICE_VENV_DIR.exists() and not venv_python().exists():
@@ -564,7 +564,7 @@ def _run_install(extras: list[str]) -> None:
             ),
             encoding="utf-8",
         )
-        _JOB.phase, _JOB.percent, _JOB.message = "done", 100.0, "Voice pack installed."
+        _JOB.phase, _JOB.percent, _JOB.message = "done", 100.0, "Voice runtime installed."
     except InterruptedError as exc:
         _JOB.phase, _JOB.error = "cancelled", str(exc)
     except Exception as exc:  # noqa: BLE001 - shown to the user with the log

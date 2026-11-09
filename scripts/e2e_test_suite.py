@@ -2043,7 +2043,7 @@ def phase_8(cap: Capability) -> PhaseResult:
         """Transcribe two voices with speaker labels into the Library, rename a
         speaker, export MP3, then delete the item."""
         if not runtime_payload.get("sttAvailable") or not runtime_payload.get("ttsAvailable"):
-            return "skip", "voice pack not installed", {}
+            return "skip", "voice runtime not installed", {}
         speakers = bool(runtime_payload.get("speakersAvailable"))
         wav = _two_voice_clip()
         if wav is None:
@@ -2085,7 +2085,7 @@ def phase_8(cap: Capability) -> PhaseResult:
     def _translate():
         """Spanish speech comes back in English with a model trained to translate."""
         if not runtime_payload.get("sttAvailable") or not runtime_payload.get("ttsAvailable"):
-            return "skip", "voice pack not installed", {}
+            return "skip", "voice runtime not installed", {}
         model = next(
             (m for m in runtime_payload.get("sttModels") or [] if m.get("translate") and m.get("installed")), None
         )
@@ -2184,7 +2184,7 @@ def phase_8(cap: Capability) -> PhaseResult:
     def _vad_turn():
         """Conversation mode's turn detector: silence, speech, silence."""
         if not runtime_payload.get("vadAvailable"):
-            return "skip", "voice pack has no turn detector (update it from Voice > Models)", {}
+            return "skip", "voice runtime has no turn detector (update it from Voice > Models)", {}
         if not runtime_payload.get("ttsAvailable"):
             return "skip", "TTS backend not installed (used to make the speech)", {}
         payload = json.dumps({"text": "This is a voice call check.", "voice": "af_heart"}).encode("utf-8")
@@ -2296,8 +2296,40 @@ def phase_8(cap: Capability) -> PhaseResult:
                 return "fail", f"{row['key']}: expected 404 for a voice without a permission record, got {code}", {}
         return "pass", "", {"models": [r["key"] for r in rows]}
 
+    def _delete_route_contract():
+        """D-73 delete routes, without deleting anything: unknown keys are refused, every listed speech model has a
+        delete plan (what goes, what another downloaded model keeps), an unknown add-on is refused, and the runtime
+        payload names its parts and what is in memory."""
+        code, _ = _voice_http("POST", "/api/voice/clone/models/delete", body=b'{"key": "not-a-model"}', content_type="application/json", timeout=20.0)
+        if code == 404 and not runtime_payload:
+            return "skip", "voice routes not present in this build", {}
+        if code != 404:
+            return "fail", f"unknown speech model delete: expected 404, got {code}", {}
+        code, _ = _voice_http("POST", "/api/voice/stt/delete", body=b'{"key": "not-a-model"}', content_type="application/json", timeout=20.0)
+        if code != 404:
+            return "fail", f"unknown dictation model delete: expected 404, got {code}", {}
+        code, _ = _voice_http("POST", "/api/voice/extras/remove", body=b'{"extra": "not-an-add-on"}', content_type="application/json", timeout=20.0)
+        if code != 400:
+            return "fail", f"unknown add-on removal: expected 400, got {code}", {}
+        code, body = _voice_http("GET", "/api/voice/models", timeout=20.0)
+        if code != 200:
+            return "fail", f"voice models HTTP {code}", {}
+        listing = json.loads(body.decode("utf-8"))
+        if "kokoro" not in listing or any("fit" not in row for row in listing.get("models", [])):
+            return "fail", "speech model list lacks fit or the Kokoro row", {}
+        plans = 0
+        for row in listing.get("models", []):
+            code, body = _voice_http("GET", f"/api/voice/clone/models/delete-plan?key={row['key']}", timeout=60.0)
+            plan = json.loads(body.decode("utf-8")) if code == 200 else {}
+            if code != 200 or not {"remove", "kept", "watermark", "sizeGb"} <= set(plan):
+                return "fail", f"{row['key']}: delete plan HTTP {code}", {}
+            plans += 1
+        if runtime_payload.get("installed") and not {"parts", "inMemory"} <= set(runtime_payload):
+            return "fail", "runtime payload lacks parts or inMemory", {}
+        return "pass", "", {"plans": plans}
+
     for name, fn in [
-        ("voice-runtime", _runtime), ("stt platform sources", _stt_sources),
+        ("voice-runtime", _runtime), ("voice delete routes (no delete)", _delete_route_contract), ("stt platform sources", _stt_sources),
         ("speech model catalog", _speech_model_catalog), ("speak with each wave-2 model", _speak_each_wave2_model),
         ("wave-2 clone needs a permission record", _clone_needs_a_permission_record),
         ("voice settings", _settings_roundtrip), ("read-aloud stream", _speak_stream),

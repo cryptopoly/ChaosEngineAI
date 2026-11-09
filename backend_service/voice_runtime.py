@@ -368,7 +368,7 @@ def transcribe_file(
     if task == "translate" and not _can_translate(repo):
         raise ValueError("This model cannot translate. Choose Whisper Small or Whisper Base.")
     if speakers and not voice_env.diarize_installed():
-        raise RuntimeError("Speaker labels need a voice pack update. Update it from Voice > Models.")
+        raise RuntimeError("Speaker labels need a voice runtime update. Update it from Voice > Models.")
     snapshot = _hf_snapshot_path(repo)
 
     def run(language_code: str | None) -> dict[str, Any]:
@@ -434,7 +434,7 @@ def diarize_file(path: Path, speaker_count: int = 0) -> dict[str, Any]:
 
     models = voice_env.diarize_model_paths()
     if models is None:
-        raise RuntimeError("Speaker labels need a voice pack update. Update it from Voice > Models.")
+        raise RuntimeError("Speaker labels need a voice runtime update. Update it from Voice > Models.")
     reply = get_worker().request(
         "diarize",
         timeout=1800.0,
@@ -465,7 +465,7 @@ def synthesize(text: str, voice: str, speed: float) -> tuple[bytes, float]:
     if not known[voice]["available"]:
         raise ValueError(f"{known[voice]['languageLabel']} voices need an extra install on this machine.")
     if not voice_env.tts_data_installed():
-        raise RuntimeError("The Kokoro voice model is not downloaded. Reinstall the voice pack from Voice > Models.")
+        raise RuntimeError("The Kokoro voice model is not downloaded. Reinstall the voice runtime from Voice > Models.")
     # mlx-audio works out the model type from the repo name, so it gets the
     # repo id (resolved from the local cache), not the snapshot folder.
     engine, source = voice_env.tts_source()
@@ -479,6 +479,6 @@ def detect_speech(session: str, pcm_b64: str, reset: bool = False) -> list[float
 
     path = voice_env.vad_model_path()
     if path is None or not voice_env.vad_installed():
-        raise RuntimeError("Conversation mode needs a voice pack update. Update it from Voice > Models.")
+        raise RuntimeError("Conversation mode needs a voice runtime update. Update it from Voice > Models.")
     reply = get_vad_worker().request("vad", timeout=30.0, path=str(path), session=session, pcm=pcm_b64, reset=reset)
     return [float(p) for p in reply.get("probs", [])]

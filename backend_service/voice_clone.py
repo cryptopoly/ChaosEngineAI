@@ -422,7 +422,7 @@ def clone_plan(
     if not available_here():
         raise ValueError(NOT_HERE)
     if not voice_env.is_installed():
-        raise RuntimeError("The voice pack is not installed. Install it from Voice > Models.")
+        raise RuntimeError("The voice runtime is not installed. Install it from Voice > Models.")
     row = pick_clone_model(model_key)
     if snapshot_dir(row) is None:
         raise RuntimeError(f"{row['name']} is not downloaded. Download it in Voice > Models.")

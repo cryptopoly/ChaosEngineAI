@@ -864,14 +864,13 @@ class DownloadTests(unittest.TestCase):
 
         install = mock.Mock()
         with mock.patch.object(voice_clone, "available_here", return_value=True), \
-             mock.patch("huggingface_hub.snapshot_download") as weights, \
+             mock.patch.object(voice_clone, "_fetch_repo") as weights, \
              mock.patch.object(voice_env, "watermark_installed", return_value=False), \
              mock.patch.object(voice_env, "install_watermark", install), \
              mock.patch.object(voice_clone.threading, "Thread", SyncThread):
             voice_clone._DOWNLOADS.clear()
             voice_clone.start_download("qwen3-tts-custom-1.7b")
-        weights.assert_called_once()
-        self.assertEqual(weights.call_args.kwargs["revision"], voice_models.voice_model("qwen3-tts-custom-1.7b")["revision"])
+        self.assertEqual(weights.call_args_list[0].args[2], voice_models.voice_model("qwen3-tts-custom-1.7b")["revision"])
         install.assert_not_called()
         self.assertEqual(voice_clone._DOWNLOADS["qwen3-tts-custom-1.7b"]["state"], "done")
         voice_clone._DOWNLOADS.clear()

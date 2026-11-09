@@ -1,4 +1,4 @@
-"""Voice routes that delete files (D-73): a speech model, a dictation model, an add-on, the voice runtime.
+"""Voice routes that delete files or stop a download (D-73): a speech model, a dictation model, an add-on, the voice runtime.
 
 Included by ``routes/voice.py``. Only the ChaosEngineAI window on this computer may call them: agents and other
 machines get 403, whatever their scopes. A delete that would pull files from under a running model is refused with
@@ -43,6 +43,18 @@ def speech_model_delete_plan(request: Request, key: str) -> dict[str, Any]:
     _window_only(request)
     try:
         return voice_model_files.removal_plan(key)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post("/api/voice/clone/models/download/cancel")
+def cancel_speech_model_download(request: Request, body: ModelKeyRequest) -> dict[str, Any]:
+    """Stop a speech model's download (weights, companions or the watermark step); the row offers Download again."""
+    from backend_service import voice_clone  # noqa: PLC0415
+
+    _window_only(request)
+    try:
+        return {"download": voice_clone.cancel_download(body.key)}
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 

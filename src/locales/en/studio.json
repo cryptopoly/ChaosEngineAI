@@ -2406,5 +2406,11 @@
     "makeTimed": "Make {n} missing · about {time}",
     "needStills": "{n, plural, one {# shot needs work} other {# shots need work}}: {stills, plural, one {# has a still and needs its clip} other {# have a still and need their clip}}",
     "stale": "{n} stale"
+  },
+  "slowRow": {
+    "label": "Slow on this Mac",
+    "measured": "Measured on {machine}, {date}: about {time} for a {size} clip of {frames, plural, one {# frame} other {# frames}}.",
+    "expected": "Expected to be slow on this Mac. Not timed yet.",
+    "alternative": "Faster here: {name}."
   }
 }

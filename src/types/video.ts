@@ -101,6 +101,8 @@ export interface VideoModelVariant {
    * — typically pointing a "dev" variant at its "distilled" sibling so
    * the same prompt + seed renders in a fraction of the time. */
   fastPreviewSiblingId?: string | null;
+  /** D-44: set on rows that are slow on some platform (catalog field). The UI shows a note only on a listed platform. */
+  slowOn?: VideoSlowOn | null;
   fit?: ModelFit;
   /** Settings that work best for this model on this machine (Studio panel). */
   recommendedSettings?: RecommendedSettings | null;
@@ -114,6 +116,21 @@ export interface VideoModelVariant {
   nativeFps?: number;
   /** Smallest edge the model renders cleanly at (the backend raises smaller sizes). */
   minSide?: number | null;
+}
+
+export interface VideoSlowOn {
+  /** Platforms the row was found slow on; today only "apple-silicon". */
+  platforms: string[];
+  basis: "measured" | "expected";
+  /** Measured wall time; absent when ``basis`` is "expected". */
+  seconds?: number | null;
+  /** Where and when it was timed, e.g. "M4 Max, 64 GB" and "2026-10-21". */
+  measuredOn?: string | null;
+  measuredDate?: string | null;
+  size?: string | null;
+  frames?: number | null;
+  /** Faster catalog row to point at. */
+  alternativeId?: string | null;
 }
 
 export interface VideoModelFamily {

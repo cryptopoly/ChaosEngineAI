@@ -20,6 +20,8 @@ import type { NativeBackendStatus } from "../../types/server";
 import type { TabRequest } from "../../constants/tabRedirects";
 import { IconActionButton, StatusIcon } from "../../components/ModelActionIcons";
 import { InstallLogPanel } from "../../components/InstallLogPanel";
+import { SlowRowChip, SlowRowNote } from "../../components/SlowRowNote";
+import { slowRowInfo } from "../../utils/slowRows";
 import {
   AcceleratorPills,
   ModelCard,
@@ -265,6 +267,10 @@ export function VideoModelsPage({
     [catalog, latest, hostSystem, loadedVideoVariantId, longLiveReady],
   );
   const familyById = useMemo(() => new Map(catalog.map((family) => [family.id, family])), [catalog]);
+  const nameById = useMemo(
+    () => new Map(catalog.flatMap((family) => family.variants.map((variant) => [variant.id, variant.name] as const))),
+    [catalog],
+  );
   const repoUsers = useMemo(() => buildVideoRepoUsers(entries), [entries]);
 
   // R25: probe the LongLive runtime once per visit when a LongLive row can
@@ -368,6 +374,9 @@ export function VideoModelsPage({
     const needsGatedAccess = isGatedImageAccessError(download?.error);
     const longLiveInstalling = entry.longLive && status.state === "downloading";
 
+    const slow = slowRowInfo(variant, hostSystem);
+    const slowAlternativeName = slow?.alternativeId ? nameById.get(slow.alternativeId) ?? null : null;
+
     const badges = (
       <>
         {(entry.styleTags ?? []).slice(0, 4).map((tag) => (
@@ -385,6 +394,7 @@ export function VideoModelsPage({
             {t("imageDiscover.trackedOnly.badge", { defaultValue: "Watching upstream" })}
           </span>
         ) : null}
+        {slow ? <SlowRowChip info={slow} alternativeName={slowAlternativeName} /> : null}
         <AcceleratorPills ids={entry.accelerators} capabilities={nativeBackends ?? null} />
       </>
     );
@@ -589,6 +599,13 @@ export function VideoModelsPage({
       callouts = (
         <div className="media-model-row-detail callout quiet">
           <p>{variant.localStatusReason}</p>
+        </div>
+      );
+    }
+    if (!callouts && slow) {
+      callouts = (
+        <div className="media-model-row-detail callout quiet">
+          <SlowRowNote info={slow} alternativeName={slowAlternativeName} detailOnly />
         </div>
       );
     }

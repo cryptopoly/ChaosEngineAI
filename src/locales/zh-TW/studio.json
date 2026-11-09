@@ -2406,5 +2406,11 @@
     "makeTimed": "產生缺少的 {n} 個 · 約 {time}",
     "needStills": null,
     "stale": "{n} 個已過時"
+  },
+  "slowRow": {
+    "label": null,
+    "measured": null,
+    "expected": null,
+    "alternative": null
   }
 }

@@ -2406,5 +2406,11 @@
     "makeTimed": "Crear {n} pendientes · unos {time}",
     "needStills": null,
     "stale": "{n} desactualizados"
+  },
+  "slowRow": {
+    "label": null,
+    "measured": null,
+    "expected": null,
+    "alternative": null
   }
 }

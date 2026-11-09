@@ -2406,5 +2406,11 @@
     "makeTimed": "Сделать недостающие ({n}) · около {time}",
     "needStills": null,
     "stale": "устарело: {n}"
+  },
+  "slowRow": {
+    "label": null,
+    "measured": null,
+    "expected": null,
+    "alternative": null
   }
 }

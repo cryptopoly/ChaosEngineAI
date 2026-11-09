@@ -7,6 +7,8 @@ import { RecommendedSettingsPanel } from "../../components/RecommendedSettingsPa
 import { ActionMenu, type ActionMenuItem } from "../../components/ActionMenu";
 import { Disclosure } from "../../components/Disclosure";
 import { RunEstimateStrip } from "../../components/RunEstimateStrip";
+import { SlowRowNote } from "../../components/SlowRowNote";
+import { slowRowInfo } from "../../utils/slowRows";
 import { DisclosureMemoryContext, useDisclosureMemory } from "../../components/studioDisclosureMemory";
 import { runEstimateBasis, summaryLine } from "../../components/studioSummary";
 import { NO_ACK, ackKey, dangerBlocked, isAcked, type DangerAck } from "../../components/studioGating";
@@ -393,6 +395,11 @@ export function VideoStudioTab({
     [videoCatalog, activeVideoDownloads, hostSystem],
   );
   const hasAnyInstalled = studioFamilies.length > 0;
+  // D-44: "Slow on this Mac" label for the selected row, with the faster row it points at.
+  const selectedSlow = slowRowInfo(selectedVideoVariant, hostSystem);
+  const selectedSlowAlternativeName = selectedSlow?.alternativeId
+    ? videoCatalog.flatMap((family) => family.variants).find((variant) => variant.id === selectedSlow.alternativeId)?.name ?? null
+    : null;
 
   // Ensure a valid model is selected once the catalog loads. "Valid" means
   // the model is present in ``studioFamilies`` — the installed / in-flight
@@ -891,6 +898,9 @@ export function VideoStudioTab({
                       <option key={variant.id} value={variant.id}>
                         {variant.name} — {family.name}
                         {suffix}
+                        {slowRowInfo(variant, hostSystem)
+                          ? ` · ${t("slowRow.label", { defaultValue: "Slow on this Mac" })}`
+                          : ""}
                       </option>
                     );
                   }),
@@ -1214,6 +1224,7 @@ export function VideoStudioTab({
             clears ``dangerOverrideAck``). Warning-level still generates freely.
           */}
           <div className="studio-shell__estimate">
+            {selectedSlow ? <SlowRowNote info={selectedSlow} alternativeName={selectedSlowAlternativeName} /> : null}
             <RunEstimateStrip
               seconds={selectedVideoVariant?.estimatedGenerationSeconds ?? null}
               peakGb={selectedVideoVariant ? generationSafety.estimatedPeakGb : null}

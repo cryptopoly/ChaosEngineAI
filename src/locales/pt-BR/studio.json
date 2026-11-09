@@ -2406,5 +2406,11 @@
     "makeTimed": "Criar {n} faltando · cerca de {time}",
     "needStills": null,
     "stale": "{n} desatualizadas"
+  },
+  "slowRow": {
+    "label": null,
+    "measured": null,
+    "expected": null,
+    "alternative": null
   }
 }

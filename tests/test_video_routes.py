@@ -162,6 +162,35 @@ class VideoCatalogRouteTests(unittest.TestCase):
         for expected in ("ltx-video", "wan-2-1", "wan-2-2", "hunyuan-video", "mochi-1"):
             self.assertIn(expected, family_ids, f"expected {expected} in video catalog")
 
+    def test_catalog_slow_on_labels_reach_the_payload(self):
+        """D-44: slow rows carry an explicit slowOn field; nothing is hidden or resized."""
+        payload = self.client.get("/api/video/catalog").json()
+        rows = {v["id"]: v for f in payload["families"] for v in f["variants"]}
+        ids = set(rows)
+        measured = rows["prince-canuma/LTX-2.3-distilled"]["slowOn"]
+        self.assertEqual(measured["basis"], "measured")
+        self.assertEqual(measured["seconds"], 1130.0)
+        self.assertEqual(measured["platforms"], ["apple-silicon"])
+        self.assertEqual(measured["measuredOn"], "M4 Max, 64 GB")
+        self.assertEqual(measured["measuredDate"], "2026-10-21")
+        self.assertEqual((measured["size"], measured["frames"]), ("768x512", 33))
+        for variant_id in ("Wan-AI/Wan2.1-T2V-1.3B-Diffusers", "Wan-AI/Wan2.2-T2V-A14B-Diffusers", "prince-canuma/LTX-2-dev"):
+            slow = rows[variant_id]["slowOn"]
+            self.assertEqual(slow["basis"], "expected")
+            self.assertNotIn("seconds", slow, "no measurement, so no number")
+        for variant_id, variant in rows.items():
+            slow = variant.get("slowOn")
+            if not slow:
+                continue
+            self.assertIn(slow["alternativeId"], ids, variant_id)
+            self.assertTrue(set(slow["platforms"]) <= {"apple-silicon"}, variant_id)
+            if slow["basis"] == "measured":
+                for key in ("seconds", "measuredOn", "measuredDate", "size", "frames"):
+                    self.assertTrue(slow.get(key), f"{variant_id} measured row needs {key}")
+        # The fast MLX rows and the CUDA-first rows carry no label.
+        for variant_id in ("dgrauet/ltx-2.5-mlx-q4", "dgrauet/ltx-2.3-mlx-q4", "THUDM/CogVideoX-5b"):
+            self.assertNotIn("slowOn", rows[variant_id])
+
     def test_catalog_includes_wan_2_1_small_starter_variant(self):
         """The 1.3B variant is our recommended first-download target — make sure it's visible."""
         payload = self.client.get("/api/video/catalog").json()

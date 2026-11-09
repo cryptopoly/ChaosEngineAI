@@ -28,13 +28,21 @@ _status: dict[str, Any] = {"state": "idle", "progress": 0.0, "error": None}
 
 
 def kokoro_dir() -> Path:
-    path = Path.home() / ".chaosengine" / "voice" / "kokoro"
+    """``voice_env.kokoro_onnx_dir()``, created for a download."""
+    path = _folder()
     path.mkdir(parents=True, exist_ok=True)
     return path
 
 
+def _folder() -> Path:
+    from backend_service import voice_env  # noqa: PLC0415
+
+    return voice_env.kokoro_onnx_dir()
+
+
 def is_installed() -> bool:
-    return all((kokoro_dir() / name).is_file() for name, _url in _FILES)
+    # No mkdir: asking whether Kokoro is installed must not create its folder (D-75: it can be removed).
+    return all((_folder() / name).is_file() for name, _url in _FILES)
 
 
 def download_status() -> dict[str, Any]:

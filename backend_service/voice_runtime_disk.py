@@ -1,8 +1,9 @@
 """What the voice runtime holds on disk, removing an add-on, and removing the runtime (D-73 M4, M5).
 
-The runtime is the voice venv (``voice_env``) plus its own small downloads: the Kokoro quick voices, the turn
-detector and the speaker-label models. ``pack_parts`` lists those four with their size; ``remove_extra`` unticks an
-add-on (pip uninstall of the add-on's own packages and a marker edit); ``remove_runtime`` deletes the venv, and the
+The runtime is the voice venv (``voice_env``) plus its own small downloads: the Kokoro quick voices (an add-on since
+D-75), the turn detector and the speaker-label models. ``pack_parts`` lists those four with their size (Kokoro 0 when
+left out); ``remove_extra`` unticks an add-on (pip uninstall of the add-on's own packages, or Kokoro's files through
+the checked path helpers, and a marker edit); ``remove_runtime`` deletes the venv, and the
 runtime's own downloads only when asked. Downloaded dictation and speech models, cloned voices and the Library stay.
 """
 
@@ -107,9 +108,43 @@ def extra_packages_to_remove(name: str) -> list[str]:
     return []
 
 
+def _kokoro_onnx_folder() -> Path:
+    """``voice_env.kokoro_onnx_dir()``, checked before it is deleted: resolved, named ``kokoro`` and directly in the
+    voice data folder."""
+    data = voice_env.VOICE_DATA_DIR.resolve()
+    folder = voice_env.kokoro_onnx_dir().resolve()
+    if folder.parent != data or folder.name != "kokoro":
+        raise RuntimeError(f"Refusing to delete {folder}.")
+    return folder
+
+
+def remove_kokoro_files() -> tuple[list[str], int]:
+    """Delete the Kokoro quick voices of this lane: the MLX repo in the Hugging Face cache, or the kokoro-onnx folder.
+    Returns what was removed and the bytes freed. The caller has checked that voice is idle and stopped the worker."""
+    from backend_service.voice_model_files import repo_cache_dir  # noqa: PLC0415
+
+    removed: list[str] = []
+    freed = 0
+    if voice_env.lane() == "mlx":
+        target = repo_cache_dir(voice_env.KOKORO_MLX_REPO)
+        if target.exists():
+            freed += _repo_bytes(voice_env.KOKORO_MLX_REPO)
+            shutil.rmtree(target)
+            removed.append(voice_env.KOKORO_MLX_REPO)
+    else:
+        folder = _kokoro_onnx_folder()
+        if folder.exists():
+            freed += _tree_bytes(folder)
+            shutil.rmtree(folder)
+            removed.append("kokoro")
+    _PARTS_CACHE.clear()
+    return removed, freed
+
+
 def remove_extra(name: str) -> dict[str, Any]:
-    """Untick an add-on: uninstall its packages from the venv and drop it from the marker. Raises ValueError for an
-    unknown or not-installed add-on, RuntimeError while an install or a voice job runs or when the uninstall fails."""
+    """Untick an add-on: uninstall its packages from the venv (Kokoro: delete its files) and drop it from the marker.
+    Raises ValueError for an unknown or not-installed add-on, RuntimeError while an install or a voice job runs or
+    when the uninstall fails."""
     from backend_service import voice_client  # noqa: PLC0415
     from backend_service.voice_model_files import voice_busy_reason  # noqa: PLC0415
 
@@ -122,7 +157,11 @@ def remove_extra(name: str) -> dict[str, Any]:
     reason = voice_busy_reason()
     if reason:
         raise RuntimeError(reason)
-    voice_client.stop_speech_worker()  # it may have the add-on's packages imported
+    voice_client.stop_speech_worker()  # it may have the add-on's packages imported (or Kokoro loaded)
+    if name == "kokoro":
+        removed, freed = remove_kokoro_files()
+        _drop_from_marker(name)
+        return {"removed": name, "packages": [], "files": removed, "freedGb": round(freed / 1e9, 2)}
     packages = extra_packages_to_remove(name)
     if packages:
         result = subprocess.run(
@@ -131,10 +170,16 @@ def remove_extra(name: str) -> dict[str, Any]:
         )
         if result.returncode != 0:
             raise RuntimeError(f"Removing {voice_env.EXTRAS[name][2]} failed: {result.stdout[-400:]}{result.stderr[-400:]}")
-    marker = voice_env.read_marker() or {}
+    _drop_from_marker(name)
+    return {"removed": name, "packages": packages}
+
+
+def _drop_from_marker(name: str) -> None:
+    marker = voice_env.read_marker()
+    if marker is None:
+        return
     marker["extras"] = [extra for extra in marker.get("extras", []) if extra != name]
     voice_env._MARKER.write_text(json.dumps(marker), encoding="utf-8")
-    return {"removed": name, "packages": packages}
 
 
 def _safe_venv_dir() -> Path:
@@ -170,13 +215,10 @@ def remove_runtime(also_runtime_models: bool = False) -> dict[str, Any]:
     shutil.rmtree(folder)
     removed_models: list[str] = []
     if also_runtime_models:
+        kokoro_removed, kokoro_freed = remove_kokoro_files()
+        removed_models += kokoro_removed
+        freed += kokoro_freed
         repos = [voice_env.VAD_REPO, *(repo for repo, _rev, _file in voice_env.DIARIZE_FILES.values())]
-        if voice_env.lane() == "mlx":
-            repos.insert(0, voice_env.KOKORO_MLX_REPO)
-        elif voice_env.kokoro_onnx_dir().exists():
-            freed += _tree_bytes(voice_env.kokoro_onnx_dir())
-            shutil.rmtree(voice_env.kokoro_onnx_dir())
-            removed_models.append("kokoro")
         for repo in repos:
             target = repo_cache_dir(repo)
             if target.exists():

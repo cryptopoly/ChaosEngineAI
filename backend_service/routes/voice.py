@@ -72,6 +72,8 @@ class SettingsRequest(BaseModel):
     # Chat read-aloud and voice calls: any voice id ``/api/voice/voices`` lists that may speak there (D-72).
     ttsVoice: str | None = Field(default=None, max_length=64)
     callVoice: str | None = Field(default=None, max_length=64)
+    # What reads when the chosen voice cannot (D-75): an installed voice allowed for read-aloud, or "" for none.
+    fallbackVoice: str | None = Field(default=None, max_length=64)
     # The voice last used on the Speak screen (any voice id, ``clone:<id>`` included); "" means none yet.
     speakVoice: str | None = Field(default=None, max_length=64)
     speed: float | None = Field(default=None, ge=0.5, le=2.0)
@@ -186,6 +188,14 @@ def put_settings(request: Request, body: SettingsRequest) -> dict[str, Any]:
 
         try:
             voice_chat.check_setting(chosen, use, include_clones=clone_allowed(request))
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if body.fallbackVoice is not None:
+        from backend_service import voice_chat  # noqa: PLC0415
+        from backend_service.voice_clone_safety import clone_allowed  # noqa: PLC0415
+
+        try:
+            voice_chat.check_fallback_setting(body.fallbackVoice, include_clones=clone_allowed(request))
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
     return save_settings(body.model_dump())
@@ -414,7 +424,8 @@ def speak_stream(request: Request, body: StreamRequest) -> StreamingResponse:
     """Read-aloud and voice calls: one NDJSON line per sentence, sent as soon as it is spoken.
 
     Any voice ``/api/voice/voices`` lists may be asked for (D-72); ``use`` is ``read`` or ``call``. When it cannot
-    speak here the Kokoro voice reads instead and a ``{"note", "voice"}`` line comes first (``voice_chat``).
+    speak here the fallback voice (the ``fallbackVoice`` setting, D-75) reads instead and a ``{"note", "voice"}`` line
+    comes first (``voice_chat``); with no usable fallback the answer is 409 with ``voice_chat.NO_FALLBACK``.
 
     Lines: ``{"index", "total", "text", "audio" (base64 WAV), "durationS", "voice"}``, then ``{"done": true}``;
     a failure ends the stream with ``{"error"}``.
@@ -426,6 +437,8 @@ def speak_stream(request: Request, body: StreamRequest) -> StreamingResponse:
         chat = voice_chat.plan_stream(body.text, body.voice, use=body.use, origin=safety.request_origin(request))
     except voice_chat.ChatVoiceRefused as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except (voice_chat.NoFallbackVoice, RuntimeError) as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     if not chat.sentences:
         raise HTTPException(status_code=400, detail="Nothing to read aloud.")
 
@@ -440,11 +453,12 @@ def speak_stream(request: Request, body: StreamRequest) -> StreamingResponse:
             sentence = current.sentences[index]
             try:
                 wav, duration = voice_chat.speak_sentence(current, sentence, body.speed)
-            except Exception as exc:  # noqa: BLE001 - reported in-stream, or Kokoro takes over
-                if current.plan.kind == "kokoro":
-                    yield json.dumps({"error": str(exc), "index": index}) + "\n"
+            except Exception as exc:  # noqa: BLE001 - reported in-stream, or the fallback voice takes over
+                try:
+                    current = voice_chat.switch_to_fallback(current, current.sentences[index:], str(exc))
+                except Exception as final:  # noqa: BLE001 - no fallback, or the fallback failed as well
+                    yield json.dumps({"error": str(final), "index": index}) + "\n"
                     return
-                current = voice_chat.switch_to_fallback(current, current.sentences[index:], str(exc))
                 index, sent_notes = 0, 0
                 continue
             yield json.dumps({

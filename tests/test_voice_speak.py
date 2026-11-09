@@ -502,10 +502,14 @@ class RouteTests(unittest.TestCase):
         self._data = tempfile.TemporaryDirectory()
         self._patch = mock.patch.object(voice_env, "VOICE_DATA_DIR", Path(self._data.name))
         self._patch.start()
+        # The Kokoro quick voices are an add-on (D-75); these tests run with them installed.
+        self._kokoro = mock.patch.object(voice_env, "kokoro_installed", return_value=True)
+        self._kokoro.start()
 
     def tearDown(self) -> None:
         from tests.test_video_routes import restore_env
 
+        self._kokoro.stop()
         self._patch.stop()
         self._data.cleanup()
         restore_env(self._snapshot)

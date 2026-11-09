@@ -277,3 +277,81 @@ class GpuWorkerTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ReferenceAudioTests(unittest.TestCase):
+    """RTX 4090 run: a cloned voice saved from an .m4a memo failed in Chatterbox with audioread's NoBackendError,
+    because chatterbox-tts and voxcpm read the sample with librosa/soundfile, which cannot decode AAC on Windows."""
+
+    def setUp(self) -> None:
+        wt._ref_wavs.clear()
+
+    def test_wav_and_flac_pass_through_untouched(self) -> None:
+        decode = mock.Mock()
+        self.assertEqual(wt.readable_audio("/s/a.wav", decode=decode), "/s/a.wav")
+        self.assertEqual(wt.readable_audio("/s/a.FLAC", decode=decode), "/s/a.FLAC")
+        decode.assert_not_called()
+
+    def test_an_m4a_sample_is_decoded_once_to_a_wav(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            sample = Path(tmp) / "memo.m4a"
+            sample.write_bytes(b"not really aac")
+            decode = mock.Mock(side_effect=lambda src, out: Path(out).write_bytes(b"RIFF"))
+            first = wt.readable_audio(str(sample), decode=decode)
+            second = wt.readable_audio(str(sample), decode=decode)
+        self.assertTrue(first.endswith(".wav"))
+        self.assertEqual(first, second)
+        decode.assert_called_once()
+        self.assertEqual(decode.call_args.args[0], str(sample))
+
+    def test_chatterbox_and_voxcpm_get_the_readable_path(self) -> None:
+        captured: dict[str, dict] = {}
+
+        class Model:
+            sr = 24000
+
+            def generate(self, text, **kwargs):
+                captured["chatterbox"] = kwargs
+                return [0.0, 0.0]
+
+        class Vox:
+            def generate(self, **kwargs):
+                captured["voxcpm"] = kwargs
+                return [0.0, 0.0]
+
+        with mock.patch.object(wt, "readable_audio", return_value="/tmp/memo.wav") as readable:
+            wt.chatterbox_call(Model(), {"text": "Hi.", "refAudioPath": "/v/memo.m4a"})
+            wt.voxcpm_call(Vox(), {"text": "Hi.", "refAudioPath": "/v/memo.m4a", "refText": "Hello", "mode": "exact"})
+        self.assertEqual(captured["chatterbox"]["audio_prompt_path"], "/tmp/memo.wav")
+        self.assertEqual(captured["voxcpm"]["reference_wav_path"], "/tmp/memo.wav")
+        self.assertEqual(captured["voxcpm"]["prompt_wav_path"], "/tmp/memo.wav")
+        self.assertEqual(readable.call_count, 2)
+
+
+class Float32LoudnessTests(unittest.TestCase):
+    """RTX 4090 run: under NumPy 2, chatterbox-tts 0.1.7's loudness step turned the sample into float64 and every
+    cloned Turbo voice failed with "expected scalar type Float but found Double"."""
+
+    def test_the_wrapped_norm_loudness_returns_float32(self) -> None:
+        import numpy as np
+
+        class Model:
+            def norm_loudness(self, wav, sr, target_lufs=-27):
+                return wav * np.float64(1.5)  # what pyloudnorm's float64 gain does under NumPy 2
+
+        model = Model()
+        wt.keep_float32_loudness(model)
+        out = model.norm_loudness(np.ones(4, dtype=np.float32), 24000)
+        self.assertEqual(out.dtype, np.float32)
+        self.assertTrue(np.allclose(out, 1.5))
+
+    def test_wrapping_twice_does_not_stack(self) -> None:
+        class Model:
+            def norm_loudness(self, wav, sr):
+                return wav
+
+        model = Model()
+        wt.keep_float32_loudness(model)
+        first = model.norm_loudness
+        wt.keep_float32_loudness(model)
+        self.assertIs(model.norm_loudness, first)

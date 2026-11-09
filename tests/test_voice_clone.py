@@ -65,12 +65,12 @@ class CatalogTests(unittest.TestCase):
     def test_listed_rows_carry_the_measured_estimates_with_basis_and_machine(self) -> None:
         with mock.patch.object(voice_clone, "snapshot_dir", return_value=None):
             rows = voice_clone.list_models(every_model=True)
-        self.assertEqual(len(rows), len(voice_models.VOICE_MODELS))
+        self.assertEqual(len(rows), len(voice_models.listed_models()))
         for listed in rows:
             catalog = voice_models.voice_model(listed["key"])["estimates"]
             self.assertEqual(listed["estimates"], catalog)
             self.assertEqual(listed["estimates"]["basis"], "measured")
-            self.assertIn("2026-11-08", listed["estimates"]["measuredOn"])
+            self.assertRegex(listed["estimates"]["measuredOn"], r"2026-11-0[89]")
             self.assertIn("peakGb", listed["estimates"])
             self.assertIn("secondsPer10sAudio", listed["estimates"])
         # A copy: changing the API row never changes the catalog.

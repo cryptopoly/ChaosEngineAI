@@ -9,6 +9,7 @@ Deleting the voice deletes all of it. Speech made with a cloned voice goes throu
 
 from __future__ import annotations
 
+import json
 import shutil
 import tempfile
 import threading
@@ -18,7 +19,7 @@ from typing import Any
 
 from backend_service import voice_clone_safety as safety
 from backend_service import voice_env
-from backend_service.catalog.voice_models import CLONE_LICENCE, CLONE_MODELS, VOICE_MODELS, clone_model, voice_model
+from backend_service.catalog.voice_models import CLONE_MODELS, clone_model, listed_models, voice_model
 
 MIN_REFERENCE_S = 3.0
 MAX_REFERENCE_S = 30.0
@@ -47,13 +48,59 @@ def _app_version() -> str:
 # Models
 # ---------------------------------------------------------------------------
 
-def snapshot_dir(row: dict[str, Any]) -> Path | None:
-    """The pinned revision's folder in the Hugging Face cache, when its weights are there."""
+def _revision_dir(repo: str, revision: str) -> Path:
     from backend_service.helpers.hf_cache_paths import _hf_repo_cache_dir  # noqa: PLC0415
 
-    path = _hf_repo_cache_dir(row["repo"]) / "snapshots" / row["revision"]
-    ready = (path / "config.json").is_file() and (path / "model.safetensors").exists()
-    return path if ready else None
+    return _hf_repo_cache_dir(repo) / "snapshots" / revision
+
+
+def weights_ready(path: Path) -> bool:
+    """``config.json`` and the weights: one ``model.safetensors``, or an index whose every shard is on disk."""
+    if not (path / "config.json").is_file():
+        return False
+    if (path / "model.safetensors").exists():
+        return True
+    index = path / "model.safetensors.index.json"
+    try:
+        shards = set(json.loads(index.read_text(encoding="utf-8")).get("weight_map", {}).values())
+    except (OSError, ValueError, AttributeError):
+        return False
+    return bool(shards) and all((path / name).exists() for name in shards)
+
+
+def companion_dir(companion: dict[str, Any]) -> Path | None:
+    """A companion repo's pinned folder, when every listed file is there."""
+    path = _revision_dir(companion["repo"], companion["revision"])
+    return path if all((path / name).exists() for name in companion["files"]) else None
+
+
+def companion_paths(row: dict[str, Any]) -> dict[str, str]:
+    """Repo id -> local folder for the row's loader companions (sent to the worker for its redirect)."""
+    paths: dict[str, str] = {}
+    for companion in row.get("companions", []):
+        folder = companion_dir(companion) if companion.get("role") == "loader" else None
+        if folder is not None:
+            paths[companion["repo"]] = str(folder)
+    return paths
+
+
+def default_voice_path(row: dict[str, Any]) -> Path | None:
+    """The ``conds.safetensors`` a ``defaultVoice`` companion provides (Chatterbox V3 has none of its own)."""
+    for companion in row.get("companions", []):
+        folder = companion_dir(companion) if companion.get("role") == "defaultVoice" else None
+        if folder is not None:
+            return folder / "conds.safetensors"
+    return None
+
+
+def snapshot_dir(row: dict[str, Any]) -> Path | None:
+    """The pinned revision's folder in the Hugging Face cache, when its weights and every companion are there."""
+    path = _revision_dir(row["repo"], row["revision"])
+    if not weights_ready(path):
+        return None
+    if any(companion_dir(c) is None for c in row.get("companions", [])):
+        return None
+    return path
 
 
 def available_here() -> bool:
@@ -68,10 +115,10 @@ def _ready(row: dict[str, Any]) -> bool:
 
 
 def list_models(*, every_model: bool = False) -> list[dict[str, Any]]:
-    """The cloning models, or with ``every_model`` all Qwen3-TTS rows (speak, style, clone, design)."""
+    """The cloning models, or with ``every_model`` every listed speech model (speak, style, clone, design)."""
     lane = voice_env.lane()
     rows = []
-    for row in VOICE_MODELS if every_model else CLONE_MODELS:
+    for row in listed_models() if every_model else CLONE_MODELS:
         job = _DOWNLOADS.get(row["key"], {})
         rows.append({
             "key": row["key"],
@@ -79,16 +126,27 @@ def list_models(*, every_model: bool = False) -> list[dict[str, Any]]:
             "summary": row["summary"],
             "repo": row["repo"],
             "revision": row["revision"],
+            "upstream": row.get("upstream"),
             "sizeGb": row["sizeGb"],
+            # Model plus companion repos: what Download fetches.
+            "downloadGb": row["downloadGb"],
             "languages": row["languages"],
             "default": row["default"],
-            "licence": CLONE_LICENCE,
+            "licence": dict(row["licence"]),
             "kind": row["kind"],
+            "family": row["family"],
             "capabilities": dict(row["capabilities"]),
+            "controls": dict(row.get("controls") or {}),
+            "companions": [{k: c[k] for k in ("repo", "revision", "files")} for c in row.get("companions", [])],
+            "sampleRate": row["sampleRate"],
+            "minReferenceS": row.get("minReferenceS"),
+            "rank": row.get("rank"),
+            "builtinWatermark": row.get("builtinWatermark"),
             # Speed and memory from the catalog, with its basis and where it was measured; None when not measured.
             "estimates": dict(row["estimates"]) if row.get("estimates") else None,
             "supported": lane in row["lanes"],
-            # Ready means the weights, and for a cloning model the watermark component; Download installs both.
+            # Ready means the weights and companions, and for a cloning model the watermark component; Download
+            # installs all of them.
             "installed": _ready(row),
             "download": {"state": job.get("state", "idle"), "error": job.get("error"), "phase": job.get("phase")},
         })
@@ -97,6 +155,8 @@ def list_models(*, every_model: bool = False) -> list[dict[str, Any]]:
 
 def start_download(key: str) -> dict[str, Any]:
     row = voice_model(key)
+    if not row["listed"]:
+        raise ValueError(f"{row['name']} is not offered on this version yet.")
     if not available_here():
         raise ValueError("Voice cloning runs on Apple Silicon Macs for now.")
     with _DOWNLOAD_LOCK:
@@ -110,6 +170,9 @@ def start_download(key: str) -> dict[str, Any]:
 
             _DOWNLOADS[row["key"]]["phase"] = "weights"
             snapshot_download(row["repo"], revision=row["revision"])
+            # Companion repos the loaders would otherwise fetch unpinned at load time.
+            for companion in row.get("companions", []):
+                snapshot_download(companion["repo"], revision=companion["revision"], allow_patterns=companion["files"])
             # Cloned output is always watermarked, so the component comes with a cloning model.
             if row["capabilities"]["clone"] and not voice_env.watermark_installed():
                 _DOWNLOADS[row["key"]]["phase"] = "watermark"
@@ -253,11 +316,22 @@ def speak(
     pitch: float = 0.0,
     seed: int | None = None,
     max_chars: int = MAX_TEXT_CHARS,
+    style: str = "",
+    language: str = "auto",
+    expression: float = 0.5,
+    guidance: float = 0.5,
 ) -> dict[str, Any]:
-    """Speak ``text`` with a cloned voice; returns the saved Library item (``speech``, ``clonedVoice``).
+    """Speak ``text`` with a cloned voice; returns the saved Library item (``speech``, ``clonedVoice``) with
+    ``notes``.
 
     Long text is cut into sentences and spoken part by part; ``speed`` and ``pitch`` are applied to the
-    joined audio before the watermark and the AI tag, which the finished speech always gets.
+    joined audio before the watermark and the AI tag, which the finished speech always gets, whatever the
+    model (Qwen3-TTS Base, VoxCPM2, Chatterbox V3, Chatterbox-Turbo). This is the only path that sends a
+    person's voice sample to the worker.
+
+    VoxCPM2 picks its mode from ``style``: empty is the exact mode (the clip, the same clip as a prompt and its
+    stored transcript); filled is the steered mode (the clip plus the style). Chatterbox V3 takes
+    ``language``, ``expression`` and ``guidance``. Other models ignore the style, with a note.
 
     Agents and other computers (``origin`` other than ``ui``) must pass ``permission_confirmed``: their
     confirmation that the speaker's permission covers this use. It is written to the audit log.
@@ -288,11 +362,17 @@ def speak(
     reference = voice_library.audio_path(voice_id)
     if reference is None:
         raise RuntimeError("This voice's sample is missing. Delete the voice and make it again.")
+    minimum = float(row.get("minReferenceS") or MIN_REFERENCE_S)
+    duration_s = float(voice.get("durationS") or 0.0)
+    if duration_s and duration_s < minimum:
+        raise ValueError(
+            f"{row['name']} needs a voice sample of at least {minimum:g} s; this one is {duration_s:.1f} s. "
+            "Pick another cloning model or record a longer sample."
+        )
 
-    plan = voice_speak.Plan(
-        "clone", f"clone:{voice_id}", row["key"], row["name"], row["engine"], str(folder),
-        {"refAudioPath": str(reference), "refText": str(voice.get("text") or "")},
-    )
+    style = " ".join((style or "").split())
+    extra, notes = clone_fields(row, str(reference), str(voice.get("text") or ""), style, language, expression, guidance)
+    plan = voice_speak.plan_for("clone", f"clone:{voice_id}", row, extra)
     rendered = voice_speak.render(plan, text, speed=speed, pitch=pitch, seed=seed)
     wav = rendered.wav
     duration = rendered.duration_s
@@ -321,4 +401,33 @@ def speak(
     safety.audit("speak", origin=origin, voiceId=voice_id, libraryId=item["id"], model=row["key"],
                  textLength=len(text), outputSha256=safety.sha256_bytes(tagged),
                  permissionConfirmed=bool(permission_confirmed))
-    return {**item, "seconds": rendered.seconds, "chunks": rendered.chunks, "modelName": row["name"]}
+    return {**item, "seconds": rendered.seconds, "chunks": rendered.chunks, "modelName": row["name"],
+            "notes": [*notes, *rendered.notes]}
+
+
+STEERED_NOTE = "VoxCPM2 followed the style; the steered mode trades a little likeness for it."
+NO_STYLE_NOTE = "A cloned voice has no style control with this model, so the style text was ignored."
+
+
+def clone_fields(
+    row: dict[str, Any], reference: str, reference_text: str, style: str, language: str, expression: float,
+    guidance: float,
+) -> tuple[dict[str, Any], list[str]]:
+    """Worker fields for speaking with a voice sample on ``row``, and notes for the person."""
+    from backend_service import voice_speak  # noqa: PLC0415
+
+    fields: dict[str, Any] = {"refAudioPath": reference, "refText": reference_text}
+    notes: list[str] = []
+    family = row["family"]
+    if family == "voxcpm2":
+        fields["mode"] = "steered" if style else "exact"
+        if style:
+            fields["instruct"] = style
+            notes.append(STEERED_NOTE)
+        return fields, notes
+    if family == "chatterbox":
+        fields.update(voice_speak.chatterbox_fields(row, language, expression, guidance))
+        fields.pop("defaultVoicePath", None)  # the sample is the voice
+    if style:
+        notes.append(NO_STYLE_NOTE)
+    return fields, notes

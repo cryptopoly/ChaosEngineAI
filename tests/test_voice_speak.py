@@ -65,15 +65,18 @@ class Machine:
             patch.stop()
 
 
+QWEN_ROWS = [r for r in voice_models.VOICE_MODELS if r["family"] == "qwen3-tts"]
+
+
 class CatalogTests(unittest.TestCase):
     def test_new_rows_are_pinned_apache_and_unique(self) -> None:
         keys = [r["key"] for r in voice_models.VOICE_MODELS]
         self.assertEqual(len(keys), len(set(keys)))
         self.assertEqual(
-            set(keys),
+            {r["key"] for r in QWEN_ROWS},
             {"qwen3-tts-0.6b", "qwen3-tts-1.7b", "qwen3-tts-custom-0.6b", "qwen3-tts-custom-1.7b", "qwen3-tts-design-1.7b"},
         )
-        for row in voice_models.VOICE_MODELS:
+        for row in QWEN_ROWS:
             self.assertRegex(row["revision"], r"^[0-9a-f]{40}$")
             self.assertTrue(row["repo"].startswith("mlx-community/Qwen3-TTS-12Hz-"))
             self.assertTrue(row["upstream"].startswith("Qwen/Qwen3-TTS-12Hz-"))
@@ -82,7 +85,7 @@ class CatalogTests(unittest.TestCase):
         self.assertEqual(voice_models.CLONE_LICENCE["id"], "apache-2.0")
 
     def test_every_row_records_a_measured_run(self) -> None:
-        for row in voice_models.VOICE_MODELS:
+        for row in voice_models.listed_models():
             est = row["estimates"]
             self.assertEqual(est["basis"], "measured")
             self.assertIn("Apple M4 Max", est["measuredOn"])
@@ -91,17 +94,23 @@ class CatalogTests(unittest.TestCase):
             self.assertNotIn("Faster", row["summary"])  # the 0.6B rows were not quicker than the 1.7B ones
 
     def test_capability_flags(self) -> None:
-        caps = {r["key"]: r["capabilities"] for r in voice_models.VOICE_MODELS}
-        for flags in caps.values():
-            self.assertEqual(set(flags), {"speak", "style", "clone", "design"})
+        for row in voice_models.VOICE_MODELS:
+            self.assertEqual(
+                set(row["capabilities"]),
+                {"speak", "style", "clone", "design", "expression", "tags", "presets", "languageSelect"},
+            )
+        caps = {r["key"]: r["capabilities"] for r in QWEN_ROWS}
         self.assertFalse(caps["qwen3-tts-custom-0.6b"]["style"])
         self.assertTrue(caps["qwen3-tts-custom-1.7b"]["style"])
         self.assertTrue(caps["qwen3-tts-custom-0.6b"]["speak"] and caps["qwen3-tts-custom-1.7b"]["speak"])
         self.assertEqual([k for k, f in caps.items() if f["design"]], ["qwen3-tts-design-1.7b"])
         self.assertEqual([k for k, f in caps.items() if f["clone"]], ["qwen3-tts-0.6b", "qwen3-tts-1.7b"])
 
-    def test_cloning_screen_still_sees_only_the_base_rows(self) -> None:
-        self.assertEqual([r["key"] for r in voice_models.CLONE_MODELS], ["qwen3-tts-0.6b", "qwen3-tts-1.7b"])
+    def test_cloning_models_are_every_listed_clone_row_default_first(self) -> None:
+        keys = [r["key"] for r in voice_models.CLONE_MODELS]
+        self.assertEqual(keys[0], voice_models.DEFAULT_CLONE_MODEL)
+        self.assertEqual(set(keys), {r["key"] for r in voice_models.listed_models() if r["capabilities"]["clone"]})
+        self.assertIn("qwen3-tts-1.7b", keys)
         self.assertEqual(sum(r["default"] for r in voice_models.VOICE_MODELS), 1)
         with self.assertRaises(ValueError):
             voice_models.clone_model("qwen3-tts-custom-1.7b")

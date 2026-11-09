@@ -8,8 +8,14 @@ the AI tag, the watermark and the audit log stay in one place; it calls ``render
 Voice ids:
   ``af_heart`` ...   Kokoro voices (fast, many languages, speed only)
   ``qwen3:Ryan`` ... Qwen3-TTS CustomVoice preset speakers (style instruction on 1.7B)
-  ``design``         Qwen3-TTS VoiceDesign: ``style`` holds the written description of the voice
-  ``clone:<id>``     a cloned voice from the Voice Library
+  ``chatterbox-turbo`` Chatterbox-Turbo's built-in voice (sound tags such as ``[laugh]`` in the text)
+  ``chatterbox``     Chatterbox Multilingual V3's default voice (``language``, ``expression``, ``guidance``)
+  ``orpheus:tara`` ... Orpheus 3B's eight preset voices (sound tags)
+  ``design``         a voice from a description in ``style``: Qwen3-TTS VoiceDesign or VoxCPM2 (``model``)
+  ``clone:<id>``     a cloned voice from the Voice Library (any cloning model, ``model``)
+
+Sound tags: people write ``[laugh]``; Turbo reads them as they are, Orpheus gets ``<laugh>`` (written after the
+text is tidied, so the HTML rule never removes them), every other model has them removed with a note.
 
 Speed and pitch: Kokoro does speed itself; every other model has neither, so both are ffmpeg filters on the
 finished audio. Pitch is a shift in semitones (rate change, then tempo restored).
@@ -20,6 +26,7 @@ from __future__ import annotations
 import array
 import base64
 import io
+import re
 import subprocess
 import sys
 import tempfile
@@ -40,6 +47,9 @@ MIN_PITCH, MAX_PITCH = -12.0, 12.0
 PRESET_PREFIX = "qwen3:"
 CLONE_PREFIX = "clone:"
 DESIGN_VOICE = "design"
+TURBO_VOICE = "chatterbox-turbo"
+CHATTERBOX_VOICE = "chatterbox"
+ORPHEUS_PREFIX = "orpheus:"
 WORKER_TIMEOUT_S = 900.0
 # A model copies the loudness of what it is given: a cloned voice from a quiet sample (peak near -28 dBFS on the
 # 2026-11-08 run) speaks just as quietly. Speech whose peak is below QUIET_PEAK is lifted to LIFT_PEAK, by at most
@@ -68,6 +78,10 @@ class Plan:
     extra: dict[str, Any] = field(default_factory=dict)  # worker fields for preset / design / clone
     native_speed: bool = False  # the model applies speed itself (Kokoro)
     notes: list[str] = field(default_factory=list)
+    family: str = ""  # catalog family; "" for Kokoro
+    chunk_chars: int = CHUNK_CHARS
+    tag_style: str = "strip"  # sound tags: keep (Turbo), angle (Orpheus), strip (every other model)
+    tags: frozenset[str] = frozenset()
 
 
 @dataclass
@@ -87,10 +101,20 @@ def _caps(**flags: bool) -> dict[str, bool]:
     return {"speak": False, "style": False, "clone": False, "design": False, **flags}
 
 
-def _models_of(kind: str) -> list[dict[str, Any]]:
-    from backend_service.catalog.voice_models import VOICE_MODELS  # noqa: PLC0415
+def _rows(test: Any) -> list[dict[str, Any]]:
+    """Listed catalog rows (Qwen3-TTS and measured wave-2 rows) that pass ``test``."""
+    from backend_service.catalog.voice_models import listed_models  # noqa: PLC0415
 
-    return [row for row in VOICE_MODELS if row["kind"] == kind]
+    return [row for row in listed_models() if test(row)]
+
+
+def _models_of(kind: str) -> list[dict[str, Any]]:
+    return _rows(lambda row: row["kind"] == kind)
+
+
+def _family_row(family: str) -> dict[str, Any] | None:
+    rows = _rows(lambda row: row["family"] == family)
+    return rows[0] if rows else None
 
 
 def _installed(row: dict[str, Any]) -> bool:
@@ -99,15 +123,60 @@ def _installed(row: dict[str, Any]) -> bool:
     return voice_clone.available_here() and voice_clone.snapshot_dir(row) is not None
 
 
+def _first_installed(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    return next((row for row in rows if _installed(row)), rows[0])
+
+
+def _needs(row: dict[str, Any]) -> str:
+    return f"Download {row['name']} in Voice Models."
+
+
+def _family_voices() -> list[dict[str, Any]]:
+    """Chatterbox-Turbo's built-in voice, Chatterbox V3's default voice and the Orpheus presets (Natural group)."""
+    from backend_service.catalog.voice_models import ORPHEUS_VOICES  # noqa: PLC0415
+
+    voices: list[dict[str, Any]] = []
+    turbo = _family_row("chatterbox-turbo")
+    if turbo is not None:
+        ready = _installed(turbo)
+        voices.append({
+            "id": TURBO_VOICE, "name": "Turbo", "kind": "preset", "family": "chatterbox-turbo", "language": "en",
+            "languageLabel": "English", "gender": "male", "about": "Chatterbox-Turbo's own voice; reads sound tags",
+            "model": turbo["key"], "models": [turbo["key"]], "capabilities": _caps(speak=True),
+            "available": ready, "needs": None if ready else _needs(turbo),
+        })
+    mtl = _family_row("chatterbox")
+    if mtl is not None and mtl["capabilities"]["speak"]:
+        ready = _installed(mtl)
+        voices.append({
+            "id": CHATTERBOX_VOICE, "name": "Chatterbox", "kind": "preset", "family": "chatterbox", "language": "auto",
+            "languageLabel": "23 languages", "gender": "female", "about": "Chatterbox's default voice in 23 languages",
+            "model": mtl["key"], "models": [mtl["key"]], "capabilities": _caps(speak=True),
+            "available": ready, "needs": None if ready else _needs(mtl),
+        })
+    orpheus = _family_row("orpheus")
+    if orpheus is not None:
+        ready = _installed(orpheus)
+        for voice in ORPHEUS_VOICES:
+            voices.append({
+                "id": ORPHEUS_PREFIX + voice["id"], "name": voice["id"].capitalize(), "kind": "preset",
+                "family": "orpheus", "language": "en", "languageLabel": "English", "gender": voice["gender"],
+                "about": voice["about"], "model": orpheus["key"], "models": [orpheus["key"]],
+                "capabilities": _caps(speak=True), "available": ready, "needs": None if ready else _needs(orpheus),
+            })
+    return voices
+
+
 def list_voices(*, include_clones: bool = True) -> list[dict[str, Any]]:
     """Built-in, preset, designed and cloned voices in one list.
 
-    Fields: ``id``, ``name``, ``kind`` (builtin / preset / design / clone), ``language``, ``languageLabel``,
-    ``gender`` (when known), ``model`` (the catalog key used by default, ``kokoro`` for built-ins), ``models``
-    (every key that can speak it), ``capabilities`` (speak / style / clone / design), ``available`` (the
-    voice can be used right now) and ``needs`` (plain words when it cannot). Built-in voices also carry ``grade``
-    (the model author's quality grade, None when ungraded) and ``addon`` (the add-on that unlocks them, or None);
-    voices that can never run on this lane (Japanese on MLX) are left out.
+    Fields: ``id``, ``name``, ``kind`` (builtin / preset / design / clone), ``group`` (quick / natural / designed /
+    cloned, the picker's groups), ``family`` (the model family that speaks it by default), ``language``,
+    ``languageLabel``, ``gender`` (when known), ``model`` (the catalog key used by default, ``kokoro`` for
+    built-ins), ``models`` (every key that can speak it), ``capabilities`` (speak / style / clone / design),
+    ``available`` (the voice can be used right now) and ``needs`` (plain words when it cannot). Built-in voices also
+    carry ``grade`` (the model author's quality grade, None when ungraded) and ``addon`` (the add-on that unlocks
+    them, or None); voices that can never run on this lane (Japanese on MLX) are left out.
 
     ``needsFfmpeg`` is True on every voice when ffmpeg is missing: pitch is always an ffmpeg step, and so is speed
     for every voice except the built-in ones, so the Speak screen can say so before Generate rather than after.
@@ -123,7 +192,7 @@ def list_voices(*, include_clones: bool = True) -> list[dict[str, Any]]:
         if v.get("neverAvailable"):
             continue  # Japanese on the MLX lane: nothing can unlock it, so it is not offered at all
         voices.append({
-            "id": v["id"], "name": v["name"], "kind": "builtin", "language": v["language"],
+            "id": v["id"], "name": v["name"], "kind": "builtin", "family": "kokoro", "language": v["language"],
             "languageLabel": v["languageLabel"], "gender": v["gender"], "model": "kokoro", "models": ["kokoro"],
             "capabilities": _caps(speak=True), "available": bool(v["available"]),
             "grade": v.get("grade"), "addon": None if v["available"] else v.get("addon"),
@@ -135,36 +204,50 @@ def list_voices(*, include_clones: bool = True) -> list[dict[str, Any]]:
     for speaker in CUSTOM_SPEAKERS:
         voices.append({
             "id": PRESET_PREFIX + speaker["id"], "name": speaker["id"].replace("_", " "), "kind": "preset",
-            "language": speaker["language"], "languageLabel": speaker["languageLabel"], "gender": speaker["gender"],
-            "about": speaker["about"], "model": (custom_ready and _pick_custom(custom_ready) or _pick_custom(customs))["key"], "models": [r["key"] for r in customs],
+            "family": "qwen3-tts", "language": speaker["language"], "languageLabel": speaker["languageLabel"],
+            "gender": speaker["gender"], "about": speaker["about"],
+            "model": (custom_ready and _pick_custom(custom_ready) or _pick_custom(customs))["key"], "models": [r["key"] for r in customs],
             "capabilities": _caps(speak=True, style=True), "available": bool(custom_ready),
             "needs": None if custom_ready else f"Download {customs[0]['name']} in Voice Models.",
         })
+    voices.extend(_family_voices())
 
-    design = _models_of("design")[0]
+    designers = _design_rows()
+    design = _first_installed(designers)
     design_ready = _installed(design)
     voices.append({
-        "id": DESIGN_VOICE, "name": "Describe a voice", "kind": "design", "language": "auto", "languageLabel": "Any",
-        "gender": None, "model": design["key"], "models": [design["key"]],
-        "capabilities": _caps(speak=True, style=True, design=True), "available": design_ready,
-        "needs": None if design_ready else f"Download {design['name']} in Voice Models.",
+        "id": DESIGN_VOICE, "name": "Describe a voice", "kind": "design", "family": design["family"],
+        "language": "auto", "languageLabel": "Any", "gender": None, "model": design["key"],
+        "models": [r["key"] for r in designers], "capabilities": _caps(speak=True, style=True, design=True),
+        "available": design_ready, "needs": None if design_ready else _needs(design),
     })
 
     if include_clones:
         from backend_service import voice_clone  # noqa: PLC0415
+        from backend_service.catalog.voice_models import CLONE_MODELS  # noqa: PLC0415
+
         base = voice_clone.pick_clone_model("")  # the default, or any downloaded cloning model
         base_ready = _installed(base) and voice_env.watermark_installed()
         for item in voice_clone.list_voices():
             voices.append({
-                "id": CLONE_PREFIX + item["id"], "name": item["name"], "kind": "clone", "language": "auto",
-                "languageLabel": "Any", "gender": None, "model": base["key"],
-                "models": [r["key"] for r in _models_of("base")], "capabilities": _caps(speak=True, clone=True),
-                "available": base_ready, "needs": None if base_ready else f"Download {base['name']} in Voice Models.",
-                "consent": item["consent"],
+                "id": CLONE_PREFIX + item["id"], "name": item["name"], "kind": "clone", "family": base["family"],
+                "language": "auto", "languageLabel": "Any", "gender": None, "model": base["key"],
+                "models": [r["key"] for r in CLONE_MODELS], "capabilities": _caps(speak=True, clone=True),
+                "available": base_ready, "needs": None if base_ready else _needs(base),
+                "consent": item["consent"], "durationS": item.get("durationS"),
             })
     for entry in voices:
+        entry["group"] = _GROUPS[entry["kind"]]
         entry["needsFfmpeg"] = no_ffmpeg
     return voices
+
+
+_GROUPS = {"builtin": "quick", "preset": "natural", "design": "designed", "clone": "cloned"}
+
+
+def _design_rows() -> list[dict[str, Any]]:
+    """Rows that make a voice from a description: Qwen3-TTS VoiceDesign first, then VoxCPM2."""
+    return _rows(lambda row: row["capabilities"]["design"])
 
 
 def _pick_custom(rows: list[dict[str, Any]], installed_only: bool = False) -> dict[str, Any]:
@@ -182,21 +265,58 @@ def _pick_custom(rows: list[dict[str, Any]], installed_only: bool = False) -> di
 # Plan
 # ---------------------------------------------------------------------------
 
-def _model_for(kind: str, model_key: str) -> dict[str, Any]:
+def worker_fields(row: dict[str, Any]) -> dict[str, Any]:
+    """Fields every worker request for ``row`` carries: the family (which call runs) and the pinned local folders
+    of its loader companions. Empty for Qwen3-TTS, whose requests are unchanged."""
+    from backend_service import voice_clone  # noqa: PLC0415
+
+    if row["family"] == "qwen3-tts":
+        return {}
+    fields: dict[str, Any] = {"family": row["family"], "companions": voice_clone.companion_paths(row)}
+    if row.get("maxTokens"):
+        fields["maxTokens"] = int(row["maxTokens"])
+    return fields
+
+
+def _tag_rules(row: dict[str, Any] | None) -> tuple[str, frozenset[str]]:
+    """``(style, allowed)`` for ``voice_text.apply_tags``: Turbo keeps its tags, Orpheus gets angle brackets,
+    every other model has them removed."""
+    if row is None or not row["capabilities"].get("tags"):
+        return "strip", frozenset()
+    controls = row.get("controls") or {}
+    allowed = frozenset([*controls.get("tags", []), *controls.get("styleTags", [])])
+    return ("angle" if row["family"] == "orpheus" else "keep"), allowed
+
+
+def plan_for(kind: str, voice: str, row: dict[str, Any], extra: dict[str, Any]) -> Plan:
+    """A plan for a catalog row: its worker fields, chunk size and sound-tag rules. ``voice_clone.speak`` uses this
+    too, so a cloned voice follows the same text rules as every other voice."""
+    from backend_service import voice_clone  # noqa: PLC0415
+
+    folder = voice_clone.snapshot_dir(row)
+    style, allowed = _tag_rules(row)
+    return Plan(
+        kind, voice, row["key"], row["name"], row["engine"], str(folder) if folder else "",
+        {**worker_fields(row), **extra}, family=row["family"], chunk_chars=int(row.get("chunkChars") or CHUNK_CHARS),
+        tag_style=style, tags=allowed,
+    )
+
+
+def _model_for(rows: list[dict[str, Any]], model_key: str, *, pick: Any = None) -> dict[str, Any]:
+    """The row to run among ``rows``: the one named (it must be one of them), else ``pick`` (default: the first
+    installed, else the first). Raises with plain words when it cannot run here."""
     from backend_service.catalog.voice_models import voice_model  # noqa: PLC0415
     from backend_service import voice_clone  # noqa: PLC0415
 
-    rows = _models_of(kind)
     if model_key:
         row = voice_model(model_key)
-        if row["kind"] != kind:
+        if row["key"] not in {r["key"] for r in rows}:
             raise ValueError(f"{row['name']} cannot speak this voice.")
         chosen = row
+    elif pick is not None:
+        chosen = pick(rows)
     else:
-        try:
-            chosen = _pick_custom(rows, installed_only=True)
-        except LookupError:
-            chosen = _pick_custom(rows)
+        chosen = _first_installed(rows)
     if not voice_clone.available_here():
         raise ValueError("Preset and designed voices run on Apple Silicon Macs for now. Use a built-in voice here.")
     if not voice_env.is_installed():
@@ -206,13 +326,60 @@ def _model_for(kind: str, model_key: str) -> dict[str, Any]:
     return chosen
 
 
-def build_plan(voice: str, style: str = "", model_key: str = "") -> Plan:
-    """The model and worker fields for a non-cloned voice. Raises ValueError / RuntimeError with plain words."""
+def _pick_custom_installed(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    try:
+        return _pick_custom(rows, installed_only=True)
+    except LookupError:
+        return _pick_custom(rows)
+
+
+def check_controls(language: str, expression: float, guidance: float) -> None:
+    """The optional speak fields, validated the same for every voice (old requests send none of them)."""
+    if not re.fullmatch(r"auto|[a-z]{2,3}(-[A-Za-z]{2,4})?", language or ""):
+        raise ValueError("Language must be 'auto' or a language code such as 'en' or 'de'.")
+    for name, value in (("Expression", expression), ("Guidance", guidance)):
+        if not 0.0 <= float(value) <= 1.0:
+            raise ValueError(f"{name} must be between 0 and 1.")
+
+
+def chatterbox_language(language: str) -> str:
+    """Chatterbox V3's ``lang_code``: one of its 23; ``auto`` means English."""
+    from backend_service.catalog.voice_models import CHATTERBOX_LANGUAGES  # noqa: PLC0415
+
+    code = (language or "auto").split("-")[0].lower()
+    if code == "auto":
+        return "en"
+    if code not in CHATTERBOX_LANGUAGES:
+        raise ValueError(f"Chatterbox speaks {', '.join(CHATTERBOX_LANGUAGES)}; '{language}' is not one of them.")
+    return code
+
+
+def chatterbox_fields(row: dict[str, Any], language: str, expression: float, guidance: float) -> dict[str, Any]:
+    """Chatterbox V3's worker fields; expression is always sent (mlx-audio's own default is 0.1, the card's 0.5)."""
     from backend_service import voice_clone  # noqa: PLC0415
-    from backend_service.catalog.voice_models import CUSTOM_SPEAKERS  # noqa: PLC0415
+
+    fields: dict[str, Any] = {
+        "language": chatterbox_language(language), "expression": float(expression), "guidance": float(guidance),
+    }
+    voice_file = voice_clone.default_voice_path(row)
+    if voice_file is not None:
+        fields["defaultVoicePath"] = str(voice_file)
+    return fields
+
+
+def build_plan(
+    voice: str, style: str = "", model_key: str = "", *,
+    language: str = "auto", expression: float = 0.5, guidance: float = 0.5,
+) -> Plan:
+    """The model and worker fields for a non-cloned voice. Raises ValueError / RuntimeError with plain words.
+
+    Never sets a reference clip: the only path that sends one to the worker is ``voice_clone.speak``.
+    """
+    from backend_service.catalog.voice_models import CUSTOM_SPEAKERS, ORPHEUS_VOICES, QWEN_LANGUAGES  # noqa: PLC0415
 
     voice = (voice or "").strip()
     style = " ".join((style or "").split())
+    check_controls(language, expression, guidance)
     if voice.startswith(CLONE_PREFIX):
         raise ValueError("Cloned voices go through speak().")
     if voice.startswith(PRESET_PREFIX):
@@ -220,21 +387,44 @@ def build_plan(voice: str, style: str = "", model_key: str = "") -> Plan:
         speaker = next((s for s in CUSTOM_SPEAKERS if s["id"].lower() == wanted), None)
         if speaker is None:
             raise ValueError(f"Unknown voice '{voice}'.")
-        row = _model_for("custom", model_key)
-        plan = Plan("preset", voice, row["key"], row["name"], row["engine"], str(voice_clone.snapshot_dir(row)),
-                    {"mode": "preset", "speaker": speaker["id"], "language": "auto"})
+        row = _model_for(_models_of("custom"), model_key, pick=_pick_custom_installed)
+        plan = plan_for("preset", voice, row, {
+            "mode": "preset", "speaker": speaker["id"], "language": QWEN_LANGUAGES.get(language.split("-")[0], "auto"),
+        })
         if style:
             if row["capabilities"]["style"]:
                 plan.extra["instruct"] = style
             else:
                 plan.notes.append("The 0.6B model ignores the style instruction. Download the 1.7B CustomVoice model to use it.")
         return plan
+    if voice.startswith(ORPHEUS_PREFIX):
+        wanted = voice[len(ORPHEUS_PREFIX):].lower()
+        if wanted not in {v["id"] for v in ORPHEUS_VOICES} or _family_row("orpheus") is None:
+            raise ValueError(f"Unknown voice '{voice}'.")
+        row = _model_for(_rows(lambda r: r["family"] == "orpheus"), model_key)
+        plan = plan_for("preset", voice, row, {"speaker": wanted})
+        if style:
+            plan.notes.append("Orpheus takes sound tags in the text, such as [laugh], not a style.")
+        return plan
+    if voice == TURBO_VOICE and _family_row("chatterbox-turbo") is not None:
+        row = _model_for(_rows(lambda r: r["family"] == "chatterbox-turbo"), model_key)
+        plan = plan_for("preset", voice, row, {})
+        if style:
+            plan.notes.append("Turbo takes sound tags in the text, such as [laugh], not a style.")
+        return plan
+    if voice == CHATTERBOX_VOICE and (_family_row("chatterbox") or {}).get("capabilities", {}).get("speak"):
+        row = _model_for(_rows(lambda r: r["family"] == "chatterbox"), model_key)
+        plan = plan_for("preset", voice, row, chatterbox_fields(row, language, expression, guidance))
+        if style:
+            plan.notes.append("Chatterbox has no style box; use the Expression slider.")
+        return plan
     if voice == DESIGN_VOICE:
         if not style:
             raise ValueError("Describe the voice you want (age, gender, tone, pace) in the style box.")
-        row = _model_for("design", model_key)
-        return Plan("design", voice, row["key"], row["name"], row["engine"], str(voice_clone.snapshot_dir(row)),
-                    {"mode": "design", "instruct": style, "language": "auto"})
+        row = _model_for(_design_rows(), model_key)
+        if row["family"] == "voxcpm2":
+            return plan_for("design", voice, row, {"mode": "design", "instruct": style})
+        return plan_for("design", voice, row, {"mode": "design", "instruct": style, "language": "auto"})
     from backend_service import voice_runtime  # noqa: PLC0415
 
     known = {v["id"]: v for v in voice_runtime.list_tts_voices()}
@@ -362,14 +552,47 @@ def process_audio(wav: bytes, speed: float = 1.0, pitch: float = 0.0) -> bytes:
 # Render
 # ---------------------------------------------------------------------------
 
-def chunk_text(text: str) -> list[str]:
-    """Clean markdown and code out of ``text`` and cut it into sentences of at most ``CHUNK_CHARS``."""
-    from backend_service.voice_text import clean_for_speech, split_sentences  # noqa: PLC0415
-
-    return split_sentences(clean_for_speech(text[:MAX_CHARS]), CHUNK_CHARS)
+def chunk_text(text: str, plan: Plan | None = None) -> list[str]:
+    """Clean markdown and code out of ``text`` and cut it into sentences (``prepare_text`` without the notes)."""
+    return prepare_text(text, plan)[0]
 
 
-def _speak_chunk(plan: Plan, sentence: str, speed: float, seed: int | None) -> tuple[bytes, float]:
+TAGS_SKIPPED = "Sound tags such as [laugh] work with Chatterbox-Turbo and Orpheus; this voice skipped them."
+
+
+def prepare_text(text: str, plan: Plan | None = None) -> tuple[list[str], list[str]]:
+    """Sentences to send, one per worker request, and notes for the person.
+
+    Clean markdown and code, cut into sentences of at most the plan's chunk size, keep a sound tag with its
+    sentence, then rewrite the tags for the model (``voice_text.apply_tags``). VoxCPM2 reads a leading "(" as a
+    voice description, so that bracket is dropped from every chunk (``clean_for_speech`` itself writes
+    "(code block omitted)").
+    """
+    from backend_service.voice_text import (  # noqa: PLC0415
+        apply_tags,
+        clean_for_speech,
+        guard_leading_paren,
+        keep_tags_with_sentences,
+        split_sentences,
+    )
+
+    size = plan.chunk_chars if plan is not None else CHUNK_CHARS
+    pieces = keep_tags_with_sentences(split_sentences(clean_for_speech(text[:MAX_CHARS]), size))
+    style, allowed = (plan.tag_style, plan.tags) if plan is not None else ("strip", frozenset())
+    sentences: list[str] = []
+    skipped = False
+    for piece in pieces:
+        piece, stripped = apply_tags(piece, allowed, style)
+        skipped = skipped or stripped
+        if plan is not None and plan.family == "voxcpm2":
+            piece = guard_leading_paren(piece)
+        if piece.strip(" .,!?;:"):
+            sentences.append(piece)
+    return sentences, [TAGS_SKIPPED] if skipped else []
+
+
+def _speak_chunk(plan: Plan, sentence: str, speed: float, seed: int | None,
+                 extra: dict[str, Any] | None = None) -> tuple[bytes, float]:
     """WAV bytes and worker seconds for one sentence."""
     if plan.kind == "kokoro":
         from backend_service import voice_runtime  # noqa: PLC0415
@@ -380,9 +603,14 @@ def _speak_chunk(plan: Plan, sentence: str, speed: float, seed: int | None) -> t
 
     reply = get_worker().request(
         "synthesize", timeout=WORKER_TIMEOUT_S, engine=plan.engine, source=plan.source, text=sentence,
-        seed=seed, **plan.extra,
+        seed=seed, **(plan.extra if extra is None else extra),
     )
     return base64.b64decode(reply["wavB64"]), float(reply.get("seconds") or 0.0)
+
+
+def _continues(plan: Plan) -> bool:
+    """A VoxCPM2 designed voice holds across chunks by continuing from its own first chunk (D-70)."""
+    return plan.family == "voxcpm2" and plan.kind == "design"
 
 
 def request_cancel() -> bool:
@@ -396,26 +624,36 @@ def request_cancel() -> bool:
 
 def render(plan: Plan, text: str, *, speed: float = 1.0, pitch: float = 0.0, seed: int | None = None) -> Rendered:
     """Speak ``text`` with ``plan``: clean, chunk, synthesize, join, then speed and pitch."""
-    sentences = chunk_text(text)
+    sentences, notes = prepare_text(text, plan)
     if not sentences:
         raise ValueError("Nothing to speak after tidying the text.")
     CANCEL.clear()  # a Cancel that arrived before this job started belongs to an earlier one
     wavs: list[bytes] = []
     seconds = 0.0
-    for sentence in sentences:
-        if CANCEL.is_set():
-            raise GenerationCancelled("Speech was cancelled.")
-        try:
-            wav, took = _speak_chunk(plan, sentence, speed if plan.native_speed else 1.0, seed)
-        except Exception:
+    with tempfile.TemporaryDirectory(prefix="chaosengine-speak-") as folder:
+        extra: dict[str, Any] | None = None
+        for index, sentence in enumerate(sentences):
             if CANCEL.is_set():
-                raise GenerationCancelled("Speech was cancelled.") from None
-            raise
-        wavs.append(wav)
-        seconds += took
+                raise GenerationCancelled("Speech was cancelled.")
+            try:
+                chunk_speed = speed if plan.native_speed else 1.0
+                wav, took = (_speak_chunk(plan, sentence, chunk_speed, seed) if extra is None
+                             else _speak_chunk(plan, sentence, chunk_speed, seed, extra))
+            except Exception:
+                if CANCEL.is_set():
+                    raise GenerationCancelled("Speech was cancelled.") from None
+                raise
+            if index == 0 and _continues(plan) and len(sentences) > 1:
+                # The model's own first chunk (never a person's clip) carries the designed voice into the rest.
+                first = Path(folder) / "first.wav"
+                first.write_bytes(wav)
+                extra = {k: v for k, v in plan.extra.items() if k not in ("instruct", "mode")}
+                extra.update({"mode": "continue", "continueAudioPath": str(first), "continueText": sentence})
+            wavs.append(wav)
+            seconds += took
     joined = lift_quiet(join_wavs(wavs))
     final = process_audio(joined, 1.0 if plan.native_speed else speed, pitch)
-    return Rendered(final, round(wav_info(final)[3], 2), round(seconds, 3), len(sentences), list(plan.notes))
+    return Rendered(final, round(wav_info(final)[3], 2), round(seconds, 3), len(sentences), [*plan.notes, *notes])
 
 
 # ---------------------------------------------------------------------------
@@ -433,6 +671,9 @@ def speak(
     model: str = "",
     origin: str,
     permission_confirmed: bool = False,
+    language: str = "auto",
+    expression: float = 0.5,
+    guidance: float = 0.5,
 ) -> dict[str, Any]:
     """Speak and return ``{wav, durationS, seconds, chunks, voice, kind, model, modelName, clonedVoice, libraryId, notes}``.
 
@@ -449,27 +690,27 @@ def speak(
     if not MIN_PITCH <= pitch <= MAX_PITCH:
         raise ValueError(f"Pitch must be between {MIN_PITCH:g} and {MAX_PITCH:g} semitones.")
     voice = (voice or "").strip()
+    check_controls(language, expression, guidance)
 
     if voice.startswith(CLONE_PREFIX):
         from backend_service import voice_clone, voice_library  # noqa: PLC0415
 
         item = voice_clone.speak(
             voice[len(CLONE_PREFIX):], text, model, origin=origin, permission_confirmed=permission_confirmed,
-            speed=speed, pitch=pitch, seed=seed, max_chars=MAX_CHARS,
+            speed=speed, pitch=pitch, seed=seed, max_chars=MAX_CHARS, style=style, language=language,
+            expression=expression, guidance=guidance,
         )
         path = voice_library.audio_path(item["id"])
         if path is None:
             raise RuntimeError("The saved speech could not be read back.")
-        notes = ["Labelled as AI-made and watermarked."]
-        if style.strip():
-            notes.append("A cloned voice has no style control, so the style text was ignored.")
+        notes = ["Labelled as AI-made and watermarked.", *item.get("notes", [])]
         return {
             "wav": path.read_bytes(), "durationS": item.get("durationS"), "seconds": item.get("seconds"),
             "chunks": item.get("chunks"), "voice": voice, "kind": "clone", "model": item.get("model"),
             "modelName": item.get("modelName"), "clonedVoice": True, "libraryId": item["id"], "notes": notes,
         }
 
-    plan = build_plan(voice, style, model)
+    plan = build_plan(voice, style, model, language=language, expression=expression, guidance=guidance)
     rendered = render(plan, text, speed=speed, pitch=pitch, seed=seed)
     return {
         "wav": rendered.wav, "durationS": rendered.duration_s, "seconds": rendered.seconds, "chunks": rendered.chunks,

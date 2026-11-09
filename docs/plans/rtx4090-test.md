@@ -29,6 +29,21 @@ For each: record the time for 10 s of speech, peak VRAM (`nvidia-smi`), and whet
 - [ ] Speed and pitch sliders; text over 400 characters (chunking); Cancel mid-run.
 - [ ] Speech to text: transcribe a clip with the default model.
 
+### 2.1 Wave-2 speech models on the GPU (D-70 Phase 6, written on a Mac, never run)
+
+Start the backend with `CHAOSENGINE_VOICE_UNMEASURED=1` so the unmeasured CUDA rows are offered. Record driver, CUDA and torch versions.
+
+- [ ] Voice Models: the "More speech models on the NVIDIA GPU" add-on appears (it must not on a machine without nvidia-smi). Install it; the log ends with `speech gpu ok`. Record the install size of the voice venv before and after.
+- [ ] If an import fails, note the missing package (the add-on installs `chatterbox-tts` and `voxcpm` with `--no-deps` plus a hand-picked list in `voice_env.SPEECH_GPU_PACKAGES`); add it there with its licence checked.
+- [ ] Download each CUDA row: Chatterbox-Turbo (GPU), Chatterbox Multilingual V3 (GPU), VoxCPM2 (GPU), Orpheus 3B (GGUF). Check only the listed files arrive (the Chatterbox repo is 13.9 GB in all; V3 needs about 3.2 GB).
+- [ ] Turbo: which decoder does `from_local` read, `s3gen.safetensors` or `s3gen_meanflow.safetensors`? Drop the other from `voice_models_cuda.py`.
+- [ ] Speak with each (Turbo voice with `[laugh]`, Chatterbox in English and German with Expression 0.3 and 0.8, VoxCPM2 design, Orpheus `tara` with `[laugh]`). Japanese on Chatterbox: pykakasi is left out (GPL), so note whether Japanese still reads.
+- [ ] Measure each with `.venv\Scripts\python scripts\measure-voice-models.py --rows chatterbox-turbo-cuda chatterbox-mtl-cuda voxcpm2-cuda orpheus-3b-gguf --json speech-4090.json` and also peak VRAM from `nvidia-smi --query-gpu=memory.used --format=csv -l 1`. Put the numbers in the rows' `estimates` (basis measured) so they are offered without the switch.
+- [ ] Clone with each cloning row (own voice only): permission tick needed, AI label present, `GET /api/voice/clone/watermark/{id}` finds our AudioSeal mark after speed 1.3 and pitch +2.
+- [ ] PerTh: on a Chatterbox clip after speed 1.3 and pitch +2, run `perth.PerthImplicitWatermarker().get_watermark(audio, sample_rate=sr)` in the voice venv; the AI tag of cloned Chatterbox speech must say `"builtinWatermark": "perth"`.
+- [ ] Orpheus GGUF: llama-server starts on a free 127.0.0.1 port and stops when the voice worker stops (Task Manager / `ps` shows no stray llama-server); a 250-character chunk is not cut short.
+- [ ] Same text through Qwen3-TTS and each wave-2 row, side by side.
+
 ## 3. Music and sound
 
 - [ ] ACE-Step 1.5: first install into the music venv, then one 30 s track. Time and VRAM.

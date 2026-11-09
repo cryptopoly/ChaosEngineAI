@@ -517,3 +517,38 @@ inference). All are MIT, BSD or Apache except the one below.
 - **AudioSeal 0.2.1** (Meta Platforms) - MIT licence for code and model weights (`facebook/audioseal`, revision
   `3c19eba53390776cf2cc9ed5f6c9ac67ce72ecba`); installed on demand into the voice venv for the cloned-voice watermark.
   omegaconf 2.3 and antlr4-python3-runtime 4.9 - BSD-3-Clause; einops 0.8 - MIT.
+
+## More speech models (optional, on demand, D-70)
+
+Downloaded by the user from Voice Models, never bundled. Each is pinned to a full revision in
+`backend_service/catalog/voice_models.py` (Apple Silicon) or `voice_models_cuda.py` (NVIDIA GPU).
+
+- **Chatterbox-Turbo** (Resemble AI, `ResembleAI/chatterbox-turbo`) - MIT. Apple Silicon: the MLX conversion
+  `mlx-community/chatterbox-turbo-8bit` (its card lists apache-2.0; the upstream MIT licence is shown).
+- **Chatterbox Multilingual V3** (Resemble AI, `ResembleAI/chatterbox`) - MIT. Apple Silicon:
+  `mlx-community/chatterbox-multilingual-v3` (MIT), with the default voice file `conds.safetensors` from
+  `mlx-community/chatterbox-8bit` (card apache-2.0, upstream MIT).
+- **S3TokenizerV2 weights** (`mlx-community/S3TokenizerV2`, no licence field) from the S3Tokenizer code
+  (xingchensong/S3Tokenizer, Apache-2.0); fetched with both Chatterbox models.
+- **VoxCPM2** (OpenBMB, `openbmb/VoxCPM2`) - Apache-2.0. Apple Silicon: `mlx-community/VoxCPM2-8bit` (Apache-2.0).
+- **Orpheus 3B 0.1 fine-tuned** (Canopy Labs, `canopylabs/orpheus-3b-0.1-ft`) - licence field Apache-2.0; the model
+  card lists `meta-llama/Llama-3.2-3B-Instruct` as its base model (Llama 3.2 Community Licence). Apple Silicon:
+  `mlx-community/orpheus-3b-0.1-ft-8bit` with the tokenizer files of `mlx-community/orpheus-3b-0.1-ft-bf16`;
+  NVIDIA GPU: `unsloth/orpheus-3b-0.1-ft-GGUF` (Q8_0) through the bundled llama-server.
+- **SNAC 24 kHz codec** (Hubert Siuzdak, hubertsiuzdak/snac) - MIT. Apple Silicon: `mlx-community/snac_24khz`;
+  NVIDIA GPU: the ONNX decoder `onnx-community/snac_24khz-ONNX` (MIT).
+- **mlx-audio** (MIT, listed above) runs all four on Apple Silicon; it adds no watermark of its own.
+
+### Speech GPU add-on (Windows / Linux with an NVIDIA GPU, installed on demand into the voice venv)
+
+Not verified on a GPU yet (rtx4090-test.md section 2). Each package and its licence:
+
+- `chatterbox-tts` 0.1.7 - MIT (installed without its pinned dependencies); it applies Resemble's PerTh watermark
+  through `resemble-perth` 1.0.1 - MIT.
+- `voxcpm` 2.0.3 - Apache-2.0 (installed without its dependencies).
+- PyTorch 2.9.1 and torchaudio 2.9.1 (CUDA 12.8 wheels) - BSD-3-Clause; torchcodec 0.8.1 - BSD-3-Clause.
+- transformers 5.2.0, diffusers 0.29.0, safetensors 0.5.3 - Apache-2.0; s3tokenizer 0.3.0 - Apache-2.0;
+  wetext 0.2.1 - Apache-2.0.
+- librosa 0.11.0 - ISC; conformer 0.3.2, pyloudnorm 0.2.0, spacy-pkuseg 1.0.2, einops 0.8, inflect 7.6,
+  addict 2.4.0, pydantic 2 - MIT; omegaconf 2.3 - BSD-3-Clause; soundfile 0.13 - BSD-3-Clause.
+- Left out on purpose: pykakasi (GPL-3.0), gradio, funasr, modelscope, datasets, matplotlib.

@@ -268,7 +268,7 @@ class DownloadTests(unittest.TestCase):
             voice_clone._DOWNLOADS.clear()
             voice_clone.start_download("qwen3-tts-0.6b")
         row = voice_models.clone_model("qwen3-tts-0.6b")
-        weights.assert_called_once_with(row["repo"], revision=row["revision"])
+        weights.assert_called_once_with(row["repo"], revision=row["revision"], allow_patterns=None)
         install.assert_called_once()
         return voice_clone._DOWNLOADS["qwen3-tts-0.6b"]
 

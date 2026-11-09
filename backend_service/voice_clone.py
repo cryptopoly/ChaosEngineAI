@@ -55,8 +55,11 @@ def _revision_dir(repo: str, revision: str) -> Path:
     return _hf_repo_cache_dir(repo) / "snapshots" / revision
 
 
-def weights_ready(path: Path) -> bool:
-    """``config.json`` and the weights: one ``model.safetensors``, or an index whose every shard is on disk."""
+def weights_ready(path: Path, files: list[str] | None = None) -> bool:
+    """``config.json`` and the weights: one ``model.safetensors``, or an index whose every shard is on disk. A row
+    that lists its ``files`` (the CUDA rows: PyTorch checkpoints, a GGUF) is ready when each of them is there."""
+    if files:
+        return all((path / name).is_file() for name in files)
     if not (path / "config.json").is_file():
         return False
     if (path / "model.safetensors").exists():
@@ -85,6 +88,15 @@ def companion_paths(row: dict[str, Any]) -> dict[str, str]:
     return paths
 
 
+def companion_file(row: dict[str, Any], role: str) -> Path | None:
+    """The first listed file of the row's companion with ``role`` (Orpheus GGUF: its SNAC decoder)."""
+    for companion in row.get("companions", []):
+        folder = companion_dir(companion) if companion.get("role") == role else None
+        if folder is not None:
+            return folder / companion["files"][0]
+    return None
+
+
 def default_voice_path(row: dict[str, Any]) -> Path | None:
     """The ``conds.safetensors`` a ``defaultVoice`` companion provides (Chatterbox V3 has none of its own)."""
     for companion in row.get("companions", []):
@@ -97,15 +109,23 @@ def default_voice_path(row: dict[str, Any]) -> Path | None:
 def snapshot_dir(row: dict[str, Any]) -> Path | None:
     """The pinned revision's folder in the Hugging Face cache, when its weights and every companion are there."""
     path = _revision_dir(row["repo"], row["revision"])
-    if not weights_ready(path):
+    if not weights_ready(path, row.get("files")):
         return None
     if any(companion_dir(c) is None for c in row.get("companions", [])):
         return None
     return path
 
 
+NOT_HERE = "Voice cloning needs an Apple Silicon Mac, or the speech GPU add-on on a computer with an NVIDIA GPU."
+
+
 def available_here() -> bool:
-    return voice_env.lane() == "mlx"
+    """Speech models beyond Kokoro run here: Apple Silicon (MLX), or the speech GPU add-on with its NVIDIA GPU."""
+    return bool(voice_env.speech_lanes())
+
+
+def runs_here(row: dict[str, Any]) -> bool:
+    return any(name in voice_env.speech_lanes() for name in row["lanes"])
 
 
 def _ready(row: dict[str, Any]) -> bool:
@@ -117,7 +137,6 @@ def _ready(row: dict[str, Any]) -> bool:
 
 def list_models(*, every_model: bool = False) -> list[dict[str, Any]]:
     """The cloning models, or with ``every_model`` every listed speech model (speak, style, clone, design)."""
-    lane = voice_env.lane()
     rows = []
     for row in _catalog.listed_models() if every_model else CLONE_MODELS:
         job = _DOWNLOADS.get(row["key"], {})
@@ -145,7 +164,7 @@ def list_models(*, every_model: bool = False) -> list[dict[str, Any]]:
             "builtinWatermark": row.get("builtinWatermark"),
             # Speed and memory from the catalog, with its basis and where it was measured; None when not measured.
             "estimates": dict(row["estimates"]) if row.get("estimates") else None,
-            "supported": lane in row["lanes"],
+            "supported": runs_here(row),
             # Ready means the weights and companions, and for a cloning model the watermark component; Download
             # installs all of them.
             "installed": _ready(row),
@@ -159,7 +178,7 @@ def start_download(key: str) -> dict[str, Any]:
     if row["key"] not in {r["key"] for r in _catalog.listed_models()}:
         raise ValueError(f"{row['name']} is not offered on this version yet.")
     if not available_here():
-        raise ValueError("Voice cloning runs on Apple Silicon Macs for now.")
+        raise ValueError(NOT_HERE)
     with _DOWNLOAD_LOCK:
         if _DOWNLOADS.get(row["key"], {}).get("state") == "downloading":
             return dict(_DOWNLOADS[row["key"]])
@@ -170,7 +189,7 @@ def start_download(key: str) -> dict[str, Any]:
             from huggingface_hub import snapshot_download  # noqa: PLC0415
 
             _DOWNLOADS[row["key"]]["phase"] = "weights"
-            snapshot_download(row["repo"], revision=row["revision"])
+            snapshot_download(row["repo"], revision=row["revision"], allow_patterns=row.get("files"))
             # Companion repos the loaders would otherwise fetch unpinned at load time.
             for companion in row.get("companions", []):
                 snapshot_download(companion["repo"], revision=companion["revision"], allow_patterns=companion["files"])
@@ -351,7 +370,7 @@ def speak(
     if len(text) > max_chars:
         raise ValueError(f"Cloned speech takes up to {max_chars} characters at a time.")
     if not available_here():
-        raise ValueError("Voice cloning runs on Apple Silicon Macs for now.")
+        raise ValueError(NOT_HERE)
     if not voice_env.is_installed():
         raise RuntimeError("The voice pack is not installed. Install it from Voice > Models.")
     row = pick_clone_model(model_key)
@@ -386,7 +405,9 @@ def speak(
             out.read_bytes(),
             {"appVersion": version, "model": row["repo"], "engine": row["engine"],
              "createdAt": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "voiceId": voice_id,
-             "watermark": "audioseal-0.2.1:CE5A"},
+             "watermark": "audioseal-0.2.1:CE5A",
+             # A watermark the model adds itself (PerTh on the CUDA Chatterbox rows), recorded so the tag is honest.
+             **({"builtinWatermark": row["builtinWatermark"]} if row.get("builtinWatermark") else {})},
             f"ChaosEngineAI {version}",
         )
         out.write_bytes(tagged)

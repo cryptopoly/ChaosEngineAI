@@ -154,3 +154,22 @@ CUDA / CPU path: the official package uses vLLM (Linux; its README pins `vllm==0
 - GitHub: https://github.com/OpenBMB/VoxCPM , https://github.com/resemble-ai/chatterbox , https://github.com/resemble-ai/Perth , https://github.com/canopyai/Orpheus-TTS , https://github.com/hubertsiuzdak/snac , https://github.com/xingchensong/S3Tokenizer , https://github.com/Blaizzy/mlx-audio .
 - PyPI JSON: `voxcpm`, `chatterbox-tts`, `orpheus-speech`, `resemble-perth`, `snac`, `s3tokenizer`, `mlx-audio`.
 - Local source: `~/.chaosengine/voice-venv/lib/python3.11/site-packages/mlx_audio/` 0.6.4 (`tts/models/{voxcpm2,chatterbox,chatterbox_turbo,llama}`, `tts/utils.py`, `codec/models/snac`).
+
+## 5. P0 spike results (2026-11-09)
+
+Run on the M4 Max (64 GB) with `scripts/measure-voice-models.py --spike`, weights already on disk, its own voice worker (no app, no port). WAVs in `~/.chaosengine/voice/wave2-listening/`.
+
+| Row | s per 10 s | peak GB | idle GB | cold start s | 12-word line s |
+|---|---|---|---|---|---|
+| chatterbox-turbo (built-in voice) | 2.1 | 1.72 | 1.72 | 2.4 | 0.8 |
+| voxcpm2 (design) | 5.22 | 3.8 | 3.8 | 2.0 | 1.9 |
+| chatterbox-mtl (default voice) | 3.63 | 3.67 | 3.66 | 2.9 | 1.4 |
+| orpheus-3b (tara) | 7.22 | 4.19 | 4.19 | 3.6 | 3.3 |
+
+- **V3 default voice:** the V2 8-bit build's `conds.safetensors` loads into the V3 weights and speaks English, German and Japanese lines (STT gives the English and German back word for word). Shipped as a `defaultVoice` companion (only that 105 KB file is fetched).
+- **Orpheus token budget:** a 400-character chunk gives 14.6 s of audio at `max_tokens` 1200 (cut short), 25.4 s at 2400 and 25.2 s at 4000. Shipped: 250-character chunks with 2400 tokens.
+- **VoxCPM2 continuation:** median pitch per chunk (librosa pYIN) stays within about 7% when later chunks continue from chunk one (171 to 183 Hz; 142 to 174 Hz with another seed) and jumps when each chunk is designed again (149 to 243 Hz; 142 to 207 Hz). Every chunk's words came back by STT in both cases. Kept. Speaker-embedding similarity (CAM++) was also tried and swung between runs on the same files, so it is not used as evidence.
+- **Seeds:** `mx.random.seed` repeats Turbo, VoxCPM2 and Orpheus byte for byte; Chatterbox V3 does not repeat.
+- **Turbo clone safety:** mlx-audio's Turbo stores a clone's conditionals on the model, so the next plain request would speak in the cloned voice without a watermark. The worker puts the built-in conditionals back after every call; the built-in voice after a clone is byte-identical to a fresh worker's.
+- **Chatterbox V3 clone:** the loader needs the reference as an `mx.array` (a numpy array fails in `expand_dims`).
+- **Upstream pin moved:** `openbmb/VoxCPM2` is now at `7936080b` (was `32279eff` on 2026-11-08); the CUDA row pins the new sha.

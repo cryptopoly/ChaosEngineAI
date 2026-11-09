@@ -102,10 +102,13 @@ def _caps(**flags: bool) -> dict[str, bool]:
 
 
 def _rows(test: Any) -> list[dict[str, Any]]:
-    """Listed catalog rows (Qwen3-TTS and measured wave-2 rows) that pass ``test``."""
+    """Listed catalog rows (Qwen3-TTS and measured wave-2 rows) that pass ``test``; rows that run here first (the
+    CUDA row of a family before its MLX row on Windows and Linux)."""
+    from backend_service import voice_clone  # noqa: PLC0415
     from backend_service.catalog.voice_models import listed_models  # noqa: PLC0415
 
-    return [row for row in listed_models() if test(row)]
+    rows = [row for row in listed_models() if test(row)]
+    return sorted(rows, key=lambda row: not voice_clone.runs_here(row))
 
 
 def _models_of(kind: str) -> list[dict[str, Any]]:
@@ -275,6 +278,19 @@ def worker_fields(row: dict[str, Any]) -> dict[str, Any]:
     fields: dict[str, Any] = {"family": row["family"], "companions": voice_clone.companion_paths(row)}
     if row.get("maxTokens"):
         fields["maxTokens"] = int(row["maxTokens"])
+    if row["engine"] == "torch":
+        fields["device"] = "cuda"
+    elif row["engine"] == "llama-gguf":
+        # Orpheus as a GGUF: the bundled llama-server makes the audio codes, the SNAC ONNX decoder makes the sound.
+        from backend_service.inference.binaries import _resolve_llama_server  # noqa: PLC0415
+
+        folder = voice_clone.snapshot_dir(row)
+        decoder = voice_clone.companion_file(row, "snacDecoder")
+        fields.update({
+            "gguf": str(folder / row["files"][0]) if folder else "",
+            "snacDecoderPath": str(decoder) if decoder else "",
+            "llamaServerPath": _resolve_llama_server() or "",
+        })
     return fields
 
 
@@ -318,7 +334,10 @@ def _model_for(rows: list[dict[str, Any]], model_key: str, *, pick: Any = None) 
     else:
         chosen = _first_installed(rows)
     if not voice_clone.available_here():
-        raise ValueError("Preset and designed voices run on Apple Silicon Macs for now. Use a built-in voice here.")
+        raise ValueError(
+            "Preset and designed voices need an Apple Silicon Mac, or the speech GPU add-on with an NVIDIA GPU. "
+            "Use a built-in voice here."
+        )
     if not voice_env.is_installed():
         raise RuntimeError("The voice pack is not installed. Install it from Voice > Models.")
     if voice_clone.snapshot_dir(chosen) is None:

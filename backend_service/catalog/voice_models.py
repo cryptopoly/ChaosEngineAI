@@ -34,6 +34,7 @@ Per row:
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
 # The model a cloned voice uses when the request names none. The owner switches this to "voxcpm2" after the
@@ -387,6 +388,13 @@ _QWEN_DEFAULTS: dict[str, Any] = {
 }
 _CAPABILITIES = ("speak", "style", "clone", "design", "expression", "tags", "presets", "languageSelect")
 
+# The CUDA lane's rows (Windows and Linux with an NVIDIA GPU, Phase 6): same shape, other weights and engines.
+from backend_service.catalog.voice_models_cuda import CUDA_VOICE_MODELS  # noqa: E402
+
+VOICE_MODELS.extend(CUDA_VOICE_MODELS)
+# The RTX 4090 session lists the unmeasured CUDA rows to measure them; nothing else does.
+_LIST_UNMEASURED_CUDA = os.environ.get("CHAOSENGINE_VOICE_UNMEASURED", "").strip() == "1"
+
 for _row in VOICE_MODELS:
     for _name, _value in _QWEN_DEFAULTS.items():
         _row.setdefault(_name, _value)
@@ -397,7 +405,11 @@ for _row in VOICE_MODELS:
     _row["default"] = _row["key"] == DEFAULT_CLONE_MODEL
     _row["downloadGb"] = round(_row["sizeGb"] + sum(c.get("sizeGb", 0.0) for c in _row["companions"]), 2)
     # A wave-2 row is offered only once it has measured numbers on this hardware (D-70: no unmeasured rows).
-    _row["listed"] = _row["family"] == "qwen3-tts" or bool((_row.get("estimates") or {}).get("basis") == "measured")
+    _row["listed"] = (
+        _row["family"] == "qwen3-tts"
+        or bool((_row.get("estimates") or {}).get("basis") == "measured")
+        or (_LIST_UNMEASURED_CUDA and "cuda" in _row["lanes"])
+    )
 
 # Every model that can clone. The default (``DEFAULT_CLONE_MODEL``) comes first.
 CLONE_MODELS: list[dict[str, Any]] = sorted(
@@ -450,5 +462,9 @@ def voice_model(key: str) -> dict[str, Any]:
 
 
 def listed_models() -> list[dict[str, Any]]:
-    """The rows offered on this build: every Qwen3-TTS row, and wave-2 rows that have measured numbers."""
-    return [row for row in VOICE_MODELS if row["listed"]]
+    """The rows offered on this build: every Qwen3-TTS row, and wave-2 rows that have measured numbers. CUDA rows
+    appear only on the portable lane (Windows, Linux), never on a Mac."""
+    from backend_service import voice_env  # noqa: PLC0415
+
+    portable = voice_env.lane() == "portable"
+    return [row for row in VOICE_MODELS if row["listed"] and (portable or "cuda" not in row["lanes"])]

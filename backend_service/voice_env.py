@@ -104,10 +104,79 @@ _PORTABLE_PACKAGES = [
 # ctranslate2 4.x runs on CUDA 12 with cuDNN 9; pip ships both libraries.
 _CUDA_PACKAGES = ["nvidia-cublas-cu12", "nvidia-cudnn-cu12>=9,<10"]
 
-# Optional extras: name -> (lanes it applies to, packages, label).
+# Optional extras: name -> (lanes it applies to, packages, label). "speech-gpu" installs with its own commands
+# (``speech_gpu_commands``), so its package list here is empty.
 EXTRAS: dict[str, tuple[tuple[str, ...], list[str], str]] = {
     "chinese": (("mlx",), ["misaki[zh]>=0.9.4,<0.10"], "Mandarin Chinese voices"),
+    "speech-gpu": (("portable",), [], "More speech models on the NVIDIA GPU (Chatterbox, VoxCPM2, Orpheus)"),
 }
+
+# Speech GPU add-on (D-70 Phase 6, FU-149). NOT VERIFIED: written on a Mac; the RTX 4090 session runs it
+# (docs/plans/rtx4090-test.md section 2). The two model packages go in with --no-deps: chatterbox-tts pins torch 2.6,
+# transformers 5.2, gradio and numpy<2, and voxcpm pulls gradio, funasr, modelscope, datasets and matplotlib, none of
+# which inference needs. What their model code imports is listed by hand instead, every licence checked (MIT,
+# Apache-2.0, BSD, ISC). Left out on purpose: pykakasi (GPL-3.0; Chatterbox uses it for Japanese readings, so Japanese
+# on this lane may read less well) and the onnxruntime-gpu build (the SNAC decoder for Orpheus is small and runs on
+# the CPU onnxruntime the pack already has). torch 2.9 with CUDA 12.8 wheels covers the RTX 40 and 50 series.
+SPEECH_GPU_TORCH = ["torch==2.9.1", "torchaudio==2.9.1"]
+SPEECH_GPU_TORCH_INDEX = "https://download.pytorch.org/whl/cu128"
+SPEECH_GPU_PACKAGES = [
+    "transformers==5.2.0",
+    "diffusers==0.29.0",
+    "safetensors==0.5.3",
+    "librosa==0.11.0",
+    "conformer==0.3.2",
+    "s3tokenizer==0.3.0",
+    "resemble-perth==1.0.1",
+    "pyloudnorm==0.2.0",
+    "omegaconf>=2.3,<2.4",
+    "spacy-pkuseg==1.0.2",
+    "einops>=0.8,<0.9",
+    "inflect>=7.6,<8",
+    "addict==2.4.0",
+    "wetext==0.2.1",
+    "soundfile>=0.13,<0.15",
+    "torchcodec==0.8.1",
+    "pydantic>=2,<3",
+]
+SPEECH_GPU_NO_DEPS = ["chatterbox-tts==0.1.7", "voxcpm==2.0.3"]
+_SPEECH_GPU_CHECK = (
+    "import torch, chatterbox.tts_turbo, chatterbox.mtl_tts, voxcpm; "
+    "assert torch.cuda.is_available(), 'PyTorch cannot see the NVIDIA GPU'; print('speech gpu ok')"
+)
+
+
+def speech_gpu_supported() -> tuple[bool, str]:
+    """Whether the speech GPU add-on can install here, and why not."""
+    if lane() != "portable":
+        return False, "The speech GPU add-on is for Windows and Linux; on a Mac these models run on MLX."
+    if not has_nvidia_gpu():
+        return False, "The speech GPU add-on needs an NVIDIA GPU (nvidia-smi was not found)."
+    if platform.machine().lower() in ("aarch64", "arm64"):
+        return False, "The speech GPU add-on is not checked on Linux ARM64 yet."
+    return True, ""
+
+
+def speech_gpu_commands(python: str) -> list[list[str]]:
+    """The add-on's install commands, in order, then an import check that also asks PyTorch for the GPU."""
+    pip = [python, "-m", "pip", "install"]
+    return [
+        [*pip, *SPEECH_GPU_TORCH, "--index-url", SPEECH_GPU_TORCH_INDEX],
+        [*pip, *SPEECH_GPU_PACKAGES],
+        [*pip, "--no-deps", *SPEECH_GPU_NO_DEPS],
+        [python, "-I", "-c", _SPEECH_GPU_CHECK],
+    ]
+
+
+def speech_gpu_installed() -> bool:
+    return is_installed() and "speech-gpu" in installed_extras()
+
+
+def speech_lanes() -> list[str]:
+    """Catalog lanes that run here: ``mlx`` on Apple Silicon, ``cuda`` with the speech GPU add-on and its GPU."""
+    if lane() == "mlx":
+        return ["mlx"]
+    return ["cuda"] if speech_gpu_installed() and speech_gpu_supported()[0] else []
 
 _VERIFY_IMPORTS = {
     "mlx": [
@@ -451,6 +520,12 @@ def _run_install(extras: list[str]) -> None:
 
         _set_phase("installing")
         _run([str(venv_python()), "-m", "pip", "install", "--upgrade", *packages_for(lane_name, extras)])
+        if "speech-gpu" in extras and lane_name == "portable":
+            ok, why = speech_gpu_supported()
+            if not ok:
+                raise RuntimeError(why)
+            for command in speech_gpu_commands(str(venv_python())):
+                _run(command)
 
         _set_phase("downloading-voice")
         if lane_name == "mlx":

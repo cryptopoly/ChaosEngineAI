@@ -303,7 +303,15 @@ export interface VoiceModelRow {
   /** Fit on this machine from the measured peak (``helpers/voice_fit.py``); read with ``readFit``. */
   fit?: unknown;
   licence?: { id: string; name: string; url: string; note?: string; baseUrl?: string };
-  download: { state: "idle" | "downloading" | "done" | "failed"; error: string | null; phase?: "weights" | "watermark" | null };
+  download: {
+    state: "idle" | "downloading" | "done" | "failed" | "cancelled";
+    error: string | null;
+    phase?: "weights" | "watermark" | null;
+    /** While downloading: 0..1 and GB on disk against the whole download (model, companions). */
+    progress?: number | null;
+    downloadedGb?: number | null;
+    totalGb?: number | null;
+  };
 }
 
 /** Body of ``POST /api/voice/speak``. */

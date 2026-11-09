@@ -14,6 +14,7 @@ import shutil
 import tempfile
 import threading
 import time
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -34,6 +35,8 @@ PERMISSION_REQUIRED = (
 
 _DOWNLOADS: dict[str, dict[str, Any]] = {}
 _DOWNLOAD_LOCK = threading.Lock()
+# Per running download: its cancel event and child process (never sent to the UI).
+_CONTROL: dict[str, dict[str, Any]] = {}
 
 
 def _app_version() -> str:
@@ -168,9 +171,66 @@ def list_models(*, every_model: bool = False) -> list[dict[str, Any]]:
             # Ready means the weights and companions, and for a cloning model the watermark component; Download
             # installs all of them.
             "installed": _ready(row),
-            "download": {"state": job.get("state", "idle"), "error": job.get("error"), "phase": job.get("phase")},
+            "download": {
+                "state": job.get("state", "idle"), "error": job.get("error"), "phase": job.get("phase"),
+                **(_progress(row) if job.get("state") == "downloading" else {}),
+            },
         })
     return rows
+
+
+class _Cancelled(Exception):
+    """The person cancelled the download; nothing more is written to the job."""
+
+
+def _fetch_repo(control: dict[str, Any], repo: str, revision: str, patterns: list[str] | None) -> None:
+    """Download one repo in a child process (the shared download helper) so Cancel can stop it mid-file.
+
+    Same child, environment and stop sequence as the Models page downloads: terminate, then kill after 5 s.
+    Partial files stay in the cache so a later Download resumes them.
+    """
+    import os  # noqa: PLC0415
+    import subprocess  # noqa: PLC0415
+    import tempfile  # noqa: PLC0415
+
+    from backend_service.state._helpers import _spawn_snapshot_download  # noqa: PLC0415
+
+    cancel: threading.Event = control["cancel"]
+    if cancel.is_set():
+        raise _Cancelled()
+    env = os.environ.copy()
+    env.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
+    env.setdefault("PYTHONUNBUFFERED", "1")
+    env["HF_HUB_DISABLE_XET"] = "1"  # keeps the bytes in the per-repo cache tree the progress count reads
+    with tempfile.TemporaryFile(mode="w+", encoding="utf-8", errors="replace") as log:
+        process = _spawn_snapshot_download(repo, env, log, allow_patterns=patterns, revision=revision)
+        control["proc"] = process
+        try:
+            while process.poll() is None:
+                if cancel.is_set():
+                    try:
+                        process.terminate()
+                        process.wait(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        process.kill()
+                        process.wait(timeout=5)
+                    raise _Cancelled()
+                time.sleep(0.3)
+        finally:
+            control["proc"] = None
+        if process.returncode != 0:
+            log.flush()
+            log.seek(0)
+            raise RuntimeError(_read_text_tail_of(log) or f"download exited with status {process.returncode}")
+
+
+def _read_text_tail_of(handle: Any, limit: int = 400) -> str:
+    return handle.read()[-limit:].strip()
+
+
+def _own(key: str, token: str) -> bool:
+    job = _DOWNLOADS.get(key)
+    return bool(job) and job.get("token") == token
 
 
 def start_download(key: str) -> dict[str, Any]:
@@ -179,31 +239,85 @@ def start_download(key: str) -> dict[str, Any]:
         raise ValueError(f"{row['name']} is not offered on this version yet.")
     if not available_here():
         raise ValueError(NOT_HERE)
+    token = uuid.uuid4().hex
+    control: dict[str, Any] = {"cancel": threading.Event(), "proc": None}
     with _DOWNLOAD_LOCK:
         if _DOWNLOADS.get(row["key"], {}).get("state") == "downloading":
             return dict(_DOWNLOADS[row["key"]])
-        _DOWNLOADS[row["key"]] = {"state": "downloading", "error": None, "startedAt": time.time()}
+        _DOWNLOADS[row["key"]] = {"state": "downloading", "error": None, "startedAt": time.time(), "token": token}
+        _CONTROL[row["key"]] = control
 
     def run() -> None:
         try:
-            from huggingface_hub import snapshot_download  # noqa: PLC0415
-
             _DOWNLOADS[row["key"]]["phase"] = "weights"
-            snapshot_download(row["repo"], revision=row["revision"], allow_patterns=row.get("files"))
+            _fetch_repo(control, row["repo"], row["revision"], row.get("files"))
             # Companion repos the loaders would otherwise fetch unpinned at load time.
             for companion in row.get("companions", []):
-                snapshot_download(companion["repo"], revision=companion["revision"], allow_patterns=companion["files"])
+                _fetch_repo(control, companion["repo"], companion["revision"], companion["files"])
             # Cloned output is always watermarked, so the component comes with a cloning model.
             if row["capabilities"]["clone"] and not voice_env.watermark_installed():
+                if control["cancel"].is_set():
+                    raise _Cancelled()
                 _DOWNLOADS[row["key"]]["phase"] = "watermark"
-                voice_env.install_watermark()
-            _DOWNLOADS[row["key"]] = {"state": "done", "error": None}
+                voice_env.install_watermark(control["cancel"])
+            with _DOWNLOAD_LOCK:
+                if _own(row["key"], token) and not control["cancel"].is_set():
+                    _DOWNLOADS[row["key"]] = {"state": "done", "error": None}
+        except _Cancelled:
+            pass  # cancel_download already recorded it
         except Exception as exc:  # noqa: BLE001 - shown on the panel
-            step = "the watermark component" if _DOWNLOADS[row["key"]].get("phase") == "watermark" else row["name"]
-            _DOWNLOADS[row["key"]] = {"state": "failed", "error": f"Downloading {step} failed: {exc}"}
+            with _DOWNLOAD_LOCK:
+                if _own(row["key"], token) and not control["cancel"].is_set():
+                    step = "the watermark component" if _DOWNLOADS[row["key"]].get("phase") == "watermark" else row["name"]
+                    _DOWNLOADS[row["key"]] = {"state": "failed", "error": f"Downloading {step} failed: {exc}"}
 
     threading.Thread(target=run, daemon=True, name=f"clone-download-{row['key']}").start()
-    return dict(_DOWNLOADS[row["key"]])
+    return _public_job(_DOWNLOADS[row["key"]])
+
+
+def cancel_download(key: str) -> dict[str, Any]:
+    """Stop a running speech-model download (weights, companions or the watermark step).
+
+    The job becomes ``cancelled`` at once, so the row offers Download again and Delete is no longer refused.
+    Files already fetched stay in the cache for a resume, as for the other model downloads. Raises ValueError for
+    an unknown key; cancelling a model that is not downloading changes nothing.
+    """
+    row = voice_model(key)
+    with _DOWNLOAD_LOCK:
+        job = _DOWNLOADS.get(row["key"])
+        control = _CONTROL.get(row["key"])
+        if not job or job.get("state") != "downloading":
+            return _public_job(job or {})
+        _DOWNLOADS[row["key"]] = {"state": "cancelled", "error": None}
+    if control is not None:
+        control["cancel"].set()
+        process = control.get("proc")
+        if process is not None and process.poll() is None:
+            try:
+                process.terminate()
+                process.wait(timeout=5)
+            except Exception:  # noqa: BLE001 - the worker thread kills it if this did not stop it
+                pass
+    return _public_job(_DOWNLOADS[row["key"]])
+
+
+def _public_job(job: dict[str, Any]) -> dict[str, Any]:
+    return {k: v for k, v in job.items() if k not in ("token",)}
+
+
+def _progress(row: dict[str, Any]) -> dict[str, float | None]:
+    """Bytes on disk for the model and its companions against the whole download, for the row's progress bar."""
+    from backend_service.helpers.hf_cache_paths import _hf_repo_downloaded_bytes  # noqa: PLC0415
+
+    try:
+        got = _hf_repo_downloaded_bytes(row["repo"], row.get("files")) + sum(
+            _hf_repo_downloaded_bytes(c["repo"], c["files"]) for c in row.get("companions", [])
+        )
+    except OSError:
+        return {"progress": None, "downloadedGb": None, "totalGb": None}
+    total = float(row["downloadGb"])
+    gb = got / 1e9
+    return {"progress": min(0.99, gb / total) if total > 0 else None, "downloadedGb": round(gb, 2), "totalGb": total}
 
 
 # ---------------------------------------------------------------------------

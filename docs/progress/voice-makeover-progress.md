@@ -10,6 +10,13 @@ Branch `feat/voice-makeover`, cut from `release/v0.10.0` at `221f37d9` (W6 inclu
 - Playwright: 07, 11, 14, 18-voice-wave2, 19-chat-voice updated; new `20-voice-makeover.spec.ts` (desktop and 375 px).
 - Docs: `docs/usage/voice.md`, README, plan status, FU-157 and FU-158, hub rebuilt; after-screenshots in `docs/plans/voice-makeover/after/` (recipe `capture-shots.spec.ts`).
 
+## FU-157 follow-up (branch `feat/voice-fu157`, cut from `release/v0.10.0` at `1a7e23c4`)
+
+- **Cancel:** `voice_clone.start_download` now fetches each repo in a child process through the same `_spawn_snapshot_download` helper and stop sequence (terminate, kill after 5 s) as the Models page downloads, keeping a cancel event and the child per model key. `POST /api/voice/clone/models/download/cancel` (window only, 403 for agents) calls `voice_clone.cancel_download`: the job becomes `cancelled`, the child (weights, a companion) or the watermark step (`voice_env.install_watermark(cancel)`) stops, and a late failure cannot overwrite the cancel. Files already fetched stay in the cache for a resume, as for the other downloads. While downloading, the row's `download` carries progress, GB done and total (model plus companions). Not routed through `state.cancel_download`: speech models keep their own `_DOWNLOADS` record (the Models table reads it), so the primitives are shared, the bookkeeping is not.
+- **Show N sizes:** local to `SpeechModelsPanel` (the shared table has no grouping): a family of three or more rows shows its downloaded or downloading rows, else its first row; "Show 5 sizes" / "Hide sizes" on the family heading. A search, a filter, an availability tab or another sort lists every match.
+- **Titles:** Voice Library joins Voice Studio in `WorkspaceHeader`'s eyebrow-only set, so its title shows once (the panel's). Voice Models keeps the header title: its panels are named Voice runtime, Dictation models and Speech models, so nothing repeats there.
+- Tests: `tests/test_voice_download_cancel.py`, `collapsedFamilyRows` in `voiceModels.test.tsx`, two cases in `20-voice-makeover.spec.ts`.
+
 ## Deferred / not checked
 
-See FU-157 and FU-158: no Cancel for a speech-model download, no "Show N sizes" family collapse, Library and Models titles still doubled; real deletes and runtime removal on a real machine, Windows and Linux, listening.
+See FU-157 and FU-158: real deletes and runtime removal on a real machine, a real Cancel of a real Hugging Face download, Windows and Linux, listening.

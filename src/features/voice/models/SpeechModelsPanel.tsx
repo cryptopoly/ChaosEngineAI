@@ -39,7 +39,7 @@ import { costLabel, recommendedNaturalModel, showInstallCard } from "../speak/sp
 import type { VoiceCatalog } from "../speak/useVoiceCatalog";
 import { quickVoiceSummary } from "../voicePackState";
 import type { StudioTarget } from "../VoiceModelsTab";
-import { familyHeadingTracker, speechDeleteConfirmText, studioTargetFor, voiceSortOptions } from "./voiceModelsLogic";
+import { collapsedFamilyRows, familyHeadingTracker, speechDeleteConfirmText, studioTargetFor, voiceSortOptions } from "./voiceModelsLogic";
 
 const VOICE_GRID = "minmax(220px, 1.7fr) minmax(160px, 1.2fr) minmax(76px, 0.5fr) minmax(130px, 1fr) minmax(100px, 0.8fr) 168px";
 const VOICE_GRID_NARROW = "minmax(190px, 1.7fr) minmax(70px, 0.5fr) minmax(130px, 1fr) minmax(100px, 0.8fr) 150px";
@@ -105,6 +105,7 @@ export function SpeechModelsPanel({ catalog, runtime, availability, onAvailabili
   const [sortId, setSortId] = useState("family");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+  const [openFamilies, setOpenFamilies] = useState<Set<string>>(() => new Set());
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const tf = t as unknown as (key: string, options?: Record<string, unknown>) => string;
@@ -120,6 +121,9 @@ export function SpeechModelsPanel({ catalog, runtime, availability, onAvailabili
       : null;
     return buildVoiceEntries(catalog.models, kokoro);
   }, [catalog.models, catalog.kokoro, runtime.installed, runtime.ttsModelInstalled, quick.count, quick.languages, kokoroPart]);
+  const collapsible = useMemo(() => collapsedFamilyRows(entries), [entries]);
+  // A search, a filter or another sort lists every matching row; the collapse is for the plain family view.
+  const plainView = search.trim() === "" && makesFilter === "all" && availability === "all" && sortId === "family";
   const catalogOrder = useMemo(() => catalog.models.map((m) => m.key), [catalog.models]);
   const sortOptions = useMemo(() => voiceSortOptions(tf, catalogOrder), [tf, catalogOrder]);
   const makesLabels = Object.fromEntries(
@@ -152,6 +156,14 @@ export function SpeechModelsPanel({ catalog, runtime, availability, onAvailabili
 
   const toggleExpanded = (id: string) =>
     setExpanded((previous) => {
+      const next = new Set(previous);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const toggleFamily = (id: string) =>
+    setOpenFamilies((previous) => {
       const next = new Set(previous);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -194,12 +206,26 @@ export function SpeechModelsPanel({ catalog, runtime, availability, onAvailabili
           {t(`voice.models.family.${family.id}`, { defaultValue: FAMILY_BLURBS[family.id] ?? "" })}
           {licence ? ` · ${licence}` : ""}
         </span>
+        {plainView && collapsible.has(family.id) ? (
+          <button
+            type="button"
+            className="link-button voice-models__sizes"
+            aria-expanded={openFamilies.has(family.id)}
+            onClick={() => toggleFamily(family.id)}
+          >
+            {openFamilies.has(family.id)
+              ? t("voice.models.hideSizes", { defaultValue: "Hide sizes" })
+              : t("voice.models.showSizes", { defaultValue: "Show {count} sizes", count: collapsible.get(family.id)?.total ?? 0 })}
+          </button>
+        ) : null}
       </div>
     );
   }
 
   function renderRow({ entry, status }: ModelRow<VoiceModelEntry>) {
     const source = entry.source;
+    const fold = plainView ? collapsible.get(entry.familyId ?? "") : undefined;
+    if (fold && !openFamilies.has(entry.familyId ?? "") && !fold.shown.has(entry.id)) return null;
     const heading = sortId === "family" && headingFor(entry) ? familyHeading(entry) : null;
     const makes = <VoiceMakesChips makes={entry.capabilities ?? []} />;
     const cells = [
@@ -259,6 +285,11 @@ export function SpeechModelsPanel({ catalog, runtime, availability, onAvailabili
             ? t("voice.clone.installingWatermark", { defaultValue: "Installing the watermark component…" })
             : t("voice.clone.downloading", { defaultValue: "Downloading…" })}
         </span>
+        {catalog.cancelDownload ? (
+          <button type="button" className="secondary-button" onClick={() => void catalog.cancelDownload?.(row.key)}>
+            {t("voice.models.cancelDownload", { defaultValue: "Cancel" })}
+          </button>
+        ) : null}
       </div>
     ) : busyKey === entry.id ? (
       <div className="media-model-actions model-download-controls">

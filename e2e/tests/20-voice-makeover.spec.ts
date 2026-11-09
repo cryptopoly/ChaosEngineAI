@@ -71,6 +71,40 @@ for (const phone of [false, true]) {
       await expectFits(page, ".voice-page");
     });
 
+    test("Cancel on a downloading speech model stops it and the row offers Download again", async ({ page }) => {
+      const seen = await mockVoiceApi(page, { installed: [], downloading: ["qwen3-tts-custom-1.7b"] });
+      await goTo(page, "Voice", "Models");
+      // A downloading row stays in view even in a collapsed family.
+      const row = page.locator('[data-model-id="qwen3-tts-custom-1.7b"]');
+      await expect(row).toBeVisible();
+      await expect(row).toContainText("Downloading");
+      await expect(row.getByTestId("model-download-progress")).toBeVisible();
+      await expect(row.getByRole("button", { name: "Download" })).toHaveCount(0);
+      await row.getByRole("button", { name: "Cancel", exact: true }).click();
+      await expect.poll(() => seen.cancels).toEqual(["qwen3-tts-custom-1.7b"]);
+      await expect(row.getByRole("button", { name: /Download/ })).toBeVisible();
+      await expect(row).not.toContainText("Downloading");
+      await expectFits(page, ".voice-page");
+    });
+
+    test("A family of five collapses behind Show 5 sizes; downloaded rows stay; a search lists every match", async ({ page }) => {
+      await mockVoiceApi(page, { installed: ["qwen3-tts-custom-1.7b"] });
+      await goTo(page, "Voice", "Models");
+      const rows = page.locator('[data-model-id^="qwen3-tts-"]');
+      await expect(page.locator('[data-model-id="qwen3-tts-custom-1.7b"]')).toBeVisible();
+      await expect(rows).toHaveCount(1);
+      const toggle = page.getByRole("button", { name: "Show 5 sizes" });
+      await expect(toggle).toHaveAttribute("aria-expanded", "false");
+      await toggle.click();
+      await expect(rows).toHaveCount(5);
+      await page.getByRole("button", { name: "Hide sizes" }).click();
+      await expect(rows).toHaveCount(1);
+      await page.getByPlaceholder("Search models, languages, what they make").fill("Base");
+      await expect(rows).toHaveCount(2);
+      await expect(page.getByRole("button", { name: /sizes/ })).toHaveCount(0);
+      await expectFits(page, ".voice-page");
+    });
+
     test("Speak: Change voice opens the picker drawer; Escape closes it and focus returns; a click picks and closes", async ({ page }) => {
       const seen = await mockVoiceApi(page, { installed: BOTH_CUSTOM, clones: [ADA], speakVoice: "af_heart" });
       await goTo(page, "Voice", "Studio");

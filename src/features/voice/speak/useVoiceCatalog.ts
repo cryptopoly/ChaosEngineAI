@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { deleteSpeechModel, downloadCloneModel, getCloneModels } from "../clone/cloneApi";
+import { cancelCloneDownload, deleteSpeechModel, downloadCloneModel, getCloneModels } from "../clone/cloneApi";
 import { getVoiceModels, getVoices } from "../../../api";
 import type { VoiceEntry, VoiceModelRow } from "../../../types";
 
@@ -20,6 +20,8 @@ export interface VoiceCatalog {
   error: string | null;
   refresh: () => Promise<void>;
   download: (key: string) => Promise<void>;
+  /** Stop a running download, then list again. */
+  cancelDownload?: (key: string) => Promise<void>;
   /** Delete a speech model's files, then list again. Rejects with the backend's reason (in use, downloading). */
   remove?: (key: string) => Promise<void>;
   kokoro?: KokoroInfo | null;
@@ -72,6 +74,18 @@ export function useVoiceCatalog(enabled = true): VoiceCatalog {
     [refresh],
   );
 
+  const cancelDownload = useCallback(
+    async (key: string) => {
+      try {
+        await cancelCloneDownload(key);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err));
+      }
+      await refresh();
+    },
+    [refresh],
+  );
+
   const remove = useCallback(
     async (key: string) => {
       try {
@@ -83,5 +97,5 @@ export function useVoiceCatalog(enabled = true): VoiceCatalog {
     [refresh],
   );
 
-  return { voices, models, modelsAvailable, cloneAllowed, loaded, error, refresh, download, remove, kokoro };
+  return { voices, models, modelsAvailable, cloneAllowed, loaded, error, refresh, download, cancelDownload, remove, kokoro };
 }

@@ -261,14 +261,14 @@ class DownloadTests(unittest.TestCase):
 
         install = mock.Mock(side_effect=install_error)
         with mock.patch.object(voice_clone, "available_here", return_value=True), \
-             mock.patch("huggingface_hub.snapshot_download") as weights, \
+             mock.patch.object(voice_clone, "_fetch_repo") as weights, \
              mock.patch.object(voice_env, "watermark_installed", return_value=False), \
              mock.patch.object(voice_env, "install_watermark", install), \
              mock.patch.object(voice_clone.threading, "Thread", SyncThread):
             voice_clone._DOWNLOADS.clear()
             voice_clone.start_download("qwen3-tts-0.6b")
         row = voice_models.clone_model("qwen3-tts-0.6b")
-        weights.assert_called_once_with(row["repo"], revision=row["revision"], allow_patterns=None)
+        self.assertEqual(weights.call_args_list[0].args[1:], (row["repo"], row["revision"], row.get("files")))
         install.assert_called_once()
         return voice_clone._DOWNLOADS["qwen3-tts-0.6b"]
 

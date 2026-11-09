@@ -1,7 +1,7 @@
 /** Voice cloning endpoints (``/api/voice/clone/*``). */
 
 import { apiFetch, fetchJson, postJson, readErrorDetail } from "../../../api";
-import type { VoiceLibraryItem } from "../../../types";
+import type { VoiceLibraryItem, VoiceModelRow } from "../../../types";
 
 export interface CloneModel {
   key: string;
@@ -15,7 +15,7 @@ export interface CloneModel {
   licence: { id: string; name: string; url: string };
   supported: boolean;
   installed: boolean;
-  download: { state: "idle" | "downloading" | "done" | "failed"; error: string | null; phase?: "weights" | "watermark" | null };
+  download: VoiceModelRow["download"];
 }
 
 export interface CloneModels {
@@ -40,6 +40,11 @@ export async function getCloneModels(): Promise<CloneModels> {
 
 export async function downloadCloneModel(key: string): Promise<CloneModel["download"]> {
   return await postJson("/api/voice/clone/models/download", { key });
+}
+
+/** Stop a speech model's download (window only); the row offers Download again. */
+export async function cancelCloneDownload(key: string): Promise<void> {
+  await postJson("/api/voice/clone/models/download/cancel", { key });
 }
 
 /** What deleting a speech model removes and keeps (companions another downloaded model still uses). */

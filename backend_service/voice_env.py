@@ -346,23 +346,41 @@ def watermark_installed() -> bool:
     return is_installed() and _watermark_package_present() and watermark_model_paths() is not None
 
 
-def install_watermark() -> None:
+def install_watermark(cancel: Any = None) -> None:
     """Install AudioSeal into the voice venv and fetch its pinned weights; records it in the marker.
 
-    Blocking (a few minutes on a slow line); called from the cloning model download thread.
+    Blocking (a few minutes on a slow line); called from the cloning model download thread. ``cancel`` is an
+    optional ``threading.Event``: when set, the pip step is stopped and ``InterruptedError`` is raised.
     """
     if not is_installed():
         raise RuntimeError("The voice runtime is not installed. Install it from Voice > Models.")
     if not _watermark_package_present():
-        result = subprocess.run(
+        process = subprocess.Popen(
             [str(venv_python()), "-m", "pip", "install", "--quiet", *WATERMARK_PACKAGES],
-            capture_output=True, text=True, encoding="utf-8", errors="replace", env=worker_env(),
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding="utf-8", errors="replace",
+            env=worker_env(),
         )
-        if result.returncode != 0:
-            raise RuntimeError(f"Installing the watermark component failed: {result.stdout[-400:]}{result.stderr[-400:]}")
+        # Wait in short steps so Cancel can stop pip; the output is read after it exits (it is quiet).
+        while True:
+            try:
+                output, _ = process.communicate(timeout=0.5)
+                break
+            except subprocess.TimeoutExpired:
+                if cancel is not None and cancel.is_set():
+                    process.terminate()
+                    try:
+                        process.communicate(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        process.kill()
+                        process.communicate()
+                    raise InterruptedError("cancelled") from None
+        if process.returncode != 0:
+            raise RuntimeError(f"Installing the watermark component failed: {(output or '')[-800:]}")
     from huggingface_hub import hf_hub_download
 
     for name in WATERMARK_FILES.values():
+        if cancel is not None and cancel.is_set():
+            raise InterruptedError("cancelled")
         hf_hub_download(WATERMARK_REPO, name, revision=WATERMARK_REVISION)
     marker = read_marker() or {}
     marker["watermark"] = WATERMARK_PACKAGES[0]

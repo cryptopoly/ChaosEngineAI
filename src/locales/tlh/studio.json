@@ -744,7 +744,10 @@
         "status": null,
         "statusSummary": null
       },
-      "ttsIntro": null
+      "ttsIntro": null,
+      "cancelDownload": null,
+      "showSizes": null,
+      "hideSizes": null
     },
     "voices": {
       "addChinese": "Mandarin Chinese ghogh tIchel",

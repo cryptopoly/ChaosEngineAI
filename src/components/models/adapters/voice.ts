@@ -152,7 +152,8 @@ export function voiceDownloadStatus(entry: VoiceModelEntry): DownloadStatus | nu
   if (isKokoro(source)) return null;
   const state = source.download.state;
   if (state === "downloading") {
-    return { repo: source.repo, state: "downloading", progress: 0, downloadedGb: 0, totalGb: entry.sizeGb ?? null, error: null };
+    const { progress, downloadedGb, totalGb } = source.download;
+    return { repo: source.repo, state: "downloading", progress: progress ?? 0, downloadedGb: downloadedGb ?? 0, totalGb: totalGb ?? entry.sizeGb ?? null, error: null };
   }
   if (state === "failed" && !source.installed) {
     return { repo: source.repo, state: "failed", progress: 0, downloadedGb: 0, totalGb: entry.sizeGb ?? null, error: source.download.error };

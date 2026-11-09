@@ -26,6 +26,16 @@ const VAD_BATCH = 4;
 const BARGE_IN = { threshold: 0.7, minSpeechMs: 256, preRollMs: 1000 };
 const LISTEN = { threshold: 0.5, minSpeechMs: 160, preRollMs: 400 };
 
+/** The Kokoro voice that speaks when nothing else can (D-72). */
+export const FALLBACK_VOICE = "af_heart";
+
+/** The voice a call speaks with: ``callVoice`` when set, else the chat voice, unless that is a cloned voice (never
+ * used in calls), in which case the Kokoro voice. */
+export function callVoiceOf(settings: { ttsVoice: string; callVoice?: string }): string {
+  if (settings.callVoice) return settings.callVoice;
+  return settings.ttsVoice.startsWith("clone:") ? FALLBACK_VOICE : settings.ttsVoice;
+}
+
 export interface VoiceCallOptions {
   active: boolean;
   messages: ChatMessage[];
@@ -34,6 +44,8 @@ export interface VoiceCallOptions {
     sttModel: string;
     language: string;
     ttsVoice: string;
+    /** The call voice; "" or absent means the chat voice (D-72). */
+    callVoice?: string;
     speed: number;
     vadSilenceMs: number;
     bargeIn: boolean;
@@ -107,7 +119,8 @@ export function useVoiceCall({ active, messages, platform, settings, send, cance
     async (audio: Float32Array) => {
       const turn = ++turnRef.current;
       setPhase("transcribing");
-      const { sttModel, language, ttsVoice, speed } = settingsRef.current;
+      const { sttModel, language, speed } = settingsRef.current;
+      const voice = callVoiceOf(settingsRef.current);
       let text = "";
       try {
         const result = await transcribeBlob(encodeWav(audio), "turn.wav", {
@@ -137,7 +150,7 @@ export function useVoiceCall({ active, messages, platform, settings, send, cance
       await sendingRef.current;
       if (turn !== turnRef.current) return;
       sentAtRef.current = messagesRef.current.length;
-      speechPlayer.startQueue(CALL_OWNER, ttsVoice, speed);
+      speechPlayer.startQueue(CALL_OWNER, voice, speed, "call");
       const sending = Promise.resolve(sendRef.current(text)).catch(() => {});
       sendingRef.current = sending;
       try {

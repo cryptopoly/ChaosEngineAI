@@ -37,10 +37,56 @@ The first time you use the microphone, macOS asks for permission.
 - **Dictation.** The microphone button in the composer.
 - **Read-aloud.** A speaker button on every reply, or have replies read
   automatically. Chat reads with the chat voice, chosen with **Use in Chat**
-  on Voice Studio > Voices (quick voices for now).
+  on Voice Studio > Voices.
 - **Voice calls.** Press **Call** and talk. The app hears when you stop, the
   model answers out loud, and you can talk over it to interrupt. Every turn is
-  saved in the chat. An (i) next to Call lists anything still missing.
+  saved in the chat. An (i) next to Call names the call voice and lists
+  anything still missing; the call bar names the voice too, with **Change in
+  Voices**.
+
+### Chat and calls: which voice
+
+Any voice that runs on this machine can read chat replies aloud or speak in
+calls: a quick (Kokoro) voice, a natural voice (Qwen3-TTS presets such as
+Ryan, Chatterbox-Turbo, Chatterbox, the Orpheus voices), or one of your cloned
+voices for read-aloud. The voice is kept per use: Speak remembers its own,
+**Use in Chat** sets the read-aloud voice and **Use for calls** the call voice
+(the call voice starts as "Same as the chat voice"). Both can also be picked
+in **Chat and calls** at the bottom of the Voices tab.
+
+- **Cloned voices** read replies aloud only under the cloning rules: the
+  permission record must exist, and every sentence is watermarked and
+  labelled as AI-made, like any cloned clip (read-aloud is not saved to the
+  Library). They are not used in calls, and agents cannot use them as a chat
+  voice.
+- **Describe a voice** cannot be the chat voice: it needs a description each
+  time and would sound different every sentence. Saved designed voices come
+  later.
+- **If the voice cannot speak** (its model is not downloaded, or it fails to
+  load) the Kokoro voice reads instead, with a one-line note under the
+  speech bar or in the call bar. Kokoro stays in the voice pack for this, and
+  because it is the voice that runs fast on machines without a GPU.
+- **Memory.** One speech model is loaded at a time, next to the chat model,
+  and freed after the idle time on Voice Models. Changing voices swaps the
+  model; two are never loaded together.
+
+What each voice costs in Chat, measured with
+`scripts/measure-voice-models.py --chat` on an Apple M4 Max (64 GB,
+2026-11-09), two runs, the slower kept. "First audio" is the time from the
+request to the first sentence of a reply being ready; "cold" includes starting
+the speech worker and loading the model, which happens once until the idle
+unload.
+
+| Voice | First audio (warm) | First audio (cold) | Speech worker memory |
+|---|---|---|---|
+| Kokoro (quick voices) | 0.13 s | 5.7 s | 0.9 GB |
+| Chatterbox-Turbo | 0.6 s | 3.8 s | 1.7 GB |
+| Qwen3-TTS 1.7B CustomVoice (Ryan and the other presets) | 1.3 s | 4.1 s | 3.5 GB |
+| VoxCPM2 (designed or cloned) | 1.7 s | 3.8 s | 3.6 GB |
+
+The pickers show these numbers next to each voice. A voice whose warm first
+audio is over 2 s is labelled **Slow for calls** (still allowed); none of the
+measured voices is.
 
 ## Voice Studio
 
@@ -136,12 +182,13 @@ models is being prepared and is not offered until it has been measured.
 **Voices** is the voice manager: every voice in one list, filtered by kind
 (Recommended, Quick, Natural, Cloned, Designed) and language. Each row has a
 sample button (cloned and designed voices too; a sample is never kept),
-**Use in Speak** and **Use in Chat**; cloned voices also have **Delete**. Chat
-uses quick voices for now, so Use in Chat is greyed out on the others. Cards
-at the top make a cloned voice, design one, add the Mandarin voices while
-they are missing, or open Voice Models for more. **Chat and calls** at the
-bottom shows the chat voice and holds reading speed, auto-read, auto-send,
-the call pause and interrupt.
+**Use in Speak**, **Use in Chat** and **Use for calls**, with the voice's
+measured first-audio time and memory; cloned voices also have **Delete** and
+no Use for calls (see Chat and calls above). Cards at the top make a cloned
+voice, design one, add the Mandarin voices while they are missing, or open
+Voice Models for more. **Chat and calls** at the bottom picks the chat and
+call voices and holds reading speed, auto-read, auto-send, the call pause and
+interrupt.
 
 **Transcribe** takes a recording or audio and video files in a queue, with
 speaker labels and translation to English. Edit the transcript, click a word

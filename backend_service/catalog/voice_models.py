@@ -83,6 +83,21 @@ QWEN_LANGUAGES = {
 _EXPRESSION = {"min": 0.0, "max": 1.0, "step": 0.05, "default": 0.5}
 _GUIDANCE = {"min": 0.0, "max": 1.0, "step": 0.05, "default": 0.5}
 
+# Chat read-aloud and voice calls (D-67 W6): ``scripts/measure-voice-models.py --chat``, two runs on 2026-11-09, the
+# slower of the two kept. First audio of one chat sentence on a fresh worker (worker start and model load included,
+# "cold") and warm (median of three); peak is the worker's resident memory over those runs.
+CHAT_MEASURED_ON = "Apple M4 Max, 64 GB, 2026-11-09"
+# A voice whose warm first audio is above this is labelled slow for calls (still allowed).
+SLOW_FOR_CALLS_S = 2.0
+
+
+def _chat(*, warm: float, cold: float, peak: float) -> dict[str, Any]:
+    return {"chatMeasuredOn": CHAT_MEASURED_ON, "chatFirstAudioS": warm, "chatFirstAudioColdS": cold, "chatPeakGb": peak}
+
+
+# Kokoro has no catalog row (it is part of the voice pack); its chat numbers live here.
+KOKORO_CHAT_ESTIMATES: dict[str, Any] = {"basis": "measured", **_chat(warm=0.13, cold=5.7, peak=0.87)}
+
 VOICE_MODELS: list[dict[str, Any]] = [
     {
         "key": "qwen3-tts-0.6b",
@@ -182,6 +197,7 @@ VOICE_MODELS: list[dict[str, Any]] = [
             "wallSecondsShortLine": 1.8,
             "peakGb": 3.5,
             "idleGb": 3.48,
+            **_chat(warm=1.3, cold=4.1, peak=3.51),
         },
     },
     {
@@ -242,6 +258,7 @@ VOICE_MODELS: list[dict[str, Any]] = [
             "wallSecondsShortLine": 0.8,
             "peakGb": 1.72,
             "idleGb": 1.72,
+            **_chat(warm=0.6, cold=3.8, peak=1.65),
         },
     },
     {
@@ -275,6 +292,7 @@ VOICE_MODELS: list[dict[str, Any]] = [
             "wallSecondsShortLine": 1.9,
             "peakGb": 3.8,
             "idleGb": 3.8,
+            **_chat(warm=1.7, cold=3.8, peak=3.63),
         },
     },
     {

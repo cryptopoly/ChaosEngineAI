@@ -91,7 +91,8 @@
     "callNeedModel": "已加载的聊天模型",
     "callNeedStt": "语音识别（语音模型）",
     "callNeedTts": "回复用的语音（语音模型）",
-    "callNeedVad": "轮次检测（语音包内含）"
+    "callNeedVad": "轮次检测（语音包内含）",
+    "callVoice": null
   },
   "sidebar": {
     "title": "对话",
@@ -398,7 +399,8 @@
     "endHint": "结束通话（Esc）",
     "end": "结束通话",
     "meta": "语音：{voice}",
-    "headphones": "使用耳机更便于打断"
+    "headphones": "使用耳机更便于打断",
+    "changeVoice": null
   },
   "emptyBanner": {
     "welcomeTitle": "👋 欢迎使用 ChaosEngineAI 对话",

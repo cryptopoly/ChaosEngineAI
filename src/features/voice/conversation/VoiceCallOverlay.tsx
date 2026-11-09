@@ -2,8 +2,10 @@ import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import type { ChatMessage } from "../../../types";
 import { MicSettingsButton } from "../MicSettingsButton";
+import { useSpeechPlayer } from "../speechPlayer";
+import { chatVoiceName } from "../speak/speakLogic";
 import { useVoice } from "../VoiceContext";
-import { useVoiceCall, type CallPhase } from "./useVoiceCall";
+import { callVoiceOf, useVoiceCall, type CallPhase } from "./useVoiceCall";
 
 export interface VoiceCallOverlayProps {
   messages: ChatMessage[];
@@ -16,9 +18,11 @@ export interface VoiceCallOverlayProps {
 /** Hands-free voice call over the chat thread. Space mutes, Esc ends. */
 export function VoiceCallOverlay({ messages, modelName, send, cancel, onEnd }: VoiceCallOverlayProps) {
   const { t } = useTranslation("chat");
-  const { runtime, settings, platform } = useVoice();
+  const { runtime, settings, platform, openVoices } = useVoice();
   const call = useVoiceCall({ active: true, messages, platform, settings, send, cancel });
-  const voiceName = runtime?.ttsVoices.find((v) => v.id === settings.ttsVoice)?.name ?? settings.ttsVoice;
+  const player = useSpeechPlayer();
+  const voiceName = chatVoiceName(callVoiceOf(settings), runtime?.ttsVoices ?? []);
+  const fallbackNote = player.ownerId === "voice-call" ? player.note : null;
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -88,6 +92,22 @@ export function VoiceCallOverlay({ messages, modelName, send, cancel, onEnd }: V
         </button>
         <span className="voice-call__meta">
           {t("voiceCall.meta", { defaultValue: "Voice: {voice}", voice: voiceName })}
+          {openVoices ? (
+            <>
+              {" "}
+              <button
+                type="button"
+                className="voice-call__voices-link"
+                onClick={() => {
+                  onEnd();
+                  openVoices();
+                }}
+              >
+                {t("voiceCall.changeVoice", { defaultValue: "Change in Voices" })}
+              </button>
+            </>
+          ) : null}
+          {fallbackNote ? ` · ${fallbackNote}` : ""}
           {settings.bargeIn ? ` · ${t("voiceCall.headphones", { defaultValue: "Headphones work best for interrupting" })}` : ""}
         </span>
       </div>

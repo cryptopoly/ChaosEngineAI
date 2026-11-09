@@ -13,12 +13,15 @@ export interface VoiceContextValue {
   refresh: () => void;
   saveSettings: (patch: Partial<VoiceSettings>) => Promise<void>;
   openVoiceModels: () => void;
+  /** Voice Studio on the Voices tab, where the chat and call voices are chosen. */
+  openVoices?: () => void;
 }
 
 const DEFAULT_SETTINGS: VoiceSettings = {
   sttModel: "",
   language: "",
   ttsVoice: "af_heart",
+  callVoice: "",
   speakVoice: "",
   speed: 1,
   autoSend: false,

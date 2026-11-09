@@ -731,14 +731,18 @@
       "managerSubtitle": "Every voice in one list: try it, use it in Speak, or make it the chat voice.",
       "designRowDetail": "Any language. A new voice from your description each run.",
       "kindDesign": "Designed",
-      "chatQuickOnly": "Chat reads aloud with quick voices for now. Natural, designed and cloned voices come to Chat later.",
       "noneCloned": "No cloned voices yet. Use New cloned voice above.",
       "chatVoice": "Chat voice",
       "stopSample": "Stop the sample of {name}",
       "useInSpeak": "Use in Speak",
       "useInChat": "Use in Chat",
       "inChat": "In use in Chat",
-      "chatLater": "Quick voices only in Chat for now."
+      "chatAnyVoice": "Chat and calls can use any voice that runs here. Cloned voices read chat replies aloud but are not used in calls. The time is how long the first sentence takes.",
+      "designNotInChat": "Describe a voice needs a description each time, so it cannot be the chat voice.",
+      "callVoice": "Call voice",
+      "cloneNotInCalls": "Cloned voices are not used in voice calls.",
+      "inCalls": "In use for calls",
+      "useForCalls": "Use for calls"
     },
     "settings": {
       "autoSend": "Send the message as soon as dictation finishes",
@@ -1085,7 +1089,13 @@
     },
     "chatCalls": {
       "title": "Chat and calls",
-      "voice": "Chat voice: {name}. Change it with Use in Chat above."
+      "cost": "first audio {warm} s ({cold} s cold), {memory} GB",
+      "slow": "Slow for calls",
+      "option": "{name}, {seconds} s",
+      "chatVoice": "Chat voice (read-aloud)",
+      "callVoice": "Call voice",
+      "sameAsChat": "Same as the chat voice",
+      "memory": "Natural voices load a speech model of up to 3.6 GB next to the chat model. One speech model stays loaded and is freed after the idle time set on Voice Models. If a voice cannot speak, the Kokoro voice reads instead."
     },
     "quickVoices": {
       "title": "Quick voices",

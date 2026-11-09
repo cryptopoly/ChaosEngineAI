@@ -250,6 +250,7 @@ export type {
   VoiceCapabilities,
   VoiceEntry,
   VoiceEntryKind,
+  VoiceChatCost,
   VoiceModelRow,
   VoiceModelControls,
   VoiceSliderRange,

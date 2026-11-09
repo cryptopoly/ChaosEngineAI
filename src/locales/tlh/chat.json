@@ -91,7 +91,8 @@
     "callNeedModel": "ja'chuq yab chu'lu'ta'",
     "callNeedStt": "QIch yajwI' (ghogh yab)",
     "callNeedTts": "jangmeH ghogh (ghogh yab)",
-    "callNeedVad": "jatlh mev tu'wI', ghogh jo 'ay'"
+    "callNeedVad": "jatlh mev tu'wI', ghogh jo 'ay'",
+    "callVoice": null
   },
   "sidebar": {
     "title": "ja'chuqmey",
@@ -398,7 +399,8 @@
     "endHint": "ghogh ja'chuq yIrInmoH (Esc)",
     "end": "yIrInmoH",
     "meta": "ghogh: {voice}",
-    "headphones": "yab DamevmeH teS QoywI' pov"
+    "headphones": "yab DamevmeH teS QoywI' pov",
+    "changeVoice": null
   },
   "emptyBanner": {
     "welcomeTitle": "👋 ChaosEngineAI ja'chuqDaq nuqneH",

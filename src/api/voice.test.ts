@@ -167,6 +167,32 @@ describe("voice api client", () => {
     });
   });
 
+  it("sends any voice with use=call and hands the fallback note to onNote (D-72)", async () => {
+    const lines = [
+      JSON.stringify({ note: "Ryan could not speak here (not downloaded), so the Kokoro voice reads instead.", voice: "af_heart" }),
+      JSON.stringify({ index: 0, total: 1, text: "Hi.", audio: "AAA=", durationS: 1, voice: "af_heart" }),
+      JSON.stringify({ done: true }),
+    ].join("\n") + "\n";
+    const body = new ReadableStream<Uint8Array<ArrayBuffer>>({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode(lines));
+        controller.close();
+      },
+    });
+    const fetchMock = stubFetch(() => ({ ok: true, body }));
+    const seen: string[] = [];
+    const notes: string[] = [];
+    await speakStream("Hi.", "qwen3:Ryan", 1, (s) => seen.push(`${s.voice}:${s.text}`), undefined, { use: "call", onNote: (n) => notes.push(n) });
+    expect(seen).toEqual(["af_heart:Hi."]);
+    expect(notes).toEqual(["Ryan could not speak here (not downloaded), so the Kokoro voice reads instead."]);
+    expect(JSON.parse(String(requestTo(fetchMock, "/api/voice/speak/stream").body))).toEqual({
+      text: "Hi.",
+      voice: "qwen3:Ryan",
+      speed: 1,
+      use: "call",
+    });
+  });
+
   it("raises an error sent inside the read-aloud stream", async () => {
     const body = new ReadableStream<Uint8Array<ArrayBuffer>>({
       start(controller) {

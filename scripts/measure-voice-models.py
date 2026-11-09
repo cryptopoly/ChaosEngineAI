@@ -20,6 +20,12 @@ AudioSeal watermark, as every cloned clip does in the app.
 
     .venv/bin/python scripts/measure-voice-models.py --rows chatterbox-turbo voxcpm2 --json out.json
     .venv/bin/python scripts/measure-voice-models.py --spike
+    .venv/bin/python scripts/measure-voice-models.py --chat --rows kokoro qwen3-tts-custom-1.7b chatterbox-turbo voxcpm2
+
+``--chat`` measures what Chat read-aloud and voice calls feel (D-67 W6): time to the first audio of one chat
+sentence on a fresh worker (``chatFirstAudioColdS``, worker start and model load included) and warm (median of
+three, ``chatFirstAudioS``), and the worker's peak resident memory over those runs (``chatPeakGb``). ``kokoro``
+is accepted as a row key here (it has no catalog row).
 """
 
 from __future__ import annotations
@@ -217,6 +223,48 @@ def plan_for_key(key: str, *, reference: Path | None = None, reference_text: str
         raise ValueError(f"{key} clones only; pass a reference clip.")
     extra, _notes = voice_clone.clone_fields(row, str(reference), reference_text, "", "en", 0.5, 0.5)
     return voice_speak.plan_for("clone", "clone:bench", row, extra)
+
+
+CHAT_SENTENCES = (
+    "Sure, here is a short answer to your question about the weather tomorrow.",
+    "It should stay dry in the morning, with some light rain after lunch.",
+    "Take a jacket if you plan to be outside in the evening.",
+    "Let me know if you want the forecast for the rest of the week.",
+)
+
+
+def chat_estimates(*, measured_on: str, cold_s: float, warm_s: list[float], peak_gb: float) -> dict[str, Any]:
+    """The ``chat`` part of a row's ``estimates``: first audio of one chat sentence, cold and warm (median)."""
+    ordered = sorted(warm_s)
+    median = ordered[len(ordered) // 2]
+    return {
+        "chatMeasuredOn": measured_on,
+        "chatFirstAudioColdS": round(cold_s, 1),
+        "chatFirstAudioS": round(median, 2),
+        "chatPeakGb": round(peak_gb, 2),
+    }
+
+
+def chat_plan(key: str) -> Any:
+    """The plan a chat voice runs: Kokoro's ``af_heart``, or the row's usual voice."""
+    from backend_service import voice_speak  # noqa: PLC0415
+
+    if key == "kokoro":
+        return voice_speak.Plan("kokoro", "af_heart", "kokoro", "Kokoro", native_speed=True)
+    return plan_for_key(key)
+
+
+def measure_chat(bench: Bench, plan: Any, label: str) -> dict[str, Any]:
+    """Fresh worker: the first sentence is the cold time, the next three the warm ones."""
+    bench.fresh()
+    started = time.perf_counter()
+    pid = bench.pid()  # the worker starting is part of the cold time a person waits through
+    with RssSampler(pid) as sampler:
+        _r, first = bench.render(plan, CHAT_SENTENCES[0])
+        cold = time.perf_counter() - started
+        warm = [bench.render(plan, sentence)[1] for sentence in CHAT_SENTENCES[1:]]
+    del first
+    return chat_estimates(measured_on=label, cold_s=cold, warm_s=warm, peak_gb=sampler.peak / GB)
 
 
 REFERENCE_TEXT = (
@@ -463,7 +511,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--json", type=Path, help="write the results here")
     parser.add_argument("--spike", action="store_true", help="answer the open checks and write WAVs to --out")
     parser.add_argument("--out", type=Path, default=Path.home() / ".chaosengine" / "voice" / "wave2-listening")
+    parser.add_argument("--chat", action="store_true", help="time to first audio of one chat sentence, cold and warm")
     args = parser.parse_args(argv)
+    if args.chat:
+        return main_chat(args)
 
     from backend_service import voice_clone  # noqa: PLC0415
     from backend_service.catalog.voice_models import VOICE_MODELS  # noqa: PLC0415
@@ -484,6 +535,29 @@ def main(argv: list[str] | None = None) -> int:
             print(key, json.dumps(results["rows"][key]), flush=True)
         if args.spike:
             results["spike"] = run_spike(bench, args.out, reference, REFERENCE_TEXT, keys)
+    finally:
+        bench.close()
+    if args.json:
+        args.json.write_text(json.dumps(results, indent=2), encoding="utf-8")
+    return 0
+
+
+def main_chat(args: argparse.Namespace) -> int:
+    from backend_service import voice_clone  # noqa: PLC0415
+    from backend_service.catalog.voice_models import VOICE_MODELS  # noqa: PLC0415
+
+    keys = args.rows or ["kokoro", *(row["key"] for row in VOICE_MODELS
+                                     if row["capabilities"]["speak"] and voice_clone.snapshot_dir(row) is not None)]
+    label = machine_label()
+    bench = Bench()
+    results: dict[str, Any] = {"machine": label, "chat": {}}
+    try:
+        for key in keys:
+            try:
+                results["chat"][key] = measure_chat(bench, chat_plan(key), label)
+            except Exception as exc:  # noqa: BLE001 - one failing model must not hide the others
+                results["chat"][key] = {"error": f"{type(exc).__name__}: {exc}"}
+            print(key, json.dumps(results["chat"][key]), flush=True)
     finally:
         bench.close()
     if args.json:

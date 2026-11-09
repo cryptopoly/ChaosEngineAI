@@ -434,6 +434,8 @@ def speak(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
     text = args["text"]
     settings = voice_runtime.load_settings()
     voice = args.get("voice") or settings.get("ttsVoice")
+    if not args.get("voice") and str(voice).startswith(voice_speak.CLONE_PREFIX):
+        voice = voice_runtime.DEFAULT_VOICE  # a cloned chat voice is never an agent's default (D-72)
     speed = float(args.get("speed", settings.get("speed", 1.0)))
     pitch = float(args.get("pitch", 0.0))
     style = str(args.get("style") or "")

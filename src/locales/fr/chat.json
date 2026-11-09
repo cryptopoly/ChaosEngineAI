@@ -91,7 +91,8 @@
     "callNeedModel": "un modèle de chat chargé",
     "callNeedStt": "la reconnaissance vocale (Modèles vocaux)",
     "callNeedTts": "une voix pour les réponses (Modèles vocaux)",
-    "callNeedVad": "la détection des tours de parole, incluse dans le pack vocal"
+    "callNeedVad": "la détection des tours de parole, incluse dans le pack vocal",
+    "callVoice": null
   },
   "sidebar": {
     "title": "Discussions",
@@ -398,7 +399,8 @@
     "endHint": "Terminer l'appel (Échap)",
     "end": "Raccrocher",
     "meta": "Voix : {voice}",
-    "headphones": "Un casque fonctionne mieux pour interrompre"
+    "headphones": "Un casque fonctionne mieux pour interrompre",
+    "changeVoice": null
   },
   "emptyBanner": {
     "welcomeTitle": "👋 Bienvenue dans le chat ChaosEngineAI",

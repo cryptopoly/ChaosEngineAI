@@ -228,9 +228,38 @@ export function managerVoices(voices: VoiceEntry[]): VoiceEntry[] {
   return voices.filter((v) => v.kind !== "builtin" || v.available);
 }
 
-/** Chat reads aloud with quick (Kokoro) voices only for now; other voices reach Chat later (D-67 W6). */
-export function usableInChat(voice: VoiceEntry): boolean {
-  return voice.kind === "builtin" && voice.available;
+/**
+ * Whether a voice can be picked for Chat read-aloud (``read``) or voice calls (``call``), D-72: it runs here now and
+ * the backend's ``chatUse`` allows it (quick and natural voices both; cloned voices read-aloud only; "Describe a
+ * voice" neither). An older backend without ``chatUse`` allows quick voices only.
+ */
+export function usableInChat(voice: VoiceEntry, use: "read" | "call" = "read"): boolean {
+  if (!voice.available) return false;
+  return voice.chatUse ? voice.chatUse[use] : voice.kind === "builtin";
+}
+
+/**
+ * A display name for a chat or call voice id without the full voice list (Chat only has the quick voices from the
+ * runtime): the quick voice's name, the preset speaker ("qwen3:Ryan" is "Ryan", "orpheus:tara" is "Tara"),
+ * "Turbo", "Chatterbox", or "Cloned voice".
+ */
+export function chatVoiceName(id: string, quick: { id: string; name: string }[] = [], cloneLabel = "Cloned voice"): string {
+  const known = quick.find((v) => v.id === id);
+  if (known) return known.name;
+  if (id.startsWith("clone:")) return cloneLabel;
+  if (id === "chatterbox-turbo") return "Turbo";
+  if (id === "chatterbox") return "Chatterbox";
+  const speaker = id.includes(":") ? id.slice(id.indexOf(":") + 1) : id;
+  const spaced = speaker.replace(/_/g, " ");
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
+/** Voices that can be picked for ``use``, quickest first (measured first audio; unmeasured last), then list order. */
+export function chatVoiceChoices(voices: VoiceEntry[], use: "read" | "call"): VoiceEntry[] {
+  const ranked = voices.filter((v) => usableInChat(v, use)).map((v, i) => ({ v, i }));
+  const first = (v: VoiceEntry) => v.chatCost?.firstAudioS ?? Number.POSITIVE_INFINITY;
+  ranked.sort((a, b) => first(a.v) - first(b.v) || a.i - b.i);
+  return ranked.map(({ v }) => v);
 }
 
 /** Voices shown in the picker: built-in ones that cannot be used here are left out, as before. */

@@ -487,6 +487,18 @@ class VoiceRouteTests(unittest.TestCase):
         self.assertEqual(base64.b64decode(lines[0]["audio"]), b"One.")
         self.assertEqual(lines[-1], {"done": True})
 
+    def test_speak_stream_falls_back_to_kokoro_when_the_chosen_voice_cannot_speak(self) -> None:
+        from backend_service import voice_chat
+
+        voice_chat.forget_failures()
+        with mock.patch.object(voice_runtime, "synthesize", side_effect=lambda text, voice, speed: (voice.encode(), 1.0)):
+            resp = self.client.post("/api/voice/speak/stream", json={"text": "One. Two.", "voice": "qwen3:Ryan", "use": "call"})
+        lines = [json.loads(line) for line in resp.text.splitlines()]
+        self.assertIn("Kokoro voice reads instead", lines[0]["note"])
+        self.assertEqual([base64.b64decode(line["audio"]) for line in lines[1:3]], [b"af_heart", b"af_heart"])
+        self.assertEqual(lines[-1], {"done": True})
+        self.assertEqual(self.client.post("/api/voice/speak/stream", json={"text": "Hi", "use": "shout"}).status_code, 422)
+
     def test_speak_stream_reports_errors_in_stream(self) -> None:
         with mock.patch.object(voice_runtime, "synthesize", side_effect=RuntimeError("no voice")):
             resp = self.client.post("/api/voice/speak/stream", json={"text": "One. Two."})
@@ -523,6 +535,35 @@ class VoiceRouteTests(unittest.TestCase):
             self.assertEqual(saved["ttsVoice"], fresh["ttsVoice"])  # the chat voice is untouched
             self.assertEqual(self.client.get("/api/voice/settings").json()["speakVoice"], "clone:voice-1234567890abcdef")
             self.assertEqual(self.client.post("/api/voice/settings", json={"speakVoice": "x" * 65}).status_code, 422)
+
+    def test_chat_and_call_voices_take_any_listed_voice(self) -> None:
+        # D-72: Chat read-aloud (ttsVoice) and calls (callVoice) take any voice list_voices returns, wave 2 included;
+        # unknown ids, "Describe a voice", and cloned voices for calls are refused; old Kokoro settings keep working.
+        from backend_service import voice_clone
+
+        clone = {"id": "1234567890_deadbeef", "name": "Me", "consent": {}, "durationS": 6.0}
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(voice_env, "VOICE_DATA_DIR", Path(tmp)), \
+                mock.patch.object(voice_clone, "list_voices", return_value=[clone]):
+            fresh = self.client.get("/api/voice/settings").json()
+            self.assertEqual((fresh["ttsVoice"], fresh["callVoice"]), ("af_heart", ""))
+            for voice in ("qwen3:Ryan", "chatterbox-turbo", "chatterbox", "orpheus:tara", "bf_emma"):
+                saved = self.client.post("/api/voice/settings", json={"ttsVoice": voice, "callVoice": voice})
+                self.assertEqual(saved.status_code, 200, voice)
+                self.assertEqual((saved.json()["ttsVoice"], saved.json()["callVoice"]), (voice, voice))
+            self.assertEqual(self.client.post("/api/voice/settings", json={"callVoice": ""}).json()["callVoice"], "")
+            self.assertEqual(self.client.post("/api/voice/settings", json={"ttsVoice": "clone:1234567890_deadbeef"}).status_code, 200)
+            refused = self.client.post("/api/voice/settings", json={"callVoice": "clone:1234567890_deadbeef"})
+            self.assertEqual(refused.status_code, 400)
+            self.assertIn("calls", refused.json()["detail"])
+            for bad in ("qwen3:Nobody", "nonsense", "design", "clone:0000000000_00000000"):
+                self.assertEqual(self.client.post("/api/voice/settings", json={"ttsVoice": bad}).status_code, 400, bad)
+            self.assertEqual(self.client.post("/api/voice/settings", json={"ttsVoice": "x" * 65}).status_code, 422)
+            # An agent never sees cloned voices, so it cannot make one the chat voice.
+            with mock.patch("backend_service.mcp_bridge.access.token_ok", return_value=True):
+                agent = self.client.post("/api/voice/settings", json={"ttsVoice": "clone:1234567890_deadbeef"},
+                                         headers={"x-chaosengine-token": "agent-token"})
+            self.assertEqual(agent.status_code, 400)
+            self.assertEqual(self.client.get("/api/voice/settings").json()["ttsVoice"], "clone:1234567890_deadbeef")
 
 
 if __name__ == "__main__":

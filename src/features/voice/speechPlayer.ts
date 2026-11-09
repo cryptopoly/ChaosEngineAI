@@ -8,7 +8,7 @@
  */
 
 import { useSyncExternalStore } from "react";
-import { speakStream, type SpokenSentence } from "../../api";
+import { speakStream, type SpeechUse, type SpokenSentence } from "../../api";
 
 export type SpeechStatus = "idle" | "loading" | "playing" | "paused" | "error";
 
@@ -20,6 +20,8 @@ export interface SpeechState {
   index: number;
   total: number;
   error: string | null;
+  /** One line from the backend, e.g. the chosen voice could not speak and the Kokoro voice reads instead. */
+  note: string | null;
 }
 
 const IDLE: SpeechState = {
@@ -29,6 +31,7 @@ const IDLE: SpeechState = {
   index: 0,
   total: 0,
   error: null,
+  note: null,
 };
 
 let state: SpeechState = IDLE;
@@ -96,11 +99,11 @@ export const speechPlayer = {
   },
 
   /** Speak ``text``; a second call (any owner) replaces the first. */
-  async play(ownerId: string, text: string, voice: string, speed: number): Promise<void> {
+  async play(ownerId: string, text: string, voice: string, speed: number, use: SpeechUse = "read"): Promise<void> {
     const mine = begin(ownerId);
     const scheduler = makeScheduler(mine);
     try {
-      await speakStream(text, voice, speed, scheduler.add, controller!.signal);
+      await speakStream(text, voice, speed, scheduler.add, controller!.signal, { use, onNote: noteFor(mine) });
       await scheduler.flushed();
       scheduler.inputDone();
     } catch (error) {
@@ -113,7 +116,7 @@ export const speechPlayer = {
    * becomes speakable and ``endQueue`` when the reply is complete. Pieces
    * are synthesized in order while earlier ones play.
    */
-  startQueue(ownerId: string, voice: string, speed: number): void {
+  startQueue(ownerId: string, voice: string, speed: number, use: SpeechUse = "call"): void {
     const mine = begin(ownerId);
     const scheduler = makeScheduler(mine);
     let synth: Promise<void> = Promise.resolve();
@@ -122,7 +125,7 @@ export const speechPlayer = {
         synth = synth.then(async () => {
           if (mine !== generation || !controller) return;
           try {
-            await speakStream(text, voice, speed, scheduler.add, controller.signal);
+            await speakStream(text, voice, speed, scheduler.add, controller.signal, { use, onNote: noteFor(mine) });
           } catch (error) {
             // A piece with nothing speakable in it (only markup) is skipped.
             if (!(error instanceof Error && error.message.includes("Nothing to read aloud"))) throw error;
@@ -163,6 +166,13 @@ function begin(ownerId: string): number {
   nextStart = context.currentTime + 0.05;
   set({ ...IDLE, status: "loading", ownerId });
   return generation;
+}
+
+/** Keeps the latest backend note on the state while this speech is still the current one. */
+function noteFor(mine: number): (note: string) => void {
+  return (note) => {
+    if (mine === generation && state.note !== note) set({ note });
+  };
 }
 
 function fail(mine: number, ownerId: string, error: unknown): void {

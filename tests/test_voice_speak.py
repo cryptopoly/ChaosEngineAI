@@ -719,6 +719,140 @@ class RouteTests(unittest.TestCase):
         self.assertEqual(len(self.client.get("/api/voice/clone/models").json()["models"]), len(voice_models.CLONE_MODELS))
 
 
+class ChatStreamTests(unittest.TestCase):
+    """``/api/voice/speak/stream`` with any voice (D-67 W6, D-72): plans through ``voice_speak`` per sentence, falls
+    back to Kokoro with a note, cloned voices only for read-aloud in this window."""
+
+    def setUp(self) -> None:
+        RouteTests.setUp(self)  # type: ignore[arg-type]
+        self.addCleanup(RouteTests.tearDown, self)
+        from backend_service import voice_chat
+
+        voice_chat.forget_failures()
+        self.addCleanup(voice_chat.forget_failures)
+
+    def stream(self, voice: str, use: str = "read", text: str = "Hello there. How are you?", **kwargs):
+        response = self.client.post("/api/voice/speak/stream", json={"text": text, "voice": voice, "use": use}, **kwargs)
+        return response, [json.loads(line) for line in response.text.splitlines()] if response.status_code == 200 else []
+
+    def kokoro(self):
+        return mock.patch.object(voice_runtime, "synthesize", side_effect=lambda t, v, s: (tone_wav(0.1), 0.1))
+
+    def test_a_preset_voice_reads_aloud_through_its_own_model(self) -> None:
+        plans = []
+
+        def chunk(plan, sentence, speed, seed, extra=None):
+            plans.append((plan.kind, plan.model_key, sentence, speed))
+            return tone_wav(0.2), 0.1
+
+        with Machine(), mock.patch.object(voice_clone, "snapshot_dir", side_effect=installed("qwen3-tts-custom-1.7b")), \
+                mock.patch.object(voice_speak, "_speak_chunk", side_effect=chunk):
+            response, lines = self.stream("qwen3:Ryan", use="call")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([l.get("voice") for l in lines[:-1]], ["qwen3:Ryan", "qwen3:Ryan"])
+        self.assertFalse(any("note" in l for l in lines))
+        self.assertEqual(plans, [("preset", "qwen3-tts-custom-1.7b", "Hello there.", 1.0),
+                                 ("preset", "qwen3-tts-custom-1.7b", "How are you?", 1.0)])
+        self.assertTrue(lines[-1]["done"])
+
+    def test_turbo_keeps_its_sound_tags_and_others_strip_them(self) -> None:
+        spoken = []
+        with Machine(), mock.patch.object(voice_clone, "snapshot_dir", side_effect=installed("chatterbox-turbo")), \
+                mock.patch.object(voice_speak, "_speak_chunk", side_effect=lambda p, s, *a, **k: spoken.append(s) or (tone_wav(0.1), 0.1)):
+            self.stream("chatterbox-turbo", text="Ha [laugh] that is funny.")
+        self.assertIn("[laugh]", spoken[0])
+
+    def test_a_voice_whose_model_is_missing_falls_back_to_kokoro_with_a_note(self) -> None:
+        with Machine(), mock.patch.object(voice_clone, "snapshot_dir", return_value=None), self.kokoro() as kokoro:
+            response, lines = self.stream("qwen3:Ryan")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Ryan could not speak here", lines[0]["note"])
+        self.assertIn("Kokoro", lines[0]["note"])
+        self.assertEqual({l.get("voice") for l in lines[1:-1]}, {"af_heart"})
+        self.assertEqual(kokoro.call_count, 2)
+
+    def test_a_model_that_fails_to_load_hands_over_to_kokoro_and_is_skipped_next_time(self) -> None:
+        with Machine(), mock.patch.object(voice_clone, "snapshot_dir", side_effect=installed("chatterbox-turbo")), \
+                mock.patch.object(voice_speak, "_speak_chunk", side_effect=RuntimeError("out of memory")) as chunk, \
+                self.kokoro() as kokoro:
+            _r, lines = self.stream("chatterbox-turbo")
+            self.assertIn("out of memory", lines[0]["note"])
+            self.assertEqual([l.get("text") for l in lines[1:-1]], ["Hello there.", "How are you?"])
+            self.assertEqual(kokoro.call_count, 2)
+            _r, again = self.stream("chatterbox-turbo")
+        self.assertEqual(chunk.call_count, 1)  # the failed load is not tried again within RETRY_AFTER_S
+        self.assertIn("note", again[0])
+
+    def test_kokoro_never_reads_a_sound_tag_aloud(self) -> None:
+        spoken = []
+        with mock.patch.object(voice_runtime, "synthesize", side_effect=lambda t, v, s: spoken.append(t) or (tone_wav(0.1), 0.1)):
+            self.stream("af_heart", text="Ha [laugh] that is funny.")
+        self.assertEqual(spoken, ["Ha that is funny."])
+
+    def test_a_kokoro_failure_is_still_an_error(self) -> None:
+        with mock.patch.object(voice_runtime, "synthesize", side_effect=RuntimeError("no voice")):
+            _r, lines = self.stream("af_heart")
+        self.assertEqual(lines[0]["error"], "no voice")
+
+    def test_describe_a_voice_cannot_be_the_chat_voice(self) -> None:
+        with self.kokoro():
+            _r, lines = self.stream("design")
+        self.assertIn("description", lines[0]["note"])
+
+    def test_a_cloned_voice_reads_aloud_marked_and_audited_but_is_refused_for_calls_and_agents(self) -> None:
+        plan = voice_speak.Plan("clone", "clone:1234567890_deadbeef", "qwen3-tts-0.6b", "Qwen3-TTS 0.6B Base")
+        row = voice_models.voice_model("qwen3-tts-0.6b")
+        with mock.patch.object(voice_clone, "clone_plan", return_value=(plan, row, {}, [])) as checks, \
+                mock.patch.object(voice_speak, "_speak_chunk", return_value=(tone_wav(0.1), 0.1)), \
+                mock.patch.object(voice_clone, "mark_cloned", side_effect=lambda wav, r, vid: b"MARKED" + wav) as mark, \
+                mock.patch.object(voice_clone_safety, "audit") as audit:
+            _r, lines = self.stream("clone:1234567890_deadbeef")
+            self.assertEqual(checks.call_args.kwargs["origin"], "ui")
+            self.assertEqual(mark.call_count, 2)
+            self.assertTrue(base64.b64decode(lines[0]["audio"]).startswith(b"MARKED"))
+            self.assertEqual(audit.call_args.kwargs["use"], "read-aloud")
+            with self.kokoro():
+                _r, call = self.stream("clone:1234567890_deadbeef", use="call")
+            self.assertIn("not used in voice calls", call[0]["note"])
+            self.assertEqual({l.get("voice") for l in call[1:-1]}, {"af_heart"})
+            self.assertEqual(checks.call_count, 1)  # the call never reached the clone
+            with mock.patch("backend_service.mcp_bridge.access.token_ok", return_value=True):
+                agent, _ = self.stream("clone:1234567890_deadbeef", headers={"x-chaosengine-token": "agent-token"})
+        self.assertEqual(agent.status_code, 403)
+        self.assertEqual(mark.call_count, 2)
+
+    def test_a_cloned_voice_whose_permission_record_is_gone_falls_back(self) -> None:
+        with mock.patch.object(voice_clone, "get_voice", return_value=None), self.kokoro():
+            _r, lines = self.stream("clone:1234567890_deadbeef")
+        self.assertIn("permission record is missing", lines[0]["note"])
+
+    def test_voices_say_where_they_may_speak_and_what_chat_costs(self) -> None:
+        voices = {v["id"]: v for v in voice_speak.list_voices()}
+        self.assertEqual(voices["af_heart"]["chatUse"], {"read": True, "call": True})
+        self.assertEqual(voices["qwen3:Ryan"]["chatUse"], {"read": True, "call": True})
+        self.assertEqual(voices["design"]["chatUse"], {"read": False, "call": False})
+        self.assertEqual(voice_speak.chat_uses("clone"), {"read": True, "call": False})
+        self.assertEqual(voices["af_heart"]["chatCost"]["peakGb"], voice_models.KOKORO_CHAT_ESTIMATES["chatPeakGb"])
+        self.assertFalse(voices["af_heart"]["chatCost"]["slowForCalls"])
+        self.assertIsNotNone(voices["chatterbox-turbo"]["chatCost"]["firstAudioColdS"])
+        with mock.patch.dict(voice_models.voice_model("chatterbox-turbo")["estimates"], {"chatFirstAudioS": 2.5}):
+            self.assertTrue(voice_speak.chat_cost("chatterbox-turbo")["slowForCalls"])
+        self.assertIsNone(voice_speak.chat_cost("orpheus-3b"))  # no chat measurement yet
+
+    def test_agents_never_default_to_a_cloned_chat_voice(self) -> None:
+        from backend_service.mcp_bridge import tools
+
+        jobs = []
+        with mock.patch.object(voice_runtime, "load_settings", return_value={"ttsVoice": "clone:1234567890_deadbeef", "speed": 1.0}), \
+                mock.patch.object(tools.STORE, "submit", side_effect=lambda *a, **k: jobs.append(a[2]) or {"id": "j"}), \
+                mock.patch.object(tools, "_submitted", side_effect=lambda job: job), \
+                mock.patch.object(voice_speak, "speak", side_effect=RuntimeError("stop")) as speak:
+            tools.speak(None, {"text": "Hi"})
+            with self.assertRaises(RuntimeError):
+                jobs[0]()
+        self.assertEqual(speak.call_args.args[1], voice_runtime.DEFAULT_VOICE)
+
+
 class DownloadTests(unittest.TestCase):
     def test_a_speaking_model_downloads_without_the_watermark_component(self) -> None:
         class SyncThread:

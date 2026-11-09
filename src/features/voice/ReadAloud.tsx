@@ -84,6 +84,7 @@ export function SpeechPlayerBar() {
           {player.index + 1}/{player.total}
         </span>
       ) : null}
+      {player.note ? <span className="speech-bar__note">{player.note}</span> : null}
     </div>
   );
 }

@@ -91,7 +91,8 @@
     "callNeedModel": "un modelo de chat cargado",
     "callNeedStt": "reconocimiento de voz (Modelos de voz)",
     "callNeedTts": "una voz para las respuestas (Modelos de voz)",
-    "callNeedVad": "detección de turnos, parte del paquete de voz"
+    "callNeedVad": "detección de turnos, parte del paquete de voz",
+    "callVoice": null
   },
   "sidebar": {
     "title": "Chats",
@@ -398,7 +399,8 @@
     "endHint": "Terminar la llamada (Esc)",
     "end": "Colgar",
     "meta": "Voz: {voice}",
-    "headphones": "Con auriculares es más fácil interrumpir"
+    "headphones": "Con auriculares es más fácil interrumpir",
+    "changeVoice": null
   },
   "emptyBanner": {
     "welcomeTitle": "👋 Te damos la bienvenida al chat de ChaosEngineAI",

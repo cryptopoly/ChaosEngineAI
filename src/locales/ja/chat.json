@@ -91,7 +91,8 @@
     "callNeedModel": "読み込まれたチャットモデル",
     "callNeedStt": "音声認識（音声モデル）",
     "callNeedTts": "返答用の音声（音声モデル）",
-    "callNeedVad": "発話ターン検出（音声パックに含まれます）"
+    "callNeedVad": "発話ターン検出（音声パックに含まれます）",
+    "callVoice": null
   },
   "sidebar": {
     "title": "チャット",
@@ -398,7 +399,8 @@
     "endHint": "通話を終了（Esc）",
     "end": "通話を終了",
     "meta": "音声: {voice}",
-    "headphones": "割り込むにはヘッドホンがおすすめです"
+    "headphones": "割り込むにはヘッドホンがおすすめです",
+    "changeVoice": null
   },
   "emptyBanner": {
     "welcomeTitle": "👋 ChaosEngineAI チャットへようこそ",

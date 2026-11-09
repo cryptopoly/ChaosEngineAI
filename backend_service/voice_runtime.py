@@ -258,7 +258,10 @@ def list_tts_voices() -> list[dict[str, Any]]:
 DEFAULT_SETTINGS: dict[str, Any] = {
     "sttModel": "",
     "language": "",
+    # Chat read-aloud: any voice ``voice_speak.list_voices`` returns that may read aloud (D-72); Kokoro by default.
     "ttsVoice": DEFAULT_VOICE,
+    # Voice calls: "" means the chat voice; cloned voices are refused here (routes/voice.py, voice_chat).
+    "callVoice": "",
     # The voice last used on the Speak screen, kept apart from the chat voice; "" until Speak has run once.
     "speakVoice": "",
     "speed": 1.0,

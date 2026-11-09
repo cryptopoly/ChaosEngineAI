@@ -506,8 +506,12 @@ export default function App() {
         setVoiceRuntime((current) => (current ? { ...current, settings } : current));
       },
       openVoiceModels: () => void setActiveTab("voice-models"),
+      openVoices: () => {
+        setVoiceOpenRequest({ mode: "voices", nonce: Date.now() });
+        void setActiveTab("voice-studio");
+      },
     }),
-    [voiceRuntime, workspace.system.platform, refreshVoiceRuntime, setActiveTab],
+    [voiceRuntime, workspace.system.platform, refreshVoiceRuntime, setActiveTab, setVoiceOpenRequest],
   );
 
   // Benchmark page: sync benchmarkDraft sliders -> previewControls

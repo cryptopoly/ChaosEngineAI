@@ -290,7 +290,7 @@ test("Voices lists every voice, filters by kind, Use in Speak jumps to Speak, De
   await expect.poll(() => seen.deleted).toEqual(["voice-1"]);
 });
 
-test("Use in Chat sets the chat voice for a quick voice; other voices wait for Chat with a note; Chat and calls holds the chat settings", async ({ page }) => {
+test("Use in Chat sets the chat voice; Describe a voice cannot be one; Chat and calls holds the chat settings", async ({ page }) => {
   const seen = await mockVoiceApi(page, { clones: [ADA], installed: BOTH_CUSTOM });
   await goTo(page, "Voice", "Studio");
   await page.getByRole("tab", { name: "Voices" }).click();
@@ -303,14 +303,16 @@ test("Use in Chat sets the chat voice for a quick voice; other voices wait for C
   await expect.poll(() => seen.ttsVoices).toEqual(["af_bella"]);
   await expect(bella.getByText("Chat voice", { exact: true })).toBeVisible();
   await expect(heart.getByText("Chat voice", { exact: true })).toHaveCount(0);
-  for (const name of ["Ryan", "Ada", "Design a voice"]) {
-    await expect(list.locator("li").filter({ has: page.getByText(name, { exact: true }) }).getByRole("button", { name: "Use in Chat" })).toBeDisabled();
+  // D-72: natural and cloned voices can read aloud now (spec 19 covers them); "Describe a voice" cannot.
+  for (const name of ["Ryan", "Ada"]) {
+    await expect(list.locator("li").filter({ has: page.getByText(name, { exact: true }) }).getByRole("button", { name: "Use in Chat" })).toBeEnabled();
   }
-  await expect(page.getByText("Chat reads aloud with quick voices for now.")).toBeVisible();
+  await expect(list.locator("li").filter({ has: page.getByText("Design a voice", { exact: true }) }).getByRole("button", { name: "Use in Chat" })).toBeDisabled();
+  await expect(page.getByText("Chat and calls can use any voice that runs here.")).toBeVisible();
 
   const panel = page.locator(".voice-chat-calls");
   await expect(panel.getByRole("heading", { name: "Chat and calls" })).toBeVisible();
-  await expect(panel.getByText("Chat voice: Bella.")).toBeVisible();
+  await expect(panel.getByLabel("Chat voice (read-aloud)")).toHaveValue("af_bella");
   for (const label of ["Read every chat reply aloud when it finishes", "Send the message as soon as dictation finishes", "Voice call: interrupt the model by speaking"]) {
     await expect(panel.getByLabel(label)).toBeVisible();
   }

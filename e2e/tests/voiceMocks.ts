@@ -112,7 +112,15 @@ export function voiceList(clones: Array<typeof ADA>, installed: string[], needsF
       model: "qwen3-tts-0.6b", models: ["qwen3-tts-0.6b", "qwen3-tts-1.7b"], capabilities: caps({ clone: true }), available: true, needs: null, consent: c.consent,
     })),
   ];
-  return list.map((v) => ({ ...v, needsFfmpeg }));
+  // Where each voice may speak in Chat and its measured chat cost, as the backend sends them (D-72).
+  const chatUse = (kind: string) => ({ read: kind !== "design", call: kind === "builtin" || kind === "preset" });
+  const chatCost = (kind: string) =>
+    kind === "builtin"
+      ? { firstAudioS: 0.13, firstAudioColdS: 5.7, peakGb: 0.87, measuredOn: "Apple M4 Max, 64 GB, 2026-11-09", slowForCalls: false }
+      : kind === "preset"
+        ? { firstAudioS: 1.3, firstAudioColdS: 4.1, peakGb: 3.51, measuredOn: "Apple M4 Max, 64 GB, 2026-11-09", slowForCalls: false }
+        : null;
+  return list.map((v) => ({ ...v, needsFfmpeg, chatUse: chatUse(v.kind), chatCost: chatCost(v.kind) }));
 }
 
 export interface VoiceMockOptions {
@@ -125,25 +133,31 @@ export interface VoiceMockOptions {
   needsFfmpeg?: boolean;
   /** The chat voice the runtime reports (``ttsVoice``); kept in the mock like ``speakVoice``. */
   ttsVoice?: string;
+  /** The call voice (``callVoice``, "" = the chat voice); kept in the mock like ``ttsVoice``. */
+  callVoice?: string;
+  /** Speech, speech-to-text and turn detection all report ready, so Read aloud and Call are enabled. */
+  ready?: boolean;
 }
 
 /** Patch the runtime to "pack installed" and mock the voice and model lists plus the clone routes. */
 export async function mockVoiceApi(
   page: Page,
   options: VoiceMockOptions = {},
-): Promise<{ downloads: string[]; deleted: string[]; speakVoices: string[]; ttsVoices: string[] }> {
+): Promise<{ downloads: string[]; deleted: string[]; speakVoices: string[]; ttsVoices: string[]; callVoices: string[] }> {
   const installed = options.installed ?? ["qwen3-tts-0.6b", "qwen3-tts-custom-0.6b"];
   const clones = options.clones ?? [];
-  const seen = { downloads: [] as string[], deleted: [] as string[], speakVoices: [] as string[], ttsVoices: [] as string[] };
+  const seen = { downloads: [] as string[], deleted: [] as string[], speakVoices: [] as string[], ttsVoices: [] as string[], callVoices: [] as string[] };
   let speakVoice = options.speakVoice ?? "";
   let ttsVoice = options.ttsVoice ?? "af_heart";
+  let callVoice = options.callVoice ?? "";
   let lastSettings: Record<string, unknown> = {};
   await page.route("**/api/voice/runtime", async (route) => {
     const response = await route.fetch();
     const body = await response.json();
     const runtime = body.runtime ?? body;
     Object.assign(runtime, { installed: true });
-    runtime.settings = { ...(runtime.settings ?? {}), speakVoice, ttsVoice };
+    if (options.ready) Object.assign(runtime, { ttsAvailable: true, sttAvailable: true, vadAvailable: true });
+    runtime.settings = { ...(runtime.settings ?? {}), speakVoice, ttsVoice, callVoice };
     lastSettings = runtime.settings;
     await route.fulfill({ response, json: body });
   });
@@ -156,10 +170,13 @@ export async function mockVoiceApi(
     } else if (typeof patch.ttsVoice === "string") {
       ttsVoice = patch.ttsVoice;
       seen.ttsVoices.push(ttsVoice);
+    } else if (typeof patch.callVoice === "string") {
+      callVoice = patch.callVoice;
+      seen.callVoices.push(callVoice);
     } else {
       return route.fallback();
     }
-    lastSettings = { ...lastSettings, speakVoice, ttsVoice };
+    lastSettings = { ...lastSettings, speakVoice, ttsVoice, callVoice };
     return route.fulfill({ json: lastSettings });
   });
   await page.route("**/api/voice/voices", (route) => route.fulfill({ json: { voices: voiceList(clones, installed, options.needsFfmpeg) } }));

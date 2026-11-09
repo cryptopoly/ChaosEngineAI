@@ -13,20 +13,25 @@ Voice Studio > Voices, and a setting sits next to the thing it changes.**
 
 ### The voice runtime
 
-Install the **voice runtime** once (about 2.3 GB). It is everything voice needs
-that is not a model you choose, in its own folder so it cannot disturb the rest
-of the app. The panel lists its four parts with their size on disk: the speech
-packages (about 1.9 GB), the Kokoro quick voices (0.3 GB), turn detection for
-calls and the speaker-label models (0.04 GB together). Dictation and speech
-models are separate downloads on the same page.
+Install the **voice runtime** once (about 2.3 GB with the Kokoro quick voices,
+about 2 GB without). It is everything voice needs that is not a model you
+choose, in its own folder so it cannot disturb the rest of the app. The panel
+lists its parts with their size on disk: the speech packages (about 1.9 GB),
+the Kokoro quick voices (0.3 GB, when installed), turn detection for calls and
+the speaker-label models (0.04 GB together). Dictation and speech models are
+separate downloads on the same page.
 
 - **In memory now** names the voice model the speech worker holds, with
   **Unload**, and the minutes of idle time after which it is freed.
-- **Add-ons** are tick boxes: **Mandarin Chinese quick voices** (8 voices,
-  about 60 MB) on Apple Silicon, and on Windows and Linux with an NVIDIA GPU
-  the speech GPU add-on when it is offered. Ticked before the install, they
-  install with the runtime; afterwards, ticking installs the add-on and
-  unticking removes it.
+- **Add-ons** are tick boxes: **Kokoro quick voices** (about 330 MB, ticked
+  by default), **Mandarin Chinese quick voices** (8 voices, about 60 MB, needs
+  Kokoro) on Apple Silicon, and on Windows and Linux with an NVIDIA GPU the
+  speech GPU add-on when it is offered. Ticked before the install, they install
+  with the runtime; afterwards, ticking installs the add-on and unticking
+  removes it (refused, with the reason, while a voice model is loading or
+  speaking). Kokoro is the only voice that runs fast without a GPU and the
+  first voice a new user hears; leave it out if you only want other speech
+  models.
 - **Troubleshooting** has **Reinstall** and **Remove voice runtime**. Remove
   asks first and says what stops working (dictation, read-aloud, voice calls
   and Voice Studio) until the runtime is installed again. Downloaded dictation
@@ -39,8 +44,8 @@ install folder are unchanged.)
 
 | | Dictation | Speech |
 |---|---|---|
-| **Apple Silicon** | Parakeet (25 European languages, the fastest), Nemotron 3.5 (40 languages, detects the language by itself) or Whisper (99 languages) | Kokoro, and the speech models below |
-| **Windows and Linux** | Whisper through faster-whisper | Kokoro |
+| **Apple Silicon** | Parakeet (25 European languages, the fastest), Nemotron 3.5 (40 languages, detects the language by itself) or Whisper (99 languages) | Kokoro (optional add-on), and the speech models below |
+| **Windows and Linux** | Whisper through faster-whisper | Kokoro (optional add-on) |
 
 Voice on Windows and Linux is new and has had less testing than on the Mac.
 Please report anything that does not work. The first time you use the
@@ -64,9 +69,10 @@ voices, Style, Clone, Design, Sound tags, Expression), its download size, its
 **Fit** on this machine from the measured peak memory, and its status. The row
 detail has the measured memory and speed, cold start, licence and repository.
 
-- **Kokoro** is the first row: the quick voices, part of the runtime, fast on
-  any machine, and the voice Chat falls back to. **Browse voices** opens
-  Voices; it has no Delete (remove the runtime instead).
+- **Kokoro** is the first row: the quick voices, an add-on of the runtime,
+  fast on any machine. **Browse voices** opens Voices; it has no Delete
+  (untick it under the runtime's add-ons instead). Left out, the row says
+  **Not installed** and where to tick it.
 - Downloaded rows have **Use in Speak** (a model that only clones has
   **Browse voices**), a **···** menu with the licence, and **Delete model**.
   Delete asks first, naming the model and its size; it removes the model and
@@ -120,7 +126,7 @@ it with focus back on Change voice. The picker has five groups:
 - **Recommended**: the best natural voice you have installed for the app's
   language, the best-graded quick voice, your newest cloned voice and Design a
   voice.
-- **Quick**: the Kokoro voices that come with the runtime (fast, under 1 GB,
+- **Quick**: the Kokoro voices, an add-on of the runtime (fast, under 1 GB,
   speed only). A language list, then the shortlist the model author grades
   best (for American English: Heart, Bella, Nicole, Fenrir, Michael, Puck);
   **All voices** shows the rest. Choosing Chinese offers the Mandarin add-on
@@ -155,12 +161,22 @@ language, else the best-graded quick voice.
 
 Voices is where you choose which voice each part of the app uses.
 
-- **Main voices** at the top: **Speak**, **Chat read-aloud** and **Voice
-  calls**, each with the voice's name and kind, its first-words time in Chat,
-  and **Change**, which opens the picker drawer showing only the voices that
-  use allows. The call voice starts as the chat voice ("same as Chat"). If a
-  chosen voice cannot speak (its model is not downloaded, or it fails to
-  load), Kokoro reads instead and Chat says so.
+- **Main voices** at the top: **Speak**, **Chat read-aloud**, **Voice
+  calls** and **Fallback**, each with the voice's name and kind, its
+  first-words time in Chat, and **Change**, which opens the picker drawer
+  showing only the voices that use allows. The call voice starts as the chat
+  voice ("same as Chat").
+- **Fallback** is the voice that reads when the chosen chat or call voice
+  cannot speak (its model is not downloaded, or it fails to load); Chat says
+  so. Any installed voice that may read aloud can be the fallback (a cloned
+  voice is used for read-aloud only, never in calls); its drawer also has
+  **No fallback voice**. It starts as Kokoro's Heart, which counts only while
+  Kokoro is installed. With no fallback, read-aloud and calls show "The
+  chosen voice could not speak and no fallback voice is set. Pick one on
+  Voice Studio > Voices." instead of switching voice. The line under the
+  cards names the fallback in effect or says none is set.
+- Without Kokoro, the Quick group says the quick voices are not installed,
+  with **Open Voice Models**.
 - **New cloned voice**, **Design a voice** and **Get more voices** in the
   header.
 - **The list**, filtered by kind (All, Natural, Quick, Cloned, Designed) and
@@ -168,7 +184,7 @@ Voices is where you choose which voice each part of the app uses.
   **All voices**, and **Add Mandarin voices** while it is missing), Cloned,
   Designed. Each row has a sample button (a sample is never kept), badges for
   the uses it holds, its cost and measured first-audio time, and one **Use
-  for…** menu: Speak, Chat read-aloud, Voice calls. A use a voice cannot have
+  for…** menu: Speak, Chat read-aloud, Voice calls, Fallback. A use a voice cannot have
   is greyed with the reason: Describe a voice needs a description each time,
   cloned voices are not used in calls, a voice whose model is not downloaded
   offers **Download** instead. Cloned voices also have **Delete**.
@@ -223,12 +239,13 @@ that use. Agents cannot delete models or remove the runtime.
 - **Dictation.** The microphone button in the composer.
 - **Read-aloud.** A speaker button on every reply, or have replies read
   automatically. The bar above the composer names the voice reading, with a
-  note when Kokoro reads instead.
+  note when the fallback voice reads instead.
 - **Voice calls.** Press **Call** and talk. The app hears when you stop, the
   model answers out loud, and you can talk over it to interrupt. Every turn is
   saved in the chat.
 - **Voice** (next to Call) opens a popover: the read-aloud voice, the call
-  voice and the dictation model, each with **Change** (Voices, or Models for
+  voice, the fallback voice (or "None set") and the dictation model, each with
+  **Change** (Voices, or Models for
   dictation); **Read every chat reply aloud**, **Send as soon as dictation
   finishes**, **Reading speed**, the **pause that ends your turn** in a call
   and **interrupt the model by speaking**; and what a call still needs, with

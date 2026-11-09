@@ -25,7 +25,7 @@ from typing import Any
 #   reason         key the UI turns into a translated sentence: "pytorch-apple-gpu", "bf16-full-size",
 #                  "no-gpu-cpu".
 #   alternativeId  a faster catalog row that runs on that kind of machine (none for cpu-only).
-SLOW_ALTERNATIVE_APPLE = "dgrauet/ltx-2.5-mlx-q4"  # ltx-2-mlx runs on Apple Silicon only
+SLOW_ALTERNATIVE_APPLE = "dgrauet/ltx-2.3-mlx-q4"  # ltx-2-mlx runs on Apple Silicon only; 2.3 needs no licence step (2.5 is gated)
 
 # Wan runs through diffusers on the Apple GPU (MPS); not timed on these rows, so no number.
 SLOW_APPLE_WAN: dict[str, Any] = {

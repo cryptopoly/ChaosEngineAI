@@ -10,6 +10,7 @@ import {
   INITIAL_SOUND_RUN,
   buildSoundPayload,
   clampSoundSeconds,
+  clampSoundSteps,
   defaultSoundForm,
   soundLimits,
   soundRunReducer,
@@ -34,20 +35,25 @@ export function useSoundsStudio({ backendOnline, variant, runtime, refreshRuntim
   const [run, dispatch] = useReducer(soundRunReducer, INITIAL_SOUND_RUN);
   const progress = useGenerationProgress("music", run.running);
   const formTouched = useRef(false);
+  const lastVariantId = useRef<string | null>(null);
   const variantId = variant?.id ?? null;
   const limits = soundLimits(variant);
 
   // A new model (or the catalog arriving) resets an untouched form; a touched one keeps its text and settings but its
   // length is brought inside the model's own range (Small stops at 11 s, the full model at 47 s).
+  // Steps belong to a model (Small's 8 is not 1.0's 100): another model goes back to its own default steps.
   useEffect(() => {
     if (!variant) return;
+    const modelChanged = lastVariantId.current !== null && lastVariantId.current !== variant.id;
+    lastVariantId.current = variant.id;
     if (!formTouched.current) {
       setFormState(defaultSoundForm(variant));
       return;
     }
     setFormState((previous) => {
       const seconds = clampSoundSeconds(previous.seconds, variant);
-      return seconds === previous.seconds ? previous : { ...previous, seconds };
+      const steps = modelChanged ? null : clampSoundSteps(previous.steps, variant);
+      return seconds === previous.seconds && steps === previous.steps ? previous : { ...previous, seconds, steps };
     });
   }, [variant]);
 
@@ -63,16 +69,18 @@ export function useSoundsStudio({ backendOnline, variant, runtime, refreshRuntim
     setFormState(next);
   }, []);
 
-  const { seconds, variations } = form;
+  const { seconds, variations, steps } = form;
   const loadedModel = runtime?.sound?.loadedModel ?? null;
   useEffect(() => {
     setEstimate(null);
   }, [variantId]);
   useEffect(() => {
     if (!backendOnline || !variantId || run.running || !(seconds >= limits.min && seconds <= limits.max)) return;
+    // A steps value outside the row's range is refused by the backend; the form shows why, and the strip waits.
+    if (steps !== null && clampSoundSteps(steps, variant) === null) return;
     const controller = new AbortController();
     const timer = window.setTimeout(() => {
-      estimateMusicRun(variantId, seconds, variations, controller.signal)
+      estimateMusicRun(variantId, seconds, variations, controller.signal, steps)
         .then(setEstimate)
         .catch(() => {
           if (!controller.signal.aborted) setEstimate(null);
@@ -82,7 +90,7 @@ export function useSoundsStudio({ backendOnline, variant, runtime, refreshRuntim
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [backendOnline, variantId, seconds, variations, loadedModel, run.running, limits.min, limits.max]);
+  }, [backendOnline, variantId, seconds, variations, steps, loadedModel, run.running, limits.min, limits.max, variant]);
 
   const generate = useCallback(
     async (formOverride?: SoundForm) => {

@@ -1303,7 +1303,9 @@
       "caution": "(Vorsicht: nahe am Limit)",
       "danger": "(Gefahr: passt möglicherweise nicht)"
     },
-    "unknownChip": "Schätzung: unbekannt bis zum ersten Lauf"
+    "unknownChip": "Schätzung: unbekannt bis zum ersten Lauf",
+    "scaled": null,
+    "scaledTitle": null
   },
   "disclosure": {
     "options": "Optionen",
@@ -1384,7 +1386,11 @@
       "tempoKey": "Tempo und Tonart",
       "variations": "Variationen",
       "variationsCost": "Jede Variation braucht noch einmal dieselbe Zeit.",
-      "variationsTotal": "Etwa {time} für {n}."
+      "variationsTotal": "Etwa {time} für {n}.",
+      "steps": null,
+      "stepsNumber": null,
+      "stepsNote": null,
+      "summarySteps": null
     },
     "artistWarning": "Wenn du einen Künstler nennst, kann eine Kopie seines Stils entstehen. Beschreibe stattdessen den Klang.",
     "cancel": "Abbrechen",
@@ -1487,7 +1493,8 @@
       "issue": {
         "captionEmpty": "Beschreibe den Sound, um ihn zu erstellen.",
         "captionTooLong": "Die Beschreibung ist länger als {max} Zeichen.",
-        "secondsRange": "Die Länge muss {min} bis {max} Sekunden betragen."
+        "secondsRange": "Die Länge muss {min} bis {max} Sekunden betragen.",
+        "stepsRange": null
       },
       "error": {
         "memory": "Nicht genug freier Speicher für diesen Sound. Gib etwas Speicher frei und versuche es erneut.",

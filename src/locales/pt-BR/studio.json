@@ -1303,7 +1303,9 @@
       "caution": "(atenção: perto do limite)",
       "danger": "(perigo: pode não caber)"
     },
-    "unknownChip": "Estimativa: desconhecida até a primeira execução"
+    "unknownChip": "Estimativa: desconhecida até a primeira execução",
+    "scaled": null,
+    "scaledTitle": null
   },
   "disclosure": {
     "options": "Opções",
@@ -1384,7 +1386,11 @@
       "tempoKey": "Andamento e tom",
       "variations": "Variações",
       "variationsCost": "Cada variação acrescenta o mesmo tempo novamente.",
-      "variationsTotal": "Cerca de {time} para {n}."
+      "variationsTotal": "Cerca de {time} para {n}.",
+      "steps": null,
+      "stepsNumber": null,
+      "stepsNote": null,
+      "summarySteps": null
     },
     "artistWarning": "Citar um artista pode gerar uma cópia do estilo dele. Descreva o som.",
     "cancel": "Cancelar",
@@ -1487,7 +1493,8 @@
       "issue": {
         "captionEmpty": "Descreva o som para criá-lo.",
         "captionTooLong": "A descrição tem mais de {max} caracteres.",
-        "secondsRange": "A duração deve ficar entre {min} e {max} segundos."
+        "secondsRange": "A duração deve ficar entre {min} e {max} segundos.",
+        "stepsRange": null
       },
       "error": {
         "memory": "Não há memória livre suficiente para este som. Libere um pouco de memória e tente novamente.",

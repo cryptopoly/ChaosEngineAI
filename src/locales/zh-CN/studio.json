@@ -1303,7 +1303,9 @@
       "caution": "（注意：接近上限）",
       "danger": "（危险：可能放不下）"
     },
-    "unknownChip": "估计：首次运行前未知"
+    "unknownChip": "估计：首次运行前未知",
+    "scaled": null,
+    "scaledTitle": null
   },
   "disclosure": {
     "options": "选项",
@@ -1384,7 +1386,11 @@
       "tempoKey": "速度与调性",
       "variations": "变体数量",
       "variationsCost": "每多一个变体，就会再多花一次同样的时间。",
-      "variationsTotal": "{n} 个约需 {time}。"
+      "variationsTotal": "{n} 个约需 {time}。",
+      "steps": null,
+      "stepsNumber": null,
+      "stepsNote": null,
+      "summarySteps": null
     },
     "artistWarning": "写出艺术家的名字可能会生成其风格的仿作。请改为描述声音本身。",
     "cancel": "取消",
@@ -1487,7 +1493,8 @@
       "issue": {
         "captionEmpty": "请先描述声音，再制作。",
         "captionTooLong": "描述超过了 {max} 个字符。",
-        "secondsRange": "时长必须为 {min} 到 {max} 秒。"
+        "secondsRange": "时长必须为 {min} 到 {max} 秒。",
+        "stepsRange": null
       },
       "error": {
         "memory": "可用内存不足，无法制作这个音效。请释放一些内存后重试。",

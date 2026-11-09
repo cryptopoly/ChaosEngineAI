@@ -1303,7 +1303,9 @@
       "caution": "（注意：上限に近い）",
       "danger": "（危険：収まらない可能性あり）"
     },
-    "unknownChip": "見積もり: 最初の実行まで不明"
+    "unknownChip": "見積もり: 最初の実行まで不明",
+    "scaled": null,
+    "scaledTitle": null
   },
   "disclosure": {
     "options": "オプション",
@@ -1384,7 +1386,11 @@
       "tempoKey": "テンポとキー",
       "variations": "バリエーション数",
       "variationsCost": "バリエーションを1つ増やすごとに、同じだけ時間がかかります。",
-      "variationsTotal": "{n} 件で約 {time}。"
+      "variationsTotal": "{n} 件で約 {time}。",
+      "steps": null,
+      "stepsNumber": null,
+      "stepsNote": null,
+      "summarySteps": null
     },
     "artistWarning": "アーティスト名を入れると、そのスタイルのコピーになることがあります。代わりに音そのものを描写してください。",
     "cancel": "キャンセル",
@@ -1487,7 +1493,8 @@
       "issue": {
         "captionEmpty": "サウンドを作るには、説明を入力してください。",
         "captionTooLong": "説明が {max} 文字を超えています。",
-        "secondsRange": "長さは {min}〜{max} 秒にしてください。"
+        "secondsRange": "長さは {min}〜{max} 秒にしてください。",
+        "stepsRange": null
       },
       "error": {
         "memory": "このサウンドを作るための空きメモリが足りません。メモリを空けてからもう一度お試しください。",

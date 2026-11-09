@@ -39,6 +39,13 @@ export interface MusicEstimates {
   outputMbPerMinute?: number | null;
 }
 
+/** Sound rows: the steps the person may choose, a few presets and a free number from `min` to `max`. */
+export interface MusicStepsOptions {
+  min: number;
+  max: number;
+  presets: number[];
+}
+
 export interface MusicDefaultSettings {
   seconds?: number;
   variations?: number;
@@ -79,6 +86,8 @@ export interface MusicModelVariant {
   licence: MusicLicence;
   estimates: MusicEstimates;
   defaultSettings: MusicDefaultSettings;
+  /** Sound rows only: the allowed steps. Absent = steps are not a setting. */
+  stepsOptions?: MusicStepsOptions;
   note?: string;
   // Added by the backend per variant.
   weightsSource?: "checkpoints" | "hf-cache" | null;
@@ -164,6 +173,9 @@ export interface MusicRunEstimate {
   writesMb: number | null;
   modelDiskGb: number | null;
   basis: "measured" | "estimated";
+  /** Set when the time was scaled from the measured run (a non-default step count). */
+  basisNote?: string | null;
+  steps?: number | null;
   measuredOn?: string | null;
 }
 
@@ -211,6 +223,8 @@ export interface MusicSoundPayload {
   loop?: boolean;
   variations?: 1 | 2 | 4;
   seed?: number | null;
+  /** Diffusion steps; left out = the model's default. */
+  steps?: number | null;
   title?: string | null;
 }
 
@@ -231,6 +245,8 @@ export interface MusicLibraryItem {
   model?: string;
   modelName?: string;
   seed?: number;
+  /** Sounds only: the diffusion steps it was made with. */
+  steps?: number;
   durationS?: number;
   sampleRate?: number;
   bpm?: number | null;

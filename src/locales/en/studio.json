@@ -1303,7 +1303,9 @@
       "caution": "(caution: close to the limit)",
       "danger": "(danger: may not fit)"
     },
-    "unknownChip": "Estimate: unknown until the first run"
+    "unknownChip": "Estimate: unknown until the first run",
+    "scaled": "Estimated from the measured run",
+    "scaledTitle": "Scaled from a timed run at the model's default settings; not timed at these settings."
   },
   "disclosure": {
     "options": "Options",
@@ -1384,7 +1386,11 @@
       "tempoKey": "Tempo and key",
       "variations": "Variations",
       "variationsCost": "Each variation adds the same time again.",
-      "variationsTotal": "About {time} for {n}."
+      "variationsTotal": "About {time} for {n}.",
+      "steps": "Steps",
+      "stepsNumber": "Number of steps",
+      "stepsNote": "Fewer steps are faster but can sound worse. {n} is the model author's setting.",
+      "summarySteps": "{n} steps"
     },
     "artistWarning": "Naming an artist can produce a copy of their style. Describe the sound instead.",
     "cancel": "Cancel",
@@ -1487,7 +1493,8 @@
       "issue": {
         "captionEmpty": "Describe the sound to make it.",
         "captionTooLong": "The description is longer than {max} characters.",
-        "secondsRange": "Length must be {min} to {max} seconds."
+        "secondsRange": "Length must be {min} to {max} seconds.",
+        "stepsRange": "Steps must be a whole number from {min} to {max}."
       },
       "error": {
         "memory": "There is not enough free memory for this sound. Free some memory and try again.",

@@ -291,6 +291,21 @@ Verdict: on this 4B-class model Vulkan decodes as fast as CUDA; CUDA wins on pre
 
 **Disk clean-up (approved by you):** deleted CogVideoX-2b (12.8 GB) and the three Mac-only Qwen3-TTS partial downloads (1.4 GB) through `POST /api/models/download/delete`, and the folders `~/.chaosengine/longlive` (25.4 GB) and `~/.chaosengine/prebuilt-llama` (2.7 GB). Free space 108.3 → **150.8 GB**.
 
+## 7. Packaged installer (in progress)
+
+No v0.10.0 installer is published (newest Windows asset: v0.9.9), so it was built here the way `release.yml` does: a fresh Python 3.12 venv with the CI package list under `release-constraints.txt`, `npx tauri build --bundles nsis` (release staging, no updater signing). Installed on the current profile (your choice; a clean Windows account is yours to create), over an existing v0.9.9 install.
+
+| Item | Result | Evidence |
+|---|---|---|
+| Build the Windows installer | PASS after a fix | First build failed in staging: `tar (child): Cannot connect to C: resolve failed`. Git Bash's GNU tar is first on PATH there and reads `C:\…\runtime.tar.gz` given to `-f` as host `C`; CI runs the Windows bsdtar so never hit it. Fixed: the archive name is passed relative to `cwd` (`ff00a1b9`, test in `test_stage_runtime_scripts.py`). Then `ChaosEngineAI_0.10.0_x64-setup.exe`, **136.5 MB**; manifest `llamaServer: bin/llama-server.exe` (Vulkan b11981), `warnings: []`; the archive holds `install-mflux.sh`, `install-ltx2-mlx.sh`, `install-mtplx.sh`, `install-tensorfold.sh`. |
+| Install, first launch, runtime extraction, sidecar | PASS | Silent install (`/S`) 10 s, registry shows 0.10.0. Launch → `/api/health` ok after **25 s** (runtime extracted to `%TEMP%\chaosengine-embedded-runtime\windows-x86_64-8ce9411e`, 397 MB), sidecar uses the bundled Vulkan llama-server. Two runtimes from earlier installs (499 MB + 346 MB, Nov 4) are still in that folder: old extractions are never cleaned up. |
+| Speech from the installed app | PASS | Kokoro `af_heart`: HTTP 200, valid WAV, 6.9 s including worker start. |
+| One project export from the installed app | PASS | RTX 4090 export check: 3 s, `1920x1080 h264 24 fps + AAC stereo`, 4.10 s. |
+| One image from the installed app | **FAIL → fixed, re-test pending** | Before the GPU runtime: HTTP 200 with a placeholder SVG and "Install the GPU image runtime packages…" (expected first-run state). Install GPU runtime: took torch **2.14.1+cu130** (driver 591 → the CUDA 13.0 index), 17 packages in ~32 min, then reported "Install completed but CUDA isn't available… `torch 2.14.1+cpu`". Cause: the follow-up packages are pinned to `torch==2.14.1` (local segment stripped on purpose), which PyPI's **CPU** torch satisfies on Windows, so one of them overwrote the CUDA files; the repair pass meant to catch exactly this read the version from the first `torch-*.dist-info`, and the stale `torch-2.14.1+cu130.dist-info` sorts before the new `torch-2.14.1.dist-info`, so it saw CUDA and skipped the repair. Fixed: `_find_installed_torch_version` reads `torch/version.py` first (`4df43569`, test in `test_setup_routes.py`). Needs a rebuilt installer and a second GPU-runtime install to confirm. Old packages from earlier installs (accelerate, bitsandbytes, torchao, two versions each) also sit side by side in `extras\cp312`. |
+| Uninstall leaves no running processes | _pending_ | |
+
+The GPU runtime's packages after torch are not held to `release-constraints.txt` (newest at install time), and the CUDA index list stops at 13.0 although PyTorch publishes CUDA 13.2 builds (torch 2.15.0, against 2.14.1 on 13.0); worth a 13.2 tier for new drivers once tested here.
+
 ## Report back (sections 0 to 6; section 7 waits for your go-ahead)
 
 ### What failed (details and logs in the sections above)

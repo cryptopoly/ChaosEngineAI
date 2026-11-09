@@ -248,6 +248,11 @@ class ProgressTracker:
         ``Event.is_set()`` is already thread-safe and we call it every step."""
         return self._cancel_event.is_set()
 
+    def phase_elapsed(self) -> float:
+        """Seconds spent in the current phase so far (0 when no run is active)."""
+        with self._lock:
+            return max(0.0, time.time() - self._phase_mark) if self._active and self._phase_mark else 0.0
+
     def snapshot(self) -> dict[str, Any]:
         with self._lock:
             now = time.time()
@@ -262,7 +267,6 @@ class ProgressTracker:
                 "startedAt": self._started_at if self._active else 0.0,
                 "updatedAt": self._updated_at,
                 "elapsedSeconds": round(elapsed, 3),
-                "phaseElapsedSeconds": round(max(0.0, now - self._phase_mark), 3) if self._active and self._phase_mark else 0.0,
                 "runLabel": self._run_label,
                 "cancelRequested": self._cancel_event.is_set(),
                 "thumbnail": self._thumbnail,

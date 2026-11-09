@@ -102,7 +102,7 @@ class Job:
         if tracker is not None:
             snap = tracker.snapshot()
             info.update(phase=snap.get("phase"), step=snap.get("step"), totalSteps=snap.get("totalSteps"))
-            step, total, phase_elapsed = snap.get("step") or 0, snap.get("totalSteps") or 0, snap.get("phaseElapsedSeconds") or 0
+            step, total, phase_elapsed = snap.get("step") or 0, snap.get("totalSteps") or 0, tracker.phase_elapsed()
             if step >= 2 and total > step and phase_elapsed > 0 and snap.get("phase") in ("diffusing", "compose"):
                 info["etaSeconds"], info["etaBasis"] = round(phase_elapsed / step * (total - step)), "steps"
         if self.progress_fn is not None:

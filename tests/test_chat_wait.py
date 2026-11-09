@@ -232,10 +232,11 @@ class JobProgressTests(unittest.TestCase):
         self.assertNotIn("etaSeconds", self.job(estimate_seconds=10).describe()["progress"])
 
     def test_steps_pace_gives_an_eta(self):
-        snap = {"phase": "diffusing", "step": 4, "totalSteps": 8, "phaseElapsedSeconds": 20.0}
+        snap = {"phase": "diffusing", "step": 4, "totalSteps": 8}
         with mock.patch("backend_service.mcp_bridge.jobs.IMAGE_PROGRESS") as tracker, \
                 mock.patch.dict("backend_service.mcp_bridge.jobs._TRACKERS", {"image": tracker}):
             tracker.snapshot.return_value = snap
+            tracker.phase_elapsed.return_value = 20.0
             info = self.job(kind="image").describe()["progress"]
         self.assertEqual((info["phase"], info["step"], info["totalSteps"]), ("diffusing", 4, 8))
         self.assertEqual((info["etaSeconds"], info["etaBasis"]), (20, "steps"))

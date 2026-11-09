@@ -242,7 +242,37 @@ def list_voices(*, include_clones: bool = True) -> list[dict[str, Any]]:
     for entry in voices:
         entry["group"] = _GROUPS[entry["kind"]]
         entry["needsFfmpeg"] = no_ffmpeg
+        entry["chatUse"] = chat_uses(entry["kind"])
+        entry["chatCost"] = chat_cost(entry["model"])
     return voices
+
+
+def chat_uses(kind: str) -> dict[str, bool]:
+    """Where a voice may speak in Chat (D-72): read-aloud and calls for quick and natural voices; read-aloud only for
+    cloned ones (the clone rules still apply per request); neither for "Describe a voice", which needs a description
+    each time (saved designed voices are W8)."""
+    return {"read": kind in ("builtin", "preset", "clone"), "call": kind in ("builtin", "preset")}
+
+
+def chat_cost(model_key: str) -> dict[str, Any] | None:
+    """Measured first-audio latency and memory for Chat, from the catalog row (or Kokoro's constant); None when the
+    row has no chat measurement."""
+    from backend_service.catalog.voice_models import KOKORO_CHAT_ESTIMATES, SLOW_FOR_CALLS_S, voice_model  # noqa: PLC0415
+
+    if model_key == "kokoro":
+        est: dict[str, Any] = KOKORO_CHAT_ESTIMATES
+    else:
+        try:
+            est = voice_model(model_key).get("estimates") or {}
+        except (KeyError, ValueError):
+            return None
+    if est.get("chatFirstAudioS") is None:
+        return None
+    return {
+        "firstAudioS": est["chatFirstAudioS"], "firstAudioColdS": est.get("chatFirstAudioColdS"),
+        "peakGb": est.get("chatPeakGb"), "measuredOn": est.get("chatMeasuredOn"),
+        "slowForCalls": float(est["chatFirstAudioS"]) > SLOW_FOR_CALLS_S,
+    }
 
 
 _GROUPS = {"builtin": "quick", "preset": "natural", "design": "designed", "clone": "cloned"}
@@ -561,6 +591,21 @@ def render(plan: Plan, text: str, *, speed: float = 1.0, pitch: float = 0.0, see
     joined = lift_quiet(join_wavs(wavs))
     final = process_audio(joined, 1.0 if plan.native_speed else speed, pitch)
     return Rendered(final, round(wav_info(final)[3], 2), round(seconds, 3), len(sentences), [*plan.notes, *notes])
+
+
+def render_sentence(plan: Plan, sentence: str, *, speed: float = 1.0) -> tuple[bytes, float]:
+    """One sentence already cut by ``prepare_text`` (Chat read-aloud and calls): WAV bytes and audio seconds.
+
+    Kokoro speaks through ``voice_runtime.synthesize`` as before (it applies speed itself); every other model gets the
+    same quiet-lift and ffmpeg speed step as ``render``.
+    """
+    if plan.kind == "kokoro":
+        from backend_service import voice_runtime  # noqa: PLC0415
+
+        return voice_runtime.synthesize(sentence, plan.voice, speed)
+    wav, _took = _speak_chunk(plan, sentence, 1.0, None)
+    final = process_audio(lift_quiet(wav), speed, 0.0)
+    return final, round(wav_info(final)[3], 2)
 
 
 # ---------------------------------------------------------------------------

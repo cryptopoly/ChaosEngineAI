@@ -31,6 +31,11 @@ class MathsTests(unittest.TestCase):
             "secondsPer10sAudio": 2.1, "wallSecondsShortLine": 0.8, "peakGb": 1.72, "idleGb": 1.7,
         })
 
+    def test_chat_estimates_take_the_median_warm_time(self) -> None:
+        est = measure.chat_estimates(measured_on="M", cold_s=4.06, warm_s=[1.3, 0.6, 0.7], peak_gb=3.512)
+        self.assertEqual(est, {"chatMeasuredOn": "M", "chatFirstAudioColdS": 4.1, "chatFirstAudioS": 0.7, "chatPeakGb": 3.51})
+        self.assertEqual(measure.chat_plan("kokoro").kind, "kokoro")
+
     def test_rss_sampler_keeps_the_peak(self) -> None:
         readings = iter([100, 300, 200, 250] + [150] * 1000)
         sampler = measure.RssSampler(1, interval=0.001, reader=lambda _pid: next(readings))

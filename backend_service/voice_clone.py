@@ -359,8 +359,7 @@ def speak(
     from backend_service import voice_library  # noqa: PLC0415
     from backend_service import voice_speak  # noqa: PLC0415
 
-    voice = get_voice(voice_id)
-    if voice is None:
+    if get_voice(voice_id) is None:
         raise LookupError("Cloned voice not found. Its permission record is missing or it was deleted.")
     if origin != "ui" and not permission_confirmed:
         raise ValueError(PERMISSION_REQUIRED)
@@ -369,47 +368,15 @@ def speak(
         raise ValueError("Text is required.")
     if len(text) > max_chars:
         raise ValueError(f"Cloned speech takes up to {max_chars} characters at a time.")
-    if not available_here():
-        raise ValueError(NOT_HERE)
-    if not voice_env.is_installed():
-        raise RuntimeError("The voice pack is not installed. Install it from Voice > Models.")
-    row = pick_clone_model(model_key)
-    folder = snapshot_dir(row)
-    if folder is None:
-        raise RuntimeError(f"{row['name']} is not downloaded. Download it in Voice > Models.")
-    if not voice_env.watermark_installed():
-        raise RuntimeError(safety.WATERMARK_MISSING)
-    reference = voice_library.audio_path(voice_id)
-    if reference is None:
-        raise RuntimeError("This voice's sample is missing. Delete the voice and make it again.")
-    minimum = float(row.get("minReferenceS") or MIN_REFERENCE_S)
-    duration_s = float(voice.get("durationS") or 0.0)
-    if duration_s and duration_s < minimum:
-        raise ValueError(
-            f"{row['name']} needs a voice sample of at least {minimum:g} s; this one is {duration_s:.1f} s. "
-            "Pick another cloning model or record a longer sample."
-        )
-
-    style = " ".join((style or "").split())
-    extra, notes = clone_fields(row, str(reference), str(voice.get("text") or ""), style, language, expression, guidance)
-    plan = voice_speak.plan_for("clone", f"clone:{voice_id}", row, extra)
+    plan, row, voice, notes = clone_plan(
+        voice_id, model_key, origin=origin, permission_confirmed=permission_confirmed, style=style,
+        language=language, expression=expression, guidance=guidance,
+    )
     rendered = voice_speak.render(plan, text, speed=speed, pitch=pitch, seed=seed)
-    wav = rendered.wav
     duration = rendered.duration_s
-    version = _app_version()
+    tagged = mark_cloned(rendered.wav, row, voice_id)
     with tempfile.TemporaryDirectory(prefix="chaosengine-cloned-") as tmp:
         out = Path(tmp) / "speech.wav"
-        out.write_bytes(wav)
-        safety.apply_watermark(out)
-        tagged = safety.tag_wav(
-            out.read_bytes(),
-            {"appVersion": version, "model": row["repo"], "engine": row["engine"],
-             "createdAt": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "voiceId": voice_id,
-             "watermark": "audioseal-0.2.1:CE5A",
-             # A watermark the model adds itself (PerTh on the CUDA Chatterbox rows), recorded so the tag is honest.
-             **({"builtinWatermark": row["builtinWatermark"]} if row.get("builtinWatermark") else {})},
-            f"ChaosEngineAI {version}",
-        )
         out.write_bytes(tagged)
         item = voice_library.create(
             "speech",
@@ -425,6 +392,73 @@ def speak(
                  permissionConfirmed=bool(permission_confirmed))
     return {**item, "seconds": rendered.seconds, "chunks": rendered.chunks, "modelName": row["name"],
             "notes": [*notes, *rendered.notes]}
+
+
+def clone_plan(
+    voice_id: str,
+    model_key: str | None,
+    *,
+    origin: str,
+    permission_confirmed: bool = False,
+    style: str = "",
+    language: str = "auto",
+    expression: float = 0.5,
+    guidance: float = 0.5,
+) -> tuple[Any, dict[str, Any], dict[str, Any], list[str]]:
+    """Every check a cloned voice passes before it speaks, then its plan: ``(plan, row, voice record, notes)``.
+
+    The permission record must exist; agents and other computers must confirm permission; the voice pack, the
+    model and the watermark must be installed; the sample must be long enough for the model. Shared by ``speak``
+    (saved to the Library) and Chat read-aloud (``voice_chat``, not saved), so both follow the same rules.
+    """
+    from backend_service import voice_library  # noqa: PLC0415
+    from backend_service import voice_speak  # noqa: PLC0415
+
+    voice = get_voice(voice_id)
+    if voice is None:
+        raise LookupError("Cloned voice not found. Its permission record is missing or it was deleted.")
+    if origin != "ui" and not permission_confirmed:
+        raise ValueError(PERMISSION_REQUIRED)
+    if not available_here():
+        raise ValueError(NOT_HERE)
+    if not voice_env.is_installed():
+        raise RuntimeError("The voice pack is not installed. Install it from Voice > Models.")
+    row = pick_clone_model(model_key)
+    if snapshot_dir(row) is None:
+        raise RuntimeError(f"{row['name']} is not downloaded. Download it in Voice > Models.")
+    if not voice_env.watermark_installed():
+        raise RuntimeError(safety.WATERMARK_MISSING)
+    reference = voice_library.audio_path(voice_id)
+    if reference is None:
+        raise RuntimeError("This voice's sample is missing. Delete the voice and make it again.")
+    minimum = float(row.get("minReferenceS") or MIN_REFERENCE_S)
+    duration_s = float(voice.get("durationS") or 0.0)
+    if duration_s and duration_s < minimum:
+        raise ValueError(
+            f"{row['name']} needs a voice sample of at least {minimum:g} s; this one is {duration_s:.1f} s. "
+            "Pick another cloning model or record a longer sample."
+        )
+    style = " ".join((style or "").split())
+    extra, notes = clone_fields(row, str(reference), str(voice.get("text") or ""), style, language, expression, guidance)
+    return voice_speak.plan_for("clone", f"clone:{voice_id}", row, extra), row, voice, notes
+
+
+def mark_cloned(wav: bytes, row: dict[str, Any], voice_id: str) -> bytes:
+    """The watermark and the AI tag every piece of cloned speech gets, whatever the model."""
+    version = _app_version()
+    with tempfile.TemporaryDirectory(prefix="chaosengine-cloned-") as tmp:
+        out = Path(tmp) / "speech.wav"
+        out.write_bytes(wav)
+        safety.apply_watermark(out)
+        return safety.tag_wav(
+            out.read_bytes(),
+            {"appVersion": version, "model": row["repo"], "engine": row["engine"],
+             "createdAt": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "voiceId": voice_id,
+             "watermark": "audioseal-0.2.1:CE5A",
+             # A watermark the model adds itself (PerTh on the CUDA Chatterbox rows), recorded so the tag is honest.
+             **({"builtinWatermark": row["builtinWatermark"]} if row.get("builtinWatermark") else {})},
+            f"ChaosEngineAI {version}",
+        )
 
 
 STEERED_NOTE = "VoxCPM2 followed the style; the steered mode trades a little likeness for it."

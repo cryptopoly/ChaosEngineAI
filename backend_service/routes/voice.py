@@ -33,6 +33,15 @@ class SynthesizeRequest(BaseModel):
     speed: float = Field(default=1.0, ge=0.5, le=2.0)
 
 
+class StreamRequest(BaseModel):
+    """Chat read-aloud and voice calls: any listed voice (D-72); ``use`` decides which voices may speak."""
+
+    text: str = Field(min_length=1, max_length=20_000)
+    voice: str = Field(default="af_heart", max_length=64)
+    speed: float = Field(default=1.0, ge=0.5, le=2.0)
+    use: str = Field(default="read", pattern=r"^(read|call)$")
+
+
 class SpeakRequest(BaseModel):
     """One request for every voice: Kokoro, a preset speaker, a designed voice or a cloned voice."""
 
@@ -60,7 +69,9 @@ class SpeakRequest(BaseModel):
 class SettingsRequest(BaseModel):
     sttModel: str | None = Field(default=None, max_length=128)
     language: str | None = Field(default=None, max_length=8)
-    ttsVoice: str | None = Field(default=None, max_length=32)
+    # Chat read-aloud and voice calls: any voice id ``/api/voice/voices`` lists that may speak there (D-72).
+    ttsVoice: str | None = Field(default=None, max_length=64)
+    callVoice: str | None = Field(default=None, max_length=64)
     # The voice last used on the Speak screen (any voice id, ``clone:<id>`` included); "" means none yet.
     speakVoice: str | None = Field(default=None, max_length=64)
     speed: float | None = Field(default=None, ge=0.5, le=2.0)
@@ -162,6 +173,17 @@ def put_settings(request: Request, body: SettingsRequest) -> dict[str, Any]:
         if origin != "ui":
             raise HTTPException(status_code=403, detail="This setting can only be changed in the ChaosEngineAI window.")
         audit("setting", allowAgentCloning=body.allowAgentCloning, origin=origin)
+    for name, use in (("ttsVoice", "read"), ("callVoice", "call")):
+        chosen = getattr(body, name)
+        if chosen is None or (name == "callVoice" and chosen == ""):
+            continue  # callVoice "" means "the same as the chat voice"
+        from backend_service import voice_chat  # noqa: PLC0415
+        from backend_service.voice_clone_safety import clone_allowed  # noqa: PLC0415
+
+        try:
+            voice_chat.check_setting(chosen, use, include_clones=clone_allowed(request))
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
     return save_settings(body.model_dump())
 
 
@@ -379,33 +401,52 @@ def list_voice_models(request: Request) -> dict[str, Any]:
 
 
 @router.post("/api/voice/speak/stream")
-def speak_stream(request: Request, body: SynthesizeRequest) -> StreamingResponse:
-    """Read-aloud: one NDJSON line per sentence, sent as soon as it is spoken.
+def speak_stream(request: Request, body: StreamRequest) -> StreamingResponse:
+    """Read-aloud and voice calls: one NDJSON line per sentence, sent as soon as it is spoken.
 
-    Lines: ``{"index", "total", "text", "audio" (base64 WAV), "durationS"}``,
-    then ``{"done": true}``; a failure ends the stream with ``{"error"}``.
+    Any voice ``/api/voice/voices`` lists may be asked for (D-72); ``use`` is ``read`` or ``call``. When it cannot
+    speak here the Kokoro voice reads instead and a ``{"note", "voice"}`` line comes first (``voice_chat``).
+
+    Lines: ``{"index", "total", "text", "audio" (base64 WAV), "durationS", "voice"}``, then ``{"done": true}``;
+    a failure ends the stream with ``{"error"}``.
     """
-    from backend_service.voice_runtime import synthesize as run  # noqa: PLC0415
-    from backend_service.voice_text import speech_sentences  # noqa: PLC0415
+    from backend_service import voice_chat  # noqa: PLC0415
+    from backend_service import voice_clone_safety as safety  # noqa: PLC0415
 
-    sentences = speech_sentences(body.text)
-    if not sentences:
+    try:
+        chat = voice_chat.plan_stream(body.text, body.voice, use=body.use, origin=safety.request_origin(request))
+    except voice_chat.ChatVoiceRefused as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    if not chat.sentences:
         raise HTTPException(status_code=400, detail="Nothing to read aloud.")
 
     def lines() -> Iterator[str]:
-        for index, sentence in enumerate(sentences):
+        current = chat
+        index = 0
+        sent_notes = 0
+        while index < len(current.sentences):
+            for note in current.notes[sent_notes:]:
+                yield json.dumps({"note": note, "voice": current.voice}) + "\n"
+            sent_notes = len(current.notes)
+            sentence = current.sentences[index]
             try:
-                wav, duration = run(sentence, body.voice, body.speed)
-            except Exception as exc:  # noqa: BLE001 - reported in-stream
-                yield json.dumps({"error": str(exc), "index": index}) + "\n"
-                return
+                wav, duration = voice_chat.speak_sentence(current, sentence, body.speed)
+            except Exception as exc:  # noqa: BLE001 - reported in-stream, or Kokoro takes over
+                if current.plan.kind == "kokoro":
+                    yield json.dumps({"error": str(exc), "index": index}) + "\n"
+                    return
+                current = voice_chat.switch_to_fallback(current, current.sentences[index:], str(exc))
+                index, sent_notes = 0, 0
+                continue
             yield json.dumps({
                 "index": index,
-                "total": len(sentences),
+                "total": len(current.sentences),
                 "text": sentence,
                 "audio": base64.b64encode(wav).decode("ascii"),
                 "durationS": duration,
+                "voice": current.voice,
             }) + "\n"
+            index += 1
         yield json.dumps({"done": True}) + "\n"
 
     return StreamingResponse(lines(), media_type="application/x-ndjson")

@@ -109,7 +109,7 @@ export function LanguageAndExpression({
     <div className="voice-studio__row">
       {controls.languages.length > 0 ? (
         <label className="voice-settings__field">
-          <span>{t("voice.speak.language", { defaultValue: "Language" })}</span>
+          <span>{t("voice.speak.speechLanguage", { defaultValue: "Speech language" })}</span>
           <select className="text-input" value={language} onChange={(e) => onLanguage(e.target.value)}>
             {controls.languages.map((code) => (
               <option key={code} value={code}>

@@ -911,7 +911,8 @@
         "sw": null,
         "tr": null,
         "zh": null
-      }
+      },
+      "speechLanguage": null
     },
     "stop": "yImev",
     "studio": {

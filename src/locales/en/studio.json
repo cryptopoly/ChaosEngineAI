@@ -911,7 +911,8 @@
         "sw": "Swahili",
         "tr": "Turkish",
         "zh": "Chinese"
-      }
+      },
+      "speechLanguage": "Speech language"
     },
     "stop": "Stop",
     "studio": {

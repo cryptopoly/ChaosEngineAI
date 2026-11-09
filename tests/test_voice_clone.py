@@ -52,10 +52,12 @@ class _DataDir(unittest.TestCase):
 
 class CatalogTests(unittest.TestCase):
     def test_rows_are_pinned_and_apache(self) -> None:
-        self.assertEqual({r["key"] for r in voice_models.CLONE_MODELS}, {"qwen3-tts-0.6b", "qwen3-tts-1.7b"})
+        self.assertEqual({r["key"] for r in voice_models.CLONE_MODELS},
+                         {"qwen3-tts-0.6b", "qwen3-tts-1.7b", "chatterbox-turbo", "voxcpm2", "chatterbox-mtl"})
         for row in voice_models.CLONE_MODELS:
             self.assertRegex(row["revision"], r"^[0-9a-f]{40}$")
-            self.assertTrue(row["repo"].startswith("mlx-community/Qwen3-TTS-12Hz-") and row["repo"].endswith("-Base-bf16"))
+            self.assertTrue(row["repo"].startswith("mlx-community/"))
+            self.assertIn(row["licence"]["id"], ("apache-2.0", "mit"))
         self.assertEqual(voice_models.CLONE_LICENCE["id"], "apache-2.0")
         self.assertEqual(sum(r["default"] for r in voice_models.CLONE_MODELS), 1)
         self.assertEqual(voice_models.clone_model("")["key"], "qwen3-tts-0.6b")
@@ -65,12 +67,12 @@ class CatalogTests(unittest.TestCase):
     def test_listed_rows_carry_the_measured_estimates_with_basis_and_machine(self) -> None:
         with mock.patch.object(voice_clone, "snapshot_dir", return_value=None):
             rows = voice_clone.list_models(every_model=True)
-        self.assertEqual(len(rows), len(voice_models.VOICE_MODELS))
+        self.assertEqual(len(rows), len(voice_models.listed_models()))
         for listed in rows:
             catalog = voice_models.voice_model(listed["key"])["estimates"]
             self.assertEqual(listed["estimates"], catalog)
             self.assertEqual(listed["estimates"]["basis"], "measured")
-            self.assertIn("2026-11-08", listed["estimates"]["measuredOn"])
+            self.assertRegex(listed["estimates"]["measuredOn"], r"2026-11-0[89]")
             self.assertIn("peakGb", listed["estimates"])
             self.assertIn("secondsPer10sAudio", listed["estimates"])
         # A copy: changing the API row never changes the catalog.
@@ -266,7 +268,7 @@ class DownloadTests(unittest.TestCase):
             voice_clone._DOWNLOADS.clear()
             voice_clone.start_download("qwen3-tts-0.6b")
         row = voice_models.clone_model("qwen3-tts-0.6b")
-        weights.assert_called_once_with(row["repo"], revision=row["revision"])
+        weights.assert_called_once_with(row["repo"], revision=row["revision"], allow_patterns=None)
         install.assert_called_once()
         return voice_clone._DOWNLOADS["qwen3-tts-0.6b"]
 
@@ -341,7 +343,7 @@ class RouteTests(unittest.TestCase):
 
     def test_models_listing(self) -> None:
         body = self.client.get("/api/voice/clone/models").json()
-        self.assertEqual(len(body["models"]), 2)
+        self.assertEqual(len(body["models"]), len(voice_models.CLONE_MODELS))
         self.assertTrue(body["allowedHere"])
         self.assertTrue(all(re.fullmatch(r"[0-9a-f]{40}", m["revision"]) for m in body["models"]))
 

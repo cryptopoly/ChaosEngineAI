@@ -1,13 +1,31 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 71 rows with work, decisions or watch items still open, newest first.
+summary: 73 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-155 · Speech GPU add-on and CUDA speech rows: run them on the RTX 4090 — Open (2026-11-09): written on a Mac, never run.</summary>
+
+**Status or trigger:** **Open (2026-11-09): written on a Mac, never run.**
+
+**Notes:** `voice_env.speech_gpu_commands` (torch 2.9.1 cu128, a hand-picked dependency list, `chatterbox-tts` and `voxcpm` with `--no-deps`), `voice_worker_torch.py` (Chatterbox and VoxCPM2 on PyTorch, Orpheus GGUF through llama-server plus the SNAC ONNX decoder), rows in `catalog/voice_models_cuda.py` (not offered until measured; `CHAOSENGINE_VOICE_UNMEASURED=1` lists them). Checklist in docs/plans/rtx4090-test.md section 2.1: imports, which Turbo decoder file is read, PerTh after speed and pitch, VRAM and speed into `estimates`, Japanese without pykakasi (GPL, left out), no stray llama-server.
+
+</details>
+
+<details>
+<summary>FU-154 · Default cloning model: VoxCPM2 or Qwen3-TTS 0.6B Base (owner listening check) — Open (2026-11-09): waiting for the owner's ears (D-70 answer 2).</summary>
+
+**Status or trigger:** **Open (2026-11-09): waiting for the owner's ears (D-70 answer 2).**
+
+**Notes:** Listen to `~/.chaosengine/voice/wave2-listening/clone-*.wav` (same synthetic Kokoro sample `reference-kokoro-af_heart.wav`, same text, all watermarked). To switch, set `DEFAULT_CLONE_MODEL = "voxcpm2"` in `backend_service/catalog/voice_models.py` and update the default-model tests. Also fill the rows' `rank` from the same check, and say whether Turbo's style tags (`turbo-style-*.wav`) and sound tags (`turbo-tags.wav`, `orpheus-*.wav`) land.
+
+</details>
 
 <details>
 <summary>FU-153 · Chat waits for long jobs, times on messages and tools, job progress with time left — Built 2026-11-09 on feat/chat-time-progress (from release/v0.10.0)</summary>
@@ -46,11 +64,11 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 </details>
 
 <details>
-<summary>FU-149 · Better speech models than Kokoro and Qwen3-TTS presets — Open (2026-11-08): decided as D-70 (owner wants VoxCPM2, Chatterbox and Turbo, Orpheus 3B)</summary>
+<summary>FU-149 · Better speech models than Kokoro and Qwen3-TTS presets — Mac rows shipped 2026-11-09 on feat/voice-models-wave2 (D-70 P0 to P5)</summary>
 
-**Status or trigger:** **Open (2026-11-08): decided as D-70 (owner wants VoxCPM2, Chatterbox and Turbo, Orpheus 3B); research plan first, build after the voice UX packages.**
+**Status or trigger:** **Mac rows shipped 2026-11-09 on `feat/voice-models-wave2` (D-70 P0 to P5); CUDA lane written, unverified (FU-155); listening check open (FU-154).**
 
-**Notes:** Candidates from docs/plans/voice-rework/research-models.md: VoxCPM2 (permissive licence, voice design and cloning, 48 kHz), Chatterbox and Chatterbox-Turbo (emotion dial, laugh tags), Orpheus 3B (most natural English presets, heavy, use the community mirror). Measure each on the M4 Max and the 4090 before adding a catalog row. Kokoro stays as the fast lane.
+**Notes:** Chatterbox-Turbo, VoxCPM2, Chatterbox Multilingual V3 (default voice from the V2 8-bit `conds.safetensors`) and Orpheus 3B (`mlx-community` 8-bit) are catalog rows with pinned companions, measured on the M4 Max with `scripts/measure-voice-models.py`: Turbo 2.1 s per 10 s, 1.72 GB; VoxCPM2 5.22 s, 3.8 GB; Chatterbox V3 3.63 s, 3.67 GB; Orpheus 7.22 s, 4.19 GB. Sound-tag chips (Turbo's ten style tags shown as undocumented), Chatterbox language, Expression and Guidance, VoxCPM2 design and exact or steered cloning, Orpheus presets; every cloning model gets the AudioSeal mark, the AI tag and the permission rules. Turbo's built-in voice is put back after a clone (mlx-audio leaves the cloned voice on the model). `rank` stays empty until the listening check.
 
 </details>
 
@@ -104,7 +122,7 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 
 **Status or trigger:** **Open (2026-11-08): backend landed on `feat/voice-rework`; these parts deferred.**
 
-**Notes:** Not built: a saved designed voice (design, then clone from the clip so the voice stays the same), a `language` field on `POST /api/voice/speak` (language is `auto` today), server-side `[pause]` handling (the screen still cuts at it), streaming audio for the new route, the CUDA path for the new Qwen3-TTS rows (`qwen-tts`), and listening checks. **Real run done 2026-11-08 (M4 Max, 64 GB):** all five Qwen3-TTS rows speak through `POST /api/voice/speak` with real weights; timings and memory are in the catalog `estimates` (CustomVoice 0.6B 2.9 GB, 1.7B 3.5 GB, VoiceDesign 3.5 GB, Base clones 4.3 and 6.5 GB; about 2.5 s of wall time per 10 s of speech on the three speak rows, 3.2 to 3.6 s on clones; the 0.6B rows are not quicker than the 1.7B 8-bit rows, so the old Faster/Slower row text is gone). Seed repeats exactly, speed 1.3 gives 1/1.3 of the length, Cancel stops in under 0.1 s and the next job reloads (about 4 s). Fixed: very quiet clone samples gave very quiet speech (peak 0.04), so quiet speech is now lifted. Nobody has listened to the WAVs yet (style, design and clone quality unverified); response `model` is a repo id for clones but a catalog key for other voices.
+**Notes:** Not built: a saved designed voice (design, then clone from the clip so the voice stays the same), a `language` field on `POST /api/voice/speak` (done 2026-11-09 with D-70: `language`, `expression`, `guidance`; Chatterbox V3 uses the code, Qwen3-TTS maps its ten), server-side `[pause]` handling (the screen still cuts at it), streaming audio for the new route, the CUDA path for the new Qwen3-TTS rows (`qwen-tts`), and listening checks. **Real run done 2026-11-08 (M4 Max, 64 GB):** all five Qwen3-TTS rows speak through `POST /api/voice/speak` with real weights; timings and memory are in the catalog `estimates` (CustomVoice 0.6B 2.9 GB, 1.7B 3.5 GB, VoiceDesign 3.5 GB, Base clones 4.3 and 6.5 GB; about 2.5 s of wall time per 10 s of speech on the three speak rows, 3.2 to 3.6 s on clones; the 0.6B rows are not quicker than the 1.7B 8-bit rows, so the old Faster/Slower row text is gone). Seed repeats exactly, speed 1.3 gives 1/1.3 of the length, Cancel stops in under 0.1 s and the next job reloads (about 4 s). Fixed: very quiet clone samples gave very quiet speech (peak 0.04), so quiet speech is now lifted. Nobody has listened to the WAVs yet (style, design and clone quality unverified); response `model` is a repo id for clones but a catalog key for other voices.
 
 </details>
 

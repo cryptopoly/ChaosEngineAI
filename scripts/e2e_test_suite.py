@@ -29,6 +29,7 @@ import argparse
 import base64
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -2211,8 +2212,76 @@ def phase_8(cap: Capability) -> PhaseResult:
             return "fail", f"settings save HTTP {code}", {}
         return "pass", "", {"keys": sorted(json.loads(body.decode("utf-8")))}
 
+    models_payload: dict[str, Any] = {}
+
+    def _speech_model_catalog():
+        """Wave-2 rows (D-70): every listed row has a pinned revision, a licence, a family, controls and companions."""
+        code, body = _voice_http("GET", "/api/voice/models", timeout=20.0)
+        if code == 404:
+            return "skip", "voice routes not present in this build", {}
+        if code != 200:
+            return "fail", f"voice models HTTP {code}", {}
+        models_payload.update(json.loads(body.decode("utf-8")))
+        rows = models_payload.get("models", [])
+        wave2 = [r for r in rows if r.get("family") in ("chatterbox-turbo", "voxcpm2", "chatterbox", "orpheus")]
+        for row in rows:
+            if not re.fullmatch(r"[0-9a-f]{40}", str(row.get("revision"))):
+                return "fail", f"{row.get('key')} has no pinned revision", {}
+            if not (row.get("licence") or {}).get("id") or not row.get("family") or "controls" not in row:
+                return "fail", f"{row.get('key')} lacks licence, family or controls", {}
+            for companion in row.get("companions", []):
+                if not re.fullmatch(r"[0-9a-f]{40}", str(companion.get("revision"))) or not companion.get("files"):
+                    return "fail", f"{row.get('key')} companion {companion.get('repo')} is not pinned", {}
+            if row.get("family") != "qwen3-tts" and (row.get("estimates") or {}).get("basis") != "measured":
+                return "fail", f"{row.get('key')} is listed without measured numbers", {}
+        return "pass", "", {"rows": len(rows), "wave2": sorted(r["key"] for r in wave2)}
+
+    def _speak_each_wave2_model():
+        """One short line per downloaded wave-2 row; the WAV comes back at the row's sample rate."""
+        rows = [r for r in models_payload.get("models", []) if r.get("family") in ("chatterbox-turbo", "voxcpm2", "chatterbox", "orpheus")]
+        if not rows:
+            return "skip", "no wave-2 speech rows listed in this build", {}
+        installed = [r for r in rows if r.get("installed")]
+        if not installed:
+            return "skip", "no wave-2 speech model downloaded (Voice Models)", {}
+        voice_for = {"chatterbox-turbo": "chatterbox-turbo", "chatterbox": "chatterbox", "orpheus": "orpheus:tara", "voxcpm2": "design"}
+        spoken = {}
+        import io
+        import wave as wave_module
+
+        for row in installed:
+            request = {"text": "A short end to end check.", "voice": voice_for[row["family"]], "model": row["key"]}
+            if row["family"] == "voxcpm2":
+                request["style"] = "A calm, clear adult voice."
+            code, body = _voice_http("POST", "/api/voice/speak", body=json.dumps(request).encode("utf-8"),
+                                     content_type="application/json", timeout=600.0)
+            if code != 200:
+                return "fail", f"{row['key']} speak HTTP {code}: {body[:200]!r}", {}
+            wav = base64.b64decode(json.loads(body.decode("utf-8"))["audio"])
+            with wave_module.open(io.BytesIO(wav)) as handle:
+                rate = handle.getframerate()
+            if rate != row.get("sampleRate"):
+                return "fail", f"{row['key']} answered at {rate} Hz, expected {row.get('sampleRate')}", {}
+            spoken[row["key"]] = rate
+        return "pass", "", {"spoken": spoken}
+
+    def _clone_needs_a_permission_record():
+        """Every wave-2 cloning model goes through the one clone path: a voice without its permission record is
+        refused (404) before any model runs. Agent refusal and the watermark are covered per model in pytest."""
+        rows = [r for r in models_payload.get("models", []) if r.get("family") in ("chatterbox-turbo", "voxcpm2", "chatterbox")]
+        if not rows:
+            return "skip", "no wave-2 cloning rows listed in this build", {}
+        for row in rows:
+            payload = json.dumps({"text": "Hello.", "voice": "clone:1790000000_deadbeef", "model": row["key"]}).encode("utf-8")
+            code, body = _voice_http("POST", "/api/voice/speak", body=payload, content_type="application/json", timeout=30.0)
+            if code != 404 or b"permission record" not in body:
+                return "fail", f"{row['key']}: expected 404 for a voice without a permission record, got {code}", {}
+        return "pass", "", {"models": [r["key"] for r in rows]}
+
     for name, fn in [
         ("voice-runtime", _runtime), ("stt platform sources", _stt_sources),
+        ("speech model catalog", _speech_model_catalog), ("speak with each wave-2 model", _speak_each_wave2_model),
+        ("wave-2 clone needs a permission record", _clone_needs_a_permission_record),
         ("voice settings", _settings_roundtrip), ("read-aloud stream", _speak_stream),
         ("voice call turn detector", _vad_turn),
         ("stt rejects unknown model", _stt_rejects_unknown_model),

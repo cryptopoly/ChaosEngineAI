@@ -1,6 +1,6 @@
 /** Pure rules for the Speak and Voices screens: which model runs, whether the style box is usable. */
 
-import type { VoiceEntry, VoiceModelRow } from "../../../types";
+import type { VoiceEntry, VoiceModelRow, VoiceSliderRange } from "../../../types";
 
 export const DESIGN_VOICE_ID = "design";
 export const MAX_SPEAK_CHARS = 200_000;
@@ -52,9 +52,12 @@ export function costLabel(model: VoiceModelRow | null): CostLabel {
 export function chooseModel(voice: VoiceEntry | null, models: VoiceModelRow[], preferredKey = ""): VoiceModelRow | null {
   if (!voice || voice.kind === "builtin") return null;
   const rows = voice.models.map((key) => models.find((m) => m.key === key)).filter((m): m is VoiceModelRow => Boolean(m));
-  // A cloning model the person picked, when it is downloaded.
-  const preferred = voice.kind === "clone" ? rows.find((m) => m.key === preferredKey && m.installed) : undefined;
+  // A cloning or design model the person picked, when it is downloaded.
+  const choosable = voice.kind === "clone" || voice.kind === "design";
+  const preferred = choosable ? rows.find((m) => m.key === preferredKey && m.installed) : undefined;
   if (preferred) return preferred;
+  // Designed voices: the first installed design model in catalog order (the backend does the same).
+  if (voice.kind === "design") return rows.find((m) => m.installed) ?? rows[0] ?? null;
   const rank = (m: VoiceModelRow) => [m.capabilities.style ? 0 : 1, m.sizeGb] as const;
   const sort = (list: VoiceModelRow[]) =>
     [...list].sort((a, b) => {
@@ -74,21 +77,38 @@ export function installedCloneModels(voice: VoiceEntry | null, models: VoiceMode
     .filter((m): m is VoiceModelRow => Boolean(m && m.installed));
 }
 
+/** The downloaded design models (Qwen3-TTS VoiceDesign, VoxCPM2); the Speak screen offers a choice when there are two. */
+export function installedDesignModels(voice: VoiceEntry | null, models: VoiceModelRow[]): VoiceModelRow[] {
+  if (!voice || voice.kind !== "design") return [];
+  return voice.models
+    .map((key) => models.find((m) => m.key === key))
+    .filter((m): m is VoiceModelRow => Boolean(m && m.installed));
+}
+
 export interface StyleState {
   /** Whether the style box can be edited. */
   enabled: boolean;
   /** Why it cannot, in a key the screen translates. */
-  reason: "builtin" | "clone" | "smallModel" | "none";
+  reason: "builtin" | "clone" | "smallModel" | "tags" | "expression" | "none";
   /** A model to download to unlock style (preset voices only). */
   unlockWith: VoiceModelRow | null;
 }
 
-/** Style is usable for a design voice (the box is its description) and for a preset when a style model is installed. */
-export function styleState(voice: VoiceEntry | null, models: VoiceModelRow[]): StyleState {
+/**
+ * Style is usable for a design voice (the box is its description), for a preset when a style model is installed, and
+ * for a cloned voice on VoxCPM2 (its steered mode). Chatterbox-Turbo and Orpheus take tags in the text instead;
+ * Chatterbox V3 takes the Expression slider. ``model`` is the model that will run (``chooseModel``).
+ */
+export function styleState(voice: VoiceEntry | null, models: VoiceModelRow[], model: VoiceModelRow | null = null): StyleState {
   if (!voice) return { enabled: false, reason: "none", unlockWith: null };
   if (voice.kind === "builtin") return { enabled: false, reason: "builtin", unlockWith: null };
-  if (voice.kind === "clone") return { enabled: false, reason: "clone", unlockWith: null };
+  if (voice.kind === "clone") {
+    if (model?.family === "voxcpm2") return { enabled: true, reason: "none", unlockWith: null };
+    return { enabled: false, reason: "clone", unlockWith: null };
+  }
   if (voice.kind === "design") return { enabled: true, reason: "none", unlockWith: null };
+  if (voice.family === "chatterbox-turbo" || voice.family === "orpheus") return { enabled: false, reason: "tags", unlockWith: null };
+  if (voice.family === "chatterbox") return { enabled: false, reason: "expression", unlockWith: null };
   const styled = voice.models.map((key) => models.find((m) => m.key === key)).filter((m): m is VoiceModelRow => Boolean(m && m.capabilities.style));
   if (styled.some((m) => m.installed)) return { enabled: true, reason: "none", unlockWith: null };
   return { enabled: false, reason: "smallModel", unlockWith: styled[0] ?? null };
@@ -125,6 +145,54 @@ export function canGenerate(voice: VoiceEntry | null, text: string, style: strin
 export function ffmpegBlocked(voice: VoiceEntry | null, speed: number, pitch: number): boolean {
   if (!voice?.needsFfmpeg) return false;
   return pitch !== 0 || (voice.kind !== "builtin" && Math.abs(speed - 1) > 1e-6);
+}
+
+/** What the screen draws for the model that runs: tag chips, the language select, Expression and Guidance. */
+export interface VoiceControls {
+  tags: string[];
+  /** Turbo's style tokens; shown with a note that their authors do not document them. */
+  styleTags: string[];
+  languages: string[];
+  expression: VoiceSliderRange | null;
+  guidance: VoiceSliderRange | null;
+}
+
+const NO_CONTROLS: VoiceControls = { tags: [], styleTags: [], languages: [], expression: null, guidance: null };
+
+export function voiceControls(model: VoiceModelRow | null): VoiceControls {
+  if (!model) return NO_CONTROLS;
+  const c = model.controls ?? {};
+  return {
+    tags: model.capabilities.tags ? (c.tags ?? []) : [],
+    styleTags: model.capabilities.tags ? (c.styleTags ?? []) : [],
+    languages: model.capabilities.languageSelect ? (c.languages ?? []) : [],
+    expression: model.capabilities.expression ? (c.expression ?? null) : null,
+    guidance: model.capabilities.expression ? (c.guidance ?? null) : null,
+  };
+}
+
+/** The language select starts on the UI language when the model speaks it, else English, else the first. */
+export function defaultLanguage(languages: string[], uiLanguage: string): string {
+  const base = baseLanguage(uiLanguage);
+  if (languages.includes(base)) return base;
+  if (languages.includes("en")) return "en";
+  return languages[0] ?? "auto";
+}
+
+/** Insert ``[tag]`` at the cursor with a space on either side as needed; returns the text and the new cursor. */
+export function insertTag(text: string, start: number, end: number, tag: string): { text: string; cursor: number } {
+  const before = text.slice(0, Math.max(0, start));
+  const after = text.slice(Math.max(start, end));
+  const left = before === "" || /\s$/.test(before) ? "" : " ";
+  const right = after === "" || /^\s/.test(after) ? "" : " ";
+  const piece = `${left}[${tag}]${right}`;
+  return { text: before + piece + after, cursor: before.length + piece.length };
+}
+
+/** A cloned voice's sample is shorter than the model asks for (Chatterbox-Turbo wants 5 s). */
+export function sampleTooShort(voice: VoiceEntry | null, model: VoiceModelRow | null): boolean {
+  if (!voice || voice.kind !== "clone" || !model?.minReferenceS || voice.durationS == null) return false;
+  return voice.durationS < model.minReferenceS;
 }
 
 /** Whether a request-sized piece of text is too long for one cloned-voice request. */

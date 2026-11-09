@@ -89,6 +89,42 @@ describe("SpeakScreen cloning model and voice picker", () => {
     expect(radios.find((r) => r.includes('tabindex="0"'))).toContain('data-voice-id="qwen3:Ryan"');
   });
 
+  it("draws Turbo's tag chips, with its undocumented style tags labelled as such", () => {
+    const turbo: VoiceModelRow = {
+      key: "chatterbox-turbo", name: "Chatterbox-Turbo", summary: "", repo: "r", sizeGb: 0.71, languages: "English", default: false, kind: "turbo",
+      family: "chatterbox-turbo", capabilities: { ...caps, clone: true, tags: true, presets: true },
+      controls: { tags: ["laugh", "clear throat"], styleTags: ["whispering"] }, supported: true, installed: true, download: { state: "idle", error: null },
+    };
+    const turboVoice: VoiceEntry = { id: "chatterbox-turbo", name: "Turbo", kind: "preset", family: "chatterbox-turbo", language: "en", model: "chatterbox-turbo", models: ["chatterbox-turbo"], capabilities: caps, available: true };
+    const html = renderToStaticMarkup(
+      <SpeakScreen catalog={{ ...catalog, voices: [...voices, turboVoice], models: [...models, turbo] }} voiceId="chatterbox-turbo" onVoiceChange={() => {}} />,
+    );
+    expect(html).toContain("[Laugh]");
+    expect(html).toContain("[Clear throat]");
+    expect(html).toContain("[Whispering]");
+    expect(html).toContain("its authors do not document them");
+    expect(html).toContain("takes sound tags in the text");
+    // Kokoro gets no chips.
+    expect(renderToStaticMarkup(<SpeakScreen catalog={catalog} voiceId="af_heart" onVoiceChange={() => {}} />)).not.toContain("[Laugh]");
+  });
+
+  it("draws Chatterbox's language select, Expression and Guidance from the catalog", () => {
+    const range = { min: 0, max: 1, step: 0.05, default: 0.5 };
+    const mtl: VoiceModelRow = {
+      key: "chatterbox-mtl", name: "Chatterbox Multilingual V3", summary: "", repo: "r", sizeGb: 2.71, languages: "23 languages", default: false, kind: "chatterbox",
+      family: "chatterbox", capabilities: { ...caps, clone: true, expression: true, languageSelect: true },
+      controls: { languages: ["de", "en"], expression: range, guidance: range }, supported: true, installed: true, download: { state: "idle", error: null },
+    };
+    const mtlVoice: VoiceEntry = { id: "chatterbox", name: "Chatterbox", kind: "preset", family: "chatterbox", language: "auto", model: "chatterbox-mtl", models: ["chatterbox-mtl"], capabilities: caps, available: true };
+    const html = renderToStaticMarkup(
+      <SpeakScreen catalog={{ ...catalog, voices: [...voices, mtlVoice], models: [...models, mtl] }} voiceId="chatterbox" onVoiceChange={() => {}} />,
+    );
+    expect(html).toContain("Expression (calm to dramatic)");
+    expect(html).toContain("Follow the voice sample closely");
+    expect(html).toContain(">German<");
+    expect(html).toContain("use the Expression slider");
+  });
+
   it("links the greyed-out style box to its reason", () => {
     const html = renderToStaticMarkup(<SpeakScreen catalog={catalog} voiceId="af_heart" onVoiceChange={() => {}} />);
     expect(html).toContain('aria-describedby="voice-speak-style-reason"');

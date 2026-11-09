@@ -332,7 +332,7 @@ def get_voice_capabilities() -> dict[str, Any]:
         "extras": [
             {"id": name, "label": label, "installed": name in voice_env.installed_extras()}
             for name, (lanes, _specs, label) in voice_env.EXTRAS.items()
-            if lane in lanes
+            if lane in lanes and (name != "speech-gpu" or voice_env.speech_gpu_supported()[0])
         ],
         "installedAt": marker.get("installedAt") if installed else None,
         "workerPid": worker_pid(),

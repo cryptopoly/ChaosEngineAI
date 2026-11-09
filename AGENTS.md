@@ -89,7 +89,7 @@ One line per tool: what it does and the arguments that matter. `*` marks a requi
   what the model supports. Reference images only work on models with `acceptsImageInput`; others refuse, they never ignore.
 - `generate_video`: `prompt`*, `model`, `seconds` (not frames), `width`, `height`, `fps`, `seed`, `start_image`, `end_image`,
   `image_strength`. Takes minutes. `start_image` and `end_image` are for LTX-2 models.
-- `speak`: text to speech (`text`*, `voice`, `speed`, `style`, `pitch`). Cancellable.
+- `speak`: text to speech (`text`*, `voice`, `speed`, `style`, `pitch`, `language`, `expression`, `guidance`; the last three are for Chatterbox voices, others ignore them). Sound tags such as `[laugh]` work with the Chatterbox-Turbo and Orpheus voices and are removed for the rest. Cancellable.
 - `speak_cloned`: speech in a cloned voice (`voice_id`*, `text`*, `permission_confirmed`* must be `true`). See Cloned voices.
 - `list_cloned_voices`: cloned voices the person made in the app, with ids. Needs the `clone` scope.
 - `make_music`: a song or `instrumental`; `caption`* (style), `lyrics`, `seconds` 10 to 600, `bpm`, `key`, `seed`, `variations` 1, 2 or 4.

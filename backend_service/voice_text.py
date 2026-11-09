@@ -86,6 +86,85 @@ def split_sentences(text: str, max_chars: int = 400) -> list[str]:
     return sentences
 
 
+# ---------------------------------------------------------------------------
+# Sound tags (D-70): people write ``[laugh]``; each model gets what it understands
+# ---------------------------------------------------------------------------
+
+# Every tag name any speech model knows. Only these are treated as tags; other bracketed text ("[1]", "[sic]")
+# is left to be read as it is.
+KNOWN_TAGS = frozenset({
+    "laugh", "chuckle", "sigh", "gasp", "cough", "clear throat", "sniff", "sniffle", "groan", "shush", "yawn",
+    "angry", "fear", "surprised", "whispering", "advertisement", "dramatic", "narration", "crying", "happy",
+    "sarcastic",
+})
+# Orpheus spells some tags its own way.
+_ANGLE_NAMES = {"sniff": "sniffle"}
+_TAG_RE = re.compile(r"\[\s*([A-Za-z][A-Za-z ]{0,24}?)\s*\]")
+_TAG_ONLY_RE = re.compile(r"^(?:\s*\[\s*[A-Za-z][A-Za-z ]{0,24}?\s*\]\s*)+[.!?,;:]*\s*$")
+
+
+def _tag_name(match: re.Match[str]) -> str:
+    return " ".join(match.group(1).lower().split())
+
+
+def apply_tags(sentence: str, allowed: frozenset[str] | set[str], style: str) -> tuple[str, bool]:
+    """Rewrite the sound tags in one cleaned sentence for a model; returns ``(text, stripped_any)``.
+
+    ``style`` "keep" leaves ``[laugh]`` for a model that reads it (Chatterbox-Turbo), "angle" writes ``<laugh>``
+    (Orpheus; run after ``clean_for_speech`` so its HTML rule never sees them), "strip" removes them. A tag the
+    model does not know (not in ``allowed``) is removed in every style, so no voice reads "laugh" aloud.
+    """
+    stripped = False
+
+    def replace(match: re.Match[str]) -> str:
+        nonlocal stripped
+        name = _tag_name(match)
+        if name not in KNOWN_TAGS:
+            return match.group(0)
+        if style == "angle":
+            name = _ANGLE_NAMES.get(name, name)
+        if style == "strip" or name not in allowed:
+            stripped = True
+            return " "
+        return f"<{name}>" if style == "angle" else f"[{name}]"
+
+    text = _TAG_RE.sub(replace, sentence)
+    text = _SPACES_RE.sub(" ", text).strip()
+    # "Hi [laugh] ." -> "Hi ." -> "Hi."
+    text = re.sub(r"\s+([.!?,;:])", r"\1", text)
+    return text, stripped
+
+
+def keep_tags_with_sentences(sentences: list[str]) -> list[str]:
+    """A piece that is only tags ("[laugh].") joins the sentence before it (or the next when it is first)."""
+    out: list[str] = []
+    pending = ""
+    for sentence in sentences:
+        if _TAG_ONLY_RE.match(sentence) and any(_tag_name(m) in KNOWN_TAGS for m in _TAG_RE.finditer(sentence)):
+            tags = sentence.rstrip(".!?,;: ")
+            if out:
+                out[-1] = f"{out[-1]} {tags}"
+            else:
+                pending = f"{pending} {tags}".strip()
+            continue
+        out.append(f"{pending} {sentence}".strip() if pending else sentence)
+        pending = ""
+    if pending:
+        out.append(pending)
+    return out
+
+
+def guard_leading_paren(sentence: str) -> str:
+    """VoxCPM2 reads text that starts with "(" as a voice description; drop that bracket pair so it is spoken."""
+    stripped = sentence.lstrip()
+    if not stripped.startswith("("):
+        return sentence
+    close = stripped.find(")")
+    inner = stripped[1:close] if close > 0 else stripped[1:]
+    rest = stripped[close + 1:] if close > 0 else ""
+    return " ".join(f"{inner}{rest}".split())
+
+
 def speech_sentences(text: str) -> list[str]:
     """Clean ``text`` and split it, capped at ``MAX_SPEAK_CHARS``."""
     cleaned = clean_for_speech(text[:MAX_SPEAK_CHARS])

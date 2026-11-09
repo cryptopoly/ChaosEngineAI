@@ -234,7 +234,10 @@ class TranscribeOptionsTests(unittest.TestCase):
             mock.patch.object(voice_env, "is_installed", return_value=True),
             mock.patch.object(voice_env, "read_marker", return_value={"features": ["vad"]}),
         ):
-            self.assertEqual(voice_env.missing_features(), ["speakers"])
+            with mock.patch.object(voice_env, "lane", return_value="portable"):
+                self.assertEqual(voice_env.missing_features(), ["speakers"])
+            with mock.patch.object(voice_env, "lane", return_value="mlx"):
+                self.assertEqual(voice_env.missing_features(), ["speakers", "speech-wave2"])
         with mock.patch.object(voice_env, "is_installed", return_value=False):
             self.assertEqual(voice_env.missing_features(), [])
 

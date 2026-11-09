@@ -102,6 +102,13 @@ TOOLS: list[dict[str, Any]] = [
                     "maxLength": 500,
                     "description": "Style instruction for preset voices on the 1.7B model, or the voice description for the design voice.",
                 },
+                "language": {
+                    "type": "string",
+                    "maxLength": 8,
+                    "description": "Language code (en, de, ja ...) or auto. Chatterbox voices speak the chosen language.",
+                },
+                "expression": {"type": "number", "minimum": 0, "maximum": 1, "description": "Chatterbox: calm (0) to dramatic (1); default 0.5."},
+                "guidance": {"type": "number", "minimum": 0, "maximum": 1, "description": "Chatterbox: how closely a voice sample is followed; default 0.5."},
                 **_PROJECT_PROPS,
             },
             ["text"],
@@ -430,13 +437,18 @@ def speak(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
     speed = float(args.get("speed", settings.get("speed", 1.0)))
     pitch = float(args.get("pitch", 0.0))
     style = str(args.get("style") or "")
+    controls = {
+        "language": str(args.get("language") or "auto"),
+        "expression": float(args.get("expression", 0.5)),
+        "guidance": float(args.get("guidance", 0.5)),
+    }
     ready = {v["id"] for v in bridge_models.list_voices()}
     if args.get("voice") and voice not in ready:
         raise ToolError(f"Voice '{voice}' is not available. Call list_voices.")
     scope = project_scope(args)
 
     def run() -> tuple[dict[str, Any], list[str]]:
-        result = voice_speak.speak(text, voice, style=style, speed=speed, pitch=pitch, origin="agent")
+        result = voice_speak.speak(text, voice, style=style, speed=speed, pitch=pitch, origin="agent", **controls)
         wav, duration = result["wav"], result["durationS"]
         with tempfile.NamedTemporaryFile(prefix="chaosengine-agent-", suffix=".wav", delete=False) as tmp:
             tmp.write(wav)

@@ -1,26 +1,87 @@
-"""Qwen3-TTS speech models through mlx-audio: Base (clone), CustomVoice (preset speakers plus a style
-instruction) and VoiceDesign (a voice from a description) (D-28, D-45, D-58).
+"""Speech models that run through mlx-audio in the voice worker (D-28, D-45, D-58, D-70).
 
-Only engines wired end to end are listed. Each row pins a full Hugging Face revision (Base rows checked on
-2026-11-07, CustomVoice and VoiceDesign rows on 2026-11-08, through the Hub API, Apache-2.0, not gated), so
-a repo update upstream cannot change what users run until this table changes. Sizes are the repo totals on
-that day. Apple Silicon only for now: the CUDA path (``qwen-tts`` / transformers) is a follow-up.
+Qwen3-TTS: Base (clone), CustomVoice (preset speakers plus a style instruction) and VoiceDesign (a voice from a
+description). Wave 2 (D-70, FU-149): Chatterbox-Turbo (built-in voice, sound tags, clone), VoxCPM2 (design and
+two cloning modes, 30 languages, 48 kHz), Chatterbox Multilingual V3 (23 languages, Expression and Guidance,
+clone) and Orpheus 3B (eight preset voices, sound tags, no cloning).
 
-``capabilities`` says what a row can do: ``speak`` (plain text to speech with a preset or designed voice),
-``style`` (a written style instruction; the 0.6B CustomVoice model ignores it), ``clone`` (a voice from a
-reference clip) and ``design`` (a voice from a description). No 0.6B VoiceDesign model exists upstream.
+Only engines wired end to end are listed. Each row pins a full Hugging Face revision (Qwen Base rows checked on
+2026-11-07, the other Qwen rows on 2026-11-08, wave-2 rows on 2026-11-08 and again on 2026-11-09, through the
+Hub API with no token; none is gated), so a repo update upstream cannot change what users run until this table
+changes. ``companions`` are extra repos a loader needs, pinned the same way and downloaded with the model:
+``role: "loader"`` repos are handed to the worker, which points the loader at them instead of letting it fetch
+them unpinned (``voice_worker_models.install_redirect``); ``role: "defaultVoice"`` is a voice file the worker
+loads itself. Sizes are repo totals (only the listed files for a companion). Apple Silicon only (``lanes``):
+the CUDA rows are in ``voice_models_cuda.py`` and are not measured yet.
+
+Per row:
+
+* ``capabilities``: ``speak`` (plain text with a preset, built-in or designed voice), ``style`` (a written style
+  instruction), ``clone`` (a voice from a reference clip), ``design`` (a voice from a description),
+  ``expression`` (the Expression slider), ``tags`` (sound tags such as ``[laugh]`` in the text), ``presets`` (named
+  voices of its own), ``languageSelect`` (the request's ``language`` picks the language).
+* ``controls``: what the screen draws from data: ``tags`` (documented sound tags), ``styleTags`` (Turbo's style
+  tokens, which its authors do not document), ``expression`` and ``guidance`` ranges, ``languages`` (codes).
+* ``licence``: the upstream model's licence (an mlx-community conversion sometimes lists another; the upstream
+  author's value is shown, with its link).
+* ``family`` groups rows and picks the worker call; ``sampleRate`` is the output rate; ``chunkChars`` the longest
+  piece of text sent in one worker request; ``minReferenceS`` the shortest voice sample the model clones from;
+  ``rank`` the per-family English quality rank (lower is better; None until the owner's listening check);
+  ``builtinWatermark`` names a watermark the model adds itself (None on the MLX lane: mlx-audio adds none).
+* ``estimates``: measured speed and memory (``basis: "measured"``), filled by ``scripts/measure-voice-models.py``.
+  A wave-2 row that has not been measured on this hardware stays out of the picker (``listed`` False).
 """
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
-CLONE_LICENCE: dict[str, Any] = {
+# The model a cloned voice uses when the request names none. The owner switches this to "voxcpm2" after the
+# listening check (D-70 answer 2); everything else follows from it (the rows' ``default`` flags below).
+DEFAULT_CLONE_MODEL = "qwen3-tts-0.6b"
+
+_QWEN_LICENCE: dict[str, Any] = {
     "id": "apache-2.0",
     "name": "Apache 2.0",
     "commercial": "yes",
     "url": "https://huggingface.co/Qwen/Qwen3-TTS-12Hz-0.6B-Base",
 }
+# Kept for older imports: the licence of the Qwen3-TTS rows. Each row now carries its own ``licence``.
+CLONE_LICENCE = _QWEN_LICENCE
+
+_S3_TOKENIZER = {
+    "repo": "mlx-community/S3TokenizerV2",
+    "revision": "e0c9886f0e1c35ae85b1f27277416fb19fc72bec",
+    "files": ["config.json", "model.safetensors"],
+    "sizeGb": 0.49,
+    "role": "loader",
+    # The repo has no licence field; the code it comes from (xingchensong/S3Tokenizer) is Apache-2.0.
+    "licence": "apache-2.0",
+}
+
+# Chatterbox Multilingual V3 (23 languages, ``lang_code``).
+CHATTERBOX_LANGUAGES = [
+    "ar", "da", "de", "el", "en", "es", "fi", "fr", "he", "hi", "it", "ja", "ko", "ms", "nl", "no", "pl", "pt",
+    "ru", "sv", "sw", "tr", "zh",
+]
+# Chatterbox-Turbo: the nine sound tags its mlx-community card documents, and ten style tokens that are in its
+# tokenizer but not documented by its authors (shown as chips with that warning, D-70 answer 3).
+TURBO_TAGS = ["laugh", "chuckle", "sigh", "gasp", "cough", "clear throat", "sniff", "groan", "shush"]
+TURBO_STYLE_TAGS = [
+    "angry", "fear", "surprised", "whispering", "advertisement", "dramatic", "narration", "crying", "happy",
+    "sarcastic",
+]
+# Orpheus 3B's tags (written ``[laugh]`` in the text box, sent as ``<laugh>``); ``[sniff]`` is read as sniffle.
+ORPHEUS_TAGS = ["laugh", "chuckle", "sigh", "cough", "sniffle", "groan", "yawn", "gasp"]
+# Qwen3-TTS takes a language name; these are the ten it lists.
+QWEN_LANGUAGES = {
+    "zh": "chinese", "en": "english", "ja": "japanese", "ko": "korean", "de": "german", "fr": "french",
+    "ru": "russian", "pt": "portuguese", "es": "spanish", "it": "italian",
+}
+
+_EXPRESSION = {"min": 0.0, "max": 1.0, "step": 0.05, "default": 0.5}
+_GUIDANCE = {"min": 0.0, "max": 1.0, "step": 0.05, "default": 0.5}
 
 VOICE_MODELS: list[dict[str, Any]] = [
     {
@@ -34,7 +95,6 @@ VOICE_MODELS: list[dict[str, Any]] = [
         "engine": "mlx-audio",
         "lanes": ["mlx"],
         "languages": "10 languages",
-        "default": True,
         "kind": "base",
         "capabilities": {"speak": False, "style": False, "clone": True, "design": False},
         "estimates": {
@@ -60,7 +120,6 @@ VOICE_MODELS: list[dict[str, Any]] = [
         "engine": "mlx-audio",
         "lanes": ["mlx"],
         "languages": "10 languages",
-        "default": False,
         "kind": "base",
         "capabilities": {"speak": False, "style": False, "clone": True, "design": False},
         "estimates": {
@@ -86,7 +145,6 @@ VOICE_MODELS: list[dict[str, Any]] = [
         "engine": "mlx-audio",
         "lanes": ["mlx"],
         "languages": "10 languages",
-        "default": False,
         "kind": "custom",
         "capabilities": {"speak": True, "style": False, "clone": False, "design": False},
         "estimates": {
@@ -112,7 +170,6 @@ VOICE_MODELS: list[dict[str, Any]] = [
         "engine": "mlx-audio",
         "lanes": ["mlx"],
         "languages": "10 languages",
-        "default": False,
         "kind": "custom",
         "capabilities": {"speak": True, "style": True, "clone": False, "design": False},
         "estimates": {
@@ -138,7 +195,6 @@ VOICE_MODELS: list[dict[str, Any]] = [
         "engine": "mlx-audio",
         "lanes": ["mlx"],
         "languages": "10 languages",
-        "default": False,
         "kind": "design",
         "capabilities": {"speak": True, "style": True, "clone": False, "design": True},
         "estimates": {
@@ -153,10 +209,213 @@ VOICE_MODELS: list[dict[str, Any]] = [
             "idleGb": 3.49,
         },
     },
+    # ------------------------------------------------------------------
+    # Wave 2 (D-70, FU-149)
+    # ------------------------------------------------------------------
+    {
+        "key": "chatterbox-turbo",
+        "name": "Chatterbox-Turbo",
+        "summary": "Quick, natural English with sound tags such as [laugh] and [sigh]. Also clones from 5 s of speech.",
+        "repo": "mlx-community/chatterbox-turbo-8bit",
+        "revision": "2f2e21a03863f86a1274d1060dcc188e7cde77e1",
+        "upstream": "ResembleAI/chatterbox-turbo",
+        "sizeGb": 0.71,
+        "engine": "mlx-audio",
+        "lanes": ["mlx"],
+        "languages": "English",
+        "kind": "turbo",
+        "family": "chatterbox-turbo",
+        "capabilities": {"speak": True, "style": False, "clone": True, "design": False, "tags": True, "presets": True},
+        "controls": {"tags": TURBO_TAGS, "styleTags": TURBO_STYLE_TAGS},
+        "licence": {"id": "mit", "name": "MIT", "commercial": "yes", "url": "https://huggingface.co/ResembleAI/chatterbox-turbo"},
+        "companions": [_S3_TOKENIZER],
+        "sampleRate": 24_000,
+        "minReferenceS": 5.0,
+        "estimates": {
+            "basis": "measured",
+            "measuredOn": "Apple M4 Max, 64 GB, 2026-11-09",
+            # scripts/measure-voice-models.py, fresh worker, weights on disk: cold start = first short line minus the same
+            # line warm; seconds per 10 s from the fixed 600-character text in this model's chunks; peak and idle are
+            # the worker's resident memory (psutil RSS) during the long text and 5 s after.
+            "coldStartSeconds": 2.4,
+            "secondsPer10sAudio": 2.1,
+            "wallSecondsShortLine": 0.8,
+            "peakGb": 1.72,
+            "idleGb": 1.72,
+        },
+    },
+    {
+        "key": "voxcpm2",
+        "name": "VoxCPM2",
+        "summary": "Describe a voice, or clone one, in 30 languages (found from the text). 48 kHz output.",
+        "repo": "mlx-community/VoxCPM2-8bit",
+        "revision": "d52725898a0675703f7f9ddc5a4d1a3cdbb99032",
+        "upstream": "openbmb/VoxCPM2",
+        "sizeGb": 3.23,
+        "engine": "mlx-audio",
+        "lanes": ["mlx"],
+        "languages": "30 languages",
+        "kind": "voxcpm",
+        "family": "voxcpm2",
+        "capabilities": {"speak": True, "style": True, "clone": True, "design": True},
+        "controls": {},
+        "licence": {"id": "apache-2.0", "name": "Apache 2.0", "commercial": "yes", "url": "https://huggingface.co/openbmb/VoxCPM2"},
+        "companions": [],
+        "sampleRate": 48_000,
+        "minReferenceS": 3.0,
+        "estimates": {
+            "basis": "measured",
+            "measuredOn": "Apple M4 Max, 64 GB, 2026-11-09",
+            # scripts/measure-voice-models.py, fresh worker, weights on disk: cold start = first short line minus the same
+            # line warm; seconds per 10 s from the fixed 600-character text in this model's chunks; peak and idle are
+            # the worker's resident memory (psutil RSS) during the long text and 5 s after.
+            # Design. 48 kHz output.
+            "coldStartSeconds": 2.0,
+            "secondsPer10sAudio": 5.22,
+            "wallSecondsShortLine": 1.9,
+            "peakGb": 3.8,
+            "idleGb": 3.8,
+        },
+    },
+    {
+        "key": "chatterbox-mtl",
+        "name": "Chatterbox Multilingual V3",
+        "summary": "23 languages with an Expression dial from calm to dramatic. Clones from a voice sample.",
+        "repo": "mlx-community/chatterbox-multilingual-v3",
+        "revision": "03565773edd72e949572557597af8063bb49a18a",
+        "upstream": "ResembleAI/chatterbox",
+        "sizeGb": 2.71,
+        "engine": "mlx-audio",
+        "lanes": ["mlx"],
+        "languages": "23 languages",
+        "kind": "chatterbox",
+        "family": "chatterbox",
+        "capabilities": {
+            "speak": True, "style": False, "clone": True, "design": False, "expression": True, "presets": True,
+            "languageSelect": True,
+        },
+        "controls": {"expression": _EXPRESSION, "guidance": _GUIDANCE, "languages": CHATTERBOX_LANGUAGES},
+        "licence": {"id": "mit", "name": "MIT", "commercial": "yes", "url": "https://huggingface.co/ResembleAI/chatterbox"},
+        "companions": [
+            _S3_TOKENIZER,
+            {
+                # The V3 conversion has no default voice; the V2 8-bit build's conds.safetensors (same voice encoder
+                # and tokenizer) works with V3 weights (P0 spike, 2026-11-09). Only that file is fetched.
+                "repo": "mlx-community/chatterbox-8bit", "revision": "9617d61b596a03d1bed766a28c341680e993a1b9",
+                "files": ["conds.safetensors"], "sizeGb": 0.0, "role": "defaultVoice", "licence": "mit",
+            },
+        ],
+        "sampleRate": 24_000,
+        "minReferenceS": 3.0,
+        "estimates": {
+            "basis": "measured",
+            "measuredOn": "Apple M4 Max, 64 GB, 2026-11-09",
+            # scripts/measure-voice-models.py, fresh worker, weights on disk: cold start = first short line minus the same
+            # line warm; seconds per 10 s from the fixed 600-character text in this model's chunks; peak and idle are
+            # the worker's resident memory (psutil RSS) during the long text and 5 s after.
+            # Default voice, English.
+            "coldStartSeconds": 2.9,
+            "secondsPer10sAudio": 3.63,
+            "wallSecondsShortLine": 1.4,
+            "peakGb": 3.67,
+            "idleGb": 3.66,
+        },
+    },
+    {
+        "key": "orpheus-3b",
+        "name": "Orpheus 3B",
+        "summary": "Eight expressive English voices with sound tags such as [laugh] and [yawn]. No cloning.",
+        "repo": "mlx-community/orpheus-3b-0.1-ft-8bit",
+        "revision": "c8521bf4ea42f8dd96df099219d7871fc9873142",
+        "upstream": "canopylabs/orpheus-3b-0.1-ft",
+        "sizeGb": 3.54,
+        "engine": "mlx-audio",
+        "lanes": ["mlx"],
+        "languages": "English",
+        "kind": "orpheus",
+        "family": "orpheus",
+        "capabilities": {"speak": True, "style": False, "clone": False, "design": False, "tags": True, "presets": True},
+        "controls": {"tags": ORPHEUS_TAGS},
+        # The Hub licence field is apache-2.0; the card lists meta-llama/Llama-3.2-3B-Instruct as its base model
+        # (D-70 answer 5: show the Hub field and note the base, with both links).
+        "licence": {
+            "id": "apache-2.0", "name": "Apache 2.0", "commercial": "yes",
+            "url": "https://huggingface.co/canopylabs/orpheus-3b-0.1-ft",
+            "note": "Fine-tuned from Llama 3.2 3B Instruct (Llama 3.2 Community Licence).",
+            "baseUrl": "https://huggingface.co/meta-llama/Llama-3.2-3B-Instruct",
+        },
+        "companions": [
+            {
+                "repo": "mlx-community/snac_24khz", "revision": "556af1cd3b1c5f2d294f6aa9bb886245d7b716ac",
+                "files": ["config.json", "model.safetensors"], "sizeGb": 0.08, "role": "loader", "licence": "mit",
+            },
+            {
+                # The loader reads its tokenizer from the bf16 repo by name; only the tokenizer files are fetched.
+                "repo": "mlx-community/orpheus-3b-0.1-ft-bf16", "revision": "3786aac51797181edddeb0d89a8253deaee99aab",
+                "files": ["tokenizer.json", "tokenizer_config.json", "special_tokens_map.json"], "sizeGb": 0.02,
+                "role": "loader", "licence": "apache-2.0",
+            },
+        ],
+        "sampleRate": 24_000,
+        # One worker request per chunk; mlx-audio stops a segment at max_tokens (about 84 codes per second of
+        # speech), so the chunk is kept short enough for the budget (measured, see estimates).
+        "chunkChars": 250,
+        "maxTokens": 2400,
+        "minReferenceS": None,
+        "estimates": {
+            "basis": "measured",
+            "measuredOn": "Apple M4 Max, 64 GB, 2026-11-09",
+            # scripts/measure-voice-models.py, fresh worker, weights on disk: cold start = first short line minus the same
+            # line warm; seconds per 10 s from the fixed 600-character text in this model's chunks; peak and idle are
+            # the worker's resident memory (psutil RSS) during the long text and 5 s after.
+            # Voice tara, 250-character chunks, max_tokens 2400.
+            "coldStartSeconds": 3.6,
+            "secondsPer10sAudio": 7.22,
+            "wallSecondsShortLine": 3.3,
+            "peakGb": 4.19,
+            "idleGb": 4.19,
+        },
+    },
 ]
 
-# The cloning screen and the clone tools only know the Base rows.
-CLONE_MODELS: list[dict[str, Any]] = [row for row in VOICE_MODELS if row["capabilities"]["clone"]]
+_QWEN_DEFAULTS: dict[str, Any] = {
+    "family": "qwen3-tts",
+    "controls": {},
+    "licence": _QWEN_LICENCE,
+    "companions": [],
+    "sampleRate": 24_000,
+    "minReferenceS": 3.0,
+}
+_CAPABILITIES = ("speak", "style", "clone", "design", "expression", "tags", "presets", "languageSelect")
+
+# The CUDA lane's rows (Windows and Linux with an NVIDIA GPU, Phase 6): same shape, other weights and engines.
+from backend_service.catalog.voice_models_cuda import CUDA_VOICE_MODELS  # noqa: E402
+
+VOICE_MODELS.extend(CUDA_VOICE_MODELS)
+# The RTX 4090 session lists the unmeasured CUDA rows to measure them; nothing else does.
+_LIST_UNMEASURED_CUDA = os.environ.get("CHAOSENGINE_VOICE_UNMEASURED", "").strip() == "1"
+
+for _row in VOICE_MODELS:
+    for _name, _value in _QWEN_DEFAULTS.items():
+        _row.setdefault(_name, _value)
+    _row["capabilities"] = {name: bool(_row["capabilities"].get(name)) for name in _CAPABILITIES}
+    _row.setdefault("chunkChars", 400)
+    _row.setdefault("rank", None)
+    _row.setdefault("builtinWatermark", None)
+    _row["default"] = _row["key"] == DEFAULT_CLONE_MODEL
+    _row["downloadGb"] = round(_row["sizeGb"] + sum(c.get("sizeGb", 0.0) for c in _row["companions"]), 2)
+    # A wave-2 row is offered only once it has measured numbers on this hardware (D-70: no unmeasured rows).
+    _row["listed"] = (
+        _row["family"] == "qwen3-tts"
+        or bool((_row.get("estimates") or {}).get("basis") == "measured")
+        or (_LIST_UNMEASURED_CUDA and "cuda" in _row["lanes"])
+    )
+
+# Every model that can clone. The default (``DEFAULT_CLONE_MODEL``) comes first.
+CLONE_MODELS: list[dict[str, Any]] = sorted(
+    (row for row in VOICE_MODELS if row["capabilities"]["clone"] and row["listed"]),
+    key=lambda row: not row["default"],
+)
 
 # CustomVoice preset speakers: id, language code, language name for the model, gender, one-line feel.
 CUSTOM_SPEAKERS: list[dict[str, str]] = [
@@ -169,6 +428,18 @@ CUSTOM_SPEAKERS: list[dict[str, str]] = [
     {"id": "Eric", "language": "zh", "languageLabel": "Chinese (Sichuan)", "gender": "male", "about": "Lively, slightly husky"},
     {"id": "Ono_Anna", "language": "ja", "languageLabel": "Japanese", "gender": "female", "about": "Playful"},
     {"id": "Sohee", "language": "ko", "languageLabel": "Korean", "gender": "female", "about": "Warm, rich emotion"},
+]
+
+# Orpheus preset voices, in the authors' order of conversational realism (README); the prompt is "name: text".
+ORPHEUS_VOICES: list[dict[str, str]] = [
+    {"id": "tara", "gender": "female", "about": "Most natural of the eight (authors' rank 1)"},
+    {"id": "leah", "gender": "female", "about": "Authors' rank 2"},
+    {"id": "jess", "gender": "female", "about": "Authors' rank 3"},
+    {"id": "leo", "gender": "male", "about": "Authors' rank 4"},
+    {"id": "dan", "gender": "male", "about": "Authors' rank 5"},
+    {"id": "mia", "gender": "female", "about": "Authors' rank 6"},
+    {"id": "zac", "gender": "male", "about": "Authors' rank 7"},
+    {"id": "zoe", "gender": "female", "about": "Authors' rank 8"},
 ]
 
 
@@ -188,3 +459,12 @@ def voice_model(key: str) -> dict[str, Any]:
         if wanted in (row["key"], row["repo"]):
             return row
     raise ValueError(f"Unknown voice model '{wanted}'.")
+
+
+def listed_models() -> list[dict[str, Any]]:
+    """The rows offered on this build: every Qwen3-TTS row, and wave-2 rows that have measured numbers. CUDA rows
+    appear only on the portable lane (Windows, Linux), never on a Mac."""
+    from backend_service import voice_env  # noqa: PLC0415
+
+    portable = voice_env.lane() == "portable"
+    return [row for row in VOICE_MODELS if row["listed"] and (portable or "cuda" not in row["lanes"])]

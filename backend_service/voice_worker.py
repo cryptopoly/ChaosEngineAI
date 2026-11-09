@@ -387,11 +387,43 @@ def _wav_reply(samples: Any, sample_rate: int) -> dict[str, Any]:
     }
 
 
+def _models_module():
+    # Wave-2 models (VoxCPM2, Chatterbox, Chatterbox-Turbo, Orpheus); a sibling like the watermark module.
+    try:
+        import voice_worker_models as module  # type: ignore[import-not-found]
+    except ImportError:
+        from backend_service import voice_worker_models as module
+    return module
+
+
+def _torch_module():
+    # The speech GPU add-on's engines (Phase 6, unverified); a sibling like the watermark module.
+    try:
+        import voice_worker_torch as module  # type: ignore[import-not-found]
+    except ImportError:
+        from backend_service import voice_worker_torch as module
+    return module
+
+
 def synthesize(request: dict[str, Any]) -> dict[str, Any]:
     import numpy as np
 
     engine = str(request["engine"])
+    if engine in ("torch", "llama-gguf"):
+        _free_tts()  # one speech model in memory at a time
+        samples, sample_rate = _torch_module().synthesize(request, decode_audio)
+        return _wav_reply(samples, sample_rate)
+    family = str(request.get("family") or "")
+    wave2 = family in ("chatterbox-turbo", "chatterbox", "voxcpm2", "orpheus")
+    if wave2:
+        if engine != "mlx-audio":
+            raise ValueError("This speech model needs the mlx-audio engine.")
+        # Before loading: the Orpheus loader fetches its codec at import time.
+        _models_module().install_redirect(request.get("companions") or {})
     model = _load_tts(engine, str(request["source"]))
+    if wave2:
+        samples, sample_rate = _models_module().synthesize(model, request, decode_audio)
+        return _wav_reply(samples, sample_rate)
     text = str(request["text"])
     mode = str(request.get("mode") or "")
     if mode in ("preset", "design"):
@@ -580,6 +612,8 @@ def unload(request: dict[str, Any]) -> dict[str, Any]:
         _stt["key"], _stt["model"] = None, None
     if what in ("tts", "all"):
         _free_tts()
+        if {"voice_worker_torch", "backend_service.voice_worker_torch"} & set(sys.modules):
+            _torch_module().unload()
     if what in ("speakers", "all"):
         _diarizer["key"], _diarizer["model"] = None, None
     try:

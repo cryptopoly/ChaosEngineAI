@@ -73,6 +73,34 @@ class FindProblemsTests(unittest.TestCase):
         self.assertEqual(list(dead), ["o/gone"])
         self.assertEqual([r.variant for r in missing], ["c"])
 
+    def test_pinned_rows_check_the_revision_and_companion_files(self) -> None:
+        rows = [{"key": "v", "repo": "o/model", "revision": "a" * 40,
+                 "companions": [{"repo": "o/tok", "revision": "b" * 40, "files": ["model.safetensors"], "role": "loader"}]}]
+        refs = audit.collect_pinned_refs("voice", rows)
+        self.assertEqual(refs, [
+            audit.Ref("voice", "v", "o/model", None, "repo", "a" * 40),
+            audit.Ref("voice", "v", "o/tok", "model.safetensors", "companion loader", "b" * 40),
+        ])
+        dead, missing = audit.find_problems(refs, {("o/model", "a" * 40): {"config.json"}, ("o/tok", "b" * 40): set()})
+        self.assertEqual((dead, [r.filename for r in missing]), ({}, ["model.safetensors"]))
+        dead, _missing = audit.find_problems(refs, {("o/model", "a" * 40): None, ("o/tok", "b" * 40): {"model.safetensors"}})
+        self.assertEqual(list(dead), ["o/model@aaaaaaaa"])
+
+    def test_the_voice_and_music_catalogs_are_collected(self) -> None:
+        from backend_service.catalog.music_models import MUSIC_MODEL_FAMILIES
+        from backend_service.catalog.voice_models import VOICE_MODELS
+
+        voice = audit.collect_pinned_refs("voice", VOICE_MODELS)
+        music = audit.collect_pinned_refs("music", [v for f in MUSIC_MODEL_FAMILIES for v in f["variants"]])
+        repos = {r.repo for r in voice}
+        self.assertTrue({"mlx-community/S3TokenizerV2", "mlx-community/snac_24khz", "mlx-community/VoxCPM2-8bit"} <= repos)
+        self.assertTrue(all(r.revision and len(r.revision) == 40 for r in voice + music))
+        self.assertTrue(music)
+
+    def test_no_token_is_sent(self) -> None:
+        source = (Path(__file__).resolve().parents[1] / "scripts" / "audit-catalog-repos.py").read_text()
+        self.assertIn("token=False", source)
+
     def test_a_clean_catalog_has_no_problems(self) -> None:
         refs = [audit.Ref("text", "t", "o/r", "f.gguf", "repo")]
         self.assertEqual(audit.find_problems(refs, {"o/r": {"f.gguf"}}), ({}, []))

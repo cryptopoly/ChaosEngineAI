@@ -16,13 +16,19 @@ import {
   cloneRequestText,
   costLabel,
   cloneTextTooLong,
+  defaultLanguage,
   ffmpegBlocked,
+  insertTag,
   installedCloneModels,
+  installedDesignModels,
   modelNote,
   recommendedNaturalModel,
+  sampleTooShort,
   showInstallCard,
   styleState,
+  voiceControls,
 } from "./speakLogic";
+import { GuidanceSlider, LanguageAndExpression, TagChips } from "./SpeakControls";
 import { InstallVoiceCard } from "./InstallVoiceCard";
 import { useCostText } from "./costText";
 import type { VoiceCatalog } from "./useVoiceCatalog";
@@ -62,8 +68,13 @@ export function SpeakScreen({
   /** Text to put in the box (the Library's Speak again); a new nonce replaces the text again. */
   textRequest?: { text: string; nonce: number } | null;
 }) {
-  const { t } = useTranslation("studio");
+  const { t, i18n } = useTranslation("studio");
   const { settings } = useVoice();
+  const textRef = useRef<HTMLTextAreaElement | null>(null);
+  const [designModelKey, setDesignModelKey] = useState("");
+  const [language, setLanguage] = useState("");
+  const [expression, setExpression] = useState<number | null>(null);
+  const [guidance, setGuidance] = useState<number | null>(null);
   const [text, setText] = useState(textRequest?.text ?? "");
   // Style text is kept per voice, so a preset's "angry" never becomes the description of a designed voice.
   const [styles, setStyles] = useState<Record<string, string>>({});
@@ -98,15 +109,39 @@ export function SpeakScreen({
   const setStyle = (value: string) => setStyles((prev) => ({ ...prev, [voiceId]: value }));
   const cloned = voice?.kind === "clone";
   const designing = voice?.kind === "design";
-  const styleInfo = styleState(voice, catalog.models);
+  const note = modelNote(voice, catalog.models, designing ? designModelKey : cloneModelKey);
+  const styleInfo = styleState(voice, catalog.models, note.model);
   const activeStyle = styleInfo.enabled ? style.trim() : "";
-  const note = modelNote(voice, catalog.models, cloneModelKey);
   const installModel = showInstallCard(catalog.models, catalog.modelsAvailable) ? recommendedNaturalModel(catalog.models) : null;
   const cloneChoices = installedCloneModels(voice, catalog.models);
+  const designChoices = installedDesignModels(voice, catalog.models);
+  const controls = voiceControls(note.model);
+  const chosenLanguage = controls.languages.includes(language) ? language : defaultLanguage(controls.languages, i18n.language ?? "en");
+  const chosenExpression = expression ?? controls.expression?.default ?? 0.5;
+  const chosenGuidance = guidance ?? controls.guidance?.default ?? 0.5;
+  const shortSample = sampleTooShort(voice, note.model);
+  const steered = cloned && note.model?.family === "voxcpm2";
+  // Only the models that take them get the new fields, so every other request body stays as it was.
+  const modelFields = {
+    ...(controls.languages.length > 0 ? { language: chosenLanguage } : {}),
+    ...(controls.expression ? { expression: chosenExpression } : {}),
+    ...(controls.guidance ? { guidance: chosenGuidance } : {}),
+  };
+  const addTag = (tag: string) => {
+    const box = textRef.current;
+    const start = box?.selectionStart ?? text.length;
+    const end = box?.selectionEnd ?? text.length;
+    const next = insertTag(text, start, end, tag);
+    setText(next.text);
+    requestAnimationFrame(() => {
+      box?.focus();
+      box?.setSelectionRange(next.cursor, next.cursor);
+    });
+  };
   const parts: SpeechPart[] = cloned ? (text.trim() ? [{ text: cloneRequestText(text), gapAfter: 0 }] : []) : splitSpeech(text);
   const tooLong = cloned && cloneTextTooLong(text);
   const needsFfmpeg = ffmpegBlocked(voice, speed, pitch);
-  const ready = canGenerate(voice, text, activeStyle, note) && !tooLong && !needsFfmpeg;
+  const ready = canGenerate(voice, text, activeStyle, note) && !tooLong && !needsFfmpeg && !shortSample;
   const seedValue = seed.trim() === "" ? null : Math.max(0, Math.min(2 ** 31 - 1, Math.floor(Number(seed))));
 
   const generate = async () => {
@@ -131,8 +166,10 @@ export function SpeakScreen({
             speed,
             pitch,
             seed: Number.isFinite(seedValue) ? seedValue : null,
-            // A cloned voice runs with the cloning model shown on the model line (the backend would otherwise take its default).
-            ...(cloned && note.model ? { model: note.model.key } : {}),
+            // A cloned or designed voice runs with the model shown on the model line (the backend would otherwise take
+            // its default).
+            ...((cloned || designing) && note.model ? { model: note.model.key } : {}),
+            ...modelFields,
           },
           controller.signal,
         );
@@ -195,7 +232,11 @@ export function SpeakScreen({
         ? t("voice.speak.styleClone", { defaultValue: "Cloned voices have no style control." })
         : styleInfo.reason === "smallModel"
           ? t("voice.speak.styleSmall", { defaultValue: "The small model ignores style. The 1.7B model reads it." })
-          : "";
+          : styleInfo.reason === "tags"
+            ? t("voice.speak.styleTags", { defaultValue: "This voice takes sound tags in the text, such as [laugh], not a style." })
+            : styleInfo.reason === "expression"
+              ? t("voice.speak.styleExpression", { defaultValue: "Chatterbox has no style box; use the Expression slider." })
+              : "";
 
   return (
     <Panel
@@ -205,6 +246,7 @@ export function SpeakScreen({
     >
       <div className="voice-studio voice-speak">
         <textarea
+          ref={textRef}
           className="text-input voice-textarea voice-textarea--long"
           value={text}
           maxLength={MAX_SPEAK_CHARS}
@@ -220,6 +262,7 @@ export function SpeakScreen({
             })}
           </p>
         ) : null}
+        <TagChips controls={controls} onInsert={addTag} />
 
         <VoicePicker
           voices={catalog.voices}
@@ -280,7 +323,22 @@ export function SpeakScreen({
               {styleReason}
             </p>
           ) : null}
+          {steered ? (
+            <p className="muted-text voice-speak__hint">
+              {t("voice.speak.steeredNote", {
+                defaultValue: "VoxCPM2 can follow a style for a cloned voice; with a style it keeps a little less of the likeness. Leave it empty for the closest match.",
+              })}
+            </p>
+          ) : null}
         </div>
+
+        <LanguageAndExpression
+          controls={controls}
+          language={chosenLanguage}
+          onLanguage={setLanguage}
+          expression={chosenExpression}
+          onExpression={setExpression}
+        />
 
         <div className="voice-studio__row">
           <label className="voice-settings__field">
@@ -311,7 +369,21 @@ export function SpeakScreen({
               onChange={(e) => setSeed(e.target.value)}
             />
           </label>
+          <GuidanceSlider range={controls.guidance} value={chosenGuidance} onChange={setGuidance} />
         </details>
+
+        {designing && designChoices.length >= 2 ? (
+          <label className="voice-settings__field voice-speak__clone-model">
+            <span>{t("voice.speak.designModel", { defaultValue: "Design model" })}</span>
+            <select className="text-input" value={note.model?.key ?? ""} onChange={(e) => setDesignModelKey(e.target.value)}>
+              {designChoices.map((m) => (
+                <option key={m.key} value={m.key}>
+                  {m.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
 
         {cloned && cloneChoices.length >= 2 ? (
           <label className="voice-settings__field voice-speak__clone-model">
@@ -367,6 +439,16 @@ export function SpeakScreen({
               : t("voice.speak.ffmpegSpeedPitch", {
                   defaultValue: "Speed and pitch for this voice need ffmpeg. Install it from Settings, or set speed to 1.0 and pitch to 0.",
                 })}
+          </p>
+        ) : null}
+        {shortSample && note.model ? (
+          <p className="voice-error" role="alert">
+            {t("voice.speak.sampleTooShort", {
+              defaultValue: "{name} needs a voice sample of at least {min} seconds; this one is {secs}. Pick another cloning model.",
+              name: note.model.name,
+              min: note.model.minReferenceS ?? 0,
+              secs: (voice?.durationS ?? 0).toFixed(1),
+            })}
           </p>
         ) : null}
         {tooLong ? (

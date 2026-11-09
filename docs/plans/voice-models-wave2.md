@@ -2,6 +2,19 @@
 
 Date: 2026-11-08. Decision D-70, tracker FU-149. Branch `plan/voice-models-wave2`, cut from `release/v0.10.0`. Research and plan only; no source changed. Verified facts, repo shas and sources: [voice-models-wave2/research.md](voice-models-wave2/research.md). Builds after the D-67 voice UX packages W1 to W4 (the picker this plan feeds).
 
+## Status (2026-11-09, branch `feat/voice-models-wave2`)
+
+| Phase | State |
+|---|---|
+| P0 spike and measurement | **Done** on the M4 Max: `scripts/measure-voice-models.py`; answers in [research.md section 5](voice-models-wave2/research.md#5-p0-spike-results-2026-11-09) |
+| P1 framework | **Done** (per-row licence, family, companions, controls, shard and companion readiness, worker redirect, tag rules, paren guard, `language` / `expression` / `guidance`, audit covers voice and music) |
+| P2 Chatterbox-Turbo | **Done**, measured; style tags shown as undocumented chips (D-70 answer 3) |
+| P3 VoxCPM2 | **Done**, measured; continuation from chunk one kept (pitch holds); default cloning model unchanged pending the listening check (FU-154) |
+| P4 Chatterbox V3 | **Done**, measured; V2 default voice works, so V3 is not clone-only |
+| P5 Orpheus | **Done**, measured; 250-character chunks with `max_tokens` 2400 |
+| P6 CUDA lane | **Written, not verified** (no GPU here): FU-155, rtx4090-test.md section 2.1 |
+| P7 docs | **Done**: usage page, notices, i18n placeholders, FOLLOW_UPS, hub |
+
 ## 1. Headline
 
 1. **On Apple Silicon all four run on what we already ship.** mlx-audio 0.6.4, already in the owner's voice venv, has loaders for VoxCPM2 (`voxcpm2`), Chatterbox Multilingual V3 (`chatterbox`), Chatterbox-Turbo (`chatterbox_turbo`) and Orpheus (`llama`), and they import nothing the venv lacks. The Mac work is catalog rows, worker calls and screen controls, not new dependencies.

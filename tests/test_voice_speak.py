@@ -18,6 +18,7 @@ from pathlib import Path
 from unittest import mock
 
 from backend_service import voice_clone, voice_clone_safety, voice_env, voice_library, voice_runtime, voice_speak
+from backend_service import voice_speak_audio
 from backend_service.catalog import voice_models
 
 
@@ -65,15 +66,18 @@ class Machine:
             patch.stop()
 
 
+QWEN_ROWS = [r for r in voice_models.VOICE_MODELS if r["family"] == "qwen3-tts"]
+
+
 class CatalogTests(unittest.TestCase):
     def test_new_rows_are_pinned_apache_and_unique(self) -> None:
         keys = [r["key"] for r in voice_models.VOICE_MODELS]
         self.assertEqual(len(keys), len(set(keys)))
         self.assertEqual(
-            set(keys),
+            {r["key"] for r in QWEN_ROWS},
             {"qwen3-tts-0.6b", "qwen3-tts-1.7b", "qwen3-tts-custom-0.6b", "qwen3-tts-custom-1.7b", "qwen3-tts-design-1.7b"},
         )
-        for row in voice_models.VOICE_MODELS:
+        for row in QWEN_ROWS:
             self.assertRegex(row["revision"], r"^[0-9a-f]{40}$")
             self.assertTrue(row["repo"].startswith("mlx-community/Qwen3-TTS-12Hz-"))
             self.assertTrue(row["upstream"].startswith("Qwen/Qwen3-TTS-12Hz-"))
@@ -82,7 +86,7 @@ class CatalogTests(unittest.TestCase):
         self.assertEqual(voice_models.CLONE_LICENCE["id"], "apache-2.0")
 
     def test_every_row_records_a_measured_run(self) -> None:
-        for row in voice_models.VOICE_MODELS:
+        for row in voice_models.listed_models():
             est = row["estimates"]
             self.assertEqual(est["basis"], "measured")
             self.assertIn("Apple M4 Max", est["measuredOn"])
@@ -91,17 +95,23 @@ class CatalogTests(unittest.TestCase):
             self.assertNotIn("Faster", row["summary"])  # the 0.6B rows were not quicker than the 1.7B ones
 
     def test_capability_flags(self) -> None:
-        caps = {r["key"]: r["capabilities"] for r in voice_models.VOICE_MODELS}
-        for flags in caps.values():
-            self.assertEqual(set(flags), {"speak", "style", "clone", "design"})
+        for row in voice_models.VOICE_MODELS:
+            self.assertEqual(
+                set(row["capabilities"]),
+                {"speak", "style", "clone", "design", "expression", "tags", "presets", "languageSelect"},
+            )
+        caps = {r["key"]: r["capabilities"] for r in QWEN_ROWS}
         self.assertFalse(caps["qwen3-tts-custom-0.6b"]["style"])
         self.assertTrue(caps["qwen3-tts-custom-1.7b"]["style"])
         self.assertTrue(caps["qwen3-tts-custom-0.6b"]["speak"] and caps["qwen3-tts-custom-1.7b"]["speak"])
         self.assertEqual([k for k, f in caps.items() if f["design"]], ["qwen3-tts-design-1.7b"])
         self.assertEqual([k for k, f in caps.items() if f["clone"]], ["qwen3-tts-0.6b", "qwen3-tts-1.7b"])
 
-    def test_cloning_screen_still_sees_only_the_base_rows(self) -> None:
-        self.assertEqual([r["key"] for r in voice_models.CLONE_MODELS], ["qwen3-tts-0.6b", "qwen3-tts-1.7b"])
+    def test_cloning_models_are_every_listed_clone_row_default_first(self) -> None:
+        keys = [r["key"] for r in voice_models.CLONE_MODELS]
+        self.assertEqual(keys[0], voice_models.DEFAULT_CLONE_MODEL)
+        self.assertEqual(set(keys), {r["key"] for r in voice_models.listed_models() if r["capabilities"]["clone"]})
+        self.assertIn("qwen3-tts-1.7b", keys)
         self.assertEqual(sum(r["default"] for r in voice_models.VOICE_MODELS), 1)
         with self.assertRaises(ValueError):
             voice_models.clone_model("qwen3-tts-custom-1.7b")
@@ -211,7 +221,7 @@ class AudioTests(unittest.TestCase):
 
     def test_neutral_settings_pass_the_audio_through_untouched(self) -> None:
         wav = tone_wav()
-        with mock.patch.object(voice_speak.subprocess, "run", side_effect=AssertionError("ffmpeg must not run")):
+        with mock.patch.object(voice_speak_audio.subprocess, "run", side_effect=AssertionError("ffmpeg must not run")):
             self.assertIs(voice_speak.process_audio(wav, 1.0, 0.0), wav)
 
     def test_changes_need_ffmpeg(self) -> None:
@@ -225,7 +235,7 @@ class AudioTests(unittest.TestCase):
         from backend_service.storyboard import ffmpeg_bin
 
         seen = {}
-        real_run = voice_speak.subprocess.run
+        real_run = voice_speak_audio.subprocess.run
 
         def fake_run(command, **kwargs):
             # ``subprocess.run`` is patched for the whole process: a background thread's call (the memory check's
@@ -237,7 +247,7 @@ class AudioTests(unittest.TestCase):
             return mock.Mock(returncode=0, stderr="")
 
         with mock.patch.object(ffmpeg_bin, "optional_ffmpeg_exe", return_value="/bin/ffmpeg"), \
-             mock.patch.object(voice_speak.subprocess, "run", fake_run):
+             mock.patch.object(voice_speak_audio.subprocess, "run", fake_run):
             out = voice_speak.process_audio(tone_wav(0.5), 2.0, 0.0)
         self.assertIsInstance(seen["command"], list)
         self.assertNotIn("shell", seen["kwargs"])
@@ -442,8 +452,9 @@ class VoiceListTests(unittest.TestCase):
             by_kind.setdefault(v["kind"], []).append(v)
         self.assertEqual(set(by_kind), {"builtin", "preset", "design", "clone"})
         self.assertEqual(len(by_kind["builtin"]), 49)  # 54 Kokoro voices less the five Japanese ones (never on MLX)
-        self.assertEqual(len(by_kind["preset"]), 9)
-        fields = {"id", "name", "kind", "language", "model", "capabilities"}
+        # Nine Qwen3-TTS speakers, Turbo's and Chatterbox's own voices, eight Orpheus voices.
+        self.assertEqual(len(by_kind["preset"]), 9 + 1 + 1 + 8)
+        fields = {"id", "name", "kind", "group", "family", "language", "model", "capabilities"}
         self.assertTrue(all(fields <= set(v) for v in voices))
         self.assertEqual(len({v["id"] for v in voices}), len(voices))
         builtin = by_kind["builtin"][0]
@@ -698,14 +709,14 @@ class RouteTests(unittest.TestCase):
 
     def test_models_route_lists_every_row_with_capabilities(self) -> None:
         body = self.client.get("/api/voice/models").json()
-        self.assertEqual(len(body["models"]), 5)
+        self.assertEqual(len(body["models"]), len(voice_models.listed_models()))
         by_key = {m["key"]: m for m in body["models"]}
         self.assertFalse(by_key["qwen3-tts-custom-0.6b"]["capabilities"]["style"])
         self.assertTrue(by_key["qwen3-tts-custom-1.7b"]["capabilities"]["style"])
         self.assertEqual(by_key["qwen3-tts-design-1.7b"]["kind"], "design")
         self.assertTrue(all(re.fullmatch(r"[0-9a-f]{40}", m["revision"]) for m in body["models"]))
-        # The cloning screen's list is unchanged.
-        self.assertEqual(len(self.client.get("/api/voice/clone/models").json()["models"]), 2)
+        # The cloning screen lists every model that can clone.
+        self.assertEqual(len(self.client.get("/api/voice/clone/models").json()["models"]), len(voice_models.CLONE_MODELS))
 
 
 class DownloadTests(unittest.TestCase):

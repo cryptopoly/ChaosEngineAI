@@ -104,9 +104,10 @@ test("failed install leads with the repair button", async ({ page }) => {
   await expect(page.getByText("verify failed")).toBeVisible();
 });
 
-test("missing voice model leads with the repair button", async ({ page }) => {
+test("a runtime without the Kokoro quick voices is healthy: Kokoro is an optional add-on (D-75)", async ({ page }) => {
   await openModels(page, { ttsModelInstalled: false, ttsAvailable: false });
-  await expect(page.getByRole("button", { name: "Repair voice runtime" })).toBeVisible();
+  await expect(page.getByText(/Installed, checked OK/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Repair voice runtime" })).toHaveCount(0);
 });
 
 test("not installed leads with install", async ({ page }) => {

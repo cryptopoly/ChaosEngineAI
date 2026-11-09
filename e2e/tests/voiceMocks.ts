@@ -142,6 +142,10 @@ export interface VoiceMockOptions {
   ttsVoice?: string;
   /** The call voice (``callVoice``, "" = the chat voice); kept in the mock like ``ttsVoice``. */
   callVoice?: string;
+  /** The fallback voice (``fallbackVoice``, "" = none, D-75); kept in the mock like ``ttsVoice``. */
+  fallbackVoice?: string;
+  /** The Kokoro quick voices look left out (D-75): the add-on unticked and the quick voices not available. */
+  noKokoro?: boolean;
   /** Speech, speech-to-text and turn detection all report ready, so Read aloud and Call are enabled. */
   ready?: boolean;
   /** Catalog keys whose download is running; Cancel on one stops it (the mock records the key in ``cancels``). */
@@ -152,15 +156,16 @@ export interface VoiceMockOptions {
 export async function mockVoiceApi(
   page: Page,
   options: VoiceMockOptions = {},
-): Promise<{ downloads: string[]; cancels: string[]; deleted: string[]; speakVoices: string[]; ttsVoices: string[]; callVoices: string[] }> {
+): Promise<{ downloads: string[]; cancels: string[]; deleted: string[]; speakVoices: string[]; ttsVoices: string[]; callVoices: string[]; fallbackVoices: string[] }> {
   const installed = options.installed ?? ["qwen3-tts-0.6b", "qwen3-tts-custom-0.6b"];
   const clones = options.clones ?? [];
   const downloading = [...(options.downloading ?? [])];
   const cancelled: string[] = [];
-  const seen = { downloads: [] as string[], cancels: [] as string[], deleted: [] as string[], speakVoices: [] as string[], ttsVoices: [] as string[], callVoices: [] as string[] };
+  const seen = { downloads: [] as string[], cancels: [] as string[], deleted: [] as string[], speakVoices: [] as string[], ttsVoices: [] as string[], callVoices: [] as string[], fallbackVoices: [] as string[] };
   let speakVoice = options.speakVoice ?? "";
   let ttsVoice = options.ttsVoice ?? "af_heart";
   let callVoice = options.callVoice ?? "";
+  let fallbackVoice = options.fallbackVoice ?? "af_heart";
   let lastSettings: Record<string, unknown> = {};
   await page.route("**/api/voice/runtime", async (route) => {
     const response = await route.fetch();
@@ -168,7 +173,11 @@ export async function mockVoiceApi(
     const runtime = body.runtime ?? body;
     Object.assign(runtime, { installed: true });
     if (options.ready) Object.assign(runtime, { ttsAvailable: true, sttAvailable: true, vadAvailable: true });
-    runtime.settings = { ...(runtime.settings ?? {}), speakVoice, ttsVoice, callVoice };
+    runtime.settings = { ...(runtime.settings ?? {}), speakVoice, ttsVoice, callVoice, fallbackVoice };
+    if (options.noKokoro) {
+      runtime.ttsModelInstalled = false;
+      runtime.extras = [{ id: "kokoro", label: "Kokoro quick voices", installed: false }, ...(runtime.extras ?? []).filter((e: { id: string }) => e.id !== "kokoro")];
+    }
     lastSettings = runtime.settings;
     await route.fulfill({ response, json: body });
   });
@@ -184,13 +193,21 @@ export async function mockVoiceApi(
     } else if (typeof patch.callVoice === "string") {
       callVoice = patch.callVoice;
       seen.callVoices.push(callVoice);
+    } else if (typeof patch.fallbackVoice === "string") {
+      fallbackVoice = patch.fallbackVoice;
+      seen.fallbackVoices.push(fallbackVoice);
     } else {
       return route.fallback();
     }
-    lastSettings = { ...lastSettings, speakVoice, ttsVoice, callVoice };
+    lastSettings = { ...lastSettings, speakVoice, ttsVoice, callVoice, fallbackVoice };
     return route.fulfill({ json: lastSettings });
   });
-  await page.route("**/api/voice/voices", (route) => route.fulfill({ json: { voices: voiceList(clones, installed, options.needsFfmpeg) } }));
+  await page.route("**/api/voice/voices", (route) => {
+    const voices = voiceList(clones, installed, options.needsFfmpeg).map((v) =>
+      options.noKokoro && v.kind === "builtin" ? { ...v, available: false, addon: null, needs: "The Kokoro quick voices are not installed." } : v,
+    );
+    return route.fulfill({ json: { voices } });
+  });
   await page.route("**/api/voice/models", (route) => route.fulfill({ json: { models: ttsModels(installed, downloading, cancelled), available: true } }));
   await page.route("**/api/voice/clone/models", (route) =>
     route.fulfill({ json: { available: true, allowedHere: true, models: ttsModels(installed, downloading, cancelled).filter((m) => m.kind === "base") } }),

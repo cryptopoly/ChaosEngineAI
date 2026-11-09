@@ -159,7 +159,7 @@ def generate(state: ChaosEngineState, request: GenerateRequest) -> dict[str, Any
                 prompt=request.prompt,
             ),
         )
-        session["messages"].append({"role": "user", "text": request.prompt, "metrics": None})
+        session["messages"].append({"role": "user", "text": request.prompt, "metrics": None, "createdAt": int(time.time() * 1000)})
         session["updatedAt"] = state._time_label()
         # Phase 2.12: if `oneTurnOverride` is set, skip persisting the
         # active runtime's model identity onto the session so the
@@ -248,6 +248,7 @@ def generate(state: ChaosEngineState, request: GenerateRequest) -> dict[str, Any
                     "arguments": tc.arguments,
                     "result": tc.result,
                     "elapsed": tc.elapsed_seconds,
+                    "startedAt": tc.started_at,
                     # Phase 2.8: forward structured output hint +
                     # data through to the frontend `ToolCallInfo`.
                     # When `render_as` is None the frontend falls
@@ -293,6 +294,7 @@ def generate(state: ChaosEngineState, request: GenerateRequest) -> dict[str, Any
             "role": "assistant",
             "text": result.text,
             "metrics": metrics,
+            "createdAt": int(time.time() * 1000),
         }
         if tool_call_payloads:
             assistant_message["toolCalls"] = tool_call_payloads
@@ -426,7 +428,7 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest, app_reque
                 prompt=request.prompt,
             ),
         )
-        session["messages"].append({"role": "user", "text": request.prompt, "metrics": None})
+        session["messages"].append({"role": "user", "text": request.prompt, "metrics": None, "createdAt": int(time.time() * 1000)})
         session["updatedAt"] = state._time_label()
         # Phase 2.12: if `oneTurnOverride` is set, skip persisting the
         # active runtime's model identity onto the session so the
@@ -516,7 +518,11 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest, app_reque
         from backend_service.tools.studio import STUDIO_HINT, studio_registry as _studio_registry
         from backend_service.tools.studio_gate import StudioGate
 
-        studio_registry = _studio_registry(app_request, _base_registry, available_tools if enable_tools else [])
+        studio_registry = _studio_registry(
+            app_request, _base_registry, available_tools if enable_tools else [],
+            # Stop in the chat ends a wait_for_job at once (the job itself keeps running).
+            is_cancelled=lambda: chaosengine.is_chat_cancel_requested(session_id_for_cancel),
+        )
         studio_gate = StudioGate(
             session_id_for_cancel,
             auto_approve=request.studioAutoApprove,
@@ -738,6 +744,8 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest, app_reque
                             yield _f
                         agent_tool_calls.append(event["tool_call_result"])
                         yield f"data: {json.dumps({'toolCallResult': event['tool_call_result']})}\n\n"
+                    elif "tool_call_progress" in event:
+                        yield f"data: {json.dumps({'toolCallProgress': event['tool_call_progress']})}\n\n"
                     elif "studio_plan" in event:
                         # Leave prompt_eval: the app's 60 s prefill watchdog must not cancel a plan the user is reading.
                         phase_event = _maybe_emit_generating_phase()
@@ -995,6 +1003,7 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest, app_reque
                 "role": "assistant",
                 "text": full_text,
                 "metrics": metrics,
+                "createdAt": int(time.time() * 1000),
             }
             if full_reasoning:
                 assistant_message["reasoning"] = full_reasoning

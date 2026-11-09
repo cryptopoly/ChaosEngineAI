@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import copy
 import json
-from typing import Any
+from typing import Any, Callable
 
 from backend_service.tools import BaseTool, StructuredToolOutput, ToolRegistry
 
@@ -21,6 +21,12 @@ from backend_service.tools import BaseTool, StructuredToolOutput, ToolRegistry
 CHAT_SCOPES = frozenset({"read", "generate"})
 # Job owner for the shared job store; the per-owner unfinished-job cap applies to Chat as one owner.
 CHAT_OWNER = "chat"
+# How long one wait_for_job blocks in Chat (the external /mcp tool stays at 60 s). A 4-clip LTX storyboard takes
+# about 25 minutes on an M4 Max, so 30 minutes lets a normal batch finish inside one call; a longer job gets
+# a "still running" answer and the model calls again (a repeat wait on a job costs no tool-use iteration).
+# It matches the 30-minute limit the plan card already uses for a user's answer.
+CHAT_WAIT_CAP_SECONDS = 30 * 60
+_WAIT_SLICE_SECONDS = 0.5
 
 # The bridge tools Chat gets, in the order the model sees them. Left out on purpose: recommend_models and
 # upload_file / transcribe (paths and uploads), storyboard_export_otio (a download), the cloned-voice tools.
@@ -54,9 +60,13 @@ _DROPPED_ACTIONS = {
     "music_library": {"delete"},
 }
 # Arguments taken out of a schema for Chat (base64 previews cost a small model its whole context).
-_DROPPED_ARGS = {"generate_image": {"include_preview"}}
+_DROPPED_ARGS = {"generate_image": {"include_preview"}, "wait_for_job": {"timeout_seconds"}}
 # Input-image arguments: in Chat they must be app outputs or upload: handles, never any file on the disk.
 _INPUT_IMAGE_ARGS = {"generate_image": ("reference_images",), "generate_video": ("start_image", "end_image")}
+_WAIT_NOTE = (
+    "Read: waits until the job finishes (up to 30 minutes) and shows progress to the user meanwhile. "
+    "Call it once per job; if it says still running, call it again."
+)
 _INPUT_NOTE = " Input images: only files the app made (output folders) or upload: handles."
 # Job tools that name a job: Chat only sees and acts on the jobs it started.
 _OWN_JOB_TOOLS = {"job_status", "wait_for_job", "cancel_job"}
@@ -71,7 +81,8 @@ STUDIO_HINT = (
     "(storyboard_* tools) with the models installed on this computer. Work like this: 1) say the plan in a "
     "short list (what, prompt, model, size); 2) call list_models first when you need a model id; 3) put "
     "every render call of the plan in one reply, the user approves the plan in the app before anything "
-    "renders; 4) call wait_for_job for each job id until it is done; jobs run one at a time. If a call "
+    "renders; 4) call wait_for_job once for each job id: it waits until the job is done (a film can take "
+    "30 minutes), then summarise; jobs run one at a time. If a call "
     "comes back 'declined', do not call it again: ask what to change. Never claim a file exists before "
     "wait_for_job says done."
 )
@@ -131,8 +142,10 @@ def _text(payload: dict[str, Any]) -> str:
 class StudioTool(BaseTool):
     """One bridge tool, run in process with Chat's scopes and job owner."""
 
-    def __init__(self, tool: dict[str, Any], handler: Any, app_request: Any) -> None:
+    def __init__(self, tool: dict[str, Any], handler: Any, app_request: Any,
+                 is_cancelled: Callable[[], bool] | None = None) -> None:
         self._tool = tool
+        self._is_cancelled = is_cancelled or (lambda: False)
         self._handler = handler
         self._request = app_request
         self._schema = chat_schema(tool)
@@ -143,6 +156,8 @@ class StudioTool(BaseTool):
 
     @property
     def description(self) -> str:
+        if self.name == "wait_for_job":
+            return _WAIT_NOTE
         note = _INPUT_NOTE if self.name in _INPUT_IMAGE_ARGS else ""
         return str(self._tool["description"]) + note
 
@@ -156,14 +171,52 @@ class StudioTool(BaseTool):
     def execute(self, **kwargs: Any) -> str:
         return self.execute_structured(**kwargs).text
 
+    # -- long waits (wait_for_job) -----------------------------------------
+
+    def long_running(self, arguments: dict[str, Any]) -> bool:
+        return self.name == "wait_for_job"
+
+    def budget_key(self, arguments: dict[str, Any]) -> str | None:
+        return str(arguments.get("job_id") or "") or None if self.name == "wait_for_job" else None
+
+    def live_progress(self, arguments: dict[str, Any]) -> dict[str, Any] | None:
+        """The job as the card shows it while the wait blocks (state, progress with elapsed and time left)."""
+        from backend_service.mcp_bridge.jobs import STORE
+
+        job = STORE.get(str(arguments.get("job_id") or ""))
+        return None if job is None else {"tool": self.name, "waiting": True, **trim_result(job.describe())}
+
+    def _wait(self, args: dict[str, Any]) -> StructuredToolOutput:
+        """Block until the job is done, the user cancels the chat turn, or the cap passes."""
+        import time
+
+        from backend_service.mcp_bridge.jobs import STORE
+
+        job = STORE.get(str(args["job_id"]))
+        started = time.monotonic()
+        cancelled = False
+        while not job.done.wait(_WAIT_SLICE_SECONDS):
+            if self._is_cancelled():
+                cancelled = True
+                break
+            if time.monotonic() - started >= CHAT_WAIT_CAP_SECONDS:
+                break
+        info = trim_result(job.describe())
+        if cancelled:
+            info["next"] = "The user stopped the chat. The job keeps running; do not call wait_for_job again unless asked."
+        elif not job.done.is_set():
+            info["next"] = "Still running after 30 minutes. Call wait_for_job again to keep waiting."
+        info["waitedSeconds"] = round(time.monotonic() - started, 1)
+        return StructuredToolOutput(text=_text(info), render_as="studio", data={"tool": self.name, **info})
+
     def execute_structured(self, **kwargs: Any) -> StructuredToolOutput:
         from backend_service.mcp_bridge.jobs import CURRENT_OWNER, STORE, JobLimitError
         from backend_service.mcp_bridge.scopes import required_scope
         from backend_service.mcp_bridge.tools import ToolError, make_context, validate
 
         args = dict(kwargs)
-        if self.name == "wait_for_job" and "timeout_seconds" not in args:
-            args["timeout_seconds"] = 60  # fewer loop turns for the chat model
+        if self.name == "wait_for_job":
+            args.pop("timeout_seconds", None)  # Chat always waits for the job (up to the cap)
         problem = validate(self._schema, args)
         if problem:
             return self._error(f"Invalid input for {self.name}: {problem}.")
@@ -177,6 +230,8 @@ class StudioTool(BaseTool):
         try:
             if needs_approval(self.name, args):
                 STORE.check_capacity()
+            if self.name == "wait_for_job":
+                return self._wait(args)
             if self.name == "list_jobs":
                 payload = _own_jobs(args)
             else:
@@ -231,18 +286,19 @@ def _own_jobs(args: dict[str, Any]) -> dict[str, Any]:
     return {"jobs": [j.describe() for j in jobs[: int(args.get("limit", 20))]]}
 
 
-def studio_tools(app_request: Any) -> list[StudioTool]:
+def studio_tools(app_request: Any, is_cancelled: Callable[[], bool] | None = None) -> list[StudioTool]:
     tools, handlers = _bridge()
     by_name = {t["name"]: t for t in tools}
-    return [StudioTool(by_name[n], handlers[n], app_request) for n in STUDIO_TOOL_NAMES if n in by_name and n in handlers]
+    return [StudioTool(by_name[n], handlers[n], app_request, is_cancelled) for n in STUDIO_TOOL_NAMES if n in by_name and n in handlers]
 
 
-def studio_registry(app_request: Any, base: ToolRegistry, available: list[str] | None) -> ToolRegistry:
+def studio_registry(app_request: Any, base: ToolRegistry, available: list[str] | None,
+                    is_cancelled: Callable[[], bool] | None = None) -> ToolRegistry:
     """The chat tools (``available`` of ``base``, all when None) plus the studio tools."""
     registry = ToolRegistry()
     for tool in base.list_tools():
         if available is None or tool.name in available:
             registry.register(tool)
-    for tool in studio_tools(app_request):
+    for tool in studio_tools(app_request, is_cancelled):
         registry.register(tool)
     return registry

@@ -185,14 +185,6 @@ class ScopeTests(unittest.TestCase):
             _refuse_placeholder({"activeEngine": "placeholder", "message": "no snapshot"})
         _refuse_placeholder({"activeEngine": "mflux"})
 
-    def test_wait_for_job_defaults_to_a_long_wait(self):
-        seen = {}
-        tool = self.tools["wait_for_job"]
-        with mock.patch.object(tool, "_handler", lambda ctx, args: seen.update(args) or {"state": "done"}), \
-                mock.patch("backend_service.tools.studio._foreign_job_problem", return_value=None):
-            tool.execute_structured(job_id="job-1")
-        self.assertEqual(seen["timeout_seconds"], 60)
-
     def test_which_calls_need_approval(self):
         for name, args, expected in (
             ("generate_image", {"prompt": "x"}, True),

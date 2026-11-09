@@ -64,6 +64,20 @@ class BaseTool(ABC):
         """
         return None
 
+    def long_running(self, arguments: dict[str, Any]) -> bool:
+        """True for a call that can block for minutes (a wait on a render). The streaming agent loop then runs it
+        on a worker thread and asks ``live_progress`` for a snapshot every couple of seconds."""
+        return False
+
+    def live_progress(self, arguments: dict[str, Any]) -> dict[str, Any] | None:
+        """What to show on this call's card while it runs (only read for ``long_running`` calls)."""
+        return None
+
+    def budget_key(self, arguments: dict[str, Any]) -> str | None:
+        """A key for a call that only waits on something already started (a job id). A reply whose calls all have
+        a key already seen in this turn does not use up an agent-loop iteration."""
+        return None
+
     @property
     def provenance(self) -> str:
         """Phase 2.10: where this tool came from. Built-ins return

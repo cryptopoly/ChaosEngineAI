@@ -70,8 +70,11 @@ WATERMARK_REVISION = "3c19eba53390776cf2cc9ed5f6c9ac67ce72ecba"
 WATERMARK_FILES = {"generator": "generator_base.pth", "detector": "detector_base.pth"}
 
 # What this version of the pack provides; an older pack lacks some and the
-# Models page offers an update.
-FEATURES = ["vad", "speakers"]
+# Models page offers an update. "speech-wave2": mlx-audio 0.6.4, the version the
+# VoxCPM2, Chatterbox and Orpheus loaders were checked against (D-70).
+FEATURES = ["vad", "speakers", "speech-wave2"]
+# Features that only mean something on some lanes; a pack on another lane is not asked to update for them.
+_LANE_FEATURES = {"speech-wave2": ("mlx",)}
 
 # spaCy's small English model: misaki's English front-end downloads it at
 # first use otherwise, through pip, which a packaged app cannot rely on.
@@ -82,7 +85,7 @@ _EN_CORE_WEB_SM = (
 
 # Versions checked together on an M4 Max (2026-10-26); bump deliberately.
 _MLX_PACKAGES = [
-    "mlx-audio>=0.6.2,<0.7",
+    "mlx-audio>=0.6.4,<0.7",
     "misaki[en]>=0.9.4,<0.10",
     "parakeet-mlx>=0.5.3,<0.6",
     "mlx-whisper>=0.4.3,<0.5",
@@ -250,7 +253,8 @@ def missing_features() -> list[str]:
     if not is_installed():
         return []
     have = set((read_marker() or {}).get("features", []))
-    return [name for name in FEATURES if name not in have]
+    here = lane()
+    return [name for name in FEATURES if name not in have and here in _LANE_FEATURES.get(name, (here,))]
 
 
 def watermark_model_paths() -> dict[str, Path] | None:

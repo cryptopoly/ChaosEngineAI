@@ -176,6 +176,18 @@ class InstalledMarkerTests(unittest.TestCase):
         (self.venv / "chaosengine-voice.json").write_text("{nope", encoding="utf-8")
         self.assertFalse(voice_env.is_installed())
 
+    def test_a_pack_from_before_wave2_offers_an_update_on_the_mlx_lane_only(self) -> None:
+        marker = self.venv / "chaosengine-voice.json"
+        old = {"schema": 1, "features": ["vad", "speakers"]}
+        marker.write_text(json.dumps({**old, "lane": "portable"}), encoding="utf-8")
+        self.assertEqual(voice_env.missing_features(), [])  # nothing for the portable lane yet
+        with mock.patch.object(voice_env, "lane", return_value="mlx"):
+            marker.write_text(json.dumps({**old, "lane": "mlx"}), encoding="utf-8")
+            self.assertEqual(voice_env.missing_features(), ["speech-wave2"])
+            marker.write_text(json.dumps({**old, "lane": "mlx", "features": voice_env.FEATURES}), encoding="utf-8")
+            self.assertEqual(voice_env.missing_features(), [])
+        self.assertIn("mlx-audio>=0.6.4,<0.7", voice_env.packages_for("mlx"))
+
     def test_vad_needs_the_marker_feature_and_the_model_file(self) -> None:
         model = self.venv / "model.onnx"  # not Path(): os.name is patched to posix
         model.write_bytes(b"onnx")

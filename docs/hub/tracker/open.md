@@ -19,11 +19,11 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 </details>
 
 <details>
-<summary>FU-157 · Voice makeover (D-73): what was deferred or not checked — Open (2026-11-09): built on feat/voice-makeover, mocked UI and throwaway-cache tests only.</summary>
+<summary>FU-157 · Voice makeover (D-73): what was deferred or not checked — Open (2026-11-09): built on feat/voice-makeover and feat/voice-fu157, mocked UI and throwaway-cache tests only…</summary>
 
-**Status or trigger:** **Open (2026-11-09): built on `feat/voice-makeover`, mocked UI and throwaway-cache tests only.**
+**Status or trigger:** **Open (2026-11-09): built on `feat/voice-makeover` and `feat/voice-fu157`, mocked UI and throwaway-cache tests only.**
 
-**Notes:** Built: delete for dictation and speech models (companions kept when shared, watermark kept while a cloning model remains, refused while voice is busy or a speech model downloads), add-on ticks with removal, Remove voice runtime, runtime parts and In memory now, speech models on the shared Models table with Fit and Kokoro as the first row, Speak voice row and picker drawer, Voices main-voices strip and Use for menu, Chat Voice popover, Library voice-kind filter, copy. Not done: **Cancel** for a speech-model download (no backend cancel; the row shows Downloading), the mock-up's "Show N sizes" collapse of a family (family headings only), the Library and Models page titles still repeat the panel title (only Voice Studio's header was compacted). Not checked: a real delete on the owner's downloaded models and Hugging Face cache, Remove voice runtime and add-on removal on a real venv (pip uninstall of misaki's `zh` requirements), Windows and Linux, and listening.
+**Notes:** Built: delete for dictation and speech models (companions kept when shared, watermark kept while a cloning model remains, refused while voice is busy or a speech model downloads), add-on ticks with removal, Remove voice runtime, runtime parts and In memory now, speech models on the shared Models table with Fit and Kokoro as the first row, Speak voice row and picker drawer, Voices main-voices strip and Use for menu, Chat Voice popover, Library voice-kind filter, copy. Done on `feat/voice-fu157` (2026-11-09): **Cancel** for a speech-model download (child-process download, window-only `POST /api/voice/clone/models/download/cancel`, row progress and Cancel, partials kept for resume), the **Show N sizes** collapse of a family (families of three or more), the Voice Library title shown once (Voice Models panels have distinct titles). Not checked: a real Cancel of a real download, a real delete on the owner's downloaded models and Hugging Face cache, Remove voice runtime and add-on removal on a real venv (pip uninstall of misaki's `zh` requirements), Windows and Linux, and listening.
 
 </details>
 

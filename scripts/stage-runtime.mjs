@@ -145,7 +145,9 @@ function main() {
   // that is immediately discarded. Release builds still need the archive.
   if (strict) {
     console.log(`[stage-runtime] archiving runtime — this can take a few minutes on Windows...`);
-    execFileSync("tar", ["-czf", archiveDest, "-C", stageRoot, "."], {
+    // The archive name is given relative to cwd: GNU tar (first on PATH in Git Bash on Windows) reads
+    // "C:\..." in -f as a remote "host:path" and fails with "Cannot connect to C: resolve failed".
+    execFileSync("tar", ["-czf", path.relative(workspaceRoot, archiveDest), "-C", stageRoot, "."], {
       cwd: workspaceRoot,
       env: { ...process.env, COPYFILE_DISABLE: "1" },
       stdio: "inherit",

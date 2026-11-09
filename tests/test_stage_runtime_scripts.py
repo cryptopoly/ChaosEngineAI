@@ -107,6 +107,18 @@ class ReleaseConstraintsTests(unittest.TestCase):
             self.assertIn(name, pins)
 
 
+class WindowsArchiveNameTests(unittest.TestCase):
+    def test_the_runtime_archive_is_named_without_a_drive_letter(self) -> None:
+        # GNU tar (Git Bash's, first on PATH there) treats "C:\\...\\runtime.tar.gz" given to -f as host "C";
+        # a local Windows release build failed with "Cannot connect to C: resolve failed".
+        source = (ROOT / "scripts" / "stage-runtime.mjs").read_text(encoding="utf-8")
+        call = re.search(r'execFileSync\("tar", \["-czf", (.+?), "-C"', source)
+        self.assertTrue(call, "stage-runtime.mjs no longer creates the archive with tar -czf")
+        self.assertEqual(call.group(1).strip(), "path.relative(workspaceRoot, archiveDest)")
+        body = source[call.start():call.start() + 300]
+        self.assertIn("cwd: workspaceRoot", body)
+
+
 class WindowsSymlinkTests(unittest.TestCase):
     def test_windows_runtime_copy_follows_symlinks(self) -> None:
         # The Windows runner's python3.exe is a symlink to C:/hostedtoolcache/...;

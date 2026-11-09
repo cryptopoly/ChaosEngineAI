@@ -2792,6 +2792,28 @@ def phase_11(cap: Capability) -> PhaseResult:
                 return "fail", f"generate {payload} answered {code}, wanted 422", {}
         return "pass", "", {"estimateSeconds": estimate["seconds"]}
 
+    def _sound_steps():
+        """D-74: sound rows carry a steps range; the estimate scales with the steps and out-of-range steps are refused (422)."""
+        code, body = _call("GET", "/catalog")
+        rows = {v["id"]: v for f in (body or {}).get("families", []) for v in f["variants"]}
+        full = rows.get("stabilityai/stable-audio-open-1.0")
+        if full is None or not full.get("stepsOptions"):
+            return "skip", "no sound row with a steps range in this build", {}
+        low, high = full["stepsOptions"]["min"], full["stepsOptions"]["max"]
+        base = {"modelId": full["id"], "seconds": 5}
+        code, default = _call("POST", "/estimate", base)
+        code_half, half = _call("POST", "/estimate", {**base, "steps": max(low, full["defaultSettings"]["steps"] // 2)})
+        if code != 200 or code_half != 200:
+            return "fail", f"estimate with steps: HTTP {code}/{code_half}", {}
+        if not half["estimate"]["seconds"] < default["estimate"]["seconds"] or half["estimate"]["basis"] != "estimated":
+            return "fail", f"half the steps did not shorten an estimated time: {default['estimate']} vs {half['estimate']}", {}
+        for steps in (low - 1, high + 1):
+            code, _ = _call("POST", "/estimate", {**base, "steps": steps})
+            code_gen, _ = _call("POST", "/sound/generate", {"caption": "e2e", "seconds": 2, "modelId": full["id"], "steps": steps})
+            if (code, code_gen) != (422, 422):
+                return "fail", f"steps {steps} answered {code}/{code_gen}, wanted 422", {}
+        return "pass", "", {"default": default["estimate"]["seconds"], "half": half["estimate"]["seconds"]}
+
     def _library_crud():
         folder = Path(str(runtime.get("libraryDir") or ""))
         if not folder.is_absolute():
@@ -2850,6 +2872,7 @@ def phase_11(cap: Capability) -> PhaseResult:
             ("runtime route shape", _runtime_shape),
             ("catalog row carries the licence and UI fields", _catalog),
             ("estimate answers; out-of-range requests are refused", _estimate_and_validation),
+            ("sound steps: range in the catalog, scaled estimate, out-of-range refused", _sound_steps),
             ("library list, rename, tag, Range audio and delete on a synthetic item", _library_crud),
             ("a real 20 s instrumental (skips without the music pack)", _real_generation),
         ]:

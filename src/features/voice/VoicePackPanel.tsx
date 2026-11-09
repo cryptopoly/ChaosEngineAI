@@ -300,7 +300,12 @@ export function VoiceRuntimePanel({ runtime, pack, actions }: { runtime: VoiceRu
           extras={runtime.extras}
           installed={runtime.installed}
           disabled={job.running || busyExtra !== null || removing}
-          chosen={(extra) => (runtime.installed ? extra.installed !== (busyExtra === extra.id) : wanted.has(extra.id))}
+          chosen={(extra) =>
+            runtime.installed
+              ? // Ticked while its install runs; unticked while its removal runs.
+                (extra.installed || (job.running && job.extras.includes(extra.id))) && busyExtra !== extra.id
+              : wanted.has(extra.id)
+          }
           onToggle={(extra, on) => void toggleExtra(extra, on)}
         />
 

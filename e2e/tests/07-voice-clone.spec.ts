@@ -3,7 +3,7 @@ import type { Page, Route } from "@playwright/test";
 import { goTo } from "./helpers";
 import { ADA, mockVoiceApi, speakAnswer } from "./voiceMocks";
 
-// Voice cloning flow in Voice Studio > Voices (and Speak for the cloned voice): the standing statement, the new-voice form (whose voice, the
+// Voice cloning flow in Voice Studio > Voices (and Speak for the cloned voice): the statement inside the new-voice form (D-73), the form (whose voice, the
 // speaker's name, a voice sample from a file or the microphone, one permission tick), what the form sends,
 // and the AI label on everything made with a cloned voice. The voice pack and the cloning model are patched
 // to look installed; no model runs. The microphone test uses Chromium's fake audio device, not a real one.
@@ -29,7 +29,7 @@ async function mockClone(page: Page, voices: unknown[] = []): Promise<string[]> 
 async function openClonePanel(page: Page) {
   await goTo(page, "Voice", "Studio");
   await page.getByRole("tab", { name: "Voices" }).click();
-  await expect(page.locator(".voice-clone__statement")).toBeVisible();
+  await expect(page.getByRole("button", { name: "New cloned voice" })).toBeVisible();
 }
 
 /** The value of one multipart text field. */
@@ -46,17 +46,20 @@ async function fillDetails(page: Page) {
 const confirmBox = (page: Page) =>
   page.getByRole("checkbox", { name: "This is my own voice, or the speaker has given me permission to clone it." });
 
-test("clone panel states the rules, and the AI label cannot be turned off", async ({ page }) => {
+test("the new cloned voice form states the rules, and the AI label cannot be turned off", async ({ page }) => {
   await mockClone(page);
   await openClonePanel(page);
-  const statement = page.locator(".voice-clone__statement");
+  // The statement sits in the form, where the permission tick is, not on the Voices screen itself (D-73).
+  await expect(page.locator(".voice-clone__statement")).toHaveCount(0);
+  await page.getByRole("button", { name: "New cloned voice" }).click();
+  const statement = page.locator(".voice-clone__new .voice-clone__statement");
   await expect(statement).toContainText("Only clone your own voice or the voice of someone who has given you permission");
   await expect(statement).toContainText("Not public figures, children or people who have died");
   await expect(statement).toContainText("labelled as AI-made inside the file");
   await expect(statement).toContainText("neither can be turned off");
   // Nothing in the panel offers a way to switch the label or the watermark off.
   await expect(page.locator(".voice-voices").getByText(/(remove|turn off|disable).*(label|watermark)/i)).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "New cloned voice" })).toBeVisible();
+  await expect(confirmBox(page)).toBeVisible();
 });
 
 test("an uploaded sample: Save needs whose voice, a name, the tick and a supported file, and sends them all", async ({ page }) => {
@@ -154,9 +157,10 @@ test("a cloned voice speaks from the Speak screen with the AI label shown", asyn
   await goTo(page, "Voice", "Studio");
   await page.getByRole("tab", { name: "Speak" }).click();
 
-  await page.getByRole("radio", { name: /^Ada(?!m)/ }).first().click();
-  await expect(page.getByText("own voice, confirmed 2026-11-01").first()).toBeVisible();
-  await expect(page.locator(".voice-speak").getByText("Only clone your own voice")).toBeVisible();
+  await page.getByRole("button", { name: "Change voice" }).click();
+  await page.getByRole("dialog", { name: "Choose a voice" }).getByRole("radio", { name: /^Ada(?!m)/ }).first().click();
+  await expect(page.locator(".voice-row")).toContainText("own voice, confirmed 2026-11-01");
+  await expect(page.locator(".voice-speak").getByText("Only clone your own voice")).toHaveCount(0);
   const generate = page.getByRole("button", { name: "Generate audio" });
   await expect(generate).toBeDisabled();
   await page.getByLabel("Text to speak").fill("Hello there");

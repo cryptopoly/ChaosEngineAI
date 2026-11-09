@@ -15547,9 +15547,17 @@ select.music-library__select {
   width: auto;
   flex: 0 1 240px;
 }
+.voice-dictation .panel-header {
+  flex-wrap: wrap;
+}
 .voice-dictation .panel-actions {
   min-width: 0;
   max-width: 100%;
+}
+.voice-dictation .panel-actions .text-input {
+  min-width: 0;
+  width: auto;
+  max-width: 220px;
 }
 .voice-use-menu > summary {
   list-style: none;

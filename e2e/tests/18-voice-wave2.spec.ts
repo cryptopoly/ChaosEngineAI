@@ -83,7 +83,11 @@ async function setup(page: Page, clones: Array<typeof ADA> = []): Promise<Array<
   return bodies;
 }
 
-const pick = (page: Page, name: RegExp) => page.getByRole("radio", { name }).first().click();
+/** Pick a voice on Speak: Change voice opens the picker drawer, a click closes it (D-73). */
+const pick = async (page: Page, name: RegExp) => {
+  await page.getByRole("button", { name: "Change voice" }).click();
+  await page.getByRole("dialog", { name: "Choose a voice" }).getByRole("radio", { name }).first().click();
+};
 
 test("Turbo: tag chips insert [laugh] at the cursor, its undocumented style tags say so, and the request carries no extra fields", async ({ page }) => {
   const bodies = await setup(page);
@@ -119,7 +123,9 @@ test("Chatterbox: the language select, Expression and Guidance go into the reque
 
 test("Orpheus voices are natural voices; a designed voice can run on VoxCPM2", async ({ page }) => {
   const bodies = await setup(page);
-  await expect(page.getByRole("radio", { name: /^Tara/ }).first()).toBeVisible();
+  await page.getByRole("button", { name: "Change voice" }).click();
+  await expect(page.getByRole("dialog", { name: "Choose a voice" }).getByRole("radio", { name: /^Tara/ }).first()).toBeVisible();
+  await page.keyboard.press("Escape");
   await pick(page, /^Leo/);
   await expect(page.getByRole("button", { name: "[Yawn]" })).toBeVisible();
   await pick(page, /Design a voice from a description/);
@@ -137,7 +143,8 @@ test("a cloned voice can use Turbo or VoxCPM2; Turbo refuses a sample under 5 s,
   await pick(page, /^Ada\b/);
   const select = page.getByLabel("Cloning model");
   await expect(select.locator("option")).toHaveText(["Qwen3-TTS 0.6B Base", "Chatterbox-Turbo", "VoxCPM2", "Chatterbox Multilingual V3"]);
-  await expect(page.getByText("Only clone your own voice").first()).toBeVisible();
+  // The cloning statement lives in the New cloned voice form now (D-73), not on Speak.
+  await expect(page.locator(".voice-speak").getByText("Only clone your own voice")).toHaveCount(0);
   await select.selectOption("chatterbox-turbo");
   await expect(page.getByText("Chatterbox-Turbo needs a voice sample of at least 5 seconds")).toBeVisible();
   await page.getByLabel("Text to speak").fill("Hello.");

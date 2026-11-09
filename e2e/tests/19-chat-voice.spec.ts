@@ -7,9 +7,9 @@ import { ADA, mockVoiceApi, silentWavBase64 } from "./voiceMocks";
 
 // D-67 W6 / D-72: any voice in Chat read-aloud and calls. No model and no speech runs: the voice API is mocked
 // (voiceMocks.ts), the chat reply is a scripted stream (as in spec 18) and /api/voice/speak/stream is answered here.
-// Covers: Use in Chat and Use for calls on a natural voice with its measured cost, a cloned voice refused for calls,
-// the read-aloud request body carrying the preset voice, the fallback note shown in the speech bar, and the Call info
-// naming the call voice and pointing at Voices.
+// Covers: Use for > Chat read-aloud and Voice calls on a natural voice with its measured cost, a cloned voice refused
+// for calls, the read-aloud request body carrying the preset voice, the speech bar naming the voice with the fallback
+// note, and Chat's Voice popover (D-73) naming the voices with Change pointing at Voices.
 
 const BOTH_CUSTOM = ["qwen3-tts-0.6b", "qwen3-tts-custom-0.6b", "qwen3-tts-custom-1.7b"];
 
@@ -62,29 +62,31 @@ test("a natural voice can be the chat voice and the call voice, with its measure
   const seen = await mockVoiceApi(page, { clones: [ADA], installed: BOTH_CUSTOM });
   await goTo(page, "Voice", "Studio");
   await page.getByRole("tab", { name: "Voices" }).click();
-  const list = page.locator(".voice-list");
-  const ryan = list.locator("li").filter({ has: page.getByText("Ryan", { exact: true }) });
-  const ada = list.locator("li").filter({ has: page.getByText("Ada", { exact: true }) });
+  const rows = page.locator(".voice-list__row");
+  const ryan = rows.filter({ hasText: "Ryan" });
+  const ada = rows.filter({ hasText: "Ada" });
   await expect(ryan.getByText("first audio 1.3 s (4.1 s cold), 3.51 GB")).toBeVisible();
-  await ryan.getByRole("button", { name: "Use in Chat" }).click();
+  await ryan.getByText("Use for…").click();
+  await ryan.getByRole("menuitemradio", { name: /^Chat read-aloud/ }).click();
   await expect.poll(() => seen.ttsVoices).toEqual(["qwen3:Ryan"]);
-  await expect(ryan.getByText("Chat voice", { exact: true })).toBeVisible();
-  await expect(ada.getByRole("button", { name: "Use for calls" })).toBeDisabled();
-  await expect(ada.getByRole("button", { name: "Use in Chat" })).toBeEnabled();
-  const heart = list.locator("li", { hasText: "Heart" }).first();
-  await heart.getByRole("button", { name: "Use for calls" }).click();
+  await expect(ryan.locator(".badge", { hasText: /^Chat$/ })).toBeVisible();
+  await ada.getByText("Use for…").click();
+  await expect(ada.getByRole("menuitemradio", { name: /^Voice calls/ })).toBeDisabled();
+  await expect(ada.getByRole("menuitemradio", { name: /^Chat read-aloud/ })).toBeEnabled();
+  await ada.getByText("Use for…").click();
+  const heart = rows.filter({ hasText: "Heart" }).first();
+  await heart.getByText("Use for…").click();
+  await heart.getByRole("menuitemradio", { name: /^Voice calls/ }).click();
   await expect.poll(() => seen.callVoices).toEqual(["af_heart"]);
-  await expect(heart.getByText("Call voice", { exact: true })).toBeVisible();
+  await expect(heart.locator(".badge", { hasText: /^Calls$/ })).toBeVisible();
 
-  // The call voice select in Chat and calls offers natural and quick voices with their time, never a cloned one.
-  const panel = page.locator(".voice-chat-calls");
-  const callSelect = panel.getByLabel("Call voice");
-  await expect(callSelect).toHaveValue("af_heart");
-  await expect(callSelect.locator("option", { hasText: "Ryan, 1.3 s" })).toHaveCount(1);
-  await expect(callSelect.locator('option[value="clone:voice-1"]')).toHaveCount(0);
-  await expect(panel.getByLabel("Chat voice (read-aloud)").locator('option[value="clone:voice-1"]')).toHaveCount(1);
+  // The main-voices strip names both, with the measured first-words time.
+  const strip = page.locator(".voice-main");
+  await expect(strip.locator('[data-use="read"]')).toContainText("Ryan");
+  await expect(strip.locator('[data-use="read"]')).toContainText("First words after 1.3 s.");
+  await expect(strip.locator('[data-use="call"]')).toContainText("Heart");
   mkdirSync(SHOTS_DIR, { recursive: true });
-  await panel.screenshot({ path: path.join(SHOTS_DIR, "voice-chat-calls.png") });
+  await strip.screenshot({ path: path.join(SHOTS_DIR, "voice-main-voices.png") });
 });
 
 test("read-aloud sends the preset chat voice and shows the fallback note; Call info names the call voice", async ({ page }) => {
@@ -103,9 +105,13 @@ test("read-aloud sends the preset chat voice and shows the fallback note; Call i
   const runtime = await mockLoadedModel(page);
   await goTo(page, "Chat", "Chat");
 
-  // Call info: the voice by name, and where to change it.
-  await page.locator(".info-tooltip").filter({ has: page.locator(".info-tooltip-icon") }).last().hover();
-  await expect(page.getByRole("tooltip")).toContainText("Voice: Ryan. Change it in Voice Studio > Voices.");
+  // The Voice popover: the voices by name, and Change opens Voices.
+  await page.locator(".voice-popover__button").click();
+  const popover = page.locator(".voice-popover__panel");
+  await expect(popover).toContainText("Chat read-aloud");
+  await expect(popover.locator(".voice-popover__line").first()).toContainText("Ryan");
+  await page.keyboard.press("Escape");
+  await expect(popover).toHaveCount(0);
 
   await page.locator(".composer textarea").fill("Tell me something");
   await page.getByRole("button", { name: "Send", exact: true }).click();
@@ -129,4 +135,5 @@ test("read-aloud sends the preset chat voice and shows the fallback note; Call i
   expect(bodies[0]).toMatchObject({ text: "Here is the answer.", voice: "qwen3:Ryan" });
   expect(bodies[0].use).toBeUndefined(); // read-aloud is the default use
   await expect(page.locator(".speech-bar__note")).toContainText("the Kokoro voice reads instead");
+  await expect(page.locator(".speech-bar__voice")).toHaveText("Ryan reading");
 });

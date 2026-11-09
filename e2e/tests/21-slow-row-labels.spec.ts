@@ -36,7 +36,7 @@ test("slow rows are labelled on an Apple Silicon Mac", async ({ page }) => {
   await expect(note).toContainText("full-size bf16 weights");
   await expect(note).toContainText("Measured: about 18 min 50 s");
   await expect(note).toContainText("768x512 clip of 33 frames (M4 Max, 64 GB, 2026-10-21)");
-  await expect(note).toContainText("Faster here: LTX-2.5 · distilled q4 (ltx-2-mlx)");
+  await expect(note).toContainText("Faster here: LTX-2.3 · distilled q4 (ltx-2-mlx)");
 
   const wan = row(page, "Wan-AI/Wan2.1-T2V-1.3B-Diffusers");
   await expect(wan.getByTestId("slow-row-chip")).toHaveText("Slow on this computer");
@@ -45,7 +45,7 @@ test("slow rows are labelled on an Apple Silicon Mac", async ({ page }) => {
   await expect(wan.getByTestId("slow-row-note")).not.toContainText("Measured");
 
   // The fast MLX row is not labelled, and every row is still listed.
-  await expect(row(page, "dgrauet/ltx-2.5-mlx-q4").getByTestId("slow-row-chip")).toHaveCount(0);
+  await expect(row(page, "dgrauet/ltx-2.3-mlx-q4").getByTestId("slow-row-chip")).toHaveCount(0);
   await expect(row(page, "Wan-AI/Wan2.2-T2V-A14B-Diffusers")).toBeVisible();
 
   await measured.scrollIntoViewIfNeeded();

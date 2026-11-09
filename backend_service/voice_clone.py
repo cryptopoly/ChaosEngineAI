@@ -493,7 +493,7 @@ def speak(
     )
     rendered = voice_speak.render(plan, text, speed=speed, pitch=pitch, seed=seed)
     duration = rendered.duration_s
-    tagged = mark_cloned(rendered.wav, row, voice_id)
+    tagged = mark_cloned(rendered.wav, row, voice_id, altered=speed != 1.0 or pitch != 0)
     with tempfile.TemporaryDirectory(prefix="chaosengine-cloned-") as tmp:
         out = Path(tmp) / "speech.wav"
         out.write_bytes(tagged)
@@ -562,9 +562,16 @@ def clone_plan(
     return voice_speak.plan_for("clone", f"clone:{voice_id}", row, extra), row, voice, notes
 
 
-def mark_cloned(wav: bytes, row: dict[str, Any], voice_id: str) -> bytes:
-    """The watermark and the AI tag every piece of cloned speech gets, whatever the model."""
+def mark_cloned(wav: bytes, row: dict[str, Any], voice_id: str, *, altered: bool = False) -> bytes:
+    """The watermark and the AI tag every piece of cloned speech gets, whatever the model.
+
+    ``altered``: the model's output was time-stretched or pitch-shifted afterwards (speed or pitch not neutral).
+    A model's own watermark (PerTh on the CUDA Chatterbox rows) does not survive that - measured on the RTX 4090
+    run: PerTh 1.0 on a plain clip, 0.0 after speed 1.3 and pitch +2, while our AudioSeal mark read 1.0 - so the
+    tag only records it on unaltered audio.
+    """
     version = _app_version()
+    builtin = None if altered else row.get("builtinWatermark")
     with tempfile.TemporaryDirectory(prefix="chaosengine-cloned-") as tmp:
         out = Path(tmp) / "speech.wav"
         out.write_bytes(wav)
@@ -575,7 +582,7 @@ def mark_cloned(wav: bytes, row: dict[str, Any], voice_id: str) -> bytes:
              "createdAt": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "voiceId": voice_id,
              "watermark": "audioseal-0.2.1:CE5A",
              # A watermark the model adds itself (PerTh on the CUDA Chatterbox rows), recorded so the tag is honest.
-             **({"builtinWatermark": row["builtinWatermark"]} if row.get("builtinWatermark") else {})},
+             **({"builtinWatermark": builtin} if builtin else {})},
             f"ChaosEngineAI {version}",
         )
 

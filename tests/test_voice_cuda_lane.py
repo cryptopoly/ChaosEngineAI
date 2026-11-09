@@ -227,6 +227,24 @@ class PerthTagTests(unittest.TestCase):
             self.assertEqual(tag["watermark"], "audioseal-0.2.1:CE5A")
             self.assertEqual(worker.request.call_args.kwargs["engine"], "torch")
 
+    def test_speed_or_pitch_drops_the_perth_claim_but_keeps_audioseal(self) -> None:
+        # RTX 4090 run: PerTh read 1.0 on a plain Chatterbox clip and 0.0 after speed 1.3 and pitch +2,
+        # while AudioSeal still read 1.0. The tag must not claim a mark that is gone.
+        wav = make_wav()
+        row = dict(voice_models.voice_model("chatterbox-turbo-cuda"), listed=True)
+        with mock.patch.object(voice_clone_safety, "apply_watermark", return_value=True):
+            plain = voice_clone_safety.read_wav_bytes_tag(voice_clone.mark_cloned(wav, row, "v1")) \
+                if hasattr(voice_clone_safety, "read_wav_bytes_tag") else None
+            shifted_bytes = voice_clone.mark_cloned(wav, row, "v1", altered=True)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "s.wav"
+            path.write_bytes(shifted_bytes)
+            tag = voice_clone_safety.read_wav_tag(path)
+        self.assertNotIn("builtinWatermark", tag)
+        self.assertEqual(tag["watermark"], "audioseal-0.2.1:CE5A")
+        if plain is not None:
+            self.assertEqual(plain["builtinWatermark"], "perth")
+
 
 class GpuWorkerTests(unittest.TestCase):
     def test_orpheus_prompt_codes_and_snac_layers(self) -> None:

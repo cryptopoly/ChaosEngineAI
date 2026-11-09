@@ -16,7 +16,7 @@ from unittest import mock
 # numpy's "cannot load module more than once per process" guard.
 import numpy  # noqa: F401
 
-from backend_service import voice_kokoro_onnx
+from backend_service import voice_env, voice_kokoro_onnx
 
 
 
@@ -61,6 +61,7 @@ class KokoroGradeTests(unittest.TestCase):
         from backend_service import voice_clone, voice_env, voice_speak  # noqa: PLC0415
 
         with mock.patch.object(voice_env, "lane", return_value="mlx"), \
+                mock.patch.object(voice_env, "kokoro_installed", return_value=True), \
                 mock.patch.object(voice_env, "installed_extras", return_value=[]), \
                 mock.patch.object(voice_clone, "snapshot_dir", return_value=None):
             builtin = {v["id"]: v for v in voice_speak.list_voices(include_clones=False) if v["kind"] == "builtin"}
@@ -70,6 +71,7 @@ class KokoroGradeTests(unittest.TestCase):
         self.assertEqual(builtin["zm_yunxi"]["addon"], "chinese")
         self.assertFalse(builtin["zm_yunxi"]["available"])
         with mock.patch.object(voice_env, "lane", return_value="portable"), \
+                mock.patch.object(voice_env, "kokoro_installed", return_value=True), \
                 mock.patch.object(voice_clone, "snapshot_dir", return_value=None):
             self.assertIn("jf_alpha", {v["id"] for v in voice_speak.list_voices(include_clones=False)})
 
@@ -175,7 +177,8 @@ class KokoroOnnxEdgeTests(unittest.TestCase):
     def test_kokoro_dir_lives_under_home(self) -> None:
         self._dir_patch.stop()
         try:
-            with mock.patch.object(voice_kokoro_onnx.Path, "home", return_value=self.root):
+            # The folder is voice_env's (D-75), which sits under the home folder.
+            with mock.patch.object(voice_env, "VOICE_DATA_DIR", self.root / ".chaosengine" / "voice"):
                 path = voice_kokoro_onnx.kokoro_dir()
         finally:
             self._dir_patch.start()

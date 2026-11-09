@@ -2146,6 +2146,8 @@ def phase_8(cap: Capability) -> PhaseResult:
     def _speak_stream():
         if not runtime_payload.get("ttsAvailable"):
             return "skip", "TTS backend not installed", {}
+        if runtime_payload.get("ttsModelInstalled") is False:
+            return "skip", "Kokoro quick voices not installed (an optional add-on, D-75)", {}
         payload = json.dumps({"text": "First sentence. Second sentence.", "voice": "af_heart"}).encode("utf-8")
         code, body = _voice_http(
             "POST", "/api/voice/speak/stream", body=payload,
@@ -2164,10 +2166,14 @@ def phase_8(cap: Capability) -> PhaseResult:
         return "pass", "", {"sentences": len(sentences)}
 
     def _chat_voice_any():
-        """D-72: settings refuse an unknown chat voice; a call with a voice that cannot speak still speaks (Kokoro
-        reads, with a note first). Uses only the bundled Kokoro voice: nothing is downloaded."""
-        if not runtime_payload.get("ttsAvailable"):
-            return "skip", "TTS backend not installed", {}
+        """D-72, D-75: settings refuse an unknown chat voice; a call with a voice that cannot speak is read by the
+        fallback voice (Kokoro's Heart by default, with a note first). Uses only the Kokoro voice: nothing is
+        downloaded. Skipped when Kokoro is not installed or another fallback is set (``_kokoro_optional`` covers
+        the no-fallback answer)."""
+        if not runtime_payload.get("ttsAvailable") or runtime_payload.get("ttsModelInstalled") is False:
+            return "skip", "Kokoro quick voices not installed", {}
+        if (runtime_payload.get("settings") or {}).get("fallbackVoice", "af_heart") != "af_heart":
+            return "skip", "another fallback voice is set (not changed by the suite)", {}
         bad = json.dumps({"callVoice": "qwen3:Nobody"}).encode("utf-8")
         code, _resp = _voice_http("POST", "/api/voice/settings", body=bad, content_type="application/json", timeout=30.0)
         if code != 400:
@@ -2185,8 +2191,8 @@ def phase_8(cap: Capability) -> PhaseResult:
         """Conversation mode's turn detector: silence, speech, silence."""
         if not runtime_payload.get("vadAvailable"):
             return "skip", "voice runtime has no turn detector (update it from Voice > Models)", {}
-        if not runtime_payload.get("ttsAvailable"):
-            return "skip", "TTS backend not installed (used to make the speech)", {}
+        if not runtime_payload.get("ttsAvailable") or runtime_payload.get("ttsModelInstalled") is False:
+            return "skip", "Kokoro quick voices not installed (used to make the speech)", {}
         payload = json.dumps({"text": "This is a voice call check.", "voice": "af_heart"}).encode("utf-8")
         code, body = _voice_http("POST", "/api/voice/synthesize", body=payload, content_type="application/json", timeout=180.0)
         if code != 200:
@@ -2218,6 +2224,34 @@ def phase_8(cap: Capability) -> PhaseResult:
         if speech_frames < 10:
             return "fail", f"only {speech_frames} speech frames detected", {}
         return "pass", "", {"frames": len(probs), "speechFrames": speech_frames}
+
+    def _kokoro_optional():
+        """D-75, without changing anything: Kokoro is listed as a runtime add-on whose state matches its files, the
+        Fallback voice setting refuses an unknown voice and "Describe a voice", and with Kokoro absent and the default
+        fallback a read-aloud request answers 409 in plain words instead of switching voice."""
+        if not runtime_payload:
+            return "skip", "voice routes not present in this build", {}
+        extras = {e.get("id"): e for e in runtime_payload.get("extras", [])}
+        if "kokoro" not in extras:
+            return "fail", "the runtime does not list the Kokoro add-on", {}
+        if bool(extras["kokoro"].get("installed")) != bool(runtime_payload.get("ttsModelInstalled")):
+            return "fail", "the Kokoro add-on state does not match its files", {}
+        settings = runtime_payload.get("settings") or {}
+        if "fallbackVoice" not in settings:
+            return "fail", "settings lack fallbackVoice", {}
+        for bad in ("qwen3:Nobody", "design"):
+            code, _resp = _voice_http("POST", "/api/voice/settings", body=json.dumps({"fallbackVoice": bad}).encode("utf-8"),
+                                      content_type="application/json", timeout=30.0)
+            if code != 400:
+                return "fail", f"fallbackVoice {bad!r}: expected 400, got {code}", {}
+        detail = {"kokoroInstalled": bool(extras["kokoro"].get("installed")), "fallbackVoice": settings.get("fallbackVoice")}
+        if not extras["kokoro"].get("installed") and settings.get("fallbackVoice") in ("af_heart", ""):
+            payload = json.dumps({"text": "One sentence.", "voice": "af_heart"}).encode("utf-8")
+            code, body = _voice_http("POST", "/api/voice/speak/stream", body=payload, content_type="application/json", timeout=60.0)
+            if code != 409 or b"no fallback voice is set" not in body:
+                return "fail", f"no Kokoro and no fallback: expected a plain 409, got {code}", {}
+            detail["noFallback"] = "409"
+        return "pass", "", detail
 
     def _settings_roundtrip():
         code, body = _voice_http("GET", "/api/voice/settings", timeout=15.0)
@@ -2333,7 +2367,8 @@ def phase_8(cap: Capability) -> PhaseResult:
         ("speech model catalog", _speech_model_catalog), ("speak with each wave-2 model", _speak_each_wave2_model),
         ("wave-2 clone needs a permission record", _clone_needs_a_permission_record),
         ("voice settings", _settings_roundtrip), ("read-aloud stream", _speak_stream),
-        ("chat voice: any voice, Kokoro fallback", _chat_voice_any),
+        ("chat voice: any voice, fallback voice", _chat_voice_any),
+        ("Kokoro optional add-on and fallback setting", _kokoro_optional),
         ("voice call turn detector", _vad_turn),
         ("stt rejects unknown model", _stt_rejects_unknown_model),
         ("synthesize smoke", _synthesize),

@@ -712,7 +712,6 @@
         "makesAll": null
       },
       "firstUseLine": null,
-      "kokoroLine": null,
       "licence": null,
       "makes": {
         "clone": null,
@@ -747,7 +746,10 @@
       "ttsIntro": null,
       "cancelDownload": null,
       "showSizes": null,
-      "hideSizes": null
+      "hideSizes": null,
+      "kokoroLineAddon": null,
+      "kokoroNotInstalled": null,
+      "kokoroAddHint": null
     },
     "voices": {
       "addChinese": null,
@@ -778,7 +780,8 @@
       "badge": {
         "call": null,
         "read": null,
-        "speak": null
+        "speak": null,
+        "fallback": null
       },
       "change": null,
       "changeFor": null,
@@ -786,7 +789,6 @@
       "chooseFor": null,
       "chooseReadHint": null,
       "clonedNote": null,
-      "fallbackNote": null,
       "female": null,
       "firstWords": null,
       "groupNatural": null,
@@ -796,7 +798,6 @@
       "naturalNote": null,
       "notForChat": null,
       "notReady": null,
-      "quickNote": null,
       "sameAsChat": null,
       "slotCall": null,
       "slotRead": null,
@@ -806,10 +807,21 @@
       "use": {
         "call": null,
         "read": null,
-        "speak": null
+        "speak": null,
+        "fallback": null
       },
       "useFor": null,
-      "useForLabel": null
+      "useForLabel": null,
+      "slotFallback": null,
+      "slotFallbackClone": null,
+      "fallbackNone": null,
+      "noFallback": null,
+      "chooseFallbackHint": null,
+      "fallbackNoteVoice": null,
+      "fallbackNoteNone": null,
+      "quickNoteAddon": null,
+      "kokoroMissing": null,
+      "openModels": null
     },
     "settings": {
       "autoSend": "Enviar a mensagem assim que o ditado terminar",
@@ -1136,7 +1148,6 @@
       "recommended": null,
       "recommendedNote": null,
       "quick": null,
-      "quickNote": null,
       "fewer": null,
       "allVoices": null,
       "cloned": null,
@@ -1151,7 +1162,8 @@
       "getMoreDetail": null,
       "openModels": null,
       "drawerHint": null,
-      "drawerTitle": null
+      "drawerTitle": null,
+      "quickNoteAddon": null
     },
     "chatCalls": {
       "cost": null,
@@ -1161,10 +1173,10 @@
       "browse": null
     },
     "runtime": {
-      "about": null,
       "addon": {
         "chinese": null,
-        "speech-gpu": null
+        "speech-gpu": null,
+        "kokoro": null
       },
       "addons": null,
       "addonsHint": null,
@@ -1186,7 +1198,9 @@
       "troubleshootBody": null,
       "update": null,
       "updateFeatures": null,
-      "workerOnly": null
+      "workerOnly": null,
+      "partsNoKokoro": null,
+      "aboutOptional": null
     }
   },
   "residentChatModelNote": "Um modelo de chat carregado ocupa cerca de {gb} GB dessa memória; descarregá-lo libera esse espaço.",

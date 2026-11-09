@@ -195,6 +195,7 @@ _LANGUAGES = {
 }
 
 DEFAULT_VOICE = "af_heart"
+KOKORO_MISSING = "The Kokoro quick voices are not installed. Tick them under Voice > Models > Voice runtime > Add-ons."
 
 # Overall grades from the model author's VOICES.md (hexgrad/Kokoro-82M, checked 2026-11-08). Spanish and Portuguese
 # voices are ungraded there and stay None. The Speak screen shortlists by these (D-67).
@@ -262,6 +263,9 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "ttsVoice": DEFAULT_VOICE,
     # Voice calls: "" means the chat voice; cloned voices are refused here (routes/voice.py, voice_chat).
     "callVoice": "",
+    # What reads when the chosen chat or call voice cannot speak (D-75): any installed voice allowed for that use (a
+    # cloned one only for read-aloud), "" for none. Kokoro's af_heart counts only while Kokoro is installed.
+    "fallbackVoice": DEFAULT_VOICE,
     # The voice last used on the Speak screen, kept apart from the chat voice; "" until Speak has run once.
     "speakVoice": "",
     "speed": 1.0,
@@ -311,6 +315,12 @@ def save_settings(patch: dict[str, Any]) -> dict[str, Any]:
 # Capabilities
 # ---------------------------------------------------------------------------
 
+def _speech_model_ready() -> bool:
+    from backend_service import voice_speak  # noqa: PLC0415
+
+    return voice_speak.natural_voice_installed()
+
+
 def get_voice_capabilities() -> dict[str, Any]:
     from backend_service.voice_client import worker_pid  # noqa: PLC0415
 
@@ -323,7 +333,8 @@ def get_voice_capabilities() -> dict[str, Any]:
         "lane": lane,
         "installed": installed,
         "sttAvailable": installed,
-        "ttsAvailable": installed and tts_data,
+        # Some voice can read aloud: Kokoro, or a downloaded speech model (Kokoro is optional, D-75).
+        "ttsAvailable": installed and (tts_data or _speech_model_ready()),
         "ttsModelInstalled": tts_data,
         "vadAvailable": voice_env.vad_installed() if installed else False,
         "speakersAvailable": voice_env.diarize_installed() if installed else False,
@@ -465,7 +476,7 @@ def synthesize(text: str, voice: str, speed: float) -> tuple[bytes, float]:
     if not known[voice]["available"]:
         raise ValueError(f"{known[voice]['languageLabel']} voices need an extra install on this machine.")
     if not voice_env.tts_data_installed():
-        raise RuntimeError("The Kokoro voice model is not downloaded. Reinstall the voice runtime from Voice > Models.")
+        raise RuntimeError(KOKORO_MISSING)
     # mlx-audio works out the model type from the repo name, so it gets the
     # repo id (resolved from the local cache), not the snapshot folder.
     engine, source = voice_env.tts_source()

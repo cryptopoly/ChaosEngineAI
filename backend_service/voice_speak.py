@@ -191,15 +191,21 @@ def list_voices(*, include_clones: bool = True) -> list[dict[str, Any]]:
     no_ffmpeg = ffmpeg_bin.optional_ffmpeg_exe() is None
 
     voices: list[dict[str, Any]] = []
+    kokoro_ready = voice_env.kokoro_installed()  # an add-on since D-75: its voices stay listed, not available
     for v in voice_runtime.list_tts_voices():
         if v.get("neverAvailable"):
             continue  # Japanese on the MLX lane: nothing can unlock it, so it is not offered at all
+        ready = kokoro_ready and bool(v["available"])
+        if not kokoro_ready:
+            needs = voice_runtime.KOKORO_MISSING
+        else:
+            needs = None if ready else f"{v['languageLabel']} voices need an extra install."
         voices.append({
             "id": v["id"], "name": v["name"], "kind": "builtin", "family": "kokoro", "language": v["language"],
             "languageLabel": v["languageLabel"], "gender": v["gender"], "model": "kokoro", "models": ["kokoro"],
-            "capabilities": _caps(speak=True), "available": bool(v["available"]),
-            "grade": v.get("grade"), "addon": None if v["available"] else v.get("addon"),
-            "needs": None if v["available"] else f"{v['languageLabel']} voices need an extra install.",
+            "capabilities": _caps(speak=True), "available": ready,
+            "grade": v.get("grade"), "addon": None if v["available"] or not kokoro_ready else v.get("addon"),
+            "needs": needs,
         })
 
     customs = _models_of("custom")
@@ -245,6 +251,12 @@ def list_voices(*, include_clones: bool = True) -> list[dict[str, Any]]:
         entry["chatUse"] = chat_uses(entry["kind"])
         entry["chatCost"] = chat_cost(entry["model"])
     return voices
+
+
+def natural_voice_installed() -> bool:
+    """A downloaded speech model with voices of its own runs here (a preset speaker, Turbo, Chatterbox or Orpheus), so
+    read-aloud can work without Kokoro (D-75)."""
+    return any(_installed(row) for row in _rows(lambda row: row["kind"] in ("custom", "turbo", "chatterbox", "orpheus")))
 
 
 def chat_uses(kind: str) -> dict[str, bool]:

@@ -712,7 +712,6 @@
         "makesAll": "Everything"
       },
       "firstUseLine": "A model you pick but have not downloaded is fetched the first time you dictate. Whisper uses the language; Parakeet and Nemotron find it themselves.",
-      "kokoroLine": "{count} quick voices in {languages} languages. Fast on any machine; the voice Chat falls back to.",
       "licence": "Licence: {name}",
       "makes": {
         "clone": "Clone",
@@ -747,7 +746,10 @@
       "ttsIntro": "Turn text into speech: Speak, read-aloud and calls. Pick a voice on Studio > Voices.",
       "cancelDownload": "Cancel",
       "showSizes": "Show {count} sizes",
-      "hideSizes": "Hide sizes"
+      "hideSizes": "Hide sizes",
+      "kokoroLineAddon": "{count} quick voices in {languages} languages. Fast on any machine; an add-on of the voice runtime.",
+      "kokoroNotInstalled": "Not installed",
+      "kokoroAddHint": "Tick it under Voice runtime > Add-ons."
     },
     "voices": {
       "addChinese": "Add Mandarin Chinese voices",
@@ -778,7 +780,8 @@
       "badge": {
         "call": "Calls",
         "read": "Chat",
-        "speak": "Speak"
+        "speak": "Speak",
+        "fallback": "Fallback"
       },
       "change": "Change",
       "changeFor": "Change the voice for {use}",
@@ -786,7 +789,6 @@
       "chooseFor": "Choose the voice for {use}",
       "chooseReadHint": "Voices that can read chat replies aloud.",
       "clonedNote": "Your voice, or someone who gave permission. Labelled AI-made and watermarked.",
-      "fallbackNote": "If a chosen voice cannot speak (model not downloaded, or it fails to load), Kokoro reads instead and Chat says so.",
       "female": "female",
       "firstWords": "First words after {s} s.",
       "groupNatural": "Natural",
@@ -796,7 +798,6 @@
       "naturalNote": "From the speech models you downloaded. Style, tags or expression depend on the model.",
       "notForChat": "This voice cannot speak in Chat here.",
       "notReady": "Its model is not downloaded yet.",
-      "quickNote": "Kokoro, part of the voice runtime. Fast, under 1 GB, speed only. The best-graded shown first.",
       "sameAsChat": "(same as Chat)",
       "slotCall": "Cloned voices are not used in calls.",
       "slotRead": "Replies and the speaker button.",
@@ -806,10 +807,21 @@
       "use": {
         "call": "Voice calls",
         "read": "Chat read-aloud",
-        "speak": "Speak"
+        "speak": "Speak",
+        "fallback": "Fallback"
       },
       "useFor": "Use for…",
-      "useForLabel": "Use {name} for"
+      "useForLabel": "Use {name} for",
+      "slotFallback": "Reads when the chat or call voice cannot.",
+      "slotFallbackClone": "Reads when the chat voice cannot. Not used in calls.",
+      "fallbackNone": "None set",
+      "noFallback": "No fallback voice",
+      "chooseFallbackHint": "Installed voices that read when the chosen chat or call voice cannot. A cloned voice is used for read-aloud only.",
+      "fallbackNoteVoice": "If a chosen voice cannot speak (model not downloaded, or it fails to load), the fallback voice {name} reads instead and Chat says so.",
+      "fallbackNoteNone": "No fallback voice is set: if a chosen voice cannot speak, read-aloud and calls show an error instead of switching voice.",
+      "quickNoteAddon": "Kokoro, an add-on of the voice runtime. Fast, under 1 GB, speed only. The best-graded shown first.",
+      "kokoroMissing": "The Kokoro quick voices are not installed. Tick them under Voice > Models > Voice runtime > Add-ons (about 330 MB).",
+      "openModels": "Open Voice Models"
     },
     "settings": {
       "autoSend": "Send the message as soon as dictation finishes",
@@ -1136,7 +1148,6 @@
       "recommended": "Recommended",
       "recommendedNote": "For this computer and {language}",
       "quick": "Quick",
-      "quickNote": "Kokoro, part of the voice runtime. Fast, under 1 GB, speed only. {count} voices in {languages} languages.",
       "fewer": "Show the shortlist",
       "allVoices": "All {count} {language} voices",
       "cloned": "Cloned",
@@ -1151,7 +1162,8 @@
       "getMoreDetail": "The cloning models and the rest of the speech models.",
       "openModels": "Open Models",
       "drawerHint": "Click a voice to use it in Speak. The sample button plays a short line.",
-      "drawerTitle": "Choose a voice"
+      "drawerTitle": "Choose a voice",
+      "quickNoteAddon": "Kokoro, an add-on of the voice runtime. Fast, under 1 GB, speed only. {count} voices in {languages} languages."
     },
     "chatCalls": {
       "cost": "first audio {warm} s ({cold} s cold), {memory} GB",
@@ -1161,10 +1173,10 @@
       "browse": "Browse voices"
     },
     "runtime": {
-      "about": "About 2.3 GB: the speech packages, the Kokoro quick voices, turn detection and speaker labels. Dictation and speech models are separate downloads on this page. Nothing is sent online.",
       "addon": {
         "chinese": "Mandarin Chinese quick voices (8 voices, about 60 MB)",
-        "speech-gpu": "Speech GPU add-on: Chatterbox, VoxCPM2 and Orpheus on the NVIDIA GPU (several GB)"
+        "speech-gpu": "Speech GPU add-on: Chatterbox, VoxCPM2 and Orpheus on the NVIDIA GPU (several GB)",
+        "kokoro": "Kokoro quick voices (about 330 MB)"
       },
       "addons": "Add-ons",
       "addonsHint": "Installs when ticked; untick to remove.",
@@ -1186,7 +1198,9 @@
       "troubleshootBody": "Reinstall runs the whole install again. Remove frees the disk space; dictation, read-aloud, calls and Voice Studio stop until it is installed again.",
       "update": "Update voice runtime",
       "updateFeatures": "Update the voice runtime for voice calls in Chat and speaker labels on transcripts (adds about 40 MB of models; a minute or two).",
-      "workerOnly": "the voice worker, no model yet"
+      "workerOnly": "the voice worker, no model yet",
+      "partsNoKokoro": "{total} GB on disk: speech packages {packages} GB, turn detection and speaker labels {small} GB; the Kokoro quick voices are not installed. Nothing is sent online.",
+      "aboutOptional": "About 2 GB: the speech packages, turn detection and speaker labels, plus the Kokoro quick voices when ticked below. Dictation and speech models are separate downloads on this page. Nothing is sent online."
     }
   },
   "residentChatModelNote": "A loaded chat model holds about {gb} GB of this memory; unloading it frees that.",

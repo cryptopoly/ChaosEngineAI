@@ -518,6 +518,8 @@
     "openVoices": null,
     "read": null,
     "sameAsChat": null,
-    "title": null
+    "title": null,
+    "fallback": null,
+    "noFallback": null
   }
 }

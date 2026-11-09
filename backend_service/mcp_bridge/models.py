@@ -132,7 +132,11 @@ def installed_models(state: Any, kind: str) -> list[dict[str, Any]]:
 
     if kind == "stt":
         return [m for m in voice_runtime.list_stt_models() if m.get("installed")]
-    # kind == "voice"
+    # kind == "voice": Kokoro when its quick voices are installed (an add-on since D-75)
+    from backend_service import voice_env
+
+    if not voice_env.kokoro_installed():
+        return []
     return [
         {"id": "kokoro", "name": "Kokoro", "voices": len([v for v in voice_runtime.list_tts_voices() if v["available"]])}
     ]

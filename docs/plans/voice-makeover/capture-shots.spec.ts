@@ -1,5 +1,6 @@
-// Screenshot recipe for this review. To re-run: copy to e2e/tests/99-voice-shots.spec.ts, then from e2e/
-// E2E_WEB_PORT=8951 E2E_API_PORT=8952 npx playwright test 99-voice-shots (own ports; never 8876).
+// Screenshot recipe for the voice makeover. To re-run: copy to e2e/tests/99-voice-shots.spec.ts, then from e2e/
+// E2E_WEB_PORT=8961 E2E_API_PORT=8962 npx playwright test 99-voice-shots --workers=1 (own ports; never 8876).
+// VOICE_SHOTS=shots writes the "before" set the review used; the default writes the finished screens to after/.
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { test, expect } from "./fixtures";
@@ -7,9 +8,9 @@ import type { Page } from "@playwright/test";
 import { goTo, openApp, openTab } from "./helpers";
 import { ADA, mockVoiceApi, ttsModels, voiceList } from "./voiceMocks";
 
-// Review-only: screenshots of every Voice screen and state for docs/plans/voice-makeover. Not a test of behaviour.
+// Screenshots of every Voice screen and state for docs/plans/voice-makeover. Not a test of behaviour.
 
-const OUT = path.resolve(__dirname, "..", "..", "docs", "plans", "voice-makeover", "shots");
+const OUT = path.resolve(__dirname, "..", "..", "docs", "plans", "voice-makeover", process.env.VOICE_SHOTS ?? "after");
 const DESKTOP = { width: 1280, height: 900 };
 const PHONE = { width: 375, height: 812 };
 
@@ -122,6 +123,8 @@ async function installedWorld(page: Page, opts: { installed?: string[]; clones?:
     Object.assign(runtime, {
       installed: true, sttAvailable: true, ttsAvailable: true, ttsModelInstalled: true, vadAvailable: true, speakersAvailable: true,
       updateAvailable: false, workerPid: 48213, installedAt: "2026-11-09T09:12:00",
+      parts: [{ id: "packages", sizeGb: 1.92 }, { id: "kokoro", sizeGb: 0.33 }, { id: "turns", sizeGb: 0.002 }, { id: "speakers", sizeGb: 0.036 }],
+      inMemory: [{ lane: "tts", name: "Kokoro", peakGb: 0.87 }],
     });
     runtime.settings = { ...(runtime.settings ?? {}), ...(settings ?? {}), speakVoice: opts.speakVoice ?? "", ttsVoice: opts.ttsVoice ?? "af_heart" };
     if (Array.isArray(runtime.sttModels) && runtime.sttModels[0]) runtime.sttModels[0].installed = true;
@@ -129,7 +132,9 @@ async function installedWorld(page: Page, opts: { installed?: string[]; clones?:
   });
   const models = [...ttsModels(installed), ...wave2Models(installed)];
   await page.route("**/api/voice/voices", (route) => route.fulfill({ json: { voices: wave2Voices(clones, installed) } }));
-  await page.route("**/api/voice/models", (route) => route.fulfill({ json: { models, available: true } }));
+  const fit = (peakGb: number) => ({ status: peakGb > 4 ? "tight" : "fits", needGb: peakGb, usableGb: 51.8, headroomPct: 90, reason: "Peak memory while speaking", basis: "measured" });
+  const withFit = models.map((m) => ({ ...m, fit: m.estimates ? fit(m.estimates.peakGb) : null }));
+  await page.route("**/api/voice/models", (route) => route.fulfill({ json: { models: withFit, available: true, kokoro: { peakGb: 0.87, fit: fit(0.87) } } }));
   await page.route("**/api/voice/clone/models", (route) =>
     route.fulfill({ json: { available: true, allowedHere: true, models: models.filter((m) => m.capabilities.clone) } }),
   );
@@ -154,6 +159,13 @@ async function openSpeak(page: Page) {
   await goTo(page, "Voice", "Studio");
   await page.getByRole("tab", { name: "Speak" }).click();
   await expect(page.getByLabel("Text to speak")).toBeVisible();
+}
+
+/** Speak's voices are chosen in the drawer behind Change voice. */
+async function choose(page: Page, id: string) {
+  await page.getByRole("button", { name: "Change voice" }).click();
+  await pick(page, id).click();
+  await expect(page.getByRole("dialog", { name: "Choose a voice" })).toHaveCount(0);
 }
 
 for (const phone of [false, true]) {
@@ -188,19 +200,21 @@ for (const phone of [false, true]) {
       await openSpeak(page);
       await page.getByLabel("Text to speak").fill("Good evening, everyone. Tonight we look at the harbour, the boats and the people who work there.");
       await shoot(page, "speak-natural", phone);
-      await pick(page, "clone:voice-1").click();
+      await page.getByRole("button", { name: "Change voice" }).click();
+      await expect(page.getByRole("dialog", { name: "Choose a voice" })).toBeVisible();
+      await page.screenshot({ path: path.join(OUT, `${phone ? "m" : "d"}-speak-drawer.png`), fullPage: false });
+      await page.keyboard.press("Escape");
+      await choose(page, "clone:voice-1");
       await shoot(page, "speak-clone", phone);
-      if (await pick(page, "design").count()) {
-        await pick(page, "design").click();
-        await shoot(page, "speak-design", phone);
-      }
-      await pick(page, "chatterbox-turbo").click();
+      await choose(page, "design");
+      await shoot(page, "speak-design", phone);
+      await choose(page, "chatterbox-turbo");
       await shoot(page, "speak-turbo", phone);
-      await pick(page, "chatterbox").click();
+      await choose(page, "chatterbox");
       await shoot(page, "speak-chatterbox", phone);
-      await pick(page, "orpheus:tara").click();
+      await choose(page, "orpheus:tara");
       await shoot(page, "speak-orpheus", phone);
-      await pick(page, "af_heart").click();
+      await choose(page, "af_heart");
       await shoot(page, "speak-quick", phone);
     });
 
@@ -230,13 +244,13 @@ for (const phone of [false, true]) {
       await page.getByRole("navigation", { name: "Primary" }).locator(".nav-group-header", { hasText: /^Chat/ }).click().catch(() => {});
       await page.getByRole("navigation", { name: "Primary" }).locator(".nav-child-button", { hasText: /^Chat$/ }).click().catch(() => {});
       await page.waitForTimeout(800);
-      const info = page.getByRole("button", { name: "More info" }).first();
       await shoot(page, "chat", phone);
-      if (await info.isVisible().catch(() => false)) {
-        await info.hover();
-        await info.click().catch(() => {});
+      const voice = page.locator(".voice-popover__button").first();
+      if (await voice.isVisible().catch(() => false)) {
+        await voice.click();
+        await expect(page.locator(".voice-popover__panel")).toBeVisible();
         await page.waitForTimeout(300);
-        await page.screenshot({ path: path.join(OUT, `${phone ? "m" : "d"}-chat-call-info.png`), fullPage: false });
+        await page.screenshot({ path: path.join(OUT, `${phone ? "m" : "d"}-chat-voice-popover.png`), fullPage: false });
       }
     });
   });

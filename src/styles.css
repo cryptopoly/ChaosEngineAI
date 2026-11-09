@@ -15474,6 +15474,12 @@ select.music-library__select {
 .drawer.drawer--wide {
   width: min(760px, 100vw);
 }
+@media (max-width: 760px) {
+  .drawer.drawer--wide {
+    left: 0;
+    width: auto;
+  }
+}
 .drawer__subtitle {
   margin: 2px 0 0;
   font-size: 0.85rem;
@@ -15534,6 +15540,17 @@ select.music-library__select {
 .voice-list__about {
   font-size: 0.85rem;
 }
+.voice-voices .voice-list__name {
+  flex: 1 1 220px;
+}
+.voice-voices__filters > select.text-input {
+  width: auto;
+  flex: 0 1 240px;
+}
+.voice-dictation .panel-actions {
+  min-width: 0;
+  max-width: 100%;
+}
 .voice-use-menu > summary {
   list-style: none;
   cursor: pointer;
@@ -15589,6 +15606,14 @@ select.music-library__select {
 }
 .voice-popover__head {
   justify-content: space-between;
+}
+.voice-popover__panel .link-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  text-decoration: underline;
+  cursor: pointer;
 }
 .voice-popover__line .link-button {
   margin-left: auto;

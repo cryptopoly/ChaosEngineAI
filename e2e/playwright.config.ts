@@ -26,6 +26,8 @@ function pythonBin(): string {
 export default defineConfig({
   testDir: "./tests",
   outputDir: "./test-results",
+  // One page load before the tests, so a slow first Vite compile (over 30 s on Windows) is not charged to a test.
+  globalSetup: "./warmup.ts",
   reporter: [["list"], ["html", { outputFolder: "./playwright-report", open: "never" }]],
   fullyParallel: false,
   workers: 1,
@@ -41,13 +43,22 @@ export default defineConfig({
   projects: [{ name: "chromium", use: { browserName: "chromium" } }],
   webServer: [
     {
-      // Fresh data dir on every run so the terms screen appears on a clean first run.
-      command:
-        `rm -rf "${home}" && mkdir -p "${home}" && ` +
-        `HOME="${home}" USERPROFILE="${home}" CHAOSENGINE_PORT=${API_PORT} CHAOSENGINE_HOST=127.0.0.1 ` +
-        `CHAOSENGINE_API_TOKEN=${TOKEN} CHAOSENGINE_ALLOWED_ORIGINS=http://127.0.0.1:${WEB_PORT} ` +
-        `HF_TOKEN= HUGGING_FACE_HUB_TOKEN= "${pythonBin()}" -m backend_service.app`,
+      // Fresh data dir on every run so the terms screen appears on a clean first run. The reset happens in
+      // e2e/start-backend.py and the variables go through `env`, so the command also runs under cmd.exe
+      // (Windows); the old POSIX one-liner failed there with "'HOME' is not recognized".
+      command: `"${pythonBin()}" "${path.join(__dirname, "start-backend.py")}"`,
       cwd: repoRoot,
+      env: {
+        CHAOSENGINE_E2E_HOME: home,
+        HOME: home,
+        USERPROFILE: home,
+        CHAOSENGINE_PORT: String(API_PORT),
+        CHAOSENGINE_HOST: "127.0.0.1",
+        CHAOSENGINE_API_TOKEN: TOKEN,
+        CHAOSENGINE_ALLOWED_ORIGINS: `http://127.0.0.1:${WEB_PORT}`,
+        HF_TOKEN: "",
+        HUGGING_FACE_HUB_TOKEN: "",
+      },
       url: `http://127.0.0.1:${API_PORT}/api/health`,
       reuseExistingServer: false,
       timeout: 120_000,

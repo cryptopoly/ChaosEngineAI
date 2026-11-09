@@ -179,3 +179,24 @@ UI-only checks from the plan (Voice runtime panel Kokoro untick/retick, the Voic
 **After a video run the GPU stays full:** following the 720p run, idle VRAM read **24.0 GB** with nothing generating — the diffusers pipeline stays resident and PyTorch's cache keeps the card reserved, so chat or voice on the GPU would be starved until the model is unloaded. `POST /api/video/unload` freed it (back to 1.2 GB). Worth an `empty_cache()` after each run, or freeing on idle.
 
 **Storyboard on Windows:** `storyboard/generators.make_clip` only passes a still to LTX-2 (MLX); any other video model refuses a shot that starts from a still or the previous shot (`_no_image_input`, D-40). The Windows/CUDA catalog has no image-to-video model (Wan 2.2 I2V was removed, D-48), so the Storyboard's still → clip flow cannot run on this PC; only text-only clips do. This affects section 5.
+
+## 3. Music and sound
+
+| Item | Result | Evidence |
+|---|---|---|
+| ACE-Step 1.5: install into the music venv, one 30 s track | SKIP (not on Windows) | `POST /api/music/install` → "Music runs on Apple Silicon (MLX) in this version. The Windows and Linux (CUDA) lane is not built yet." (FU-139). |
+| Stable Audio Open: one sound effect | SKIP (not on Windows) | `POST /api/music/sound/install` → "Sound effects run on Apple Silicon in this version. The Windows and Linux lane is not built yet." Licence/token is fine: the app's Hugging Face token passes `auth_check` for both `stabilityai/stable-audio-open-1.0` and `-small`. |
+| Stable Audio Open 1.0 at 2 s and 30 s (timing, no timeout) | SKIP (not on Windows) | same |
+| Music and Audio Library with 20+ items scrolls to the last card | _see Playwright run_ | Cannot make 20 real items here (no music engine); covered by `e2e/tests/21-library-scroll.spec.ts` in the Windows Playwright run below. |
+
+**Music and Audio Models page on Windows** is mostly honest ("Music needs an Apple Silicon Mac for now. … The Windows and Linux (CUDA) lane is not built yet."), but contradicts itself (Mac session):
+- the header still says "Music models run on this computer. Download one, then open the Studio to make a track.";
+- both ACE-Step rows carry a **CUDA** platform chip (catalog `platforms: ["apple-silicon","cuda"]`) and XL is rated **"Tight"** while turbo says "Not for this machine";
+- not-installed rows show a **Delete model** action;
+- Stable Audio rows show "NEEDS LICENCE / Accept licence" although the token already has access.
+
+## Windows harness and backend fixes found while testing
+
+**New Windows bug fixed — the Playwright suite could not start on Windows.** `e2e/playwright.config.ts` launched the backend with a POSIX one-liner (`rm -rf … && mkdir -p … && HOME=… cmd`); Playwright runs `webServer.command` through `cmd.exe` on Windows → `'HOME' is not recognized as an internal or external command`. Now the variables go through the config's `env` option and a new `e2e/start-backend.py` resets the throwaway home (refuses any folder outside `e2e/.run`) and starts the backend; same command on every OS. Also added `e2e/warmup.ts` (`globalSetup`): one page load before the tests, because the first Vite compile on Windows took over 30 s and failed whichever test ran first. `01-smoke.spec.ts`: 3/3 pass on Windows after both.
+
+**New Windows bug fixed — GPU metrics froze the backend on NVIDIA PCs.** `GET /api/metrics/gpu` was `async def` and called the blocking `get_gpu_metrics()` on the event loop, and on an NVIDIA host that snapshot first spawned a Python child that imports torch (2.6 s per call here) before trying `nvidia-smi`. The UI polls it, so every poll stalled every other request: in the Playwright run the "I agree" save on the terms screen never finished (trace: `PATCH /api/settings` and the catalog calls pending behind three `metrics/gpu` calls). Fixed: the route is a plain `def` (thread pool), and `GPUMonitor._snapshot_nvidia` tries `nvidia-smi` first (fast, and it reports utilisation, temperature and power, which the torch path left empty), keeping the torch probe as the fallback when `nvidia-smi` is missing. Tests in `tests/test_gpu.py` (order both ways, route is not a coroutine). The terms test went from FAIL to PASS on the next Windows run.

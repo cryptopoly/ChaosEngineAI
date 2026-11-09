@@ -108,14 +108,11 @@ class GPUMonitor:
     # ------------------------------------------------------------------
 
     def _snapshot_nvidia(self) -> dict[str, Any]:
-        # Try torch.cuda first — when the GPU bundle is installed it reads
-        # the right total VRAM via the CUDA driver without shelling out,
-        # and works even if ``nvidia-smi`` isn't on PATH (common on Windows
-        # when the user installs the driver but not the CUDA toolkit).
-        torch_snapshot = self._snapshot_torch_cuda()
-        if torch_snapshot is not None:
-            return torch_snapshot
-
+        # nvidia-smi first: it answers in a fraction of a second and also reports
+        # utilisation, temperature and power. The torch.cuda probe below spawns a
+        # Python child that imports torch, about 2-3 s on Windows, and fills none of
+        # those fields; it only runs when nvidia-smi is missing or fails (the
+        # driver without nvidia-smi on PATH, which happens on Windows).
         try:
             out = subprocess.check_output(
                 [
@@ -132,6 +129,10 @@ class GPUMonitor:
                 return parsed
         except (FileNotFoundError, subprocess.SubprocessError, ValueError):
             pass
+
+        torch_snapshot = self._snapshot_torch_cuda()
+        if torch_snapshot is not None:
+            return torch_snapshot
 
         # No GPU detected — return a None-VRAM dict rather than reporting
         # system RAM as if it were VRAM. The image / video safety

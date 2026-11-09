@@ -9,6 +9,12 @@ router = APIRouter(prefix="/api/metrics", tags=["metrics"])
 
 
 @router.get("/gpu")
-async def gpu_snapshot():
-    """Return current GPU / accelerator metrics."""
+def gpu_snapshot():
+    """Return current GPU / accelerator metrics.
+
+    A plain ``def`` so FastAPI runs it in its thread pool: the snapshot shells out
+    (nvidia-smi, sysctl, or a torch probe that takes seconds on Windows), and as an
+    ``async def`` it blocked the event loop, stalling every other request while the
+    UI polled it.
+    """
     return get_gpu_metrics()

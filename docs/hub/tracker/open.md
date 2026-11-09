@@ -46,9 +46,9 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 </details>
 
 <details>
-<summary>FU-154 · Default cloning model: VoxCPM2 or Qwen3-TTS 0.6B Base (owner listening check) — Open (2026-11-09): waiting for the owner's ears (D-70 answer 2).</summary>
+<summary>FU-154 · Default cloning model: VoxCPM2 or Qwen3-TTS 0.6B Base (owner listening check) — Open (2026-11-09): owner prefers that people choose rather than the app picking a default for them</summary>
 
-**Status or trigger:** **Open (2026-11-09): waiting for the owner's ears (D-70 answer 2).**
+**Status or trigger:** **Open (2026-11-09): owner prefers that people choose rather than the app picking a default for them. Proposal: the New cloned voice form lists every downloaded cloning model with its cost and preselects one that is installed; no row is presented as the best. Listening check still useful for each row's rank.**
 
 **Notes:** Listen to `~/.chaosengine/voice/wave2-listening/clone-*.wav` (same synthetic Kokoro sample `reference-kokoro-af_heart.wav`, same text, all watermarked). To switch, set `DEFAULT_CLONE_MODEL = "voxcpm2"` in `backend_service/catalog/voice_models.py` and update the default-model tests. Also fill the rows' `rank` from the same check, and say whether Turbo's style tags (`turbo-style-*.wav`) and sound tags (`turbo-tags.wav`, `orpheus-*.wav`) land.
 

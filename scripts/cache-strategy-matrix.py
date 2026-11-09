@@ -554,7 +554,21 @@ def print_summary(results: list[CellResult]) -> int:
 
 # ── Entry point ──────────────────────────────────────────────────────
 
+def _utf8_console() -> None:
+    """Windows consoles and redirected output default to cp1252, which cannot print the "→" in some skip reasons:
+    the full run on the RTX 4090 died with UnicodeEncodeError on the vLLM cell. Print UTF-8, replacing what a
+    console cannot show."""
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            try:
+                reconfigure(encoding="utf-8", errors="replace")
+            except (ValueError, OSError):
+                pass
+
+
 def main() -> int:
+    _utf8_console()
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--port", type=int, default=DEFAULT_PORT)
     parser.add_argument("--quick", action="store_true",

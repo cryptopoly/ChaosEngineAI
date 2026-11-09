@@ -399,3 +399,19 @@ class MatrixDefinitionTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Utf8ConsoleTests(unittest.TestCase):
+    """RTX 4090 run: the full sweep died with UnicodeEncodeError printing the vLLM skip reason ("→") to a
+    cp1252 Windows console."""
+
+    def test_a_cp1252_stream_prints_the_arrow_after_the_switch(self) -> None:
+        import io
+
+        raw = io.BytesIO()
+        stream = io.TextIOWrapper(raw, encoding="cp1252", errors="strict")
+        with mock.patch.object(runner.sys, "stdout", stream), mock.patch.object(runner.sys, "stderr", stream):
+            runner._utf8_console()
+            print("Diagnostics → WSL2", file=runner.sys.stdout)
+            stream.flush()
+        self.assertIn("→".encode("utf-8"), raw.getvalue())

@@ -18,6 +18,7 @@ from pathlib import Path
 from unittest import mock
 
 from backend_service import voice_clone, voice_clone_safety, voice_env, voice_library, voice_runtime, voice_speak
+from backend_service import voice_speak_audio
 from backend_service.catalog import voice_models
 
 
@@ -220,7 +221,7 @@ class AudioTests(unittest.TestCase):
 
     def test_neutral_settings_pass_the_audio_through_untouched(self) -> None:
         wav = tone_wav()
-        with mock.patch.object(voice_speak.subprocess, "run", side_effect=AssertionError("ffmpeg must not run")):
+        with mock.patch.object(voice_speak_audio.subprocess, "run", side_effect=AssertionError("ffmpeg must not run")):
             self.assertIs(voice_speak.process_audio(wav, 1.0, 0.0), wav)
 
     def test_changes_need_ffmpeg(self) -> None:
@@ -234,7 +235,7 @@ class AudioTests(unittest.TestCase):
         from backend_service.storyboard import ffmpeg_bin
 
         seen = {}
-        real_run = voice_speak.subprocess.run
+        real_run = voice_speak_audio.subprocess.run
 
         def fake_run(command, **kwargs):
             # ``subprocess.run`` is patched for the whole process: a background thread's call (the memory check's
@@ -246,7 +247,7 @@ class AudioTests(unittest.TestCase):
             return mock.Mock(returncode=0, stderr="")
 
         with mock.patch.object(ffmpeg_bin, "optional_ffmpeg_exe", return_value="/bin/ffmpeg"), \
-             mock.patch.object(voice_speak.subprocess, "run", fake_run):
+             mock.patch.object(voice_speak_audio.subprocess, "run", fake_run):
             out = voice_speak.process_audio(tone_wav(0.5), 2.0, 0.0)
         self.assertIsInstance(seen["command"], list)
         self.assertNotIn("shell", seen["kwargs"])

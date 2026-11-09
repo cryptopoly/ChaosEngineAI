@@ -159,6 +159,8 @@ Driven through the backend API (`POST /api/voice/speak`) on the running backend;
 | Cancel mid-run (Speak) | PASS | `POST /api/voice/speak/cancel` 8 s into a long VoxCPM2 job → `{"cancelled": true}`; the job ended at once with 499 "Speech was cancelled." |
 | Delete a dictation model | PASS | Downloaded Whisper Base (0.14 GB) → listed installed → `POST /api/voice/stt/delete {whisper-base}` → deleted, folder gone, row back to not installed. (The "···" menu itself: Playwright `11-voice-pack`, passes when run alone.) |
 | Chat voice call with a microphone | **BLOCKED (needs owner/hardware)** | Needs a real microphone; cannot be driven headless. |
+| Voices: Speak, Chat and Call set to different voices | PASS | `POST /api/voice/settings {"speakVoice":"am_michael","ttsVoice":"bf_emma","callVoice":"bm_george"}` → 200, read back unchanged; read-aloud with the chat voice spoke as `bf_emma`, a call line as `bm_george`; the UI passes these (`ReadAloud.tsx`, `callVoiceOf`). Restored to Heart afterwards. A clone id the voice list does not know is refused (400 "Unknown voice …"). |
+| Remove voice runtime (Troubleshooting), with and without the Kokoro tick, then reinstall | **NOT RUN** | It deletes the 8 GB voice venv (portable lane + speech-gpu with torch cu128) and re-downloads it at ~2 MB/s, about an hour per pass; left for a session where the download speed allows, or for you to run. |
 
 **New Windows bug fixed — Speak offered a Mac-only download.** With Kokoro off, Voice Studio > Speak defaults to the voice "Ryan" and shows "Download 3.08 GB" for Qwen3-TTS 1.7B CustomVoice. On Windows the backend accepted that download and pulled `mlx-community/...-8bit` weights the CUDA worker cannot load (`start_download` only checked `available_here()`, never whether the row's lanes run here). Fixed in [voice_clone.py](../../backend_service/voice_clone.py): `start_download` now refuses a row that does not `runs_here`, with "X runs on Apple Silicon Macs only, so it cannot be used on this computer." (400). Tests: two new cases in `tests/test_voice_clone.py` (MLX row refused on a CUDA host, CUDA row refused on a Mac, no download started); the download tests that target MLX rows now pin the lane so they don't depend on the host. **Still open (frontend, Mac session):** Speak should not pick a non-runnable default voice on Windows, and the "Download" link should not show for it.
 
@@ -239,10 +241,10 @@ Driver 591.86; voice venv torch 2.9.1+cu128 (speech-GPU add-on); NumPy 2.5.4; ch
 | AudioSeal after speed 1.3 and pitch +2 | PASS | `GET /api/voice/clone/watermark/{id}` → `{"probability": 1.0, "message": "CE5A", "matches": true}`. |
 | PerTh on a Chatterbox clip after speed 1.3 and pitch +2; AI tag says `"builtinWatermark": "perth"` | **FAIL → fixed** | In the voice venv, `perth.PerthImplicitWatermarker().get_watermark(...)`: plain cloned clip **1.0**, after speed 1.3 + pitch +2 **0.0**, Kokoro control 0.0. The WAV's AI tag (`LIST/INFO ICMT`) still claimed `"builtinWatermark":"perth"` on the shifted file. Fixed: `voice_clone.mark_cloned(..., altered=)` records PerTh only when speed is 1.0 and pitch 0 (Speak and Chat read-aloud); AudioSeal and `machine_generated` stay on every clip. Test added. |
 
-| Orpheus `tara` with `<laugh>` | PASS (slow on this setup) | Only the listed `orpheus-3b-0.1-ft-Q8_0.gguf` + the SNAC ONNX companion arrived. 8.34 s of speech in **37.6 s** (slower than real time) with **no VRAM use**: this from-source backend resolves the stale CPU-only `~/.chaosengine/bin/llama-server.exe` (build 9189); a packaged app would use the bundled Vulkan b11981. Re-measured on the CUDA build below. File: `%TEMP%oice-checks\orpheus-tara.wav`. |
+| Orpheus `tara` with `<laugh>` | PASS (slow on this setup) | Only the listed `orpheus-3b-0.1-ft-Q8_0.gguf` + the SNAC ONNX companion arrived. 8.34 s of speech in **37.6 s** (slower than real time) with **no VRAM use**: this from-source backend resolves the stale CPU-only `~/.chaosengine/bin/llama-server.exe` (build 9189); a packaged app would use the bundled Vulkan b11981. Re-measured on the CUDA build below. File: `%TEMP%\voice-checks\orpheus-tara.wav`. |
 | Orpheus: llama-server starts on 127.0.0.1 and stops with the voice worker | **FAIL → fixed** | It started (`llama-server.exe --model …orpheus-3b-0.1-ft-Q8_0.gguf` on a local port), but after `POST /api/voice/worker/stop` the worker was gone and **llama-server kept running**. `voice_client._kill` closed stdin and called `terminate()` at once — TerminateProcess on Windows — so the worker's `atexit` `stop_server` never ran. Fixed: the worker gets 5 s to exit on its own after stdin closes, and a forced stop ends its child processes first (psutil). Tests: `VoiceClientTests.test_stop_lets_the_worker_clean_up_its_children`, `…ignores_stdin_still_loses_its_children` (real child processes). |
 
-| VoxCPM2 (GPU): voice design | PASS | Only listed files arrived (4.96 GB). Design "A warm, deep male narrator…": cold 24.6 s (load) for 5.9 s; warm **5.8 s for 6.1 s of speech** (≈9.5 s per 10 s; the Mac measured 5.2 s). Peak VRAM +6.7 GB. Files: `%TEMP%oice-checksox-design-*.wav`. |
+| VoxCPM2 (GPU): voice design | PASS | Only listed files arrived (4.96 GB). Design "A warm, deep male narrator…": cold 24.6 s (load) for 5.9 s; warm **5.8 s for 6.1 s of speech** (≈9.5 s per 10 s; the Mac measured 5.2 s). Peak VRAM +6.7 GB. Files: `%TEMP%\voice-checks\vox-design-*.wav`. |
 | VoxCPM2 (GPU): clone with your sample | PASS | Exact mode 13.0 s for 6.6 s; steered ("excited and happy") 7.9 s for 6.2 s with the note "VoxCPM2 followed the style; the steered mode trades a little likeness for it." Both "Labelled as AI-made and watermarked." The m4a sample decoded through the new PyAV path. |
 
 **Two more Windows/CUDA cloning bugs fixed on the way** (cloning had never run on the CUDA lane):
@@ -288,3 +290,49 @@ Verdict: on this 4B-class model Vulkan decodes as fast as CUDA; CUDA wins on pre
 **New Windows bug fixed — every Hugging Face model showed twice its size on Windows.** `helpers/discovery._path_size_bytes` deduplicates files by `(st_dev, st_ino)`, but on Windows `os.scandir`'s cached stat gives 0 for those on plain files while a followed symlink gets the real ids, so a blob and the snapshot link to it were both counted. Measured: Whisper Large v3 Turbo 3.24 GB counted for 1.62 GB of blobs; the Orpheus delete confirm said 7.14 GB for 3.6 GB. This size feeds the Disk usage page, delete confirmations and "freed GB". Fixed by fetching the real ids with `os.stat()` when scandir has none; after the fix Whisper 1.62, VoxCPM2 4.96, Turbo 4.04 GB (exact). Test in `tests/test_discovery.py` simulates the Windows scandir on any OS.
 
 **Disk clean-up (approved by you):** deleted CogVideoX-2b (12.8 GB) and the three Mac-only Qwen3-TTS partial downloads (1.4 GB) through `POST /api/models/download/delete`, and the folders `~/.chaosengine/longlive` (25.4 GB) and `~/.chaosengine/prebuilt-llama` (2.7 GB). Free space 108.3 → **150.8 GB**.
+
+## Report back (sections 0 to 6; section 7 waits for your go-ahead)
+
+### What failed (details and logs in the sections above)
+
+Fixed on this branch, each with a test (all Windows or CUDA-lane only):
+1. Warm worker never restarted after a crash (`Popen.poll()` stays None after `os._exit`); ffmpeg-fetch test on Windows zips.
+2. Speak offered and downloaded Mac-only Qwen3-TTS weights on Windows (`voice_clone.start_download` guard).
+3. Dictation crashed on every NVIDIA PC: ctranslate2 finds cuBLAS on PATH only.
+4. Cloning on CUDA: m4a samples could not be read; cloned Turbo voices crashed (float64 loudness under NumPy 2); the PerTh tag claimed a watermark that speed/pitch had erased.
+5. Orpheus's llama-server outlived "stop voice worker" (TerminateProcess skips `atexit`).
+6. GPU metrics blocked the whole backend on NVIDIA PCs (torch probe on the event loop).
+7. Every Hugging Face model counted twice its size (scandir has no inode on Windows).
+8. Cache-strategy matrix crashed on a cp1252 console; the Playwright suite could not start on Windows.
+9. Chatterbox-Turbo row listed a 1.0 GB file it never reads.
+
+Not fixed here (for you or the Mac session):
+- **Backend crash from the Windows commit limit** during two chat renders (section 5): FLUX.2 Klein in the backend process took commit to 75 GB of a 67.8 GB limit. Today's cheap fix: a larger page file. Proper fix: image jobs in a worker process, and a fit check that reads free commit on Windows.
+- **No Storyboard clips and no Cast stills on Windows/Linux**: clip making refuses every non-LTX-2 model; reference pictures are MLX-only, and the refusal names FLUX.2 Klein as both refused and suggested.
+- **No music, sound effects or Qwen3-TTS on Windows** (MLX-only lanes); the Music page contradicts itself (CUDA chips, "Tight" rating, Delete on rows not installed, licence prompt the token already passes).
+- **Chatterbox Multilingual V3** needs chatterbox-tts from upstream master (PyPI 0.1.7 has only v2); waiting on your OK to pin the commit.
+- **TurboQuant unavailable off the Mac** (`is_available` checks only the MLX package).
+- **No in-app CUDA llama.cpp on Windows**, and a stale CPU `llama-server.exe` in `~/.chaosengine/bin` is picked first by from-source backends (8× slower).
+- Cross-platform, seen here: STT "installed" while `model.bin` is still downloading; voice runtime panel not refreshed after a load; "stop voice worker" waits behind a stuck request; studio chat with a small model makes empty projects and claims renders; a crashed backend leaves job files `running`, loses the chat turn and orphans its llama-servers.
+- Not run: remove/reinstall voice runtime (about an hour per pass at 2 MB/s); Ctrl+V paste (needs a hand check); voice call (needs a microphone); LTX timing (not on Windows).
+
+### Slower than expected
+- Wan 2.1 1.3B at 720p: **578 s** and the full 24 GB, against "About 1 min, 16.7 GB" (FU-145); the new-project form says 74 GB instead. 480p: 95 s.
+- After any video run the card stays full (24 GB) until Unload.
+- Orpheus and chat on the stale CPU llama-server: 37.6 s for 8.3 s of speech, 21.6 tok/s (CUDA build: 4.57 s, 170 tok/s).
+- Hugging Face downloads at ~2 MB/s over the VPN on this PC.
+
+### What the Mac values got wrong for this PC
+- Chatterbox-Turbo: Mac 2.1 s per 10 s of speech; here 3.5 s. VoxCPM2 design: Mac 5.2 s, here 9.5 s per 10 s.
+- Orpheus: Mac 7.2 s per 10 s; here 5.5 s on the CUDA build (faster), 45 s on the stale CPU build.
+- Video estimates (above) are 4–10× off on CUDA, in both directions between the two estimators.
+- FLUX.2 Klein plan card: "about 6 s" per poster; measured 18.8 s first (load) and 9.1 s warm; "41 GB free" ignores the Windows commit limit.
+
+### One-line verdict per section
+- **0 Setup:** PASS. Torch needed the cu128 wheel (cu124 stops at 2.6).
+- **1 Automated checks:** PASS after fixes. Both release flags pass. Remaining failures are host-dependent tests, handed to the Mac session.
+- **2 Speech:** PASS for Kokoro, Whisper on CUDA, Chatterbox-Turbo, VoxCPM2 and Orpheus, including cloning, fallback, delete and cancel. Six Windows bugs fixed. Qwen3-TTS is Mac-only; Multilingual V3 waits on your OK.
+- **3 Music and sound:** SKIP. Mac-only in v0.10.0; the UI checks pass in Playwright with mocks.
+- **4 Image and video:** Images PASS (2048² in 75 s). Video FAIL on estimates (FU-145). Storyboard export PASS, but clips cannot be made on Windows.
+- **5 Projects:** Mixed. Plan, approve and render work. The backend crashed once on the Windows commit limit. Renders don't land in a project, Cast stills are refused, and the Mixer export passes.
+- **6 Text on CUDA:** PASS. 170 tok/s, 332 with DFlash, 330 through the app on the CUDA build. Vulkan matches CUDA on decode. The vLLM and TurboQuant lanes are not available on Windows.

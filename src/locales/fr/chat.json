@@ -83,16 +83,13 @@
     "startCall": "Parler au modèle à la voix",
     "call": "Appel",
     "callNeedsModel": "Chargez un modèle de chat pour lancer un appel vocal",
-    "callInfo": "Parlez au modèle chargé à voix haute. Parlez, faites une pause, et il répond à voix haute ; parlez par-dessus pour l'interrompre. Chaque tour est enregistré dans ce chat.",
     "callNeeds": "Nécessite :",
     "callReady": "Prêt",
     "callMissing": "Manquant",
-    "callSetup": "Cliquez sur Appel pour ouvrir Modèles vocaux et installer ce qui manque.",
     "callNeedModel": "un modèle de chat chargé",
-    "callNeedStt": "la reconnaissance vocale (Modèles vocaux)",
-    "callNeedTts": "une voix pour les réponses (Modèles vocaux)",
-    "callNeedVad": "la détection des tours de parole, incluse dans le pack vocal",
-    "callVoice": null
+    "callNeedDictation": null,
+    "callNeedTurns": null,
+    "callNeedVoice": null
   },
   "sidebar": {
     "title": "Discussions",
@@ -367,18 +364,20 @@
   },
   "voice": {
     "heardNothing": "Aucune parole détectée. Réessayez plus près du micro.",
-    "installToDictate": "La saisie vocale nécessite le pack vocal. Cliquez pour l'installer.",
+    "installToDictate": null,
     "stopDictation": "Arrêter et transcrire (Échap annule)",
     "transcribing": "Transcription…",
     "startDictation": "Dicter (cliquez, ou maintenez pour parler ; Ctrl/Cmd+Maj+M)",
-    "installToRead": "La lecture à voix haute nécessite le pack vocal. Cliquez pour l'installer.",
+    "installToRead": null,
     "stopReading": "Arrêter la lecture",
     "readAloud": "Lire à voix haute",
     "dismiss": "Fermer",
     "resume": "Reprendre",
     "pause": "Pause",
     "stop": "Arrêter",
-    "preparing": "Préparation de la synthèse vocale…"
+    "preparing": "Préparation de la synthèse vocale…",
+    "clonedVoice": null,
+    "readingWith": null
   },
   "voiceCall": {
     "starting": "Démarrage du micro…",
@@ -508,5 +507,17 @@
       "offTooltip": null,
       "ratings": null
     }
+  },
+  "voicePopover": {
+    "button": null,
+    "call": null,
+    "change": null,
+    "dictation": null,
+    "fix": null,
+    "noRuntime": null,
+    "openVoices": null,
+    "read": null,
+    "sameAsChat": null,
+    "title": null
   }
 }

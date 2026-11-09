@@ -83,16 +83,13 @@
     "startCall": "音声でモデルと話す",
     "call": "通話",
     "callNeedsModel": "音声通話を始めるにはチャットモデルを読み込んでください",
-    "callInfo": "読み込んだモデルと声で会話します。話して間を置くと音声で答えます。話しかぶせると中断できます。各ターンはこのチャットに保存されます。",
     "callNeeds": "必要なもの:",
     "callReady": "準備完了",
     "callMissing": "未導入",
-    "callSetup": "「通話」をクリックすると音声モデルが開き、足りないものをインストールできます。",
     "callNeedModel": "読み込まれたチャットモデル",
-    "callNeedStt": "音声認識（音声モデル）",
-    "callNeedTts": "返答用の音声（音声モデル）",
-    "callNeedVad": "発話ターン検出（音声パックに含まれます）",
-    "callVoice": null
+    "callNeedDictation": null,
+    "callNeedTurns": null,
+    "callNeedVoice": null
   },
   "sidebar": {
     "title": "チャット",
@@ -367,18 +364,20 @@
   },
   "voice": {
     "heardNothing": "音声が聞き取れませんでした。マイクに近づいてもう一度お試しください。",
-    "installToDictate": "音声入力には音声パックが必要です。クリックしてインストールします。",
+    "installToDictate": null,
     "stopDictation": "停止して文字起こし（Esc でキャンセル）",
     "transcribing": "文字起こし中…",
     "startDictation": "音声入力（クリック、または押し続けて話す。Ctrl/Cmd+Shift+M）",
-    "installToRead": "読み上げには音声パックが必要です。クリックしてインストールします。",
+    "installToRead": null,
     "stopReading": "読み上げを停止",
     "readAloud": "読み上げ",
     "dismiss": "閉じる",
     "resume": "再開",
     "pause": "一時停止",
     "stop": "停止",
-    "preparing": "音声を準備中…"
+    "preparing": "音声を準備中…",
+    "clonedVoice": null,
+    "readingWith": null
   },
   "voiceCall": {
     "starting": "マイクを起動しています…",
@@ -508,5 +507,17 @@
       "offTooltip": null,
       "ratings": null
     }
+  },
+  "voicePopover": {
+    "button": null,
+    "call": null,
+    "change": null,
+    "dictation": null,
+    "fix": null,
+    "noRuntime": null,
+    "openVoices": null,
+    "read": null,
+    "sameAsChat": null,
+    "title": null
   }
 }

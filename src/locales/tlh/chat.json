@@ -83,16 +83,13 @@
     "startCall": "ghoghlIjmo' yab yIja'",
     "call": "ghogh",
     "callNeedsModel": "ghogh ja'chuq DataghmeH ja'chuq yab yIchu'",
-    "callInfo": "chu'lu'ta'bogh yab yIja', ghogh yIlo'. yIjatlh, yIyev, 'ej ghoghmo' jang. jatlhtaHvIS yIjatlh 'e' DamevmeH. ja'chuqvamDaq Hoch QIn pollu'.",
     "callNeeds": "poQlu':",
     "callReady": "ghuH",
     "callMissing": "Hutlh",
-    "callSetup": "ghogh yI'uy: ghogh yab yIpoSmoH 'ej Hutlhbogh Doch yIjom.",
     "callNeedModel": "ja'chuq yab chu'lu'ta'",
-    "callNeedStt": "QIch yajwI' (ghogh yab)",
-    "callNeedTts": "jangmeH ghogh (ghogh yab)",
-    "callNeedVad": "jatlh mev tu'wI', ghogh jo 'ay'",
-    "callVoice": null
+    "callNeedDictation": null,
+    "callNeedTurns": null,
+    "callNeedVoice": null
   },
   "sidebar": {
     "title": "ja'chuqmey",
@@ -367,18 +364,20 @@
   },
   "voice": {
     "heardNothing": "QIch Qoybe'lu'. QoywI' DaSumchoHDI' yInIDqa'.",
-    "installToDictate": "ghogh jo poQ ghogh 'el. jommeH yI'uy.",
+    "installToDictate": null,
     "stopDictation": "yImev 'ej yIghItlh (qIlmeH Esc)",
     "transcribing": "ghItlhlI'…",
     "startDictation": "yIjatlh (yI'uy, pagh jatlhtaHvIS yI'uytaH; Ctrl/Cmd+Shift+M)",
-    "installToRead": "ghogh jo poQ laD jatlh. jommeH yI'uy.",
+    "installToRead": null,
     "stopReading": "laD yImev",
     "readAloud": "yIlaD 'ej yIjatlh",
     "dismiss": "yISo'",
     "resume": "yItaH",
     "pause": "yIyev",
     "stop": "yImev",
-    "preparing": "QIch chenmoHlI'…"
+    "preparing": "QIch chenmoHlI'…",
+    "clonedVoice": null,
+    "readingWith": null
   },
   "voiceCall": {
     "starting": "QoywI' taghlI'…",
@@ -508,5 +507,17 @@
       "offTooltip": "SeHlawDaq chu'lu'ta'bogh laH yabvamvaD tInob",
       "ratings": "Qob nuD: {high} Qob law', {medium} motlh, {low} Qob puS."
     }
+  },
+  "voicePopover": {
+    "button": null,
+    "call": null,
+    "change": null,
+    "dictation": null,
+    "fix": null,
+    "noRuntime": null,
+    "openVoices": null,
+    "read": null,
+    "sameAsChat": null,
+    "title": null
   }
 }

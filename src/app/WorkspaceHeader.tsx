@@ -3,6 +3,9 @@ import { tabs } from "../constants";
 import { projectName, useProjectRoute } from "../features/storyboard/projectRoute";
 import type { TabId, WorkspaceData } from "../types";
 
+/** Tabs whose studio shell carries the page title, so the header does not repeat it. */
+const SHELL_TITLED_TABS = new Set<TabId>(["voice-studio"]);
+
 /** Workspace title, caption and platform / cache badges. */
 export function WorkspaceHeader({
   activeTab,
@@ -23,6 +26,21 @@ export function WorkspaceHeader({
         <div>
           <span className="eyebrow">{tCommon("tabs.projects", { defaultValue: "Projects" })}</span>
           <h2>{openName}</h2>
+        </div>
+        <div className="header-badges">
+          <span className="badge muted">{system.platform}</span>
+          <span className="badge muted">{system.arch}</span>
+          <span className="badge accent">{cacheLabel}</span>
+        </div>
+      </header>
+    );
+  }
+  // Voice Studio's shell names the page and holds its modes, so the header keeps only the eyebrow (D-73).
+  if (SHELL_TITLED_TABS.has(activeTab)) {
+    return (
+      <header className="workspace-header workspace-header--compact">
+        <div>
+          <span className="eyebrow">{tCommon("app.workspace", { defaultValue: "Workspace" })}</span>
         </div>
         <div className="header-badges">
           <span className="badge muted">{system.platform}</span>

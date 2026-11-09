@@ -649,21 +649,14 @@
   },
   "voice": {
     "pack": {
-      "title": "ghogh ghom jan",
       "installed": "jomlu'ta'",
       "notInstalled": "jomlu'be'",
-      "about": "De'wI'vamDaq Daq le'chajDaq Qap QIch ghItlhwI' ghItlh jatlhwI' je (2 GB loQ, DalI'bogh yab je). pagh ngeHlu'.",
       "cancel": "yIqIl",
-      "update": "ghogh ghom jan yIchu'moH",
-      "install": "ghogh ghom jan yIjom",
       "done": "ghogh ghom jan jomlu'ta'.",
       "log": "jom QonoS",
-      "updateFeatures": "ja'chuqDaq ghogh ja'chuq ghItlhDaq jatlhwI' pong je DaneHchugh ghogh ghom jan yIchu'moH (yab 40 MB loQ chel; wa' cha' tup).",
       "checkedOk": "jomlu'ta', 'ollu'ta' QaQ",
       "checkedOkAt": "jomlu'ta', 'ollu'ta' QaQ ({time})",
-      "repair": "ghogh ghom jan yItI'",
       "troubleshoot": "Qagh tI'ghach",
-      "troubleshootBody": "ghogh Qapbe'choHchugh neH nISlu'. jomghach naQ nIDqa'.",
       "reinstallSmall": "yIjomqa'"
     },
     "models": {
@@ -671,47 +664,92 @@
       "downloaded": "lI'lu'ta'",
       "use": "ghItlhmeH yIlo'",
       "download": "yIlI'",
-      "firstUse": "bIyevchugh, lo'ghach wa'DIchDaq lI'lu'.",
       "title": "ghogh",
-      "sttTitle": "QIch ghItlhwI' yab",
-      "sttSubtitle": "ja'chuq QoywI' ghogh vumpa' je lo'.",
-      "capabilities": "laHDaj",
+      "sttTitle": null,
+      "sttSubtitle": null,
       "ttsTitle": "QIch yab",
-      "ttsSubtitle": "ghogh na', mIw, ghogh chenmoHghach velqa' je. ghogh nom (Kokoro) ghogh ghom janDaq tu'lu'.",
       "ttsNone": "QIch yab tetlh chIm.",
-      "caps": {
-        "speak": "jatlh",
-        "style": "mIw",
-        "clone": "velqa'",
-        "design": "chenmoH",
-        "tags": null,
-        "presets": null,
-        "expression": null,
-        "languageSelect": null
-      },
       "cost": {
-        "download": null,
-        "memory": null,
-        "peak": null,
-        "speed": null,
-        "per10s": null,
         "coldStart": null,
-        "seconds": null,
-        "measuredOn": null,
-        "notMeasured": null
+        "seconds": null
       },
       "browseVoices": null,
       "useInSpeak": null,
-      "openStudio": null
+      "openStudio": null,
+      "column": {
+        "fit": null,
+        "makes": null,
+        "model": null,
+        "size": null,
+        "status": null
+      },
+      "delete": {
+        "confirmSpeech": null,
+        "confirmStt": null,
+        "keptShared": null,
+        "watermarkGoes": null
+      },
+      "deleteModel": null,
+      "deleting": null,
+      "detail": {
+        "cost": null,
+        "fit": null,
+        "languages": null,
+        "licence": null,
+        "repo": null
+      },
+      "emptyAttention": null,
+      "emptyDownloading": null,
+      "emptyInstalled": null,
+      "family": {
+        "chatterbox": null,
+        "orpheus": null,
+        "qwen3-tts": null,
+        "voxcpm2": null
+      },
+      "filter": {
+        "makes": null,
+        "makesAll": null
+      },
+      "firstUseLine": null,
+      "kokoroLine": null,
+      "licence": null,
+      "makes": {
+        "clone": null,
+        "design": null,
+        "expression": null,
+        "languages": null,
+        "natural": null,
+        "quick": null,
+        "style": null,
+        "tags": null
+      },
+      "memory": {
+        "pending": null,
+        "pendingTitle": null
+      },
+      "moreFor": null,
+      "partOfRuntime": null,
+      "search": null,
+      "sort": {
+        "family": null,
+        "familySummary": null,
+        "fit": null,
+        "fitSummary": null,
+        "largestFirst": null,
+        "name": null,
+        "nameSummary": null,
+        "size": null,
+        "smallestFirst": null,
+        "status": null,
+        "statusSummary": null
+      },
+      "ttsIntro": null
     },
     "voices": {
       "addChinese": "Mandarin Chinese ghogh tIchel",
       "listTitle": "ghogh",
-      "cloneCard": "ghogh velqa' yIchenmoH",
-      "cloneDetail": "ghoghlIj qonghach runvo', pagh chaw' nobpu'bogh ghot ghoghvo'.",
       "designCard": "ghogh yIchenmoH",
-      "designDetail": "mu'mey lo'taHvIS ghogh DaneHbogh yIDel.",
-      "designAction": "ghogh yIDel",
       "moreCard": "latlh ghogh tISuq",
       "filter": "yIcha'",
       "allLanguages": "Hoch Hol",
@@ -722,43 +760,63 @@
       "tab": "ghogh",
       "filters": {
         "all": "Hoch",
-        "recommended": null,
         "quick": null,
         "natural": null,
         "cloned": null,
         "designed": null
       },
-      "managerSubtitle": null,
       "designRowDetail": null,
       "kindDesign": null,
       "noneCloned": null,
-      "chatVoice": null,
       "stopSample": null,
       "useInSpeak": null,
-      "useInChat": null,
-      "inChat": null,
-      "chatAnyVoice": null,
       "designNotInChat": null,
-      "callVoice": null,
       "cloneNotInCalls": null,
-      "inCalls": null,
-      "useForCalls": null
+      "badge": {
+        "call": null,
+        "read": null,
+        "speak": null
+      },
+      "change": null,
+      "changeFor": null,
+      "chooseCallHint": null,
+      "chooseFor": null,
+      "chooseReadHint": null,
+      "clonedNote": null,
+      "fallbackNote": null,
+      "female": null,
+      "firstWords": null,
+      "groupNatural": null,
+      "inUse": null,
+      "mainTitle": null,
+      "male": null,
+      "naturalNote": null,
+      "notForChat": null,
+      "notReady": null,
+      "quickNote": null,
+      "sameAsChat": null,
+      "slotCall": null,
+      "slotRead": null,
+      "slotSpeak": null,
+      "slowFor": null,
+      "subtitleUses": null,
+      "use": {
+        "call": null,
+        "read": null,
+        "speak": null
+      },
+      "useFor": null,
+      "useForLabel": null
     },
     "settings": {
       "autoSend": "ghItlhghach rInDI' QIn yIngeH SIbI'",
       "autoRead": "Hoch ja'chuq jang rInDI' yIlaD",
-      "language": "ghItlhmeH Hol",
-      "languageHint": "Whisper lo'; Hol tu' Parakeet nIteb.",
+      "language": null,
       "speed": "laD Do",
       "idle": "ghogh qawHaq chImmoHpa' poH (tup leStaHvIS, 0 = not)",
-      "workerRunning": "ghogh yab chu'lu'ta' (vumwI' {pid}).",
-      "workerStopped": "ghogh yab chu'lu'be'.",
-      "unload": "DaH yIchu'Ha'",
+      "unload": null,
       "silence": "ghogh ja'chuq: tam poH, ghIq jang yab",
-      "silenceHint": "run = jang nom; nI' = bIqeltaHvIS bIyevlaH.",
-      "bargeIn": "ghogh ja'chuq: bIjatlhDI' yab yImev",
-      "runtimeTitle": null,
-      "chatMoved": null
+      "bargeIn": "ghogh ja'chuq: bIjatlhDI' yab yImev"
     },
     "offline": "qoD pat loStaH…",
     "copy": "yIqon",
@@ -775,16 +833,16 @@
       "segments": "poH mI' ({n})",
       "tooBig": "500 MB tIn law' {name} tIn puS.",
       "recordingName": "qonghach",
-      "subtitleQueue": "yIqon, pagh wab mIllogh vIH nav tIlan",
-      "translateNeedsWhisper": "DIvI' HolDaq mughmeH Whisper Small pagh Whisper Base nISlu'.",
-      "translate": "DIvI' HolDaq yImugh",
       "speakers": "jatlhwI' tIngu'",
       "speakerCount": "jatlhwI' mI'",
       "speakersAuto": "mI' yISam",
       "speakersN": "{n} jatlhwI'",
-      "speakersNeedUpdate": "jatlhwI' pongvaD ghogh ghom jan chu'moHghach nISlu'.",
+      "speakersNeedUpdate": null,
       "hintQueue": "yIqon, pagh naDev nav tIlan (law' ghom QaQ).",
-      "chooseFiles": "nav tIwIv"
+      "chooseFiles": "nav tIwIv",
+      "fileTypes": null,
+      "subtitleLibrary": null,
+      "translateWhich": null
     },
     "stopRecording": "qon yImev",
     "record": "yIqon",
@@ -916,12 +974,14 @@
         "tr": null,
         "zh": null
       },
-      "speechLanguage": null
+      "speechLanguage": null,
+      "changeVoice": null,
+      "noVoice": null
     },
     "stop": "yImev",
     "studio": {
       "title": "ghogh vumpa'",
-      "needsPack": "De'wI'vamDaq Qap ghogh 'ej ghogh ghom jan nIS (2 GB loQ). ghogh > yabvo' wa'logh yIjom.",
+      "needsPack": null,
       "openModels": "ghogh yab yIpoSmoH",
       "library": null
     },
@@ -987,16 +1047,18 @@
       "openStudio": null,
       "emptyAuto": null,
       "aiMade": null,
-      "speakAgain": null
+      "speakAgain": null,
+      "anyVoice": null,
+      "sendToProject": null,
+      "voiceKind": null
     },
     "languages": {
       "auto": "Hol yItu' SIbI'"
     },
     "lane": {
-      "mlx": "Apple Silicon: MLXDaq Parakeet Whisper je, Kokoro ghogh",
-      "cuda": "NVIDIA GPU: CUDADaq Whisper, Kokoro ghogh",
-      "nvidia": "Whisper (CUDA chel jomghach), Kokoro ghogh",
-      "cpu": "CPUDaq Whisper, Kokoro ghogh"
+      "cpuRuntime": null,
+      "mlxRuntime": null,
+      "nvidiaRuntime": null
     },
     "micError": {
       "blockedMac": "QoywI' bot. System Settings > Privacy & Security > MicrophoneDaq ChaosEngineAI yIchaw', ghIq yInIDqa'.",
@@ -1023,7 +1085,6 @@
       "new": "ghogh velqa' chu'",
       "placeholder": "ghogh velqa' jatlhnISbogh ghItlh.",
       "tagged": "AI chenmoHghach ngu'lu'ta'",
-      "allowAgents": "Duy latlh De'wI' je ghogh velqa' lo' yIchaw' (motlh chu'Ha'lu')",
       "whose": "'Iv ghogh 'oH?",
       "basisOwn": "ghoghwIj",
       "basisPermission": "chaw' munobpu'bogh ghot",
@@ -1085,22 +1146,44 @@
       "moreNote": null,
       "getMore": null,
       "getMoreDetail": null,
-      "openModels": null
+      "openModels": null,
+      "drawerHint": null,
+      "drawerTitle": null
     },
     "chatCalls": {
-      "title": null,
       "cost": null,
-      "slow": null,
-      "option": null,
-      "chatVoice": null,
-      "callVoice": null,
-      "sameAsChat": null,
-      "memory": null
+      "slow": null
     },
     "quickVoices": {
-      "title": null,
-      "line": null,
       "browse": null
+    },
+    "runtime": {
+      "about": null,
+      "addon": {
+        "chinese": null,
+        "speech-gpu": null
+      },
+      "addons": null,
+      "addonsHint": null,
+      "addonsHintInstall": null,
+      "alsoModels": null,
+      "idleAfter": null,
+      "idleBefore": null,
+      "inMemory": null,
+      "install": null,
+      "modelWithGb": null,
+      "nothingLoaded": null,
+      "parts": null,
+      "remove": null,
+      "removeConfirm": null,
+      "removing": null,
+      "repair": null,
+      "subtitle": null,
+      "title": null,
+      "troubleshootBody": null,
+      "update": null,
+      "updateFeatures": null,
+      "workerOnly": null
     }
   },
   "residentChatModelNote": "qawHaqvamvo' ~{gb} GB ghaj chu'lu'ta'bogh ja'chuq yab; chu'Ha'lu'chugh qawHaqvetlh chImchoH.",

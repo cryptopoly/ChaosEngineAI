@@ -6,7 +6,7 @@ import type { VoiceLibraryItem, SttModel, VoiceRuntime } from "../../../types";
 import { MicSettingsButton } from "../MicSettingsButton";
 import { formatClock, micErrorMessage, startMicCapture, type MicCapture } from "../audio";
 import { useVoice } from "../VoiceContext";
-import { VOICE_LANGUAGES, voiceLanguageName } from "../VoiceModelsTab";
+import { VOICE_LANGUAGES, voiceLanguageName } from "../voiceLanguages";
 import { TranscriptEditor } from "./TranscriptEditor";
 
 const ACCEPTED_FILES = "audio/*,video/*,.wav,.mp3,.m4a,.aac,.flac,.ogg,.opus,.webm,.mp4,.mov,.mkv,.m4v,.aiff,.caf";
@@ -261,7 +261,7 @@ export function TranscribePanel({ runtime, openRequest, onSendToChat, onOpenMode
     <>
       <Panel
         title={t("voice.transcribe.title", { defaultValue: "Transcribe" })}
-        subtitle={t("voice.transcribe.subtitleQueue", { defaultValue: "Record, or drop audio and video files" })}
+        subtitle={t("voice.transcribe.subtitleLibrary", { defaultValue: "Record, or drop audio and video files. Transcripts are kept in the Library." })}
       >
         <div className="voice-studio">
           <div className="voice-studio__row">
@@ -289,14 +289,14 @@ export function TranscribePanel({ runtime, openRequest, onSendToChat, onOpenMode
           </div>
 
           <div className="voice-studio__options">
-            <label className="checkbox-label" title={canTranslate ? undefined : t("voice.transcribe.translateNeedsWhisper", { defaultValue: "Translation to English needs Whisper Small or Whisper Base." })}>
+            <label className="checkbox-label">
               <input
                 type="checkbox"
                 checked={options.translate && canTranslate}
                 disabled={!canTranslate}
                 onChange={(e) => setOptions({ ...options, translate: e.target.checked })}
               />
-              <span>{t("voice.transcribe.translate", { defaultValue: "Translate to English" })}</span>
+              <span>{t("voice.transcribe.translateWhich", { defaultValue: "Translate to English (Whisper Small or Base)" })}</span>
             </label>
             <label className="checkbox-label">
               <input
@@ -323,7 +323,7 @@ export function TranscribePanel({ runtime, openRequest, onSendToChat, onOpenMode
             ) : null}
             {!runtime.speakersAvailable ? (
               <span className="muted-text">
-                {t("voice.transcribe.speakersNeedUpdate", { defaultValue: "Speaker labels need a voice pack update." })}{" "}
+                {t("voice.transcribe.speakersNeedUpdate", { defaultValue: "Speaker labels need a voice runtime update." })}{" "}
                 <button type="button" className="link-button" onClick={onOpenModels}>
                   {t("voice.studio.openModels", { defaultValue: "Open Voice Models" })}
                 </button>
@@ -366,6 +366,9 @@ export function TranscribePanel({ runtime, openRequest, onSendToChat, onOpenMode
                   <button type="button" className="link-button" onClick={() => fileInput.current?.click()}>
                     {t("voice.transcribe.chooseFiles", { defaultValue: "Choose files" })}
                   </button>
+                  <small className="muted-text voice-drop__types">
+                    {t("voice.transcribe.fileTypes", { defaultValue: "WAV, MP3, M4A, FLAC, OGG, MP4, MOV and more" })}
+                  </small>
                 </span>
               )}
             </div>

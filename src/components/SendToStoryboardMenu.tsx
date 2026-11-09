@@ -35,6 +35,8 @@ export interface SendToStoryboardMenuProps {
   /** Render the list already open (on a project's targets when `initialProjectId` is set); for tests. */
   initialOpen?: boolean;
   initialProjectId?: string | null;
+  /** A shorter button label for a crowded card ("Send to project" on the Voice Library). */
+  label?: string;
 }
 
 /** One row of the open menu; `key` keeps the rows apart for focus. */
@@ -57,6 +59,7 @@ export function SendToStoryboardMenu({
   onDismissNotice,
   initialOpen = false,
   initialProjectId = null,
+  label: labelOverride,
 }: SendToStoryboardMenuProps) {
   const { t } = useTranslation("studio");
   const [open, setOpen] = useState(initialOpen);
@@ -104,11 +107,11 @@ export function SendToStoryboardMenu({
   if (!visible || !item) return null;
 
   const single = hasSingleTarget(item);
-  const label = noProjects
+  const label = labelOverride ?? (noProjects
     ? t("sendToStoryboard.start", { defaultValue: "Start a storyboard with this" })
     : single
       ? t("sendToStoryboard.send", { defaultValue: "Send to storyboard" })
-      : t("sendToStoryboard.use", { defaultValue: "Use in storyboard" });
+      : t("sendToStoryboard.use", { defaultValue: "Use in storyboard" }));
 
   const run = async (id: string | null, target: SendTarget) => {
     setFailed(false);

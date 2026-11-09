@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
-import { downloadCloneModel, getCloneModels } from "../clone/cloneApi";
+import { deleteSpeechModel, downloadCloneModel, getCloneModels } from "../clone/cloneApi";
 import { getVoiceModels, getVoices } from "../../../api";
 import type { VoiceEntry, VoiceModelRow } from "../../../types";
+
+/** Kokoro's measured peak and fit (it has no catalog row; the Models table shows it first). */
+export interface KokoroInfo {
+  peakGb: number | null;
+  fit: unknown;
+}
 
 export interface VoiceCatalog {
   voices: VoiceEntry[];
@@ -14,12 +20,16 @@ export interface VoiceCatalog {
   error: string | null;
   refresh: () => Promise<void>;
   download: (key: string) => Promise<void>;
+  /** Delete a speech model's files, then list again. Rejects with the backend's reason (in use, downloading). */
+  remove?: (key: string) => Promise<void>;
+  kokoro?: KokoroInfo | null;
 }
 
-/** Voices and Qwen3-TTS models for the Speak and Voices screens; polls while a model downloads. */
+/** Voices and speech models for the Speak, Voices and Models screens; polls while a model downloads. */
 export function useVoiceCatalog(enabled = true): VoiceCatalog {
   const [voices, setVoices] = useState<VoiceEntry[]>([]);
   const [models, setModels] = useState<VoiceModelRow[]>([]);
+  const [kokoro, setKokoro] = useState<KokoroInfo | null>(null);
   const [modelsAvailable, setModelsAvailable] = useState(false);
   const [cloneAllowed, setCloneAllowed] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -31,6 +41,7 @@ export function useVoiceCatalog(enabled = true): VoiceCatalog {
     if (modelList.status === "fulfilled") {
       setModels(modelList.value.models);
       setModelsAvailable(modelList.value.available);
+      setKokoro(modelList.value.kokoro ?? null);
     }
     if (clone.status === "fulfilled") setCloneAllowed(clone.value.available && clone.value.allowedHere);
     const failed = [voiceList, modelList].find((r) => r.status === "rejected");
@@ -61,5 +72,16 @@ export function useVoiceCatalog(enabled = true): VoiceCatalog {
     [refresh],
   );
 
-  return { voices, models, modelsAvailable, cloneAllowed, loaded, error, refresh, download };
+  const remove = useCallback(
+    async (key: string) => {
+      try {
+        await deleteSpeechModel(key);
+      } finally {
+        await refresh();
+      }
+    },
+    [refresh],
+  );
+
+  return { voices, models, modelsAvailable, cloneAllowed, loaded, error, refresh, download, remove, kokoro };
 }

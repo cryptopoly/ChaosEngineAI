@@ -42,6 +42,26 @@ export async function downloadCloneModel(key: string): Promise<CloneModel["downl
   return await postJson("/api/voice/clone/models/download", { key });
 }
 
+/** What deleting a speech model removes and keeps (companions another downloaded model still uses). */
+export interface SpeechModelDeletePlan {
+  key: string;
+  name: string;
+  remove: string[];
+  kept: Array<{ repo: string; usedBy: string[] }>;
+  /** The watermark component goes too (no other downloaded model can clone). */
+  watermark: boolean;
+  sizeGb: number;
+}
+
+export async function getSpeechModelDeletePlan(key: string): Promise<SpeechModelDeletePlan> {
+  return await fetchJson<SpeechModelDeletePlan>(`/api/voice/clone/models/delete-plan?key=${encodeURIComponent(key)}`, 30000);
+}
+
+/** Delete a speech model's files (refused with 409 while a voice model is busy or a download runs). */
+export async function deleteSpeechModel(key: string): Promise<{ freedGb: number }> {
+  return await postJson("/api/voice/clone/models/delete", { key }, 120000);
+}
+
 export async function listClonedVoices(): Promise<ClonedVoice[]> {
   return (await fetchJson<{ voices: ClonedVoice[] }>("/api/voice/clone/voices", 15000)).voices;
 }

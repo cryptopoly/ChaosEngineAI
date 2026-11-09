@@ -5,7 +5,7 @@ import { ProjectFilter, ProjectHeader } from "../../components/ProjectFilter";
 import { SendToStoryboardMenu } from "../../components/SendToStoryboardMenu";
 import { Panel } from "../../components/Panel";
 import { deleteLibraryItems, getLibrary, getLibraryAudio, getLibraryItem } from "../../api";
-import type { TabId, VoiceLibraryKind, VoiceLibrarySummary } from "../../types";
+import type { TabId, VoiceEntryKind, VoiceLibraryKind, VoiceLibrarySummary } from "../../types";
 import type { SendItem } from "../storyboard/sendToStoryboardLogic";
 import { useSendToStoryboard, type UseSendToStoryboard } from "../storyboard/useSendToStoryboard";
 import { ALL_PROJECTS, filterByProject, projectOptions, untaggedCount } from "../../utils/galleryProject";
@@ -194,6 +194,7 @@ export function LibraryCard({
             {t("voice.library.delete", { defaultValue: "Delete" })}
           </button>
           <SendToStoryboardMenu
+            label={t("voice.library.sendToProject", { defaultValue: "Send to project" })}
             item={sendItem}
             projects={storyboard.projects}
             loaded={storyboard.loaded}
@@ -220,6 +221,8 @@ export function VoiceLibraryTab({ backendOnline, onOpenTranscript, onTabChange, 
   const [filter, setFilter] = useState<Filter>(peekLibraryFilter);
   useEffect(() => clearLibraryFilter(), []);
   const [projectFilter, setProjectFilter] = useState(ALL_PROJECTS);
+  // Speech made with which kind of voice (D-73 L1); transcripts have no voice.
+  const [voiceKind, setVoiceKind] = useState<"" | VoiceEntryKind>("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const request = useRef(0);
@@ -227,7 +230,7 @@ export function VoiceLibraryTab({ backendOnline, onOpenTranscript, onTabChange, 
   const load = useCallback(async () => {
     const mine = ++request.current;
     try {
-      const next = await getLibrary(query.trim(), filter);
+      const next = await getLibrary(query.trim(), filter, filter === "transcript" ? "" : voiceKind);
       if (mine !== request.current) return;
       setItems(next);
       setSelected((current) => new Set([...current].filter((id) => next.some((i) => i.id === id))));
@@ -237,7 +240,7 @@ export function VoiceLibraryTab({ backendOnline, onOpenTranscript, onTabChange, 
     } finally {
       if (mine === request.current) setLoaded(true);
     }
-  }, [query, filter]);
+  }, [query, filter, voiceKind]);
 
   useEffect(() => {
     if (!backendOnline) return;
@@ -317,6 +320,19 @@ export function VoiceLibraryTab({ backendOnline, onOpenTranscript, onTabChange, 
                   </button>
                 ))}
               </div>
+              <select
+                className="text-input voice-library__voice-kind"
+                value={voiceKind}
+                disabled={filter === "transcript"}
+                aria-label={t("voice.library.voiceKind", { defaultValue: "Voice" })}
+                onChange={(e) => setVoiceKind(e.target.value as "" | VoiceEntryKind)}
+              >
+                <option value="">{t("voice.library.anyVoice", { defaultValue: "Any voice" })}</option>
+                <option value="preset">{t("voice.voices.kindPreset", { defaultValue: "Natural" })}</option>
+                <option value="builtin">{t("voice.voices.kindBuiltin", { defaultValue: "Quick" })}</option>
+                <option value="clone">{t("voice.voices.kindClone", { defaultValue: "Cloned" })}</option>
+                <option value="design">{t("voice.voices.kindDesign", { defaultValue: "Designed" })}</option>
+              </select>
               <ProjectFilter
                 options={projects}
                 value={projectFilter}
@@ -358,7 +374,7 @@ export function VoiceLibraryTab({ backendOnline, onOpenTranscript, onTabChange, 
             ) : shownItems.length === 0 ? (
               <div className="empty-state">
                 <p className="muted-text">
-                  {query || filter || projectFilter !== ALL_PROJECTS
+                  {query || filter || voiceKind || projectFilter !== ALL_PROJECTS
                     ? t("voice.library.noMatch", { defaultValue: "Nothing matches." })
                     : t("voice.library.emptyAuto", { defaultValue: "Nothing here yet. Transcripts and speech made in Voice Studio are kept here." })}
                 </p>

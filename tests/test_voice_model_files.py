@@ -472,6 +472,13 @@ class VoiceFileRouteTests(unittest.TestCase):
         self.assertIn("parts", body)
         self.assertIn("inMemory", body)
 
+    def test_models_carry_fit_and_kokoro(self) -> None:
+        body = self.client.get("/api/voice/models").json()
+        self.assertIn("kokoro", body)
+        self.assertIn(body["kokoro"]["fit"]["status"], ("fits", "tight", "wont-fit", "unknown"))
+        for row in body["models"]:
+            self.assertIn(row["fit"]["status"], ("fits", "tight", "wont-fit", "unknown"))
+
     def test_library_voice_kind_filter(self) -> None:
         self.assertEqual(self.client.get("/api/voice/library", params={"voiceKind": "bogus"}).status_code, 400)
         self.assertEqual(self.client.get("/api/voice/library", params={"voiceKind": "preset"}).status_code, 200)

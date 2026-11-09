@@ -1,8 +1,9 @@
-/** Which Voice Studio mode opens: Speak the first time, then the last one used (kept in localStorage). */
+/** Which Voice Studio mode opens: Speak the first time, then the last one used (kept in localStorage). Shown in the
+ * order Speak, Voices, Transcribe (D-73): Voices is where the main voices are chosen. */
 
 export type StudioMode = "speak" | "transcribe" | "voices";
 
-export const STUDIO_MODES: StudioMode[] = ["speak", "transcribe", "voices"];
+export const STUDIO_MODES: StudioMode[] = ["speak", "voices", "transcribe"];
 export const DEFAULT_STUDIO_MODE: StudioMode = "speak";
 export const STUDIO_MODE_KEY = "chaos.studio.voice-studio.mode";
 

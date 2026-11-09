@@ -118,7 +118,7 @@ export function VoiceStudioTab({ voiceRuntime, backendOnline, openRequest, onSen
           <div className="empty-state">
             <p className="muted-text">
               {t("voice.studio.needsPack", {
-                defaultValue: "Voice runs on this computer and needs the voice pack (about 2 GB). Install it once from Voice > Models.",
+                defaultValue: "Voice runs on this computer and needs the voice runtime (about 2.3 GB). Install it once from Voice > Models.",
               })}
             </p>
             <button type="button" className="primary-button" onClick={() => onTabChange("voice-models")}>
@@ -188,7 +188,8 @@ export function VoiceStudioTab({ voiceRuntime, backendOnline, openRequest, onSen
       <div className={`voice-studio__pane${mode === "voices" ? "" : " voice-studio__pane--hidden"}`}>
         <VoicesScreen
           catalog={catalog}
-          onUse={useVoiceInSpeak}
+          speakVoiceId={voiceId}
+          onUseInSpeak={pickVoice}
           onDesign={() => useVoiceInSpeak(DESIGN_VOICE_ID)}
           onGetMore={() => onTabChange("voice-models")}
         />

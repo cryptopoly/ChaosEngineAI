@@ -25,7 +25,7 @@ function MandarinCardBody({ runtime, onChanged }: { runtime: VoiceRuntime; onCha
   return (
     <ActionCard
       title={t("voice.picker.addMandarin", { defaultValue: "Add Mandarin voices" })}
-      detail={t("voice.picker.addMandarinDetail", { defaultValue: "Eight quick voices, a small add-on to the voice pack." })}
+      detail={t("voice.picker.addMandarinDetail", { defaultValue: "Eight quick voices, a small add-on to the voice runtime." })}
     >
       {pack.job.running ? (
         <InstallProgress pack={pack} />

@@ -193,10 +193,30 @@ export async function stopVoiceWorker(): Promise<void> {
   await postJson<{ stopped: boolean }>("/api/voice/worker/stop", {});
 }
 
-export async function getLibrary(query = "", kind: "" | VoiceLibraryKind = ""): Promise<VoiceLibrarySummary[]> {
+/** Delete a downloaded dictation model (catalog key or repo). Refused (409) while voice is busy. */
+export async function deleteSttModel(key: string): Promise<void> {
+  await postJson<{ repo: string }>("/api/voice/stt/delete", { key });
+}
+
+/** Untick an add-on: uninstall its packages from the voice runtime. Ticking installs through ``startVoiceInstall``. */
+export async function removeVoiceExtra(extra: string): Promise<void> {
+  await postJson<{ removed: string }>("/api/voice/extras/remove", { extra }, 300000);
+}
+
+/** Remove the voice runtime; downloaded models stay unless ``alsoRuntimeModels`` (Kokoro, turn detection, speaker labels). */
+export async function uninstallVoiceRuntime(alsoRuntimeModels = false): Promise<{ freedGb: number }> {
+  return await postJson<{ removed: boolean; freedGb: number }>("/api/voice/uninstall", { alsoRuntimeModels }, 300000);
+}
+
+export async function getLibrary(
+  query = "",
+  kind: "" | VoiceLibraryKind = "",
+  voiceKind: "" | VoiceEntryKind = "",
+): Promise<VoiceLibrarySummary[]> {
   const params = new URLSearchParams();
   if (query) params.set("q", query);
   if (kind) params.set("kind", kind);
+  if (voiceKind) params.set("voiceKind", voiceKind);
   const suffix = params.toString() ? `?${params}` : "";
   const result = await fetchJson<{ items: VoiceLibrarySummary[] }>(`/api/voice/library${suffix}`, 20000);
   return result.items;
@@ -275,6 +295,13 @@ export async function getVoices(): Promise<VoiceEntry[]> {
   return (await fetchJson<{ voices: VoiceEntry[] }>("/api/voice/voices", 20000)).voices;
 }
 
-export async function getVoiceModels(): Promise<{ models: VoiceModelRow[]; available: boolean }> {
-  return await fetchJson<{ models: VoiceModelRow[]; available: boolean }>("/api/voice/models", 15000);
+export interface VoiceModelList {
+  models: VoiceModelRow[];
+  available: boolean;
+  /** Kokoro's measured peak and fit (no catalog row: it is part of the voice runtime); absent from older backends. */
+  kokoro?: { peakGb: number | null; fit: unknown } | null;
+}
+
+export async function getVoiceModels(): Promise<VoiceModelList> {
+  return await fetchJson<VoiceModelList>("/api/voice/models", 15000);
 }

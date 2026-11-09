@@ -649,21 +649,14 @@
   },
   "voice": {
     "pack": {
-      "title": "音声パック",
       "installed": "インストール済み",
       "notInstalled": "未インストール",
-      "about": "音声認識と音声合成は、このコンピューター上の専用環境で動作します（約 2 GB、ダウンロードするモデルは別）。オンラインには何も送信されません。",
       "cancel": "キャンセル",
-      "update": "音声パックを更新",
-      "install": "音声パックをインストール",
       "done": "音声パックをインストールしました。",
       "log": "インストールログ",
-      "updateFeatures": "チャットの音声通話と文字起こしの話者区別のために音声パックを更新してください（約 40 MB のモデル、1〜2 分）。",
       "checkedOk": null,
       "checkedOkAt": null,
-      "repair": null,
       "troubleshoot": "トラブルシューティング",
-      "troubleshootBody": null,
       "reinstallSmall": "再インストール"
     },
     "models": {
@@ -671,47 +664,92 @@
       "downloaded": "ダウンロード済み",
       "use": "音声入力に使用",
       "download": "ダウンロード",
-      "firstUse": "ここでダウンロードしなくても、初回使用時にダウンロードされます。",
       "title": "音声",
-      "sttTitle": "音声認識モデル",
-      "sttSubtitle": "チャットのマイクと Voice Studio で使用されます。",
-      "capabilities": null,
+      "sttTitle": null,
+      "sttSubtitle": null,
       "ttsTitle": "音声モデル",
-      "ttsSubtitle": null,
       "ttsNone": null,
-      "caps": {
-        "speak": "読み上げ",
-        "style": "スタイル",
-        "clone": "クローン",
-        "design": "デザイン",
-        "tags": null,
-        "presets": null,
-        "expression": null,
-        "languageSelect": null
-      },
       "cost": {
-        "download": null,
-        "memory": null,
-        "peak": null,
-        "speed": null,
-        "per10s": null,
         "coldStart": null,
-        "seconds": null,
-        "measuredOn": null,
-        "notMeasured": null
+        "seconds": null
       },
       "browseVoices": null,
       "useInSpeak": null,
-      "openStudio": null
+      "openStudio": null,
+      "column": {
+        "fit": null,
+        "makes": null,
+        "model": null,
+        "size": null,
+        "status": null
+      },
+      "delete": {
+        "confirmSpeech": null,
+        "confirmStt": null,
+        "keptShared": null,
+        "watermarkGoes": null
+      },
+      "deleteModel": null,
+      "deleting": null,
+      "detail": {
+        "cost": null,
+        "fit": null,
+        "languages": null,
+        "licence": null,
+        "repo": null
+      },
+      "emptyAttention": null,
+      "emptyDownloading": null,
+      "emptyInstalled": null,
+      "family": {
+        "chatterbox": null,
+        "orpheus": null,
+        "qwen3-tts": null,
+        "voxcpm2": null
+      },
+      "filter": {
+        "makes": null,
+        "makesAll": null
+      },
+      "firstUseLine": null,
+      "kokoroLine": null,
+      "licence": null,
+      "makes": {
+        "clone": null,
+        "design": null,
+        "expression": null,
+        "languages": null,
+        "natural": null,
+        "quick": null,
+        "style": null,
+        "tags": null
+      },
+      "memory": {
+        "pending": null,
+        "pendingTitle": null
+      },
+      "moreFor": null,
+      "partOfRuntime": null,
+      "search": null,
+      "sort": {
+        "family": null,
+        "familySummary": null,
+        "fit": null,
+        "fitSummary": null,
+        "largestFirst": null,
+        "name": null,
+        "nameSummary": null,
+        "size": null,
+        "smallestFirst": null,
+        "status": null,
+        "statusSummary": null
+      },
+      "ttsIntro": null
     },
     "voices": {
       "addChinese": null,
       "listTitle": "音声",
-      "cloneCard": null,
-      "cloneDetail": null,
       "designCard": null,
-      "designDetail": null,
-      "designAction": null,
       "moreCard": null,
       "filter": "表示",
       "allLanguages": "すべての言語",
@@ -722,43 +760,63 @@
       "tab": null,
       "filters": {
         "all": "すべて",
-        "recommended": null,
         "quick": null,
         "natural": null,
         "cloned": null,
         "designed": null
       },
-      "managerSubtitle": null,
       "designRowDetail": null,
       "kindDesign": null,
       "noneCloned": null,
-      "chatVoice": null,
       "stopSample": null,
       "useInSpeak": null,
-      "useInChat": null,
-      "inChat": null,
-      "chatAnyVoice": null,
       "designNotInChat": null,
-      "callVoice": null,
       "cloneNotInCalls": null,
-      "inCalls": null,
-      "useForCalls": null
+      "badge": {
+        "call": null,
+        "read": null,
+        "speak": null
+      },
+      "change": null,
+      "changeFor": null,
+      "chooseCallHint": null,
+      "chooseFor": null,
+      "chooseReadHint": null,
+      "clonedNote": null,
+      "fallbackNote": null,
+      "female": null,
+      "firstWords": null,
+      "groupNatural": null,
+      "inUse": null,
+      "mainTitle": null,
+      "male": null,
+      "naturalNote": null,
+      "notForChat": null,
+      "notReady": null,
+      "quickNote": null,
+      "sameAsChat": null,
+      "slotCall": null,
+      "slotRead": null,
+      "slotSpeak": null,
+      "slowFor": null,
+      "subtitleUses": null,
+      "use": {
+        "call": null,
+        "read": null,
+        "speak": null
+      },
+      "useFor": null,
+      "useForLabel": null
     },
     "settings": {
       "autoSend": "音声入力が終わったらすぐにメッセージを送信",
       "autoRead": "チャットの返信が完了したら毎回読み上げる",
-      "language": "音声入力の言語",
-      "languageHint": "Whisper はこの設定を使用し、Parakeet は言語を自動で判別します。",
+      "language": null,
       "speed": "読み上げ速度",
       "idle": "アイドル後に音声メモリを解放（分。0 = 解放しない）",
-      "workerRunning": "音声モデルは読み込み済みです（プロセス {pid}）。",
-      "workerStopped": "音声モデルは読み込まれていません。",
-      "unload": "今すぐアンロード",
+      "unload": null,
       "silence": "音声通話: 発話の終わりとみなす無音時間",
-      "silenceHint": "短いほど速く応答し、長いほど考える間を取れます。",
-      "bargeIn": "音声通話: 話しかけてモデルを中断する",
-      "runtimeTitle": null,
-      "chatMoved": null
+      "bargeIn": "音声通話: 話しかけてモデルを中断する"
     },
     "offline": "バックエンドを待っています…",
     "copy": "コピー",
@@ -775,16 +833,16 @@
       "segments": "タイムスタンプ（{n}）",
       "tooBig": "{name} は 500 MB を超えています。",
       "recordingName": "録音",
-      "subtitleQueue": "録音するか、音声・動画ファイルをドロップ",
-      "translateNeedsWhisper": "英語への翻訳には Whisper Small か Whisper Base が必要です。",
-      "translate": "英語に翻訳",
       "speakers": "話者を区別",
       "speakerCount": "話者の人数",
       "speakersAuto": "自動で判定",
       "speakersN": "{n} 人",
-      "speakersNeedUpdate": "話者の区別には音声パックの更新が必要です。",
+      "speakersNeedUpdate": null,
       "hintQueue": "録音するか、ここにファイルをドロップ（複数同時も可）。",
-      "chooseFiles": "ファイルを選択"
+      "chooseFiles": "ファイルを選択",
+      "fileTypes": null,
+      "subtitleLibrary": null,
+      "translateWhich": null
     },
     "stopRecording": "録音を停止",
     "record": "録音",
@@ -916,12 +974,14 @@
         "tr": null,
         "zh": null
       },
-      "speechLanguage": null
+      "speechLanguage": null,
+      "changeVoice": null,
+      "noVoice": null
     },
     "stop": "停止",
     "studio": {
       "title": "Voice Studio",
-      "needsPack": "音声機能はこのコンピューター上で動作し、音声パック（約 2 GB）が必要です。音声 > モデル から一度だけインストールしてください。",
+      "needsPack": null,
       "openModels": "音声モデルを開く",
       "library": null
     },
@@ -987,16 +1047,18 @@
       "openStudio": null,
       "emptyAuto": null,
       "aiMade": null,
-      "speakAgain": null
+      "speakAgain": null,
+      "anyVoice": null,
+      "sendToProject": null,
+      "voiceKind": null
     },
     "languages": {
       "auto": "自動検出"
     },
     "lane": {
-      "mlx": "Apple Silicon：MLX 上の Parakeet と Whisper、Kokoro の音声",
-      "cuda": "NVIDIA GPU：CUDA 上の Whisper、Kokoro の音声",
-      "nvidia": "Whisper（CUDA ライブラリはインストール時に追加されます）、Kokoro の音声",
-      "cpu": "CPU 上の Whisper、Kokoro の音声"
+      "cpuRuntime": null,
+      "mlxRuntime": null,
+      "nvidiaRuntime": null
     },
     "micError": {
       "blockedMac": "マイクへのアクセスがブロックされています。システム設定 > プライバシーとセキュリティ > マイク で ChaosEngineAI を許可してから、もう一度お試しください。",
@@ -1023,7 +1085,6 @@
       "new": "新しいクローンボイス",
       "placeholder": "クローンボイスで話すテキスト。",
       "tagged": "AI 作成のラベル付き",
-      "allowAgents": "エージェントや他のコンピュータによるクローンボイスの利用を許可（デフォルトはオフ）",
       "whose": "誰の声ですか？",
       "basisOwn": "自分の声",
       "basisPermission": null,
@@ -1085,22 +1146,44 @@
       "moreNote": null,
       "getMore": null,
       "getMoreDetail": null,
-      "openModels": null
+      "openModels": null,
+      "drawerHint": null,
+      "drawerTitle": null
     },
     "chatCalls": {
-      "title": null,
       "cost": null,
-      "slow": null,
-      "option": null,
-      "chatVoice": null,
-      "callVoice": null,
-      "sameAsChat": null,
-      "memory": null
+      "slow": null
     },
     "quickVoices": {
-      "title": null,
-      "line": null,
       "browse": null
+    },
+    "runtime": {
+      "about": null,
+      "addon": {
+        "chinese": null,
+        "speech-gpu": null
+      },
+      "addons": null,
+      "addonsHint": null,
+      "addonsHintInstall": null,
+      "alsoModels": null,
+      "idleAfter": null,
+      "idleBefore": null,
+      "inMemory": null,
+      "install": null,
+      "modelWithGb": null,
+      "nothingLoaded": null,
+      "parts": null,
+      "remove": null,
+      "removeConfirm": null,
+      "removing": null,
+      "repair": null,
+      "subtitle": null,
+      "title": null,
+      "troubleshootBody": null,
+      "update": null,
+      "updateFeatures": null,
+      "workerOnly": null
     }
   },
   "residentChatModelNote": "読み込み済みのチャットモデルがこのメモリのうち約 {gb} GB を使用しています。アンロードするとその分が解放されます。",

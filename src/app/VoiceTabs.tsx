@@ -36,12 +36,18 @@ export function VoiceModelsView({ ctx }: { ctx: AppTabContext }) {
     refreshVoiceRuntime,
     setVoiceOpenRequest,
     setActiveTab,
+    modelsAvailability,
+    setAreaAvailability,
+    handleOpenExternalUrl,
   } = ctx;
   return (
     <VoiceModelsTab
       voiceRuntime={voiceRuntime}
       backendOnline={backendOnline}
       onRefreshVoiceRuntime={refreshVoiceRuntime}
+      availability={modelsAvailability.voice}
+      onAvailabilityChange={(value) => setAreaAvailability("voice", value)}
+      onOpenExternalUrl={(url) => void handleOpenExternalUrl(url)}
       onOpenStudio={(target) => {
         // No target: the Studio opens on the mode it remembers. Use in Speak names the mode and the voice.
         if (target) setVoiceOpenRequest({ ...target, nonce: Date.now() });

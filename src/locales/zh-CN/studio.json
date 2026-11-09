@@ -649,21 +649,14 @@
   },
   "voice": {
     "pack": {
-      "title": "语音包",
       "installed": "已安装",
       "notInstalled": "未安装",
-      "about": "语音转文字和文字转语音在这台电脑上各自独立的环境中运行（约 2 GB，另加你下载的模型）。不会向网络发送任何内容。",
       "cancel": "取消",
-      "update": "更新语音包",
-      "install": "安装语音包",
       "done": "语音包已安装。",
       "log": "安装日志",
-      "updateFeatures": "更新语音包以在聊天中使用语音通话并为转写稿区分说话人（约 40 MB 模型，一两分钟）。",
       "checkedOk": null,
       "checkedOkAt": null,
-      "repair": null,
       "troubleshoot": "故障排除",
-      "troubleshootBody": null,
       "reinstallSmall": "重新安装"
     },
     "models": {
@@ -671,47 +664,92 @@
       "downloaded": "已下载",
       "use": "用于语音输入",
       "download": "下载",
-      "firstUse": "如果跳过此步，将在首次使用时下载。",
       "title": "语音",
-      "sttTitle": "语音转文字模型",
-      "sttSubtitle": "供聊天中的麦克风和 Voice Studio 使用。",
-      "capabilities": null,
+      "sttTitle": null,
+      "sttSubtitle": null,
       "ttsTitle": "语音模型",
-      "ttsSubtitle": null,
       "ttsNone": null,
-      "caps": {
-        "speak": "朗读",
-        "style": "风格",
-        "clone": "克隆",
-        "design": "设计",
-        "tags": null,
-        "presets": null,
-        "expression": null,
-        "languageSelect": null
-      },
       "cost": {
-        "download": null,
-        "memory": null,
-        "peak": null,
-        "speed": null,
-        "per10s": null,
         "coldStart": null,
-        "seconds": null,
-        "measuredOn": null,
-        "notMeasured": null
+        "seconds": null
       },
       "browseVoices": null,
       "useInSpeak": null,
-      "openStudio": null
+      "openStudio": null,
+      "column": {
+        "fit": null,
+        "makes": null,
+        "model": null,
+        "size": null,
+        "status": null
+      },
+      "delete": {
+        "confirmSpeech": null,
+        "confirmStt": null,
+        "keptShared": null,
+        "watermarkGoes": null
+      },
+      "deleteModel": null,
+      "deleting": null,
+      "detail": {
+        "cost": null,
+        "fit": null,
+        "languages": null,
+        "licence": null,
+        "repo": null
+      },
+      "emptyAttention": null,
+      "emptyDownloading": null,
+      "emptyInstalled": null,
+      "family": {
+        "chatterbox": null,
+        "orpheus": null,
+        "qwen3-tts": null,
+        "voxcpm2": null
+      },
+      "filter": {
+        "makes": null,
+        "makesAll": null
+      },
+      "firstUseLine": null,
+      "kokoroLine": null,
+      "licence": null,
+      "makes": {
+        "clone": null,
+        "design": null,
+        "expression": null,
+        "languages": null,
+        "natural": null,
+        "quick": null,
+        "style": null,
+        "tags": null
+      },
+      "memory": {
+        "pending": null,
+        "pendingTitle": null
+      },
+      "moreFor": null,
+      "partOfRuntime": null,
+      "search": null,
+      "sort": {
+        "family": null,
+        "familySummary": null,
+        "fit": null,
+        "fitSummary": null,
+        "largestFirst": null,
+        "name": null,
+        "nameSummary": null,
+        "size": null,
+        "smallestFirst": null,
+        "status": null,
+        "statusSummary": null
+      },
+      "ttsIntro": null
     },
     "voices": {
       "addChinese": null,
       "listTitle": "声音",
-      "cloneCard": null,
-      "cloneDetail": null,
       "designCard": null,
-      "designDetail": null,
-      "designAction": null,
       "moreCard": null,
       "filter": "显示",
       "allLanguages": "所有语言",
@@ -722,43 +760,63 @@
       "tab": null,
       "filters": {
         "all": "全部",
-        "recommended": null,
         "quick": null,
         "natural": null,
         "cloned": null,
         "designed": null
       },
-      "managerSubtitle": null,
       "designRowDetail": null,
       "kindDesign": null,
       "noneCloned": null,
-      "chatVoice": null,
       "stopSample": null,
       "useInSpeak": null,
-      "useInChat": null,
-      "inChat": null,
-      "chatAnyVoice": null,
       "designNotInChat": null,
-      "callVoice": null,
       "cloneNotInCalls": null,
-      "inCalls": null,
-      "useForCalls": null
+      "badge": {
+        "call": null,
+        "read": null,
+        "speak": null
+      },
+      "change": null,
+      "changeFor": null,
+      "chooseCallHint": null,
+      "chooseFor": null,
+      "chooseReadHint": null,
+      "clonedNote": null,
+      "fallbackNote": null,
+      "female": null,
+      "firstWords": null,
+      "groupNatural": null,
+      "inUse": null,
+      "mainTitle": null,
+      "male": null,
+      "naturalNote": null,
+      "notForChat": null,
+      "notReady": null,
+      "quickNote": null,
+      "sameAsChat": null,
+      "slotCall": null,
+      "slotRead": null,
+      "slotSpeak": null,
+      "slowFor": null,
+      "subtitleUses": null,
+      "use": {
+        "call": null,
+        "read": null,
+        "speak": null
+      },
+      "useFor": null,
+      "useForLabel": null
     },
     "settings": {
       "autoSend": "语音输入结束后立即发送消息",
       "autoRead": "回复完成后自动朗读每条聊天回复",
-      "language": "语音输入语言",
-      "languageHint": "Whisper 会使用此设置；Parakeet 会自动检测语言。",
+      "language": null,
       "speed": "朗读速度",
       "idle": "空闲多久后释放语音内存（分钟，0 = 从不）",
-      "workerRunning": "语音模型已加载（进程 {pid}）。",
-      "workerStopped": "语音模型未加载。",
-      "unload": "立即卸载",
+      "unload": null,
       "silence": "语音通话：结束你发言的停顿时长",
-      "silenceHint": "越短回复越快；越长越方便停下来思考。",
-      "bargeIn": "语音通话：开口说话即可打断模型",
-      "runtimeTitle": null,
-      "chatMoved": null
+      "bargeIn": "语音通话：开口说话即可打断模型"
     },
     "offline": "正在等待后端…",
     "copy": "复制",
@@ -775,16 +833,16 @@
       "segments": "时间戳（{n}）",
       "tooBig": "{name} 超过 500 MB。",
       "recordingName": "录音",
-      "subtitleQueue": "录音，或拖入音频和视频文件",
-      "translateNeedsWhisper": "翻译成英文需要 Whisper Small 或 Whisper Base。",
-      "translate": "翻译成英文",
       "speakers": "区分说话人",
       "speakerCount": "说话人数量",
       "speakersAuto": "自动判断",
       "speakersN": "{n} 位说话人",
-      "speakersNeedUpdate": "区分说话人需要更新语音包。",
+      "speakersNeedUpdate": null,
       "hintQueue": "录音，或把文件拖到这里（可一次拖入多个）。",
-      "chooseFiles": "选择文件"
+      "chooseFiles": "选择文件",
+      "fileTypes": null,
+      "subtitleLibrary": null,
+      "translateWhich": null
     },
     "stopRecording": "停止录音",
     "record": "录音",
@@ -916,12 +974,14 @@
         "tr": null,
         "zh": null
       },
-      "speechLanguage": null
+      "speechLanguage": null,
+      "changeVoice": null,
+      "noVoice": null
     },
     "stop": "停止",
     "studio": {
       "title": "Voice Studio",
-      "needsPack": "语音功能在这台电脑上运行，需要语音包（约 2 GB）。请在“语音 > 模型”中安装一次。",
+      "needsPack": null,
       "openModels": "打开语音模型",
       "library": null
     },
@@ -987,16 +1047,18 @@
       "openStudio": null,
       "emptyAuto": null,
       "aiMade": null,
-      "speakAgain": null
+      "speakAgain": null,
+      "anyVoice": null,
+      "sendToProject": null,
+      "voiceKind": null
     },
     "languages": {
       "auto": "自动检测"
     },
     "lane": {
-      "mlx": "Apple Silicon：MLX 上的 Parakeet 和 Whisper，Kokoro 语音",
-      "cuda": "NVIDIA GPU：CUDA 上的 Whisper，Kokoro 语音",
-      "nvidia": "Whisper（安装时会添加 CUDA 库），Kokoro 语音",
-      "cpu": "CPU 上的 Whisper，Kokoro 语音"
+      "cpuRuntime": null,
+      "mlxRuntime": null,
+      "nvidiaRuntime": null
     },
     "micError": {
       "blockedMac": "麦克风访问被阻止。请在“系统设置 > 隐私与安全性 > 麦克风”中允许 ChaosEngineAI，然后重试。",
@@ -1023,7 +1085,6 @@
       "new": "新建克隆声音",
       "placeholder": "要用克隆声音朗读的文字。",
       "tagged": "已标注为 AI 生成",
-      "allowAgents": "允许智能体和其他电脑使用克隆声音（默认关闭）",
       "whose": "这是谁的声音？",
       "basisOwn": "我自己的声音",
       "basisPermission": null,
@@ -1085,22 +1146,44 @@
       "moreNote": null,
       "getMore": null,
       "getMoreDetail": null,
-      "openModels": null
+      "openModels": null,
+      "drawerHint": null,
+      "drawerTitle": null
     },
     "chatCalls": {
-      "title": null,
       "cost": null,
-      "slow": null,
-      "option": null,
-      "chatVoice": null,
-      "callVoice": null,
-      "sameAsChat": null,
-      "memory": null
+      "slow": null
     },
     "quickVoices": {
-      "title": null,
-      "line": null,
       "browse": null
+    },
+    "runtime": {
+      "about": null,
+      "addon": {
+        "chinese": null,
+        "speech-gpu": null
+      },
+      "addons": null,
+      "addonsHint": null,
+      "addonsHintInstall": null,
+      "alsoModels": null,
+      "idleAfter": null,
+      "idleBefore": null,
+      "inMemory": null,
+      "install": null,
+      "modelWithGb": null,
+      "nothingLoaded": null,
+      "parts": null,
+      "remove": null,
+      "removeConfirm": null,
+      "removing": null,
+      "repair": null,
+      "subtitle": null,
+      "title": null,
+      "troubleshootBody": null,
+      "update": null,
+      "updateFeatures": null,
+      "workerOnly": null
     }
   },
   "residentChatModelNote": "已加载的聊天模型占用了其中约 {gb} GB 内存；卸载它即可释放这部分内存。",

@@ -400,8 +400,13 @@ def list_voice_models(request: Request) -> dict[str, Any]:
     """Every speech model offered here (Qwen3-TTS and the measured wave-2 rows) with install state, capabilities,
     controls, per-row licence, companions, sample rate and measured cost."""
     from backend_service import voice_clone  # noqa: PLC0415
+    from backend_service.helpers.hardware_class import host_hardware_class  # noqa: PLC0415
+    from backend_service.helpers.voice_fit import annotate_voice_models  # noqa: PLC0415
 
-    return {"models": voice_clone.list_models(every_model=True), "available": voice_clone.available_here()}
+    models = voice_clone.list_models(every_model=True)
+    # Fit on this machine from the measured peak, and Kokoro's row (part of the runtime) for the Models table.
+    kokoro = annotate_voice_models(models, host_hardware_class())
+    return {"models": models, "available": voice_clone.available_here(), "kokoro": kokoro}
 
 
 @router.post("/api/voice/speak/stream")

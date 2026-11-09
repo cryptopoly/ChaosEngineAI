@@ -21,7 +21,7 @@ export function useCostText(): CostText {
           : t("voice.cost.unmeasuredChip", { defaultValue: "{gb} GB, not measured", gb: cost.downloadGb }),
     detail: (cost) =>
       cost.kind === "kokoro"
-        ? t("voice.cost.kokoroDetail", { defaultValue: "part of the voice pack, under 1 GB" })
+        ? t("voice.cost.kokoroDetail", { defaultValue: "part of the voice runtime, under 1 GB" })
         : cost.kind === "measured"
           ? t("voice.cost.detail", {
               defaultValue: "{peak} GB in memory, about {seconds} s per 10 s of speech (measured on {machine})",

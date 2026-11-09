@@ -10092,9 +10092,7 @@ html[lang="ko"] select {
 }
 
 .voice-pack__status,
-.voice-pack__extras,
-.voice-studio__row,
-.voice-settings__worker {
+.voice-studio__row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -13887,41 +13885,6 @@ select.music-library__select {
   min-width: 36px;
 }
 
-.voice-picker__statement {
-  margin: 0 0 8px;
-  font-size: 0.8rem;
-}
-
-/* Voices tab: how chat speaks, under the list (D-67 W5). */
-.voice-chat-calls {
-  margin-top: 8px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.voice-chat-calls > p,
-.voice-voices__chat-note {
-  margin: 0;
-  font-size: 0.85rem;
-}
-
-/* Voice Models: the one line left for the quick voices. */
-.voice-quick-line {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 12px;
-}
-
-.voice-model-row__caps {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
 /* Measured cost: the chip on a voice card and the cells on a Models row (D-67 W1). */
 .voice-card__cost {
   margin-top: 4px;
@@ -13967,29 +13930,6 @@ select.music-library__select {
 
 .voice-install-card__cost {
   font-size: 0.85rem;
-}
-
-.voice-model-row__cost {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
-  gap: 6px 12px;
-  margin: 0;
-}
-
-.voice-model-row__cost > div {
-  min-width: 0;
-}
-
-.voice-model-row__cost dt {
-  color: var(--muted);
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.voice-model-row__cost dd {
-  margin: 0;
-  overflow-wrap: anywhere;
 }
 
 /* ===== Projects (D-65): list, project shell, Overview, Cast, picker, voice, Export ===== */
@@ -15393,4 +15333,307 @@ select.music-library__select {
 .batch-bar .job-progress-line {
   flex: 1 1 100%;
   order: 3;
+}
+
+/* ===== Voice makeover (D-73): runtime, dictation, speech table, voice row, drawer, main voices, Chat popover ===== */
+.voice-runtime__memory {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+.voice-runtime__unload {
+  margin-left: 6px;
+}
+.voice-runtime__idle {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted-strong);
+  font-size: 0.9rem;
+}
+.voice-runtime__idle .text-input {
+  width: 72px;
+}
+.voice-runtime__addons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.voice-runtime__addons legend {
+  float: left;
+  margin-right: 8px;
+  padding: 0;
+  color: var(--muted-strong);
+  font-weight: 600;
+}
+.voice-runtime__addons .muted-text {
+  flex-basis: 100%;
+}
+.danger-text {
+  color: var(--danger);
+}
+.voice-dictation__language {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted-strong);
+  font-size: 0.9rem;
+}
+.voice-dictation__language .text-input {
+  width: auto;
+  max-width: 220px;
+}
+.voice-models__speech {
+  min-width: 0;
+}
+.voice-models__family {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  padding: 9px 14px;
+  background: var(--panel-alt);
+  border-bottom: 1px solid var(--border);
+}
+.voice-models__inline {
+  display: none;
+}
+@media (max-width: 1439px) {
+  .voice-models__inline {
+    display: flex;
+  }
+}
+
+/* Speak: the voice in use, with Change voice (the picker is a drawer). */
+.voice-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md, 12px);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+.voice-row__play {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+.voice-row__who {
+  display: flex;
+  flex: 1 1 220px;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.voice-row__name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.voice-row__name strong {
+  font-size: 1rem;
+}
+.voice-row__about {
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+.voice-row .voice-card__cost {
+  margin-top: 0;
+}
+.drawer-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+}
+.drawer-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 18, 21, 0.72);
+}
+.drawer.drawer--wide {
+  width: min(760px, 100vw);
+}
+.drawer__subtitle {
+  margin: 2px 0 0;
+  font-size: 0.85rem;
+}
+
+/* Voices: the main voice per use, then the grouped list with one Use for menu per row. */
+.voice-main {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.voice-main__slots {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+}
+.voice-main__slot {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md, 12px);
+  background: var(--surface);
+  min-width: 0;
+}
+.voice-main__label {
+  color: var(--muted);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.voice-main__voice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  font-size: 1rem;
+}
+.voice-main__note {
+  font-size: 0.85rem;
+}
+.voice-main__fallback {
+  margin: 0;
+  font-size: 0.85rem;
+}
+.voice-voices__group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.voice-voices__language {
+  margin: 4px 0;
+  color: var(--muted-strong);
+  font-size: 0.85rem;
+}
+.voice-list__about {
+  font-size: 0.85rem;
+}
+.voice-use-menu > summary {
+  list-style: none;
+  cursor: pointer;
+}
+.voice-use-menu > summary::-webkit-details-marker {
+  display: none;
+}
+.voice-use-menu .model-action-menu__item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.voice-use-menu__reason {
+  color: var(--muted);
+  font-size: 0.75rem;
+  white-space: normal;
+}
+
+/* Chat: the Voice button and its popover. */
+.voice-popover {
+  position: relative;
+  display: inline-flex;
+}
+.voice-popover__button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.voice-popover__panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(360px, calc(100vw - 32px));
+  max-height: min(70vh, 640px);
+  overflow-y: auto;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md, 12px);
+  background: var(--panel);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  text-align: left;
+}
+.voice-popover__head,
+.voice-popover__line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+}
+.voice-popover__head {
+  justify-content: space-between;
+}
+.voice-popover__line .link-button {
+  margin-left: auto;
+}
+.voice-popover__what {
+  flex-basis: 100%;
+  color: var(--muted);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.voice-popover__who {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.voice-popover__fallback {
+  margin: 0;
+  font-size: 0.8rem;
+}
+.voice-popover__needs ul {
+  margin: 4px 0 8px;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.85rem;
+}
+@media (max-width: 760px) {
+  .voice-popover__panel {
+    position: fixed;
+    top: 72px;
+    right: 16px;
+    left: 16px;
+    width: auto;
+  }
+}
+.speech-bar__voice {
+  color: var(--muted-strong);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+.workspace-header--compact {
+  padding-bottom: 0;
 }

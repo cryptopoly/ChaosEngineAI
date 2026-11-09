@@ -83,16 +83,13 @@
     "startCall": "음성으로 모델과 대화",
     "call": "통화",
     "callNeedsModel": "음성 통화를 시작하려면 채팅 모델을 로드하세요",
-    "callInfo": "로드된 모델과 소리 내어 대화하세요. 말하고 잠시 멈추면 음성으로 답합니다. 말을 끊으려면 겹쳐 말하세요. 각 턴은 이 채팅에 저장됩니다.",
     "callNeeds": "필요한 항목:",
     "callReady": "준비됨",
     "callMissing": "없음",
-    "callSetup": "통화를 클릭하면 음성 모델이 열리고 없는 항목을 설치할 수 있습니다.",
     "callNeedModel": "로드된 채팅 모델",
-    "callNeedStt": "음성 인식 (음성 모델)",
-    "callNeedTts": "응답용 음성 (음성 모델)",
-    "callNeedVad": "발화 차례 감지 (음성 팩에 포함)",
-    "callVoice": null
+    "callNeedDictation": null,
+    "callNeedTurns": null,
+    "callNeedVoice": null
   },
   "sidebar": {
     "title": "채팅",
@@ -367,18 +364,20 @@
   },
   "voice": {
     "heardNothing": "음성이 감지되지 않았습니다. 마이크에 더 가까이 대고 다시 시도하세요.",
-    "installToDictate": "음성 입력에는 음성 팩이 필요합니다. 클릭하여 설치하세요.",
+    "installToDictate": null,
     "stopDictation": "중지하고 받아쓰기 (Esc로 취소)",
     "transcribing": "받아쓰는 중…",
     "startDictation": "음성 입력 (클릭하거나 길게 눌러 말하기; Ctrl/Cmd+Shift+M)",
-    "installToRead": "소리 내어 읽으려면 음성 팩이 필요합니다. 클릭하여 설치하세요.",
+    "installToRead": null,
     "stopReading": "읽기 중지",
     "readAloud": "소리 내어 읽기",
     "dismiss": "닫기",
     "resume": "재개",
     "pause": "일시 중지",
     "stop": "중지",
-    "preparing": "음성을 준비하는 중…"
+    "preparing": "음성을 준비하는 중…",
+    "clonedVoice": null,
+    "readingWith": null
   },
   "voiceCall": {
     "starting": "마이크를 시작하는 중…",
@@ -508,5 +507,17 @@
       "offTooltip": null,
       "ratings": null
     }
+  },
+  "voicePopover": {
+    "button": null,
+    "call": null,
+    "change": null,
+    "dictation": null,
+    "fix": null,
+    "noRuntime": null,
+    "openVoices": null,
+    "read": null,
+    "sameAsChat": null,
+    "title": null
   }
 }

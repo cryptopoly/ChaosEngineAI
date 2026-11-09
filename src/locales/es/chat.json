@@ -83,16 +83,13 @@
     "startCall": "Hablar con el modelo por voz",
     "call": "Llamar",
     "callNeedsModel": "Carga un modelo de chat para iniciar una llamada de voz",
-    "callInfo": "Habla en voz alta con el modelo cargado. Habla, haz una pausa y te responde con voz; habla encima para interrumpirlo. Cada turno se guarda en este chat.",
     "callNeeds": "Necesita:",
     "callReady": "Listo",
     "callMissing": "Falta",
-    "callSetup": "Haz clic en Llamar para abrir Modelos de voz e instalar lo que falta.",
     "callNeedModel": "un modelo de chat cargado",
-    "callNeedStt": "reconocimiento de voz (Modelos de voz)",
-    "callNeedTts": "una voz para las respuestas (Modelos de voz)",
-    "callNeedVad": "detección de turnos, parte del paquete de voz",
-    "callVoice": null
+    "callNeedDictation": null,
+    "callNeedTurns": null,
+    "callNeedVoice": null
   },
   "sidebar": {
     "title": "Chats",
@@ -367,18 +364,20 @@
   },
   "voice": {
     "heardNothing": "No se oyó nada. Inténtalo de nuevo más cerca del micrófono.",
-    "installToDictate": "La entrada de voz necesita el paquete de voz. Haz clic para instalarlo.",
+    "installToDictate": null,
     "stopDictation": "Detener y transcribir (Esc cancela)",
     "transcribing": "Transcribiendo…",
     "startDictation": "Dictar (haz clic, o mantén pulsado para hablar; Ctrl/Cmd+Shift+M)",
-    "installToRead": "Leer en voz alta necesita el paquete de voz. Haz clic para instalarlo.",
+    "installToRead": null,
     "stopReading": "Detener la lectura",
     "readAloud": "Leer en voz alta",
     "dismiss": "Cerrar",
     "resume": "Reanudar",
     "pause": "Pausa",
     "stop": "Detener",
-    "preparing": "Preparando la voz…"
+    "preparing": "Preparando la voz…",
+    "clonedVoice": null,
+    "readingWith": null
   },
   "voiceCall": {
     "starting": "Iniciando el micrófono…",
@@ -508,5 +507,17 @@
       "offTooltip": null,
       "ratings": null
     }
+  },
+  "voicePopover": {
+    "button": null,
+    "call": null,
+    "change": null,
+    "dictation": null,
+    "fix": null,
+    "noRuntime": null,
+    "openVoices": null,
+    "read": null,
+    "sameAsChat": null,
+    "title": null
   }
 }

@@ -649,21 +649,14 @@
   },
   "voice": {
     "pack": {
-      "title": "Voice pack",
       "installed": "Installed",
       "notInstalled": "Not installed",
-      "about": "Speech-to-text and text-to-speech run in their own environment on this computer (about 2 GB, plus the models you download). Nothing is sent online.",
       "cancel": "Cancel",
-      "update": "Update voice pack",
-      "install": "Install voice pack",
       "done": "Voice pack installed.",
       "log": "Install log",
-      "updateFeatures": "Update the voice pack for voice calls in Chat and speaker labels on transcripts (adds about 40 MB of models; a minute or two).",
       "checkedOk": "Installed, checked OK",
       "checkedOkAt": "Installed, checked OK ({time})",
-      "repair": "Repair voice pack",
       "troubleshoot": "Troubleshooting",
-      "troubleshootBody": "Only needed if voice features stop working. This runs the whole install again.",
       "reinstallSmall": "Reinstall"
     },
     "models": {
@@ -671,47 +664,92 @@
       "downloaded": "Downloaded",
       "use": "Use for dictation",
       "download": "Download",
-      "firstUse": "Downloads on first use if you skip this.",
       "title": "Voice",
-      "sttTitle": "Speech-to-text models",
-      "sttSubtitle": "Used by the microphone in chat and by Voice Studio.",
-      "capabilities": "What it can do",
+      "sttTitle": "Dictation models",
+      "sttSubtitle": "Turn speech into text: the microphone in Chat, voice calls and Transcribe.",
       "ttsTitle": "Speech models",
-      "ttsSubtitle": "Natural voices, style, voice design and cloning. The quick voices (Kokoro) come with the voice pack.",
       "ttsNone": "No speech models are listed.",
-      "caps": {
-        "speak": "Speak",
-        "style": "Style",
-        "clone": "Clone",
-        "design": "Design",
-        "tags": "Sound tags",
-        "presets": "Preset voices",
-        "expression": "Expression",
-        "languageSelect": "Language choice"
-      },
       "cost": {
-        "download": "Download size",
-        "memory": "Memory",
-        "peak": "{gb} GB peak",
-        "speed": "Speed",
-        "per10s": "{seconds} s per 10 s",
         "coldStart": "Cold start",
-        "seconds": "{seconds} s",
-        "measuredOn": "Measured on",
-        "notMeasured": "Not measured yet"
+        "seconds": "{seconds} s"
       },
       "browseVoices": "Browse voices",
       "useInSpeak": "Use in Speak",
-      "openStudio": "Open Studio"
+      "openStudio": "Open Studio",
+      "column": {
+        "fit": "Fit",
+        "makes": "Makes",
+        "model": "Model",
+        "size": "Size",
+        "status": "Status"
+      },
+      "delete": {
+        "confirmSpeech": "Delete {name} ({gb} GB) from this computer? Download it again to use it. Cloned voices and Library items stay.",
+        "confirmStt": "Delete {name} ({gb} GB) from this computer? If it is the dictation model, it downloads again the next time you dictate.",
+        "keptShared": "Kept: {repo}, still used by {names}.",
+        "watermarkGoes": "The watermark component goes too: no other downloaded model clones. It comes back with the next cloning model."
+      },
+      "deleteModel": "Delete model ({gb} GB)",
+      "deleting": "Deleting…",
+      "detail": {
+        "cost": "Memory and speed",
+        "fit": "Fit on this machine",
+        "languages": "Languages",
+        "licence": "Licence",
+        "repo": "Repository"
+      },
+      "emptyAttention": "No speech model needs attention.",
+      "emptyDownloading": "No speech model is downloading.",
+      "emptyInstalled": "No speech model downloaded yet. The quick voices come with the runtime.",
+      "family": {
+        "chatterbox": "Sound tags, the Expression dial and cloning",
+        "orpheus": "Eight expressive English voices with sound tags",
+        "qwen3-tts": "Natural voices, style instructions, voice design and cloning",
+        "voxcpm2": "Voice design and cloning in 30 languages"
+      },
+      "filter": {
+        "makes": "Makes",
+        "makesAll": "Everything"
+      },
+      "firstUseLine": "A model you pick but have not downloaded is fetched the first time you dictate. Whisper uses the language; Parakeet and Nemotron find it themselves.",
+      "kokoroLine": "{count} quick voices in {languages} languages. Fast on any machine; the voice Chat falls back to.",
+      "licence": "Licence: {name}",
+      "makes": {
+        "clone": "Clone",
+        "design": "Design",
+        "expression": "Expression",
+        "languages": "Language choice",
+        "natural": "Natural voices",
+        "quick": "Quick voices",
+        "style": "Style",
+        "tags": "Sound tags"
+      },
+      "memory": {
+        "pending": "not measured",
+        "pendingTitle": "No memory figure for this model yet."
+      },
+      "moreFor": "More actions for {name}",
+      "partOfRuntime": "Part of the runtime",
+      "search": "Search models, languages, what they make",
+      "sort": {
+        "family": "By family",
+        "familySummary": "by family",
+        "fit": "Best fit first",
+        "fitSummary": "best fit first",
+        "largestFirst": "largest first",
+        "name": "Name",
+        "nameSummary": "name A-Z",
+        "size": "Size",
+        "smallestFirst": "smallest first",
+        "status": "Status",
+        "statusSummary": "downloaded first"
+      },
+      "ttsIntro": "Turn text into speech: Speak, read-aloud and calls. Pick a voice on Studio > Voices."
     },
     "voices": {
       "addChinese": "Add Mandarin Chinese voices",
       "listTitle": "Voices",
-      "cloneCard": "Clone a voice",
-      "cloneDetail": "From a short recording of your own voice, or of someone who gave permission.",
       "designCard": "Design a voice",
-      "designDetail": "Describe the voice you want in words.",
-      "designAction": "Describe a voice",
       "moreCard": "Get more voices",
       "filter": "Show",
       "allLanguages": "All languages",
@@ -722,43 +760,63 @@
       "tab": "Voices",
       "filters": {
         "all": "All",
-        "recommended": "Recommended",
         "quick": "Quick",
         "natural": "Natural",
         "cloned": "Cloned",
         "designed": "Designed"
       },
-      "managerSubtitle": "Every voice in one list: try it, use it in Speak, or make it the chat voice.",
       "designRowDetail": "Any language. A new voice from your description each run.",
       "kindDesign": "Designed",
       "noneCloned": "No cloned voices yet. Use New cloned voice above.",
-      "chatVoice": "Chat voice",
       "stopSample": "Stop the sample of {name}",
       "useInSpeak": "Use in Speak",
-      "useInChat": "Use in Chat",
-      "inChat": "In use in Chat",
-      "chatAnyVoice": "Chat and calls can use any voice that runs here. Cloned voices read chat replies aloud but are not used in calls. The time is how long the first sentence takes.",
       "designNotInChat": "Describe a voice needs a description each time, so it cannot be the chat voice.",
-      "callVoice": "Call voice",
       "cloneNotInCalls": "Cloned voices are not used in voice calls.",
-      "inCalls": "In use for calls",
-      "useForCalls": "Use for calls"
+      "badge": {
+        "call": "Calls",
+        "read": "Chat",
+        "speak": "Speak"
+      },
+      "change": "Change",
+      "changeFor": "Change the voice for {use}",
+      "chooseCallHint": "Voices that can answer calls. Cloned voices are not used in calls.",
+      "chooseFor": "Choose the voice for {use}",
+      "chooseReadHint": "Voices that can read chat replies aloud.",
+      "clonedNote": "Your voice, or someone who gave permission. Labelled AI-made and watermarked.",
+      "fallbackNote": "If a chosen voice cannot speak (model not downloaded, or it fails to load), Kokoro reads instead and Chat says so.",
+      "female": "female",
+      "firstWords": "First words after {s} s.",
+      "groupNatural": "Natural",
+      "inUse": "in use",
+      "mainTitle": "Main voices",
+      "male": "male",
+      "naturalNote": "From the speech models you downloaded. Style, tags or expression depend on the model.",
+      "notForChat": "This voice cannot speak in Chat here.",
+      "notReady": "Its model is not downloaded yet.",
+      "quickNote": "Kokoro, part of the voice runtime. Fast, under 1 GB, speed only. The best-graded shown first.",
+      "sameAsChat": "(same as Chat)",
+      "slotCall": "Cloned voices are not used in calls.",
+      "slotRead": "Replies and the speaker button.",
+      "slotSpeak": "Starts selected on the Speak screen.",
+      "slowFor": "slow: {s} s",
+      "subtitleUses": "Every voice on this computer, and which one each part of the app uses.",
+      "use": {
+        "call": "Voice calls",
+        "read": "Chat read-aloud",
+        "speak": "Speak"
+      },
+      "useFor": "Use for…",
+      "useForLabel": "Use {name} for"
     },
     "settings": {
       "autoSend": "Send the message as soon as dictation finishes",
       "autoRead": "Read every chat reply aloud when it finishes",
-      "language": "Dictation language",
-      "languageHint": "Whisper uses it; Parakeet detects the language itself.",
+      "language": "Language",
       "speed": "Reading speed",
       "idle": "Free voice memory after (minutes idle, 0 = never)",
-      "workerRunning": "Voice models are loaded (process {pid}).",
-      "workerStopped": "Voice models are not loaded.",
-      "unload": "Unload now",
+      "unload": "Unload",
       "silence": "Voice call: pause that ends your turn",
-      "silenceHint": "Shorter replies faster; longer lets you pause to think.",
-      "bargeIn": "Voice call: interrupt the model by speaking",
-      "runtimeTitle": "Dictation and memory",
-      "chatMoved": "How chat reads aloud and voice calls: Voice Studio > Voices."
+      "bargeIn": "Voice call: interrupt the model by speaking"
     },
     "offline": "Waiting for the backend…",
     "copy": "Copy",
@@ -775,16 +833,16 @@
       "segments": "Timestamps ({n})",
       "tooBig": "{name} is larger than 500 MB.",
       "recordingName": "Recording",
-      "subtitleQueue": "Record, or drop audio and video files",
-      "translateNeedsWhisper": "Translation to English needs Whisper Small or Whisper Base.",
-      "translate": "Translate to English",
       "speakers": "Label speakers",
       "speakerCount": "Number of speakers",
       "speakersAuto": "Find how many",
       "speakersN": "{n} speakers",
-      "speakersNeedUpdate": "Speaker labels need a voice pack update.",
+      "speakersNeedUpdate": "Speaker labels need a voice runtime update.",
       "hintQueue": "Record, or drop files here (several at once is fine).",
-      "chooseFiles": "Choose files"
+      "chooseFiles": "Choose files",
+      "fileTypes": "WAV, MP3, M4A, FLAC, OGG, MP4, MOV and more",
+      "subtitleLibrary": "Record, or drop audio and video files. Transcripts are kept in the Library.",
+      "translateWhich": "Translate to English (Whisper Small or Base)"
     },
     "stopRecording": "Stop recording",
     "record": "Record",
@@ -916,12 +974,14 @@
         "tr": "Turkish",
         "zh": "Chinese"
       },
-      "speechLanguage": "Speech language"
+      "speechLanguage": "Speech language",
+      "changeVoice": "Change voice",
+      "noVoice": "No voice chosen"
     },
     "stop": "Stop",
     "studio": {
       "title": "Voice Studio",
-      "needsPack": "Voice runs on this computer and needs the voice pack (about 2 GB). Install it once from Voice > Models.",
+      "needsPack": "Voice runs on this computer and needs the voice runtime (about 2.3 GB). Install it once from Voice > Models.",
       "openModels": "Open Voice Models",
       "library": "Library"
     },
@@ -987,16 +1047,18 @@
       "openStudio": "Open Studio",
       "emptyAuto": "Nothing here yet. Transcripts and speech made in Voice Studio are kept here.",
       "aiMade": "AI-made, cloned voice",
-      "speakAgain": "Speak again"
+      "speakAgain": "Speak again",
+      "anyVoice": "Any voice",
+      "sendToProject": "Send to project",
+      "voiceKind": "Voice"
     },
     "languages": {
       "auto": "Detect automatically"
     },
     "lane": {
-      "mlx": "Apple Silicon: Parakeet and Whisper on MLX, Kokoro voices",
-      "cuda": "NVIDIA GPU: Whisper on CUDA, Kokoro voices",
-      "nvidia": "Whisper (CUDA libraries are added by the install), Kokoro voices",
-      "cpu": "Whisper on the CPU, Kokoro voices"
+      "cpuRuntime": "CPU",
+      "mlxRuntime": "Apple Silicon",
+      "nvidiaRuntime": "NVIDIA GPU"
     },
     "micError": {
       "blockedMac": "Microphone access is blocked. Allow ChaosEngineAI in System Settings > Privacy & Security > Microphone, then try again.",
@@ -1023,7 +1085,6 @@
       "new": "New cloned voice",
       "placeholder": "Text to say in the cloned voice.",
       "tagged": "Labelled as AI-made",
-      "allowAgents": "Allow agents and other computers to use cloned voices (off by default)",
       "whose": "Whose voice is it?",
       "basisOwn": "My own voice",
       "basisPermission": "Someone who gave me permission",
@@ -1052,7 +1113,7 @@
       "kokoroChip": "fast, under 1 GB",
       "chip": "{peak} GB, {seconds} s per 10 s",
       "unmeasuredChip": "{gb} GB, not measured",
-      "kokoroDetail": "part of the voice pack, under 1 GB",
+      "kokoroDetail": "part of the voice runtime, under 1 GB",
       "detail": "{peak} GB in memory, about {seconds} s per 10 s of speech (measured on {machine})",
       "unmeasuredDetail": "speed and memory not measured yet",
       "download": "Download {gb} GB"
@@ -1065,14 +1126,14 @@
     },
     "picker": {
       "addMandarin": "Add Mandarin voices",
-      "addMandarinDetail": "Eight quick voices, a small add-on to the voice pack.",
+      "addMandarinDetail": "Eight quick voices, a small add-on to the voice runtime.",
       "naturalDetail": "Natural, {language}{gender}. {about}",
       "designDetail": "Describe age, gender, tone, accent and pace. A new voice each run unless you set a seed.",
       "quickDetail": "Quick, {language}{gender}. Best-graded quick voice.",
       "recommended": "Recommended",
       "recommendedNote": "For this computer and {language}",
       "quick": "Quick",
-      "quickNote": "Kokoro, part of the voice pack. Fast, under 1 GB, speed only. {count} voices in {languages} languages.",
+      "quickNote": "Kokoro, part of the voice runtime. Fast, under 1 GB, speed only. {count} voices in {languages} languages.",
       "fewer": "Show the shortlist",
       "allVoices": "All {count} {language} voices",
       "cloned": "Cloned",
@@ -1085,22 +1146,44 @@
       "moreNote": "Natural voices in other languages, and more to install.",
       "getMore": "Get more voices",
       "getMoreDetail": "The cloning models and the rest of the speech models.",
-      "openModels": "Open Models"
+      "openModels": "Open Models",
+      "drawerHint": "Click a voice to use it in Speak. The sample button plays a short line.",
+      "drawerTitle": "Choose a voice"
     },
     "chatCalls": {
-      "title": "Chat and calls",
       "cost": "first audio {warm} s ({cold} s cold), {memory} GB",
-      "slow": "Slow for calls",
-      "option": "{name}, {seconds} s",
-      "chatVoice": "Chat voice (read-aloud)",
-      "callVoice": "Call voice",
-      "sameAsChat": "Same as the chat voice",
-      "memory": "Natural voices load a speech model of up to 3.6 GB next to the chat model. One speech model stays loaded and is freed after the idle time set on Voice Models. If a voice cannot speak, the Kokoro voice reads instead."
+      "slow": "Slow for calls"
     },
     "quickVoices": {
-      "title": "Quick voices",
-      "line": "Kokoro: {count} voices in {languages} languages, part of the voice pack, under 1 GB.",
       "browse": "Browse voices"
+    },
+    "runtime": {
+      "about": "About 2.3 GB: the speech packages, the Kokoro quick voices, turn detection and speaker labels. Dictation and speech models are separate downloads on this page. Nothing is sent online.",
+      "addon": {
+        "chinese": "Mandarin Chinese quick voices (8 voices, about 60 MB)",
+        "speech-gpu": "Speech GPU add-on: Chatterbox, VoxCPM2 and Orpheus on the NVIDIA GPU (several GB)"
+      },
+      "addons": "Add-ons",
+      "addonsHint": "Installs when ticked; untick to remove.",
+      "addonsHintInstall": "Ticked add-ons install with the runtime; you can change them later.",
+      "alsoModels": "Also delete the Kokoro quick voices, turn detection and speaker labels. Downloaded dictation and speech models always stay.",
+      "idleAfter": "minutes idle (0 = never)",
+      "idleBefore": "Free memory after",
+      "inMemory": "In memory now:",
+      "install": "Install voice runtime",
+      "modelWithGb": "{name}, {gb} GB",
+      "nothingLoaded": "nothing",
+      "parts": "{total} GB on disk: speech packages {packages} GB, Kokoro quick voices {kokoro} GB, turn detection and speaker labels {small} GB. Nothing is sent online.",
+      "remove": "Remove voice runtime",
+      "removeConfirm": "Remove the voice runtime{size}? Dictation, read-aloud, voice calls and Voice Studio stop working until it is installed again. Downloaded dictation and speech models, cloned voices and the Library stay.",
+      "removing": "Removing…",
+      "repair": "Repair voice runtime",
+      "subtitle": "{lane}. Everything voice needs that is not a model you choose.",
+      "title": "Voice runtime",
+      "troubleshootBody": "Reinstall runs the whole install again. Remove frees the disk space; dictation, read-aloud, calls and Voice Studio stop until it is installed again.",
+      "update": "Update voice runtime",
+      "updateFeatures": "Update the voice runtime for voice calls in Chat and speaker labels on transcripts (adds about 40 MB of models; a minute or two).",
+      "workerOnly": "the voice worker, no model yet"
     }
   },
   "residentChatModelNote": "A loaded chat model holds about {gb} GB of this memory; unloading it frees that.",

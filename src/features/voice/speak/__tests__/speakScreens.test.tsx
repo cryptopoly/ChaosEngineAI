@@ -5,6 +5,7 @@ vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn(), isTauri: vi.fn(() => f
 
 import type { VoiceEntry, VoiceModelRow } from "../../../../types";
 import { SpeakScreen } from "../SpeakScreen";
+import { VoicePicker } from "../VoicePicker";
 import type { VoiceCatalog } from "../useVoiceCatalog";
 
 const caps = { speak: true, style: false, clone: false, design: false };
@@ -27,8 +28,19 @@ describe("SpeakScreen", () => {
     expect(html).toContain("have no style control");
     expect(html).toContain(">Angry<");
     expect(html).toContain("Runs with Kokoro");
-    expect(html).toContain("Design a voice from a description");
     expect(html).toContain("Advanced");
+  });
+
+  it("shows one voice row with Change voice instead of the picker, so the form and Generate come first (D-73 S1)", () => {
+    const html = renderToStaticMarkup(<SpeakScreen catalog={catalog} voiceId="qwen3:Ryan" onVoiceChange={() => {}} />);
+    expect(html).not.toContain('role="radiogroup"');
+    expect(html).toContain(">Change voice<");
+    expect(html).toMatch(/<strong>Ryan<\/strong><span class="badge">Natural<\/span>/);
+    expect(html).toContain("English, male");
+    // Text, then the voice row, then the style box, then Generate.
+    const order = ["Text to speak", "voice-row", "voice-speak__style", "Generate audio"].map((needle) => html.indexOf(needle));
+    expect(order.every((at) => at >= 0)).toBe(true);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
   });
 
   it("explains the small model and offers the style model download", () => {
@@ -37,13 +49,10 @@ describe("SpeakScreen", () => {
     expect(html).toContain("Download Qwen3-TTS 1.7B CustomVoice for style");
   });
 
-  it("keeps the standing statement in the Cloned group, the same whichever voice is chosen", () => {
-    const heart = renderToStaticMarkup(<SpeakScreen catalog={catalog} voiceId="af_heart" onVoiceChange={() => {}} />);
-    const clone = renderToStaticMarkup(<SpeakScreen catalog={catalog} voiceId="clone:1" onVoiceChange={() => {}} />);
-    expect(heart.match(/Only clone your own voice/g)).toHaveLength(1);
-    expect(clone.match(/Only clone your own voice/g)).toHaveLength(1);
-    // In the picker, not between the picker and the style box.
-    expect(clone.indexOf("Only clone your own voice")).toBeLessThan(clone.indexOf("voice-picker__group--designed"));
+  it("keeps the cloning statement off Speak: it lives in the New cloned voice form (D-73 S2)", () => {
+    for (const id of ["af_heart", "clone:1"]) {
+      expect(renderToStaticMarkup(<SpeakScreen catalog={catalog} voiceId={id} onVoiceChange={() => {}} />)).not.toContain("Only clone your own voice");
+    }
   });
 
   it("tells a designed voice what to describe and how to keep it", () => {
@@ -53,10 +62,10 @@ describe("SpeakScreen", () => {
     expect(html).toContain("set a seed under Advanced");
   });
 
-  it("shows the standing statement for a cloned voice", () => {
+  it("names a cloned voice's permission record on the voice row", () => {
     const html = renderToStaticMarkup(<SpeakScreen catalog={catalog} voiceId="clone:1" onVoiceChange={() => {}} />);
-    expect(html).toContain("Only clone your own voice");
     expect(html).toContain("own voice, confirmed 2026-11-08");
+    expect(html).toMatch(/<strong>My voice<\/strong><span class="badge">Cloned<\/span>/);
   });
 });
 
@@ -79,14 +88,21 @@ describe("SpeakScreen cloning model and voice picker", () => {
     expect(one).toContain("Runs with Qwen3-TTS 1.7B");
     const notClone = renderToStaticMarkup(<SpeakScreen catalog={cloneCatalog(true, true)} voiceId="af_heart" onVoiceChange={() => {}} />);
     expect(notClone).not.toContain("Cloning model");
+    // The cloning model sits with the voice it belongs to: right under the voice row, above the style box.
+    expect(both.indexOf("Cloning model")).toBeGreaterThan(both.indexOf("voice-row"));
+    expect(both.indexOf("Cloning model")).toBeLessThan(both.indexOf("voice-speak__style"));
   });
 
-  it("makes exactly one voice card a Tab stop", () => {
-    const html = renderToStaticMarkup(<SpeakScreen catalog={catalog} voiceId="qwen3:Ryan" onVoiceChange={() => {}} />);
+  it("makes exactly one voice card a Tab stop, and marks it to take focus when the drawer opens", () => {
+    const html = renderToStaticMarkup(
+      <VoicePicker voices={voices} models={models} selectedId="qwen3:Ryan" onSelect={() => {}} modelsAvailable isPlaying={() => false} onSample={() => {}} />,
+    );
     const radios = html.match(/<button[^>]*role="radio"[^>]*>/g) ?? [];
     expect(radios.length).toBeGreaterThan(2);
     expect(radios.filter((r) => r.includes('tabindex="0"'))).toHaveLength(1);
     expect(radios.find((r) => r.includes('tabindex="0"'))).toContain('data-voice-id="qwen3:Ryan"');
+    expect(radios.filter((r) => r.includes("data-autofocus"))).toHaveLength(1);
+    expect(html).not.toContain("Only clone your own voice");
   });
 
   it("draws Turbo's tag chips, with its undocumented style tags labelled as such", () => {
@@ -101,6 +117,8 @@ describe("SpeakScreen cloning model and voice picker", () => {
     );
     expect(html).toContain("[Laugh]");
     expect(html).toContain("[Clear throat]");
+    // The tag chips sit under the voice row with the other controls of that voice, not above it.
+    expect(html.indexOf("[Laugh]")).toBeGreaterThan(html.indexOf("voice-row"));
     expect(html).toContain("[Whispering]");
     expect(html).toContain("its authors do not document them");
     expect(html).toContain("takes sound tags in the text");

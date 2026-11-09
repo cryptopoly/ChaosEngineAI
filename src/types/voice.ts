@@ -68,6 +68,19 @@ export interface VoiceExtra {
   installed: boolean;
 }
 
+/** One part of the voice runtime: the speech packages, the Kokoro quick voices, turn detection, speaker labels. */
+export interface VoiceRuntimePart {
+  id: "packages" | "kokoro" | "turns" | "speakers";
+  sizeGb: number;
+}
+
+/** A model the speech worker has in memory; ``peakGb`` is the measured peak (null when not measured). */
+export interface VoiceInMemory {
+  lane: "stt" | "tts";
+  name: string;
+  peakGb: number | null;
+}
+
 export interface VoiceRuntime {
   platform: string;
   /** "mlx" on Apple Silicon, "portable" on Windows / Linux / Intel Macs. */
@@ -91,6 +104,10 @@ export interface VoiceRuntime {
   /** When the voice pack install last passed its check (local time, ISO), if known. */
   installedAt?: string | null;
   workerPid: number | null;
+  /** The runtime's parts and their size on disk (an older backend sends none). */
+  parts?: VoiceRuntimePart[];
+  /** Models the speech worker holds now. */
+  inMemory?: VoiceInMemory[];
   install: VoiceInstallJob;
   sttModels: SttModel[];
   ttsVoices: TtsVoice[];
@@ -283,6 +300,8 @@ export interface VoiceModelRow {
   estimates?: VoiceModelEstimates | null;
   supported: boolean;
   installed: boolean;
+  /** Fit on this machine from the measured peak (``helpers/voice_fit.py``); read with ``readFit``. */
+  fit?: unknown;
   licence?: { id: string; name: string; url: string; note?: string; baseUrl?: string };
   download: { state: "idle" | "downloading" | "done" | "failed"; error: string | null; phase?: "weights" | "watermark" | null };
 }

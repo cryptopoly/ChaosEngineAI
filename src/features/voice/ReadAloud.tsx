@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { speechPlayer, useSpeechPlayer } from "./speechPlayer";
 import { useVoice } from "./VoiceContext";
+import { chatVoiceName } from "./speak/speakLogic";
 
 /** Speaker button for a message: reads it aloud, or stops it if it is playing. */
 export function ReadAloudButton({ ownerId, text, className = "message-action-btn" }: { ownerId: string; text: string; className?: string }) {
@@ -11,7 +12,7 @@ export function ReadAloudButton({ ownerId, text, className = "message-action-btn
   const ready = Boolean(runtime?.ttsAvailable);
 
   const title = !ready
-    ? t("voice.installToRead", { defaultValue: "Read aloud needs the voice pack. Click to install it." })
+    ? t("voice.installToRead", { defaultValue: "Read aloud needs the voice runtime. Click to install it." })
     : active
       ? t("voice.stopReading", { defaultValue: "Stop reading" })
       : t("voice.readAloud", { defaultValue: "Read aloud" });
@@ -44,9 +45,10 @@ export function ReadAloudButton({ ownerId, text, className = "message-action-btn
   );
 }
 
-/** Bar above the composer while something is being read aloud. */
+/** Bar above the composer while something is being read aloud; it names the voice reading (D-73 S3). */
 export function SpeechPlayerBar() {
   const { t } = useTranslation("chat");
+  const { runtime, settings } = useVoice();
   const player = useSpeechPlayer();
   if (player.status === "idle") return null;
 
@@ -74,6 +76,12 @@ export function SpeechPlayerBar() {
       <button type="button" className="secondary-button speech-bar__button" onClick={() => speechPlayer.stop()}>
         {t("voice.stop", { defaultValue: "Stop" })}
       </button>
+      <span className="speech-bar__voice">
+        {t("voice.readingWith", {
+          defaultValue: "{voice} reading",
+          voice: chatVoiceName(settings.ttsVoice, runtime?.ttsVoices ?? [], t("voice.clonedVoice", { defaultValue: "Cloned voice" })),
+        })}
+      </span>
       <span className="speech-bar__text">
         {player.status === "loading"
           ? t("voice.preparing", { defaultValue: "Preparing speech…" })

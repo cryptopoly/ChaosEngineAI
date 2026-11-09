@@ -14,7 +14,9 @@ import {
   managerVoices,
   matchesFilter,
   usableInChat,
-  chatVoiceChoices,
+  useBlockReason,
+  usesOf,
+  voicesForUse,
   chatVoiceName,
   modelNote,
   pickerVoices,
@@ -388,8 +390,21 @@ describe("chat and call voices (D-72)", () => {
     expect(usableInChat({ ...heart, chatUse: undefined })).toBe(true);
   });
 
-  it("orders choices by measured first audio, unmeasured last", () => {
-    expect(chatVoiceChoices([orpheus, ryan, heart, turbo, ada], "call").map((v) => v.id)).toEqual(["af_heart", "chatterbox-turbo", "qwen3:Ryan", "orpheus:tara"]);
+  it("says why a voice cannot be the main voice for a use (D-73 Use for menu)", () => {
+    expect(useBlockReason(design, "speak")).toBeNull();
+    expect(useBlockReason(design, "read")).toBe("design");
+    expect(useBlockReason(ada, "read")).toBeNull();
+    expect(useBlockReason(ada, "call")).toBe("clone");
+    expect(useBlockReason(missing, "read")).toBe("unavailable");
+    expect(useBlockReason(ryan, "call")).toBeNull();
+    expect(voicesForUse([heart, ryan, ada, design, missing], "call").map((v) => v.id)).toEqual(["af_heart", "qwen3:Ryan"]);
+    expect(voicesForUse([heart, design], "speak").map((v) => v.id)).toEqual(["af_heart", "design"]);
+  });
+
+  it("lists the uses a voice is the main voice for", () => {
+    expect(usesOf("af_heart", { ttsVoice: "af_heart", callVoice: "" }, "qwen3:Ryan", "af_heart")).toEqual(["read", "call"]);
+    expect(usesOf("qwen3:Ryan", { ttsVoice: "af_heart" }, "qwen3:Ryan", "af_heart")).toEqual(["speak"]);
+    expect(usesOf("orpheus:tara", { ttsVoice: "af_heart" }, "qwen3:Ryan", "af_heart")).toEqual([]);
   });
 
   it("names a voice without the full list", () => {

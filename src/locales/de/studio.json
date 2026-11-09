@@ -649,21 +649,14 @@
   },
   "voice": {
     "pack": {
-      "title": "Sprachpaket",
       "installed": "Installiert",
       "notInstalled": "Nicht installiert",
-      "about": "Spracherkennung und Sprachausgabe laufen in einer eigenen Umgebung auf diesem Computer (etwa 2 GB, plus die Modelle, die du herunterlädst). Nichts wird online gesendet.",
       "cancel": "Abbrechen",
-      "update": "Sprachpaket aktualisieren",
-      "install": "Sprachpaket installieren",
       "done": "Sprachpaket installiert.",
       "log": "Installations-Log",
-      "updateFeatures": "Aktualisiere das Sprachpaket für Sprachanrufe im Chat und Sprecherkennzeichnung in Transkripten (etwa 40 MB Modelle; ein bis zwei Minuten).",
       "checkedOk": null,
       "checkedOkAt": null,
-      "repair": null,
       "troubleshoot": "Fehlerbehebung",
-      "troubleshootBody": null,
       "reinstallSmall": "Neu installieren"
     },
     "models": {
@@ -671,47 +664,92 @@
       "downloaded": "Heruntergeladen",
       "use": "Fürs Diktieren verwenden",
       "download": "Herunterladen",
-      "firstUse": "Wird bei der ersten Verwendung heruntergeladen, wenn du das überspringst.",
       "title": "Voice",
-      "sttTitle": "Modelle für die Spracherkennung",
-      "sttSubtitle": "Werden vom Mikrofon im Chat und von Voice Studio verwendet.",
-      "capabilities": null,
+      "sttTitle": null,
+      "sttSubtitle": null,
       "ttsTitle": "Sprachmodelle",
-      "ttsSubtitle": null,
       "ttsNone": null,
-      "caps": {
-        "speak": "Sprechen",
-        "style": "Stil",
-        "clone": "Klonen",
-        "design": "Entwerfen",
-        "tags": null,
-        "presets": null,
-        "expression": null,
-        "languageSelect": null
-      },
       "cost": {
-        "download": null,
-        "memory": null,
-        "peak": null,
-        "speed": null,
-        "per10s": null,
         "coldStart": null,
-        "seconds": null,
-        "measuredOn": null,
-        "notMeasured": null
+        "seconds": null
       },
       "browseVoices": null,
       "useInSpeak": null,
-      "openStudio": null
+      "openStudio": null,
+      "column": {
+        "fit": null,
+        "makes": null,
+        "model": null,
+        "size": null,
+        "status": null
+      },
+      "delete": {
+        "confirmSpeech": null,
+        "confirmStt": null,
+        "keptShared": null,
+        "watermarkGoes": null
+      },
+      "deleteModel": null,
+      "deleting": null,
+      "detail": {
+        "cost": null,
+        "fit": null,
+        "languages": null,
+        "licence": null,
+        "repo": null
+      },
+      "emptyAttention": null,
+      "emptyDownloading": null,
+      "emptyInstalled": null,
+      "family": {
+        "chatterbox": null,
+        "orpheus": null,
+        "qwen3-tts": null,
+        "voxcpm2": null
+      },
+      "filter": {
+        "makes": null,
+        "makesAll": null
+      },
+      "firstUseLine": null,
+      "kokoroLine": null,
+      "licence": null,
+      "makes": {
+        "clone": null,
+        "design": null,
+        "expression": null,
+        "languages": null,
+        "natural": null,
+        "quick": null,
+        "style": null,
+        "tags": null
+      },
+      "memory": {
+        "pending": null,
+        "pendingTitle": null
+      },
+      "moreFor": null,
+      "partOfRuntime": null,
+      "search": null,
+      "sort": {
+        "family": null,
+        "familySummary": null,
+        "fit": null,
+        "fitSummary": null,
+        "largestFirst": null,
+        "name": null,
+        "nameSummary": null,
+        "size": null,
+        "smallestFirst": null,
+        "status": null,
+        "statusSummary": null
+      },
+      "ttsIntro": null
     },
     "voices": {
       "addChinese": null,
       "listTitle": "Stimmen",
-      "cloneCard": null,
-      "cloneDetail": null,
       "designCard": null,
-      "designDetail": null,
-      "designAction": null,
       "moreCard": null,
       "filter": "Anzeigen",
       "allLanguages": "Alle Sprachen",
@@ -722,43 +760,63 @@
       "tab": null,
       "filters": {
         "all": "Alle",
-        "recommended": null,
         "quick": null,
         "natural": null,
         "cloned": null,
         "designed": null
       },
-      "managerSubtitle": null,
       "designRowDetail": null,
       "kindDesign": null,
       "noneCloned": null,
-      "chatVoice": null,
       "stopSample": null,
       "useInSpeak": null,
-      "useInChat": null,
-      "inChat": null,
-      "chatAnyVoice": null,
       "designNotInChat": null,
-      "callVoice": null,
       "cloneNotInCalls": null,
-      "inCalls": null,
-      "useForCalls": null
+      "badge": {
+        "call": null,
+        "read": null,
+        "speak": null
+      },
+      "change": null,
+      "changeFor": null,
+      "chooseCallHint": null,
+      "chooseFor": null,
+      "chooseReadHint": null,
+      "clonedNote": null,
+      "fallbackNote": null,
+      "female": null,
+      "firstWords": null,
+      "groupNatural": null,
+      "inUse": null,
+      "mainTitle": null,
+      "male": null,
+      "naturalNote": null,
+      "notForChat": null,
+      "notReady": null,
+      "quickNote": null,
+      "sameAsChat": null,
+      "slotCall": null,
+      "slotRead": null,
+      "slotSpeak": null,
+      "slowFor": null,
+      "subtitleUses": null,
+      "use": {
+        "call": null,
+        "read": null,
+        "speak": null
+      },
+      "useFor": null,
+      "useForLabel": null
     },
     "settings": {
       "autoSend": "Nachricht senden, sobald das Diktat beendet ist",
       "autoRead": "Jede Chat-Antwort nach Abschluss vorlesen",
-      "language": "Diktiersprache",
-      "languageHint": "Whisper nutzt sie; Parakeet erkennt die Sprache selbst.",
+      "language": null,
       "speed": "Lesegeschwindigkeit",
       "idle": "Sprachspeicher freigeben nach (Minuten Leerlauf, 0 = nie)",
-      "workerRunning": "Sprachmodelle sind geladen (Prozess {pid}).",
-      "workerStopped": "Sprachmodelle sind nicht geladen.",
-      "unload": "Jetzt entladen",
+      "unload": null,
       "silence": "Sprachanruf: Pause, die deinen Redebeitrag beendet",
-      "silenceHint": "Kürzer antwortet schneller; länger lässt dir Zeit zum Nachdenken.",
-      "bargeIn": "Sprachanruf: Modell durch Sprechen unterbrechen",
-      "runtimeTitle": null,
-      "chatMoved": null
+      "bargeIn": "Sprachanruf: Modell durch Sprechen unterbrechen"
     },
     "offline": "Warte auf das Backend…",
     "copy": "Kopieren",
@@ -775,16 +833,16 @@
       "segments": "Zeitstempel ({n})",
       "tooBig": "{name} ist größer als 500 MB.",
       "recordingName": "Aufnahme",
-      "subtitleQueue": "Aufnehmen oder Audio- und Videodateien ablegen",
-      "translateNeedsWhisper": "Für die Übersetzung ins Englische wird Whisper Small oder Whisper Base benötigt.",
-      "translate": "Ins Englische übersetzen",
       "speakers": "Sprecher kennzeichnen",
       "speakerCount": "Anzahl der Sprecher",
       "speakersAuto": "Automatisch erkennen",
       "speakersN": "{n} Sprecher",
-      "speakersNeedUpdate": "Für Sprecherkennzeichnung muss das Sprachpaket aktualisiert werden.",
+      "speakersNeedUpdate": null,
       "hintQueue": "Aufnehmen oder Dateien hier ablegen (auch mehrere auf einmal).",
-      "chooseFiles": "Dateien wählen"
+      "chooseFiles": "Dateien wählen",
+      "fileTypes": null,
+      "subtitleLibrary": null,
+      "translateWhich": null
     },
     "stopRecording": "Aufnahme beenden",
     "record": "Aufnehmen",
@@ -916,12 +974,14 @@
         "tr": null,
         "zh": null
       },
-      "speechLanguage": null
+      "speechLanguage": null,
+      "changeVoice": null,
+      "noVoice": null
     },
     "stop": "Stoppen",
     "studio": {
       "title": "Voice Studio",
-      "needsPack": "Sprachfunktionen laufen auf diesem Computer und benötigen das Sprachpaket (etwa 2 GB). Installiere es einmalig unter Sprache > Modelle.",
+      "needsPack": null,
       "openModels": "Sprachmodelle öffnen",
       "library": null
     },
@@ -987,16 +1047,18 @@
       "openStudio": null,
       "emptyAuto": null,
       "aiMade": null,
-      "speakAgain": null
+      "speakAgain": null,
+      "anyVoice": null,
+      "sendToProject": null,
+      "voiceKind": null
     },
     "languages": {
       "auto": "Automatisch erkennen"
     },
     "lane": {
-      "mlx": "Apple Silicon: Parakeet und Whisper auf MLX, Kokoro-Stimmen",
-      "cuda": "NVIDIA-GPU: Whisper auf CUDA, Kokoro-Stimmen",
-      "nvidia": "Whisper (die CUDA-Bibliotheken kommen mit der Installation), Kokoro-Stimmen",
-      "cpu": "Whisper auf der CPU, Kokoro-Stimmen"
+      "cpuRuntime": null,
+      "mlxRuntime": null,
+      "nvidiaRuntime": null
     },
     "micError": {
       "blockedMac": "Der Mikrofonzugriff ist blockiert. Erlaube ChaosEngineAI unter Systemeinstellungen > Datenschutz & Sicherheit > Mikrofon und versuche es dann erneut.",
@@ -1023,7 +1085,6 @@
       "new": "Neue geklonte Stimme",
       "placeholder": "Text, der mit der geklonten Stimme gesprochen wird.",
       "tagged": "Als KI-erzeugt gekennzeichnet",
-      "allowAgents": "Agenten und anderen Computern die Nutzung geklonter Stimmen erlauben (standardmäßig aus)",
       "whose": "Wessen Stimme ist es?",
       "basisOwn": "Meine eigene Stimme",
       "basisPermission": null,
@@ -1085,22 +1146,44 @@
       "moreNote": null,
       "getMore": null,
       "getMoreDetail": null,
-      "openModels": null
+      "openModels": null,
+      "drawerHint": null,
+      "drawerTitle": null
     },
     "chatCalls": {
-      "title": null,
       "cost": null,
-      "slow": null,
-      "option": null,
-      "chatVoice": null,
-      "callVoice": null,
-      "sameAsChat": null,
-      "memory": null
+      "slow": null
     },
     "quickVoices": {
-      "title": null,
-      "line": null,
       "browse": null
+    },
+    "runtime": {
+      "about": null,
+      "addon": {
+        "chinese": null,
+        "speech-gpu": null
+      },
+      "addons": null,
+      "addonsHint": null,
+      "addonsHintInstall": null,
+      "alsoModels": null,
+      "idleAfter": null,
+      "idleBefore": null,
+      "inMemory": null,
+      "install": null,
+      "modelWithGb": null,
+      "nothingLoaded": null,
+      "parts": null,
+      "remove": null,
+      "removeConfirm": null,
+      "removing": null,
+      "repair": null,
+      "subtitle": null,
+      "title": null,
+      "troubleshootBody": null,
+      "update": null,
+      "updateFeatures": null,
+      "workerOnly": null
     }
   },
   "residentChatModelNote": "Ein geladenes Chat-Modell belegt etwa {gb} GB dieses Speichers; beim Entladen wird er freigegeben.",

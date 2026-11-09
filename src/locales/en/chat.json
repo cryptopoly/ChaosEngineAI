@@ -83,16 +83,13 @@
     "startCall": "Talk with the model by voice",
     "call": "Call",
     "callNeedsModel": "Load a chat model to start a voice call",
-    "callInfo": "Talk with the loaded model out loud. Speak, pause, and it answers by voice; talk over it to interrupt. Each turn is saved in this chat.",
     "callNeeds": "Needs:",
     "callReady": "Ready",
     "callMissing": "Missing",
-    "callSetup": "Click Call to open Voice Models and install what is missing.",
     "callNeedModel": "a chat model loaded",
-    "callNeedStt": "speech recognition (Voice Models)",
-    "callNeedTts": "a voice for replies (Voice Models)",
-    "callNeedVad": "turn detection, part of the voice pack",
-    "callVoice": "Voice: {voice}. Change it in Voice Studio > Voices."
+    "callNeedDictation": "dictation",
+    "callNeedTurns": "turn detection",
+    "callNeedVoice": "a voice"
   },
   "sidebar": {
     "title": "Chats",
@@ -367,18 +364,20 @@
   },
   "voice": {
     "heardNothing": "No speech was heard. Try again closer to the microphone.",
-    "installToDictate": "Voice input needs the voice pack. Click to install it.",
+    "installToDictate": "Voice input needs the voice runtime. Click to install it.",
     "stopDictation": "Stop and transcribe (Esc cancels)",
     "transcribing": "Transcribing…",
     "startDictation": "Dictate (click, or hold to talk; Ctrl/Cmd+Shift+M)",
-    "installToRead": "Read aloud needs the voice pack. Click to install it.",
+    "installToRead": "Read aloud needs the voice runtime. Click to install it.",
     "stopReading": "Stop reading",
     "readAloud": "Read aloud",
     "dismiss": "Dismiss",
     "resume": "Resume",
     "pause": "Pause",
     "stop": "Stop",
-    "preparing": "Preparing speech…"
+    "preparing": "Preparing speech…",
+    "clonedVoice": "Cloned voice",
+    "readingWith": "{voice} reading"
   },
   "voiceCall": {
     "starting": "Starting the microphone…",
@@ -508,5 +507,17 @@
       "offTooltip": "Offer the skills switched on in Settings to the model in this chat",
       "ratings": "Security scan: {high} High, {medium} Medium, {low} Low."
     }
+  },
+  "voicePopover": {
+    "button": "Voice",
+    "call": "Voice calls",
+    "change": "Change",
+    "dictation": "Dictation",
+    "fix": "Install what is missing",
+    "noRuntime": "Voice in Chat needs the voice runtime. Install it once from Voice > Models.",
+    "openVoices": "Open Voices",
+    "read": "Chat read-aloud",
+    "sameAsChat": "(same as Chat)",
+    "title": "Voice in Chat: which voice reads, calls and dictation"
   }
 }

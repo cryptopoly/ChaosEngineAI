@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { CloneStatement } from "./CloneStatement";
 import { useTranslation } from "react-i18next";
 import { MicSettingsButton } from "../MicSettingsButton";
 import { formatClock, micErrorMessage, startMicCapture, type MicCapture } from "../audio";
@@ -96,6 +97,7 @@ export function NewVoiceForm({ onCreated, onCancel }: { onCreated: (voice: Clone
 
   return (
     <div className="voice-studio voice-clone__new">
+      <CloneStatement />
       <fieldset className="voice-clone__basis">
         <legend>{t("voice.clone.whose", { defaultValue: "Whose voice is it?" })}</legend>
         <label>

@@ -1,7 +1,6 @@
 import { useMemo, useState, type KeyboardEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { VoiceEntry, VoiceModelRow } from "../../../types";
-import { CloneStatement } from "../clone/CloneStatement";
 import { useCostText } from "./costText";
 import { DESIGN_VOICE_ID, chooseModel, costLabel, groupVoices, quickLanguage, quickShortlist } from "./speakLogic";
 import { ActionCard, GroupHead, VoiceCard, type CardCost } from "./VoiceCard";
@@ -14,7 +13,10 @@ export interface VoicePickerProps {
   /** Shown first in Recommended (the "Install a better voice" card). */
   lead?: ReactNode;
   selectedId: string;
+  /** A card was selected: by a click, Enter, or the arrow keys. */
   onSelect: (id: string) => void;
+  /** A card was chosen with a click or Enter (not the arrow keys): the drawer closes on it. */
+  onChoose?: (id: string) => void;
   /** Preset and designed voices run on Apple Silicon Macs for now. */
   modelsAvailable: boolean;
   isPlaying: (id: string) => boolean;
@@ -40,6 +42,7 @@ export function VoicePicker({
   lead,
   selectedId,
   onSelect,
+  onChoose,
   modelsAvailable,
   isPlaying,
   isLoading,
@@ -158,7 +161,10 @@ export function VoicePicker({
       detail={detailOf(v, where)}
       selected={v.id === selectedId || (v.kind === "design" && selectedId === DESIGN_VOICE_ID)}
       disabled={disabledOf(v)}
-      onSelect={() => onSelect(v.id)}
+      onSelect={() => {
+        onSelect(v.id);
+        onChoose?.(v.id);
+      }}
       playing={isPlaying(v.id)}
       loading={loadingOf(v.id)}
       tabStop={v.id === tabStopId && section === tabStopSection}
@@ -191,7 +197,7 @@ export function VoicePicker({
           <GroupHead
             title={t("voice.picker.quick", { defaultValue: "Quick" })}
             note={t("voice.picker.quickNote", {
-              defaultValue: "Kokoro, part of the voice pack. Fast, under 1 GB, speed only. {count} voices in {languages} languages.",
+              defaultValue: "Kokoro, part of the voice runtime. Fast, under 1 GB, speed only. {count} voices in {languages} languages.",
               count: quickCount,
               languages: languages.length,
             })}
@@ -229,7 +235,6 @@ export function VoicePicker({
       {groups.clones.length > 0 || (modelsAvailable && onNewClone) ? (
         <section className="voice-picker__group voice-picker__group--clones">
           <GroupHead title={t("voice.picker.cloned", { defaultValue: "Cloned" })} />
-          <CloneStatement inPicker />
           <div className="voice-cards">
             {groups.clones.map((v) => card(v, "clones"))}
             {modelsAvailable && onNewClone ? (

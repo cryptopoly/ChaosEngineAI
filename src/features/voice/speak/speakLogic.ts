@@ -238,6 +238,43 @@ export function usableInChat(voice: VoiceEntry, use: "read" | "call" = "read"): 
   return voice.chatUse ? voice.chatUse[use] : voice.kind === "builtin";
 }
 
+/** The three places a voice can be the main one (D-73 S2): Speak, Chat read-aloud and voice calls. */
+export type VoiceUse = "speak" | "read" | "call";
+
+/** The settings key each use writes; the keys stay the same so Chat, calls, the bridge and the CLI keep working. */
+export const VOICE_USE_SETTING: Record<VoiceUse, "speakVoice" | "ttsVoice" | "callVoice"> = {
+  speak: "speakVoice",
+  read: "ttsVoice",
+  call: "callVoice",
+};
+
+/**
+ * Why a voice cannot be the main voice for ``use`` (W6's rules, D-72), or null when it can. Speak takes any voice;
+ * Chat read-aloud any that runs here except "Describe a voice"; calls the same minus cloned voices.
+ */
+export function useBlockReason(voice: VoiceEntry, use: VoiceUse): "design" | "clone" | "unavailable" | "notAllowed" | null {
+  if (use === "speak") return null;
+  if (usableInChat(voice, use)) return null;
+  if (voice.kind === "design") return "design";
+  if (use === "call" && voice.kind === "clone") return "clone";
+  if (!voice.available) return "unavailable";
+  return "notAllowed";
+}
+
+/** Voices that may be chosen for ``use`` in the picker drawer (Change on a main-voice slot). */
+export function voicesForUse(voices: VoiceEntry[], use: VoiceUse): VoiceEntry[] {
+  return use === "speak" ? voices : voices.filter((v) => useBlockReason(v, use) === null);
+}
+
+/** Which uses a voice is the main voice for, given the settings and the Speak voice in use. */
+export function usesOf(voiceId: string, settings: { ttsVoice: string; callVoice?: string }, speakId: string, callId: string): VoiceUse[] {
+  const uses: VoiceUse[] = [];
+  if (voiceId === speakId) uses.push("speak");
+  if (voiceId === settings.ttsVoice) uses.push("read");
+  if (voiceId === callId) uses.push("call");
+  return uses;
+}
+
 /**
  * A display name for a chat or call voice id without the full voice list (Chat only has the quick voices from the
  * runtime): the quick voice's name, the preset speaker ("qwen3:Ryan" is "Ryan", "orpheus:tara" is "Tara"),
@@ -252,14 +289,6 @@ export function chatVoiceName(id: string, quick: { id: string; name: string }[] 
   const speaker = id.includes(":") ? id.slice(id.indexOf(":") + 1) : id;
   const spaced = speaker.replace(/_/g, " ");
   return spaced.charAt(0).toUpperCase() + spaced.slice(1);
-}
-
-/** Voices that can be picked for ``use``, quickest first (measured first audio; unmeasured last), then list order. */
-export function chatVoiceChoices(voices: VoiceEntry[], use: "read" | "call"): VoiceEntry[] {
-  const ranked = voices.filter((v) => usableInChat(v, use)).map((v, i) => ({ v, i }));
-  const first = (v: VoiceEntry) => v.chatCost?.firstAudioS ?? Number.POSITIVE_INFINITY;
-  ranked.sort((a, b) => first(a.v) - first(b.v) || a.i - b.i);
-  return ranked.map(({ v }) => v);
 }
 
 /** Voices shown in the picker: built-in ones that cannot be used here are left out, as before. */

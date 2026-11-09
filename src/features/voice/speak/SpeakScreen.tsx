@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Drawer } from "../../../components/Drawer";
 import { Panel } from "../../../components/Panel";
 import { cancelSpeak, saveSpeech, speakVoice } from "../../../api";
 import type { TabId, VoiceEntry } from "../../../types";
@@ -8,6 +9,7 @@ import { joinWavs, splitSpeech, type SpeechPart } from "../studio/speech";
 import { requestLibraryFilter } from "../libraryVoice";
 import { SpeakResultRow, type SpeakOutput } from "./SpeakResultRow";
 import { VoicePicker } from "./VoicePicker";
+import { VoiceRow } from "./VoiceRow";
 import {
   MAX_REQUEST_CHARS,
   MAX_SPEAK_CHARS,
@@ -86,6 +88,8 @@ export function SpeakScreen({
   const [error, setError] = useState<string | null>(null);
   const [notes, setNotes] = useState<string[]>([]);
   const [output, setOutput] = useState<SpeakOutput | null>(null);
+  // The picker is a drawer behind "Change voice", so the form and Generate stay above the fold (D-73 S1).
+  const [picking, setPicking] = useState(false);
   const cancelRef = useRef(false);
   const abortRef = useRef<AbortController | null>(null);
   const sample = useVoiceSample(speed);
@@ -262,22 +266,45 @@ export function SpeakScreen({
             })}
           </p>
         ) : null}
-        <TagChips controls={controls} onInsert={addTag} />
-
-        <VoicePicker
-          voices={catalog.voices}
-          models={catalog.models}
-          lead={installModel ? <InstallVoiceCard model={installModel} onDownload={() => void catalog.download(installModel.key)} /> : null}
-          selectedId={voiceId}
-          onSelect={onVoiceChange}
-          modelsAvailable={catalog.modelsAvailable}
-          isPlaying={sample.isPlaying}
-          isLoading={sample.isLoading}
-          onSample={(entry) => void sample.play(entry)}
-          onNewClone={catalog.cloneAllowed ? onNewClone : undefined}
-          onGetMore={onTabChange ? () => onTabChange("voice-models") : undefined}
-          onAddonInstalled={() => void catalog.refresh()}
+        <VoiceRow
+          voice={voice}
+          model={note.model}
+          playing={voice ? sample.isPlaying(voice.id) : false}
+          loading={voice ? sample.isLoading(voice.id) : false}
+          onSample={() => {
+            if (voice) void sample.play(voice);
+          }}
+          onChange={() => setPicking(true)}
         />
+        {installModel ? <InstallVoiceCard model={installModel} onDownload={() => void catalog.download(installModel.key)} /> : null}
+
+        {designing && designChoices.length >= 2 ? (
+          <label className="voice-settings__field voice-speak__clone-model">
+            <span>{t("voice.speak.designModel", { defaultValue: "Design model" })}</span>
+            <select className="text-input" value={note.model?.key ?? ""} onChange={(e) => setDesignModelKey(e.target.value)}>
+              {designChoices.map((m) => (
+                <option key={m.key} value={m.key}>
+                  {m.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+
+        {cloned && cloneChoices.length >= 2 ? (
+          <label className="voice-settings__field voice-speak__clone-model">
+            <span>{t("voice.speak.cloneModel", { defaultValue: "Cloning model" })}</span>
+            <select className="text-input" value={note.model?.key ?? ""} onChange={(e) => setCloneModelKey(e.target.value)}>
+              {cloneChoices.map((m) => (
+                <option key={m.key} value={m.key}>
+                  {m.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+
+        <TagChips controls={controls} onInsert={addTag} />
 
         <div className="voice-speak__style">
           <label className="voice-settings__field">
@@ -371,32 +398,6 @@ export function SpeakScreen({
           </label>
           <GuidanceSlider range={controls.guidance} value={chosenGuidance} onChange={setGuidance} />
         </details>
-
-        {designing && designChoices.length >= 2 ? (
-          <label className="voice-settings__field voice-speak__clone-model">
-            <span>{t("voice.speak.designModel", { defaultValue: "Design model" })}</span>
-            <select className="text-input" value={note.model?.key ?? ""} onChange={(e) => setDesignModelKey(e.target.value)}>
-              {designChoices.map((m) => (
-                <option key={m.key} value={m.key}>
-                  {m.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        ) : null}
-
-        {cloned && cloneChoices.length >= 2 ? (
-          <label className="voice-settings__field voice-speak__clone-model">
-            <span>{t("voice.speak.cloneModel", { defaultValue: "Cloning model" })}</span>
-            <select className="text-input" value={note.model?.key ?? ""} onChange={(e) => setCloneModelKey(e.target.value)}>
-              {cloneChoices.map((m) => (
-                <option key={m.key} value={m.key}>
-                  {m.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        ) : null}
 
         <p className="muted-text voice-speak__model" aria-live="polite">
           {voice == null
@@ -505,6 +506,36 @@ export function SpeakScreen({
           />
         ) : null}
       </div>
+      {picking ? (
+        <Drawer
+          title={t("voice.picker.drawerTitle", { defaultValue: "Choose a voice" })}
+          subtitle={t("voice.picker.drawerHint", { defaultValue: "Click a voice to use it in Speak. The sample button plays a short line." })}
+          onClose={() => setPicking(false)}
+          className="voice-drawer"
+        >
+          <VoicePicker
+            voices={catalog.voices}
+            models={catalog.models}
+            selectedId={voiceId}
+            onSelect={onVoiceChange}
+            onChoose={() => setPicking(false)}
+            modelsAvailable={catalog.modelsAvailable}
+            isPlaying={sample.isPlaying}
+            isLoading={sample.isLoading}
+            onSample={(entry) => void sample.play(entry)}
+            onNewClone={
+              catalog.cloneAllowed && onNewClone
+                ? () => {
+                    setPicking(false);
+                    onNewClone();
+                  }
+                : undefined
+            }
+            onGetMore={onTabChange ? () => onTabChange("voice-models") : undefined}
+            onAddonInstalled={() => void catalog.refresh()}
+          />
+        </Drawer>
+      ) : null}
     </Panel>
   );
 }

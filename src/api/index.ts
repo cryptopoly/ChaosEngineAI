@@ -750,6 +750,9 @@ export {
   getVoiceInstallStatus,
   cancelVoiceInstall,
   stopVoiceWorker,
+  deleteSttModel,
+  removeVoiceExtra,
+  uninstallVoiceRuntime,
 } from "./voice";
 export type { TranscribeOptions, TranscribeResult, SpokenSentence, SpeechUse } from "./voice";
 

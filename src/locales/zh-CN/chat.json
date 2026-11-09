@@ -83,16 +83,13 @@
     "startCall": "通过语音与模型对话",
     "call": "通话",
     "callNeedsModel": "加载聊天模型后即可开始语音通话",
-    "callInfo": "用语音与已加载的模型对话。说话、停顿，它就会用语音回答；插话即可打断。每一轮都会保存在此聊天中。",
     "callNeeds": "需要：",
     "callReady": "就绪",
     "callMissing": "缺少",
-    "callSetup": "点击“通话”打开语音模型并安装缺少的项目。",
     "callNeedModel": "已加载的聊天模型",
-    "callNeedStt": "语音识别（语音模型）",
-    "callNeedTts": "回复用的语音（语音模型）",
-    "callNeedVad": "轮次检测（语音包内含）",
-    "callVoice": null
+    "callNeedDictation": null,
+    "callNeedTurns": null,
+    "callNeedVoice": null
   },
   "sidebar": {
     "title": "对话",
@@ -367,18 +364,20 @@
   },
   "voice": {
     "heardNothing": "没有听到语音。请靠近麦克风再试一次。",
-    "installToDictate": "语音输入需要语音包。点击安装。",
+    "installToDictate": null,
     "stopDictation": "停止并转写（按 Esc 取消）",
     "transcribing": "正在转写…",
     "startDictation": "语音输入（点击，或按住说话；Ctrl/Cmd+Shift+M）",
-    "installToRead": "朗读需要语音包。点击安装。",
+    "installToRead": null,
     "stopReading": "停止朗读",
     "readAloud": "朗读",
     "dismiss": "关闭",
     "resume": "恢复",
     "pause": "暂停",
     "stop": "停止",
-    "preparing": "正在准备语音…"
+    "preparing": "正在准备语音…",
+    "clonedVoice": null,
+    "readingWith": null
   },
   "voiceCall": {
     "starting": "正在启动麦克风…",
@@ -508,5 +507,17 @@
       "offTooltip": null,
       "ratings": null
     }
+  },
+  "voicePopover": {
+    "button": null,
+    "call": null,
+    "change": null,
+    "dictation": null,
+    "fix": null,
+    "noRuntime": null,
+    "openVoices": null,
+    "read": null,
+    "sameAsChat": null,
+    "title": null
   }
 }

@@ -45,6 +45,7 @@ export function VoiceCard({
         aria-checked={selected}
         tabIndex={tabStop ? 0 : -1}
         data-voice-id={voice.id}
+        data-autofocus={tabStop ? "" : undefined}
         className="voice-card__main"
         disabled={disabled}
         onClick={onSelect}

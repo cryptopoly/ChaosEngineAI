@@ -58,6 +58,7 @@ export const MODELS_TAB_BY_AREA: Record<ModelsArea, TabId> = {
   image: "image-models",
   video: "video-models",
   music: "music-models",
+  voice: "voice-models",
 };
 
 export const LEGACY_TAB_REDIRECTS: Record<LegacyTabId, TabNavigation> = {
@@ -85,6 +86,7 @@ export function modelsAreaForTab(tab: TabId): ModelsArea | null {
   if (tab === "image-models") return "image";
   if (tab === "video-models") return "video";
   if (tab === "music-models") return "music";
+  if (tab === "voice-models") return "voice";
   return null;
 }
 

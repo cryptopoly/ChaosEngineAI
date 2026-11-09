@@ -18,8 +18,7 @@ import { SpeechPlayerBar } from "../voice/ReadAloud";
 import { speechPlayer } from "../voice/speechPlayer";
 import { useVoice } from "../voice/VoiceContext";
 import { VoiceCallOverlay } from "../voice/conversation/VoiceCallOverlay";
-import { callVoiceOf } from "../voice/conversation/useVoiceCall";
-import { chatVoiceName } from "../voice/speak/speakLogic";
+import { VoicePopover, type VoiceRequirement } from "../voice/VoicePopover";
 import { cancelChatGeneration } from "../../api";
 import type { SendMessageOptions } from "../../hooks/useChat";
 import { ChatComposer } from "./ChatComposer";
@@ -214,11 +213,11 @@ export function ChatTab({
   const [callOpen, setCallOpen] = useState(false);
   const [dismissedAdviceKey, setDismissedAdviceKey] = useState<string | null>(null);
   const voiceRuntime = voice.runtime;
-  const callRequirements = [
+  const callRequirements: VoiceRequirement[] = [
     { label: t("header.callNeedModel", { defaultValue: "a chat model loaded" }), ready: Boolean(loadedModelRef) },
-    { label: t("header.callNeedStt", { defaultValue: "speech recognition (Voice Models)" }), ready: Boolean(voiceRuntime?.sttAvailable) },
-    { label: t("header.callNeedTts", { defaultValue: "a voice for replies (Voice Models)" }), ready: Boolean(voiceRuntime?.ttsAvailable) },
-    { label: t("header.callNeedVad", { defaultValue: "turn detection, part of the voice pack" }), ready: Boolean(voiceRuntime?.vadAvailable) },
+    { label: t("header.callNeedDictation", { defaultValue: "dictation" }), ready: Boolean(voiceRuntime?.sttAvailable), fixOnModels: true },
+    { label: t("header.callNeedVoice", { defaultValue: "a voice" }), ready: Boolean(voiceRuntime?.ttsAvailable), fixOnModels: true },
+    { label: t("header.callNeedTurns", { defaultValue: "turn detection" }), ready: Boolean(voiceRuntime?.vadAvailable), fixOnModels: true },
   ];
   const voiceReady = Boolean(voiceRuntime?.sttAvailable && voiceRuntime.ttsAvailable && voiceRuntime.vadAvailable);
 
@@ -489,42 +488,7 @@ export function ChatTab({
               ? t("header.callNeedsModel", { defaultValue: "Load a chat model to start a voice call" })
               : null
           }
-          callInfo={
-            <>
-              {t("header.callInfo", {
-                defaultValue:
-                  "Talk with the loaded model out loud. Speak, pause, and it answers by voice; talk over it to interrupt. Each turn is saved in this chat.",
-              })}
-              <br />
-              <br />
-              {t("header.callVoice", {
-                defaultValue: "Voice: {voice}. Change it in Voice Studio > Voices.",
-                voice: chatVoiceName(callVoiceOf(voice.settings), voiceRuntime?.ttsVoices ?? []),
-              })}
-              <br />
-              <br />
-              {t("header.callNeeds", { defaultValue: "Needs:" })}
-              {callRequirements.map((req) => (
-                <span key={req.label}>
-                  <br />
-                  {req.ready
-                    ? t("header.callReady", { defaultValue: "Ready" })
-                    : t("header.callMissing", { defaultValue: "Missing" })}
-                  {" · "}
-                  {req.label}
-                </span>
-              ))}
-              {voiceReady ? null : (
-                <>
-                  <br />
-                  <br />
-                  {t("header.callSetup", {
-                    defaultValue: "Click Call to open Voice Models and install what is missing.",
-                  })}
-                </>
-              )}
-            </>
-          }
+          voiceControl={<VoicePopover requirements={callRequirements} />}
         />
         <ChatThread
           activeChat={activeChat}

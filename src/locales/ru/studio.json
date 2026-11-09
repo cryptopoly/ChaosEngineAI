@@ -649,21 +649,14 @@
   },
   "voice": {
     "pack": {
-      "title": "Голосовой пакет",
       "installed": "Установлено",
       "notInstalled": "Не установлено",
-      "about": "Распознавание и синтез речи работают в отдельной среде на этом компьютере (около 2 ГБ плюс скачиваемые модели). Ничего не отправляется в интернет.",
       "cancel": "Отмена",
-      "update": "Обновить голосовой пакет",
-      "install": "Установить голосовой пакет",
       "done": "Голосовой пакет установлен.",
       "log": "Журнал установки",
-      "updateFeatures": "Обновите голосовой пакет для голосовых звонков в чате и разметки говорящих (около 40 МБ моделей; минута-две).",
       "checkedOk": null,
       "checkedOkAt": null,
-      "repair": null,
       "troubleshoot": "Устранение неполадок",
-      "troubleshootBody": null,
       "reinstallSmall": "Переустановить"
     },
     "models": {
@@ -671,47 +664,92 @@
       "downloaded": "Загружено",
       "use": "Использовать для диктовки",
       "download": "Скачать",
-      "firstUse": "Если пропустить, загрузится при первом использовании.",
       "title": "Голос",
-      "sttTitle": "Модели распознавания речи",
-      "sttSubtitle": "Используется микрофоном в чате и в Voice Studio.",
-      "capabilities": null,
+      "sttTitle": null,
+      "sttSubtitle": null,
       "ttsTitle": "Речевые модели",
-      "ttsSubtitle": null,
       "ttsNone": null,
-      "caps": {
-        "speak": "Озвучка",
-        "style": "Стиль",
-        "clone": "Клонирование",
-        "design": "Создание",
-        "tags": null,
-        "presets": null,
-        "expression": null,
-        "languageSelect": null
-      },
       "cost": {
-        "download": null,
-        "memory": null,
-        "peak": null,
-        "speed": null,
-        "per10s": null,
         "coldStart": null,
-        "seconds": null,
-        "measuredOn": null,
-        "notMeasured": null
+        "seconds": null
       },
       "browseVoices": null,
       "useInSpeak": null,
-      "openStudio": null
+      "openStudio": null,
+      "column": {
+        "fit": null,
+        "makes": null,
+        "model": null,
+        "size": null,
+        "status": null
+      },
+      "delete": {
+        "confirmSpeech": null,
+        "confirmStt": null,
+        "keptShared": null,
+        "watermarkGoes": null
+      },
+      "deleteModel": null,
+      "deleting": null,
+      "detail": {
+        "cost": null,
+        "fit": null,
+        "languages": null,
+        "licence": null,
+        "repo": null
+      },
+      "emptyAttention": null,
+      "emptyDownloading": null,
+      "emptyInstalled": null,
+      "family": {
+        "chatterbox": null,
+        "orpheus": null,
+        "qwen3-tts": null,
+        "voxcpm2": null
+      },
+      "filter": {
+        "makes": null,
+        "makesAll": null
+      },
+      "firstUseLine": null,
+      "kokoroLine": null,
+      "licence": null,
+      "makes": {
+        "clone": null,
+        "design": null,
+        "expression": null,
+        "languages": null,
+        "natural": null,
+        "quick": null,
+        "style": null,
+        "tags": null
+      },
+      "memory": {
+        "pending": null,
+        "pendingTitle": null
+      },
+      "moreFor": null,
+      "partOfRuntime": null,
+      "search": null,
+      "sort": {
+        "family": null,
+        "familySummary": null,
+        "fit": null,
+        "fitSummary": null,
+        "largestFirst": null,
+        "name": null,
+        "nameSummary": null,
+        "size": null,
+        "smallestFirst": null,
+        "status": null,
+        "statusSummary": null
+      },
+      "ttsIntro": null
     },
     "voices": {
       "addChinese": null,
       "listTitle": "Голоса",
-      "cloneCard": null,
-      "cloneDetail": null,
       "designCard": null,
-      "designDetail": null,
-      "designAction": null,
       "moreCard": null,
       "filter": "Показать",
       "allLanguages": "Все языки",
@@ -722,43 +760,63 @@
       "tab": null,
       "filters": {
         "all": "Все",
-        "recommended": null,
         "quick": null,
         "natural": null,
         "cloned": null,
         "designed": null
       },
-      "managerSubtitle": null,
       "designRowDetail": null,
       "kindDesign": null,
       "noneCloned": null,
-      "chatVoice": null,
       "stopSample": null,
       "useInSpeak": null,
-      "useInChat": null,
-      "inChat": null,
-      "chatAnyVoice": null,
       "designNotInChat": null,
-      "callVoice": null,
       "cloneNotInCalls": null,
-      "inCalls": null,
-      "useForCalls": null
+      "badge": {
+        "call": null,
+        "read": null,
+        "speak": null
+      },
+      "change": null,
+      "changeFor": null,
+      "chooseCallHint": null,
+      "chooseFor": null,
+      "chooseReadHint": null,
+      "clonedNote": null,
+      "fallbackNote": null,
+      "female": null,
+      "firstWords": null,
+      "groupNatural": null,
+      "inUse": null,
+      "mainTitle": null,
+      "male": null,
+      "naturalNote": null,
+      "notForChat": null,
+      "notReady": null,
+      "quickNote": null,
+      "sameAsChat": null,
+      "slotCall": null,
+      "slotRead": null,
+      "slotSpeak": null,
+      "slowFor": null,
+      "subtitleUses": null,
+      "use": {
+        "call": null,
+        "read": null,
+        "speak": null
+      },
+      "useFor": null,
+      "useForLabel": null
     },
     "settings": {
       "autoSend": "Отправлять сообщение сразу после завершения диктовки",
       "autoRead": "Читать вслух каждый ответ в чате по его завершении",
-      "language": "Язык диктовки",
-      "languageHint": "Используется Whisper; Parakeet определяет язык сам.",
+      "language": null,
       "speed": "Скорость чтения",
       "idle": "Освобождать память голосовых моделей через (минут простоя, 0 — никогда)",
-      "workerRunning": "Голосовые модели загружены (процесс {pid}).",
-      "workerStopped": "Голосовые модели не загружены.",
-      "unload": "Выгрузить сейчас",
+      "unload": null,
       "silence": "Голосовой звонок: пауза, завершающая вашу реплику",
-      "silenceHint": "Короче — ответ быстрее; длиннее — можно подумать.",
-      "bargeIn": "Голосовой звонок: перебивать модель голосом",
-      "runtimeTitle": null,
-      "chatMoved": null
+      "bargeIn": "Голосовой звонок: перебивать модель голосом"
     },
     "offline": "Ожидание бэкенда…",
     "copy": "Копировать",
@@ -775,16 +833,16 @@
       "segments": "Метки времени ({n})",
       "tooBig": "Файл {name} больше 500 МБ.",
       "recordingName": "Запись",
-      "subtitleQueue": "Запишите или перетащите аудио- и видеофайлы",
-      "translateNeedsWhisper": "Для перевода на английский нужен Whisper Small или Whisper Base.",
-      "translate": "Перевести на английский",
       "speakers": "Разметить говорящих",
       "speakerCount": "Количество говорящих",
       "speakersAuto": "Определить автоматически",
       "speakersN": "Говорящих: {n}",
-      "speakersNeedUpdate": "Для разметки говорящих нужно обновить голосовой пакет.",
+      "speakersNeedUpdate": null,
       "hintQueue": "Запишите или перетащите сюда файлы (можно несколько сразу).",
-      "chooseFiles": "Выбрать файлы"
+      "chooseFiles": "Выбрать файлы",
+      "fileTypes": null,
+      "subtitleLibrary": null,
+      "translateWhich": null
     },
     "stopRecording": "Остановить запись",
     "record": "Записать",
@@ -916,12 +974,14 @@
         "tr": null,
         "zh": null
       },
-      "speechLanguage": null
+      "speechLanguage": null,
+      "changeVoice": null,
+      "noVoice": null
     },
     "stop": "Остановить",
     "studio": {
       "title": "Voice Studio",
-      "needsPack": "Голосовые функции работают на этом компьютере и требуют голосового пакета (около 2 ГБ). Установите его один раз в разделе «Голос» > «Модели».",
+      "needsPack": null,
       "openModels": "Открыть голосовые модели",
       "library": null
     },
@@ -987,16 +1047,18 @@
       "openStudio": null,
       "emptyAuto": null,
       "aiMade": null,
-      "speakAgain": null
+      "speakAgain": null,
+      "anyVoice": null,
+      "sendToProject": null,
+      "voiceKind": null
     },
     "languages": {
       "auto": "Определять автоматически"
     },
     "lane": {
-      "mlx": "Apple Silicon: Parakeet и Whisper на MLX, голоса Kokoro",
-      "cuda": "GPU NVIDIA: Whisper на CUDA, голоса Kokoro",
-      "nvidia": "Whisper (библиотеки CUDA добавляются при установке), голоса Kokoro",
-      "cpu": "Whisper на CPU, голоса Kokoro"
+      "cpuRuntime": null,
+      "mlxRuntime": null,
+      "nvidiaRuntime": null
     },
     "micError": {
       "blockedMac": "Доступ к микрофону заблокирован. Разрешите ChaosEngineAI в разделе «Системные настройки > Конфиденциальность и безопасность > Микрофон» и повторите попытку.",
@@ -1023,7 +1085,6 @@
       "new": "Новый клонированный голос",
       "placeholder": "Текст, который произнесёт клонированный голос.",
       "tagged": "Помечено как созданное ИИ",
-      "allowAgents": "Разрешить агентам и другим компьютерам использовать клонированные голоса (по умолчанию выключено)",
       "whose": "Чей это голос?",
       "basisOwn": "Мой собственный голос",
       "basisPermission": null,
@@ -1085,22 +1146,44 @@
       "moreNote": null,
       "getMore": null,
       "getMoreDetail": null,
-      "openModels": null
+      "openModels": null,
+      "drawerHint": null,
+      "drawerTitle": null
     },
     "chatCalls": {
-      "title": null,
       "cost": null,
-      "slow": null,
-      "option": null,
-      "chatVoice": null,
-      "callVoice": null,
-      "sameAsChat": null,
-      "memory": null
+      "slow": null
     },
     "quickVoices": {
-      "title": null,
-      "line": null,
       "browse": null
+    },
+    "runtime": {
+      "about": null,
+      "addon": {
+        "chinese": null,
+        "speech-gpu": null
+      },
+      "addons": null,
+      "addonsHint": null,
+      "addonsHintInstall": null,
+      "alsoModels": null,
+      "idleAfter": null,
+      "idleBefore": null,
+      "inMemory": null,
+      "install": null,
+      "modelWithGb": null,
+      "nothingLoaded": null,
+      "parts": null,
+      "remove": null,
+      "removeConfirm": null,
+      "removing": null,
+      "repair": null,
+      "subtitle": null,
+      "title": null,
+      "troubleshootBody": null,
+      "update": null,
+      "updateFeatures": null,
+      "workerOnly": null
     }
   },
   "residentChatModelNote": "Загруженная чат-модель занимает около {gb} ГБ этой памяти; выгрузка модели освободит её.",

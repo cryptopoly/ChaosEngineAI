@@ -115,7 +115,7 @@ export function ComposerMicButton({ onTranscript, onAutoSend, disabled = false }
   useEffect(() => () => captureRef.current?.cancel(), []);
 
   const title = !installed
-    ? t("voice.installToDictate", { defaultValue: "Voice input needs the voice pack. Click to install it." })
+    ? t("voice.installToDictate", { defaultValue: "Voice input needs the voice runtime. Click to install it." })
     : state === "recording"
       ? t("voice.stopDictation", { defaultValue: "Stop and transcribe (Esc cancels)" })
       : state === "transcribing"

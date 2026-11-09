@@ -64,8 +64,8 @@ export interface ChatHeaderProps {
   /** Start a voice call; ``callBlockedReason`` explains why it is off. */
   onStartCall?: () => void;
   callBlockedReason?: string | null;
-  /** Explains the call and lists what it still needs. */
-  callInfo?: ReactNode;
+  /** The Voice button and popover next to Call (which voice reads, calls, dictation; what a call needs). */
+  voiceControl?: ReactNode;
 }
 
 export function ChatHeader({
@@ -89,7 +89,7 @@ export function ChatHeader({
   onUnloadModel,
   onStartCall,
   callBlockedReason = null,
-  callInfo = null,
+  voiceControl = null,
 }: ChatHeaderProps) {
   const { t } = useTranslation("chat");
   return (
@@ -202,7 +202,7 @@ export function ChatHeader({
               {t("header.call", { defaultValue: "Call" })}
             </button>
           ) : null}
-          {onStartCall && callInfo ? <InfoTooltip text={callInfo} /> : null}
+          {voiceControl}
           {activeChat?.modelRef === loadedModelRef ? (
             <span className="badge success">{t("header.ready", { defaultValue: "Ready" })}</span>
           ) : serverLoading ? (

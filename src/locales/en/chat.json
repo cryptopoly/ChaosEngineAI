@@ -48,7 +48,9 @@
     "failed": "Tool failed: {tool}",
     "noArguments": "(no arguments)",
     "input": "Input",
-    "result": "Result"
+    "result": "Result",
+    "startedAt": "started {time}",
+    "polls": "{count, plural, one {# check} other {# checks}}"
   },
   "attachments": {
     "image": "Attach image",
@@ -469,7 +471,14 @@
       "cancel": "Cancel",
       "openProject": "Open in Project",
       "openLibrary": "Open in Library",
-      "interrupted": "Interrupted (the app restarted)"
+      "interrupted": "Interrupted (the app restarted)",
+      "startedAt": "started {time}",
+      "elapsed": "{elapsed} elapsed",
+      "eta": "about {eta} left",
+      "etaClips": "about {eta} left (from the clips made so far)",
+      "etaCatalog": "about {eta} left (estimated for this model)",
+      "stepOf": "step {step} of {total}",
+      "tookFor": "took {elapsed}"
     },
     "kind": {
       "image": "Image",

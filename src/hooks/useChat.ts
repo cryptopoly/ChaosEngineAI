@@ -40,6 +40,7 @@ import {
   readStudioAutoApprove,
   readStudioToolsEnabled,
   upsertPlan,
+  applyToolProgress,
   upsertToolCall,
   writeStudioAutoApprove,
   writeStudioToolsEnabled,
@@ -810,6 +811,12 @@ export function useChat(
         }));
       };
       await generateChatStream(streamPayload, {
+        onToolCallStart: (toolCall) => {
+          patchStreamingAssistant((m) => ({ ...m, toolCalls: upsertToolCall(m.toolCalls, toolCall) }));
+        },
+        onToolCallProgress: (progress) => {
+          patchStreamingAssistant((m) => ({ ...m, toolCalls: applyToolProgress(m.toolCalls, progress) }));
+        },
         onToolCallResult: (toolCall) => {
           patchStreamingAssistant((m) => ({ ...m, toolCalls: upsertToolCall(m.toolCalls, toolCall) }));
         },

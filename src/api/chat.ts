@@ -160,6 +160,9 @@ export interface StreamCallbacks {
   onAdvice?: (advice: BusyAdvice) => void;
   /** A tool finished (streamed as it happens, so studio job cards show before the turn ends). */
   onToolCallResult?: (toolCall: ToolCallInfo) => void;
+  /** A tool began (a running card with its start time) and, for a long wait, a progress snapshot of its job. */
+  onToolCallStart?: (toolCall: ToolCallInfo) => void;
+  onToolCallProgress?: (progress: { id: string; name: string; data: Record<string, unknown> }) => void;
   /** D-60: the model asked for renders; the plan card waits for the user's click. */
   onStudioPlan?: (plan: StudioPlan) => void;
   onStudioPlanResolved?: (plan: StudioPlan) => void;
@@ -275,6 +278,22 @@ export async function generateChatStream(
           if (event.cancelled) {
             callbacks.onCancelled?.();
           }
+          if (event.toolCallStart && typeof event.toolCallStart === "object") {
+            const tc = event.toolCallStart;
+            callbacks.onToolCallStart?.({
+              id: String(tc.id ?? ""),
+              name: String(tc.name ?? "tool"),
+              arguments: coerceToolArguments(tc.arguments),
+              result: "",
+              elapsed: 0,
+              startedAt: typeof tc.startedAt === "number" ? tc.startedAt : null,
+              running: true,
+            });
+          }
+          if (event.toolCallProgress && typeof event.toolCallProgress === "object" && event.toolCallProgress.data) {
+            const tp = event.toolCallProgress;
+            callbacks.onToolCallProgress?.({ id: String(tp.id ?? ""), name: String(tp.name ?? "tool"), data: tp.data });
+          }
           if (event.toolCallResult && typeof event.toolCallResult === "object") {
             const tc = event.toolCallResult;
             callbacks.onToolCallResult?.({
@@ -283,6 +302,7 @@ export async function generateChatStream(
               arguments: tc.arguments && typeof tc.arguments === "object" ? tc.arguments : {},
               result: String(tc.result ?? ""),
               elapsed: typeof tc.elapsed === "number" ? tc.elapsed : 0,
+              startedAt: typeof tc.startedAt === "number" ? tc.startedAt : null,
               renderAs: tc.renderAs ?? null,
               data: tc.data ?? null,
             });
@@ -409,4 +429,18 @@ export async function deleteSessionDocument(sessionId: string, docId: string): P
   if (!response.ok) {
     throw new Error(await readErrorDetail(response, `Delete failed with status ${response.status}`));
   }
+}
+
+/** A start event carries the arguments as the model wrote them: a JSON string or an object. */
+function coerceToolArguments(raw: unknown): Record<string, unknown> {
+  if (raw && typeof raw === "object" && !Array.isArray(raw)) return raw as Record<string, unknown>;
+  if (typeof raw === "string" && raw.trim()) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed as Record<string, unknown>;
+    } catch {
+      // not JSON: shown as no arguments until the result arrives
+    }
+  }
+  return {};
 }

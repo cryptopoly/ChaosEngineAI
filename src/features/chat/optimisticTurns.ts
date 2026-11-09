@@ -41,7 +41,7 @@ export function appendOptimisticTurn(
             updatedAt,
             messages: [
               ...session.messages,
-              { role: "user" as const, text: prompt, metrics: null },
+              { role: "user" as const, text: prompt, metrics: null, createdAt: Date.now() },
               {
                 role: "assistant" as const,
                 text: "",

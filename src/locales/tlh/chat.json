@@ -48,7 +48,9 @@
     "failed": "jan lujta': {tool}",
     "noArguments": "(De' tu'be'lu')",
     "input": "De' 'el",
-    "result": "ngoD"
+    "result": "ngoD",
+    "startedAt": null,
+    "polls": null
   },
   "attachments": {
     "image": "mIllogh yIchel",
@@ -469,7 +471,14 @@
       "cancel": "yIqIl",
       "openProject": "Qu'Daq yIpoSmoH",
       "openLibrary": "ghomDaq yIpoSmoH",
-      "interrupted": "mevlu'pu' (taghqa'pu' De'wI' pat)"
+      "interrupted": "mevlu'pu' (taghqa'pu' De'wI' pat)",
+      "startedAt": null,
+      "elapsed": null,
+      "eta": null,
+      "etaClips": null,
+      "etaCatalog": null,
+      "stepOf": null,
+      "tookFor": null
     },
     "kind": {
       "image": "mIllogh",

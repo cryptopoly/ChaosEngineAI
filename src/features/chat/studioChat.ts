@@ -162,14 +162,66 @@ export function upsertPlan(plans: StudioPlan[] | undefined, plan: StudioPlan): S
   return next;
 }
 
-/** Insert or replace a tool call by id (streamed results, then the done payload). */
+/**
+ * Insert or replace a tool call by id (the running card, then its result, then the done payload). The result
+ * keeps the start time the running card had when the result itself carries none.
+ */
 export function upsertToolCall(calls: ToolCallInfo[] | undefined, call: ToolCallInfo): ToolCallInfo[] {
   const list = calls ?? [];
   const index = list.findIndex((c) => c.id === call.id);
   if (index < 0) return [...list, call];
   const next = [...list];
-  next[index] = call;
+  const startedAt = call.startedAt ?? list[index].startedAt;
+  next[index] = startedAt == null ? call : { ...call, startedAt };
   return next;
+}
+
+/** A progress snapshot of a long wait lands on its running card (state, progress with elapsed and time left). */
+export function applyToolProgress(
+  calls: ToolCallInfo[] | undefined,
+  progress: { id: string; data: Record<string, unknown> },
+): ToolCallInfo[] {
+  const list = calls ?? [];
+  const index = list.findIndex((c) => c.id === progress.id);
+  if (index < 0 || !list[index].running) return list;
+  const next = [...list];
+  next[index] = { ...list[index], renderAs: "studio", data: { ...(list[index].data ?? {}), ...progress.data } };
+  return next;
+}
+
+/** A tool card, possibly standing for several polls of one job. */
+export type DisplayToolCall = ToolCallInfo & { polls?: number };
+
+/**
+ * One card per job for repeated wait_for_job calls: the models poll the same job again and again, and the
+ * thread showed N near-identical lines. The first call's position and start time stay, the newest answer
+ * wins, and the elapsed times add up. Other tools pass through unchanged.
+ */
+export function mergeToolCalls(calls: ToolCallInfo[] | undefined): DisplayToolCall[] {
+  const merged: DisplayToolCall[] = [];
+  const byJob = new Map<string, number>();
+  for (const call of calls ?? []) {
+    const jobId = call.name === "wait_for_job" ? call.arguments?.job_id : null;
+    if (typeof jobId !== "string" || !jobId) {
+      merged.push(call);
+      continue;
+    }
+    const at = byJob.get(jobId);
+    if (at === undefined) {
+      byJob.set(jobId, merged.length);
+      merged.push({ ...call, polls: 1 });
+      continue;
+    }
+    const first = merged[at];
+    merged[at] = {
+      ...call,
+      id: first.id,
+      startedAt: first.startedAt ?? call.startedAt ?? null,
+      elapsed: (first.elapsed || 0) + (call.elapsed || 0),
+      polls: (first.polls ?? 1) + 1,
+    };
+  }
+  return merged;
 }
 
 /** Studio tools that start a job; their answer gets a live job card (wait_for_job answers do not). */

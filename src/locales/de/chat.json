@@ -48,7 +48,9 @@
     "failed": "Tool fehlgeschlagen: {tool}",
     "noArguments": "(keine Argumente)",
     "input": "Eingabe",
-    "result": "Ergebnis"
+    "result": "Ergebnis",
+    "startedAt": null,
+    "polls": null
   },
   "attachments": {
     "image": "Bild anhängen",
@@ -469,7 +471,14 @@
       "cancel": null,
       "openProject": null,
       "openLibrary": null,
-      "interrupted": null
+      "interrupted": null,
+      "startedAt": null,
+      "elapsed": null,
+      "eta": null,
+      "etaClips": null,
+      "etaCatalog": null,
+      "stepOf": null,
+      "tookFor": null
     },
     "kind": {
       "image": null,

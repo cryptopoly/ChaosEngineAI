@@ -48,7 +48,9 @@
     "failed": "工具失败:{tool}",
     "noArguments": "(无参数)",
     "input": "输入",
-    "result": "结果"
+    "result": "结果",
+    "startedAt": null,
+    "polls": null
   },
   "attachments": {
     "image": "附加图像",
@@ -469,7 +471,14 @@
       "cancel": null,
       "openProject": null,
       "openLibrary": null,
-      "interrupted": null
+      "interrupted": null,
+      "startedAt": null,
+      "elapsed": null,
+      "eta": null,
+      "etaClips": null,
+      "etaCatalog": null,
+      "stepOf": null,
+      "tookFor": null
     },
     "kind": {
       "image": null,

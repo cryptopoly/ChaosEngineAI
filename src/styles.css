@@ -15338,3 +15338,25 @@ select.music-library__select {
   align-items: flex-start;
   gap: 6px;
 }
+
+/* Chat times: message send time, tool timing and the long-job progress line */
+.message-header__who {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.message-time {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.job-progress-line {
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}

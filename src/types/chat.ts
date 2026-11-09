@@ -59,6 +59,16 @@ export interface StudioPlan {
   alwaysAllow?: boolean;
 }
 
+/** Where a running job is. `etaSeconds` only when the backend had a basis (`etaBasis`); otherwise elapsed only. */
+export interface JobProgress {
+  phase?: string | null;
+  step?: number | null;
+  totalSteps?: number | null;
+  elapsedSeconds?: number | null;
+  etaSeconds?: number | null;
+  etaBasis?: "clips" | "steps" | "catalog" | null;
+}
+
 /** D-60: a chat job as the job card polls it (trimmed: paths and short notes). */
 export interface StudioJob {
   jobId: string;
@@ -66,7 +76,9 @@ export interface StudioJob {
   label: string;
   state: "queued" | "running" | "done" | "failed" | "cancelled" | "interrupted";
   queuePosition?: number;
-  progress?: { phase?: string | null; step?: number | null; totalSteps?: number | null; elapsedSeconds?: number | null };
+  progress?: JobProgress;
+  /** Seconds a finished job ran. */
+  durationSeconds?: number;
   output?: Record<string, unknown>;
   error?: string;
   notes?: string[];
@@ -78,6 +90,10 @@ export interface ToolCallInfo {
   arguments: Record<string, unknown>;
   result: string;
   elapsed: number;
+  /** Epoch milliseconds when the call began; absent on sessions saved before this field existed. */
+  startedAt?: number | null;
+  /** True between the call starting and its result arriving (streamed, never saved). */
+  running?: boolean;
   /** Phase 2.8: rendering hint. Null/undefined → JSON fallback. */
   renderAs?: ToolRenderAs | null;
   /** Phase 2.8: structured payload matching the renderAs shape. */
@@ -152,6 +168,8 @@ export interface BusyAdvice {
 export interface ChatMessage {
   role: "user" | "assistant";
   text: string;
+  /** Epoch milliseconds when the message was sent (assistant: when it finished); absent on old sessions. */
+  createdAt?: number | null;
   images?: string[];
   reasoning?: string;
   reasoningDone?: boolean | null;

@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { cancelStudioJob, fetchStudioJob, fetchStudioJobMedia } from "../../api";
 import type { StudioJob, ToolCallInfo } from "../../types";
+import { JobProgressLine } from "../../components/JobProgressLine";
+import { formatDuration, isValidTime, formatClock, formatFullTime } from "../../utils/chatTime";
 import { openProjectAt } from "../storyboard/projectRoute";
 import { isFinished, jobPercent, libraryTab, mediaKind, openAppTab, studioJobId } from "./studioChat";
 
@@ -24,7 +26,7 @@ function DeclinedCard({ toolCall }: { toolCall: ToolCallInfo }) {
  * "Open in Library".
  */
 export function StudioJobCard({ toolCall }: { toolCall: ToolCallInfo }) {
-  const { t } = useTranslation("chat");
+  const { t, i18n } = useTranslation("chat");
   const jobId = studioJobId(toolCall);
   const [job, setJob] = useState<StudioJob | null>(null);
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
@@ -109,6 +111,20 @@ export function StudioJobCard({ toolCall }: { toolCall: ToolCallInfo }) {
         <div className="studio-job-card__bar" role="progressbar" aria-valuemin={0} aria-valuemax={100}
           aria-valuenow={percent ?? undefined}>
           <span style={{ width: `${percent ?? (state === "running" ? 30 : 0)}%` }} data-indeterminate={percent === null} />
+        </div>
+      ) : null}
+      {state === "running" || state === "queued" ? (
+        <JobProgressLine progress={job?.progress ?? null} running startedAt={toolCall.startedAt} />
+      ) : isValidTime(toolCall.startedAt) || typeof job?.durationSeconds === "number" ? (
+        <div className="job-progress-line" title={isValidTime(toolCall.startedAt) ? formatFullTime(toolCall.startedAt, i18n.language) : undefined}>
+          {[
+            isValidTime(toolCall.startedAt)
+              ? t("studioChat.job.startedAt", { time: formatClock(toolCall.startedAt, i18n.language), defaultValue: "started {time}" })
+              : null,
+            typeof job?.durationSeconds === "number"
+              ? t("studioChat.job.tookFor", { elapsed: formatDuration(job.durationSeconds, i18n.language), defaultValue: "took {elapsed}" })
+              : null,
+          ].filter(Boolean).join(" \u00b7 ")}
         </div>
       ) : null}
       {job?.error ? <p className="studio-job-card__error">{job.error}</p> : null}

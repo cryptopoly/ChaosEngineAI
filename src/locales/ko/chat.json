@@ -48,7 +48,9 @@
     "failed": "도구 실패: {tool}",
     "noArguments": "(인수 없음)",
     "input": "입력",
-    "result": "결과"
+    "result": "결과",
+    "startedAt": null,
+    "polls": null
   },
   "attachments": {
     "image": "이미지 첨부",
@@ -469,7 +471,14 @@
       "cancel": null,
       "openProject": null,
       "openLibrary": null,
-      "interrupted": null
+      "interrupted": null,
+      "startedAt": null,
+      "elapsed": null,
+      "eta": null,
+      "etaClips": null,
+      "etaCatalog": null,
+      "stepOf": null,
+      "tookFor": null
     },
     "kind": {
       "image": null,

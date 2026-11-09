@@ -90,7 +90,7 @@ def create(fields: dict[str, Any], audio_file: Path, audio_ext: str = ".flac") -
         "updatedAt": now,
         "audio": ext,
     }
-    for key in ("model", "modelName", "engine", "seed", "durationS", "sampleRate", "channels", "bpm", "key",
+    for key in ("model", "modelName", "engine", "seed", "steps", "durationS", "sampleRate", "channels", "bpm", "key",
                 "instrumental", "variation", "jobSeconds", "peakFootprintGb", "source", "sizeBytes", "tagged", "loop", "licence", "projectId", "projectName", "shotId"):
         if fields.get(key) is not None:
             item[key] = fields[key]

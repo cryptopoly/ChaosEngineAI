@@ -35,6 +35,8 @@ export interface VoiceSettings {
   ttsVoice: string;
   /** Voice calls: "" means the chat voice; any listed voice whose ``chatUse.call`` is true. */
   callVoice?: string;
+  /** What reads when the chosen chat or call voice cannot (D-75): an installed voice, "" for none; Kokoro's Heart by default. */
+  fallbackVoice?: string;
   /** The voice last used on the Speak screen, apart from the chat voice; "" until Speak has been used. */
   speakVoice?: string;
   speed: number;

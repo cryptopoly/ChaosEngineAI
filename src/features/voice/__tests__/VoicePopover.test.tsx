@@ -4,7 +4,8 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn(), isTauri: vi.fn(() => false) }));
 
 import { Drawer } from "../../../components/Drawer";
-import type { VoiceRuntime, VoiceSettings } from "../../../types";
+import type { VoiceEntry, VoiceRuntime, VoiceSettings } from "../../../types";
+import { FallbackNote } from "../speak/FallbackNote";
 import { VoiceProvider } from "../VoiceContext";
 import { VoicePopover, type VoiceRequirement } from "../VoicePopover";
 
@@ -57,9 +58,21 @@ describe("Chat's Voice popover (D-73 S3)", () => {
     expect(html).toContain("Voice calls");
     expect(html).toContain("(same as Chat)");
     expect(html).toContain("<strong>Parakeet TDT 0.6B v3</strong>");
-    expect(html.match(/>Change</g)).toHaveLength(3);
+    expect(html.match(/>Change</g)).toHaveLength(4);
     expect(html).toContain("Open Voices");
-    expect(html).toContain("Kokoro reads instead");
+    expect(html).not.toContain("Kokoro reads instead");
+  });
+
+  it("names the fallback voice, or says none is set (D-75)", () => {
+    const html = render();
+    expect(html).toContain(">Fallback<");
+    expect(html).toContain("<strong>Heart</strong>");
+    const none = render(ready, runtime({ settings: { ...settings, fallbackVoice: "" } }));
+    expect(none).toContain("<strong>None set</strong>");
+    // The note under it (shown once the voice list has loaded) names the voice or says none is set.
+    const ryan = { id: "qwen3:Ryan", name: "Ryan" } as VoiceEntry;
+    expect(renderToStaticMarkup(<FallbackNote voice={ryan} />)).toContain("the fallback voice Ryan reads instead");
+    expect(renderToStaticMarkup(<FallbackNote voice={null} />)).toContain("No fallback voice is set");
   });
 
   it("holds the chat behaviour settings, read from the same keys", () => {

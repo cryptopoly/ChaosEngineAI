@@ -4,7 +4,7 @@
  * Open (Small: 1 to 11 s, 1.0: 1 to 47 s; each catalog row carries its own limits); the models are gated, so
  * readiness also asks whether the licence was accepted.
  */
-import type { MusicLibraryItem, MusicModelVariant, MusicResult, MusicSoundPayload } from "../../types";
+import type { MusicLibraryItem, MusicModelVariant, MusicResult, MusicSoundPayload, MusicStepsOptions } from "../../types";
 import { classifyMusicError, SEED_MAX, type MusicErrorInfo } from "./musicLogic";
 
 /** Limits used when no model row is known yet (Small's, the default sound model). */
@@ -34,6 +34,32 @@ export function clampSoundSeconds(seconds: number, variant?: SoundRange): number
   if (!Number.isFinite(seconds)) return Math.min(5, max);
   return Math.min(max, Math.max(min, seconds));
 }
+type StepsRow = Partial<Pick<MusicModelVariant, "stepsOptions" | "defaultSettings">> | null | undefined;
+
+/** The row's allowed steps, or `null` when the row has no steps setting (no catalog data yet). */
+export function soundStepsOptions(variant?: StepsRow): MusicStepsOptions | null {
+  const options = variant?.stepsOptions;
+  return options && Number.isFinite(options.min) && Number.isFinite(options.max) ? options : null;
+}
+
+/** The row's own step count (the model author's setting), the one its estimate was timed at. */
+export function soundDefaultSteps(variant?: StepsRow): number | null {
+  const steps = Number(variant?.defaultSettings?.steps);
+  return Number.isInteger(steps) && steps > 0 ? steps : null;
+}
+
+/** The steps a run would use: the chosen number, else the row's default. */
+export function effectiveSoundSteps(form: Pick<SoundForm, "steps">, variant?: StepsRow): number | null {
+  return form.steps ?? soundDefaultSteps(variant);
+}
+
+/** `steps` as a number the row accepts, else `null` (use the row's default). */
+export function clampSoundSteps(steps: number | null | undefined, variant?: StepsRow): number | null {
+  const options = soundStepsOptions(variant);
+  if (steps == null || !options || !Number.isInteger(steps)) return null;
+  return steps >= options.min && steps <= options.max ? steps : null;
+}
+
 export const SOUND_VARIATION_CHOICES = [1, 2, 4] as const;
 /** Pack size shown on the Models page (the install is about 0.9 GB of Python packages). */
 export const SOUNDS_PACK_GB = 1;
@@ -45,9 +71,11 @@ export interface SoundForm {
   variations: 1 | 2 | 4;
   /** `null` = a new random seed every run. */
   seed: number | null;
+  /** Diffusion steps; `null` = the model's own default (not sent). */
+  steps: number | null;
 }
 
-export type SoundIssue = "captionEmpty" | "captionTooLong" | "secondsRange" | "seedRange" | "variations";
+export type SoundIssue = "captionEmpty" | "captionTooLong" | "secondsRange" | "seedRange" | "variations" | "stepsRange";
 
 export function defaultSoundForm(variant?: (Pick<MusicModelVariant, "defaultSettings"> & SoundRange) | null): SoundForm {
   const seconds = Number(variant?.defaultSettings?.seconds);
@@ -58,10 +86,11 @@ export function defaultSoundForm(variant?: (Pick<MusicModelVariant, "defaultSett
     loop: Boolean(variant?.defaultSettings?.loop),
     variations: 1,
     seed: null,
+    steps: null,
   };
 }
 
-export function validateSoundForm(form: SoundForm, variant?: SoundRange): SoundIssue[] {
+export function validateSoundForm(form: SoundForm, variant?: SoundRange & StepsRow): SoundIssue[] {
   const { min, max } = soundLimits(variant);
   const issues: SoundIssue[] = [];
   if (!form.caption.trim()) issues.push("captionEmpty");
@@ -69,6 +98,8 @@ export function validateSoundForm(form: SoundForm, variant?: SoundRange): SoundI
   if (!Number.isFinite(form.seconds) || form.seconds < min || form.seconds > max) issues.push("secondsRange");
   if (form.seed !== null && (!Number.isInteger(form.seed) || form.seed < 0 || form.seed > SEED_MAX)) issues.push("seedRange");
   if (!(SOUND_VARIATION_CHOICES as readonly number[]).includes(form.variations)) issues.push("variations");
+  const options = soundStepsOptions(variant);
+  if (form.steps !== null && (!Number.isInteger(form.steps) || (options && (form.steps < options.min || form.steps > options.max)))) issues.push("stepsRange");
   return issues;
 }
 
@@ -81,13 +112,23 @@ export function buildSoundPayload(form: SoundForm, modelId: string | null): Musi
     variations: form.variations,
   };
   if (form.seed !== null) payload.seed = form.seed;
+  if (form.steps !== null) payload.steps = form.steps;
   return payload;
 }
 
 /** "Make another like this" for a sound in the Library. */
-export function soundFormFromItem(item: MusicLibraryItem, variant?: SoundRange): SoundForm {
+export function soundFormFromItem(item: MusicLibraryItem, variant?: SoundRange & StepsRow): SoundForm {
   const seconds = clampSoundSeconds(Math.round(item.durationS ?? 5), variant);
-  return { caption: item.caption ?? "", seconds, loop: Boolean(item.loop), variations: 1, seed: item.seed ?? null };
+  const steps = clampSoundSteps(item.steps, variant);
+  return {
+    caption: item.caption ?? "",
+    seconds,
+    loop: Boolean(item.loop),
+    variations: 1,
+    seed: item.seed ?? null,
+    // The row's own default stays unset, so the run follows the row.
+    steps: steps !== null && steps === soundDefaultSteps(variant) ? null : steps,
+  };
 }
 
 export function againSoundForm(form: SoundForm): SoundForm {

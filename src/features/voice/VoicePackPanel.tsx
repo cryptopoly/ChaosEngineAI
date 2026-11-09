@@ -19,7 +19,7 @@ import {
 import type { VoiceExtra, VoiceInstallJob, VoiceRuntime } from "../../types";
 import { useVoice } from "./VoiceContext";
 import { runtimeRemoveConfirmText } from "./models/voiceModelsLogic";
-import { runtimePartsSummary, voicePackMode } from "./voicePackState";
+import { kokoroInstalled, runtimePartsSummary, voicePackMode } from "./voicePackState";
 
 function laneDescription(runtime: VoiceRuntime): string {
   if (runtime.lane === "mlx") return i18next.t("studio:voice.lane.mlxRuntime", { defaultValue: "Apple Silicon" });
@@ -107,9 +107,11 @@ export function InstallLog({ pack }: { pack: VoicePackJob }) {
   );
 }
 
+// i18n-extract: voice.runtime.addon.kokoro
 // i18n-extract: voice.runtime.addon.chinese
 // i18n-extract: voice.runtime.addon.speech-gpu
 const ADDON_LABELS: Record<string, string> = {
+  kokoro: "Kokoro quick voices (about 330 MB)",
   chinese: "Mandarin Chinese quick voices (8 voices, about 60 MB)",
   "speech-gpu": "Speech GPU add-on: Chatterbox, VoxCPM2 and Orpheus on the NVIDIA GPU (several GB)",
 };
@@ -205,7 +207,8 @@ export function VoiceRuntimePanel({ runtime, pack, actions }: { runtime: VoiceRu
   const { t } = useTranslation("studio");
   const { refresh } = useVoice();
   const { job, start } = pack;
-  const [wanted, setWanted] = useState<Set<string>>(() => new Set());
+  // Kokoro is ticked by default at install (D-75); unticked, the runtime installs without it.
+  const [wanted, setWanted] = useState<Set<string>>(() => new Set(["kokoro"]));
   const [busyExtra, setBusyExtra] = useState<string | null>(null);
   const [alsoModels, setAlsoModels] = useState(false);
   const [removing, setRemoving] = useState(false);
@@ -218,14 +221,20 @@ export function VoiceRuntimePanel({ runtime, pack, actions }: { runtime: VoiceRu
   });
   const installedAt = formatInstalledAt(runtime.installedAt);
   const parts = runtimePartsSummary(runtime.parts ?? []);
+  const withKokoro = kokoroInstalled(runtime.extras, runtime.ttsModelInstalled);
   const partsText = parts
-    ? t("voice.runtime.parts", {
-        defaultValue: "{total} GB on disk: speech packages {packages} GB, Kokoro quick voices {kokoro} GB, turn detection and speaker labels {small} GB. Nothing is sent online.",
-        ...parts,
-      })
-    : t("voice.runtime.about", {
+    ? withKokoro
+      ? t("voice.runtime.parts", {
+          defaultValue: "{total} GB on disk: speech packages {packages} GB, Kokoro quick voices {kokoro} GB, turn detection and speaker labels {small} GB. Nothing is sent online.",
+          ...parts,
+        })
+      : t("voice.runtime.partsNoKokoro", {
+          defaultValue: "{total} GB on disk: speech packages {packages} GB, turn detection and speaker labels {small} GB; the Kokoro quick voices are not installed. Nothing is sent online.",
+          ...parts,
+        })
+    : t("voice.runtime.aboutOptional", {
         defaultValue:
-          "About 2.3 GB: the speech packages, the Kokoro quick voices, turn detection and speaker labels. Dictation and speech models are separate downloads on this page. Nothing is sent online.",
+          "About 2 GB: the speech packages, turn detection and speaker labels, plus the Kokoro quick voices when ticked below. Dictation and speech models are separate downloads on this page. Nothing is sent online.",
       });
 
   const toggleExtra = async (extra: VoiceExtra, on: boolean) => {
@@ -313,7 +322,7 @@ export function VoiceRuntimePanel({ runtime, pack, actions }: { runtime: VoiceRu
           <InstallProgress pack={pack} />
         ) : mode !== "healthy" ? (
           <div className="button-row">
-            <button type="button" className="primary-button" onClick={() => void start(runtime.installed ? [] : [...wanted])}>
+            <button type="button" className="primary-button" onClick={() => void start(runtime.installed ? [] : [...wanted].filter((id) => runtime.extras.some((extra) => extra.id === id)))}>
               {mode === "install"
                 ? t("voice.runtime.install", { defaultValue: "Install voice runtime" })
                 : mode === "update"

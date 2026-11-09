@@ -13,6 +13,10 @@ Two lanes:
 * ``portable`` (Windows, Linux, Intel Macs): faster-whisper (CUDA when an
   NVIDIA GPU and its libraries are present, CPU otherwise) and kokoro-onnx.
 
+The Kokoro quick voices are an add-on (D-75), ticked by default in the install
+form: the install downloads their files only when ``"kokoro"`` is among the
+extras, and ``installed_extras`` reports Kokoro from its files on disk.
+
 ``CHAOSENGINE_VOICE_LANE=portable`` forces the portable lane on a Mac, which is
 how it gets tested there.
 """
@@ -106,7 +110,10 @@ _CUDA_PACKAGES = ["nvidia-cublas-cu12", "nvidia-cudnn-cu12>=9,<10"]
 
 # Optional extras: name -> (lanes it applies to, packages, label). "speech-gpu" installs with its own commands
 # (``speech_gpu_commands``), so its package list here is empty.
+# "kokoro" has no packages either: its files are a download (the MLX repo, or the kokoro-onnx files), and its
+# installed state is those files on disk (``kokoro_installed``), not the marker, so packs from before D-75 count it.
 EXTRAS: dict[str, tuple[tuple[str, ...], list[str], str]] = {
+    "kokoro": (("mlx", "portable"), [], "Kokoro quick voices"),
     "chinese": (("mlx",), ["misaki[zh]>=0.9.4,<0.10"], "Mandarin Chinese voices"),
     "speech-gpu": (("portable",), [], "More speech models on the NVIDIA GPU (Chatterbox, VoxCPM2, Orpheus)"),
 }
@@ -272,7 +279,13 @@ def is_installed() -> bool:
 
 def installed_extras() -> list[str]:
     marker = read_marker() or {}
-    return [name for name in marker.get("extras", []) if name in EXTRAS]
+    names = [name for name in marker.get("extras", []) if name in EXTRAS and name != "kokoro"]
+    return ["kokoro", *names] if kokoro_installed() else names
+
+
+def kokoro_installed() -> bool:
+    """The Kokoro quick voices' files are on disk for this lane (D-75: an add-on, left out or removed at will)."""
+    return tts_data_installed()
 
 
 def kokoro_onnx_dir() -> Path:
@@ -395,6 +408,22 @@ def tts_data_installed() -> bool:
     from backend_service import voice_kokoro_onnx
 
     return voice_kokoro_onnx.is_installed()
+
+
+def download_kokoro(lane_name: str) -> None:
+    """Fetch the Kokoro quick voices for ``lane_name`` (the install job, when the add-on is ticked)."""
+    if lane_name == "mlx":
+        from huggingface_hub import snapshot_download
+
+        snapshot_download(KOKORO_MLX_REPO)
+        return
+    from backend_service import voice_kokoro_onnx
+
+    if not voice_kokoro_onnx.is_installed():
+        voice_kokoro_onnx._download_worker()
+        state = voice_kokoro_onnx.download_status()
+        if state.get("state") == "failed":
+            raise RuntimeError(f"Kokoro voice files: {state.get('error')}")
 
 
 def worker_env() -> dict[str, str]:
@@ -546,18 +575,8 @@ def _run_install(extras: list[str]) -> None:
                 _run(command)
 
         _set_phase("downloading-voice")
-        if lane_name == "mlx":
-            from huggingface_hub import snapshot_download
-
-            snapshot_download(KOKORO_MLX_REPO)
-        else:
-            from backend_service import voice_kokoro_onnx
-
-            if not voice_kokoro_onnx.is_installed():
-                voice_kokoro_onnx._download_worker()
-                state = voice_kokoro_onnx.download_status()
-                if state.get("state") == "failed":
-                    raise RuntimeError(f"Kokoro voice files: {state.get('error')}")
+        if "kokoro" in extras:
+            download_kokoro(lane_name)
         from huggingface_hub import hf_hub_download
 
         hf_hub_download(VAD_REPO, VAD_FILE, revision=VAD_REVISION)

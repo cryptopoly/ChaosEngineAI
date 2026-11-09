@@ -21,7 +21,7 @@ _FLAC_MAGIC = b"fLaC"
 _STREAMINFO, _PADDING, _VORBIS_COMMENT = 0, 1, 4
 _PADDING_BYTES = 1024
 # Keys a music tag may carry; anything else (lyrics, paths) is dropped.
-TAG_KEYS = ("appVersion", "model", "modelName", "engine", "seed", "durationSeconds", "bpm", "key",
+TAG_KEYS = ("appVersion", "model", "modelName", "engine", "seed", "steps", "durationSeconds", "bpm", "key",
             "prompt", "instrumental", "variation", "createdAt", "machine_generated", "kind", "loop", "licence")
 
 

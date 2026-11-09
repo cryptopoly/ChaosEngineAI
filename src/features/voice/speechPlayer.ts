@@ -20,7 +20,7 @@ export interface SpeechState {
   index: number;
   total: number;
   error: string | null;
-  /** One line from the backend, e.g. the chosen voice could not speak and the Kokoro voice reads instead. */
+  /** One line from the backend, e.g. the chosen voice could not speak and the fallback voice reads instead. */
   note: string | null;
 }
 

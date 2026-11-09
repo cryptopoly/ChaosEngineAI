@@ -1,6 +1,6 @@
 /**
- * Voice > Models > Speech models on the shared Models shell (D-73 M3b): Kokoro as the pinned first row (part of the
- * voice runtime, the voice Chat falls back to), then every speech model grouped by family, with Makes, Size, Fit,
+ * Voice > Models > Speech models on the shared Models shell (D-73 M3b): Kokoro as the pinned first row (an add-on of
+ * the voice runtime since D-75, "Not installed" when left out), then every speech model grouped by family, with Makes, Size, Fit,
  * Status and the shared actions (Use in Speak or Browse voices, Download, Delete with a confirm, Licence). The full
  * measured cost sits in the row's detail. A first-run callout offers a natural voice while none is downloaded.
  */
@@ -97,6 +97,9 @@ export interface SpeechModelsPanelProps {
   onOpenExternalUrl?: (url: string) => void;
 }
 
+/** The Kokoro quick voices' download (the MLX checkpoint or the ONNX files), shown while they are not installed. */
+const KOKORO_DOWNLOAD_GB = 0.33;
+
 export function SpeechModelsPanel({ catalog, runtime, availability, onAvailabilityChange, onOpenStudio, onOpenExternalUrl }: SpeechModelsPanelProps) {
   const { t, i18n } = useTranslation("studio");
   const costs = useCostText();
@@ -115,7 +118,14 @@ export function SpeechModelsPanel({ catalog, runtime, availability, onAvailabili
   const entries = useMemo(() => {
     const kokoro = runtime.installed
       ? kokoroEntry(
-          { voices: quick.count, languages: quick.languages, sizeGb: kokoroPart, peakGb: catalog.kokoro?.peakGb ?? null, installed: runtime.ttsModelInstalled },
+          {
+            voices: quick.count,
+            languages: quick.languages,
+            // 0 GB on disk when Kokoro is left out (an add-on, D-75): show its download size instead.
+            sizeGb: kokoroPart || KOKORO_DOWNLOAD_GB,
+            peakGb: catalog.kokoro?.peakGb ?? null,
+            installed: runtime.ttsModelInstalled,
+          },
           catalog.kokoro?.fit,
         )
       : null;
@@ -246,17 +256,27 @@ export function SpeechModelsPanel({ catalog, runtime, availability, onAvailabili
             key={entry.id}
             entry={entry}
             status={status}
-            subtitle={t("voice.models.kokoroLine", {
-              defaultValue: "{count} quick voices in {languages} languages. Fast on any machine; the voice Chat falls back to.",
+            subtitle={t("voice.models.kokoroLineAddon", {
+              defaultValue: "{count} quick voices in {languages} languages. Fast on any machine; an add-on of the voice runtime.",
               count: source.voices,
               languages: source.languages,
             })}
             badges={badges}
             cells={cells}
-            statusCell={<span className="badge muted">{t("voice.models.partOfRuntime", { defaultValue: "Part of the runtime" })}</span>}
+            statusCell={
+              source.installed ? (
+                <span className="badge muted">{t("voice.models.partOfRuntime", { defaultValue: "Part of the runtime" })}</span>
+              ) : (
+                <span className="badge muted">{t("voice.models.kokoroNotInstalled", { defaultValue: "Not installed" })}</span>
+              )
+            }
             actions={
               <div className="media-model-actions model-download-controls">
-                {onOpenStudio ? (
+                {!source.installed ? (
+                  <span className="muted-text">
+                    {t("voice.models.kokoroAddHint", { defaultValue: "Tick it under Voice runtime > Add-ons." })}
+                  </span>
+                ) : onOpenStudio ? (
                   <button type="button" className="secondary-button" onClick={() => onOpenStudio({ mode: "voices" })}>
                     {t("voice.quickVoices.browse", { defaultValue: "Browse voices" })}
                   </button>

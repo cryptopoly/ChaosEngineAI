@@ -80,8 +80,8 @@ describe("VoicesScreen (D-73 S2)", () => {
     expect(slot(html, "call")).toContain("<strong>Bella</strong>");
     expect(slot(html, "call")).toContain("(same as Chat)");
     expect(slot(html, "call")).toContain("Cloned voices are not used in calls.");
-    expect(html.match(/>Change</g)).toHaveLength(3);
-    expect(html).toContain("Kokoro reads instead and Chat says so");
+    expect(html.match(/>Change</g)).toHaveLength(4);
+    expect(html).toContain("the fallback voice Heart reads instead and Chat says so");
     const own = render(runtime({ settings: { ...runtime().settings, callVoice: "qwen3:Ryan" } }));
     expect(slot(own, "call")).toContain("<strong>Ryan</strong>");
     expect(slot(own, "call")).not.toContain("(same as Chat)");
@@ -121,7 +121,52 @@ describe("VoicesScreen (D-73 S2)", () => {
     expect(row(html, "Ryan")).toContain("Slow for calls");
   });
 
-  it("writes the same settings keys as before", () => {
-    expect(VOICE_USE_SETTING).toEqual({ speak: "speakVoice", read: "ttsVoice", call: "callVoice" });
+  it("writes the same settings keys as before, plus the fallback voice", () => {
+    expect(VOICE_USE_SETTING).toEqual({ speak: "speakVoice", read: "ttsVoice", call: "callVoice", fallback: "fallbackVoice" });
+  });
+
+  it("has a fourth Fallback card naming the fallback in effect, or none (D-75)", () => {
+    const html = render();
+    expect(slot(html, "fallback")).toContain(">Fallback<");
+    expect(slot(html, "fallback")).toContain("<strong>Heart</strong>");
+    expect(slot(html, "fallback")).toContain("Reads when the chat or call voice cannot.");
+    expect(slot(html, "fallback")).toContain('aria-label="Change the voice for Fallback"');
+    expect(row(html, "Heart")).toContain(">Fallback<");
+
+    const chosen = render(runtime({ settings: { ...runtime().settings, fallbackVoice: "clone:1" } }));
+    expect(slot(chosen, "fallback")).toContain("<strong>Ada</strong>");
+    expect(slot(chosen, "fallback")).toContain("Not used in calls.");
+    expect(chosen).toContain("the fallback voice Ada reads instead");
+
+    const none = render(runtime({ settings: { ...runtime().settings, fallbackVoice: "" } }));
+    expect(slot(none, "fallback")).toContain("<strong>None set</strong>");
+    expect(none).toContain("No fallback voice is set");
+    expect(none).not.toContain("Kokoro reads instead");
+  });
+
+  it("without Kokoro: the default fallback counts as none and the Quick group says how to add Kokoro", () => {
+    const noKokoro: VoiceCatalog = {
+      ...catalog,
+      voices: voices.map((v) => (v.kind === "builtin" ? { ...v, available: false, addon: null } : v)),
+    };
+    const html = renderToStaticMarkup(
+      <VoiceProvider
+        value={{
+          runtime: runtime({ extras: [{ id: "kokoro", installed: false }, { id: "chinese", installed: false }] } as Partial<VoiceRuntime>),
+          platform: "Darwin",
+          refresh: () => {},
+          saveSettings: async () => {},
+          openVoiceModels: () => {},
+        }}
+      >
+        <VoicesScreen catalog={noKokoro} speakVoiceId="qwen3:Ryan" onUseInSpeak={() => {}} onDesign={() => {}} onGetMore={() => {}} />
+      </VoiceProvider>,
+    );
+    expect(slot(html, "fallback")).toContain("<strong>None set</strong>");
+    expect(html).toContain("No fallback voice is set");
+    expect(html).toContain("The Kokoro quick voices are not installed");
+    expect(html).toContain("Open Voice Models");
+    expect(html).not.toContain("Add Mandarin voices");
+    expect(row(html, "Heart")).toBe("");
   });
 });

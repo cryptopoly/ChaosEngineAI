@@ -95,7 +95,7 @@ test("read-aloud sends the preset chat voice and shows the fallback note; Call i
   await page.route("**/api/voice/speak/stream", (route) => {
     bodies.push(route.request().postDataJSON() as Record<string, unknown>);
     const lines = [
-      { note: "Ryan could not speak here (Qwen3-TTS 1.7B CustomVoice is not downloaded), so the Kokoro voice reads instead.", voice: "af_heart" },
+      { note: "Ryan could not speak here (Qwen3-TTS 1.7B CustomVoice is not downloaded), so the fallback voice Heart (Kokoro) reads instead.", voice: "af_heart" },
       { index: 0, total: 1, text: "Here is the answer.", audio: silentWavBase64(2), durationS: 2, voice: "af_heart" },
       { done: true },
     ];
@@ -134,6 +134,6 @@ test("read-aloud sends the preset chat voice and shows the fallback note; Call i
   await expect.poll(() => bodies.length).toBe(1);
   expect(bodies[0]).toMatchObject({ text: "Here is the answer.", voice: "qwen3:Ryan" });
   expect(bodies[0].use).toBeUndefined(); // read-aloud is the default use
-  await expect(page.locator(".speech-bar__note")).toContainText("the Kokoro voice reads instead");
+  await expect(page.locator(".speech-bar__note")).toContainText("the fallback voice Heart (Kokoro) reads instead");
   await expect(page.locator(".speech-bar__voice")).toHaveText("Ryan reading");
 });

@@ -102,7 +102,14 @@ def extract_members(archive: Path, pin: Pin, out_dir: Path) -> list[Path]:
     written: list[Path] = []
 
     def accept(name: str) -> str | None:
-        if "\\" in name or name.startswith("/") or ".." in PurePosixPath(name).parts:
+        # Checked on the name as stored in the archive: on Windows the zip reader turns "\\" into "/" before
+        # we see ``filename``, so zip members are checked by ``orig_filename``. Drive letters ("C:") are refused too.
+        if (
+            "\\" in name
+            or name.startswith("/")
+            or re.match(r"^[A-Za-z]:", name)
+            or ".." in PurePosixPath(name).parts
+        ):
             raise FetchError(f"The archive holds an unsafe path ({name}). Nothing was installed.")
         match = _MEMBER.match(name)
         return PurePosixPath(name).name if match else None
@@ -120,7 +127,7 @@ def extract_members(archive: Path, pin: Pin, out_dir: Path) -> list[Path]:
         if pin.archive == "zip":
             with zipfile.ZipFile(archive) as zf:
                 for info in zf.infolist():
-                    base = accept(info.filename)
+                    base = accept(info.orig_filename)
                     if base is None or info.is_dir():
                         continue
                     if _is_link_zip(info):

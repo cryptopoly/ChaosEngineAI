@@ -7,6 +7,7 @@ import {
   cloneTextTooLong,
   costLabel,
   defaultVoice,
+  effectiveFallback,
   ffmpegBlocked,
   groupVoices,
   installedCloneModels,
@@ -402,9 +403,27 @@ describe("chat and call voices (D-72)", () => {
   });
 
   it("lists the uses a voice is the main voice for", () => {
-    expect(usesOf("af_heart", { ttsVoice: "af_heart", callVoice: "" }, "qwen3:Ryan", "af_heart")).toEqual(["read", "call"]);
-    expect(usesOf("qwen3:Ryan", { ttsVoice: "af_heart" }, "qwen3:Ryan", "af_heart")).toEqual(["speak"]);
+    // Heart is the fallback by default (D-75).
+    expect(usesOf("af_heart", { ttsVoice: "af_heart", callVoice: "" }, "qwen3:Ryan", "af_heart")).toEqual(["read", "call", "fallback"]);
+    expect(usesOf("af_heart", { ttsVoice: "af_heart", fallbackVoice: "" }, "qwen3:Ryan", "af_heart")).toEqual(["read", "call"]);
+    expect(usesOf("qwen3:Ryan", { ttsVoice: "af_heart", fallbackVoice: "qwen3:Ryan" }, "qwen3:Ryan", "af_heart")).toEqual(["speak", "fallback"]);
     expect(usesOf("orpheus:tara", { ttsVoice: "af_heart" }, "qwen3:Ryan", "af_heart")).toEqual([]);
+  });
+
+  it("the fallback voice follows the read-aloud rules and counts only when installed (D-75)", () => {
+    expect(useBlockReason(ada, "fallback")).toBeNull();
+    expect(useBlockReason(design, "fallback")).toBe("design");
+    expect(useBlockReason(missing, "fallback")).toBe("unavailable");
+    expect(voicesForUse([heart, ryan, ada, design, missing], "fallback").map((v) => v.id)).toEqual(["af_heart", "qwen3:Ryan", "clone:1"]);
+    const all = [heart, ryan, ada, missing];
+    expect(effectiveFallback(all, {})?.id).toBe("af_heart");
+    expect(effectiveFallback(all, { fallbackVoice: "qwen3:Ryan" })?.id).toBe("qwen3:Ryan");
+    expect(effectiveFallback(all, { fallbackVoice: "" })).toBeNull();
+    expect(effectiveFallback(all, { fallbackVoice: "qwen3:Aiden" })).toBeNull();
+    // Kokoro removed: Heart is listed but not available, so there is no fallback.
+    expect(effectiveFallback([{ ...heart, available: false }, ryan], {})).toBeNull();
+    expect(effectiveFallback(all, { fallbackVoice: "clone:1" })?.id).toBe("clone:1");
+    expect(effectiveFallback(all, { fallbackVoice: "clone:1" }, "call")).toBeNull();
   });
 
   it("names a voice without the full list", () => {
@@ -419,5 +438,9 @@ describe("chat and call voices (D-72)", () => {
     expect(callVoiceOf({ ttsVoice: "af_heart", callVoice: "qwen3:Ryan" })).toBe("qwen3:Ryan");
     expect(callVoiceOf({ ttsVoice: "qwen3:Ryan", callVoice: "" })).toBe("qwen3:Ryan");
     expect(callVoiceOf({ ttsVoice: "clone:1" })).toBe(FALLBACK_VOICE);
+    expect(callVoiceOf({ ttsVoice: "clone:1", fallbackVoice: "qwen3:Ryan" })).toBe("qwen3:Ryan");
+    // A cloned fallback is never used in calls, and none set means none: the backend answers with its plain error.
+    expect(callVoiceOf({ ttsVoice: "clone:1", fallbackVoice: "clone:2" })).toBe("");
+    expect(callVoiceOf({ ttsVoice: "clone:1", fallbackVoice: "" })).toBe("");
   });
 });

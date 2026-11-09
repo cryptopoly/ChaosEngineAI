@@ -4,20 +4,28 @@ export interface VoicePackHealthInput {
   installed: boolean;
   updateAvailable: boolean;
   vadAvailable: boolean;
-  ttsModelInstalled: boolean;
+  /** Kokoro's files are on disk. Not part of the health check: Kokoro is an optional add-on (D-75). */
+  ttsModelInstalled?: boolean;
   /** Phase of the most recent install job ("done", "error", ...). */
   jobPhase: string;
 }
 
 /**
  * Which call to action the voice pack panel leads with. Only a missing pack, an out-of-date pack
- * or a failed check gets a primary button; a healthy pack gets a quiet "Reinstall" link.
+ * or a failed check gets a primary button; a healthy pack gets a quiet "Reinstall" link. A runtime without the
+ * Kokoro quick voices is healthy: they are an add-on that can be left out (D-75).
  */
 export function voicePackMode(input: VoicePackHealthInput): VoicePackMode {
   if (!input.installed) return "install";
   if (input.updateAvailable || !input.vadAvailable) return "update";
-  if (input.jobPhase === "error" || !input.ttsModelInstalled) return "repair";
+  if (input.jobPhase === "error") return "repair";
   return "healthy";
+}
+
+/** Whether the runtime lists the Kokoro add-on as installed (D-75); an older backend without the add-on means yes. */
+export function kokoroInstalled(extras: Array<{ id: string; installed: boolean }>, ttsModelInstalled: boolean): boolean {
+  const addon = extras.find((extra) => extra.id === "kokoro");
+  return addon ? addon.installed : ttsModelInstalled;
 }
 
 /** How many quick (Kokoro) voices and languages this machine can offer; voices that can never run here are not counted. */

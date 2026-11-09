@@ -1,6 +1,6 @@
 /**
- * Voice Studio > Voices (D-73 S2): the main voice for Speak, Chat read-aloud and voice calls at the top (each with
- * Change, which opens the picker in a drawer for that use), then every voice grouped like the picker (Natural, Quick
+ * Voice Studio > Voices (D-73 S2): the main voice for Speak, Chat read-aloud and voice calls, and the Fallback voice
+ * (D-75), at the top (each with Change, which opens the picker in a drawer for that use; Fallback also offers none), then every voice grouped like the picker (Natural, Quick
  * shortlist with an expander, Cloned, Designed), each with a sample, one "Use for" menu and Delete for cloned voices.
  * The chat behaviour settings live in Chat's Voice popover; agent cloning stays in Settings > Agent access.
  */
@@ -12,14 +12,16 @@ import type { VoiceChatCost, VoiceEntry } from "../../../types";
 import { useVoice } from "../VoiceContext";
 import { deleteClonedVoice } from "../clone/cloneApi";
 import { NewVoiceForm } from "../clone/NewVoiceForm";
-import { chineseAddonPending } from "../voicePackState";
+import { chineseAddonPending, kokoroInstalled } from "../voicePackState";
 import { callVoiceOf } from "../conversation/useVoiceCall";
 import { useCostText } from "./costText";
+import { FallbackNote } from "./FallbackNote";
 import { MandarinCard } from "./MandarinCard";
 import {
   VOICE_USE_SETTING,
   chooseModel,
   costLabel,
+  effectiveFallback,
   managerVoices,
   matchesFilter,
   quickLanguage,
@@ -52,9 +54,11 @@ const FILTER_LABELS: Record<VoiceFilter, string> = {
 // i18n-extract: voice.voices.badge.speak
 // i18n-extract: voice.voices.badge.read
 // i18n-extract: voice.voices.badge.call
-const USES: VoiceUse[] = ["speak", "read", "call"];
-const USE_LABELS: Record<VoiceUse, string> = { speak: "Speak", read: "Chat read-aloud", call: "Voice calls" };
-const USE_BADGES: Record<VoiceUse, string> = { speak: "Speak", read: "Chat", call: "Calls" };
+// i18n-extract: voice.voices.use.fallback
+// i18n-extract: voice.voices.badge.fallback
+const USES: VoiceUse[] = ["speak", "read", "call", "fallback"];
+const USE_LABELS: Record<VoiceUse, string> = { speak: "Speak", read: "Chat read-aloud", call: "Voice calls", fallback: "Fallback" };
+const USE_BADGES: Record<VoiceUse, string> = { speak: "Speak", read: "Chat", call: "Calls", fallback: "Fallback" };
 
 type T = (key: string, options?: Record<string, unknown>) => string;
 
@@ -169,8 +173,12 @@ export function VoicesScreen({ catalog, speakVoiceId, onUseInSpeak, onDesign, on
   const anyLanguage = (v: VoiceEntry) => v.kind === "clone" || v.kind === "design";
   const languages = useMemo(() => [...new Set(listed.filter((v) => !anyLanguage(v)).map((v) => v.languageLabel ?? v.language))], [listed]);
   const shown = listed.filter((v) => matchesFilter(v, filter) && (!language || anyLanguage(v) || (v.languageLabel ?? v.language) === language));
-  const addonPending = chineseAddonPending(runtime?.extras ?? []);
+  // Mandarin voices are Kokoro voices: offered only while Kokoro is installed.
+  const addonPending = kokoroInstalled(runtime?.extras ?? [], runtime?.ttsModelInstalled ?? true) && chineseAddonPending(runtime?.extras ?? []);
   const byId = (id: string) => catalog.voices.find((v) => v.id === id) ?? null;
+
+  const fallback = effectiveFallback(catalog.voices, settings);
+  const kokoroReady = kokoroInstalled(runtime?.extras ?? [], runtime?.ttsModelInstalled ?? true);
 
   const assign = (use: VoiceUse, id: string) => {
     setError(null);
@@ -202,9 +210,15 @@ export function VoicesScreen({ catalog, speakVoiceId, onUseInSpeak, onDesign, on
     const first = voice?.chatCost?.firstAudioS;
     const timing = first != null ? t("voice.voices.firstWords", { defaultValue: "First words after {s} s.", s: first }) : "";
     if (use === "read") return `${t("voice.voices.slotRead", { defaultValue: "Replies and the speaker button." })} ${timing}`.trim();
+    if (use === "fallback") {
+      return voice?.kind === "clone"
+        ? t("voice.voices.slotFallbackClone", { defaultValue: "Reads when the chat voice cannot. Not used in calls." })
+        : t("voice.voices.slotFallback", { defaultValue: "Reads when the chat or call voice cannot." });
+    }
     return `${timing} ${t("voice.voices.slotCall", { defaultValue: "Cloned voices are not used in calls." })}`.trim();
   };
-  const slotVoice: Record<VoiceUse, string> = { speak: speakVoiceId, read: settings.ttsVoice, call: callId };
+  // The fallback slot shows the fallback in effect: a set voice that is not installed (Kokoro removed) counts as none.
+  const slotVoice: Record<VoiceUse, string> = { speak: speakVoiceId, read: settings.ttsVoice, call: callId, fallback: fallback?.id ?? "" };
 
   // --- the grouped list -----------------------------------------------------------------------------------------
   const natural = shown.filter((v) => v.kind === "preset");
@@ -297,12 +311,28 @@ export function VoicesScreen({ catalog, speakVoiceId, onUseInSpeak, onDesign, on
     </section>
   );
 
+  const kokoroMissingGroup =
+    !kokoroReady && (filter === "all" || filter === "quick")
+      ? group(
+          "quick",
+          t("voice.picker.quick", { defaultValue: "Quick" }),
+          t("voice.voices.kokoroMissing", {
+            defaultValue: "The Kokoro quick voices are not installed. Tick them under Voice > Models > Voice runtime > Add-ons (about 330 MB).",
+          }),
+          <div className="button-row">
+            <button type="button" className="secondary-button" onClick={onGetMore}>
+              {t("voice.voices.openModels", { defaultValue: "Open Voice Models" })}
+            </button>
+          </div>,
+        )
+      : null;
+
   const quickGroup =
     quick.length > 0 || (addonPending && (filter === "all" || filter === "quick"))
       ? group(
           "quick",
           t("voice.picker.quick", { defaultValue: "Quick" }),
-          t("voice.voices.quickNote", { defaultValue: "Kokoro, part of the voice runtime. Fast, under 1 GB, speed only. The best-graded shown first." }),
+          t("voice.voices.quickNoteAddon", { defaultValue: "Kokoro, an add-on of the voice runtime. Fast, under 1 GB, speed only. The best-graded shown first." }),
           <>
             {orderedQuickLanguages.map((lang) => {
               const inLanguage = quick.filter((v) => quickLanguage(v) === lang);
@@ -391,7 +421,15 @@ export function VoicesScreen({ catalog, speakVoiceId, onUseInSpeak, onDesign, on
                 <div key={use} className="voice-main__slot" data-use={use}>
                   <span className="voice-main__label">{useLabel(use, tf)}</span>
                   <span className="voice-main__voice">
-                    <strong>{voice ? (voice.kind === "design" ? t("voice.voices.designCard", { defaultValue: "Design a voice" }) : voice.name) : slotVoice[use] || "—"}</strong>
+                    <strong>
+                      {voice
+                        ? voice.kind === "design"
+                          ? t("voice.voices.designCard", { defaultValue: "Design a voice" })
+                          : voice.name
+                        : use === "fallback"
+                          ? t("voice.voices.fallbackNone", { defaultValue: "None set" })
+                          : slotVoice[use] || "—"}
+                    </strong>
                     {voice ? <span className="badge">{voiceKindLabel(voice, tf)}</span> : null}
                     {use === "call" && !settings.callVoice ? (
                       <span className="muted-text">{t("voice.voices.sameAsChat", { defaultValue: "(same as Chat)" })}</span>
@@ -411,9 +449,7 @@ export function VoicesScreen({ catalog, speakVoiceId, onUseInSpeak, onDesign, on
             })}
           </div>
           <p className="muted-text voice-main__fallback">
-            {t("voice.voices.fallbackNote", {
-              defaultValue: "If a chosen voice cannot speak (model not downloaded, or it fails to load), Kokoro reads instead and Chat says so.",
-            })}
+            <FallbackNote voice={fallback} />
           </p>
         </section>
 
@@ -441,7 +477,7 @@ export function VoicesScreen({ catalog, speakVoiceId, onUseInSpeak, onDesign, on
           </p>
         ) : null}
         {catalog.error ? <p className="voice-error" role="alert">{catalog.error}</p> : null}
-        {shown.length === 0 && catalog.loaded && !(addonPending && filter === "quick") ? (
+        {shown.length === 0 && catalog.loaded && !((addonPending || !kokoroReady) && filter === "quick") ? (
           <p className="muted-text">
             {filter === "cloned"
               ? t("voice.voices.noneCloned", { defaultValue: "No cloned voices yet. Use New cloned voice above." })
@@ -457,7 +493,7 @@ export function VoicesScreen({ catalog, speakVoiceId, onUseInSpeak, onDesign, on
               <ul className="voice-list">{natural.map(row)}</ul>,
             )
           : null}
-        {quickGroup}
+        {quickGroup ?? kokoroMissingGroup}
         {clones.length > 0
           ? group(
               "cloned",
@@ -484,11 +520,30 @@ export function VoicesScreen({ catalog, speakVoiceId, onUseInSpeak, onDesign, on
               ? t("voice.voices.chooseCallHint", { defaultValue: "Voices that can answer calls. Cloned voices are not used in calls." })
               : drawerUse === "read"
                 ? t("voice.voices.chooseReadHint", { defaultValue: "Voices that can read chat replies aloud." })
-                : t("voice.picker.drawerHint", { defaultValue: "Click a voice to use it in Speak. The sample button plays a short line." })
+                : drawerUse === "fallback"
+                  ? t("voice.voices.chooseFallbackHint", {
+                      defaultValue: "Installed voices that read when the chosen chat or call voice cannot. A cloned voice is used for read-aloud only.",
+                    })
+                  : t("voice.picker.drawerHint", { defaultValue: "Click a voice to use it in Speak. The sample button plays a short line." })
           }
           onClose={() => setChoosingFor(null)}
           className="voice-drawer"
         >
+          {drawerUse === "fallback" ? (
+            <div className="button-row voice-drawer__none">
+              <button
+                type="button"
+                className="secondary-button"
+                aria-pressed={!fallback}
+                onClick={() => {
+                  assign("fallback", "");
+                  setChoosingFor(null);
+                }}
+              >
+                {t("voice.voices.noFallback", { defaultValue: "No fallback voice" })}
+              </button>
+            </div>
+          ) : null}
           <VoicePicker
             voices={drawerVoices}
             models={catalog.models}

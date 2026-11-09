@@ -13,6 +13,58 @@ from __future__ import annotations
 from typing import Any
 
 
+# D-44: rows that are slow on some kinds of machine. ``slowOn`` is a list of platform entries; the app
+# shows "Slow on this computer" with the reason when the current machine matches an entry, and shows
+# nothing otherwise. Rows stay listed and runnable; sizes, frames and defaults are untouched.
+#
+# Entry keys:
+#   platform       "apple-mps" (Apple Silicon), "cpu-only" (no usable GPU: Windows or Linux without an
+#                  NVIDIA card, or an Intel Mac) or "cuda" (NVIDIA; unused until a measurement says so).
+#   basis          "measured" (then seconds, measuredOn, measuredDate, size and frames say what was timed
+#                  and where) or "expected" (not timed: the note says so and shows no number).
+#   reason         key the UI turns into a translated sentence: "pytorch-apple-gpu", "bf16-full-size",
+#                  "no-gpu-cpu".
+#   alternativeId  a faster catalog row that runs on that kind of machine (none for cpu-only).
+SLOW_ALTERNATIVE_APPLE = "dgrauet/ltx-2.3-mlx-q4"  # ltx-2-mlx runs on Apple Silicon only; 2.3 needs no licence step (2.5 is gated)
+
+# Wan runs through diffusers on the Apple GPU (MPS); not timed on these rows, so no number.
+SLOW_APPLE_WAN: dict[str, Any] = {
+    "platform": "apple-mps",
+    "basis": "expected",
+    "reason": "pytorch-apple-gpu",
+    "alternativeId": SLOW_ALTERNATIVE_APPLE,
+}
+
+# The older full-size bf16 LTX rows (mlx-video, 40 GB footprint). Only LTX-2.3 distilled was timed.
+SLOW_APPLE_BF16_EXPECTED: dict[str, Any] = {
+    "platform": "apple-mps",
+    "basis": "expected",
+    "reason": "bf16-full-size",
+    "alternativeId": SLOW_ALTERNATIVE_APPLE,
+}
+
+# LTX-2.3 distilled bf16 (mlx-video), 768x512, 33 frames: 1130 s (34 s/frame), 40 GB footprint.
+# Source: docs/research/m4max-generation-times.md, measured 2026-10-21.
+SLOW_APPLE_LTX23_BF16_MEASURED: dict[str, Any] = {
+    "platform": "apple-mps",
+    "basis": "measured",
+    "reason": "bf16-full-size",
+    "seconds": 1130.0,
+    "measuredOn": "M4 Max, 64 GB",
+    "measuredDate": "2026-10-21",
+    "size": "768x512",
+    "frames": 33,
+    "alternativeId": SLOW_ALTERNATIVE_APPLE,
+}
+
+# Every diffusion video row on a machine with no usable GPU. Not timed, so no number, no faster row.
+SLOW_CPU_ONLY_EXPECTED: dict[str, Any] = {
+    "platform": "cpu-only",
+    "basis": "expected",
+    "reason": "no-gpu-cpu",
+}
+
+
 VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
     {
         "id": "ltx-video",
@@ -40,6 +92,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "defaultDurationSeconds": 4.0,
                 "note": "Small, fast, Apache 2.0 — best starter pick for a local video runtime.",
                 "estimatedGenerationSeconds": 45.0,
+                "slowOn": [SLOW_CPU_ONLY_EXPECTED],
                 "availableLocally": False,
                 "releaseDate": "2024-11",
             },
@@ -61,6 +114,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "defaultDurationSeconds": 4.0,
                 "note": "GGUF Q4_K_M — quantizes the transformer, but the LTX pipeline still needs roughly a 10 GB runtime envelope for text encoder/VAE/buffers.",
                 "estimatedGenerationSeconds": 50.0,
+                "slowOn": [SLOW_CPU_ONLY_EXPECTED],
                 "availableLocally": False,
                 "releaseDate": "2024-12",
             },
@@ -82,6 +136,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "defaultDurationSeconds": 4.0,
                 "note": "GGUF Q6_K — mid-point between Q4 footprint and Q8 fidelity.",
                 "estimatedGenerationSeconds": 48.0,
+                "slowOn": [SLOW_CPU_ONLY_EXPECTED],
                 "availableLocally": False,
                 "releaseDate": "2024-12",
             },
@@ -103,6 +158,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "defaultDurationSeconds": 4.0,
                 "note": "GGUF Q8_0 — near-bf16 quality at roughly half the memory.",
                 "estimatedGenerationSeconds": 46.0,
+                "slowOn": [SLOW_CPU_ONLY_EXPECTED],
                 "availableLocally": False,
                 "releaseDate": "2024-12",
             },
@@ -147,6 +203,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 # ignored. Real-world wall time on M4 Max at 768×512 / 4 s
                 # lands around 90 s including model load.
                 "estimatedGenerationSeconds": 1130.0,  # same sampler as LTX-2.3 distilled (measured there)
+                "slowOn": [SLOW_APPLE_BF16_EXPECTED],
                 "availableLocally": False,
                 "releaseDate": "2026-01",
             },
@@ -177,6 +234,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 # distilled sibling instead so the user gets a quick draft
                 # of the same prompt + seed in ~1/6 of the time.
                 "fastPreviewSiblingId": "prince-canuma/LTX-2-distilled",
+                "slowOn": [SLOW_APPLE_BF16_EXPECTED],
                 "availableLocally": False,
                 "releaseDate": "2026-01",
             },
@@ -204,6 +262,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 # 2.3 weight refresh; wall time tracks the LTX-2 distilled
                 # entry within measurement noise.
                 "estimatedGenerationSeconds": 1130.0,  # measured with the footprint above (34 s/frame)
+                "slowOn": [SLOW_APPLE_LTX23_BF16_MEASURED],
                 "availableLocally": False,
                 "releaseDate": "2026-03",
             },
@@ -324,6 +383,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 # estimate predated STG and the dev pipeline-mode change.
                 "estimatedGenerationSeconds": 600.0,
                 "fastPreviewSiblingId": "prince-canuma/LTX-2.3-distilled",
+                "slowOn": [SLOW_APPLE_BF16_EXPECTED],
                 "availableLocally": False,
                 "releaseDate": "2026-03",
             },
@@ -364,6 +424,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "defaultDurationSeconds": 4.0,
                 "note": "1.3B transformer + UMT5 text encoder. ~16GB on disk. Best starter pick for trying local video end-to-end on modest hardware.",
                 "estimatedGenerationSeconds": 60.0,
+                "slowOn": [SLOW_APPLE_WAN, SLOW_CPU_ONLY_EXPECTED],
                 "availableLocally": False,
                 "releaseDate": "2025-02",
             },
@@ -387,6 +448,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "defaultDurationSeconds": 5.0,
                 "note": "Wan 2.1 quality tier. ~45GB. Same WanPipeline class as the 1.3B and Wan 2.2.",
                 "estimatedGenerationSeconds": 180.0,
+                "slowOn": [SLOW_APPLE_WAN, SLOW_CPU_ONLY_EXPECTED],
                 "availableLocally": False,
                 "releaseDate": "2025-02",
             },
@@ -410,6 +472,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "defaultDurationSeconds": 4.0,
                 "note": "Q4_K_M — smallest quantized 1.3B. The transformer is tiny, but UMT5/VAE keep the full runtime envelope in the 12-23 GB range depending on device/offload.",
                 "estimatedGenerationSeconds": 70.0,
+                "slowOn": [SLOW_APPLE_WAN, SLOW_CPU_ONLY_EXPECTED],
                 "availableLocally": False,
                 "releaseDate": "2025-03",
             },
@@ -432,6 +495,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "defaultDurationSeconds": 4.0,
                 "note": "Q6_K — mid-point between Q4 footprint and Q8 fidelity; still carries the shared UMT5/VAE runtime overhead.",
                 "estimatedGenerationSeconds": 68.0,
+                "slowOn": [SLOW_APPLE_WAN, SLOW_CPU_ONLY_EXPECTED],
                 "availableLocally": False,
                 "releaseDate": "2025-03",
             },
@@ -454,6 +518,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "defaultDurationSeconds": 4.0,
                 "note": "Q8_0 — near-bf16 quality at roughly half the transformer footprint; shared UMT5/VAE still dominate peak RAM/VRAM.",
                 "estimatedGenerationSeconds": 65.0,
+                "slowOn": [SLOW_APPLE_WAN, SLOW_CPU_ONLY_EXPECTED],
                 "availableLocally": False,
                 "releaseDate": "2025-03",
             },
@@ -478,6 +543,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "defaultDurationSeconds": 5.0,
                 "note": "Q4_K_M — unlocks Wan 2.1 14B on 24 GB VRAM (RTX 4090) without bnb.",
                 "estimatedGenerationSeconds": 220.0,
+                "slowOn": [SLOW_APPLE_WAN, SLOW_CPU_ONLY_EXPECTED],
                 "availableLocally": False,
                 "releaseDate": "2025-03",
             },
@@ -500,6 +566,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "defaultDurationSeconds": 5.0,
                 "note": "Q6_K — mid-point between Q4 footprint and Q8 fidelity.",
                 "estimatedGenerationSeconds": 210.0,
+                "slowOn": [SLOW_APPLE_WAN, SLOW_CPU_ONLY_EXPECTED],
                 "availableLocally": False,
                 "releaseDate": "2025-03",
             },
@@ -522,6 +589,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "defaultDurationSeconds": 5.0,
                 "note": "Q8_0 — near-bf16 quality at roughly half the transformer footprint.",
                 "estimatedGenerationSeconds": 200.0,
+                "slowOn": [SLOW_APPLE_WAN, SLOW_CPU_ONLY_EXPECTED],
                 "availableLocally": False,
                 "releaseDate": "2025-03",
             },
@@ -558,6 +626,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                     "(non-commercial)."
                 ),
                 "estimatedGenerationSeconds": 9.0,
+                "slowOn": [SLOW_APPLE_WAN, SLOW_CPU_ONLY_EXPECTED],
                 "availableLocally": False,
                 "releaseDate": "2025-04",
             },
@@ -588,6 +657,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                     "(non-commercial)."
                 ),
                 "estimatedGenerationSeconds": 24.0,
+                "slowOn": [SLOW_APPLE_WAN, SLOW_CPU_ONLY_EXPECTED],
                 "availableLocally": False,
                 "releaseDate": "2025-04",
             },
@@ -646,6 +716,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                     "use the TI2V-5B variant above."
                 ),
                 "estimatedGenerationSeconds": 300.0,
+                "slowOn": [SLOW_APPLE_WAN, SLOW_CPU_ONLY_EXPECTED],
                 "availableLocally": False,
                 "releaseDate": "2025-07",
             },
@@ -684,6 +755,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "defaultDurationSeconds": 5.0,
                 "note": "High quality. Runs on 64 GB+ Apple Silicon Max/Ultra or 40GB+ CUDA (24 GB CUDA with NF4). Sequential text-encoder loading keeps the diffusion phase under ~28 GB resident.",
                 "estimatedGenerationSeconds": 420.0,
+                "slowOn": [SLOW_CPU_ONLY_EXPECTED],
                 "availableLocally": False,
                 "releaseDate": "2024-12",
             }
@@ -715,6 +787,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "defaultDurationSeconds": 5.4,
                 "note": "Apache 2.0, balanced footprint, strong motion quality. Diffusers' bf16/offload path lands around a 22 GB runtime envelope.",
                 "estimatedGenerationSeconds": 150.0,
+                "slowOn": [SLOW_CPU_ONLY_EXPECTED],
                 "availableLocally": False,
                 "releaseDate": "2024-10",
             }
@@ -762,6 +835,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "defaultDurationSeconds": 6.0,
                 "note": "Smallest CogVideoX. Apache 2.0 weights, ~9 GB on disk; bf16 peak is ~13 GB on CUDA / ~15 GB on MPS. Runtime auto-engages sequential CPU offload on smaller GPUs (~5-7 GB peak, slower).",
                 "estimatedGenerationSeconds": 90.0,
+                "slowOn": [SLOW_CPU_ONLY_EXPECTED],
                 "availableLocally": False,
                 "releaseDate": "2024-08",
             },
@@ -789,6 +863,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "defaultDurationSeconds": 6.0,
                 "note": "Quality tier. ~18 GB on disk; bf16 peak is ~18 GB on CUDA / ~22 GB on MPS. Sequential CPU offload kicks in automatically on smaller GPUs.",
                 "estimatedGenerationSeconds": 200.0,
+                "slowOn": [SLOW_CPU_ONLY_EXPECTED],
                 "availableLocally": False,
                 "releaseDate": "2024-08",
             },
@@ -824,6 +899,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                     "~23 GB on MPS; same CogVideoXPipeline as 5B."
                 ),
                 "estimatedGenerationSeconds": 220.0,
+                "slowOn": [SLOW_CPU_ONLY_EXPECTED],
                 "availableLocally": False,
                 "releaseDate": "2024-11",
             },

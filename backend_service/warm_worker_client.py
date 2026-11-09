@@ -181,8 +181,13 @@ class WarmWorker:
             except Exception:  # noqa: BLE001
                 pass
         finally:
+            # On Windows closing a pipe the reader thread is still on can raise OSError 22; the process is
+            # already gone, so a failed close must not turn a clean restart into a raw error.
             if process.stdout:
-                process.stdout.close()
+                try:
+                    process.stdout.close()
+                except (OSError, ValueError):
+                    pass
         with self._pending_lock:
             waiting = list(self._pending.values())
         for target in waiting:

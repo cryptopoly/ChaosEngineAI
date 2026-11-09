@@ -81,8 +81,11 @@ export async function estimateMusicRun(
   seconds: number,
   variations: 1 | 2 | 4,
   signal?: AbortSignal,
+  /** Sound rows: the chosen diffusion steps; left out = the model's default. */
+  steps?: number | null,
 ): Promise<MusicEstimateResponse> {
-  return await request<MusicEstimateResponse>("POST", "/api/music/estimate", { modelId, seconds, variations }, 10000, signal);
+  const body = steps == null ? { modelId, seconds, variations } : { modelId, seconds, variations, steps };
+  return await request<MusicEstimateResponse>("POST", "/api/music/estimate", body, 10000, signal);
 }
 
 export async function getMusicProgress(): Promise<MusicProgressSnapshot> {

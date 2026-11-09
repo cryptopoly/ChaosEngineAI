@@ -22,6 +22,7 @@ const DEFAULT_SETTINGS: VoiceSettings = {
   language: "",
   ttsVoice: "af_heart",
   callVoice: "",
+  fallbackVoice: "af_heart",
   speakVoice: "",
   speed: 1,
   autoSend: false,

@@ -712,7 +712,6 @@
         "makesAll": null
       },
       "firstUseLine": null,
-      "kokoroLine": null,
       "licence": null,
       "makes": {
         "clone": null,
@@ -747,7 +746,10 @@
       "ttsIntro": null,
       "cancelDownload": null,
       "showSizes": null,
-      "hideSizes": null
+      "hideSizes": null,
+      "kokoroLineAddon": null,
+      "kokoroNotInstalled": null,
+      "kokoroAddHint": null
     },
     "voices": {
       "addChinese": "Mandarin Chinese ghogh tIchel",
@@ -778,7 +780,8 @@
       "badge": {
         "call": null,
         "read": null,
-        "speak": null
+        "speak": null,
+        "fallback": null
       },
       "change": null,
       "changeFor": null,
@@ -786,7 +789,6 @@
       "chooseFor": null,
       "chooseReadHint": null,
       "clonedNote": null,
-      "fallbackNote": null,
       "female": null,
       "firstWords": null,
       "groupNatural": null,
@@ -796,7 +798,6 @@
       "naturalNote": null,
       "notForChat": null,
       "notReady": null,
-      "quickNote": null,
       "sameAsChat": null,
       "slotCall": null,
       "slotRead": null,
@@ -806,10 +807,21 @@
       "use": {
         "call": null,
         "read": null,
-        "speak": null
+        "speak": null,
+        "fallback": null
       },
       "useFor": null,
-      "useForLabel": null
+      "useForLabel": null,
+      "slotFallback": null,
+      "slotFallbackClone": null,
+      "fallbackNone": null,
+      "noFallback": null,
+      "chooseFallbackHint": null,
+      "fallbackNoteVoice": null,
+      "fallbackNoteNone": null,
+      "quickNoteAddon": null,
+      "kokoroMissing": null,
+      "openModels": null
     },
     "settings": {
       "autoSend": "ghItlhghach rInDI' QIn yIngeH SIbI'",
@@ -1136,7 +1148,6 @@
       "recommended": null,
       "recommendedNote": null,
       "quick": null,
-      "quickNote": null,
       "fewer": null,
       "allVoices": null,
       "cloned": null,
@@ -1151,7 +1162,8 @@
       "getMoreDetail": null,
       "openModels": null,
       "drawerHint": null,
-      "drawerTitle": null
+      "drawerTitle": null,
+      "quickNoteAddon": null
     },
     "chatCalls": {
       "cost": null,
@@ -1161,10 +1173,10 @@
       "browse": null
     },
     "runtime": {
-      "about": null,
       "addon": {
         "chinese": null,
-        "speech-gpu": null
+        "speech-gpu": null,
+        "kokoro": null
       },
       "addons": null,
       "addonsHint": null,
@@ -1186,7 +1198,9 @@
       "troubleshootBody": null,
       "update": null,
       "updateFeatures": null,
-      "workerOnly": null
+      "workerOnly": null,
+      "partsNoKokoro": null,
+      "aboutOptional": null
     }
   },
   "residentChatModelNote": "qawHaqvamvo' ~{gb} GB ghaj chu'lu'ta'bogh ja'chuq yab; chu'Ha'lu'chugh qawHaqvetlh chImchoH.",
@@ -1306,7 +1320,9 @@
       "caution": "(yIghuH: veH Sum)",
       "danger": "(Qob: yapbe'laH)"
     },
-    "unknownChip": "noH: wa'DIch chu'pa' Sovbe'lu'"
+    "unknownChip": "noH: wa'DIch chu'pa' Sovbe'lu'",
+    "scaled": null,
+    "scaledTitle": null
   },
   "disclosure": {
     "options": "wIvmey",
@@ -1387,7 +1403,11 @@
       "tempoKey": "Do 'ej key",
       "variations": "pImwI'",
       "variationsCost": "Hoch pImwI' poH rap chel.",
-      "variationsTotal": "{n}vaD {time} loQ."
+      "variationsTotal": "{n}vaD {time} loQ.",
+      "steps": null,
+      "stepsNumber": null,
+      "stepsNote": null,
+      "summarySteps": null
     },
     "artistWarning": "muchwI' pong DaghItlhchugh, mIwDaj velqa' chenlaH. wab yIDel.",
     "cancel": "yIqIl",
@@ -1490,7 +1510,8 @@
       "issue": {
         "captionEmpty": "wab chenmoHmeH wab yIDel.",
         "captionTooLong": "{max} ngutlh law' Del, ngutlh puS veH.",
-        "secondsRange": "{min} lup 'ej {max} lup jojDaq poH 'oHnIS."
+        "secondsRange": "{min} lup 'ej {max} lup jojDaq poH 'oHnIS.",
+        "stepsRange": null
       },
       "error": {
         "memory": "wabvamvaD qawHaq chIm yapbe'. qawHaq yIchImmoH 'ej yInIDqa'.",
@@ -2406,5 +2427,16 @@
     "makeTimed": "Hutlhbogh {n} tIchenmoH · {time} loQ",
     "needStills": "{n, plural, other {Qu' poQ # 'ay''}}: {stills, plural, other {mIllogh ghaj 'ej mIllogh vIH poQ #}}",
     "stale": "{n} ngo'"
+  },
+  "slowRow": {
+    "label": null,
+    "reason": {
+      "pytorchAppleGpu": null,
+      "bf16FullSize": null,
+      "noGpuCpu": null
+    },
+    "measured": null,
+    "expected": null,
+    "alternative": null
   }
 }

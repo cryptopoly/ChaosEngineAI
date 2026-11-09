@@ -164,7 +164,10 @@ class InstalledMarkerTests(unittest.TestCase):
             json.dumps({"schema": 1, "lane": "portable", "extras": ["chinese", "bogus"]}), encoding="utf-8"
         )
         self.assertTrue(voice_env.is_installed())
-        self.assertEqual(voice_env.installed_extras(), ["chinese"])
+        with mock.patch.object(voice_env, "kokoro_installed", return_value=False):
+            self.assertEqual(voice_env.installed_extras(), ["chinese"])
+        with mock.patch.object(voice_env, "kokoro_installed", return_value=True):
+            self.assertEqual(voice_env.installed_extras(), ["kokoro", "chinese"])  # Kokoro from its files (D-75)
 
     def test_capabilities_report_when_the_pack_passed_its_check(self) -> None:
         (self.venv / "chaosengine-voice.json").write_text(
@@ -435,10 +438,21 @@ class VoiceRouteTests(unittest.TestCase):
         from tests.test_video_routes import make_client
 
         self.client, self._tmp, self._snapshot = make_client()
+        # A throwaway settings folder, and the Kokoro quick voices installed (an add-on since D-75).
+        self._data = tempfile.TemporaryDirectory()
+        self._patches = [
+            mock.patch.object(voice_env, "VOICE_DATA_DIR", Path(self._data.name)),
+            mock.patch.object(voice_env, "kokoro_installed", return_value=True),
+        ]
+        for patch in self._patches:
+            patch.start()
 
     def tearDown(self) -> None:
         from tests.test_video_routes import restore_env
 
+        for patch in reversed(self._patches):
+            patch.stop()
+        self._data.cleanup()
         restore_env(self._snapshot)
         self._tmp.cleanup()
 
@@ -494,7 +508,7 @@ class VoiceRouteTests(unittest.TestCase):
         with mock.patch.object(voice_runtime, "synthesize", side_effect=lambda text, voice, speed: (voice.encode(), 1.0)):
             resp = self.client.post("/api/voice/speak/stream", json={"text": "One. Two.", "voice": "qwen3:Ryan", "use": "call"})
         lines = [json.loads(line) for line in resp.text.splitlines()]
-        self.assertIn("Kokoro voice reads instead", lines[0]["note"])
+        self.assertIn("fallback voice Heart (Kokoro) reads instead", lines[0]["note"])
         self.assertEqual([base64.b64decode(line["audio"]) for line in lines[1:3]], [b"af_heart", b"af_heart"])
         self.assertEqual(lines[-1], {"done": True})
         self.assertEqual(self.client.post("/api/voice/speak/stream", json={"text": "Hi", "use": "shout"}).status_code, 422)

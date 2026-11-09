@@ -254,7 +254,8 @@ test("Voice library speech cards: voice name and kind, AI-made on cloned speech,
   await ryan.getByRole("button", { name: "Speak again" }).click();
   await expect(page.getByRole("tab", { name: "Speak" })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByLabel("Text to speak")).toHaveValue("Good evening, everyone. This is the whole text.");
-  await expect(page.getByRole("radio", { name: /^Ryan/ }).first()).toHaveAttribute("aria-checked", "true");
+  // Speak shows the chosen voice in its voice row (the picker is a drawer since the voice makeover).
+  await expect(page.locator(".voice-row__name strong")).toHaveText("Ryan");
 });
 
 test.describe("Voice library at 375 px", () => {

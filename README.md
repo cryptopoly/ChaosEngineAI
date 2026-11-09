@@ -154,7 +154,7 @@ ChaosEngineAI is a desktop control plane for running large language models local
 - Dictation (microphone button in the chat box), read-aloud on every reply or automatically, and voice calls in Chat: the app hears when you stop, the model answers out loud, you can talk over it to interrupt, and every turn is saved in the thread. The **Voice** button in Chat names the voices in use and holds the read-aloud and call settings
 - **Voice Studio**: a transcription queue for recordings and audio / video files with speaker labels and translation to English; edit the transcript, click a word to jump to it in the audio, rename speakers, export TXT, Markdown, SRT, VTT or JSON, or send it to a chat. **Speak** turns long text into speech with pauses and voice previews, saved as WAV or MP3
 - **Voice Library** keeps every recording, transcript and generated clip
-- Apple Silicon: Parakeet (25 European languages, the fastest), Nemotron 3.5 speech recognition (40 languages, detects the language by itself) or Whisper (99 languages) for speech recognition, Kokoro for speech. Windows and Linux: Whisper through faster-whisper and Kokoro. Voice on Windows and Linux is new and has had less testing than on the Mac
+- Apple Silicon: Parakeet (25 European languages, the fastest), Nemotron 3.5 speech recognition (40 languages, detects the language by itself) or Whisper (99 languages) for speech recognition, Kokoro (an optional add-on, ticked by default) and the downloadable speech models for speech. Windows and Linux: Whisper through faster-whisper and Kokoro (optional). Voice on Windows and Linux is new and has had less testing than on the Mac
 - The first time you use the microphone, macOS asks for permission
 
 ### Performance, evaluation & extensibility
@@ -239,7 +239,7 @@ A focused chat surface with multi-thread sessions in the left rail, pinned threa
 ### Voice Models — *Speech recognition and voices*
 ![Voice Models](./Screenshots/v0.9.9/voice-models.png)
 
-Install the voice runtime once (about 2.3 GB: speech packages, the Kokoro quick voices, turn detection and speaker labels; it runs in its own folder on your computer and nothing is sent online), pick the dictation model (Parakeet, Nemotron 3.5 and Whisper on Apple Silicon; Whisper through faster-whisper on Windows and Linux), and download speech models from the same table as Image, Video and Music Models, with Fit and Delete. Voices are chosen on Voice Studio > Voices. Voice on Windows and Linux is new and has had less testing than on the Mac.
+Install the voice runtime once (about 2.3 GB: speech packages, turn detection and speaker labels, and the Kokoro quick voices, an add-on ticked by default that can be left out or removed later; it runs in its own folder on your computer and nothing is sent online), pick the dictation model (Parakeet, Nemotron 3.5 and Whisper on Apple Silicon; Whisper through faster-whisper on Windows and Linux), and download speech models from the same table as Image, Video and Music Models, with Fit and Delete. Voices are chosen on Voice Studio > Voices, including the Fallback voice that reads when the chosen one cannot. Voice on Windows and Linux is new and has had less testing than on the Mac.
 
 ### HTML Challenge — *Side-by-side HTML generation*
 

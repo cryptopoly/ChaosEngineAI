@@ -230,7 +230,18 @@ VOICE_MODELS: list[dict[str, Any]] = [
         "companions": [_S3_TOKENIZER],
         "sampleRate": 24_000,
         "minReferenceS": 5.0,
-        "estimates": None,
+        "estimates": {
+            "basis": "measured",
+            "measuredOn": "Apple M4 Max, 64 GB, 2026-11-09",
+            # scripts/measure-voice-models.py, fresh worker, weights on disk: cold start = first short line minus the same
+            # line warm; seconds per 10 s from the fixed 600-character text in this model's chunks; peak and idle are
+            # the worker's resident memory (psutil RSS) during the long text and 5 s after.
+            "coldStartSeconds": 2.4,
+            "secondsPer10sAudio": 2.1,
+            "wallSecondsShortLine": 0.8,
+            "peakGb": 1.72,
+            "idleGb": 1.72,
+        },
     },
     {
         "key": "voxcpm2",
@@ -251,7 +262,19 @@ VOICE_MODELS: list[dict[str, Any]] = [
         "companions": [],
         "sampleRate": 48_000,
         "minReferenceS": 3.0,
-        "estimates": None,
+        "estimates": {
+            "basis": "measured",
+            "measuredOn": "Apple M4 Max, 64 GB, 2026-11-09",
+            # scripts/measure-voice-models.py, fresh worker, weights on disk: cold start = first short line minus the same
+            # line warm; seconds per 10 s from the fixed 600-character text in this model's chunks; peak and idle are
+            # the worker's resident memory (psutil RSS) during the long text and 5 s after.
+            # Design. 48 kHz output.
+            "coldStartSeconds": 2.0,
+            "secondsPer10sAudio": 5.22,
+            "wallSecondsShortLine": 1.9,
+            "peakGb": 3.8,
+            "idleGb": 3.8,
+        },
     },
     {
         "key": "chatterbox-mtl",
@@ -266,13 +289,36 @@ VOICE_MODELS: list[dict[str, Any]] = [
         "languages": "23 languages",
         "kind": "chatterbox",
         "family": "chatterbox",
-        "capabilities": {"speak": False, "style": False, "clone": True, "design": False, "expression": True, "languageSelect": True},
+        "capabilities": {
+            "speak": True, "style": False, "clone": True, "design": False, "expression": True, "presets": True,
+            "languageSelect": True,
+        },
         "controls": {"expression": _EXPRESSION, "guidance": _GUIDANCE, "languages": CHATTERBOX_LANGUAGES},
         "licence": {"id": "mit", "name": "MIT", "commercial": "yes", "url": "https://huggingface.co/ResembleAI/chatterbox"},
-        "companions": [_S3_TOKENIZER],
+        "companions": [
+            _S3_TOKENIZER,
+            {
+                # The V3 conversion has no default voice; the V2 8-bit build's conds.safetensors (same voice encoder
+                # and tokenizer) works with V3 weights (P0 spike, 2026-11-09). Only that file is fetched.
+                "repo": "mlx-community/chatterbox-8bit", "revision": "9617d61b596a03d1bed766a28c341680e993a1b9",
+                "files": ["conds.safetensors"], "sizeGb": 0.0, "role": "defaultVoice", "licence": "mit",
+            },
+        ],
         "sampleRate": 24_000,
         "minReferenceS": 3.0,
-        "estimates": None,
+        "estimates": {
+            "basis": "measured",
+            "measuredOn": "Apple M4 Max, 64 GB, 2026-11-09",
+            # scripts/measure-voice-models.py, fresh worker, weights on disk: cold start = first short line minus the same
+            # line warm; seconds per 10 s from the fixed 600-character text in this model's chunks; peak and idle are
+            # the worker's resident memory (psutil RSS) during the long text and 5 s after.
+            # Default voice, English.
+            "coldStartSeconds": 2.9,
+            "secondsPer10sAudio": 3.63,
+            "wallSecondsShortLine": 1.4,
+            "peakGb": 3.67,
+            "idleGb": 3.66,
+        },
     },
     {
         "key": "orpheus-3b",
@@ -315,7 +361,19 @@ VOICE_MODELS: list[dict[str, Any]] = [
         "chunkChars": 250,
         "maxTokens": 2400,
         "minReferenceS": None,
-        "estimates": None,
+        "estimates": {
+            "basis": "measured",
+            "measuredOn": "Apple M4 Max, 64 GB, 2026-11-09",
+            # scripts/measure-voice-models.py, fresh worker, weights on disk: cold start = first short line minus the same
+            # line warm; seconds per 10 s from the fixed 600-character text in this model's chunks; peak and idle are
+            # the worker's resident memory (psutil RSS) during the long text and 5 s after.
+            # Voice tara, 250-character chunks, max_tokens 2400.
+            "coldStartSeconds": 3.6,
+            "secondsPer10sAudio": 7.22,
+            "wallSecondsShortLine": 3.3,
+            "peakGb": 4.19,
+            "idleGb": 4.19,
+        },
     },
 ]
 

@@ -111,7 +111,7 @@ def install_redirect(companions: dict[str, str]) -> None:
 
         AutoTokenizer.from_pretrained = staticmethod(from_pretrained)  # type: ignore[method-assign]
         _patched["tokenizer"] = original_tokenizer
-    except ImportError:  # transformers is in the voice venv; tests may run without it
+    except Exception:  # noqa: BLE001 - transformers is in the voice venv; without it no loader needs the redirect
         pass
     _patched.update(originals)
 
@@ -208,7 +208,10 @@ def chatterbox(model: Any, request: dict[str, Any], decode_audio: Callable[..., 
     saved = getattr(model, "_conds", None)
     try:
         if request.get("refAudioPath"):
-            kwargs["ref_audio"] = decode_audio(str(request["refAudioPath"]), rate)
+            import mlx.core as mx  # type: ignore[import-untyped]
+
+            # This loader needs an mx.array at its own rate (a numpy array fails in expand_dims).
+            kwargs["ref_audio"] = mx.array(decode_audio(str(request["refAudioPath"]), rate))
         elif saved is None:
             if not request.get("defaultVoicePath"):
                 raise ValueError("Chatterbox needs a voice sample here: pick a cloned voice.")

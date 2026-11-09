@@ -19,6 +19,11 @@ import {
   recommendedNaturalModel,
   showInstallCard,
   styleState,
+  defaultLanguage,
+  insertTag,
+  installedDesignModels,
+  sampleTooShort,
+  voiceControls,
 } from "../speakLogic";
 
 const caps = (over: Partial<VoiceEntry["capabilities"]> = {}) => ({ speak: true, style: false, clone: false, design: false, ...over });
@@ -302,5 +307,62 @@ describe("ffmpegBlocked", () => {
     expect(ffmpegBlocked(p, 1, 0)).toBe(false);
     expect(ffmpegBlocked(p, 1.2, 0)).toBe(true);
     expect(ffmpegBlocked(p, 1, -1)).toBe(true);
+  });
+});
+
+describe("wave-2 models: controls drawn from data", () => {
+  const turbo = row({
+    key: "chatterbox-turbo", kind: "turbo", family: "chatterbox-turbo", installed: true,
+    capabilities: caps({ clone: true, tags: true, presets: true }),
+    controls: { tags: ["laugh", "sigh"], styleTags: ["angry", "whispering"] }, minReferenceS: 5,
+  });
+  const mtl = row({
+    key: "chatterbox-mtl", kind: "chatterbox", family: "chatterbox", installed: true,
+    capabilities: caps({ clone: true, expression: true, languageSelect: true }),
+    controls: { languages: ["de", "en", "ja"], expression: { min: 0, max: 1, step: 0.05, default: 0.5 }, guidance: { min: 0, max: 1, step: 0.05, default: 0.5 } },
+  });
+  const vox = row({ key: "voxcpm2", kind: "voxcpm", family: "voxcpm2", installed: true, capabilities: caps({ style: true, clone: true, design: true }) });
+
+  it("shows tag chips, style tags, sliders and languages only for the models that take them", () => {
+    expect(voiceControls(turbo)).toMatchObject({ tags: ["laugh", "sigh"], styleTags: ["angry", "whispering"], languages: [], expression: null });
+    expect(voiceControls(mtl)).toMatchObject({ tags: [], languages: ["de", "en", "ja"] });
+    expect(voiceControls(mtl).expression?.default).toBe(0.5);
+    expect(voiceControls(vox)).toEqual({ tags: [], styleTags: [], languages: [], expression: null, guidance: null });
+    expect(voiceControls(null).tags).toEqual([]);
+  });
+
+  it("starts the language select on the UI language when the model speaks it, else English", () => {
+    expect(defaultLanguage(["de", "en", "ja"], "de-DE")).toBe("de");
+    expect(defaultLanguage(["de", "en", "ja"], "ko")).toBe("en");
+    expect(defaultLanguage(["fr"], "ko")).toBe("fr");
+    expect(defaultLanguage([], "ko")).toBe("auto");
+  });
+
+  it("inserts a tag at the cursor with spaces where needed", () => {
+    expect(insertTag("Hello there", 5, 5, "laugh")).toEqual({ text: "Hello [laugh] there", cursor: 13 });
+    expect(insertTag("Hello ", 6, 6, "sigh")).toEqual({ text: "Hello [sigh]", cursor: 12 });
+    expect(insertTag("", 0, 0, "clear throat")).toEqual({ text: "[clear throat]", cursor: 14 });
+    expect(insertTag("Replace me now", 8, 10, "gasp").text).toBe("Replace [gasp] now");
+  });
+
+  it("explains why a Turbo, Orpheus or Chatterbox voice has no style box, and opens it for a VoxCPM2 clone", () => {
+    expect(styleState(voice({ id: "chatterbox-turbo", family: "chatterbox-turbo", models: ["chatterbox-turbo"] }), [turbo]).reason).toBe("tags");
+    expect(styleState(voice({ id: "orpheus:tara", family: "orpheus", models: ["orpheus-3b"] }), []).reason).toBe("tags");
+    expect(styleState(voice({ id: "chatterbox", family: "chatterbox", models: ["chatterbox-mtl"] }), [mtl]).reason).toBe("expression");
+    const clone = voice({ id: "clone:1", kind: "clone", models: ["voxcpm2", "chatterbox-turbo"] });
+    expect(styleState(clone, [vox, turbo], vox).enabled).toBe(true);
+    expect(styleState(clone, [vox, turbo], turbo)).toMatchObject({ enabled: false, reason: "clone" });
+  });
+
+  it("lets a designed voice pick its model and flags a sample too short for Turbo", () => {
+    const qwenDesign = { ...design, installed: true };
+    const designVoice = voice({ id: "design", kind: "design", models: ["design-1.7b", "voxcpm2"] });
+    expect(chooseModel(designVoice, [qwenDesign, vox])?.key).toBe("design-1.7b");
+    expect(chooseModel(designVoice, [qwenDesign, vox], "voxcpm2")?.key).toBe("voxcpm2");
+    expect(installedDesignModels(designVoice, [qwenDesign, vox]).map((m) => m.key)).toEqual(["design-1.7b", "voxcpm2"]);
+    const clone = voice({ id: "clone:1", kind: "clone", models: ["chatterbox-turbo"], durationS: 4 });
+    expect(sampleTooShort(clone, turbo)).toBe(true);
+    expect(sampleTooShort({ ...clone, durationS: 8 }, turbo)).toBe(false);
+    expect(sampleTooShort(clone, vox)).toBe(false);
   });
 });

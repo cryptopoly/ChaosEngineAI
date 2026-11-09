@@ -451,8 +451,9 @@ class VoiceListTests(unittest.TestCase):
             by_kind.setdefault(v["kind"], []).append(v)
         self.assertEqual(set(by_kind), {"builtin", "preset", "design", "clone"})
         self.assertEqual(len(by_kind["builtin"]), 49)  # 54 Kokoro voices less the five Japanese ones (never on MLX)
-        self.assertEqual(len(by_kind["preset"]), 9)
-        fields = {"id", "name", "kind", "language", "model", "capabilities"}
+        # Nine Qwen3-TTS speakers, Turbo's and Chatterbox's own voices, eight Orpheus voices.
+        self.assertEqual(len(by_kind["preset"]), 9 + 1 + 1 + 8)
+        fields = {"id", "name", "kind", "group", "family", "language", "model", "capabilities"}
         self.assertTrue(all(fields <= set(v) for v in voices))
         self.assertEqual(len({v["id"] for v in voices}), len(voices))
         builtin = by_kind["builtin"][0]
@@ -707,14 +708,14 @@ class RouteTests(unittest.TestCase):
 
     def test_models_route_lists_every_row_with_capabilities(self) -> None:
         body = self.client.get("/api/voice/models").json()
-        self.assertEqual(len(body["models"]), 5)
+        self.assertEqual(len(body["models"]), len(voice_models.listed_models()))
         by_key = {m["key"]: m for m in body["models"]}
         self.assertFalse(by_key["qwen3-tts-custom-0.6b"]["capabilities"]["style"])
         self.assertTrue(by_key["qwen3-tts-custom-1.7b"]["capabilities"]["style"])
         self.assertEqual(by_key["qwen3-tts-design-1.7b"]["kind"], "design")
         self.assertTrue(all(re.fullmatch(r"[0-9a-f]{40}", m["revision"]) for m in body["models"]))
-        # The cloning screen's list is unchanged.
-        self.assertEqual(len(self.client.get("/api/voice/clone/models").json()["models"]), 2)
+        # The cloning screen lists every model that can clone.
+        self.assertEqual(len(self.client.get("/api/voice/clone/models").json()["models"]), len(voice_models.CLONE_MODELS))
 
 
 class DownloadTests(unittest.TestCase):

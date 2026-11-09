@@ -5,8 +5,17 @@ import type { StudioMode } from "../voiceStudioMode";
 import { DESIGN_VOICE_ID, bestNaturalVoice, costLabel } from "./speakLogic";
 import { useVoiceCatalog } from "./useVoiceCatalog";
 
-const CAPS: Array<keyof VoiceCapabilities> = ["speak", "style", "clone", "design"];
-const CAP_LABELS: Record<keyof VoiceCapabilities, string> = { speak: "Speak", style: "Style", clone: "Clone", design: "Design" };
+const CAPS: Array<keyof VoiceCapabilities> = ["speak", "style", "clone", "design", "tags", "expression", "languageSelect"];
+const CAP_LABELS: Record<keyof VoiceCapabilities, string> = {
+  speak: "Speak",
+  style: "Style",
+  clone: "Clone",
+  design: "Design",
+  tags: "Sound tags",
+  presets: "Preset voices",
+  expression: "Expression",
+  languageSelect: "Language choice",
+};
 
 /** Download, memory, speed, cold start and where it was measured; an unmeasured model says so instead of guessing. */
 function CostCells({ model }: { model: VoiceModelRow }) {

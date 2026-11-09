@@ -153,13 +153,43 @@ export interface VoiceLibraryPatch {
   speakers?: Record<string, string>;
 }
 
-/** What a voice's model can do (set by the catalog). */
+/** What a voice's model can do (set by the catalog). The last four are set on model rows only. */
 export interface VoiceCapabilities {
   speak: boolean;
   style: boolean;
   clone: boolean;
   design: boolean;
+  /** The Expression slider (Chatterbox V3). */
+  expression?: boolean;
+  /** Sound tags such as [laugh] in the text (Chatterbox-Turbo, Orpheus). */
+  tags?: boolean;
+  /** Named voices of its own (Orpheus, the Chatterbox default voices). */
+  presets?: boolean;
+  /** The request's language picks the language (Chatterbox V3). */
+  languageSelect?: boolean;
 }
+
+/** A slider's range from the catalog. */
+export interface VoiceSliderRange {
+  min: number;
+  max: number;
+  step: number;
+  default: number;
+}
+
+/** What the Speak screen draws for a model, from data (no per-model code). */
+export interface VoiceModelControls {
+  /** Documented sound tags, inserted as [name]. */
+  tags?: string[];
+  /** Chatterbox-Turbo's style tokens: in its tokenizer, not documented by its authors. */
+  styleTags?: string[];
+  expression?: VoiceSliderRange;
+  guidance?: VoiceSliderRange;
+  /** Language codes the model can be told to speak. */
+  languages?: string[];
+}
+
+export type VoiceFamily = "kokoro" | "qwen3-tts" | "voxcpm2" | "chatterbox" | "chatterbox-turbo" | "orpheus";
 
 export type VoiceEntryKind = "builtin" | "preset" | "design" | "clone";
 
@@ -172,6 +202,12 @@ export interface VoiceEntry {
   languageLabel?: string;
   gender?: "female" | "male" | null;
   about?: string;
+  /** The Speak picker's group. */
+  group?: "quick" | "natural" | "designed" | "cloned";
+  /** The model family that speaks it by default. */
+  family?: VoiceFamily;
+  /** Cloned voices: the voice sample's length, for the per-model minimum. */
+  durationS?: number | null;
   /** Catalog key of the model used by default (``kokoro`` for built-ins). */
   model: string;
   /** Every catalog key that can speak this voice. */
@@ -203,22 +239,32 @@ export interface VoiceModelEstimates {
   idleGb?: number;
 }
 
-/** One row of ``GET /api/voice/models``: a Qwen3-TTS model with its install state. */
+/** One row of ``GET /api/voice/models``: a speech model with its install state. */
 export interface VoiceModelRow {
   key: string;
   name: string;
   summary: string;
   repo: string;
   sizeGb: number;
+  /** Model plus companion repos: what Download fetches. */
+  downloadGb?: number;
   languages: string;
   default: boolean;
-  kind: "base" | "custom" | "design";
+  kind: "base" | "custom" | "design" | "turbo" | "voxcpm" | "chatterbox" | "orpheus";
+  family?: VoiceFamily;
   capabilities: VoiceCapabilities;
+  controls?: VoiceModelControls;
+  /** Output sample rate (48 kHz for VoxCPM2). */
+  sampleRate?: number;
+  /** The shortest voice sample it clones from, in seconds; null for models that do not clone. */
+  minReferenceS?: number | null;
+  /** A watermark the model adds itself ("perth" on the CUDA Chatterbox rows); null otherwise. */
+  builtinWatermark?: string | null;
   /** Null (or missing) when the model has not been measured. */
   estimates?: VoiceModelEstimates | null;
   supported: boolean;
   installed: boolean;
-  licence?: { id: string; name: string; url: string };
+  licence?: { id: string; name: string; url: string; note?: string; baseUrl?: string };
   download: { state: "idle" | "downloading" | "done" | "failed"; error: string | null; phase?: "weights" | "watermark" | null };
 }
 
@@ -231,6 +277,12 @@ export interface SpeakBody {
   pitch?: number;
   seed?: number | null;
   model?: string;
+  /** Language code or "auto" (Chatterbox V3 speaks the chosen one). */
+  language?: string;
+  /** Chatterbox V3: calm (0) to dramatic (1). */
+  expression?: number;
+  /** Chatterbox V3: how closely a voice sample is followed. */
+  guidance?: number;
 }
 
 /** Answer of ``POST /api/voice/speak``. */

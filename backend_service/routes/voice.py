@@ -48,6 +48,13 @@ class SpeakRequest(BaseModel):
     model: str = Field(default="", max_length=64)
     # Required from agents and other computers for cloned voices.
     permissionConfirmed: bool = False
+    # Optional, for the models that use them; the defaults change nothing for other voices (D-70).
+    # A language code or "auto": Chatterbox V3 speaks the chosen one of its 23; Qwen3-TTS takes its ten.
+    language: str = Field(default="auto", max_length=8, pattern=r"^(auto|[a-z]{2,3}(-[A-Za-z]{2,4})?)$")
+    # Chatterbox V3: Expression, calm (0) to dramatic (1).
+    expression: float = Field(default=0.5, ge=0.0, le=1.0)
+    # Chatterbox V3: how closely the voice sample is followed (lower for fast speakers, 0 across languages).
+    guidance: float = Field(default=0.5, ge=0.0, le=1.0)
 
 
 class SettingsRequest(BaseModel):
@@ -342,6 +349,7 @@ def speak(request: Request, body: SpeakRequest) -> dict[str, Any]:
             result = voice_speak.speak(
                 body.text, body.voice, style=body.style, speed=body.speed, pitch=body.pitch, seed=body.seed,
                 model=body.model, origin=origin, permission_confirmed=body.permissionConfirmed,
+                language=body.language, expression=body.expression, guidance=body.guidance,
             )
     except GenerationCancelled as exc:
         raise HTTPException(status_code=499, detail="Speech was cancelled.") from exc
@@ -363,7 +371,8 @@ def list_voices(request: Request) -> dict[str, Any]:
 
 @router.get("/api/voice/models")
 def list_voice_models(request: Request) -> dict[str, Any]:
-    """Every Qwen3-TTS model (speak, style, clone, design) with install state and capabilities."""
+    """Every speech model offered here (Qwen3-TTS and the measured wave-2 rows) with install state, capabilities,
+    controls, per-row licence, companions, sample rate and measured cost."""
     from backend_service import voice_clone  # noqa: PLC0415
 
     return {"models": voice_clone.list_models(every_model=True), "available": voice_clone.available_here()}

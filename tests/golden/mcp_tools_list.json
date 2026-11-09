@@ -273,6 +273,23 @@
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
+        "expression": {
+          "description": "Chatterbox: calm (0) to dramatic (1); default 0.5.",
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "guidance": {
+          "description": "Chatterbox: how closely a voice sample is followed; default 0.5.",
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "language": {
+          "description": "Language code (en, de, ja ...) or auto. Chatterbox voices speak the chosen language.",
+          "maxLength": 8,
+          "type": "string"
+        },
         "pitch": {
           "description": "Semitones; 0 keeps the voice.",
           "maximum": 12,

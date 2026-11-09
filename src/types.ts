@@ -250,6 +250,9 @@ export type {
   VoiceEntry,
   VoiceEntryKind,
   VoiceModelRow,
+  VoiceModelControls,
+  VoiceSliderRange,
+  VoiceFamily,
   SpeakBody,
   SpeakResult,
 } from "./types/voice";

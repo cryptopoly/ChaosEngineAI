@@ -19,7 +19,8 @@ from typing import Any
 
 from backend_service import voice_clone_safety as safety
 from backend_service import voice_env
-from backend_service.catalog.voice_models import CLONE_MODELS, clone_model, listed_models, voice_model
+from backend_service.catalog import voice_models as _catalog
+from backend_service.catalog.voice_models import CLONE_MODELS, clone_model, voice_model
 
 MIN_REFERENCE_S = 3.0
 MAX_REFERENCE_S = 30.0
@@ -118,7 +119,7 @@ def list_models(*, every_model: bool = False) -> list[dict[str, Any]]:
     """The cloning models, or with ``every_model`` every listed speech model (speak, style, clone, design)."""
     lane = voice_env.lane()
     rows = []
-    for row in listed_models() if every_model else CLONE_MODELS:
+    for row in _catalog.listed_models() if every_model else CLONE_MODELS:
         job = _DOWNLOADS.get(row["key"], {})
         rows.append({
             "key": row["key"],
@@ -155,7 +156,7 @@ def list_models(*, every_model: bool = False) -> list[dict[str, Any]]:
 
 def start_download(key: str) -> dict[str, Any]:
     row = voice_model(key)
-    if not row["listed"]:
+    if row["key"] not in {r["key"] for r in _catalog.listed_models()}:
         raise ValueError(f"{row['name']} is not offered on this version yet.")
     if not available_here():
         raise ValueError("Voice cloning runs on Apple Silicon Macs for now.")

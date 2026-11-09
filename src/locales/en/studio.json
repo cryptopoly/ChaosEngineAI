@@ -2408,9 +2408,14 @@
     "stale": "{n} stale"
   },
   "slowRow": {
-    "label": "Slow on this Mac",
-    "measured": "Measured on {machine}, {date}: about {time} for a {size} clip of {frames, plural, one {# frame} other {# frames}}.",
-    "expected": "Expected to be slow on this Mac. Not timed yet.",
+    "label": "Slow on this computer",
+    "reason": {
+      "pytorchAppleGpu": "Runs through PyTorch on the Apple GPU.",
+      "bf16FullSize": "Runs the full-size bf16 weights, which press hard on memory.",
+      "noGpuCpu": "No NVIDIA GPU found, so it runs on the CPU."
+    },
+    "measured": "Measured: about {time} for a {size} clip of {frames, plural, one {# frame} other {# frames}} ({machine}, {date}).",
+    "expected": "Expected to be slow; not timed yet.",
     "alternative": "Faster here: {name}."
   }
 }

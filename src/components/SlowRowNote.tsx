@@ -1,5 +1,5 @@
 /**
- * D-44: "Slow on this Mac" label for a video row, with the measured time (where and when it was timed)
+ * D-44: "Slow on this computer" label for a video row, with the measured time (where and when it was timed)
  * or "Expected to be slow" when there is no measurement, and a pointer to the faster row. The caller
  * decides whether it applies (``slowRowInfo``); this only renders.
  */
@@ -13,22 +13,30 @@ type TFn = (key: string, options: Record<string, unknown>) => string;
 export function useSlowRowText(info: SlowRowInfo, alternativeName: string | null): { label: string; detail: string } {
   const { t } = useTranslation("studio");
   const tf = t as unknown as TFn;
-  const label = tf("slowRow.label", { defaultValue: "Slow on this Mac" });
+  const label = tf("slowRow.label", { defaultValue: "Slow on this computer" });
+  const reason =
+    info.reason === "pytorch-apple-gpu"
+      ? tf("slowRow.reason.pytorchAppleGpu", { defaultValue: "Runs through PyTorch on the Apple GPU." })
+      : info.reason === "bf16-full-size"
+        ? tf("slowRow.reason.bf16FullSize", { defaultValue: "Runs the full-size bf16 weights, which press hard on memory." })
+        : info.reason === "no-gpu-cpu"
+          ? tf("slowRow.reason.noGpuCpu", { defaultValue: "No NVIDIA GPU found, so it runs on the CPU." })
+          : "";
   const basis =
     info.kind === "measured" && info.seconds != null
       ? tf("slowRow.measured", {
-          defaultValue: "Measured on {machine}, {date}: about {time} for a {size} clip of {frames, plural, one {# frame} other {# frames}}.",
+          defaultValue: "Measured: about {time} for a {size} clip of {frames, plural, one {# frame} other {# frames}} ({machine}, {date}).",
           machine: info.measuredOn ?? "",
           date: info.measuredDate ?? "",
           time: formatDuration(tf, info.seconds),
           size: info.size ?? "",
           frames: info.frames ?? 0,
         })
-      : tf("slowRow.expected", { defaultValue: "Expected to be slow on this Mac. Not timed yet." });
+      : tf("slowRow.expected", { defaultValue: "Expected to be slow; not timed yet." });
   const alternative = alternativeName
     ? tf("slowRow.alternative", { defaultValue: "Faster here: {name}.", name: alternativeName })
     : "";
-  return { label, detail: [basis, alternative].filter(Boolean).join(" ") };
+  return { label, detail: [reason, basis, alternative].filter(Boolean).join(" ") };
 }
 
 /** Small badge for a Models list row; the full sentence is its tooltip. */

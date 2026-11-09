@@ -21,7 +21,7 @@ import type { TabRequest } from "../../constants/tabRedirects";
 import { IconActionButton, StatusIcon } from "../../components/ModelActionIcons";
 import { InstallLogPanel } from "../../components/InstallLogPanel";
 import { SlowRowChip, SlowRowNote } from "../../components/SlowRowNote";
-import { slowRowInfo } from "../../utils/slowRows";
+import { slowAlternativeName as slowAlternativeNameFor, slowRowInfo } from "../../utils/slowRows";
 import {
   AcceleratorPills,
   ModelCard,
@@ -267,10 +267,7 @@ export function VideoModelsPage({
     [catalog, latest, hostSystem, loadedVideoVariantId, longLiveReady],
   );
   const familyById = useMemo(() => new Map(catalog.map((family) => [family.id, family])), [catalog]);
-  const nameById = useMemo(
-    () => new Map(catalog.flatMap((family) => family.variants.map((variant) => [variant.id, variant.name] as const))),
-    [catalog],
-  );
+  const catalogVariants = useMemo(() => catalog.flatMap((family) => family.variants), [catalog]);
   const repoUsers = useMemo(() => buildVideoRepoUsers(entries), [entries]);
 
   // R25: probe the LongLive runtime once per visit when a LongLive row can
@@ -375,7 +372,7 @@ export function VideoModelsPage({
     const longLiveInstalling = entry.longLive && status.state === "downloading";
 
     const slow = slowRowInfo(variant, hostSystem);
-    const slowAlternativeName = slow?.alternativeId ? nameById.get(slow.alternativeId) ?? null : null;
+    const slowAlternativeName = slowAlternativeNameFor(slow, catalogVariants, hostSystem);
 
     const badges = (
       <>

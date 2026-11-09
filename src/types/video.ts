@@ -101,8 +101,8 @@ export interface VideoModelVariant {
    * — typically pointing a "dev" variant at its "distilled" sibling so
    * the same prompt + seed renders in a fraction of the time. */
   fastPreviewSiblingId?: string | null;
-  /** D-44: set on rows that are slow on some platform (catalog field). The UI shows a note only on a listed platform. */
-  slowOn?: VideoSlowOn | null;
+  /** D-44: one entry per kind of machine the row is slow on (catalog field). The UI shows a note only when this machine matches an entry. */
+  slowOn?: VideoSlowOn[] | null;
   fit?: ModelFit;
   /** Settings that work best for this model on this machine (Studio panel). */
   recommendedSettings?: RecommendedSettings | null;
@@ -119,9 +119,11 @@ export interface VideoModelVariant {
 }
 
 export interface VideoSlowOn {
-  /** Platforms the row was found slow on; today only "apple-silicon". */
-  platforms: string[];
+  /** Kind of machine this entry is about: "apple-mps", "cpu-only" or "cuda". */
+  platform: string;
   basis: "measured" | "expected";
+  /** Reason key: "pytorch-apple-gpu", "bf16-full-size" or "no-gpu-cpu". */
+  reason?: string | null;
   /** Measured wall time; absent when ``basis`` is "expected". */
   seconds?: number | null;
   /** Where and when it was timed, e.g. "M4 Max, 64 GB" and "2026-10-21". */

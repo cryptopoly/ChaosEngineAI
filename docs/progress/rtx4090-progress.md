@@ -241,3 +241,21 @@ Driver 591.86; voice venv torch 2.9.1+cu128 (speech-GPU add-on); NumPy 2.5.4; ch
 **Two more Windows/CUDA cloning bugs fixed on the way** (cloning had never run on the CUDA lane):
 - m4a/AAC samples failed with audioread's `NoBackendError`: chatterbox-tts and voxcpm read the sample with librosa/soundfile, which cannot decode AAC on Windows (the Mac has CoreAudio). `voice_worker_torch.readable_audio` decodes non-WAV/FLAC samples once with PyAV to a 24 kHz WAV, as the MLX path already does.
 - every cloned Turbo voice then failed with `expected scalar type Float but found Double`: chatterbox-tts 0.1.7's `norm_loudness` multiplies by pyloudnorm's `numpy.float64`, and under NumPy 2's promotion rules the sample becomes float64. `keep_float32_loudness` casts it back after load.
+
+## 6. Text models on CUDA
+
+Model: `nvidia/NVIDIA-Nemotron-3.5-Bolt-E4B-4GB` (Q4_K_M, 6.2 GB) downloaded through the app; its pinned DFlash drafter (`…-DFlash-BF16.gguf`, 0.74 GB) arrived with it. llama.cpp b11981 Windows builds fetched from the pinned GitHub release (with your OK) into `~/.chaosengine/test-llama-b11981/{cuda,vulkan}`: `--list-devices` shows **CUDA0: NVIDIA GeForce RTX 4090** and **Vulkan0: NVIDIA GeForce RTX 4090**. Each server was launched with the app's own flags (`--parallel 1 --ctx-size 8192 --jinja --flash-attn on`, f16 cache, `--reasoning off`, `--fit on`; drafter: `--model-draft … --spec-type draft-dflash --spec-draft-n-max 15`); one warm-up, then 3 greedy runs of 400 tokens of Python, llama.cpp's own timings.
+
+| Build | Decode tok/s | + DFlash drafter | Prefill (~5K-token prompt) | Load | VRAM |
+|---|---|---|---|---|---|
+| CUDA 13.4, b11981 | **169.7** (169.3–170.0) | **331.9** (2.0×, 43 % of drafts accepted) | **13,463 tok/s** | 2.5 s | +3.8 GB (+5.6 with drafter) |
+| Vulkan, b11981 (what the Windows bundle ships) | **169.6** | 92.8 → 271.8 → 311.8 (still warming up), 53 % accepted | 10,999 tok/s | 10.6 s (3.0 s second start) | +3.5 GB |
+| CPU build 9189 in `~/.chaosengine/bin` (what this from-source backend resolves today) | **21.6** | — | 177 tok/s (short prompt) | 3.5 s | none |
+
+Verdict: on this 4B-class model Vulkan decodes as fast as CUDA; CUDA wins on prefill (+22 %), model load (4× faster cold) and steadier speculative decoding. The real problem on this PC is the stale CPU-only `llama-server.exe` (build 9189) in `~/.chaosengine/bin`, which a from-source backend picks up first: chat and Orpheus run **8× slower** on it, with no GPU use. Packaged builds use the bundled Vulkan binary and are not affected. Same outputs on every build (greedy).
+
+| Item | Result | Evidence |
+|---|---|---|
+| llama.cpp with CUDA: load a GGUF, chat, tokens/s | PASS (outside the app) | Table above. In-app CUDA lane does not exist on Windows (`llama-cuda-status` → `supported:false`; installer is Linux-only). |
+| vLLM lane | SKIP | No native Windows vLLM (WSL2 only, per D-66 that is a later pass). |
+| `cache-strategy-matrix.py --quick` | _pending_ | Needs the backend pointed at a GPU llama-server. |

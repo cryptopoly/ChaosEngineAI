@@ -1,13 +1,22 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 73 rows with work, decisions or watch items still open, newest first.
+summary: 74 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-156 · Any voice in Chat and calls (D-67 W6, D-72): what was not done or not checked — Open (2026-11-09): W6 built on feat/voice-w6</summary>
+
+**Status or trigger:** **Open (2026-11-09): W6 built on `feat/voice-w6`; tests and a worker-only measurement, no real call.**
+
+**Notes:** Built: `speak/stream` plans through `voice_speak` per sentence (`voice_chat.py`), `ttsVoice` / new `callVoice` validated against `list_voices`, cloned voices read-aloud only (watermark, AI tag, audit; not saved), Kokoro fallback with a note, per-voice chat cost in the pickers. Left: (1) a saved designed voice as chat voice waits for W8 (FU-141; bare "Describe a voice" is refused); (2) the owner's real call on the M4 Max with a chat model loaded: listen to each voice, barge-in feel with a 1.3 s first sentence, memory of chat model plus the 1.7B worker; (3) chat numbers for Chatterbox V3 and Orpheus (`--chat --rows chatterbox-mtl orpheus-3b`; their pickers show no time until then); (4) the fallback note text comes from the backend in English; (5) Windows and Linux (Kokoro only there today) not run.
+
+</details>
 
 <details>
 <summary>FU-155 · Speech GPU add-on and CUDA speech rows: run them on the RTX 4090 — Open (2026-11-09): written on a Mac, never run.</summary>

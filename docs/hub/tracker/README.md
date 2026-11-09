@@ -8,13 +8,14 @@ summary: Every FU row from FOLLOW_UPS.md, split into open and closed.
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here.
 
-- [Open and live follow-ups](open.md): **73** rows.
+- [Open and live follow-ups](open.md): **74** rows.
 - [Closed follow-ups](closed.md): **80** rows.
 
 ## Newest ten
 
 | Row | Item | Status |
 |---|---|---|
+| [FU-156](open.md) | Any voice in Chat and calls (D-67 W6, D-72): what was not done or not checked | Open (2026-11-09): W6 built on feat/voice-w6 |
 | [FU-155](open.md) | Speech GPU add-on and CUDA speech rows: run them on the RTX 4090 | Open (2026-11-09): written on a Mac, never run. |
 | [FU-154](open.md) | Default cloning model: VoxCPM2 or Qwen3-TTS 0.6B Base (owner listening check) | Open (2026-11-09): waiting for the owner's ears (D-70 answer 2). |
 | [FU-153](open.md) | Chat waits for long jobs, times on messages and tools, job progress with time left | Built 2026-11-09 on feat/chat-time-progress (from release/v0.10.0) |
@@ -24,4 +25,3 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 | [FU-149](open.md) | Better speech models than Kokoro and Qwen3-TTS presets | Mac rows shipped 2026-11-09 on feat/voice-models-wave2 (D-70 P0 to P5) |
 | [FU-148](closed.md) | Qwen3-TTS 0.6B models: keep or hide | Dropped (owner 2026-11-08): the only saving is disk space, which few users will lack |
 | [FU-147](open.md) | Size caps: useChat.ts and generation.py | Open (2026-11-08): not started |
-| [FU-146](closed.md) | Play a sample of cloned and designed voices | Shipped 2026-11-08 (D-67 W5, feat/voice-ux-b). |

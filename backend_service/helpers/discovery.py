@@ -105,6 +105,12 @@ def _path_size_bytes(path: Path, *, seen: set[tuple[int, int]] | None = None) ->
             for entry in entries:
                 try:
                     entry_stat = entry.stat(follow_symlinks=True)
+                    if not entry_stat.st_ino and not entry.is_symlink():
+                        # Windows: scandir's cached stat has st_ino/st_dev of 0 for plain files, while a
+                        # followed symlink gets the real ids. A Hugging Face blob and the snapshot link to it
+                        # then never matched, and every cached model was counted twice (RTX 4090 run:
+                        # 3.24 GB for 1.62 GB of Whisper). os.stat() fills the ids in.
+                        entry_stat = os.stat(entry.path)
                 except OSError:
                     continue
                 try:

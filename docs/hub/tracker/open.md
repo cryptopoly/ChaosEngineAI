@@ -1,13 +1,31 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 74 rows with work, decisions or watch items still open, newest first.
+summary: 76 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-158 · Speech GPU add-on as a tick box on Windows and Linux (D-73 M4) — Open (2026-11-09): wired, never run</summary>
+
+**Status or trigger:** **Open (2026-11-09): wired, never run.** Trigger: the RTX 4090 session (FU-155).
+
+**Notes:** The runtime panel lists the speech GPU add-on as a tick box when the backend offers it; unticking runs `pip uninstall` of torch, torchaudio, torchcodec, chatterbox-tts, voxcpm, diffusers, s3tokenizer, resemble-perth and conformer (`voice_runtime_disk._SPEECH_GPU_REMOVE`). Check that nothing the base runtime needs goes with them, that the tick installs through `start_install(['speech-gpu'])`, and the label and size on the panel.
+
+</details>
+
+<details>
+<summary>FU-157 · Voice makeover (D-73): what was deferred or not checked — Open (2026-11-09): built on feat/voice-makeover, mocked UI and throwaway-cache tests only.</summary>
+
+**Status or trigger:** **Open (2026-11-09): built on `feat/voice-makeover`, mocked UI and throwaway-cache tests only.**
+
+**Notes:** Built: delete for dictation and speech models (companions kept when shared, watermark kept while a cloning model remains, refused while voice is busy or a speech model downloads), add-on ticks with removal, Remove voice runtime, runtime parts and In memory now, speech models on the shared Models table with Fit and Kokoro as the first row, Speak voice row and picker drawer, Voices main-voices strip and Use for menu, Chat Voice popover, Library voice-kind filter, copy. Not done: **Cancel** for a speech-model download (no backend cancel; the row shows Downloading), the mock-up's "Show N sizes" collapse of a family (family headings only), the Library and Models page titles still repeat the panel title (only Voice Studio's header was compacted). Not checked: a real delete on the owner's downloaded models and Hugging Face cache, Remove voice runtime and add-on removal on a real venv (pip uninstall of misaki's `zh` requirements), Windows and Linux, and listening.
+
+</details>
 
 <details>
 <summary>FU-156 · Any voice in Chat and calls (D-67 W6, D-72): what was not done or not checked — Open (2026-11-09): W6 built on feat/voice-w6</summary>

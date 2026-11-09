@@ -2,6 +2,8 @@
 
 Companion to [review.md](review.md) (findings, answers) and [mockups.html](mockups.html) (screens). Designed for the state after W6 (D-72). Build only after the owner picks from this plan.
 
+**Status (2026-11-09):** owner took the review's defaults on all six questions. Built on `feat/voice-makeover` (from `release/v0.10.0`): **M1, M2, M3b (replaces M3), M4, M5, S1, S2, S3, S4, L1, D1 done**; finished screens in [after/](after/) (`d-` desktop, `m-` 375 px), progress in `docs/progress/voice-makeover-progress.md`. Deferred: download Cancel for speech models and the family "Show N sizes" collapse (FU-157); the speech GPU add-on tick box is wired but never run on Windows or Linux (FU-158).
+
 ## 1. Target information architecture
 
 Three sidebar children, same order as Images, Video and Music. One rule for where things live: **a model is on Models, a voice is on Voices, a setting sits next to the thing it changes.**

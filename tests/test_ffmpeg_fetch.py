@@ -214,6 +214,20 @@ class Extract(InstallBase):
             with self.assertRaisesRegex(install.FetchError, "unsafe path"):
                 install.extract_members(archive, self.pin_for(archive), self.dir / "out")
 
+    def test_drive_letter_member_is_rejected(self):
+        archive = self.dir / "d.zip"
+        make_zip(archive, {"C:/x/bin/ffmpeg": b"x"})
+        with self.assertRaisesRegex(install.FetchError, "unsafe path"):
+            install.extract_members(archive, self.pin_for(archive), self.dir / "out")
+
+    def test_backslash_member_is_rejected_as_windows_reads_it(self):
+        # On Windows the zip reader turns "\\" into "/" in ``filename``; the check must use the stored name.
+        archive = self.dir / "w.zip"
+        make_zip(archive, {"x\\bin\\ffmpeg": b"x"})
+        with mock.patch.object(zipfile.os, "sep", "\\"):
+            with self.assertRaisesRegex(install.FetchError, "unsafe path"):
+                install.extract_members(archive, self.pin_for(archive), self.dir / "out")
+
     def test_tar_link_member_is_rejected(self):
         archive = self.dir / "l.tar.xz"
         with tarfile.open(archive, "w:xz") as tf:

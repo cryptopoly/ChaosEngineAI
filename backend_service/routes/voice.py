@@ -152,6 +152,10 @@ def voice_runtime(request: Request) -> dict[str, Any]:
     caps["sttModels"] = list_stt_models()
     caps["ttsVoices"] = list_tts_voices()
     caps["settings"] = load_settings()
+    from backend_service import voice_runtime_disk  # noqa: PLC0415
+
+    caps["parts"] = voice_runtime_disk.pack_parts()
+    caps["inMemory"] = voice_runtime_disk.in_memory()
     return caps
 
 
@@ -473,12 +477,14 @@ def _library_id(item_id: str) -> str:
 
 
 @router.get("/api/voice/library")
-def list_library(request: Request, q: str = "", kind: str = "") -> dict[str, Any]:
-    from backend_service.voice_library import KINDS, list_items  # noqa: PLC0415
+def list_library(request: Request, q: str = "", kind: str = "", voiceKind: str = "") -> dict[str, Any]:
+    from backend_service.voice_library import KINDS, VOICE_KINDS, list_items  # noqa: PLC0415
 
     if kind and kind not in KINDS:
         raise HTTPException(status_code=400, detail="Unknown kind.")
-    return {"items": list_items(q[:200], kind)}
+    if voiceKind and voiceKind not in VOICE_KINDS:
+        raise HTTPException(status_code=400, detail="Unknown voice kind.")
+    return {"items": list_items(q[:200], kind, voiceKind)}
 
 
 @router.post("/api/voice/library/speech")
@@ -607,3 +613,7 @@ def _mp3_response(source: Path) -> Response:
 from backend_service.routes.voice_clone import router as _clone_router  # noqa: E402
 
 router.include_router(_clone_router)
+# Deleting models, add-ons and the runtime (D-73).
+from backend_service.routes.voice_files import router as _files_router  # noqa: E402
+
+router.include_router(_files_router)

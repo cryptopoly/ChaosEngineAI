@@ -44,6 +44,9 @@ class VoiceWorker:
         self._last_used = 0.0
         self.idle_minutes = 10.0
         self._log_path = voice_env.VOICE_DATA_DIR / log_name
+        # What the worker last loaded, per lane ("stt", "tts"): the ``source`` the request named (a repo id, a
+        # snapshot folder or the Kokoro folder). Shown as "In memory now" and checked before a model is deleted.
+        self.loaded: dict[str, str] = {}
         threading.Thread(target=self._idle_watch, daemon=True).start()
 
     # -- lifecycle -----------------------------------------------------
@@ -95,6 +98,7 @@ class VoiceWorker:
 
     def _kill(self) -> None:
         process, self._process = self._process, None
+        self.loaded = {}
         if process is None:
             return
         try:
@@ -169,7 +173,18 @@ class VoiceWorker:
                 self._last_used = time.monotonic()
                 if not reply.get("ok"):
                     raise VoiceWorkerError(str(reply.get("error") or "Voice request failed."))
+                lane = {"transcribe": "stt", "synthesize": "tts"}.get(cmd)
+                if lane and payload.get("source"):
+                    self.loaded[lane] = str(payload["source"])
+                elif cmd == "unload":
+                    what = payload.get("what") or "all"
+                    self.loaded = {} if what == "all" else {k: v for k, v in self.loaded.items() if k != what}
                 return reply
+
+    @property
+    def busy(self) -> bool:
+        """A request is being answered right now (a sentence, a transcript, a model load)."""
+        return self._lock.locked()
 
 
 _WORKER: VoiceWorker | None = None
@@ -212,3 +227,21 @@ def interrupt_all() -> None:
 
 def worker_pid() -> int | None:
     return _WORKER.pid if _WORKER is not None else None
+
+
+def worker_busy() -> bool:
+    """The speech worker is answering a request (read-aloud, a call turn, Speak, a transcript)."""
+    return _WORKER is not None and _WORKER.busy
+
+
+def loaded_sources() -> dict[str, str]:
+    """``{"stt": source, "tts": source}`` of the models the running worker holds; empty when it is not running."""
+    if _WORKER is None or _WORKER.pid is None:
+        return {}
+    return dict(_WORKER.loaded)
+
+
+def stop_speech_worker() -> None:
+    """Stop the main worker (not the small turn-detection one), freeing every model it holds."""
+    if _WORKER is not None:
+        _WORKER.stop()

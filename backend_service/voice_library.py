@@ -31,6 +31,9 @@ AUDIO_EXTENSIONS = {
     ".mp4", ".mov", ".mkv", ".m4v", ".aiff", ".aif", ".caf",
 }
 KINDS = ("transcript", "speech", "clone")
+# The voice a speech item was made with, for the Library's voice filter (D-73 L1).
+VOICE_KINDS = ("builtin", "preset", "design", "clone")
+_QUICK_VOICE_ID = re.compile(r"^[a-z]{2}_[a-z]+$")
 _EDITABLE = ("title", "text", "segments", "speakers")
 _PREVIEW_CHARS = 300
 _LOCK = threading.Lock()
@@ -167,8 +170,20 @@ def _summary(meta: dict[str, Any]) -> dict[str, Any]:
     return summary
 
 
-def list_items(query: str = "", kind: str = "") -> list[dict[str, Any]]:
-    """Summaries, newest first; ``query`` matches title and text, case-insensitive."""
+def voice_kind_of(meta: dict[str, Any]) -> str | None:
+    """A speech item's voice kind; older items (before ``voiceKind`` was saved) from the clone flag or a quick-voice id."""
+    if meta.get("kind") != "speech":
+        return None
+    if meta.get("voiceKind") in VOICE_KINDS:
+        return str(meta["voiceKind"])
+    if meta.get("clonedVoice") or str(meta.get("voice") or "").startswith("clone:"):
+        return "clone"
+    return "builtin" if _QUICK_VOICE_ID.match(str(meta.get("voice") or "")) else None
+
+
+def list_items(query: str = "", kind: str = "", voice_kind: str = "") -> list[dict[str, Any]]:
+    """Summaries, newest first; ``query`` matches title and text, case-insensitive; ``voice_kind`` keeps speech made
+    with that kind of voice (transcripts drop out)."""
     _migrate_gallery()
     needle = query.strip().lower()
     items = []
@@ -182,6 +197,8 @@ def list_items(query: str = "", kind: str = "") -> list[dict[str, Any]]:
         if not kind and meta.get("kind") == "clone":
             continue
         if needle and needle not in f"{meta.get('title', '')}\n{meta.get('text', '')}".lower():
+            continue
+        if voice_kind and voice_kind_of(meta) != voice_kind:
             continue
         items.append(_summary(meta))
     items.sort(key=lambda m: m.get("createdAt", 0), reverse=True)

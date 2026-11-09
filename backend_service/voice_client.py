@@ -26,6 +26,26 @@ from backend_service import voice_env
 
 _WORKER_SCRIPT = Path(__file__).with_name("voice_worker.py")
 _READY_TIMEOUT_S = 120.0
+# How long a worker whose stdin was closed gets to finish its request loop and run its atexit cleanup.
+_GRACEFUL_EXIT_S = 5.0
+
+
+def _end_children(pid: int) -> None:
+    """End a worker's own child processes (Orpheus's llama-server) before the worker is killed: Windows does not
+    take a killed process's children with it."""
+    try:
+        import psutil  # noqa: PLC0415 - in the backend's base install
+    except ImportError:
+        return
+    try:
+        children = psutil.Process(pid).children(recursive=True)
+    except psutil.Error:
+        return
+    for child in children:
+        try:
+            child.kill()
+        except psutil.Error:
+            pass
 # Put on the line queue when the worker's stdout closes, so a dead worker is told
 # apart from a slow one even before the OS has reaped it (Windows lags here).
 _CLOSED: dict[str, Any] = {}
@@ -104,9 +124,17 @@ class VoiceWorker:
         try:
             if process.stdin:
                 process.stdin.close()
-            process.terminate()
-            process.wait(timeout=5)
+            # Closing stdin ends the worker's request loop; let it exit on its own so its atexit handlers run
+            # (the Orpheus GGUF lane stops its llama-server there). terminate() on Windows is TerminateProcess,
+            # which skips them and left llama-server running after Stop (RTX 4090 run).
+            try:
+                process.wait(timeout=_GRACEFUL_EXIT_S)
+            except subprocess.TimeoutExpired:
+                _end_children(process.pid)
+                process.terminate()
+                process.wait(timeout=5)
         except Exception:  # noqa: BLE001 - kill whatever is left
+            _end_children(process.pid)
             process.kill()
             try:
                 process.wait(timeout=5)

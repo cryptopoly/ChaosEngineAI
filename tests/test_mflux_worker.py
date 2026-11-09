@@ -161,6 +161,24 @@ class ProtocolTests(_WorkerCase):
         self.assertFalse(reply["warm"])
 
 
+    def test_a_crash_restarts_cleanly_when_closing_the_dead_pipe_fails(self) -> None:
+        # Windows: closing the stdout pipe of a crashed worker while the reader thread is on it can raise
+        # OSError 22. The next request must still restart the worker, not surface the raw error.
+        with self.assertRaises(wwc.WarmWorkerError):
+            self._generate("crash")
+        dead = self.worker._process
+        if dead is not None and dead.stdout is not None:
+            real_close = dead.stdout.close
+
+            def failing_close() -> None:
+                real_close()
+                raise OSError(22, "Invalid argument")
+
+            dead.stdout.close = failing_close  # type: ignore[method-assign]
+        reply, _ = self._generate("a cat", 4)
+        self.assertFalse(reply["warm"])
+
+
 class PolicyTests(_WorkerCase):
     def test_another_heavy_kind_stops_an_idle_worker(self) -> None:
         self._generate("a cat")

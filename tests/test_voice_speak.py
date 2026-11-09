@@ -56,6 +56,8 @@ class Machine:
         self.patches = [
             mock.patch.object(voice_clone, "available_here", return_value=True),
             mock.patch.object(voice_env, "is_installed", return_value=True),
+            # The Kokoro quick voices installed too (an optional add-on since D-75).
+            mock.patch.object(voice_env, "kokoro_installed", return_value=True),
         ]
         for patch in self.patches:
             patch.start()

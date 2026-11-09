@@ -27,22 +27,21 @@ _lock = threading.Lock()
 _status: dict[str, Any] = {"state": "idle", "progress": 0.0, "error": None}
 
 
-def kokoro_dir() -> Path:
-    """``voice_env.kokoro_onnx_dir()``, created for a download."""
-    path = _folder()
-    path.mkdir(parents=True, exist_ok=True)
-    return path
-
-
-def _folder() -> Path:
+def kokoro_dir(create: bool = True) -> Path:
+    """``voice_env.kokoro_onnx_dir()`` (one place for the folder, so removing Kokoro deletes what was downloaded),
+    created for a download."""
     from backend_service import voice_env  # noqa: PLC0415
 
-    return voice_env.kokoro_onnx_dir()
+    path = voice_env.kokoro_onnx_dir()
+    if create:
+        path.mkdir(parents=True, exist_ok=True)
+    return path
 
 
 def is_installed() -> bool:
     # No mkdir: asking whether Kokoro is installed must not create its folder (D-75: it can be removed).
-    return all((_folder() / name).is_file() for name, _url in _FILES)
+    folder = kokoro_dir(create=False)
+    return all((folder / name).is_file() for name, _url in _FILES)
 
 
 def download_status() -> dict[str, Any]:

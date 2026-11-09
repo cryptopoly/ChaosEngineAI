@@ -2406,5 +2406,16 @@
     "makeTimed": "不足分 {n} 件を作る · 約 {time}",
     "needStills": null,
     "stale": "{n} 件が古い"
+  },
+  "slowRow": {
+    "label": null,
+    "reason": {
+      "pytorchAppleGpu": null,
+      "bf16FullSize": null,
+      "noGpuCpu": null
+    },
+    "measured": null,
+    "expected": null,
+    "alternative": null
   }
 }

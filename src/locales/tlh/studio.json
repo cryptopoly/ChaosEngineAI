@@ -2406,5 +2406,16 @@
     "makeTimed": "Hutlhbogh {n} tIchenmoH · {time} loQ",
     "needStills": "{n, plural, other {Qu' poQ # 'ay''}}: {stills, plural, other {mIllogh ghaj 'ej mIllogh vIH poQ #}}",
     "stale": "{n} ngo'"
+  },
+  "slowRow": {
+    "label": null,
+    "reason": {
+      "pytorchAppleGpu": null,
+      "bf16FullSize": null,
+      "noGpuCpu": null
+    },
+    "measured": null,
+    "expected": null,
+    "alternative": null
   }
 }

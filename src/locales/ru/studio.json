@@ -2406,5 +2406,16 @@
     "makeTimed": "Сделать недостающие ({n}) · около {time}",
     "needStills": null,
     "stale": "устарело: {n}"
+  },
+  "slowRow": {
+    "label": null,
+    "reason": {
+      "pytorchAppleGpu": null,
+      "bf16FullSize": null,
+      "noGpuCpu": null
+    },
+    "measured": null,
+    "expected": null,
+    "alternative": null
   }
 }

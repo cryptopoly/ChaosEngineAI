@@ -2406,5 +2406,16 @@
     "makeTimed": "빠진 {n}개 만들기 · 약 {time}",
     "needStills": null,
     "stale": "{n}개 오래됨"
+  },
+  "slowRow": {
+    "label": null,
+    "reason": {
+      "pytorchAppleGpu": null,
+      "bf16FullSize": null,
+      "noGpuCpu": null
+    },
+    "measured": null,
+    "expected": null,
+    "alternative": null
   }
 }

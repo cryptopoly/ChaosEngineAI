@@ -2406,5 +2406,16 @@
     "makeTimed": "Criar {n} faltando · cerca de {time}",
     "needStills": null,
     "stale": "{n} desatualizadas"
+  },
+  "slowRow": {
+    "label": null,
+    "reason": {
+      "pytorchAppleGpu": null,
+      "bf16FullSize": null,
+      "noGpuCpu": null
+    },
+    "measured": null,
+    "expected": null,
+    "alternative": null
   }
 }

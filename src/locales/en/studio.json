@@ -2406,5 +2406,16 @@
     "makeTimed": "Make {n} missing · about {time}",
     "needStills": "{n, plural, one {# shot needs work} other {# shots need work}}: {stills, plural, one {# has a still and needs its clip} other {# have a still and need their clip}}",
     "stale": "{n} stale"
+  },
+  "slowRow": {
+    "label": "Slow on this computer",
+    "reason": {
+      "pytorchAppleGpu": "Runs through PyTorch on the Apple GPU.",
+      "bf16FullSize": "Runs the full-size bf16 weights, which press hard on memory.",
+      "noGpuCpu": "No NVIDIA GPU found, so it runs on the CPU."
+    },
+    "measured": "Measured: about {time} for a {size} clip of {frames, plural, one {# frame} other {# frames}} ({machine}, {date}).",
+    "expected": "Expected to be slow; not timed yet.",
+    "alternative": "Faster here: {name}."
   }
 }

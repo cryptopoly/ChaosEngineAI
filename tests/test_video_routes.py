@@ -162,6 +162,59 @@ class VideoCatalogRouteTests(unittest.TestCase):
         for expected in ("ltx-video", "wan-2-1", "wan-2-2", "hunyuan-video", "mochi-1"):
             self.assertIn(expected, family_ids, f"expected {expected} in video catalog")
 
+    def test_catalog_slow_on_labels_reach_the_payload(self):
+        """D-44: slow rows carry an explicit per-platform slowOn list; nothing is hidden or resized."""
+        payload = self.client.get("/api/video/catalog").json()
+        rows = {v["id"]: v for f in payload["families"] for v in f["variants"]}
+
+        def entry(variant_id: str, platform: str):
+            found = [e for e in rows[variant_id].get("slowOn", []) if e["platform"] == platform]
+            return found[0] if found else None
+
+        measured = entry("prince-canuma/LTX-2.3-distilled", "apple-mps")
+        self.assertEqual(measured["basis"], "measured")
+        self.assertEqual(measured["seconds"], 1130.0)
+        self.assertEqual(measured["measuredOn"], "M4 Max, 64 GB")
+        self.assertEqual(measured["measuredDate"], "2026-10-21")
+        self.assertEqual((measured["size"], measured["frames"]), ("768x512", 33))
+        self.assertEqual(measured["reason"], "bf16-full-size")
+        # Wan: expected on Apple GPU and on CPU-only, never labelled for CUDA, no invented number.
+        for variant_id in ("Wan-AI/Wan2.1-T2V-1.3B-Diffusers", "Wan-AI/Wan2.2-T2V-A14B-Diffusers"):
+            for platform in ("apple-mps", "cpu-only"):
+                slow = entry(variant_id, platform)
+                self.assertEqual(slow["basis"], "expected", (variant_id, platform))
+                self.assertNotIn("seconds", slow)
+            self.assertIsNone(entry(variant_id, "cuda"))
+        self.assertEqual(entry("Wan-AI/Wan2.1-T2V-1.3B-Diffusers", "apple-mps")["reason"], "pytorch-apple-gpu")
+        self.assertEqual(entry("Wan-AI/Wan2.1-T2V-1.3B-Diffusers", "cpu-only")["reason"], "no-gpu-cpu")
+        self.assertIsNotNone(entry("prince-canuma/LTX-2-dev", "apple-mps"))
+        # Every diffusers row is expected to be slow on a CPU-only machine.
+        for variant_id, variant in rows.items():
+            if "diffusers" in variant["runtime"]:
+                self.assertEqual(entry(variant_id, "cpu-only")["basis"], "expected", variant_id)
+        by_id = rows
+        for variant_id, variant in rows.items():
+            platforms = [e["platform"] for e in variant.get("slowOn", [])]
+            self.assertEqual(len(platforms), len(set(platforms)), variant_id)
+            for slow in variant.get("slowOn", []):
+                self.assertIn(slow["platform"], {"apple-mps", "cpu-only", "cuda"}, variant_id)
+                self.assertIn(slow["reason"], {"pytorch-apple-gpu", "bf16-full-size", "no-gpu-cpu"}, variant_id)
+                alternative = slow.get("alternativeId")
+                if slow["platform"] == "cpu-only":
+                    self.assertIsNone(alternative, "no row is fast on a CPU-only machine")
+                elif alternative:
+                    # The suggested row must run on that kind of machine: the LTX MLX rows are Mac-only.
+                    self.assertIn(alternative, by_id, variant_id)
+                    self.assertIn("ltx-2-mlx", by_id[alternative]["runtime"])
+                if slow["basis"] == "measured":
+                    for key in ("seconds", "measuredOn", "measuredDate", "size", "frames"):
+                        self.assertTrue(slow.get(key), f"{variant_id} measured entry needs {key}")
+                else:
+                    self.assertNotIn("seconds", slow, variant_id)
+        # The fast MLX rows carry no label.
+        for variant_id in ("dgrauet/ltx-2.5-mlx-q4", "dgrauet/ltx-2.3-mlx-q4"):
+            self.assertNotIn("slowOn", rows[variant_id])
+
     def test_catalog_includes_wan_2_1_small_starter_variant(self):
         """The 1.3B variant is our recommended first-download target — make sure it's visible."""
         payload = self.client.get("/api/video/catalog").json()

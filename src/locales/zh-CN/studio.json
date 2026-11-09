@@ -2406,5 +2406,16 @@
     "makeTimed": "生成缺少的 {n} 个 · 约 {time}",
     "needStills": null,
     "stale": "{n} 个已过时"
+  },
+  "slowRow": {
+    "label": null,
+    "reason": {
+      "pytorchAppleGpu": null,
+      "bf16FullSize": null,
+      "noGpuCpu": null
+    },
+    "measured": null,
+    "expected": null,
+    "alternative": null
   }
 }

@@ -44,27 +44,27 @@ _BASE_S = 30.0
 STALL_DEFAULT_S = 180.0  # load, encode, diffusion steps and write all send events well inside this
 
 
-def _estimate(model: str | None, seconds: float, variations: int) -> tuple[float, float, dict[str, Any]]:
+def _estimate(model: str | None, seconds: float, variations: int, steps: int | None = None) -> tuple[float, float, dict[str, Any]]:
     """(warm wall seconds, cold-start seconds, the row's estimates) from the catalog row."""
     from backend_service.music_runtime import estimate_run, resolve_variant
 
-    run = estimate_run(model, seconds, variations, warm=False)
+    run = estimate_run(model, seconds, variations, warm=False, steps=steps)
     return run["seconds"] - run["coldStartSeconds"], run["coldStartSeconds"], resolve_variant(model)["estimates"]
 
 
-def generate_timeout_s(seconds: float, variations: int, model: str | None = None) -> float:
+def generate_timeout_s(seconds: float, variations: int, model: str | None = None, steps: int | None = None) -> float:
     """How long a ``generate`` may take in all before the worker is killed: estimate x safety + cold start."""
-    warm, cold, _ = _estimate(model, seconds, variations)
+    warm, cold, _ = _estimate(model, seconds, variations, steps)
     return round(_BASE_S + SAFETY_FACTOR * warm + cold, 1)
 
 
-def stall_limits(seconds: float, variations: int, model: str | None = None) -> dict[str, float]:
+def stall_limits(seconds: float, variations: int, model: str | None = None, steps: int | None = None) -> dict[str, float]:
     """Seconds without any event before a ``generate`` counts as stuck, per stage.
 
     ``load`` covers a model load inside the job (and the time before the first event); ``decode`` is the
     VAE decode, which sends no events and grows with the audio length; every other stage sends events.
     """
-    _, cold, est = _estimate(model, seconds, variations)
+    _, cold, est = _estimate(model, seconds, variations, steps)
     decode = float(est.get("vaeSecondsPerAudioSecond") or 0.1) * float(seconds) * max(1, int(variations))
     return {
         "load": round(max(STALL_DEFAULT_S, SAFETY_FACTOR * cold + 60.0), 1),

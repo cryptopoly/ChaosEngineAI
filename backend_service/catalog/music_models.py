@@ -248,6 +248,9 @@ MUSIC_MODEL_FAMILIES: list[dict[str, Any]] = [
                     "outputMbPerMinute": 14.0,
                     "cuda": {"peakGb": None, "basis": "estimated", "source": "not measured; the CUDA sound lane is not built yet"},
                 },
+                # Steps the person may choose (D-74): presets plus a free number inside min..max. The default is
+                # defaultSettings.steps, which is also the step count the estimate was measured at.
+                "stepsOptions": {"min": 1, "max": 32, "presets": [4, 8, 16]},
                 "defaultSettings": {
                     "seconds": 5,
                     "variations": 1,
@@ -325,6 +328,7 @@ MUSIC_MODEL_FAMILIES: list[dict[str, Any]] = [
                     "cuda": {"peakGb": None, "basis": "estimated", "source": "not measured; the CUDA sound lane is not built yet"},
                 },
                 # Model card example for stable-audio-tools: 100 steps, cfg 7, dpmpp-3m-sde, sigma 0.3 to 500.
+                "stepsOptions": {"min": 10, "max": 150, "presets": [25, 50, 100]},
                 "defaultSettings": {
                     "seconds": 10,
                     "variations": 1,

@@ -91,7 +91,8 @@
     "callNeedModel": "로드된 채팅 모델",
     "callNeedStt": "음성 인식 (음성 모델)",
     "callNeedTts": "응답용 음성 (음성 모델)",
-    "callNeedVad": "발화 차례 감지 (음성 팩에 포함)"
+    "callNeedVad": "발화 차례 감지 (음성 팩에 포함)",
+    "callVoice": null
   },
   "sidebar": {
     "title": "채팅",
@@ -398,7 +399,8 @@
     "endHint": "통화 종료 (Esc)",
     "end": "통화 종료",
     "meta": "음성: {voice}",
-    "headphones": "끼어들기에는 헤드폰이 가장 좋습니다"
+    "headphones": "끼어들기에는 헤드폰이 가장 좋습니다",
+    "changeVoice": null
   },
   "emptyBanner": {
     "welcomeTitle": "👋 ChaosEngineAI 채팅에 오신 것을 환영합니다",

@@ -91,7 +91,8 @@
     "callNeedModel": "ein geladenes Chat-Modell",
     "callNeedStt": "Spracherkennung (Sprachmodelle)",
     "callNeedTts": "eine Stimme für Antworten (Sprachmodelle)",
-    "callNeedVad": "Sprecherwechsel-Erkennung, Teil des Sprachpakets"
+    "callNeedVad": "Sprecherwechsel-Erkennung, Teil des Sprachpakets",
+    "callVoice": null
   },
   "sidebar": {
     "title": "Chats",
@@ -398,7 +399,8 @@
     "endHint": "Anruf beenden (Esc)",
     "end": "Anruf beenden",
     "meta": "Stimme: {voice}",
-    "headphones": "Mit Kopfhörern klappt das Unterbrechen am besten"
+    "headphones": "Mit Kopfhörern klappt das Unterbrechen am besten",
+    "changeVoice": null
   },
   "emptyBanner": {
     "welcomeTitle": "👋 Willkommen im ChaosEngineAI-Chat",

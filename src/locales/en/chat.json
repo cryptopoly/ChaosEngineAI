@@ -91,7 +91,8 @@
     "callNeedModel": "a chat model loaded",
     "callNeedStt": "speech recognition (Voice Models)",
     "callNeedTts": "a voice for replies (Voice Models)",
-    "callNeedVad": "turn detection, part of the voice pack"
+    "callNeedVad": "turn detection, part of the voice pack",
+    "callVoice": "Voice: {voice}. Change it in Voice Studio > Voices."
   },
   "sidebar": {
     "title": "Chats",
@@ -398,7 +399,8 @@
     "endHint": "End the call (Esc)",
     "end": "End call",
     "meta": "Voice: {voice}",
-    "headphones": "Headphones work best for interrupting"
+    "headphones": "Headphones work best for interrupting",
+    "changeVoice": "Change in Voices"
   },
   "emptyBanner": {
     "welcomeTitle": "👋 Welcome to ChaosEngineAI Chat",

@@ -91,7 +91,8 @@
     "callNeedModel": "已載入的聊天模型",
     "callNeedStt": "語音辨識（語音模型）",
     "callNeedTts": "回覆用的語音（語音模型）",
-    "callNeedVad": "輪次偵測（語音套件內含）"
+    "callNeedVad": "輪次偵測（語音套件內含）",
+    "callVoice": null
   },
   "sidebar": {
     "title": "對話",
@@ -398,7 +399,8 @@
     "endHint": "結束通話（Esc）",
     "end": "結束通話",
     "meta": "語音：{voice}",
-    "headphones": "使用耳機更便於打斷"
+    "headphones": "使用耳機更便於打斷",
+    "changeVoice": null
   },
   "emptyBanner": {
     "welcomeTitle": "👋 歡迎使用 ChaosEngineAI 對話",

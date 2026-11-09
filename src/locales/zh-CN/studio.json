@@ -731,14 +731,18 @@
       "managerSubtitle": null,
       "designRowDetail": null,
       "kindDesign": null,
-      "chatQuickOnly": null,
       "noneCloned": null,
       "chatVoice": null,
       "stopSample": null,
       "useInSpeak": null,
       "useInChat": null,
       "inChat": null,
-      "chatLater": null
+      "chatAnyVoice": null,
+      "designNotInChat": null,
+      "callVoice": null,
+      "cloneNotInCalls": null,
+      "inCalls": null,
+      "useForCalls": null
     },
     "settings": {
       "autoSend": "语音输入结束后立即发送消息",
@@ -1085,7 +1089,13 @@
     },
     "chatCalls": {
       "title": null,
-      "voice": null
+      "cost": null,
+      "slow": null,
+      "option": null,
+      "chatVoice": null,
+      "callVoice": null,
+      "sameAsChat": null,
+      "memory": null
     },
     "quickVoices": {
       "title": null,

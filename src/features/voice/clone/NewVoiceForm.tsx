@@ -125,6 +125,11 @@ export function NewVoiceForm({ onCreated, onCancel }: { onCreated: (voice: Clone
               "3 to 30 seconds of the same person speaking clearly. Upload a WAV, MP3, M4A, FLAC or OGG file, or record with the microphone. 10 to 20 seconds works best.",
           })}
         </p>
+        <p className="muted-text">
+          {t("voice.clone.sampleMinimumTurbo", {
+            defaultValue: "Chatterbox-Turbo needs at least 5 seconds. A sample of 10 seconds or more works with every cloning model.",
+          })}
+        </p>
         <input
           key={fileInputKey}
           type="file"

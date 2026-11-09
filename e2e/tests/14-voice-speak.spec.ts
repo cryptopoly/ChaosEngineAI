@@ -127,7 +127,7 @@ test("picker groups: Recommended, a graded Quick shortlist with an expander, Clo
   await expect(recommended).toHaveText(["Ryan", "Heart", "Ada", "Design a voice from a description"]);
 
   const quick = picker.locator(".voice-picker__group--quick");
-  await expect(quick).toContainText("Kokoro, part of the voice runtime. Fast, under 1 GB, speed only. 22 voices in 2 languages.");
+  await expect(quick).toContainText("Kokoro, an add-on of the voice runtime. Fast, under 1 GB, speed only. 22 voices in 2 languages.");
   await expect(quick.locator(".voice-card__title")).toHaveText(["Heart", "Bella", "Nicole", "Fenrir", "Michael", "Puck"]);
   await quick.getByRole("button", { name: "All 20 American English voices" }).click();
   await expect(quick.locator(".voice-card__title")).toHaveCount(20);
@@ -353,7 +353,8 @@ test("the main voices: Use for sets read-aloud and calls with W6's rules; the ch
   // The chat behaviour settings and the agent switch left Voices (Chat's Voice popover, Settings > Agent access).
   await expect(page.getByText("Read every chat reply aloud when it finishes")).toHaveCount(0);
   await expect(page.getByText(/Allow agents and other computers/)).toHaveCount(0);
-  await expect(page.getByText("Kokoro reads instead and Chat says so", { exact: false })).toBeVisible();
+  // The fallback note names the fallback voice in effect (D-75; Kokoro's Heart by default).
+  await expect(page.getByText("the fallback voice Heart reads instead and Chat says so", { exact: false })).toBeVisible();
 });
 
 test("a cloned voice's sample is made through speak and not kept in the Library", async ({ page }) => {
@@ -413,8 +414,10 @@ test("Voice Models lists the speech models in the shared table: Kokoro first, Ma
   const rows = page.locator(".models-card");
   await expect(rows.first()).toHaveAttribute("data-model-id", "kokoro");
   await expect(rows.first()).toContainText("Part of the runtime");
-  await expect(rows.first()).toContainText("the voice Chat falls back to");
+  await expect(rows.first()).toContainText("an add-on of the voice runtime");
   await expect(page.locator(".voice-models__family", { hasText: "Qwen3-TTS" })).toBeVisible();
+  // Qwen3-TTS (five sizes) is collapsed to its downloaded rows since FU-157; open it to see the rest.
+  await page.getByRole("button", { name: "Show 5 sizes" }).click();
   const row = page.locator('[data-model-id="qwen3-tts-custom-1.7b"]');
   await expect(row.getByText("Style", { exact: true }).first()).toBeVisible();
   await expect(row.getByText("3.08 GB", { exact: true })).toBeVisible();

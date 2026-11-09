@@ -174,10 +174,13 @@ export async function mockVoiceApi(
     Object.assign(runtime, { installed: true });
     if (options.ready) Object.assign(runtime, { ttsAvailable: true, sttAvailable: true, vadAvailable: true });
     runtime.settings = { ...(runtime.settings ?? {}), speakVoice, ttsVoice, callVoice, fallbackVoice };
-    if (options.noKokoro) {
-      runtime.ttsModelInstalled = false;
-      runtime.extras = [{ id: "kokoro", label: "Kokoro quick voices", installed: false }, ...(runtime.extras ?? []).filter((e: { id: string }) => e.id !== "kokoro")];
-    }
+    // The Kokoro add-on (D-75) follows the mocked voice list: installed unless ``noKokoro``. The throwaway backend has
+    // no Kokoro files, so without this the runtime would say "not installed" while the voices say available.
+    runtime.ttsModelInstalled = !options.noKokoro;
+    runtime.extras = [
+      { id: "kokoro", label: "Kokoro quick voices", installed: !options.noKokoro },
+      ...(runtime.extras ?? []).filter((e: { id: string }) => e.id !== "kokoro"),
+    ];
     lastSettings = runtime.settings;
     await route.fulfill({ response, json: body });
   });

@@ -92,10 +92,19 @@ def forget_failures() -> None:
 
 
 def _kokoro_plan(text: str, voice: str) -> ChatPlan:
+    """Kokoro reads the sentences as before (``speech_sentences``), with sound tags such as [laugh] removed so it
+    never reads the word aloud."""
     from backend_service.voice_text import speech_sentences  # noqa: PLC0415
 
     plan = voice_speak.Plan("kokoro", voice, "kokoro", "Kokoro", native_speed=True)
-    return ChatPlan(plan, speech_sentences(text), voice)
+    return ChatPlan(plan, _without_tags(speech_sentences(text)), voice)
+
+
+def _without_tags(sentences: list[str]) -> list[str]:
+    from backend_service.voice_text import apply_tags  # noqa: PLC0415
+
+    plain = (apply_tags(piece, frozenset(), "strip")[0] for piece in sentences)
+    return [s for s in plain if s.strip(" .,!?;:")]
 
 
 def _plan(text: str, voice: str, use: str) -> ChatPlan:
@@ -125,7 +134,12 @@ def _plan(text: str, voice: str, use: str) -> ChatPlan:
 
 
 def fallback_note(voice: str, reason: str) -> str:
-    name = "The cloned voice" if voice.startswith(voice_speak.CLONE_PREFIX) else voice.split(":")[-1]
+    if voice.startswith(voice_speak.CLONE_PREFIX):
+        name = "The cloned voice"
+    elif voice == voice_speak.DESIGN_VOICE:
+        name = "Describe a voice"
+    else:
+        name = {voice_speak.TURBO_VOICE: "Turbo", voice_speak.CHATTERBOX_VOICE: "Chatterbox"}.get(voice, voice.split(":")[-1].capitalize())
     return f"{name} could not speak here ({reason.rstrip('.')}), so the Kokoro voice reads instead."
 
 
@@ -160,11 +174,8 @@ def speak_sentence(chat: ChatPlan, sentence: str, speed: float) -> tuple[bytes, 
 
 def switch_to_fallback(chat: ChatPlan, remaining: list[str], reason: str) -> ChatPlan:
     """After a sentence failed (the model would not load): Kokoro reads the rest, sound tags removed."""
-    from backend_service.voice_text import apply_tags  # noqa: PLC0415
-
     mark_failed(chat.voice, reason)
-    plain = [s for s in (apply_tags(piece, frozenset(), "strip")[0] for piece in remaining) if s.strip(" .,!?;:")]
     fallback = _kokoro_plan("", fallback_voice())
-    fallback.sentences = plain
+    fallback.sentences = _without_tags(remaining)
     fallback.notes = [fallback_note(chat.voice, reason)]
     return fallback

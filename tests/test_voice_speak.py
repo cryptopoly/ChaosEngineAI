@@ -783,6 +783,12 @@ class ChatStreamTests(unittest.TestCase):
         self.assertEqual(chunk.call_count, 1)  # the failed load is not tried again within RETRY_AFTER_S
         self.assertIn("note", again[0])
 
+    def test_kokoro_never_reads_a_sound_tag_aloud(self) -> None:
+        spoken = []
+        with mock.patch.object(voice_runtime, "synthesize", side_effect=lambda t, v, s: spoken.append(t) or (tone_wav(0.1), 0.1)):
+            self.stream("af_heart", text="Ha [laugh] that is funny.")
+        self.assertEqual(spoken, ["Ha that is funny."])
+
     def test_a_kokoro_failure_is_still_an_error(self) -> None:
         with mock.patch.object(voice_runtime, "synthesize", side_effect=RuntimeError("no voice")):
             _r, lines = self.stream("af_heart")

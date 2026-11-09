@@ -2163,6 +2163,24 @@ def phase_8(cap: Capability) -> PhaseResult:
             return "fail", "speak stream audio is not a WAV", {}
         return "pass", "", {"sentences": len(sentences)}
 
+    def _chat_voice_any():
+        """D-72: settings refuse an unknown chat voice; a call with a voice that cannot speak still speaks (Kokoro
+        reads, with a note first). Uses only the bundled Kokoro voice: nothing is downloaded."""
+        if not runtime_payload.get("ttsAvailable"):
+            return "skip", "TTS backend not installed", {}
+        bad = json.dumps({"callVoice": "qwen3:Nobody"}).encode("utf-8")
+        code, _resp = _voice_http("POST", "/api/voice/settings", body=bad, content_type="application/json", timeout=30.0)
+        if code != 400:
+            return "fail", f"unknown call voice: expected 400, got {code}", {}
+        payload = json.dumps({"text": "One sentence.", "voice": "design", "use": "call"}).encode("utf-8")
+        code, body = _voice_http("POST", "/api/voice/speak/stream", body=payload, content_type="application/json", timeout=180.0)
+        if code != 200:
+            return "fail", f"speak stream HTTP {code}", {}
+        events = [json.loads(line) for line in body.decode("utf-8").splitlines() if line.strip()]
+        if not events or "note" not in events[0] or not any("audio" in e for e in events) or events[-1] != {"done": True}:
+            return "fail", f"expected a note, Kokoro audio, then done: {events[:2]}", {}
+        return "pass", "", {"note": events[0]["note"][:80]}
+
     def _vad_turn():
         """Conversation mode's turn detector: silence, speech, silence."""
         if not runtime_payload.get("vadAvailable"):
@@ -2283,6 +2301,7 @@ def phase_8(cap: Capability) -> PhaseResult:
         ("speech model catalog", _speech_model_catalog), ("speak with each wave-2 model", _speak_each_wave2_model),
         ("wave-2 clone needs a permission record", _clone_needs_a_permission_record),
         ("voice settings", _settings_roundtrip), ("read-aloud stream", _speak_stream),
+        ("chat voice: any voice, Kokoro fallback", _chat_voice_any),
         ("voice call turn detector", _vad_turn),
         ("stt rejects unknown model", _stt_rejects_unknown_model),
         ("synthesize smoke", _synthesize),

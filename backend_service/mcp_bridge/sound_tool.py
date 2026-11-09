@@ -29,6 +29,7 @@ SOUND_TOOLS: list[dict[str, Any]] = [
                 "loop": {"type": "boolean", "description": "Make the clip a seamless loop (ambience, beats)."},
                 "seed": {"type": "integer", "minimum": 0, "maximum": 2147483647},
                 "variations": {"type": "integer", "minimum": 1, "maximum": 4, "description": "1, 2 or 4 takes with seeds seed, seed+1, ..."},
+                "steps": {"type": "integer", "minimum": 1, "maximum": 150, "description": "Diffusion steps. Fewer is faster but can sound worse. Default: 8 Small (range 1 to 32), 100 for 1.0 (range 10 to 150)."},
                 **_PROJECT_PROPS,
             },
             ["caption"],
@@ -65,7 +66,7 @@ def make_sound(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
     if not_ready:
         raise ToolError(not_ready)
     fields: dict[str, Any] = {"modelId": variant["id"], "caption": args["caption"]}
-    for key in ("seconds", "loop", "seed", "variations"):
+    for key in ("seconds", "loop", "seed", "variations", "steps"):
         if key in args:
             fields[key] = args[key]
     try:
@@ -100,6 +101,8 @@ def make_sound(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
     label = f"{body.seconds:g} s {'loop' if body.loop else 'sound'}"
     per_10s = (variant.get("estimates") or {}).get("secondsPer10sAudio")
     estimate = round(body.seconds / 10 * per_10s) + 5 if per_10s else None
+    if body.steps and body.steps != (variant.get("defaultSettings") or {}).get("steps"):
+        estimate = round(music_runtime.estimate_run(variant["id"], body.seconds, body.variations, steps=body.steps)["seconds"]) + 5
     return _submitted(STORE.submit("music", label, run, estimate_seconds=estimate))
 
 

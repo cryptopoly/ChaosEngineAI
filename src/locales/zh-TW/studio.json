@@ -1306,7 +1306,9 @@
       "caution": "（注意：接近上限）",
       "danger": "（危險：可能放不下）"
     },
-    "unknownChip": "估計：首次執行前未知"
+    "unknownChip": "估計：首次執行前未知",
+    "scaled": null,
+    "scaledTitle": null
   },
   "disclosure": {
     "options": "選項",
@@ -1387,7 +1389,11 @@
       "tempoKey": "速度與調性",
       "variations": "變體數量",
       "variationsCost": "每多一個變體，就會再多花一次同樣的時間。",
-      "variationsTotal": "{n} 個約需 {time}。"
+      "variationsTotal": "{n} 個約需 {time}。",
+      "steps": null,
+      "stepsNumber": null,
+      "stepsNote": null,
+      "summarySteps": null
     },
     "artistWarning": "寫出藝術家的名字可能會產生其風格的仿作。請改為描述聲音本身。",
     "cancel": "取消",
@@ -1490,7 +1496,8 @@
       "issue": {
         "captionEmpty": "請先描述聲音，再製作。",
         "captionTooLong": "描述超過了 {max} 個字元。",
-        "secondsRange": "長度必須為 {min} 到 {max} 秒。"
+        "secondsRange": "長度必須為 {min} 到 {max} 秒。",
+        "stepsRange": null
       },
       "error": {
         "memory": "可用記憶體不足，無法製作這個音效。請釋放一些記憶體後重試。",

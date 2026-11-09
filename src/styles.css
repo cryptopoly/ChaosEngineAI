@@ -13505,6 +13505,10 @@ button.licence-chip:focus-visible {
 .music-options__seed {
   width: 160px;
 }
+.music-options__steps-input {
+  width: 88px;
+  min-width: 0;
+}
 .music-options__note {
   margin: 0;
   font-size: 0.82rem;

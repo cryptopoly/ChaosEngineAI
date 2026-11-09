@@ -194,6 +194,8 @@ export interface StripModel {
   totalGb: number | null;
   diskMb: number | null;
   basis: EstimateBasis | null;
+  /** The time was scaled from the measured run (a non-default step count): the strip says so. */
+  scaledFromMeasured?: boolean;
   risk: EstimateRisk;
   queue: RunEstimateQueue | null;
 }
@@ -234,6 +236,7 @@ export function stripFromEstimate(
     totalGb: total,
     diskMb: positive(estimate.writesMb),
     basis: seconds == null && peakGb == null ? null : estimate.basis === "measured" ? "measured" : "estimated",
+    ...(estimate.basisNote ? { scaledFromMeasured: true } : {}),
     risk: memoryRisk(peakGb, total, fallback),
     // While this Studio runs, the progress panel owns the queue line (and the snapshot lists our own job).
     queue: running ? null : queueForStrip(response.queue, progressQueue),

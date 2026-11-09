@@ -27,6 +27,8 @@ export interface RunEstimateStripProps {
   totalGb: number | null;
   diskMb: number | null;
   basis: EstimateBasis | null;
+  /** An estimate scaled from a measured run (not timed at these settings): the badge reads "Estimated from the measured run". */
+  scaledFromMeasured?: boolean;
   risk: EstimateRisk;
   queue?: RunEstimateQueue | null;
   /** The machine is short of memory for this run beside what is already loaded (advice only). */
@@ -74,7 +76,7 @@ export function formatDisk(t: TFn, mb: number): string {
   return t("estimate.size.mb", { defaultValue: "{n} MB", n: Math.max(1, Math.round(mb)) });
 }
 
-export function RunEstimateStrip({ compactUnknown, seconds, peakGb, totalGb, diskMb, basis, risk, queue, busy, ack, memoryTitle, action }: RunEstimateStripProps) {
+export function RunEstimateStrip({ compactUnknown, seconds, peakGb, totalGb, diskMb, basis, scaledFromMeasured, risk, queue, busy, ack, memoryTitle, action }: RunEstimateStripProps) {
   const { t } = useTranslation("studio");
   const tf = t as unknown as TFn;
   const memoryBand = memoryRisk(peakGb, totalGb, risk);
@@ -138,12 +140,16 @@ export function RunEstimateStrip({ compactUnknown, seconds, peakGb, totalGb, dis
               title={
                 basis === "measured"
                   ? t("estimate.measuredTitle", { defaultValue: "Timed on this machine for this model and preset." })
-                  : t("estimate.estimatedTitle", { defaultValue: "From the model card or a similar machine; not timed here yet." })
+                  : scaledFromMeasured
+                    ? t("estimate.scaledTitle", { defaultValue: "Scaled from a timed run at the model's default settings; not timed at these settings." })
+                    : t("estimate.estimatedTitle", { defaultValue: "From the model card or a similar machine; not timed here yet." })
               }
             >
               {basis === "measured"
                 ? t("estimate.measured", { defaultValue: "Measured" })
-                : t("estimate.estimated", { defaultValue: "Estimated" })}
+                : scaledFromMeasured
+                  ? t("estimate.scaled", { defaultValue: "Estimated from the measured run" })
+                  : t("estimate.estimated", { defaultValue: "Estimated" })}
             </span>
           ) : null}
         </div>

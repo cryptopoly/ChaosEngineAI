@@ -111,14 +111,52 @@ def _wall_seconds(points: list[list[float]], seconds: float) -> float:
     return w1 + (w1 - w0) / (a1 - a0) * (seconds - a1)
 
 
-def estimate_run(model: str | None, seconds: float, variations: int = 1, warm: bool = True) -> dict[str, Any]:
-    """Time, peak memory and disk for one run, from the row's ``estimates`` table only."""
+def steps_options(variant: dict[str, Any]) -> dict[str, Any] | None:
+    """The row's ``stepsOptions`` (``min``, ``max``, ``presets``), or ``None`` when steps are not a setting."""
+    return variant.get("stepsOptions") or None
+
+
+def default_steps(variant: dict[str, Any]) -> int | None:
+    value = (variant.get("defaultSettings") or {}).get("steps")
+    return int(value) if value else None
+
+
+def check_steps(variant: dict[str, Any], steps: int | None) -> int | None:
+    """``steps`` inside the row's range (``ValueError`` naming the range otherwise); ``None`` stays ``None``."""
+    if steps is None:
+        return None
+    options = steps_options(variant)
+    if not options:
+        raise ValueError(f"{variant['name']} does not have a steps setting.")
+    low, high = int(options["min"]), int(options["max"])
+    if not low <= int(steps) <= high:
+        raise ValueError(f"{variant['name']} takes {low} to {high} steps.")
+    return int(steps)
+
+
+def estimate_run(model: str | None, seconds: float, variations: int = 1, warm: bool = True,
+                 steps: int | None = None) -> dict[str, Any]:
+    """Time, peak memory and disk for one run, from the row's ``estimates`` table only.
+
+    On a row with ``stepsOptions`` the denoising part of the measured time scales with ``steps`` over the steps it
+    was measured at (the row's default); cold start and the VAE decode do not. A non-default step count turns the
+    basis into ``estimated`` (``basisNote`` says from what).
+    """
     variant = resolve_variant(model)
     est = variant["estimates"]
     count = max(1, int(variations))
     # A fixed-window row (Stable Audio) works on its whole window whatever length is asked: full cost always.
     length = max(float(a) for a, _ in est["wallSecondsAt"]) if est.get("fixedWindow") else float(seconds)
-    wall = _wall_seconds(est["wallSecondsAt"], length) * count
+    per_clip = _wall_seconds(est["wallSecondsAt"], length)
+    basis = est.get("basis", "estimated")
+    note = None
+    measured_steps = default_steps(variant)
+    chosen = int(steps) if steps is not None else None
+    if chosen is not None and steps_options(variant) and measured_steps and chosen != measured_steps:
+        fixed = min(float(est.get("vaeSecondsPerAudioSecond") or 0.0) * length, 0.5 * per_clip)
+        per_clip = fixed + (per_clip - fixed) * chosen / measured_steps
+        basis, note = "estimated", f"Estimated from the measured run at {measured_steps} steps."
+    wall = per_clip * count
     cold = 0.0 if warm else float(est.get("coldStartSeconds") or 0.0)
     return {
         "model": variant["id"],
@@ -129,7 +167,9 @@ def estimate_run(model: str | None, seconds: float, variations: int = 1, warm: b
         "idleGb": est.get("idleGb"),
         "writesMb": round(float(est.get("outputMbPerMinute") or 0.0) * float(seconds) / 60.0 * count, 1),
         "modelDiskGb": est.get("diskGb"),
-        "basis": est.get("basis", "estimated"),
+        "basis": basis,
+        "basisNote": note,
+        "steps": chosen if chosen is not None else measured_steps,
         "measuredOn": est.get("measuredOn"),
     }
 
@@ -458,6 +498,7 @@ def _save_sound(track: dict[str, Any], index: int, variant: dict[str, Any], requ
 
     path = Path(str(track["path"]))
     count = int(request.get("variations") or 1)
+    reply_steps = request.get("steps") or default_steps(variant)
     tagged = False
     if tag:
         tagged = embed_flac_tags(path, {
@@ -467,6 +508,7 @@ def _save_sound(track: dict[str, Any], index: int, variant: dict[str, Any], requ
             "modelName": variant["name"],
             "engine": music_sound_env.ENGINE_VERSION,
             "seed": track.get("seed"),
+            "steps": reply_steps,
             "durationSeconds": track.get("duration_s"),
             "prompt": request.get("caption"),
             "loop": bool(request.get("loop")),
@@ -484,6 +526,7 @@ def _save_sound(track: dict[str, Any], index: int, variant: dict[str, Any], requ
         "modelName": variant["name"],
         "engine": "stableaudio",
         "seed": track.get("seed"),
+        "steps": reply_steps,
         "durationS": track.get("duration_s"),
         "sampleRate": track.get("sample_rate"),
         "channels": track.get("channels"),
@@ -519,6 +562,8 @@ def generate_sound(
     seconds = float(request["seconds"])
     variations = int(request.get("variations") or 1)
     defaults = variant.get("defaultSettings") or {}
+    steps = check_steps(variant, request.get("steps")) or int(defaults.get("steps") or 8)
+    request = {**request, "steps": steps}
 
     def on_event(event: dict[str, Any]) -> None:
         if progress is None:
@@ -540,8 +585,8 @@ def generate_sound(
     try:
         reply = worker.request(
             "generate",
-            timeout=generate_timeout_s(seconds, variations, variant["id"]),
-            stall_limits=stall_limits(seconds, variations, variant["id"]),
+            timeout=generate_timeout_s(seconds, variations, variant["id"], steps),
+            stall_limits=stall_limits(seconds, variations, variant["id"], steps),
             on_event=on_event,
             cancel_check=cancel_check,
             job=job,
@@ -553,7 +598,7 @@ def generate_sound(
             loop=bool(request.get("loop")),
             seed=seed,
             variations=variations,
-            steps=int(defaults.get("steps") or 8),
+            steps=steps,
             cfg_scale=float(defaults.get("cfgScale") or 1.0),
             sampler=str(defaults.get("sampler") or "pingpong"),
             out_dir=str(out_dir.resolve()),

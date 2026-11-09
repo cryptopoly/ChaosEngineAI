@@ -60,6 +60,24 @@ class MusicGenerateRequest(BaseModel):
         return self
 
 
+def _check_request_steps(model_id: str | None, steps: int | None, sound_default: bool) -> None:
+    """Steps against the chosen row's own range, at the request edge (a 422 names the range). An unknown
+    model is left to the route, which answers 400."""
+    if steps is None:
+        return
+    from backend_service.catalog.music_models import music_variants
+    from backend_service.music_runtime import check_steps, is_sound
+
+    if model_id:
+        from backend_service.helpers.music import find_music_variant
+
+        variant = find_music_variant(model_id)
+    else:
+        variant = next((v for v in music_variants() if is_sound(v)), None) if sound_default else None
+    if variant is not None:
+        check_steps(variant, steps)
+
+
 class SoundGenerateRequest(BaseModel):
     """Text to sound effect: a short clip, optionally made into a seamless loop.
 
@@ -73,12 +91,15 @@ class SoundGenerateRequest(BaseModel):
     loop: bool = False
     variations: Literal[1, 2, 4] = 1
     seed: int | None = Field(default=None, ge=0, le=MAX_SEED)
+    # Diffusion steps; the chosen row's own range is checked below. Missing = the row's default.
+    steps: int | None = Field(default=None, ge=1, le=1000)
     title: str | None = Field(default=None, max_length=200)
 
     @model_validator(mode="after")
     def _described(self) -> "SoundGenerateRequest":
         if not self.caption.strip():
             raise ValueError("Describe the sound (caption is empty).")
+        _check_request_steps(self.modelId, self.steps, sound_default=True)
         return self
 
 
@@ -90,6 +111,12 @@ class MusicEstimateRequest(BaseModel):
     modelId: str | None = Field(default=None, max_length=128)
     seconds: float = Field(default=60, ge=1, le=600)
     variations: Literal[1, 2, 4] = 1
+    steps: int | None = Field(default=None, ge=1, le=1000)
+
+    @model_validator(mode="after")
+    def _steps_in_range(self) -> "MusicEstimateRequest":
+        _check_request_steps(self.modelId, self.steps, sound_default=False)
+        return self
 
 
 def _variant_or_400(model_id: str | None) -> dict[str, Any]:
@@ -134,7 +161,7 @@ def music_estimate(request: Request, body: MusicEstimateRequest) -> dict[str, An
     warm = loaded_model(variant) == variant["engineModel"]
     hardware = host_hardware_class()
     return {
-        "estimate": estimate_run(variant["id"], body.seconds, body.variations, warm=warm),
+        "estimate": estimate_run(variant["id"], body.seconds, body.variations, warm=warm, steps=body.steps),
         "fit": music_fit(variant, hardware),
         "totalGb": round(hardware.total_gb, 1),
         "queue": HEAVY_JOBS.snapshot(),
@@ -369,7 +396,7 @@ def generate_sound_locked(request: Request, body: SoundGenerateRequest, source: 
 
     fields = {**body.model_dump(), "model": variant["id"], "source": source}
     MUSIC_PROGRESS.begin(run_label=f"{body.seconds:g} s sound · {variant['name']}",
-                         total_steps=int((variant.get("defaultSettings") or {}).get("steps") or 8),
+                         total_steps=int(body.steps or (variant.get("defaultSettings") or {}).get("steps") or 8),
                          phase="encode", message="Starting")
     try:
         result = music_runtime.generate_sound(fields, progress=MUSIC_PROGRESS, cancel_check=MUSIC_PROGRESS.is_cancelled)

@@ -152,7 +152,7 @@ function acceptLicence() {
 
 describe("sounds form", () => {
   it("starts from the model defaults with a random seed", () => {
-    expect(defaultSoundForm(soundVariant())).toEqual({ caption: "", seconds: 5, loop: false, variations: 1, seed: null });
+    expect(defaultSoundForm(soundVariant())).toEqual({ caption: "", seconds: 5, loop: false, variations: 1, seed: null, steps: null });
     expect(defaultSoundForm(null).seconds).toBe(5);
     expect(defaultSoundForm(soundVariant({ defaultSettings: { seconds: 60 } })).seconds).toBe(5);
   });
@@ -168,7 +168,7 @@ describe("sounds form", () => {
   });
 
   it("builds the request without a seed when it is random, and with the loop flag", () => {
-    const form: SoundForm = { caption: " door ", seconds: 4, loop: true, variations: 2, seed: null };
+    const form: SoundForm = { caption: " door ", seconds: 4, loop: true, variations: 2, seed: null, steps: null };
     expect(buildSoundPayload(form, "m")).toEqual({ modelId: "m", caption: "door", seconds: 4, loop: true, variations: 2 });
     expect(buildSoundPayload({ ...form, seed: 7 }, "m").seed).toBe(7);
   });

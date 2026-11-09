@@ -26,6 +26,9 @@ import {
   SOUND_CAPTION_MAX,
   SOUND_VARIATION_CHOICES,
   againSoundForm,
+  effectiveSoundSteps,
+  soundDefaultSteps,
+  soundStepsOptions,
   soundBlocker,
   soundLimits,
   validateSoundForm,
@@ -149,6 +152,9 @@ export function SoundsStudio({ music, backendOnline, onTabChange, header }: Soun
   });
   const canMake = blocker === null && issues.length === 0 && !running;
   const strip = stripFromEstimate(estimate, progress?.queue ?? null, running);
+  const stepsOptions = soundStepsOptions(soundVariant);
+  const defaultSteps = soundDefaultSteps(soundVariant);
+  const chosenSteps = effectiveSoundSteps(form, soundVariant);
 
   const { dismissError } = studio;
   const errorKind = run.error?.kind;
@@ -227,8 +233,8 @@ export function SoundsStudio({ music, backendOnline, onTabChange, header }: Soun
     studio.replaceForm(next);
     void studio.generate(next);
   }
-  const again = (result: MusicResult) => runFrom(againSoundForm({ ...soundFormFromItem(result.item), variations: form.variations }));
-  const vary = (result: MusicResult) => runFrom(varySoundForm({ ...soundFormFromItem(result.item), variations: form.variations }, result.seed));
+  const again = (result: MusicResult) => runFrom(againSoundForm({ ...soundFormFromItem(result.item, soundVariant), variations: form.variations }));
+  const vary = (result: MusicResult) => runFrom(varySoundForm({ ...soundFormFromItem(result.item, soundVariant), variations: form.variations }, result.seed));
 
   const inputs = (
     <>
@@ -283,6 +289,11 @@ export function SoundsStudio({ music, backendOnline, onTabChange, header }: Soun
     secondsRange: t("musicStudio.sounds.issue.secondsRange", { defaultValue: "Length must be {min} to {max} seconds.", min: limits.min, max: limits.max }),
     seedRange: t("musicStudio.issue.seedRange", { defaultValue: "The seed must be a whole number from 0 up." }),
     variations: t("musicStudio.issue.variations", { defaultValue: "Variations must be 1, 2 or 4." }),
+    stepsRange: t("musicStudio.sounds.issue.stepsRange", {
+      defaultValue: "Steps must be a whole number from {min} to {max}.",
+      min: stepsOptions?.min ?? 1,
+      max: stepsOptions?.max ?? 1,
+    }),
   };
 
   const estimateNode = (
@@ -293,6 +304,7 @@ export function SoundsStudio({ music, backendOnline, onTabChange, header }: Soun
         totalGb={strip.totalGb}
         diskMb={strip.diskMb}
         basis={strip.basis}
+        scaledFromMeasured={strip.scaledFromMeasured}
         risk={strip.risk}
         queue={strip.queue}
         action={
@@ -345,6 +357,7 @@ export function SoundsStudio({ music, backendOnline, onTabChange, header }: Soun
       summary={
         summaryLine([
           t("musicStudio.options.summaryVariations", { defaultValue: "{n, plural, one {# variation} other {# variations}}", n: form.variations }),
+          stepsOptions && chosenSteps !== null ? t("musicStudio.options.summarySteps", { defaultValue: "{n} steps", n: chosenSteps }) : null,
           form.seed === null
             ? t("musicStudio.options.randomSeed", { defaultValue: "Random seed" })
             : t("musicStudio.options.summarySeed", { defaultValue: "Seed {n}", n: form.seed }),
@@ -369,6 +382,46 @@ export function SoundsStudio({ music, backendOnline, onTabChange, header }: Soun
             ))}
           </div>
         </div>
+        {stepsOptions && defaultSteps !== null ? (
+          <div className="music-options__group music-options__steps" role="group" aria-label={t("musicStudio.options.steps", { defaultValue: "Steps" })}>
+            <span className="preset-row-label">{t("musicStudio.options.steps", { defaultValue: "Steps" })}</span>
+            <div className="preset-row">
+              {stepsOptions.presets.map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  className={`preset-pill${chosenSteps === preset ? " active" : ""}`}
+                  aria-pressed={chosenSteps === preset}
+                  disabled={running}
+                  onClick={() => studio.setForm({ steps: preset === defaultSteps ? null : preset })}
+                >
+                  <span className="preset-pill-label">{preset}</span>
+                </button>
+              ))}
+              <input
+                className="text-input music-options__steps-input"
+                type="number"
+                inputMode="numeric"
+                min={stepsOptions.min}
+                max={stepsOptions.max}
+                step={1}
+                disabled={running}
+                aria-label={t("musicStudio.options.stepsNumber", { defaultValue: "Number of steps" })}
+                value={chosenSteps ?? ""}
+                onChange={(event) => {
+                  const text = event.target.value.trim();
+                  studio.setForm({ steps: text === "" ? null : Math.round(Number(text)) });
+                }}
+              />
+            </div>
+            <small className="muted-text">
+              {t("musicStudio.options.stepsNote", {
+                defaultValue: "Fewer steps are faster but can sound worse. {n} is the model author's setting.",
+                n: defaultSteps,
+              })}
+            </small>
+          </div>
+        ) : null}
         <label className="music-options__field">
           <span>{t("musicStudio.options.seed", { defaultValue: "Seed" })}</span>
           <input

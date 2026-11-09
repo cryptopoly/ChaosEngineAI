@@ -1148,6 +1148,12 @@
           "minimum": 0,
           "type": "integer"
         },
+        "steps": {
+          "description": "Diffusion steps. Fewer is faster but can sound worse. Default: 8 Small (range 1 to 32), 100 for 1.0 (range 10 to 150).",
+          "maximum": 150,
+          "minimum": 1,
+          "type": "integer"
+        },
         "variations": {
           "description": "1, 2 or 4 takes with seeds seed, seed+1, ...",
           "maximum": 4,

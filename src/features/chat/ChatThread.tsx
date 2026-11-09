@@ -15,7 +15,8 @@ import { ToolCallCard } from "../../components/ToolCallCard";
 import { ChatEmptyStateBanner } from "./ChatEmptyStateBanner";
 import { StudioJobCard } from "./StudioJobCard";
 import { StudioPlanCard } from "./StudioPlanCard";
-import { studioJobId } from "./studioChat";
+import { mergeToolCalls, studioJobId } from "./studioChat";
+import { formatClock, formatFullTime, isValidTime } from "../../utils/chatTime";
 import type { ChatSession, ChatMessageVariant, LaunchPreferences, ModelLoadingState, WarmModel } from "../../types";
 import { number } from "../../utils";
 import { VariantPickerButton } from "./VariantPickerButton";
@@ -113,7 +114,7 @@ export function ChatThread({
   onBrowseDiscover,
   onOpenModels,
 }: ChatThreadProps) {
-  const { t } = useTranslation("chat");
+  const { t, i18n } = useTranslation("chat");
   return (
     <div
       className="message-list message-scroll"
@@ -156,10 +157,21 @@ export function ChatThread({
           return (
             <div className={`message-bubble ${message.role}`} key={`${message.role}-${index}`}>
               <div className="message-header">
-                <span className="eyebrow">
-                  {message.role === "assistant"
-                    ? t("thread.roleAgent", { defaultValue: "Agent" })
-                    : t("thread.roleUser", { defaultValue: "User" })}
+                <span className="message-header__who">
+                  <span className="eyebrow">
+                    {message.role === "assistant"
+                      ? t("thread.roleAgent", { defaultValue: "Agent" })
+                      : t("thread.roleUser", { defaultValue: "User" })}
+                  </span>
+                  {isValidTime(message.createdAt) ? (
+                    <time
+                      className="message-time"
+                      dateTime={new Date(message.createdAt).toISOString()}
+                      title={formatFullTime(message.createdAt, i18n.language)}
+                    >
+                      {formatClock(message.createdAt, i18n.language)}
+                    </time>
+                  ) : null}
                 </span>
                 {!isStreamingMessage ? (
                   <div className="message-actions">
@@ -317,7 +329,7 @@ export function ChatThread({
               ) : null}
               {message.toolCalls?.length ? (
                 <div style={{ margin: "4px 0" }}>
-                  {message.toolCalls.map((tc) =>
+                  {mergeToolCalls(message.toolCalls).map((tc) =>
                     tc.renderAs === "studio" && (studioJobId(tc) || tc.data?.declined) ? (
                       <StudioJobCard key={tc.id} toolCall={tc} />
                     ) : (

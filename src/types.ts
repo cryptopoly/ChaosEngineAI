@@ -47,6 +47,7 @@ export type {
   CreateSessionResponse,
   GeneratePayload,
   GenerateResponse,
+  JobProgress,
   SamplerOverrides,
   SessionDocument,
   StudioJob,

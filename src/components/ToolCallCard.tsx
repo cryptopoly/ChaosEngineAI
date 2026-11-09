@@ -1,11 +1,14 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { ToolCallInfo, ToolRenderAs } from "../types";
+import type { JobProgress, ToolCallInfo, ToolRenderAs } from "../types";
+import { formatClock, formatDuration, formatFullTime, isValidTime, liveElapsedSeconds, useNow } from "../utils/chatTime";
 import { CodeBlock } from "./CodeBlock";
+import { JobProgressLine } from "./JobProgressLine";
 import { RichMarkdown } from "./RichMarkdown";
 
 interface ToolCallCardProps {
-  toolCall: ToolCallInfo;
+  /** `polls` is set when several waits on one job were merged into this card. */
+  toolCall: ToolCallInfo & { polls?: number };
 }
 
 /**
@@ -112,7 +115,20 @@ const TOOL_ICONS: Record<string, string> = {
 
 export function ToolCallCard({ toolCall }: ToolCallCardProps) {
   const [expanded, setExpanded] = useState(false);
-  const { t } = useTranslation("chat");
+  const { t, i18n } = useTranslation("chat");
+  const locale = i18n.language;
+  const running = Boolean(toolCall.running);
+  const now = useNow(running);
+  const elapsed = liveElapsedSeconds(toolCall, now);
+  // "started 07:31 · 4 min 12 sec" (ticking while it runs). Calls saved before start times existed show their elapsed time only.
+  const timing = isValidTime(toolCall.startedAt)
+    ? [
+        t("toolCall.startedAt", { time: formatClock(toolCall.startedAt, locale), defaultValue: "started {time}" }),
+        elapsed !== null ? formatDuration(elapsed, locale) : null,
+        toolCall.polls && toolCall.polls > 1 ? t("toolCall.polls", { count: toolCall.polls, defaultValue: "{count} checks" }) : null,
+      ].filter(Boolean).join(" \u00b7 ")
+    : `${toolCall.elapsed.toFixed(1)}s`;
+  const liveProgress = running ? ((toolCall.data?.progress as JobProgress | undefined) ?? null) : null;
 
   const icon = TOOL_ICONS[toolCall.name] ?? "tool";
   // FU-039 (2026-05-10): defensive guards on every shape field that
@@ -191,13 +207,23 @@ export function ToolCallCard({ toolCall }: ToolCallCardProps) {
         <span style={{ color: "#7a8594", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {argSummary}
         </span>
-        <span style={{ color: "#5a6574", fontSize: 11, flexShrink: 0 }}>
-          {toolCall.elapsed.toFixed(1)}s
+        <span
+          style={{ color: "#5a6574", fontSize: 11, flexShrink: 0 }}
+          title={isValidTime(toolCall.startedAt) ? formatFullTime(toolCall.startedAt, locale) : undefined}
+          data-testid="tool-call-timing"
+        >
+          {timing}
         </span>
         <span style={{ color: "#5a6574", fontSize: 14, flexShrink: 0 }}>
           {expanded ? "\u25B2" : "\u25BC"}
         </span>
       </button>
+
+      {liveProgress ? (
+        <div style={{ padding: "0 12px 8px" }}>
+          <JobProgressLine progress={liveProgress} running />
+        </div>
+      ) : null}
 
       {expanded && (
         <div style={{ padding: "0 12px 12px", fontSize: 12 }}>

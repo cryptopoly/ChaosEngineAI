@@ -204,6 +204,8 @@ export type StoryboardBatchWhat = "still" | "clip" | "both";
 export interface StoryboardBatchStatus {
   batch: StoryboardBatchRecord;
   revision: number;
+  /** Live batches only: where the run is, elapsed seconds, and time left when earlier steps give a basis. */
+  progress?: import("./chat").JobProgress | null;
 }
 
 export type StoryboardRenderState = "running" | "done" | "failed" | "cancelled" | "interrupted";

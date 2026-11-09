@@ -47,8 +47,11 @@ def jobs_dir() -> Path | None:
 
 class Job:
     def __init__(self, job_id: str, kind: str, label: str, ticket: Any, cancel: Callable[[], bool] | None = None,
-                 owner: str = "app", estimate_seconds: float | None = None) -> None:
+                 owner: str = "app", estimate_seconds: float | None = None,
+                 progress_fn: Callable[[], dict[str, Any]] | None = None) -> None:
         self.id = job_id
+        # A job that knows its own steps (a storyboard batch) reports them here; see ``progress``.
+        self.progress_fn = progress_fn
         self.cancel_fn = cancel  # set for a job that queues its own work (a storyboard batch or render)
         self.kind = kind
         self.label = label
@@ -76,19 +79,39 @@ class Job:
         if self.state == "queued" and self.ticket is not None:
             info["queuePosition"] = max(HEAVY_JOBS.position(self.ticket), 0)
         if self.state == "running":
-            tracker = _TRACKERS.get(self.kind)
-            if tracker is not None:
-                snap = tracker.snapshot()
-                info["progress"] = {
-                    "phase": snap.get("phase"),
-                    "step": snap.get("step"),
-                    "totalSteps": snap.get("totalSteps"),
-                    "elapsedSeconds": snap.get("elapsedSeconds"),
-                }
+            info["progress"] = self.progress()
+        if self.state in FINISHED and self.started_at and self.finished_at:
+            info["durationSeconds"] = round(max(0.0, self.finished_at - self.started_at), 1)
         if self.output is not None:
             info["output"] = self.output
         if self.error:
             info["error"] = self.error
+        return info
+
+    def progress(self) -> dict[str, Any]:
+        """Where a running job is: phase, step, totalSteps, elapsedSeconds, and etaSeconds only with a basis.
+
+        ``etaBasis`` says what the estimate rests on: ``clips`` (the measured time of earlier steps in this
+        run), ``steps`` (this phase's pace so far) or ``catalog`` (the model catalogue's time for this
+        machine). No basis, no ``etaSeconds``: elapsed time only.
+        """
+        now = time.time()
+        elapsed = max(0.0, now - (self.started_at or now))
+        info: dict[str, Any] = {"phase": None, "step": None, "totalSteps": None, "elapsedSeconds": round(elapsed, 1)}
+        tracker = _TRACKERS.get(self.kind)
+        if tracker is not None:
+            snap = tracker.snapshot()
+            info.update(phase=snap.get("phase"), step=snap.get("step"), totalSteps=snap.get("totalSteps"))
+            step, total, phase_elapsed = snap.get("step") or 0, snap.get("totalSteps") or 0, tracker.phase_elapsed()
+            if step >= 2 and total > step and phase_elapsed > 0 and snap.get("phase") in ("diffusing", "compose"):
+                info["etaSeconds"], info["etaBasis"] = round(phase_elapsed / step * (total - step)), "steps"
+        if self.progress_fn is not None:
+            try:
+                info.update({k: v for k, v in self.progress_fn().items() if v is not None})
+            except Exception:  # noqa: BLE001 - progress is a nicety; the job still reports its state
+                pass
+        if "etaSeconds" not in info and self.estimate_seconds and elapsed < self.estimate_seconds:
+            info["etaSeconds"], info["etaBasis"] = round(self.estimate_seconds - elapsed), "catalog"
         return info
 
     def record(self) -> dict[str, Any]:
@@ -176,13 +199,13 @@ class JobStore:
             )
 
     def submit(self, kind: str, label: str, runner: Runner, cancel: Callable[[], bool] | None = None,
-               estimate_seconds: float | None = None) -> Job:
+               estimate_seconds: float | None = None, progress: Callable[[], dict[str, Any]] | None = None) -> Job:
         """Run ``runner`` on the heavy queue. With ``cancel``, take no ticket: the runner queues its own work."""
         owner = CURRENT_OWNER.get()
         self.check_capacity(owner)
         ticket = HEAVY_JOBS.enqueue(kind, "agent", label) if cancel is None else None
         with self._lock:
-            job = Job(f"job-{next(self._ids)}", kind, label, ticket, cancel, owner, estimate_seconds)
+            job = Job(f"job-{next(self._ids)}", kind, label, ticket, cancel, owner, estimate_seconds, progress)
             self._jobs[job.id] = job
             finished = sorted((j for j in self._jobs.values() if j.done.is_set()), key=lambda j: j.created_at)
             stale = [j for j in finished if time.time() - (j.finished_at or j.created_at) > KEEP_SECONDS]

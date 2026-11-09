@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+import threading
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -23,6 +24,10 @@ from backend_service.tools import ToolRegistry, registry as default_registry
 logger = logging.getLogger(__name__)
 
 _DEFAULT_MAX_ITERATIONS = 10
+# Replies that only wait on a job already started (wait_for_job) do not use up the iteration budget. This
+# bounds them anyway: a model that polls forever still ends, after about a day of 30-minute waits.
+_FREE_WAIT_LIMIT = 48
+_PROGRESS_SECONDS = 2.0
 
 
 @dataclass
@@ -40,6 +45,8 @@ class ToolCallResult:
     # readable on the next turn regardless of UI rendering.
     render_as: str | None = None
     data: dict[str, Any] | None = None
+    # Epoch milliseconds when the call began; None for records made before this field existed.
+    started_at: int | None = None
 
 
 @dataclass
@@ -261,6 +268,7 @@ def _execute_tool_call(
         )
 
     start = time.perf_counter()
+    started_ms = int(time.time() * 1000)
     render_as: str | None = None
     structured_data: dict[str, Any] | None = None
     try:
@@ -288,7 +296,30 @@ def _execute_tool_call(
         elapsed_seconds=elapsed,
         render_as=render_as,
         data=structured_data,
+        started_at=started_ms,
     )
+
+
+def _run_tool_call_live(tool_call: dict[str, Any], tool_registry: ToolRegistry) -> Iterator[dict[str, Any]]:
+    """Run one call; a long-running one (a wait on a render) runs on a worker thread while this yields
+    ``tool_call_progress`` events every couple of seconds. Returns the ``ToolCallResult``."""
+    func = tool_call.get("function", {})
+    tool = tool_registry.get(func.get("name", ""))
+    arguments = _coerce_arguments(func.get("arguments"))
+    if tool is None or not tool.long_running(arguments):
+        return _execute_tool_call(tool_call, tool_registry)
+    box: list[ToolCallResult] = []
+    worker = threading.Thread(target=lambda: box.append(_execute_tool_call(tool_call, tool_registry)),
+                              name="agent-long-tool", daemon=True)
+    worker.start()
+    while True:
+        worker.join(_PROGRESS_SECONDS)
+        if not worker.is_alive():
+            break
+        snapshot = tool.live_progress(arguments)
+        if snapshot is not None:
+            yield {"tool_call_progress": {"id": tool_call.get("id"), "name": func.get("name"), "data": snapshot}}
+    return box[0]
 
 
 def _declined_tool_call(tool_call: dict[str, Any], text: str) -> ToolCallResult:
@@ -517,7 +548,12 @@ def run_agent_loop_streaming(
     messages = list(history)
     messages.append({"role": "user", "text": prompt})
 
-    for iteration in range(max_iterations):
+    used = 0  # iterations that count against ``max_iterations``
+    free = 0  # replies that only waited on a job already waited on this turn
+    seen_waits: set[str] = set()
+    iteration = -1
+    while used < max_iterations:
+        iteration += 1
         # Use non-streaming generate for tool-calling iterations
         # (streaming + tool calls is complex; non-streaming is reliable)
         result = generate_fn(
@@ -558,12 +594,26 @@ def run_agent_loop_streaming(
                         "arguments": tr.arguments,
                         "result": tr.result,
                         "elapsed": tr.elapsed_seconds,
+                        "startedAt": tr.started_at,
                     }
                     for tr in all_tool_results
                 ],
                 "iterations": iteration + 1,
             }
             return
+
+        # A reply that only waits on jobs already waited on this turn is free: a 25-minute render must not
+        # end the chat with "maximum iterations". The first wait on each job still counts.
+        keys: list[str | None] = []
+        for tc in tool_calls:
+            func = tc.get("function", {})
+            tool = reg.get(func.get("name", ""))
+            keys.append(tool.budget_key(_coerce_arguments(func.get("arguments"))) if tool is not None else None)
+        if all(k is not None and k in seen_waits for k in keys) and free < _FREE_WAIT_LIMIT:
+            free += 1
+        else:
+            used += 1
+        seen_waits.update(k for k in keys if k is not None)
 
         # Execute tool calls
         # Every call gets its own id: a missing or repeated id would let one approval cover two calls.
@@ -584,18 +634,21 @@ def run_agent_loop_streaming(
 
         for tc in tool_calls:
             func = tc.get("function", {})
+            started_ms = int(time.time() * 1000)
             yield {
                 "tool_call_start": {
                     "id": tc.get("id"),
                     "name": func.get("name"),
                     "arguments": func.get("arguments"),
+                    "startedAt": started_ms,
                 },
             }
 
             if tc["id"] in denials:
                 tc_result = _declined_tool_call(tc, denials[tc["id"]])
             else:
-                tc_result = _execute_tool_call(tc, reg)
+                tc_result = yield from _run_tool_call_live(tc, reg)
+            tc_result.started_at = started_ms
             all_tool_results.append(tc_result)
 
             yield {
@@ -605,6 +658,7 @@ def run_agent_loop_streaming(
                     "arguments": tc_result.arguments,
                     "result": tc_result.result[:2000],  # Cap for streaming
                     "elapsed": tc_result.elapsed_seconds,
+                    "startedAt": tc_result.started_at,
                     # Phase 2.8: stream the structured shape so the
                     # frontend can render it as the tool finishes
                     # rather than waiting for the final done payload.

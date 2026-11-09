@@ -107,6 +107,10 @@ class Batch:
         self.done = threading.Event()
         self.steps: list[tuple[str, str]] = []  # (shot id, still|clip), stills first
         self._takes: dict[str, str] = {}  # shot id -> take made in this run
+        self._began: float | None = None  # monotonic start of ``run``
+        self._finished_steps: list[tuple[str, float]] = []  # (kind, seconds) of steps that made their output
+        self._current: tuple[str, str, float] | None = None  # (shot id, kind, monotonic start) of the running step
+        self._processed = 0  # steps that ended, made or not
 
     # ---- planning ----
     def plan(self, project: Project) -> list[tuple[str, str, str | None]]:
@@ -202,8 +206,49 @@ class Batch:
     def _last_step(self, shot_id: str, kind: str) -> bool:
         return kind == "clip" or (shot_id, "clip") not in self.steps
 
+    def progress(self) -> dict[str, Any]:
+        """Where the run is, for ``job_status`` and the UI: "clip 2 of 4", elapsed, and time left from earlier steps.
+
+        The time left uses only what this run measured: each remaining step is priced at the average of the
+        finished steps of the same kind (a clip at the clips made so far). A kind with no finished step has
+        no price, so there is no ``etaSeconds`` until one exists (the first clip of a batch shows none).
+        """
+        steps, now = list(self.steps), time.monotonic()
+        current = self._current
+        finished = list(self._finished_steps)
+        info: dict[str, Any] = {"totalSteps": len(steps)}
+        if self._began is not None:
+            info["elapsedSeconds"] = round(now - self._began, 1)
+        done_by_kind = {k: sum(1 for kk, _ in finished if kk == k) for k in ("still", "clip")}
+        total_by_kind = {k: sum(1 for _, kk in steps if kk == k) for k in ("still", "clip")}
+        processed = min(self._processed, len(steps))
+        info["step"] = min(len(steps), processed + (1 if current else 0))
+        if current is not None:
+            kind = current[1]
+            index = sum(1 for _, kk in steps[:processed] if kk == kind) + 1
+            info["phase"] = f"{kind} {index} of {total_by_kind[kind]}"
+            info["kind"], info["kindIndex"], info["kindTotal"], info["shotId"] = kind, index, total_by_kind[kind], current[0]
+            info["stepElapsedSeconds"] = round(now - current[2], 1)
+        mean = {k: sum(sec for kk, sec in finished if kk == k) / done_by_kind[k] for k in ("still", "clip") if done_by_kind[k]}
+        if mean:
+            info["finishedSeconds"] = {k: round(v, 1) for k, v in mean.items()}
+        remaining = steps[processed + (1 if current else 0):]
+        left: float | None = 0.0
+        if current is not None:
+            price = mean.get(current[1])
+            left = None if price is None else max(0.0, price - (now - current[2]))
+        for _, kind in remaining:
+            if left is None or kind not in mean:
+                left = None
+                break
+            left += mean[kind]
+        if left is not None and finished and (remaining or current is not None):
+            info["etaSeconds"], info["etaBasis"] = round(left), "clips"
+        return info
+
     def run(self) -> None:
         state = "done"
+        self._began = time.monotonic()
         try:
             ran_still = False
             for shot_id, kind in self.steps:
@@ -215,7 +260,9 @@ class Batch:
                     ran_still = False
                 if kind == "still":
                     ran_still = True
-                if not self._step(shot_id, kind):
+                ok = self._step(shot_id, kind)
+                self._processed += 1
+                if not ok:
                     state = "cancelled"
                     break
             if any(r.state == "failed" for r in self.record().results) and state == "done":
@@ -246,6 +293,7 @@ class Batch:
             if shot is None:
                 raise StoreError("the shot was removed")
             began = time.monotonic()
+            self._current = (shot_id, kind, began)
             if kind == "still":
                 path, info = _split(self.make_still(shot, project))
             else:
@@ -258,15 +306,19 @@ class Batch:
             # The measured time of this step rides with the take; the estimate uses it for this model next time.
             made = dict(info.get("settings") or {})
             made[f"{kind}Seconds"] = round(time.monotonic() - began, 2)
+            self._finished_steps.append((kind, time.monotonic() - began))
             if made.get("model"):
                 made[f"{kind}Model"] = made["model"]
             info = {**info, "settings": made}
             self._update(lambda p, folder: self._store_output(p, folder, shot_id, kind, path, info))
+            self._current = None
             return True
         except GenerationCancelled:
+            self._current = None
             self._update(lambda p, folder: self._mark(p, shot_id, kind, "cancelled", None))
             return False
         except Exception as exc:  # noqa: BLE001 - recorded on the shot, the batch goes on
+            self._current = None
             message = media.scrub(getattr(exc, "detail", None) or str(exc) or type(exc).__name__)
             self._update(lambda p, folder: self._mark(p, shot_id, kind, "failed", message))
             return not self.cancel_event.is_set()

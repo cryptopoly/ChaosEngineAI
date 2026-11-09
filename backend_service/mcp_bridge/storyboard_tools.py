@@ -353,7 +353,8 @@ def storyboard_generate(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
         notes = [f"{r.shotId} {r.kind}: {r.state}{' - ' + r.error if r.error else ''}" for r in record.results]
         return {"batchId": batch.id, "state": record.state, "projectId": pid}, notes
 
-    return _submitted(STORE.submit("storyboard", f"storyboard {batch.id}", run, cancel=batch.cancel))
+    return _submitted(STORE.submit("storyboard", f"storyboard {batch.id}", run, cancel=batch.cancel,
+                                 progress=batch.progress))
 
 
 def _extras(pid: str, files: list[str]) -> list[dict[str, Any]]:
@@ -391,7 +392,17 @@ def storyboard_render(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
             output["warnings"] = list(job.warnings)
         return output, list(job.warnings)
 
-    return _submitted(STORE.submit("storyboard", f"render {pid}", run, cancel=lambda: RENDERS.cancel(pid)))
+    def progress() -> dict[str, Any]:
+        import time
+
+        fraction = float(job.fraction or 0.0)
+        info: dict[str, Any] = {"phase": job.message or "rendering", "step": round(fraction * 100), "totalSteps": 100}
+        elapsed = time.time() - float(job.started_at or time.time())
+        if fraction >= 0.15 and elapsed > 0:  # the pace so far; earlier than that the guess is noise
+            info["etaSeconds"], info["etaBasis"] = round(elapsed / fraction * (1 - fraction)), "steps"
+        return info
+
+    return _submitted(STORE.submit("storyboard", f"render {pid}", run, cancel=lambda: RENDERS.cancel(pid), progress=progress))
 
 
 def storyboard_captions(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:

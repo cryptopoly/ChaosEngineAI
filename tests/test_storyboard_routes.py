@@ -134,6 +134,38 @@ class ProjectRouteTests(StoryboardRouteCase):
 
 
 class BatchRenderBundleRouteTests(StoryboardRouteCase):
+    def test_a_live_batch_reports_progress_with_the_clips_made_so_far(self):
+        import threading
+        import time
+
+        pid, data = self.create(shots=3)
+        gens = FakeGenerators(self.src)
+        second_clip, release = threading.Event(), threading.Event()
+        original = gens.make_clip
+
+        def slow_clip(shot, project, still):
+            made = sum(1 for c in gens.calls if c[0] == "clip")
+            if made == 1:  # hold the second clip so the poll sees a batch with one measured clip
+                second_clip.set()
+                release.wait(10)
+            time.sleep(0.05)
+            return original(shot, project, still)
+
+        gens.make_clip = slow_clip
+        with mock.patch("backend_service.storyboard.generators.studio_generators", fake_wiring(gens)):
+            bid = self.post(f"/projects/{pid}/batches", {"revision": data["project"]["revision"], "what": "both"})["batchId"]
+            self.assertTrue(second_clip.wait(10))
+            live = self.get(f"/projects/{pid}/batches/{bid}")
+            release.set()
+            self.wait(lambda: self.get(f"/projects/{pid}/batches/{bid}")["batch"]["state"] == "done")
+            finished = self.get(f"/projects/{pid}/batches/{bid}")
+        progress = live["progress"]
+        self.assertEqual((progress["kind"], progress["kindIndex"], progress["kindTotal"]), ("clip", 2, 3))
+        self.assertEqual(progress["totalSteps"], 6)  # three stills, then three clips
+        self.assertEqual(progress["etaBasis"], "clips")  # one clip was measured: the other two are priced from it
+        self.assertIn("elapsedSeconds", progress)
+        self.assertNotIn("progress", finished)
+
     def test_batch_runs_with_fake_generators_and_is_persisted(self):
         pid, data = self.create(shots=2)
         gens = FakeGenerators(self.src)

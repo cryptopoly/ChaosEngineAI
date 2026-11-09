@@ -48,7 +48,9 @@
     "failed": "Échec de l'outil : {tool}",
     "noArguments": "(aucun argument)",
     "input": "Entrée",
-    "result": "Résultat"
+    "result": "Résultat",
+    "startedAt": null,
+    "polls": null
   },
   "attachments": {
     "image": "Joindre une image",
@@ -469,7 +471,16 @@
       "cancel": null,
       "openProject": null,
       "openLibrary": null,
-      "interrupted": null
+      "interrupted": null,
+      "startedAt": null,
+      "elapsed": null,
+      "eta": null,
+      "etaClips": null,
+      "etaCatalog": null,
+      "stepOf": null,
+      "tookFor": null,
+      "clipOf": null,
+      "stillOf": null
     },
     "kind": {
       "image": null,

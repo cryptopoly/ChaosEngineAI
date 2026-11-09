@@ -48,7 +48,9 @@
     "failed": "Инструмент не удался: {tool}",
     "noArguments": "(без аргументов)",
     "input": "Вход",
-    "result": "Результат"
+    "result": "Результат",
+    "startedAt": null,
+    "polls": null
   },
   "attachments": {
     "image": "Прикрепить изображение",
@@ -469,7 +471,16 @@
       "cancel": null,
       "openProject": null,
       "openLibrary": null,
-      "interrupted": null
+      "interrupted": null,
+      "startedAt": null,
+      "elapsed": null,
+      "eta": null,
+      "etaClips": null,
+      "etaCatalog": null,
+      "stepOf": null,
+      "tookFor": null,
+      "clipOf": null,
+      "stillOf": null
     },
     "kind": {
       "image": null,

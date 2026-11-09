@@ -148,7 +148,13 @@ def _batch_info(project_id: str, batch_id: str) -> dict[str, Any]:
     record = next((b for b in project.batches if b.id == batch_id), None)
     if record is None:
         raise HTTPException(status_code=404, detail=f"Unknown batch '{batch_id}'.")
-    return {"batch": record.model_dump(mode="json"), "revision": project.revision}
+    info: dict[str, Any] = {"batch": record.model_dump(mode="json"), "revision": project.revision}
+    from backend_service.storyboard.batch import get_batch
+
+    live = get_batch(batch_id)
+    if live is not None and not live.done.is_set():
+        info["progress"] = live.progress()  # "clip 2 of 4", elapsed, and time left from the clips made so far
+    return info
 
 
 # ---- projects ----

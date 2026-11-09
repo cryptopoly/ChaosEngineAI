@@ -281,6 +281,7 @@ export function StoryboardTab({ story, project, timeline, imageGallery, videoGal
           unlocked={unlocked.length}
           estimate={estimate}
           batch={batch}
+          batchProgress={story.batchProgress ?? null}
           running={running}
           busy={busy}
           onMakeMissing={() => void story.startBatch("both", missing)}

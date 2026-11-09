@@ -48,7 +48,9 @@
     "failed": "ツール失敗:{tool}",
     "noArguments": "(引数なし)",
     "input": "入力",
-    "result": "結果"
+    "result": "結果",
+    "startedAt": null,
+    "polls": null
   },
   "attachments": {
     "image": "画像を添付",
@@ -469,7 +471,16 @@
       "cancel": null,
       "openProject": null,
       "openLibrary": null,
-      "interrupted": null
+      "interrupted": null,
+      "startedAt": null,
+      "elapsed": null,
+      "eta": null,
+      "etaClips": null,
+      "etaCatalog": null,
+      "stepOf": null,
+      "tookFor": null,
+      "clipOf": null,
+      "stillOf": null
     },
     "kind": {
       "image": null,

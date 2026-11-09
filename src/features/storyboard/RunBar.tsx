@@ -8,7 +8,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { StoryboardEstimate } from "../../api/storyboard";
 import { RunEstimateStrip, formatDuration, memoryRisk } from "../../components/RunEstimateStrip";
-import type { StoryboardBatchRecord } from "../../types";
+import type { JobProgress, StoryboardBatchRecord } from "../../types";
 import { BatchBar } from "./BatchBar";
 
 export interface RunBarProps {
@@ -18,6 +18,7 @@ export interface RunBarProps {
   unlocked: number;
   estimate: StoryboardEstimate | null;
   batch: StoryboardBatchRecord | null;
+  batchProgress?: JobProgress | null;
   running: boolean;
   busy: boolean;
   onMakeMissing: () => void;
@@ -27,13 +28,13 @@ export interface RunBarProps {
 
 type TFn = (key: string, options: Record<string, unknown>) => string;
 
-export function RunBar({ missing, stills, stale, unlocked, estimate, batch, running, busy, onMakeMissing, onMakeAll, onCancel }: RunBarProps) {
+export function RunBar({ missing, stills, stale, unlocked, estimate, batch, batchProgress, running, busy, onMakeMissing, onMakeAll, onCancel }: RunBarProps) {
   const { t } = useTranslation("studio");
   const [ack, setAck] = useState(false);
   if (running && batch) {
     return (
       <div className="run-bar run-bar--running">
-        <BatchBar batch={batch} onCancel={onCancel} />
+        <BatchBar batch={batch} progress={batchProgress ?? null} onCancel={onCancel} />
       </div>
     );
   }

@@ -15,6 +15,7 @@ import {
   undoStoryboard,
 } from "../../api";
 import type {
+  JobProgress,
   StoryboardBatchRecord,
   StoryboardBatchWhat,
   StoryboardOpArgs,
@@ -46,6 +47,8 @@ export interface UseStoryboardResult {
   /** True while an op, undo or redo is in flight. */
   busy: boolean;
   batch: StoryboardBatchRecord | null;
+  /** Live progress of the running batch (step, elapsed, time left); null when it reports none. */
+  batchProgress?: JobProgress | null;
   reload: () => Promise<void>;
   op: <K extends StoryboardOpName>(name: K, args: StoryboardOpArgs[K]) => Promise<boolean>;
   /**
@@ -76,6 +79,7 @@ export function useStoryboard(enabled: boolean, projectId: string | null): UseSt
   const [notice, setNotice] = useState<StoryboardNotice>(null);
   const [busy, setBusy] = useState(false);
   const [batch, setBatch] = useState<StoryboardBatchRecord | null>(null);
+  const [batchProgress, setBatchProgress] = useState<JobProgress | null>(null);
 
   const projectRef = useRef<StoryboardProject | null>(null);
   const idRef = useRef<string | null>(projectId);
@@ -229,6 +233,7 @@ export function useStoryboard(enabled: boolean, projectId: string | null): UseSt
         const status = await getStoryboardBatch(projectId, batchId);
         if (stopped) return;
         setBatch(status.batch);
+        setBatchProgress(isBatchRunning(status.batch) ? status.progress ?? null : null);
         const moved = status.revision !== projectRef.current?.revision;
         if (moved || !isBatchRunning(status.batch)) await reload();
         if (!stopped && isBatchRunning(status.batch)) timer = setTimeout(() => void tick(), BATCH_POLL_MS);
@@ -257,6 +262,7 @@ export function useStoryboard(enabled: boolean, projectId: string | null): UseSt
     dismissNotice: () => setNotice(null),
     busy,
     batch,
+    batchProgress,
     reload,
     op,
     opFrom,

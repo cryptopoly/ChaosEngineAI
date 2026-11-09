@@ -30,13 +30,14 @@ CUDA_VOICE_MODELS: list[dict[str, Any]] = [
         "repo": "ResembleAI/chatterbox-turbo",
         "revision": "749d1c1a46eb10492095d68fbcf55691ccf137cd",
         "files": [
-            # Both decoders: which one from_local reads is confirmed on the 4090 (then the other can go).
-            "added_tokens.json", "conds.pt", "merges.txt", "s3gen.safetensors", "s3gen_meanflow.safetensors",
+            # chatterbox-tts 0.1.7 ChatterboxTurboTTS.from_local builds S3Gen(meanflow=True) and loads only
+            # s3gen_meanflow.safetensors (checked on the RTX 4090 run); s3gen.safetensors (about 1 GB) is never read.
+            "added_tokens.json", "conds.pt", "merges.txt", "s3gen_meanflow.safetensors",
             "special_tokens_map.json", "t3_turbo_v1.safetensors", "t3_turbo_v1.yaml", "tokenizer_config.json",
             "ve.safetensors", "vocab.json",
         ],
         "upstream": "ResembleAI/chatterbox-turbo",
-        "sizeGb": 4.04,
+        "sizeGb": 2.99,
         "engine": "torch",
         "lanes": ["cuda"],
         "languages": "English",

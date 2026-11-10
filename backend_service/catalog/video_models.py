@@ -688,6 +688,8 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "runtime": "diffusers WanPipeline / WanImageToVideoPipeline",
                 "styleTags": ["general", "quality", "motion"],
                 "taskSupport": ["txt2video", "img2video"],
+                # PyTorch's MPS backend corrupts Wan 2.2's bf16 output (FU-102, FU-125), so a Mac is not offered this row.
+                "cudaOnly": True,
                 # 5B dense transformer bf16 (~10 GB) + UMT5-XXL (~11 GB) + a 2.8 GB VAE: 34 GB on disk. The
                 # model card runs 720p at 24 fps on one 24 GB card (RTX 4090) with the text encoder offloaded.
                 "sizeGb": 34.2,

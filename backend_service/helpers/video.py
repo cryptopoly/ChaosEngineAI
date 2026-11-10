@@ -100,6 +100,11 @@ def _video_model_payloads(
             enriched["acceptsImageInput"], enriched["acceptsEndImage"] = image_input_support(
                 str(enriched.get("repo") or "")
             )
+            # A distilled LTX-2 on diffusers runs its own 8-step schedule at guidance 1 (the MLX rows are told apart by
+            # their runtime string): the Studio hides steps, guidance and the negative prompt for it.
+            from backend_service.video_runtime.repos import is_ltx2_distilled_repo
+
+            enriched["fixedSampler"] = is_ltx2_distilled_repo(str(enriched.get("repo") or ""))
             validation_error = _video_variant_validation_error(enriched)
             local_data_repos = _video_variant_local_data_repos(enriched)
             enriched["availableLocally"] = validation_error is None

@@ -209,6 +209,19 @@ describe("Video Studio danger gate", () => {
   });
 });
 
+describe("Video Studio fixed-schedule models", () => {
+  it("hides steps and guidance for a distilled model that runs its own schedule", () => {
+    const html = render({}, { fixedSampler: true, runtime: "diffusers LTX2Pipeline" });
+    expect(html).not.toContain("Guidance");
+    expect(html).not.toContain("CFG decay");
+  });
+
+  it("keeps them for a model whose steps and guidance apply", () => {
+    const html = render({}, { fixedSampler: false, runtime: "diffusers LTX2Pipeline" });
+    expect(html).toContain("Guidance");
+  });
+});
+
 describe("Video Studio start and end image pickers", () => {
   it("shows no picture picker for a model without image input", () => {
     const html = render({}, { acceptsImageInput: false, acceptsEndImage: false });

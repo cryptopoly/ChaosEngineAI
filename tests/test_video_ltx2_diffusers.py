@@ -94,6 +94,18 @@ class RegistryTests(unittest.TestCase):
         self.assertLess(rows[DEV_BF16]["loadMemoryGb"], rows[DEV_BF16]["sizeGb"])
         self.assertLess(rows[DISTILLED_NF4]["runtimeFootprintGb"], 32.0)  # a 4-bit pack for 24 GB cards
 
+    def test_the_catalog_payload_flags_the_distilled_rows_as_fixed_schedule(self) -> None:
+        from backend_service.helpers.video import _video_model_payloads
+
+        rows = {v["repo"]: v for f in _video_model_payloads([]) for v in f["variants"]}
+        self.assertTrue(rows[DISTILLED_NF4]["fixedSampler"])
+        self.assertTrue(rows["diffusers/LTX-2.3-Distilled-Diffusers"]["fixedSampler"])
+        self.assertFalse(rows[DEV_BF16]["fixedSampler"])
+        self.assertFalse(rows["Wan-AI/Wan2.2-TI2V-5B-Diffusers"]["fixedSampler"])
+        for repo in (DISTILLED_NF4, DEV_BF16):
+            self.assertTrue(rows[repo]["acceptsImageInput"])
+            self.assertTrue(rows[repo]["acceptsEndImage"])
+
     def test_the_picture_mode_is_part_of_the_loaded_pipeline_key(self) -> None:
         engine = DiffusersVideoEngine()
         keys = {

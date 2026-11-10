@@ -21,6 +21,8 @@ export interface VideoModelVariant {
   acceptsImageInput?: boolean;
   /** True when it can also end on a picture (LTX-2); Wan 2.2 TI2V-5B follows only the start picture. */
   acceptsEndImage?: boolean;
+  /** True for a distilled model that runs its own fixed schedule (LTX-2 on MLX or diffusers): steps, guidance and negative prompt do not apply. */
+  fixedSampler?: boolean;
   /** Few-step distilled rows (CausVid, lightx2v, LTX distilled): the steps and guidance the Studio starts from. */
   defaultSteps?: number | null;
   cfgOverride?: number | null;

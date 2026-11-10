@@ -417,7 +417,24 @@ class DiffusersVideoEngine:
                 effectiveGuidance=float(config.guidance),
             )
         finally:
+            self._trim_device_cache()
             VIDEO_PROGRESS.finish()
+
+    def _trim_device_cache(self) -> None:
+        """Hand PyTorch's cached scratch memory back after a run; the pipeline stays loaded for the next one.
+
+        The allocator keeps what a run reserved, so after one Wan 720p clip the NVIDIA card read 24.0 GB used with
+        nothing generating and chat or speech on the same GPU had no room until "Unload" (RTX 4090 run).
+        """
+        torch = self._torch
+        if torch is None:
+            return
+        try:
+            gc.collect()
+            if self._device == "cuda" and getattr(torch.cuda, "is_available", lambda: False)():
+                torch.cuda.empty_cache()
+        except Exception:  # noqa: BLE001 - trimming a cache must never fail a finished run
+            pass
 
     def _format_run_label(self, config: VideoGenerationConfig) -> str:
         return f"{config.modelName} · {config.numFrames}f @ {config.width}x{config.height}"

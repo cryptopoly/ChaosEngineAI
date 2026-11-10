@@ -402,6 +402,34 @@ class GenerateTests(unittest.TestCase):
         engine._device = "cpu"
         return generator_cls
 
+    def test_a_finished_run_gives_the_cuda_cache_back_but_keeps_the_pipeline(self):
+        engine = DiffusersVideoEngine()
+        self._install_torch_shim(engine)
+        emptied = mock.Mock()
+        engine._torch.cuda = SimpleNamespace(is_available=lambda: True, empty_cache=emptied)  # type: ignore[union-attr]
+        engine._device = "cuda"
+        fake_pipeline = mock.MagicMock(name="pipeline")
+        frames = [mock.MagicMock(name=f"frame_{idx}") for idx in range(24)]
+
+        with mock.patch.object(video_runtime, "_find_missing", return_value=[]),                 mock.patch.object(engine, "_ensure_pipeline", return_value=fake_pipeline),                 mock.patch.object(engine, "_invoke_pipeline", return_value=frames),                 mock.patch.object(engine, "_encode_frames_to_mp4", return_value=self.FAKE_BYTES):
+            engine.generate(self._config(seed=1))
+
+        emptied.assert_called_once()
+        self.assertIsNotNone(engine._torch)  # the loaded pipeline's torch handle is untouched
+
+    def test_a_failed_run_trims_the_cache_too_and_a_broken_trim_never_hides_the_error(self):
+        engine = DiffusersVideoEngine()
+        self._install_torch_shim(engine)
+        engine._torch.cuda = SimpleNamespace(  # type: ignore[union-attr]
+            is_available=lambda: True, empty_cache=mock.Mock(side_effect=RuntimeError("driver gone")),
+        )
+        engine._device = "cuda"
+
+        with mock.patch.object(video_runtime, "_find_missing", return_value=[]),                 mock.patch.object(engine, "_ensure_pipeline", return_value=mock.MagicMock()),                 mock.patch.object(engine, "_invoke_pipeline", return_value=[]):
+            with self.assertRaises(RuntimeError) as raised:
+                engine.generate(self._config(seed=1))
+        self.assertIn("zero frames", str(raised.exception))
+
     def test_generate_happy_path_returns_generated_video_with_real_metadata(self):
         engine = DiffusersVideoEngine()
         generator_cls = self._install_torch_shim(engine)

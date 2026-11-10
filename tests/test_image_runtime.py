@@ -117,6 +117,44 @@ class DiffusersTextToImageEngineTests(unittest.TestCase):
         self.assertEqual(kwargs["negative_prompt"], "blurry")
 
 
+class TrimDeviceCacheTests(unittest.TestCase):
+    """After a run the CUDA allocator's cache goes back to the driver; the pipeline stays loaded."""
+
+    def _engine(self, device: str, empty_cache):
+        from types import SimpleNamespace
+
+        engine = DiffusersTextToImageEngine()
+        engine._torch = SimpleNamespace(cuda=SimpleNamespace(is_available=lambda: True, empty_cache=empty_cache))
+        engine._device = device
+        return engine
+
+    def test_cuda_cache_is_emptied(self):
+        from unittest import mock
+
+        empty = mock.Mock()
+        engine = self._engine("cuda", empty)
+        engine._trim_device_cache()
+        empty.assert_called_once()
+        self.assertIsNotNone(engine._torch)
+
+    def test_other_devices_and_an_unloaded_engine_are_left_alone(self):
+        from unittest import mock
+
+        empty = mock.Mock()
+        self._engine("cpu", empty)._trim_device_cache()
+        empty.assert_not_called()
+        DiffusersTextToImageEngine()._trim_device_cache()  # nothing loaded: no error
+
+    def test_a_driver_error_never_escapes(self):
+        from unittest import mock
+
+        self._engine("cuda", mock.Mock(side_effect=RuntimeError("driver gone")))._trim_device_cache()
+
+    def test_generate_trims_in_its_finally_block(self):
+        source = Path(__file__).resolve().parents[1].joinpath("backend_service", "image_runtime", "__init__.py").read_text(encoding="utf-8")
+        self.assertLess(source.index("self._trim_device_cache()\n            IMAGE_PROGRESS.finish()"), source.index("def _diffuse_message"))
+
+
 class ValidateLocalDiffusersSnapshotTests(unittest.TestCase):
     """Regression coverage for the LTX-Video corruption case.
 

@@ -477,7 +477,24 @@ class DiffusersTextToImageEngine:
             IMAGE_PROGRESS.set_phase(PHASE_SAVING, message="Saving to gallery")
             return artifacts
         finally:
+            self._trim_device_cache()
             IMAGE_PROGRESS.finish()
+
+    def _trim_device_cache(self) -> None:
+        """Hand PyTorch's cached scratch memory back after a run; the pipeline stays loaded for the next one.
+
+        Same as the video engine: the allocator keeps what a run reserved (19 GB peak for one FLUX.2 Klein 4B render
+        at 2048 px), which left chat or speech on the same NVIDIA card with no room until the model was unloaded.
+        """
+        torch = getattr(self, "_torch", None)
+        if torch is None:
+            return
+        try:
+            gc.collect()
+            if getattr(self, "_device", None) == "cuda" and getattr(torch.cuda, "is_available", lambda: False)():
+                torch.cuda.empty_cache()
+        except Exception:  # noqa: BLE001 - trimming a cache must never fail a finished run
+            pass
 
     def _diffuse_message(self, config: ImageGenerationConfig) -> str:
         return diffuse_message(config)

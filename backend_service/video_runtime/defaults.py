@@ -87,23 +87,64 @@ def _estimate_model_footprint_gb(
     return base
 
 
+# A pipeline taking more than this share of the GPU's free memory is offloaded by model: the weights alone would leave
+# too little for activations and the VAE decode (video DiTs are activation-hungry), and the price is only the seconds
+# it takes to move each component over PCIe once per clip.
+_MODEL_OFFLOAD_SHARE = 0.6
+# ...unless that much memory is still free beyond the weights: then everything stays in place (a 96 GB card with a
+# 76 GB pipeline), which also spares the CPU copy of the whole pipeline.
+_ACTIVATION_HEADROOM_GB = 16.0
+# The memory of a unified-memory machine (DGX Spark, GB10) is the system's: GPU total within this share of system RAM.
+_UNIFIED_MEMORY_SHARE = 0.85
+
+
 def _prefers_model_cpu_offload(
     device: str,
-    total_memory_gb: float | None,
+    budget_gb: float | None,
     estimated_footprint_gb: float | None,
     largest_component_gb: float | None,
+    *,
+    unified_memory: bool = False,
 ) -> bool:
-    """True when the whole pipeline is too big for the card but its largest single part fits.
+    """True when the pipeline takes a large share of the GPU's memory but its largest single part fits.
 
-    Model-level offload keeps one component (text encoder, then transformer, then VAE) on the GPU at a time and moves
-    it whole: far faster than sequential offload, which moves every layer on every step. It cannot help when one
-    component alone is bigger than the card (a 14B transformer on 24 GB), so that case keeps the old path: try the
-    full placement, then sequential offload. Wan 2.2 TI2V-5B is the case it is for: 22 GB in total on a 24 GB card
-    (RTX 4090 run), transformer 10 GB.
+    ``budget_gb`` is the GPU memory free now (or its total when that cannot be read). Model-level offload keeps one
+    component (text encoder, then transformer, then VAE) on the GPU at a time and moves it whole: far faster than
+    sequential offload, which moves every layer on every step. It cannot help when one component alone is bigger than
+    the card (a 14B transformer on 24 GB), so that case keeps the old path: try the full placement, then sequential
+    offload. It is pointless on a unified-memory machine, where GPU and CPU share one pool and moving a component
+    only copies it. Cases: Wan 2.2 TI2V-5B (22 GB) on a 24 GB card; LTX-2.3 4-bit (25 GB) on 24 GB and on a 32 GB
+    RTX 5090; LTX-2.3 bf16 (76 GB) on an 80 GB card; a DGX Spark runs everything in place.
     """
-    if device != "cuda" or not total_memory_gb or not estimated_footprint_gb or not largest_component_gb:
+    if device != "cuda" or unified_memory:
         return False
-    return estimated_footprint_gb > 0.8 * total_memory_gb and largest_component_gb * 1.3 < total_memory_gb
+    if not budget_gb or not estimated_footprint_gb or not largest_component_gb:
+        return False
+    if budget_gb - estimated_footprint_gb >= _ACTIVATION_HEADROOM_GB:
+        return False
+    return estimated_footprint_gb > _MODEL_OFFLOAD_SHARE * budget_gb and largest_component_gb * 1.3 < budget_gb
+
+
+def _cuda_memory_gb(torch: Any) -> tuple[float | None, float | None]:
+    """``(free, total)`` GPU memory in GB as the driver reports it now, or ``(None, None)``."""
+    try:
+        free, total = torch.cuda.mem_get_info()
+    except Exception:  # noqa: BLE001 - no CUDA, an old driver, or a mocked torch
+        return None, None
+    return free / 1e9, total / 1e9
+
+
+def _is_unified_memory(gpu_total_gb: float | None) -> bool:
+    """True when the GPU's memory is the system's (DGX Spark / GB10): its total is about the machine's RAM."""
+    if not gpu_total_gb:
+        return False
+    try:
+        import psutil  # noqa: PLC0415
+
+        ram_gb = psutil.virtual_memory().total / 1e9
+    except Exception:  # noqa: BLE001
+        return False
+    return gpu_total_gb >= _UNIFIED_MEMORY_SHARE * ram_gb
 
 
 def _largest_component_gb(pipeline: Any) -> float | None:

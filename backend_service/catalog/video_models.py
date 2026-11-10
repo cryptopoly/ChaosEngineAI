@@ -200,8 +200,9 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "defaultDurationSeconds": 4.0,
                 "note": (
                     "Distilled LTX-2.3 with 4-bit (NF4) weights from a community conversion of the Lightricks model: "
-                    "stereo sound, 8 steps, no guidance (steps, guidance and negative prompt do not apply). For 24 GB "
-                    "NVIDIA cards and up; smaller cards fall back to slower layer-by-layer offloading. Takes a start "
+                    "stereo sound, 8 steps, no guidance (steps, guidance and negative prompt do not apply). For NVIDIA "
+                    "cards with 24 GB or more (components are moved on and off the card as they are needed, so a "
+                    "bigger card is faster, not required to be bigger); not for smaller cards. Takes a start "
                     "picture and an end picture. Sizes are multiples of 32, clips 8k+1 frames. Weights: LTX-2 "
                     "community licence (free below US$10M annual revenue)."
                 ),

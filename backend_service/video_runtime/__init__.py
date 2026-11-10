@@ -54,6 +54,8 @@ from backend_service.video_runtime.defaults import (
     _estimate_model_footprint_gb,
     _find_missing,
     _interpolate_frames,
+    _cuda_memory_gb,
+    _is_unified_memory,
     _largest_component_gb,
     _prefers_model_cpu_offload,
     _resolve_video_defaults,
@@ -861,13 +863,17 @@ class DiffusersVideoEngine:
                     )
                     pipeline.enable_sequential_cpu_offload()
                 elif hasattr(pipeline, "enable_model_cpu_offload") and _prefers_model_cpu_offload(
-                    device, total_memory_gb, estimated_footprint_gb, _largest_component_gb(pipeline),
+                    device,
+                    (_cuda_memory_gb(torch)[0] or total_memory_gb) if device == "cuda" else total_memory_gb,
+                    estimated_footprint_gb,
+                    _largest_component_gb(pipeline),
+                    unified_memory=_is_unified_memory(_cuda_memory_gb(torch)[1] or total_memory_gb),
                 ):
                     _LOG.info(
-                        "video.placement: model-level CPU offload (pipeline ~%s GB on a %s GB device, "
+                        "video.placement: model-level CPU offload (pipeline ~%s GB, GPU memory free %s GB, "
                         "largest component fits).",
                         estimated_footprint_gb,
-                        total_memory_gb,
+                        _cuda_memory_gb(torch)[0] or total_memory_gb,
                     )
                     pipeline.enable_model_cpu_offload()
                 else:

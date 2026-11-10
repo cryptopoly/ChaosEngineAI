@@ -60,15 +60,64 @@ class CapabilityTests(unittest.TestCase):
 
 
 class PlacementTests(unittest.TestCase):
-    def test_model_offload_is_for_a_pipeline_that_almost_fits_with_a_part_that_fits(self) -> None:
+    def test_model_offload_across_card_sizes(self) -> None:
+        """Pipeline, largest component, free GPU memory (GB) -> offload by model? Cards from 24 GB up to unified memory."""
         from backend_service.video_runtime.defaults import _prefers_model_cpu_offload as prefers
 
-        self.assertTrue(prefers("cuda", 24.0, 22.0, 11.4))   # Wan 2.2 TI2V-5B on a 4090: 22 GB total, 11 GB biggest part
-        self.assertFalse(prefers("cuda", 24.0, 9.0, 4.0))    # fits whole: no offload
-        self.assertFalse(prefers("cuda", 24.0, 39.0, 28.0))  # a 14B transformer alone exceeds the card: the old path
-        self.assertFalse(prefers("mps", 24.0, 22.0, 11.0))   # CUDA only
-        self.assertFalse(prefers("cuda", None, 22.0, 11.0))  # unknown figures: the old path
+        wan_5b = (22.0, 11.4)       # Wan 2.2 TI2V-5B: pipeline, text encoder (its largest part)
+        ltx_4bit = (25.0, 14.4)     # LTX-2.3 distilled 4-bit: pipeline, transformer
+        ltx_bf16 = (76.0, 38.0)     # LTX-2.3 bf16: pipeline, transformer
+        small = (9.0, 4.0)          # Wan 2.1 1.3B
+        cases = [
+            # (label, free GB, (pipeline, largest), expected)
+            ("24 GB: Wan 5B", 24.0, wan_5b, True),
+            ("24 GB: LTX 4-bit", 24.0, ltx_4bit, True),
+            ("24 GB: small model fits whole", 24.0, small, False),
+            ("24 GB: LTX bf16 cannot (transformer alone too big): old path", 24.0, ltx_bf16, False),
+            ("32 GB (RTX 5090): LTX 4-bit leaves too little for activations", 32.0, ltx_4bit, True),
+            ("32 GB: Wan 5B", 32.0, wan_5b, True),
+            ("48 GB: LTX bf16, transformer 38 GB does not fit twice: old path", 48.0, ltx_bf16, False),
+            ("80 GB (H100): LTX bf16", 80.0, ltx_bf16, True),
+            ("48 GB: LTX 4-bit has 23 GB to spare: in place", 48.0, ltx_4bit, False),
+            ("96 GB (RTX PRO 6000): LTX bf16 has 20 GB to spare: in place", 96.0, ltx_bf16, False),
+            ("96 GB: 4-bit sits in place", 96.0, ltx_4bit, False),
+            ("20 GB free of 24 (a chat model holds 4): LTX 4-bit", 20.0, ltx_4bit, True),
+        ]
+        for label, free, (footprint, largest), expected in cases:
+            self.assertEqual(prefers("cuda", free, footprint, largest), expected, label)
+
+    def test_no_offload_on_unified_memory_or_other_devices_or_unknown_figures(self) -> None:
+        from backend_service.video_runtime.defaults import _prefers_model_cpu_offload as prefers
+
+        self.assertFalse(prefers("cuda", 100.0, 76.0, 38.0, unified_memory=True))   # DGX Spark: one pool, copying helps nothing
+        self.assertFalse(prefers("cuda", 24.0, 22.0, 11.0, unified_memory=True))
+        self.assertFalse(prefers("mps", 24.0, 22.0, 11.0))     # CUDA only
+        self.assertFalse(prefers("cuda", None, 22.0, 11.0))    # unknown figures: the old path
+        self.assertFalse(prefers("cuda", 24.0, None, 11.0))
         self.assertFalse(prefers("cuda", 24.0, 22.0, None))
+
+    def test_the_gpu_memory_probe_reads_free_and_total(self) -> None:
+        from backend_service.video_runtime.defaults import _cuda_memory_gb
+
+        torch = SimpleNamespace(cuda=SimpleNamespace(mem_get_info=lambda: (20_000_000_000, 24_000_000_000)))
+        self.assertEqual(_cuda_memory_gb(torch), (20.0, 24.0))
+        self.assertEqual(_cuda_memory_gb(SimpleNamespace(cuda=SimpleNamespace())), (None, None))  # no CUDA
+
+        def broken() -> tuple[int, int]:
+            raise RuntimeError("no device")
+
+        self.assertEqual(_cuda_memory_gb(SimpleNamespace(cuda=SimpleNamespace(mem_get_info=broken))), (None, None))
+
+    def test_unified_memory_is_a_gpu_total_close_to_the_machines_ram(self) -> None:
+        from backend_service.video_runtime.defaults import _is_unified_memory
+
+        with mock.patch("psutil.virtual_memory", return_value=SimpleNamespace(total=128_000_000_000)):
+            self.assertTrue(_is_unified_memory(119.0))    # DGX Spark: ~119 GB visible of 128 GB
+            self.assertFalse(_is_unified_memory(24.0))    # a discrete card in a 128 GB workstation
+            self.assertFalse(_is_unified_memory(96.0))    # a 96 GB card in a 128 GB workstation
+        with mock.patch("psutil.virtual_memory", return_value=SimpleNamespace(total=64_000_000_000)):
+            self.assertFalse(_is_unified_memory(24.0))    # a 4090 in a 64 GB PC
+        self.assertFalse(_is_unified_memory(None))
 
     def test_the_largest_component_is_measured_from_its_parameters(self) -> None:
         from backend_service.video_runtime.defaults import _largest_component_gb

@@ -261,6 +261,19 @@ class ModelMemoryTests(unittest.TestCase):
         self.assertEqual(model_memory_gb({"sizeGb": 45.0, "runtimeFootprintGb": 39.0}, apple_silicon=False), 45.0)
         self.assertIsNone(model_memory_gb({}, apple_silicon=False))
 
+    def test_a_row_can_declare_what_loading_really_needs(self):
+        """Wan 2.2 TI2V-5B: 34 GB on disk (fp32 transformer), ~24 GB to load as bf16. The disk size refused a 64 GB PC."""
+        from backend_service.helpers.memory_gate import model_memory_gb
+
+        row = {"sizeGb": 34.2, "runtimeFootprintGb": 22.0, "loadMemoryGb": 24.0}
+        self.assertEqual(model_memory_gb(row, apple_silicon=False), 24.0)
+        self.assertEqual(model_memory_gb({"sizeGb": 34.2, "runtimeFootprintGb": 22.0}, apple_silicon=False), 34.2)
+        self.assertEqual(model_memory_gb({**row, "runtimeFootprintMpsGb": 30.0}, apple_silicon=True), 30.0)  # the Mac keeps its own
+        from backend_service.catalog.video_models import VIDEO_MODEL_FAMILIES
+
+        ti2v = next(v for f in VIDEO_MODEL_FAMILIES for v in f["variants"] if v["repo"] == "Wan-AI/Wan2.2-TI2V-5B-Diffusers")
+        self.assertLess(model_memory_gb(ti2v, apple_silicon=False), 30.0)
+
     def test_video_model_too_large_is_refused(self):
         result = gate_video_generation(available_gb=30.0, pressure_percent=40.0, model_gb=48.0, model_name="LTX-2.3")
         self.assertEqual(result["code"], "memory_gate_video_model_too_large")

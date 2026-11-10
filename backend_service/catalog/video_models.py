@@ -694,6 +694,9 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 # model card runs 720p at 24 fps on one 24 GB card (RTX 4090) with the text encoder offloaded.
                 "sizeGb": 34.2,
                 "runtimeFootprintGb": 22.0,
+                # The transformer is fp32 on disk (~20 GB) and loads as bf16 (~10 GB): memory needed to load is not the
+                # 34 GB download size.
+                "loadMemoryGb": 24.0,
                 "recommendedResolution": "1280x704",
                 "defaultDurationSeconds": 5.0,
                 "note": (

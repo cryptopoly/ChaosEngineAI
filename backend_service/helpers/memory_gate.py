@@ -174,6 +174,11 @@ def model_memory_gb(variant: dict[str, Any], *, apple_silicon: bool | None = Non
 
     if apple_silicon:
         return number("runtimeFootprintMpsGb") or number("runtimeFootprintGb") or number("sizeGb")
+    # A row whose files on disk are larger than what loads (Wan 2.2 TI2V-5B stores its transformer in fp32 and loads
+    # it as bf16: 34 GB on disk, ~22 GB in memory) says so; the disk size would refuse a 64 GB PC with 30 GB free.
+    declared = number("loadMemoryGb")
+    if declared:
+        return declared
     candidates = [v for v in (number("sizeGb"), number("runtimeFootprintGb")) if v]
     return max(candidates) if candidates else None
 

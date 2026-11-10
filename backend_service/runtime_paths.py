@@ -235,7 +235,13 @@ def quarantine_stale_core_packages(extras_dir: Path, bundled_dirs: list[Path]) -
         for version, info in copies:
             if not info.exists():
                 continue
-            if any(not path.is_file() for path in record_paths(info) if path.suffix != ".pyc"):
+            paths = record_paths(info)
+            if any(not path.is_file() for path in paths if path.suffix != ".pyc"):
+                move_aside(name, version, info)
+            elif version == bundled[name] and any(path.suffix.lower() in (".pyd", ".so") for path in paths):
+                # Same version as the bundle, with a native extension: it adds nothing, but the overlay
+                # comes first on sys.path, so the backend loads it, and on Windows a loaded .pyd cannot be
+                # replaced. Every later GPU-runtime install then failed on psutil / pyyaml with WinError 5.
                 move_aside(name, version, info)
     # Drop the folders those moves left empty (deepest first), stopping at
     # the overlay root; rmdir refuses any folder that still holds files.

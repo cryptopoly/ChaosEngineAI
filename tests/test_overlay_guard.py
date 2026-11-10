@@ -140,6 +140,24 @@ class QuarantineTests(unittest.TestCase):
         self.assertFalse((self.extras / "pydantic").exists())
         self.assertFalse((self.extras / "pydantic_core").exists())
 
+    def test_a_same_version_native_copy_of_a_bundled_package_is_moved_aside(self) -> None:
+        # The backend loaded the overlay's yaml/_yaml.pyd and psutil/_psutil_windows.pyd, so a GPU-runtime
+        # install could not replace them (WinError 5) and six packages failed.
+        files = ["yaml/__init__.py", "yaml/_yaml.cp312-win_amd64.pyd"]
+        _install(self.bundled, "pyyaml", "6.0.3", files)
+        _install(self.extras, "pyyaml", "6.0.3", files)
+
+        self.assertEqual(runtime_paths.quarantine_stale_core_packages(self.extras, [self.bundled]), ["pyyaml 6.0.3"])
+        self.assertFalse((self.extras / "yaml").exists())
+
+    def test_a_different_version_native_copy_stays(self) -> None:
+        files = ["yaml/__init__.py", "yaml/_yaml.cp312-win_amd64.pyd"]
+        _install(self.bundled, "pyyaml", "6.0.2", files)
+        _install(self.extras, "pyyaml", "6.0.3", files)
+
+        self.assertEqual(runtime_paths.quarantine_stale_core_packages(self.extras, [self.bundled]), [])
+        self.assertTrue((self.extras / "yaml" / "__init__.py").exists())
+
     def test_a_whole_copy_of_a_bundled_package_and_unbundled_broken_ones_stay(self) -> None:
         files = ["psutil/__init__.py", "psutil/_common.py"]
         _install(self.bundled, "psutil", "7.2.2", files)

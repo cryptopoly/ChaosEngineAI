@@ -243,6 +243,31 @@ def quarantine_stale_core_packages(extras_dir: Path, bundled_dirs: list[Path]) -
                 # comes first on sys.path, so the backend loads it, and on Windows a loaded .pyd cannot be
                 # replaced. Every later GPU-runtime install then failed on psutil / pyyaml with WinError 5.
                 move_aside(name, version, info)
+    # Packages the bundle does not ship: pip --target leaves an older version's dist-info next to the new
+    # one, and importlib.metadata may read the old record. transformers then refused the tokenizers it had
+    # ("tokenizers>=0.23.1 is required ... but found tokenizers==0.22.2"), so diffusers never loaded on
+    # Windows. Keep the record pip wrote last and move only the older records' folders (not files) aside.
+    for name, copies in _dist_infos(extras_dir).items():
+        if name in bundled or len(copies) < 2:
+            continue
+        try:
+            ordered = sorted(copies, key=lambda copy: copy[1].stat().st_mtime)
+        except OSError:
+            continue
+        for version, info in ordered[:-1]:
+            target = extras_dir.parent / "stale-core" / f"{name}-{version}.record"
+            attempt = 1
+            while target.exists():
+                attempt += 1
+                target = extras_dir.parent / "stale-core" / f"{name}-{version}.record.{attempt}"
+            try:
+                target.mkdir(parents=True)
+                shutil.move(str(info), str(target / info.name))
+            except OSError as exc:
+                print(f"[chaosengine] could not move an old {name} record out of the extras overlay: {exc}", file=sys.stderr)
+                continue
+            moved.append(f"{name} {version} (old record)")
+
     # Drop the folders those moves left empty (deepest first), stopping at
     # the overlay root; rmdir refuses any folder that still holds files.
     for folder in sorted(emptied, key=lambda p: len(p.parts), reverse=True):

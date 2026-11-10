@@ -158,6 +158,21 @@ class QuarantineTests(unittest.TestCase):
         self.assertEqual(runtime_paths.quarantine_stale_core_packages(self.extras, [self.bundled]), [])
         self.assertTrue((self.extras / "yaml" / "__init__.py").exists())
 
+    def test_an_older_record_of_an_unbundled_package_is_moved_but_its_files_stay(self) -> None:
+        # pip --target left tokenizers-0.22.2.dist-info beside 0.23.3; transformers read 0.22.2 and refused.
+        _install(self.extras, "tokenizers", "0.22.2", ["tokenizers/__init__.py"])
+        _install(self.extras, "tokenizers", "0.23.3", ["tokenizers/__init__.py", "tokenizers/tokenizers.pyd"])
+        old = self.extras / "tokenizers-0.22.2.dist-info"
+        os.utime(old, (1, 1))
+
+        moved = runtime_paths.quarantine_stale_core_packages(self.extras, [self.bundled])
+
+        self.assertEqual(moved, ["tokenizers 0.22.2 (old record)"])
+        self.assertFalse(old.exists())
+        self.assertTrue((self.extras / "tokenizers-0.23.3.dist-info").exists())
+        self.assertTrue((self.extras / "tokenizers" / "tokenizers.pyd").exists())
+        self.assertTrue((self.extras / "tokenizers" / "__init__.py").exists())
+
     def test_a_whole_copy_of_a_bundled_package_and_unbundled_broken_ones_stay(self) -> None:
         files = ["psutil/__init__.py", "psutil/_common.py"]
         _install(self.bundled, "psutil", "7.2.2", files)

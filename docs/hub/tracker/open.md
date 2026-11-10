@@ -1,13 +1,22 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 76 rows with work, decisions or watch items still open, newest first.
+summary: 77 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-159 · Image-to-video and Storyboard clips on NVIDIA PCs (Wan 2.2 TI2V 5B), text-only shots — Shipped 2026-11-10 on test/rtx4090</summary>
+
+**Status or trigger:** **Shipped 2026-11-10 on `test/rtx4090`; live-validated on an RTX 4090.**
+
+**Notes:** Closes the Windows/Linux half of D-40 and D-48. `image_input_support(repo)` in `video_runtime/repos.py` is the one place that says who takes a start and an end picture (LTX-2 MLX: both; Wan 2.2 TI2V 5B on diffusers: start only), used by the catalog flags (`acceptsImageInput`, new `acceptsEndImage`), the video route, the agent bridge and Storyboard. A run with a start picture loads `WanImageToVideoPipeline` (same weights; the loaded-pipeline key carries `i2v`), the picture is scaled to cover and centre-cropped. The row is `cudaOnly` (hidden on a Mac: MPS corrupts Wan 2.2, FU-102/125), 34 GB on disk but `loadMemoryGb` 24 (fp32 transformer on disk, bf16 in memory), and placed with model-level CPU offload because 22 GB of pipeline does not fit a 24 GB card with activations. New shot start mode `startFrom: text` (a text-to-video clip on any model; Shot editor: "Text only (no picture)", all locales). Measured (832x480, 49 frames, 20 steps): text 42.5 s, picture 49.9 s, 12-14 GB VRAM; a three-shot Storyboard (still-started, text-only, continued) made and exported in 286 s. Open: LTX-2.3/2.5 and Kandinsky 6 through diffusers on CUDA (newer, audio; research in docs/research/cuda-model-landscape-2026-11.md), Wan 2.2 I2V A14B for an end frame, FU-145 estimator.
+
+</details>
 
 <details>
 <summary>FU-158 · Speech GPU add-on as a tick box on Windows and Linux (D-73 M4) — Open (2026-11-09): wired, never run</summary>

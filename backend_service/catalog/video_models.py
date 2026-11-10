@@ -195,8 +195,8 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 # 1.8 GB VAEs and vocoder: 31 GB on disk and about 25 GB in memory.
                 "sizeGb": 31.0,
                 "runtimeFootprintGb": 25.0,
-                # The 6.3 GB connectors file is the one the pack's two connector layouts share; ~26 GB reaches system
-                # memory while the pipeline loads, not the 31 GB of the download.
+                # About 26 GB has to fit in system memory while the pipeline loads (the 31 GB download includes
+                # files that are not all resident at once), so the gate judges that, not the download size.
                 "loadMemoryGb": 26.0,
                 "footprintBasis": "estimated",
                 "recommendedResolution": "768x512",

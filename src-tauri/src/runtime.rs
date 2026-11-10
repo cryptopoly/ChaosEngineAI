@@ -244,6 +244,65 @@ pub fn cleanup_legacy_extraction_root() {
     }
 }
 
+/// Files whose being locked shows that a runtime folder belongs to a running app: its interpreter or llama-server.
+const RUNTIME_PROBE_FILES: [&str; 5] = [
+    "python/home/python.exe",
+    "python/home/bin/python3",
+    "python/bin/python3",
+    "bin/llama-server.exe",
+    "bin/llama-server",
+];
+
+/// True when a program from this extraction folder is running (or the files cannot be opened for writing, which is
+/// treated the same, so nothing in doubt is deleted). Windows refuses a write handle on a running exe, Unix answers
+/// ETXTBSY.
+fn extraction_in_use(dir: &Path) -> bool {
+    RUNTIME_PROBE_FILES.iter().any(|relative| {
+        let file = dir.join(relative);
+        file.is_file() && fs::OpenOptions::new().write(true).open(&file).is_err()
+    })
+}
+
+/// Delete the extraction folders of earlier builds next to ``current`` (each build unpacks into its own
+/// ``<platform>-<hash>`` folder and nothing removed the old ones: 4 GB across ten folders on one PC). Folders that
+/// are in use stay, and so does anything that cannot be removed. Returns what was removed.
+pub fn prune_stale_extractions(current: &Path) -> Vec<PathBuf> {
+    let mut removed = Vec::new();
+    let Some(parent) = current.parent() else {
+        return removed;
+    };
+    let prefix = format!("{}-", current_platform_tag());
+    let Ok(entries) = fs::read_dir(parent) else {
+        return removed;
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        let name = entry.file_name().to_string_lossy().to_string();
+        if path == current || !path.is_dir() || !name.starts_with(&prefix) {
+            continue;
+        }
+        if extraction_in_use(&path) {
+            debug_embedded(format!("keeping {} (in use)", path.display()));
+            continue;
+        }
+        if fs::remove_dir_all(&path).is_ok() {
+            removed.push(path);
+        }
+    }
+    removed
+}
+
+/// ``prune_stale_extractions`` off the startup path: deleting a few hundred MB per old build takes seconds.
+fn prune_stale_extractions_in_background(current: &Path) {
+    let current = current.to_path_buf();
+    std::thread::spawn(move || {
+        let removed = prune_stale_extractions(&current);
+        if !removed.is_empty() {
+            debug_embedded(format!("removed {} old runtime folder(s)", removed.len()));
+        }
+    });
+}
+
 pub fn embedded_debug_enabled() -> bool {
     env::var_os("CHAOSENGINE_DEBUG_EMBEDDED").is_some()
 }
@@ -412,6 +471,7 @@ pub fn ensure_embedded_runtime_extracted(
             .as_deref()
             == Some(manifest_payload.as_str())
     {
+        prune_stale_extractions_in_background(&extraction_root);
         return Ok(extraction_root);
     }
 
@@ -462,6 +522,7 @@ pub fn ensure_embedded_runtime_extracted(
         })?;
     }
 
+    prune_stale_extractions_in_background(&extraction_root);
     Ok(extraction_root)
 }
 
@@ -518,4 +579,68 @@ pub fn resolve_python_executable(workspace_root: &Path) -> Option<PathBuf> {
     }
 
     find_in_path(&["python3", "python"])
+}
+
+#[cfg(test)]
+mod prune_tests {
+    use super::*;
+
+    fn scratch(name: &str) -> PathBuf {
+        let root = env::temp_dir().join(format!("chaosengine-prune-test-{}-{name}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        root
+    }
+
+    fn fake_runtime(root: &Path, suffix: &str) -> PathBuf {
+        let dir = root.join(format!("{}-{suffix}", current_platform_tag()));
+        fs::create_dir_all(dir.join("python/home")).unwrap();
+        fs::write(dir.join("manifest.json"), "{}").unwrap();
+        fs::write(dir.join("python/home/python.exe"), "x").unwrap();
+        dir
+    }
+
+    #[test]
+    fn old_builds_are_removed_and_the_current_one_stays() {
+        let root = scratch("old");
+        let current = fake_runtime(&root, "cccccccc");
+        let old_a = fake_runtime(&root, "aaaaaaaa");
+        let old_b = fake_runtime(&root, "bbbbbbbb");
+        let removed = prune_stale_extractions(&current);
+        assert_eq!(removed.len(), 2);
+        assert!(current.join("manifest.json").exists());
+        assert!(!old_a.exists() && !old_b.exists());
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn other_platforms_and_unrelated_folders_stay() {
+        let root = scratch("other");
+        let current = fake_runtime(&root, "cccccccc");
+        let other = root.join("someos-arch-aaaaaaaa");
+        let unrelated = root.join("notes");
+        fs::create_dir_all(&other).unwrap();
+        fs::create_dir_all(&unrelated).unwrap();
+        assert!(prune_stale_extractions(&current).is_empty());
+        assert!(other.exists() && unrelated.exists());
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn a_folder_whose_interpreter_cannot_be_opened_for_writing_is_kept() {
+        let root = scratch("busy");
+        let current = fake_runtime(&root, "cccccccc");
+        let busy = fake_runtime(&root, "dddddddd");
+        let python = busy.join("python/home/python.exe");
+        let mut permissions = fs::metadata(&python).unwrap().permissions();
+        permissions.set_readonly(true); // stands in for the sharing violation of a running exe
+        fs::set_permissions(&python, permissions).unwrap();
+        assert!(extraction_in_use(&busy));
+        assert!(prune_stale_extractions(&current).is_empty());
+        assert!(busy.exists());
+        let mut permissions = fs::metadata(&python).unwrap().permissions();
+        permissions.set_readonly(false);
+        fs::set_permissions(&python, permissions).unwrap();
+        let _ = fs::remove_dir_all(&root);
+    }
 }

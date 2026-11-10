@@ -107,6 +107,39 @@ class QuarantineTests(unittest.TestCase):
         self.assertFalse(any(self.extras.glob("psutil-*.dist-info")))
         self.assertTrue((self.extras.parent / "stale-core" / "psutil-7.2.2" / "psutil" / "__init__.py").exists())
 
+    def test_moving_the_same_version_twice_does_not_stop_the_tidy_up(self) -> None:
+        # A GPU-runtime install brought huggingface-hub 2.4.0 back after it had been moved once; the second
+        # move clashed with the first ("Destination path ... already exists") and aborted the whole guard,
+        # so a broken pydantic_core behind it was never moved and the backend did not start.
+        _install(self.bundled, "huggingface-hub", "2.2.0", ["huggingface_hub/__init__.py"])
+        _install(self.bundled, "pydantic-core", "2.41.5", ["pydantic_core/__init__.py", "pydantic_core/core_schema.py"])
+        _install(self.extras, "huggingface-hub", "2.4.0", ["huggingface_hub/__init__.py"])
+        self.assertEqual(runtime_paths.quarantine_stale_core_packages(self.extras, [self.bundled]), ["huggingface-hub 2.4.0"])
+        _install(self.extras, "huggingface-hub", "2.4.0", ["huggingface_hub/__init__.py"])
+        _install(self.extras, "pydantic-core", "2.50.4", ["pydantic_core/__init__.py", "pydantic_core/core_schema.py"])
+        (self.extras / "pydantic_core" / "core_schema.py").unlink()
+
+        moved = runtime_paths.quarantine_stale_core_packages(self.extras, [self.bundled])
+
+        self.assertEqual(sorted(moved), ["huggingface-hub 2.4.0", "pydantic-core 2.50.4"])
+        stale = self.extras.parent / "stale-core"
+        self.assertTrue((stale / "huggingface-hub-2.4.0.2" / "huggingface_hub" / "__init__.py").exists())
+        self.assertFalse((self.extras / "pydantic_core").exists())
+
+    def test_an_overlay_pydantic_goes_with_its_core(self) -> None:
+        # pydantic 2.14.3 in the overlay demanded pydantic-core 2.50.4 once the broken core had been moved:
+        # "The installed pydantic-core version (2.41.5) is incompatible with the current pydantic version".
+        _install(self.bundled, "pydantic", "2.12.5", ["pydantic/__init__.py"])
+        _install(self.bundled, "pydantic-core", "2.41.5", ["pydantic_core/__init__.py"])
+        _install(self.extras, "pydantic", "2.14.3", ["pydantic/__init__.py"])
+        _install(self.extras, "pydantic-core", "2.50.4", ["pydantic_core/__init__.py"])
+
+        moved = runtime_paths.quarantine_stale_core_packages(self.extras, [self.bundled])
+
+        self.assertEqual(sorted(moved), ["pydantic 2.14.3", "pydantic-core 2.50.4"])
+        self.assertFalse((self.extras / "pydantic").exists())
+        self.assertFalse((self.extras / "pydantic_core").exists())
+
     def test_a_whole_copy_of_a_bundled_package_and_unbundled_broken_ones_stay(self) -> None:
         files = ["psutil/__init__.py", "psutil/_common.py"]
         _install(self.bundled, "psutil", "7.2.2", files)
@@ -124,6 +157,31 @@ class QuarantineTests(unittest.TestCase):
             os.environ.pop("CHAOSENGINE_EMBEDDED_RUNTIME", None)
             self.assertEqual(runtime_paths.guard_overlay_against_bundle(), [])
         self.assertTrue((self.extras / "mlx" / "__init__.py").exists())
+
+
+class GuardRunsFirstTests(unittest.TestCase):
+    def test_app_tidies_the_overlay_before_importing_any_third_party_package(self) -> None:
+        # A broken overlay pydantic_core crashed `from fastapi import ...` at app.py line 13, before the guard.
+        import ast
+
+        source = Path(runtime_paths.__file__).with_name("app.py").read_text(encoding="utf-8")
+        tree = ast.parse(source)
+        guard_line = next(
+            node.lineno for node in tree.body
+            if isinstance(node, ast.Expr) and isinstance(node.value, ast.Call)
+            and getattr(node.value.func, "id", None) == "guard_overlay_against_bundle"
+        )
+        stdlib = {"__future__", "os", "ipaddress", "secrets", "signal", "time", "uuid", "datetime", "pathlib", "typing"}
+        for node in tree.body:
+            if node.lineno >= guard_line or not isinstance(node, (ast.Import, ast.ImportFrom)):
+                continue
+            names = [node.module] if isinstance(node, ast.ImportFrom) else [alias.name for alias in node.names]
+            for name in names:
+                top = (name or "").split(".")[0]
+                self.assertTrue(
+                    top in stdlib or name == "backend_service.runtime_paths",
+                    f"app.py imports {name} before guard_overlay_against_bundle() (line {node.lineno})",
+                )
 
 
 if __name__ == "__main__":

@@ -10,10 +10,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from fastapi import FastAPI, Request
-from fastapi.middleware.cors import CORSMiddleware
-from starlette.responses import JSONResponse
-
 from backend_service.runtime_paths import ensure_extras_on_sys_path, guard_overlay_against_bundle
 
 # The Hugging Face libraries add library and version details to their requests
@@ -23,6 +19,13 @@ os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
 
 guard_overlay_against_bundle()
 ensure_extras_on_sys_path()
+
+# Imported only after the guard: the extras overlay is already on sys.path in packaged builds, and a
+# half-replaced overlay copy of pydantic_core (Windows file locks during a GPU-runtime install) made
+# `from fastapi import ...` crash before the guard could move it aside.
+from fastapi import FastAPI, Request  # noqa: E402
+from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
+from starlette.responses import JSONResponse  # noqa: E402
 
 from backend_service.models import ImageGenerationRequest, VideoGenerationRequest
 from backend_service.routes import register_routes

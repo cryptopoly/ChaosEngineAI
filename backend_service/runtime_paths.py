@@ -117,7 +117,9 @@ _BUNDLED_CORE = ("mlx", "mlx-metal", "mlx-lm")
 # on top of one another (huggingface-hub 1.12 files under a 2.2 dist-info), so
 # the overlay is not just stale, it is a mix. Unless the overlay holds exactly
 # the bundled version, every copy of the package goes and the bundled one runs.
-_LOCKSTEP_CORE = ("huggingface-hub", "transformers", "tokenizers", "safetensors", "hf-xet")
+# pydantic refuses any pydantic-core but its own (the backend did not start with an overlay pydantic 2.14
+# over the bundled core 2.41), and fastapi imports both, so they only ever run as the bundled pair.
+_LOCKSTEP_CORE = ("huggingface-hub", "transformers", "tokenizers", "safetensors", "hf-xet", "pydantic", "pydantic-core")
 
 
 def _normalise(name: str) -> str:
@@ -186,17 +188,28 @@ def quarantine_stale_core_packages(extras_dir: Path, bundled_dirs: list[Path]) -
         return paths
 
     def move_aside(name: str, version: str, info: Path) -> None:
+        # A later install can bring the same version back, so a second move gets its own folder
+        # (a clash used to raise and stop the whole tidy-up, leaving a broken pydantic_core in place).
         target = extras_dir.parent / "stale-core" / f"{name}-{version}"
-        for source in record_paths(info):
-            if not source.is_file():
-                continue
-            destination = target / source.relative_to(root)
-            destination.parent.mkdir(parents=True, exist_ok=True)
-            shutil.move(str(source), str(destination))
-            emptied.add(source.parent)
-        if info.exists():
-            target.mkdir(parents=True, exist_ok=True)
-            shutil.move(str(info), str(target / info.name))
+        attempt = 1
+        while target.exists():
+            attempt += 1
+            target = extras_dir.parent / "stale-core" / f"{name}-{version}.{attempt}"
+        try:
+            for source in record_paths(info):
+                if not source.is_file():
+                    continue
+                destination = target / source.relative_to(root)
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.move(str(source), str(destination))
+                emptied.add(source.parent)
+            if info.exists():
+                target.mkdir(parents=True, exist_ok=True)
+                shutil.move(str(info), str(target / info.name))
+        except OSError as exc:
+            # One package that cannot move (a file still locked) must not stop the others.
+            print(f"[chaosengine] could not move {name} {version} out of the extras overlay: {exc}", file=sys.stderr)
+            return
         moved.append(f"{name} {version}")
 
     for name in _BUNDLED_CORE + _LOCKSTEP_CORE:

@@ -842,6 +842,37 @@ class SetupRouteTests(unittest.TestCase):
         self.assertEqual(cuda_torch_indexes(driver_major=550, machine="x86_64"), _CUDA_TORCH_INDEXES)
         self.assertEqual(cuda_torch_indexes(driver_major=None, machine="x86_64"), _CUDA_TORCH_INDEXES)
 
+    def test_cuda_torch_order_uses_the_newest_cuda_the_driver_supports(self):
+        """Driver 621.14 reports CUDA 13.5; PyTorch's newest index is cu134, then cu132 and cu130."""
+        from backend_service.routes.setup._install_helpers import cuda_torch_indexes
+
+        base = "https://download.pytorch.org/whl/"
+        cu134, cu132, cu130, cu128 = (base + n for n in ("cu134", "cu132", "cu130", "cu128"))
+        newest = cuda_torch_indexes(driver_major=621, machine="x86_64", driver_cuda=(13, 5))
+        self.assertEqual(newest[:4], [cu134, cu132, cu130, cu128])
+        self.assertEqual(len(newest), len(set(newest)))
+        self.assertEqual(cuda_torch_indexes(driver_major=600, machine="x86_64", driver_cuda=(13, 4))[0], cu134)
+        self.assertEqual(cuda_torch_indexes(driver_major=595, machine="x86_64", driver_cuda=(13, 3))[0], cu132)
+        self.assertEqual(cuda_torch_indexes(driver_major=591, machine="x86_64", driver_cuda=(13, 1))[:2], [cu130, cu128])
+        # a driver of 580+ whose CUDA version could not be read still gets cu130, as before
+        self.assertEqual(cuda_torch_indexes(driver_major=591, machine="x86_64", driver_cuda=None)[:2], [cu130, cu128])
+        # Linux ARM64 takes the newest tiers too, and only the CUDA 13 / 12.8 builds that exist for it
+        self.assertEqual(cuda_torch_indexes(driver_major=621, machine="aarch64", driver_cuda=(13, 5)), [cu134, cu132, cu130, cu128])
+
+    def test_the_driver_cuda_version_is_read_from_the_nvidia_smi_header(self):
+        """Old drivers print "CUDA Version: 13.1", newer ones "CUDA UMD Version: 13.5"."""
+        from backend_service.helpers import llama_cuda
+
+        header = "| NVIDIA-SMI 621.14   KMD Version: 621.14   CUDA UMD Version: 13.5 |\n"
+        legacy = "| NVIDIA-SMI 591.86   Driver Version: 591.86   CUDA Version: 13.1 |\n"
+        for text, expected in ((header, (13, 5)), (legacy, (13, 1)), ("no driver here", None)):
+            done = mock.Mock(returncode=0, stdout=text)
+            with mock.patch.object(llama_cuda.shutil, "which", return_value="nvidia-smi"):
+                with mock.patch.object(llama_cuda.subprocess, "run", return_value=done):
+                    self.assertEqual(llama_cuda.nvidia_driver_cuda(), expected, text)
+        with mock.patch.object(llama_cuda.shutil, "which", return_value=None):
+            self.assertIsNone(llama_cuda.nvidia_driver_cuda())
+
     # ------------------------------------------------------------------
     # Turbo update check
     # ------------------------------------------------------------------

@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import os
 import platform
+import re
 import shutil
 import subprocess
 import sys
@@ -65,6 +66,26 @@ def nvidia_driver_major() -> int | None:
         return int(first[0].split(".")[0]) if proc.returncode == 0 and first else None
     except ValueError:
         return None
+
+
+_DRIVER_CUDA_RE = re.compile(r"CUDA (?:UMD )?Version:\s*(\d+)\.(\d+)")
+
+
+def nvidia_driver_cuda() -> tuple[int, int] | None:
+    """Newest CUDA version the installed driver supports, as ``(major, minor)``, or None.
+
+    Read from the ``nvidia-smi`` header, which says ``CUDA Version: 13.1`` on older drivers and
+    ``CUDA UMD Version: 13.5`` on newer ones (621.14). There is no ``--query-gpu`` field for it.
+    """
+    nvidia_smi = shutil.which("nvidia-smi")
+    if not nvidia_smi:
+        return None
+    try:
+        proc = subprocess.run([nvidia_smi], capture_output=True, text=True, timeout=10)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    match = _DRIVER_CUDA_RE.search(proc.stdout or "") if proc.returncode == 0 else None
+    return (int(match.group(1)), int(match.group(2))) if match else None
 
 
 def cuda_version_for(arch: str, driver_major: int | None) -> str:

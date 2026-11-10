@@ -31,35 +31,52 @@ _CUDA_TORCH_INDEXES: list[str] = [
     "https://download.pytorch.org/whl/cu121",
     "https://download.pytorch.org/whl/nightly/cu128",
 ]
+_CU134 = "https://download.pytorch.org/whl/cu134"
+_CU132 = "https://download.pytorch.org/whl/cu132"
 _CU130 = "https://download.pytorch.org/whl/cu130"
 _CU128 = "https://download.pytorch.org/whl/cu128"
 
 
-def cuda_torch_indexes(driver_major: int | None = None, machine: str | None = None) -> list[str]:
+def cuda_torch_indexes(
+    driver_major: int | None = None,
+    machine: str | None = None,
+    driver_cuda: tuple[int, int] | None = None,
+) -> list[str]:
     """CUDA torch indexes to try, best match for this host first.
 
     The default list starts at CUDA 12.4, whose torch has no kernels for
     Blackwell GPUs (RTX 50-series sm_120, DGX Spark sm_121) and no Linux ARM64
-    build at all. So: Linux ARM64 tries CUDA 13.0 then 12.8; a driver of 580 or
-    newer (CUDA 13) starts at 13.0, 570 or newer (CUDA 12.8) at 12.8; anything
-    else keeps the old order, which suits older drivers and GPUs.
+    build at all. So: a driver that supports CUDA 13.4 (``nvidia-smi`` header; 621.14 says
+    13.5; PyTorch publishes nothing newer than 13.4) starts at 13.4, one that supports 13.2
+    at 13.2, each followed by the older CUDA 13 and 12.8 builds; Linux
+    ARM64 otherwise tries 13.0 then 12.8; a driver of 580 or newer (CUDA 13)
+    starts at 13.0, 570 or newer (CUDA 12.8) at 12.8; anything else keeps the
+    old order, which suits older drivers and GPUs. The driver is probed only
+    when neither ``driver_major`` nor ``driver_cuda`` is given.
     """
     import platform as _platform
 
     if machine is None:
         machine = _platform.machine() if sys.platform.startswith("linux") else ""
-    if driver_major is None:
-        from backend_service.helpers.llama_cuda import nvidia_driver_major
+    if driver_major is None and driver_cuda is None:
+        from backend_service.helpers.llama_cuda import nvidia_driver_cuda, nvidia_driver_major
 
         driver_major = nvidia_driver_major()
-    if machine.lower() in ("aarch64", "arm64"):
+        driver_cuda = nvidia_driver_cuda()
+    if driver_cuda is not None and driver_cuda >= (13, 4):
+        first = [_CU134, _CU132, _CU130, _CU128]
+    elif driver_cuda is not None and driver_cuda >= (13, 2):
+        first = [_CU132, _CU130, _CU128]
+    elif machine.lower() in ("aarch64", "arm64"):
         return [_CU130, _CU128]
-    if driver_major is not None and driver_major >= 580:
+    elif driver_major is not None and driver_major >= 580:
         first = [_CU130, _CU128]
     elif driver_major is not None and driver_major >= 570:
         first = [_CU128]
     else:
         return list(_CUDA_TORCH_INDEXES)
+    if machine.lower() in ("aarch64", "arm64"):
+        return first
     return first + [url for url in _CUDA_TORCH_INDEXES if url not in first]
 
 

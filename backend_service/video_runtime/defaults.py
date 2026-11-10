@@ -126,12 +126,22 @@ def _prefers_model_cpu_offload(
 
 
 def _cuda_memory_gb(torch: Any) -> tuple[float | None, float | None]:
-    """``(free, total)`` GPU memory in GB as the driver reports it now, or ``(None, None)``."""
+    """``(available to this process, total)`` GPU memory in GB, or ``(None, None)``.
+
+    Available is what the driver says is free plus what this process already holds: other programs' share (a chat
+    model, a desktop) is what is not ours, and our own weights are exactly what a placement decision is about. The
+    4-bit LTX-2.3 pack is loaded straight onto the GPU by bitsandbytes (22.7 GB of a 24 GB card), so judging by the
+    free memory after that load saw 1 GB, ruled offloading out and left the clip thrashing for an hour on step 1.
+    """
     try:
         free, total = torch.cuda.mem_get_info()
     except Exception:  # noqa: BLE001 - no CUDA, an old driver, or a mocked torch
         return None, None
-    return free / 1e9, total / 1e9
+    try:
+        own = torch.cuda.memory_reserved()
+    except Exception:  # noqa: BLE001
+        own = 0
+    return (free + own) / 1e9, total / 1e9
 
 
 def _is_unified_memory(gpu_total_gb: float | None) -> bool:

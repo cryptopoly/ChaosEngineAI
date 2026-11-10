@@ -101,12 +101,27 @@ class PlacementTests(unittest.TestCase):
 
         torch = SimpleNamespace(cuda=SimpleNamespace(mem_get_info=lambda: (20_000_000_000, 24_000_000_000)))
         self.assertEqual(_cuda_memory_gb(torch), (20.0, 24.0))
+        # weights this process already put on the card count as available to it: the 4-bit LTX-2.3 pack is on the GPU
+        # (22.7 GB of 24) before placement runs, and judging by the 1.3 GB left over left it thrashing on step 1
+        loaded = SimpleNamespace(cuda=SimpleNamespace(
+            mem_get_info=lambda: (1_300_000_000, 24_000_000_000), memory_reserved=lambda: 22_700_000_000))
+        self.assertEqual(_cuda_memory_gb(loaded), (24.0, 24.0))
         self.assertEqual(_cuda_memory_gb(SimpleNamespace(cuda=SimpleNamespace())), (None, None))  # no CUDA
 
         def broken() -> tuple[int, int]:
             raise RuntimeError("no device")
 
         self.assertEqual(_cuda_memory_gb(SimpleNamespace(cuda=SimpleNamespace(mem_get_info=broken))), (None, None))
+
+    def test_a_pipeline_already_on_the_card_is_still_offloaded(self) -> None:
+        """The 4-bit LTX-2.3 case end to end: 22.7 GB resident, 1.3 GB free, 14.4 GB largest part, 25 GB pipeline."""
+        from backend_service.video_runtime.defaults import _cuda_memory_gb, _prefers_model_cpu_offload as prefers
+
+        loaded = SimpleNamespace(cuda=SimpleNamespace(
+            mem_get_info=lambda: (1_300_000_000, 24_000_000_000), memory_reserved=lambda: 22_700_000_000))
+        budget, _ = _cuda_memory_gb(loaded)
+        self.assertTrue(prefers("cuda", budget, 25.0, 14.4))
+        self.assertFalse(prefers("cuda", 1.3, 25.0, 14.4))  # the bug: the free memory alone rules it out
 
     def test_unified_memory_is_a_gpu_total_close_to_the_machines_ram(self) -> None:
         from backend_service.video_runtime.defaults import _is_unified_memory

@@ -1027,6 +1027,54 @@ class InstallGpuBundleTests(unittest.TestCase):
         self.assertEqual(status["pythonVersion"], "3.13.1")
         self.assertIsNotNone(status["indexUrlUsed"])
 
+    def _fake_locked_torch(self):
+        """A torch folder whose DLL cannot be opened for writing (stands in for a DLL the backend has loaded)."""
+        import os
+        import stat
+
+        dll = self.extras_dir / "torch" / "lib" / "c10.dll"
+        dll.parent.mkdir(parents=True)
+        dll.write_bytes(b"x")
+        (self.extras_dir / "torch" / "version.py").write_text("__version__ = '2.14.1+cu130'\n", encoding="utf-8")
+        os.chmod(dll, stat.S_IREAD)
+        def writable() -> None:
+            try:
+                os.chmod(dll, stat.S_IWRITE | stat.S_IREAD)
+            except OSError:
+                pass  # the temporary folder is already gone
+
+        self.addCleanup(writable)
+        return dll
+
+    def test_locked_torch_dlls_are_found_on_windows_only(self):
+        from backend_service.routes.setup import _install_helpers
+
+        self._fake_locked_torch()
+        with mock.patch.object(_install_helpers.sys, "platform", "win32"):
+            self.assertEqual(_install_helpers.locked_torch_files(self.extras_dir), ["c10.dll"])
+        with mock.patch.object(_install_helpers.sys, "platform", "linux"):
+            self.assertEqual(_install_helpers.locked_torch_files(self.extras_dir), [])
+
+    def test_install_with_torch_loaded_changes_nothing_and_says_to_restart(self):
+        """RTX 4090 run: the clean-up removed torch's Python files, kept the locked DLLs and left torch unusable."""
+        from backend_service.routes.setup import _install_helpers
+
+        self._fake_locked_torch()
+        with mock.patch.object(_install_helpers.sys, "platform", "win32"),              mock.patch("backend_service.routes.setup.gpu_bundle._free_bytes", return_value=100_000_000_000),              mock.patch("backend_service.routes.setup.gpu_bundle._read_python_version", return_value="3.12.10"),              mock.patch("backend_service.routes.setup.gpu_bundle.platform.system", return_value="Windows"),              mock.patch("backend_service.routes.setup._install_helpers.subprocess.run") as pip:
+            self.client.post("/api/setup/install-gpu-bundle", json={})
+            import time as _time
+            deadline = _time.time() + 5.0
+            while _time.time() < deadline:
+                status = self.client.get("/api/setup/install-gpu-bundle/status").json()
+                if status["done"]:
+                    break
+                _time.sleep(0.05)
+
+        self.assertEqual(status["phase"], "error")
+        self.assertIn("Restart Backend", status["error"])
+        self.assertTrue((self.extras_dir / "torch" / "version.py").exists())  # nothing was deleted
+        pip.assert_not_called()
+
     def test_start_install_repairs_cpu_torch_after_dependency_clobber(self):
         """A ``+cpu`` local version is still a clobber and must be repaired."""
         index_url = "https://download.pytorch.org/whl/cu124"

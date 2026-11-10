@@ -33,6 +33,7 @@ from backend_service.i18n import localized_detail
 from backend_service.routes.setup._install_helpers import (
     _CUDA_TORCH_INDEXES,
     cuda_torch_indexes,
+    locked_torch_files,
     _all_attempts_lack_wheel,
     _cleanup_mlx_video_shadow_metadata,
     _extras_site_packages,
@@ -333,6 +334,16 @@ def _gpu_bundle_job_worker(python: str, extras_dir: Path) -> None:
             state.message = f"Cleaned up {len(purged)} broken stub(s) from prior run"
 
         if not is_apple_silicon:
+            # Before anything is deleted: with torch's DLLs loaded by this backend the clean-up below removed
+            # torch's Python files, kept the locked DLLs, and left torch unusable until a restart and a second
+            # install (RTX 4090 run). Say so first and change nothing.
+            locked = locked_torch_files(extras_dir)
+            if locked:
+                raise RuntimeError(
+                    "torch is loaded by the running backend (" + ", ".join(locked[:3]) + "), so its files cannot be "
+                    "replaced and nothing was changed. Click Restart Backend, wait for it to come back online, "
+                    "then click Install GPU runtime again."
+                )
             purged_torch = _purge_stale_torch_from_extras(extras_dir)
             if purged_torch:
                 state.attempts.append({

@@ -140,6 +140,31 @@ def _purge_broken_distributions(site_packages: Path) -> list[str]:
     return removed
 
 
+def locked_torch_files(extras_dir: Path) -> list[str]:
+    """Windows: the DLLs of torch and its NVIDIA runtime that a running process has loaded (names, at most 8).
+
+    Windows refuses a write handle on a loaded DLL, so opening each one for writing finds them without touching
+    anything. Anywhere else a loaded library can be replaced, so the answer is always empty.
+    """
+    if sys.platform != "win32" or not extras_dir.is_dir():
+        return []
+    candidates: list[Path] = []
+    for entry in extras_dir.iterdir():
+        lower = entry.name.lower()
+        if entry.is_dir() and (entry.name == "torch" or lower.startswith("nvidia")):
+            candidates.extend(entry.rglob("*.dll"))
+    locked: list[str] = []
+    for dll in candidates:
+        try:
+            with open(dll, "r+b"):
+                pass
+        except OSError:
+            locked.append(dll.name)
+            if len(locked) >= 8:
+                break
+    return locked
+
+
 def _purge_stale_torch_from_extras(extras_dir: Path) -> list[str]:
     """Remove torch and its NVIDIA runtime deps from the extras dir.
 

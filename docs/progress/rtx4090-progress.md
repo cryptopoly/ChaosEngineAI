@@ -346,6 +346,30 @@ You said OK to the chatterbox pin and to carry on with the remaining Windows/CUD
 **Full pytest on this PC after all of the above:** 38 failures, all of which also fail on the commit before today's work (compared test by test in a clean worktree), none new. The bulk are Windows test portability (19 × `cannot instantiate 'PosixPath'`, the Kokoro and voice-model-file tests), the five CUDA-index tests that call the real `nvidia-smi`, and the Mac-only media-input and music-sound tests; all for the Mac session. Rust: 8 of 8.
 
 
+## Image-to-video and Storyboard clips on the NVIDIA PC (2026-11-10, FU-159)
+
+Section 4 found that a Windows user could not make any Storyboard clip (the video route and Storyboard allowed a start picture only for the Mac's LTX-2 engine). Fixed with **Wan 2.2 TI2V 5B** (Apache 2.0, 5B, text and start-picture video in one model, fits 24 GB) and a **text-only shot** option. Commits `7a1e6152`, `99560201`, `9902407d`, `e13d14b6`.
+
+| Check | Result | Evidence |
+|---|---|---|
+| Text-to-video, 832x480, 49 frames, 20 steps | PASS | 42.5 s generation (83 s with the first load), peak VRAM 12.4 GB, idle 1.6 GB after unload. The old Wan 2.1 1.3B took 95 s for 33 frames at 480p. |
+| Picture-to-video from a FLUX.2 Klein still | PASS | 49.9 s, peak 13.8 GB. Frame 0 is the still (red lighthouse at dusk); at 1.5 s the waves have broken and birds have appeared, scene unchanged. Frames in `%TEMP%\wan-ti2v-check\`. |
+| 5-second clip at the catalog's recommended 1280x704, 121 frames, 20 steps | PASS | **273 s** generation (304 s total), peak **18.5 GB**. Wan 2.1 1.3B at 720p took 578 s and filled all 24 GB (section 4). The catalog's "about 540 s" guess is now 275 s. |
+| Storyboard project, FLUX.2 Klein + Wan 2.2 TI2V 5B, 480p | PASS | Three shots: one that starts from its generated still, one text-only, one continuing from the previous shot's last frame. Still + 3 clips in **286 s**, then export 854x480 H.264, 5.63 s. |
+| Text-only shots on the old Wan 2.1 1.3B (no image input at all) | PASS | Default shots: 400 "cannot start a clip from an image… Wan 2.2 TI2V 5B on an NVIDIA PC". After `startFrom: text`: two 2 s clips in 170 s. |
+| Real diffusers call path, tiny random pipeline on CPU | PASS | `WanImageToVideoPipeline` built with `expand_timesteps=True` from `pruna-test/wan-t2v-tiny-random`; the app's `build_pipeline_kwargs` + `invoke_pipeline` returned 9 frames. |
+| E2E suite | PASS | New checks in phase 5 (flags, refusals, live run when installed: 14 s for 17 frames) and phase 10 (text-only shot). |
+| Frontend | PASS | `tsc` clean; vitest: 3 new picker tests pass; the 4 failures are the same ones as in section 1. `npm run i18n:validate` OK (new string in all 11 locales). |
+
+**What it took (three things the first live run found that the unit tests could not):**
+- The memory gate refused: "needs about 34 GB of free memory, only 29.8 GB available". The row's disk size (34.2 GB) is double what loads, because the repo stores the transformer in fp32 and the app loads bf16. A row can now declare `loadMemoryGb` (24).
+- 22 GB of pipeline does not fit a 24 GB card with activations, and full placement falls back to sequential offload (every layer, every step). Placement now uses model-level CPU offload when the whole pipeline is too big but its largest component fits (`_prefers_model_cpu_offload`; the old path stays for a component bigger than the card).
+- The runtime table said 11 GB for the 5B (transformer only); it is 22 GB with the text encoder.
+
+**Design points.** `image_input_support(repo)` is now the single answer to "does this model take a start / end picture" (LTX-2 MLX: both; TI2V-5B: start only, diffusers' expanded-timestep path ignores a last frame), used by the catalog flags (`acceptsImageInput`, new `acceptsEndImage`), the video route, the agent bridge, Storyboard and the Studio's picker (end picker only when `acceptsEndImage`). The row is `cudaOnly`, so a Mac does not see it (MPS corrupts Wan 2.2, FU-102/125); `platform_filter` gained that filter. Tests: 12 new in `test_video_image_input.py`, 4 in `test_storyboard_store.py`, 4 in `test_platform_filter.py`, 1 in `test_memory_gate.py`, 5 Rust-free frontend/E2E.
+
+**Not done.** The newest open video models are still Mac-only or unwired on CUDA: LTX-2.3/2.5 (March / July 2026, audio, diffusers 0.42.1 has the pipelines), Kandinsky 6 (MIT), Motif-Video; Wan 2.2 I2V A14B for an end frame needs offload or GGUF. See `docs/research/cuda-model-landscape-2026-11.md`.
+
 ## Report back (sections 0 to 7)
 
 ### What failed (details and logs in the sections above)

@@ -703,7 +703,8 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                     "Text-to-video, or image-to-video from a start picture (the first frame; no end frame). "
                     "34 GB on disk, 720p at 24 fps on a 24 GB NVIDIA card. Apache 2.0."
                 ),
-                "estimatedGenerationSeconds": 540.0,
+                # Measured on an RTX 4090: 1280x704, 121 frames, 20 steps = 273 s, 18.5 GB peak VRAM.
+                "estimatedGenerationSeconds": 275.0,
                 "slowOn": [SLOW_APPLE_WAN, SLOW_CPU_ONLY_EXPECTED],
                 "availableLocally": False,
                 "releaseDate": "2025-07",

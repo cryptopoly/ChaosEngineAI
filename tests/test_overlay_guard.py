@@ -92,6 +92,32 @@ class QuarantineTests(unittest.TestCase):
         self.assertEqual(runtime_paths.quarantine_stale_core_packages(self.extras, [self.bundled]), [])
         self.assertTrue((self.extras / "mlx" / "__init__.py").exists())
 
+    def test_a_half_replaced_copy_of_a_bundled_package_is_moved_aside(self) -> None:
+        # Windows: pip could not replace psutil's loaded .pyd, so psutil/ kept 3 of its files and the
+        # backend failed to import it at the next start.
+        files = ["psutil/__init__.py", "psutil/_common.py", "psutil/_pswindows.py", "psutil/_psutil_windows.pyd"]
+        _install(self.bundled, "psutil", "7.2.2", files)
+        _install(self.extras, "psutil", "7.2.2", files)
+        (self.extras / "psutil" / "_common.py").unlink()
+
+        moved = runtime_paths.quarantine_stale_core_packages(self.extras, [self.bundled])
+
+        self.assertEqual(moved, ["psutil 7.2.2"])
+        self.assertFalse((self.extras / "psutil").exists())
+        self.assertFalse(any(self.extras.glob("psutil-*.dist-info")))
+        self.assertTrue((self.extras.parent / "stale-core" / "psutil-7.2.2" / "psutil" / "__init__.py").exists())
+
+    def test_a_whole_copy_of_a_bundled_package_and_unbundled_broken_ones_stay(self) -> None:
+        files = ["psutil/__init__.py", "psutil/_common.py"]
+        _install(self.bundled, "psutil", "7.2.2", files)
+        _install(self.extras, "psutil", "7.2.2", files)
+        _install(self.extras, "diffusers", "0.42.1", ["diffusers/__init__.py", "diffusers/pipelines.py"])
+        (self.extras / "diffusers" / "pipelines.py").unlink()  # not in the bundle: not ours to move
+
+        self.assertEqual(runtime_paths.quarantine_stale_core_packages(self.extras, [self.bundled]), [])
+        self.assertTrue((self.extras / "psutil" / "_common.py").exists())
+        self.assertTrue((self.extras / "diffusers" / "__init__.py").exists())
+
     def test_only_packaged_builds_touch_the_overlay(self) -> None:
         _install(self.extras, "mlx", "0.31.2", ["mlx/__init__.py"])
         with mock.patch.dict(os.environ, {"CHAOSENGINE_EXTRAS_SITE_PACKAGES": str(self.extras)}, clear=False):

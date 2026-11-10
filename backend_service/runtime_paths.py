@@ -168,6 +168,37 @@ def quarantine_stale_core_packages(extras_dir: Path, bundled_dirs: list[Path]) -
     root = extras_dir.resolve()
     moved: list[str] = []
     emptied: set[Path] = set()
+
+    def record_paths(info: Path) -> list[Path]:
+        """The files a dist-info's RECORD lists inside the overlay (scripts elsewhere are left alone)."""
+        try:
+            lines = (info / "RECORD").read_text(encoding="utf-8", errors="ignore").splitlines()
+        except OSError:
+            return []
+        paths = []
+        for line in lines:
+            relative = line.split(",", 1)[0].strip()
+            if not relative:
+                continue
+            source = (extras_dir / relative).resolve()
+            if root in source.parents:
+                paths.append(source)
+        return paths
+
+    def move_aside(name: str, version: str, info: Path) -> None:
+        target = extras_dir.parent / "stale-core" / f"{name}-{version}"
+        for source in record_paths(info):
+            if not source.is_file():
+                continue
+            destination = target / source.relative_to(root)
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(source), str(destination))
+            emptied.add(source.parent)
+        if info.exists():
+            target.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(info), str(target / info.name))
+        moved.append(f"{name} {version}")
+
     for name in _BUNDLED_CORE + _LOCKSTEP_CORE:
         want = bundled.get(name)
         if want is None:
@@ -179,26 +210,20 @@ def quarantine_stale_core_packages(extras_dir: Path, bundled_dirs: list[Path]) -
         for version, info in copies:
             if version == want and not move_all:
                 continue
-            target = extras_dir.parent / "stale-core" / f"{name}-{version}"
-            try:
-                record = (info / "RECORD").read_text(encoding="utf-8", errors="ignore").splitlines()
-            except OSError:
-                record = []
-            for line in record:
-                relative = line.split(",", 1)[0].strip()
-                if not relative:
-                    continue
-                source = (extras_dir / relative).resolve()
-                if root not in source.parents or not source.is_file():
-                    continue  # paths outside the overlay (scripts) stay put
-                destination = target / source.relative_to(root)
-                destination.parent.mkdir(parents=True, exist_ok=True)
-                shutil.move(str(source), str(destination))
-                emptied.add(source.parent)
-            if info.exists():
-                target.mkdir(parents=True, exist_ok=True)
-                shutil.move(str(info), str(target / info.name))
-            moved.append(f"{name} {version}")
+            move_aside(name, version, info)
+
+    # Any other package the bundle also ships: an overlay copy with files missing from its RECORD goes,
+    # so the bundle's whole copy runs. On Windows a GPU-runtime install could not replace psutil's
+    # loaded _psutil_windows.pyd, pip left psutil/ with three of its files, and the backend no longer
+    # started ("cannot import name '_common' from partially initialized module 'psutil'").
+    for name, copies in overlay.items():
+        if name not in bundled or name in _BUNDLED_CORE + _LOCKSTEP_CORE:
+            continue
+        for version, info in copies:
+            if not info.exists():
+                continue
+            if any(not path.is_file() for path in record_paths(info) if path.suffix != ".pyc"):
+                move_aside(name, version, info)
     # Drop the folders those moves left empty (deepest first), stopping at
     # the overlay root; rmdir refuses any folder that still holds files.
     for folder in sorted(emptied, key=lambda p: len(p.parts), reverse=True):

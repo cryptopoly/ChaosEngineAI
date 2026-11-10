@@ -47,7 +47,9 @@ class CapabilityTests(unittest.TestCase):
 
         variants = {v["repo"]: v for f in VIDEO_MODEL_FAMILIES for v in f["variants"]}
         self.assertIn("img2video", variants[TI2V]["taskSupport"])
-        self.assertEqual(set(IMAGE_TO_VIDEO_REGISTRY), {TI2V})
+        from backend_service.video_runtime.repos import LTX2_DIFFUSERS_REPOS
+
+        self.assertEqual(set(IMAGE_TO_VIDEO_REGISTRY), {TI2V, *LTX2_DIFFUSERS_REPOS})
         self.assertNotIn("img2video", variants[WAN_21]["taskSupport"])
 
     def test_the_enriched_catalog_carries_both_flags(self) -> None:

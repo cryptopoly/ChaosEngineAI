@@ -241,9 +241,104 @@ def build_pipeline_kwargs(
         if not config.startImagePath:
             raise RuntimeError("This run loaded the image-to-video pipeline but has no start image.")
         kwargs["image"] = load_start_image(config.startImagePath, config.width, config.height)
-    kwargs["__cfg_decay"] = bool(config.cfgDecay)
+    if pipeline_cls in LTX2_PIPELINE_CLASSES:
+        _shape_ltx2_kwargs(kwargs, config, pipeline_cls)
+    kwargs["__cfg_decay"] = bool(config.cfgDecay) and pipeline_cls not in LTX2_PIPELINE_CLASSES
     kwargs["__preview_vae"] = bool(config.previewVae)
     return kwargs
+
+
+LTX2_PIPELINE_CLASSES = ("LTX2Pipeline", "LTX2ImageToVideoPipeline", "LTX2ConditionPipeline")
+
+# H.264 CRF the LTX-2.3 pipelines were trained against for conditioning pictures (diffusers' DEFAULT_IMAGE_CRF).
+LTX2_IMAGE_CRF = 33
+
+
+def recompress_still(picture: Any, crf: int) -> Any:
+    """``picture`` after one frame of H.264 compression at ``crf`` (ffmpeg's libx264); unchanged when it cannot be done.
+
+    Same operation as diffusers' ``apply_image_conditioning_crf``, which needs PyAV. Without a libx264 ffmpeg the
+    picture is used as it is: the clip still follows it, slightly less closely.
+    """
+    if crf <= 0:
+        return picture
+    import subprocess  # noqa: PLC0415
+    from PIL import Image  # noqa: PLC0415
+
+    from backend_service.storyboard import ffmpeg_bin  # noqa: PLC0415
+
+    found = ffmpeg_bin.find_ffmpeg(allow_path=True)
+    if found is None:
+        return picture
+    try:
+        if ffmpeg_bin.h264_encoder() != "libx264":
+            return picture
+    except RuntimeError:
+        return picture
+    width, height = picture.size[0] // 2 * 2, picture.size[1] // 2 * 2  # yuv420p needs even sides
+    if width < 2 or height < 2:
+        return picture
+    with tempfile.TemporaryDirectory(prefix="chaosengine-crf-") as tmp:
+        folder = Path(tmp)
+        picture.crop((0, 0, width, height)).save(folder / "in.png")
+        encode = [found[0], "-hide_banner", "-loglevel", "error", "-y", "-i", str(folder / "in.png"), "-frames:v", "1",
+                  "-c:v", "libx264", "-preset", "veryfast", "-crf", str(int(crf)), "-pix_fmt", "yuv420p", str(folder / "c.mp4")]
+        decode = [found[0], "-hide_banner", "-loglevel", "error", "-y", "-i", str(folder / "c.mp4"), "-frames:v", "1",
+                  str(folder / "out.png")]
+        try:
+            for command in (encode, decode):
+                if subprocess.run(command, capture_output=True, timeout=120).returncode != 0:
+                    return picture
+            with Image.open(folder / "out.png") as result:
+                return result.convert("RGB").copy()
+        except (OSError, subprocess.TimeoutExpired):
+            return picture
+
+
+def _shape_ltx2_kwargs(kwargs: dict[str, Any], config: VideoGenerationConfig, pipeline_cls: str) -> None:
+    """LTX-2's own arguments: frame rate, the distilled sigma schedule, and the start / end pictures.
+
+    Video and sound are made together; guidance is the pipeline's own multi-term scheme, so the CFG decay that Wan and
+    LTX-Video use is off (``build_pipeline_kwargs`` sets that flag). The distilled model is told to run its fixed
+    8-step schedule at guidance 1 and gets no negative prompt (it would be ignored at guidance 1).
+    """
+    from backend_service.video_runtime.repos import is_ltx2_distilled_repo
+
+    kwargs["frame_rate"] = float(config.fps)
+    # The pictures are re-compressed here (with ffmpeg) instead of by the pipeline, which would need PyAV: the model
+    # was trained on H.264-compressed conditioning frames (CRF 33 through LTX-2.3) and follows them better so.
+    kwargs["image_crf"] = 0
+    if is_ltx2_distilled_repo(config.repo):
+        from diffusers.pipelines.ltx2.utils import DISTILLED_SIGMA_VALUES  # noqa: PLC0415
+
+        kwargs["sigmas"] = list(DISTILLED_SIGMA_VALUES)
+        kwargs["num_inference_steps"] = 8
+        kwargs["guidance_scale"] = 1.0
+        kwargs.pop("negative_prompt", None)
+    elif "negative_prompt" not in kwargs:
+        from diffusers.pipelines.ltx2.utils import DEFAULT_NEGATIVE_PROMPT  # noqa: PLC0415
+
+        kwargs["negative_prompt"] = DEFAULT_NEGATIVE_PROMPT
+    if pipeline_cls == "LTX2ImageToVideoPipeline":
+        if not config.startImagePath:
+            raise RuntimeError("This run loaded the image-to-video pipeline but has no start image.")
+        kwargs["image"] = recompress_still(
+            load_start_image(config.startImagePath, config.width, config.height), LTX2_IMAGE_CRF)
+    elif pipeline_cls == "LTX2ConditionPipeline":
+        from diffusers.pipelines.ltx2.pipeline_ltx2_condition import LTX2VideoCondition  # noqa: PLC0415
+
+        conditions = []
+        if config.startImagePath:
+            conditions.append(LTX2VideoCondition(
+                frames=recompress_still(load_start_image(config.startImagePath, config.width, config.height), LTX2_IMAGE_CRF),
+                index=0, strength=1.0, crf=0))
+        if config.endImagePath:
+            conditions.append(LTX2VideoCondition(
+                frames=recompress_still(load_start_image(config.endImagePath, config.width, config.height), LTX2_IMAGE_CRF),
+                index=-1, strength=1.0, crf=0))  # a latent index; -1 is the last one (diffusers' own example)
+        if not conditions:
+            raise RuntimeError("This run loaded the condition pipeline but has no start or end image.")
+        kwargs["conditions"] = conditions
 
 
 def load_start_image(path: str, width: int, height: int) -> Any:
@@ -393,8 +488,25 @@ def invoke_pipeline(pipeline: Any, kwargs: dict[str, Any]) -> list[Any]:
             "different output shape. Upgrade diffusers: pip install -U diffusers"
         )
     if isinstance(frames, (list, tuple)) and frames and isinstance(frames[0], (list, tuple)):
-        return list(frames[0])
-    return list(frames)
+        out = FrameList(frames[0])
+    else:
+        out = FrameList(frames)
+    # LTX-2 makes sound with the picture: ``result.audio`` is the waveform (batch, channels, samples) and the vocoder
+    # config says at what rate. Carried on the frame list so the encoder can put it in the mp4.
+    audio = getattr(result, "audio", None)
+    if audio is not None:
+        out.audio = audio
+        vocoder = getattr(pipeline, "vocoder", None)
+        rate = getattr(getattr(vocoder, "config", None), "output_sampling_rate", None)
+        out.audio_sample_rate = int(rate) if rate else None
+    return out
+
+
+class FrameList(list):
+    """The frames of one clip, plus the sound a pipeline made with them (None for silent models)."""
+
+    audio: Any = None
+    audio_sample_rate: int | None = None
 
 
 def encode_frames_to_mp4(frames: list[Any], fps: int) -> bytes:
@@ -452,11 +564,17 @@ def encode_frames_to_mp4(frames: list[Any], fps: int) -> bytes:
             pass
 
 
-def pipeline_class_for_repo(repo: str, image_input: bool = False) -> Any:
-    """The diffusers class for ``repo``; the image-to-video one when the run starts from a picture and has one."""
+def pipeline_class_for_repo(repo: str, image_input: bool = False, end_image: bool = False) -> Any:
+    """The diffusers class for ``repo``.
+
+    A run with a start picture gets the repo's image-to-video class; one with an end picture too (or alone) gets its
+    condition class when it has one (LTX-2), else the image-to-video class.
+    """
     entry = PIPELINE_REGISTRY.get(repo)
-    if image_input and repo in IMAGE_TO_VIDEO_REGISTRY:
+    if (image_input or end_image) and repo in IMAGE_TO_VIDEO_REGISTRY:
         entry = IMAGE_TO_VIDEO_REGISTRY[repo]
+        if end_image and entry.get("endClassName"):
+            entry = {**entry, "class_name": entry["endClassName"]}
     if entry is None:
         raise RuntimeError(
             f"No diffusers pipeline is registered for repo '{repo}'. "

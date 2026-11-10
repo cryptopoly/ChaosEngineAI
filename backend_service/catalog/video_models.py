@@ -165,6 +165,111 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
         ],
     },
     {
+        "id": "ltx-2-diffusers",
+        "name": "LTX-2.3 (NVIDIA)",
+        "provider": "Lightricks",
+        "headline": "LTX-2.3 with sound on NVIDIA GPUs: a 4-bit pack for 24 GB cards, bf16 packs for large ones.",
+        "summary": (
+            "The newest open video model that ships for torch: video and stereo sound made together, text to video, "
+            "from a start picture, or between a start and an end picture. The 4-bit pack (about 31 GB) runs on a 24 GB "
+            "card with offloading; the official bf16 packs (about 100 GB) are for 80 GB cards and for machines with "
+            "unified memory such as the DGX Spark. The distilled models run 8 steps with no guidance. "
+            "Weights: LTX-2 community licence (free below US$10M annual revenue)."
+        ),
+        "updatedLabel": "Diffusers · NVIDIA",
+        "badges": ["Sound", "NVIDIA", "Quantized"],
+        "defaultVariantId": "OzzyGT/LTX-2.3-Distilled-bnb-nf4",
+        "variants": [
+            {
+                "id": "OzzyGT/LTX-2.3-Distilled-bnb-nf4",
+                "familyId": "ltx-2-diffusers",
+                "name": "LTX-2.3 · distilled 4-bit (diffusers)",
+                "provider": "Lightricks · OzzyGT (conversion)",
+                "repo": "OzzyGT/LTX-2.3-Distilled-bnb-nf4",
+                "link": "https://huggingface.co/OzzyGT/LTX-2.3-Distilled-bnb-nf4",
+                "runtime": "diffusers LTX2Pipeline",
+                "styleTags": ["general", "fast", "motion", "audio", "quantized"],
+                "taskSupport": ["txt2video", "img2video"],
+                "cudaOnly": True,
+                # 14.4 GB transformer + 8.4 GB Gemma 3 text encoder (both bitsandbytes NF4) + 6.3 GB connectors +
+                # 1.8 GB VAEs and vocoder: 31 GB on disk and about 25 GB in memory.
+                "sizeGb": 31.0,
+                "runtimeFootprintGb": 25.0,
+                "footprintBasis": "estimated",
+                "recommendedResolution": "768x512",
+                "defaultDurationSeconds": 4.0,
+                "note": (
+                    "Distilled LTX-2.3 with 4-bit (NF4) weights from a community conversion of the Lightricks model: "
+                    "stereo sound, 8 steps, no guidance (steps, guidance and negative prompt do not apply). For 24 GB "
+                    "NVIDIA cards and up; smaller cards fall back to slower layer-by-layer offloading. Takes a start "
+                    "picture and an end picture. Sizes are multiples of 32, clips 8k+1 frames. Weights: LTX-2 "
+                    "community licence (free below US$10M annual revenue)."
+                ),
+                "estimatedGenerationSeconds": 120.0,
+                "slowOn": [SLOW_CPU_ONLY_EXPECTED],
+                "availableLocally": False,
+                "releaseDate": "2026-03",
+            },
+            {
+                "id": "diffusers/LTX-2.3-Distilled-Diffusers",
+                "familyId": "ltx-2-diffusers",
+                "name": "LTX-2.3 · distilled bf16 (diffusers)",
+                "provider": "Lightricks · Hugging Face diffusers",
+                "repo": "diffusers/LTX-2.3-Distilled-Diffusers",
+                "link": "https://huggingface.co/diffusers/LTX-2.3-Distilled-Diffusers",
+                "runtime": "diffusers LTX2Pipeline",
+                "styleTags": ["general", "fast", "motion", "audio", "heavy"],
+                "taskSupport": ["txt2video", "img2video"],
+                "cudaOnly": True,
+                # Official repo: the Gemma 3 12B text encoder is stored in fp32 (48.7 GB) and loads as bf16, so the
+                # pipeline needs about 76 GB in memory against ~100 GB on disk.
+                "sizeGb": 101.0,
+                "runtimeFootprintGb": 76.0,
+                "loadMemoryGb": 80.0,
+                "footprintBasis": "estimated",
+                "recommendedResolution": "768x512",
+                "defaultDurationSeconds": 4.0,
+                "note": (
+                    "Distilled LTX-2.3 at full precision: stereo sound, 8 steps, no guidance. About 76 GB in memory: "
+                    "for 80 GB NVIDIA cards (H100, RTX PRO 6000) and unified-memory machines such as the DGX Spark. "
+                    "Smaller cards should use the 4-bit row above. Takes a start picture and an end picture. "
+                    "Weights: LTX-2 community licence (free below US$10M annual revenue)."
+                ),
+                "estimatedGenerationSeconds": 60.0,
+                "slowOn": [SLOW_CPU_ONLY_EXPECTED],
+                "availableLocally": False,
+                "releaseDate": "2026-05",
+            },
+            {
+                "id": "diffusers/LTX-2.3-Diffusers",
+                "familyId": "ltx-2-diffusers",
+                "name": "LTX-2.3 · dev bf16 (diffusers)",
+                "provider": "Lightricks · Hugging Face diffusers",
+                "repo": "diffusers/LTX-2.3-Diffusers",
+                "link": "https://huggingface.co/diffusers/LTX-2.3-Diffusers",
+                "runtime": "diffusers LTX2Pipeline",
+                "styleTags": ["general", "quality", "motion", "audio", "heavy"],
+                "taskSupport": ["txt2video", "img2video"],
+                "cudaOnly": True,
+                "sizeGb": 101.3,
+                "runtimeFootprintGb": 76.0,
+                "loadMemoryGb": 80.0,
+                "footprintBasis": "estimated",
+                "recommendedResolution": "768x512",
+                "defaultDurationSeconds": 4.0,
+                "note": (
+                    "The full LTX-2.3 model: 30 steps with guidance, the best fidelity, about 4 times the work of the "
+                    "distilled one. About 76 GB in memory: for 80 GB NVIDIA cards and the DGX Spark. Takes a start "
+                    "picture and an end picture. Weights: LTX-2 community licence (free below US$10M annual revenue)."
+                ),
+                "estimatedGenerationSeconds": 240.0,
+                "slowOn": [SLOW_CPU_ONLY_EXPECTED],
+                "availableLocally": False,
+                "releaseDate": "2026-05",
+            },
+        ],
+    },
+    {
         "id": "ltx-2",
         "name": "LTX-2 (MLX)",
         "provider": "Lightricks · prince-canuma",

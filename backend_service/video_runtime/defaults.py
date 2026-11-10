@@ -41,6 +41,11 @@ _VIDEO_MODEL_FOOTPRINT_BF16_GB: dict[str, float] = {
     # 5B transformer (~10 GB) + UMT5-XXL text encoder (~11 GB) + VAE: the pipeline as a whole, not the transformer alone.
     "Wan-AI/Wan2.2-TI2V-5B-Diffusers": 22.0,
     "Wan-AI/Wan2.2-T2V-A14B-Diffusers": 28.0,
+    # LTX-2.3 diffusers: transformer + Gemma 3 12B text encoder + connectors + VAEs. bf16 ~76 GB (the repos store the
+    # text encoder in fp32 on disk, 100 GB; it loads as bf16); the NF4 packs ~25 GB resident.
+    "diffusers/LTX-2.3-Diffusers": 76.0,
+    "diffusers/LTX-2.3-Distilled-Diffusers": 76.0,
+    "OzzyGT/LTX-2.3-Distilled-bnb-nf4": 25.0,
     "hunyuanvideo-community/HunyuanVideo": 26.0,
     "genmo/mochi-1-preview": 22.0,
     "THUDM/CogVideoX-2b": 19.0,

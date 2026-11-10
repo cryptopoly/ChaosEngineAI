@@ -305,6 +305,7 @@ class DiffusersVideoEngine:
                 distill_low_file=config.distillTransformerLowNoiseFile,
                 distill_precision=config.distillTransformerPrecision,
                 image_input=self._uses_image_pipeline(config),
+                end_image=self._uses_end_image(config),
             )
             # Early-cancel check after model load — from_pretrained is a
             # blocking C-extension call we can't interrupt. If the user hit
@@ -382,6 +383,8 @@ class DiffusersVideoEngine:
                     "Try a smaller resolution or a different model."
                 )
 
+            clip_audio = getattr(frames, "audio", None)  # LTX-2 makes sound with the picture
+            clip_audio_rate = getattr(frames, "audio_sample_rate", None)
             interpolation_factor = max(1, int(config.interpolationFactor or 1))
             if interpolation_factor > 1:
                 VIDEO_PROGRESS.set_phase(
@@ -404,6 +407,13 @@ class DiffusersVideoEngine:
             # user sees what was applied. Joined with " · " for a
             # single-line UI presentation.
             note_parts = [*self._load_notes, *finalize_notes, *kwarg_notes]
+            if clip_audio is not None:
+                try:
+                    from backend_service.video_runtime.audio_mux import mux_audio_into_mp4
+
+                    mp4_bytes = mux_audio_into_mp4(mp4_bytes, clip_audio, int(clip_audio_rate or 0))
+                except Exception as exc:  # noqa: BLE001 - a silent clip is better than none
+                    note_parts.append(f"The clip is silent: {exc}")
             runtime_note = " · ".join(note_parts) if note_parts else None
             return GeneratedVideo(
                 seed=base_seed,
@@ -546,8 +556,8 @@ class DiffusersVideoEngine:
     def _encode_frames_to_mp4(self, frames: list[Any], fps: int) -> bytes:
         return encode_frames_to_mp4(frames, fps)
 
-    def _pipeline_class(self, repo: str, image_input: bool = False) -> Any:
-        return pipeline_class_for_repo(repo, image_input=image_input)
+    def _pipeline_class(self, repo: str, image_input: bool = False, end_image: bool = False) -> Any:
+        return pipeline_class_for_repo(repo, image_input=image_input, end_image=end_image)
 
     @staticmethod
     def _build_variant_key(
@@ -564,9 +574,12 @@ class DiffusersVideoEngine:
         distill_low_file: str | None,
         distill_precision: str | None,
         image_input: bool = False,
+        end_image: bool = False,
     ) -> str:
         variant_parts = [repo]
-        if image_input:
+        if end_image:
+            variant_parts.append("cond")
+        elif image_input:
             variant_parts.append("i2v")
         if gguf_file:
             variant_parts.append(f"gguf={gguf_file}")
@@ -597,12 +610,19 @@ class DiffusersVideoEngine:
             distill_low_file=config.distillTransformerLowNoiseFile,
             distill_precision=config.distillTransformerPrecision,
             image_input=self._uses_image_pipeline(config),
+            end_image=self._uses_end_image(config),
         )
 
     @staticmethod
     def _uses_image_pipeline(config: VideoGenerationConfig) -> bool:
         """True when this run starts from a picture and its repo has an image-to-video pipeline class."""
         return bool(config.startImagePath) and config.repo in IMAGE_TO_VIDEO_REGISTRY
+
+    @staticmethod
+    def _uses_end_image(config: VideoGenerationConfig) -> bool:
+        """True when this run ends on a picture and its repo takes one (LTX-2's condition pipeline)."""
+        entry = IMAGE_TO_VIDEO_REGISTRY.get(config.repo)
+        return bool(config.endImagePath) and bool(entry and entry.get("endImage"))
 
     def _is_variant_loaded(self, variant_key: str) -> bool:
         with self._lock:
@@ -623,6 +643,7 @@ class DiffusersVideoEngine:
         distill_low_file: str | None = None,
         distill_precision: str | None = None,
         image_input: bool = False,
+        end_image: bool = False,
     ) -> Any:
         with self._lock:
             # Variant key folds in LoRA identity — switching LoRAs on the
@@ -644,6 +665,7 @@ class DiffusersVideoEngine:
                 distill_low_file=distill_low_file,
                 distill_precision=distill_precision,
                 image_input=image_input,
+                end_image=end_image,
             )
             if self._pipeline is not None and self._loaded_variant_key == variant_key:
                 return self._pipeline
@@ -659,7 +681,7 @@ class DiffusersVideoEngine:
             import torch  # type: ignore
             from backend_service.helpers.hf_local import local_snapshot_path
 
-            pipeline_cls = self._pipeline_class(repo, image_input=image_input)
+            pipeline_cls = self._pipeline_class(repo, image_input=image_input, end_image=end_image)
 
             local_path = local_snapshot_path(repo, resume_download=True)
             local_root = Path(local_path)

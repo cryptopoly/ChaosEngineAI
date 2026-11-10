@@ -235,6 +235,10 @@ class PipelineRegistryTests(unittest.TestCase):
             # FU-019 catalog refresh: CogVideoX 1.5 5B routes via the same
             # CogVideoXPipeline class as the 5B base.
             "THUDM/CogVideoX1.5-5B",
+            # LTX-2.3 on diffusers: official bf16 packs and the NF4 community packs, all LTX2Pipeline.
+            "diffusers/LTX-2.3-Diffusers",
+            "diffusers/LTX-2.3-Distilled-Diffusers",
+            "OzzyGT/LTX-2.3-Distilled-bnb-nf4",
         }
         self.assertEqual(set(PIPELINE_REGISTRY.keys()), expected)
         for entry in PIPELINE_REGISTRY.values():

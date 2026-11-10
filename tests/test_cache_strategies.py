@@ -167,7 +167,9 @@ class CacheStrategyRegistryTests(unittest.TestCase):
         with patch(
             "cache_compression.turboquant._turboquant_mlx_source_blobs",
             return_value=["def make_adaptive_cache():\n    pass", "def apply_patch():\n    pass"],
-        ), patch("cache_compression.turboquant._has_full_turboquant_mlx_package", return_value=False):
+        ), patch("cache_compression.turboquant._has_full_turboquant_mlx_package", return_value=False), patch(
+            "cache_compression.turboquant._has_turbo_llama_binary", return_value=False,
+        ):
             self.assertFalse(tq.is_available())
 
     def test_turboquant_is_unavailable_without_required_hooks(self):
@@ -175,8 +177,36 @@ class CacheStrategyRegistryTests(unittest.TestCase):
         with patch(
             "cache_compression.turboquant._turboquant_mlx_source_blobs",
             return_value=["TurboQuant = PolarQuant"],
-        ):
+        ), patch("cache_compression.turboquant._has_turbo_llama_binary", return_value=False):
             self.assertFalse(tq.is_available())
+
+    def test_turboquant_is_available_for_gguf_with_only_the_turbo_llama_binary(self):
+        """Windows and Linux have no MLX; the llama-server-turbo fork alone makes the GGUF lane usable."""
+        tq = TurboQuantStrategy()
+        with patch("cache_compression.turboquant._has_full_turboquant_mlx_package", return_value=False), patch(
+            "cache_compression.turboquant._has_turbo_llama_binary", return_value=True,
+        ):
+            self.assertTrue(tq.is_available())
+            self.assertEqual(tq.availability_badge(), "Ready")
+            self.assertIsNone(tq.availability_reason())
+
+    def test_turboquant_without_any_lane_says_to_install_the_turbo_binary_off_the_mac(self):
+        tq = TurboQuantStrategy()
+        with patch("cache_compression.turboquant._has_full_turboquant_mlx_package", return_value=False), patch(
+            "cache_compression.turboquant._has_turbo_llama_binary", return_value=False,
+        ), patch("cache_compression.turboquant.sys.platform", "win32"):
+            self.assertFalse(tq.is_available())
+            self.assertIn("llama-server-turbo", tq.availability_reason())
+
+    def test_the_turbo_binary_probe_follows_the_resolver(self):
+        from cache_compression.turboquant import _has_turbo_llama_binary
+
+        with patch("backend_service.inference.binaries._resolve_llama_server_turbo", return_value="C:/bin/llama-server-turbo.exe"):
+            self.assertTrue(_has_turbo_llama_binary())
+        with patch("backend_service.inference.binaries._resolve_llama_server_turbo", return_value=None):
+            self.assertFalse(_has_turbo_llama_binary())
+        with patch("backend_service.inference.binaries._resolve_llama_server_turbo", side_effect=OSError("x")):
+            self.assertFalse(_has_turbo_llama_binary())
 
     def test_turboquant_mlx_cache_raises_helpful_message_without_hooks(self):
         tq = TurboQuantStrategy()

@@ -27,8 +27,9 @@ _LABELS: dict[str, str] = {
 }
 
 # Arguments the runtime adds for its own bookkeeping. They are dropped without
-# a note: a pipeline without them still runs, only the live progress is lost.
-_QUIET = frozenset({"callback_on_step_end", "callback_on_step_end_tensor_inputs"})
+# a note: a pipeline without them still runs, only the live progress is lost (or, for ``image_crf``, the text-to-video
+# pipeline has no start picture to compress).
+_QUIET = frozenset({"callback_on_step_end", "callback_on_step_end_tensor_inputs", "image_crf"})
 
 # Never dropped: a pipeline that lacks these cannot run the request at all.
 _ESSENTIAL = frozenset({"prompt"})

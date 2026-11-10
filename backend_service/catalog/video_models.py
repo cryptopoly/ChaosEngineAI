@@ -209,7 +209,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                     "picture and an end picture. Sizes are multiples of 32, clips 8k+1 frames. Weights: LTX-2 "
                     "community licence (free below US$10M annual revenue)."
                 ),
-                "estimatedGenerationSeconds": 120.0,
+                "estimatedGenerationSeconds": 70.0,
                 "slowOn": [SLOW_CPU_ONLY_EXPECTED],
                 "availableLocally": False,
                 "releaseDate": "2026-03",

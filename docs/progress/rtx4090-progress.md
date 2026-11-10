@@ -368,6 +368,18 @@ Section 4 found that a Windows user could not make any Storyboard clip (the vide
 
 **Design points.** `image_input_support(repo)` is now the single answer to "does this model take a start / end picture" (LTX-2 MLX: both; TI2V-5B: start only, diffusers' expanded-timestep path ignores a last frame), used by the catalog flags (`acceptsImageInput`, new `acceptsEndImage`), the video route, the agent bridge, Storyboard and the Studio's picker (end picker only when `acceptsEndImage`). The row is `cudaOnly`, so a Mac does not see it (MPS corrupts Wan 2.2, FU-102/125); `platform_filter` gained that filter. Tests: 13 new in `test_video_image_input.py`, 4 in `test_storyboard_store.py`, 4 in `test_platform_filter.py`, 1 in `test_memory_gate.py`, 3 frontend picker tests and 2 E2E checks.
 
+## LTX-2.3 with sound on the NVIDIA PC (2026-11-10)
+
+`OzzyGT/LTX-2.3-Distilled-bnb-nf4` (4-bit, 31 GB) through the dev backend, 768x512, 97 frames at 24 fps, FLUX.2 Klein stills for the start and end pictures. Every clip carries a 48 kHz stereo AAC track.
+
+| Mode | Generation | Peak VRAM | Sound (mean / max) |
+|---|---|---|---|
+| Text only | 69.6 s | 22.3 GB | -20.3 / -3.7 dB |
+| Start picture | 70.8 s | 22.3 GB | -23.2 / -2.8 dB |
+| Start + end pictures | 74.9 s | 22.3 GB | -12.1 / -2.4 dB |
+
+First frame of the start clip matches the still; the late frame of the start+end clip has moved to the end still's night scene. The first attempt sat on step 1 of 8 for over an hour: the 4-bit weights are loaded onto the card by bitsandbytes, so the free-memory budget read 1 GB and ruled out model offload. `_cuda_memory_gb` now counts what this process already holds (`356eae6d`); the same pack then ran at 70 s. Not run live: the two bf16 rows (100 GB downloads); they are covered by the tiny-pipeline tests and the placement matrix.
+
 **Not done.** The newest open video models are still Mac-only or unwired on CUDA: LTX-2.3/2.5 (March / July 2026, audio, diffusers 0.42.1 has the pipelines), Kandinsky 6 (MIT), Motif-Video; Wan 2.2 I2V A14B for an end frame needs offload or GGUF. See `docs/research/cuda-model-landscape-2026-11.md`.
 
 ## Report back (sections 0 to 7)

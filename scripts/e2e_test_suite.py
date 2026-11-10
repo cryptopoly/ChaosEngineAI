@@ -1738,6 +1738,8 @@ def phase_5(cap: Capability) -> PhaseResult:
             content_type="application/json", timeout=3600.0)
         artifact = (json.loads(data.decode("utf-8")) if code == 200 else {}).get("artifact") or {}
         if not artifact.get("videoPath") or not artifact.get("startImagePath"):
+            if code == 503 and _is_memory_refusal(data.decode("utf-8", "replace")):
+                return "skip", "host memory gate fired: " + data.decode("utf-8", "replace")[:160], {}
             return "fail", f"live image-to-video: HTTP {code} {data[:160]!r}", {}
         return "pass", "", {"seconds": artifact.get("durationSeconds"), "live": True}
 
@@ -1759,6 +1761,8 @@ def phase_5(cap: Capability) -> PhaseResult:
             content_type="application/json", timeout=3600.0)
         artifact = (json.loads(data.decode("utf-8")) if code == 200 else {}).get("artifact") or {}
         if not artifact.get("videoPath"):
+            if code == 503 and _is_memory_refusal(data.decode("utf-8", "replace")):
+                return "skip", "host memory gate fired: " + data.decode("utf-8", "replace")[:160], {}
             return "fail", f"live text-to-video: HTTP {code} {data[:200]!r}", {}
         if artifact.get("hasAudio") is not True:
             return "fail", f"the clip should carry sound but hasAudio={artifact.get('hasAudio')!r}: {artifact.get('runtimeNote')}", {}

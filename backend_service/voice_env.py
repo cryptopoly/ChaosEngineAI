@@ -122,8 +122,8 @@ EXTRAS: dict[str, tuple[tuple[str, ...], list[str], str]] = {
 # (docs/plans/rtx4090-test.md section 2). The two model packages go in with --no-deps: chatterbox-tts pins torch 2.6,
 # transformers 5.2, gradio and numpy<2, and voxcpm pulls gradio, funasr, modelscope, datasets and matplotlib, none of
 # which inference needs. What their model code imports is listed by hand instead, every licence checked (MIT,
-# Apache-2.0, BSD, ISC). Left out on purpose: pykakasi (GPL-3.0; Chatterbox uses it for Japanese readings, so Japanese
-# on this lane may read less well) and the onnxruntime-gpu build (the SNAC decoder for Orpheus is small and runs on
+# Apache-2.0, BSD, ISC). Left out on purpose: pykakasi (GPL-3.0; Chatterbox uses it for Japanese readings, so fugashi + unidic-lite
+# stand in for it, see voice_ja.py) and the onnxruntime-gpu build (the SNAC decoder for Orpheus is small and runs on
 # the CPU onnxruntime the pack already has). torch 2.9 with CUDA 12.8 wheels covers the RTX 40 and 50 series.
 SPEECH_GPU_TORCH = ["torch==2.9.1", "torchaudio==2.9.1"]
 SPEECH_GPU_TORCH_INDEX = "https://download.pytorch.org/whl/cu128"
@@ -144,9 +144,17 @@ SPEECH_GPU_PACKAGES = [
     "wetext==0.2.1",
     "soundfile>=0.13,<0.15",
     "torchcodec==0.8.1",
+    "fugashi==1.5.2",  # Japanese readings for Chatterbox (backend_service/voice_ja.py), instead of GPL pykakasi
+    "unidic-lite==1.0.8",
     "pydantic>=2,<3",
 ]
-SPEECH_GPU_NO_DEPS = ["chatterbox-tts==0.1.7", "voxcpm==2.0.3"]
+# chatterbox-tts: PyPI's newest (0.1.7) only knows the v2 Multilingual model; V3 (`from_local(..., t3_model="v3")`,
+# weights `t3_mtl23ls_v3.safetensors`) is only in the upstream repository, from commit 65b1843 (2026-06-10). Pinned to
+# a source archive of the commit the RTX 4090 run tested (same 0.1.7 version string, MIT). Move back to a PyPI pin
+# once a release carries V3.
+CHATTERBOX_REF = "ab55923c27757c90cfcc407baa57dc25a7d25217"
+CHATTERBOX_PACKAGE = f"chatterbox-tts @ https://github.com/resemble-ai/chatterbox/archive/{CHATTERBOX_REF}.zip"
+SPEECH_GPU_NO_DEPS = [CHATTERBOX_PACKAGE, "voxcpm==2.0.3"]
 _SPEECH_GPU_CHECK = (
     "import torch, chatterbox.tts_turbo, chatterbox.mtl_tts, voxcpm; "
     "assert torch.cuda.is_available(), 'PyTorch cannot see the NVIDIA GPU'; print('speech gpu ok')"
@@ -170,7 +178,9 @@ def speech_gpu_commands(python: str) -> list[list[str]]:
     return [
         [*pip, *SPEECH_GPU_TORCH, "--index-url", SPEECH_GPU_TORCH_INDEX],
         [*pip, *SPEECH_GPU_PACKAGES],
-        [*pip, "--no-deps", *SPEECH_GPU_NO_DEPS],
+        # --force-reinstall: the pinned chatterbox archive reports the same version (0.1.7) as the PyPI wheel an earlier
+        # install left behind, and pip keeps the installed copy of an equal version without it (RTX 4090 run).
+        [*pip, "--no-deps", "--force-reinstall", *SPEECH_GPU_NO_DEPS],
         [python, "-I", "-c", _SPEECH_GPU_CHECK],
     ]
 

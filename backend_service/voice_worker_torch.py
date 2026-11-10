@@ -75,6 +75,12 @@ def _load(family: str, source: str, device: str) -> Any:
         model = ChatterboxTurboTTS.from_local(source, device)
         keep_float32_loudness(model)
     elif family == "chatterbox":
+        try:  # the worker runs as a script, so a sibling is a top-level module (as for voice_worker_models)
+            import voice_ja  # type: ignore[import-not-found]  # noqa: PLC0415
+        except ImportError:
+            from backend_service import voice_ja  # noqa: PLC0415
+
+        voice_ja.install_pykakasi_stand_in()  # Japanese readings without the GPL pykakasi
         from chatterbox.mtl_tts import ChatterboxMultilingualTTS  # type: ignore[import-not-found]
 
         model = ChatterboxMultilingualTTS.from_local(source, device, t3_model="v3")

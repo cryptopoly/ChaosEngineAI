@@ -117,7 +117,7 @@ class SafetyTests(_DataDir):
              mock.patch("backend_service.voice_client.get_worker", return_value=worker):
             self.assertTrue(voice_clone_safety.apply_watermark(path))
             self.assertEqual(worker.request.call_args.args[0], "watermark")
-            self.assertEqual(worker.request.call_args.kwargs["generator"], "/g.pth")
+            self.assertEqual(worker.request.call_args.kwargs["generator"], str(Path("/g.pth")))
             found = voice_clone_safety.detect_watermark(path)
         self.assertEqual(found, {"probability": 0.99, "message": "CE5A", "matches": True})
         self.assertEqual(worker.request.call_args.args[0], "detectWatermark")

@@ -34,13 +34,25 @@ def make_wav(rate: int = 24_000) -> bytes:
     return buffer.getvalue()
 
 
+class ChatterboxPinTests(unittest.TestCase):
+    def test_chatterbox_is_pinned_to_an_upstream_commit_that_has_the_v3_model(self) -> None:
+        # PyPI's chatterbox-tts 0.1.7 has no `t3_model` argument, so Multilingual V3 failed with
+        # "from_local() got an unexpected keyword argument 't3_model'" until the pin moved to the repository.
+        self.assertRegex(voice_env.CHATTERBOX_REF, r"^[0-9a-f]{40}$")
+        self.assertIn(voice_env.CHATTERBOX_REF, voice_env.CHATTERBOX_PACKAGE)
+        self.assertTrue(voice_env.CHATTERBOX_PACKAGE.startswith("chatterbox-tts @ https://github.com/resemble-ai/chatterbox/"))
+        self.assertIn(voice_env.CHATTERBOX_PACKAGE, voice_env.SPEECH_GPU_NO_DEPS)
+        worker = Path(__file__).resolve().parents[1] / "backend_service" / "voice_worker_torch.py"
+        self.assertIn('t3_model="v3"', worker.read_text(encoding="utf-8"))
+
+
 class InstallTests(unittest.TestCase):
     def test_commands_install_cuda_torch_then_the_hand_picked_set_then_the_models_without_deps(self) -> None:
         commands = voice_env.speech_gpu_commands("/venv/bin/python")
         self.assertEqual(commands[0], ["/venv/bin/python", "-m", "pip", "install", "torch==2.9.1", "torchaudio==2.9.1",
                                        "--index-url", "https://download.pytorch.org/whl/cu128"])
         self.assertEqual(commands[1][:4], ["/venv/bin/python", "-m", "pip", "install"])
-        self.assertEqual(commands[2], ["/venv/bin/python", "-m", "pip", "install", "--no-deps", "chatterbox-tts==0.1.7", "voxcpm==2.0.3"])
+        self.assertEqual(commands[2], ["/venv/bin/python", "-m", "pip", "install", "--no-deps", "--force-reinstall", voice_env.CHATTERBOX_PACKAGE, "voxcpm==2.0.3"])
         self.assertEqual(commands[3][:3], ["/venv/bin/python", "-I", "-c"])
         self.assertIn("torch.cuda.is_available()", commands[3][3])
         names = " ".join(commands[1]).lower()
@@ -173,8 +185,8 @@ class RoutingTests(unittest.TestCase):
                 patch.stop()
         self.assertEqual((turbo.model_key, turbo.engine, turbo.extra["device"]), ("chatterbox-turbo-cuda", "torch", "cuda"))
         self.assertEqual(orpheus.engine, "llama-gguf")
-        self.assertEqual(orpheus.extra["gguf"], "/snap/orpheus-3b-gguf/orpheus-3b-0.1-ft-Q8_0.gguf")
-        self.assertEqual(orpheus.extra["snacDecoderPath"], "/c/onnx/decoder_model.onnx")
+        self.assertEqual(orpheus.extra["gguf"], str(Path("/snap") / "orpheus-3b-gguf" / "orpheus-3b-0.1-ft-Q8_0.gguf"))
+        self.assertEqual(orpheus.extra["snacDecoderPath"], str(Path("/c/onnx/decoder_model.onnx")))
         self.assertEqual(orpheus.extra["llamaServerPath"], "/bin/llama-server")
         self.assertEqual(orpheus.tag_style, "angle")
         self.assertEqual(design.extra["instruct"], "A calm man")

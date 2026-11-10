@@ -541,10 +541,13 @@ Downloaded by the user from Voice Models, never bundled. Each is pinned to a ful
 
 ### Speech GPU add-on (Windows / Linux with an NVIDIA GPU, installed on demand into the voice venv)
 
-Not verified on a GPU yet (rtx4090-test.md section 2). Each package and its licence:
+Verified on an RTX 4090 (docs/progress/rtx4090-progress.md). Each package and its licence:
 
-- `chatterbox-tts` 0.1.7 - MIT (installed without its pinned dependencies); it applies Resemble's PerTh watermark
+- `chatterbox-tts` 0.1.7 - MIT (installed without its pinned dependencies), from the upstream repository at commit
+  `ab55923c` (the Multilingual V3 model is not in the PyPI release); it applies Resemble's PerTh watermark
   through `resemble-perth` 1.0.1 - MIT.
+- `fugashi` 1.5.2 - MIT (bundles MeCab bindings, BSD-3-Clause) and `unidic-lite` 1.0.8 - MIT, with the UniDic
+  dictionary under its BSD-3-Clause option: Japanese readings for Chatterbox, in place of `pykakasi` (GPL-3.0, not used).
 - `voxcpm` 2.0.3 - Apache-2.0 (installed without its dependencies).
 - PyTorch 2.9.1 and torchaudio 2.9.1 (CUDA 12.8 wheels) - BSD-3-Clause; torchcodec 0.8.1 - BSD-3-Clause.
 - transformers 5.2.0, diffusers 0.29.0, safetensors 0.5.3 - Apache-2.0; s3tokenizer 0.3.0 - Apache-2.0;

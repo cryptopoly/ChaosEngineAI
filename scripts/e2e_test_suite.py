@@ -1741,9 +1741,33 @@ def phase_5(cap: Capability) -> PhaseResult:
             return "fail", f"live image-to-video: HTTP {code} {data[:160]!r}", {}
         return "pass", "", {"seconds": artifact.get("durationSeconds"), "live": True}
 
+    def _ltx2_diffusers():
+        # LTX-2.3 on diffusers (NVIDIA): video and sound together; takes a start and an end picture. Distilled rows
+        # run a fixed schedule. Live run only when the 4-bit pack is installed (31 GB).
+        rc, payload, _ = _cli_json("video-catalog", timeout=15.0)
+        variants = [v for f in ((payload or {}).get("families") or []) for v in (f.get("variants") or [])]
+        row = next((v for v in variants if v.get("id") == "OzzyGT/LTX-2.3-Distilled-bnb-nf4"), None)
+        if row is None:
+            return "skip", "LTX-2.3 (NVIDIA) is not in this catalog", {}
+        if row.get("acceptsImageInput") is not True or row.get("acceptsEndImage") is not True or row.get("fixedSampler") is not True:
+            return "fail", f"flags: image={row.get('acceptsImageInput')!r} end={row.get('acceptsEndImage')!r} fixed={row.get('fixedSampler')!r}", {}
+        if not row.get("availableLocally"):
+            return "pass", "catalog only (the model is not installed)", {"live": False}
+        code, data = _voice_http("POST", "/api/video/generate", body=json.dumps({
+            "modelId": "OzzyGT/LTX-2.3-Distilled-bnb-nf4", "prompt": "waves crash on a rocky shore, gulls calling",
+            "width": 512, "height": 320, "numFrames": 25, "fps": 24, "seed": 3}).encode("utf-8"),
+            content_type="application/json", timeout=3600.0)
+        artifact = (json.loads(data.decode("utf-8")) if code == 200 else {}).get("artifact") or {}
+        if not artifact.get("videoPath"):
+            return "fail", f"live text-to-video: HTTP {code} {data[:200]!r}", {}
+        if artifact.get("hasAudio") is not True:
+            return "fail", f"the clip should carry sound but hasAudio={artifact.get('hasAudio')!r}: {artifact.get('runtimeNote')}", {}
+        return "pass", "", {"seconds": artifact.get("durationSeconds"), "live": True}
+
     for name, fn in [("catalog", _catalog), ("library", _library),
                       ("mlx-runtime", _mlx_runtime), ("generate", _generate),
                       ("LTX-2.5 on ltx-2-mlx (routing + live)", _ltx2_engine),
+                      ("LTX-2.3 on diffusers with sound (flags; live when installed)", _ltx2_diffusers),
                       ("Wan 2.2 TI2V 5B image-to-video (flags, refusals, live when installed)", _wan_image_to_video),
                       ("Wan is not burnt on MPS (FU-102)", _wan_not_burnt)]:
         phase.checks.append(_check(name, fn))

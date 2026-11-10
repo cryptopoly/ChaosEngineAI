@@ -1703,9 +1703,48 @@ def phase_5(cap: Capability) -> PhaseResult:
             return "fail", f"the clip should carry sound but hasAudio={artifact.get('hasAudio')!r}", {}
         return "pass", "", {"seconds": artifact.get("durationSeconds")}
 
+    def _wan_image_to_video():
+        # Wan 2.2 TI2V-5B (diffusers) starts a clip from a picture; its end frame is refused (LTX-2 takes both).
+        rc, payload, _ = _cli_json("video-catalog", timeout=15.0)
+        variants = [v for f in ((payload or {}).get("families") or []) for v in (f.get("variants") or [])]
+        row = next((v for v in variants if v.get("id") == "Wan-AI/Wan2.2-TI2V-5B-Diffusers"), None)
+        if row is None:
+            return "skip", "Wan 2.2 TI2V 5B is not in this catalog", {}
+        if row.get("acceptsImageInput") is not True or row.get("acceptsEndImage") is not False:
+            return "fail", f"flags are acceptsImageInput={row.get('acceptsImageInput')!r}, acceptsEndImage={row.get('acceptsEndImage')!r}", {}
+        if "img2video" not in (row.get("taskSupport") or []):
+            return "fail", "taskSupport does not list img2video", {}
+        picture = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==")
+        code, data = _voice_http("POST", "/api/storyboard/uploads", body=picture, content_type="application/octet-stream", timeout=30.0)
+        handle = (json.loads(data.decode("utf-8")) if code == 200 else {}).get("handle")
+        if not handle:
+            return "fail", f"picture upload: HTTP {code}", {}
+        code, data = _voice_http("POST", "/api/video/generate", body=json.dumps({
+            "modelId": "Lightricks/LTX-Video", "prompt": "x", "startImagePath": handle}).encode("utf-8"),
+            content_type="application/json", timeout=60.0)
+        if code != 400 or b"cannot start from an image" not in data:
+            return "fail", f"a start picture on a model without image input answered HTTP {code}", {}
+        if not row.get("availableLocally"):
+            return "pass", "catalog and refusal only (the model is not installed)", {"live": False}
+        code, data = _voice_http("POST", "/api/video/generate", body=json.dumps({
+            "modelId": "Wan-AI/Wan2.2-TI2V-5B-Diffusers", "prompt": "waves rolling in", "startImagePath": handle,
+            "endImagePath": handle, "numFrames": 17, "width": 512, "height": 320, "steps": 4, "seed": 1}).encode("utf-8"),
+            content_type="application/json", timeout=60.0)
+        if code != 400 or b"only a start image" not in data:
+            return "fail", f"an end picture answered HTTP {code}, wanted the 400 that says only a start image", {}
+        code, data = _voice_http("POST", "/api/video/generate", body=json.dumps({
+            "modelId": "Wan-AI/Wan2.2-TI2V-5B-Diffusers", "prompt": "waves rolling in", "startImagePath": handle,
+            "numFrames": 17, "width": 512, "height": 320, "steps": 4, "seed": 1}).encode("utf-8"),
+            content_type="application/json", timeout=3600.0)
+        artifact = (json.loads(data.decode("utf-8")) if code == 200 else {}).get("artifact") or {}
+        if not artifact.get("videoPath") or not artifact.get("startImagePath"):
+            return "fail", f"live image-to-video: HTTP {code} {data[:160]!r}", {}
+        return "pass", "", {"seconds": artifact.get("durationSeconds"), "live": True}
+
     for name, fn in [("catalog", _catalog), ("library", _library),
                       ("mlx-runtime", _mlx_runtime), ("generate", _generate),
                       ("LTX-2.5 on ltx-2-mlx (routing + live)", _ltx2_engine),
+                      ("Wan 2.2 TI2V 5B image-to-video (flags, refusals, live when installed)", _wan_image_to_video),
                       ("Wan is not burnt on MPS (FU-102)", _wan_not_burnt)]:
         phase.checks.append(_check(name, fn))
     fails = [c for c in phase.checks if c.status == "fail"]
@@ -2680,6 +2719,21 @@ def phase_10(cap: Capability) -> PhaseResult:
             return "fail", "removeImage did not drop the picture", {}
         return "pass", "", {"pictures": 2}
 
+    def _text_only():
+        # A shot can ask for no picture at all (a text-to-video clip, on any video model): its start mode is
+        # accepted, it needs no still, and the estimate counts one clip and no still for it.
+        body = _op("add_shot", {"title": "text only", "motionPrompt": "waves on rocks", "seconds": 2})
+        sid = body["project"]["shots"][-1]["id"]
+        body = _op("edit_shot", {"shotId": sid, "startFrom": "text"})
+        shot = next(s for s in body["project"]["shots"] if s["id"] == sid)
+        if shot["startFrom"] != "text":
+            return "fail", f"startFrom is {shot['startFrom']!r}, wanted 'text'", {}
+        _op("edit_shot", {"shotId": sid, "startFrom": "no-such-mode"}, want=400)
+        code, est = _call("POST", f"/projects/{state['id']}/estimate", {"what": "still", "shotIds": [sid]})
+        if code != 200 or est.get("stills") != 0:
+            return "fail", f"a still estimate for a text-only shot counted {est.get('stills') if isinstance(est, dict) else est!r} stills", {}
+        return "pass", "", {"shot": sid}
+
     def _estimate():
         # D-65 phase 3: an estimate answers even without a model (it then names what is missing).
         code, body = _call("POST", f"/projects/{state['id']}/estimate", {"what": "both"})
@@ -2734,6 +2788,7 @@ def phase_10(cap: Capability) -> PhaseResult:
             ("add and edit shots; a stale revision answers 409", _shots),
             ("import two takes, pick one, undo", _takes),
             ("a character with two uploaded pictures, then one removed", _cast),
+            ("a text-only shot is accepted, needs no still and a bad start mode is refused", _text_only),
             ("the batch estimate answers, naming any missing model", _estimate),
             ("export a .chaosfilm bundle and import it again", _bundle),
             ("a hostile project.json or bundle is refused", _hostile),

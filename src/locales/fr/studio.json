@@ -1582,6 +1582,7 @@
       "startFrom": "Partir de",
       "startFromGenerate": "Une nouvelle image fixe",
       "startFromPrevious": "Dernière image du plan précédent",
+      "startFromText": "Texte seul (sans image)",
       "startFromUpload": "Mon image",
       "stillPrompt": "Prompt de l'image fixe",
       "title": "Plan {n}",

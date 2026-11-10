@@ -217,17 +217,24 @@ class CatalogFlagsTests(unittest.TestCase):
         self.assertEqual(inputs({"engine": "mflux", "repo": "speridlabs/iris-3b"})["maxReferenceImages"], 0)
         self.assertEqual(inputs({"repo": "black-forest-labs/FLUX.1-dev"})["maxReferenceImages"], 0)
 
-    def test_video_payloads_flag_ltx2_only(self):
+    def test_video_payloads_flag_who_takes_a_start_and_an_end_picture(self):
         from backend_service.helpers.video import _video_model_payloads
 
-        flags = {
-            v["repo"]: v["acceptsImageInput"]
+        rows = {
+            v["repo"]: v
             for family in _video_model_payloads([])
             for v in family["variants"]
         }
-        self.assertTrue(flags["dgrauet/ltx-2.5-mlx-q4"])
-        self.assertFalse(flags["Lightricks/LTX-Video"])
-
+        # Wan 2.2 TI2V-5B (diffusers) follows the first frame only; LTX-2 (a Mac engine, so absent from the list on
+        # other computers) takes both; the rest take none.
+        ti2v = rows["Wan-AI/Wan2.2-TI2V-5B-Diffusers"]
+        self.assertTrue(ti2v["acceptsImageInput"])
+        self.assertFalse(ti2v["acceptsEndImage"])
+        if "dgrauet/ltx-2.5-mlx-q4" in rows:
+            self.assertTrue(rows["dgrauet/ltx-2.5-mlx-q4"]["acceptsImageInput"])
+            self.assertTrue(rows["dgrauet/ltx-2.5-mlx-q4"]["acceptsEndImage"])
+        self.assertFalse(rows["Lightricks/LTX-Video"]["acceptsImageInput"])
+        self.assertFalse(rows["Lightricks/LTX-Video"]["acceptsEndImage"])
 
 if __name__ == "__main__":
     unittest.main()

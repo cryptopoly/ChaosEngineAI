@@ -42,6 +42,7 @@ from backend_service.video_runtime.defaults import (
     _resolve_video_defaults,
 )
 from backend_service.video_runtime.repos import (
+    IMAGE_TO_VIDEO_REGISTRY,
     PIPELINE_REGISTRY,
     _LTX_DEFAULT_NEGATIVE_PROMPT,
 )
@@ -236,9 +237,22 @@ def build_pipeline_kwargs(
             kwargs["negative_prompt"] = _LTX_DEFAULT_NEGATIVE_PROMPT
     # Private kwargs consumed by ``invoke_pipeline`` — pop'd before
     # passing to the diffusers pipeline.
+    if pipeline_cls == "WanImageToVideoPipeline":
+        if not config.startImagePath:
+            raise RuntimeError("This run loaded the image-to-video pipeline but has no start image.")
+        kwargs["image"] = load_start_image(config.startImagePath, config.width, config.height)
     kwargs["__cfg_decay"] = bool(config.cfgDecay)
     kwargs["__preview_vae"] = bool(config.previewVae)
     return kwargs
+
+
+def load_start_image(path: str, width: int, height: int) -> Any:
+    """The start picture as RGB at the clip's size: scaled to cover it, then centre-cropped (no stretching)."""
+    from PIL import Image, ImageOps  # noqa: PLC0415 - Pillow ships with the image runtime
+
+    with Image.open(path) as source:
+        picture = ImageOps.exif_transpose(source).convert("RGB")
+    return ImageOps.fit(picture, (int(width), int(height)), method=Image.Resampling.LANCZOS)
 
 
 def make_step_callback(
@@ -438,8 +452,11 @@ def encode_frames_to_mp4(frames: list[Any], fps: int) -> bytes:
             pass
 
 
-def pipeline_class_for_repo(repo: str) -> Any:
+def pipeline_class_for_repo(repo: str, image_input: bool = False) -> Any:
+    """The diffusers class for ``repo``; the image-to-video one when the run starts from a picture and has one."""
     entry = PIPELINE_REGISTRY.get(repo)
+    if image_input and repo in IMAGE_TO_VIDEO_REGISTRY:
+        entry = IMAGE_TO_VIDEO_REGISTRY[repo]
     if entry is None:
         raise RuntimeError(
             f"No diffusers pipeline is registered for repo '{repo}'. "

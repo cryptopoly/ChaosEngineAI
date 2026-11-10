@@ -667,16 +667,42 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
         "id": "wan-2-2",
         "name": "Wan 2.2",
         "provider": "Alibaba",
-        "headline": "Wan 2.2 A14B: the mixture-of-experts quality tier, for large GPUs.",
+        "headline": "Wan 2.2: the 5B makes video from text or from a start picture on a 24 GB NVIDIA card; the A14B is the quality tier for large GPUs.",
         "summary": (
-            "A mixture-of-experts model with separate high-noise and low-noise transformers: "
-            "roughly 27B total weights on disk, only viable on data-center-class hardware. "
-            "The dense 5B (TI2V) was retired: LTX-2.3 on its own MLX engine is faster and cleaner on a Mac."
+            "The dense 5B (TI2V) does text-to-video and image-to-video in one model and fits a 24 GB GPU: it is the "
+            "model that lets a Storyboard shot start from its still on Windows and Linux (on a Mac, LTX-2.3 on its own "
+            "MLX engine is faster). The A14B is a mixture-of-experts model with separate high-noise and low-noise "
+            "transformers, roughly 27B total weights on disk, only viable on data-center-class hardware."
         ),
         "updatedLabel": "Planned — first wave",
         "badges": ["Balanced", "Quality", "Apache 2.0"],
-        "defaultVariantId": "Wan-AI/Wan2.2-T2V-A14B-Diffusers",
+        "defaultVariantId": "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
         "variants": [
+            {
+                "id": "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
+                "familyId": "wan-2-2",
+                "name": "Wan 2.2 TI2V 5B",
+                "provider": "Alibaba",
+                "repo": "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
+                "link": "https://huggingface.co/Wan-AI/Wan2.2-TI2V-5B-Diffusers",
+                "runtime": "diffusers WanPipeline / WanImageToVideoPipeline",
+                "styleTags": ["general", "quality", "motion"],
+                "taskSupport": ["txt2video", "img2video"],
+                # 5B dense transformer bf16 (~10 GB) + UMT5-XXL (~11 GB) + a 2.8 GB VAE: 34 GB on disk. The
+                # model card runs 720p at 24 fps on one 24 GB card (RTX 4090) with the text encoder offloaded.
+                "sizeGb": 34.2,
+                "runtimeFootprintGb": 22.0,
+                "recommendedResolution": "1280x704",
+                "defaultDurationSeconds": 5.0,
+                "note": (
+                    "Text-to-video, or image-to-video from a start picture (the first frame; no end frame). "
+                    "34 GB on disk, 720p at 24 fps on a 24 GB NVIDIA card. Apache 2.0."
+                ),
+                "estimatedGenerationSeconds": 540.0,
+                "slowOn": [SLOW_APPLE_WAN, SLOW_CPU_ONLY_EXPECTED],
+                "availableLocally": False,
+                "releaseDate": "2025-07",
+            },
             {
                 "id": "Wan-AI/Wan2.2-T2V-A14B-Diffusers",
                 "familyId": "wan-2-2",

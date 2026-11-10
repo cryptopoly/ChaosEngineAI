@@ -1582,6 +1582,7 @@
       "startFrom": "Начать с",
       "startFromGenerate": "Новый кадр-заставка",
       "startFromPrevious": "Последний кадр предыдущего шота",
+      "startFromText": "Только текст (без картинки)",
       "startFromUpload": "Моё изображение",
       "stillPrompt": "Промпт кадра-заставки",
       "title": "Шот {n}",

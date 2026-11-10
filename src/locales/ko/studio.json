@@ -1582,6 +1582,7 @@
       "startFrom": "시작 방식",
       "startFromGenerate": "새 정지 이미지",
       "startFromPrevious": "이전 샷의 마지막 프레임",
+      "startFromText": "텍스트만 (이미지 없음)",
       "startFromUpload": "내 이미지",
       "stillPrompt": "정지 이미지 프롬프트",
       "title": "샷 {n}",

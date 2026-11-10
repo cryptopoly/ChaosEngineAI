@@ -1582,6 +1582,7 @@
       "startFrom": "起始方式",
       "startFromGenerate": "新的静态图",
       "startFromPrevious": "上一个镜头的最后一帧",
+      "startFromText": "仅文字（无图片）",
       "startFromUpload": "我的图像",
       "stillPrompt": "静态图提示词",
       "title": "镜头 {n}",

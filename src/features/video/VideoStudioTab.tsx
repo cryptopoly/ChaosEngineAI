@@ -792,7 +792,7 @@ export function VideoStudioTab({
       : labelValue(t("videoStudio.fields.seed", { defaultValue: "Seed" }), videoSeedInput || "?"),
     !fixedSampler && videoNegativePrompt !== DEFAULT_VIDEO_NEGATIVE_PROMPT
       && t("studioKit.summary.negativeEdited", { defaultValue: "Negative prompt edited" }),
-    selectedVideoVariant?.acceptsImageInput && videoEndImage != null
+    selectedVideoVariant?.acceptsEndImage && videoEndImage != null
       && t("studioKit.summary.endImageSet", { defaultValue: "End image set" }),
   ]);
 
@@ -1322,7 +1322,7 @@ export function VideoStudioTab({
                 </label>
               ) : null}
 
-              {selectedVideoVariant?.acceptsImageInput ? (
+              {selectedVideoVariant?.acceptsEndImage ? (
                 <InputImagePicker
                   label={t("inputImage.endLabel")}
                   hint={t("inputImage.endHint")}

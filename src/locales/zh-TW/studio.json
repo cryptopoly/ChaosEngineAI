@@ -1582,6 +1582,7 @@
       "startFrom": "起始方式",
       "startFromGenerate": "新的靜態圖",
       "startFromPrevious": "上一個鏡頭的最後一幀",
+      "startFromText": "僅文字（無圖片）",
       "startFromUpload": "我的影像",
       "stillPrompt": "靜態圖提示詞",
       "title": "鏡頭 {n}",

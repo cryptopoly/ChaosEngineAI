@@ -53,7 +53,7 @@ STORYBOARD_TOOLS: list[dict[str, Any]] = [
             "action": {"type": "string", "enum": ["add", "edit", "remove", "reorder", "lock", "unlock", "pick_take", "redo", "import"]},
             "project_id": _PID, "revision": _REV,
             "shot_id": {"type": "string"}, "take_id": {"type": "string"},
-            "fields": {**_FIELDS, "description": "title, stillPrompt, motionPrompt, startFrom (generate|upload|previous-shot), "
+            "fields": {**_FIELDS, "description": "title, stillPrompt, motionPrompt, startFrom (generate|upload|previous-shot|text), "
                        "seconds, seed, trimIn, trimOut, speed, transition{type,seconds}, nativeSoundDb, index."},
             "order": {"type": "array", "items": {"type": "string"}, "maxItems": 500},
             "path": {"type": "string", "description": "upload: handle, or a file in the app's output folders."},

@@ -622,7 +622,7 @@ export function useVideoState(
       negativePrompt: videoNegativePrompt.trim() || undefined,
       startImagePath: selectedVideoVariant.acceptsImageInput && videoStartImage ? videoStartImage.path : undefined,
       endImagePath:
-        selectedVideoVariant.acceptsImageInput && videoEndImage ? videoEndImage.path : undefined,
+        selectedVideoVariant.acceptsEndImage && videoEndImage ? videoEndImage.path : undefined,
       width: safeWidth,
       height: safeHeight,
       numFrames: safeNumFrames,

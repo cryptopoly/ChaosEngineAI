@@ -398,16 +398,22 @@ def generate_video(request: Request, body: VideoGenerationRequest) -> dict[str, 
 
 
 def _checked_input_images(body: VideoGenerationRequest, variant: dict[str, Any]) -> VideoGenerationRequest:
-    """Resolve start / end image paths; only LTX-2 models take them. 400 with a readable message otherwise."""
+    """Resolve start / end image paths; only models with image input take them. 400 with a readable message otherwise."""
     if not (body.startImagePath or body.endImagePath):
         return body
     from backend_service.helpers.media_input import InputImageError, resolve_input_image
-    from backend_service.ltx2_mlx_runtime import _is_ltx2_mlx_repo
+    from backend_service.video_runtime.repos import image_input_support
 
-    if not _is_ltx2_mlx_repo(str(variant.get("repo") or "")):
+    takes_start, takes_end = image_input_support(str(variant.get("repo") or ""))
+    if not takes_start:
         raise HTTPException(
             status_code=400,
-            detail=f"{variant.get('name')} cannot start from an image. Pick an LTX-2 model (ltx-2-mlx).",
+            detail=f"{variant.get('name')} cannot start from an image. Pick LTX-2.3 or LTX-2.5 (Apple Silicon) or Wan 2.2 TI2V 5B.",
+        )
+    if body.endImagePath and not takes_end:
+        raise HTTPException(
+            status_code=400,
+            detail=f"{variant.get('name')} follows only a start image; remove the end frame or pick an LTX-2 model.",
         )
     try:
         return body.model_copy(update={

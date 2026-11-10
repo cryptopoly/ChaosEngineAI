@@ -1582,6 +1582,7 @@
       "startFrom": "開始方法",
       "startFromGenerate": "新しい静止画",
       "startFromPrevious": "前のショットの最後のフレーム",
+      "startFromText": "テキストのみ（画像なし）",
       "startFromUpload": "自分の画像",
       "stillPrompt": "静止画プロンプト",
       "title": "ショット {n}",

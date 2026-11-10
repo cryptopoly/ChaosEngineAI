@@ -38,7 +38,8 @@ _VIDEO_MODEL_FOOTPRINT_BF16_GB: dict[str, float] = {
     "Lightricks/LTX-Video": 10.0,
     "Wan-AI/Wan2.1-T2V-1.3B-Diffusers": 9.0,
     "Wan-AI/Wan2.1-T2V-14B-Diffusers": 28.0,
-    "Wan-AI/Wan2.2-TI2V-5B-Diffusers": 11.0,
+    # 5B transformer (~10 GB) + UMT5-XXL text encoder (~11 GB) + VAE: the pipeline as a whole, not the transformer alone.
+    "Wan-AI/Wan2.2-TI2V-5B-Diffusers": 22.0,
     "Wan-AI/Wan2.2-T2V-A14B-Diffusers": 28.0,
     "hunyuanvideo-community/HunyuanVideo": 26.0,
     "genmo/mochi-1-preview": 22.0,
@@ -79,6 +80,43 @@ def _estimate_model_footprint_gb(
     if "float32" in dtype_name and "bfloat16" not in dtype_name:
         base = base * 2.0
     return base
+
+
+def _prefers_model_cpu_offload(
+    device: str,
+    total_memory_gb: float | None,
+    estimated_footprint_gb: float | None,
+    largest_component_gb: float | None,
+) -> bool:
+    """True when the whole pipeline is too big for the card but its largest single part fits.
+
+    Model-level offload keeps one component (text encoder, then transformer, then VAE) on the GPU at a time and moves
+    it whole: far faster than sequential offload, which moves every layer on every step. It cannot help when one
+    component alone is bigger than the card (a 14B transformer on 24 GB), so that case keeps the old path: try the
+    full placement, then sequential offload. Wan 2.2 TI2V-5B is the case it is for: 22 GB in total on a 24 GB card
+    (RTX 4090 run), transformer 10 GB.
+    """
+    if device != "cuda" or not total_memory_gb or not estimated_footprint_gb or not largest_component_gb:
+        return False
+    return estimated_footprint_gb > 0.8 * total_memory_gb and largest_component_gb * 1.3 < total_memory_gb
+
+
+def _largest_component_gb(pipeline: Any) -> float | None:
+    """Size in GB of the biggest torch module among the pipeline's components (None when none can be measured)."""
+    components = getattr(pipeline, "components", None)
+    if not isinstance(components, dict):
+        return None
+    largest = 0
+    for module in components.values():
+        parameters = getattr(module, "parameters", None)
+        if not callable(parameters):
+            continue
+        try:
+            size = sum(p.numel() * p.element_size() for p in parameters())
+        except Exception:  # noqa: BLE001 - an odd component must not stop the load
+            continue
+        largest = max(largest, size)
+    return largest / 1e9 if largest else None
 
 
 def _should_apply_memory_savers(

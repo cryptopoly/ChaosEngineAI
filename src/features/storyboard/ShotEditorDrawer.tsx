@@ -160,6 +160,7 @@ export function ShotEditorDrawer({
               <option value="generate">{t("board.editor.startFromGenerate", { defaultValue: "A new still" })}</option>
               <option value="upload">{t("board.editor.startFromUpload", { defaultValue: "My image" })}</option>
               <option value="previous-shot">{t("board.editor.startFromPrevious", { defaultValue: "Last frame of the previous shot" })}</option>
+              <option value="text">{t("board.editor.startFromText", { defaultValue: "Text only (no picture)" })}</option>
             </select>
           </label>
           <label className="control-stack">

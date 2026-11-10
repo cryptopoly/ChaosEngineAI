@@ -94,10 +94,12 @@ def _video_model_payloads(
             # Merge live metadata first so curated fields (releaseDate,
             # familyName) still win when both exist.
             enriched = {**enriched, **live_metadata, **size_limit_fields(enriched)}
-            # Studio shows the start / end image pickers only for these (ltx-2-mlx).
-            from backend_service.ltx2_mlx_runtime import _is_ltx2_mlx_repo
+            # Studio shows the start / end image pickers only for these (ltx-2-mlx, Wan 2.2 TI2V-5B on diffusers).
+            from backend_service.video_runtime.repos import image_input_support
 
-            enriched["acceptsImageInput"] = _is_ltx2_mlx_repo(str(enriched.get("repo") or ""))
+            enriched["acceptsImageInput"], enriched["acceptsEndImage"] = image_input_support(
+                str(enriched.get("repo") or "")
+            )
             validation_error = _video_variant_validation_error(enriched)
             local_data_repos = _video_variant_local_data_repos(enriched)
             enriched["availableLocally"] = validation_error is None

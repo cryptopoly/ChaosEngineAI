@@ -1582,6 +1582,7 @@
       "startFrom": "Começar de",
       "startFromGenerate": "Uma nova imagem estática",
       "startFromPrevious": "Último quadro do plano anterior",
+      "startFromText": "Somente texto (sem imagem)",
       "startFromUpload": "Minha imagem",
       "stillPrompt": "Prompt da imagem estática",
       "title": "Plano {n}",

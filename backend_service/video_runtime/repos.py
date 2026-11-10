@@ -42,6 +42,25 @@ PIPELINE_REGISTRY: dict[str, dict[str, str]] = {
 }
 
 
+# Repos whose diffusers pipeline can start from a picture, and which class does it. A run with a start image loads
+# this class (same weights as the text-to-video one, so the pipeline is rebuilt when the mode changes). ``endImage``
+# says whether the class also takes a last frame: Wan 2.2 TI2V-5B expands its timesteps per frame and only follows
+# the first. The LTX-2 MLX engine is not diffusers and is handled by ``image_input_support``.
+IMAGE_TO_VIDEO_REGISTRY: dict[str, dict[str, Any]] = {
+    "Wan-AI/Wan2.2-TI2V-5B-Diffusers": {"class_name": "WanImageToVideoPipeline", "endImage": False},
+}
+
+
+def image_input_support(repo: str) -> tuple[bool, bool]:
+    """``(takes a start image, takes an end image)`` for a video repo, on any engine this app drives."""
+    from backend_service.ltx2_mlx_runtime import _is_ltx2_mlx_repo
+
+    if _is_ltx2_mlx_repo(repo):
+        return True, True
+    entry = IMAGE_TO_VIDEO_REGISTRY.get(repo)
+    return (True, bool(entry.get("endImage"))) if entry else (False, False)
+
+
 # Maps a base repo to the diffusers transformer class used when loading
 # GGUF-quantized DiT weights via ``from_single_file``. city96 currently
 # ships LTX-Video, Wan, and HunyuanVideo GGUFs; CogVideoX uses a

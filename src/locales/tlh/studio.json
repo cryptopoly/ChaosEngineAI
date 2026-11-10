@@ -1582,6 +1582,7 @@
       "startFrom": "tagh Hal",
       "startFromGenerate": "mIllogh chu'",
       "startFromPrevious": "nungbogh 'ay' mIllogh Qav",
+      "startFromText": null,
       "startFromUpload": "mIlloghwIj",
       "stillPrompt": "mIllogh QIn",
       "title": "'ay' {n}",

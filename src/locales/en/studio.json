@@ -1582,6 +1582,7 @@
       "startFrom": "Start from",
       "startFromGenerate": "A new still",
       "startFromPrevious": "Last frame of the previous shot",
+      "startFromText": "Text only (no picture)",
       "startFromUpload": "My image",
       "stillPrompt": "Still prompt",
       "title": "Shot {n}",

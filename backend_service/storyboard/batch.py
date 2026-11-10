@@ -325,6 +325,8 @@ class Batch:
 
     def _start_image(self, project: Project, shot: Shot) -> Path | None:
         folder = self.store.folder(self.project_id)
+        if shot.startFrom == "text":
+            return None  # the shot asked for no picture, even when an older take left a still behind
         if shot.startFrom == "previous-shot":
             prev = deps.previous_shot(project, shot)
             take = prev.active() if prev else None

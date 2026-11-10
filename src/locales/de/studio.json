@@ -1582,6 +1582,7 @@
       "startFrom": "Start mit",
       "startFromGenerate": "Neues Standbild",
       "startFromPrevious": "Letztes Bild der vorherigen Einstellung",
+      "startFromText": "Nur Text (kein Bild)",
       "startFromUpload": "Mein Bild",
       "stillPrompt": "Standbild-Prompt",
       "title": "Einstellung {n}",

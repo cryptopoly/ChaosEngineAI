@@ -59,7 +59,7 @@ class ShotFields(_Args):
     stillPrompt: Prompt | None = None
     motionPrompt: Prompt | None = None
     referenceImages: list[Id] | None = Field(None, max_length=8)
-    startFrom: Literal["generate", "upload", "previous-shot"] | None = None
+    startFrom: Literal["generate", "upload", "previous-shot", "text"] | None = None
     seconds: float | None = Field(None, ge=0.5, le=60)
     seed: int | None = Field(None, ge=0, le=2**31 - 1)
     trimIn: float | None = Field(None, ge=0, le=3600)

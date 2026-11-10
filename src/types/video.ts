@@ -17,8 +17,10 @@ export type VideoCacheStrategyId =
 export type VideoModelTask = "txt2video" | "img2video" | "video2video";
 
 export interface VideoModelVariant {
-  /** True for LTX-2 (ltx-2-mlx): the clip can start and end on an image. */
+  /** True when the clip can start on a picture: LTX-2 (ltx-2-mlx) and Wan 2.2 TI2V-5B (diffusers). */
   acceptsImageInput?: boolean;
+  /** True when it can also end on a picture (LTX-2); Wan 2.2 TI2V-5B follows only the start picture. */
+  acceptsEndImage?: boolean;
   /** Few-step distilled rows (CausVid, lightx2v, LTX distilled): the steps and guidance the Studio starts from. */
   defaultSteps?: number | null;
   cfgOverride?: number | null;

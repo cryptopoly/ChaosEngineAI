@@ -54,6 +54,8 @@ from backend_service.video_runtime.defaults import (
     _estimate_model_footprint_gb,
     _find_missing,
     _interpolate_frames,
+    _largest_component_gb,
+    _prefers_model_cpu_offload,
     _resolve_video_defaults,
     _should_apply_memory_savers,
 )
@@ -67,6 +69,7 @@ from backend_service.video_runtime.device import (
     _windows_cuda_unavailable_message,
 )
 from backend_service.video_runtime.repos import (
+    IMAGE_TO_VIDEO_REGISTRY,
     PIPELINE_REGISTRY,
     _BNB_NF4_VIDEO_TRANSFORMER_CLASSES,
     _GGUF_VIDEO_TRANSFORMER_CLASSES,
@@ -301,6 +304,7 @@ class DiffusersVideoEngine:
                 distill_high_file=config.distillTransformerHighNoiseFile,
                 distill_low_file=config.distillTransformerLowNoiseFile,
                 distill_precision=config.distillTransformerPrecision,
+                image_input=self._uses_image_pipeline(config),
             )
             # Early-cancel check after model load — from_pretrained is a
             # blocking C-extension call we can't interrupt. If the user hit
@@ -542,8 +546,8 @@ class DiffusersVideoEngine:
     def _encode_frames_to_mp4(self, frames: list[Any], fps: int) -> bytes:
         return encode_frames_to_mp4(frames, fps)
 
-    def _pipeline_class(self, repo: str) -> Any:
-        return pipeline_class_for_repo(repo)
+    def _pipeline_class(self, repo: str, image_input: bool = False) -> Any:
+        return pipeline_class_for_repo(repo, image_input=image_input)
 
     @staticmethod
     def _build_variant_key(
@@ -559,8 +563,11 @@ class DiffusersVideoEngine:
         distill_high_file: str | None,
         distill_low_file: str | None,
         distill_precision: str | None,
+        image_input: bool = False,
     ) -> str:
         variant_parts = [repo]
+        if image_input:
+            variant_parts.append("i2v")
         if gguf_file:
             variant_parts.append(f"gguf={gguf_file}")
         elif use_nf4:
@@ -589,7 +596,13 @@ class DiffusersVideoEngine:
             distill_high_file=config.distillTransformerHighNoiseFile,
             distill_low_file=config.distillTransformerLowNoiseFile,
             distill_precision=config.distillTransformerPrecision,
+            image_input=self._uses_image_pipeline(config),
         )
+
+    @staticmethod
+    def _uses_image_pipeline(config: VideoGenerationConfig) -> bool:
+        """True when this run starts from a picture and its repo has an image-to-video pipeline class."""
+        return bool(config.startImagePath) and config.repo in IMAGE_TO_VIDEO_REGISTRY
 
     def _is_variant_loaded(self, variant_key: str) -> bool:
         with self._lock:
@@ -609,6 +622,7 @@ class DiffusersVideoEngine:
         distill_high_file: str | None = None,
         distill_low_file: str | None = None,
         distill_precision: str | None = None,
+        image_input: bool = False,
     ) -> Any:
         with self._lock:
             # Variant key folds in LoRA identity — switching LoRAs on the
@@ -629,6 +643,7 @@ class DiffusersVideoEngine:
                 distill_high_file=distill_high_file,
                 distill_low_file=distill_low_file,
                 distill_precision=distill_precision,
+                image_input=image_input,
             )
             if self._pipeline is not None and self._loaded_variant_key == variant_key:
                 return self._pipeline
@@ -644,7 +659,7 @@ class DiffusersVideoEngine:
             import torch  # type: ignore
             from backend_service.helpers.hf_local import local_snapshot_path
 
-            pipeline_cls = self._pipeline_class(repo)
+            pipeline_cls = self._pipeline_class(repo, image_input=image_input)
 
             local_path = local_snapshot_path(repo, resume_download=True)
             local_root = Path(local_path)
@@ -823,6 +838,16 @@ class DiffusersVideoEngine:
                         "device memory."
                     )
                     pipeline.enable_sequential_cpu_offload()
+                elif hasattr(pipeline, "enable_model_cpu_offload") and _prefers_model_cpu_offload(
+                    device, total_memory_gb, estimated_footprint_gb, _largest_component_gb(pipeline),
+                ):
+                    _LOG.info(
+                        "video.placement: model-level CPU offload (pipeline ~%s GB on a %s GB device, "
+                        "largest component fits).",
+                        estimated_footprint_gb,
+                        total_memory_gb,
+                    )
+                    pipeline.enable_model_cpu_offload()
                 else:
                     # Try full-device placement first; fall back to sequential
                     # CPU offload if the model is too big to fit.

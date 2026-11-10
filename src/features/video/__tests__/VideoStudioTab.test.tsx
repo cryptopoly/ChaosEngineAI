@@ -209,6 +209,26 @@ describe("Video Studio danger gate", () => {
   });
 });
 
+describe("Video Studio start and end image pickers", () => {
+  it("shows no picture picker for a model without image input", () => {
+    const html = render({}, { acceptsImageInput: false, acceptsEndImage: false });
+    expect(html).not.toContain("Start image");
+    expect(html).not.toContain("End image (optional)");
+  });
+
+  it("shows only the start picker for a model that follows the first frame (Wan 2.2 TI2V 5B)", () => {
+    const html = render({}, { acceptsImageInput: true, acceptsEndImage: false });
+    expect(html).toContain("Start image");
+    expect(html).not.toContain("End image (optional)");
+  });
+
+  it("shows both pickers for a model that takes a first and a last frame (LTX-2)", () => {
+    const html = render({}, { acceptsImageInput: true, acceptsEndImage: true });
+    expect(html).toContain("Start image");
+    expect(html).toContain("End image (optional)");
+  });
+});
+
 describe("Video Studio controls moved into Options and Expert", () => {
   it("still has every control, each under a disclosure", () => {
     const html = render({ videoUseRandomSeed: false, videoSeedInput: "7" }, { acceptsImageInput: true });

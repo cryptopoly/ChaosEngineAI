@@ -418,13 +418,14 @@ Both figures beat the Windows guide's 340 tok/s. No refusal, no kernel error, re
 
 `serve TensorFold/Qwen3.8-27B-MLX-4bit --name q27 --context 8192 --no-thinking --parallel 1 --temperature 0 --drafter z-lab/Qwen3.8-27B-DFlash2`. Fits: startup line "model 16.06 GiB (target + drafter); 1 stream at once, 1.46 GiB each at 8192 tokens, 5.4 GiB left"; 18.1 GB on the card in total. Target alone loads in 130 s, with the drafter 73 s (file cache warm). **The first request stalled 259 s** (the driver's first use of each kernel, as the README warns), so an app needs a long first-request timeout or a warm-up request.
 
-| Greedy, one request | tok/s |
+| Greedy, one request, card idle (rerun after the other session finished; memory flat at 18.8 GB, three rounds) | tok/s |
 |---|---|
-| Plain (`"draft": false`), prose, card idle | **47.8** (one clean sample; later plain runs read 10 to 26 only because the other session had resumed) |
-| DFlash2, prose (300 tokens) | 143 to 161 (server log 154, 161; accepted 225/1096) |
-| DFlash2, code (400 tokens) | 118 to 148 (accepted 355/667) |
+| Plain (`"draft": false`), prose, 300 tokens | **46.8 to 48.9** |
+| Plain, code, 400 tokens | **49.2** |
+| DFlash2, prose | **147 to 151** |
+| DFlash2, code | **300 to 307** |
 
-Caveat: the card was shared with the diffusion benchmarks for part of this (whole-card memory peaked at 23.4 GB, util 100% with no request from me), so every figure but the 47.8 is a floor; the first three plain-code and plain-prose runs under contention read 2.9 to 26 tok/s. Replies stay identical to plain decoding per the README (not byte-compared here). So the README's 4090 figures hold: 40 plain (measured 47.8), 80 to 160 with the drafter (measured 118 to 161). The 700 tok/s figure is a 5090 number; a 4090 is bandwidth-bound at roughly a third of that.
+The first run, made while the other session was still using the card, read 10 to 26 plain and 118 to 161 drafted; the figures above replace it. The second server start had no first-request stall (kernel cache warm, loaded in 44 s, first reply in 0.11 s); the 259 s stall seen on the first ever start is a one-off per driver cache, so an app still needs a long first-request timeout or warm-up. The README's 4090 numbers hold (40 plain, 80 to 160 drafted) and are beaten on this card: 47 to 49 plain, 147 to 151 on prose, about 300 on code (greedy, code is very predictable, so treat it as a ceiling). The 700 tok/s headline is a 5090 number. Replies stay identical to plain decoding per the README (not byte-compared here).
 
 ### Not run
 

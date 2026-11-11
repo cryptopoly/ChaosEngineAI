@@ -18,6 +18,7 @@ from functools import lru_cache, wraps
 import json
 import os
 import subprocess
+import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -630,6 +631,41 @@ class RuntimeController:
             path=path,
         )
 
+    def _tensorfold_engine(self, match: TensorFoldMatch | None) -> BaseInferenceEngine | None:
+        """The TensorFold engine that can serve ``match``, or ``None`` when none is installed.
+
+        The 1.x native binary is preferred. The older Python install (0.6.6,
+        Mac only) serves just the families the native binary does not
+        (``family.native`` is False), and only while it is still installed.
+        """
+        caps = self.capabilities
+        needs_python = match is not None and not match.family.native
+        if caps.tensorfoldNativeAvailable and not needs_python:
+            return TensorFoldNativeEngine(caps)
+        if caps.tensorfoldAvailable and (needs_python or not caps.tensorfoldNativeAvailable):
+            return TensorFoldEngine(caps)
+        return None
+
+    def _tensorfold_unavailable_message(
+        self,
+        model_ref: str,
+        canonical_repo: str | None,
+        runtime_target: str | None,
+        path: str | None,
+    ) -> str:
+        match = self._tensorfold_match(
+            model_ref=model_ref, canonical_repo=canonical_repo, runtime_target=runtime_target, path=path
+        )
+        if match is not None and not match.family.native and self.capabilities.tensorfoldNativeAvailable:
+            return (
+                f"{match.family.title} is not served by TensorFold 1.x. It needs the older Python "
+                "TensorFold install (0.6.6), which is not installed."
+            )
+        return (
+            "TensorFold backend requested but not installed. "
+            "Install it from the launch settings or the Setup tab."
+        )
+
     def _select_tensorfold(
         self,
         *,
@@ -657,19 +693,24 @@ class RuntimeController:
                     "TensorFold serves MLX (safetensors) checkpoints, not GGUF files. "
                     "Use the llama.cpp backend for this model."
                 )
-            if self.capabilities.tensorfoldNativeAvailable and not self.capabilities.tensorfoldAvailable:
-                # TensorFold 1.x native binary (CUDA hosts); the Mac Python
-                # engine, when installed, keeps the Apple Silicon path.
-                return TensorFoldNativeEngine(self.capabilities)
-            if not self.capabilities.tensorfoldAvailable:
-                raise RuntimeError(
-                    "TensorFold backend requested but not installed. "
-                    "Install it from the launch settings or the Setup tab."
+            engine = self._tensorfold_engine(
+                self._tensorfold_match(
+                    model_ref=model_ref,
+                    canonical_repo=canonical_repo,
+                    runtime_target=runtime_target,
+                    path=path,
                 )
-            return TensorFoldEngine(self.capabilities)
+            )
+            if engine is None:
+                raise RuntimeError(self._tensorfold_unavailable_message(model_ref, canonical_repo, runtime_target, path))
+            return engine
         if hint not in {"mlx", "auto"} or _looks_like_gguf(target):
             return None
-        if self.capabilities.tensorfoldNativeAvailable and not self.capabilities.tensorfoldAvailable:
+        if (
+            sys.platform != "darwin"
+            and self.capabilities.tensorfoldNativeAvailable
+            and not self.capabilities.tensorfoldAvailable
+        ):
             # CUDA host: an MLX-format checkpoint in the native registry has no
             # other engine here (MLX is Apple-only), so it goes to TensorFold 1.x.
             from backend_service.inference._tensorfold_native import match_native_model
@@ -684,8 +725,13 @@ class RuntimeController:
         )
         if match is None:
             return None
-        if self.capabilities.tensorfoldAvailable and (match.tier == "exclusive" or speculative_decoding):
-            return TensorFoldEngine(self.capabilities)
+        if match.tier == "exclusive" or speculative_decoding:
+            if sys.platform == "darwin":
+                engine = self._tensorfold_engine(match)
+            else:
+                engine = TensorFoldEngine(self.capabilities) if self.capabilities.tensorfoldAvailable else None
+            if engine is not None:
+                return engine
         if match.tier == "exclusive":
             needs = (
                 f" It needs a Mac with at least {match.family.min_memory_gb} GB of memory."

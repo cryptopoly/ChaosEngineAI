@@ -123,8 +123,10 @@ def safe_extract(archive: Path, dest: Path) -> None:
 
 
 def _download(url: str, target: Path, progress: Callable[[float], None]) -> None:
+    from backend_service.helpers.hub_http import ssl_context
+
     request = urllib.request.Request(url, headers={"User-Agent": "chaosengine-installer"})
-    with urllib.request.urlopen(request, timeout=_TIMEOUT_SECONDS) as response, target.open("wb") as out:  # noqa: S310 - https only, checked by the caller
+    with urllib.request.urlopen(request, timeout=_TIMEOUT_SECONDS, context=ssl_context()) as response, target.open("wb") as out:  # noqa: S310 - https only, checked by the caller
         total = int(response.headers.get("Content-Length") or 0)
         done = 0
         while True:
@@ -138,8 +140,10 @@ def _download(url: str, target: Path, progress: Callable[[float], None]) -> None
 
 
 def _fetch_text(url: str) -> str:
+    from backend_service.helpers.hub_http import ssl_context
+
     request = urllib.request.Request(url, headers={"User-Agent": "chaosengine-installer"})
-    with urllib.request.urlopen(request, timeout=_TIMEOUT_SECONDS) as response:  # noqa: S310
+    with urllib.request.urlopen(request, timeout=_TIMEOUT_SECONDS, context=ssl_context()) as response:  # noqa: S310
         return response.read().decode("utf-8", errors="replace")
 
 

@@ -20,11 +20,11 @@ controller, the engine and the system-stats payload can all consult it:
 * ``resolve_model_dir`` / ``native_context_window`` — locate the local
   snapshot the server is started on, without ever touching the network.
 
-Every fact below is taken from TensorFold's own source at v0.6.6, the last
-release of the Python engine (1.x is a native binary with a different model
-set; see FU-111)
-(``src/tensorfold/families/*/__init__.py`` ``MODEL_TYPES`` / ``MODELS`` /
-``DRAFTER``) and its recipe book; re-check it when the pin in
+Every fact below was taken from TensorFold's source at v0.6.6 (the last
+Python release: ``src/tensorfold/families/*/__init__.py`` ``MODEL_TYPES`` /
+``MODELS`` / ``DRAFTER``), then checked against the native 1.2.6 binary's
+``tensorfold capabilities --json`` and recipe docs. Families the native
+binary does not serve carry ``native=False``. Re-check it when the pin in
 ``scripts/install-tensorfold.sh`` moves.
 """
 
@@ -65,6 +65,10 @@ class TensorFoldFamily:
     # TensorFold/<name> (the old ids redirect), so a model downloaded under
     # either name matches. Used for matching only, never listed.
     repo_aliases: tuple[str, ...] = ()
+    # False when the native 1.x binary does not serve this checkpoint (its
+    # ``capabilities --json`` lacks the family, or its docs say it refuses
+    # it); only the older Python install (0.6.6) can. Checked at v1.2.6.
+    native: bool = True
 
 
 TENSORFOLD_FAMILIES: tuple[TensorFoldFamily, ...] = (
@@ -108,6 +112,9 @@ TENSORFOLD_FAMILIES: tuple[TensorFoldFamily, ...] = (
         tested_repos=("mlx-community/gemma-4-26b-a4b-it-4bit",),
         drafter="z-lab/gemma-4-26B-A4B-it-DFlash",
         drafter_args=("--drafter-bits", "8"),
+        # 1.x serves the dense 31B and 12B and refuses this 26B-A4B; its
+        # --drafter-bits takes only 0 or 4.
+        native=False,
     ),
     TensorFoldFamily(
         key="glm5_flash",
@@ -127,6 +134,7 @@ TENSORFOLD_FAMILIES: tuple[TensorFoldFamily, ...] = (
         tested_repos=("mlx-community/DeepSeek-V4-Flash-4bit",),
         drafter="TensorFold/DeepSeek-V4-Flash-DSpark-MLX",
         exclusive=True,
+        native=False,
         min_memory_gb=256,
     ),
     TensorFoldFamily(
@@ -136,6 +144,7 @@ TENSORFOLD_FAMILIES: tuple[TensorFoldFamily, ...] = (
         tested_repos=("prism-ml/Ternary-Bonsai-2-27B-mlx-2bit",),
         drafter="z-lab/Qwen3.8-27B-DFlash2",
         exclusive=True,
+        native=False,
         min_memory_gb=32,
     ),
 )

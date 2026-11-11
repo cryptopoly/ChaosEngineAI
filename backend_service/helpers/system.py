@@ -196,12 +196,30 @@ def _build_system_snapshot(
                 "minMemoryGb": {},
                 "engine": "native",
             }
+        from backend_service.inference.capabilities import _detect_tensorfold_native
+        from backend_service.inference._tensorfold import TENSORFOLD_FAMILIES
+
+        native_ok, _binary, native_version = _detect_tensorfold_native()
+        extras = list(_detect_tensorfold_extras()) if available else []
+        if native_ok:
+            # Mac: the 1.x binary serves the families marked native; the older
+            # Python install (when still present) serves the rest. Image input
+            # and grammar are inside the binary.
+            extras = ["vision", "grammar"]
+            skipped = {
+                repo
+                for family in TENSORFOLD_FAMILIES
+                if not family.native and not available
+                for repo in family.tested_repos
+            }
+        else:
+            skipped = set()
         return {
-            "available": available,
-            "version": version,
-            "extras": list(_detect_tensorfold_extras()) if available else [],
-            "supportedModels": supported_repos(),
-            "exclusiveModels": exclusive_repos(),
+            "available": available or native_ok,
+            "version": native_version if native_ok else version,
+            "extras": extras,
+            "supportedModels": [repo for repo in supported_repos() if repo not in skipped],
+            "exclusiveModels": [repo for repo in exclusive_repos() if repo not in skipped],
             "visionModels": vision_repos(),
             "minMemoryGb": min_memory_gb_by_repo(),
         }

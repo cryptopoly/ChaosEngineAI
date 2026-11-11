@@ -140,6 +140,15 @@ class TensorFoldSetupRouteTests(unittest.TestCase):
         mac_patch = mock.patch.object(setup_tf, "_apple_silicon", lambda: True)
         mac_patch.start()
         self.addCleanup(mac_patch.stop)
+        # ... and a machine with no native binary, whatever this host has installed.
+        from backend_service.inference import _tensorfold_native
+
+        no_native = mock.patch.object(_tensorfold_native, "find_binary", lambda environ=None: None)
+        no_native.start()
+        self.addCleanup(no_native.stop)
+        no_record = mock.patch.object(_tensorfold_native, "read_install_record", lambda: None)
+        no_record.start()
+        self.addCleanup(no_record.stop)
         # a fresh job per test
         job_patch = mock.patch.object(setup_tf, "_JOB", setup_tf._TensorfoldJobState())
         job_patch.start()
@@ -185,7 +194,7 @@ class TensorFoldSetupRouteTests(unittest.TestCase):
         self.assertEqual(self.client.get("/api/setup/tensorfold-status").json()["extras"], ["vision", "grammar"])
 
     def test_unknown_extra_is_rejected_without_starting_a_job(self) -> None:
-        response = self.client.post("/api/setup/install-tensorfold", json={"extras": ["vision", "bogus"]})
+        response = self.client.post("/api/setup/install-tensorfold", json={"legacy": True, "extras": ["vision", "bogus"]})
         self.assertEqual(response.status_code, 400)
         self.assertIn("bogus", response.json()["detail"])
         self.assertEqual(self.client.get("/api/setup/install-tensorfold/status").json()["phase"], "idle")
@@ -196,7 +205,7 @@ class TensorFoldSetupRouteTests(unittest.TestCase):
         self._script(f'echo PHASE:preflight\necho "[${{TENSORFOLD_EXTRAS-unset}}]" > "{out}"\necho OK\n')
         with mock.patch.dict(os.environ):
             os.environ.pop("TENSORFOLD_EXTRAS", None)
-            started = self.client.post("/api/setup/install-tensorfold", json={"extras": ["grammar", "vision", "vision"]}).json()
+            started = self.client.post("/api/setup/install-tensorfold", json={"legacy": True, "extras": ["grammar", "vision", "vision"]}).json()
             self.assertEqual(started["extras"], ["vision", "grammar"])
             self._wait_for_job()
         self.assertEqual(out.read_text().strip(), "[vision,grammar]")
@@ -207,9 +216,9 @@ class TensorFoldSetupRouteTests(unittest.TestCase):
         self._script(f'echo PHASE:preflight\necho "[${{TENSORFOLD_EXTRAS-unset}}]" > "{out}"\necho OK\n')
         with mock.patch.dict(os.environ):
             os.environ.pop("TENSORFOLD_EXTRAS", None)
-            for body in (None, {}, {"extras": []}):
+            for body in (None, {"legacy": True}, {"legacy": True, "extras": []}):
                 started = (
-                    self.client.post("/api/setup/install-tensorfold")
+                    self.client.post("/api/setup/install-tensorfold", json={"legacy": True})
                     if body is None
                     else self.client.post("/api/setup/install-tensorfold", json=body)
                 ).json()
@@ -236,7 +245,7 @@ echo OK
         )
         refreshed = mock.Mock()
         with mock.patch("backend_service.inference.capabilities.refresh_install_detection", refreshed):
-            started = self.client.post("/api/setup/install-tensorfold").json()
+            started = self.client.post("/api/setup/install-tensorfold", json={"legacy": True}).json()
             self.assertEqual(started["id"], "tensorfold-install")
             final = self._wait_for_job()
         self.assertEqual(final["phase"], "done")
@@ -254,7 +263,7 @@ echo OK
         self._script('echo PHASE:preflight\necho "FAIL:TensorFold needs native arm64 Python"\nexit 1\n')
         refreshed = mock.Mock()
         with mock.patch("backend_service.inference.capabilities.refresh_install_detection", refreshed):
-            self.client.post("/api/setup/install-tensorfold")
+            self.client.post("/api/setup/install-tensorfold", json={"legacy": True})
             final = self._wait_for_job()
         self.assertEqual(final["phase"], "error")
         self.assertEqual(final["error"], "TensorFold needs native arm64 Python")
@@ -269,7 +278,7 @@ echo OK
             os.environ,
             {"PYTHONHOME": "/embedded", "PYTHONPATH": "/extras", "DYLD_LIBRARY_PATH": "/lib", "KEEP_ME": "1"},
         ):
-            self.client.post("/api/setup/install-tensorfold")
+            self.client.post("/api/setup/install-tensorfold", json={"legacy": True})
             self._wait_for_job()
         seen = out.read_text()
         self.assertIn("KEEP_ME=1", seen)
@@ -279,8 +288,8 @@ echo OK
     @unittest.skipIf(sys.platform == "win32", "install scripts run under bash")
     def test_second_post_while_running_does_not_start_another_job(self) -> None:
         self._script("echo PHASE:preflight\nsleep 1\necho OK\n")
-        first = self.client.post("/api/setup/install-tensorfold").json()
-        second = self.client.post("/api/setup/install-tensorfold").json()
+        first = self.client.post("/api/setup/install-tensorfold", json={"legacy": True}).json()
+        second = self.client.post("/api/setup/install-tensorfold", json={"legacy": True}).json()
         self.assertEqual(first["startedAt"], second["startedAt"])
         self._wait_for_job()
 

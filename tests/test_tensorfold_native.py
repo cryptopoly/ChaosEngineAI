@@ -377,7 +377,9 @@ class StatusAndEngine(InstallerBase):
         caps = native.parse_capabilities(CAPS_JSON)
         with mock.patch.object(native, "find_binary", lambda environ=None: Path("tf")), mock.patch.object(
             native, "probe_capabilities", lambda binary, timeout=30.0: caps
-        ), mock.patch.object(native, "read_gpu", lambda timeout=10.0: gpu(driver="535.0")):
+        ), mock.patch.object(native, "read_gpu", lambda timeout=10.0: gpu(driver="535.0")), mock.patch.object(
+            native, "platform_key", lambda *a, **k: "windows-x86_64"
+        ):
             with self.assertRaises(RuntimeError) as ctx:
                 self._load(self._engine())
         self.assertIn("R580", str(ctx.exception))
@@ -391,6 +393,8 @@ class StatusAndEngine(InstallerBase):
             with mock.patch.object(native, "find_binary", lambda environ=None: Path("tf")), mock.patch.object(
                 native, "probe_capabilities", lambda binary, timeout=30.0: caps
             ), mock.patch.object(native, "read_gpu", lambda timeout=10.0: gpu(free=9000)), mock.patch.object(
+                native, "platform_key", lambda *a, **k: "windows-x86_64"
+            ), mock.patch.object(
                 TensorFoldNativeEngine, "_ensure_drafter", lambda self, repo, cb: (None, None)
             ):
                 with self.assertRaises(RuntimeError) as ctx:
@@ -410,16 +414,31 @@ class Routing(unittest.TestCase):
         )
         self.assertIsInstance(engine, TensorFoldNativeEngine)
 
-    def test_mac_engine_still_wins_when_installed(self):
+    def test_native_wins_over_the_python_install_when_both_are_present(self):
         from backend_service.inference.controller import RuntimeController
-        from backend_service.inference.tensorfold_engine import TensorFoldEngine
 
         controller = RuntimeController.__new__(RuntimeController)
         controller.capabilities = _bc(tensorfoldAvailable=True, tensorfoldNativeAvailable=True)
         engine = controller._select_tensorfold(
             hint="tensorfold", target="/m", model_ref="x/y", canonical_repo=None, runtime_target=None, path=None
         )
-        self.assertIs(type(engine), TensorFoldEngine)
+        self.assertIs(type(engine), TensorFoldNativeEngine)
+
+    def test_a_family_the_native_binary_skips_uses_the_python_install(self):
+        from backend_service.inference.controller import RuntimeController
+        from backend_service.inference.tensorfold_engine import TensorFoldEngine
+
+        controller = RuntimeController.__new__(RuntimeController)
+        controller.capabilities = _bc(tensorfoldAvailable=True, tensorfoldNativeAvailable=True)
+        gemma = dict(
+            hint="tensorfold", target="/m", model_ref="mlx-community/gemma-4-26b-a4b-it-4bit",
+            canonical_repo="mlx-community/gemma-4-26b-a4b-it-4bit", runtime_target=None, path=None,
+        )
+        self.assertIs(type(controller._select_tensorfold(**gemma)), TensorFoldEngine)
+        controller.capabilities = _bc(tensorfoldNativeAvailable=True)
+        with self.assertRaises(RuntimeError) as ctx:
+            controller._select_tensorfold(**gemma)
+        self.assertIn("not served by TensorFold 1.x", str(ctx.exception))
 
     def test_nothing_installed_asks_for_an_install(self):
         from backend_service.inference.controller import RuntimeController

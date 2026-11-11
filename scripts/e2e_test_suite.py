@@ -787,6 +787,8 @@ def phase_1(cap: Capability) -> PhaseResult:
                 fb = _specdec_fallback_reason(note)
                 if fb:
                     return "fail", f"DDTree silently fell back ('{fb}'): {note[:160]}", detail
+                if "ddtree is not available for this model" in note.lower():
+                    continue  # a hybrid (linear-attention) model: the app says so and runs plain DFlash
                 if not detail.get("treeBudget"):
                     return "fail", f"treeBudget not applied (got {detail.get('treeBudget')}): {note[:160]}", detail
                 if "ddtree" not in note.lower():
@@ -852,6 +854,8 @@ def phase_1(cap: Capability) -> PhaseResult:
             fb = _specdec_fallback_reason(note)
             if fb:
                 return "fail", f"MTPLX silently fell back ('{fb}'): {note[:160]}", detail
+            if "mtplx" not in low and "dflash speculative decoding active" in low:
+                continue  # DFlash serves this model first; MTPLX is only tried on a model it owns
             if "mtplx" not in low:
                 return "fail", f"MTPLX expected but runtimeNote was: {note[:160]}", detail
             return "pass", "", detail

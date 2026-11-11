@@ -16,8 +16,8 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 | Row | Item | Status |
 |---|---|---|
 | [FU-170](open.md) | cargo test port race in backend::tests::runtime_info_keeps_a_soft_note_while_the_port_is_s | Open; low priority. |
-| [FU-169](open.md) | scripts/check-upstreams.py: report every pinned upstream against its newest release (D-78) | Open; nothing built. |
-| [FU-168](open.md) | TensorFold 1.x: build the family table from capabilities --json, add newer families | Open; follows FU-111. |
+| [FU-169](open.md) | scripts/check-upstreams.py: report every pinned upstream against its newest release (D-78) | Shipped 2026-11-11. |
+| [FU-168](open.md) | TensorFold 1.x: build the family table from capabilities --json, add newer families | Open; follows FU-111 |
 | [FU-167](open.md) | Image, video and audio speed-ups beyond the diffusion caches | Researched 2026-11-11 |
 | [FU-166](open.md) | MiniMax H3 (video and image) and newer image/video models: scan, supersedes the FU-082 / F | Researched 2026-11-10 |
 | [FU-165](open.md) | Studio time estimate does not scale with size, frames or steps | Open (2026-11-11): measured, not built. |

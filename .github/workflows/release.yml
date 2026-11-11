@@ -46,6 +46,8 @@ jobs:
       # npm packages), checked against osv.dev. A high or critical advisory stops
       # the release before anything is built; accept one on purpose in
       # scripts/dependency-audit-ignore.json with a reason and an expiry date.
+      - name: Upstream freshness (report only)
+        run: python3 scripts/check-upstreams.py
       - name: Dependency audit
         run: python3 scripts/audit-dependencies.py
       - name: Find or create release

@@ -34,19 +34,19 @@ def _tarball(path: Path, files: dict[str, bytes], top: str) -> None:
 
 class AssetChoiceTests(unittest.TestCase):
     def test_arm64_always_uses_cuda_13(self) -> None:
-        self.assertEqual(llama_cuda.cuda_version_for("arm64", None), "13.4")
-        self.assertEqual(llama_cuda.cuda_version_for("arm64", 550), "13.4")
+        self.assertEqual(llama_cuda.cuda_version_for("arm64", None), "13.5")
+        self.assertEqual(llama_cuda.cuda_version_for("arm64", 550), "13.5")
 
     def test_x64_falls_back_to_cuda_12_on_an_older_driver(self) -> None:
         self.assertEqual(llama_cuda.cuda_version_for("x64", 575), "12.8")
-        self.assertEqual(llama_cuda.cuda_version_for("x64", 580), "13.4")
+        self.assertEqual(llama_cuda.cuda_version_for("x64", 580), "13.5")
 
     def test_asset_names_match_the_published_release(self) -> None:
-        # Names as published with llama.cpp b11981.
+        # Names as published with llama.cpp b12292.
         self.assertEqual(
-            llama_cuda.asset_names("arm64", "13.4", "b11981", "linux"),
-            ("llama-b11981-bin-ubuntu-cuda-13.4-arm64.tar.gz",
-             "cudart-llama-b11981-bin-ubuntu-cuda-13.4-arm64.tar.gz"),
+            llama_cuda.asset_names("arm64", "13.5", "b12292", "linux"),
+            ("llama-b12292-bin-ubuntu-cuda-13.5-arm64.tar.gz",
+             "cudart-llama-b12292-bin-ubuntu-cuda-13.5-arm64.tar.gz"),
         )
 
     def test_tag_matches_the_bundled_llama_cpp(self) -> None:
@@ -121,8 +121,8 @@ class InstallTests(_TempRoot):
 
     def test_install_unpacks_both_archives_into_one_folder(self) -> None:
         sources = Path(tempfile.mkdtemp(prefix="ce-llama-src-"))
-        build, cudart = llama_cuda.asset_names("arm64", "13.4", llama_cuda.LLAMA_CPP_TAG, "linux")
-        _tarball(sources / build, {"llama-server": b"#!/bin/sh\n", "libggml-cuda.so": b"x"}, "llama-b11981")
+        build, cudart = llama_cuda.asset_names("arm64", "13.5", llama_cuda.LLAMA_CPP_TAG, "linux")
+        _tarball(sources / build, {"llama-server": b"#!/bin/sh\n", "libggml-cuda.so": b"x"}, "llama-b12292")
         _tarball(sources / cudart, {"libcudart.so.13": b"x", "libcublas.so.13": b"x"}, "cudart")
 
         def fake_download(url: str, dest: Path, progress) -> None:
@@ -143,7 +143,7 @@ class InstallTests(_TempRoot):
             ["installed.json", "libcublas.so.13", "libcudart.so.13", "libggml-cuda.so", "llama-server"],
         )
         self.assertTrue(os.access(binary, os.X_OK))
-        self.assertEqual(json.loads((folder / "installed.json").read_text())["cuda"], "13.4")
+        self.assertEqual(json.loads((folder / "installed.json").read_text())["cuda"], "13.5")
         self.assertEqual(llama_cuda.installed_binary(), binary)
         self.assertFalse(any(p.name.startswith(".staging-") for p in self.root.iterdir()))
 

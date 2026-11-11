@@ -54,44 +54,44 @@ class _TempRoot(_Base):
 class WindowsAssetTests(unittest.TestCase):
     def test_cuda_build_follows_the_driver_cuda_version(self) -> None:
         pick = llama_cuda.windows_cuda_version
-        self.assertEqual(pick("x64", (13, 5)), "13.4")
-        self.assertEqual(pick("x64", (13, 0)), "13.4")
+        self.assertEqual(pick("x64", (13, 5)), "13.5")
+        self.assertEqual(pick("x64", (13, 0)), "13.5")
         self.assertEqual(pick("x64", (12, 9)), "12.4")
         self.assertEqual(pick("x64", (12, 4)), "12.4")
         self.assertIsNone(pick("x64", (12, 3)))
         self.assertIsNone(pick("x64", (11, 8)))
         self.assertIsNone(pick("x64", None))
-        # ARM64 has a 13.4 build only.
-        self.assertEqual(pick("arm64", (13, 1)), "13.4")
+        # ARM64 has a 13.5 build only.
+        self.assertEqual(pick("arm64", (13, 1)), "13.5")
         self.assertIsNone(pick("arm64", (12, 8)))
 
     def test_driver_major_decides_when_nvidia_smi_gives_no_cuda_line(self) -> None:
         pick = llama_cuda.windows_cuda_version
-        self.assertEqual(pick("x64", None, 621), "13.4")
-        self.assertEqual(pick("x64", None, 580), "13.4")
+        self.assertEqual(pick("x64", None, 621), "13.5")
+        self.assertEqual(pick("x64", None, 580), "13.5")
         self.assertEqual(pick("x64", None, 552), "12.4")
         self.assertIsNone(pick("x64", None, 546))
 
     def test_asset_names_match_the_published_release(self) -> None:
-        # Names as published with llama.cpp b11981: the cudart zip carries no tag.
+        # Names as published with llama.cpp b12292: the cudart zip carries no tag.
         self.assertEqual(
-            llama_cuda.asset_names("x64", "13.4", "b11981", "windows"),
-            ("llama-b11981-bin-win-cuda-13.4-x64.zip", "cudart-llama-bin-win-cuda-13.4-x64.zip"),
+            llama_cuda.asset_names("x64", "13.5", "b12292", "windows"),
+            ("llama-b12292-bin-win-cuda-13.5-x64.zip", "cudart-llama-bin-win-cuda-13.5-x64.zip"),
         )
         self.assertEqual(
-            llama_cuda.asset_names("x64", "12.4", "b11981", "windows"),
-            ("llama-b11981-bin-win-cuda-12.4-x64.zip", "cudart-llama-bin-win-cuda-12.4-x64.zip"),
+            llama_cuda.asset_names("x64", "12.4", "b12292", "windows"),
+            ("llama-b12292-bin-win-cuda-12.4-x64.zip", "cudart-llama-bin-win-cuda-12.4-x64.zip"),
         )
 
     def test_pinned_checksums_cover_every_asset_we_can_pick(self) -> None:
-        for arch, cuda in (("x64", "13.4"), ("x64", "12.4"), ("arm64", "13.4")):
+        for arch, cuda in (("x64", "13.5"), ("x64", "12.4"), ("arm64", "13.5")):
             for name in llama_cuda.asset_names(arch, cuda, llama_cuda.LLAMA_CPP_TAG, "windows"):
                 self.assertRegex(llama_cuda._PINNED_SHA256.get(name, ""), r"^[0-9a-f]{64}$", name)
 
     def test_expected_sha256_prefers_the_pin_then_the_release(self) -> None:
-        name = "llama-b11981-bin-win-cuda-13.4-x64.zip"
+        name = "llama-b12292-bin-win-cuda-13.5-x64.zip"
         never = mock.Mock(side_effect=AssertionError("pin should win"))
-        self.assertEqual(llama_cuda.expected_sha256(name, "b11981", never), llama_cuda._PINNED_SHA256[name])
+        self.assertEqual(llama_cuda.expected_sha256(name, "b12292", never), llama_cuda._PINNED_SHA256[name])
         self.assertEqual(llama_cuda.expected_sha256("x.zip", "b99999", lambda _t: {"x.zip": "ab"}), "ab")
         self.assertIsNone(llama_cuda.expected_sha256("x.zip", "b99999", lambda _t: {}))
 
@@ -133,7 +133,7 @@ class PlanTests(_Base):
         # The gate reads the driver only; a 12 GB card and a 5090 take the same path.
         got = self._plan("windows", "x64", 621, (13, 5))
         self.assertTrue(got["ok"])
-        self.assertEqual((got["state"], got["cuda"]), ("ready", "13.4"))
+        self.assertEqual((got["state"], got["cuda"]), ("ready", "13.5"))
 
     def test_windows_cuda_12_driver_gets_the_12_4_build(self) -> None:
         got = self._plan("windows", "x64", 552, (12, 4))
@@ -156,7 +156,7 @@ class PlanTests(_Base):
 
     def test_linux_keeps_its_choice(self) -> None:
         self.assertEqual(self._plan("linux", "x64", 575, (12, 9))["cuda"], "12.8")
-        self.assertEqual(self._plan("linux", "arm64", 580, (13, 0))["cuda"], "13.4")
+        self.assertEqual(self._plan("linux", "arm64", 580, (13, 0))["cuda"], "13.5")
 
 
 class WindowsInstallTests(_TempRoot):
@@ -164,7 +164,7 @@ class WindowsInstallTests(_TempRoot):
         super().setUp()
         self.start_host("windows", "x64", 621, (13, 5))
         self.sources = Path(tempfile.mkdtemp(prefix="ce-llama-win-src-"))
-        self.build, self.cudart = llama_cuda.asset_names("x64", "13.4", llama_cuda.LLAMA_CPP_TAG)
+        self.build, self.cudart = llama_cuda.asset_names("x64", "13.5", llama_cuda.LLAMA_CPP_TAG)
         _zipfile(self.sources / self.build, {"llama-server.exe": b"MZ", "ggml-cuda.dll": b"x", "llama-bench.exe": b"MZ"})
         _zipfile(self.sources / self.cudart, {"cudart64_13.dll": b"x", "cublas64_13.dll": b"x"})
 
@@ -190,7 +190,7 @@ class WindowsInstallTests(_TempRoot):
         info = json.loads((binary.parent / "installed.json").read_text())
         self.assertEqual(
             (info["os"], info["arch"], info["cuda"], info["tag"]),
-            ("windows", "x64", "13.4", llama_cuda.LLAMA_CPP_TAG),
+            ("windows", "x64", "13.5", llama_cuda.LLAMA_CPP_TAG),
         )
         self.assertEqual(info["sha256"], digests)
         self.assertEqual(info["verified"], {self.build: True, self.cudart: True})
@@ -339,7 +339,7 @@ class WindowsRouteTests(_TempRoot):
     def test_not_installed_and_installable(self) -> None:
         body = self._status("windows", "x64", 621, (13, 5))
         self.assertEqual((body["supported"], body["canInstall"], body["state"]), (True, True, "not-installed"))
-        self.assertEqual((body["os"], body["cudaVersion"], body["driverCuda"]), ("windows", "13.4", "13.5"))
+        self.assertEqual((body["os"], body["cudaVersion"], body["driverCuda"]), ("windows", "13.5", "13.5"))
         self.assertFalse(body["installed"])
 
     def test_driver_too_old_is_supported_but_not_installable(self) -> None:
@@ -357,14 +357,14 @@ class WindowsRouteTests(_TempRoot):
         folder = self.root / llama_cuda.LLAMA_CPP_TAG
         folder.mkdir(parents=True)
         (folder / "installed.json").write_text(
-            json.dumps({"cuda": "13.4", "verified": {"a": True, "b": True}}), encoding="utf-8")
+            json.dumps({"cuda": "13.5", "verified": {"a": True, "b": True}}), encoding="utf-8")
         (folder / "llama-server.exe").write_bytes(b"MZ")
         self.start_host("windows", "x64", 621, (13, 5))
         with mock.patch.object(llama_cuda, "lists_cuda_device", return_value=True):
             body = self._client().get("/api/setup/llama-cuda-status").json()
         self.assertEqual(
             (body["state"], body["inUse"], body["verified"], body["installedCuda"]),
-            ("in-use", True, True, "13.4"),
+            ("in-use", True, True, "13.5"),
         )
         llama_cuda.clear_cache()
         with mock.patch.object(llama_cuda, "lists_cuda_device", return_value=False):

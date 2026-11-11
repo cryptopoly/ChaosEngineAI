@@ -4,7 +4,7 @@ No Python venv and no bash: a Python thread downloads the release archive for
 this platform, checks its sha256 against the published ``.sha256`` file, unpacks
 it into ``~/.chaosengine/tensorfold-native/<version>/`` and runs
 ``tensorfold-native capabilities --json`` before it records the install in
-``install.json``. Windows has no release archive (1.2.6 ships Linux and macOS
+``install.json``. Windows has no release archive (1.2.7 ships Linux and macOS
 only), so there the install either adopts a binary the user built from source
 (``{"binaryPath": "..."}``) or downloads a self-hosted archive named by
 ``CHAOSENGINE_TENSORFOLD_WINDOWS_URL`` and ``..._SHA256``.

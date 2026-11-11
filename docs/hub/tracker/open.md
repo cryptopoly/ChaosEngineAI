@@ -19,18 +19,18 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 </details>
 
 <details>
-<summary>FU-169 · scripts/check-upstreams.py: report every pinned upstream against its newest release (D-78) — Open; nothing built.</summary>
+<summary>FU-169 · scripts/check-upstreams.py: report every pinned upstream against its newest release (D-78) — Shipped 2026-11-11.</summary>
 
-**Status or trigger:** **Open; nothing built.**
+**Status or trigger:** **Shipped 2026-11-11.**
 
-**Notes:** Pins to read: llama.cpp tag, llama-server-turbo branch head, dflash-mlx, TensorFold, mflux, ltx-2-mlx, ACE-Step, TriAttention, Chatterbox, DDTree, Playwright, plus `scripts/audit-dependencies.py` output. Print behind or current per row; run from `pre-build-check` and the release workflow; never block a release.
+**Notes:** Reads each pin (llama.cpp, TensorFold, ltx-2-mlx, mflux, dflash-mlx, ACE-Step, TriAttention, Chatterbox, Playwright), asks the upstream for the newest release or commit, prints current, behind or unknown; for ltx-2-mlx it also says whether the commits touch more than CI. Also lists TensorFold model families the installed binary serves that no table row lists. Report only, exit 0; run by `pre-build-check` and the release workflow; `tests/test_check_upstreams.py`. Open: dflash-mlx pinned at v0.1.5.1, newest v0.1.10 (FU-057); llama-server-turbo and DDTree have no pin to compare.
 
 </details>
 
 <details>
-<summary>FU-168 · TensorFold 1.x: build the family table from capabilities --json, add newer families — Open; follows FU-111.</summary>
+<summary>FU-168 · TensorFold 1.x: build the family table from capabilities --json, add newer families — Open; follows FU-111</summary>
 
-**Status or trigger:** **Open; follows FU-111.**
+**Status or trigger:** **Open; follows FU-111. 2026-11-11: pin moved to 1.2.7; `check-upstreams.py` now lists the 14 families 1.2.7 serves that no row covers (fish_omni, gemma4_unified, glm_moe_dsa, kimi_k3, kimi_k31, lfm2_moe, lfm3, lfm3_vl, llama, minimax_m3_vl, qwen4, qwen4_text, spark2_5, step5_vl). Still to do: a catalog row, memory figures and an E2E check per family you want offered.**
 
 **Notes:** 1.2.6 Metal serves more than `NATIVE_MODELS` and `TENSORFOLD_FAMILIES` list (`lfm3`, `lfm2_moe`, `llama`, `minimax_m3_vl`, `spark2_5`, `step5_vl`, `kimi_k3`, Gemma 4 31B and 12B dense) and adds `--speed-up`, `--prompt-cache-disk`, `--unix-socket`, `/v1/images/generations`. Build the table from the binary's own report at runtime instead of copying docs, then add catalog rows and E2E checks per family. Also decide whether to keep the 0.6.6 fallback for the three `native=False` families or drop them (D-77).
 

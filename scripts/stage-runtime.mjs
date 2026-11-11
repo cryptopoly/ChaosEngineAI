@@ -63,7 +63,7 @@ const BUNDLED_ROOT_DOCS = ["AGENTS.md"];
 // the repository's "latest" release, which had become a `v0.7.0` entry holding
 // only nightly-tag.txt, so no platform's release bundle got a llama-server.
 // Override with CHAOSENGINE_LLAMA_CPP_TAG.
-const LLAMA_CPP_TAG = process.env.CHAOSENGINE_LLAMA_CPP_TAG || "b11981";
+const LLAMA_CPP_TAG = process.env.CHAOSENGINE_LLAMA_CPP_TAG || "b12292";
 
 main();
 
@@ -695,7 +695,7 @@ function pickLlamaAsset(assets, platformKey) {
       /^llama-.*-bin-ubuntu-x64\.(?:zip|tar\.gz)$/i,
       /^llama-.*-bin-linux-x64\.(?:zip|tar\.gz)$/i,
     ],
-    // Upstream also ships ``ubuntu-cuda-13.4-arm64`` (plus a separate cudart
+    // Upstream also ships ``ubuntu-cuda-13.5-arm64`` (plus a separate cudart
     // archive) for DGX Spark class machines. The bundle stages the CPU build
     // because the CUDA one fails to start on an ARM host without a CUDA 13
     // driver; GPU use on ARM needs ``update-llama-cpp.sh`` (builds with CUDA

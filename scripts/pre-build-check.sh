@@ -197,6 +197,7 @@ echo
 # scripts/dependency-audit-ignore.json (reason + expiry). Packages behind the
 # newest release are listed but never block. Needs network access.
 echo "[7/10] Dependency audit (osv.dev)..."
+.venv/bin/python scripts/check-upstreams.py || warn "upstream freshness report could not run"
 .venv/bin/python scripts/audit-dependencies.py
 AUDIT_RC=$?
 if [[ $AUDIT_RC -eq 0 ]]; then

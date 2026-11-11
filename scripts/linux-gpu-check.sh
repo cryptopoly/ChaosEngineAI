@@ -17,7 +17,7 @@ set -u
 
 REPORT="${HOME}/chaosengine-gpu-report.md"
 PORT="${CHAOSENGINE_PORT:-8876}"
-TAG="${CHAOSENGINE_LLAMA_CPP_TAG:-b11981}"
+TAG="${CHAOSENGINE_LLAMA_CPP_TAG:-b12292}"
 CUDA_DIR="${HOME}/.chaosengine/bin/llama-cuda/${TAG}"
 MODEL_DIR="${HOME}/.chaosengine/gpu-check"
 MODEL="${MODEL_DIR}/LFM3-1.7B-Q4_K_M.gguf"

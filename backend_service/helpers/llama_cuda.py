@@ -31,7 +31,7 @@ from pathlib import Path
 from typing import Callable
 
 # Must match LLAMA_CPP_TAG in scripts/stage-runtime.mjs (a test checks).
-LLAMA_CPP_TAG = "b11981"
+LLAMA_CPP_TAG = "b12292"
 
 INSTALL_ROOT = Path.home() / ".chaosengine" / "bin" / "llama-cuda"
 _MARKER = "installed.json"
@@ -103,13 +103,13 @@ def nvidia_driver_cuda() -> tuple[int, int] | None:
 
 
 def cuda_version_for(arch: str, driver_major: int | None) -> str:
-    """Linux CUDA build to fetch: 13.4 by default; 12.8 on x86_64 with a pre-580 driver."""
+    """Linux CUDA build to fetch: 13.5 by default; 12.8 on x86_64 with a pre-580 driver."""
     if arch == "x64" and driver_major is not None and driver_major < _CUDA13_MIN_DRIVER:
         return "12.8"
-    return "13.4"
+    return "13.5"
 
 
-# Windows builds published by ggml-org: CUDA 12.4 (x64) and 13.4 (x64, ARM64). A CUDA 13
+# Windows builds published by ggml-org: CUDA 12.4 (x64) and 13.5 (x64, ARM64). A CUDA 13
 # runtime needs a driver that reports CUDA 13 or newer; CUDA 12.4 needs one reporting 12.4+.
 _WIN_CUDA12_MIN = (12, 4)
 
@@ -117,7 +117,7 @@ _WIN_CUDA12_MIN = (12, 4)
 def windows_cuda_version(
     arch: str, driver_cuda: tuple[int, int] | None, driver_major: int | None = None
 ) -> str | None:
-    """Windows build for this driver ("13.4" or "12.4"), or None when the driver is too old.
+    """Windows build for this driver ("13.5" or "12.4"), or None when the driver is too old.
 
     ``driver_cuda`` is the version ``nvidia-smi`` reports. When it cannot be read the driver
     major decides (580 and newer is CUDA 13, 551 and newer is CUDA 12.4).
@@ -132,7 +132,7 @@ def windows_cuda_version(
     if driver_cuda is None:
         return None
     if driver_cuda[0] >= 13:
-        return "13.4"
+        return "13.5"
     if arch == "x64" and driver_cuda >= _WIN_CUDA12_MIN:
         return "12.4"
     return None
@@ -150,12 +150,12 @@ def asset_names(arch: str, cuda: str, tag: str = LLAMA_CPP_TAG, os_name: str | N
 # sha256 of the Windows archives of the pinned tag, from the release's published digests.
 # Other tags are looked up from the release at install time (see ``release_digests``).
 _PINNED_SHA256: dict[str, str] = {
-    "llama-b11981-bin-win-cuda-12.4-x64.zip": "dcb0f6be103aec6c55a365be71a678c0cf620f9c85bf9a16de78090edd44ddbb",
+    "llama-b12292-bin-win-cuda-12.4-x64.zip": "078a43924a90f5d93c77727743f36b8cfa5da59795a8f2651c09d1b734e87088",
     "cudart-llama-bin-win-cuda-12.4-x64.zip": "8c79a9b226de4b3cacfd1f83d24f962d0773be79f1e7b75c6af4ded7e32ae1d6",
-    "llama-b11981-bin-win-cuda-13.4-x64.zip": "b160dff6e5d74855eda001261299b5fc1f4db714080f04c35f3a5c8c696c9691",
-    "cudart-llama-bin-win-cuda-13.4-x64.zip": "738f8c251ac22b70c3ae6f83a10cf222725df0395246a2cf58f32bdb85fbe668",
-    "llama-b11981-bin-win-cuda-13.4-arm64.zip": "e535c88877b62b1f632f1c7e08f3f87de720cae06af1e86b3a34a6539ab6cb6f",
-    "cudart-llama-bin-win-cuda-13.4-arm64.zip": "642dcde8805b3e3165ca710a5443b3b4044b27d96bd3ee3132473988c9bcb774",
+    "llama-b12292-bin-win-cuda-13.5-x64.zip": "f173b246ab8d7e55c13024fdf53192d5b6a0c333042c37724c38d4c333cb92be",
+    "cudart-llama-bin-win-cuda-13.5-x64.zip": "c2bf4cc202bfbaaa7a0b75f5082457c3811326947bb216059b72839d844e9cba",
+    "llama-b12292-bin-win-cuda-13.5-arm64.zip": "276f93b8e3f6faf67d05c466a301666be8dc4ef2124f259ff3b85bb89c8f30d6",
+    "cudart-llama-bin-win-cuda-13.5-arm64.zip": "f89e7b2457f627d052dd99f42205ddfd01964454809754cdc649cffc74320dca",
 }
 
 

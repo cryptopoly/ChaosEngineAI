@@ -31,10 +31,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-NATIVE_VERSION = "1.2.6"
+NATIVE_VERSION = "1.2.7"
 RELEASE_BASE = "https://github.com/ashhart/TensorFold/releases/download"
 
-# Platform key -> archive name. Windows has no release archive (1.2.6 ships
+# Platform key -> archive name. Windows has no release archive (1.2.7 ships
 # Linux x86_64 / aarch64 and macOS arm64 only): its binary is a source build
 # the user adopts, or a self-hosted archive named by the two env vars below.
 _ASSETS: dict[str, str] = {

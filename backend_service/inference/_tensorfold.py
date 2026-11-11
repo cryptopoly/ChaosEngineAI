@@ -22,7 +22,7 @@ controller, the engine and the system-stats payload can all consult it:
 
 Every fact below was taken from TensorFold's source at v0.6.6 (the last
 Python release: ``src/tensorfold/families/*/__init__.py`` ``MODEL_TYPES`` /
-``MODELS`` / ``DRAFTER``), then checked against the native 1.2.6 binary's
+``MODELS`` / ``DRAFTER``), then checked against the native 1.2.7 binary's
 ``tensorfold capabilities --json`` and recipe docs. Families the native
 binary does not serve carry ``native=False``. Re-check it when the pin in
 ``scripts/install-tensorfold.sh`` moves.
@@ -67,7 +67,7 @@ class TensorFoldFamily:
     repo_aliases: tuple[str, ...] = ()
     # False when the native 1.x binary does not serve this checkpoint (its
     # ``capabilities --json`` lacks the family, or its docs say it refuses
-    # it); only the older Python install (0.6.6) can. Checked at v1.2.6.
+    # it); only the older Python install (0.6.6) can. Checked at v1.2.7.
     native: bool = True
 
 

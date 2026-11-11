@@ -25,7 +25,7 @@ from backend_service.routes.setup import tensorfold_native as installer
 CAPS_JSON = json.dumps(
     {
         "schema": 1,
-        "version": "1.2.6",
+        "version": "1.2.7",
         "chip": "nvidia-sm89",
         "backends": ["cuda"],
         "families": {"qwen3_5": ["mlx-q4g64", "exl3"], "nemotron_h": ["mlx-q4g64", "modelopt-nvfp4"]},
@@ -54,11 +54,11 @@ class PlatformAndAssets(unittest.TestCase):
         self.assertIsNone(native.platform_key("win32", "ARM64"))
 
     def test_release_asset_names_and_urls(self):
-        asset = native.release_asset("linux-x86_64", version="1.2.6")
-        self.assertEqual(asset.name, "tensorfold-1.2.6-linux-x86_64.tar.gz")
-        self.assertTrue(asset.url.endswith("/v1.2.6/tensorfold-1.2.6-linux-x86_64.tar.gz"))
+        asset = native.release_asset("linux-x86_64", version="1.2.7")
+        self.assertEqual(asset.name, "tensorfold-1.2.7-linux-x86_64.tar.gz")
+        self.assertTrue(asset.url.endswith("/v1.2.7/tensorfold-1.2.7-linux-x86_64.tar.gz"))
         self.assertEqual(asset.sha256_url, asset.url + ".sha256")
-        self.assertEqual(native.release_asset("linux-aarch64").name, "tensorfold-1.2.6-linux-aarch64.tar.gz")
+        self.assertEqual(native.release_asset("linux-aarch64").name, "tensorfold-1.2.7-linux-aarch64.tar.gz")
 
     def test_windows_has_no_asset_unless_self_hosted(self):
         self.assertIsNone(native.release_asset("windows-x86_64", environ={}))
@@ -72,7 +72,7 @@ class PlatformAndAssets(unittest.TestCase):
 
     def test_parse_sha256_file(self):
         digest = "ab" * 32
-        self.assertEqual(native.parse_sha256_file(f"{digest}  tensorfold-1.2.6-linux-x86_64.tar.gz\n"), digest)
+        self.assertEqual(native.parse_sha256_file(f"{digest}  tensorfold-1.2.7-linux-x86_64.tar.gz\n"), digest)
         self.assertEqual(native.parse_sha256_file(digest), digest)
         self.assertIsNone(native.parse_sha256_file("not a digest"))
 
@@ -87,7 +87,7 @@ class Probes(unittest.TestCase):
 
     def test_parse_capabilities(self):
         caps = native.parse_capabilities(CAPS_JSON)
-        self.assertEqual((caps.chip, caps.backends, caps.version), ("nvidia-sm89", ("cuda",), "1.2.6"))
+        self.assertEqual((caps.chip, caps.backends, caps.version), ("nvidia-sm89", ("cuda",), "1.2.7"))
         self.assertTrue(caps.supports_flag("--vision"))
         self.assertFalse(caps.supports_flag("--kv-cache"))
         self.assertIn("mlx-q4g64", caps.families["qwen3_5"])
@@ -272,7 +272,7 @@ class InstallFromAsset(InstallerBase):
         binary, caps = self._run(asset, digest, fake)
         self.assertTrue(binary.is_file())
         record = native.read_install_record()
-        self.assertEqual((record["version"], record["sha256"], record["platform"]), ("1.2.6", digest, "linux-x86_64"))
+        self.assertEqual((record["version"], record["sha256"], record["platform"]), ("1.2.7", digest, "linux-x86_64"))
         self.assertEqual(native.find_binary({}), binary.resolve())
         self.assertEqual(list(self.root.glob("download-*")), [])  # temp download removed
 

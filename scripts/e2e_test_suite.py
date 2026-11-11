@@ -883,7 +883,7 @@ def phase_1(cap: Capability) -> PhaseResult:
             if status != "pass":
                 return status, reason, detail
             note = (detail.get("runtimeNote") or "")
-            if detail.get("engine") != "tensorfold":
+            if detail.get("engine") not in ("tensorfold", "tensorfold-native"):
                 return "fail", f"TensorFold expected but engine was {detail.get('engine')!r}: {note[:160]}", detail
             if not detail.get("speculativeDecoding"):
                 return "fail", f"TensorFold loaded without speculative decoding: {note[:160]}", detail

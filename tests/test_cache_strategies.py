@@ -5,6 +5,7 @@ import tempfile
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
+from unittest import mock
 from unittest.mock import patch
 
 from cache_compression import CacheStrategyRegistry
@@ -401,6 +402,284 @@ class FirstBlockCacheStrategyTests(unittest.TestCase):
             # match what the hook expects" outcome — exactly what we
             # want this smoke test to confirm.
             pass
+
+
+class DiffusionCacheResetTests(unittest.TestCase):
+    """A loaded pipeline is reused, so each request must start without the last run's cache."""
+
+    def test_reset_disables_an_enabled_cache(self):
+        from cache_compression import reset_diffusion_cache
+
+        calls = []
+
+        class T:
+            is_cache_enabled = True
+
+            def disable_cache(self):
+                calls.append("off")
+
+        reset_diffusion_cache(SimpleNamespace(transformer=T()))
+        self.assertEqual(calls, ["off"])
+
+    def test_reset_leaves_a_pipeline_without_cache_alone(self):
+        from cache_compression import reset_diffusion_cache
+
+        class T:
+            is_cache_enabled = False
+
+            def disable_cache(self):
+                raise AssertionError("nothing to disable")
+
+        reset_diffusion_cache(SimpleNamespace(transformer=T()))
+        reset_diffusion_cache(SimpleNamespace(unet=object()))
+
+    def test_reset_switches_teacache_off(self):
+        from cache_compression import reset_diffusion_cache
+
+        class T:
+            enable_teacache = True
+
+        reset_diffusion_cache(SimpleNamespace(transformer=T()))
+        self.assertFalse(T.enable_teacache)
+
+    def test_apply_with_no_strategy_still_resets(self):
+        from cache_compression import apply_diffusion_cache_strategy
+
+        calls = []
+
+        class T:
+            is_cache_enabled = True
+
+            def disable_cache(self):
+                calls.append("off")
+
+        for strategy_id in (None, "none"):
+            note = apply_diffusion_cache_strategy(
+                SimpleNamespace(transformer=T()), strategy_id=strategy_id,
+                num_inference_steps=4, rel_l1_thresh=None, domain="image",
+            )
+            self.assertIsNone(note)
+        self.assertEqual(calls, ["off"] * 2)
+
+    def test_per_block_caches_are_refused_on_a_cpu_offloaded_pipeline_with_little_card_left(self):
+        """TaylorSeer / PAB on LTX-2.3 4-bit (model offload, 24 GB) filled the card and stalled for minutes."""
+        from cache_compression import apply_diffusion_cache_strategy
+
+        enabled = []
+
+        class T:
+            is_cache_enabled = False
+
+            def enable_cache(self, cfg):
+                enabled.append(cfg)
+
+        with mock.patch("cache_compression._vram_headroom_gb", return_value=1.7):
+            for strategy_id in ("taylorseer", "pab", "fastercache", "magcache"):
+                note = apply_diffusion_cache_strategy(
+                    SimpleNamespace(transformer=T(), _all_hooks=[object()]), strategy_id=strategy_id,
+                    num_inference_steps=8, rel_l1_thresh=3, domain="video",
+                )
+                self.assertIn("not applied", note, strategy_id)
+            self.assertEqual(enabled, [])
+        # Plenty of card left (Wan 2.2 TI2V on 24 GB: peak 12.4 GB), no offload, or no reading: it attaches.
+        for headroom, hooks in ((11.5, [object()]), (1.7, []), (None, [object()])):
+            with mock.patch("cache_compression._vram_headroom_gb", return_value=headroom):
+                apply_diffusion_cache_strategy(
+                    SimpleNamespace(transformer=T(), _all_hooks=hooks), strategy_id="taylorseer",
+                    num_inference_steps=8, rel_l1_thresh=3, domain="video",
+                )
+        self.assertEqual(len(enabled), 3)
+
+    def test_fbcache_goes_through_enable_cache_so_it_can_be_undone(self):
+        registry = CacheStrategyRegistry()
+        registry.discover()
+        strategy = registry.get("fbcache")
+        seen = []
+        transformer = SimpleNamespace(enable_cache=lambda cfg: seen.append(cfg), named_children=lambda: iter(()))
+        strategy.apply_diffusers_hook(
+            SimpleNamespace(transformer=transformer), num_inference_steps=4, rel_l1_thresh=0.1,
+        )
+        self.assertEqual(len(seen), 1)
+        self.assertAlmostEqual(seen[0].threshold, 0.1)
+
+    def test_a_hook_that_raises_valueerror_becomes_a_not_applied_note(self):
+        """diffusers raises ValueError("Model class ... not registered") for LTX-2; that used to be an HTTP 500."""
+        import torch.nn as nn  # type: ignore
+        from cache_compression import apply_diffusion_cache_strategy
+
+        class Block(nn.Module):
+            pass
+
+        class Odd(nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.transformer_blocks = nn.ModuleList([Block(), Block()])
+
+            def enable_cache(self, cfg):
+                raise AssertionError("must be refused before attaching")
+
+        note = apply_diffusion_cache_strategy(
+            SimpleNamespace(transformer=Odd()), strategy_id="fbcache",
+            num_inference_steps=8, rel_l1_thresh=0.1, domain="video",
+        )
+        self.assertIn("not applied", note)
+
+        class Boom:
+            is_cache_enabled = False
+
+            def enable_cache(self, cfg):
+                raise ValueError("Model class X not registered")
+
+        note = apply_diffusion_cache_strategy(
+            SimpleNamespace(transformer=Boom()), strategy_id="taylorseer",
+            num_inference_steps=8, rel_l1_thresh=3, domain="video",
+        )
+        self.assertIn("not applied: ValueError", note)
+
+    def test_fbcache_refuses_mixed_dual_and_single_stream_blocks(self):
+        import torch.nn as nn  # type: ignore
+        from diffusers.models.transformers.transformer_flux2 import (
+            Flux2SingleTransformerBlock, Flux2TransformerBlock,
+        )
+
+        def bare(cls):
+            obj = cls.__new__(cls)
+            nn.Module.__init__(obj)
+            return obj
+
+        class Flux2Like(nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.transformer_blocks = nn.ModuleList([bare(Flux2TransformerBlock)])
+                self.single_transformer_blocks = nn.ModuleList([bare(Flux2SingleTransformerBlock)])
+
+            def enable_cache(self, cfg):
+                raise AssertionError("must be refused before attaching")
+
+        registry = CacheStrategyRegistry()
+        registry.discover()
+        with self.assertRaises(NotImplementedError) as ctx:
+            registry.get("fbcache").apply_diffusers_hook(
+                SimpleNamespace(transformer=Flux2Like()), num_inference_steps=4, rel_l1_thresh=0.1,
+            )
+        self.assertIn("differ in shape", str(ctx.exception))
+
+
+class RunWithoutCacheOnFailureTests(unittest.TestCase):
+    def _pipeline(self, calls):
+        class T:
+            is_cache_enabled = True
+
+            def disable_cache(self):
+                calls.append("off")
+
+        return SimpleNamespace(transformer=T())
+
+    def test_retries_stock_when_a_cached_run_fails(self):
+        from cache_compression import run_without_cache_on_failure
+
+        calls, attempts = [], []
+
+        def run():
+            attempts.append(1)
+            if len(attempts) == 1:
+                raise IndexError("tuple index out of range")
+            return "frames"
+
+        result, note = run_without_cache_on_failure(self._pipeline(calls), "FasterCache applied (thresh=2.0).", run)
+        self.assertEqual(result, "frames")
+        self.assertEqual(calls, ["off"])
+        self.assertIn("tuple index out of range", note)
+        self.assertIn("ran without it", note)
+
+    def test_before_retry_runs_between_the_attempts(self):
+        from cache_compression import run_without_cache_on_failure
+
+        order = []
+
+        def run():
+            order.append("run")
+            if order.count("run") == 1:
+                raise IndexError("x")
+            return 1
+
+        run_without_cache_on_failure(
+            self._pipeline([]), "PAB applied (thresh=2.0).", run, before_retry=lambda: order.append("reseed"),
+        )
+        self.assertEqual(order, ["run", "reseed", "run"])
+
+    def test_does_not_retry_when_no_cache_was_applied(self):
+        from cache_compression import run_without_cache_on_failure
+
+        def run():
+            raise RuntimeError("boom")
+
+        for note in (None, "TeaCache not applied: no patch"):
+            with self.assertRaises(RuntimeError):
+                run_without_cache_on_failure(self._pipeline([]), note, run)
+
+    def test_a_cancel_is_never_retried(self):
+        from cache_compression import run_without_cache_on_failure
+
+        class GenerationCancelled(Exception):
+            pass
+
+        attempts = []
+
+        def run():
+            attempts.append(1)
+            raise GenerationCancelled("stop")
+
+        with self.assertRaises(GenerationCancelled):
+            run_without_cache_on_failure(self._pipeline([]), "TaylorSeer Cache applied (thresh=2.0).", run)
+        self.assertEqual(len(attempts), 1)
+
+
+class TaylorSeerModuleMatchTests(unittest.TestCase):
+    """diffusers' default TaylorSeer patterns hook nothing on Wan, which made "applied" a silent no-op."""
+
+    def _strategy(self):
+        registry = CacheStrategyRegistry()
+        registry.discover()
+        return registry.get("taylorseer")
+
+    def test_wan_transformer_falls_back_to_block_level_caching(self):
+        from diffusers import WanTransformer3DModel
+        from cache_compression._diffusers_probe import hooked_module_count
+
+        wan = WanTransformer3DModel(
+            patch_size=(1, 2, 2), num_attention_heads=2, attention_head_dim=12, in_channels=4,
+            out_channels=4, text_dim=16, freq_dim=16, ffn_dim=32, num_layers=2,
+        )
+        self._strategy().apply_diffusers_hook(SimpleNamespace(transformer=wan), num_inference_steps=20, rel_l1_thresh=3)
+        self.assertGreater(hooked_module_count(wan), 0)
+        wan.disable_cache()
+        self.assertEqual(hooked_module_count(wan), 0)
+
+    def test_refuses_a_transformer_with_nothing_to_cache(self):
+        import torch.nn as nn  # type: ignore
+
+        class Bare(nn.Module):
+            _cache_config = None
+            is_cache_enabled = False
+
+            def __init__(self):
+                super().__init__()
+                self.proj = nn.Linear(2, 2)
+
+            def enable_cache(self, cfg):
+                from diffusers.hooks import apply_taylorseer_cache
+                apply_taylorseer_cache(self, cfg)
+                self._cache_config = cfg
+
+            def disable_cache(self):
+                self._cache_config = None
+
+        with self.assertRaises(NotImplementedError) as ctx:
+            self._strategy().apply_diffusers_hook(
+                SimpleNamespace(transformer=Bare()), num_inference_steps=20, rel_l1_thresh=3,
+            )
+        self.assertIn("no attention or block modules", str(ctx.exception))
 
 
 # ----------------------------------------------------------------------

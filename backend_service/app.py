@@ -625,6 +625,8 @@ def _generate_video_artifact(
             cfgDecay=request.cfgDecay,
             stgScale=request.stgScale,
             previewVae=request.previewVae,
+            cacheStrategy=request.cacheStrategy,
+            cacheRelL1Thresh=request.cacheRelL1Thresh,
             # FU-019: variant-declared LoRA + override metadata.
             loraRepo=(variant.get("loraRepo") or None),
             loraFile=(variant.get("loraFile") or None),

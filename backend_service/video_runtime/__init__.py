@@ -349,7 +349,7 @@ class DiffusersVideoEngine:
             # see FU-007 in FOLLOW_UPS.md.
             from cache_compression import apply_diffusion_cache_strategy
 
-            apply_diffusion_cache_strategy(
+            cache_note = apply_diffusion_cache_strategy(
                 pipeline,
                 strategy_id=config.cacheStrategy,
                 num_inference_steps=int(config.steps),
@@ -376,7 +376,12 @@ class DiffusersVideoEngine:
                     VIDEO_PROGRESS.set_phase(PHASE_DIFFUSING, message=note)
                     frames = self._invoke_pipeline(pipeline, kwargs)
             else:
-                frames = self._invoke_pipeline(pipeline, kwargs)
+                from cache_compression import run_without_cache_on_failure
+
+                frames, cache_note = run_without_cache_on_failure(
+                    pipeline, cache_note, lambda: self._invoke_pipeline(pipeline, kwargs),
+                    before_retry=lambda: generator.manual_seed(base_seed),
+                )
             elapsed = max(0.1, time.perf_counter() - started)
 
             if not frames:
@@ -409,6 +414,8 @@ class DiffusersVideoEngine:
             # user sees what was applied. Joined with " · " for a
             # single-line UI presentation.
             note_parts = [*self._load_notes, *finalize_notes, *kwarg_notes]
+            if cache_note:
+                note_parts.append(cache_note)
             if clip_audio is not None:
                 try:
                     from backend_service.video_runtime.audio_mux import mux_audio_into_mp4

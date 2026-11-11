@@ -1743,6 +1743,31 @@ def phase_5(cap: Capability) -> PhaseResult:
             return "fail", f"live image-to-video: HTTP {code} {data[:160]!r}", {}
         return "pass", "", {"seconds": artifact.get("durationSeconds"), "live": True}
 
+    def _video_cache_strategy():
+        # The video request carries a cache strategy and an interval of 2 to 16 (it used to be dropped, then capped at 1).
+        rc, payload, _ = _cli_json("video-catalog", timeout=15.0)
+        variants = [v for f in ((payload or {}).get("families") or []) for v in (f.get("variants") or [])]
+        row = next((v for v in variants if v.get("id") == "Wan-AI/Wan2.2-TI2V-5B-Diffusers"), None)
+        if row is None:
+            return "skip", "Wan 2.2 TI2V 5B is not in this catalog", {}
+        body = {"modelId": "Wan-AI/Wan2.2-TI2V-5B-Diffusers", "prompt": "waves rolling in", "numFrames": 17,
+                "width": 512, "height": 320, "steps": 8, "seed": 1, "cacheStrategy": "taylorseer", "cacheRelL1Thresh": 3}
+        code, data = _voice_http("POST", "/api/video/generate", body=json.dumps(body).encode("utf-8"),
+                                 content_type="application/json", timeout=3600.0)
+        if code == 422:
+            return "fail", f"the request schema rejects a cache strategy: {data[:200]!r}", {}
+        if not row.get("availableLocally"):
+            return "pass", f"schema accepts the cache fields (HTTP {code}, the model is not installed)", {"live": False}
+        artifact = (json.loads(data.decode("utf-8")) if code == 200 else {}).get("artifact") or {}
+        if not artifact.get("videoPath"):
+            if code == 503 and _is_memory_refusal(data.decode("utf-8", "replace")):
+                return "skip", "host memory gate fired: " + data.decode("utf-8", "replace")[:160], {}
+            return "fail", f"cached live run: HTTP {code} {data[:160]!r}", {}
+        note = str(artifact.get("runtimeNote") or "")
+        if "TaylorSeer Cache applied" not in note and "TaylorSeer Cache not applied" not in note:
+            return "fail", "the runtime note does not say whether the cache was applied: " + note[-160:], {}
+        return "pass", "", {"seconds": artifact.get("durationSeconds"), "live": True}
+
     def _ltx2_diffusers():
         # LTX-2.3 on diffusers (NVIDIA): video and sound together; takes a start and an end picture. Distilled rows
         # run a fixed schedule. Live run only when the 4-bit pack is installed (31 GB).
@@ -1773,6 +1798,7 @@ def phase_5(cap: Capability) -> PhaseResult:
                       ("LTX-2.5 on ltx-2-mlx (routing + live)", _ltx2_engine),
                       ("LTX-2.3 on diffusers with sound (flags; live when installed)", _ltx2_diffusers),
                       ("Wan 2.2 TI2V 5B image-to-video (flags, refusals, live when installed)", _wan_image_to_video),
+                      ("Video diffusion cache strategy reaches the runtime (live when installed)", _video_cache_strategy),
                       ("Wan is not burnt on MPS (FU-102)", _wan_not_burnt)]:
         phase.checks.append(_check(name, fn))
     fails = [c for c in phase.checks if c.status == "fail"]

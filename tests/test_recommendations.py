@@ -283,3 +283,11 @@ class PayloadShapeTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CacheDefaultsMeasuredOnCudaTests(unittest.TestCase):
+    def test_wan_ti2v_5b_defaults_to_no_cache_with_the_measured_reason(self):
+        variant = _variant(VIDEO_MODEL_FAMILIES, "Wan-AI/Wan2.2-TI2V-5B-Diffusers")
+        rec = recommended_settings(variant, "video", CUDA_48, chip=None)
+        self.assertEqual(rec["settings"]["cacheStrategy"], "none")
+        self.assertIn("RTX 4090", rec["reasons"]["cacheStrategy"])

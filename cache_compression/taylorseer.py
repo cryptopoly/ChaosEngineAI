@@ -22,6 +22,7 @@ from . import CacheStrategy
 
 _DEFAULT_CACHE_INTERVAL = 5
 _DEFAULT_MAX_ORDER = 1
+_BLOCK_LEVEL_PATTERN = r"^(?:\w+_)?blocks\.\d+$"
 
 
 def _import_config():
@@ -110,3 +111,28 @@ class TaylorSeerCacheStrategy(CacheStrategy):
             config = TaylorSeerCacheConfig()
 
         transformer.enable_cache(config)
+        from cache_compression._diffusers_probe import hooked_module_count
+
+        if hooked_module_count(transformer) == 0:
+            # diffusers' default patterns look for ``attn1`` / ``attn`` style names; Wan's
+            # blocks match none of them and the cache silently did nothing. Cache whole
+            # blocks instead, then give up honestly if even that matches nothing.
+            transformer.disable_cache()
+            try:
+                config = TaylorSeerCacheConfig(
+                    cache_interval=cache_interval,
+                    max_order=_DEFAULT_MAX_ORDER,
+                    disable_cache_before_step=warmup,
+                    cache_identifiers=[_BLOCK_LEVEL_PATTERN],
+                )
+            except TypeError:
+                raise NotImplementedError(
+                    "TaylorSeer found no attention modules to cache on this transformer."
+                ) from None
+            transformer.enable_cache(config)
+            if hooked_module_count(transformer) == 0:
+                transformer.disable_cache()
+                raise NotImplementedError(
+                    f"TaylorSeer found no attention or block modules to cache on "
+                    f"{type(transformer).__name__}."
+                )

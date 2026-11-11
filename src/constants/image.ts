@@ -166,6 +166,18 @@ export function isFluxFamilyRepo(repo: string | null | undefined): boolean {
   return FLUX_FAMILY_TOKENS.some((token) => lowered.includes(token));
 }
 
+// Rows where no cache pays: step-distilled models run 4 to 8 steps, so there is nothing to
+// skip (FLUX.2 Klein on an RTX 4090: TaylorSeer 0.5-0.75x speed, MagCache and PAB no faster,
+// FasterCache crashes, the picture changes), and FLUX.2's mixed dual / single stream blocks
+// are refused by First Block Cache and have no TeaCache patch.
+const NO_CACHE_IMAGE_TOKENS = ["flux.2", "flux2", "schnell", "turbo", "lightning", "lcm", "hyper-sd"];
+
+export function isCacheUselessImageRepo(repo: string | null | undefined): boolean {
+  if (!repo) return false;
+  const lowered = repo.toLowerCase();
+  return NO_CACHE_IMAGE_TOKENS.some((token) => lowered.includes(token));
+}
+
 export function isUnetImageRepo(repo: string | null | undefined): boolean {
   if (!repo) return false;
   const lowered = repo.toLowerCase();
@@ -186,7 +198,7 @@ export function isUnetImageRepo(repo: string | null | undefined): boolean {
 export function imageCacheStrategiesForRepo(
   repo: string | null | undefined,
 ): typeof IMAGE_CACHE_STRATEGIES {
-  if (isUnetImageRepo(repo)) {
+  if (isUnetImageRepo(repo) || isCacheUselessImageRepo(repo)) {
     return IMAGE_CACHE_STRATEGIES.filter((s) => s.id === "none");
   }
   if (isFluxFamilyRepo(repo)) {

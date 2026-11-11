@@ -633,6 +633,25 @@ class VideoGenerateRouteTests(unittest.TestCase):
         self.assertEqual(len(listing), 1)
         self.assertEqual(listing[0]["artifactId"], artifact["artifactId"])
 
+    def test_generate_forwards_the_cache_strategy_to_the_runtime(self):
+        """The Studio's cache choice used to stop at the request model, so no video ever ran cached."""
+        state = self.client.app.state.chaosengine
+        capabilities = {
+            "activeEngine": "diffusers", "realGenerationAvailable": True, "message": "Ready",
+            "missingDependencies": [], "loadedModelRepo": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+        }
+        generate_mock = mock.MagicMock(return_value=(self._fake_generated_video(), capabilities))
+        state.video_runtime.generate = generate_mock  # type: ignore[method-assign]
+        with mock.patch.object(video_routes, "_video_variant_available_locally", return_value=True):
+            response = self.client.post(
+                "/api/video/generate",
+                json=self._payload(cacheStrategy="taylorseer", cacheRelL1Thresh=3),
+            )
+        self.assertEqual(response.status_code, 200, response.text)
+        config = generate_mock.call_args.args[0]
+        self.assertEqual(config.cacheStrategy, "taylorseer")
+        self.assertEqual(config.cacheRelL1Thresh, 3)
+
     def test_generate_unloads_idle_image_runtime_first(self):
         state = self.client.app.state.chaosengine
         state.image_runtime = mock.MagicMock()

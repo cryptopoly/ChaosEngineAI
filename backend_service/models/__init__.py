@@ -403,7 +403,7 @@ class ImageGenerationRequest(BaseModel):
     # Threshold for caching strategies. ``None`` uses the strategy
     # default (FBCache: 0.12, TeaCache: 0.4). Lower = stricter (more
     # blocks recomputed, less cached, less speedup, less quality drift).
-    cacheRelL1Thresh: float | None = Field(default=None, ge=0.0, le=1.0)
+    cacheRelL1Thresh: float | None = Field(default=None, ge=0.0, le=16.0)
     # FU-021: CFG decay schedule for flow-match image models. Mirrors
     # the video runtime knob. Default off; opt-in.
     cfgDecay: bool = Field(default=False)
@@ -459,6 +459,12 @@ class VideoGenerationRequest(BaseModel):
     steps: int = Field(default=50, ge=1, le=100)
     guidance: float = Field(default=3.0, ge=1.0, le=20.0)
     seed: int | None = Field(default=None, ge=0, le=2147483647)
+    # Diffusion cache strategy id ("fbcache", "teacache", "taylorseer", "magcache",
+    # "pab", "fastercache"); ``None`` or "none" runs the stock pipeline. The
+    # threshold is a rel-L1 value below 1 for fbcache / teacache and a whole-step
+    # interval (2 to 16) for taylorseer / pab / fastercache; ``None`` = strategy default.
+    cacheStrategy: str | None = Field(default=None, max_length=32)
+    cacheRelL1Thresh: float | None = Field(default=None, ge=0.0, le=16.0)
     # Smoothness post-processing. 1 = generated frames only; 2 or 4
     # inserts blended intermediates to raise the effective fps.
     interpolationFactor: int = Field(default=1, ge=1, le=4)

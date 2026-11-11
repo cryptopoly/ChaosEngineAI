@@ -418,22 +418,29 @@ class DiffusersTextToImageEngine:
             kwargs.setdefault("callback_on_step_end", _on_step_end)
             kwargs, kwarg_notes = filter_pipeline_kwargs(pipeline, kwargs)
 
-            started = time.perf_counter()
-            try:
-                result = pipeline(**kwargs)
-            except TypeError as exc:
-                # Older diffusers versions don't accept ``callback_on_step_end``
-                # — drop it and retry once before bubbling the original error.
-                if "callback_on_step_end" in str(exc):
-                    kwargs.pop("callback_on_step_end", None)
-                    try:
-                        result = pipeline(**kwargs)
-                    except TypeError:
-                        kwargs.pop("negative_prompt", None)
-                        result = pipeline(**kwargs)
-                else:
+            def _call_pipeline() -> Any:
+                try:
+                    return pipeline(**kwargs)
+                except TypeError as exc:
+                    # Older diffusers versions don't accept ``callback_on_step_end``
+                    # — drop it and retry once before bubbling the original error.
+                    if "callback_on_step_end" in str(exc):
+                        kwargs.pop("callback_on_step_end", None)
+                        try:
+                            return pipeline(**kwargs)
+                        except TypeError:
+                            kwargs.pop("negative_prompt", None)
+                            return pipeline(**kwargs)
                     kwargs.pop("negative_prompt", None)
-                    result = pipeline(**kwargs)
+                    return pipeline(**kwargs)
+
+            from cache_compression import run_without_cache_on_failure
+
+            started = time.perf_counter()
+            result, cache_note = run_without_cache_on_failure(
+                pipeline, cache_note, _call_pipeline,
+                before_retry=lambda: [g.manual_seed(base_seed + i) for i, g in enumerate(generators)],
+            )
             elapsed = max(0.1, time.perf_counter() - started)
 
             IMAGE_PROGRESS.set_phase(PHASE_DECODING, message="Decoding pixels")

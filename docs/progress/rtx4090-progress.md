@@ -307,7 +307,8 @@ No v0.10.0 installer is published (newest Windows asset: v0.9.9), so it was buil
 The GPU runtime's packages after torch are not held to `release-constraints.txt` (newest at install time), (the CUDA index list used to stop at 13.0; see the cu134 note below).
 
 **Installed app: the GPU runtime on Windows, six bugs fixed** (all in `test/rtx4090`, each with a test; the dev build never hit them because it runs from the dev venv):
-1. `ff00a1b9` — local release build: Git Bash's GNU tar read `C:\…untime.tar.gz` as a remote host. The archive name is now relative to `cwd`.
+1. `ff00a1b9` — local release build: Git Bash's GNU tar read `C:\…
+untime.tar.gz` as a remote host. The archive name is now relative to `cwd`.
 2. `4df43569` — CPU torch from PyPI replaced the CUDA torch, and the repair pass missed it because it read the stale `+cu130` dist-info. It now reads `torch/version.py`.
 3. `47ffa182` — after an install the backend **did not start** ("cannot import name '_common' from partially initialized module 'psutil'"): pip could not replace the loaded `_psutil_windows.pyd` and left `psutil/` with 3 files. The start-up overlay guard now moves aside a bundled package's overlay copy whose RECORD files are missing.
 4. `6fd76791` — the guard ran after `from fastapi import …`, so a broken overlay `pydantic_core` crashed first (the "Backend failed to start" screen you saw); a repeat move of the same version raised "already exists" and stopped the whole tidy-up; and `pydantic` 2.14 stayed behind without its core. Guard now runs before any third-party import (test checks `app.py`), each move gets its own folder and fails alone, and `pydantic` + `pydantic-core` are lock-step.
@@ -550,7 +551,7 @@ Same harness and baselines as W1 (Wan 2.2 TI2V 5B 832x480, 49 frames, 20 steps: 
 
 | Item | Result | Numbers |
 |---|---|---|
-| `torch.compile` on the repeated transformer blocks (Wan) | **SKIP, cannot run here** | `triton-windows 3.7.1` installs (into a scratch folder, not the app); the first step then fails with "Failed to find C compiler". The PC has Visual Studio Build Tools without the C++ workload (no `cl.exe`). Install effort: the C++ build tools (several GB, owner decision) or a bundled compiler. The option now checks for Triton and a compiler first and reports why instead of failing the step. Owner test on Linux and on a Windows PC with the C++ tools. |
+| `torch.compile` on the repeated transformer blocks (Wan) | **measured, off by default** | First attempt failed with "Failed to find C compiler": `cl.exe` is installed (VS Build Tools 2022) but not on PATH. Run from a `vcvars64` prompt with `triton-windows 3.7.1` (scratch folder, not the app) it works: first run **136.8 s** (about 106 s of compilation), then **30.9 s and 29.0 s** against 35.5 s (**1.22x**). Peak VRAM 23.3 GB on the two compiled runs against 12.4 GB, and fine detail changes (PSNR 21 dB against the stock clip). Not worth a default: the gain pays back the compile after about 16 clips and the 23 GB peak leaves no room on smaller cards. The option checks for Triton and a compiler (`cl` on PATH or `CC`) and reports why instead of failing a step. |
 | Attention backend: SDPA vs sage vs flash | **SKIP** | `set_attention_backend("sage")` needs `sageattention>=2.1.1`; PyPI stops at 1.0.6 (Triton v1), so the app's existing "SageAttention unavailable" path is what runs. `flash-attn>=2.6.3` has no Windows wheel on PyPI. SDPA stays. Building SageAttention 2 needs MSVC plus the CUDA toolkit. |
 | VAE tiling / slicing (Wan, 832x480) | **no gain, no harm** | 34.8 s / 35.3 s against 35.3 s; peak 12.6 GB in all three. VAE decode is 7.5 s of the 35 s (21 %). |
 | VAE tiling (LTX-2.3 4-bit) | **no gain** | 58.4 s against 58.0 s; peak 18.1 GB. Decode is 3.7 s of 58 s (6 %). |
@@ -559,4 +560,41 @@ Same harness and baselines as W1 (Wan 2.2 TI2V 5B 832x480, 49 frames, 20 steps: 
 | Distilled rows (Klein 4 steps, LTX-2.3 8 steps) | n/a | nothing to cut; their model cards set the steps. |
 | TeaCache-style skipping | see W1 | |
 
-**Defaults changed:** none; nothing in W2 beat the stock path on this card. **Owner tests:** `torch.compile` and SageAttention 2 on Linux CUDA, and with the Windows C++ tools; VAE tiling on 12 to 16 GB cards, where decode peak matters more than it does on 24 GB.
+**Defaults changed:** none; nothing in W2 beat the stock path on this card. **Owner tests:** `torch.compile` on Linux CUDA and on cards under 24 GB (peak), SageAttention 2 on Linux CUDA; VAE tiling on 12 to 16 GB cards, where decode peak matters more than it does on 24 GB.
+
+
+## Speed-up and quantisation pass, W3: quantisation for image and video (2026-11-11)
+
+Standalone runs (one fresh process per option, warm second generation, same seed 7, PSNR against the bf16 output), outside the app so each option is isolated: scripts in the session scratch folder. Optional packages (`torchao 0.17`, `gguf 0.19`, `nunchaku 1.1.0`) went into scratch folders, not the app's overlay.
+
+**Already in the app:** NF4 via bitsandbytes (FLUX.1 only, `try_load_nf4_flux_transformer`, plus LTX-2.3), torchao int8 weight-only (FLUX.1, Mac only), GGUF single-file transformers, Nunchaku SVDQuant (FLUX / Qwen-Image / SD3 / SANA, catalog rows), and FP8 layerwise casting (`fp8LayerwiseCasting`, gated to compute capability 8.9 and up).
+
+**FLUX.2 Klein 4B, 1024x640, 4 steps, whole pipeline on the card** (bf16: transformer 7.75 GB, 9.2 s, peak 17.6 GB):
+
+| Option | Transformer | Time | Peak VRAM | PSNR | Looks | Verdict |
+|---|---|---|---|---|---|---|
+| FP8 layerwise (E4M3 storage, bf16 compute) | 3.89 GB | 10.4 s (+13 %) | 13.8 GB | 28.4 | same picture | **PASS** (already shipped; confirmed live) |
+| NF4 (bitsandbytes) | 1.94 GB | 9.7 s (+5 %) | 12.1 GB | 22.1 | same picture | **PASS** for the model; the app only wires NF4 for FLUX.1 |
+| 8-bit (bitsandbytes int8) | 3.88 GB | 10.9 s | 13.8 GB | 10.7 | **pure noise** | **FAIL** (upstream: int8 on FLUX.2 gives noise) |
+| torchao int8 weight-only | n/a (logical size) | 10.2 s (+11 %) | 13.8 GB | **33.1** | same picture | **PASS, best quality**; not wired on CUDA (FU-160) |
+| torchao fp8 weight-only | n/a | 12.9 s (+40 %) | 13.8 GB | 27.4 | one stray object | PASS, slow |
+
+**Wan 2.2 TI2V 5B, 832x480, 49 frames, 20 steps, model CPU offload** (bf16: transformer 10.02 GB, 32.6 s; peak 11.5 GB is the text encoder, so weight savings do not show in the peak). PSNR is against the bf16 clip; 20 dB or less is a visibly different clip.
+
+| Option | Transformer | Time | PSNR | Looks | Verdict |
+|---|---|---|---|---|---|
+| FP8 layerwise | 5.11 GB | 32.7 s | 19.1 | scene and lighthouse kept, birds differ | **PASS** |
+| NF4 (bitsandbytes) | 2.54 GB | 31.6 s | 13.7 | the lighthouse breaks into a light beam | **FAIL on quality** (5B is too small for 4-bit) |
+| GGUF Q4_K_M (diffusers) | 3.45 GB | **154 s (4.7x slower)** | 17.0 | | **FAIL on speed** (dequantises every layer every step) |
+| torchao int8 / fp8 weight-only | n/a | 34.0 s / 35.1 s | 19.5 to 20.4 / 17.0 to 18.9 | | neutral: no speed or peak gain with offload |
+
+Finding while testing: the generic `DiffusionPipeline.from_pretrained(..., transformer=obj)` silently ignores a quantised transformer for Wan 2.2 (`pipe.transformer is obj` is False, bf16 weights are loaded); the specific `WanPipeline.from_pretrained` honours it. The app calls the specific class (`pipeline_cls.from_pretrained`), so it is not affected; worth knowing before anyone switches to `AutoPipeline`.
+
+| Item | Result |
+|---|---|
+| Nunchaku / SVDQuant on this torch | **SKIP, does not load.** A Windows wheel for torch 2.11 and cp312 exists (`nunchaku-ai/nunchaku`, `nunchaku-1.1.0+torch2.11`, 112 MB); installed alone into a scratch folder, `import nunchaku` fails with "DLL load failed while importing _C: The specified procedure could not be found" against this PC's `torch 2.11.0+cu128`. The wheel's binary does not match that CUDA build (the app's own GPU runtime installs a cu130 torch). The 6.75 GB SVDQuant pack and the 10 GB of FLUX.1-schnell text encoders were downloaded for it (HF cache, 17 GB, Apache 2.0) and are still there. **Owner test:** with the cu130 GPU runtime. The app's pin is 1.2.1; the newest torch 2.11 Windows wheel is 1.1.0. The PyPI `nunchaku` (0.16.1, 17 KB) is an unrelated stub, as the app already notes. |
+| GGUF image / video | measured above (Wan TI2V Q4_K_M, 3.4 GB, Apache 2.0, from `QuantStack/Wan2.2-TI2V-5B-GGUF`): works, but 4.7x slower. GGUF stays a memory-only option for models that do not fit. |
+| LTX-2.3 bf16 with fp8 | SKIP: the bf16 rows are 100 GB downloads. The 4-bit row already runs (section "LTX-2.3 with sound"). |
+| NVFP4 / hardware fp8 | **Gate written, live run SKIP (no hardware).** `backend_service/helpers/gpu_formats.py`: `nvfp4_supported(cc)` is true from compute capability 10.0 (B200 10.x, RTX 50-series 12.0, DGX Spark 12.1) and false for this card (8.9); `fp8_supported` from 8.9. Read from the card, never assumed. `tests/test_gpu_formats.py`. **Owner test:** an RTX 5090 or a Spark. |
+
+**Catalog change:** none. Every row that passed is either already offered (FP8 layerwise, NF4 for FLUX.1) or needs a new load path and a toggle (torchao int8 on CUDA, FU-160); the two Wan options that save memory fail on quality or speed.

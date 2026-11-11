@@ -1,13 +1,22 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 77 rows with work, decisions or watch items still open, newest first.
+summary: 78 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-160 · Weight quantisation on NVIDIA for FLUX.2 and Wan: torchao int8 (best measured quality), NF4 beyond FLUX.1, Nunchaku on the cu130 runtime — Open (2026-11-11): measured on an RTX 4090, nothing wired.</summary>
+
+**Status or trigger:** **Open (2026-11-11): measured on an RTX 4090, nothing wired.**
+
+**Notes:** `docs/progress/rtx4090-progress.md`, W3. On FLUX.2 Klein 4B: torchao int8 weight-only 33.1 dB, 10.2 s vs 9.2 s, peak 17.6 to 13.8 GB; NF4 22.1 dB, 12.1 GB; FP8 layerwise 28.4 dB (already shipped). bitsandbytes int8 gives noise on FLUX.2, so do not offer it. On Wan 2.2 TI2V 5B NF4 breaks the picture and GGUF Q4 is 4.7x slower, so only FP8 layerwise passes there. To do: a `weightQuant` choice (int8 / NF4 / FP8) that reads the card, loads torchao int8 through the existing `TorchAoConfig` helper for CUDA and FLUX.2, with the torchao version pinned to the torch build by the Setup path. Nunchaku: the `torch2.11` Windows wheel (1.1.0) fails to import against `torch 2.11.0+cu128`; owner test on the cu130 GPU runtime. NVFP4 gate exists (`helpers/gpu_formats.py`), no live run (needs Blackwell).
+
+</details>
 
 <details>
 <summary>FU-159 · Image-to-video and Storyboard clips on NVIDIA PCs (Wan 2.2 TI2V 5B), text-only shots — Shipped 2026-11-10 on test/rtx4090</summary>

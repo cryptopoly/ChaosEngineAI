@@ -748,3 +748,22 @@ Built on `test/rtx4090`; design in the section "TensorFold 1.x on the RTX 4090" 
 - **Live, through the app (backend on 8876, RTX 4090, driver 621.14)**: status gate `ready` (`nvidia-sm89`), load of Qwen3.8-27B + `z-lab/Qwen3.8-27B-DFlash2` in 46 s (engine `tensorfold-native`, drafter engaged, 21.4 GB used on the card), then 300-token replies: **49.6 tok/s plain, 132 tok/s drafted on prose, 206 tok/s drafted on code** (app default sampling, not forced greedy; the standalone greedy runs read 147-151 and about 300). Unload returned the card to 1.8 GB.
 - **Tests**: `tests/test_tensorfold_native.py` (43), vitest `tensorfoldSupport.test.ts` (+2), `tsc` clean, `npm run i18n:validate` OK (two new en keys, other locales `null`). E2E: phase 1 check "TensorFold 1.x native, CUDA (FU-111)" (skips without the binary); the Mac check and the catalog check skip or relax for the native engine.
 - **Not done**: Linux archive installed live; `tfgrammar` (structured output) on the Windows source build; Gemma 4, Qwen3.6-MoE and LFM2.5 registry rows; image input run.
+
+
+## Rebuilt installer installed over the installed app, section 7 smoke again (2026-11-11)
+
+Installed over the existing 0.10.0 (silent `/S`, exit 0) with your OK. The build includes everything up to `18cb80e6`.
+
+| Item | Result | Evidence |
+|---|---|---|
+| `./build.sh` as written | **FAIL on this PC, with a reason** | It installs into and stages the dev `.venv` (torch, diffusers, bitsandbytes and the rest): the runtime archive came out at **3.04 GB** and `makensis` stopped with "failed creating mmap" of it (NSIS cannot map past 2 GB). It also upgrades packages in the dev `.venv` without `release-constraints.txt`. A release build must stage a clean venv. |
+| Installer built instead | PASS | Same steps as `release.yml` from a clean Python 3.12 venv (`C:\Users\Dan\release-venv-w5`, `release-constraints.txt`), `npx tauri build --bundles nsis`, release staging, `tauri.conf.json` untouched: `ChaosEngineAI_0.10.0_x64-setup.exe`, **136.6 MB**; runtime archive **131.9 MB**. |
+| Install over the old app | PASS | Exit 0; `ChaosEngineAI.exe` product version 0.10.0, timestamp moved from Nov 10 12:10 to Nov 11 15:11. No app or backend process was running first. |
+| Backend starts | PASS | `/api/health` 200 after **24 s**; `appVersion` 0.10.0; runtime unpacked to `%TEMP%\chaosengine-embedded-runtime\windows-x86_64-30e8dd42` (old extractions are still never cleaned). |
+| Overlay guard | PASS | `extras\cp312\stale-core` holds 53 entries, all from Nov 4 and Nov 10; nothing new after the update, so nothing was quarantined. The overlay still has `torch 2.14.1+cu130`, `diffusers 0.42.1`, `transformers 5.22.2`, `bitsandbytes 0.50.2`. |
+| GPU runtime present, torch is the CUDA build | PASS (existing runtime kept) | The installed app's own Python with the overlay: `torch 2.14.1+cu130`, CUDA 13.0, `cuda.is_available() True`, RTX 4090. Image and video runtimes report diffusers ready, expected device `cuda`, 23.99 GB. |
+| GPU runtime install from scratch | **SKIP** | Not re-run: the overlay is kept across updates by design and the install (466 s, 17 packages) passed on the earlier build; reinstalling would only repeat it. |
+| One image from the installed app | PASS | FLUX.2 Klein 4B 1024x640: `Diffusers local engine (cuda)`, **14.8 s** generation (65.3 s with the first load), peak 10.3 GB. |
+| One video from the installed app | PASS | Wan 2.2 TI2V 5B 832x480, 49 frames, 20 steps: `Diffusers video engine (cuda)`, **42.3 s** generation (85.5 s total), peak 13.2 GB. |
+
+The installed app was closed afterwards (backend down, GPU free for the TensorFold session). Not exercised against the installed app: the step watchdog's hard stop.

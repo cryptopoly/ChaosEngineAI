@@ -323,6 +323,8 @@ def refresh_install_detection() -> None:
         if _capability_cache is None:
             return
         _cached_at, capabilities = _capability_cache
+        # An installed CUDA llama-server wins over the bundled one (binaries._resolve_llama_server).
+        capabilities.llamaServerPath = _resolve_llama_server() or capabilities.llamaServerPath
         capabilities.mtplxAvailable, capabilities.mtplxPythonPath = _detect_mtplx()
         (
             capabilities.tensorfoldAvailable,

@@ -1339,6 +1339,7 @@
   },
   "llamaCuda": {
     "description": "CUDA {cuda} を使い、NVIDIA GPU で GGUF チャットモデルを実行します（llama.cpp {tag}）。ダウンロードは約 680 MB で、CUDA ランタイムを含みます（ディスク上では 0.9 GB）。",
+    "driverTooOld": null,
     "inUse": "使用中：GGUF モデルは NVIDIA GPU で実行されます。",
     "install": "インストール",
     "installedNoDevice": "インストール済みですが、CUDA デバイスが見つかりませんでした。NVIDIA ドライバー（nvidia-smi）を確認してください。",

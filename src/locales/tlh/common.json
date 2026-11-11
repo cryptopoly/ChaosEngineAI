@@ -1339,6 +1339,7 @@
   },
   "llamaCuda": {
     "description": "CUDA {cuda} (llama.cpp {tag}) lo'taHvIS NVIDIA GPUlIjDaq GGUF ja'chuq yab chu'. tlhoS 680 MB lI', CUDA jonta' je (polmeH DaqDaq 0.9 GB).",
+    "driverTooOld": null,
     "inUse": "lo'lu'taH: NVIDIA GPUDaq Qap GGUF yab.",
     "install": "yIjom",
     "installedNoDevice": "jomlu'ta', 'ach CUDA jan tu'be'. NVIDIA driver yInuD (nvidia-smi).",

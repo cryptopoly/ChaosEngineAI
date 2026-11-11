@@ -1339,6 +1339,7 @@
   },
   "llamaCuda": {
     "description": "使用 CUDA {cuda} 在你的 NVIDIA GPU 上运行 GGUF 聊天模型（llama.cpp {tag}）。下载约 680 MB，含 CUDA 运行时（磁盘占用 0.9 GB）。",
+    "driverTooOld": null,
     "inUse": "使用中：GGUF 模型在 NVIDIA GPU 上运行。",
     "install": "安装",
     "installedNoDevice": "已安装，但未找到 CUDA 设备。请检查 NVIDIA 驱动程序（nvidia-smi）。",

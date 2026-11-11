@@ -95,7 +95,7 @@ def _which_with_fallbacks(name: str) -> str | None:
 
 
 def _resolve_llama_server() -> str | None:
-    # A CUDA build the user installed from Setup (Linux + NVIDIA) wins over the
+    # A CUDA build the user installed from Setup (Linux or Windows + NVIDIA) wins over the
     # bundled portable build, but only when it actually sees a CUDA device.
     from backend_service.helpers import llama_cuda
 

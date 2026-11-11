@@ -572,13 +572,24 @@ export async function getLtx2InstallStatus(): Promise<Ltx2JobState> {
   return await fetchJson<Ltx2JobState>("/api/setup/install-ltx2/status", 10000);
 }
 
-// ---- CUDA llama-server (Linux x86_64 / ARM64 with an NVIDIA driver) ----
+// ---- CUDA llama-server (Linux or Windows, x86_64 / ARM64, with an NVIDIA driver) ----
 
 export interface LlamaCudaStatus {
-  /** True on Linux x86_64 / ARM64 when nvidia-smi answers. */
+  /** True on Linux or Windows (x86_64 / ARM64) when nvidia-smi answers, even if the driver is too old. */
   supported: boolean;
+  /** True when this driver can take the install. */
+  canInstall: boolean;
+  state: "unsupported" | "no-driver" | "driver-too-old" | "not-installed" | "installed-no-device" | "in-use";
+  /** One line the panel can show as is. */
+  message: string;
+  os: "linux" | "windows" | null;
   arch: "x64" | "arm64" | null;
   driverMajor: number | null;
+  /** Newest CUDA version the driver supports, for example "13.5". */
+  driverCuda: string | null;
+  driverTooOld: boolean;
+  /** Every downloaded archive matched its published sha256. */
+  verified: boolean;
   cudaVersion: string | null;
   tag: string;
   installed: boolean;

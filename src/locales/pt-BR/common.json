@@ -1339,6 +1339,7 @@
   },
   "llamaCuda": {
     "description": "Executa modelos de chat GGUF na sua GPU NVIDIA com CUDA {cuda} (llama.cpp {tag}). O download tem cerca de 680 MB, incluindo o runtime do CUDA (0,9 GB em disco).",
+    "driverTooOld": null,
     "inUse": "Em uso: os modelos GGUF rodam na GPU NVIDIA.",
     "install": "Instalar",
     "installedNoDevice": "Instalado, mas nenhum dispositivo CUDA foi encontrado. Verifique o driver da NVIDIA (nvidia-smi).",

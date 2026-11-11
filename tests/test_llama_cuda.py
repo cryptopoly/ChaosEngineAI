@@ -44,7 +44,7 @@ class AssetChoiceTests(unittest.TestCase):
     def test_asset_names_match_the_published_release(self) -> None:
         # Names as published with llama.cpp b11981.
         self.assertEqual(
-            llama_cuda.asset_names("arm64", "13.4", "b11981"),
+            llama_cuda.asset_names("arm64", "13.4", "b11981", "linux"),
             ("llama-b11981-bin-ubuntu-cuda-13.4-arm64.tar.gz",
              "cudart-llama-b11981-bin-ubuntu-cuda-13.4-arm64.tar.gz"),
         )
@@ -113,9 +113,15 @@ class SelectionTests(_TempRoot):
 
 
 class InstallTests(_TempRoot):
+    def setUp(self) -> None:
+        super().setUp()
+        patcher = mock.patch.object(llama_cuda, "host_os", return_value="linux")
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     def test_install_unpacks_both_archives_into_one_folder(self) -> None:
         sources = Path(tempfile.mkdtemp(prefix="ce-llama-src-"))
-        build, cudart = llama_cuda.asset_names("arm64", "13.4")
+        build, cudart = llama_cuda.asset_names("arm64", "13.4", llama_cuda.LLAMA_CPP_TAG, "linux")
         _tarball(sources / build, {"llama-server": b"#!/bin/sh\n", "libggml-cuda.so": b"x"}, "llama-b11981")
         _tarball(sources / cudart, {"libcudart.so.13": b"x", "libcublas.so.13": b"x"}, "cudart")
 
@@ -126,6 +132,8 @@ class InstallTests(_TempRoot):
 
         with mock.patch.object(llama_cuda, "host_arch", return_value="arm64"), \
                 mock.patch.object(llama_cuda, "nvidia_driver_major", return_value=580), \
+                mock.patch.object(llama_cuda, "nvidia_driver_cuda", return_value=(13, 1)), \
+                mock.patch.object(llama_cuda, "expected_sha256", return_value=None), \
                 mock.patch.object(llama_cuda, "_download", side_effect=fake_download):
             binary = llama_cuda.install()
 
@@ -166,13 +174,15 @@ class RouteTests(_TempRoot):
 
         app = FastAPI()
         app.include_router(router)
-        with mock.patch.object(llama_cuda, "host_arch", return_value="arm64"), \
+        with mock.patch.object(llama_cuda, "host_os", return_value="linux"), \
+                mock.patch.object(llama_cuda, "host_arch", return_value="arm64"), \
                 mock.patch.object(llama_cuda, "nvidia_driver_major", return_value=None):
             body = TestClient(app).get("/api/setup/llama-cuda-status").json()
         self.assertFalse(body["supported"])
         self.assertFalse(body["installed"])
         self.assertFalse(body["inUse"])
-        self.assertEqual(body["cudaVersion"], "13.4")
+        self.assertEqual(body["state"], "no-driver")
+        self.assertIsNone(body["cudaVersion"])
 
 
 if __name__ == "__main__":

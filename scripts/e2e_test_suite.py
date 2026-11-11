@@ -956,6 +956,32 @@ def phase_1(cap: Capability) -> PhaseResult:
             prompt="Reply with two words: hello there", load_timeout=600.0,
         )
 
+    # 1d5. CUDA llama-server (Linux and Windows, NVIDIA). Reads the status route and
+    # checks the driver gate and the install record agree. Never downloads: it skips on
+    # a host without an NVIDIA driver, when the driver is too old (the message must say
+    # so), and when the CUDA build is not installed. When it is installed it must list a
+    # CUDA device ("in-use") and the install record must carry both archive checksums.
+    def _llama_cuda():
+        rc, state, _ = _cli_json("call", "GET", "/api/setup/llama-cuda-status", timeout=60.0)
+        if rc != 0 or not isinstance(state, dict):
+            return "fail", "llama-cuda-status failed", {}
+        for key in ("supported", "canInstall", "state", "message", "installed", "inUse", "tag"):
+            if key not in state:
+                return "fail", f"status is missing {key!r}", state
+        if not state["supported"]:
+            return "skip", f"no NVIDIA CUDA lane on this host ({state['state']}): {state['message'][:120]}", state
+        if state.get("driverTooOld"):
+            if state["canInstall"] or "too old" not in state["message"]:
+                return "fail", "driver too old but the status offers the install or hides why", state
+            return "skip", state["message"][:160], state
+        if not state["installed"]:
+            return "skip", "CUDA llama-server not installed (POST /api/setup/install-llama-cuda)", state
+        if not state["inUse"]:
+            return "fail", f"installed but lists no CUDA device: {state['message'][:160]}", state
+        if not state.get("verified"):
+            return "fail", "installed build was not checked against a published sha256", state
+        return "pass", "", state
+
     # 1e. GGUF (llama.cpp backend). Cycle through .gguf files until one loads
     # so a single broken model doesn't fail the whole check.
     def _gguf():
@@ -1246,6 +1272,7 @@ def phase_1(cap: Capability) -> PhaseResult:
         ("TensorFold 1.x native, CUDA (FU-111)", _tensorfold_native_engine),
         ("MLX Kolibri 1, vendored architecture (FU-103)", _kolibri),
         ("MLX LFM3, vendored architecture", _lfm3),
+        ("CUDA llama-server lane (Windows and Linux)", _llama_cuda),
         ("GGUF llama.cpp", _gguf),
         ("GGUF MTP speculative", _gguf_mtp),
         ("GGUF speculative lane (sidecar / ngram-mod)", _gguf_spec_lane),

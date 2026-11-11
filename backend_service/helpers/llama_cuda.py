@@ -1,17 +1,20 @@
-"""NVIDIA CUDA build of llama-server for Linux (x86_64 and ARM64, e.g. DGX Spark).
+"""NVIDIA CUDA build of llama-server for Linux (x86_64, ARM64) and Windows (x64, ARM64).
 
 The release bundle stages a portable llama-server (Vulkan on x86_64, CPU on
 ARM64). This module downloads ggml-org's prebuilt CUDA build of the same pinned
 tag, plus its CUDA runtime archive, into ``~/.chaosengine/bin/llama-cuda/<tag>/``.
-The binaries carry ``RUNPATH $ORIGIN``, so the CUDA runtime libraries placed next
-to them are found without ``LD_LIBRARY_PATH``; only ``libcuda.so.1`` comes from
-the NVIDIA driver. The install is used only when this host's ``llama-server
---list-devices`` reports a CUDA device, so a machine without a working NVIDIA
-driver keeps the bundled build.
+On Linux the binaries carry ``RUNPATH $ORIGIN``; on Windows the DLLs sit next to
+``llama-server.exe``, which is where the loader looks first. Either way the CUDA
+runtime libraries are found without touching ``LD_LIBRARY_PATH`` or ``PATH``, and
+only the driver library (``libcuda.so.1`` / ``nvcuda.dll``) comes from the NVIDIA
+driver. The install is used only when this host's ``llama-server --list-devices``
+reports a CUDA device, so a machine without a working NVIDIA driver keeps the
+bundled build. Archives are checked against the sha256 published with the release.
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import platform
@@ -21,7 +24,9 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import time
 import urllib.request
+import zipfile
 from pathlib import Path
 from typing import Callable
 
@@ -37,9 +42,18 @@ _CUDA13_MIN_DRIVER = 580
 _usable_cache: dict[str, str | None] = {}
 
 
+def host_os() -> str | None:
+    """``"linux"`` or ``"windows"`` when llama.cpp publishes CUDA builds for it, else None."""
+    if sys.platform.startswith("linux"):
+        return "linux"
+    if sys.platform == "win32":
+        return "windows"
+    return None
+
+
 def host_arch() -> str | None:
-    """llama.cpp's asset arch for this Linux host, or None when unsupported."""
-    if not sys.platform.startswith("linux"):
+    """llama.cpp's asset arch for this host (Linux or Windows), or None when unsupported."""
+    if host_os() is None:
         return None
     machine = platform.machine().lower()
     if machine in ("x86_64", "amd64"):
@@ -89,16 +103,125 @@ def nvidia_driver_cuda() -> tuple[int, int] | None:
 
 
 def cuda_version_for(arch: str, driver_major: int | None) -> str:
-    """CUDA build to fetch: 13.4 by default; 12.8 on x86_64 with a pre-580 driver."""
+    """Linux CUDA build to fetch: 13.4 by default; 12.8 on x86_64 with a pre-580 driver."""
     if arch == "x64" and driver_major is not None and driver_major < _CUDA13_MIN_DRIVER:
         return "12.8"
     return "13.4"
 
 
-def asset_names(arch: str, cuda: str, tag: str = LLAMA_CPP_TAG) -> tuple[str, str]:
+# Windows builds published by ggml-org: CUDA 12.4 (x64) and 13.4 (x64, ARM64). A CUDA 13
+# runtime needs a driver that reports CUDA 13 or newer; CUDA 12.4 needs one reporting 12.4+.
+_WIN_CUDA12_MIN = (12, 4)
+
+
+def windows_cuda_version(
+    arch: str, driver_cuda: tuple[int, int] | None, driver_major: int | None = None
+) -> str | None:
+    """Windows build for this driver ("13.4" or "12.4"), or None when the driver is too old.
+
+    ``driver_cuda`` is the version ``nvidia-smi`` reports. When it cannot be read the driver
+    major decides (580 and newer is CUDA 13, 551 and newer is CUDA 12.4).
+    """
+    if driver_cuda is None and driver_major is not None:
+        if driver_major >= _CUDA13_MIN_DRIVER:
+            driver_cuda = (13, 0)
+        elif driver_major >= 551:
+            driver_cuda = (12, 4)
+        else:
+            driver_cuda = (0, 0)
+    if driver_cuda is None:
+        return None
+    if driver_cuda[0] >= 13:
+        return "13.4"
+    if arch == "x64" and driver_cuda >= _WIN_CUDA12_MIN:
+        return "12.4"
+    return None
+
+
+def asset_names(arch: str, cuda: str, tag: str = LLAMA_CPP_TAG, os_name: str | None = None) -> tuple[str, str]:
     """(llama.cpp build, CUDA runtime) archive names published with ``tag``."""
+    if (os_name or host_os()) == "windows":
+        suffix = f"bin-win-cuda-{cuda}-{arch}.zip"
+        return f"llama-{tag}-{suffix}", f"cudart-llama-{suffix}"
     suffix = f"bin-ubuntu-cuda-{cuda}-{arch}.tar.gz"
     return f"llama-{tag}-{suffix}", f"cudart-llama-{tag}-{suffix}"
+
+
+# sha256 of the Windows archives of the pinned tag, from the release's published digests.
+# Other tags are looked up from the release at install time (see ``release_digests``).
+_PINNED_SHA256: dict[str, str] = {
+    "llama-b11981-bin-win-cuda-12.4-x64.zip": "dcb0f6be103aec6c55a365be71a678c0cf620f9c85bf9a16de78090edd44ddbb",
+    "cudart-llama-bin-win-cuda-12.4-x64.zip": "8c79a9b226de4b3cacfd1f83d24f962d0773be79f1e7b75c6af4ded7e32ae1d6",
+    "llama-b11981-bin-win-cuda-13.4-x64.zip": "b160dff6e5d74855eda001261299b5fc1f4db714080f04c35f3a5c8c696c9691",
+    "cudart-llama-bin-win-cuda-13.4-x64.zip": "738f8c251ac22b70c3ae6f83a10cf222725df0395246a2cf58f32bdb85fbe668",
+    "llama-b11981-bin-win-cuda-13.4-arm64.zip": "e535c88877b62b1f632f1c7e08f3f87de720cae06af1e86b3a34a6539ab6cb6f",
+    "cudart-llama-bin-win-cuda-13.4-arm64.zip": "642dcde8805b3e3165ca710a5443b3b4044b27d96bd3ee3132473988c9bcb774",
+}
+
+
+def release_digests(tag: str) -> dict[str, str]:
+    """``{asset name: sha256}`` the GitHub release publishes for ``tag`` (empty when unreachable)."""
+    url = f"https://api.github.com/repos/ggml-org/llama.cpp/releases/tags/{tag}"
+    try:
+        request = urllib.request.Request(
+            url, headers={"User-Agent": "ChaosEngineAI", "Accept": "application/vnd.github+json"}
+        )
+        with urllib.request.urlopen(request, timeout=20) as response:  # noqa: S310 - fixed https host
+            payload = json.loads(response.read().decode("utf-8"))
+    except (OSError, ValueError):
+        return {}
+    digests: dict[str, str] = {}
+    for asset in payload.get("assets") or []:
+        digest = str(asset.get("digest") or "")
+        if digest.startswith("sha256:") and asset.get("name"):
+            digests[str(asset["name"])] = digest.split(":", 1)[1].lower()
+    return digests
+
+
+def expected_sha256(name: str, tag: str, fetch: Callable[[str], dict[str, str]] = release_digests) -> str | None:
+    """The published sha256 for ``name`` (pinned table for the pinned tag, else the release), or None."""
+    pinned = _PINNED_SHA256.get(name) if tag == LLAMA_CPP_TAG else None
+    return pinned or fetch(tag).get(name)
+
+
+def sha256_of(path: Path) -> str:
+    digest = hashlib.sha256()
+    with open(path, "rb") as handle:
+        for block in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def server_name() -> str:
+    return "llama-server.exe" if host_os() == "windows" else "llama-server"
+
+
+def plan(tag: str = LLAMA_CPP_TAG) -> dict:
+    """What this host can install: ``{"ok", "state", "message", "cuda", ...}``.
+
+    ``state`` is ``unsupported`` (no published build for this OS or CPU), ``no-driver``
+    (nvidia-smi missing or failing), ``driver-too-old`` or ``ready``. Nothing here names a
+    card: the driver version alone decides, and the CUDA build itself reports the devices.
+    """
+    os_name, arch = host_os(), host_arch()
+    base = {"os": os_name, "arch": arch, "cuda": None, "driverMajor": None, "driverCuda": None}
+    if os_name is None or arch is None:
+        return {**base, "ok": False, "state": "unsupported",
+                "message": "A CUDA build of llama-server is published for Linux and Windows on x86_64 or ARM64 only."}
+    driver = nvidia_driver_major()
+    if driver is None:
+        return {**base, "ok": False, "state": "no-driver",
+                "message": "No NVIDIA driver found (nvidia-smi did not answer). The bundled build stays in use."}
+    driver_cuda = nvidia_driver_cuda()
+    shown = f"{driver_cuda[0]}.{driver_cuda[1]}" if driver_cuda else None
+    base.update(driverMajor=driver, driverCuda=shown)
+    cuda = windows_cuda_version(arch, driver_cuda, driver) if os_name == "windows" else cuda_version_for(arch, driver)
+    if cuda is None:
+        have = f"CUDA {shown}" if shown else f"driver {driver}"
+        return {**base, "ok": False, "state": "driver-too-old",
+                "message": f"The NVIDIA driver is too old ({have}). llama.cpp's CUDA builds need CUDA 12.4 or newer "
+                           "(driver 551 or newer on Windows); update the driver, then install again."}
+    return {**base, "ok": True, "state": "ready", "cuda": cuda, "message": ""}
 
 
 def install_dir(tag: str = LLAMA_CPP_TAG) -> Path:
@@ -108,7 +231,7 @@ def install_dir(tag: str = LLAMA_CPP_TAG) -> Path:
 def installed_binary(tag: str = LLAMA_CPP_TAG) -> Path | None:
     """The installed CUDA llama-server for ``tag``, or None."""
     target = install_dir(tag)
-    binary = target / "llama-server"
+    binary = target / server_name()
     if (target / _MARKER).is_file() and binary.is_file() and os.access(binary, os.X_OK):
         return binary
     return None
@@ -175,6 +298,24 @@ def _safe_extract(archive: Path, dest: Path) -> None:
         tar.extractall(root)  # noqa: S202 - every member checked above
 
 
+def _safe_extract_zip(archive: Path, dest: Path) -> None:
+    """Extract a zip into ``dest``, refusing members that would land outside it."""
+    root = dest.resolve()
+    with zipfile.ZipFile(archive) as zf:
+        for info in zf.infolist():
+            target = (root / info.filename).resolve()
+            if target != root and root not in target.parents:
+                raise ValueError(f"archive member escapes the install folder: {info.filename}")
+        zf.extractall(root)  # noqa: S202 - every member checked above
+
+
+def _extract(archive: Path, dest: Path) -> None:
+    if archive.suffix == ".zip":
+        _safe_extract_zip(archive, dest)
+    else:
+        _safe_extract(archive, dest)
+
+
 def _flatten_into(source: Path, dest: Path) -> None:
     """Move every file and symlink under ``source`` into ``dest`` (no subfolders)."""
     for path in sorted(source.rglob("*")):
@@ -201,6 +342,9 @@ def _download(url: str, dest: Path, progress: Callable[[int, int | None], None])
             progress(done, total_bytes)
 
 
+_MIN_FREE_BYTES = 3 * (1 << 30)
+
+
 def install(
     log: Callable[[str], None] = lambda _msg: None,
     progress: Callable[[str, int, int | None], None] = lambda *_args: None,
@@ -208,16 +352,22 @@ def install(
 ) -> Path:
     """Download and unpack the CUDA build for this host. Returns the llama-server path.
 
-    Raises RuntimeError when the host is not Linux x86_64 / ARM64. The new
-    folder replaces an older install of the same tag only after it is complete.
+    Raises RuntimeError when the host has no published build, no NVIDIA driver or a driver
+    that is too old, when an archive does not match its published sha256, or when the disk
+    is nearly full. The new folder replaces an older install of the same tag only after it is
+    complete.
     """
-    arch = host_arch()
-    if arch is None:
-        raise RuntimeError("The CUDA build of llama-server is for Linux x86_64 and ARM64 only.")
-    driver = nvidia_driver_major()
-    cuda = cuda_version_for(arch, driver)
-    names = asset_names(arch, cuda, tag)
+    chosen = plan(tag)
+    if not chosen["ok"]:
+        raise RuntimeError(chosen["message"])
+    arch, cuda, os_name = chosen["arch"], chosen["cuda"], chosen["os"]
+    names = asset_names(arch, cuda, tag, os_name)
     INSTALL_ROOT.mkdir(parents=True, exist_ok=True)
+    free = shutil.disk_usage(INSTALL_ROOT).free
+    if free < _MIN_FREE_BYTES:
+        raise RuntimeError(f"Not enough disk space: {free / (1 << 30):.1f} GB free, the install needs about 3 GB.")
+    checksums: dict[str, str] = {}
+    verified: dict[str, bool] = {}
     with tempfile.TemporaryDirectory(dir=INSTALL_ROOT, prefix=".staging-") as tmp:
         work = Path(tmp)
         unpacked = work / "unpacked"
@@ -229,23 +379,47 @@ def install(
             log(f"Downloading {name}")
             archive = work / name
             _download(url, archive, lambda done, total, n=name: progress(n, done, total))
+            expected = expected_sha256(name, tag)
+            actual = sha256_of(archive)
+            if expected is None:
+                log(f"No published sha256 for {name}; recorded {actual[:12]} without a comparison")
+                verified[name] = False
+            elif actual != expected:
+                raise RuntimeError(
+                    f"{name} does not match its published sha256 (got {actual[:12]}, expected {expected[:12]}); nothing was installed."
+                )
+            else:
+                log(f"Verified sha256 of {name}")
+                verified[name] = True
+            checksums[name] = actual
             log(f"Unpacking {name}")
-            _safe_extract(archive, unpacked)
+            _extract(archive, unpacked)
             archive.unlink()
         _flatten_into(unpacked, flat)
-        binary = flat / "llama-server"
+        binary = flat / server_name()
         if not binary.is_file():
             raise RuntimeError("The downloaded archive has no llama-server.")
-        binary.chmod(binary.stat().st_mode | 0o111)
+        if os_name != "windows":
+            binary.chmod(binary.stat().st_mode | 0o111)
         (flat / _MARKER).write_text(
-            json.dumps({"tag": tag, "arch": arch, "cuda": cuda, "assets": list(names)}),
+            json.dumps({
+                "tag": tag, "os": os_name, "arch": arch, "cuda": cuda, "assets": list(names),
+                "sha256": checksums, "verified": verified,
+                "driverMajor": chosen["driverMajor"], "driverCuda": chosen["driverCuda"],
+                "installedAt": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+            }),
             encoding="utf-8",
         )
         final = install_dir(tag)
         old = work / "previous"
         if final.exists():
-            final.rename(old)
+            try:
+                final.rename(old)
+            except OSError as exc:
+                raise RuntimeError(
+                    f"Could not replace the installed build ({exc}). Unload the GGUF model, then install again."
+                ) from exc
         flat.rename(final)
     clear_cache()
     log(f"Installed CUDA {cuda} llama-server ({tag}) in {final}")
-    return final / "llama-server"
+    return final / server_name()

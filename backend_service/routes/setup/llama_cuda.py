@@ -1,4 +1,4 @@
-"""Install and status endpoints for the NVIDIA CUDA llama-server on Linux.
+"""Install and status endpoints for the NVIDIA CUDA llama-server on Linux and Windows.
 
 Background-job pattern (same as ``ltx2.py``): POST starts a daemon thread that
 downloads ggml-org's CUDA build of the pinned llama.cpp tag (see
@@ -74,6 +74,13 @@ def _worker() -> None:
         llama_cuda.install(log=log, progress=progress)
         job.phase = "verifying"
         usable = llama_cuda.usable_binary()
+        try:
+            # Point the running backend at the new server without a restart.
+            from backend_service.inference.capabilities import refresh_install_detection
+
+            refresh_install_detection()
+        except Exception:  # noqa: BLE001 - the install itself succeeded
+            pass
         job.phase = "done"
         job.percent = 100.0
         job.message = (
@@ -92,21 +99,40 @@ def _worker() -> None:
 
 @router.get("/api/setup/llama-cuda-status")
 def llama_cuda_status() -> dict[str, Any]:
-    arch = llama_cuda.host_arch()
-    driver = llama_cuda.nvidia_driver_major() if arch else None
+    chosen = llama_cuda.plan()
     installed = llama_cuda.installed_binary()
     info = llama_cuda.installed_info() if installed else None
+    in_use = bool(installed and llama_cuda.usable_binary())
+    state = chosen["state"]
+    message = chosen["message"]
+    if installed:
+        state = "in-use" if in_use else "installed-no-device"
+        message = (
+            "GGUF models run on the NVIDIA GPU."
+            if in_use
+            else "Installed, but it found no CUDA device. Check the NVIDIA driver (nvidia-smi); the bundled build stays in use."
+        )
+    elif chosen["ok"]:
+        state, message = "not-installed", "Not installed. GGUF models use the bundled build."
     return {
-        # Shown only on Linux hosts with an NVIDIA driver.
-        "supported": arch is not None and driver is not None,
-        "arch": arch,
-        "driverMajor": driver,
-        "cudaVersion": llama_cuda.cuda_version_for(arch, driver) if arch else None,
+        # Shown on Linux and Windows hosts that have an NVIDIA driver (even one that is too old,
+        # so the panel can say why it cannot install).
+        "supported": chosen["state"] in ("ready", "driver-too-old"),
+        "canInstall": bool(chosen["ok"]),
+        "state": state,
+        "message": message,
+        "os": chosen["os"],
+        "arch": chosen["arch"],
+        "driverMajor": chosen["driverMajor"],
+        "driverCuda": chosen["driverCuda"],
+        "driverTooOld": chosen["state"] == "driver-too-old",
+        "cudaVersion": chosen["cuda"],
         "tag": llama_cuda.LLAMA_CPP_TAG,
         "installed": installed is not None,
         "installedCuda": (info or {}).get("cuda"),
+        "verified": bool(info and info.get("verified") and all(info["verified"].values())),
         "path": str(installed) if installed else None,
-        "inUse": bool(installed and llama_cuda.usable_binary()),
+        "inUse": in_use,
         "disabled": os.environ.get("CHAOSENGINE_LLAMA_CUDA") == "0",
     }
 

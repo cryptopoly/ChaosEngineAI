@@ -1339,6 +1339,7 @@
   },
   "llamaCuda": {
     "description": "Запускает чат-модели GGUF на вашей видеокарте NVIDIA с CUDA {cuda} (llama.cpp {tag}). Загрузка около 680 МБ, включая среду выполнения CUDA (0,9 ГБ на диске).",
+    "driverTooOld": null,
     "inUse": "Используется: модели GGUF работают на видеокарте NVIDIA.",
     "install": "Установить",
     "installedNoDevice": "Установлено, но устройство CUDA не найдено. Проверьте драйвер NVIDIA (nvidia-smi).",

@@ -828,3 +828,92 @@ Built on `test/rtx4090`. The five Qwen3-TTS rows that were `lanes=['mlx']` now h
 
 - **`test_a_cloned_voice_reads_aloud_marked_and_audited...` (`mark.call_count 1 != 2`)**: a stale test, not a code bug. `voice_chat.speak_sentence` has passed `altered=` to `voice_clone.mark_cloned` since the "don't claim PerTh after speed or pitch changes" commit, but the test's mock was `lambda wav, r, vid`, so the first sentence raised a TypeError (counted as call 1), the stream fell back and the second sentence never reached the mark. The mock now takes `**kw`; the code still marks and audits every sentence of a cloned voice. `tests/test_voice_speak.py`: all pass.
 - **E2E phase 8 "is listed without measured numbers"**: `GET /api/voice/models` now carries `unmeasuredListed` (true when `CHAOSENGINE_VOICE_UNMEASURED=1` is on). The check (`unmeasured_listed_rows` in `scripts/e2e_test_suite.py`) SKIPs with that reason and the row keys when the switch is on, and still FAILs when it is off and an unmeasured non-Qwen3-TTS row is listed. Covered by a unit test; phase 8 itself was not re-run (it needs the running backend and loads speech models on the GPU).
+
+
+## Estimate audit: memory, size and time figures on CUDA (2026-11-11, FU-164, FU-165)
+
+The Mac re-evaluation found many "will it fit / how much memory / how long" figures wrong. No Mac findings were on this branch, so every estimate a non-Apple host shows was inventoried and measured here, one model at a time, with `nvidia-smi` sampled every 0.25 to 0.5 s and the app's own figure computed from the same code. Card idle at 1.4 to 1.9 GB (desktop); "measured" below is the process's own share (peak minus idle). Commit `925f6f2f`.
+
+### Inventory: what assumed a Mac
+
+| Estimate | Where | Apple-only assumption off the Mac |
+|---|---|---|
+| Chat fit badge, `/api/models/memory-check` | `helpers/fit.py`, `routes/cache.py` | Weights + 10 % + KV in one pool. On CUDA llama.cpp keeps input embeddings in system RAM; the memory check compared against **system RAM**, not the card |
+| KV cache size | `helpers/model_arch.py` | Ignored Gemma 4 shared-KV layers and narrow sliding heads (Nemotron 3.5 Bolt) |
+| TurboQuant size and speed | `helpers/cache.py`, `cache_compression/turboquant.py` | MLX lane: keeps 2 x `fp16_layers` layers in f16, 0.13 to 0.18x decode. The llama.cpp lane compresses every layer and decodes at 0.85x |
+| Decode tok/s | `helpers/cache.py` | 2 ms per-token overhead fitted on an M4 Max; the whole file read per token |
+| Hardware class | `helpers/hardware_class.py` | A GPU that shares system memory (DGX Spark) got 100 % of RAM as "usable" |
+| Image / video badge | `helpers/fit.py` | Whole pipeline on the card; the runtime offloads by model on CUDA |
+| Studio peak (image, video) | `src/utils/images.ts`, `videos.ts` | Quadratic attention (score matrix held); CUDA SDPA never holds it |
+| Time estimates | catalog `estimatedGenerationSeconds` | Flat per row, not scaled by size, frames or steps (Mac and PC alike) |
+| Memory gates after Unload | `video_runtime`, `image_runtime` | (Windows only) freed RAM was not given back to the OS |
+
+### Chat (llama-server b11981 CUDA and the TurboQuant fork, the app's launch flags, 256-token decode)
+
+| Model, context, cache | Measured VRAM | App before | App after | Measured tok/s | Before | After |
+|---|---|---|---|---|---|---|
+| Qwen3-0.6B Q8_0, 4K f16 | 1.44 GB | 1.3 GB (-10 %) | 1.50 (+4 %) | 563 | 316 (-44 %) | 466 (-17 %) |
+| Qwen3-0.6B, 32K f16 | 4.53 GB | 4.3 (-7 %) | 4.56 (+1 %) | 566 | 316 | 466 |
+| Qwen3-0.6B, 32K turbo3 | 1.95 GB; KV 700 MiB | KV 1.37 GB (+96 %) | KV 0.68 GB (-3 %); total +6 % | 467 | **56 (-88 %)** | 396 (-15 %) |
+| Qwen3-0.6B, 32K turbo4 | KV 952 MiB | KV 1.53 GB (+61 %) | 952 MiB (0 %) | 462 | 56 | 396 |
+| Bolt E4B Q4_K_M, 4K f16 | 3.57 GB | **6.5 GB (+82 %)** | 3.73 (+5 %) | 174 | 112 (-36 %) | 182 (+5 %) |
+| Bolt E4B, 64K f16 | 4.56 GB; KV 1040 MiB | 8.1 GB; KV 1.82 GB (+75 %) | 4.67 (+2 %); KV 1044 MiB | 174 | 112 | 182 |
+| Bolt E4B, 64K turbo3 | 4.49 GB | 7.0 GB | 4.4 (-2 %) | 152 | 20 | 155 (+2 %) |
+
+Why: llama.cpp keeps `token_embd` and Bolt's 3.5 GB `per_layer_token_embd` in system RAM and puts a copy of a tied output head on the card; the new `helpers/gguf_layout.py` reads that split from the GGUF tensor table (it matched llama.cpp's buffers to the MiB: 3023 / 3536 MiB and 604 / 158 MiB). Bolt caches only 4 global + 20 sliding layers of 42 (18 reuse an earlier layer's cache), sliding heads 256 wide. The TurboQuant fork holds one more compute buffer (+0.27 to +0.55 GB), now counted. TurboQuant on this lane saves real memory only on KV-heavy models: Bolt's turbo3 used **more** VRAM than f16 up to 32K and saved 0.08 GB at 64K, where the app promised 1.1 GB. Live check after the fix: `/api/cache/preview` for Qwen3-0.6B turbo3 at 32K reads 0.68 GB and 466 tok/s.
+
+**The memory check judged the wrong memory:** on a 24 GB card with 50 GB of free system RAM, a 33 GB model read "fits"; llama.cpp then runs the layers that do not fit on the CPU (section 6: 21.6 tok/s on CPU against 170 on the card). It now judges the card's free memory plus what loaded chat models hold, says "GPU memory" and names the CPU slowdown, and separately checks the embeddings against system RAM.
+
+### Image and video (dev backend, warm unless noted)
+
+| Model and size | Measured peak | Badge before | Badge after | Studio before | Studio after |
+|---|---|---|---|---|---|
+| FLUX.2 Klein 4B 1024², 4 steps | 9.1 GB | 20.8 GB, "tight" (+129 %) | 11.4, fits (+25 %) | 9.2 | 8.7 (-4 %) |
+| Klein 1536² | 10.0 GB | | | 17.3 (+73 %) | 11.2 (+12 %) |
+| Klein 2048² | 15.6 GB | | | **39.2, "danger"** (+151 %) | 15.1 (-3 %) |
+| Klein 1024² fp8 layerwise | 8.4 GB | | | | |
+| Wan 2.2 TI2V 5B 832x480x49, 20 steps | 11.0 GB | 22 GB, "tight" | 17.6, tight | 22, caution | 13.5 (+23 %) |
+| Wan TI2V 832x480x121 | 12.9 GB | | | 33, **danger** | 15.5 (+20 %) |
+| Wan TI2V 1280x704x49 | 12.7 GB | | | 31, **danger** | 15.3 (+20 %) |
+| Wan TI2V 1280x704x121 (its recommended size) | 17.3 GB | | | **119, danger** (+585 %) | 19.9 (+15 %) |
+| LTX-2.3 4-bit 768x512x97 (cold / warm) | 21.7 / 16.9 GB | 22.5 measured, tight | unchanged | 22.5 | unchanged |
+| LTX-2.3 768x512x49 / 1024x576x97 | 16.0 / 17.9 GB | | | 22.5 | unchanged |
+
+The Studio's danger state blocks Generate until ticked, so Wan TI2V at its own recommended settings needed an override on a card where it uses 72 %. Badge: diffusers rows the runtime offloads by model on a discrete card (all video, the FLUX family) are judged at the offloaded share (image 0.55, video 0.8 of the full pipeline); rows measured on CUDA keep their measurement; Macs and shared-memory GPUs are unchanged.
+
+**Time (catalog `estimatedGenerationSeconds`, shown flat in the Studio):**
+
+| Run | Measured | Catalog | Verdict |
+|---|---|---|---|
+| Klein 1024², 4 steps, warm (cold) | 6.3 s (49.7 s, 33 s of it loading) | 5.5 s | correct warm (-13 %); load not in the estimate |
+| Klein 2048² | 11.2 to 13.1 s | 5.5 s | wrong by -51 % |
+| Wan TI2V 832x480x49, 20 steps | 34.5 s | 275 s | **wrong by 8x** (the catalog figure is for 1280x704x121) |
+| Wan TI2V 832x480x49 10 steps / 832x480x121 / 1280x704x49 | 22.8 / 88.0 / 81.7 s | 275 s | wrong by 3 to 12x |
+| Wan TI2V 1280x704x121 | 273 s (W1) | 275 s | correct at the reference |
+| LTX-2.3 768x512x97 / x49 / 1024x576x97 | 59.5 / 36.3 / 86.7 s | 70 s | -15 % / +93 % / -19 % |
+
+Not fixed (FU-165: needs a reference size and step count per row, and touches the Mac): a fit that works for both measured video models is `seconds = catalog x (0.04 + 0.96 x steps/ref_steps x w(T)/w(T_ref))` with `w(T) = T + T²/53,300` and `T = W/16 x H/16 x F/4`. It predicts Wan TI2V 33 / 22 / 84 / 78 s for the four runs above (within 5 %) and LTX at 49 frames 15 % low.
+
+### Memory not given back after Unload (Windows)
+
+After Klein, then Wan TI2V, and two Unloads, the dev backend still held **29.5 GB of system RAM (35 GB committed)** with nothing loaded, and the gates then refused FLUX.1 schnell ("needs about 26 GB, only 25.1 GB available") and LTX-2.3 ("only 23.3 GB"). Cause: PyTorch's Windows CPU allocator (mimalloc) keeps freed memory until its next allocation, and nothing allocates after an Unload (no Python object was left: no module or large tensor alive, `remove_all_hooks` and heap compaction changed nothing). `backend_service/__init__.py` now sets `MIMALLOC_PURGE_DELAY=0` and `MIMALLOC_RESET_DELAY=0` before torch loads (Windows only; a user's own values win). Measured: Klein unload 16.6 → **1.8 GB**, Wan unload 26.5 → **2.0 GB**; Klein warm 6.57 s with and without the setting (A/B, 5 runs each). Linux uses glibc, not mimalloc: not checked.
+
+### Other changes
+
+- DGX Spark and other GPUs that share system memory: usable memory is total minus max(8 GB, 10 %) (115 GB of 128) instead of 100 %. Not measured: **owner test**.
+- `llama-server-turbo.exe` in `~/.chaosengine/bin` is now found by a backend run from source on Windows (the lookup tried only the name without `.exe`; the packaged shell passes an env var, so installed apps were not affected).
+- Tests: `tests/test_chat_memory_cuda.py` (22: GGUF split, shared KV, TurboQuant lane, decode speed, VRAM table 4 to 96 GB and a 128 GB shared-memory machine, shared-memory class table 32/64/128, `.exe` lookup, mimalloc env), `tests/test_media_fit_cuda.py` (5: Klein, Wan TI2V and LTX tables at 8 to 96 GB, rows kept whole, Mac and Spark unchanged), 3 memory-check route tests in `test_model_arch.py`, vitest image (3 new) and video (4 updated or new). E2E: phase 4 "CUDA estimates judge the card's own memory (FU-164)" PASS here (it skips off a discrete card).
+- Mac paths: unchanged except shared bugs: the shared-KV / sliding-head KV reading (Gemma 4 GGUFs and `num_kv_shared_layers` in config.json on any machine) and the TurboQuant llama.cpp-lane size (a GGUF on a Mac also runs the `turboN` types on every layer). The Mac's TurboQuant speed ratio for GGUF is unchanged (unmeasured there). The Mac-oriented tests (`test_speed_estimate`, `test_model_fit`, `test_model_arch`, `test_recommendations`, `test_memory_gate`) pass; the memory-check tests now pin the host instead of reading this PC.
+
+### Not verified (owner tests)
+
+| What | Why |
+|---|---|
+| Qwen3.8-27B Q4_K_M + DFlash sidecar | No longer in the HF cache (a 20 GB download, over this pass's limit) |
+| Cards of 8, 12, 16 and 32 GB | Badges and Studio figures come from formulas fitted on 24 GB; Klein on 12 GB still reads "won't fit" (offloaded estimate 11.4 GB against a measured 9.1) |
+| RTX 5090, DGX Spark | Spark's usable share; FLUX placement (the image runtime always offloads FLUX on CUDA, even where the whole 16 GB pipeline fits: resident Klein ran 1.42 s against 6.6 s offloaded at 1024², but spilled past 24 GB at 2048²) |
+| Linux CUDA | glibc allocator behaviour after Unload; the CUDA decode overhead constant |
+| Wan 2.1 1.3B at 720p | Filled the card before the offload rule existed (section 4); not re-run |
+| Studio time scaling | FU-165 |
+
+Pre-existing failures seen while testing, unrelated: vitest "keeps the device and capacity facts as the memory item's tooltip" (host card), pytest `test_video_routes::test_catalog_slow_on_labels_reach_the_payload` (Mac row), E2E phase 4 "new image families" (Mac-only mflux rows are filtered on Windows).

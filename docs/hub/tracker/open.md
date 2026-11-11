@@ -1,13 +1,31 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 81 rows with work, decisions or watch items still open, newest first.
+summary: 83 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-165 · Studio time estimate does not scale with size, frames or steps — Open (2026-11-11): measured, not built.</summary>
+
+**Status or trigger:** **Open (2026-11-11): measured, not built.**
+
+**Notes:** Catalog `estimatedGenerationSeconds` is shown flat (Mac and PC). Wan 2.2 TI2V reads 275 s for every setting; 832x480x49 took 34.5 s (8x), Klein 2048² 11 to 13 s against 5.5. Fit from the 4090 runs: `seconds = catalog x (0.04 + 0.96 x steps/ref_steps x w(T)/w(T_ref))`, `w(T) = T + T²/53,300`, `T = W/16 x H/16 x F/4`, within 5 % on four Wan TI2V runs, 15 % low on LTX at 49 frames. **To do:** a reference size, frame count and step count per row (rows lack `defaultSteps`; TI2V's 275 s is at 20 steps), apply in Image and Video Studio and in `storyboard/estimate.py`, check on the Mac (mflux has no offload swap, so its fixed share differs), add tests and an E2E check.
+
+</details>
+
+<details>
+<summary>FU-164 · Estimates on NVIDIA cards other than a 24 GB RTX 4090, DGX Spark and Linux — Open (2026-11-11): fixes measured and shipped on test/rtx4090 (925f6f2f)</summary>
+
+**Status or trigger:** **Open (2026-11-11): fixes measured and shipped on `test/rtx4090` (`925f6f2f`); other hardware never run.**
+
+**Notes:** `docs/progress/rtx4090-progress.md`, "Estimate audit". Fixed on the 4090: chat VRAM from the GGUF tensor table, shared-KV layers, TurboQuant llama.cpp size and speed, CUDA decode overhead, memory check on the card, offload-aware image/video badges, linear CUDA Studio peaks, mimalloc purge after Unload. **To do (owner):** (1) run the chat and image badges on an 8, 12 or 16 GB card (Klein reads "won't fit" on 12 GB; measured 9.1 GB on 24); (2) DGX Spark: check the usable share (total minus max(8 GB, 10 %)) against what a model can really allocate; (3) Linux CUDA: backend RAM after Unload (glibc, not mimalloc); (4) RTX 5090 / 96 GB: the image runtime always offloads FLUX on CUDA (resident Klein 1.42 s against 6.6 s at 1024² on 24 GB, but spills at 2048²), so give FLUX the video runtime's free-memory placement rule and re-measure; (5) Qwen3.8-27B Q4_K_M + DFlash sidecar against the new chat estimate (20 GB download).
+
+</details>
 
 <details>
 <summary>FU-163 · Qwen3.8-27B + DFlash2 on llama.cpp: low acceptance and no 24 GB catalog row — Open (2026-11-11): measured on an RTX 4090, lane works.</summary>

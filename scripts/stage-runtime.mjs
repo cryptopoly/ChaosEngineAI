@@ -67,6 +67,26 @@ const LLAMA_CPP_TAG = process.env.CHAOSENGINE_LLAMA_CPP_TAG || "b11981";
 
 main();
 
+// NSIS cannot map an archive larger than 2 GB ("failed creating mmap"), so a
+// Windows runtime archive past 1.9 GB means the installer cannot be built.
+// Fail here, before the long Tauri bundle step, and say why.
+const NSIS_ARCHIVE_LIMIT_BYTES = 1.9 * 1024 ** 3;
+
+function assertArchiveFitsInstaller(archivePath) {
+  if (process.platform !== "win32" || process.env.CHAOSENGINE_SKIP_ARCHIVE_SIZE_CHECK === "1") {
+    return;
+  }
+  const size = fs.statSync(archivePath).size;
+  if (size <= NSIS_ARCHIVE_LIMIT_BYTES) {
+    return;
+  }
+  throw new Error(
+    `runtime archive is ${(size / 1024 ** 3).toFixed(2)} GB, over the 1.9 GB limit of the NSIS installer. ` +
+      `A dev venv (torch, diffusers, bitsandbytes) or the GPU bundle (CHAOSENGINE_BUNDLE_GPU=1) was staged. ` +
+      `Build with ./build.sh, which uses the clean .venv-release, and leave CHAOSENGINE_BUNDLE_GPU unset.`,
+  );
+}
+
 function main() {
   ensureDir(embeddedResourcesRoot);
   cleanupStaleTauriResources();
@@ -153,6 +173,7 @@ function main() {
       stdio: "inherit",
     });
     console.log(`[stage-runtime] archive -> ${archiveDest}`);
+    assertArchiveFitsInstaller(archiveDest);
   } else {
     // Clear any stale archive so the Rust shell doesn't surface an old one.
     if (fs.existsSync(archiveDest)) {

@@ -13,50 +13,71 @@ case "$(uname -s)" in
 esac
 echo "==> Platform: $PLATFORM"
 
-# ── Python venv ──────────────────────────────────────────
-if [ ! -d .venv ]; then
-  echo "==> Creating Python venv..."
-  python3 -m venv .venv
+# â”€â”€ Release Python venv â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# A release build stages a Python environment into the installer, so it must
+# be a clean, pinned one. It uses its own venv (.venv-release, created on
+# demand, kept out of git) and installs with release-constraints.txt, the same
+# as .github/workflows/release.yml. The dev .venv is never touched: it holds
+# torch, diffusers, bitsandbytes and more, which pushed the Windows runtime
+# archive to 3 GB (NSIS cannot map past 2 GB) and ships untested versions.
+RELEASE_VENV="$SCRIPT_DIR/.venv-release"
+case "$PLATFORM" in
+  windows) RELEASE_PY="$RELEASE_VENV/Scripts/python.exe" ;;
+  *)       RELEASE_PY="$RELEASE_VENV/bin/python3" ;;
+esac
+
+# A venv left over from a GPU-bundle build would drag torch into a chat-only
+# installer; start over when the requested flavour changed.
+if [ -x "$RELEASE_PY" ] && [ "${CHAOSENGINE_BUNDLE_GPU:-}" != "1" ] \
+   && "$RELEASE_PY" -m pip show torch >/dev/null 2>&1; then
+  echo "==> $RELEASE_VENV holds torch from a GPU-bundle build; recreating it..."
+  rm -rf "$RELEASE_VENV"
 fi
 
-echo "==> Installing Python dependencies..."
+if [ ! -x "$RELEASE_PY" ]; then
+  echo "==> Creating release Python venv (.venv-release)..."
+  # release-constraints.txt is frozen on CPython 3.12; prefer that interpreter.
+  if [ -n "${CHAOSENGINE_RELEASE_PYTHON:-}" ]; then
+    BASE_PY=("$CHAOSENGINE_RELEASE_PYTHON")
+  elif [ "$PLATFORM" = "windows" ] && command -v py >/dev/null 2>&1 && py -3.12 -c "" >/dev/null 2>&1; then
+    BASE_PY=(py -3.12)
+  elif command -v python3.12 >/dev/null 2>&1; then
+    BASE_PY=(python3.12)
+  elif command -v python3 >/dev/null 2>&1; then
+    BASE_PY=(python3)
+  else
+    BASE_PY=(python)
+  fi
+  "${BASE_PY[@]}" -m venv "$RELEASE_VENV"
+fi
+
+echo "==> Installing Python dependencies into .venv-release (release-constraints.txt)..."
 # vendor/ChaosEngine declares `license = "Apache-2.0"` per PEP 639. Setuptools
 # < 77 rejects the string form, so bump it across every platform before the
 # vendor install in stage-runtime.mjs runs.
+"$RELEASE_PY" -m pip install --upgrade pip -q
+"$RELEASE_PY" -m pip install -c release-constraints.txt --upgrade "setuptools>=77,<82" wheel -q
 case "$PLATFORM" in
   darwin)
-    .venv/bin/pip install --upgrade pip -q
-    .venv/bin/pip install --upgrade "setuptools>=77,<82" wheel -q
-    .venv/bin/pip install mlx mlx-lm gguf fastapi psutil uvicorn "pypdf>=6.21.4" python-multipart huggingface_hub -q
-    export CHAOSENGINE_EMBED_PYTHON_BIN="$SCRIPT_DIR/.venv/bin/python3"
+    "$RELEASE_PY" -m pip install -c release-constraints.txt mlx mlx-lm gguf fastapi psutil uvicorn "pypdf>=6.21.4" python-multipart huggingface_hub babel -q
     ;;
-  linux)
-    .venv/bin/pip install --upgrade pip -q
-    .venv/bin/pip install --upgrade "setuptools>=77,<82" wheel -q
-    .venv/bin/pip install fastapi psutil uvicorn "pypdf>=6.21.4" python-multipart huggingface_hub -q
-    export CHAOSENGINE_EMBED_PYTHON_BIN="$SCRIPT_DIR/.venv/bin/python3"
-    ;;
-  windows)
-    .venv/Scripts/pip install --upgrade pip -q
-    .venv/Scripts/pip install --upgrade "setuptools>=77,<82" wheel -q
-    .venv/Scripts/pip install fastapi psutil uvicorn "pypdf>=6.21.4" python-multipart huggingface_hub -q
-    export CHAOSENGINE_EMBED_PYTHON_BIN="$SCRIPT_DIR/.venv/Scripts/python.exe"
+  linux|windows)
+    "$RELEASE_PY" -m pip install -c release-constraints.txt fastapi psutil uvicorn "pypdf>=6.21.4" python-multipart huggingface_hub babel -q
     ;;
 esac
+export CHAOSENGINE_EMBED_PYTHON_BIN="$RELEASE_PY"
 
-# ── Optional GPU bundle ──────────────────────────────────
+# â”€â”€ Optional GPU bundle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # By default the installer ships CHAT-ONLY (no torch, no diffusers). Users
 # click "Install GPU support" inside the app, which installs CUDA torch +
 # diffusers into ~/.chaosengine/extras/ at runtime. Set
 # CHAOSENGINE_BUNDLE_GPU=1 to include the GPU stack in the installer
-# itself (adds ~1.3 GB, only useful for air-gapped deployments).
+# itself (adds ~1.3 GB, only useful for air-gapped deployments). On Windows
+# the result exceeds the 1.9 GB NSIS limit and stage-runtime.mjs refuses it.
 if [ "${CHAOSENGINE_BUNDLE_GPU:-}" = "1" ]; then
-  echo "==> CHAOSENGINE_BUNDLE_GPU=1 -- bundling [images] extras"
-  case "$PLATFORM" in
-    darwin)  .venv/bin/pip install -q -e ".[desktop,images]" ;;
-    linux)   .venv/bin/pip install -q -e ".[desktop,images]" ;;
-    windows) .venv/Scripts/pip install -q -e ".[desktop,images]" ;;
-  esac
+  echo "==> WARNING: CHAOSENGINE_BUNDLE_GPU=1 -- bundling [images] extras (adds ~1.3 GB;"
+  echo "    a Windows NSIS installer cannot hold it, use a chat-only build there)"
+  "$RELEASE_PY" -m pip install -c release-constraints.txt -q -e ".[desktop,images]"
 fi
 
 # ── npm dependencies ─────────────────────────────────────

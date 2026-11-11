@@ -767,3 +767,8 @@ Installed over the existing 0.10.0 (silent `/S`, exit 0) with your OK. The build
 | One video from the installed app | PASS | Wan 2.2 TI2V 5B 832x480, 49 frames, 20 steps: `Diffusers video engine (cuda)`, **42.3 s** generation (85.5 s total), peak 13.2 GB. |
 
 The installed app was closed afterwards (backend down, GPU free for the TensorFold session). Not exercised against the installed app: the step watchdog's hard stop.
+
+
+## build.sh stages a clean release venv (2026-11-11)
+
+`./build.sh` no longer installs into or stages the dev `.venv`. It creates `.venv-release` on demand (CPython 3.12 via `py -3.12` / `python3.12`, or `CHAOSENGINE_RELEASE_PYTHON`; git-ignored), installs with `-c release-constraints.txt` as `release.yml` does, and exports `CHAOSENGINE_EMBED_PYTHON_BIN` to it on all three platforms (the Mac and Linux package lists are unchanged apart from `babel`, which the workflow already installs). A leftover GPU-bundle venv is recreated when `CHAOSENGINE_BUNDLE_GPU` is not set; `CHAOSENGINE_BUNDLE_GPU=1` keeps its own warning and now notes that a Windows NSIS installer cannot hold it. `scripts/stage-runtime.mjs` fails right after archiving on Windows when the runtime archive is over 1.9 GB, naming a staged dev venv or the GPU bundle as the cause (`CHAOSENGINE_SKIP_ARCHIVE_SIZE_CHECK=1` skips it). Tests: `tests/test_stage_runtime_scripts.py` (+6, 18 pass). Checked with `bash -n` and the test only; the full Windows build was not rerun. An aborted dry run started a real stage step and was killed; it left no tracked changes.

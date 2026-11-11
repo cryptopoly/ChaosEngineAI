@@ -344,6 +344,11 @@ def _generate_image_locked(request: Request, body: ImageGenerationRequest) -> di
     try:
         artifacts, runtime = _generate_image_artifacts(body, variant, state.image_runtime)
     except GenerationCancelled:
+        stalled = IMAGE_PROGRESS.stall_message()
+        if stalled:
+            # The step watchdog ended the run, not the user: say why, as an error.
+            state.add_log("images", "error", f"Image generation for {variant.get('name')} stopped by the step watchdog: {stalled}")
+            raise HTTPException(status_code=504, detail=stalled) from None
         # User hit Cancel on the modal. 409 (Conflict) carries a clearer
         # semantics than 500 ("something broke") for the frontend to tell
         # "we stopped because you asked us to" apart from an actual crash,

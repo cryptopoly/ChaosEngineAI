@@ -106,6 +106,11 @@ class ImportTake(_Args):
     still: str | None = Field(None, max_length=4096)
 
 
+class SetEndImage(_Args):
+    shotId: Id
+    image: str | None = Field(None, max_length=4096)  # an upload handle, an output file or a project file; empty clears it
+
+
 class Relink(_Args):
     id: Id
     path: str = Field(min_length=1, max_length=4096)
@@ -229,6 +234,7 @@ _FILE_ARGS: dict[str, tuple[tuple[str, set[str]], ...]] = {
     "add_reference": (("image", {"image"}), ("images", {"image"})),
     "edit_reference": (("image", {"image"}), ("addImage", {"image"})),
     "import_take": (("still", {"image"}), ("clip", {"video"})),
+    "set_end_image": (("image", {"image"}),),
     "relink": (("path", {"image", "video", "audio"}),),
     "add_audio": (("path", {"audio", "video"}),),
 }
@@ -404,6 +410,16 @@ def import_take(p: Project, folder: Path, a: ImportTake) -> None:
     shot.redo = False
 
 
+def set_end_image(p: Project, folder: Path, a: SetEndImage) -> None:
+    """The picture a clip should end on (LTX-2 models take one; the others refuse a shot that has it)."""
+    shot = _shot(p, a.shotId)
+    if not a.image:
+        shot.endImage = None
+        return
+    stamp = int(time.time() * 1000)
+    shot.endImage, _digest, _src = _import(folder, a.image, {"image"}, f"media/{shot.id}/end-{stamp}")
+
+
 def relink(p: Project, folder: Path, a: Relink) -> None:
     shot, clip = p.shot(a.id), p.clip(a.id)
     if shot is None and clip is None:
@@ -539,6 +555,7 @@ OPS: dict[str, tuple[type[_Args], Callable[[Project, Path, Any], None], bool]] =
     "pick_take": (PickTake, pick_take, True),
     "mark_redo": (MarkRedo, mark_redo, True),
     "import_take": (ImportTake, import_take, True),
+    "set_end_image": (SetEndImage, set_end_image, True),
     "relink": (Relink, relink, False),
     "add_audio": (AddAudio, add_audio, True),
     "edit_audio": (EditAudio, edit_audio, True),

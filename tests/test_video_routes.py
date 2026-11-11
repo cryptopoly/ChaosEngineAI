@@ -652,6 +652,30 @@ class VideoGenerateRouteTests(unittest.TestCase):
         self.assertEqual(config.cacheStrategy, "taylorseer")
         self.assertEqual(config.cacheRelL1Thresh, 3)
 
+    def test_a_watchdog_stop_answers_504_with_the_reason_and_a_user_cancel_stays_409(self):
+        from backend_service.progress import VIDEO_PROGRESS, GenerationCancelled
+
+        state = self.client.app.state.chaosengine
+        reason = "The video stopped: step 2 of 8 ran for 300 s without finishing (limit 120 s)."
+
+        def stalled(*_a, **_k):
+            VIDEO_PROGRESS.mark_stalled(reason)
+            raise GenerationCancelled(reason)
+
+        def cancelled(*_a, **_k):
+            VIDEO_PROGRESS.begin(run_label="t", total_steps=4)  # a new run clears any old stall reason
+            raise GenerationCancelled("Video generation cancelled by user")
+
+        with mock.patch.object(video_routes, "_video_variant_available_locally", return_value=True):
+            state.video_runtime.generate = mock.MagicMock(side_effect=stalled)  # type: ignore[method-assign]
+            response = self.client.post("/api/video/generate", json=self._payload())
+            self.assertEqual(response.status_code, 504, response.text)
+            self.assertEqual(response.json()["detail"], reason)
+            state.video_runtime.generate = mock.MagicMock(side_effect=cancelled)  # type: ignore[method-assign]
+            response = self.client.post("/api/video/generate", json=self._payload())
+            self.assertEqual(response.status_code, 409, response.text)
+        VIDEO_PROGRESS.finish()
+
     def test_generate_unloads_idle_image_runtime_first(self):
         state = self.client.app.state.chaosengine
         state.image_runtime = mock.MagicMock()

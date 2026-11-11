@@ -237,8 +237,12 @@ def _base_python() -> str:
     raise RuntimeError(f"No Python interpreter found in {stable}.")
 
 
+def _is_windows() -> bool:
+    return os.name == "nt"
+
+
 def venv_python() -> Path:
-    if os.name == "nt":
+    if _is_windows():
         return VOICE_VENV_DIR / "Scripts" / "python.exe"
     return VOICE_VENV_DIR / "bin" / "python"
 

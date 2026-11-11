@@ -307,6 +307,8 @@ def _media_footprint(variant: dict[str, Any], hardware: HardwareClass) -> tuple[
         )
         if measured:
             return value, f"Peak memory {value:.1f} GB, measured on an Apple Silicon Mac", "measured"
+        if hardware.kind == "cuda" and variant.get("footprintBasis") == "measured" and variant.get("footprintMeasuredOn") == "cuda":
+            return value, f"Peak memory {value:.1f} GB, measured on a 24 GB NVIDIA card", "measured"
         return value, f"Peak memory about {value:.1f} GB (catalog estimate)", "estimated"
     size = _positive(variant.get("sizeGb"))
     if size is None:

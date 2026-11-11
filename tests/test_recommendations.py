@@ -291,3 +291,16 @@ class CacheDefaultsMeasuredOnCudaTests(unittest.TestCase):
         rec = recommended_settings(variant, "video", CUDA_48, chip=None)
         self.assertEqual(rec["settings"]["cacheStrategy"], "none")
         self.assertIn("RTX 4090", rec["reasons"]["cacheStrategy"])
+
+
+class CudaMeasuredFootprintTests(unittest.TestCase):
+    """The LTX-2.3 4-bit pack peaks at 22.3 GB on a 24 GB RTX 4090 and ran there; the catalog called it "won't fit"."""
+
+    def test_the_4bit_ltx_pack_is_tight_not_wont_fit_on_a_24gb_card(self):
+        from backend_service.helpers.fit import variant_fit
+
+        card24 = HardwareClass("cuda", "cuda-24", "NVIDIA GPU, 24 GB VRAM", 64.0, 24.0)
+        card16 = HardwareClass("cuda", "cuda-16", "NVIDIA GPU, 16 GB VRAM", 32.0, 16.0)
+        variant = _variant(VIDEO_MODEL_FAMILIES, "OzzyGT/LTX-2.3-Distilled-bnb-nf4")
+        self.assertEqual(variant_fit(variant, "video", card24)["status"], "tight")
+        self.assertEqual(variant_fit(variant, "video", card16)["status"], "wont-fit")

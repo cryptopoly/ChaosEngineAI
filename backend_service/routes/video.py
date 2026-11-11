@@ -456,6 +456,11 @@ def _generate_video_locked(request: Request, body: VideoGenerationRequest) -> di
     try:
         artifact, runtime = _generate_video_artifact(body, variant, state.video_runtime)
     except GenerationCancelled:
+        stalled = VIDEO_PROGRESS.stall_message()
+        if stalled:
+            # The step watchdog ended the run, not the user: say why, as an error.
+            state.add_log("video", "error", f"Video generation for {variant['name']} stopped by the step watchdog: {stalled}")
+            raise HTTPException(status_code=504, detail=stalled) from None
         # User hit Cancel. Same 409 contract as the image route so the
         # frontend's generic "is this a cancel?" check is symmetric.
         state.add_log("video", "info", f"Video generation cancelled for {variant['name']} by user.")

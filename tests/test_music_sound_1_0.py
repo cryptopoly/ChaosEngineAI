@@ -178,10 +178,10 @@ class EngineArgumentTests(unittest.TestCase):
     def test_each_model_reads_its_own_folder(self) -> None:
         engine = self._engine("stable-audio-open-1.0", "/data")
         config, weights, encoder = engine._model_files("stable-audio-open-1.0")
-        self.assertEqual(str(config), "/data/checkpoints/stable-audio-open-1.0/model_config.json")
-        self.assertEqual(str(weights), "/data/checkpoints/stable-audio-open-1.0/model.safetensors")
-        self.assertEqual(str(encoder), "/data/checkpoints/t5-base")
-        self.assertEqual(str(engine._model_files("stable-audio-open-small")[1]), "/data/checkpoints/stable-audio-open-small/model.safetensors")
+        self.assertEqual(config.as_posix(), "/data/checkpoints/stable-audio-open-1.0/model_config.json")
+        self.assertEqual(weights.as_posix(), "/data/checkpoints/stable-audio-open-1.0/model.safetensors")
+        self.assertEqual(encoder.as_posix(), "/data/checkpoints/t5-base")
+        self.assertEqual(engine._model_files("stable-audio-open-small")[1].as_posix(), "/data/checkpoints/stable-audio-open-small/model.safetensors")
 
     def test_the_engine_holds_a_clip_to_the_loaded_models_length(self) -> None:
         small = self._engine("stable-audio-open-small")

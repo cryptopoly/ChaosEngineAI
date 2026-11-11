@@ -46,7 +46,7 @@ TOOLS: list[dict[str, Any]] = [
     {"name": "list_voices", "description": "Read: ready text-to-speech voices with language.", "inputSchema": _obj({})},
     {
         "name": "generate_image",
-        "description": "Make: start an image job (returns a job id). Sizes snap to what the model supports; see the job notes.",
+        "description": "Make: start an image job (returns a job id) for a picture on its own (poster, cover). Not for film stills: storyboard_generate makes those. Sizes snap to what the model supports.",
         "inputSchema": _obj(
             {
                 "prompt": {"type": "string", "minLength": 1, "maxLength": 4000},

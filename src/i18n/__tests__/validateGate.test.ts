@@ -27,7 +27,9 @@ const { mkdtempSync, mkdirSync, rmSync, writeFileSync } = require("node:fs") as 
 const { tmpdir } = require("node:os") as { tmpdir: () => string };
 const path = require("node:path") as { resolve: (...parts: string[]) => string; join: (...parts: string[]) => string };
 
-const SCRIPT = path.resolve(new URL(".", import.meta.url).pathname, "../../../scripts/i18n-validate.mjs");
+const { fileURLToPath } = require("node:url") as { fileURLToPath: (url: URL) => string };
+// fileURLToPath, not ``.pathname``: on Windows the latter is "/C:/..." and resolves to "C:\C:\...".
+const SCRIPT = path.resolve(fileURLToPath(new URL(".", import.meta.url)), "../../../scripts/i18n-validate.mjs");
 const NAMESPACES = ["common", "chat", "studio", "library", "setup", "diagnostics", "runtime", "errors", "meta", "dashboard"];
 const LOCALES = ["en", "zh-CN", "zh-TW", "ja", "de", "ru", "ko", "fr", "es", "pt-BR", "tlh"];
 

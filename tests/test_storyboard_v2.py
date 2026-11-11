@@ -270,7 +270,7 @@ class RenderV2Tests(Base):
             while not (self.base / "flag").exists() and time.time() < deadline:
                 time.sleep(0.1)
             self.assertTrue((self.base / "flag").exists(), "the child never reached shot 3")
-            proc.send_signal(signal.SIGKILL)
+            proc.kill()  # SIGKILL on POSIX, TerminateProcess on Windows
             proc.wait(timeout=10)
         finally:
             if proc.poll() is None:

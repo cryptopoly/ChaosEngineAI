@@ -357,31 +357,34 @@ class DiffusersVideoEngine:
                 domain="video",
             )
 
-            started = time.perf_counter()
-            if config.enableLtxRefiner and config.repo == "Lightricks/LTX-Video":
-                try:
-                    frames = self._invoke_pipeline_with_ltx_refiner(
-                        pipeline, kwargs, torch
-                    )
-                    VIDEO_PROGRESS.set_phase(
-                        PHASE_DIFFUSING,
-                        message="LTX two-stage spatial upscale applied.",
-                    )
-                except Exception as exc:  # noqa: BLE001 — refiner is best-effort
-                    note = (
-                        f"LTX refiner skipped ({type(exc).__name__}: {exc}) — "
-                        "running base pipeline only."
-                    )
-                    _LOG.info("video.ltx_refiner: %s", note)
-                    VIDEO_PROGRESS.set_phase(PHASE_DIFFUSING, message=note)
-                    frames = self._invoke_pipeline(pipeline, kwargs)
-            else:
-                from cache_compression import run_without_cache_on_failure
+            from backend_service.helpers.step_watchdog import StepWatchdog
 
-                frames, cache_note = run_without_cache_on_failure(
-                    pipeline, cache_note, lambda: self._invoke_pipeline(pipeline, kwargs),
-                    before_retry=lambda: generator.manual_seed(base_seed),
-                )
+            started = time.perf_counter()
+            with StepWatchdog(VIDEO_PROGRESS, kind="video"):
+                if config.enableLtxRefiner and config.repo == "Lightricks/LTX-Video":
+                    try:
+                        frames = self._invoke_pipeline_with_ltx_refiner(
+                            pipeline, kwargs, torch
+                        )
+                        VIDEO_PROGRESS.set_phase(
+                            PHASE_DIFFUSING,
+                            message="LTX two-stage spatial upscale applied.",
+                        )
+                    except Exception as exc:  # noqa: BLE001 — refiner is best-effort
+                        note = (
+                            f"LTX refiner skipped ({type(exc).__name__}: {exc}) — "
+                            "running base pipeline only."
+                        )
+                        _LOG.info("video.ltx_refiner: %s", note)
+                        VIDEO_PROGRESS.set_phase(PHASE_DIFFUSING, message=note)
+                        frames = self._invoke_pipeline(pipeline, kwargs)
+                else:
+                    from cache_compression import run_without_cache_on_failure
+
+                    frames, cache_note = run_without_cache_on_failure(
+                        pipeline, cache_note, lambda: self._invoke_pipeline(pipeline, kwargs),
+                        before_retry=lambda: generator.manual_seed(base_seed),
+                    )
             elapsed = max(0.1, time.perf_counter() - started)
 
             if not frames:

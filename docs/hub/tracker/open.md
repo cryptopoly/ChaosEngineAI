@@ -1,13 +1,22 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 79 rows with work, decisions or watch items still open, newest first.
+summary: 80 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-162 · Storyboard end frames: a picker in the shot editor and an end_image action in the agent's storyboard_shot tool — Open (2026-11-11): the op exists, nothing offers it.</summary>
+
+**Status or trigger:** **Open (2026-11-11): the op exists, nothing offers it.**
+
+**Notes:** `set_end_image` (undoable; upload handle or file; empty clears) landed on `test/rtx4090` with route tests and an E2E check, because `Shot.endImage` was read by clip generation, the staleness check and the bundle but nothing could set it. LTX-2 models take it; TI2V-5B and the others refuse a shot that has one. Needs: an end-frame picker (only when the video model `acceptsEndImage`), the agent action (the tool descriptions are capped at 220 characters), and a Cast-style drop target.
+
+</details>
 
 <details>
 <summary>FU-161 · DDTree on NVIDIA: a torch tree-verification lane (the algorithm is portable, the app's verifier is MLX-only) — Open (2026-11-11): read from the code, nothing built.</summary>

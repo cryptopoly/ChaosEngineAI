@@ -18,7 +18,7 @@ INSTRUCTIONS = (
     "times. Jobs run one at a time and each token may have 20 unfinished: start a job, call wait_for_job until "
     "it is done, then use the file in its output (output.download for another machine). list_jobs finds a job "
     "id you lost; jobs survive an app restart as 'interrupted'. If list_models is empty, call recommend_models "
-    "and tell the user what to download; you cannot download. Music: make_music. Films: storyboard_project, "
+    "and tell the user what to download; you cannot download. Music: make_music. A poster or any single picture is generate_image, never a film project: its file lands in the image outputs. Films: storyboard_project (it starts empty: add shots, then generate), "
     "storyboard_shot, storyboard_audio, storyboard_captions, storyboard_generate, storyboard_render, "
     "storyboard_export_otio (pass the revision from the last answer). music_library manages tracks. Cloned voices: "
     "list_cloned_voices and speak_cloned only, never create one. Resources and prompts are listed for reading "

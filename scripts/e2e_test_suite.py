@@ -2788,6 +2788,25 @@ def phase_10(cap: Capability) -> PhaseResult:
             return "fail", f"a still estimate for a text-only shot counted {est.get('stills') if isinstance(est, dict) else est!r} stills", {}
         return "pass", "", {"shot": sid}
 
+    def _end_frame():
+        # A shot can end on a picture (LTX-2 models take one); the op used to be missing, so no project could have one.
+        body = _op("add_shot", {"title": "end frame", "motionPrompt": "the beam turns", "seconds": 2})
+        sid = body["project"]["shots"][-1]["id"]
+        picture = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSlAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==")
+        code, data = _voice_http("POST", "/api/storyboard/uploads", body=picture, content_type="application/octet-stream", timeout=30.0)
+        handle = (json.loads(data.decode("utf-8")) if code == 200 else {}).get("handle")
+        if not handle:
+            return "fail", f"picture upload: HTTP {code}", {}
+        body = _op("set_end_image", {"shotId": sid, "image": handle})
+        shot = next(s for s in body["project"]["shots"] if s["id"] == sid)
+        if not str(shot.get("endImage") or "").startswith(f"media/{sid}/end-"):
+            return "fail", f"endImage is {shot.get('endImage')!r}", {}
+        body = _op("set_end_image", {"shotId": sid})
+        shot = next(s for s in body["project"]["shots"] if s["id"] == sid)
+        if shot.get("endImage") is not None:
+            return "fail", "an empty image did not clear the end frame", {}
+        return "pass", "", {"shot": sid}
+
     def _estimate():
         # D-65 phase 3: an estimate answers even without a model (it then names what is missing).
         code, body = _call("POST", f"/projects/{state['id']}/estimate", {"what": "both"})
@@ -2843,6 +2862,7 @@ def phase_10(cap: Capability) -> PhaseResult:
             ("import two takes, pick one, undo", _takes),
             ("a character with two uploaded pictures, then one removed", _cast),
             ("a text-only shot is accepted, needs no still and a bad start mode is refused", _text_only),
+            ("a shot takes an end frame and loses it again", _end_frame),
             ("the batch estimate answers, naming any missing model", _estimate),
             ("export a .chaosfilm bundle and import it again", _bundle),
             ("a hostile project.json or bundle is refused", _hostile),

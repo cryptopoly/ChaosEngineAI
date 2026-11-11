@@ -385,7 +385,7 @@ class DiffusersTextToImageEngine:
                         _pipeline._interrupt = True
                     except Exception:
                         pass
-                    raise GenerationCancelled("Image generation cancelled by user")
+                    raise GenerationCancelled(IMAGE_PROGRESS.stall_message() or "Image generation cancelled by user")
                 if decay_active:
                     next_step = step + 1
                     progress = min(1.0, next_step / max(1, total_steps - 1))
@@ -436,11 +436,14 @@ class DiffusersTextToImageEngine:
 
             from cache_compression import run_without_cache_on_failure
 
+            from backend_service.helpers.step_watchdog import StepWatchdog
+
             started = time.perf_counter()
-            result, cache_note = run_without_cache_on_failure(
-                pipeline, cache_note, _call_pipeline,
-                before_retry=lambda: [g.manual_seed(base_seed + i) for i, g in enumerate(generators)],
-            )
+            with StepWatchdog(IMAGE_PROGRESS, kind="image"):
+                result, cache_note = run_without_cache_on_failure(
+                    pipeline, cache_note, _call_pipeline,
+                    before_retry=lambda: [g.manual_seed(base_seed + i) for i, g in enumerate(generators)],
+                )
             elapsed = max(0.1, time.perf_counter() - started)
 
             IMAGE_PROGRESS.set_phase(PHASE_DECODING, message="Decoding pixels")

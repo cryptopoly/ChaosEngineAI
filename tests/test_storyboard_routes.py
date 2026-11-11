@@ -124,6 +124,30 @@ class ProjectRouteTests(StoryboardRouteCase):
         served = self.client.get(f"/api/storyboard/projects/{pid}/files", params={"path": take["clip"]}, headers=H)
         self.assertEqual(served.content, (self.src / "c.mp4").read_bytes())
 
+    def test_a_shot_can_be_given_an_end_frame_and_lose_it_again(self):
+        """Shot.endImage was read by clip generation, the bundle and the staleness check, but no op could set it."""
+        pid, data = self.create(shots=1)
+        sid = data["project"]["shots"][0]["id"]
+        inbox = self.base / "inbox"
+        inbox.mkdir()
+        with mock.patch.object(files, "inbox_dir", lambda: inbox):
+            handle = files.save_upload(png(self.src / "end.png").read_bytes())["handle"]
+            data = self.op(pid, data["project"]["revision"], "set_end_image", {"shotId": sid, "image": handle})
+        end = data["project"]["shots"][0]["endImage"]
+        self.assertTrue(end.startswith(f"media/{sid}/end-") and end.endswith(".png"), end)
+        served = self.client.get(f"/api/storyboard/projects/{pid}/files", params={"path": end}, headers=H)
+        self.assertEqual(served.content, (self.src / "end.png").read_bytes())
+        data = self.op(pid, data["project"]["revision"], "set_end_image", {"shotId": sid})
+        self.assertIsNone(data["project"]["shots"][0]["endImage"])
+        undone = self.post(f"/projects/{pid}/undo", {"revision": data["project"]["revision"]})
+        self.assertEqual(undone["project"]["shots"][0]["endImage"], end)
+
+    def test_an_end_frame_must_be_a_picture(self):
+        pid, data = self.create(shots=1)
+        sid = data["project"]["shots"][0]["id"]
+        self.op(pid, data["project"]["revision"], "set_end_image",
+                {"shotId": sid, "image": str(fake_mp4(self.src / "c.mp4"))}, code=400)
+
     def test_files_only_from_inside_the_project(self):
         pid, _ = self.create(shots=0)
         (self.base / "secret.txt").write_text("secret")

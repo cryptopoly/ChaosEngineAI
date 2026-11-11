@@ -110,9 +110,9 @@ class LaneTests(unittest.TestCase):
             self.assertFalse(any("misaki" in p for p in voice_env.packages_for("portable", ["chinese"])))
 
     def test_venv_python_path_per_os(self) -> None:
-        with mock.patch.object(voice_env.os, "name", "nt"):
+        with mock.patch.object(voice_env, "_is_windows", return_value=True):
             self.assertEqual(voice_env.venv_python().parts[-2:], ("Scripts", "python.exe"))
-        with mock.patch.object(voice_env.os, "name", "posix"):
+        with mock.patch.object(voice_env, "_is_windows", return_value=False):
             self.assertEqual(voice_env.venv_python().parts[-2:], ("bin", "python"))
 
 
@@ -145,7 +145,7 @@ class InstalledMarkerTests(unittest.TestCase):
         self.patches = [
             mock.patch.object(voice_env, "VOICE_VENV_DIR", venv),
             mock.patch.object(voice_env, "_MARKER", venv / "chaosengine-voice.json"),
-            mock.patch.object(voice_env.os, "name", "posix"),
+            mock.patch.object(voice_env, "_is_windows", return_value=False),
             mock.patch.dict(os.environ, {"CHAOSENGINE_VOICE_LANE": "portable"}),
         ]
         for patch in self.patches:

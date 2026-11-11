@@ -106,7 +106,7 @@
       "readOnlyHint": false,
       "title": "Generate image"
     },
-    "description": "Make: start an image job (returns a job id). Sizes snap to what the model supports; see the job notes.",
+    "description": "Make: start an image job (returns a job id) for a picture on its own (poster, cover). Not for film stills: storyboard_generate makes those. Sizes snap to what the model supports.",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
@@ -187,7 +187,7 @@
       "additionalProperties": false,
       "properties": {
         "end_image": {
-          "description": "Path or upload: handle of the last frame. May be used alone.",
+          "description": "Path or upload: handle of the last frame. May be used alone. Only for models with acceptsEndImage (list_models).",
           "type": "string"
         },
         "fps": {
@@ -668,7 +668,7 @@
           "type": "string"
         },
         "fields": {
-          "description": "title, stillPrompt, motionPrompt, startFrom (generate|upload|previous-shot), seconds, seed, trimIn, trimOut, speed, transition{type,seconds}, nativeSoundDb, index.",
+          "description": "title, stillPrompt, motionPrompt, startFrom (generate|upload|previous-shot|text), seconds, seed, trimIn, trimOut, speed, transition{type,seconds}, nativeSoundDb, index.",
           "type": "object"
         },
         "order": {

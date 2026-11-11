@@ -194,11 +194,15 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 # 14.4 GB transformer + 8.4 GB Gemma 3 text encoder (both bitsandbytes NF4) + 6.3 GB connectors +
                 # 1.8 GB VAEs and vocoder: 31 GB on disk and about 25 GB in memory.
                 "sizeGb": 31.0,
-                "runtimeFootprintGb": 25.0,
+                # Measured on an RTX 4090 (24 GB), 768x512, 97 frames, 8 steps: peak 22.3 GB (22.9 GB seen in a
+                # longer session). The first estimate, 25 GB, made the catalog call the row "won't fit" on the
+                # one kind of card it was built for, and the agent bridge and Storyboard then refused it.
+                "runtimeFootprintGb": 22.5,
                 # About 26 GB has to fit in system memory while the pipeline loads (the 31 GB download includes
                 # files that are not all resident at once), so the gate judges that, not the download size.
                 "loadMemoryGb": 26.0,
-                "footprintBasis": "estimated",
+                "footprintBasis": "measured",
+                "footprintMeasuredOn": "cuda",
                 "recommendedResolution": "768x512",
                 "defaultDurationSeconds": 4.0,
                 "note": (

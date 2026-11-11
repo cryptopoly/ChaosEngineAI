@@ -396,7 +396,7 @@ def make_step_callback(
                 _pipeline._interrupt = True
             except Exception:
                 pass
-            raise GenerationCancelled("Video generation cancelled by user")
+            raise GenerationCancelled(VIDEO_PROGRESS.stall_message() or "Video generation cancelled by user")
         if decay_active:
             # Step `step` just finished (step uses scale set BEFORE it).
             # Set the scale for step `step+1`. Linear ramp from initial

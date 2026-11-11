@@ -8,7 +8,7 @@ summary: Every FU row from FOLLOW_UPS.md, split into open and closed.
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here.
 
-- [Open and live follow-ups](open.md): **85** rows.
+- [Open and live follow-ups](open.md): **86** rows.
 - [Closed follow-ups](closed.md): **80** rows.
 
 ## Newest ten
@@ -17,6 +17,7 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 |---|---|---|
 | [FU-168](open.md) | TensorFold 1.x: build the family table from capabilities --json, add newer families | Open; follows FU-111. |
 | [FU-167](open.md) | Image, video and audio speed-ups beyond the diffusion caches | Researched 2026-11-11 |
+| [FU-166](open.md) | MiniMax H3 (video and image) and newer image/video models: scan, supersedes the FU-082 / F | Researched 2026-11-10 |
 | [FU-165](open.md) | Studio time estimate does not scale with size, frames or steps | Open (2026-11-11): measured, not built. |
 | [FU-164](open.md) | Estimates on NVIDIA cards other than a 24 GB RTX 4090, DGX Spark and Linux | Open (2026-11-11): fixes measured and shipped on test/rtx4090 (925f6f2f) |
 | [FU-163](open.md) | Qwen3.8-27B + DFlash2 on llama.cpp: low acceptance and no 24 GB catalog row | Open (2026-11-11): measured on an RTX 4090, lane works. |
@@ -24,4 +25,3 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 | [FU-161](open.md) | DDTree on NVIDIA: a torch tree-verification lane (the algorithm is portable, the app's ver | Open (2026-11-11): read from the code, nothing built. |
 | [FU-160](open.md) | Weight quantisation on NVIDIA for FLUX.2 and Wan: torchao int8 (best measured quality), NF | Open (2026-11-11): measured on an RTX 4090, nothing wired. |
 | [FU-159](open.md) | Image-to-video and Storyboard clips on NVIDIA PCs (Wan 2.2 TI2V 5B), text-only shots | Shipped 2026-11-10 on test/rtx4090 |
-| [FU-158](open.md) | Speech GPU add-on as a tick box on Windows and Linux (D-73 M4) | Open (2026-11-09): wired, never run |

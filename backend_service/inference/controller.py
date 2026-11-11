@@ -118,6 +118,7 @@ from backend_service.inference.simple_engines import (
 from backend_service.inference._mtp import has_mtp_heads, has_mtp_heads_strict
 from backend_service.inference._tensorfold import TensorFoldMatch, match_model
 from backend_service.inference.tensorfold_engine import TensorFoldEngine
+from backend_service.inference.tensorfold_native_engine import TensorFoldNativeEngine
 
 
 def _model_weights_bytes(path: str) -> int:
@@ -415,7 +416,7 @@ class RuntimeController:
             is_mlx_worker = "backend_service.mlx_worker" in cmdline or "mlx_worker" in cmdline
             is_llama = "llama-server" in name or "llama-server" in cmdline
             is_mtplx = "mtplx" in name or "/mtplx-venv/" in cmdline or " mtplx " in f" {cmdline} " or cmdline.endswith(" mtplx")
-            is_tensorfold = "/tensorfold-venv/" in cmdline
+            is_tensorfold = "/tensorfold-venv/" in cmdline or "tensorfold-native" in cmdline
             if not (is_mlx_worker or is_llama or is_mtplx or is_tensorfold):
                 continue
             if child.pid in tracked:
@@ -462,7 +463,7 @@ class RuntimeController:
         self._expire_orphan_records()
 
     _OWNED_PROCESS_MARKERS = (
-        "mlx_worker", "llama-server", "/mtplx-venv/", "/tensorfold-venv/", "voice_worker.py",
+        "mlx_worker", "llama-server", "/mtplx-venv/", "/tensorfold-venv/", "tensorfold-native", "voice_worker.py",
         "music_worker.py", "/music-venv/",
     )
 
@@ -656,6 +657,10 @@ class RuntimeController:
                     "TensorFold serves MLX (safetensors) checkpoints, not GGUF files. "
                     "Use the llama.cpp backend for this model."
                 )
+            if self.capabilities.tensorfoldNativeAvailable and not self.capabilities.tensorfoldAvailable:
+                # TensorFold 1.x native binary (CUDA hosts); the Mac Python
+                # engine, when installed, keeps the Apple Silicon path.
+                return TensorFoldNativeEngine(self.capabilities)
             if not self.capabilities.tensorfoldAvailable:
                 raise RuntimeError(
                     "TensorFold backend requested but not installed. "
@@ -664,6 +669,13 @@ class RuntimeController:
             return TensorFoldEngine(self.capabilities)
         if hint not in {"mlx", "auto"} or _looks_like_gguf(target):
             return None
+        if self.capabilities.tensorfoldNativeAvailable and not self.capabilities.tensorfoldAvailable:
+            # CUDA host: an MLX-format checkpoint in the native registry has no
+            # other engine here (MLX is Apple-only), so it goes to TensorFold 1.x.
+            from backend_service.inference._tensorfold_native import match_native_model
+
+            if match_native_model(canonical_repo, model_ref, runtime_target):
+                return TensorFoldNativeEngine(self.capabilities)
         match = self._tensorfold_match(
             model_ref=model_ref,
             canonical_repo=canonical_repo,

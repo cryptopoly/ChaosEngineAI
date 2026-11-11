@@ -119,6 +119,7 @@ class Capability:
     gguf_mtp_available: bool = False
     mtplx_available: bool = False
     tensorfold_available: bool = False
+    tensorfold_native: bool = False  # system.tensorfold.engine == "native" (TensorFold 1.x, CUDA)
     tensorfold_models: list[str] = field(default_factory=list)
     tensorfold_exclusive: list[str] = field(default_factory=list)
     tensorfold_extras: list[str] = field(default_factory=list)
@@ -150,6 +151,7 @@ def probe_capabilities() -> Capability:
         cap.mtplx_supported_models = mtplx_info.get("supportedModels") or []
         tensorfold_info = system.get("tensorfold") or {}
         cap.tensorfold_available = bool(tensorfold_info.get("available"))
+        cap.tensorfold_native = tensorfold_info.get("engine") == "native"
         cap.tensorfold_models = tensorfold_info.get("supportedModels") or []
         cap.tensorfold_exclusive = tensorfold_info.get("exclusiveModels") or []
         cap.tensorfold_extras = tensorfold_info.get("extras") or []
@@ -315,6 +317,8 @@ def phase_0(cap: Capability) -> PhaseResult:
         exclusive = info.get("exclusiveModels") or []
         if not supported:
             return "fail", "system.tensorfold.supportedModels empty", {"info": info}
+        if info.get("engine") == "native":
+            return "pass", "native registry; the Discover rows are the Mac engine's", {"info": info}
         variants = {
             v.get("repo"): v
             for f in (payload.get("featuredModels") or [])
@@ -857,6 +861,8 @@ def phase_1(cap: Capability) -> PhaseResult:
     def _tensorfold_engine():
         if not cap.tensorfold_available:
             return "skip", "TensorFold not installed", {}
+        if cap.tensorfold_native:
+            return "skip", "native engine: see the TensorFold 1.x check", {}
         for repo in cap.tensorfold_models:
             leaf = repo.split("/")[-1]
             pick = _pick_model_by_ref_prefix(cap.local_mlx_models, leaf)
@@ -886,6 +892,40 @@ def phase_1(cap: Capability) -> PhaseResult:
                 ), detail
             return "pass", "", detail
         return "skip", "no TensorFold-served checkpoint on disk", {}
+
+    # 1d2b. TensorFold 1.x native binary on a CUDA host (FU-111). Skips when the
+    # binary is absent, the gate refuses this machine, or no served checkpoint is
+    # on disk. Asserts the load really reports engine "tensorfold-native" (not a
+    # fallback) and that a reply comes back; the 27B is tried with its drafter.
+    def _tensorfold_native_engine():
+        rc, state, _ = _cli_json("call", "GET", "/api/setup/tensorfold-native-status", timeout=60.0)
+        if rc != 0 or not isinstance(state, dict):
+            return "fail", "tensorfold-native-status failed", {}
+        if not state.get("installed"):
+            return "skip", "TensorFold 1.x binary not installed", {"gate": state.get("gate")}
+        if not (state.get("gate") or {}).get("offered"):
+            return "skip", f"gate refused this machine: {(state.get('gate') or {}).get('message', '')[:160]}", state
+        # Smallest model first so a card with little free VRAM still gets a run.
+        for row in sorted(state.get("models") or [], key=lambda r: r.get("vramGb") or 0):
+            if not row.get("servable") or row.get("fits") is False:
+                continue
+            repo = row["repo"]
+            pick = _pick_model_by_ref_prefix(cap.local_mlx_models, repo.split("/")[-1])
+            if not pick:
+                continue
+            _ref, path = pick
+            status, reason, detail = _load_unload_prompt(
+                repo.split("/")[-1], path=path, backend="auto", spec=bool(row.get("drafter")),
+                canonical_repo=repo, context=8192, max_tokens=24, load_timeout=1800.0,
+            )
+            if status != "pass":
+                return status, reason, detail
+            if detail.get("engine") != "tensorfold-native":
+                return "fail", f"expected tensorfold-native, engine was {detail.get('engine')!r}", detail
+            if row.get("drafter") and not detail.get("dflashDraftModel"):
+                return "fail", f"drafter {row['drafter']} not engaged: {(detail.get('runtimeNote') or '')[:160]}", detail
+            return "pass", "", detail
+        return "skip", "no served checkpoint that fits is on disk", {}
 
     # 1d3. Kolibri 1 (FU-103). mlx-lm ships no ``kolibri1`` architecture, so the
     # worker loads the one vendored in backend_service/mlx_models; a load that
@@ -1203,6 +1243,7 @@ def phase_1(cap: Capability) -> PhaseResult:
         ("MLX DFlash on a hybrid model (FU-135)", _mlx_dflash_hybrid),
         ("MLX + MTPLX speculative", _mtplx),
         ("MLX + TensorFold exact speculative (FU-093)", _tensorfold_engine),
+        ("TensorFold 1.x native, CUDA (FU-111)", _tensorfold_native_engine),
         ("MLX Kolibri 1, vendored architecture (FU-103)", _kolibri),
         ("MLX LFM3, vendored architecture", _lfm3),
         ("GGUF llama.cpp", _gguf),

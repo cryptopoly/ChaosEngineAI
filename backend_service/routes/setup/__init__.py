@@ -427,6 +427,7 @@ from backend_service.routes.setup.ltx2 import router as _ltx2_router
 from backend_service.routes.setup.llama_cuda import router as _llama_cuda_router
 from backend_service.routes.setup.mtplx import router as _mtplx_router
 from backend_service.routes.setup.tensorfold import router as _tensorfold_router
+from backend_service.routes.setup.tensorfold_native import router as _tensorfold_native_router
 from backend_service.routes.setup.torch_upgrade import router as _torch_upgrade_router
 from backend_service.routes.setup.turbo import router as _turbo_router
 from backend_service.routes.setup.vllm_wsl import router as _vllm_wsl_router
@@ -443,6 +444,7 @@ router.include_router(_ltx2_router)
 router.include_router(_llama_cuda_router)
 router.include_router(_mtplx_router)
 router.include_router(_tensorfold_router)
+router.include_router(_tensorfold_native_router)
 router.include_router(_torch_upgrade_router)
 router.include_router(_turbo_router)
 router.include_router(_vllm_wsl_router)

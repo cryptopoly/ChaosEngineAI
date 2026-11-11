@@ -167,6 +167,23 @@ def _build_system_snapshot(
             _detect_tensorfold_extras,
         )
         available, _python, version = _detect_tensorfold()
+        from backend_service.inference import _tensorfold_native as native
+
+        if native.uses_native_engine():
+            # CUDA hosts: the TensorFold 1.x native binary and its own registry.
+            from backend_service.inference.capabilities import _detect_tensorfold_native
+
+            native_ok, _binary, native_version = _detect_tensorfold_native()
+            return {
+                "available": native_ok,
+                "version": native_version,
+                "extras": [],
+                "supportedModels": [repo for model in native.NATIVE_MODELS for repo in model.repos[:1]],
+                "exclusiveModels": [],
+                "visionModels": [repo for model in native.NATIVE_MODELS if model.vision for repo in model.repos[:1]],
+                "minMemoryGb": {},
+                "engine": "native",
+            }
         return {
             "available": available,
             "version": version,

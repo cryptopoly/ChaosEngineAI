@@ -47,6 +47,7 @@ export function TensorfoldLaunchControl({
   const { t } = useTranslation("runtime");
   const [expanded, setExpanded] = useState(false);
   const { available, support, version } = launch;
+  const native = launch.native === true;
   const exclusive = support.tier === "exclusive";
   const shortfall = tensorfoldMemoryShortfall(support, totalMemoryGb);
 
@@ -154,9 +155,13 @@ export function TensorfoldLaunchControl({
           <div className="cache-strategy-meta">
             <span className="cache-strategy-meta-label">{t("tensorfold.requiresLabel", { defaultValue: "Requires:" })}</span>
             <span>
-              {t("tensorfold.requiresBody", {
-                defaultValue: "Apple Silicon and a separate TensorFold Python environment (installed from this panel). Serves only the checkpoints it is tested with.",
-              })}
+              {native
+                ? t("tensorfold.requiresBodyNative", {
+                    defaultValue: "An NVIDIA GPU (Ampere or newer) with driver R580 or later, and the TensorFold native binary (installed from this panel; Windows needs one built from source). Serves only the checkpoints it is tested with.",
+                  })
+                : t("tensorfold.requiresBody", {
+                    defaultValue: "Apple Silicon and a separate TensorFold Python environment (installed from this panel). Serves only the checkpoints it is tested with.",
+                  })}
             </span>
           </div>
           {support.minMemoryGb ? (
@@ -177,6 +182,10 @@ export function TensorfoldLaunchControl({
                 ? t("tensorfold.statusInstalled", {
                     defaultValue: "Installed{{version}} — active when speculative decoding is ticked.",
                     version: version ? ` (${version})` : "",
+                  })
+                : native
+                ? t("tensorfold.statusNotInstalledNative", {
+                    defaultValue: "Not installed. Click Install TensorFold: it downloads and checks the native binary and reads your GPU and driver first, and says why if this machine cannot run it.",
                   })
                 : t("tensorfold.statusNotInstalled", {
                     defaultValue: "Not installed. Click Install TensorFold to set up its separate environment.",

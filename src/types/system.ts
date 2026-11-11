@@ -104,6 +104,8 @@ export interface SystemStats {
     /** Checkpoints whose images TensorFold can read once the vision extra is installed. */
     visionModels?: string[];
     minMemoryGb?: Record<string, number>;
+    /** "native" on CUDA hosts (TensorFold 1.x binary); absent for the Mac Python engine. */
+    engine?: "native";
   };
   runningLlmProcesses: Array<{
     pid: number;

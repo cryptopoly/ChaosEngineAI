@@ -207,6 +207,21 @@ def _refresh_capabilities() -> None:
 @router.get("/api/setup/tensorfold-status")
 def tensorfold_status() -> dict[str, Any]:
     """Lightweight probe: is TensorFold installed, and can this machine run it?"""
+    if not _apple_silicon():
+        from backend_service.routes.setup.tensorfold_native import native_status
+
+        state = native_status()
+        return {
+            "installed": state["installed"],
+            "version": state["version"],
+            "installedAt": None,
+            "ref": None,
+            "venvPath": state["binary"],
+            "extras": [],
+            "supported": state["gate"]["offered"],
+            "engine": "native",
+            "gate": state["gate"],
+        }
     installed = _is_installed()
     version, installed_at, ref = _read_version_file()
     return {
@@ -231,6 +246,11 @@ class InstallTensorfoldRequest(BaseModel):
 @router.post("/api/setup/install-tensorfold")
 def start_tensorfold_install(body: InstallTensorfoldRequest | None = None) -> dict[str, Any]:
     """Start the TensorFold install job. Returns immediately; poll the status endpoint."""
+    if not _apple_silicon():
+        # CUDA hosts install the native 1.x binary (no venv, no bash).
+        from backend_service.routes.setup.tensorfold_native import start_install
+
+        return start_install()
     extras = [extra for extra in OPTIONAL_EXTRAS if body is not None and extra in body.extras]
     unknown = sorted(set(body.extras) - set(OPTIONAL_EXTRAS)) if body is not None else []
     if unknown:
@@ -256,4 +276,8 @@ def start_tensorfold_install(body: InstallTensorfoldRequest | None = None) -> di
 @router.get("/api/setup/install-tensorfold/status")
 def tensorfold_install_status() -> dict[str, Any]:
     """Poll the running install job."""
+    if not _apple_silicon():
+        from backend_service.routes.setup.tensorfold_native import job_state
+
+        return job_state()
     return _JOB.to_dict()

@@ -135,6 +135,11 @@ class TensorFoldSetupRouteTests(unittest.TestCase):
             patcher = mock.patch.object(setup_tf, name, value)
             patcher.start()
             self.addCleanup(patcher.stop)
+        # These routes are the Mac engine's; off the Mac they hand over to the native
+        # installer (tests/test_tensorfold_native.py), so pin the Mac answer here.
+        mac_patch = mock.patch.object(setup_tf, "_apple_silicon", lambda: True)
+        mac_patch.start()
+        self.addCleanup(mac_patch.stop)
         # a fresh job per test
         job_patch = mock.patch.object(setup_tf, "_JOB", setup_tf._TensorfoldJobState())
         job_patch.start()
@@ -283,8 +288,10 @@ echo OK
 class TensorFoldSnapshotTests(unittest.TestCase):
     def test_system_snapshot_lists_supported_and_exclusive_models(self) -> None:
         from backend_service.helpers.system import _build_system_snapshot
+        from backend_service.inference import _tensorfold_native
 
-        snapshot = _build_system_snapshot("0", time.time())
+        with mock.patch.object(_tensorfold_native, "uses_native_engine", lambda: False):
+            snapshot = _build_system_snapshot("0", time.time())
         info = snapshot["tensorfold"]
         self.assertIn("available", info)
         self.assertIn("version", info)
@@ -296,6 +303,17 @@ class TensorFoldSnapshotTests(unittest.TestCase):
         # launch settings use to offer image support.
         self.assertEqual(info["visionModels"], ["Vontra/Qwen3.8-27B-MLX-4bit"])
         self.assertIsInstance(info["extras"], list)
+
+    def test_native_snapshot_lists_the_native_registry(self) -> None:
+        from backend_service.helpers.system import _build_system_snapshot
+        from backend_service.inference import _tensorfold_native
+
+        with mock.patch.object(_tensorfold_native, "uses_native_engine", lambda: True):
+            info = _build_system_snapshot("0", time.time())["tensorfold"]
+        self.assertEqual(info["engine"], "native")
+        self.assertIn("TensorFold/Qwen3.8-27B-MLX-4bit", info["supportedModels"])
+        self.assertEqual(info["exclusiveModels"], [])
+        self.assertEqual(info["visionModels"], ["TensorFold/Qwen3.8-27B-MLX-4bit"])
 
     def test_capability_payload_carries_the_install_fields(self) -> None:
         payload = BackendCapabilities(

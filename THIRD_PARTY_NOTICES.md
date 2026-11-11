@@ -139,6 +139,22 @@ Pillow (HPND, a permissive MIT-style licence), ``transformers`` (Apache 2.0) and
 ``mlx-vlm`` (MIT); ``grammar`` (structured output) brings ``xgrammar``
 (Apache 2.0) and, through it, PyTorch (BSD-3-Clause).
 
+### TensorFold 1.x native binary (CUDA text engine on Windows and Linux)
+
+TensorFold 1.x (<https://github.com/ashhart/TensorFold>) is a single native
+binary, `tensorfold-native serve`, with CUDA and Metal back ends. It is
+**Apache-2.0** licensed (free use, modification and redistribution with the
+licence and notice preserved; patent grant included). It has no Python
+dependencies, so there is no venv. ChaosEngineAI downloads the release archive
+for the platform (Linux x86_64 / aarch64), checks its sha256 against the
+published `.sha256` file and unpacks it into
+``~/.chaosengine/tensorfold-native/`` (`backend_service/routes/setup/tensorfold_native.py`);
+on Windows, where no archive is published, the user's own source build is
+copied there. It is never bundled in the installer. The archive's licence file
+stays beside the unpacked binary.
+The engine is `backend_service/inference/tensorfold_native_engine.py`; the
+capability gate and registry are in `_tensorfold_native.py`.
+
 ## Optional Apple Silicon Image Runtime
 
 | Package | Repository | Licence |

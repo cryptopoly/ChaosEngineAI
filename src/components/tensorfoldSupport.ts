@@ -56,6 +56,7 @@ export function tensorfoldLaunchInfoFor(
     version: controls.info.version,
     extras: controls.info.extras ?? [],
     support,
+    native: controls.info.engine === "native",
   };
 }
 
@@ -66,6 +67,8 @@ export interface TensorfoldLaunchInfo {
   /** Optional extras already installed ("vision", "grammar"). */
   extras: string[];
   support: TensorfoldModelSupport;
+  /** TensorFold 1.x native binary on a CUDA host (not the Mac Python engine). */
+  native?: boolean;
 }
 
 function lowered(values: Array<string | null | undefined>): string[] {

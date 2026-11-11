@@ -277,6 +277,9 @@ def compute_cache_preview(
     arch=None,
     weights_gb: float | None = None,
     measured_tok_s: float | None = None,
+    lane: str | None = None,
+    cuda: bool = False,
+    layout=None,
 ) -> dict[str, Any]:
     return compute_cache_preview_impl(
         bits=bits,
@@ -293,6 +296,9 @@ def compute_cache_preview(
         arch=arch,
         weights_gb=weights_gb,
         measured_tok_s=measured_tok_s,
+        lane=lane,
+        cuda=cuda,
+        layout=layout,
     )
 
 

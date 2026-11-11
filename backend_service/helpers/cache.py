@@ -30,10 +30,24 @@ def estimate_decode_tok_s(
     active_fraction: float,
     kv_bytes_per_token_read: float,
     bandwidth_gbps: float,
+    cuda_layers: int | None = None,
 ) -> float:
-    """Tokens per second for single-stream decode with the native cache."""
+    """Tokens per second for single-stream decode with the native cache.
+
+    ``cuda_layers`` is the model's layer count on a discrete NVIDIA GPU: the fixed per-token cost there is
+    per layer (``helpers.chat_memory``), about 1 ms for a 28-layer model where the Mac's fitted figure is 2 ms.
+    ``weights_gb`` is then the part on the card (input embeddings stay in system memory and are read one row
+    per token). None keeps the Apple Silicon fit.
+    """
     bytes_per_token = weights_gb * 1e9 * max(0.01, min(1.0, active_fraction)) + kv_bytes_per_token_read
-    overhead = _TOKEN_OVERHEAD_SECONDS_MOE if active_fraction < 0.9 else _TOKEN_OVERHEAD_SECONDS_DENSE
+    if cuda_layers:
+        from backend_service.helpers.chat_memory import CUDA_TOKEN_OVERHEAD_SECONDS_PER_LAYER
+
+        overhead = CUDA_TOKEN_OVERHEAD_SECONDS_PER_LAYER * cuda_layers
+        if active_fraction < 0.9:
+            overhead += _TOKEN_OVERHEAD_SECONDS_MOE - _TOKEN_OVERHEAD_SECONDS_DENSE
+    else:
+        overhead = _TOKEN_OVERHEAD_SECONDS_MOE if active_fraction < 0.9 else _TOKEN_OVERHEAD_SECONDS_DENSE
     seconds = bytes_per_token / (_DECODE_BANDWIDTH_EFFICIENCY * bandwidth_gbps * 1e9) + overhead
     return 1.0 / seconds
 
@@ -84,6 +98,9 @@ def compute_cache_preview(
     arch=None,
     weights_gb: float | None = None,
     measured_tok_s: float | None = None,
+    lane: str | None = None,
+    cuda: bool = False,
+    layout: Any = None,
 ) -> dict[str, Any]:
     """Cache size, speed and quality preview for one launch configuration.
 
@@ -97,6 +114,14 @@ def compute_cache_preview(
     Speed: ``measured_tok_s`` (this machine's own history for the model) wins;
     otherwise it is estimated from memory bandwidth and the bytes read per
     token (``weights_gb`` on disk, scaled by the active-parameter share).
+
+    ``lane`` is ``"llama.cpp"`` for a GGUF model (or any model off Apple
+    Silicon): TurboQuant then runs the fork's ``turboN`` cache types on every
+    layer, so ``fp16_layers`` does not apply and the size follows the measured
+    bits per element (``helpers.chat_memory``). ``cuda`` marks a discrete
+    NVIDIA host, whose decode estimate and TurboQuant speed were measured on
+    an RTX 4090; ``layout`` (``helpers.gguf_layout``) gives the bytes that sit
+    on the card. Without them the Apple Silicon figures are used unchanged.
     """
     from cache_compression import registry as _cache_registry
 
@@ -133,6 +158,16 @@ def compute_cache_preview(
         quality_map = _strategy_quality_base(strategy)
         quality_percent = min(99.5, quality_map.get(clamped_bits, 94.0) + min(fp16_layers, 8) * 0.35)
 
+        if strategy == "turboquant" and lane == "llama.cpp":
+            from backend_service.helpers.chat_memory import TURBO_LLAMA_CUDA_SPEED_RATIO, turbo_llama_bits
+
+            # Every layer in turboN (no f16 layers on this lane); 1 bit runs as turbo2.
+            optimized_bytes = int(baseline_bytes * turbo_llama_bits(bits) / 16)
+            compression_ratio = baseline_bytes / optimized_bytes if optimized_bytes else 1.0
+            quality_percent = min(99.5, quality_map.get(clamped_bits, 94.0))
+            if cuda:
+                speed_ratio = TURBO_LLAMA_CUDA_SPEED_RATIO
+
     if arch is not None:
         # Real layout: size the f16 cache from it and keep the strategy's own
         # compression ratio from the nominal estimate above.
@@ -156,12 +191,16 @@ def compute_cache_preview(
         baseline_tok_s = measured_tok_s
         speed_source = "measured"
     else:
+        # Without the file size, assume a 4-bit build (~0.56 GB per billion).
+        read_gb = weights_gb if weights_gb and weights_gb > 0 else params_b * 0.56
+        if cuda and layout is not None and getattr(layout, "gpu_bytes", 0) > 0:
+            read_gb = layout.gpu_bytes / 1e9
         baseline_tok_s = estimate_decode_tok_s(
-            # Without the file size, assume a 4-bit build (~0.56 GB per billion).
-            weights_gb=weights_gb if weights_gb and weights_gb > 0 else params_b * 0.56,
+            weights_gb=read_gb,
             active_fraction=arch.active_fraction if arch is not None else 1.0,
             kv_bytes_per_token_read=kv_read,
             bandwidth_gbps=bandwidth_gbps,
+            cuda_layers=num_layers if cuda else None,
         )
         speed_source = "estimate"
     estimated_tok_s = round(baseline_tok_s * speed_ratio, 1)
@@ -181,7 +220,7 @@ def compute_cache_preview(
             f"{_bytes_to_gb(optimized_bytes):.1f} GB from {_bytes_to_gb(baseline_bytes):.1f} GB, "
             f"about {compression_ratio:.1f}x smaller, with an estimated {estimated_tok_s:.1f} tok/s on this machine."
         )
-        if strategy == "turboquant" and context_tokens > 4096:
+        if strategy == "turboquant" and context_tokens > 4096 and lane != "llama.cpp":
             summary += (
                 " Decode keeps slowing as the conversation grows: on an M4 Max it fell to about 0.04x "
                 "Native at 16K tokens."

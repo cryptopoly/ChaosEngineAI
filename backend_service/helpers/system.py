@@ -71,6 +71,18 @@ def _get_disk_usage_for_models(settings: dict[str, Any]) -> dict[str, float] | N
 
 
 
+def _gpu_unified_memory(gpu_vram_total_gb: Any) -> bool:
+    """True when the NVIDIA GPU shares system memory (DGX Spark); never raises."""
+    if not gpu_vram_total_gb:
+        return False
+    try:
+        from backend_service.helpers.gpu import nvidia_shared_memory
+
+        return nvidia_shared_memory()
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def _capabilities_payload(capabilities: Any | None = None) -> dict[str, Any]:
     if capabilities is None:
         from backend_service.inference import get_backend_capabilities
@@ -240,6 +252,7 @@ def _build_system_snapshot(
         "nativeRuntimeMessage": native["mlxMessage"],
         "totalMemoryGb": total_memory_gb,
         "gpuVramTotalGb": gpu_vram_total_gb,
+        "gpuUnifiedMemory": _gpu_unified_memory(gpu_vram_total_gb),
         "availableMemoryGb": available_memory_gb,
         "usedMemoryGb": used_memory_gb,
         "swapUsedGb": swap_used_gb,

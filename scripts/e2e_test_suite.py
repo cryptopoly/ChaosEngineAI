@@ -1621,10 +1621,40 @@ def phase_4(cap: Capability) -> PhaseResult:
         _cli("image-unload", timeout=30.0)
         return "pass", "", {"modelId": model_id}
 
+    # RTX 4090 estimate audit (FU-164): on a discrete NVIDIA card the chat memory check judges the card's own
+    # memory (a 60 GB model used to "fit" because 64 GB of system RAM was free) and the FLUX.2 Klein badge follows
+    # the runtime's model offload (9.1 GB measured, 20.8 GB claimed before). Skips on a Mac, a CPU host and a GPU
+    # that shares system memory.
+    def _cuda_estimates():
+        status, raw = _voice_http("GET", "/api/models/memory-check?weights_gb=60&context_tokens=8192", timeout=30.0)
+        if status != 200:
+            return "fail", f"memory-check HTTP {status}: {raw[:160]!r}", {}
+        check = json.loads(raw.decode("utf-8"))
+        if check.get("memoryKind") != "gpu":
+            return "skip", "not a discrete NVIDIA card (one memory pool is judged)", {}
+        free_gpu = float(check.get("freeGpuGb") or 0)
+        if free_gpu + float(check.get("reclaimableGb") or 0) < 50 and check.get("verdict") != "may_not_fit":
+            return "fail", f"60 GB on a card with {free_gpu} GB free reads {check.get('verdict')}", check
+        if check.get("verdict") == "may_not_fit" and "GPU memory" not in (check.get("message") or ""):
+            return "fail", f"message does not name GPU memory: {check.get('message')!r}", {}
+        rc, payload, err = _cli_json("image-catalog", timeout=20.0)
+        if rc != 0 or not isinstance(payload, dict):
+            return "fail", f"image-catalog failed: {err[:160]}", {}
+        klein = next(
+            (v for f in payload.get("families") or [] for v in f.get("variants") or []
+             if v.get("id") == "black-forest-labs/FLUX.2-klein-4B"),
+            None,
+        )
+        fit = (klein or {}).get("fit") or {}
+        if fit.get("status") in {"fits", "tight"} and float(fit.get("needGb") or 0) > 12.0:
+            return "fail", f"FLUX.2 Klein still counts the whole pipeline on the card: {fit}", {}
+        return "pass", "", {"chatVerdict": check.get("verdict"), "klein": fit.get("status"), "kleinNeedGb": fit.get("needGb")}
+
     for name, fn in [
         ("catalog", _catalog),
         ("new image families (Qwen-Image / Z-Image / FLUX.2)", _new_image_families),
         ("fit ratings and size limits in the catalogs (FU-133)", _fit_and_limits),
+        ("CUDA estimates judge the card's own memory (FU-164)", _cuda_estimates),
         ("FLUX.1 sd.cpp variants pin real GGUF files (FU-096)", _flux_sdcpp_catalog),
         ("library", _library), ("runtime", _runtime), ("generate", _generate),
         ("generate via mflux (FU-096)", _generate_mflux),

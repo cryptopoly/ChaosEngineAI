@@ -38,16 +38,28 @@ class KvArchitecture:
     # Share of the weights read for each generated token: 1.0 for a dense
     # model, the active-parameter share for a mixture of experts.
     active_fraction: float = 1.0
+    # Sliding-window layers with narrower heads than the global ones (Gemma 4 / Nemotron 3.5 Bolt: 512 global,
+    # 256 sliding); 0 means the same as ``key_dim`` / ``value_dim``.
+    sliding_key_dim: int = 0
+    sliding_value_dim: int = 0
 
     def bytes_per_token_per_layer(self, bytes_per_element: int = 2) -> int:
         if self.latent_dim:
             return self.latent_dim * bytes_per_element
         return self.kv_heads * (self.key_dim + self.value_dim) * bytes_per_element
 
+    def _sliding_bytes_per_token_per_layer(self, bytes_per_element: int) -> int:
+        if self.latent_dim or not (self.sliding_key_dim or self.sliding_value_dim):
+            return self.bytes_per_token_per_layer(bytes_per_element)
+        key = self.sliding_key_dim or self.key_dim
+        value = self.sliding_value_dim or self.value_dim
+        return self.kv_heads * (key + value) * bytes_per_element
+
     def cache_bytes(self, context_tokens: int, bytes_per_element: int = 2) -> int:
         per_layer = self.bytes_per_token_per_layer(bytes_per_element)
+        sliding_per_layer = self._sliding_bytes_per_token_per_layer(bytes_per_element)
         sliding_tokens = min(context_tokens, self.sliding_window) if self.sliding_window else context_tokens
-        return per_layer * (self.full_layers * context_tokens + self.sliding_layers * sliding_tokens)
+        return per_layer * self.full_layers * context_tokens + sliding_per_layer * self.sliding_layers * sliding_tokens
 
 
 def _int(value: Any) -> int | None:
@@ -139,6 +151,13 @@ def architecture_from_config(config: dict[str, Any]) -> KvArchitecture | None:
 
     counts = _layer_counts_from_config(cfg, num_layers)
     full, sliding = counts if counts else (num_layers, 0)
+    # Gemma 3n / Gemma 4: the last N layers share an earlier layer's cache (see the GGUF reader below).
+    shared_kv = min(_int(cfg.get("num_kv_shared_layers")) or 0, num_layers - 1)
+    layer_types = cfg.get("layer_types")
+    if shared_kv and isinstance(layer_types, list) and len(layer_types) == num_layers:
+        own = layer_types[: num_layers - shared_kv]
+        full = sum(1 for t in own if t in _FULL_TYPES)
+        sliding = sum(1 for t in own if t in _SLIDING_TYPES)
     window = (_int(cfg.get("sliding_window")) or 0) if sliding else 0
     if sliding and not window:
         full, sliding = full + sliding, 0
@@ -282,10 +301,16 @@ def architecture_from_gguf_metadata(meta: dict[str, Any]) -> KvArchitecture | No
 
     window = _int(key("attention.sliding_window")) or 0
     swa_pattern = key("attention.sliding_window_pattern")
+    # Gemma 3n / Gemma 4 (Nemotron 3.5 Bolt): the last N layers reuse an earlier layer's keys and values and keep
+    # no cache of their own. llama.cpp measured 4 global + 20 sliding cached layers of 42 for Bolt E4B (18 shared).
+    shared_kv = min(_int(key("attention.shared_kv_layers")) or 0, num_layers - 1)
+    cached_layers = num_layers - shared_kv
+    if shared_kv and attn_count == num_layers:
+        attn_count = cached_layers
     full, sliding = attn_count, 0
     if window and isinstance(swa_pattern, list) and len(swa_pattern) == num_layers:
         # llama.cpp writes one flag per layer: true = sliding.
-        sliding = sum(1 for flag in swa_pattern if flag)
+        sliding = sum(1 for flag in swa_pattern[:cached_layers] if flag)
         full = attn_count - sliding
     else:
         every = _int(swa_pattern) or _GGUF_SWA_EVERY_NTH_GLOBAL.get(arch)
@@ -321,6 +346,8 @@ def architecture_from_gguf_metadata(meta: dict[str, Any]) -> KvArchitecture | No
     return KvArchitecture(
         num_layers, full, sliding, window, kv_heads, key_dim, value_dim,
         source="gguf", active_fraction=active_fraction,
+        sliding_key_dim=(_int(key("attention.key_length_swa")) or 0) if sliding else 0,
+        sliding_value_dim=(_int(key("attention.value_length_swa")) or 0) if sliding else 0,
     )
 
 

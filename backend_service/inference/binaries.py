@@ -87,10 +87,14 @@ def _which_with_fallbacks(name: str) -> str | None:
     found = shutil.which(name)
     if found:
         return found
+    # Windows executables carry ``.exe``: without it a Setup-installed ``~/.chaosengine/bin/llama-server-turbo.exe``
+    # was never found by a backend run from source (the packaged shell passes the path in an env var instead).
+    names = [name, f"{name}.exe"] if sys.platform == "win32" and not name.lower().endswith(".exe") else [name]
     for d in _LLAMA_FALLBACK_DIRS:
-        candidate = os.path.join(d, name)
-        if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
-            return candidate
+        for candidate_name in names:
+            candidate = os.path.join(d, candidate_name)
+            if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+                return candidate
     return None
 
 

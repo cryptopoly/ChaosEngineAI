@@ -31,6 +31,8 @@ class HardwareClass:
     label: str         # "Apple Silicon, 64 GB"
     total_gb: float
     usable_gb: float
+    # An NVIDIA GPU with no memory of its own (DGX Spark / GB10, GH200): ``usable_gb`` is then system memory.
+    unified: bool = False
 
 
 _GIB = 1024 ** 3
@@ -42,6 +44,10 @@ _METAL_WAIT_SECONDS = 6.0
 # A failed probe (slow cold import, busy machine) is retried after this long.
 _METAL_FAILURE_TTL_SECONDS = 300.0
 _HOST_CLASS_TTL_SECONDS = 60.0
+# Memory kept back for the OS and the app on an NVIDIA GPU that shares system memory: the larger of these. Not
+# measured on a Spark (owner test); it mirrors the share a Mac keeps out of its Metal working set at 128 GB.
+UNIFIED_RESERVE_MIN_GB = 8.0
+UNIFIED_RESERVE_SHARE = 0.1
 
 _METAL_PROBE_CODE = (
     "import json, mlx.core as mx\n"
@@ -180,6 +186,13 @@ def hardware_class(system: dict[str, Any]) -> HardwareClass:
     if vram:
         vram = float(vram)
         tier = _nearest(vram, (6, 8, 10, 12, 16, 20, 24, 32, 48, 80, 96))
+        if system.get("gpuUnifiedMemory"):
+            # The GPU's "VRAM" is the whole system memory (nvidia-smi reports none of its own), and the OS, the
+            # backend and the desktop live in it too: a 128 GB DGX Spark cannot give a model 128 GB.
+            usable = round(max(0.0, vram - max(UNIFIED_RESERVE_MIN_GB, vram * UNIFIED_RESERVE_SHARE)), 1)
+            return HardwareClass(
+                "cuda", f"cuda-{tier}", f"NVIDIA GPU, {vram:.0f} GB shared memory", total, usable, unified=True,
+            )
         return HardwareClass("cuda", f"cuda-{tier}", f"NVIDIA GPU, {vram:.0f} GB VRAM", total, vram)
     # An Intel Mac has neither MLX nor CUDA; a snapshot without an arch is a current Mac.
     if platform_name.startswith(("darwin", "mac")) and machine not in {"x86_64", "amd64", "i386"}:
@@ -199,11 +212,13 @@ def host_system_dict() -> dict[str, Any]:
     the runtimes); memory, platform and the GPU's VRAM are all the classification needs.
     """
     vram = None
+    unified = False
     if not (platform.system() == "Darwin" and platform.machine() in ("arm64", "aarch64")):
         try:
-            from backend_service.helpers.gpu import get_device_vram_total_gb
+            from backend_service.helpers.gpu import get_device_vram_total_gb, nvidia_shared_memory
 
             vram = get_device_vram_total_gb()
+            unified = bool(vram) and nvidia_shared_memory()
         except Exception:
             vram = None
     return {
@@ -211,6 +226,7 @@ def host_system_dict() -> dict[str, Any]:
         "arch": platform.machine(),
         "totalMemoryGb": round((_host_memory_gb() or 0.0), 2),
         "gpuVramTotalGb": vram,
+        "gpuUnifiedMemory": unified,
     }
 
 

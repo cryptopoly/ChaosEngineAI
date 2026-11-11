@@ -64,6 +64,30 @@ def keep_float32_loudness(model: Any) -> None:
     model.norm_loudness = norm_loudness
 
 
+def load_qwen(source: str, device: str) -> Any:
+    """Qwen3-TTS (``qwen-tts``) from the pinned local snapshot, straight onto the GPU in bf16 (fp16 on a card without
+    bf16) with PyTorch's own attention (flash-attn is not installed). Runs in the Qwen worker, whose transformers is
+    the 4.57 that ``qwen-tts`` needs (``voice_env.qwen_worker_env``)."""
+    import torch  # type: ignore[import-not-found]
+
+    try:
+        from qwen_tts import Qwen3TTSModel  # type: ignore[import-not-found]
+    except ModuleNotFoundError as exc:  # an add-on installed before Qwen3-TTS joined it
+        if exc.name not in ("qwen_tts", "sox", "accelerate"):
+            raise
+        raise RuntimeError(
+            "The speech GPU add-on has no Qwen3-TTS package yet. Untick and tick \"More speech models on the NVIDIA GPU\" "
+            "under Voice runtime > Add-ons to update it."
+        ) from exc
+
+    cuda = device.startswith("cuda")
+    dtype = torch.bfloat16 if cuda and torch.cuda.is_bf16_supported() else (torch.float16 if cuda else torch.float32)
+    where = device if ":" in device or not cuda else f"{device}:0"
+    return Qwen3TTSModel.from_pretrained(
+        source, dtype=dtype, device_map=where, attn_implementation="sdpa", local_files_only=True,
+    )
+
+
 def _load(family: str, source: str, device: str) -> Any:
     key = (family, source, device)
     if _model["key"] == key:
@@ -84,6 +108,8 @@ def _load(family: str, source: str, device: str) -> Any:
         from chatterbox.mtl_tts import ChatterboxMultilingualTTS  # type: ignore[import-not-found]
 
         model = ChatterboxMultilingualTTS.from_local(source, device, t3_model="v3")
+    elif family == "qwen3-tts":
+        model = load_qwen(source, device)
     elif family == "voxcpm2":
         from voxcpm import VoxCPM  # type: ignore[import-not-found]
 
@@ -200,6 +226,29 @@ def voxcpm_call(model: Any, request: dict[str, Any]) -> tuple[Any, int]:
     audio = model.generate(text=text, **kwargs)
     rate = int(getattr(getattr(model, "tts_model", None), "sample_rate", 48_000))
     return _numpy(audio), rate
+
+
+def qwen_call(model: Any, request: dict[str, Any]) -> tuple[Any, int]:
+    """Qwen3-TTS: a preset speaker with an optional style (CustomVoice), a described voice (VoiceDesign) or a voice
+    sample (Base: with its transcript the whole clip is the prompt, without one only the speaker embedding is used)."""
+    text = str(request["text"])
+    language = str(request.get("language") or "auto")
+    mode = str(request.get("mode") or "")
+    if request.get("refAudioPath"):
+        transcript = str(request.get("refText") or "").strip()
+        wavs, rate = model.generate_voice_clone(
+            text=text, language=language, ref_audio=readable_audio(str(request["refAudioPath"])),
+            ref_text=transcript or None, x_vector_only_mode=not transcript,
+        )
+    elif mode == "preset":
+        wavs, rate = model.generate_custom_voice(
+            text=text, speaker=str(request["speaker"]), language=language, instruct=request.get("instruct") or None,
+        )
+    elif mode == "design":
+        wavs, rate = model.generate_voice_design(text=text, instruct=str(request["instruct"]), language=language)
+    else:
+        raise ValueError("Qwen3-TTS needs a preset voice, a voice description or a voice sample.")
+    return _numpy(wavs[0]), int(rate)
 
 
 # ---------------------------------------------------------------------------
@@ -334,4 +383,6 @@ def synthesize(request: dict[str, Any], _decode_audio: Callable[..., Any] | None
     _seed(request.get("seed"))
     if family == "voxcpm2":
         return voxcpm_call(model, request)
+    if family == "qwen3-tts":
+        return qwen_call(model, request)
     return chatterbox_call(model, request)

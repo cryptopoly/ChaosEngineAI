@@ -131,6 +131,18 @@ def runs_here(row: dict[str, Any]) -> bool:
     return any(name in voice_env.speech_lanes() for name in row["lanes"])
 
 
+def gpu_problem(row: dict[str, Any]) -> str | None:
+    """Plain words for why this computer's GPU cannot run a row that runs here by lane (memory, compute capability)."""
+    from backend_service import voice_gpu  # noqa: PLC0415
+
+    return voice_gpu.problem(row) if runs_here(row) else None
+
+
+def usable_here(row: dict[str, Any]) -> bool:
+    """Runs here by lane, and the GPU is big and new enough for it."""
+    return runs_here(row) and gpu_problem(row) is None
+
+
 def _ready(row: dict[str, Any]) -> bool:
     """Weights on disk; a model that clones also needs the watermark component."""
     if snapshot_dir(row) is None:
@@ -141,7 +153,11 @@ def _ready(row: dict[str, Any]) -> bool:
 def list_models(*, every_model: bool = False) -> list[dict[str, Any]]:
     """The cloning models, or with ``every_model`` every listed speech model (speak, style, clone, design)."""
     rows = []
-    for row in _catalog.listed_models() if every_model else CLONE_MODELS:
+    offered = _catalog.listed_models()  # this lane's rows: a Mac never lists the GPU rows, nor a PC the Apple ones' twins
+    if not every_model:
+        keys = {row["key"] for row in offered}
+        offered = [row for row in CLONE_MODELS if row["key"] in keys]
+    for row in offered:
         job = _DOWNLOADS.get(row["key"], {})
         rows.append({
             "key": row["key"],
@@ -167,7 +183,9 @@ def list_models(*, every_model: bool = False) -> list[dict[str, Any]]:
             "builtinWatermark": row.get("builtinWatermark"),
             # Speed and memory from the catalog, with its basis and where it was measured; None when not measured.
             "estimates": dict(row["estimates"]) if row.get("estimates") else None,
-            "supported": runs_here(row),
+            "supported": usable_here(row),
+            # Why a row that is right for this lane still cannot run on this GPU; None otherwise.
+            "unsupportedReason": gpu_problem(row),
             # Ready means the weights and companions, and for a cloning model the watermark component; Download
             # installs all of them.
             "installed": _ready(row),
@@ -244,6 +262,8 @@ def start_download(key: str) -> dict[str, Any]:
         # downloading them only fills the disk (Speak offered "Download" for a Mac-only default voice on Windows).
         where = "Apple Silicon Macs" if row["lanes"] == ["mlx"] else "computers with an NVIDIA GPU"
         raise ValueError(f"{row['name']} runs on {where} only, so it cannot be used on this computer.")
+    if (why := gpu_problem(row)) is not None:
+        raise ValueError(why)
     token = uuid.uuid4().hex
     control: dict[str, Any] = {"cancel": threading.Event(), "proc": None}
     with _DOWNLOAD_LOCK:
@@ -438,10 +458,12 @@ def pick_clone_model(model_key: str | None) -> dict[str, Any]:
     """
     if (model_key or "").strip():
         return clone_model(model_key)
-    default = clone_model("")
+    # The default's GPU twin, not its MLX row; a row this GPU is too small for only when nothing else runs here.
+    rows = ([r for r in CLONE_MODELS if usable_here(r)] or [r for r in CLONE_MODELS if runs_here(r)] or CLONE_MODELS)
+    default = next((row for row in rows if row["default"]), rows[0])
     if snapshot_dir(default) is not None:
         return default
-    return next((row for row in CLONE_MODELS if snapshot_dir(row) is not None), default)
+    return next((row for row in rows if snapshot_dir(row) is not None), default)
 
 
 def speak(

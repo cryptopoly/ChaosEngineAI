@@ -154,6 +154,20 @@ SPEECH_GPU_PACKAGES = [
 # once a release carries V3.
 CHATTERBOX_REF = "ab55923c27757c90cfcc407baa57dc25a7d25217"
 CHATTERBOX_PACKAGE = f"chatterbox-tts @ https://github.com/resemble-ai/chatterbox/archive/{CHATTERBOX_REF}.zip"
+# Qwen3-TTS (``qwen-tts`` 0.1.1, Apache-2.0) pins transformers 4.57.3 and cannot run on the 5.2 that Chatterbox pins
+# (RTX 4090 run: on 5.2 it loads and then speaks hum; its prefill and rope bookkeeping rely on 4.x generation
+# internals). So its packages go into their own folder inside the voice venv (``--no-deps``; torch, librosa,
+# soundfile, onnxruntime, einops and the rest come from the venv) and the Qwen worker puts that folder first on
+# PYTHONPATH (``qwen_worker_env``). huggingface-hub 0.36 is what transformers 4.57 accepts (the venv has 1.x);
+# accelerate loads the model straight onto the GPU; ``sox`` (BSD-3-Clause, pure Python) is imported by
+# qwen-tts and never run. All Apache-2.0 except sox.
+QWEN_TTS_SITE_PACKAGES = [
+    "transformers==4.57.3", "huggingface-hub==0.36.0", "accelerate==1.12.0", "qwen-tts==0.1.1", "sox==1.5.0",
+]
+_QWEN_SITE_CHECK = (
+    "import sys; sys.path.insert(0, {site!r}); import transformers, qwen_tts; "
+    "assert transformers.__version__ == '4.57.3', transformers.__version__; print('qwen ok')"
+)
 SPEECH_GPU_NO_DEPS = [CHATTERBOX_PACKAGE, "voxcpm==2.0.3"]
 _SPEECH_GPU_CHECK = (
     "import torch, chatterbox.tts_turbo, chatterbox.mtl_tts, voxcpm; "
@@ -181,8 +195,27 @@ def speech_gpu_commands(python: str) -> list[list[str]]:
         # --force-reinstall: the pinned chatterbox archive reports the same version (0.1.7) as the PyPI wheel an earlier
         # install left behind, and pip keeps the installed copy of an equal version without it (RTX 4090 run).
         [*pip, "--no-deps", "--force-reinstall", *SPEECH_GPU_NO_DEPS],
+        [*pip, "--target", str(qwen_site_dir()), "--no-deps", "--upgrade", *QWEN_TTS_SITE_PACKAGES],
         [python, "-I", "-c", _SPEECH_GPU_CHECK],
+        [python, "-I", "-c", _QWEN_SITE_CHECK.format(site=str(qwen_site_dir()))],
     ]
+
+
+def qwen_site_dir() -> Path:
+    """Where the Qwen3-TTS packages live: inside the voice venv, so removing the venv or the add-on removes them."""
+    return VOICE_VENV_DIR / "qwen-site"
+
+
+def qwen_installed() -> bool:
+    site = qwen_site_dir()
+    return (site / "qwen_tts").is_dir() and any(site.glob("transformers-4.57.3*"))
+
+
+def qwen_worker_env() -> dict[str, str]:
+    """Environment of the Qwen3-TTS worker: its own transformers first on the import path."""
+    # Never the backend's own PYTHONPATH: it points at the app's packages (another torch and transformers), which
+    # ``worker_env`` removes on purpose.
+    return {"PYTHONPATH": str(qwen_site_dir()), "HF_HUB_OFFLINE": "1"}
 
 
 def speech_gpu_installed() -> bool:

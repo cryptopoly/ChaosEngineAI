@@ -102,13 +102,18 @@ def _caps(**flags: bool) -> dict[str, bool]:
 
 
 def _rows(test: Any) -> list[dict[str, Any]]:
-    """Listed catalog rows (Qwen3-TTS and measured wave-2 rows) that pass ``test``; rows that run here first (the
-    CUDA row of a family before its MLX row on Windows and Linux)."""
+    """Listed catalog rows (Qwen3-TTS and measured wave-2 rows) that pass ``test``. Rows that run here come alone when
+    there are any (an Apple-only row never shadows its GPU twin on Windows and Linux); with none that run here, all
+    of them, so the screen can still say what to download or install."""
     from backend_service import voice_clone  # noqa: PLC0415
     from backend_service.catalog.voice_models import listed_models  # noqa: PLC0415
 
     rows = [row for row in listed_models() if test(row)]
-    return sorted(rows, key=lambda row: not voice_clone.runs_here(row))
+    for fits in (voice_clone.usable_here, voice_clone.runs_here):  # a GPU too small for a row drops it if others run
+        here = [row for row in rows if fits(row)]
+        if here:
+            return here
+    return rows
 
 
 def _models_of(kind: str) -> list[dict[str, Any]]:
@@ -312,10 +317,10 @@ def _pick_custom(rows: list[dict[str, Any]], installed_only: bool = False) -> di
 
 def worker_fields(row: dict[str, Any]) -> dict[str, Any]:
     """Fields every worker request for ``row`` carries: the family (which call runs) and the pinned local folders
-    of its loader companions. Empty for Qwen3-TTS, whose requests are unchanged."""
+    of its loader companions. Empty for Qwen3-TTS on MLX, whose requests are unchanged."""
     from backend_service import voice_clone  # noqa: PLC0415
 
-    if row["family"] == "qwen3-tts":
+    if row["family"] == "qwen3-tts" and row["engine"] == "mlx-audio":
         return {}
     fields: dict[str, Any] = {"family": row["family"], "companions": voice_clone.companion_paths(row)}
     if row.get("maxTokens"):
@@ -368,6 +373,8 @@ def _model_for(rows: list[dict[str, Any]], model_key: str, *, pick: Any = None) 
 
     if model_key:
         row = voice_model(model_key)
+        if (why := voice_clone.gpu_problem(row)) is not None:
+            raise ValueError(why)
         if row["key"] not in {r["key"] for r in rows}:
             raise ValueError(f"{row['name']} cannot speak this voice.")
         chosen = row
@@ -548,9 +555,9 @@ def _speak_chunk(plan: Plan, sentence: str, speed: float, seed: int | None,
 
         wav, _duration = voice_runtime.synthesize(sentence, plan.voice, speed)
         return wav, 0.0
-    from backend_service.voice_client import get_worker  # noqa: PLC0415
+    from backend_service.voice_client import speech_worker_for  # noqa: PLC0415
 
-    reply = get_worker().request(
+    reply = speech_worker_for(plan.engine, plan.family).request(
         "synthesize", timeout=WORKER_TIMEOUT_S, engine=plan.engine, source=plan.source, text=sentence,
         seed=seed, **(plan.extra if extra is None else extra),
     )

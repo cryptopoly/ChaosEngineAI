@@ -28,6 +28,24 @@ from backend_service.catalog import voice_models
 WAVE2 = ["chatterbox-turbo", "voxcpm2", "chatterbox-mtl", "orpheus-3b"]
 CLONERS = [k for k in WAVE2 if voice_models.voice_model(k)["capabilities"]["clone"]]
 
+_MODULE_PATCHES: list = []
+
+
+def setUpModule() -> None:
+    """These tests describe the Apple Silicon catalog (MLX rows). Pin the lane so a Windows or Linux box with the
+    speech GPU add-on gives the same answers; the GPU lane is covered by test_voice_cuda_lane.py and
+    test_voice_qwen_cuda.py."""
+    for patch in (mock.patch.object(voice_env, "lane", return_value="mlx"),
+                  mock.patch.object(voice_env, "speech_lanes", return_value=["mlx"])):
+        patch.start()
+        _MODULE_PATCHES.append(patch)
+
+
+def tearDownModule() -> None:
+    while _MODULE_PATCHES:
+        _MODULE_PATCHES.pop().stop()
+
+
 
 def make_wav(seconds: float = 0.2, rate: int = 24_000) -> bytes:
     buffer = io.BytesIO()
@@ -108,11 +126,13 @@ class CatalogTests(unittest.TestCase):
         for row in voice_models.VOICE_MODELS:
             measured = (row.get("estimates") or {}).get("basis") == "measured"
             self.assertEqual(row["listed"], measured, row["key"])
-        listed = {r["key"] for r in voice_models.listed_models()}
-        self.assertTrue(set(voice_models.CLONE_MODELS[i]["key"] for i in range(len(voice_models.CLONE_MODELS))) <= listed)
+        listed = {r["key"] for r in voice_models.VOICE_MODELS if r["listed"]}
+        self.assertTrue({r["key"] for r in voice_models.CLONE_MODELS} <= listed)
 
     def test_default_clone_model_is_one_constant(self) -> None:
-        self.assertEqual([r["key"] for r in voice_models.VOICE_MODELS if r["default"]], [voice_models.DEFAULT_CLONE_MODEL])
+        # The default and its GPU twin (the cloning picker takes the one that runs on this machine).
+        self.assertEqual([r["key"] for r in voice_models.VOICE_MODELS if r["default"]],
+                         [voice_models.DEFAULT_CLONE_MODEL, f"{voice_models.DEFAULT_CLONE_MODEL}-cuda"])
         self.assertEqual(voice_models.clone_model("")["key"], voice_models.DEFAULT_CLONE_MODEL)
 
 

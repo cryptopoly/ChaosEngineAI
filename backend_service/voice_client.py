@@ -8,6 +8,11 @@ worker, and the next request starts a fresh one. The worker exits after
 Conversation mode runs voice activity detection in a second, small worker
 (``get_vad_worker``) so a microphone frame never waits behind a sentence
 being spoken or a recording being transcribed.
+
+Qwen3-TTS on an NVIDIA GPU runs in a third worker (``get_qwen_worker``): the same script and the same Python
+and PyTorch, with the pinned transformers 4.57 that ``qwen-tts`` needs put first on ``PYTHONPATH``, because the
+speech GPU add-on's own transformers 5.2 (which Chatterbox pins) breaks its generation. Only one of the two
+speech workers holds a model at a time (``speech_worker_for`` frees the other).
 """
 
 from __future__ import annotations
@@ -56,7 +61,8 @@ class VoiceWorkerError(RuntimeError):
 
 
 class VoiceWorker:
-    def __init__(self, log_name: str = "worker.log") -> None:
+    def __init__(self, log_name: str = "worker.log", env_extra: dict[str, str] | None = None) -> None:
+        self._env_extra = env_extra or {}
         self._process: subprocess.Popen[str] | None = None
         self._lines: queue.Queue[dict[str, Any] | None] = queue.Queue()
         self._lock = threading.Lock()
@@ -92,7 +98,7 @@ class VoiceWorker:
             text=True,
             encoding="utf-8",
             bufsize=1,
-            env=voice_env.worker_env(),
+            env={**voice_env.worker_env(), **self._env_extra},
             cwd=str(voice_env.VOICE_DATA_DIR),
         )
         log.close()
@@ -241,16 +247,48 @@ def get_vad_worker() -> VoiceWorker:
         return _VAD_WORKER
 
 
+_QWEN_WORKER: VoiceWorker | None = None
+
+
+def get_qwen_worker() -> VoiceWorker:
+    """The worker that runs Qwen3-TTS on the GPU: the main worker's Python with the pinned transformers first."""
+    global _QWEN_WORKER
+    with _WORKER_LOCK:
+        if _QWEN_WORKER is None:
+            _QWEN_WORKER = VoiceWorker(log_name="qwen-worker.log", env_extra=voice_env.qwen_worker_env())
+            atexit.register(_QWEN_WORKER.stop)
+        return _QWEN_WORKER
+
+
+def uses_qwen_worker(engine: str, family: str) -> bool:
+    return engine == "torch" and family == "qwen3-tts"
+
+
+def speech_worker_for(engine: str, family: str) -> VoiceWorker:
+    """The worker that serves this speech model. A model held by the other speech worker is unloaded first, so two
+    speech models never sit in GPU memory together (an unload of a worker that is not running costs nothing)."""
+    wanted, other = ((get_qwen_worker(), _WORKER) if uses_qwen_worker(engine, family) else (get_worker(), _QWEN_WORKER))
+    held = other.loaded.get("tts", "") if other is not None and other.pid is not None else ""
+    if held and "kokoro" not in held.lower():  # Kokoro is small and runs on the CPU; it can stay
+        if other.busy:
+            raise VoiceWorkerError("Another voice is speaking. Try again when it has finished.")
+        other.request("unload", timeout=60.0, what="tts")
+    return wanted
+
+
+def _speech_workers() -> list[VoiceWorker]:
+    return [w for w in (_WORKER, _QWEN_WORKER) if w is not None]
+
+
 def stop_all() -> None:
-    for worker in (_WORKER, _VAD_WORKER):
+    for worker in (*_speech_workers(), _VAD_WORKER):
         if worker is not None:
             worker.stop()
 
 
 def interrupt_all() -> None:
-    for worker in (_WORKER,):
-        if worker is not None:
-            worker.interrupt()
+    for worker in _speech_workers():
+        worker.interrupt()
 
 
 def worker_pid() -> int | None:
@@ -259,17 +297,19 @@ def worker_pid() -> int | None:
 
 def worker_busy() -> bool:
     """The speech worker is answering a request (read-aloud, a call turn, Speak, a transcript)."""
-    return _WORKER is not None and _WORKER.busy
+    return any(worker.busy for worker in _speech_workers())
 
 
 def loaded_sources() -> dict[str, str]:
     """``{"stt": source, "tts": source}`` of the models the running worker holds; empty when it is not running."""
-    if _WORKER is None or _WORKER.pid is None:
-        return {}
-    return dict(_WORKER.loaded)
+    held: dict[str, str] = {}
+    for worker in _speech_workers():
+        if worker.pid is not None:
+            held.update(worker.loaded)
+    return held
 
 
 def stop_speech_worker() -> None:
-    """Stop the main worker (not the small turn-detection one), freeing every model it holds."""
-    if _WORKER is not None:
-        _WORKER.stop()
+    """Stop the speech workers (not the small turn-detection one), freeing every model they hold."""
+    for worker in _speech_workers():
+        worker.stop()

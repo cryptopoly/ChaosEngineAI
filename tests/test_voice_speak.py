@@ -21,6 +21,24 @@ from backend_service import voice_clone, voice_clone_safety, voice_env, voice_li
 from backend_service import voice_speak_audio
 from backend_service.catalog import voice_models
 
+_MODULE_PATCHES: list = []
+
+
+def setUpModule() -> None:
+    """These tests describe the Apple Silicon catalog (MLX rows). Pin the lane so a Windows or Linux box with the
+    speech GPU add-on (whose Qwen3-TTS GPU rows are listed and run there) gives the same answers; the GPU lane is
+    covered by test_voice_cuda_lane.py and test_voice_qwen_cuda.py."""
+    for patch in (mock.patch.object(voice_env, "lane", return_value="mlx"),
+                  mock.patch.object(voice_env, "speech_lanes", return_value=["mlx"])):
+        patch.start()
+        _MODULE_PATCHES.append(patch)
+
+
+def tearDownModule() -> None:
+    while _MODULE_PATCHES:
+        _MODULE_PATCHES.pop().stop()
+
+
 
 def tone_wav(seconds: float = 0.5, rate: int = 24_000, hz: float = 440.0) -> bytes:
     frames = b"".join(
@@ -68,7 +86,7 @@ class Machine:
             patch.stop()
 
 
-QWEN_ROWS = [r for r in voice_models.VOICE_MODELS if r["family"] == "qwen3-tts"]
+QWEN_ROWS = [r for r in voice_models.VOICE_MODELS if r["family"] == "qwen3-tts" and r["lanes"] == ["mlx"]]  # GPU rows: test_voice_qwen_cuda.py
 
 
 class CatalogTests(unittest.TestCase):
@@ -112,9 +130,12 @@ class CatalogTests(unittest.TestCase):
     def test_cloning_models_are_every_listed_clone_row_default_first(self) -> None:
         keys = [r["key"] for r in voice_models.CLONE_MODELS]
         self.assertEqual(keys[0], voice_models.DEFAULT_CLONE_MODEL)
-        self.assertEqual(set(keys), {r["key"] for r in voice_models.listed_models() if r["capabilities"]["clone"]})
+        self.assertEqual(set(keys), {r["key"] for r in voice_models.VOICE_MODELS if r["listed"] and r["capabilities"]["clone"]})
+        self.assertEqual({r["key"] for r in voice_models.listed_models() if r["capabilities"]["clone"]} - set(keys), set())
         self.assertIn("qwen3-tts-1.7b", keys)
-        self.assertEqual(sum(r["default"] for r in voice_models.VOICE_MODELS), 1)
+        # The default and its GPU twin; the cloning picker takes the one that runs on this machine.
+        self.assertEqual({r["key"] for r in voice_models.VOICE_MODELS if r["default"]},
+                         {voice_models.DEFAULT_CLONE_MODEL, f"{voice_models.DEFAULT_CLONE_MODEL}-cuda"})
         with self.assertRaises(ValueError):
             voice_models.clone_model("qwen3-tts-custom-1.7b")
         self.assertEqual(voice_models.voice_model("qwen3-tts-custom-1.7b")["kind"], "custom")
@@ -722,7 +743,7 @@ class RouteTests(unittest.TestCase):
         self.assertEqual(by_key["qwen3-tts-design-1.7b"]["kind"], "design")
         self.assertTrue(all(re.fullmatch(r"[0-9a-f]{40}", m["revision"]) for m in body["models"]))
         # The cloning screen lists every model that can clone.
-        self.assertEqual(len(self.client.get("/api/voice/clone/models").json()["models"]), len(voice_models.CLONE_MODELS))
+        self.assertEqual(len(self.client.get("/api/voice/clone/models").json()["models"]), len([r for r in voice_models.CLONE_MODELS if r["key"] in {x["key"] for x in voice_models.listed_models()}]))
 
 
 class ChatStreamTests(unittest.TestCase):

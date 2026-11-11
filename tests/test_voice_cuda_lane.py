@@ -53,8 +53,9 @@ class InstallTests(unittest.TestCase):
                                        "--index-url", "https://download.pytorch.org/whl/cu128"])
         self.assertEqual(commands[1][:4], ["/venv/bin/python", "-m", "pip", "install"])
         self.assertEqual(commands[2], ["/venv/bin/python", "-m", "pip", "install", "--no-deps", "--force-reinstall", voice_env.CHATTERBOX_PACKAGE, "voxcpm==2.0.3"])
-        self.assertEqual(commands[3][:3], ["/venv/bin/python", "-I", "-c"])
-        self.assertIn("torch.cuda.is_available()", commands[3][3])
+        self.assertEqual(commands[3][:6], ["/venv/bin/python", "-m", "pip", "install", "--target", str(voice_env.qwen_site_dir())])
+        self.assertEqual(commands[4][:3], ["/venv/bin/python", "-I", "-c"])
+        self.assertIn("torch.cuda.is_available()", commands[4][3])
         names = " ".join(commands[1]).lower()
         for unwanted in ("gradio", "funasr", "modelscope", "datasets", "matplotlib", "pykakasi", "vllm"):
             self.assertNotIn(unwanted, names)

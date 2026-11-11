@@ -19,6 +19,24 @@ from unittest import mock
 from backend_service import voice_clone, voice_clone_safety, voice_env, voice_library, voice_runtime
 from backend_service.catalog import voice_models
 
+_MODULE_PATCHES: list = []
+
+
+def setUpModule() -> None:
+    """These tests describe the Apple Silicon catalog (MLX rows). Pin the lane so a Windows or Linux box with the
+    speech GPU add-on (whose Qwen3-TTS GPU rows are listed and run there) gives the same answers; the GPU lane is
+    covered by test_voice_cuda_lane.py and test_voice_qwen_cuda.py."""
+    for patch in (mock.patch.object(voice_env, "lane", return_value="mlx"),
+                  mock.patch.object(voice_env, "speech_lanes", return_value=["mlx"])):
+        patch.start()
+        _MODULE_PATCHES.append(patch)
+
+
+def tearDownModule() -> None:
+    while _MODULE_PATCHES:
+        _MODULE_PATCHES.pop().stop()
+
+
 
 def make_wav(seconds: float = 0.1, rate: int = 24_000) -> bytes:
     buffer = io.BytesIO()
@@ -53,13 +71,14 @@ class _DataDir(unittest.TestCase):
 class CatalogTests(unittest.TestCase):
     def test_rows_are_pinned_and_apache(self) -> None:
         self.assertEqual({r["key"] for r in voice_models.CLONE_MODELS},
-                         {"qwen3-tts-0.6b", "qwen3-tts-1.7b", "chatterbox-turbo", "voxcpm2", "chatterbox-mtl"})
+                         {"qwen3-tts-0.6b", "qwen3-tts-1.7b", "qwen3-tts-0.6b-cuda", "qwen3-tts-1.7b-cuda",
+                          "chatterbox-turbo", "voxcpm2", "chatterbox-mtl"})
         for row in voice_models.CLONE_MODELS:
             self.assertRegex(row["revision"], r"^[0-9a-f]{40}$")
-            self.assertTrue(row["repo"].startswith("mlx-community/"))
+            self.assertTrue(row["repo"].startswith("mlx-community/" if row["lanes"] == ["mlx"] else "Qwen/"))
             self.assertIn(row["licence"]["id"], ("apache-2.0", "mit"))
         self.assertEqual(voice_models.CLONE_LICENCE["id"], "apache-2.0")
-        self.assertEqual(sum(r["default"] for r in voice_models.CLONE_MODELS), 1)
+        self.assertEqual(sum(r["default"] for r in voice_models.CLONE_MODELS), 2)  # the default and its GPU twin
         self.assertEqual(voice_models.clone_model("")["key"], "qwen3-tts-0.6b")
         with self.assertRaises(ValueError):
             voice_models.clone_model("/tmp/some/local/path")
@@ -363,7 +382,7 @@ class RouteTests(unittest.TestCase):
 
     def test_models_listing(self) -> None:
         body = self.client.get("/api/voice/clone/models").json()
-        self.assertEqual(len(body["models"]), len(voice_models.CLONE_MODELS))
+        self.assertEqual(len(body["models"]), len([r for r in voice_models.CLONE_MODELS if r["key"] in {x["key"] for x in voice_models.listed_models()}]))
         self.assertTrue(body["allowedHere"])
         self.assertTrue(all(re.fullmatch(r"[0-9a-f]{40}", m["revision"]) for m in body["models"]))
 

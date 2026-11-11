@@ -14,7 +14,7 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 
 **Status or trigger:** **Dropped (owner 2026-11-08):** the only saving is disk space, which few users will lack. Both sizes stay listed.
 
-**Notes:** Measured: the 0.6B models are not faster than 1.7B and cannot take a style instruction; memory is lower.
+**Notes:** Measured: the 0.6B models are not faster than 1.7B and cannot take a style instruction; memory is lower. **On CUDA (RTX 4090, 2026-11-11, `test/rtx4090`):** the same answer. 0.6B and 1.7B take 17.1 and 17.2 s per 10 s of speech (CustomVoice), the GPU is launch-bound at about 40 % use, and the 0.6B models only save about 1.9 GB of GPU memory (2.8 against 4.7 GB).
 
 </details>
 

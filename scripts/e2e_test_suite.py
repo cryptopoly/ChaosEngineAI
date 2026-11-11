@@ -2509,10 +2509,48 @@ def phase_8(cap: Capability) -> PhaseResult:
             spoken[row["key"]] = rate
         return "pass", "", {"spoken": spoken}
 
+    def _speak_qwen_on_the_gpu():
+        """Qwen3-TTS on an NVIDIA GPU (the ``-cuda`` rows): one preset voice with a style (CustomVoice) and one voice
+        from a description (VoiceDesign), each answering a real WAV at 24 kHz that is not silent. Skipped when no such
+        row is downloaded and supported on this machine."""
+        rows = [r for r in models_payload.get("models", [])
+                if r.get("family") == "qwen3-tts" and str(r.get("key", "")).endswith("-cuda")]
+        if not rows:
+            return "skip", "no GPU Qwen3-TTS rows listed in this build", {}
+        ready = {r["key"]: r for r in rows if r.get("installed") and r.get("supported")}
+        wanted = [("qwen3-tts-custom-1.7b-cuda", "qwen3:Ryan", "Sound warm and unhurried."),
+                  ("qwen3-tts-design-1.7b-cuda", "design", "A calm adult woman with a low, steady voice.")]
+        wanted = [w for w in wanted if w[0] in ready]
+        if not wanted:
+            return "skip", "no GPU Qwen3-TTS model downloaded and supported here (Voice Models)", {}
+        import array
+        import io
+        import wave as wave_module
+
+        spoken = {}
+        for key, voice, style in wanted:
+            request = {"text": "A short end to end check of the GPU voice.", "voice": voice, "style": style, "model": key}
+            code, body = _voice_http("POST", "/api/voice/speak", body=json.dumps(request).encode("utf-8"),
+                                     content_type="application/json", timeout=600.0)
+            if code != 200:
+                return "fail", f"{key} speak HTTP {code}: {body[:200]!r}", {}
+            wav = base64.b64decode(json.loads(body.decode("utf-8"))["audio"])
+            with wave_module.open(io.BytesIO(wav)) as handle:
+                rate, frames = handle.getframerate(), handle.getnframes()
+                samples = array.array("h", handle.readframes(frames))
+            seconds = frames / float(rate or 1)
+            if rate != 24_000 or seconds < 0.8:
+                return "fail", f"{key}: {rate} Hz, {seconds:.2f} s", {}
+            if max((abs(v) for v in samples), default=0) < 300:
+                return "fail", f"{key}: the audio is silent", {}
+            spoken[key] = round(seconds, 2)
+        return "pass", "", {"spoken": spoken}
+
     def _clone_needs_a_permission_record():
         """Every wave-2 cloning model goes through the one clone path: a voice without its permission record is
         refused (404) before any model runs. Agent refusal and the watermark are covered per model in pytest."""
-        rows = [r for r in models_payload.get("models", []) if r.get("family") in ("chatterbox-turbo", "voxcpm2", "chatterbox")]
+        rows = [r for r in models_payload.get("models", []) if r.get("family") in ("chatterbox-turbo", "voxcpm2", "chatterbox")
+                or (r.get("family") == "qwen3-tts" and r.get("capabilities", {}).get("clone") and str(r.get("key", "")).endswith("-cuda"))]
         if not rows:
             return "skip", "no wave-2 cloning rows listed in this build", {}
         for row in rows:
@@ -2556,7 +2594,7 @@ def phase_8(cap: Capability) -> PhaseResult:
 
     for name, fn in [
         ("voice-runtime", _runtime), ("voice delete routes (no delete)", _delete_route_contract), ("stt platform sources", _stt_sources),
-        ("speech model catalog", _speech_model_catalog), ("speak with each wave-2 model", _speak_each_wave2_model),
+        ("speech model catalog", _speech_model_catalog), ("speak with each wave-2 model", _speak_each_wave2_model), ("speak with Qwen3-TTS on the GPU", _speak_qwen_on_the_gpu),
         ("wave-2 clone needs a permission record", _clone_needs_a_permission_record),
         ("voice settings", _settings_roundtrip), ("read-aloud stream", _speak_stream),
         ("chat voice: any voice, fallback voice", _chat_voice_any),

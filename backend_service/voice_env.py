@@ -115,7 +115,7 @@ _CUDA_PACKAGES = ["nvidia-cublas-cu12", "nvidia-cudnn-cu12>=9,<10"]
 EXTRAS: dict[str, tuple[tuple[str, ...], list[str], str]] = {
     "kokoro": (("mlx", "portable"), [], "Kokoro quick voices"),
     "chinese": (("mlx",), ["misaki[zh]>=0.9.4,<0.10"], "Mandarin Chinese voices"),
-    "speech-gpu": (("portable",), [], "More speech models on the NVIDIA GPU (Chatterbox, VoxCPM2, Orpheus)"),
+    "speech-gpu": (("portable",), [], "More speech models on the NVIDIA GPU (Qwen3-TTS, Chatterbox, VoxCPM2, Orpheus)"),
 }
 
 # Speech GPU add-on (D-70 Phase 6, FU-149). NOT VERIFIED: written on a Mac; the RTX 4090 session runs it

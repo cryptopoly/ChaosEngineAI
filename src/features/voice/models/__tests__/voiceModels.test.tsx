@@ -113,6 +113,24 @@ describe("Speech models on the shared Models table (D-73 M3b)", () => {
     expect(base).not.toContain("Delete model");
   });
 
+  it("says why a row cannot run on this GPU, from the numbers the backend sends, else that it is Apple-only", () => {
+    const panel = (over: Partial<VoiceModelRow>) =>
+      wrap(
+        <SpeechModelsPanel
+          catalog={{ ...catalog, models: [model("only-row", "Only row", { supported: false, ...over })] }}
+          runtime={runtime()}
+          availability="all"
+          onAvailabilityChange={() => {}}
+          onOpenStudio={() => {}}
+        />,
+      );
+    expect(panel({ unsupportedFacts: { kind: "memory", need: 5.4, have: 4 } })).toContain("Needs about 5.4 GB of GPU memory; this GPU has 4 GB.");
+    expect(panel({ unsupportedFacts: { kind: "compute", need: 7, have: 6.1 } })).toContain(
+      "Needs an NVIDIA GPU of compute capability 7 or newer; this one is 6.1.",
+    );
+    expect(panel({})).toContain("Apple Silicon Macs only for now.");
+  });
+
   it("offers a natural voice while none is downloaded (first-run callout)", () => {
     const none = wrap(
       <SpeechModelsPanel catalog={{ ...catalog, models: models.map((m) => ({ ...m, installed: false })) }} runtime={runtime()} availability="all" onAvailabilityChange={() => {}} />,

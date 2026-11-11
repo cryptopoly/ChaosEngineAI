@@ -138,6 +138,13 @@ def gpu_problem(row: dict[str, Any]) -> str | None:
     return voice_gpu.problem(row) if runs_here(row) else None
 
 
+def gpu_facts(row: dict[str, Any]) -> dict[str, Any] | None:
+    """The same as ``gpu_problem`` as data (kind, need, have) for the screen."""
+    from backend_service import voice_gpu  # noqa: PLC0415
+
+    return voice_gpu.facts(row) if runs_here(row) else None
+
+
 def usable_here(row: dict[str, Any]) -> bool:
     """Runs here by lane, and the GPU is big and new enough for it."""
     return runs_here(row) and gpu_problem(row) is None
@@ -186,6 +193,7 @@ def list_models(*, every_model: bool = False) -> list[dict[str, Any]]:
             "supported": usable_here(row),
             # Why a row that is right for this lane still cannot run on this GPU; None otherwise.
             "unsupportedReason": gpu_problem(row),
+            "unsupportedFacts": gpu_facts(row),
             # Ready means the weights and companions, and for a cloning model the watermark component; Download
             # installs all of them.
             "installed": _ready(row),

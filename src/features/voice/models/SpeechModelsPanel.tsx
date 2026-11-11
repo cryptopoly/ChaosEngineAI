@@ -74,6 +74,26 @@ const FAMILY_BLURBS: Record<string, string> = {
   orpheus: "Eight expressive English voices with sound tags",
 };
 
+/** Why a row cannot run here: the GPU's memory or age (the backend sends the numbers), else the Apple-only note. */
+function unsupportedText(row: VoiceModelRow, t: (key: string, options: Record<string, unknown>) => string): string {
+  const facts = row.unsupportedFacts;
+  if (facts?.kind === "memory") {
+    return t("voice.speak.gpuTooSmall", {
+      need: facts.need,
+      have: facts.have,
+      defaultValue: "Needs about {need} GB of GPU memory; this GPU has {have} GB.",
+    });
+  }
+  if (facts?.kind === "compute") {
+    return t("voice.speak.gpuTooOld", {
+      need: facts.need,
+      have: facts.have,
+      defaultValue: "Needs an NVIDIA GPU of compute capability {need} or newer; this one is {have}.",
+    });
+  }
+  return t("voice.speak.appleOnly", { defaultValue: "Apple Silicon Macs only for now." });
+}
+
 export function VoiceMakesChips({ makes }: { makes: string[] }) {
   const { t } = useTranslation("studio");
   if (makes.length === 0) return null;
@@ -296,7 +316,9 @@ export function SpeechModelsPanel({ catalog, runtime, availability, onAvailabili
     const downloading = row.download.state === "downloading";
     const actions = !row.supported && !row.installed ? (
       <div className="media-model-actions model-download-controls">
-        <span className="muted-text">{t("voice.speak.appleOnly", { defaultValue: "Apple Silicon Macs only for now." })}</span>
+        <span className="muted-text">
+          {unsupportedText(row, t)}
+        </span>
       </div>
     ) : downloading ? (
       <div className="media-model-actions model-download-controls">

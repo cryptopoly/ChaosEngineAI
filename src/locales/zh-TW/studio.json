@@ -902,6 +902,8 @@
       "cloneTooLong": null,
       "describeFirst": null,
       "appleOnly": null,
+      "gpuTooSmall": null,
+      "gpuTooOld": null,
       "language": "語言",
       "sampleOf": null,
       "sampleLoading": null,

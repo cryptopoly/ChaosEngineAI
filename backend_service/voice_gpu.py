@@ -42,18 +42,29 @@ def reset() -> None:
     _CAP.clear()
 
 
-def problem(row: dict[str, Any]) -> str | None:
-    """Plain words for why this GPU cannot run ``row``, or None. Only rows that declare a need are checked."""
+def facts(row: dict[str, Any]) -> dict[str, Any] | None:
+    """Why this GPU cannot run ``row``, as data the screen words in the person's language:
+    ``{"kind": "memory" | "compute", "need": number, "have": number}``, or None. Only rows that declare a need are
+    checked; the compute capability first, because more memory does not help an old card."""
     need_cap = row.get("minComputeCap")
     if need_cap:
         cap = compute_capability()
         if cap is not None and cap < float(need_cap):
-            return (f"{row['name']} needs an NVIDIA GPU of compute capability {float(need_cap):g} or newer; "
-                    f"this one is {cap:g}.")
+            return {"kind": "compute", "need": float(need_cap), "have": cap}
     need_vram = row.get("minVramGb")
     if need_vram:
         total = vram_total_gb()
         if total is not None and total < float(need_vram):
-            return (f"{row['name']} needs about {float(need_vram):g} GB of GPU memory; "
-                    f"this GPU has {total:.0f} GB.")
+            return {"kind": "memory", "need": float(need_vram), "have": round(float(total))}
     return None
+
+
+def problem(row: dict[str, Any]) -> str | None:
+    """Plain English words for ``facts`` (API errors and logs)."""
+    found = facts(row)
+    if found is None:
+        return None
+    if found["kind"] == "compute":
+        return (f"{row['name']} needs an NVIDIA GPU of compute capability {found['need']:g} or newer; "
+                f"this one is {found['have']:g}.")
+    return f"{row['name']} needs about {found['need']:g} GB of GPU memory; this GPU has {found['have']:g} GB."

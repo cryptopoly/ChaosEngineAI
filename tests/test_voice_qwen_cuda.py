@@ -375,6 +375,15 @@ class GpuGateTests(unittest.TestCase):
                 else:
                     self.assertIn(expected, why)
 
+    def test_facts_are_data_for_the_screen_compute_first(self) -> None:
+        row = {"name": "Big", "minVramGb": 9.0, "minComputeCap": 7.0}
+        for vram, cap, expected in ((8.0, 8.6, {"kind": "memory", "need": 9.0, "have": 8}),
+                                    (16.0, 6.1, {"kind": "compute", "need": 7.0, "have": 6.1}),
+                                    (4.0, 6.1, {"kind": "compute", "need": 7.0, "have": 6.1}),
+                                    (24.0, 8.9, None)):
+            with self.subTest(vram=vram, cap=cap), mock.patch.object(voice_gpu, "vram_total_gb", return_value=vram),                     mock.patch.object(voice_gpu, "compute_capability", return_value=cap):
+                self.assertEqual(voice_gpu.facts(row), expected)
+
     def test_a_row_with_no_stated_need_is_never_checked(self) -> None:
         with mock.patch.object(voice_gpu, "vram_total_gb", side_effect=AssertionError), \
                 mock.patch.object(voice_gpu, "compute_capability", side_effect=AssertionError):
@@ -413,6 +422,7 @@ class GpuGateTests(unittest.TestCase):
         small = rows["qwen3-tts-custom-0.6b-cuda"]
         self.assertFalse(small["supported"])
         self.assertIn("GB of GPU memory", small["unsupportedReason"])
+        self.assertEqual(small["unsupportedFacts"]["kind"], "memory")
         with _Box(vram=24.0, cap=8.9), mock.patch.object(voice_clone, "_ready", return_value=False):
             rows = {r["key"]: r for r in voice_clone.list_models(every_model=True)}
         self.assertTrue(rows["qwen3-tts-custom-1.7b-cuda"]["supported"])

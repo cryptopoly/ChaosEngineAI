@@ -902,6 +902,8 @@
       "cloneTooLong": "This is too long for one cloned-voice clip. Shorten it to {max} characters.",
       "describeFirst": "Describe the voice you want before generating.",
       "appleOnly": "Apple Silicon Macs only for now.",
+      "gpuTooSmall": "Needs about {need} GB of GPU memory; this GPU has {have} GB.",
+      "gpuTooOld": "Needs an NVIDIA GPU of compute capability {need} or newer; this one is {have}.",
       "language": "Language",
       "sampleOf": "Play a sample of {name}",
       "sampleLoading": "Making a sample of {name}. Click to stop.",

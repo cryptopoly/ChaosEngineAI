@@ -1,13 +1,31 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 86 rows with work, decisions or watch items still open, newest first.
+summary: 88 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-170 · cargo test port race in backend::tests::runtime_info_keeps_a_soft_note_while_the_port_is_silent — Open; low priority.</summary>
+
+**Status or trigger:** **Open; low priority.**
+
+**Notes:** The test binds port 0, drops the listener, then expects the port to stay silent. Failed once while pip, brew and nvm were opening sockets; passes 3 of 3 when the machine is quiet. Fix: pick a port and hold a non-accepting socket, or retry the probe.
+
+</details>
+
+<details>
+<summary>FU-169 · scripts/check-upstreams.py: report every pinned upstream against its newest release (D-78) — Open; nothing built.</summary>
+
+**Status or trigger:** **Open; nothing built.**
+
+**Notes:** Pins to read: llama.cpp tag, llama-server-turbo branch head, dflash-mlx, TensorFold, mflux, ltx-2-mlx, ACE-Step, TriAttention, Chatterbox, DDTree, Playwright, plus `scripts/audit-dependencies.py` output. Print behind or current per row; run from `pre-build-check` and the release workflow; never block a release.
+
+</details>
 
 <details>
 <summary>FU-168 · TensorFold 1.x: build the family table from capabilities --json, add newer families — Open; follows FU-111.</summary>

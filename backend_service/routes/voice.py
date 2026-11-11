@@ -416,7 +416,11 @@ def list_voice_models(request: Request) -> dict[str, Any]:
     models = voice_clone.list_models(every_model=True)
     # Fit on this machine from the measured peak, and Kokoro's row (part of the runtime) for the Models table.
     kokoro = annotate_voice_models(models, host_hardware_class())
-    return {"models": models, "available": voice_clone.available_here(), "kokoro": kokoro}
+    from backend_service.catalog import voice_models  # noqa: PLC0415
+
+    # ``unmeasuredListed``: the dev-only CHAOSENGINE_VOICE_UNMEASURED switch is on, so unmeasured CUDA rows are listed.
+    return {"models": models, "available": voice_clone.available_here(), "kokoro": kokoro,
+            "unmeasuredListed": bool(voice_models._LIST_UNMEASURED_CUDA)}
 
 
 @router.post("/api/voice/speak/stream")

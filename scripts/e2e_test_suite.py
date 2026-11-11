@@ -203,6 +203,12 @@ def probe_capabilities() -> Capability:
 _CHAT_ARCH_SUFFIXES = ("ForCausalLM", "ForConditionalGeneration", "LMHeadModel")
 
 
+def unmeasured_listed_rows(rows: list[dict[str, Any]]) -> list[str]:
+    """Keys of listed speech rows without measured numbers (Qwen3-TTS rows are exempt: they predate the rule)."""
+    return [str(r.get("key")) for r in rows
+            if r.get("family") != "qwen3-tts" and (r.get("estimates") or {}).get("basis") != "measured"]
+
+
 def _dir_bytes(path: Path) -> int:
     """Size of a file or folder, following the snapshot symlinks into blobs/."""
     try:
@@ -2476,8 +2482,12 @@ def phase_8(cap: Capability) -> PhaseResult:
             for companion in row.get("companions", []):
                 if not re.fullmatch(r"[0-9a-f]{40}", str(companion.get("revision"))) or not companion.get("files"):
                     return "fail", f"{row.get('key')} companion {companion.get('repo')} is not pinned", {}
-            if row.get("family") != "qwen3-tts" and (row.get("estimates") or {}).get("basis") != "measured":
-                return "fail", f"{row.get('key')} is listed without measured numbers", {}
+        unmeasured = unmeasured_listed_rows(rows)
+        if unmeasured:
+            if models_payload.get("unmeasuredListed"):
+                return "skip", ("CHAOSENGINE_VOICE_UNMEASURED=1 lists unmeasured rows on purpose: "
+                                + ", ".join(unmeasured)), {}
+            return "fail", f"{unmeasured[0]} is listed without measured numbers", {}
         return "pass", "", {"rows": len(rows), "wave2": sorted(r["key"] for r in wave2)}
 
     def _speak_each_wave2_model():

@@ -10,6 +10,7 @@ import math
 import re
 import shutil
 import struct
+import sys
 import tempfile
 import threading
 import unittest
@@ -734,6 +735,25 @@ class RouteTests(unittest.TestCase):
             agent = self.client.get("/api/voice/voices", headers={"x-chaosengine-token": "agent-token"}).json()
         self.assertNotIn("clone", {v["kind"] for v in agent["voices"]})
 
+    def test_models_route_reports_the_unmeasured_switch_and_the_e2e_check_uses_it(self) -> None:
+        import importlib.util
+        from pathlib import Path
+
+        self.assertIs(self.client.get("/api/voice/models").json()["unmeasuredListed"], voice_models._LIST_UNMEASURED_CUDA)
+        with mock.patch.object(voice_models, "_LIST_UNMEASURED_CUDA", True):
+            self.assertTrue(self.client.get("/api/voice/models").json()["unmeasuredListed"])
+        path = Path(__file__).resolve().parents[1] / "scripts" / "e2e_test_suite.py"
+        spec = importlib.util.spec_from_file_location("e2e_suite_unmeasured", path)
+        suite = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = suite  # its dataclasses look the module up by name
+        self.addCleanup(sys.modules.pop, spec.name, None)
+        spec.loader.exec_module(suite)
+        rows = [{"key": "a", "family": "qwen3-tts", "estimates": None},
+                {"key": "b", "family": "chatterbox-turbo", "estimates": {"basis": "measured"}},
+                {"key": "c", "family": "chatterbox-turbo", "estimates": None}]
+        self.assertEqual(suite.unmeasured_listed_rows(rows), ["c"])
+        self.assertEqual(suite.unmeasured_listed_rows(rows[:2]), [])
+
     def test_models_route_lists_every_row_with_capabilities(self) -> None:
         body = self.client.get("/api/voice/models").json()
         self.assertEqual(len(body["models"]), len(voice_models.listed_models()))
@@ -831,7 +851,7 @@ class ChatStreamTests(unittest.TestCase):
         row = voice_models.voice_model("qwen3-tts-0.6b")
         with mock.patch.object(voice_clone, "clone_plan", return_value=(plan, row, {}, [])) as checks, \
                 mock.patch.object(voice_speak, "_speak_chunk", return_value=(tone_wav(0.1), 0.1)), \
-                mock.patch.object(voice_clone, "mark_cloned", side_effect=lambda wav, r, vid: b"MARKED" + wav) as mark, \
+                mock.patch.object(voice_clone, "mark_cloned", side_effect=lambda wav, r, vid, **kw: b"MARKED" + wav) as mark, \
                 mock.patch.object(voice_clone_safety, "audit") as audit:
             _r, lines = self.stream("clone:1234567890_deadbeef")
             self.assertEqual(checks.call_args.kwargs["origin"], "ui")

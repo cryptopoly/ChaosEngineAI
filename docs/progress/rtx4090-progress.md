@@ -542,3 +542,21 @@ Four steps leave nothing to cache. The Studio now offers only "Off" for FLUX.2, 
 Not changed: the FBCache 0.08 recommendation on the Wan 2.1 and LTX-Video rows (not measured here; the Wan 2.2 data says 0.08 may never skip).
 
 **Tests:** `tests/test_cache_strategies.py` (+14), `tests/test_video_routes.py` (+1), `tests/test_recommendations.py` (+1), vitest `imageCacheStrategies.test.ts` (2), `tsc` clean. E2E: new check "Video diffusion cache strategy reaches the runtime" in phase 5 of `scripts/e2e_test_suite.py`. `tests/test_video_routes.py::test_catalog_slow_on_labels_reach_the_payload` fails here for a reason unrelated to this change (KeyError on the Mac-only `prince-canuma/LTX-2.3-distilled` row).
+
+
+## Speed-up and quantisation pass, W2: other diffusion speed-ups (2026-11-11)
+
+Same harness and baselines as W1 (Wan 2.2 TI2V 5B 832x480, 49 frames, 20 steps: **35.5 s**, 12.4 GB; LTX-2.3 4-bit 768x512, 97 frames: **59.6 s**, 22.3 GB). The measuring knobs live in `backend_service/helpers/speedups.py` (`CHAOSENGINE_SPEEDUPS=vae_tiling,vae_slicing,compile,time_decode`, off unless set, covered by `tests/test_speedups.py`).
+
+| Item | Result | Numbers |
+|---|---|---|
+| `torch.compile` on the repeated transformer blocks (Wan) | **SKIP, cannot run here** | `triton-windows 3.7.1` installs (into a scratch folder, not the app); the first step then fails with "Failed to find C compiler". The PC has Visual Studio Build Tools without the C++ workload (no `cl.exe`). Install effort: the C++ build tools (several GB, owner decision) or a bundled compiler. The option now checks for Triton and a compiler first and reports why instead of failing the step. Owner test on Linux and on a Windows PC with the C++ tools. |
+| Attention backend: SDPA vs sage vs flash | **SKIP** | `set_attention_backend("sage")` needs `sageattention>=2.1.1`; PyPI stops at 1.0.6 (Triton v1), so the app's existing "SageAttention unavailable" path is what runs. `flash-attn>=2.6.3` has no Windows wheel on PyPI. SDPA stays. Building SageAttention 2 needs MSVC plus the CUDA toolkit. |
+| VAE tiling / slicing (Wan, 832x480) | **no gain, no harm** | 34.8 s / 35.3 s against 35.3 s; peak 12.6 GB in all three. VAE decode is 7.5 s of the 35 s (21 %). |
+| VAE tiling (LTX-2.3 4-bit) | **no gain** | 58.4 s against 58.0 s; peak 18.1 GB. Decode is 3.7 s of 58 s (6 %). |
+| Fewer steps on Wan TI2V (`unipc`) | measured, default **kept at 20** | 8 / 12 / 16 / 20 steps: 21.1 / 25.4 / 29.9 / 34.7 s (about 1.2 s per step on top of 14 s fixed: text encoder, decode, offload swaps). Fewer steps give a different clip rather than a blurrier one: composition stays at 16, a different (still clean) lighthouse at 12 and 8; PSNR against the 20-step clip 12 to 16 dB. 16 steps (1.16x) or 12 (1.37x) suit drafts. |
+| Scheduler at 12 steps (Wan) | no better | `dpm++` 26.4 s, `flow-euler` 26.0 s, `unipc` 25.4 s. Plain `euler` is refused for Wan (flow prediction; the app already offers `flow-euler` for that). |
+| Distilled rows (Klein 4 steps, LTX-2.3 8 steps) | n/a | nothing to cut; their model cards set the steps. |
+| TeaCache-style skipping | see W1 | |
+
+**Defaults changed:** none; nothing in W2 beat the stock path on this card. **Owner tests:** `torch.compile` and SageAttention 2 on Linux CUDA, and with the Windows C++ tools; VAE tiling on 12 to 16 GB cards, where decode peak matters more than it does on 24 GB.

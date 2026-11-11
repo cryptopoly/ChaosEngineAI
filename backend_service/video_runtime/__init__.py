@@ -894,6 +894,13 @@ class DiffusersVideoEngine:
                         else:
                             raise
 
+            try:
+                from backend_service.helpers.speedups import apply_speedups
+
+                self._load_notes.extend(apply_speedups(pipeline))
+            except Exception:  # noqa: BLE001 - speed-ups are optional
+                pass
+
             self._pipeline = pipeline
             self._torch = torch
             self._loaded_repo = repo

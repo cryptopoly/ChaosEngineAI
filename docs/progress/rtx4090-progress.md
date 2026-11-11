@@ -681,6 +681,26 @@ The drafter's gain grows with context because the target's own decode slows whil
 **E2E on this PC:** phase 10 (Storyboard) PASS, 9 checks. Phase 5 (video): the new "cache strategy reaches the runtime" check and the Wan image-to-video check SKIP on the host memory gate (the installer build and a loaded model held the RAM); the LTX-2.3 diffusers check PASS; the LTX-2.5 check FAILS here because that row is Mac-only (not touched by this pass).
 
 
+## Qwen3.8-27B + DFlash2 through llama.cpp CUDA (2026-11-11)
+
+**Verdict: PASS (runs, 1.8 to 2.6x), far short of 700 tok/s.** The lane already existed (FU-089): llama.cpp b11981 reads DFlash 2 from the `dflash-` sidecar's GGUF metadata and the app pairs it as `--model-draft <sidecar> --spec-type draft-dflash --spec-draft-n-max 15`. Nothing needed converting. Weights: `ggml-org/Qwen3.8-27B-GGUF` `Qwen3.8-27B-Q4_K_M.gguf` (18.07 GiB) + `dflash-Qwen3.8-27B-Q8_0.gguf` (1.92 GiB); the drafter's Hub twin is `z-lab/Qwen3.8-27B-DFlash2` (safetensors, not used here).
+
+Setup: b11981 CUDA build (`~/.chaosengine/test-llama-b11981/cuda`), `--parallel 1 --ctx-size 4096 --jinja --flash-attn on --reasoning off --n-gpu-layers 99`, drafter on GPU, greedy, 300 tokens, one warm-up, 3 runs per prompt, llama.cpp's own timings, card idle.
+
+| Prompt | No drafter | DFlash 2 | Speed-up | Draft acceptance |
+|---|---|---|---|---|
+| Prose (essay) | 43.1 tok/s | 77.8 | 1.8x | 31 % |
+| Code (LRU cache module) | 43.1 | 93.0 | 2.2x | 39 % |
+| Structured (JSON array) | 43.1 | 111.8 | 2.6x | 50 % |
+| Peak VRAM (whole card) | 19.8 GB | **24.0 GB of 24.5** | | |
+| Load | 24.6 s | 10.5 s (warm cache) | | |
+
+Runs were within 1 % of each other. Comparison, same card: TensorFold's Python engine with the same drafter measured 47 to 49 plain, 147 to 151 prose and about 300 on code (section above), so on a 4090 the llama.cpp route gets about half of TensorFold's drafted prose speed and a third of its code speed, for the same plain speed. Acceptance is low (31 to 50 %); the cause is not investigated (block size, drafter quant, or llama.cpp's DFlash 2 path against the vendor engine). The 700 tok/s headline is a 5090 number.
+
+**Limits.** Only 4096 context was run; with the drafter the card is full (24.0 of 24.5 GB), so longer context needs the app's `--fit` to shrink GPU layers, and 12 to 16 GB cards cannot hold the 4-bit model at all (a 32 GB 5090 or a 128 GB DGX Spark can hold Q8_0). Output equality with plain decoding was not diffed (greedy verification should make it identical). Not run through the app: the E2E check is added but skips without the files in its model scan.
+
+**Shipped:** catalog note on the `ggml-org/Qwen3.8-27B-GGUF` row (Q8_0 is 26.6 GB; Q4_K_M + sidecar measured), test `test_dflash2_sidecar_for_the_4bit_pack_picks_its_closest_quant` (real file names), E2E check "Qwen3.8-27B DFlash 2 drafter (GGUF sidecar)" in `scripts/e2e_test_suite.py` (SKIP unless the model with a `dflash-Qwen3.8-27B*` sidecar is on disk; fails if the note names no drafter). The mapping in `DFLASH2_DRAFT_MODEL_MAP` stays vLLM-only: GGUF needs no entry. Follow-up FU-163 (acceptance gap, GGUF row for 24 GB cards).
+
 ## Report back (speed-up and quantisation pass, W1 to W5)
 
 Branch `test/rtx4090`. Every item is recorded with numbers in the sections above ("W1" to "W5").

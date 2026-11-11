@@ -1025,6 +1025,36 @@ def phase_1(cap: Capability) -> PhaseResult:
             return "skip", f"drafter not on disk or not paired: {note[:160]}", detail
         return "pass", "", detail
 
+    # 1e5. Qwen3.8-27B with the DFlash 2 drafter (``dflash-`` sidecar beside the
+    # GGUF, read from the file's metadata by llama.cpp). Skips when the model or
+    # its sidecar is not on disk, or when the card cannot hold both (the load
+    # then fails on memory, which is not a pairing bug).
+    def _qwen38_dflash2():
+        if not cap.gguf_available:
+            return "skip", "GGUF backend not available", {}
+        if not cap.gguf_mtp_available:
+            return "skip", "llama-server lacks --spec-type (run scripts/update-llama-cpp.sh)", {}
+        mains = [
+            (ref, p) for (ref, p) in cap.local_gguf_files
+            if "qwen3.8-27b" in p.lower() and not Path(p).name.lower().startswith(("dflash-", "mtp-", "mmproj-"))
+            and any(Path(p).parent.glob("dflash-Qwen3.8-27B*.gguf"))
+        ]
+        if not mains:
+            return "skip", "no Qwen3.8-27B GGUF with a dflash- sidecar on disk", {}
+        ref, gguf_path = mains[0]
+        status, reason, detail = _load_unload_prompt(
+            ref, path=gguf_path, backend="gguf", spec=True,
+            canonical_repo="ggml-org/Qwen3.8-27B-GGUF",
+            cache_strategy="native", context=4096, max_tokens=24,
+            load_timeout=900.0,
+        )
+        if status != "pass":
+            return status, reason, detail
+        note = detail.get("runtimeNote") or ""
+        if "draft-dflash" not in note or "dflash-Qwen3.8-27B" not in note:
+            return "fail", f"sidecar present but note names no DFlash 2 drafter: {note[:160]}", detail
+        return "pass", "", detail
+
     # 1f. Long context cache preview
     def _long_context_preview():
         pick = _pick_model_by_ref_prefix(cap.local_mlx_models, "Qwen3") \
@@ -1178,6 +1208,7 @@ def phase_1(cap: Capability) -> PhaseResult:
         ("GGUF llama.cpp", _gguf),
         ("GGUF MTP speculative", _gguf_mtp),
         ("GGUF speculative lane (sidecar / ngram-mod)", _gguf_spec_lane),
+        ("Qwen3.8-27B DFlash 2 drafter (GGUF sidecar)", _qwen38_dflash2),
         ("GGUF Nemotron 3.5 Bolt + pinned DFlash drafter", _bolt_drafter),
         ("long context cache-preview", _long_context_preview),
         ("fused attention flag", _fused_attention),

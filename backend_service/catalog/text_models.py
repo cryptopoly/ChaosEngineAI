@@ -372,7 +372,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "quantization": "Q8_0",
                 "ggufFile": "Qwen3.8-27B-Q8_0.gguf",
                 "capabilities": ["reasoning", "coding", "agents", "tool-use", "vision"],
-                "note": "Canonical ggml-org Q8_0. Its mtp-/dflash- drafter sidecars download with it; turn on Speculative decoding to use them (needs a current llama-server — scripts/update-llama-cpp.sh).",
+                "note": "Canonical ggml-org Q8_0. Its mtp-/dflash- drafter sidecars download with it; turn on Speculative decoding to use them (needs a current llama-server — scripts/update-llama-cpp.sh). Q8_0 is 26.6 GB, too big for a 24 GB card; the same repo's Q4_K_M (18 GB) plus its DFlash 2 sidecar decoded 78-112 tok/s against 43 without it on an RTX 4090 (short context; the card is then nearly full).",
                 "contextWindow": "262K",
                 "launchMode": "direct",
                 "backend": "llama.cpp",

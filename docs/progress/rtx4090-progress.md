@@ -382,6 +382,42 @@ First frame of the start clip matches the still; the late frame of the start+end
 
 **Not done.** The newest open video models are still Mac-only or unwired on CUDA: LTX-2.3/2.5 (March / July 2026, audio, diffusers 0.42.1 has the pipelines), Kandinsky 6 (MIT), Motif-Video; Wan 2.2 I2V A14B for an end frame needs offload or GGUF. See `docs/research/cuda-model-landscape-2026-11.md`.
 
+## TensorFold 1.x on the RTX 4090 (2026-11-11, FU-111)
+
+Standalone evaluation of the native engine (release 1.2.6, `tensorfold-native serve`), outside the app. Nothing in the app changed.
+
+**Verdict: it works on a 4090 (sm_89), but only as a source build. There is no Windows release binary.**
+
+- **Release assets (v1.2.6):** `linux-x86_64`, `linux-aarch64` and `macos-arm64` archives (47 / 47 / 6 MB, each with a `.sha256` and a `.sha256.sig`). No Windows asset. `docs/WINDOWS.md` says "supported from source only".
+- **The Linux archive carries no sm_89 image.** Its fatbins hold sm_80, 86, 120 and 121. The runbook: "`sm_89` builds, but the release set holds no image qualified on it". Not run here: WSL2 has no distro on this PC. A Linux 4090 user would build `-Dgpu=sm_89` too (or try the sm_86 image; untested).
+- **Driver floor:** R580 or newer (CUDA 13.0 `libcuda`); the server refuses an older driver at startup. This PC: 621.14, accepted.
+- **Qualified set (README, "Pick a model"):** Qwen3.5-2B (one Mac or one GB10), Qwen3.8-27B + DFlash2 (one Mac or one GB10), Nemotron 3.5 Lightning (GB10, RTX 3090, RTX PRO 6000), Bolt (RTX PRO 6000, 24 GB checkpoint), Gemma 4 31B, Qwen3.6-35B-A3B, LFM2.5-24B-A2B (GB10). The README states "no NVFP4/FP8 model run on sm_80 to sm_89 is recorded", so the 4090 is not model-qualified by the project, only by the Windows guide's PR note (2B ~340 tok/s, 27B 40 plain and 80 to 160 with the drafter).
+- **Docs drift:** `docs/WINDOWS.md` still says `zig build native install -Dsm=89 ...`; on `main` that step no longer exists (`error: no such step: native`). The runbook's `zig build -Dgpu=sm_89 -Dnvcc=...` is the working form.
+
+### Build (Windows, this PC)
+
+- Tools: Zig 0.17.0 portable zip (100,268,137 bytes, sha256 `b5663f69...c428` matched ziglang.org's index), nvcc 13.2, MSVC Build Tools 2022 (`vcvars64.bat`).
+- Command: `zig build -Dgpu=sm_89 -Dnvcc="...\CUDA\v13.2\bin\nvcc.exe"` from a vcvars64 prompt. About 8 minutes cold; output is one `tensorfold-native.exe` of 49,212,416 bytes (no `lib\` beside it; the kernel images are embedded). Without `tfgrammar.dll`, structured output and required tool calls answer HTTP 400 and everything else serves.
+- `tensorfold-native capabilities --json` reports `"chip": "nvidia-sm89"`, `"backends": ["cuda"]` and lists `qwen3_5` (mlx-q4g64, exl3), nemotron_h, gemma4, lfm2_moe, qwen4 and more. Licence: Apache 2.0.
+
+### Qwen3.5-2B MLX 4-bit (1.60 GiB pull at 4.4 MiB/s, revision `93760be4`)
+
+`serve ... --name local-model --context 8192 --no-thinking --parallel 1`: loaded in 1.5 s; startup line "CUDA sm_89 device 0 (NVIDIA GeForce RTX 4090): model 1.58 GiB; 1 stream at once, 0.17 GiB each at a 8192-token window".
+
+| Run | Result |
+|---|---|
+| 400 tokens, greedy, one request | **457 to 461 tok/s** (server log 484 tok/s decode, ttft 0.019 s) |
+| 64-token reply | 0.41 s total |
+| 8 requests at once (server `--parallel 1`) | 454 tok/s aggregate, so serial; the README's 1,500 across eight needs `--parallel 8` (not run) |
+| VRAM, whole card with the model loaded | 3.1 GB (the card was shared; the other session's use came and went) |
+
+Both figures beat the Windows guide's 340 tok/s. No refusal, no kernel error, replies coherent.
+
+### Not run
+
+- **Qwen3.8-27B + DFlash2** (the headline 700 tok/s is a 5090 figure; the guide says 80 to 160 on a 4090) and **Nemotron Bolt** (24 GB checkpoint; fits no 24 GB card with caches). The 27B pair is 14.98 + 3.58 = 18.56 GiB to download, needs your yes; comparison to llama.cpp is therefore open. The plain-text llama.cpp reference on this PC is Bolt 170 tok/s plain, 332 with DFlash.
+- **WSL2 / Linux archive path**, `--parallel 8`, `tfgrammar.dll` build, and a run through the app.
+
 ## Report back (sections 0 to 7)
 
 ### What failed (details and logs in the sections above)
@@ -427,3 +463,82 @@ Not fixed here (for you or the Mac session):
 - **5 Projects:** Mixed. Plan, approve and render work. The backend crashed once on the Windows commit limit. Renders don't land in a project, Cast stills are refused, and the Mixer export passes.
 - **6 Text on CUDA:** PASS. 170 tok/s, 332 with DFlash, 330 through the app on the CUDA build. Vulkan matches CUDA on decode. The vLLM and TurboQuant lanes are not available on Windows.
 - **7 Packaged installer:** PASS after fixes. It builds (136.5 MB), installs in 10 s, the backend is up in 16–25 s, and speech, export, FLUX on CUDA and uninstall all work. The GPU-runtime install on Windows needed six fixes before an installed app could make an image; built locally, since no v0.10.0 installer is published.
+
+
+## Speed-up and quantisation pass, W1: diffusion cache strategies on CUDA (2026-11-11)
+
+Plan: `docs/plans/rtx4090-speed-and-quant.md`. Harness: HTTP to the dev backend on 8876, same seed (7) for every run, peak VRAM from `nvidia-smi` every second, PSNR against the uncached output (frames 0, middle and last for video). Baselines are warm generation seconds, first runs after a load thrown away: FLUX.2 Klein 4B 1024x640 4 steps **4.2 s** (noise 4.2 to 5.0 s, 9.6 GB); Wan 2.2 TI2V 5B 832x480 49 frames 20 steps **35.5 s** (12.4 GB; the 42.5 s measured earlier included a cold start); LTX-2.3 4-bit 768x512 97 frames **59.6 s** (the 70 s earlier was a first run; 22.3 GB).
+
+### 1. What the engine reports, and what the Studio offers (Windows, CUDA)
+
+| Strategy | `is_available` | `applies_to` | Studio offers it |
+|---|---|---|---|
+| fbcache, taylorseer, pab, fastercache, magcache | yes (diffusers 0.42.1) | image, video | fbcache, taylorseer, pab only |
+| teacache | yes, vendored patches for Flux, Hunyuan, LTX-Video, CogVideoX, Mochi | image, video | FLUX family on the image side; filtered on the video side |
+| native, triattention, turboquant | text only (the last two not installed here) | text | n/a |
+
+### 2. What the sweep found (all fixed, with tests)
+
+| Finding | Fix |
+|---|---|
+| **The video route dropped `cacheStrategy` and `cacheRelL1Thresh`.** `VideoGenerationRequest` had no such fields, so no video the Studio sent ever ran cached. | Fields added and passed to `VideoGenerationConfig` (`test_generate_forwards_the_cache_strategy_to_the_runtime`). |
+| **`cacheRelL1Thresh` capped at 1**, but TaylorSeer, PAB and FasterCache read it as a whole-step interval (2 and up): HTTP 422 for every interval. | Cap 16. |
+| **Hooks stayed on the loaded pipeline.** The variant key ignores the cache choice, so an "off" run after a cached one stayed cached, and a second `enable_cache` raises "already enabled". FBCache used `apply_first_block_cache` directly, which `disable_cache` cannot undo. | `reset_diffusion_cache` runs before every request; FBCache goes through `enable_cache`. |
+| **The video runtime threw the "not applied" note away** (the image runtime kept it), so a refused cache looked like a speed-up that did not happen. | Note kept on the clip. |
+| **"Applied" but doing nothing: TaylorSeer on Wan.** diffusers' default module patterns match nothing in Wan's blocks (0 hooked modules, same speed, identical pixels). | Counts hooked modules, falls back to block-level patterns, refuses if still none (test on a tiny Wan transformer). |
+| **FBCache on FLUX.2 crashed the run** (`unsupported operand type(s) for -: 'Tensor' and 'list'`: dual-stream head block, single-stream tail block) and fell back to a placeholder picture. **On LTX-2.3 it was HTTP 500** (`Model class LTX2VideoTransformerBlock not registered`). | Preflight refuses both; any hook-attach error becomes a "not applied" note. |
+| **FasterCache crashes inside step 1** on FLUX.2 and Wan (`tuple index out of range`) after the weights are on the card. | A cached run that fails is retried once without the cache, re-seeded (the retry matches the uncached output, PSNR 99), and the note says so. |
+| **TaylorSeer, PAB and FasterCache stall LTX-2.3 4-bit:** more than 15, 8 and 8 minutes against 60 s, card full at 24 GB, GPU at 99 %, no output (stopped by hand). Per-block tensors on top of a 22.3 GB peak spill into system memory. This is the "one step took an hour" case. | Per-block caches are refused when the pipeline is CPU-offloaded and this process leaves under 6 GB of the card free. Headroom is read from the card, so a 5090 or a Spark is unaffected. Live: LTX refuses at once (headroom 2.8 GB); Wan TI2V (also offloaded, headroom 11 GB) still applies it. |
+
+### 3. Results (warm, same seed, PSNR against the uncached output)
+
+**FLUX.2 Klein 4B, 1024x640, 4 steps** (baseline 4.2 s):
+
+| Setting | Gen s | Speed-up | Peak VRAM | PSNR | Verdict |
+|---|---|---|---|---|---|
+| fbcache 0.08 / 0.12 / 0.20 | n/a | n/a | 9.6 GB | n/a | **FAIL, fixed:** crashed (above); now refused with a note |
+| teacache | n/a | n/a | 9.6 GB | n/a | SKIP: no patch for `Flux2Transformer2DModel` (noted) |
+| taylorseer 2 / 3 / 4 | 8.6 / 6.3 / 5.6 | 0.49 / 0.67 / 0.75x | 10.3 GB | 24.3 / 22.8 / 21.2 | **FAIL:** slower, different picture |
+| magcache | 4.3 | 0.98x | 9.6 GB | 24.2 | **FAIL:** no gain, picture changes |
+| pab 2 / 3 | 4.9 | 0.86x (noise) | 9.8 GB | 34.9 | **FAIL:** no gain (identical for both: 4 steps leave nothing to skip) |
+| fastercache 2 / 3 | n/a | n/a | 9.4 to 16.5 GB | n/a | **FAIL, fixed:** `tuple index out of range`; now retried stock |
+
+Four steps leave nothing to cache. The Studio now offers only "Off" for FLUX.2, FLUX schnell, "turbo" and other step-distilled rows (`isCacheUselessImageRepo`, vitest).
+
+**Wan 2.2 TI2V 5B, 832x480, 49 frames, 20 steps** (baseline 35.5 s, 12.4 GB). Every setting keeps the scene (pink dusk, lighthouse, rocks) but changes fine detail (gulls, glow, sky texture); 20 dB or below is a visibly different clip.
+
+| Setting | Gen s | Speed-up | Peak VRAM | PSNR (first / mid / last) | Verdict |
+|---|---|---|---|---|---|
+| fbcache 0.08 | 35.5 | 1.00x | 12.7 GB | 99 / 99 / 99 | PASS, useless: never skips |
+| fbcache 0.12 | 28.7 | 1.23x | 12.8 GB | 19.8 / 20.3 / 21.2 | details change |
+| fbcache 0.20 | 24.3 | 1.46x | 12.8 GB | 17.0 / 17.5 / 17.9 | **FAIL:** visibly different |
+| teacache | 35.5 | 1.00x | 12.4 GB | identical | SKIP: no patch for Wan (noted) |
+| taylorseer 2 / 3 / 4 (after the fix) | 27.2 / 24.1 / 23.0 | 1.31 / 1.47 / 1.55x | 16.1 GB (+3.7) | 17.5 to 19.1 | **FAIL on quality:** sky artefacts, different birds |
+| magcache | n/a | n/a | n/a | n/a | SKIP: calibrated for FLUX only (noted) |
+| pab 2 / 3 / 5 | 34.0 / 33.6 / 32.9 | 1.04 / 1.06 / 1.08x | 13.1 to 13.5 GB | 19 to 26 | **FAIL:** no gain, picture changes |
+| fastercache 2 / 3 / 4 | 38.2 to 39.0 | 0.91 to 0.93x | 22.4 GB | 10 before the re-seed fix, 99 after | **FAIL, fixed:** crashes in step 1; the retry runs stock |
+
+**Wan 2.2 TI2V 5B from a start picture** (FLUX.2 Klein still; baseline 36.2 s): fbcache 0.12 **1.24x**, 13.3 GB, PSNR 37.7 / 21.3 / 18.3; taylorseer 3 **1.45x**, 16.5 GB, PSNR 38.1 / 19.2 / 18.0. Frame 0 still matches the picture; later frames drift as in text-to-video.
+
+**LTX-2.3 distilled 4-bit, 768x512, 97 frames** (baseline 59.6 s, 8 steps, model CPU offload): fbcache refused (block class not registered by diffusers; was HTTP 500); teacache and magcache not applied (no patch / FLUX only); taylorseer, pab and fastercache stalled before the headroom guard and are refused after it. No setting speeds it up. The Studio already hides the cache controls for distilled LTX (`fixedSampler`).
+
+### 4. Interactions
+
+| Check | Result |
+|---|---|
+| Cache + start picture (Wan TI2V) | PASS: 1.24x (fbcache 0.12), 1.45x (taylorseer 3), frame 0 matches the still |
+| Cache + start and end pictures | SKIP: the only model that takes an end picture (LTX-2.3) has no working cache; TI2V refuses an end picture |
+| Cache + model CPU offload (LTX-2.3 4-bit) | FAIL found, fixed: the stall above |
+| Cache + Storyboard clip | not reachable: Storyboard builds its `VideoGenerationRequest` without cache fields, so clips run stock by design |
+
+### 5. Recommended defaults (applied)
+
+| Family | Default | Why |
+|---|---|---|
+| FLUX.2 Klein, FLUX schnell, turbo rows | off; the Studio offers only Off | 4 to 8 steps, nothing to skip; every cache was slower, equal, crashed or changed the picture |
+| Wan 2.2 TI2V 5B | **off** (`recommended_settings` row carrying the measured reason) | the speed-ups (1.2 to 1.5x) all change the gulls and the glow; fbcache 0.12 and taylorseer 3 stay opt-in |
+| LTX-2.3 distilled 4-bit | off, controls hidden | nothing applies; two caches stalled it |
+
+Not changed: the FBCache 0.08 recommendation on the Wan 2.1 and LTX-Video rows (not measured here; the Wan 2.2 data says 0.08 may never skip).
+
+**Tests:** `tests/test_cache_strategies.py` (+14), `tests/test_video_routes.py` (+1), `tests/test_recommendations.py` (+1), vitest `imageCacheStrategies.test.ts` (2), `tsc` clean. E2E: new check "Video diffusion cache strategy reaches the runtime" in phase 5 of `scripts/e2e_test_suite.py`. `tests/test_video_routes.py::test_catalog_slow_on_labels_reach_the_payload` fails here for a reason unrelated to this change (KeyError on the Mac-only `prince-canuma/LTX-2.3-distilled` row).

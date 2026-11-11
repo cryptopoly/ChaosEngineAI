@@ -92,7 +92,7 @@ export function LlamaCudaPanel({ backendOnline }: { backendOnline: boolean }) {
             cuda: status.cudaVersion ?? "",
             tag: status.tag,
             defaultValue:
-              "Runs GGUF chat models on your NVIDIA GPU with CUDA {cuda} (llama.cpp {tag}). Downloads about 680 MB, including the CUDA runtime (0.9 GB on disk).",
+              "Runs GGUF chat models on your NVIDIA GPU with CUDA {cuda} (llama.cpp {tag}). The download includes the CUDA runtime.",
           })}
         </p>
       </header>

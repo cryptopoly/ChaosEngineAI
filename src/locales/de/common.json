@@ -1338,7 +1338,7 @@
     "storyboard": "Storyboard kommt bald."
   },
   "llamaCuda": {
-    "description": "Führt GGUF-Chatmodelle mit CUDA {cuda} auf deiner NVIDIA-GPU aus (llama.cpp {tag}). Download etwa 680 MB, einschließlich CUDA-Laufzeit (0,9 GB auf der Festplatte).",
+    "description": null,
     "driverTooOld": null,
     "inUse": "In Benutzung: GGUF-Modelle laufen auf der NVIDIA-GPU.",
     "install": "Installieren",

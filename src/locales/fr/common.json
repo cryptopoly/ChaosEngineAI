@@ -1338,7 +1338,7 @@
     "storyboard": "Le storyboard arrive bientôt."
   },
   "llamaCuda": {
-    "description": "Exécute les modèles de chat GGUF sur votre GPU NVIDIA avec CUDA {cuda} (llama.cpp {tag}). Téléchargement d'environ 680 Mo, runtime CUDA inclus (0,9 Go sur le disque).",
+    "description": null,
     "driverTooOld": null,
     "inUse": "Utilisé : les modèles GGUF s'exécutent sur le GPU NVIDIA.",
     "install": "Installer",

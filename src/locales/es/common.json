@@ -1338,7 +1338,7 @@
     "storyboard": "El storyboard llegará pronto."
   },
   "llamaCuda": {
-    "description": "Ejecuta modelos de chat GGUF en tu GPU NVIDIA con CUDA {cuda} (llama.cpp {tag}). La descarga pesa unos 680 MB, con el runtime de CUDA incluido (0,9 GB en disco).",
+    "description": null,
     "driverTooOld": null,
     "inUse": "En uso: los modelos GGUF se ejecutan en la GPU NVIDIA.",
     "install": "Instalar",

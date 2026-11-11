@@ -137,7 +137,7 @@ class SnapshotNvidiaTests(unittest.TestCase):
             snapshot = self.monitor._snapshot_nvidia()
         self.assertNotEqual(snapshot["gpu_name"], "System RAM (no GPU detected)")
 
-    def test_torch_cuda_takes_precedence_over_nvidia_smi(self) -> None:
+    def test_torch_cuda_is_the_fallback_when_nvidia_smi_is_missing(self) -> None:
         torch_snapshot = {
             "gpu_name": "RTX 4090",
             "vram_total_gb": 24.0,
@@ -147,10 +147,10 @@ class SnapshotNvidiaTests(unittest.TestCase):
             "power_w": None,
         }
         with mock.patch.object(self.monitor, "_snapshot_torch_cuda", return_value=torch_snapshot), \
-             mock.patch("subprocess.check_output") as mock_subprocess:
+             mock.patch("subprocess.check_output", side_effect=FileNotFoundError) as mock_subprocess:
             snapshot = self.monitor._snapshot_nvidia()
         self.assertEqual(snapshot["vram_total_gb"], 24.0)
-        mock_subprocess.assert_not_called()
+        mock_subprocess.assert_called_once()
 
 
 class GetDeviceVramTotalGbTests(unittest.TestCase):

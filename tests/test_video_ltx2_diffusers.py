@@ -97,7 +97,9 @@ class RegistryTests(unittest.TestCase):
     def test_the_catalog_payload_flags_the_distilled_rows_as_fixed_schedule(self) -> None:
         from backend_service.helpers.video import _video_model_payloads
 
-        rows = {v["repo"]: v for f in _video_model_payloads([]) for v in f["variants"]}
+        with mock.patch("backend_service.helpers.video.is_apple_silicon", return_value=False):
+            families = _video_model_payloads([])
+        rows = {v["repo"]: v for f in families for v in f["variants"]}
         self.assertTrue(rows[DISTILLED_NF4]["fixedSampler"])
         self.assertTrue(rows["diffusers/LTX-2.3-Distilled-Diffusers"]["fixedSampler"])
         self.assertFalse(rows[DEV_BF16]["fixedSampler"])

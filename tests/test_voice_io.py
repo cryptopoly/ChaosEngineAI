@@ -647,6 +647,7 @@ class NemotronLanguageTests(unittest.TestCase):
 class CudaDllPathTests(unittest.TestCase):
     """Windows: ctranslate2 loads cuBLAS with plain LoadLibrary, which only searches PATH (RTX 4090 run)."""
 
+    @unittest.skipUnless(sys.platform == "win32", "builds Windows paths; runs on the Windows box")
     def test_nvidia_bin_folders_go_on_path_as_well_as_the_dll_directories(self) -> None:
         from backend_service import voice_worker
 

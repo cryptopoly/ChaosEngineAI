@@ -1063,7 +1063,9 @@
         "model": {
           "enum": [
             "qwen3-tts-0.6b",
-            "qwen3-tts-1.7b"
+            "qwen3-tts-1.7b",
+            "qwen3-tts-0.6b-cuda",
+            "qwen3-tts-1.7b-cuda"
           ],
           "type": "string"
         },

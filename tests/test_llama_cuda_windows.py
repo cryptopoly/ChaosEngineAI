@@ -9,6 +9,7 @@ import hashlib
 import io
 import json
 import os
+import sys
 import tempfile
 import unittest
 import zipfile
@@ -175,6 +176,7 @@ class WindowsInstallTests(_TempRoot):
     def _digests(self) -> dict[str, str]:
         return {n: hashlib.sha256((self.sources / n).read_bytes()).hexdigest() for n in (self.build, self.cudart)}
 
+    @unittest.skipUnless(sys.platform == "win32", "builds Windows paths; runs on the Windows box")
     def test_installs_server_and_runtime_dlls_next_to_each_other_and_records_it(self) -> None:
         digests = self._digests()
         with mock.patch.object(llama_cuda, "_download", side_effect=self._download), \
@@ -257,6 +259,7 @@ class WindowsSelectionTests(_TempRoot):
         (folder / "llama-server.exe").write_bytes(b"MZ")
         self.binary = folder / "llama-server.exe"
 
+    @unittest.skipUnless(sys.platform == "win32", "builds Windows paths; runs on the Windows box")
     def test_used_when_it_lists_a_cuda_device(self) -> None:
         with mock.patch.object(llama_cuda, "lists_cuda_device", return_value=True):
             self.assertEqual(llama_cuda.usable_binary(), str(self.binary))
@@ -265,6 +268,7 @@ class WindowsSelectionTests(_TempRoot):
         with mock.patch.object(llama_cuda, "lists_cuda_device", return_value=False):
             self.assertIsNone(llama_cuda.usable_binary())
 
+    @unittest.skipUnless(sys.platform == "win32", "builds Windows paths; runs on the Windows box")
     def test_backend_lookup_prefers_cuda_then_falls_back(self) -> None:
         from backend_service.inference import binaries
 
@@ -297,6 +301,7 @@ class WindowsSelectionTests(_TempRoot):
 
 
 class CapabilityRefreshTests(_TempRoot):
+    @unittest.skipUnless(sys.platform == "win32", "builds Windows paths; runs on the Windows box")
     def test_install_detection_repoints_the_cached_server_path(self) -> None:
         from backend_service.inference import capabilities as caps
         from backend_service.inference.base import BackendCapabilities
@@ -347,6 +352,7 @@ class WindowsRouteTests(_TempRoot):
         body = self._status("windows", "x64", None, None)
         self.assertEqual((body["supported"], body["state"]), (False, "no-driver"))
 
+    @unittest.skipUnless(sys.platform == "win32", "builds Windows paths; runs on the Windows box")
     def test_installed_and_in_use_or_without_a_device(self) -> None:
         folder = self.root / llama_cuda.LLAMA_CPP_TAG
         folder.mkdir(parents=True)

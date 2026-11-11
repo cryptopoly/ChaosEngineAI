@@ -220,11 +220,10 @@ class CatalogFlagsTests(unittest.TestCase):
     def test_video_payloads_flag_who_takes_a_start_and_an_end_picture(self):
         from backend_service.helpers.video import _video_model_payloads
 
-        rows = {
-            v["repo"]: v
-            for family in _video_model_payloads([])
-            for v in family["variants"]
-        }
+        # Diffusers-only rows are hidden on Apple Silicon; pin the host so this runs the same everywhere.
+        with mock.patch("backend_service.helpers.video.is_apple_silicon", return_value=False):
+            families = _video_model_payloads([])
+        rows = {v["repo"]: v for family in families for v in family["variants"]}
         # Wan 2.2 TI2V-5B (diffusers) follows the first frame only; LTX-2 (a Mac engine, so absent from the list on
         # other computers) takes both; the rest take none.
         ti2v = rows["Wan-AI/Wan2.2-TI2V-5B-Diffusers"]

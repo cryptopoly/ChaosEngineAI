@@ -610,3 +610,57 @@ Finding while testing: the generic `DiffusionPipeline.from_pretrained(..., trans
 | NVFP4 / hardware fp8 | **Gate written, live run SKIP (no hardware).** `backend_service/helpers/gpu_formats.py`: `nvfp4_supported(cc)` is true from compute capability 10.0 (B200 10.x, RTX 50-series 12.0, DGX Spark 12.1) and false for this card (8.9); `fp8_supported` from 8.9. Read from the card, never assumed. `tests/test_gpu_formats.py`. **Owner test:** an RTX 5090 or a Spark. |
 
 **Catalog change:** none. Every row that passed is either already offered (FP8 layerwise, NF4 for FLUX.1) or needs a new load path and a toggle (torchao int8 on CUDA, FU-160); the two Wan options that save memory fail on quality or speed.
+
+
+## Speed-up and quantisation pass, W4: text-model caches and speculative decoding (2026-11-11)
+
+llama.cpp server on the 4090, `-ngl 99 -fa on`, one process per KV type, a seeded prose filler with the needle sentence ("The secret passphrase for the vault is crimson-otter-7731.") at mid-depth and the question at the end, temperature 0, the context window set just above the prompt. Two binaries: the TurboQuant fork `llama-server-turbo.exe` (CUDA, `feature/turboquant-kv-cache`, adds `turbo2/3/4` cache types) for the KV sweep, and the standard b11981 CUDA build for the drafter runs (the fork's server rejected the DFlash drafter path). A first sweep was discarded: a stray earlier copy of the script shared the port and the GPU. Numbers below are from clean reruns with the card at 0.5 GB idle.
+
+### TurboQuant and the native KV types
+
+**Nemotron 3.5 Bolt E4B Q4_K_M** (hybrid model, small KV: 1.04 GB at f16 for 66K tokens). Needle found in every cell. VRAM is the whole process; decode tok/s at 4K / 16K / 32K / 64K:
+
+| KV type | KV buffer | VRAM | Decode tok/s (4K / 16K / 32K / 64K) | Needle |
+|---|---|---|---|---|
+| f16 (native) | 1040 MiB | 5.5 GB | 141 / 152 / 143 / 125 | 4/4 |
+| q8_0 | 552 MiB | 5.1 to 5.3 GB | 132 / 138 / 116 / 90 | 4/4 |
+| q4_0 | 292 MiB | 4.8 to 5.0 GB | 130 / 138 / 117 / 93 | 4/4 |
+| turbo4 | 276 MiB | 5.1 to 5.3 GB | 115 / 119 / 101 / 80 | 4/4 |
+| turbo3 | 203 MiB | 5.0 to 5.2 GB | 126 / 132 / 112 / 89 | 4/4 |
+
+Prefill 8.3 to 12.2K tok/s for all types (within 10 %). On this model the KV is 1 GB of 5.5, so no type saves more than 0.7 GB, and every quantised type is slower than f16 (11 to 36 % at 64K). **TurboQuant buys nothing here.**
+
+**Qwen3-0.6B Q8_0** (dense, KV-heavy: 3.7 GB f16 at 33K tokens), contexts up to 32K (its trained window is 40K):
+
+| KV type | KV buffer | VRAM | Decode tok/s (4K / 16K / 32K) | Needle (4K / 16K / 32K) |
+|---|---|---|---|---|
+| f16 | 3696 MiB | 5.3 GB | 395 / 269 / 180 | pass / pass / pass |
+| q8_0 | 1964 MiB | 3.7 GB | 363 / 254 / 174 | pass / pass / pass |
+| q4_0 | 1040 MiB | 2.8 GB | 360 / 259 / 183 | **fail** x3 |
+| turbo4 | 982 MiB | 2.7 GB | 362 / 260 / 179 | **fail** x3 |
+| turbo3 | 722 MiB | 2.5 GB | 386 / 304 / 225 | **fail** x3 |
+
+On a KV-heavy model the saving is real (f16 to turbo3: 5.3 to 2.5 GB; turbo3 decodes 25 % faster at 32K because it moves less KV), but 4-bit keys and values (q4_0, turbo4, turbo3 alike) lose the needle on a 0.6B model, even at 4K. q8_0 is the safe setting: half the KV, the answer intact, speed unchanged. TurboQuant's recovery of 4-bit quality (the published claim) did not show on this small model: turbo4 failed where q4_0 failed. Not tested: a 7B or larger dense model (none in the library; the 27B Qwen3.8 GGUF folder is empty). **Owner test:** a 7B to 14B dense model at 32K and 64K, f16 against q8_0 against turbo4.
+
+### DFlash drafter (Nemotron 3.5 Bolt, standard b11981 CUDA build, 128 generated tokens)
+
+| Context | Plain decode | With the DFlash drafter | Drafted / accepted (first request) |
+|---|---|---|---|
+| 4K | 130 tok/s | 108 (0.83x, first request) | 28 / 6 |
+| 16K | 148 | 189 (**1.28x**) | 28 / 6 |
+| 32K | 136 | 178 (**1.31x**) | 28 / 6 |
+| 64K | 119 | 165 (**1.38x**) | 28 / 6 |
+
+The drafter's gain grows with context because the target's own decode slows while the 0.74 GB drafter's cost stays flat; its VRAM cost is 1.7 GB (5.6 to 7.3 GB). The continuation of a repetitive filler is a hard case for drafting (21 % of drafted tokens accepted); section 6's 332 tok/s was on ordinary prose. **SKIP: a second model with a pinned drafter** (none is in the library; the other pinned drafters are 8 to 27B downloads).
+
+### TriAttention, DDTree, MTPLX, TensorFold (read from the code, then checked)
+
+| Item | Result |
+|---|---|
+| TriAttention off the Mac | **SKIP, cannot run.** The pinned commit builds and imports on Windows (a pure-Python 0.2.0 wheel into a scratch folder), but `TriAttentionStrategy.is_available` needs the MLX entry point or vLLM, and vLLM has no Windows build; the app's WSL2 route (`vllm_wsl_engine.py`) needs a distro, and this PC has none (`wsl -l` reports no distributions). Badge "Install" with the Linux/CUDA hint. **Owner test:** Linux CUDA or a WSL2 distro. |
+| DDTree | **Mac-only as built; the algorithm is portable.** `ddtree.py` builds the tree with NumPy, but verification (`ddtree_attention.py`: `tree_forward`, `compact_kv_cache`, `prefill_with_capture`) imports `mlx` and `mlx_lm`. A llama.cpp route does not exist (the server's `--spec-type` has linear drafters only: `draft-dflash`, `draft-mtp`, ngram; tree verification lives in the example binary, not the server). A torch route could exist: a transformers target with a 4D tree attention mask, plus the same DFlash drafter. Follow-up FU-161. |
+| MTPLX | **Mac-only** (forked MLX in its own venv; `routes/setup/mtplx.py` reports `supported` only for `darwin` + `arm64`). The CUDA counterpart already exists without it: llama.cpp's `--spec-type draft-mtp` for MTP-head GGUFs, wired in `llama_cpp_engine.py`. No follow-up needed. |
+| TensorFold | **Mac-only in the app** (`scripts/install-tensorfold.sh` requires arm64 Python; Python 0.6.6 pin). The 1.x native engine builds from source on this PC (2B at 460 tok/s); the other session's section "TensorFold 1.x on the RTX 4090" and FU-111 cover it. |
+| `cache-strategy-matrix.py` | **Not re-run:** nothing in this pass touched the text-model cache or engine code, so the cells are as recorded in section 6 (one cell runs on this PC). |
+
+**Defaults changed:** none. The sweep supports what the app already does (native f16 default, q8_0 as the safe quantised choice); it argues against offering 4-bit KV types on models under a few billion parameters.

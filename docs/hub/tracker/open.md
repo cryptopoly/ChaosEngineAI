@@ -1,13 +1,22 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 78 rows with work, decisions or watch items still open, newest first.
+summary: 79 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-161 · DDTree on NVIDIA: a torch tree-verification lane (the algorithm is portable, the app's verifier is MLX-only) — Open (2026-11-11): read from the code, nothing built.</summary>
+
+**Status or trigger:** **Open (2026-11-11): read from the code, nothing built.**
+
+**Notes:** `ddtree.py` builds the tree in NumPy; `ddtree_attention.py` (`tree_forward`, `compact_kv_cache`, `prefill_with_capture`) imports `mlx` / `mlx_lm`. llama-server has linear drafters only (`draft-dflash`, `draft-mtp`, ngram), so a CUDA lane means a transformers target with a 4D tree attention mask and the same DFlash drafter, in a worker process. DFlash on the 4090 already gives 1.28 to 1.38x at 16K to 64K (`docs/progress/rtx4090-progress.md`, W4), which is the bar a tree lane has to beat.
+
+</details>
 
 <details>
 <summary>FU-160 · Weight quantisation on NVIDIA for FLUX.2 and Wan: torchao int8 (best measured quality), NF4 beyond FLUX.1, Nunchaku on the cu130 runtime — Open (2026-11-11): measured on an RTX 4090, nothing wired.</summary>

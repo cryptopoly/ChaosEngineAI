@@ -428,6 +428,9 @@ class ImageRouteGateTests(unittest.TestCase):
         with mock.patch(
             "backend_service.helpers.memory_gate.snapshot_memory_signals", return_value=(available_gb, 20.0)
         ), mock.patch(
+            # Pin the size term to system memory; a CUDA card's own free memory would replace it.
+            "backend_service.helpers.memory_gate.cuda_free_vram_gb", return_value=None
+        ), mock.patch(
             "backend_service.routes.images._generate_image_artifacts",
             return_value=([], {"activeEngine": "diffusers"}),
         ) as generate:
@@ -464,6 +467,8 @@ class ImageRouteGateTests(unittest.TestCase):
         with mock.patch(
             "backend_service.helpers.memory_gate.snapshot_memory_signals", return_value=(18.0, 20.0)
         ), mock.patch(
+            "backend_service.helpers.memory_gate.cuda_free_vram_gb", return_value=None
+        ), mock.patch(
             "backend_service.routes.images._generate_image_artifacts",
             return_value=([], {"activeEngine": "diffusers"}),
         ):
@@ -488,7 +493,7 @@ class VideoGateRouteHelperTests(unittest.TestCase):
         body = SimpleNamespace(width=width, height=height, numFrames=frames)
         with mock.patch(
             "backend_service.helpers.memory_gate.snapshot_memory_signals", return_value=(available_gb, 20.0)
-        ):
+        ), mock.patch("backend_service.helpers.memory_gate.cuda_free_vram_gb", return_value=None):
             video_routes._video_memory_gate(request, variant, "video generation", body)
 
     def test_native_size_passes_on_a_modest_machine(self):

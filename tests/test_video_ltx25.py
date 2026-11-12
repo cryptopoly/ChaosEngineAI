@@ -120,6 +120,24 @@ class GatingTests(unittest.TestCase):
                 video_routes.download_video_model(request, mock.MagicMock(modelId=LTX25_NF4_ID))
         self.assertEqual(caught.exception.status_code, 403)
 
+    def test_download_route_passes_the_gate_with_a_token(self) -> None:
+        from backend_service.routes import video as video_routes
+
+        request = mock.MagicMock()
+        request.app.state.chaosengine.start_download.return_value = {"id": "d1"}
+        with mock.patch("backend_service.helpers.huggingface._hf_token_value", return_value="hf_x"):
+            video_routes.download_video_model(request, mock.MagicMock(modelId=LTX25_NF4_ID, repo=LTX25_REPO))
+        request.app.state.chaosengine.start_download.assert_called()
+
+    def test_catalog_row_reason_follows_the_token(self) -> None:
+        row = _rows()[LTX25_NF4_ID]
+        with mock.patch("backend_service.helpers.huggingface._hf_token_value", return_value=""):
+            from backend_service.helpers.huggingface import _hf_token_value
+            self.assertTrue(gated_access_reason(row, available_locally=False, token=_hf_token_value()))
+        with mock.patch("backend_service.helpers.huggingface._hf_token_value", return_value="hf_x"):
+            from backend_service.helpers.huggingface import _hf_token_value
+            self.assertIsNone(gated_access_reason(row, available_locally=False, token=_hf_token_value()))
+
 
 class TierTests(unittest.TestCase):
     def test_precision_by_free_vram(self) -> None:

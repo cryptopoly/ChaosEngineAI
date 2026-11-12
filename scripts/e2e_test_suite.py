@@ -1831,6 +1831,32 @@ _MEMORY_REFUSAL_MARKERS = (
 )
 
 
+def _gated_row_blocked_check(row: dict[str, Any], *, token_present: bool) -> tuple[str, str] | None:
+    """Verdict for a gated row whose weights are absent: ``None`` means keep going.
+
+    A saved Hugging Face token (settings or environment) opens a gated row, so the reason is only asserted
+    when no token exists. Only the presence flag is ever read, never the token.
+    """
+    if row.get("accessBlockedReason"):
+        return "skip", "LTX-2.5 weights not on this machine (gated, ~71 GB): " + str(row["accessBlockedReason"])[:120]
+    if token_present:
+        return "skip", "a Hugging Face token is present, so the gated row is not blocked and its weights are not downloaded"
+    if not row.get("hasLocalData"):
+        return "fail", "a gated row with no weights and no token must say why it is blocked"
+    return "skip", "LTX-2.5 weights not on this machine (gated, ~71 GB): not downloaded"
+
+
+def _hf_token_present() -> bool:
+    """Same notion as the backend: a saved settings token or the environment variable (flag only, never the value)."""
+    if os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN"):
+        return True
+    try:
+        code, data = _voice_http("GET", "/api/settings", timeout=10.0)
+        return code == 200 and bool((json.loads(data.decode("utf-8")) or {}).get("hasHuggingFaceToken"))
+    except Exception:
+        return False
+
+
 def _is_memory_refusal(err: str) -> bool:
     return any(marker in err for marker in _MEMORY_REFUSAL_MARKERS)
 
@@ -2091,9 +2117,8 @@ def phase_5(cap: Capability) -> PhaseResult:
         if row.get("acceptsImageInput") is not True or row.get("fixedSampler") is not True:
             return "fail", f"flags: image={row.get('acceptsImageInput')!r} fixed={row.get('fixedSampler')!r}", {}
         if not row.get("availableLocally"):
-            if not row.get("accessBlockedReason") and not row.get("hasLocalData") and not os.environ.get("HF_TOKEN"):
-                return "fail", "a gated row with no weights and no token must say why it is blocked", {}
-            return "skip", "LTX-2.5 weights not on this machine (gated, ~71 GB): " + str(row.get("accessBlockedReason") or "not downloaded")[:120], {}
+            verdict = _gated_row_blocked_check(row, token_present=_hf_token_present())
+            return verdict[0], verdict[1], {}
         code, data = _voice_http("POST", "/api/video/generate", body=json.dumps({
             "modelId": "Lightricks/LTX-2.5-Diffusers~nf4", "prompt": "waves crash on a rocky shore, gulls calling",
             "width": 512, "height": 320, "numFrames": 25, "fps": 24, "seed": 3}).encode("utf-8"),

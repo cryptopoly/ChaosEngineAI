@@ -30,5 +30,35 @@ class NonMlxEngineSkipTests(unittest.TestCase):
         self.assertIsNotNone(_load_suite()._non_mlx_engine_skip(None))
 
 
+class GatedRowCheckTests(unittest.TestCase):
+    def test_token_present_skips_even_without_a_reason(self):
+        verdict = _load_suite()._gated_row_blocked_check({"accessBlockedReason": None, "hasLocalData": False}, token_present=True)
+        self.assertEqual(verdict[0], "skip")
+        self.assertIn("token", verdict[1])
+
+    def test_no_token_and_no_reason_fails(self):
+        verdict = _load_suite()._gated_row_blocked_check({"accessBlockedReason": None, "hasLocalData": False}, token_present=False)
+        self.assertEqual(verdict[0], "fail")
+
+    def test_no_token_with_a_reason_skips(self):
+        verdict = _load_suite()._gated_row_blocked_check({"accessBlockedReason": "gated, add a token"}, token_present=False)
+        self.assertEqual(verdict[0], "skip")
+        self.assertIn("gated", verdict[1])
+
+    def test_token_probe_reads_env_then_settings_flag_only(self):
+        from unittest import mock
+
+        suite = _load_suite()
+        with mock.patch.dict("os.environ", {"HF_TOKEN": "x"}):
+            self.assertTrue(suite._hf_token_present())
+        body = b'{"hasHuggingFaceToken": true, "huggingFaceToken": "masked"}'
+        with mock.patch.dict("os.environ", {}, clear=True), mock.patch.object(suite, "_voice_http", return_value=(200, body)):
+            self.assertTrue(suite._hf_token_present())
+        with mock.patch.dict("os.environ", {}, clear=True), mock.patch.object(suite, "_voice_http", return_value=(200, b'{"hasHuggingFaceToken": false}')):
+            self.assertFalse(suite._hf_token_present())
+        with mock.patch.dict("os.environ", {}, clear=True), mock.patch.object(suite, "_voice_http", side_effect=OSError):
+            self.assertFalse(suite._hf_token_present())
+
+
 if __name__ == "__main__":
     unittest.main()

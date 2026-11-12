@@ -965,6 +965,48 @@ def phase_1(cap: Capability) -> PhaseResult:
             return "pass", "", detail
         return "skip", "no served checkpoint that fits is on disk", {}
 
+    # 1d2b2. Structured output through the native TensorFold binary (FU-111): needs
+    # tfgrammar beside the binary. Skips when the binary, the grammar library or the
+    # small Qwen3.5-2B checkpoint is absent; a reply that is not schema-valid JSON fails.
+    def _tensorfold_native_grammar():
+        rc, state, _ = _cli_json("call", "GET", "/api/setup/tensorfold-native-status", timeout=60.0)
+        if rc != 0 or not isinstance(state, dict):
+            return "fail", "tensorfold-native-status failed", {}
+        if not state.get("installed") or sys.platform == "darwin":
+            return "skip", "TensorFold 1.x binary not installed (or a Mac)", {}
+        if not (state.get("gate") or {}).get("offered"):
+            return "skip", "gate refused this machine", {}
+        if not state.get("grammar"):
+            return "skip", "tfgrammar library absent beside the binary", {}
+        repo = "mlx-community/Qwen3.5-2B-MLX-4bit"
+        pick = _pick_model_by_ref_prefix(cap.local_mlx_models, repo.split("/")[-1])
+        if not pick:
+            return "skip", "Qwen3.5-2B is not on disk", {}
+        _ref, path = pick
+        rc, loaded, err = _cli_json("load", repo.split("/")[-1], "--backend", "auto", "--path", path,
+                                    "--canonical-repo", repo, "--context", "4096", "--timeout", "600", timeout=660.0)
+        if rc != 0 or not isinstance(loaded, dict) or loaded.get("state") != "loaded":
+            return "fail", f"load failed: {str(err or loaded)[:200]}", {}
+        try:
+            body = json.dumps({
+                "prompt": "Invent a person.", "maxTokens": 160, "temperature": 0.0,
+                "jsonSchema": {"type": "object", "additionalProperties": False, "required": ["name", "age"],
+                               "properties": {"name": {"type": "string"}, "age": {"type": "integer"}}},
+            })
+            rc, gen, err = _cli_json("call", "POST", "/api/chat/generate", "--body", body, "--timeout", "300")
+        finally:
+            _cli("unload", timeout=60.0)
+        if rc != 0 or not isinstance(gen, dict):
+            return "fail", f"generate rc={rc}: {(err or '')[:200]}", {}
+        try:
+            text = gen["session"]["messages"][-1]["text"]
+            doc = json.loads(text)
+        except (KeyError, IndexError, ValueError):
+            return "fail", "reply is not JSON", {"reply": str(gen)[:300]}
+        if set(doc) != {"name", "age"} or not isinstance(doc["name"], str) or not isinstance(doc["age"], int):
+            return "fail", f"reply breaks the schema: {text[:160]}", {}
+        return "pass", "", {"reply": text[:160]}
+
     # 1d2c. Families the TensorFold 1.2.7 binary added (FU-168). Every repo below
     # must reach the status payload's supportedModels (the registry dropping one is
     # a fail). Then one load per family on disk, smallest first, with speculative
@@ -1369,6 +1411,7 @@ def phase_1(cap: Capability) -> PhaseResult:
         ("MLX + MTPLX speculative", _mtplx),
         ("MLX + TensorFold exact speculative (FU-093)", _tensorfold_engine),
         ("TensorFold 1.x native, CUDA (FU-111)", _tensorfold_native_engine),
+        ("TensorFold 1.x native structured output (FU-111)", _tensorfold_native_grammar),
         ("TensorFold 1.2.7 families: LFM3, LFM2.5, Spark, Nanbeige, MiniMax (FU-168)", _tensorfold_new_families),
         ("MLX Kolibri 1, vendored architecture (FU-103)", _kolibri),
         ("MLX LFM3, vendored architecture", _lfm3),

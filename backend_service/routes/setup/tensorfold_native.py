@@ -192,8 +192,24 @@ def adopt_binary(source: Path, *, platform: str) -> tuple[Path, native.NativeCap
     shutil.copy2(source, dest)
     if sha256_file(dest) != digest:
         raise InstallError("The copied binary does not match the original; check the disk and try again.")
+    _copy_grammar_library(source, dest_dir)
     caps = finish_install(dest, platform=platform, sha256=digest, source=f"adopted:{source}", fallback_version=version)
     return dest, caps
+
+
+def _copy_grammar_library(source: Path, dest_dir: Path) -> None:
+    """Bring the structured-output library a source build keeps beside or above ``bin`` along with the binary.
+
+    ``zig build grammar`` installs ``tfgrammar`` to ``native/lib``; the server opens ``../lib`` and then the
+    folder of the executable, and the data folder holds the executable alone, so the library is copied beside it.
+    """
+    for root in (source.parent, source.parent / "lib", source.parent.parent / "lib"):
+        if not root.is_dir():
+            continue
+        for found in root.glob("*tfgrammar*"):
+            if found.is_file() and found.suffix.lower() in (".dll", ".so", ".dylib"):
+                shutil.copy2(found, dest_dir / found.name)
+                return
 
 
 def install_from_asset(asset: native.ReleaseAsset, progress: Callable[[str, float, str], None]) -> tuple[Path, native.NativeCapabilities]:
@@ -262,7 +278,8 @@ def _worker(binary_path: str | None) -> None:
                 raise InstallError(
                     "TensorFold publishes no Windows build. Build tensorfold-native from source for your card and choose "
                     f"the executable here, or set {native.WINDOWS_ARCHIVE_URL_ENV} and {native.WINDOWS_ARCHIVE_SHA_ENV} "
-                    "to a self-hosted archive."
+                    "to a self-hosted archive. For structured output also run `zig build grammar -Dxgrammar=DIR` (xgrammar v0.2.8); "
+                    "tfgrammar.dll is picked up from the build's native/lib folder."
                 )
             binary, caps = install_from_asset(asset, progress)
         post = native.evaluate_gate(gpu, caps, key=key, asset_available=True, binary_present=True)

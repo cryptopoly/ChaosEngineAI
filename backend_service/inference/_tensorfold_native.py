@@ -361,11 +361,12 @@ NATIVE_MODELS: tuple[NativeModel, ...] = (
         repos=("TensorFold/Qwen3.6-35B-A3B-MLX-4bit-MTP",),
         family="qwen3_5_moe",
         weight_format="mlx-q4g64",
-        vram_gb=23.0,
-        kv_gb_per_ref=0.3,
+        vram_gb=20.2,  # measured on an RTX 4090: 20.1 GB added to the card at an 8192-token window
+        kv_gb_per_ref=0.16,
+        measured=True,
         note=(
-            "Size is the 20.9 GB checkpoint plus runtime and KV; unmeasured here and tight on a 24 GB card. "
-            "Upstream checked it on a GB10."
+            "Measured on a 24 GB card with the model's own MTP head: 186 tok/s plain, about 420 on code; 20.1 GB "
+            "at an 8,192-token window, 20.6 GB at 32,768 (the full 32K prompt ran at 156 tok/s)."
         ),
     ),
     NativeModel(
@@ -378,11 +379,13 @@ NATIVE_MODELS: tuple[NativeModel, ...] = (
         family="gemma4",
         weight_format="mlx-q4g64",
         vision=True,
-        vram_gb=21.5,
-        kv_gb_per_ref=0.5,
+        vram_gb=21.8,  # measured on an RTX 4090: 21.8 GB added to the card at an 8192-token window
+        kv_gb_per_ref=0.65,
+        measured=True,
         note=(
-            "Size is the 18.44 GB checkpoint plus runtime and KV; unmeasured here and tight on a 24 GB card. "
-            "Upstream checked CUDA on a GB10. Images go through --vision."
+            "Measured on a 24 GB card: 42 tok/s plain, 21.8 GB at an 8,192-token window, 22.1 GB at 12,288. "
+            "A 16,384-token window is refused (the KV pages need 1.27 GiB, 0.95 GiB are left), so keep the "
+            "window at 12K or less on 24 GB. Images go through --vision."
         ),
     ),
 )

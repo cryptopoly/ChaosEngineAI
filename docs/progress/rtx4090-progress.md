@@ -1120,3 +1120,34 @@ Real bug: ffmpeg 9 prints two flag columns in `-filters` (every film failed "lac
 E2E phases were not run (no backend started); the new skips are in `scripts/e2e_test_suite.py` (`_mflux_catalog_rows`, `_ltx2_engine`).
 
 **Update 2026-11-12 (licence accepted, indexes read).** Access to `Lightricks/LTX-2.5-Diffusers` now works. `model_index.json` is `LTX2Pipeline`; the weight maps settle the duplicates: `transformer/` = the 4-shard set (`-0000N-of-00004`, 37.98 GB); the 8-shard set has no index and is stale. `connectors/` = the 2-shard set (6.34 GB); the single 6.34 GB file is stale. `text_encoder/` = 5 shards, 23.92 GB (Gemma 4, `Gemma4UnifiedForConditionalGeneration`). `processor`, `prompt_enhancer` (10.2 GB), `duration_head` are optional in `LTX2Pipeline` (`_optional_components`); the card's 72 GB leaves out `prompt_enhancer`, so pass `None` for it. Exact allow-patterns, distilled pipeline: `model_index.json`, `scheduler/*`, `tokenizer/*`, `processor/*`, `duration_head/*`, `transformer/config.json`, `transformer/*.index.json`, `transformer/*-of-00004.safetensors`, `text_encoder/config.json`, `text_encoder/generation_config.json`, `text_encoder/*.index.json`, `text_encoder/*.safetensors`, `connectors/config.json`, `connectors/*.index.json`, `connectors/*-of-00002.safetensors`, `vae/*`, `audio_vae/*`, `vocoder/*`, `latent_upsampler/*`. Sizes: **70.1 GB** without the latent upsampler, **71.1 GB** with it (route a, the whole download). Route b has the same network volume; it keeps a ~32 GB pack (transformer nf4 ~14.4, Gemma 4 nf4 ~8.4, connectors 6.35 kept bf16, VAEs/vocoder/upsampler ~2.8, from the 2.3 pack's proportions) and a peak of that plus one source shard (max 10 GB) and the HF partial file: **~45 GB on disk**. C: free is **61 GB** now (it was 94 GB earlier in the session; something else wrote ~33 GB), so route a (70 GB) does not fit and route b leaves ~16 GB, under the 25 GB floor. Nothing downloaded.
+
+## TensorFold native on Windows: tfgrammar and the Gemma 4 / Qwen3.6 rows (2026-11-12, FU-111, FU-168)
+
+**tfgrammar.dll builds on Windows.** `zig build grammar -Dxgrammar=DIR` (xgrammar `v0.2.8` cloned with submodules; same Zig 0.17.0 as the exe, no vcvars or nvcc needed, 32 s) wrote `zig-out\native\lib\tfgrammar.dll` (2.8 MB). Copied beside the installed exe (`~\.chaosengine\tensorfold-native\<version>\`; the server also opens `..\lib`). The app's detection (`grammar_library_present`, status `grammar: true`) saw it with no code change and the 400 refusal (`_require_grammar_for`) is skipped when present, kept when absent. Through the app (backend on 8894, Qwen3.5-2B MLX-4bit, `jsonSchema` name/age/tags, additionalProperties false): reply was schema-valid JSON in 0.9 s. Changes: the adopt step (`adopt_binary`) now copies a `*tfgrammar*` library found beside the exe, in `lib\` or in `..\lib` (a source build puts it in `native\lib`) into the data folder; the Windows "no build" install message names the `zig build grammar` step; test `test_adopting_brings_the_grammar_library_from_the_build_lib_folder`; E2E check "TensorFold 1.x native structured output (FU-111)" (skips without the binary, the library or Qwen3.5-2B).
+
+**Gemma 4 31B** (`mlx-community/gemma-4-31B-it-4bit`, 18.4 GB, pulled 36 min, native engine, vision on, `--no-drafts`):
+
+| Measure | Result |
+|---|---|
+| Load (8192 window) | 19.9 s; +21.8 GB on the card (23.1 GB total with the desktop's 1.3 GB), fits 24 GB |
+| Plain greedy, 300 tokens, 3 runs | 42.5 / 42.5 / 42.6 tok/s |
+| Quality | "The capital of France is Paris."; red and blue 64 px squares answered "Red" and "Blue" |
+| 3K / 3.8K / 10K-token prompt | 41.2 / 41.2 / 39.0 tok/s decode (10K at a 12,288 window: +22.1 GB) |
+| 16,384 window | **refused**: "the CUDA memory budget fits no stream beside the model: one at a 16384-token window takes 1.27 GiB of KV pages, and the budget leaves 0.95 GiB" |
+
+Row: `measured=True`, `vram_gb` 21.8, KV 0.65 GB per 8K, note says keep the window at 12K or less on 24 GB.
+
+**Qwen3.6-35B-A3B + MTP** (`TensorFold/Qwen3.6-35B-A3B-MLX-4bit-MTP`, 20.9 GB, pulled about 45 min):
+
+| Measure | Result |
+|---|---|
+| Load (8192) | 21 to 24 s; +20.1 GB (21.0 GB total), fits |
+| Plain (`--no-drafts`), prose, 3 runs | 180 / 186 / 186 tok/s |
+| MTP on (`speculativeDecoding`), prose | 178 / 187 / 187 tok/s (no gain on prose) |
+| Code, 400 tokens, MTP on vs off | **417 to 425 vs 186 tok/s** (2.3x) |
+| Context 3.8K / 14.5K / 30K prompt, MTP on | 172 / 167 / 156 tok/s; card +20.1 / +20.3 / +20.6 GB (windows 8K / 16K / 32K) |
+| Quality | "The capital of France is Paris."; "a fox" from the long-context needle prompts |
+
+The old row (23.0 GB estimate) made the app's own gate refuse the 16K window ("needs about 23.3 GB ... has 23.3 GB free") although it loads at 20.3 GB. Row now `measured=True`, `vram_gb` 20.2, KV 0.16 GB per 8K. One note: a first attempt while another session held 23.8 GB of the card was refused by that gate, as designed; rerun on the idle card.
+
+Weights deleted afterwards from the HF cache (both; neither is on the Keep list); the cached Qwen3.5-2B stays. tfgrammar.dll stays installed beside the exe.

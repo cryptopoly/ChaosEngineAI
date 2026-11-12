@@ -397,6 +397,8 @@ def variant_fit(
     gap = _platform_gap_reason(platform_gate(variant, kind), hardware)
     if gap:
         return _unknown(hardware, gap)
+    if variant.get("accessBlockedReason"):  # a gated row nobody can download yet is never recommended
+        return _unknown(hardware, str(variant["accessBlockedReason"]))
     usable = hardware.usable_gb
     if usable <= 0:
         return _unknown(hardware, "This machine's usable memory could not be read.")

@@ -2078,10 +2078,40 @@ def phase_5(cap: Capability) -> PhaseResult:
             return "fail", f"the clip should carry sound but hasAudio={artifact.get('hasAudio')!r}: {artifact.get('runtimeNote')}", {}
         return "pass", "", {"seconds": artifact.get("durationSeconds"), "live": True}
 
+    def _ltx25_diffusers():
+        # LTX-2.5 on diffusers (NVIDIA, gated, 4-bit on load): catalog flags always; a live clip only when the
+        # 71 GB of weights are already on this machine. Skips on Apple Silicon (the row is CUDA-only) and without them.
+        rc, payload, _ = _cli_json("video-catalog", timeout=15.0)
+        variants = [v for f in ((payload or {}).get("families") or []) for v in (f.get("variants") or [])]
+        row = next((v for v in variants if v.get("id") == "Lightricks/LTX-2.5-Diffusers~nf4"), None)
+        if row is None:
+            return "skip", "LTX-2.5 (NVIDIA) is not listed on this host (CUDA-only row)", {}
+        if row.get("gated") is not True or row.get("loadQuantization") != "nf4" or row.get("footprintBasis") != "estimated":
+            return "fail", f"flags: gated={row.get('gated')!r} quant={row.get('loadQuantization')!r} basis={row.get('footprintBasis')!r}", {}
+        if row.get("acceptsImageInput") is not True or row.get("fixedSampler") is not True:
+            return "fail", f"flags: image={row.get('acceptsImageInput')!r} fixed={row.get('fixedSampler')!r}", {}
+        if not row.get("availableLocally"):
+            if not row.get("accessBlockedReason") and not row.get("hasLocalData") and not os.environ.get("HF_TOKEN"):
+                return "fail", "a gated row with no weights and no token must say why it is blocked", {}
+            return "skip", "LTX-2.5 weights not on this machine (gated, ~71 GB): " + str(row.get("accessBlockedReason") or "not downloaded")[:120], {}
+        code, data = _voice_http("POST", "/api/video/generate", body=json.dumps({
+            "modelId": "Lightricks/LTX-2.5-Diffusers~nf4", "prompt": "waves crash on a rocky shore, gulls calling",
+            "width": 512, "height": 320, "numFrames": 25, "fps": 24, "seed": 3}).encode("utf-8"),
+            content_type="application/json", timeout=3600.0)
+        artifact = (json.loads(data.decode("utf-8")) if code == 200 else {}).get("artifact") or {}
+        if not artifact.get("videoPath"):
+            if code == 503 and _is_memory_refusal(data.decode("utf-8", "replace")):
+                return "skip", "host memory gate fired: " + data.decode("utf-8", "replace")[:160], {}
+            return "fail", f"live text-to-video: HTTP {code} {data[:200]!r}", {}
+        if artifact.get("hasAudio") is not True:
+            return "fail", f"the clip should carry sound but hasAudio={artifact.get('hasAudio')!r}: {artifact.get('runtimeNote')}", {}
+        return "pass", "", {"seconds": artifact.get("durationSeconds"), "live": True}
+
     for name, fn in [("catalog", _catalog), ("library", _library),
                       ("mlx-runtime", _mlx_runtime), ("generate", _generate),
                       ("LTX-2.5 on ltx-2-mlx (routing + live)", _ltx2_engine),
                       ("LTX-2.3 on diffusers with sound (flags; live when installed)", _ltx2_diffusers),
+                      ("LTX-2.5 on diffusers, 4-bit on load (flags; live when the gated weights are present)", _ltx25_diffusers),
                       ("Wan 2.2 TI2V 5B image-to-video (flags, refusals, live when installed)", _wan_image_to_video),
                       ("Video diffusion cache strategy reaches the runtime (live when installed)", _video_cache_strategy),
                       ("Wan is not burnt on MPS (FU-102)", _wan_not_burnt)]:

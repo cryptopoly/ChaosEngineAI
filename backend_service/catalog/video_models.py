@@ -12,6 +12,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from backend_service.catalog.video_ltx25 import LTX25_NVIDIA_FAMILY
+
 
 # D-44: rows that are slow on some kinds of machine. ``slowOn`` is a list of platform entries; the app
 # shows "Slow on this computer" with the reason when the current machine matches an entry, and shows
@@ -276,6 +278,11 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "releaseDate": "2026-05",
             },
         ],
+    },
+    # LTX-2.5 on NVIDIA (gated, estimated figures): rows live in video_ltx25.py.
+    {
+        **LTX25_NVIDIA_FAMILY,
+        "variants": [{**v, "slowOn": [SLOW_CPU_ONLY_EXPECTED]} for v in LTX25_NVIDIA_FAMILY["variants"]],
     },
     {
         "id": "ltx-2",

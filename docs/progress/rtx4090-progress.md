@@ -1209,3 +1209,18 @@ Fix (matrix): a `triattention` or `turboquant` cell whose load fell back to nati
 Not done: a real TriAttention compression comparison (FU-171) and DFlash on vLLM (no Qwen3.5-4B copy, size).
 
 Footprint: WSL `ext4.vhdx` 36.0 GB (23.9 before), C: free 56 GB; the two venvs are 9.4 and 9.6 GB, the WSL HF cache 3.7 GB.
+
+## LTX-2.5 4-bit text encoder branch: written, not run live (2026-11-12)
+
+**Verified: unit tests with fakes only.** No weights downloaded, no GPU used, no backend started. The tests (`tests/test_video_ltx25.py`, 25) cover: catalog shape (two rows on the one gated repo, estimated figures, licence note, no card names), the access gate, quantisation config (nf4, bf16 compute, skip list), the text-encoder class read from `text_encoder/config.json`, fallback notes (no bitsandbytes, class missing from transformers, no architecture, non-CUDA, load error), tier choice at 12/24/48/96 GB free and unified memory, Windows `disable_mmap` kwargs, and a snapshot without `prompt_enhancer` validating complete. Existing video, fit, size-limit and catalog test files pass.
+
+**What changed.**
+- `video_runtime/ltx25_loader.py` (new): transformer through `try_load_bnb_nf4_transformer` (`LTX2VideoTransformer3DModel` now registered for the LTX-2.5 and official LTX-2.3 repos), Gemma 4 encoder from the architecture named in its own config with `BitsAndBytesConfig(nf4, bf16 compute, llm_int8_skip_modules=[lm_head, embed_tokens, per-layer embeddings, vision/audio towers and projectors])`, `prompt_enhancer=None`. Encoder stays bf16 when free GPU memory >= 48 GB (`CHAOSENGINE_LTX25_TE_BF16_MIN_GB`) or on unified memory; a 4-bit transformer that fails raises (a 38 GB bf16 one would fill system RAM), an encoder that fails falls back to bf16 with a note.
+- `loadQuantization: "nf4"` on a row makes `app.py` ask for NF4; the 4-bit row and the bf16 row share the repo, so the run key differs by `useNf4`. Footprint for placement is 22.5 GB (nf4) or 76 GB, so model CPU offload follows the same rule as LTX-2.3.
+- `pipeline_load_kwargs()` (`disable_mmap` on Windows) now also goes to the NF4 transformer load.
+- Catalog `catalog/video_ltx25.py`: `Lightricks/LTX-2.5-Diffusers~nf4` (22.5 GB peak, estimated) and `Lightricks/LTX-2.5-Diffusers` (76 GB, estimated), CUDA-only, allow-patterns from the scoping section, LTX-2.x Community License terms in the note. Mac MLX row untouched.
+- Gate: gated rows with no complete weights and no saved token carry `accessBlockedReason`, are never a fit or the recommendation, and the download route answers 403 with the reason. A saved token is the only offline signal; the real answer comes from the download.
+- `validate_local_diffusers_snapshot` ignores `prompt_enhancer` for this repo.
+- E2E phase 5 check "LTX-2.5 on diffusers, 4-bit on load" skips off CUDA and without the weights.
+
+**Not verified (live steps still needed).** Whether diffusers 0.42.1 and transformers 5.22.2 load the real checkpoint; that `Gemma4UnifiedForConditionalGeneration` quantises with this skip list (module names are guessed from Gemma 3n/4 conventions, read them from the first real load); that `disable_mmap` is accepted with a quantised diffusers load; the 22.5 GB peak, seconds and the 48 GB tier threshold (all estimates). Steps: free disk (route b: stream-convert ~45 GB peak) or fit 71 GB; download through the app (`/api/video/download`, ~71 GB, needs the token); load the 4-bit row; one 512x320, 25-frame clip with sound; record peak VRAM and seconds; then flip `footprintBasis` to measured.

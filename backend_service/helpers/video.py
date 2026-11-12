@@ -108,6 +108,13 @@ def _video_model_payloads(
             validation_error = _video_variant_validation_error(enriched)
             local_data_repos = _video_variant_local_data_repos(enriched)
             enriched["availableLocally"] = validation_error is None
+            # Gated rows (LTX-2.5): blocked with a reason until the weights are here or a token is saved.
+            from backend_service.helpers.huggingface import _hf_token_value
+            from backend_service.helpers.video_gating import gated_access_reason
+
+            enriched["accessBlockedReason"] = gated_access_reason(
+                enriched, available_locally=enriched["availableLocally"], token=_hf_token_value()
+            )
             enriched["hasLocalData"] = (
                 enriched["availableLocally"]
                 or bool(local_data_repos)

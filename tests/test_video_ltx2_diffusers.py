@@ -71,7 +71,7 @@ def _fake_diffusers_modules():
 
 class RegistryTests(unittest.TestCase):
     def test_the_rows_and_their_capabilities(self) -> None:
-        self.assertEqual(set(LTX2_DIFFUSERS_REPOS), {DISTILLED_NF4, "diffusers/LTX-2.3-Distilled-Diffusers", DEV_BF16})
+        self.assertEqual(set(LTX2_DIFFUSERS_REPOS), {DISTILLED_NF4, "diffusers/LTX-2.3-Distilled-Diffusers", DEV_BF16, "Lightricks/LTX-2.5-Diffusers"})
         self.assertTrue(is_ltx2_distilled_repo(DISTILLED_NF4))
         self.assertFalse(is_ltx2_distilled_repo(DEV_BF16))
         for repo in LTX2_DIFFUSERS_REPOS:
@@ -82,7 +82,7 @@ class RegistryTests(unittest.TestCase):
         from backend_service.catalog.video_models import VIDEO_MODEL_FAMILIES
         from backend_service.video_runtime.repos import _VIDEO_PIPELINE_DEFAULTS
 
-        rows = {v["repo"]: v for f in VIDEO_MODEL_FAMILIES for v in f["variants"] if f["id"] == "ltx-2-diffusers"}
+        rows = {v["repo"]: v for f in VIDEO_MODEL_FAMILIES for v in f["variants"] if f["id"] in {"ltx-2-diffusers", "ltx-2-5-diffusers"}}
         self.assertEqual(set(rows), set(LTX2_DIFFUSERS_REPOS))
         for repo, row in rows.items():
             self.assertTrue(row["cudaOnly"], repo)  # the Mac has its own LTX-2 engine

@@ -115,6 +115,7 @@ VIDEO_FAMILY_LIMITS: dict[str, SizeRow] = {
     "ltx-2": SizeRow(DEFAULT_MAX_SIDE, 4096 * 2304, 768),
     # LTX-2.3 on diffusers (NVIDIA): measured at 768x512 on a 24 GB card; the cap is the LTX-Video one until a larger size is measured.
     "ltx-2-diffusers": SizeRow(1280, 1280 * 720, 768),
+    "ltx-2-5-diffusers": SizeRow(1280, 1280 * 720, 768),
     "wan-2-1": _WAN,
     "wan-2-2": _WAN,
     # HunyuanVideo (Tencent README): the supported settings are 720px1280px129f and 544px960px129f.

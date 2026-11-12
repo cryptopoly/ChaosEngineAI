@@ -626,7 +626,8 @@ def _generate_video_artifact(
             ggufFile=(variant.get("ggufFile") or None),
             interpolationFactor=request.interpolationFactor,
             scheduler=request.scheduler,
-            useNf4=request.useNf4,
+            # A row that is 4-bit on load (``loadQuantization``: LTX-2.5) asks for NF4 whatever the toggle says.
+            useNf4=bool(request.useNf4) or variant.get("loadQuantization") == "nf4",
             enableLtxRefiner=request.enableLtxRefiner,
             cfgDecay=request.cfgDecay,
             stgScale=request.stgScale,

@@ -46,10 +46,18 @@ _VIDEO_MODEL_FOOTPRINT_BF16_GB: dict[str, float] = {
     "diffusers/LTX-2.3-Diffusers": 76.0,
     "diffusers/LTX-2.3-Distilled-Diffusers": 76.0,
     "OzzyGT/LTX-2.3-Distilled-bnb-nf4": 25.0,
+    # LTX-2.5 (Gemma 4 12B text encoder): bf16 estimated from the 2.3 pack; unmeasured.
+    "Lightricks/LTX-2.5-Diffusers": 76.0,
     "hunyuanvideo-community/HunyuanVideo": 26.0,
     "genmo/mochi-1-preview": 22.0,
     "THUDM/CogVideoX-2b": 19.0,
     "THUDM/CogVideoX-5b": 33.0,
+}
+
+# Repos quantised to 4-bit while they load (``use_nf4`` on a repo whose weights are bf16): estimated resident GB, from the
+# LTX-2.3 4-bit pack's measured peak. Unmeasured for LTX-2.5.
+_VIDEO_MODEL_FOOTPRINT_NF4_ON_LOAD_GB: dict[str, float] = {
+    "Lightricks/LTX-2.5-Diffusers": 22.5,
 }
 
 # GGUF quant level → multiplier vs the bf16 footprint. Keys are matched as
@@ -64,7 +72,7 @@ _GGUF_QUANT_MULTIPLIERS: tuple[tuple[str, float], ...] = (
 
 
 def _estimate_model_footprint_gb(
-    repo: str, dtype_name: str, gguf_file: str | None = None
+    repo: str, dtype_name: str, gguf_file: str | None = None, nf4_on_load: bool = False
 ) -> float | None:
     """Cheap estimate of a video pipeline's GPU/MPS memory footprint in GB.
 
@@ -73,6 +81,8 @@ def _estimate_model_footprint_gb(
     torch dtype (``"torch.bfloat16"`` etc.); we treat fp16/bf16 as the
     catalog baseline and double for fp32.
     """
+    if nf4_on_load and repo in _VIDEO_MODEL_FOOTPRINT_NF4_ON_LOAD_GB:
+        return _VIDEO_MODEL_FOOTPRINT_NF4_ON_LOAD_GB[repo]
     base = _VIDEO_MODEL_FOOTPRINT_BF16_GB.get(repo)
     if base is None:
         return None

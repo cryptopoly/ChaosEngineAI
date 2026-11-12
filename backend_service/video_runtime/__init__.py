@@ -91,6 +91,7 @@ from backend_service.video_runtime.pipeline_helpers import (
     pipeline_class_for_repo,
     swap_scheduler,
 )
+from backend_service.video_runtime.ltx25_loader import is_ltx25_repo, load_ltx25_components
 from backend_service.video_runtime.transformer_loaders import (
     detect_device,
     preferred_torch_dtype,
@@ -725,6 +726,22 @@ class DiffusersVideoEngine:
                         gguf_note
                         or f"Could not load requested GGUF transformer {gguf_file}."
                     )
+            elif use_nf4 and is_ltx25_repo(repo):
+                # LTX-2.5: 4-bit transformer, and a 4-bit text encoder unless this card has room for bf16.
+                VIDEO_PROGRESS.set_phase(PHASE_LOADING, message="Loading LTX-2.5 in 4-bit (bitsandbytes)")
+                free_gb, total_gb = _cuda_memory_gb(torch)
+                ltx25_kwargs, ltx25_notes = load_ltx25_components(
+                    repo,
+                    local_path,
+                    torch,
+                    device,
+                    free_gb=free_gb,
+                    unified_memory=_is_unified_memory(total_gb or 0.0),
+                    load_transformer=self._try_load_bnb_nf4_transformer,
+                )
+                pipeline_kwargs.update(ltx25_kwargs)
+                for ltx25_note in ltx25_notes:
+                    VIDEO_PROGRESS.set_phase(PHASE_LOADING, message=ltx25_note)
             elif use_nf4:
                 VIDEO_PROGRESS.set_phase(
                     PHASE_LOADING,
@@ -829,7 +846,7 @@ class DiffusersVideoEngine:
             # for the decision matrix.
             total_memory_gb = _detect_device_memory_gb(device)
             estimated_footprint_gb = _estimate_model_footprint_gb(
-                repo, str(dtype), gguf_file=gguf_file
+                repo, str(dtype), gguf_file=gguf_file, nf4_on_load=use_nf4
             )
             if _should_apply_memory_savers(device, total_memory_gb, estimated_footprint_gb):
                 _LOG.info(

@@ -16,12 +16,13 @@ from typing import Any
 # LTX-2.3 diffusers-format repos -> True for the distilled model (8 steps with a fixed sigma schedule, no guidance).
 # Sizes on disk: the official bf16 repos are ~100 GB (a fp32 Gemma 3 12B text encoder is half of that); the NF4 pack
 # is ~31 GB. The dev NF4 pack (`OzzyGT/LTX-2.3-bnb-nf4`) is left out: it holds every connector file twice and needs a
-# partial download this catalog has not been run with. LTX-2.5 (gated, `Lightricks/LTX-2.5-Diffusers`, 174 GB) uses
-# another layout and is not listed yet.
+# partial download this catalog has not been run with. LTX-2.5 (gated, `Lightricks/LTX-2.5-Diffusers`, a Gemma 4 text
+# encoder) is listed as its distilled pipeline only; its 4-bit-on-load branch lives in ``ltx25_loader``.
 LTX2_DIFFUSERS_REPOS: dict[str, bool] = {
     "diffusers/LTX-2.3-Diffusers": False,
     "diffusers/LTX-2.3-Distilled-Diffusers": True,
     "OzzyGT/LTX-2.3-Distilled-bnb-nf4": True,
+    "Lightricks/LTX-2.5-Diffusers": True,
 }
 
 
@@ -126,6 +127,10 @@ _BNB_NF4_VIDEO_TRANSFORMER_CLASSES: dict[str, str] = {
     "Wan-AI/Wan2.2-TI2V-5B-Diffusers": "WanTransformer3DModel",
     "hunyuanvideo-community/HunyuanVideo": "HunyuanVideoTransformer3DModel",
     "Lightricks/LTX-Video": "LTXVideoTransformer3DModel",
+    # The LTX-2 family (video with sound). The pre-quantised 2.3 pack is already 4-bit and is not listed.
+    "diffusers/LTX-2.3-Diffusers": "LTX2VideoTransformer3DModel",
+    "diffusers/LTX-2.3-Distilled-Diffusers": "LTX2VideoTransformer3DModel",
+    "Lightricks/LTX-2.5-Diffusers": "LTX2VideoTransformer3DModel",
 }
 
 

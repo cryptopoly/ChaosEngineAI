@@ -530,6 +530,14 @@ def download_video_model(request: Request, body: DownloadModelRequest) -> dict[s
     variant = _find_video_variant(body.modelId) if body.modelId else None
     if body.modelId and variant is None:
         raise HTTPException(status_code=404, detail=f"Unknown video model '{body.modelId}'.")
+    if variant is not None:
+        from backend_service.helpers.huggingface import _hf_token_value
+        from backend_service.helpers.video_gating import gated_access_reason
+
+        # Not yet complete on disk (this is the download route), so only a saved token opens a gated row.
+        blocked = gated_access_reason(variant, available_locally=False, token=_hf_token_value())
+        if blocked:
+            raise HTTPException(status_code=403, detail=blocked)
     if variant is not None and variant.get("ggufFile"):
         gguf_repo = str(variant.get("ggufRepo") or "")
         gguf_file = str(variant.get("ggufFile") or "")

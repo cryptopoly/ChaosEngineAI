@@ -924,6 +924,10 @@ def phase_1(cap: Capability) -> PhaseResult:
             return "fail", "tensorfold-native-status failed", {}
         if not state.get("installed"):
             return "skip", "TensorFold 1.x binary not installed", {"gate": state.get("gate")}
+        if sys.platform == "darwin":
+            # On a Mac the native engine engages only with speculative decoding ticked (the Mac checks above and
+            # the 1.2.7 families check cover it); a plain load stays on MLX by design.
+            return "skip", "Mac lane is covered by the Apple Silicon TensorFold checks", {}
         if not (state.get("gate") or {}).get("offered"):
             return "skip", f"gate refused this machine: {(state.get('gate') or {}).get('message', '')[:160]}", state
         # Smallest model first so a card with little free VRAM still gets a run.

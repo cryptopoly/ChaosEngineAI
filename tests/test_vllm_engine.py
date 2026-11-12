@@ -204,5 +204,73 @@ class VLLMEnvPreparationTests(unittest.TestCase):
         self.assertEqual(env["VLLM_USE_FLASHINFER_SAMPLER"], "1")
 
 
+class VLLMPromptRenderingTests(unittest.TestCase):
+    def _engine(self, tokenizer):
+        from backend_service.vllm_engine import VLLMEngine
+
+        engine = VLLMEngine.__new__(VLLMEngine)
+        engine._llm = MagicMock()
+        engine._llm.get_tokenizer.return_value = tokenizer
+        return engine
+
+    def test_chat_template_is_applied_when_the_tokenizer_has_one(self) -> None:
+        tok = MagicMock()
+        tok.chat_template = "{{ messages }}"
+        tok.apply_chat_template.return_value = "<|im_start|>user" + chr(10) + "hi<|im_end|>" + chr(10) + "<|im_start|>assistant" + chr(10)
+        text = self._engine(tok)._render_prompt([{"role": "user", "content": "hi"}])
+        self.assertTrue(text.startswith("<|im_start|>user"))
+        tok.apply_chat_template.assert_called_once()
+        self.assertTrue(tok.apply_chat_template.call_args.kwargs["add_generation_prompt"])
+
+    def test_plain_text_when_there_is_no_template_or_it_fails(self) -> None:
+        tok = MagicMock()
+        tok.chat_template = None
+        self.assertIn("USER: hi", self._engine(tok)._render_prompt([{"role": "user", "content": "hi"}]))
+        tok = MagicMock()
+        tok.chat_template = "x"
+        tok.apply_chat_template.side_effect = ValueError("bad template")
+        self.assertIn("USER: hi", self._engine(tok)._render_prompt([{"role": "user", "content": "hi"}]))
+
+
+class TriAttentionVllmGuardTests(unittest.TestCase):
+    """apply_vllm_patches refuses a vLLM whose engine core it cannot patch."""
+
+    def _strategy(self):
+        from cache_compression.triattention import TriAttentionStrategy
+
+        return TriAttentionStrategy()
+
+    def _stub_vllm(self, engine_core_cls):
+        import sys
+        import types
+
+        modules = {
+            "vllm": types.ModuleType("vllm"),
+            "vllm.v1": types.ModuleType("vllm.v1"),
+            "vllm.v1.engine": types.ModuleType("vllm.v1.engine"),
+            "vllm.v1.engine.core": types.ModuleType("vllm.v1.engine.core"),
+        }
+        modules["vllm"].__version__ = "0.33.0"
+        modules["vllm.v1.engine.core"].EngineCoreProc = engine_core_cls
+        return patch.dict(sys.modules, modules)
+
+    def test_engine_core_without_the_hook_is_refused(self) -> None:
+        class EngineCoreProc:
+            def _attach_iteration_details(self): ...
+
+        with patch("cache_compression.triattention._module_available", return_value=True),                 self._stub_vllm(EngineCoreProc):
+            with self.assertRaisesRegex(RuntimeError, "does not support vLLM 0.33.0"):
+                self._strategy().apply_vllm_patches()
+
+    def test_engine_core_with_the_hook_goes_on_to_the_install(self) -> None:
+        class EngineCoreProc:
+            def log_iteration_details(self): ...
+
+        with patch("cache_compression.triattention._module_available", return_value=True),                 self._stub_vllm(EngineCoreProc):
+            # The integration module is not importable here, which is the step after the guard.
+            with self.assertRaises(NotImplementedError):
+                self._strategy().apply_vllm_patches()
+
+
 if __name__ == "__main__":
     unittest.main()

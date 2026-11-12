@@ -240,7 +240,7 @@ class VLLMEngine(BaseInferenceEngine):
         from vllm import SamplingParams  # type: ignore[import-untyped]
 
         messages = self._build_messages(prompt, history, system_prompt)
-        prompt_text = self._messages_to_text(messages)
+        prompt_text = self._render_prompt(messages)
         started = time.perf_counter()
 
         # Build SamplingParams from base fields + optional Phase 2.2
@@ -320,6 +320,24 @@ class VLLMEngine(BaseInferenceEngine):
         from backend_service.mlx_worker import _sanitize_messages
         messages = _sanitize_messages(messages)
         return messages
+
+    def _render_prompt(self, messages: list[dict[str, str]]) -> str:
+        """Apply the model's own chat template; plain text only when it has none.
+
+        The plain ``USER: ... ASSISTANT:`` layout is not what chat models were
+        trained on (Qwen3 rambles and repeats itself in it).
+        """
+        try:
+            tokenizer = self._llm.get_tokenizer()
+            if getattr(tokenizer, "chat_template", None):
+                rendered = tokenizer.apply_chat_template(
+                    messages, tokenize=False, add_generation_prompt=True,
+                )
+                if isinstance(rendered, str) and rendered:
+                    return rendered
+        except Exception:  # noqa: BLE001 - any template failure falls back to plain text
+            pass
+        return self._messages_to_text(messages)
 
     @staticmethod
     def _messages_to_text(messages: list[dict[str, str]]) -> str:

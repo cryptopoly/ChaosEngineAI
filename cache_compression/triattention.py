@@ -101,6 +101,31 @@ class TriAttentionStrategy(CacheStrategy):
     # vLLM integration
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _check_vllm_engine_core() -> None:
+        """Refuse vLLM builds the integration cannot patch.
+
+        TriAttention wraps ``EngineCoreProc.log_iteration_details``. vLLM 0.33
+        renamed it, and the patched engine core then dies on the first request
+        after the model reported loaded; failing here lets the caller fall back
+        to the native cache with a readable note instead.
+        """
+        try:
+            from vllm.v1.engine.core import EngineCoreProc  # type: ignore[import-untyped]
+        except ImportError:
+            return
+        if not hasattr(EngineCoreProc, "log_iteration_details"):
+            try:
+                import vllm
+
+                version = getattr(vllm, "__version__", "unknown")
+            except ImportError:
+                version = "unknown"
+            raise RuntimeError(
+                f"TriAttention's vLLM integration does not support vLLM {version} "
+                "(EngineCoreProc.log_iteration_details is missing)."
+            )
+
     def apply_vllm_patches(self) -> None:
         """Install TriAttention monkeypatches into vLLM.
 
@@ -108,6 +133,7 @@ class TriAttentionStrategy(CacheStrategy):
         """
         if not _module_available("triattention"):
             raise RuntimeError("triattention is not installed.")
+        self._check_vllm_engine_core()
         try:
             from triattention.vllm.runtime.integration_monkeypatch import (
                 install_vllm_integration_monkeypatches,

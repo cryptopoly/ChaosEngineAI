@@ -219,7 +219,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  {mark} {r.name.ljust(width)}  pinned {r.pinned}  newest {r.newest}{extra}")
     families = unlisted_families()
     if families and families[1]:
-        print(f"TensorFold {families[0]} serves {len(families[1])} model families no catalog row lists (FU-168): "
+        print(f"The installed TensorFold binary ({families[0]}) serves {len(families[1])} model families no catalog row lists (FU-168): "
               f"{', '.join(families[1])}")
     behind = [r.name for r in rows if r.state == "behind"]
     if behind:

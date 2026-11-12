@@ -279,3 +279,80 @@ class ModelMemoryTests(unittest.TestCase):
         self.assertEqual(result["code"], "memory_gate_video_model_too_large")
         self.assertIn("LTX-2.3", result["message"])
         self.assertIsNone(gate_video_generation(available_gb=50.0, pressure_percent=40.0, model_gb=48.0))
+
+
+class WarmPipelineGateTests(unittest.TestCase):
+    """A pipeline the backend already holds must not count against its own next request."""
+
+    TOTAL = 31.0
+    WAN = "Wan-AI/Wan2.2-TI2V-5B-Diffusers"
+
+    def _signals(self, available):
+        from backend_service.helpers.memory_gate import pressure_percent_from_available
+
+        return available, pressure_percent_from_available(self.TOTAL, available)
+
+    def _video(self, loaded, requested, model_gb, loaded_gb, available=2.6, rss=25.0):
+        from backend_service.helpers.memory_gate import adjust_for_resident
+
+        available, pressure = self._signals(available)
+        adj = adjust_for_resident(
+            available, pressure, loaded_repo=loaded, requested_repo=requested,
+            loaded_estimate_gb=loaded_gb, total_gb=self.TOTAL, rss_gb=rss,
+            vram_free_gb=None, vram_reserved_gb=0.0,
+        )
+        return gate_video_generation(
+            adj["available_gb"], adj["pressure_percent"],
+            model_gb=None if adj["reuse"] else model_gb, model_name="Wan", reuse_resident=adj["reuse"],
+        )
+
+    def test_warm_same_model_is_allowed(self):
+        # 2.6 GB free with the 25 GB pipeline resident was refused before.
+        self.assertIsNone(self._video(self.WAN, self.WAN, 22.0, 22.0))
+
+    def test_cold_with_little_free_memory_is_still_refused(self):
+        refusal = self._video(None, self.WAN, 22.0, None)
+        self.assertEqual(refusal["code"], "memory_gate_video_model_too_large")
+
+    def test_warm_different_model_that_fits_after_unload_is_allowed(self):
+        self.assertIsNone(self._video(self.WAN, "other/repo", 20.0, 22.0))
+
+    def test_warm_different_model_too_big_even_after_unload_is_refused(self):
+        refusal = self._video(self.WAN, "other/huge", 60.0, 22.0)
+        self.assertEqual(refusal["code"], "memory_gate_video_model_too_large")
+
+    def test_reclaim_is_capped_by_what_the_process_holds(self):
+        from backend_service.helpers.memory_gate import adjust_for_resident
+
+        adj = adjust_for_resident(
+            2.6, 91.6, loaded_repo="a", requested_repo="b", loaded_estimate_gb=40.0,
+            total_gb=31.0, rss_gb=3.0, vram_free_gb=None, vram_reserved_gb=0.0,
+        )
+        self.assertAlmostEqual(adj["available_gb"], 5.6)
+
+    def test_vram_reserved_by_the_resident_pipeline_is_added_on_swap_only(self):
+        from backend_service.helpers.memory_gate import adjust_for_resident
+
+        kw = dict(loaded_estimate_gb=10.0, total_gb=64.0, rss_gb=10.0, vram_free_gb=4.0, vram_reserved_gb=18.0)
+        swap = adjust_for_resident(30.0, 50.0, loaded_repo="a", requested_repo="b", **kw)
+        reuse = adjust_for_resident(30.0, 50.0, loaded_repo="a", requested_repo="a", **kw)
+        self.assertEqual(swap["size_available_gb"], 22.0)
+        self.assertEqual(reuse["size_available_gb"], 4.0)
+
+    def test_image_warm_same_model_allowed_and_too_big_refused(self):
+        from backend_service.helpers.memory_gate import adjust_for_resident
+
+        available, pressure = self._signals(2.6)
+        adj = adjust_for_resident(
+            available, pressure, loaded_repo="img/a", requested_repo="img/a", loaded_estimate_gb=12.0,
+            total_gb=self.TOTAL, rss_gb=14.0,
+        )
+        self.assertIsNone(gate_image_generation(
+            adj["available_gb"], adj["pressure_percent"], model_gb=None, reuse_resident=adj["reuse"]))
+        swap = adjust_for_resident(
+            available, pressure, loaded_repo="img/a", requested_repo="img/b", loaded_estimate_gb=12.0,
+            total_gb=self.TOTAL, rss_gb=14.0,
+        )
+        self.assertIsNone(gate_image_generation(swap["available_gb"], swap["pressure_percent"], model_gb=10.0))
+        refusal = gate_image_generation(swap["available_gb"], swap["pressure_percent"], model_gb=40.0)
+        self.assertEqual(refusal["code"], "memory_gate_image_model_too_large")

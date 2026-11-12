@@ -1764,3 +1764,29 @@ class UniPCOnMpsTests(unittest.TestCase):
         pipeline.scheduler.config = {"prediction_type": "epsilon"}
         self.assertIsNone(engine._swap_scheduler(pipeline, "unipc"))
         self.assertEqual(type(pipeline.scheduler).__name__, "UniPCMultistepScheduler")
+
+
+class GpuBundleHintTests(unittest.TestCase):
+    """A package the GPU bundle provides, when absent, gets an install note instead of an import error."""
+
+    def test_missing_ftfy_and_bitsandbytes_name_the_gpu_bundle(self):
+        from backend_service.helpers.video_runtime_diagnostics import (
+            diagnose_diffusers_lazy_import_error,
+            gpu_bundle_hint,
+        )
+
+        for text, name in (
+            ("ModuleNotFoundError: No module named 'ftfy'", "ftfy"),
+            ("WanImageToVideoPipeline requires the ftfy library but it was not found", "ftfy"),
+            ("bitsandbytes package missing", "bitsandbytes"),
+        ):
+            hint = gpu_bundle_hint(text)
+            self.assertIn(name, hint)
+            self.assertIn("Install GPU runtime", hint)
+            self.assertEqual(diagnose_diffusers_lazy_import_error(text), hint)
+
+    def test_other_errors_are_left_alone(self):
+        from backend_service.helpers.video_runtime_diagnostics import gpu_bundle_hint
+
+        self.assertIsNone(gpu_bundle_hint("CUDA out of memory"))
+        self.assertIsNone(gpu_bundle_hint("No module named 'somethingelse'"))

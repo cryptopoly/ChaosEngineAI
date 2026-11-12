@@ -315,6 +315,22 @@ def _generate_image_locked(request: Request, body: ImageGenerationRequest) -> di
 
         resident = variant.get("repo") == getattr(state.image_runtime, "loaded_repo", None)
         available_gb, pressure_percent = snapshot_memory_signals()
+        # Another resident pipeline is unloaded before the swap, so its memory counts as free.
+        from backend_service.helpers.images import _find_image_variant_by_repo
+        from backend_service.helpers.memory_gate import adjust_for_resident
+
+        loaded_repo = getattr(state.image_runtime, "loaded_repo", None)
+        loaded_variant = _find_image_variant_by_repo(loaded_repo) if loaded_repo else None
+        adjusted = adjust_for_resident(
+            available_gb,
+            pressure_percent,
+            loaded_repo=loaded_repo,
+            requested_repo=variant.get("repo"),
+            loaded_estimate_gb=model_memory_gb(loaded_variant) if loaded_variant else None,
+            vram_free_gb=cuda_free_vram_gb(),
+        )
+        available_gb = adjusted["available_gb"]
+        pressure_percent = adjusted["pressure_percent"]
         # A footprint that is a measured process peak already includes the headroom.
         measured_peak = variant.get("id") in MEASURED_FOOTPRINTS or variant.get("footprintBasis") == "measured"
         # The size that will actually render (draft mode, minimum edge, per-model limits),
@@ -330,7 +346,8 @@ def _generate_image_locked(request: Request, body: ImageGenerationRequest) -> di
             reference_pixels=reference_pixels(variant),
             footprint_gb=model_memory_gb(variant),
             headroom=1.0 if measured_peak else IMAGE_MODEL_HEADROOM,
-            size_available_gb=cuda_free_vram_gb(),
+            size_available_gb=adjusted["size_available_gb"],
+            reuse_resident=adjusted["reuse"],
         )
     except Exception as gate_exc:
         state.add_log("images", "warning", f"Memory gate skipped: {gate_exc}")

@@ -233,8 +233,13 @@ def gate_image_generation(
     footprint_gb: float | None = None,
     headroom: float = IMAGE_MODEL_HEADROOM,
     size_available_gb: float | None = None,
+    reuse_resident: bool = False,
 ) -> dict[str, Any] | None:
     """Pre-flight check for image generation. Returns refusal or None.
+
+    ``reuse_resident``: the pipeline is already loaded and is reused, so the host's low free memory
+    is mostly that pipeline; the floor and pressure ceiling drop to the chat gate's (a run only adds
+    its working set). The size term still applies.
 
     Image inference can OOM swap-thrash for minutes before recovering, so
     we require materially more headroom than chat. Same shape as
@@ -255,6 +260,9 @@ def gate_image_generation(
     against it (the extra memory a large size needs lives on the card, not in system RAM) and the
     model's own load is left to the card's offload modes.
     """
+    if reuse_resident:
+        min_available_gb = min(min_available_gb, CHAT_MIN_AVAILABLE_GB)
+        max_pressure_percent = max(max_pressure_percent, CHAT_MAX_PRESSURE_PERCENT)
     if model_gb and available_gb < model_gb * headroom:
         label = model_name or "This image model"
         return {
@@ -323,8 +331,11 @@ def gate_video_generation(
     reference_frames: int | None = None,
     footprint_gb: float | None = None,
     size_available_gb: float | None = None,
+    reuse_resident: bool = False,
 ) -> dict[str, Any] | None:
     """Pre-flight check for video generation. Returns refusal or None.
+
+    ``reuse_resident`` works as for images.
 
     Video working sets scale with frame count + resolution, so the floor
     is the strictest of the three gates. A hung diffusion loop on a memory
@@ -337,6 +348,9 @@ def gate_video_generation(
     scales the extra memory for a size above the reference by the length ratio.
     ``size_available_gb`` works as for images (free GPU memory on a CUDA host).
     """
+    if reuse_resident:
+        min_available_gb = min(min_available_gb, CHAT_MIN_AVAILABLE_GB)
+        max_pressure_percent = max(max_pressure_percent, CHAT_MAX_PRESSURE_PERCENT)
     if model_gb and available_gb < model_gb * VIDEO_MODEL_HEADROOM:
         label = model_name or "This video model"
         return {
@@ -503,6 +517,80 @@ def cuda_free_vram_gb() -> float | None:
         return get_device_vram_free_gb()
     except Exception:
         return None
+
+
+def process_rss_gb() -> float:
+    """Resident memory of this backend process in GB (0 when unreadable)."""
+    try:
+        import psutil
+
+        return psutil.Process().memory_info().rss / (1024 ** 3)
+    except Exception:
+        return 0.0
+
+
+def process_vram_reserved_gb() -> float:
+    """GPU memory this process holds in GB. Reads torch only when it is already imported."""
+    import sys
+
+    torch = sys.modules.get("torch")
+    try:
+        if torch is not None and torch.cuda.is_available():
+            return torch.cuda.memory_reserved() / (1024 ** 3)
+    except Exception:
+        pass
+    return 0.0
+
+
+def adjust_for_resident(
+    available_gb: float,
+    pressure_percent: float,
+    *,
+    loaded_repo: str | None,
+    requested_repo: str | None,
+    loaded_estimate_gb: float | None,
+    total_gb: float | None = None,
+    vram_free_gb: float | None = None,
+    rss_gb: float | None = None,
+    vram_reserved_gb: float | None = None,
+) -> dict[str, Any]:
+    """Account for a pipeline this backend already holds, as the swap will actually behave.
+
+    The kernel's available figure counts the resident pipeline as used. A request for the same
+    pipeline reuses it (``reuse`` True: nothing to load, the caller drops the load term and the
+    low-memory floor). A request for another model unloads it before loading, so its memory counts
+    as free: the smaller of this process's resident memory and the loaded model's catalog footprint
+    (never more than is really held; the backend's own baseline stays counted), and the GPU memory
+    this process reserved is added to the free VRAM.
+    Returns ``available_gb``, ``pressure_percent``, ``size_available_gb`` and ``reuse``.
+    """
+    if not loaded_repo:
+        return {"available_gb": available_gb, "pressure_percent": pressure_percent,
+                "size_available_gb": vram_free_gb, "reuse": False}
+    if loaded_repo == requested_repo:
+        return {"available_gb": available_gb, "pressure_percent": pressure_percent,
+                "size_available_gb": vram_free_gb, "reuse": True}
+    rss = process_rss_gb() if rss_gb is None else rss_gb
+    reclaim = min(rss, loaded_estimate_gb) if loaded_estimate_gb else 0.0
+    if total_gb is None:
+        try:
+            import psutil
+
+            total_gb = psutil.virtual_memory().total / (1024 ** 3)
+        except Exception:
+            total_gb = 0.0
+    new_available = available_gb + reclaim
+    if total_gb:
+        new_available = min(new_available, total_gb)
+    vram = vram_free_gb
+    if vram is not None:
+        vram += process_vram_reserved_gb() if vram_reserved_gb is None else vram_reserved_gb
+    return {
+        "available_gb": new_available,
+        "pressure_percent": pressure_percent_from_available(total_gb, new_available) if total_gb else pressure_percent,
+        "size_available_gb": vram,
+        "reuse": False,
+    }
 
 
 def snapshot_memory_signals() -> tuple[float, float]:

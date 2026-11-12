@@ -134,8 +134,9 @@ def try_load_bnb_nf4_transformer(
         )
     if importlib.util.find_spec("bitsandbytes") is None:
         return None, (
-            "bitsandbytes package missing — install it from the Setup "
-            "page to enable NF4. Falling back to the standard transformer."
+            "bitsandbytes package missing — open Settings > Setup, click Install GPU runtime "
+            "(the GPU bundle installs it) and restart the backend to enable NF4. "
+            "Falling back to the standard transformer."
         )
     try:
         from diffusers import BitsAndBytesConfig  # type: ignore

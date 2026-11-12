@@ -126,6 +126,39 @@ def _format_cpu_torch_on_cuda_host_warning(torch_info: dict[str, Any]) -> str | 
     )
 
 
+# Packages the GPU bundle installs (routes/setup/gpu_bundle.py) that a feature may need and a base venv lacks.
+_GPU_BUNDLE_MODULES = {
+    "ftfy": "ftfy (cleans the text prompt for Wan image-to-video)",
+    "bitsandbytes": "bitsandbytes (4-bit NF4 weights, e.g. LTX-2.3 NF4)",
+    "sentencepiece": "sentencepiece",
+    "tiktoken": "tiktoken",
+    "gguf": "gguf",
+    "torchao": "torchao",
+}
+_MISSING_MODULE_PATTERNS = (
+    re.compile(r"No module named ['\"]([A-Za-z0-9_]+)"),
+    re.compile(r"requires the ([A-Za-z0-9_]+) library", re.IGNORECASE),
+    re.compile(r"([A-Za-z0-9_]+) package missing", re.IGNORECASE),
+)
+
+
+def gpu_bundle_hint(error_text: str) -> str | None:
+    """A plain "install the GPU bundle" note when the error is a package the bundle provides.
+
+    Returns None for any other error, so the caller keeps its own text.
+    """
+    for pattern in _MISSING_MODULE_PATTERNS:
+        for module in pattern.findall(error_text or ""):
+            name = module.lower()
+            if name in _GPU_BUNDLE_MODULES:
+                return (
+                    f"This feature needs {_GPU_BUNDLE_MODULES[name]}, which is not installed. "
+                    "Open Settings > Setup and click Install GPU runtime (the GPU bundle installs it), "
+                    "then click Restart Backend."
+                )
+    return None
+
+
 def diagnose_diffusers_lazy_import_error(error_text: str) -> str | None:
     """Translate a diffusers lazy-import RuntimeError into a friendlier reason.
 
@@ -136,6 +169,10 @@ def diagnose_diffusers_lazy_import_error(error_text: str) -> str | None:
     """
     if not error_text:
         return None
+
+    bundle_hint = gpu_bundle_hint(error_text)
+    if bundle_hint:
+        return bundle_hint
 
     # ``module 'torch' has no attribute 'cuda'`` shows up when the install
     # left torch importable but partially gutted -- typically a CPU wheel

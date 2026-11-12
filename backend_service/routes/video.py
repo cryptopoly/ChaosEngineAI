@@ -182,6 +182,22 @@ def _video_memory_gate(
         except Exception:
             loaded_repo = ""
         available_gb, pressure_percent = snapshot_memory_signals()
+        # A pipeline already held here is reused (same model) or unloaded before the swap (another one):
+        # count it that way, not as memory the new request has to find elsewhere.
+        from backend_service.helpers.memory_gate import adjust_for_resident
+        from backend_service.helpers.video import _find_video_variant_by_repo
+
+        loaded_variant = _find_video_variant_by_repo(loaded_repo) if loaded_repo else None
+        resident = adjust_for_resident(
+            available_gb,
+            pressure_percent,
+            loaded_repo=loaded_repo or None,
+            requested_repo=str(variant.get("repo") or ""),
+            loaded_estimate_gb=model_memory_gb(loaded_variant) if loaded_variant else None,
+            vram_free_gb=cuda_free_vram_gb(),
+        )
+        available_gb = resident["available_gb"]
+        pressure_percent = resident["pressure_percent"]
         size_args: dict[str, Any] = {}
         if body is not None:
             from backend_service.helpers.generation_limits import (
@@ -207,9 +223,10 @@ def _video_memory_gate(
         refusal = gate_video_generation(
             available_gb,
             pressure_percent,
-            model_gb=None if loaded_repo == variant.get("repo") else model_memory_gb(variant),
+            model_gb=None if resident["reuse"] else model_memory_gb(variant),
             model_name=variant.get("name"),
-            size_available_gb=cuda_free_vram_gb(),
+            size_available_gb=resident["size_available_gb"],
+            reuse_resident=resident["reuse"],
             **size_args,
         )
     except Exception as gate_exc:

@@ -1892,3 +1892,17 @@ class MlxSeriesConstraintTests(unittest.TestCase):
         with self._with_sys_path(self.extras, self.base):
             self.assertIsNone(_write_mlx_constraint(self.extras))
         self.assertFalse((self.extras / ".chaosengine-mlx-constraints.txt").exists())
+
+
+class GpuBundleContentsTests(unittest.TestCase):
+    """The GPU bundle must carry the packages features import lazily (ftfy, bitsandbytes)."""
+
+    def test_bundle_lists_ftfy_and_bitsandbytes_for_every_cuda_platform(self):
+        from backend_service.routes.setup.gpu_bundle import _GPU_BUNDLE_PACKAGES
+
+        labels = {label for label, _ in _GPU_BUNDLE_PACKAGES}
+        self.assertTrue({"ftfy", "bitsandbytes"} <= labels)
+        # No platform marker: the bundle installs them on Windows (win_amd64 wheel) and Linux alike.
+        for label, spec in _GPU_BUNDLE_PACKAGES:
+            if label in ("ftfy", "bitsandbytes"):
+                self.assertNotIn(";", spec)

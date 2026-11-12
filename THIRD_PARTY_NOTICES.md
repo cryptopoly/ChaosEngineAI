@@ -484,6 +484,13 @@ Weights are downloaded by the user into the Hugging Face cache at pinned revisio
   legally compliant data and that generated music may be used commercially; the README asks users to check that
   a track is original, to disclose AI involvement and to get permission when adapting protected material.
 
+### Packages the GPU bundle installs (not bundled)
+
+The Setup "Install GPU runtime" job (`backend_service/routes/setup/gpu_bundle.py`) installs, among others: ftfy
+(Apache-2.0; cleans the text prompt for Wan image-to-video) and bitsandbytes (MIT; 4-bit NF4 weights, with a
+`win_amd64` wheel on PyPI), next to torch (BSD-3-Clause), diffusers, transformers, accelerate (Apache-2.0), gguf and
+torchao (Apache-2.0).
+
 ### Packages the music pack installs (not bundled)
 
 `backend_service/music_requirements.txt` (exported from the pinned `uv.lock`) installs, among others: PyTorch and

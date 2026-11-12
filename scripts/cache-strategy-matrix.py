@@ -403,6 +403,20 @@ def run_cell(cell: MatrixCell, *, port: int) -> CellResult:
         loaded = ((load_resp.get("runtime") or {}).get("loadedModel")) or load_resp.get("loadedModel") or {}
         result.actual_strategy = loaded.get("cacheStrategy", "")
         result.runtime_note = loaded.get("runtimeNote") or ""
+        if (
+            cell.strategy in ("triattention", "turboquant")
+            and result.actual_strategy
+            and result.actual_strategy != cell.strategy
+        ):
+            # The load fell back to the native cache (patches refused, runtime
+            # too old). The prompt would pass on native, so it is not a result
+            # for this strategy.
+            result.skipped = True
+            result.skip_reason = (
+                f"loaded as {result.actual_strategy}, not {cell.strategy}: {result.runtime_note[:160]}"
+            )
+            result.duration_seconds = round(time.monotonic() - started, 2)
+            return result
         if cell.spec_decode == "tensorfold" and loaded.get("engine") != "tensorfold":
             # A standard-MLX fallback would still produce text and pass the
             # non-empty check, so assert the engine the load actually chose.

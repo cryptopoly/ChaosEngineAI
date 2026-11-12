@@ -96,6 +96,28 @@ class RunCellTensorFoldTests(unittest.TestCase):
         self.assertEqual(result.dflash_acceptance, 2.5)
 
 
+class RunCellFallbackTests(unittest.TestCase):
+    """A strategy cell whose load fell back to native is a skip, not a pass."""
+
+    def test_triattention_loaded_as_native_is_skipped(self):
+        cell = runner.MatrixCell("tri", runner.VLLM_SMALL, "vllm", "triattention", 3, "none", quick=False)
+        load = {"runtime": {"loadedModel": {"engine": "vllm", "cacheStrategy": "native", "runtimeNote": "patches failed"}}}
+        with mock.patch.object(runner, "_api", return_value=load),                 mock.patch.object(runner, "_stream_inference") as stream:
+            result = runner.run_cell(cell, port=1)
+        stream.assert_not_called()
+        self.assertTrue(result.skipped)
+        self.assertFalse(result.ok)
+        self.assertIn("loaded as native, not triattention", result.skip_reason)
+
+    def test_native_cell_is_not_affected(self):
+        cell = runner.MatrixCell("nat", runner.VLLM_SMALL, "vllm", "native", 0, "none", quick=False)
+        load = {"runtime": {"loadedModel": {"engine": "vllm", "cacheStrategy": "native", "runtimeNote": ""}}}
+        done = {"assistant": {"metrics": {"tokS": 10.0}}}
+        with mock.patch.object(runner, "_api", return_value=load),                 mock.patch.object(runner, "_stream_inference", return_value=("text", done)):
+            result = runner.run_cell(cell, port=1)
+        self.assertTrue(result.ok)
+
+
 class SkipReasonTests(unittest.TestCase):
     def test_quick_skips_non_quick_cells(self):
         cell = runner.MatrixCell(

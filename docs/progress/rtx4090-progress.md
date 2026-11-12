@@ -1151,3 +1151,61 @@ Row: `measured=True`, `vram_gb` 21.8, KV 0.65 GB per 8K, note says keep the wind
 The old row (23.0 GB estimate) made the app's own gate refuse the 16K window ("needs about 23.3 GB ... has 23.3 GB free") although it loads at 20.3 GB. Row now `measured=True`, `vram_gb` 20.2, KV 0.16 GB per 8K. One note: a first attempt while another session held 23.8 GB of the card was refused by that gate, as designed; rerun on the idle card.
 
 Weights deleted afterwards from the HF cache (both; neither is on the Keep list); the cached Qwen3.5-2B stays. tfgrammar.dll stays installed beside the exe.
+
+## W4 leftovers on Linux: vLLM and TriAttention (WSL2, 2026-11-12)
+
+Own venvs in WSL (`uv`, no root): `~/venv-vllm` (vLLM 0.33.0, torch 2.14.0+cu130, Apache-2.0) and `~/venv-vllm19` (vLLM 0.19.1, torch 2.10.0+cu128, the release the TriAttention README names), each with the app installed (`-e .[desktop]`) and TriAttention from the pinned commit `a4bc3c8` (cloned without the unused LongLive submodule, whose clone made the git+https install hang). Model: `Qwen/Qwen3-0.6B` HF safetensors (1.4 GB, ungated) in the WSL HF cache. Backend run in WSL on port 8895 with `CHAOSENGINE_REQUIRE_AUTH=0`; every load and generate below went through `/api/models/load` and `/api/chat/generate/stream` (`vllm_engine.VLLMEngine`, the in-process Linux lane; the Windows host uses `vllm_wsl_engine`). GPU was under 1.4 GB used at every run start.
+
+### 1. vLLM lane
+
+| Item | Result | Evidence |
+|---|---|---|
+| `is_available` / install path | PASS | `vllmAvailable: true, vllmVersion 0.33.0` from `/api/health`. The in-process engine imports `vllm` from the interpreter running the backend, so the backend must run from the vLLM venv (the app venv pins torch 2.11). |
+| Load + generate, native f16 KV, 8K and 16K | **PASS after 3 fixes** | Load 24 to 59 s. First run **FAIL**: `RuntimeError: Could not find nvcc and default cuda_home='/usr/local/cuda' doesn't exist` (FlashInfer sampler JIT during the memory profiling run). |
+| Throughput | PASS | Short prompt (18 tokens, 600 to 750 generated): **413 to 439 tok/s** on 0.33.0, **320 to 325 tok/s** on 0.19.1 (includes first-token wait). |
+| VRAM | not a comparison | vLLM reserves `gpu_memory_utilization` 0.92 on load: 0.9 GB before, **23.9 GB** after, whatever the context. The useful number is the KV pool it logs: **187,776 tokens** (20.1 GiB) on 0.33.0, 184,960 on 0.19.1. The app passes no `gpu_memory_utilization`, so another GPU job on the card makes the load fail. |
+| Matrix `vllm native (Qwen3-0.6B)` | PASS | 277 to 300 tok/s. |
+
+Surgical fixes (commits `08d6708c`, `ee2220d1`; tests in `tests/test_vllm_engine.py`, +8):
+1. **FlashInfer sampler without nvcc** (load failed): `_prepare_vllm_env` sets `VLLM_USE_FLASHINFER_SAMPLER=0` when no nvcc is found (the WSL-bridge engine already did this).
+2. **An installed TriAttention broke every vLLM load**: its `vllm.general_plugins` entry point patches every engine, `native` included. On 0.33 the engine core died on the first request (`AttributeError: 'EngineCoreProc' object has no attribute 'log_iteration_details'`) after the load had reported success. The engine now sets `ENABLE_TRIATTENTION=0` unless the strategy is `triattention`.
+3. **Prompt format**: the engine fed `USER: ... ASSISTANT:` text; Qwen3 rambled and looped (needle check failed, 1500 tokens of repetition). It now applies the tokenizer chat template (plain text only when there is none). The needle answer went from FAIL to PASS.
+
+### 2. TriAttention
+
+| Item | Result | Evidence |
+|---|---|---|
+| Install + `is_available` | PASS | The pure-Python package installs on Linux; `TriAttentionStrategy.is_available()` is True, badge "Ready" (vLLM backend). It is not MLX-only. |
+| vLLM 0.33.0 | **FAIL, now falls back** | The plugin patches a method vLLM renamed (fix 2). `apply_vllm_patches` now refuses when `EngineCoreProc.log_iteration_details` is missing, so the load comes back as native with the note "TriAttention's vLLM integration does not support vLLM 0.33.0" instead of dying on the first request (test added). |
+| vLLM 0.19.1 | loads and generates, **compression never applies** | The plugin activates (`Runtime (V2) plugin activated`) and the scheduler signals every 128 tokens, but all **1885 of 1885** compaction events (long-decode run, budget 512) ended `no_compactable_groups`, 0 applied; same on the 5.5K-token needle prompt with budget 256. No KV was dropped. Cause not found (third-party runtime). |
+| Stats file | n/a | TriAttention needs a per-model stats file; only Qwen3-32B and gpt-oss-120b ship for vLLM. Generated one for Qwen3-0.6B with `scripts/calibrate.py` (needed `--attn-implementation sdpa`; the default wants flash-attn) from 118 KB of docs text. |
+| App wiring | gap | The app sets none of `TRIATTN_RUNTIME_KV_BUDGET`, `TRIATTN_RUNTIME_SPARSE_STATS_PATH`, `enforce_eager`, `enable_prefix_caching=False`. The runs below set the two env vars by hand. FU-171. |
+
+Needle in a haystack (passphrase in the middle, ask for it, thinking left on, answer read from the end; Qwen3-0.6B, `contextTokens` 8192 / 16384, prompt 5,546 / 11,071 tokens). "Short" is tok/s for an 18-token prompt; "needle" is tok/s for the long prompt with 16 generated tokens, so it is prefill-bound.
+
+| Run | 8K short / needle tok/s | 8K needle | 16K short / needle tok/s | 16K needle |
+|---|---|---|---|---|
+| native f16, vLLM 0.33.0 | 416 / 61 | PASS | 413 / 31 | PASS |
+| native f16, vLLM 0.19.1 | 325 / 139 | PASS | 320 / 52 | PASS |
+| triattention, budget 2048, 0.19.1 | 429 / 115 | PASS | not run | not run |
+| triattention, budget 512, 0.19.1 | 411 / 123 | PASS | 418 / 61 | PASS |
+| triattention on 0.33.0 | falls back to native (above) | PASS (native) | | |
+
+Reading: the triattention rows are **not** evidence for the strategy, because nothing was compacted (with a 5.5K prompt and a 512 budget a working compressor would be expected to lose the needle). VRAM is 23.9 GB in every row (pre-allocated pool); the KV pool is 184,960 tokens in both 0.19.1 rows.
+
+### 3. Cache-strategy matrix in WSL
+
+`--quick` runs **0 cells**: the quick set is the MLX and GGUF cells (models absent, or turbo binary absent) and the vLLM cells are `quick=False`. Full run against the WSL backend (library: Qwen3-0.6B safetensors, plus the Qwen3-0.6B GGUF copied from the Windows cache):
+
+| Cell | Result |
+|---|---|
+| native GGUF (smoke) | PASS, 525 tok/s |
+| vllm native (Qwen3-0.6B) | PASS, 277 to 300 tok/s |
+| vllm triattention (Qwen3-0.6B) | PASS on 0.19.1 (384 to 403 tok/s, same output hash as native: no compaction); on 0.33 the cell used to pass as native |
+| the four turboquant cells, dflash, ddtree, mtplx, tensorfold, MLX cells, GGUF MTP, vllm dflash | skip (no turbo binary, runtimes not installed, models not in the WSL library) |
+
+Fix (matrix): a `triattention` or `turboquant` cell whose load fell back to native is now a skip with the reason rather than a pass (2 tests).
+
+Not done: a real TriAttention compression comparison (FU-171) and DFlash on vLLM (no Qwen3.5-4B copy, size).
+
+Footprint: WSL `ext4.vhdx` 36.0 GB (23.9 before), C: free 56 GB; the two venvs are 9.4 and 9.6 GB, the WSL HF cache 3.7 GB.

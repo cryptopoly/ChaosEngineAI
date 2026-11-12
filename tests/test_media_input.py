@@ -72,7 +72,7 @@ class LtxCommandTests(unittest.TestCase):
         args = self.build(self.config(startImagePath="/a.png", endImagePath="/b.png", imageStrength=0.8))
         pairs = [args[i + 1 : i + 4] for i, a in enumerate(args) if a == "--image"]
         self.assertEqual(pairs, [["/a.png", "0", "0.8"], ["/b.png", "64", "0.8"]])
-        self.assertEqual(args[-2:], ["--output", "/o.mp4"])
+        self.assertEqual(args[-2:], ["--output", str(Path("/o.mp4"))])
 
 
 class RouteChecksTests(unittest.TestCase):
@@ -149,7 +149,7 @@ class ReferenceImageTests(unittest.TestCase):
 
     def test_init_image_command(self):
         args = self.cmd("black-forest-labs/FLUX.1-dev", ["/a.png"], 0.6)
-        self.assertTrue(args[0].endswith("/mflux-generate"))
+        self.assertEqual(Path(args[0]).stem, "mflux-generate")
         self.assertEqual(args[args.index("--image") : args.index("--image") + 3], ["--image", "/a.png", "0.6"])
         no_strength = self.cmd("black-forest-labs/FLUX.1-dev", ["/a.png"])
         self.assertEqual(no_strength[no_strength.index("--image") + 1 :][:1], ["/a.png"])
@@ -157,13 +157,13 @@ class ReferenceImageTests(unittest.TestCase):
 
     def test_flux3_uses_the_edit_command_with_all_images(self):
         args = self.cmd("black-forest-labs/flux-3-image-klein", ["/a.png", "/b.png"])
-        self.assertTrue(args[0].endswith("/mflux-generate-flux3-edit"))
+        self.assertEqual(Path(args[0]).stem, "mflux-generate-flux3-edit")
         i = args.index("--image-paths")
         self.assertEqual(args[i + 1 : i + 3], ["/a.png", "/b.png"])
 
     def test_no_reference_keeps_the_normal_command(self):
         args = self.cmd("black-forest-labs/flux-3-image-klein", None)
-        self.assertTrue(args[0].endswith("/mflux-generate-flux3"))
+        self.assertEqual(Path(args[0]).stem, "mflux-generate-flux3")
         self.assertNotIn("--image", args)
         self.assertNotIn("--image-paths", args)
 

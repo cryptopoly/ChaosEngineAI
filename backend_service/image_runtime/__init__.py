@@ -716,10 +716,13 @@ class DiffusersTextToImageEngine:
                 if note:
                     IMAGE_PROGRESS.set_phase(PHASE_LOADING, message=note)
 
+            from backend_service.helpers.malloc_release import pipeline_load_kwargs
+
             pipeline = AutoPipelineForText2Image.from_pretrained(
                 local_path,
                 torch_dtype=dtype,
                 local_files_only=True,
+                **pipeline_load_kwargs(),
                 **pipeline_kwargs,
             )
             # The safety checker adds extra vision-model dependencies and can

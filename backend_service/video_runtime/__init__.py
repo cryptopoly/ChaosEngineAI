@@ -741,10 +741,13 @@ class DiffusersVideoEngine:
                 if nf4_note:
                     VIDEO_PROGRESS.set_phase(PHASE_LOADING, message=nf4_note)
 
+            from backend_service.helpers.malloc_release import pipeline_load_kwargs
+
             pipeline = pipeline_cls.from_pretrained(
                 local_path,
                 torch_dtype=dtype,
                 local_files_only=True,
+                **pipeline_load_kwargs(),
                 **pipeline_kwargs,
             )
 

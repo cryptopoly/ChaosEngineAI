@@ -1049,3 +1049,19 @@ Installed over the existing 0.10.0 (silent `/S`, exit 0) with your OK. The insta
 | One video | **FAIL** | Wan 2.2 TI2V 5B 832x480, 49 frames, 20 steps: backend process dies right after "Loading pipeline components 100%" (52 s and 65 s, twice, on a fresh backend, GPU idle at start). Passed on the 11-11 installed build (42.3 s). |
 
 Crash signature (Application log, same each time): `python.exe` faulting module `torch\lib\c10.dll`, exception `0xc0000005`, offset `0x91444`; the first one coincided with a `dwm.exe` crash (`udwm.dll`), so a driver reset is possible. The WSL pass was using the GPU at times (6 to 15 GB), which may be involved; the video runs started with about 1 GB used. Cause not found, not fixed. Next: run the same video request against the dev backend (`.venv`) to tell the new build from the machine.
+
+## Wan 2.2 TI2V 5B crash on the installed build: commit exhaustion, fixed (2026-11-12)
+
+Reproduced on the dev backend (port 8891), same request (832x480, 49 frames, 20 steps): the process died 53 to 70 s in, three runs out of three, with the same `c10.dll` `0xc0000005`. `faulthandler` put it in model CPU offload moving the text encoder to the GPU (`accelerate` `init_hook` -> `module.to`).
+
+| Check | Result |
+|---|---|
+| `MIMALLOC_PURGE_DELAY=0` (925f6f2f) as the cause | **No.** With the mimalloc defaults preset (`PURGE_DELAY=10`, `RESET_DELAY=100`; `__init__` only uses `setdefault`) it crashed the same way. Kept. |
+| WSL-pass commits (sage guard, `malloc_trim`, compile check) | Linux-only or inert here (the sage guard only runs when SageAttention is installed). Video and image runtimes are otherwise unchanged since the 11-11 build, and so are the overlay packages. |
+| What ran out | System **commit**, not RAM or VRAM. Backend private bytes reached **59.3 GB**; the page file grew from 4 to 15.7 GB and stopped (C: has about 12 GB free); idle system commit is about 20 GB (WSL VM and the rest). `dwm.exe` died at the same moment with `0xc00001ad` (fatal memory exhaustion). |
+| Why so much | Two Windows facts, measured with a probe: CUDA allocations count against the process's commit under WDDM (a 10 GiB CUDA tensor adds 10.5 GB private), and diffusers' memory-mapped safetensors load stays charged while the model lives. Wan's transformer alone (fp32 on disk, loaded as bf16, 9.3 GB of tensors) held **34.3 GB** private with the map and **16.0 GB** with `disable_mmap=True`; the whole pipeline **46.8 GB** vs **28.5 GB**. |
+| Why it passed on 11-11 | Same code and packages; the disk had room then, so the page file could grow past the peak. |
+
+Fix: `helpers/malloc_release.pipeline_load_kwargs()` returns `{"disable_mmap": True}` on Windows; the image and video runtimes pass it to the pipeline `from_pretrained`. Tests in `tests/test_malloc_release.py` (+3). The `-k "video or image or diffusion"` run has the same 7 Windows-only failures with and without the change.
+
+Verified on the dev backend: Wan 2.2 TI2V 5B passed three times in a row (115 s cold, then **39.5 s** generation twice), peak private **43.9 GB** (was 59.3), and after Unload the backend held **4.1 GB** private (1.8 GB RSS), so the purge still returns the memory. Not verified: the installed app, which needs a rebuilt installer. Free disk on C: is still the real margin: with about 12 GB free the page file cannot grow much, so a bigger model can still run out of commit.

@@ -1254,3 +1254,19 @@ The back-to-back LTX-2.3 refusal (98.4 % pressure, 1.0 GB free, 45 GB resident, 
 `GET /api/diagnostics/snapshot` took a constant ~61 s on the installed backend and timed out E2E phase 7. Per-section timing on the dev backend: extras 26.0 s, gpu (torch subprocess probe) 2.4 s, hardware 0.9 s, rest under 0.1 s. Cause: `_extras_info` walked the whole extras site-packages tree (torch and CUDA wheels, tens of thousands of files) with `rglob` on every call; the installed app is slower per file than dev.
 
 Fix in `backend_service/routes/diagnostics.py`: the walk is now an `os.scandir` pass run once in a background thread and cached for 10 min (the snapshot waits at most 2 s, else `extras.sizeNote` says it is still measuring); sections run in parallel under a 12 s total deadline and a section still running reports a timeout note. Dev backend after: 3.9 s on both calls (the torch probe now dominates). Tests: `tests/test_diagnostics_snapshot.py`.
+
+## Final installer rebuild, installed, smoke at `16bd472b` (2026-11-12, fourth run)
+
+`./build.sh` (size guard passed) then silent install (`/S`, exit 0) over the installed app, with your OK. Ports 8876/8890/8891 free, C: free 104 GB before. Installed backend on 8876. Generation ran only after the GPU was idle (nvidia-smi 1.3 GB used).
+
+| Item | Result | Evidence |
+|---|---|---|
+| Build / installer | PASS | `ChaosEngineAI_0.10.0_x64-setup.exe` **131.78 MiB**; build exit 0. |
+| Backend / CUDA | PASS | `/api/health` 200, 0.10.0, CUDA llama-server b12292; `torch-upgrade-available` reports `2.14.1+cu130` already latest; `llama-cuda-status` in-use CUDA 13.5 verified; `tensorfold-native-status` installed **1.2.6** (pin in CLAUDE.md says 1.2.7), gate `ready` on nvidia-sm89. |
+| `GET /api/diagnostics/snapshot` | PASS | **4.4 s** (was 61 s), HTTP 200, 23.7 KB. |
+| FLUX.2 Klein 4B 1024x640, 3 runs | PASS | Cold 90.5 s wall (26.2 s gen); warm 8.7 s (7.3 s); 9.0 s (7.4 s). Peak private 23.2 / 27.7 / **47.6 GB** (the third run shows the same jump as last run, no failure). |
+| LTX-2.3 4-bit 768x512, 97 frames, twice back to back | **PASS** | Clip 1 138.2 s wall, 79.4 s gen, peak private **75.0 GB**. Clip 2 78.8 s wall, 77.2 s gen, peak **72.9 GB**; not refused (the warm-gate credit works). |
+| `e2e_test_suite.py --smoke` | **FAIL (1 of 7)** | Phases 0, 3, 4, 6, 7, 8 PASS; **phase 7 diagnostics now PASS (6.2 s)**. Phase 5 FAIL: check "LTX-2.5 on diffusers, 4-bit on load": "a gated row with no weights and no token must say why it is blocked". The catalog row `Lightricks/LTX-2.5-Diffusers~nf4` has `gated: true` and no `accessBlockedReason` (and `hasLocalData` false) with no HF_TOKEN set. The same phase's generate check skipped on a 503 memory gate while the LTX pipeline was resident. Reports `~/.chaosengine/test-results/e2e-20261112-155607.{json,md}`. |
+| Windows Application log | **FAULTS** | No `python.exe` crash (Event 1000/1001 for python). But Event 1001 `LiveKernelEvent` code **141** (GPU engine hang/reset), each with an `AppTermFailureEvent` report, at **15:52:16** (end of the LTX runs) and **15:57:51-52** (during E2E phase 8's video work); earlier one at 14:37:40-42 (previous run). Both generations returned HTTP 200 and the backend stayed up (health 200 afterwards). Dump files under `C:\ProgramData\Microsoft\Windows\WER\ReportQueue\Kernel_0_0_*`. Not analysed. |
+
+Open: LTX-2.5 gated row without `accessBlockedReason` (either set it on the row or relax the E2E check); the GPU code-141 events during heavy video runs (check the NVIDIA driver and TDR delay; a 4090 at sustained load); TensorFold native runs 1.2.6, not the 1.2.7 pin.

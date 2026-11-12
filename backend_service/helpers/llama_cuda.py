@@ -342,6 +342,67 @@ def _download(url: str, dest: Path, progress: Callable[[int, int | None], None])
             progress(done, total_bytes)
 
 
+def _folder_in_use(folder: Path) -> bool:
+    """True when a running process was started from a file inside ``folder``."""
+    try:
+        import psutil
+    except ImportError:
+        return False
+    root = str(folder.resolve()).lower()
+    for proc in psutil.process_iter(["exe"]):
+        try:
+            exe = proc.info.get("exe")
+            if exe and str(Path(exe).resolve()).lower().startswith(root + os.sep):
+                return True
+        except (OSError, psutil.Error):
+            continue
+    return False
+
+
+def prune_old_installs(
+    keep_tag: str = LLAMA_CPP_TAG,
+    log: Callable[[str], None] = lambda _msg: None,
+    root: Path | None = None,
+) -> list[str]:
+    """Delete the older tag folders this installer made. Returns the tags removed.
+
+    Only a direct child of ``root`` that holds an ``installed.json`` naming a different
+    tag goes: a folder without the marker, staging folders and files are never touched.
+    A folder whose llama-server is running, or whose files are locked (Windows holds
+    loaded DLLs), is left for next time. Never raises.
+    """
+    base = (root or INSTALL_ROOT)
+    removed: list[str] = []
+    try:
+        base_resolved = base.resolve()
+        children = sorted(base.iterdir())
+    except OSError:
+        return removed
+    for child in children:
+        try:
+            if child.name == keep_tag or child.name.startswith(".") or child.is_symlink() or not child.is_dir():
+                continue
+            resolved = child.resolve()
+            if resolved.parent != base_resolved:
+                continue
+            marker = child / _MARKER
+            if not marker.is_file():
+                continue
+            info = json.loads(marker.read_text(encoding="utf-8"))
+            tag = info.get("tag") if isinstance(info, dict) else None
+            if not tag or tag == keep_tag:
+                continue
+            if _folder_in_use(resolved):
+                log(f"Kept the old CUDA llama-server build {child.name}: it is running")
+                continue
+            shutil.rmtree(resolved)
+            removed.append(child.name)
+            log(f"Removed the old CUDA llama-server build {child.name}")
+        except (OSError, ValueError) as exc:
+            log(f"Could not remove the old CUDA llama-server build {child.name} ({exc}); left in place")
+    return removed
+
+
 _MIN_FREE_BYTES = 3 * (1 << 30)
 
 
@@ -422,4 +483,6 @@ def install(
         flat.rename(final)
     clear_cache()
     log(f"Installed CUDA {cuda} llama-server ({tag}) in {final}")
+    if installed_binary(tag) is not None:
+        prune_old_installs(tag, log)
     return final / server_name()

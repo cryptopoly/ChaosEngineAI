@@ -948,3 +948,10 @@ Verdict: no regression from b12292. The 6.6 % gap to the doc's Bolt 172 is run-t
 | Full matrix (extra) | PASS | 2 pass, 14 skip: native GGUF smoke 223 tok/s (b12292; 24-token reply, startup dominated), `turboquant GGUF 3-bit` 445 tok/s on `llama-server-turbo.exe`, which is its own pin: build 9079 (`69d8e4be4`), not b12292 |
 
 Left: backend stopped, no llama-server running, card back to the desktop's idle 1.2 GB.
+
+## E2E settings check skips off MLX; CUDA llama.cpp installer prunes old tags
+
+- `unusable settings are corrected with a note` (E2E phase 1) now skips with a reason when the load landed on an engine other than `mlx` (on a CUDA host the MLX request routes to TensorFold native). The decision is `_non_mlx_engine_skip` in `scripts/e2e_test_suite.py`, tested in `tests/test_e2e_engine_skip.py`.
+- Route: the TensorFold "needs grammar support" error stays an error on purpose (the engine docstring: dropping the schema would hand a JSON-parsing caller free-form text, and the guard already notes-and-drops only where the engine is known not to enforce, mlx/mtplx). It is now a `RequestNotUsable`, so the chat and OpenAI routes answer 400 with the in-app fix instead of 500. Asserted in `tests/test_tensorfold_engine_integration.py`.
+- `llama_cuda.install` now calls `prune_old_installs` after the pinned tag's `installed.json` and binary verify. It removes only direct child folders whose `installed.json` names a different tag; skips folders with no marker, dot-folders, files, symlinks, folders with a running process (psutil) and anything that fails to delete (locked DLLs: logged, never fails the install). Tests: `tests/test_llama_cuda_prune.py`.
+- Not applied to `llama-server-turbo` (installs flat into `~/.chaosengine/bin` and overwrites in place) or TensorFold native (one install root and one record): neither leaves per-version folders.

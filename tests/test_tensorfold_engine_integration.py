@@ -17,6 +17,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+from backend_service.helpers.request_guards import RequestNotUsable
 from backend_service.inference.base import BackendCapabilities
 from backend_service.inference.tensorfold_engine import TensorFoldEngine
 
@@ -488,6 +489,8 @@ class TensorFoldEngineIntegrationTests(unittest.TestCase):
         ):
             with self.assertRaises(RuntimeError) as ctx:
                 call()
+            # A settings problem the person can fix: the routes answer 400, not 500.
+            self.assertIsInstance(ctx.exception, RequestNotUsable)
             self.assertIn("TensorFold section of the launch settings", str(ctx.exception))
             # The server's own refusal would tell the user to run pip; this one
             # never reaches it.

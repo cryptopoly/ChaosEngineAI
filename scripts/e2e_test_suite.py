@@ -95,6 +95,19 @@ def _cli_json(*argv: str, timeout: float = 600.0) -> tuple[int, Any, str]:
         return rc, None, err or out
 
 
+def _non_mlx_engine_skip(loaded: Any) -> str | None:
+    """A skip reason when a load that asked for MLX landed on another engine, else None.
+
+    The unusable-settings check sends ``jsonSchema``, which MLX corrects with a note.
+    On a CUDA host an MLX request routes to TensorFold native, which has no grammar
+    without its extra and answers 400 on purpose, so the check says nothing there.
+    """
+    engine = loaded.get("engine") if isinstance(loaded, dict) else None
+    if engine == "mlx":
+        return None
+    return f"loaded engine is {engine!r}, not MLX; the settings guard check is the MLX lane's"
+
+
 def _check(name: str, fn) -> CheckResult:
     """Run a check fn and capture pass/fail/skip + reason."""
     started = time.perf_counter()
@@ -1274,6 +1287,10 @@ def phase_1(cap: Capability) -> PhaseResult:
         )
         if rc != 0 or not isinstance(loaded, dict) or loaded.get("state") != "loaded":
             return "fail", f"load failed: {err[:160] if err else loaded}", {}
+        skip_reason = _non_mlx_engine_skip(loaded)
+        if skip_reason:
+            _cli("unload", timeout=60.0)
+            return "skip", skip_reason, {"engine": loaded.get("engine")}
         body = json.dumps({
             "sessionId": "e2e-hostile", "prompt": "Say hello in one short sentence.",
             "modelRef": ref, "backend": "mlx", "cacheStrategy": "native",

@@ -39,6 +39,7 @@ from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import Any
 
+from backend_service.helpers.request_guards import RequestNotUsable
 from backend_service.inference._constants import MLX_LOAD_TIMEOUT_SECONDS
 from backend_service.reasoning_split import ThinkingTokenFilter
 from backend_service.inference._tensorfold import (
@@ -538,10 +539,12 @@ class TensorFoldEngine(BaseInferenceEngine):
 
         Structured output needs xgrammar in the TensorFold venv. Ignoring the
         schema would hand a caller that parses the reply (JSON mode over the
-        API) free-form text, so the request fails with the in-app fix instead.
+        API) free-form text, so the request fails with the in-app fix instead. It is a
+        RequestNotUsable (HTTP 400, not 500): the person's settings cannot run on
+        this load, and the message says how to fix it.
         """
         if json_schema and not self._grammar:
-            raise RuntimeError(
+            raise RequestNotUsable(
                 "Structured output (a JSON schema) needs TensorFold's grammar support, which is not "
                 "installed. Add it from the TensorFold section of the launch settings (it installs "
                 "PyTorch), then load the model again."

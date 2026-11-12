@@ -260,6 +260,31 @@ def lists_cuda_device(binary: Path) -> bool:
     )
 
 
+_MISSING_LIBRARY_RE = re.compile(r"error while loading shared libraries:\s*([^\s:]+)")
+
+
+def missing_system_library(binary: Path) -> str | None:
+    """The shared library a Linux host lacks when the server cannot even start (``libgomp.so.1`` on a minimal
+    Ubuntu image), else None. Without this the install reads as "no CUDA device", which sends the user to the
+    driver when the fix is a system package."""
+    if sys.platform != "linux":
+        return None
+    try:
+        proc = subprocess.run([str(binary), "--list-devices"], capture_output=True, text=True, timeout=30)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if proc.returncode == 0:
+        return None
+    match = _MISSING_LIBRARY_RE.search(f"{proc.stderr or ''}\n{proc.stdout or ''}")
+    return match.group(1) if match else None
+
+
+def missing_library_message(library: str) -> str:
+    package = "libgomp1" if library.startswith("libgomp") else None
+    hint = f" On Ubuntu or Debian: sudo apt install {package}." if package else " Install the system package that provides it."
+    return f"The CUDA llama-server cannot start because this system lacks {library}.{hint}"
+
+
 def usable_binary() -> str | None:
     """The installed CUDA llama-server when this host can run it on a GPU, else None.
 

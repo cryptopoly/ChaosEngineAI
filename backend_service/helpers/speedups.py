@@ -38,6 +38,17 @@ def compile_blocker() -> str | None:
         return "Triton is not installed"
     if sys.platform == "win32" and not (os.environ.get("CC") or shutil.which("cl")):
         return "no C compiler: install the Visual Studio C++ build tools or set CC"
+    if sys.platform.startswith("linux"):
+        if not (os.environ.get("CC") or any(shutil.which(name) for name in ("gcc", "cc", "clang"))):
+            return "no C compiler: install one (Ubuntu or Debian: sudo apt install build-essential) or set CC"
+        # Triton builds its CUDA launcher against Python.h, which a python3-dev-less system lacks.
+        import sysconfig
+        from pathlib import Path
+
+        include_dirs = [sysconfig.get_paths().get("include") or ""]
+        include_dirs += [part for part in (os.environ.get("C_INCLUDE_PATH") or "").split(os.pathsep) if part]
+        if not any(directory and (Path(directory) / "Python.h").is_file() for directory in include_dirs):
+            return "the Python headers are missing (Ubuntu or Debian: sudo apt install python3-dev)"
     return None
 
 

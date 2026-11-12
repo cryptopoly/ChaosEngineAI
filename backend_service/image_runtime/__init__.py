@@ -857,6 +857,14 @@ class DiffusersTextToImageEngine:
                 if device != "cpu":
                     pipeline = pipeline.to(device)
 
+            # Measuring knob (CHAOSENGINE_SPEEDUPS=compile,...), off unless set; the same one the video runtime reads.
+            try:
+                from backend_service.helpers.speedups import apply_speedups
+
+                self._load_notes.extend(apply_speedups(pipeline))
+            except Exception:  # noqa: BLE001 - speed-ups are optional
+                pass
+
             self._pipeline = pipeline
             self._torch = torch
             self._loaded_repo = repo
@@ -878,6 +886,8 @@ class DiffusersTextToImageEngine:
         if pipeline is not None:
             del pipeline
         gc.collect()
+        from backend_service.helpers.malloc_release import release_freed_memory
+        release_freed_memory()
         if torch is not None:
             try:
                 if device == "cuda" and getattr(torch.cuda, "is_available", lambda: False)():

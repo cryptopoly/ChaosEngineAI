@@ -42,5 +42,33 @@ class SpeedupsTests(unittest.TestCase):
         self.assertIn("torch.compile on", notes[0])
 
 
+class LinuxCompileBlockerTests(unittest.TestCase):
+    """torch.compile on Linux needs a C compiler and Python.h for Triton's launcher."""
+
+    def _blocker(self, *, compiler: bool, headers: bool, cc: str = ""):
+        import tempfile
+        from pathlib import Path
+
+        with tempfile.TemporaryDirectory() as tmp:
+            if headers:
+                (Path(tmp) / "Python.h").write_text("", encoding="utf-8")
+            env = {"CC": cc, "C_INCLUDE_PATH": ""}
+            with mock.patch.dict(os.environ, env, clear=False), \
+                    mock.patch("sys.platform", "linux"), \
+                    mock.patch("importlib.util.find_spec", return_value=object()), \
+                    mock.patch("shutil.which", return_value="/usr/bin/gcc" if compiler else None), \
+                    mock.patch("sysconfig.get_paths", return_value={"include": tmp if headers else str(Path(tmp) / "none")}):
+                return speedups.compile_blocker()
+
+    def test_a_linux_box_without_a_compiler_is_told_so(self):
+        self.assertIn("no C compiler", self._blocker(compiler=False, headers=True))
+
+    def test_a_linux_box_without_python_headers_is_told_so(self):
+        self.assertIn("python3-dev", self._blocker(compiler=True, headers=False))
+
+    def test_a_linux_box_with_both_is_not_blocked(self):
+        self.assertIsNone(self._blocker(compiler=True, headers=True))
+
+
 if __name__ == "__main__":
     unittest.main()

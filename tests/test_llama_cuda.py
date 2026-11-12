@@ -185,5 +185,34 @@ class RouteTests(_TempRoot):
         self.assertIsNone(body["cudaVersion"])
 
 
+class MissingSystemLibraryTests(unittest.TestCase):
+    """A minimal Linux image without libgomp.so.1 must not read as "no CUDA device"."""
+
+    def _run(self, returncode: int, stderr: str):
+        done = mock.Mock(returncode=returncode, stdout="", stderr=stderr)
+        return mock.patch.object(llama_cuda.subprocess, "run", return_value=done), mock.patch.object(llama_cuda.sys, "platform", "linux")
+
+    def test_the_loader_error_names_the_library(self):
+        run, linux = self._run(127, "llama-server: error while loading shared libraries: libgomp.so.1: cannot open shared object file")
+        with run, linux:
+            library = llama_cuda.missing_system_library(Path("llama-server"))
+        self.assertEqual(library, "libgomp.so.1")
+        self.assertIn("sudo apt install libgomp1", llama_cuda.missing_library_message(library))
+
+    def test_a_server_that_starts_has_nothing_missing(self):
+        run, linux = self._run(0, "")
+        with run, linux:
+            self.assertIsNone(llama_cuda.missing_system_library(Path("llama-server")))
+
+    def test_a_failure_for_another_reason_is_not_a_missing_library(self):
+        run, linux = self._run(1, "no CUDA device")
+        with run, linux:
+            self.assertIsNone(llama_cuda.missing_system_library(Path("llama-server")))
+
+    def test_off_linux_there_is_nothing_to_report(self):
+        with mock.patch.object(llama_cuda.sys, "platform", "win32"):
+            self.assertIsNone(llama_cuda.missing_system_library(Path("llama-server.exe")))
+
+
 if __name__ == "__main__":
     unittest.main()

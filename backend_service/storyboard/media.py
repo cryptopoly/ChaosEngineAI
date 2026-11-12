@@ -192,6 +192,16 @@ def probe_seconds(path: Path) -> float | None:
         return None
     if is_video:
         frames = _FRAME_RE.findall(text)
+        if not frames:
+            # Some ffmpeg builds (the static Linux one) print no frame counter for a stream copy and
+            # report a time that ignores the last frames; decoding prints the real count.
+            try:
+                decoded = subprocess.run(args[:-7] + ["-map", "0:v:0", "-f", "null", "-"], capture_output=True, timeout=120)
+            except (OSError, subprocess.SubprocessError):
+                decoded = None
+            if decoded is not None and decoded.returncode == 0:
+                text = decoded.stderr.decode("utf-8", "replace")
+                frames = _FRAME_RE.findall(text)
         fps = _FPS_RE.search(text)
         if frames and fps and float(fps.group(1)) > 0:
             return round(int(frames[-1]) / float(fps.group(1)), 4)

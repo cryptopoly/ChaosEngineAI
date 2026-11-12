@@ -962,6 +962,8 @@ class DiffusersVideoEngine:
         if pipeline is not None:
             del pipeline
         gc.collect()
+        from backend_service.helpers.malloc_release import release_freed_memory
+        release_freed_memory()
         if torch is not None:
             try:
                 if device == "cuda" and getattr(torch.cuda, "is_available", lambda: False)():

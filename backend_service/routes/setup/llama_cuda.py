@@ -52,6 +52,11 @@ _JOB = _JobState()
 _JOB_LOCK = threading.Lock()
 
 
+def _missing_library() -> str | None:
+    binary = llama_cuda.installed_binary()
+    return llama_cuda.missing_system_library(binary) if binary else None
+
+
 def _worker() -> None:
     job = _JOB
     assets_seen: list[str] = []
@@ -83,12 +88,16 @@ def _worker() -> None:
             pass
         job.phase = "done"
         job.percent = 100.0
-        job.message = (
-            "CUDA llama-server installed. GGUF models now run on the NVIDIA GPU."
-            if usable
-            else "CUDA llama-server installed, but it found no CUDA device. "
-            "Check that the NVIDIA driver is installed (nvidia-smi); the bundled build stays in use."
-        )
+        missing = None if usable else _missing_library()
+        if usable:
+            job.message = "CUDA llama-server installed. GGUF models now run on the NVIDIA GPU."
+        elif missing:
+            job.message = f"CUDA llama-server installed. {llama_cuda.missing_library_message(missing)} The bundled build stays in use."
+        else:
+            job.message = (
+                "CUDA llama-server installed, but it found no CUDA device. "
+                "Check that the NVIDIA driver is installed (nvidia-smi); the bundled build stays in use."
+            )
     except Exception as exc:  # noqa: BLE001 - reported to the UI
         job.phase = "error"
         job.error = str(exc)
@@ -105,11 +114,15 @@ def llama_cuda_status() -> dict[str, Any]:
     in_use = bool(installed and llama_cuda.usable_binary())
     state = chosen["state"]
     message = chosen["message"]
+    missing = None
     if installed:
         state = "in-use" if in_use else "installed-no-device"
+        missing = None if in_use else _missing_library()
         message = (
             "GGUF models run on the NVIDIA GPU."
             if in_use
+            else llama_cuda.missing_library_message(missing)
+            if missing
             else "Installed, but it found no CUDA device. Check the NVIDIA driver (nvidia-smi); the bundled build stays in use."
         )
     elif chosen["ok"]:
@@ -133,6 +146,7 @@ def llama_cuda_status() -> dict[str, Any]:
         "verified": bool(info and info.get("verified") and all(info["verified"].values())),
         "path": str(installed) if installed else None,
         "inUse": in_use,
+        "missingLibrary": missing,
         "disabled": os.environ.get("CHAOSENGINE_LLAMA_CUDA") == "0",
     }
 

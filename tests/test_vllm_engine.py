@@ -169,5 +169,40 @@ class VLLMSamplerForwardingTests(unittest.TestCase):
         self.assertGreater(captured["temperature"], 0.0)
 
 
+class VLLMEnvPreparationTests(unittest.TestCase):
+    """The env the vLLM engine subprocess inherits (no vllm import needed)."""
+
+    def _run(self, strategy, env):
+        import os
+        from backend_service.vllm_engine import _prepare_vllm_env
+
+        with patch.dict(os.environ, env, clear=True):
+            notes = _prepare_vllm_env(strategy)
+            return notes, dict(os.environ)
+
+    def test_triattention_plugin_off_for_other_strategies(self) -> None:
+        for strategy in ("native", "turboquant"):
+            _notes, env = self._run(strategy, {"VLLM_USE_FLASHINFER_SAMPLER": "1"})
+            self.assertEqual(env["ENABLE_TRIATTENTION"], "0", strategy)
+
+    def test_triattention_plugin_left_on_for_its_own_strategy(self) -> None:
+        _notes, env = self._run("triattention", {"ENABLE_TRIATTENTION": "0", "VLLM_USE_FLASHINFER_SAMPLER": "1"})
+        self.assertNotIn("ENABLE_TRIATTENTION", env)
+
+    def test_flashinfer_sampler_off_without_nvcc(self) -> None:
+        with patch("backend_service.vllm_engine.shutil.which", return_value=None),                 patch("backend_service.vllm_engine.Path.exists", return_value=False):
+            notes, env = self._run("native", {})
+        self.assertEqual(env["VLLM_USE_FLASHINFER_SAMPLER"], "0")
+        self.assertTrue(notes)
+
+    def test_flashinfer_sampler_untouched_with_nvcc_or_explicit_setting(self) -> None:
+        with patch("backend_service.vllm_engine.shutil.which", return_value="/usr/bin/nvcc"):
+            _notes, env = self._run("native", {})
+        self.assertNotIn("VLLM_USE_FLASHINFER_SAMPLER", env)
+        with patch("backend_service.vllm_engine.shutil.which", return_value=None):
+            _notes, env = self._run("native", {"VLLM_USE_FLASHINFER_SAMPLER": "1"})
+        self.assertEqual(env["VLLM_USE_FLASHINFER_SAMPLER"], "1")
+
+
 if __name__ == "__main__":
     unittest.main()

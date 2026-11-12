@@ -9,7 +9,10 @@ Install: ``pip install chaosengine-ai[vllm]``
 from __future__ import annotations
 
 import gc
+import os
+import shutil
 import time
+from pathlib import Path
 from collections.abc import Callable
 from typing import Any
 
@@ -36,6 +39,36 @@ def _vllm_version() -> str | None:
         return getattr(vllm, "__version__", None)
     except ImportError:
         return None
+
+
+def _prepare_vllm_env(strategy_id: str) -> list[str]:
+    """Set the process env vLLM's engine subprocess inherits. Returns notes.
+
+    * An installed ``triattention`` package registers a vLLM general plugin
+      that patches every engine it starts, whichever cache strategy the app
+      asked for. Its patches target older vLLM internals (on 0.33 the engine
+      core dies on the first request with ``'EngineCoreProc' object has no
+      attribute 'log_iteration_details'``), so it is switched off unless the
+      TriAttention strategy was chosen.
+    * Without ``nvcc`` the FlashInfer sampler cannot JIT its kernel and the
+      memory profiling run fails at load; vLLM's own sampler works.
+    """
+    notes: list[str] = []
+    if strategy_id == "triattention":
+        os.environ.pop("ENABLE_TRIATTENTION", None)
+    else:
+        os.environ["ENABLE_TRIATTENTION"] = "0"
+    if "VLLM_USE_FLASHINFER_SAMPLER" not in os.environ:
+        cuda_home = os.environ.get("CUDA_HOME") or os.environ.get("CUDA_PATH")
+        has_nvcc = (
+            shutil.which("nvcc") is not None
+            or (bool(cuda_home) and (Path(cuda_home) / "bin" / "nvcc").exists())
+            or Path("/usr/local/cuda/bin/nvcc").exists()
+        )
+        if not has_nvcc:
+            os.environ["VLLM_USE_FLASHINFER_SAMPLER"] = "0"
+            notes.append("No nvcc found, FlashInfer sampler off.")
+    return notes
 
 
 def _now_label() -> str:
@@ -132,11 +165,14 @@ class VLLMEngine(BaseInferenceEngine):
             except ImportError:
                 pass
 
+        env_notes = _prepare_vllm_env(actual_cache_strategy)
         self._llm = LLM(**llm_kwargs)
 
         version = _vllm_version() or "unknown"
         if runtime_note is None:
             runtime_note = f"Model loaded via vLLM {version}."
+        if env_notes:
+            runtime_note += " " + " ".join(env_notes)
         if speculative_decoding and draft_model:
             runtime_note += f" DFLASH speculative decoding active (draft: {draft_model})."
         elif speculative_decoding and not draft_model:

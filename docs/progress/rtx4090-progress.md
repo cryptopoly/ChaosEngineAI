@@ -1272,3 +1272,21 @@ Fix in `backend_service/routes/diagnostics.py`: the walk is now an `os.scandir` 
 Open: LTX-2.5 gated row without `accessBlockedReason` (either set it on the row or relax the E2E check); the GPU code-141 events during heavy video runs (check the NVIDIA driver and TDR delay; a 4090 at sustained load); TensorFold native runs 1.2.6, not the 1.2.7 pin.
 
 - E2E video phase gated-row check fixed: it now treats a saved Hugging Face token (settings `hasHuggingFaceToken` flag or env var, flag only) as "token present" and skips; the reason is asserted only with no token. Backend gate unchanged; unit tests cover both branches and the download 403 / token-open route.
+
+## Qwen3-TTS speed on CUDA (2026-11-12)
+
+Standalone runs in the voice venv with the worker's own loader (`load_qwen`), RTX 4090, torch 2.9.1+cu128, same text (21 words), seed 7, one warm call then 3 timed runs; GPU use sampled with `nvidia-smi` every 0.2 s; quality = sample-for-sample comparison and a Whisper Large v3 Turbo transcript.
+
+- **Launch-bound, confirmed** (cProfile of one request): about 300 k small GPU ops per request, ~45 us of host time each (Windows launch cost); the 5-layer code predictor runs 15 forward passes per talker step and takes about 70 % of them, the 28-layer talker the rest. The GPU sits at 25 to 40 %.
+- **Kept: plain code-predictor loop** (`backend_service/qwen_tts_fast.py`, installed by `voice_worker_torch.speed_up_qwen`). `qwen-tts` calls the full `transformers` `generate()` for the 15 codes of every talker step; the loop does the same forward passes and the same sampling (temperature, top-k, top-p, one `torch.multinomial`) in the same order. Output is bit-identical for a seed (max sample difference 0.0, same transcript).
+
+| Model | Before (s compute per s of audio) | After | Audio |
+|---|---|---|---|
+| CustomVoice 1.7B, Ryan | 1.913 (16.8 s for 8.80 s), GPU 38 % | 1.702 (15.0 s), GPU 39 % | identical, transcript exact |
+| Base 1.7B clone (12 s synthetic reference, ICL with transcript) | 3.302 (23.8 s for 7.20 s), GPU 25 % | 2.940 (21.2 s), GPU 27 % | identical, transcript exact |
+
+  The Base row's "after" also reuses the reference's speaker embedding and codes (`cached_clone_prompt`, per clip path, modification time, transcript and mode; cleared on unload). `CHAOSENGINE_QWEN_FAST=0` turns the loop off; if the loop fails it notes why and every later call uses the library's `generate()`.
+- **Not kept: CUDA graphs of the code predictor** (static KV cache, one graph per position, sampling eager between replays so the random stream is unchanged). The prefill graph matched eager; decode graphs gave wrong logits when the 15 graphs shared a memory pool, and on the 1.7B model also with separate pools, while the same plan run eagerly on the same static cache was right. Not finished inside the time box; not shipped. `torch.compile` (inductor) needs Triton, which this Windows venv does not have.
+- **Not tried in this pass**: attention backends (only SDPA and eager are installed; SageAttention and flash-attn are not on Windows, and the predictor attends over at most 16 keys, so attention is not where the time goes), fp16 against bf16, a static cache for the 28-layer talker.
+- **0.6B Base "last word of the reference leaks"**: our worker passes the transcript stripped and unchanged, and `qwen-tts` cuts the reference part of the decoded audio by exact frame ratio, so no trimming bug was found on our side; the reference (transcript ends "...a short queue of early coffee.") ends on that word, and the model repeats it before the new text. Treated as model behaviour; not re-run on the GPU in this pass (no fix, no test).
+- Tests: new `tests/test_qwen_tts_fast.py` (loop order, step numbers and one cache; other calls and failures go to the library; sampling order; install once; prompt cache keys; worker wiring and the off switch); `tests/test_voice_qwen_cuda.py` passes.

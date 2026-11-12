@@ -38,6 +38,10 @@ CODEBOOK = 4096
 
 def unload() -> None:
     _model["key"], _model["model"] = None, None
+    try:
+        _qwen_fast().clear_prompts()
+    except ImportError:
+        pass
     stop_server()
     try:
         import torch  # type: ignore[import-not-found]
@@ -83,9 +87,38 @@ def load_qwen(source: str, device: str) -> Any:
     cuda = device.startswith("cuda")
     dtype = torch.bfloat16 if cuda and torch.cuda.is_bf16_supported() else (torch.float16 if cuda else torch.float32)
     where = device if ":" in device or not cuda else f"{device}:0"
-    return Qwen3TTSModel.from_pretrained(
+    model = Qwen3TTSModel.from_pretrained(
         source, dtype=dtype, device_map=where, attn_implementation="sdpa", local_files_only=True,
     )
+    speed_up_qwen(model)
+    return model
+
+
+_qwen_notes: list[str] = []
+
+
+def _qwen_fast() -> Any:
+    try:  # the worker runs as a script, so a sibling is a top-level module (as for voice_worker_models)
+        import qwen_tts_fast  # type: ignore[import-not-found]  # noqa: PLC0415
+    except ImportError:
+        from backend_service import qwen_tts_fast  # noqa: PLC0415
+    return qwen_tts_fast
+
+
+def speed_up_qwen(model: Any) -> None:
+    """Swap the code predictor's per-step ``generate()`` for the plain loop in ``qwen_tts_fast`` (same codes for a
+    seed, about 11 % less time on an RTX 4090). Off with ``CHAOSENGINE_QWEN_FAST=0``; any failure keeps the library's
+    own path and is written to the worker log."""
+    import os
+    import sys
+
+    if os.environ.get("CHAOSENGINE_QWEN_FAST", "1") == "0":
+        return
+    try:
+        if not _qwen_fast().fast_code_predictor(model, notes=_qwen_notes):
+            print("Qwen3-TTS: unexpected model layout, the fast code predictor is off.", file=sys.stderr)
+    except Exception as exc:  # noqa: BLE001 - never block loading the model
+        print(f"Qwen3-TTS: the fast code predictor is off: {exc}", file=sys.stderr)
 
 
 def _load(family: str, source: str, device: str) -> Any:
@@ -236,10 +269,18 @@ def qwen_call(model: Any, request: dict[str, Any]) -> tuple[Any, int]:
     mode = str(request.get("mode") or "")
     if request.get("refAudioPath"):
         transcript = str(request.get("refText") or "").strip()
-        wavs, rate = model.generate_voice_clone(
-            text=text, language=language, ref_audio=readable_audio(str(request["refAudioPath"])),
-            ref_text=transcript or None, x_vector_only_mode=not transcript,
-        )
+        reference = readable_audio(str(request["refAudioPath"]))
+        try:  # the reference's speaker embedding and codes once per clip and transcript
+            prompt = _qwen_fast().cached_clone_prompt(model, reference, transcript or None, not transcript)
+        except Exception:  # noqa: BLE001 - no prompt API or an unreadable clip: let the model encode it itself
+            prompt = None
+        if prompt is not None:
+            wavs, rate = model.generate_voice_clone(text=text, language=language, voice_clone_prompt=prompt)
+        else:
+            wavs, rate = model.generate_voice_clone(
+                text=text, language=language, ref_audio=reference, ref_text=transcript or None,
+                x_vector_only_mode=not transcript,
+            )
     elif mode == "preset":
         wavs, rate = model.generate_custom_voice(
             text=text, speaker=str(request["speaker"]), language=language, instruct=request.get("instruct") or None,

@@ -263,13 +263,16 @@ class RenderV2Tests(Base):
             start_render({self.pid!r}, None, False)
             time.sleep(120)
         """)
+        errlog = open(self.base / "child.err", "w")
+        self.addCleanup(errlog.close)
         proc = subprocess.Popen([sys.executable, "-c", script], cwd=str(REPO), env=os.environ.copy(),
-                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                                stdout=subprocess.DEVNULL, stderr=errlog)
         try:
             deadline = time.time() + 60
             while not (self.base / "flag").exists() and time.time() < deadline:
                 time.sleep(0.1)
-            self.assertTrue((self.base / "flag").exists(), "the child never reached shot 3")
+            errlog.flush()
+            self.assertTrue((self.base / "flag").exists(), "the child never reached shot 3: " + (self.base / "child.err").read_text(errors="replace")[-1500:])
             proc.kill()  # SIGKILL on POSIX, TerminateProcess on Windows
             proc.wait(timeout=10)
         finally:

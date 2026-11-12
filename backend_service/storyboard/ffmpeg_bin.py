@@ -120,7 +120,8 @@ def ffmpeg_exe() -> str:
     return found[0]
 
 
-_FILTER_LINE = re.compile(r"^\s*[T.][S.][C.]\s+(\w+)\s+\S*->\S*")
+# ffmpeg 7 prints three flag columns (timeline, slice threading, command support); ffmpeg 9 dropped the third.
+_FILTER_LINE = re.compile(r"^\s*[T.][S.][C.]?\s+(\w+)\s+\S*->\S*")
 
 
 @functools.lru_cache(maxsize=4)

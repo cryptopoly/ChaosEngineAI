@@ -81,6 +81,12 @@ class RenderResult:
     stems: list[str] = field(default_factory=list)  # file names written next to the film
 
 
+def _filter_script_flag() -> str:
+    """The option that reads a filter graph from a file: ffmpeg 9 removed ``-filter_complex_script``; ``-/filter_complex`` (7.0+) is its replacement."""
+    match = re.match(r"(\d+)", ffmpeg_bin.ffmpeg_version())
+    return "-filter_complex_script" if match and int(match.group(1)) < 7 else "-/filter_complex"
+
+
 # ---------------------------------------------------------------------------------------------
 # Running ffmpeg
 
@@ -266,7 +272,7 @@ def _write_stems(plan: RenderPlan, work: Path, film_input: list[str], lanes: lis
         args = ["-f", "lavfi", "-i", f"anullsrc=channel_layout=stereo:sample_rate={SAMPLE_RATE}"]
         for lane in renumbered:
             args += _inp(lane.clip.path)
-        jobs.append((name, [*args, "-filter_complex_script", graph.name, "-map", "[aout]"]))
+        jobs.append((name, [*args, _filter_script_flag(), graph.name, "-map", "[aout]"]))
     written: list[str] = []
     try:
         for index, (name, args) in enumerate(jobs):
@@ -348,7 +354,7 @@ def render(plan: RenderPlan, progress_cb: ProgressCb | None = None,
                                                                  src_in, src_out))
             tmp = work / f"{run_id}-{name}"
             scratch.append(tmp)
-            _run([*_inp(shot.video), "-filter_complex_script", graph, "-map", "[v]", "-map", "[a]",
+            _run([*_inp(shot.video), _filter_script_flag(), graph, "-map", "[v]", "-map", "[a]",
                   *_codec_args(plan), "-c:a", "pcm_s16le", "-map_metadata", "-1", "-f", "mov",
                   tmp.name], cwd=work, expected_s=frames / plan.fps, report=report,
                  cancel_event=cancel_event)
@@ -397,11 +403,11 @@ def render(plan: RenderPlan, progress_cb: ProgressCb | None = None,
                 args += _inp(name)
             joined_v, joined_a, joined = (work / f"{run_id}-join{part}.mov" for part in ("v", "a", ""))
             scratch += [joined_v, joined_a, joined]
-            _run([*args, "-filter_complex_script", script("xfade-v.txt", video_graph), "-map", "[vout]",
+            _run([*args, _filter_script_flag(), script("xfade-v.txt", video_graph), "-map", "[vout]",
                   *_codec_args(plan), "-f", "mov", joined_v.name],
                  cwd=work, expected_s=timing.total, report=lambda f: progress("join", 0.2 + 0.6 * f),
                  cancel_event=cancel_event)
-            _run([*args, "-filter_complex_script", script("xfade-a.txt", audio_graph), "-map", "[aout]",
+            _run([*args, _filter_script_flag(), script("xfade-a.txt", audio_graph), "-map", "[aout]",
                   "-c:a", "pcm_s16le", "-f", "mov", joined_a.name],
                  cwd=work, expected_s=timing.total, report=lambda f: progress("join", 0.8 + 0.15 * f),
                  cancel_event=cancel_event)
@@ -438,7 +444,7 @@ def render(plan: RenderPlan, progress_cb: ProgressCb | None = None,
             else:
                 graph_text, _ = build_mix_graph(lanes, total_samples, f"{base}:print_format=json")
                 graph = script("measure.txt", graph_text)
-                stderr = _run([*film_input, *lane_args, "-filter_complex_script", graph,
+                stderr = _run([*film_input, *lane_args, _filter_script_flag(), graph,
                                "-map", "[aout]", "-f", "null", "-"], cwd=work, expected_s=timing.total,
                               report=lambda f: progress("measure", f), cancel_event=cancel_event)
                 measured = parse_loudnorm(stderr) or {}
@@ -466,7 +472,7 @@ def render(plan: RenderPlan, progress_cb: ProgressCb | None = None,
         if plan.metadata:
             comment = json.dumps(plan.metadata, ensure_ascii=True, separators=(",", ":"))
             meta_args = ["-metadata", f"comment={META_PREFIX}:{comment}"]
-        stderr = _run([*film_input, *lane_args, "-filter_complex_script", graph, *video_args,
+        stderr = _run([*film_input, *lane_args, _filter_script_flag(), graph, *video_args,
                        "-map", "[aout]", "-c:a", "aac", "-b:a", "128k" if plan.preview else "192k",
                        "-ar", str(SAMPLE_RATE), "-map_metadata", "-1", *meta_args,
                        "-movflags", "+faststart", "-f", "mp4", str(out_tmp)],

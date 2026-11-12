@@ -1065,3 +1065,15 @@ Reproduced on the dev backend (port 8891), same request (832x480, 49 frames, 20 
 Fix: `helpers/malloc_release.pipeline_load_kwargs()` returns `{"disable_mmap": True}` on Windows; the image and video runtimes pass it to the pipeline `from_pretrained`. Tests in `tests/test_malloc_release.py` (+3). The `-k "video or image or diffusion"` run has the same 7 Windows-only failures with and without the change.
 
 Verified on the dev backend: Wan 2.2 TI2V 5B passed three times in a row (115 s cold, then **39.5 s** generation twice), peak private **43.9 GB** (was 59.3), and after Unload the backend held **4.1 GB** private (1.8 GB RSS), so the purge still returns the memory. Not verified: the installed app, which needs a rebuilt installer. Free disk on C: is still the real margin: with about 12 GB free the page file cannot grow much, so a bigger model can still run out of commit.
+
+## Disk cleanup (2026-11-12)
+
+C: free 13.6 GB before, 105.9 GB after (about 92 GB freed). Cache at `~/.cache/huggingface/hub`, removed with `huggingface_hub` `delete_revisions`; nothing was running (no backend ports, no python).
+
+Deleted (GB): Wan 2.2 TI2V 5B Diffusers 34.2, Wan 2.1 T2V 1.3B Diffusers 28.9, TensorFold/Qwen3.8-27B-MLX-4bit 16.1, nunchaku-flux.1-schnell 6.8 (Nunchaku does not load on this torch), z-lab/Qwen3.8-27B-DFlash2 3.9, QuantStack/Wan2.2-TI2V-5B-GGUF 3.4; empty Wan2.1-T2V-1.3B stub dir; `~/.chaosengine/test-llama-b11981` 1.4; stale `Temp\pip-install-*` about 4.
+
+E2E impact: the Wan 2.2 and Wan 2.1 checks already skip or pass without the model (`_wan_image_to_video`, cached live run "model is not installed", `_wan_not_burnt` "not downloaded"); `_qwen38_dflash2` skips without a GGUF. The 27B MLX + DFlash2 run (section above) is recorded here and no E2E check needs the weights.
+
+Kept: FLUX.2-klein-4B 16, LTX-2.3 nf4 30.9 (live E2E row), Nemotron Bolt 6.2 + its DFlash drafter 0.7, Qwen3.5-2B MLX-4bit 1.75 (TensorFold), Qwen3-0.6B GGUF 2.35 (cache matrix smoke), voice models (Chatterbox, Chatterbox-turbo, VoxCPM2, Qwen3-TTS 0.6B/1.7B, faster-whisper, audioseal, VAD), Qwen-Image-2.1 GGUF stub, small test repos.
+
+Re-download: the app's model Hub, or `huggingface-cli download <repo>` (Wan-AI/Wan2.2-TI2V-5B-Diffusers, TensorFold/Qwen3.8-27B-MLX-4bit with z-lab/Qwen3.8-27B-DFlash2, nunchaku-ai/nunchaku-flux.1-schnell).

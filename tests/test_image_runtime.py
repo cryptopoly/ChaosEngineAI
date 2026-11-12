@@ -475,6 +475,104 @@ class GgufTransformerLoaderTests(unittest.TestCase):
         self.assertNotEqual(key_bf16, key_q4)
 
 
+class FluxTransformerClassTests(unittest.TestCase):
+    """FLUX.2 snapshots (Klein, Dev) declare ``Flux2Transformer2DModel``.
+
+    The NF4 / int8wo loaders used ``FluxTransformer2DModel`` for every
+    repo with "flux" in its name, so a FLUX.2 checkpoint loaded with every
+    weight unused and newly initialised, the quantised load raised, and
+    the pipeline fell back to bf16. The class now comes from the snapshot.
+    """
+
+    def _snapshot(self, root: Path, config: object | None) -> str:
+        if config is not None:
+            (root / "transformer").mkdir(parents=True)
+            text = config if isinstance(config, str) else json.dumps(config)
+            (root / "transformer" / "config.json").write_text(text, encoding="utf-8")
+        return str(root)
+
+    def test_class_name_comes_from_transformer_config(self):
+        from backend_service.image_runtime.transformer_loaders import flux_transformer_class_name
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self._snapshot(Path(tmp), {"_class_name": "Flux2Transformer2DModel"})
+            self.assertEqual(flux_transformer_class_name(path), "Flux2Transformer2DModel")
+
+    def test_class_name_defaults_to_flux1(self):
+        from backend_service.image_runtime.transformer_loaders import flux_transformer_class_name
+
+        for config in (None, "not json", {"_class_name": "os.system"}, {}):
+            with tempfile.TemporaryDirectory() as tmp:
+                path = self._snapshot(Path(tmp), config)
+                self.assertEqual(flux_transformer_class_name(path), "FluxTransformer2DModel")
+
+    def _run_loader(self, loader_name: str, spec_name: str, config_name: str):
+        import sys
+        from backend_service.image_runtime import transformer_loaders
+
+        calls: list[str] = []
+
+        def _cls(name):
+            class _Model:
+                @classmethod
+                def from_pretrained(cls, *args, **kwargs):
+                    calls.append(name)
+                    return cls()
+            _Model.__name__ = name
+            return _Model
+
+        fake_diffusers = SimpleNamespace(
+            FluxTransformer2DModel=_cls("FluxTransformer2DModel"),
+            Flux2Transformer2DModel=_cls("Flux2Transformer2DModel"),
+            BitsAndBytesConfig=lambda **kwargs: kwargs,
+            TorchAoConfig=lambda *args: args,
+        )
+        real_find_spec = transformer_loaders.importlib.util.find_spec
+
+        def _find_spec(name, *args, **kwargs):
+            if name == spec_name:
+                return object()
+            return real_find_spec(name, *args, **kwargs)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self._snapshot(Path(tmp), {"_class_name": config_name})
+            with mock.patch.dict(sys.modules, {"diffusers": fake_diffusers}), \
+                    mock.patch.object(transformer_loaders.importlib.util, "find_spec", _find_spec):
+                transformer, note = getattr(transformer_loaders, loader_name)(
+                    path, SimpleNamespace(bfloat16="bfloat16"),
+                )
+        return calls, transformer, note
+
+    def test_nf4_loader_uses_flux2_class_for_flux2_snapshot(self):
+        calls, transformer, note = self._run_loader(
+            "try_load_nf4_flux_transformer", "bitsandbytes", "Flux2Transformer2DModel",
+        )
+        self.assertEqual(calls, ["Flux2Transformer2DModel"])
+        self.assertIsNotNone(transformer)
+        self.assertIn("Flux2Transformer2DModel", note or "")
+
+    def test_int8wo_loader_uses_flux2_class_for_flux2_snapshot(self):
+        calls, transformer, _ = self._run_loader(
+            "try_load_int8wo_flux_transformer", "torchao", "Flux2Transformer2DModel",
+        )
+        self.assertEqual(calls, ["Flux2Transformer2DModel"])
+        self.assertIsNotNone(transformer)
+
+    def test_nf4_loader_keeps_flux1_class(self):
+        calls, _, _ = self._run_loader(
+            "try_load_nf4_flux_transformer", "bitsandbytes", "FluxTransformer2DModel",
+        )
+        self.assertEqual(calls, ["FluxTransformer2DModel"])
+
+    def test_unknown_class_falls_back_without_loading(self):
+        calls, transformer, note = self._run_loader(
+            "try_load_nf4_flux_transformer", "bitsandbytes", "Flux9Transformer2DModel",
+        )
+        self.assertEqual(calls, [])
+        self.assertIsNone(transformer)
+        self.assertIn("Flux9Transformer2DModel", note or "")
+
+
 class Int8woLoaderTests(unittest.TestCase):
     """``_try_load_int8wo_flux_transformer`` must return ``(None, note)``
     when torchao isn't installed so the pipeline falls back to bf16

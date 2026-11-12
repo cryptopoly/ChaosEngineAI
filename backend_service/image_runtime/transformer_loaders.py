@@ -35,6 +35,42 @@ from backend_service.image_runtime.repos import (
 )
 
 
+_DEFAULT_FLUX_TRANSFORMER_CLASS = "FluxTransformer2DModel"
+
+
+def flux_transformer_class_name(local_path: str) -> str:
+    """The diffusers transformer class a FLUX-family snapshot declares.
+
+    ``_is_flux_repo`` matches FLUX.1 and FLUX.2 alike, but FLUX.2 (Klein,
+    Dev) ships ``Flux2Transformer2DModel``. Loading that checkpoint into
+    ``FluxTransformer2DModel`` leaves every weight unused and the model
+    newly initialised, and the quantised load then fails, so the snapshot's
+    own ``transformer/config.json`` ``_class_name`` decides. A snapshot
+    without a readable config keeps the FLUX.1 class.
+    """
+    import json
+    from pathlib import Path
+
+    try:
+        config = json.loads(
+            (Path(local_path) / "transformer" / "config.json").read_text(encoding="utf-8")
+        )
+    except (OSError, ValueError):
+        return _DEFAULT_FLUX_TRANSFORMER_CLASS
+    name = config.get("_class_name") if isinstance(config, dict) else None
+    if isinstance(name, str) and name.isidentifier() and "Transformer" in name:
+        return name
+    return _DEFAULT_FLUX_TRANSFORMER_CLASS
+
+
+def _resolve_flux_transformer_class(local_path: str) -> tuple[Any, str]:
+    """``(class or None, class name)`` for the snapshot, from diffusers."""
+    import diffusers  # type: ignore
+
+    name = flux_transformer_class_name(local_path)
+    return getattr(diffusers, name, None), name
+
+
 def try_load_nf4_flux_transformer(
     local_path: str, torch: Any,
 ) -> tuple[Any, str | None]:
@@ -59,11 +95,17 @@ def try_load_nf4_flux_transformer(
             "(turns 8 min/step into ~10 s/step on a 24 GB GPU)."
         )
     try:
-        from diffusers import BitsAndBytesConfig, FluxTransformer2DModel  # type: ignore
+        from diffusers import BitsAndBytesConfig  # type: ignore
     except ImportError:
         return None, (
             "Installed diffusers doesn't expose BitsAndBytesConfig. "
             "Upgrade via the Setup page to use NF4 FLUX."
+        )
+    transformer_cls, cls_name = _resolve_flux_transformer_class(local_path)
+    if transformer_cls is None:
+        return None, (
+            f"{cls_name} not in installed diffusers — loading the "
+            "transformer in bf16. Upgrade via the Setup page to use NF4."
         )
 
     try:
@@ -72,14 +114,14 @@ def try_load_nf4_flux_transformer(
             bnb_4bit_quant_type="nf4",
             bnb_4bit_compute_dtype=torch.bfloat16,
         )
-        transformer = FluxTransformer2DModel.from_pretrained(
+        transformer = transformer_cls.from_pretrained(
             local_path,
             subfolder="transformer",
             quantization_config=nf4_config,
             torch_dtype=torch.bfloat16,
             local_files_only=True,
         )
-        return transformer, "FLUX transformer loaded in NF4 (~7 GB VRAM)"
+        return transformer, f"FLUX transformer ({cls_name}) loaded in NF4"
     except Exception as exc:  # noqa: BLE001 — any failure → fall back to bf16
         return None, (
             f"NF4 quantization failed ({type(exc).__name__}: {exc}) — "
@@ -109,21 +151,27 @@ def try_load_int8wo_flux_transformer(
             "quantization (~24 GB → ~12 GB)."
         )
     try:
-        from diffusers import FluxTransformer2DModel, TorchAoConfig  # type: ignore
+        from diffusers import TorchAoConfig  # type: ignore
     except ImportError:
         return None, (
             "Installed diffusers doesn't expose TorchAoConfig. "
             "Upgrade via the Setup page to use int8wo FLUX."
         )
+    transformer_cls, cls_name = _resolve_flux_transformer_class(local_path)
+    if transformer_cls is None:
+        return None, (
+            f"{cls_name} not in installed diffusers — loading the "
+            "transformer in bf16. Upgrade via the Setup page to use int8wo."
+        )
     try:
-        transformer = FluxTransformer2DModel.from_pretrained(
+        transformer = transformer_cls.from_pretrained(
             local_path,
             subfolder="transformer",
             quantization_config=TorchAoConfig("int8wo"),
             torch_dtype=torch.bfloat16,
             local_files_only=True,
         )
-        return transformer, "FLUX transformer loaded in int8wo (~12 GB)"
+        return transformer, f"FLUX transformer ({cls_name}) loaded in int8wo"
     except Exception as exc:  # noqa: BLE001 — fall back to bf16
         return None, (
             f"int8wo quantization failed ({type(exc).__name__}: {exc}) — "

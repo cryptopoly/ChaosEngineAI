@@ -188,6 +188,18 @@ class PromptOpensReasoningTests(unittest.TestCase):
         self.assertTrue(second.reasoning_done)
         self.assertEqual((first.text + second.text + rest.text).strip(), "The sky is blue.")
 
+    def test_a_close_tag_split_across_chunks_is_still_found(self):
+        filt = ThinkingTokenFilter(detect_raw_reasoning=False, starts_inside_reasoning=True)
+        parts = [filt.feed(piece) for piece in ("We need to add.", "</th", "ink>", "The answer is 4.")] + [filt.flush()]
+        self.assertEqual("".join(p.reasoning for p in parts), "We need to add.")
+        self.assertEqual("".join(p.text for p in parts), "The answer is 4.")
+
+    def test_a_lookalike_tail_is_released_when_it_is_not_the_close_tag(self):
+        filt = ThinkingTokenFilter(detect_raw_reasoning=False, starts_inside_reasoning=True)
+        parts = [filt.feed(piece) for piece in ("a</", " b", "</think>c")] + [filt.flush()]
+        self.assertEqual("".join(p.reasoning for p in parts), "a</ b")
+        self.assertEqual("".join(p.text for p in parts), "c")
+
     def test_default_leaves_an_orphan_close_tag_in_the_text(self):
         filt = ThinkingTokenFilter(detect_raw_reasoning=False)
         out = filt.feed("plan</think>answer")

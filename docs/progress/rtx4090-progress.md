@@ -1099,3 +1099,22 @@ Re-download: the app's model Hub, or `huggingface-cli download <repo>` (Wan-AI/W
 **Proposed rows** (all repo `Lightricks/LTX-2.5-Diffusers`, cudaOnly, gated + licence note, `downloadFiles` pinned to the component folders, exact shard patterns to be read from the transformer index once the repo is accessible): (1) distilled 4-bit on load, 24 to 48 GB cards, ~22.5 GB peak, estimated until measured; (2) distilled bf16, 80 GB cards and unified memory (DGX Spark), ~76 GB in memory; (3) later: dev (`transformer_full`) bf16 for 80 GB cards, and NVFP4 for Blackwell once its layout is checked. Gates come from `variant_fit` and the hardware read, nothing keyed to a card.
 
 **Not done:** no rows, tests or E2E check, no download. Blockers: licence not accepted on the Diffusers repo for the stored account; the 72 GB download would leave ~22 GB free on C: (floor is 25 GB), so it needs either space freed or the streaming-conversion route (download shard by shard, quantise to nf4, delete the shard: peak ~45 GB, network ~68 GB, output a ~31 GB local pack).
+
+## Host-bound tests skip or pass everywhere (2026-11-12)
+
+Full runs on Windows (RTX 4090): Python **3710 passed, 14 failed, 134 skipped** before, **3737 passed, 0 failed, 134 skipped** after; vitest 1528 passed, 1 failed before, **1529 passed** after. The WSL list had 3 more host-bound failures (soundfile, librosa) that now skip.
+
+| Test | Cause | Fix |
+|---|---|---|
+| 5 CUDA torch index tests (`test_setup_routes`) | called the real `nvidia-smi` | mock "no NVIDIA driver" so they run everywhere |
+| 2 `test_size_limits` gate tests | the size term used this card's free VRAM | pin `cuda_free_vram_gb` to None |
+| `test_catalog_slow_on_labels_reach_the_payload` | Mac-only rows are filtered off other hosts | pin Apple Silicon for the catalog read |
+| 4 `test_media_input` | path separator / `.exe` in command paths | compare with `Path` |
+| Video Studio tooltip (vitest) | device guess read the host's navigator | stub a Mac navigator in that assertion |
+| 3 voice/music tests | need soundfile / librosa | `skipIf` the package is missing, reason names it |
+| E2E phase 4 mflux rows, phase 5 LTX-2.5 MLX row | catalog lists them on Apple Silicon only | new check "mflux image rows" and the LTX check skip off Apple Silicon |
+| `test_a_killed_render_is_interrupted...` | **real bug**: the child process picked ffmpeg 9.0.2 from the extras, and Storyboard renders failed on it | see below |
+
+Real bug: ffmpeg 9 prints two flag columns in `-filters` (every film failed "lacks the filters") and removed `-filter_complex_script`. `ffmpeg_bin._FILTER_LINE` reads both layouts and `assemble._filter_script_flag()` uses `-/filter_complex` from ffmpeg 7.0 on. Tests added in `test_ffmpeg_bin.py`. Not run against a live 9.x render end to end beyond the killed-render test.
+
+E2E phases were not run (no backend started); the new skips are in `scripts/e2e_test_suite.py` (`_mflux_catalog_rows`, `_ltx2_engine`).

@@ -1565,7 +1565,19 @@ def phase_4(cap: Capability) -> PhaseResult:
         )
         if q21 is None or q21.get("engine") != "sdcpp":
             return "fail", f"Qwen-Image-2.1 sd.cpp variant missing or mis-routed: {q21 and q21.get('engine')}", {}
-        # FU-096: the MLX variants run through the mflux engine (own venv).
+        return "pass", "", {"families": ["qwen-image", "z-image", "flux-2"]}
+
+    # FU-096: the MLX variants run through the mflux engine (own venv). The catalog
+    # lists them on Apple Silicon only, so every other host skips this.
+    def _mflux_catalog_rows():
+        import platform
+
+        if not (sys.platform == "darwin" and platform.machine() == "arm64"):
+            return "skip", "the mflux image rows are listed on Apple Silicon only", {}
+        rc, payload, err = _cli_json("image-catalog", timeout=15.0)
+        if rc != 0 or not isinstance(payload, dict):
+            return "fail", f"catalog fetch failed: {err[:160]}", {}
+        fams = {f.get("id"): f for f in (payload.get("families") or [])}
         wanted_mflux = {
             "Qwen/Qwen-Image-2.1-mflux": "qwen-image",
             "black-forest-labs/FLUX.2-klein-4B-mflux": "flux-2",
@@ -1578,7 +1590,7 @@ def phase_4(cap: Capability) -> PhaseResult:
             )
             if found is None or found.get("engine") != "mflux":
                 return "fail", f"{variant_id} missing or not routed to mflux", {}
-        return "pass", "", {"families": ["qwen-image", "z-image", "flux-2"]}
+        return "pass", "", {}
 
     # FU-096 (e): the FLUX.1 sd.cpp variants point at sd.cpp's own GGUF repos
     # (the city96 Q4_K_M names they used to carry do not exist on the Hub) and
@@ -1747,6 +1759,7 @@ def phase_4(cap: Capability) -> PhaseResult:
     for name, fn in [
         ("catalog", _catalog),
         ("new image families (Qwen-Image / Z-Image / FLUX.2)", _new_image_families),
+        ("mflux image rows in the catalog (FU-096)", _mflux_catalog_rows),
         ("fit ratings and size limits in the catalogs (FU-133)", _fit_and_limits),
         ("CUDA estimates judge the card's own memory (FU-164)", _cuda_estimates),
         ("FLUX.1 sd.cpp variants pin real GGUF files (FU-096)", _flux_sdcpp_catalog),
@@ -1898,6 +1911,8 @@ def phase_5(cap: Capability) -> PhaseResult:
     def _ltx2_engine():
         import platform
 
+        if not (sys.platform == "darwin" and platform.machine() == "arm64"):
+            return "skip", "ltx-2-mlx needs Apple Silicon (the LTX-2.5 MLX row is listed there only)", {}
         rc, payload, _ = _cli_json("video-catalog", timeout=15.0)
         variants = [v for f in ((payload or {}).get("families") or []) for v in (f.get("variants") or [])]
         row = next((v for v in variants if v.get("id") == "dgrauet/ltx-2.5-mlx-q4"), None)
@@ -1906,8 +1921,6 @@ def phase_5(cap: Capability) -> PhaseResult:
         rc, status, _ = _cli_json("ltx2-status", timeout=15.0)
         if rc != 0 or not isinstance(status, dict):
             return "fail", "ltx2-status failed", {}
-        if not (sys.platform == "darwin" and platform.machine() == "arm64"):
-            return "skip", "ltx-2-mlx needs Apple Silicon", {}
         if not status.get("installed"):
             return "skip", "the LTX MLX engine is not installed", {}
         if not row.get("availableLocally"):

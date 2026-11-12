@@ -1713,6 +1713,41 @@ def phase_4(cap: Capability) -> PhaseResult:
         _cli("image-unload", timeout=30.0)
         return "pass", "", {"modelId": model_id, "keys": sorted((payload or {}).keys())[:10] if isinstance(payload, dict) else None}
 
+    # Unload gives the memory back, so a second generation after it is not refused. On Windows the backend used to
+    # keep the whole pipeline (16.6 GB working set, 22.9 GB private for FLUX.2 Klein) after Unload on some loads: torch's
+    # allocator held memory freed into segments of threads that had exited, and the gate refused the next run.
+    def _memory_returns_after_unload():
+        rc, lib, _ = _cli_json("image-library", timeout=15.0)
+        models = [m for m in ((lib or {}).get("models") or [])
+                  if (m.get("availableLocally") or m.get("hasLocalData")) and m.get("engine") not in ("sdcpp", "mflux")]
+        if not models:
+            return "skip", "no diffusers image model installed locally", {}
+        models.sort(key=lambda m: float(m.get("sizeGb") or 1e9))
+        model_id = models[0].get("id") or models[0].get("repo")
+        before = _backend_private_gb()
+        if before is None:
+            return "skip", "the backend process is not on this machine (cannot read its memory)", {}
+        rows = []
+        for attempt in (1, 2):
+            rc, _payload, err = _cli_json(
+                "image-generate", "a lighthouse on a cliff at dusk", "--model", model_id, "--steps", "4",
+                "--width", "512", "--height", "512", "--seed", "7", "--timeout", "1800",
+            )
+            if rc != 0:
+                if attempt == 1 and _is_memory_refusal(err):
+                    return "skip", f"host memory gate fired on the first run: {err[:200]}", {}
+                return "fail", f"generation {attempt} after unload: rc={rc} {err[:240]}", {"rows": rows}
+            loaded = _backend_private_gb() or 0.0
+            _cli("image-unload", timeout=60.0)
+            time.sleep(3)
+            after = _backend_private_gb() or 0.0
+            rows.append({"loadedGb": round(loaded, 1), "afterUnloadGb": round(after, 1)})
+            grown = loaded - before
+            if grown > 2.0 and after - before > max(2.0, 0.3 * grown):
+                return "fail", (f"unload kept {after - before:.1f} GB of the {grown:.1f} GB the model took "
+                                f"(backend {before:.1f} GB before, {after:.1f} GB after)"), {"rows": rows}
+        return "pass", "", {"modelId": model_id, "beforeGb": round(before, 1), "rows": rows}
+
     # FU-096: the mflux engine end to end (own venv, one process per image).
     # Skips when the engine is not installed or its checkpoint is not on disk.
     def _generate_mflux():
@@ -1807,6 +1842,7 @@ def phase_4(cap: Capability) -> PhaseResult:
         ("CUDA estimates judge the card's own memory (FU-164)", _cuda_estimates),
         ("FLUX.1 sd.cpp variants pin real GGUF files (FU-096)", _flux_sdcpp_catalog),
         ("library", _library), ("runtime", _runtime), ("generate", _generate),
+        ("memory returns after unload; a second generation is not refused", _memory_returns_after_unload),
         ("generate via mflux (FU-096)", _generate_mflux),
         ("generate via sd.cpp FLUX.1 (FU-096)", _generate_flux_sdcpp),
     ]:
@@ -1859,6 +1895,23 @@ def _hf_token_present() -> bool:
 
 def _is_memory_refusal(err: str) -> bool:
     return any(marker in err for marker in _MEMORY_REFUSAL_MARKERS)
+
+
+def _backend_private_gb() -> float | None:
+    """Memory the backend process holds in GB (private bytes on Windows, resident elsewhere), or None when the
+    backend is not a local process listening on the suite's port, or psutil is missing."""
+    if _HOST not in ("127.0.0.1", "localhost", "::1"):
+        return None
+    try:
+        import psutil
+
+        for conn in psutil.net_connections("tcp"):
+            if conn.laddr and conn.laddr.port == _PORT and conn.status == psutil.CONN_LISTEN and conn.pid:
+                info = psutil.Process(conn.pid).memory_info()
+                return float(getattr(info, "private", 0) or info.rss) / (1024 ** 3)
+    except Exception:  # noqa: BLE001 - access denied, psutil missing: the check skips
+        return None
+    return None
 
 
 def phase_5(cap: Capability) -> PhaseResult:

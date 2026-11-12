@@ -164,3 +164,12 @@ class ReleaseBuildScriptTests(unittest.TestCase):
         source = (ROOT / "scripts" / "stage-runtime.mjs").read_text(encoding="utf-8")
         self.assertIn("1.9 * 1024 ** 3", source)
         self.assertIn("assertArchiveFitsInstaller(archiveDest)", source)
+
+    def test_archive_limit_constant_is_declared_before_main_runs(self) -> None:
+        # main() is called at module level; a const declared after that call is
+        # still in its temporal dead zone when main() reads it (v0.10.0 build crash).
+        source = (ROOT / "scripts" / "stage-runtime.mjs").read_text(encoding="utf-8")
+        self.assertLess(
+            source.index("const NSIS_ARCHIVE_LIMIT_BYTES"),
+            source.index("\nmain();"),
+        )

@@ -65,12 +65,13 @@ const BUNDLED_ROOT_DOCS = ["AGENTS.md"];
 // Override with CHAOSENGINE_LLAMA_CPP_TAG.
 const LLAMA_CPP_TAG = process.env.CHAOSENGINE_LLAMA_CPP_TAG || "b12292";
 
+const NSIS_ARCHIVE_LIMIT_BYTES = 1.9 * 1024 ** 3;
+
 main();
 
 // NSIS cannot map an archive larger than 2 GB ("failed creating mmap"), so a
 // Windows runtime archive past 1.9 GB means the installer cannot be built.
 // Fail here, before the long Tauri bundle step, and say why.
-const NSIS_ARCHIVE_LIMIT_BYTES = 1.9 * 1024 ** 3;
 
 function assertArchiveFitsInstaller(archivePath) {
   if (process.platform !== "win32" || process.env.CHAOSENGINE_SKIP_ARCHIVE_SIZE_CHECK === "1") {

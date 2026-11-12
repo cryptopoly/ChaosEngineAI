@@ -1031,3 +1031,21 @@ The distro's virtual disk is 23.1 GB (the guest holds about 14 GB after cleaning
 | Registry/routing/setup/engine/native tests | PASS | 5 files, no failures (skips are macOS-only) |
 
 Left: dev backend on 8876 and the side `serve` on 8899 stopped, model unloaded.
+
+
+## Installer rebuilt with everything since 18cb80e6, installed, section 7 smoke (2026-11-12)
+
+Installed over the existing 0.10.0 (silent `/S`, exit 0) with your OK. The installed backend ran on port 8890 (a throwaway `%APPDATA%\.chaosengine\settings.json` with `preferredServerPort`, removed afterwards) because the WSL pass holds 8876 and the app attaches to whatever answers there.
+
+| Item | Result | Evidence |
+|---|---|---|
+| `./build.sh` | **FAIL, fixed** | `stage-runtime.mjs` crashed right after archiving: `ReferenceError: Cannot access 'NSIS_ARCHIVE_LIMIT_BYTES' before initialization` (the const sat below the top-level `main()` call). Moved above it; regression test `test_archive_limit_constant_is_declared_before_main_runs` (fails without the fix). Second run PASS, 3 m 42 s for the failed run, about 4 min for the good one. |
+| Installer / archive | PASS | `ChaosEngineAI_0.10.0_x64-setup.exe` **131.8 MiB (138.2 MB)**, runtime archive **133.5 MB**; manifest `llamaServer: bin/llama-server.exe` (Vulkan b12292), `llamaServerTurbo` set, `warnings: []`; the four `install-*.sh` are in the archive. |
+| Backend starts | PASS | `/api/health` 200 after 18 s (10 s on later starts). |
+| Torch is the CUDA build | PASS | `torch 2.14.1+cu130`, CUDA 13.0, available, RTX 4090 (existing overlay kept; install from scratch not re-run). |
+| `GET /api/setup/llama-cuda-status` | PASS | `supported:true, state:in-use, tag b12292, installedCuda 13.5, verified:true`. |
+| `GET /api/setup/tensorfold-native-status` | PASS | installed 1.2.6 (the earlier manual adoption, pin is 1.2.7), gate `ready` on nvidia-sm89; install status route answers `idle`. |
+| One image | PASS with a crash | FLUX.2 Klein 4B 1024x640, 4 steps: cold 54 to 81 s, warm **6.6 s** (`Diffusers local engine (cuda)`). One earlier run crashed the backend (below). |
+| One video | **FAIL** | Wan 2.2 TI2V 5B 832x480, 49 frames, 20 steps: backend process dies right after "Loading pipeline components 100%" (52 s and 65 s, twice, on a fresh backend, GPU idle at start). Passed on the 11-11 installed build (42.3 s). |
+
+Crash signature (Application log, same each time): `python.exe` faulting module `torch\lib\c10.dll`, exception `0xc0000005`, offset `0x91444`; the first one coincided with a `dwm.exe` crash (`udwm.dll`), so a driver reset is possible. The WSL pass was using the GPU at times (6 to 15 GB), which may be involved; the video runs started with about 1 GB used. Cause not found, not fixed. Next: run the same video request against the dev backend (`.venv`) to tell the new build from the machine.

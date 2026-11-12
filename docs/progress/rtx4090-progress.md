@@ -955,3 +955,69 @@ Left: backend stopped, no llama-server running, card back to the desktop's idle 
 - Route: the TensorFold "needs grammar support" error stays an error on purpose (the engine docstring: dropping the schema would hand a JSON-parsing caller free-form text, and the guard already notes-and-drops only where the engine is known not to enforce, mlx/mtplx). It is now a `RequestNotUsable`, so the chat and OpenAI routes answer 400 with the in-app fix instead of 500. Asserted in `tests/test_tensorfold_engine_integration.py`.
 - `llama_cuda.install` now calls `prune_old_installs` after the pinned tag's `installed.json` and binary verify. It removes only direct child folders whose `installed.json` names a different tag; skips folders with no marker, dot-folders, files, symlinks, folders with a running process (psutil) and anything that fails to delete (locked DLLs: logged, never fails the install). Tests: `tests/test_llama_cuda_prune.py`.
 - Not applied to `llama-server-turbo` (installs flat into `~/.chaosengine/bin` and overwrites in place) or TensorFold native (one install root and one record): neither leaves per-version folders.
+
+
+## Linux pass of the backend on WSL2 with the RTX 4090 (2026-11-12)
+
+Ubuntu 24.04 (WSL2, Python 3.12.3, 32 cores, 31 GB RAM, the Windows driver 621.14 passed through) with a clone of `test/rtx4090` at `~/ChaosEngineAI`, a plain venv (pip from get-pip: the image has no `ensurepip`), the `release.yml` base list plus the image packages installed with `-c release-constraints.txt`, and CUDA torch from the app's own `cuda_torch_indexes()` order (cu134 first, which serves `2.11.0+cu130`; `torch.cuda.is_available()` True, sm_89). Models were read from the Windows HF cache over 9p (`HF_HOME=/mnt/c/...`, nothing copied; load is slower, steady state is not). No root: system packages came from `apt-get download` and `dpkg -x` into `~/syslibs` (libgomp1, the python3.12-dev headers, a relocated gcc 13), none installed system-wide.
+
+**WSL2 is not bare Linux.** Host-to-device copies measured 10.5 GB/s pageable and 12.5 GB/s pinned (PCIe 4 x16 gives about 24), 156 TFLOPs bf16 matmul, 10 us per tiny kernel launch. Anything that offloads weights to system RAM is slower here than on Windows native (Wan TI2V 87 s against 35 s, Klein 10.0 s against 6.3 s, warm, same settings). Compare speed-ups inside this section, not with the Windows numbers.
+
+### 1. Python test suite (`pytest tests/`, whole suite)
+
+3740 passed, 14 failed, 71 skipped on the first run. After the fixes below: 11 failed.
+
+| Failure | Verdict |
+|---|---|
+| `test_agent_files::test_bad_uploads_are_refused` (200 != 413) | **Linux-only, fixed (test).** A solid 32x24 PNG compresses to under the test's 100-byte cap with this zlib. The cap is 20 bytes now. |
+| `test_storyboard_store::test_a_real_97_frame_clip_measures_4_0417_seconds` (3.95) and `test_storyboard_v2::OtioTests::test_document_shape_crossfade_and_lanes` ([27.84, ...] against [30, ...]) | **Linux-only, real bug, fixed.** `probe_seconds` read the `frame=` counter of `ffmpeg -c copy -f null -`. The static Linux ffmpeg 7.0.2 (imageio-ffmpeg) prints none for a stream copy and reports a time that ignores the last frames, so every clip measured about 0.09 s short and the film length, crossfades and OTIO export were off. It now decodes to count when no counter is printed. |
+| `test_setup_routes` x5 (CUDA index order, `--target`) | Same as Windows: they call the real `nvidia-smi` (here `/usr/lib/wsl/lib/nvidia-smi`, driver 621, CUDA 13.5, cu134 first). Host-bound, not fixed. |
+| `test_size_limits` x2, `test_video_routes::test_catalog_slow_on_labels...` | Same as Windows (the memory gate reads the card; a Mac catalog row). |
+| `test_music_sound_1_0` (soundfile), `test_voice_watermark` x2 (librosa) | Same as Windows: the optional audio packages live in the voice venv, not in this test venv. |
+
+### 2. Backend and E2E (port 8876, backend started from the clone)
+
+The backend starts and serves on Linux. The CLI-driven E2E suite needs `CHAOSENGINE_REQUIRE_AUTH=0` (otherwise every call is 401). `--smoke` after the fixes: phases 0, 3, 6, 7, 8 PASS (phase 8 has 18 checks; the speech checks SKIP with their reasons because the voice runtime is not installed here). Phase 4 fails only on "new image families" (the Mac-only mflux rows are not in a Linux catalog; same as Windows). Phase 5: LTX-2.5 on ltx-2-mlx fails (Mac row, same as Windows); the real LTX-2.3 4-bit text-to-video check PASSES (after the SageAttention fix below); the checks after it SKIP with "host memory gate fired" because a 31 GB VM cannot hold LTX-2.3 and Wan together. Not run: the full suite (phases 1, 2, 9, 10 need the large chat models).
+
+### 3. CUDA llama.cpp installer, live (`POST /api/setup/install-llama-cuda`)
+
+| Item | Result |
+|---|---|
+| Asset | `llama-b12292-bin-ubuntu-cuda-13.5-x64.tar.gz` plus the `cudart-` archive; sha256 verified against the release digests (both "Verified"); 77.5 s end to end. |
+| Install check | **FAIL, then fixed.** "Installed, but it found no CUDA device." The server could not start at all: this image has no `libgomp.so.1` (`error while loading shared libraries`), and the message sent the user to the driver. `llama_cuda.missing_system_library` now reads the loader error and says "this system lacks libgomp.so.1. On Ubuntu or Debian: sudo apt install libgomp1" in the install job and in the status (new `missingLibrary` field). The installer cannot apt-install without root, so the fix is the message. |
+| Chat (Qwen3-0.6B Q8_0 from the Windows cache, ctx 4096, f16 KV, 300 tokens) | PASS once `libgomp1` was available: **322 / 489 / 480 tok/s** (the first run includes warm-up), +1.5 GB VRAM. Windows native b11981 measured 549 to 563 tok/s, so about 12 % lower under WSL2. |
+
+### 4. TensorFold 1.2.7 native, Linux archive through the app (`POST /api/setup/install-tensorfold-native`)
+
+- Gate before install: `unqualified` (sm_89 unconfirmed until the installed binary reports a CUDA chip). Install 9.2 s (archive and `.sha256` checked by the installer). After install the binary's own `capabilities --json` reports **`nvidia-sm89`, back end cuda, grammar true**: the sm_80/86 images in the release set do run on the 4090, no image-load failure.
+- Serving Qwen3.5-2B (`mlx-community/Qwen3.5-2B-MLX-4bit` from the Windows cache) through `/api/models/load` with `backend: tensorfold`: load 3.3 s, engine label "TensorFold 1.x (CUDA, exact speculative decoding)", 3 x 300 tokens at **450.0 / 454.0 / 453.8 tok/s**, +2.1 GB VRAM. The sm_89 source build on Windows gave 460 tok/s, so the shipped image costs about 1.5 %.
+
+### 5. Linux-only speed options
+
+Wan 2.2 TI2V 5B 832x480, 49 frames, 20 steps; FLUX.2 Klein 4B 1024^2, 4 steps; warm = the second run in the same load.
+
+| Option | Result | Numbers |
+|---|---|---|
+| SageAttention 2.2.0 (thu-ml master `d1a57a5`) | **PASS: 1.49x on Wan, no gain on Klein.** No PyPI wheel (PyPI stops at 1.0.6) and no Linux release wheel, so it was built for sm_89 only: 6 min with a relocated gcc 13 and `nvidia-cuda-nvcc==13.0.*` (plus the matching nvvm, crt, cccl) from pip; a 15.7 MB wheel. | Wan warm 87.2 s -> **58.7 s**, peak 12.9 -> 12.7 GB. Klein warm 10.0 to 10.5 s -> 9.9 to 10.5 s (offload-bound). Image quality not compared (no PSNR run). |
+| `torch.compile` (`CHAOSENGINE_SPEEDUPS=compile`) | **PASS on Wan, 1.67x; no gain on Klein.** Needs a C compiler and Python.h on Linux; this image had neither (a stand-in compiler from `ziglang` proved the path first). | Wan cold 117.6 s -> 123.7 s, warm 87.2 s -> **52.3 s**, peak 12.9 -> 12.7 GB. Klein cold 63.8 s -> 72.1 s, warm 10.0 to 10.5 s -> 9.8 to 10.3 s. |
+| flash-attn | **SKIP.** The newest prebuilt wheels are cu12 / torch 2.8 (v2.8.3.post2); none for torch 2.11 with cu13, and the app has no flash backend switch (only `sage` and SDPA), so a source build would have nothing to call it. | |
+| vLLM and TriAttention | **SKIP (stopped at the disk floor).** `vllm` 0.33.0 pins torch 2.14 and the cu13 toolkit, so it needs its own venv (the test venv pins 2.11). That venv reached 6.0 GB and C: fell from 23.4 to 14.4 GB free, under the 15 GB stop line, so the install was killed and the venv deleted. Run the vLLM lane and TriAttention after the WSL disk is compacted (see the footprint). | |
+
+### Linux-only bugs found and fixed here
+
+1. `probe_seconds` was short by the last frames with the static Linux ffmpeg 7 (above).
+2. A missing `libgomp.so.1` read as "no CUDA device" for the CUDA llama-server (above).
+3. **Installing SageAttention 2 broke every LTX-2.3 clip**: `ValueError: attn_mask is not supported for sage attention`, raised in the text connectors, so the app's blanket `set_attention_backend("sage")` failed a model that passes a mask. The pipeline call is now guarded: on that error the transformer goes back to PyTorch attention and the call repeats (the call signature is preserved for the kwarg filter; five tests). Verified live: the LTX-2.3 4-bit E2E check passes with the package installed (it failed three times before). The note still reads "Attention: SageAttention" after a fall-back.
+4. **System RAM not given back after Unload on glibc**: 12.0 GB stayed with the backend after Klein then Wan (nothing loaded), and the gates then refused the next model. `malloc_trim(0)` after the image and video pipelines are released (`helpers/malloc_release.py`) leaves 0.4 to 1.9 GB.
+5. The `torch.compile` knob had no check for a C compiler or Python.h on Linux (the first step failed with a Triton error) and was read only by the video runtime. `compile_blocker()` now names the missing piece (`build-essential` or `python3-dev`) and the image runtime reads the knob too.
+6. Test only: the 413 upload cap (above).
+
+### Observed, not fixed
+
+- A warm Wan pipeline (about 25 GB of system RAM on this 31 GB VM) makes the next Wan run fail the gate ("Only 2.6 GB of RAM available ... needs at least 6.0 GB free") although the pipeline is already resident: the gate counts the warm model against itself. The warm timings above needed the floor lowered in the clone (not committed). Same gate on any machine with little spare RAM.
+- `bitsandbytes` and `ftfy` are not in the base venv; the Wan image-to-video and LTX 4-bit routes fail without them until the GPU bundle installs them. Not run here: the bundle installer itself (it would have overlaid a second torch, over the disk budget).
+- Not run: ACE-Step and Stable Audio (music stays Apple-only), the voice runtime, Nunchaku, DDTree, MTPLX.
+
+### WSL footprint
+
+The distro's virtual disk is 23.1 GB (the guest holds about 14 GB after cleaning: venv 5.5 GB, `~/.chaosengine` 1.1 GB, scratch gcc and headers 0.3 GB, build caches). C: went from 42.4 GB free to 12.1 GB free, below the 15 GB stop line, so vLLM was not retried. The virtual disk does not shrink by itself: `wsl --shutdown`, then compacting `ext4.vhdx` (admin `Optimize-VHD` or `diskpart` "compact vdisk") gives back about 9 GB. Not done here (host-level change).

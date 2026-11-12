@@ -23,6 +23,7 @@ Reference: https://github.com/thu-ml/SageAttention
 
 from __future__ import annotations
 
+import functools
 import importlib.util
 from typing import Any
 
@@ -72,4 +73,35 @@ def maybe_apply_sage_attention(pipeline: Any) -> str | None:
     except Exception as exc:  # noqa: BLE001 — keep stock SDPA on any failure
         return f"SageAttention unavailable ({type(exc).__name__})"
 
+
+    _fall_back_when_a_mask_is_passed(pipeline, transformer)
     return "Attention: SageAttention"
+
+
+def _fall_back_when_a_mask_is_passed(pipeline: Any, transformer: Any) -> None:
+    """Keep a model that passes an attention mask working once SageAttention 2 is installed.
+
+    SageAttention has no ``attn_mask`` input, and diffusers raises ``ValueError: `attn_mask` is not supported for
+    sage attention`` the first time such a model runs (LTX-2.3's text connectors pass the prompt mask, so with
+    the package installed every LTX-2.3 clip failed; other pipelines may do the same). The error comes before any
+    step has run, and it can come from a module other than the transformer, so the guard sits on the pipeline
+    call: the transformer goes back to PyTorch attention and the same call is repeated.
+    """
+    original = type(pipeline)
+
+    @functools.wraps(original.__call__)
+    def guarded_call(self: Any, *args: Any, **kwargs: Any) -> Any:
+        try:
+            return original.__call__(self, *args, **kwargs)
+        except ValueError as exc:
+            text = str(exc)
+            if "attn_mask" not in text or "sage" not in text.lower():
+                raise
+            transformer.set_attention_backend("native")
+            self.__class__ = original
+            return original.__call__(self, *args, **kwargs)
+
+    try:
+        pipeline.__class__ = type(original.__name__, (original,), {"__call__": guarded_call, "__module__": original.__module__})
+    except TypeError:  # a pipeline type that cannot be re-classed keeps SageAttention without the guard
+        pass

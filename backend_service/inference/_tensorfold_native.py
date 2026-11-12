@@ -310,6 +310,9 @@ NATIVE_MODELS: tuple[NativeModel, ...] = (
         repos=("mlx-community/Qwen3.5-2B-MLX-4bit",),
         family="qwen3_5",
         weight_format="mlx-q4g64",
+        # The checkpoint ships its vision tower; `serve --vision` read a red
+        # square as "Red" on a 4090 (1.2.6).
+        vision=True,
         vram_gb=3.1,  # 1.58 GiB model + 0.17 GiB KV at 8192 + runtime; 457-461 tok/s on a 4090
         kv_gb_per_ref=0.18,
         measured=True,

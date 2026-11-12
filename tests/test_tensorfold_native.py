@@ -188,6 +188,12 @@ class Registry(unittest.TestCase):
         self.assertFalse(rows["lfm2_5_24b_a2b"]["fits"])  # the memory gate: 15.7 GB > 11 GB free
         self.assertTrue({r["key"]: r for r in native.supported_models(with_lfm, free_gb=22.0)}["lfm2_5_24b_a2b"]["fits"])
 
+    def test_qwen3_5_2b_reads_images(self):
+        # RTX 4090 run: `serve --vision` on the 2B 4-bit export answered "Red" for a red square.
+        model = native.match_native_model("mlx-community/Qwen3.5-2B-MLX-4bit")
+        assert model is not None
+        self.assertTrue(model.vision)
+
     def test_qwen3_6_and_gemma4_are_listed_for_cuda_with_unmeasured_floors(self):
         # FU-168: 1.2.6 lists qwen3_5_moe and gemma4 for CUDA (mlx-q4g64); both
         # rows are documented upstream, not measured here.

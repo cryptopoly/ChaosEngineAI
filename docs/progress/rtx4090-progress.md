@@ -1021,3 +1021,13 @@ Wan 2.2 TI2V 5B 832x480, 49 frames, 20 steps; FLUX.2 Klein 4B 1024^2, 4 steps; w
 ### WSL footprint
 
 The distro's virtual disk is 23.1 GB (the guest holds about 14 GB after cleaning: venv 5.5 GB, `~/.chaosengine` 1.1 GB, scratch gcc and headers 0.3 GB, build caches). C: went from 42.4 GB free to 12.1 GB free, below the 15 GB stop line, so vLLM was not retried. The virtual disk does not shrink by itself: `wsl --shutdown`, then compacting `ext4.vhdx` (admin `Optimize-VHD` or `diskpart` "compact vdisk") gives back about 9 GB. Not done here (host-level change).
+
+## TensorFold CUDA registry rows; image input on the native engine
+
+| Item | Result | Notes |
+|---|---|---|
+| A. `NATIVE_MODELS` rows (FU-168) | PASS | Added Qwen3.6-35B-A3B + MTP (`qwen3_5_moe`, 20.9 GB, ~23 GB estimate) and Gemma 4 31B (`gemma4`, 18.44 GB, vision, ~21.5 GB estimate). Both repos are public (not gated) and listed by the 1.2.6 binary's `capabilities --json` (`qwen3_5_moe` and `gemma4`, mlx-q4g64); both `measured=False`, tight on 24 GB, upstream receipts are GB10. LFM2.5 already had its row. Gemma 4 26B-A4B stays Python-only (1.x refuses it), and the Gemma drafter is not wired on CUDA. Not loaded (over the size budget). |
+| B. Image input, Qwen3.5-2B 4-bit (3 GB) via the backend | FAIL, then fixed, PASS | Before: the row had `vision=False`, `visionEnabled: false`, and the model answered "there is no image provided" (the app drops images). Binary check: `serve --vision` on the same checkpoint answered "Red" for a red square, so the checkpoint ships its tower. Fix: `vision=True` on the `qwen3_5_2b` row, with a test. After: `visionEnabled: true`, reply "red" through `/api/chat/generate` on `tensorfold-native`. |
+| Registry/routing/setup/engine/native tests | PASS | 5 files, no failures (skips are macOS-only) |
+
+Left: dev backend on 8876 and the side `serve` on 8899 stopped, model unloaded.

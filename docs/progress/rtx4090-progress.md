@@ -1224,3 +1224,23 @@ Footprint: WSL `ext4.vhdx` 36.0 GB (23.9 before), C: free 56 GB; the two venvs a
 - E2E phase 5 check "LTX-2.5 on diffusers, 4-bit on load" skips off CUDA and without the weights.
 
 **Not verified (live steps still needed).** Whether diffusers 0.42.1 and transformers 5.22.2 load the real checkpoint; that `Gemma4UnifiedForConditionalGeneration` quantises with this skip list (module names are guessed from Gemma 3n/4 conventions, read them from the first real load); that `disable_mmap` is accepted with a quantised diffusers load; the 22.5 GB peak, seconds and the 48 GB tier threshold (all estimates). Steps: free disk (route b: stream-convert ~45 GB peak) or fit 71 GB; download through the app (`/api/video/download`, ~71 GB, needs the token); load the 4-bit row; one 512x320, 25-frame clip with sound; record peak VRAM and seconds; then flip `footprintBasis` to measured.
+
+## Installer rebuilt via `./build.sh`, installed over the installed app, section 7 smoke (2026-11-12, third run)
+
+Installed over 0.10.0 (silent `/S`, exit 0) with your OK, build at `0326b5c2`. Ports 8876/8890/8891 were free, so no settings trick; the installed backend ran on 8876. Page file was system-managed. C: free 81.6 GB before the build.
+
+| Item | Result | Evidence |
+|---|---|---|
+| `./build.sh` (clean `.venv-release`, `release-constraints.txt`) | PASS | No fix needed this time; about 25 min including a full Rust compile. Size guard passed. |
+| Installer / archive | PASS | `ChaosEngineAI_0.10.0_x64-setup.exe` **131.75 MiB (138,149,774 B)**, runtime archive **133.5 MB**; manifest `llamaServer` and `llamaServerTurbo` set, `warnings: []`; the four `install-*.sh` are in the archive. |
+| Backend starts | PASS | `/api/health` 200 after 28 s, `appVersion` 0.10.0, runtime `windows-x86_64-1e6de1b8`; health reports the CUDA llama-server `llama-cuda\b12292`. |
+| Torch CUDA build | PASS | Overlay `torch 2.14.1+cu130`; with the app's python: CUDA available, RTX 4090 (4 s import); image runtime `expectedDevice cuda`, 23.99 GB. |
+| `llama-cuda-status` | PASS | `in-use`, tag b12292, CUDA 13.5, verified. |
+| `tensorfold-native-status` | PASS | installed 1.2.6, gate `ready` (nvidia-sm89), **`grammar: true`**. |
+| FLUX.2 Klein 4B 1024x640, 4 steps, three runs | PASS, one oddity | Cold 84.3 s wall (10.0 s generation); warm 10.4 s (8.9 s); second warm 11.4 s (9.6 s). No crash. Peak backend private bytes 25.6, 23.7 and **48.9 GB** (the third is not explained; a sampling artefact or a transient, nothing failed). |
+| LTX-2.3 4-bit text mode 768x512, 97 frames, clip 1 (FLUX pipeline still resident) | PASS | 151 s wall, **84.4 s generation** (baseline about 70 s), peak private **72.1 GB**. The cross-model warm gate let it through. |
+| Clip 2 back to back, same model | **FAIL then PASS** | First attempt: HTTP 503 `Memory pressure is 98%` at 0.1 s: free RAM 1.0 GB of 63.9 GB (backend working set 45 GB, private 60.8 GB), above the 98 % chat ceiling that `reuse_resident` falls back to (98.4 %). Ten seconds later free RAM was 1.6 GB (97.5 %) and the same request ran: 81.6 s wall, **80.4 s generation**, peak private **76.3 GB**. So the warm same-model gate sits on the edge: the resident LTX pipeline itself keeps the host at about 98 % pressure and the request passes or is refused on noise. Not changed (needs a decision: for `reuse` the resident pipeline's own memory should probably not count as pressure). |
+| Commit / page file | PASS | Commit 83 to 85 GB against a limit of 100.4 GB during and after the clips; the system-managed page file grew to 36.6 GB allocated but only 87 MB was ever used. Side effect: C: free fell from 98.7 to 72.7 GB (the page file grows on disk when commit passes RAM). After the runs the backend held 23.2 GB private. No `python.exe`, `dwm.exe` or other fault in the Application log (Event 1000/1001) in the previous two hours. |
+| `scripts/e2e_test_suite.py --smoke` against the installed backend | **FAIL (1 of 7 phases)** | Phases 0, 3, 4, 5, 6, 8 PASS; phase 7 `diagnostics-snapshot` FAIL: the CLI timed out at 30 s. `GET /api/diagnostics/snapshot` answers in a constant **61.2 s** on the installed backend (twice, also with the backend at 23 GB). Not isolated: the one 30 s subprocess in that route (torch probe with `sys.executable`) runs in 4 s when started by hand with the overlay on `PYTHONPATH`. Phase 8's video check skipped on the memory gate (503) while the LTX pipeline was resident. Reports: `~/.chaosengine/test-results/e2e-20261112-145929.md`. |
+
+Open: the snapshot latency (first suspect: the torch probe subprocess; run the route under a profiler on the installed backend) and the warm same-model video gate margin.

@@ -164,7 +164,9 @@ class VideoCatalogRouteTests(unittest.TestCase):
 
     def test_catalog_slow_on_labels_reach_the_payload(self):
         """D-44: slow rows carry an explicit per-platform slowOn list; nothing is hidden or resized."""
-        payload = self.client.get("/api/video/catalog").json()
+        # The Mac-only MLX rows are listed on Apple Silicon only; pin that so the test reads the whole table anywhere.
+        with mock.patch("backend_service.helpers.video.is_apple_silicon", return_value=True):
+            payload = self.client.get("/api/video/catalog").json()
         rows = {v["id"]: v for f in payload["families"] for v in f["variants"]}
 
         def entry(variant_id: str, platform: str):

@@ -6,6 +6,7 @@ engine, and the real engine file runs against stubbed ``torch`` and ``stable_aud
 
 from __future__ import annotations
 
+import importlib.util
 import sys
 import types
 import unittest
@@ -183,6 +184,7 @@ class EngineArgumentTests(unittest.TestCase):
         self.assertEqual(encoder.as_posix(), "/data/checkpoints/t5-base")
         self.assertEqual(engine._model_files("stable-audio-open-small")[1].as_posix(), "/data/checkpoints/stable-audio-open-small/model.safetensors")
 
+    @unittest.skipIf(importlib.util.find_spec("soundfile") is None, "soundfile is not installed (the engine imports it before it checks the length)")
     def test_the_engine_holds_a_clip_to_the_loaded_models_length(self) -> None:
         small = self._engine("stable-audio-open-small")
         with self.assertRaisesRegex(ValueError, "up to 11 s"):

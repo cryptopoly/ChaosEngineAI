@@ -3,6 +3,7 @@ and a real embed -> MP3 / AAC re-encode -> detect round trip in the voice venv w
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import subprocess
 import tempfile
@@ -44,8 +45,14 @@ class MessageTests(unittest.TestCase):
             self.assertTrue(voice_env._watermark_package_present())
 
 
+_NEEDS_LIBROSA = unittest.skipIf(
+    importlib.util.find_spec("librosa") is None, "librosa is not installed (the resampling step imports it)"
+)
+
+
 @unittest.skipIf(torch is None, "torch not installed")
 class PlumbingTests(unittest.TestCase):
+    @_NEEDS_LIBROSA
     def test_watermark_keeps_length_and_rate_and_adds_the_signal(self) -> None:
         seen = {}
 
@@ -65,6 +72,7 @@ class PlumbingTests(unittest.TestCase):
         self.assertEqual(seen["message"], [wm.message_bits()])
         self.assertAlmostEqual(float(np.median(out)), 0.01, places=3)
 
+    @_NEEDS_LIBROSA
     def test_detect_reports_probability_and_message(self) -> None:
         class Detector(torch.nn.Module):
             def __init__(self) -> None:

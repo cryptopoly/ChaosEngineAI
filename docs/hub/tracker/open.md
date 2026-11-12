@@ -1,13 +1,22 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 88 rows with work, decisions or watch items still open, newest first.
+summary: 89 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-171 · TriAttention on the vLLM lane: the app passes no budget, stats file, eager mode or prefix-cache switch, and compaction never applied on the RTX 4090 — Open.</summary>
+
+**Status or trigger:** **Open.**
+
+**Notes:** Found 2026-11-12 (WSL2, vLLM 0.19.1 and 0.33.0). On vLLM 0.33 the plugin crashes the engine on the first request (the app now falls back to native with a note); on 0.19.1 it activates but all 1885 compaction events ended `no_compactable_groups` for Qwen3-0.6B, so no KV was ever dropped. The app also never sets `TRIATTN_RUNTIME_KV_BUDGET` / `TRIATTN_RUNTIME_SPARSE_STATS_PATH` (a per-model stats file from `scripts/calibrate.py`), `enforce_eager` or `enable_prefix_caching=False` for the strategy. Needs: a supported vLLM pin, stats generation or lookup, the env wiring in `VLLMEngine`, then a re-run of the 8K / 16K needle check. See `docs/progress/rtx4090-progress.md`, section "W4 leftovers on Linux: vLLM and TriAttention".
+
+</details>
 
 <details>
 <summary>FU-170 · cargo test port race in backend::tests::runtime_info_keeps_a_soft_note_while_the_port_is_silent — Open; low priority.</summary>

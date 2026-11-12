@@ -417,6 +417,13 @@ class SetupRouteTests(unittest.TestCase):
     # CUDA torch install (Windows/Linux NVIDIA fallback)
     # ------------------------------------------------------------------
 
+    def _no_nvidia_driver(self):
+        """The install order probes ``nvidia-smi``; pin "no driver" so the result does not depend on the host."""
+        for name in ("nvidia_driver_major", "nvidia_driver_cuda"):
+            patcher = mock.patch(f"backend_service.helpers.llama_cuda.{name}", return_value=None)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
     def _patch_cuda_helpers(self):
         """Neutralise the pre-install helpers so tests focus on the pip loop.
 
@@ -429,6 +436,7 @@ class SetupRouteTests(unittest.TestCase):
         the real user-persistent extras tree (which may contain torch
         installs the user cares about) is never touched during tests.
         """
+        self._no_nvidia_driver()
         extras_dir = Path(self.tempdir.name) / "extras"
         extras_dir.mkdir(parents=True, exist_ok=True)
         return (
@@ -831,6 +839,7 @@ class SetupRouteTests(unittest.TestCase):
         """Blackwell (RTX 50, DGX Spark) needs CUDA 12.8+; Linux ARM64 has no cu124 build."""
         from backend_service.routes.setup._install_helpers import _CUDA_TORCH_INDEXES, cuda_torch_indexes
 
+        self._no_nvidia_driver()
         cu130 = "https://download.pytorch.org/whl/cu130"
         cu128 = "https://download.pytorch.org/whl/cu128"
         self.assertEqual(cuda_torch_indexes(driver_major=None, machine="aarch64"), [cu130, cu128])

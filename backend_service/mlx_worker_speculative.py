@@ -4,7 +4,7 @@ Two helpers lifted out of ``WorkerState``:
 
 * ``generate_dflash`` — DFLASH speculative decoding (linear). Streams
   per-token events from ``stream_dflash_generate`` (upstream
-  dflash-mlx 0.1.4+), tracks per-token accepted-from-draft for the
+  dflash-mlx 0.1.10), tracks per-token accepted-from-draft for the
   Phase 3.1 frontend overlay, applies the thinking-token filter,
   computes accepted spans, returns the response payload.
 * ``generate_ddtree`` — DDTree tree-based speculative decoding. Calls
@@ -57,18 +57,14 @@ def _without_trailing_stop(tokens: list[int], stop_ids: Any) -> list[int]:
 
 def generate_dflash(state: WorkerState, request: dict[str, Any]) -> dict[str, Any]:
     """Generate using DFLASH speculative decoding."""
+    from dflash_mlx.engine.events import SummaryEvent, TokenEvent
     from dflash_mlx.runtime import stream_dflash_generate
+    from dflash_mlx.runtime.context import build_offline_runtime_context
 
-    # dflash-mlx 0.1.5 made ``runtime_context`` required; without it every
-    # call raised and the stream path fell back to standard decoding. Build
-    # the same offline context upstream's own ``generate`` uses (defaults).
-    context_kwargs: dict[str, Any] = {}
-    try:
-        from dflash_mlx.runtime_context import build_offline_runtime_context
-    except ImportError:  # releases before 0.1.5 take no context
-        pass
-    else:
-        context_kwargs["runtime_context"] = build_offline_runtime_context(target_fa_window=0)
+    # dflash-mlx 0.1.10 (FU-057): the adapter, the draft backend and a runtime
+    # context are required, and events are frozen dataclasses. The context is
+    # upstream's offline default (adaptive verify, conservative copyspec).
+    runtime_context = build_offline_runtime_context(target_fa_window=0)
 
     # Build prompt text
     system_prompt = request.get("systemPrompt")
@@ -90,10 +86,9 @@ def generate_dflash(state: WorkerState, request: dict[str, Any]) -> dict[str, An
     if eos_token_id is not None and int(eos_token_id) not in eos_token_ids:
         eos_token_ids.append(int(eos_token_id))
 
-    # ``stream_dflash_generate`` (upstream v0.1.4) yields per-token events
-    # followed by a final ``{"event": "summary", ...}`` payload whose shape
-    # matches what the old ``generate_dflash_once`` helper returned.
-    summary: dict[str, Any] = {}
+    # ``stream_dflash_generate`` yields ``TokenEvent`` per committed token and
+    # one final ``SummaryEvent`` (plus prefill / cycle events we ignore).
+    summary: SummaryEvent | None = None
     # Phase 3.1: per-token accepted-from-draft tracking. Tokens that
     # share `cycles_completed` with the previous token are commits
     # from the same DDTree cycle — the first is verifier-decoded,
@@ -105,26 +100,26 @@ def generate_dflash(state: WorkerState, request: dict[str, Any]) -> dict[str, An
     prev_gen_count: int = 0
     for event in stream_dflash_generate(
         target_model=state._dflash_target or state.model,
+        target_ops=state._dflash_target_ops,
         tokenizer=state.tokenizer,
         draft_model=state._dflash_generator,
+        draft_backend=state._dflash_draft_backend,
         prompt=prompt_text,
         max_new_tokens=int(request.get("maxTokens") or 256),
         use_chat_template=False,
         block_tokens=LINEAR_DFLASH_BLOCK_TOKENS,
         stop_token_ids=eos_token_ids,
         prompt_tokens_override=prompt_tokens,
-        **context_kwargs,
+        runtime_context=runtime_context,
     ):
-        if event.get("event") == "summary":
-            summary = dict(event)
+        if isinstance(event, SummaryEvent):
+            summary = event
             continue
-        if event.get("event") != "token":
+        if not isinstance(event, TokenEvent):
             continue
-        cycle = int(event.get("cycles_completed") or 0)
-        gen_count = int(event.get("generated_tokens") or 0)
-        token_id = event.get("token_id")
-        if token_id is None:
-            continue
+        cycle = int(event.cycles_completed)
+        gen_count = int(event.generated_tokens)
+        token_id = event.token_id
         # First token of a new cycle (cycle increments) is
         # verifier-decoded; subsequent tokens within the same
         # cycle are draft-accepted. Cycle 0 (the initial seed
@@ -141,8 +136,9 @@ def generate_dflash(state: WorkerState, request: dict[str, Any]) -> dict[str, An
         prev_cycle = cycle
         prev_gen_count = gen_count
 
+    summary_payload: dict[str, Any] = summary.to_payload() if summary is not None else {}
     gen_tokens = _without_trailing_stop(
-        [int(token_id) for token_id in summary.get("generated_token_ids", [])], eos_token_ids
+        [int(token_id) for token_id in summary_payload.get("generated_token_ids", [])], eos_token_ids
     )
     text = state.tokenizer.decode(gen_tokens).strip() if gen_tokens else ""
     # Respect thinkingMode: only strip raw reasoning patterns when thinking
@@ -164,15 +160,15 @@ def generate_dflash(state: WorkerState, request: dict[str, Any]) -> dict[str, An
     if not text:
         text = "Generation completed without decoded text."
 
-    output_tokens = int(summary.get("generation_tokens") or len(gen_tokens))
-    prompt_token_count = int(summary.get("prompt_token_count") or len(prompt_tokens))
-    elapsed = max(float(summary.get("elapsed_us") or 0.0) / 1e6, 1e-6)
-    phase_timings = dict(summary.get("phase_timings_us") or {})
+    output_tokens = int(summary_payload.get("generation_tokens") or len(gen_tokens))
+    prompt_token_count = int(summary_payload.get("prompt_token_count") or len(prompt_tokens))
+    elapsed = max(float(summary_payload.get("elapsed_us") or 0.0) / 1e6, 1e-6)
+    phase_timings = dict(summary_payload.get("phase_timings_us") or {})
     prefill_elapsed = max(0.0, float(phase_timings.get("prefill") or 0.0) / 1e6)
     generation_elapsed = max(elapsed - prefill_elapsed, 1e-6)
     tok_s = round(output_tokens / generation_elapsed, 1) if output_tokens else 0.0
-    cycles_completed = int(summary.get("cycles_completed") or 0)
-    accepted_from_draft = int(summary.get("accepted_from_draft") or 0)
+    cycles_completed = int(summary_payload.get("cycles_completed") or 0)
+    accepted_from_draft = int(summary_payload.get("accepted_from_draft") or 0)
     acceptance_rate = (
         accepted_from_draft / cycles_completed
         if cycles_completed > 0
@@ -185,6 +181,11 @@ def generate_dflash(state: WorkerState, request: dict[str, Any]) -> dict[str, An
             f"DFLASH speculative decoding. Acceptance rate: {acceptance_rate:.1f} avg tokens."
             if acceptance_rate is not None
             else "DFLASH speculative decoding."
+        ),
+        (
+            f"dflash-mlx decoded this reply without the draft ({summary_payload.get('fallback_reason')})."
+            if summary_payload.get("fallback_ar")
+            else None
         ),
     )
 
@@ -222,7 +223,7 @@ def generate_dflash(state: WorkerState, request: dict[str, Any]) -> dict[str, An
         "totalTokens": prompt_token_count + output_tokens,
         "tokS": tok_s,
         "promptTokS": 0.0,
-        "peakMemoryGb": round(float(summary.get("peak_memory_gb") or 0.0), 3),
+        "peakMemoryGb": round(float(summary_payload.get("peak_memory_gb") or 0.0), 3),
         "runtimeNote": runtime_note,
         "dflashAcceptanceRate": round(float(acceptance_rate), 2) if acceptance_rate is not None else None,
         "acceptedSpans": accepted_spans,

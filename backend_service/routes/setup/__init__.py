@@ -50,7 +50,7 @@ _INSTALLABLE_PIP_PACKAGES: dict[str, str] = {
     # pyproject / stage-runtime pin (FU-033 check covers this file too):
     # it lagged on f825ffb (v0.1.4.1, no ``resolve_target_ops``) so an
     # in-app install silently disabled DFlash — the FU-075 symptom.
-    "dflash-mlx": "dflash-mlx @ git+https://github.com/bstnxbt/dflash-mlx.git@fada1eb2b75cd1c875ca6547b6518783fd3d2956",
+    "dflash-mlx": "dflash-mlx @ git+https://github.com/bstnxbt/dflash-mlx.git@9ca002898b48e14c9727dec17299f497e8467870",
     # FU-091: no ``"dflash"`` entry. PyPI ``dflash`` (z-lab's DFlash 2
     # research package) installs a top-level ``dflash`` module that
     # collides with our in-repo ``dflash/`` registry, pins tqdm /

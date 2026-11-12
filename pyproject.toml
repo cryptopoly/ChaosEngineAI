@@ -42,7 +42,7 @@ triattention = ["triattention @ git+https://github.com/WeianMao/triattention.git
 triattention-mlx = ["triattention @ git+https://github.com/WeianMao/triattention.git@a4bc3c8f709db60f016ef42c3feb290fd0c00c1b", "mlx-lm>=0.22.0"]
 turboquant = ["turboquant-mlx-full>=0.11.0"]
 vllm = ["vllm>=0.28.0"]
-dflash-mlx = ["dflash-mlx @ git+https://github.com/bstnxbt/dflash-mlx.git@fada1eb2b75cd1c875ca6547b6518783fd3d2956"]
+dflash-mlx = ["dflash-mlx @ git+https://github.com/bstnxbt/dflash-mlx.git@9ca002898b48e14c9727dec17299f497e8467870"]
 desktop = [
     "fastapi>=0.115.0",
     "huggingface-hub>=0.26.0",

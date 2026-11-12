@@ -19,9 +19,13 @@ guarantees output is identical to standard generation).
 ## Backends
 
 - **`dflash-mlx`** — Apple Silicon native, MLX-based draft + target. Pinned
-  to commit `fada1eb` (HEAD as of 2026-05-10) which adds the Gemma 4 backend,
-  v0.1.5 serving surface, live server metrics, prefix-cache survival test
-  gate, branchless Metal kernels, and fused draft KV projections.
+  to release `v0.1.10` (commit `9ca0028`). The worker reuses the model it
+  already loaded and prepares it the way upstream's own loader does
+  (speculative hooks, verify-length quantized linears, the drafter's default
+  quantization, `w4` for the larger Qwen3.5 / 3.6 drafters), then runs
+  upstream's adaptive verify. On an M4 Max with Qwen3.6-27B 4-bit this is
+  about a third faster than the old `v0.1.5.1` pin, and prose no longer
+  loses to plain decoding (FU-057).
 - **vLLM ≥ 0.28** — Linux + CUDA. DFlash (and DFlash 2) are built into
   vLLM's `speculative_config`, so there is no separate package. The PyPI
   `dflash` package is *not* used: its module name collides with the app's

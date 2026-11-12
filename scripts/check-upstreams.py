@@ -145,8 +145,12 @@ def check_ltx2() -> Row:
 
 def check_dflash() -> Row:
     pinned = read_pin("pyproject.toml", r"dflash-mlx\.git@([0-9a-f]{40})")
-    tag = newest_tag("https://github.com/bstnxbt/dflash-mlx.git", r"v\d+(\.\d+)+")
-    result = row("dflash-mlx", pinned[:8] if pinned else None, tag, same=lambda a, b: False)
+    repo = "https://github.com/bstnxbt/dflash-mlx.git"
+    tag = newest_tag(repo, r"v\d+(\.\d+)+")
+    # Pinned by commit: current when it is the commit the newest tag points at (the peeled ^{} row).
+    tag_commits = {sha for sha, _ in ls_remote(repo, f"refs/tags/{tag}*")} if tag and pinned else set()
+    result = row("dflash-mlx", pinned[:8] if pinned else None, tag,
+                 same=lambda a, b: pinned in tag_commits)
     if result.state == "behind":
         result.note = "pinned by commit; newest is a release tag (FU-057)"
     return result

@@ -842,7 +842,7 @@ export function RuntimeControls({
                 {/* Pin string mirrors pyproject.toml + scripts/stage-runtime.mjs.
                     Update all three together when bumping (FU-033 pin-sync probe
                     catches drift between the latter two). */}
-                <code>./.venv/bin/python3 -m pip install "dflash-mlx @ git+https://github.com/bstnxbt/dflash-mlx.git@fada1eb2b75cd1c875ca6547b6518783fd3d2956"</code>
+                <code>./.venv/bin/python3 -m pip install "dflash-mlx @ git+https://github.com/bstnxbt/dflash-mlx.git@9ca002898b48e14c9727dec17299f497e8467870"</code>
               </div>
             ) : null}
           </div>

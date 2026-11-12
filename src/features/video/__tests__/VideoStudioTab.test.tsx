@@ -140,9 +140,15 @@ describe("Video Studio busy and loading feedback", () => {
     expect(html).toMatch(/run-estimate__item--memory[^>]*title="GPU · 24 GB total · model ≈ [^"]+, this run peak ≈ [^"]+"/);
     const apple = render({ hostSystem: MAC, videoRuntimeStatus: runtime({ device: "mps", expectedDevice: "mps", deviceMemoryGb: 64 }) });
     expect(apple).toContain("Apple Silicon · 64 GB total");
-    const guess = render({ hostSystem: MAC, videoRuntimeStatus: runtime({ device: null, expectedDevice: null, deviceMemoryGb: null }) });
-    expect(guess).toContain("Apple Silicon (detected)");
-    expect(guess).toContain("default — restart backend for real detection");
+    // The guess comes from the webview's own platform, so pin it to a Mac for this assertion.
+    vi.stubGlobal("navigator", { platform: "MacIntel", userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)" });
+    try {
+      const guess = render({ hostSystem: MAC, videoRuntimeStatus: runtime({ device: null, expectedDevice: null, deviceMemoryGb: null }) });
+      expect(guess).toContain("Apple Silicon (detected)");
+      expect(guess).toContain("default — restart backend for real detection");
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it("announces only the estimate figures, not the Generate button", () => {

@@ -917,3 +917,34 @@ After Klein, then Wan TI2V, and two Unloads, the dev backend still held **29.5 G
 | Studio time scaling | FU-165 |
 
 Pre-existing failures seen while testing, unrelated: vitest "keeps the device and capacity facts as the memory item's tooltip" (host card), pytest `test_video_routes::test_catalog_slow_on_labels_reach_the_payload` (Mac row), E2E phase 4 "new image families" (Mac-only mflux rows are filtered on Windows).
+
+## llama.cpp b12292 CUDA lane on the 4090 (2026-11-12)
+
+Checks the Mac session's move from b11981 to b12292 (`153751bf`; CUDA 13 archives renamed 13.4 to 13.5). RTX 4090, driver 621.14 (CUDA 13.5), dev backend on 8876.
+
+| Check | Result | Detail |
+|---|---|---|
+| `test_llama_cuda.py`, `test_llama_cuda_windows.py`, `test_linux_arm64_build.py` | PASS | all pass, 5 skipped (Linux-only) |
+| Pinned sha256 against the GitHub release API (`b12292`) | PASS | all 6 Windows CUDA digests in `_PINNED_SHA256` (12.4 x64, 13.5 x64, 13.5 arm64; build and cudart) equal the digests the release lists |
+| `POST /api/setup/install-llama-cuda` | PASS | picked CUDA 13.5, both zips (178 MB + 426 MB) downloaded and verified (`installed.json`: `verified: true` for both, sha256 as pinned), about 3 min |
+| `GET /api/setup/llama-cuda-status` | PASS | before: `not-installed` for tag b12292 (the b11981 folder is ignored, status is per pinned tag); after: `installed`, `verified`, then `in-use` after a load; health `llamaServerPath` = `llama-cuda\b12292\llama-server.exe`; `--list-devices` shows `CUDA0: NVIDIA GeForce RTX 4090 (24563 MiB)`; `--version` build 12292 |
+| Old `llama-cuda\b11981` folder | left by the installer, not pruned | ignored (never used once b12292 is installed). Deleted by hand after b12292 worked (our own install); an app update leaves one stale 600 MB folder per tag. Not fixed |
+
+**Decode, 300 tokens, greedy, 3 runs, default `--fit on`, through `/api/chat/generate`.** On b12292 the first request of a benchmark process read low on 3 of 3 Qwen3 passes and 2 of 3 Bolt ones (Qwen3 342 to 363 against 541, Bolt 135 against 160) even with the server already warm; the b11981 passes showed no such dip. Cause not found (idle GPU clocks after a pause between processes is the likely one, not proven); the table gives runs 2 and 3. Same-day A/B with the b11981 server (`CHAOSENGINE_LLAMA_CUDA=0` plus `CHAOSENGINE_LLAMA_SERVER` to force it, because an installed CUDA server wins over the env override by design):
+
+| Model | b11981 today | b12292 | b11981 in the doc (11 Nov) | vs doc | vs same day |
+|---|---|---|---|---|---|
+| Qwen3-0.6B Q8_0 | 493 to 510 | **541, 543** | 549 | -1.5 % | +7 % |
+| Nemotron 3.5 Bolt E4B Q4_K_M | 153 to 157 | **160, 162** | 172 | **-6.6 %** | +3 % |
+| Bolt + DFlash drafter (BF16) | 171, 173 | **180.5 to 183.9** (second and third) | 332 (400 tokens, prose, other prompt) | not comparable | +7 % |
+
+Verdict: no regression from b12292. The 6.6 % gap to the doc's Bolt 172 is run-to-run and day-to-day drift: the old build measured 155 on the same card today. The DFlash figure uses a different prompt (a long essay on the printing press at temperature 0, 300 tokens) from the doc's 332, so only the same-day A/B counts: b12292 is +7 %. Drafter engaged ("Speculative decoding active (draft-dflash ...)").
+
+| Check | Result | Detail |
+|---|---|---|
+| E2E phase 1 `CUDA llama-server lane (Windows and Linux)` | PASS | 0.4 s; also pass: GGUF llama.cpp, GGUF speculative lane, GGUF Nemotron 3.5 Bolt + pinned DFlash drafter (4.9 s), TensorFold 1.x native CUDA |
+| E2E phase 1 as a whole | FAIL (not llama.cpp) | `unusable settings are corrected with a note`: the check loads an "MLX" model with `--backend mlx`; on this PC that routes to TensorFold native, which answers HTTP 500 "Structured output (a JSON schema) needs TensorFold's grammar support" to the check's `jsonSchema`. A Mac-shaped check on a CUDA host; not touched here |
+| `cache-strategy-matrix.py --quick` | PASS | only the native GGUF smoke cell runs in quick (Qwen3-0.6B Q8_0, b12292 server): 522.5 tok/s; the other 15 cells skip ("deferred to full run") |
+| Full matrix (extra) | PASS | 2 pass, 14 skip: native GGUF smoke 223 tok/s (b12292; 24-token reply, startup dominated), `turboquant GGUF 3-bit` 445 tok/s on `llama-server-turbo.exe`, which is its own pin: build 9079 (`69d8e4be4`), not b12292 |
+
+Left: backend stopped, no llama-server running, card back to the desktop's idle 1.2 GB.

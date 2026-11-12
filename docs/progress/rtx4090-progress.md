@@ -1305,3 +1305,31 @@ Rebuilt with `./build.sh` from `fa42c580` (Qwen3-TTS loop, E2E fix), installed o
 | `--smoke` against the installed backend | not rerun | the diagnostics fix is covered by the 5.2 s measurement. |
 
 **Found, not fixed (for a decision):** after a video clip (or image then video) the backend keeps its host memory after `POST /api/video/unload` and `/api/images/unload` (`loadedModelRepo` null): working set 45.7 GB, private 60.6 GB, only 3.3 GB RAM free. The next image or video request is then refused by the gate ("needs about 18 GB, only 3.3 GB available"; "26 GB ... only 3.3 GB"). 9 of 22 requests in the run hit this (3.3 to 14.7 GB free); only restarting the backend cleared it. The same happened after Qwen3-TTS runs (backend 30.8 GB working set, 14.6 GB free, image and video refused). Earlier today the dev backend returned to 4 GB after unload and the first installed run to 23 GB, so the release is not reliable on the installed build.
+
+## Host RAM kept after Unload on Windows: root cause and fix (2026-11-12)
+
+**Root cause: torch's allocator, not a Python reference.** PyTorch on Windows allocates CPU memory through mimalloc (linked into `c10.dll`). Weights are allocated by threads that exit soon after (the loader threads that read the weights, request workers that go idle), so their memory sits in mimalloc "abandoned" segments. Unload frees the weights from another thread, and by default mimalloc does not take an abandoned segment back when a block in it is freed, so `MIMALLOC_PURGE_DELAY=0` never ran for it and the memory stayed committed. Which thread allocated and whether it had exited decides it, so it hit some loads and not others (dev and installed alike; torch 2.11 and 2.14 carry the same mimalloc).
+
+Evidence:
+
+| Check | Result |
+|---|---|
+| Installed app at `fa42c580`, `img img vid img vid` with unload after each | 3rd image: unload 200, `loadedModelRepo` null, backend stayed at **16.9 GB working set / 23.1 GB private**; the next video loaded on top (45.9 / 61.0 GB) and its unload dropped back to 16.9 / 23.2 only. Second session: the first image already stuck at 16.6 / 22.8 GB. |
+| In the stuck process (diagnostic route injected through a scratch `sitecustomize`, removed afterwards) | no pipeline, no `nn.Module` over 300 MB and no CPU tensor alive (`gc`); private commit 22.2 GB, 18.6 GB of it in 1 to 2 GB mimalloc arena regions; `gc.collect`, `torch.cuda.empty_cache`, `torch._C._host_emptyCache`, `_heapmin`, `HeapCompact` freed nothing; allocating in all 40 request workers freed nothing; the next load did not reuse it (private grew by a whole pipeline). |
+| Standalone, embedded Python + torch 2.14.1 | tensors made in a thread that exits, freed from the main thread: kept **21.8 of 21.8 GB** (512 KB tensors) and **14.1 of 14.1 GB** (24 MB tensors) with no options or with purge delay 0; with `ABANDONED_RECLAIM_ON_FREE=1` plus purge delay 0: back to the **1.6 GB** baseline. Reclaim alone, or abandoned-page purge (with or without purge delay 0), changes nothing. Same result on the dev venv's torch 2.11 (2.86 GB kept vs 1.61 GB). |
+| Voice worker | separate process, about 2 GB working set / 8.2 GB private while idle with Qwen3-TTS 1.7B on the GPU; not where the RAM was. |
+
+**Fix** (`6d4b3fef`): `backend_service/__init__` applies `helpers/malloc_release.MIMALLOC_ENV` on Windows before torch loads: `MIMALLOC_PURGE_DELAY=0`, `MIMALLOC_RESET_DELAY=0` (as before) and **`MIMALLOC_ABANDONED_RECLAIM_ON_FREE=1`**; a value the user exported wins. Gate unchanged. Tests: `AllocatorEnvTests` and a real measurement `AbandonedSegmentMeasurementTests` in `tests/test_malloc_release.py` (about 1 GB made in an exited thread and freed elsewhere; fails without the fix: "kept 1.26 GB of 1.26 GB"). E2E phase 4 check "memory returns after unload; a second generation is not refused" (two generations of the smallest installed diffusers image model with unload; fails when unload keeps over 30 % of what the model took): PASS on the dev backend (FLUX.2 Klein: 4.0 GB before, 23.9 loaded, 4.0 after, twice). pytest: memory_gate, malloc_release, voice_qwen_cuda, qwen_tts_fast, image_runtime, video_runtime, media_fit_cuda, chat_memory_cuda, backend_service: **403 passed**.
+
+**Rebuilt and installed** (`./build.sh`, exit 0; `ChaosEngineAI_0.10.0_x64-setup.exe` 131.75 MiB; manifest `llamaServer` and `llamaServerTurbo` set, `warnings: []`; archive holds the four `install-*.sh` and the fix; silent `/S` exit 0; backend up in 32 s). Mixed sequence through the installed app, unload after every image and video:
+
+| Step | Loaded (backend WS / private GB) | After unload | Free RAM after |
+|---|---|---|---|
+| Klein 1024x640 x2 | 16.6 / 23.1 | 1.7 / 3.2 | 48.2 GB |
+| LTX-2.3 4-bit 768x512, 97 frames x2 | 30.9-31.0 / 41.3-41.4 | 2.0 / 3.5 | 48.2 GB |
+| Qwen3-TTS CustomVoice 1.7B x2 (worker) | backend 2.0 / 3.5; worker 1.9 / 8.2 | worker stays loaded | 46.2 GB |
+| Klein, LTX, Klein, LTX, Klein | 16.9-17.0 / 23.4 and 31.2-31.3 / 41.4 | 2.0-2.4 / 3.5-3.6 | 45.5-46.0 GB |
+
+11 of 11 requests HTTP 200, **0 refused** (before: 9 of 22 refused). Every unload back to about 2 GB working set.
+
+Not verified: other cards and RAM sizes (the fix is an allocator setting, independent of card and RAM, but only this 4090 / 64 GB PC was measured); Linux and macOS (not affected: no mimalloc there, `malloc_trim` path unchanged); very small CPU allocations (32 KB tensors) still stay with the abandoned thread in the standalone probe (6.2 GB of 6.3 kept), which model weights do not hit in the runs above.

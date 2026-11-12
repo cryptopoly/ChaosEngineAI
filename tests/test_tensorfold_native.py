@@ -188,6 +188,31 @@ class Registry(unittest.TestCase):
         self.assertFalse(rows["lfm2_5_24b_a2b"]["fits"])  # the memory gate: 15.7 GB > 11 GB free
         self.assertTrue({r["key"]: r for r in native.supported_models(with_lfm, free_gb=22.0)}["lfm2_5_24b_a2b"]["fits"])
 
+    def test_qwen3_6_and_gemma4_are_listed_for_cuda_with_unmeasured_floors(self):
+        # FU-168: 1.2.6 lists qwen3_5_moe and gemma4 for CUDA (mlx-q4g64); both
+        # rows are documented upstream, not measured here.
+        qwen = native.match_native_model("tensorfold/qwen3.6-35b-a3b-mlx-4bit-mtp")
+        gemma = native.match_native_model("mlx-community/gemma-4-31B-it-4bit")
+        assert qwen is not None and gemma is not None
+        self.assertEqual((qwen.family, qwen.weight_format, qwen.drafter, qwen.vision), ("qwen3_5_moe", "mlx-q4g64", None, False))
+        self.assertEqual((gemma.family, gemma.weight_format, gemma.drafter, gemma.vision), ("gemma4", "mlx-q4g64", None, True))
+        for model in (qwen, gemma):
+            self.assertFalse(model.measured)
+            self.assertIn("unmeasured", model.note)
+        self.assertEqual(native.estimate_vram_gb(qwen, 8192), 23.0)
+        self.assertEqual(native.estimate_vram_gb(gemma, 8192), 21.5)
+        # the 26B-A4B stays on the Python engine (1.x refuses it)
+        self.assertIsNone(native.match_native_model("mlx-community/gemma-4-26b-a4b-it-4bit"))
+        caps = native.parse_capabilities(
+            '{"version": "1.2.6", "chip": "nvidia-sm89", "backends": ["cuda"], "families": '
+            '{"qwen3_5_moe": ["mlx-q4g64"], "gemma4": ["mlx-q4g64"]}}'
+        )
+        rows = {r["key"]: r for r in native.supported_models(caps, free_gb=22.0)}
+        self.assertTrue(rows["qwen3_6_35b_a3b"]["servable"] and rows["gemma4_31b"]["servable"])
+        self.assertFalse(rows["qwen3_6_35b_a3b"]["fits"])  # 23.0 GB > 22 GB free
+        self.assertTrue(rows["gemma4_31b"]["fits"])
+        self.assertFalse({r["key"]: r for r in native.supported_models(native.parse_capabilities(CAPS_JSON))}["gemma4_31b"]["servable"])
+
     def test_small_card_marks_big_models_as_not_fitting(self):
         rows = {row["key"]: row for row in native.supported_models(native.parse_capabilities(CAPS_JSON), free_gb=11.0)}
         self.assertFalse(rows["qwen3_8_27b"]["fits"])

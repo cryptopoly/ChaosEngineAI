@@ -342,7 +342,11 @@ class TensorFoldSnapshotTests(unittest.TestCase):
         self.assertIn("TensorFold/Qwen3.8-27B-MLX-4bit", info["supportedModels"])
         self.assertIn("LiquidAI/LFM2.5-24B-A2B-MLX-4bit", info["supportedModels"])  # CUDA since 1.2.5
         self.assertEqual(info["exclusiveModels"], [])
-        self.assertEqual(info["visionModels"], ["TensorFold/Qwen3.8-27B-MLX-4bit"])
+        self.assertIn("TensorFold/Qwen3.6-35B-A3B-MLX-4bit-MTP", info["supportedModels"])
+        self.assertIn("mlx-community/gemma-4-31B-it-4bit", info["supportedModels"])
+        self.assertEqual(
+            info["visionModels"], ["TensorFold/Qwen3.8-27B-MLX-4bit", "mlx-community/gemma-4-31B-it-4bit"]
+        )
 
     def test_capability_payload_carries_the_install_fields(self) -> None:
         payload = BackendCapabilities(

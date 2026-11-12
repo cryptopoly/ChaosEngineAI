@@ -349,6 +349,39 @@ NATIVE_MODELS: tuple[NativeModel, ...] = (
             "is not documented or measured here. Checked upstream on a GB10, not on a discrete card."
         ),
     ),
+    NativeModel(
+        # 1.2.6 lists qwen3_5_moe for CUDA with this MLX 4-bit export; the
+        # checkpoint carries its own MTP layer (mtp-4bit.safetensors), so no
+        # external drafter. Upstream's receipt is one GB10 (20.9 GB checkpoint).
+        key="qwen3_6_35b_a3b",
+        title="Qwen3.6-35B-A3B + MTP",
+        repos=("TensorFold/Qwen3.6-35B-A3B-MLX-4bit-MTP",),
+        family="qwen3_5_moe",
+        weight_format="mlx-q4g64",
+        vram_gb=23.0,
+        kv_gb_per_ref=0.3,
+        note=(
+            "Size is the 20.9 GB checkpoint plus runtime and KV; unmeasured here and tight on a 24 GB card. "
+            "Upstream checked it on a GB10."
+        ),
+    ),
+    NativeModel(
+        # Dense 31B from the MLX 4-bit export (18.44 GB). The 26B-A4B stays on
+        # the Python engine; 1.x serves the dense 31B. The z-lab drafter is not
+        # wired on CUDA (upstream's drafter receipt is Metal on M5).
+        key="gemma4_31b",
+        title="Gemma 4 31B",
+        repos=("mlx-community/gemma-4-31B-it-4bit",),
+        family="gemma4",
+        weight_format="mlx-q4g64",
+        vision=True,
+        vram_gb=21.5,
+        kv_gb_per_ref=0.5,
+        note=(
+            "Size is the 18.44 GB checkpoint plus runtime and KV; unmeasured here and tight on a 24 GB card. "
+            "Upstream checked CUDA on a GB10. Images go through --vision."
+        ),
+    ),
 )
 
 

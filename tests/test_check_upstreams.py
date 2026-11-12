@@ -24,6 +24,29 @@ class PinTests(unittest.TestCase):
         self.assertTrue(cu.read_pin("e2e/package.json", r'"@playwright/test": "([\d.]+)"'))
 
 
+class DecodeTests(unittest.TestCase):
+    def test_curl_output_is_read_as_utf8_not_the_console_code_page(self):
+        """On Windows text=True used cp1252, which cannot decode a package index page and crashed the whole report."""
+        import json
+        from unittest import mock
+
+        seen = {}
+
+        def fake_run(cmd, **kwargs):
+            seen.update(kwargs)
+            return mock.Mock(stdout=json.dumps({"name": "café"}))
+
+        with mock.patch.object(cu.subprocess, "run", fake_run):
+            self.assertEqual(cu.http_json("https://example.invalid/x"), {"name": "café"})
+        self.assertEqual(seen.get("encoding"), "utf-8")
+
+    def test_an_unreadable_reply_is_unknown_not_a_crash(self):
+        from unittest import mock
+
+        with mock.patch.object(cu.subprocess, "run", return_value=mock.Mock(stdout=None)):
+            self.assertIsNone(cu.http_json("https://example.invalid/x"))
+
+
 class RowTests(unittest.TestCase):
     def test_states(self):
         self.assertEqual(cu.row("x", "1.2.6", "1.2.7").state, "behind")

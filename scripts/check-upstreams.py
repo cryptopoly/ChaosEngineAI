@@ -50,16 +50,17 @@ def http_json(url: str, timeout: float = 20.0):
     if token and "api.github.com" in url:
         cmd += ["-H", f"Authorization: Bearer {token}"]
     try:
-        out = subprocess.run([*cmd, url], capture_output=True, text=True, timeout=timeout + 5, check=False).stdout
+        out = subprocess.run([*cmd, url], capture_output=True, text=True, encoding="utf-8", errors="replace",
+                             timeout=timeout + 5, check=False).stdout
         return json.loads(out)
-    except (OSError, subprocess.SubprocessError, ValueError):
+    except (OSError, subprocess.SubprocessError, ValueError, TypeError):
         return None
 
 
 def ls_remote(repo: str, ref: str) -> list[tuple[str, str]]:
     try:
         out = subprocess.run(
-            ["git", "ls-remote", repo, ref], capture_output=True, text=True, timeout=60, check=False
+            ["git", "ls-remote", repo, ref], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60, check=False
         ).stdout
     except (OSError, subprocess.SubprocessError):
         return []

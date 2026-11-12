@@ -2582,7 +2582,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "format": "MLX",
                 "quantization": "4-bit",
                 "capabilities": ["reasoning", "coding", "tool-use", "multilingual"],
-                "note": "Official MLX 4-bit; stock mlx-lm (lfm2_moe).",
+                "note": "Official MLX 4-bit; stock mlx-lm (lfm2_moe). With TensorFold installed, ticking speculative decoding in the launch settings serves it on TensorFold 1.x instead (exact drafts: replies identical to serial decoding).",
                 "contextWindow": "128K",
                 "launchMode": "direct",
                 "backend": "mlx",
@@ -2598,7 +2598,23 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "format": "MLX",
                 "quantization": "8-bit",
                 "capabilities": ["reasoning", "coding", "tool-use", "multilingual"],
-                "note": "Official MLX 8-bit; stock mlx-lm (lfm2_moe).",
+                "note": "Official MLX 8-bit; stock mlx-lm (lfm2_moe). With TensorFold installed, ticking speculative decoding in the launch settings serves it on TensorFold 1.x instead (exact drafts: replies identical to serial decoding).",
+                "contextWindow": "128K",
+                "launchMode": "direct",
+                "backend": "mlx",
+                "releaseDate": "2026-10",
+            },
+            {
+                "id": "LiquidAI/LFM2.5-24B-A2B-MLX-6bit",
+                "name": "LFM2.5 24B-A2B MLX 6-bit",
+                "repo": "LiquidAI/LFM2.5-24B-A2B-MLX-6bit",
+                "link": "https://huggingface.co/LiquidAI/LFM2.5-24B-A2B-MLX-6bit",
+                "paramsB": 24.0,
+                "sizeGb": 19.5,
+                "format": "MLX",
+                "quantization": "6-bit",
+                "capabilities": ["reasoning", "coding", "tool-use", "multilingual"],
+                "note": "Official MLX 6-bit; stock mlx-lm (lfm2_moe). With TensorFold installed, ticking speculative decoding in the launch settings serves it on TensorFold 1.x instead (exact drafts: replies identical to serial decoding).",
                 "contextWindow": "128K",
                 "launchMode": "direct",
                 "backend": "mlx",
@@ -2658,7 +2674,23 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "format": "MLX",
                 "quantization": "4-bit",
                 "capabilities": ["reasoning", "tool-use", "multilingual"],
-                "note": "Official MLX 4-bit; runs on a bundled port until mlx-lm ships lfm3.",
+                "note": "Official MLX 4-bit; runs on a bundled port until mlx-lm ships lfm3. With TensorFold installed, ticking speculative decoding in the launch settings serves it on TensorFold 1.x instead (exact drafts: replies identical to serial decoding).",
+                "contextWindow": "256K",
+                "launchMode": "direct",
+                "backend": "mlx",
+                "releaseDate": "2026-10",
+            },
+            {
+                "id": "LiquidAI/LFM3-1.7B-MLX-6bit",
+                "name": "LFM3 1.7B MLX 6-bit",
+                "repo": "LiquidAI/LFM3-1.7B-MLX-6bit",
+                "link": "https://huggingface.co/LiquidAI/LFM3-1.7B-MLX-6bit",
+                "paramsB": 1.7,
+                "sizeGb": 1.4,
+                "format": "MLX",
+                "quantization": "6-bit",
+                "capabilities": ["reasoning", "tool-use", "multilingual"],
+                "note": "Official MLX 6-bit; runs on a bundled port until mlx-lm ships lfm3. With TensorFold installed, ticking speculative decoding in the launch settings serves it on TensorFold 1.x instead (exact drafts: replies identical to serial decoding).",
                 "contextWindow": "256K",
                 "launchMode": "direct",
                 "backend": "mlx",
@@ -2674,7 +2706,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "format": "MLX",
                 "quantization": "8-bit",
                 "capabilities": ["reasoning", "tool-use", "multilingual"],
-                "note": "Official MLX 8-bit; runs on a bundled port until mlx-lm ships lfm3.",
+                "note": "Official MLX 8-bit; runs on a bundled port until mlx-lm ships lfm3. With TensorFold installed, ticking speculative decoding in the launch settings serves it on TensorFold 1.x instead (exact drafts: replies identical to serial decoding).",
                 "contextWindow": "256K",
                 "launchMode": "direct",
                 "backend": "mlx",
@@ -2696,6 +2728,194 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "launchMode": "direct",
                 "backend": "llama.cpp",
                 "releaseDate": "2026-10",
+            },
+        ],
+    },
+    {
+        # Nanbeige4.3-33B (model_type llama, FU-168). TensorFold's llama family
+        # admits exactly these two releases, Metal only, M5 or later (M1-M4 are
+        # refused by name). Sizes from the Hub on 2026-11-11; 61.7 GiB / 21.0
+        # GiB of weights and the 3B drafter from TensorFold's Nanbeige recipe.
+        "id": "nanbeige-4-3",
+        "name": "Nanbeige 4.3",
+        "provider": "Nanbeige",
+        "headline": "Dense 33B with a 512K context, thinking and tool calls.",
+        "summary": "Nanbeige4.3-33B: a dense Llama-architecture 33B with a 512K context. The bf16 release runs on MLX; Nanbeige's INT4 release runs on TensorFold on M5 Macs.",
+        "description": (
+            "Nanbeige4.3-33B is a dense 33B model on the Llama architecture with a 512K context and thinking "
+            "and tool calls in its chat template. Apache 2.0. The bf16 release loads on standard MLX; "
+            "TensorFold 1.x serves it and Nanbeige's own INT4 release with exact drafts from Nanbeige4.1-3B, "
+            "but only on M5 or later Macs."
+        ),
+        "updatedLabel": "Tracked via TensorFold",
+        "popularityLabel": "Workstation class",
+        "likesLabel": "Nanbeige official",
+        "badges": ["Reasoning", "Long context", "Tool use"],
+        "capabilities": ["reasoning", "coding", "tool-use"],
+        "defaultVariantId": "Nanbeige/Nanbeige4.3-33B-INT4",
+        "readme": [
+            "Nanbeige4.3-33B is a dense 33B Llama-architecture model with a 512K context, thinking and tool calls.",
+            "The bf16 release (about 66 GB) runs on standard MLX on any Mac with the memory for it. TensorFold serves it, and Nanbeige's INT4 release (about 23 GB), only on M5 or later Macs, drafting with Nanbeige4.1-3B (an extra 7.9 GB download on first load).",
+            "Apache 2.0.",
+        ],
+        "variants": [
+            {
+                "id": "Nanbeige/Nanbeige4.3-33B-INT4",
+                "name": "Nanbeige4.3 33B INT4 (TensorFold)",
+                "repo": "Nanbeige/Nanbeige4.3-33B-INT4",
+                "link": "https://huggingface.co/Nanbeige/Nanbeige4.3-33B-INT4",
+                "paramsB": 33.0,
+                "sizeGb": 22.6,
+                "format": "Transformers",
+                "quantization": "INT4",
+                "capabilities": ["reasoning", "coding", "tool-use"],
+                "note": (
+                    "Nanbeige's own INT4 release (compressed-tensors, groups of 32; 21.0 GiB of weights). Runs only on "
+                    "TensorFold 1.x, and only on an M5 or later Mac: M1 to M4 are refused at load. Drafts with Nanbeige4.1-3B."
+                ),
+                "contextWindow": "512K",
+                "launchMode": "direct",
+                "backend": "tensorfold",
+                "releaseDate": "2026-10",
+            },
+            {
+                "id": "Nanbeige/Nanbeige4.3-33B",
+                "name": "Nanbeige4.3 33B (BF16)",
+                "repo": "Nanbeige/Nanbeige4.3-33B",
+                "link": "https://huggingface.co/Nanbeige/Nanbeige4.3-33B",
+                "paramsB": 33.0,
+                "sizeGb": 66.3,
+                "format": "Transformers",
+                "quantization": "BF16",
+                "capabilities": ["reasoning", "coding", "tool-use"],
+                "note": (
+                    "The bf16 release (61.7 GiB of weights); loads on stock mlx-lm. On an M5 or later Mac with TensorFold "
+                    "installed, ticking speculative decoding serves it on TensorFold with exact Nanbeige4.1-3B drafts."
+                ),
+                "contextWindow": "512K",
+                "launchMode": "direct",
+                "backend": "mlx",
+                "releaseDate": "2026-10",
+            },
+        ],
+    },
+    {
+        # Spark-X2.6-4B (spark2_5, FU-168). TensorFold serves the bf16 release on
+        # Metal as published (7.7 GiB of weights; M5 Ultra checked upstream);
+        # stock mlx-lm 0.32 ships spark2_5 too. Size and 1M window from the Hub.
+        "id": "spark-x2-6",
+        "name": "Spark-X2.6",
+        "provider": "XHToken",
+        "headline": "4B model with a 1M-token context window.",
+        "summary": "Spark-X2.6-4B (spark2_5): sliding-window and full attention layers, thinking on by default, up to a 1,048,576-token window.",
+        "description": (
+            "Spark-X2.6-4B is a 4B model with three sliding-window layers to each full-attention layer, "
+            "which keeps long contexts cheap. The bf16 release loads on stock mlx-lm and on TensorFold 1.x, "
+            "which drafts exactly when speculative decoding is ticked."
+        ),
+        "updatedLabel": "Tracked via TensorFold",
+        "popularityLabel": "Trending",
+        "likesLabel": "XHToken",
+        "badges": ["Small", "Long context"],
+        "capabilities": ["reasoning", "tool-use"],
+        "defaultVariantId": "XHToken/Spark-X2.6-4B",
+        "readme": [
+            "Spark-X2.6-4B has a 1M-token context window; TensorFold's recipe fits one stream of the full window in 64 GB.",
+            "Thinking is on by default, as in its chat template.",
+            "The bf16 release runs on standard MLX; with TensorFold installed, ticking speculative decoding serves it on TensorFold.",
+        ],
+        "variants": [
+            {
+                "id": "XHToken/Spark-X2.6-4B",
+                "name": "Spark-X2.6 4B (BF16)",
+                "repo": "XHToken/Spark-X2.6-4B",
+                "link": "https://huggingface.co/XHToken/Spark-X2.6-4B",
+                "paramsB": 4.0,
+                "sizeGb": 8.2,
+                "format": "Transformers",
+                "quantization": "BF16",
+                "capabilities": ["reasoning", "tool-use"],
+                "note": (
+                    "The bf16 release; loads on stock mlx-lm (spark2_5). "
+                    "With TensorFold installed, ticking speculative decoding in the launch settings serves it on TensorFold 1.x instead (exact drafts: replies identical to serial decoding)."
+                ),
+                "contextWindow": "1M",
+                "launchMode": "direct",
+                "backend": "mlx",
+                "releaseDate": "2026-10",
+            },
+        ],
+    },
+    {
+        # MiniMax-M3.1-Flash (minimax_m3_vl, FU-168): TensorFold serves two
+        # community affine conversions on one 256 GB M5 Ultra (Metal); MiniMax's
+        # own NVFP4 release (about 248 GB) does not fit. 203.7 / 189.2 GiB of
+        # weights, the 226 GB load limit, the KL figures and the drafter heads
+        # come from TensorFold's MiniMax-M3.1-Flash recipe; sizes from the Hub.
+        "id": "minimax-m3-1-flash",
+        "name": "MiniMax-M3.1-Flash",
+        "provider": "MiniMax",
+        "headline": "428B-A23B MoE with vision; community 3/4-bit builds for 256 GB Macs.",
+        "summary": "MiniMax-M3.1-Flash: 428B-parameter MoE (23B active) with block-sparse attention and a vision tower. Needs a Mac with 256 GB of memory.",
+        "description": (
+            "MiniMax-M3.1-Flash is a 428B-A23B mixture of experts with a lightning indexer for block-sparse "
+            "attention and a CLIP vision tower. These are community conversions of MiniMax's NVFP4 release to "
+            "mixed 3/4-bit MLX groups; they cost some fidelity (mean KL 0.244 for mix34, 0.295 for mix256k "
+            "against the release). TensorFold 1.x serves them on a 256 GB Mac with exact DSpark or DFlash2 "
+            "drafts and images. MiniMax Community License."
+        ),
+        "updatedLabel": "Tracked via TensorFold",
+        "popularityLabel": "Workstation class",
+        "likesLabel": "Community conversion",
+        "badges": ["MoE", "Vision", "256 GB Mac"],
+        "capabilities": ["reasoning", "coding", "agents", "tool-use", "vision"],
+        "defaultVariantId": "BobClawblaw/MiniMax-M3.1-Flash-MLX-mix256k",
+        "readme": [
+            "MiniMax-M3.1-Flash is a 428B-parameter mixture of experts with 23B active per token, block-sparse attention and a vision tower.",
+            "These community 3/4-bit conversions need a Mac with 256 GB of memory: about 190 to 204 GiB of weights plus caches.",
+            "mix256k keeps more 3-bit experts for a longer window (about 147K tokens on 256 GB); mix34 keeps more 4-bit experts for fidelity (about 32K tokens).",
+            "MiniMax Community License.",
+        ],
+        "variants": [
+            {
+                "id": "BobClawblaw/MiniMax-M3.1-Flash-MLX-mix256k",
+                "name": "MiniMax-M3.1-Flash MLX mix 3/4-bit (long window)",
+                "repo": "BobClawblaw/MiniMax-M3.1-Flash-MLX-mix256k",
+                "link": "https://huggingface.co/BobClawblaw/MiniMax-M3.1-Flash-MLX-mix256k",
+                "paramsB": 428.0,
+                "sizeGb": 203.1,
+                "estimatedMemoryGb": 226.0,
+                "format": "MLX",
+                "quantization": "3/4-bit mix",
+                "capabilities": ["reasoning", "coding", "agents", "tool-use", "vision"],
+                "note": (
+                    "Community conversion (3-bit experts on all but 3 layers; 189.2 GiB of weights). Needs a Mac with 256 GB of "
+                    "memory. Tick speculative decoding with TensorFold installed for exact drafts from its DSpark head."
+                ),
+                "contextWindow": "1M",
+                "launchMode": "direct",
+                "backend": "mlx",
+                "releaseDate": "2026-11",
+            },
+            {
+                "id": "BobClawblaw/MiniMax-M3.1-Flash-MLX-mix34",
+                "name": "MiniMax-M3.1-Flash MLX mix 3/4-bit (fidelity)",
+                "repo": "BobClawblaw/MiniMax-M3.1-Flash-MLX-mix34",
+                "link": "https://huggingface.co/BobClawblaw/MiniMax-M3.1-Flash-MLX-mix34",
+                "paramsB": 428.0,
+                "sizeGb": 218.8,
+                "estimatedMemoryGb": 226.0,
+                "format": "MLX",
+                "quantization": "3/4-bit mix",
+                "capabilities": ["reasoning", "coding", "agents", "tool-use", "vision"],
+                "note": (
+                    "Community conversion (4-bit experts on 26 of 60 layers; 203.7 GiB of weights, about a 32K window). Needs "
+                    "a Mac with 256 GB of memory. Tick speculative decoding with TensorFold installed for exact drafts."
+                ),
+                "contextWindow": "1M",
+                "launchMode": "direct",
+                "backend": "mlx",
+                "releaseDate": "2026-11",
             },
         ],
     },

@@ -28,7 +28,7 @@ from pathlib import Path
 from typing import Any
 
 from backend_service.inference import _tensorfold_native as native
-from backend_service.inference._tensorfold import native_context_window, resolve_model_dir, weights_complete
+from backend_service.inference._tensorfold import match_model, native_context_window, resolve_model_dir, weights_complete
 from backend_service.inference._utils import _append_runtime_note, _find_open_port, _isolated_child_env, _now_label
 from backend_service.inference.base import BackendCapabilities, LoadedModelInfo
 from backend_service.inference.tensorfold_engine import TensorFoldEngine, _emit_progress
@@ -139,11 +139,19 @@ class TensorFoldNativeEngine(TensorFoldEngine):
             )
 
         model = native.match_native_model(canonical_repo, model_ref, runtime_target)
+        # On the Metal build, the Mac family table names drafters and vision for
+        # checkpoints the CUDA registry has no row for (MiniMax, Nanbeige, ...).
+        # Its facts are Metal facts, and 1.x rows only (``native``).
+        family = None
+        if model is None and native.platform_key() == "macos-arm64":
+            found = match_model(canonical_repo=canonical_repo, model_ref=model_ref, runtime_target=runtime_target, path=path)
+            family = found.family if found is not None and found.family.native else None
+        drafter_repo = model.drafter if model is not None else (family.drafter if family is not None else None)
         drafts = bool(speculative_decoding)
         drafter_dir: Path | None = None
         drafter_note: str | None = None
-        if drafts and model is not None and model.drafter:
-            drafter_dir, drafter_note = self._ensure_drafter(model.drafter, progress_callback)
+        if drafts and drafter_repo:
+            drafter_dir, drafter_note = self._ensure_drafter(drafter_repo, progress_callback)
             if drafter_dir is None:
                 drafts = False
 
@@ -161,7 +169,8 @@ class TensorFoldNativeEngine(TensorFoldEngine):
                     f"{gpu.name} has {free:.1f} GB free. Close other GPU programs, lower the context, or pick a smaller model."
                 )
 
-        vision = bool(model is not None and model.vision and caps.supports_flag("--vision"))
+        wants_vision = model.vision if model is not None else bool(family is not None and family.vision)
+        vision = bool(wants_vision and caps.supports_flag("--vision"))
         image_note = None if vision else "TensorFold cannot read images for this model, so the attached image was ignored."
 
         self.port = _find_open_port()
@@ -208,9 +217,9 @@ class TensorFoldNativeEngine(TensorFoldEngine):
 
         if not drafts:
             note = "TensorFold serial decoding (speculative drafts off)."
-        elif drafter_dir is not None and model is not None:
+        elif drafter_dir is not None:
             note = (
-                f"TensorFold exact speculative decoding with draft model {model.drafter}. "
+                f"TensorFold exact speculative decoding with draft model {drafter_repo}. "
                 "Replies are identical to serial decoding."
             )
         else:
@@ -220,7 +229,7 @@ class TensorFoldNativeEngine(TensorFoldEngine):
         if gate.status == "unqualified" or gate.reasons:
             for reason in gate.reasons:
                 note = _append_runtime_note(note, reason)
-        if model is None:
+        if model is None and family is None:
             note = _append_runtime_note(note, "This checkpoint is not in the registry; replies stay exact, speed and VRAM are unmeasured.")
         if context and context != context_tokens:
             note = _append_runtime_note(note, f"Context window limited to {context:,} tokens, the most this checkpoint supports.")
@@ -244,7 +253,7 @@ class TensorFoldNativeEngine(TensorFoldEngine):
             runtimeTarget=runtime_target or str(model_dir),
             runtimeNote=note,
             speculativeDecoding=drafts,
-            dflashDraftModel=model.drafter if model is not None and drafter_dir is not None else None,
+            dflashDraftModel=drafter_repo if drafter_dir is not None else None,
             visionEnabled=vision,
         )
         return self.loaded_model

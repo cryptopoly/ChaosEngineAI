@@ -308,10 +308,29 @@ class TensorFoldSnapshotTests(unittest.TestCase):
         self.assertIn("Vontra/Qwen3.8-Flash-Next-MLX-4bit-MTP", info["exclusiveModels"])
         self.assertNotIn("mlx-community/gemma-4-26b-a4b-it-4bit", info["exclusiveModels"])
         self.assertEqual(info["minMemoryGb"]["Vontra/GLM-5.3-Flash-MLX-4bit-MTP"], 256)
-        # Only the dense Qwen checkpoint reads images; the list is what the
-        # launch settings use to offer image support.
-        self.assertEqual(info["visionModels"], ["Vontra/Qwen3.8-27B-MLX-4bit"])
+        # The dense Qwen checkpoint and MiniMax-M3.1-Flash read images; the list
+        # is what the launch settings use to offer image support.
+        self.assertEqual(
+            info["visionModels"],
+            [
+                "Vontra/Qwen3.8-27B-MLX-4bit",
+                "BobClawblaw/MiniMax-M3.1-Flash-MLX-mix256k",
+                "BobClawblaw/MiniMax-M3.1-Flash-MLX-mix34",
+            ],
+        )
         self.assertIsInstance(info["extras"], list)
+        # FU-168: the families 1.2.7 added reach the Mac snapshot, with the
+        # 256 GB floor the fit check reads.
+        for repo in (
+            "LiquidAI/LFM3-1.7B-MLX-4bit",
+            "LiquidAI/LFM2.5-24B-A2B-MLX-4bit",
+            "Nanbeige/Nanbeige4.3-33B",
+            "XHToken/Spark-X2.6-4B",
+            "BobClawblaw/MiniMax-M3.1-Flash-MLX-mix34",
+        ):
+            self.assertIn(repo, info["supportedModels"])
+        self.assertIn("Nanbeige/Nanbeige4.3-33B-INT4", info["exclusiveModels"])
+        self.assertEqual(info["minMemoryGb"]["BobClawblaw/MiniMax-M3.1-Flash-MLX-mix34"], 256)
 
     def test_native_snapshot_lists_the_native_registry(self) -> None:
         from backend_service.helpers.system import _build_system_snapshot
@@ -321,6 +340,7 @@ class TensorFoldSnapshotTests(unittest.TestCase):
             info = _build_system_snapshot("0", time.time())["tensorfold"]
         self.assertEqual(info["engine"], "native")
         self.assertIn("TensorFold/Qwen3.8-27B-MLX-4bit", info["supportedModels"])
+        self.assertIn("LiquidAI/LFM2.5-24B-A2B-MLX-4bit", info["supportedModels"])  # CUDA since 1.2.5
         self.assertEqual(info["exclusiveModels"], [])
         self.assertEqual(info["visionModels"], ["TensorFold/Qwen3.8-27B-MLX-4bit"])
 

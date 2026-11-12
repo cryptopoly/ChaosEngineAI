@@ -334,6 +334,21 @@ NATIVE_MODELS: tuple[NativeModel, ...] = (
         kv_gb_per_ref=0.6,
         note="Needs more than 24 GB of free VRAM.",
     ),
+    NativeModel(
+        # CUDA since 1.2.5 (GB10 checked), from the MLX 4-bit export only; no
+        # drafter, no prompt cache on CUDA. The figure is the binary's own
+        # `info` memory floor: 12.65 GiB of weights plus its 2.00 GiB margin.
+        key="lfm2_5_24b_a2b",
+        title="LFM2.5-24B-A2B",
+        repos=("LiquidAI/LFM2.5-24B-A2B-MLX-4bit",),
+        family="lfm2_moe",
+        weight_format="mlx-q4g64",
+        vram_gb=15.7,
+        note=(
+            "Size is TensorFold's own memory floor (weights plus a 2 GiB margin); KV growth with the window "
+            "is not documented or measured here. Checked upstream on a GB10, not on a discrete card."
+        ),
+    ),
 )
 
 

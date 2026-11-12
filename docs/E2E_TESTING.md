@@ -43,6 +43,11 @@ Concrete, not "feels right":
   (a silent fallback to standard MLX still produces text, so the token check
   alone would not catch it), and that image input is on exactly when the
   `vision` extra is installed and the checkpoint has a vision tower.
+- The TensorFold 1.2.7 families check (FU-168) fails when any LFM3, LFM2.5,
+  Spark, Nanbeige or MiniMax checkpoint drops out of the status payload, then
+  loads one checkpoint per family that is on disk with speculative decoding
+  ticked and asserts the engine is `tensorfold-native`. Nanbeige skips on
+  M1 to M4 (TensorFold needs an M5); nothing is downloaded.
 - DFlash / MTPLX checks additionally assert the expected token appears
   in `runtimeNote` (`"dflash"` / `"speculative"` / `"mtplx"`). A pass for
   "speculativeDecoding=true" alone is **not** sufficient — backend must

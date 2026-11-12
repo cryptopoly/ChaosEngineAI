@@ -606,6 +606,17 @@ def phase_0(cap: Capability) -> PhaseResult:
 # ---------------------------------------------------------------------------
 
 
+def _apple_chip() -> str:
+    """``Apple M4 Max`` and the like on a Mac, ``""`` elsewhere or when unreadable."""
+    if sys.platform != "darwin":
+        return ""
+    try:
+        out = subprocess.run(["sysctl", "-n", "machdep.cpu.brand_string"], capture_output=True, text=True, timeout=5, check=False)
+    except (OSError, subprocess.SubprocessError):
+        return ""
+    return out.stdout.strip()
+
+
 def _pick_model_by_ref_prefix(local: list[tuple[str, str]], *needles: str) -> tuple[str, str] | None:
     for ref, path in local:
         low = ref.lower()
@@ -936,6 +947,63 @@ def phase_1(cap: Capability) -> PhaseResult:
                 return "fail", f"drafter {row['drafter']} not engaged: {(detail.get('runtimeNote') or '')[:160]}", detail
             return "pass", "", detail
         return "skip", "no served checkpoint that fits is on disk", {}
+
+    # 1d2c. Families the TensorFold 1.2.7 binary added (FU-168). Every repo below
+    # must reach the status payload's supportedModels (the registry dropping one is
+    # a fail). Then one load per family on disk, smallest first, with speculative
+    # decoding ticked: the tested families route to TensorFold only that way, so a
+    # load that comes back on another engine is a silent fallback, not a pass.
+    # Nanbeige needs an M5 or later Mac (TensorFold refuses M1-M4 by name), and
+    # MiniMax a 256 GB Mac: those skip with the reason. Never downloads; skips when
+    # TensorFold is absent or nothing of these families is on disk.
+    def _tensorfold_new_families():
+        families = (
+            ("LFM3", ("LiquidAI/LFM3-1.7B-MLX-4bit", "LiquidAI/LFM3-1.7B-MLX-6bit", "LiquidAI/LFM3-1.7B-MLX-8bit")),
+            ("Spark-X2.6", ("XHToken/Spark-X2.6-4B",)),
+            ("LFM2.5", ("LiquidAI/LFM2.5-24B-A2B-MLX-4bit", "LiquidAI/LFM2.5-24B-A2B-MLX-6bit", "LiquidAI/LFM2.5-24B-A2B-MLX-8bit")),
+            ("Nanbeige4.3", ("Nanbeige/Nanbeige4.3-33B-INT4", "Nanbeige/Nanbeige4.3-33B")),
+            ("MiniMax-M3.1-Flash", ("BobClawblaw/MiniMax-M3.1-Flash-MLX-mix256k", "BobClawblaw/MiniMax-M3.1-Flash-MLX-mix34")),
+        )
+        if not cap.tensorfold_available:
+            return "skip", "TensorFold not installed", {}
+        if cap.tensorfold_native:
+            return "skip", "CUDA host: LFM2.5 is covered by the TensorFold 1.x native check", {}
+        missing = [repo for _name, repos in families for repo in repos if repo not in cap.tensorfold_models]
+        if missing:
+            return "fail", f"registry lost FU-168 checkpoints: {', '.join(missing)}", {}
+        results: dict[str, str] = {}
+        ran = 0
+        for name, repos in families:
+            pick = None
+            for repo in repos:
+                found = _pick_model_by_ref_prefix(cap.local_mlx_models, repo.split("/")[-1])
+                if found:
+                    pick = (repo, found[1])
+                    break
+            if not pick:
+                results[name] = "not on disk"
+                continue
+            repo, path = pick
+            generation = re.search(r"\bM(\d+)\b", _apple_chip())
+            if name == "Nanbeige4.3" and generation and int(generation.group(1)) < 5:
+                results[name] = f"skipped: needs an M5 or later Mac ({_apple_chip()})"
+                continue
+            status, reason, detail = _load_unload_prompt(
+                repo.split("/")[-1], path=path, backend="mlx", spec=True,
+                canonical_repo=repo, context=8192, max_tokens=24, load_timeout=1800.0,
+            )
+            if status != "pass":
+                return status, f"{name}: {reason}", {"results": results, **detail}
+            if detail.get("engine") not in ("tensorfold", "tensorfold-native"):
+                return "fail", (
+                    f"{name}: TensorFold expected but engine was {detail.get('engine')!r}: "
+                    f"{(detail.get('runtimeNote') or '')[:160]}"
+                ), {"results": results, **detail}
+            results[name] = f"pass ({detail.get('engine')})"
+            ran += 1
+        if not ran:
+            return "skip", f"no FU-168 family checkpoint loaded: {results}", {"results": results}
+        return "pass", "", {"results": results}
 
     # 1d3. Kolibri 1 (FU-103). mlx-lm ships no ``kolibri1`` architecture, so the
     # worker loads the one vendored in backend_service/mlx_models; a load that
@@ -1280,6 +1348,7 @@ def phase_1(cap: Capability) -> PhaseResult:
         ("MLX + MTPLX speculative", _mtplx),
         ("MLX + TensorFold exact speculative (FU-093)", _tensorfold_engine),
         ("TensorFold 1.x native, CUDA (FU-111)", _tensorfold_native_engine),
+        ("TensorFold 1.2.7 families: LFM3, LFM2.5, Spark, Nanbeige, MiniMax (FU-168)", _tensorfold_new_families),
         ("MLX Kolibri 1, vendored architecture (FU-103)", _kolibri),
         ("MLX LFM3, vendored architecture", _lfm3),
         ("CUDA llama-server lane (Windows and Linux)", _llama_cuda),

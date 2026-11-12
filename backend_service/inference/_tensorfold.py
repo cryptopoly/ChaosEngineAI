@@ -24,8 +24,11 @@ Every fact below was taken from TensorFold's source at v0.6.6 (the last
 Python release: ``src/tensorfold/families/*/__init__.py`` ``MODEL_TYPES`` /
 ``MODELS`` / ``DRAFTER``), then checked against the native 1.2.7 binary's
 ``tensorfold capabilities --json`` and recipe docs. Families the native
-binary does not serve carry ``native=False``. Re-check it when the pin in
-``scripts/install-tensorfold.sh`` moves.
+binary does not serve carry ``native=False``. The rows after Ternary Bonsai 2
+were added from the 1.2.7 binary itself (FU-168); a row with no
+``tested_repos`` accounts for a family the binary reports that the app cannot
+offer, and its ``note`` says why. Re-check it when the pin in
+``scripts/install-tensorfold.sh`` or ``NATIVE_VERSION`` moves.
 """
 
 from __future__ import annotations
@@ -69,6 +72,11 @@ class TensorFoldFamily:
     # ``capabilities --json`` lacks the family, or its docs say it refuses
     # it); only the older Python install (0.6.6) can. Checked at v1.2.7.
     native: bool = True
+    # What the app cannot offer and why (needs conversion, two Macs, no
+    # released checkpoint, a speech model, ...). Required when
+    # ``tested_repos`` is empty: such a row is listed so the binary's family
+    # report is accounted for, but nothing matches it by repo.
+    note: str = ""
 
 
 TENSORFOLD_FAMILIES: tuple[TensorFoldFamily, ...] = (
@@ -147,6 +155,169 @@ TENSORFOLD_FAMILIES: tuple[TensorFoldFamily, ...] = (
         native=False,
         min_memory_gb=32,
     ),
+    # --- Families the native 1.2.7 binary added (FU-168). Repos, formats and
+    # memory come from the binary (`capabilities --json`, `info`) and its
+    # recipes (docs/recipes/*.md at v1.2.7); every repo was checked on the Hub
+    # on 2026-11-11. "Metal" / "CUDA" below is what the docs record as run.
+    TensorFoldFamily(
+        # Metal (1.2.4+), official MLX 4/6/8-bit, served as stored. The app also
+        # runs these on its bundled lfm3 port, so the family is "tested", not
+        # exclusive: TensorFold when speculative decoding is ticked.
+        key="lfm3",
+        title="LFM3",
+        model_types=("lfm3",),
+        tested_repos=(
+            "LiquidAI/LFM3-1.7B-MLX-4bit",
+            "LiquidAI/LFM3-1.7B-MLX-6bit",
+            "LiquidAI/LFM3-1.7B-MLX-8bit",
+        ),
+    ),
+    TensorFoldFamily(
+        # `capabilities --json` lists lfm3_vl and `info` admits the official
+        # LFM3-VL-2B MLX checkpoints, but 1.2.7 refuses to serve them (checked
+        # 2026-11-11 on LiquidAI/LFM3-VL-2B-MLX-4bit, with and without --vision).
+        # List the repos here once a release serves them, with vision=True.
+        key="lfm3_vl",
+        title="LFM3-VL",
+        model_types=("lfm3_vl",),
+        tested_repos=(),
+        note=(
+            "TensorFold 1.2.7 admits LiquidAI/LFM3-VL-2B-MLX-4bit/6bit/8bit but refuses to serve them "
+            "(\"LFM3-VL inference requires the stacked vision contribution\"); no engine the app ships loads "
+            "lfm3_vl yet."
+        ),
+    ),
+    TensorFoldFamily(
+        # LFM2.5-24B-A2B: Metal (M4 Pro checked) for the MLX 4/6/8-bit exports,
+        # CUDA (1.2.5, GB10 checked) for the 4-bit one. Stock mlx-lm loads it too.
+        key="lfm2_moe",
+        title="LFM2.5-24B-A2B",
+        model_types=("lfm2_moe",),
+        tested_repos=(
+            "LiquidAI/LFM2.5-24B-A2B-MLX-4bit",
+            "LiquidAI/LFM2.5-24B-A2B-MLX-6bit",
+            "LiquidAI/LFM2.5-24B-A2B-MLX-8bit",
+        ),
+    ),
+    TensorFoldFamily(
+        # The `llama` family admits only the two Nanbeige4.3-33B releases it was
+        # checked against and refuses any other llama checkpoint by name. Metal
+        # only, M5 or later. The bf16 release (61.7 GiB of weights) also loads
+        # on stock mlx-lm, so it is "tested".
+        key="nanbeige4_3",
+        title="Nanbeige4.3-33B",
+        model_types=("llama",),
+        tested_repos=("Nanbeige/Nanbeige4.3-33B",),
+        drafter="Nanbeige/Nanbeige4.1-3B",
+        note=(
+            "Metal only, and only on an M5 or later Mac: prompts run on Metal 4 tensor units and M1 to M4 are "
+            "refused at load (the app then falls back to standard MLX)."
+        ),
+    ),
+    TensorFoldFamily(
+        # Nanbeige's own INT4 release (compressed-tensors, groups of 32, 21.0
+        # GiB), read in place. mlx-lm does not read compressed-tensors, so only
+        # TensorFold serves it. ``llama`` is shared with stock mlx-lm, so a
+        # local config never routes here; only the repo id does.
+        key="nanbeige4_3_int4",
+        title="Nanbeige4.3-33B INT4",
+        model_types=("llama",),
+        tested_repos=("Nanbeige/Nanbeige4.3-33B-INT4",),
+        drafter="Nanbeige/Nanbeige4.1-3B",
+        exclusive=True,
+        note="Metal only, and only on an M5 or later Mac: M1 to M4 are refused at load.",
+    ),
+    TensorFoldFamily(
+        # Spark-X2.6-4B (spark2_5): Metal serves the bf16 release as published
+        # (7.7 GiB of weights, M5 Ultra checked). CUDA needs an MLX affine
+        # conversion first and refuses the bf16 release. Stock mlx-lm loads it.
+        key="spark2_5",
+        title="Spark-X2.6-4B",
+        model_types=("spark2_5",),
+        tested_repos=("XHToken/Spark-X2.6-4B",),
+    ),
+    TensorFoldFamily(
+        # MiniMax-M3.1-Flash (428B-A23B), Metal on one 256 GB M5 Ultra, from two
+        # community affine conversions that carry the DSpark and DFlash2 heads;
+        # images with --vision. CUDA serves it only at TP=2 on two GB10s.
+        key="minimax_m3_1_flash",
+        title="MiniMax-M3.1-Flash",
+        model_types=("minimax_m3_vl",),
+        tested_repos=(
+            "BobClawblaw/MiniMax-M3.1-Flash-MLX-mix256k",
+            "BobClawblaw/MiniMax-M3.1-Flash-MLX-mix34",
+        ),
+        vision=True,
+        min_memory_gb=256,
+    ),
+    TensorFoldFamily(
+        key="gemma4_12b",
+        title="Gemma 4 12B",
+        model_types=("gemma4_unified",),
+        tested_repos=(),
+        note=(
+            "Served from a local conversion of google/gemma-4-12B-it to MLX 4-bit made with TensorFold's own "
+            "converter (needs Python, mlx and mlx-lm); no converted checkpoint is published, and the bf16 release "
+            "is not a format the family reads. Metal needs an M5 for its MTP assistant; CUDA serves the 4-bit "
+            "conversion on a GB10."
+        ),
+    ),
+    TensorFoldFamily(
+        key="step5_preview",
+        title="Step-5-Preview",
+        model_types=("step5_vl",),
+        tested_repos=(),
+        exclusive=True,
+        min_memory_gb=256,
+        note=(
+            "StepFun ships FP8 (650 GB), which no Mac holds; TensorFold serves a local 2-bit affine conversion "
+            "(166.9 GiB of text weights) made with its own Python tool, on one 256 GB Mac. Metal only."
+        ),
+    ),
+    TensorFoldFamily(
+        key="glm5_3_exlr8",
+        title="GLM-5.3 (EXLR8)",
+        model_types=("glm_moe_dsa",),
+        tested_repos=(),
+        min_memory_gb=256,
+        note=(
+            "Needs two 256 GB M5 Ultra Macs joined by Thunderbolt 5 with MCDMA, each holding half of "
+            "kindlingai/glm-5.3-exlr8-k2-k3-k4 (about 160 GB resident per Mac). No CUDA backend. "
+            "The app runs one machine, so it does not offer it."
+        ),
+    ),
+    TensorFoldFamily(
+        key="kimi_k3",
+        title="Kimi K3 / K3.1",
+        model_types=("kimi_k3", "kimi_k31"),
+        tested_repos=(),
+        note=(
+            "Groundwork only in 1.2.7: run on synthetic weights, never on the released checkpoints "
+            "(moonshotai/Kimi-K3 and moonshotai/Kimi-K3.1-Pro, about 1.56 TB each), which the binary refuses "
+            "by its own memory budget on one Mac. K3.1 is capped at 2,047 tokens. Metal only."
+        ),
+    ),
+    TensorFoldFamily(
+        key="qwen4_dense",
+        title="Qwen4 dense",
+        model_types=("qwen4", "qwen4_text"),
+        tested_repos=(),
+        note=(
+            "Prepared for a dense Qwen4 that has not been released: the Metal and CUDA gates pass on synthetic "
+            "weights only, and no real checkpoint has been run."
+        ),
+    ),
+    TensorFoldFamily(
+        key="fish_drama3",
+        title="Fish Audio Drama 3",
+        model_types=("fish_omni",),
+        tested_repos=(),
+        note=(
+            "A speech model (fishaudio/drama-3, plotarmordev/drama-3-NVFP4-Pruned) served on /v1/audio/speech, "
+            "on Metal and CUDA. The app's TensorFold engine is a chat engine, so it is not offered there; its "
+            "licence also limits voice imitation."
+        ),
+    ),
 )
 
 _REPO_INDEX: dict[str, TensorFoldFamily] = {
@@ -155,11 +326,18 @@ _REPO_INDEX: dict[str, TensorFoldFamily] = {
     for repo in (*family.tested_repos, *family.repo_aliases)
 }
 
+# A model_type that a non-exclusive family also names (``llama``: the bf16
+# Nanbeige loads on stock MLX, its INT4 sibling does not) is no evidence, so
+# only the repo id routes those.
+_SHARED_MODEL_TYPES = {
+    model_type for family in TENSORFOLD_FAMILIES if not family.exclusive for model_type in family.model_types
+}
 _EXCLUSIVE_MODEL_TYPES: dict[str, TensorFoldFamily] = {
     model_type: family
     for family in TENSORFOLD_FAMILIES
     if family.exclusive
     for model_type in family.model_types
+    if model_type not in _SHARED_MODEL_TYPES
 }
 
 

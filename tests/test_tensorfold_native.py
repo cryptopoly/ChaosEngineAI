@@ -171,6 +171,23 @@ class Registry(unittest.TestCase):
         self.assertFalse({r["key"]: r for r in native.supported_models(bare)}["nemotron_bolt"]["servable"])
         self.assertFalse(native.supported_models(None)[0]["servable"])
 
+    def test_lfm2_5_is_listed_for_cuda_with_an_unmeasured_floor(self):
+        # FU-168: LFM2.5-24B-A2B on CUDA (1.2.5, GB10), from the 4-bit export.
+        model = native.match_native_model("liquidai/lfm2.5-24b-a2b-mlx-4bit")
+        assert model is not None
+        self.assertEqual((model.family, model.weight_format, model.drafter, model.vision), ("lfm2_moe", "mlx-q4g64", None, False))
+        self.assertFalse(model.measured)
+        self.assertIn("not documented or measured", model.note)
+        self.assertEqual(native.estimate_vram_gb(model, 8192), 15.7)
+        self.assertIsNone(native.match_native_model("LiquidAI/LFM2.5-24B-A2B-MLX-8bit"))  # CUDA runs the 4-bit only
+        caps = native.parse_capabilities(CAPS_JSON)
+        self.assertFalse({r["key"]: r for r in native.supported_models(caps)}["lfm2_5_24b_a2b"]["servable"])
+        with_lfm = native.parse_capabilities(CAPS_JSON.replace('"nemotron_h"', '"lfm2_moe": ["mlx-q4g64"], "nemotron_h"'))
+        rows = {r["key"]: r for r in native.supported_models(with_lfm, free_gb=11.0)}
+        self.assertTrue(rows["lfm2_5_24b_a2b"]["servable"])
+        self.assertFalse(rows["lfm2_5_24b_a2b"]["fits"])  # the memory gate: 15.7 GB > 11 GB free
+        self.assertTrue({r["key"]: r for r in native.supported_models(with_lfm, free_gb=22.0)}["lfm2_5_24b_a2b"]["fits"])
+
     def test_small_card_marks_big_models_as_not_fitting(self):
         rows = {row["key"]: row for row in native.supported_models(native.parse_capabilities(CAPS_JSON), free_gb=11.0)}
         self.assertFalse(rows["qwen3_8_27b"]["fits"])
@@ -401,6 +418,58 @@ class StatusAndEngine(InstallerBase):
                     self._load(self._engine(), runtime_target=str(model_dir), speculative_decoding=False)
         self.assertIn("GB of VRAM", str(ctx.exception))
         self.assertIn("9.0 GB free", str(ctx.exception))
+
+    def _mac_load(self, repo: str) -> list[str]:
+        """Load ``repo`` on the Metal build with the server mocked; return the serve argv."""
+        mac_caps = native.parse_capabilities(
+            json.dumps({"version": "1.2.7", "chip": "apple-m4", "backends": ["metal"], "families": {},
+                        "serve": {"flags": {"--vision": {}, "--drafter": {}, "--context": {}, "--parallel": {}}}})
+        )
+        commands: list[list[str]] = []
+
+        class _Proc:
+            def __init__(self, command, **_kw):
+                commands.append(command)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            model_dir = Path(tmp) / "model"
+            model_dir.mkdir()
+            (model_dir / "config.json").write_text("{}", encoding="utf-8")
+            (model_dir / "model.safetensors").write_bytes(b"x")
+            drafter_dir = Path(tmp) / "drafter"
+            with mock.patch.object(native, "find_binary", lambda environ=None: Path("tf")), mock.patch.object(
+                native, "probe_capabilities", lambda binary, timeout=30.0: mac_caps
+            ), mock.patch.object(native, "read_gpu", lambda timeout=10.0: None), mock.patch.object(
+                native, "platform_key", lambda *a, **k: "macos-arm64"
+            ), mock.patch.object(
+                TensorFoldNativeEngine, "_ensure_drafter", lambda self, r, cb: (drafter_dir, None)
+            ), mock.patch.object(TensorFoldNativeEngine, "_wait_for_server", lambda self, name, cb: None), mock.patch(
+                "backend_service.inference.tensorfold_native_engine.subprocess.Popen", _Proc
+            ):
+                engine = self._engine()
+                info = self._load(engine, model_ref=repo, canonical_repo=repo, runtime_target=str(model_dir))
+                engine._cleanup_process = lambda: None
+        self.info = info
+        return commands[0]
+
+    def test_mac_family_table_supplies_drafter_and_vision(self):
+        # FU-168: checkpoints without a CUDA VRAM row take their drafter and
+        # vision from the Mac family table.
+        command = self._mac_load("Nanbeige/Nanbeige4.3-33B-INT4")
+        self.assertIn("--drafter", command)
+        self.assertNotIn("--vision", command)
+        self.assertEqual(self.info.dflashDraftModel, "Nanbeige/Nanbeige4.1-3B")
+        self.assertNotIn("not in the registry", self.info.runtimeNote)
+
+        command = self._mac_load("BobClawblaw/MiniMax-M3.1-Flash-MLX-mix34")
+        self.assertIn("--vision", command)
+        self.assertNotIn("--drafter", command)
+        self.assertTrue(self.info.visionEnabled)
+
+        command = self._mac_load("LiquidAI/LFM3-1.7B-MLX-4bit")
+        self.assertNotIn("--drafter", command)
+        self.assertNotIn("--vision", command)
+        self.assertNotIn("not in the registry", self.info.runtimeNote)
 
 
 class Routing(unittest.TestCase):

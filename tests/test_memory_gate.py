@@ -356,3 +356,61 @@ class WarmPipelineGateTests(unittest.TestCase):
         self.assertIsNone(gate_image_generation(swap["available_gb"], swap["pressure_percent"], model_gb=10.0))
         refusal = gate_image_generation(swap["available_gb"], swap["pressure_percent"], model_gb=40.0)
         self.assertEqual(refusal["code"], "memory_gate_image_model_too_large")
+
+
+class ResidentCreditOnReuseTests(unittest.TestCase):
+    """Reusing the resident pipeline must not read its own memory as host pressure."""
+
+    TOTAL = 63.9
+
+    def _reuse(self, available, rss, estimate, **gate):
+        from backend_service.helpers.memory_gate import (
+            adjust_for_resident, pressure_percent_from_available,
+        )
+
+        adj = adjust_for_resident(
+            available, pressure_percent_from_available(self.TOTAL, available),
+            loaded_repo="Lightricks/LTX-2.3", requested_repo="Lightricks/LTX-2.3",
+            loaded_estimate_gb=estimate, total_gb=self.TOTAL, rss_gb=rss,
+        )
+        self.assertTrue(adj["reuse"])
+        return adj, gate_video_generation(
+            adj["available_gb"], adj["pressure_percent"], model_gb=None, reuse_resident=True, **gate)
+
+    def test_installed_app_case_is_allowed_on_reuse(self):
+        # 98.4% pressure, 1.0 GB free, 45 GB resident, 63.9 GB total.
+        adj, refusal = self._reuse(1.0, 45.0, 48.0)
+        self.assertIsNone(refusal)
+        self.assertAlmostEqual(adj["available_gb"], 46.0)
+        self.assertLess(adj["pressure_percent"], 30.0)
+
+    def test_credit_is_capped_by_catalog_footprint_and_rss(self):
+        adj, _ = self._reuse(1.0, 45.0, 20.0)
+        self.assertAlmostEqual(adj["available_gb"], 21.0)
+        adj, _ = self._reuse(1.0, 3.0, 48.0)
+        self.assertAlmostEqual(adj["available_gb"], 4.0)
+
+    def test_other_processes_eating_ram_still_refuse(self):
+        # ~94% pressure with a small resident share: 4 GB free + 1 GB credit is below the video floor.
+        _, refusal = self._reuse(4.0, 1.0, 48.0)
+        self.assertEqual(refusal["code"], "memory_gate_video_low_available")
+        # Free RAM minus the credit truly short for a chat-sized floor.
+        _, refusal = self._reuse(0.2, 0.5, 48.0)
+        self.assertEqual(refusal["code"], "memory_gate_video_low_available")
+
+    def test_too_big_model_is_still_refused(self):
+        adj, _ = self._reuse(1.0, 45.0, 48.0)
+        refusal = gate_video_generation(adj["available_gb"], adj["pressure_percent"], model_gb=120.0)
+        self.assertEqual(refusal["code"], "memory_gate_video_model_too_large")
+
+    def test_image_gate_reuse_with_credit(self):
+        from backend_service.helpers.memory_gate import adjust_for_resident, pressure_percent_from_available
+
+        kw = dict(loaded_repo="i/a", requested_repo="i/a", loaded_estimate_gb=20.0, total_gb=self.TOTAL)
+        adj = adjust_for_resident(1.0, pressure_percent_from_available(self.TOTAL, 1.0), rss_gb=22.0, **kw)
+        self.assertIsNone(gate_image_generation(
+            adj["available_gb"], adj["pressure_percent"], model_gb=None, reuse_resident=True))
+        adj = adjust_for_resident(1.0, pressure_percent_from_available(self.TOTAL, 1.0), rss_gb=0.5, **kw)
+        refusal = gate_image_generation(
+            adj["available_gb"], adj["pressure_percent"], model_gb=None, reuse_resident=True)
+        self.assertEqual(refusal["code"], "memory_gate_image_low_available")

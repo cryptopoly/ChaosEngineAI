@@ -983,6 +983,16 @@ _NO_DIFFUSERS_PIPELINE: frozenset[str] = frozenset({
 _MODEL_THREAD = ModelThread("image-model")
 
 
+def _release_gpu_speech() -> None:
+    """Free idle speech models on the NVIDIA GPU before image weights load (``voice_client.release_gpu_for_media``)."""
+    try:
+        from backend_service.voice_client import release_gpu_for_media  # noqa: PLC0415
+
+        release_gpu_for_media()
+    except Exception:  # noqa: BLE001 - housekeeping must never fail a generation
+        pass
+
+
 class ImageRuntimeManager:
     def __init__(self) -> None:
         self._lock = RLock()
@@ -1012,6 +1022,7 @@ class ImageRuntimeManager:
             status = self._diffusers.probe()
             if not status.realGenerationAvailable:
                 raise RuntimeError(status.message)
+            _release_gpu_speech()
             return _MODEL_THREAD.run(self._diffusers.preload, repo).to_dict()
 
     def unload(self, repo: str | None = None) -> dict[str, Any]:
@@ -1058,6 +1069,7 @@ class ImageRuntimeManager:
             _mflux_fallback_note = None
         # Another engine is about to load its own weights: free the warm mflux model first.
         self._mflux.release("another image engine is loading")
+        _release_gpu_speech()
 
         # FU-008 image subset: sd.cpp path. Routed when the catalog
         # variant declares ``engine="sdcpp"`` (which app.py threads onto

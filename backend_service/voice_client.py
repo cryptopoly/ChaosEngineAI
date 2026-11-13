@@ -154,6 +154,18 @@ class VoiceWorker:
         with self._lock:
             self._kill()
 
+    def stop_if_idle(self) -> bool:
+        """Stop the worker unless a request is running. True when a running worker was stopped."""
+        if self._process is None or not self._lock.acquire(blocking=False):
+            return False
+        try:
+            if self._process is None:
+                return False
+            self._kill()
+            return True
+        finally:
+            self._lock.release()
+
     def interrupt(self) -> None:
         """End a running request now. ``stop`` waits for the request lock; this does not.
 
@@ -223,13 +235,38 @@ class VoiceWorker:
 
 _WORKER: VoiceWorker | None = None
 _WORKER_LOCK = threading.Lock()
+# The user's "unload after N idle minutes" (Voice settings), for both speech workers. None until first read.
+_SPEECH_IDLE_MINUTES: float | None = None
+
+
+def _speech_idle_minutes() -> float:
+    """The stored setting; read once, so a worker created after a backend restart honours it too."""
+    global _SPEECH_IDLE_MINUTES
+    if _SPEECH_IDLE_MINUTES is None:
+        try:
+            from backend_service.voice_runtime import load_settings  # noqa: PLC0415 - voice_runtime imports this module
+
+            _SPEECH_IDLE_MINUTES = float(load_settings()["idleUnloadMinutes"])
+        except Exception:  # noqa: BLE001 - a bad settings file keeps the default
+            _SPEECH_IDLE_MINUTES = 10.0
+    return _SPEECH_IDLE_MINUTES
+
+
+def set_speech_idle_minutes(minutes: float) -> None:
+    """Apply the idle-unload setting to both speech workers (the Qwen3-TTS one holds the most GPU memory)."""
+    global _SPEECH_IDLE_MINUTES
+    _SPEECH_IDLE_MINUTES = float(minutes)
+    for worker in _speech_workers():
+        worker.idle_minutes = _SPEECH_IDLE_MINUTES
 
 
 def get_worker() -> VoiceWorker:
     global _WORKER
+    minutes = _speech_idle_minutes()
     with _WORKER_LOCK:
         if _WORKER is None:
             _WORKER = VoiceWorker()
+            _WORKER.idle_minutes = minutes
             atexit.register(_WORKER.stop)
         return _WORKER
 
@@ -253,9 +290,11 @@ _QWEN_WORKER: VoiceWorker | None = None
 def get_qwen_worker() -> VoiceWorker:
     """The worker that runs Qwen3-TTS on the GPU: the main worker's Python with the pinned transformers first."""
     global _QWEN_WORKER
+    minutes = _speech_idle_minutes()
     with _WORKER_LOCK:
         if _QWEN_WORKER is None:
             _QWEN_WORKER = VoiceWorker(log_name="qwen-worker.log", env_extra=voice_env.qwen_worker_env())
+            _QWEN_WORKER.idle_minutes = minutes
             atexit.register(_QWEN_WORKER.stop)
         return _QWEN_WORKER
 
@@ -307,6 +346,24 @@ def loaded_sources() -> dict[str, str]:
         if worker.pid is not None:
             held.update(worker.loaded)
     return held
+
+
+def release_gpu_for_media() -> list[str]:
+    """Stop idle speech workers that hold a model on the NVIDIA GPU, before an image or video job loads its own.
+
+    An idle Qwen3-TTS worker keeps about 4.7 GB of the card until its idle unload; an LTX-2.5 clip that started
+    next to it spilled into shared system memory and took about 600 s for its first step instead of about 5 s
+    (RTX 4090 24 GB). Kokoro runs on the CPU and is left alone; a worker answering a request is left alone. The next
+    voice request starts a fresh worker (one model load). Returns the models that were released.
+    """
+    if not voice_env.voice_uses_cuda():
+        return []
+    released: list[str] = []
+    for worker in _speech_workers():
+        held = [source for source in worker.loaded.values() if "kokoro" not in source.lower()]
+        if worker.pid is not None and held and worker.stop_if_idle():
+            released.extend(held)
+    return released
 
 
 def stop_speech_worker() -> None:

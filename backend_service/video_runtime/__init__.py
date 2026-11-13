@@ -1061,6 +1061,16 @@ def _is_longlive_repo(repo: str | None) -> bool:
 _MODEL_THREAD = ModelThread("video-model")
 
 
+def _release_gpu_speech() -> None:
+    """Free idle speech models on the NVIDIA GPU before video weights load (``voice_client.release_gpu_for_media``)."""
+    try:
+        from backend_service.voice_client import release_gpu_for_media  # noqa: PLC0415
+
+        release_gpu_for_media()
+    except Exception:  # noqa: BLE001 - housekeeping must never fail a generation
+        pass
+
+
 class VideoRuntimeManager:
     """State-level facade that mirrors ``ImageRuntimeManager``."""
 
@@ -1178,6 +1188,7 @@ class VideoRuntimeManager:
             status = self._engine.probe()
             if not status.realGenerationAvailable:
                 raise RuntimeError(status.message)
+            _release_gpu_speech()
             if use_nf4:
                 return _MODEL_THREAD.run(self._engine.preload, repo, use_nf4=True).to_dict()
             return _MODEL_THREAD.run(self._engine.preload, repo).to_dict()
@@ -1228,6 +1239,7 @@ class VideoRuntimeManager:
         # Another engine is about to load its own weights: free the warm LTX pipeline first.
         if self._ltx2_mlx is not None:
             self._ltx2_mlx.release("another video engine is loading")
+        _release_gpu_speech()
 
         if self._is_mlx_video_repo(config.repo):
             mlx = self._get_mlx_video()

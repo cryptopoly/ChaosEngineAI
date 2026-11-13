@@ -1,13 +1,22 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 91 rows with work, decisions or watch items still open, newest first.
+summary: 92 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-174 · Idle GPU speech workers slow image and video jobs; the idle-unload setting missed the Qwen3-TTS worker — Fixed in code (2026-11-13), needs an installer rebuild</summary>
+
+**Status or trigger:** **Fixed in code (2026-11-13), needs an installer rebuild; not yet checked through the installed app.**
+
+**Notes:** `docs/progress/rtx4090-progress.md`, "FU-174: voice workers after the E2E". Measured on the RTX 4090 through the installed app: E2E phase 8 leaves three workers (Qwen3-TTS 1.7B 8.1 GB private / 4.5 GB GPU, Whisper + Kokoro 2.8 / 0.6 GB, turn detector 0.8 / 0 GB), about 5 to 7 GB on the card; by design they stay warm and exit after 10 min idle (turn detector 2 min), on `/api/voice/worker/stop` and on app close (all measured). No leak: 3 Qwen and 3 phase-8 load/stop cycles return to the same GPU (783 MiB) and backend private (3.40 GB). Problem: an LTX-2.5 768x512x97 clip started next to the idle Qwen worker spilled into shared memory (17.9 GB dedicated + 1.5 GB shared, 90 W) and spent about 600 s on step 1; the moment the worker idled out, steps 2 to 8 took about 40 s at 400 W. Fix: `voice_client.release_gpu_for_media()` stops idle speech workers holding a GPU model (not Kokoro, not a busy one, NVIDIA only) before the image and video managers load or generate; the `idleUnloadMinutes` setting now reaches the Qwen3-TTS worker and is read at startup (it was applied only to the main worker and only when saved). Tests `tests/test_voice_gpu_release.py`. The 2.9 s per audio second TTS run was not reproduced: warm runs are 1.61 to 1.66 in every case tried (fresh worker, after a video run, next to the phase-8 workers, started with 19.5 or 21.5 GB of the card taken); a request that loads the model measures 2.7 to 3.5, so the slow figure most likely included a model load.
+
+</details>
 
 <details>
 <summary>FU-173 · Installed app runs LTX-2.5 4-bit and FLUX.2 Klein slower than the dev venv on the same card — Fixed and verified through the installed app (2026-11-13, installer built at a8b0051e).</summary>

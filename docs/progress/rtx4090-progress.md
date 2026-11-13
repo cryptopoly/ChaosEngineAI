@@ -1532,3 +1532,23 @@ The 33 to 35 s LTX-2.5 denoise seen through the app earlier today did not come b
 After the suite the backend held the E2E's video pipeline (36.4 GB private); Unload brought it to 3.5 GB. About 7 GB of GPU memory stays with the three voice workers phase 8 started (voice venv, 8.7 / 2.8 / 0.8 GB private); not looked into. The installed app was left running.
 
 **FU-173 verified:** the installed app now matches the dev venv within noise on both clips. Not checked here: vLLM `thinkingMode` (needs Linux; the code is in the installed backend but no vLLM lane runs on this PC).
+
+## FU-174: voice workers after the E2E, GPU held, slow TTS (2026-11-13)
+
+Installed app on 8876 (runtime `windows-x86_64-f1afdca7`), measured with `nvidia-smi` and the per-process `GPU Process Memory` counters and psutil private bytes. Qwen3-TTS CustomVoice 1.7B (`qwen3:Ryan`, "Sound warm and unhurried.", seed 7, 9.60 s of audio per request). The app was found closed at 17:12 (not by this run) and was started again; it was closed once on purpose (window close) for the app-close check and started again.
+
+**What phase 8 leaves.** Three workers: Qwen3-TTS worker 8.1 GB private / 4.5 GB GPU, main speech worker (Whisper Large v3 Turbo on CUDA + Kokoro) 2.8 / 0.6 GB, turn-detection worker 0.8 / 0 GB; the card went from 0.8 to 5.9 to 7.3 GB used. By design: the workers stay warm and exit after `idleUnloadMinutes` (10) without use, the turn detector after 2. The E2E does not stop them.
+
+| Check | Result |
+|---|---|
+| Idle exit | **PASS**: main and turn-detection workers gone by 17:34 after last use at 17:23-17:24; the Qwen worker exited about 10 min 20 s after its last request (the watch polls every 30 s). |
+| `/api/voice/worker/stop` | **PASS**: every worker gone, card back to 783 MiB, within 7 s. |
+| App close (window close) | **PASS**: shell, backend and all three workers gone, card back to the desktop's own use. |
+| 3 Qwen load / stop cycles | **No leak**: 5567 / 5563 / 5567 MiB loaded, **783 MiB** after every stop; worker 8.33 to 8.35 GB private; backend private 3.40 GB flat. |
+| 3 phase-8 / stop cycles | **No leak**: 7.3 / 6.9 / 6.9 GB loaded, backend private 3.40 GB flat; the card settled 0.9 GB higher after the first cycle, all of it in `dwm.exe` (683 to 1437 MB), none in our processes. |
+
+**Problem found: an idle speech worker slows image and video jobs.** LTX-2.5 `~nf4` 768x512, 97 frames, 8 steps, started with the Qwen worker idle (4.67 GB on the card): backend 17.9 GB dedicated + **1.5 GB shared**, 100 % util at **90 W**, step 1 still running after **600 s**. When the worker hit its idle exit (17:34:43) steps 2 to 8 ran in about **40 s at 400 W**. The heavy-job queue keeps voice and video from running together, so the worker was idle, only holding memory. **Fix:** `voice_client.release_gpu_for_media()` stops idle speech workers that hold a GPU model (Kokoro-only and busy workers stay; NVIDIA only) and the image and video managers call it before they load or generate. The next voice request starts a fresh worker (one model load, 25 s for Qwen 1.7B). Also fixed: `idleUnloadMinutes` was applied only to the main worker and only when the setting was saved; it now reaches the Qwen worker and is read when a worker is created. Tests: `tests/test_voice_gpu_release.py`; voice, video, image, MCP job and backend tests pass (423 + the voice set).
+
+**Slow TTS (2.9 s per audio second) not reproduced.** Warm requests were **1.61 to 1.66 s per audio second** in every case: fresh worker (1.62), LTX-2.5 loaded and offloaded (1.62), after an LTX-2.5 clip (1.62), next to the phase-8 workers (1.61 to 1.65), worker started with 19.5 GB (1.63) or 21.5 GB (1.61) of the card held by another process; all workers at normal priority. A request that loads the model is **2.67 to 3.55** (25 to 34 s for 9.6 s). So the 2.9 s figure most likely timed a request that included a load (the worker had idled out or been restarted); not proven. A Kokoro request does not unload the Qwen model (checked).
+
+**Ships with:** the next installer build (backend code only). Not checked through a rebuilt installer: the release before a video job, and the setting reaching the Qwen worker.

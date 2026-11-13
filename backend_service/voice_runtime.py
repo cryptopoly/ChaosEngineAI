@@ -305,9 +305,9 @@ def save_settings(patch: dict[str, Any]) -> dict[str, Any]:
         path = _settings_path()
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(settings, indent=2), encoding="utf-8")
-    from backend_service.voice_client import get_worker  # noqa: PLC0415
+    from backend_service.voice_client import set_speech_idle_minutes  # noqa: PLC0415
 
-    get_worker().idle_minutes = float(settings["idleUnloadMinutes"])
+    set_speech_idle_minutes(float(settings["idleUnloadMinutes"]))
     return settings
 
 

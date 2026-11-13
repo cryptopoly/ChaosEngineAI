@@ -42,11 +42,11 @@ class AssetChoiceTests(unittest.TestCase):
         self.assertEqual(llama_cuda.cuda_version_for("x64", 580), "13.5")
 
     def test_asset_names_match_the_published_release(self) -> None:
-        # Names as published with llama.cpp b12292.
+        # Names as published with llama.cpp b12317.
         self.assertEqual(
-            llama_cuda.asset_names("arm64", "13.5", "b12292", "linux"),
-            ("llama-b12292-bin-ubuntu-cuda-13.5-arm64.tar.gz",
-             "cudart-llama-b12292-bin-ubuntu-cuda-13.5-arm64.tar.gz"),
+            llama_cuda.asset_names("arm64", "13.5", "b12317", "linux"),
+            ("llama-b12317-bin-ubuntu-cuda-13.5-arm64.tar.gz",
+             "cudart-llama-b12317-bin-ubuntu-cuda-13.5-arm64.tar.gz"),
         )
 
     def test_tag_matches_the_bundled_llama_cpp(self) -> None:
@@ -122,7 +122,7 @@ class InstallTests(_TempRoot):
     def test_install_unpacks_both_archives_into_one_folder(self) -> None:
         sources = Path(tempfile.mkdtemp(prefix="ce-llama-src-"))
         build, cudart = llama_cuda.asset_names("arm64", "13.5", llama_cuda.LLAMA_CPP_TAG, "linux")
-        _tarball(sources / build, {"llama-server": b"#!/bin/sh\n", "libggml-cuda.so": b"x"}, "llama-b12292")
+        _tarball(sources / build, {"llama-server": b"#!/bin/sh\n", "libggml-cuda.so": b"x"}, "llama-b12317")
         _tarball(sources / cudart, {"libcudart.so.13": b"x", "libcublas.so.13": b"x"}, "cudart")
 
         def fake_download(url: str, dest: Path, progress) -> None:

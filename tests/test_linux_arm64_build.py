@@ -41,13 +41,13 @@ class StageRuntimeTests(unittest.TestCase):
         match = re.search(r'"linux-arm64": \[\s*/(.+?)/i,', source, re.S)
         self.assertIsNotNone(match)
         pattern = re.compile(match.group(1).replace("\\.", "."), re.I)
-        # Names published with llama.cpp b12292.
-        self.assertTrue(pattern.match("llama-b12292-bin-ubuntu-arm64.tar.gz"))
+        # Names published with llama.cpp b12317.
+        self.assertTrue(pattern.match("llama-b12317-bin-ubuntu-arm64.tar.gz"))
         for other in (
-            "llama-b12292-bin-ubuntu-cuda-13.5-arm64.tar.gz",
-            "llama-b12292-bin-linux-arm64-snapdragon.tar.gz",
-            "llama-b12292-bin-ubuntu-cuda-13.5-x64.tar.gz",
-            "cudart-llama-b12292-bin-ubuntu-cuda-13.5-arm64.tar.gz",
+            "llama-b12317-bin-ubuntu-cuda-13.5-arm64.tar.gz",
+            "llama-b12317-bin-linux-arm64-snapdragon.tar.gz",
+            "llama-b12317-bin-ubuntu-cuda-13.5-x64.tar.gz",
+            "cudart-llama-b12317-bin-ubuntu-cuda-13.5-arm64.tar.gz",
         ):
             self.assertFalse(pattern.match(other), other)
 

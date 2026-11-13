@@ -19,6 +19,12 @@ from typing import Any
 
 LTX25_REPO = "Lightricks/LTX-2.5-Diffusers"
 
+# Optional pipeline components the app never uses, passed as ``None`` on every LTX-2.5 load (both rows, text and
+# image to video). Both serve only prompt enhancement: ``prompt_enhancer`` (10 GB) is not downloaded, and
+# ``processor`` (``Gemma4Processor``) needs torchvision for its video processor, which the GPU runtime does not
+# ship, so the installed app failed every clip with "Gemma4VideoProcessor requires the Torchvision library".
+LTX25_UNUSED_COMPONENTS: dict[str, None] = {"prompt_enhancer": None, "processor": None}
+
 # At or above this much GPU memory free, the 24 GB text encoder stays bf16 (the transformer is still 4-bit: the row
 # asked for it). Below it both are 4-bit. Override with CHAOSENGINE_LTX25_TE_BF16_MIN_GB.
 TEXT_ENCODER_BF16_MIN_FREE_GB = 48.0
@@ -159,7 +165,7 @@ def load_ltx25_components(
     failure raises. A text encoder that cannot be quantised falls back to bf16 with a note. ``prompt_enhancer`` is
     always ``None``: its 10 GB are not downloaded and the app does not use it.
     """
-    kwargs: dict[str, Any] = {"prompt_enhancer": None}
+    kwargs: dict[str, Any] = dict(LTX25_UNUSED_COMPONENTS)
     notes: list[str] = []
     transformer, transformer_note = load_transformer(repo, local_path, torch, device)
     if transformer_note:

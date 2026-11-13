@@ -92,7 +92,11 @@ from backend_service.video_runtime.pipeline_helpers import (
     pipeline_class_for_repo,
     swap_scheduler,
 )
-from backend_service.video_runtime.ltx25_loader import is_ltx25_repo, load_ltx25_components
+from backend_service.video_runtime.ltx25_loader import (
+    LTX25_UNUSED_COMPONENTS,
+    is_ltx25_repo,
+    load_ltx25_components,
+)
 from backend_service.video_runtime.transformer_loaders import (
     detect_device,
     preferred_torch_dtype,
@@ -647,7 +651,32 @@ class DiffusersVideoEngine:
         with self._lock:
             return self._pipeline is not None and self._loaded_variant_key == variant_key
 
-    def _ensure_pipeline(
+    def _ensure_pipeline(self, repo: str, *args: Any, **kwargs: Any) -> Any:
+        """Load (or reuse) the pipeline; a load that fails hands back what it had already put on the GPU.
+
+        The exception's traceback holds the loader's frames, and with them every component loaded before the
+        failure. The installed app kept 19 GB on the GPU and 21 GB of system memory after an LTX-2.5 load failed
+        late (on its processor), and Unload could not free it because no pipeline was ever stored. The exception
+        is re-raised with its type and message but without that traceback, after a collection.
+        """
+        try:
+            return self._load_or_reuse_pipeline(repo, *args, **kwargs)
+        except Exception as exc:  # noqa: BLE001 - re-raised below
+            failure = exc.with_traceback(None)
+            failure.__context__ = None
+            failure.__cause__ = None
+        gc.collect()
+        try:
+            import sys
+
+            torch = sys.modules.get("torch")
+            if torch is not None and getattr(torch.cuda, "is_available", lambda: False)():
+                torch.cuda.empty_cache()
+        except Exception:  # noqa: BLE001 - housekeeping only
+            pass
+        raise failure
+
+    def _load_or_reuse_pipeline(
         self,
         repo: str,
         gguf_repo: str | None = None,
@@ -763,6 +792,9 @@ class DiffusersVideoEngine:
                     pipeline_kwargs["transformer"] = nf4_transformer
                 if nf4_note:
                     VIDEO_PROGRESS.set_phase(PHASE_LOADING, message=nf4_note)
+            if is_ltx25_repo(repo):
+                for name, value in LTX25_UNUSED_COMPONENTS.items():
+                    pipeline_kwargs.setdefault(name, value)
 
             from backend_service.helpers.malloc_release import pipeline_load_kwargs
 

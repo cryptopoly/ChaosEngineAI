@@ -261,9 +261,34 @@ class ComponentTests(unittest.TestCase):
     def test_small_cards_get_both_in_4bit_and_no_prompt_enhancer(self) -> None:
         for free in (12.0, 24.0):
             (kwargs, notes), te = self._load(free)
-            self.assertEqual(kwargs, {"prompt_enhancer": None, "transformer": "T", "text_encoder": "E"})
+            self.assertEqual(
+                kwargs, {"prompt_enhancer": None, "processor": None, "transformer": "T", "text_encoder": "E"},
+            )
             te.assert_called_once()
             self.assertEqual(notes, ["nf4 ok", "enc ok"])
+
+    def test_the_unused_components_are_skipped_on_every_load(self) -> None:
+        # Gemma4Processor needs torchvision (not in the GPU runtime): the installed app failed every clip on it.
+        self.assertEqual(loader.LTX25_UNUSED_COMPONENTS, {"prompt_enhancer": None, "processor": None})
+        from pathlib import Path
+
+        source = (Path(__file__).resolve().parents[1] / "backend_service" / "video_runtime" / "__init__.py").read_text(
+            encoding="utf-8",
+        )
+        self.assertIn("if is_ltx25_repo(repo):\n                for name, value in LTX25_UNUSED_COMPONENTS.items():", source)
+
+    def test_the_pipelines_take_them_as_optional(self) -> None:
+        import importlib.util
+
+        if importlib.util.find_spec("diffusers") is None:
+            self.skipTest("diffusers not installed")
+        import diffusers
+
+        for name in ("LTX2Pipeline", "LTX2ImageToVideoPipeline", "LTX2ConditionPipeline"):
+            cls = getattr(diffusers, name, None)
+            if cls is None:
+                self.skipTest(f"diffusers has no {name}")
+            self.assertTrue(set(loader.LTX25_UNUSED_COMPONENTS) <= set(cls._optional_components), name)
 
     def test_big_cards_and_unified_memory_keep_the_text_encoder_bf16(self) -> None:
         for free, unified in ((48.0, False), (96.0, False), (10.0, True)):

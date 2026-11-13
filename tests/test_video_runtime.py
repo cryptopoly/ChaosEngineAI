@@ -325,6 +325,39 @@ class PreloadLifecycleTests(unittest.TestCase):
         self.assertIsNone(engine._loaded_repo)
 
 
+class FailedLoadReleaseTests(unittest.TestCase):
+    """A load that fails late must not keep the components it already loaded (LTX-2.5: 19 GB GPU, 21 GB RAM)."""
+
+    def test_components_loaded_before_the_failure_are_freed(self):
+        import weakref
+
+        class _Component:
+            pass
+
+        refs: list[Any] = []
+
+        def failing_load(repo, *args, **kwargs):
+            component = _Component()
+            refs.append(weakref.ref(component))
+            pipeline_kwargs = {"transformer": component}  # noqa: F841 - held by the frame, as in the real loader
+            raise ImportError("Gemma4VideoProcessor requires the Torchvision library")
+
+        engine = DiffusersVideoEngine()
+        with mock.patch.object(engine, "_load_or_reuse_pipeline", side_effect=failing_load):
+            with self.assertRaises(ImportError) as caught:
+                engine._ensure_pipeline("Lightricks/LTX-2.5-Diffusers", use_nf4=True)
+        self.assertIn("Torchvision", str(caught.exception))  # type and message survive
+        # The exception itself is still alive here (the route chains it into the HTTP error), yet it no longer
+        # reaches the loader's frame.
+        self.assertIsNone(refs[0]())
+
+    def test_a_successful_load_passes_through(self):
+        engine = DiffusersVideoEngine()
+        with mock.patch.object(engine, "_load_or_reuse_pipeline", return_value="P") as load:
+            self.assertEqual(engine._ensure_pipeline("r", use_nf4=True), "P")
+        load.assert_called_once_with("r", use_nf4=True)
+
+
 class VideoRuntimeManagerTests(unittest.TestCase):
     def test_capabilities_delegates_to_engine_probe(self):
         manager = VideoRuntimeManager()

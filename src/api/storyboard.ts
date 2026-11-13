@@ -160,6 +160,7 @@ export const storyboardOps = {
   pickTake: wrap("pick_take"),
   markRedo: wrap("mark_redo"),
   importTake: wrap("import_take"),
+  setEndImage: wrap("set_end_image"),
   relink: wrap("relink"),
   addAudio: wrap("add_audio"),
   editAudio: wrap("edit_audio"),

@@ -649,7 +649,7 @@
       "readOnlyHint": false,
       "title": "Storyboard shot"
     },
-    "description": "Edit: shots. add(fields), edit(shot_id, fields), remove, reorder(order), lock, unlock, pick_take(take_id), redo (marks for the next generate), import(path of a clip or still).",
+    "description": "Edit: shots. add(fields), edit(shot_id, fields), remove, reorder(order), lock, unlock, pick_take(take_id), redo (marks for the next generate), import(path of a clip or still), end_image(path; none clears; LTX-2).",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
@@ -663,7 +663,8 @@
             "unlock",
             "pick_take",
             "redo",
-            "import"
+            "import",
+            "end_image"
           ],
           "type": "string"
         },
@@ -679,7 +680,7 @@
           "type": "array"
         },
         "path": {
-          "description": "upload: handle, or a file in the app's output folders.",
+          "description": "upload: handle, or a file in the app's output folders (import, end_image).",
           "type": "string"
         },
         "project_id": {

@@ -1,13 +1,22 @@
 ---
 title: Closed follow-ups
 order: 3
-summary: 80 shipped, obsoleted or dropped rows, newest first.
+summary: 81 shipped, obsoleted or dropped rows, newest first.
 ---
 
 # Closed follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Shipped, obsoleted or dropped rows (struck through, or marked shipped with no open points left). Kept as the history of why things are the way they are.
 
+
+<details>
+<summary>FU-162 · Storyboard end frames: a picker in the shot editor and an end_image action in the agent's storyboard_shot tool — Shipped 2026-11-13 (Mac): the shot editor has an End frame section (choose from file, gallery or a project sti…</summary>
+
+**Status or trigger:** **Shipped 2026-11-13 (Mac): the shot editor has an End frame section (choose from file, gallery or a project still; remove) and the agent's `storyboard_shot` has an `end_image` action; not yet seen in the running app.**
+
+**Notes:** `set_end_image` (undoable; upload handle or file; empty clears) landed on `test/rtx4090` with route tests and an E2E check, because `Shot.endImage` was read by clip generation, the staleness check and the bundle but nothing could set it. LTX-2 models take it; TI2V-5B and the others refuse a shot that has one. Needs: an end-frame picker (only when the video model `acceptsEndImage`), the agent action (the tool descriptions are capped at 220 characters), and a Cast-style drop target.
+
+</details>
 
 <details>
 <summary>FU-148 · Qwen3-TTS 0.6B models: keep or hide — Dropped (owner 2026-11-08): the only saving is disk space, which few users will lack</summary>

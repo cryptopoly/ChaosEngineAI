@@ -12404,6 +12404,11 @@ button.licence-chip:focus-visible {
   display: flex;
   gap: 8px;
 }
+.shot-editor__end-thumb {
+  width: 100%;
+  max-width: 256px;
+  border-radius: var(--radius-sm);
+}
 .shot-editor__import,
 .shot-editor__gallery {
   display: flex;

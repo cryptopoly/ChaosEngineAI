@@ -174,4 +174,20 @@ describe("ShotEditorDrawer", () => {
     expect(html).toContain('aria-modal="true"');
     expect(html).not.toContain("alertdialog");
   });
+
+  it("offers an end frame picker, and removing it only once one is set", () => {
+    const project = { id: "p_1", references: { characters: [], places: [] } } as unknown as StoryboardProject;
+    const render = (endImage: string | null) =>
+      renderToStaticMarkup(
+        <ShotEditorDrawer
+          project={project} shot={{ ...shot(), endImage }} index={0} imageGallery={[]} videoGallery={[]}
+          busy={false} batchRunning={false} op={async () => true} onMake={noop} onClose={noop}
+        />,
+      );
+    expect(render(null)).toContain("Choose end frame");
+    expect(render(null)).not.toContain("Remove end frame");
+    const withEnd = render("media/s_1/end-1.png");
+    expect(withEnd).toContain("Change end frame");
+    expect(withEnd).toContain("Remove end frame");
+  });
 });

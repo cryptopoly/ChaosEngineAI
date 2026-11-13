@@ -6,6 +6,8 @@ import { RunEstimateStrip } from "../../components/RunEstimateStrip";
 import { ConfirmDialog } from "./ConfirmDialog";
 import type { ImageOutputArtifact, StoryboardProject, StoryboardShot, VideoOutputArtifact } from "../../types";
 import { PathField } from "./PathField";
+import { ReferenceImagePicker } from "./ReferenceImagePicker";
+import { ProjectImage } from "./ProjectMedia";
 import type { RunOp } from "./useStoryboard";
 import {
   draftFromShot,
@@ -41,6 +43,7 @@ export function ShotEditorDrawer({
   const [draft, setDraft] = useState<ShotDraft>(() => draftFromShot(shot));
   const [importError, setImportError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
+  const [pickingEnd, setPickingEnd] = useState(false);
   const opener = useRef<HTMLElement | null>(null);
   const root = useRef<HTMLElement>(null);
   const references = [...project.references.characters, ...project.references.places];
@@ -222,6 +225,52 @@ export function ShotEditorDrawer({
             ))
           )}
         </fieldset>
+
+        <fieldset className="shot-editor__refs shot-editor__end">
+          <legend className="eyebrow">{t("board.editor.endFrame", { defaultValue: "End frame" })}</legend>
+          <p className="muted-text">
+            {t("board.editor.endFrameHint", {
+              defaultValue: "The picture the clip should finish on. Only LTX-2 video models use it; the others will ask you to remove it.",
+            })}
+          </p>
+          {shot.endImage ? (
+            <ProjectImage
+              projectId={project.id}
+              rel={shot.endImage}
+              version={shot.endImage}
+              className="shot-editor__end-thumb"
+              alt={t("board.editor.endFrameAlt", { defaultValue: "End frame of shot {number}", number })}
+              thumb={256}
+            />
+          ) : null}
+          <div className="shot-editor__actions">
+            <button type="button" className="secondary-button" disabled={busy || batchRunning} onClick={() => setPickingEnd(true)}>
+              {shot.endImage
+                ? t("board.editor.endFrameChange", { defaultValue: "Change end frame" })
+                : t("board.editor.endFramePick", { defaultValue: "Choose end frame" })}
+            </button>
+            {shot.endImage ? (
+              <button
+                type="button"
+                className="secondary-button"
+                disabled={busy || batchRunning}
+                onClick={() => void op("set_end_image", { shotId: shot.id, image: "" })}
+              >
+                {t("board.editor.endFrameRemove", { defaultValue: "Remove end frame" })}
+              </button>
+            ) : null}
+          </div>
+        </fieldset>
+        {pickingEnd ? (
+          <ReferenceImagePicker
+            title={t("board.editor.endFramePickerTitle", { defaultValue: "End frame for shot {number}", number })}
+            project={project}
+            imageGallery={imageGallery}
+            room={1}
+            onPick={(source) => op("set_end_image", { shotId: shot.id, image: source })}
+            onClose={() => setPickingEnd(false)}
+          />
+        ) : null}
 
         <div className="shot-editor__actions">
           <button type="button" className="primary-button" disabled={!dirty || busy} onClick={() => void save()}>

@@ -748,7 +748,10 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "runtime": "diffusers Flux2Pipeline",
                 "styleTags": ["photoreal", "detailed", "multi-reference"],
                 "taskSupport": ["txt2img"],
-                "sizeGb": 64.0,
+                # The diffusers folders the app fetches: transformer 64.45 + text encoder 48.02 + VAE 0.34 GB
+                # (Hub file list, 2026-11-13). The repo is 177.6 GB because it also ships the single-file
+                # flux2-dev.safetensors (64.45 GB), which the allow patterns skip.
+                "sizeGb": 112.8,
                 "recommendedResolution": "1024x1024",
                 "note": "Full 32B FLUX.2 (gated — accept BFL's licence on HF). Up to 10 reference images for character/product/style consistency.",
                 "estimatedGenerationSeconds": 22.0,
@@ -889,7 +892,7 @@ LATEST_IMAGE_TRACKED_SEEDS: list[dict[str, Any]] = [
         "provider": "Black Forest Labs",
         "styleTags": ["general", "detailed", "flux"],
         "taskSupport": ["txt2img", "img2img"],
-        "sizeGb": 64.7,
+        "sizeGb": 112.8,  # diffusers folders only; see the curated FLUX.2 Dev row
         "runtimeFootprintGb": 65.0,
         "runtimeFootprintMpsGb": 78.0,
         "runtimeFootprintCpuGb": 90.0,

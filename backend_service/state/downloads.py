@@ -104,7 +104,16 @@ def start_download(
     if repo in state._downloads and state._downloads[repo].get("state") == "downloading":
         return state._downloads[repo]
 
-    total_gb = _known_repo_size_gb(repo)
+    # A video or image row that pins its files (LTX-2.5: 71 GB of a 162 GB repo, FLUX.2 Dev: 112.8 of 177.6 GB)
+    # sizes the bar with the catalog's download size, never the cached Hub total of the whole repo. Catalog GB
+    # are decimal, the bar counts GiB.
+    pinned_catalog_gb: float | None = None
+    if not allow_patterns and (_video_repo_allow_patterns(repo) or _image_repo_allow_patterns(repo)):
+        catalog_gb = _known_repo_size_gb(repo, catalog_only=True)
+        if isinstance(catalog_gb, (int, float)) and catalog_gb > 0:
+            pinned_catalog_gb = round(float(catalog_gb) * 1e9 / 1024 ** 3, 2)
+
+    total_gb = pinned_catalog_gb or _known_repo_size_gb(repo)
     downloaded_gb = _bytes_to_gb(_hf_repo_downloaded_bytes(repo))
     try:
         preflight_total_gb = _hf_repo_preflight_size_gb(repo)
@@ -159,13 +168,10 @@ def start_download(
         or music_repo_allow_patterns(repo)
         or text_patterns
     )
-    # A video or image row that pins its files (LTX-2.5: 71 GB of a 162 GB repo) sizes the bar with the catalog's
-    # download size, not the whole repo (the preflight counts every file). The Hub file preview lists only the top
-    # level, so it cannot be summed against the patterns the way text and music rows are.
-    if not allow_patterns and (_video_repo_allow_patterns(repo) or _image_repo_allow_patterns(repo)):
-        catalog_gb = _known_repo_size_gb(repo)
-        if isinstance(catalog_gb, (int, float)) and catalog_gb > 0:
-            total_gb = round(float(catalog_gb) * 1e9 / 1024 ** 3, 2)  # catalog GB are decimal, the bar counts GiB
+    # The preflight counts every file of the repo; a pinned row keeps the catalog size (above). The Hub file
+    # preview lists only the top level, so it cannot be summed against the patterns the way text and music rows are.
+    if pinned_catalog_gb:
+        total_gb = pinned_catalog_gb
     # A music row's companion repo (Stable Audio's T5 text encoder) is fetched after the model itself, so
     # the bar counts it too: otherwise it sat at 99 % while the last 0.9 GB came down.
     companion_total_bytes = 0

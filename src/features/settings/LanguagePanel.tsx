@@ -44,7 +44,7 @@ interface LocaleEntry {
 }
 
 const REPO_TRANSLATIONS_BASE =
-  "https://github.com/anthropics/ChaosEngineAI/tree/main/src/locales";
+  "https://github.com/cryptopoly/ChaosEngineAI/tree/main/src/locales";
 
 export interface LanguagePanelProps {
   settingsDraft: SettingsDraft;

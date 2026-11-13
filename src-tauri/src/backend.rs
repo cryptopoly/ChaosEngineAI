@@ -356,11 +356,10 @@ impl BackendManager {
         // Alive but silent: a slow cold start, not a failure. runtime_info()
         // drops this note once the port answers.
         inner.startup_note_soft = true;
-        inner.info.startup_error = Some(if detail.is_empty() {
-            "The backend sidecar has not answered yet and may still be starting.".to_string()
-        } else {
-            format!("The backend sidecar has not answered yet and may still be starting. {detail}")
-        });
+        // No log tail here: the splash would print raw access-log lines. The
+        // log path is shown after 45 s, and a crash still carries the tail.
+        inner.info.startup_error =
+            Some("The backend sidecar has not answered yet and may still be starting.".to_string());
     }
 
     fn sidecar_running(&self) -> bool {

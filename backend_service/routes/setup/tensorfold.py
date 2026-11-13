@@ -114,6 +114,15 @@ def _apple_silicon() -> bool:
     return sys.platform == "darwin" and platform.machine() == "arm64"
 
 
+def _use_native_status() -> bool:
+    """Native 1.x status everywhere, except a Mac that has only the old Python install."""
+    if not _apple_silicon():
+        return True
+    from backend_service.inference import _tensorfold_native as native
+
+    return native.find_binary() is not None or not _is_installed()
+
+
 def _job_worker(extras: list[str]) -> None:
     """Run install-tensorfold.sh and stream its output into the job state."""
     from backend_service.inference._utils import _isolated_child_env
@@ -207,6 +216,22 @@ def _refresh_capabilities() -> None:
 @router.get("/api/setup/tensorfold-status")
 def tensorfold_status() -> dict[str, Any]:
     """Lightweight probe: is TensorFold installed, and can this machine run it?"""
+    if _use_native_status():
+        from backend_service.routes.setup.tensorfold_native import native_status
+
+        state = native_status()
+        return {
+            "installed": state["installed"],
+            "version": state["version"],
+            "installedAt": None,
+            "ref": None,
+            "venvPath": state["binary"],
+            # On a Mac the binary carries image input and grammar itself.
+            "extras": ["vision", "grammar"] if _apple_silicon() and state["installed"] else [],
+            "supported": state["gate"]["offered"],
+            "engine": "native",
+            "gate": state["gate"],
+        }
     installed = _is_installed()
     version, installed_at, ref = _read_version_file()
     return {
@@ -226,11 +251,20 @@ def tensorfold_status() -> dict[str, Any]:
 class InstallTensorfoldRequest(BaseModel):
     # Optional extras to add: any of ``OPTIONAL_EXTRAS``. Empty = the base install.
     extras: list[str] = Field(default_factory=list)
+    # Mac only: install the older Python engine (0.6.6) instead of the native binary.
+    legacy: bool = False
 
 
 @router.post("/api/setup/install-tensorfold")
 def start_tensorfold_install(body: InstallTensorfoldRequest | None = None) -> dict[str, Any]:
     """Start the TensorFold install job. Returns immediately; poll the status endpoint."""
+    # Every platform installs the native 1.x binary (no venv, no bash). Only a
+    # Mac can ask for the older Python install (``legacy``), which three model
+    # families the native binary does not serve still need.
+    if not (body is not None and body.legacy and _apple_silicon()):
+        from backend_service.routes.setup.tensorfold_native import start_install
+
+        return start_install()
     extras = [extra for extra in OPTIONAL_EXTRAS if body is not None and extra in body.extras]
     unknown = sorted(set(body.extras) - set(OPTIONAL_EXTRAS)) if body is not None else []
     if unknown:
@@ -256,4 +290,8 @@ def start_tensorfold_install(body: InstallTensorfoldRequest | None = None) -> di
 @router.get("/api/setup/install-tensorfold/status")
 def tensorfold_install_status() -> dict[str, Any]:
     """Poll the running install job."""
-    return _JOB.to_dict()
+    if _JOB.started_at:
+        return _JOB.to_dict()
+    from backend_service.routes.setup.tensorfold_native import job_state
+
+    return job_state()

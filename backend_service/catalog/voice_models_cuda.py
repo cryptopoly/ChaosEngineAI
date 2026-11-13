@@ -7,6 +7,10 @@ GGUF weights instead of the MLX conversions:
   speech GPU add-on, ``voice_env.speech_gpu_commands``). That package adds Resemble's PerTh watermark to every
   output (``builtinWatermark: "perth"``); the AI tag on cloned speech records it.
 * VoxCPM2 runs through ``voxcpm`` (also ``--no-deps``), denoiser off.
+* Qwen3-TTS (Base, CustomVoice, VoiceDesign, 0.6B and 1.7B) runs through ``qwen-tts``. It needs transformers 4.57, so
+  it has its own worker and its own transformers folder (``voice_env.QWEN_TTS_SITE_PACKAGES``). These rows have
+  numbers measured on an RTX 4090 and carry ``minVramGb`` and ``minComputeCap``, which ``voice_gpu`` checks against
+  the GPU in this computer.
 * Orpheus 3B runs as a GGUF through the ``llama-server`` we already ship, and its audio codes are decoded by the SNAC
   decoder in ONNX on onnxruntime (no PyTorch, no vLLM).
 
@@ -22,7 +26,59 @@ from typing import Any
 
 from backend_service.catalog import voice_models as _mlx
 
+# Qwen3-TTS through ``qwen-tts`` (Apache-2.0), the upstream bf16 weights. It needs transformers 4.57, so it runs in its
+# own worker with its own transformers folder (``voice_env.QWEN_TTS_SITE_PACKAGES``, ``voice_client.get_qwen_worker``).
+# Revisions checked through the Hub API with no token on 2026-11-11; none is gated. Only the files the loader reads.
+_QWEN_FILES = [
+    "config.json", "generation_config.json", "merges.txt", "model.safetensors", "preprocessor_config.json",
+    "speech_tokenizer/config.json", "speech_tokenizer/configuration.json", "speech_tokenizer/model.safetensors",
+    "speech_tokenizer/preprocessor_config.json", "tokenizer_config.json", "vocab.json",
+]
+_QWEN_MEASURED_ON = "NVIDIA RTX 4090 24 GB, Windows 11, driver 591.86, 2026-11-11"
+_QWEN_GPU_NEEDS = {"minComputeCap": 7.0}  # PyTorch's CUDA 12.8 wheels start at Volta; bf16 from Ampere, fp16 below
+
+
+def _qwen(key: str, name: str, summary: str, variant: str, revision: str, size_gb: float, kind: str,
+          capabilities: dict[str, bool], *, cold: float, per10: float, short: float, peak: float) -> dict[str, Any]:
+    """One Qwen3-TTS GPU row. Numbers from the live run through the app (docs/progress/rtx4090-progress.md): ``cold``
+    is the first short line minus the same line warm (worker start excluded, model load, and for a cloning row the
+    watermark worker), ``per10`` the wall seconds per 10 s of speech for a 600-character text in 6 chunks, ``short``
+    one 12-word line warm, ``peak`` the GPU memory the worker added over idle (nvidia-smi, CUDA context included).
+    The model stays resident after a request, so idle equals peak. ``minVramGb`` is the peak plus 0.7 GB, rounded."""
+    return {
+        "key": key, "name": name, "summary": summary,
+        "repo": f"Qwen/Qwen3-TTS-12Hz-{variant}", "revision": revision, "files": list(_QWEN_FILES),
+        "upstream": f"Qwen/Qwen3-TTS-12Hz-{variant}", "sizeGb": size_gb, "engine": "torch", "lanes": ["cuda"],
+        "languages": "10 languages", "kind": kind, "family": "qwen3-tts", "capabilities": capabilities,
+        "minVramGb": round(peak + 0.7, 1), **_QWEN_GPU_NEEDS,
+        "estimates": {
+            "basis": "measured", "measuredOn": _QWEN_MEASURED_ON, "coldStartSeconds": cold,
+            "secondsPer10sAudio": per10, "wallSecondsShortLine": short, "peakGb": peak, "idleGb": peak,
+        },
+    }
+
+
 CUDA_VOICE_MODELS: list[dict[str, Any]] = [
+    _qwen("qwen3-tts-0.6b-cuda", "Qwen3-TTS 0.6B Base (GPU)",
+          "Clones a voice from 10 to 20 s of clean speech; needs about 3.5 GB of GPU memory.", "0.6B-Base",
+          "5d83992436eae1d760afd27aff78a71d676296fc", 2.52, "base", {"clone": True},
+          cold=19.9, per10=19.09, short=9.69, peak=3.42),
+    _qwen("qwen3-tts-1.7b-cuda", "Qwen3-TTS 1.7B Base (GPU)",
+          "Closer likeness from a voice sample; needs about 5.3 GB of GPU memory. No quicker than the 0.6B model.",
+          "1.7B-Base", "fd4b254389122332181a7c3db7f27e918eec64e3", 4.54, "base", {"clone": True},
+          cold=15.7, per10=24.07, short=8.9, peak=5.31),
+    _qwen("qwen3-tts-custom-0.6b-cuda", "Qwen3-TTS 0.6B CustomVoice (GPU)",
+          "Nine preset voices; ignores the style instruction. Smallest in GPU memory (about 2.8 GB), no quicker.",
+          "0.6B-CustomVoice", "85e237c12c027371202489a0ec509ded67b5e4b5", 2.50, "custom", {"speak": True},
+          cold=8.5, per10=17.06, short=8.74, peak=2.83),
+    _qwen("qwen3-tts-custom-1.7b-cuda", "Qwen3-TTS 1.7B CustomVoice (GPU)",
+          "Nine preset voices and a written style instruction; about 4.7 GB of GPU memory.", "1.7B-CustomVoice",
+          "0c0e3051f131929182e2c023b9537f8b1c68adfe", 4.52, "custom", {"speak": True, "style": True},
+          cold=9.3, per10=17.19, short=8.25, peak=4.68),
+    _qwen("qwen3-tts-design-1.7b-cuda", "Qwen3-TTS 1.7B VoiceDesign (GPU)",
+          "Describe a voice in words and it speaks in that voice; about 4.6 GB of GPU memory.", "1.7B-VoiceDesign",
+          "5ecdb67327fd37bb2e042aab12ff7391903235d3", 4.52, "design", {"speak": True, "style": True, "design": True},
+          cold=9.3, per10=17.16, short=7.6, peak=4.58),
     {
         "key": "chatterbox-turbo-cuda",
         "name": "Chatterbox-Turbo (GPU)",
@@ -30,13 +86,14 @@ CUDA_VOICE_MODELS: list[dict[str, Any]] = [
         "repo": "ResembleAI/chatterbox-turbo",
         "revision": "749d1c1a46eb10492095d68fbcf55691ccf137cd",
         "files": [
-            # Both decoders: which one from_local reads is confirmed on the 4090 (then the other can go).
-            "added_tokens.json", "conds.pt", "merges.txt", "s3gen.safetensors", "s3gen_meanflow.safetensors",
+            # chatterbox-tts 0.1.7 ChatterboxTurboTTS.from_local builds S3Gen(meanflow=True) and loads only
+            # s3gen_meanflow.safetensors (checked on the RTX 4090 run); s3gen.safetensors (about 1 GB) is never read.
+            "added_tokens.json", "conds.pt", "merges.txt", "s3gen_meanflow.safetensors",
             "special_tokens_map.json", "t3_turbo_v1.safetensors", "t3_turbo_v1.yaml", "tokenizer_config.json",
             "ve.safetensors", "vocab.json",
         ],
         "upstream": "ResembleAI/chatterbox-turbo",
-        "sizeGb": 4.04,
+        "sizeGb": 2.99,
         "engine": "torch",
         "lanes": ["cuda"],
         "languages": "English",

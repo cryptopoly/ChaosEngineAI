@@ -13,6 +13,27 @@ from __future__ import annotations
 from typing import Any
 
 
+# LTX-2.3 diffusers-format repos -> True for the distilled model (8 steps with a fixed sigma schedule, no guidance).
+# Sizes on disk: the official bf16 repos are ~100 GB (a fp32 Gemma 3 12B text encoder is half of that); the NF4 pack
+# is ~31 GB. The dev NF4 pack (`OzzyGT/LTX-2.3-bnb-nf4`) is left out: it holds every connector file twice and needs a
+# partial download this catalog has not been run with. LTX-2.5 (gated, `Lightricks/LTX-2.5-Diffusers`, a Gemma 4 text
+# encoder) is listed as its distilled pipeline only; its 4-bit-on-load branch lives in ``ltx25_loader``.
+LTX2_DIFFUSERS_REPOS: dict[str, bool] = {
+    "diffusers/LTX-2.3-Diffusers": False,
+    "diffusers/LTX-2.3-Distilled-Diffusers": True,
+    "OzzyGT/LTX-2.3-Distilled-bnb-nf4": True,
+    "Lightricks/LTX-2.5-Diffusers": True,
+}
+
+
+def is_ltx2_diffusers_repo(repo: str) -> bool:
+    return repo in LTX2_DIFFUSERS_REPOS
+
+
+def is_ltx2_distilled_repo(repo: str) -> bool:
+    return LTX2_DIFFUSERS_REPOS.get(repo, False)
+
+
 # Maps a Hugging Face repo id to the diffusers pipeline class that loads it.
 # The class name is looked up dynamically on the ``diffusers`` module so we
 # don't blow up at import time if the installed diffusers is older than
@@ -39,7 +60,39 @@ PIPELINE_REGISTRY: dict[str, dict[str, str]] = {
     "THUDM/CogVideoX-2b": {"class_name": "CogVideoXPipeline", "task": "txt2video"},
     "THUDM/CogVideoX-5b": {"class_name": "CogVideoXPipeline", "task": "txt2video"},
     "THUDM/CogVideoX1.5-5B": {"class_name": "CogVideoXPipeline", "task": "txt2video"},
+    # LTX-2.3 on diffusers (video with sound). Official bf16 packs for large GPUs and 4-bit (bitsandbytes NF4) packs
+    # for 24 GB cards; every one is loaded by the same class, the quantisation lives in the component configs.
+    **{repo: {"class_name": "LTX2Pipeline", "task": "txt2video"} for repo in LTX2_DIFFUSERS_REPOS},
 }
+
+
+# Repos whose diffusers pipeline can start from a picture, and which class does it. A run with a start image loads
+# this class (same weights as the text-to-video one, so the pipeline is rebuilt when the mode changes). ``endImage``
+# says whether the class also takes a last frame: Wan 2.2 TI2V-5B expands its timesteps per frame and only follows
+# the first. The LTX-2 MLX engine is not diffusers and is handled by ``image_input_support``.
+IMAGE_TO_VIDEO_REGISTRY: dict[str, dict[str, Any]] = {
+    "Wan-AI/Wan2.2-TI2V-5B-Diffusers": {"class_name": "WanImageToVideoPipeline", "endImage": False},
+    # LTX-2: a start picture goes to the image-to-video class, a start and an end picture (or an end alone) to the
+    # condition class, which takes the pictures as conditions at the first and last frame.
+    **{
+        repo: {
+            "class_name": "LTX2ImageToVideoPipeline",
+            "endImage": True,
+            "endClassName": "LTX2ConditionPipeline",
+        }
+        for repo in LTX2_DIFFUSERS_REPOS
+    },
+}
+
+
+def image_input_support(repo: str) -> tuple[bool, bool]:
+    """``(takes a start image, takes an end image)`` for a video repo, on any engine this app drives."""
+    from backend_service.ltx2_mlx_runtime import _is_ltx2_mlx_repo
+
+    if _is_ltx2_mlx_repo(repo):
+        return True, True
+    entry = IMAGE_TO_VIDEO_REGISTRY.get(repo)
+    return (True, bool(entry.get("endImage"))) if entry else (False, False)
 
 
 # Maps a base repo to the diffusers transformer class used when loading
@@ -74,6 +127,10 @@ _BNB_NF4_VIDEO_TRANSFORMER_CLASSES: dict[str, str] = {
     "Wan-AI/Wan2.2-TI2V-5B-Diffusers": "WanTransformer3DModel",
     "hunyuanvideo-community/HunyuanVideo": "HunyuanVideoTransformer3DModel",
     "Lightricks/LTX-Video": "LTXVideoTransformer3DModel",
+    # The LTX-2 family (video with sound). The pre-quantised 2.3 pack is already 4-bit and is not listed.
+    "diffusers/LTX-2.3-Diffusers": "LTX2VideoTransformer3DModel",
+    "diffusers/LTX-2.3-Distilled-Diffusers": "LTX2VideoTransformer3DModel",
+    "Lightricks/LTX-2.5-Diffusers": "LTX2VideoTransformer3DModel",
 }
 
 
@@ -115,6 +172,12 @@ _VIDEO_PIPELINE_DEFAULTS: dict[str, dict[str, Any]] = {
     # CogVideoX 1.5 5B inherits the 5B defaults — refreshed weights but
     # the same step / CFG sweet spot per upstream model card.
     "THUDM/CogVideoX1.5-5B": {"steps": 50, "guidance": 7.0, "scheduler": None},
+    # LTX-2.3: the dev model runs 30 steps at CFG 3 (Lightricks card), the distilled one 8 steps at CFG 1 with its
+    # fixed sigma schedule. The scheduler is the pipeline's own flow-match Euler: never swapped.
+    **{
+        repo: ({"steps": 8, "guidance": 1.0, "scheduler": None} if distilled else {"steps": 30, "guidance": 3.0, "scheduler": None})
+        for repo, distilled in LTX2_DIFFUSERS_REPOS.items()
+    },
 }
 
 # Schema-level defaults — must mirror ``VideoGenerationRequest`` in

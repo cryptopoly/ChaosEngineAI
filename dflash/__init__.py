@@ -168,14 +168,33 @@ def _normalize_ref(model_ref: str) -> str:
     return ref
 
 
+def _match_dflash2(target_ref: str) -> str | None:
+    """DFlash 2 draft for *target_ref*: exact key, else the base name inside it.
+
+    vLLM serves quantised community packs (``RedHatAI/Qwen3.8-27B-INT4``,
+    ``Qwen/Qwen3.8-27B-FP8``, a local snapshot folder) of the same target, so
+    an exact-key lookup left every runnable 27B on a 24-32 GB card without
+    its drafter. Longest base name first, case-insensitive.
+    """
+    if target_ref in DFLASH2_DRAFT_MODEL_MAP:
+        return DFLASH2_DRAFT_MODEL_MAP[target_ref]
+    ref_lower = target_ref.replace("\\", "/").lower()
+    for key, draft in sorted(DFLASH2_DRAFT_MODEL_MAP.items(), key=lambda kv: -len(kv[0])):
+        if key.split("/", 1)[-1].lower() in ref_lower:
+            return draft
+    return None
+
+
 def get_draft_model(target_ref: str, *, allow_dflash2: bool = False) -> str | None:
     """Return the DFLASH draft model checkpoint for *target_ref*, or ``None``.
 
     ``allow_dflash2`` also consults ``DFLASH2_DRAFT_MODEL_MAP`` (vLLM
     only); an exact DFlash 2 match wins there since it's the faster draft.
     """
-    if allow_dflash2 and target_ref in DFLASH2_DRAFT_MODEL_MAP:
-        return DFLASH2_DRAFT_MODEL_MAP[target_ref]
+    if allow_dflash2:
+        dflash2_draft = _match_dflash2(target_ref)
+        if dflash2_draft:
+            return dflash2_draft
     # 1. Exact match
     if target_ref in DRAFT_MODEL_MAP:
         return DRAFT_MODEL_MAP[target_ref]
@@ -291,40 +310,38 @@ def supported_models() -> list[str]:
 def is_ddtree_available() -> bool:
     """True when DDTree (tree-based speculative decoding) can run.
 
-    DDTree requires the same dflash_mlx runtime as linear DFlash, plus
-    access to ``dflash_mlx.runtime`` primitives for tree verification.
-
-    The required-symbol set mirrors what our code actually imports from
-    ``dflash_mlx.runtime`` (see FU-006): ``resolve_target_ops`` is the
-    per-family adapter entry point ``backend_service/ddtree.py`` calls to
-    reach ``forward_with_hidden_capture`` / ``extract_context_feature`` /
-    ``make_cache`` (these moved off the runtime top level onto a
-    ``target_ops`` object in dflash-mlx 0.1.5); ``load_draft_bundle`` is
-    used by the worker lifecycle; ``stream_dflash_generate`` drives the
-    linear path. The pre-0.1.5 symbol ``target_forward_with_hidden_states``
-    was renamed to ``target_ops.forward_with_hidden_capture`` and must NOT
-    be required here, or the probe wrongly reports DDTree unavailable on
-    every modern dflash-mlx build.
+    DDTree needs the same dflash_mlx runtime as linear DFlash. The probe
+    reads the source of each module our code imports from (no import, so no
+    MLX load at startup) and checks the symbol is defined there, mirroring
+    the dflash-mlx 0.1.10 layout (FU-057): ``resolve_target_ops`` in
+    ``engine.target_ops`` (``backend_service/ddtree.py``), ``load_draft_bundle``
+    in ``runtime.loading`` (worker lifecycle), ``stream_dflash_generate`` in
+    ``runtime`` (linear path) and ``EagerDraftBackend`` in ``draft_backend``.
+    A module whose source cannot be read counts as present.
     """
-    try:
-        runtime_spec = importlib.util.find_spec("dflash_mlx.runtime")
-    except ModuleNotFoundError:
-        return False
-    if runtime_spec is None:
-        return False
-    runtime_path = getattr(runtime_spec, "origin", None)
-    if not runtime_path:
-        return True
-    try:
-        source = Path(runtime_path).read_text(encoding="utf-8", errors="ignore")
-    except OSError:
-        return True
-    required_symbols = (
-        "resolve_target_ops",
-        "load_draft_bundle",
-        "stream_dflash_generate",
+    required = (
+        ("dflash_mlx.engine.target_ops", "resolve_target_ops"),
+        ("dflash_mlx.runtime.loading", "load_draft_bundle"),
+        ("dflash_mlx.runtime", "stream_dflash_generate"),
+        ("dflash_mlx.draft_backend", "EagerDraftBackend"),
     )
-    return all(symbol in source for symbol in required_symbols)
+    for module_name, symbol in required:
+        try:
+            spec = importlib.util.find_spec(module_name)
+        except (ModuleNotFoundError, ValueError):
+            return False
+        if spec is None:
+            return False
+        origin = getattr(spec, "origin", None)
+        if not origin:
+            continue
+        try:
+            source = Path(origin).read_text(encoding="utf-8", errors="ignore")
+        except OSError:
+            continue
+        if symbol not in source:
+            return False
+    return True
 
 
 def availability_info() -> dict[str, Any]:

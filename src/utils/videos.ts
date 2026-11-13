@@ -521,13 +521,44 @@ function nf4RuntimeFootprintForRepo(repo: string | null | undefined, runtimeFoot
  * the real run fits inside 24 GB on a 4090. */
 const CUDA_OVERRIDE_ATTENTION_DISCOUNT = 0.6;
 
+/** Video working memory per 1,000 latent tokens (``W/16 x H/16 x F/4``) with PyTorch's attention on CUDA, which
+ * never holds the full score matrix, so memory grows with the token count rather than its square. Fitted on an
+ * RTX 4090 with Wan 2.2 TI2V 5B (model offload): 11.0 / 12.9 / 12.7 / 17.3 GB at 832x480x49, 832x480x121,
+ * 1280x704x49 and 1280x704x121, where the quadratic term said 22 / 33 / 31 / 119 GB. */
+const CUDA_VIDEO_GB_PER_1K_TOKENS = 0.071;
+/** The video runtime's model-offload rule (``video_runtime/defaults.py``): a pipeline taking more than this share
+ * of the card is offloaded by component, unless this much would still be free beside it. */
+const CUDA_MODEL_OFFLOAD_SHARE = 0.6;
+const CUDA_ACTIVATION_HEADROOM_GB = 16;
+
+function cudaVideoActivationGb(latentTokens: number): number {
+  return (latentTokens / 1000) * CUDA_VIDEO_GB_PER_1K_TOKENS;
+}
+
+/** True when the runtime would place this pipeline with model CPU offload on a card of ``budgetGb``. */
+function cudaOffloadsByModel(modelFootprintGb: number, budgetGb: number): boolean {
+  return (
+    modelFootprintGb > CUDA_MODEL_OFFLOAD_SHARE * budgetGb
+    && budgetGb - modelFootprintGb < CUDA_ACTIVATION_HEADROOM_GB
+  );
+}
+
 function estimateVideoRequestPeakGb(opts: {
   modelFootprintGb: number;
   attentionPeakGb: number;
   device: VideoEffectiveDevice;
   hasRuntimeFootprintOverride: boolean;
+  /** CUDA only: the card's budget, so the estimate follows the runtime's offload placement. */
+  cudaBudgetGb?: number;
 }): number {
-  const { modelFootprintGb, attentionPeakGb, device, hasRuntimeFootprintOverride } = opts;
+  const { modelFootprintGb, attentionPeakGb, device, hasRuntimeFootprintOverride, cudaBudgetGb } = opts;
+  if (device === "cuda" && cudaBudgetGb != null && modelFootprintGb > 0) {
+    // Linear activation term (``cudaVideoActivationGb``): whole pipeline plus activations when it stays on the
+    // card, one component at a time (0.55 of it) plus activations when the runtime offloads by model.
+    return cudaOffloadsByModel(modelFootprintGb, cudaBudgetGb)
+      ? modelFootprintGb * 0.55 + attentionPeakGb
+      : modelFootprintGb + attentionPeakGb;
+  }
   if (device === "cuda" && hasRuntimeFootprintOverride && modelFootprintGb > 0) {
     // Catalog CUDA runtime footprints are phase peaks for pipelines with
     // offload / sequential text-encoder handling. Adding the full attention
@@ -745,14 +776,21 @@ function assessVideoGenerationSafetyForBudget(opts: {
 
   const latentTokens =
     Math.ceil(width / 16) * Math.ceil(height / 16) * Math.ceil(numFrames / 4);
-  const attentionPeakGb = opts.skipAttentionEstimate
-    ? ltxGrowthGb(latentTokens)
-    : estimatePeakAttentionBytes(latentTokens, effectiveDevice) / 1024 ** 3;
+  const linearCuda = effectiveDevice === "cuda" && !opts.skipAttentionEstimate;
+  const activationGb = (tokens: number): number => (
+    opts.skipAttentionEstimate
+      ? ltxGrowthGb(tokens)
+      : linearCuda
+        ? cudaVideoActivationGb(tokens)
+        : estimatePeakAttentionBytes(tokens, effectiveDevice) / 1024 ** 3
+  );
+  const attentionPeakGb = activationGb(latentTokens);
   const estimatedPeakGb = estimateVideoRequestPeakGb({
     modelFootprintGb,
     attentionPeakGb,
     device: effectiveDevice,
     hasRuntimeFootprintOverride,
+    cudaBudgetGb: linearCuda ? budgetGb : undefined,
   });
 
   // Risk thresholds expressed as a fraction of the effective memory
@@ -872,9 +910,10 @@ function assessVideoGenerationSafetyForBudget(opts: {
       * Math.ceil(suggestedFrames / 4);
     const peakGb = estimateVideoRequestPeakGb({
       modelFootprintGb,
-      attentionPeakGb: estimatePeakAttentionBytes(tokens, effectiveDevice) / 1024 ** 3,
+      attentionPeakGb: activationGb(tokens),
       device: effectiveDevice,
       hasRuntimeFootprintOverride,
+      cudaBudgetGb: linearCuda ? budgetGb : undefined,
     });
     if (peakGb / budgetGb < safeRatioTarget) break;
     if (suggestedFrames > 17) {

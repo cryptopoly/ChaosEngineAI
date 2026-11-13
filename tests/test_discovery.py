@@ -30,6 +30,56 @@ class PathSizeBytesTests(unittest.TestCase):
             total = _path_size_bytes(root)
             self.assertEqual(total, 2048 + 4096 + 2)
 
+    def test_hf_blob_and_its_snapshot_link_count_once_when_scandir_has_no_inodes(self):
+        # Windows: os.scandir's cached stat reports st_ino/st_dev 0 for plain files but real ids for a followed
+        # symlink, so a Hugging Face blob and the snapshot link to it were both counted (RTX 4090 run: every
+        # cached model showed twice its size). Simulate that scandir on any OS.
+        from unittest import mock
+
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "models--org--name"
+            (repo / "blobs").mkdir(parents=True)
+            (repo / "snapshots" / "rev").mkdir(parents=True)
+            blob = repo / "blobs" / "abc123"
+            blob.write_bytes(b"w" * 4096)
+            try:
+                os.symlink(str(blob), str(repo / "snapshots" / "rev" / "model.bin"))
+            except (OSError, NotImplementedError):
+                self.skipTest("symlinks not allowed here")
+
+            real_scandir = os.scandir
+
+            class ZeroInodeEntry:
+                def __init__(self, entry):
+                    self._entry = entry
+                    self.path, self.name = entry.path, entry.name
+
+                def is_dir(self, follow_symlinks=True):
+                    return self._entry.is_dir(follow_symlinks=follow_symlinks)
+
+                def is_symlink(self):
+                    return self._entry.is_symlink()
+
+                def stat(self, follow_symlinks=True):
+                    st = self._entry.stat(follow_symlinks=follow_symlinks)
+                    if self._entry.is_symlink():
+                        return st
+                    return os.stat_result((st.st_mode, 0, 0, st.st_nlink, st.st_uid, st.st_gid, st.st_size,
+                                           int(st.st_atime), int(st.st_mtime), int(st.st_ctime)))
+
+            class Wrapper:
+                def __init__(self, path):
+                    self._it = real_scandir(path)
+
+                def __enter__(self):
+                    return (ZeroInodeEntry(e) for e in self._it)
+
+                def __exit__(self, *exc):
+                    self._it.close()
+
+            with mock.patch("backend_service.helpers.discovery.os.scandir", Wrapper):
+                self.assertEqual(_path_size_bytes(repo), 4096)
+
     def test_skips_symlink_loops(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "loop"

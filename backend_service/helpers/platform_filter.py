@@ -53,21 +53,31 @@ def is_mlx_only_variant(variant: dict[str, Any]) -> bool:
     return any(marker in runtime for marker in _MLX_ONLY_RUNTIME_MARKERS)
 
 
+def is_cuda_only_variant(variant: dict[str, Any]) -> bool:
+    """True iff the variant is declared ``cudaOnly``: it runs through diffusers and is known-bad on Apple's MPS.
+
+    Wan 2.2 TI2V-5B is the case: PyTorch MPS corrupts its bf16 output (FU-102, FU-125), so a Mac is not offered it.
+    """
+    return variant.get("cudaOnly") is True
+
+
 def filter_mlx_only_families(
     families: list[dict[str, Any]],
     *,
     on_apple_silicon: bool,
 ) -> list[dict[str, Any]]:
-    """Strip MLX-only variants from a catalog payload on non-Apple hosts.
+    """Strip the variants that cannot run on this host from a catalog payload.
 
-    On Apple Silicon every variant is preserved untouched. On every other
-    OS the MLX-only variants are dropped from each family's ``variants``
-    list, and any family whose entire variant set is MLX-only is dropped
-    from the result so the UI doesn't render an empty card.
+    On Apple Silicon the ``cudaOnly`` variants are dropped. On every other OS the MLX-only variants are dropped from
+    each family's ``variants`` list. A family left with no variants is dropped from the result so the UI doesn't
+    render an empty card.
 
     Returns a new list — the input is not mutated.
     """
-    if on_apple_silicon:
+    unavailable = is_cuda_only_variant if on_apple_silicon else is_mlx_only_variant
+    if on_apple_silicon and not any(
+        is_cuda_only_variant(variant) for family in families for variant in family.get("variants", [])
+    ):
         return families
 
     filtered: list[dict[str, Any]] = []
@@ -75,7 +85,7 @@ def filter_mlx_only_families(
         variants = [
             variant
             for variant in family.get("variants", [])
-            if not is_mlx_only_variant(variant)
+            if not unavailable(variant)
         ]
         if not variants:
             continue

@@ -267,3 +267,21 @@ def _field(text, name):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ToolRoutingDescriptionTests(unittest.TestCase):
+    """Section 5 of the RTX 4090 test: a model asked for posters made empty Storyboard projects and claimed renders."""
+
+    def test_generate_image_says_what_it_is_for_and_where_film_stills_come_from(self):
+        from backend_service.mcp_bridge.tools import TOOLS
+
+        text = next(t for t in TOOLS if t["name"] == "generate_image")["description"]
+        self.assertIn("poster", text)
+        self.assertIn("storyboard_generate", text)
+        self.assertLessEqual(len(text), 220)
+
+    def test_the_server_instructions_keep_posters_out_of_film_projects(self):
+        from backend_service.mcp_bridge.protocol import INSTRUCTIONS
+
+        self.assertIn("A poster or any single picture is generate_image, never a film project", INSTRUCTIONS)
+        self.assertIn("starts empty", INSTRUCTIONS)

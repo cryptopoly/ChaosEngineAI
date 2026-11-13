@@ -45,7 +45,7 @@ class _Sandbox(unittest.TestCase):
             mock.patch.object(voice_env, "VOICE_VENV_DIR", venv),
             mock.patch.object(voice_env, "VOICE_DATA_DIR", self.data),
             mock.patch.object(voice_env, "_MARKER", self.marker),
-            mock.patch.object(voice_env.os, "name", "posix"),
+            mock.patch.object(voice_env, "_is_windows", return_value=False),
             mock.patch.dict(os.environ, {"CHAOSENGINE_VOICE_LANE": self.LANE, "HF_HUB_CACHE": str(self.cache),
                                          "HUGGINGFACE_HUB_CACHE": str(self.cache)}),
             mock.patch.object(voice_model_files, "voice_busy_reason", return_value=None),

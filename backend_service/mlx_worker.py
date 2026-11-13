@@ -116,6 +116,8 @@ class WorkerState:
         self.speculative_decoding = False
         self._dflash_generator = None  # Loaded DFlash draft model when active
         self._dflash_target = None     # Target model prepared by dflash_mlx.runtime
+        self._dflash_target_ops = None     # dflash-mlx per-family adapter for the target
+        self._dflash_draft_backend = None  # dflash-mlx draft backend (EagerDraftBackend)
         self.tree_budget = 0
         self._ddtree_draft = None     # DFlashDraftModel for DDTree
         self._ddtree_target = None    # target model loaded via dflash_mlx for DDTree

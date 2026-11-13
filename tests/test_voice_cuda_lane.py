@@ -34,15 +34,28 @@ def make_wav(rate: int = 24_000) -> bytes:
     return buffer.getvalue()
 
 
+class ChatterboxPinTests(unittest.TestCase):
+    def test_chatterbox_is_pinned_to_an_upstream_commit_that_has_the_v3_model(self) -> None:
+        # PyPI's chatterbox-tts 0.1.7 has no `t3_model` argument, so Multilingual V3 failed with
+        # "from_local() got an unexpected keyword argument 't3_model'" until the pin moved to the repository.
+        self.assertRegex(voice_env.CHATTERBOX_REF, r"^[0-9a-f]{40}$")
+        self.assertIn(voice_env.CHATTERBOX_REF, voice_env.CHATTERBOX_PACKAGE)
+        self.assertTrue(voice_env.CHATTERBOX_PACKAGE.startswith("chatterbox-tts @ https://github.com/resemble-ai/chatterbox/"))
+        self.assertIn(voice_env.CHATTERBOX_PACKAGE, voice_env.SPEECH_GPU_NO_DEPS)
+        worker = Path(__file__).resolve().parents[1] / "backend_service" / "voice_worker_torch.py"
+        self.assertIn('t3_model="v3"', worker.read_text(encoding="utf-8"))
+
+
 class InstallTests(unittest.TestCase):
     def test_commands_install_cuda_torch_then_the_hand_picked_set_then_the_models_without_deps(self) -> None:
         commands = voice_env.speech_gpu_commands("/venv/bin/python")
         self.assertEqual(commands[0], ["/venv/bin/python", "-m", "pip", "install", "torch==2.9.1", "torchaudio==2.9.1",
                                        "--index-url", "https://download.pytorch.org/whl/cu128"])
         self.assertEqual(commands[1][:4], ["/venv/bin/python", "-m", "pip", "install"])
-        self.assertEqual(commands[2], ["/venv/bin/python", "-m", "pip", "install", "--no-deps", "chatterbox-tts==0.1.7", "voxcpm==2.0.3"])
-        self.assertEqual(commands[3][:3], ["/venv/bin/python", "-I", "-c"])
-        self.assertIn("torch.cuda.is_available()", commands[3][3])
+        self.assertEqual(commands[2], ["/venv/bin/python", "-m", "pip", "install", "--no-deps", "--force-reinstall", voice_env.CHATTERBOX_PACKAGE, "voxcpm==2.0.3"])
+        self.assertEqual(commands[3][:6], ["/venv/bin/python", "-m", "pip", "install", "--target", str(voice_env.qwen_site_dir())])
+        self.assertEqual(commands[4][:3], ["/venv/bin/python", "-I", "-c"])
+        self.assertIn("torch.cuda.is_available()", commands[4][3])
         names = " ".join(commands[1]).lower()
         for unwanted in ("gradio", "funasr", "modelscope", "datasets", "matplotlib", "pykakasi", "vllm"):
             self.assertNotIn(unwanted, names)
@@ -173,8 +186,8 @@ class RoutingTests(unittest.TestCase):
                 patch.stop()
         self.assertEqual((turbo.model_key, turbo.engine, turbo.extra["device"]), ("chatterbox-turbo-cuda", "torch", "cuda"))
         self.assertEqual(orpheus.engine, "llama-gguf")
-        self.assertEqual(orpheus.extra["gguf"], "/snap/orpheus-3b-gguf/orpheus-3b-0.1-ft-Q8_0.gguf")
-        self.assertEqual(orpheus.extra["snacDecoderPath"], "/c/onnx/decoder_model.onnx")
+        self.assertEqual(orpheus.extra["gguf"], str(Path("/snap") / "orpheus-3b-gguf" / "orpheus-3b-0.1-ft-Q8_0.gguf"))
+        self.assertEqual(orpheus.extra["snacDecoderPath"], str(Path("/c/onnx/decoder_model.onnx")))
         self.assertEqual(orpheus.extra["llamaServerPath"], "/bin/llama-server")
         self.assertEqual(orpheus.tag_style, "angle")
         self.assertEqual(design.extra["instruct"], "A calm man")
@@ -227,6 +240,24 @@ class PerthTagTests(unittest.TestCase):
             self.assertEqual(tag["watermark"], "audioseal-0.2.1:CE5A")
             self.assertEqual(worker.request.call_args.kwargs["engine"], "torch")
 
+    def test_speed_or_pitch_drops_the_perth_claim_but_keeps_audioseal(self) -> None:
+        # RTX 4090 run: PerTh read 1.0 on a plain Chatterbox clip and 0.0 after speed 1.3 and pitch +2,
+        # while AudioSeal still read 1.0. The tag must not claim a mark that is gone.
+        wav = make_wav()
+        row = dict(voice_models.voice_model("chatterbox-turbo-cuda"), listed=True)
+        with mock.patch.object(voice_clone_safety, "apply_watermark", return_value=True):
+            plain = voice_clone_safety.read_wav_bytes_tag(voice_clone.mark_cloned(wav, row, "v1")) \
+                if hasattr(voice_clone_safety, "read_wav_bytes_tag") else None
+            shifted_bytes = voice_clone.mark_cloned(wav, row, "v1", altered=True)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "s.wav"
+            path.write_bytes(shifted_bytes)
+            tag = voice_clone_safety.read_wav_tag(path)
+        self.assertNotIn("builtinWatermark", tag)
+        self.assertEqual(tag["watermark"], "audioseal-0.2.1:CE5A")
+        if plain is not None:
+            self.assertEqual(plain["builtinWatermark"], "perth")
+
 
 class GpuWorkerTests(unittest.TestCase):
     def test_orpheus_prompt_codes_and_snac_layers(self) -> None:
@@ -277,3 +308,81 @@ class GpuWorkerTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ReferenceAudioTests(unittest.TestCase):
+    """RTX 4090 run: a cloned voice saved from an .m4a memo failed in Chatterbox with audioread's NoBackendError,
+    because chatterbox-tts and voxcpm read the sample with librosa/soundfile, which cannot decode AAC on Windows."""
+
+    def setUp(self) -> None:
+        wt._ref_wavs.clear()
+
+    def test_wav_and_flac_pass_through_untouched(self) -> None:
+        decode = mock.Mock()
+        self.assertEqual(wt.readable_audio("/s/a.wav", decode=decode), "/s/a.wav")
+        self.assertEqual(wt.readable_audio("/s/a.FLAC", decode=decode), "/s/a.FLAC")
+        decode.assert_not_called()
+
+    def test_an_m4a_sample_is_decoded_once_to_a_wav(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            sample = Path(tmp) / "memo.m4a"
+            sample.write_bytes(b"not really aac")
+            decode = mock.Mock(side_effect=lambda src, out: Path(out).write_bytes(b"RIFF"))
+            first = wt.readable_audio(str(sample), decode=decode)
+            second = wt.readable_audio(str(sample), decode=decode)
+        self.assertTrue(first.endswith(".wav"))
+        self.assertEqual(first, second)
+        decode.assert_called_once()
+        self.assertEqual(decode.call_args.args[0], str(sample))
+
+    def test_chatterbox_and_voxcpm_get_the_readable_path(self) -> None:
+        captured: dict[str, dict] = {}
+
+        class Model:
+            sr = 24000
+
+            def generate(self, text, **kwargs):
+                captured["chatterbox"] = kwargs
+                return [0.0, 0.0]
+
+        class Vox:
+            def generate(self, **kwargs):
+                captured["voxcpm"] = kwargs
+                return [0.0, 0.0]
+
+        with mock.patch.object(wt, "readable_audio", return_value="/tmp/memo.wav") as readable:
+            wt.chatterbox_call(Model(), {"text": "Hi.", "refAudioPath": "/v/memo.m4a"})
+            wt.voxcpm_call(Vox(), {"text": "Hi.", "refAudioPath": "/v/memo.m4a", "refText": "Hello", "mode": "exact"})
+        self.assertEqual(captured["chatterbox"]["audio_prompt_path"], "/tmp/memo.wav")
+        self.assertEqual(captured["voxcpm"]["reference_wav_path"], "/tmp/memo.wav")
+        self.assertEqual(captured["voxcpm"]["prompt_wav_path"], "/tmp/memo.wav")
+        self.assertEqual(readable.call_count, 2)
+
+
+class Float32LoudnessTests(unittest.TestCase):
+    """RTX 4090 run: under NumPy 2, chatterbox-tts 0.1.7's loudness step turned the sample into float64 and every
+    cloned Turbo voice failed with "expected scalar type Float but found Double"."""
+
+    def test_the_wrapped_norm_loudness_returns_float32(self) -> None:
+        import numpy as np
+
+        class Model:
+            def norm_loudness(self, wav, sr, target_lufs=-27):
+                return wav * np.float64(1.5)  # what pyloudnorm's float64 gain does under NumPy 2
+
+        model = Model()
+        wt.keep_float32_loudness(model)
+        out = model.norm_loudness(np.ones(4, dtype=np.float32), 24000)
+        self.assertEqual(out.dtype, np.float32)
+        self.assertTrue(np.allclose(out, 1.5))
+
+    def test_wrapping_twice_does_not_stack(self) -> None:
+        class Model:
+            def norm_loudness(self, wav, sr):
+                return wav
+
+        model = Model()
+        wt.keep_float32_loudness(model)
+        first = model.norm_loudness
+        wt.keep_float32_loudness(model)
+        self.assertIs(model.norm_loudness, first)

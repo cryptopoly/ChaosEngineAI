@@ -289,10 +289,12 @@ class GenerateLosslessTests(unittest.TestCase):
 
         reference = self._greedy(prompt, count + 16)
         draft = _OracleDraft(self.model.lm_head.weight, reference, len(prompt))
-        runtime = types.ModuleType("dflash_mlx.runtime")
-        runtime.resolve_target_ops = lambda model: _TinyTargetOps()
+        target_ops_module = types.ModuleType("dflash_mlx.engine.target_ops")
+        target_ops_module.resolve_target_ops = lambda model: _TinyTargetOps()
+        engine = types.ModuleType("dflash_mlx.engine")
+        engine.target_ops = target_ops_module
         package = types.ModuleType("dflash_mlx")
-        package.runtime = runtime
+        package.engine = engine
         compacted = []
         real_compact = ddtree.compact_kv_cache
 
@@ -300,7 +302,8 @@ class GenerateLosslessTests(unittest.TestCase):
             compacted.append(list(accepted))
             return real_compact(cache, past, accepted)
 
-        with mock.patch.dict(sys.modules, {"dflash_mlx": package, "dflash_mlx.runtime": runtime}), \
+        with mock.patch.dict(sys.modules, {"dflash_mlx": package, "dflash_mlx.engine": engine,
+                                         "dflash_mlx.engine.target_ops": target_ops_module}), \
                 mock.patch.object(ddtree, "_make_draft_cache", return_value=[]), \
                 mock.patch.object(ddtree, "compact_kv_cache", side_effect=spy):
             result = ddtree.generate_ddtree_mlx(

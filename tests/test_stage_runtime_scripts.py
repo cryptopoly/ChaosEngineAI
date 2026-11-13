@@ -107,6 +107,18 @@ class ReleaseConstraintsTests(unittest.TestCase):
             self.assertIn(name, pins)
 
 
+class WindowsArchiveNameTests(unittest.TestCase):
+    def test_the_runtime_archive_is_named_without_a_drive_letter(self) -> None:
+        # GNU tar (Git Bash's, first on PATH there) treats "C:\\...\\runtime.tar.gz" given to -f as host "C";
+        # a local Windows release build failed with "Cannot connect to C: resolve failed".
+        source = (ROOT / "scripts" / "stage-runtime.mjs").read_text(encoding="utf-8")
+        call = re.search(r'execFileSync\("tar", \["-czf", (.+?), "-C"', source)
+        self.assertTrue(call, "stage-runtime.mjs no longer creates the archive with tar -czf")
+        self.assertEqual(call.group(1).strip(), "path.relative(workspaceRoot, archiveDest)")
+        body = source[call.start():call.start() + 300]
+        self.assertIn("cwd: workspaceRoot", body)
+
+
 class WindowsSymlinkTests(unittest.TestCase):
     def test_windows_runtime_copy_follows_symlinks(self) -> None:
         # The Windows runner's python3.exe is a symlink to C:/hostedtoolcache/...;
@@ -115,3 +127,49 @@ class WindowsSymlinkTests(unittest.TestCase):
         body = source[source.index("function copyTree"):source.index("function copyFile")]
         self.assertIn("dereference: onWindows", body)
         self.assertIn("verbatimSymlinks: !onWindows", body)
+
+
+class ReleaseBuildScriptTests(unittest.TestCase):
+    """build.sh must stage a clean pinned venv, never the dev .venv."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.script = (ROOT / "build.sh").read_text(encoding="utf-8")
+
+    def test_uses_dedicated_release_venv_and_exports_it(self) -> None:
+        self.assertIn('RELEASE_VENV="$SCRIPT_DIR/.venv-release"', self.script)
+        self.assertRegex(self.script, r'export CHAOSENGINE_EMBED_PYTHON_BIN="\$RELEASE_PY"')
+
+    def test_dev_venv_is_not_touched(self) -> None:
+        self.assertNotRegex(self.script, r"(^|[^-\w])\.venv/(bin|Scripts)/")
+        self.assertNotRegex(self.script, r"-m venv \.venv(\s|$)")
+
+    def test_every_pip_install_is_constrained(self) -> None:
+        installs = [l for l in self.script.splitlines() if "pip install" in l and '"$RELEASE_PY"' in l]
+        self.assertTrue(installs)
+        for line in installs:
+            if "--upgrade pip" in line:
+                continue
+            self.assertIn("-c release-constraints.txt", line)
+
+    def test_release_venv_is_ignored_by_git(self) -> None:
+        ignore = (ROOT / ".gitignore").read_text(encoding="utf-8").splitlines()
+        self.assertIn(".venv-release/", [l.strip() for l in ignore])
+
+    def test_gpu_bundle_keeps_its_warning(self) -> None:
+        self.assertIn("CHAOSENGINE_BUNDLE_GPU", self.script)
+        self.assertIn("WARNING: CHAOSENGINE_BUNDLE_GPU=1", self.script)
+
+    def test_stage_runtime_guards_the_nsis_archive_limit(self) -> None:
+        source = (ROOT / "scripts" / "stage-runtime.mjs").read_text(encoding="utf-8")
+        self.assertIn("1.9 * 1024 ** 3", source)
+        self.assertIn("assertArchiveFitsInstaller(archiveDest)", source)
+
+    def test_archive_limit_constant_is_declared_before_main_runs(self) -> None:
+        # main() is called at module level; a const declared after that call is
+        # still in its temporal dead zone when main() reads it (v0.10.0 build crash).
+        source = (ROOT / "scripts" / "stage-runtime.mjs").read_text(encoding="utf-8")
+        self.assertLess(
+            source.index("const NSIS_ARCHIVE_LIMIT_BYTES"),
+            source.index("\nmain();"),
+        )

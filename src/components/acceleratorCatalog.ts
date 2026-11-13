@@ -151,8 +151,10 @@ export const ACCELERATOR_CATALOG: ReadonlyArray<AcceleratorMeta> = [
     pipPackage: "triattention",
     capabilityField: "triattentionAvailable",
     versionField: "triattentionVersion",
-    speedupClaim: "Real-time long Wan video + 2-3× KV compression on long-context LLMs",
-    appliesTo: "Wan 2.1 1.3B (LongLive), long-context chat models",
+    // FU-171: the chat KV compression only runs on vLLM 0.18 or older (the
+    // app's vLLM is newer) and needs a per-model stats file.
+    speedupClaim: "Real-time long Wan video; chat KV compression only on vLLM 0.18 or older",
+    appliesTo: "Wan 2.1 1.3B (LongLive), long generations with a per-model stats file",
     sizeOnDiskLabel: "~2 GB (pulls vllm)",
     installMode: "async",
     platformGate: "cuda",

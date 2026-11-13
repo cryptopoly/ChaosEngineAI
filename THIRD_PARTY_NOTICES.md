@@ -139,6 +139,22 @@ Pillow (HPND, a permissive MIT-style licence), ``transformers`` (Apache 2.0) and
 ``mlx-vlm`` (MIT); ``grammar`` (structured output) brings ``xgrammar``
 (Apache 2.0) and, through it, PyTorch (BSD-3-Clause).
 
+### TensorFold 1.x native binary (CUDA text engine on Windows and Linux)
+
+TensorFold 1.x (<https://github.com/ashhart/TensorFold>) is a single native
+binary, `tensorfold-native serve`, with CUDA and Metal back ends. It is
+**Apache-2.0** licensed (free use, modification and redistribution with the
+licence and notice preserved; patent grant included). It has no Python
+dependencies, so there is no venv. ChaosEngineAI downloads the release archive
+for the platform (Linux x86_64 / aarch64), checks its sha256 against the
+published `.sha256` file and unpacks it into
+``~/.chaosengine/tensorfold-native/`` (`backend_service/routes/setup/tensorfold_native.py`);
+on Windows, where no archive is published, the user's own source build is
+copied there. It is never bundled in the installer. The archive's licence file
+stays beside the unpacked binary.
+The engine is `backend_service/inference/tensorfold_native_engine.py`; the
+capability gate and registry are in `_tensorfold_native.py`.
+
 ## Optional Apple Silicon Image Runtime
 
 | Package | Repository | Licence |
@@ -468,6 +484,13 @@ Weights are downloaded by the user into the Hugging Face cache at pinned revisio
   legally compliant data and that generated music may be used commercially; the README asks users to check that
   a track is original, to disclose AI involvement and to get permission when adapting protected material.
 
+### Packages the GPU bundle installs (not bundled)
+
+The Setup "Install GPU runtime" job (`backend_service/routes/setup/gpu_bundle.py`) installs, among others: ftfy
+(Apache-2.0; cleans the text prompt for Wan image-to-video) and bitsandbytes (MIT; 4-bit NF4 weights, with a
+`win_amd64` wheel on PyPI), next to torch (BSD-3-Clause), diffusers, transformers, accelerate (Apache-2.0), gguf and
+torchao (Apache-2.0).
+
 ### Packages the music pack installs (not bundled)
 
 `backend_service/music_requirements.txt` (exported from the pinned `uv.lock`) installs, among others: PyTorch and
@@ -513,7 +536,8 @@ inference). All are MIT, BSD or Apache except the one below.
 
 ## Voice cloning and watermark (optional, on demand)
 
-- **Qwen3-TTS 12Hz Base 0.6B / 1.7B** (Alibaba Qwen; MLX conversions by mlx-community) - Apache 2.0, downloaded on demand.
+- **Qwen3-TTS 12Hz Base, CustomVoice and VoiceDesign, 0.6B / 1.7B** (Alibaba Qwen; MLX conversions by mlx-community on
+  Apple Silicon, the upstream `Qwen/Qwen3-TTS-12Hz-*` weights on an NVIDIA GPU) - Apache 2.0, downloaded on demand.
 - **AudioSeal 0.2.1** (Meta Platforms) - MIT licence for code and model weights (`facebook/audioseal`, revision
   `3c19eba53390776cf2cc9ed5f6c9ac67ce72ecba`); installed on demand into the voice venv for the cloned-voice watermark.
   omegaconf 2.3 and antlr4-python3-runtime 4.9 - BSD-3-Clause; einops 0.8 - MIT.
@@ -541,11 +565,19 @@ Downloaded by the user from Voice Models, never bundled. Each is pinned to a ful
 
 ### Speech GPU add-on (Windows / Linux with an NVIDIA GPU, installed on demand into the voice venv)
 
-Not verified on a GPU yet (rtx4090-test.md section 2). Each package and its licence:
+Verified on an RTX 4090 (docs/progress/rtx4090-progress.md). Each package and its licence:
 
-- `chatterbox-tts` 0.1.7 - MIT (installed without its pinned dependencies); it applies Resemble's PerTh watermark
+- `chatterbox-tts` 0.1.7 - MIT (installed without its pinned dependencies), from the upstream repository at commit
+  `ab55923c` (the Multilingual V3 model is not in the PyPI release); it applies Resemble's PerTh watermark
   through `resemble-perth` 1.0.1 - MIT.
+- `fugashi` 1.5.2 - MIT (bundles MeCab bindings, BSD-3-Clause) and `unidic-lite` 1.0.8 - MIT, with the UniDic
+  dictionary under its BSD-3-Clause option: Japanese readings for Chatterbox, in place of `pykakasi` (GPL-3.0, not used).
 - `voxcpm` 2.0.3 - Apache-2.0 (installed without its dependencies).
+- `qwen-tts` 0.1.1 (Alibaba Qwen) - Apache-2.0: runs Qwen3-TTS on the GPU. It needs transformers 4.57.3, which Chatterbox's
+  5.2 rules out in the same environment, so it and its own copies of transformers 4.57.3, huggingface-hub 0.36.0 and
+  accelerate 1.12.0 (all Apache-2.0) go into a folder inside the voice venv (`qwen-site`, installed `--no-deps`) that
+  only the Qwen3-TTS worker puts on its import path. `sox` 1.5.0 - BSD-3-Clause (a pure-Python wrapper `qwen-tts`
+  imports; the sox program is not used).
 - PyTorch 2.9.1 and torchaudio 2.9.1 (CUDA 12.8 wheels) - BSD-3-Clause; torchcodec 0.8.1 - BSD-3-Clause.
 - transformers 5.2.0, diffusers 0.29.0, safetensors 0.5.3 - Apache-2.0; s3tokenizer 0.3.0 - Apache-2.0;
   wetext 0.2.1 - Apache-2.0.

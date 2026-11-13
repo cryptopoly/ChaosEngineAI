@@ -46,7 +46,7 @@ TOOLS: list[dict[str, Any]] = [
     {"name": "list_voices", "description": "Read: ready text-to-speech voices with language.", "inputSchema": _obj({})},
     {
         "name": "generate_image",
-        "description": "Make: start an image job (returns a job id). Sizes snap to what the model supports; see the job notes.",
+        "description": "Make: start an image job (returns a job id) for a picture on its own (poster, cover). Not for film stills: storyboard_generate makes those. Sizes snap to what the model supports.",
         "inputSchema": _obj(
             {
                 "prompt": {"type": "string", "minLength": 1, "maxLength": 4000},
@@ -78,7 +78,7 @@ TOOLS: list[dict[str, Any]] = [
                 "seconds": {"type": "number", "minimum": 0.5, "maximum": 20},
                 "frames": {"type": "integer", "minimum": 8, "maximum": 257},
                 "start_image": {"type": "string", "description": "Path or upload: handle of the first frame. Only for models with acceptsImageInput (list_models)."},
-                "end_image": {"type": "string", "description": "Path or upload: handle of the last frame. May be used alone."},
+                "end_image": {"type": "string", "description": "Path or upload: handle of the last frame. May be used alone. Only for models with acceptsEndImage (list_models)."},
                 "image_strength": {"type": "number", "minimum": 0.1, "maximum": 1.0, "description": "1.0 follows the image closely (default); lower lets the clip drift."},
                 "fps": {"type": "integer", "minimum": 1, "maximum": 60},
                 "steps": {"type": "integer", "minimum": 1, "maximum": 100},
@@ -364,10 +364,13 @@ def generate_video(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
     image_fields: dict[str, Any] = {}
     if args.get("start_image") or args.get("end_image"):
         from backend_service.helpers.media_input import InputImageError, image_size, resolve_input_image
-        from backend_service.ltx2_mlx_runtime import _is_ltx2_mlx_repo
+        from backend_service.video_runtime.repos import image_input_support
 
-        if not _is_ltx2_mlx_repo(str(variant.get("repo") or "")):
+        takes_start, takes_end = image_input_support(str(variant.get("repo") or ""))
+        if not takes_start:
             raise ToolError(f"{variant.get('name')} cannot start from an image. Use a model with acceptsImageInput in list_models.")
+        if args.get("end_image") and not takes_end:
+            raise ToolError(f"{variant.get('name')} follows only a start image. Use a model with acceptsEndImage in list_models for an end frame.")
         try:
             start = resolve_input_image(args["start_image"]) if args.get("start_image") else None
             end = resolve_input_image(args["end_image"]) if args.get("end_image") else None

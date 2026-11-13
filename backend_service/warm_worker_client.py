@@ -77,6 +77,11 @@ class WarmWorker:
         self.hard_cancel_after_s = hard_cancel_after_s
         self.idle_minutes = IDLE_MINUTES
         self._process: subprocess.Popen[str] | None = None
+        # Set by the reader thread when a worker's output stream closes (the process is gone). On Windows
+        # ``Popen.poll()`` can still read ``None`` for a worker that called ``os._exit``, so stream-close is
+        # the reliable death signal: without it ``_ensure_started`` would reuse a dead process and the next
+        # write would raise ``OSError 22``.
+        self._crashed = False
         self._start_lock = threading.Lock()
         self._write_lock = threading.Lock()
         self._pending: dict[Any, queue.Queue[dict[str, Any]]] = {}
@@ -104,8 +109,9 @@ class WarmWorker:
 
     def _ensure_started(self) -> None:
         with self._start_lock:
-            if self._process is not None and self._process.poll() is None:
+            if self._process is not None and self._process.poll() is None and not self._crashed:
                 return
+            self._crashed = False
             self._kill()
             self._log_path.parent.mkdir(parents=True, exist_ok=True)
             log = open(self._log_path, "a", encoding="utf-8")  # noqa: SIM115 - owned by the process
@@ -161,6 +167,10 @@ class WarmWorker:
         with self._pending_lock:
             if self._process is not process and self._process is not None:
                 return
+            if self._process is process:
+                # The stream closed, so this worker is gone; mark it so the next request restarts it
+                # instead of reusing a dead process whose ``poll()`` may still read ``None`` on Windows.
+                self._crashed = True
             waiting = list(self._pending.values())
         for target in waiting:
             target.put(_CLOSED)

@@ -182,6 +182,22 @@ def _video_memory_gate(
         except Exception:
             loaded_repo = ""
         available_gb, pressure_percent = snapshot_memory_signals()
+        # A pipeline already held here is reused (same model) or unloaded before the swap (another one):
+        # count it that way, not as memory the new request has to find elsewhere.
+        from backend_service.helpers.memory_gate import adjust_for_resident
+        from backend_service.helpers.video import _find_video_variant_by_repo
+
+        loaded_variant = _find_video_variant_by_repo(loaded_repo) if loaded_repo else None
+        resident = adjust_for_resident(
+            available_gb,
+            pressure_percent,
+            loaded_repo=loaded_repo or None,
+            requested_repo=str(variant.get("repo") or ""),
+            loaded_estimate_gb=model_memory_gb(loaded_variant) if loaded_variant else None,
+            vram_free_gb=cuda_free_vram_gb(),
+        )
+        available_gb = resident["available_gb"]
+        pressure_percent = resident["pressure_percent"]
         size_args: dict[str, Any] = {}
         if body is not None:
             from backend_service.helpers.generation_limits import (
@@ -207,9 +223,10 @@ def _video_memory_gate(
         refusal = gate_video_generation(
             available_gb,
             pressure_percent,
-            model_gb=None if loaded_repo == variant.get("repo") else model_memory_gb(variant),
+            model_gb=None if resident["reuse"] else model_memory_gb(variant),
             model_name=variant.get("name"),
-            size_available_gb=cuda_free_vram_gb(),
+            size_available_gb=resident["size_available_gb"],
+            reuse_resident=resident["reuse"],
             **size_args,
         )
     except Exception as gate_exc:
@@ -244,7 +261,11 @@ def preload_video_model(request: Request, body: VideoRuntimePreloadRequest) -> d
     _unload_idle_image_runtime_for_video(request, "video preload")
     _video_memory_gate(request, variant, "video preload")
     try:
-        runtime = state.video_runtime.preload(variant["repo"])
+        # A row quantised on load (LTX-2.5 4-bit) must preload 4-bit too: the plain preload read the bf16 repo.
+        if variant.get("loadQuantization") == "nf4":
+            runtime = state.video_runtime.preload(variant["repo"], use_nf4=True)
+        else:
+            runtime = state.video_runtime.preload(variant["repo"])
     except RuntimeError as exc:
         # Diffusers' lazy-import wrapper hides the real underlying cause when
         # transformers / torchao / torch versions don't agree -- the user
@@ -398,16 +419,22 @@ def generate_video(request: Request, body: VideoGenerationRequest) -> dict[str, 
 
 
 def _checked_input_images(body: VideoGenerationRequest, variant: dict[str, Any]) -> VideoGenerationRequest:
-    """Resolve start / end image paths; only LTX-2 models take them. 400 with a readable message otherwise."""
+    """Resolve start / end image paths; only models with image input take them. 400 with a readable message otherwise."""
     if not (body.startImagePath or body.endImagePath):
         return body
     from backend_service.helpers.media_input import InputImageError, resolve_input_image
-    from backend_service.ltx2_mlx_runtime import _is_ltx2_mlx_repo
+    from backend_service.video_runtime.repos import image_input_support
 
-    if not _is_ltx2_mlx_repo(str(variant.get("repo") or "")):
+    takes_start, takes_end = image_input_support(str(variant.get("repo") or ""))
+    if not takes_start:
         raise HTTPException(
             status_code=400,
-            detail=f"{variant.get('name')} cannot start from an image. Pick an LTX-2 model (ltx-2-mlx).",
+            detail=f"{variant.get('name')} cannot start from an image. Pick LTX-2.3 or LTX-2.5 (Apple Silicon) or Wan 2.2 TI2V 5B.",
+        )
+    if body.endImagePath and not takes_end:
+        raise HTTPException(
+            status_code=400,
+            detail=f"{variant.get('name')} follows only a start image; remove the end frame or pick an LTX-2 model.",
         )
     try:
         return body.model_copy(update={
@@ -450,6 +477,11 @@ def _generate_video_locked(request: Request, body: VideoGenerationRequest) -> di
     try:
         artifact, runtime = _generate_video_artifact(body, variant, state.video_runtime)
     except GenerationCancelled:
+        stalled = VIDEO_PROGRESS.stall_message()
+        if stalled:
+            # The step watchdog ended the run, not the user: say why, as an error.
+            state.add_log("video", "error", f"Video generation for {variant['name']} stopped by the step watchdog: {stalled}")
+            raise HTTPException(status_code=504, detail=stalled) from None
         # User hit Cancel. Same 409 contract as the image route so the
         # frontend's generic "is this a cancel?" check is symmetric.
         state.add_log("video", "info", f"Video generation cancelled for {variant['name']} by user.")
@@ -502,6 +534,14 @@ def download_video_model(request: Request, body: DownloadModelRequest) -> dict[s
     variant = _find_video_variant(body.modelId) if body.modelId else None
     if body.modelId and variant is None:
         raise HTTPException(status_code=404, detail=f"Unknown video model '{body.modelId}'.")
+    if variant is not None:
+        from backend_service.helpers.huggingface import _hf_token_value
+        from backend_service.helpers.video_gating import gated_access_reason
+
+        # Not yet complete on disk (this is the download route), so only a saved token opens a gated row.
+        blocked = gated_access_reason(variant, available_locally=False, token=_hf_token_value())
+        if blocked:
+            raise HTTPException(status_code=403, detail=blocked)
     if variant is not None and variant.get("ggufFile"):
         gguf_repo = str(variant.get("ggufRepo") or "")
         gguf_file = str(variant.get("ggufFile") or "")

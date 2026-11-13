@@ -42,3 +42,15 @@ def diffusers_at_least(major: int, minor: int) -> bool:
     """True when installed diffusers >= ``major.minor`` (no import)."""
     version = diffusers_version()
     return version is not None and version >= (major, minor)
+
+
+def hooked_module_count(module) -> int:
+    """How many submodules of ``module`` carry a diffusers hook (no torch import needed)."""
+    if not hasattr(module, "named_modules"):
+        return 1  # not an nn.Module (a stand-in): cannot tell, so do not second-guess the cache
+    count = 0
+    for _name, child in module.named_modules():
+        registry = getattr(child, "_diffusers_hook", None)
+        if registry is not None and getattr(registry, "hooks", None):
+            count += 1
+    return count

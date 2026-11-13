@@ -8,6 +8,11 @@ worker, and the next request starts a fresh one. The worker exits after
 Conversation mode runs voice activity detection in a second, small worker
 (``get_vad_worker``) so a microphone frame never waits behind a sentence
 being spoken or a recording being transcribed.
+
+Qwen3-TTS on an NVIDIA GPU runs in a third worker (``get_qwen_worker``): the same script and the same Python
+and PyTorch, with the pinned transformers 4.57 that ``qwen-tts`` needs put first on ``PYTHONPATH``, because the
+speech GPU add-on's own transformers 5.2 (which Chatterbox pins) breaks its generation. Only one of the two
+speech workers holds a model at a time (``speech_worker_for`` frees the other).
 """
 
 from __future__ import annotations
@@ -26,6 +31,26 @@ from backend_service import voice_env
 
 _WORKER_SCRIPT = Path(__file__).with_name("voice_worker.py")
 _READY_TIMEOUT_S = 120.0
+# How long a worker whose stdin was closed gets to finish its request loop and run its atexit cleanup.
+_GRACEFUL_EXIT_S = 5.0
+
+
+def _end_children(pid: int) -> None:
+    """End a worker's own child processes (Orpheus's llama-server) before the worker is killed: Windows does not
+    take a killed process's children with it."""
+    try:
+        import psutil  # noqa: PLC0415 - in the backend's base install
+    except ImportError:
+        return
+    try:
+        children = psutil.Process(pid).children(recursive=True)
+    except psutil.Error:
+        return
+    for child in children:
+        try:
+            child.kill()
+        except psutil.Error:
+            pass
 # Put on the line queue when the worker's stdout closes, so a dead worker is told
 # apart from a slow one even before the OS has reaped it (Windows lags here).
 _CLOSED: dict[str, Any] = {}
@@ -36,7 +61,8 @@ class VoiceWorkerError(RuntimeError):
 
 
 class VoiceWorker:
-    def __init__(self, log_name: str = "worker.log") -> None:
+    def __init__(self, log_name: str = "worker.log", env_extra: dict[str, str] | None = None) -> None:
+        self._env_extra = env_extra or {}
         self._process: subprocess.Popen[str] | None = None
         self._lines: queue.Queue[dict[str, Any] | None] = queue.Queue()
         self._lock = threading.Lock()
@@ -72,7 +98,7 @@ class VoiceWorker:
             text=True,
             encoding="utf-8",
             bufsize=1,
-            env=voice_env.worker_env(),
+            env={**voice_env.worker_env(), **self._env_extra},
             cwd=str(voice_env.VOICE_DATA_DIR),
         )
         log.close()
@@ -104,9 +130,17 @@ class VoiceWorker:
         try:
             if process.stdin:
                 process.stdin.close()
-            process.terminate()
-            process.wait(timeout=5)
+            # Closing stdin ends the worker's request loop; let it exit on its own so its atexit handlers run
+            # (the Orpheus GGUF lane stops its llama-server there). terminate() on Windows is TerminateProcess,
+            # which skips them and left llama-server running after Stop (RTX 4090 run).
+            try:
+                process.wait(timeout=_GRACEFUL_EXIT_S)
+            except subprocess.TimeoutExpired:
+                _end_children(process.pid)
+                process.terminate()
+                process.wait(timeout=5)
         except Exception:  # noqa: BLE001 - kill whatever is left
+            _end_children(process.pid)
             process.kill()
             try:
                 process.wait(timeout=5)
@@ -119,6 +153,18 @@ class VoiceWorker:
     def stop(self) -> None:
         with self._lock:
             self._kill()
+
+    def stop_if_idle(self) -> bool:
+        """Stop the worker unless a request is running. True when a running worker was stopped."""
+        if self._process is None or not self._lock.acquire(blocking=False):
+            return False
+        try:
+            if self._process is None:
+                return False
+            self._kill()
+            return True
+        finally:
+            self._lock.release()
 
     def interrupt(self) -> None:
         """End a running request now. ``stop`` waits for the request lock; this does not.
@@ -189,13 +235,38 @@ class VoiceWorker:
 
 _WORKER: VoiceWorker | None = None
 _WORKER_LOCK = threading.Lock()
+# The user's "unload after N idle minutes" (Voice settings), for both speech workers. None until first read.
+_SPEECH_IDLE_MINUTES: float | None = None
+
+
+def _speech_idle_minutes() -> float:
+    """The stored setting; read once, so a worker created after a backend restart honours it too."""
+    global _SPEECH_IDLE_MINUTES
+    if _SPEECH_IDLE_MINUTES is None:
+        try:
+            from backend_service.voice_runtime import load_settings  # noqa: PLC0415 - voice_runtime imports this module
+
+            _SPEECH_IDLE_MINUTES = float(load_settings()["idleUnloadMinutes"])
+        except Exception:  # noqa: BLE001 - a bad settings file keeps the default
+            _SPEECH_IDLE_MINUTES = 10.0
+    return _SPEECH_IDLE_MINUTES
+
+
+def set_speech_idle_minutes(minutes: float) -> None:
+    """Apply the idle-unload setting to both speech workers (the Qwen3-TTS one holds the most GPU memory)."""
+    global _SPEECH_IDLE_MINUTES
+    _SPEECH_IDLE_MINUTES = float(minutes)
+    for worker in _speech_workers():
+        worker.idle_minutes = _SPEECH_IDLE_MINUTES
 
 
 def get_worker() -> VoiceWorker:
     global _WORKER
+    minutes = _speech_idle_minutes()
     with _WORKER_LOCK:
         if _WORKER is None:
             _WORKER = VoiceWorker()
+            _WORKER.idle_minutes = minutes
             atexit.register(_WORKER.stop)
         return _WORKER
 
@@ -213,16 +284,50 @@ def get_vad_worker() -> VoiceWorker:
         return _VAD_WORKER
 
 
+_QWEN_WORKER: VoiceWorker | None = None
+
+
+def get_qwen_worker() -> VoiceWorker:
+    """The worker that runs Qwen3-TTS on the GPU: the main worker's Python with the pinned transformers first."""
+    global _QWEN_WORKER
+    minutes = _speech_idle_minutes()
+    with _WORKER_LOCK:
+        if _QWEN_WORKER is None:
+            _QWEN_WORKER = VoiceWorker(log_name="qwen-worker.log", env_extra=voice_env.qwen_worker_env())
+            _QWEN_WORKER.idle_minutes = minutes
+            atexit.register(_QWEN_WORKER.stop)
+        return _QWEN_WORKER
+
+
+def uses_qwen_worker(engine: str, family: str) -> bool:
+    return engine == "torch" and family == "qwen3-tts"
+
+
+def speech_worker_for(engine: str, family: str) -> VoiceWorker:
+    """The worker that serves this speech model. A model held by the other speech worker is unloaded first, so two
+    speech models never sit in GPU memory together (an unload of a worker that is not running costs nothing)."""
+    wanted, other = ((get_qwen_worker(), _WORKER) if uses_qwen_worker(engine, family) else (get_worker(), _QWEN_WORKER))
+    held = other.loaded.get("tts", "") if other is not None and other.pid is not None else ""
+    if held and "kokoro" not in held.lower():  # Kokoro is small and runs on the CPU; it can stay
+        if other.busy:
+            raise VoiceWorkerError("Another voice is speaking. Try again when it has finished.")
+        other.request("unload", timeout=60.0, what="tts")
+    return wanted
+
+
+def _speech_workers() -> list[VoiceWorker]:
+    return [w for w in (_WORKER, _QWEN_WORKER) if w is not None]
+
+
 def stop_all() -> None:
-    for worker in (_WORKER, _VAD_WORKER):
+    for worker in (*_speech_workers(), _VAD_WORKER):
         if worker is not None:
             worker.stop()
 
 
 def interrupt_all() -> None:
-    for worker in (_WORKER,):
-        if worker is not None:
-            worker.interrupt()
+    for worker in _speech_workers():
+        worker.interrupt()
 
 
 def worker_pid() -> int | None:
@@ -231,17 +336,37 @@ def worker_pid() -> int | None:
 
 def worker_busy() -> bool:
     """The speech worker is answering a request (read-aloud, a call turn, Speak, a transcript)."""
-    return _WORKER is not None and _WORKER.busy
+    return any(worker.busy for worker in _speech_workers())
 
 
 def loaded_sources() -> dict[str, str]:
     """``{"stt": source, "tts": source}`` of the models the running worker holds; empty when it is not running."""
-    if _WORKER is None or _WORKER.pid is None:
-        return {}
-    return dict(_WORKER.loaded)
+    held: dict[str, str] = {}
+    for worker in _speech_workers():
+        if worker.pid is not None:
+            held.update(worker.loaded)
+    return held
+
+
+def release_gpu_for_media() -> list[str]:
+    """Stop idle speech workers that hold a model on the NVIDIA GPU, before an image or video job loads its own.
+
+    An idle Qwen3-TTS worker keeps about 4.7 GB of the card until its idle unload; an LTX-2.5 clip that started
+    next to it spilled into shared system memory and took about 600 s for its first step instead of about 5 s
+    (RTX 4090 24 GB). Kokoro runs on the CPU and is left alone; a worker answering a request is left alone. The next
+    voice request starts a fresh worker (one model load). Returns the models that were released.
+    """
+    if not voice_env.voice_uses_cuda():
+        return []
+    released: list[str] = []
+    for worker in _speech_workers():
+        held = [source for source in worker.loaded.values() if "kokoro" not in source.lower()]
+        if worker.pid is not None and held and worker.stop_if_idle():
+            released.extend(held)
+    return released
 
 
 def stop_speech_worker() -> None:
-    """Stop the main worker (not the small turn-detection one), freeing every model it holds."""
-    if _WORKER is not None:
-        _WORKER.stop()
+    """Stop the speech workers (not the small turn-detection one), freeing every model they hold."""
+    for worker in _speech_workers():
+        worker.stop()

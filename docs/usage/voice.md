@@ -96,9 +96,34 @@ detail has the measured memory and speed, cold start, licence and repository.
 | Orpheus 3B | Eight expressive English voices (Tara, Leah, Jess, Leo, Dan, Mia, Zac, Zoe) with sound tags | 3.6 GB | 4.2 GB | 7.2 |
 
 Measured on an Apple M4 Max (64 GB, 2026-11-08 and 2026-11-09). A model that
-has not been measured says so instead of showing a guess. On Windows and Linux
-with an NVIDIA GPU, a speech GPU add-on for the same models is being prepared
-and is not offered until it has been measured.
+has not been measured says so instead of showing a guess.
+
+### Qwen3-TTS on an NVIDIA GPU
+
+On Windows and Linux with an NVIDIA GPU and the speech GPU add-on ticked, the
+same five Qwen3-TTS models run on the GPU (the rows say "(GPU)", with the
+upstream bf16 weights). The numbers below were measured on an RTX 4090 24 GB
+(Windows 11, 2026-11-11). Qwen3-TTS needs its own copy of transformers 4.57,
+so it runs in a second speech worker; only one of the two workers holds a
+speech model at a time, and a switch frees the other first. Each row checks
+this computer's GPU before it is offered or downloaded: it needs the memory
+shown (peak plus 0.7 GB) and a card of compute capability 7.0 or newer
+(bf16 from Ampere, fp16 below). A card that is too small or too old gets the
+reason in the Models row instead of Download.
+
+| Model | Download | GPU memory | Seconds per 10 s of speech |
+|---|---|---|---|
+| Qwen3-TTS 0.6B CustomVoice (GPU) | 2.5 GB | 2.8 GB | 17.1 |
+| Qwen3-TTS 1.7B CustomVoice (GPU) | 4.5 GB | 4.7 GB | 17.2 |
+| Qwen3-TTS 1.7B VoiceDesign (GPU) | 4.5 GB | 4.6 GB | 17.2 |
+| Qwen3-TTS 0.6B Base (GPU) | 2.5 GB | 3.4 GB | 19.1 |
+| Qwen3-TTS 1.7B Base (GPU) | 4.5 GB | 5.3 GB | 24.1 |
+
+Speech on the GPU is slower than on a Mac here: about 1.7 s of compute for each
+second of speech, more than twice the real time, because each token launches
+many small GPU steps and the card sits at about 40 % use. The 0.6B models use
+about 1.9 GB less memory and are no quicker than the 1.7B ones, so on a GPU
+they are for small cards, not for speed.
 
 ## Voice Studio
 

@@ -84,6 +84,31 @@ class GPUMonitorNvidiaTests(unittest.TestCase):
             self.assertIn(key, snapshot)
 
     @patch("backend_service.helpers.gpu.subprocess.check_output")
+    def test_nvidia_smi_answers_first_and_the_torch_probe_is_skipped(self, mock_check_output):
+        # RTX 4090 run: the torch probe spawns a Python child importing torch (~2.6 s on
+        # Windows) and loses utilisation/temperature/power, so it must only be a fallback.
+        mock_check_output.return_value = "NVIDIA GeForce RTX 4090, 24576, 2048, 7, 41, 35.2"
+        monitor = GPUMonitor()
+        monitor._system = "Windows"
+        with patch.object(GPUMonitor, "_snapshot_torch_cuda") as torch_probe:
+            snapshot = monitor._snapshot_nvidia()
+        torch_probe.assert_not_called()
+        self.assertEqual(snapshot["utilization_pct"], 7.0)
+        self.assertEqual(snapshot["temperature_c"], 41.0)
+
+    @patch("backend_service.helpers.gpu.subprocess.check_output")
+    def test_torch_probe_is_the_fallback_when_nvidia_smi_is_missing(self, mock_check_output):
+        mock_check_output.side_effect = FileNotFoundError("nvidia-smi not found")
+        monitor = GPUMonitor()
+        monitor._system = "Windows"
+        fallback = {"gpu_name": "NVIDIA GeForce RTX 4090", "vram_total_gb": 24.0, "vram_used_gb": 1.0,
+                    "utilization_pct": None, "temperature_c": None, "power_w": None}
+        with patch.object(GPUMonitor, "_snapshot_torch_cuda", return_value=fallback) as torch_probe:
+            snapshot = monitor._snapshot_nvidia()
+        torch_probe.assert_called_once()
+        self.assertEqual(snapshot, fallback)
+
+    @patch("backend_service.helpers.gpu.subprocess.check_output")
     def test_nvidia_smi_malformed_output(self, mock_check_output):
         mock_check_output.return_value = "garbage output"
         monitor = GPUMonitor()
@@ -366,3 +391,14 @@ class FreeVramTests(unittest.TestCase):
         apple = hc.HardwareClass("apple", "apple-64", "Apple Silicon, 64 GB", 64.0, 51.8)
         with mock.patch.object(hc, "host_hardware_class", return_value=apple):
             self.assertIsNone(cuda_free_vram_gb())
+
+
+class MetricsRouteTests(unittest.TestCase):
+    def test_gpu_route_does_not_block_the_event_loop(self):
+        # As ``async def`` the route ran the blocking snapshot on the event loop and froze
+        # every other request while the UI polled it (RTX 4090 run, Windows).
+        import inspect
+
+        from backend_service.routes import metrics
+
+        self.assertFalse(inspect.iscoroutinefunction(metrics.gpu_snapshot))

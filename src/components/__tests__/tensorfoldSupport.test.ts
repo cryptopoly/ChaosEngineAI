@@ -236,3 +236,18 @@ describe("cache strategies on the tensorfold backend", () => {
     expect(strategyIncompatReason("turboquant", "tensorfold")).toContain("tensorfold");
   });
 });
+
+describe("TensorFold 1.x native engine (CUDA hosts)", () => {
+  const native = makeInfo({ engine: "native", supportedModels: ["TensorFold/Qwen3.8-27B-MLX-4bit"], exclusiveModels: [], visionModels: [] });
+
+  it("marks the launch info as native so the panel shows the GPU requirements", () => {
+    const launch = tensorfoldLaunchInfoFor({ info: native }, ["TensorFold/Qwen3.8-27B-MLX-4bit"]);
+    expect(launch?.native).toBe(true);
+    expect(launch?.support.tier).toBe("tested");
+  });
+
+  it("leaves the Mac engine's info unmarked", () => {
+    const launch = tensorfoldLaunchInfoFor({ info: makeInfo() }, [DENSE]);
+    expect(launch?.native).toBe(false);
+  });
+});

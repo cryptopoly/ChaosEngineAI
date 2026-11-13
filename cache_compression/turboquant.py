@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import importlib
 import importlib.util
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -73,6 +74,16 @@ def _has_full_turboquant_mlx_package() -> bool:
         return False
 
 
+def _has_turbo_llama_binary() -> bool:
+    """True when the TurboQuant fork of llama-server is installed (the GGUF lane needs nothing from MLX)."""
+    try:
+        from backend_service.inference.binaries import _resolve_llama_server_turbo
+
+        return bool(_resolve_llama_server_turbo())
+    except Exception:  # noqa: BLE001 - an unreadable install is "not available", never a crash of the listing
+        return False
+
+
 def _load_turboquant_mlx_hooks() -> tuple[Any | None, Any | None]:
     if not _has_required_turboquant_mlx_hooks():
         return None, None
@@ -94,10 +105,11 @@ class TurboQuantStrategy(CacheStrategy):
         return "TurboQuant"
 
     def is_available(self) -> bool:
-        # The in-tree adapter provides ChaosEngineAI's stable hooks, while
-        # turboquant-mlx-full provides the actual TurboQuantKVCache. Report
-        # "Ready" only when both are visible to the backend runtime.
-        return _has_full_turboquant_mlx_package()
+        # Two lanes. On a Mac the in-tree adapter provides ChaosEngineAI's stable hooks and turboquant-mlx-full the
+        # actual TurboQuantKVCache: "Ready" needs both visible to the backend runtime. A GGUF model on any computer
+        # only needs the llama-server-turbo fork, so on Windows and Linux (no MLX at all) the strategy was
+        # "unavailable" everywhere although its binary was installed (RTX 4090 run).
+        return _has_full_turboquant_mlx_package() or _has_turbo_llama_binary()
 
     def availability_badge(self) -> str:
         return "Ready" if self.is_available() else "Experimental"
@@ -108,6 +120,11 @@ class TurboQuantStrategy(CacheStrategy):
     def availability_reason(self) -> str | None:
         if self.is_available():
             return None
+        if sys.platform != "darwin":
+            return (
+                "TurboQuant needs the llama-server-turbo build, which is not installed. "
+                "Install it from Setup (or place it in ~/.chaosengine/bin), then retry."
+            )
         if not _has_required_turboquant_mlx_hooks():
             return (
                 "ChaosEngineAI's TurboQuant MLX adapter is not available in "

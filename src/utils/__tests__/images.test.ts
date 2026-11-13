@@ -308,3 +308,27 @@ describe("assessImageGenerationSafety() with a chat model loaded", () => {
     expect(assessImageGenerationSafety({ ...base, otherResidentGb: 0 })).toEqual(assessImageGenerationSafety(base));
   });
 });
+
+describe("assessImageGenerationSafety() on CUDA", () => {
+  // Measured on an RTX 4090 through the app (FLUX.2 Klein 4B, model offload, 4 steps): 9.1 / 10.0 / 15.6 GB at
+  // 1024 / 1536 / 2048 px. The quadratic attention term said 9.2 / 17.3 / 39.2 GB and "danger" at 2048.
+  const klein = { device: "cuda", deviceMemoryGb: 24, baseModelFootprintGb: 16, repo: "black-forest-labs/FLUX.2-klein-4B" };
+
+  it("follows the measured FLUX.2 Klein peaks", () => {
+    for (const [size, measured] of [[1024, 9.1], [1536, 10.0], [2048, 15.6]] as const) {
+      const result = assessImageGenerationSafety({ ...klein, width: size, height: size });
+      expect(Math.abs(result.estimatedPeakGb / measured - 1)).toBeLessThan(0.15);
+      expect(result.riskLevel).toBe("safe");
+    }
+  });
+
+  it("still warns when a size is too big for the card", () => {
+    const result = assessImageGenerationSafety({ ...klein, width: 4096, height: 4096, deviceMemoryGb: 12 });
+    expect(result.riskLevel).toBe("danger");
+  });
+
+  it("leaves Apple Silicon unchanged", () => {
+    const mps = assessImageGenerationSafety({ ...klein, device: "mps", deviceMemoryGb: 64, width: 2048, height: 2048 });
+    expect(mps.estimatedPeakGb).toBeCloseTo(16 * 0.75 + (256 * 256) ** 2 * 2 * 4 / 1024 ** 3, 3);
+  });
+});

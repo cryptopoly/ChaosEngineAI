@@ -436,7 +436,7 @@ class RenderTests(unittest.TestCase):
         expected = sum(durations) - fades * 0.1
         self.assertAlmostEqual(result.duration_s, expected, delta=0.1)
         self.assertEqual(result.shots_rendered, 20)
-        self.assertTrue(any("-filter_complex_script" in args for args in commands))
+        self.assertTrue(any({"-filter_complex_script", "-/filter_complex"} & set(args) for args in commands))
         for args in commands:
             self.assertNotIn("-filter_complex", args)
             self.assertFalse(any(";" in a or "xfade=" in a or "amix=" in a for a in args),

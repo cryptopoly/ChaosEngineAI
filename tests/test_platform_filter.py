@@ -146,5 +146,33 @@ class FilterMlxOnlyFamiliesTests(unittest.TestCase):
         self.assertEqual(filter_mlx_only_families([], on_apple_silicon=False), [])
 
 
+class CudaOnlyVariantTests(unittest.TestCase):
+    """Wan 2.2 TI2V-5B is hidden on Apple Silicon (MPS corrupts its output) and shown everywhere else."""
+
+    def _families(self) -> list[dict[str, object]]:
+        cuda = {"id": "wan-ti2v", "name": "Wan 2.2 TI2V 5B", "runtime": "diffusers WanPipeline", "cudaOnly": True}
+        plain = {"id": "wan-21", "name": "Wan 2.1", "runtime": "diffusers WanPipeline"}
+        return [{"id": "wan-2-2", "variants": [cuda]}, {"id": "wan-2-1", "variants": [plain]}]
+
+    def test_a_mac_does_not_see_a_cuda_only_row_or_its_empty_family(self) -> None:
+        shown = filter_mlx_only_families(self._families(), on_apple_silicon=True)
+        self.assertEqual([f["id"] for f in shown], ["wan-2-1"])
+
+    def test_other_computers_keep_it(self) -> None:
+        shown = filter_mlx_only_families(self._families(), on_apple_silicon=False)
+        self.assertEqual([f["id"] for f in shown], ["wan-2-2", "wan-2-1"])
+
+    def test_the_live_catalog_marks_ti2v_cuda_only(self) -> None:
+        from backend_service.catalog.video_models import VIDEO_MODEL_FAMILIES
+
+        rows = {v["repo"]: v for f in VIDEO_MODEL_FAMILIES for v in f["variants"]}
+        self.assertIs(rows["Wan-AI/Wan2.2-TI2V-5B-Diffusers"].get("cudaOnly"), True)
+        self.assertNotIn("cudaOnly", rows["Wan-AI/Wan2.2-T2V-A14B-Diffusers"])
+
+    def test_a_mac_with_no_cuda_only_rows_gets_the_input_back_untouched(self) -> None:
+        families = [{"id": "x", "variants": [_flux_dev_gguf()]}]
+        self.assertIs(filter_mlx_only_families(families, on_apple_silicon=True), families)
+
+
 if __name__ == "__main__":
     unittest.main()

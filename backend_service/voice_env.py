@@ -115,15 +115,15 @@ _CUDA_PACKAGES = ["nvidia-cublas-cu12", "nvidia-cudnn-cu12>=9,<10"]
 EXTRAS: dict[str, tuple[tuple[str, ...], list[str], str]] = {
     "kokoro": (("mlx", "portable"), [], "Kokoro quick voices"),
     "chinese": (("mlx",), ["misaki[zh]>=0.9.4,<0.10"], "Mandarin Chinese voices"),
-    "speech-gpu": (("portable",), [], "More speech models on the NVIDIA GPU (Chatterbox, VoxCPM2, Orpheus)"),
+    "speech-gpu": (("portable",), [], "More speech models on the NVIDIA GPU (Qwen3-TTS, Chatterbox, VoxCPM2, Orpheus)"),
 }
 
 # Speech GPU add-on (D-70 Phase 6, FU-149). NOT VERIFIED: written on a Mac; the RTX 4090 session runs it
 # (docs/plans/rtx4090-test.md section 2). The two model packages go in with --no-deps: chatterbox-tts pins torch 2.6,
 # transformers 5.2, gradio and numpy<2, and voxcpm pulls gradio, funasr, modelscope, datasets and matplotlib, none of
 # which inference needs. What their model code imports is listed by hand instead, every licence checked (MIT,
-# Apache-2.0, BSD, ISC). Left out on purpose: pykakasi (GPL-3.0; Chatterbox uses it for Japanese readings, so Japanese
-# on this lane may read less well) and the onnxruntime-gpu build (the SNAC decoder for Orpheus is small and runs on
+# Apache-2.0, BSD, ISC). Left out on purpose: pykakasi (GPL-3.0; Chatterbox uses it for Japanese readings, so fugashi + unidic-lite
+# stand in for it, see voice_ja.py) and the onnxruntime-gpu build (the SNAC decoder for Orpheus is small and runs on
 # the CPU onnxruntime the pack already has). torch 2.9 with CUDA 12.8 wheels covers the RTX 40 and 50 series.
 SPEECH_GPU_TORCH = ["torch==2.9.1", "torchaudio==2.9.1"]
 SPEECH_GPU_TORCH_INDEX = "https://download.pytorch.org/whl/cu128"
@@ -144,9 +144,31 @@ SPEECH_GPU_PACKAGES = [
     "wetext==0.2.1",
     "soundfile>=0.13,<0.15",
     "torchcodec==0.8.1",
+    "fugashi==1.5.2",  # Japanese readings for Chatterbox (backend_service/voice_ja.py), instead of GPL pykakasi
+    "unidic-lite==1.0.8",
     "pydantic>=2,<3",
 ]
-SPEECH_GPU_NO_DEPS = ["chatterbox-tts==0.1.7", "voxcpm==2.0.3"]
+# chatterbox-tts: PyPI's newest (0.1.7) only knows the v2 Multilingual model; V3 (`from_local(..., t3_model="v3")`,
+# weights `t3_mtl23ls_v3.safetensors`) is only in the upstream repository, from commit 65b1843 (2026-06-10). Pinned to
+# a source archive of the commit the RTX 4090 run tested (same 0.1.7 version string, MIT). Move back to a PyPI pin
+# once a release carries V3.
+CHATTERBOX_REF = "ab55923c27757c90cfcc407baa57dc25a7d25217"
+CHATTERBOX_PACKAGE = f"chatterbox-tts @ https://github.com/resemble-ai/chatterbox/archive/{CHATTERBOX_REF}.zip"
+# Qwen3-TTS (``qwen-tts`` 0.1.1, Apache-2.0) pins transformers 4.57.3 and cannot run on the 5.2 that Chatterbox pins
+# (RTX 4090 run: on 5.2 it loads and then speaks hum; its prefill and rope bookkeeping rely on 4.x generation
+# internals). So its packages go into their own folder inside the voice venv (``--no-deps``; torch, librosa,
+# soundfile, onnxruntime, einops and the rest come from the venv) and the Qwen worker puts that folder first on
+# PYTHONPATH (``qwen_worker_env``). huggingface-hub 0.36 is what transformers 4.57 accepts (the venv has 1.x);
+# accelerate loads the model straight onto the GPU; ``sox`` (BSD-3-Clause, pure Python) is imported by
+# qwen-tts and never run. All Apache-2.0 except sox.
+QWEN_TTS_SITE_PACKAGES = [
+    "transformers==4.57.3", "huggingface-hub==0.36.0", "accelerate==1.12.0", "qwen-tts==0.1.1", "sox==1.5.0",
+]
+_QWEN_SITE_CHECK = (
+    "import sys; sys.path.insert(0, {site!r}); import transformers, qwen_tts; "
+    "assert transformers.__version__ == '4.57.3', transformers.__version__; print('qwen ok')"
+)
+SPEECH_GPU_NO_DEPS = [CHATTERBOX_PACKAGE, "voxcpm==2.0.3"]
 _SPEECH_GPU_CHECK = (
     "import torch, chatterbox.tts_turbo, chatterbox.mtl_tts, voxcpm; "
     "assert torch.cuda.is_available(), 'PyTorch cannot see the NVIDIA GPU'; print('speech gpu ok')"
@@ -170,9 +192,30 @@ def speech_gpu_commands(python: str) -> list[list[str]]:
     return [
         [*pip, *SPEECH_GPU_TORCH, "--index-url", SPEECH_GPU_TORCH_INDEX],
         [*pip, *SPEECH_GPU_PACKAGES],
-        [*pip, "--no-deps", *SPEECH_GPU_NO_DEPS],
+        # --force-reinstall: the pinned chatterbox archive reports the same version (0.1.7) as the PyPI wheel an earlier
+        # install left behind, and pip keeps the installed copy of an equal version without it (RTX 4090 run).
+        [*pip, "--no-deps", "--force-reinstall", *SPEECH_GPU_NO_DEPS],
+        [*pip, "--target", str(qwen_site_dir()), "--no-deps", "--upgrade", *QWEN_TTS_SITE_PACKAGES],
         [python, "-I", "-c", _SPEECH_GPU_CHECK],
+        [python, "-I", "-c", _QWEN_SITE_CHECK.format(site=str(qwen_site_dir()))],
     ]
+
+
+def qwen_site_dir() -> Path:
+    """Where the Qwen3-TTS packages live: inside the voice venv, so removing the venv or the add-on removes them."""
+    return VOICE_VENV_DIR / "qwen-site"
+
+
+def qwen_installed() -> bool:
+    site = qwen_site_dir()
+    return (site / "qwen_tts").is_dir() and any(site.glob("transformers-4.57.3*"))
+
+
+def qwen_worker_env() -> dict[str, str]:
+    """Environment of the Qwen3-TTS worker: its own transformers first on the import path."""
+    # Never the backend's own PYTHONPATH: it points at the app's packages (another torch and transformers), which
+    # ``worker_env`` removes on purpose.
+    return {"PYTHONPATH": str(qwen_site_dir()), "HF_HUB_OFFLINE": "1"}
 
 
 def speech_gpu_installed() -> bool:
@@ -227,8 +270,12 @@ def _base_python() -> str:
     raise RuntimeError(f"No Python interpreter found in {stable}.")
 
 
+def _is_windows() -> bool:
+    return os.name == "nt"
+
+
 def venv_python() -> Path:
-    if os.name == "nt":
+    if _is_windows():
         return VOICE_VENV_DIR / "Scripts" / "python.exe"
     return VOICE_VENV_DIR / "bin" / "python"
 

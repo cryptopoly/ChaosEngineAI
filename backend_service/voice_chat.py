@@ -250,7 +250,7 @@ def speak_sentence(chat: ChatPlan, sentence: str, speed: float) -> tuple[bytes, 
     if chat.clone_row is not None:
         from backend_service import voice_clone  # noqa: PLC0415
 
-        wav = voice_clone.mark_cloned(wav, chat.clone_row, chat.clone_id)
+        wav = voice_clone.mark_cloned(wav, chat.clone_row, chat.clone_id, altered=speed != 1.0)
     return wav, duration
 
 

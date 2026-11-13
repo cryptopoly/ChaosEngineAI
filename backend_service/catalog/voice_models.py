@@ -420,7 +420,8 @@ for _row in VOICE_MODELS:
     _row.setdefault("chunkChars", 400)
     _row.setdefault("rank", None)
     _row.setdefault("builtinWatermark", None)
-    _row["default"] = _row["key"] == DEFAULT_CLONE_MODEL
+    # The default and its GPU twin ("-cuda"); the cloning picker takes the one that runs here.
+    _row["default"] = _row["key"] in (DEFAULT_CLONE_MODEL, f"{DEFAULT_CLONE_MODEL}-cuda")
     _row["downloadGb"] = round(_row["sizeGb"] + sum(c.get("sizeGb", 0.0) for c in _row["companions"]), 2)
     # A wave-2 row is offered only once it has measured numbers on this hardware (D-70: no unmeasured rows).
     _row["listed"] = (

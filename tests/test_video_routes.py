@@ -164,7 +164,9 @@ class VideoCatalogRouteTests(unittest.TestCase):
 
     def test_catalog_slow_on_labels_reach_the_payload(self):
         """D-44: slow rows carry an explicit per-platform slowOn list; nothing is hidden or resized."""
-        payload = self.client.get("/api/video/catalog").json()
+        # The Mac-only MLX rows are listed on Apple Silicon only; pin that so the test reads the whole table anywhere.
+        with mock.patch("backend_service.helpers.video.is_apple_silicon", return_value=True):
+            payload = self.client.get("/api/video/catalog").json()
         rows = {v["id"]: v for f in payload["families"] for v in f["variants"]}
 
         def entry(variant_id: str, platform: str):
@@ -632,6 +634,49 @@ class VideoGenerateRouteTests(unittest.TestCase):
         listing = self.client.get("/api/video/outputs").json()["outputs"]
         self.assertEqual(len(listing), 1)
         self.assertEqual(listing[0]["artifactId"], artifact["artifactId"])
+
+    def test_generate_forwards_the_cache_strategy_to_the_runtime(self):
+        """The Studio's cache choice used to stop at the request model, so no video ever ran cached."""
+        state = self.client.app.state.chaosengine
+        capabilities = {
+            "activeEngine": "diffusers", "realGenerationAvailable": True, "message": "Ready",
+            "missingDependencies": [], "loadedModelRepo": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+        }
+        generate_mock = mock.MagicMock(return_value=(self._fake_generated_video(), capabilities))
+        state.video_runtime.generate = generate_mock  # type: ignore[method-assign]
+        with mock.patch.object(video_routes, "_video_variant_available_locally", return_value=True):
+            response = self.client.post(
+                "/api/video/generate",
+                json=self._payload(cacheStrategy="taylorseer", cacheRelL1Thresh=3),
+            )
+        self.assertEqual(response.status_code, 200, response.text)
+        config = generate_mock.call_args.args[0]
+        self.assertEqual(config.cacheStrategy, "taylorseer")
+        self.assertEqual(config.cacheRelL1Thresh, 3)
+
+    def test_a_watchdog_stop_answers_504_with_the_reason_and_a_user_cancel_stays_409(self):
+        from backend_service.progress import VIDEO_PROGRESS, GenerationCancelled
+
+        state = self.client.app.state.chaosengine
+        reason = "The video stopped: step 2 of 8 ran for 300 s without finishing (limit 120 s)."
+
+        def stalled(*_a, **_k):
+            VIDEO_PROGRESS.mark_stalled(reason)
+            raise GenerationCancelled(reason)
+
+        def cancelled(*_a, **_k):
+            VIDEO_PROGRESS.begin(run_label="t", total_steps=4)  # a new run clears any old stall reason
+            raise GenerationCancelled("Video generation cancelled by user")
+
+        with mock.patch.object(video_routes, "_video_variant_available_locally", return_value=True):
+            state.video_runtime.generate = mock.MagicMock(side_effect=stalled)  # type: ignore[method-assign]
+            response = self.client.post("/api/video/generate", json=self._payload())
+            self.assertEqual(response.status_code, 504, response.text)
+            self.assertEqual(response.json()["detail"], reason)
+            state.video_runtime.generate = mock.MagicMock(side_effect=cancelled)  # type: ignore[method-assign]
+            response = self.client.post("/api/video/generate", json=self._payload())
+            self.assertEqual(response.status_code, 409, response.text)
+        VIDEO_PROGRESS.finish()
 
     def test_generate_unloads_idle_image_runtime_first(self):
         state = self.client.app.state.chaosengine

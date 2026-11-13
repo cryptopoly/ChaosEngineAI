@@ -53,7 +53,7 @@ export interface StoryboardTake {
 }
 
 export type StoryboardShotStatus = "idle" | "queued" | "running" | "done" | "failed" | "stale" | "missing";
-export type StoryboardStartFrom = "generate" | "upload" | "previous-shot";
+export type StoryboardStartFrom = "generate" | "upload" | "previous-shot" | "text";
 
 export interface StoryboardShot {
   id: string;

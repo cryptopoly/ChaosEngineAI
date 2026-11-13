@@ -32,6 +32,7 @@ from typing import Any
 
 from backend_service.helpers.gpu import nvidia_gpu_present, torch_install_warning
 from backend_service.helpers.lora import fuse_catalog_lora
+from backend_service.helpers.malloc_release import ModelThread
 from backend_service.helpers.pipeline_kwargs import filter_pipeline_kwargs
 from backend_service.image_runtime import validate_local_diffusers_snapshot
 from backend_service.progress import (
@@ -54,6 +55,10 @@ from backend_service.video_runtime.defaults import (
     _estimate_model_footprint_gb,
     _find_missing,
     _interpolate_frames,
+    _cuda_memory_gb,
+    _is_unified_memory,
+    _largest_component_gb,
+    _prefers_model_cpu_offload,
     _resolve_video_defaults,
     _should_apply_memory_savers,
 )
@@ -67,6 +72,7 @@ from backend_service.video_runtime.device import (
     _windows_cuda_unavailable_message,
 )
 from backend_service.video_runtime.repos import (
+    IMAGE_TO_VIDEO_REGISTRY,
     PIPELINE_REGISTRY,
     _BNB_NF4_VIDEO_TRANSFORMER_CLASSES,
     _GGUF_VIDEO_TRANSFORMER_CLASSES,
@@ -85,6 +91,11 @@ from backend_service.video_runtime.pipeline_helpers import (
     make_step_callback,
     pipeline_class_for_repo,
     swap_scheduler,
+)
+from backend_service.video_runtime.ltx25_loader import (
+    LTX25_UNUSED_COMPONENTS,
+    is_ltx25_repo,
+    load_ltx25_components,
 )
 from backend_service.video_runtime.transformer_loaders import (
     detect_device,
@@ -235,8 +246,13 @@ class DiffusersVideoEngine:
             torchInstallWarning=torch_install_warning(),
         )
 
-    def preload(self, repo: str) -> VideoRuntimeStatus:
-        self._ensure_pipeline(repo)
+    def preload(self, repo: str, use_nf4: bool = False) -> VideoRuntimeStatus:
+        # ``use_nf4`` matters for a row quantised on load (LTX-2.5 4-bit): without it the preload read the
+        # bf16 repo whole (a 38 GB transformer and a 24 GB text encoder) and generate then loaded it again.
+        if use_nf4:
+            self._ensure_pipeline(repo, use_nf4=True)
+        else:
+            self._ensure_pipeline(repo)
         return self.probe()
 
     def unload(self, repo: str | None = None) -> VideoRuntimeStatus:
@@ -301,6 +317,8 @@ class DiffusersVideoEngine:
                 distill_high_file=config.distillTransformerHighNoiseFile,
                 distill_low_file=config.distillTransformerLowNoiseFile,
                 distill_precision=config.distillTransformerPrecision,
+                image_input=self._uses_image_pipeline(config),
+                end_image=self._uses_end_image(config),
             )
             # Early-cancel check after model load — from_pretrained is a
             # blocking C-extension call we can't interrupt. If the user hit
@@ -342,7 +360,7 @@ class DiffusersVideoEngine:
             # see FU-007 in FOLLOW_UPS.md.
             from cache_compression import apply_diffusion_cache_strategy
 
-            apply_diffusion_cache_strategy(
+            cache_note = apply_diffusion_cache_strategy(
                 pipeline,
                 strategy_id=config.cacheStrategy,
                 num_inference_steps=int(config.steps),
@@ -350,26 +368,34 @@ class DiffusersVideoEngine:
                 domain="video",
             )
 
+            from backend_service.helpers.step_watchdog import StepWatchdog
+
             started = time.perf_counter()
-            if config.enableLtxRefiner and config.repo == "Lightricks/LTX-Video":
-                try:
-                    frames = self._invoke_pipeline_with_ltx_refiner(
-                        pipeline, kwargs, torch
+            with StepWatchdog(VIDEO_PROGRESS, kind="video"):
+                if config.enableLtxRefiner and config.repo == "Lightricks/LTX-Video":
+                    try:
+                        frames = self._invoke_pipeline_with_ltx_refiner(
+                            pipeline, kwargs, torch
+                        )
+                        VIDEO_PROGRESS.set_phase(
+                            PHASE_DIFFUSING,
+                            message="LTX two-stage spatial upscale applied.",
+                        )
+                    except Exception as exc:  # noqa: BLE001 — refiner is best-effort
+                        note = (
+                            f"LTX refiner skipped ({type(exc).__name__}: {exc}) — "
+                            "running base pipeline only."
+                        )
+                        _LOG.info("video.ltx_refiner: %s", note)
+                        VIDEO_PROGRESS.set_phase(PHASE_DIFFUSING, message=note)
+                        frames = self._invoke_pipeline(pipeline, kwargs)
+                else:
+                    from cache_compression import run_without_cache_on_failure
+
+                    frames, cache_note = run_without_cache_on_failure(
+                        pipeline, cache_note, lambda: self._invoke_pipeline(pipeline, kwargs),
+                        before_retry=lambda: generator.manual_seed(base_seed),
                     )
-                    VIDEO_PROGRESS.set_phase(
-                        PHASE_DIFFUSING,
-                        message="LTX two-stage spatial upscale applied.",
-                    )
-                except Exception as exc:  # noqa: BLE001 — refiner is best-effort
-                    note = (
-                        f"LTX refiner skipped ({type(exc).__name__}: {exc}) — "
-                        "running base pipeline only."
-                    )
-                    _LOG.info("video.ltx_refiner: %s", note)
-                    VIDEO_PROGRESS.set_phase(PHASE_DIFFUSING, message=note)
-                    frames = self._invoke_pipeline(pipeline, kwargs)
-            else:
-                frames = self._invoke_pipeline(pipeline, kwargs)
             elapsed = max(0.1, time.perf_counter() - started)
 
             if not frames:
@@ -378,6 +404,8 @@ class DiffusersVideoEngine:
                     "Try a smaller resolution or a different model."
                 )
 
+            clip_audio = getattr(frames, "audio", None)  # LTX-2 makes sound with the picture
+            clip_audio_rate = getattr(frames, "audio_sample_rate", None)
             interpolation_factor = max(1, int(config.interpolationFactor or 1))
             if interpolation_factor > 1:
                 VIDEO_PROGRESS.set_phase(
@@ -400,6 +428,15 @@ class DiffusersVideoEngine:
             # user sees what was applied. Joined with " · " for a
             # single-line UI presentation.
             note_parts = [*self._load_notes, *finalize_notes, *kwarg_notes]
+            if cache_note:
+                note_parts.append(cache_note)
+            if clip_audio is not None:
+                try:
+                    from backend_service.video_runtime.audio_mux import mux_audio_into_mp4
+
+                    mp4_bytes = mux_audio_into_mp4(mp4_bytes, clip_audio, int(clip_audio_rate or 0))
+                except Exception as exc:  # noqa: BLE001 - a silent clip is better than none
+                    note_parts.append(f"The clip is silent: {exc}")
             runtime_note = " · ".join(note_parts) if note_parts else None
             return GeneratedVideo(
                 seed=base_seed,
@@ -417,7 +454,24 @@ class DiffusersVideoEngine:
                 effectiveGuidance=float(config.guidance),
             )
         finally:
+            self._trim_device_cache()
             VIDEO_PROGRESS.finish()
+
+    def _trim_device_cache(self) -> None:
+        """Hand PyTorch's cached scratch memory back after a run; the pipeline stays loaded for the next one.
+
+        The allocator keeps what a run reserved, so after one Wan 720p clip the NVIDIA card read 24.0 GB used with
+        nothing generating and chat or speech on the same GPU had no room until "Unload" (RTX 4090 run).
+        """
+        torch = self._torch
+        if torch is None:
+            return
+        try:
+            gc.collect()
+            if self._device == "cuda" and getattr(torch.cuda, "is_available", lambda: False)():
+                torch.cuda.empty_cache()
+        except Exception:  # noqa: BLE001 - trimming a cache must never fail a finished run
+            pass
 
     def _format_run_label(self, config: VideoGenerationConfig) -> str:
         return f"{config.modelName} · {config.numFrames}f @ {config.width}x{config.height}"
@@ -525,8 +579,8 @@ class DiffusersVideoEngine:
     def _encode_frames_to_mp4(self, frames: list[Any], fps: int) -> bytes:
         return encode_frames_to_mp4(frames, fps)
 
-    def _pipeline_class(self, repo: str) -> Any:
-        return pipeline_class_for_repo(repo)
+    def _pipeline_class(self, repo: str, image_input: bool = False, end_image: bool = False) -> Any:
+        return pipeline_class_for_repo(repo, image_input=image_input, end_image=end_image)
 
     @staticmethod
     def _build_variant_key(
@@ -542,8 +596,14 @@ class DiffusersVideoEngine:
         distill_high_file: str | None,
         distill_low_file: str | None,
         distill_precision: str | None,
+        image_input: bool = False,
+        end_image: bool = False,
     ) -> str:
         variant_parts = [repo]
+        if end_image:
+            variant_parts.append("cond")
+        elif image_input:
+            variant_parts.append("i2v")
         if gguf_file:
             variant_parts.append(f"gguf={gguf_file}")
         elif use_nf4:
@@ -572,13 +632,51 @@ class DiffusersVideoEngine:
             distill_high_file=config.distillTransformerHighNoiseFile,
             distill_low_file=config.distillTransformerLowNoiseFile,
             distill_precision=config.distillTransformerPrecision,
+            image_input=self._uses_image_pipeline(config),
+            end_image=self._uses_end_image(config),
         )
+
+    @staticmethod
+    def _uses_image_pipeline(config: VideoGenerationConfig) -> bool:
+        """True when this run starts from a picture and its repo has an image-to-video pipeline class."""
+        return bool(config.startImagePath) and config.repo in IMAGE_TO_VIDEO_REGISTRY
+
+    @staticmethod
+    def _uses_end_image(config: VideoGenerationConfig) -> bool:
+        """True when this run ends on a picture and its repo takes one (LTX-2's condition pipeline)."""
+        entry = IMAGE_TO_VIDEO_REGISTRY.get(config.repo)
+        return bool(config.endImagePath) and bool(entry and entry.get("endImage"))
 
     def _is_variant_loaded(self, variant_key: str) -> bool:
         with self._lock:
             return self._pipeline is not None and self._loaded_variant_key == variant_key
 
-    def _ensure_pipeline(
+    def _ensure_pipeline(self, repo: str, *args: Any, **kwargs: Any) -> Any:
+        """Load (or reuse) the pipeline; a load that fails hands back what it had already put on the GPU.
+
+        The exception's traceback holds the loader's frames, and with them every component loaded before the
+        failure. The installed app kept 19 GB on the GPU and 21 GB of system memory after an LTX-2.5 load failed
+        late (on its processor), and Unload could not free it because no pipeline was ever stored. The exception
+        is re-raised with its type and message but without that traceback, after a collection.
+        """
+        try:
+            return self._load_or_reuse_pipeline(repo, *args, **kwargs)
+        except Exception as exc:  # noqa: BLE001 - re-raised below
+            failure = exc.with_traceback(None)
+            failure.__context__ = None
+            failure.__cause__ = None
+        gc.collect()
+        try:
+            import sys
+
+            torch = sys.modules.get("torch")
+            if torch is not None and getattr(torch.cuda, "is_available", lambda: False)():
+                torch.cuda.empty_cache()
+        except Exception:  # noqa: BLE001 - housekeeping only
+            pass
+        raise failure
+
+    def _load_or_reuse_pipeline(
         self,
         repo: str,
         gguf_repo: str | None = None,
@@ -592,6 +690,8 @@ class DiffusersVideoEngine:
         distill_high_file: str | None = None,
         distill_low_file: str | None = None,
         distill_precision: str | None = None,
+        image_input: bool = False,
+        end_image: bool = False,
     ) -> Any:
         with self._lock:
             # Variant key folds in LoRA identity — switching LoRAs on the
@@ -612,6 +712,8 @@ class DiffusersVideoEngine:
                 distill_high_file=distill_high_file,
                 distill_low_file=distill_low_file,
                 distill_precision=distill_precision,
+                image_input=image_input,
+                end_image=end_image,
             )
             if self._pipeline is not None and self._loaded_variant_key == variant_key:
                 return self._pipeline
@@ -627,7 +729,7 @@ class DiffusersVideoEngine:
             import torch  # type: ignore
             from backend_service.helpers.hf_local import local_snapshot_path
 
-            pipeline_cls = self._pipeline_class(repo)
+            pipeline_cls = self._pipeline_class(repo, image_input=image_input, end_image=end_image)
 
             local_path = local_snapshot_path(repo, resume_download=True)
             local_root = Path(local_path)
@@ -659,6 +761,22 @@ class DiffusersVideoEngine:
                         gguf_note
                         or f"Could not load requested GGUF transformer {gguf_file}."
                     )
+            elif use_nf4 and is_ltx25_repo(repo):
+                # LTX-2.5: 4-bit transformer, and a 4-bit text encoder unless this card has room for bf16.
+                VIDEO_PROGRESS.set_phase(PHASE_LOADING, message="Loading LTX-2.5 in 4-bit (bitsandbytes)")
+                free_gb, total_gb = _cuda_memory_gb(torch)
+                ltx25_kwargs, ltx25_notes = load_ltx25_components(
+                    repo,
+                    local_path,
+                    torch,
+                    device,
+                    free_gb=free_gb,
+                    unified_memory=_is_unified_memory(total_gb or 0.0),
+                    load_transformer=self._try_load_bnb_nf4_transformer,
+                )
+                pipeline_kwargs.update(ltx25_kwargs)
+                for ltx25_note in ltx25_notes:
+                    VIDEO_PROGRESS.set_phase(PHASE_LOADING, message=ltx25_note)
             elif use_nf4:
                 VIDEO_PROGRESS.set_phase(
                     PHASE_LOADING,
@@ -674,11 +792,17 @@ class DiffusersVideoEngine:
                     pipeline_kwargs["transformer"] = nf4_transformer
                 if nf4_note:
                     VIDEO_PROGRESS.set_phase(PHASE_LOADING, message=nf4_note)
+            if is_ltx25_repo(repo):
+                for name, value in LTX25_UNUSED_COMPONENTS.items():
+                    pipeline_kwargs.setdefault(name, value)
+
+            from backend_service.helpers.malloc_release import pipeline_load_kwargs
 
             pipeline = pipeline_cls.from_pretrained(
                 local_path,
                 torch_dtype=dtype,
                 local_files_only=True,
+                **pipeline_load_kwargs(),
                 **pipeline_kwargs,
             )
 
@@ -760,7 +884,7 @@ class DiffusersVideoEngine:
             # for the decision matrix.
             total_memory_gb = _detect_device_memory_gb(device)
             estimated_footprint_gb = _estimate_model_footprint_gb(
-                repo, str(dtype), gguf_file=gguf_file
+                repo, str(dtype), gguf_file=gguf_file, nf4_on_load=use_nf4
             )
             if _should_apply_memory_savers(device, total_memory_gb, estimated_footprint_gb):
                 _LOG.info(
@@ -806,6 +930,20 @@ class DiffusersVideoEngine:
                         "device memory."
                     )
                     pipeline.enable_sequential_cpu_offload()
+                elif hasattr(pipeline, "enable_model_cpu_offload") and _prefers_model_cpu_offload(
+                    device,
+                    (_cuda_memory_gb(torch)[0] or total_memory_gb) if device == "cuda" else total_memory_gb,
+                    estimated_footprint_gb,
+                    _largest_component_gb(pipeline),
+                    unified_memory=_is_unified_memory(_cuda_memory_gb(torch)[1] or total_memory_gb),
+                ):
+                    _LOG.info(
+                        "video.placement: model-level CPU offload (pipeline ~%s GB, GPU memory free %s GB, "
+                        "largest component fits).",
+                        estimated_footprint_gb,
+                        _cuda_memory_gb(torch)[0] or total_memory_gb,
+                    )
+                    pipeline.enable_model_cpu_offload()
                 else:
                     # Try full-device placement first; fall back to sequential
                     # CPU offload if the model is too big to fit.
@@ -816,6 +954,13 @@ class DiffusersVideoEngine:
                             pipeline.enable_sequential_cpu_offload()
                         else:
                             raise
+
+            try:
+                from backend_service.helpers.speedups import apply_speedups
+
+                self._load_notes.extend(apply_speedups(pipeline))
+            except Exception:  # noqa: BLE001 - speed-ups are optional
+                pass
 
             self._pipeline = pipeline
             self._torch = torch
@@ -875,6 +1020,8 @@ class DiffusersVideoEngine:
         if pipeline is not None:
             del pipeline
         gc.collect()
+        from backend_service.helpers.malloc_release import release_freed_memory
+        release_freed_memory()
         if torch is not None:
             try:
                 if device == "cuda" and getattr(torch.cuda, "is_available", lambda: False)():
@@ -907,6 +1054,21 @@ def _is_longlive_repo(repo: str | None) -> bool:
     if not repo:
         return False
     return repo.startswith("NVlabs/LongLive")
+
+
+# Load, generate and unload of the diffusers pipeline run on one thread so Windows hands its memory back on Unload
+# (see ``ModelThread``).
+_MODEL_THREAD = ModelThread("video-model")
+
+
+def _release_gpu_speech() -> None:
+    """Free idle speech models on the NVIDIA GPU before video weights load (``voice_client.release_gpu_for_media``)."""
+    try:
+        from backend_service.voice_client import release_gpu_for_media  # noqa: PLC0415
+
+        release_gpu_for_media()
+    except Exception:  # noqa: BLE001 - housekeeping must never fail a generation
+        pass
 
 
 class VideoRuntimeManager:
@@ -1007,7 +1169,7 @@ class VideoRuntimeManager:
         """
         return self._get_sdcpp_video().probe().to_dict()
 
-    def preload(self, repo: str) -> dict[str, Any]:
+    def preload(self, repo: str, use_nf4: bool = False) -> dict[str, Any]:
         with self._lock:
             if _is_longlive_repo(repo):
                 engine = self._get_longlive()
@@ -1026,7 +1188,10 @@ class VideoRuntimeManager:
             status = self._engine.probe()
             if not status.realGenerationAvailable:
                 raise RuntimeError(status.message)
-            return self._engine.preload(repo).to_dict()
+            _release_gpu_speech()
+            if use_nf4:
+                return _MODEL_THREAD.run(self._engine.preload, repo, use_nf4=True).to_dict()
+            return _MODEL_THREAD.run(self._engine.preload, repo).to_dict()
 
     def unload(self, repo: str | None = None) -> dict[str, Any]:
         with self._lock:
@@ -1038,7 +1203,7 @@ class VideoRuntimeManager:
                 return self._get_mlx_video().unload(repo).to_dict()
             if repo is None and self._ltx2_mlx is not None:
                 self._ltx2_mlx.release("unloaded")  # the warm ltx-2-mlx worker, when it idles
-            return self._engine.unload(repo).to_dict()
+            return _MODEL_THREAD.run(self._engine.unload, repo).to_dict()
 
     def generate(self, config: VideoGenerationConfig) -> tuple[GeneratedVideo, dict[str, Any]]:
         """Run a single video generation, returning (video, runtime_status).
@@ -1074,6 +1239,7 @@ class VideoRuntimeManager:
         # Another engine is about to load its own weights: free the warm LTX pipeline first.
         if self._ltx2_mlx is not None:
             self._ltx2_mlx.release("another video engine is loading")
+        _release_gpu_speech()
 
         if self._is_mlx_video_repo(config.repo):
             mlx = self._get_mlx_video()
@@ -1127,6 +1293,6 @@ class VideoRuntimeManager:
         if not status.realGenerationAvailable:
             raise RuntimeError(status.message)
         with self._lock:
-            video = self._engine.generate(config)
+            video = _MODEL_THREAD.run(self._engine.generate, config)
             runtime = self._engine.probe().to_dict()
         return video, runtime

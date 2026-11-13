@@ -10,10 +10,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from fastapi import FastAPI, Request
-from fastapi.middleware.cors import CORSMiddleware
-from starlette.responses import JSONResponse
-
 from backend_service.runtime_paths import ensure_extras_on_sys_path, guard_overlay_against_bundle
 
 # The Hugging Face libraries add library and version details to their requests
@@ -23,6 +19,13 @@ os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
 
 guard_overlay_against_bundle()
 ensure_extras_on_sys_path()
+
+# Imported only after the guard: the extras overlay is already on sys.path in packaged builds, and a
+# half-replaced overlay copy of pydantic_core (Windows file locks during a GPU-runtime install) made
+# `from fastapi import ...` crash before the guard could move it aside.
+from fastapi import FastAPI, Request  # noqa: E402
+from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
+from starlette.responses import JSONResponse  # noqa: E402
 
 from backend_service.models import ImageGenerationRequest, VideoGenerationRequest
 from backend_service.routes import register_routes
@@ -274,6 +277,9 @@ def compute_cache_preview(
     arch=None,
     weights_gb: float | None = None,
     measured_tok_s: float | None = None,
+    lane: str | None = None,
+    cuda: bool = False,
+    layout=None,
 ) -> dict[str, Any]:
     return compute_cache_preview_impl(
         bits=bits,
@@ -290,6 +296,9 @@ def compute_cache_preview(
         arch=arch,
         weights_gb=weights_gb,
         measured_tok_s=measured_tok_s,
+        lane=lane,
+        cuda=cuda,
+        layout=layout,
     )
 
 
@@ -617,11 +626,14 @@ def _generate_video_artifact(
             ggufFile=(variant.get("ggufFile") or None),
             interpolationFactor=request.interpolationFactor,
             scheduler=request.scheduler,
-            useNf4=request.useNf4,
+            # A row that is 4-bit on load (``loadQuantization``: LTX-2.5) asks for NF4 whatever the toggle says.
+            useNf4=bool(request.useNf4) or variant.get("loadQuantization") == "nf4",
             enableLtxRefiner=request.enableLtxRefiner,
             cfgDecay=request.cfgDecay,
             stgScale=request.stgScale,
             previewVae=request.previewVae,
+            cacheStrategy=request.cacheStrategy,
+            cacheRelL1Thresh=request.cacheRelL1Thresh,
             # FU-019: variant-declared LoRA + override metadata.
             loraRepo=(variant.get("loraRepo") or None),
             loraFile=(variant.get("loraFile") or None),

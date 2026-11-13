@@ -451,7 +451,9 @@ export function VideoStudioTab({
   const isLtx2DistilledVariant = isLtx2DistilledRepo(selectedVideoVariant?.repo);
   // ltx-2-mlx runs a fixed distilled sampler: steps, guidance, the negative prompt, CFG decay,
   // the preview VAE and the diffusion cache do not exist for it, so they are not offered.
-  const fixedSampler = Boolean(selectedVideoVariant?.runtime?.toLowerCase().includes("ltx-2-mlx"));
+  const fixedSampler = Boolean(
+    selectedVideoVariant?.fixedSampler || selectedVideoVariant?.runtime?.toLowerCase().includes("ltx-2-mlx"),
+  );
   const ltx2DevSibling = selectedVideoFamily?.variants.find(
     (variant) => variant.repo === selectedVideoVariant?.repo.replace(/-distilled$/i, "-dev"),
   ) ?? null;
@@ -792,7 +794,7 @@ export function VideoStudioTab({
       : labelValue(t("videoStudio.fields.seed", { defaultValue: "Seed" }), videoSeedInput || "?"),
     !fixedSampler && videoNegativePrompt !== DEFAULT_VIDEO_NEGATIVE_PROMPT
       && t("studioKit.summary.negativeEdited", { defaultValue: "Negative prompt edited" }),
-    selectedVideoVariant?.acceptsImageInput && videoEndImage != null
+    selectedVideoVariant?.acceptsEndImage && videoEndImage != null
       && t("studioKit.summary.endImageSet", { defaultValue: "End image set" }),
   ]);
 
@@ -1322,7 +1324,7 @@ export function VideoStudioTab({
                 </label>
               ) : null}
 
-              {selectedVideoVariant?.acceptsImageInput ? (
+              {selectedVideoVariant?.acceptsEndImage ? (
                 <InputImagePicker
                   label={t("inputImage.endLabel")}
                   hint={t("inputImage.endHint")}

@@ -71,6 +71,18 @@ def _get_disk_usage_for_models(settings: dict[str, Any]) -> dict[str, float] | N
 
 
 
+def _gpu_unified_memory(gpu_vram_total_gb: Any) -> bool:
+    """True when the NVIDIA GPU shares system memory (DGX Spark); never raises."""
+    if not gpu_vram_total_gb:
+        return False
+    try:
+        from backend_service.helpers.gpu import nvidia_shared_memory
+
+        return nvidia_shared_memory()
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def _capabilities_payload(capabilities: Any | None = None) -> dict[str, Any]:
     if capabilities is None:
         from backend_service.inference import get_backend_capabilities
@@ -167,12 +179,47 @@ def _build_system_snapshot(
             _detect_tensorfold_extras,
         )
         available, _python, version = _detect_tensorfold()
+        from backend_service.inference import _tensorfold_native as native
+
+        if native.uses_native_engine():
+            # CUDA hosts: the TensorFold 1.x native binary and its own registry.
+            from backend_service.inference.capabilities import _detect_tensorfold_native
+
+            native_ok, _binary, native_version = _detect_tensorfold_native()
+            return {
+                "available": native_ok,
+                "version": native_version,
+                "extras": [],
+                "supportedModels": [repo for model in native.NATIVE_MODELS for repo in model.repos[:1]],
+                "exclusiveModels": [],
+                "visionModels": [repo for model in native.NATIVE_MODELS if model.vision for repo in model.repos[:1]],
+                "minMemoryGb": {},
+                "engine": "native",
+            }
+        from backend_service.inference.capabilities import _detect_tensorfold_native
+        from backend_service.inference._tensorfold import TENSORFOLD_FAMILIES
+
+        native_ok, _binary, native_version = _detect_tensorfold_native()
+        extras = list(_detect_tensorfold_extras()) if available else []
+        if native_ok:
+            # Mac: the 1.x binary serves the families marked native; the older
+            # Python install (when still present) serves the rest. Image input
+            # and grammar are inside the binary.
+            extras = ["vision", "grammar"]
+            skipped = {
+                repo
+                for family in TENSORFOLD_FAMILIES
+                if not family.native and not available
+                for repo in family.tested_repos
+            }
+        else:
+            skipped = set()
         return {
-            "available": available,
-            "version": version,
-            "extras": list(_detect_tensorfold_extras()) if available else [],
-            "supportedModels": supported_repos(),
-            "exclusiveModels": exclusive_repos(),
+            "available": available or native_ok,
+            "version": native_version if native_ok else version,
+            "extras": extras,
+            "supportedModels": [repo for repo in supported_repos() if repo not in skipped],
+            "exclusiveModels": [repo for repo in exclusive_repos() if repo not in skipped],
             "visionModels": vision_repos(),
             "minMemoryGb": min_memory_gb_by_repo(),
         }
@@ -223,6 +270,7 @@ def _build_system_snapshot(
         "nativeRuntimeMessage": native["mlxMessage"],
         "totalMemoryGb": total_memory_gb,
         "gpuVramTotalGb": gpu_vram_total_gb,
+        "gpuUnifiedMemory": _gpu_unified_memory(gpu_vram_total_gb),
         "availableMemoryGb": available_memory_gb,
         "usedMemoryGb": used_memory_gb,
         "swapUsedGb": swap_used_gb,

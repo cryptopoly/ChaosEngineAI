@@ -69,8 +69,8 @@ class AgentFilesTests(unittest.TestCase):
             response = self.client.post("/api/agent/uploads", content=data, headers=self.headers)
             self.assertEqual(response.status_code, 400)
             self.assertIn(needle, response.json()["detail"])
-        with mock.patch("backend_service.helpers.media_input.MAX_INPUT_IMAGE_BYTES", 100), \
-                mock.patch("backend_service.mcp_bridge.files.MAX_INPUT_IMAGE_BYTES", 100):
+        with mock.patch("backend_service.helpers.media_input.MAX_INPUT_IMAGE_BYTES", 20), \
+                mock.patch("backend_service.mcp_bridge.files.MAX_INPUT_IMAGE_BYTES", 20):
             self.assertEqual(self.client.post("/api/agent/uploads", content=_image_bytes(), headers=self.headers).status_code, 413)
 
     def test_sound_and_video_uploads_are_typed_from_their_bytes(self):

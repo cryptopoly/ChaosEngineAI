@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import importlib.metadata
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -30,35 +31,52 @@ _CUDA_TORCH_INDEXES: list[str] = [
     "https://download.pytorch.org/whl/cu121",
     "https://download.pytorch.org/whl/nightly/cu128",
 ]
+_CU134 = "https://download.pytorch.org/whl/cu134"
+_CU132 = "https://download.pytorch.org/whl/cu132"
 _CU130 = "https://download.pytorch.org/whl/cu130"
 _CU128 = "https://download.pytorch.org/whl/cu128"
 
 
-def cuda_torch_indexes(driver_major: int | None = None, machine: str | None = None) -> list[str]:
+def cuda_torch_indexes(
+    driver_major: int | None = None,
+    machine: str | None = None,
+    driver_cuda: tuple[int, int] | None = None,
+) -> list[str]:
     """CUDA torch indexes to try, best match for this host first.
 
     The default list starts at CUDA 12.4, whose torch has no kernels for
     Blackwell GPUs (RTX 50-series sm_120, DGX Spark sm_121) and no Linux ARM64
-    build at all. So: Linux ARM64 tries CUDA 13.0 then 12.8; a driver of 580 or
-    newer (CUDA 13) starts at 13.0, 570 or newer (CUDA 12.8) at 12.8; anything
-    else keeps the old order, which suits older drivers and GPUs.
+    build at all. So: a driver that supports CUDA 13.4 (``nvidia-smi`` header; 621.14 says
+    13.5; PyTorch publishes nothing newer than 13.4) starts at 13.4, one that supports 13.2
+    at 13.2, each followed by the older CUDA 13 and 12.8 builds; Linux
+    ARM64 otherwise tries 13.0 then 12.8; a driver of 580 or newer (CUDA 13)
+    starts at 13.0, 570 or newer (CUDA 12.8) at 12.8; anything else keeps the
+    old order, which suits older drivers and GPUs. The driver is probed only
+    when neither ``driver_major`` nor ``driver_cuda`` is given.
     """
     import platform as _platform
 
     if machine is None:
         machine = _platform.machine() if sys.platform.startswith("linux") else ""
-    if driver_major is None:
-        from backend_service.helpers.llama_cuda import nvidia_driver_major
+    if driver_major is None and driver_cuda is None:
+        from backend_service.helpers.llama_cuda import nvidia_driver_cuda, nvidia_driver_major
 
         driver_major = nvidia_driver_major()
-    if machine.lower() in ("aarch64", "arm64"):
+        driver_cuda = nvidia_driver_cuda()
+    if driver_cuda is not None and driver_cuda >= (13, 4):
+        first = [_CU134, _CU132, _CU130, _CU128]
+    elif driver_cuda is not None and driver_cuda >= (13, 2):
+        first = [_CU132, _CU130, _CU128]
+    elif machine.lower() in ("aarch64", "arm64"):
         return [_CU130, _CU128]
-    if driver_major is not None and driver_major >= 580:
+    elif driver_major is not None and driver_major >= 580:
         first = [_CU130, _CU128]
     elif driver_major is not None and driver_major >= 570:
         first = [_CU128]
     else:
         return list(_CUDA_TORCH_INDEXES)
+    if machine.lower() in ("aarch64", "arm64"):
+        return first
     return first + [url for url in _CUDA_TORCH_INDEXES if url not in first]
 
 
@@ -122,6 +140,31 @@ def _purge_broken_distributions(site_packages: Path) -> list[str]:
     return removed
 
 
+def locked_torch_files(extras_dir: Path) -> list[str]:
+    """Windows: the DLLs of torch and its NVIDIA runtime that a running process has loaded (names, at most 8).
+
+    Windows refuses a write handle on a loaded DLL, so opening each one for writing finds them without touching
+    anything. Anywhere else a loaded library can be replaced, so the answer is always empty.
+    """
+    if sys.platform != "win32" or not extras_dir.is_dir():
+        return []
+    candidates: list[Path] = []
+    for entry in extras_dir.iterdir():
+        lower = entry.name.lower()
+        if entry.is_dir() and (entry.name == "torch" or lower.startswith("nvidia")):
+            candidates.extend(entry.rglob("*.dll"))
+    locked: list[str] = []
+    for dll in candidates:
+        try:
+            with open(dll, "r+b"):
+                pass
+        except OSError:
+            locked.append(dll.name)
+            if len(locked) >= 8:
+                break
+    return locked
+
+
 def _purge_stale_torch_from_extras(extras_dir: Path) -> list[str]:
     """Remove torch and its NVIDIA runtime deps from the extras dir.
 
@@ -173,6 +216,18 @@ def _find_installed_torch_version(extras_dir: Path) -> str | None:
     """
     if not extras_dir.is_dir():
         return None
+    # The package's own version.py describes the files that get imported. pip --target leaves the old
+    # dist-info behind when another wheel overwrites torch, and "torch-2.14.1+cu130.dist-info" sorts before
+    # "torch-2.14.1.dist-info", so on Windows a CPU torch from PyPI that clobbered the CUDA one was still
+    # reported as CUDA and the repair pass never ran (RTX 4090 run, v0.10.0).
+    version_py = extras_dir / "torch" / "version.py"
+    if version_py.is_file():
+        try:
+            match = re.search(r"""^__version__\s*=\s*['"]([^'"]+)['"]""", version_py.read_text(errors="ignore"), re.M)
+        except OSError:
+            match = None
+        if match:
+            return match.group(1)
     for entry in extras_dir.iterdir():
         lower = entry.name.lower()
         if not (lower.startswith("torch-") and lower.endswith(".dist-info")):

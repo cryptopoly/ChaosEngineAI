@@ -30,8 +30,26 @@ class RegistryInvariantTests(unittest.TestCase):
     def test_every_family_names_model_types_and_tested_repos(self) -> None:
         for family in tf.TENSORFOLD_FAMILIES:
             self.assertTrue(family.model_types, family.key)
-            self.assertTrue(family.tested_repos, family.key)
+            # A row without checkpoints only accounts for a family the binary
+            # reports; it must say why the app cannot offer it.
+            self.assertTrue(family.tested_repos or family.note, family.key)
             self.assertTrue(family.title, family.key)
+
+    def test_rows_without_checkpoints_never_route_by_config(self) -> None:
+        for family in tf.TENSORFOLD_FAMILIES:
+            if not family.tested_repos and family.exclusive:
+                # only Step-5-Preview: its checkpoint is a local conversion
+                self.assertEqual(family.key, "step5_preview")
+
+    def test_every_model_type_the_127_binary_serves_is_listed(self) -> None:
+        # ``capabilities --json`` families of the macOS 1.2.7 build (2026-11-11).
+        served = {
+            "kimi_k3", "kimi_k31", "qwen4", "qwen4_text", "fish_omni", "nemotron_h", "qwen4_exp", "glm5_next",
+            "qwen3_5", "qwen3_5_moe", "lfm3", "lfm3_vl", "lfm2_moe", "glm_moe_dsa", "gemma4", "gemma4_unified",
+            "step5_vl", "spark2_5", "minimax_m3_vl", "llama",
+        }
+        listed = {mt for family in tf.TENSORFOLD_FAMILIES for mt in family.model_types}
+        self.assertEqual(served - listed, set())
 
     def test_keys_and_tested_repos_are_unique(self) -> None:
         keys = [family.key for family in tf.TENSORFOLD_FAMILIES]
@@ -58,8 +76,16 @@ class RegistryInvariantTests(unittest.TestCase):
                 self.assertTrue(family.drafter, family.key)
 
     def test_vision_is_only_claimed_for_the_dense_qwen_checkpoint(self) -> None:
-        # docs/vision.md: dense Qwen3.5/3.8 checkpoints that ship a vision tower.
-        self.assertEqual(tf.vision_repos(), ["Vontra/Qwen3.8-27B-MLX-4bit"])
+        # docs/vision.md: dense Qwen3.5/3.8 checkpoints that ship a vision tower;
+        # the MiniMax-M3.1-Flash recipe serves images with --vision too.
+        self.assertEqual(
+            tf.vision_repos(),
+            [
+                "Vontra/Qwen3.8-27B-MLX-4bit",
+                "BobClawblaw/MiniMax-M3.1-Flash-MLX-mix256k",
+                "BobClawblaw/MiniMax-M3.1-Flash-MLX-mix34",
+            ],
+        )
         match = tf.match_model(canonical_repo="Vontra/Qwen3.8-27B-MLX-4bit")
         self.assertTrue(match is not None and match.supports_vision)
         gemma = tf.match_model(canonical_repo="mlx-community/gemma-4-26b-a4b-it-4bit")
@@ -156,6 +182,70 @@ class MatchModelTests(unittest.TestCase):
             match = tf.match_model(path=str(repo_dir))
             assert match is not None
             self.assertEqual(match.family.key, "deepseek_v4_flash")
+
+    def test_families_added_from_the_127_binary_match_their_checkpoints(self) -> None:
+        # FU-168: each servable new family is found by its Hub repo id, with the
+        # tier, drafter and vision facts its recipe documents.
+        expected = {
+            "LiquidAI/LFM3-1.7B-MLX-4bit": ("lfm3", "tested", None, False),
+            "LiquidAI/LFM3-1.7B-MLX-6bit": ("lfm3", "tested", None, False),
+            "LiquidAI/LFM3-1.7B-MLX-8bit": ("lfm3", "tested", None, False),
+            "LiquidAI/LFM2.5-24B-A2B-MLX-4bit": ("lfm2_moe", "tested", None, False),
+            "LiquidAI/LFM2.5-24B-A2B-MLX-6bit": ("lfm2_moe", "tested", None, False),
+            "LiquidAI/LFM2.5-24B-A2B-MLX-8bit": ("lfm2_moe", "tested", None, False),
+            "Nanbeige/Nanbeige4.3-33B": ("nanbeige4_3", "tested", "Nanbeige/Nanbeige4.1-3B", False),
+            "Nanbeige/Nanbeige4.3-33B-INT4": ("nanbeige4_3_int4", "exclusive", "Nanbeige/Nanbeige4.1-3B", False),
+            "XHToken/Spark-X2.6-4B": ("spark2_5", "tested", None, False),
+            "BobClawblaw/MiniMax-M3.1-Flash-MLX-mix34": ("minimax_m3_1_flash", "tested", None, True),
+            "BobClawblaw/MiniMax-M3.1-Flash-MLX-mix256k": ("minimax_m3_1_flash", "tested", None, True),
+        }
+        for repo, (key, tier, drafter, vision) in expected.items():
+            match = tf.match_model(canonical_repo=repo)
+            assert match is not None, repo
+            self.assertEqual(
+                (match.family.key, match.tier, match.family.drafter, match.supports_vision, match.family.native),
+                (key, tier, drafter, vision, True),
+                repo,
+            )
+            self.assertIn(repo, tf.supported_repos())
+
+    def test_families_the_app_cannot_offer_match_no_repo(self) -> None:
+        # Listed so the binary's report is accounted for, never offered.
+        for repo in (
+            "LiquidAI/LFM3-VL-2B-MLX-4bit",  # 1.2.7 refuses to serve it
+            "moonshotai/Kimi-K3",
+            "moonshotai/Kimi-K3.1-Pro",
+            "stepfun-ai/Step-5-Preview",
+            "kindlingai/glm-5.3-exlr8-k2-k3-k4",
+            "google/gemma-4-12B-it",
+            "fishaudio/drama-3",
+        ):
+            self.assertIsNone(tf.match_model(canonical_repo=repo), repo)
+            self.assertNotIn(repo, tf.supported_repos())
+
+    def test_new_exclusive_and_shared_model_types_route_by_config_correctly(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(tf, "_stock_mlx_loads", return_value=False):
+            def config(model_type: str) -> Path:
+                directory = Path(tmp) / model_type
+                _write(directory / "config.json", json.dumps({"model_type": model_type}))
+                return directory
+
+            # A local Step-5-Preview conversion goes to TensorFold.
+            step = tf.match_model(model_dir=config("step5_vl"))
+            assert step is not None
+            self.assertEqual((step.family.key, step.tier), ("step5_preview", "exclusive"))
+            # ``llama`` is shared with the bf16 Nanbeige row, so a local llama
+            # model is never sent to TensorFold by its config alone, even where
+            # mlx-lm is missing.
+            self.assertIsNone(tf.match_model(model_dir=config("llama")))
+            # Listed-only families never route by config.
+            for model_type in ("kimi_k3", "kimi_k31", "qwen4", "qwen4_text", "fish_omni", "lfm3_vl", "gemma4_unified", "glm_moe_dsa"):
+                self.assertIsNone(tf.match_model(model_dir=config(model_type)), model_type)
+
+    def test_memory_floor_of_256_gb_families_is_reported(self) -> None:
+        floors = tf.min_memory_gb_by_repo()
+        self.assertEqual(floors["BobClawblaw/MiniMax-M3.1-Flash-MLX-mix34"], 256)
+        self.assertEqual(floors["BobClawblaw/MiniMax-M3.1-Flash-MLX-mix256k"], 256)
 
     def test_read_model_type_falls_back_to_text_config(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

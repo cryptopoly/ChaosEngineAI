@@ -229,6 +229,25 @@ class LlamaCppCommandTests(unittest.TestCase):
         self.assertEqual(command[command.index("--spec-draft-n-max") + 1], "15")
         self.assertIn("draft-dflash", note or "")
 
+    def test_dflash2_sidecar_for_the_4bit_pack_picks_its_closest_quant(self):
+        # The 24 GB route: Q4_K_M beside every published sidecar. llama.cpp
+        # reads DFlash 2 from the file's metadata, so it is the same
+        # draft-dflash lane with a full block.
+        command, _note, root = self._build_with_dir(
+            [
+                "Qwen3.8-27B-Q4_K_M.gguf",
+                "dflash-Qwen3.8-27B-BF16.gguf",
+                "dflash-Qwen3.8-27B-Q8_0.gguf",
+                "dflash-Qwen3.8-27B-Q4_0.gguf",
+            ],
+            "Qwen3.8-27B-Q4_K_M.gguf",
+        )
+        draft = Path(command[command.index("--model-draft") + 1]).name
+        self.assertTrue(draft.startswith("dflash-Qwen3.8-27B-"))
+        self.assertNotEqual(draft, "dflash-Qwen3.8-27B-BF16.gguf")
+        self.assertEqual(command[command.index("--spec-type") + 1], "draft-dflash")
+        self.assertEqual(command[command.index("--spec-draft-n-max") + 1], "15")
+
     def test_mtp_sidecar_outranks_dflash(self):
         command, _note, root = self._build_with_dir(
             ["M-Q4_K_M.gguf", "dflash-M-Q4_K_M.gguf", "mtp-M-Q4_K_M.gguf"],

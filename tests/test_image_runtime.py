@@ -117,6 +117,44 @@ class DiffusersTextToImageEngineTests(unittest.TestCase):
         self.assertEqual(kwargs["negative_prompt"], "blurry")
 
 
+class TrimDeviceCacheTests(unittest.TestCase):
+    """After a run the CUDA allocator's cache goes back to the driver; the pipeline stays loaded."""
+
+    def _engine(self, device: str, empty_cache):
+        from types import SimpleNamespace
+
+        engine = DiffusersTextToImageEngine()
+        engine._torch = SimpleNamespace(cuda=SimpleNamespace(is_available=lambda: True, empty_cache=empty_cache))
+        engine._device = device
+        return engine
+
+    def test_cuda_cache_is_emptied(self):
+        from unittest import mock
+
+        empty = mock.Mock()
+        engine = self._engine("cuda", empty)
+        engine._trim_device_cache()
+        empty.assert_called_once()
+        self.assertIsNotNone(engine._torch)
+
+    def test_other_devices_and_an_unloaded_engine_are_left_alone(self):
+        from unittest import mock
+
+        empty = mock.Mock()
+        self._engine("cpu", empty)._trim_device_cache()
+        empty.assert_not_called()
+        DiffusersTextToImageEngine()._trim_device_cache()  # nothing loaded: no error
+
+    def test_a_driver_error_never_escapes(self):
+        from unittest import mock
+
+        self._engine("cuda", mock.Mock(side_effect=RuntimeError("driver gone")))._trim_device_cache()
+
+    def test_generate_trims_in_its_finally_block(self):
+        source = Path(__file__).resolve().parents[1].joinpath("backend_service", "image_runtime", "__init__.py").read_text(encoding="utf-8")
+        self.assertLess(source.index("self._trim_device_cache()\n            IMAGE_PROGRESS.finish()"), source.index("def _diffuse_message"))
+
+
 class ValidateLocalDiffusersSnapshotTests(unittest.TestCase):
     """Regression coverage for the LTX-Video corruption case.
 
@@ -435,6 +473,104 @@ class GgufTransformerLoaderTests(unittest.TestCase):
         key_bf16 = "black-forest-labs/FLUX.1-dev"
         key_q4 = "black-forest-labs/FLUX.1-dev::flux1-dev-Q4_K_M.gguf"
         self.assertNotEqual(key_bf16, key_q4)
+
+
+class FluxTransformerClassTests(unittest.TestCase):
+    """FLUX.2 snapshots (Klein, Dev) declare ``Flux2Transformer2DModel``.
+
+    The NF4 / int8wo loaders used ``FluxTransformer2DModel`` for every
+    repo with "flux" in its name, so a FLUX.2 checkpoint loaded with every
+    weight unused and newly initialised, the quantised load raised, and
+    the pipeline fell back to bf16. The class now comes from the snapshot.
+    """
+
+    def _snapshot(self, root: Path, config: object | None) -> str:
+        if config is not None:
+            (root / "transformer").mkdir(parents=True)
+            text = config if isinstance(config, str) else json.dumps(config)
+            (root / "transformer" / "config.json").write_text(text, encoding="utf-8")
+        return str(root)
+
+    def test_class_name_comes_from_transformer_config(self):
+        from backend_service.image_runtime.transformer_loaders import flux_transformer_class_name
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self._snapshot(Path(tmp), {"_class_name": "Flux2Transformer2DModel"})
+            self.assertEqual(flux_transformer_class_name(path), "Flux2Transformer2DModel")
+
+    def test_class_name_defaults_to_flux1(self):
+        from backend_service.image_runtime.transformer_loaders import flux_transformer_class_name
+
+        for config in (None, "not json", {"_class_name": "os.system"}, {}):
+            with tempfile.TemporaryDirectory() as tmp:
+                path = self._snapshot(Path(tmp), config)
+                self.assertEqual(flux_transformer_class_name(path), "FluxTransformer2DModel")
+
+    def _run_loader(self, loader_name: str, spec_name: str, config_name: str):
+        import sys
+        from backend_service.image_runtime import transformer_loaders
+
+        calls: list[str] = []
+
+        def _cls(name):
+            class _Model:
+                @classmethod
+                def from_pretrained(cls, *args, **kwargs):
+                    calls.append(name)
+                    return cls()
+            _Model.__name__ = name
+            return _Model
+
+        fake_diffusers = SimpleNamespace(
+            FluxTransformer2DModel=_cls("FluxTransformer2DModel"),
+            Flux2Transformer2DModel=_cls("Flux2Transformer2DModel"),
+            BitsAndBytesConfig=lambda **kwargs: kwargs,
+            TorchAoConfig=lambda *args: args,
+        )
+        real_find_spec = transformer_loaders.importlib.util.find_spec
+
+        def _find_spec(name, *args, **kwargs):
+            if name == spec_name:
+                return object()
+            return real_find_spec(name, *args, **kwargs)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self._snapshot(Path(tmp), {"_class_name": config_name})
+            with mock.patch.dict(sys.modules, {"diffusers": fake_diffusers}), \
+                    mock.patch.object(transformer_loaders.importlib.util, "find_spec", _find_spec):
+                transformer, note = getattr(transformer_loaders, loader_name)(
+                    path, SimpleNamespace(bfloat16="bfloat16"),
+                )
+        return calls, transformer, note
+
+    def test_nf4_loader_uses_flux2_class_for_flux2_snapshot(self):
+        calls, transformer, note = self._run_loader(
+            "try_load_nf4_flux_transformer", "bitsandbytes", "Flux2Transformer2DModel",
+        )
+        self.assertEqual(calls, ["Flux2Transformer2DModel"])
+        self.assertIsNotNone(transformer)
+        self.assertIn("Flux2Transformer2DModel", note or "")
+
+    def test_int8wo_loader_uses_flux2_class_for_flux2_snapshot(self):
+        calls, transformer, _ = self._run_loader(
+            "try_load_int8wo_flux_transformer", "torchao", "Flux2Transformer2DModel",
+        )
+        self.assertEqual(calls, ["Flux2Transformer2DModel"])
+        self.assertIsNotNone(transformer)
+
+    def test_nf4_loader_keeps_flux1_class(self):
+        calls, _, _ = self._run_loader(
+            "try_load_nf4_flux_transformer", "bitsandbytes", "FluxTransformer2DModel",
+        )
+        self.assertEqual(calls, ["FluxTransformer2DModel"])
+
+    def test_unknown_class_falls_back_without_loading(self):
+        calls, transformer, note = self._run_loader(
+            "try_load_nf4_flux_transformer", "bitsandbytes", "Flux9Transformer2DModel",
+        )
+        self.assertEqual(calls, [])
+        self.assertIsNone(transformer)
+        self.assertIn("Flux9Transformer2DModel", note or "")
 
 
 class Int8woLoaderTests(unittest.TestCase):

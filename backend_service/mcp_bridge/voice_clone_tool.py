@@ -36,7 +36,7 @@ CLONE_TOOLS: list[dict[str, Any]] = [
                     "description": "true: this is the person's own voice, or the speaker's permission covers this use. "
                     "Recorded in the audit log.",
                 },
-                "model": {"type": "string", "enum": ["qwen3-tts-0.6b", "qwen3-tts-1.7b"]},
+                "model": {"type": "string", "enum": ["qwen3-tts-0.6b", "qwen3-tts-1.7b", "qwen3-tts-0.6b-cuda", "qwen3-tts-1.7b-cuda"]},
                 **_PROJECT_PROPS,
             },
             ["voice_id", "text", "permission_confirmed"],

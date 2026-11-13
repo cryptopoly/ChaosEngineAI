@@ -131,6 +131,25 @@ def runs_here(row: dict[str, Any]) -> bool:
     return any(name in voice_env.speech_lanes() for name in row["lanes"])
 
 
+def gpu_problem(row: dict[str, Any]) -> str | None:
+    """Plain words for why this computer's GPU cannot run a row that runs here by lane (memory, compute capability)."""
+    from backend_service import voice_gpu  # noqa: PLC0415
+
+    return voice_gpu.problem(row) if runs_here(row) else None
+
+
+def gpu_facts(row: dict[str, Any]) -> dict[str, Any] | None:
+    """The same as ``gpu_problem`` as data (kind, need, have) for the screen."""
+    from backend_service import voice_gpu  # noqa: PLC0415
+
+    return voice_gpu.facts(row) if runs_here(row) else None
+
+
+def usable_here(row: dict[str, Any]) -> bool:
+    """Runs here by lane, and the GPU is big and new enough for it."""
+    return runs_here(row) and gpu_problem(row) is None
+
+
 def _ready(row: dict[str, Any]) -> bool:
     """Weights on disk; a model that clones also needs the watermark component."""
     if snapshot_dir(row) is None:
@@ -141,7 +160,11 @@ def _ready(row: dict[str, Any]) -> bool:
 def list_models(*, every_model: bool = False) -> list[dict[str, Any]]:
     """The cloning models, or with ``every_model`` every listed speech model (speak, style, clone, design)."""
     rows = []
-    for row in _catalog.listed_models() if every_model else CLONE_MODELS:
+    offered = _catalog.listed_models()  # this lane's rows: a Mac never lists the GPU rows, nor a PC the Apple ones' twins
+    if not every_model:
+        keys = {row["key"] for row in offered}
+        offered = [row for row in CLONE_MODELS if row["key"] in keys]
+    for row in offered:
         job = _DOWNLOADS.get(row["key"], {})
         rows.append({
             "key": row["key"],
@@ -167,7 +190,10 @@ def list_models(*, every_model: bool = False) -> list[dict[str, Any]]:
             "builtinWatermark": row.get("builtinWatermark"),
             # Speed and memory from the catalog, with its basis and where it was measured; None when not measured.
             "estimates": dict(row["estimates"]) if row.get("estimates") else None,
-            "supported": runs_here(row),
+            "supported": usable_here(row),
+            # Why a row that is right for this lane still cannot run on this GPU; None otherwise.
+            "unsupportedReason": gpu_problem(row),
+            "unsupportedFacts": gpu_facts(row),
             # Ready means the weights and companions, and for a cloning model the watermark component; Download
             # installs all of them.
             "installed": _ready(row),
@@ -239,6 +265,13 @@ def start_download(key: str) -> dict[str, Any]:
         raise ValueError(f"{row['name']} is not offered on this version yet.")
     if not available_here():
         raise ValueError(NOT_HERE)
+    if not runs_here(row):
+        # An Apple-only (MLX) row on Windows/Linux, or a CUDA row on a Mac: its weights cannot load here, so
+        # downloading them only fills the disk (Speak offered "Download" for a Mac-only default voice on Windows).
+        where = "Apple Silicon Macs" if row["lanes"] == ["mlx"] else "computers with an NVIDIA GPU"
+        raise ValueError(f"{row['name']} runs on {where} only, so it cannot be used on this computer.")
+    if (why := gpu_problem(row)) is not None:
+        raise ValueError(why)
     token = uuid.uuid4().hex
     control: dict[str, Any] = {"cancel": threading.Event(), "proc": None}
     with _DOWNLOAD_LOCK:
@@ -433,10 +466,12 @@ def pick_clone_model(model_key: str | None) -> dict[str, Any]:
     """
     if (model_key or "").strip():
         return clone_model(model_key)
-    default = clone_model("")
+    # The default's GPU twin, not its MLX row; a row this GPU is too small for only when nothing else runs here.
+    rows = ([r for r in CLONE_MODELS if usable_here(r)] or [r for r in CLONE_MODELS if runs_here(r)] or CLONE_MODELS)
+    default = next((row for row in rows if row["default"]), rows[0])
     if snapshot_dir(default) is not None:
         return default
-    return next((row for row in CLONE_MODELS if snapshot_dir(row) is not None), default)
+    return next((row for row in rows if snapshot_dir(row) is not None), default)
 
 
 def speak(
@@ -488,7 +523,7 @@ def speak(
     )
     rendered = voice_speak.render(plan, text, speed=speed, pitch=pitch, seed=seed)
     duration = rendered.duration_s
-    tagged = mark_cloned(rendered.wav, row, voice_id)
+    tagged = mark_cloned(rendered.wav, row, voice_id, altered=speed != 1.0 or pitch != 0)
     with tempfile.TemporaryDirectory(prefix="chaosengine-cloned-") as tmp:
         out = Path(tmp) / "speech.wav"
         out.write_bytes(tagged)
@@ -557,9 +592,16 @@ def clone_plan(
     return voice_speak.plan_for("clone", f"clone:{voice_id}", row, extra), row, voice, notes
 
 
-def mark_cloned(wav: bytes, row: dict[str, Any], voice_id: str) -> bytes:
-    """The watermark and the AI tag every piece of cloned speech gets, whatever the model."""
+def mark_cloned(wav: bytes, row: dict[str, Any], voice_id: str, *, altered: bool = False) -> bytes:
+    """The watermark and the AI tag every piece of cloned speech gets, whatever the model.
+
+    ``altered``: the model's output was time-stretched or pitch-shifted afterwards (speed or pitch not neutral).
+    A model's own watermark (PerTh on the CUDA Chatterbox rows) does not survive that - measured on the RTX 4090
+    run: PerTh 1.0 on a plain clip, 0.0 after speed 1.3 and pitch +2, while our AudioSeal mark read 1.0 - so the
+    tag only records it on unaltered audio.
+    """
     version = _app_version()
+    builtin = None if altered else row.get("builtinWatermark")
     with tempfile.TemporaryDirectory(prefix="chaosengine-cloned-") as tmp:
         out = Path(tmp) / "speech.wav"
         out.write_bytes(wav)
@@ -570,7 +612,7 @@ def mark_cloned(wav: bytes, row: dict[str, Any], voice_id: str) -> bytes:
              "createdAt": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "voiceId": voice_id,
              "watermark": "audioseal-0.2.1:CE5A",
              # A watermark the model adds itself (PerTh on the CUDA Chatterbox rows), recorded so the tag is honest.
-             **({"builtinWatermark": row["builtinWatermark"]} if row.get("builtinWatermark") else {})},
+             **({"builtinWatermark": builtin} if builtin else {})},
             f"ChaosEngineAI {version}",
         )
 

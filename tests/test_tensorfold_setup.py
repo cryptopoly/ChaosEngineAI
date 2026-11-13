@@ -135,6 +135,20 @@ class TensorFoldSetupRouteTests(unittest.TestCase):
             patcher = mock.patch.object(setup_tf, name, value)
             patcher.start()
             self.addCleanup(patcher.stop)
+        # These routes are the Mac engine's; off the Mac they hand over to the native
+        # installer (tests/test_tensorfold_native.py), so pin the Mac answer here.
+        mac_patch = mock.patch.object(setup_tf, "_apple_silicon", lambda: True)
+        mac_patch.start()
+        self.addCleanup(mac_patch.stop)
+        # ... and a machine with no native binary, whatever this host has installed.
+        from backend_service.inference import _tensorfold_native
+
+        no_native = mock.patch.object(_tensorfold_native, "find_binary", lambda environ=None: None)
+        no_native.start()
+        self.addCleanup(no_native.stop)
+        no_record = mock.patch.object(_tensorfold_native, "read_install_record", lambda: None)
+        no_record.start()
+        self.addCleanup(no_record.stop)
         # a fresh job per test
         job_patch = mock.patch.object(setup_tf, "_JOB", setup_tf._TensorfoldJobState())
         job_patch.start()
@@ -180,7 +194,7 @@ class TensorFoldSetupRouteTests(unittest.TestCase):
         self.assertEqual(self.client.get("/api/setup/tensorfold-status").json()["extras"], ["vision", "grammar"])
 
     def test_unknown_extra_is_rejected_without_starting_a_job(self) -> None:
-        response = self.client.post("/api/setup/install-tensorfold", json={"extras": ["vision", "bogus"]})
+        response = self.client.post("/api/setup/install-tensorfold", json={"legacy": True, "extras": ["vision", "bogus"]})
         self.assertEqual(response.status_code, 400)
         self.assertIn("bogus", response.json()["detail"])
         self.assertEqual(self.client.get("/api/setup/install-tensorfold/status").json()["phase"], "idle")
@@ -191,7 +205,7 @@ class TensorFoldSetupRouteTests(unittest.TestCase):
         self._script(f'echo PHASE:preflight\necho "[${{TENSORFOLD_EXTRAS-unset}}]" > "{out}"\necho OK\n')
         with mock.patch.dict(os.environ):
             os.environ.pop("TENSORFOLD_EXTRAS", None)
-            started = self.client.post("/api/setup/install-tensorfold", json={"extras": ["grammar", "vision", "vision"]}).json()
+            started = self.client.post("/api/setup/install-tensorfold", json={"legacy": True, "extras": ["grammar", "vision", "vision"]}).json()
             self.assertEqual(started["extras"], ["vision", "grammar"])
             self._wait_for_job()
         self.assertEqual(out.read_text().strip(), "[vision,grammar]")
@@ -202,9 +216,9 @@ class TensorFoldSetupRouteTests(unittest.TestCase):
         self._script(f'echo PHASE:preflight\necho "[${{TENSORFOLD_EXTRAS-unset}}]" > "{out}"\necho OK\n')
         with mock.patch.dict(os.environ):
             os.environ.pop("TENSORFOLD_EXTRAS", None)
-            for body in (None, {}, {"extras": []}):
+            for body in (None, {"legacy": True}, {"legacy": True, "extras": []}):
                 started = (
-                    self.client.post("/api/setup/install-tensorfold")
+                    self.client.post("/api/setup/install-tensorfold", json={"legacy": True})
                     if body is None
                     else self.client.post("/api/setup/install-tensorfold", json=body)
                 ).json()
@@ -231,7 +245,7 @@ echo OK
         )
         refreshed = mock.Mock()
         with mock.patch("backend_service.inference.capabilities.refresh_install_detection", refreshed):
-            started = self.client.post("/api/setup/install-tensorfold").json()
+            started = self.client.post("/api/setup/install-tensorfold", json={"legacy": True}).json()
             self.assertEqual(started["id"], "tensorfold-install")
             final = self._wait_for_job()
         self.assertEqual(final["phase"], "done")
@@ -249,7 +263,7 @@ echo OK
         self._script('echo PHASE:preflight\necho "FAIL:TensorFold needs native arm64 Python"\nexit 1\n')
         refreshed = mock.Mock()
         with mock.patch("backend_service.inference.capabilities.refresh_install_detection", refreshed):
-            self.client.post("/api/setup/install-tensorfold")
+            self.client.post("/api/setup/install-tensorfold", json={"legacy": True})
             final = self._wait_for_job()
         self.assertEqual(final["phase"], "error")
         self.assertEqual(final["error"], "TensorFold needs native arm64 Python")
@@ -264,7 +278,7 @@ echo OK
             os.environ,
             {"PYTHONHOME": "/embedded", "PYTHONPATH": "/extras", "DYLD_LIBRARY_PATH": "/lib", "KEEP_ME": "1"},
         ):
-            self.client.post("/api/setup/install-tensorfold")
+            self.client.post("/api/setup/install-tensorfold", json={"legacy": True})
             self._wait_for_job()
         seen = out.read_text()
         self.assertIn("KEEP_ME=1", seen)
@@ -274,8 +288,8 @@ echo OK
     @unittest.skipIf(sys.platform == "win32", "install scripts run under bash")
     def test_second_post_while_running_does_not_start_another_job(self) -> None:
         self._script("echo PHASE:preflight\nsleep 1\necho OK\n")
-        first = self.client.post("/api/setup/install-tensorfold").json()
-        second = self.client.post("/api/setup/install-tensorfold").json()
+        first = self.client.post("/api/setup/install-tensorfold", json={"legacy": True}).json()
+        second = self.client.post("/api/setup/install-tensorfold", json={"legacy": True}).json()
         self.assertEqual(first["startedAt"], second["startedAt"])
         self._wait_for_job()
 
@@ -283,8 +297,10 @@ echo OK
 class TensorFoldSnapshotTests(unittest.TestCase):
     def test_system_snapshot_lists_supported_and_exclusive_models(self) -> None:
         from backend_service.helpers.system import _build_system_snapshot
+        from backend_service.inference import _tensorfold_native
 
-        snapshot = _build_system_snapshot("0", time.time())
+        with mock.patch.object(_tensorfold_native, "uses_native_engine", lambda: False):
+            snapshot = _build_system_snapshot("0", time.time())
         info = snapshot["tensorfold"]
         self.assertIn("available", info)
         self.assertIn("version", info)
@@ -292,10 +308,46 @@ class TensorFoldSnapshotTests(unittest.TestCase):
         self.assertIn("Vontra/Qwen3.8-Flash-Next-MLX-4bit-MTP", info["exclusiveModels"])
         self.assertNotIn("mlx-community/gemma-4-26b-a4b-it-4bit", info["exclusiveModels"])
         self.assertEqual(info["minMemoryGb"]["Vontra/GLM-5.3-Flash-MLX-4bit-MTP"], 256)
-        # Only the dense Qwen checkpoint reads images; the list is what the
-        # launch settings use to offer image support.
-        self.assertEqual(info["visionModels"], ["Vontra/Qwen3.8-27B-MLX-4bit"])
+        # The dense Qwen checkpoint and MiniMax-M3.1-Flash read images; the list
+        # is what the launch settings use to offer image support.
+        self.assertEqual(
+            info["visionModels"],
+            [
+                "Vontra/Qwen3.8-27B-MLX-4bit",
+                "BobClawblaw/MiniMax-M3.1-Flash-MLX-mix256k",
+                "BobClawblaw/MiniMax-M3.1-Flash-MLX-mix34",
+            ],
+        )
         self.assertIsInstance(info["extras"], list)
+        # FU-168: the families 1.2.7 added reach the Mac snapshot, with the
+        # 256 GB floor the fit check reads.
+        for repo in (
+            "LiquidAI/LFM3-1.7B-MLX-4bit",
+            "LiquidAI/LFM2.5-24B-A2B-MLX-4bit",
+            "Nanbeige/Nanbeige4.3-33B",
+            "XHToken/Spark-X2.6-4B",
+            "BobClawblaw/MiniMax-M3.1-Flash-MLX-mix34",
+        ):
+            self.assertIn(repo, info["supportedModels"])
+        self.assertIn("Nanbeige/Nanbeige4.3-33B-INT4", info["exclusiveModels"])
+        self.assertEqual(info["minMemoryGb"]["BobClawblaw/MiniMax-M3.1-Flash-MLX-mix34"], 256)
+
+    def test_native_snapshot_lists_the_native_registry(self) -> None:
+        from backend_service.helpers.system import _build_system_snapshot
+        from backend_service.inference import _tensorfold_native
+
+        with mock.patch.object(_tensorfold_native, "uses_native_engine", lambda: True):
+            info = _build_system_snapshot("0", time.time())["tensorfold"]
+        self.assertEqual(info["engine"], "native")
+        self.assertIn("TensorFold/Qwen3.8-27B-MLX-4bit", info["supportedModels"])
+        self.assertIn("LiquidAI/LFM2.5-24B-A2B-MLX-4bit", info["supportedModels"])  # CUDA since 1.2.5
+        self.assertEqual(info["exclusiveModels"], [])
+        self.assertIn("TensorFold/Qwen3.6-35B-A3B-MLX-4bit-MTP", info["supportedModels"])
+        self.assertIn("mlx-community/gemma-4-31B-it-4bit", info["supportedModels"])
+        self.assertEqual(
+            info["visionModels"],
+            ["TensorFold/Qwen3.8-27B-MLX-4bit", "mlx-community/Qwen3.5-2B-MLX-4bit", "mlx-community/gemma-4-31B-it-4bit"],
+        )
 
     def test_capability_payload_carries_the_install_fields(self) -> None:
         payload = BackendCapabilities(

@@ -375,8 +375,12 @@ def _hub_repo_files(repo_id: str) -> dict[str, Any]:
 
 
 
-def _known_repo_size_gb(repo_id: str) -> float | None:
-    cached = _HUB_FILE_CACHE.get((repo_id, _hf_token_cache_key()))
+def _known_repo_size_gb(repo_id: str, catalog_only: bool = False) -> float | None:
+    """Size of a repo in GB: the cached Hub total (the whole repo), else the catalog row's ``sizeGb``.
+
+    ``catalog_only`` skips the Hub total, for rows whose download fetches only some of the repo's files.
+    """
+    cached = None if catalog_only else _HUB_FILE_CACHE.get((repo_id, _hf_token_cache_key()))
     if cached is not None:
         cached_total = cached.get("totalSizeGb")
         if isinstance(cached_total, (int, float)) and cached_total > 0:

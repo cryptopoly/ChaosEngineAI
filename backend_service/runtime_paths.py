@@ -117,7 +117,9 @@ _BUNDLED_CORE = ("mlx", "mlx-metal", "mlx-lm")
 # on top of one another (huggingface-hub 1.12 files under a 2.2 dist-info), so
 # the overlay is not just stale, it is a mix. Unless the overlay holds exactly
 # the bundled version, every copy of the package goes and the bundled one runs.
-_LOCKSTEP_CORE = ("huggingface-hub", "transformers", "tokenizers", "safetensors", "hf-xet")
+# pydantic refuses any pydantic-core but its own (the backend did not start with an overlay pydantic 2.14
+# over the bundled core 2.41), and fastapi imports both, so they only ever run as the bundled pair.
+_LOCKSTEP_CORE = ("huggingface-hub", "transformers", "tokenizers", "safetensors", "hf-xet", "pydantic", "pydantic-core")
 
 
 def _normalise(name: str) -> str:
@@ -168,6 +170,48 @@ def quarantine_stale_core_packages(extras_dir: Path, bundled_dirs: list[Path]) -
     root = extras_dir.resolve()
     moved: list[str] = []
     emptied: set[Path] = set()
+
+    def record_paths(info: Path) -> list[Path]:
+        """The files a dist-info's RECORD lists inside the overlay (scripts elsewhere are left alone)."""
+        try:
+            lines = (info / "RECORD").read_text(encoding="utf-8", errors="ignore").splitlines()
+        except OSError:
+            return []
+        paths = []
+        for line in lines:
+            relative = line.split(",", 1)[0].strip()
+            if not relative:
+                continue
+            source = (extras_dir / relative).resolve()
+            if root in source.parents:
+                paths.append(source)
+        return paths
+
+    def move_aside(name: str, version: str, info: Path) -> None:
+        # A later install can bring the same version back, so a second move gets its own folder
+        # (a clash used to raise and stop the whole tidy-up, leaving a broken pydantic_core in place).
+        target = extras_dir.parent / "stale-core" / f"{name}-{version}"
+        attempt = 1
+        while target.exists():
+            attempt += 1
+            target = extras_dir.parent / "stale-core" / f"{name}-{version}.{attempt}"
+        try:
+            for source in record_paths(info):
+                if not source.is_file():
+                    continue
+                destination = target / source.relative_to(root)
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.move(str(source), str(destination))
+                emptied.add(source.parent)
+            if info.exists():
+                target.mkdir(parents=True, exist_ok=True)
+                shutil.move(str(info), str(target / info.name))
+        except OSError as exc:
+            # One package that cannot move (a file still locked) must not stop the others.
+            print(f"[chaosengine] could not move {name} {version} out of the extras overlay: {exc}", file=sys.stderr)
+            return
+        moved.append(f"{name} {version}")
+
     for name in _BUNDLED_CORE + _LOCKSTEP_CORE:
         want = bundled.get(name)
         if want is None:
@@ -179,26 +223,51 @@ def quarantine_stale_core_packages(extras_dir: Path, bundled_dirs: list[Path]) -
         for version, info in copies:
             if version == want and not move_all:
                 continue
-            target = extras_dir.parent / "stale-core" / f"{name}-{version}"
+            move_aside(name, version, info)
+
+    # Any other package the bundle also ships: an overlay copy with files missing from its RECORD goes,
+    # so the bundle's whole copy runs. On Windows a GPU-runtime install could not replace psutil's
+    # loaded _psutil_windows.pyd, pip left psutil/ with three of its files, and the backend no longer
+    # started ("cannot import name '_common' from partially initialized module 'psutil'").
+    for name, copies in overlay.items():
+        if name not in bundled or name in _BUNDLED_CORE + _LOCKSTEP_CORE:
+            continue
+        for version, info in copies:
+            if not info.exists():
+                continue
+            paths = record_paths(info)
+            if any(not path.is_file() for path in paths if path.suffix != ".pyc"):
+                move_aside(name, version, info)
+            elif version == bundled[name] and any(path.suffix.lower() in (".pyd", ".so") for path in paths):
+                # Same version as the bundle, with a native extension: it adds nothing, but the overlay
+                # comes first on sys.path, so the backend loads it, and on Windows a loaded .pyd cannot be
+                # replaced. Every later GPU-runtime install then failed on psutil / pyyaml with WinError 5.
+                move_aside(name, version, info)
+    # Packages the bundle does not ship: pip --target leaves an older version's dist-info next to the new
+    # one, and importlib.metadata may read the old record. transformers then refused the tokenizers it had
+    # ("tokenizers>=0.23.1 is required ... but found tokenizers==0.22.2"), so diffusers never loaded on
+    # Windows. Keep the record pip wrote last and move only the older records' folders (not files) aside.
+    for name, copies in _dist_infos(extras_dir).items():
+        if name in bundled or len(copies) < 2:
+            continue
+        try:
+            ordered = sorted(copies, key=lambda copy: copy[1].stat().st_mtime)
+        except OSError:
+            continue
+        for version, info in ordered[:-1]:
+            target = extras_dir.parent / "stale-core" / f"{name}-{version}.record"
+            attempt = 1
+            while target.exists():
+                attempt += 1
+                target = extras_dir.parent / "stale-core" / f"{name}-{version}.record.{attempt}"
             try:
-                record = (info / "RECORD").read_text(encoding="utf-8", errors="ignore").splitlines()
-            except OSError:
-                record = []
-            for line in record:
-                relative = line.split(",", 1)[0].strip()
-                if not relative:
-                    continue
-                source = (extras_dir / relative).resolve()
-                if root not in source.parents or not source.is_file():
-                    continue  # paths outside the overlay (scripts) stay put
-                destination = target / source.relative_to(root)
-                destination.parent.mkdir(parents=True, exist_ok=True)
-                shutil.move(str(source), str(destination))
-                emptied.add(source.parent)
-            if info.exists():
-                target.mkdir(parents=True, exist_ok=True)
+                target.mkdir(parents=True)
                 shutil.move(str(info), str(target / info.name))
-            moved.append(f"{name} {version}")
+            except OSError as exc:
+                print(f"[chaosengine] could not move an old {name} record out of the extras overlay: {exc}", file=sys.stderr)
+                continue
+            moved.append(f"{name} {version} (old record)")
+
     # Drop the folders those moves left empty (deepest first), stopping at
     # the overlay root; rmdir refuses any folder that still holds files.
     for folder in sorted(emptied, key=lambda p: len(p.parts), reverse=True):

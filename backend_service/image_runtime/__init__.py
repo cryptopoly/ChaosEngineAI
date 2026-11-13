@@ -11,6 +11,7 @@ import gc
 import secrets
 
 from backend_service.helpers.lora import fuse_catalog_lora
+from backend_service.helpers.malloc_release import ModelThread
 from backend_service.helpers.pipeline_kwargs import filter_pipeline_kwargs
 from backend_service.helpers.gpu import (
     nvidia_gpu_present as _nvidia_gpu_present,
@@ -385,7 +386,7 @@ class DiffusersTextToImageEngine:
                         _pipeline._interrupt = True
                     except Exception:
                         pass
-                    raise GenerationCancelled("Image generation cancelled by user")
+                    raise GenerationCancelled(IMAGE_PROGRESS.stall_message() or "Image generation cancelled by user")
                 if decay_active:
                     next_step = step + 1
                     progress = min(1.0, next_step / max(1, total_steps - 1))
@@ -418,22 +419,32 @@ class DiffusersTextToImageEngine:
             kwargs.setdefault("callback_on_step_end", _on_step_end)
             kwargs, kwarg_notes = filter_pipeline_kwargs(pipeline, kwargs)
 
-            started = time.perf_counter()
-            try:
-                result = pipeline(**kwargs)
-            except TypeError as exc:
-                # Older diffusers versions don't accept ``callback_on_step_end``
-                # — drop it and retry once before bubbling the original error.
-                if "callback_on_step_end" in str(exc):
-                    kwargs.pop("callback_on_step_end", None)
-                    try:
-                        result = pipeline(**kwargs)
-                    except TypeError:
-                        kwargs.pop("negative_prompt", None)
-                        result = pipeline(**kwargs)
-                else:
+            def _call_pipeline() -> Any:
+                try:
+                    return pipeline(**kwargs)
+                except TypeError as exc:
+                    # Older diffusers versions don't accept ``callback_on_step_end``
+                    # — drop it and retry once before bubbling the original error.
+                    if "callback_on_step_end" in str(exc):
+                        kwargs.pop("callback_on_step_end", None)
+                        try:
+                            return pipeline(**kwargs)
+                        except TypeError:
+                            kwargs.pop("negative_prompt", None)
+                            return pipeline(**kwargs)
                     kwargs.pop("negative_prompt", None)
-                    result = pipeline(**kwargs)
+                    return pipeline(**kwargs)
+
+            from cache_compression import run_without_cache_on_failure
+
+            from backend_service.helpers.step_watchdog import StepWatchdog
+
+            started = time.perf_counter()
+            with StepWatchdog(IMAGE_PROGRESS, kind="image"):
+                result, cache_note = run_without_cache_on_failure(
+                    pipeline, cache_note, _call_pipeline,
+                    before_retry=lambda: [g.manual_seed(base_seed + i) for i, g in enumerate(generators)],
+                )
             elapsed = max(0.1, time.perf_counter() - started)
 
             IMAGE_PROGRESS.set_phase(PHASE_DECODING, message="Decoding pixels")
@@ -477,7 +488,24 @@ class DiffusersTextToImageEngine:
             IMAGE_PROGRESS.set_phase(PHASE_SAVING, message="Saving to gallery")
             return artifacts
         finally:
+            self._trim_device_cache()
             IMAGE_PROGRESS.finish()
+
+    def _trim_device_cache(self) -> None:
+        """Hand PyTorch's cached scratch memory back after a run; the pipeline stays loaded for the next one.
+
+        Same as the video engine: the allocator keeps what a run reserved (19 GB peak for one FLUX.2 Klein 4B render
+        at 2048 px), which left chat or speech on the same NVIDIA card with no room until the model was unloaded.
+        """
+        torch = getattr(self, "_torch", None)
+        if torch is None:
+            return
+        try:
+            gc.collect()
+            if getattr(self, "_device", None) == "cuda" and getattr(torch.cuda, "is_available", lambda: False)():
+                torch.cuda.empty_cache()
+        except Exception:  # noqa: BLE001 - trimming a cache must never fail a finished run
+            pass
 
     def _diffuse_message(self, config: ImageGenerationConfig) -> str:
         return diffuse_message(config)
@@ -689,10 +717,13 @@ class DiffusersTextToImageEngine:
                 if note:
                     IMAGE_PROGRESS.set_phase(PHASE_LOADING, message=note)
 
+            from backend_service.helpers.malloc_release import pipeline_load_kwargs
+
             pipeline = AutoPipelineForText2Image.from_pretrained(
                 local_path,
                 torch_dtype=dtype,
                 local_files_only=True,
+                **pipeline_load_kwargs(),
                 **pipeline_kwargs,
             )
             # The safety checker adds extra vision-model dependencies and can
@@ -830,6 +861,14 @@ class DiffusersTextToImageEngine:
                 if device != "cpu":
                     pipeline = pipeline.to(device)
 
+            # Measuring knob (CHAOSENGINE_SPEEDUPS=compile,...), off unless set; the same one the video runtime reads.
+            try:
+                from backend_service.helpers.speedups import apply_speedups
+
+                self._load_notes.extend(apply_speedups(pipeline))
+            except Exception:  # noqa: BLE001 - speed-ups are optional
+                pass
+
             self._pipeline = pipeline
             self._torch = torch
             self._loaded_repo = repo
@@ -851,6 +890,8 @@ class DiffusersTextToImageEngine:
         if pipeline is not None:
             del pipeline
         gc.collect()
+        from backend_service.helpers.malloc_release import release_freed_memory
+        release_freed_memory()
         if torch is not None:
             try:
                 if device == "cuda" and getattr(torch.cuda, "is_available", lambda: False)():
@@ -937,6 +978,21 @@ _NO_DIFFUSERS_PIPELINE: frozenset[str] = frozenset({
 })
 
 
+# Load, generate and unload of the diffusers pipeline run on one thread so Windows hands its memory back on Unload
+# (see ``ModelThread``).
+_MODEL_THREAD = ModelThread("image-model")
+
+
+def _release_gpu_speech() -> None:
+    """Free idle speech models on the NVIDIA GPU before image weights load (``voice_client.release_gpu_for_media``)."""
+    try:
+        from backend_service.voice_client import release_gpu_for_media  # noqa: PLC0415
+
+        release_gpu_for_media()
+    except Exception:  # noqa: BLE001 - housekeeping must never fail a generation
+        pass
+
+
 class ImageRuntimeManager:
     def __init__(self) -> None:
         self._lock = RLock()
@@ -966,13 +1022,14 @@ class ImageRuntimeManager:
             status = self._diffusers.probe()
             if not status.realGenerationAvailable:
                 raise RuntimeError(status.message)
-            return self._diffusers.preload(repo).to_dict()
+            _release_gpu_speech()
+            return _MODEL_THREAD.run(self._diffusers.preload, repo).to_dict()
 
     def unload(self, repo: str | None = None) -> dict[str, Any]:
         with self._lock:
             if repo is None or repo in supported_repos():
                 self._mflux.release("unloaded")  # the warm mflux worker, when it idles
-            return self._diffusers.unload(repo).to_dict()
+            return _MODEL_THREAD.run(self._diffusers.unload, repo).to_dict()
 
     def generate(self, config: ImageGenerationConfig) -> tuple[list[GeneratedImage], dict[str, Any]]:
         # mflux path: Apple Silicon native FLUX via MLX. Routed only
@@ -1012,6 +1069,7 @@ class ImageRuntimeManager:
             _mflux_fallback_note = None
         # Another engine is about to load its own weights: free the warm mflux model first.
         self._mflux.release("another image engine is loading")
+        _release_gpu_speech()
 
         # FU-008 image subset: sd.cpp path. Routed when the catalog
         # variant declares ``engine="sdcpp"`` (which app.py threads onto
@@ -1057,7 +1115,7 @@ class ImageRuntimeManager:
         status = self._diffusers.probe()
         if status.realGenerationAvailable:
             try:
-                images = self._diffusers.generate(config)
+                images = _MODEL_THREAD.run(self._diffusers.generate, config)
                 result_status = self._diffusers.probe().to_dict()
                 if _mflux_fallback_note:
                     result_status["message"] = (

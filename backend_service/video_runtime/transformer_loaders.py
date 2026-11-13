@@ -134,8 +134,9 @@ def try_load_bnb_nf4_transformer(
         )
     if importlib.util.find_spec("bitsandbytes") is None:
         return None, (
-            "bitsandbytes package missing — install it from the Setup "
-            "page to enable NF4. Falling back to the standard transformer."
+            "bitsandbytes package missing — open Settings > Setup, click Install GPU runtime "
+            "(the GPU bundle installs it) and restart the backend to enable NF4. "
+            "Falling back to the standard transformer."
         )
     try:
         from diffusers import BitsAndBytesConfig  # type: ignore
@@ -167,12 +168,15 @@ def try_load_bnb_nf4_transformer(
             bnb_4bit_quant_type="nf4",
             bnb_4bit_compute_dtype=torch.bfloat16,
         )
+        from backend_service.helpers.malloc_release import pipeline_load_kwargs
+
         transformer = transformer_cls.from_pretrained(
             local_path,
             subfolder="transformer",
             quantization_config=quant_config,
             torch_dtype=torch.bfloat16,
             local_files_only=True,
+            **pipeline_load_kwargs(),  # Windows: read the shards without the memory map (keeps commit low)
         )
         return transformer, "Transformer loaded with NF4 (bitsandbytes)"
     except Exception as exc:  # noqa: BLE001 — any failure → fall back

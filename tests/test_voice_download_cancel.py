@@ -41,6 +41,9 @@ class CancelDownloadTests(unittest.TestCase):
         self.downloads.start()
         self.avail = mock.patch.object(voice_clone, "available_here", return_value=True)
         self.avail.start()
+        # The download mechanics under test do not depend on which lane this machine has.
+        self.runs = mock.patch.object(voice_clone, "runs_here", return_value=True)
+        self.runs.start()
 
     def tearDown(self) -> None:
         control = voice_clone._CONTROL.pop(KEY, None)
@@ -48,6 +51,7 @@ class CancelDownloadTests(unittest.TestCase):
             control["cancel"].set()
             if control.get("proc"):
                 control["proc"].kill()
+        self.runs.stop()
         self.avail.stop()
         self.downloads.stop()
         self.env.stop()

@@ -89,9 +89,9 @@ def studio_generators(request: Any, batch_id: str, folder: Path) -> dict[str, Ca
         from fastapi import HTTPException
 
         from backend_service.helpers.generation_limits import align_video_frames
-        from backend_service.ltx2_mlx_runtime import _is_ltx2_mlx_repo
         from backend_service.mcp_bridge.tools import _recommended
         from backend_service.models import VideoGenerationRequest
+        from backend_service.video_runtime.repos import image_input_support
         from backend_service.helpers.provenance import provenance
         from backend_service.routes.video import _generate_video_locked
 
@@ -104,11 +104,17 @@ def studio_generators(request: Any, batch_id: str, folder: Path) -> dict[str, Ca
         frames, _ = align_video_frames(str(variant.get("repo") or ""), max(8, min(257, round(shot.seconds * fps))))
         fields: dict[str, Any] = {"modelId": variant["id"], "prompt": prompt, "numFrames": frames, "fps": fps,
                                   "width": project.defaults.width, "height": project.defaults.height}
-        if _is_ltx2_mlx_repo(str(variant.get("repo") or "")):
+        takes_start, takes_end = image_input_support(str(variant.get("repo") or ""))
+        if shot.startFrom == "text":
+            pass  # text-to-video by the shot's own choice: no picture goes in, on any model
+        elif takes_start:
             if still is not None:
                 fields["startImagePath"] = str(still)
-            if shot.endImage:
+            if shot.endImage and takes_end:
                 fields["endImagePath"] = str(media.inside(folder, shot.endImage))
+            elif shot.endImage:
+                raise RuntimeError(f"{variant.get('name') or 'This video model'} follows only a start image; "
+                                   "remove this shot's end frame or pick an LTX-2 model.")
         elif still is not None or shot.startFrom in ("generate", "previous-shot"):
             raise RuntimeError(_no_image_input(variant))  # never a silent text-to-video for a shot that asked for an image
         if shot.seed is not None:
@@ -130,13 +136,13 @@ def studio_generators(request: Any, batch_id: str, folder: Path) -> dict[str, Ca
         return str(art["videoPath"]), {"settings": info, "measuredSeconds": round(n / rate, 4) if rate else None}
 
     def clip_image_refusal(project: Project) -> str | None:
-        from backend_service.ltx2_mlx_runtime import _is_ltx2_mlx_repo
+        from backend_service.video_runtime.repos import image_input_support
 
         try:
             variant = _variant(request, "video", project.defaults.videoModel)
         except RuntimeError:
             return None  # no model yet: the clip step fails with the readable pick error
-        return None if _is_ltx2_mlx_repo(str(variant.get("repo") or "")) else _no_image_input(variant)
+        return None if image_input_support(str(variant.get("repo") or ""))[0] else _no_image_input(variant)
 
     def unload(kind: str) -> None:
         state = request.app.state.chaosengine
@@ -158,8 +164,8 @@ def studio_generators(request: Any, batch_id: str, folder: Path) -> dict[str, Ca
 
 def _no_image_input(variant: dict[str, Any]) -> str:
     return (f"{variant.get('name') or variant.get('id') or 'This video model'} cannot start a clip from an image, so it "
-            "would ignore this shot's still or the previous shot. Pick LTX-2.3 or LTX-2.5 (the models with "
-            "acceptsImageInput) as the project's video model, or import a clip.")
+            "would ignore this shot's still or the previous shot. Pick LTX-2.3 or LTX-2.5 on a Mac or Wan 2.2 TI2V 5B on "
+            "an NVIDIA PC (the models with acceptsImageInput) as the project's video model, or import a clip.")
 
 
 def last_frame(clip: Path) -> Path:

@@ -1,5 +1,6 @@
 """Tests for the DFLASH speculative decoding integration module."""
 
+import importlib.util
 import unittest
 from unittest.mock import patch, MagicMock
 from types import SimpleNamespace
@@ -408,31 +409,45 @@ class GenerationResultTests(unittest.TestCase):
 
 
 class DDTreeAvailabilityProbeTests(unittest.TestCase):
-    """FU-071: the probe must key off the symbols our code actually imports
-    from ``dflash_mlx.runtime`` (new ``target_ops`` adapter API), not the
-    pre-0.1.5 ``target_forward_with_hidden_states`` that was renamed away."""
+    """FU-071 / FU-057: the probe keys off the symbols our code imports, in
+    the modules dflash-mlx 0.1.10 defines them in (``runtime`` is a package
+    there and only exports ``stream_dflash_generate``)."""
 
-    def _probe_with_source(self, source: str) -> bool:
-        spec = SimpleNamespace(origin="/fake/dflash_mlx/runtime.py")
-        with patch("dflash.importlib.util.find_spec", return_value=spec), patch(
-            "dflash.Path"
-        ) as mock_path:
-            mock_path.return_value.read_text.return_value = source
+    MODERN = {
+        "dflash_mlx.engine.target_ops": "def resolve_target_ops(model): ...\n",
+        "dflash_mlx.runtime.loading": "def load_draft_bundle(ref): ...\n",
+        "dflash_mlx.runtime": "def stream_dflash_generate(**kw): ...\n",
+        "dflash_mlx.draft_backend": "class EagerDraftBackend: ...\n",
+    }
+
+    def _probe_with_sources(self, sources: dict) -> bool:
+        def find_spec(name):
+            return SimpleNamespace(origin=f"/fake/{name}.py") if name in sources else None
+
+        def read_text(self, *args, **kwargs):
+            return sources[str(self)[len("/fake/"):-len(".py")]]
+
+        with patch("dflash.importlib.util.find_spec", side_effect=find_spec), patch(
+            "pathlib.Path.read_text", read_text
+        ):
             return is_ddtree_available()
 
-    def test_modern_runtime_with_target_ops_api_is_available(self):
-        # Mirrors the installed dflash-mlx 0.1.5+ surface.
-        source = "def resolve_target_ops(): ...\nload_draft_bundle\nstream_dflash_generate\n"
-        self.assertTrue(self._probe_with_source(source))
+    def test_modern_runtime_layout_is_available(self):
+        self.assertTrue(self._probe_with_sources(self.MODERN))
 
-    def test_legacy_only_symbol_is_not_enough(self):
-        # The obsolete pre-0.1.5 symbol on its own must NOT satisfy the probe.
-        source = "target_forward_with_hidden_states\nload_target_bundle\n"
-        self.assertFalse(self._probe_with_source(source))
+    def test_the_old_flat_runtime_module_is_not_enough(self):
+        # dflash-mlx 0.1.5 kept everything in ``runtime.py``; the 0.1.10 code paths need the
+        # split modules, so a lone flat module must not satisfy the probe.
+        source = "resolve_target_ops\nload_draft_bundle\nstream_dflash_generate\n"
+        self.assertFalse(self._probe_with_sources({"dflash_mlx.runtime": source}))
 
     def test_missing_resolve_target_ops_is_unavailable(self):
-        source = "load_draft_bundle\nstream_dflash_generate\n"
-        self.assertFalse(self._probe_with_source(source))
+        sources = dict(self.MODERN, **{"dflash_mlx.engine.target_ops": "def something_else(): ...\n"})
+        self.assertFalse(self._probe_with_sources(sources))
+
+    @unittest.skipUnless(importlib.util.find_spec("dflash_mlx") is not None, "dflash-mlx not installed")
+    def test_the_installed_release_passes_the_probe(self):
+        self.assertTrue(is_ddtree_available())
 
     def test_unimportable_runtime_is_unavailable(self):
         with patch("dflash.importlib.util.find_spec", return_value=None):
@@ -458,6 +473,26 @@ class DFlash2DraftMapTests(unittest.TestCase):
             get_draft_model("Qwen/Qwen3.8-27B", allow_dflash2=True),
             "z-lab/Qwen3.8-27B-DFlash2",
         )
+
+    def test_vllm_opt_in_pairs_quantised_packs_of_the_target(self):
+        # The only vLLM catalog row (FP8) and the 4-bit packs that fit a
+        # 24 GB card are not the exact BF16 repo id.
+        from dflash import get_draft_model
+
+        for ref in (
+            "Qwen/Qwen3.8-27B-FP8",
+            "RedHatAI/Qwen3.8-27B-INT4",
+            "grevinden/qwen3.8-27b-w4a16-autoround-rtx3090",
+            "/home/u/.cache/huggingface/hub/models--RedHatAI--Qwen3.8-27B-INT4/snapshots/abc",
+            "C:\\Models\\Qwen3.8-27B-AWQ",
+        ):
+            self.assertEqual(get_draft_model(ref, allow_dflash2=True), "z-lab/Qwen3.8-27B-DFlash2", ref)
+
+    def test_dflash2_match_does_not_catch_other_qwen38_models(self):
+        from dflash import get_draft_model
+
+        self.assertIsNone(get_draft_model("Vontra/Qwen3.8-Flash-Next-MLX-4bit-MTP", allow_dflash2=True))
+        self.assertIsNone(get_draft_model("Qwen/Qwen3.8-27B-FP8"))
 
     def test_mlx_default_never_gets_a_dflash2_draft(self):
         from dflash import get_draft_model

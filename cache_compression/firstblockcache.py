@@ -101,6 +101,8 @@ class FirstBlockCacheStrategy(CacheStrategy):
                 "this pipeline appears to be UNet-based. Use TeaCache or stay on stock."
             )
 
+        _check_head_and_tail_blocks_match(transformer)
+
         threshold = (
             rel_l1_thresh
             if rel_l1_thresh is not None and rel_l1_thresh > 0
@@ -124,4 +126,44 @@ class FirstBlockCacheStrategy(CacheStrategy):
                 except Exception:
                     pass
 
-        apply_first_block_cache(transformer, config)
+        if hasattr(transformer, "enable_cache"):
+            # Goes through the model's cache mixin so ``disable_cache`` can undo it.
+            transformer.enable_cache(config)
+        else:
+            apply_first_block_cache(transformer, config)
+
+
+def _check_head_and_tail_blocks_match(transformer: Any) -> None:
+    """Refuse transformers whose first and last block return different shapes.
+
+    diffusers' First Block Cache subtracts the head block's output from the tail
+    block's. FLUX.2 starts with dual-stream blocks (a ``(encoder, hidden)`` tuple)
+    and ends with single-stream blocks (one tensor), so the hook raises
+    "unsupported operand type(s) for -: 'Tensor' and 'list'" on the first step and
+    the whole generation falls over. Catch it before the run instead.
+    """
+    try:
+        from diffusers.hooks._helpers import TransformerBlockRegistry
+        from diffusers.hooks._common import _ALL_TRANSFORMER_BLOCK_IDENTIFIERS
+    except ImportError:
+        return
+    blocks = []
+    for name, child in transformer.named_children():
+        if name in _ALL_TRANSFORMER_BLOCK_IDENTIFIERS and hasattr(child, "__len__"):
+            blocks.extend(list(child))
+    if len(blocks) < 2:
+        return
+    try:
+        head = TransformerBlockRegistry.get(type(blocks[0]))
+        tail = TransformerBlockRegistry.get(type(blocks[-1]))
+    except Exception as exc:  # noqa: BLE001 - diffusers raises ValueError for unknown block types
+        raise NotImplementedError(
+            f"diffusers has no First Block Cache support for {type(blocks[0]).__name__} / "
+            f"{type(blocks[-1]).__name__} ({exc})."
+        ) from exc
+    if (head.return_encoder_hidden_states_index is None) != (tail.return_encoder_hidden_states_index is None):
+        raise NotImplementedError(
+            f"{type(transformer).__name__} starts with {type(blocks[0]).__name__} and ends with "
+            f"{type(blocks[-1]).__name__}, whose outputs differ in shape; diffusers' First Block Cache "
+            "cannot compare them. Pick another cache strategy or leave it off."
+        )

@@ -59,6 +59,15 @@ def _snapshot_visible_label(local_root: Path) -> str:
     return ", ".join(visible_files[:6]) if visible_files else "no files"
 
 
+# Components a repo lists in model_index.json that the app leaves out of the download and loads as None
+# (LTX-2.5's 10 GB prompt enhancer), or that the pipeline class does not take at all (LTX-2.5's
+# ``diffusion_decoder``: LTX2Pipeline has no such argument, it needs NATTEN kernels and the distilled run does not
+# use it; the first real download failed validation on it): a snapshot without them is complete.
+OPTIONAL_COMPONENTS_BY_REPO: dict[str, frozenset[str]] = {
+    "Lightricks/LTX-2.5-Diffusers": frozenset({"prompt_enhancer", "diffusion_decoder"}),
+}
+
+
 def validate_local_diffusers_snapshot(
     local_root: Path,
     repo: str | None = None,
@@ -89,6 +98,7 @@ def validate_local_diffusers_snapshot(
         )
 
     missing_components: list[str] = []
+    skipped_components = OPTIONAL_COMPONENTS_BY_REPO.get(repo or "", frozenset())
     if isinstance(pipeline_index, dict):
         # Any of these names being present in a subfolder is enough to call it
         # a real component directory — diffusers picks the right one based on
@@ -100,8 +110,8 @@ def validate_local_diffusers_snapshot(
             "preprocessor_config.json",
         )
         for component_name, descriptor in pipeline_index.items():
-            if component_name.startswith("_"):
-                continue  # ``_class_name`` / ``_diffusers_version`` metadata
+            if component_name.startswith("_") or component_name in skipped_components:
+                continue  # ``_class_name`` / ``_diffusers_version`` metadata, or a part this app never loads
             if not isinstance(descriptor, (list, tuple)) or len(descriptor) < 2:
                 continue
             # Pipelines list ``[null, null]`` for optional components that the

@@ -23,7 +23,7 @@
 //! Extracted from `lib.rs` as part of the v0.8.0 refactor.
 
 use std::io::{Read, Write};
-use std::net::TcpStream;
+use std::net::{SocketAddr, TcpStream};
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -33,8 +33,15 @@ pub struct ExistingBackendProbe {
     pub python_executable: Option<String>,
 }
 
+/// How long a TCP probe of a local port may take. A listening loopback port accepts in well under a millisecond, but
+/// Windows needs about 2 s to refuse a connection to a port nobody listens on, so an unbounded `connect` made every
+/// startup poll before the sidecar was up cost 2 s (and `wait_for_port` give up late). Timing out counts as "not
+/// responding", which is the right answer either way.
+const PORT_PROBE_TIMEOUT: Duration = Duration::from_millis(250);
+
 pub fn port_responding(port: u16) -> bool {
-    TcpStream::connect(("127.0.0.1", port)).is_ok()
+    let address = SocketAddr::from(([127, 0, 0, 1], port));
+    TcpStream::connect_timeout(&address, PORT_PROBE_TIMEOUT).is_ok()
 }
 
 /// Wait for the backend on `port` to answer `/api/health`.

@@ -8,20 +8,20 @@ summary: Every FU row from FOLLOW_UPS.md, split into open and closed.
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here.
 
-- [Open and live follow-ups](open.md): **76** rows.
+- [Open and live follow-ups](open.md): **93** rows.
 - [Closed follow-ups](closed.md): **80** rows.
 
 ## Newest ten
 
 | Row | Item | Status |
 |---|---|---|
-| [FU-158](open.md) | Speech GPU add-on as a tick box on Windows and Linux (D-73 M4) | Open (2026-11-09): wired, never run |
-| [FU-157](open.md) | Voice makeover (D-73): what was deferred or not checked | Open (2026-11-09): built on feat/voice-makeover and feat/voice-fu157, mocked UI and throwaway-cache tests only… |
-| [FU-156](open.md) | Any voice in Chat and calls (D-67 W6, D-72): what was not done or not checked | Open (2026-11-09): W6 built on feat/voice-w6 |
-| [FU-155](open.md) | Speech GPU add-on and CUDA speech rows: run them on the RTX 4090 | Open (2026-11-09): written on a Mac, never run. |
-| [FU-154](open.md) | Default cloning model: VoxCPM2 or Qwen3-TTS 0.6B Base (owner listening check) | Open (2026-11-09): owner prefers that people choose rather than the app picking a default for them |
-| [FU-153](open.md) | Chat waits for long jobs, times on messages and tools, job progress with time left | Built 2026-11-09 on feat/chat-time-progress (from release/v0.10.0) |
-| [FU-152](open.md) | Flaky timing test test_mflux_worker.py::CliTimingTests::test_the_cli_split_is_read_off_the | Open (2026-11-08). |
-| [FU-151](open.md) | Hard-coded English strings found by the Klingon pass | Open (2026-11-08): not started. |
-| [FU-150](open.md) | Klingon locale: re-sync and speaker review | Open (2026-11-08) |
-| [FU-149](open.md) | Better speech models than Kokoro and Qwen3-TTS presets | Mac rows shipped 2026-11-09 on feat/voice-models-wave2 (D-70 P0 to P5) |
+| [FU-175](open.md) | FLUX.2 Dev: catalog size wrong (64 GB) and the download bar showed the whole repo (154.08) | Open (2026-11-13): size fixed in code (3f534add) |
+| [FU-174](open.md) | Idle GPU speech workers slow image and video jobs; the idle-unload setting missed the Qwen | Fixed and verified through the installed app (2026-11-13, installer built at 3f534add). |
+| [FU-173](open.md) | Installed app runs LTX-2.5 4-bit and FLUX.2 Klein slower than the dev venv on the same car | Fixed and verified through the installed app (2026-11-13, installer built at a8b0051e). |
+| [FU-172](open.md) | Qwen3.8-27B + DFlash2 on the vLLM lane does not fit a 24 GB card; vLLM lane ignores the th | Open (2026-11-13): measured on an RTX 4090 (WSL2, vLLM 0.33). |
+| [FU-171](open.md) | TriAttention on the vLLM lane: works only on vLLM 0.18 or older; the app now says so and w | Open: root cause found, compaction working on vLLM 0.18.1, app honest on newer vLLM (2026-11-13). |
+| [FU-170](open.md) | cargo test port race in backend::tests::runtime_info_keeps_a_soft_note_while_the_port_is_s | Open; low priority. |
+| [FU-169](open.md) | scripts/check-upstreams.py: report every pinned upstream against its newest release (D-78) | Shipped 2026-11-11. |
+| [FU-168](open.md) | TensorFold 1.x: build the family table from capabilities --json, add newer families | Open: the 14 families are now in the tables (2026-11-11) |
+| [FU-167](open.md) | Image, video and audio speed-ups beyond the diffusion caches | Researched 2026-11-11 |
+| [FU-166](open.md) | MiniMax H3 (video and image) and newer image/video models: scan, supersedes the FU-082 / F | Researched 2026-11-10 |

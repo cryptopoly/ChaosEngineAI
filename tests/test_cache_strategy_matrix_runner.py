@@ -96,6 +96,28 @@ class RunCellTensorFoldTests(unittest.TestCase):
         self.assertEqual(result.dflash_acceptance, 2.5)
 
 
+class RunCellFallbackTests(unittest.TestCase):
+    """A strategy cell whose load fell back to native is a skip, not a pass."""
+
+    def test_triattention_loaded_as_native_is_skipped(self):
+        cell = runner.MatrixCell("tri", runner.VLLM_SMALL, "vllm", "triattention", 3, "none", quick=False)
+        load = {"runtime": {"loadedModel": {"engine": "vllm", "cacheStrategy": "native", "runtimeNote": "patches failed"}}}
+        with mock.patch.object(runner, "_api", return_value=load),                 mock.patch.object(runner, "_stream_inference") as stream:
+            result = runner.run_cell(cell, port=1)
+        stream.assert_not_called()
+        self.assertTrue(result.skipped)
+        self.assertFalse(result.ok)
+        self.assertIn("loaded as native, not triattention", result.skip_reason)
+
+    def test_native_cell_is_not_affected(self):
+        cell = runner.MatrixCell("nat", runner.VLLM_SMALL, "vllm", "native", 0, "none", quick=False)
+        load = {"runtime": {"loadedModel": {"engine": "vllm", "cacheStrategy": "native", "runtimeNote": ""}}}
+        done = {"assistant": {"metrics": {"tokS": 10.0}}}
+        with mock.patch.object(runner, "_api", return_value=load),                 mock.patch.object(runner, "_stream_inference", return_value=("text", done)):
+            result = runner.run_cell(cell, port=1)
+        self.assertTrue(result.ok)
+
+
 class SkipReasonTests(unittest.TestCase):
     def test_quick_skips_non_quick_cells(self):
         cell = runner.MatrixCell(
@@ -399,3 +421,19 @@ class MatrixDefinitionTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Utf8ConsoleTests(unittest.TestCase):
+    """RTX 4090 run: the full sweep died with UnicodeEncodeError printing the vLLM skip reason ("→") to a
+    cp1252 Windows console."""
+
+    def test_a_cp1252_stream_prints_the_arrow_after_the_switch(self) -> None:
+        import io
+
+        raw = io.BytesIO()
+        stream = io.TextIOWrapper(raw, encoding="cp1252", errors="strict")
+        with mock.patch.object(runner.sys, "stdout", stream), mock.patch.object(runner.sys, "stderr", stream):
+            runner._utf8_console()
+            print("Diagnostics → WSL2", file=runner.sys.stdout)
+            stream.flush()
+        self.assertIn("→".encode("utf-8"), raw.getvalue())

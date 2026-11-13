@@ -73,8 +73,8 @@ class PlanTests(unittest.TestCase):
         self.assertEqual((turbo.kind, turbo.voice), ("preset", "chatterbox-turbo"))
         self.assertEqual(orpheus.extra["speaker"], "tara")
         self.assertEqual((vox.kind, vox.extra["mode"]), ("design", "design"))
-        self.assertEqual((mtl.voice, mtl.extra["defaultVoicePath"], mtl.extra["expression"]), ("chatterbox", "/c/conds.safetensors", 0.5))
-        self.assertEqual((base.kind, base.extra["refAudioPath"]), ("clone", "/ref.wav"))
+        self.assertEqual((mtl.voice, Path(mtl.extra["defaultVoicePath"]).as_posix(), mtl.extra["expression"]), ("chatterbox", "/c/conds.safetensors", 0.5))
+        self.assertEqual((base.kind, Path(base.extra["refAudioPath"]).as_posix()), ("clone", "/ref.wav"))
 
 
 if __name__ == "__main__":

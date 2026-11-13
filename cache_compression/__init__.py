@@ -425,6 +425,60 @@ class _BrokenStrategy(CacheStrategy):
 registry = CacheStrategyRegistry()
 
 
+def reset_diffusion_cache(pipeline: Any) -> None:
+    """Remove whatever diffusion cache an earlier run left on the loaded pipeline.
+
+    A loaded pipeline is reused across requests (the variant key ignores the
+    cache choice), so without this a cached run leaves its hooks behind for
+    the next "off" run and a second ``enable_cache`` raises "already enabled".
+    TeaCache patches the transformer class, so its flag is switched off too.
+    """
+    transformer = getattr(pipeline, "transformer", None)
+    if transformer is None:
+        return
+    if getattr(transformer, "is_cache_enabled", False) and hasattr(transformer, "disable_cache"):
+        try:
+            transformer.disable_cache()
+        except Exception:  # noqa: BLE001 - a stale hook must never block a generation
+            pass
+    if getattr(type(transformer), "enable_teacache", False):
+        type(transformer).enable_teacache = False
+
+
+# Caches that keep per-block tensors between steps (the First Block Cache keeps one residual).
+_PER_BLOCK_STATE_STRATEGIES = frozenset({"taylorseer", "pab", "fastercache", "magcache"})
+
+
+def _is_cpu_offloaded(pipeline: Any) -> bool:
+    """True when diffusers moves this pipeline's weights between system memory and the card."""
+    if getattr(pipeline, "_all_hooks", None):  # enable_model_cpu_offload
+        return True
+    return bool(getattr(pipeline, "_offload_gpu_id", None) is not None and getattr(pipeline, "_offload_device", None))
+
+
+_MIN_HEADROOM_GB = 6.0
+
+
+def _vram_headroom_gb() -> float | None:
+    """Card memory this process has not needed so far (total minus its peak); None when unknown.
+
+    Per-block caches add several GB on top of a run's peak (Wan 2.2 TI2V: +3.7 GB). Once that
+    pushes past the card, Windows spills to system memory and a 60 s clip takes over eight
+    minutes (LTX-2.3 4-bit, 24 GB: peak 22.3 GB). Reads the card, so it scales to any size.
+    """
+    try:
+        import torch
+
+        if not torch.cuda.is_available():
+            return None
+        peak = torch.cuda.max_memory_reserved()
+        if peak <= 0:
+            return None
+        return (torch.cuda.get_device_properties(0).total_memory - peak) / (1024 ** 3)
+    except Exception:  # noqa: BLE001 - no torch / no card: nothing to measure
+        return None
+
+
 def apply_diffusion_cache_strategy(
     pipeline: Any,
     *,
@@ -452,7 +506,8 @@ def apply_diffusion_cache_strategy(
     — those produce a note and the caller falls back to the stock pipeline.
     Programming errors (wrong types) still surface.
     """
-    if not strategy_id:
+    reset_diffusion_cache(pipeline)
+    if not strategy_id or strategy_id == "none":
         return None
     strategy = registry.get(strategy_id)
     if strategy is None:
@@ -462,6 +517,14 @@ def apply_diffusion_cache_strategy(
             f"{strategy.name} does not apply to {domain} pipelines "
             f"(domains: {sorted(strategy.applies_to())}); using stock pipeline."
         )
+    if strategy.strategy_id in _PER_BLOCK_STATE_STRATEGIES and _is_cpu_offloaded(pipeline):
+        headroom = _vram_headroom_gb()
+        if headroom is not None and headroom < _MIN_HEADROOM_GB:
+            return (
+                f"{strategy.name} not applied: it keeps tensors for every block, and this pipeline "
+                f"already swaps weights to system memory with only {headroom:.1f} GB of the card spare; "
+                "past the card the run stalls (LTX-2.3 4-bit on 24 GB: over 8 minutes for a 60 s clip)."
+            )
     hook = getattr(strategy, "apply_diffusers_hook", None)
     if hook is None:
         return (
@@ -477,4 +540,37 @@ def apply_diffusion_cache_strategy(
         # Expected path when a pipeline's patch hasn't landed yet. Return
         # the message so the UI can show "TeaCache not applied: <reason>".
         return f"{strategy.name} not applied: {exc}"
+    except (ValueError, TypeError, KeyError, IndexError, AttributeError, RuntimeError) as exc:
+        # The hook refused this transformer (diffusers: "Model class ... not
+        # registered"). A cache is an extra: leave the pipeline stock and say so.
+        reset_diffusion_cache(pipeline)
+        return f"{strategy.name} not applied: {type(exc).__name__}: {exc}"
     return f"{strategy.name} applied (thresh={rel_l1_thresh or 'default'})."
+
+
+def cache_is_active(note: str | None) -> bool:
+    """True when ``apply_diffusion_cache_strategy`` reported that it attached a cache."""
+    return bool(note) and " applied" in str(note) and "not applied" not in str(note)
+
+
+def run_without_cache_on_failure(
+    pipeline: Any, cache_note: str | None, run: Any, before_retry: Any = None,
+) -> tuple[Any, str | None]:
+    """Call ``run()``; when it fails with a cache attached, drop the cache and call it once more.
+
+    Some cache hooks attach cleanly and then break inside the first forward pass
+    (FasterCache on FLUX.2: ``tuple index out of range``). The user asked for a
+    picture, not a cache, so the retry runs stock and the note says what happened.
+    ``before_retry`` runs first (re-seed the generator the failed attempt used up, so
+    the same seed still gives the same picture). Cancels pass straight through.
+    """
+    try:
+        return run(), cache_note
+    except Exception as exc:  # noqa: BLE001 - re-raised below when no cache was involved
+        if type(exc).__name__ == "GenerationCancelled" or not cache_is_active(cache_note):
+            raise
+        reset_diffusion_cache(pipeline)
+        if before_retry is not None:
+            before_retry()
+        note = f"Cache failed during the run ({type(exc).__name__}: {exc}); ran without it."
+        return run(), note

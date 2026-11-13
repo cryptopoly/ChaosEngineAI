@@ -301,6 +301,10 @@ export interface VoiceModelRow {
   /** Null (or missing) when the model has not been measured. */
   estimates?: VoiceModelEstimates | null;
   supported: boolean;
+  /** Why a model that suits this machine's lane still cannot run on its GPU (memory, compute capability); null otherwise. */
+  unsupportedReason?: string | null;
+  /** The same as data: `memory` (GB needed and present) or `compute` (capability needed and present); null otherwise. */
+  unsupportedFacts?: { kind: "memory" | "compute"; need: number; have: number } | null;
   installed: boolean;
   /** Fit on this machine from the measured peak (``helpers/voice_fit.py``); read with ``readFit``. */
   fit?: unknown;

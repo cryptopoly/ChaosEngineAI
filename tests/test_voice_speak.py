@@ -10,6 +10,7 @@ import math
 import re
 import shutil
 import struct
+import sys
 import tempfile
 import threading
 import unittest
@@ -20,6 +21,24 @@ from unittest import mock
 from backend_service import voice_clone, voice_clone_safety, voice_env, voice_library, voice_runtime, voice_speak
 from backend_service import voice_speak_audio
 from backend_service.catalog import voice_models
+
+_MODULE_PATCHES: list = []
+
+
+def setUpModule() -> None:
+    """These tests describe the Apple Silicon catalog (MLX rows). Pin the lane so a Windows or Linux box with the
+    speech GPU add-on (whose Qwen3-TTS GPU rows are listed and run there) gives the same answers; the GPU lane is
+    covered by test_voice_cuda_lane.py and test_voice_qwen_cuda.py."""
+    for patch in (mock.patch.object(voice_env, "lane", return_value="mlx"),
+                  mock.patch.object(voice_env, "speech_lanes", return_value=["mlx"])):
+        patch.start()
+        _MODULE_PATCHES.append(patch)
+
+
+def tearDownModule() -> None:
+    while _MODULE_PATCHES:
+        _MODULE_PATCHES.pop().stop()
+
 
 
 def tone_wav(seconds: float = 0.5, rate: int = 24_000, hz: float = 440.0) -> bytes:
@@ -68,7 +87,7 @@ class Machine:
             patch.stop()
 
 
-QWEN_ROWS = [r for r in voice_models.VOICE_MODELS if r["family"] == "qwen3-tts"]
+QWEN_ROWS = [r for r in voice_models.VOICE_MODELS if r["family"] == "qwen3-tts" and r["lanes"] == ["mlx"]]  # GPU rows: test_voice_qwen_cuda.py
 
 
 class CatalogTests(unittest.TestCase):
@@ -112,9 +131,12 @@ class CatalogTests(unittest.TestCase):
     def test_cloning_models_are_every_listed_clone_row_default_first(self) -> None:
         keys = [r["key"] for r in voice_models.CLONE_MODELS]
         self.assertEqual(keys[0], voice_models.DEFAULT_CLONE_MODEL)
-        self.assertEqual(set(keys), {r["key"] for r in voice_models.listed_models() if r["capabilities"]["clone"]})
+        self.assertEqual(set(keys), {r["key"] for r in voice_models.VOICE_MODELS if r["listed"] and r["capabilities"]["clone"]})
+        self.assertEqual({r["key"] for r in voice_models.listed_models() if r["capabilities"]["clone"]} - set(keys), set())
         self.assertIn("qwen3-tts-1.7b", keys)
-        self.assertEqual(sum(r["default"] for r in voice_models.VOICE_MODELS), 1)
+        # The default and its GPU twin; the cloning picker takes the one that runs on this machine.
+        self.assertEqual({r["key"] for r in voice_models.VOICE_MODELS if r["default"]},
+                         {voice_models.DEFAULT_CLONE_MODEL, f"{voice_models.DEFAULT_CLONE_MODEL}-cuda"})
         with self.assertRaises(ValueError):
             voice_models.clone_model("qwen3-tts-custom-1.7b")
         self.assertEqual(voice_models.voice_model("qwen3-tts-custom-1.7b")["kind"], "custom")
@@ -713,6 +735,25 @@ class RouteTests(unittest.TestCase):
             agent = self.client.get("/api/voice/voices", headers={"x-chaosengine-token": "agent-token"}).json()
         self.assertNotIn("clone", {v["kind"] for v in agent["voices"]})
 
+    def test_models_route_reports_the_unmeasured_switch_and_the_e2e_check_uses_it(self) -> None:
+        import importlib.util
+        from pathlib import Path
+
+        self.assertIs(self.client.get("/api/voice/models").json()["unmeasuredListed"], voice_models._LIST_UNMEASURED_CUDA)
+        with mock.patch.object(voice_models, "_LIST_UNMEASURED_CUDA", True):
+            self.assertTrue(self.client.get("/api/voice/models").json()["unmeasuredListed"])
+        path = Path(__file__).resolve().parents[1] / "scripts" / "e2e_test_suite.py"
+        spec = importlib.util.spec_from_file_location("e2e_suite_unmeasured", path)
+        suite = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = suite  # its dataclasses look the module up by name
+        self.addCleanup(sys.modules.pop, spec.name, None)
+        spec.loader.exec_module(suite)
+        rows = [{"key": "a", "family": "qwen3-tts", "estimates": None},
+                {"key": "b", "family": "chatterbox-turbo", "estimates": {"basis": "measured"}},
+                {"key": "c", "family": "chatterbox-turbo", "estimates": None}]
+        self.assertEqual(suite.unmeasured_listed_rows(rows), ["c"])
+        self.assertEqual(suite.unmeasured_listed_rows(rows[:2]), [])
+
     def test_models_route_lists_every_row_with_capabilities(self) -> None:
         body = self.client.get("/api/voice/models").json()
         self.assertEqual(len(body["models"]), len(voice_models.listed_models()))
@@ -722,7 +763,7 @@ class RouteTests(unittest.TestCase):
         self.assertEqual(by_key["qwen3-tts-design-1.7b"]["kind"], "design")
         self.assertTrue(all(re.fullmatch(r"[0-9a-f]{40}", m["revision"]) for m in body["models"]))
         # The cloning screen lists every model that can clone.
-        self.assertEqual(len(self.client.get("/api/voice/clone/models").json()["models"]), len(voice_models.CLONE_MODELS))
+        self.assertEqual(len(self.client.get("/api/voice/clone/models").json()["models"]), len([r for r in voice_models.CLONE_MODELS if r["key"] in {x["key"] for x in voice_models.listed_models()}]))
 
 
 class ChatStreamTests(unittest.TestCase):
@@ -810,7 +851,7 @@ class ChatStreamTests(unittest.TestCase):
         row = voice_models.voice_model("qwen3-tts-0.6b")
         with mock.patch.object(voice_clone, "clone_plan", return_value=(plan, row, {}, [])) as checks, \
                 mock.patch.object(voice_speak, "_speak_chunk", return_value=(tone_wav(0.1), 0.1)), \
-                mock.patch.object(voice_clone, "mark_cloned", side_effect=lambda wav, r, vid: b"MARKED" + wav) as mark, \
+                mock.patch.object(voice_clone, "mark_cloned", side_effect=lambda wav, r, vid, **kw: b"MARKED" + wav) as mark, \
                 mock.patch.object(voice_clone_safety, "audit") as audit:
             _r, lines = self.stream("clone:1234567890_deadbeef")
             self.assertEqual(checks.call_args.kwargs["origin"], "ui")
@@ -870,6 +911,7 @@ class DownloadTests(unittest.TestCase):
 
         install = mock.Mock()
         with mock.patch.object(voice_clone, "available_here", return_value=True), \
+             mock.patch.object(voice_clone, "runs_here", return_value=True), \
              mock.patch.object(voice_clone, "_fetch_repo") as weights, \
              mock.patch.object(voice_env, "watermark_installed", return_value=False), \
              mock.patch.object(voice_env, "install_watermark", install), \

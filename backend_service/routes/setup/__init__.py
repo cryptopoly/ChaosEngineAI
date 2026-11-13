@@ -50,7 +50,7 @@ _INSTALLABLE_PIP_PACKAGES: dict[str, str] = {
     # pyproject / stage-runtime pin (FU-033 check covers this file too):
     # it lagged on f825ffb (v0.1.4.1, no ``resolve_target_ops``) so an
     # in-app install silently disabled DFlash — the FU-075 symptom.
-    "dflash-mlx": "dflash-mlx @ git+https://github.com/bstnxbt/dflash-mlx.git@fada1eb2b75cd1c875ca6547b6518783fd3d2956",
+    "dflash-mlx": "dflash-mlx @ git+https://github.com/bstnxbt/dflash-mlx.git@9ca002898b48e14c9727dec17299f497e8467870",
     # FU-091: no ``"dflash"`` entry. PyPI ``dflash`` (z-lab's DFlash 2
     # research package) installs a top-level ``dflash`` module that
     # collides with our in-repo ``dflash/`` registry, pins tqdm /
@@ -427,6 +427,7 @@ from backend_service.routes.setup.ltx2 import router as _ltx2_router
 from backend_service.routes.setup.llama_cuda import router as _llama_cuda_router
 from backend_service.routes.setup.mtplx import router as _mtplx_router
 from backend_service.routes.setup.tensorfold import router as _tensorfold_router
+from backend_service.routes.setup.tensorfold_native import router as _tensorfold_native_router
 from backend_service.routes.setup.torch_upgrade import router as _torch_upgrade_router
 from backend_service.routes.setup.turbo import router as _turbo_router
 from backend_service.routes.setup.vllm_wsl import router as _vllm_wsl_router
@@ -443,6 +444,7 @@ router.include_router(_ltx2_router)
 router.include_router(_llama_cuda_router)
 router.include_router(_mtplx_router)
 router.include_router(_tensorfold_router)
+router.include_router(_tensorfold_native_router)
 router.include_router(_torch_upgrade_router)
 router.include_router(_turbo_router)
 router.include_router(_vllm_wsl_router)

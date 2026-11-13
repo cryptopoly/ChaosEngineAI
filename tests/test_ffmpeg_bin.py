@@ -207,6 +207,50 @@ class Lookup(unittest.TestCase):
             self.assertEqual(output_metadata._ffmpeg_exe(), "/usr/bin/ffmpeg")
 
 
+class FilterListing(unittest.TestCase):
+    """``ffmpeg -filters`` has three flag columns up to ffmpeg 7 and two from ffmpeg 9; both must be read."""
+
+    def names(self, listing: str) -> frozenset[str]:
+        ffmpeg_bin._filters_for.cache_clear()
+        try:
+            with mock.patch.object(ffmpeg_bin.subprocess, "run", return_value=mock.Mock(stdout=listing)):
+                return ffmpeg_bin._filters_for("ffmpeg-test")
+        finally:
+            ffmpeg_bin._filters_for.cache_clear()
+
+    def test_three_flag_columns(self):
+        listing = (
+            "Filters:\n  T.. = Timeline support\n ------\n"
+            " TSC adelay            A->A       Delay audio.\n"
+            " ... scale             V->V       Scale.\n"
+        )
+        self.assertEqual(self.names(listing), frozenset({"adelay", "scale"}))
+
+    def test_two_flag_columns(self):
+        listing = (
+            "Filters:\n  T.. = Timeline support\n  ------\n"
+            " TS adelay            A->A       Delay audio.\n"
+            " .. scale             V->V       Scale.\n"
+        )
+        self.assertEqual(self.names(listing), frozenset({"adelay", "scale"}))
+
+
+class FilterScriptFlag(unittest.TestCase):
+    """ffmpeg 9 removed ``-filter_complex_script``; the file-reading option follows the binary's major version."""
+
+    def flag(self, version: str) -> str:
+        from backend_service.storyboard import assemble
+
+        with mock.patch.object(assemble.ffmpeg_bin, "ffmpeg_version", return_value=version):
+            return assemble._filter_script_flag()
+
+    def test_old_and_new_binaries(self):
+        self.assertEqual(self.flag("6.1.1"), "-filter_complex_script")
+        self.assertEqual(self.flag("7.1"), "-/filter_complex")
+        self.assertEqual(self.flag("9.0.2"), "-/filter_complex")
+        self.assertEqual(self.flag("unknown"), "-/filter_complex")
+
+
 class RouteMapping(unittest.TestCase):
     def test_ffmpeg_missing_is_409_with_code(self):
         from backend_service.routes import storyboard as routes

@@ -72,7 +72,7 @@ class LtxCommandTests(unittest.TestCase):
         args = self.build(self.config(startImagePath="/a.png", endImagePath="/b.png", imageStrength=0.8))
         pairs = [args[i + 1 : i + 4] for i, a in enumerate(args) if a == "--image"]
         self.assertEqual(pairs, [["/a.png", "0", "0.8"], ["/b.png", "64", "0.8"]])
-        self.assertEqual(args[-2:], ["--output", "/o.mp4"])
+        self.assertEqual(args[-2:], ["--output", str(Path("/o.mp4"))])
 
 
 class RouteChecksTests(unittest.TestCase):
@@ -149,7 +149,7 @@ class ReferenceImageTests(unittest.TestCase):
 
     def test_init_image_command(self):
         args = self.cmd("black-forest-labs/FLUX.1-dev", ["/a.png"], 0.6)
-        self.assertTrue(args[0].endswith("/mflux-generate"))
+        self.assertEqual(Path(args[0]).stem, "mflux-generate")
         self.assertEqual(args[args.index("--image") : args.index("--image") + 3], ["--image", "/a.png", "0.6"])
         no_strength = self.cmd("black-forest-labs/FLUX.1-dev", ["/a.png"])
         self.assertEqual(no_strength[no_strength.index("--image") + 1 :][:1], ["/a.png"])
@@ -157,13 +157,13 @@ class ReferenceImageTests(unittest.TestCase):
 
     def test_flux3_uses_the_edit_command_with_all_images(self):
         args = self.cmd("black-forest-labs/flux-3-image-klein", ["/a.png", "/b.png"])
-        self.assertTrue(args[0].endswith("/mflux-generate-flux3-edit"))
+        self.assertEqual(Path(args[0]).stem, "mflux-generate-flux3-edit")
         i = args.index("--image-paths")
         self.assertEqual(args[i + 1 : i + 3], ["/a.png", "/b.png"])
 
     def test_no_reference_keeps_the_normal_command(self):
         args = self.cmd("black-forest-labs/flux-3-image-klein", None)
-        self.assertTrue(args[0].endswith("/mflux-generate-flux3"))
+        self.assertEqual(Path(args[0]).stem, "mflux-generate-flux3")
         self.assertNotIn("--image", args)
         self.assertNotIn("--image-paths", args)
 
@@ -217,17 +217,23 @@ class CatalogFlagsTests(unittest.TestCase):
         self.assertEqual(inputs({"engine": "mflux", "repo": "speridlabs/iris-3b"})["maxReferenceImages"], 0)
         self.assertEqual(inputs({"repo": "black-forest-labs/FLUX.1-dev"})["maxReferenceImages"], 0)
 
-    def test_video_payloads_flag_ltx2_only(self):
+    def test_video_payloads_flag_who_takes_a_start_and_an_end_picture(self):
         from backend_service.helpers.video import _video_model_payloads
 
-        flags = {
-            v["repo"]: v["acceptsImageInput"]
-            for family in _video_model_payloads([])
-            for v in family["variants"]
-        }
-        self.assertTrue(flags["dgrauet/ltx-2.5-mlx-q4"])
-        self.assertFalse(flags["Lightricks/LTX-Video"])
-
+        # Diffusers-only rows are hidden on Apple Silicon; pin the host so this runs the same everywhere.
+        with mock.patch("backend_service.helpers.video.is_apple_silicon", return_value=False):
+            families = _video_model_payloads([])
+        rows = {v["repo"]: v for family in families for v in family["variants"]}
+        # Wan 2.2 TI2V-5B (diffusers) follows the first frame only; LTX-2 (a Mac engine, so absent from the list on
+        # other computers) takes both; the rest take none.
+        ti2v = rows["Wan-AI/Wan2.2-TI2V-5B-Diffusers"]
+        self.assertTrue(ti2v["acceptsImageInput"])
+        self.assertFalse(ti2v["acceptsEndImage"])
+        if "dgrauet/ltx-2.5-mlx-q4" in rows:
+            self.assertTrue(rows["dgrauet/ltx-2.5-mlx-q4"]["acceptsImageInput"])
+            self.assertTrue(rows["dgrauet/ltx-2.5-mlx-q4"]["acceptsEndImage"])
+        self.assertFalse(rows["Lightricks/LTX-Video"]["acceptsImageInput"])
+        self.assertFalse(rows["Lightricks/LTX-Video"]["acceptsEndImage"])
 
 if __name__ == "__main__":
     unittest.main()

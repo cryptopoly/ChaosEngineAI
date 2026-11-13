@@ -167,7 +167,7 @@ def run(cap: Any, suite: Any):
         if "error" not in mcp("resources/read", {"uri": "chaosengine://storyboard/..%2F..%2Fetc"})[1]:
             return "fail", "a path-like resource id was not refused", {}
         prompts = [p["name"] for p in mcp("prompts/list")[1]["result"]["prompts"]]
-        if prompts != ["short_film_from_brief", "poster_set", "soundtrack_for_project"]:
+        if prompts != ["short_film_from_brief", "poster_set", "soundtrack_for_project", "start_here"]:
             return "fail", f"prompts: {prompts}", {}
         got = mcp("prompts/get", {"name": "poster_set", "arguments": {"subject": "a lighthouse"}})[1]["result"]
         if "lighthouse" not in got["messages"][0]["content"]["text"]:

@@ -275,17 +275,27 @@ class PreviewRouteHubTests(_RouteFixture):
 class MemoryCheckRouteTests(_RouteFixture):
     """/api/models/memory-check: advisory verdict before a chat load."""
 
-    def _check(self, *, free_gb: float, reclaimable_gb: float = 0.0, **params):
+    def _check(self, *, free_gb: float, reclaimable_gb: float = 0.0, gpu_free_gb: float | None = None, **params):
         from types import SimpleNamespace
         from unittest import mock
+
+        from backend_service.helpers.hardware_class import HardwareClass
 
         vm = SimpleNamespace(total=64 * 1024 ** 3, available=int(free_gb * 1024 ** 3))
         self.client.app.state.chaosengine.runtime.reclaimable_model_bytes = (
             lambda: int(reclaimable_gb * 1024 ** 3)
         )
+        # The verdict depends on the host: one memory pool (a Mac) unless a discrete card's free memory is given.
+        hardware = (
+            HardwareClass("apple", "apple-64", "", 64.0, 48.0)
+            if gpu_free_gb is None
+            else HardwareClass("cuda", "cuda-24", "", 64.0, 24.0)
+        )
         base = {"weights_gb": 33.0, "context_tokens": K32, "model_path": str(self.models / "kolibri")}
         with mock.patch("psutil.virtual_memory", return_value=vm), \
-                mock.patch("backend_service.helpers.memory_gate._macos_reclaimable_gb", return_value=None):
+                mock.patch("backend_service.helpers.memory_gate._macos_reclaimable_gb", return_value=None), \
+                mock.patch("backend_service.helpers.hardware_class.host_hardware_class", return_value=hardware), \
+                mock.patch("backend_service.helpers.memory_gate.cuda_free_vram_gb", return_value=gpu_free_gb):
             resp = self.client.get("/api/models/memory-check", params={**base, **params})
         self.assertEqual(resp.status_code, 200, resp.text)
         return resp.json()
@@ -303,3 +313,32 @@ class MemoryCheckRouteTests(_RouteFixture):
 
     def test_memory_held_by_the_loaded_model_counts_as_available(self):
         self.assertEqual(self._check(free_gb=20, reclaimable_gb=30)["verdict"], "fits")
+
+    def test_a_discrete_card_is_judged_on_its_own_memory(self):
+        # 50 GB of free system RAM used to say "fits" for a 33 GB model on a 24 GB card; llama.cpp then runs the
+        # layers that do not fit on the CPU.
+        body = self._check(free_gb=50, gpu_free_gb=22)
+        self.assertEqual((body["verdict"], body["memoryKind"]), ("may_not_fit", "gpu"))
+        self.assertIn("GPU memory", body["message"])
+        self.assertIn("CPU", body["message"])
+
+    def test_a_small_model_fits_the_card(self):
+        body = self._check(free_gb=50, gpu_free_gb=22, weights_gb=4.0, context_tokens=8192)
+        self.assertEqual((body["verdict"], body["memoryKind"]), ("fits", "gpu"))
+
+    def test_gguf_on_the_card_counts_only_what_llama_cpp_puts_there(self):
+        from tests.test_chat_memory_cuda import write_gguf
+
+        gguf = self.models / "bolt" / "bolt.gguf"
+        gguf.parent.mkdir()
+        # 1 GiB of input embeddings that stay in system memory and 2 GiB of layers.
+        write_gguf(gguf, [
+            ("token_embd.weight", [64, 2000], 1024 ** 3),
+            ("output.weight", [64, 2000], 1024),
+            ("blk.0.attn_q.weight", [64, 64], 2 * 1024 ** 3),
+        ])
+        body = self._check(free_gb=50, gpu_free_gb=5, weights_gb=3.0, context_tokens=256, num_layers=1, num_heads=1,
+                           hidden_size=256, model_path=str(gguf))
+        self.assertEqual(body["memoryKind"], "gpu")
+        self.assertAlmostEqual(body["hostGb"], 1.0, places=1)
+        self.assertLess(body["neededGb"], 3.0)

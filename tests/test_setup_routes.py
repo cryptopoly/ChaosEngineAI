@@ -417,6 +417,13 @@ class SetupRouteTests(unittest.TestCase):
     # CUDA torch install (Windows/Linux NVIDIA fallback)
     # ------------------------------------------------------------------
 
+    def _no_nvidia_driver(self):
+        """The install order probes ``nvidia-smi``; pin "no driver" so the result does not depend on the host."""
+        for name in ("nvidia_driver_major", "nvidia_driver_cuda"):
+            patcher = mock.patch(f"backend_service.helpers.llama_cuda.{name}", return_value=None)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
     def _patch_cuda_helpers(self):
         """Neutralise the pre-install helpers so tests focus on the pip loop.
 
@@ -429,6 +436,7 @@ class SetupRouteTests(unittest.TestCase):
         the real user-persistent extras tree (which may contain torch
         installs the user cares about) is never touched during tests.
         """
+        self._no_nvidia_driver()
         extras_dir = Path(self.tempdir.name) / "extras"
         extras_dir.mkdir(parents=True, exist_ok=True)
         return (
@@ -672,6 +680,26 @@ class SetupRouteTests(unittest.TestCase):
             )
             self.assertEqual(_find_installed_torch_version(root), "2.6.0+cu124")
 
+    def test_find_installed_torch_version_trusts_the_package_over_a_stale_dist_info(self):
+        """A CPU torch that overwrote the CUDA one is reported as CPU, so the repair pass runs.
+
+        pip --target keeps the CUDA wheel's dist-info, which sorts first; seen on Windows, where PyPI's
+        torch is the CPU build.
+        """
+        from backend_service.routes.setup import _find_installed_torch_version, _is_cuda_torch_version
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for name, version in (("torch-2.14.1+cu130.dist-info", "2.14.1+cu130"), ("torch-2.14.1.dist-info", "2.14.1")):
+                (root / name).mkdir()
+                (root / name / "METADATA").write_text(f"Name: torch\nVersion: {version}\n")
+            (root / "torch").mkdir()
+            (root / "torch" / "version.py").write_text(
+                "from typing import Optional\n__version__ = '2.14.1+cpu'\ncuda: Optional[str] = None\n"
+            )
+            self.assertEqual(_find_installed_torch_version(root), "2.14.1+cpu")
+            self.assertFalse(_is_cuda_torch_version(_find_installed_torch_version(root)))
+
     def test_find_installed_torch_version_returns_none_when_missing(self):
         from backend_service.routes.setup import _find_installed_torch_version
 
@@ -811,6 +839,7 @@ class SetupRouteTests(unittest.TestCase):
         """Blackwell (RTX 50, DGX Spark) needs CUDA 12.8+; Linux ARM64 has no cu124 build."""
         from backend_service.routes.setup._install_helpers import _CUDA_TORCH_INDEXES, cuda_torch_indexes
 
+        self._no_nvidia_driver()
         cu130 = "https://download.pytorch.org/whl/cu130"
         cu128 = "https://download.pytorch.org/whl/cu128"
         self.assertEqual(cuda_torch_indexes(driver_major=None, machine="aarch64"), [cu130, cu128])
@@ -821,6 +850,37 @@ class SetupRouteTests(unittest.TestCase):
         self.assertEqual(cuda_torch_indexes(driver_major=575, machine="x86_64")[0], cu128)
         self.assertEqual(cuda_torch_indexes(driver_major=550, machine="x86_64"), _CUDA_TORCH_INDEXES)
         self.assertEqual(cuda_torch_indexes(driver_major=None, machine="x86_64"), _CUDA_TORCH_INDEXES)
+
+    def test_cuda_torch_order_uses_the_newest_cuda_the_driver_supports(self):
+        """Driver 621.14 reports CUDA 13.5; PyTorch's newest index is cu134, then cu132 and cu130."""
+        from backend_service.routes.setup._install_helpers import cuda_torch_indexes
+
+        base = "https://download.pytorch.org/whl/"
+        cu134, cu132, cu130, cu128 = (base + n for n in ("cu134", "cu132", "cu130", "cu128"))
+        newest = cuda_torch_indexes(driver_major=621, machine="x86_64", driver_cuda=(13, 5))
+        self.assertEqual(newest[:4], [cu134, cu132, cu130, cu128])
+        self.assertEqual(len(newest), len(set(newest)))
+        self.assertEqual(cuda_torch_indexes(driver_major=600, machine="x86_64", driver_cuda=(13, 4))[0], cu134)
+        self.assertEqual(cuda_torch_indexes(driver_major=595, machine="x86_64", driver_cuda=(13, 3))[0], cu132)
+        self.assertEqual(cuda_torch_indexes(driver_major=591, machine="x86_64", driver_cuda=(13, 1))[:2], [cu130, cu128])
+        # a driver of 580+ whose CUDA version could not be read still gets cu130, as before
+        self.assertEqual(cuda_torch_indexes(driver_major=591, machine="x86_64", driver_cuda=None)[:2], [cu130, cu128])
+        # Linux ARM64 takes the newest tiers too, and only the CUDA 13 / 12.8 builds that exist for it
+        self.assertEqual(cuda_torch_indexes(driver_major=621, machine="aarch64", driver_cuda=(13, 5)), [cu134, cu132, cu130, cu128])
+
+    def test_the_driver_cuda_version_is_read_from_the_nvidia_smi_header(self):
+        """Old drivers print "CUDA Version: 13.1", newer ones "CUDA UMD Version: 13.5"."""
+        from backend_service.helpers import llama_cuda
+
+        header = "| NVIDIA-SMI 621.14   KMD Version: 621.14   CUDA UMD Version: 13.5 |\n"
+        legacy = "| NVIDIA-SMI 591.86   Driver Version: 591.86   CUDA Version: 13.1 |\n"
+        for text, expected in ((header, (13, 5)), (legacy, (13, 1)), ("no driver here", None)):
+            done = mock.Mock(returncode=0, stdout=text)
+            with mock.patch.object(llama_cuda.shutil, "which", return_value="nvidia-smi"):
+                with mock.patch.object(llama_cuda.subprocess, "run", return_value=done):
+                    self.assertEqual(llama_cuda.nvidia_driver_cuda(), expected, text)
+        with mock.patch.object(llama_cuda.shutil, "which", return_value=None):
+            self.assertIsNone(llama_cuda.nvidia_driver_cuda())
 
     # ------------------------------------------------------------------
     # Turbo update check
@@ -975,6 +1035,54 @@ class InstallGpuBundleTests(unittest.TestCase):
         self.assertTrue(status["cudaVerified"])
         self.assertEqual(status["pythonVersion"], "3.13.1")
         self.assertIsNotNone(status["indexUrlUsed"])
+
+    def _fake_locked_torch(self):
+        """A torch folder whose DLL cannot be opened for writing (stands in for a DLL the backend has loaded)."""
+        import os
+        import stat
+
+        dll = self.extras_dir / "torch" / "lib" / "c10.dll"
+        dll.parent.mkdir(parents=True)
+        dll.write_bytes(b"x")
+        (self.extras_dir / "torch" / "version.py").write_text("__version__ = '2.14.1+cu130'\n", encoding="utf-8")
+        os.chmod(dll, stat.S_IREAD)
+        def writable() -> None:
+            try:
+                os.chmod(dll, stat.S_IWRITE | stat.S_IREAD)
+            except OSError:
+                pass  # the temporary folder is already gone
+
+        self.addCleanup(writable)
+        return dll
+
+    def test_locked_torch_dlls_are_found_on_windows_only(self):
+        from backend_service.routes.setup import _install_helpers
+
+        self._fake_locked_torch()
+        with mock.patch.object(_install_helpers.sys, "platform", "win32"):
+            self.assertEqual(_install_helpers.locked_torch_files(self.extras_dir), ["c10.dll"])
+        with mock.patch.object(_install_helpers.sys, "platform", "linux"):
+            self.assertEqual(_install_helpers.locked_torch_files(self.extras_dir), [])
+
+    def test_install_with_torch_loaded_changes_nothing_and_says_to_restart(self):
+        """RTX 4090 run: the clean-up removed torch's Python files, kept the locked DLLs and left torch unusable."""
+        from backend_service.routes.setup import _install_helpers
+
+        self._fake_locked_torch()
+        with mock.patch.object(_install_helpers.sys, "platform", "win32"),              mock.patch("backend_service.routes.setup.gpu_bundle._free_bytes", return_value=100_000_000_000),              mock.patch("backend_service.routes.setup.gpu_bundle._read_python_version", return_value="3.12.10"),              mock.patch("backend_service.routes.setup.gpu_bundle.platform.system", return_value="Windows"),              mock.patch("backend_service.routes.setup._install_helpers.subprocess.run") as pip:
+            self.client.post("/api/setup/install-gpu-bundle", json={})
+            import time as _time
+            deadline = _time.time() + 5.0
+            while _time.time() < deadline:
+                status = self.client.get("/api/setup/install-gpu-bundle/status").json()
+                if status["done"]:
+                    break
+                _time.sleep(0.05)
+
+        self.assertEqual(status["phase"], "error")
+        self.assertIn("Restart Backend", status["error"])
+        self.assertTrue((self.extras_dir / "torch" / "version.py").exists())  # nothing was deleted
+        pip.assert_not_called()
 
     def test_start_install_repairs_cpu_torch_after_dependency_clobber(self):
         """A ``+cpu`` local version is still a clobber and must be repaired."""
@@ -1793,3 +1901,17 @@ class MlxSeriesConstraintTests(unittest.TestCase):
         with self._with_sys_path(self.extras, self.base):
             self.assertIsNone(_write_mlx_constraint(self.extras))
         self.assertFalse((self.extras / ".chaosengine-mlx-constraints.txt").exists())
+
+
+class GpuBundleContentsTests(unittest.TestCase):
+    """The GPU bundle must carry the packages features import lazily (ftfy, bitsandbytes)."""
+
+    def test_bundle_lists_ftfy_and_bitsandbytes_for_every_cuda_platform(self):
+        from backend_service.routes.setup.gpu_bundle import _GPU_BUNDLE_PACKAGES
+
+        labels = {label for label, _ in _GPU_BUNDLE_PACKAGES}
+        self.assertTrue({"ftfy", "bitsandbytes"} <= labels)
+        # No platform marker: the bundle installs them on Windows (win_amd64 wheel) and Linux alike.
+        for label, spec in _GPU_BUNDLE_PACKAGES:
+            if label in ("ftfy", "bitsandbytes"):
+                self.assertNotIn(";", spec)

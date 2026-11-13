@@ -286,33 +286,56 @@ class _FakeTokenizer:
 
 class DFlashCompatibilityTests(unittest.TestCase):
     @staticmethod
+    def _target_ops(family: str):
+        return SimpleNamespace(
+            family=Mock(return_value=family),
+            install_speculative_hooks=Mock(),
+            capabilities_for=Mock(return_value=SimpleNamespace(supports_verify_linear=False)),
+        )
+
+    @staticmethod
     def _fake_dflash_modules(fake_model, fake_tokenizer, target_ops):
-        # FU-075: the worker imports ``load_draft_bundle`` + ``resolve_target_ops``
-        # from ``dflash_mlx.runtime`` (the pre-0.1.5 top-level
-        # ``configure_full_attention_split`` moved onto the per-family
-        # ``target_ops`` adapter). The fake runtime mirrors that surface.
-        fake_runtime = SimpleNamespace(
+        # FU-057: dflash-mlx 0.1.10 splits the surface the worker uses across
+        # ``engine.target_ops`` (adapter + draft binding), ``runtime.loading``
+        # (draft loader) and ``draft_backend``. The fakes mirror that layout.
+        fake_ops_module = SimpleNamespace(
             resolve_target_ops=Mock(return_value=target_ops),
+            bind_draft_to_target=Mock(),
+        )
+        fake_loading = SimpleNamespace(
             load_draft_bundle=Mock(return_value=("draft_bundle", {"config": True})),
         )
-        fake_pkg = SimpleNamespace(runtime=fake_runtime)
+        fake_backend_module = SimpleNamespace(EagerDraftBackend=Mock(return_value="eager_backend"))
+        fake_runtime = SimpleNamespace(
+            resolve_target_ops=fake_ops_module.resolve_target_ops,
+            bind_draft_to_target=fake_ops_module.bind_draft_to_target,
+            load_draft_bundle=fake_loading.load_draft_bundle,
+        )
         fake_mlx_lm = SimpleNamespace(
             load=lambda *args, **kwargs: (fake_model, fake_tokenizer, {"num_hidden_layers": 2, "num_attention_heads": 2, "hidden_size": 8}),
         )
-        modules = {"mlx_lm": fake_mlx_lm, "dflash_mlx": fake_pkg, "dflash_mlx.runtime": fake_runtime}
+        modules = {
+            "mlx_lm": fake_mlx_lm,
+            "dflash_mlx": SimpleNamespace(),
+            "dflash_mlx.engine": SimpleNamespace(),
+            "dflash_mlx.engine.target_ops": fake_ops_module,
+            "dflash_mlx.runtime": SimpleNamespace(),
+            "dflash_mlx.runtime.loading": fake_loading,
+            "dflash_mlx.runtime.registry": SimpleNamespace(MODEL_SUPPORT_SPECS=(
+                SimpleNamespace(draft_ref="z-lab/Qwen3.6-27B-DFlash",
+                                defaults=SimpleNamespace(draft_quant="w4")),
+            )),
+            "dflash_mlx.draft_backend": fake_backend_module,
+        }
         return fake_runtime, modules
 
     def test_load_model_uses_dflash_runtime_bundle_api(self):
-        # Pure-attention target (Qwen3.5): the draft bundle loads + speculative
-        # decoding engages, but configure_full_attention_split must be SKIPPED
-        # (FU-075 gates it to hybrid_gdn families only).
+        # Pure-attention target: hooks installed on the already loaded model, the draft
+        # loads (no default quant for this drafter), is bound to the target, and DFlash engages.
         worker = WorkerState()
         fake_model = SimpleNamespace(layers=[object(), object()])
         fake_tokenizer = _FakeTokenizer()
-        target_ops = SimpleNamespace(
-            family=Mock(return_value="pure_attention"),
-            configure_full_attention_split=Mock(),
-        )
+        target_ops = self._target_ops("pure_attention")
         fake_runtime, modules = self._fake_dflash_modules(fake_model, fake_tokenizer, target_ops)
 
         with patch.dict("sys.modules", modules):
@@ -333,21 +356,22 @@ class DFlashCompatibilityTests(unittest.TestCase):
         self.assertEqual(result["dflashDraftModel"], "z-lab/Qwen3.5-35B-A3B-DFlash")
         self.assertIs(worker._dflash_target, fake_model)
         self.assertEqual(worker._dflash_generator, "draft_bundle")
+        self.assertIs(worker._dflash_target_ops, target_ops)
+        self.assertEqual(worker._dflash_draft_backend, "eager_backend")
         self.assertIsNone(worker._ddtree_draft)
         fake_runtime.resolve_target_ops.assert_called_once_with(fake_model)
-        target_ops.configure_full_attention_split.assert_not_called()
+        target_ops.install_speculative_hooks.assert_called_once_with(fake_model)
         fake_runtime.load_draft_bundle.assert_called_once_with(
-            "z-lab/Qwen3.5-35B-A3B-DFlash",
-            lazy=True,
+            "z-lab/Qwen3.5-35B-A3B-DFlash", lazy=True, draft_quant=None,
+        )
+        fake_runtime.bind_draft_to_target.assert_called_once_with(
+            "draft_bundle", fake_model, target_ops=target_ops,
         )
 
     def test_load_model_keeps_tree_budget_when_target_supports_tree_verify(self):
         worker = WorkerState()
         fake_model = SimpleNamespace(layers=[object(), object()])
-        target_ops = SimpleNamespace(
-            family=Mock(return_value="pure_attention"),
-            configure_full_attention_split=Mock(),
-        )
+        target_ops = self._target_ops("pure_attention")
         fake_runtime, modules = self._fake_dflash_modules(fake_model, _FakeTokenizer(), target_ops)
 
         with patch.dict("sys.modules", modules), patch(
@@ -371,10 +395,7 @@ class DFlashCompatibilityTests(unittest.TestCase):
     def _hybrid_load(self, mismatch=None):
         worker = WorkerState()
         fake_model = SimpleNamespace(layers=[object(), object()])
-        target_ops = SimpleNamespace(
-            family=Mock(return_value="hybrid_gdn"),
-            configure_full_attention_split=Mock(),
-        )
+        target_ops = self._target_ops("hybrid_gdn")
         fake_runtime, modules = self._fake_dflash_modules(fake_model, _FakeTokenizer(), target_ops)
         with patch.dict("sys.modules", modules), patch(
             "backend_service.dflash_compat.self_check", return_value=mismatch
@@ -389,15 +410,17 @@ class DFlashCompatibilityTests(unittest.TestCase):
             )
         return worker, result, fake_model, target_ops, fake_runtime
 
-    def test_load_model_applies_full_attention_split_for_hybrid_gdn(self):
-        # hybrid_gdn target (Qwen3.5 / 3.6 / Next): configure_full_attention_split MUST be invoked
-        # on the resolved target_ops adapter (FU-075 split path), and DFlash engages (FU-135 fixed
-        # the output head the adapter reads under mlx-lm 0.32).
+    def test_load_model_prepares_a_hybrid_gdn_target(self):
+        # hybrid_gdn target (Qwen3.5 / 3.6 / Next): the speculative hooks go on the loaded model
+        # with dflash-mlx's default w4 drafter quant, and DFlash engages. dflash-mlx 0.1.10 removed
+        # the full-attention split switch.
         worker, result, fake_model, target_ops, fake_runtime = self._hybrid_load()
 
         self.assertTrue(result["speculativeDecoding"])
-        target_ops.configure_full_attention_split.assert_called_once_with(fake_model, enabled=True)
-        fake_runtime.load_draft_bundle.assert_called_once_with("z-lab/Qwen3.6-27B-DFlash", lazy=True)
+        target_ops.install_speculative_hooks.assert_called_once_with(fake_model)
+        fake_runtime.load_draft_bundle.assert_called_once_with(
+            "z-lab/Qwen3.6-27B-DFlash", lazy=True, draft_quant="w4",
+        )
 
     def test_load_model_refuses_dflash_when_the_self_check_finds_a_mismatch(self):
         # FU-135: when the draft runtime and the model disagree the lane stays off and says why,
@@ -413,6 +436,46 @@ class DFlashCompatibilityTests(unittest.TestCase):
         self.assertIsNone(worker._dflash_generator)
         fake_runtime.load_draft_bundle.assert_not_called()
 
+    @staticmethod
+    def _stream_modules(stream_fn, context_fn=lambda **kw: ("ctx", kw)):
+        """Fakes for the dflash-mlx 0.1.10 stream surface: frozen event dataclasses."""
+        from dataclasses import asdict, dataclass, field
+
+        @dataclass(frozen=True)
+        class TokenEvent:
+            token_id: int
+            generated_tokens: int
+            acceptance_ratio: float = 0.0
+            cycles_completed: int = 0
+
+        @dataclass(frozen=True)
+        class SummaryEvent:
+            elapsed_us: float
+            prompt_token_count: int
+            generated_token_ids: tuple
+            generation_tokens: int
+            accepted_from_draft: int = 0
+            acceptance_ratio: float = 0.0
+            cycles_completed: int = 0
+            phase_timings_us: dict = field(default_factory=dict)
+            peak_memory_gb: float | None = None
+            fallback_ar: bool = False
+            fallback_reason: str | None = None
+
+            def to_payload(self):
+                return asdict(self)
+
+        events = SimpleNamespace(TokenEvent=TokenEvent, SummaryEvent=SummaryEvent)
+        runtime = SimpleNamespace(stream_dflash_generate=lambda **kw: stream_fn(events, **kw))
+        modules = {
+            "dflash_mlx": SimpleNamespace(),
+            "dflash_mlx.engine": SimpleNamespace(),
+            "dflash_mlx.engine.events": events,
+            "dflash_mlx.runtime": runtime,
+            "dflash_mlx.runtime.context": SimpleNamespace(build_offline_runtime_context=context_fn),
+        }
+        return modules
+
     def test_generate_dflash_uses_runtime_summary_shape(self):
         worker = WorkerState()
         worker.model = "standard_target"
@@ -420,28 +483,24 @@ class DFlashCompatibilityTests(unittest.TestCase):
         worker._dflash_target = "dflash_target"
         worker._dflash_generator = "draft_bundle"
 
-        def _fake_stream(**_kwargs):
-            # Emit a couple of per-token events followed by the summary event,
-            # matching the v0.1.4 ``stream_dflash_generate`` protocol.
-            yield {"event": "token", "token_id": 10, "generated_tokens": 1}
-            yield {"event": "token", "token_id": 11, "generated_tokens": 2}
-            yield {"event": "token", "token_id": 12, "generated_tokens": 3}
-            yield {
-                "event": "summary",
-                "generated_token_ids": [10, 11, 12],
-                "generation_tokens": 3,
-                "prompt_token_count": 3,
-                "elapsed_us": 2_000_000,
-                "accepted_from_draft": 8,
-                "cycles_completed": 4,
-                "phase_timings_us": {"prefill": 500_000},
-                "peak_memory_gb": 12.34,
-            }
+        def _fake_stream(events, **_kwargs):
+            # Per-token events, an event the worker ignores, then the summary (dflash-mlx 0.1.10).
+            yield events.TokenEvent(token_id=10, generated_tokens=1)
+            yield events.TokenEvent(token_id=11, generated_tokens=2)
+            yield object()
+            yield events.TokenEvent(token_id=12, generated_tokens=3)
+            yield events.SummaryEvent(
+                generated_token_ids=(10, 11, 12),
+                generation_tokens=3,
+                prompt_token_count=3,
+                elapsed_us=2_000_000,
+                accepted_from_draft=8,
+                cycles_completed=4,
+                phase_timings_us={"prefill": 500_000},
+                peak_memory_gb=12.34,
+            )
 
-        fake_runtime = SimpleNamespace(stream_dflash_generate=_fake_stream)
-        fake_pkg = SimpleNamespace(runtime=fake_runtime)
-
-        with patch.dict("sys.modules", {"dflash_mlx": fake_pkg, "dflash_mlx.runtime": fake_runtime}):
+        with patch.dict("sys.modules", self._stream_modules(_fake_stream)):
             result = worker._generate_dflash({"prompt": "hello", "maxTokens": 16})
 
         self.assertEqual(result["text"], "decoded output")
@@ -449,36 +508,54 @@ class DFlashCompatibilityTests(unittest.TestCase):
         self.assertEqual(result["completionTokens"], 3)
         self.assertEqual(result["totalTokens"], 6)
         self.assertEqual(result["dflashAcceptanceRate"], 2.0)
+        self.assertEqual(result["peakMemoryGb"], 12.34)
         self.assertGreater(result["tokS"], 0)
         self.assertIn("DFLASH speculative decoding", result["runtimeNote"])
+        self.assertNotIn("without the draft", result["runtimeNote"])
 
-    def test_generate_dflash_passes_a_runtime_context(self):
-        """dflash-mlx 0.1.5+ raises without ``runtime_context``; a fake that
-        accepted any kwargs hid that every DFlash reply fell back."""
+    def test_generate_dflash_says_when_upstream_fell_back_to_plain_decoding(self):
         worker = WorkerState()
         worker.model = "standard_target"
         worker.tokenizer = _FakeTokenizer()
         worker._dflash_generator = "draft_bundle"
+
+        def _fallback_stream(events, **_kwargs):
+            yield events.SummaryEvent(
+                generated_token_ids=(10,), generation_tokens=1, prompt_token_count=3,
+                elapsed_us=1_000_000, fallback_ar=True, fallback_reason="projected_ctx too long",
+            )
+
+        with patch.dict("sys.modules", self._stream_modules(_fallback_stream)):
+            result = worker._generate_dflash({"prompt": "hello", "maxTokens": 16})
+
+        self.assertIn("without the draft (projected_ctx too long)", result["runtimeNote"])
+
+    def test_generate_dflash_passes_the_required_runtime_objects(self):
+        """dflash-mlx 0.1.10 raises without ``runtime_context`` / ``target_ops`` /
+        ``draft_backend``; a fake that accepted any kwargs hid that every DFlash
+        reply fell back (FU-112)."""
+        worker = WorkerState()
+        worker.model = "standard_target"
+        worker.tokenizer = _FakeTokenizer()
+        worker._dflash_generator = "draft_bundle"
+        worker._dflash_target_ops = "target_ops"
+        worker._dflash_draft_backend = "draft_backend"
         seen: dict = {}
 
-        def _strict_stream(**kwargs):
-            if kwargs.get("runtime_context") is None:
-                raise ValueError("runtime_context is required")
+        def _strict_stream(events, **kwargs):
+            for name in ("runtime_context", "target_ops", "draft_backend"):
+                if kwargs.get(name) is None:
+                    raise ValueError(f"{name} is required")
             seen.update(kwargs)
-            yield {"event": "summary", "generated_token_ids": [10], "generation_tokens": 1,
-                   "prompt_token_count": 3, "elapsed_us": 1_000_000, "cycles_completed": 1}
+            yield events.SummaryEvent(generated_token_ids=(10,), generation_tokens=1,
+                                      prompt_token_count=3, elapsed_us=1_000_000, cycles_completed=1)
 
-        fake_runtime = SimpleNamespace(stream_dflash_generate=_strict_stream)
-        fake_context = SimpleNamespace(build_offline_runtime_context=lambda **kw: ("ctx", kw))
-        modules = {
-            "dflash_mlx": SimpleNamespace(runtime=fake_runtime),
-            "dflash_mlx.runtime": fake_runtime,
-            "dflash_mlx.runtime_context": fake_context,
-        }
-        with patch.dict("sys.modules", modules):
+        with patch.dict("sys.modules", self._stream_modules(_strict_stream)):
             worker._generate_dflash({"prompt": "hello", "maxTokens": 16})
 
         self.assertEqual(seen["runtime_context"], ("ctx", {"target_fa_window": 0}))
+        self.assertEqual(seen["target_ops"], "target_ops")
+        self.assertEqual(seen["draft_backend"], "draft_backend")
         self.assertEqual(seen["block_tokens"], 8)
 
     def test_generate_dflash_supplies_every_required_argument_of_the_installed_release(self):
@@ -492,8 +569,9 @@ class DFlashCompatibilityTests(unittest.TestCase):
             name for name, param in inspect.signature(stream_dflash_generate_impl).parameters.items()
             if param.default is inspect.Parameter.empty
         }
-        passed = {"target_model", "tokenizer", "draft_model", "prompt", "max_new_tokens",
-                  "use_chat_template", "stop_token_ids", "prompt_tokens_override", "runtime_context"}
+        passed = {"target_model", "target_ops", "tokenizer", "draft_model", "draft_backend", "prompt",
+                  "max_new_tokens", "use_chat_template", "block_tokens", "stop_token_ids",
+                  "prompt_tokens_override", "runtime_context"}
         self.assertIn("block_tokens", inspect.signature(stream_dflash_generate_impl).parameters)
         self.assertLessEqual(required, passed, "dflash-mlx needs arguments the worker does not pass (FU-057)")
 

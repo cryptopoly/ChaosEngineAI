@@ -34,19 +34,19 @@ def _tarball(path: Path, files: dict[str, bytes], top: str) -> None:
 
 class AssetChoiceTests(unittest.TestCase):
     def test_arm64_always_uses_cuda_13(self) -> None:
-        self.assertEqual(llama_cuda.cuda_version_for("arm64", None), "13.4")
-        self.assertEqual(llama_cuda.cuda_version_for("arm64", 550), "13.4")
+        self.assertEqual(llama_cuda.cuda_version_for("arm64", None), "13.5")
+        self.assertEqual(llama_cuda.cuda_version_for("arm64", 550), "13.5")
 
     def test_x64_falls_back_to_cuda_12_on_an_older_driver(self) -> None:
         self.assertEqual(llama_cuda.cuda_version_for("x64", 575), "12.8")
-        self.assertEqual(llama_cuda.cuda_version_for("x64", 580), "13.4")
+        self.assertEqual(llama_cuda.cuda_version_for("x64", 580), "13.5")
 
     def test_asset_names_match_the_published_release(self) -> None:
-        # Names as published with llama.cpp b11981.
+        # Names as published with llama.cpp b12317.
         self.assertEqual(
-            llama_cuda.asset_names("arm64", "13.4", "b11981"),
-            ("llama-b11981-bin-ubuntu-cuda-13.4-arm64.tar.gz",
-             "cudart-llama-b11981-bin-ubuntu-cuda-13.4-arm64.tar.gz"),
+            llama_cuda.asset_names("arm64", "13.5", "b12317", "linux"),
+            ("llama-b12317-bin-ubuntu-cuda-13.5-arm64.tar.gz",
+             "cudart-llama-b12317-bin-ubuntu-cuda-13.5-arm64.tar.gz"),
         )
 
     def test_tag_matches_the_bundled_llama_cpp(self) -> None:
@@ -113,10 +113,16 @@ class SelectionTests(_TempRoot):
 
 
 class InstallTests(_TempRoot):
+    def setUp(self) -> None:
+        super().setUp()
+        patcher = mock.patch.object(llama_cuda, "host_os", return_value="linux")
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     def test_install_unpacks_both_archives_into_one_folder(self) -> None:
         sources = Path(tempfile.mkdtemp(prefix="ce-llama-src-"))
-        build, cudart = llama_cuda.asset_names("arm64", "13.4")
-        _tarball(sources / build, {"llama-server": b"#!/bin/sh\n", "libggml-cuda.so": b"x"}, "llama-b11981")
+        build, cudart = llama_cuda.asset_names("arm64", "13.5", llama_cuda.LLAMA_CPP_TAG, "linux")
+        _tarball(sources / build, {"llama-server": b"#!/bin/sh\n", "libggml-cuda.so": b"x"}, "llama-b12317")
         _tarball(sources / cudart, {"libcudart.so.13": b"x", "libcublas.so.13": b"x"}, "cudart")
 
         def fake_download(url: str, dest: Path, progress) -> None:
@@ -126,6 +132,8 @@ class InstallTests(_TempRoot):
 
         with mock.patch.object(llama_cuda, "host_arch", return_value="arm64"), \
                 mock.patch.object(llama_cuda, "nvidia_driver_major", return_value=580), \
+                mock.patch.object(llama_cuda, "nvidia_driver_cuda", return_value=(13, 1)), \
+                mock.patch.object(llama_cuda, "expected_sha256", return_value=None), \
                 mock.patch.object(llama_cuda, "_download", side_effect=fake_download):
             binary = llama_cuda.install()
 
@@ -135,7 +143,7 @@ class InstallTests(_TempRoot):
             ["installed.json", "libcublas.so.13", "libcudart.so.13", "libggml-cuda.so", "llama-server"],
         )
         self.assertTrue(os.access(binary, os.X_OK))
-        self.assertEqual(json.loads((folder / "installed.json").read_text())["cuda"], "13.4")
+        self.assertEqual(json.loads((folder / "installed.json").read_text())["cuda"], "13.5")
         self.assertEqual(llama_cuda.installed_binary(), binary)
         self.assertFalse(any(p.name.startswith(".staging-") for p in self.root.iterdir()))
 
@@ -166,13 +174,44 @@ class RouteTests(_TempRoot):
 
         app = FastAPI()
         app.include_router(router)
-        with mock.patch.object(llama_cuda, "host_arch", return_value="arm64"), \
+        with mock.patch.object(llama_cuda, "host_os", return_value="linux"), \
+                mock.patch.object(llama_cuda, "host_arch", return_value="arm64"), \
                 mock.patch.object(llama_cuda, "nvidia_driver_major", return_value=None):
             body = TestClient(app).get("/api/setup/llama-cuda-status").json()
         self.assertFalse(body["supported"])
         self.assertFalse(body["installed"])
         self.assertFalse(body["inUse"])
-        self.assertEqual(body["cudaVersion"], "13.4")
+        self.assertEqual(body["state"], "no-driver")
+        self.assertIsNone(body["cudaVersion"])
+
+
+class MissingSystemLibraryTests(unittest.TestCase):
+    """A minimal Linux image without libgomp.so.1 must not read as "no CUDA device"."""
+
+    def _run(self, returncode: int, stderr: str):
+        done = mock.Mock(returncode=returncode, stdout="", stderr=stderr)
+        return mock.patch.object(llama_cuda.subprocess, "run", return_value=done), mock.patch.object(llama_cuda.sys, "platform", "linux")
+
+    def test_the_loader_error_names_the_library(self):
+        run, linux = self._run(127, "llama-server: error while loading shared libraries: libgomp.so.1: cannot open shared object file")
+        with run, linux:
+            library = llama_cuda.missing_system_library(Path("llama-server"))
+        self.assertEqual(library, "libgomp.so.1")
+        self.assertIn("sudo apt install libgomp1", llama_cuda.missing_library_message(library))
+
+    def test_a_server_that_starts_has_nothing_missing(self):
+        run, linux = self._run(0, "")
+        with run, linux:
+            self.assertIsNone(llama_cuda.missing_system_library(Path("llama-server")))
+
+    def test_a_failure_for_another_reason_is_not_a_missing_library(self):
+        run, linux = self._run(1, "no CUDA device")
+        with run, linux:
+            self.assertIsNone(llama_cuda.missing_system_library(Path("llama-server")))
+
+    def test_off_linux_there_is_nothing_to_report(self):
+        with mock.patch.object(llama_cuda.sys, "platform", "win32"):
+            self.assertIsNone(llama_cuda.missing_system_library(Path("llama-server.exe")))
 
 
 if __name__ == "__main__":

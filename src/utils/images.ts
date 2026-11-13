@@ -263,6 +263,9 @@ function imageEngine(engine?: string | null): ImageEngine {
 // never holds the full score matrix. Their working set grows roughly with
 // pixel count, so allow 15% of the model per extra megapixel above 1024².
 const FUSED_ATTENTION_EXTRA_SHARE_PER_MEGAPIXEL = 0.15;
+// Diffusers on CUDA: working memory at 1 megapixel, and per megapixel above it (mostly the VAE decode).
+const CUDA_IMAGE_ACTIVATION_BASE_GB = 1.5;
+const CUDA_IMAGE_GB_PER_EXTRA_MEGAPIXEL = 2.0;
 
 function estimateActivationGb(
   width: number,
@@ -274,6 +277,13 @@ function estimateActivationGb(
   if (engine !== "diffusers") {
     const extraMegapixels = Math.max(0, (width * height) / (1024 * 1024) - 1);
     return modelFootprintGb * FUSED_ATTENTION_EXTRA_SHARE_PER_MEGAPIXEL * extraMegapixels;
+  }
+  if (device === "cuda") {
+    // PyTorch's attention on CUDA (flash / memory-efficient SDPA) never holds the full score matrix, so memory
+    // grows with the pixel count, not its square. Measured on an RTX 4090 (FLUX.2 Klein 4B, model offload):
+    // 9.1 / 10.0 / 15.6 GB at 1024 / 1536 / 2048 px, where the quadratic term said 9.2 / 17.3 / 39.2 GB.
+    const megapixels = (width * height) / (1024 * 1024);
+    return CUDA_IMAGE_ACTIVATION_BASE_GB + CUDA_IMAGE_GB_PER_EXTRA_MEGAPIXEL * Math.max(0, megapixels - 1);
   }
   const latentTokens = Math.ceil(width / 8) * Math.ceil(height / 8);
   return estimatePeakAttentionBytes(latentTokens, device) / 1024 ** 3;

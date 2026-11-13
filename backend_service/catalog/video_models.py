@@ -12,6 +12,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from backend_service.catalog.video_ltx25 import LTX25_NVIDIA_FAMILY
+
 
 # D-44: rows that are slow on some kinds of machine. ``slowOn`` is a list of platform entries; the app
 # shows "Slow on this computer" with the reason when the current machine matches an entry, and shows
@@ -163,6 +165,124 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "releaseDate": "2024-12",
             },
         ],
+    },
+    {
+        "id": "ltx-2-diffusers",
+        "name": "LTX-2.3 (NVIDIA)",
+        "provider": "Lightricks",
+        "headline": "LTX-2.3 with sound on NVIDIA GPUs: a 4-bit pack for 24 GB cards, bf16 packs for large ones.",
+        "summary": (
+            "The newest open video model that ships for torch: video and stereo sound made together, text to video, "
+            "from a start picture, or between a start and an end picture. The 4-bit pack (about 31 GB) runs on a 24 GB "
+            "card with offloading; the official bf16 packs (about 100 GB) are for 80 GB cards and for machines with "
+            "unified memory such as the DGX Spark. The distilled models run 8 steps with no guidance. "
+            "Weights: LTX-2 community licence (free below US$10M annual revenue)."
+        ),
+        "updatedLabel": "Diffusers · NVIDIA",
+        "badges": ["Sound", "NVIDIA", "Quantized"],
+        "defaultVariantId": "OzzyGT/LTX-2.3-Distilled-bnb-nf4",
+        "variants": [
+            {
+                "id": "OzzyGT/LTX-2.3-Distilled-bnb-nf4",
+                "familyId": "ltx-2-diffusers",
+                "name": "LTX-2.3 · distilled 4-bit (diffusers)",
+                "provider": "Lightricks · OzzyGT (conversion)",
+                "repo": "OzzyGT/LTX-2.3-Distilled-bnb-nf4",
+                "link": "https://huggingface.co/OzzyGT/LTX-2.3-Distilled-bnb-nf4",
+                "runtime": "diffusers LTX2Pipeline",
+                "styleTags": ["general", "fast", "motion", "audio", "quantized"],
+                "taskSupport": ["txt2video", "img2video"],
+                "cudaOnly": True,
+                # 14.4 GB transformer + 8.4 GB Gemma 3 text encoder (both bitsandbytes NF4) + 6.3 GB connectors +
+                # 1.8 GB VAEs and vocoder: 31 GB on disk and about 25 GB in memory.
+                "sizeGb": 31.0,
+                # Measured on an RTX 4090 (24 GB), 768x512, 97 frames, 8 steps: peak 22.3 GB (22.9 GB seen in a
+                # longer session). The first estimate, 25 GB, made the catalog call the row "won't fit" on the
+                # one kind of card it was built for, and the agent bridge and Storyboard then refused it.
+                "runtimeFootprintGb": 22.5,
+                # About 26 GB has to fit in system memory while the pipeline loads (the 31 GB download includes
+                # files that are not all resident at once), so the gate judges that, not the download size.
+                "loadMemoryGb": 26.0,
+                "footprintBasis": "measured",
+                "footprintMeasuredOn": "cuda",
+                "recommendedResolution": "768x512",
+                "defaultDurationSeconds": 4.0,
+                "note": (
+                    "Distilled LTX-2.3 with 4-bit (NF4) weights from a community conversion of the Lightricks model: "
+                    "stereo sound, 8 steps, no guidance (steps, guidance and negative prompt do not apply). For NVIDIA "
+                    "cards with 24 GB or more (components are moved on and off the card as they are needed, so a "
+                    "bigger card is faster, not required to be bigger); not for smaller cards. Takes a start "
+                    "picture and an end picture. Sizes are multiples of 32, clips 8k+1 frames. Weights: LTX-2 "
+                    "community licence (free below US$10M annual revenue)."
+                ),
+                "estimatedGenerationSeconds": 70.0,
+                "slowOn": [SLOW_CPU_ONLY_EXPECTED],
+                "availableLocally": False,
+                "releaseDate": "2026-03",
+            },
+            {
+                "id": "diffusers/LTX-2.3-Distilled-Diffusers",
+                "familyId": "ltx-2-diffusers",
+                "name": "LTX-2.3 · distilled bf16 (diffusers)",
+                "provider": "Lightricks · Hugging Face diffusers",
+                "repo": "diffusers/LTX-2.3-Distilled-Diffusers",
+                "link": "https://huggingface.co/diffusers/LTX-2.3-Distilled-Diffusers",
+                "runtime": "diffusers LTX2Pipeline",
+                "styleTags": ["general", "fast", "motion", "audio", "heavy"],
+                "taskSupport": ["txt2video", "img2video"],
+                "cudaOnly": True,
+                # Official repo: the Gemma 3 12B text encoder is stored in fp32 (48.7 GB) and loads as bf16, so the
+                # pipeline needs about 76 GB in memory against ~100 GB on disk.
+                "sizeGb": 101.0,
+                "runtimeFootprintGb": 76.0,
+                "loadMemoryGb": 80.0,
+                "footprintBasis": "estimated",
+                "recommendedResolution": "768x512",
+                "defaultDurationSeconds": 4.0,
+                "note": (
+                    "Distilled LTX-2.3 at full precision: stereo sound, 8 steps, no guidance. About 76 GB in memory: "
+                    "for 80 GB NVIDIA cards (H100, RTX PRO 6000) and unified-memory machines such as the DGX Spark. "
+                    "Smaller cards should use the 4-bit row above. Takes a start picture and an end picture. "
+                    "Weights: LTX-2 community licence (free below US$10M annual revenue)."
+                ),
+                "estimatedGenerationSeconds": 60.0,
+                "slowOn": [SLOW_CPU_ONLY_EXPECTED],
+                "availableLocally": False,
+                "releaseDate": "2026-05",
+            },
+            {
+                "id": "diffusers/LTX-2.3-Diffusers",
+                "familyId": "ltx-2-diffusers",
+                "name": "LTX-2.3 · dev bf16 (diffusers)",
+                "provider": "Lightricks · Hugging Face diffusers",
+                "repo": "diffusers/LTX-2.3-Diffusers",
+                "link": "https://huggingface.co/diffusers/LTX-2.3-Diffusers",
+                "runtime": "diffusers LTX2Pipeline",
+                "styleTags": ["general", "quality", "motion", "audio", "heavy"],
+                "taskSupport": ["txt2video", "img2video"],
+                "cudaOnly": True,
+                "sizeGb": 101.3,
+                "runtimeFootprintGb": 76.0,
+                "loadMemoryGb": 80.0,
+                "footprintBasis": "estimated",
+                "recommendedResolution": "768x512",
+                "defaultDurationSeconds": 4.0,
+                "note": (
+                    "The full LTX-2.3 model: 30 steps with guidance, the best fidelity, about 4 times the work of the "
+                    "distilled one. About 76 GB in memory: for 80 GB NVIDIA cards and the DGX Spark. Takes a start "
+                    "picture and an end picture. Weights: LTX-2 community licence (free below US$10M annual revenue)."
+                ),
+                "estimatedGenerationSeconds": 240.0,
+                "slowOn": [SLOW_CPU_ONLY_EXPECTED],
+                "availableLocally": False,
+                "releaseDate": "2026-05",
+            },
+        ],
+    },
+    # LTX-2.5 on NVIDIA (gated, estimated figures): rows live in video_ltx25.py.
+    {
+        **LTX25_NVIDIA_FAMILY,
+        "variants": [{**v, "slowOn": [SLOW_CPU_ONLY_EXPECTED]} for v in LTX25_NVIDIA_FAMILY["variants"]],
     },
     {
         "id": "ltx-2",
@@ -667,16 +787,48 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
         "id": "wan-2-2",
         "name": "Wan 2.2",
         "provider": "Alibaba",
-        "headline": "Wan 2.2 A14B: the mixture-of-experts quality tier, for large GPUs.",
+        "headline": "Wan 2.2: the 5B makes video from text or from a start picture on a 24 GB NVIDIA card; the A14B is the quality tier for large GPUs.",
         "summary": (
-            "A mixture-of-experts model with separate high-noise and low-noise transformers: "
-            "roughly 27B total weights on disk, only viable on data-center-class hardware. "
-            "The dense 5B (TI2V) was retired: LTX-2.3 on its own MLX engine is faster and cleaner on a Mac."
+            "The dense 5B (TI2V) does text-to-video and image-to-video in one model and fits a 24 GB GPU: it is the "
+            "model that lets a Storyboard shot start from its still on Windows and Linux (on a Mac, LTX-2.3 on its own "
+            "MLX engine is faster). The A14B is a mixture-of-experts model with separate high-noise and low-noise "
+            "transformers, roughly 27B total weights on disk, only viable on data-center-class hardware."
         ),
         "updatedLabel": "Planned — first wave",
         "badges": ["Balanced", "Quality", "Apache 2.0"],
-        "defaultVariantId": "Wan-AI/Wan2.2-T2V-A14B-Diffusers",
+        "defaultVariantId": "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
         "variants": [
+            {
+                "id": "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
+                "familyId": "wan-2-2",
+                "name": "Wan 2.2 TI2V 5B",
+                "provider": "Alibaba",
+                "repo": "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
+                "link": "https://huggingface.co/Wan-AI/Wan2.2-TI2V-5B-Diffusers",
+                "runtime": "diffusers WanPipeline / WanImageToVideoPipeline",
+                "styleTags": ["general", "quality", "motion"],
+                "taskSupport": ["txt2video", "img2video"],
+                # PyTorch's MPS backend corrupts Wan 2.2's bf16 output (FU-102, FU-125), so a Mac is not offered this row.
+                "cudaOnly": True,
+                # 5B dense transformer bf16 (~10 GB) + UMT5-XXL (~11 GB) + a 2.8 GB VAE: 34 GB on disk. The
+                # model card runs 720p at 24 fps on one 24 GB card (RTX 4090) with the text encoder offloaded.
+                "sizeGb": 34.2,
+                "runtimeFootprintGb": 22.0,
+                # The transformer is fp32 on disk (~20 GB) and loads as bf16 (~10 GB): memory needed to load is not the
+                # 34 GB download size.
+                "loadMemoryGb": 24.0,
+                "recommendedResolution": "1280x704",
+                "defaultDurationSeconds": 5.0,
+                "note": (
+                    "Text-to-video, or image-to-video from a start picture (the first frame; no end frame). "
+                    "34 GB on disk, 720p at 24 fps on a 24 GB NVIDIA card. Apache 2.0."
+                ),
+                # Measured on an RTX 4090: 1280x704, 121 frames, 20 steps = 273 s, 18.5 GB peak VRAM.
+                "estimatedGenerationSeconds": 275.0,
+                "slowOn": [SLOW_APPLE_WAN, SLOW_CPU_ONLY_EXPECTED],
+                "availableLocally": False,
+                "releaseDate": "2025-07",
+            },
             {
                 "id": "Wan-AI/Wan2.2-T2V-A14B-Diffusers",
                 "familyId": "wan-2-2",

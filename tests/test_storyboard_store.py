@@ -618,6 +618,84 @@ class DepsAndBatchTests(StoreCase):
         with mock.patch.object(generators, "_variant", return_value=ltx):
             self.assertIsNone(generators.studio_generators(mock.Mock(), "b_1", self.folder(p))["clip_image_refusal"](p))
 
+    def test_text_only_shots_are_never_refused_and_make_no_still(self):
+        p = self.new(shots=3)
+        ids = [s.id for s in p.shots]
+        p = self.op(p, "edit_shot", shotId=ids[0], startFrom="text")
+        p = self.op(p, "edit_shot", shotId=ids[1], startFrom="text")
+        gens = FakeGenerators(self.src)
+        reason = "Wan 2.1 cannot start a clip from an image; pick another video model."
+        batch = Batch(self.store, p.id, "both", gens.make_still, gens.make_clip, gens.unload, gens.last_frame,
+                      clip_image_refusal=lambda project: reason)
+        steps = batch.plan(p)
+        text_steps = [(k, r) for s, k, r in steps if s in ids[:2]]
+        self.assertEqual(text_steps, [("clip", None), ("clip", None)])  # no still, and the clips are not blocked
+        self.assertEqual([r for s, k, r in steps if s == ids[2]], [reason, reason])  # the shot that wants a still still is
+        only_text = Batch(self.store, p.id, "both", gens.make_still, gens.make_clip, gens.unload, gens.last_frame,
+                          clip_image_refusal=lambda project: reason, shot_ids=ids[:2])
+        only_text.start(p.revision)
+        only_text.run()
+        self.assertEqual([c[:2] for c in gens.calls if c[0] != "unload"], [("clip", ids[0]), ("clip", ids[1])])
+        self.assertTrue(all(c[2] is None for c in gens.calls if c[0] == "clip"))  # no picture goes in
+
+    def test_a_stills_batch_says_a_text_only_shot_has_no_still_to_make(self):
+        p = self.new(shots=1)
+        p = self.op(p, "edit_shot", shotId=p.shots[0].id, startFrom="text")
+        steps = Batch(self.store, p.id, "still", FakeGenerators(self.src).make_still, None).plan(p)
+        self.assertEqual(steps, [(p.shots[0].id, "still", "starts from text; no still to make")])
+
+    def test_a_text_only_shot_ignores_a_still_an_earlier_take_left(self):
+        p = self.new(shots=1)
+        sid = p.shots[0].id
+        gens = FakeGenerators(self.src)
+        batch, p = self._batch(p, gens)  # a normal batch: the shot gets a still and a clip
+        p = self.op(self.store.load(p.id), "edit_shot", shotId=sid, startFrom="text")
+        gens.calls.clear()
+        again = Batch(self.store, p.id, "clip", gens.make_still, gens.make_clip, gens.unload, gens.last_frame,
+                      shot_ids=[sid], force=True)
+        again.start(p.revision)
+        again.run()
+        self.assertEqual([c[:3] for c in gens.calls if c[0] == "clip"], [("clip", sid, None)])
+
+    def test_studio_wiring_takes_the_start_picture_for_wan_ti2v_and_nothing_for_text_only(self):
+        from backend_service.storyboard import generators
+
+        p = self.new(shots=1)
+        shot = p.shots[0]
+        ti2v = {"id": "ti2v", "name": "Wan 2.2 TI2V 5B", "repo": "Wan-AI/Wan2.2-TI2V-5B-Diffusers"}
+        wan = {"id": "wan", "name": "Wan 2.1", "repo": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers"}
+        sent = []
+
+        def fake_generate(request, body):
+            sent.append(body)
+            return {"artifact": {"videoPath": "out.mp4", "numFrames": body.numFrames, "fps": body.fps,
+                                 "width": body.width, "height": body.height}}
+
+        still = self.src / "still.png"
+        still.write_bytes(b"png")
+        with mock.patch("backend_service.mcp_bridge.tools._recommended", return_value={}),                 mock.patch("backend_service.routes.video._generate_video_locked", side_effect=fake_generate):
+            with mock.patch.object(generators, "_variant", return_value=ti2v):
+                wiring = generators.studio_generators(mock.Mock(), "b_1", self.folder(p))
+                self.assertIsNone(wiring["clip_image_refusal"](p))  # image-to-video on a diffusers model is allowed
+                wiring["make_clip"](shot, p, still)
+                self.assertEqual(sent[-1].startImagePath, str(still))
+                self.assertIsNone(sent[-1].endImagePath)
+                shot.endImage = "media/end.png"  # TI2V follows only the first frame
+                with self.assertRaises(RuntimeError) as caught:
+                    wiring["make_clip"](shot, p, still)
+                self.assertIn("follows only a start image", str(caught.exception))
+                shot.endImage = None
+                shot.startFrom = "text"
+                wiring["make_clip"](shot, p, still)  # the shot asked for no picture: none is sent
+                self.assertIsNone(sent[-1].startImagePath)
+            with mock.patch.object(generators, "_variant", return_value=wan):
+                wiring = generators.studio_generators(mock.Mock(), "b_1", self.folder(p))
+                wiring["make_clip"](shot, p, None)  # text-only works on a model with no image input at all
+                self.assertIsNone(sent[-1].startImagePath)
+                shot.startFrom = "generate"
+                with self.assertRaises(RuntimeError):
+                    wiring["make_clip"](shot, p, None)  # but a shot that asked for a still is still refused
+
     def test_chained_clips_leave_no_last_frame_folders(self):
         import tempfile
 

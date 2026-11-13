@@ -140,9 +140,15 @@ describe("Video Studio busy and loading feedback", () => {
     expect(html).toMatch(/run-estimate__item--memory[^>]*title="GPU · 24 GB total · model ≈ [^"]+, this run peak ≈ [^"]+"/);
     const apple = render({ hostSystem: MAC, videoRuntimeStatus: runtime({ device: "mps", expectedDevice: "mps", deviceMemoryGb: 64 }) });
     expect(apple).toContain("Apple Silicon · 64 GB total");
-    const guess = render({ hostSystem: MAC, videoRuntimeStatus: runtime({ device: null, expectedDevice: null, deviceMemoryGb: null }) });
-    expect(guess).toContain("Apple Silicon (detected)");
-    expect(guess).toContain("default — restart backend for real detection");
+    // The guess comes from the webview's own platform, so pin it to a Mac for this assertion.
+    vi.stubGlobal("navigator", { platform: "MacIntel", userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)" });
+    try {
+      const guess = render({ hostSystem: MAC, videoRuntimeStatus: runtime({ device: null, expectedDevice: null, deviceMemoryGb: null }) });
+      expect(guess).toContain("Apple Silicon (detected)");
+      expect(guess).toContain("default — restart backend for real detection");
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it("announces only the estimate figures, not the Generate button", () => {
@@ -206,6 +212,39 @@ describe("Video Studio danger gate", () => {
     const html = render();
     expect(html).not.toContain("Run anyway");
     expect(generateButton(html)).not.toContain("disabled");
+  });
+});
+
+describe("Video Studio fixed-schedule models", () => {
+  it("hides steps and guidance for a distilled model that runs its own schedule", () => {
+    const html = render({}, { fixedSampler: true, runtime: "diffusers LTX2Pipeline" });
+    expect(html).not.toContain("Guidance");
+    expect(html).not.toContain("CFG decay");
+  });
+
+  it("keeps them for a model whose steps and guidance apply", () => {
+    const html = render({}, { fixedSampler: false, runtime: "diffusers LTX2Pipeline" });
+    expect(html).toContain("Guidance");
+  });
+});
+
+describe("Video Studio start and end image pickers", () => {
+  it("shows no picture picker for a model without image input", () => {
+    const html = render({}, { acceptsImageInput: false, acceptsEndImage: false });
+    expect(html).not.toContain("Start image");
+    expect(html).not.toContain("End image (optional)");
+  });
+
+  it("shows only the start picker for a model that follows the first frame (Wan 2.2 TI2V 5B)", () => {
+    const html = render({}, { acceptsImageInput: true, acceptsEndImage: false });
+    expect(html).toContain("Start image");
+    expect(html).not.toContain("End image (optional)");
+  });
+
+  it("shows both pickers for a model that takes a first and a last frame (LTX-2)", () => {
+    const html = render({}, { acceptsImageInput: true, acceptsEndImage: true });
+    expect(html).toContain("Start image");
+    expect(html).toContain("End image (optional)");
   });
 });
 

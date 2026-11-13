@@ -417,9 +417,16 @@ class ThinkingTokenFilter:
                         # Continue the loop so the leftover bytes get
                         # routed through the post-think text/tail logic.
                         continue
-                    output.reasoning += self._buffer
-                    self._reasoning_emitted += len(self._buffer)
-                    self._buffer = ""
+                    # Hold back a tail that could be the start of a close tag split across chunks ("</th" then "ink>").
+                    keep = 0
+                    for size in range(min(len(self._close_tag) - 1, len(self._buffer)), 0, -1):
+                        if self._close_tag.startswith(self._buffer[-size:]):
+                            keep = size
+                            break
+                    emit = self._buffer[: len(self._buffer) - keep]
+                    output.reasoning += emit
+                    self._reasoning_emitted += len(emit)
+                    self._buffer = self._buffer[len(emit):]
                     break
                 output.reasoning += self._buffer[:end_idx]
                 self._reasoning_emitted += end_idx

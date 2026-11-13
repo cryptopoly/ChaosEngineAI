@@ -17,6 +17,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+from backend_service.helpers.request_guards import RequestNotUsable
 from backend_service.inference.base import BackendCapabilities
 from backend_service.inference.tensorfold_engine import TensorFoldEngine
 
@@ -488,6 +489,8 @@ class TensorFoldEngineIntegrationTests(unittest.TestCase):
         ):
             with self.assertRaises(RuntimeError) as ctx:
                 call()
+            # A settings problem the person can fix: the routes answer 400, not 500.
+            self.assertIsInstance(ctx.exception, RequestNotUsable)
             self.assertIn("TensorFold section of the launch settings", str(ctx.exception))
             # The server's own refusal would tell the user to run pip; this one
             # never reaches it.
@@ -617,3 +620,44 @@ class TensorFoldEngineIntegrationTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class OpenReasoningFamilyTests(unittest.TestCase):
+    """LFM2.5 and LFM3 send their reasoning as plain content with only the close tag (FU-168 follow-up)."""
+
+    def test_only_the_lfm_families_are_marked(self) -> None:
+        from backend_service.inference.tensorfold_engine import _template_opens_reasoning
+
+        self.assertTrue(_template_opens_reasoning("LiquidAI/LFM3-1.7B-MLX-4bit"))
+        self.assertTrue(_template_opens_reasoning("LiquidAI/LFM2.5-24B-A2B-MLX-4bit"))
+        self.assertFalse(_template_opens_reasoning("Vontra/Qwen3.8-27B-MLX-4bit"))
+        self.assertFalse(_template_opens_reasoning(None))
+
+    def _run(self, pieces: list[str], starts_in_reasoning: bool):
+        import types
+
+        def sse(text: str) -> bytes:
+            return ("data: " + json.dumps({"choices": [{"delta": {"content": text}}]}) + "\n").encode()
+
+        lines = [sse(p) for p in pieces] + [b'data: {"choices": [{"delta": {}, "finish_reason": "stop"}]}\n', b"data: [DONE]\n"]
+        engine = TensorFoldEngine.__new__(TensorFoldEngine)
+
+        class _Response(list):
+            def close(self) -> None:
+                pass
+
+        engine._open = lambda payload, stream=True: _Response(lines)  # type: ignore[method-assign]
+        loaded = types.SimpleNamespace(runtimeNote=None, ref="LiquidAI/LFM3-1.7B-MLX-4bit")
+        return list(engine._stream_once({}, loaded, [], starts_in_reasoning=starts_in_reasoning))
+
+    def test_a_lone_close_tag_splits_reasoning_from_the_answer(self) -> None:
+        chunks = self._run(["We need ", "to add.", "</th", "ink>", "The answer is 4."], True)
+        self.assertEqual("".join(c.reasoning for c in chunks if c.reasoning), "We need to add.")
+        self.assertEqual("".join(c.text for c in chunks if c.text), "The answer is 4.")
+        self.assertFalse(any("think" in (c.text or "") for c in chunks))
+        self.assertEqual(sum(1 for c in chunks if c.reasoning_done), 1)
+
+    def test_other_families_pass_content_through_untouched(self) -> None:
+        chunks = self._run(["plain ", "reply"], False)
+        self.assertEqual("".join(c.text for c in chunks if c.text), "plain reply")
+        self.assertFalse(any(c.reasoning for c in chunks))

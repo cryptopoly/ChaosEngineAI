@@ -59,6 +59,7 @@ class _Measurement:
 
 _FBCACHE_IMAGE = "First Block Cache at 0.12 skips repeated transformer work between similar steps: about 1.8x faster on FLUX.1-dev with no visible change (diffusers write-up, FU-015). Not timed in this app yet."
 _FBCACHE_VIDEO = "First Block Cache at the video threshold 0.08 skips repeated transformer work between similar steps; 0.08 is the tighter setting that keeps motion consistent (FU-015). Not timed in this app yet."
+_NO_CACHE_WAN_TI2V = "Measured on an RTX 4090 (832x480, 49 frames, 20 steps, 35 s): First Block Cache 0.08 never skips (1.0x), 0.12 is 1.23x and 0.20 is 1.46x but the gulls and the lighthouse glow come out different (PSNR about 20 and 17 dB against the uncached clip); TaylorSeer 3 is 1.5x with sky artefacts. Left off so the same seed gives the same clip."
 _CFG_DECAY_VIDEO = "Relaxes guidance toward 1.5 over the run so late steps stop over-saturating; flow-match video models only."
 _FP8 = "Stores the transformer in FP8 (about half the memory) on RTX 40-series and newer cards; older cards skip it. Not yet run in this app on CUDA (FU-024)."
 _CPU_SIZE = "CPU only: a 512 px image is about a quarter of the work per step of a 1024 px one."
@@ -249,6 +250,12 @@ _ENTRIES: tuple[_Entry, ...] = (
             "cacheStrategy": _FBCACHE_VIDEO,
             "cacheThreshold": _FBCACHE_VIDEO,
         },
+    ),
+    _Entry(
+        "video",
+        ("Wan-AI/Wan2.2-TI2V-5B-Diffusers",),
+        {"cacheStrategy": "none"},
+        {"cacheStrategy": _NO_CACHE_WAN_TI2V},
     ),
     _Entry(
         "video",

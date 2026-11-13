@@ -1338,7 +1338,8 @@
     "storyboard": "스토리보드 기능이 곧 제공됩니다."
   },
   "llamaCuda": {
-    "description": "CUDA {cuda}로 NVIDIA GPU에서 GGUF 채팅 모델을 실행합니다(llama.cpp {tag}). 다운로드 크기는 약 680 MB이며 CUDA 런타임이 포함됩니다(디스크에서는 0.9 GB).",
+    "description": null,
+    "driverTooOld": null,
     "inUse": "사용 중: GGUF 모델이 NVIDIA GPU에서 실행됩니다.",
     "install": "설치",
     "installedNoDevice": "설치되었지만 CUDA 장치를 찾지 못했습니다. NVIDIA 드라이버(nvidia-smi)를 확인하세요.",

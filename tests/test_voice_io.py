@@ -14,6 +14,7 @@ import os
 import sys
 import tempfile
 import textwrap
+import time
 import unittest
 import wave
 from pathlib import Path
@@ -109,9 +110,9 @@ class LaneTests(unittest.TestCase):
             self.assertFalse(any("misaki" in p for p in voice_env.packages_for("portable", ["chinese"])))
 
     def test_venv_python_path_per_os(self) -> None:
-        with mock.patch.object(voice_env.os, "name", "nt"):
+        with mock.patch.object(voice_env, "_is_windows", return_value=True):
             self.assertEqual(voice_env.venv_python().parts[-2:], ("Scripts", "python.exe"))
-        with mock.patch.object(voice_env.os, "name", "posix"):
+        with mock.patch.object(voice_env, "_is_windows", return_value=False):
             self.assertEqual(voice_env.venv_python().parts[-2:], ("bin", "python"))
 
 
@@ -144,7 +145,7 @@ class InstalledMarkerTests(unittest.TestCase):
         self.patches = [
             mock.patch.object(voice_env, "VOICE_VENV_DIR", venv),
             mock.patch.object(voice_env, "_MARKER", venv / "chaosengine-voice.json"),
-            mock.patch.object(voice_env.os, "name", "posix"),
+            mock.patch.object(voice_env, "_is_windows", return_value=False),
             mock.patch.dict(os.environ, {"CHAOSENGINE_VOICE_LANE": "portable"}),
         ]
         for patch in self.patches:
@@ -279,10 +280,20 @@ class SettingsTests(unittest.TestCase):
 
 _FAKE_WORKER = textwrap.dedent(
     """
-    import json, sys, time
+    import atexit, json, subprocess, sys, time
     print(json.dumps({"id": None, "ok": True, "ready": True}), flush=True)
+    stubborn = False
     for line in sys.stdin:
         req = json.loads(line)
+        if req["cmd"] in ("child", "stubborn-child"):
+            # Like the Orpheus lane's llama-server: a child the worker cleans up in atexit.
+            child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(120)"], stdin=subprocess.DEVNULL)
+            if req["cmd"] == "child":
+                atexit.register(child.kill)
+            else:
+                stubborn = True
+            print(json.dumps({"id": req["id"], "ok": True, "pid": child.pid}), flush=True)
+            continue
         if req["cmd"] == "sleep":
             time.sleep(5)
         if req["cmd"] == "die":
@@ -291,6 +302,8 @@ _FAKE_WORKER = textwrap.dedent(
             print(json.dumps({"id": req["id"], "ok": False, "error": "boom"}), flush=True)
             continue
         print(json.dumps({"id": req["id"], "ok": True, "echo": req.get("value")}), flush=True)
+    if stubborn:
+        time.sleep(120)  # ignores stdin closing, so only the forced path can end it
     """
 )
 
@@ -347,6 +360,30 @@ class VoiceClientTests(unittest.TestCase):
         with self.assertRaisesRegex(voice_client.VoiceWorkerError, "did not answer"):
             self.worker.request("sleep", timeout=0.5)
         self.assertIsNone(self.worker.pid)
+
+    @staticmethod
+    def _gone(pid: int, within: float = 10.0) -> bool:
+        import psutil
+
+        deadline = time.monotonic() + within
+        while time.monotonic() < deadline:
+            if not psutil.pid_exists(pid) or psutil.Process(pid).status() == psutil.STATUS_ZOMBIE:
+                return True
+            time.sleep(0.2)
+        return False
+
+    def test_stop_lets_the_worker_clean_up_its_children(self) -> None:
+        # RTX 4090 run: Stop left Orpheus's llama-server running, because terminate() (TerminateProcess on
+        # Windows) skipped the worker's atexit cleanup. Closing stdin first lets the worker exit on its own.
+        pid = self.worker.request("child")["pid"]
+        self.worker.stop()
+        self.assertTrue(self._gone(pid), "the worker's child survived Stop")
+
+    def test_a_worker_that_ignores_stdin_still_loses_its_children(self) -> None:
+        pid = self.worker.request("stubborn-child")["pid"]
+        with mock.patch.object(voice_client, "_GRACEFUL_EXIT_S", 0.5):
+            self.worker.stop()
+        self.assertTrue(self._gone(pid), "a forced stop left the worker's child running")
 
     def test_not_installed_is_reported(self) -> None:
         self.worker.stop()
@@ -605,3 +642,35 @@ class NemotronLanguageTests(unittest.TestCase):
         self.assertEqual(voice_worker._nemotron_language(model, None), "auto")
         self.assertEqual(voice_worker._nemotron_language(model, "xx"), "auto")
         self.assertEqual(voice_worker._nemotron_language(object(), "de"), "auto")
+
+
+class CudaDllPathTests(unittest.TestCase):
+    """Windows: ctranslate2 loads cuBLAS with plain LoadLibrary, which only searches PATH (RTX 4090 run)."""
+
+    @unittest.skipUnless(sys.platform == "win32", "builds Windows paths; runs on the Windows box")
+    def test_nvidia_bin_folders_go_on_path_as_well_as_the_dll_directories(self) -> None:
+        from backend_service import voice_worker
+
+        with tempfile.TemporaryDirectory() as tmp:
+            bin_dir = Path(tmp) / "nvidia" / "cublas" / "bin"
+            bin_dir.mkdir(parents=True)
+            added: list[str] = []
+            with mock.patch.object(voice_worker.os, "name", "nt"), \
+                 mock.patch.object(voice_worker.os, "add_dll_directory", side_effect=added.append, create=True), \
+                 mock.patch.object(voice_worker.sys, "path", [tmp]), \
+                 mock.patch.dict(voice_worker.os.environ, {"PATH": "C:/Windows"}, clear=False):
+                voice_worker._add_cuda_dll_dirs()
+                voice_worker._add_cuda_dll_dirs()  # a second call must not stack duplicates
+                path = voice_worker.os.environ["PATH"].split(os.pathsep)
+        self.assertIn(str(bin_dir), added)
+        self.assertEqual(path[0], str(bin_dir))
+        self.assertEqual(path.count(str(bin_dir)), 1)
+        self.assertIn("C:/Windows", path)
+
+    def test_nothing_changes_off_windows(self) -> None:
+        from backend_service import voice_worker
+
+        with mock.patch.object(voice_worker.os, "name", "posix"), \
+             mock.patch.dict(voice_worker.os.environ, {"PATH": "/usr/bin"}, clear=False):
+            voice_worker._add_cuda_dll_dirs()
+            self.assertEqual(voice_worker.os.environ["PATH"], "/usr/bin")

@@ -63,9 +63,30 @@ const BUNDLED_ROOT_DOCS = ["AGENTS.md"];
 // the repository's "latest" release, which had become a `v0.7.0` entry holding
 // only nightly-tag.txt, so no platform's release bundle got a llama-server.
 // Override with CHAOSENGINE_LLAMA_CPP_TAG.
-const LLAMA_CPP_TAG = process.env.CHAOSENGINE_LLAMA_CPP_TAG || "b11981";
+const LLAMA_CPP_TAG = process.env.CHAOSENGINE_LLAMA_CPP_TAG || "b12317";
+
+const NSIS_ARCHIVE_LIMIT_BYTES = 1.9 * 1024 ** 3;
 
 main();
+
+// NSIS cannot map an archive larger than 2 GB ("failed creating mmap"), so a
+// Windows runtime archive past 1.9 GB means the installer cannot be built.
+// Fail here, before the long Tauri bundle step, and say why.
+
+function assertArchiveFitsInstaller(archivePath) {
+  if (process.platform !== "win32" || process.env.CHAOSENGINE_SKIP_ARCHIVE_SIZE_CHECK === "1") {
+    return;
+  }
+  const size = fs.statSync(archivePath).size;
+  if (size <= NSIS_ARCHIVE_LIMIT_BYTES) {
+    return;
+  }
+  throw new Error(
+    `runtime archive is ${(size / 1024 ** 3).toFixed(2)} GB, over the 1.9 GB limit of the NSIS installer. ` +
+      `A dev venv (torch, diffusers, bitsandbytes) or the GPU bundle (CHAOSENGINE_BUNDLE_GPU=1) was staged. ` +
+      `Build with ./build.sh, which uses the clean .venv-release, and leave CHAOSENGINE_BUNDLE_GPU unset.`,
+  );
+}
 
 function main() {
   ensureDir(embeddedResourcesRoot);
@@ -145,12 +166,15 @@ function main() {
   // that is immediately discarded. Release builds still need the archive.
   if (strict) {
     console.log(`[stage-runtime] archiving runtime — this can take a few minutes on Windows...`);
-    execFileSync("tar", ["-czf", archiveDest, "-C", stageRoot, "."], {
+    // The archive name is given relative to cwd: GNU tar (first on PATH in Git Bash on Windows) reads
+    // "C:\..." in -f as a remote "host:path" and fails with "Cannot connect to C: resolve failed".
+    execFileSync("tar", ["-czf", path.relative(workspaceRoot, archiveDest), "-C", stageRoot, "."], {
       cwd: workspaceRoot,
       env: { ...process.env, COPYFILE_DISABLE: "1" },
       stdio: "inherit",
     });
     console.log(`[stage-runtime] archive -> ${archiveDest}`);
+    assertArchiveFitsInstaller(archiveDest);
   } else {
     // Clear any stale archive so the Rust shell doesn't surface an old one.
     if (fs.existsSync(archiveDest)) {
@@ -332,7 +356,7 @@ function stageOptionalRuntimePackages(pythonBinary) {
   //   matching distribution.
   const optionalPackages = [
     {
-      pipName: "dflash-mlx @ git+https://github.com/bstnxbt/dflash-mlx.git@fada1eb2b75cd1c875ca6547b6518783fd3d2956",
+      pipName: "dflash-mlx @ git+https://github.com/bstnxbt/dflash-mlx.git@9ca002898b48e14c9727dec17299f497e8467870",
       importName: "dflash_mlx",
       platforms: ["darwin"],
     },
@@ -672,7 +696,7 @@ function pickLlamaAsset(assets, platformKey) {
       /^llama-.*-bin-ubuntu-x64\.(?:zip|tar\.gz)$/i,
       /^llama-.*-bin-linux-x64\.(?:zip|tar\.gz)$/i,
     ],
-    // Upstream also ships ``ubuntu-cuda-13.4-arm64`` (plus a separate cudart
+    // Upstream also ships ``ubuntu-cuda-13.5-arm64`` (plus a separate cudart
     // archive) for DGX Spark class machines. The bundle stages the CPU build
     // because the CUDA one fails to start on an ARM host without a CUDA 13
     // driver; GPU use on ARM needs ``update-llama-cpp.sh`` (builds with CUDA

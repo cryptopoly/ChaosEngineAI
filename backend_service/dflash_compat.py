@@ -1,48 +1,50 @@
-"""Keep the pinned dflash-mlx working with newer mlx-lm releases, and notice when it does not.
+"""Prepare an already loaded MLX target for the pinned dflash-mlx, and notice when they disagree.
 
-dflash-mlx 0.1.5.1 picks the module that owns a Qwen target's output head with
-``text_wrapper``: the model itself when it has a ``model`` attribute, otherwise its
-``language_model``. mlx-lm 0.32 gave the top-level Qwen3.5 / 3.6 / Next ``Model`` a ``model``
-attribute, so the adapter started reading ``tie_word_embeddings`` from the wrong object, took the
-default (tied) and projected the hidden state through the embedding matrix. Qwen3.6-27B has an
-untied head, so every draft step produced garbage (wrong first token, nothing accepted, 8 tok/s)
-while the same pin works on mlx-lm 0.31.3 (FU-135).
+Upstream's own loader (``dflash_mlx.runtime.bundle.load_runtime_bundle``) loads a second copy of
+the target. The worker reuses the model it already holds, so it repeats the preparation steps that
+loader takes: the per-family speculative hooks, the verify-length quantized linears and the
+per-drafter quantization default (``prepare_target`` and ``default_draft_quant``).
 
-``patch_text_wrapper`` makes the adapter prefer ``language_model`` when it owns a ``model``.
 ``self_check`` then runs a short prompt through the adapter's own forward pass and through the
-model, so any other mismatch between the two libraries turns DFlash off instead of producing text
-(a check that cannot run at all lets the lane through, so it never disables a working one).
+model, so any mismatch between the two libraries turns DFlash off instead of producing text (a
+check that cannot run at all lets the lane through, so it never disables a working one). It was
+added for FU-135: dflash-mlx 0.1.5.1 read the wrong output head of hybrid Qwen3.5 / 3.6 / Next
+models under mlx-lm 0.32 and replied with garbage. dflash-mlx 0.1.10 picks the right head itself
+(``text_wrapper`` prefers ``language_model``), so the old patch is gone and only the check stays.
 """
 
 from __future__ import annotations
 
 from typing import Any
 
-_PATCHED_FLAG = "_chaosengine_text_wrapper_patched"
+
+def prepare_target(target_model: Any, target_ops: Any) -> int:
+    """Install the speculative hooks and, where the family supports it, the verify linears.
+
+    Mirrors ``dflash_mlx.runtime.loading.load_target_bundle`` with the default verify mode.
+    Returns the number of linears swapped (0 when the family does not use them).
+    """
+    target_ops.install_speculative_hooks(target_model)
+    if not getattr(target_ops.capabilities_for(target_model), "supports_verify_linear", False):
+        return 0
+    from dflash_mlx.verify_linear import install_verify_linears
+
+    return int(install_verify_linears(target_model, enable_qmm=True))
 
 
-def patch_text_wrapper() -> bool:
-    """Prefer ``language_model`` over a top-level ``model`` alias. Idempotent; True when applied."""
+def default_draft_quant(draft_ref: str | None) -> str | None:
+    """The quantization dflash-mlx applies by default to this drafter (``"w4"`` for the larger
+    Qwen3.5 / 3.6 drafters), or None. Matched on the drafter repo, so a local target path works."""
+    if not draft_ref:
+        return None
     try:
-        import dflash_mlx.engine.target_qwen_gdn as gdn
+        from dflash_mlx.runtime.registry import MODEL_SUPPORT_SPECS
     except ImportError:
-        return False
-    for value in vars(gdn).values():
-        if isinstance(value, type) and value.__module__ == gdn.__name__ and hasattr(value, "text_wrapper"):
-            if getattr(value, _PATCHED_FLAG, False):
-                return True
-            original = value.text_wrapper
-
-            def text_wrapper(self: Any, target_model: Any, _original: Any = original) -> Any:
-                language_model = getattr(target_model, "language_model", None)
-                if language_model is not None and hasattr(language_model, "model"):
-                    return language_model
-                return _original(self, target_model)
-
-            value.text_wrapper = text_wrapper
-            setattr(value, _PATCHED_FLAG, True)
-            return True
-    return False
+        return None
+    for spec in MODEL_SUPPORT_SPECS:
+        if spec.draft_ref == draft_ref:
+            return spec.defaults.draft_quant or None
+    return None
 
 
 def self_check(target_model: Any, target_ops: Any, *, tolerance: float = 1.0) -> str | None:

@@ -405,18 +405,16 @@ describe("assessVideoGenerationSafety()", () => {
       expect(cuda.estimatedPeakGb).toBeLessThanOrEqual(mps.estimatedPeakGb);
     });
 
-    it("flags caution when an attention-only CUDA estimate gets close to VRAM", () => {
-      // A 4090 with 24 GB can't really handle 832×480 × 96 frames without
-      // model offload (~20 GB attention peak vs 22.8 GB effective budget)
-      // so the heuristic warns without hard-blocking.
-      const result = assessVideoGenerationSafety({
-        width: 832,
-        height: 480,
-        numFrames: 96,
-        device: "cuda:0",
-        deviceMemoryGb: 24,
-      });
-      expect(result.riskLevel).toBe("caution");
+    it("grows the CUDA working memory with the token count, not its square", () => {
+      // PyTorch's attention on CUDA never holds the score matrix. Measured on an RTX 4090 (Wan 2.2 TI2V 5B):
+      // 832x480 x 121 frames took 1.9 GB more than x 49 frames; the quadratic term said 11 GB more.
+      const short = assessVideoGenerationSafety({ width: 832, height: 480, numFrames: 49, device: "cuda:0", deviceMemoryGb: 24 });
+      const long = assessVideoGenerationSafety({ width: 832, height: 480, numFrames: 121, device: "cuda:0", deviceMemoryGb: 24 });
+      expect(long.estimatedPeakGb - short.estimatedPeakGb).toBeCloseTo(2.0, 0);
+      expect(long.riskLevel).toBe("safe");
+      // A 1080p clip of 257 frames still needs more than the card has.
+      const huge = assessVideoGenerationSafety({ width: 1920, height: 1088, numFrames: 257, device: "cuda:0", deviceMemoryGb: 24 });
+      expect(huge.riskLevel).toBe("danger");
     });
 
     it("A100-class (40 GB) clears the observed-crash config", () => {
@@ -662,18 +660,42 @@ describe("assessVideoGenerationSafety()", () => {
       expect(result.modelFootprintGb).toBe(24.0);
     });
 
+    it("follows the measured Wan 2.2 5B peaks on a 24 GB RTX 4090 (model offload)", () => {
+      // Measured peaks: 11.0 / 12.9 / 12.7 / 17.3 GB. The quadratic term said 22 / 33 / 31 / 119 GB.
+      const cases: Array<[number, number, number, number]> = [
+        [832, 480, 49, 11.0], [832, 480, 121, 12.9], [1280, 704, 49, 12.7], [1280, 704, 121, 17.3],
+      ];
+      for (const [width, height, numFrames, measured] of cases) {
+        const result = assessVideoGenerationSafety({
+          width, height, numFrames, device: "cuda:0", deviceMemoryGb: 24,
+          baseModelFootprintGb: 34.2, runtimeFootprintGb: 22.0,
+        });
+        expect(result.estimatedPeakGb / measured).toBeGreaterThan(0.95);
+        expect(result.estimatedPeakGb / measured).toBeLessThan(1.3);
+        expect(result.riskLevel).not.toBe("danger");
+      }
+    });
+
     it("still warns hard for very long Wan 2.2 5B clips on a 24 GB RTX 4090", () => {
       const result = assessVideoGenerationSafety({
-        width: 832,
-        height: 480,
-        numFrames: 96,
+        width: 1280,
+        height: 704,
+        numFrames: 257,
         device: "cuda:0",
         deviceMemoryGb: 24,
-        baseModelFootprintGb: 24.0,
+        baseModelFootprintGb: 34.2,
         runtimeFootprintGb: 22.0,
       });
       expect(result.riskLevel).toBe("danger");
-      expect(result.suggestion).toBeNull();
+    });
+
+    it("keeps the whole pipeline on a card with room to spare", () => {
+      const result = assessVideoGenerationSafety({
+        width: 1280, height: 704, numFrames: 121, device: "cuda:0", deviceMemoryGb: 96,
+        baseModelFootprintGb: 34.2, runtimeFootprintGb: 22.0,
+      });
+      expect(result.estimatedPeakGb).toBeCloseTo(22.0 + 109.12 * 0.071, 1);
+      expect(result.riskLevel).toBe("safe");
     });
 
     it("hands back a null suggestion when the model alone doesn't fit", () => {

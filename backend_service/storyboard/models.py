@@ -157,7 +157,8 @@ class Shot(_Model):
     stillPrompt: Prompt = ""
     motionPrompt: Prompt = ""
     referenceImages: list[Id] = Field(default_factory=list, max_length=8)  # ids in project.references
-    startFrom: Literal["generate", "upload", "previous-shot"] = "generate"
+    # "text": no picture at all, a text-to-video clip made from the motion prompt, on any video model.
+    startFrom: Literal["generate", "upload", "previous-shot", "text"] = "generate"
     endImage: RelPath | None = None
     seconds: float = Field(4.0, ge=0.5, le=60)
     seed: int | None = Field(None, ge=0, le=2**31 - 1)

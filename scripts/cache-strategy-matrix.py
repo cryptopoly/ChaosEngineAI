@@ -403,6 +403,20 @@ def run_cell(cell: MatrixCell, *, port: int) -> CellResult:
         loaded = ((load_resp.get("runtime") or {}).get("loadedModel")) or load_resp.get("loadedModel") or {}
         result.actual_strategy = loaded.get("cacheStrategy", "")
         result.runtime_note = loaded.get("runtimeNote") or ""
+        if (
+            cell.strategy in ("triattention", "turboquant")
+            and result.actual_strategy
+            and result.actual_strategy != cell.strategy
+        ):
+            # The load fell back to the native cache (patches refused, runtime
+            # too old). The prompt would pass on native, so it is not a result
+            # for this strategy.
+            result.skipped = True
+            result.skip_reason = (
+                f"loaded as {result.actual_strategy}, not {cell.strategy}: {result.runtime_note[:160]}"
+            )
+            result.duration_seconds = round(time.monotonic() - started, 2)
+            return result
         if cell.spec_decode == "tensorfold" and loaded.get("engine") != "tensorfold":
             # A standard-MLX fallback would still produce text and pass the
             # non-empty check, so assert the engine the load actually chose.
@@ -554,7 +568,21 @@ def print_summary(results: list[CellResult]) -> int:
 
 # ── Entry point ──────────────────────────────────────────────────────
 
+def _utf8_console() -> None:
+    """Windows consoles and redirected output default to cp1252, which cannot print the "→" in some skip reasons:
+    the full run on the RTX 4090 died with UnicodeEncodeError on the vLLM cell. Print UTF-8, replacing what a
+    console cannot show."""
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            try:
+                reconfigure(encoding="utf-8", errors="replace")
+            except (ValueError, OSError):
+                pass
+
+
 def main() -> int:
+    _utf8_console()
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--port", type=int, default=DEFAULT_PORT)
     parser.add_argument("--quick", action="store_true",

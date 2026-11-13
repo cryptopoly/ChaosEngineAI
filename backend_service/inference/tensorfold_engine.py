@@ -39,7 +39,9 @@ from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import Any
 
+from backend_service.helpers.request_guards import RequestNotUsable
 from backend_service.inference._constants import MLX_LOAD_TIMEOUT_SECONDS
+from backend_service.reasoning_split import ThinkingTokenFilter
 from backend_service.inference._tensorfold import (
     TensorFoldMatch,
     match_model,
@@ -168,6 +170,17 @@ def _latest_server_line(log_path: Path | None) -> str | None:
 
 
 _COLD_START_NOTE = "A cold start can take a few minutes."
+
+
+# Families whose chat template ends the prompt with the reasoning open tag when thinking is on, so the reply starts
+# inside the reasoning block and only the close tag ever appears (LFM2.5 and LFM3; the server sends it as content).
+_OPEN_REASONING_MARKERS = ("lfm2", "lfm3")
+
+
+def _template_opens_reasoning(model_ref: str | None) -> bool:
+    ref = (model_ref or "").lower()
+    return any(marker in ref for marker in _OPEN_REASONING_MARKERS)
+
 
 class TensorFoldEngine(BaseInferenceEngine):
     engine_name = "tensorfold"
@@ -526,10 +539,12 @@ class TensorFoldEngine(BaseInferenceEngine):
 
         Structured output needs xgrammar in the TensorFold venv. Ignoring the
         schema would hand a caller that parses the reply (JSON mode over the
-        API) free-form text, so the request fails with the in-app fix instead.
+        API) free-form text, so the request fails with the in-app fix instead. It is a
+        RequestNotUsable (HTTP 400, not 500): the person's settings cannot run on
+        this load, and the message says how to fix it.
         """
         if json_schema and not self._grammar:
-            raise RuntimeError(
+            raise RequestNotUsable(
                 "Structured output (a JSON schema) needs TensorFold's grammar support, which is not "
                 "installed. Add it from the TensorFold section of the launch settings (it installs "
                 "PyTorch), then load the model again."
@@ -700,7 +715,10 @@ class TensorFoldEngine(BaseInferenceEngine):
         for attempt in (0, 1):
             emitted = False
             try:
-                for chunk in self._stream_once(payload, loaded, notes):
+                for chunk in self._stream_once(
+                    payload, loaded, notes,
+                    starts_in_reasoning=(thinking_mode or "off") != "off" and _template_opens_reasoning(loaded.ref),
+                ):
                     if chunk.text or chunk.reasoning:
                         emitted = True
                     yield chunk
@@ -718,8 +736,11 @@ class TensorFoldEngine(BaseInferenceEngine):
         payload: dict[str, Any],
         loaded: LoadedModelInfo,
         notes: list[str],
+        starts_in_reasoning: bool = False,
     ) -> Iterator[StreamChunk]:
         resp = self._open(payload, stream=True)
+        # The server sends such a family's reasoning as plain content with only the close tag, so split it here.
+        think_filter = ThinkingTokenFilter(starts_inside_reasoning=True) if starts_in_reasoning else None
 
         finish_reason = "stop"
         usage: dict[str, Any] = {}
@@ -763,6 +784,18 @@ class TensorFoldEngine(BaseInferenceEngine):
                     reasoning_open = True
                     yield StreamChunk(reasoning=str(reasoning))
                 content = delta.get("content")
+                if content and think_filter is not None:
+                    split = think_filter.feed(str(content))
+                    if split.reasoning:
+                        if first_token_time is None:
+                            first_token_time = time.perf_counter()
+                        streamed_pieces += 1
+                        reasoning_open = True
+                        yield StreamChunk(reasoning=split.reasoning)
+                    if split.reasoning_done and reasoning_open:
+                        reasoning_open = False
+                        yield StreamChunk(reasoning_done=True)
+                    content = split.text
                 if content:
                     if reasoning_open:
                         reasoning_open = False
@@ -792,6 +825,17 @@ class TensorFoldEngine(BaseInferenceEngine):
                 if isinstance(chunk.get("speculative"), dict):
                     speculative = chunk["speculative"]
 
+            if think_filter is not None:
+                tail = think_filter.flush()
+                if tail.reasoning:
+                    reasoning_open = True
+                    yield StreamChunk(reasoning=tail.reasoning)
+                if tail.text:
+                    if reasoning_open:
+                        reasoning_open = False
+                        yield StreamChunk(reasoning_done=True)
+                    emitted_text = True
+                    yield StreamChunk(text=tail.text)
             if reasoning_open:
                 yield StreamChunk(reasoning_done=True)
             calls = tool_calls.calls()

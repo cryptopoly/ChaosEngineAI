@@ -31,9 +31,14 @@ def fake_runner(version=GOOD_VERSION, licence=LGPL, buildconf="--disable-gpl", f
 
 
 def make_zip(path: Path, members: dict[str, bytes]) -> None:
-    with zipfile.ZipFile(path, "w") as zf:
-        for name, data in members.items():
-            zf.writestr(name, data)
+    # Store member names verbatim. On Windows ``ZipInfo`` rewrites "\\" -> "/" at write time
+    # (because ``os.sep == "\\"``), which would erase a backslash member before it is stored; a
+    # malicious archive built off-Windows keeps the backslash, so we make ``os.sep`` look like "/"
+    # here to reproduce that archive faithfully on every platform.
+    with mock.patch.object(zipfile.os, "sep", "/"):
+        with zipfile.ZipFile(path, "w") as zf:
+            for name, data in members.items():
+                zf.writestr(name, data)
 
 
 def make_tar(path: Path, members: dict[str, bytes]) -> None:

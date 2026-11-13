@@ -88,11 +88,36 @@ def _detect_tensorfold() -> tuple[bool, str | None, str | None]:
     return True, str(python), version
 
 
+def _detect_tensorfold_native() -> tuple[bool, str | None, str | None]:
+    """(available, binary path, version) for the TensorFold 1.x native binary.
+
+    A file check against the install record (no subprocess); the capability gate
+    runs the binary's own ``capabilities --json`` at load time.
+    """
+    from backend_service.inference import _tensorfold_native as native
+
+    binary = native.find_binary()
+    if binary is None:
+        return False, None, None
+    record = native.read_install_record() or {}
+    version = record.get("version") if isinstance(record.get("version"), str) else None
+    return True, str(binary), version
+
+
 def _detect_tensorfold_extras() -> tuple[str, ...]:
     """The optional extras recorded for the TensorFold install (a file read)."""
     from backend_service.inference._tensorfold import read_install_extras
 
     return read_install_extras(_TENSORFOLD_VERSION_FILE)
+
+
+def _native_capability_fields() -> dict[str, object]:
+    available, path, version = _detect_tensorfold_native()
+    return {
+        "tensorfoldNativeAvailable": available,
+        "tensorfoldNativePath": path,
+        "tensorfoldNativeVersion": version,
+    }
 
 
 def _initial_backend_capabilities() -> BackendCapabilities:
@@ -132,6 +157,7 @@ def _initial_backend_capabilities() -> BackendCapabilities:
         tensorfoldPythonPath=tensorfold_python,
         tensorfoldVersion=tensorfold_version,
         tensorfoldExtras=_detect_tensorfold_extras() if tensorfold_available else (),
+        **_native_capability_fields(),
         nunchakuAvailable=nunchaku_available(),
         nunchakuVersion=nunchaku_version(),
         sageattentionAvailable=sageattention_available(),
@@ -246,6 +272,7 @@ def _probe_native_backends() -> BackendCapabilities:
         tensorfoldPythonPath=tensorfold_python,
         tensorfoldVersion=tensorfold_version,
         tensorfoldExtras=_detect_tensorfold_extras() if tensorfold_available else (),
+        **_native_capability_fields(),
         ggufMtpAvailable=gguf_mtp_available,
         # FU-056 Phase 1: per-accelerator import + version probes.
         nunchakuAvailable=nunchaku_available(),
@@ -296,6 +323,8 @@ def refresh_install_detection() -> None:
         if _capability_cache is None:
             return
         _cached_at, capabilities = _capability_cache
+        # An installed CUDA llama-server wins over the bundled one (binaries._resolve_llama_server).
+        capabilities.llamaServerPath = _resolve_llama_server() or capabilities.llamaServerPath
         capabilities.mtplxAvailable, capabilities.mtplxPythonPath = _detect_mtplx()
         (
             capabilities.tensorfoldAvailable,
@@ -305,3 +334,8 @@ def refresh_install_detection() -> None:
         capabilities.tensorfoldExtras = (
             _detect_tensorfold_extras() if capabilities.tensorfoldAvailable else ()
         )
+        (
+            capabilities.tensorfoldNativeAvailable,
+            capabilities.tensorfoldNativePath,
+            capabilities.tensorfoldNativeVersion,
+        ) = _detect_tensorfold_native()

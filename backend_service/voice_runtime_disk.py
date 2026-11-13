@@ -170,8 +170,20 @@ def remove_extra(name: str) -> dict[str, Any]:
         )
         if result.returncode != 0:
             raise RuntimeError(f"Removing {voice_env.EXTRAS[name][2]} failed: {result.stdout[-400:]}{result.stderr[-400:]}")
+    if name == "speech-gpu":
+        remove_qwen_site()
     _drop_from_marker(name)
     return {"removed": name, "packages": packages}
+
+
+def remove_qwen_site() -> None:
+    """Delete the folder with Qwen3-TTS's own transformers, checked first: directly inside the voice venv and named
+    ``qwen-site`` (the add-on's packages are uninstalled by pip, this folder is not one of them)."""
+    folder = voice_env.qwen_site_dir()
+    if folder.parent != voice_env.VOICE_VENV_DIR or folder.name != "qwen-site":
+        raise RuntimeError(f"Refusing to delete {folder}.")
+    if folder.is_dir():
+        shutil.rmtree(folder)
 
 
 def _drop_from_marker(name: str) -> None:

@@ -101,6 +101,10 @@ class BackendCapabilities:
     # Optional pip extras installed in that venv: "vision" (image input) and
     # "grammar" (structured output). Read from the installer's version file.
     tensorfoldExtras: tuple[str, ...] = ()
+    # TensorFold 1.x native binary (CUDA hosts; ``~/.chaosengine/tensorfold-native``).
+    tensorfoldNativeAvailable: bool = False
+    tensorfoldNativePath: str | None = None
+    tensorfoldNativeVersion: str | None = None
     # FU-047: GGUF MTP speculative decoding via llama.cpp PR #22673. Set
     # when the resolved llama-server binary advertises --spec-type in its
     # help text. The UI keys an MTP affordance for GGUF models off this
@@ -160,6 +164,9 @@ class BackendCapabilities:
             "tensorfoldPythonPath": self.tensorfoldPythonPath,
             "tensorfoldVersion": self.tensorfoldVersion,
             "tensorfoldExtras": list(self.tensorfoldExtras),
+            "tensorfoldNativeAvailable": self.tensorfoldNativeAvailable,
+            "tensorfoldNativePath": self.tensorfoldNativePath,
+            "tensorfoldNativeVersion": self.tensorfoldNativeVersion,
             "ggufMtpAvailable": self.ggufMtpAvailable,
             "nunchakuAvailable": self.nunchakuAvailable,
             "nunchakuVersion": self.nunchakuVersion,

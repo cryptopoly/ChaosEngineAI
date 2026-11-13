@@ -1338,7 +1338,8 @@
     "storyboard": "分鏡功能即將推出。"
   },
   "llamaCuda": {
-    "description": "使用 CUDA {cuda} 在你的 NVIDIA GPU 上執行 GGUF 聊天模型（llama.cpp {tag}）。下載約 680 MB，含 CUDA 執行階段（磁碟佔用 0.9 GB）。",
+    "description": null,
+    "driverTooOld": null,
     "inUse": "使用中：GGUF 模型在 NVIDIA GPU 上執行。",
     "install": "安裝",
     "installedNoDevice": "已安裝，但找不到 CUDA 裝置。請檢查 NVIDIA 驅動程式（nvidia-smi）。",

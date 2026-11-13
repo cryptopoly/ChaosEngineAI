@@ -10,8 +10,9 @@ import type { LlamaCudaJobState, LlamaCudaStatus } from "../../api";
 
 /**
  * Settings > Accelerators: install the NVIDIA CUDA build of llama-server on
- * Linux (x86_64 and ARM64, e.g. DGX Spark). Shown only when the backend sees
- * a Linux host with a working NVIDIA driver; the bundled build stays in use
+ * Linux (x86_64 and ARM64, e.g. DGX Spark) and Windows. Shown only when the
+ * backend sees a supported host with an NVIDIA driver; a driver that is too
+ * old shows why instead of an install button. The bundled build stays in use
  * until the CUDA build lists a CUDA device.
  */
 export function LlamaCudaPanel({ backendOnline }: { backendOnline: boolean }) {
@@ -66,7 +67,11 @@ export function LlamaCudaPanel({ backendOnline }: { backendOnline: boolean }) {
   if (!backendOnline || !status?.supported) return null;
 
   const running = job !== null && !job.done;
-  const state = status.inUse
+  const state = status.driverTooOld
+    ? t("llamaCuda.driverTooOld", {
+        defaultValue: "The NVIDIA driver is too old for the CUDA llama-server. Update the driver, then install again.",
+      })
+    : status.inUse
     ? t("llamaCuda.inUse", { defaultValue: "In use: GGUF models run on the NVIDIA GPU." })
     : status.installed
       ? t("llamaCuda.installedNoDevice", {
@@ -87,7 +92,7 @@ export function LlamaCudaPanel({ backendOnline }: { backendOnline: boolean }) {
             cuda: status.cudaVersion ?? "",
             tag: status.tag,
             defaultValue:
-              "Runs GGUF chat models on your NVIDIA GPU with CUDA {cuda} (llama.cpp {tag}). Downloads about 680 MB, including the CUDA runtime (0.9 GB on disk).",
+              "Runs GGUF chat models on your NVIDIA GPU with CUDA {cuda} (llama.cpp {tag}). The download includes the CUDA runtime.",
           })}
         </p>
       </header>
@@ -95,7 +100,7 @@ export function LlamaCudaPanel({ backendOnline }: { backendOnline: boolean }) {
         <span className="muted-text" style={{ flex: 1, fontSize: "0.84rem" }}>
           {running ? `${job?.message || ""} ${Math.round(job?.percent ?? 0)}%` : state}
         </span>
-        {!status.inUse ? (
+        {!status.inUse && status.canInstall ? (
           <button type="button" className="secondary-button" disabled={running} onClick={() => void install()}>
             {status.installed
               ? t("llamaCuda.reinstall", { defaultValue: "Reinstall" })

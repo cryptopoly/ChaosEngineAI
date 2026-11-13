@@ -38,12 +38,28 @@ _VIDEO_MODEL_FOOTPRINT_BF16_GB: dict[str, float] = {
     "Lightricks/LTX-Video": 10.0,
     "Wan-AI/Wan2.1-T2V-1.3B-Diffusers": 9.0,
     "Wan-AI/Wan2.1-T2V-14B-Diffusers": 28.0,
-    "Wan-AI/Wan2.2-TI2V-5B-Diffusers": 11.0,
+    # 5B transformer (~10 GB) + UMT5-XXL text encoder (~11 GB) + VAE: the pipeline as a whole, not the transformer alone.
+    "Wan-AI/Wan2.2-TI2V-5B-Diffusers": 22.0,
     "Wan-AI/Wan2.2-T2V-A14B-Diffusers": 28.0,
+    # LTX-2.3 diffusers: transformer + Gemma 3 12B text encoder + connectors + VAEs. bf16 ~76 GB (the repos store the
+    # text encoder in fp32 on disk, 100 GB; it loads as bf16); the NF4 packs ~25 GB resident.
+    "diffusers/LTX-2.3-Diffusers": 76.0,
+    "diffusers/LTX-2.3-Distilled-Diffusers": 76.0,
+    "OzzyGT/LTX-2.3-Distilled-bnb-nf4": 25.0,
+    # LTX-2.5 (Gemma 4 12B text encoder): bf16 estimated from the 2.3 pack; unmeasured.
+    "Lightricks/LTX-2.5-Diffusers": 76.0,
     "hunyuanvideo-community/HunyuanVideo": 26.0,
     "genmo/mochi-1-preview": 22.0,
     "THUDM/CogVideoX-2b": 19.0,
     "THUDM/CogVideoX-5b": 33.0,
+}
+
+# Repos quantised to 4-bit while they load (``use_nf4`` on a repo whose weights are bf16): the whole pipeline's GB if it
+# sat on the GPU at once, which is what the placement rule compares with the card. LTX-2.5, measured 2026-11-13: the
+# 4-bit transformer and text encoder take 18.1 GB on the card after loading, plus 6.3 GB of bf16 connectors and about
+# 2 GB of VAEs and vocoder. With model CPU offload the generation peak is about 20 GB (the catalog row's figure).
+_VIDEO_MODEL_FOOTPRINT_NF4_ON_LOAD_GB: dict[str, float] = {
+    "Lightricks/LTX-2.5-Diffusers": 27.0,
 }
 
 # GGUF quant level → multiplier vs the bf16 footprint. Keys are matched as
@@ -58,7 +74,7 @@ _GGUF_QUANT_MULTIPLIERS: tuple[tuple[str, float], ...] = (
 
 
 def _estimate_model_footprint_gb(
-    repo: str, dtype_name: str, gguf_file: str | None = None
+    repo: str, dtype_name: str, gguf_file: str | None = None, nf4_on_load: bool = False
 ) -> float | None:
     """Cheap estimate of a video pipeline's GPU/MPS memory footprint in GB.
 
@@ -67,6 +83,8 @@ def _estimate_model_footprint_gb(
     torch dtype (``"torch.bfloat16"`` etc.); we treat fp16/bf16 as the
     catalog baseline and double for fp32.
     """
+    if nf4_on_load and repo in _VIDEO_MODEL_FOOTPRINT_NF4_ON_LOAD_GB:
+        return _VIDEO_MODEL_FOOTPRINT_NF4_ON_LOAD_GB[repo]
     base = _VIDEO_MODEL_FOOTPRINT_BF16_GB.get(repo)
     if base is None:
         return None
@@ -79,6 +97,94 @@ def _estimate_model_footprint_gb(
     if "float32" in dtype_name and "bfloat16" not in dtype_name:
         base = base * 2.0
     return base
+
+
+# A pipeline taking more than this share of the GPU's free memory is offloaded by model: the weights alone would leave
+# too little for activations and the VAE decode (video DiTs are activation-hungry), and the price is only the seconds
+# it takes to move each component over PCIe once per clip.
+_MODEL_OFFLOAD_SHARE = 0.6
+# ...unless that much memory is still free beyond the weights: then everything stays in place (a 96 GB card with a
+# 76 GB pipeline), which also spares the CPU copy of the whole pipeline.
+_ACTIVATION_HEADROOM_GB = 16.0
+# The memory of a unified-memory machine (DGX Spark, GB10) is the system's: GPU total within this share of system RAM.
+_UNIFIED_MEMORY_SHARE = 0.85
+
+
+def _prefers_model_cpu_offload(
+    device: str,
+    budget_gb: float | None,
+    estimated_footprint_gb: float | None,
+    largest_component_gb: float | None,
+    *,
+    unified_memory: bool = False,
+) -> bool:
+    """True when the pipeline takes a large share of the GPU's memory but its largest single part fits.
+
+    ``budget_gb`` is the GPU memory free now (or its total when that cannot be read). Model-level offload keeps one
+    component (text encoder, then transformer, then VAE) on the GPU at a time and moves it whole: far faster than
+    sequential offload, which moves every layer on every step. It cannot help when one component alone is bigger than
+    the card (a 14B transformer on 24 GB), so that case keeps the old path: try the full placement, then sequential
+    offload. It is pointless on a unified-memory machine, where GPU and CPU share one pool and moving a component
+    only copies it. Cases: Wan 2.2 TI2V-5B (22 GB) on a 24 GB card; LTX-2.3 4-bit (25 GB) on 24 GB and on a 32 GB
+    RTX 5090; LTX-2.3 bf16 (76 GB) on an 80 GB card; a DGX Spark runs everything in place.
+    """
+    if device != "cuda" or unified_memory:
+        return False
+    if not budget_gb or not estimated_footprint_gb or not largest_component_gb:
+        return False
+    if budget_gb - estimated_footprint_gb >= _ACTIVATION_HEADROOM_GB:
+        return False
+    return estimated_footprint_gb > _MODEL_OFFLOAD_SHARE * budget_gb and largest_component_gb * 1.3 < budget_gb
+
+
+def _cuda_memory_gb(torch: Any) -> tuple[float | None, float | None]:
+    """``(available to this process, total)`` GPU memory in GB, or ``(None, None)``.
+
+    Available is what the driver says is free plus what this process already holds: other programs' share (a chat
+    model, a desktop) is what is not ours, and our own weights are exactly what a placement decision is about. The
+    4-bit LTX-2.3 pack is loaded straight onto the GPU by bitsandbytes (22.7 GB of a 24 GB card), so judging by the
+    free memory after that load saw 1 GB, ruled offloading out and left the clip thrashing for an hour on step 1.
+    """
+    try:
+        free, total = torch.cuda.mem_get_info()
+    except Exception:  # noqa: BLE001 - no CUDA, an old driver, or a mocked torch
+        return None, None
+    try:
+        own = torch.cuda.memory_reserved()
+    except Exception:  # noqa: BLE001
+        own = 0
+    return (free + own) / 1e9, total / 1e9
+
+
+def _is_unified_memory(gpu_total_gb: float | None) -> bool:
+    """True when the GPU's memory is the system's (DGX Spark / GB10): its total is about the machine's RAM."""
+    if not gpu_total_gb:
+        return False
+    try:
+        import psutil  # noqa: PLC0415
+
+        ram_gb = psutil.virtual_memory().total / 1e9
+    except Exception:  # noqa: BLE001
+        return False
+    return gpu_total_gb >= _UNIFIED_MEMORY_SHARE * ram_gb
+
+
+def _largest_component_gb(pipeline: Any) -> float | None:
+    """Size in GB of the biggest torch module among the pipeline's components (None when none can be measured)."""
+    components = getattr(pipeline, "components", None)
+    if not isinstance(components, dict):
+        return None
+    largest = 0
+    for module in components.values():
+        parameters = getattr(module, "parameters", None)
+        if not callable(parameters):
+            continue
+        try:
+            size = sum(p.numel() * p.element_size() for p in parameters())
+        except Exception:  # noqa: BLE001 - an odd component must not stop the load
+            continue
+        largest = max(largest, size)
+    return largest / 1e9 if largest else None
 
 
 def _should_apply_memory_savers(

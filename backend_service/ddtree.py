@@ -175,7 +175,7 @@ def ddtree_unsupported_reason(target_model: Any, target_ops: Any = None) -> Opti
     """Why ``target_model`` cannot run DDTree on MLX, or None when it can."""
     try:
         if target_ops is None:
-            from dflash_mlx.runtime import resolve_target_ops
+            from dflash_mlx.engine.target_ops import resolve_target_ops
 
             target_ops = resolve_target_ops(target_model)
         cache = target_ops.make_cache(target_model, enable_speculative_linear_cache=False)
@@ -210,18 +210,11 @@ def _draft_top_k(mx: Any, draft_logits: Any, k: int, suppress_mask: Any) -> tupl
 
 def _make_draft_cache(draft_model: Any, context_len: int) -> list[Any]:
     """The draft cache upstream's own decode loop uses for this drafter."""
-    try:
-        from dflash_mlx.draft_backend import make_draft_backend
-        from dflash_mlx.engine.config import resolve_draft_window
-    except ImportError:
-        from dflash_mlx.model import ContextOnlyDraftKVCache
+    from dflash_mlx.draft_backend import EagerDraftBackend
+    from dflash_mlx.engine.config import resolve_draft_window
 
-        return [
-            ContextOnlyDraftKVCache(sink_size=64, window_size=1024)
-            for _ in range(len(draft_model.layers))
-        ]
     sink_size, window_size = resolve_draft_window(None, draft_model, context_len=context_len)
-    return make_draft_backend().make_cache(
+    return EagerDraftBackend().make_cache(
         draft_model=draft_model, sink_size=sink_size, window_size=window_size,
     )
 
@@ -275,10 +268,10 @@ def generate_ddtree_mlx(
     linear DFlash.
     """
     import mlx.core as mx
-    # dflash-mlx 0.1.5+ exposes the per-architecture entry points (text
-    # model, embeddings, lm head, cache factory, hidden-feature extraction)
-    # through a per-family ``target_ops`` adapter.
-    from dflash_mlx.runtime import resolve_target_ops
+    # dflash-mlx exposes the per-architecture entry points (text model,
+    # embeddings, lm head, cache factory, hidden-feature extraction) through a
+    # per-family ``target_ops`` adapter (``dflash_mlx.engine.target_ops`` since 0.1.6).
+    from dflash_mlx.engine.target_ops import resolve_target_ops
 
     target_ops = resolve_target_ops(target_model)
     bind_target = getattr(draft_model, "bind_target_model", None)

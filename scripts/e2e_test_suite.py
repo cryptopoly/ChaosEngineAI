@@ -95,6 +95,19 @@ def _cli_json(*argv: str, timeout: float = 600.0) -> tuple[int, Any, str]:
         return rc, None, err or out
 
 
+def _non_mlx_engine_skip(loaded: Any) -> str | None:
+    """A skip reason when a load that asked for MLX landed on another engine, else None.
+
+    The unusable-settings check sends ``jsonSchema``, which MLX corrects with a note.
+    On a CUDA host an MLX request routes to TensorFold native, which has no grammar
+    without its extra and answers 400 on purpose, so the check says nothing there.
+    """
+    engine = loaded.get("engine") if isinstance(loaded, dict) else None
+    if engine == "mlx":
+        return None
+    return f"loaded engine is {engine!r}, not MLX; the settings guard check is the MLX lane's"
+
+
 def _check(name: str, fn) -> CheckResult:
     """Run a check fn and capture pass/fail/skip + reason."""
     started = time.perf_counter()
@@ -119,6 +132,7 @@ class Capability:
     gguf_mtp_available: bool = False
     mtplx_available: bool = False
     tensorfold_available: bool = False
+    tensorfold_native: bool = False  # system.tensorfold.engine == "native" (TensorFold 1.x, CUDA)
     tensorfold_models: list[str] = field(default_factory=list)
     tensorfold_exclusive: list[str] = field(default_factory=list)
     tensorfold_extras: list[str] = field(default_factory=list)
@@ -150,6 +164,7 @@ def probe_capabilities() -> Capability:
         cap.mtplx_supported_models = mtplx_info.get("supportedModels") or []
         tensorfold_info = system.get("tensorfold") or {}
         cap.tensorfold_available = bool(tensorfold_info.get("available"))
+        cap.tensorfold_native = tensorfold_info.get("engine") == "native"
         cap.tensorfold_models = tensorfold_info.get("supportedModels") or []
         cap.tensorfold_exclusive = tensorfold_info.get("exclusiveModels") or []
         cap.tensorfold_extras = tensorfold_info.get("extras") or []
@@ -199,6 +214,12 @@ def probe_capabilities() -> Capability:
 
 
 _CHAT_ARCH_SUFFIXES = ("ForCausalLM", "ForConditionalGeneration", "LMHeadModel")
+
+
+def unmeasured_listed_rows(rows: list[dict[str, Any]]) -> list[str]:
+    """Keys of listed speech rows without measured numbers (Qwen3-TTS rows are exempt: they predate the rule)."""
+    return [str(r.get("key")) for r in rows
+            if r.get("family") != "qwen3-tts" and (r.get("estimates") or {}).get("basis") != "measured"]
 
 
 def _dir_bytes(path: Path) -> int:
@@ -315,6 +336,8 @@ def phase_0(cap: Capability) -> PhaseResult:
         exclusive = info.get("exclusiveModels") or []
         if not supported:
             return "fail", "system.tensorfold.supportedModels empty", {"info": info}
+        if info.get("engine") == "native":
+            return "pass", "native registry; the Discover rows are the Mac engine's", {"info": info}
         variants = {
             v.get("repo"): v
             for f in (payload.get("featuredModels") or [])
@@ -596,6 +619,17 @@ def phase_0(cap: Capability) -> PhaseResult:
 # ---------------------------------------------------------------------------
 
 
+def _apple_chip() -> str:
+    """``Apple M4 Max`` and the like on a Mac, ``""`` elsewhere or when unreadable."""
+    if sys.platform != "darwin":
+        return ""
+    try:
+        out = subprocess.run(["sysctl", "-n", "machdep.cpu.brand_string"], capture_output=True, text=True, timeout=5, check=False)
+    except (OSError, subprocess.SubprocessError):
+        return ""
+    return out.stdout.strip()
+
+
 def _pick_model_by_ref_prefix(local: list[tuple[str, str]], *needles: str) -> tuple[str, str] | None:
     for ref, path in local:
         low = ref.lower()
@@ -777,6 +811,8 @@ def phase_1(cap: Capability) -> PhaseResult:
                 fb = _specdec_fallback_reason(note)
                 if fb:
                     return "fail", f"DDTree silently fell back ('{fb}'): {note[:160]}", detail
+                if "ddtree is not available for this model" in note.lower():
+                    continue  # a hybrid (linear-attention) model: the app says so and runs plain DFlash
                 if not detail.get("treeBudget"):
                     return "fail", f"treeBudget not applied (got {detail.get('treeBudget')}): {note[:160]}", detail
                 if "ddtree" not in note.lower():
@@ -842,6 +878,8 @@ def phase_1(cap: Capability) -> PhaseResult:
             fb = _specdec_fallback_reason(note)
             if fb:
                 return "fail", f"MTPLX silently fell back ('{fb}'): {note[:160]}", detail
+            if "mtplx" not in low and "dflash speculative decoding active" in low:
+                continue  # DFlash serves this model first; MTPLX is only tried on a model it owns
             if "mtplx" not in low:
                 return "fail", f"MTPLX expected but runtimeNote was: {note[:160]}", detail
             return "pass", "", detail
@@ -857,6 +895,8 @@ def phase_1(cap: Capability) -> PhaseResult:
     def _tensorfold_engine():
         if not cap.tensorfold_available:
             return "skip", "TensorFold not installed", {}
+        if cap.tensorfold_native:
+            return "skip", "native engine: see the TensorFold 1.x check", {}
         for repo in cap.tensorfold_models:
             leaf = repo.split("/")[-1]
             pick = _pick_model_by_ref_prefix(cap.local_mlx_models, leaf)
@@ -871,7 +911,7 @@ def phase_1(cap: Capability) -> PhaseResult:
             if status != "pass":
                 return status, reason, detail
             note = (detail.get("runtimeNote") or "")
-            if detail.get("engine") != "tensorfold":
+            if detail.get("engine") not in ("tensorfold", "tensorfold-native"):
                 return "fail", f"TensorFold expected but engine was {detail.get('engine')!r}: {note[:160]}", detail
             if not detail.get("speculativeDecoding"):
                 return "fail", f"TensorFold loaded without speculative decoding: {note[:160]}", detail
@@ -886,6 +926,143 @@ def phase_1(cap: Capability) -> PhaseResult:
                 ), detail
             return "pass", "", detail
         return "skip", "no TensorFold-served checkpoint on disk", {}
+
+    # 1d2b. TensorFold 1.x native binary on a CUDA host (FU-111). Skips when the
+    # binary is absent, the gate refuses this machine, or no served checkpoint is
+    # on disk. Asserts the load really reports engine "tensorfold-native" (not a
+    # fallback) and that a reply comes back; the 27B is tried with its drafter.
+    def _tensorfold_native_engine():
+        rc, state, _ = _cli_json("call", "GET", "/api/setup/tensorfold-native-status", timeout=60.0)
+        if rc != 0 or not isinstance(state, dict):
+            return "fail", "tensorfold-native-status failed", {}
+        if not state.get("installed"):
+            return "skip", "TensorFold 1.x binary not installed", {"gate": state.get("gate")}
+        if sys.platform == "darwin":
+            # On a Mac the native engine engages only with speculative decoding ticked (the Mac checks above and
+            # the 1.2.7 families check cover it); a plain load stays on MLX by design.
+            return "skip", "Mac lane is covered by the Apple Silicon TensorFold checks", {}
+        if not (state.get("gate") or {}).get("offered"):
+            return "skip", f"gate refused this machine: {(state.get('gate') or {}).get('message', '')[:160]}", state
+        # Smallest model first so a card with little free VRAM still gets a run.
+        for row in sorted(state.get("models") or [], key=lambda r: r.get("vramGb") or 0):
+            if not row.get("servable") or row.get("fits") is False:
+                continue
+            repo = row["repo"]
+            pick = _pick_model_by_ref_prefix(cap.local_mlx_models, repo.split("/")[-1])
+            if not pick:
+                continue
+            _ref, path = pick
+            status, reason, detail = _load_unload_prompt(
+                repo.split("/")[-1], path=path, backend="auto", spec=bool(row.get("drafter")),
+                canonical_repo=repo, context=8192, max_tokens=24, load_timeout=1800.0,
+            )
+            if status != "pass":
+                return status, reason, detail
+            if detail.get("engine") != "tensorfold-native":
+                return "fail", f"expected tensorfold-native, engine was {detail.get('engine')!r}", detail
+            if row.get("drafter") and not detail.get("dflashDraftModel"):
+                return "fail", f"drafter {row['drafter']} not engaged: {(detail.get('runtimeNote') or '')[:160]}", detail
+            return "pass", "", detail
+        return "skip", "no served checkpoint that fits is on disk", {}
+
+    # 1d2b2. Structured output through the native TensorFold binary (FU-111): needs
+    # tfgrammar beside the binary. Skips when the binary, the grammar library or the
+    # small Qwen3.5-2B checkpoint is absent; a reply that is not schema-valid JSON fails.
+    def _tensorfold_native_grammar():
+        rc, state, _ = _cli_json("call", "GET", "/api/setup/tensorfold-native-status", timeout=60.0)
+        if rc != 0 or not isinstance(state, dict):
+            return "fail", "tensorfold-native-status failed", {}
+        if not state.get("installed") or sys.platform == "darwin":
+            return "skip", "TensorFold 1.x binary not installed (or a Mac)", {}
+        if not (state.get("gate") or {}).get("offered"):
+            return "skip", "gate refused this machine", {}
+        if not state.get("grammar"):
+            return "skip", "tfgrammar library absent beside the binary", {}
+        repo = "mlx-community/Qwen3.5-2B-MLX-4bit"
+        pick = _pick_model_by_ref_prefix(cap.local_mlx_models, repo.split("/")[-1])
+        if not pick:
+            return "skip", "Qwen3.5-2B is not on disk", {}
+        _ref, path = pick
+        rc, loaded, err = _cli_json("load", repo.split("/")[-1], "--backend", "auto", "--path", path,
+                                    "--canonical-repo", repo, "--context", "4096", "--timeout", "600", timeout=660.0)
+        if rc != 0 or not isinstance(loaded, dict) or loaded.get("state") != "loaded":
+            return "fail", f"load failed: {str(err or loaded)[:200]}", {}
+        try:
+            body = json.dumps({
+                "prompt": "Invent a person.", "maxTokens": 160, "temperature": 0.0,
+                "jsonSchema": {"type": "object", "additionalProperties": False, "required": ["name", "age"],
+                               "properties": {"name": {"type": "string"}, "age": {"type": "integer"}}},
+            })
+            rc, gen, err = _cli_json("call", "POST", "/api/chat/generate", "--body", body, "--timeout", "300")
+        finally:
+            _cli("unload", timeout=60.0)
+        if rc != 0 or not isinstance(gen, dict):
+            return "fail", f"generate rc={rc}: {(err or '')[:200]}", {}
+        try:
+            text = gen["session"]["messages"][-1]["text"]
+            doc = json.loads(text)
+        except (KeyError, IndexError, ValueError):
+            return "fail", "reply is not JSON", {"reply": str(gen)[:300]}
+        if set(doc) != {"name", "age"} or not isinstance(doc["name"], str) or not isinstance(doc["age"], int):
+            return "fail", f"reply breaks the schema: {text[:160]}", {}
+        return "pass", "", {"reply": text[:160]}
+
+    # 1d2c. Families the TensorFold 1.2.7 binary added (FU-168). Every repo below
+    # must reach the status payload's supportedModels (the registry dropping one is
+    # a fail). Then one load per family on disk, smallest first, with speculative
+    # decoding ticked: the tested families route to TensorFold only that way, so a
+    # load that comes back on another engine is a silent fallback, not a pass.
+    # Nanbeige needs an M5 or later Mac (TensorFold refuses M1-M4 by name), and
+    # MiniMax a 256 GB Mac: those skip with the reason. Never downloads; skips when
+    # TensorFold is absent or nothing of these families is on disk.
+    def _tensorfold_new_families():
+        families = (
+            ("LFM3", ("LiquidAI/LFM3-1.7B-MLX-4bit", "LiquidAI/LFM3-1.7B-MLX-6bit", "LiquidAI/LFM3-1.7B-MLX-8bit")),
+            ("Spark-X2.6", ("XHToken/Spark-X2.6-4B",)),
+            ("LFM2.5", ("LiquidAI/LFM2.5-24B-A2B-MLX-4bit", "LiquidAI/LFM2.5-24B-A2B-MLX-6bit", "LiquidAI/LFM2.5-24B-A2B-MLX-8bit")),
+            ("Nanbeige4.3", ("Nanbeige/Nanbeige4.3-33B-INT4", "Nanbeige/Nanbeige4.3-33B")),
+            ("MiniMax-M3.1-Flash", ("BobClawblaw/MiniMax-M3.1-Flash-MLX-mix256k", "BobClawblaw/MiniMax-M3.1-Flash-MLX-mix34")),
+        )
+        if not cap.tensorfold_available:
+            return "skip", "TensorFold not installed", {}
+        if cap.tensorfold_native:
+            return "skip", "CUDA host: LFM2.5 is covered by the TensorFold 1.x native check", {}
+        missing = [repo for _name, repos in families for repo in repos if repo not in cap.tensorfold_models]
+        if missing:
+            return "fail", f"registry lost FU-168 checkpoints: {', '.join(missing)}", {}
+        results: dict[str, str] = {}
+        ran = 0
+        for name, repos in families:
+            pick = None
+            for repo in repos:
+                found = _pick_model_by_ref_prefix(cap.local_mlx_models, repo.split("/")[-1])
+                if found:
+                    pick = (repo, found[1])
+                    break
+            if not pick:
+                results[name] = "not on disk"
+                continue
+            repo, path = pick
+            generation = re.search(r"\bM(\d+)\b", _apple_chip())
+            if name == "Nanbeige4.3" and generation and int(generation.group(1)) < 5:
+                results[name] = f"skipped: needs an M5 or later Mac ({_apple_chip()})"
+                continue
+            status, reason, detail = _load_unload_prompt(
+                repo.split("/")[-1], path=path, backend="mlx", spec=True,
+                canonical_repo=repo, context=8192, max_tokens=24, load_timeout=1800.0,
+            )
+            if status != "pass":
+                return status, f"{name}: {reason}", {"results": results, **detail}
+            if detail.get("engine") not in ("tensorfold", "tensorfold-native"):
+                return "fail", (
+                    f"{name}: TensorFold expected but engine was {detail.get('engine')!r}: "
+                    f"{(detail.get('runtimeNote') or '')[:160]}"
+                ), {"results": results, **detail}
+            results[name] = f"pass ({detail.get('engine')})"
+            ran += 1
+        if not ran:
+            return "skip", f"no FU-168 family checkpoint loaded: {results}", {"results": results}
+        return "pass", "", {"results": results}
 
     # 1d3. Kolibri 1 (FU-103). mlx-lm ships no ``kolibri1`` architecture, so the
     # worker loads the one vendored in backend_service/mlx_models; a load that
@@ -915,6 +1092,32 @@ def phase_1(cap: Capability) -> PhaseResult:
             ref, path=path, backend="mlx", context=4096, max_tokens=24,
             prompt="Reply with two words: hello there", load_timeout=600.0,
         )
+
+    # 1d5. CUDA llama-server (Linux and Windows, NVIDIA). Reads the status route and
+    # checks the driver gate and the install record agree. Never downloads: it skips on
+    # a host without an NVIDIA driver, when the driver is too old (the message must say
+    # so), and when the CUDA build is not installed. When it is installed it must list a
+    # CUDA device ("in-use") and the install record must carry both archive checksums.
+    def _llama_cuda():
+        rc, state, _ = _cli_json("call", "GET", "/api/setup/llama-cuda-status", timeout=60.0)
+        if rc != 0 or not isinstance(state, dict):
+            return "fail", "llama-cuda-status failed", {}
+        for key in ("supported", "canInstall", "state", "message", "installed", "inUse", "tag"):
+            if key not in state:
+                return "fail", f"status is missing {key!r}", state
+        if not state["supported"]:
+            return "skip", f"no NVIDIA CUDA lane on this host ({state['state']}): {state['message'][:120]}", state
+        if state.get("driverTooOld"):
+            if state["canInstall"] or "too old" not in state["message"]:
+                return "fail", "driver too old but the status offers the install or hides why", state
+            return "skip", state["message"][:160], state
+        if not state["installed"]:
+            return "skip", "CUDA llama-server not installed (POST /api/setup/install-llama-cuda)", state
+        if not state["inUse"]:
+            return "fail", f"installed but lists no CUDA device: {state['message'][:160]}", state
+        if not state.get("verified"):
+            return "fail", "installed build was not checked against a published sha256", state
+        return "pass", "", state
 
     # 1e. GGUF (llama.cpp backend). Cycle through .gguf files until one loads
     # so a single broken model doesn't fail the whole check.
@@ -1025,6 +1228,36 @@ def phase_1(cap: Capability) -> PhaseResult:
             return "skip", f"drafter not on disk or not paired: {note[:160]}", detail
         return "pass", "", detail
 
+    # 1e5. Qwen3.8-27B with the DFlash 2 drafter (``dflash-`` sidecar beside the
+    # GGUF, read from the file's metadata by llama.cpp). Skips when the model or
+    # its sidecar is not on disk, or when the card cannot hold both (the load
+    # then fails on memory, which is not a pairing bug).
+    def _qwen38_dflash2():
+        if not cap.gguf_available:
+            return "skip", "GGUF backend not available", {}
+        if not cap.gguf_mtp_available:
+            return "skip", "llama-server lacks --spec-type (run scripts/update-llama-cpp.sh)", {}
+        mains = [
+            (ref, p) for (ref, p) in cap.local_gguf_files
+            if "qwen3.8-27b" in p.lower() and not Path(p).name.lower().startswith(("dflash-", "mtp-", "mmproj-"))
+            and any(Path(p).parent.glob("dflash-Qwen3.8-27B*.gguf"))
+        ]
+        if not mains:
+            return "skip", "no Qwen3.8-27B GGUF with a dflash- sidecar on disk", {}
+        ref, gguf_path = mains[0]
+        status, reason, detail = _load_unload_prompt(
+            ref, path=gguf_path, backend="gguf", spec=True,
+            canonical_repo="ggml-org/Qwen3.8-27B-GGUF",
+            cache_strategy="native", context=4096, max_tokens=24,
+            load_timeout=900.0,
+        )
+        if status != "pass":
+            return status, reason, detail
+        note = detail.get("runtimeNote") or ""
+        if "draft-dflash" not in note or "dflash-Qwen3.8-27B" not in note:
+            return "fail", f"sidecar present but note names no DFlash 2 drafter: {note[:160]}", detail
+        return "pass", "", detail
+
     # 1f. Long context cache preview
     def _long_context_preview():
         pick = _pick_model_by_ref_prefix(cap.local_mlx_models, "Qwen3") \
@@ -1096,6 +1329,10 @@ def phase_1(cap: Capability) -> PhaseResult:
         )
         if rc != 0 or not isinstance(loaded, dict) or loaded.get("state") != "loaded":
             return "fail", f"load failed: {err[:160] if err else loaded}", {}
+        skip_reason = _non_mlx_engine_skip(loaded)
+        if skip_reason:
+            _cli("unload", timeout=60.0)
+            return "skip", skip_reason, {"engine": loaded.get("engine")}
         body = json.dumps({
             "sessionId": "e2e-hostile", "prompt": "Say hello in one short sentence.",
             "modelRef": ref, "backend": "mlx", "cacheStrategy": "native",
@@ -1173,11 +1410,16 @@ def phase_1(cap: Capability) -> PhaseResult:
         ("MLX DFlash on a hybrid model (FU-135)", _mlx_dflash_hybrid),
         ("MLX + MTPLX speculative", _mtplx),
         ("MLX + TensorFold exact speculative (FU-093)", _tensorfold_engine),
+        ("TensorFold 1.x native, CUDA (FU-111)", _tensorfold_native_engine),
+        ("TensorFold 1.x native structured output (FU-111)", _tensorfold_native_grammar),
+        ("TensorFold 1.2.7 families: LFM3, LFM2.5, Spark, Nanbeige, MiniMax (FU-168)", _tensorfold_new_families),
         ("MLX Kolibri 1, vendored architecture (FU-103)", _kolibri),
         ("MLX LFM3, vendored architecture", _lfm3),
+        ("CUDA llama-server lane (Windows and Linux)", _llama_cuda),
         ("GGUF llama.cpp", _gguf),
         ("GGUF MTP speculative", _gguf_mtp),
         ("GGUF speculative lane (sidecar / ngram-mod)", _gguf_spec_lane),
+        ("Qwen3.8-27B DFlash 2 drafter (GGUF sidecar)", _qwen38_dflash2),
         ("GGUF Nemotron 3.5 Bolt + pinned DFlash drafter", _bolt_drafter),
         ("long context cache-preview", _long_context_preview),
         ("fused attention flag", _fused_attention),
@@ -1366,7 +1608,19 @@ def phase_4(cap: Capability) -> PhaseResult:
         )
         if q21 is None or q21.get("engine") != "sdcpp":
             return "fail", f"Qwen-Image-2.1 sd.cpp variant missing or mis-routed: {q21 and q21.get('engine')}", {}
-        # FU-096: the MLX variants run through the mflux engine (own venv).
+        return "pass", "", {"families": ["qwen-image", "z-image", "flux-2"]}
+
+    # FU-096: the MLX variants run through the mflux engine (own venv). The catalog
+    # lists them on Apple Silicon only, so every other host skips this.
+    def _mflux_catalog_rows():
+        import platform
+
+        if not (sys.platform == "darwin" and platform.machine() == "arm64"):
+            return "skip", "the mflux image rows are listed on Apple Silicon only", {}
+        rc, payload, err = _cli_json("image-catalog", timeout=15.0)
+        if rc != 0 or not isinstance(payload, dict):
+            return "fail", f"catalog fetch failed: {err[:160]}", {}
+        fams = {f.get("id"): f for f in (payload.get("families") or [])}
         wanted_mflux = {
             "Qwen/Qwen-Image-2.1-mflux": "qwen-image",
             "black-forest-labs/FLUX.2-klein-4B-mflux": "flux-2",
@@ -1379,7 +1633,7 @@ def phase_4(cap: Capability) -> PhaseResult:
             )
             if found is None or found.get("engine") != "mflux":
                 return "fail", f"{variant_id} missing or not routed to mflux", {}
-        return "pass", "", {"families": ["qwen-image", "z-image", "flux-2"]}
+        return "pass", "", {}
 
     # FU-096 (e): the FLUX.1 sd.cpp variants point at sd.cpp's own GGUF repos
     # (the city96 Q4_K_M names they used to carry do not exist on the Hub) and
@@ -1459,6 +1713,41 @@ def phase_4(cap: Capability) -> PhaseResult:
         _cli("image-unload", timeout=30.0)
         return "pass", "", {"modelId": model_id, "keys": sorted((payload or {}).keys())[:10] if isinstance(payload, dict) else None}
 
+    # Unload gives the memory back, so a second generation after it is not refused. On Windows the backend used to
+    # keep the whole pipeline (16.6 GB working set, 22.9 GB private for FLUX.2 Klein) after Unload on some loads: torch's
+    # allocator held memory freed into segments of threads that had exited, and the gate refused the next run.
+    def _memory_returns_after_unload():
+        rc, lib, _ = _cli_json("image-library", timeout=15.0)
+        models = [m for m in ((lib or {}).get("models") or [])
+                  if (m.get("availableLocally") or m.get("hasLocalData")) and m.get("engine") not in ("sdcpp", "mflux")]
+        if not models:
+            return "skip", "no diffusers image model installed locally", {}
+        models.sort(key=lambda m: float(m.get("sizeGb") or 1e9))
+        model_id = models[0].get("id") or models[0].get("repo")
+        before = _backend_private_gb()
+        if before is None:
+            return "skip", "the backend process is not on this machine (cannot read its memory)", {}
+        rows = []
+        for attempt in (1, 2):
+            rc, _payload, err = _cli_json(
+                "image-generate", "a lighthouse on a cliff at dusk", "--model", model_id, "--steps", "4",
+                "--width", "512", "--height", "512", "--seed", "7", "--timeout", "1800",
+            )
+            if rc != 0:
+                if attempt == 1 and _is_memory_refusal(err):
+                    return "skip", f"host memory gate fired on the first run: {err[:200]}", {}
+                return "fail", f"generation {attempt} after unload: rc={rc} {err[:240]}", {"rows": rows}
+            loaded = _backend_private_gb() or 0.0
+            _cli("image-unload", timeout=60.0)
+            time.sleep(3)
+            after = _backend_private_gb() or 0.0
+            rows.append({"loadedGb": round(loaded, 1), "afterUnloadGb": round(after, 1)})
+            grown = loaded - before
+            if grown > 2.0 and after - before > max(2.0, 0.3 * grown):
+                return "fail", (f"unload kept {after - before:.1f} GB of the {grown:.1f} GB the model took "
+                                f"(backend {before:.1f} GB before, {after:.1f} GB after)"), {"rows": rows}
+        return "pass", "", {"modelId": model_id, "beforeGb": round(before, 1), "rows": rows}
+
     # FU-096: the mflux engine end to end (own venv, one process per image).
     # Skips when the engine is not installed or its checkpoint is not on disk.
     def _generate_mflux():
@@ -1516,12 +1805,44 @@ def phase_4(cap: Capability) -> PhaseResult:
         _cli("image-unload", timeout=30.0)
         return "pass", "", {"modelId": model_id}
 
+    # RTX 4090 estimate audit (FU-164): on a discrete NVIDIA card the chat memory check judges the card's own
+    # memory (a 60 GB model used to "fit" because 64 GB of system RAM was free) and the FLUX.2 Klein badge follows
+    # the runtime's model offload (9.1 GB measured, 20.8 GB claimed before). Skips on a Mac, a CPU host and a GPU
+    # that shares system memory.
+    def _cuda_estimates():
+        status, raw = _voice_http("GET", "/api/models/memory-check?weights_gb=60&context_tokens=8192", timeout=30.0)
+        if status != 200:
+            return "fail", f"memory-check HTTP {status}: {raw[:160]!r}", {}
+        check = json.loads(raw.decode("utf-8"))
+        if check.get("memoryKind") != "gpu":
+            return "skip", "not a discrete NVIDIA card (one memory pool is judged)", {}
+        free_gpu = float(check.get("freeGpuGb") or 0)
+        if free_gpu + float(check.get("reclaimableGb") or 0) < 50 and check.get("verdict") != "may_not_fit":
+            return "fail", f"60 GB on a card with {free_gpu} GB free reads {check.get('verdict')}", check
+        if check.get("verdict") == "may_not_fit" and "GPU memory" not in (check.get("message") or ""):
+            return "fail", f"message does not name GPU memory: {check.get('message')!r}", {}
+        rc, payload, err = _cli_json("image-catalog", timeout=20.0)
+        if rc != 0 or not isinstance(payload, dict):
+            return "fail", f"image-catalog failed: {err[:160]}", {}
+        klein = next(
+            (v for f in payload.get("families") or [] for v in f.get("variants") or []
+             if v.get("id") == "black-forest-labs/FLUX.2-klein-4B"),
+            None,
+        )
+        fit = (klein or {}).get("fit") or {}
+        if fit.get("status") in {"fits", "tight"} and float(fit.get("needGb") or 0) > 12.0:
+            return "fail", f"FLUX.2 Klein still counts the whole pipeline on the card: {fit}", {}
+        return "pass", "", {"chatVerdict": check.get("verdict"), "klein": fit.get("status"), "kleinNeedGb": fit.get("needGb")}
+
     for name, fn in [
         ("catalog", _catalog),
         ("new image families (Qwen-Image / Z-Image / FLUX.2)", _new_image_families),
+        ("mflux image rows in the catalog (FU-096)", _mflux_catalog_rows),
         ("fit ratings and size limits in the catalogs (FU-133)", _fit_and_limits),
+        ("CUDA estimates judge the card's own memory (FU-164)", _cuda_estimates),
         ("FLUX.1 sd.cpp variants pin real GGUF files (FU-096)", _flux_sdcpp_catalog),
         ("library", _library), ("runtime", _runtime), ("generate", _generate),
+        ("memory returns after unload; a second generation is not refused", _memory_returns_after_unload),
         ("generate via mflux (FU-096)", _generate_mflux),
         ("generate via sd.cpp FLUX.1 (FU-096)", _generate_flux_sdcpp),
     ]:
@@ -1546,8 +1867,51 @@ _MEMORY_REFUSAL_MARKERS = (
 )
 
 
+def _gated_row_blocked_check(row: dict[str, Any], *, token_present: bool) -> tuple[str, str] | None:
+    """Verdict for a gated row whose weights are absent: ``None`` means keep going.
+
+    A saved Hugging Face token (settings or environment) opens a gated row, so the reason is only asserted
+    when no token exists. Only the presence flag is ever read, never the token.
+    """
+    if row.get("accessBlockedReason"):
+        return "skip", "LTX-2.5 weights not on this machine (gated, ~71 GB): " + str(row["accessBlockedReason"])[:120]
+    if token_present:
+        return "skip", "a Hugging Face token is present, so the gated row is not blocked and its weights are not downloaded"
+    if not row.get("hasLocalData"):
+        return "fail", "a gated row with no weights and no token must say why it is blocked"
+    return "skip", "LTX-2.5 weights not on this machine (gated, ~71 GB): not downloaded"
+
+
+def _hf_token_present() -> bool:
+    """Same notion as the backend: a saved settings token or the environment variable (flag only, never the value)."""
+    if os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN"):
+        return True
+    try:
+        code, data = _voice_http("GET", "/api/settings", timeout=10.0)
+        return code == 200 and bool((json.loads(data.decode("utf-8")) or {}).get("hasHuggingFaceToken"))
+    except Exception:
+        return False
+
+
 def _is_memory_refusal(err: str) -> bool:
     return any(marker in err for marker in _MEMORY_REFUSAL_MARKERS)
+
+
+def _backend_private_gb() -> float | None:
+    """Memory the backend process holds in GB (private bytes on Windows, resident elsewhere), or None when the
+    backend is not a local process listening on the suite's port, or psutil is missing."""
+    if _HOST not in ("127.0.0.1", "localhost", "::1"):
+        return None
+    try:
+        import psutil
+
+        for conn in psutil.net_connections("tcp"):
+            if conn.laddr and conn.laddr.port == _PORT and conn.status == psutil.CONN_LISTEN and conn.pid:
+                info = psutil.Process(conn.pid).memory_info()
+                return float(getattr(info, "private", 0) or info.rss) / (1024 ** 3)
+    except Exception:  # noqa: BLE001 - access denied, psutil missing: the check skips
+        return None
+    return None
 
 
 def phase_5(cap: Capability) -> PhaseResult:
@@ -1669,6 +2033,8 @@ def phase_5(cap: Capability) -> PhaseResult:
     def _ltx2_engine():
         import platform
 
+        if not (sys.platform == "darwin" and platform.machine() == "arm64"):
+            return "skip", "ltx-2-mlx needs Apple Silicon (the LTX-2.5 MLX row is listed there only)", {}
         rc, payload, _ = _cli_json("video-catalog", timeout=15.0)
         variants = [v for f in ((payload or {}).get("families") or []) for v in (f.get("variants") or [])]
         row = next((v for v in variants if v.get("id") == "dgrauet/ltx-2.5-mlx-q4"), None)
@@ -1677,8 +2043,6 @@ def phase_5(cap: Capability) -> PhaseResult:
         rc, status, _ = _cli_json("ltx2-status", timeout=15.0)
         if rc != 0 or not isinstance(status, dict):
             return "fail", "ltx2-status failed", {}
-        if not (sys.platform == "darwin" and platform.machine() == "arm64"):
-            return "skip", "ltx-2-mlx needs Apple Silicon", {}
         if not status.get("installed"):
             return "skip", "the LTX MLX engine is not installed", {}
         if not row.get("availableLocally"):
@@ -1703,9 +2067,132 @@ def phase_5(cap: Capability) -> PhaseResult:
             return "fail", f"the clip should carry sound but hasAudio={artifact.get('hasAudio')!r}", {}
         return "pass", "", {"seconds": artifact.get("durationSeconds")}
 
+    def _wan_image_to_video():
+        # Wan 2.2 TI2V-5B (diffusers) starts a clip from a picture; its end frame is refused (LTX-2 takes both).
+        rc, payload, _ = _cli_json("video-catalog", timeout=15.0)
+        variants = [v for f in ((payload or {}).get("families") or []) for v in (f.get("variants") or [])]
+        row = next((v for v in variants if v.get("id") == "Wan-AI/Wan2.2-TI2V-5B-Diffusers"), None)
+        if row is None:
+            return "skip", "Wan 2.2 TI2V 5B is not in this catalog", {}
+        if row.get("acceptsImageInput") is not True or row.get("acceptsEndImage") is not False:
+            return "fail", f"flags are acceptsImageInput={row.get('acceptsImageInput')!r}, acceptsEndImage={row.get('acceptsEndImage')!r}", {}
+        if "img2video" not in (row.get("taskSupport") or []):
+            return "fail", "taskSupport does not list img2video", {}
+        picture = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==")
+        code, data = _voice_http("POST", "/api/storyboard/uploads", body=picture, content_type="application/octet-stream", timeout=30.0)
+        handle = (json.loads(data.decode("utf-8")) if code == 200 else {}).get("handle")
+        if not handle:
+            return "fail", f"picture upload: HTTP {code}", {}
+        code, data = _voice_http("POST", "/api/video/generate", body=json.dumps({
+            "modelId": "Lightricks/LTX-Video", "prompt": "x", "startImagePath": handle}).encode("utf-8"),
+            content_type="application/json", timeout=60.0)
+        if code != 400 or b"cannot start from an image" not in data:
+            return "fail", f"a start picture on a model without image input answered HTTP {code}", {}
+        if not row.get("availableLocally"):
+            return "pass", "catalog and refusal only (the model is not installed)", {"live": False}
+        code, data = _voice_http("POST", "/api/video/generate", body=json.dumps({
+            "modelId": "Wan-AI/Wan2.2-TI2V-5B-Diffusers", "prompt": "waves rolling in", "startImagePath": handle,
+            "endImagePath": handle, "numFrames": 17, "width": 512, "height": 320, "steps": 4, "seed": 1}).encode("utf-8"),
+            content_type="application/json", timeout=60.0)
+        if code != 400 or b"only a start image" not in data:
+            return "fail", f"an end picture answered HTTP {code}, wanted the 400 that says only a start image", {}
+        code, data = _voice_http("POST", "/api/video/generate", body=json.dumps({
+            "modelId": "Wan-AI/Wan2.2-TI2V-5B-Diffusers", "prompt": "waves rolling in", "startImagePath": handle,
+            "numFrames": 17, "width": 512, "height": 320, "steps": 4, "seed": 1}).encode("utf-8"),
+            content_type="application/json", timeout=3600.0)
+        artifact = (json.loads(data.decode("utf-8")) if code == 200 else {}).get("artifact") or {}
+        if not artifact.get("videoPath") or not artifact.get("startImagePath"):
+            if code == 503 and _is_memory_refusal(data.decode("utf-8", "replace")):
+                return "skip", "host memory gate fired: " + data.decode("utf-8", "replace")[:160], {}
+            return "fail", f"live image-to-video: HTTP {code} {data[:160]!r}", {}
+        return "pass", "", {"seconds": artifact.get("durationSeconds"), "live": True}
+
+    def _video_cache_strategy():
+        # The video request carries a cache strategy and an interval of 2 to 16 (it used to be dropped, then capped at 1).
+        rc, payload, _ = _cli_json("video-catalog", timeout=15.0)
+        variants = [v for f in ((payload or {}).get("families") or []) for v in (f.get("variants") or [])]
+        row = next((v for v in variants if v.get("id") == "Wan-AI/Wan2.2-TI2V-5B-Diffusers"), None)
+        if row is None:
+            return "skip", "Wan 2.2 TI2V 5B is not in this catalog", {}
+        body = {"modelId": "Wan-AI/Wan2.2-TI2V-5B-Diffusers", "prompt": "waves rolling in", "numFrames": 17,
+                "width": 512, "height": 320, "steps": 8, "seed": 1, "cacheStrategy": "taylorseer", "cacheRelL1Thresh": 3}
+        code, data = _voice_http("POST", "/api/video/generate", body=json.dumps(body).encode("utf-8"),
+                                 content_type="application/json", timeout=3600.0)
+        if code == 422:
+            return "fail", f"the request schema rejects a cache strategy: {data[:200]!r}", {}
+        if not row.get("availableLocally"):
+            return "pass", f"schema accepts the cache fields (HTTP {code}, the model is not installed)", {"live": False}
+        artifact = (json.loads(data.decode("utf-8")) if code == 200 else {}).get("artifact") or {}
+        if not artifact.get("videoPath"):
+            if code == 503 and _is_memory_refusal(data.decode("utf-8", "replace")):
+                return "skip", "host memory gate fired: " + data.decode("utf-8", "replace")[:160], {}
+            return "fail", f"cached live run: HTTP {code} {data[:160]!r}", {}
+        note = str(artifact.get("runtimeNote") or "")
+        if "TaylorSeer Cache applied" not in note and "TaylorSeer Cache not applied" not in note:
+            return "fail", "the runtime note does not say whether the cache was applied: " + note[-160:], {}
+        return "pass", "", {"seconds": artifact.get("durationSeconds"), "live": True}
+
+    def _ltx2_diffusers():
+        # LTX-2.3 on diffusers (NVIDIA): video and sound together; takes a start and an end picture. Distilled rows
+        # run a fixed schedule. Live run only when the 4-bit pack is installed (31 GB).
+        rc, payload, _ = _cli_json("video-catalog", timeout=15.0)
+        variants = [v for f in ((payload or {}).get("families") or []) for v in (f.get("variants") or [])]
+        row = next((v for v in variants if v.get("id") == "OzzyGT/LTX-2.3-Distilled-bnb-nf4"), None)
+        if row is None:
+            return "skip", "LTX-2.3 (NVIDIA) is not in this catalog", {}
+        if row.get("acceptsImageInput") is not True or row.get("acceptsEndImage") is not True or row.get("fixedSampler") is not True:
+            return "fail", f"flags: image={row.get('acceptsImageInput')!r} end={row.get('acceptsEndImage')!r} fixed={row.get('fixedSampler')!r}", {}
+        if not row.get("availableLocally"):
+            return "pass", "catalog only (the model is not installed)", {"live": False}
+        code, data = _voice_http("POST", "/api/video/generate", body=json.dumps({
+            "modelId": "OzzyGT/LTX-2.3-Distilled-bnb-nf4", "prompt": "waves crash on a rocky shore, gulls calling",
+            "width": 512, "height": 320, "numFrames": 25, "fps": 24, "seed": 3}).encode("utf-8"),
+            content_type="application/json", timeout=3600.0)
+        artifact = (json.loads(data.decode("utf-8")) if code == 200 else {}).get("artifact") or {}
+        if not artifact.get("videoPath"):
+            if code == 503 and _is_memory_refusal(data.decode("utf-8", "replace")):
+                return "skip", "host memory gate fired: " + data.decode("utf-8", "replace")[:160], {}
+            return "fail", f"live text-to-video: HTTP {code} {data[:200]!r}", {}
+        if artifact.get("hasAudio") is not True:
+            return "fail", f"the clip should carry sound but hasAudio={artifact.get('hasAudio')!r}: {artifact.get('runtimeNote')}", {}
+        return "pass", "", {"seconds": artifact.get("durationSeconds"), "live": True}
+
+    def _ltx25_diffusers():
+        # LTX-2.5 on diffusers (NVIDIA, gated, 4-bit on load): catalog flags always; a live clip only when the
+        # 71 GB of weights are already on this machine. Skips on Apple Silicon (the row is CUDA-only) and without them.
+        rc, payload, _ = _cli_json("video-catalog", timeout=15.0)
+        variants = [v for f in ((payload or {}).get("families") or []) for v in (f.get("variants") or [])]
+        row = next((v for v in variants if v.get("id") == "Lightricks/LTX-2.5-Diffusers~nf4"), None)
+        if row is None:
+            return "skip", "LTX-2.5 (NVIDIA) is not listed on this host (CUDA-only row)", {}
+        # Measured on a 24 GB NVIDIA card (2026-11-13): the basis is "measured" from then on.
+        if row.get("gated") is not True or row.get("loadQuantization") != "nf4" or row.get("footprintBasis") != "measured":
+            return "fail", f"flags: gated={row.get('gated')!r} quant={row.get('loadQuantization')!r} basis={row.get('footprintBasis')!r}", {}
+        if row.get("acceptsImageInput") is not True or row.get("fixedSampler") is not True:
+            return "fail", f"flags: image={row.get('acceptsImageInput')!r} fixed={row.get('fixedSampler')!r}", {}
+        if not row.get("availableLocally"):
+            verdict = _gated_row_blocked_check(row, token_present=_hf_token_present())
+            return verdict[0], verdict[1], {}
+        code, data = _voice_http("POST", "/api/video/generate", body=json.dumps({
+            "modelId": "Lightricks/LTX-2.5-Diffusers~nf4", "prompt": "waves crash on a rocky shore, gulls calling",
+            "width": 512, "height": 320, "numFrames": 25, "fps": 24, "seed": 3}).encode("utf-8"),
+            content_type="application/json", timeout=3600.0)
+        artifact = (json.loads(data.decode("utf-8")) if code == 200 else {}).get("artifact") or {}
+        if not artifact.get("videoPath"):
+            if code == 503 and _is_memory_refusal(data.decode("utf-8", "replace")):
+                return "skip", "host memory gate fired: " + data.decode("utf-8", "replace")[:160], {}
+            return "fail", f"live text-to-video: HTTP {code} {data[:200]!r}", {}
+        if artifact.get("hasAudio") is not True:
+            return "fail", f"the clip should carry sound but hasAudio={artifact.get('hasAudio')!r}: {artifact.get('runtimeNote')}", {}
+        return "pass", "", {"seconds": artifact.get("durationSeconds"), "live": True}
+
     for name, fn in [("catalog", _catalog), ("library", _library),
                       ("mlx-runtime", _mlx_runtime), ("generate", _generate),
                       ("LTX-2.5 on ltx-2-mlx (routing + live)", _ltx2_engine),
+                      ("LTX-2.3 on diffusers with sound (flags; live when installed)", _ltx2_diffusers),
+                      ("LTX-2.5 on diffusers, 4-bit on load (flags; live when the gated weights are present)", _ltx25_diffusers),
+                      ("Wan 2.2 TI2V 5B image-to-video (flags, refusals, live when installed)", _wan_image_to_video),
+                      ("Video diffusion cache strategy reaches the runtime (live when installed)", _video_cache_strategy),
                       ("Wan is not burnt on MPS (FU-102)", _wan_not_burnt)]:
         phase.checks.append(_check(name, fn))
     fails = [c for c in phase.checks if c.status == "fail"]
@@ -2284,8 +2771,12 @@ def phase_8(cap: Capability) -> PhaseResult:
             for companion in row.get("companions", []):
                 if not re.fullmatch(r"[0-9a-f]{40}", str(companion.get("revision"))) or not companion.get("files"):
                     return "fail", f"{row.get('key')} companion {companion.get('repo')} is not pinned", {}
-            if row.get("family") != "qwen3-tts" and (row.get("estimates") or {}).get("basis") != "measured":
-                return "fail", f"{row.get('key')} is listed without measured numbers", {}
+        unmeasured = unmeasured_listed_rows(rows)
+        if unmeasured:
+            if models_payload.get("unmeasuredListed"):
+                return "skip", ("CHAOSENGINE_VOICE_UNMEASURED=1 lists unmeasured rows on purpose: "
+                                + ", ".join(unmeasured)), {}
+            return "fail", f"{unmeasured[0]} is listed without measured numbers", {}
         return "pass", "", {"rows": len(rows), "wave2": sorted(r["key"] for r in wave2)}
 
     def _speak_each_wave2_model():
@@ -2317,10 +2808,48 @@ def phase_8(cap: Capability) -> PhaseResult:
             spoken[row["key"]] = rate
         return "pass", "", {"spoken": spoken}
 
+    def _speak_qwen_on_the_gpu():
+        """Qwen3-TTS on an NVIDIA GPU (the ``-cuda`` rows): one preset voice with a style (CustomVoice) and one voice
+        from a description (VoiceDesign), each answering a real WAV at 24 kHz that is not silent. Skipped when no such
+        row is downloaded and supported on this machine."""
+        rows = [r for r in models_payload.get("models", [])
+                if r.get("family") == "qwen3-tts" and str(r.get("key", "")).endswith("-cuda")]
+        if not rows:
+            return "skip", "no GPU Qwen3-TTS rows listed in this build", {}
+        ready = {r["key"]: r for r in rows if r.get("installed") and r.get("supported")}
+        wanted = [("qwen3-tts-custom-1.7b-cuda", "qwen3:Ryan", "Sound warm and unhurried."),
+                  ("qwen3-tts-design-1.7b-cuda", "design", "A calm adult woman with a low, steady voice.")]
+        wanted = [w for w in wanted if w[0] in ready]
+        if not wanted:
+            return "skip", "no GPU Qwen3-TTS model downloaded and supported here (Voice Models)", {}
+        import array
+        import io
+        import wave as wave_module
+
+        spoken = {}
+        for key, voice, style in wanted:
+            request = {"text": "A short end to end check of the GPU voice.", "voice": voice, "style": style, "model": key}
+            code, body = _voice_http("POST", "/api/voice/speak", body=json.dumps(request).encode("utf-8"),
+                                     content_type="application/json", timeout=600.0)
+            if code != 200:
+                return "fail", f"{key} speak HTTP {code}: {body[:200]!r}", {}
+            wav = base64.b64decode(json.loads(body.decode("utf-8"))["audio"])
+            with wave_module.open(io.BytesIO(wav)) as handle:
+                rate, frames = handle.getframerate(), handle.getnframes()
+                samples = array.array("h", handle.readframes(frames))
+            seconds = frames / float(rate or 1)
+            if rate != 24_000 or seconds < 0.8:
+                return "fail", f"{key}: {rate} Hz, {seconds:.2f} s", {}
+            if max((abs(v) for v in samples), default=0) < 300:
+                return "fail", f"{key}: the audio is silent", {}
+            spoken[key] = round(seconds, 2)
+        return "pass", "", {"spoken": spoken}
+
     def _clone_needs_a_permission_record():
         """Every wave-2 cloning model goes through the one clone path: a voice without its permission record is
         refused (404) before any model runs. Agent refusal and the watermark are covered per model in pytest."""
-        rows = [r for r in models_payload.get("models", []) if r.get("family") in ("chatterbox-turbo", "voxcpm2", "chatterbox")]
+        rows = [r for r in models_payload.get("models", []) if r.get("family") in ("chatterbox-turbo", "voxcpm2", "chatterbox")
+                or (r.get("family") == "qwen3-tts" and r.get("capabilities", {}).get("clone") and str(r.get("key", "")).endswith("-cuda"))]
         if not rows:
             return "skip", "no wave-2 cloning rows listed in this build", {}
         for row in rows:
@@ -2364,7 +2893,7 @@ def phase_8(cap: Capability) -> PhaseResult:
 
     for name, fn in [
         ("voice-runtime", _runtime), ("voice delete routes (no delete)", _delete_route_contract), ("stt platform sources", _stt_sources),
-        ("speech model catalog", _speech_model_catalog), ("speak with each wave-2 model", _speak_each_wave2_model),
+        ("speech model catalog", _speech_model_catalog), ("speak with each wave-2 model", _speak_each_wave2_model), ("speak with Qwen3-TTS on the GPU", _speak_qwen_on_the_gpu),
         ("wave-2 clone needs a permission record", _clone_needs_a_permission_record),
         ("voice settings", _settings_roundtrip), ("read-aloud stream", _speak_stream),
         ("chat voice: any voice, fallback voice", _chat_voice_any),
@@ -2680,6 +3209,40 @@ def phase_10(cap: Capability) -> PhaseResult:
             return "fail", "removeImage did not drop the picture", {}
         return "pass", "", {"pictures": 2}
 
+    def _text_only():
+        # A shot can ask for no picture at all (a text-to-video clip, on any video model): its start mode is
+        # accepted, it needs no still, and the estimate counts one clip and no still for it.
+        body = _op("add_shot", {"title": "text only", "motionPrompt": "waves on rocks", "seconds": 2})
+        sid = body["project"]["shots"][-1]["id"]
+        body = _op("edit_shot", {"shotId": sid, "startFrom": "text"})
+        shot = next(s for s in body["project"]["shots"] if s["id"] == sid)
+        if shot["startFrom"] != "text":
+            return "fail", f"startFrom is {shot['startFrom']!r}, wanted 'text'", {}
+        _op("edit_shot", {"shotId": sid, "startFrom": "no-such-mode"}, want=400)
+        code, est = _call("POST", f"/projects/{state['id']}/estimate", {"what": "still", "shotIds": [sid]})
+        if code != 200 or est.get("stills") != 0:
+            return "fail", f"a still estimate for a text-only shot counted {est.get('stills') if isinstance(est, dict) else est!r} stills", {}
+        return "pass", "", {"shot": sid}
+
+    def _end_frame():
+        # A shot can end on a picture (LTX-2 models take one); the op used to be missing, so no project could have one.
+        body = _op("add_shot", {"title": "end frame", "motionPrompt": "the beam turns", "seconds": 2})
+        sid = body["project"]["shots"][-1]["id"]
+        picture = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSlAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==")
+        code, data = _voice_http("POST", "/api/storyboard/uploads", body=picture, content_type="application/octet-stream", timeout=30.0)
+        handle = (json.loads(data.decode("utf-8")) if code == 200 else {}).get("handle")
+        if not handle:
+            return "fail", f"picture upload: HTTP {code}", {}
+        body = _op("set_end_image", {"shotId": sid, "image": handle})
+        shot = next(s for s in body["project"]["shots"] if s["id"] == sid)
+        if not str(shot.get("endImage") or "").startswith(f"media/{sid}/end-"):
+            return "fail", f"endImage is {shot.get('endImage')!r}", {}
+        body = _op("set_end_image", {"shotId": sid})
+        shot = next(s for s in body["project"]["shots"] if s["id"] == sid)
+        if shot.get("endImage") is not None:
+            return "fail", "an empty image did not clear the end frame", {}
+        return "pass", "", {"shot": sid}
+
     def _estimate():
         # D-65 phase 3: an estimate answers even without a model (it then names what is missing).
         code, body = _call("POST", f"/projects/{state['id']}/estimate", {"what": "both"})
@@ -2734,6 +3297,8 @@ def phase_10(cap: Capability) -> PhaseResult:
             ("add and edit shots; a stale revision answers 409", _shots),
             ("import two takes, pick one, undo", _takes),
             ("a character with two uploaded pictures, then one removed", _cast),
+            ("a text-only shot is accepted, needs no still and a bad start mode is refused", _text_only),
+            ("a shot takes an end frame and loses it again", _end_frame),
             ("the batch estimate answers, naming any missing model", _estimate),
             ("export a .chaosfilm bundle and import it again", _bundle),
             ("a hostile project.json or bundle is refused", _hostile),

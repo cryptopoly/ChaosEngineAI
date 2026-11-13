@@ -65,6 +65,8 @@ def load_model(state: WorkerState, request: dict[str, Any]) -> dict[str, Any]:
     dflash_draft_model = request.get("dflashDraftModel")
     state._dflash_generator = None
     state._dflash_target = None
+    state._dflash_target_ops = None
+    state._dflash_draft_backend = None
     state._ddtree_draft = None
     state._ddtree_target = None
     state.tree_budget = 0
@@ -163,33 +165,23 @@ def load_model(state: WorkerState, request: dict[str, Any]) -> dict[str, Any]:
     if state.speculative_decoding and dflash_draft_model:
         target_ops = None
         try:
-            # FU-075: dflash-mlx 0.1.5 moved the pre-0.1.5 top-level
-            # ``configure_full_attention_split`` onto the per-family
-            # ``target_ops`` adapter (same FU-006 migration that rewrote
-            # ddtree.py — this file was missed). Importing the old top-level
-            # name raised ImportError, which silently disabled DFlash /
-            # DDTree / MTPLX (every spec-dec path fell back to standard
-            # generation). Use the new ``resolve_target_ops`` entry point;
-            # both it and ``load_draft_bundle`` are still top-level.
-            from dflash_mlx.runtime import load_draft_bundle, resolve_target_ops
+            # dflash-mlx 0.1.10 (FU-057): ``runtime`` is a package whose top level only exports
+            # ``stream_dflash_generate``; the adapter, draft loader and draft backend live in
+            # their own modules, and the full-attention split switch is gone (routing is
+            # target-owned now).
+            from dflash_mlx.draft_backend import EagerDraftBackend
+            from dflash_mlx.engine.target_ops import bind_draft_to_target, resolve_target_ops
+            from dflash_mlx.runtime.loading import load_draft_bundle
 
-            from backend_service.dflash_compat import patch_text_wrapper, self_check
+            from backend_service.dflash_compat import default_draft_quant, prepare_target, self_check
 
-            patch_text_wrapper()
             emit_progress("dflash", 96.0, f"Loading DFLASH draft model: {dflash_draft_model}")
             # Reuse the already loaded MLX target model. Loading a second
             # target bundle can duplicate the full model footprint and
             # trigger SIGKILL on large models during DFLASH startup.
             state._dflash_target = state.model
-            # Full-attention split is a hybrid-GDN-only concern upstream
-            # (see runtime.load_target_bundle); pure-attention targets
-            # (Qwen3/3.5/3.6) don't need it. Resolve the adapter and apply
-            # the split only when the family calls for it.
             target_ops = resolve_target_ops(state._dflash_target)
-            family_fn = getattr(target_ops, "family", None)
-            is_hybrid = family_fn is not None and family_fn(state._dflash_target) == "hybrid_gdn"
-            if is_hybrid and hasattr(target_ops, "configure_full_attention_split"):
-                target_ops.configure_full_attention_split(state._dflash_target, enabled=True)
+            prepare_target(state._dflash_target, target_ops)
             mismatch = self_check(state._dflash_target, target_ops)
             if mismatch:
                 # FU-135: a library pair that disagrees with the model produced garbage text before;
@@ -198,7 +190,12 @@ def load_model(state: WorkerState, request: dict[str, Any]) -> dict[str, Any]:
                 state.speculative_decoding = False
                 state.tree_budget = 0
                 raise _DflashSelfCheckFailed(mismatch)
-            state._dflash_generator, _ = load_draft_bundle(dflash_draft_model, lazy=True)
+            state._dflash_generator, _ = load_draft_bundle(
+                dflash_draft_model, lazy=True, draft_quant=default_draft_quant(dflash_draft_model)
+            )
+            bind_draft_to_target(state._dflash_generator, state._dflash_target, target_ops=target_ops)
+            state._dflash_target_ops = target_ops
+            state._dflash_draft_backend = EagerDraftBackend()
             dflash_note = f"DFLASH speculative decoding active (draft: {dflash_draft_model})."
         except _DflashSelfCheckFailed as exc:
             dflash_note = f"DFLASH is off for this model: {exc}. Standard generation is used."
@@ -273,6 +270,8 @@ def unload_model(state: WorkerState) -> dict[str, Any]:
     state._loaded_model_ref = None
     state._dflash_generator = None
     state._dflash_target = None
+    state._dflash_target_ops = None
+    state._dflash_draft_backend = None
     state._ddtree_draft = None
     state._ddtree_target = None
     state.speculative_decoding = False

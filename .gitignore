@@ -36,3 +36,5 @@ e2e/screenshots/
 
 # Vite dependency cache, one per checkout (vite.config.ts cacheDir)
 .vite-cache/
+
+.venv-release/

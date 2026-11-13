@@ -100,6 +100,8 @@ class ProgressTracker:
         self._phase_mark = 0.0
         self._last_timings: dict[str, Any] | None = None
         self._warning: str | None = None
+        # Set by the step watchdog when a step never returns (see helpers/step_watchdog.py).
+        self._stall_message: str | None = None
 
     def _close_phase(self, now: float) -> None:
         if self._active and self._phase_mark:
@@ -126,6 +128,7 @@ class ProgressTracker:
             self._run_label = run_label
             self._thumbnail = None
             self._warning = None
+            self._stall_message = None
             self._phase_seconds = {}
             self._phase_mark = now
             # Clear any cancel flag from a previous run — otherwise a user
@@ -242,6 +245,14 @@ class ProgressTracker:
             self._message = "Cancelling..."
             self._updated_at = time.time()
             return True
+
+    def mark_stalled(self, message: str) -> None:
+        """Record why a run is being cancelled by the watchdog, for the error the callback raises."""
+        with self._lock:
+            self._stall_message = message
+
+    def stall_message(self) -> str | None:
+        return self._stall_message
 
     def is_cancelled(self) -> bool:
         """Fast poll used from the pipeline's step-end callback. No lock —

@@ -26,6 +26,7 @@ import re
 import shutil
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 from typing import Any
@@ -124,18 +125,45 @@ def diagnostics_snapshot(request: Request) -> dict[str, Any]:
     user report) for the panel to fetch-fail when something's off.
     """
     state = request.app.state.chaosengine
-    return {
-        "generatedAt": time.time(),
-        "app": _guarded("app", lambda: _app_info(state)),
-        "os": _guarded("os", _os_info),
-        "hardware": _guarded("hardware", _hardware_info),
-        "python": _guarded("python", _python_info),
-        "runtime": _guarded("runtime", lambda: _runtime_info(state)),
-        "gpu": _guarded("gpu", _gpu_info),
-        "extras": _guarded("extras", _extras_info),
-        "environment": _guarded("environment", _env_vars),
-        "logs": _guarded("logs", _log_info),
+    builders = {
+        "app": lambda: _app_info(state),
+        "os": _os_info,
+        "hardware": _hardware_info,
+        "python": _python_info,
+        "runtime": lambda: _runtime_info(state),
+        "gpu": _gpu_info,
+        "extras": _extras_info,
+        "environment": _env_vars,
+        "logs": _log_info,
     }
+    sections = _run_sections(builders, _SNAPSHOT_DEADLINE_SECONDS)
+    return {"generatedAt": time.time(), **sections}
+
+
+# Total wall-clock budget for the snapshot. Sections run in parallel; one that
+# is still running at the deadline is reported as timed out instead of holding
+# the whole response (the torch probe alone can take several seconds on a cold
+# disk, the extras walk far longer).
+_SNAPSHOT_DEADLINE_SECONDS = 12.0
+
+
+def _run_sections(builders: dict[str, Any], deadline_seconds: float) -> dict[str, Any]:
+    from concurrent.futures import ThreadPoolExecutor, wait
+
+    pool = ThreadPoolExecutor(max_workers=max(1, len(builders)), thread_name_prefix="diag")
+    futures = {name: pool.submit(_guarded, name, fn) for name, fn in builders.items()}
+    wait(list(futures.values()), timeout=deadline_seconds)
+    pool.shutdown(wait=False)
+    out: dict[str, Any] = {}
+    for name, fut in futures.items():
+        if fut.done():
+            out[name] = fut.result()
+        else:
+            out[name] = {
+                "error": f"timed out after {deadline_seconds:g}s (probe still running)",
+                "section": name,
+            }
+    return out
 
 
 def _guarded(section: str, fn):
@@ -638,8 +666,9 @@ def _extras_info() -> dict[str, Any]:
             entries = sorted(p.name for p in extras.iterdir())[:60]
         except OSError:
             entries = []
-        size_bytes = _safe(lambda: _dir_size(extras))
+        size_bytes, size_note = _cached_dir_size(extras)
     return {
+        "sizeNote": size_note if exists else None,
         "path": str(extras),
         "exists": exists,
         "freeBytes": free,
@@ -714,14 +743,63 @@ def _bytes_to_gb(value: int | None) -> float | None:
 
 
 def _dir_size(path: Path) -> int:
+    """Total bytes of regular files under ``path`` (os.scandir walk, no symlinks)."""
     total = 0
-    for entry in path.rglob("*"):
+    stack = [str(path)]
+    while stack:
         try:
-            if entry.is_file() and not entry.is_symlink():
-                total += entry.stat().st_size
+            with os.scandir(stack.pop()) as it:
+                for entry in it:
+                    try:
+                        if entry.is_symlink():
+                            continue
+                        if entry.is_dir():
+                            stack.append(entry.path)
+                        elif entry.is_file():
+                            total += entry.stat().st_size
+                    except OSError:
+                        continue
         except OSError:
             continue
     return total
+
+
+# The extras tree holds torch + CUDA wheels (tens of thousands of files); a
+# full walk took 26 s to 60 s and was the cause of the slow snapshot. The size
+# is walked once in a background thread and cached; the snapshot waits at most
+# ``_DIR_SIZE_WAIT_SECONDS`` for it and otherwise reports a note.
+_DIR_SIZE_WAIT_SECONDS = 2.0
+_DIR_SIZE_TTL_SECONDS = 600.0
+_dir_size_lock = threading.Lock()
+_dir_size_state: dict[str, Any] = {}
+
+
+def _cached_dir_size(path: Path) -> tuple[int | None, str | None]:
+    key = str(path)
+    with _dir_size_lock:
+        entry = _dir_size_state.get(key)
+        fresh = entry is not None and entry.get("done") and time.time() - entry["at"] < _DIR_SIZE_TTL_SECONDS
+        if entry is None or (entry.get("done") and not fresh):
+            event = threading.Event()
+            entry = {"done": False, "at": time.time(), "bytes": (entry or {}).get("bytes"), "event": event}
+            _dir_size_state[key] = entry
+
+            def _walk(e=entry, p=path):
+                try:
+                    e["bytes"] = _dir_size(p)
+                except Exception:  # noqa: BLE001
+                    pass
+                e["at"] = time.time()
+                e["done"] = True
+                e["event"].set()
+
+            threading.Thread(target=_walk, name="diag-dir-size", daemon=True).start()
+    if entry["done"]:
+        return entry["bytes"], None
+    entry["event"].wait(_DIR_SIZE_WAIT_SECONDS)
+    if entry["done"]:
+        return entry["bytes"], None
+    return entry.get("bytes"), "size still being measured in the background; refresh in a minute"
 
 
 def _disk_usage() -> list[dict[str, Any]]:

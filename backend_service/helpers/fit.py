@@ -57,6 +57,11 @@ CHAT_RUNTIME_SHARE = 0.10
 MEDIA_SIZE_FACTOR = 1.3
 # Decode reads the cache for a typical turn, not the whole window (see helpers.cache).
 _SPEED_KV_TOKENS = 2048
+# Share of a diffusers pipeline's full footprint that is on a discrete card at once under model CPU offload (one
+# component plus activations), measured on an RTX 4090 at each row's recommended size: FLUX.2 Klein 4B 9.1 of 20.8 GB
+# (0.44), Wan 2.2 TI2V 5B 17.3 of 22 GB (0.79, 1280x704 x 121 frames), LTX-2.3 4-bit 21 of 26 GB (0.81). Video keeps
+# far more activation memory than a still image, so the two kinds get their own share.
+CUDA_OFFLOAD_SHARE = {"image": 0.55, "video": 0.8}
 
 # Footprints that came from a run on an M4 Max (the catalog comments say "measured"): variant id ->
 # the footprint key the figure sits under. Rows whose number was copied from a sibling or scaled
@@ -226,8 +231,13 @@ def _chat_fit_numbers(
     arch: Any,
     explicit_memory_gb: float | None,
     context_tokens: int,
+    layout: Any = None,
 ) -> tuple[float, str] | None:
-    """``(need GB, reason)`` for a chat variant, or None without any size information."""
+    """``(need GB, reason)`` for a chat variant, or None without any size information.
+
+    ``layout`` (``helpers.gguf_layout``, a downloaded GGUF on a discrete NVIDIA card) replaces the weights with
+    what llama.cpp puts on the card, plus its compute buffer, measured to within 5 % on an RTX 4090.
+    """
     weights = _chat_weights_gb(variant)
     explicit = _positive(explicit_memory_gb)
     if weights is None and explicit is None:
@@ -236,6 +246,14 @@ def _chat_fit_numbers(
     reference = weights if weights is not None else explicit
     cache = _chat_cache_gb(variant, reference, arch, ctx)
     label = _context_label(ctx)
+    if layout is not None:
+        from backend_service.helpers.chat_memory import llama_gpu_need
+
+        parts = llama_gpu_need(layout, cache * 1024 ** 3)
+        return parts["needGb"], (
+            f"On the GPU: weights {parts['weightsGpuGb']:.1f} GB + {cache:.1f} GB cache at {label} context + "
+            f"{parts['computeGb']:.1f} GB working memory; {parts['hostGb']:.1f} GB of embeddings stay in system RAM"
+        )
     if explicit is not None:
         return explicit + cache, f"Model {explicit:.1f} GB (catalog estimate) + {cache:.1f} GB cache at {label} context"
     runtime = weights * CHAT_RUNTIME_SHARE
@@ -271,13 +289,20 @@ def _name_active_fraction(variant: dict[str, Any]) -> float | None:
     return max(0.02, min(1.0, float(match.group(1)) / params))
 
 
-def estimate_chat_tok_s(variant: dict[str, Any], *, arch: Any, bandwidth_gbps: float) -> float | None:
-    """Decode speed from memory bandwidth, the same estimate the launch preview shows."""
+def estimate_chat_tok_s(
+    variant: dict[str, Any], *, arch: Any, bandwidth_gbps: float, cuda: bool = False, layout: Any = None,
+) -> float | None:
+    """Decode speed from memory bandwidth, the same estimate the launch preview shows.
+
+    ``cuda`` (a discrete NVIDIA card) uses the per-layer overhead measured there and, with a ``layout``, only the
+    bytes llama.cpp puts on the card."""
     from backend_service.helpers.cache import estimate_decode_tok_s
 
     weights = _chat_weights_gb(variant)
     if weights is None:
         return None
+    if cuda and layout is not None and layout.gpu_bytes > 0:
+        weights = layout.gpu_bytes / 1e9
     if arch is not None and arch.active_fraction < 1.0:
         active = arch.active_fraction
     else:
@@ -288,6 +313,7 @@ def estimate_chat_tok_s(variant: dict[str, Any], *, arch: Any, bandwidth_gbps: f
         active_fraction=active,
         kv_bytes_per_token_read=kv_read,
         bandwidth_gbps=bandwidth_gbps,
+        cuda_layers=((arch.num_layers if arch is not None else 32) if cuda else None),
     )
 
 
@@ -307,6 +333,8 @@ def _media_footprint(variant: dict[str, Any], hardware: HardwareClass) -> tuple[
         )
         if measured:
             return value, f"Peak memory {value:.1f} GB, measured on an Apple Silicon Mac", "measured"
+        if hardware.kind == "cuda" and variant.get("footprintBasis") == "measured" and variant.get("footprintMeasuredOn") == "cuda":
+            return value, f"Peak memory {value:.1f} GB, measured on a 24 GB NVIDIA card", "measured"
         return value, f"Peak memory about {value:.1f} GB (catalog estimate)", "estimated"
     size = _positive(variant.get("sizeGb"))
     if size is None:
@@ -316,6 +344,19 @@ def _media_footprint(variant: dict[str, Any], hardware: HardwareClass) -> tuple[
         f"Estimated from the {size:.1f} GB download (x{MEDIA_SIZE_FACTOR:g} for the pipeline)",
         "estimated",
     )
+
+
+def _cuda_offload_need(variant: dict[str, Any], kind: str, need_gb: float) -> float | None:
+    """GPU memory of a diffusers pipeline that the runtime places with model CPU offload on a discrete card, or
+    None when it does not. The video runtime offloads any pipeline too big for the card's free memory; the image
+    runtime does it for the FLUX family (``CUDA_OFFLOAD_SHARE``)."""
+    engine = str(variant.get("engine") or "").strip().lower()
+    runtime = str(variant.get("runtime") or "").strip().lower()
+    if engine not in {"", "diffusers"} or "diffusers" not in runtime or variant.get("ggufFile"):
+        return None
+    if kind == "image" and "flux" not in str(variant.get("repo") or "").lower():
+        return None
+    return need_gb * CUDA_OFFLOAD_SHARE[kind] if kind in CUDA_OFFLOAD_SHARE else None
 
 
 # ---------------------------------------------------------------------------
@@ -341,6 +382,7 @@ def variant_fit(
     arch: Any = None,
     explicit_memory_gb: float | None = None,
     context_tokens: int = DEFAULT_CHAT_CONTEXT_TOKENS,
+    layout: Any = None,
 ) -> dict[str, Any]:
     """The ``fit`` dict for one catalog variant (``kind`` is ``chat``, ``image``, ``video`` or ``music``).
 
@@ -355,12 +397,17 @@ def variant_fit(
     gap = _platform_gap_reason(platform_gate(variant, kind), hardware)
     if gap:
         return _unknown(hardware, gap)
+    if variant.get("accessBlockedReason"):  # a gated row nobody can download yet is never recommended
+        return _unknown(hardware, str(variant["accessBlockedReason"]))
     usable = hardware.usable_gb
     if usable <= 0:
         return _unknown(hardware, "This machine's usable memory could not be read.")
 
     if kind == "chat":
-        numbers = _chat_fit_numbers(variant, arch, explicit_memory_gb, context_tokens)
+        numbers = _chat_fit_numbers(
+            variant, arch, explicit_memory_gb, context_tokens,
+            layout=layout if hardware.kind == "cuda" and not hardware.unified else None,
+        )
         if numbers is None:
             return _unknown(hardware, "No size information for this model.")
         need, reason = numbers
@@ -372,6 +419,14 @@ def variant_fit(
         need, reason, basis = footprint
 
     status = classify_share(need, usable)
+    if kind != "chat" and status != "fits" and basis != "measured" and hardware.kind == "cuda" and not hardware.unified:
+        offloaded = _cuda_offload_need(variant, kind, need)
+        if offloaded is not None and classify_share(offloaded, usable) != "wont-fit":
+            need, status = offloaded, classify_share(offloaded, usable)
+            reason = (
+                f"About {offloaded:.1f} GB on the GPU with model offload: the whole pipeline waits in system RAM "
+                "and its parts take turns on the card (estimate)"
+            )
     if status == "wont-fit" and basis == "measured" and need <= usable:
         # A peak that was measured on this kind of machine did run, so it cannot be "won't fit";
         # it is as tight as it gets (Qwen-Image-2.1 peaks at 46-50 GB of 51.8).
@@ -505,6 +560,7 @@ def annotate_chat_families(
 
         for family in families:
             archs: dict[str, Any] = {}
+            layouts: dict[str, Any] = {}
             variants = family.get("variants") or []
             for variant in variants:
                 variant_id = str(variant.get("id") or "")
@@ -516,11 +572,19 @@ def annotate_chat_families(
                     except Exception:
                         arch = None
                 archs[variant_id] = arch
+                layout = None
+                if runnable and hardware.kind == "cuda" and not hardware.unified and arch is not None:
+                    from backend_service.helpers.chat_memory import local_variant_layout
+
+                    layout = local_variant_layout(str(variant.get("repo") or ""), variant.get("ggufFile"))
+                layouts[variant_id] = layout
                 variant["fit"] = variant_fit(
-                    variant, "chat", hardware, arch=arch, explicit_memory_gb=explicit.get(variant_id),
+                    variant, "chat", hardware, arch=arch, explicit_memory_gb=explicit.get(variant_id), layout=layout,
                 )
 
-            def speed_for(variant: dict[str, Any], _archs: dict[str, Any] = archs) -> float | None:
+            def speed_for(
+                variant: dict[str, Any], _archs: dict[str, Any] = archs, _layouts: dict[str, Any] = layouts,
+            ) -> float | None:
                 if measured_speed_for is not None:
                     try:
                         measured = measured_speed_for(variant)
@@ -528,8 +592,10 @@ def annotate_chat_families(
                         measured = None
                     if measured:
                         return measured
+                variant_id = str(variant.get("id") or "")
                 return estimate_chat_tok_s(
-                    variant, arch=_archs.get(str(variant.get("id") or "")), bandwidth_gbps=bandwidth_gbps(),
+                    variant, arch=_archs.get(variant_id), bandwidth_gbps=bandwidth_gbps(),
+                    cuda=hardware.kind == "cuda" and not hardware.unified, layout=_layouts.get(variant_id),
                 )
 
             family["bestFitVariantId"] = best_fit_variant_id(variants, "chat", speed_for=speed_for)

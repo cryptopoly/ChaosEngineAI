@@ -173,6 +173,62 @@ def _real_tensorfold_engine_that_fails(controller: RuntimeController, message: s
     return engine
 
 
+class NativeFamiliesRoutingTests(unittest.TestCase):
+    """FU-168: the families the 1.2.7 binary added route to the native engine on a Mac."""
+
+    _TESTED = (
+        "LiquidAI/LFM3-1.7B-MLX-4bit",
+        "LiquidAI/LFM2.5-24B-A2B-MLX-6bit",
+        "Nanbeige/Nanbeige4.3-33B",
+        "XHToken/Spark-X2.6-4B",
+        "BobClawblaw/MiniMax-M3.1-Flash-MLX-mix34",
+    )
+
+    def _mac_controller(self, *, native: bool) -> RuntimeController:
+        controller = _controller(tensorfold=False)
+        controller.capabilities.tensorfoldNativeAvailable = native
+        return controller
+
+    def test_tested_families_follow_the_speculative_toggle(self) -> None:
+        from backend_service.inference.tensorfold_native_engine import TensorFoldNativeEngine
+
+        with mock.patch("backend_service.inference.controller.sys.platform", "darwin"):
+            controller = self._mac_controller(native=True)
+            for repo in self._TESTED:
+                self.assertIsInstance(_select(controller, repo, speculative_decoding=True), TensorFoldNativeEngine, repo)
+                self.assertIsInstance(_select(controller, repo, speculative_decoding=False), MLXWorkerEngine, repo)
+            # not installed: standard MLX, never an error
+            for repo in self._TESTED:
+                self.assertIsInstance(
+                    _select(self._mac_controller(native=False), repo, speculative_decoding=True), MLXWorkerEngine, repo
+                )
+
+    def test_nanbeige_int4_always_goes_to_tensorfold(self) -> None:
+        from backend_service.inference.tensorfold_native_engine import TensorFoldNativeEngine
+
+        repo = "Nanbeige/Nanbeige4.3-33B-INT4"
+        with mock.patch("backend_service.inference.controller.sys.platform", "darwin"):
+            engine = _select(self._mac_controller(native=True), repo, speculative_decoding=False)
+            self.assertIsInstance(engine, TensorFoldNativeEngine)
+            with self.assertRaises(RuntimeError) as ctx:
+                _select(self._mac_controller(native=False), repo, speculative_decoding=False)
+        self.assertIn("runs only on TensorFold", str(ctx.exception))
+
+    def test_listed_only_families_stay_off_tensorfold(self) -> None:
+        with mock.patch("backend_service.inference.controller.sys.platform", "darwin"):
+            controller = self._mac_controller(native=True)
+            for repo in ("moonshotai/Kimi-K3", "stepfun-ai/Step-5-Preview", "fishaudio/drama-3", "LiquidAI/LFM3-VL-2B-MLX-4bit"):
+                self.assertIsInstance(_select(controller, repo, speculative_decoding=True), MLXWorkerEngine, repo)
+
+    def test_lfm2_5_goes_to_the_native_engine_on_a_cuda_host(self) -> None:
+        from backend_service.inference.tensorfold_native_engine import TensorFoldNativeEngine
+
+        repo = "LiquidAI/LFM2.5-24B-A2B-MLX-4bit"
+        with mock.patch("backend_service.inference.controller.sys.platform", "linux"):
+            engine = _select(self._mac_controller(native=True), repo, speculative_decoding=False)
+        self.assertIsInstance(engine, TensorFoldNativeEngine)
+
+
 class StartupFallbackTests(unittest.TestCase):
     def _load(self, controller: RuntimeController, repo: str):
         return controller.load_model(

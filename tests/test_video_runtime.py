@@ -235,6 +235,12 @@ class PipelineRegistryTests(unittest.TestCase):
             # FU-019 catalog refresh: CogVideoX 1.5 5B routes via the same
             # CogVideoXPipeline class as the 5B base.
             "THUDM/CogVideoX1.5-5B",
+            # LTX-2.3 on diffusers: official bf16 packs and the NF4 community packs, all LTX2Pipeline.
+            "diffusers/LTX-2.3-Diffusers",
+            "diffusers/LTX-2.3-Distilled-Diffusers",
+            "OzzyGT/LTX-2.3-Distilled-bnb-nf4",
+            # LTX-2.5 (gated, Gemma 4 text encoder), distilled pipeline.
+            "Lightricks/LTX-2.5-Diffusers",
         }
         self.assertEqual(set(PIPELINE_REGISTRY.keys()), expected)
         for entry in PIPELINE_REGISTRY.values():
@@ -319,6 +325,39 @@ class PreloadLifecycleTests(unittest.TestCase):
         self.assertIsNone(engine._loaded_repo)
 
 
+class FailedLoadReleaseTests(unittest.TestCase):
+    """A load that fails late must not keep the components it already loaded (LTX-2.5: 19 GB GPU, 21 GB RAM)."""
+
+    def test_components_loaded_before_the_failure_are_freed(self):
+        import weakref
+
+        class _Component:
+            pass
+
+        refs: list[Any] = []
+
+        def failing_load(repo, *args, **kwargs):
+            component = _Component()
+            refs.append(weakref.ref(component))
+            pipeline_kwargs = {"transformer": component}  # noqa: F841 - held by the frame, as in the real loader
+            raise ImportError("Gemma4VideoProcessor requires the Torchvision library")
+
+        engine = DiffusersVideoEngine()
+        with mock.patch.object(engine, "_load_or_reuse_pipeline", side_effect=failing_load):
+            with self.assertRaises(ImportError) as caught:
+                engine._ensure_pipeline("Lightricks/LTX-2.5-Diffusers", use_nf4=True)
+        self.assertIn("Torchvision", str(caught.exception))  # type and message survive
+        # The exception itself is still alive here (the route chains it into the HTTP error), yet it no longer
+        # reaches the loader's frame.
+        self.assertIsNone(refs[0]())
+
+    def test_a_successful_load_passes_through(self):
+        engine = DiffusersVideoEngine()
+        with mock.patch.object(engine, "_load_or_reuse_pipeline", return_value="P") as load:
+            self.assertEqual(engine._ensure_pipeline("r", use_nf4=True), "P")
+        load.assert_called_once_with("r", use_nf4=True)
+
+
 class VideoRuntimeManagerTests(unittest.TestCase):
     def test_capabilities_delegates_to_engine_probe(self):
         manager = VideoRuntimeManager()
@@ -401,6 +440,34 @@ class GenerateTests(unittest.TestCase):
         engine._torch = torch_shim  # type: ignore[assignment]
         engine._device = "cpu"
         return generator_cls
+
+    def test_a_finished_run_gives_the_cuda_cache_back_but_keeps_the_pipeline(self):
+        engine = DiffusersVideoEngine()
+        self._install_torch_shim(engine)
+        emptied = mock.Mock()
+        engine._torch.cuda = SimpleNamespace(is_available=lambda: True, empty_cache=emptied)  # type: ignore[union-attr]
+        engine._device = "cuda"
+        fake_pipeline = mock.MagicMock(name="pipeline")
+        frames = [mock.MagicMock(name=f"frame_{idx}") for idx in range(24)]
+
+        with mock.patch.object(video_runtime, "_find_missing", return_value=[]),                 mock.patch.object(engine, "_ensure_pipeline", return_value=fake_pipeline),                 mock.patch.object(engine, "_invoke_pipeline", return_value=frames),                 mock.patch.object(engine, "_encode_frames_to_mp4", return_value=self.FAKE_BYTES):
+            engine.generate(self._config(seed=1))
+
+        emptied.assert_called_once()
+        self.assertIsNotNone(engine._torch)  # the loaded pipeline's torch handle is untouched
+
+    def test_a_failed_run_trims_the_cache_too_and_a_broken_trim_never_hides_the_error(self):
+        engine = DiffusersVideoEngine()
+        self._install_torch_shim(engine)
+        engine._torch.cuda = SimpleNamespace(  # type: ignore[union-attr]
+            is_available=lambda: True, empty_cache=mock.Mock(side_effect=RuntimeError("driver gone")),
+        )
+        engine._device = "cuda"
+
+        with mock.patch.object(video_runtime, "_find_missing", return_value=[]),                 mock.patch.object(engine, "_ensure_pipeline", return_value=mock.MagicMock()),                 mock.patch.object(engine, "_invoke_pipeline", return_value=[]):
+            with self.assertRaises(RuntimeError) as raised:
+                engine.generate(self._config(seed=1))
+        self.assertIn("zero frames", str(raised.exception))
 
     def test_generate_happy_path_returns_generated_video_with_real_metadata(self):
         engine = DiffusersVideoEngine()
@@ -1732,3 +1799,29 @@ class UniPCOnMpsTests(unittest.TestCase):
         pipeline.scheduler.config = {"prediction_type": "epsilon"}
         self.assertIsNone(engine._swap_scheduler(pipeline, "unipc"))
         self.assertEqual(type(pipeline.scheduler).__name__, "UniPCMultistepScheduler")
+
+
+class GpuBundleHintTests(unittest.TestCase):
+    """A package the GPU bundle provides, when absent, gets an install note instead of an import error."""
+
+    def test_missing_ftfy_and_bitsandbytes_name_the_gpu_bundle(self):
+        from backend_service.helpers.video_runtime_diagnostics import (
+            diagnose_diffusers_lazy_import_error,
+            gpu_bundle_hint,
+        )
+
+        for text, name in (
+            ("ModuleNotFoundError: No module named 'ftfy'", "ftfy"),
+            ("WanImageToVideoPipeline requires the ftfy library but it was not found", "ftfy"),
+            ("bitsandbytes package missing", "bitsandbytes"),
+        ):
+            hint = gpu_bundle_hint(text)
+            self.assertIn(name, hint)
+            self.assertIn("Install GPU runtime", hint)
+            self.assertEqual(diagnose_diffusers_lazy_import_error(text), hint)
+
+    def test_other_errors_are_left_alone(self):
+        from backend_service.helpers.video_runtime_diagnostics import gpu_bundle_hint
+
+        self.assertIsNone(gpu_bundle_hint("CUDA out of memory"))
+        self.assertIsNone(gpu_bundle_hint("No module named 'somethingelse'"))

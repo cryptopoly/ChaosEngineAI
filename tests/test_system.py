@@ -64,6 +64,14 @@ class RunningProcessListTests(unittest.TestCase):
         attrs = set(scan.call_args.args[0])
         self.assertEqual(attrs, {"pid", "name", "cmdline"})
 
+    def test_macos_top_is_not_run_when_no_model_process_exists(self):
+        # Startup and every idle UI poll paid 0.7 s for a ``top`` call nobody read.
+        with mock.patch("backend_service.helpers.system_processes.platform.system", return_value="Darwin"), \
+             mock.patch("backend_service.helpers.system_processes.psutil.process_iter", return_value=[]), \
+             mock.patch("backend_service.helpers.system_processes._get_top_memory_map") as top:
+            self.assertEqual(_list_llm_processes(), [])
+        top.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()

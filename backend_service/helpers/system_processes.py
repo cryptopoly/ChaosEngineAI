@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import platform
 import subprocess
+import time
 from typing import Any
 
 import psutil
@@ -79,6 +80,21 @@ def _get_top_memory_map() -> dict[int, float]:
         return mem_map
     except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
         return {}
+
+
+_TOP_CACHE: tuple[float, dict[int, float]] | None = None
+_TOP_CACHE_SECONDS = 5.0
+
+
+def _cached_top_memory_map() -> dict[int, float]:
+    """``_get_top_memory_map`` reused for a few seconds: the UI polls every few seconds."""
+    global _TOP_CACHE
+    now = time.monotonic()
+    if _TOP_CACHE is not None and now - _TOP_CACHE[0] < _TOP_CACHE_SECONDS:
+        return _TOP_CACHE[1]
+    mem = _get_top_memory_map()
+    _TOP_CACHE = (now, mem)
+    return mem
 
 
 def _get_top_memory_for_pid(pid: int) -> float | None:
@@ -193,8 +209,10 @@ def _list_llm_processes(limit: int = 12) -> list[dict[str, Any]]:
     # anywhere else is a path or a prompt of some other program, which listed
     # unrelated tools here.
     cmdline_markers = ("backend_service.mlx_worker", "mlx_worker", "llama-server", "llama-cli")
-    # Get real memory from top (includes GPU/Metal memory on macOS)
-    top_mem = _get_top_memory_map() if platform.system() == "Darwin" else {}
+    # Real memory from top (includes GPU/Metal memory on macOS). Asked for only once
+    # a model process is found: top costs 0.7 s, and with no model loaded (the
+    # common case, and every launch) the scan used to pay it for nothing.
+    top_mem: dict[int, float] | None = None
 
     matches: list[dict[str, Any]] = []
     try:
@@ -219,6 +237,8 @@ def _list_llm_processes(limit: int = 12) -> list[dict[str, Any]]:
                 if not is_llm:
                     continue
 
+                if top_mem is None:
+                    top_mem = _cached_top_memory_map() if platform.system() == "Darwin" else {}
                 described = _describe_process(pid, top_mem=top_mem)
                 if described is not None:
                     matches.append(described)

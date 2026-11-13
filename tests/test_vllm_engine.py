@@ -231,6 +231,44 @@ class VLLMPromptRenderingTests(unittest.TestCase):
         tok.apply_chat_template.side_effect = ValueError("bad template")
         self.assertIn("USER: hi", self._engine(tok)._render_prompt([{"role": "user", "content": "hi"}]))
 
+    def _templated(self):
+        tok = MagicMock()
+        tok.chat_template = "{{ messages }}"
+        tok.apply_chat_template.return_value = "rendered"
+        return tok
+
+    def test_thinking_off_reaches_the_template(self) -> None:
+        tok = self._templated()
+        engine = self._engine(tok)
+        engine._thinking_mode = "off"
+        engine._render_prompt([{"role": "user", "content": "hi"}])
+        self.assertIs(tok.apply_chat_template.call_args.kwargs["enable_thinking"], False)
+        engine._thinking_mode = "on"
+        engine._render_prompt([{"role": "user", "content": "hi"}])
+        self.assertIs(tok.apply_chat_template.call_args.kwargs["enable_thinking"], True)
+
+    def test_no_thinking_switch_leaves_the_template_default(self) -> None:
+        tok = self._templated()
+        self._engine(tok)._render_prompt([{"role": "user", "content": "hi"}])
+        self.assertNotIn("enable_thinking", tok.apply_chat_template.call_args.kwargs)
+
+    def test_stream_generate_carries_thinking_mode_and_clears_it(self) -> None:
+        tok = self._templated()
+        engine = self._engine(tok)
+        seen: list = []
+
+        def fake_generate(**_kwargs):
+            seen.append(engine._thinking_mode)
+            return MagicMock(text="ok")
+
+        engine.generate = fake_generate  # type: ignore[method-assign]
+        list(engine.stream_generate(
+            prompt="hi", history=[], system_prompt=None, max_tokens=8,
+            temperature=0.5, thinking_mode="off",
+        ))
+        self.assertEqual(seen, ["off"])
+        self.assertIsNone(engine._thinking_mode)
+
 
 class TriAttentionVllmGuardTests(unittest.TestCase):
     """FU-171: TriAttention's vLLM patches only work on vLLM 0.18 and older."""

@@ -449,6 +449,19 @@ class VLLMEngine(BaseInferenceEngine):
         messages = _sanitize_messages(messages)
         return messages
 
+    def stream_generate(self, *, thinking_mode: str | None = None, **kwargs: Any):
+        """Remember the chat's thinking switch for the prompt render, then stream.
+
+        The base class drops ``thinking_mode`` before it reaches ``generate``,
+        so templates that gate reasoning on ``enable_thinking`` (Qwen3 family)
+        reasoned even when the chat said off.
+        """
+        self._thinking_mode = thinking_mode
+        try:
+            yield from super().stream_generate(**kwargs)
+        finally:
+            self._thinking_mode = None
+
     def _render_prompt(self, messages: list[dict[str, str]]) -> str:
         """Apply the model's own chat template; plain text only when it has none.
 
@@ -458,8 +471,14 @@ class VLLMEngine(BaseInferenceEngine):
         try:
             tokenizer = self._llm.get_tokenizer()
             if getattr(tokenizer, "chat_template", None):
+                template_kwargs: dict[str, Any] = {}
+                thinking_mode = getattr(self, "_thinking_mode", None)
+                if thinking_mode is not None:
+                    # Unknown template variables are ignored by the template.
+                    template_kwargs["enable_thinking"] = thinking_mode != "off"
                 rendered = tokenizer.apply_chat_template(
                     messages, tokenize=False, add_generation_prompt=True,
+                    **template_kwargs,
                 )
                 if isinstance(rendered, str) and rendered:
                     return rendered

@@ -168,14 +168,33 @@ def _normalize_ref(model_ref: str) -> str:
     return ref
 
 
+def _match_dflash2(target_ref: str) -> str | None:
+    """DFlash 2 draft for *target_ref*: exact key, else the base name inside it.
+
+    vLLM serves quantised community packs (``RedHatAI/Qwen3.8-27B-INT4``,
+    ``Qwen/Qwen3.8-27B-FP8``, a local snapshot folder) of the same target, so
+    an exact-key lookup left every runnable 27B on a 24-32 GB card without
+    its drafter. Longest base name first, case-insensitive.
+    """
+    if target_ref in DFLASH2_DRAFT_MODEL_MAP:
+        return DFLASH2_DRAFT_MODEL_MAP[target_ref]
+    ref_lower = target_ref.replace("\\", "/").lower()
+    for key, draft in sorted(DFLASH2_DRAFT_MODEL_MAP.items(), key=lambda kv: -len(kv[0])):
+        if key.split("/", 1)[-1].lower() in ref_lower:
+            return draft
+    return None
+
+
 def get_draft_model(target_ref: str, *, allow_dflash2: bool = False) -> str | None:
     """Return the DFLASH draft model checkpoint for *target_ref*, or ``None``.
 
     ``allow_dflash2`` also consults ``DFLASH2_DRAFT_MODEL_MAP`` (vLLM
     only); an exact DFlash 2 match wins there since it's the faster draft.
     """
-    if allow_dflash2 and target_ref in DFLASH2_DRAFT_MODEL_MAP:
-        return DFLASH2_DRAFT_MODEL_MAP[target_ref]
+    if allow_dflash2:
+        dflash2_draft = _match_dflash2(target_ref)
+        if dflash2_draft:
+            return dflash2_draft
     # 1. Exact match
     if target_ref in DRAFT_MODEL_MAP:
         return DRAFT_MODEL_MAP[target_ref]

@@ -474,6 +474,26 @@ class DFlash2DraftMapTests(unittest.TestCase):
             "z-lab/Qwen3.8-27B-DFlash2",
         )
 
+    def test_vllm_opt_in_pairs_quantised_packs_of_the_target(self):
+        # The only vLLM catalog row (FP8) and the 4-bit packs that fit a
+        # 24 GB card are not the exact BF16 repo id.
+        from dflash import get_draft_model
+
+        for ref in (
+            "Qwen/Qwen3.8-27B-FP8",
+            "RedHatAI/Qwen3.8-27B-INT4",
+            "grevinden/qwen3.8-27b-w4a16-autoround-rtx3090",
+            "/home/u/.cache/huggingface/hub/models--RedHatAI--Qwen3.8-27B-INT4/snapshots/abc",
+            "C:\\Models\\Qwen3.8-27B-AWQ",
+        ):
+            self.assertEqual(get_draft_model(ref, allow_dflash2=True), "z-lab/Qwen3.8-27B-DFlash2", ref)
+
+    def test_dflash2_match_does_not_catch_other_qwen38_models(self):
+        from dflash import get_draft_model
+
+        self.assertIsNone(get_draft_model("Vontra/Qwen3.8-Flash-Next-MLX-4bit-MTP", allow_dflash2=True))
+        self.assertIsNone(get_draft_model("Qwen/Qwen3.8-27B-FP8"))
+
     def test_mlx_default_never_gets_a_dflash2_draft(self):
         from dflash import get_draft_model
 

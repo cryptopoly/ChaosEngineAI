@@ -59,6 +59,55 @@ def release_freed_memory() -> bool:
         return False
 
 
+class ModelThread:
+    """Run a model engine's load, generation and unload on one thread of its own (Windows; elsewhere a direct call).
+
+    mimalloc returns freed memory only when the block is freed on the thread that allocated it (or that thread has
+    exited and the freeing thread reclaims it). Request handlers run on a pool of worker threads, so the thread that
+    loaded a pipeline (and, with model CPU offload, moved its weights back to system memory after every run) was
+    seldom the one that served Unload: on an RTX 4090 PC the installed backend kept 16.5 GB private after unloading
+    FLUX.2 Klein, and in a standalone run Klein loaded on one live thread and unloaded on another kept 16.6 GB (29.9
+    after a second cycle), while load and unload on the same thread went back to 3.3 GB. Funnelling every call that
+    touches the weights through one thread keeps allocation and free together. ``CHAOSENGINE_MODEL_THREAD=0`` turns
+    it off. A call made from that thread runs inline, so nested calls cannot deadlock.
+    """
+
+    def __init__(self, name: str) -> None:
+        import threading
+
+        self._name = name
+        self._lock = threading.Lock()
+        self._executor: Any = None
+        self._thread_ident: int | None = None
+
+    @staticmethod
+    def enabled(platform: str | None = None, environ: Any = None) -> bool:
+        environ = os.environ if environ is None else environ
+        return (platform or sys.platform) == "win32" and environ.get("CHAOSENGINE_MODEL_THREAD", "1") != "0"
+
+    def _mark(self) -> None:
+        import threading
+
+        self._thread_ident = threading.get_ident()
+
+    def run(self, fn: Any, *args: Any, **kwargs: Any) -> Any:
+        import contextvars
+        import threading
+
+        if not self.enabled() or threading.get_ident() == self._thread_ident:
+            return fn(*args, **kwargs)
+        with self._lock:
+            if self._executor is None:
+                from concurrent.futures import ThreadPoolExecutor
+
+                self._executor = ThreadPoolExecutor(
+                    max_workers=1, thread_name_prefix=self._name, initializer=self._mark,
+                )
+            executor = self._executor
+        context = contextvars.copy_context()  # provenance / agent job owner travel with the call
+        return executor.submit(context.run, fn, *args, **kwargs).result()
+
+
 def pipeline_load_kwargs() -> dict[str, Any]:
     """Extra ``from_pretrained`` keywords for a diffusers pipeline or model on this platform.
 

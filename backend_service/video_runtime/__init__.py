@@ -32,6 +32,7 @@ from typing import Any
 
 from backend_service.helpers.gpu import nvidia_gpu_present, torch_install_warning
 from backend_service.helpers.lora import fuse_catalog_lora
+from backend_service.helpers.malloc_release import ModelThread
 from backend_service.helpers.pipeline_kwargs import filter_pipeline_kwargs
 from backend_service.image_runtime import validate_local_diffusers_snapshot
 from backend_service.progress import (
@@ -1023,6 +1024,11 @@ def _is_longlive_repo(repo: str | None) -> bool:
     return repo.startswith("NVlabs/LongLive")
 
 
+# Load, generate and unload of the diffusers pipeline run on one thread so Windows hands its memory back on Unload
+# (see ``ModelThread``).
+_MODEL_THREAD = ModelThread("video-model")
+
+
 class VideoRuntimeManager:
     """State-level facade that mirrors ``ImageRuntimeManager``."""
 
@@ -1141,8 +1147,8 @@ class VideoRuntimeManager:
             if not status.realGenerationAvailable:
                 raise RuntimeError(status.message)
             if use_nf4:
-                return self._engine.preload(repo, use_nf4=True).to_dict()
-            return self._engine.preload(repo).to_dict()
+                return _MODEL_THREAD.run(self._engine.preload, repo, use_nf4=True).to_dict()
+            return _MODEL_THREAD.run(self._engine.preload, repo).to_dict()
 
     def unload(self, repo: str | None = None) -> dict[str, Any]:
         with self._lock:
@@ -1154,7 +1160,7 @@ class VideoRuntimeManager:
                 return self._get_mlx_video().unload(repo).to_dict()
             if repo is None and self._ltx2_mlx is not None:
                 self._ltx2_mlx.release("unloaded")  # the warm ltx-2-mlx worker, when it idles
-            return self._engine.unload(repo).to_dict()
+            return _MODEL_THREAD.run(self._engine.unload, repo).to_dict()
 
     def generate(self, config: VideoGenerationConfig) -> tuple[GeneratedVideo, dict[str, Any]]:
         """Run a single video generation, returning (video, runtime_status).
@@ -1243,6 +1249,6 @@ class VideoRuntimeManager:
         if not status.realGenerationAvailable:
             raise RuntimeError(status.message)
         with self._lock:
-            video = self._engine.generate(config)
+            video = _MODEL_THREAD.run(self._engine.generate, config)
             runtime = self._engine.probe().to_dict()
         return video, runtime

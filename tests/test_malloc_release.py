@@ -96,6 +96,126 @@ class AbandonedSegmentMeasurementTests(unittest.TestCase):
         self.assertLess(after - base, 0.2 * grown, f"kept {(after - base) / 2 ** 30:.2f} GB of {grown / 2 ** 30:.2f} GB")
 
 
+class ModelThreadTests(unittest.TestCase):
+    """Load, generate and unload share one thread on Windows, so freed weights go back to the OS."""
+
+    def _thread(self):
+        return malloc_release.ModelThread("test-model")
+
+    def test_calls_run_on_one_thread_that_is_not_the_callers(self):
+        import threading
+        from concurrent.futures import ThreadPoolExecutor
+
+        model = self._thread()
+        with mock.patch.object(malloc_release.ModelThread, "enabled", return_value=True):
+            with ThreadPoolExecutor(max_workers=3) as callers:
+                idents = list(callers.map(lambda _: model.run(threading.get_ident), range(6)))
+        self.assertEqual(len(set(idents)), 1)
+        self.assertNotEqual(idents[0], threading.get_ident())
+
+    def test_a_nested_call_runs_inline(self):
+        import threading
+
+        model = self._thread()
+        with mock.patch.object(malloc_release.ModelThread, "enabled", return_value=True):
+            outer, inner = model.run(lambda: (threading.get_ident(), model.run(threading.get_ident)))
+        self.assertEqual(outer, inner)
+
+    def test_results_arguments_and_exceptions_pass_through(self):
+        model = self._thread()
+        with mock.patch.object(malloc_release.ModelThread, "enabled", return_value=True):
+            self.assertEqual(model.run(lambda a, b=0: a + b, 2, b=3), 5)
+            with self.assertRaises(KeyError):
+                model.run(lambda: {}["missing"])
+
+    def test_context_variables_travel_with_the_call(self):
+        import contextvars
+
+        var: contextvars.ContextVar[str] = contextvars.ContextVar("owner", default="app")
+        model = self._thread()
+        with mock.patch.object(malloc_release.ModelThread, "enabled", return_value=True):
+            token = var.set("agent")
+            try:
+                self.assertEqual(model.run(var.get), "agent")
+            finally:
+                var.reset(token)
+
+    def test_off_windows_or_switched_off_it_calls_directly(self):
+        import threading
+
+        self.assertFalse(malloc_release.ModelThread.enabled(platform="linux", environ={}))
+        self.assertFalse(malloc_release.ModelThread.enabled(platform="darwin", environ={}))
+        self.assertFalse(malloc_release.ModelThread.enabled(platform="win32", environ={"CHAOSENGINE_MODEL_THREAD": "0"}))
+        self.assertTrue(malloc_release.ModelThread.enabled(platform="win32", environ={}))
+        with mock.patch.object(malloc_release.ModelThread, "enabled", return_value=False):
+            self.assertEqual(self._thread().run(threading.get_ident), threading.get_ident())
+
+    def test_image_and_video_managers_route_the_pipeline_calls_through_it(self):
+        from pathlib import Path
+        import re
+
+        root = Path(__file__).resolve().parents[1] / "backend_service"
+        image = (root / "image_runtime" / "__init__.py").read_text(encoding="utf-8")
+        for call in ("_MODEL_THREAD.run(self._diffusers.generate", "_MODEL_THREAD.run(self._diffusers.unload",
+                     "_MODEL_THREAD.run(self._diffusers.preload"):
+            self.assertIn(call, image)
+        self.assertIsNone(re.search(r"self\._diffusers\.(generate|unload|preload)\(", image))
+        video = (root / "video_runtime" / "__init__.py").read_text(encoding="utf-8")
+        for call in ("_MODEL_THREAD.run(self._engine.generate", "_MODEL_THREAD.run(self._engine.unload",
+                     "_MODEL_THREAD.run(self._engine.preload"):
+            self.assertIn(call, video)
+
+
+# Real measurement (Windows with torch only): weights allocated on one live worker thread and freed on another, as a
+# request worker loads a pipeline and another serves Unload. Without the model thread the memory stays committed.
+_LIVE_THREAD_PROBE = """
+import gc, sys, threading, time
+from concurrent.futures import ThreadPoolExecutor
+import backend_service
+import psutil, torch
+from backend_service.helpers.malloc_release import ModelThread
+proc = psutil.Process()
+model = ModelThread("probe")
+keep = []
+def load():
+    for _ in range(40):
+        keep.append(torch.ones(24 * 2 ** 20, dtype=torch.uint8))
+def clear():
+    keep.clear(); gc.collect()
+loader, unloader = ThreadPoolExecutor(max_workers=1), ThreadPoolExecutor(max_workers=1)
+base = proc.memory_info().private
+loader.submit(model.run, load).result()
+loaded = proc.memory_info().private
+unloader.submit(model.run, clear).result()
+time.sleep(1)
+print(base, loaded, proc.memory_info().private)
+"""
+
+
+@unittest.skipUnless(sys.platform == "win32", "torch links mimalloc on Windows only")
+class LiveThreadMeasurementTests(unittest.TestCase):
+    def _probe(self, model_thread: str):
+        import importlib.util
+        import os
+        import subprocess
+
+        if importlib.util.find_spec("torch") is None or importlib.util.find_spec("psutil") is None:
+            self.skipTest("torch or psutil not installed")
+        env = {k: v for k, v in os.environ.items() if not k.startswith("MIMALLOC_")}
+        env["CHAOSENGINE_MODEL_THREAD"] = model_thread
+        result = subprocess.run([sys.executable, "-c", _LIVE_THREAD_PROBE], capture_output=True, text=True, env=env,
+                                timeout=300)
+        self.assertEqual(result.returncode, 0, result.stderr[-2000:])
+        base, loaded, after = (int(v) for v in result.stdout.split()[-3:])
+        grown = loaded - base
+        self.assertGreater(grown, 512 * 2 ** 20)  # the probe really allocated about 1 GB
+        return grown, after - base
+
+    def test_memory_comes_back_when_load_and_unload_share_the_model_thread(self):
+        grown, kept = self._probe("1")
+        self.assertLess(kept, 0.2 * grown, f"kept {kept / 2 ** 30:.2f} GB of {grown / 2 ** 30:.2f} GB")
+
+
 class PipelineLoadKwargsTests(unittest.TestCase):
     """Windows loads diffusers pipelines without the memory map (Wan 2.2 TI2V-5B: 46.8 GB private -> 28.5 GB)."""
 

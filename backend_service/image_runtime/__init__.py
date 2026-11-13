@@ -11,6 +11,7 @@ import gc
 import secrets
 
 from backend_service.helpers.lora import fuse_catalog_lora
+from backend_service.helpers.malloc_release import ModelThread
 from backend_service.helpers.pipeline_kwargs import filter_pipeline_kwargs
 from backend_service.helpers.gpu import (
     nvidia_gpu_present as _nvidia_gpu_present,
@@ -977,6 +978,11 @@ _NO_DIFFUSERS_PIPELINE: frozenset[str] = frozenset({
 })
 
 
+# Load, generate and unload of the diffusers pipeline run on one thread so Windows hands its memory back on Unload
+# (see ``ModelThread``).
+_MODEL_THREAD = ModelThread("image-model")
+
+
 class ImageRuntimeManager:
     def __init__(self) -> None:
         self._lock = RLock()
@@ -1006,13 +1012,13 @@ class ImageRuntimeManager:
             status = self._diffusers.probe()
             if not status.realGenerationAvailable:
                 raise RuntimeError(status.message)
-            return self._diffusers.preload(repo).to_dict()
+            return _MODEL_THREAD.run(self._diffusers.preload, repo).to_dict()
 
     def unload(self, repo: str | None = None) -> dict[str, Any]:
         with self._lock:
             if repo is None or repo in supported_repos():
                 self._mflux.release("unloaded")  # the warm mflux worker, when it idles
-            return self._diffusers.unload(repo).to_dict()
+            return _MODEL_THREAD.run(self._diffusers.unload, repo).to_dict()
 
     def generate(self, config: ImageGenerationConfig) -> tuple[list[GeneratedImage], dict[str, Any]]:
         # mflux path: Apple Silicon native FLUX via MLX. Routed only
@@ -1097,7 +1103,7 @@ class ImageRuntimeManager:
         status = self._diffusers.probe()
         if status.realGenerationAvailable:
             try:
-                images = self._diffusers.generate(config)
+                images = _MODEL_THREAD.run(self._diffusers.generate, config)
                 result_status = self._diffusers.probe().to_dict()
                 if _mflux_fallback_note:
                     result_status["message"] = (

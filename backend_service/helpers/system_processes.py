@@ -178,6 +178,9 @@ def _describe_process(
     }
 
 
+SCAN_ATTRS = ("pid", "name", "cmdline")
+
+
 def _list_llm_processes(limit: int = 12) -> list[dict[str, Any]]:
     # Process-name keywords that indicate an LLM-related process.
     # Intentionally excludes the desktop app name itself, which is too broad
@@ -195,7 +198,12 @@ def _list_llm_processes(limit: int = 12) -> list[dict[str, Any]]:
 
     matches: list[dict[str, Any]] = []
     try:
-        for process in psutil.process_iter(["pid", "name", "cmdline", "memory_info", "cpu_percent", "ppid"]):
+        # Only what the filter reads. ``_describe_process`` fetches memory and CPU for
+        # the few matches. Asking for memory_info / cpu_percent here opened every
+        # process on the machine (0.44 s for 290 processes on Windows, against 0.01 s),
+        # holding the GIL on each UI poll of /api/workspace and slowing a running
+        # image or video generation by 13 to 16 % (FU-173).
+        for process in psutil.process_iter(SCAN_ATTRS):
             try:
                 name = (process.info.get("name") or "").lower()
                 cmdline_parts = process.info.get("cmdline") or []

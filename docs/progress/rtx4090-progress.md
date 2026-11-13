@@ -1493,3 +1493,25 @@ Built with `./build.sh` from `12288835` (mimalloc unload, Klein loader class, Tr
 **Fix 2, LTX-2.5 on the installed app (`36014c9b`).** `model_index.json` lists `processor` (`Gemma4Processor`), whose video processor needs torchvision; the dev venv has torchvision, the GPU runtime does not. The processor serves only prompt enhancement, which the app does not use, so `LTX25_UNUSED_COMPONENTS` (`prompt_enhancer` and `processor` as `None`) now goes to every LTX-2.5 load, both rows, text and image to video (the bf16 row did not pass `prompt_enhancer=None` before either; not runnable on this card). Also: a failed video load re-raises without its traceback, after a collection, so components loaded before the failure are freed (the 19 GB GPU / 21 GB RAM case). Tests in `tests/test_video_ltx25.py` (the components; all three LTX-2 pipeline classes take them as optional) and `FailedLoadReleaseTests` in `tests/test_video_runtime.py`. pytest: malloc_release, image_runtime, video_runtime, video_ltx25, memory_gate, media_fit_cuda, backend_service, teacache, ltx2_mlx_runtime, mcp_bridge, storyboard_tools, job_queue pass.
 
 **Not verified on this PC:** the LTX-2.5 bf16 row and the bf16 text-encoder branch (need 48 GB or more of VRAM); vLLM `thinkingMode` and the RedHat INT4 pack (need Linux, which was removed from this PC); FLUX.2 Dev NF4 (not downloaded); other cards and RAM sizes for the model-thread fix (an allocator matter, independent of the card). Open: LTX-2.5 and Klein warm denoise are slower on the installed runtime than on the dev venv (FU-173).
+
+## FU-173: installed app slower than dev, root cause and fix (2026-11-13)
+
+Same card, same clips (`klein.json`: 1024x640, 4 steps; `ltx_t2v.json`: LTX-2.5 `~nf4`, 512x320, 25 frames, 8 steps, seed 42), one backend at a time on 8876, the installed app closed for the standalone runs. "Standalone" is the installed runtime (embedded Python, extras overlay with torch 2.14.1+cu130, the installed backend code) started from a shell with the same `PYTHONPATH` the shell builds; "dev" is `.venv` (torch 2.11+cu128). diffusers 0.42.1 in both is byte-identical.
+
+| Run | Klein warm denoise | LTX-2.5 warm denoise |
+|---|---|---|
+| Dev venv, torch 2.11+cu128, no UI | 4.74 s | 20.8 s |
+| Installed runtime, torch 2.14.1+cu130, standalone, no UI | 4.72 s | 20.2 to 20.4 s |
+| Installed app (its own UI polling) | 5.16 to 5.22 s | 22.1 to 22.3 s |
+| Standalone + UI-like polling (`/api/metrics/gpu` 2 s, `/api/health` 1 s, `/api/workspace` 3 s) | 5.47 s | |
+| same, `/api/metrics/gpu` only | 4.75 s | |
+| same, `/api/health` only | 4.74 s | |
+| same, `/api/workspace` only | 5.45 s | |
+| **After the fix**, all three polls | **4.83 s** | **20.6 s** |
+| After the fix, no polls | 4.77 to 4.80 s | |
+
+**Not torch, not CUDA 13, not diffusers.** The runtime itself is as fast as the dev venv; the torch 2.11 swap was not needed. **Cause:** the UI polls `/api/workspace`, whose system snapshot lists LLM processes with `psutil.process_iter(["pid", "name", "cmdline", "memory_info", "cpu_percent", "ppid"])`. On Windows that opens every process on the machine: 0.44 s for 290 processes, holding the GIL, against 0.01 s for pid, name and command line. Every poll stalled the Python thread that queues the GPU work. The filter reads only name and command line, and `_describe_process` already fetches memory and CPU for the few matches, so the scan now asks for those three only (`helpers/system_processes.py`, `SCAN_ATTRS`). `/api/workspace` went from 0.56 to 0.15 s per call. Test: `RunningProcessListTests.test_scan_asks_only_for_name_and_command_line` in `tests/test_system.py`.
+
+The 33 to 35 s LTX-2.5 denoise seen through the app earlier today did not come back (22 s through the app this time, before the fix); the scan cost grows with the number of processes and the polls with the number of open views, which is the best explanation, not proven. Remaining `/api/workspace` cost (0.15 s: `shutil.which` over `PATH` and the TurboQuant path probe) is mostly file-system calls that release the GIL; not measurable in denoise.
+
+**Ships with:** the next installer build (backend code only, no runtime or pin change). Not yet checked through a rebuilt installer.

@@ -56,6 +56,14 @@ class RunningProcessListTests(unittest.TestCase):
             [],
         )
 
+    def test_scan_asks_only_for_name_and_command_line(self):
+        # FU-173: memory_info / cpu_percent for every process cost 0.44 s per UI poll on
+        # Windows (290 processes) and slowed a running generation by 13 to 16 %.
+        with mock.patch("backend_service.helpers.system_processes.psutil.process_iter", return_value=[]) as scan:
+            _list_llm_processes()
+        attrs = set(scan.call_args.args[0])
+        self.assertEqual(attrs, {"pid", "name", "cmdline"})
+
 
 if __name__ == "__main__":
     unittest.main()

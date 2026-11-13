@@ -10,11 +10,11 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 
 
 <details>
-<summary>FU-173 · Installed app runs LTX-2.5 4-bit and FLUX.2 Klein slower than the dev venv on the same card — Open (2026-11-13).</summary>
+<summary>FU-173 · Installed app runs LTX-2.5 4-bit and FLUX.2 Klein slower than the dev venv on the same card — Fixed in code (2026-11-13), ships with the next installer build.</summary>
 
-**Status or trigger:** **Open (2026-11-13).**
+**Status or trigger:** **Fixed in code (2026-11-13), ships with the next installer build.**
 
-**Notes:** `docs/progress/rtx4090-progress.md`, "Installer rebuilt with today's fixes". LTX-2.5 4-bit 512x320x25: denoise 33 to 35 s installed against 21 to 23 s on the dev backend; Klein 1024x640 warm repeats 5.2 to 5.7 s against 4.6 s. Installed: extras overlay torch 2.14.1+cu130, no torchvision; dev: torch 2.11+cu128. Not caused by the model thread (Klein was 5.5 to 5.7 s before it). Next: run the same clip with the dev venv's torch against the installed backend code, then profile one step.
+**Notes:** `docs/progress/rtx4090-progress.md`, "FU-173: installed app slower than dev". Not torch: the installed runtime (torch 2.14.1+cu130) run standalone matches the dev venv (Klein warm denoise 4.72 s, LTX-2.5 512x320x25 20.2 to 20.9 s). Cause: the UI polls `/api/workspace` every few seconds, and its LLM process scan asked psutil for `memory_info` and `cpu_percent` of every process (0.44 s for 290 processes on Windows, GIL held), stalling the Python loop that drives the GPU. With UI-like polling Klein went 4.72 to 5.45 s (+16 %); through the app LTX-2.5 was 22.1 to 23.0 s. The scan now asks only for pid, name and command line (0.01 s; `/api/workspace` 0.56 to 0.15 s); with the same polling Klein is 4.83 s and LTX-2.5 20.6 s. The 33 to 35 s seen earlier did not come back in this session (best guess: more processes or more UI polling then).
 
 </details>
 

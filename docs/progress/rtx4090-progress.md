@@ -1341,3 +1341,63 @@ Not verified: other cards and RAM sizes (the fix is an allocator setting, indepe
 **Fix.** Both loaders take the class from the snapshot's `transformer/config.json` `_class_name` (FLUX.1 class when the file is missing or odd; a class the installed diffusers lacks returns the bf16 fallback note without loading). Tests: `FluxTransformerClassTests` in `tests/test_image_runtime.py` (6). `test_image_runtime.py` + `test_teacache.py` and `-k "image or nf4 or flux or quant"` pass.
 
 **Evidence.** Klein 1024x640, 4 steps, seed 1234: after the fix, no unused / newly-initialised warnings, NF4 `Flux2Transformer2DModel` loads (13.3 s), denoise warm 4.6 s vs 6.3 s bf16 (script) and 4.6 s vs 7.8-8.4 s earlier through the dev backend; peak CUDA allocation 8.38 GB both ways (the Qwen3 text encoder dominates). Image: same composition and quality as bf16, small detail differences (PSNR 21 dB vs bf16), checked by eye. Not verified: FLUX.2 Dev (not downloaded), MPS int8wo, other cards.
+## TriAttention on vLLM: root cause and a working combination (2026-11-13)
+
+FU-171. WSL2 Ubuntu 24.04, RTX 4090, Qwen3-0.6B, the stats file made on 2026-11-12 with TriAttention's `scripts/calibrate.py`. Plugin at commit `a4bc3c8` (upstream `main` is unchanged since).
+
+**Root cause.** The plugin copies vLLM 0.18-era model-runner internals; 0.19 changed two of them.
+
+| vLLM | What happens | Evidence |
+|---|---|---|
+| 0.19.1 | compacts nothing | vLLM's `bind_kv_cache` sets `layer.kv_cache = [kv_cache]` up to v0.18.x and `= kv_cache` (bare tensor) from v0.19.0. The plugin's `kv_group_resolver.resolve_group_tensors` skips any layer whose `kv_cache` is not a list, so it found no KV tensors and `hook_group_pipeline` returned `no_compactable_groups` for every event (and that reason is on the plugin's allowed-skip list, so nothing failed). |
+| 0.19.1 + a resolver shim | compacts once, then crashes | `compression applied ... before=7794 after=2048 reclaimed_blocks=360`, then on the next step `AttributeError: 'Tensor' object has no attribute 'np'` in the plugin's copied `_prepare_inputs` (`self.positions.np`): `positions` is a `_make_buffer` CPU/GPU buffer up to v0.18.1 and a plain GPU tensor from v0.19.0. Porting that copy is upstream work; the shim was dropped. |
+| 0.33.0 | engine core dies on the first request | `EngineCoreProc.log_iteration_details` is gone (found 2026-11-12). |
+| 0.18.1 | **compacts** | Scratch venv: a hardlinked copy of the 0.19.1 venv plus `vllm==0.18.1` (same torch 2.10), +3 GB on the WSL disk. |
+
+**Our fix (adapter).** On 0.18.1 the first compaction worked and then no other: the plugin's `mark_compression_skipped` stamps the skipped step as `last_compression_step`, and its one-step dedup guard then skipped every following signal (budget 512, 3000 tokens: 1 applied, 2304 `batch_queue_dedup` skips). `_install_skip_stamp_fix` keeps the last applied step: 20 compactions on the same run, 39 at 6000 tokens.
+
+**Prompt handling.** The plugin compacts before the step's forward pass. A 7.8K prompt prefilled in one step was compacted before its KV existed: garbage from the first token, then `effective_len_regressed` once the dedup fix let it continue. With 2048-token prefill chunks it compacts the prompt correctly, but a prompt in the budget loses detail. With the prompt protected (not counted in the budget) only generated tokens are compacted. The app uses chunks of 2048 and the protected prompt.
+
+Needle (passphrase `PURPLE-OTTER-4821` in the middle of filler, thinking on, 1024 max tokens), vLLM 0.18.1, `enforce_eager` in every row:
+
+| Run | Prompt | Compactions | Needle | e2e tok/s |
+|---|---|---|---|---|
+| native | 7,794 | 0 | PASS | 72.7 |
+| native | 15,580 | 0 | PASS | 66.4 |
+| prompt in budget 2048, one-chunk prefill | 7,794 | 1, then garbage | FAIL | |
+| prompt in budget 2048, chunks 2048 | 7,794 | 2 | FAIL (`PURPLE-4821`) | 15.8 |
+| prompt in budget 4096, chunks 2048 | 7,794 | 2 | FAIL (`PURPLE-4821`) | 28.6 |
+| prompt in budget 4096, chunks 2048 | 15,580 | 5 | FAIL (made-up passphrase) | 21.0 |
+| prompt in budget 2048, chunks 2048 | 15,580 | 14 | FAIL (never left thinking) | 73.1 |
+| **prompt protected, budget 2048 (app setting)** | 15,580 | 0 (161 generated) | **PASS** | 66.5 |
+
+Long generation (69-token prompt, up to 6000 tokens):
+
+| Run | Generated | Compactions | tok/s | Per-request KV at the end |
+|---|---|---|---|---|
+| native, CUDA graphs | 5,779 (finished) | 0 | **340.5** | ~5,850 tokens |
+| native, eager | 5,241 (finished) | 0 | 80.6 | ~5,310 tokens (332 blocks) |
+| TriAttention budget 1024, eager | 6,000 (still reasoning) | 39, 312 blocks reclaimed | 76.9 | at most 1,152 tokens (72 blocks) |
+| same, prompt protected | 6,000 (still reasoning) | 39 | 76.1 | same |
+| **app `VLLMEngine`, budget 1024, 3000 tokens** | 3,000 | 15 | 70.1 | |
+
+Reading:
+- Compaction is real on 0.18.1: blocks go back to vLLM's pool, so a long generation holds about 4.6x fewer KV blocks at budget 1024.
+- Peak GPU memory does not drop. vLLM reserves its pool at load (`gpu_memory_utilization` 0.6 here, torch peak 13.8 GB in every row). The gain is pool room for more or longer requests at once, not lower VRAM.
+- The cost is eager mode, which the plugin requires: decoding is 80 tok/s against 340 with CUDA graphs on this small model. Compaction itself costs about 5 % on top (76.9 against 80.6).
+- Answer quality is not measured. The math prompt was badly worded and Qwen3-0.6B answered it wrongly with and without compression. Text stayed coherent through 39 compactions, but the compressed run had not finished reasoning at 6000 tokens, while native finished at 5,241.
+
+**App changes.**
+- `cache_compression/triattention.py` refuses vLLM >= 0.19 with the reason. The Settings badge reads Unavailable, tone warning.
+- It looks up the stats file `<repo name>.pt` in `~/.chaosengine/triattention/stats` (`CHAOSENGINE_TRIATTENTION_STATS_DIR` overrides). The pip install ships no stats, and without a file the load falls back to native with a note.
+- It installs the dedup fix and returns the env and `LLM` kwargs: budget (`CHAOSENGINE_TRIATTENTION_KV_BUDGET`, default 2048), stats path, protected prompt, `enforce_eager`, no prefix caching, 2048-token chunks, and the engine core in process so the fix reaches the scheduler.
+- `VLLMEngine` applies them and clears them for the next load.
+- The `[triattention]` extra pins `vllm>=0.15,<0.19`, and the accelerator card copy no longer claims chat KV compression in general.
+- Tests: `tests/test_vllm_engine.py`, 14 new tests replacing the 2 for the old engine-core check.
+
+**Not done or not verified.**
+- The app's own vLLM is >= 0.28, so a stock install shows TriAttention on vLLM as Unavailable. It works only from a hand-made vLLM 0.18 environment, and nothing in the app creates one.
+- No E2E check added, since no user-reachable feature shipped.
+- Not run through the HTTP backend or the UI. The engine was driven directly.
+- A model larger than 0.6B was not tried.
+- The scratch venv `~/venv-vllm18` is left in WSL.

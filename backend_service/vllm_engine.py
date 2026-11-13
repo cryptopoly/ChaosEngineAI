@@ -41,6 +41,20 @@ def _vllm_version() -> str | None:
         return None
 
 
+# Env vars a cache strategy set for the previous load; cleared before the next.
+_STRATEGY_ENV_KEYS: set[str] = set()
+
+
+def _apply_strategy_env(env: dict[str, str]) -> None:
+    """Set a strategy's env for this load, dropping the previous strategy's."""
+    for key in _STRATEGY_ENV_KEYS - set(env):
+        os.environ.pop(key, None)
+    _STRATEGY_ENV_KEYS.clear()
+    for key, value in env.items():
+        os.environ[key] = value
+        _STRATEGY_ENV_KEYS.add(key)
+
+
 def _prepare_vllm_env(strategy_id: str) -> list[str]:
     """Set the process env vLLM's engine subprocess inherits. Returns notes.
 
@@ -121,15 +135,24 @@ class VLLMEngine(BaseInferenceEngine):
         actual_cache_strategy = cache_strategy
         actual_cache_bits = cache_bits
         actual_fp16_layers = fp16_layers
+        strategy_env: dict[str, str] = {}
+        strategy_llm_kwargs: dict[str, Any] = {}
         if strategy and hasattr(strategy, "apply_vllm_patches"):
             try:
+                if hasattr(strategy, "vllm_runtime"):
+                    # Checked first: without a stats file the patched engine
+                    # stops at the first compression.
+                    strategy_env, strategy_llm_kwargs, runtime_note = strategy.vllm_runtime(
+                        [canonical_repo, model_ref, path],
+                    )
                 strategy.apply_vllm_patches()
-                runtime_note = f"Applied {strategy.name} vLLM patches."
+                runtime_note = runtime_note or f"Applied {strategy.name} vLLM patches."
             except (NotImplementedError, RuntimeError) as exc:
-                runtime_note = f"Cache strategy '{strategy.name}' patches failed: {exc}. Running without compression."
+                runtime_note = f"Cache strategy '{strategy.name}' unavailable: {exc} Running without compression."
                 actual_cache_strategy = "native"
                 actual_cache_bits = 0
                 actual_fp16_layers = 0
+                strategy_env, strategy_llm_kwargs = {}, {}
 
         target = runtime_target or path or model_ref
         dflash_target_ref = resolve_dflash_target_ref(
@@ -166,6 +189,8 @@ class VLLMEngine(BaseInferenceEngine):
                 pass
 
         env_notes = _prepare_vllm_env(actual_cache_strategy)
+        _apply_strategy_env(strategy_env)
+        llm_kwargs.update(strategy_llm_kwargs)
         self._llm = LLM(**llm_kwargs)
 
         version = _vllm_version() or "unknown"

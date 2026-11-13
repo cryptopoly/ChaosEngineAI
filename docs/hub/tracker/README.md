@@ -15,7 +15,7 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 
 | Row | Item | Status |
 |---|---|---|
-| [FU-171](open.md) | TriAttention on the vLLM lane: the app passes no budget, stats file, eager mode or prefix- | Open. |
+| [FU-171](open.md) | TriAttention on the vLLM lane: works only on vLLM 0.18 or older; the app now says so and w | Open: root cause found, compaction working on vLLM 0.18.1, app honest on newer vLLM (2026-11-13). |
 | [FU-170](open.md) | cargo test port race in backend::tests::runtime_info_keeps_a_soft_note_while_the_port_is_s | Open; low priority. |
 | [FU-169](open.md) | scripts/check-upstreams.py: report every pinned upstream against its newest release (D-78) | Shipped 2026-11-11. |
 | [FU-168](open.md) | TensorFold 1.x: build the family table from capabilities --json, add newer families | Open: the 14 families are now in the tables (2026-11-11) |

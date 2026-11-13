@@ -1447,3 +1447,28 @@ The recurrent-state blocks for draft verification need about 1.6 GiB even at 1K 
 - The bf16-embedding copy is a test aid, not an app feature.
 
 Disk: HF cache in WSL 16 GB + 3.6 GB, local copy 2.4 GB of new data, so 22 GB in all, inside the WSL `ext4.vhdx`. C: free went from 60.9 GB to 52.3 GB over this run (the vhdx grows and does not shrink; vLLM compile caches too). Nothing deleted.
+
+## LTX-2.5 on Windows/CUDA (diffusers), first real run (2026-11-13)
+
+Dev backend on port 8896 (the installed app held 8876), `.venv` torch 2.11+cu128 and diffusers 0.42.1, transformers 5.22.2 and bitsandbytes 0.50.2 from the GPU extras. **diffusers 0.42.1 loads the real checkpoint end to end; no upgrade needed.** Gemma 4 text encoder is `Gemma4UnifiedForConditionalGeneration` (11.96B; children `language_model`, `embed_vision`, `embed_audio`, `lm_head`); 4-bit load works with the skip list as written (`lm_head`, `embed_tokens`, `embed_vision`, `embed_audio` match; the other names match nothing and are harmless). `disable_mmap` is accepted with both quantised loads.
+
+**Download** through `/api/video/download` (the app path, saved token): 66.2 GiB (71.1 GB), about 37 min at 26 to 30 MB/s. C: free 124.6 GB before, 49.8 GB after. Nothing deleted.
+
+| Run (row `~nf4`, seed 42, 8 steps) | Load | Denoise | Wall | GPU peak (desktop 0.7 GB incl.) | Backend private peak | Commit peak |
+|---|---|---|---|---|---|---|
+| 512x320, 25 frames, cold | 124.5 s | 22.7 s | 149.3 s | 18.8 GB | 51.0 GB | 68.7 GB (limit 67.9, page file grew) |
+| same, warm | 0 | 21.0 s | 21.5 s | 18.6 GB | 48.3 GB | 66.3 GB |
+| 768x512, 97 frames, cold | 107.1 s | 62.4 s | 170.5 s | 20.1 GB | 51.4 GB | 69.3 GB |
+| same, warm | 0 | 61.3 s | 62.2 s | 20.1 GB | | |
+| `/api/video/preload` then 512x320 clip | 107.4 s (preload) | 21.6 s | 22.3 s | 18.8 GB | 51.0 GB | 68.7 GB |
+
+Loaded and idle the backend holds 37.5 GB private (the offloaded components wait in system memory); the 51 GB peak lasts a few seconds while the pipeline is assembled. After `/api/video/unload`: private 4.2 GB, GPU 1.15 GB (memory returns). Minimum free RAM seen 22.9 GB. Every clip has a stereo 48 kHz AAC track, mean -28.6 / -32.3 dB, max -12.6 / -16.6 dB (not silent); frames looked at (first, middle, last): a fox moving through snow, coherent, no artefacts. LTX-2.3 4-bit for comparison: 70 to 80 s denoise at 768x512x97.
+
+**Failed and fixed**
+1. The download ended `failed`: "missing components: diffusion_decoder". `model_index.json` lists `diffusion_decoder`, which `LTX2Pipeline` in 0.42.1 does not take (and it needs NATTEN). `OPTIONAL_COMPONENTS_BY_REPO` now lists it with `prompt_enhancer`; re-requesting the download validated as complete with no new bytes.
+2. `/api/video/preload` ignored the row's `loadQuantization`: preloading the 4-bit row would have read the bf16 repo (38 GB transformer + 24 GB encoder) into a 64 GB machine. Route, manager and engine now pass `use_nf4`; checked live (above: 18.8 GB on the card, then generate reused it, load 0 s).
+3. The download bar was sized at 162.45 GB (the whole repo, stale shard sets and `transformer_full` included). A video or image row with pinned files now uses the catalog size (converted to GiB, as the bar counts); the Hub preview lists only top-level files, so it cannot be summed against the patterns.
+
+**Catalog** `Lightricks/LTX-2.5-Diffusers~nf4` is now measured: `runtimeFootprintGb` 19.5 (offloaded generation peak), `loadMemoryGb` 38 (held while loaded), `estimatedGenerationSeconds` 62 (warm, 768x512, 97 frames), `footprintBasis` measured on cuda. The placement figure in `video_runtime/defaults.py` is now 27 GB (the whole pipeline in place: 18.1 GB of 4-bit models on the card after loading + 6.3 GB connectors + ~2 GB VAEs); offload is still chosen on cards up to ~40 GB. The bf16 row stays estimated. E2E check "LTX-2.5 on diffusers, 4-bit on load" now expects basis `measured`.
+
+**Not verified:** the bf16 text-encoder branch (needs 48 GB free on the card; does not fit 24 GB, not attempted); the bf16 row; image-to-video on this row; E2E phase 5 itself not run (the live steps it makes were run by hand above). The commit peak passes the system-managed page file's current limit by ~1.5 GB while loading, so on a 64 GB machine the page file has to be allowed to grow.

@@ -159,6 +159,13 @@ def start_download(
         or music_repo_allow_patterns(repo)
         or text_patterns
     )
+    # A video or image row that pins its files (LTX-2.5: 71 GB of a 162 GB repo) sizes the bar with the catalog's
+    # download size, not the whole repo (the preflight counts every file). The Hub file preview lists only the top
+    # level, so it cannot be summed against the patterns the way text and music rows are.
+    if not allow_patterns and (_video_repo_allow_patterns(repo) or _image_repo_allow_patterns(repo)):
+        catalog_gb = _known_repo_size_gb(repo)
+        if isinstance(catalog_gb, (int, float)) and catalog_gb > 0:
+            total_gb = round(float(catalog_gb) * 1e9 / 1024 ** 3, 2)  # catalog GB are decimal, the bar counts GiB
     # A music row's companion repo (Stable Audio's T5 text encoder) is fetched after the model itself, so
     # the bar counts it too: otherwise it sat at 99 % while the last 0.9 GB came down.
     companion_total_bytes = 0

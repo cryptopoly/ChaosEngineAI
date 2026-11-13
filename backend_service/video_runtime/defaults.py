@@ -54,10 +54,12 @@ _VIDEO_MODEL_FOOTPRINT_BF16_GB: dict[str, float] = {
     "THUDM/CogVideoX-5b": 33.0,
 }
 
-# Repos quantised to 4-bit while they load (``use_nf4`` on a repo whose weights are bf16): estimated resident GB, from the
-# LTX-2.3 4-bit pack's measured peak. Unmeasured for LTX-2.5.
+# Repos quantised to 4-bit while they load (``use_nf4`` on a repo whose weights are bf16): the whole pipeline's GB if it
+# sat on the GPU at once, which is what the placement rule compares with the card. LTX-2.5, measured 2026-11-13: the
+# 4-bit transformer and text encoder take 18.1 GB on the card after loading, plus 6.3 GB of bf16 connectors and about
+# 2 GB of VAEs and vocoder. With model CPU offload the generation peak is about 20 GB (the catalog row's figure).
 _VIDEO_MODEL_FOOTPRINT_NF4_ON_LOAD_GB: dict[str, float] = {
-    "Lightricks/LTX-2.5-Diffusers": 22.5,
+    "Lightricks/LTX-2.5-Diffusers": 27.0,
 }
 
 # GGUF quant level → multiplier vs the bf16 footprint. Keys are matched as

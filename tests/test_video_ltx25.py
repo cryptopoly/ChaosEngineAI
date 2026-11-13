@@ -45,9 +45,6 @@ class CatalogTests(unittest.TestCase):
             self.assertEqual(row["repo"], LTX25_REPO)
             self.assertIs(row["cudaOnly"], True)
             self.assertIs(row["gated"], True)
-            self.assertEqual(row["footprintBasis"], "estimated")
-            self.assertEqual(row["estimatedGenerationSecondsBasis"], "estimated")
-            self.assertNotIn("footprintMeasuredOn", row)
             self.assertIn("US$10M", row["note"])
             self.assertIn("affiliates", row["note"])
             self.assertIn("Commercial Use Agreement", row["note"])
@@ -55,11 +52,17 @@ class CatalogTests(unittest.TestCase):
         self.assertEqual(rows[LTX25_NF4_ID]["loadQuantization"], "nf4")
         self.assertNotIn("loadQuantization", rows[LTX25_BF16_ID])
 
-    def test_footprints_are_the_estimates_asked_for(self) -> None:
+    def test_four_bit_row_is_measured_and_bf16_row_estimated(self) -> None:
         rows = _rows()
-        self.assertEqual(rows[LTX25_NF4_ID]["runtimeFootprintGb"], 22.5)
-        self.assertEqual(rows[LTX25_BF16_ID]["runtimeFootprintGb"], 76.0)
-        self.assertIn("not measured", rows[LTX25_NF4_ID]["note"])
+        nf4, bf16 = rows[LTX25_NF4_ID], rows[LTX25_BF16_ID]
+        # Measured 2026-11-13 on a 24 GB card: GPU peak 20.1 GB at 768x512x97, 37.5 GB system memory held, 62 s warm.
+        self.assertEqual((nf4["footprintBasis"], nf4["footprintMeasuredOn"]), ("measured", "cuda"))
+        self.assertEqual(nf4["estimatedGenerationSecondsBasis"], "measured")
+        self.assertEqual((nf4["runtimeFootprintGb"], nf4["loadMemoryGb"], nf4["estimatedGenerationSeconds"]), (19.5, 38.0, 62.0))
+        self.assertEqual((bf16["footprintBasis"], bf16["estimatedGenerationSecondsBasis"]), ("estimated", "estimated"))
+        self.assertNotIn("footprintMeasuredOn", bf16)
+        self.assertEqual(bf16["runtimeFootprintGb"], 76.0)
+        self.assertIn("Memory and speed are not measured", bf16["note"])
 
     def test_allow_patterns_are_the_distilled_pipeline(self) -> None:
         files = _rows()[LTX25_NF4_ID]["downloadFiles"]
@@ -107,7 +110,9 @@ class GatingTests(unittest.TestCase):
         hardware = HardwareClass(kind="cuda", bucket="cuda-24", label="NVIDIA, 24 GB", total_gb=24.0, usable_gb=23.0)
         row = dict(_rows()[LTX25_NF4_ID], accessBlockedReason="gated")
         self.assertEqual(variant_fit(row, "video", hardware)["status"], "unknown")
-        self.assertEqual(variant_fit(_rows()[LTX25_NF4_ID], "video", hardware)["basis"], "estimated")
+        fit = variant_fit(_rows()[LTX25_NF4_ID], "video", hardware)
+        self.assertEqual(fit["basis"], "measured")
+        self.assertNotEqual(fit["status"], "wont-fit")
 
     def test_download_route_refuses_without_a_token(self) -> None:
         from fastapi import HTTPException
@@ -312,12 +317,77 @@ class SnapshotTests(unittest.TestCase):
             "_class_name": "LTX2Pipeline",
             "transformer": ["diffusers", "LTX2VideoTransformer3DModel"],
             "prompt_enhancer": ["transformers", "Gemma4ForConditionalGeneration"],
+            # Listed in the real model_index.json, not an LTX2Pipeline argument, not downloaded.
+            "diffusion_decoder": ["diffusers", "LTX2VideoDiffusionDecoderModel"],
         }
         (root / "model_index.json").write_text(json.dumps(index), encoding="utf-8")
         (root / "transformer").mkdir()
         (root / "transformer" / "config.json").write_text("{}", encoding="utf-8")
         self.assertIsNone(validate_local_diffusers_snapshot(root, LTX25_REPO))
         self.assertIn("prompt_enhancer", validate_local_diffusers_snapshot(root, "someone/else") or "")
+
+
+class PreloadTests(unittest.TestCase):
+    """Preloading the 4-bit row loads it 4-bit (a plain preload read the 62 GB bf16 repo into system memory)."""
+
+    def test_engine_preload_passes_nf4_to_the_pipeline_load(self) -> None:
+        from backend_service.video_runtime import DiffusersVideoEngine
+
+        engine = DiffusersVideoEngine()
+        with mock.patch.object(engine, "_ensure_pipeline") as ensure, mock.patch.object(engine, "probe"):
+            engine.preload(LTX25_REPO, use_nf4=True)
+            engine.preload("Lightricks/LTX-Video")
+        self.assertEqual(ensure.call_args_list[0].kwargs, {"use_nf4": True})
+        self.assertEqual(ensure.call_args_list[1].kwargs, {})
+
+    def test_manager_preload_forwards_nf4(self) -> None:
+        from backend_service.video_runtime import VideoRuntimeManager
+
+        manager = VideoRuntimeManager()
+        fake = mock.Mock()
+        fake.probe.return_value.realGenerationAvailable = True
+        with mock.patch.object(manager, "_engine", fake), \
+             mock.patch.object(manager, "_is_ltx2_mlx_repo", return_value=False), \
+             mock.patch.object(manager, "_is_mlx_video_repo", return_value=False):
+            manager.preload(LTX25_REPO, use_nf4=True)
+        fake.preload.assert_called_once_with(LTX25_REPO, use_nf4=True)
+
+
+class DownloadSizeTests(unittest.TestCase):
+    """The progress bar is sized against the pinned files, not the whole repo (162 GB with the stale shards)."""
+
+    def test_total_counts_only_the_pinned_files(self) -> None:
+        from backend_service.state import ChaosEngineState
+
+        gb = 1024 ** 3
+        files = [
+            {"path": "transformer/diffusion_pytorch_model-00001-of-00004.safetensors", "sizeBytes": 10 * gb},
+            {"path": "transformer/diffusion_pytorch_model-00001-of-00008.safetensors", "sizeBytes": 5 * gb},
+            {"path": "transformer_full/diffusion_pytorch_model-00001-of-00004.safetensors", "sizeBytes": 38 * gb},
+            {"path": "prompt_enhancer/model.safetensors", "sizeBytes": 10 * gb},
+            {"path": "text_encoder/model-00001-of-00005.safetensors", "sizeBytes": 5 * gb},
+        ]
+
+        class NoThread:
+            def __init__(self, *, target=None, daemon=None):
+                pass
+
+            def start(self):
+                pass
+
+        with tempfile.TemporaryDirectory() as tmp:
+            state = ChaosEngineState(
+                settings_path=Path(tmp) / "settings.json",
+                benchmarks_path=Path(tmp) / "benchmarks.json",
+                chat_sessions_path=Path(tmp) / "chats.json",
+            )
+            with mock.patch("backend_service.helpers.huggingface._hf_repo_downloaded_bytes", return_value=0), \
+                 mock.patch("backend_service.helpers.huggingface._hf_repo_preflight_size_gb", return_value=162.45), \
+                 mock.patch("backend_service.helpers.huggingface._hub_repo_files", return_value={"files": files}), \
+                 mock.patch("backend_service.state.downloads.threading.Thread", side_effect=NoThread):
+                row = dict(state.start_download(LTX25_REPO))
+        # The catalog's 71.1 GB (decimal) in the GiB the bar counts, not the preflight's 162 GB.
+        self.assertAlmostEqual(row["totalGb"], 66.22, places=1)
 
 
 if __name__ == "__main__":

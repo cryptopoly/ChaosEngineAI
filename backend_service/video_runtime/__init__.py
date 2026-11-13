@@ -241,8 +241,13 @@ class DiffusersVideoEngine:
             torchInstallWarning=torch_install_warning(),
         )
 
-    def preload(self, repo: str) -> VideoRuntimeStatus:
-        self._ensure_pipeline(repo)
+    def preload(self, repo: str, use_nf4: bool = False) -> VideoRuntimeStatus:
+        # ``use_nf4`` matters for a row quantised on load (LTX-2.5 4-bit): without it the preload read the
+        # bf16 repo whole (a 38 GB transformer and a 24 GB text encoder) and generate then loaded it again.
+        if use_nf4:
+            self._ensure_pipeline(repo, use_nf4=True)
+        else:
+            self._ensure_pipeline(repo)
         return self.probe()
 
     def unload(self, repo: str | None = None) -> VideoRuntimeStatus:
@@ -1116,7 +1121,7 @@ class VideoRuntimeManager:
         """
         return self._get_sdcpp_video().probe().to_dict()
 
-    def preload(self, repo: str) -> dict[str, Any]:
+    def preload(self, repo: str, use_nf4: bool = False) -> dict[str, Any]:
         with self._lock:
             if _is_longlive_repo(repo):
                 engine = self._get_longlive()
@@ -1135,6 +1140,8 @@ class VideoRuntimeManager:
             status = self._engine.probe()
             if not status.realGenerationAvailable:
                 raise RuntimeError(status.message)
+            if use_nf4:
+                return self._engine.preload(repo, use_nf4=True).to_dict()
             return self._engine.preload(repo).to_dict()
 
     def unload(self, repo: str | None = None) -> dict[str, Any]:

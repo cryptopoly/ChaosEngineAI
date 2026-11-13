@@ -60,9 +60,11 @@ def _snapshot_visible_label(local_root: Path) -> str:
 
 
 # Components a repo lists in model_index.json that the app leaves out of the download and loads as None
-# (LTX-2.5's 10 GB prompt enhancer): a snapshot without them is complete.
+# (LTX-2.5's 10 GB prompt enhancer), or that the pipeline class does not take at all (LTX-2.5's
+# ``diffusion_decoder``: LTX2Pipeline has no such argument, it needs NATTEN kernels and the distilled run does not
+# use it; the first real download failed validation on it): a snapshot without them is complete.
 OPTIONAL_COMPONENTS_BY_REPO: dict[str, frozenset[str]] = {
-    "Lightricks/LTX-2.5-Diffusers": frozenset({"prompt_enhancer"}),
+    "Lightricks/LTX-2.5-Diffusers": frozenset({"prompt_enhancer", "diffusion_decoder"}),
 }
 
 

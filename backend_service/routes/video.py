@@ -261,7 +261,11 @@ def preload_video_model(request: Request, body: VideoRuntimePreloadRequest) -> d
     _unload_idle_image_runtime_for_video(request, "video preload")
     _video_memory_gate(request, variant, "video preload")
     try:
-        runtime = state.video_runtime.preload(variant["repo"])
+        # A row quantised on load (LTX-2.5 4-bit) must preload 4-bit too: the plain preload read the bf16 repo.
+        if variant.get("loadQuantization") == "nf4":
+            runtime = state.video_runtime.preload(variant["repo"], use_nf4=True)
+        else:
+            runtime = state.video_runtime.preload(variant["repo"])
     except RuntimeError as exc:
         # Diffusers' lazy-import wrapper hides the real underlying cause when
         # transformers / torchao / torch versions don't agree -- the user

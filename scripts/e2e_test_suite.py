@@ -2165,7 +2165,8 @@ def phase_5(cap: Capability) -> PhaseResult:
         row = next((v for v in variants if v.get("id") == "Lightricks/LTX-2.5-Diffusers~nf4"), None)
         if row is None:
             return "skip", "LTX-2.5 (NVIDIA) is not listed on this host (CUDA-only row)", {}
-        if row.get("gated") is not True or row.get("loadQuantization") != "nf4" or row.get("footprintBasis") != "estimated":
+        # Measured on a 24 GB NVIDIA card (2026-11-13): the basis is "measured" from then on.
+        if row.get("gated") is not True or row.get("loadQuantization") != "nf4" or row.get("footprintBasis") != "measured":
             return "fail", f"flags: gated={row.get('gated')!r} quant={row.get('loadQuantization')!r} basis={row.get('footprintBasis')!r}", {}
         if row.get("acceptsImageInput") is not True or row.get("fixedSampler") is not True:
             return "fail", f"flags: image={row.get('acceptsImageInput')!r} fixed={row.get('fixedSampler')!r}", {}

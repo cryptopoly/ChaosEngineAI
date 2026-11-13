@@ -1,7 +1,7 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 90 rows with work, decisions or watch items still open, newest first.
+summary: 91 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
@@ -10,11 +10,20 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 
 
 <details>
+<summary>FU-173 · Installed app runs LTX-2.5 4-bit and FLUX.2 Klein slower than the dev venv on the same card — Open (2026-11-13).</summary>
+
+**Status or trigger:** **Open (2026-11-13).**
+
+**Notes:** `docs/progress/rtx4090-progress.md`, "Installer rebuilt with today's fixes". LTX-2.5 4-bit 512x320x25: denoise 33 to 35 s installed against 21 to 23 s on the dev backend; Klein 1024x640 warm repeats 5.2 to 5.7 s against 4.6 s. Installed: extras overlay torch 2.14.1+cu130, no torchvision; dev: torch 2.11+cu128. Not caused by the model thread (Klein was 5.5 to 5.7 s before it). Next: run the same clip with the dev venv's torch against the installed backend code, then profile one step.
+
+</details>
+
+<details>
 <summary>FU-172 · Qwen3.8-27B + DFlash2 on the vLLM lane does not fit a 24 GB card; vLLM lane ignores the thinking switch — Open (2026-11-13): measured on an RTX 4090 (WSL2, vLLM 0.33).</summary>
 
 **Status or trigger:** **Open (2026-11-13): measured on an RTX 4090 (WSL2, vLLM 0.33).**
 
-**Notes:** `docs/progress/rtx4090-progress.md`, "Qwen3.8-27B + DFlash2 on the vLLM lane". Plain W4A16 runs through the app (about 53 tok/s, 16K and 32K context fit). With the drafter, weights alone are 20.2 GiB (18.5 with an fp8 drafter) and the recurrent-state blocks need 1.6 to 1.8 GiB even at 1K context, so every load stops at "no memory for the cache blocks". Fixed on the way: the drafter now pairs with quantised packs, `num_speculative_tokens` comes from the drafter's block size, `max_num_seqs` 8, the GPU share follows free memory. **To do:** (1) run the lane on a 32 GB or larger card and record speed-up and acceptance (`LLM` runs with stats off, so acceptance is not shown); (2) `VLLMEngine` renders the chat template without `enable_thinking`, so "thinking off" still thinks; (3) a 24 GB vLLM catalog row needs a 4-bit pack whose embedding loads on stock vLLM (the AutoRound pack with an int8 embedding does not; RedHatAI's INT4 has bf16 embeddings and should).
+**Notes:** `docs/progress/rtx4090-progress.md`, "Qwen3.8-27B + DFlash2 on the vLLM lane". Plain W4A16 runs through the app (about 53 tok/s, 16K and 32K context fit). With the drafter, weights alone are 20.2 GiB (18.5 with an fp8 drafter) and the recurrent-state blocks need 1.6 to 1.8 GiB even at 1K context, so every load stops at "no memory for the cache blocks". Fixed on the way: the drafter now pairs with quantised packs, `num_speculative_tokens` comes from the drafter's block size, `max_num_seqs` 8, the GPU share follows free memory. **To do:** (1) run the lane on a 32 GB or larger card and record speed-up and acceptance (`LLM` runs with stats off, so acceptance is not shown); (2) `VLLMEngine` renders the chat template without `enable_thinking`, so "thinking off" still thinks; (3) a 24 GB vLLM catalog row needs a 4-bit pack whose embedding loads on stock vLLM (the AutoRound pack with an int8 embedding does not; RedHatAI's INT4 has bf16 embeddings and should). **Update (2026-11-13):** the thinking switch now reaches the vLLM chat template (`VLLMEngine.stream_generate` passes `enable_thinking`; unit tests only, not run live because the Linux test environment was removed). Still needs native Linux to confirm live; the RedHat INT4 load and the DFlash speed-up need a 32 GB card.
 
 </details>
 

@@ -1,7 +1,7 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 92 rows with work, decisions or watch items still open, newest first.
+summary: 93 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
@@ -10,11 +10,20 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 
 
 <details>
-<summary>FU-174 · Idle GPU speech workers slow image and video jobs; the idle-unload setting missed the Qwen3-TTS worker — Fixed in code (2026-11-13), needs an installer rebuild</summary>
+<summary>FU-175 · FLUX.2 Dev: catalog size wrong (64 GB) and the download bar showed the whole repo (154.08) — Open (2026-11-13): size fixed in code (3f534add)</summary>
 
-**Status or trigger:** **Fixed in code (2026-11-13), needs an installer rebuild; not yet checked through the installed app.**
+**Status or trigger:** **Open (2026-11-13): size fixed in code (`3f534add`); FLUX.2 Dev NF4 untested on 24 GB.**
 
-**Notes:** `docs/progress/rtx4090-progress.md`, "FU-174: voice workers after the E2E". Measured on the RTX 4090 through the installed app: E2E phase 8 leaves three workers (Qwen3-TTS 1.7B 8.1 GB private / 4.5 GB GPU, Whisper + Kokoro 2.8 / 0.6 GB, turn detector 0.8 / 0 GB), about 5 to 7 GB on the card; by design they stay warm and exit after 10 min idle (turn detector 2 min), on `/api/voice/worker/stop` and on app close (all measured). No leak: 3 Qwen and 3 phase-8 load/stop cycles return to the same GPU (783 MiB) and backend private (3.40 GB). Problem: an LTX-2.5 768x512x97 clip started next to the idle Qwen worker spilled into shared memory (17.9 GB dedicated + 1.5 GB shared, 90 W) and spent about 600 s on step 1; the moment the worker idled out, steps 2 to 8 took about 40 s at 400 W. Fix: `voice_client.release_gpu_for_media()` stops idle speech workers holding a GPU model (not Kokoro, not a busy one, NVIDIA only) before the image and video managers load or generate; the `idleUnloadMinutes` setting now reaches the Qwen3-TTS worker and is read at startup (it was applied only to the main worker and only when saved). Tests `tests/test_voice_gpu_release.py`. The 2.9 s per audio second TTS run was not reproduced: warm runs are 1.61 to 1.66 in every case tried (fresh worker, after a video run, next to the phase-8 workers, started with 19.5 or 21.5 GB of the card taken); a request that loads the model measures 2.7 to 3.5, so the slow figure most likely included a model load.
+**Notes:** Seen on the RTX 4090 through the installed app: a download of `black-forest-labs/FLUX.2-dev` without a token failed at the preflight with the right message (add a read-enabled HF_TOKEN in Settings), but the job reported `totalGb` 154.08 while the row said 64.0 GB. The Hub file list (public, no token) shows a 177.6 GB repo: the diffusers folders the app fetches (transformer 64.45 + text encoder 48.02 + VAE 0.34 GB = **112.8 GB**, 105.1 GiB) plus the single-file `flux2-dev.safetensors` (64.45 GB), which `_IMAGE_DIFFUSERS_ALLOW_PATTERNS` already skips. So the download was already filtered; the size shown was wrong, for two reasons: the row's `sizeGb`, and `_known_repo_size_gb`, which returns the cached Hub total of the whole repo before the catalog size, so the "pinned rows use the catalog size" branch in `state/downloads.py` never applied once the preflight had filled the cache (same for Klein 4B on its restore: bar sized 20.59 GiB, the download was 14.88 GiB, all 20 pinned files present and size-checked). Fixed: `sizeGb` 112.8 on the curated and the tracked FLUX.2 Dev rows; `_known_repo_size_gb(repo, catalog_only=True)` for pinned image and video rows, used on both the normal and the failed-preflight path (bar: 105.05 GiB for FLUX.2 Dev). Tests `tests/test_image_download_size.py`. Shipped in the installer built at `3f534add`; the bar in the installed app not re-checked with a new download. Still open: FLUX.2 Dev NF4 on 24 GB not run (needs the licence accepted on the model page, a token, and 112.8 GB of disk; C: has 73.6 GB free).
+
+</details>
+
+<details>
+<summary>FU-174 · Idle GPU speech workers slow image and video jobs; the idle-unload setting missed the Qwen3-TTS worker — Fixed and verified through the installed app (2026-11-13, installer built at 3f534add).</summary>
+
+**Status or trigger:** **Fixed and verified through the installed app (2026-11-13, installer built at `3f534add`).**
+
+**Notes:** `docs/progress/rtx4090-progress.md`, "FU-174: voice workers after the E2E" and "Installer rebuilt at `3f534add`". Installed app: with the Qwen3-TTS worker idle-warm (4.67 GB on the card) an LTX-2.5 768x512x97 clip stopped it 2.9 s into the request, backend shared GPU memory stayed at the idle 0.09 GB, denoise 62.8 s (no 600 s step); the next TTS request reloaded in 33.3 s, then 1.63 s per audio second; `idleUnloadMinutes` 1 stopped the Qwen worker 84 s after its last request; smoke E2E 7 of 7 and full E2E 18 of 18 phases. Measured on the RTX 4090 through the installed app: E2E phase 8 leaves three workers (Qwen3-TTS 1.7B 8.1 GB private / 4.5 GB GPU, Whisper + Kokoro 2.8 / 0.6 GB, turn detector 0.8 / 0 GB), about 5 to 7 GB on the card; by design they stay warm and exit after 10 min idle (turn detector 2 min), on `/api/voice/worker/stop` and on app close (all measured). No leak: 3 Qwen and 3 phase-8 load/stop cycles return to the same GPU (783 MiB) and backend private (3.40 GB). Problem: an LTX-2.5 768x512x97 clip started next to the idle Qwen worker spilled into shared memory (17.9 GB dedicated + 1.5 GB shared, 90 W) and spent about 600 s on step 1; the moment the worker idled out, steps 2 to 8 took about 40 s at 400 W. Fix: `voice_client.release_gpu_for_media()` stops idle speech workers holding a GPU model (not Kokoro, not a busy one, NVIDIA only) before the image and video managers load or generate; the `idleUnloadMinutes` setting now reaches the Qwen3-TTS worker and is read at startup (it was applied only to the main worker and only when saved). Tests `tests/test_voice_gpu_release.py`. The 2.9 s per audio second TTS run was not reproduced: warm runs are 1.61 to 1.66 in every case tried (fresh worker, after a video run, next to the phase-8 workers, started with 19.5 or 21.5 GB of the card taken); a request that loads the model measures 2.7 to 3.5, so the slow figure most likely included a model load.
 
 </details>
 

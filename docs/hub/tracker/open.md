@@ -10,11 +10,11 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 
 
 <details>
-<summary>FU-173 · Installed app runs LTX-2.5 4-bit and FLUX.2 Klein slower than the dev venv on the same card — Fixed in code (2026-11-13), ships with the next installer build.</summary>
+<summary>FU-173 · Installed app runs LTX-2.5 4-bit and FLUX.2 Klein slower than the dev venv on the same card — Fixed and verified through the installed app (2026-11-13, installer built at a8b0051e).</summary>
 
-**Status or trigger:** **Fixed in code (2026-11-13), ships with the next installer build.**
+**Status or trigger:** **Fixed and verified through the installed app (2026-11-13, installer built at `a8b0051e`).**
 
-**Notes:** `docs/progress/rtx4090-progress.md`, "FU-173: installed app slower than dev". Not torch: the installed runtime (torch 2.14.1+cu130) run standalone matches the dev venv (Klein warm denoise 4.72 s, LTX-2.5 512x320x25 20.2 to 20.9 s). Cause: the UI polls `/api/workspace` every few seconds, and its LLM process scan asked psutil for `memory_info` and `cpu_percent` of every process (0.44 s for 290 processes on Windows, GIL held), stalling the Python loop that drives the GPU. With UI-like polling Klein went 4.72 to 5.45 s (+16 %); through the app LTX-2.5 was 22.1 to 23.0 s. The scan now asks only for pid, name and command line (0.01 s; `/api/workspace` 0.56 to 0.15 s); with the same polling Klein is 4.83 s and LTX-2.5 20.6 s. The 33 to 35 s seen earlier did not come back in this session (best guess: more processes or more UI polling then).
+**Notes:** `docs/progress/rtx4090-progress.md`, "FU-173: installed app slower than dev" and "Installer rebuilt at `a8b0051e`". Installed app, UI open: Klein warm denoise 5.07 / 4.83 s, LTX-2.5 20.90 / 20.74 s, `/api/workspace` 0.10 s median, smoke E2E 7 of 7. Not torch: the installed runtime (torch 2.14.1+cu130) run standalone matches the dev venv (Klein warm denoise 4.72 s, LTX-2.5 512x320x25 20.2 to 20.9 s). Cause: the UI polls `/api/workspace` every few seconds, and its LLM process scan asked psutil for `memory_info` and `cpu_percent` of every process (0.44 s for 290 processes on Windows, GIL held), stalling the Python loop that drives the GPU. With UI-like polling Klein went 4.72 to 5.45 s (+16 %); through the app LTX-2.5 was 22.1 to 23.0 s. The scan now asks only for pid, name and command line (0.01 s; `/api/workspace` 0.56 to 0.15 s); with the same polling Klein is 4.83 s and LTX-2.5 20.6 s. The 33 to 35 s seen earlier did not come back in this session (best guess: more processes or more UI polling then).
 
 </details>
 

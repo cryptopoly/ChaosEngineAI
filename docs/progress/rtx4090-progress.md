@@ -1515,3 +1515,20 @@ Same card, same clips (`klein.json`: 1024x640, 4 steps; `ltx_t2v.json`: LTX-2.5 
 The 33 to 35 s LTX-2.5 denoise seen through the app earlier today did not come back (22 s through the app this time, before the fix); the scan cost grows with the number of processes and the polls with the number of open views, which is the best explanation, not proven. Remaining `/api/workspace` cost (0.15 s: `shutil.which` over `PATH` and the TurboQuant path probe) is mostly file-system calls that release the GIL; not measurable in denoise.
 
 **Ships with:** the next installer build (backend code only, no runtime or pin change). Not yet checked through a rebuilt installer.
+
+## Installer rebuilt at `a8b0051e`, FU-173 checked through the installed app (2026-11-13)
+
+`./build.sh` from `a8b0051e` (FU-173 process scan, `d1b6939e` vLLM thinking switch), exit 0, then silent install over the app (`/S`, exit 0), with your OK. Nothing of ours was running before the build (ports 8876/8890/8891 free, no backend or GPU process). Pre-build: pytest `test_system`, `test_vllm_engine`, `test_backend_service`, `test_malloc_release`, `test_image_runtime`, `test_video_runtime`, `test_video_ltx25`, `test_memory_gate` pass; `npx tsc --noEmit` clean; `npm test` 1529 of 1529. Installer **131.77 MiB** (138,170,482 B), archive 133.5 MB, manifest `llamaServer` and `llamaServerTurbo` set, `warnings: []`, the four `install-*.sh` in the archive. Health in 24 s, runtime `windows-x86_64-f1afdca7`; the unpacked backend has `SCAN_ATTRS = ("pid", "name", "cmdline")` and the `enable_thinking` template switch. All runs below went through the installed backend with the app window open, one job at a time (same `klein.json` / `ltx_t2v.json` as the FU-173 section).
+
+| Item | Result | Evidence |
+|---|---|---|
+| `/api/workspace` latency | **PASS** | 8 calls: 0.09 to 0.14 s, median **0.10 s** (was 0.56 s before the fix, 0.15 s on the dev backend after it). |
+| FLUX.2 Klein 4B 1024x640, 4 steps, 3 runs | **PASS** | Cold: load 46.0 s, denoise 5.48 s. Warm denoise **5.07 s, 4.83 s** (was 5.16 to 5.22 s through the app before the fix; 4.83 s expected). Peak private 21 to 23 GB, GPU 9.2 GB. |
+| Unload after Klein | **PASS** | 16.5 GB private loaded, **3.2 GB** after Unload, GPU 1.38 GB. |
+| LTX-2.5 `~nf4` 512x320, 25 frames, 8 steps, seed 42, 3 runs | **PASS** | Cold: load 109.4 s, denoise 21.73 s. Warm denoise **20.90 s, 20.74 s** (was 22.1 to 22.3 s through the app before the fix, 33 to 35 s earlier today; 20.6 s expected). Peak private 43 to 47 GB, GPU 19.1 GB, min free RAM 23.2 GB. |
+| Unload after LTX-2.5 | **PASS** | 36.6 GB private loaded, **3.5 GB** after Unload, GPU 1.4 GB. |
+| `e2e_test_suite.py --smoke` | **PASS, 7 of 7 phases** | 0 (17 checks), 3, 4 (12), 5 (10, 153 s), 6, 7 (diagnostics, 4 checks), 8 (18). Report `~/.chaosengine/test-results/e2e-20261113-164750.md`. |
+
+After the suite the backend held the E2E's video pipeline (36.4 GB private); Unload brought it to 3.5 GB. About 7 GB of GPU memory stays with the three voice workers phase 8 started (voice venv, 8.7 / 2.8 / 0.8 GB private); not looked into. The installed app was left running.
+
+**FU-173 verified:** the installed app now matches the dev venv within noise on both clips. Not checked here: vLLM `thinkingMode` (needs Linux; the code is in the installed backend but no vLLM lane runs on this PC).

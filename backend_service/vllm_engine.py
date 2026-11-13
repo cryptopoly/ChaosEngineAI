@@ -85,6 +85,94 @@ def _prepare_vllm_env(strategy_id: str) -> list[str]:
     return notes
 
 
+def _draft_config(draft_model: str) -> dict[str, Any] | None:
+    """The drafter's ``config.json``: a local folder, else the HF cache/Hub."""
+    import json
+
+    local = Path(draft_model)
+    try:
+        if local.is_dir():
+            return json.loads((local / "config.json").read_text(encoding="utf-8"))
+        from huggingface_hub import hf_hub_download
+
+        return json.loads(Path(hf_hub_download(draft_model, "config.json")).read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001 - vLLM reports a missing drafter itself
+        return None
+
+
+def _dflash_num_speculative_tokens(draft_model: str) -> int | None:
+    """Draft length for a DFlash drafter: its trained block size minus one.
+
+    vLLM only defaults ``num_speculative_tokens`` from ``n_predict`` (MTP)
+    or a DSpark block size; a DFlash drafter carries
+    ``dflash_config.block_size`` instead, so leaving it out fails the load
+    with "num_speculative_tokens was not provided". A block holds the
+    anchor token plus ``block_size - 1`` drafted ones (z-lab's b16
+    drafters serve with 15).
+    """
+    config = _draft_config(draft_model) or {}
+    block = (config.get("dflash_config") or {}).get("block_size") or config.get("block_size")
+    try:
+        block = int(block)
+    except (TypeError, ValueError):
+        return None
+    return block - 1 if block > 1 else None
+
+
+# Concurrent sequences per load (vLLM's server default is 256).
+_DESKTOP_MAX_NUM_SEQS = 8
+
+# vLLM's own default share of the card, and what is left free beside our share.
+# NVML reads more free memory than CUDA's own count, which is what vLLM
+# checks: 23.38 against 22.35 GiB on an idle 24 GB card under WSL2, so the
+# headroom covers that gap.
+_VLLM_DEFAULT_GPU_UTILIZATION = 0.92
+_GPU_HEADROOM_BYTES = 1536 * 1024 * 1024
+
+
+def _gpu_free_total_bytes() -> tuple[int, int] | None:
+    """Free and total memory of GPU 0 through NVML (no CUDA context here)."""
+    try:
+        import pynvml  # type: ignore[import-untyped]  # nvidia-ml-py, a vLLM dependency
+
+        pynvml.nvmlInit()
+        try:
+            info = pynvml.nvmlDeviceGetMemoryInfo(pynvml.nvmlDeviceGetHandleByIndex(0))
+            return int(info.free), int(info.total)
+        finally:
+            pynvml.nvmlShutdown()
+    except Exception:  # noqa: BLE001 - no NVML: keep vLLM's default
+        return None
+
+
+def _gpu_memory_utilization() -> float | None:
+    """Share of the card to give vLLM when its default would not be free.
+
+    vLLM refuses to start when ``gpu_memory_utilization`` x total is more
+    than the free memory, so anything else on the card (the desktop, a
+    second app, a voice model) made every load fail at the default 0.92.
+    Returns ``None`` when the default fits, else the free share less a
+    small headroom. Read at every load, never fixed to one card.
+    """
+    override = os.environ.get("CHAOSENGINE_VLLM_GPU_SHARE", "").strip()
+    if override:
+        try:
+            value = float(override)
+        except ValueError:
+            value = 0.0
+        if 0.0 < value <= 1.0:
+            return value
+    sizes = _gpu_free_total_bytes()
+    if sizes is None:
+        return None
+    free, total = sizes
+    usable = free - _GPU_HEADROOM_BYTES
+    if total <= 0 or usable >= _VLLM_DEFAULT_GPU_UTILIZATION * total:
+        return None
+    share = usable / total
+    return round(share, 3) if share > 0 else None
+
+
 def _now_label() -> str:
     return time.strftime("%Y-%m-%d %H:%M:%S")
 
@@ -170,6 +258,12 @@ class VLLMEngine(BaseInferenceEngine):
             "model": target,
             "max_model_len": context_tokens,
             "trust_remote_code": True,
+            # vLLM's server default (256 sequences) reserves one recurrent
+            # state block per sequence on hybrid models (Qwen3.5/3.6/3.8
+            # Gated DeltaNet); a 27B on a 24 GB card has about 30, so the
+            # load failed. The app runs a few chats at a time, and fewer
+            # sequences also mean fewer CUDA graphs to capture at load.
+            "max_num_seqs": _DESKTOP_MAX_NUM_SEQS,
         }
         if speculative_decoding:
             try:
@@ -181,16 +275,25 @@ class VLLMEngine(BaseInferenceEngine):
                         allow_dflash2=True,
                     )
                     if draft_model:
-                        llm_kwargs["speculative_config"] = {
+                        spec_config: dict[str, Any] = {
                             "method": "dflash",
                             "model": draft_model,
                         }
+                        draft_tokens = _dflash_num_speculative_tokens(draft_model)
+                        if draft_tokens:
+                            spec_config["num_speculative_tokens"] = draft_tokens
+                        llm_kwargs["speculative_config"] = spec_config
             except ImportError:
                 pass
 
         env_notes = _prepare_vllm_env(actual_cache_strategy)
         _apply_strategy_env(strategy_env)
         llm_kwargs.update(strategy_llm_kwargs)
+        if "gpu_memory_utilization" not in llm_kwargs:
+            gpu_share = _gpu_memory_utilization()
+            if gpu_share is not None:
+                llm_kwargs["gpu_memory_utilization"] = gpu_share
+                env_notes.append(f"GPU memory share {gpu_share:.0%} (sized to the free memory).")
         self._llm = LLM(**llm_kwargs)
 
         version = _vllm_version() or "unknown"

@@ -1401,3 +1401,49 @@ Reading:
 - Not run through the HTTP backend or the UI. The engine was driven directly.
 - A model larger than 0.6B was not tried.
 - The scratch venv `~/venv-vllm18` is left in WSL.
+
+## Qwen3.8-27B + DFlash2 on the vLLM lane (WSL2, vLLM 0.33.0, 2026-11-13)
+
+**Verdict: the plain 27B runs through the app on a 24 GB card at about 53 tok/s. With the DFlash 2 drafter it does not fit 24 GB at any context; FAIL (memory), not a wiring fault.** Three app bugs on the way are fixed (below). The speed-up and acceptance on vLLM remain unmeasured (FU-172).
+
+**Weights (downloaded through the WSL backend's `/api/models/download`, kept):** `grevinden/qwen3.8-27b-w4a16-autoround-rtx3090` 15.61 GiB (W4A16 compressed-tensors with int8 `lm_head` and `embed_tokens`, Apache-2.0) and `z-lab/Qwen3.8-27B-DFlash2` 3.58 GiB (revision `50307d4c`). The catalog has no vLLM row that fits 24 GB (its only vLLM row is FP8, 30.9 GB). `RedHatAI/Qwen3.8-27B-INT4` (19.5 GB, bf16 `lm_head` and embeddings) was not taken: about 21.5 GiB of weights with the drafter.
+
+**The pack does not load on stock vLLM 0.33.** Error: `There is no module or parameter named 'embed_tokens.weight_packed' in Qwen3_5Model`. vLLM builds the Qwen3.5 embedding without a quant config, and the pack's card names a vLLM fork. For the runs, a local copy (`~/models/qwen3.8-27b-w4a16-bf16embed`, 2.4 GB of new data, the rest symlinked to the HF cache) has the int8 embedding dequantised to bf16 (group 128 scales). It was loaded through `/api/models/load` with `path` and `backend: vllm`.
+
+Setup: dev backend in WSL from `~/venv-vllm` on port 8897. Each cell is one load, three 300-token replies per prompt (after one warm-up) at temperature 0 (the engine sends 0.01), then unload. VRAM is the whole card from `nvidia-smi`. Host RAM is the RSS of the backend plus the engine process. Windows shared GPU memory stayed at 0.1 GB (no spill).
+
+| Context | Load | VRAM after load / peak | Host RAM | Prose tok/s | Code tok/s | Long prompt tok/s |
+|---|---|---|---|---|---|---|
+| 4K | 60 s (compile cache warm) | 20.8 / 20.8 GB | 5.3 GB | 52.9 | 52.9 | |
+| 16K | 151 s | 20.9 / 23.2 GB | 6.6 GB | 52.9 | 52.8 | 49.1 (11.5K-token prompt; 29.3 on first sight) |
+| 32K | 150 s | 20.7 / 23.0 GB | 6.5 GB | 52.9 | 53.1 | 47.8 (23K-token prompt; 19.6 on first sight) |
+
+- vLLM's KV pool: 23,552 tokens at 4K, 47,104 tokens at 32K. The model is hybrid (16 attention layers of 64), so long context is cheap.
+- Unload returns the card to 0.2 GB.
+- Same-card reference for this model: llama.cpp Q4_K_M 43 tok/s and TensorFold native about 50 tok/s plain (sections above).
+- Every reply began with reasoning text even with `thinkingMode: off`: the vLLM engine renders the chat template without `enable_thinking` (FU-172).
+
+**DFlash 2 drafter on 24 GB: does not fit.**
+
+| Attempt | Weights | KV budget | Result |
+|---|---|---|---|
+| App, 4K and 16K (bf16 drafter, share 0.92) | 20.21 GiB | -2.02 GiB | "No available memory for the cache blocks" |
+| Standalone, fp8 drafter, 2048 batched tokens, share 0.93, 4K | 18.49 GiB | 0.18 GiB, 1.84 needed | refused |
+| Same, 1024 batched tokens, 1K context | 18.49 GiB | 0.30 GiB, 1.60 needed | refused |
+
+The recurrent-state blocks for draft verification need about 1.6 GiB even at 1K context, and CUDA reports only 22.35 of 23.99 GiB free on an idle card under WSL2. With the bf16 drafter the lane needs roughly 26 GB or more. The drafter pairing and config are correct: the app's load reached vLLM with `{'method': 'dflash', 'model': 'z-lab/Qwen3.8-27B-DFlash2', 'num_speculative_tokens': 7}`, and vLLM resolved `DFlash2DraftModel`, compiled `dflash_head` and `dflash2_candidate_selector`, and failed only at the KV allocation. On this card, DFlash on Qwen3.8-27B stays with TensorFold native (132 prose / 206 code tok/s through the app) and llama.cpp (78 to 112).
+
+**Fixed (tests in `tests/test_dflash.py` and `tests/test_vllm_engine.py`):**
+1. **Drafter not paired** (commit `56ea082d`): `get_draft_model(..., allow_dflash2=True)` matched only the exact id `Qwen/Qwen3.8-27B`. The catalog's own `Qwen/Qwen3.8-27B-FP8` row, every INT4/AWQ/W4A16 pack and local folders got no drafter, and the load fell back to plain decoding with "no compatible draft model is registered". It now matches the base name inside the ref.
+2. **`num_speculative_tokens` missing**: vLLM 0.33 defaults it only from `n_predict` (MTP) or a DSpark block size. The app's `{"method": "dflash", "model": ...}` failed with "A speculative model was provided, but `num_speculative_tokens` was not provided" (reproduced). It is now the drafter's `dflash_config.block_size` minus one (7 for DFlash2, 15 for the b16 drafters), read from the drafter's `config.json`.
+3. **`max_num_seqs` 256 on hybrid models**: "max_num_seqs (256) exceeds available Mamba cache blocks (31)" failed the plain 27B load at share 0.85. The engine now passes 8. That also cut CUDA graph capture at load from 224 s (51 graphs) to 3 s.
+4. **GPU share**: vLLM refuses a load when share x total is more than CUDA's free memory ("Free memory on device (22.35/23.99 GiB) ... less than desired GPU memory utilization (0.97 ...)", reproduced at 0.97). The app passed nothing, so 0.92 failed whenever about 2 GB of the card was in use (the desktop held 2.7 GB earlier today). The engine now reads free memory through NVML at every load and lowers the share when needed (free less 1.5 GiB headroom: NVML read 23.38 GiB free where CUDA read 22.35 under WSL2). `CHAOSENGINE_VLLM_GPU_SHARE` overrides it. Nothing is fixed to one card.
+
+**Not done or not verified:**
+- DFlash speed-up and acceptance on vLLM (needs a 32 GB or larger card). Acceptance is not exposed in any case, because the in-process `LLM` runs with stats off.
+- The Windows WSL-bridge engine (`vllm_wsl_engine.py`) still drops speculative decoding (not touched).
+- No catalog row added: no 4-bit pack verified to load on stock vLLM with the drafter on 24 GB.
+- No E2E check: the lane that runs (plain vLLM) already has the matrix cell, and the DFlash cell cannot run on 24 GB.
+- The bf16-embedding copy is a test aid, not an app feature.
+
+Disk: HF cache in WSL 16 GB + 3.6 GB, local copy 2.4 GB of new data, so 22 GB in all, inside the WSL `ext4.vhdx`. C: free went from 60.9 GB to 52.3 GB over this run (the vhdx grows and does not shrink; vLLM compile caches too). Nothing deleted.

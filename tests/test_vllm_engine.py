@@ -466,5 +466,113 @@ class VLLMEngineTriAttentionLoadTests(unittest.TestCase):
             self.assertNotIn("VLLM_ENABLE_V1_MULTIPROCESSING", os.environ)
 
 
+class VLLMGpuShareTests(unittest.TestCase):
+    """vLLM refuses a load when its share (default 0.92) is not free."""
+
+    GiB = 1024 ** 3
+
+    def _share(self, free_gb, total_gb):
+        from backend_service.vllm_engine import _gpu_memory_utilization
+
+        sizes = None if free_gb is None else (int(free_gb * self.GiB), int(total_gb * self.GiB))
+        with patch("backend_service.vllm_engine._gpu_free_total_bytes", return_value=sizes):
+            return _gpu_memory_utilization()
+
+    def test_default_kept_when_it_fits(self) -> None:
+        self.assertIsNone(self._share(23.8, 24.0))
+        self.assertIsNone(self._share(78.0, 80.0))
+        self.assertIsNone(self._share(None, None))
+
+    def test_shrinks_to_the_free_share_less_headroom(self) -> None:
+        # 2.7 GB held by the desktop on a 24 GB card: 0.92 x 24 is not free.
+        share = self._share(21.3, 24.0)
+        self.assertAlmostEqual(share, (21.3 - 1.5) / 24.0, places=3)
+        # NVML read 23.38 GiB free where CUDA (vLLM's check) read 22.35.
+        self.assertLessEqual(self._share(23.38, 23.99) * 23.99, 22.35)
+        # Scales with the card, nothing fixed to one size.
+        self.assertAlmostEqual(self._share(10.0, 16.0), 8.5 / 16.0, places=3)
+
+    def test_nothing_free_leaves_it_to_vllm(self) -> None:
+        self.assertIsNone(self._share(1.0, 24.0))
+
+    def test_env_override_wins_and_bad_values_are_ignored(self) -> None:
+        import os
+
+        with patch.dict(os.environ, {"CHAOSENGINE_VLLM_GPU_SHARE": "0.8"}):
+            self.assertEqual(self._share(23.8, 24.0), 0.8)
+        for bad in ("abc", "0", "1.5"):
+            with patch.dict(os.environ, {"CHAOSENGINE_VLLM_GPU_SHARE": bad}):
+                self.assertIsNone(self._share(23.8, 24.0), bad)
+
+
+class VLLMDFlashSpecConfigTests(unittest.TestCase):
+    """vLLM defaults num_speculative_tokens only for MTP / DSpark drafters.
+
+    Without it a DFlash load fails ("num_speculative_tokens was not
+    provided"), so the engine passes the drafter's block size minus one.
+    """
+
+    def _draft_dir(self, config):
+        import json
+        import tempfile
+        from pathlib import Path
+
+        folder = Path(tempfile.mkdtemp())
+        (folder / "config.json").write_text(json.dumps(config), encoding="utf-8")
+        return str(folder)
+
+    def test_block_size_minus_one(self) -> None:
+        from backend_service.vllm_engine import _dflash_num_speculative_tokens
+
+        dflash2 = self._draft_dir({"architectures": ["DFlash2DraftModel"], "dflash_config": {"block_size": 8}})
+        b16 = self._draft_dir({"block_size": 16})
+        self.assertEqual(_dflash_num_speculative_tokens(dflash2), 7)
+        self.assertEqual(_dflash_num_speculative_tokens(b16), 15)
+
+    def test_no_block_size_leaves_it_to_vllm(self) -> None:
+        from backend_service.vllm_engine import _dflash_num_speculative_tokens
+
+        self.assertIsNone(_dflash_num_speculative_tokens(self._draft_dir({"n_predict": 3})))
+        self.assertIsNone(_dflash_num_speculative_tokens(self._draft_dir({"dflash_config": {"block_size": 1}})))
+        with patch("huggingface_hub.hf_hub_download", side_effect=OSError("offline")):
+            self.assertIsNone(_dflash_num_speculative_tokens("org/missing-drafter"))
+
+    def test_load_passes_the_draft_length(self) -> None:
+        import types
+        from backend_service.vllm_engine import VLLMEngine
+
+        captured: dict[str, object] = {}
+
+        class LLM:
+            def __init__(self, **kwargs):
+                captured.update(kwargs)
+
+        fake_vllm = types.ModuleType("vllm")
+        fake_vllm.LLM = LLM
+        fake_vllm.__version__ = "0.33.0"
+        engine = VLLMEngine(capabilities=MagicMock())
+        with patch.dict(sys.modules, {"vllm": fake_vllm}), \
+                patch("cache_compression.registry.get", return_value=None), \
+                patch("dflash.is_vllm_available", return_value=True), \
+                patch("backend_service.vllm_engine._dflash_num_speculative_tokens", return_value=7) as length, \
+                patch("backend_service.vllm_engine._gpu_memory_utilization", return_value=None):
+            info = engine.load_model(
+                model_ref="/models/qwen3.8-27b-w4a16", model_name="Qwen3.8-27B",
+                canonical_repo=None, source="library", backend="vllm",
+                path="/models/qwen3.8-27b-w4a16", runtime_target=None, cache_strategy="native",
+                cache_bits=0, fp16_layers=0, fused_attention=False,
+                fit_model_in_memory=True, context_tokens=4096, speculative_decoding=True,
+            )
+        self.assertEqual(captured["speculative_config"], {
+            "method": "dflash", "model": "z-lab/Qwen3.8-27B-DFlash2", "num_speculative_tokens": 7,
+        })
+        length.assert_called_once_with("z-lab/Qwen3.8-27B-DFlash2")
+        self.assertTrue(info.speculativeDecoding)
+        # Hybrid models get one recurrent-state block per sequence; vLLM's
+        # 256 default failed the 27B load on a 24 GB card.
+        self.assertEqual(captured["max_num_seqs"], 8)
+        self.assertNotIn("gpu_memory_utilization", captured)
+
+
 if __name__ == "__main__":
     unittest.main()

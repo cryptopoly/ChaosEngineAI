@@ -1,13 +1,22 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 89 rows with work, decisions or watch items still open, newest first.
+summary: 90 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-172 · Qwen3.8-27B + DFlash2 on the vLLM lane does not fit a 24 GB card; vLLM lane ignores the thinking switch — Open (2026-11-13): measured on an RTX 4090 (WSL2, vLLM 0.33).</summary>
+
+**Status or trigger:** **Open (2026-11-13): measured on an RTX 4090 (WSL2, vLLM 0.33).**
+
+**Notes:** `docs/progress/rtx4090-progress.md`, "Qwen3.8-27B + DFlash2 on the vLLM lane". Plain W4A16 runs through the app (about 53 tok/s, 16K and 32K context fit). With the drafter, weights alone are 20.2 GiB (18.5 with an fp8 drafter) and the recurrent-state blocks need 1.6 to 1.8 GiB even at 1K context, so every load stops at "no memory for the cache blocks". Fixed on the way: the drafter now pairs with quantised packs, `num_speculative_tokens` comes from the drafter's block size, `max_num_seqs` 8, the GPU share follows free memory. **To do:** (1) run the lane on a 32 GB or larger card and record speed-up and acceptance (`LLM` runs with stats off, so acceptance is not shown); (2) `VLLMEngine` renders the chat template without `enable_thinking`, so "thinking off" still thinks; (3) a 24 GB vLLM catalog row needs a 4-bit pack whose embedding loads on stock vLLM (the AutoRound pack with an int8 embedding does not; RedHatAI's INT4 has bf16 embeddings and should).
+
+</details>
 
 <details>
 <summary>FU-171 · TriAttention on the vLLM lane: works only on vLLM 0.18 or older; the app now says so and wires the budget, stats file, eager mode and prefix-cache switch — Open: root cause found, compaction working on vLLM 0.18.1, app honest on newer vLLM (2026-11-13).</summary>

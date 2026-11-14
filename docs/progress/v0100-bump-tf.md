@@ -30,7 +30,8 @@ Flint always reasons and the server answers 400 to `chat_template_kwargs.enable_
 
 ## Tests
 
-See the final report for the run.
+- `pytest tests/test_tensorfold_*.py tests/test_mlx_models.py tests/test_inference.py tests/test_setup_routes.py tests/test_check_upstreams.py`: 443 passed, 2 skipped (existing skips).
+- `pytest tests/test_hub_tracker.py`: passed.
 
 ## Real loads (M4 Max, after the release gate's DONE)
 

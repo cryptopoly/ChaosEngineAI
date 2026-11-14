@@ -11,6 +11,11 @@ Branch `v0100/bump-llama`, commits a9139306 (llama.cpp) and ba6aa7bc (Playwright
 - tests/test_inference.py: pass (70 tests). Run on the code, not on a new binary.
 - Playwright 1.65.1, `npx playwright test 01-smoke --workers=1`: 3 passed.
 
+## llama-server b12387 installed on the Mac (owner approved the download)
+- Prebuilt `llama-b12387-bin-macos-arm64.tar.gz` (official release), sha256 matched the release digest (a654e602...).
+- The new build is dylib-linked (`@loader_path`), the old one was a single file. Installed `llama-server` plus the `libggml*`/`libllama*`/`libmtmd*` dylibs into `~/.chaosengine/bin`. Old binary kept as `llama-server.bak-20261114`; no dylibs existed there before. To roll back: copy the .bak over `llama-server` and delete the `*.dylib` files in that folder. `llama-server-turbo` still runs.
+- Direct run, Llama-3.2-1B Q4_K_M (Metal, -ngl 99): `/v1/chat/completions` returned a reply, version `build 12387 (a956a852c)`. Not run through the app's engine path.
+
 ## Not done
-- llama-server b12387 install and GGUF chat. `scripts/update-llama-cpp.sh` only builds in a sibling `../llama.cpp` checkout (none exists on this Mac) and never copies into `~/.chaosengine/bin`, so it needs a git clone of ggml-org/llama.cpp (or the prebuilt macos-arm64 archive, sha256 a654e6020f85d71274f1cf29460caec6537db31decc95a1a9e2f91ce05e648d7) plus a manual copy. Either is a download that needs the owner's yes. Installed binary is untouched (May build 6049906), so there was nothing to back up or restore.
 - Windows CUDA install on b12387 (4090 item).
+- Chat through the app's llama.cpp engine path (direct server only).

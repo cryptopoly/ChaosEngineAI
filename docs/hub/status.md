@@ -5,9 +5,33 @@ summary: Read this first in every session.
 ---
 # Status and handover
 
-> **Read first.** ChaosEngineAI is a desktop AI inference app (Tauri shell, React frontend, Python sidecar; MLX, llama.cpp and vLLM engines; image, video and voice studios). It is in **v0.9.9 release prep**: the tag `v0.9.9` is held until [PR 119](https://github.com/cryptopoly/ChaosEngineAI/pull/119) merges. Then read [decisions](decisions.md), [backlog](backlog.md) and the progress file for the active stream in [progress](progress/README.md).
+> **Read first.** ChaosEngineAI is a desktop AI inference app (Tauri shell, React frontend, Python sidecar; MLX, llama.cpp and vLLM engines; image, video and voice studios). It is in **v0.10.0 prep** on `release/v0.10.0` (plan: `docs/plans/v0.10.0-all-singing.md`); the Windows 4090 pass comes before the tag. Then read [decisions](decisions.md), [backlog](backlog.md) and the progress file for the active stream in [progress](progress/README.md).
 
 Newest dated update first. Each update has the same sections: Done, Open for Claude, Open for Dan.
+
+## Update 2026-11-14 (v0.10.0 all-singing): waves 1 and 2 are merged on `release/v0.10.0`; not pushed, Windows pass and release steps still ahead.
+
+**Done:**
+- **Stronger field borders (task A):** `--border-control` token on inputs, selects and buttons, on by default; switch in Settings > General > Accessibility (`strongControlBorders`). Panels, cards and dividers keep the old border.
+- **Cloning form (R6, FU-154):** lists every downloaded cloning model with its cost; `qwen3-tts-1.7b` is preselected and Save is enabled (one constant, `DEFAULT_CLONE_MODEL`). Old voices now speak with the 1.7B when it is downloaded. Real clones made on the Mac with all five models; listening not done.
+- **Studio time estimates (R8, FU-165):** `estimateRef` on 28 image and 27 video rows, so the strip scales with size, frames and steps; measured rows within 7 % over six runs.
+- **TensorFold (R9, FU-168):** family table now comes from the binary's `capabilities --json`; four CUDA-only families listed, not offered; Gemma 4 26B-A4B stays on the Python install (`native_refuses`).
+- **Music (R10, FU-139):** wording route only: one sentence, "Mac-only in this version", install and download hidden. The CUDA build is not done.
+- **First-clip ETA (R7, FU-153):** catalogue estimate shows from the first clip of a batch; wired into `start_batch`.
+- **MiniMax H3 (B, FU-166):** territory gate, licence screen and H3 video row built behind `licence_gate.H3_RELEASED = False`. sd.cpp pinned at `3f8527a`. No H3-Image; release bundles carry no `sd`. H3 was never downloaded or run.
+
+**Open for Claude:**
+- Run the full suites on the merged tree (pytest, vitest, tsc, i18n, full `e2e_test_suite.py`, Playwright, upstreams, audits), build the Mac installer and check the manifest, then recut `test/rtx4090` (plan section 5).
+- A real 4-shot storyboard in Chat on the Mac (FU-153).
+- FU-176 (Wan on sd.cpp is not wired), FU-177 (UI for the TensorFold family report), server-side refusal of `POST /api/music/download` off Apple Silicon (FU-139), TensorFold 1.2.8 bump (FU-168), Klein recommendation text says 40 s (FU-165).
+- Release notes: Music Mac-only, H3 untested and territory-limited (or absent), `sd` not in release bundles, stronger borders on by default.
+
+**Open for Dan:**
+- Legal read of the MiniMax H3 licence (II, III, V.2, V.4, V.5, AUP 1), then flip `licence_gate.H3_RELEASED` (one line and a test). Until then H3 stays hidden.
+- The R5 voice call in Chat with a microphone.
+- Listen to the clones (`rank` is still empty) and say whether 1.7B stays the default.
+- Decide whether to bump sd.cpp for H3-Image. It needs about 22 GB of FLUX.1 schnell and Wan 2.1 1.3B sd.cpp downloads first, to prove the bump breaks nothing.
+- Push the branch.
 
 ## Update 2026-11-08: Chat can use the studios, behind a Studio switch and a plan you approve (D-60). On `feat/chat-studio-tools` (cut from `feat/home-studio`), not merged.
 

@@ -123,3 +123,29 @@ Start the backend with `CHAOSENGINE_VOICE_UNMEASURED=1` so the unmeasured CUDA r
 ## Report back
 
 Finish the progress file with: what failed (with logs), what is slower than expected, what the Mac values got wrong, and a one-line verdict per section.
+
+
+## v0.10.0 all-singing: Windows pass
+
+Branch `test/rtx4090`, recut from the finished `release/v0.10.0` (plan: `docs/plans/v0.10.0-all-singing.md` section 6). One suite at a time, Playwright `--workers=1`, PASS / FAIL / SKIP with one line of evidence in `docs/progress/rtx4090-progress.md`.
+
+| # | Test | Expected |
+|---|---|---|
+| 1 | `pytest tests/ -q`, `npm test`, `npx tsc --noEmit`, `npm run i18n:validate`, full `scripts/e2e_test_suite.py`, `npx playwright test --workers=1` | No new failure against the last Windows run; the new checks (border setting, clone model, estimates, TensorFold report, music refusal, territory gate) pass |
+| 2 | Build the installer, install over the app, start it | Starts; slow-start splash shows the plain note with no backend log lines (R2) |
+| 3 | Settings, Accelerators: install the CUDA llama-server at `b12317` on a clean `~/.chaosengine/bin/llama-cuda/` | Archives match `_PINNED_SHA256`; a tampered archive is refused; `llama-server --list-devices` lists the 4090; a GGUF chat runs on the card |
+| 4 | Storyboard shot editor: pick an end frame, render an LTX-2.5 clip with start and end stills | The last frame matches the end still; the agent `storyboard_shot` `end_image` action does the same |
+| 5 | FU-155 / FU-158: remove the voice runtime, reinstall, tick the speech GPU add-on (section 2.1) | Log ends `speech gpu ok`; each CUDA row downloads only its listed files and speaks; VRAM and speed recorded into `estimates`; unticking removes only the listed packages and Kokoro, dictation and Qwen3-TTS still work; no stray llama-server |
+| 6 | Voice call in Chat with a microphone (Kokoro, then a GPU voice) | Chosen voice heard, barge-in works, fallback note on a failing voice |
+| 7 | New cloned voice form with two cloning models downloaded | Both listed with costs; the default `qwen3-tts-1.7b` (the `-cuda` twin on this host) is preselected and tagged Default, Save is enabled; picking the other model saves that model on the voice; a GPU too small for the default falls to a downloaded runnable model |
+| 8 | Image and Video Studio estimates: Wan TI2V at 832x480x49 and at the reference, Klein at 1024 and 2048, LTX-2.5 at 49 and 97 frames | Shown time within 20 % of the run; report the error per case so the CUDA image and LTX constants can be set (below) |
+| 9 | Chat with Studio tools: 4-shot storyboard, leave it waiting | One job card, time left from the first clip (basis `catalog` until a clip is measured), summary at the end |
+| 10 | TensorFold: `check-upstreams.py`; status route family report; then, if weights are at hand, run one model each of `dory`, `kolibri1`, `lfm2_vl`, `nemotron_h_omni` | No uncurated family reported; each family run gets a `NATIVE_MODELS` row with measured VRAM, or its note says why not |
+| 11 | Music and Sounds screens | The sentence "Music generation runs on Apple Silicon Macs in this version. Windows and Linux support (NVIDIA GPUs) is planned; nothing is installed or downloaded on this computer." shown once on Music Models and in both studios; each ACE-Step row reads "Not available on this computer yet"; no Install or Download can start (also `POST /api/music/download` is not refused server-side yet, FU-139: note what happens) |
+| 12 | Stronger borders switch (Settings > General > Accessibility) | Fields and buttons visibly outlined by default; the switch reverts them without a reload; no layout shift |
+| 13 | Territory gate (only if `licence_gate.H3_RELEASED` is true; otherwise SKIP) | Rows hidden until the tick; download refused through the API without it. **Do not download or run H3 in the UK.** |
+
+### Also for this pass
+
+- **Real CUDA capabilities fixture (R9, FU-168).** `tests/fixtures/tensorfold_caps_cuda_1_2_7.json` was pieced together from the v1.2.7 source and the GB10 receipts, so some format lists (`spark2_5`, `minimax_m3_vl`, `gemma4` on CUDA) are guesses. Run the installed binary's `capabilities --json` on the 4090, save the output verbatim in `tests/fixtures/` (name it for the binary version, for example `tensorfold_caps_cuda_win_<version>.json`), point `tests/test_tensorfold_family_report.py` at it in place of the assembled file, and run `pytest tests/test_tensorfold_family_report.py tests/test_tensorfold_native.py -q`. Note any family it lists that no row names.
+- **FU-165 constants still to measure.** `estimateRef` rows for CUDA images and for LTX-2.5 / LTX-2.3 on CUDA were not measured (the LTX constants are the Mac `ltx-2-mlx` fit: `fixed` 0.1, `quad` 1e9, `ignoresSteps`). From row 8, record per case: shown seconds, real seconds, error. Then set `fixed`, `quad` and `ignoresSteps` per row in the image and video catalogues, add the cases to `tests/fixtures/time_estimate_cases.json`, and update `docs/research/time-estimate-fit-2026-11.md`.

@@ -7,7 +7,10 @@ Branch `v0100/bump-llama`, commits a9139306 (llama.cpp) and ba6aa7bc (Playwright
 - Playwright 1.65.0 -> 1.65.1 exact in `e2e/package.json` and its lockfile; chromium headless shell installed. CLAUDE.md row updated. `docs/research/playwright-security.md` left alone (dated research record naming 1.65.0 as latest on 2026-11-07).
 - pytest tests/test_llama_cuda.py tests/test_llama_cuda_windows.py tests/test_linux_arm64_build.py: pass (some skips).
 
-## Not done (blocked: release gate not DONE, /tmp/claude-501/r1/summary2.txt absent)
-- Rebuild/install of llama-server into `~/.chaosengine/bin` (back up first as `llama-server.bak-20261114`), GGUF chat on the new binary, tests/test_inference.py.
-- Playwright specs (01-smoke etc.) with --workers=1.
+## Mac checks (after the gate was DONE)
+- tests/test_inference.py: pass (70 tests). Run on the code, not on a new binary.
+- Playwright 1.65.1, `npx playwright test 01-smoke --workers=1`: 3 passed.
+
+## Not done
+- llama-server b12387 install and GGUF chat. `scripts/update-llama-cpp.sh` only builds in a sibling `../llama.cpp` checkout (none exists on this Mac) and never copies into `~/.chaosengine/bin`, so it needs a git clone of ggml-org/llama.cpp (or the prebuilt macos-arm64 archive, sha256 a654e6020f85d71274f1cf29460caec6537db31decc95a1a9e2f91ce05e648d7) plus a manual copy. Either is a download that needs the owner's yes. Installed binary is untouched (May build 6049906), so there was nothing to back up or restore.
 - Windows CUDA install on b12387 (4090 item).

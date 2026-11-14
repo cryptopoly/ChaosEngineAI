@@ -168,6 +168,30 @@ def run(h: Any, cap: Any) -> Any:
             return "fail", f"generate: HTTP {code} {str(body)[:200]}", {}
         return "pass", "", {"notes": body.get("notes")}
 
+    def first_clip_eta():
+        # In-process, no model run: a batch priced from the catalogue (scaled by estimate.py) before any clip is measured.
+        from backend_service.storyboard.batch import Batch
+        from backend_service.storyboard.ops import run_op
+        from backend_service.storyboard.store import ProjectStore
+
+        with tempfile.TemporaryDirectory() as root:
+            store = ProjectStore(Path(root))
+            project = store.create("ETA check", None)
+            for index in range(2):
+                project = run_op(store, project.id, project.revision, "add_shot",
+                                 {"title": f"s{index}", "stillPrompt": "x", "motionPrompt": "y"})
+            batch = Batch(store, project.id, "clip", lambda s, p: None, lambda s, p, i: None,
+                          shot_ids=[s.id for s in project.shots], force=True)
+            batch.start(project.revision)
+            batch.use_models({"id": "i", "name": "I", "estimatedGenerationSeconds": 5.0},
+                             {"id": "v", "name": "V", "estimatedGenerationSeconds": 40.0, "defaultDurationSeconds": 4.0})
+            batch._began = time.monotonic()
+            batch._current = (batch.steps[0][0], "clip", time.monotonic())
+            info = batch.progress()
+            if info.get("etaBasis") != "catalog" or not info.get("etaSeconds"):
+                return "fail", f"first clip has no catalogue ETA: {info}", {}
+            return "pass", "", {"etaSeconds": info["etaSeconds"]}
+
     first = "build a 3-shot film with a voice clip"
     try:
         for name, fn in [
@@ -177,8 +201,9 @@ def run(h: Any, cap: Any) -> Any:
             ("export with burned-in captions, an .srt and lane stems", export_all),
             ("cancel an export, then resume it", cancel_and_resume),
             ("make captions from the voice clip (speech model)", stt),
+            ("first clip of a batch shows a catalogue ETA", first_clip_eta),
         ]:
-            if "id" not in state and name != first:
+            if "id" not in state and name not in (first, "first clip of a batch shows a catalogue ETA"):
                 phase.checks.append(h.CheckResult(name, "skip", reason="no project"))
                 continue
             phase.checks.append(h._check(name, fn))

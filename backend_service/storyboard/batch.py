@@ -111,6 +111,9 @@ class Batch:
         self._finished_steps: list[tuple[str, float]] = []  # (kind, seconds) of steps that made their output
         self._current: tuple[str, str, float] | None = None  # (shot id, kind, monotonic start) of the running step
         self._processed = 0  # steps that ended, made or not
+        # The models a run would use, for the catalogue price of a step no earlier step has measured (FU-153).
+        self._variants: tuple[dict[str, Any] | None, dict[str, Any] | None] = (None, None)
+        self._prices: dict[tuple[str, str], tuple[float, str] | None] = {}  # (shot id, kind) -> (seconds, basis)
 
     # ---- planning ----
     def plan(self, project: Project) -> list[tuple[str, str, str | None]]:
@@ -206,12 +209,40 @@ class Batch:
     def _last_step(self, shot_id: str, kind: str) -> bool:
         return kind == "clip" or (shot_id, "clip") not in self.steps
 
-    def progress(self) -> dict[str, Any]:
-        """Where the run is, for ``job_status`` and the UI: "clip 2 of 4", elapsed, and time left from earlier steps.
+    def use_models(self, image_variant: dict[str, Any] | None, video_variant: dict[str, Any] | None) -> None:
+        """Name the models this run uses, so a step no earlier step has measured is priced from the catalogue."""
+        self._variants = (image_variant, video_variant)
+        self._prices.clear()
 
-        The time left uses only what this run measured: each remaining step is priced at the average of the
-        finished steps of the same kind (a clip at the clips made so far). A kind with no finished step has
-        no price, so there is no ``etaSeconds`` until one exists (the first clip of a batch shows none).
+    def _catalog_price(self, shot_id: str, kind: str) -> tuple[float, str] | None:
+        """(seconds, basis) for one step from ``estimate.estimate`` (this project's takes, else the catalogue scaled
+        to the project's size and the shot's frames), or None when no model is known or it has no figure."""
+        key = (shot_id, kind)
+        if key not in self._prices:
+            price = None
+            variant = self._variants[0 if kind == "still" else 1]
+            if variant is not None:
+                try:
+                    from backend_service.storyboard.estimate import estimate
+
+                    got = estimate(
+                        self.store.load(self.project_id), self.store.folder(self.project_id), what=kind,
+                        shot_ids=[shot_id], image_variant=self._variants[0], video_variant=self._variants[1], missing=[],
+                    )
+                    if isinstance(got.get("seconds"), (int, float)) and got["seconds"] > 0:
+                        price = (float(got["seconds"]), "clips" if got.get("basis") == "measured" else "catalog")
+                except Exception:  # noqa: BLE001 - a price is a nicety; no price means elapsed time only
+                    price = None
+            self._prices[key] = price
+        return self._prices[key]
+
+    def progress(self) -> dict[str, Any]:
+        """Where the run is, for ``job_status`` and the UI: "clip 2 of 4", elapsed, and time left.
+
+        Each remaining step is priced at the average of the finished steps of the same kind in this run
+        (basis ``clips``). A kind with no finished step yet (the first clip of a batch) is priced from the
+        catalogue figure for that shot (basis ``catalog``) when the models are known (``use_models``); with
+        neither there is no ``etaSeconds``, elapsed time only. The basis is ``catalog`` if any price used it.
         """
         steps, now = list(self.steps), time.monotonic()
         current = self._current
@@ -234,16 +265,29 @@ class Batch:
             info["finishedSeconds"] = {k: round(v, 1) for k, v in mean.items()}
         remaining = steps[processed + (1 if current else 0):]
         left: float | None = 0.0
+        basis = "clips"
+
+        def price(shot_id: str, kind: str) -> float | None:
+            nonlocal basis
+            if kind in mean:
+                return mean[kind]
+            got = self._catalog_price(shot_id, kind)
+            if got is None:
+                return None
+            basis = "catalog" if got[1] == "catalog" or basis == "catalog" else "clips"
+            return got[0]
+
         if current is not None:
-            price = mean.get(current[1])
-            left = None if price is None else max(0.0, price - (now - current[2]))
-        for _, kind in remaining:
-            if left is None or kind not in mean:
+            each = price(current[0], current[1])
+            left = None if each is None else max(0.0, each - (now - current[2]))
+        for shot_id, kind in remaining:
+            each = price(shot_id, kind)
+            if left is None or each is None:
                 left = None
                 break
-            left += mean[kind]
-        if left is not None and finished and (remaining or current is not None):
-            info["etaSeconds"], info["etaBasis"] = round(left), "clips"
+            left += each
+        if left is not None and (remaining or current is not None):
+            info["etaSeconds"], info["etaBasis"] = round(left), basis
         return info
 
     def run(self) -> None:

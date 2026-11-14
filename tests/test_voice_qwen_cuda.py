@@ -119,7 +119,7 @@ class CatalogTests(unittest.TestCase):
 
     def test_the_clone_default_is_the_same_model_on_both_lanes(self) -> None:
         defaults = {r["key"] for r in voice_models.VOICE_MODELS if r["default"]}
-        self.assertEqual(defaults, {"qwen3-tts-0.6b", "qwen3-tts-0.6b-cuda"})
+        self.assertEqual(defaults, {voice_models.DEFAULT_CLONE_MODEL, f"{voice_models.DEFAULT_CLONE_MODEL}-cuda"})
 
     def test_measured_numbers_are_there_and_the_gate_clears_the_peak(self) -> None:
         for key in QWEN_CUDA:

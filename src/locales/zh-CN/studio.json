@@ -1124,7 +1124,12 @@
       "recordingPlayback": "你的录音",
       "saving": null,
       "sampleType": null,
-      "sampleMinimumTurbo": null
+      "sampleMinimumTurbo": null,
+      "modelTitle": null,
+      "modelNone": null,
+      "modelDownload": null,
+      "modelDefault": null,
+      "modelSize": null
     },
     "cost": {
       "kokoroChip": null,

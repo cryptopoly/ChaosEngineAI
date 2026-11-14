@@ -79,7 +79,7 @@ class CatalogTests(unittest.TestCase):
             self.assertIn(row["licence"]["id"], ("apache-2.0", "mit"))
         self.assertEqual(voice_models.CLONE_LICENCE["id"], "apache-2.0")
         self.assertEqual(sum(r["default"] for r in voice_models.CLONE_MODELS), 2)  # the default and its GPU twin
-        self.assertEqual(voice_models.clone_model("")["key"], "qwen3-tts-0.6b")
+        self.assertEqual(voice_models.clone_model("")["key"], voice_models.DEFAULT_CLONE_MODEL)
         with self.assertRaises(ValueError):
             voice_models.clone_model("/tmp/some/local/path")
 

@@ -23,9 +23,9 @@ export function isSampleFile(name: string): boolean {
   return SAMPLE_EXTENSIONS.some((ext) => lower.endsWith(ext));
 }
 
-/** A voice can be saved once whose voice it is, the speaker's name, the tick and a usable sample are given. */
-export function canSaveVoice(details: NewVoiceDetails, hasSample: boolean): boolean {
-  return details.basis !== null && details.speakerName.trim().length > 0 && details.confirmed && hasSample;
+/** A voice can be saved once whose voice it is, the speaker's name, the tick, a usable sample and a model are given. */
+export function canSaveVoice(details: NewVoiceDetails, hasSample: boolean, modelKey: string): boolean {
+  return details.basis !== null && details.speakerName.trim().length > 0 && details.confirmed && hasSample && modelKey !== "";
 }
 
 /** A microphone recording must be 3 to 30 seconds (an uploaded file is measured by the backend). */
@@ -41,14 +41,22 @@ export function wavSeconds(bytes: number, sampleRate = 16_000): number {
   return Math.max(0, bytes - 44) / (2 * sampleRate);
 }
 
-/** The model to preselect: the downloaded default, else any downloaded one, else the default. */
+/** The cloning models to offer: downloaded and able to run here, by name. */
+export function offeredCloneModels(models: CloneModel[]): CloneModel[] {
+  return models.filter((m) => m.supported && m.installed).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * The model the form starts on: the backend's default when it is downloaded, else the first downloaded one (a single
+ * downloaded model is therefore shown selected). Null when none is downloaded: the form offers the download instead.
+ */
 export function pickCloneModel(models: CloneModel[]): CloneModel | null {
+  const offered = offeredCloneModels(models);
+  return offered.find((m) => m.default) ?? offered[0] ?? null;
+}
+
+/** The model to download when none is on disk: the default (it runs here), else the first one that does. */
+export function modelToDownload(models: CloneModel[]): CloneModel | null {
   const usable = models.filter((m) => m.supported);
-  return (
-    usable.find((m) => m.default && m.installed) ??
-    usable.find((m) => m.installed) ??
-    usable.find((m) => m.default) ??
-    usable[0] ??
-    null
-  );
+  return usable.find((m) => m.default) ?? usable[0] ?? null;
 }

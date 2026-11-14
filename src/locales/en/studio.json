@@ -1124,7 +1124,12 @@
       "recordingPlayback": "Your recording",
       "saving": "Saving the voice…",
       "sampleType": "Choose a WAV, MP3, M4A, FLAC or OGG file.",
-      "sampleMinimumTurbo": "Chatterbox-Turbo needs at least 5 seconds. A sample of 10 seconds or more works with every cloning model."
+      "sampleMinimumTurbo": "Chatterbox-Turbo needs at least 5 seconds. A sample of 10 seconds or more works with every cloning model.",
+      "modelTitle": "Cloning model",
+      "modelNone": "No cloning model is downloaded yet.",
+      "modelDownload": "Download {name} ({gb} GB)",
+      "modelDefault": "Default",
+      "modelSize": "{gb} GB download"
     },
     "cost": {
       "kokoroChip": "fast, under 1 GB",

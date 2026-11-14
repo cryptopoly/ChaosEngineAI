@@ -507,10 +507,10 @@ class VoiceListTests(unittest.TestCase):
             self.assertEqual(voice_clone.pick_clone_model("")["key"], "qwen3-tts-1.7b")
             self.assertEqual(voice_clone.pick_clone_model(None)["key"], "qwen3-tts-1.7b")
         with Machine(), mock.patch.object(voice_clone, "snapshot_dir", installed("qwen3-tts-0.6b", "qwen3-tts-1.7b")):
-            self.assertEqual(voice_clone.pick_clone_model("")["key"], "qwen3-tts-0.6b")  # the default wins when both are there
+            self.assertEqual(voice_clone.pick_clone_model("")["key"], voice_models.DEFAULT_CLONE_MODEL)  # the default wins when both are there
             self.assertEqual(voice_clone.pick_clone_model("qwen3-tts-1.7b")["key"], "qwen3-tts-1.7b")  # a named model is honoured
         with Machine(), mock.patch.object(voice_clone, "snapshot_dir", installed()):
-            self.assertEqual(voice_clone.pick_clone_model("")["key"], "qwen3-tts-0.6b")  # nothing installed: the default is named in the error
+            self.assertEqual(voice_clone.pick_clone_model("")["key"], voice_models.DEFAULT_CLONE_MODEL)  # nothing installed: the default is named in the error
 
     def test_clones_can_be_left_out(self) -> None:
         with mock.patch.object(voice_clone, "list_voices", side_effect=AssertionError("not read")):

@@ -4,7 +4,9 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn(), isTauri: vi.fn(() => false) }));
 
 import type { CloneModel } from "./cloneApi";
-import { canSaveVoice, isSampleFile, pickCloneModel, sampleLengthProblem, wavSeconds } from "./cloneLogic";
+import { CloneModelPicker } from "./CloneModelPicker";
+import { createClonedVoice } from "./cloneApi";
+import { canSaveVoice, isSampleFile, modelToDownload, offeredCloneModels, pickCloneModel, sampleLengthProblem, wavSeconds } from "./cloneLogic";
 import { CloneStatement } from "./CloneStatement";
 import { NewVoiceForm } from "./NewVoiceForm";
 
@@ -29,11 +31,13 @@ function model(over: Partial<CloneModel> = {}): CloneModel {
 describe("clone logic", () => {
   it("saves only with basis, name, the permission tick and a sample", () => {
     const details = { basis: "own" as const, speakerName: "Dan", voiceName: "", confirmed: true };
-    expect(canSaveVoice(details, true)).toBe(true);
-    expect(canSaveVoice(details, false)).toBe(false);
-    expect(canSaveVoice({ ...details, basis: null }, true)).toBe(false);
-    expect(canSaveVoice({ ...details, speakerName: "  " }, true)).toBe(false);
-    expect(canSaveVoice({ ...details, confirmed: false }, true)).toBe(false);
+    expect(canSaveVoice(details, true, "qwen3-tts-1.7b")).toBe(true);
+    expect(canSaveVoice(details, false, "qwen3-tts-1.7b")).toBe(false);
+    expect(canSaveVoice({ ...details, basis: null }, true, "qwen3-tts-1.7b")).toBe(false);
+    expect(canSaveVoice({ ...details, speakerName: "  " }, true, "qwen3-tts-1.7b")).toBe(false);
+    expect(canSaveVoice({ ...details, confirmed: false }, true, "qwen3-tts-1.7b")).toBe(false);
+    // No model selected (none downloaded): Save stays off.
+    expect(canSaveVoice(details, true, "")).toBe(false);
   });
 
   it("takes WAV, MP3, M4A, FLAC and OGG samples", () => {
@@ -50,13 +54,15 @@ describe("clone logic", () => {
     expect(wavSeconds(10)).toBe(0);
   });
 
-  it("prefers a downloaded default model", () => {
-    const small = model();
-    const big = model({ key: "qwen3-tts-1.7b", default: false, installed: true });
+  it("preselects the default when it is downloaded, else the one downloaded model", () => {
+    const small = model({ default: false, installed: true });
+    const big = model({ key: "qwen3-tts-1.7b", name: "Qwen3-TTS 1.7B Base", default: true, installed: true });
     expect(pickCloneModel([small, big])?.key).toBe("qwen3-tts-1.7b");
-    expect(pickCloneModel([model({ installed: true }), big])?.key).toBe("qwen3-tts-0.6b");
-    expect(pickCloneModel([small, model({ key: "x", default: false })])?.key).toBe("qwen3-tts-0.6b");
-    expect(pickCloneModel([model({ supported: false })])).toBeNull();
+    expect(pickCloneModel([small, { ...big, installed: false }])?.key).toBe("qwen3-tts-0.6b");
+    expect(pickCloneModel([model({ installed: false })])).toBeNull();
+    expect(pickCloneModel([model({ installed: true, supported: false })])).toBeNull();
+    expect(offeredCloneModels([big, small]).map((m) => m.name)).toEqual(["Qwen3-TTS 0.6B Base", "Qwen3-TTS 1.7B Base"]);
+    expect(modelToDownload([small, big])?.key).toBe("qwen3-tts-1.7b");
   });
 });
 
@@ -86,5 +92,41 @@ describe("clone components", () => {
     expect(html).toMatch(/<button[^>]*disabled=""[^>]*>Save voice/);
     // No URL field: samples come only from the microphone or a local file.
     expect(html).not.toMatch(/type="url"/);
+  });
+
+  it("lists no radios and offers the download when no cloning model is downloaded", () => {
+    const html = renderToStaticMarkup(<CloneModelPicker models={[model()]} selected="" onSelect={() => {}} onDownload={() => {}} />);
+    expect(html).toContain("No cloning model is downloaded yet.");
+    expect(html).toContain("Download Qwen3-TTS 0.6B Base");
+    expect(html).not.toContain('type="radio"');
+  });
+
+  it("shows a single downloaded model selected, with its size and no Default-only wording beyond the tag", () => {
+    const one = model({ installed: true, default: false });
+    const html = renderToStaticMarkup(<CloneModelPicker models={[one]} selected={one.key} onSelect={() => {}} onDownload={() => {}} />);
+    expect(html).toMatch(/type="radio"[^>]*checked=""/);
+    expect(html).toContain("2.52 GB download");
+    expect(html).not.toContain("Default");
+    expect(html).not.toMatch(/recommended|best/i);
+  });
+
+  it("lists two downloaded models by name, tags the default and marks the selected one", () => {
+    const small = model({ installed: true, default: false });
+    const big = model({ key: "qwen3-tts-1.7b", name: "Qwen3-TTS 1.7B Base", default: true, installed: true, sizeGb: 4.54 });
+    const html = renderToStaticMarkup(<CloneModelPicker models={[big, small]} selected={big.key} onSelect={() => {}} onDownload={() => {}} />);
+    expect(html.indexOf("0.6B Base")).toBeLessThan(html.indexOf("1.7B Base"));
+    expect(html.match(/type="radio"/g)).toHaveLength(2);
+    expect(html.match(/>Default</g)).toHaveLength(1);
+    expect(html.match(/checked=""/g)).toHaveLength(1);
+  });
+
+  it("sends the chosen model key with the new voice", async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ id: "v1", name: "Me" }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    await createClonedVoice({ speakerName: "Dan", basis: "own", name: "Me", sample: new Blob(["x"]), sampleName: "a.wav", model: "voxcpm2" });
+    const calls = fetchMock.mock.calls as unknown as Array<[string, RequestInit]>;
+    const create = calls.find(([url]) => String(url).endsWith("/api/voice/clone/voices"));
+    expect((create?.[1].body as FormData).get("model")).toBe("voxcpm2");
+    vi.unstubAllGlobals();
   });
 });

@@ -7,7 +7,9 @@ Checks, against a running backend:
 4. full run when a cloning model is downloaded: Kokoro speaks a short voice sample, the voice is
    saved with the permission tick, one sentence is spoken, the WAV and the MP3 carry the AI tag, the
    AudioSeal watermark is detected (a model counts as installed only with the watermark component), then
-   the voice, the speech and the worker are cleaned up. Nothing is downloaded by this phase.
+   the voice, the speech and the worker are cleaned up. Nothing is downloaded by this phase;
+5. a voice created without a model records the default (never a 422), one created with a model records it,
+   an unknown model is a 400 (FU-154).
 """
 
 from __future__ import annotations
@@ -149,8 +151,52 @@ def phase_14(cap: Any):
             http("DELETE", f"/api/voice/clone/voices/{voice['id']}")
             http("POST", "/api/voice/worker/stop")
 
+    def _model_choice():
+        reason = _voice_ready()
+        if reason:
+            return "skip", reason, {}
+        installed = [r["key"] for r in state["models"]["models"] if r.get("installed")]
+        if not installed:
+            return "skip", "no cloning model downloaded (won't pull weights in a test run)", {}
+        # List order puts the default first, so the expected pick is the first downloaded row.
+        expected = installed[0]
+        wav = _say("Hello, this is a short voice sample for the end to end check. It runs for a few seconds.")
+        if wav is None:
+            return "fail", "Kokoro could not speak the sample", {}
+        made: list[str] = []
+
+        def create(extra: dict[str, str]):
+            body, ctype = _multipart({"speakerName": "Test Speaker", "basis": "own", "permissionConfirmed": "true",
+                                      "name": "E2E model", **extra}, {"sample": ("sample.wav", wav)})
+            code, raw = http("POST", "/api/voice/clone/voices", body=body, content_type=ctype, timeout=300.0)
+            voice = json.loads(raw) if code == 200 else None
+            if voice:
+                made.append(voice["id"])
+            return code, voice, raw
+
+        try:
+            code, voice, raw = create({})
+            if code != 200:
+                return "fail", f"omitted model: HTTP {code} {raw[:160]!r}", {}
+            if voice.get("model") != expected:
+                return "fail", f"omitted model recorded {voice.get('model')!r}, expected the default {expected!r}", {}
+            detail = {"default": expected}
+            if len(installed) >= 2:
+                code, voice, raw = create({"model": installed[1]})
+                if code != 200 or voice.get("model") != installed[1]:
+                    return "fail", f"named model {installed[1]!r}: HTTP {code} {raw[:160]!r}", {}
+                detail["named"] = installed[1]
+            code, _voice, raw = create({"model": "no-such-model"})
+            if code != 400:
+                return "fail", f"unknown model: HTTP {code}, expected 400", {}
+            return "pass", "", detail
+        finally:
+            for voice_id in made:
+                http("DELETE", f"/api/voice/clone/voices/{voice_id}")
+
     for name, fn in (("clone models pinned", _models), ("agent token refused", _agent_refused),
-                     ("unconfirmed or unsupported sample refused", _unconfirmed_refused), ("clone, speak, AI tag", _full_clone)):
+                     ("unconfirmed or unsupported sample refused", _unconfirmed_refused), ("clone, speak, AI tag", _full_clone),
+                     ("clone create: omitted model uses the default", _model_choice)):
         phase.checks.append(suite._check(name, fn))
     statuses = {c.status for c in phase.checks}
     phase.status = "fail" if "fail" in statuses else ("pass" if "pass" in statuses else "skip")

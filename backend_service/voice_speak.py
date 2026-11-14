@@ -241,13 +241,15 @@ def list_voices(*, include_clones: bool = True) -> list[dict[str, Any]]:
 
         cloners = sorted(_rows(lambda row: row["capabilities"]["clone"]), key=lambda row: not row["default"])
         base = voice_clone.pick_clone_model("")  # the default, or any downloaded cloning model
-        base_ready = _installed(base) and voice_env.watermark_installed()
         for item in voice_clone.list_voices():
+            # The model the voice was made with, while it is downloaded; else the default.
+            own = voice_clone.recorded_model(item.get("model")) or base
+            own_ready = _installed(own) and voice_env.watermark_installed()
             voices.append({
-                "id": CLONE_PREFIX + item["id"], "name": item["name"], "kind": "clone", "family": base["family"],
-                "language": "auto", "languageLabel": "Any", "gender": None, "model": base["key"],
+                "id": CLONE_PREFIX + item["id"], "name": item["name"], "kind": "clone", "family": own["family"],
+                "language": "auto", "languageLabel": "Any", "gender": None, "model": own["key"],
                 "models": [r["key"] for r in cloners], "capabilities": _caps(speak=True, clone=True),
-                "available": base_ready, "needs": None if base_ready else _needs(base),
+                "available": own_ready, "needs": None if own_ready else _needs(own),
                 "consent": item["consent"], "durationS": item.get("durationS"),
             })
     for entry in voices:

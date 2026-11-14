@@ -78,8 +78,11 @@ def create_cloned_voice(
     permissionConfirmed: bool = Form(default=False),
     name: str = Form(default="", max_length=80),
     referenceText: str = Form(default="", max_length=2_000),
+    model: str = Form(default="", max_length=64),
 ) -> dict[str, Any]:
-    """Save a voice from its sample (an uploaded file or a microphone recording) with its permission record."""
+    """Save a voice from its sample (an uploaded file or a microphone recording) with its permission record.
+
+    ``model`` is the cloning model chosen in the form; empty takes the default (never a 422)."""
     from backend_service import voice_clone  # noqa: PLC0415
     from backend_service.helpers.job_queue import HEAVY_JOBS  # noqa: PLC0415
     from backend_service.routes.voice import _receive_upload, _worker_error  # noqa: PLC0415
@@ -107,6 +110,7 @@ def create_cloned_voice(
                     permission_confirmed=permissionConfirmed,
                     origin=origin,
                     transcribe=transcribe,
+                    model_key=model,
                 )
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc

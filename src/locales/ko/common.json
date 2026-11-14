@@ -1363,5 +1363,10 @@
       "voices": "화자의 동의가 있는 경우에만 음성을 복제하세요.",
       "licences": "모델마다 고유한 라이선스가 있습니다. 결과물을 사용하기 전에 확인하세요."
     }
+  },
+  "accessibilityPanel": {
+    "title": null,
+    "strongBorders": null,
+    "note": null
   }
 }

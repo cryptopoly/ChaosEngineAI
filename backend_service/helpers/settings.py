@@ -266,6 +266,8 @@ def _default_settings(default_port: int, data_dir: Path) -> dict[str, Any]:
         # D-34: generated music carries a machine-readable "made with AI" tag (FLAC Vorbis comment).
         # On by default; the switch is for private use.
         "musicEmbedTag": True,
+        # Accessibility: control borders (inputs, buttons) use the stronger --border-control colour. On by default.
+        "strongControlBorders": True,
         # First-run terms of use: 0 = never accepted; the time is ISO 8601 UTC.
         "termsAcceptedVersion": 0,
         "termsAcceptedAt": "",
@@ -379,6 +381,7 @@ def _load_settings(path: Path, default_port: int, data_dir: Path) -> dict[str, A
     # Phase 3.3: advanced-mode logprobs toggle.
     settings["advancedLogprobs"] = bool(payload.get("advancedLogprobs", False))
     settings["musicEmbedTag"] = bool(payload.get("musicEmbedTag", True))
+    settings["strongControlBorders"] = bool(payload.get("strongControlBorders", True))
     settings["termsAcceptedVersion"] = _int_or_zero(payload.get("termsAcceptedVersion"))
     terms_at = payload.get("termsAcceptedAt")
     settings["termsAcceptedAt"] = terms_at.strip()[:40] if isinstance(terms_at, str) else ""

@@ -2333,8 +2333,14 @@ def phase_7(cap: Capability) -> PhaseResult:
         # After all phases, runtime should be idle (we unload after every load)
         return ("pass" if state in {"idle", "loaded"} else "fail"), f"state={state}", {"state": state}
 
+    def _border_setting():
+        from e2e_phases.border_settings import check
+
+        return check(sys.modules[__name__])
+
     for name, fn in [("diagnostics-snapshot", _snapshot), ("diagnostics-log-tail", _log_tail),
-                      ("no orphan workers", _no_orphans), ("runtime idle/loaded", _idle_state)]:
+                      ("no orphan workers", _no_orphans), ("runtime idle/loaded", _idle_state),
+                      ("strongControlBorders round trip", _border_setting)]:
         phase.checks.append(_check(name, fn))
     fails = [c for c in phase.checks if c.status == "fail"]
     phase.status = "fail" if fails else "pass"

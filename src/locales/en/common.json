@@ -1363,5 +1363,10 @@
       "voices": "Only clone a voice with the speaker's consent.",
       "licences": "Each model comes with its own licence. Check it before you use the output."
     }
+  },
+  "accessibilityPanel": {
+    "title": "Accessibility",
+    "strongBorders": "Stronger borders on fields and buttons",
+    "note": "Outlines inputs and buttons with a higher-contrast line so they are easier to see. Applies immediately."
   }
 }

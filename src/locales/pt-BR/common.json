@@ -1363,5 +1363,10 @@
       "voices": "Só clone uma voz com o consentimento de quem fala.",
       "licences": "Cada modelo tem sua própria licença. Confira-a antes de usar o resultado."
     }
+  },
+  "accessibilityPanel": {
+    "title": null,
+    "strongBorders": null,
+    "note": null
   }
 }

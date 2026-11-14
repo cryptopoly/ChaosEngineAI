@@ -107,6 +107,7 @@ def settings_payload(
         "hfCachePath": str(state.settings.get("hfCachePath") or ""),
         "favoriteModelRefs": list(state.settings.get("favoriteModelRefs") or []),
         "musicEmbedTag": bool(state.settings.get("musicEmbedTag", True)),
+        "strongControlBorders": bool(state.settings.get("strongControlBorders", True)),
         "termsAcceptedVersion": int(state.settings.get("termsAcceptedVersion") or 0),
         "termsAcceptedAt": str(state.settings.get("termsAcceptedAt") or ""),
         "locale": str(state.settings.get("locale") or "system"),
@@ -151,6 +152,9 @@ def update_settings(
         next_settings["musicEmbedTag"] = bool(state.settings.get("musicEmbedTag", True))
         if request.musicEmbedTag is not None:
             next_settings["musicEmbedTag"] = request.musicEmbedTag
+        next_settings["strongControlBorders"] = bool(state.settings.get("strongControlBorders", True))
+        if request.strongControlBorders is not None:
+            next_settings["strongControlBorders"] = request.strongControlBorders
         next_settings["termsAcceptedVersion"] = int(state.settings.get("termsAcceptedVersion") or 0)
         next_settings["termsAcceptedAt"] = str(state.settings.get("termsAcceptedAt") or "")
         if request.termsAcceptedVersion is not None:

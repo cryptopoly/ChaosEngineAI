@@ -77,6 +77,8 @@ export interface AppSettings {
   /** First-run terms of use: accepted version (0 = never) and when (ISO 8601 UTC). */
   termsAcceptedVersion?: number;
   termsAcceptedAt?: string;
+  /** Stronger borders on fields and buttons; missing reads as true. */
+  strongControlBorders?: boolean;
 }
 
 export interface SettingsUpdateResponse {
@@ -93,6 +95,8 @@ export interface SettingsUpdateResponse {
 export interface UpdateSettingsPayload {
   /** D-34: write the machine-generated tag into music files (on by default). */
   musicEmbedTag?: boolean;
+  /** Stronger borders on fields and buttons (on by default). */
+  strongControlBorders?: boolean;
   /** First-run terms of use: the version the user accepted (the server stamps the time). */
   termsAcceptedVersion?: number;
   modelDirectories?: ModelDirectorySetting[];

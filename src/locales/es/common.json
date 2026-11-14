@@ -1363,5 +1363,10 @@
       "voices": "Clona una voz solo con el consentimiento de quien habla.",
       "licences": "Cada modelo tiene su propia licencia. Revísala antes de usar el resultado."
     }
+  },
+  "accessibilityPanel": {
+    "title": null,
+    "strongBorders": null,
+    "note": null
   }
 }

@@ -5,6 +5,7 @@ import { AgentAccessPanel } from "./AgentAccessPanel";
 import { SkillsPanel } from "./SkillsPanel";
 import { AcceleratorsPanel, DiagnosticsPanel, DiskUsagePanel } from "./DiagnosticsPanel";
 import { LanguagePanel } from "./LanguagePanel";
+import { AccessibilityPanel } from "./AccessibilityPanel";
 import { TermsDialog, TermsOfUsePanel } from "../terms/TermsOfUse";
 import type { TermsSettings } from "../terms/termsLogic";
 import { ModelStoragePanel } from "./ModelStoragePanel";
@@ -224,6 +225,7 @@ export function SettingsTab({
         onSettingsDraftChange={onSettingsDraftChange}
         onCopyText={onCopyText}
       />
+      <AccessibilityPanel />
       <TermsOfUsePanel settings={terms} onRead={() => setReadingTerms(true)} />
       {readingTerms ? <TermsDialog mode="read" onClose={() => setReadingTerms(false)} /> : null}
     </div>

@@ -1363,5 +1363,10 @@
       "voices": "jatlhwI' chaw'chugh neH ghogh velqa' yIchenmoH.",
       "licences": "chaw'Daj ghaj yab Hoch. ngoD Dalo'pa' yInuD."
     }
+  },
+  "accessibilityPanel": {
+    "title": null,
+    "strongBorders": null,
+    "note": null
   }
 }

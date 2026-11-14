@@ -169,6 +169,13 @@ export default function App() {
     void changeLocale(normalised);
   }, [loading, ws.workspace.settings?.locale, i18nInstance]);
 
+  // Stronger control borders: on unless the saved setting is false (the default applies before settings load).
+  const strongBorders = ws.workspace.settings?.strongControlBorders;
+  useEffect(() => {
+    if (strongBorders === false) document.documentElement.dataset.strongBorders = "off";
+    else delete document.documentElement.dataset.strongBorders;
+  }, [strongBorders]);
+
   // ── Settings / Server / Preview ────────────────────────────
   const imgState = useImageState(backendOnline, setError, setActiveTab);
   const videoState = useVideoState(backendOnline, setError, setActiveTab);

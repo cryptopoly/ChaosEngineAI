@@ -190,6 +190,18 @@ class BatchRenderBundleRouteTests(StoryboardRouteCase):
         self.assertIn("elapsedSeconds", progress)
         self.assertNotIn("progress", finished)
 
+    def test_starting_a_batch_names_the_projects_models_for_the_first_step_estimate(self):
+        pid, data = self.create(shots=1)
+        gens = FakeGenerators(self.src)
+        image, video = {"id": "img-variant"}, {"id": "vid-variant"}
+        with mock.patch("backend_service.storyboard.generators.studio_generators", fake_wiring(gens)), \
+                mock.patch("backend_service.routes.storyboard._project_variant",
+                           side_effect=lambda request, kind, model: ((image if kind == "image" else video), None)), \
+                mock.patch("backend_service.storyboard.batch.Batch.use_models") as use_models:
+            bid = self.post(f"/projects/{pid}/batches", {"revision": data["project"]["revision"], "what": "both"})["batchId"]
+            self.wait(lambda: self.get(f"/projects/{pid}/batches/{bid}")["batch"]["state"] == "done")
+        use_models.assert_called_once_with(image, video)
+
     def test_batch_runs_with_fake_generators_and_is_persisted(self):
         pid, data = self.create(shots=2)
         gens = FakeGenerators(self.src)

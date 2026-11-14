@@ -123,6 +123,10 @@ def start_batch(request: Request, project_id: str, revision: int | None, what: s
     batch.make_still, batch.make_clip = wiring["make_still"], wiring["make_clip"]
     batch.unload, batch.last_frame, batch.stop_running = wiring["unload"], wiring["last_frame"], wiring["stop_running"]
     batch.clip_image_refusal = wiring.get("clip_image_refusal")
+    # Name the project's models so the first step of each kind shows a time left before any step has finished.
+    project = store.load(project_id)
+    batch.use_models(_project_variant(request, "image", project.defaults.imageModel)[0],
+                     _project_variant(request, "video", project.defaults.videoModel)[0])
     batch.start(revision)
     batch.start_thread()
     return batch

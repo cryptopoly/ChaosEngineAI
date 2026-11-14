@@ -127,6 +127,9 @@ VIDEO_FAMILY_LIMITS: dict[str, SizeRow] = {
     "cogvideox": SizeRow(720, 720 * 480, 720),
     # LongLive (hidden from the catalog): Wan 2.1 1.3B base, 832x480 output per our catalog note. Unverified.
     "longlive": SizeRow(832, 832 * 480, 832),
+    # MiniMax H3 (HF card: "the shorter side is set to 768 pixels by default", 24 fps; the sd.cpp doc example is
+    # 864x480; sd.cpp aligns sides up to 32). Not run by the maintainers: the cap is 768p at 16:9.
+    "minimax-h3": SizeRow(1344, 1344 * 768, 864),
 }
 
 # Frame rate a family is trained or documented for, from its model card. A family not listed has no stated
@@ -136,6 +139,7 @@ VIDEO_NATIVE_FPS: dict[str, int] = {
     "wan-2-1": 16,  # Wan-Video README: 16 fps
     "wan-2-2": 16,
     "ltx-video": 24,  # HF card: 24 fps at 768x512
+    "minimax-h3": 24,  # HF card: 24 FPS output; sd.cpp overrides any other rate
     "mochi-1": 30,  # HF card: 30 fps
     "cogvideox": 8,  # HF card: 8 fps (CogVideoX 1.5 overrides: 16 fps)
 }

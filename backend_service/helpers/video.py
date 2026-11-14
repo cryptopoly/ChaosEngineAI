@@ -58,10 +58,14 @@ def _video_model_payloads(
 
     ``hardware`` (default: this machine) decides each variant's ``fit``.
     """
+    from backend_service import licence_gate
+
+    # Territory-limited rows (D-76) are left out of every list until the user confirms, for the UI and agents alike.
+    source_families, _ = licence_gate.filter_families(VIDEO_MODEL_FAMILIES)
     repo_metadata: dict[str, dict[str, Any]] = {}
     repos = sorted({
         str(variant.get("repo") or "")
-        for family in VIDEO_MODEL_FAMILIES
+        for family in source_families
         for variant in family["variants"]
         if str(variant.get("repo") or "")
     })
@@ -85,7 +89,7 @@ def _video_model_payloads(
                 pass
 
     families: list[dict[str, Any]] = []
-    for family in VIDEO_MODEL_FAMILIES:
+    for family in source_families:
         variants: list[dict[str, Any]] = []
         for variant in family["variants"]:
             enriched = dict(variant)
@@ -350,10 +354,22 @@ def _video_variant_has_any_local_data(variant: dict[str, Any]) -> bool:
     return bool(_video_variant_local_data_repos(variant))
 
 
+def _sdcpp_files_validation_error(variant: dict[str, Any]) -> str | None:
+    """Rows that name every sd.cpp input file (``sdcppFiles``, MiniMax H3): each file must be on disk."""
+    for source in (variant.get("sdcppFiles") or {}).values():
+        repo, name = str(source.get("repo") or ""), str(source.get("file") or "")
+        snapshot_dir = _hf_repo_snapshot_dir(repo)
+        if snapshot_dir is None or not (Path(snapshot_dir) / name).is_file():
+            return f"{variant.get('name') or repo} is missing {name} from {repo}. Retry the download."
+    return None
+
+
 def _video_variant_validation_error(variant: dict[str, Any]) -> str | None:
     repo = str(variant.get("repo") or "")
     if not repo:
         return "Video model variant is missing its base repo id."
+    if variant.get("sdcppFiles"):
+        return _sdcpp_files_validation_error(variant)
     if _is_ltx2_mlx_repo_id(repo):
         return _ltx2_mlx_variant_error(variant)
     is_gguf_variant = bool(str(variant.get("ggufFile") or "").strip())
@@ -664,7 +680,20 @@ def _video_download_validation_error(repo_id: str) -> str | None:
         return _ltx2_mlx_pack_error(snapshot_dir, repo_id)
     if _is_mlx_video_routed_repo(repo_id):
         return _validate_mlx_video_snapshot(snapshot_dir, repo_id)
+    if _is_sdcpp_files_repo(repo_id):
+        # A bare GGUF repo for sd.cpp (MiniMax H3): no diffusers layout, only the pinned files.
+        missing = [name for name in _pinned_video_download_files(repo_id)
+                   if not any(ch in name for ch in "*?[") and not (Path(snapshot_dir) / name).is_file()]
+        return f"The snapshot of {repo_id} is missing {', '.join(missing)}. Retry the download." if missing else None
     return validate_local_diffusers_snapshot(snapshot_dir, repo_id)
+
+
+def _is_sdcpp_files_repo(repo_id: str) -> bool:
+    return any(
+        str(variant.get("repo") or "") == repo_id and variant.get("sdcppFiles")
+        for family in VIDEO_MODEL_FAMILIES
+        for variant in family["variants"]
+    )
 
 
 _VIDEO_GGUF_BASE_IGNORED_WEIGHT_INDEX_DIRS: set[str] = {"transformer", "transformer_2"}

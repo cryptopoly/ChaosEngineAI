@@ -13,6 +13,7 @@ from __future__ import annotations
 from typing import Any
 
 from backend_service.catalog.video_ltx25 import LTX25_NVIDIA_FAMILY
+from backend_service.catalog.video_minimax_h3 import MINIMAX_H3_FAMILY
 
 
 # D-44: rows that are slow on some kinds of machine. ``slowOn`` is a list of platform entries; the app
@@ -1131,6 +1132,10 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
         ],
     },
 ]
+
+
+# D-76: territory-limited, hidden until the user confirms (and while licence_gate.H3_RELEASED is False).
+VIDEO_MODEL_FAMILIES.append(MINIMAX_H3_FAMILY)
 
 
 # FU-003: LongLive HF repo paths are stale (`NVlabs/LongLive-1.3B` 404s; the

@@ -4,6 +4,7 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
 
+from backend_service import licence_gate
 from backend_service.i18n import localized_detail
 from backend_service.models import (
     DownloadModelRequest,
@@ -84,7 +85,19 @@ def image_catalog(request: Request) -> dict[str, Any]:
         "families": _image_model_payloads(library),
         # Copies: the latest list is cached between requests.
         "latest": annotate_variants([dict(row) for row in _latest_image_model_payloads(library)], "image"),
+        "territoryLimited": [m["key"] for m in licence_gate.status()["models"] if "image" in m.get("kinds", [])],
     }
+
+
+def _require_territory(variant: dict[str, Any] | None = None, repo: str | None = None) -> None:
+    """403 with the plain reason when a territory-limited row (D-76) is reached without the user's confirmation."""
+    try:
+        if variant is not None:
+            licence_gate.require_variant(variant)
+        else:
+            licence_gate.require_repo(repo)
+    except licence_gate.LicenceGateError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.message) from None
 
 
 @router.get("/api/images/runtime")
@@ -138,6 +151,7 @@ def preload_image_model(request: Request, body: ImageRuntimePreloadRequest) -> d
             status_code=404,
             detail=localized_detail(request, f"Unknown image model '{body.modelId}'."),
         )
+    _require_territory(variant)
     library = state._library()
     if not _image_variant_available_locally(variant, library):
         validation_error = _image_download_validation_error(variant["repo"])
@@ -220,6 +234,7 @@ def image_library(request: Request) -> dict[str, Any]:
 @router.post("/api/images/download")
 def download_image_model(request: Request, body: DownloadModelRequest) -> dict[str, Any]:
     state = request.app.state.chaosengine
+    _require_territory(repo=body.repo)
     return {"download": state.start_download(body.repo)}
 
 
@@ -286,6 +301,7 @@ def _generate_image_locked(request: Request, body: ImageGenerationRequest) -> di
             ),
         )
     state.add_log("images", "info", f"Resolved variant: {variant.get('name')} (repo={variant.get('repo')})")
+    _require_territory(variant)
     body = _checked_reference_images(body, variant)
     # Free an idle video model first, so the memory it held counts as free
     # in the gate below.

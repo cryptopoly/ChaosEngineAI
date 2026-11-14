@@ -456,7 +456,8 @@ def best_fit_variant_id(
     fits comfortably, not the smallest), then the faster, then the smaller; for image and video the
     shorter ``estimatedGenerationSeconds``, then the smaller, then the id.
     """
-    fitting = [v for v in variants if (v.get("fit") or {}).get("status") == "fits"]
+    # A territory-limited row (D-76) is never recommended, even after the user confirmed it.
+    fitting = [v for v in variants if (v.get("fit") or {}).get("status") == "fits" and not v.get("territoryGate")]
     if not fitting:
         return None
     # A row that must be converted from full-precision weights first is a fallback: the

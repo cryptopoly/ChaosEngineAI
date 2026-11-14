@@ -247,6 +247,12 @@ def _pick_variant(ctx: Any, kind: str, model: str | None) -> dict[str, Any]:
     variant = (_find_image_variant if kind == "image" else _find_video_variant)(model)
     if variant is None:
         raise ToolError(f"Unknown {kind} model '{model}'.")
+    from backend_service import licence_gate
+
+    try:
+        licence_gate.require_variant(variant)  # belt and braces: hidden rows are not in ``installed`` either
+    except licence_gate.LicenceGateError as exc:
+        raise ToolError(exc.message) from None
     return variant
 
 

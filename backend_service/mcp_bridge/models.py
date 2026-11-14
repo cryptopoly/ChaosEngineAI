@@ -61,10 +61,14 @@ def _licence_hints(family: dict[str, Any], variant: dict[str, Any]) -> dict[str,
     """The catalog has no licence field; read the family badges and the variant note."""
     text = f"{variant.get('note') or ''} {family.get('description') or ''}".lower()
     badges = [str(b).lower() for b in family.get("badges") or []]
-    return {
+    hints = {
         "gated": "gated" in badges or "gated" in text,
         "nonCommercial": "non-commercial" in text or "noncommercial" in text,
     }
+    if variant.get("territoryGate"):
+        # Listed only after the user confirmed the territory statement (D-76); the agent must not offer it elsewhere.
+        hints["territoryRestricted"] = True
+    return hints
 
 
 def _row(family: dict[str, Any], variant: dict[str, Any], kind: str) -> dict[str, Any]:
@@ -204,6 +208,7 @@ def recommend(state: Any, kind: str, limit: int = 3) -> dict[str, Any]:
 
 def default_model(state: Any, kind: str) -> dict[str, Any] | None:
     """The installed model to use when the agent names none: the catalog's best fit, else the newest that fits."""
-    rows = installed_models(state, kind)
+    # Never pick a territory-limited model (D-76) on the agent's behalf; it must be named explicitly.
+    rows = [r for r in installed_models(state, kind) if not r.get("territoryRestricted")]
     fitting = [r for r in rows if r.get("fit") == "fits"] or rows
     return fitting[0] if fitting else None

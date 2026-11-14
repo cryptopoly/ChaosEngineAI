@@ -195,6 +195,11 @@ class MusicRouteTests(_RouteBox):
                 for family in families:
                     for variant in family["variants"]:
                         self.assertNotIn("cuda", variant["platforms"])
+                with mock.patch.object(self.client.app.state.chaosengine, "start_download") as start:
+                    refused = self.client.post("/api/music/download", json={"repo": "ACE-Step/Ace-Step1.5"})
+                start.assert_not_called()
+                self.assertEqual(refused.status_code, 409)
+                self.assertEqual(refused.json()["detail"], music_env.UNSUPPORTED_PLATFORM_REASON)
 
     def test_catalog_runtime_estimate_and_unload(self) -> None:
         families = self.client.get("/api/music/catalog").json()["families"]

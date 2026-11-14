@@ -13,14 +13,18 @@
 # Environment variables:
 #   SDCPP_DIR            Source checkout dir  (default: /tmp/stable-diffusion.cpp)
 #   CHAOSENGINE_BIN_DIR  Install destination  (default: ~/.chaosengine/bin)
-#   SDCPP_BRANCH         Git branch to build  (default: master)
+#   SDCPP_REF            Commit to build      (default: the pinned SDCPP_REF below)
 #   SDCPP_JOBS           Parallel build jobs  (default: $(nproc) or sysctl)
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SDCPP_REPO="https://github.com/leejet/stable-diffusion.cpp.git"
-SDCPP_BRANCH="${SDCPP_BRANCH:-master}"
+# Pinned commit (no longer floating ``master``). 3f8527a = master-929 (2026-09-27): the build installed on the
+# maintainers' Mac, with MiniMax H3 video (docs/minimax_h3.md) and no H3-Image (that landed in 32d516c). Moving
+# the pin means rerunning the sd.cpp tests plus one real FLUX.1 schnell image and one Wan 2.1 clip; bump it with
+# scripts/update-sdcpp.sh and the sd.cpp row in scripts/check-upstreams.py.
+SDCPP_REF="${SDCPP_REF:-3f8527a46c54ecf4cb4ed6003da8e8982283c73c}"
 SDCPP_DIR="${SDCPP_DIR:-/tmp/stable-diffusion.cpp}"
 INSTALL_DIR="${CHAOSENGINE_BIN_DIR:-$HOME/.chaosengine/bin}"
 
@@ -35,7 +39,7 @@ fi
 
 echo "==> stable-diffusion.cpp builder"
 echo "    repo:     $SDCPP_REPO"
-echo "    branch:   $SDCPP_BRANCH"
+echo "    commit:   $SDCPP_REF"
 echo "    source:   $SDCPP_DIR"
 echo "    install:  $INSTALL_DIR"
 echo "    jobs:     $JOBS"
@@ -52,17 +56,18 @@ if [[ -d "$SDCPP_DIR/.git" ]] && git -C "$SDCPP_DIR" rev-parse --git-dir > /dev/
   echo "==> updating existing checkout"
   cd "$SDCPP_DIR"
   git fetch --all --prune
-  git checkout "$SDCPP_BRANCH"
-  git reset --hard "origin/$SDCPP_BRANCH"
+  git checkout --detach "$SDCPP_REF"
   git submodule update --init --recursive
 else
   if [[ -e "$SDCPP_DIR" ]]; then
     echo "==> stale checkout at $SDCPP_DIR — removing before clone"
     rm -rf "$SDCPP_DIR"
   fi
-  echo "==> cloning $SDCPP_REPO (branch: $SDCPP_BRANCH)"
-  git clone --recursive --branch "$SDCPP_BRANCH" "$SDCPP_REPO" "$SDCPP_DIR"
+  echo "==> cloning $SDCPP_REPO (commit: $SDCPP_REF)"
+  git clone "$SDCPP_REPO" "$SDCPP_DIR"
   cd "$SDCPP_DIR"
+  git checkout --detach "$SDCPP_REF"
+  git submodule update --init --recursive
 fi
 
 # Platform-specific CMake flags
@@ -100,7 +105,7 @@ chmod +x "$INSTALL_DIR/sd"
 VERSION_FILE="$INSTALL_DIR/sd.version"
 {
   git rev-parse HEAD
-  echo "$SDCPP_BRANCH"
+  echo "pinned"
   date -u +"%Y-%m-%dT%H:%M:%SZ"
 } > "$VERSION_FILE"
 echo "==> version tracked in $VERSION_FILE"

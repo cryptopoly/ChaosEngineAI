@@ -30,6 +30,7 @@ import platform
 import subprocess
 import tempfile
 import time
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -52,11 +53,33 @@ _RUNTIME_LABEL = "stable-diffusion.cpp"
 # Wan 2.1 GGUF (city96/Wan2.1-T2V-14B-gguf, samuelchristlie/Wan2.1-T2V-1.3B-GGUF) and Wan 2.2 GGUF
 # (QuantStack/Wan2.2-T2V-A14B-GGUF) are the immediate targets — those
 # unlock the Mac Metal video path that diffusers MPS cannot serve.
+# MiniMax H3 (D-76): sd.cpp is its only engine in the app, so the manager routes it here (``requires_sdcpp``).
+# Territory-limited; the routes refuse it before it gets this far without the user's confirmation.
+_H3_REPOS: frozenset[str] = frozenset({"leejet/MiniMax-H3-GGUF"})
+
 _SUPPORTED_REPOS: frozenset[str] = frozenset({
     "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
     "Wan-AI/Wan2.1-T2V-14B-Diffusers",
     "Wan-AI/Wan2.2-T2V-A14B-Diffusers",
+    *_H3_REPOS,
 })
+
+# MiniMax H3 shape rules from docs/minimax_h3.md at the pinned commit: sides align up to 32, frames to 17k+5
+# (minimum 5), always 24 fps. Aligned here so the clip we report is the clip sd.cpp makes.
+_H3_FPS = 24
+
+
+def requires_sdcpp(repo: str | None) -> bool:
+    """Repos with no other engine in the app (MiniMax H3); the video manager sends them straight here."""
+    return bool(repo) and repo in _H3_REPOS
+
+
+def h3_shape(width: int, height: int, frames: int) -> tuple[int, int, int]:
+    def up(value: int, step: int) -> int:
+        return max(step, -(-int(value) // step) * step)
+
+    aligned_frames = max(5, 5 + -(-max(0, int(frames) - 5) // 17) * 17)
+    return up(width, 32), up(height, 32), aligned_frames
 
 
 def supported_repos() -> frozenset[str]:
@@ -162,6 +185,9 @@ class SdCppVideoEngine:
                 f"Supported: {sorted(_SUPPORTED_REPOS)}"
             )
 
+        if requires_sdcpp(config.repo):
+            return self._generate_h3(binary, config)
+
         # The Wan video path needs a GGUF transformer file — sd.cpp
         # cannot consume a sharded diffusers safetensors snapshot
         # directly. The catalog variant pins ``ggufRepo`` + ``ggufFile``
@@ -213,6 +239,108 @@ class SdCppVideoEngine:
             effectiveSteps=config.steps,
             effectiveGuidance=config.guidance,
         )
+
+    # ------------------------------------------------------------------
+    # MiniMax H3 (D-76): four separate inputs, video + stereo audio
+    # ------------------------------------------------------------------
+
+    def _generate_h3(self, binary: Path, config: VideoGenerationConfig) -> GeneratedVideo:
+        width, height, frames = h3_shape(config.width, config.height, config.numFrames)
+        files = self._resolve_h3_files(config)
+        seed = config.seed if config.seed is not None else int(time.time())
+        aligned = replace(config, width=width, height=height, numFrames=frames, fps=_H3_FPS)
+        with tempfile.TemporaryDirectory(prefix="chaosengine-sdcpp-h3-") as tmpdir:
+            output_path = Path(tmpdir) / f"sdcpp-h3-{seed}.webm"
+            args = self._build_h3_cli_args(
+                binary=binary,
+                config=aligned,
+                files=files,
+                output_path=output_path,
+                seed=seed,
+                offload=platform.system() != "Darwin",
+            )
+            output_bytes = self._run_subprocess(args=args, config=aligned, output_path=output_path)
+        return GeneratedVideo(
+            seed=seed,
+            bytes=output_bytes,
+            extension="webm",
+            mimeType="video/webm",
+            durationSeconds=round(frames / _H3_FPS, 3),
+            frameCount=frames,
+            fps=_H3_FPS,
+            width=width,
+            height=height,
+            runtimeLabel=_RUNTIME_LABEL,
+            runtimeNote=(
+                "MiniMax H3 via sd.cpp (territory-limited licence; not tested by the maintainers). "
+                f"Sides align to 32 and frames to 17k+5: {width}x{height}, {frames} frames at 24 fps."
+            ),
+            effectiveSteps=config.steps,
+            effectiveGuidance=1.0,
+        )
+
+    def _resolve_h3_files(self, config: VideoGenerationConfig) -> dict[str, str]:
+        """Local paths for each sd.cpp input of the row. Never downloads: a missing file is an error."""
+        from backend_service.helpers.video import _find_video_variant
+
+        variant = _find_video_variant(config.modelId) or {}
+        sources = variant.get("sdcppFiles") or {}
+        if not sources:
+            raise RuntimeError(f"{config.modelName} does not list its sd.cpp files in the catalog.")
+        try:
+            from huggingface_hub import hf_hub_download  # type: ignore
+        except ImportError as exc:
+            raise RuntimeError(f"huggingface_hub is required to find the model files: {exc}") from exc
+        resolved: dict[str, str] = {}
+        for flag, source in sources.items():
+            try:
+                resolved[flag] = hf_hub_download(
+                    repo_id=source["repo"], filename=source["file"], local_files_only=True,
+                )
+            except Exception as exc:  # noqa: BLE001 - any miss reads the same to the user
+                raise RuntimeError(
+                    f"{config.modelName} is missing {source['file']} from {source['repo']}. Download it from "
+                    "Video > Models first."
+                ) from exc
+        return resolved
+
+    def _build_h3_cli_args(
+        self,
+        *,
+        binary: Path,
+        config: VideoGenerationConfig,
+        files: dict[str, str],
+        output_path: Path,
+        seed: int,
+        offload: bool,
+    ) -> list[str]:
+        """The text-to-audio-video command from docs/minimax_h3.md at sd.cpp 3f8527a.
+
+        Guidance is always 1 (the weights are CFG-distilled), so no negative prompt is passed. ``--offload-to-cpu``
+        only off macOS (unified memory gains nothing from it). Width, height and frames arrive aligned.
+        """
+        args: list[str] = [
+            str(binary),
+            "-M", "vid_gen",
+            "--diffusion-model", files["--diffusion-model"],
+            "--vae", files["--vae"],
+            "--audio-vae", files["--audio-vae"],
+            "--llm", files["--llm"],
+            "-p", config.prompt,
+            "--cfg-scale", "1",
+            "-W", str(config.width),
+            "-H", str(config.height),
+            "--steps", str(config.steps),
+            "--seed", str(seed),
+            "--diffusion-fa",
+            "--rng", "cpu",
+            "--fps", str(_H3_FPS),
+            "--video-frames", str(config.numFrames),
+            "-o", str(output_path),
+        ]
+        if offload:
+            args.append("--offload-to-cpu")
+        return args
 
     # ------------------------------------------------------------------
     # CLI builders + subprocess plumbing

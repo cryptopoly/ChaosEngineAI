@@ -42,6 +42,7 @@ export function ImageModelsView({ ctx }: { ctx: AppTabContext }) {
       onDeleteImageDownload={(repo) => void imgState.handleDeleteImageDownload(repo)}
       onOpenExternalUrl={(url) => void handleOpenExternalUrl(url)}
       onRevealPath={(path) => void handleRevealPath(path)}
+      onTerritoryGateChanged={() => void imgState.refreshImageData()}
     />
   );
 }

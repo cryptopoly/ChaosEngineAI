@@ -71,6 +71,9 @@ def collect_refs(catalogs: dict[str, list[dict[str, Any]]]) -> list[Ref]:
                 add(catalog, vid, distill, variant.get("distillTransformerLowNoiseFile"), "distill-low")
                 for flag, source in (variant.get("sdcppAux") or {}).items():
                     add(catalog, vid, source.get("repo"), source.get("file"), f"sdcppAux {flag}")
+                # Rows that name every sd.cpp input (MiniMax H3, D-76), hidden or not.
+                for flag, source in (variant.get("sdcppFiles") or {}).items():
+                    add(catalog, vid, source.get("repo"), source.get("file"), f"sdcppFiles {flag}")
     return refs
 
 

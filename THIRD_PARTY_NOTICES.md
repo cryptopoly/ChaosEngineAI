@@ -54,6 +54,19 @@ These may be compiled from source and shipped alongside ChaosEngineAI.
 - **Usage:** Cross-platform image and video generation lane (FLUX.1, Qwen-Image-2.1
   and the Wan GGUF rows). The MIT permission notice above applies to it, with the
   copyright holder named here.
+- **Pinned commit:** `3f8527a` (master-929), `SDCPP_REF` in `scripts/build-sdcpp.sh`.
+
+#### MiniMax H3 weights (user-downloaded, never bundled)
+
+The MiniMax H3 video row (hidden unless released and confirmed, D-76) runs on this
+binary with weights the user downloads from Hugging Face: `leejet/MiniMax-H3-GGUF`
+(the diffusion transformer and the Qwen3-VL-32B text encoder) and the two VAEs from
+`Comfy-Org/MiniMax-H3`. They are under the **MiniMax H3 Community License Agreement**
+(<https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/0919fb684102ef115126612f3fbb84d1027e7317/LICENSE>),
+which applies only outside the European Union, the United Kingdom, the Republic of
+Korea and the United States; its text encoder derives from Qwen3-VL-32B (Apache
+2.0). ChaosEngineAI ships none of these files and asks the user to confirm the
+territory statement before they are listed or downloaded.
 
 ---
 

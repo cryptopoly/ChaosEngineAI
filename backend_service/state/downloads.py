@@ -101,6 +101,13 @@ def start_download(
             status_code=400,
             detail="Invalid repo format. Expected 'owner/model-name'.",
         )
+    # D-76: weights of a territory-limited model download only after the user's confirmation, whichever route asks.
+    from backend_service import licence_gate
+
+    try:
+        licence_gate.require_repo(repo)
+    except licence_gate.LicenceGateError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.message) from None
     if repo in state._downloads and state._downloads[repo].get("state") == "downloading":
         return state._downloads[repo]
 

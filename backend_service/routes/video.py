@@ -83,7 +83,25 @@ def video_catalog(request: Request) -> dict[str, Any]:
     return {
         "families": _video_model_payloads(library),
         "latest": [],
+        # D-76: keys of released territory-limited models (rows hidden until confirmed); the page shows one notice.
+        "territoryLimited": _territory_limited_keys("video"),
     }
+
+
+def _territory_limited_keys(kind: str) -> list[str]:
+    from backend_service import licence_gate
+
+    return [m["key"] for m in licence_gate.status()["models"] if kind in m.get("kinds", [])]
+
+
+def _require_territory(variant: dict[str, Any] | None) -> None:
+    """403 with the plain reason when a territory-limited row is reached without the user's confirmation."""
+    from backend_service import licence_gate
+
+    try:
+        licence_gate.require_variant(variant)
+    except licence_gate.LicenceGateError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.message) from None
 
 
 @router.get("/api/video/runtime")
@@ -252,6 +270,7 @@ def preload_video_model(request: Request, body: VideoRuntimePreloadRequest) -> d
             status_code=404,
             detail=localized_detail(request, f"Unknown video model '{body.modelId}'."),
         )
+    _require_territory(variant)
 
     if not _video_variant_available_locally(variant):
         validation_error = _video_variant_validation_error(variant)
@@ -463,6 +482,7 @@ def _generate_video_locked(request: Request, body: VideoGenerationRequest) -> di
             status_code=404,
             detail=f"Unknown video model '{body.modelId}'. The model isn't in the curated catalog.",
         )
+    _require_territory(variant)
     body = _checked_input_images(body, variant)
     if not _video_variant_available_locally(variant):
         validation_error = _video_variant_validation_error(variant)
@@ -534,6 +554,7 @@ def download_video_model(request: Request, body: DownloadModelRequest) -> dict[s
     variant = _find_video_variant(body.modelId) if body.modelId else None
     if body.modelId and variant is None:
         raise HTTPException(status_code=404, detail=f"Unknown video model '{body.modelId}'.")
+    _require_territory(variant if variant is not None else _find_video_variant_by_repo(body.repo))
     if variant is not None:
         from backend_service.helpers.huggingface import _hf_token_value
         from backend_service.helpers.video_gating import gated_access_reason

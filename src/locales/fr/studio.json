@@ -2450,5 +2450,22 @@
   "musicUnsupported": {
     "reason": null,
     "badge": null
+  },
+  "territoryGate": {
+    "chip": null,
+    "notice": {
+      "title": null,
+      "body": null,
+      "confirmed": null,
+      "hidden": null,
+      "review": null,
+      "withdraw": null
+    },
+    "screen": {
+      "excluded": null,
+      "noLookup": null,
+      "confirm": null,
+      "error": null
+    }
   }
 }

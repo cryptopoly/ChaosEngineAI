@@ -83,3 +83,40 @@ describe("MakesChips", () => {
     expect(renderToStaticMarkup(<MakesChips makes={[]} />)).toBe("");
   });
 });
+
+describe("LicenceScreen with a territory statement (D-76)", () => {
+  const territory = {
+    excludedTerritories: ["European Union", "United Kingdom", "Republic of Korea", "United States"],
+    confirmSentence: "I confirm that I am not in the European Union, the United Kingdom, the Republic of Korea or the United States, and that I will not use this model or what it makes there.",
+  };
+  const props = { entry: { name: "MiniMax H3" }, onAccept: noop, onDismiss: noop, onOpenHub: noop, onOpenFull: noop };
+
+  it("lists the excluded territories, the statement as a tick and keeps Confirm disabled until ticked", () => {
+    const html = renderToStaticMarkup(
+      <LicenceScreen {...props} licence={makeLicence({ gated: false, territoryRestricted: true })} accepted={false} territory={territory} />,
+    );
+    expect(html).toContain("Not licensed for use in: European Union, United Kingdom, Republic of Korea, United States.");
+    expect(html).toContain("does not check where you are");
+    expect(html).toContain('type="checkbox"');
+    expect(html).toContain(territory.confirmSentence);
+    expect(html).toContain("Read the full licence");
+    expect(html).toMatch(/<button type="button" class="primary-button" disabled="">Confirm<\/button>/);
+    expect(html).toContain("Not now");
+    expect(html).not.toContain("I have accepted");
+  });
+
+  it("shows a save error and falls back to OK once confirmed", () => {
+    const failed = renderToStaticMarkup(
+      <LicenceScreen {...props} licence={makeLicence({ gated: false })} accepted={false} territory={territory} error="Could not save" />,
+    );
+    expect(failed).toContain('role="alert"');
+    const done = renderToStaticMarkup(<LicenceScreen {...props} licence={makeLicence({ gated: false })} accepted territory={territory} />);
+    expect(done).toContain(">OK<");
+    expect(done).not.toContain('type="checkbox"');
+  });
+
+  it("chip names the territory limit", () => {
+    const html = renderToStaticMarkup(<LicenceChip licence={makeLicence({ gated: false, territoryRestricted: true })} />);
+    expect(html).toContain(">Territory-limited<");
+  });
+});

@@ -21,6 +21,8 @@ export interface ModelLicence {
   url?: string;
   /** Extra note shown on the licence screen (for example a provenance note). */
   note?: string;
+  /** Licensed only outside some territories (D-76): the user confirmed a statement before the row appeared. */
+  territoryRestricted?: boolean;
 }
 
 export interface LicenceChipProps {
@@ -36,9 +38,12 @@ export function LicenceChip({ licence, onOpen }: LicenceChipProps) {
       : licence.commercial === "limited"
         ? t("licence.chip.limited", { defaultValue: "{name} · limited commercial", name: licence.name })
         : t("licence.chip.noCommercial", { defaultValue: "{name} · no commercial use", name: licence.name });
-  const className = `licence-chip licence-chip--${licence.commercial}${licence.gated ? " licence-chip--gated" : ""}`;
+  const className = `licence-chip licence-chip--${licence.commercial}${licence.gated || licence.territoryRestricted ? " licence-chip--gated" : ""}`;
   const content = (
     <>
+      {licence.territoryRestricted ? (
+        <span className="licence-chip__gated">{t("territoryGate.chip", { defaultValue: "Territory-limited" })}</span>
+      ) : null}
       {licence.gated ? <span className="licence-chip__gated">{t("licence.chip.gated", { defaultValue: "Gated" })}</span> : null}
       <span className="licence-chip__text">{text}</span>
     </>

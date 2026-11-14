@@ -2450,5 +2450,22 @@
   "musicUnsupported": {
     "reason": "Music generation runs on Apple Silicon Macs in this version. Windows and Linux support (NVIDIA GPUs) is planned; nothing is installed or downloaded on this computer.",
     "badge": "Not available on this computer yet"
+  },
+  "territoryGate": {
+    "chip": "Territory-limited",
+    "notice": {
+      "title": "Models with territory limits",
+      "body": "Some models may only be used outside certain countries. They stay hidden until you review the licence and confirm.",
+      "confirmed": "Confirmed: listed below",
+      "hidden": "Hidden until you confirm",
+      "review": "Review",
+      "withdraw": "Withdraw"
+    },
+    "screen": {
+      "excluded": "Not licensed for use in: {territories}.",
+      "noLookup": "ChaosEngineAI does not check where you are. Your tick is your own statement.",
+      "confirm": "Confirm",
+      "error": "Could not save your confirmation: {message}"
+    }
   }
 }

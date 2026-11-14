@@ -1170,6 +1170,10 @@ class VideoRuntimeManager:
         return self._get_sdcpp_video().probe().to_dict()
 
     def preload(self, repo: str, use_nf4: bool = False) -> dict[str, Any]:
+        from backend_service.sdcpp_video_runtime import requires_sdcpp
+
+        if requires_sdcpp(repo):
+            return self._get_sdcpp_video().probe().to_dict()  # one process per clip: nothing to hold in memory
         with self._lock:
             if _is_longlive_repo(repo):
                 engine = self._get_longlive()
@@ -1240,6 +1244,30 @@ class VideoRuntimeManager:
         if self._ltx2_mlx is not None:
             self._ltx2_mlx.release("another video engine is loading")
         _release_gpu_speech()
+
+        from backend_service.sdcpp_video_runtime import requires_sdcpp
+
+        if requires_sdcpp(config.repo):
+            # MiniMax H3 (D-76) has no diffusers path: one sd.cpp process per clip.
+            sdcpp = self._get_sdcpp_video()
+            status = sdcpp.probe()
+            if not status.realGenerationAvailable:
+                raise RuntimeError(status.message)
+            VIDEO_PROGRESS.begin(
+                run_label=self._engine._format_run_label(config),
+                total_steps=max(1, int(config.steps)),
+                phase=PHASE_DIFFUSING,
+                message=f"Running {config.modelName}",
+            )
+            try:
+                with self._lock:
+                    self._engine.unload(None)
+                    video = sdcpp.generate(config)
+                    runtime = sdcpp.probe().to_dict()
+                VIDEO_PROGRESS.set_phase(PHASE_SAVING, message="Saving to gallery")
+                return video, runtime
+            finally:
+                VIDEO_PROGRESS.finish()
 
         if self._is_mlx_video_repo(config.repo):
             mlx = self._get_mlx_video()

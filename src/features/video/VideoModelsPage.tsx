@@ -21,6 +21,8 @@ import type { TabRequest } from "../../constants/tabRedirects";
 import { IconActionButton, StatusIcon } from "../../components/ModelActionIcons";
 import { InstallLogPanel } from "../../components/InstallLogPanel";
 import { SlowRowChip, SlowRowNote } from "../../components/SlowRowNote";
+import { LicenceChip } from "../../components/LicenceChip";
+import { TerritoryGateNotice } from "../../components/TerritoryGateNotice";
 import { slowAlternativeName as slowAlternativeNameFor, slowRowInfo } from "../../utils/slowRows";
 import {
   AcceleratorPills,
@@ -94,6 +96,8 @@ export interface VideoModelsPageProps {
   onInstallLongLive: () => Promise<InstallResult>;
   /** Injectable for tests; defaults to ``window.confirm``. */
   confirmDelete?: ConfirmFn;
+  /** Reload the catalog after the territory statement is confirmed or withdrawn (D-76). */
+  onTerritoryGateChanged?: () => void;
 }
 
 const VIDEO_GRID =
@@ -250,6 +254,7 @@ export function VideoModelsPage({
   onRefreshLongLiveStatus,
   onInstallLongLive,
   confirmDelete,
+  onTerritoryGateChanged,
 }: VideoModelsPageProps) {
   const { t } = useTranslation("library");
   const { t: tCommon } = useTranslation("common");
@@ -392,6 +397,7 @@ export function VideoModelsPage({
           </span>
         ) : null}
         {slow ? <SlowRowChip info={slow} alternativeName={slowAlternativeName} /> : null}
+        {variant.licence?.territoryRestricted ? <LicenceChip licence={variant.licence} /> : null}
         <AcceleratorPills ids={entry.accelerators} capabilities={nativeBackends ?? null} />
       </>
     );
@@ -634,12 +640,19 @@ export function VideoModelsPage({
         </button>
       }
       intro={
-        <p className="muted-text">
-          {t("models.video.intro", {
-            defaultValue:
-              "Every video model in one list. Download one to use it in Video Studio; filter by what is installed, available or downloading.",
-          })}
-        </p>
+        <>
+          <p className="muted-text">
+            {t("models.video.intro", {
+              defaultValue:
+                "Every video model in one list. Download one to use it in Video Studio; filter by what is installed, available or downloading.",
+            })}
+          </p>
+          <TerritoryGateNotice
+            kind="video"
+            onChanged={() => onTerritoryGateChanged?.()}
+            onOpenExternalUrl={onOpenExternalUrl}
+          />
+        </>
       }
       entries={entries}
       resolveStatus={resolveStatus}

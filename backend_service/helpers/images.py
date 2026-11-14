@@ -153,10 +153,14 @@ def _image_model_payloads(
     library: list[dict[str, Any]],
     hardware: HardwareClass | None = None,
 ) -> list[dict[str, Any]]:
+    from backend_service import licence_gate
+
+    # Territory-limited rows (D-76) are left out of every list until the user confirms.
+    source_families, _ = licence_gate.filter_families(IMAGE_MODEL_FAMILIES)
     repo_metadata: dict[str, dict[str, Any]] = {}
     repos = sorted({
         str(variant.get("repo") or "")
-        for family in IMAGE_MODEL_FAMILIES
+        for family in source_families
         for variant in family["variants"]
         if str(variant.get("repo") or "")
     })
@@ -179,7 +183,7 @@ def _image_model_payloads(
                 pass  # Return whatever we have so far; missing repos get curated defaults
 
     families: list[dict[str, Any]] = []
-    for family in IMAGE_MODEL_FAMILIES:
+    for family in source_families:
         variants = []
         for variant in family["variants"]:
             repo_id = str(variant.get("repo") or "")

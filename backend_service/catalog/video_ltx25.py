@@ -100,6 +100,7 @@ LTX25_NVIDIA_FAMILY: dict[str, Any] = {
             "loadMemoryGb": 38.0,
             # Warm, 768x512, 97 frames: 62.4 / 61.3 s denoise (62.2 s wall); the first load adds 107 to 124 s.
             "estimatedGenerationSeconds": 62.0,
+            "estimateRef": {"width": 768, "height": 512, "frames": 97, "steps": 8, "ignoresSteps": True},  # FU-165 reference: measured at 768x512, 97 frames; distilled 8-step schedule
             "estimatedGenerationSecondsBasis": "measured",
             "note": (
                 "Distilled LTX-2.5 converted to 4-bit (NF4) while it loads: the transformer and the language-model "
@@ -122,6 +123,7 @@ LTX25_NVIDIA_FAMILY: dict[str, Any] = {
             "loadMemoryGb": 80.0,
             "footprintBasis": "estimated",
             "estimatedGenerationSeconds": 60.0,
+            "estimateRef": {"width": 768, "height": 512, "frames": 97, "steps": 8, "ignoresSteps": True},  # FU-165 reference: same settings as the 4-bit row; distilled 8-step schedule
             "estimatedGenerationSecondsBasis": "estimated",
             "note": (
                 "Distilled LTX-2.5 at full precision: stereo sound, 8 steps, no guidance. About 76 GB in memory "

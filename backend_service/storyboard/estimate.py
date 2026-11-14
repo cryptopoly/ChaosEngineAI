@@ -2,8 +2,9 @@
 
 Nothing here is a number of its own. Time per still and per clip comes from this project's own takes made with
 the same model (``stillSeconds`` / ``clipSeconds`` that the batch records; a clip's time is taken per second of
-clip), else from the catalog's ``estimatedGenerationSeconds`` for that model (a clip scaled from the catalog's
-default clip length to the shot's length). Peak memory is the model's catalog footprint for this machine
+clip), else from the catalog's ``estimatedGenerationSeconds`` for that model scaled to the project's size and the
+shot's frames from the row's ``estimateRef`` (FU-165, ``helpers.time_estimate``); a row without one is scaled from
+its default clip length to the shot's length. Peak memory is the model's catalog footprint for this machine
 (``helpers.fit``), the larger of the image and the video model, since a batch unloads one before the other. Disk
 is the average size of this project's own stills and clips times the count; without any yet it is unknown.
 ``basis`` is ``measured`` only when every time came from this machine; a missing model is named, never guessed.
@@ -15,6 +16,7 @@ import statistics
 from pathlib import Path
 from typing import Any
 
+from backend_service.helpers.time_estimate import variant_seconds
 from backend_service.storyboard.batch import needs_work, still_only
 from backend_service.storyboard.models import Project, Shot
 
@@ -34,6 +36,14 @@ def plan_steps(project: Project, what: str, shot_ids: list[str] | None) -> list[
         if what in ("clip", "both") and shot.startFrom != "upload":
             steps.append((shot, "clip"))
     return steps
+
+
+def _clip_frames(variant: dict[str, Any], shot: Shot, fps: int) -> int:
+    """Frames the batch would ask for, as ``generators.make_clip`` picks them."""
+    from backend_service.helpers.generation_limits import align_video_frames
+
+    frames, _ = align_video_frames(str(variant.get("repo") or ""), max(8, min(257, round(shot.seconds * fps))))
+    return frames
 
 
 def _measured(project: Project, kind: str, model_name: str | None) -> list[float]:
@@ -103,8 +113,12 @@ def estimate(
             if not isinstance(catalog, (int, float)) or catalog <= 0:
                 seconds = None
                 continue
+            width, height = project.defaults.width, project.defaults.height
             if kind == "still":
-                part = float(catalog) * len(shots)
+                part = (variant_seconds(variant, "image", width, height) or float(catalog)) * len(shots)
+            elif variant.get("estimateRef"):
+                part = sum(variant_seconds(variant, "video", width, height, _clip_frames(variant, shot, project.defaults.fps))
+                           or float(catalog) for shot in shots)
             else:
                 base = variant.get("defaultDurationSeconds")
                 part = sum(float(catalog) * (shot.seconds / float(base) if base else 1.0) for shot in shots)

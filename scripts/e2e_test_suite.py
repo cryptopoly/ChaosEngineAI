@@ -1850,6 +1850,7 @@ def phase_4(cap: Capability) -> PhaseResult:
         ("new image families (Qwen-Image / Z-Image / FLUX.2)", _new_image_families),
         ("mflux image rows in the catalog (FU-096)", _mflux_catalog_rows),
         ("fit ratings and size limits in the catalogs (FU-133)", _fit_and_limits),
+        ("image rows carry estimateRef (FU-165)", lambda: _time_estimate.catalog_refs(sys.modules[__name__], "image")),
         ("CUDA estimates judge the card's own memory (FU-164)", _cuda_estimates),
         ("FLUX.1 sd.cpp variants pin real GGUF files (FU-096)", _flux_sdcpp_catalog),
         ("library", _library), ("runtime", _runtime), ("generate", _generate),
@@ -2199,6 +2200,7 @@ def phase_5(cap: Capability) -> PhaseResult:
 
     for name, fn in [("catalog", _catalog), ("library", _library),
                       ("mlx-runtime", _mlx_runtime), ("generate", _generate),
+                      ("video rows carry estimateRef (FU-165)", lambda: _time_estimate.catalog_refs(sys.modules[__name__], "video")),
                       ("LTX-2.5 on ltx-2-mlx (routing + live)", _ltx2_engine),
                       ("LTX-2.3 on diffusers with sound (flags; live when installed)", _ltx2_diffusers),
                       ("LTX-2.5 on diffusers, 4-bit on load (flags; live when the gated weights are present)", _ltx25_diffusers),
@@ -3521,7 +3523,10 @@ def phase_16(cap: Capability) -> PhaseResult:
     spec = importlib.util.spec_from_file_location("e2e_phase_16", Path(__file__).parent / "e2e_phases" / "phase_16.py")
     module = importlib.util.module_from_spec(spec)  # type: ignore[arg-type]
     spec.loader.exec_module(module)  # type: ignore[union-attr]
-    return module.run(sys.modules[__name__], cap)
+    phase = module.run(sys.modules[__name__], cap)
+    if cap.backend_reachable:  # FU-165: doubling the project size raises the batch estimate
+        phase.checks.append(_check("storyboard estimate grows with project size (FU-165)", lambda: _time_estimate.storyboard_size_scales(sys.modules[__name__])))
+    return phase
 
 def phase_17(cap: Capability) -> PhaseResult:
     """Agent bridge v2; the checks live in scripts/e2e_phases/phase_17.py."""
@@ -3553,6 +3558,7 @@ PHASES = {
 # Stream phases live in scripts/e2e_phases/ (one file each); scripts/ is this file's folder.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from e2e_phases.phase_14 import phase_14  # noqa: E402
+from e2e_phases import time_estimate as _time_estimate  # noqa: E402
 from e2e_phases.phase_15 import phase_15  # noqa: E402
 
 PHASES[14] = phase_14

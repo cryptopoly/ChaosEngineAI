@@ -28,6 +28,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "recommendedResolution": "1024x1024",
                 "note": "Fastest concepting option in the curated image catalog.",
                 "estimatedGenerationSeconds": 4.2,
+                "estimateRef": {"width": 1024, "height": 1024, "frames": 1, "steps": 4},  # FU-165 reference: schnell 4-step entry in recommended_settings
                 "releaseDate": "2024-08",
             },
             {
@@ -46,6 +47,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "recommendedResolution": "1024x1024",
                 "note": "GGUF Q4_K_S — quantizes the FLUX transformer; the full diffusers pipeline still carries the base text encoders/VAE in memory.",
                 "estimatedGenerationSeconds": 5.2,
+                "estimateRef": {"width": 1024, "height": 1024, "frames": 1, "steps": 4},  # FU-165 reference: schnell 4-step entry in recommended_settings
                 "releaseDate": "2024-09",
             },
             {
@@ -64,6 +66,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "recommendedResolution": "1024x1024",
                 "note": "GGUF Q8_0 — near-bf16 transformer quality; text encoders/VAE still make the full FLUX runtime memory-heavy.",
                 "estimatedGenerationSeconds": 4.8,
+                "estimateRef": {"width": 1024, "height": 1024, "frames": 1, "steps": 4},  # FU-165 reference: schnell 4-step entry in recommended_settings
                 "releaseDate": "2024-09",
             },
             {
@@ -81,6 +84,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "recommendedResolution": "1024x1024",
                 "note": "Apple Silicon only — native MLX runtime, 2-3x faster than diffusers+MPS.",
                 "estimatedGenerationSeconds": 2.4,
+                "estimateRef": {"width": 1024, "height": 1024, "frames": 1, "steps": 4},  # FU-165 reference: schnell 4-step entry in recommended_settings
                 "releaseDate": "2024-10",
             },
             {
@@ -121,6 +125,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                     "(0.6 GB together) download on the first run. Apache 2.0."
                 ),
                 "estimatedGenerationSeconds": 114.0,
+                "estimateRef": {"width": 1024, "height": 1024, "frames": 1, "steps": 4},  # FU-165 reference: row defaultSteps
                 "releaseDate": "2024-08",
             },
             {
@@ -143,6 +148,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                     "4090 with quality near the bf16 baseline. CUDA only."
                 ),
                 "estimatedGenerationSeconds": 0.7,
+                "estimateRef": {"width": 1024, "height": 1024, "frames": 1, "steps": 4},  # FU-165 reference: row defaultSteps
                 "releaseDate": "2026-01",
             },
         ],
@@ -171,6 +177,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "recommendedResolution": "1024x1024",
                 "note": "Quality-oriented generalist for the curated image lineup.",
                 "estimatedGenerationSeconds": 7.4,
+                "estimateRef": {"width": 1024, "height": 1024, "frames": 1, "steps": 28},  # FU-165 reference: FLUX.1-dev 28-step entry in recommended_settings
                 "releaseDate": "2024-08",
             },
             {
@@ -189,6 +196,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "recommendedResolution": "1024x1024",
                 "note": "GGUF Q4_K_S — quantizes the FLUX Dev transformer; expect the full diffusers pipeline to remain memory-heavy from text encoders/VAE.",
                 "estimatedGenerationSeconds": 9.0,
+                "estimateRef": {"width": 1024, "height": 1024, "frames": 1, "steps": 28},  # FU-165 reference: FLUX.1-dev 28-step entry in recommended_settings
                 "releaseDate": "2024-09",
             },
             {
@@ -207,6 +215,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "recommendedResolution": "1024x1024",
                 "note": "GGUF Q6_K — mid-point between Q4 size and Q8 transformer quality; FLUX text encoders/VAE still dominate runtime memory.",
                 "estimatedGenerationSeconds": 8.4,
+                "estimateRef": {"width": 1024, "height": 1024, "frames": 1, "steps": 28},  # FU-165 reference: FLUX.1-dev 28-step entry in recommended_settings
                 "releaseDate": "2024-09",
             },
             {
@@ -225,6 +234,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "recommendedResolution": "1024x1024",
                 "note": "GGUF Q8_0 — near-bf16 transformer quality; text encoders/VAE still make the full FLUX runtime memory-heavy.",
                 "estimatedGenerationSeconds": 7.8,
+                "estimateRef": {"width": 1024, "height": 1024, "frames": 1, "steps": 28},  # FU-165 reference: FLUX.1-dev 28-step entry in recommended_settings
                 "releaseDate": "2024-09",
             },
             {
@@ -258,6 +268,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                     "non-commercial."
                 ),
                 "estimatedGenerationSeconds": 230.0,
+                "estimateRef": {"width": 1024, "height": 1024, "frames": 1, "steps": 28},  # FU-165 reference: row defaultSteps
                 "releaseDate": "2024-08",
             },
             {
@@ -306,6 +317,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                     "Stacks with NF4/int8wo/GGUF."
                 ),
                 "estimatedGenerationSeconds": 2.4,
+                "estimateRef": {"width": 1024, "height": 1024, "frames": 1, "steps": 8},  # FU-165 reference: row defaultSteps
                 "releaseDate": "2024-10",
             },
             {
@@ -331,6 +343,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                     "stylistic bias — try both and pick by output."
                 ),
                 "estimatedGenerationSeconds": 2.4,
+                "estimateRef": {"width": 1024, "height": 1024, "frames": 1, "steps": 8},  # FU-165 reference: row defaultSteps
                 "releaseDate": "2025-02",
             },
             # FU-023 Nunchaku SVDQuant — 4-bit precompiled INT4 weights.
@@ -359,6 +372,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                     "automatically on Apple Silicon and CPU."
                 ),
                 "estimatedGenerationSeconds": 1.4,
+                "estimateRef": {"width": 1024, "height": 1024, "frames": 1, "steps": 28},  # FU-165 reference: FLUX.1-dev 28-step entry in recommended_settings
                 "releaseDate": "2026-01",
             },
         ],
@@ -387,6 +401,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "recommendedResolution": "1024x1024",
                 "note": "Latest Stability offering targeting a good quality-to-resource balance.",
                 "estimatedGenerationSeconds": 5.8,
+                "estimateRef": {"width": 1024, "height": 1024, "frames": 1, "steps": 40},  # FU-165 reference: SD 3.5 Medium 40-step entry in recommended_settings
                 "releaseDate": "2024-10",
             }
         ],
@@ -415,6 +430,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "recommendedResolution": "1024x1024",
                 "note": "Fastest high-fidelity model in the curated set.",
                 "estimatedGenerationSeconds": 3.1,
+                "estimateRef": {"width": 1024, "height": 1024, "frames": 1, "steps": 4},  # FU-165 reference: SD 3.5 Large Turbo 4-step entry in recommended_settings
                 "releaseDate": "2024-10",
             }
         ],
@@ -443,6 +459,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "recommendedResolution": "1024x1024",
                 "note": "Widely adopted SDXL baseline with strong community and LoRA ecosystem.",
                 "estimatedGenerationSeconds": 7.4,
+                "estimateRef": {"width": 1024, "height": 1024, "frames": 1, "steps": 10},  # FU-165 reference: SDXL Align Your Steps 10-step entry in recommended_settings
                 "releaseDate": "2023-07",
             }
         ],
@@ -488,6 +505,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "recommendedResolution": "1328x1328",
                 "note": "Lightning distill LoRA fused onto Qwen-Image — 8-step generation at ~CFG 1.0 for fast iteration.",
                 "estimatedGenerationSeconds": 6.0,
+                "estimateRef": {"width": 1328, "height": 1328, "frames": 1, "steps": 8},  # FU-165 reference: Lightning 8-step entry in recommended_settings
                 "releaseDate": "2026-03",
             },
             {
@@ -514,6 +532,9 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                     "non-commercial use only. Needs the mflux engine, installed from the Image Studio."
                 ),
                 "estimatedGenerationSeconds": 265.0,  # measured 258-271 s at 1024², 40 steps (2026-10-29)
+                # FU-165: fixed from the two measured rows (40 steps 265 s, Turbo 8 steps 74 s): about 6 s a step and 26 s
+                # that does not grow with steps (text encoder, decode).
+                "estimateRef": {"width": 1024, "height": 1024, "frames": 1, "steps": 40, "fixed": 0.1},
                 "releaseDate": "2026-09",
             },
             {
@@ -541,6 +562,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                     "33 GB download with the bf16 variant. Qwen Research licence: non-commercial use only."
                 ),
                 "estimatedGenerationSeconds": 340.0,
+                "estimateRef": {"width": 1024, "height": 1024, "frames": 1, "steps": 40},  # FU-165 reference: row defaultSteps
                 "releaseDate": "2026-09",
             },
             {
@@ -566,6 +588,8 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                     "non-commercial use only. Needs the mflux engine, installed from the Image Studio."
                 ),
                 "estimatedGenerationSeconds": 74.0,  # measured 72-75 s at 1024², 8 steps (2026-10-29)
+                # FU-165: 26 s of the 74 s does not grow with steps (from the 40-step base row's 265 s).
+                "estimateRef": {"width": 1024, "height": 1024, "frames": 1, "steps": 8, "fixed": 0.35},
                 "releaseDate": "2026-10",
             },
             {
@@ -609,6 +633,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                     "(about 13 s per step); fast on CUDA."
                 ),
                 "estimatedGenerationSeconds": 520.0,
+                "estimateRef": {"width": 1024, "height": 1024, "frames": 1, "steps": 40},  # FU-165 reference: row defaultSteps
                 "releaseDate": "2026-09",
             },
         ],
@@ -637,6 +662,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "recommendedResolution": "1024x1024",
                 "note": "Turbo few-step model tuned for realism — arguably better skin detail than FLUX.1 / Qwen-Image at a fraction of the steps.",
                 "estimatedGenerationSeconds": 3.5,
+                "estimateRef": {"width": 1024, "height": 1024, "frames": 1, "steps": 9},  # FU-165 reference: Z-Image-Turbo 9-step entry in recommended_settings
                 "releaseDate": "2026-02",
             },
         ],
@@ -686,7 +712,12 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                     "Needs at least 768 px (smaller sizes come out as noise or blocks, so the app raises them). Downloads the 6 GB Turbo checkpoint and the Qwen3-VL-4B text encoder (about 9 GB). "
                     "Needs the mflux engine, installed from the Image Studio."
                 ),
-                "estimatedGenerationSeconds": 18.0,
+                # Warm on an M4 Max 64 GB (2026-11-14): 10.0 / 10.5 s at 1024 px (was 18 s, taken while
+                # other jobs ran). The steps setting does not change the time (4 and 8 steps: 10.0 and 10.5 s;
+                # 5.5 s both at 768 px). Pixel space, so cost rises fast with size: 21.2 s at 1280, 34.0 s at
+                # 1536 px. fixed / quad fitted to five runs, within 10 % (docs/research/time-estimate-fit-2026-11.md).
+                "estimatedGenerationSeconds": 10.5,
+                "estimateRef": {"width": 1024, "height": 1024, "frames": 1, "steps": 4, "fixed": 0.25, "quad": 300, "ignoresSteps": True},
                 "releaseDate": "2026-10",
             },
         ],
@@ -715,6 +746,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "recommendedResolution": "1024x1024",
                 "note": "Distilled 4B FLUX.2 — the accessible entry point, fits consumer GPUs and 32 GB Macs.",
                 "estimatedGenerationSeconds": 5.5,
+                "estimateRef": {"width": 1024, "height": 1024, "frames": 1, "steps": 4},  # FU-165 reference: klein 4-step entry in recommended_settings
                 "releaseDate": "2025-11",
             },
             {
@@ -736,6 +768,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                     "(about 18 GB peak). Needs the mflux engine, installed from the Image Studio."
                 ),
                 "estimatedGenerationSeconds": 26.0,
+                "estimateRef": {"width": 1024, "height": 1024, "frames": 1, "steps": 4},  # FU-165 reference: row defaultSteps
                 "releaseDate": "2025-11",
             },
             {
@@ -789,8 +822,12 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 # The maker's default is 16; 8 looked the same on three prompts and took 40 s against
                 # 70 s on an M4 Max (2026-10-29), so the Studio starts at 8.
                 "defaultSteps": 8,
-                # 40 s measured at 1024 px / 8 steps on an M4 Max.
-                "estimatedGenerationSeconds": 40.0,
+                # Warm on an M4 Max 64 GB (2026-11-14): 33.6 / 34.3 s at 1024 px, 8 steps (40 s earlier was cold).
+                # Time is almost all per step (768 px: 19.2 s at 8, 40.0 s at 16; 1024 px 16 steps: 71.1 s;
+                # 1536 px 16 steps: 207.4 s), so fixed is near zero; fitted within 11 %
+                # (docs/research/time-estimate-fit-2026-11.md).
+                "estimatedGenerationSeconds": 34.5,
+                "estimateRef": {"width": 1024, "height": 1024, "frames": 1, "steps": 8, "fixed": 0.01, "quad": 5000},
                 "recommendedResolution": "1024x1024",
                 "note": (
                     "Apple Silicon only. Distilled, no guidance: starts at 8 steps (the maker's default "
@@ -816,6 +853,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "cfgOverride": 3.5,
                 # Estimate, not timed: the distilled row takes about 5 s a step and guidance doubles each step.
                 "estimatedGenerationSeconds": 500.0,
+                "estimateRef": {"width": 1024, "height": 1024, "frames": 1, "steps": 50},  # FU-165 reference: row defaultSteps
                 "recommendedResolution": "1024x1024",
                 "note": (
                     "Apple Silicon only. Undistilled Base: 50 steps with guidance 3.5, slower but "

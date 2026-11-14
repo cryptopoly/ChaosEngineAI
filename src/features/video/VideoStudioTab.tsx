@@ -7,6 +7,7 @@ import { RecommendedSettingsPanel } from "../../components/RecommendedSettingsPa
 import { ActionMenu, type ActionMenuItem } from "../../components/ActionMenu";
 import { Disclosure } from "../../components/Disclosure";
 import { RunEstimateStrip } from "../../components/RunEstimateStrip";
+import { variantSeconds } from "../../utils/timeEstimate";
 import { SlowRowNote } from "../../components/SlowRowNote";
 import { slowAlternativeName, slowRowInfo } from "../../utils/slowRows";
 import { DisclosureMemoryContext, useDisclosureMemory } from "../../components/studioDisclosureMemory";
@@ -1230,7 +1231,7 @@ export function VideoStudioTab({
           <div className="studio-shell__estimate">
             {selectedSlow ? <SlowRowNote info={selectedSlow} alternativeName={selectedSlowAlternativeName} /> : null}
             <RunEstimateStrip
-              seconds={selectedVideoVariant?.estimatedGenerationSeconds ?? null}
+              seconds={variantSeconds(selectedVideoVariant, "video", { width: videoWidth, height: videoHeight, frames: videoNumFrames, steps: videoSteps })}
               peakGb={selectedVideoVariant ? generationSafety.estimatedPeakGb : null}
               totalGb={selectedVideoVariant ? generationSafety.deviceMemoryGb : null}
               diskMb={null}

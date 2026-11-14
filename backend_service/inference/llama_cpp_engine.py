@@ -611,12 +611,13 @@ class LlamaCppEngine(BaseInferenceEngine):
             command.extend(["--cache-reuse", "256"])
         # On a GPU that shares system memory (DGX Spark, GH200) loading through
         # mmap is slow; read the file in instead. CHAOSENGINE_LLAMA_MMAP=1 keeps mmap.
-        if (
-            os.environ.get("CHAOSENGINE_LLAMA_MMAP") != "1"
-            and nvidia_shared_memory()
-            and _llama_server_supports(binary, "--no-mmap")
-        ):
-            command.append("--no-mmap")
+        # llama.cpp 1.0 replaced --no-mmap (now an invalid argument) with
+        # --load-mode none; older builds and the turbo fork still take --no-mmap.
+        if os.environ.get("CHAOSENGINE_LLAMA_MMAP") != "1" and nvidia_shared_memory():
+            if _llama_server_supports(binary, "--load-mode"):
+                command.extend(["--load-mode", "none"])
+            elif _llama_server_supports(binary, "--no-mmap"):
+                command.append("--no-mmap")
         # Honour the user's fused-attention toggle. It was plumbed into
         # load_model + stored on LoadedModelInfo but never emitted as a
         # flag. Flash attention is a large decode + KV-memory win on Metal

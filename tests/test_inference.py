@@ -72,10 +72,14 @@ class LlamaCppCommandTests(unittest.TestCase):
     def test_build_command_turns_off_mmap_on_a_shared_memory_nvidia_gpu(self):
         engine = LlamaCppEngine(self._capabilities())
 
-        def build(shared: bool, env: dict[str, str]) -> list[str]:
+        def build(shared: bool, env: dict[str, str], new_binary: bool = False) -> list[str]:
+            # A llama.cpp 1.0 binary lists --load-mode and rejects --no-mmap.
+            def supports(_binary, option):
+                return option != "--no-mmap" if new_binary else option != "--load-mode"
+
             with (
                 mock.patch("backend_service.inference._find_open_port", return_value=9999),
-                mock.patch("backend_service.inference.llama_cpp_engine._llama_server_supports", return_value=True),
+                mock.patch("backend_service.inference.llama_cpp_engine._llama_server_supports", side_effect=supports),
                 mock.patch("backend_service.inference.llama_cpp_engine.nvidia_shared_memory", return_value=shared),
                 mock.patch.dict("os.environ", env),
             ):
@@ -88,6 +92,12 @@ class LlamaCppCommandTests(unittest.TestCase):
         self.assertIn("--no-mmap", build(True, {}))
         self.assertNotIn("--no-mmap", build(False, {}))
         self.assertNotIn("--no-mmap", build(True, {"CHAOSENGINE_LLAMA_MMAP": "1"}))
+
+        new = build(True, {}, new_binary=True)
+        self.assertNotIn("--no-mmap", new)
+        self.assertEqual(new[new.index("--load-mode") + 1], "none")
+        self.assertNotIn("--load-mode", build(False, {}, new_binary=True))
+        self.assertNotIn("--load-mode", build(True, {"CHAOSENGINE_LLAMA_MMAP": "1"}, new_binary=True))
 
     def test_build_command_skips_reasoning_flags_when_unsupported(self):
         engine = LlamaCppEngine(self._capabilities())

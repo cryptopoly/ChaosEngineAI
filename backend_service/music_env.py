@@ -55,13 +55,21 @@ def lane() -> str:
     return "unsupported"
 
 
+UNSUPPORTED_PLATFORM_CODE = "music.unsupportedPlatform"
+UNSUPPORTED_PLATFORM_REASON = (
+    "Music generation runs on Apple Silicon Macs in this version. Windows and Linux support "
+    "(NVIDIA GPUs) is planned; nothing is installed or downloaded on this computer."
+)
+
+
 def lane_unavailable_reason() -> str | None:
-    if lane() == "mlx":
-        return None
-    return (
-        "Music runs on Apple Silicon (MLX) in this version. The Windows and Linux (CUDA) lane is "
-        "not built yet."
-    )
+    """The one sentence for every music and sound surface off Apple Silicon (``None`` on a supported Mac)."""
+    return None if lane() == "mlx" else UNSUPPORTED_PLATFORM_REASON
+
+
+def lane_unavailable_code() -> str | None:
+    """The translation key the frontend maps the reason to."""
+    return None if lane() == "mlx" else UNSUPPORTED_PLATFORM_CODE
 
 
 def checkpoints_dir() -> Path:
@@ -305,6 +313,10 @@ def start_install() -> dict[str, Any]:
         if _JOB.to_dict()["running"]:
             return _JOB.to_dict()
         _JOB.__init__()  # type: ignore[misc]
+        reason = lane_unavailable_reason()
+        if reason:  # off Apple Silicon: say why and start nothing (no venv, no thread, no download)
+            _JOB.phase, _JOB.error, _JOB.finished_at = "error", reason, time.time()
+            return _JOB.to_dict()
         _JOB.phase = "preflight"
         _JOB.started_at = time.time()
     threading.Thread(target=_run_install, daemon=True).start()

@@ -45,8 +45,25 @@ class LaneAndMarkerTests(_EnvBox):
                 self.assertEqual(music_env.lane(), expected)
                 reason = music_env.lane_unavailable_reason()
                 self.assertEqual(reason is None, expected == "mlx")
+                self.assertEqual(music_env.lane_unavailable_code() is None, expected == "mlx")
                 if reason:
-                    self.assertIn("not built yet", reason)
+                    self.assertEqual(reason, music_env.UNSUPPORTED_PLATFORM_REASON)
+                    self.assertEqual(music_env.lane_unavailable_code(), "music.unsupportedPlatform")
+                    self.assertIn("Apple Silicon", reason)
+                    self.assertIn("nothing is installed or downloaded", reason)
+
+    def test_install_is_refused_off_apple_silicon_and_starts_nothing(self) -> None:
+        for system, machine in (("Windows", "AMD64"), ("Linux", "x86_64")):
+            with mock.patch.object(music_env.platform, "system", return_value=system), \
+                    mock.patch.object(music_env.platform, "machine", return_value=machine), \
+                    mock.patch.object(music_env.threading, "Thread") as thread, \
+                    mock.patch.object(music_env, "_run") as run:
+                job = music_env.start_install()
+            self.assertEqual((job["phase"], job["running"], job["error"]), ("error", False, music_env.UNSUPPORTED_PLATFORM_REASON))
+            thread.assert_not_called()
+            run.assert_not_called()
+            self.assertFalse(self.venv.exists())
+            self.assertFalse(self.data.exists())
 
     def test_python_versions(self) -> None:
         self.assertTrue(music_env._python_supported((3, 11, 2)))

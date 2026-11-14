@@ -54,7 +54,7 @@ def lane() -> str:
 def lane_unavailable_reason() -> str | None:
     if lane() == "mps":
         return None
-    return "Sound effects run on Apple Silicon in this version. The Windows and Linux lane is not built yet."
+    return music_env.lane_unavailable_reason()
 
 
 def _marker_path() -> Path:

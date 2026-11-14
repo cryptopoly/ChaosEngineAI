@@ -40,6 +40,7 @@ import {
   type MusicMode,
   type TFn,
 } from "./musicLogic";
+import { unsupportedText } from "./musicUnsupported";
 import { MusicExpertBody, MusicOptionsBody, expertSummary, optionsSummary } from "./MusicStudioOptions";
 import { MusicResultCard } from "./MusicResultCard";
 import { SoundsStudio } from "./SoundsStudio";
@@ -187,7 +188,7 @@ export function MusicStudioTab({ music, backendOnline, onTabChange }: MusicStudi
   if (!ready) {
     let message: string;
     if (!music.catalogLoaded || !runtime) message = t("musicStudio.loading", { defaultValue: "Loading the music models…" });
-    else if (runtime.unavailableReason) message = runtime.unavailableReason;
+    else if (runtime.unavailableReason) message = unsupportedText(tf, runtime.unavailableReason, runtime.unavailableCode);
     else if (!installed) {
       message = t("musicStudio.packMissing", { defaultValue: "The music pack is not installed yet. Install it from Music and Audio Models (about 1.6 GB)." });
     } else {

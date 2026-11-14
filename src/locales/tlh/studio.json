@@ -2441,5 +2441,9 @@
     "measured": null,
     "expected": null,
     "alternative": null
+  },
+  "musicUnsupported": {
+    "reason": null,
+    "badge": null
   }
 }

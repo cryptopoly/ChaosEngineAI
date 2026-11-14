@@ -3467,9 +3467,16 @@ def phase_11(cap: Capability) -> PhaseResult:
         return "pass", "", {"wallSeconds": round(time.perf_counter() - started, 1), "jobSeconds": body.get("seconds"),
                             "peakFootprintGb": peak, "bytes": len(data)}
 
+    def _platform_reason():
+        """FU-139: off Apple Silicon the runtime says why and install is refused (checks in e2e_phases/music_platform.py)."""
+        from e2e_phases.music_platform import check
+
+        return check(_call, runtime)
+
     try:
         for name, fn in [
             ("runtime route shape", _runtime_shape),
+            ("off Apple Silicon: one reason, no cuda rows, install refused", _platform_reason),
             ("catalog row carries the licence and UI fields", _catalog),
             ("estimate answers; out-of-range requests are refused", _estimate_and_validation),
             ("sound steps: range in the catalog, scaled estimate, out-of-range refused", _sound_steps),

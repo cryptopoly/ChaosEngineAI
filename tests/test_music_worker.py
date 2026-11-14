@@ -200,10 +200,13 @@ class EngineUnavailableTests(unittest.TestCase):
 
     def test_the_acestep_engine_explains_itself_off_apple_silicon(self) -> None:
         engine = music_worker_acestep.create_engine(Path("/tmp"))
-        with mock.patch.object(music_worker_acestep.platform, "system", return_value="Linux"):
-            reason = engine.unavailable_reason()
-        self.assertIn("Apple Silicon", reason)
-        self.assertIn("CUDA", reason)
+        from backend_service import music_env
+
+        for system in ("Linux", "Windows"):
+            with mock.patch.object(music_worker_acestep.platform, "system", return_value=system):
+                reason = engine.unavailable_reason()
+            self.assertEqual(reason, music_env.UNSUPPORTED_PLATFORM_REASON)
+        self.assertEqual(music_worker_acestep.UNSUPPORTED_PLATFORM_REASON, music_env.UNSUPPORTED_PLATFORM_REASON)
 
 
 class WorkerImportTests(unittest.TestCase):

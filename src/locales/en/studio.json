@@ -2441,5 +2441,9 @@
     "measured": "Measured: about {time} for a {size} clip of {frames, plural, one {# frame} other {# frames}} ({machine}, {date}).",
     "expected": "Expected to be slow; not timed yet.",
     "alternative": "Faster here: {name}."
+  },
+  "musicUnsupported": {
+    "reason": "Music generation runs on Apple Silicon Macs in this version. Windows and Linux support (NVIDIA GPUs) is planned; nothing is installed or downloaded on this computer.",
+    "badge": "Not available on this computer yet"
   }
 }

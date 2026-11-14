@@ -7,8 +7,13 @@ on an M4 Max with 64 GB.
 
 ## What you need
 
-- **Apple Silicon.** The engine runs on MLX. On Windows and Linux the music worker starts and answers
-  "engine unavailable" with the reason; the CUDA lane is later work.
+- **Apple Silicon.** The engine runs on MLX. Music and sound effects are Mac-only (Apple Silicon) in v0.10.0.
+  On Windows and Linux every surface says one sentence ("Music generation runs on Apple Silicon Macs in this
+  version. Windows and Linux support (NVIDIA GPUs) is planned; nothing is installed or downloaded on this
+  computer."; `music_env.UNSUPPORTED_PLATFORM_REASON`, code `music.unsupportedPlatform`): `GET /api/music/runtime`
+  (`unavailableReason`, `unavailableCode`, also under `sound`), a refused `POST /api/music/install`, the worker's
+  "engine unavailable", and the Studio, Sounds and Models pages. The catalog rows list `platforms: ["apple-silicon"]`
+  only, so each row's fit chip reads "Not available on this computer yet". The CUDA lane is FU-139 and not built.
 - **The music pack** (Music > Models, `POST /api/music/install`): its own environment in
   `~/.chaosengine/music-venv`, built with plain pip from the app's own Python (3.11 or 3.12), with ACE-Step 1.5 at
   a pinned commit. About 1.6 GB. If the folder already holds a working pack, the install only checks it.

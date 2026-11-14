@@ -19,6 +19,12 @@ from typing import Any, Callable
 STEP_HOOK_MODULE = "acestep.models.mlx.dit_generate"
 MLX_CACHE_LIMIT_BYTES = 2 * 1024 ** 3
 SAMPLE_RATE = 48_000
+# The worker runs in its own process and imports nothing from the backend, so this sentence is a copy of
+# ``music_env.UNSUPPORTED_PLATFORM_REASON``; tests/test_music_worker.py keeps the two equal.
+UNSUPPORTED_PLATFORM_REASON = (
+    "Music generation runs on Apple Silicon Macs in this version. Windows and Linux support "
+    "(NVIDIA GPUs) is planned; nothing is installed or downloaded on this computer."
+)
 
 # Who receives step events right now: ``(before_step(index, total), after_step(done, total))``.
 _ACTIVE: dict[str, Callable[[int, int], None] | None] = {"before": None, "after": None}
@@ -88,8 +94,7 @@ class AceStepEngine:
 
     def unavailable_reason(self) -> str | None:
         if platform.system() != "Darwin" or platform.machine() not in ("arm64", "aarch64"):
-            return ("ACE-Step runs on Apple Silicon (MLX) in this version; the Windows and Linux (CUDA) "
-                    "lane is later work.")
+            return UNSUPPORTED_PLATFORM_REASON
         import importlib.util
 
         for name in ("mlx", "torch", "acestep", "soundfile"):

@@ -300,6 +300,7 @@ def capabilities() -> dict[str, Any]:
         "sound": {
             "lane": music_sound_env.lane(),
             "unavailableReason": music_sound_env.lane_unavailable_reason(),
+            "unavailableCode": music_env.lane_unavailable_code(),
             "installed": music_sound_env.is_installed(),
             "engine": "stableaudio",
             "engineVersion": music_sound_env.ENGINE_VERSION,
@@ -311,6 +312,7 @@ def capabilities() -> dict[str, Any]:
         },
         "lane": music_env.lane(),
         "unavailableReason": music_env.lane_unavailable_reason(),
+        "unavailableCode": music_env.lane_unavailable_code(),
         "installed": music_env.is_installed(),
         "engine": "acestep",
         "engineVersion": music_env.ENGINE_VERSION,

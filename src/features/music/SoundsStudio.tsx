@@ -20,7 +20,8 @@ import { summaryLine } from "../../components/studioSummary";
 import type { UseMusicState } from "../../hooks/useMusicState";
 import type { MusicResult } from "../../types";
 import { useSendToStoryboard, type UseSendToStoryboard } from "../storyboard/useSendToStoryboard";
-import { clock, isQueued, itemFilePath, megabytes, stripFromEstimate } from "./musicLogic";
+import { clock, isQueued, itemFilePath, megabytes, stripFromEstimate, type TFn } from "./musicLogic";
+import { unsupportedText } from "./musicUnsupported";
 import { isLicenceAccepted } from "./musicLicence";
 import {
   SOUND_CAPTION_MAX,
@@ -192,7 +193,7 @@ export function SoundsStudio({ music, backendOnline, onTabChange, header }: Soun
     const messages: Record<NonNullable<typeof blocker>, string> = {
       offline: t("musicStudio.offline", { defaultValue: "Waiting for the backend…" }),
       loading: t("musicStudio.loading", { defaultValue: "Loading the music models…" }),
-      unsupported: runtime?.sound?.unavailableReason ?? "",
+      unsupported: unsupportedText(t as unknown as TFn, runtime?.sound?.unavailableReason, runtime?.sound?.unavailableCode),
       licence: t("musicStudio.sounds.needLicence", {
         defaultValue: "Sound effects use Stable Audio Open, which asks you to accept its licence first. Open Music and Audio Models to read it.",
       }),

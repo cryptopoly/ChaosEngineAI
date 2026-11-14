@@ -21,6 +21,8 @@ from backend_service.helpers.job_queue import HEAVY_JOBS
 from backend_service.progress import MUSIC_PROGRESS
 from tests.music_fakes import MusicSandbox
 
+_REAL_LANE_REASON = music_env.lane_unavailable_reason  # the sandbox below replaces it with "supported"
+
 INSTRUMENTAL = {"caption": "warm lo-fi piano", "instrumental": True, "seconds": 30, "seed": 5}
 
 
@@ -174,6 +176,25 @@ class MusicRouteTests(_RouteBox):
         self.assertEqual(self.client.post("/api/music/library/delete", json={"ids": [item["id"]]}).json()["deleted"], [item["id"]])
         self.assertEqual(self.client.get(f"/api/music/library/{item['id']}").status_code, 404)
         self.assertEqual(self.client.post("/api/music/library/delete", json={"ids": ["../x"]}).status_code, 400)
+
+    def test_off_apple_silicon_the_runtime_reports_one_reason_and_a_code(self) -> None:
+        for system, machine in (("Windows", "AMD64"), ("Linux", "x86_64")):
+            with mock.patch.object(music_env.platform, "system", return_value=system), \
+                    mock.patch.object(music_env.platform, "machine", return_value=machine), \
+                    mock.patch.object(music_env, "lane_unavailable_reason", _REAL_LANE_REASON):
+                runtime = self.client.get("/api/music/runtime").json()["runtime"]
+                self.assertEqual(runtime["unavailableReason"], music_env.UNSUPPORTED_PLATFORM_REASON)
+                self.assertEqual(runtime["unavailableCode"], "music.unsupportedPlatform")
+                self.assertEqual(runtime["sound"]["unavailableReason"], music_env.UNSUPPORTED_PLATFORM_REASON)
+                self.assertEqual(runtime["sound"]["unavailableCode"], "music.unsupportedPlatform")
+                with mock.patch.object(music_env.threading, "Thread") as thread:
+                    job = self.client.post("/api/music/install").json()
+                thread.assert_not_called()
+                self.assertEqual((job["phase"], job["error"]), ("error", music_env.UNSUPPORTED_PLATFORM_REASON))
+                families = self.client.get("/api/music/catalog").json()["families"]
+                for family in families:
+                    for variant in family["variants"]:
+                        self.assertNotIn("cuda", variant["platforms"])
 
     def test_catalog_runtime_estimate_and_unload(self) -> None:
         families = self.client.get("/api/music/catalog").json()["families"]

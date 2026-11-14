@@ -64,3 +64,51 @@ test("Stable Audio Open licence screen: terms, attribution, Not now and I have a
   await expect(page.getByText(/asks you to accept its licence first/)).toHaveCount(0);
   await expect(page.getByText(/Download Stable Audio Open Small from Music and Audio Models/)).toBeVisible();
 });
+
+// FU-139: off Apple Silicon (mocked here, the real screen is checked on Windows and Linux) the Music Studio and the
+// Sounds Studio say the same single sentence, the Models page says it once at the top, and every row's fit chip
+// reads "Not available on this computer yet" with Download and Install disabled.
+const UNSUPPORTED_SENTENCE =
+  "Music generation runs on Apple Silicon Macs in this version. Windows and Linux support (NVIDIA GPUs) is planned; nothing is installed or downloaded on this computer.";
+
+async function mockUnsupportedPlatform(page: import("@playwright/test").Page) {
+  await page.route("**/api/music/runtime", async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    const runtime = {
+      ...body.runtime,
+      lane: "unsupported",
+      installed: false,
+      unavailableReason: UNSUPPORTED_SENTENCE,
+      unavailableCode: "music.unsupportedPlatform",
+      sound: {
+        ...(body.runtime.sound ?? {}),
+        lane: "unsupported",
+        installed: false,
+        unavailableReason: UNSUPPORTED_SENTENCE,
+        unavailableCode: "music.unsupportedPlatform",
+      },
+    };
+    await route.fulfill({ response, json: { runtime } });
+  });
+}
+
+test("off Apple Silicon: one sentence in Music and Sounds, rows say Not available on this computer yet", async ({ page }) => {
+  await mockUnsupportedPlatform(page);
+  await goTo(page, "Music and Audio", "Studio");
+  await expect(page.getByText(UNSUPPORTED_SENTENCE)).toBeVisible();
+  await expect(page.getByText("The music pack is not installed yet.")).toHaveCount(0);
+
+  await page.getByRole("group", { name: "Music or sound effects" }).getByRole("button", { name: "Sounds", exact: true }).click();
+  await expect(page.getByText(UNSUPPORTED_SENTENCE)).toBeVisible();
+
+  await openTab(page, "Music and Audio", "Models");
+  await expect(page.getByText(UNSUPPORTED_SENTENCE)).toHaveCount(1);
+  const rows = page.locator("[data-model-id]");
+  expect(await rows.count()).toBeGreaterThan(0);
+  const chips = page.locator('[data-fit-status="unknown"]', { hasText: "Not available on this computer yet" });
+  await expect(chips).toHaveCount(await rows.count());
+  await expect(page.getByText("not measured", { exact: false })).toHaveCount(0);
+  // No row offers a download or an install (the filter tab "Downloading" is not a row button).
+  await expect(rows.getByRole("button", { name: /download|install/i })).toHaveCount(0);
+});

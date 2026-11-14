@@ -5,6 +5,9 @@ Same family -> variants shape as the image and video catalogs, plus the fields t
 ``estimates`` comes from the ACE-Step spike on an M4 Max with 64 GB (``docs/plans/music-spike.md``,
 sections 3.2, 4.2 and 5); ``estimate_run`` in ``music_runtime`` reads this table and nothing else,
 so a new measurement is a change here. Weights are pinned to full Hugging Face revisions.
+
+``platforms`` lists only where a row actually runs. ``"cuda"`` stays out until the CUDA lane exists (FU-139);
+the ``estimates.cuda`` notes are kept for that day and are not read while it is absent.
 """
 
 from __future__ import annotations
@@ -97,7 +100,7 @@ MUSIC_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "engineModel": "acestep-v15-turbo",
                 "runtime": "ACE-Step 1.5 on MLX (isolated music venv)",
                 "makes": ["songs", "instrumental"],
-                "platforms": ["apple-silicon", "cuda"],
+                "platforms": ["apple-silicon"],
                 "taskSupport": ["txt2music"],
                 "sizeGb": 10.09,
                 "sizeNote": "Includes the 1.7B planner LM (3.7 GB) the library requires on disk; it is not loaded by default.",
@@ -145,7 +148,7 @@ MUSIC_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "engineModel": "acestep-v15-xl-turbo",
                 "runtime": "ACE-Step 1.5 on MLX (isolated music venv)",
                 "makes": ["songs", "instrumental"],
-                "platforms": ["apple-silicon", "cuda"],
+                "platforms": ["apple-silicon"],
                 "taskSupport": ["txt2music"],
                 "sizeGb": 19.95,
                 "sizeNote": "Needs the ACE-Step 1.5 turbo pack too (VAE and text encoder).",

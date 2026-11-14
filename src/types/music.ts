@@ -138,6 +138,8 @@ export interface MusicSettings {
 export interface MusicSoundRuntime {
   lane: string;
   unavailableReason: string | null;
+  /** A translation key for the reason (``music.unsupportedPlatform``); the reason text is the English fallback. */
+  unavailableCode?: string | null;
   installed: boolean;
   engine: string;
   workerRunning: boolean;
@@ -149,6 +151,8 @@ export interface MusicRuntimeStatus {
   sound?: MusicSoundRuntime;
   lane: string;
   unavailableReason: string | null;
+  /** A translation key for the reason (``music.unsupportedPlatform``); the reason text is the English fallback. */
+  unavailableCode?: string | null;
   installed: boolean;
   engine: string;
   engineVersion?: string;

@@ -29,10 +29,12 @@ import {
   type SortDir,
 } from "../../components/models";
 import { buildMusicEntries, measuredSpeed, musicEntryMatchesQuery, type MusicModelEntry } from "../../components/models/adapters/music";
+import type { TFn } from "./musicLogic";
 import type { UseMusicState } from "../../hooks/useMusicState";
 import { MusicPackBanner } from "./MusicPackBanner";
 import { SoundPackNotice } from "./SoundPackNotice";
 import { isLicenceAccepted, rememberLicenceAccepted } from "./musicLicence";
+import { unsupportedBadge, unsupportedText } from "./musicUnsupported";
 
 export interface MusicModelsPageProps {
   music: UseMusicState;
@@ -99,6 +101,7 @@ export function MusicModelsPage({ music, backendOnline, availability, onAvailabi
 
   const { runtime, families, downloads } = music;
   const unavailable = runtime?.unavailableReason ?? null;
+  const unavailableText = unavailable ? unsupportedText(t as unknown as TFn, unavailable, runtime?.unavailableCode) : "";
   const entries = useMemo(
     () => buildMusicEntries(families, { loadedEngineModel: runtime?.loadedModel ?? null }),
     [families, runtime?.loadedModel],
@@ -195,12 +198,26 @@ export function MusicModelsPage({ music, backendOnline, availability, onAvailabi
       makes,
       licenceChip,
       <span title={entry.sizeTitle ?? undefined}>{entry.sizeLabel}</span>,
-      <ModelMemoryCell
-        memory={entry.memory}
-        fit={entry.fit}
-        pendingLabel={t("musicModels.memory.pending", { defaultValue: "not estimated" })}
-        pendingTitle={t("musicModels.memory.pendingTitle", { defaultValue: "No memory figure for this model yet." })}
-      />,
+      unavailable ? (
+        // Off Apple Silicon no row can run: say so instead of the generic "Not for this machine" fit chip.
+        <span className="media-model-memory models-memory-cell">
+          <span
+            className="fit-badge fit-badge--unknown"
+            data-fit-status="unknown"
+            title={unavailableText}
+            aria-label={`${unsupportedBadge(tf)}. ${unavailableText}`}
+          >
+            {unsupportedBadge(tf)}
+          </span>
+        </span>
+      ) : (
+        <ModelMemoryCell
+          memory={entry.memory}
+          fit={entry.fit}
+          pendingLabel={t("musicModels.memory.pending", { defaultValue: "not estimated" })}
+          pendingTitle={t("musicModels.memory.pendingTitle", { defaultValue: "No memory figure for this model yet." })}
+        />
+      ),
     ];
 
     const statusCell = needsLicence ? (
@@ -252,7 +269,9 @@ export function MusicModelsPage({ music, backendOnline, availability, onAvailabi
                 ? t("models.speed.measured", { defaultValue: "About {rate} s of audio per second on this machine", rate: speed.rate })
                 : t("models.speed.unknown", { defaultValue: "Speed not measured yet" }),
             },
-            entry.fit
+            unavailable
+              ? { label: t("musicModels.detail.fit", { defaultValue: "Fit on this machine" }), value: unsupportedBadge(tf) }
+              : entry.fit
               ? {
                   label: t("musicModels.detail.fit", { defaultValue: "Fit on this machine" }),
                   value: `${fitLabel(entry.fit, tf as never)}${entry.fit.reason ? ` · ${entry.fit.reason}` : ""}`,
@@ -381,7 +400,7 @@ export function MusicModelsPage({ music, backendOnline, availability, onAvailabi
             {unavailable ? (
               <div className="callout warning music-models__unavailable" role="status">
                 <p>{t("musicModels.unavailable", { defaultValue: "Music needs an Apple Silicon Mac for now." })}</p>
-                <p className="muted-text">{unavailable}</p>
+                <p className="muted-text">{unavailableText}</p>
               </div>
             ) : null}
             {!unavailable ? <MusicPackBanner music={music} /> : null}

@@ -1,7 +1,7 @@
 {
  "schema": 1,
  "engine": "zig",
- "version": "1.2.7",
+ "version": "1.2.8",
  "chip": "nvidia-sm89",
  "backends": [
   "cuda"
@@ -66,6 +66,12 @@
   ],
   "qwen4_text": [
    "bf16"
+  ],
+  "dots_ocr": [
+   "bf16"
+  ],
+  "qwen3": [
+   "bf16"
   ]
  },
  "serve": {
@@ -76,7 +82,10 @@
    "--parallel": {},
    "--snapshot-dir": {},
    "--no-update-check": {},
-   "--no-thinking": {}
+   "--no-thinking": {},
+   "--max-connections": {},
+   "--max-connections-per-address": {},
+   "--trusted-proxy": {}
   }
  }
 }

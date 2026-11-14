@@ -22,13 +22,13 @@ controller, the engine and the system-stats payload can all consult it:
 
 Every fact below was taken from TensorFold's source at v0.6.6 (the last
 Python release: ``src/tensorfold/families/*/__init__.py`` ``MODEL_TYPES`` /
-``MODELS`` / ``DRAFTER``), then checked against the native 1.2.7 binary's
-``tensorfold capabilities --json`` and recipe docs. Families the native
-binary does not serve carry ``native=False``. The rows after Ternary Bonsai 2
-were added from the 1.2.7 binary itself (FU-168); a row with no
-``tested_repos`` accounts for a family the binary reports that the app cannot
-offer, and its ``note`` says why. The last four rows are CUDA-only families
-the Metal build never lists. Re-check it when the pin in
+``MODELS`` / ``DRAFTER``), then checked against the native binary's
+``tensorfold capabilities --json`` and recipe docs (1.2.7, re-checked at
+1.2.8). Families the native binary does not serve carry ``native=False``. The
+rows after Ternary Bonsai 2 were added from the 1.2.7 binary itself (FU-168),
+Flint from 1.2.8; a row with no ``tested_repos`` accounts for a family the
+binary reports that the app cannot offer, and its ``note`` says why. The last
+rows are CUDA-only families the Metal build never lists. Re-check it when the pin in
 ``scripts/install-tensorfold.sh`` or ``NATIVE_VERSION`` moves.
 
 Which families the *installed* binary serves is read at runtime
@@ -76,12 +76,13 @@ class TensorFoldFamily:
     repo_aliases: tuple[str, ...] = ()
     # False when the native 1.x binary does not serve this checkpoint (its
     # ``capabilities --json`` lacks the family, or its docs say it refuses
-    # it); only the older Python install (0.6.6) can. Checked at v1.2.7.
+    # it); only the older Python install (0.6.6) can. Checked at v1.2.8.
     native: bool = True
     # True when the binary lists this row's ``model_type`` yet refuses its
-    # checkpoint by name (1.2.7 serves the dense Gemma 4 31B and 12B under
-    # ``gemma4`` and refuses the 26B-A4B), so the binary's family list is no
-    # evidence that it serves this row. Re-check when NATIVE_VERSION moves.
+    # checkpoint by name (1.2.7 and 1.2.8 serve the dense Gemma 4 31B and 12B
+    # under ``gemma4`` and refuse the 26B-A4B: ``GemmaMoeNotServed`` on
+    # ``enable_moe_block``), so the binary's family list is no evidence that
+    # it serves this row. Re-check when NATIVE_VERSION moves.
     native_refuses: bool = False
     # What the app cannot offer and why (needs conversion, two Macs, no
     # released checkpoint, a speech model, ...). Required when
@@ -148,6 +149,9 @@ TENSORFOLD_FAMILIES: tuple[TensorFoldFamily, ...] = (
         min_memory_gb=256,
     ),
     TensorFoldFamily(
+        # 1.2.8's experimental Metal DeepSeek is a different family
+        # (``deepseek_v41``, FP8 only, behind TF_EXPERIMENTAL and not listed by
+        # ``capabilities --json``); this MLX 4-bit V4-Flash stays on Python.
         key="deepseek_v4_flash",
         title="DeepSeek-V4-Flash",
         model_types=("deepseek_v4",),
@@ -187,7 +191,8 @@ TENSORFOLD_FAMILIES: tuple[TensorFoldFamily, ...] = (
     TensorFoldFamily(
         # `capabilities --json` lists lfm3_vl and `info` admits the official
         # LFM3-VL-2B MLX checkpoints, but 1.2.7 refuses to serve them (checked
-        # 2026-11-11 on LiquidAI/LFM3-VL-2B-MLX-4bit, with and without --vision).
+        # 2026-11-11 on LiquidAI/LFM3-VL-2B-MLX-4bit, with and without --vision);
+        # 1.2.8 still carries the same refusal (zig/src/native/lfm3.zig).
         # List the repos here once a release serves them, with vision=True.
         key="lfm3_vl",
         title="LFM3-VL",
@@ -261,6 +266,30 @@ TENSORFOLD_FAMILIES: tuple[TensorFoldFamily, ...] = (
         ),
         vision=True,
         min_memory_gb=256,
+    ),
+    TensorFoldFamily(
+        # Recursive's Flint 40B-A2.5B (flint), new in 1.2.8: Metal only, from
+        # Recursive's own MLX export (affine 4-bit g64, 8-bit embedding; 22.6
+        # GB on disk, 21.4 GiB resident; Apache-2.0; not gated, model_type
+        # checked on the Hub 2026-11-14). Upstream checked it on M5 only and
+        # calls M1-M4 untested, but the binary does not refuse them. Its load
+        # budget is 75% of RAM, so 21.4 GiB needs a 32 GB Mac. Stock mlx-lm has
+        # no flint architecture, so only TensorFold loads it.
+        # Not offered yet: Flint always reasons and the server answers 400 to
+        # `enable_thinking: false`, which the engine sends whenever thinking is
+        # off (every non-streaming turn). Offer it (tested_repos, exclusive=True,
+        # a catalog row, the E2E family list) once the engine leaves that flag
+        # out for always-reasoning families and a load has been run here.
+        key="flint",
+        title="Recursive Flint 40B-A2.5B",
+        model_types=("flint",),
+        tested_repos=(),
+        min_memory_gb=32,
+        note=(
+            "RecursiveSI/flint-int4 (MLX 4-bit, 22.6 GB), Metal only, checked upstream on M5 Macs (M1 to M4 "
+            "untested). It always reasons and refuses requests that turn thinking off, which the app's engine "
+            "sends today, so it is not offered yet."
+        ),
     ),
     TensorFoldFamily(
         key="gemma4_12b",
@@ -378,6 +407,30 @@ TENSORFOLD_FAMILIES: tuple[TensorFoldFamily, ...] = (
             "nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-NVFP4 (70.8 GiB of weights, images with --vision) on one "
             "or two GB10s. CUDA only, and larger than a 24 or 32 GB card. Not offered until it has been run on a "
             "card here."
+        ),
+    ),
+    # CUDA families new in 1.2.8 (`zig/src/native/cuda_families.zig` at v1.2.8).
+    # Neither is a chat model the app's engine can use. ``qwen3`` is also the
+    # stock Qwen3 architecture, so this row is not exclusive and never routes
+    # by config.
+    TensorFoldFamily(
+        key="qwen3_embed_rerank",
+        title="Qwen3 Embedding / Reranker",
+        model_types=("qwen3",),
+        tested_repos=(),
+        note=(
+            "Qwen/Qwen3-Embedding-* on /v1/embeddings and Qwen/Qwen3-Reranker-* on /v1/rerank, from the published "
+            "BF16 weights. CUDA only. Not chat models, so the app's chat engine does not offer them."
+        ),
+    ),
+    TensorFoldFamily(
+        key="dots_ocr",
+        title="dots.mocr",
+        model_types=("dots_ocr",),
+        tested_repos=(),
+        note=(
+            "dots-studio/dots.mocr (BF16), an OCR model. CUDA only for text prompts (images are refused there; OCR "
+            "with images runs on TensorFold's HIP engine). Not offered in chat."
         ),
     ),
 )

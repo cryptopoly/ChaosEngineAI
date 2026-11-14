@@ -2,12 +2,13 @@
 
 Two canned reports drive these tests:
 
-* ``tensorfold_caps_macos_1_2_7.json`` is the macOS 1.2.7 Metal build's real
-  output (M4 Max, 2026-11-14; ``serve.flags`` kept as names only).
-* ``tensorfold_caps_cuda_1_2_7.json`` is assembled from the v1.2.7 source (the
+* ``tensorfold_caps_macos_1_2_8.json`` is the macOS 1.2.8 Metal build's real
+  output, verbatim (M4 Max, 2026-11-14).
+* ``tensorfold_caps_cuda_1_2_8.json`` is assembled from the v1.2.7 source (the
   CUDA registry in ``zig/src/native/cuda_families.zig``) and the formats of the
   GB10 receipts in ``docs/receipts``; it carries the four CUDA-only families the
-  Windows 1.2.6 build reported (dory, kolibri1, lfm2_vl, nemotron_h_omni).
+  Windows 1.2.6 build reported (dory, kolibri1, lfm2_vl, nemotron_h_omni),
+  plus the two CUDA families v1.2.8 added (qwen3, dots_ocr; bf16).
   Replace it with a verbatim dump from the 4090 when one is taken.
 
 Also covers D-77: the three ``native=False`` rows keep routing to the 0.6.6
@@ -35,7 +36,7 @@ from backend_service.inference.tensorfold_native_engine import TensorFoldNativeE
 
 FIXTURES = Path(__file__).parent / "fixtures"
 ROOT = Path(__file__).resolve().parents[1]
-CUDA_ONLY = ("dory", "kolibri1", "lfm2_vl", "nemotron_h_omni")
+CUDA_ONLY = ("dory", "kolibri1", "lfm2_vl", "nemotron_h_omni", "qwen3", "dots_ocr")
 LEGACY = ("deepseek_v4", "prism_hadamard_qwen35")
 
 _DEEPSEEK = "mlx-community/DeepSeek-V4-Flash-4bit"
@@ -53,8 +54,8 @@ def _with_families(caps: native.NativeCapabilities, **extra: tuple[str, ...]) ->
     return native.NativeCapabilities(caps.version, caps.chip, caps.backends, {**caps.families, **extra}, caps.flags)
 
 
-MAC = _caps("tensorfold_caps_macos_1_2_7.json")
-CUDA = _caps("tensorfold_caps_cuda_1_2_7.json")
+MAC = _caps("tensorfold_caps_macos_1_2_8.json")
+CUDA = _caps("tensorfold_caps_cuda_1_2_8.json")
 
 
 def _by_type(report: list[dict]) -> dict[str, dict]:
@@ -120,6 +121,11 @@ class FamilyReportTests(unittest.TestCase):
         self.assertNotIn("mlx-community/gemma-4-31B-it-4bit", entries["gemma4"]["repos"])
         for model_type in ("kimi_k3", "fish_omni", "lfm3_vl", "step5_vl"):
             self.assertFalse(entries[model_type]["offered"], model_type)
+        # 1.2.8 added Flint on Metal: listed and curated, not offered yet.
+        self.assertTrue(entries["flint"]["servedHere"])
+        self.assertTrue(entries["flint"]["curated"])
+        self.assertFalse(entries["flint"]["offered"])
+        self.assertFalse(entries["flint"]["legacy"])
 
     def test_cuda_report_lists_the_four_families_curated_and_not_offered(self) -> None:
         report = native.family_report(CUDA)
@@ -338,7 +344,7 @@ class CheckUpstreamsTests(unittest.TestCase):
             with mock.patch.object(native, "find_binary", lambda environ=None: Path("/fake/tensorfold-native")), mock.patch.object(
                 native, "probe_capabilities", lambda binary, timeout=30.0, caps=caps: caps
             ):
-                self.assertEqual(module.unlisted_families(), ("1.2.7", expected))
+                self.assertEqual(module.unlisted_families(), ("1.2.8", expected))
 
 
 if __name__ == "__main__":

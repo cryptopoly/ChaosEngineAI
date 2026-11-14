@@ -41,12 +41,13 @@ class RegistryInvariantTests(unittest.TestCase):
                 # only Step-5-Preview: its checkpoint is a local conversion
                 self.assertEqual(family.key, "step5_preview")
 
-    def test_every_model_type_the_127_binary_serves_is_listed(self) -> None:
-        # ``capabilities --json`` families of the macOS 1.2.7 build (2026-11-11).
+    def test_every_model_type_the_128_binary_serves_is_listed(self) -> None:
+        # ``capabilities --json`` families of the macOS 1.2.8 build (2026-11-14);
+        # 1.2.8 added ``flint`` to 1.2.7's list.
         served = {
             "kimi_k3", "kimi_k31", "qwen4", "qwen4_text", "fish_omni", "nemotron_h", "qwen4_exp", "glm5_next",
             "qwen3_5", "qwen3_5_moe", "lfm3", "lfm3_vl", "lfm2_moe", "glm_moe_dsa", "gemma4", "gemma4_unified",
-            "step5_vl", "spark2_5", "minimax_m3_vl", "llama",
+            "step5_vl", "spark2_5", "minimax_m3_vl", "llama", "flint",
         }
         listed = {mt for family in tf.TENSORFOLD_FAMILIES for mt in family.model_types}
         self.assertEqual(served - listed, set())
@@ -212,13 +213,16 @@ class MatchModelTests(unittest.TestCase):
     def test_families_the_app_cannot_offer_match_no_repo(self) -> None:
         # Listed so the binary's report is accounted for, never offered.
         for repo in (
-            "LiquidAI/LFM3-VL-2B-MLX-4bit",  # 1.2.7 refuses to serve it
+            "LiquidAI/LFM3-VL-2B-MLX-4bit",  # 1.2.7 and 1.2.8 refuse to serve it
             "moonshotai/Kimi-K3",
             "moonshotai/Kimi-K3.1-Pro",
             "stepfun-ai/Step-5-Preview",
             "kindlingai/glm-5.3-exlr8-k2-k3-k4",
             "google/gemma-4-12B-it",
             "fishaudio/drama-3",
+            "RecursiveSI/flint-int4",  # 1.2.8 serves it; refuses thinking off, which the engine sends
+            "Qwen/Qwen3-Embedding-8B",
+            "dots-studio/dots.mocr",
         ):
             self.assertIsNone(tf.match_model(canonical_repo=repo), repo)
             self.assertNotIn(repo, tf.supported_repos())

@@ -1,0 +1,1415 @@
+{
+ "schema": 1,
+ "engine": "zig",
+ "version": "1.2.8",
+ "chip": "apple-m4",
+ "backends": [
+  "metal"
+ ],
+ "families": {
+  "kimi_k3": [
+   "mxfp4"
+  ],
+  "kimi_k31": [
+   "mxfp4"
+  ],
+  "qwen4": [
+   "bf16",
+   "mlx-q4g32",
+   "mlx-q4g64",
+   "mlx-q4g128",
+   "mlx-q8g32",
+   "mlx-q8g64",
+   "mlx-q8g128",
+   "modelopt-fp8",
+   "modelopt-nvfp4"
+  ],
+  "qwen4_text": [
+   "bf16",
+   "mlx-q4g32",
+   "mlx-q4g64",
+   "mlx-q4g128",
+   "mlx-q8g32",
+   "mlx-q8g64",
+   "mlx-q8g128",
+   "modelopt-fp8",
+   "modelopt-nvfp4"
+  ],
+  "fish_omni": [
+   "fp8-block128",
+   "nvfp4"
+  ],
+  "nemotron_h": [
+   "mlx-q2g32",
+   "mlx-q2g64",
+   "mlx-q2g128",
+   "mlx-q3g32",
+   "mlx-q3g64",
+   "mlx-q3g128",
+   "mlx-q4g32",
+   "mlx-q4g64",
+   "mlx-q4g128",
+   "mlx-q5g32",
+   "mlx-q5g64",
+   "mlx-q5g128",
+   "mlx-q6g32",
+   "mlx-q6g64",
+   "mlx-q6g128",
+   "mlx-q8g32",
+   "mlx-q8g64",
+   "mlx-q8g128"
+  ],
+  "qwen4_exp": [
+   "mlx-q2g32",
+   "mlx-q2g64",
+   "mlx-q2g128",
+   "mlx-q3g32",
+   "mlx-q3g64",
+   "mlx-q3g128",
+   "mlx-q4g32",
+   "mlx-q4g64",
+   "mlx-q4g128",
+   "mlx-q5g32",
+   "mlx-q5g64",
+   "mlx-q5g128",
+   "mlx-q6g32",
+   "mlx-q6g64",
+   "mlx-q6g128",
+   "mlx-q8g32",
+   "mlx-q8g64",
+   "mlx-q8g128"
+  ],
+  "glm5_next": [
+   "mlx-q4g64"
+  ],
+  "qwen3_5": [
+   "mlx-q2g32",
+   "mlx-q2g64",
+   "mlx-q2g128",
+   "mlx-q3g32",
+   "mlx-q3g64",
+   "mlx-q3g128",
+   "mlx-q4g32",
+   "mlx-q4g64",
+   "mlx-q4g128",
+   "mlx-q5g32",
+   "mlx-q5g64",
+   "mlx-q5g128",
+   "mlx-q6g32",
+   "mlx-q6g64",
+   "mlx-q6g128",
+   "mlx-q8g32",
+   "mlx-q8g64",
+   "mlx-q8g128"
+  ],
+  "qwen3_5_moe": [
+   "mlx-q2g32",
+   "mlx-q2g64",
+   "mlx-q2g128",
+   "mlx-q3g32",
+   "mlx-q3g64",
+   "mlx-q3g128",
+   "mlx-q4g32",
+   "mlx-q4g64",
+   "mlx-q4g128",
+   "mlx-q5g32",
+   "mlx-q5g64",
+   "mlx-q5g128",
+   "mlx-q6g32",
+   "mlx-q6g64",
+   "mlx-q6g128",
+   "mlx-q8g32",
+   "mlx-q8g64",
+   "mlx-q8g128"
+  ],
+  "lfm3": [
+   "mlx-q4g32",
+   "mlx-q4g64",
+   "mlx-q6g64",
+   "mlx-q8g64"
+  ],
+  "lfm3_vl": [
+   "mlx-q4g32",
+   "mlx-q4g64",
+   "mlx-q6g64",
+   "mlx-q8g64"
+  ],
+  "lfm2_moe": [
+   "mlx-q4g64",
+   "mlx-q6g64",
+   "mlx-q8g64"
+  ],
+  "glm_moe_dsa": [
+   "exlr8"
+  ],
+  "gemma4": [
+   "mlx-q2g64",
+   "mlx-q3g64",
+   "mlx-q4g64",
+   "mlx-q5g64",
+   "mlx-q6g64",
+   "mlx-q8g64"
+  ],
+  "gemma4_unified": [
+   "mlx-q2g64",
+   "mlx-q3g64",
+   "mlx-q4g64",
+   "mlx-q5g64",
+   "mlx-q6g64",
+   "mlx-q8g64"
+  ],
+  "step5_vl": [
+   "mlx-q2g128"
+  ],
+  "spark2_5": [
+   "bf16",
+   "mlx-q2g64",
+   "mlx-q3g64",
+   "mlx-q4g64",
+   "mlx-q5g64",
+   "mlx-q6g64",
+   "mlx-q8g64"
+  ],
+  "minimax_m3_vl": [
+   "mlx-q3g64",
+   "mlx-q8g64"
+  ],
+  "llama": [
+   "bf16",
+   "compressed-tensors-int4-g32"
+  ],
+  "flint": [
+   "mlx-q4g64"
+  ]
+ },
+ "decisions": {},
+ "serve": {
+  "flags": {
+   "--host": {},
+   "--allowed-host": {},
+   "--allowed-origin": {},
+   "--allowed-controls": {},
+   "--port": {},
+   "--unix-socket": {},
+   "--name": {},
+   "--chat-template": {},
+   "--voices": {},
+   "--default-voice": {},
+   "--cfg-gamma": {},
+   "--cfg-allow-request-gamma": {},
+   "--cfg-force-guided": {},
+   "--cfg-batched": {},
+   "--max-inflight": {},
+   "--max-inflight-per-key": {},
+   "--requests-per-second": {},
+   "--request-burst": {},
+   "--max-connections": {},
+   "--max-connections-per-address": {},
+   "--trusted-proxy": {},
+   "--alias": {},
+   "--name-priority": {},
+   "--api-key": {},
+   "--api-key-file": {},
+   "--metrics-open": {},
+   "--dashboard": {},
+   "--vision": {},
+   "--vision-urls": {},
+   "--vision-pdf": {},
+   "--vision-max-images": {},
+   "--vision-max-videos": {},
+   "--vision-image-tokens": {},
+   "--vision-video-tokens": {},
+   "--context": {},
+   "--profile": {
+    "values": [
+     "stable"
+    ]
+   },
+   "--max-frames": {},
+   "--speed-up": {},
+   "--max-tokens": {},
+   "--temperature": {},
+   "--prompt-seed": {},
+   "--top-p": {},
+   "--top-k": {},
+   "--min-p": {},
+   "--instruct-sampling": {},
+   "--thinking": {},
+   "--no-thinking": {},
+   "--reasoning-effort": {
+    "values": [
+     "minimal",
+     "low",
+     "medium",
+     "high",
+     "xhigh",
+     "max"
+    ]
+   },
+   "--thinking-budget": {},
+   "--thinking-reserve": {},
+   "--loop-guard": {},
+   "--loop-guard-stop": {},
+   "--no-drafts": {},
+   "--keep-warm": {},
+   "--silence-floor-dbfs": {},
+   "--silence-seconds": {},
+   "--silence-onset-s": {},
+   "--silence-onset-voiced-s": {},
+   "--silence-mid-s": {},
+   "--silence-mid-min-voiced-s": {},
+   "--silence-redraws": {},
+   "--silence-redraw-budget-s": {},
+   "--silence-redraw-controls": {},
+   "--short-reply-ratio": {},
+   "--short-reply-chars-per-s": {},
+   "--register-redraw-st": {},
+   "--register-redraw-high": {},
+   "--register-high-hz": {},
+   "--idle-unload": {},
+   "--compact-at": {},
+   "--compact-keep": {},
+   "--compact-memory": {},
+   "--slide": {},
+   "--slide-drift-gate": {},
+   "--slide-graph": {},
+   "--drafter": {},
+   "--drafter-bits": {
+    "values": [
+     "0",
+     "4"
+    ]
+   },
+   "--record": {},
+   "--kv-cache": {
+    "values": [
+     "bf16",
+     "fp8"
+    ]
+   },
+   "--prompt-precision": {
+    "values": [
+     "bf16",
+     "int8"
+    ]
+   },
+   "--prompt-cache-gib": {},
+   "--prompt-cache-disk": {},
+   "--prompt-cache-over-cap": {},
+   "--checkpoint-slots": {},
+   "--spill-gib": {},
+   "--snapshot-dir": {
+    "values": [
+     "none"
+    ]
+   },
+   "--max-snapshots": {
+    "values": [
+     "0"
+    ]
+   },
+   "--parallel": {},
+   "--decode-share": {},
+   "--ssd-experts": {},
+   "--ple-on-ssd": {},
+   "--fsr-route-trace": {},
+   "--no-update-check": {},
+   "--backend": {
+    "values": [
+     "auto",
+     "mlx"
+    ]
+   },
+   "--learn": {},
+   "--learn-dir": {},
+   "--learn-gib": {},
+   "--learn-min-free-gib": {},
+   "--learn-conversations": {},
+   "--learn-daily-gib": {},
+   "--recall": {},
+   "--recall-dir": {},
+   "--recall-gib": {},
+   "--recall-read-only": {},
+   "--cortheon": {}
+  }
+ },
+ "env": [
+  "TENSORFOLD_API_KEY",
+  "TENSORFOLD_NO_LIVE",
+  "TENSORFOLD_SEED_SALT",
+  "TENSORFOLD_REQUEST_LOG",
+  "TENSORFOLD_TOOL_ID_KEY_FILE",
+  "TENSORFOLD_PHASE_METRICS",
+  "TENSORFOLD_LIBPDFIUM",
+  "TENSORFOLD_MAX_PDF_PAGES",
+  "HF_HOME",
+  "HF_HUB_CACHE",
+  "BRAVE_SEARCH_API_KEY",
+  "TF_Q27_PROFILE"
+ ],
+ "optional_libraries": [
+  {
+   "name": "cuBLASLt",
+   "feature": "CUDA vision towers (--vision) and CUDA cuBLASLt projections",
+   "soname": "libcublasLt.so.13",
+   "found": false,
+   "install": "install the NVIDIA CUDA 13 cuBLAS runtime; on Linux, add its directory to LD_LIBRARY_PATH; a driver-only host does not include it",
+   "usable": null,
+   "problem": null
+  },
+  {
+   "name": "cuBLAS",
+   "feature": "Drama CUDA prompt and codec GEMMs",
+   "soname": "libcublas.so.13",
+   "found": false,
+   "install": "install the NVIDIA CUDA 13 cuBLAS runtime; on Linux, add its directory to LD_LIBRARY_PATH",
+   "usable": null,
+   "problem": null
+  },
+  {
+   "name": "rocBLAS",
+   "feature": "HIP BF16 dense projections and image towers",
+   "soname": "librocblas.so.5",
+   "found": false,
+   "install": "install the rocBLAS runtime matching the ROCm installation; on Linux, add its directory to LD_LIBRARY_PATH",
+   "usable": null,
+   "problem": null
+  },
+  {
+   "name": "hipBLASLt",
+   "feature": "HIP BF16 projections with a fixed decode algorithm",
+   "soname": "libhipblaslt.so.1",
+   "found": false,
+   "install": "install the hipBLASLt runtime matching the ROCm installation; on Linux, add its directory to LD_LIBRARY_PATH",
+   "usable": null,
+   "problem": null
+  },
+  {
+   "name": "MIOpen",
+   "feature": "HIP BF16 image convolutions",
+   "soname": "libMIOpen.so.1",
+   "found": false,
+   "install": "install the MIOpen runtime matching the ROCm installation; on Linux, add its directory to LD_LIBRARY_PATH",
+   "usable": null,
+   "problem": null
+  },
+  {
+   "name": "AOTriton",
+   "feature": "HIP BF16 flash attention",
+   "soname": "libaotriton_v2.so.0.11.1",
+   "found": false,
+   "install": "install AOTriton 0.11.1 with its matching aotriton.images directory and set TENSORFOLD_AOTRITON to its library",
+   "usable": null,
+   "problem": null
+  },
+  {
+   "name": "NCCL",
+   "feature": "CUDA ranks (including the GLM pair)",
+   "soname": "libnccl.so.2",
+   "found": false,
+   "install": "install the NVIDIA NCCL 2 runtime compatible with CUDA 13; on Linux, add its directory to LD_LIBRARY_PATH",
+   "usable": null,
+   "problem": null
+  },
+  {
+   "name": "RDMA verbs",
+   "feature": "RoCE/RDMA gathers",
+   "soname": "/usr/lib/librdma.dylib",
+   "found": true,
+   "install": "use a macOS installation with its RDMA runtime",
+   "usable": null,
+   "problem": null
+  },
+  {
+   "name": "TensorFold video",
+   "feature": "video inputs (--vision)",
+   "soname": "libtfvideo.dylib",
+   "found": false,
+   "install": "build the optional zig build video -Dffmpeg=PREFIX runtime against FFmpeg 9.0.2 and place it in lib beside the server; see packaging/RUNTIME.md",
+   "usable": null,
+   "problem": null
+  },
+  {
+   "name": "libjpeg-turbo",
+   "feature": "JPEG inputs (--vision)",
+   "soname": "libturbojpeg.0.dylib",
+   "found": true,
+   "install": "install libjpeg-turbo 3.1.4.1 and set TENSORFOLD_LIBTURBOJPEG to its file, or put it on the documented loader path",
+   "usable": false,
+   "problem": "JPEG images need libjpeg-turbo 3.1.4.1 (libturbojpeg); the library has another release, whose pixels can differ; libturbojpeg.0.dylib is required for JPEG inputs (--vision); install libjpeg-turbo 3.1.4.1 and set TENSORFOLD_LIBTURBOJPEG to its file, or put it on the documented loader path"
+  },
+  {
+   "name": "libwebp",
+   "feature": "WebP inputs (--vision)",
+   "soname": "libwebpdecoder.3.dylib",
+   "found": true,
+   "install": "install libwebp 1.6.0 and set TENSORFOLD_LIBWEBP to its decoder file, or put it on the documented loader path",
+   "usable": true,
+   "problem": null
+  },
+  {
+   "name": "PDFium",
+   "feature": "PDF inputs (--vision --vision-pdf)",
+   "soname": "libpdfium.dylib",
+   "found": false,
+   "install": "install PDFium (chromium/7725) in lib/ beside the server or set TENSORFOLD_LIBPDFIUM to its file",
+   "usable": null,
+   "problem": null
+  },
+  {
+   "name": "TensorFold grammar",
+   "feature": "structured output and required tool calls (HTTP 400 when missing)",
+   "soname": "libtfgrammar.dylib",
+   "found": true,
+   "install": "restore the matching release archive's lib/ directory or run zig build grammar -Dxgrammar=DIR; prepare DIR with git clone --branch v0.2.8 --recurse-submodules https://github.com/mlc-ai/xgrammar",
+   "usable": null,
+   "problem": null
+  },
+  {
+   "name": "RCCL",
+   "feature": "HIP tensor-parallel ranks",
+   "soname": "librccl.so.1",
+   "found": false,
+   "install": "install the RCCL runtime matching the ROCm installation; on Linux, add its directory to LD_LIBRARY_PATH",
+   "usable": null,
+   "problem": null
+  },
+  {
+   "name": "MCDMA RPC",
+   "feature": "MCDMA mailbox and Metal speed-up communication",
+   "soname": "libmcdma-rpc.dylib",
+   "found": false,
+   "install": "build and install MCDMA's RPC helper and set MCDMA_RPC_LIBRARY to its file",
+   "usable": null,
+   "problem": null
+  },
+  {
+   "name": "MCDMA fabric",
+   "feature": "MCDMA peer fabric",
+   "soname": "libmcdma-fabric.dylib",
+   "found": false,
+   "install": "build MCDMA's fabric helper and name its inspected absolute path in the peer settings",
+   "usable": null,
+   "problem": null
+  }
+ ],
+ "profiles": {
+  "default": "stable",
+  "available": [
+   "stable"
+  ],
+  "registered_switches": [
+   {
+    "id": "TF_QWEN_REQUEST_STARTS",
+    "members": null,
+    "scopes": null,
+    "report_values": null,
+    "redact": false,
+    "families": [
+     "qwen3_5",
+     "qwen3_5_moe"
+    ],
+    "backend": "cuda",
+    "class": "arithmetic",
+    "effect": "Opt into CUDA message-start prompt cuts",
+    "evidence": "#1334; default-off; GB10 six-turn: resumed equals fresh, one reply differs from unset",
+    "syntax": "one",
+    "stable": null,
+    "on_with": null
+   },
+   {
+    "id": "TF_GLM_REQUEST_STARTS",
+    "members": null,
+    "scopes": null,
+    "report_values": null,
+    "redact": false,
+    "families": [
+     "glm5_next"
+    ],
+    "backend": "cuda",
+    "class": "arithmetic",
+    "effect": "Opt into CUDA message-start prompt cuts",
+    "evidence": "#2396; default-off; GB10 TP=2 receipts in #2404",
+    "syntax": "one",
+    "stable": null,
+    "on_with": null
+   },
+   {
+    "id": "TF_QWEN_KV_PAGES",
+    "members": null,
+    "scopes": null,
+    "report_values": null,
+    "redact": false,
+    "families": [
+     "qwen3_5",
+     "qwen3_5_moe"
+    ],
+    "backend": "cuda",
+    "class": "identical",
+    "effect": "KV pool page size; memory and workload tradeoffs",
+    "evidence": "#1357",
+    "syntax": "count",
+    "stable": null,
+    "on_with": null
+   },
+   {
+    "id": "TF_QWEN_KV_PAGES_ALL",
+    "members": null,
+    "scopes": null,
+    "report_values": null,
+    "redact": false,
+    "families": [
+     "qwen3_5",
+     "qwen3_5_moe"
+    ],
+    "backend": "cuda",
+    "class": "debug",
+    "effect": "Put the engine's own stream on pages too",
+    "evidence": "#1357",
+    "syntax": "one",
+    "stable": null,
+    "on_with": null
+   },
+   {
+    "id": "TF_QWEN_KV_SHARE",
+    "members": null,
+    "scopes": null,
+    "report_values": null,
+    "redact": false,
+    "families": [
+     "qwen3_5",
+     "qwen3_5_moe"
+    ],
+    "backend": "cuda",
+    "class": "identical",
+    "effect": "Keep prompt pages and bounded recurrent snapshots",
+    "evidence": "#1357",
+    "syntax": "count",
+    "stable": null,
+    "on_with": null
+   },
+   {
+    "id": "TF_KV_SHARE",
+    "members": null,
+    "scopes": null,
+    "report_values": null,
+    "redact": false,
+    "families": [
+     "gemma4",
+     "gemma4_unified",
+     "kolibri1",
+     "spark2_5",
+     "glm5_next",
+     "dory"
+    ],
+    "backend": "cuda",
+    "class": "identical",
+    "effect": "Keep prompt states over the core KV pool",
+    "evidence": "#1657",
+    "syntax": "count",
+    "stable": null,
+    "on_with": null
+   },
+   {
+    "id": "TF_FLASHNEXT_KV_PAGES",
+    "members": null,
+    "scopes": null,
+    "report_values": null,
+    "redact": false,
+    "families": [
+     "qwen4_exp"
+    ],
+    "backend": "cuda",
+    "class": "experimental",
+    "effect": "KV pool page size; no profile qualifies it yet",
+    "evidence": "#1660",
+    "syntax": "count",
+    "stable": null,
+    "on_with": null
+   },
+   {
+    "id": "TF_FLASHNEXT_KV_PAGES_ALL",
+    "members": null,
+    "scopes": null,
+    "report_values": null,
+    "redact": false,
+    "families": [
+     "qwen4_exp"
+    ],
+    "backend": "cuda",
+    "class": "debug",
+    "effect": "Put every stream on pool pages for checks",
+    "evidence": "#1660",
+    "syntax": "one",
+    "stable": null,
+    "on_with": null
+   },
+   {
+    "id": "TF_KV_PAGES",
+    "members": null,
+    "scopes": null,
+    "report_values": null,
+    "redact": false,
+    "families": [
+     "glm5_next"
+    ],
+    "backend": "cuda",
+    "class": "identical",
+    "effect": "GLM KV pool pages; auto from two ranks with BF16, windows with FP8",
+    "evidence": "#1322",
+    "syntax": "auto",
+    "stable": null,
+    "on_with": null
+   },
+   {
+    "id": "TF_KV_PAGES",
+    "members": null,
+    "scopes": null,
+    "report_values": [
+     "0",
+     "all"
+    ],
+    "redact": false,
+    "families": [
+     "nemotron_h",
+     "nemotron_h_omni"
+    ],
+    "backend": "cuda",
+    "class": "identical",
+    "effect": "Nemotron KV pool pages by default; exact 0 disables, exact all pages every stream",
+    "evidence": "#781",
+    "syntax": "count",
+    "stable": null,
+    "on_with": null
+   },
+   {
+    "id": "TF_GLM_KV_HOST",
+    "members": null,
+    "scopes": null,
+    "report_values": null,
+    "redact": false,
+    "families": [
+     "glm5_next"
+    ],
+    "backend": "cuda",
+    "class": "identical",
+    "effect": "Keep the DSA layers' latent rows on pinned host pages",
+    "evidence": "#1795",
+    "syntax": "one",
+    "stable": null,
+    "on_with": null
+   },
+   {
+    "id": "TF_GLM_KV_HOST_SHARED",
+    "members": null,
+    "scopes": null,
+    "report_values": null,
+    "redact": false,
+    "families": [
+     "glm5_next"
+    ],
+    "backend": "cuda",
+    "class": "identical",
+    "effect": "One copy of those host pages across the ranks on one host",
+    "evidence": "#1795",
+    "syntax": "one",
+    "stable": null,
+    "on_with": null
+   },
+   {
+    "id": "TF_GLM_PROMPT_TAIL",
+    "members": null,
+    "scopes": null,
+    "report_values": null,
+    "redact": false,
+    "families": [
+     "glm5_next"
+    ],
+    "backend": "cuda",
+    "class": "identical",
+    "effect": "Keep a raw prompt's state at its last chunk start, from the chat states' budget",
+    "evidence": "#2226",
+    "syntax": "one",
+    "stable": null,
+    "on_with": null
+   },
+   {
+    "id": "TF_GLM_HOST_CACHE",
+    "members": null,
+    "scopes": null,
+    "report_values": null,
+    "redact": false,
+    "families": [
+     "glm5_next"
+    ],
+    "backend": "cuda",
+    "class": "identical",
+    "effect": "Keep kept prompt states in pinned host memory instead of on the device",
+    "evidence": "#2370",
+    "syntax": "one",
+    "stable": null,
+    "on_with": null
+   },
+   {
+    "id": "TF_GLM_VISION_HOST",
+    "members": null,
+    "scopes": null,
+    "report_values": null,
+    "redact": false,
+    "families": [
+     "glm5_next"
+    ],
+    "backend": "cuda",
+    "class": "identical",
+    "effect": "Keep the vision tower's weights in pinned host memory, staged a unit at a time",
+    "evidence": "#2370",
+    "syntax": "one",
+    "stable": null,
+    "on_with": null
+   },
+   {
+    "id": "TF_GLM_PDL",
+    "members": null,
+    "scopes": null,
+    "report_values": [
+     "0"
+    ],
+    "redact": false,
+    "families": [
+     "glm5_next"
+    ],
+    "backend": "cuda",
+    "class": "identical",
+    "effect": "Exact 0 turns off the matmuls' dependent launches",
+    "evidence": "#2370",
+    "syntax": "count",
+    "stable": null,
+    "on_with": null
+   },
+   {
+    "id": "TF_GLM_PROMPT_STEPS",
+    "members": null,
+    "scopes": null,
+    "report_values": [
+     "0"
+    ],
+    "redact": false,
+    "families": [
+     "glm5_next"
+    ],
+    "backend": "cuda",
+    "class": "identical",
+    "effect": "Exact 0 runs rank 0's prompt passes whole, not in chunks",
+    "evidence": "#2370",
+    "syntax": "count",
+    "stable": null,
+    "on_with": null
+   },
+   {
+    "id": "TF_GLM_SHARED",
+    "members": null,
+    "scopes": null,
+    "report_values": [
+     "0"
+    ],
+    "redact": false,
+    "families": [
+     "glm5_next"
+    ],
+    "backend": "cuda",
+    "class": "identical",
+    "effect": "Exact 0 runs each of rank 0's windows in its own forward",
+    "evidence": "#2370",
+    "syntax": "count",
+    "stable": null,
+    "on_with": null
+   },
+   {
+    "id": "TENSORFOLD_PROMPT_CACHE_KEEP_OTHERS",
+    "members": null,
+    "scopes": null,
+    "report_values": null,
+    "redact": false,
+    "families": [
+     "nemotron_h",
+     "nemotron_h_omni",
+     "glm5_next",
+     "minimax_m3_vl",
+     "qwen3_5",
+     "qwen3_5_moe",
+     "qwen4_exp",
+     "kolibri1",
+     "gemma4",
+     "gemma4_unified",
+     "spark2_5",
+     "dory"
+    ],
+    "backend": "cuda",
+    "class": "identical",
+    "effect": "A new prompt state that fits only by evicting another conversation's is not kept",
+    "evidence": "#2346",
+    "syntax": "one",
+    "stable": null,
+    "on_with": null
+   },
+   {
+    "id": "TENSORFOLD_KOLIBRI_KV_PAGES",
+    "members": null,
+    "scopes": null,
+    "report_values": [
+     "0"
+    ],
+    "redact": false,
+    "families": [
+     "kolibri1"
+    ],
+    "backend": "cuda",
+    "class": "arithmetic",
+    "effect": "Exact 0 disables requested pool pages; other text keeps the option",
+    "evidence": "#2370",
+    "syntax": "count",
+    "stable": null,
+    "on_with": null
+   },
+   {
+    "id": "TENSORFOLD_DORY_KV_PAGES",
+    "members": null,
+    "scopes": null,
+    "report_values": null,
+    "redact": false,
+    "families": [
+     "dory"
+    ],
+    "backend": "cuda",
+    "class": "arithmetic",
+    "effect": "Present text except exact 0 selects pool pages instead of default windows",
+    "evidence": "#2370",
+    "syntax": "not_zero",
+    "stable": null,
+    "on_with": "TF_KV_SHARE"
+   },
+   {
+    "id": "GEMMA_DRAFT_BF16",
+    "members": null,
+    "scopes": null,
+    "report_values": [
+     "all",
+     "fc",
+     "self_attn.q_proj",
+     "self_attn.k_proj",
+     "self_attn.o_proj",
+     "mlp.gate_proj",
+     "mlp.down_proj"
+    ],
+    "redact": false,
+    "families": [
+     "gemma4",
+     "gemma4_unified"
+    ],
+    "backend": "metal",
+    "class": "debug",
+    "effect": "Keep selected drafter stacks in stored BF16 instead of quantizing them",
+    "evidence": "#2370",
+    "syntax": "count",
+    "stable": null,
+    "on_with": null
+   },
+   {
+    "id": "TF_ANE_COLUMNS",
+    "members": null,
+    "scopes": null,
+    "report_values": null,
+    "redact": false,
+    "families": [
+     "qwen3_5"
+    ],
+    "backend": "metal",
+    "class": "experimental",
+    "effect": "FP16 Neural Engine prompt columns; exact output not qualified",
+    "evidence": "#2370",
+    "syntax": "count",
+    "stable": null,
+    "on_with": null
+   },
+   {
+    "id": "TF_PROMPT_ROWS",
+    "members": null,
+    "scopes": null,
+    "report_values": null,
+    "redact": false,
+    "families": [
+     "qwen3_5",
+     "qwen3_5_moe"
+    ],
+    "backend": "metal",
+    "class": "arithmetic",
+    "effect": "Explicit prompt frame capacity and kept-state key geometry",
+    "evidence": "#2370",
+    "syntax": "present",
+    "stable": null,
+    "on_with": null
+   },
+   {
+    "id": "slide_learn_mode",
+    "members": [
+     {
+      "name": "TF_SLIDE_POCKET_KEY",
+      "syntax": "auto",
+      "families": null
+     },
+     {
+      "name": "TF_SLIDE_EDIT",
+      "syntax": "present",
+      "families": [
+       "nemotron_h",
+       "nemotron_h_omni"
+      ]
+     },
+     {
+      "name": "TF_SLIDE_PROBE",
+      "syntax": "present",
+      "families": [
+       "nemotron_h",
+       "nemotron_h_omni"
+      ]
+     },
+     {
+      "name": "TF_SLIDE_ROUTED",
+      "syntax": "present",
+      "families": [
+       "nemotron_h",
+       "nemotron_h_omni"
+      ]
+     }
+    ],
+    "scopes": [
+     {
+      "backend": "cuda",
+      "families": [
+       "nemotron_h",
+       "nemotron_h_omni",
+       "qwen3_5"
+      ]
+     },
+     {
+      "backend": "metal",
+      "families": [
+       "nemotron_h",
+       "nemotron_h_omni"
+      ]
+     }
+    ],
+    "report_values": null,
+    "redact": false,
+    "families": [
+     "nemotron_h",
+     "nemotron_h_omni",
+     "qwen3_5"
+    ],
+    "backend": "multiple",
+    "class": "experimental",
+    "effect": "Pocket keying and presence-selected edit, probe or routed learning modes",
+    "evidence": "#2370",
+    "syntax": "count",
+    "stable": null,
+    "on_with": null
+   },
+   {
+    "id": "TENSORFOLD_GEMMA4_KV_PAGES",
+    "members": null,
+    "scopes": null,
+    "report_values": [
+     "0"
+    ],
+    "redact": false,
+    "families": [
+     "gemma4",
+     "gemma4_unified"
+    ],
+    "backend": "cuda",
+    "class": "identical",
+    "effect": "Global caches lease pool pages by default; 0 keeps them linear",
+    "evidence": "#1619",
+    "syntax": "count",
+    "stable": null,
+    "on_with": null
+   },
+   {
+    "id": "TENSORFOLD_SPARK25_KV_PAGES",
+    "members": null,
+    "scopes": null,
+    "report_values": [
+     "0"
+    ],
+    "redact": false,
+    "families": [
+     "spark2_5"
+    ],
+    "backend": "cuda",
+    "class": "identical",
+    "effect": "Full caches lease pool pages by default; 0 keeps them linear",
+    "evidence": "#1653",
+    "syntax": "count",
+    "stable": null,
+    "on_with": null
+   },
+   {
+    "id": "TF_NEMOTRON_METAL_KV_PAGES",
+    "members": null,
+    "scopes": null,
+    "report_values": null,
+    "redact": false,
+    "families": [
+     "nemotron_h"
+    ],
+    "backend": "metal",
+    "class": "identical",
+    "effect": "Only exact 1 puts keys and values in the core pool's pages; unset, whole caches made at open",
+    "evidence": "#1537",
+    "syntax": "one",
+    "stable": null,
+    "on_with": null
+   },
+   {
+    "id": "TF_DSV41_EXPERT_TOPP",
+    "members": null,
+    "scopes": null,
+    "report_values": null,
+    "redact": false,
+    "families": [
+     "deepseek_v41"
+    ],
+    "backend": "cuda",
+    "class": "experimental",
+    "effect": "Expert top-p routing mass",
+    "evidence": "#2370",
+    "syntax": "present",
+    "stable": null,
+    "on_with": null
+   },
+   {
+    "id": "TF_DSV41_NUCLEUS",
+    "members": null,
+    "scopes": null,
+    "report_values": null,
+    "redact": false,
+    "families": [
+     "deepseek_v41"
+    ],
+    "backend": "cuda",
+    "class": "arithmetic",
+    "effect": "Nucleus candidate count",
+    "evidence": "#2370",
+    "syntax": "present",
+    "stable": null,
+    "on_with": null
+   },
+   {
+    "id": "TF_DSV41_CONTEXT",
+    "members": null,
+    "scopes": null,
+    "report_values": null,
+    "redact": false,
+    "families": [
+     "deepseek_v41"
+    ],
+    "backend": "cuda",
+    "class": "arithmetic",
+    "effect": "Slot position limit",
+    "evidence": "#2370",
+    "syntax": "present",
+    "stable": null,
+    "on_with": null
+   },
+   {
+    "id": "TF_DSV41_LAYERS",
+    "members": null,
+    "scopes": null,
+    "report_values": null,
+    "redact": false,
+    "families": [
+     "deepseek_v41"
+    ],
+    "backend": "cuda",
+    "class": "debug",
+    "effect": "Loaded backbone layer subset",
+    "evidence": "#2370",
+    "syntax": "present",
+    "stable": null,
+    "on_with": null
+   },
+   {
+    "id": "TF_DSV41_OWN_PREFILL",
+    "members": null,
+    "scopes": null,
+    "report_values": null,
+    "redact": false,
+    "families": [
+     "deepseek_v41"
+    ],
+    "backend": "cuda",
+    "class": "experimental",
+    "effect": "Prompt prefill program; ranks must agree",
+    "evidence": "#2370",
+    "syntax": "present",
+    "stable": null,
+    "on_with": null
+   },
+   {
+    "id": "TF_DSV41_PREFILL_PIECES",
+    "members": null,
+    "scopes": null,
+    "report_values": null,
+    "redact": false,
+    "families": [
+     "deepseek_v41"
+    ],
+    "backend": "cuda",
+    "class": "experimental",
+    "effect": "Host prompt-piece scheduler",
+    "evidence": "#2370",
+    "syntax": "present",
+    "stable": null,
+    "on_with": null
+   },
+   {
+    "id": "TF_DSV41_SLOTS",
+    "members": null,
+    "scopes": null,
+    "report_values": null,
+    "redact": false,
+    "families": [
+     "deepseek_v41"
+    ],
+    "backend": "cuda",
+    "class": "experimental",
+    "effect": "Live serving slots",
+    "evidence": "#2370",
+    "syntax": "present",
+    "stable": null,
+    "on_with": null
+   },
+   {
+    "id": "TF_DSV41_POOL_TOKENS",
+    "members": null,
+    "scopes": null,
+    "report_values": null,
+    "redact": false,
+    "families": [
+     "deepseek_v41"
+    ],
+    "backend": "cuda",
+    "class": "arithmetic",
+    "effect": "Paged pool token capacity",
+    "evidence": "#2370",
+    "syntax": "present",
+    "stable": null,
+    "on_with": null
+   },
+   {
+    "id": "TF_DSV41_KV_SPLIT",
+    "members": null,
+    "scopes": null,
+    "report_values": null,
+    "redact": false,
+    "families": [
+     "deepseek_v41"
+    ],
+    "backend": "cuda",
+    "class": "arithmetic",
+    "effect": "Split ownership of pool rows",
+    "evidence": "#2370",
+    "syntax": "present",
+    "stable": null,
+    "on_with": null
+   },
+   {
+    "id": "TF_DSV41_KV_SPLIT_UNION_MIB",
+    "members": null,
+    "scopes": null,
+    "report_values": null,
+    "redact": false,
+    "families": [
+     "deepseek_v41"
+    ],
+    "backend": "cuda",
+    "class": "arithmetic",
+    "effect": "Split pool union capacity",
+    "evidence": "#2370",
+    "syntax": "present",
+    "stable": null,
+    "on_with": null
+   },
+   {
+    "id": "TF_DSV41_NEEDS_POOL",
+    "members": null,
+    "scopes": null,
+    "report_values": null,
+    "redact": false,
+    "families": [
+     "deepseek_v41"
+    ],
+    "backend": "cuda",
+    "class": "debug",
+    "effect": "Force pool geometry in the AOT asset planner only",
+    "evidence": "#2370",
+    "syntax": "present",
+    "stable": null,
+    "on_with": null
+   },
+   {
+    "id": "TF_DSV41_MHC_DEFER",
+    "members": null,
+    "scopes": null,
+    "report_values": null,
+    "redact": false,
+    "families": [
+     "deepseek_v41"
+    ],
+    "backend": "cuda",
+    "class": "experimental",
+    "effect": "Deferred mHC coefficient launches",
+    "evidence": "#2370",
+    "syntax": "present",
+    "stable": null,
+    "on_with": null
+   },
+   {
+    "id": "TF_DSV41_DRAFTS",
+    "members": null,
+    "scopes": null,
+    "report_values": null,
+    "redact": false,
+    "families": [
+     "deepseek_v41"
+    ],
+    "backend": "cuda",
+    "class": "experimental",
+    "effect": "DSpark drafting policy",
+    "evidence": "#2370",
+    "syntax": "present",
+    "stable": null,
+    "on_with": null
+   },
+   {
+    "id": "TF_DSV41_SAMPLING",
+    "members": null,
+    "scopes": null,
+    "report_values": null,
+    "redact": false,
+    "families": [
+     "deepseek_v41"
+    ],
+    "backend": "cuda",
+    "class": "experimental",
+    "effect": "Device sampler",
+    "evidence": "#2370",
+    "syntax": "present",
+    "stable": null,
+    "on_with": null
+   },
+   {
+    "id": "TF_DSV41_IMAGES",
+    "members": null,
+    "scopes": null,
+    "report_values": null,
+    "redact": false,
+    "families": [
+     "deepseek_v41"
+    ],
+    "backend": "cuda",
+    "class": "experimental",
+    "effect": "Native image segments in the AOT plan",
+    "evidence": "#2370",
+    "syntax": "present",
+    "stable": null,
+    "on_with": null
+   },
+   {
+    "id": "TF_DSV41_BIAS_VL",
+    "members": null,
+    "scopes": null,
+    "report_values": null,
+    "redact": false,
+    "families": [
+     "deepseek_v41"
+    ],
+    "backend": "cuda",
+    "class": "experimental",
+    "effect": "Vision-bias calls in the AOT plan",
+    "evidence": "#2370",
+    "syntax": "present",
+    "stable": null,
+    "on_with": null
+   },
+   {
+    "id": "TF_DSV41_ENGRAM_DIR",
+    "members": null,
+    "scopes": null,
+    "report_values": null,
+    "redact": true,
+    "families": [
+     "deepseek_v41"
+    ],
+    "backend": "cuda",
+    "class": "experimental",
+    "effect": "Real Engram rows instead of synthetic rows",
+    "evidence": "#2370",
+    "syntax": "present",
+    "stable": null,
+    "on_with": null
+   },
+   {
+    "id": "TF_DSV41_SCHEMA_PROMPT",
+    "members": null,
+    "scopes": null,
+    "report_values": null,
+    "redact": false,
+    "families": [
+     "deepseek_v41"
+    ],
+    "backend": "cuda",
+    "class": "experimental",
+    "effect": "Response schema in the encoded prompt",
+    "evidence": "#2370",
+    "syntax": "present",
+    "stable": null,
+    "on_with": null
+   },
+   {
+    "id": "TF_DSV41_ROWS_CAP",
+    "members": null,
+    "scopes": null,
+    "report_values": null,
+    "redact": false,
+    "families": [
+     "deepseek_v41"
+    ],
+    "backend": "cuda",
+    "class": "arithmetic",
+    "effect": "Rows in each forward bucket",
+    "evidence": "#2370",
+    "syntax": "present",
+    "stable": null,
+    "on_with": null
+   },
+   {
+    "id": "TF_DSV41_TOOL_GRAMMAR",
+    "members": null,
+    "scopes": null,
+    "report_values": null,
+    "redact": false,
+    "families": [
+     "deepseek_v41"
+    ],
+    "backend": "cuda",
+    "class": "experimental",
+    "effect": "Legacy alias of the server-wide auto-tool grammar policy",
+    "evidence": "#2370",
+    "syntax": "present",
+    "stable": null,
+    "on_with": null
+   }
+  ]
+ }
+}

@@ -258,8 +258,12 @@ def _llama_server_help_text(binary_path: str | None) -> str:
     except (OSError, subprocess.TimeoutExpired):
         help_text = ""
 
-    with _LLAMA_HELP_LOCK:
-        _LLAMA_HELP_CACHE[binary_path] = help_text
+    # Cache only a real answer: a first --help that timed out (a cold binary
+    # on a busy machine) used to pin an empty result for the life of the
+    # backend, so every later TurboQuant load fell back to f16.
+    if help_text:
+        with _LLAMA_HELP_LOCK:
+            _LLAMA_HELP_CACHE[binary_path] = help_text
     return help_text
 
 
@@ -285,7 +289,6 @@ def _llama_server_cache_types(binary_path: str | None) -> frozenset[str]:
 
     help_text = _llama_server_help_text(binary_path)
     if not help_text:
-        _CACHE_TYPE_CACHE[binary_path] = _STANDARD_CACHE_TYPES
         return _STANDARD_CACHE_TYPES
 
     # The help text contains lines like:

@@ -1111,6 +1111,29 @@ class CacheTypeValidationTests(unittest.TestCase):
         self.assertIn("q8_0", types)  # still includes standard types
         _CACHE_TYPE_CACHE.pop("/test/turbo", None)
 
+    def test_help_that_timed_out_is_not_cached(self):
+        """A cold first --help that times out must not pin the standard set for good."""
+        import subprocess as _sp
+        from backend_service.inference import _llama_server_cache_types, _CACHE_TYPE_CACHE
+        from backend_service.inference.llama_cpp_engine import _LLAMA_HELP_CACHE
+
+        turbo_help = (
+            "-ctk,  --cache-type-k type              kv cache data type for k\n"
+            "                                        allowed values: f16, q8_0, turbo2, turbo3, turbo4\n"
+        )
+        ok = mock.Mock(stdout=turbo_help, stderr="")
+        for key in ("/test/cold-turbo",):
+            _CACHE_TYPE_CACHE.pop(key, None)
+            _LLAMA_HELP_CACHE.pop(key, None)
+        with mock.patch(
+            "backend_service.inference.llama_cpp_engine.subprocess.run",
+            side_effect=[_sp.TimeoutExpired("x", 8.0), ok],
+        ):
+            self.assertNotIn("turbo3", _llama_server_cache_types("/test/cold-turbo"))
+            self.assertIn("turbo3", _llama_server_cache_types("/test/cold-turbo"))
+        _CACHE_TYPE_CACHE.pop("/test/cold-turbo", None)
+        _LLAMA_HELP_CACHE.pop("/test/cold-turbo", None)
+
     def test_build_command_prevalidation_catches_unsupported_type(self):
         """When cache type is unsupported by the binary, _build_command should
         fall back to f16 and set an informative runtime note."""

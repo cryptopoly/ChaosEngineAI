@@ -23,7 +23,7 @@ export interface EstimateRef {
 export const VIDEO_FIXED = 0.04;
 export const DEFAULT_QUAD = 53300;
 export const IMAGE_FIXED = 0.6;
-export const MFLUX_FIXED = 0.25;
+export const MFLUX_FIXED = 0.1;
 
 export function defaultFixed(kind: "image" | "video", engine?: string | null): number {
   if (kind === "video") return VIDEO_FIXED;

@@ -424,7 +424,9 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 # model load; 40 s for 25 frames at 512x320. LTX-2.3 through mlx-video took
                 # 1130 s for 33 frames.
                 "estimatedGenerationSeconds": 155.0,
-                "estimateRef": {"width": 768, "height": 512, "frames": 97, "steps": 8, "ignoresSteps": True},  # FU-165 reference: measured at 768x512, 97 frames; set 8 + 3 schedule
+                # FU-165: measured at 768x512, 97 frames; fixed / quad are the LTX-2.5 q4 fit on the same engine
+                # (ltx-2-mlx, model load in every run), not fitted on this row.
+                "estimateRef": {"width": 768, "height": 512, "frames": 97, "steps": 8, "fixed": 0.1, "quad": 1000000000, "ignoresSteps": True},
                 "downloadFiles": [
                     "transformer-distilled-1.1.safetensors",
                     "connector.safetensors",
@@ -470,8 +472,13 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                     "LTX-2.3 MLX engine, installed from the Video Studio. Sizes are multiples of 64. Weights: "
                     "LTX-2 community licence (free below US$10M annual revenue)."
                 ),
-                "estimatedGenerationSeconds": 128.0,  # measured, see above
-                "estimateRef": {"width": 768, "height": 512, "frames": 97, "steps": 8, "ignoresSteps": True},  # FU-165 reference: measured at 768x512, 97 frames; set 8 + 3 schedule
+                # 2026-11-14, M4 Max, each run loads the model: 128.9 and 142.8 s at 768x512 x 97 frames (128 s on
+                # 2026-10-29). Size and length: 77.7 s at 49 frames, 62.7 s at 512x320 x 97, 109.7 / 210.7 s at
+                # 1024x576 x 49 / 97: time grows about linearly with size x frames (quad 1e9 switches the square
+                # term off), fixed 0.1, within 7 % of the six runs and 9 / 14 % of the older LTX-2.3 runs at 257
+                # frames and 1280x704 (FU-165, docs/research/time-estimate-fit-2026-11.md). Set 8 + 3 schedule.
+                "estimatedGenerationSeconds": 136.0,
+                "estimateRef": {"width": 768, "height": 512, "frames": 97, "steps": 8, "fixed": 0.1, "quad": 1000000000, "ignoresSteps": True},
                 "downloadFiles": [
                     "transformer-distilled.safetensors",
                     "connector.safetensors",

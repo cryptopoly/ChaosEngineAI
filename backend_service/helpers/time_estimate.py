@@ -17,10 +17,11 @@ from typing import Any
 # Fitted on four Wan 2.2 TI2V runs on an RTX 4090 (within 5 %), FU-165.
 VIDEO_FIXED = 0.04
 DEFAULT_QUAD = 53300.0
-# Image rows that were not timed: diffusers on CUDA fits about 0.6 (FLUX.2 Klein, 1024 vs 2048 px); mflux on an
-# M4 Max is measured in docs/research/time-estimate-fit-2026-11.md.
+# Image rows that were not timed: diffusers on CUDA fits about 0.6 (FLUX.2 Klein, 1024 vs 2048 px). mflux on an
+# M4 Max measured 0.01 (FLUX 3 Klein), 0.1 and 0.35 (Qwen-Image-2.1 base and Turbo) and 0.25 (Iris-3B); 0.1 is the
+# middle (docs/research/time-estimate-fit-2026-11.md).
 IMAGE_FIXED = 0.6
-MFLUX_FIXED = 0.25
+MFLUX_FIXED = 0.1
 
 
 def default_fixed(kind: str, engine: str | None = None) -> float:

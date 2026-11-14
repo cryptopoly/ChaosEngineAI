@@ -180,7 +180,7 @@
     "frames": 1,
     "steps": 4
    },
-   "expected": 13.7
+   "expected": 8.4
   },
   {
    "name": "Row fixed wins over the engine default",
@@ -275,6 +275,76 @@
     "steps": 100000
    },
    "expected": 3.393122473776195e+20
+  },
+  {
+   "name": "Iris-3B mflux 1280 px on an M4 Max (measured 21.2 s)",
+   "kind": "image",
+   "engine": "mflux",
+   "catalog": 10.5,
+   "ref": {
+    "width": 1024,
+    "height": 1024,
+    "frames": 1,
+    "steps": 4,
+    "fixed": 0.25,
+    "quad": 300,
+    "ignoresSteps": true
+   },
+   "request": {
+    "width": 1280,
+    "height": 1280,
+    "frames": 1,
+    "steps": 4
+   },
+   "measured": 21.2,
+   "tolerancePct": 20,
+   "expected": 20.3
+  },
+  {
+   "name": "FLUX 3 Klein mflux 1024 px 16 steps on an M4 Max (measured 71.1 s)",
+   "kind": "image",
+   "engine": "mflux",
+   "catalog": 34.5,
+   "ref": {
+    "width": 1024,
+    "height": 1024,
+    "frames": 1,
+    "steps": 8,
+    "fixed": 0.01,
+    "quad": 5000
+   },
+   "request": {
+    "width": 1024,
+    "height": 1024,
+    "frames": 1,
+    "steps": 16
+   },
+   "measured": 71.1,
+   "tolerancePct": 20,
+   "expected": 68.7
+  },
+  {
+   "name": "LTX-2.5 q4 ltx-2-mlx 1024x576x97 on an M4 Max (measured 210.7 s)",
+   "kind": "video",
+   "catalog": 136,
+   "ref": {
+    "width": 768,
+    "height": 512,
+    "frames": 97,
+    "steps": 8,
+    "fixed": 0.1,
+    "quad": 1000000000,
+    "ignoresSteps": true
+   },
+   "request": {
+    "width": 1024,
+    "height": 576,
+    "frames": 97,
+    "steps": 30
+   },
+   "measured": 210.7,
+   "tolerancePct": 20,
+   "expected": 197.2
   }
  ]
 }

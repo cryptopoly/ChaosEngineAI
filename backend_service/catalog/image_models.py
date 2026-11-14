@@ -532,7 +532,9 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                     "non-commercial use only. Needs the mflux engine, installed from the Image Studio."
                 ),
                 "estimatedGenerationSeconds": 265.0,  # measured 258-271 s at 1024², 40 steps (2026-10-29)
-                "estimateRef": {"width": 1024, "height": 1024, "frames": 1, "steps": 40},  # FU-165 reference: measured at 1024 px, 40 steps
+                # FU-165: fixed from the two measured rows (40 steps 265 s, Turbo 8 steps 74 s): about 6 s a step and 26 s
+                # that does not grow with steps (text encoder, decode).
+                "estimateRef": {"width": 1024, "height": 1024, "frames": 1, "steps": 40, "fixed": 0.1},
                 "releaseDate": "2026-09",
             },
             {
@@ -586,7 +588,8 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                     "non-commercial use only. Needs the mflux engine, installed from the Image Studio."
                 ),
                 "estimatedGenerationSeconds": 74.0,  # measured 72-75 s at 1024², 8 steps (2026-10-29)
-                "estimateRef": {"width": 1024, "height": 1024, "frames": 1, "steps": 8},  # FU-165 reference: measured at 1024 px, 8 steps
+                # FU-165: 26 s of the 74 s does not grow with steps (from the 40-step base row's 265 s).
+                "estimateRef": {"width": 1024, "height": 1024, "frames": 1, "steps": 8, "fixed": 0.35},
                 "releaseDate": "2026-10",
             },
             {
@@ -709,8 +712,12 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                     "Needs at least 768 px (smaller sizes come out as noise or blocks, so the app raises them). Downloads the 6 GB Turbo checkpoint and the Qwen3-VL-4B text encoder (about 9 GB). "
                     "Needs the mflux engine, installed from the Image Studio."
                 ),
-                "estimatedGenerationSeconds": 18.0,
-                "estimateRef": {"width": 1024, "height": 1024, "frames": 1, "steps": 4},  # FU-165 reference: row defaultSteps
+                # Warm on an M4 Max 64 GB (2026-11-14): 10.0 / 10.5 s at 1024 px (was 18 s, taken while
+                # other jobs ran). The steps setting does not change the time (4 and 8 steps: 10.0 and 10.5 s;
+                # 5.5 s both at 768 px). Pixel space, so cost rises fast with size: 21.2 s at 1280, 34.0 s at
+                # 1536 px. fixed / quad fitted to five runs, within 10 % (docs/research/time-estimate-fit-2026-11.md).
+                "estimatedGenerationSeconds": 10.5,
+                "estimateRef": {"width": 1024, "height": 1024, "frames": 1, "steps": 4, "fixed": 0.25, "quad": 300, "ignoresSteps": True},
                 "releaseDate": "2026-10",
             },
         ],
@@ -815,9 +822,12 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 # The maker's default is 16; 8 looked the same on three prompts and took 40 s against
                 # 70 s on an M4 Max (2026-10-29), so the Studio starts at 8.
                 "defaultSteps": 8,
-                # 40 s measured at 1024 px / 8 steps on an M4 Max.
-                "estimatedGenerationSeconds": 40.0,
-                "estimateRef": {"width": 1024, "height": 1024, "frames": 1, "steps": 8},  # FU-165 reference: measured at 1024 px, 8 steps
+                # Warm on an M4 Max 64 GB (2026-11-14): 33.6 / 34.3 s at 1024 px, 8 steps (40 s earlier was cold).
+                # Time is almost all per step (768 px: 19.2 s at 8, 40.0 s at 16; 1024 px 16 steps: 71.1 s;
+                # 1536 px 16 steps: 207.4 s), so fixed is near zero; fitted within 11 %
+                # (docs/research/time-estimate-fit-2026-11.md).
+                "estimatedGenerationSeconds": 34.5,
+                "estimateRef": {"width": 1024, "height": 1024, "frames": 1, "steps": 8, "fixed": 0.01, "quad": 5000},
                 "recommendedResolution": "1024x1024",
                 "note": (
                     "Apple Silicon only. Distilled, no guidance: starts at 8 steps (the maker's default "

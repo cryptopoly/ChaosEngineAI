@@ -1,0 +1,82 @@
+{
+ "schema": 1,
+ "engine": "zig",
+ "version": "1.2.7",
+ "chip": "nvidia-sm89",
+ "backends": [
+  "cuda"
+ ],
+ "families": {
+  "nemotron_h": [
+   "mlx-q4g64",
+   "modelopt-nvfp4",
+   "modelopt-ggml"
+  ],
+  "nemotron_h_omni": [
+   "mlx-q4g64",
+   "modelopt-nvfp4",
+   "modelopt-ggml"
+  ],
+  "glm5_next": [
+   "modelopt-nvfp4",
+   "modelopt-mixed",
+   "exl3"
+  ],
+  "minimax_m3_vl": [
+   "modelopt-nvfp4"
+  ],
+  "qwen3_5": [
+   "mlx-q4g64",
+   "exl3"
+  ],
+  "qwen3_5_moe": [
+   "mlx-q4g64",
+   "modelopt-nvfp4"
+  ],
+  "qwen4_exp": [
+   "mlx-q4g32",
+   "modelopt-mixed"
+  ],
+  "kolibri1": [
+   "fp8-block"
+  ],
+  "gemma4": [
+   "mlx-q4g64"
+  ],
+  "gemma4_unified": [
+   "mlx-q4g64"
+  ],
+  "spark2_5": [
+   "mlx-q8g64"
+  ],
+  "dory": [
+   "modelopt-nvfp4"
+  ],
+  "lfm2_moe": [
+   "mlx-q4g64"
+  ],
+  "lfm2_vl": [
+   "bf16"
+  ],
+  "fish_omni": [
+   "fp8-block128"
+  ],
+  "qwen4": [
+   "bf16"
+  ],
+  "qwen4_text": [
+   "bf16"
+  ]
+ },
+ "serve": {
+  "flags": {
+   "--context": {},
+   "--drafter": {},
+   "--vision": {},
+   "--parallel": {},
+   "--snapshot-dir": {},
+   "--no-update-check": {},
+   "--no-thinking": {}
+  }
+ }
+}

@@ -11,12 +11,15 @@ route, the controller, the engine and the system-stats payload share one view:
   capability and free VRAM from ``nvidia-smi``, driver floor, and the binary's
   own ``capabilities --json`` (chip, back ends, families, serve flags);
 * which models it can serve and what they need (``NATIVE_MODELS``,
-  ``estimate_vram_gb``, ``supported_models``).
+  ``estimate_vram_gb``, ``supported_models``);
+* which families the installed binary serves, from its own ``capabilities
+  --json`` joined to the curated rows (``family_report``, ``serves_family``,
+  ``prefers_python``; probed once per binary by ``cached_capabilities``).
 
 The gate never names a card. It reads numbers and the binary's own verdict, so a
 12 GB card, a 4090, a 5090 and a DGX Spark are each judged on what they report.
-The Mac Python engine (0.6.6, ``_tensorfold.py``) is a separate lane and is not
-touched here.
+The Mac Python engine (0.6.6) is a separate lane; this module only decides
+which ``_tensorfold.py`` rows still belong on it (``prefers_python``).
 """
 
 from __future__ import annotations
@@ -27,9 +30,13 @@ import platform as _platform
 import re
 import subprocess
 import sys
+import threading
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from backend_service.inference._tensorfold import TensorFoldFamily
 
 NATIVE_VERSION = "1.2.7"
 RELEASE_BASE = "https://github.com/ashhart/TensorFold/releases/download"
@@ -259,6 +266,138 @@ def probe_capabilities(binary: Path, timeout: float = 30.0) -> NativeCapabilitie
     except (OSError, subprocess.SubprocessError):
         return None
     return parse_capabilities(result.stdout) if result.returncode == 0 else None
+
+
+_CAPS_CACHE: dict[str, tuple[tuple[int, int], NativeCapabilities]] = {}
+_CAPS_LOCK = threading.Lock()
+
+
+def cached_capabilities(binary: Path | str | None) -> NativeCapabilities | None:
+    """``probe_capabilities`` once per binary path, size and mtime.
+
+    The probe can take up to 30 s, so routing and status reads never run it per
+    request; a replaced binary (new mtime or size) is probed again. A failed
+    probe is not cached, so the next call retries.
+    """
+    if not binary:
+        return None
+    path = Path(binary)
+    try:
+        stat = path.stat()
+    except OSError:
+        return None
+    stamp = (stat.st_mtime_ns, stat.st_size)
+    with _CAPS_LOCK:
+        hit = _CAPS_CACHE.get(str(path))
+        if hit is not None and hit[0] == stamp:
+            return hit[1]
+    caps = probe_capabilities(path)
+    if caps is not None:
+        with _CAPS_LOCK:
+            _CAPS_CACHE[str(path)] = (stamp, caps)
+    return caps
+
+
+# ---------------------------------------------------------------------------
+# Family table from the binary (FU-168)
+# ---------------------------------------------------------------------------
+
+
+def serves_family(family: TensorFoldFamily, caps: NativeCapabilities | None) -> bool:
+    """Whether the installed 1.x binary serves ``family``'s checkpoints.
+
+    With no binary report the curated ``native`` flag answers. With one, the
+    binary's own family list does, except for a row whose checkpoint the binary
+    refuses although it lists the type (``native_refuses``).
+    """
+    if caps is None:
+        return family.native
+    if family.native_refuses:
+        return False
+    return any(model_type in caps.families for model_type in family.model_types)
+
+
+def prefers_python(family: TensorFoldFamily, caps: NativeCapabilities | None) -> bool:
+    """True when ``family`` belongs on the older Python install (0.6.6), not the binary.
+
+    Only the ``native=False`` rows (D-77: Gemma 4 26B-A4B, DeepSeek-V4-Flash,
+    Ternary Bonsai 2) can: they stay on Python while the binary does not list
+    them, and move to the binary once a release does. Every other row stays on
+    the binary, which refuses an unknown checkpoint by name.
+    """
+    return not family.native and not serves_family(family, caps)
+
+
+def family_report(caps: NativeCapabilities | None) -> list[dict[str, Any]]:
+    """The installed binary's family list joined to the curated rows.
+
+    One entry per ``model_type`` in ``caps.families`` (``servedHere``), joined to
+    the rows of ``TENSORFOLD_FAMILIES`` and ``NATIVE_MODELS`` that name it; a type
+    no row names is ``curated: False``, listed and never offered. Then one entry
+    per curated row none of whose types the binary lists (``servedHere: False``;
+    ``legacy`` when the older Python install still serves it). Empty without a
+    binary report. The binary reports types and weight formats only; titles,
+    repos, drafters and notes come from the curated rows.
+    """
+    if caps is None:
+        return []
+    from backend_service.inference._tensorfold import TENSORFOLD_FAMILIES
+
+    rows_by_type: dict[str, list[TensorFoldFamily]] = {}
+    for family in TENSORFOLD_FAMILIES:
+        for model_type in family.model_types:
+            rows_by_type.setdefault(model_type, []).append(family)
+    models_by_type: dict[str, list[NativeModel]] = {}
+    for model in NATIVE_MODELS:
+        models_by_type.setdefault(model.family, []).append(model)
+
+    report: list[dict[str, Any]] = []
+    for model_type, formats in sorted(caps.families.items()):
+        rows = rows_by_type.get(model_type, [])
+        models = models_by_type.get(model_type, [])
+        # What the app offers on this binary: the Mac table's checkpoints on the
+        # Metal build, the CUDA registry's on a CUDA build.
+        repos: list[str] = []
+        if "metal" in caps.backends:
+            repos += [repo for row in rows if serves_family(row, caps) for repo in row.tested_repos]
+        if "cuda" in caps.backends:
+            repos += [model.repos[0] for model in models if model.weight_format in formats]
+        titles = [row.title for row in rows] + [model.title for model in models if not rows]
+        report.append(
+            {
+                "modelType": model_type,
+                "modelTypes": [model_type],
+                "formats": list(formats),
+                "curated": bool(rows or models),
+                "servedHere": True,
+                "families": [row.key for row in rows] + [model.key for model in models],
+                "title": " / ".join(dict.fromkeys(titles)) or model_type,
+                "offered": bool(repos),
+                "repos": repos,
+                # A row of this type the binary refuses stays on the Python install.
+                "legacy": any(prefers_python(row, caps) for row in rows),
+                "note": " ".join(row.note for row in rows if row.note),
+            }
+        )
+    for family in TENSORFOLD_FAMILIES:
+        if any(model_type in caps.families for model_type in family.model_types):
+            continue
+        report.append(
+            {
+                "modelType": family.model_types[0],
+                "modelTypes": list(family.model_types),
+                "formats": [],
+                "curated": True,
+                "servedHere": False,
+                "families": [family.key],
+                "title": family.title,
+                "offered": False,
+                "repos": [],
+                "legacy": prefers_python(family, caps),
+                "note": family.note,
+            }
+        )
+    return report
 
 
 # ---------------------------------------------------------------------------

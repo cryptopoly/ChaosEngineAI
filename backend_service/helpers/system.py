@@ -206,10 +206,13 @@ def _build_system_snapshot(
             # Python install (when still present) serves the rest. Image input
             # and grammar are inside the binary.
             extras = ["vision", "grammar"]
+            # A row the binary does not serve is listed only while the older
+            # Python install is there to serve it (D-77, FU-168).
+            served_by = native.cached_capabilities(_binary) if not available else None
             skipped = {
                 repo
                 for family in TENSORFOLD_FAMILIES
-                if not family.native and not available
+                if not available and native.prefers_python(family, served_by)
                 for repo in family.tested_repos
             }
         else:

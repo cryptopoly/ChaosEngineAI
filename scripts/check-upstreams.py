@@ -167,15 +167,15 @@ def unlisted_families() -> tuple[str, list[str]] | None:
     """(binary version, model_types the installed TensorFold binary serves that no table row lists), or None."""
     sys.path.insert(0, str(ROOT))
     try:
-        from backend_service.inference import _tensorfold, _tensorfold_native as native
+        from backend_service.inference import _tensorfold_native as native
 
         binary = native.find_binary()
         caps = native.probe_capabilities(binary) if binary else None
         if caps is None:
             return None
-        listed = {mt for fam in _tensorfold.TENSORFOLD_FAMILIES for mt in fam.model_types}
-        listed |= {model.family for model in native.NATIVE_MODELS}
-        return caps.version or "?", sorted(set(caps.families) - listed)
+        # The same join the status route serves: a family no curated row names.
+        report = native.family_report(caps)
+        return caps.version or "?", sorted(entry["modelType"] for entry in report if not entry["curated"])
     except Exception:  # noqa: BLE001 - a report must never fail the build
         return None
 

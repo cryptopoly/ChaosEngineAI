@@ -636,15 +636,26 @@ class RuntimeController:
 
         The 1.x native binary is preferred. The older Python install (0.6.6,
         Mac only) serves just the families the native binary does not
-        (``family.native`` is False), and only while it is still installed.
+        (``family.native`` is False) while the installed binary does not list
+        them, and only while it is still installed (D-77).
         """
         caps = self.capabilities
-        needs_python = match is not None and not match.family.native
+        needs_python = match is not None and self._tensorfold_prefers_python(match.family)
         if caps.tensorfoldNativeAvailable and not needs_python:
             return TensorFoldNativeEngine(caps)
         if caps.tensorfoldAvailable and (needs_python or not caps.tensorfoldNativeAvailable):
             return TensorFoldEngine(caps)
         return None
+
+    def _tensorfold_prefers_python(self, family) -> bool:
+        """The binary's own family list decides, once probed; ``native`` without a binary (FU-168)."""
+        if family.native:
+            return False
+        from backend_service.inference import _tensorfold_native as native
+
+        caps = self.capabilities
+        report = native.cached_capabilities(caps.tensorfoldNativePath) if caps.tensorfoldNativeAvailable else None
+        return native.prefers_python(family, report)
 
     def _tensorfold_unavailable_message(
         self,
@@ -656,7 +667,7 @@ class RuntimeController:
         match = self._tensorfold_match(
             model_ref=model_ref, canonical_repo=canonical_repo, runtime_target=runtime_target, path=path
         )
-        if match is not None and not match.family.native and self.capabilities.tensorfoldNativeAvailable:
+        if match is not None and self.capabilities.tensorfoldNativeAvailable and self._tensorfold_prefers_python(match.family):
             return (
                 f"{match.family.title} is not served by TensorFold 1.x. It needs the older Python "
                 "TensorFold install (0.6.6), which is not installed."
@@ -733,6 +744,9 @@ class RuntimeController:
             if engine is not None:
                 return engine
         if match.tier == "exclusive":
+            if self.capabilities.tensorfoldNativeAvailable and self._tensorfold_prefers_python(match.family):
+                # The binary is installed; what is missing is the older Python install.
+                raise RuntimeError(self._tensorfold_unavailable_message(model_ref, canonical_repo, runtime_target, path))
             needs = (
                 f" It needs a Mac with at least {match.family.min_memory_gb} GB of memory."
                 if match.family.min_memory_gb

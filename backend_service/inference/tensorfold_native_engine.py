@@ -141,11 +141,11 @@ class TensorFoldNativeEngine(TensorFoldEngine):
         model = native.match_native_model(canonical_repo, model_ref, runtime_target)
         # On the Metal build, the Mac family table names drafters and vision for
         # checkpoints the CUDA registry has no row for (MiniMax, Nanbeige, ...).
-        # Its facts are Metal facts, and 1.x rows only (``native``).
+        # Its facts are Metal facts, and only for rows this binary serves.
         family = None
         if model is None and native.platform_key() == "macos-arm64":
             found = match_model(canonical_repo=canonical_repo, model_ref=model_ref, runtime_target=runtime_target, path=path)
-            family = found.family if found is not None and found.family.native else None
+            family = found.family if found is not None and not native.prefers_python(found.family, caps) else None
         drafter_repo = model.drafter if model is not None else (family.drafter if family is not None else None)
         drafts = bool(speculative_decoding)
         drafter_dir: Path | None = None

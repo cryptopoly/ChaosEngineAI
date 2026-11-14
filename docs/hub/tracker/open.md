@@ -1,7 +1,7 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 93 rows with work, decisions or watch items still open, newest first.
+summary: 92 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
@@ -93,7 +93,7 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 <details>
 <summary>FU-166 · MiniMax H3 (video and image) and newer image/video models: scan, supersedes the FU-082 / FU-125 H3 notes — Researched 2026-11-10</summary>
 
-**Status or trigger:** **Researched 2026-11-10; nothing built; decision D-76 open.**
+**Status or trigger:** **Researched 2026-11-10; D-76 decided 2026-11-14: add support behind a territory tick and licence screen; planned in `docs/plans/v0.10.0-all-singing.md`, not built.**
 
 **Notes:** Size is no longer the blocker: pruned Q4_K_M DiT 11.4 GB, stable-diffusion.cpp has `docs/minimax_h3.md` and `docs/minimax_h3_image.md`, community GGUF / nvfp4 / MLX / few-step builds exist, and the official `MiniMaxAI/MiniMax-H3-Image` (2026-11-03, 6-step, about 16 MP) is out. **Licence is the blocker:** rights are granted only outside the EU, UK, Korea and US (same for H3-Image), so it cannot be shipped by default or tested by an owner in the UK. Vimoo-1.0-Lite and Cosmos3-Edge were looked at and **dropped by the owner 2026-11-11**. Still unrun: Motif-Video-2B, LongCat-Video, plus image families stable-diffusion.cpp already documents (Krea 2, Ideogram 4, Qwen-Image 2.1, HiDream-O1). **Open:** check the pinned sd.cpp for H3 code (only if H3 is revived). Write-up and fit table (4090, M4 Max, 512 GB Mac Studio, DGX Spark): [docs/research/minimax-h3-and-new-video-image-2026-11-10.md](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/docs/research/minimax-h3-and-new-video-image-2026-11-10.md).
 
@@ -123,15 +123,6 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 **Status or trigger:** **Open (2026-11-11): measured on an RTX 4090, lane works.**
 
 **Notes:** `docs/progress/rtx4090-progress.md`, "Qwen3.8-27B + DFlash2 through llama.cpp CUDA". Q4_K_M + `dflash-` Q8_0 sidecar: 43 tok/s plain, 78 prose / 93 code / 112 JSON drafted, acceptance 31 to 50 %, card full (24.0 of 24.5 GB) at 4K context; TensorFold on the same card does 150 prose / 300 code. **To do:** (1) find why acceptance is low (try `--spec-draft-n-max` 4 to 15, the BF16/Q4_0 sidecars, a `--spec-draft-p-min`-style cutoff if b11981 has one, and compare with a newer tag); (2) a Q4_K_M catalog row that fits 24 GB (the repo pins one `ggufFile` per row, so it needs a second repo id or per-variant file selection); (3) a long-context pass (8K to 32K) to see where the card runs out; (4) run the new E2E check through the app on this PC.
-
-</details>
-
-<details>
-<summary>FU-162 · Storyboard end frames: a picker in the shot editor and an end_image action in the agent's storyboard_shot tool — Open (2026-11-11): the op exists, nothing offers it.</summary>
-
-**Status or trigger:** **Open (2026-11-11): the op exists, nothing offers it.**
-
-**Notes:** `set_end_image` (undoable; upload handle or file; empty clears) landed on `test/rtx4090` with route tests and an E2E check, because `Shot.endImage` was read by clip generation, the staleness check and the bundle but nothing could set it. LTX-2 models take it; TI2V-5B and the others refuse a shot that has one. Needs: an end-frame picker (only when the video model `acceptsEndImage`), the agent action (the tool descriptions are capped at 220 characters), and a Cast-style drop target.
 
 </details>
 

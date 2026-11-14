@@ -48,15 +48,16 @@ STORYBOARD_TOOLS: list[dict[str, Any]] = [
     {
         "name": "storyboard_shot",
         "description": "Edit: shots. add(fields), edit(shot_id, fields), remove, reorder(order), lock, unlock, "
-        "pick_take(take_id), redo (marks for the next generate), import(path of a clip or still).",
+        "pick_take(take_id), redo (marks for the next generate), import(path of a clip or still), "
+        "end_image(path; none clears; LTX-2).",
         "inputSchema": _obj({
-            "action": {"type": "string", "enum": ["add", "edit", "remove", "reorder", "lock", "unlock", "pick_take", "redo", "import"]},
+            "action": {"type": "string", "enum": ["add", "edit", "remove", "reorder", "lock", "unlock", "pick_take", "redo", "import", "end_image"]},
             "project_id": _PID, "revision": _REV,
             "shot_id": {"type": "string"}, "take_id": {"type": "string"},
             "fields": {**_FIELDS, "description": "title, stillPrompt, motionPrompt, startFrom (generate|upload|previous-shot|text), "
                        "seconds, seed, trimIn, trimOut, speed, transition{type,seconds}, nativeSoundDb, index."},
             "order": {"type": "array", "items": {"type": "string"}, "maxItems": 500},
-            "path": {"type": "string", "description": "upload: handle, or a file in the app's output folders."},
+            "path": {"type": "string", "description": "upload: handle, or a file in the app's output folders (import, end_image)."},
         }, ["action", "project_id", "revision"]),
     },
     {
@@ -309,6 +310,10 @@ def storyboard_shot(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
         return _summary(_op(args, "pick_take", {**shot, "takeId": args["take_id"]}))
     if action == "redo":
         return _summary(_op(args, "mark_redo", {**shot, "redo": True}))
+    if action == "end_image":
+        # No path clears it; a path is an upload handle or a file in the output folders, like any agent input.
+        path = str(args.get("path") or "").strip()
+        return _summary(_op(args, "set_end_image", {**shot, "image": _cast_source(path) if path else None}))
     _need(args, "path")
     from backend_service.storyboard.media import IMAGE_EXTS
 

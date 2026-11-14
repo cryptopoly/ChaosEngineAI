@@ -284,6 +284,8 @@ export interface StoryboardOpArgs {
   pick_take: { shotId: string; takeId: string };
   mark_redo: { shotId: string; redo?: boolean };
   import_take: { shotId: string; clip?: string; still?: string };
+  /** The picture a clip should end on (LTX-2 models only); `image` is a path, an `upload:` handle or a project `media/` path, empty or absent clears it. */
+  set_end_image: { shotId: string; image?: string | null };
   relink: { id: string; path: string };
   add_audio: StoryboardAudioFields & {
     kind: StoryboardAudioClip["kind"];

@@ -234,6 +234,25 @@ class StoryboardToolTests(unittest.TestCase):
         self.assertTrue(takes[0]["still"].endswith(".png") and takes[1]["clip"].endswith(".mp4"))
         self.assertEqual(len(info["audio"]), 1)
 
+    def test_agent_sets_and_clears_a_shots_end_frame(self):
+        info = self.project(shots=1)
+        pid, sid = info["projectId"], info["shots"][0]["id"]
+        still = png(self.src / "last.png")
+        info = self.call("storyboard_shot", {"action": "end_image", "project_id": pid, "revision": info["revision"],
+                                             "shot_id": sid, "path": str(still)})
+        shot = self.call("storyboard_project", {"action": "get", "project_id": pid})["project"]["shots"][0]
+        self.assertTrue(shot["endImage"].startswith(f"media/{sid}/end-"), shot["endImage"])
+        self.call("storyboard_shot", {"action": "end_image", "project_id": pid, "revision": info["revision"], "shot_id": sid})
+        shot = self.call("storyboard_project", {"action": "get", "project_id": pid})["project"]["shots"][0]
+        self.assertIsNone(shot["endImage"])
+
+    def test_agent_end_frame_refuses_files_outside_the_output_folders(self):
+        info = self.project(shots=1)
+        outside = png(self.base / "elsewhere" / "private.png")
+        text = self.call("storyboard_shot", {"action": "end_image", "project_id": info["projectId"], "revision": info["revision"],
+                                             "shot_id": info["shots"][0]["id"], "path": str(outside)}, error=True)
+        self.assertIn("upload: handle", text)
+
 
 if __name__ == "__main__":
     unittest.main()

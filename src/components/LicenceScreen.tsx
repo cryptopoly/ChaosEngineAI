@@ -6,11 +6,22 @@
  * Gated and not yet accepted: Read / Open on Hugging Face, Not now,
  * I have accepted. Anything else (already accepted, or not gated): a plain
  * notice with OK only. Escape = Not now; focus stays inside the dialog and returns to the opener.
+ *
+ * ``territory`` (D-76): a model licensed only outside some territories. The screen lists the excluded
+ * territories, links the full licence and needs a tick on the exact statement before Confirm is enabled.
+ * The app does not check where the user is; the screen says so.
  */
-import { useId, useRef } from "react";
+import { useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useDialogFocus } from "../hooks/useDialogFocus";
 import type { ModelLicence } from "./LicenceChip";
+
+export interface TerritoryTerms {
+  /** Where the licence does not apply, in one list ("European Union", "United Kingdom", ...). */
+  excludedTerritories: string[];
+  /** The exact statement the user ticks; sent back to the backend unchanged. */
+  confirmSentence: string;
+}
 
 export interface LicenceScreenProps {
   entry: { name: string };
@@ -20,14 +31,22 @@ export interface LicenceScreenProps {
   onDismiss: () => void;
   onOpenHub: () => void;
   onOpenFull: () => void;
+  territory?: TerritoryTerms;
+  /** Shown under the tick when saving the statement failed. */
+  error?: string | null;
 }
 
-export function LicenceScreen({ entry, licence, accepted, onAccept, onDismiss, onOpenHub, onOpenFull }: LicenceScreenProps) {
+export function LicenceScreen({
+  entry, licence, accepted, onAccept, onDismiss, onOpenHub, onOpenFull, territory, error,
+}: LicenceScreenProps) {
   const { t } = useTranslation("studio");
   const titleId = useId();
   const descId = useId();
+  const tickId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
-  const needsAccept = licence.gated && !accepted;
+  const [ticked, setTicked] = useState(false);
+  const needsTerritory = Boolean(territory) && !accepted;
+  const needsAccept = licence.gated && !accepted && !territory;
   const lines = licence.summaryLines ?? [];
   useDialogFocus(dialogRef, { onEscape: onDismiss });
 
@@ -57,6 +76,35 @@ export function LicenceScreen({ entry, licence, accepted, onAccept, onDismiss, o
               </ul>
             </div>
           ) : null}
+          {needsTerritory && territory ? (
+            <div className="licence-screen__territory">
+              <p>
+                {t("territoryGate.screen.excluded", {
+                  defaultValue: "Not licensed for use in: {territories}.",
+                  territories: territory.excludedTerritories.join(", "),
+                })}
+              </p>
+              <p className="muted-text">
+                {t("territoryGate.screen.noLookup", {
+                  defaultValue: "ChaosEngineAI does not check where you are. Your tick is your own statement.",
+                })}
+              </p>
+              <div className="button-row">
+                <button type="button" className="secondary-button" onClick={onOpenFull}>
+                  {t("licence.screen.readFull", { defaultValue: "Read the full licence" })}
+                </button>
+              </div>
+              <label className="licence-screen__tick" htmlFor={tickId}>
+                <input id={tickId} type="checkbox" checked={ticked} onChange={(event) => setTicked(event.target.checked)} />
+                <span>{territory.confirmSentence}</span>
+              </label>
+              {error ? (
+                <p className="voice-error" role="alert">
+                  {error}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
           {licence.note ? <p className="muted-text">{licence.note}</p> : null}
           {needsAccept ? (
             <p className="muted-text">
@@ -78,7 +126,16 @@ export function LicenceScreen({ entry, licence, accepted, onAccept, onDismiss, o
           ) : null}
         </div>
         <div className="modal-footer licence-screen__footer">
-          {needsAccept ? (
+          {needsTerritory ? (
+            <>
+              <button type="button" className="secondary-button" onClick={onDismiss}>
+                {t("licence.screen.notNow", { defaultValue: "Not now" })}
+              </button>
+              <button type="button" className="primary-button" disabled={!ticked} onClick={onAccept}>
+                {t("territoryGate.screen.confirm", { defaultValue: "Confirm" })}
+              </button>
+            </>
+          ) : needsAccept ? (
             <>
               <button type="button" className="secondary-button" onClick={onDismiss}>
                 {t("licence.screen.notNow", { defaultValue: "Not now" })}

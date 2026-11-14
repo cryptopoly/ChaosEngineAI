@@ -11766,6 +11766,34 @@ button.licence-chip:focus-visible {
 .licence-screen__footer {
   justify-content: flex-end;
 }
+/* D-76 territory statement: the tick and the collapsed notice on the Models pages. */
+.licence-screen__territory {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.licence-screen__tick {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.licence-screen__tick input {
+  margin-top: 3px;
+  flex: none;
+}
+.territory-gate-notice {
+  margin-top: 8px;
+}
+.territory-gate-notice summary {
+  cursor: pointer;
+}
+.territory-gate-notice__list {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
 
 .makes-chips {
   display: flex;

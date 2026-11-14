@@ -16,6 +16,7 @@ import type { DiscoverSort, ImageDiscoverAccessFilter, ImageDiscoverTaskFilter }
 import type { NativeBackendStatus } from "../../types/server";
 import type { TabRequest } from "../../constants/tabRedirects";
 import { IconActionButton } from "../../components/ModelActionIcons";
+import { TerritoryGateNotice } from "../../components/TerritoryGateNotice";
 import {
   AcceleratorPills,
   ModelCard,
@@ -74,6 +75,8 @@ export interface ImageModelsPageProps {
   onRevealPath: (path: string) => void;
   /** Injectable for tests; defaults to ``window.confirm``. */
   confirmDelete?: ConfirmFn;
+  /** Reload the catalog after the territory statement is confirmed or withdrawn (D-76). */
+  onTerritoryGateChanged?: () => void;
 }
 
 const IMAGE_GRID =
@@ -212,6 +215,7 @@ export function ImageModelsPage({
   onOpenExternalUrl,
   onRevealPath,
   confirmDelete,
+  onTerritoryGateChanged,
 }: ImageModelsPageProps) {
   const { t } = useTranslation("library");
   const { t: tCommon } = useTranslation("common");
@@ -486,12 +490,19 @@ export function ImageModelsPage({
         </button>
       }
       intro={
-        <p className="muted-text">
-          {t("models.image.intro", {
-            defaultValue:
-              "Every image model in one list. Download one to use it in Image Studio; filter by what is installed, available or downloading.",
-          })}
-        </p>
+        <>
+          <p className="muted-text">
+            {t("models.image.intro", {
+              defaultValue:
+                "Every image model in one list. Download one to use it in Image Studio; filter by what is installed, available or downloading.",
+            })}
+          </p>
+          <TerritoryGateNotice
+            kind="image"
+            onChanged={() => onTerritoryGateChanged?.()}
+            onOpenExternalUrl={onOpenExternalUrl}
+          />
+        </>
       }
       entries={entries}
       resolveStatus={resolveStatus}

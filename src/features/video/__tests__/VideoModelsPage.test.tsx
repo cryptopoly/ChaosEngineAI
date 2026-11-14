@@ -103,6 +103,30 @@ const downloads: Record<string, DownloadStatus> = {
 };
 
 describe("VideoModelsPage", () => {
+  it("shows a confirmed territory-limited row with its licence chip (D-76)", () => {
+    const h3 = makeVideoVariant({
+      id: "leejet/MiniMax-H3-GGUF~fl2va-pruned-q4km",
+      familyId: "minimax-h3",
+      name: "MiniMax H3 · FL2VA pruned GGUF Q4_K_M (sd.cpp)",
+      repo: "leejet/MiniMax-H3-GGUF",
+      territoryGate: "minimax-h3",
+      licence: {
+        id: "minimax-h3-community",
+        name: "MiniMax H3 Community License",
+        commercial: "limited",
+        gated: false,
+        territoryRestricted: true,
+        summary: "Only outside the EU, the UK, the Republic of Korea and the USA.",
+      },
+    });
+    const markup = render({ catalog: [makeVideoFamily({ id: "minimax-h3", name: "MiniMax H3" }, [h3])] });
+    const row = rowMarkup(markup, h3.id);
+    expect(row).toContain("MiniMax H3");
+    expect(row).toContain(">Territory-limited<");
+    // The notice fetches its status after mount; before that it renders nothing.
+    expect(markup).not.toContain("Models with territory limits");
+  });
+
   it("lists installed and not-installed models on one page with bucket counts", () => {
     const markup = render({ catalog: catalog(), activeVideoDownloads: downloads });
     for (const id of [BASE, Q4, Q6, Q8, ltxInstalled.id, ltx25.id]) rowMarkup(markup, id);

@@ -18,6 +18,10 @@ export type VideoCacheStrategyId =
 export type VideoModelTask = "txt2video" | "img2video" | "video2video";
 
 export interface VideoModelVariant {
+  /** Territory-limited rows (D-76): the licence, shown as a chip once the user confirmed the statement. */
+  licence?: import("../components/LicenceChip").ModelLicence;
+  /** Key of the territory statement the row needs (``minimax-h3``); hidden from the catalog until confirmed. */
+  territoryGate?: string;
   /** True when the clip can start on a picture: LTX-2 (ltx-2-mlx) and Wan 2.2 TI2V-5B (diffusers). */
   acceptsImageInput?: boolean;
   /** True when it can also end on a picture (LTX-2); Wan 2.2 TI2V-5B follows only the start picture. */
@@ -159,6 +163,8 @@ export interface VideoModelFamily {
 export interface VideoCatalogResponse {
   families: VideoModelFamily[];
   latest: VideoModelVariant[];
+  /** Released territory-limited model keys for video (D-76); the rows themselves appear only after confirmation. */
+  territoryLimited?: string[];
 }
 
 export interface VideoRuntimeStatus {

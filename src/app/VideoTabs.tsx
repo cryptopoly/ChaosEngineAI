@@ -1,3 +1,4 @@
+import { getVideoCatalog } from "../api";
 import { VideoModelsPage } from "../features/video/VideoModelsPage";
 import { VideoStudioTab } from "../features/video/VideoStudioTab";
 import { VideoGalleryTab } from "../features/video/VideoGalleryTab";
@@ -52,6 +53,7 @@ export function VideoModelsView({ ctx }: { ctx: AppTabContext }) {
       onRevealPath={(path) => void handleRevealPath(path)}
       onRefreshLongLiveStatus={() => void videoState.refreshLongLiveStatus()}
       onInstallLongLive={() => videoState.handleInstallLongLive()}
+      onTerritoryGateChanged={() => void getVideoCatalog().then((r) => videoState.setVideoCatalog(r.families)).catch(() => undefined)}
     />
   );
 }

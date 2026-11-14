@@ -54,8 +54,9 @@ TERRITORY_MODELS: dict[str, dict[str, Any]] = {
             "States, and that I will not use this model or what it makes there."
         ),
         "note": (
-            "ChaosEngineAI does not check where you are; your tick is your own statement. The weights are never "
-            "bundled: you download them from Hugging Face yourself. Not tested by the maintainers."
+            "The weights are never bundled with ChaosEngineAI: you download them from Hugging Face yourself. It "
+            "runs on the stable-diffusion.cpp runtime (sd), which release builds may not include. Not tested by "
+            "the maintainers."
         ),
     },
 }

@@ -8,13 +8,31 @@ Move `SDCPP_REF` from `3f8527a` (master-929, 2026-09-27) to the newest `master` 
 
 ## State
 
-- [x] `check-upstreams.py` rerun 2026-11-14: newest `master` is `5dcfa79801213f23e27b3e83617350ebb8ea93aa` (2026-11-14, 175 commits ahead of `3f8527a`, 1104 commits on master).
-- [x] Docs read at the new pin (`docs/models/`): `wan.md`, `flux.md`, `minimax_h3.md`, `minimax_h3_image.md` (exists).
-- [ ] Downloads (owner-approved this session, see below).
-- [ ] Baseline FLUX.1 schnell image on the old binary.
-- [ ] Build new pin, FLUX.1 schnell image, Wan 2.1 1.3B clip.
-- [ ] Tests.
-- [ ] CLAUDE.md row, check-upstreams note.
+- [x] `check-upstreams.py` rerun 2026-11-14: newest `master` is `5dcfa79801213f23e27b3e83617350ebb8ea93aa` (2026-11-14, master-1104, 175 commits ahead of `3f8527a`).
+- [x] Docs read at the new pin (`docs/models/`): `qwen_image_2.1.md`, `wan.md`, `flux.md`, `minimax_h3.md`, `minimax_h3_image.md` (exists).
+- [x] Old binary kept as `~/.chaosengine/bin/sd.bak-20261114` (plus `sd.version.bak-20261114`); reports `master-929-3f8527a`.
+- [x] `./scripts/build-sdcpp.sh` at `5dcfa79`: built and installed, `sd --version` reports `master-1104-5dcfa79`.
+- [x] Qwen-Image 2.1 image on both builds: pass (below).
+- [x] Tests: `pytest tests/test_sdcpp_image.py tests/test_sdcpp_video.py tests/test_sdcpp_progress.py tests/test_licence_gate.py tests/test_model_fit.py tests/test_check_upstreams.py`: 172 passed. `tests/test_hub_tracker.py` after the hub rebuild.
+- [x] Pin, comments, CLAUDE.md row, `check-upstreams.py` note, THIRD_PARTY_NOTICES, FU-166, hub status.
+
+## Result: Qwen-Image 2.1 sd.cpp, old vs new build
+
+The row `leejet/Qwen-Image-2.1-GGUF-q4k`, called with the argument list `SdCppImageEngine._build_cli_args` makes for it (`--diffusion-model <Q4_K gguf> -p ... -W 1024 -H 1024 --steps 40 --cfg-scale 1 --seed 42 -o ... --vae <vae> --llm <Qwen3-VL-8B Q4_K_M> --sampling-method euler --fa`), prompt "a red fox sitting in a snowy forest at sunrise, holding a wooden sign that says 'ChaosEngine'". Scripts and outputs in the agent scratchpad (not kept in the repo).
+
+| Build | Wall | Sampling | Peak memory | Output |
+| --- | --- | --- | --- | --- |
+| `3f8527a` (old) | 650 s | 622 s (about 15.6 s/step) | 10.6 GB | sane photo, fox, sign reads "ChaosEngine" |
+| `5dcfa79` (new) | 510 s | 493 s (about 12.3 s/step) | 11.1 GB | same picture |
+
+Pixel comparison: mean absolute difference 0.24 of 255, 0.06 % of pixels differ by more than 10. The new build is about 21 % faster here. New log format (`[I]` / `[W]` prefixes, `ETA` after the step rate) still parses: `parse_step` read every sampling step off the new log. The new build logs `--fa is deprecated` and an `auto-fit` plan that put all three models on Metal.
+
+## Not tested
+
+- FLUX.1 schnell on either build (download stopped half way by the owner's change of plan) and any Wan 2.1 clip (dropped).
+- The app's own Images tab path end to end (the run used the same argument list from the CLI, not the backend).
+- CUDA or Windows builds of `5dcfa79`; `--offload-to-cpu` and `--auto-fit` off macOS.
+- MiniMax H3, by rule.
 
 ## Change of plan (owner, 2026-11-14, mid-task)
 

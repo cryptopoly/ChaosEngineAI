@@ -1012,6 +1012,8 @@ def phase_1(cap: Capability) -> PhaseResult:
     # a fail). Then one load per family on disk, smallest first, with speculative
     # decoding ticked: the tested families route to TensorFold only that way, so a
     # load that comes back on another engine is a silent fallback, not a pass.
+    # First, the status route's family report must equal the installed binary's
+    # own family list with every family curated (scripts/e2e_phases/tensorfold_families.py).
     # Nanbeige needs an M5 or later Mac (TensorFold refuses M1-M4 by name), and
     # MiniMax a 256 GB Mac: those skip with the reason. Never downloads; skips when
     # TensorFold is absent or nothing of these families is on disk.
@@ -1023,9 +1025,16 @@ def phase_1(cap: Capability) -> PhaseResult:
             ("Nanbeige4.3", ("Nanbeige/Nanbeige4.3-33B-INT4", "Nanbeige/Nanbeige4.3-33B")),
             ("MiniMax-M3.1-Flash", ("BobClawblaw/MiniMax-M3.1-Flash-MLX-mix256k", "BobClawblaw/MiniMax-M3.1-Flash-MLX-mix34")),
         )
+        from e2e_phases.tensorfold_families import family_report_check
+
+        report_status, report_reason, report = family_report_check(_cli_json)  # FU-168: table from the binary
+        if report_status == "fail":
+            return "fail", f"family report: {report_reason}", report
         if not cap.tensorfold_available:
             return "skip", "TensorFold not installed", {}
         if cap.tensorfold_native:
+            if report_status == "pass":
+                return "pass", "", {"familyReport": report}
             return "skip", "CUDA host: LFM2.5 is covered by the TensorFold 1.x native check", {}
         missing = [repo for _name, repos in families for repo in repos if repo not in cap.tensorfold_models]
         if missing:
@@ -1061,8 +1070,10 @@ def phase_1(cap: Capability) -> PhaseResult:
             results[name] = f"pass ({detail.get('engine')})"
             ran += 1
         if not ran:
+            if report_status == "pass":
+                return "pass", "", {"results": results, "familyReport": report}
             return "skip", f"no FU-168 family checkpoint loaded: {results}", {"results": results}
-        return "pass", "", {"results": results}
+        return "pass", "", {"results": results, "familyReport": report}
 
     # 1d3. Kolibri 1 (FU-103). mlx-lm ships no ``kolibri1`` architecture, so the
     # worker loads the one vendored in backend_service/mlx_models; a load that

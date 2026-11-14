@@ -231,6 +231,7 @@ def tensorfold_status() -> dict[str, Any]:
             "supported": state["gate"]["offered"],
             "engine": "native",
             "gate": state["gate"],
+            "families": state["families"],
         }
     installed = _is_installed()
     version, installed_at, ref = _read_version_file()

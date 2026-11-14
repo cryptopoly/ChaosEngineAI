@@ -318,7 +318,7 @@ def native_status() -> dict[str, Any]:
     """The capability gate plus registry, for the Setup page."""
     key = native.platform_key()
     binary = native.find_binary()
-    caps = native.probe_capabilities(binary) if binary else None
+    caps = native.cached_capabilities(binary)
     gpu = native.read_gpu() if key != "macos-arm64" else None
     asset = native.release_asset(key)
     smallest = min((native.estimate_vram_gb(m, m.ctx_ref, drafts=False) for m in native.NATIVE_MODELS), default=None)
@@ -351,6 +351,9 @@ def native_status() -> dict[str, Any]:
         "backends": list(caps.backends) if caps else [],
         "grammar": bool(binary) and _grammar_present(binary),
         "models": native.supported_models(caps, free_gb=free_gb),
+        # What the installed binary serves, from its own `capabilities --json`
+        # joined to the curated rows (FU-168); empty without a binary.
+        "families": native.family_report(caps),
         "needsBinaryPath": key == "windows-x86_64" and asset is None,
     }
 

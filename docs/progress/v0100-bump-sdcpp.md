@@ -16,7 +16,13 @@ Move `SDCPP_REF` from `3f8527a` (master-929, 2026-09-27) to the newest `master` 
 - [ ] Tests.
 - [ ] CLAUDE.md row, check-upstreams note.
 
-## Downloads (owner-approved, HF cache)
+## Change of plan (owner, 2026-11-14, mid-task)
+
+FLUX.1 schnell and Wan 2.1 are too old to be the regression test. Primary image check is now the `leejet/Qwen-Image-2.1-GGUF-q4k` row through the app's own arguments, old binary and new binary, same seed, size and steps. FLUX.1 schnell only if its files were already complete (they were not: download stopped at 5.3 of 6.9 GB for the GGUF, `.incomplete` left in the HF cache, nothing else of FLUX fetched). Wan clip dropped (no app path, FU-176); no Wan file was fetched. The only sd.cpp video row in the app is MiniMax H3, which is never run, so there is no video run.
+
+Qwen-Image 2.1 files (Hub list, 2026-11-14): `leejet/Qwen-Image-2.1-GGUF/qwen_image_2.1-Q4_K.gguf` (4.20 GB), `Comfy-Org/Qwen-Image-2.1/vae/qwen_image_2.1_vae_bf16.safetensors` (0.68 GB, already cached), `Qwen/Qwen3-VL-8B-Instruct-GGUF/Qwen3VL-8B-Instruct-Q4_K_M.gguf` (5.03 GB). Supported at both pins (`docs/qwen_image_2.1.md` at `3f8527a`, `docs/models/qwen_image_2.1.md` at `5dcfa79`).
+
+## Original download plan (superseded)
 
 FLUX.1 schnell sd.cpp row (`image_models.py`): `leejet/FLUX.1-schnell-gguf/flux1-schnell-q4_k.gguf` (6.88 GB), `second-state/FLUX.1-schnell-GGUF/ae.safetensors` (0.34 GB) and `t5xxl-Q8_0.gguf` (5.20 GB), `comfyanonymous/flux_text_encoders/clip_l.safetensors` (already cached).
 

@@ -1,0 +1,280 @@
+{
+ "_doc": "Shared cases for backend_service/helpers/time_estimate.py and src/utils/timeEstimate.ts (FU-165). expected is what both must return exactly; measured/tolerancePct, when present, is a real run the expected figure must be within.",
+ "cases": [
+  {
+   "name": "Wan 2.2 TI2V 5B, 832x480x49 at 20 steps (RTX 4090 measured 34.5 s)",
+   "kind": "video",
+   "catalog": 275,
+   "ref": {
+    "width": 1280,
+    "height": 704,
+    "frames": 121,
+    "steps": 20
+   },
+   "request": {
+    "width": 832,
+    "height": 480,
+    "frames": 49,
+    "steps": 20
+   },
+   "measured": 34.5,
+   "tolerancePct": 6,
+   "expected": 32.5
+  },
+  {
+   "name": "Wan 2.2 TI2V 5B at its reference gives the catalog figure",
+   "kind": "video",
+   "catalog": 275,
+   "ref": {
+    "width": 1280,
+    "height": 704,
+    "frames": 121,
+    "steps": 20
+   },
+   "request": {
+    "width": 1280,
+    "height": 704,
+    "frames": 121,
+    "steps": 20
+   },
+   "expected": 275.0
+  },
+  {
+   "name": "Wan 2.2 TI2V 5B, reference size at 40 steps",
+   "kind": "video",
+   "catalog": 275,
+   "ref": {
+    "width": 1280,
+    "height": 704,
+    "frames": 121,
+    "steps": 20
+   },
+   "request": {
+    "width": 1280,
+    "height": 704,
+    "frames": 121,
+    "steps": 40
+   },
+   "expected": 539.0
+  },
+  {
+   "name": "No reference: flat catalog figure",
+   "kind": "video",
+   "catalog": 60,
+   "ref": null,
+   "request": {
+    "width": 1920,
+    "height": 1080,
+    "frames": 241,
+    "steps": 50
+   },
+   "expected": 60.0
+  },
+  {
+   "name": "No catalog time: null",
+   "kind": "image",
+   "catalog": null,
+   "ref": {
+    "width": 1024,
+    "height": 1024,
+    "frames": 1,
+    "steps": 4
+   },
+   "request": {
+    "width": 512,
+    "height": 512,
+    "frames": 1,
+    "steps": 4
+   },
+   "expected": null
+  },
+  {
+   "name": "Reference missing steps: flat",
+   "kind": "image",
+   "catalog": 5.5,
+   "ref": {
+    "width": 1024,
+    "height": 1024,
+    "frames": 1
+   },
+   "request": {
+    "width": 2048,
+    "height": 2048,
+    "frames": 1,
+    "steps": 4
+   },
+   "expected": 5.5
+  },
+  {
+   "name": "Zero width: flat",
+   "kind": "image",
+   "catalog": 5.5,
+   "ref": {
+    "width": 1024,
+    "height": 1024,
+    "frames": 1,
+    "steps": 4
+   },
+   "request": {
+    "width": 0,
+    "height": 1024,
+    "frames": 1,
+    "steps": 4
+   },
+   "expected": 5.5
+  },
+  {
+   "name": "FLUX.2 Klein diffusers 2048 px, image default share (CUDA measured 11 to 13 s)",
+   "kind": "image",
+   "engine": null,
+   "catalog": 5.5,
+   "ref": {
+    "width": 1024,
+    "height": 1024,
+    "frames": 1,
+    "steps": 4
+   },
+   "request": {
+    "width": 2048,
+    "height": 2048,
+    "frames": 1,
+    "steps": 4
+   },
+   "measured": 12.0,
+   "tolerancePct": 20,
+   "expected": 12.6
+  },
+  {
+   "name": "Image rows ignore frames",
+   "kind": "image",
+   "engine": null,
+   "catalog": 5.5,
+   "ref": {
+    "width": 1024,
+    "height": 1024,
+    "frames": 1,
+    "steps": 4
+   },
+   "request": {
+    "width": 1024,
+    "height": 1024,
+    "frames": 97,
+    "steps": 4
+   },
+   "expected": 5.5
+  },
+  {
+   "name": "mflux row uses the mflux default share, half size half steps",
+   "kind": "image",
+   "engine": "mflux",
+   "catalog": 40,
+   "ref": {
+    "width": 1024,
+    "height": 1024,
+    "frames": 1,
+    "steps": 8
+   },
+   "request": {
+    "width": 512,
+    "height": 512,
+    "frames": 1,
+    "steps": 4
+   },
+   "expected": 13.7
+  },
+  {
+   "name": "Row fixed wins over the engine default",
+   "kind": "image",
+   "engine": "mflux",
+   "catalog": 40,
+   "ref": {
+    "width": 1024,
+    "height": 1024,
+    "frames": 1,
+    "steps": 8,
+    "fixed": 0.5
+   },
+   "request": {
+    "width": 512,
+    "height": 512,
+    "frames": 1,
+    "steps": 4
+   },
+   "expected": 22.5
+  },
+  {
+   "name": "Set schedule: steps ignored, frames still count",
+   "kind": "video",
+   "catalog": 128,
+   "ref": {
+    "width": 768,
+    "height": 512,
+    "frames": 97,
+    "steps": 8,
+    "ignoresSteps": true
+   },
+   "request": {
+    "width": 768,
+    "height": 512,
+    "frames": 193,
+    "steps": 30
+   },
+   "expected": 349.2
+  },
+  {
+   "name": "Missing frames and steps count as the reference",
+   "kind": "video",
+   "catalog": 128,
+   "ref": {
+    "width": 768,
+    "height": 512,
+    "frames": 97,
+    "steps": 8
+   },
+   "request": {
+    "width": 1024,
+    "height": 576,
+    "frames": null,
+    "steps": null
+   },
+   "expected": 227.4
+  },
+  {
+   "name": "Row quad override",
+   "kind": "video",
+   "catalog": 100,
+   "ref": {
+    "width": 768,
+    "height": 512,
+    "frames": 97,
+    "steps": 8,
+    "quad": 20000
+   },
+   "request": {
+    "width": 1536,
+    "height": 1024,
+    "frames": 97,
+    "steps": 8
+   },
+   "expected": 1137.5
+  },
+  {
+   "name": "Huge request stays finite",
+   "kind": "video",
+   "catalog": 100,
+   "ref": {
+    "width": 768,
+    "height": 512,
+    "frames": 97,
+    "steps": 8
+   },
+   "request": {
+    "width": 100000,
+    "height": 100000,
+    "frames": 100000,
+    "steps": 100000
+   },
+   "expected": 3.393122473776195e+20
+  }
+ ]
+}

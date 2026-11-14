@@ -9,6 +9,7 @@ from types import SimpleNamespace
 from typing import Any, Callable
 
 from backend_service.mcp_bridge import models as bridge_models
+from backend_service.helpers.time_estimate import variant_seconds
 from backend_service.mcp_bridge.jobs import STORE
 
 
@@ -337,7 +338,7 @@ def generate_image(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
         return output, notes + _artifact_notes(art)
 
     return _submitted(STORE.submit("image", str(variant.get("name") or variant["id"]), run,
-                                   estimate_seconds=variant.get("estimatedGenerationSeconds")))
+                                   estimate_seconds=variant_seconds(variant, "image", body.width, body.height, 1, fields.get("steps"))))
 
 
 def generate_video(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
@@ -428,7 +429,8 @@ def generate_video(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
         return output, notes + _artifact_notes(art)
 
     return _submitted(STORE.submit("video", str(variant.get("name") or variant["id"]), run,
-                                   estimate_seconds=variant.get("estimatedGenerationSeconds")))
+                                   estimate_seconds=variant_seconds(variant, "video", body.width, body.height, body.numFrames,
+                                                                    fields.get("steps"))))
 
 
 def speak(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:

@@ -1,5 +1,6 @@
 import type { ModelFit } from "./models";
 import type { RecommendedSettings } from "./recommendations";
+import type { EstimateRef } from "../utils/timeEstimate";
 
 export type VideoDiscoverTaskFilter = "all" | "txt2video" | "img2video" | "video2video";
 
@@ -58,6 +59,8 @@ export interface VideoModelVariant {
   primaryLocalRepo?: string | null;
   localStatusReason?: string | null;
   estimatedGenerationSeconds: number | null;
+  /** FU-165: the settings the catalog time was measured at; the Studio scales the time from it. */
+  estimateRef?: EstimateRef | null;
   onDiskBytes?: number | null;
   onDiskGb?: number | null;
   /** FU-054: per-file size for GGUF-pinned variants. ``onDiskBytes`` is the

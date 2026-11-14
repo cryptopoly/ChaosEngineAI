@@ -94,6 +94,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "defaultDurationSeconds": 4.0,
                 "note": "Small, fast, Apache 2.0 — best starter pick for a local video runtime.",
                 "estimatedGenerationSeconds": 45.0,
+                "estimateRef": {"width": 768, "height": 512, "frames": 97, "steps": 30},  # FU-165 reference: 4 s x 24 fps + 1; LTX-Video 30-step entry in recommended_settings
                 "slowOn": [SLOW_CPU_ONLY_EXPECTED],
                 "availableLocally": False,
                 "releaseDate": "2024-11",
@@ -116,6 +117,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "defaultDurationSeconds": 4.0,
                 "note": "GGUF Q4_K_M — quantizes the transformer, but the LTX pipeline still needs roughly a 10 GB runtime envelope for text encoder/VAE/buffers.",
                 "estimatedGenerationSeconds": 50.0,
+                "estimateRef": {"width": 768, "height": 512, "frames": 97, "steps": 30},  # FU-165 reference: 4 s x 24 fps + 1; LTX-Video 30-step entry
                 "slowOn": [SLOW_CPU_ONLY_EXPECTED],
                 "availableLocally": False,
                 "releaseDate": "2024-12",
@@ -138,6 +140,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "defaultDurationSeconds": 4.0,
                 "note": "GGUF Q6_K — mid-point between Q4 footprint and Q8 fidelity.",
                 "estimatedGenerationSeconds": 48.0,
+                "estimateRef": {"width": 768, "height": 512, "frames": 97, "steps": 30},  # FU-165 reference: 4 s x 24 fps + 1; LTX-Video 30-step entry
                 "slowOn": [SLOW_CPU_ONLY_EXPECTED],
                 "availableLocally": False,
                 "releaseDate": "2024-12",
@@ -160,6 +163,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "defaultDurationSeconds": 4.0,
                 "note": "GGUF Q8_0 — near-bf16 quality at roughly half the memory.",
                 "estimatedGenerationSeconds": 46.0,
+                "estimateRef": {"width": 768, "height": 512, "frames": 97, "steps": 30},  # FU-165 reference: 4 s x 24 fps + 1; LTX-Video 30-step entry
                 "slowOn": [SLOW_CPU_ONLY_EXPECTED],
                 "availableLocally": False,
                 "releaseDate": "2024-12",
@@ -216,6 +220,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                     "community licence (free below US$10M annual revenue)."
                 ),
                 "estimatedGenerationSeconds": 70.0,
+                "estimateRef": {"width": 768, "height": 512, "frames": 97, "steps": 8, "ignoresSteps": True},  # FU-165 reference: 4 s x 24 fps + 1; distilled 8-step schedule
                 "slowOn": [SLOW_CPU_ONLY_EXPECTED],
                 "availableLocally": False,
                 "releaseDate": "2026-03",
@@ -246,6 +251,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                     "Weights: LTX-2 community licence (free below US$10M annual revenue)."
                 ),
                 "estimatedGenerationSeconds": 60.0,
+                "estimateRef": {"width": 768, "height": 512, "frames": 97, "steps": 8, "ignoresSteps": True},  # FU-165 reference: 4 s x 24 fps + 1; distilled 8-step schedule
                 "slowOn": [SLOW_CPU_ONLY_EXPECTED],
                 "availableLocally": False,
                 "releaseDate": "2026-05",
@@ -273,6 +279,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                     "picture and an end picture. Weights: LTX-2 community licence (free below US$10M annual revenue)."
                 ),
                 "estimatedGenerationSeconds": 240.0,
+                "estimateRef": {"width": 768, "height": 512, "frames": 97, "steps": 30},  # FU-165 reference: 4 s x 24 fps + 1; 30 steps per the row note
                 "slowOn": [SLOW_CPU_ONLY_EXPECTED],
                 "availableLocally": False,
                 "releaseDate": "2026-05",
@@ -323,6 +330,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 # ignored. Real-world wall time on M4 Max at 768×512 / 4 s
                 # lands around 90 s including model load.
                 "estimatedGenerationSeconds": 1130.0,  # same sampler as LTX-2.3 distilled (measured there)
+                "estimateRef": {"width": 768, "height": 512, "frames": 33, "steps": 8, "ignoresSteps": True},  # FU-165 reference: the LTX-2.3 distilled run it copies: 768x512, 33 frames
                 "slowOn": [SLOW_APPLE_BF16_EXPECTED],
                 "availableLocally": False,
                 "releaseDate": "2026-01",
@@ -382,6 +390,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 # 2.3 weight refresh; wall time tracks the LTX-2 distilled
                 # entry within measurement noise.
                 "estimatedGenerationSeconds": 1130.0,  # measured with the footprint above (34 s/frame)
+                "estimateRef": {"width": 768, "height": 512, "frames": 33, "steps": 8, "ignoresSteps": True},  # FU-165 reference: measured at 768x512, 33 frames
                 "slowOn": [SLOW_APPLE_LTX23_BF16_MEASURED],
                 "availableLocally": False,
                 "releaseDate": "2026-03",
@@ -415,6 +424,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 # model load; 40 s for 25 frames at 512x320. LTX-2.3 through mlx-video took
                 # 1130 s for 33 frames.
                 "estimatedGenerationSeconds": 155.0,
+                "estimateRef": {"width": 768, "height": 512, "frames": 97, "steps": 8, "ignoresSteps": True},  # FU-165 reference: measured at 768x512, 97 frames; set 8 + 3 schedule
                 "downloadFiles": [
                     "transformer-distilled-1.1.safetensors",
                     "connector.safetensors",
@@ -461,6 +471,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                     "LTX-2 community licence (free below US$10M annual revenue)."
                 ),
                 "estimatedGenerationSeconds": 128.0,  # measured, see above
+                "estimateRef": {"width": 768, "height": 512, "frames": 97, "steps": 8, "ignoresSteps": True},  # FU-165 reference: measured at 768x512, 97 frames; set 8 + 3 schedule
                 "downloadFiles": [
                     "transformer-distilled.safetensors",
                     "connector.safetensors",
@@ -544,6 +555,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "defaultDurationSeconds": 4.0,
                 "note": "1.3B transformer + UMT5 text encoder. ~16GB on disk. Best starter pick for trying local video end-to-end on modest hardware.",
                 "estimatedGenerationSeconds": 60.0,
+                "estimateRef": {"width": 832, "height": 480, "frames": 65, "steps": 30},  # FU-165 reference: 4 s x 16 fps + 1; Wan 30-step entry in recommended_settings
                 "slowOn": [SLOW_APPLE_WAN, SLOW_CPU_ONLY_EXPECTED],
                 "availableLocally": False,
                 "releaseDate": "2025-02",
@@ -568,6 +580,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "defaultDurationSeconds": 5.0,
                 "note": "Wan 2.1 quality tier. ~45GB. Same WanPipeline class as the 1.3B and Wan 2.2.",
                 "estimatedGenerationSeconds": 180.0,
+                "estimateRef": {"width": 832, "height": 480, "frames": 81, "steps": 30},  # FU-165 reference: 5 s x 16 fps + 1; Wan 30-step entry
                 "slowOn": [SLOW_APPLE_WAN, SLOW_CPU_ONLY_EXPECTED],
                 "availableLocally": False,
                 "releaseDate": "2025-02",
@@ -592,6 +605,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "defaultDurationSeconds": 4.0,
                 "note": "Q4_K_M — smallest quantized 1.3B. The transformer is tiny, but UMT5/VAE keep the full runtime envelope in the 12-23 GB range depending on device/offload.",
                 "estimatedGenerationSeconds": 70.0,
+                "estimateRef": {"width": 832, "height": 480, "frames": 65, "steps": 30},  # FU-165 reference: 4 s x 16 fps + 1; Wan 30-step entry
                 "slowOn": [SLOW_APPLE_WAN, SLOW_CPU_ONLY_EXPECTED],
                 "availableLocally": False,
                 "releaseDate": "2025-03",
@@ -615,6 +629,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "defaultDurationSeconds": 4.0,
                 "note": "Q6_K — mid-point between Q4 footprint and Q8 fidelity; still carries the shared UMT5/VAE runtime overhead.",
                 "estimatedGenerationSeconds": 68.0,
+                "estimateRef": {"width": 832, "height": 480, "frames": 65, "steps": 30},  # FU-165 reference: 4 s x 16 fps + 1; Wan 30-step entry
                 "slowOn": [SLOW_APPLE_WAN, SLOW_CPU_ONLY_EXPECTED],
                 "availableLocally": False,
                 "releaseDate": "2025-03",
@@ -638,6 +653,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "defaultDurationSeconds": 4.0,
                 "note": "Q8_0 — near-bf16 quality at roughly half the transformer footprint; shared UMT5/VAE still dominate peak RAM/VRAM.",
                 "estimatedGenerationSeconds": 65.0,
+                "estimateRef": {"width": 832, "height": 480, "frames": 65, "steps": 30},  # FU-165 reference: 4 s x 16 fps + 1; Wan 30-step entry
                 "slowOn": [SLOW_APPLE_WAN, SLOW_CPU_ONLY_EXPECTED],
                 "availableLocally": False,
                 "releaseDate": "2025-03",
@@ -663,6 +679,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "defaultDurationSeconds": 5.0,
                 "note": "Q4_K_M — unlocks Wan 2.1 14B on 24 GB VRAM (RTX 4090) without bnb.",
                 "estimatedGenerationSeconds": 220.0,
+                "estimateRef": {"width": 832, "height": 480, "frames": 81, "steps": 30},  # FU-165 reference: 5 s x 16 fps + 1; Wan 30-step entry
                 "slowOn": [SLOW_APPLE_WAN, SLOW_CPU_ONLY_EXPECTED],
                 "availableLocally": False,
                 "releaseDate": "2025-03",
@@ -686,6 +703,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "defaultDurationSeconds": 5.0,
                 "note": "Q6_K — mid-point between Q4 footprint and Q8 fidelity.",
                 "estimatedGenerationSeconds": 210.0,
+                "estimateRef": {"width": 832, "height": 480, "frames": 81, "steps": 30},  # FU-165 reference: 5 s x 16 fps + 1; Wan 30-step entry
                 "slowOn": [SLOW_APPLE_WAN, SLOW_CPU_ONLY_EXPECTED],
                 "availableLocally": False,
                 "releaseDate": "2025-03",
@@ -709,6 +727,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "defaultDurationSeconds": 5.0,
                 "note": "Q8_0 — near-bf16 quality at roughly half the transformer footprint.",
                 "estimatedGenerationSeconds": 200.0,
+                "estimateRef": {"width": 832, "height": 480, "frames": 81, "steps": 30},  # FU-165 reference: 5 s x 16 fps + 1; Wan 30-step entry
                 "slowOn": [SLOW_APPLE_WAN, SLOW_CPU_ONLY_EXPECTED],
                 "availableLocally": False,
                 "releaseDate": "2025-03",
@@ -746,6 +765,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                     "(non-commercial)."
                 ),
                 "estimatedGenerationSeconds": 9.0,
+                "estimateRef": {"width": 832, "height": 480, "frames": 65, "steps": 4},  # FU-165 reference: 4 s x 16 fps + 1; row defaultSteps
                 "slowOn": [SLOW_APPLE_WAN, SLOW_CPU_ONLY_EXPECTED],
                 "availableLocally": False,
                 "releaseDate": "2025-04",
@@ -777,6 +797,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                     "(non-commercial)."
                 ),
                 "estimatedGenerationSeconds": 24.0,
+                "estimateRef": {"width": 832, "height": 480, "frames": 81, "steps": 4},  # FU-165 reference: 5 s x 16 fps + 1; row defaultSteps
                 "slowOn": [SLOW_APPLE_WAN, SLOW_CPU_ONLY_EXPECTED],
                 "availableLocally": False,
                 "releaseDate": "2025-04",
@@ -825,6 +846,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 ),
                 # Measured on an RTX 4090: 1280x704, 121 frames, 20 steps = 273 s, 18.5 GB peak VRAM.
                 "estimatedGenerationSeconds": 275.0,
+                "estimateRef": {"width": 1280, "height": 704, "frames": 121, "steps": 20},  # FU-165 reference: measured on an RTX 4090 at 1280x704, 121 frames, 20 steps
                 "slowOn": [SLOW_APPLE_WAN, SLOW_CPU_ONLY_EXPECTED],
                 "availableLocally": False,
                 "releaseDate": "2025-07",
@@ -868,6 +890,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                     "use the TI2V-5B variant above."
                 ),
                 "estimatedGenerationSeconds": 300.0,
+                "estimateRef": {"width": 832, "height": 480, "frames": 81, "steps": 30},  # FU-165 reference: 5 s x 16 fps + 1; Wan 2.2 A14B 30-step entry
                 "slowOn": [SLOW_APPLE_WAN, SLOW_CPU_ONLY_EXPECTED],
                 "availableLocally": False,
                 "releaseDate": "2025-07",
@@ -907,6 +930,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "defaultDurationSeconds": 5.0,
                 "note": "High quality. Runs on 64 GB+ Apple Silicon Max/Ultra or 40GB+ CUDA (24 GB CUDA with NF4). Sequential text-encoder loading keeps the diffusion phase under ~28 GB resident.",
                 "estimatedGenerationSeconds": 420.0,
+                "estimateRef": {"width": 1280, "height": 720, "frames": 121, "steps": 50},  # FU-165 reference: 5 s x 24 fps + 1; HunyuanVideo 50-step entry
                 "slowOn": [SLOW_CPU_ONLY_EXPECTED],
                 "availableLocally": False,
                 "releaseDate": "2024-12",
@@ -939,6 +963,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "defaultDurationSeconds": 5.4,
                 "note": "Apache 2.0, balanced footprint, strong motion quality. Diffusers' bf16/offload path lands around a 22 GB runtime envelope.",
                 "estimatedGenerationSeconds": 150.0,
+                "estimateRef": {"width": 848, "height": 480, "frames": 163, "steps": 64},  # FU-165 reference: 5.4 s x 30 fps + 1; Mochi 64-step entry
                 "slowOn": [SLOW_CPU_ONLY_EXPECTED],
                 "availableLocally": False,
                 "releaseDate": "2024-10",

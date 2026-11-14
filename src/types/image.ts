@@ -1,5 +1,6 @@
 import type { ModelFit } from "./models";
 import type { RecommendedSettings } from "./recommendations";
+import type { EstimateRef } from "../utils/timeEstimate";
 
 export type ImageGalleryRuntimeFilter = "all" | "diffusers" | "placeholder" | "warning";
 export type ImageGalleryOrientationFilter = "all" | "square" | "portrait" | "landscape";
@@ -94,6 +95,8 @@ export interface ImageModelVariant {
   availableLocally: boolean;
   hasLocalData?: boolean;
   estimatedGenerationSeconds: number | null;
+  /** FU-165: the settings the catalog time was measured at; the Studio scales the time from it. */
+  estimateRef?: EstimateRef | null;
   downloads?: number | null;
   likes?: number | null;
   downloadsLabel?: string | null;

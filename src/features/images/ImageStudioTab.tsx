@@ -9,6 +9,7 @@ import { RecommendedSettingsPanel } from "../../components/RecommendedSettingsPa
 import { ActionMenu, type ActionMenuItem } from "../../components/ActionMenu";
 import { Disclosure } from "../../components/Disclosure";
 import { RunEstimateStrip } from "../../components/RunEstimateStrip";
+import { variantSeconds } from "../../utils/timeEstimate";
 import { DisclosureMemoryContext, useDisclosureMemory } from "../../components/studioDisclosureMemory";
 import { runEstimateBasis, summaryLine } from "../../components/studioSummary";
 import { imageMenuItems } from "./imageMenu";
@@ -1040,7 +1041,7 @@ export function ImageStudioTab({
 
           <div className="studio-shell__estimate">
             <RunEstimateStrip
-              seconds={selectedImageVariant?.estimatedGenerationSeconds ?? null}
+              seconds={variantSeconds(selectedImageVariant, "image", { width: imageWidth, height: imageHeight, steps: imageSteps })}
               peakGb={selectedImageVariant && imageSafety.modelFootprintGb > 0 ? imageSafety.estimatedPeakGb : null}
               totalGb={selectedImageVariant && imageSafety.modelFootprintGb > 0 ? imageSafety.deviceMemoryGb : null}
               diskMb={null}

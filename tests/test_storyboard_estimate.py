@@ -45,6 +45,23 @@ class EstimateTests(StoreCase):
         self.assertEqual((out["clips"], out["stills"], out["seconds"], out["peakGb"]), (1, 0, None, None))
         self.assertEqual(out["missing"], ["No video model is installed."])
 
+    def test_catalog_time_scales_with_project_size_and_shot_frames(self):
+        # FU-165: a row with estimateRef is scaled to the project's size and the shot's frames.
+        image = {**IMAGE, "estimateRef": {"width": 1280, "height": 720, "frames": 1, "steps": 4}}
+        video = {**VIDEO, "estimateRef": {"width": 1280, "height": 720, "frames": 96, "steps": 8}}
+        p = self.new(shots=1)
+        p.defaults.width, p.defaults.height, p.defaults.fps = 1280, 720, 24
+        at_ref = estimate(p, self.folder(p), image_variant=image, video_variant=video, missing=[], hardware=HW)
+        self.assertEqual(at_ref["seconds"], 45.0)  # 4 s x 24 fps = 96 frames: the reference, so 5 + 40
+        p.defaults.width, p.defaults.height = 2560, 1440
+        doubled = estimate(p, self.folder(p), image_variant=image, video_variant=video, missing=[], hardware=HW)
+        self.assertGreater(doubled["seconds"], at_ref["seconds"] * 2)
+        p.defaults.width, p.defaults.height = 1280, 720
+        p = self.op(p, "edit_shot", shotId=p.shots[0].id, seconds=8)
+        p.defaults.width, p.defaults.height, p.defaults.fps = 1280, 720, 24
+        longer = estimate(p, self.folder(p), image_variant=image, video_variant=video, missing=[], hardware=HW)
+        self.assertGreater(longer["seconds"], at_ref["seconds"])
+
     def test_nothing_to_make(self):
         p = self.new()
         out = estimate(p, self.folder(p), image_variant=IMAGE, video_variant=VIDEO, missing=[], hardware=HW)

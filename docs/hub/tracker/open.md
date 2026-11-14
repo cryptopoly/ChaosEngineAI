@@ -1,13 +1,22 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 94 rows with work, decisions or watch items still open, newest first.
+summary: 95 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-178 · llama.cpp 1.0 features not wired — Open</summary>
+
+**Status or trigger:** Open
+
+**Notes:** b12387 (llama.cpp 1.0) adds: **FP8 KV** (`--cache-type-k/v f8_e4m3`): aborts llama-server on Metal at load (`SET_ROWS` unsupported on MTL0, with or without flash attention); needs a CUDA test, then a native-strategy bit option gated to CUDA and to the help list, plus a Metal refusal, because pre-validation would pass it. Quantized KV in general: the native strategy emits only f16 for llama.cpp; q8_0 / q4_0 run fine on Metal (8B q8_0 about 35 tok/s vs 37-40 f16 with flash attention) and halve/quarter KV memory, so a `cacheBits` 8/4 option on native would be cheap. **MTP speculative decoding** (`--spec-type draft-mtp`): already wired via `_mtp.py` tensor probe and repo aliases, never run on this binary (no MTP GGUF on disk; Qwen3.8-27B is MLX only here); needs a Qwen3.8-27B MTP GGUF run (load time, tok/s, acceptance) and the app to surface acceptance for llama.cpp (`dflashAcceptanceRate` is null on the GGUF lane). **DFlash 2**: llama.cpp now has a separate `draft-dflash2` type, while the app maps every `dflash-` drafter to `draft-dflash` on the assumption that v2 is detected from metadata; check with a DFlash 2 GGUF (z-lab Qwen3.8-27B-DFlash2 is MLX only here). **MoE expert cache** (`--cpu-moe`, `--n-cpu-moe N`, `--moe-cache-mib N`, `--moe-cache-cpu-share F`): lets a large MoE run with experts in host RAM and a GPU-side cache; the app needs a Fit/memory rule (when the model does not fit in VRAM on CUDA), a setting, and an estimate in the memory planner; on Apple unified memory it brings little. Also: `--load-mode` (now used for shared-memory NVIDIA), `--reasoning-effort/-budget` (could replace template switches), and the server's no-API-key warning. Measured on the Mac: b12387 decodes about 7-12% slower than Homebrew b12110 on Llama-3.1-8B Q4_K_M. **Also found 2026-11-14:** b12387 decodes about 7 to 12 % slower than the May build and Homebrew b12110 on Llama-3.1-8B (indicative, another job ran at the same time): re-measure alone before the release and decide whether to hold the pin; in a source run the app finds Homebrew's llama-server before `~/.chaosengine/bin` (PATH first).
+
+</details>
 
 <details>
 <summary>FU-177 · Show the TensorFold family report in Setup and Models — Open (2026-11-14): backend done (FU-168), no UI.</summary>

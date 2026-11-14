@@ -27,8 +27,14 @@ Python release: ``src/tensorfold/families/*/__init__.py`` ``MODEL_TYPES`` /
 binary does not serve carry ``native=False``. The rows after Ternary Bonsai 2
 were added from the 1.2.7 binary itself (FU-168); a row with no
 ``tested_repos`` accounts for a family the binary reports that the app cannot
-offer, and its ``note`` says why. Re-check it when the pin in
+offer, and its ``note`` says why. The last four rows are CUDA-only families
+the Metal build never lists. Re-check it when the pin in
 ``scripts/install-tensorfold.sh`` or ``NATIVE_VERSION`` moves.
+
+Which families the *installed* binary serves is read at runtime
+(``_tensorfold_native.family_report`` / ``serves_family``); ``native`` is the
+answer only when no binary is installed, and marks the rows the older Python
+install keeps serving (D-77).
 """
 
 from __future__ import annotations
@@ -72,6 +78,11 @@ class TensorFoldFamily:
     # ``capabilities --json`` lacks the family, or its docs say it refuses
     # it); only the older Python install (0.6.6) can. Checked at v1.2.7.
     native: bool = True
+    # True when the binary lists this row's ``model_type`` yet refuses its
+    # checkpoint by name (1.2.7 serves the dense Gemma 4 31B and 12B under
+    # ``gemma4`` and refuses the 26B-A4B), so the binary's family list is no
+    # evidence that it serves this row. Re-check when NATIVE_VERSION moves.
+    native_refuses: bool = False
     # What the app cannot offer and why (needs conversion, two Macs, no
     # released checkpoint, a speech model, ...). Required when
     # ``tested_repos`` is empty: such a row is listed so the binary's family
@@ -123,6 +134,7 @@ TENSORFOLD_FAMILIES: tuple[TensorFoldFamily, ...] = (
         # 1.x serves the dense 31B and 12B and refuses this 26B-A4B; its
         # --drafter-bits takes only 0 or 4.
         native=False,
+        native_refuses=True,
     ),
     TensorFoldFamily(
         key="glm5_flash",
@@ -316,6 +328,56 @@ TENSORFOLD_FAMILIES: tuple[TensorFoldFamily, ...] = (
             "A speech model (fishaudio/drama-3, plotarmordev/drama-3-NVFP4-Pruned) served on /v1/audio/speech, "
             "on Metal and CUDA. The app's TensorFold engine is a chat engine, so it is not offered there; its "
             "licence also limits voice imitation."
+        ),
+    ),
+    # --- CUDA-only families (FU-168): reported by the CUDA builds' `capabilities
+    # --json` (the Windows 1.2.6 source build; `zig/src/native/cuda_families.zig`
+    # at v1.2.7), never by the Metal build. Facts from the v1.2.7 README, recipes
+    # and CHANGELOG; repos checked on the Hub by metadata on 2026-11-14. None is
+    # offered until a served run on a card is recorded (a `NATIVE_MODELS` row with
+    # measured VRAM is the 4090 job). Not exclusive, so a local config never routes
+    # here: `kolibri1` is also the architecture the app's own MLX port loads.
+    TensorFoldFamily(
+        key="dory",
+        title="Nemotron-Labs Dory 1.0 4B",
+        model_types=("dory",),
+        tested_repos=(),
+        note=(
+            "NVIDIA's looped 4B model (nvidia/NVIDIA-Nemotron-Labs-Dory1.0-4B-NVFP4, ModelOpt NVFP4), served at 1 to "
+            "4 passes over its recurrent block. CUDA only (checked upstream on a GB10). Not offered until it has "
+            "been run on a card here."
+        ),
+    ),
+    TensorFoldFamily(
+        key="kolibri1_fp8",
+        title="Kolibri-1 (block FP8)",
+        model_types=("kolibri1",),
+        tested_repos=(),
+        note=(
+            "Aleph Alpha's research checkpoint (Aleph-Alpha/Kolibri-1, block FP8, 74 GB) on one NVIDIA GPU, text "
+            "only, copy drafts. CUDA only (checked upstream on a GB10). The app's Kolibri 1 MLX builds keep loading "
+            "on its own MLX port. Not offered until it has been run on a card here."
+        ),
+    ),
+    TensorFoldFamily(
+        key="lfm2_vl_d1",
+        title="Liquid AI d1-3B",
+        model_types=("lfm2_vl",),
+        tested_repos=(),
+        note=(
+            "LiquidAI/d1-3B, an LFM2-VL decision model served on /v1/systemone and /v1/decisions; TensorFold refuses "
+            "chat requests to it, so the app's chat engine cannot use it. CUDA only."
+        ),
+    ),
+    TensorFoldFamily(
+        key="nemotron_super_vl",
+        title="Nemotron 3.5 Super VL 120B-A12B",
+        model_types=("nemotron_h_omni",),
+        tested_repos=(),
+        note=(
+            "nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-NVFP4 (70.8 GiB of weights, images with --vision) on one "
+            "or two GB10s. CUDA only, and larger than a 24 or 32 GB card. Not offered until it has been run on a "
+            "card here."
         ),
     ),
 )

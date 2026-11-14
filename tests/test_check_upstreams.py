@@ -23,6 +23,11 @@ class PinTests(unittest.TestCase):
         self.assertTrue(cu.read_pin("pyproject.toml", r"dflash-mlx\.git@([0-9a-f]{40})"))
         self.assertTrue(cu.read_pin("e2e/package.json", r'"@playwright/test": "([\d.]+)"'))
 
+    def test_sdcpp_is_pinned_by_one_commit_in_both_scripts(self):
+        build = cu.read_pin("scripts/build-sdcpp.sh", cu.SDCPP_PIN_PATTERN)
+        self.assertRegex(build or "", r"^[0-9a-f]{40}$")
+        self.assertEqual(cu.read_pin("scripts/update-sdcpp.sh", cu.SDCPP_PIN_PATTERN), build)
+
 
 class DecodeTests(unittest.TestCase):
     def test_curl_output_is_read_as_utf8_not_the_console_code_page(self):

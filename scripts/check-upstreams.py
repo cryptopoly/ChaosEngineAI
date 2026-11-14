@@ -157,6 +157,18 @@ def check_dflash() -> Row:
     return result
 
 
+SDCPP_PIN_PATTERN = r'SDCPP_REF="\$\{SDCPP_REF:-([0-9a-f]{40})\}"'
+
+
+def check_sdcpp() -> Row:
+    """stable-diffusion.cpp (the ``sd`` binary): pinned by commit in build-sdcpp.sh, compared with ``master``."""
+    pinned = read_pin("scripts/build-sdcpp.sh", SDCPP_PIN_PATTERN)
+    result = check_commit_pin("stable-diffusion.cpp", "https://github.com/leejet/stable-diffusion.cpp.git", pinned)
+    if result.state == "behind":
+        result.note = "a bump needs a real FLUX.1 schnell image and a Wan 2.1 clip on the new build (task B step 0)"
+    return result
+
+
 def check_playwright() -> Row:
     pinned = read_pin("e2e/package.json", r'"@playwright/test": "([\d.]+)"')
     data = http_json("https://registry.npmjs.org/@playwright%2ftest/latest")
@@ -199,6 +211,7 @@ def collect() -> list[Row]:
             "Chatterbox", "https://github.com/resemble-ai/chatterbox.git",
             read_pin("backend_service/voice_env.py", r'^CHATTERBOX_REF = "([0-9a-f]{7,40})"'),
         ),
+        check_sdcpp(),
         check_playwright(),
     ]
 

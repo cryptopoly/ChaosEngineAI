@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Update the ``sd`` binary from leejet/stable-diffusion.cpp.
 #
-# Companion to ``build-sdcpp.sh`` — fetches the latest commit on the
-# tracked branch and rebuilds in place. Mirrors update-llama-turbo.sh.
+# Companion to ``build-sdcpp.sh``: rebuilds in place when the installed
+# commit differs from the pinned SDCPP_REF. Mirrors update-llama-turbo.sh.
 #
 # Usage:  ./scripts/update-sdcpp.sh
 #
@@ -12,7 +12,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-SDCPP_BRANCH="${SDCPP_BRANCH:-master}"
+# Keep in step with SDCPP_REF in build-sdcpp.sh (tests/test_check_upstreams.py checks they match).
+SDCPP_REF="${SDCPP_REF:-3f8527a46c54ecf4cb4ed6003da8e8982283c73c}"
 SDCPP_DIR="${SDCPP_DIR:-/tmp/stable-diffusion.cpp}"
 INSTALL_DIR="${CHAOSENGINE_BIN_DIR:-$HOME/.chaosengine/bin}"
 VERSION_FILE="$INSTALL_DIR/sd.version"
@@ -40,14 +41,11 @@ else
   echo "No version file found — will rebuild regardless."
 fi
 
-echo "==> fetching latest changes"
+echo "==> fetching"
 git fetch --all --prune
 
-echo "==> checking out $SDCPP_BRANCH"
-git checkout "$SDCPP_BRANCH"
-
-REMOTE_COMMIT=$(git rev-parse "origin/$SDCPP_BRANCH")
-echo "Remote HEAD: $REMOTE_COMMIT"
+REMOTE_COMMIT=$(git rev-parse "$SDCPP_REF^{commit}")
+echo "Pinned commit: $REMOTE_COMMIT"
 
 if [[ "$CURRENT_COMMIT" == "$REMOTE_COMMIT" ]]; then
   echo
@@ -55,8 +53,8 @@ if [[ "$CURRENT_COMMIT" == "$REMOTE_COMMIT" ]]; then
   exit 0
 fi
 
-echo "==> resetting to origin/$SDCPP_BRANCH"
-git reset --hard "origin/$SDCPP_BRANCH"
+echo "==> checking out $REMOTE_COMMIT"
+git checkout --detach "$REMOTE_COMMIT"
 git submodule update --init --recursive
 
 CMAKE_FLAGS=(-DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF)
@@ -86,7 +84,7 @@ chmod +x "$INSTALL_DIR/sd"
 
 {
   git rev-parse HEAD
-  echo "$SDCPP_BRANCH"
+  echo "pinned"
   date -u +"%Y-%m-%dT%H:%M:%SZ"
 } > "$VERSION_FILE"
 

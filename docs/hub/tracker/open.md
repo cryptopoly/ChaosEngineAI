@@ -93,7 +93,7 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 <details>
 <summary>FU-166 · MiniMax H3 (video and image) and newer image/video models: scan, supersedes the FU-082 / FU-125 H3 notes — Researched 2026-11-10</summary>
 
-**Status or trigger:** **Researched 2026-11-10; nothing built; decision D-76 open.**
+**Status or trigger:** **Researched 2026-11-10; D-76 decided 2026-11-14: add support behind a territory tick and licence screen; planned in `docs/plans/v0.10.0-all-singing.md`, not built.**
 
 **Notes:** Size is no longer the blocker: pruned Q4_K_M DiT 11.4 GB, stable-diffusion.cpp has `docs/minimax_h3.md` and `docs/minimax_h3_image.md`, community GGUF / nvfp4 / MLX / few-step builds exist, and the official `MiniMaxAI/MiniMax-H3-Image` (2026-11-03, 6-step, about 16 MP) is out. **Licence is the blocker:** rights are granted only outside the EU, UK, Korea and US (same for H3-Image), so it cannot be shipped by default or tested by an owner in the UK. Vimoo-1.0-Lite and Cosmos3-Edge were looked at and **dropped by the owner 2026-11-11**. Still unrun: Motif-Video-2B, LongCat-Video, plus image families stable-diffusion.cpp already documents (Krea 2, Ideogram 4, Qwen-Image 2.1, HiDream-O1). **Open:** check the pinned sd.cpp for H3 code (only if H3 is revived). Write-up and fit table (4090, M4 Max, 512 GB Mac Studio, DGX Spark): [docs/research/minimax-h3-and-new-video-image-2026-11-10.md](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/docs/research/minimax-h3-and-new-video-image-2026-11-10.md).
 

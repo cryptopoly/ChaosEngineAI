@@ -37,9 +37,12 @@ from __future__ import annotations
 import os
 from typing import Any
 
-# The model a cloned voice uses when the request names none. The owner switches this to "voxcpm2" after the
-# listening check (D-70 answer 2); everything else follows from it (the rows' ``default`` flags below).
-DEFAULT_CLONE_MODEL = "qwen3-tts-0.6b"
+# The cloning model the New voice form preselects, and the one a cloned voice uses when nothing names one. The one
+# place to change it; everything else follows from it (the rows' ``default`` flags below, the form's "Default" tag).
+# Chosen on the measured rows (Apple M4 Max): the 1.7B row is the catalog's "closer likeness" model and costs 3.6 s
+# per 10 s of speech against 3.2 s for the 0.6B, 6.5 GB peak against 4.3 GB; VoxCPM2 (5.2 s, 3.8 GB) and Chatterbox
+# (3.6 s, 3.7 GB; Turbo 2.1 s, English only) have no listening rank yet (D-70: owner's listening check).
+DEFAULT_CLONE_MODEL = "qwen3-tts-1.7b"
 
 _QWEN_LICENCE: dict[str, Any] = {
     "id": "apache-2.0",

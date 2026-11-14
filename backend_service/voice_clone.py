@@ -380,8 +380,19 @@ def _public(item: dict[str, Any]) -> dict[str, Any]:
         "createdAt": item.get("createdAt"),
         "durationS": item.get("durationS"),
         "referenceText": item.get("text", item.get("preview", "")),
+        # The cloning model chosen when the voice was made; None for voices made before it was recorded.
+        "model": item.get("model"),
         "consent": {k: record.get(k) for k in ("speakerName", "basis", "consentedAt", "appVersion")},
     }
+
+
+def recorded_model(model_key: str | None) -> dict[str, Any] | None:
+    """The cloning row a voice was made with, when it is still listed and downloaded; else None."""
+    try:
+        row = clone_model(model_key) if (model_key or "").strip() else None
+    except ValueError:
+        return None
+    return row if row is not None and snapshot_dir(row) is not None else None
 
 
 def create_voice(
@@ -395,8 +406,12 @@ def create_voice(
     permission_confirmed: bool,
     origin: str,
     transcribe: Any,
+    model_key: str = "",
 ) -> dict[str, Any]:
     """Check the permission tick and the voice sample, then save the voice.
+
+    ``model_key`` is the cloning model to speak it with; empty takes the default (``DEFAULT_CLONE_MODEL``, or the
+    downloaded one when the default is not). The row's key is saved with the voice.
 
     ``transcribe(path) -> {"text", "durationS"}`` gives the sample's length and, when ``sample_text`` is empty,
     its words. Raises ValueError with a plain message when a check fails.
@@ -413,6 +428,7 @@ def create_voice(
     ext = (sample_ext or "").lower()
     if ext not in SAMPLE_EXTENSIONS:
         raise ValueError("The voice sample must be a WAV, MP3, M4A, FLAC or OGG file.")
+    model_row = pick_clone_model(model_key)
 
     heard = transcribe(sample_audio)
     duration = float(heard.get("durationS") or 0.0)
@@ -437,7 +453,7 @@ def create_voice(
         item = voice_library.create(
             "clone",
             {"title": " ".join(name.split())[:80] or speaker, "text": text,
-             "durationS": round(duration, 2), "consent": record},
+             "durationS": round(duration, 2), "model": model_row["key"], "consent": record},
             audio_file=sample_copy,
             audio_ext=ext,
         )
@@ -572,7 +588,10 @@ def clone_plan(
         raise ValueError(NOT_HERE)
     if not voice_env.is_installed():
         raise RuntimeError("The voice runtime is not installed. Install it from Voice > Models.")
-    row = pick_clone_model(model_key)
+    # No model named: the voice's own (chosen when it was made, if still downloaded), else the default.
+    row = pick_clone_model(model_key) if (model_key or "").strip() else (
+        recorded_model(voice.get("model")) or pick_clone_model("")
+    )
     if snapshot_dir(row) is None:
         raise RuntimeError(f"{row['name']} is not downloaded. Download it in Voice > Models.")
     if not voice_env.watermark_installed():

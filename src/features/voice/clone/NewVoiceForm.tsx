@@ -1,14 +1,16 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CloneStatement } from "./CloneStatement";
 import { useTranslation } from "react-i18next";
 import { MicSettingsButton } from "../MicSettingsButton";
 import { formatClock, micErrorMessage, startMicCapture, type MicCapture } from "../audio";
 import { useVoice } from "../VoiceContext";
-import { createClonedVoice, type ClonedVoice } from "./cloneApi";
+import { CloneModelPicker } from "./CloneModelPicker";
+import { createClonedVoice, downloadCloneModel, getCloneModels, type CloneModel, type ClonedVoice } from "./cloneApi";
 import {
   SAMPLE_EXTENSIONS,
   canSaveVoice,
   isSampleFile,
+  pickCloneModel,
   sampleLengthProblem,
   wavSeconds,
   type CloneBasis,
@@ -32,6 +34,29 @@ export function NewVoiceForm({ onCreated, onCancel }: { onCreated: (voice: Clone
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const captureRef = useRef<MicCapture | null>(null);
+  const [models, setModels] = useState<CloneModel[]>([]);
+  const [chosenModel, setChosenModel] = useState("");
+
+  const refreshModels = async () => {
+    try {
+      setModels((await getCloneModels()).models);
+    } catch {
+      // The picker then shows the download prompt; saving stays off until a model is known.
+    }
+  };
+  useEffect(() => {
+    void refreshModels();
+  }, []);
+  // A download in progress: look again until it finishes.
+  const fetching = models.some((m) => m.download.state === "downloading");
+  useEffect(() => {
+    if (!fetching) return;
+    const timer = window.setInterval(() => void refreshModels(), 3000);
+    return () => window.clearInterval(timer);
+  }, [fetching]);
+  // The choice, or the default while the person has not changed it (or the chosen model is gone).
+  const preselected = pickCloneModel(models);
+  const modelKey = models.some((m) => m.key === chosenModel && m.installed && m.supported) ? chosenModel : (preselected?.key ?? "");
 
   const set = (patch: Partial<NewVoiceDetails>) => setDetails((current) => ({ ...current, ...patch }));
 
@@ -86,6 +111,7 @@ export function NewVoiceForm({ onCreated, onCancel }: { onCreated: (voice: Clone
           sample,
           sampleName: file ? file.name : "recording.wav",
           referenceText: sampleText.trim(),
+          model: modelKey,
         }),
       );
     } catch (err) {
@@ -119,6 +145,12 @@ export function NewVoiceForm({ onCreated, onCancel }: { onCreated: (voice: Clone
           <input className="text-input" maxLength={80} value={details.voiceName} onChange={(e) => set({ voiceName: e.target.value })} />
         </label>
       </div>
+      <CloneModelPicker
+        models={models}
+        selected={modelKey}
+        onSelect={setChosenModel}
+        onDownload={(key) => void downloadCloneModel(key).then(refreshModels, refreshModels)}
+      />
       <div className="voice-clone__sample">
         <h4>{t("voice.clone.sampleTitle", { defaultValue: "Voice sample" })}</h4>
         <p className="muted-text">
@@ -179,7 +211,7 @@ export function NewVoiceForm({ onCreated, onCancel }: { onCreated: (voice: Clone
         <button
           type="button"
           className="primary-button"
-          disabled={!canSaveVoice(details, hasSample) || recordingNow || busy}
+          disabled={!canSaveVoice(details, hasSample, modelKey) || recordingNow || busy}
           onClick={() => void save()}
         >
           {busy ? t("voice.clone.saving", { defaultValue: "Saving the voice…" }) : t("voice.clone.save", { defaultValue: "Save voice" })}

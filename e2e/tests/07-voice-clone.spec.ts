@@ -1,7 +1,7 @@
 import { test, expect } from "./fixtures";
 import type { Page, Route } from "@playwright/test";
 import { goTo } from "./helpers";
-import { ADA, mockVoiceApi, speakAnswer } from "./voiceMocks";
+import { ADA, mockVoiceApi, speakAnswer, ttsModels } from "./voiceMocks";
 
 // Voice cloning flow in Voice Studio > Voices (and Speak for the cloned voice): the statement inside the new-voice form (D-73), the form (whose voice, the
 // speaker's name, a voice sample from a file or the microphone, one permission tick), what the form sends,
@@ -11,9 +11,9 @@ import { ADA, mockVoiceApi, speakAnswer } from "./voiceMocks";
 const ADA_VOICE = ADA;
 
 /** Mock the voice routes; returns the multipart body of each voice the form saves (as latin1 text). */
-async function mockClone(page: Page, voices: unknown[] = []): Promise<string[]> {
+async function mockClone(page: Page, voices: unknown[] = [], installed?: string[]): Promise<string[]> {
   const saved: string[] = [];
-  await mockVoiceApi(page, { clones: voices as Array<typeof ADA> });
+  await mockVoiceApi(page, { clones: voices as Array<typeof ADA>, installed });
   // The save route is the one the form posts to; the list route stays as mockVoiceApi set it.
   await page.route("**/api/voice/clone/voices", (route: Route) => {
     if (route.request().method() === "POST") {
@@ -98,6 +98,70 @@ test("an uploaded sample: Save needs whose voice, a name, the tick and a support
   expect(field(body, "basis")).toBe("permission");
   expect(field(body, "name")).toBe("Grace");
   expect(field(body, "permissionConfirmed")).toBe("true");
+});
+
+/** Two or more downloaded cloning models, with the 1.7B row flagged as the backend's default. */
+async function mockTwoCloneModels(page: Page, installed: string[]) {
+  const saved = await mockClone(page, [], installed);
+  await page.route("**/api/voice/clone/models", (route) =>
+    route.fulfill({
+      json: {
+        available: true,
+        allowedHere: true,
+        models: ttsModels(installed)
+          .filter((m) => m.kind === "base")
+          .map((m) => ({ ...m, default: m.key === "qwen3-tts-1.7b" })),
+      },
+    }),
+  );
+  return saved;
+}
+
+test("two downloaded cloning models: both listed by name, the default preselected and tagged, the chosen key sent", async ({ page }) => {
+  const saved = await mockTwoCloneModels(page, ["qwen3-tts-0.6b", "qwen3-tts-1.7b"]);
+  await openClonePanel(page);
+  await page.getByRole("button", { name: "New cloned voice" }).click();
+  const small = page.getByRole("radio", { name: /Qwen3-TTS 0\.6B Base/ });
+  const big = page.getByRole("radio", { name: /Qwen3-TTS 1\.7B Base/ });
+  await expect(small).not.toBeChecked();
+  await expect(big).toBeChecked();
+  await expect(page.locator(".voice-clone__model").getByText("Default", { exact: true })).toHaveCount(1);
+  await expect(page.locator(".voice-clone__model")).toContainText("GB download");
+
+  await fillDetails(page);
+  await confirmBox(page).check();
+  await page.getByLabel("Voice sample file").setInputFiles({ name: "grace.mp3", mimeType: "audio/mpeg", buffer: Buffer.from("ID3 fake") });
+  await expect(page.getByRole("button", { name: "Save voice" })).toBeEnabled();
+  await small.check();
+  await page.getByRole("button", { name: "Save voice" }).click();
+  await expect(page.getByRole("button", { name: "New cloned voice" })).toBeVisible();
+  expect(field(saved[0], "model")).toBe("qwen3-tts-0.6b");
+});
+
+test("one downloaded cloning model is shown selected and its key sent", async ({ page }) => {
+  const saved = await mockTwoCloneModels(page, ["qwen3-tts-1.7b"]);
+  await openClonePanel(page);
+  await page.getByRole("button", { name: "New cloned voice" }).click();
+  await expect(page.getByRole("radio", { name: /Qwen3-TTS 1\.7B Base/ })).toBeChecked();
+  await expect(page.getByRole("radio")).toHaveCount(3); // the two basis radios and this one
+  await fillDetails(page);
+  await confirmBox(page).check();
+  await page.getByLabel("Voice sample file").setInputFiles({ name: "grace.mp3", mimeType: "audio/mpeg", buffer: Buffer.from("ID3 fake") });
+  await page.getByRole("button", { name: "Save voice" }).click();
+  await expect(page.getByRole("button", { name: "New cloned voice" })).toBeVisible();
+  expect(field(saved[0], "model")).toBe("qwen3-tts-1.7b");
+});
+
+test("no cloning model downloaded: the form offers the download and Save stays off", async ({ page }) => {
+  await mockTwoCloneModels(page, []);
+  await openClonePanel(page);
+  await page.getByRole("button", { name: "New cloned voice" }).click();
+  await expect(page.getByText("No cloning model is downloaded yet.")).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Download Qwen3-TTS/ })).toBeVisible();
+  await fillDetails(page);
+  await confirmBox(page).check();
+  await page.getByLabel("Voice sample file").setInputFiles({ name: "grace.mp3", mimeType: "audio/mpeg", buffer: Buffer.from("ID3 fake") });
+  await expect(page.getByRole("button", { name: "Save voice" })).toBeDisabled();
 });
 
 // Chromium's fake microphone (a tone) for the recording tests; the other tests never open the microphone.

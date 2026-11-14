@@ -1124,7 +1124,12 @@
       "recordingPlayback": "qonghachlIj",
       "saving": "ghogh pollI'…",
       "sampleType": "WAV, MP3, M4A, FLAC pagh OGG nav yIwIv.",
-      "sampleMinimumTurbo": null
+      "sampleMinimumTurbo": null,
+      "modelTitle": null,
+      "modelNone": null,
+      "modelDownload": null,
+      "modelDefault": null,
+      "modelSize": null
     },
     "cost": {
       "kokoroChip": null,

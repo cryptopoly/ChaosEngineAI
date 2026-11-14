@@ -10,8 +10,13 @@ export interface CloneModel {
   repo: string;
   revision: string;
   sizeGb: number;
+  /** Model plus companion repos: what Download fetches. */
+  downloadGb?: number;
   languages: string;
+  /** The model the form preselects (``DEFAULT_CLONE_MODEL`` on the backend). */
   default: boolean;
+  /** Measured speed and memory; null when not measured. */
+  estimates?: VoiceModelRow["estimates"];
   licence: { id: string; name: string; url: string };
   supported: boolean;
   installed: boolean;
@@ -30,6 +35,8 @@ export interface ClonedVoice {
   createdAt: number;
   durationS: number | null;
   referenceText: string;
+  /** The cloning model chosen when the voice was made; null for voices made before it was recorded. */
+  model?: string | null;
   /** The permission record: who, on what basis, when, and the app version. */
   consent: { speakerName: string; basis: "own" | "permission"; consentedAt: string; appVersion: string };
 }
@@ -79,6 +86,8 @@ export async function createClonedVoice(fields: {
   sample: Blob;
   sampleName: string;
   referenceText?: string;
+  /** The cloning model key chosen in the form. */
+  model?: string;
 }): Promise<ClonedVoice> {
   const form = new FormData();
   form.append("sample", fields.sample, fields.sampleName);
@@ -88,6 +97,7 @@ export async function createClonedVoice(fields: {
   // The user ticked the permission box; the form cannot be saved otherwise.
   form.append("permissionConfirmed", "true");
   if (fields.referenceText) form.append("referenceText", fields.referenceText);
+  if (fields.model) form.append("model", fields.model);
   const response = await apiFetch("/api/voice/clone/voices", { method: "POST", body: form });
   if (!response.ok) throw new Error(await readErrorDetail(response, `Saving the voice failed with status ${response.status}`));
   return (await response.json()) as ClonedVoice;

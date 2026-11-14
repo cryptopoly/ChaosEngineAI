@@ -31,7 +31,7 @@ from pathlib import Path
 from typing import Callable
 
 # Must match LLAMA_CPP_TAG in scripts/stage-runtime.mjs (a test checks).
-LLAMA_CPP_TAG = "b12317"
+LLAMA_CPP_TAG = "b12387"
 
 INSTALL_ROOT = Path.home() / ".chaosengine" / "bin" / "llama-cuda"
 _MARKER = "installed.json"
@@ -150,11 +150,11 @@ def asset_names(arch: str, cuda: str, tag: str = LLAMA_CPP_TAG, os_name: str | N
 # sha256 of the Windows archives of the pinned tag, from the release's published digests.
 # Other tags are looked up from the release at install time (see ``release_digests``).
 _PINNED_SHA256: dict[str, str] = {
-    "llama-b12317-bin-win-cuda-12.4-x64.zip": "b6678853912e0cd1ac5adb2258db6b021c1833c4d139001fa1bb3ed7481745ea",
+    "llama-b12387-bin-win-cuda-12.4-x64.zip": "939c94e827c8bc74e2841c5b05643cf35a81b46ec01c6fb0d2732ed41970c2e7",
     "cudart-llama-bin-win-cuda-12.4-x64.zip": "8c79a9b226de4b3cacfd1f83d24f962d0773be79f1e7b75c6af4ded7e32ae1d6",
-    "llama-b12317-bin-win-cuda-13.5-x64.zip": "8c9542f737e3cb2e6592069cb62ff5158cf39de747e225cdd4bb7e7528561969",
+    "llama-b12387-bin-win-cuda-13.5-x64.zip": "451b353723c8ef9788ed0b6757010500f01d89ffac6f9d7dc910997847f0361d",
     "cudart-llama-bin-win-cuda-13.5-x64.zip": "c2bf4cc202bfbaaa7a0b75f5082457c3811326947bb216059b72839d844e9cba",
-    "llama-b12317-bin-win-cuda-13.5-arm64.zip": "a0706aef8b77f66eee84f1767a015d28dc4475cd056d354c49f94039a5bcf05b",
+    "llama-b12387-bin-win-cuda-13.5-arm64.zip": "0175349ababc7463ff6e01a7d2d678a67a3119783b0c4f15569cde7326f9d8dd",
     "cudart-llama-bin-win-cuda-13.5-arm64.zip": "f89e7b2457f627d052dd99f42205ddfd01964454809754cdc649cffc74320dca",
 }
 

@@ -18,7 +18,7 @@ Newest dated update first. Each update has the same sections: Done, Open for Cla
 - **TensorFold (R9, FU-168):** family table now comes from the binary's `capabilities --json`; four CUDA-only families listed, not offered; Gemma 4 26B-A4B stays on the Python install (`native_refuses`).
 - **Music (R10, FU-139):** wording route only: one sentence, "Mac-only in this version", install and download hidden. The CUDA build is not done.
 - **First-clip ETA (R7, FU-153):** catalogue estimate shows from the first clip of a batch; wired into `start_batch`.
-- **MiniMax H3 (B, FU-166):** territory gate, licence screen and H3 video row built behind `licence_gate.H3_RELEASED = False`. sd.cpp pinned at `3f8527a`. No H3-Image; release bundles carry no `sd`. H3 was never downloaded or run.
+- **MiniMax H3 (B, FU-166):** territory gate, licence screen and H3 video row built behind `licence_gate.H3_RELEASED = False`. sd.cpp pinned at `5dcfa79` (bumped 2026-11-14, checked with a real Qwen-Image 2.1 image on old and new builds). No H3-Image row; release bundles carry no `sd`. H3 was never downloaded or run.
 
 **Open for Claude:**
 - Run the full suites on the merged tree (pytest, vitest, tsc, i18n, full `e2e_test_suite.py`, Playwright, upstreams, audits), build the Mac installer and check the manifest, then recut `test/rtx4090` (plan section 5).

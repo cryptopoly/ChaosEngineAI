@@ -13,7 +13,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # Keep in step with SDCPP_REF in build-sdcpp.sh (tests/test_check_upstreams.py checks they match).
-SDCPP_REF="${SDCPP_REF:-3f8527a46c54ecf4cb4ed6003da8e8982283c73c}"
+SDCPP_REF="${SDCPP_REF:-5dcfa79801213f23e27b3e83617350ebb8ea93aa}"
 SDCPP_DIR="${SDCPP_DIR:-/tmp/stable-diffusion.cpp}"
 INSTALL_DIR="${CHAOSENGINE_BIN_DIR:-$HOME/.chaosengine/bin}"
 VERSION_FILE="$INSTALL_DIR/sd.version"

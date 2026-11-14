@@ -54,7 +54,7 @@ These may be compiled from source and shipped alongside ChaosEngineAI.
 - **Usage:** Cross-platform image and video generation lane (FLUX.1, Qwen-Image-2.1
   and the Wan GGUF rows). The MIT permission notice above applies to it, with the
   copyright holder named here.
-- **Pinned commit:** `3f8527a` (master-929), `SDCPP_REF` in `scripts/build-sdcpp.sh`.
+- **Pinned commit:** `5dcfa79` (master-1104), `SDCPP_REF` in `scripts/build-sdcpp.sh`.
 
 #### MiniMax H3 weights (user-downloaded, never bundled)
 

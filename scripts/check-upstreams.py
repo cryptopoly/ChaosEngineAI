@@ -165,7 +165,7 @@ def check_sdcpp() -> Row:
     pinned = read_pin("scripts/build-sdcpp.sh", SDCPP_PIN_PATTERN)
     result = check_commit_pin("stable-diffusion.cpp", "https://github.com/leejet/stable-diffusion.cpp.git", pinned)
     if result.state == "behind":
-        result.note = "a bump needs a real FLUX.1 schnell image and a Wan 2.1 clip on the new build (task B step 0)"
+        result.note = "a bump needs a real Qwen-Image 2.1 sd.cpp image on the old and new build (docs/progress/v0100-bump-sdcpp.md)"
     return result
 
 

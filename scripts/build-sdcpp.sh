@@ -20,11 +20,11 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SDCPP_REPO="https://github.com/leejet/stable-diffusion.cpp.git"
-# Pinned commit (no longer floating ``master``). 3f8527a = master-929 (2026-09-27): the build installed on the
-# maintainers' Mac, with MiniMax H3 video (docs/minimax_h3.md) and no H3-Image (that landed in 32d516c). Moving
-# the pin means rerunning the sd.cpp tests plus one real FLUX.1 schnell image and one Wan 2.1 clip; bump it with
+# Pinned commit (no longer floating ``master``). 5dcfa79 = master-1104 (2026-11-14), moved from 3f8527a
+# (master-929): MiniMax H3 video and H3-Image docs under docs/models/. Moving the pin means rerunning the sd.cpp
+# tests plus one real Qwen-Image 2.1 sd.cpp image on the old and the new build; bump it with
 # scripts/update-sdcpp.sh and the sd.cpp row in scripts/check-upstreams.py.
-SDCPP_REF="${SDCPP_REF:-3f8527a46c54ecf4cb4ed6003da8e8982283c73c}"
+SDCPP_REF="${SDCPP_REF:-5dcfa79801213f23e27b3e83617350ebb8ea93aa}"
 SDCPP_DIR="${SDCPP_DIR:-/tmp/stable-diffusion.cpp}"
 INSTALL_DIR="${CHAOSENGINE_BIN_DIR:-$HOME/.chaosengine/bin}"
 

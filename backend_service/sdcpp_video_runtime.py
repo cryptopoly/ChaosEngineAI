@@ -314,7 +314,7 @@ class SdCppVideoEngine:
         seed: int,
         offload: bool,
     ) -> list[str]:
-        """The text-to-audio-video command from docs/minimax_h3.md at sd.cpp 3f8527a.
+        """The text-to-audio-video command from docs/models/minimax_h3.md at sd.cpp 5dcfa79 (unchanged since 3f8527a).
 
         Guidance is always 1 (the weights are CFG-distilled), so no negative prompt is passed. ``--offload-to-cpu``
         only off macOS (unified memory gains nothing from it). Width, height and frames arrive aligned.

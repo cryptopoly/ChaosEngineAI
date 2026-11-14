@@ -46,16 +46,22 @@ export function AccessibilityPanel() {
   return (
     <Panel title={t("accessibilityPanel.title", { defaultValue: "Accessibility" })}>
       <div className="control-stack">
-        <button
-          type="button"
-          role="switch"
-          aria-checked={on}
-          className={on ? "secondary-button active-toggle" : "secondary-button"}
-          data-testid="strong-borders-switch"
-          onClick={toggle}
-        >
-          {t("accessibilityPanel.strongBorders", { defaultValue: "Stronger borders on fields and buttons" })}
-        </button>
+        <div className="field-row" style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <span className="field-label" id="strong-borders-label">
+            {t("accessibilityPanel.strongBorders", { defaultValue: "Stronger borders on fields and buttons" })}
+          </span>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={on}
+            aria-labelledby="strong-borders-label"
+            className={on ? "segment active" : "segment"}
+            data-testid="strong-borders-switch"
+            onClick={toggle}
+          >
+            {on ? t("accessibilityPanel.on", { defaultValue: "On" }) : t("accessibilityPanel.off", { defaultValue: "Off" })}
+          </button>
+        </div>
         <p className="help-text">
           {t("accessibilityPanel.note", {
             defaultValue: "Outlines inputs and buttons with a higher-contrast line so they are easier to see. Applies immediately.",

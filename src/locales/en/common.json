@@ -1367,6 +1367,8 @@
   "accessibilityPanel": {
     "title": "Accessibility",
     "strongBorders": "Stronger borders on fields and buttons",
-    "note": "Outlines inputs and buttons with a higher-contrast line so they are easier to see. Applies immediately."
+    "note": "Outlines inputs and buttons with a higher-contrast line so they are easier to see. Applies immediately.",
+    "on": "On",
+    "off": "Off"
   }
 }

@@ -1367,6 +1367,8 @@
   "accessibilityPanel": {
     "title": null,
     "strongBorders": null,
-    "note": null
+    "note": null,
+    "on": null,
+    "off": null
   }
 }

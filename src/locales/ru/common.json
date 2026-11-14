@@ -1363,5 +1363,12 @@
       "voices": "Клонируйте голос только с согласия говорящего.",
       "licences": "У каждой модели своя лицензия. Проверьте её, прежде чем использовать результат."
     }
+  },
+  "accessibilityPanel": {
+    "title": null,
+    "strongBorders": null,
+    "note": null,
+    "on": null,
+    "off": null
   }
 }

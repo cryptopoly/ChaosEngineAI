@@ -263,6 +263,8 @@ class UpdateSettingsRequest(BaseModel):
     favoriteModelRefs: list[str] | None = None
     # D-34: the machine-generated tag in music files (on by default).
     musicEmbedTag: bool | None = None
+    # Accessibility: stronger borders on fields and buttons (on by default).
+    strongControlBorders: bool | None = None
     # First-run terms of use: the version the user accepted. The server stamps the time itself.
     termsAcceptedVersion: int | None = Field(default=None, ge=1, le=10_000)
     # FU-042 / D-69: UI locale ("system" or a BCP-47 tag) and clock format.

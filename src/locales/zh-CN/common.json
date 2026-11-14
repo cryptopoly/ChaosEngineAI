@@ -1363,5 +1363,12 @@
       "voices": "只有在说话者同意的情况下，才能克隆其声音。",
       "licences": "每个模型都有自己的许可证。使用输出内容前请先查看。"
     }
+  },
+  "accessibilityPanel": {
+    "title": null,
+    "strongBorders": null,
+    "note": null,
+    "on": null,
+    "off": null
   }
 }

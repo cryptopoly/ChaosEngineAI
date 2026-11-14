@@ -27,6 +27,7 @@
   --panel: #15191e;
   --panel-alt: #1a1f25;
   --border: #27303a;
+  --border-control: #66727f;
   --text: #f4f6f8;
   --muted: #9ea8b4;
   --muted-strong: #ccd4dd;
@@ -51,6 +52,11 @@
   --lane-native: var(--panel-alt);
   --accent-audio: color-mix(in srgb, var(--accent) 55%, var(--success));
   --accent-storyboard: color-mix(in srgb, var(--accent) 60%, var(--warning));
+}
+
+/* Accessibility switch (Settings > General): off puts control borders back to the panel border colour. */
+:root[data-strong-borders="off"] {
+  --border-control: var(--border);
 }
 
 * {
@@ -709,7 +715,7 @@ strong {
 .segment {
   border-radius: var(--radius-sm);
   padding: 8px 11px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-control);
   color: var(--text);
   background: var(--surface);
   font-size: 0.92rem;
@@ -1423,7 +1429,7 @@ select.text-input {
   width: 100%;
   background: var(--surface);
   color: var(--text);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-control);
   border-radius: var(--radius-sm);
   padding: 8px 10px;
 }
@@ -1578,7 +1584,7 @@ select.text-input {
 }
 
 .thread-icon-button {
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-control);
   border-radius: 12px;
   background: var(--surface);
   color: var(--muted-strong);
@@ -1763,7 +1769,7 @@ select.text-input {
   align-items: center;
   gap: 4px;
   padding: 3px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-control);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.03);
 }
@@ -2614,7 +2620,7 @@ select.text-input {
   padding: 4px 10px;
   font-size: 0.78rem;
   font-weight: 500;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-control);
   border-radius: 999px;
   background: transparent;
   color: var(--muted-strong);
@@ -4232,7 +4238,7 @@ select.text-input {
   align-items: center;
   gap: 6px;
   padding: 6px 12px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-control);
   border-radius: var(--radius-sm);
   background: var(--surface);
   color: var(--muted-strong);
@@ -5561,7 +5567,7 @@ select.text-input {
   align-items: center;
   gap: 2px;
   padding: 8px 10px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-control);
   border-radius: var(--radius-sm);
   background: var(--surface);
   color: var(--text);
@@ -5710,7 +5716,7 @@ select.text-input {
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-control);
   background: none;
   color: var(--text-secondary, #8b949e);
   font-size: 12px;
@@ -5956,7 +5962,7 @@ select.text-input {
     #0f1317 calc(var(--slider-pct, 0%)),
     #0f1317 100%
   );
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-control);
   outline: none;
   cursor: pointer;
   margin: 6px 0 2px;
@@ -6636,7 +6642,7 @@ select.text-input {
   font-family: inherit;
   color: var(--text);
   background: var(--surface, rgba(255,255,255,0.04));
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-control);
   border-radius: 6px;
   cursor: pointer;
 }
@@ -8994,7 +9000,7 @@ tr.accelerator-card-row.accelerator-card-incompatible {
 
 .sampler-panel__clear {
   background: transparent;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-control);
   color: var(--muted);
   font-size: 11px;
   padding: 2px 8px;
@@ -9050,7 +9056,7 @@ tr.accelerator-card-row.accelerator-card-incompatible {
 
 .sampler-row__reset {
   background: transparent;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-control);
   color: var(--muted);
   font-size: 10px;
   padding: 3px 6px;
@@ -9463,7 +9469,7 @@ tr.accelerator-card-row.accelerator-card-incompatible {
 
 .kv-chip__bits-button {
   background: transparent;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-control);
   color: var(--muted-strong);
   font-size: 10px;
   padding: 2px 8px;
@@ -9490,7 +9496,7 @@ tr.accelerator-card-row.accelerator-card-incompatible {
 
 .kv-chip__reset {
   background: transparent;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-control);
   color: var(--muted);
   font-size: 11px;
   padding: 4px 8px;
@@ -9710,7 +9716,7 @@ tr.accelerator-card-row.accelerator-card-incompatible {
 
 .swap-menu__reset {
   background: transparent;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-control);
   color: var(--muted);
   font-size: 11px;
   padding: 4px 8px;
@@ -9964,7 +9970,7 @@ html[lang="ko"] select {
   width: 34px;
   height: 34px;
   border-radius: 999px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-control);
   background: var(--panel-alt);
   color: var(--muted-strong);
   display: inline-flex;
@@ -15441,7 +15447,7 @@ select.music-library__select {
   justify-content: center;
   width: 32px;
   height: 32px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-control);
   border-radius: 50%;
   background: var(--surface);
   color: var(--text);

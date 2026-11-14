@@ -1363,5 +1363,12 @@
       "voices": "声のクローンは、話者本人の同意がある場合にのみ作成してください。",
       "licences": "モデルごとに独自のライセンスがあります。出力を使う前に確認してください。"
     }
+  },
+  "accessibilityPanel": {
+    "title": null,
+    "strongBorders": null,
+    "note": null,
+    "on": null,
+    "off": null
   }
 }

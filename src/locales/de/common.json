@@ -1363,5 +1363,12 @@
       "voices": "Klone eine Stimme nur mit Einwilligung der sprechenden Person.",
       "licences": "Jedes Modell hat eine eigene Lizenz. Prüfe sie, bevor du die Ausgabe verwendest."
     }
+  },
+  "accessibilityPanel": {
+    "title": null,
+    "strongBorders": null,
+    "note": null,
+    "on": null,
+    "off": null
   }
 }

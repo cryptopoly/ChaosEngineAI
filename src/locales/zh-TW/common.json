@@ -1363,5 +1363,12 @@
       "voices": "只有在說話者同意的情況下，才能複製其聲音。",
       "licences": "每個模型都有自己的授權條款。使用輸出內容前請先查看。"
     }
+  },
+  "accessibilityPanel": {
+    "title": null,
+    "strongBorders": null,
+    "note": null,
+    "on": null,
+    "off": null
   }
 }

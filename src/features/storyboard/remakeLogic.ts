@@ -27,8 +27,9 @@ export function canRedoStill(shot: StoryboardShot): boolean {
   return Boolean(take) && shot.startFrom === "generate" && shot.status !== "missing";
 }
 
-export type CompareKey = "pass" | "stillModel" | "stillSeed" | "clipModel" | "clipSeed" | "size" | "steps" | "length";
-export const COMPARE_KEYS: CompareKey[] = ["pass", "stillModel", "stillSeed", "clipModel", "clipSeed", "size", "steps", "length"];
+// No "steps": a take holds one steps figure for whichever half ran last, so it would compare a still with a clip.
+export type CompareKey = "pass" | "stillModel" | "stillSeed" | "clipModel" | "clipSeed" | "size" | "length";
+export const COMPARE_KEYS: CompareKey[] = ["pass", "stillModel", "stillSeed", "clipModel", "clipSeed", "size", "length"];
 
 export type TakeFacts = Record<CompareKey, string | null>;
 
@@ -50,7 +51,6 @@ export function takeFacts(take: StoryboardTake): TakeFacts {
     clipModel: take.clip ? text(s.clipModel) ?? text(s.model) : null,
     clipSeed: take.clip ? text(s.clipSeed) ?? seed : null,
     size: width && height ? `${width} x ${height}` : null,
-    steps: text(s.steps),
     length: take.measuredSeconds ? `${Math.round(take.measuredSeconds * 10) / 10}` : null,
   };
 }

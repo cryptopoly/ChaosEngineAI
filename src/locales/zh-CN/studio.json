@@ -1734,7 +1734,6 @@
         "clipModel": null,
         "clipSeed": null,
         "size": null,
-        "steps": null,
         "length": null
       },
       "draft": null,
@@ -1787,7 +1786,8 @@
       "untimed": null,
       "label": null,
       "clipTitle": null,
-      "stillTitle": null
+      "stillTitle": null,
+      "outdatedBadge": null
     },
     "sample": {
       "projectName": null,

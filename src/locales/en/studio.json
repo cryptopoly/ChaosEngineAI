@@ -1734,7 +1734,6 @@
         "clipModel": "Clip model",
         "clipSeed": "Clip seed",
         "size": "Size",
-        "steps": "Steps",
         "length": "Length (s)"
       },
       "draft": "Draft",
@@ -1787,7 +1786,8 @@
       "untimed": "{action} · time unknown",
       "label": "Redo one half of the take",
       "clipTitle": "A new take that keeps this still and makes a new clip with a new seed.",
-      "stillTitle": "A new still with a new seed. The clip stays until you redo it, and the shot shows it is behind."
+      "stillTitle": "A new still with a new seed. The clip stays until you redo it, and the shot shows it is behind.",
+      "outdatedBadge": "Clip is behind"
     },
     "sample": {
       "projectName": "The Lighthouse",

@@ -15994,6 +15994,16 @@ select.music-library__select {
     border-bottom-left-radius: 0;
     border-bottom-right-radius: 0;
   }
+  /* The panes stack: keep Play both in reach while scrolling between them. */
+  .take-compare__transport {
+    position: sticky;
+    bottom: -20px;
+    z-index: 1;
+    margin: 0 -20px;
+    padding: 10px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--panel);
+  }
 }
 /* S12: the sample film card on an empty Projects list. */
 .sample-card {

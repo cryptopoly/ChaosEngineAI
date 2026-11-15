@@ -173,7 +173,6 @@ export function TakeCompare({ projectId, shot, number, disabled, onPick, onClose
     clipModel: t("board.compare.facts.clipModel", { defaultValue: "Clip model" }),
     clipSeed: t("board.compare.facts.clipSeed", { defaultValue: "Clip seed" }),
     size: t("board.compare.facts.size", { defaultValue: "Size" }),
-    steps: t("board.compare.facts.steps", { defaultValue: "Steps" }),
     length: t("board.compare.facts.length", { defaultValue: "Length (s)" }),
   };
   const passLabel = (take: StoryboardTake) =>

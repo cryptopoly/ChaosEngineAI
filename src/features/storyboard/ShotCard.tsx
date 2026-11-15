@@ -280,7 +280,7 @@ export function ShotCard(props: ShotCardProps) {
       {showStale ? (
         <div className="shot-card__stale">
           <StaleBadge
-            reason={statusText}
+            reason={outdated ? t("board.remake.outdatedBadge", { defaultValue: "Clip is behind" }) : statusText}
             title={
               outdated
                 ? t("board.remake.outdatedTitle", { defaultValue: "This take has a new still; its clip was made from the old one. Redo the clip to match." })

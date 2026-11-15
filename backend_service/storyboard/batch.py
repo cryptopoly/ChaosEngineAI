@@ -260,6 +260,9 @@ class Batch:
             info["phase"] = f"{kind} {index} of {total_by_kind[kind]}"
             info["kind"], info["kindIndex"], info["kindTotal"], info["shotId"] = kind, index, total_by_kind[kind], current[0]
             info["stepElapsedSeconds"] = round(now - current[2], 1)
+            inner = _inner_step(kind)
+            if inner is not None:
+                info["innerStep"], info["innerTotal"] = inner
         mean = {k: sum(sec for kk, sec in finished if kk == k) / done_by_kind[k] for k in ("still", "clip") if done_by_kind[k]}
         if mean:
             info["finishedSeconds"] = {k: round(v, 1) for k, v in mean.items()}
@@ -445,6 +448,22 @@ class Batch:
         finally:
             LIVE_BATCHES.discard(self.id)
             self.done.set()
+
+
+def _inner_step(kind: str) -> tuple[int, int] | None:
+    """(step, total) of the denoise loop the running still or clip is in, from the shared progress tracker, else None.
+
+    A still takes minutes on a big model and its batch step only moves when it ends; this is the part in between."""
+    from backend_service.progress import IMAGE_PROGRESS, VIDEO_PROGRESS
+
+    try:
+        snap = (IMAGE_PROGRESS if kind == "still" else VIDEO_PROGRESS).snapshot()
+    except Exception:  # noqa: BLE001 - a missing figure is fine, the bar then shows elapsed time only
+        return None
+    step, total = snap.get("step"), snap.get("totalSteps")
+    if snap.get("active") and snap.get("phase") in ("diffusing", "compose") and isinstance(step, int) and isinstance(total, int) and total > 0:
+        return min(step, total), total
+    return None
 
 
 def get_batch(batch_id: str) -> Batch | None:

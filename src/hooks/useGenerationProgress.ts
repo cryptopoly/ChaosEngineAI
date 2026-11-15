@@ -18,6 +18,8 @@ const MUSIC_POLL_INTERVAL_MS = 1000;
 export function useGenerationProgress(
   kind: "image" | "video" | "music",
   active: boolean,
+  /** Poll slower than the default, for a screen that only watches for a run it did not start. */
+  intervalMs?: number,
 ): GenerationProgressSnapshot | null {
   const [snapshot, setSnapshot] = useState<GenerationProgressSnapshot | null>(null);
   const cancelledRef = useRef(false);
@@ -33,7 +35,7 @@ export function useGenerationProgress(
 
     const fetcher =
       kind === "image" ? getImageGenerationProgress : kind === "music" ? getMusicProgress : getVideoGenerationProgress;
-    const interval = kind === "music" ? MUSIC_POLL_INTERVAL_MS : POLL_INTERVAL_MS;
+    const interval = intervalMs ?? (kind === "music" ? MUSIC_POLL_INTERVAL_MS : POLL_INTERVAL_MS);
     let timer: number | null = null;
 
     const poll = async () => {
@@ -61,7 +63,7 @@ export function useGenerationProgress(
         window.clearTimeout(timer);
       }
     };
-  }, [kind, active]);
+  }, [kind, active, intervalMs]);
 
   return snapshot;
 }

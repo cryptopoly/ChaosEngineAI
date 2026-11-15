@@ -40,6 +40,9 @@ export function JobProgressLine({
       : null;
   if (kindText) parts.push(kindText);
   else if (facts.phase) parts.push(facts.phase);
+  if (typeof progress?.innerStep === "number" && typeof progress?.innerTotal === "number" && progress.innerTotal > 0) {
+    parts.push(t("studioChat.job.stepOf", { step: progress.innerStep, total: progress.innerTotal, defaultValue: "step {step} of {total}" }));
+  }
   // A "clip 2 of 4" already says the step. A film render reports a percent as step of 100: no step text.
   const phaseSaysStep = kindText !== null || (facts.phase !== null && /\d/.test(facts.phase));
   if (!phaseSaysStep && facts.step !== null && facts.totalSteps !== null && facts.totalSteps > 0 && facts.totalSteps !== 100) {

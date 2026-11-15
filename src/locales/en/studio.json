@@ -2467,5 +2467,13 @@
       "confirm": "Confirm",
       "error": "Could not save your confirmation: {message}"
     }
+  },
+  "runningElsewhere": {
+    "title": "Generating now",
+    "image": "An image",
+    "video": "A video",
+    "step": "step {step} of {total}",
+    "elapsed": "{minutes} min {seconds} s elapsed",
+    "hint": "Started from another screen, such as a Storyboard batch. Wait for it to finish before starting another."
   }
 }

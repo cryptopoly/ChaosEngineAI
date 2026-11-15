@@ -1,3 +1,4 @@
+import { RunningElsewhere } from "../../components/RunningElsewhere";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
@@ -687,6 +688,8 @@ export function ImageStudioTab({
           nativeBackends={nativeBackends}
         />
       </Panel>
+
+      <RunningElsewhere kind="image" ownRunActive={imageBusy} className="span-2" />
 
       <Panel
         title={t("image.promptPanelTitle", { defaultValue: "Prompt" })}

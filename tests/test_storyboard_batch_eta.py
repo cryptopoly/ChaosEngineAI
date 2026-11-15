@@ -73,3 +73,21 @@ class BatchEtaTests(StoreCase):
         batch, _ = self.batch(models=(IMAGE, {"id": "vid", "name": "Vid One"}))
         batch._current = (batch.steps[0][0], "clip", time.monotonic())
         self.assertNotIn("etaSeconds", batch.progress())
+
+
+class BatchInnerStepTests(BatchEtaTests):
+    def test_the_denoise_step_of_the_running_still_is_reported(self):
+        batch, _ = self.batch(what="still", shots=1)
+        batch._current = (batch.steps[0][0], "still", time.monotonic())
+        snap = {"active": True, "phase": "diffusing", "step": 27, "totalSteps": 40}
+        with mock.patch("backend_service.progress.IMAGE_PROGRESS.snapshot", return_value=snap):
+            info = batch.progress()
+        self.assertEqual((info["innerStep"], info["innerTotal"]), (27, 40))
+
+    def test_no_denoise_step_while_the_tracker_is_idle_or_loading(self):
+        batch, _ = self.batch(what="still", shots=1)
+        batch._current = (batch.steps[0][0], "still", time.monotonic())
+        for snap in ({"active": False, "phase": "idle", "step": 0, "totalSteps": 0},
+                     {"active": True, "phase": "loading", "step": 0, "totalSteps": 0}):
+            with mock.patch("backend_service.progress.IMAGE_PROGRESS.snapshot", return_value=snap):
+                self.assertNotIn("innerStep", batch.progress())

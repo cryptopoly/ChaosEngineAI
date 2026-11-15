@@ -15725,3 +15725,24 @@ select.music-library__select {
   font-size: 0.8rem;
   text-decoration: underline;
 }
+
+.running-elsewhere {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--accent-storyboard);
+  border-radius: var(--radius-sm);
+  background: var(--panel-alt);
+}
+.running-elsewhere progress {
+  flex: 1 1 100%;
+  height: 6px;
+  accent-color: var(--accent-storyboard);
+}
+.running-elsewhere__hint {
+  flex: 1 1 100%;
+  color: var(--muted);
+  font-size: 0.85rem;
+}

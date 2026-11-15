@@ -2467,5 +2467,13 @@
       "confirm": null,
       "error": null
     }
+  },
+  "runningElsewhere": {
+    "title": null,
+    "image": null,
+    "video": null,
+    "step": null,
+    "elapsed": null,
+    "hint": null
   }
 }

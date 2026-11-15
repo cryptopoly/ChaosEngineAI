@@ -120,6 +120,14 @@ describe("JobProgressLine", () => {
     expect(catalog).toContain("(estimated for this model)");
   });
 
+  it("a storyboard still shows the denoise step it is on beside its place in the batch", () => {
+    const html = renderToStaticMarkup(
+      <JobProgressLine progress={{ kind: "still", kindIndex: 1, kindTotal: 1, innerStep: 27, innerTotal: 40, elapsedSeconds: 290 }} running />,
+    );
+    expect(html).toContain("still 1 of 1");
+    expect(html).toContain("step 27 of 40");
+  });
+
   it("a film render's percent is not shown as steps, and a finished job shows no estimate", () => {
     const render = renderToStaticMarkup(<JobProgressLine progress={{ phase: "joining", step: 40, totalSteps: 100, elapsedSeconds: 5 }} running />);
     expect(render).not.toContain("step 40");

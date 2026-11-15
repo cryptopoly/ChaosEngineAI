@@ -71,6 +71,9 @@ export interface JobProgress {
   kind?: "still" | "clip" | null;
   kindIndex?: number | null;
   kindTotal?: number | null;
+  /** A still or clip in a storyboard batch: the denoise step it is on, between the batch's own steps. */
+  innerStep?: number | null;
+  innerTotal?: number | null;
 }
 
 /** D-60: a chat job as the job card polls it (trimmed: paths and short notes). */

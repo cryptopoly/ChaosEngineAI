@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
+import { RunningElsewhere } from "../../components/RunningElsewhere";
 import { InfoTooltip } from "../../components/InfoTooltip";
 import { Ltx2EngineBanner } from "../../components/Ltx2EngineBanner";
 import { RecommendedSettingsPanel } from "../../components/RecommendedSettingsPanel";
@@ -826,6 +827,7 @@ export function VideoStudioTab({
   return (
     <DisclosureMemoryContext.Provider value={disclosureMemory}>
     <div className="content-grid image-page-grid">
+      <RunningElsewhere kind="video" ownRunActive={videoBusy} className="span-2" />
       <Panel
         title={t("video.title")}
         subtitle={selectedVideoVariant?.name ?? t("videoStudio.subtitle", { defaultValue: "Choose a video model to get started" })}

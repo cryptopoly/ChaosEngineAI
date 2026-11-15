@@ -1,13 +1,22 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 96 rows with work, decisions or watch items still open, newest first.
+summary: 97 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-180 · A job started elsewhere shows no progress in the studios — Done</summary>
+
+**Status or trigger:** Done
+
+**Notes:** Found on the Mac (2026-11-15): a Storyboard still ran for minutes while Image Studio and the Server tab looked idle, and the batch bar had no step inside the still. The batch progress now carries the denoise step (`innerStep` / `innerTotal`, from the shared progress tracker) and the bar shows "step 27 of 40"; Image Studio and Video Studio show a "Generating now" card (model, phase, step, elapsed) for a run they did not start, polled every 2 s and hidden during their own run. Checked on screen against a live Qwen-Image 2.1 still. The Server tab still says "No model loaded" for an sd.cpp subprocess; not changed.
+
+</details>
 
 <details>
 <summary>FU-179 · Chat storyboard run: two render approvals, slow default still model — Open</summary>

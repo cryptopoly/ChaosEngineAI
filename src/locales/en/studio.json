@@ -1725,7 +1725,70 @@
       "withClips": "Drafts with clips",
       "keepHint": "Mark shots with Keep to choose them for the final pass."
     },
-    "exportDrafts": "{n, plural, one {# shot uses a draft take.} other {# shots use a draft take.}} Keep them and run the final pass for full quality, or export the drafts as they are."
+    "exportDrafts": "{n, plural, one {# shot uses a draft take.} other {# shots use a draft take.}} Keep them and run the final pass for full quality, or export the drafts as they are.",
+    "compare": {
+      "facts": {
+        "pass": "Pass",
+        "stillModel": "Still model",
+        "stillSeed": "Still seed",
+        "clipModel": "Clip model",
+        "clipSeed": "Clip seed",
+        "size": "Size",
+        "steps": "Steps",
+        "length": "Length (s)"
+      },
+      "draft": "Draft",
+      "final": "Final",
+      "notRecorded": "Not recorded",
+      "summary": {
+        "sameStill": "Same still, a different clip.",
+        "sameClip": "Same clip, a different still. Remake the clip to match the new still.",
+        "identical": "These takes hold the same still and clip.",
+        "different": "A different still and clip."
+      },
+      "picked": "{take} is now the shot's take.",
+      "left": "Left",
+      "right": "Right",
+      "pickSide": "{side} take",
+      "option": "Take {n} · {pass}{active, select, yes { · in use} other {}}",
+      "inUse": "In use",
+      "clipOf": "Clip of {take}",
+      "stillOf": "Still of {take}",
+      "noClip": "No clip in this take yet.",
+      "noStill": "No still in this take.",
+      "stillShown": "No clip yet: its still is shown.",
+      "inUseButton": "In use",
+      "use": "Use this one",
+      "title": "Compare takes · Shot {n}",
+      "viewLabel": "Show",
+      "clips": "Clips",
+      "stills": "Stills",
+      "transport": "Play both clips",
+      "pause": "Pause",
+      "playBoth": "Play both",
+      "position": "Position in both clips",
+      "time": "{time} of {length} s",
+      "sound": "Sound",
+      "soundOff": "Off",
+      "factsCaption": "What made each take",
+      "setting": "Setting",
+      "differs": "(differs)",
+      "open": "Compare takes",
+      "openTitle": "Two takes side by side, with what made each one.",
+      "short": "Compare"
+    },
+    "remake": {
+      "clip": "Redo clip only",
+      "still": "Redo still only",
+      "outdatedStatus": "New still · clip not remade yet",
+      "outdatedTitle": "This take has a new still; its clip was made from the old one. Redo the clip to match.",
+      "outdatedAction": "Redo clip",
+      "timed": "{action} · about {time}",
+      "untimed": "{action} · time unknown",
+      "label": "Redo one half of the take",
+      "clipTitle": "A new take that keeps this still and makes a new clip with a new seed.",
+      "stillTitle": "A new still with a new seed. The clip stays until you redo it, and the shot shows it is behind."
+    }
   },
   "storyProjects": {
     "card": {

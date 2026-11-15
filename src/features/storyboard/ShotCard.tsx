@@ -14,7 +14,9 @@ import type { StoryboardShot, StoryboardShotStatus, StoryboardTransition } from 
 import { ActionMenu } from "../../components/ActionMenu";
 import { ProjectImage, ProjectVideo } from "./ProjectMedia";
 import { StaleBadge, TransitionPicker } from "./ShotParts";
+import { TakeCompare } from "./TakeCompare";
 import { TakesStrip } from "./TakesStrip";
+import { canRedoClip, canRedoStill, clipOutdated } from "./remakeLogic";
 import { activeTakeOf, isDraftTake, shotCardClassName, thumbnailOf } from "./storyboardLogic";
 
 export const SHOT_DRAG_TYPE = "application/x-chaos-shot";
@@ -53,6 +55,10 @@ export interface ShotCardProps {
   onRetry: () => void;
   /** Makes only the clip of a still-only take, from its still. */
   onMakeClip?: () => void;
+  /** Redo clip only (S11): a new take that keeps the active still and has a new clip (new seed). */
+  onRedoClip?: () => void;
+  /** Redo still only (S11): a new still; the old clip stays (marked stale) until it is remade. */
+  onRedoStill?: () => void;
   /** Adds a cast entry whose picture is this shot's active still. */
   onUseAsReference?: () => void;
   onRemove: () => void;
@@ -69,10 +75,23 @@ export function ShotCard(props: ShotCardProps) {
   const { t } = useTranslation("studio");
   const [title, setTitle] = useState(shot.title);
   const [playing, setPlaying] = useState(false);
+  const [comparing, setComparing] = useState(false);
   const take = activeTakeOf(shot);
   const thumb = thumbnailOf(shot);
   const number = index + 1;
   const showStale = status === "stale" && !kept;
+  const outdated = status === "stale" && clipOutdated(shot);
+  const redoItems = [
+    ...(shot.takes.length > 1
+      ? [{ id: "compare", label: t("board.compare.open", { defaultValue: "Compare takes" }), onSelect: () => setComparing(true) }]
+      : []),
+    ...(props.onRedoClip && canRedoClip(shot)
+      ? [{ id: "redo-clip", label: t("board.remake.clip", { defaultValue: "Redo clip only" }), onSelect: props.onRedoClip, disabled }]
+      : []),
+    ...(props.onRedoStill && canRedoStill(shot)
+      ? [{ id: "redo-still", label: t("board.remake.still", { defaultValue: "Redo still only" }), onSelect: props.onRedoStill, disabled }]
+      : []),
+  ];
 
   useEffect(() => setTitle(shot.title), [shot.title]);
   useEffect(() => setPlaying(false), [shot.activeTake]);
@@ -92,6 +111,7 @@ export function ShotCard(props: ShotCardProps) {
       case "failed":
         return t("board.shot.status.failed", { defaultValue: "Failed" });
       case "stale":
+        if (clipOutdated(shot)) return t("board.remake.outdatedStatus", { defaultValue: "New still · clip not remade yet" });
         return staleAfter != null
           ? t("board.shot.status.stale", { defaultValue: "Stale · after shot {n}", n: staleAfter + 1 })
           : t("board.shot.status.staleNoShot", { defaultValue: "Stale" });
@@ -262,7 +282,9 @@ export function ShotCard(props: ShotCardProps) {
           <StaleBadge
             reason={statusText}
             title={
-              staleAfter != null
+              outdated
+                ? t("board.remake.outdatedTitle", { defaultValue: "This take has a new still; its clip was made from the old one. Redo the clip to match." })
+                : staleAfter != null
                 ? t("board.shot.staleTitle", {
                     defaultValue: "Shot {n} got a new take; this shot starts from its last frame.",
                     n: staleAfter + 1,
@@ -270,9 +292,15 @@ export function ShotCard(props: ShotCardProps) {
                 : t("board.shot.staleTitleGeneric", { defaultValue: "Something this shot depends on changed." })
             }
           />
-          <button type="button" className="secondary-button" disabled={disabled} onClick={props.onRerun}>
-            {t("board.shot.rerun", { defaultValue: "Re-run" })}
-          </button>
+          {outdated && props.onRedoClip ? (
+            <button type="button" className="secondary-button" disabled={disabled} onClick={props.onRedoClip}>
+              {t("board.remake.outdatedAction", { defaultValue: "Redo clip" })}
+            </button>
+          ) : (
+            <button type="button" className="secondary-button" disabled={disabled} onClick={props.onRerun}>
+              {t("board.shot.rerun", { defaultValue: "Re-run" })}
+            </button>
+          )}
           <button type="button" className="secondary-button" onClick={props.onKeep}>
             {t("board.shot.keep", { defaultValue: "Keep" })}
           </button>
@@ -309,6 +337,7 @@ export function ShotCard(props: ShotCardProps) {
         activeId={shot.activeTake}
         onPick={props.onPickTake}
         disabled={disabled}
+        onCompare={() => setComparing(true)}
       />
 
       <div className="shot-card__actions">
@@ -355,6 +384,7 @@ export function ShotCard(props: ShotCardProps) {
           items={[
             { id: "edit", label: t("board.shot.menu.edit", { defaultValue: "Edit prompts" }), onSelect: props.onEdit },
             { id: "import", label: t("board.shot.menu.import", { defaultValue: "Import footage" }), onSelect: props.onEdit },
+            ...redoItems,
             ...(props.onUseAsReference && take?.still
               ? [{ id: "reference", label: t("board.shot.menu.useAsReference", { defaultValue: "Use still as reference" }), onSelect: props.onUseAsReference }]
               : []),
@@ -364,6 +394,16 @@ export function ShotCard(props: ShotCardProps) {
           ]}
         />
       </div>
+      {comparing ? (
+        <TakeCompare
+          projectId={projectId}
+          shot={shot}
+          number={number}
+          disabled={disabled}
+          onPick={(takeId) => props.onPickTake(takeId)}
+          onClose={() => setComparing(false)}
+        />
+      ) : null}
     </article>
   );
 }

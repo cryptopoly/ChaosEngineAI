@@ -1725,7 +1725,70 @@
       "withClips": null,
       "keepHint": null
     },
-    "exportDrafts": null
+    "exportDrafts": null,
+    "compare": {
+      "facts": {
+        "pass": null,
+        "stillModel": null,
+        "stillSeed": null,
+        "clipModel": null,
+        "clipSeed": null,
+        "size": null,
+        "steps": null,
+        "length": null
+      },
+      "draft": null,
+      "final": null,
+      "notRecorded": null,
+      "summary": {
+        "sameStill": null,
+        "sameClip": null,
+        "identical": null,
+        "different": null
+      },
+      "picked": null,
+      "left": null,
+      "right": null,
+      "pickSide": null,
+      "option": null,
+      "inUse": null,
+      "clipOf": null,
+      "stillOf": null,
+      "noClip": null,
+      "noStill": null,
+      "stillShown": null,
+      "inUseButton": null,
+      "use": null,
+      "title": null,
+      "viewLabel": null,
+      "clips": null,
+      "stills": null,
+      "transport": null,
+      "pause": null,
+      "playBoth": null,
+      "position": null,
+      "time": null,
+      "sound": null,
+      "soundOff": null,
+      "factsCaption": null,
+      "setting": null,
+      "differs": null,
+      "open": null,
+      "openTitle": null,
+      "short": null
+    },
+    "remake": {
+      "clip": null,
+      "still": null,
+      "outdatedStatus": null,
+      "outdatedTitle": null,
+      "outdatedAction": null,
+      "timed": null,
+      "untimed": null,
+      "label": null,
+      "clipTitle": null,
+      "stillTitle": null
+    }
   },
   "storyProjects": {
     "card": {

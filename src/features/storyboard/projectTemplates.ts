@@ -1,7 +1,8 @@
 /**
  * Start-from templates for a new project (D-65): client-side data only. A template fills the format and a few
  * titled shots with an example still prompt; nothing else. Blank is the default, and "Scene / b-roll" has no
- * character at all: a cast is optional everywhere.
+ * character at all: a cast is optional everywhere. "Sample film" (S12) is different: it copies the bundled,
+ * finished four-shot film (its shots here only give the count and titles shown in the dialog).
  */
 import type { StoryboardExportPreset, StoryboardResolution } from "../../types";
 
@@ -14,12 +15,14 @@ export interface TemplateShot {
 }
 
 export interface ProjectTemplate {
-  id: "blank" | "ad30" | "vertical" | "story" | "broll";
+  id: "blank" | "ad30" | "vertical" | "story" | "broll" | "sample";
   label: string;
   aspect: StoryboardExportPreset;
   resolution: StoryboardResolution;
   fps: number;
   shots: TemplateShot[];
+  /** Copies the bundled sample film instead of making an empty project from the format and shots. */
+  sample?: boolean;
 }
 
 export const PROJECT_TEMPLATES: ProjectTemplate[] = [
@@ -77,6 +80,20 @@ export const PROJECT_TEMPLATES: ProjectTemplate[] = [
       { key: "brollDetail", title: "Detail", stillPrompt: "Rain on a window with neon reflections, close up", seconds: 4 },
     ],
   },
+  {
+    id: "sample",
+    label: "Sample film",
+    aspect: "16:9",
+    resolution: "480p",
+    fps: 24,
+    sample: true,
+    shots: [
+      { key: "sampleDawn", title: "Dawn on the cliff", stillPrompt: "", seconds: 2 },
+      { key: "sampleLamp", title: "The lamp", stillPrompt: "", seconds: 2 },
+      { key: "sampleSea", title: "Out at sea", stillPrompt: "", seconds: 2 },
+      { key: "sampleNight", title: "Night watch", stillPrompt: "", seconds: 2 },
+    ],
+  },
 ];
 
 export function templateById(id: string): ProjectTemplate {
@@ -88,5 +105,6 @@ export function templateShotArgs(
   template: ProjectTemplate,
   translate: (shot: TemplateShot) => { title: string; stillPrompt: string },
 ): { title: string; stillPrompt: string; seconds: number }[] {
+  if (template.sample) return [];
   return template.shots.map((shot) => ({ ...translate(shot), seconds: shot.seconds }));
 }

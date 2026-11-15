@@ -124,7 +124,13 @@ export function ProjectDialog({
                     </button>
                   ))}
                 </div>
-                {template !== "blank" ? (
+                {templateById(template).sample ? (
+                  <p className="muted-text" role="status">
+                    {t("board.sample.templateNote", {
+                      defaultValue: "Copies a finished four-shot film (16:9, 480p, 24 fps) with its stills and clips. Change anything once it is open.",
+                    })}
+                  </p>
+                ) : template !== "blank" ? (
                   <p className="muted-text" role="status">
                     {t("templates.sets", {
                       defaultValue: "{name} set the format to {aspect}, {resolution}, {fps} fps. Change any of them below.",
@@ -136,35 +142,39 @@ export function ProjectDialog({
                   </p>
                 ) : null}
               </div>
-              <FormatFields
-                aspect={aspect}
-                resolution={resolution}
-                fps={fps}
-                fit={fitContext(fitSource, videoModel)}
-                onAspect={setAspect}
-                onResolution={setResolution}
-                onFps={setFps}
-              />
-              <Disclosure
-                id="new-project-models"
-                title={t("storyProjects.dialog.models", { defaultValue: "Models" })}
-                summary={`${nameOf(imageModels, imageModel)} · ${nameOf(videoModels, videoModel)}`}
-              >
-                <label className="control-stack">
-                  <span className="eyebrow">{t("storyProjects.dialog.imageModel", { defaultValue: "Image model" })}</span>
-                  <select value={imageModel ?? ""} onChange={(event) => setImageModel(event.target.value || null)}>
-                    <option value="">{t("board.defaults.automatic", { defaultValue: "Automatic (an installed model)" })}</option>
-                    {imageModels.map((choice) => <option key={choice.id} value={choice.id}>{choice.name}</option>)}
-                  </select>
-                </label>
-                <label className="control-stack">
-                  <span className="eyebrow">{t("storyProjects.dialog.videoModel", { defaultValue: "Video model" })}</span>
-                  <select value={videoModel ?? ""} onChange={(event) => setVideoModel(event.target.value || null)}>
-                    <option value="">{t("board.defaults.automatic", { defaultValue: "Automatic (an installed model)" })}</option>
-                    {videoModels.map((choice) => <option key={choice.id} value={choice.id}>{choice.name}</option>)}
-                  </select>
-                </label>
-              </Disclosure>
+              {templateById(template).sample ? null : (
+                <>
+                  <FormatFields
+                    aspect={aspect}
+                    resolution={resolution}
+                    fps={fps}
+                    fit={fitContext(fitSource, videoModel)}
+                    onAspect={setAspect}
+                    onResolution={setResolution}
+                    onFps={setFps}
+                  />
+                  <Disclosure
+                    id="new-project-models"
+                    title={t("storyProjects.dialog.models", { defaultValue: "Models" })}
+                    summary={`${nameOf(imageModels, imageModel)} · ${nameOf(videoModels, videoModel)}`}
+                  >
+                    <label className="control-stack">
+                      <span className="eyebrow">{t("storyProjects.dialog.imageModel", { defaultValue: "Image model" })}</span>
+                      <select value={imageModel ?? ""} onChange={(event) => setImageModel(event.target.value || null)}>
+                        <option value="">{t("board.defaults.automatic", { defaultValue: "Automatic (an installed model)" })}</option>
+                        {imageModels.map((choice) => <option key={choice.id} value={choice.id}>{choice.name}</option>)}
+                      </select>
+                    </label>
+                    <label className="control-stack">
+                      <span className="eyebrow">{t("storyProjects.dialog.videoModel", { defaultValue: "Video model" })}</span>
+                      <select value={videoModel ?? ""} onChange={(event) => setVideoModel(event.target.value || null)}>
+                        <option value="">{t("board.defaults.automatic", { defaultValue: "Automatic (an installed model)" })}</option>
+                        {videoModels.map((choice) => <option key={choice.id} value={choice.id}>{choice.name}</option>)}
+                      </select>
+                    </label>
+                  </Disclosure>
+                </>
+              )}
             </>
           ) : null}
           {error ? <p className="error-text" role="alert">{error}</p> : null}

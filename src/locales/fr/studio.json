@@ -1788,6 +1788,18 @@
       "label": null,
       "clipTitle": null,
       "stillTitle": null
+    },
+    "sample": {
+      "projectName": null,
+      "meta": null,
+      "posterAlt": null,
+      "eyebrow": null,
+      "title": null,
+      "body": null,
+      "opening": null,
+      "open": null,
+      "failed": null,
+      "templateNote": null
     }
   },
   "storyProjects": {
@@ -2488,7 +2500,8 @@
     "story": "Histoire courte",
     "vertical": "Vertical réseaux sociaux",
     "metaFormat": null,
-    "sets": "{name} a réglé le format sur {aspect}, {resolution}, {fps} i/s. Modifiez-les ci-dessous."
+    "sets": "{name} a réglé le format sur {aspect}, {resolution}, {fps} i/s. Modifiez-les ci-dessous.",
+    "sample": null
   },
   "voicePicker": {
     "automatic": "Pas de voix (automatique)",

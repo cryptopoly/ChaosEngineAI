@@ -1788,6 +1788,18 @@
       "label": null,
       "clipTitle": null,
       "stillTitle": null
+    },
+    "sample": {
+      "projectName": null,
+      "meta": null,
+      "posterAlt": null,
+      "eyebrow": null,
+      "title": null,
+      "body": null,
+      "opening": null,
+      "open": null,
+      "failed": null,
+      "templateNote": null
     }
   },
   "storyProjects": {
@@ -2488,7 +2500,8 @@
     "story": "短編",
     "vertical": "縦型ソーシャル",
     "metaFormat": null,
-    "sets": "{name} が形式を {aspect}、{resolution}、{fps} fps に設定しました。下で変更できます。"
+    "sets": "{name} が形式を {aspect}、{resolution}、{fps} fps に設定しました。下で変更できます。",
+    "sample": null
   },
   "voicePicker": {
     "automatic": "音声なし (自動)",

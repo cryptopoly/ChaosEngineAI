@@ -1788,6 +1788,18 @@
       "label": null,
       "clipTitle": null,
       "stillTitle": null
+    },
+    "sample": {
+      "projectName": null,
+      "meta": null,
+      "posterAlt": null,
+      "eyebrow": null,
+      "title": null,
+      "body": null,
+      "opening": null,
+      "open": null,
+      "failed": null,
+      "templateNote": null
     }
   },
   "storyProjects": {
@@ -2488,7 +2500,8 @@
     "story": "Kurzgeschichte",
     "vertical": "Hochformat Social",
     "metaFormat": null,
-    "sets": "{name} hat das Format auf {aspect}, {resolution}, {fps} fps gesetzt. Du kannst alles unten ändern."
+    "sets": "{name} hat das Format auf {aspect}, {resolution}, {fps} fps gesetzt. Du kannst alles unten ändern.",
+    "sample": null
   },
   "voicePicker": {
     "automatic": "Keine Stimme (automatisch)",

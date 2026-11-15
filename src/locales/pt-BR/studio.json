@@ -1788,6 +1788,18 @@
       "label": null,
       "clipTitle": null,
       "stillTitle": null
+    },
+    "sample": {
+      "projectName": null,
+      "meta": null,
+      "posterAlt": null,
+      "eyebrow": null,
+      "title": null,
+      "body": null,
+      "opening": null,
+      "open": null,
+      "failed": null,
+      "templateNote": null
     }
   },
   "storyProjects": {
@@ -2488,7 +2500,8 @@
     "story": "Conto curto",
     "vertical": "Vertical para redes",
     "metaFormat": null,
-    "sets": "{name} definiu o formato como {aspect}, {resolution}, {fps} fps. Altere abaixo."
+    "sets": "{name} definiu o formato como {aspect}, {resolution}, {fps} fps. Altere abaixo.",
+    "sample": null
   },
   "voicePicker": {
     "automatic": "Sem voz (automático)",

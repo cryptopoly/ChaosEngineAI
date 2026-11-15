@@ -11,6 +11,7 @@ import { apiFetch, readErrorDetail } from "./index";
 import type {
   StoryboardBatchStatus,
   StoryboardBatchWhat,
+  StoryboardExportPreset,
   StoryboardListRow,
   StoryboardOpArgs,
   StoryboardOpName,
@@ -375,4 +376,32 @@ export async function fetchStoryboardFileSize(projectId: string, rel: string): P
   const full = await apiFetch(path, { method: "GET" });
   if (!full.ok) throw new StoryboardApiError(`Failed to read ${rel} (${full.status})`, full.status);
   return (await full.blob()).size;
+}
+
+/** The bundled sample film (S12): whether this install has it, and what its card shows. */
+export interface StoryboardSampleInfo {
+  available: boolean;
+  name?: string;
+  shots?: number;
+  seconds?: number;
+  aspect?: StoryboardExportPreset;
+  resolution?: string;
+  fps?: number;
+  poster?: boolean;
+}
+
+export async function getStoryboardSample(): Promise<StoryboardSampleInfo> {
+  return await request("GET", "/api/storyboard/sample", undefined, 15000);
+}
+
+/** Copies the sample into the storyboards folder as an ordinary new project, named `name` when given. */
+export async function installStoryboardSample(name?: string): Promise<StoryboardProjectPayload> {
+  return await request("POST", "/api/storyboard/sample", name ? { name } : {}, 120000);
+}
+
+/** The sample's first still as an object URL (revoke it when done). */
+export async function fetchStoryboardSamplePosterUrl(): Promise<string> {
+  const response = await apiFetch("/api/storyboard/sample/poster", { method: "GET" });
+  if (!response.ok) throw new StoryboardApiError(`Failed to load the sample picture (${response.status})`, response.status);
+  return URL.createObjectURL(await response.blob());
 }

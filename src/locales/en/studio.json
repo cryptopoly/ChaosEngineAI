@@ -1788,6 +1788,18 @@
       "label": "Redo one half of the take",
       "clipTitle": "A new take that keeps this still and makes a new clip with a new seed.",
       "stillTitle": "A new still with a new seed. The clip stays until you redo it, and the shot shows it is behind."
+    },
+    "sample": {
+      "projectName": "The Lighthouse",
+      "meta": "{shots, plural, one {# shot} other {# shots}} · {seconds} s · {aspect} · {resolution}",
+      "posterAlt": "The first shot of the sample film",
+      "eyebrow": "New here?",
+      "title": "Try the sample project",
+      "body": "A finished four-shot film with its stills and clips, ready to play. Change a prompt, redo a shot or compare takes: it is an ordinary project, so you can delete it when you are done.",
+      "opening": "Copying the sample…",
+      "open": "Open the sample",
+      "failed": "The sample project could not be copied.",
+      "templateNote": "Copies a finished four-shot film (16:9, 480p, 24 fps) with its stills and clips. Change anything once it is open."
     }
   },
   "storyProjects": {
@@ -2488,7 +2500,8 @@
     "story": "Short story",
     "vertical": "Vertical social",
     "metaFormat": "{aspect} · {resolution} · {fps} fps · {shots, plural, one {# shot} other {# shots}}",
-    "sets": "{name} set the format to {aspect}, {resolution}, {fps} fps. Change any of them below."
+    "sets": "{name} set the format to {aspect}, {resolution}, {fps} fps. Change any of them below.",
+    "sample": "Sample film"
   },
   "voicePicker": {
     "automatic": "No voice (automatic)",

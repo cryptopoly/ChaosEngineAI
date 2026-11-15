@@ -1788,6 +1788,18 @@
       "label": null,
       "clipTitle": null,
       "stillTitle": null
+    },
+    "sample": {
+      "projectName": null,
+      "meta": null,
+      "posterAlt": null,
+      "eyebrow": null,
+      "title": null,
+      "body": null,
+      "opening": null,
+      "open": null,
+      "failed": null,
+      "templateNote": null
     }
   },
   "storyProjects": {
@@ -2488,7 +2500,8 @@
     "story": "短篇故事",
     "vertical": "直式社群",
     "metaFormat": null,
-    "sets": "{name} 已將格式設為 {aspect}、{resolution}、{fps} fps。可在下方變更。"
+    "sets": "{name} 已將格式設為 {aspect}、{resolution}、{fps} fps。可在下方變更。",
+    "sample": null
   },
   "voicePicker": {
     "automatic": "無聲音（自動）",

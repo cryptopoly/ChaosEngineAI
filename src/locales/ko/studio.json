@@ -1788,6 +1788,18 @@
       "label": null,
       "clipTitle": null,
       "stillTitle": null
+    },
+    "sample": {
+      "projectName": null,
+      "meta": null,
+      "posterAlt": null,
+      "eyebrow": null,
+      "title": null,
+      "body": null,
+      "opening": null,
+      "open": null,
+      "failed": null,
+      "templateNote": null
     }
   },
   "storyProjects": {
@@ -2488,7 +2500,8 @@
     "story": "짧은 이야기",
     "vertical": "세로 소셜",
     "metaFormat": null,
-    "sets": "{name}이(가) 형식을 {aspect}, {resolution}, {fps}fps로 설정했습니다. 아래에서 바꿀 수 있습니다."
+    "sets": "{name}이(가) 형식을 {aspect}, {resolution}, {fps}fps로 설정했습니다. 아래에서 바꿀 수 있습니다.",
+    "sample": null
   },
   "voicePicker": {
     "automatic": "음성 없음(자동)",

@@ -41,3 +41,32 @@ describe("Storyboard run bar", () => {
     expect(html).toMatch(/disabled="">Make missing/);
   });
 });
+
+describe("Storyboard run bar: draft and final passes", () => {
+  const passes = {
+    draft: { shots: 3, stills: 3, clips: 3, seconds: 45, stillSeconds: 45, clipSeconds: 150, basis: "estimated" as const,
+      imageModel: "Iris-3B Turbo", videoModel: "Vid", width: 1280, height: 720 },
+    final: { shots: 1, stills: 1, clips: 1, seconds: 500, stillSeconds: 450, clipSeconds: 50, basis: "estimated" as const,
+      imageModel: "Qwen-Image 2.1", videoModel: "Vid", width: 1280, height: 720, assumedAllKept: false },
+  };
+
+  it("shows both passes with their times and models", () => {
+    const html = bar({ estimate: estimate({ passes }), kept: 1, finalShots: 1, onMakeDrafts: noop, onFinalPass: noop });
+    expect(html).toContain("Make drafts · about 45 s");
+    expect(html).toContain("Final pass on 1 kept shot · about 8 min 20 s");
+    expect(html).toContain("Quick stills with Iris-3B Turbo at 1280 x 720");
+    expect(html).toContain("again with Qwen-Image 2.1");
+    expect(html).not.toContain("Mark shots with Keep");
+  });
+
+  it("holds the final pass until a shot is kept, and says how", () => {
+    const html = bar({ estimate: estimate({ passes: { ...passes, final: { ...passes.final, assumedAllKept: true } } }),
+      kept: 0, finalShots: 0, onMakeDrafts: noop, onFinalPass: noop });
+    expect(html).toMatch(/disabled="" title="[^"]*">Final pass on 0 kept shots</);
+    expect(html).toContain("Mark shots with Keep to choose them for the final pass.");
+  });
+
+  it("has no passes row when the screen does not offer them", () => {
+    expect(bar()).not.toContain("Make drafts");
+  });
+});

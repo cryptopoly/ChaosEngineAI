@@ -15,9 +15,11 @@ import {
   activeTakeOf,
   effectiveShotStatus,
   filmSeconds,
+  finalPassShotIds,
   isBareKey,
   isBatchRunning,
   isStillOnly,
+  keptShotIds,
   liveShotStates,
   missingShotIds,
   reorderByDrop,
@@ -69,7 +71,9 @@ export function StoryboardTab({ story, project, timeline, imageGallery, videoGal
   const missing = missingShotIds(shots);
   const unlocked = unlockedShotIds(shots);
   const stillOnly = shots.filter((shot) => missing.includes(shot.id) && isStillOnly(shot)).length;
-  const estimate = useProjectEstimate(project.id, project.revision, missing, !running);
+  const finalIds = finalPassShotIds(shots);
+  const keptCount = keptShotIds(shots).length;
+  const estimate = useProjectEstimate(project.id, project.revision, missing, !running && (missing.length > 0 || finalIds.length > 0));
   const stale = staleCount(project);
   const tabbableId = focusId && ids.includes(focusId) ? focusId : ids[0];
   const castById = new Map([...project.references.characters, ...project.references.places].map((r) => [r.id, r]));
@@ -244,6 +248,7 @@ export function StoryboardTab({ story, project, timeline, imageGallery, videoGal
                 onPickTake={(takeId) => void story.op("pick_take", { shotId: shot.id, takeId })}
                 onToggleLock={() => void story.op("lock", { shotId: shot.id, locked: !shot.locked })}
                 onToggleRedo={() => void story.op("mark_redo", { shotId: shot.id, redo: !shot.redo })}
+                onToggleKept={() => void story.op("set_kept", { shotId: shot.id, kept: !shot.kept })}
                 onTransition={(transition) => void story.op("edit_shot", { shotId: shot.id, transition })}
                 onMove={(step) => void reorderTo(reorderByStep(ids, shot.id, step), shot.id)}
                 onEdit={() => setEditingId(shot.id)}
@@ -287,6 +292,10 @@ export function StoryboardTab({ story, project, timeline, imageGallery, videoGal
           onMakeMissing={() => void story.startBatch("both", missing)}
           onMakeAll={() => void story.startBatch("both", unlocked)}
           onCancel={() => void story.cancelBatch()}
+          kept={keptCount}
+          finalShots={finalIds.length}
+          onMakeDrafts={(withClips) => void story.startBatch(withClips ? "both" : "still", missing, false, true)}
+          onFinalPass={() => void story.startBatch("final", finalIds)}
         />
       ) : null}
       <p className="sr-only" role="status" aria-live="polite">{announce}</p>

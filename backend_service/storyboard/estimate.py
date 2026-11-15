@@ -8,6 +8,8 @@ its default clip length to the shot's length. Peak memory is the model's catalog
 (``helpers.fit``), the larger of the image and the video model, since a batch unloads one before the other. Disk
 is the average size of this project's own stills and clips times the count; without any yet it is unknown.
 ``basis`` is ``measured`` only when every time came from this machine; a missing model is named, never guessed.
+Measured times count only for takes of the same pass (S6): a small draft never prices a full still. ``passes``
+prices both passes at once, drafts (fast model, draft size) and the final pass on the kept shots (quality model).
 """
 
 from __future__ import annotations
@@ -17,7 +19,7 @@ from pathlib import Path
 from typing import Any
 
 from backend_service.helpers.time_estimate import variant_seconds
-from backend_service.storyboard.batch import needs_work, still_only
+from backend_service.storyboard.batch import needs_final, needs_work, still_only
 from backend_service.storyboard.models import Project, Shot
 
 
@@ -29,6 +31,9 @@ def plan_steps(project: Project, what: str, shot_ids: list[str] | None) -> list[
     else:
         shots = [s for s in project.shots if needs_work(s, what) and not s.locked]
     steps: list[tuple[Shot, str]] = []
+    if what == "final":
+        steps += [(shot, "still") for shot in shots if shot.startFrom == "generate"]
+        return steps + [(shot, "clip") for shot in shots if shot.startFrom != "upload"]
     for shot in shots:
         if what in ("still", "both") and shot.startFrom == "generate" and not (what == "both" and still_only(shot) and not shot.redo):
             steps.append((shot, "still"))
@@ -46,11 +51,13 @@ def _clip_frames(variant: dict[str, Any], shot: Shot, fps: int) -> int:
     return frames
 
 
-def _measured(project: Project, kind: str, model_name: str | None) -> list[float]:
-    """Seconds per still, or per second of clip, from takes this project made with ``model_name``."""
+def _measured(project: Project, kind: str, model_name: str | None, render_pass: str = "final") -> list[float]:
+    """Seconds per still, or per second of clip, from takes of this pass this project made with ``model_name``."""
     rates: list[float] = []
     for shot in project.shots:
         for take in shot.takes:
+            if take.renderPass != render_pass:
+                continue
             settings = take.settings or {}
             took = settings.get(f"{kind}Seconds")
             if not isinstance(took, (int, float)) or took <= 0 or settings.get(f"{kind}Model") != model_name:
@@ -87,8 +94,12 @@ def estimate(
     video_variant: dict[str, Any] | None,
     missing: list[str],
     hardware: Any = None,
+    render_pass: str = "final",
+    sizes: dict[str, tuple[int, int]] | None = None,
 ) -> dict[str, Any]:
-    """The estimate for one batch. ``missing`` holds plain sentences about models that are not installed."""
+    """The estimate for one batch. ``missing`` holds plain sentences about models that are not installed.
+
+    ``render_pass`` picks which measured takes count; ``sizes`` ({"still"|"clip": (w, h)}) prices a draft size."""
     from backend_service.helpers.fit import variant_fit
 
     steps = plan_steps(project, what, shot_ids)
@@ -96,14 +107,15 @@ def estimate(
     clips = [shot for shot, kind in steps if kind == "clip"]
 
     seconds: float | None = 0.0
+    parts: dict[str, float | None] = {}
     measured_all = bool(steps)
     for kind, shots, variant in (("still", stills, image_variant), ("clip", clips, video_variant)):
         if not shots:
             continue
         if variant is None:
-            seconds, measured_all = None, False
+            seconds, measured_all, parts[kind] = None, False, None
             continue
-        rates = _measured(project, kind, variant.get("name"))
+        rates = _measured(project, kind, variant.get("name"), render_pass)
         if rates:
             rate = statistics.median(rates)
             part = rate * len(shots) if kind == "still" else sum(rate * shot.seconds for shot in shots)
@@ -111,9 +123,9 @@ def estimate(
             measured_all = False
             catalog = variant.get("estimatedGenerationSeconds")
             if not isinstance(catalog, (int, float)) or catalog <= 0:
-                seconds = None
+                seconds, parts[kind] = None, None
                 continue
-            width, height = project.defaults.width, project.defaults.height
+            width, height = (sizes or {}).get(kind) or (project.defaults.width, project.defaults.height)
             if kind == "still":
                 part = (variant_seconds(variant, "image", width, height) or float(catalog)) * len(shots)
             elif variant.get("estimateRef"):
@@ -122,6 +134,7 @@ def estimate(
             else:
                 base = variant.get("defaultDurationSeconds")
                 part = sum(float(catalog) * (shot.seconds / float(base) if base else 1.0) for shot in shots)
+        parts[kind] = part
         if seconds is not None:
             seconds += part
 
@@ -163,4 +176,47 @@ def estimate(
         "missing": missing,
         "imageModel": image_variant.get("name") if image_variant else None,
         "videoModel": video_variant.get("name") if video_variant else None,
+        "stillSeconds": _round(parts.get("still")) if stills else None,
+        "clipSeconds": _round(parts.get("clip")) if clips else None,
     }
+
+
+def _round(value: float | None) -> float | None:
+    return round(value, 1) if value is not None else None
+
+
+def passes(
+    project: Project,
+    folder: Path,
+    *,
+    shot_ids: list[str] | None,
+    draft_variant: dict[str, Any] | None,
+    final_variant: dict[str, Any] | None,
+    video_variant: dict[str, Any] | None,
+    draft_sizes: dict[str, tuple[int, int]],
+    hardware: Any = None,
+) -> dict[str, Any]:
+    """Both passes (S6). ``draft``: stills of the shots a Make would work on (or ``shot_ids``) with the fast model at
+    the draft size, and their clips at that size, priced apart (``clipSeconds``) because drafts make clips only when
+    asked; its ``seconds`` is the stills. ``final``: the kept shots again with the quality model at the project size
+    plus their clips; with no shot kept yet it is priced for the same shots as the drafts (``assumedAllKept``)."""
+    draft = estimate(project, folder, what="both", shot_ids=shot_ids, image_variant=draft_variant,
+                     video_variant=video_variant, missing=[], hardware=hardware, render_pass="draft", sizes=draft_sizes)
+    # Make drafts without clips is a stills batch: a shot that has a still but no clip gets a new draft still too.
+    stills = estimate(project, folder, what="still", shot_ids=shot_ids, image_variant=draft_variant, video_variant=None,
+                      missing=[], hardware=hardware, render_pass="draft", sizes=draft_sizes)
+    draft["stills"], draft["stillSeconds"] = stills["stills"], stills["stillSeconds"]
+    draft["seconds"] = draft["stillSeconds"] if draft["stills"] else None
+    still = draft_sizes.get("still") or (project.defaults.width, project.defaults.height)
+    draft["width"], draft["height"] = still
+    kept = [s.id for s in project.shots if s.kept]
+    assumed = not kept
+    if assumed:  # every shot the drafts cover, or every unlocked one that is not an upload
+        kept = shot_ids if shot_ids is not None else [s.id for s in project.shots if not s.locked and s.startFrom != "upload"]
+    final = estimate(project, folder, what="final", shot_ids=kept if assumed else None, image_variant=final_variant,
+                     video_variant=video_variant, missing=[], hardware=hardware)
+    final["assumedAllKept"] = assumed
+    final["width"], final["height"] = project.defaults.width, project.defaults.height
+    for out in (draft, final):
+        out.pop("missing", None)
+    return {"draft": draft, "final": final}

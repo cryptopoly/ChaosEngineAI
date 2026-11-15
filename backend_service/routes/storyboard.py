@@ -45,9 +45,10 @@ class RevisionOnly(_Body):
 
 class BatchRequest(_Body):
     revision: int
-    what: Literal["still", "clip", "both"] = "both"
+    what: Literal["still", "clip", "both", "final"] = "both"
     shotIds: list[str] | None = Field(None, max_length=500)
     force: bool = False
+    draft: bool = False  # Make drafts: the fast still model at a smaller size (not with final)
 
 
 class RenderRequest(_Body):
@@ -63,8 +64,9 @@ class CaptionsRequest(_Body):
 
 
 class EstimateRequest(_Body):
-    what: Literal["still", "clip", "both"] = "both"
+    what: Literal["still", "clip", "both", "final"] = "both"
     shotIds: list[str] | None = Field(None, max_length=500)
+    draft: bool = False
 
 
 class ImportRequest(_Body):
@@ -111,22 +113,30 @@ def _guard(fn: Any, *args: Any, **kwargs: Any) -> Any:
 
 # ---- shared with the agent tools ----
 def start_batch(request: Request, project_id: str, revision: int | None, what: str,
-                shot_ids: list[str] | None, force: bool) -> Any:
+                shot_ids: list[str] | None, force: bool, draft: bool = False) -> Any:
     from backend_service.storyboard.batch import Batch
     from backend_service.storyboard.generators import studio_generators
 
     store = get_store()
     folder = store.folder(project_id)
+    project = store.load(project_id)
+    image, _ = _project_variant(request, "image", project.defaults.imageModel)
+    video, _ = _project_variant(request, "video", project.defaults.videoModel)
+    final_image = None
+    if what == "final":
+        final_image, why = _project_variant(request, "image", _final_model(request, project))
+        if final_image is None:
+            raise store_module.StoreError(why or "No image model is installed for the final pass.")
     batch = Batch(store, project_id, what, make_still=lambda s, p: None, make_clip=lambda s, p, i: None,
-                  shot_ids=shot_ids, force=force)
+                  shot_ids=shot_ids, force=force, draft=draft,
+                  draft_sizes=_draft_sizes(project, image, video) if draft else None,
+                  final_image_model=str(final_image["id"]) if final_image else None)
     wiring = studio_generators(request, batch.id, folder)
     batch.make_still, batch.make_clip = wiring["make_still"], wiring["make_clip"]
     batch.unload, batch.last_frame, batch.stop_running = wiring["unload"], wiring["last_frame"], wiring["stop_running"]
     batch.clip_image_refusal = wiring.get("clip_image_refusal")
     # Name the project's models so the first step of each kind shows a time left before any step has finished.
-    project = store.load(project_id)
-    batch.use_models(_project_variant(request, "image", project.defaults.imageModel)[0],
-                     _project_variant(request, "video", project.defaults.videoModel)[0])
+    batch.use_models(final_image or image, video)
     batch.start(revision)
     batch.start_thread()
     return batch
@@ -202,7 +212,7 @@ def redo(project_id: str, body: RevisionOnly) -> dict[str, Any]:
 # ---- batches ----
 @router.post("/api/storyboard/projects/{project_id}/batches")
 def create_batch(request: Request, project_id: str, body: BatchRequest) -> dict[str, Any]:
-    batch = _guard(start_batch, request, project_id, body.revision, body.what, body.shotIds, body.force)
+    batch = _guard(start_batch, request, project_id, body.revision, body.what, body.shotIds, body.force, body.draft)
     return {"batchId": batch.id, **_batch_info(project_id, batch.id)}
 
 
@@ -221,25 +231,78 @@ def _project_variant(request: Request, kind: str, model: str | None) -> tuple[di
         return None, f"The project's {kind} model ({model}) is not installed. Install it under {area} > Models, or pick another in Project settings."
 
 
+def _final_model(request: Request, project: Any) -> str | None:
+    """The still model of the final pass: the project's own choice, else the best-quality installed one."""
+    if project.defaults.finalImageModel:
+        return project.defaults.finalImageModel
+    from backend_service.mcp_bridge import models as bridge_models
+
+    picked = bridge_models.quality_model(request.app.state.chaosengine, "image")
+    return str(picked["id"]) if picked else None
+
+
+def _min_side(variant: dict[str, Any] | None) -> int | None:
+    value = (variant or {}).get("minSide")
+    return int(value) if isinstance(value, (int, float)) and value > 0 else None
+
+
+def _draft_sizes(project: Any, image: dict[str, Any] | None, video: dict[str, Any] | None) -> dict[str, tuple[int, int]]:
+    """The draft size of stills and clips, each kept at or above its model's smallest usable side."""
+    from backend_service.storyboard.batch import draft_size
+
+    w, h = project.defaults.width, project.defaults.height
+    return {"still": draft_size(w, h, _min_side(image)), "clip": draft_size(w, h, _min_side(video))}
+
+
+@router.get("/api/storyboard/still-models")
+def still_models(request: Request, width: int = Query(1280, ge=64, le=4096),
+                 height: int = Query(720, ge=64, le=4096)) -> dict[str, Any]:
+    """The installed still models with the catalogue time per still at this size, and which one Automatic picks
+    for Make and drafts (``fast``, the fastest) and for the final pass (``quality``). One rule with the agent."""
+    from backend_service.helpers.images import _find_image_variant
+    from backend_service.helpers.time_estimate import variant_seconds
+    from backend_service.mcp_bridge import models as bridge_models
+
+    state = request.app.state.chaosengine
+    rows = []
+    for row in bridge_models.installed_models(state, "image"):
+        variant = _find_image_variant(str(row["id"])) or {}
+        rows.append({"id": row["id"], "name": row["name"], "fit": row.get("fit"),
+                     "territoryRestricted": bool(row.get("territoryRestricted")),
+                     "secondsPerStill": variant_seconds(variant, "image", width, height)})
+    fast, quality = bridge_models.default_model(state, "image"), bridge_models.quality_model(state, "image")
+    return {"models": rows, "fast": fast["id"] if fast else None, "quality": quality["id"] if quality else None,
+            "width": width, "height": height}
+
+
 @router.post("/api/storyboard/projects/{project_id}/estimate")
 def estimate_batch(request: Request, project_id: str, body: EstimateRequest) -> dict[str, Any]:
     """Time, peak memory and disk for a batch of shots (what Make would run), from this project's measured takes
-    or the catalog. Never fails for a missing model: ``missing`` says what to install."""
-    from backend_service.storyboard.estimate import estimate, plan_steps
+    or the catalog. Never fails for a missing model: ``missing`` says what to install.
+
+    ``passes`` (S6) adds both passes for the same shots: ``draft`` (fast model, draft size; ``seconds`` is the
+    stills, ``clipSeconds`` the optional clips) and ``final`` (the kept shots with the quality model, plus clips)."""
+    from backend_service.storyboard.estimate import estimate, passes, plan_steps
 
     store = get_store()
     project = _guard(store.load, project_id)
     steps = plan_steps(project, body.what, body.shotIds)
     missing: list[str] = []
-    image = video = None
+    image, why_image = _project_variant(request, "image", project.defaults.imageModel)
+    video, why_video = _project_variant(request, "video", project.defaults.videoModel)
+    final_image = _project_variant(request, "image", _final_model(request, project))[0]
     if any(kind == "still" for _, kind in steps):
-        image, why = _project_variant(request, "image", project.defaults.imageModel)
-        missing += [why] if why else []
+        missing += [why_image] if why_image else []
     if any(kind == "clip" for _, kind in steps):
-        video, why = _project_variant(request, "video", project.defaults.videoModel)
-        missing += [why] if why else []
-    return estimate(project, store.folder(project_id), what=body.what, shot_ids=body.shotIds,
-                    image_variant=image, video_variant=video, missing=missing)
+        missing += [why_video] if why_video else []
+    folder = store.folder(project_id)
+    sizes = _draft_sizes(project, image, video)
+    out = estimate(project, folder, what=body.what, shot_ids=body.shotIds,
+                   image_variant=final_image if body.what == "final" else image, video_variant=video, missing=missing,
+                   render_pass="draft" if body.draft else "final", sizes=sizes if body.draft else None)
+    out["passes"] = passes(project, folder, shot_ids=body.shotIds if body.what != "final" else None,
+                           draft_variant=image, final_variant=final_image, video_variant=video, draft_sizes=sizes)
+    return out
 
 
 @router.get("/api/storyboard/projects/{project_id}/batches/{batch_id}")

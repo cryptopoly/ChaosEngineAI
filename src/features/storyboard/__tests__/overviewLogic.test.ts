@@ -50,6 +50,17 @@ describe("Before you export", () => {
   });
 });
 
+describe("Before you export: drafts", () => {
+  it("warns when an active take is a draft, after the stale line", () => {
+    const draft = shot("a", { clip: "c.mp4" });
+    draft.takes[0].renderPass = "draft";
+    const p = { ...project([draft, shot("b", { clip: "d.mp4" })]), captions: [], export: { loudnessLufs: null, aiLabel: { embedTag: false } } } as unknown as StoryboardProject;
+    const lines = preflight(p, { leftOut: 0, previewStale: false, clonedVoice: false });
+    expect(lines.find((l) => l.id === "drafts")).toEqual({ id: "drafts", ok: false, n: 1, total: 2, tab: "storyboard" });
+    expect(lines.map((l) => l.id).indexOf("drafts")).toBe(1);
+  });
+});
+
 describe("Recent activity", () => {
   it("lists the last finished batches newest first with what they made", () => {
     const batch = (id: string, state: string, at: number, results: { shotId: string; state: string }[]) =>

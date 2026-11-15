@@ -1560,7 +1560,12 @@
       "automatic": "Automático (um modelo instalado)",
       "automaticShort": "auto",
       "automaticName": "Automático",
-      "noVoice": "nenhuma"
+      "noVoice": "nenhuma",
+      "modelTimed": null,
+      "automaticFast": null,
+      "automaticQuality": null,
+      "stillTime": null,
+      "finalImageModel": null
     },
     "defaultsSummary": null,
     "defaultsTitle": "Padrões do projeto",
@@ -1689,7 +1694,11 @@
       "noPrompt": "Ainda sem prompt. Pressione Enter ou Editar prompts.",
       "makeClip": "Criar o clipe",
       "makeClipTitle": "Criar o clipe desta cena a partir da sua imagem.",
-      "referenceAdded": "{name} foi adicionado ao elenco com esta imagem."
+      "referenceAdded": "{name} foi adicionado ao elenco com esta imagem.",
+      "draft": null,
+      "draftTitle": null,
+      "keepForFinal": null,
+      "keepForFinalTitle": null
     },
     "shots": "Planos",
     "subtitle": "{shots, plural, one {# plano} other {# planos}} · {seconds} s · {stale} desatualizado(s)",
@@ -1704,7 +1713,19 @@
     "emptyNoCast": null,
     "subtitleShots": null,
     "lengthStrip": "Duração das cenas",
-    "lengthStripPart": "Cena {n} · {seconds} s"
+    "lengthStripPart": "Cena {n} · {seconds} s",
+    "passes": {
+      "draft": null,
+      "draftTimed": null,
+      "final": null,
+      "finalTimed": null,
+      "draftTitle": null,
+      "finalTitle": null,
+      "label": null,
+      "withClips": null,
+      "keepHint": null
+    },
+    "exportDrafts": null
   },
   "storyProjects": {
     "card": {

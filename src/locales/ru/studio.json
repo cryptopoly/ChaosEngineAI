@@ -1560,7 +1560,12 @@
       "automatic": "Автоматически (установленная модель)",
       "automaticShort": "авто",
       "automaticName": "Автоматически",
-      "noVoice": "нет"
+      "noVoice": "нет",
+      "modelTimed": null,
+      "automaticFast": null,
+      "automaticQuality": null,
+      "stillTime": null,
+      "finalImageModel": null
     },
     "defaultsSummary": null,
     "defaultsTitle": "Настройки проекта по умолчанию",
@@ -1689,7 +1694,11 @@
       "noPrompt": "Промпта пока нет. Нажмите Enter или «Изменить промпты».",
       "makeClip": "Сделать клип",
       "makeClipTitle": "Сделать клип этого плана из его кадра.",
-      "referenceAdded": "{name} добавлен в персонажи с этим кадром."
+      "referenceAdded": "{name} добавлен в персонажи с этим кадром.",
+      "draft": null,
+      "draftTitle": null,
+      "keepForFinal": null,
+      "keepForFinalTitle": null
     },
     "shots": "Шоты",
     "subtitle": "{shots, plural, one {# шот} few {# шота} many {# шотов} other {# шота}} · {seconds} с · устарело: {stale}",
@@ -1704,7 +1713,19 @@
     "emptyNoCast": null,
     "subtitleShots": null,
     "lengthStrip": "Длина планов",
-    "lengthStripPart": "План {n} · {seconds} с"
+    "lengthStripPart": "План {n} · {seconds} с",
+    "passes": {
+      "draft": null,
+      "draftTimed": null,
+      "final": null,
+      "finalTimed": null,
+      "draftTitle": null,
+      "finalTitle": null,
+      "label": null,
+      "withClips": null,
+      "keepHint": null
+    },
+    "exportDrafts": null
   },
   "storyProjects": {
     "card": {

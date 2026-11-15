@@ -9,7 +9,10 @@ export interface StoryboardDefaults {
   width: number;
   height: number;
   fps: number;
+  /** Stills for Make and Make drafts; null is Automatic (the fastest installed model). */
   imageModel: string | null;
+  /** Stills for the final pass on kept shots; null is Automatic (the best-quality installed model). */
+  finalImageModel?: string | null;
   videoModel: string | null;
   voice: string | null;
   exportPreset: StoryboardExportPreset;
@@ -50,7 +53,11 @@ export interface StoryboardTake {
   createdAt: number;
   origin: "generate" | "upload" | "batch";
   basis: string | null;
+  /** A quick draft or a full take; absent (an older project) reads as final. */
+  renderPass?: StoryboardRenderPass;
 }
+
+export type StoryboardRenderPass = "draft" | "final";
 
 export type StoryboardShotStatus = "idle" | "queued" | "running" | "done" | "failed" | "stale" | "missing";
 export type StoryboardStartFrom = "generate" | "upload" | "previous-shot" | "text";
@@ -76,6 +83,8 @@ export interface StoryboardShot {
   transition: StoryboardTransition;
   nativeSoundDb: number;
   redo: boolean;
+  /** Chosen for the final pass. */
+  kept?: boolean;
 }
 
 export interface StoryboardAudioSource {
@@ -136,8 +145,10 @@ export interface StoryboardBatchResult {
 
 export interface StoryboardBatchRecord {
   id: string;
-  what: "still" | "clip" | "both";
+  what: StoryboardBatchWhat;
   force: boolean;
+  /** A Make drafts run. */
+  draft?: boolean;
   state: StoryboardBatchState;
   createdAt: number;
   finishedAt: number | null;
@@ -199,7 +210,8 @@ export type StoryboardListRow =
   | { id: string; name: string; revision: number; shots: number; createdAt: number; error?: undefined }
   | { id: string; error: string; name?: undefined; revision?: undefined; shots?: undefined; createdAt?: undefined };
 
-export type StoryboardBatchWhat = "still" | "clip" | "both";
+/** `final`: the kept shots again with the quality model, then their clips. */
+export type StoryboardBatchWhat = "still" | "clip" | "both" | "final";
 
 export interface StoryboardBatchStatus {
   batch: StoryboardBatchRecord;
@@ -283,6 +295,7 @@ export interface StoryboardOpArgs {
   lock: { shotId: string; locked?: boolean };
   pick_take: { shotId: string; takeId: string };
   mark_redo: { shotId: string; redo?: boolean };
+  set_kept: { shotId: string; kept?: boolean };
   import_take: { shotId: string; clip?: string; still?: string };
   /** The picture a clip should end on (LTX-2 models only); `image` is a path, an `upload:` handle or a project `media/` path, empty or absent clears it. */
   set_end_image: { shotId: string; image?: string | null };

@@ -3,12 +3,13 @@
  * takes strip keyboard model, batch progress, reorder, which shots a batch should make, and project
  * summaries. No React here so the rules are unit-tested directly.
  */
-import { StoryboardRevisionConflict } from "../../api/storyboard";
+import { StoryboardRevisionConflict, type StoryboardStillModel } from "../../api/storyboard";
 import type {
   StoryboardBatchRecord,
   StoryboardProject,
   StoryboardShot,
   StoryboardShotStatus,
+  StoryboardTake,
   StoryboardTimeline,
 } from "../../types";
 
@@ -174,6 +175,53 @@ export function missingShotIds(shots: StoryboardShot[]): string[] {
 /** "Make all unlocked": every unlocked shot a batch can work on. */
 export function unlockedShotIds(shots: StoryboardShot[]): string[] {
   return shots.filter((s) => !s.locked && s.startFrom !== "upload" && s.status !== "missing").map((s) => s.id);
+}
+
+// ---- draft and final passes (S6) ----
+/** A take made by Make drafts. A take with no pass (an older project) is final. */
+export function isDraftTake(take: StoryboardTake | null | undefined): boolean {
+  return take?.renderPass === "draft";
+}
+
+/** Shots whose active take is a draft: Export warns before such a film goes out. */
+export function draftShotIds(shots: StoryboardShot[]): string[] {
+  return shots.filter((s) => isDraftTake(activeTakeOf(s))).map((s) => s.id);
+}
+
+/** Shots marked to keep for the final pass. */
+export function keptShotIds(shots: StoryboardShot[]): string[] {
+  return shots.filter((s) => s.kept).map((s) => s.id);
+}
+
+/** What "Final pass on kept shots" would redo. Mirrors `needs_final` in batch.py (locked shots left out). */
+export function finalPassShotIds(shots: StoryboardShot[]): string[] {
+  return shots
+    .filter((s) => {
+      if (!s.kept || s.locked || s.startFrom === "upload" || s.status === "missing") return false;
+      const take = activeTakeOf(s);
+      const finished = take != null && !isDraftTake(take) && Boolean(take.clip);
+      return !finished || s.redo || s.status === "stale" || s.status === "failed";
+    })
+    .map((s) => s.id);
+}
+
+export interface StillModelPick {
+  id: string | null;
+  name: string | null;
+  /** Catalogue seconds for one still at the project size; null when unknown. */
+  seconds: number | null;
+  automatic: boolean;
+}
+
+/** The still model a project setting resolves to: the saved one, else what Automatic picks (`autoId`). */
+export function stillModelPick(
+  models: StoryboardStillModel[],
+  saved: string | null | undefined,
+  autoId: string | null,
+): StillModelPick {
+  const id = saved || autoId;
+  const row = id ? models.find((m) => m.id === id) : undefined;
+  return { id: id ?? null, name: row?.name ?? id ?? null, seconds: row?.secondsPerStill ?? null, automatic: !saved };
 }
 
 // ---- reorder ----

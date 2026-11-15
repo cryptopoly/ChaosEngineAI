@@ -1,6 +1,7 @@
 /**
  * The estimate for "Make missing" on the open project (D-65 phase 3), read again shortly after the project
  * changes (debounced), so a new shot or a picked take updates the run bar without a request per keystroke.
+ * The answer also prices both passes (`passes`): drafts for these shots and the final pass on the kept ones.
  */
 import { useEffect, useState } from "react";
 import { estimateStoryboardBatch } from "../../api";
@@ -17,7 +18,7 @@ export function useProjectEstimate(
   const [estimate, setEstimate] = useState<StoryboardEstimate | null>(null);
   const key = shotIds.join(",");
   useEffect(() => {
-    if (!enabled || shotIds.length === 0) {
+    if (!enabled) {
       setEstimate(null);
       return;
     }

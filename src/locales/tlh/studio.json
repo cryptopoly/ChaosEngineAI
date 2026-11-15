@@ -1560,7 +1560,12 @@
       "automatic": "De'wI' wIv (jomlu'ta'bogh yab)",
       "automaticShort": "De'wI' wIv",
       "automaticName": "De'wI' wIv",
-      "noVoice": "pagh"
+      "noVoice": "pagh",
+      "modelTimed": null,
+      "automaticFast": null,
+      "automaticQuality": null,
+      "stillTime": null,
+      "finalImageModel": null
     },
     "defaultsSummary": "{aspect} · {resolution} · {fps} fps · {imageModel} · {videoModel} · ghogh {voice}",
     "defaultsTitle": "Qu' motlh wIv",
@@ -1689,7 +1694,11 @@
       "noPrompt": "wej QIn tu'lu'. Enter yI'uy pagh QIn yIchoH yIwIv.",
       "makeClip": "mIllogh vIH yIchenmoH",
       "makeClipTitle": "mIlloghvo' 'ay'vam mIllogh vIH chenmoH.",
-      "referenceAdded": "mIlloghvam lo'taHvIS, ghot ghomDaq chellu'ta' {name}."
+      "referenceAdded": "mIlloghvam lo'taHvIS, ghot ghomDaq chellu'ta' {name}.",
+      "draft": null,
+      "draftTitle": null,
+      "keepForFinal": null,
+      "keepForFinalTitle": null
     },
     "shots": "'ay'",
     "subtitle": "{shots, plural, other {# 'ay''}} · {seconds} lup · {stale} ngo'",
@@ -1704,7 +1713,19 @@
     "emptyNoCast": "wej 'ay' tu'lu'. 'ay' yIchel 'ej yIDel, pagh mIllogh vIH yIqem. ghot poQbe' 'ay': He pagh ghom nIteb QaplaH.",
     "subtitleShots": "{shots, plural, other {# 'ay''}} · {seconds} lup · {stale} ngo'",
     "lengthStrip": "'ay' poH",
-    "lengthStripPart": "'ay' {n} · {seconds} lup"
+    "lengthStripPart": "'ay' {n} · {seconds} lup",
+    "passes": {
+      "draft": null,
+      "draftTimed": null,
+      "final": null,
+      "finalTimed": null,
+      "draftTitle": null,
+      "finalTitle": null,
+      "label": null,
+      "withClips": null,
+      "keepHint": null
+    },
+    "exportDrafts": null
   },
   "storyProjects": {
     "card": {

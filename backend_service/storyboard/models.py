@@ -96,7 +96,8 @@ class Defaults(_Model):
     width: int = Field(1280, ge=64, le=4096)
     height: int = Field(720, ge=64, le=4096)
     fps: int = Field(24, ge=1, le=60)
-    imageModel: Line | None = None
+    imageModel: Line | None = None  # stills for Make and Make drafts; None picks the fastest installed model (S2)
+    finalImageModel: Line | None = None  # stills for the final pass on kept shots; None picks the best-quality one
     videoModel: Line | None = None
     voice: Line | None = None
     exportPreset: Literal["16:9", "9:16", "1:1"] = "16:9"  # the aspect ratio (called "shape" before D-64)
@@ -144,6 +145,7 @@ class Take(_Model):
     createdAt: float = 0.0
     origin: Literal["generate", "upload", "batch"] = "upload"
     basis: Annotated[str, Field(max_length=128)] | None = None  # fingerprint of the inputs (deps.py)
+    renderPass: Literal["draft", "final"] = "final"  # a quick draft or a full take; takes saved before S6 are final
 
 
 ShotStatus = Literal["idle", "queued", "running", "done", "failed", "stale", "missing"]
@@ -171,6 +173,7 @@ class Shot(_Model):
     transition: Transition = Field(default_factory=Transition)  # how this shot comes in from the previous one
     nativeSoundDb: float = Field(0.0, ge=-60, le=12)
     redo: bool = False  # marked for the next batch
+    kept: bool = False  # chosen for the final pass (S6)
 
     def take(self, take_id: str | None) -> Take | None:
         return next((t for t in self.takes if t.id == take_id), None) if take_id else None
@@ -271,8 +274,9 @@ class BatchResult(_Model):
 
 class BatchRecord(_Model):
     id: Id
-    what: Literal["still", "clip", "both"]
+    what: Literal["still", "clip", "both", "final"]  # final: kept shots again with the quality model, then clips
     force: bool = False
+    draft: bool = False  # a "Make drafts" run: the fast model at a smaller size
     state: Literal["queued", "running", "done", "failed", "cancelled", "interrupted"] = "queued"
     createdAt: float = 0.0
     finishedAt: float | None = None

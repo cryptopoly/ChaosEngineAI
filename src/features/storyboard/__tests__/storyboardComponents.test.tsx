@@ -37,6 +37,16 @@ function card(overrides: Partial<ShotCardProps> = {}) {
 }
 
 describe("ShotCard", () => {
+  it("marks a draft take and toggles Keep for final", () => {
+    const draft = { ...take("t1"), clip: "media/c.mp4", renderPass: "draft" as const };
+    const html = card({ status: "done", shot: shot({ takes: [draft], activeTake: "t1", kept: true }), onToggleKept: noop });
+    expect(html).toContain(">Draft</span>");
+    expect(html).toMatch(/aria-pressed="true"[^>]*>Keep for final/);
+    const plain = card({ status: "done", shot: shot({ takes: [{ ...take("t1"), clip: "media/c.mp4" }], activeTake: "t1" }), onToggleKept: noop });
+    expect(plain).not.toContain(">Draft</span>");
+    expect(plain).toMatch(/aria-pressed="false"[^>]*>Keep for final/);
+  });
+
   it("carries the state class and the status sentence for each state", () => {
     expect(card({ status: "idle" })).toContain("shot-card--idle");
     expect(card({ status: "idle" })).toContain("Not made yet");

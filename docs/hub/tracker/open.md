@@ -1,13 +1,22 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 95 rows with work, decisions or watch items still open, newest first.
+summary: 96 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-179 · Chat storyboard run: two render approvals, slow default still model — Open</summary>
+
+**Status or trigger:** Open
+
+**Notes:** Chat run on the Mac with Qwen3.8-27B MLX 4-bit, Studio tools on (2026-11-15): the model made the project and 4 shots with 6 tool calls, but asked for `storyboard_generate` (stills) twice, so the user had to approve two plan cards; the first approval rendered nothing, the second did. Also the default still model was Qwen-Image 2.1 (sd.cpp Q4_K, 1280x720) at 435 to 637 s per still, so 4 stills took about 30 min; a smaller default still model for storyboards, or a time shown on the plan card, would help. The model also dropped the `<tool_call>` opening tag once; fixed in `agent.py` (commit 136b3097). Not run: the clips, the 4th still (power loss).
+
+</details>
 
 <details>
 <summary>FU-178 · llama.cpp 1.0 features not wired — Open</summary>

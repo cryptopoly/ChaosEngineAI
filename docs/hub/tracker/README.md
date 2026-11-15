@@ -8,13 +8,14 @@ summary: Every FU row from FOLLOW_UPS.md, split into open and closed.
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here.
 
-- [Open and live follow-ups](open.md): **95** rows.
+- [Open and live follow-ups](open.md): **96** rows.
 - [Closed follow-ups](closed.md): **81** rows.
 
 ## Newest ten
 
 | Row | Item | Status |
 |---|---|---|
+| [FU-179](open.md) | Chat storyboard run: two render approvals, slow default still model | Open |
 | [FU-178](open.md) | llama.cpp 1.0 features not wired | Open |
 | [FU-177](open.md) | Show the TensorFold family report in Setup and Models | Open (2026-11-14): backend done (FU-168), no UI. |
 | [FU-176](open.md) | Wan 2.1 via stable-diffusion.cpp: the video path is not wired | Open (2026-11-14): found by v0.10.0 task B, not changed. |
@@ -24,4 +25,3 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 | [FU-172](open.md) | Qwen3.8-27B + DFlash2 on the vLLM lane does not fit a 24 GB card; vLLM lane ignores the th | Open (2026-11-13): measured on an RTX 4090 (WSL2, vLLM 0.33). |
 | [FU-171](open.md) | TriAttention on the vLLM lane: works only on vLLM 0.18 or older; the app now says so and w | Open: root cause found, compaction working on vLLM 0.18.1, app honest on newer vLLM (2026-11-13). |
 | [FU-170](open.md) | cargo test port race in backend::tests::runtime_info_keeps_a_soft_note_while_the_port_is_s | Open; low priority. |
-| [FU-169](open.md) | scripts/check-upstreams.py: report every pinned upstream against its newest release (D-78) | Shipped 2026-11-11. |

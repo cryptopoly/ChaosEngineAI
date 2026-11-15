@@ -6,8 +6,10 @@ the current project), applies the change, bumps ``revision``, writes ``project.j
 file in the same folder, then ``os.replace``) and appends one small diff file to ``history/``. Undo and
 redo replay those diffs for the reversible ops, field by field: work done since by non-undoable ops
 (batch picks and takes, relinked files) is kept, and a shot an undo removes keeps its takes for redo. On the first load in a
-process, shots left ``queued`` / ``running`` go back to ``idle`` and unfinished batches are marked
-``interrupted``; on every load, a shot or audio clip whose file is gone shows ``missing``.
+process start and on every load, work left ``queued`` / ``running`` with no live batch in this process
+(a crash, a power cut) is reset by ``reconcile``: the shot goes to ``done`` if it has a take, else ``idle``;
+its batch is marked ``interrupted`` and its unfinished results ``cancelled``. On every load, a shot or audio
+clip whose file is gone shows ``missing``.
 """
 
 from __future__ import annotations
@@ -77,8 +79,40 @@ def refs_to_single(data: dict[str, Any]) -> dict[str, Any] | None:
 
 _LOCKS: dict[str, threading.RLock] = {}
 _LOCKS_GUARD = threading.Lock()
-_RECOVERED: set[str] = set()
 LIVE_BATCHES: set[str] = set()  # batch ids running in this process (batch.py adds and removes)
+
+
+INTERRUPTED_NOTE = "Stopped before this step finished (the app closed or the computer lost power)."
+
+
+def reconcile(project: Project, dry_run: bool = False) -> bool:
+    """Reset work a dead process left ``queued`` or ``running``; True when something was (or, in a dry run, would be) changed.
+
+    A batch in ``LIVE_BATCHES`` runs in this process: it and its shots are never touched. For the rest, a shot
+    goes to ``done`` if it has a take and ``idle`` if not (the rule a finished batch uses), the batch record to
+    ``interrupted`` and its queued or running results to ``cancelled`` with a note."""
+    live = {b.id for b in project.batches if b.id in LIVE_BATCHES}
+    held = {r.shotId for b in project.batches if b.id in live for r in b.results}
+    changed = False
+    for shot in project.shots:
+        if shot.status in ("queued", "running") and shot.id not in held:
+            changed = True
+            if not dry_run:
+                shot.status = "done" if shot.active() else "idle"
+    for batch in project.batches:
+        if batch.id in live:
+            continue
+        stale = [r for r in batch.results if r.state in ("queued", "running")]
+        if batch.state in ("queued", "running") or stale:
+            changed = True
+            if dry_run:
+                continue
+            if batch.state in ("queued", "running"):
+                batch.state = "interrupted"
+                batch.finishedAt = batch.finishedAt or time.time()
+            for result in stale:
+                result.state, result.error = "cancelled", INTERRUPTED_NOTE
+    return changed
 
 
 class StoreError(ValueError):
@@ -303,30 +337,32 @@ class ProjectStore:
         project = parse_project(path.read_bytes())
         if project.id != project_id:
             raise StoreError("project.json id does not match its folder.")
-        key = str(folder.resolve())
-        if key not in _RECOVERED:
+        if reconcile(project, dry_run=True):
             with self.lock(project_id):
-                if key not in _RECOVERED:
-                    project = parse_project(path.read_bytes())
-                    if self._recover(project):
-                        project.revision += 1
-                        atomic_write(path, _encode(project))
-                    _RECOVERED.add(key)
+                project = parse_project(path.read_bytes())
+                if reconcile(project):
+                    project.revision += 1
+                    atomic_write(path, _encode(project))
         check_media(project, folder)
         deps.apply_stale(project)
         return project
 
-    @staticmethod
-    def _recover(project: Project) -> bool:
-        changed = False
-        for shot in project.shots:
-            if shot.status in ("queued", "running"):
-                shot.status = "idle"
-                changed = True
-        for batch in project.batches:
-            if batch.state in ("queued", "running") and batch.id not in LIVE_BATCHES:
-                batch.state = "interrupted"
-                changed = True
+    def reconcile_all(self) -> int:
+        """Reset the stale work of every project on disk (the start-up pass); the number of projects changed.
+        A project that cannot be read is skipped: opening it shows the reason."""
+        changed = 0
+        if not self.root.is_dir():
+            return changed
+        for entry in sorted(self.root.iterdir()):
+            if not PROJECT_ID_RE.match(entry.name) or not (entry / PROJECT_FILE).is_file():
+                continue
+            try:
+                before = parse_project((entry / PROJECT_FILE).read_bytes())
+                if reconcile(before, dry_run=True):
+                    self.load(entry.name)
+                    changed += 1
+            except (StoreError, OSError):
+                continue
         return changed
 
     # ---- write ----
@@ -338,7 +374,6 @@ class ProjectStore:
         for sub in ("media/audio", "cache", "history", "exports"):
             (folder / sub).mkdir(parents=True, exist_ok=True)
         atomic_write(folder / PROJECT_FILE, _encode(project))
-        _RECOVERED.add(str(folder.resolve()))
         return project
 
     def delete(self, project_id: str, expected_revision: int) -> dict[str, Any]:
@@ -364,7 +399,6 @@ class ProjectStore:
             except OSError as exc:
                 raise StoreError(f"Could not delete the project: project.json is in use ({exc.strerror or exc}). "
                                  "Close what is using it and try again.") from exc
-            _RECOVERED.discard(str(folder.resolve()))
             failed: list[str] = []
             # Count files only: their folders then fail to go too (``rmdir`` of a non-empty folder).
             shutil.rmtree(folder, onerror=lambda fn, path, info: None if getattr(fn, "__name__", "") == "rmdir"

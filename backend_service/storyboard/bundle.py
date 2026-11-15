@@ -25,7 +25,6 @@ from typing import Any
 from backend_service.storyboard import media
 from backend_service.storyboard.models import Project, check_rel_path, dump, new_project_id
 from backend_service.storyboard.store import (
-    _RECOVERED,
     MAX_PROJECT_BYTES,
     PROJECT_FILE,
     ProjectStore,
@@ -180,7 +179,6 @@ def import_bundle(store: ProjectStore, src: Path) -> Project:
             atomic_write(staging / PROJECT_FILE, json.dumps(dump(project), indent=1, ensure_ascii=False).encode("utf-8"))
             final = store.folder(project.id)
             os.rename(staging, final)
-            _RECOVERED.add(str(final.resolve()))
         except BaseException:
             shutil.rmtree(staging, ignore_errors=True)
             raise

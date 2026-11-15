@@ -39,6 +39,23 @@ export interface StudioPlanItem {
   preview?: boolean;
   /** Storyboard: shots this generate will work on, or a render will join. */
   shots?: number | null;
+  /** S7: a storyboard generate's time per shot and in total, from the Storyboard estimate. */
+  estimate?: StudioPlanEstimate | null;
+}
+
+/** Seconds are null when unknown (no catalogue time, or a model that is not installed). */
+export interface StudioPlanEstimate {
+  seconds: number | null;
+  basis: "measured" | "estimated" | null;
+  peakGb?: number | null;
+  totalGb?: number | null;
+  /** Plain sentences about models that are not installed. */
+  missing: string[];
+  imageModel?: string | null;
+  videoModel?: string | null;
+  shots: { id: string; title: string; still?: number | null; clip?: number | null }[];
+  /** Shots past the listed ones (the list stops at 24). */
+  moreShots?: number;
 }
 
 /** D-60: the plan card. Approval is a click in the app, never chat text. */

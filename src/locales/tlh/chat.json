@@ -459,7 +459,14 @@
       "less": "puS",
       "memoryLoaded": "chu'lu'taH {model}: {gb} GB chIm 'e' noHlu'.",
       "memoryFree": "{gb} GB chIm 'e' noHlu'.",
-      "approveThisLabel": "{kind}vam neH yIlaj: {prompt}"
+      "approveThisLabel": "{kind}vam neH yIlaj: {prompt}",
+      "perShot": null,
+      "shotNumber": null,
+      "shotStill": null,
+      "shotClip": null,
+      "unknownTime": null,
+      "moreShots": null,
+      "total": null
     },
     "job": {
       "declined": "lajQo'lu'ta'. pagh chenmoHlu'.",

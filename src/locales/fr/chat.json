@@ -459,7 +459,14 @@
       "less": null,
       "memoryLoaded": null,
       "memoryFree": null,
-      "approveThisLabel": null
+      "approveThisLabel": null,
+      "perShot": null,
+      "shotNumber": null,
+      "shotStill": null,
+      "shotClip": null,
+      "unknownTime": null,
+      "moreShots": null,
+      "total": null
     },
     "job": {
       "declined": null,

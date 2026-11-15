@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { StudioPlan, StudioPlanItem } from "../../types";
+import { formatDuration } from "../../components/RunEstimateStrip";
+import type { StudioPlan, StudioPlanEstimate, StudioPlanItem } from "../../types";
 import { formatSeconds, submitPlanDecision, type PlanAction } from "./studioChat";
 
 interface StudioPlanCardProps {
@@ -54,6 +55,65 @@ function ItemFacts({ item }: { item: StudioPlanItem }) {
         </span>
       ) : null}
     </>
+  );
+}
+
+type TFn = (key: string, options: Record<string, unknown>) => string;
+
+/**
+ * S7: time per shot (still and clip) and the total before a storyboard render is approved. The time, unknown
+ * and basis words are the Storyboard run bar's own (studio namespace), so both screens say the same thing.
+ */
+function StoryboardEstimate({ estimate }: { estimate: StudioPlanEstimate }) {
+  const { t } = useTranslation("chat");
+  const { t: ts } = useTranslation("studio");
+  const tf = ts as unknown as TFn;
+  const about = (seconds: number | null | undefined) =>
+    typeof seconds === "number" && seconds > 0
+      ? ts("estimate.time", { defaultValue: "About {time}", time: formatDuration(tf, seconds) })
+      : t("studioChat.plan.unknownTime", { defaultValue: "time unknown" });
+  const basis = estimate.basis;
+  return (
+    <div className="studio-plan-card__estimate">
+      <span className="studio-plan-card__estimate-label">{t("studioChat.plan.perShot", { defaultValue: "Time per shot" })}</span>
+      <ul className="studio-plan-card__estimate-shots">
+        {estimate.shots.map((shot, index) => (
+          <li key={shot.id}>
+            <span className="studio-plan-card__estimate-title">{shot.title || t("studioChat.plan.shotNumber", { n: index + 1, defaultValue: "Shot {n}" })}</span>
+            {shot.still !== undefined ? <span>{t("studioChat.plan.shotStill", { time: about(shot.still), defaultValue: "still: {time}" })}</span> : null}
+            {shot.clip !== undefined ? <span>{t("studioChat.plan.shotClip", { time: about(shot.clip), defaultValue: "clip: {time}" })}</span> : null}
+          </li>
+        ))}
+        {estimate.moreShots ? (
+          <li className="muted-text">{t("studioChat.plan.moreShots", { count: estimate.moreShots, defaultValue: "and {count} more" })}</li>
+        ) : null}
+      </ul>
+      <div className="studio-plan-card__estimate-total">
+        <strong>{t("studioChat.plan.total", { defaultValue: "Total" })}</strong>
+        <span>
+          {estimate.seconds != null && estimate.seconds > 0
+            ? ts("estimate.time", { defaultValue: "About {time}", time: formatDuration(tf, estimate.seconds) })
+            : ts("estimate.timeUnknown", { defaultValue: "Time: unknown until the first run" })}
+        </span>
+        {basis ? (
+          <span
+            className={`badge subtle run-estimate__basis run-estimate__basis--${basis}`}
+            title={basis === "measured"
+              ? ts("estimate.measuredTitle", { defaultValue: "Timed on this machine for this model and preset." })
+              : ts("estimate.estimatedTitle", { defaultValue: "From the model card or a similar machine; not timed here yet." })}
+          >
+            {basis === "measured"
+              ? ts("estimate.measured", { defaultValue: "Measured" })
+              : ts("estimate.estimated", { defaultValue: "Estimated" })}
+          </span>
+        ) : null}
+      </div>
+      {estimate.missing.length ? (
+        <ul className="studio-plan-card__estimate-missing">
+          {estimate.missing.map((line) => <li key={line}>{line}</li>)}
+        </ul>
+      ) : null}
+    </div>
   );
 }
 
@@ -162,6 +222,7 @@ export function StudioPlanCard({ plan, sessionId, onEditByChat }: StudioPlanCard
                   </span>
                 ) : null}
               </div>
+              {item.estimate ? <StoryboardEstimate estimate={item.estimate} /> : null}
               {pending && many ? (
                 <button type="button" className="secondary-button studio-plan-card__one" disabled={sending}
                   aria-label={t("studioChat.plan.approveThisLabel", {

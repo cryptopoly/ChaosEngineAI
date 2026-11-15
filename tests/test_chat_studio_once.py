@@ -207,5 +207,54 @@ class OneApprovalTests(unittest.TestCase):
         self.assertEqual(set(denials), {"g1", "g2"})
 
 
+IMAGE = {"name": "Iris-3B Turbo", "estimatedGenerationSeconds": 15}
+VIDEO = {"name": "LTX-2.5", "estimatedGenerationSeconds": 60, "defaultDurationSeconds": 2}
+
+
+class PlanEstimateTests(OneApprovalTests):
+    """S7: the plan card's time per shot and total, from the Storyboard estimate."""
+
+    def setUp(self):
+        super().setUp()
+        variants = {"image": IMAGE, "video": VIDEO}
+        patcher = mock.patch("backend_service.routes.storyboard._project_variant",
+                             lambda request, kind, model: (variants[kind], None))
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def item(self, **args):
+        return studio_gate.plan_item(call("storyboard_generate", {"project_id": self.pid, "revision": self.rev, **args}, "g1"),
+                                     SimpleNamespace(runtime=None))
+
+    def test_both_lists_each_shot_and_the_total(self):
+        board = self.item()["estimate"]
+        self.assertEqual(board["seconds"], 300)
+        self.assertEqual(board["basis"], "estimated")
+        self.assertEqual(len(board["shots"]), 4)
+        self.assertEqual({(r["still"], r["clip"]) for r in board["shots"]}, {(15, 60)})
+        self.assertEqual(board["shots"][0]["title"], "shot 0")
+        self.assertEqual((board["imageModel"], board["videoModel"], board["missing"]), ("Iris-3B Turbo", "LTX-2.5", []))
+
+    def test_stills_only_have_no_clip_time(self):
+        item = self.item(what="still")
+        board = item["estimate"]
+        self.assertEqual(board["seconds"], 60)
+        self.assertNotIn("clip", board["shots"][0])
+        self.assertEqual(item["model"], "Iris-3B Turbo")
+
+    def test_a_missing_model_is_named_not_guessed(self):
+        with mock.patch("backend_service.routes.storyboard._project_variant",
+                        lambda request, kind, model: (None, "No video model is installed.") if kind == "video" else (IMAGE, None)):
+            board = self.item()["estimate"]
+        self.assertIsNone(board["seconds"])
+        self.assertEqual(board["missing"], ["No video model is installed."])
+        self.assertEqual(board["shots"][0]["still"], 15)
+        self.assertIsNone(board["shots"][0]["clip"])
+
+    def test_no_project_no_estimate(self):
+        item = studio_gate.plan_item(call("storyboard_generate", {"project_id": "nope", "revision": 1}, "g1"), None)
+        self.assertNotIn("estimate", item)
+
+
 if __name__ == "__main__":
     unittest.main()

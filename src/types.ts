@@ -52,6 +52,7 @@ export type {
   SessionDocument,
   StudioJob,
   StudioPlan,
+  StudioPlanEstimate,
   StudioPlanItem,
   TokenLogprob,
   ToolCallInfo,

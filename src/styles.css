@@ -14747,6 +14747,46 @@ select.music-library__select {
   padding: 2px 8px;
 }
 
+.studio-plan-card__estimate {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.studio-plan-card__estimate-label {
+  color: var(--muted-strong);
+}
+
+.studio-plan-card__estimate-shots,
+.studio-plan-card__estimate-missing {
+  margin: 0;
+  padding-left: 16px;
+}
+
+.studio-plan-card__estimate-shots li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+}
+
+.studio-plan-card__estimate-title {
+  color: var(--muted-strong);
+}
+
+.studio-plan-card__estimate-total {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  color: var(--muted-strong);
+}
+
+.studio-plan-card__estimate-missing {
+  color: var(--warning);
+}
+
 .studio-plan-card__memory {
   margin: 0;
   font-size: 12px;

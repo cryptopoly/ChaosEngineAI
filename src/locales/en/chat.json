@@ -459,7 +459,14 @@
       "less": "less",
       "memoryLoaded": "{model} stays loaded: about {gb} GB free.",
       "memoryFree": "About {gb} GB free.",
-      "approveThisLabel": "Approve only this {kind}: {prompt}"
+      "approveThisLabel": "Approve only this {kind}: {prompt}",
+      "perShot": "Time per shot",
+      "shotNumber": "Shot {n}",
+      "shotStill": "still: {time}",
+      "shotClip": "clip: {time}",
+      "unknownTime": "time unknown",
+      "moreShots": "and {count} more",
+      "total": "Total"
     },
     "job": {
       "declined": "Declined. Nothing was made.",

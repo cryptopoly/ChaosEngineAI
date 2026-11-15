@@ -522,3 +522,35 @@ def get_peaks(project_id: str, path: str, buckets: int = Query(400, ge=32, le=40
         if isinstance(exc, FfmpegMissing):
             raise _http(exc) from exc
         raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+# ---- the bundled sample film (S12) ----
+class SampleRequest(_Body):
+    name: Line | None = None  # the project's name in the user's language; the bundled name when absent
+
+
+@router.get("/api/storyboard/sample")
+def sample_info() -> dict[str, Any]:
+    """Whether this install carries the sample film, and what the "Try the sample project" card says about it."""
+    from backend_service.storyboard import sample
+
+    return sample.info()
+
+
+@router.get("/api/storyboard/sample/poster")
+def sample_poster() -> FileResponse:
+    """The sample's first still, for its card."""
+    from backend_service.storyboard import sample
+
+    try:
+        return FileResponse(sample.poster_path())
+    except store_module.StoreError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post("/api/storyboard/sample")
+def install_sample(body: SampleRequest) -> dict[str, Any]:
+    """Copy the sample film into the storyboards folder as an ordinary new project and return it."""
+    from backend_service.storyboard import sample
+
+    return _payload(_guard(sample.install, get_store(), body.name or None))

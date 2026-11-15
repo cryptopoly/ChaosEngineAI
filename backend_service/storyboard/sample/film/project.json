@@ -1,0 +1,267 @@
+{
+ "schemaVersion": 3,
+ "revision": 1,
+ "id": "7838ac81eb3aaf5c",
+ "name": "The Lighthouse",
+ "createdAt": 0.0,
+ "defaults": {
+  "width": 854,
+  "height": 480,
+  "fps": 24,
+  "imageModel": null,
+  "finalImageModel": null,
+  "videoModel": null,
+  "voice": null,
+  "exportPreset": "16:9",
+  "resolution": "480p"
+ },
+ "references": {
+  "characters": [],
+  "places": []
+ },
+ "shots": [
+  {
+   "id": "s_5ae762b6",
+   "order": 0,
+   "title": "Dawn on the cliff",
+   "status": "done",
+   "stillPrompt": "A white lighthouse on a rocky cliff at dawn, soft pink and gold sky, calm sea below, wide cinematic shot",
+   "motionPrompt": "Slow push in toward the lighthouse, waves rolling gently against the rocks, seabirds in the distance",
+   "referenceImages": [],
+   "startFrom": "generate",
+   "endImage": null,
+   "seconds": 2.0,
+   "seed": null,
+   "locked": false,
+   "trimIn": 0.0,
+   "trimOut": null,
+   "speed": 1.0,
+   "takes": [
+    {
+     "id": "t_4e712da9",
+     "still": "media/s_5ae762b6/t_4e712da9/still.jpg",
+     "clip": "media/s_5ae762b6/t_4e712da9/clip.mp4",
+     "hashes": {
+      "still": "73db3e2dd73f53109bbbdab960be410c01f99725f8af841dc33f7f5a1fb09332",
+      "clip": "34510b019ca2202d3fac2f4afb611d7da554fa0dbaf18483d7160e4404d5ad10"
+     },
+     "settings": {
+      "model": "LTX-2.5 · distilled q4 (ltx-2-mlx)",
+      "seed": 1046187097,
+      "steps": 24,
+      "width": 832,
+      "height": 512,
+      "stillSeconds": 12.98,
+      "stillModel": "Iris-3B Turbo · mflux (MLX)",
+      "stillSeed": 4448715,
+      "frames": 41,
+      "fps": 24,
+      "clipSeconds": 74.7,
+      "clipModel": "LTX-2.5 · distilled q4 (ltx-2-mlx)",
+      "clipSeed": 1046187097,
+      "clipStill": "73db3e2dd73f53109bbbdab960be410c01f99725f8af841dc33f7f5a1fb09332"
+     },
+     "measuredSeconds": 1.7083,
+     "createdAt": 1794785716.884761,
+     "origin": "batch",
+     "basis": "577bb11f1cf6e0dfa88900bae65f270b",
+     "renderPass": "final"
+    }
+   ],
+   "activeTake": "t_4e712da9",
+   "transition": {
+    "type": "cut",
+    "seconds": 0.0
+   },
+   "nativeSoundDb": 0.0,
+   "redo": false,
+   "kept": false
+  },
+  {
+   "id": "s_dd43a785",
+   "order": 1,
+   "title": "The lamp",
+   "status": "done",
+   "stillPrompt": "Inside a lighthouse lantern room, a large brass and glass lamp glowing warm, round windows, morning light, close up",
+   "motionPrompt": "The great lamp turns slowly, its light sweeping across the brass and the windows",
+   "referenceImages": [],
+   "startFrom": "generate",
+   "endImage": null,
+   "seconds": 2.0,
+   "seed": null,
+   "locked": false,
+   "trimIn": 0.0,
+   "trimOut": null,
+   "speed": 1.0,
+   "takes": [
+    {
+     "id": "t_f8169547",
+     "still": "media/s_dd43a785/t_f8169547/still.jpg",
+     "clip": "media/s_dd43a785/t_f8169547/clip.mp4",
+     "hashes": {
+      "still": "74cc1c2f391285ca3993e83411a9301b0fc29a121ac7411be759984e713938a0",
+      "clip": "c25102665e4ab331ca932baade7f4f3e34ff65403a86922eedac37d40c801a88"
+     },
+     "settings": {
+      "model": "LTX-2.5 · distilled q4 (ltx-2-mlx)",
+      "seed": 1118676428,
+      "steps": 24,
+      "width": 832,
+      "height": 512,
+      "stillSeconds": 10.94,
+      "stillModel": "Iris-3B Turbo · mflux (MLX)",
+      "stillSeed": 860717832,
+      "frames": 41,
+      "fps": 24,
+      "clipSeconds": 72.94,
+      "clipModel": "LTX-2.5 · distilled q4 (ltx-2-mlx)",
+      "clipSeed": 1118676428,
+      "clipStill": "74cc1c2f391285ca3993e83411a9301b0fc29a121ac7411be759984e713938a0"
+     },
+     "measuredSeconds": 1.7083,
+     "createdAt": 1794785727.831678,
+     "origin": "batch",
+     "basis": "7853113f1af72399df50a58522caa3cf",
+     "renderPass": "final"
+    }
+   ],
+   "activeTake": "t_f8169547",
+   "transition": {
+    "type": "cut",
+    "seconds": 0.0
+   },
+   "nativeSoundDb": 0.0,
+   "redo": false,
+   "kept": false
+  },
+  {
+   "id": "s_dfebfe6c",
+   "order": 2,
+   "title": "Out at sea",
+   "status": "done",
+   "stillPrompt": "A small red fishing boat on a calm sea at sunrise, gulls overhead, the lighthouse far away on the coast, mid shot",
+   "motionPrompt": "The boat drifts gently on small waves, gulls glide across the frame",
+   "referenceImages": [],
+   "startFrom": "generate",
+   "endImage": null,
+   "seconds": 2.0,
+   "seed": null,
+   "locked": false,
+   "trimIn": 0.0,
+   "trimOut": null,
+   "speed": 1.0,
+   "takes": [
+    {
+     "id": "t_a9ccb233",
+     "still": "media/s_dfebfe6c/t_a9ccb233/still.jpg",
+     "clip": "media/s_dfebfe6c/t_a9ccb233/clip.mp4",
+     "hashes": {
+      "still": "5d4ccd5a44b527c7e5c586020189e585d4650d366d7d2da33a4dd6ec701abba1",
+      "clip": "3b0ae0b4c1971f9aa45c5d065b865d33d599b445aab224edf78d6b5ba01575ca"
+     },
+     "settings": {
+      "model": "LTX-2.5 · distilled q4 (ltx-2-mlx)",
+      "seed": 1965858703,
+      "steps": 24,
+      "width": 832,
+      "height": 512,
+      "stillSeconds": 11.83,
+      "stillModel": "Iris-3B Turbo · mflux (MLX)",
+      "stillSeed": 620252832,
+      "frames": 41,
+      "fps": 24,
+      "clipSeconds": 69.47,
+      "clipModel": "LTX-2.5 · distilled q4 (ltx-2-mlx)",
+      "clipSeed": 1965858703,
+      "clipStill": "5d4ccd5a44b527c7e5c586020189e585d4650d366d7d2da33a4dd6ec701abba1"
+     },
+     "measuredSeconds": 1.7083,
+     "createdAt": 1794785739.66832,
+     "origin": "batch",
+     "basis": "726d73aca150d860dbe01775abf673cd",
+     "renderPass": "final"
+    }
+   ],
+   "activeTake": "t_a9ccb233",
+   "transition": {
+    "type": "cut",
+    "seconds": 0.0
+   },
+   "nativeSoundDb": 0.0,
+   "redo": false,
+   "kept": false
+  },
+  {
+   "id": "s_22c59278",
+   "order": 3,
+   "title": "Night watch",
+   "status": "done",
+   "stillPrompt": "The lighthouse at dusk under a deep blue starry sky, its beam crossing the clouds, the sea dark and calm, wide shot",
+   "motionPrompt": "The beam sweeps slowly across the sky while thin clouds drift past",
+   "referenceImages": [],
+   "startFrom": "generate",
+   "endImage": null,
+   "seconds": 2.0,
+   "seed": null,
+   "locked": false,
+   "trimIn": 0.0,
+   "trimOut": null,
+   "speed": 1.0,
+   "takes": [
+    {
+     "id": "t_ed21f8ec",
+     "still": "media/s_22c59278/t_ed21f8ec/still.jpg",
+     "clip": "media/s_22c59278/t_ed21f8ec/clip.mp4",
+     "hashes": {
+      "still": "f1f57f39897f41c424ec7924b7ce8fdbbe03e9cf80b53969de9d19b29902d325",
+      "clip": "82669cfee0e6db8fff1bfa1040d48763f5ecbefb71660443169eb031e324bed4"
+     },
+     "settings": {
+      "model": "LTX-2.5 · distilled q4 (ltx-2-mlx)",
+      "seed": 804575020,
+      "steps": 24,
+      "width": 832,
+      "height": 512,
+      "stillSeconds": 12.56,
+      "stillModel": "Iris-3B Turbo · mflux (MLX)",
+      "stillSeed": 834822934,
+      "frames": 41,
+      "fps": 24,
+      "clipSeconds": 67.12,
+      "clipModel": "LTX-2.5 · distilled q4 (ltx-2-mlx)",
+      "clipSeed": 804575020,
+      "clipStill": "f1f57f39897f41c424ec7924b7ce8fdbbe03e9cf80b53969de9d19b29902d325"
+     },
+     "measuredSeconds": 1.7083,
+     "createdAt": 1794785752.232499,
+     "origin": "batch",
+     "basis": "d2a577cde9f0883eff13474a01288c74",
+     "renderPass": "final"
+    }
+   ],
+   "activeTake": "t_ed21f8ec",
+   "transition": {
+    "type": "cut",
+    "seconds": 0.0
+   },
+   "nativeSoundDb": 0.0,
+   "redo": false,
+   "kept": false
+  }
+ ],
+ "audio": [],
+ "export": {
+  "aiLabel": {
+   "embedTag": true
+  },
+  "loudnessLufs": -16.0,
+  "captionsSrt": false,
+  "captionsBurn": false,
+  "stems": false,
+  "upscale": "none"
+ },
+ "captions": [],
+ "batches": [],
+ "undoStack": [],
+ "redoStack": []
+}

@@ -4,6 +4,7 @@ import { ProgressRow } from "../../components/ProgressRow";
 import { StatCard } from "../../components/StatCard";
 import { GPUCard } from "../../components/GPUCard";
 import { number } from "../../utils/format";
+import { busyEngineLines } from "../../utils/busyEngine";
 import type { ActivityItem, Recommendation, RuntimeStatus, SystemStats } from "../../types";
 
 export interface DashboardTabProps {
@@ -27,6 +28,8 @@ function isStopCandidate(process: RunningProcess): boolean {
 
 export function DashboardTab({ system, recommendation, runtime, activity, backendOnline, onStopProcess, onStopIdleProcesses }: DashboardTabProps) {
   const { t } = useTranslation("dashboard");
+  const { t: tCommon } = useTranslation("common");
+  const busyLines = busyEngineLines(tCommon, system.activeGenerations);
   const warmModels = runtime.warmModels ?? [];
   const activeReq = runtime.activeRequests ?? 0;
   const servedReq = runtime.requestsServed ?? 0;
@@ -48,7 +51,7 @@ export function DashboardTab({ system, recommendation, runtime, activity, backen
           <StatCard
             label={t("liveStats.runtimeEngine")}
             value={runtime.engineLabel}
-            hint={runtime.loadedModel ? runtime.loadedModel.name : t("liveStats.noModelLoaded")}
+            hint={[runtime.loadedModel?.name, ...busyLines].filter(Boolean).join(" · ") || t("liveStats.noModelLoaded")}
           />
           <StatCard
             label={t("liveStats.inferenceActivity")}

@@ -4,8 +4,10 @@ import os
 import ipaddress
 import secrets
 import signal
+import threading
 import time
 import uuid
+from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -692,11 +694,27 @@ def _generate_video_artifact(
     return _save_video_artifact(artifact), runtime_status
 
 
+def _reconcile_storyboards() -> None:
+    """Reset Storyboard work a crash or power cut left marked running (plan S3). Runs off the start-up path."""
+    try:
+        from backend_service.storyboard.store import default_store
+
+        default_store().reconcile_all()
+    except Exception:  # noqa: BLE001 - a project that cannot be read shows its reason when it is opened
+        pass
+
+
+@asynccontextmanager
+async def _lifespan(_app: FastAPI):
+    threading.Thread(target=_reconcile_storyboards, name="storyboard-reconcile", daemon=True).start()
+    yield
+
+
 def create_app(
     state: ChaosEngineState | None = None,
     api_token: str | None = None,
 ) -> FastAPI:
-    app = FastAPI(title="ChaosEngineAI Sidecar", version="0.2.0")
+    app = FastAPI(title="ChaosEngineAI Sidecar", version="0.2.0", lifespan=_lifespan)
     allowed_origins = _allowed_cors_origins()
     app.add_middleware(
         CORSMiddleware,

@@ -312,6 +312,15 @@
       "openWebuiHint": "관리자 → 설정 → 연결 → OpenAI API. 기본 URL: {base} — 위의 API 키를 사용하세요.",
       "ollamaApps": "Ollama 호환 앱",
       "ollamaHint": "앱의 Ollama 호스트 / 기본 URL을 아래 주소로 설정하세요. 기본 /api 엔드포인트가 /v1과 함께 제공됩니다."
+    },
+    "engineBusy": {
+      "step": null,
+      "image": null,
+      "imageBare": null,
+      "video": null,
+      "videoBare": null,
+      "music": null,
+      "musicBare": null
     }
   },
   "conversionTab": {

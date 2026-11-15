@@ -312,6 +312,15 @@
       "openWebuiHint": "Admin → Settings → Connections → OpenAI API. Base URL: {base}; Dung API key yIlo'.",
       "ollamaApps": "/api lo'bogh app",
       "ollamaHint": "app host / base URL bIng Daq yIlan; /v1 retlhDaq /api Hal je jab."
+    },
+    "engineBusy": {
+      "step": null,
+      "image": null,
+      "imageBare": null,
+      "video": null,
+      "videoBare": null,
+      "music": null,
+      "musicBare": null
     }
   },
   "conversionTab": {

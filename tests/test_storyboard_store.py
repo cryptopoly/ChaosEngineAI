@@ -107,7 +107,6 @@ class LayoutAndRevisionTests(StoreCase):
         data["shots"][1]["status"] = "queued"
         data["batches"] = [{"id": "b_1234abcd", "what": "both", "state": "running"}]
         path.write_text(json.dumps(data))
-        store_module._RECOVERED.discard(str(self.folder(project).resolve()))
         loaded = self.store.load(project.id)
         self.assertEqual([s.status for s in loaded.shots], ["idle", "idle"])
         self.assertEqual(loaded.batches[0].state, "interrupted")

@@ -3,7 +3,8 @@ import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
 import { StatCard } from "../../components/StatCard";
 import { ModelLoadingProgress } from "../../components/ModelLoadingProgress";
-import type { LogEntry, ModelLoadingState, OrphanedWorker, WarmModel } from "../../types";
+import type { ActiveGeneration, LogEntry, ModelLoadingState, OrphanedWorker, WarmModel } from "../../types";
+import { busyEngineLines } from "../../utils/busyEngine";
 import type { SettingsDraft } from "../../types/chat";
 
 export interface ServerTabProps {
@@ -23,6 +24,8 @@ export interface ServerTabProps {
   requestsServed: number;
   activeConnections: number;
   engineLabel: string;
+  /** Image, video or music runs in flight: the API reads "idle" while one holds the GPU. */
+  activeGenerations?: ActiveGeneration[];
   settingsDraft: SettingsDraft;
   serverLogEntries: LogEntry[];
   showRemoteTest: boolean;
@@ -69,6 +72,7 @@ export function ServerTab({
   requestsServed,
   activeConnections,
   engineLabel,
+  activeGenerations,
   settingsDraft,
   serverLogEntries,
   showRemoteTest,
@@ -193,6 +197,9 @@ console.log(resp.choices[0].message.content);`;
                 {busyAction ? (
                   <p className="busy-indicator"><span className="busy-dot" />{busyAction}</p>
                 ) : null}
+                {busyEngineLines(t, activeGenerations).map((line) => (
+                  <p key={line} className="busy-indicator" role="status"><span className="busy-dot" />{line}</p>
+                ))}
               </div>
               <div className="button-row server-actions">
                 <button

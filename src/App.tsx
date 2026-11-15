@@ -925,6 +925,7 @@ export default function App() {
         backendOnline={backendOnline}
         engineLabel={workspace.runtime.engineLabel}
         loadedModelName={workspace.runtime.loadedModel?.name ?? null}
+        activeGenerations={workspace.system.activeGenerations}
         mode={sidebarPrefs.mode}
         collapsedGroups={sidebarPrefs.collapsedGroups}
         keepAllOpen={sidebarPrefs.keepAllOpen}

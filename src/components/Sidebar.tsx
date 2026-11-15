@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { SidebarGroupId, SidebarMode, TabId } from "../types";
+import type { ActiveGeneration, SidebarGroupId, SidebarMode, TabId } from "../types";
+import { busyEngineLines } from "../utils/busyEngine";
 import type { TabConfig } from "../constants";
 import { HOME_STUDIO_ENABLED, tabs as allTabs } from "../constants";
 import { arrangeRows, buildItems, resolveGroupTarget, visibleSidebarTabs } from "./sidebarModel";
@@ -14,6 +15,8 @@ interface SidebarProps {
   backendOnline: boolean;
   engineLabel: string;
   loadedModelName?: string | null;
+  /** Image, video or music runs in flight; shown where "No model loaded" would mislead. */
+  activeGenerations?: ActiveGeneration[];
   mode: SidebarMode;
   collapsedGroups: Set<SidebarGroupId>;
   onToggleGroupCollapsed: (group: SidebarGroupId) => void;
@@ -35,6 +38,7 @@ export function Sidebar({
   backendOnline,
   engineLabel,
   loadedModelName,
+  activeGenerations,
   mode,
   collapsedGroups,
   onToggleGroupCollapsed,
@@ -45,6 +49,7 @@ export function Sidebar({
   homeStudioEnabled = HOME_STUDIO_ENABLED,
 }: SidebarProps) {
   const { t } = useTranslation("common");
+  const busyLines = busyEngineLines(t, activeGenerations);
   const visibleTabs = useMemo(
     () => visibleSidebarTabs(allTabs, platform, homeStudioEnabled),
     [platform, homeStudioEnabled],
@@ -208,9 +213,12 @@ export function Sidebar({
             : t("sidebar.backendOffline", { defaultValue: "Offline" })}
         </span>
         <p>{engineLabel}</p>
-        <small>
-          {loadedModelName ?? t("sidebar.noModelLoaded", { defaultValue: "No model loaded" })}
-        </small>
+        {busyLines.length === 0 || loadedModelName ? (
+          <small>{loadedModelName ?? t("sidebar.noModelLoaded", { defaultValue: "No model loaded" })}</small>
+        ) : null}
+        {busyLines.map((line) => (
+          <small key={line} role="status">{line}</small>
+        ))}
       </div>
     </aside>
   );

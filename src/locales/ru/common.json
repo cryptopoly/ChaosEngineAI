@@ -312,6 +312,15 @@
       "openWebuiHint": "Админ → Настройки → Подключения → OpenAI API. Базовый URL: {base} — используйте API-ключ выше.",
       "ollamaApps": "Приложения, совместимые с Ollama",
       "ollamaHint": "Укажите в приложении адрес ниже как хост Ollama / базовый URL — нативные эндпоинты /api работают наряду с /v1."
+    },
+    "engineBusy": {
+      "step": null,
+      "image": null,
+      "imageBare": null,
+      "video": null,
+      "videoBare": null,
+      "music": null,
+      "musicBare": null
     }
   },
   "conversionTab": {

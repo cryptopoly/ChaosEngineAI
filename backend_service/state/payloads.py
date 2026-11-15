@@ -39,6 +39,34 @@ if TYPE_CHECKING:
     from backend_service.state import ChaosEngineState
 
 
+def active_generations() -> list[dict[str, Any]]:
+    """Image, video and music runs in flight, for the Server tab, the Dashboard and the sidebar footer.
+
+    A still or clip often runs in a subprocess engine (sd.cpp, the LTX engine) that the chat runtime knows
+    nothing about, so ``loadedModel`` stays empty while the GPU is busy. The shared progress trackers hold the
+    live run; this reads them (three locked dict copies, no I/O) and drops the preview thumbnail."""
+    from backend_service.progress import IMAGE_PROGRESS, MUSIC_PROGRESS, VIDEO_PROGRESS
+
+    runs: list[dict[str, Any]] = []
+    for tracker in (IMAGE_PROGRESS, VIDEO_PROGRESS, MUSIC_PROGRESS):
+        try:
+            snap = tracker.snapshot()
+        except Exception:  # noqa: BLE001 - a missing figure must never break the workspace poll
+            continue
+        if not snap.get("active"):
+            continue
+        runs.append({
+            "kind": snap["kind"],
+            "runLabel": snap.get("runLabel"),
+            "phase": snap.get("phase"),
+            "message": snap.get("message") or "",
+            "step": snap.get("step", 0),
+            "totalSteps": snap.get("totalSteps", 0),
+            "elapsedSeconds": snap.get("elapsedSeconds", 0.0),
+        })
+    return runs
+
+
 def server_status(state: ChaosEngineState) -> dict[str, Any]:
     from backend_service.app import DEFAULT_HOST
 
@@ -112,6 +140,7 @@ def workspace(state: ChaosEngineState) -> dict[str, Any]:
     from backend_service.app import compute_cache_preview
 
     system_stats = state._system_snapshot()
+    system_stats["activeGenerations"] = active_generations()
     try:
         loaded_name = state.runtime.loaded_model.name if state.runtime.loaded_model else None
         loaded_engine = state.runtime.engine.engine_name if state.runtime.engine else None

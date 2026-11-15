@@ -77,6 +77,7 @@ export function ServerView({ ctx }: { ctx: AppTabContext }) {
       requestsServed={workspace.server.requestsServed}
       activeConnections={workspace.server.activeConnections}
       engineLabel={workspace.runtime.engineLabel}
+      activeGenerations={workspace.system.activeGenerations}
       settingsDraft={settingsDraft}
       serverLogEntries={serverLogEntries}
       showRemoteTest={showRemoteTest}

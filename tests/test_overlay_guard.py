@@ -204,7 +204,7 @@ class GuardRunsFirstTests(unittest.TestCase):
             if isinstance(node, ast.Expr) and isinstance(node.value, ast.Call)
             and getattr(node.value.func, "id", None) == "guard_overlay_against_bundle"
         )
-        stdlib = {"__future__", "os", "ipaddress", "secrets", "signal", "time", "uuid", "datetime", "pathlib", "typing"}
+        stdlib = {"__future__", "os", "ipaddress", "secrets", "signal", "threading", "time", "uuid", "datetime", "pathlib", "typing"}
         for node in tree.body:
             if node.lineno >= guard_line or not isinstance(node, (ast.Import, ast.ImportFrom)):
                 continue

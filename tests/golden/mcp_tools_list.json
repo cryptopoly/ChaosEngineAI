@@ -779,6 +779,10 @@
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
+        "draft": {
+          "description": "Make drafts: the fast image model at a smaller size.",
+          "type": "boolean"
+        },
         "force": {
           "description": "Also run locked shots.",
           "type": "boolean"
@@ -800,10 +804,12 @@
           "type": "array"
         },
         "what": {
+          "description": "final: redo only the shots marked Keep for final, with the quality image model.",
           "enum": [
             "still",
             "clip",
-            "both"
+            "both",
+            "final"
           ],
           "type": "string"
         }

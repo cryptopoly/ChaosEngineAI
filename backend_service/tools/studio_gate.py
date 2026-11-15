@@ -149,7 +149,7 @@ def storyboard_estimate(args: dict[str, Any], state: Any | None) -> dict[str, An
     when the project cannot be read; a missing model is named in ``missing``, never guessed."""
     from types import SimpleNamespace
 
-    from backend_service.routes.storyboard import _project_variant, get_store
+    from backend_service.routes.storyboard import _draft_sizes, _final_model, _project_variant, get_store
     from backend_service.storyboard.batch import needs_work
     from backend_service.storyboard.estimate import estimate, plan_steps
 
@@ -166,8 +166,11 @@ def storyboard_estimate(args: dict[str, Any], state: Any | None) -> dict[str, An
     request = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(chaosengine=state)))
     missing: list[str] = []
     image = video = None
+    draft = bool(args.get("draft")) and what != "final"
     if any(kind == "still" for _, kind in steps):
-        image, why = _project_variant(request, "image", project.defaults.imageModel)
+        # The final pass prices the quality model; drafts and the normal run price the project's model.
+        model = _final_model(request, project) if what == "final" else project.defaults.imageModel
+        image, why = _project_variant(request, "image", model)
         missing += [why] if why else []
     if any(kind == "clip" for _, kind in steps):
         video, why = _project_variant(request, "video", project.defaults.videoModel)
@@ -180,9 +183,11 @@ def storyboard_estimate(args: dict[str, Any], state: Any | None) -> dict[str, An
     except Exception:  # noqa: BLE001 - the estimate reads it again or goes without memory
         pass
 
+    sizes = _draft_sizes(project, image, video) if draft else None
+
     def run(kind: str, ids: list[str] | None) -> dict[str, Any]:
         return estimate(project, folder, what=kind, shot_ids=ids, image_variant=image, video_variant=video,
-                        missing=missing, hardware=hardware)
+                        missing=missing, hardware=hardware, render_pass="draft" if draft else "final", sizes=sizes)
 
     total = run(what, shot_ids)
     rows: list[dict[str, Any]] = []

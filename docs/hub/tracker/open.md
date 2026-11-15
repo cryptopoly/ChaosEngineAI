@@ -1,13 +1,22 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 99 rows with work, decisions or watch items still open, newest first.
+summary: 100 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-183 · Storyboard polish S1 to S7 — Done</summary>
+
+**Status or trigger:** Done
+
+**Notes:** Plan `docs/plans/v0.10.0-storyboard-polish.md`; progress `docs/progress/v0100-{a,b,c}.md`. S1: the Chat gate runs the tool's own checks before showing a card, so a call that cannot run gets no card; repeats return the running job (closes FU-179's double approval; proven by tests, not seen on screen). S2: Automatic still model = fastest installed that fits. S3: stale running work reset on every project load and at start-up. S4: Server tab, Dashboard and sidebar footer name a busy engine. S5: first-clip estimate seen in Chat. S6: draft and final passes (Keep for final, Make drafts, Final pass, draft warning on Export). S7: time per shot and total on the plan card; `storyboard_generate` accepts `what: final` and `draft`. Open: Iris draft estimate is low at small sizes (engine raises Iris to 768 px); the film render itself does not warn about draft takes; the Dashboard Current runtime panel still says no model during a studio run. FU-179 stays open only for the slower-default-model part, now covered by S2.
+
+</details>
 
 <details>
 <summary>FU-182 · Open button could not open a picture or clip — Done</summary>

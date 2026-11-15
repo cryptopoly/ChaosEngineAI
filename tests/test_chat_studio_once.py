@@ -242,6 +242,15 @@ class PlanEstimateTests(OneApprovalTests):
         self.assertNotIn("clip", board["shots"][0])
         self.assertEqual(item["model"], "Iris-3B Turbo")
 
+    def test_a_draft_run_and_the_final_pass_are_known_to_the_tool(self):
+        from backend_service.mcp_bridge.storyboard_tools import STORYBOARD_TOOLS as TOOLS
+
+        schema = next(t for t in TOOLS if t["name"] == "storyboard_generate")["inputSchema"]["properties"]
+        self.assertIn("final", schema["what"]["enum"])
+        self.assertIn("draft", schema)
+        board = self.item(draft=True, what="still")["estimate"]  # priced as drafts, not refused
+        self.assertIsNotNone(board["seconds"])
+
     def test_a_missing_model_is_named_not_guessed(self):
         with mock.patch("backend_service.routes.storyboard._project_variant",
                         lambda request, kind, model: (None, "No video model is installed.") if kind == "video" else (IMAGE, None)):

@@ -79,7 +79,9 @@ STORYBOARD_TOOLS: list[dict[str, Any]] = [
         "inputSchema": _obj({
             "project_id": _PID, "revision": _REV,
             "shot_ids": {"type": "array", "items": {"type": "string"}, "maxItems": 500},
-            "what": {"type": "string", "enum": ["still", "clip", "both"]},
+            "what": {"type": "string", "enum": ["still", "clip", "both", "final"],
+                     "description": "final: redo only the shots marked Keep for final, with the quality image model."},
+            "draft": {"type": "boolean", "description": "Make drafts: the fast image model at a smaller size."},
             "force": {"type": "boolean", "description": "Also run locked shots."},
         }, ["project_id", "revision"]),
     },
@@ -350,7 +352,8 @@ def storyboard_generate(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
 
     pid = str(args["project_id"])
     batch = _run(lambda: start_batch(ctx.request, pid, int(args["revision"]), str(args.get("what", "both")),
-                                     list(args["shot_ids"]) if "shot_ids" in args else None, bool(args.get("force"))))
+                                     list(args["shot_ids"]) if "shot_ids" in args else None, bool(args.get("force")),
+                                     bool(args.get("draft"))))
 
     def run() -> tuple[dict[str, Any], list[str]]:
         batch.done.wait()

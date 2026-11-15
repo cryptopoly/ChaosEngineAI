@@ -100,6 +100,11 @@ class MarkRedo(_Args):
     redo: bool = True
 
 
+class SetKept(_Args):
+    shotId: Id
+    kept: bool = True
+
+
 class ImportTake(_Args):
     shotId: Id
     clip: str | None = Field(None, max_length=4096)
@@ -391,6 +396,11 @@ def mark_redo(p: Project, folder: Path, a: MarkRedo) -> None:
     _shot(p, a.shotId).redo = a.redo
 
 
+def set_kept(p: Project, folder: Path, a: SetKept) -> None:
+    """Choose a shot for the final pass (or take it out again)."""
+    _shot(p, a.shotId).kept = a.kept
+
+
 def import_take(p: Project, folder: Path, a: ImportTake) -> None:
     if not a.clip and not a.still:
         raise OpError("Give a clip, a still or both.")
@@ -554,6 +564,7 @@ OPS: dict[str, tuple[type[_Args], Callable[[Project, Path, Any], None], bool]] =
     "lock": (Lock, lock, True),
     "pick_take": (PickTake, pick_take, True),
     "mark_redo": (MarkRedo, mark_redo, True),
+    "set_kept": (SetKept, set_kept, True),
     "import_take": (ImportTake, import_take, True),
     "set_end_image": (SetEndImage, set_end_image, True),
     "relink": (Relink, relink, False),

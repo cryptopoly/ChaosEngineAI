@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 KINDS = ("image", "video", "voice", "stt", "music")
+STILL_RANK_SIZE = (1280, 720)  # the storyboard default size (720p, 16:9)
 _TEXT_TASK = {"image": "txt2img", "video": "txt2video", "music": "txt2music"}
 
 
@@ -88,7 +89,11 @@ def _row(family: dict[str, Any], variant: dict[str, Any], kind: str) -> dict[str
         **_licence_hints(family, variant),
     }
     if kind == "image":
+        from backend_service.helpers.time_estimate import variant_seconds
         from backend_service.image_runtime.mflux_engine import reference_image_limit
+
+        # The catalogue time for one still at the storyboard default size, the figure the default pick ranks by (S2).
+        row["secondsPerStill"] = variant_seconds(variant, "image", *STILL_RANK_SIZE)
 
         limit = reference_image_limit(str(variant.get("repo") or "")) if variant.get("engine") == "mflux" else 0
         row["acceptsImageInput"] = limit > 0
@@ -206,9 +211,26 @@ def recommend(state: Any, kind: str, limit: int = 3) -> dict[str, Any]:
     }
 
 
-def default_model(state: Any, kind: str) -> dict[str, Any] | None:
-    """The installed model to use when the agent names none: the catalog's best fit, else the newest that fits."""
+def _candidates(state: Any, kind: str) -> list[dict[str, Any]]:
     # Never pick a territory-limited model (D-76) on the agent's behalf; it must be named explicitly.
     rows = [r for r in installed_models(state, kind) if not r.get("territoryRestricted")]
-    fitting = [r for r in rows if r.get("fit") == "fits"] or rows
-    return fitting[0] if fitting else None
+    return [r for r in rows if r.get("fit") == "fits"] or rows
+
+
+def quality_model(state: Any, kind: str) -> dict[str, Any] | None:
+    """The installed model in the catalogue's best-fit order (newest, largest that fits): the quality choice."""
+    rows = _candidates(state, kind)
+    return rows[0] if rows else None
+
+
+def default_model(state: Any, kind: str) -> dict[str, Any] | None:
+    """The installed model to use when none is named (the agent, a storyboard set to Automatic).
+
+    Images (S2): the fastest by catalogue time per still among those that fit, so a first run shows results in
+    seconds; rows with no figure come last, in catalogue order. Other kinds: the catalogue's best fit."""
+    rows = _candidates(state, kind)
+    if kind == "image":
+        timed = [r for r in rows if isinstance(r.get("secondsPerStill"), (int, float)) and r["secondsPerStill"] > 0]
+        if timed:
+            return min(timed, key=lambda r: r["secondsPerStill"])  # min keeps the first of equal times
+    return rows[0] if rows else None

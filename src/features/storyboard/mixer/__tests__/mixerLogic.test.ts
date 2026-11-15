@@ -406,3 +406,17 @@ describe("captions, stems and resuming", () => {
     expect(resumeProgress(null)).toBeNull();
   });
 });
+
+describe("exportedSeconds", () => {
+  it("counts only shots with a clip, less their crossfades", async () => {
+    const { exportedSeconds } = await import("../mixerLogic");
+    const span = (id: string, duration: number, ready: boolean, fade = 0) => ({
+      id, start: 0, end: duration, duration, source_in: 0, source_out: duration,
+      transition_type: fade ? "crossfade" : "cut", transition_seconds: fade, measured: true, ready,
+    });
+    const timeline = { total: 13.3, audio: [], problems: [], shots: [span("a", 1.7, true), span("b", 1.7, true, 0.5), span("c", 2, false), span("d", 4.7, true)] };
+    expect(exportedSeconds(timeline)).toBeCloseTo(7.6);
+    expect(exportedSeconds({ ...timeline, shots: [span("x", 2, true, 0.5)] })).toBe(2);
+    expect(exportedSeconds(null)).toBe(0);
+  });
+});

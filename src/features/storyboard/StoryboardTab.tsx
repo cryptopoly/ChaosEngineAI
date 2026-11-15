@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { PlusIcon } from "../../components/icons/ActionIcons";
 import type { ImageOutputArtifact, StoryboardBatchRecord, StoryboardProject, StoryboardShot, StoryboardTimeline, VideoOutputArtifact } from "../../types";
 import { RunBar } from "./RunBar";
+import { RoughCutButton } from "./preview/RoughCutButton";
 import { useProjectEstimate } from "./useProjectEstimate";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { ShotCard } from "./ShotCard";
@@ -181,9 +182,12 @@ export function StoryboardTab({ story, project, timeline, imageGallery, videoGal
             })}
           </p>
         </div>
-        <button type="button" className="secondary-button" disabled={busy} onClick={() => void addShot()}>
-          <PlusIcon /> {t("board.addShot", { defaultValue: "Add shot" })}
-        </button>
+        <div className="board-shots__actions">
+          <RoughCutButton project={project} timeline={timeline} />
+          <button type="button" className="secondary-button" disabled={busy} onClick={() => void addShot()}>
+            <PlusIcon /> {t("board.addShot", { defaultValue: "Add shot" })}
+          </button>
+        </div>
       </div>
       {shots.length > 1 && timeline.total > 0 ? (
         <div className="length-strip" role="group" aria-label={t("board.lengthStrip", { defaultValue: "Shot lengths" })}>

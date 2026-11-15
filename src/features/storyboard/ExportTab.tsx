@@ -18,6 +18,7 @@ import {
   leftOutShotCount,
   presetPatch,
   exportSize,
+  exportedSeconds,
   previewIsStale,
   readRenderedRevision,
 } from "./mixer/mixerLogic";
@@ -27,6 +28,7 @@ import { copyProjectFilePath, downloadProjectBundle, formatBundleBytes, revealPr
 import type { ProjectTabId } from "./projectRoute";
 import type { UseStoryboardResult } from "./useStoryboard";
 import { useStoryboardRender, type UseStoryboardRenderResult } from "./useStoryboardRender";
+import { RoughCutButton } from "./preview/RoughCutButton";
 import { VideoToolsPrompt } from "../videotools/VideoToolsPrompt";
 import { useVideoTools } from "../videotools/useVideoTools";
 
@@ -173,7 +175,10 @@ export function ExportTab({ story, project, timeline, dataDirectory, onTab, rend
   return (
     <div className="export-tab">
       <section className="export-preflight" aria-labelledby="export-preflight-title">
-        <h4 id="export-preflight-title">{t("exportTab.before", { defaultValue: "Before you export" })}</h4>
+        <div className="export-preflight__head">
+          <h4 id="export-preflight-title">{t("exportTab.before", { defaultValue: "Before you export" })}</h4>
+          <RoughCutButton project={project} timeline={timeline} />
+        </div>
         <ul>
           {lines.map((line) => (
             <li key={line.id} className={`export-preflight__line${line.ok ? " is-ok" : " is-warn"}`}>
@@ -216,7 +221,7 @@ export function ExportTab({ story, project, timeline, dataDirectory, onTab, rend
       ) : null}
       <ExportPanel
         project={project}
-        filmSeconds={timeline.total}
+        filmSeconds={exportedSeconds(timeline)}
         empty={!canRender(timeline)}
         rendering={rendering}
         exportJob={exportJob}

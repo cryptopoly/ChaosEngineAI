@@ -163,9 +163,34 @@ def upscale_filter(size: tuple[int, int]) -> str:
     return f"scale={size[0]}:{size[1]}:flags=lanczos,setsar=1"
 
 
+_CAPTION_SIZE = {"small": 15, "medium": 18, "large": 23}  # libass units: 288 is the frame height of an SRT
+_CAPTION_ALIGN = {"bottom": 2, "top": 6, "middle": 10}  # centred; force_style on an SRT takes the legacy SSA numbers
+
+
+def caption_force_style(look: dict[str, str], width: int, height: int) -> str:
+    """The ``force_style`` text for burnt-in captions. Values are checked again here, so nothing but our own
+    words and numbers reaches the filter. Portrait frames get type scaled to their width so a line fits."""
+    from backend_service.storyboard.captions import check_look
+
+    look = check_look(look)
+    position, size = look.get("position", "bottom"), look.get("size", "medium")
+    colour = look.get("colour", "#FFFFFF")
+    scale = min(width, height) / height if height else 1.0
+    fontsize = max(8, round(_CAPTION_SIZE[size] * scale))
+    bgr = f"{colour[5:7]}{colour[3:5]}{colour[1:3]}".upper()
+    parts = [f"FontName={look['font']}"] if look.get("font") else []
+    parts += [
+        "Bold=1", f"Fontsize={fontsize}", f"PrimaryColour=&H00{bgr}", "OutlineColour=&H00000000",
+        "BackColour=&H80000000", "BorderStyle=1", "Outline=1.4", "Shadow=0.6",
+        f"Alignment={_CAPTION_ALIGN[position]}", f"MarginV={0 if position == 'middle' else 22}", "MarginL=24", "MarginR=24",
+    ]
+    return ",".join(parts)
+
+
 def build_mix_graph(lanes: Sequence[Lane], total_samples: int, loudnorm: str | None,
                     captions_name: str | None = None,
-                    upscale_to: tuple[int, int] | None = None) -> tuple[str, list[str]]:
+                    upscale_to: tuple[int, int] | None = None,
+                    captions_style: str | None = None) -> tuple[str, list[str]]:
     """The audio graph (plus captions burn-in when asked). Returns (graph, warnings)."""
     total = total_samples / SAMPLE_RATE
     warnings: list[str] = []
@@ -243,7 +268,10 @@ def build_mix_graph(lanes: Sequence[Lane], total_samples: int, loudnorm: str | N
         joined = "".join(f"[{x}]" for x in mix_inputs)
         lines.append(f"{joined}amix=inputs={len(mix_inputs)}:normalize=0:duration=first,{tail}")
     if captions_name or upscale_to:
-        video = [f"subtitles=filename={captions_name}"] if captions_name else []  # captions are drawn at the project size
+        video = []  # captions are drawn at the project size, before any upscale
+        if captions_name:
+            styled = f":force_style='{captions_style}'" if captions_style else ""
+            video.append(f"subtitles=filename={captions_name}{styled}")
         if upscale_to:
             video.append(upscale_filter(upscale_to))
         lines.append(f"[0:v]{','.join(video)}[vout]")

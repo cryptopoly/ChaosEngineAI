@@ -152,6 +152,93 @@ def write_srt(project: Project, folder: Path, items: list[Cue]) -> Path:
     return target
 
 
+CAPTION_POSITIONS = ("bottom", "top", "middle")
+CAPTION_SIZES = ("small", "medium", "large")
+_COLOUR = re.compile(r"^#[0-9A-Fa-f]{6}$")
+_FONT = re.compile(r"^[A-Za-z0-9 ]{1,64}$")
+# Hangul, CJK punctuation, kana, Han, compatibility forms: text a Latin-only font draws as empty boxes.
+_CJK = re.compile(r"[ᄀ-ᇿ⺀-鿿가-힯豈-﫿＀-￯]")
+_FONTS = {  # (Latin, CJK) per platform; each is a system font there, and the CJK one falls back for Hangul
+    "darwin": ("Helvetica Neue", "Hiragino Sans"),
+    "win32": ("Segoe UI", "Microsoft YaHei"),
+    "linux": ("DejaVu Sans", "Noto Sans CJK SC"),
+}
+
+
+@dataclass(frozen=True)
+class CaptionLook:
+    """How burnt-in captions look. Every field is checked, so it can reach an ffmpeg filter as is."""
+
+    position: str = "bottom"
+    size: str = "medium"
+    colour: str = "#FFFFFF"
+    font: str = ""
+
+    def as_dict(self) -> dict[str, str]:
+        out = {"position": self.position, "size": self.size, "colour": self.colour}
+        if self.font:
+            out["font"] = self.font
+        return out
+
+
+def default_font(text: str, platform: str | None = None) -> str:
+    """A system font that has the glyphs of ``text`` (a CJK one when the captions use CJK script)."""
+    import sys
+
+    key = platform or sys.platform
+    latin, cjk = _FONTS.get(key, _FONTS["linux"] if key.startswith("linux") else ("", ""))
+    return cjk if _CJK.search(text) else latin
+
+
+def _field(look: Any, *names: str) -> Any:
+    for name in names:
+        value = look.get(name) if isinstance(look, dict) else getattr(look, name, None)
+        if value is not None:
+            return value
+    return None
+
+
+def _project_look(project: Any) -> Any:
+    """The project's own caption look (the brand kit, S15), or None while a project has none."""
+    for holder in (getattr(project, "brand", None), getattr(project, "export", None)):
+        look = _field(holder, "captionLook") if holder is not None else None
+        if look is not None:
+            return look
+    return None
+
+
+def look_for(project: Any, text: str, platform: str | None = None) -> CaptionLook:
+    """The look burnt-in captions get: the project's caption look where it has one, else white, bottom,
+    medium, in a font that can draw ``text``. A value that is not one of ours falls back to the default."""
+    look = _project_look(project)
+    position = size = colour = font = None
+    if look is not None:
+        position, size = _field(look, "position"), _field(look, "size")
+        colour, font = _field(look, "colour", "color"), _field(look, "font", "fontFamily")
+    return CaptionLook(
+        position=position if position in CAPTION_POSITIONS else "bottom",
+        size=size if size in CAPTION_SIZES else "medium",
+        colour=colour.upper() if isinstance(colour, str) and _COLOUR.match(colour) else "#FFFFFF",
+        font=font if isinstance(font, str) and _FONT.match(font) else default_font(text, platform),
+    )
+
+
+def check_look(value: Any) -> dict[str, str]:
+    """A caption look dict from a render plan, checked; raises ValueError naming the bad field."""
+    if not isinstance(value, dict):
+        raise ValueError("must be an object")
+    unknown = set(value) - {"position", "size", "colour", "font"}
+    if unknown:
+        raise ValueError(f"unknown field {sorted(unknown)[0]!r}")
+    checks = {"position": lambda v: v in CAPTION_POSITIONS, "size": lambda v: v in CAPTION_SIZES,
+              "colour": lambda v: isinstance(v, str) and bool(_COLOUR.match(v)),
+              "font": lambda v: isinstance(v, str) and bool(_FONT.match(v))}
+    for key, item in value.items():
+        if not checks[key](item):
+            raise ValueError(f"{key} is not allowed")
+    return {str(k): str(v) for k, v in value.items()}
+
+
 def voice_clip_ids(project: Project) -> list[str]:
     return [c.id for c in project.audio if c.kind == "voice" and c.status != "missing" and not c.loop]
 

@@ -202,6 +202,10 @@ def passes(
     plus their clips; with no shot kept yet it is priced for the same shots as the drafts (``assumedAllKept``)."""
     draft = estimate(project, folder, what="both", shot_ids=shot_ids, image_variant=draft_variant,
                      video_variant=video_variant, missing=[], hardware=hardware, render_pass="draft", sizes=draft_sizes)
+    # Make drafts without clips is a stills batch: a shot that has a still but no clip gets a new draft still too.
+    stills = estimate(project, folder, what="still", shot_ids=shot_ids, image_variant=draft_variant, video_variant=None,
+                      missing=[], hardware=hardware, render_pass="draft", sizes=draft_sizes)
+    draft["stills"], draft["stillSeconds"] = stills["stills"], stills["stillSeconds"]
     draft["seconds"] = draft["stillSeconds"] if draft["stills"] else None
     still = draft_sizes.get("still") or (project.defaults.width, project.defaults.height)
     draft["width"], draft["height"] = still

@@ -120,7 +120,7 @@ describe("storyboard api client", () => {
       force: false,
     });
     await startStoryboardBatch("abc", { revision: 4, what: "still", draft: true });
-    expect(JSON.parse(fetchMock.mock.calls.at(-1)?.[1]?.body as string)).toEqual({
+    expect(JSON.parse(fetchMock.mock.calls[fetchMock.mock.calls.length - 1]?.[1]?.body as string)).toEqual({
       revision: 4,
       what: "still",
       shotIds: null,

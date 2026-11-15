@@ -152,6 +152,14 @@ class PassEstimateTests(StoreCase):
         self.assertEqual(final["clipSeconds"], 80.0)
         self.assertTrue(final["assumedAllKept"])  # nothing kept yet: the final is priced for every shot
         self.assertEqual(final["seconds"], 880.0)
+        # A shot with a still and no clip: Make drafts (stills) makes a new draft still, so it is priced.
+        _, p = PassBatchTests._run(self, p, RecordingGenerators(self.src), what="still", draft=True,
+                                   draft_sizes={"still": (640, 384)})
+        p = self.store.load(p.id)
+        out = passes(p, self.folder(p), shot_ids=[s.id for s in p.shots], draft_variant=FAST, final_variant=SLOW,
+                     video_variant=VIDEO, draft_sizes={"still": (640, 384), "clip": (640, 384)})
+        self.assertEqual((out["draft"]["stills"], out["draft"]["clips"]), (2, 2))
+        self.assertIsNotNone(out["draft"]["seconds"])
         p = self.op(p, "set_kept", shotId=p.shots[0].id, kept=True)
         out = passes(p, self.folder(p), shot_ids=None, draft_variant=FAST, final_variant=SLOW, video_variant=VIDEO,
                      draft_sizes={"still": (640, 384), "clip": (640, 384)})

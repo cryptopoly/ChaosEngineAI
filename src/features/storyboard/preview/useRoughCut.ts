@@ -304,6 +304,11 @@ export function useRoughCut(projectId: string, cut: RoughCut): UseRoughCutResult
           if (Math.abs(el.currentTime - wanted) > 0.02 && !el.seeking) el.currentTime = wanted;
           continue;
         }
+        // At the end of its source the clip holds its last frame: play() there would start it over.
+        if (Number.isFinite(el.duration) && wanted >= el.duration - 0.06) {
+          if (!el.paused) el.pause();
+          continue;
+        }
         if (el.paused) {
           // A cued clip just starts; otherwise seek a little ahead, since starting takes a moment.
           if (Math.abs(el.currentTime - wanted) > 0.05) el.currentTime = wanted + START_AHEAD_S * piece.speed;

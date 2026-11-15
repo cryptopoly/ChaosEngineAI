@@ -263,6 +263,7 @@ def build_render_plan(project: Project, preview: bool, folder: Path | None = Non
         "audio": audio,
         "metadata": _string_metadata(provenance(project)),
         "captions_srt": str(captions_srt) if captions_srt else None,
+        "captions_style": captions_module.look_for(project, srt_text).as_dict() if captions_srt else None,
         "stems_base": stems_base,
         "upscale_to": None if preview else upscale_target(project, (width, height)),
         "sidecar_srt": sidecar,  # not read by RenderPlan: the render manager writes it once the film exists

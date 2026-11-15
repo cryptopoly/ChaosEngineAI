@@ -256,6 +256,7 @@ class RenderPlan:
     audio: list[AudioInput] = field(default_factory=list)
     metadata: dict[str, str] = field(default_factory=dict)
     captions_srt: str | None = None
+    captions_style: dict[str, str] | None = None  # the burnt-in look (captions.check_look fields)
     stems_base: str | None = None  # write each audio lane as ``<stems_base>-stem-<lane>.wav`` (a full render only)
     upscale_to: tuple[int, int] | None = None  # scale the finished film to this size (lanczos) at the final encode
 
@@ -298,6 +299,14 @@ class RenderPlan:
             captions = check_input_file(captions, "captions_srt")
             if Path(captions).suffix.lower() != ".srt":
                 raise _fail("captions_srt", "must be an .srt file")
+        captions_style = data.get("captions_style")
+        if captions_style is not None:
+            from backend_service.storyboard.captions import check_look
+
+            try:
+                captions_style = check_look(captions_style)
+            except ValueError as exc:
+                raise _fail("captions_style", str(exc)) from exc
         stems_base = data.get("stems_base")
         if stems_base is not None:
             check_output_path(f"{stems_base}-stem.wav", "stems_base", ".wav")
@@ -321,6 +330,7 @@ class RenderPlan:
             audio=audio,
             metadata=dict(metadata),
             captions_srt=captions,
+            captions_style=captions_style,
             stems_base=stems_base,
             upscale_to=upscale_to,
         )
@@ -333,6 +343,7 @@ class RenderPlan:
             "audio": [clip.to_dict() for clip in self.audio],
             "metadata": dict(self.metadata),
             "captions_srt": self.captions_srt,
+            "captions_style": dict(self.captions_style) if self.captions_style else None,
             "stems_base": self.stems_base,
             "upscale_to": list(self.upscale_to) if self.upscale_to else None,
         }

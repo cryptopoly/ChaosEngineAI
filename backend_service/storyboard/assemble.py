@@ -42,6 +42,7 @@ from backend_service.storyboard.assemble_graphs import (  # noqa: F401 - re-expo
     build_mix_graph,
     build_shot_graph,
     build_xfade_graphs,
+    caption_force_style,
     compute_join_offsets,
     concat_list,
     parse_loudnorm,
@@ -463,7 +464,8 @@ def render(plan: RenderPlan, progress_cb: ProgressCb | None = None,
                     warnings.append("loudness not normalised: the mix is silent or could not be measured")
 
         upscale_to = None if plan.preview else plan.upscale_to
-        graph_text, mix_warnings = build_mix_graph(lanes, total_samples, loudnorm, captions_name, upscale_to)
+        style = caption_force_style(plan.captions_style, plan.width, plan.height) if captions_name and plan.captions_style else None
+        graph_text, mix_warnings = build_mix_graph(lanes, total_samples, loudnorm, captions_name, upscale_to, style)
         warnings += mix_warnings
         graph = script("mix.txt", graph_text)
         video_args = (["-map", "[vout]", *_codec_args(plan)] if captions_name or upscale_to

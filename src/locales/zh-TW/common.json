@@ -312,6 +312,15 @@
       "openWebuiHint": "管理員 → 設定 → 連線 → OpenAI API。基礎網址：{base} — 請使用上方的 API 金鑰。",
       "ollamaApps": "相容 Ollama 的應用程式",
       "ollamaHint": "將應用程式的 Ollama 主機 / 基礎網址設定為下方的位址 — 原生 /api 端點會與 /v1 一同提供。"
+    },
+    "engineBusy": {
+      "step": null,
+      "image": null,
+      "imageBare": null,
+      "video": null,
+      "videoBare": null,
+      "music": null,
+      "musicBare": null
     }
   },
   "conversionTab": {

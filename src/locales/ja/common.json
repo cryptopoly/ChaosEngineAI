@@ -312,6 +312,15 @@
       "openWebuiHint": "管理者 → 設定 → 接続 → OpenAI API。ベース URL: {base} — 上の API キーを使用してください。",
       "ollamaApps": "Ollama 互換アプリ",
       "ollamaHint": "アプリの Ollama ホスト / ベース URL を下のアドレスに設定してください。ネイティブの /api エンドポイントも /v1 と並行して提供されます。"
+    },
+    "engineBusy": {
+      "step": null,
+      "image": null,
+      "imageBare": null,
+      "video": null,
+      "videoBare": null,
+      "music": null,
+      "musicBare": null
     }
   },
   "conversionTab": {

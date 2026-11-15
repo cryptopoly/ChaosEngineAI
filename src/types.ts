@@ -1,5 +1,6 @@
 import type { SystemStats, Recommendation } from "./types/system";
 export type {
+  ActiveGeneration,
   TabId,
   SidebarGroupId,
   SidebarMode,

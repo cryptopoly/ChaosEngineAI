@@ -3,9 +3,9 @@ import { describe, expect, it } from "vitest";
 import { Sidebar } from "../Sidebar";
 import { arrangeRows, buildItems, resolveGroupTarget, visibleSidebarTabs } from "../sidebarModel";
 import { HOME_STUDIO_ENABLED, tabs } from "../../constants";
-import type { TabId } from "../../types";
+import type { ActiveGeneration, TabId } from "../../types";
 
-function render(props: { activeTab?: TabId; keepAllOpen?: boolean; homeStudioEnabled?: boolean; mode?: "collapsible" | "tabs" } = {}) {
+function render(props: { loadedModelName?: string | null; activeGenerations?: ActiveGeneration[]; activeTab?: TabId; keepAllOpen?: boolean; homeStudioEnabled?: boolean; mode?: "collapsible" | "tabs" } = {}) {
   return renderToStaticMarkup(
     <Sidebar
       activeTab={props.activeTab ?? "image-studio"}
@@ -13,6 +13,8 @@ function render(props: { activeTab?: TabId; keepAllOpen?: boolean; homeStudioEna
       platform="Darwin"
       backendOnline
       engineLabel="MLX"
+      loadedModelName={props.loadedModelName}
+      activeGenerations={props.activeGenerations}
       mode={props.mode ?? "collapsible"}
       collapsedGroups={new Set()}
       onToggleGroupCollapsed={() => {}}
@@ -94,5 +96,25 @@ describe("sidebar sections and accordion", () => {
   it("keeps group headers keyboard reachable with aria attributes", () => {
     const html = render({ activeTab: "chat" });
     expect(html).toMatch(/<button type="button" class="nav-group-header" aria-expanded="(true|false)" aria-controls="nav-group-/);
+  });
+});
+
+describe("footer status while an engine is busy", () => {
+  const still: ActiveGeneration = { kind: "image", runLabel: "Qwen-Image 2.1", phase: "diffusing", message: "", step: 27, totalSteps: 40, elapsedSeconds: 90 };
+
+  it("says No model loaded when nothing runs", () => {
+    expect(render()).toContain("No model loaded");
+  });
+
+  it("names the busy engine and its step instead of No model loaded", () => {
+    const html = render({ activeGenerations: [still] });
+    expect(html).toContain("Image engine busy: Qwen-Image 2.1 · step 27 of 40");
+    expect(html).not.toContain("No model loaded");
+  });
+
+  it("keeps the loaded chat model name beside the busy line", () => {
+    const html = render({ loadedModelName: "Gemma 4", activeGenerations: [still] });
+    expect(html).toContain("Gemma 4");
+    expect(html).toContain("Image engine busy");
   });
 });

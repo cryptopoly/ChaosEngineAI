@@ -312,6 +312,15 @@
       "openWebuiHint": "Admin → Einstellungen → Verbindungen → OpenAI API. Basis-URL: {base} — verwende den API-Schlüssel von oben.",
       "ollamaApps": "Ollama-kompatible Apps",
       "ollamaHint": "Setze den Ollama-Host bzw. die Basis-URL der App auf die Adresse unten — native /api-Endpunkte werden neben /v1 bereitgestellt."
+    },
+    "engineBusy": {
+      "step": null,
+      "image": null,
+      "imageBare": null,
+      "video": null,
+      "videoBare": null,
+      "music": null,
+      "musicBare": null
     }
   },
   "conversionTab": {

@@ -44,6 +44,17 @@ export type SidebarGroupId =
 
 export type SidebarMode = "collapsible" | "tabs";
 
+/** An image, video or music run in flight, read from the shared progress trackers. */
+export interface ActiveGeneration {
+  kind: "image" | "video" | "music";
+  runLabel: string | null;
+  phase: string;
+  message: string;
+  step: number;
+  totalSteps: number;
+  elapsedSeconds: number;
+}
+
 export interface SystemStats {
   platform: string;
   arch: string;
@@ -124,6 +135,8 @@ export interface SystemStats {
   diskUsedGb?: number;
   diskTotalGb?: number;
   diskPath?: string;
+  /** Runs in flight in a subprocess or worker engine; the chat runtime reports no loaded model for them. */
+  activeGenerations?: ActiveGeneration[];
   battery?: {
     percent: number;
     powerSource: "AC" | "Battery";

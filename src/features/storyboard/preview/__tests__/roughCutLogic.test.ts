@@ -209,10 +209,8 @@ describe("controls", () => {
     ]);
   });
 
-  it("keeps video on the clock: nudges small drift, seeks large drift", () => {
-    expect(videoCorrection(1.0, 1.01, 1)).toEqual({ rate: 1, seek: false });
-    expect(videoCorrection(1.0, 1.1, 1).rate).toBeGreaterThan(1);
-    expect(videoCorrection(1.1, 1.0, 2).rate).toBeLessThan(2);
-    expect(videoCorrection(1.0, 2.0, 1)).toEqual({ rate: 1, seek: true });
+  it("keeps video on the clock by seeking only when it is clearly off", () => {
+    expect(videoCorrection(1.0, 1.05, 1)).toEqual({ rate: 1, seek: false });
+    expect(videoCorrection(1.0, 1.2, 2)).toEqual({ rate: 2, seek: true });
   });
 });

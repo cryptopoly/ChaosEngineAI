@@ -189,6 +189,23 @@ export function leftOutShotCount(timeline: StoryboardTimeline | null): number {
   return timeline ? timeline.shots.filter((s) => !s.ready).length : 0;
 }
 
+/**
+ * The length of the exported film: only shots with a clip are joined (the others are left out), each
+ * crossfade between them shortening it by its length. The project timeline also counts the shots
+ * still waiting for a clip, so it is longer whenever one is missing.
+ */
+export function exportedSeconds(timeline: StoryboardTimeline | null): number {
+  if (!timeline) return 0;
+  let total = 0;
+  let first = true;
+  for (const span of timeline.shots) {
+    if (!span.ready) continue;
+    total += span.duration - (!first && span.transition_type === "crossfade" ? span.transition_seconds : 0);
+    first = false;
+  }
+  return Math.max(0, total);
+}
+
 /** A film can be rendered when at least one shot has a playable clip. */
 export function canRender(timeline: StoryboardTimeline | null): boolean {
   return readyShotCount(timeline) > 0;

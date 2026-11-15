@@ -81,13 +81,13 @@ export function RoughCutPlayer({ project, timeline, onClose }: RoughCutPlayerPro
         player.toggle();
         break;
       case "seek":
-        player.seek(timeS + action.deltaS);
+        player.seek(player.now() + action.deltaS);
         break;
       case "seek-to":
         player.seek(action.where === "start" ? 0 : total);
         break;
       case "shot":
-        player.seek(shotJump(cut, timeS, action.direction));
+        player.seek(shotJump(cut, player.now(), action.direction));
         break;
       case "captions":
         if (cut.captions.length) setCaptionsOn((on) => !on);
@@ -115,6 +115,12 @@ export function RoughCutPlayer({ project, timeline, onClose }: RoughCutPlayerPro
         aria-describedby="rough-cut-keys"
         tabIndex={-1}
         onKeyDown={onKeyDown}
+        data-drift-p50-ms={Math.round(player.drift.p50S * 1000)}
+        data-drift-p95-ms={Math.round(player.drift.p95S * 1000)}
+        data-drift-max-ms={Math.round(player.drift.maxS * 1000)}
+        data-drift-bias-ms={Math.round(player.drift.biasS * 1000)}
+        data-drift-seeks={player.drift.seeks}
+        data-latency-ms={Math.round(player.drift.latencyS * 1000)}
       >
         <div className="rough-cut__head">
           <div>

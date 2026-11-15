@@ -18,6 +18,7 @@ import {
   leftOutShotCount,
   presetPatch,
   exportSize,
+  exportedSeconds,
   previewIsStale,
   readRenderedRevision,
 } from "./mixer/mixerLogic";
@@ -220,7 +221,7 @@ export function ExportTab({ story, project, timeline, dataDirectory, onTab, rend
       ) : null}
       <ExportPanel
         project={project}
-        filmSeconds={timeline.total}
+        filmSeconds={exportedSeconds(timeline)}
         empty={!canRender(timeline)}
         rendering={rendering}
         exportJob={exportJob}

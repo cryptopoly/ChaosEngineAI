@@ -15931,7 +15931,7 @@ select.music-library__select {
   color: #fff;
   font-family: "Helvetica Neue", var(--font-latin);
   font-weight: 700;
-  font-size: 6.25cqmin;
+  font-size: 5.4cqmin; /* measured against the burnt-in text: the same line width at the same frame size */
   line-height: 1.25;
   text-shadow: 0 0 2px #000, 0 0 2px #000, 1px 1px 2px rgba(0, 0, 0, 0.8);
   pointer-events: none;
@@ -16020,6 +16020,8 @@ select.music-library__select {
 }
 .rough-cut__marker--none {
   background: repeating-linear-gradient(135deg, var(--panel) 0 4px, var(--surface) 4px 8px);
+  outline: 1px dashed var(--border-control);
+  outline-offset: -1px;
 }
 .rough-cut__marker.is-current {
   box-shadow: inset 0 -3px 0 var(--accent-strong), inset -1px 0 0 var(--panel);

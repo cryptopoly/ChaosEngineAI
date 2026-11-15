@@ -28,6 +28,12 @@ const START_LEAD_S = 0.06;
 const CUE_AHEAD_S = 1.5;
 /** How often the readout (and anything else that renders) catches up with the clock while playing. */
 const READOUT_MS = 100;
+/** The backup step timer, for when animation frames are slowed. */
+const STEP_MS = 40;
+/** How far ahead a clip that has to seek is started, to cover the time it takes to start. */
+const START_AHEAD_S = 0.03;
+/** How long before its cut a hidden clip starts playing. */
+const PREROLL_S = 0.07;
 
 export interface RoughCutLoad {
   done: number;
@@ -36,12 +42,29 @@ export interface RoughCutLoad {
   failed: string[];
 }
 
+/** How closely the picture follows the sound since the last play or seek (|video time - wanted time|). */
 export interface DriftStats {
-  /** Largest |video time - wanted time| seen while playing, seconds. */
+  p50S: number;
+  p95S: number;
+  /** Mean signed drift: positive when the picture runs ahead of the sound. */
+  biasS: number;
   maxS: number;
   /** Seeks made to catch up. */
   seeks: number;
   samples: number;
+  /** The audio output latency the picture is delayed by, seconds. */
+  latencyS: number;
+}
+
+const NO_DRIFT: DriftStats = { p50S: 0, p95S: 0, biasS: 0, maxS: 0, seeks: 0, samples: 0, latencyS: 0 };
+const MAX_DRIFT_SAMPLES = 4000;
+
+function summarise(samples: number[], seeks: number, latencyS: number): DriftStats {
+  if (!samples.length) return { ...NO_DRIFT, seeks, latencyS };
+  const biasS = samples.reduce((sum, v) => sum + v, 0) / samples.length;
+  const sorted = samples.map(Math.abs).sort((a, b) => a - b);
+  const at = (q: number) => sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))];
+  return { p50S: at(0.5), p95S: at(0.95), biasS, maxS: sorted[sorted.length - 1], seeks, samples: samples.length, latencyS };
 }
 
 export interface UseRoughCutResult {
@@ -50,6 +73,8 @@ export interface UseRoughCutResult {
   playing: boolean;
   /** Film seconds, updated about ten times a second while playing. */
   timeS: number;
+  /** Film seconds right now (for key presses that come faster than renders). */
+  now: () => number;
   /** Object URL of a project file once loaded. */
   urlOf: (rel: string) => string | null;
   /** The stage registers each shot's layer (a video, a picture or a card) by shot id. */
@@ -95,7 +120,7 @@ export function useRoughCut(projectId: string, cut: RoughCut): UseRoughCutResult
   const [ready, setReady] = useState(totalFiles === 0);
   const [playing, setPlaying] = useState(false);
   const [timeS, setTimeS] = useState(0);
-  const [drift, setDrift] = useState<DriftStats>({ maxS: 0, seeks: 0, samples: 0 });
+  const [drift, setDrift] = useState<DriftStats>(NO_DRIFT);
   const urls = useRef(new Map<string, string>());
   const buffers = useRef(new Map<string, AudioBuffer>());
   const layers = useRef(new Map<string, HTMLElement>());
@@ -105,7 +130,7 @@ export function useRoughCut(projectId: string, cut: RoughCut): UseRoughCutResult
   const anchor = useRef<{ clock: number; film: number } | null>(null);
   const timeRef = useRef(0);
   const readoutAt = useRef(0);
-  const driftRef = useRef<DriftStats>({ maxS: 0, seeks: 0, samples: 0 });
+  const driftRef = useRef<{ samples: number[]; seeks: number }>({ samples: [], seeks: 0 });
   const [, bump] = useState(0);
 
   // The audio context lives as long as the player.
@@ -259,8 +284,17 @@ export function useRoughCut(projectId: string, cut: RoughCut): UseRoughCutResult
         el.style.visibility = opacity === undefined ? "hidden" : "visible";
         if (!(el instanceof HTMLVideoElement)) continue;
         if (opacity === undefined) {
+          const lead = piece.start - t;
+          // A clip takes about a tenth of a second to get going: start it, still hidden, just before its cut.
+          if (isPlaying && lead > 0 && lead < PREROLL_S) {
+            if (el.paused) {
+              el.playbackRate = piece.speed;
+              void el.play().catch(() => undefined);
+            }
+            continue;
+          }
           if (!el.paused) el.pause();
-          const upcoming = piece.start > t && piece.start - t < CUE_AHEAD_S;
+          const upcoming = lead > 0 && lead < CUE_AHEAD_S;
           if (upcoming && Math.abs(el.currentTime - piece.sourceIn) > 0.05 && !el.seeking) el.currentTime = piece.sourceIn;
           continue;
         }
@@ -271,7 +305,8 @@ export function useRoughCut(projectId: string, cut: RoughCut): UseRoughCutResult
           continue;
         }
         if (el.paused) {
-          el.currentTime = wanted;
+          // A cued clip just starts; otherwise seek a little ahead, since starting takes a moment.
+          if (Math.abs(el.currentTime - wanted) > 0.05) el.currentTime = wanted + START_AHEAD_S * piece.speed;
           el.playbackRate = piece.speed;
           void el.play().catch(() => undefined);
           continue;
@@ -279,8 +314,7 @@ export function useRoughCut(projectId: string, cut: RoughCut): UseRoughCutResult
         if (el.seeking) continue;
         const fix = videoCorrection(el.currentTime, wanted, piece.speed);
         const stats = driftRef.current;
-        stats.samples += 1;
-        stats.maxS = Math.max(stats.maxS, Math.abs(el.currentTime - wanted));
+        if (stats.samples.length < MAX_DRIFT_SAMPLES) stats.samples.push(el.currentTime - wanted);
         if (fix.seek) {
           stats.seeks += 1;
           el.currentTime = wanted;
@@ -310,7 +344,7 @@ export function useRoughCut(projectId: string, cut: RoughCut): UseRoughCutResult
       const clock = ctx ? ctx.currentTime + START_LEAD_S : performance.now() / 1000 + START_LEAD_S;
       anchor.current = { clock, film: start };
       timeRef.current = start;
-      driftRef.current = { maxS: 0, seeks: 0, samples: 0 };
+      driftRef.current = { samples: [], seeks: 0 };
       scheduleSounds(start, clock);
       setPlaying(true);
       setTimeS(start);
@@ -342,11 +376,12 @@ export function useRoughCut(projectId: string, cut: RoughCut): UseRoughCutResult
     [cut.total, paint, playFrom],
   );
 
-  // The frame loop: picture follows the clock; the readout catches up a few times a second.
+  // The frame loop: picture follows the clock; the readout catches up a few times a second. A timer runs
+  // the same step too, because animation frames slow to about one a second in a window that is covered.
   useEffect(() => {
     if (!ready) return;
     let frame = 0;
-    const tick = () => {
+    const step = () => {
       if (anchor.current) {
         const heard = clockNow();
         const seen = Math.max(0, heard - latency());
@@ -361,15 +396,22 @@ export function useRoughCut(projectId: string, cut: RoughCut): UseRoughCutResult
           if (now - readoutAt.current >= READOUT_MS) {
             readoutAt.current = now;
             setTimeS(heard);
-            setDrift({ ...driftRef.current });
+            setDrift(summarise(driftRef.current.samples, driftRef.current.seeks, latency()));
           }
         }
       }
+    };
+    const tick = () => {
+      step();
       frame = requestAnimationFrame(tick);
     };
     paint(timeRef.current, false);
     frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
+    const timer = setInterval(step, STEP_MS);
+    return () => {
+      cancelAnimationFrame(frame);
+      clearInterval(timer);
+    };
   }, [ready, cut.total, clockNow, latency, paint, pause]);
 
   // Stop the sound when the player goes away.
@@ -393,6 +435,7 @@ export function useRoughCut(projectId: string, cut: RoughCut): UseRoughCutResult
     load,
     playing,
     timeS,
+    now: () => (anchor.current ? clockNow() : timeRef.current),
     urlOf,
     registerLayer,
     play,

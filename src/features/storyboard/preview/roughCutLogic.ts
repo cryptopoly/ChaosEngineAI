@@ -352,14 +352,10 @@ export function mediaFiles(cut: RoughCut): { videos: string[]; stills: string[];
 }
 
 /**
- * How a playing video element follows the film clock. Small drift is absorbed by nudging the rate,
- * large drift (or a paused element) by a seek. Returns the rate to set and whether to seek.
+ * How a playing video element follows the film clock: it plays at its shot's speed and is only moved
+ * (a seek) when it is more than a frame or two off. Rate nudges were tried and dropped: each rate change
+ * stalls the element for a moment in the browser, which made the drift worse, not better.
  */
 export function videoCorrection(currentS: number, wantedS: number, speed: number): { rate: number; seek: boolean } {
-  const drift = currentS - wantedS;
-  if (Math.abs(drift) > 0.25) return { rate: speed, seek: true };
-  if (Math.abs(drift) < 0.02) return { rate: speed, seek: false };
-  // Catch up within about half a second: behind plays faster, ahead plays slower.
-  const nudge = Math.max(-0.1, Math.min(0.1, -drift * 2));
-  return { rate: speed * (1 + nudge), seek: false };
+  return { rate: speed, seek: Math.abs(currentS - wantedS) > 0.1 };
 }

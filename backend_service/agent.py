@@ -85,6 +85,28 @@ def _decode_xml_tool_call(text: str, start: int) -> tuple[dict[str, Any], int] |
     return {"name": match.group(1).strip(), "arguments": arguments}, match.end()
 
 
+def _bare_call_span(text: str) -> tuple[dict[str, Any], int, int] | None:
+    """A call whose ``<tool_call>`` opener the model dropped: ``{"name": ..., "arguments": ...}</tool_call>``.
+
+    Qwen3.8 does this on some turns (seen on a Storyboard chat, 2026-11-15): JSON that runs straight into the
+    close tag. Only accepted when the text holds no opener at all and a call object is followed directly by the
+    close tag, so ordinary prose with braces in it is left alone. Returns ``(payload, start, end)``.
+    """
+    if "<tool_call>" in text.lower() or "</tool_call>" not in text.lower():
+        return None
+    start = text.find("{")
+    if start < 0:
+        return None
+    try:
+        payload, end = json.JSONDecoder().raw_decode(text, start)
+    except json.JSONDecodeError:
+        return None
+    close = _TOOL_CALL_CLOSE.match(text, end)
+    if close is None or not isinstance(payload, dict) or not (payload.get("name") or payload.get("function")):
+        return None
+    return payload, start, close.end()
+
+
 def _strip_tool_call_xml(text: str) -> str:
     """Remove every ``<tool_call>...`` blob from a model response.
 
@@ -101,7 +123,12 @@ def _strip_tool_call_xml(text: str) -> str:
     framing) stays put. A trailing ``</tool_call>`` close tag, when
     present, is also swallowed.
     """
-    if not text or "<tool_call>" not in text.lower():
+    if not text:
+        return text
+    bare = _bare_call_span(text)
+    if bare is not None:
+        return re.sub(r"\n{3,}", "\n\n", text[:bare[1]] + text[bare[2]:]).strip()
+    if "<tool_call>" not in text.lower():
         return text
     decoder = json.JSONDecoder()
     out: list[str] = []
@@ -170,7 +197,27 @@ def _parse_tool_calls_from_response(response_text: str) -> list[dict[str, Any]] 
     braces inside argument string values that a naive regex would
     choke on.
     """
-    if not response_text or "<tool_call>" not in response_text.lower():
+    if not response_text:
+        return None
+    bare = _bare_call_span(response_text)
+    if bare is not None:
+        # Same shape handling as below, for the call that lost its opener.
+        payload = bare[0]
+        arguments = payload.get("arguments") or payload.get("parameters") or {}
+        if isinstance(arguments, str):
+            try:
+                arguments = json.loads(arguments)
+            except json.JSONDecodeError:
+                arguments = {"raw": arguments}
+        return [{
+            "id": f"call_{uuid.uuid4().hex[:8]}",
+            "type": "function",
+            "function": {
+                "name": payload.get("name") or payload.get("function"),
+                "arguments": json.dumps(arguments) if isinstance(arguments, dict) else str(arguments),
+            },
+        }]
+    if "<tool_call>" not in response_text.lower():
         return None
 
     calls: list[dict[str, Any]] = []

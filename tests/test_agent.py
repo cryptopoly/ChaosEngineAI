@@ -53,6 +53,17 @@ class ParseToolCallsTests(unittest.TestCase):
         self.assertEqual(calls[0]["function"]["name"], "calculator")
         self.assertEqual(calls[1]["function"]["name"], "web_search")
 
+    def test_parses_call_that_lost_its_opening_tag(self):
+        text = '{"name": "calculator", "arguments": {"expression": "2+2"}}\n</tool_call>'
+        calls = _parse_tool_calls_from_response(text)
+        self.assertEqual([c["function"]["name"] for c in calls], ["calculator"])
+        self.assertEqual(json.loads(calls[0]["function"]["arguments"]), {"expression": "2+2"})
+        from backend_service.agent import _strip_tool_call_xml
+        self.assertEqual(_strip_tool_call_xml(text), "")
+
+    def test_braces_in_prose_without_a_close_tag_are_not_a_call(self):
+        self.assertIsNone(_parse_tool_calls_from_response('Use {"name": "x", "arguments": {}} as the shape.'))
+
     def test_returns_none_for_no_tool_calls(self):
         result = _parse_tool_calls_from_response("Just a normal text response.")
         self.assertIsNone(result)

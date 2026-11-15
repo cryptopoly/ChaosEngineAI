@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any
 
 from backend_service.helpers.time_estimate import variant_seconds
-from backend_service.storyboard.batch import needs_final, needs_work, still_only
+from backend_service.storyboard.batch import clip_outdated, needs_final, needs_work, still_only
 from backend_service.storyboard.models import Project, Shot
 
 
@@ -34,8 +34,14 @@ def plan_steps(project: Project, what: str, shot_ids: list[str] | None) -> list[
     if what == "final":
         steps += [(shot, "still") for shot in shots if shot.startFrom == "generate"]
         return steps + [(shot, "clip") for shot in shots if shot.startFrom != "upload"]
+    if what == "redo-still":
+        return [(shot, "still") for shot in shots if shot.startFrom == "generate"]
+    if what == "redo-clip":
+        return [(shot, "clip") for shot in shots if shot.startFrom != "upload"
+                and not (shot.startFrom == "generate" and not (shot.active() and shot.active().still))]  # type: ignore[union-attr]
     for shot in shots:
-        if what in ("still", "both") and shot.startFrom == "generate" and not (what == "both" and still_only(shot) and not shot.redo):
+        behind = still_only(shot) or clip_outdated(shot)
+        if what in ("still", "both") and shot.startFrom == "generate" and not (what == "both" and behind and not shot.redo):
             steps.append((shot, "still"))
     for shot in shots:
         if what in ("clip", "both") and shot.startFrom != "upload":

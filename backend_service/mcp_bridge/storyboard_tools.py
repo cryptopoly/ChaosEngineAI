@@ -79,8 +79,9 @@ STORYBOARD_TOOLS: list[dict[str, Any]] = [
         "inputSchema": _obj({
             "project_id": _PID, "revision": _REV,
             "shot_ids": {"type": "array", "items": {"type": "string"}, "maxItems": 500},
-            "what": {"type": "string", "enum": ["still", "clip", "both", "final"],
-                     "description": "final: redo only the shots marked Keep for final, with the quality image model."},
+            "what": {"type": "string", "enum": ["still", "clip", "both", "final", "redo-clip", "redo-still"],
+                     "description": "final: redo only the shots marked Keep for final, with the quality image model. "
+                     "redo-clip: new clip from the current still; redo-still: new still, old clip kept until remade."},
             "draft": {"type": "boolean", "description": "Make drafts: the fast image model at a smaller size."},
             "force": {"type": "boolean", "description": "Also run locked shots."},
         }, ["project_id", "revision"]),

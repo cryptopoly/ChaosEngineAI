@@ -45,7 +45,7 @@ class RevisionOnly(_Body):
 
 class BatchRequest(_Body):
     revision: int
-    what: Literal["still", "clip", "both", "final"] = "both"
+    what: Literal["still", "clip", "both", "final", "redo-clip", "redo-still"] = "both"
     shotIds: list[str] | None = Field(None, max_length=500)
     force: bool = False
     draft: bool = False  # Make drafts: the fast still model at a smaller size (not with final)
@@ -64,7 +64,7 @@ class CaptionsRequest(_Body):
 
 
 class EstimateRequest(_Body):
-    what: Literal["still", "clip", "both", "final"] = "both"
+    what: Literal["still", "clip", "both", "final", "redo-clip", "redo-still"] = "both"
     shotIds: list[str] | None = Field(None, max_length=500)
     draft: bool = False
 
@@ -129,7 +129,8 @@ def start_batch(request: Request, project_id: str, revision: int | None, what: s
             raise store_module.StoreError(why or "No image model is installed for the final pass.")
     batch = Batch(store, project_id, what, make_still=lambda s, p: None, make_clip=lambda s, p, i: None,
                   shot_ids=shot_ids, force=force, draft=draft,
-                  draft_sizes=_draft_sizes(project, image, video) if draft else None,
+                  # A redo keeps the pass of the take it redoes, so a draft take is redone at the draft size.
+                  draft_sizes=_draft_sizes(project, image, video) if draft or what.startswith("redo-") else None,
                   final_image_model=str(final_image["id"]) if final_image else None)
     wiring = studio_generators(request, batch.id, folder)
     batch.make_still, batch.make_clip = wiring["make_still"], wiring["make_clip"]
@@ -297,10 +298,13 @@ def estimate_batch(request: Request, project_id: str, body: EstimateRequest) -> 
         missing += [why_video] if why_video else []
     folder = store.folder(project_id)
     sizes = _draft_sizes(project, image, video)
+    # A redo is made in the pass of the takes it redoes: priced as a draft when every one of them is a draft.
+    redone = [shot.active() for shot, _ in steps] if body.what.startswith("redo-") else []
+    draft = body.draft or (bool(redone) and all(t is not None and t.renderPass == "draft" for t in redone))
     out = estimate(project, folder, what=body.what, shot_ids=body.shotIds,
                    image_variant=final_image if body.what == "final" else image, video_variant=video, missing=missing,
-                   render_pass="draft" if body.draft else "final", sizes=sizes if body.draft else None)
-    out["passes"] = passes(project, folder, shot_ids=body.shotIds if body.what != "final" else None,
+                   render_pass="draft" if draft else "final", sizes=sizes if draft else None)
+    out["passes"] = passes(project, folder, shot_ids=body.shotIds if body.what in ("still", "clip", "both") else None,
                            draft_variant=image, final_variant=final_image, video_variant=video, draft_sizes=sizes)
     return out
 

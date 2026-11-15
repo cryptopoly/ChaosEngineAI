@@ -12,6 +12,11 @@ are written into ``project.batches`` so a restart shows what finished.
 Passes (S6): a ``draft`` run hands the generators a copy of the project at the draft size, and its takes are
 marked ``draft``. ``what="final"`` redoes only the shots marked ``kept`` that have no finished final take: the
 still with the quality model (``final_image_model``) at the project size, then the clip from that still.
+
+Redo one half (S11): ``what="redo-clip"`` makes a new take that keeps the active still and has a new clip;
+``what="redo-still"`` makes a new take with a new still that keeps the old clip until it is remade (the clip records
+the still it started from, so ``deps.clip_outdated`` marks the shot stale and the next Make remakes only the clip).
+Both ask the makers for a new seed (the shot's own seed is left alone) and keep the pass of the take they redo.
 """
 
 from __future__ import annotations
@@ -23,6 +28,7 @@ from typing import Any, Callable
 
 from backend_service.progress import GenerationCancelled
 from backend_service.storyboard import deps, media
+from backend_service.storyboard.deps import clip_outdated
 from backend_service.storyboard.models import BatchRecord, BatchResult, Project, Shot, Take, new_id
 from backend_service.storyboard.store import LIVE_BATCHES, ProjectStore, RevisionConflict, StoreError
 
@@ -31,7 +37,7 @@ MakeStill = Callable[[Shot, Project], GenResult]
 MakeClip = Callable[[Shot, Project, "Path | None"], GenResult]
 # ``stillSeconds`` / ``clipSeconds``: how long making that still or clip took here (the estimate reads them).
 _SETTING_KEYS = ("model", "seed", "steps", "width", "height", "frames", "fps", "guidance", "stillSeconds", "clipSeconds",
-                 "stillModel", "clipModel")
+                 "stillModel", "clipModel", "stillSeed", "clipSeed")
 KEEP_BATCHES = 20
 BATCHES: dict[str, "Batch"] = {}
 _BATCHES_LOCK = threading.Lock()
@@ -41,7 +47,9 @@ class BatchRefused(StoreError):
     pass
 
 
-WHATS = ("still", "clip", "both", "final")
+REDO = ("redo-clip", "redo-still")
+WHATS = ("still", "clip", "both", "final", *REDO)
+__all__ = ["clip_outdated"]
 
 
 def draft_size(width: int, height: int, min_side: int | None = None) -> tuple[int, int]:
@@ -70,8 +78,12 @@ def needs_work(shot: Shot, what: str = "both") -> bool:
         return needs_final(shot)
     if shot.startFrom == "upload" or shot.status == "missing":
         return False
+    if what in REDO:  # a take to redo half of; a new still needs a shot that makes one
+        return shot.active() is not None and (what == "redo-clip" or shot.startFrom == "generate")
     if what != "still" and still_only(shot):
         return True
+    if what == "still" and clip_outdated(shot) and not shot.redo:
+        return False  # its still is the new one: only the clip is behind
     return shot.redo or shot.active() is None or shot.status in ("idle", "stale", "failed")
 
 
@@ -127,8 +139,8 @@ class Batch:
     ) -> None:
         if what not in WHATS:
             raise BatchRefused("what must be still, clip, both or final.")
-        if draft and what == "final":
-            raise BatchRefused("A final pass is not a draft.")
+        if draft and what in ("final", *REDO):
+            raise BatchRefused("A final pass or a redo is not a draft (a redo keeps the pass of the take it redoes).")
         self.id = new_id("b")
         self.store, self.project_id, self.what = store, project_id, what
         self.make_still, self.make_clip, self.unload = make_still, make_clip, unload
@@ -137,6 +149,7 @@ class Batch:
         # Passes (S6): drafts are made at ``draft_sizes`` ({"still"|"clip": (w, h)}); a final pass uses the quality model.
         self.draft, self.draft_sizes, self.final_image_model = draft, dict(draft_sizes or {}), final_image_model
         self.render_pass = "draft" if draft else "final"
+        self._shot_pass: dict[str, str] = {}  # redo kinds: shot id -> the pass of the take being redone
         # Why the project's video model cannot start a clip from an image (None when it can or is unknown).
         self.clip_image_refusal = clip_image_refusal
         self._refusal: tuple[str | None, str | None] | None = None  # (video model, reason) cache
@@ -167,14 +180,16 @@ class Batch:
             shots = [s for s in project.shots if needs_work(s, self.what) and (self.force or not s.locked)]
         if self.what == "final":
             return self._plan_final(project, shots)
+        if self.what in REDO:
+            return self._plan_redo(project, shots)
         refusal = self._image_refusal(project) if self.what in ("clip", "both") else None
         stills, clips = [], []
         for shot in shots:
             # A clip that would ignore its still or its chain is refused, and its still is not made for nothing.
             blocked = refusal if shot.startFrom in ("generate", "previous-shot") else None
             if self.what in ("still", "both"):
-                if self.what == "both" and still_only(shot) and not shot.redo:
-                    pass  # its still is there: only the clip is missing, made from that still
+                if self.what == "both" and (still_only(shot) or clip_outdated(shot)) and not shot.redo:
+                    pass  # its still is there: only the clip is missing (or behind), made from that still
                 elif shot.startFrom == "generate":
                     stills.append((shot.id, "still", blocked))
                 elif self.what == "still":
@@ -197,12 +212,32 @@ class Batch:
             clips.append((shot.id, "clip", blocked))
         return stills + clips
 
-    def run_project(self, project: Project, kind: str) -> Project:
-        """The project the generators see for one step: the draft size for a draft, the quality model for a final pass.
+    def _plan_redo(self, project: Project, shots: list[Shot]) -> list[tuple[str, str, str | None]]:
+        """One step per shot: a new still (shots that start from one) or a new clip (from the active still)."""
+        if self.what == "redo-still":
+            return [(s.id, "still", None if s.startFrom == "generate" else f"starts from {s.startFrom}; no still to make")
+                    for s in shots]
+        refusal = self._image_refusal(project)
+        steps = []
+        for shot in shots:
+            take = shot.active()
+            if shot.startFrom == "upload":
+                reason = "upload shot; import a clip"
+            elif shot.startFrom == "generate" and not (take and take.still):
+                reason = "no still yet; make the shot first"
+            else:
+                reason = refusal if shot.startFrom in ("generate", "previous-shot") else None
+            steps.append((shot.id, "clip", reason))
+        return steps
 
-        A copy; the stored project never changes."""
+    def _pass(self, shot_id: str | None) -> str:
+        return self._shot_pass.get(shot_id or "", self.render_pass)
+
+    def run_project(self, project: Project, kind: str, shot_id: str | None = None) -> Project:
+        """The project the generators see for one step: the draft size for a draft (or a redo of a draft take), the
+        quality model for a final pass. A copy; the stored project never changes."""
         changes: dict[str, Any] = {}
-        if self.draft and kind in self.draft_sizes:
+        if self._pass(shot_id) == "draft" and kind in self.draft_sizes:
             changes["width"], changes["height"] = self.draft_sizes[kind]
         if self.what == "final" and kind == "still":
             changes["imageModel"] = self.final_image_model or project.defaults.finalImageModel or project.defaults.imageModel
@@ -224,7 +259,7 @@ class Batch:
         def change(p: Project, folder: Path) -> None:
             steps = self.plan(p)
             if not any(reason is None for _, _, reason in steps):
-                refusal = self._image_refusal(p) if self.what in ("clip", "both", "final") else None
+                refusal = self._image_refusal(p) if self.what in ("clip", "both", "final", "redo-clip") else None
                 if refusal and any(reason == refusal for _, _, reason in steps):
                     raise BatchRefused(refusal)
                 if self.what == "final":
@@ -233,12 +268,15 @@ class Batch:
             results = [BatchResult(shotId=s, kind=k, state="skipped" if r else "queued", error=r) for s, k, r in steps]  # type: ignore[arg-type]
             self.steps = [(s, k) for s, k, r in steps if r is None]
             for shot_id in {s for s, _ in self.steps}:
-                p.shot(shot_id).status = "queued"  # type: ignore[union-attr]
+                shot = p.shot(shot_id)
+                shot.status = "queued"  # type: ignore[union-attr]
+                if self.what in REDO and shot.active() is not None:  # type: ignore[union-attr]
+                    self._shot_pass[shot_id] = shot.active().renderPass  # type: ignore[union-attr]
             record = BatchRecord(id=self.id, what=self.what, force=self.force, draft=self.draft,  # type: ignore[arg-type]
                                  state="running", createdAt=time.time(), results=results)
             p.batches = (p.batches + [record])[-KEEP_BATCHES:]
 
-        if self.what in ("clip", "both", "final"):
+        if self.what in ("clip", "both", "final", "redo-clip"):
             self._image_refusal(self.store.load(self.project_id))  # look the model up before taking the lock
         LIVE_BATCHES.add(self.id)
         try:
@@ -409,12 +447,14 @@ class Batch:
                 raise StoreError("the shot was removed")
             began = time.monotonic()
             self._current = (shot_id, kind, began)
+            # A redo asks for a new seed; the shot keeps its own (the fingerprint and the next Make still use it).
+            made_shot = shot.model_copy(update={"seed": None}) if self.what in REDO else shot
             if kind == "still":
-                path, info = _split(self.make_still(shot, self.run_project(project, kind)))
+                path, info = _split(self.make_still(made_shot, self.run_project(project, kind, shot_id)))
             else:
                 start = self._start_image(project, shot)
                 try:
-                    path, info = _split(self.make_clip(shot, self.run_project(project, kind), start))
+                    path, info = _split(self.make_clip(made_shot, self.run_project(project, kind, shot_id), start))
                 finally:
                     if start is not None and shot.startFrom == "previous-shot":
                         _remove_frame(start)
@@ -424,6 +464,8 @@ class Batch:
             self._finished_steps.append((kind, time.monotonic() - began))
             if made.get("model"):
                 made[f"{kind}Model"] = made["model"]
+            if made.get("seed") is not None:
+                made[f"{kind}Seed"] = made["seed"]
             info = {**info, "settings": made}
             self._update(lambda p, folder: self._store_output(p, folder, shot_id, kind, path, info))
             self._current = None
@@ -468,15 +510,21 @@ class Batch:
             return
         take = shot.take(self._takes.get(shot_id))
         active = shot.active()
-        same_pass = active is not None and active.renderPass == self.render_pass
+        render_pass = self._pass(shot_id)
+        same_pass = active is not None and active.renderPass == render_pass
         if take is None and kind == "clip" and active is not None and active.still and not active.clip and same_pass:
             take = active  # the clip completes the still-only take instead of starting a new one
             self._takes[shot_id] = take.id
         if take is None:
-            take = Take(id=new_id("t"), createdAt=time.time(), origin="batch", renderPass=self.render_pass)  # type: ignore[arg-type]
+            take = Take(id=new_id("t"), createdAt=time.time(), origin="batch", renderPass=render_pass)  # type: ignore[arg-type]
             if kind == "clip" and same_pass and shot.active().still:  # type: ignore[union-attr]
                 old = shot.active()
                 take.still, take.hashes = old.still, {"still": old.hashes["still"]} if "still" in old.hashes else {}  # type: ignore[union-attr]
+                take.settings = {k: v for k, v in old.settings.items() if k in ("stillModel", "stillSeed")}  # type: ignore[union-attr]
+            elif kind == "still" and self.what == "redo-still" and active is not None and active.clip:
+                # The old clip stays until it is remade; it records the still it came from, so the shot shows stale.
+                take.clip, take.measuredSeconds, take.settings = active.clip, active.measuredSeconds, dict(active.settings)
+                take.hashes = {"clip": active.hashes["clip"]} if "clip" in active.hashes else {}
             shot.takes.append(take)
             self._takes[shot_id] = take.id
         src = media.resolve_source(str(path), {"image"} if kind == "still" else {"video"})
@@ -488,6 +536,8 @@ class Batch:
         else:
             measured = info.get("measuredSeconds") or media.probe_seconds(media.inside(folder, rel))
             take.clip, take.hashes, take.measuredSeconds = rel, {**take.hashes, "clip": digest}, measured
+            if take.still and "still" in take.hashes and shot.startFrom == "generate":
+                settings["clipStill"] = take.hashes["still"]  # the still this clip started from (deps.clip_outdated)
         take.settings = settings
         result = self._result(p, shot_id, kind)
         if result is not None:

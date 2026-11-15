@@ -566,3 +566,23 @@ class CeilingScriptHelperTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class DistilledStepsNoteRunTests(unittest.TestCase):
+    """A 4-step model asked for 40 steps once crashed with ``NameError: size_notes`` (High Quality on Iris and Klein)."""
+
+    def test_the_run_carries_the_steps_note_instead_of_crashing(self):
+        from backend_service import app as backend_app
+        from backend_service.models import ImageGenerationRequest
+
+        rendered = SimpleNamespace(
+            seed=1, durationSeconds=1.0, timings=None, bytes=b"x", mimeType="image/png", extension="png",
+            runtimeLabel="mflux", runtimeNote=None,
+        )
+        manager = mock.Mock()
+        manager.generate.return_value = ([rendered], {})
+        variant = {"name": "Iris-3B Turbo", "repo": "r/iris", "defaultSteps": 4}
+        request = ImageGenerationRequest(modelId="iris", prompt="p", steps=40, width=1024, height=1024)
+        with mock.patch.object(backend_app, "_save_image_artifact", side_effect=lambda a: a):
+            artifacts, _ = backend_app._generate_image_artifacts(request, variant, runtime_manager=manager)
+        self.assertIn("tuned for 4 steps", artifacts[0]["runtimeNote"])

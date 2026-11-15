@@ -475,8 +475,7 @@ def _generate_image_artifacts(
         int(variant_default_steps) if variant_default_steps is not None else None,
     )
     if steps_note:
-        size_notes.append(steps_note)
-        size_note = " ".join(size_notes)
+        size_note = " ".join(part for part in (size_note, steps_note) if part)
 
     rendered_images, runtime_status = runtime_manager.generate(
         ImageGenerationConfig(

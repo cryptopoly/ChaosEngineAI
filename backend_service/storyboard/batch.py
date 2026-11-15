@@ -366,7 +366,14 @@ class Batch:
             return False
         except Exception as exc:  # noqa: BLE001 - recorded on the shot, the batch goes on
             self._current = None
-            message = media.scrub(getattr(exc, "detail", None) or str(exc) or type(exc).__name__)
+            if self.cancel_event.is_set():
+                # The studio reports a stopped run as an error of its own; the user cancelled, so the shot keeps its last take.
+                self._update(lambda p, folder: self._mark(p, shot_id, kind, "cancelled", None))
+                return False
+            detail = getattr(exc, "detail", None)
+            if isinstance(detail, dict):
+                detail = detail.get("message") or detail.get("localized")
+            message = media.scrub(detail or str(exc) or type(exc).__name__)
             self._update(lambda p, folder: self._mark(p, shot_id, kind, "failed", message))
             return not self.cancel_event.is_set()
 

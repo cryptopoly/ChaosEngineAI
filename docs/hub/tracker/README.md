@@ -8,13 +8,14 @@ summary: Every FU row from FOLLOW_UPS.md, split into open and closed.
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here.
 
-- [Open and live follow-ups](open.md): **97** rows.
+- [Open and live follow-ups](open.md): **98** rows.
 - [Closed follow-ups](closed.md): **81** rows.
 
 ## Newest ten
 
 | Row | Item | Status |
 |---|---|---|
+| [FU-181](open.md) | Two bugs found by the owner on the Mac (2026-11-15) | Done |
 | [FU-180](open.md) | A job started elsewhere shows no progress in the studios | Done |
 | [FU-179](open.md) | Chat storyboard run: two render approvals, slow default still model | Open |
 | [FU-178](open.md) | llama.cpp 1.0 features not wired | Open |
@@ -24,4 +25,3 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 | [FU-174](open.md) | Idle GPU speech workers slow image and video jobs; the idle-unload setting missed the Qwen | Fixed and verified through the installed app (2026-11-13, installer built at 3f534add). |
 | [FU-173](open.md) | Installed app runs LTX-2.5 4-bit and FLUX.2 Klein slower than the dev venv on the same car | Fixed and verified through the installed app (2026-11-13, installer built at a8b0051e). |
 | [FU-172](open.md) | Qwen3.8-27B + DFlash2 on the vLLM lane does not fit a 24 GB card; vLLM lane ignores the th | Open (2026-11-13): measured on an RTX 4090 (WSL2, vLLM 0.33). |
-| [FU-171](open.md) | TriAttention on the vLLM lane: works only on vLLM 0.18 or older; the app now says so and w | Open: root cause found, compaction working on vLLM 0.18.1, app honest on newer vLLM (2026-11-13). |

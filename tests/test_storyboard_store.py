@@ -573,6 +573,27 @@ class DepsAndBatchTests(StoreCase):
         self.assertEqual([r.state for r in p.batches[-1].results], ["cancelled"] * 3)
         self.assertTrue(all(s.status == "idle" for s in p.shots))
 
+    def test_cancelling_a_new_take_keeps_the_shots_earlier_take_as_done(self):
+        from fastapi import HTTPException
+
+        p = self.new(shots=1)
+        gens = FakeGenerators(self.src)
+        _, p = self._batch(p, gens, what="still")
+        shot_id = p.shots[0].id
+        self.assertEqual(p.shots[0].status, "done")
+        batch = Batch(self.store, p.id, "still", gens.make_still, gens.make_clip, shot_ids=[shot_id], force=True)
+
+        def stopped(shot, project):
+            batch.cancel_event.set()  # the user pressed Cancel; the studio then reports its own error
+            raise HTTPException(status_code=499, detail={"message": "cancelled", "locale": "en"})
+
+        batch.make_still = stopped
+        batch.start(self.store.load(p.id).revision)
+        batch.run()
+        p = self.store.load(p.id)
+        self.assertEqual(p.shots[0].status, "done")
+        self.assertEqual(p.batches[-1].results[-1].state, "cancelled")
+
     def test_a_video_model_without_image_input_skips_stills_and_chains_with_a_reason(self):
         p, ids = self._film()  # A..F, D and E continue from the shot before
         p = self.op(p, "edit_shot", shotId=ids[5], startFrom="upload")

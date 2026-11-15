@@ -1,13 +1,22 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 97 rows with work, decisions or watch items still open, newest first.
+summary: 98 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-181 · Two bugs found by the owner on the Mac (2026-11-15) — Done</summary>
+
+**Status or trigger:** Done
+
+**Notes:** (1) Iris-3B and FLUX 3 Klein (mflux) failed with `NameError: name 'size_notes' is not defined` whenever the step count was more than twice the model's tuned steps (the High Quality preset): the steps note in `_generate_image_artifacts` used a name from another function; now joined onto `size_note`, test in `test_size_limits.py`. (2) Cancelling a re-render marked the shot Failed with a raw `{'message': 'cancelled', ...}` even though its earlier take was fine, because the studio reports a stopped run as an HTTP error; the batch now treats any error after Cancel as cancelled (shot keeps its last take) and reads the `message` of a dict detail. Test in `test_storyboard_store.py`. Tea Shop Ad 2 shot 4 still shows Failed from before the fix; Retry or New take clears it.
+
+</details>
 
 <details>
 <summary>FU-180 · A job started elsewhere shows no progress in the studios — Done</summary>

@@ -213,7 +213,8 @@
       "placeholder": "模糊,变形的手,多余的肢体,过度曝光"
     },
     "draft": {
-      "tooltip": "强制 512px 长边渲染,用于快速迭代提示词。输出会以草稿尺寸保存 — 关闭以进行全分辨率最终渲染。"
+      "tooltip": "强制 512px 长边渲染,用于快速迭代提示词。输出会以草稿尺寸保存 — 关闭以进行全分辨率最终渲染。",
+      "sizeKept": null
     },
     "sampler": {
       "tooltip": "去噪过程中使用的调度器 / 采样器算法。\"模型默认\"保留管线随附的设置。AYS DPM++ 2M (SD1.5 / SDXL) 使用 NVIDIA 的 Align Your Steps 调度 — 在 7-10 步即可获得细节,而 Karras / Euler 看起来偏柔。FLUX、SD3、Qwen-Image、Sana 和 HiDream 隐藏此项 — 这些流匹配管线使用锁定的调度,切换会产生噪点。"

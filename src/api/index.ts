@@ -710,6 +710,7 @@ export {
   resolveHfModel,
   scanImportableModels,
   revealModelPath,
+  openMediaFile,
   runBenchmark,
   searchHubModels,
   searchModels,

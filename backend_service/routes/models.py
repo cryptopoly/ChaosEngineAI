@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+import os
 import re
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query, Request
@@ -191,6 +193,50 @@ def convert_model(request: Request, body: ConvertModelRequest) -> dict[str, Any]
 def reveal_model_path(request: Request, body: RevealPathRequest) -> dict[str, Any]:
     state = request.app.state.chaosengine
     return state.reveal_model_path(body.path)
+
+
+# What the Open button may hand to the system's default app: pictures, clips, sound and subtitles only,
+# never a script or an app bundle, and only from the folders the app writes to.
+_OPENABLE_SUFFIXES = {
+    ".png", ".jpg", ".jpeg", ".webp", ".gif", ".mp4", ".mov", ".m4v", ".webm",
+    ".wav", ".mp3", ".flac", ".ogg", ".m4a", ".srt",
+}
+
+
+def _openable_roots(state: Any) -> list[Path]:
+    settings = state.settings
+    raw = [settings.get("dataDirectory"), settings.get("imageOutputsDirectory"), settings.get("videoOutputsDirectory"),
+           "~/.chaosengine"]
+    roots: list[Path] = []
+    for value in raw:
+        if not value:
+            continue
+        try:
+            roots.append(Path(os.path.expanduser(str(value))).resolve())
+        except (OSError, RuntimeError):
+            continue
+    return roots
+
+
+@router.post("/api/files/open")
+def open_media_file(request: Request, body: RevealPathRequest) -> dict[str, Any]:
+    """Open a picture, clip or sound the app made in the system's default app (the studios' Open button)."""
+    from backend_service.routes.html_challenges._helpers import _open_default_app
+
+    state = request.app.state.chaosengine
+    try:
+        target = Path(body.path).expanduser().resolve(strict=True)
+    except (OSError, RuntimeError):
+        raise HTTPException(status_code=404, detail="That file no longer exists.")
+    if not target.is_file() or target.suffix.lower() not in _OPENABLE_SUFFIXES:
+        raise HTTPException(status_code=400, detail="Only pictures, clips, sound and subtitle files can be opened here.")
+    if not any(root == target or root in target.parents for root in _openable_roots(state)):
+        raise HTTPException(status_code=400, detail="That file is outside the folders the app writes to.")
+    try:
+        _open_default_app(target)
+    except Exception as exc:  # noqa: BLE001 - the system has no app for it, or the launch failed
+        raise HTTPException(status_code=500, detail=f"Could not open the file: {exc}") from exc
+    return {"opened": str(target)}
 
 
 @router.post("/api/models/delete")

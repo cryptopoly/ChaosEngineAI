@@ -213,7 +213,8 @@
       "placeholder": "模糊、變形的手、多餘的肢體、過度曝光"
     },
     "draft": {
-      "tooltip": "強制使用 512px 長邊渲染以快速迭代提示詞。輸出將以草稿大小儲存 — 停用以進行全解析度的最終渲染。"
+      "tooltip": "強制使用 512px 長邊渲染以快速迭代提示詞。輸出將以草稿大小儲存 — 停用以進行全解析度的最終渲染。",
+      "sizeKept": null
     },
     "sampler": {
       "tooltip": "在去噪過程中使用的排程器 / 取樣演算法。「模型預設」保留管線出廠設定。AYS DPM++ 2M (SD1.5 / SDXL) 使用 NVIDIA 的 Align Your Steps 排程 — 在 7-10 步時細節優於 Karras / Euler 的柔化效果。FLUX、SD3、Qwen-Image、Sana 與 HiDream 已隱藏此選項 — 這些 flow-matching 管線出廠時鎖定排程器,更換會產生雜訊。"

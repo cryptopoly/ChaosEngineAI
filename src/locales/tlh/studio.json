@@ -213,7 +213,8 @@
       "placeholder": "Huv, ghop Duy', 'uS 'ej DeS law', wov law'"
     },
     "draft": {
-      "tooltip": "512px tIq 'aqroS mIllogh yIchenmoH vaj nom QIn DawaHlaH. tInghach nap pol mIllogh. mIllogh Qav DaneHchugh yIchu'Ha'."
+      "tooltip": "512px tIq 'aqroS mIllogh yIchenmoH vaj nom QIn DawaHlaH. tInghach nap pol mIllogh. mIllogh Qav DaneHchugh yIchu'Ha'.",
+      "sizeKept": null
     },
     "sampler": {
       "tooltip": "scheduler / sampler lo'lu' noise teqlu'taHvIS. 'yab motlh' wIvlu'chugh pipeline wIv pol. AYS DPM++ 2M (SD1.5 / SDXL) NVIDIA Align Your Steps mIw lo', 7-10 mIwDaq De' law' Sam, Karras / Euler Huv. FLUX, SD3, Qwen-Image, Sana, HiDream So'lu': scheduler ngaQ lo' flow-matching pipeline, tamlu'chugh noise neH chenmoH."

@@ -213,7 +213,8 @@
       "placeholder": "borroso, manos deformadas, extremidades adicionales, sobreexpuesto"
     },
     "draft": {
-      "tooltip": "Forzar un renderizado de 512px en el lado largo para iterar prompts rápidamente. La salida se guarda al tamaño de borrador — desactívalo para un pase final a resolución completa."
+      "tooltip": "Forzar un renderizado de 512px en el lado largo para iterar prompts rápidamente. La salida se guarda al tamaño de borrador — desactívalo para un pase final a resolución completa.",
+      "sizeKept": null
     },
     "sampler": {
       "tooltip": "Algoritmo de scheduler / sampler usado durante el denoising. \"Predeterminado del modelo\" mantiene lo que vino con el pipeline. AYS DPM++ 2M (SD1.5 / SDXL) usa la programación Align Your Steps de NVIDIA — gana detalle con 7-10 pasos donde Karras / Euler se ven blandos. Oculto para FLUX, SD3, Qwen-Image, Sana y HiDream — esos pipelines flow-matching traen schedulers bloqueados y cambiarlos produce ruido."

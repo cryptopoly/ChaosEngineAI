@@ -213,7 +213,8 @@
       "placeholder": "flou, mains déformées, membres en trop, surexposé"
     },
     "draft": {
-      "tooltip": "Force un rendu à 512 px sur le côté long pour itérer rapidement sur l'invite. La sortie est enregistrée à la taille du brouillon — désactivez pour une passe finale en pleine résolution."
+      "tooltip": "Force un rendu à 512 px sur le côté long pour itérer rapidement sur l'invite. La sortie est enregistrée à la taille du brouillon — désactivez pour une passe finale en pleine résolution.",
+      "sizeKept": null
     },
     "sampler": {
       "tooltip": "Algorithme d'ordonnanceur / échantillonneur utilisé pendant le débruitage. « Par défaut du modèle » conserve celui livré avec le pipeline. AYS DPM++ 2M (SD1.5 / SDXL) utilise l'ordonnancement Align Your Steps de NVIDIA — gagne en détail à 7-10 étapes là où Karras / Euler paraissent flous. Masqué pour FLUX, SD3, Qwen-Image, Sana et HiDream — ces pipelines flow-matching livrent des ordonnanceurs verrouillés et le swap produit du bruit."

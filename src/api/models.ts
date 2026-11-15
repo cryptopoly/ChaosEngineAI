@@ -146,6 +146,10 @@ export async function revealModelPath(path: string): Promise<void> {
   await postJson<{ revealed: string }>("/api/models/reveal", { path });
 }
 
+export async function openMediaFile(path: string): Promise<void> {
+  await postJson<{ opened: string }>("/api/files/open", { path });
+}
+
 export async function deleteModelPath(path: string): Promise<{ deleted: string; library: LibraryItem[] }> {
   return await postJson<{ deleted: string; library: LibraryItem[] }>(
     "/api/models/delete",

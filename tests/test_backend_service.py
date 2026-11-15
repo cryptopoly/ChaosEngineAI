@@ -3,6 +3,7 @@ import os
 import json
 import subprocess
 from pathlib import Path
+import shutil
 import tempfile
 from types import SimpleNamespace
 from unittest import mock
@@ -3123,6 +3124,27 @@ class ChaosEngineBackendTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["revealed"], str(target.resolve()))
         popen.assert_called()
+
+    def test_open_file_endpoint_opens_only_media_inside_the_apps_folders(self):
+        data_dir = Path(self.tempdir.name)
+        picture = data_dir / "images" / "out.png"
+        picture.parent.mkdir(parents=True)
+        picture.write_bytes(b"png")
+        script = data_dir / "images" / "run.sh"
+        script.write_text("echo hi")
+        outside = Path(tempfile.mkdtemp()) / "other.png"
+        outside.write_bytes(b"png")
+        self.addCleanup(lambda: shutil.rmtree(outside.parent, ignore_errors=True))
+        state = self.client.app.state.chaosengine
+        with mock.patch.dict(state.settings, {"dataDirectory": str(data_dir)}), \
+             mock.patch("backend_service.routes.html_challenges._helpers._open_default_app") as opener:
+            ok = self.client.post("/api/files/open", json={"path": str(picture)})
+            no_script = self.client.post("/api/files/open", json={"path": str(script)})
+            no_outside = self.client.post("/api/files/open", json={"path": str(outside)})
+            missing = self.client.post("/api/files/open", json={"path": str(data_dir / "gone.png")})
+        self.assertEqual(ok.status_code, 200)
+        opener.assert_called_once_with(picture.resolve())
+        self.assertEqual((no_script.status_code, no_outside.status_code, missing.status_code), (400, 400, 404))
 
     def test_cancel_chat_endpoint_sets_flag_and_reports_active(self):
         create_response = self.client.post("/api/chat/sessions", json={"title": "Cancel test"})

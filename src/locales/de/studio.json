@@ -213,7 +213,8 @@
       "placeholder": "verschwommen, deformierte Hände, zusätzliche Gliedmaßen, überbelichtet"
     },
     "draft": {
-      "tooltip": "Erzwingt ein Rendering mit 512px Langkante für schnelle Prompt-Iteration. Die Ausgabe wird in der Entwurfsgröße gespeichert — deaktivieren für einen finalen Durchlauf in voller Auflösung."
+      "tooltip": "Erzwingt ein Rendering mit 512px Langkante für schnelle Prompt-Iteration. Die Ausgabe wird in der Entwurfsgröße gespeichert — deaktivieren für einen finalen Durchlauf in voller Auflösung.",
+      "sizeKept": null
     },
     "sampler": {
       "tooltip": "Scheduler- / Sampler-Algorithmus während des Entrauschens. „Modell-Standard“ behält das mit der Pipeline ausgelieferte Verfahren bei. AYS DPM++ 2M (SD1.5 / SDXL) verwendet NVIDIAs Align-Your-Steps-Schedule — gewinnt Details bei 7-10 Schritten, wo Karras / Euler weich wirken. Ausgeblendet für FLUX, SD3, Qwen-Image, Sana und HiDream — diese Flow-Matching-Pipelines liefern fest verdrahtete Scheduler aus, ein Wechsel erzeugt Rauschen."

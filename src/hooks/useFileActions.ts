@@ -1,4 +1,4 @@
-import { openHtmlChallengeFile, revealModelPath } from "../api";
+import { openHtmlChallengeFile, openMediaFile, revealModelPath } from "../api";
 
 
 function fileUrlFromPath(path: string): string {
@@ -40,6 +40,11 @@ export function useFileActions(
 
   async function handleOpenFilePath(path: string) {
     if (backendOnline) {
+      // Pictures, clips and sound the app made: the backend opens them in the system's default app.
+      try {
+        await openMediaFile(path);
+        return;
+      } catch { /* an HTML Challenge file, or the backend is not the one that made it */ }
       try {
         await openHtmlChallengeFile(path);
         return;

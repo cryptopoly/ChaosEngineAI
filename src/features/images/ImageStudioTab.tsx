@@ -931,6 +931,13 @@ export function ImageStudioTab({
                 megapixels: ((imageWidth * imageHeight) / 1_000_000).toFixed(1),
               })}
             </p>
+            {imageDraftMode ? (
+              <p className="muted-text" role="note">
+                {t("imageStudio.draft.sizeKept", {
+                  defaultValue: "Preview is on: this run renders at 512 px on the long edge. Your size is kept for when you turn Preview off.",
+                })}
+              </p>
+            ) : null}
           </div>
 
           <div className="control-stack">

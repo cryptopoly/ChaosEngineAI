@@ -1,13 +1,22 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 98 rows with work, decisions or watch items still open, newest first.
+summary: 99 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-182 · Open button could not open a picture or clip — Done</summary>
+
+**Status or trigger:** Done
+
+**Notes:** Found by the owner on the Mac (2026-11-15): Open on an Image Studio output showed "Could not open file". The backend route behind Open only served HTML Challenge files, the Tauri file URL is outside the opener scope, and `open_path` is not allowed by `opener:default`. New `POST /api/files/open` opens pictures, clips, sound and subtitles from the app's own folders only (data dir, image and video output dirs), never scripts or apps; the Open handler tries it first. Also: with Preview (draft) on, the size block now says the run renders at 512 px and the chosen size is kept (Preview never changed the size setting, but the screen still showed the old size without saying so). Tests: `test_open_file_endpoint_opens_only_media_inside_the_apps_folders`. Not checked in the Tauri app; the owner should click Open on the rebuilt app.
+
+</details>
 
 <details>
 <summary>FU-181 · Two bugs found by the owner on the Mac (2026-11-15) — Done</summary>

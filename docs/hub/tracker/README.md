@@ -8,13 +8,14 @@ summary: Every FU row from FOLLOW_UPS.md, split into open and closed.
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here.
 
-- [Open and live follow-ups](open.md): **98** rows.
+- [Open and live follow-ups](open.md): **99** rows.
 - [Closed follow-ups](closed.md): **81** rows.
 
 ## Newest ten
 
 | Row | Item | Status |
 |---|---|---|
+| [FU-182](open.md) | Open button could not open a picture or clip | Done |
 | [FU-181](open.md) | Two bugs found by the owner on the Mac (2026-11-15) | Done |
 | [FU-180](open.md) | A job started elsewhere shows no progress in the studios | Done |
 | [FU-179](open.md) | Chat storyboard run: two render approvals, slow default still model | Open |
@@ -24,4 +25,3 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 | [FU-175](open.md) | FLUX.2 Dev: catalog size wrong (64 GB) and the download bar showed the whole repo (154.08) | Open (2026-11-13): size fixed in code (3f534add) |
 | [FU-174](open.md) | Idle GPU speech workers slow image and video jobs; the idle-unload setting missed the Qwen | Fixed and verified through the installed app (2026-11-13, installer built at 3f534add). |
 | [FU-173](open.md) | Installed app runs LTX-2.5 4-bit and FLUX.2 Klein slower than the dev venv on the same car | Fixed and verified through the installed app (2026-11-13, installer built at a8b0051e). |
-| [FU-172](open.md) | Qwen3.8-27B + DFlash2 on the vLLM lane does not fit a 24 GB card; vLLM lane ignores the th | Open (2026-11-13): measured on an RTX 4090 (WSL2, vLLM 0.33). |

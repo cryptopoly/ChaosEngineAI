@@ -119,6 +119,14 @@ describe("storyboard api client", () => {
       shotIds: ["s_1"],
       force: false,
     });
+    await startStoryboardBatch("abc", { revision: 4, what: "still", draft: true });
+    expect(JSON.parse(fetchMock.mock.calls.at(-1)?.[1]?.body as string)).toEqual({
+      revision: 4,
+      what: "still",
+      shotIds: null,
+      force: false,
+      draft: true,
+    });
     expect(requestTo(fetchMock, "/api/storyboard/projects/abc/batches/b_1").method).toBe("GET");
     expect(requestTo(fetchMock, "/api/storyboard/projects/abc/batches/b_1/cancel").method).toBe("POST");
     expect(JSON.parse(requestTo(fetchMock, "/api/storyboard/projects/abc/render").body as string)).toEqual({

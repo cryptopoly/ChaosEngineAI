@@ -159,6 +159,7 @@ export const storyboardOps = {
   lock: wrap("lock"),
   pickTake: wrap("pick_take"),
   markRedo: wrap("mark_redo"),
+  setKept: wrap("set_kept"),
   importTake: wrap("import_take"),
   setEndImage: wrap("set_end_image"),
   relink: wrap("relink"),
@@ -182,10 +183,10 @@ export async function redoStoryboard(projectId: string, revision: number): Promi
 // ---- batches ----
 export async function startStoryboardBatch(
   projectId: string,
-  options: { revision: number; what?: StoryboardBatchWhat; shotIds?: string[]; force?: boolean },
+  options: { revision: number; what?: StoryboardBatchWhat; shotIds?: string[]; force?: boolean; draft?: boolean },
 ): Promise<StoryboardBatchStatus & { batchId: string }> {
-  const { revision, what = "both", shotIds, force = false } = options;
-  return await request("POST", `${base(projectId)}/batches`, { revision, what, shotIds: shotIds ?? null, force });
+  const { revision, what = "both", shotIds, force = false, draft = false } = options;
+  return await request("POST", `${base(projectId)}/batches`, { revision, what, shotIds: shotIds ?? null, force, ...(draft ? { draft } : {}) });
 }
 
 export async function getStoryboardBatch(projectId: string, batchId: string): Promise<StoryboardBatchStatus> {
@@ -249,8 +250,26 @@ export async function importStoryboardBundle(source: Blob | { path: string }): P
 }
 
 /** What a batch would cost (``POST .../estimate``). Unknown parts are null; ``missing`` names absent models. */
+/** One pass of `StoryboardEstimate.passes`, priced for its own model and size. */
+export interface StoryboardPassEstimate {
+  shots: number;
+  stills: number;
+  clips: number;
+  /** Draft: the stills only (clips are optional, see `clipSeconds`). Final: stills and clips. */
+  seconds: number | null;
+  stillSeconds: number | null;
+  clipSeconds: number | null;
+  basis: "measured" | "estimated" | null;
+  imageModel: string | null;
+  videoModel: string | null;
+  width: number;
+  height: number;
+  /** Final only: no shot is kept yet, so every shot is priced. */
+  assumedAllKept?: boolean;
+}
+
 export interface StoryboardEstimate {
-  what: "still" | "clip" | "both";
+  what: StoryboardBatchWhat;
   shots: number;
   stills: number;
   clips: number;
@@ -262,13 +281,39 @@ export interface StoryboardEstimate {
   missing: string[];
   imageModel: string | null;
   videoModel: string | null;
+  stillSeconds?: number | null;
+  clipSeconds?: number | null;
+  /** Both passes for the same shots: drafts and the final pass on the kept shots. */
+  passes?: { draft: StoryboardPassEstimate; final: StoryboardPassEstimate };
 }
 
 export async function estimateStoryboardBatch(
   projectId: string,
-  body: { what: "still" | "clip" | "both"; shotIds?: string[] },
+  body: { what: StoryboardBatchWhat; shotIds?: string[]; draft?: boolean },
 ): Promise<StoryboardEstimate> {
   return await request("POST", `${base(projectId)}/estimate`, body, 30000);
+}
+
+/** An installed still model with the catalogue time for one still at the asked size. */
+export interface StoryboardStillModel {
+  id: string;
+  name: string;
+  fit: string | null;
+  territoryRestricted: boolean;
+  secondsPerStill: number | null;
+}
+
+/** The still models and what Automatic picks: `fast` for Make and drafts, `quality` for the final pass. */
+export interface StoryboardStillModels {
+  models: StoryboardStillModel[];
+  fast: string | null;
+  quality: string | null;
+  width: number;
+  height: number;
+}
+
+export async function getStoryboardStillModels(width: number, height: number): Promise<StoryboardStillModels> {
+  return await request("GET", `/api/storyboard/still-models?width=${width}&height=${height}`, undefined, 15000);
 }
 
 /**

@@ -5,7 +5,7 @@
  */
 import type { StoryboardProject } from "../../types";
 import type { ProjectTabId } from "./projectRoute";
-import { activeTakeOf, missingShotIds } from "./storyboardLogic";
+import { activeTakeOf, draftShotIds, missingShotIds } from "./storyboardLogic";
 
 export type NextStepId = "writeShots" | "makeMissing" | "makeClips" | "addSound" | "renderPreview" | "export" | "done";
 
@@ -74,7 +74,7 @@ export function checklist(project: StoryboardProject, facts: GuideFacts): Checkl
   ];
 }
 
-export type PreflightId = "format" | "upscale" | "clips" | "stale" | "loudness" | "captions" | "aiTag" | "cloned" | "preview";
+export type PreflightId = "format" | "upscale" | "clips" | "stale" | "drafts" | "loudness" | "captions" | "aiTag" | "cloned" | "preview";
 
 export interface PreflightLine {
   id: PreflightId;
@@ -107,6 +107,8 @@ export function preflight(
   if (facts.upscaledTo) lines.push({ id: "upscale", ok: true, n: 0, total: 0, tab: null, detail: facts.upscaledTo });
   lines.push({ id: "clips", ok: facts.leftOut === 0 && shots > 0, n: shots - facts.leftOut, total: shots, tab: facts.leftOut > 0 ? "storyboard" : null });
   if (stale > 0) lines.push({ id: "stale", ok: false, n: stale, total: shots, tab: "storyboard" });
+  const drafts = draftShotIds(project.shots).length;
+  if (drafts > 0) lines.push({ id: "drafts", ok: false, n: drafts, total: shots, tab: "storyboard" });
   const lufs = project.export?.loudnessLufs;
   lines.push({ id: "loudness", ok: true, n: lufs ?? 0, total: 0, tab: null, detail: lufs == null ? "" : String(lufs) });
   const kinds = [project.export?.captionsSrt ? "srt" : "", project.export?.captionsBurn ? "burn" : ""].filter(Boolean).join("+");

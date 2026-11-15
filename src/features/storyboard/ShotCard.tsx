@@ -15,7 +15,7 @@ import { ActionMenu } from "../../components/ActionMenu";
 import { ProjectImage, ProjectVideo } from "./ProjectMedia";
 import { StaleBadge, TransitionPicker } from "./ShotParts";
 import { TakesStrip } from "./TakesStrip";
-import { activeTakeOf, shotCardClassName, thumbnailOf } from "./storyboardLogic";
+import { activeTakeOf, isDraftTake, shotCardClassName, thumbnailOf } from "./storyboardLogic";
 
 export const SHOT_DRAG_TYPE = "application/x-chaos-shot";
 
@@ -43,6 +43,8 @@ export interface ShotCardProps {
   onPickTake: (takeId: string) => void;
   onToggleLock: () => void;
   onToggleRedo: () => void;
+  /** Marks the shot for the final pass (S6), or takes it out. */
+  onToggleKept?: () => void;
   onTransition: (next: StoryboardTransition) => void;
   onMove: (step: -1 | 1) => void;
   onEdit: () => void;
@@ -232,6 +234,11 @@ export function ShotCard(props: ShotCardProps) {
           ) : null}
           {shot.redo ? <span className="badge accent">{t("board.shot.newTakeMarked", { defaultValue: "New take next run" })}</span> : null}
           {shot.locked ? <span className="badge muted">{t("board.shot.status.locked", { defaultValue: "Locked" })}</span> : null}
+          {isDraftTake(take) ? (
+            <span className="badge muted" title={t("board.shot.draftTitle", { defaultValue: "A quick draft. Keep this shot and run the final pass for the full-quality take." })}>
+              {t("board.shot.draft", { defaultValue: "Draft" })}
+            </span>
+          ) : null}
           {props.onMakeClip && take?.still && !take.clip && status === "done" ? (
             <button
               type="button"
@@ -330,6 +337,18 @@ export function ShotCard(props: ShotCardProps) {
         >
           <RedoIcon /> {t("board.shot.newTake", { defaultValue: "New take" })}
         </button>
+        {props.onToggleKept ? (
+          <button
+            type="button"
+            className={`secondary-button${shot.kept ? " is-active" : ""}`}
+            aria-pressed={Boolean(shot.kept)}
+            title={t("board.shot.keepForFinalTitle", { defaultValue: "Final pass on kept shots makes this shot again with the quality model." })}
+            disabled={disabled}
+            onClick={props.onToggleKept}
+          >
+            {t("board.shot.keepForFinal", { defaultValue: "Keep for final" })}
+          </button>
+        ) : null}
         {index > 0 ? <TransitionPicker value={shot.transition} onChange={props.onTransition} disabled={disabled} /> : null}
         <ActionMenu
           label={t("board.shot.moreActions", { defaultValue: "More actions for shot {n}", n: number })}

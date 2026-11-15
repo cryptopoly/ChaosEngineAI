@@ -2,7 +2,8 @@
  * The Storyboard tab's run bar (D-65 4.6): sticky at the bottom of the tab. What needs a take, the estimate for
  * Make missing (time, peak memory, disk; Estimated until a run here measures it), the Make buttons with the count
  * and time on the primary one, a red state with an acknowledgement when it will not fit, and the batch progress
- * with Cancel while a batch runs.
+ * with Cancel while a batch runs. Below them the two passes (S6): Make drafts (the fast still model at a smaller
+ * size, clips optional) and Final pass on kept shots (the quality model at full size, then clips), each with its time.
  */
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -24,11 +25,77 @@ export interface RunBarProps {
   onMakeMissing: () => void;
   onMakeAll: () => void;
   onCancel: () => void;
+  /** Shots marked Keep, and how many of them the final pass would redo. */
+  kept?: number;
+  finalShots?: number;
+  onMakeDrafts?: (withClips: boolean) => void;
+  onFinalPass?: () => void;
 }
 
 type TFn = (key: string, options: Record<string, unknown>) => string;
 
-export function RunBar({ missing, stills, stale, unlocked, estimate, batch, batchProgress, running, busy, onMakeMissing, onMakeAll, onCancel }: RunBarProps) {
+function PassesRow({ missing, kept = 0, finalShots = 0, estimate, busy, onMakeDrafts, onFinalPass }: RunBarProps) {
+  const { t } = useTranslation("studio");
+  const [withClips, setWithClips] = useState(false);
+  const draft = estimate?.passes?.draft;
+  const final = estimate?.passes?.final;
+  const tf = t as unknown as TFn;
+  const draftSeconds = draft?.seconds != null ? draft.seconds + (withClips ? (draft.clipSeconds ?? 0) : 0) : null;
+  const draftLabel =
+    missing > 0 && draftSeconds != null
+      ? t("board.passes.draftTimed", { defaultValue: "Make drafts · about {time}", time: formatDuration(tf, draftSeconds) })
+      : t("board.passes.draft", { defaultValue: "Make drafts" });
+  const finalSeconds = final && !final.assumedAllKept && finalShots > 0 ? final.seconds : null;
+  const finalLabel =
+    finalSeconds != null
+      ? t("board.passes.finalTimed", {
+          defaultValue: "Final pass on {n, plural, one {# kept shot} other {# kept shots}} · about {time}",
+          n: finalShots,
+          time: formatDuration(tf, finalSeconds),
+        })
+      : t("board.passes.final", {
+          defaultValue: "Final pass on {n, plural, one {# kept shot} other {# kept shots}}",
+          n: finalShots,
+        });
+  const draftTitle = draft?.imageModel
+    ? t("board.passes.draftTitle", {
+        defaultValue: "Quick stills with {model} at {width} x {height}. Mark the shots you like with Keep, then run the final pass.",
+        model: draft.imageModel,
+        width: draft.width,
+        height: draft.height,
+      })
+    : undefined;
+  const finalTitle = final?.imageModel
+    ? t("board.passes.finalTitle", {
+        defaultValue: "Makes each kept shot again with {model} at {width} x {height}, then its clip from the new still.",
+        model: final.imageModel,
+        width: final.width,
+        height: final.height,
+      })
+    : undefined;
+  return (
+    <div className="run-bar__passes" role="group" aria-label={t("board.passes.label", { defaultValue: "Draft and final passes" })}>
+      <label className="run-bar__passes-clips">
+        <input type="checkbox" checked={withClips} disabled={busy} onChange={(event) => setWithClips(event.target.checked)} />
+        {t("board.passes.withClips", { defaultValue: "Drafts with clips" })}
+      </label>
+      <button type="button" className="secondary-button" disabled={busy || missing === 0} title={draftTitle}
+        onClick={() => onMakeDrafts?.(withClips)}>
+        {draftLabel}
+      </button>
+      <button type="button" className="secondary-button" disabled={busy || finalShots === 0} title={finalTitle}
+        onClick={onFinalPass}>
+        {finalLabel}
+      </button>
+      {kept === 0 ? (
+        <span className="muted-text">{t("board.passes.keepHint", { defaultValue: "Mark shots with Keep to choose them for the final pass." })}</span>
+      ) : null}
+    </div>
+  );
+}
+
+export function RunBar(props: RunBarProps) {
+  const { missing, stills, stale, unlocked, estimate, batch, batchProgress, running, busy, onMakeMissing, onMakeAll, onCancel } = props;
   const { t } = useTranslation("studio");
   const [ack, setAck] = useState(false);
   if (running && batch) {
@@ -104,6 +171,7 @@ export function RunBar({ missing, stills, stale, unlocked, estimate, batch, batc
           </div>
         }
       />
+      {props.onMakeDrafts ? <PassesRow {...props} /> : null}
     </div>
   );
 }

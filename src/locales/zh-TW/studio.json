@@ -1559,7 +1559,12 @@
       "automatic": "自動（已安裝的模型）",
       "automaticShort": "自動",
       "automaticName": "自動",
-      "noVoice": "無"
+      "noVoice": "無",
+      "modelTimed": null,
+      "automaticFast": null,
+      "automaticQuality": null,
+      "stillTime": null,
+      "finalImageModel": null
     },
     "defaultsSummary": null,
     "defaultsTitle": "專案預設設定",
@@ -1688,7 +1693,11 @@
       "noPrompt": "還沒有提示詞。按 Enter 或編輯提示詞。",
       "makeClip": "產生片段",
       "makeClipTitle": "用此鏡頭的靜態畫面產生片段。",
-      "referenceAdded": "已用此靜態畫面將 {name} 加入角色。"
+      "referenceAdded": "已用此靜態畫面將 {name} 加入角色。",
+      "draft": null,
+      "draftTitle": null,
+      "keepForFinal": null,
+      "keepForFinalTitle": null
     },
     "shots": "鏡頭",
     "subtitle": "{shots, plural, other {# 個鏡頭}} · {seconds} 秒 · {stale} 個已過期",
@@ -1703,7 +1712,19 @@
     "emptyNoCast": null,
     "subtitleShots": null,
     "lengthStrip": "鏡頭長度",
-    "lengthStripPart": "鏡頭 {n} · {seconds} 秒"
+    "lengthStripPart": "鏡頭 {n} · {seconds} 秒",
+    "passes": {
+      "draft": null,
+      "draftTimed": null,
+      "final": null,
+      "finalTimed": null,
+      "draftTitle": null,
+      "finalTitle": null,
+      "label": null,
+      "withClips": null,
+      "keepHint": null
+    },
+    "exportDrafts": null
   },
   "storyProjects": {
     "card": {

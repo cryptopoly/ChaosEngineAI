@@ -61,7 +61,8 @@ export interface UseStoryboardResult {
   ) => Promise<boolean>;
   undo: () => Promise<void>;
   redo: () => Promise<void>;
-  startBatch: (what: StoryboardBatchWhat, shotIds?: string[], force?: boolean) => Promise<boolean>;
+  /** `draft`: Make drafts (the fast still model at a smaller size); `what: "final"` redoes the kept shots. */
+  startBatch: (what: StoryboardBatchWhat, shotIds?: string[], force?: boolean, draft?: boolean) => Promise<boolean>;
   cancelBatch: () => Promise<void>;
 }
 
@@ -193,12 +194,12 @@ export function useStoryboard(enabled: boolean, projectId: string | null): UseSt
   const redo = useCallback(async () => void (await mutate((id, rev) => redoStoryboard(id, rev))), [mutate]);
 
   const startBatch = useCallback(
-    async (what: StoryboardBatchWhat, shotIds?: string[], force = false) => {
+    async (what: StoryboardBatchWhat, shotIds?: string[], force = false, draft = false) => {
       const id = idRef.current;
       const current = projectRef.current;
       if (!id || !current) return false;
       try {
-        const started = await startStoryboardBatch(id, { revision: current.revision, what, shotIds, force });
+        const started = await startStoryboardBatch(id, { revision: current.revision, what, shotIds, force, draft });
         setBatch(started.batch);
         projectRef.current = { ...current, revision: started.revision };
         setError(null);

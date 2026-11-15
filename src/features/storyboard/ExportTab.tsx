@@ -136,6 +136,11 @@ export function ExportTab({ story, project, timeline, dataDirectory, onTab, rend
           defaultValue: "{n, plural, one {# shot is stale.} other {# shots are stale.}} The export uses the takes you have.",
           n: line.n,
         });
+      case "drafts":
+        return t("board.exportDrafts", {
+          defaultValue: "{n, plural, one {# shot uses a draft take.} other {# shots use a draft take.}} Keep them and run the final pass for full quality, or export the drafts as they are.",
+          n: line.n,
+        });
       case "captions":
         if (line.n === 0) return t("exportTab.line.noCaptions", { defaultValue: "No captions." });
         return line.detail === "srt+burn"

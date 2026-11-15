@@ -1559,7 +1559,12 @@
       "automatic": "자동(설치된 모델)",
       "automaticShort": "자동",
       "automaticName": "자동",
-      "noVoice": "없음"
+      "noVoice": "없음",
+      "modelTimed": null,
+      "automaticFast": null,
+      "automaticQuality": null,
+      "stillTime": null,
+      "finalImageModel": null
     },
     "defaultsSummary": null,
     "defaultsTitle": "프로젝트 기본값",
@@ -1688,7 +1693,11 @@
       "noPrompt": "아직 프롬프트가 없습니다. Enter를 누르거나 프롬프트 편집을 사용하세요.",
       "makeClip": "클립 만들기",
       "makeClipTitle": "이 샷의 스틸로 클립을 만듭니다.",
-      "referenceAdded": "{name}을(를) 이 스틸로 등장인물에 추가했습니다."
+      "referenceAdded": "{name}을(를) 이 스틸로 등장인물에 추가했습니다.",
+      "draft": null,
+      "draftTitle": null,
+      "keepForFinal": null,
+      "keepForFinalTitle": null
     },
     "shots": "샷",
     "subtitle": "{shots, plural, other {샷 #개}} · {seconds}초 · 오래됨 {stale}개",
@@ -1703,7 +1712,19 @@
     "emptyNoCast": null,
     "subtitleShots": null,
     "lengthStrip": "샷 길이",
-    "lengthStripPart": "샷 {n} · {seconds}초"
+    "lengthStripPart": "샷 {n} · {seconds}초",
+    "passes": {
+      "draft": null,
+      "draftTimed": null,
+      "final": null,
+      "finalTimed": null,
+      "draftTitle": null,
+      "finalTitle": null,
+      "label": null,
+      "withClips": null,
+      "keepHint": null
+    },
+    "exportDrafts": null
   },
   "storyProjects": {
     "card": {

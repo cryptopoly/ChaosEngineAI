@@ -1559,7 +1559,12 @@
       "automatic": "Automatisch (ein installiertes Modell)",
       "automaticShort": "auto",
       "automaticName": "Automatisch",
-      "noVoice": "keine"
+      "noVoice": "keine",
+      "modelTimed": null,
+      "automaticFast": null,
+      "automaticQuality": null,
+      "stillTime": null,
+      "finalImageModel": null
     },
     "defaultsSummary": null,
     "defaultsTitle": "Projektstandards",
@@ -1688,7 +1693,11 @@
       "noPrompt": "Noch kein Prompt. Drücke Enter oder Prompts bearbeiten.",
       "makeClip": "Clip erstellen",
       "makeClipTitle": "Den Clip dieser Einstellung aus ihrem Standbild erstellen.",
-      "referenceAdded": "{name} wurde mit diesem Standbild zur Besetzung hinzugefügt."
+      "referenceAdded": "{name} wurde mit diesem Standbild zur Besetzung hinzugefügt.",
+      "draft": null,
+      "draftTitle": null,
+      "keepForFinal": null,
+      "keepForFinalTitle": null
     },
     "shots": "Einstellungen",
     "subtitle": "{shots, plural, one {# Einstellung} other {# Einstellungen}} · {seconds} s · {stale} veraltet",
@@ -1703,7 +1712,19 @@
     "emptyNoCast": null,
     "subtitleShots": null,
     "lengthStrip": "Längen der Einstellungen",
-    "lengthStripPart": "Einstellung {n} · {seconds} s"
+    "lengthStripPart": "Einstellung {n} · {seconds} s",
+    "passes": {
+      "draft": null,
+      "draftTimed": null,
+      "final": null,
+      "finalTimed": null,
+      "draftTitle": null,
+      "finalTitle": null,
+      "label": null,
+      "withClips": null,
+      "keepHint": null
+    },
+    "exportDrafts": null
   },
   "storyProjects": {
     "card": {

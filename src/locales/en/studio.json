@@ -1559,7 +1559,12 @@
       "automatic": "Automatic (an installed model)",
       "automaticShort": "auto",
       "automaticName": "Automatic",
-      "noVoice": "none"
+      "noVoice": "none",
+      "modelTimed": "{name} · about {time} per still",
+      "automaticFast": "Automatic: fastest ({name})",
+      "automaticQuality": "Automatic: best quality ({name})",
+      "stillTime": "{name}: about {time} per still at {width} x {height}",
+      "finalImageModel": "Final pass image model"
     },
     "defaultsSummary": "{aspect} · {resolution} · {fps} fps · {imageModel} · {videoModel} · voice {voice}",
     "defaultsTitle": "Project defaults",
@@ -1688,7 +1693,11 @@
       "noPrompt": "No prompt yet. Press Enter or Edit prompts.",
       "makeClip": "Make clip",
       "makeClipTitle": "Make the clip of this shot from its still.",
-      "referenceAdded": "{name} was added to the Cast with this still."
+      "referenceAdded": "{name} was added to the Cast with this still.",
+      "draft": "Draft",
+      "draftTitle": "A quick draft. Keep this shot and run the final pass for the full-quality take.",
+      "keepForFinal": "Keep for final",
+      "keepForFinalTitle": "Final pass on kept shots makes this shot again with the quality model."
     },
     "shots": "Shots",
     "subtitle": "{shots, plural, one {# shot} other {# shots}} · {seconds} s · {stale} stale",
@@ -1703,7 +1712,19 @@
     "emptyNoCast": "No shots yet. Add a shot and describe it, or import footage. A shot does not need a character: a street or a crowd works on its own.",
     "subtitleShots": "{shots, plural, one {# shot} other {# shots}} · {seconds} s · {stale} stale",
     "lengthStrip": "Shot lengths",
-    "lengthStripPart": "Shot {n} · {seconds} s"
+    "lengthStripPart": "Shot {n} · {seconds} s",
+    "passes": {
+      "draft": "Make drafts",
+      "draftTimed": "Make drafts · about {time}",
+      "final": "Final pass on {n, plural, one {# kept shot} other {# kept shots}}",
+      "finalTimed": "Final pass on {n, plural, one {# kept shot} other {# kept shots}} · about {time}",
+      "draftTitle": "Quick stills with {model} at {width} x {height}. Mark the shots you like with Keep, then run the final pass.",
+      "finalTitle": "Makes each kept shot again with {model} at {width} x {height}, then its clip from the new still.",
+      "label": "Draft and final passes",
+      "withClips": "Drafts with clips",
+      "keepHint": "Mark shots with Keep to choose them for the final pass."
+    },
+    "exportDrafts": "{n, plural, one {# shot uses a draft take.} other {# shots use a draft take.}} Keep them and run the final pass for full quality, or export the drafts as they are."
   },
   "storyProjects": {
     "card": {

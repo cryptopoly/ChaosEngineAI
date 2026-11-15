@@ -518,3 +518,124 @@ def get_peaks(project_id: str, path: str, buckets: int = Query(400, ge=32, le=40
         if isinstance(exc, FfmpegMissing):
             raise _http(exc) from exc
         raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+# ---- plan and style (S8, S15) ----
+class _Turn(_Body):
+    role: Literal["user", "assistant"]
+    text: str = Field(max_length=4000)
+
+
+class ProposeRequest(_Body):
+    brief: str = Field("", max_length=4000)
+    filmSeconds: float | None = Field(None, ge=5, le=600)
+    shots: int | None = Field(None, ge=4, le=8)
+
+
+class ReworkRequest(_Body):
+    shotId: str = Field(min_length=1, max_length=64)
+    message: str = Field("", max_length=2000)
+    history: list[_Turn] = Field(default_factory=list, max_length=24)
+
+
+class DirectRequest(_Body):
+    message: str = Field(min_length=1, max_length=2000)
+
+
+def _plan_http(exc: Exception) -> HTTPException:
+    from backend_service.storyboard.planner import PlanError
+
+    if isinstance(exc, PlanError):
+        status = 409 if exc.code in ("no-model", "busy") else 400 if exc.code == "no-brief" else 502
+        return HTTPException(status_code=status, detail={"code": exc.code, "message": str(exc)})
+    return _http(exc)
+
+
+def _plan_guard(fn: Any, *args: Any) -> Any:
+    try:
+        return fn(*args)
+    except HTTPException:
+        raise
+    except Exception as exc:  # noqa: BLE001 - mapped to a readable status, others re-raised
+        raise _plan_http(exc) from exc
+
+
+def _record_chat(project_id: str, role: str, text: str) -> Any:
+    """Add one line to the direction chat against the newest revision (the chat is not part of Undo)."""
+    from backend_service.storyboard.ops import run_op as apply
+
+    store = get_store()
+    for _ in range(3):  # an edit landing meanwhile moves the revision; the chat line still belongs at the end
+        try:
+            return apply(store, project_id, store.load(project_id).revision, "add_plan_message", {"role": role, "text": text[:4000]})
+        except store_module.RevisionConflict:
+            continue
+    raise store_module.StoreError("The project kept changing; the chat line was not saved.")
+
+
+@router.get("/api/storyboard/projects/{project_id}/plan/status")
+def plan_status(request: Request, project_id: str) -> dict[str, Any]:
+    """The loaded chat model (or null), and how the project's style reaches its still model."""
+    from backend_service.storyboard import planner, style
+
+    project = _guard(get_store().load, project_id)
+    variant, why = _project_variant(request, "image", project.defaults.imageModel)
+    return {
+        "chatModel": planner.chat_model(request.app.state.chaosengine),
+        "style": {
+            "mode": style.style_mode(project, variant),
+            "stillModel": (variant or {}).get("name"),
+            "pictureSlots": style.picture_slots(variant),
+            "words": style.style_words(project),
+            "problem": why,
+        },
+    }
+
+
+@router.post("/api/storyboard/projects/{project_id}/plan/propose")
+def plan_propose(request: Request, project_id: str, body: ProposeRequest) -> dict[str, Any]:
+    """Shots the chat model proposes for the brief; nothing is written until the user applies them (``apply_plan``)."""
+    from backend_service.storyboard import planner
+
+    store = get_store()
+    project = _guard(store.load, project_id)
+    brief = body.brief or project.plan.brief
+    return _plan_guard(planner.propose, request.app.state.chaosengine, project, store.folder(project_id), brief,
+                       body.filmSeconds if body.filmSeconds is not None else project.plan.filmSeconds, body.shots)
+
+
+@router.post("/api/storyboard/projects/{project_id}/plan/rework")
+def plan_rework(request: Request, project_id: str, body: ReworkRequest) -> dict[str, Any]:
+    """A new prompt for one shot and why; the user applies it with ``edit_shot``."""
+    from backend_service.storyboard import planner
+
+    store = get_store()
+    project = _guard(store.load, project_id)
+    shot = project.shot(body.shotId)
+    if shot is None:
+        raise HTTPException(status_code=404, detail=f"Unknown shot '{body.shotId}'.")
+    history = [turn.model_dump() for turn in body.history]
+    return _plan_guard(planner.rework, request.app.state.chaosengine, project, store.folder(project_id), shot,
+                       body.message, history)
+
+
+@router.post("/api/storyboard/projects/{project_id}/plan/direct")
+def plan_direct(request: Request, project_id: str, body: DirectRequest) -> dict[str, Any]:
+    """One turn of the direction chat: both lines are kept with the project; the proposed changes are returned
+    for the user to apply with ``plan_changes``."""
+    from backend_service.storyboard import planner
+
+    store = get_store()
+    project = _guard(store.load, project_id)
+    answer = _plan_guard(planner.direct, request.app.state.chaosengine, project, store.folder(project_id), body.message)
+    _guard(_record_chat, project_id, "user", body.message)
+    saved = _guard(_record_chat, project_id, "assistant", answer["reply"])
+    return {**answer, **_payload(saved)}
+
+
+@router.get("/api/storyboard/fonts")
+def list_fonts() -> dict[str, Any]:
+    """Font families installed on this machine, for the caption look."""
+    from backend_service.storyboard.fonts import installed_fonts
+
+    return {"fonts": installed_fonts()}

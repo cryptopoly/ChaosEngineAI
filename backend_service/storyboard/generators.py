@@ -70,7 +70,10 @@ def studio_generators(request: Any, batch_id: str, folder: Path) -> dict[str, Ca
         for key in ("steps", "guidance"):
             if settings.get(key) is not None:
                 fields[key] = settings[key]
-        paths = reference_paths(project, shot, folder)
+        from backend_service.storyboard.style import apply_to_still
+
+        paths, fields["prompt"], style_mode = apply_to_still(project, shot, folder, variant,
+                                                             reference_paths(project, shot, folder), prompt)
         if paths:
             fields["referenceImagePaths"] = paths
         body = ImageGenerationRequest(**fields)
@@ -83,6 +86,8 @@ def studio_generators(request: Any, batch_id: str, folder: Path) -> dict[str, Ca
         art = result["artifacts"][0]
         info = {"model": art.get("modelName") or variant.get("name"), "seed": art.get("seed"),
                 "steps": body.steps, "width": art.get("width"), "height": art.get("height")}
+        if style_mode != "none":
+            info["style"] = style_mode  # S15: the project's style went in as reference pictures or as words
         return str(art["imagePath"]), {"settings": info}
 
     def make_clip(shot: Shot, project: Project, still: Path | None) -> tuple[str, dict[str, Any]]:
@@ -95,9 +100,12 @@ def studio_generators(request: Any, batch_id: str, folder: Path) -> dict[str, Ca
         from backend_service.helpers.provenance import provenance
         from backend_service.routes.video import _generate_video_locked
 
+        from backend_service.storyboard.style import apply_to_motion
+
         prompt = shot.motionPrompt or shot.stillPrompt or shot.title
         if not prompt:
             raise RuntimeError("the shot has no motion prompt")
+        prompt = apply_to_motion(project, shot, prompt)
         variant = _variant(request, "video", project.defaults.videoModel)
         settings = _recommended(variant)
         fps = project.defaults.fps

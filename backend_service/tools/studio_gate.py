@@ -140,6 +140,79 @@ def _storyboard_shots(args: dict[str, Any], render: bool) -> int | None:
     return sum(1 for s in project.shots if needs_work(s, str(args.get("what") or "both")) and (args.get("force") or not s.locked))
 
 
+MAX_ESTIMATE_SHOTS = 24
+
+
+def storyboard_estimate(args: dict[str, Any], state: Any | None) -> dict[str, Any] | None:
+    """S7: time per shot (still and clip) and in total for a ``storyboard_generate``, from the same estimate the
+    Storyboard run bar shows (``storyboard.estimate``: this project's measured takes, else the catalogue). None
+    when the project cannot be read; a missing model is named in ``missing``, never guessed."""
+    from types import SimpleNamespace
+
+    from backend_service.routes.storyboard import _project_variant, get_store
+    from backend_service.storyboard.batch import needs_work
+    from backend_service.storyboard.estimate import estimate, plan_steps
+
+    store = get_store()
+    project = store.load(str(args.get("project_id")))
+    folder = store.folder(project.id)
+    what = str(args.get("what") or "both")
+    shot_ids = [str(i) for i in args["shot_ids"]] if args.get("shot_ids") else None
+    if shot_ids is None and args.get("force"):  # a forced batch also runs locked shots; the estimate skips them
+        shot_ids = [s.id for s in project.shots if needs_work(s, what)]
+    steps = plan_steps(project, what, shot_ids)
+    if not steps:
+        return None
+    request = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(chaosengine=state)))
+    missing: list[str] = []
+    image = video = None
+    if any(kind == "still" for _, kind in steps):
+        image, why = _project_variant(request, "image", project.defaults.imageModel)
+        missing += [why] if why else []
+    if any(kind == "clip" for _, kind in steps):
+        video, why = _project_variant(request, "video", project.defaults.videoModel)
+        missing += [why] if why else []
+    hardware = None
+    try:
+        from backend_service.helpers.hardware_class import host_hardware_class
+
+        hardware = host_hardware_class()
+    except Exception:  # noqa: BLE001 - the estimate reads it again or goes without memory
+        pass
+
+    def run(kind: str, ids: list[str] | None) -> dict[str, Any]:
+        return estimate(project, folder, what=kind, shot_ids=ids, image_variant=image, video_variant=video,
+                        missing=missing, hardware=hardware)
+
+    total = run(what, shot_ids)
+    rows: list[dict[str, Any]] = []
+    order: list[str] = []
+    kinds: dict[str, set[str]] = {}
+    for shot, kind in steps:
+        if shot.id not in kinds:
+            order.append(shot.id)
+            kinds[shot.id] = set()
+        kinds[shot.id].add(kind)
+    titles = {s.id: s.title for s in project.shots}
+    for shot_id in order[:MAX_ESTIMATE_SHOTS]:
+        row: dict[str, Any] = {"id": shot_id, "title": titles.get(shot_id) or ""}
+        for kind in ("still", "clip"):
+            if kind in kinds[shot_id]:
+                row[kind] = run(kind, [shot_id])["seconds"]
+        rows.append(row)
+    return {
+        "seconds": total["seconds"],
+        "basis": total["basis"],
+        "peakGb": total["peakGb"],
+        "totalGb": total["totalGb"],
+        "missing": missing,
+        "imageModel": total["imageModel"],
+        "videoModel": total["videoModel"],
+        "shots": rows,
+        "moreShots": max(0, len(order) - MAX_ESTIMATE_SHOTS),
+    }
+
+
 def plan_item(tool_call: dict[str, Any], state: Any | None) -> dict[str, Any]:
     """One row of the plan card: what will be made and every argument that changes it. Never raises.
 
@@ -175,6 +248,17 @@ def plan_item(tool_call: dict[str, Any], state: Any | None) -> dict[str, Any]:
             item["preview"] = True
         if name in ("storyboard_generate", "storyboard_render"):
             item["shots"] = _storyboard_shots(args, render=name == "storyboard_render")
+        if name == "storyboard_generate":
+            try:
+                board = storyboard_estimate(args, state)
+            except Exception:  # noqa: BLE001 - the card shows without the times
+                board = None
+            if board is not None:
+                item["estimate"] = board
+                item["peakGb"] = board["peakGb"]
+                models = [m for m in (board["imageModel"], board["videoModel"]) if m]
+                if models and not item["model"]:
+                    item["model"] = " + ".join(models)
     if args.get("width") and args.get("height"):
         item["size"] = f"{args['width']}x{args['height']}"
     if args.get("seconds"):
@@ -239,6 +323,20 @@ def memory_note(items: list[dict[str, Any]], state: Any | None) -> dict[str, Any
         return None
 
 
+def _edited_earlier(tool_calls: list[dict[str, Any]], call: dict[str, Any], args: dict[str, Any]) -> bool:
+    """An earlier call of the same reply names the same project: it runs first and moves the revision, so the
+    revision is checked when the call runs, not before the card."""
+    pid = args.get("project_id")
+    if not pid:
+        return False
+    for tc in tool_calls:
+        if tc is call:
+            return False
+        if call_args(tc).get("project_id") == pid:
+            return True
+    return False
+
+
 class StudioGate:
     """Holds render calls of one chat turn until the user decides in the app."""
 
@@ -263,13 +361,39 @@ class StudioGate:
         self.resolved: list[dict[str, Any]] = []
 
     def review(self, tool_calls: list[dict[str, Any]]) -> Iterator[dict[str, Any]]:
-        """Generator: yields plan events while waiting; returns ``{call_id: declined text}`` for calls not to run."""
-        from backend_service.tools.studio import needs_approval
+        """Generator: yields plan events while waiting; returns ``{call_id: answer}`` for calls not to run, where
+        the answer is the declined text or a ready result (``StructuredToolOutput``).
+
+        Before a card (S1, FU-179): a render call that would be refused (bad argument, stale revision, nothing to
+        generate) gets that refusal at once, and a repeat of a storyboard render that is still running gets that
+        job; neither shows on a card. Identical storyboard renders in one reply make one row; the copies follow
+        its decision and, once it runs, find its job.
+        """
+        from backend_service.tools.studio import needs_approval, ready_answer, render_signature
 
         render = [tc for tc in tool_calls if needs_approval(call_name(tc), call_args(tc))]
-        if not render or self.auto_approve:
+        if not render:
             return {}
-        items = [plan_item(tc, self.state) for tc in render]
+        answers: dict[str, Any] = {}
+        planned: list[dict[str, Any]] = []
+        leaders: dict[tuple[Any, ...], str] = {}
+        follows: dict[str, str] = {}
+        for tc in render:
+            name, args = call_name(tc), call_args(tc)
+            ready = ready_answer(name, args, check_revision=not _edited_earlier(tool_calls, tc, args))
+            if ready is not None:
+                answers[str(tc.get("id"))] = ready
+                continue
+            signature = render_signature(name, args)
+            if signature is not None and signature in leaders:
+                follows[str(tc.get("id"))] = leaders[signature]
+                continue
+            if signature is not None:
+                leaders[signature] = str(tc.get("id"))
+            planned.append(tc)
+        if not planned or self.auto_approve:
+            return answers
+        items = [plan_item(tc, self.state) for tc in planned]
         plan = PendingPlan(id=f"plan-{uuid.uuid4().hex[:10]}", session_id=self.session_id, items=items,
                            memory=memory_note(items, self.state))
         with _LOCK:
@@ -308,4 +432,7 @@ class StudioGate:
         }
         self.resolved.append(resolved)
         yield {"studio_plan_resolved": resolved}
-        return denials
+        for copy_id, leader in follows.items():
+            if leader in denials:
+                denials[copy_id] = denials[leader]
+        return {**answers, **denials}

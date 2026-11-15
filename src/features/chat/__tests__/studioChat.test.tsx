@@ -204,6 +204,30 @@ describe("plan card states", () => {
     }
   });
 
+  it("a storyboard generate lists time per shot and the total with the run bar's words", () => {
+    const html = renderToStaticMarkup(<StudioPlanCard plan={plan({
+      items: [{
+        callId: "c1", tool: "storyboard_generate", kind: "storyboard", prompt: "", shots: 2,
+        estimate: {
+          seconds: 150, basis: "estimated", missing: ["No video model is installed."],
+          shots: [{ id: "s1", title: "Customer enters", still: 15, clip: 60 }, { id: "s2", title: "", still: 15, clip: null }],
+          moreShots: 3,
+        },
+      }],
+    })} sessionId="s1" />);
+    for (const text of ["Time per shot", "Customer enters", "still: About 15 s", "clip: About 1 min", "Shot 2", "clip: time unknown",
+      "and 3 more", "Total", "About 2 min 30 s", ">Estimated<", "No video model is installed."]) {
+      expect(html).toContain(text);
+    }
+    const measured = renderToStaticMarkup(<StudioPlanCard plan={plan({
+      items: [{ callId: "c1", tool: "storyboard_generate", kind: "storyboard", prompt: "",
+        estimate: { seconds: null, basis: "measured", missing: [], shots: [{ id: "s1", title: "a", still: 20 }] } }],
+    })} sessionId="s1" />);
+    expect(measured).toContain(">Measured<");
+    expect(measured).toContain("Time: unknown until the first run");
+    expect(measured).not.toContain("clip:");
+  });
+
   it("one item: Approve, no per-row button", () => {
     const html = renderToStaticMarkup(<StudioPlanCard plan={plan({ items: plan().items.slice(0, 1) })} sessionId="s1" />);
     expect(html).toContain(">Approve<");

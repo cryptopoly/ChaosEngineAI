@@ -19,7 +19,7 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any, Iterator
 
-from backend_service.tools import ToolRegistry, registry as default_registry
+from backend_service.tools import StructuredToolOutput, ToolRegistry, registry as default_registry
 
 logger = logging.getLogger(__name__)
 
@@ -369,10 +369,21 @@ def _run_tool_call_live(tool_call: dict[str, Any], tool_registry: ToolRegistry) 
     return box[0]
 
 
-def _declined_tool_call(tool_call: dict[str, Any], text: str) -> ToolCallResult:
-    """The result a call gets when the user declined it at the plan card: nothing ran."""
+def _declined_tool_call(tool_call: dict[str, Any], text: Any) -> ToolCallResult:
+    """The result a call gets when the user declined it at the plan card: nothing ran. The gate can also hand
+    over a ready result (a refusal found before the card, or the job already making this render)."""
     func = tool_call.get("function", {})
     name = func.get("name", "unknown")
+    if isinstance(text, StructuredToolOutput):
+        return ToolCallResult(
+            tool_call_id=tool_call["id"],
+            tool_name=name,
+            arguments=_coerce_arguments(func.get("arguments")),
+            result=text.text,
+            elapsed_seconds=0.0,
+            render_as=text.render_as,
+            data=text.data,
+        )
     return ToolCallResult(
         tool_call_id=tool_call["id"],
         tool_name=name,

@@ -15800,3 +15800,309 @@ select.music-library__select {
   color: var(--muted);
   font-size: 0.85rem;
 }
+
+/* Rough-cut player (S9): the film played from its takes, in a dialog. */
+.board-shots__actions,
+.export-preflight__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.export-preflight__head {
+  justify-content: space-between;
+}
+.rough-cut-button svg {
+  vertical-align: -2px;
+}
+.rough-cut-overlay {
+  z-index: 120;
+  padding: 12px;
+}
+.modal-content.rough-cut {
+  width: min(1100px, 96vw);
+  max-height: 94vh;
+  padding: 16px;
+  gap: 12px;
+  outline: none;
+}
+.rough-cut__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.rough-cut__head p {
+  margin: 2px 0 0;
+}
+.rough-cut__close {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+}
+.rough-cut__stage {
+  position: relative;
+  width: min(100%, calc(60vh * var(--cut-w) / var(--cut-h)));
+  aspect-ratio: var(--cut-w) / var(--cut-h);
+  margin: 0 auto;
+  background: #000;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  container-type: size;
+}
+.rough-cut__layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: 0;
+  visibility: hidden;
+}
+.rough-cut__layer--still img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.rough-cut__layer--card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 16px;
+  text-align: center;
+  color: var(--muted-strong);
+  background: repeating-linear-gradient(135deg, var(--panel) 0 14px, var(--panel-alt) 14px 28px);
+}
+.rough-cut__layer--card strong {
+  color: var(--text);
+  font-size: 1.05rem;
+}
+.rough-cut__badges {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-width: calc(100% - 20px);
+  pointer-events: none;
+}
+.rough-cut__chip,
+.rough-cut__hold {
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.62);
+  color: #f4f6f8;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rough-cut__chip--draft {
+  background: var(--warning);
+  color: #1d1505;
+  font-weight: 600;
+}
+.rough-cut__hold {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  max-width: 55%;
+  border: 1px solid color-mix(in srgb, var(--warning) 70%, transparent);
+  color: var(--warning);
+}
+/* Drawn like the export's default burn-in: bold white with a dark outline, low and centred. */
+.rough-cut__caption {
+  position: absolute;
+  left: 4%;
+  right: 4%;
+  bottom: 7.6cqh;
+  margin: 0;
+  text-align: center;
+  white-space: pre-line;
+  color: #fff;
+  font-family: "Helvetica Neue", var(--font-latin);
+  font-weight: 700;
+  font-size: 6.25cqmin;
+  line-height: 1.25;
+  text-shadow: 0 0 2px #000, 0 0 2px #000, 1px 1px 2px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+}
+.rough-cut__loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--muted-strong);
+  background: rgba(0, 0, 0, 0.55);
+  font-size: 0.9rem;
+}
+.rough-cut__loading-bar {
+  width: min(240px, 60%);
+  height: 4px;
+  border-radius: 999px;
+  background: var(--panel-alt);
+  overflow: hidden;
+}
+.rough-cut__loading-bar span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.2s ease;
+}
+.rough-cut__transport {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.rough-cut__play {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 999px;
+}
+.rough-cut__time {
+  min-width: 112px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted-strong);
+  font-size: 0.85rem;
+}
+.rough-cut__scrubber {
+  position: relative;
+  flex: 1 1 260px;
+  min-width: 0;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  touch-action: none;
+  overflow: hidden;
+}
+.rough-cut__scrubber:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.rough-cut__scrubber[aria-disabled="true"] {
+  cursor: default;
+  opacity: 0.6;
+}
+.rough-cut__marker {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  box-shadow: inset -1px 0 0 var(--panel);
+  overflow: hidden;
+}
+.rough-cut__marker--clip {
+  background: color-mix(in srgb, var(--accent) 30%, var(--panel));
+}
+.rough-cut__marker--draft {
+  background: color-mix(in srgb, var(--warning) 38%, var(--panel));
+}
+.rough-cut__marker--still {
+  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--warning) 22%, var(--panel)) 0 4px, var(--panel-alt) 4px 8px);
+}
+.rough-cut__marker--none {
+  background: repeating-linear-gradient(135deg, var(--panel) 0 4px, var(--surface) 4px 8px);
+}
+.rough-cut__marker.is-current {
+  box-shadow: inset 0 -3px 0 var(--accent-strong), inset -1px 0 0 var(--panel);
+}
+.rough-cut__marker-n {
+  position: absolute;
+  top: 3px;
+  left: 5px;
+  font-size: 0.68rem;
+  color: var(--muted-strong);
+  font-variant-numeric: tabular-nums;
+}
+.rough-cut__played {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  background: color-mix(in srgb, var(--text) 10%, transparent);
+  pointer-events: none;
+}
+.rough-cut__head-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--accent-strong);
+  pointer-events: none;
+}
+.rough-cut__cc {
+  min-width: 44px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.rough-cut__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+.rough-cut__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.8rem;
+  color: var(--muted-strong);
+}
+.rough-cut__legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.rough-cut__swatch {
+  width: 14px;
+  height: 10px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+}
+.rough-cut__keys,
+.rough-cut__note {
+  margin: 0;
+  font-size: 0.78rem;
+}
+@media (max-width: 560px) {
+  .rough-cut-overlay {
+    padding: 6px;
+  }
+  .modal-content.rough-cut {
+    padding: 12px;
+    width: 100%;
+  }
+  .rough-cut__stage {
+    width: 100%;
+  }
+  .rough-cut__scrubber {
+    order: 3;
+    flex-basis: 100%;
+  }
+  .rough-cut__keys {
+    display: none;
+  }
+}

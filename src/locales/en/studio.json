@@ -1725,7 +1725,40 @@
       "withClips": "Drafts with clips",
       "keepHint": "Mark shots with Keep to choose them for the final pass."
     },
-    "exportDrafts": "{n, plural, one {# shot uses a draft take.} other {# shots use a draft take.}} Keep them and run the final pass for full quality, or export the drafts as they are."
+    "exportDrafts": "{n, plural, one {# shot uses a draft take.} other {# shots use a draft take.}} Keep them and run the final pass for full quality, or export the drafts as they are.",
+    "preview": {
+      "emptyHint": "Add a shot to play the film.",
+      "buttonHint": "Play the active takes in order with the Mixer's sound, without rendering anything.",
+      "button": "Play film",
+      "shotTitled": "Shot {n} · {title}",
+      "shot": "Shot {n}",
+      "legendDraft": "Draft take",
+      "legendStill": "No clip yet: still held",
+      "legendNone": "No picture yet",
+      "legendClip": "Clip",
+      "timeOf": "{current} of {total}",
+      "title": "Rough cut",
+      "subtitle": "{name} · {shots, plural, one {# shot} other {# shots}} · {seconds} s · played from the takes, nothing is rendered",
+      "close": "Close the rough cut",
+      "heldStill": "No clip yet · still held for {seconds} s",
+      "noPicture": "No picture yet · {seconds} s",
+      "draft": "Draft",
+      "loading": "Loading the film: {done} of {total} files",
+      "pause": "Pause",
+      "play": "Play",
+      "scrubber": "Position in the film",
+      "legend": "What the markers mean",
+      "keys": "Space or K: play / pause · J and L: 5 s · arrows: 1 s (Shift 10 s) · Page Up / Down: shot · Home / End · C: captions · Esc: close",
+      "missingNote": "{n, plural, one {# shot has no clip yet. It holds its still here (or a card) for its planned length; the export leaves it out.} other {# shots have no clip yet. They hold their still here (or a card) for their planned length; the export leaves them out.}}",
+      "draftNote": "{n, plural, one {# shot plays a draft take.} other {# shots play a draft take.}} Run the final pass on kept shots for full quality.",
+      "failed": "{n, plural, one {# file could not be read; its part plays blank or silent.} other {# files could not be read; their parts play blank or silent.}}",
+      "noSound": "This window cannot play sound, so the rough cut plays without it."
+    },
+    "captions": {
+      "toggle": "Show captions (C)",
+      "none": "No captions yet. Make them from the voice lane in the Mixer.",
+      "short": "CC"
+    }
   },
   "storyProjects": {
     "card": {

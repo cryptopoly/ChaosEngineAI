@@ -1725,7 +1725,40 @@
       "withClips": null,
       "keepHint": null
     },
-    "exportDrafts": null
+    "exportDrafts": null,
+    "preview": {
+      "emptyHint": null,
+      "buttonHint": null,
+      "button": null,
+      "shotTitled": null,
+      "shot": null,
+      "legendDraft": null,
+      "legendStill": null,
+      "legendNone": null,
+      "legendClip": null,
+      "timeOf": null,
+      "title": null,
+      "subtitle": null,
+      "close": null,
+      "heldStill": null,
+      "noPicture": null,
+      "draft": null,
+      "loading": null,
+      "pause": null,
+      "play": null,
+      "scrubber": null,
+      "legend": null,
+      "keys": null,
+      "missingNote": null,
+      "draftNote": null,
+      "failed": null,
+      "noSound": null
+    },
+    "captions": {
+      "toggle": null,
+      "none": null,
+      "short": null
+    }
   },
   "storyProjects": {
     "card": {

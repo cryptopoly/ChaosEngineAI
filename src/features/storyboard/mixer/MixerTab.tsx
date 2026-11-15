@@ -55,6 +55,7 @@ import {
   type LaneId,
 } from "./timelineGeometry";
 import { Transport } from "./Transport";
+import { RoughCutButton } from "../preview/RoughCutButton";
 import { VideoToolsPrompt } from "../../videotools/VideoToolsPrompt";
 import { useVideoTools } from "../../videotools/useVideoTools";
 
@@ -520,7 +521,8 @@ export function MixerTab({ story, project, timeline, dataDirectory, onOpenShot, 
                   )}
                 </div>
                 <div className="mixer__stage-actions">
-                  <button type="button" className="primary-button" disabled={disabled || rendering || !canRender(timeline)} onClick={() => void startRender(true)}>
+                  <RoughCutButton project={project} timeline={timeline} tone="primary" />
+                  <button type="button" className="secondary-button" disabled={disabled || rendering || !canRender(timeline)} onClick={() => void startRender(true)}>
                     {t("mixer.preview.render", { defaultValue: "Render preview" })}
                   </button>
                   {previewJob?.state === "running" ? (

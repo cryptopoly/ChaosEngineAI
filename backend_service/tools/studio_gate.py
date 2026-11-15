@@ -239,6 +239,20 @@ def memory_note(items: list[dict[str, Any]], state: Any | None) -> dict[str, Any
         return None
 
 
+def _edited_earlier(tool_calls: list[dict[str, Any]], call: dict[str, Any], args: dict[str, Any]) -> bool:
+    """An earlier call of the same reply names the same project: it runs first and moves the revision, so the
+    revision is checked when the call runs, not before the card."""
+    pid = args.get("project_id")
+    if not pid:
+        return False
+    for tc in tool_calls:
+        if tc is call:
+            return False
+        if call_args(tc).get("project_id") == pid:
+            return True
+    return False
+
+
 class StudioGate:
     """Holds render calls of one chat turn until the user decides in the app."""
 
@@ -263,13 +277,39 @@ class StudioGate:
         self.resolved: list[dict[str, Any]] = []
 
     def review(self, tool_calls: list[dict[str, Any]]) -> Iterator[dict[str, Any]]:
-        """Generator: yields plan events while waiting; returns ``{call_id: declined text}`` for calls not to run."""
-        from backend_service.tools.studio import needs_approval
+        """Generator: yields plan events while waiting; returns ``{call_id: answer}`` for calls not to run, where
+        the answer is the declined text or a ready result (``StructuredToolOutput``).
+
+        Before a card (S1, FU-179): a render call that would be refused (bad argument, stale revision, nothing to
+        generate) gets that refusal at once, and a repeat of a storyboard render that is still running gets that
+        job; neither shows on a card. Identical storyboard renders in one reply make one row; the copies follow
+        its decision and, once it runs, find its job.
+        """
+        from backend_service.tools.studio import needs_approval, ready_answer, render_signature
 
         render = [tc for tc in tool_calls if needs_approval(call_name(tc), call_args(tc))]
-        if not render or self.auto_approve:
+        if not render:
             return {}
-        items = [plan_item(tc, self.state) for tc in render]
+        answers: dict[str, Any] = {}
+        planned: list[dict[str, Any]] = []
+        leaders: dict[tuple[Any, ...], str] = {}
+        follows: dict[str, str] = {}
+        for tc in render:
+            name, args = call_name(tc), call_args(tc)
+            ready = ready_answer(name, args, check_revision=not _edited_earlier(tool_calls, tc, args))
+            if ready is not None:
+                answers[str(tc.get("id"))] = ready
+                continue
+            signature = render_signature(name, args)
+            if signature is not None and signature in leaders:
+                follows[str(tc.get("id"))] = leaders[signature]
+                continue
+            if signature is not None:
+                leaders[signature] = str(tc.get("id"))
+            planned.append(tc)
+        if not planned or self.auto_approve:
+            return answers
+        items = [plan_item(tc, self.state) for tc in planned]
         plan = PendingPlan(id=f"plan-{uuid.uuid4().hex[:10]}", session_id=self.session_id, items=items,
                            memory=memory_note(items, self.state))
         with _LOCK:
@@ -308,4 +348,7 @@ class StudioGate:
         }
         self.resolved.append(resolved)
         yield {"studio_plan_resolved": resolved}
-        return denials
+        for copy_id, leader in follows.items():
+            if leader in denials:
+                denials[copy_id] = denials[leader]
+        return {**answers, **denials}

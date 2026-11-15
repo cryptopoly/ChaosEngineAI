@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import copy
 import json
+import threading
 from typing import Any, Callable
 
 from backend_service.tools import BaseTool, StructuredToolOutput, ToolRegistry
@@ -113,6 +114,159 @@ def needs_approval(name: str, args: dict[str, Any] | None = None) -> bool:
     return starts_job(name, args or {})
 
 
+_STORYBOARD_RENDERS = ("storyboard_generate", "storyboard_render")
+# S1 (FU-179): the storyboard renders Chat started and that may still run, by what they make, so a repeat of the
+# same request returns that job instead of asking the user to approve the same render again.
+_ACTIVE_RENDERS: dict[tuple[Any, ...], str] = {}
+_ACTIVE_LOCK = threading.Lock()
+
+
+def render_signature(name: str, args: dict[str, Any]) -> tuple[Any, ...] | None:
+    """What a storyboard render makes (project, kind, shots, force; or project and preview). None for other tools."""
+    if name == "storyboard_generate":
+        shots = args.get("shot_ids")
+        return (name, str(args.get("project_id")), str(args.get("what") or "both"),
+                tuple(sorted(str(s) for s in shots)) if isinstance(shots, list) else None, bool(args.get("force")))
+    if name == "storyboard_render":
+        return (name, str(args.get("project_id")), bool(args.get("preview", True)))
+    return None
+
+
+def running_render(name: str, args: dict[str, Any]) -> Any | None:
+    """The unfinished Chat job that makes exactly this storyboard render, or None."""
+    from backend_service.mcp_bridge.jobs import FINISHED, STORE
+
+    signature = render_signature(name, args)
+    if signature is None:
+        return None
+    with _ACTIVE_LOCK:
+        job_id = _ACTIVE_RENDERS.get(signature)
+    job = STORE.get(job_id) if job_id else None
+    if job is None or job.state in FINISHED:
+        with _ACTIVE_LOCK:
+            if _ACTIVE_RENDERS.get(signature) == job_id:
+                _ACTIVE_RENDERS.pop(signature, None)
+        return None
+    return job
+
+
+def _remember_render(name: str, args: dict[str, Any], payload: Any) -> None:
+    signature = render_signature(name, args)
+    if signature is not None and isinstance(payload, dict) and payload.get("jobId"):
+        with _ACTIVE_LOCK:
+            _ACTIVE_RENDERS[signature] = str(payload["jobId"])
+
+
+def _stale_text(revision: int) -> str:
+    return f"The project is at revision {revision} now. Call storyboard_project get and retry."
+
+
+def _storyboard_problem(name: str, args: dict[str, Any], check_revision: bool) -> str | None:
+    """Why a storyboard generate or render would be refused before it starts (the handler's own checks), or None."""
+    from backend_service.routes.storyboard import get_store
+    from backend_service.storyboard.batch import Batch, BatchRefused
+    from backend_service.storyboard.store import StoreError
+
+    store = get_store()
+    try:
+        project = store.load(str(args["project_id"]))
+    except StoreError as exc:
+        return str(exc)
+    if check_revision and project.revision != int(args["revision"]):
+        return _stale_text(project.revision)
+    if name != "storyboard_generate":
+        return None
+    try:
+        batch = Batch(store, project.id, str(args.get("what") or "both"), make_still=lambda s, p: None,
+                      make_clip=lambda s, p, i: None, shot_ids=list(args["shot_ids"]) if "shot_ids" in args else None,
+                      force=bool(args.get("force")))
+        steps = batch.plan(project)
+    except BatchRefused as exc:
+        return str(exc)
+    if not any(reason is None for _, _, reason in steps):
+        return "Nothing to generate: every shot is done, locked or an upload."
+    return None
+
+
+def precheck(name: str, args: dict[str, Any], *, check_revision: bool = True) -> str | None:
+    """Why a render call would be refused before it starts, or None. The gate asks this before it shows a plan
+    card, so the user is never asked to approve a call that cannot run (S1, FU-179): the model reads the reason
+    and fixes the call first. Same checks and words as ``StudioTool.execute_structured`` and the handlers."""
+    from backend_service.mcp_bridge.jobs import STORE, JobLimitError
+    from backend_service.mcp_bridge.scopes import required_scope
+    from backend_service.mcp_bridge.tools import validate
+
+    tools, _ = _bridge()
+    tool = next((t for t in tools if t["name"] == name), None)
+    if tool is None or name not in STUDIO_TOOL_NAMES:
+        return None
+    problem = validate(chat_schema(tool), args)
+    if problem:
+        return f"Invalid input for {name}: {problem}."
+    if required_scope(name, args) not in CHAT_SCOPES:
+        return f"Chat cannot use {name} with these arguments. Ask the user to do it in the app."
+    refused = _chat_input_problem(name, args)
+    if refused:
+        return refused
+    try:
+        STORE.check_capacity(CHAT_OWNER)
+    except JobLimitError as exc:
+        return str(exc)
+    if name in _STORYBOARD_RENDERS:
+        try:
+            return _storyboard_problem(name, args, check_revision)
+        except Exception:  # noqa: BLE001 - when the check itself fails, the card shows and the handler decides
+            return None
+    return None
+
+
+def ready_answer(name: str, args: dict[str, Any], *, check_revision: bool = True) -> StructuredToolOutput | None:
+    """The answer for a render call that needs no plan card: the reason it cannot run, or the job already making
+    exactly this storyboard render. None when the call needs the user's approval."""
+    job = running_render(name, args)  # first: the running batch has moved the revision on
+    if job is not None:
+        return already_running(name, job)
+    problem = precheck(name, args, check_revision=check_revision)
+    if problem:
+        return StructuredToolOutput(text=f"Error: {problem}", render_as="studio", data={"tool": name, "error": problem})
+    return None
+
+
+def already_running(name: str, job: Any) -> StructuredToolOutput:
+    """The answer for a repeat of a storyboard render that is running: that job, not a new one."""
+    info = trim_result(job.describe())
+    info["next"] = (f"This render is already running as {job.id}, so it was not started again. "
+                    "Call wait_for_job with this jobId.")
+    return StructuredToolOutput(text=_text(info), render_as="studio", data={"tool": name, "alreadyRunning": True, **info})
+
+
+class TurnRevisions:
+    """Project revisions this chat turn's own edits made. A storyboard generate or render that names a revision
+    older than the project's is moved to the current one when every change in between was this turn's own edit:
+    the model added a shot and asked for the stills in one reply, both with the revision it last saw (S1)."""
+
+    def __init__(self) -> None:
+        self._own: dict[str, set[int]] = {}
+
+    def record(self, payload: Any) -> None:
+        if isinstance(payload, dict) and payload.get("projectId") and isinstance(payload.get("revision"), int):
+            self._own.setdefault(str(payload["projectId"]), set()).add(int(payload["revision"]))
+
+    def rebase(self, args: dict[str, Any]) -> None:
+        from backend_service.routes.storyboard import get_store
+
+        pid, asked = str(args.get("project_id")), args.get("revision")
+        own = self._own.get(pid)
+        if not own or not isinstance(asked, int):
+            return
+        try:
+            current = get_store().load(pid).revision
+        except Exception:  # noqa: BLE001 - the handler reports a bad project
+            return
+        if asked < current and all(r in own for r in range(asked + 1, current + 1)):
+            args["revision"] = current
+
+
 def _trim(value: Any, depth: int = 0) -> Any:
     if isinstance(value, dict):
         return {k: _trim(v, depth + 1) for k, v in value.items() if k not in _STRIPPED_KEYS and v is not None}
@@ -143,8 +297,9 @@ class StudioTool(BaseTool):
     """One bridge tool, run in process with Chat's scopes and job owner."""
 
     def __init__(self, tool: dict[str, Any], handler: Any, app_request: Any,
-                 is_cancelled: Callable[[], bool] | None = None) -> None:
+                 is_cancelled: Callable[[], bool] | None = None, revisions: TurnRevisions | None = None) -> None:
         self._tool = tool
+        self._revisions = revisions or TurnRevisions()
         self._is_cancelled = is_cancelled or (lambda: False)
         self._handler = handler
         self._request = app_request
@@ -232,10 +387,18 @@ class StudioTool(BaseTool):
                 STORE.check_capacity()
             if self.name == "wait_for_job":
                 return self._wait(args)
+            if self.name in _STORYBOARD_RENDERS:
+                already = running_render(self.name, args)
+                if already is not None:  # an identical call earlier in this reply started it a moment ago
+                    return already_running(self.name, already)
+                self._revisions.rebase(args)
             if self.name == "list_jobs":
                 payload = _own_jobs(args)
             else:
                 payload = self._handler(make_context(self._request), args)
+            if self.name.startswith("storyboard_"):
+                self._revisions.record(payload)
+            _remember_render(self.name, args, payload)
         except (ToolError, JobLimitError) as exc:
             return self._error(str(exc))
         except Exception as exc:  # noqa: BLE001 - a tool bug is a readable answer, never a dead chat
@@ -289,7 +452,9 @@ def _own_jobs(args: dict[str, Any]) -> dict[str, Any]:
 def studio_tools(app_request: Any, is_cancelled: Callable[[], bool] | None = None) -> list[StudioTool]:
     tools, handlers = _bridge()
     by_name = {t["name"]: t for t in tools}
-    return [StudioTool(by_name[n], handlers[n], app_request, is_cancelled) for n in STUDIO_TOOL_NAMES if n in by_name and n in handlers]
+    revisions = TurnRevisions()  # one per chat turn, shared by its storyboard tools
+    return [StudioTool(by_name[n], handlers[n], app_request, is_cancelled, revisions)
+            for n in STUDIO_TOOL_NAMES if n in by_name and n in handlers]
 
 
 def studio_registry(app_request: Any, base: ToolRegistry, available: list[str] | None,

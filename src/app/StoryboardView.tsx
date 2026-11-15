@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import type { ChatModelOption } from "../types/chat";
 import type { VideoFitSource } from "../features/storyboard/formatLogic";
 import { ProjectListTab } from "../features/storyboard/ProjectListTab";
 import { ProjectShell, type ProjectWorkspaceDeps } from "../features/storyboard/ProjectShell";
@@ -21,6 +22,28 @@ function videoFitSource(ctx: AppTabContext): VideoFitSource {
 }
 
 const choices = (variants: { id: string; name: string }[]) => variants.map((variant) => ({ id: variant.id, name: variant.name }));
+
+/** The Plan tab's chat model (S8): the installed chat models it can load in place, and what is loaded now. */
+function planChat(ctx: AppTabContext) {
+  const options: ChatModelOption[] = ctx.libraryChatOptions;
+  return {
+    chatModels: options.map((option) => ({ key: option.key, label: option.label, detail: option.detail })),
+    preferredChatModel: ctx.activeThreadOption?.key ?? null,
+    loadedChatModel: ctx.workspace.runtime.loadedModel?.name ?? null,
+    onLoadChatModel: async (key: string) => {
+      const option = options.find((item) => item.key === key);
+      if (!option) return;
+      await ctx.handleLoadModel({
+        modelRef: option.modelRef,
+        modelName: option.model,
+        canonicalRepo: option.canonicalRepo,
+        source: option.source,
+        backend: option.backend,
+        path: option.path ?? undefined,
+      });
+    },
+  };
+}
 
 export function StoryboardView({ ctx }: { ctx: AppTabContext }) {
   const [route, go] = useProjectRoute();
@@ -49,6 +72,7 @@ export function StoryboardView({ ctx }: { ctx: AppTabContext }) {
     videoModels,
     videoFit,
     dataDirectory: ctx.settings.settingsDraft.dataDirectory,
+    chat: planChat(ctx),
   };
   return (
     <ProjectShell

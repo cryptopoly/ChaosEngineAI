@@ -54,7 +54,7 @@ export function parseRevisionConflict(status: number, body: unknown): Storyboard
   return new StoryboardRevisionConflict(typeof message === "string" ? message : "Revision conflict", project as StoryboardProject);
 }
 
-async function request<T>(
+export async function request<T>(
   method: "GET" | "POST" | "DELETE",
   path: string,
   body?: object,

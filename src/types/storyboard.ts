@@ -25,17 +25,56 @@ export interface StoryboardRefImage {
   hash: string | null;
 }
 
-/** A character or place: a name, a few words and up to four pictures (front, side, detail...). */
+/** A character, place or style: a name, a few words and up to four pictures (front, side, detail...). */
 export interface StoryboardReference {
   id: string;
   name: string;
   description: string;
   images: StoryboardRefImage[];
+  /** A style's main colours (`#rrggbb`), read from its pictures (S15). Empty for characters and places. */
+  palette?: string[];
 }
 
 export interface StoryboardReferences {
   characters: StoryboardReference[];
   places: StoryboardReference[];
+  /** The look of the film (S15); absent in projects saved before it. */
+  styles?: StoryboardReference[];
+}
+
+export type StoryboardReferenceKind = "character" | "place" | "style";
+
+/** How captions look when drawn into the picture (S15). */
+export interface StoryboardCaptionLook {
+  font: string | null;
+  colour: string;
+  position: "bottom" | "middle" | "top";
+}
+
+export type StoryboardLogoCorner = "top-left" | "top-right" | "bottom-left" | "bottom-right";
+/** How style references reach the still model: as pictures when it takes them (auto), as words, or not at all. */
+export type StoryboardStyleUse = "auto" | "words" | "off";
+
+/** The project's brand kit (S15). */
+export interface StoryboardBrand {
+  logo: StoryboardRefImage | null;
+  logoCorner: StoryboardLogoCorner;
+  captions: StoryboardCaptionLook;
+  styleUse: StoryboardStyleUse;
+}
+
+/** The idea behind the film (S8). */
+export interface StoryboardPlan {
+  brief: string;
+  filmSeconds: number | null;
+}
+
+/** One line of the direction chat (kept with the project, not part of Undo). */
+export interface StoryboardPlanMessage {
+  id: string;
+  role: "user" | "assistant";
+  text: string;
+  at: number;
 }
 
 export interface StoryboardTransition {
@@ -163,6 +202,10 @@ export interface StoryboardProject {
   createdAt: number;
   defaults: StoryboardDefaults;
   references: StoryboardReferences;
+  /** S8 and S15; absent in projects saved before them. */
+  plan?: StoryboardPlan;
+  brand?: StoryboardBrand;
+  planChat?: StoryboardPlanMessage[];
   shots: StoryboardShot[];
   audio: StoryboardAudioClip[];
   export: StoryboardExportSettings;
@@ -284,9 +327,9 @@ export interface StoryboardAudioFields {
 export interface StoryboardOpArgs {
   edit_project: { name?: string; defaults?: Partial<StoryboardDefaults>; export?: Record<string, unknown> };
   /** `image` and `images` take local paths, `upload:` handles, or a `media/` path of this project (a shot still). */
-  add_reference: { kind: "character" | "place"; name?: string; description?: string; image?: string; images?: string[] };
-  /** `image` replaces every picture; `addImage` appends one (four at most); `removeImage` drops one by position. */
-  edit_reference: { refId: string; name?: string; description?: string; image?: string; addImage?: string; removeImage?: number };
+  add_reference: { kind: StoryboardReferenceKind; name?: string; description?: string; image?: string; images?: string[] };
+  /** `image` replaces every picture; `addImage` appends one (four at most); `removeImage` drops one by position; `palette` trims a style's colours. */
+  edit_reference: { refId: string; name?: string; description?: string; image?: string; addImage?: string; removeImage?: number; palette?: string[] };
   remove_reference: { refId: string };
   add_shot: StoryboardShotFields & { index?: number };
   edit_shot: StoryboardShotFields & { shotId: string };
@@ -311,6 +354,37 @@ export interface StoryboardOpArgs {
   add_caption: { start: number; end: number; text: string; clipId?: string | null };
   edit_caption: { captionId: string; start?: number; end?: number; text?: string };
   remove_caption: { captionId: string };
+  /** S8: the brief and the length aimed for. */
+  set_plan: { brief?: string; filmSeconds?: number; clearFilmSeconds?: boolean };
+  /** S8: planned shots in one step (one Undo). */
+  apply_plan: { mode: "replace" | "append"; shots: StoryboardPlannedShot[] };
+  /** S8: the direction chat's changes in one step (one Undo). */
+  plan_changes: StoryboardPlanChanges;
+  add_plan_message: { role: "user" | "assistant"; text: string };
+  clear_plan_chat: Record<string, never>;
+  /** S15: the brand kit; `logo` is a path, an `upload:` handle or a project `media/` path. */
+  set_brand: {
+    logo?: string;
+    clearLogo?: boolean;
+    logoCorner?: StoryboardLogoCorner;
+    captions?: { font?: string; clearFont?: boolean; colour?: string; position?: StoryboardCaptionLook["position"] };
+    styleUse?: StoryboardStyleUse;
+  };
+}
+
+/** A shot the chat model proposed (S8). */
+export interface StoryboardPlannedShot {
+  title: string;
+  stillPrompt: string;
+  motionPrompt: string;
+  seconds: number;
+  referenceImages?: string[];
+}
+
+export interface StoryboardPlanChanges {
+  edits: ({ shotId: string } & Partial<Omit<StoryboardPlannedShot, "referenceImages">>)[];
+  add: (StoryboardPlannedShot & { after: string | null })[];
+  remove: string[];
 }
 
 export type StoryboardOpName = keyof StoryboardOpArgs;

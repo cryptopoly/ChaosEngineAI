@@ -1,5 +1,5 @@
 /**
- * One character or place on the Cast tab: up to four pictures (each removable), the name, "What it looks
+ * One character, place or style on the Cast tab: up to four pictures (each removable), the name, "What it looks
  * like", how many shots use it, and Remove. A picture is added through the picker, or by dropping or pasting
  * an image on the card. Fields save when they lose focus.
  */
@@ -7,6 +7,7 @@ import { useEffect, useRef, useState, type ClipboardEvent, type DragEvent } from
 import { useTranslation } from "react-i18next";
 import { PlusIcon, TrashIcon, CloseIcon } from "../../components/icons/ActionIcons";
 import type { StoryboardRefImage, StoryboardReference } from "../../types";
+import { PaletteSwatches } from "./PaletteSwatches";
 import { MAX_PICTURES, isSmallPicture, picturesFrom } from "./pickerLogic";
 import { useProjectFileUrl } from "./ProjectMedia";
 
@@ -22,6 +23,11 @@ export interface ReferenceCardProps {
   onRemovePicture: (index: number) => void;
   onOpenPicker: () => void;
   onFiles: (files: File[]) => void;
+  /** A style (S15): the colours read from its pictures; with `onRemoveColour` each can be taken out. */
+  palette?: string[];
+  onRemoveColour?: (index: number) => void;
+  /** The "What it looks like" placeholder (a style asks for the look instead). */
+  descriptionPlaceholder?: string;
 }
 
 function Picture({ projectId, image, index, name, disabled, onRemove }: {
@@ -63,6 +69,7 @@ function Picture({ projectId, image, index, name, disabled, onRemove }: {
 
 export function ReferenceCard({
   projectId, reference, usedBy, disabled, autoFocus, onEdit, onRemove, onRemovePicture, onOpenPicker, onFiles,
+  palette, onRemoveColour, descriptionPlaceholder,
 }: ReferenceCardProps) {
   const { t } = useTranslation("studio");
   const [name, setName] = useState(reference.name);
@@ -173,14 +180,25 @@ export function ReferenceCard({
           rows={2}
           value={description}
           maxLength={4000}
-          placeholder={t("board.references.description", { defaultValue: "What it looks like" })}
-          aria-label={t("board.references.description", { defaultValue: "What it looks like" })}
+          placeholder={descriptionPlaceholder ?? t("board.references.description", { defaultValue: "What it looks like" })}
+          aria-label={descriptionPlaceholder ?? t("board.references.description", { defaultValue: "What it looks like" })}
           onChange={(event) => setDescription(event.target.value)}
           onBlur={flush}
         />
-        <p className="muted-text cast-card__used">
-          {t("cast.usedBy", { defaultValue: "{n, plural, =0 {Not used by a shot yet} one {Used by # shot} other {Used by # shots}}", n: usedBy })}
-        </p>
+        {palette !== undefined ? (
+          palette.length > 0 ? (
+            <div className="cast-card__palette">
+              <span className="muted-text">{t("board.style.paletteLabel", { defaultValue: "Colours read from the pictures" })}</span>
+              <PaletteSwatches colours={palette} label={t("board.style.paletteLabel", { defaultValue: "Colours read from the pictures" })} disabled={disabled} onRemove={onRemoveColour} />
+            </div>
+          ) : (
+            <p className="muted-text cast-card__used">{t("board.style.noPalette", { defaultValue: "Add a picture to read its colours." })}</p>
+          )
+        ) : (
+          <p className="muted-text cast-card__used">
+            {t("cast.usedBy", { defaultValue: "{n, plural, =0 {Not used by a shot yet} one {Used by # shot} other {Used by # shots}}", n: usedBy })}
+          </p>
+        )}
       </div>
       <button
         type="button"

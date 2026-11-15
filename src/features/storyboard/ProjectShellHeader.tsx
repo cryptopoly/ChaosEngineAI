@@ -95,12 +95,13 @@ export function ProjectShellHeader({
   const tabRow = useRef<HTMLDivElement>(null);
   const labels: Record<ProjectTabId, string> = {
     overview: t("projectShell.tab.overview", { defaultValue: "Overview" }),
+    plan: t("board.plan.tab", { defaultValue: "Plan" }),
     cast: t("projectShell.tab.cast", { defaultValue: "Cast" }),
     storyboard: t("projectShell.tab.storyboard", { defaultValue: "Storyboard" }),
     mixer: t("projectShell.tab.mixer", { defaultValue: "Mixer" }),
     export: t("projectShell.tab.export", { defaultValue: "Export" }),
   };
-  const castCount = project ? project.references.characters.length + project.references.places.length : 0;
+  const castCount = project ? project.references.characters.length + project.references.places.length + (project.references.styles?.length ?? 0) : 0;
   const stale = project ? staleCount(project) : 0;
 
   // Keep the active tab in view when the row scrolls (narrow screens).

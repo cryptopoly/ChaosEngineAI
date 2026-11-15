@@ -2,6 +2,7 @@
  * The Cast tab of a project (D-65): characters and places, each a name, a few words and up to four pictures.
  * Set once, used by shots to keep a look. Optional: a project with no cast works (a street, a crowd), and
  * nothing elsewhere waits for one. Dropping pictures on empty space adds a character named after the file.
+ * Below them, the film's style (S15): pictures whose look and colours every shot follows, and the brand kit.
  */
 import { useEffect, useRef, useState, type DragEvent } from "react";
 import { useTranslation } from "react-i18next";
@@ -9,6 +10,8 @@ import { uploadStoryboardPicture } from "../../api";
 import { PlusIcon } from "../../components/icons/ActionIcons";
 import type { ImageOutputArtifact, StoryboardProject, StoryboardReference } from "../../types";
 import { MAX_PICTURES, nameFromFile, picturesFrom, usedByCount } from "./pickerLogic";
+import { BrandKitPanel } from "./BrandKitPanel";
+import { stylesOf } from "./planLogic";
 import { ReferenceCard } from "./ReferenceCard";
 import { ReferenceImagePicker } from "./ReferenceImagePicker";
 import type { UseStoryboardResult } from "./useStoryboard";
@@ -19,7 +22,7 @@ export interface CastTabProps {
   imageGallery: ImageOutputArtifact[];
 }
 
-type Kind = "character" | "place";
+type Kind = "character" | "place" | "style";
 
 export function CastTab({ story, project, imageGallery }: CastTabProps) {
   const { t } = useTranslation("studio");
@@ -29,9 +32,10 @@ export function CastTab({ story, project, imageGallery }: CastTabProps) {
   const [dropOver, setDropOver] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const { characters, places } = project.references;
+  const styles = stylesOf(project);
   const known = useRef<Set<string> | null>(null);
   // The reference as the project has it now (a name typed just before opening the picker lands meanwhile).
-  const picking = pickerFor ? ([...characters, ...places].find((r) => r.id === pickerFor.id) ?? pickerFor) : null;
+  const picking = pickerFor ? ([...characters, ...places, ...styles].find((r) => r.id === pickerFor.id) ?? pickerFor) : null;
 
   async function add(kind: Kind, extra: { name?: string; images?: string[] } = {}) {
     known.current = new Set(allIds);
@@ -39,7 +43,7 @@ export function CastTab({ story, project, imageGallery }: CastTabProps) {
   }
 
   // A card just added gets the focus: it is the one whose id was not there before the add.
-  const allIds = [...characters, ...places].map((r) => r.id);
+  const allIds = [...characters, ...places, ...styles].map((r) => r.id);
   const idsKey = allIds.join(",");
   useEffect(() => {
     if (!known.current) return;
@@ -86,6 +90,7 @@ export function CastTab({ story, project, imageGallery }: CastTabProps) {
   const groups: { kind: Kind; title: string; add: string; items: StoryboardReference[] }[] = [
     { kind: "character", title: t("board.references.characters", { defaultValue: "Characters" }), add: t("board.references.addCharacter", { defaultValue: "Add character" }), items: characters },
     { kind: "place", title: t("board.references.places", { defaultValue: "Places" }), add: t("board.references.addPlace", { defaultValue: "Add place" }), items: places },
+    { kind: "style", title: t("board.style.title", { defaultValue: "Style" }), add: t("board.style.add", { defaultValue: "Add style" }), items: styles },
   ];
 
   return (
@@ -120,14 +125,23 @@ export function CastTab({ story, project, imageGallery }: CastTabProps) {
       {groups.map((group) => (
         <section key={group.kind} className="cast-tab__group" aria-label={group.title}>
           <div className="cast-tab__group-head">
-            <h4>{group.title}</h4>
+            <div>
+              <h4>{group.title}</h4>
+              {group.kind === "style" ? (
+                <p className="muted-text">
+                  {t("board.style.subtitle", { defaultValue: "Screenshots or photos of the look you want: a website, a shop, a mood. Every shot follows its look and colours. Pictures only; nothing is fetched from the web." })}
+                </p>
+              ) : null}
+            </div>
             <button type="button" className="secondary-button" disabled={busy} onClick={() => void add(group.kind)}>
               <PlusIcon /> {group.add}
             </button>
           </div>
           {group.items.length === 0 ? (
             <p className="muted-text">
-              {t("cast.noneShort", { defaultValue: "None yet." })}
+              {group.kind === "style"
+                ? t("board.style.none", { defaultValue: "No style yet. Add one, or drop style pictures on the Plan tab." })
+                : t("cast.noneShort", { defaultValue: "None yet." })}
             </p>
           ) : (
             <div className="cast-tab__cards">
@@ -144,12 +158,21 @@ export function CastTab({ story, project, imageGallery }: CastTabProps) {
                   onRemovePicture={(index) => void story.op("edit_reference", { refId: reference.id, removeImage: index })}
                   onOpenPicker={() => setPickerFor(reference)}
                   onFiles={(files) => void addFiles(reference, files)}
+                  {...(group.kind === "style"
+                    ? {
+                        palette: reference.palette ?? [],
+                        onRemoveColour: (index: number) =>
+                          void story.op("edit_reference", { refId: reference.id, palette: (reference.palette ?? []).filter((_, i) => i !== index) }),
+                        descriptionPlaceholder: t("board.style.describe", { defaultValue: "The look in words: mood, materials, light" }),
+                      }
+                    : {})}
                 />
               ))}
             </div>
           )}
         </section>
       ))}
+      <BrandKitPanel story={story} project={project} imageGallery={imageGallery} />
       <p className="cast-tab__drop muted-text">
         {t("cast.dropHint", { defaultValue: "Drop pictures anywhere on this tab to add a character named after each file." })}
       </p>

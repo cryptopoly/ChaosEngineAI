@@ -1,0 +1,10 @@
+/* The Mixer plays the rough cut (no render needed); with a rendered preview, a switch picks what Play plays. */
+.mixer__source {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.mixer__source .secondary-button.active {
+  border-color: var(--accent);
+  color: var(--accent);
+}

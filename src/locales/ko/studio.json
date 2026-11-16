@@ -1752,7 +1752,10 @@
       "missingNote": null,
       "draftNote": null,
       "failed": null,
-      "noSound": null
+      "noSound": null,
+      "titleCard": null,
+      "endCard": null,
+      "legendCard": null
     },
     "captions": {
       "toggle": null,
@@ -2016,6 +2019,20 @@
       "usedPicturesHint": null,
       "usedWords": null,
       "usedWordsHint": null
+    },
+    "brandFilm": {
+      "title": null,
+      "editKit": null,
+      "noLogo": null,
+      "logo": null,
+      "logoNone": null,
+      "titleCard": null,
+      "titleText": null,
+      "endCard": null,
+      "endText": null,
+      "seconds": null,
+      "secondsValue": null,
+      "lookNote": null
     }
   },
   "storyProjects": {
@@ -2243,11 +2260,17 @@
       "stop": "정지",
       "timeOf": "{current} / {total}",
       "zoomIn": "확대",
-      "zoomOut": "축소"
+      "zoomOut": "축소",
+      "loadingCut": null
     },
     "emptyShots": "아직 믹스할 것이 없습니다. 먼저 스토리보드 탭에서 샷을 만드세요.",
     "openInStoryboard": "스토리보드에서 열기",
-    "openStoryboard": "스토리보드 열기"
+    "openStoryboard": "스토리보드 열기",
+    "source": {
+      "label": null,
+      "cut": null,
+      "render": null
+    }
   },
   "aiLabel": {
     "forced": "이 프로젝트는 복제한 음성을 사용하므로 AI 태그가 항상 기록됩니다.",

@@ -44,3 +44,73 @@
   margin: 0;
   border-radius: 0;
 }
+
+/* Export tab: the brand on the film. */
+.brand-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: var(--panel-gap);
+  border-top: 1px solid var(--border);
+}
+.brand-cards__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.brand-cards__head h4 {
+  margin: 0;
+}
+.brand-cards__options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.brand-cards__card-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+}
+.brand-cards__card-row .check-row {
+  min-width: 13rem;
+}
+.brand-cards__text {
+  flex: 1 1 14rem;
+  min-width: 0;
+  max-width: 28rem;
+}
+.brand-cards__seconds {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.brand-cards__select {
+  width: auto;
+}
+.brand-cards__sample {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.brand-cards__swatch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 160px;
+  max-width: 100%;
+  aspect-ratio: 16 / 9;
+  padding: 6px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 6px);
+  font-size: 0.9rem;
+  text-align: center;
+}

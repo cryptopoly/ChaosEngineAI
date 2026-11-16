@@ -1752,7 +1752,10 @@
       "missingNote": null,
       "draftNote": null,
       "failed": null,
-      "noSound": null
+      "noSound": null,
+      "titleCard": null,
+      "endCard": null,
+      "legendCard": null
     },
     "captions": {
       "toggle": null,
@@ -2016,6 +2019,20 @@
       "usedPicturesHint": null,
       "usedWords": null,
       "usedWordsHint": null
+    },
+    "brandFilm": {
+      "title": null,
+      "editKit": null,
+      "noLogo": null,
+      "logo": null,
+      "logoNone": null,
+      "titleCard": null,
+      "titleText": null,
+      "endCard": null,
+      "endText": null,
+      "seconds": null,
+      "secondsValue": null,
+      "lookNote": null
     }
   },
   "storyProjects": {
@@ -2243,11 +2260,17 @@
       "stop": "停止",
       "timeOf": "{current} / {total}",
       "zoomIn": "放大",
-      "zoomOut": "缩小"
+      "zoomOut": "缩小",
+      "loadingCut": null
     },
     "emptyShots": "还没有可混音的内容。请先在故事板标签页中制作镜头。",
     "openInStoryboard": "在故事板中打开",
-    "openStoryboard": "打开故事板"
+    "openStoryboard": "打开故事板",
+    "source": {
+      "label": null,
+      "cut": null,
+      "render": null
+    }
   },
   "aiLabel": {
     "forced": "此项目使用了克隆声音，因此始终会写入 AI 标签。",

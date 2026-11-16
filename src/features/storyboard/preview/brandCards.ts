@@ -91,3 +91,9 @@ export function brandOnFilm(project: StoryboardProject): BrandOnFilm {
     look: cardLook(project),
   };
 }
+
+/** Seconds the cards add to the exported film (0 with no card). */
+export function brandSeconds(project: StoryboardProject): number {
+  const settings = project.export;
+  return (settings.titleCard ? cardSeconds(project) : 0) + (settings.endCard ? cardSeconds(project) : 0);
+}

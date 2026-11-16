@@ -8,8 +8,10 @@ export interface TransportProps {
   timeS: number;
   durationS: number;
   loop: boolean;
-  /** False until a preview has been rendered: there is nothing to play yet. */
+  /** False while there is nothing to play yet. */
   canPlay: boolean;
+  /** Why Play is off (default: render a preview). */
+  disabledHint?: string;
   canZoomIn: boolean;
   canZoomOut: boolean;
   onPlay: () => void;
@@ -39,7 +41,7 @@ export function Transport(props: TransportProps) {
         className="secondary-button transport__button"
         disabled={!canPlay}
         aria-label={playLabel}
-        title={canPlay ? playLabel : t("mixer.transport.needPreview", { defaultValue: "Render a preview to play the film." })}
+        title={canPlay ? playLabel : props.disabledHint ?? t("mixer.transport.needPreview", { defaultValue: "Render a preview to play the film." })}
         onClick={props.onPlay}
       >
         {playing ? <PauseIcon /> : <PlayIcon />}

@@ -343,7 +343,11 @@ describe("MixerTab (a tab of the project shell)", () => {
     const html = render(story());
     expect(html).toContain("8 s · 16:9 · preview 640 × 360");
     expect(html).toContain("Render preview");
-    expect(html).toContain("No preview yet.");
+    // The stage plays the rough cut from the takes (no render needed); it loads them first, then Play is on.
+    expect(html).toContain("rough-cut__stage");
+    expect(html).toContain("Loading the film: 0 of 3 files");
+    expect(html).toContain("Loading the takes to play the film");
+    expect(html).not.toContain("Rendered preview"); // the switch shows once a preview exists
     expect(html).toContain("Select a clip on the timeline to edit its sound.");
     expect(html).toContain("Open in Storyboard");
     expect(html).toContain("Transitions shorten the film by their length; the ruler shows the real total.");

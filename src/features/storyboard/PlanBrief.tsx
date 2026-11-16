@@ -13,6 +13,7 @@ import { PaletteSwatches } from "./PaletteSwatches";
 import { MAX_PICTURES, picturesFrom } from "./pickerLogic";
 import { LENGTH_CHOICES, SHOT_COUNT_CHOICES, lengthLabel, planOf, projectPalette, styleWithRoom, stylesOf } from "./planLogic";
 import { PlanSuggestion } from "./PlanSuggestion";
+import { songLength } from "./song/songLogic";
 import { ProjectImage } from "./ProjectMedia";
 import { ReferenceImagePicker } from "./ReferenceImagePicker";
 import type { UseStoryboardResult } from "./useStoryboard";
@@ -106,6 +107,10 @@ export function PlanBrief({ story, project, imageGallery, canPropose, proposing,
     return t("board.plan.length.minutesSeconds", { defaultValue: "{m} min {s} s", m: minutes, s: rest });
   };
   const trimmed = brief.trim();
+  // An attached song and the Length disagree (15 s chosen, a 64 s song): offer the song's length (S-O).
+  const songSeconds = songLength(project.song?.seconds);
+  const songDiffers = songSeconds !== null && plan.filmSeconds !== null && Math.abs(plan.filmSeconds - songSeconds) >= 1;
+  const customLength = plan.filmSeconds !== null && !(LENGTH_CHOICES as readonly number[]).includes(plan.filmSeconds);
 
   return (
     <section className="plan-brief" aria-labelledby="plan-brief-title">
@@ -158,7 +163,19 @@ export function PlanBrief({ story, project, imageGallery, canPropose, proposing,
                 {lengthText(seconds)}
               </button>
             ))}
+            {customLength && plan.filmSeconds !== null ? (
+              <span className="plan-chip is-active">{lengthText(Math.round(plan.filmSeconds))}</span>
+            ) : null}
           </div>
+          {songDiffers && songSeconds !== null ? (
+            <p className="plan-brief__song-length muted-text">
+              {t("board.plan.length.songDiffers", { defaultValue: "The song runs {length}.", length: lengthText(songSeconds) })}{" "}
+              {/* Not disabled while busy: the op queue runs it after the brief's blur-save (busyGate.ts). */}
+              <button type="button" className="plan-link" onClick={() => setLength(songSeconds)}>
+                {t("board.plan.length.useSong", { defaultValue: "Use the song's length" })}
+              </button>
+            </p>
+          ) : null}
         </div>
         <label className="plan-brief__option">
           <span className="plan-brief__option-label">{t("board.plan.count.label", { defaultValue: "Shots" })}</span>

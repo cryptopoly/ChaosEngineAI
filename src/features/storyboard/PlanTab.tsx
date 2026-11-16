@@ -17,7 +17,7 @@ import { PlanDirection } from "./PlanDirection";
 import { planOf, stylesOf } from "./planLogic";
 import { PlanModelBar, type ChatModelChoice } from "./PlanModelBar";
 import { PlanProposal } from "./PlanProposal";
-import { PlanShotRow } from "./PlanShotRow";
+import { PlanShotList } from "./PlanShotList";
 import { SongPanel } from "./song/SongPanel";
 import type { ProjectTabId } from "./projectRoute";
 import { failureOf, useElapsed, usePlanStatus } from "./usePlan";
@@ -177,19 +177,7 @@ export function PlanTab({ story, project, imageGallery, chat, onTab }: PlanTabPr
               {t("board.plan.shots.empty", { defaultValue: "No shots yet. Write a brief and propose shots, or add them one by one in Storyboard." })}
             </p>
           ) : (
-            <ol className="plan-shots__list">
-              {project.shots.map((shot, index) => (
-                <PlanShotRow
-                  key={shot.id}
-                  story={story}
-                  projectId={project.id}
-                  shot={shot}
-                  number={index + 1}
-                  canAsk={canAsk}
-                  onModelMissing={showModelMissing}
-                />
-              ))}
-            </ol>
+            <PlanShotList story={story} project={project} canAsk={canAsk} onModelMissing={showModelMissing} />
           )}
         </section>
       </div>

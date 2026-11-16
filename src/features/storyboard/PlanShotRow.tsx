@@ -10,6 +10,7 @@ import type { StoryboardShot } from "../../types";
 import { takeStyle } from "./planLogic";
 import { PlanReworkChat } from "./PlanReworkChat";
 import type { UseStoryboardResult } from "./useStoryboard";
+import { useCardTabStops } from "./useCardTabStops";
 import { useRework } from "./useRework";
 import { useUnsavedText } from "./useUnsavedText";
 
@@ -19,11 +20,15 @@ export interface PlanShotRowProps {
   shot: StoryboardShot;
   number: number;
   canAsk: boolean;
+  /** The row that is the list's one Tab stop (PlanShotList); the others' fields leave the Tab order. Default true. */
+  tabbable?: boolean;
   onModelMissing: () => void;
 }
 
-export function PlanShotRow({ story, projectId, shot, number, canAsk, onModelMissing }: PlanShotRowProps) {
+export function PlanShotRow({ story, projectId, shot, number, canAsk, tabbable = true, onModelMissing }: PlanShotRowProps) {
   const { t } = useTranslation("studio");
+  const rowRef = useRef<HTMLLIElement>(null);
+  useCardTabStops(rowRef, tabbable);
   const [fields, setFields] = useState({ title: shot.title, stillPrompt: shot.stillPrompt, motionPrompt: shot.motionPrompt, seconds: String(shot.seconds) });
   const saved = useRef({ title: shot.title, stillPrompt: shot.stillPrompt, motionPrompt: shot.motionPrompt, seconds: shot.seconds });
   useEffect(() => {
@@ -83,11 +88,17 @@ export function PlanShotRow({ story, projectId, shot, number, canAsk, onModelMis
   const lastSuggestion = rework.waiting;
 
   return (
-    <li className={`plan-shot${open ? " is-open" : ""}${shot.locked ? " is-locked" : ""}`} aria-labelledby={`${rowId}-label`}>
+    <li
+      ref={rowRef}
+      className={`plan-shot${open ? " is-open" : ""}${shot.locked ? " is-locked" : ""}`}
+      data-plan-shot-id={shot.id}
+      tabIndex={tabbable ? 0 : -1}
+      // The number is drawn aria-hidden and the title is a field: name the row "Shot 3 · Title" for a screen reader.
+      aria-label={shot.title ? `${t("board.shot.untitled", { defaultValue: "Shot {n}", n: number })} · ${shot.title}` : t("board.shot.untitled", { defaultValue: "Shot {n}", n: number })}
+    >
       <span className="plan-number" aria-hidden="true">{number}</span>
       <div className="plan-shot__main">
         <div className="plan-shot__top">
-          <span id={`${rowId}-label`} className="sr-only">{t("board.shot.untitled", { defaultValue: "Shot {n}", n: number })}</span>
           <input
             className="text-input plan-shot__title"
             value={fields.title}

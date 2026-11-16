@@ -272,7 +272,8 @@ export async function exportStoryboardOtio(projectId: string): Promise<{ file: s
   return await request("POST", `${base(projectId)}/otio`);
 }
 
-export async function getStoryboardRender(projectId: string): Promise<{ render: StoryboardRenderJob | null }> {
+/** `hasPreview`: exports/preview.mp4 is there (absent from an older backend). */
+export async function getStoryboardRender(projectId: string): Promise<{ render: StoryboardRenderJob | null; hasPreview?: boolean }> {
   return await request("GET", `${base(projectId)}/render`, undefined, 15000);
 }
 

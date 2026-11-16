@@ -14,6 +14,7 @@ import { CutPlanReview } from "./CutPlanReview";
 import { SongAttach } from "./SongAttach";
 import { SongLyrics } from "./SongLyrics";
 import { SongRuler } from "./SongRuler";
+import { totalSeconds } from "../planLogic";
 import { clock, relabel } from "./songLogic";
 import "./song.css";
 
@@ -128,7 +129,14 @@ export function SongPanel({ story, project }: { story: UseStoryboardResult; proj
           <div ref={review}>
             {plan ? <CutPlanReview plan={plan} project={project} busy={story.busy} onUse={() => void use()} onDiscard={() => setPlan(null)} /> : null}
           </div>
-          <SongLyrics story={story} song={song} projectId={project.id} />
+          <SongLyrics
+            story={story}
+            song={song}
+            projectId={project.id}
+            filmSeconds={totalSeconds(project.shots)}
+            onCutPlan={() => void cut()}
+            cutDisabled={working !== null}
+          />
         </>
       )}
       {problem ? <p className="plan-error" role="alert">{problem}</p> : null}

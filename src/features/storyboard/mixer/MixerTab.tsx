@@ -170,9 +170,12 @@ export function MixerTab({ story, project, timeline, dataDirectory, onOpenShot, 
     setZoomIndex(fitZoomIndex(total, width));
   }, [total]);
 
-  // The preview file: load it when a render finishes, and once on arrival if one is already there.
-  // A failed refetch keeps the preview that is already showing.
+  // The preview file: load it when a render finishes, and once on arrival if one is already there (the render
+  // status says so; a project never rendered asks for nothing). A failed refetch keeps the preview already showing.
+  // `hasPreview` is optional on the render result (test doubles leave it out): absent reads as "may be there".
+  const previewMissing = render.hasPreview !== undefined && render.hasPreview !== true && render.previewVersion === 0;
   useEffect(() => {
+    if (previewMissing) return;
     let cancelled = false;
     fetchStoryboardFileBlobUrl(project.id, PREVIEW_FILE)
       .then((url) => {
@@ -185,7 +188,7 @@ export function MixerTab({ story, project, timeline, dataDirectory, onOpenShot, 
     return () => {
       cancelled = true;
     };
-  }, [project.id, render.previewVersion]);
+  }, [project.id, render.previewVersion, previewMissing]);
 
   // This screen owns the blob URLs it made: one is released once the player has moved on from it.
   useEffect(() => {

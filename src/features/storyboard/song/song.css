@@ -185,6 +185,17 @@ button.song-ruler__label:focus-visible {
   align-items: center;
   gap: 6px;
 }
+.song-lyrics__longer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+.song-lyrics__longer p {
+  margin: 0;
+  flex: 1 1 16rem;
+  min-width: 0;
+}
 .song-lyrics__done p {
   margin: 0;
 }

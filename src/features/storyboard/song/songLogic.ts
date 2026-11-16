@@ -6,6 +6,17 @@
 import type { StoryboardCutPlan, StoryboardPlannedShot, StoryboardSongSection } from "../../../types";
 
 /** "3:05" for 185 s; "0:04" for 4.2 s. */
+/** True when the song runs past the film by more than a second (the film: the shots' seconds added up). */
+export function songLonger(songSeconds: number, filmSeconds: number | undefined): boolean {
+  return filmSeconds !== undefined && songSeconds > filmSeconds + 1;
+}
+
+/** The song's length as a Length value (`set_plan` takes 5 to 600 s), or null when it is too short to be one. */
+export function songLength(songSeconds: number | null | undefined): number | null {
+  if (!songSeconds || songSeconds < 5) return null;
+  return Math.min(600, Math.round(songSeconds));
+}
+
 export function clock(seconds: number): string {
   const total = Math.max(0, Math.round(seconds));
   const m = Math.floor(total / 60);

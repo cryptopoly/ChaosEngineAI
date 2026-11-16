@@ -15969,6 +15969,11 @@ select.music-library__select {
   background: var(--accent);
   transition: width 0.2s ease;
 }
+@media (prefers-reduced-motion: reduce) {
+  .rough-cut__loading-bar span {
+    transition: none;
+  }
+}
 .rough-cut__transport {
   display: flex;
   flex-wrap: wrap;

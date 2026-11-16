@@ -83,6 +83,9 @@ export function ShotCard(props: ShotCardProps) {
   // Every way to make this shot again lives in the menu, next to each other (S6, S11): the card keeps one
   // pass action (Keep for final) so the row fits one line.
   const redoItems = [
+    ...(shot.takes.length > 1
+      ? [{ id: "compare", label: t("board.compare.open", { defaultValue: "Compare takes" }), onSelect: () => setComparing(true) }]
+      : []),
     {
       id: "new-take",
       label: shot.redo
@@ -91,9 +94,6 @@ export function ShotCard(props: ShotCardProps) {
       onSelect: props.onToggleRedo,
       disabled,
     },
-    ...(shot.takes.length > 1
-      ? [{ id: "compare", label: t("board.compare.open", { defaultValue: "Compare takes" }), onSelect: () => setComparing(true) }]
-      : []),
     ...(props.onRedoClip && canRedoClip(shot)
       ? [{ id: "redo-clip", label: t("board.remake.clip", { defaultValue: "Redo clip only" }), onSelect: props.onRedoClip, disabled }]
       : []),

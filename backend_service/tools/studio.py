@@ -179,7 +179,7 @@ def _storyboard_problem(name: str, args: dict[str, Any], check_revision: bool) -
     try:
         batch = Batch(store, project.id, str(args.get("what") or "both"), make_still=lambda s, p: None,
                       make_clip=lambda s, p, i: None, shot_ids=list(args["shot_ids"]) if "shot_ids" in args else None,
-                      force=bool(args.get("force")))
+                      force=bool(args.get("force")), draft=bool(args.get("draft")))
         steps = batch.plan(project)
     except BatchRefused as exc:
         return str(exc)

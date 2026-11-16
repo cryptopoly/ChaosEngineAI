@@ -150,7 +150,8 @@ def build_batch(request: Request, project_id: str, what: str, shot_ids: list[str
     batch.unload, batch.last_frame, batch.stop_running = wiring["unload"], wiring["last_frame"], wiring["stop_running"]
     batch.clip_image_refusal = wiring.get("clip_image_refusal")
     # Name the project's models so the first step of each kind shows a time left before any step has finished.
-    batch.use_models(final_image or image, video)
+    # A draft batch prices its stills with the draft (fast) model, not the project's slow one (S-N).
+    batch.use_models(final_image or (draft_image if draft and draft_image else image), video)
     return batch
 
 

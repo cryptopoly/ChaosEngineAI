@@ -361,9 +361,11 @@ class Batch:
                 try:
                     from backend_service.storyboard.estimate import estimate
 
+                    draft = self._pass(shot_id) == "draft"
                     got = estimate(
                         self.store.load(self.project_id), self.store.folder(self.project_id), what=kind,
                         shot_ids=[shot_id], image_variant=self._variants[0], video_variant=self._variants[1], missing=[],
+                        render_pass="draft" if draft else "final", sizes=self.draft_sizes if draft else None,
                     )
                     if isinstance(got.get("seconds"), (int, float)) and got["seconds"] > 0:
                         price = (float(got["seconds"]), "clips" if got.get("basis") == "measured" else "catalog")

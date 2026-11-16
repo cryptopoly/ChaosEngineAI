@@ -84,6 +84,12 @@ def studio_generators(request: Any, batch_id: str, folder: Path) -> dict[str, Ca
         except HTTPException as exc:
             raise _readable(exc) from exc
         art = result["artifacts"][0]
+        if str(art.get("imagePath") or "").lower().endswith(".svg"):
+            # The image runtime fell back to its placeholder picture (the engine could not run): say so, instead of
+            # the media check's later "'.svg' is not a image file".
+            note = str(art.get("runtimeNote") or "").strip()
+            name = variant.get("name") or variant.get("id")
+            raise RuntimeError(f"{name} could not run here, so no still was made." + (f" {note}" if note else ""))
         info = {"model": art.get("modelName") or variant.get("name"), "seed": art.get("seed"),
                 "steps": body.steps, "width": art.get("width"), "height": art.get("height")}
         if style_mode != "none":

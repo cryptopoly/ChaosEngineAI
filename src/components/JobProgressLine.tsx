@@ -52,7 +52,7 @@ export function JobProgressLine({
   if (eta !== null && running) {
     const key = facts.etaBasis === "clips" ? "etaClips" : facts.etaBasis === "catalog" ? "etaCatalog" : "eta";
     const fallback =
-      key === "etaClips" ? "about {eta} left (from the clips made so far)"
+      key === "etaClips" ? "about {eta} left (timed on this machine)"
       : key === "etaCatalog" ? "about {eta} left (estimated for this model)"
       : "about {eta} left";
     parts.push(t(`studioChat.job.${key}`, { eta: formatDuration(eta, locale), defaultValue: fallback }));

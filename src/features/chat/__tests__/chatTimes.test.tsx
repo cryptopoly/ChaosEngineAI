@@ -98,7 +98,7 @@ describe("ToolCallCard timing", () => {
     );
     expect(html).toContain("clip 2 of 4");
     expect(html).toContain("about ");
-    expect(html).toContain("(from the clips made so far)");
+    expect(html).toContain("(timed on this machine)");
   });
 });
 
@@ -150,7 +150,7 @@ describe("storyboard batch progress", () => {
     );
     expect(html).toContain("clip 2 of 4");
     expect(html).toContain("6 min 9 sec elapsed");
-    expect(html).toContain("about 12 min 18 sec left (from the clips made so far)");
+    expect(html).toContain("about 12 min 18 sec left (timed on this machine)");
     expect(html).not.toContain("step 6 of 8");
   });
 

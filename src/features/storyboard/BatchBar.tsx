@@ -30,7 +30,7 @@ export function BatchBar({
   onCancel,
 }: {
   batch: StoryboardBatchRecord;
-  /** Live progress from the backend: "clip 2 of 4", elapsed, time left from the clips made so far. */
+  /** Live progress from the backend: "clip 2 of 4", elapsed, time left timed on this machine. */
   progress?: JobProgress | null;
   onCancel: () => void;
 }) {

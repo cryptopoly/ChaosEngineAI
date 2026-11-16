@@ -12326,6 +12326,11 @@ button.licence-chip:focus-visible {
 .transition-picker select {
   padding: 6px 8px;
 }
+/* On a shot card the picker shares one row with Lock, Keep for final and the menu. */
+.shot-card__actions .transition-picker select {
+  padding: 5px 4px;
+  font-size: 0.85rem;
+}
 .transition-picker__seconds {
   display: inline-flex;
   align-items: center;

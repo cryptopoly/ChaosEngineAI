@@ -483,7 +483,7 @@
       "startedAt": "started {time}",
       "elapsed": "{elapsed} elapsed",
       "eta": "about {eta} left",
-      "etaClips": "about {eta} left (from the clips made so far)",
+      "etaClips": "about {eta} left (timed on this machine)",
       "etaCatalog": "about {eta} left (estimated for this model)",
       "stepOf": "step {step} of {total}",
       "tookFor": "took {elapsed}",

@@ -178,6 +178,7 @@ export function ShotCard(props: ShotCardProps) {
           className="shot-card__title"
           type="text"
           value={title}
+          title={title || undefined}
           maxLength={200}
           placeholder={t("board.shot.untitled", { defaultValue: "Shot {n}", n: number })}
           aria-label={t("board.shot.titleLabel", { defaultValue: "Shot {n} title", n: number })}
@@ -226,7 +227,7 @@ export function ShotCard(props: ShotCardProps) {
           ) : thumb ? (
             <>
               {thumb.kind === "still" ? (
-                <ProjectImage projectId={projectId} rel={thumb.path} version={take?.hashes.still} className="shot-card__thumb" />
+                <ProjectImage projectId={projectId} rel={thumb.path} version={take?.hashes.still} className="shot-card__thumb" thumb={512} />
               ) : (
                 <ProjectVideo projectId={projectId} rel={thumb.path} version={take?.hashes.clip} className="shot-card__thumb" />
               )}

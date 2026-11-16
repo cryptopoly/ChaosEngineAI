@@ -61,7 +61,9 @@
     "cacheStrategyTensorfoldNote": "(TensorFold 自行管理 KV 快取)",
     "moreInfo": "更多資訊",
     "requiresLabel": "需要:",
-    "installLabel": "安裝:"
+    "installLabel": "安裝:",
+    "kvCacheTypeGguf": null,
+    "kvCacheTypeGgufHint": null
   },
   "notes": {
     "binaryRequired": "需要 {binary}。",

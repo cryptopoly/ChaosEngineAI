@@ -61,7 +61,9 @@
     "cacheStrategyTensorfoldNote": "(TensorFold가 자체 KV cache를 관리합니다)",
     "moreInfo": "자세한 정보",
     "requiresLabel": "필요:",
-    "installLabel": "설치:"
+    "installLabel": "설치:",
+    "kvCacheTypeGguf": null,
+    "kvCacheTypeGgufHint": null
   },
   "notes": {
     "binaryRequired": "{binary}가 필요합니다.",

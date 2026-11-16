@@ -61,7 +61,9 @@
     "cacheStrategyTensorfoldNote": "(TensorFold manages its own KV cache)",
     "moreInfo": "More info",
     "requiresLabel": "Requires:",
-    "installLabel": "Install:"
+    "installLabel": "Install:",
+    "kvCacheTypeGguf": "KV cache type",
+    "kvCacheTypeGgufHint": "q8_0 holds the KV cache in about half the memory of f16, q4_0 in about a quarter. Decode is a little slower."
   },
   "notes": {
     "binaryRequired": "Requires {binary}.",

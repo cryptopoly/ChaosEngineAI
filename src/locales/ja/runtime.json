@@ -61,7 +61,9 @@
     "cacheStrategyTensorfoldNote": "(TensorFold は独自の KV キャッシュを管理します)",
     "moreInfo": "詳細情報",
     "requiresLabel": "必須:",
-    "installLabel": "インストール:"
+    "installLabel": "インストール:",
+    "kvCacheTypeGguf": null,
+    "kvCacheTypeGgufHint": null
   },
   "notes": {
     "binaryRequired": "{binary} が必要です。",

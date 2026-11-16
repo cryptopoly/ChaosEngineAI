@@ -90,5 +90,27 @@ class MalformedPlanReplyTests(StoreCase):
             self.assertEqual(caught.exception.code, "bad-reply")
 
 
+class NonAsciiExportNameTests(StoreCase):
+    def test_a_bundle_of_a_project_with_a_non_ascii_name_can_be_fetched(self):
+        """A Japanese or accented project name (the sample film is named in the user's language) made a bundle
+        file the files route refused with 404, so the export could not be downloaded."""
+        from fastapi.testclient import TestClient
+
+        from backend_service.app import create_app
+
+        client = TestClient(create_app(api_token="app-token"))
+        headers = {"Authorization": "Bearer app-token"}
+        for name in ("灯台の夜", "Café crème", "Ein Fluss · Größe"):
+            created = client.post("/api/storyboard/projects", json={"name": name}, headers=headers).json()
+            pid = created["project"]["id"]
+            bundle = client.post(f"/api/storyboard/projects/{pid}/bundle", headers=headers).json()
+            got = client.get(f"/api/storyboard/projects/{pid}/files", params={"path": bundle["file"]}, headers=headers)
+            self.assertEqual(got.status_code, 200, (name, bundle["file"], got.text))
+            self.assertEqual(len(got.content), bundle["bytes"])
+        for bad in ("exports/../project.json", "exports/.hidden", "exports/a/b.mp4", "exports/a\\b.mp4", "exports/"):
+            got = client.get(f"/api/storyboard/projects/{pid}/files", params={"path": bad}, headers=headers)
+            self.assertEqual(got.status_code, 404, bad)
+
+
 if __name__ == "__main__":
     unittest.main()

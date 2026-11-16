@@ -21,7 +21,8 @@ from backend_service.storyboard import store as store_module
 from backend_service.storyboard.models import Line, dump
 
 router = APIRouter()
-_EXPORT_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,120}$")
+# Letters and digits of any script (a bundle is named after the project: "灯台", "Café"), dots and dashes; no separators.
+_EXPORT_NAME_RE = re.compile(r"^[^\W_][\w.-]{0,120}$")
 
 
 class _Body(BaseModel):

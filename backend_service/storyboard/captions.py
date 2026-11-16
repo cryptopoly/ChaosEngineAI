@@ -199,9 +199,9 @@ def _field(look: Any, *names: str) -> Any:
 
 
 def _project_look(project: Any) -> Any:
-    """The project's own caption look (the brand kit, S15), or None while a project has none."""
+    """The project's own caption look (the brand kit, S15, keeps it at ``brand.captions``), or None while a project has none."""
     for holder in (getattr(project, "brand", None), getattr(project, "export", None)):
-        look = _field(holder, "captionLook") if holder is not None else None
+        look = _field(holder, "captionLook", "captions") if holder is not None else None
         if look is not None:
             return look
     return None

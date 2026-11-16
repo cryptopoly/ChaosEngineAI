@@ -39,6 +39,17 @@ class LookTests(unittest.TestCase):
         look = captions.look_for(SimpleNamespace(brand=brand), "Hi", platform="darwin")
         self.assertEqual((look.position, look.size, look.colour, look.font), ("top", "large", "#FFD700", "Avenir Next"))
 
+    def test_the_brand_kit_caption_look_of_a_real_project_is_used(self):
+        """S15 stores the look at ``brand.captions`` (the Cast tab's Brand kit); the burn-in must read it there."""
+        from backend_service.storyboard.models import Brand, CaptionLook, Project
+
+        project = Project(id="0123456789abcdef", name="x",
+                          brand=Brand(captions=CaptionLook(font="Didot", colour="#ff8800", position="top")))
+        look = captions.look_for(project, "Hi", platform="darwin")
+        self.assertEqual((look.position, look.colour, look.font), ("top", "#FF8800", "Didot"))
+        default = captions.look_for(Project(id="0123456789abcdef", name="x"), "Hi", platform="darwin")
+        self.assertEqual((default.position, default.colour, default.font), ("bottom", "#FFFFFF", "Helvetica Neue"))
+
     def test_a_bad_project_look_falls_back_field_by_field(self):
         brand = SimpleNamespace(captionLook=SimpleNamespace(position="left", size="huge", color="red", font="Evil',x=1"))
         look = captions.look_for(SimpleNamespace(brand=brand), "Hi", platform="darwin")

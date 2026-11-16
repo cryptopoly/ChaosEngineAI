@@ -142,7 +142,12 @@ class ConfirmTests(GateCase):
     def test_only_the_app_window_can_confirm(self):
         from backend_service.mcp_bridge import access
 
-        with mock.patch.object(access, "token_ok", lambda token: token == "agent-token"):
+        # The gate's own 403 is what is under test, so the bearer middleware must not answer 401 first. A fresh
+        # data folder has requireApiAuth on (the default); the owner's Mac has it off. Pin it for this test.
+        with mock.patch.dict(os.environ, {"CHAOSENGINE_REQUIRE_AUTH": "0"}):
+            self.client = TestClient(create_app(api_token="app-token"))
+        with mock.patch.dict(os.environ, {"CHAOSENGINE_REQUIRE_AUTH": "0"}), \
+                mock.patch.object(access, "token_ok", lambda token: token == "agent-token"):
             self.confirm(code=403, headers={"Authorization": "Bearer agent-token"})
             response = self.client.post("/api/licence-gate/withdraw", json={"key": KEY},
                                         headers={"Authorization": "Bearer agent-token"})

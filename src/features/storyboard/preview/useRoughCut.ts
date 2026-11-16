@@ -113,8 +113,18 @@ async function pool<T>(items: T[], limit: number, work: (item: T) => Promise<voi
   await Promise.all(runners);
 }
 
-export function useRoughCut(projectId: string, cut: RoughCut): UseRoughCutResult {
-  const files = useMemo(() => mediaFiles(cut), [cut]);
+export interface RoughCutHooks {
+  /** Called when playing reaches the end of the film (the Mixer loops from here). */
+  onEnded?: () => void;
+}
+
+type FileJob = { rel: string; url: boolean; decode: boolean };
+type FileState = "pending" | "done" | "failed";
+
+export function useRoughCut(projectId: string, cut: RoughCut, hooks: RoughCutHooks = {}): UseRoughCutResult {
+  // The file list as a value: a new cut with the same files (an edit in the Mixer) fetches nothing again.
+  const filesKey = JSON.stringify(mediaFiles(cut));
+  const files = useMemo(() => JSON.parse(filesKey) as ReturnType<typeof mediaFiles>, [filesKey]);
   const totalFiles = files.videos.length + files.stills.length + files.audio.length;
   const [load, setLoad] = useState<RoughCutLoad>({ done: 0, total: totalFiles, failed: [] });
   const [ready, setReady] = useState(totalFiles === 0);
@@ -123,6 +133,9 @@ export function useRoughCut(projectId: string, cut: RoughCut): UseRoughCutResult
   const [drift, setDrift] = useState<DriftStats>(NO_DRIFT);
   const urls = useRef(new Map<string, string>());
   const buffers = useRef(new Map<string, AudioBuffer>());
+  const fileState = useRef(new Map<string, FileState>());
+  const wanted = useRef<FileJob[]>([]);
+  const mounted = useRef(true);
   const layers = useRef(new Map<string, HTMLElement>());
   const ctxRef = useRef<AudioContext | null>(null);
   const master = useRef<GainNode | null>(null);
@@ -131,6 +144,8 @@ export function useRoughCut(projectId: string, cut: RoughCut): UseRoughCutResult
   const timeRef = useRef(0);
   const readoutAt = useRef(0);
   const driftRef = useRef<{ samples: number[]; seeks: number }>({ samples: [], seeks: 0 });
+  const hooksRef = useRef(hooks);
+  hooksRef.current = hooks;
   const [, bump] = useState(0);
 
   // The audio context lives as long as the player.
@@ -149,53 +164,64 @@ export function useRoughCut(projectId: string, cut: RoughCut): UseRoughCutResult
     };
   }, []);
 
-  // Fetch every file once; decode the sound of clips and audio files.
+  // Object URLs and decoded sound live as long as the player.
   useEffect(() => {
-    let cancelled = false;
-    const made: string[] = [];
-    const failed: string[] = [];
-    let done = 0;
-    const jobs = [
+    mounted.current = true;
+    const madeUrls = urls.current;
+    const decoded = buffers.current;
+    const states = fileState.current;
+    return () => {
+      mounted.current = false;
+      madeUrls.forEach((url) => URL.revokeObjectURL(url));
+      madeUrls.clear();
+      decoded.clear();
+      states.clear();
+    };
+  }, []);
+
+  // Fetch every file the cut needs that is not here yet; decode the sound of clips and audio files.
+  useEffect(() => {
+    const jobs: FileJob[] = [
       ...files.videos.map((rel) => ({ rel, url: true, decode: true })),
       ...files.stills.map((rel) => ({ rel, url: true, decode: false })),
       ...files.audio.map((rel) => ({ rel, url: false, decode: true })),
     ];
-    void pool(jobs, 3, async (job) => {
+    wanted.current = jobs;
+    const report = () => {
+      if (!mounted.current) return;
+      const now = wanted.current;
+      const states = now.map((job) => fileState.current.get(job.rel) ?? "pending");
+      const done = states.filter((state) => state !== "pending").length;
+      setLoad({ done, total: now.length, failed: now.filter((_, i) => states[i] === "failed").map((job) => job.rel) });
+      setReady(done === now.length);
+    };
+    const fresh = jobs.filter((job) => !fileState.current.has(job.rel));
+    fresh.forEach((job) => fileState.current.set(job.rel, "pending"));
+    report();
+    if (!fresh.length) return;
+    void pool(fresh, 3, async (job) => {
+      let state: FileState = "done";
       try {
         const blob = await fetchProjectFile(projectId, job.rel);
-        if (cancelled) return;
-        if (job.url) {
-          const url = URL.createObjectURL(blob);
-          made.push(url);
-          urls.current.set(job.rel, url);
-        }
+        if (!mounted.current) return;
+        if (job.url) urls.current.set(job.rel, URL.createObjectURL(blob));
         const ctx = ctxRef.current;
         if (job.decode && ctx) {
           try {
             buffers.current.set(job.rel, await ctx.decodeAudioData(await blob.arrayBuffer()));
           } catch {
             // A clip with no sound track: its shot is silent, which is what the export does too.
-            if (!job.url) failed.push(job.rel);
+            if (!job.url) state = "failed";
           }
         }
       } catch {
-        failed.push(job.rel);
-      } finally {
-        done += 1;
-        if (!cancelled) setLoad({ done, total: jobs.length, failed: [...failed] });
+        state = "failed";
       }
+      fileState.current.set(job.rel, state);
+      report();
     }).then(() => {
-      if (!cancelled) {
-        setReady(true);
-        bump((n) => n + 1);
-      }
+      if (mounted.current) bump((n) => n + 1);
     });
-    return () => {
-      cancelled = true;
-      made.forEach((url) => URL.revokeObjectURL(url));
-      urls.current.clear();
-      buffers.current.clear();
-    };
   }, [projectId, files]);
 
   const latency = useCallback((): number => {
@@ -394,6 +420,7 @@ export function useRoughCut(projectId: string, cut: RoughCut): UseRoughCutResult
           pause();
           timeRef.current = cut.total;
           setTimeS(cut.total);
+          hooksRef.current.onEnded?.();
         } else {
           timeRef.current = heard;
           paint(seen, true);
@@ -418,6 +445,18 @@ export function useRoughCut(projectId: string, cut: RoughCut): UseRoughCutResult
       clearInterval(timer);
     };
   }, [ready, cut.total, clockNow, latency, paint, pause]);
+
+  // The film changed while it plays (an edit in the Mixer): carry on from here with the new cut.
+  const lastCut = useRef(cut);
+  useEffect(() => {
+    if (lastCut.current === cut) return;
+    lastCut.current = cut;
+    if (anchor.current) playFrom(Math.min(clockNow(), cut.total));
+    else {
+      timeRef.current = Math.min(timeRef.current, cut.total);
+      paint(timeRef.current, false);
+    }
+  }, [cut, clockNow, paint, playFrom]);
 
   // Stop the sound when the player goes away.
   useEffect(() => () => stopSounds(), [stopSounds]);

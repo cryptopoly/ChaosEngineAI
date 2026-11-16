@@ -1,0 +1,46 @@
+/* The brand kit in the rough cut (S15): cards and the corner logo, sized like the export draws them
+   (cards: text 9 % of the frame height, logo 22 %; corner logo 12 % of the height). */
+.rough-cut__brand-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4cqh;
+  padding: 0 8%;
+  text-align: center;
+}
+.rough-cut__brand-card-logo {
+  height: 22cqh;
+  width: auto;
+  max-width: 80%;
+  object-fit: contain;
+}
+.rough-cut__brand-card-text {
+  font-size: 9cqh;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+.rough-cut__brand-logo {
+  position: absolute;
+  height: 12cqh;
+  width: auto;
+  pointer-events: none;
+}
+.rough-cut__caption--top {
+  top: 7.6cqh;
+  bottom: auto;
+}
+.rough-cut__caption--middle {
+  top: 50%;
+  bottom: auto;
+  transform: translateY(-50%);
+}
+.rough-cut__marker--card {
+  background: color-mix(in srgb, var(--text) 18%, var(--panel));
+}
+.mixer__stage .rough-cut__stage {
+  width: auto;
+  height: 100%;
+  margin: 0;
+  border-radius: 0;
+}

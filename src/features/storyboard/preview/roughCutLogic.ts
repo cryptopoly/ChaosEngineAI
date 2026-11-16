@@ -11,10 +11,12 @@
  */
 import type { StoryboardProject, StoryboardTimeline } from "../../../types";
 import { captionRows } from "../mixer/mixerLogic";
+import { brandOnFilm, type BrandOnFilm, type CardWhich } from "./brandCards";
 
 export type PieceMedia =
   | { kind: "clip"; clip: string; still: string | null }
   | { kind: "still"; still: string }
+  | { kind: "card"; which: CardWhich; text: string }
   | { kind: "none" };
 
 /** One shot on the rough cut. Times are film seconds. */
@@ -74,6 +76,37 @@ export interface RoughCut {
   missing: number;
   /** Shots whose active take is a draft. */
   drafts: number;
+  /** The brand kit on the film (S15): cards and the corner logo; null when the cut leaves them out (the Mixer). */
+  brand: BrandOnFilm | null;
+  /** Film seconds before the first shot (the title card), and where the last shot ends (the end card starts). */
+  lead: number;
+  shotsEnd: number;
+}
+
+export interface RoughCutOptions {
+  /** Add the title and end cards and the corner logo, as the export does (default true). The Mixer leaves them
+   * out, so its playhead stays on the timeline it draws. */
+  brand?: boolean;
+}
+
+function cardPiece(which: CardWhich, text: string, start: number, seconds: number): CutPiece {
+  return {
+    shotId: `card:${which}`,
+    index: -1,
+    title: text,
+    start,
+    end: start + seconds,
+    duration: seconds,
+    sourceIn: 0,
+    speed: 1,
+    fadeIn: 0,
+    media: { kind: "card", which, text },
+    draft: false,
+  };
+}
+
+export function isCard(piece: CutPiece): boolean {
+  return piece.media.kind === "card";
 }
 
 /** How far a ducked sound drops under a voice line (about -12 dB, close to the export's compressor). */
@@ -84,7 +117,9 @@ export function dbToGain(db: number): number {
   return Math.pow(10, db / 20);
 }
 
-export function buildRoughCut(project: StoryboardProject, timeline: StoryboardTimeline): RoughCut {
+export function buildRoughCut(project: StoryboardProject, timeline: StoryboardTimeline, options: RoughCutOptions = {}): RoughCut {
+  const brand = options.brand === false ? null : brandOnFilm(project);
+  const lead = brand?.title?.seconds ?? 0;
   const shots = new Map(project.shots.map((shot, index) => [shot.id, { shot, index }]));
   const pieces: CutPiece[] = [];
   const sounds: CutSound[] = [];
@@ -100,8 +135,8 @@ export function buildRoughCut(project: StoryboardProject, timeline: StoryboardTi
       shotId: shot.id,
       index,
       title: shot.title,
-      start: span.start,
-      end: span.end,
+      start: span.start + lead,
+      end: span.end + lead,
       duration: span.duration,
       sourceIn: span.source_in,
       speed: shot.speed || 1,
@@ -136,7 +171,7 @@ export function buildRoughCut(project: StoryboardProject, timeline: StoryboardTi
       id: clip.id,
       kind: clip.kind,
       path: clip.source.path,
-      start: span.start,
+      start: span.start + lead,
       duration: span.duration,
       offset: span.trim_in,
       rate: 1,
@@ -151,14 +186,24 @@ export function buildRoughCut(project: StoryboardProject, timeline: StoryboardTi
   if (!sounds.some((s) => s.kind === "voice")) sounds.forEach((s) => (s.duck = false));
   const captions = captionRows(project, timeline)
     .filter((row) => row.start !== null && row.end !== null && (row.end as number) > (row.start as number))
-    .map((row) => ({ start: row.start as number, end: row.end as number, text: row.text }));
+    .map((row) => ({ start: (row.start as number) + lead, end: (row.end as number) + lead, text: row.text }));
+  const missing = pieces.filter((p) => p.media.kind !== "clip").length;
+  const shotsEnd = lead + timeline.total;
+  const all = [
+    ...(brand?.title ? [cardPiece("title", brand.title.text, 0, brand.title.seconds)] : []),
+    ...pieces,
+    ...(brand?.end ? [cardPiece("end", brand.end.text, shotsEnd, brand.end.seconds)] : []),
+  ];
   return {
-    total: timeline.total,
-    pieces,
+    total: shotsEnd + (brand?.end?.seconds ?? 0),
+    pieces: all,
     sounds,
     captions,
-    missing: pieces.filter((p) => p.media.kind !== "clip").length,
+    missing,
     drafts: pieces.filter((p) => p.draft).length,
+    brand,
+    lead,
+    shotsEnd,
   };
 }
 
@@ -314,7 +359,7 @@ export function previewKeyAction(key: string, shift: boolean): PreviewKeyAction 
   }
 }
 
-export type MarkerState = "clip" | "draft" | "still" | "none";
+export type MarkerState = "clip" | "draft" | "still" | "card" | "none";
 
 export interface CutMarker {
   shotId: string;
@@ -326,6 +371,13 @@ export interface CutMarker {
   state: MarkerState;
 }
 
+/** Whether the corner logo is on screen at `t`: over the shots, never over the cards (as the export draws it). */
+export function logoVisibleAt(cut: RoughCut, t: number): boolean {
+  if (!cut.brand?.logo) return false;
+  const cards = cut.brand.title !== null || cut.brand.end !== null;
+  return !cards || (t >= cut.lead && t <= cut.shotsEnd);
+}
+
 /** The scrubber's shot segments, each marked by what it will show. */
 export function cutMarkers(cut: RoughCut): CutMarker[] {
   const total = cut.total > 0 ? cut.total : 1;
@@ -335,7 +387,11 @@ export function cutMarkers(cut: RoughCut): CutMarker[] {
     start: piece.start,
     left: (piece.start / total) * 100,
     width: (Math.max(0, piece.end - piece.start) / total) * 100,
-    state: piece.draft ? "draft" : piece.media.kind === "clip" ? "clip" : piece.media.kind === "still" ? "still" : "none",
+    state: piece.draft
+      ? "draft"
+      : piece.media.kind === "clip" || piece.media.kind === "still" || piece.media.kind === "card"
+        ? piece.media.kind
+        : "none",
   }));
 }
 
@@ -347,6 +403,7 @@ export function mediaFiles(cut: RoughCut): { videos: string[]; stills: string[];
     if (piece.media.kind === "clip") videos.add(piece.media.clip);
     if (piece.media.kind === "still") stills.add(piece.media.still);
   }
+  for (const logo of [cut.brand?.logo, cut.brand?.cardLogo]) if (logo) stills.add(logo);
   const audio = new Set(cut.sounds.filter((s) => s.kind !== "native").map((s) => s.path));
   return { videos: [...videos], stills: [...stills], audio: [...audio] };
 }

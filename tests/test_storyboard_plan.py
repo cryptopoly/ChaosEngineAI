@@ -274,7 +274,7 @@ class PlannerTests(StoreCase):
         runtime = FakeRuntime(["<think>hmm</think>```json\n" + json.dumps(PROPOSAL) + "\n```"])
         out = planner.propose(fake_state(runtime), p, self.folder(p), p.plan.brief, 60, None)
         self.assertEqual(len(out["shots"]), 4)
-        self.assertEqual(out["shots"][2]["seconds"], 20.0)  # 99 clamped
+        self.assertEqual(out["shots"][2]["seconds"], 10.0)  # 99 clamped to what a clip model makes
         self.assertEqual(out["shots"][3]["seconds"], 4.0)  # unreadable: the default
         self.assertEqual(out["shots"][1]["seconds"], 6.0)
         self.assertEqual(out["model"], "Tiny Chat 1B")
@@ -389,6 +389,14 @@ class FontTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             (Path(tmp) / "junk.ttf").write_bytes(b"nope")
             self.assertEqual(fonts.installed_fonts([Path(tmp)]), [])
+
+
+
+class TakeStyleSettingTests(unittest.TestCase):
+    def test_batch_keeps_the_style_word_on_the_take(self):
+        from backend_service.storyboard.batch import _clean_settings
+
+        self.assertEqual(_clean_settings({"style": "words", "model": "x"})["style"], "words")
 
 
 if __name__ == "__main__":

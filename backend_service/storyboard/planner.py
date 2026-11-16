@@ -47,7 +47,7 @@ SYSTEM = (
     "- stillPrompt: one frame written for an image model: the subject, the setting, the light, the framing and the "
     "colours, in 1 to 3 concrete sentences. No camera moves, no on-screen text, no logos.\n"
     "- motionPrompt: one sentence: what moves in the shot and how the camera moves.\n"
-    "- seconds: between 2 and 10.\n"
+    "- seconds: between 2 and 10 (a clip is at most about 10 seconds; a longer film needs more shots).\n"
     "- Describe a character or place the same way in every shot it appears in, so it keeps its look.\n"
     "- Follow the visual style and palette when one is given.\n"
     "Answer with JSON only, no other text."
@@ -105,7 +105,7 @@ def _seconds(value: Any, default: float = 4.0) -> float:
         return default
     if number != number:  # NaN
         return default
-    return max(1.0, min(20.0, round(number * 2) / 2))
+    return max(1.0, min(10.0, round(number * 2) / 2))  # a clip model makes about 10 s at most
 
 
 def clean_shot(raw: Any) -> dict[str, Any] | None:
@@ -182,7 +182,8 @@ def shots_text(project: Project) -> str:
     for number, shot in enumerate(project.shots, 1):
         rows.append(f"Shot {number}: {shot.title or 'untitled'} ({shot.seconds:g} s){' [locked]' if shot.locked else ''}\n"
                     f"  still: {shot.stillPrompt or '-'}\n  motion: {shot.motionPrompt or '-'}")
-    return "Current shots:\n" + "\n".join(rows)
+    total = sum(shot.seconds for shot in project.shots)
+    return f"Current shots ({len(project.shots)}, {total:g} s in all):\n" + "\n".join(rows)
 
 
 def reference_pictures(project: Project, folder: Path, limit: int = MAX_IMAGES) -> list[str]:

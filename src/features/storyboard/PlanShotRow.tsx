@@ -31,11 +31,12 @@ export function PlanShotRow({ story, projectId, shot, number, canAsk, onModelMis
   useEffect(() => {
     // Take what the project now says (an Undo, a rework, the direction chat), but keep a field being typed in.
     const next = { title: shot.title, stillPrompt: shot.stillPrompt, motionPrompt: shot.motionPrompt, seconds: shot.seconds };
+    const before = saved.current; // read now: the updater below runs later, after `saved` has moved on
     setFields((current) => ({
-      title: current.title === saved.current.title ? next.title : current.title,
-      stillPrompt: current.stillPrompt === saved.current.stillPrompt ? next.stillPrompt : current.stillPrompt,
-      motionPrompt: current.motionPrompt === saved.current.motionPrompt ? next.motionPrompt : current.motionPrompt,
-      seconds: Number(current.seconds) === saved.current.seconds ? String(next.seconds) : current.seconds,
+      title: current.title === before.title ? next.title : current.title,
+      stillPrompt: current.stillPrompt === before.stillPrompt ? next.stillPrompt : current.stillPrompt,
+      motionPrompt: current.motionPrompt === before.motionPrompt ? next.motionPrompt : current.motionPrompt,
+      seconds: Number(current.seconds) === before.seconds ? String(next.seconds) : current.seconds,
     }));
     saved.current = next;
   }, [shot.title, shot.stillPrompt, shot.motionPrompt, shot.seconds]);
@@ -152,7 +153,7 @@ export function PlanShotRow({ story, projectId, shot, number, canAsk, onModelMis
         </div>
         <textarea
           className="text-area plan-shot__prompt"
-          rows={2}
+          rows={3}
           maxLength={4000}
           value={fields.stillPrompt}
           disabled={shot.locked}

@@ -1,6 +1,6 @@
 """The main colours of a few pictures, read locally (S15): a small k-means on a downscaled copy, no network.
 
-``palette_of`` returns up to ``count`` colours as ``#rrggbb``, the most used first, with near-duplicates
+``palette_of`` returns up to ``count`` colours as ``#rrggbb``, the most used (and most colourful) first, with near-duplicates
 merged so a mostly white screenshot does not give five whites. ``colour_name`` turns a colour into plain
 words ("deep green", "warm cream") for prompts written to a still model that cannot take reference pictures.
 Pillow and numpy are imported inside the calls; both ship with the backend.
@@ -67,7 +67,7 @@ def palette_of(paths: list[Path], count: int = 5) -> list[str]:
     pixels = _pixels(paths)
     if len(pixels) == 0:
         return []
-    centres, counts = _kmeans(pixels, min(count + 3, len(pixels)))
+    centres, counts = _kmeans(pixels, min(count + 7, len(pixels)))
     order = np.argsort(-counts)
     kept: list[tuple[np.ndarray, int]] = []
     for i in order:
@@ -79,8 +79,16 @@ def palette_of(paths: list[Path], count: int = 5) -> list[str]:
                 break
         else:
             kept.append((centres[i], int(counts[i])))
-    kept.sort(key=lambda item: -item[1])
+    # Rank by how much of the picture a colour covers, lifted by how colourful it is, so the amber of the tea
+    # is not pushed out by four shades of grey wall.
+    total = sum(weight for _, weight in kept)
+    kept = [item for item in kept if item[1] >= total * 0.005] or kept  # specks are not part of the look
+    kept.sort(key=lambda item: -(item[1] ** 0.5) * (0.15 + _chroma(item[0])))
     return [_hex(centre) for centre, _ in kept[:count]]
+
+
+def _chroma(rgb) -> float:  # noqa: ANN001 - numpy row
+    return (float(max(rgb)) - float(min(rgb))) / 255.0
 
 
 def _hex(rgb) -> str:  # noqa: ANN001 - numpy row

@@ -130,8 +130,9 @@
 }
 .plan-chip.is-active {
   border-color: var(--accent-storyboard);
-  background: color-mix(in srgb, var(--accent-storyboard) 18%, transparent);
+  background: color-mix(in srgb, var(--accent-storyboard) 30%, transparent);
   color: var(--text);
+  font-weight: 600;
 }
 .plan-chip:focus-visible,
 .plan-link:focus-visible,
@@ -362,7 +363,16 @@ img.plan-pictures__thumb {
   width: 72px;
   font-variant-numeric: tabular-nums;
 }
+.plan-shot__prompt,
 .plan-shot__motion {
+  field-sizing: content; /* grows with the text where the browser can; the rows are the fallback */
+  max-height: 220px;
+}
+.plan-shot__prompt {
+  min-height: 4.6em;
+}
+.plan-shot__motion {
+  min-height: 2.6em;
   font-size: 0.88rem;
 }
 .plan-shot__actions {
@@ -615,7 +625,7 @@ button.palette-swatch {
 .palette-swatch svg {
   width: 12px;
   height: 12px;
-  opacity: 0.45;
+  opacity: 0;
   transition: opacity 0.12s;
 }
 .palette-swatch--removable:hover svg,

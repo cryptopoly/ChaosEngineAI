@@ -181,28 +181,46 @@ export const SUGGEST_SHOT_SECONDS = { short: 4, long: 5 } as const;
 /** A usual length when the brief states none: an ad 30 s, a trailer 60 s, anything else 30 s. */
 export const TYPICAL_SECONDS: Record<FilmKind, number> = { ad: 30, trailer: 60, film: 30 };
 
+// Length and kind words in the shipping languages (S-N): a brief in German, Japanese or Russian gets the same
+// suggestion as one in English. Digits work in any language; number words are English plus "one"/"a" in the others.
 const NUMBER_WORDS: Record<string, number> = {
   one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
   fifteen: 15, twenty: 20, thirty: 30, forty: 40, "forty-five": 45, fifty: 50, sixty: 60, ninety: 90,
+  eine: 1, einer: 1, une: 1, un: 1, una: 1, um: 1, uma: 1, "одна": 1, "одну": 1, "один": 1,
+  zwei: 2, deux: 2, dos: 2, dois: 2, duas: 2, "две": 2, "два": 2,
+  "dreißig": 30, trente: 30, treinta: 30, trinta: 30, "тридцать": 30,
 };
+/** Seconds or minutes, by the unit's word (minute words are the ones listed here). */
+const SECOND_UNITS = "seconds?|secs?|s|sekunden?|sek|secondes?|segundos?|seg|секунд\\p{L}*|сек";
+const MINUTE_UNITS = "minutes?|mins?|minuten?|minutos?|минут\\p{L}*|мин";
+const CJK_UNITS = "秒|分钟|分鐘|分間|分|초|분";
+// Digits may follow a CJK letter ("一个1分钟"), not a Latin or Cyrillic one ("mp4s"); number words stand alone.
+const NUMBER = `(?<![\\p{Script=Latin}\\p{Script=Cyrillic}\\p{N}.,])\\d+(?:[.,]\\d+)?|(?<![\\p{L}\\p{N}])(?:${Object.keys(NUMBER_WORDS).join("|")})`;
 const LENGTH_RE = new RegExp(
-  `\\b(\\d+(?:\\.\\d+)?|${Object.keys(NUMBER_WORDS).join("|")})[\\s-]*(seconds?|secs?|s|minutes?|mins?)\\b`,
-  "i",
+  `(${NUMBER})(?:[\\s-]*(${SECOND_UNITS}|${MINUTE_UNITS})(?![\\p{L}])|\\s*(${CJK_UNITS}))`,
+  "iu",
 );
+const MINUTE_RE = new RegExp(`^(?:${MINUTE_UNITS}|分钟|分鐘|分間|分|분)$`, "iu");
 
-/** The film length a brief states ("a 30 s ad", "a one-minute advert", "90 seconds"), in seconds, or null. */
+/** The film length a brief states ("a 30 s ad", "a one-minute advert", "90 Sekunden", "30秒の広告"), in seconds, or null. */
 export function briefSeconds(brief: string): number | null {
   const match = LENGTH_RE.exec(brief);
   if (!match) return null;
-  const amount = NUMBER_WORDS[match[1].toLowerCase()] ?? Number(match[1]);
-  const seconds = /^m/i.test(match[2]) ? amount * 60 : amount;
+  const word = match[1].toLowerCase();
+  const amount = NUMBER_WORDS[word] ?? Number(word.replace(",", "."));
+  const unit = match[2] ?? match[3];
+  const seconds = MINUTE_RE.test(unit) ? amount * 60 : amount;
   return Number.isFinite(seconds) && seconds >= 2 && seconds <= 600 ? Math.round(seconds) : null;
 }
 
-/** What kind of film a brief asks for, from a few words: an ad, a trailer, or any other film. */
+const AD_RE =
+  /(?<![\p{L}])(ad|ads|advert|adverts|advertisement|commercial|promo|werbung|werbespot|spot|publicité|publicite|anuncio|comercial|anúncio|propaganda|реклам\p{L}*)(?![\p{L}])|広告|コマーシャル|广告|廣告|광고/iu;
+const TRAILER_RE = /(?<![\p{L}])(trailer|bande-annonce|tráiler|трейлер\p{L}*)(?![\p{L}])|予告|トレーラー|预告|預告|예고편|트레일러/iu;
+
+/** What kind of film a brief asks for, from a few words in any shipping language: an ad, a trailer, or another film. */
 export function briefKind(brief: string): FilmKind {
-  if (/\b(ad|ads|advert|adverts|advertisement|commercial|promo)\b/i.test(brief)) return "ad";
-  if (/\btrailer\b/i.test(brief)) return "trailer";
+  if (AD_RE.test(brief)) return "ad";
+  if (TRAILER_RE.test(brief)) return "trailer";
   return "film";
 }
 

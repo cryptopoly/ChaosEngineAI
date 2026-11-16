@@ -86,6 +86,11 @@ describe("ShotCard", () => {
     expect(card({ status: "stale", shot: stale, staleAfter: 0, kept: true })).not.toContain("Re-run");
   });
 
+  it("names the card by its number and title, also with no title", () => {
+    expect(card()).toContain('aria-label="Shot 2 · Arrival"');
+    expect(card({ shot: shot({ title: "" }) })).toContain('aria-label="Shot 2"');
+  });
+
   it("marks a locked shot with aria-pressed and a Locked badge", () => {
     const html = card({ shot: shot({ locked: true }) });
     expect(html).toContain("shot-card--locked");

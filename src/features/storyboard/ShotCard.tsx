@@ -145,7 +145,13 @@ export function ShotCard(props: ShotCardProps) {
     <article
       className={`${shotCardClassName(status, shot.locked)}${dragOver ? " shot-card--drop" : ""}${shot.redo ? " shot-card--redo" : ""}`}
       data-shot-id={shot.id}
-      aria-labelledby={titleId}
+      // The number is drawn aria-hidden and the title is an input: name the card "Shot 3 · Title" so a screen
+      // reader says which shot it is, also while the title is empty.
+      aria-label={
+        shot.title
+          ? `${t("board.shot.untitled", { defaultValue: "Shot {n}", n: number })} · ${shot.title}`
+          : t("board.shot.untitled", { defaultValue: "Shot {n}", n: number })
+      }
       aria-describedby={statusId}
       tabIndex={tabbable ? 0 : -1}
       onDragOver={(event) => {

@@ -16395,3 +16395,44 @@ select.music-library__select {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* S-L: Settings > Disk > Clean up */
+.cleanup-group {
+  margin: 0;
+  padding: 8px 12px 12px;
+  border: 1px solid var(--border-control, var(--border));
+  border-radius: 8px;
+}
+
+.cleanup-group legend {
+  padding: 0 6px;
+  font-weight: 600;
+}
+
+.cleanup-list {
+  max-height: 260px;
+  overflow-y: auto;
+  margin-top: 6px;
+}
+
+.cleanup-row {
+  align-items: flex-start;
+  padding: 4px 0;
+}
+
+.cleanup-row__text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.cleanup-row__size {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.cleanup-result p {
+  margin: 0 0 6px;
+}

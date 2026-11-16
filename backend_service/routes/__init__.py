@@ -36,6 +36,7 @@ def register_routes(app: FastAPI) -> None:
     from .music_library import router as music_library_router
     from .skills import router as skills_router
     from .licence_gate import router as licence_gate_router
+    from .cleanup import router as cleanup_router
 
     app.include_router(auth_router)
     app.include_router(health_router)
@@ -67,3 +68,4 @@ def register_routes(app: FastAPI) -> None:
     app.include_router(music_library_router)
     app.include_router(skills_router)
     app.include_router(licence_gate_router)
+    app.include_router(cleanup_router)

@@ -276,6 +276,16 @@ class LyricTests(StoreCase):
         undone = self.store.undo(saved.id, saved.revision)
         self.assertEqual(undone.captions, [])
 
+    def test_section_timing_never_shows_two_lines_at_once(self):
+        # S-P: a real song (240 s, 84 lines): starts snapped back onto beats came before the previous line's end.
+        from backend_service.storyboard.models import Song
+
+        song = Song(path="media/song/a.wav", seconds=60.0, beats=[round(0.5 + 0.668 * i, 3) for i in range(88)],
+                    sections=[{"start": 0.0, "end": 60.0, "label": "A"}])
+        cues = lyrics.by_sections(song, [f"line {i}" for i in range(23)])
+        self.assertTrue(all(a["end"] <= b["start"] for a, b in zip(cues, cues[1:])), cues)
+        self.assertTrue(all(c["end"] > c["start"] for c in cues))
+
     def test_speech_timing_matches_the_words_in_order_and_spaces_the_rest(self):
         project = self.project_with_lyrics(["hello night", "we drive on", "nothing heard here", "under the stars"])
         segments = [{"start": 5.0, "end": 7.0, "text": "Hello, night!"}, {"start": 9.0, "end": 11.0, "text": "we drive on"},

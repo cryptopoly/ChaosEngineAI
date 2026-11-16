@@ -83,6 +83,11 @@ def by_sections(song: Song, lines: list[str]) -> list[dict[str, Any]]:
                 end = min(start + MIN_LINE_SECONDS, song.seconds)
             cues.append({"start": round(start, 3), "end": round(end, 3), "text": lines[index]})
             index += 1
+    # A start snapped back onto a beat came before the previous line's end: two captions showed at once (S-P, a real
+    # song: 46 of 84 lines overlapped). Each line ends where the next one starts.
+    for cue, after in zip(cues, cues[1:]):
+        if cue["end"] > after["start"]:
+            cue["end"] = after["start"]
     return cues
 
 

@@ -179,12 +179,14 @@ def _storyboard_problem(name: str, args: dict[str, Any], check_revision: bool) -
     try:
         batch = Batch(store, project.id, str(args.get("what") or "both"), make_still=lambda s, p: None,
                       make_clip=lambda s, p, i: None, shot_ids=list(args["shot_ids"]) if "shot_ids" in args else None,
-                      force=bool(args.get("force")))
+                      force=bool(args.get("force")), draft=bool(args.get("draft")))
         steps = batch.plan(project)
     except BatchRefused as exc:
         return str(exc)
     if not any(reason is None for _, _, reason in steps):
-        return "Nothing to generate: every shot is done, locked or an upload."
+        from backend_service.storyboard.batch import NOTHING_TO_REDO, REDO
+
+        return NOTHING_TO_REDO if batch.what in REDO else "Nothing to generate: every shot is done, locked or an upload."
     return None
 
 

@@ -3551,10 +3551,17 @@ def phase_19(cap: Capability) -> PhaseResult:
     return run(cap, sys.modules[__name__])
 
 
+def phase_20(cap: Capability) -> PhaseResult:
+    """Storyboard 0.10 (plan, passes, redo, compare, sample, rough cut, captions, reconcile); scripts/e2e_phases/phase_20.py."""
+    from e2e_phases.phase_20 import run
+
+    return run(cap, sys.modules[__name__])
+
+
 PHASES = {
     0: phase_0, 1: phase_1, 2: phase_2, 3: phase_3,
     4: phase_4, 5: phase_5, 6: phase_6, 7: phase_7, 8: phase_8, 9: phase_9, 10: phase_10,
-    11: phase_11, 16: phase_16, 17: phase_17, 18: phase_18, 19: phase_19,
+    11: phase_11, 16: phase_16, 17: phase_17, 18: phase_18, 19: phase_19, 20: phase_20,
 }
 
 # Stream phases live in scripts/e2e_phases/ (one file each); scripts/ is this file's folder.

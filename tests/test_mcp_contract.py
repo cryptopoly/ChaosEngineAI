@@ -46,6 +46,8 @@ EXAMPLES = {
     "storyboard_render": {"project_id": "p", "revision": 1, "preview": True, "notify": False},
     "storyboard_captions": {"action": "add", "project_id": "p", "revision": 1, "start": 0, "end": 1, "text": "Hi"},
     "storyboard_export_otio": {"project_id": "p"},
+    "storyboard_batch": {"action": "status", "project_id": "p", "batch_id": "b_1"},
+    "storyboard_song": {"action": "get", "project_id": "p"},
     "music_library": {"action": "rename", "track_id": "t", "title": "New"},
     "list_cloned_voices": {},
     "speak_cloned": {"voice_id": "v", "text": "Hello", "permission_confirmed": True},

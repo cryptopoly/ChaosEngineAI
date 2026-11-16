@@ -8,7 +8,8 @@ redo replay those diffs for the reversible ops, field by field: work done since 
 (batch picks and takes, relinked files) is kept, and a shot an undo removes keeps its takes for redo. On the first load in a
 process start and on every load, work left ``queued`` / ``running`` with no live batch in this process
 (a crash, a power cut) is reset by ``reconcile``: the shot goes to ``done`` if it has a take, else ``idle``;
-its batch is marked ``interrupted`` and its unfinished results ``cancelled``. On every load, a shot or audio
+its batch becomes ``paused`` with its unfinished steps queued for a resume (S-M1), or ``interrupted`` when none
+of them can resume (their results are then ``cancelled``). On every load, a shot or audio
 clip whose file is gone shows ``missing``.
 """
 
@@ -32,7 +33,7 @@ from backend_service.storyboard.models import PROJECT_ID_RE, SCHEMA_VERSION, Def
 PROJECT_FILE = "project.json"
 MAX_PROJECT_BYTES = 16 * 1024 * 1024
 HISTORY_KEEP = 500
-_TOP_KEYS = ("name", "defaults", "references", "export", "plan", "brand")
+_TOP_KEYS = ("name", "defaults", "references", "export", "plan", "brand", "song")
 _LIST_KEYS = ("shots", "audio", "captions")
 
 # schemaVersion n -> function turning an n dict into an n+1 dict. Add one entry per format change.
@@ -83,17 +84,44 @@ LIVE_BATCHES: set[str] = set()  # batch ids running in this process (batch.py ad
 
 
 INTERRUPTED_NOTE = "Stopped before this step finished (the app closed or the computer lost power)."
+CANNOT_RESUME_NOTE = "Cannot resume this step: its shot or the still it needs is gone."
 
 
-def reconcile(project: Project, dry_run: bool = False) -> bool:
-    """Reset work a dead process left ``queued`` or ``running``; True when something was (or, in a dry run, would be) changed.
+def _can_resume(project: Project, batch: Any, result: Any, folder: Path | None) -> bool:
+    """A step a resume can run again from scratch: its shot is there and, for a clip after a still this batch made,
+    that take and its still file are still there (a still or clip is only stored when its step ends)."""
+    shot = project.shot(result.shotId)
+    if shot is None:
+        return False
+    if result.kind != "clip":
+        return True
+    made = next((r for r in batch.results if r.shotId == result.shotId and r.kind == "still" and r.state == "done"), None)
+    if made is None or made.takeId is None:
+        return True
+    take = shot.take(made.takeId)
+    if take is None:
+        return False
+    if take.still and folder is not None:
+        try:
+            inside(folder, take.still)
+        except MediaError:
+            return False
+    return True
 
-    A batch in ``LIVE_BATCHES`` runs in this process: it and its shots are never touched. For the rest, a shot
-    goes to ``done`` if it has a take and ``idle`` if not (the rule a finished batch uses), the batch record to
-    ``interrupted`` and its queued or running results to ``cancelled`` with a note."""
+
+def reconcile(project: Project, dry_run: bool = False, folder: Path | None = None) -> bool:
+    """Make work a dead process left ``queued`` or ``running`` honest; True when something was (or, in a dry run,
+    would be) changed.
+
+    A batch in ``LIVE_BATCHES`` runs in this process: it and its shots are never touched. A batch record that says
+    ``queued`` or ``running`` becomes ``paused`` (``pauseReason`` "restart") with its running step queued again, so
+    a resume continues it (S-M1); a step that cannot resume is ``cancelled`` with a note (S3), and a batch left with no
+    queued step is ``interrupted``. Unfinished results of a finished batch are ``cancelled``. A shot left queued or
+    running goes to ``done`` if it has a take and ``idle`` if not (the rule a finished batch uses)."""
     live = {b.id for b in project.batches if b.id in LIVE_BATCHES}
     held = {r.shotId for b in project.batches if b.id in live for r in b.results}
     changed = False
+    now = time.time()
     for shot in project.shots:
         if shot.status in ("queued", "running") and shot.id not in held:
             changed = True
@@ -103,15 +131,27 @@ def reconcile(project: Project, dry_run: bool = False) -> bool:
         if batch.id in live:
             continue
         stale = [r for r in batch.results if r.state in ("queued", "running")]
-        if batch.state in ("queued", "running") or stale:
-            changed = True
-            if dry_run:
-                continue
-            if batch.state in ("queued", "running"):
+        was_running = batch.state in ("queued", "running")
+        if batch.state == "paused":
+            stale = [r for r in stale if r.state == "running" or not _can_resume(project, batch, r, folder)]
+        if not (was_running or stale):
+            continue
+        changed = True
+        if dry_run:
+            continue
+        resumable = was_running or batch.state == "paused"
+        for result in stale:
+            if resumable and _can_resume(project, batch, result, folder):
+                result.state, result.error = "queued", None
+            else:
+                result.state = "cancelled"
+                result.error = CANNOT_RESUME_NOTE if resumable else INTERRUPTED_NOTE
+        if was_running:
+            if any(r.state == "queued" for r in batch.results):
+                batch.state, batch.pausedAt, batch.pauseReason = "paused", now, "restart"
+            else:
                 batch.state = "interrupted"
-                batch.finishedAt = batch.finishedAt or time.time()
-            for result in stale:
-                result.state, result.error = "cancelled", INTERRUPTED_NOTE
+                batch.finishedAt = batch.finishedAt or now
     return changed
 
 
@@ -337,10 +377,10 @@ class ProjectStore:
         project = parse_project(path.read_bytes())
         if project.id != project_id:
             raise StoreError("project.json id does not match its folder.")
-        if reconcile(project, dry_run=True):
+        if reconcile(project, dry_run=True, folder=folder):
             with self.lock(project_id):
                 project = parse_project(path.read_bytes())
-                if reconcile(project):
+                if reconcile(project, folder=folder):
                     project.revision += 1
                     atomic_write(path, _encode(project))
         check_media(project, folder)
@@ -358,7 +398,7 @@ class ProjectStore:
                 continue
             try:
                 before = parse_project((entry / PROJECT_FILE).read_bytes())
-                if reconcile(before, dry_run=True):
+                if reconcile(before, dry_run=True, folder=entry):
                     self.load(entry.name)
                     changed += 1
             except (StoreError, OSError):

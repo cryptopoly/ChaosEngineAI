@@ -83,7 +83,8 @@ export interface JobProgress {
   totalSteps?: number | null;
   elapsedSeconds?: number | null;
   etaSeconds?: number | null;
-  etaBasis?: "clips" | "steps" | "catalog" | null;
+  /** "project": a paused storyboard batch priced from this project's other takes (S-M1). */
+  etaBasis?: "clips" | "steps" | "catalog" | "project" | null;
   /** A storyboard batch: which kind of step is running and its place among that kind ("clip 2 of 4"). */
   kind?: "still" | "clip" | null;
   kindIndex?: number | null;

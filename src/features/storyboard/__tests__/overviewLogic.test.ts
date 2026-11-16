@@ -71,6 +71,7 @@ describe("Recent activity", () => {
         batch("b2", "done", 200, [{ shotId: "a", state: "failed" }, { shotId: "b", state: "done" }]),
         batch("b3", "interrupted", 300, []),
         batch("b4", "running", 400, []),
+        batch("b5", "paused", 500, []),
       ],
     } as unknown as StoryboardProject;
     expect(recentActivity(p).map((l) => [l.id, l.state, l.shots, l.failed])).toEqual([

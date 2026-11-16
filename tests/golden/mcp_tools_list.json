@@ -880,6 +880,151 @@
       "idempotentHint": false,
       "openWorldHint": false,
       "readOnlyHint": false,
+      "title": "Storyboard batch (pause, resume)"
+    },
+    "description": "Make: a generate batch. status, pause (stops after the step in progress; a restart also pauses), resume(revision; a job id like generate), cancel.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "enum": [
+            "status",
+            "pause",
+            "resume",
+            "cancel"
+          ],
+          "type": "string"
+        },
+        "batch_id": {
+          "description": "From generate's output or the project's batches.",
+          "maxLength": 64,
+          "type": "string"
+        },
+        "project_id": {
+          "description": "Project id.",
+          "type": "string"
+        },
+        "revision": {
+          "description": "Project revision you last saw (from get).",
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "action",
+        "project_id",
+        "batch_id"
+      ],
+      "type": "object"
+    },
+    "name": "storyboard_batch"
+  },
+  {
+    "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Storyboard song and cut plan"
+    },
+    "description": "Edit: the song a music video is cut to. attach(library_id or path), get, edit(lyrics, sections, bpm, title), remove, cut_plan (shots on its beats; apply: true replaces the shots), lyric_captions(timing).",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "enum": [
+            "attach",
+            "get",
+            "edit",
+            "remove",
+            "cut_plan",
+            "lyric_captions"
+          ],
+          "type": "string"
+        },
+        "apply": {
+          "description": "cut_plan: replace the shots with the plan (one undo).",
+          "type": "boolean"
+        },
+        "bpm": {
+          "description": "edit: 0 clears.",
+          "maximum": 400,
+          "minimum": 0,
+          "type": "number"
+        },
+        "language": {
+          "maxLength": 16,
+          "type": "string"
+        },
+        "library_id": {
+          "description": "attach: a Music library track id.",
+          "maxLength": 40,
+          "type": "string"
+        },
+        "lyrics": {
+          "description": "edit: one caption line each.",
+          "items": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "maxItems": 500,
+          "type": "array"
+        },
+        "max_shot_seconds": {
+          "description": "cut_plan: lower cap.",
+          "maximum": 60,
+          "minimum": 0.5,
+          "type": "number"
+        },
+        "path": {
+          "description": "attach: upload: handle or a file in the app's output folders.",
+          "type": "string"
+        },
+        "project_id": {
+          "description": "Project id.",
+          "type": "string"
+        },
+        "revision": {
+          "description": "Project revision you last saw (from get).",
+          "minimum": 1,
+          "type": "integer"
+        },
+        "sections": {
+          "description": "edit: [{start, end, label}] seconds.",
+          "items": {
+            "type": "object"
+          },
+          "maxItems": 200,
+          "type": "array"
+        },
+        "timing": {
+          "description": "lyric_captions: speech needs speech-to-text installed.",
+          "enum": [
+            "auto",
+            "sections",
+            "speech"
+          ],
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 200,
+          "type": "string"
+        }
+      },
+      "required": [
+        "action",
+        "project_id"
+      ],
+      "type": "object"
+    },
+    "name": "storyboard_song"
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false,
       "title": "Storyboard render"
     },
     "description": "Make: render the film to MP4 (preview: small and fast). Returns a job id; the output has the file, download, warnings and extras (captions, stems). A failed render can be resumed by calling again.",

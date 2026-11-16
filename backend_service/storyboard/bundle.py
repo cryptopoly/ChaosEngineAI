@@ -61,6 +61,8 @@ def referenced(project: Project) -> dict[str, str | None]:
                 files[take.clip] = take.hashes.get("clip")
     for clip in project.audio:
         files[clip.source.path] = clip.source.hash
+    if project.song is not None:  # the song a music video is cut to (S-M1)
+        files[project.song.path] = project.song.hash
     return files
 
 

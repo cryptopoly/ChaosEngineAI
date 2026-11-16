@@ -1,6 +1,8 @@
 """Phase 20: Storyboard 0.10 (plan, style and brand kit, draft and final passes, redo one half, take compare,
-sample film, rough-cut inputs, caption look, stale-state reconcile, the busy-engine field, the Open route and the
-Chat plan-card pre-check).
+sample film, rough-cut inputs, caption look, stale-state reconcile, the busy-engine field, the Open route, the
+Chat plan-card pre-check, and the long-project backend of S-M1: a batch paused by a simulated restart, its bar data,
+a resume refused when nothing can run and a cancel; a song attached from a short generated sine-and-noise WAV with its
+tempo and sections; a cut plan applied and undone; lyric captions written to an .srt).
 
 Most checks need no model. Three run real models and skip with the reason when the model is not installed: a
 draft still with the fast still model (and, during it, the ``activeGenerations`` entry in ``/api/workspace``),
@@ -49,6 +51,32 @@ def png(width: int, height: int, colours: list[tuple[int, int, int]]) -> bytes:
 
     head = struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)
     return b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", head) + chunk(b"IDAT", zlib.compress(rows)) + chunk(b"IEND", b"")
+
+
+def song_wav(seconds: float = 24.0, bpm: float = 120.0, split: float = 12.0, rate: int = 11025) -> bytes:
+    """A mono 16-bit WAV (stdlib only): a quiet sine, then louder noise from ``split``, with a click on every beat."""
+    import io
+    import math
+    import random
+    import wave
+
+    rng = random.Random(7)
+    period, click = 60.0 / bpm, int(0.03 * rate)
+    frames = bytearray()
+    for i in range(int(seconds * rate)):
+        t = i / rate
+        x = 0.1 * math.sin(2 * math.pi * 220 * t) if t < split else 0.25 * rng.gauss(0, 1) + 0.3 * math.sin(2 * math.pi * 440 * t)
+        into = i - int(round(t / period)) * int(period * rate)
+        if 0 <= into < click:
+            x += 0.8 * math.exp(-into / (0.005 * rate)) * rng.gauss(0, 1)
+        frames += struct.pack("<h", max(-32767, min(32767, int(x * 32767))))
+    out = io.BytesIO()
+    with wave.open(out, "wb") as handle:
+        handle.setnchannels(1)
+        handle.setsampwidth(2)
+        handle.setframerate(rate)
+        handle.writeframes(bytes(frames))
+    return out.getvalue()
 
 
 def run(cap: Any, suite: Any):
@@ -391,9 +419,120 @@ def run(cap: Any, suite: Any):
         path.write_text(json.dumps(data), encoding="utf-8")  # what a power cut mid-batch leaves on disk
         got = proj.reload()
         batch = got["batches"][0]
-        if got["shots"][0]["status"] != "idle" or batch["state"] != "interrupted" or batch["results"][0]["state"] != "cancelled":
+        # S-M1: the batch is paused with its cut-off step queued for a resume, and the shot no longer shows running.
+        if got["shots"][0]["status"] != "idle" or batch["state"] != "paused" or batch["results"][0]["state"] != "queued":
             return "fail", f"after opening: shot {got['shots'][0]['status']}, batch {batch['state']}, result {batch['results'][0]['state']}", {}
+        state["crash"] = proj
         return "pass", "start-up pass: tests/test_storyboard_reconcile.py (needs a restart)", {}
+
+    def _pause_resume():
+        proj = state.get("crash")
+        if proj is None:
+            return "skip", "no project left paused by the simulated restart", {}
+        bid = "b_e2edead0"
+        code, info = api("GET", f"/api/storyboard/projects/{proj.id}/batches/{bid}")
+        progress = (info or {}).get("progress") or {}
+        if code != 200 or not progress.get("paused") or progress.get("pauseReason") != "restart" or progress.get("remainingSteps") != 1:
+            return "fail", f"paused bar data: HTTP {code} {str(info)[:200]}", {}
+        code, _ = api("POST", f"/api/storyboard/projects/{proj.id}/batches/{bid}/pause")
+        if code != 404:
+            return "fail", f"pausing a paused batch: HTTP {code}, wanted 404", {}
+        code, _ = api("POST", f"/api/storyboard/projects/{proj.id}/batches/{bid}/resume", {"revision": proj.rev - 1})
+        if code != 409:
+            return "fail", f"resume with a stale revision: HTTP {code}, wanted 409", {}
+        proj.op("lock", {"shotId": proj.shot(0)["id"], "locked": True})  # nothing can run: no model is touched
+        code, body = api("POST", f"/api/storyboard/projects/{proj.id}/batches/{bid}/resume", {"revision": proj.rev})
+        if code != 400 or "Nothing left to resume" not in str(body):
+            return "fail", f"resume with every step locked: HTTP {code} {str(body)[:200]}", {}
+        if proj.reload()["batches"][0]["state"] != "paused":
+            return "fail", "a refused resume changed the batch", {}
+        code, body = api("POST", f"/api/storyboard/projects/{proj.id}/batches/{bid}/cancel")
+        got = proj.reload()["batches"][0]
+        if code != 200 or not (body or {}).get("cancelled") or got["state"] != "cancelled":
+            return "fail", f"cancel a paused batch: HTTP {code}, state {got['state']}", {}
+        return "pass", "a real resume runs a model: tests/test_storyboard_queue.py", {}
+
+    def _song():
+        wav = base / "e2e-song.wav"
+        wav.write_bytes(song_wav())
+        proj = Proj("E2E 0.10 music video")
+        proj.op("add_shot", {"title": "kept prompt", "stillPrompt": "neon street at night"})
+        code, body = api("POST", f"/api/storyboard/projects/{proj.id}/song", {"revision": proj.rev, "path": str(wav)}, timeout=300)
+        if code == 400 and "not found" in str(body).lower():
+            return "skip", "the backend is not on this machine (it cannot read the test file)", {}
+        if code == 409 and "ffmpeg" in str(body).lower():
+            return "skip", f"no ffmpeg: {str(body)[:120]}", {}
+        if code != 200:
+            return "fail", f"attach: HTTP {code} {str(body)[:200]}", {}
+        proj.rev, proj.body = body["project"]["revision"], body
+        song, analysis = body["project"]["song"], body["analysis"]
+        problems = []
+        if not isinstance(analysis.get("bpm"), (int, float)) or abs(analysis["bpm"] - 120) > 3:
+            problems.append(f"bpm {analysis.get('bpm')}")
+        if len(analysis.get("sections") or []) != 2 or abs(analysis["sections"][1]["start"] - 12.0) > 1.5:
+            problems.append(f"sections {analysis.get('sections')}")
+        if not song["path"].startswith("media/song/") or song["clipId"] != body["project"]["audio"][0]["id"] or not analysis.get("rough"):
+            problems.append(f"song {song['path']} clip {song['clipId']}")
+        fake = base / "e2e-not-a-song.wav"
+        fake.write_text("text, not audio " * 20)
+        code, _ = api("POST", f"/api/storyboard/projects/{proj.id}/song", {"revision": proj.rev, "path": str(fake)})
+        if code != 400:
+            problems.append(f"a text file named .wav: HTTP {code}")
+        if problems:
+            return "fail", "; ".join(problems), {}
+        state["song"] = proj
+        return "pass", "", {"bpm": analysis["bpm"], "sections": [s["label"] for s in analysis["sections"]]}
+
+    def _cut_plan():
+        proj = state.get("song")
+        if proj is None:
+            return "skip", "no project with a song", {}
+        code, plan = api("POST", f"/api/storyboard/projects/{proj.id}/cut-plan", {"maxShotSeconds": 4})
+        if code != 200:
+            return "fail", f"cut plan: HTTP {code} {str(plan)[:200]}", {}
+        lengths = [s["seconds"] for s in plan["shots"]]
+        song = proj.p["song"]
+        if abs(sum(lengths) - song["seconds"]) > 0.05 or max(lengths) > plan["clipSeconds"] + 1e-6:
+            return "fail", f"shots {lengths} for a {song['seconds']} s song capped at {plan['clipSeconds']}", {}
+        if plan["shots"][0]["stillPrompt"] != "neon street at night":
+            return "fail", "the first shot lost the prompt of the shot already there", {}
+        proj.op("apply_plan", {"mode": "replace", "shots": plan["shots"]})
+        if len(proj.p["shots"]) != len(lengths) or abs(proj.body["timeline"]["total"] - song["seconds"]) > 0.05:
+            return "fail", f"applied: {len(proj.p['shots'])} shots, film {proj.body['timeline']['total']} s", {}
+        proj.step("undo")
+        if [s["title"] for s in proj.p["shots"]] != ["kept prompt"]:
+            return "fail", "undo did not bring the old shot back", {}
+        return "pass", "", {"shots": len(lengths), "clipSeconds": plan["clipSeconds"], "source": plan["clipSecondsSource"]}
+
+    def _lyric_srt():
+        proj = state.get("sample")
+        if proj is None:
+            return "skip", "no sample film (its clips make the film the .srt covers)", {}
+        wav = base / "e2e-song.wav"
+        if not wav.is_file():
+            wav.write_bytes(song_wav())
+        code, body = api("POST", f"/api/storyboard/projects/{proj.id}/song", {"revision": proj.rev, "path": str(wav), "title": "E2E"},
+                         timeout=300)
+        if code != 200:
+            return "skip" if code in (400, 409) else "fail", f"attach to the sample: HTTP {code} {str(body)[:160]}", {}
+        proj.rev, proj.body = body["project"]["revision"], body
+        proj.op("edit_song", {"lyrics": ["E2E lyric one", "E2E lyric two"]})
+        code, status = api("GET", "/api/storyboard/lyrics/speech")
+        if code != 200 or not isinstance((status or {}).get("ready"), bool):
+            return "fail", f"speech status: HTTP {code}", {}
+        code, made = api("POST", f"/api/storyboard/projects/{proj.id}/lyrics/captions", {"revision": proj.rev, "timing": "sections"})
+        if code != 200 or made.get("timing") != "sections":
+            return "fail", f"lyric captions: HTTP {code} {str(made)[:200]}", {}
+        proj.rev, proj.body = made["project"]["revision"], made
+        code, out = api("POST", f"/api/storyboard/projects/{proj.id}/captions/export")
+        if code != 200:
+            return "fail", f"srt export: HTTP {code} {str(out)[:160]}", {}
+        code, srt = suite._voice_http("GET", f"/api/storyboard/projects/{proj.id}/files?path={urllib.parse.quote(out['file'])}")
+        text = srt.decode("utf-8", "replace") if isinstance(srt, bytes) else str(srt)
+        if code != 200 or "E2E lyric one" not in text or "-->" not in text:
+            return "fail", f"the .srt has no lyric line: HTTP {code} {text[:120]!r}", {}
+        return "pass", "speech timing needs a speech-to-text model: tests/test_storyboard_song.py" if not status["ready"] else "", \
+            {"cues": out.get("cues"), "speechReady": status["ready"]}
 
     def _workspace_field():
         code, body = api("GET", "/api/workspace")
@@ -610,6 +749,10 @@ def run(cap: Any, suite: Any):
             ("rough-cut inputs: the timeline and every clip of the sample", _rough_cut),
             ("the render plan burns captions in the brand kit's look", _caption_look),
             ("a project left running by a crash is reset when opened", _reconcile),
+            ("a batch paused by a restart: bar data, resume refused when nothing can run, cancel", _pause_resume),
+            ("a song from a generated WAV: tempo, sections, file checked by its bytes", _song),
+            ("a cut plan follows the song, capped at the clip length, applied and undone", _cut_plan),
+            ("lyric captions from the sections reach the .srt", _lyric_srt),
             ("/api/workspace carries activeGenerations", _workspace_field),
             ("the Open route refuses files outside the app folders, non-media and symlinks out", _open_route),
             ("Chat plan card: a call that cannot run gets no card", _plan_card_precheck),

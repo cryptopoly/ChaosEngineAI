@@ -127,10 +127,11 @@ export interface ActivityLine {
   at: number;
 }
 
-/** The last finished batches, newest first (at most `limit`), with how many shots each made or failed. */
+/** The last finished batches, newest first (at most `limit`), with how many shots each made or failed. A paused
+ *  batch (S-M1) is not finished: it can still resume, so it is left out. */
 export function recentActivity(project: Pick<StoryboardProject, "batches">, limit = 3): ActivityLine[] {
   return project.batches
-    .filter((batch) => batch.state !== "queued" && batch.state !== "running")
+    .filter((batch) => batch.state !== "queued" && batch.state !== "running" && batch.state !== "paused")
     .slice(-limit)
     .reverse()
     .map((batch) => ({

@@ -37,7 +37,7 @@ A token carries scopes and `tools/list` only shows what the token may use.
 
 | Scope | Gives |
 |---|---|
-| `read` | status, model and voice lists, job status, `storyboard_project` list and get, `music_library` list and get |
+| `read` | status, model and voice lists, job status, `storyboard_project` list and get, `music_library` list and get, `storyboard_batch` status, `storyboard_song` get and cut_plan (without apply) |
 | `generate` | every make tool, film edits, `cancel_job` |
 | `files` | `upload_file`, `/api/agent/uploads`, `/api/agent/files`, film export and SRT and OTIO downloads |
 | `clone` | `list_cloned_voices`, `speak_cloned` (never in a token unless the person ticks it) |
@@ -114,6 +114,11 @@ call `storyboard_project` get and retry.
   `duck`, `loop`, `trimIn`, `trimOut`, `label`.
 - `storyboard_generate`: new takes, all stills then all clips, for shots that need work (`shot_ids`, `what` is `still`, `clip` or `both`,
   `force` to include locked shots). Returns a job id.
+- `storyboard_batch`: `action`* is `status`, `pause` (stops after the step in progress), `resume` (`revision`; a job id) or `cancel`, with
+  `batch_id`*. A batch the app stopped mid-way (a restart) is `paused` and can be resumed.
+- `storyboard_song`: a music video. `attach` (`library_id` of a Music library track, or `path`; tempo, beats and sections are estimated),
+  `get`, `edit` (`lyrics`, `sections`, `bpm`, `title`), `remove`, `cut_plan` (shots on the beats, each at most one clip long; `apply: true`
+  replaces the shots, one undo), `lyric_captions` (`timing` `auto`, `sections` or `speech`; a job).
 - `storyboard_render`: render to MP4 (`preview` is small and fast, `notify` shows a banner). A failed render names how many shots are
   done; call again to resume.
 - `storyboard_captions`: `generate` (a job; transcribes the voice clips), `export_srt`, `set`, `add`, `edit`, `remove`.

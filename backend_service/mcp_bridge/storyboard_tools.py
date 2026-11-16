@@ -97,6 +97,38 @@ STORYBOARD_TOOLS: list[dict[str, Any]] = [
         }, ["project_id", "revision"]),
     },
     {
+        "name": "storyboard_batch",
+        "description": "Make: a generate batch. status, pause (stops after the step in progress; a restart also pauses), "
+        "resume(revision; a job id like generate), cancel.",
+        "inputSchema": _obj({
+            "action": {"type": "string", "enum": ["status", "pause", "resume", "cancel"]},
+            "project_id": _PID, "revision": _REV,
+            "batch_id": {"type": "string", "maxLength": 64, "description": "From generate's output or the project's batches."},
+        }, ["action", "project_id", "batch_id"]),
+    },
+    {
+        "name": "storyboard_song",
+        "description": "Edit: the song a music video is cut to. attach(library_id or path), get, edit(lyrics, sections, bpm, "
+        "title), remove, cut_plan (shots on its beats; apply: true replaces the shots), lyric_captions(timing).",
+        "inputSchema": _obj({
+            "action": {"type": "string", "enum": ["attach", "get", "edit", "remove", "cut_plan", "lyric_captions"]},
+            "project_id": _PID, "revision": _REV,
+            "library_id": {"type": "string", "maxLength": 40, "description": "attach: a Music library track id."},
+            "path": {"type": "string", "description": "attach: upload: handle or a file in the app's output folders."},
+            "title": {"type": "string", "maxLength": 200},
+            "lyrics": {"type": "array", "maxItems": 500, "items": {"type": "string", "maxLength": 200},
+                       "description": "edit: one caption line each."},
+            "sections": {"type": "array", "maxItems": 200, "items": {"type": "object"},
+                         "description": "edit: [{start, end, label}] seconds."},
+            "bpm": {"type": "number", "minimum": 0, "maximum": 400, "description": "edit: 0 clears."},
+            "max_shot_seconds": {"type": "number", "minimum": 0.5, "maximum": 60, "description": "cut_plan: lower cap."},
+            "apply": {"type": "boolean", "description": "cut_plan: replace the shots with the plan (one undo)."},
+            "timing": {"type": "string", "enum": ["auto", "sections", "speech"],
+                       "description": "lyric_captions: speech needs speech-to-text installed."},
+            "language": {"type": "string", "maxLength": 16},
+        }, ["action", "project_id"]),
+    },
+    {
         "name": "storyboard_render",
         "description": "Make: render the film to MP4 (preview: small and fast). Returns a job id; the output has the file, download, "
         "warnings and extras (captions, stems). A failed render can be resumed by calling again.",
@@ -423,6 +455,12 @@ def storyboard_generate(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
                                      list(args["shot_ids"]) if "shot_ids" in args else None, bool(args.get("force")),
                                      bool(args.get("draft"))))
 
+    return _batch_job(batch, pid)
+
+
+def _batch_job(batch: Any, pid: str) -> dict[str, Any]:
+    """A job for ``wait_for_job`` that ends when the batch run ends (done, failed, cancelled or paused)."""
+
     def run() -> tuple[dict[str, Any], list[str]]:
         batch.done.wait()
         record = batch.record()
@@ -431,6 +469,105 @@ def storyboard_generate(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
 
     return _submitted(STORE.submit("storyboard", f"storyboard {batch.id}", run, cancel=batch.cancel,
                                  progress=batch.progress))
+
+
+def storyboard_batch(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
+    from backend_service.routes.storyboard import _batch_info
+    from backend_service.routes.storyboard_long import resume_batch
+    from backend_service.storyboard.batch import get_batch
+    from backend_service.storyboard.batch_queue import cancel_paused
+
+    action, pid, bid = args["action"], str(args["project_id"]), str(args["batch_id"])
+
+    def info() -> dict[str, Any]:
+        try:
+            return _batch_info(pid, bid)
+        except Exception as exc:  # noqa: BLE001 - the route's 404 as a tool error
+            raise ToolError(getattr(exc, "detail", None) or str(exc)) from exc
+
+    if action == "status":
+        return info()
+    live = get_batch(bid)
+    running = live is not None and live.project_id == pid and not live.done.is_set()
+    if action == "pause":
+        if not running:
+            raise ToolError("That batch is not running.")
+        return {"pausing": live.pause(), "batchId": bid}  # type: ignore[union-attr]
+    if action == "cancel":
+        if running:
+            return {"cancelled": live.cancel(), "batchId": bid}  # type: ignore[union-attr]
+        return {"cancelled": _run(lambda: cancel_paused(_store(), pid, bid)), "batchId": bid}
+    _need(args, "revision")
+    batch = _run(lambda: resume_batch(ctx.request, pid, bid, int(args["revision"])))
+    return _batch_job(batch, pid)
+
+
+def _song_edit(args: dict[str, Any]) -> dict[str, Any]:
+    out: dict[str, Any] = {}
+    if "title" in args:
+        out["title"] = " ".join(str(args["title"] or "").split())[:200]
+    if "lyrics" in args:
+        out["lyrics"] = [" ".join(str(x).split())[:200] for x in args["lyrics"] or [] if str(x).strip()]
+    if "sections" in args:
+        out["sections"] = list(args["sections"] or [])
+    if "bpm" in args:
+        if args["bpm"]:
+            out["bpm"] = args["bpm"]
+        else:
+            out["clearBpm"] = True
+    if not out:
+        raise ToolError("edit needs lyrics, sections, bpm or title.")
+    return out
+
+
+def storyboard_song(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
+    from backend_service.routes import storyboard_long
+    from backend_service.storyboard import lyrics
+
+    action, pid, store = args["action"], str(args["project_id"]), _store()
+    if action == "get":
+        project = _run(lambda: store.load(pid))
+        song = project.song.model_dump(mode="json") if project.song else None
+        if song is not None:
+            song["beats"] = len(song["beats"])  # the count; the list is long and an agent rarely needs it
+        return {"projectId": pid, "revision": project.revision, "song": song}
+    if action == "cut_plan":
+        plan = _run(lambda: storyboard_long.cut_plan(ctx.request, pid, args.get("max_shot_seconds")))
+        if not args.get("apply"):
+            return plan
+        _need(args, "revision")
+        applied = _op(args, "apply_plan", {"mode": "replace", "shots": plan["shots"]})
+        return _summary(applied, {"note": plan["note"], "clipSeconds": plan["clipSeconds"]})
+    _need(args, "revision")
+    rev = int(args["revision"])
+    if action == "attach":
+        library_id = args.get("library_id")
+        if (library_id is None) == ("path" not in args):
+            raise ToolError("attach needs library_id or path (one of them).")
+        path = None if library_id is not None else _agent_source(args["path"])
+        project, analysis = _run(lambda: storyboard_long.attach_song(pid, rev, library_id, path, args.get("title")))
+        return _summary(project, {"song": analysis})
+    if action == "edit":
+        return _summary(_op(args, "edit_song", _song_edit(args)))
+    if action == "remove":
+        return _summary(_op(args, "clear_song", {}))
+    timing, language = str(args.get("timing") or "auto"), str(args.get("language") or "")
+
+    def run() -> tuple[dict[str, Any], list[str]]:
+        project, used, notes = lyrics.make(store, pid, rev, timing, language)
+        return {"projectId": pid, "revision": project.revision, "timing": used, "captions": len(project.captions)}, notes
+
+    try:
+        project = store.load(pid)
+        if timing == "speech" and not lyrics.speech_status()[0]:
+            raise ToolError(lyrics.speech_status()[1] or "Speech-to-text is not available.")
+        if project.song is None or not project.song.lyrics:
+            raise ToolError("The project needs a song with lyrics first (storyboard_song attach, then edit lyrics).")
+    except ToolError:
+        raise
+    except Exception as exc:  # noqa: BLE001 - a missing project as a tool error
+        raise ToolError(str(exc)) from exc
+    return _submitted(STORE.submit("voice", f"lyrics {pid}", run))
 
 
 def _extras(pid: str, files: list[str]) -> list[dict[str, Any]]:
@@ -533,6 +670,8 @@ STORYBOARD_HANDLERS: dict[str, Callable[[Any, dict[str, Any]], dict[str, Any]]] 
     "storyboard_shot": storyboard_shot,
     "storyboard_audio": storyboard_audio,
     "storyboard_generate": storyboard_generate,
+    "storyboard_batch": storyboard_batch,
+    "storyboard_song": storyboard_song,
     "storyboard_render": storyboard_render,
     "storyboard_captions": storyboard_captions,
     "storyboard_export_otio": storyboard_export_otio,

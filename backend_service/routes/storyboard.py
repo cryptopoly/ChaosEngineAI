@@ -115,6 +115,16 @@ def _guard(fn: Any, *args: Any, **kwargs: Any) -> Any:
 # ---- shared with the agent tools ----
 def start_batch(request: Request, project_id: str, revision: int | None, what: str,
                 shot_ids: list[str] | None, force: bool, draft: bool = False) -> Any:
+    batch = build_batch(request, project_id, what, shot_ids, force, draft)
+    batch.start(revision)
+    batch.start_thread()
+    return batch
+
+
+def build_batch(request: Request, project_id: str, what: str, shot_ids: list[str] | None, force: bool,
+                draft: bool = False) -> Any:
+    """A batch wired to the studio generators and priced for the project's models, not yet started (``start`` for a
+    new batch, ``resume`` for a paused one)."""
     from backend_service.storyboard.batch import Batch
     from backend_service.storyboard.generators import studio_generators
 
@@ -141,8 +151,6 @@ def start_batch(request: Request, project_id: str, revision: int | None, what: s
     batch.clip_image_refusal = wiring.get("clip_image_refusal")
     # Name the project's models so the first step of each kind shows a time left before any step has finished.
     batch.use_models(final_image or image, video)
-    batch.start(revision)
-    batch.start_thread()
     return batch
 
 
@@ -172,6 +180,10 @@ def _batch_info(project_id: str, batch_id: str) -> dict[str, Any]:
     live = get_batch(batch_id)
     if live is not None and not live.done.is_set():
         info["progress"] = live.progress()  # "clip 2 of 4", elapsed, and time left from the clips made so far
+    elif record.state == "paused":
+        from backend_service.storyboard.batch_queue import paused_progress
+
+        info["progress"] = paused_progress(project, record)  # steps left and the time they would take (S-M1)
     return info
 
 
@@ -350,8 +362,16 @@ def cancel_batch(project_id: str, batch_id: str) -> dict[str, Any]:
     from backend_service.storyboard.batch import get_batch
 
     batch = get_batch(batch_id)
-    if batch is None or batch.project_id != project_id:
-        raise HTTPException(status_code=404, detail=f"Batch '{batch_id}' is not running.")
+    if batch is None or batch.project_id != project_id or batch.done.is_set():
+        from backend_service.storyboard.batch_queue import cancel_paused
+
+        project = _guard(get_store().load, project_id)
+        record = next((b for b in project.batches if b.id == batch_id), None)
+        if record is None or record.state != "paused":
+            if batch is not None and batch.project_id == project_id:
+                return {"cancelled": False}  # it already ended
+            raise HTTPException(status_code=404, detail=f"Batch '{batch_id}' is not running or paused.")
+        return {"cancelled": _guard(cancel_paused, get_store(), project_id, batch_id)}  # a paused batch (S-M1)
     return {"cancelled": batch.cancel()}
 
 

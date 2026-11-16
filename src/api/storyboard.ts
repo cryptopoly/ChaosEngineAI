@@ -10,6 +10,8 @@
 import { apiFetch, readErrorDetail } from "./index";
 import type {
   StoryboardBatchStatus,
+  StoryboardCutPlan,
+  StoryboardSongAnalysis,
   StoryboardBatchWhat,
   StoryboardExportPreset,
   StoryboardListRow,
@@ -196,6 +198,50 @@ export async function getStoryboardBatch(projectId: string, batchId: string): Pr
 
 export async function cancelStoryboardBatch(projectId: string, batchId: string): Promise<{ cancelled: boolean }> {
   return await request("POST", `${base(projectId)}/batches/${encodeURIComponent(batchId)}/cancel`);
+}
+
+/** Stop a running batch after the step in progress; it becomes `paused` and keeps its remaining steps (S-M1). */
+export async function pauseStoryboardBatch(projectId: string, batchId: string): Promise<{ pausing: boolean }> {
+  return await request("POST", `${base(projectId)}/batches/${encodeURIComponent(batchId)}/pause`);
+}
+
+/** Continue a paused batch from its remaining steps (S-M1). */
+export async function resumeStoryboardBatch(
+  projectId: string,
+  batchId: string,
+  revision: number,
+): Promise<StoryboardBatchStatus & { batchId: string }> {
+  return await request("POST", `${base(projectId)}/batches/${encodeURIComponent(batchId)}/resume`, { revision });
+}
+
+// ---- song, cut plan and lyric captions (S-M1) ----
+/** Attach a song from the Music library (`libraryId`) or a file (`path`: local path or `upload:` handle) and analyse it. */
+export async function attachStoryboardSong(
+  projectId: string,
+  body: { revision: number; libraryId?: string; path?: string; title?: string; addToMixer?: boolean },
+): Promise<StoryboardProjectPayload & { analysis: StoryboardSongAnalysis }> {
+  return await request("POST", `${base(projectId)}/song`, body, 300000);
+}
+
+/** Shots cut to the attached song's sections and beats; nothing is written (apply with `apply_plan`). */
+export async function proposeStoryboardCutPlan(
+  projectId: string,
+  body: { maxShotSeconds?: number; minShotSeconds?: number; keepPrompts?: boolean } = {},
+): Promise<StoryboardCutPlan> {
+  return await request("POST", `${base(projectId)}/cut-plan`, body);
+}
+
+/** Whether lyric captions can be timed by speech-to-text on this machine. */
+export async function getLyricsSpeechStatus(): Promise<{ ready: boolean; reason: string | null }> {
+  return await request("GET", "/api/storyboard/lyrics/speech", undefined, 15000);
+}
+
+/** Time the song's lyrics as captions on its mixer clip (from the sections, or by speech-to-text). */
+export async function makeStoryboardLyricCaptions(
+  projectId: string,
+  body: { revision: number; timing?: "auto" | "sections" | "speech"; language?: string },
+): Promise<StoryboardProjectPayload & { timing: "sections" | "speech"; notes: string[] }> {
+  return await request("POST", `${base(projectId)}/lyrics/captions`, body, 1800000);
 }
 
 // ---- renders (used by the Mixer) ----

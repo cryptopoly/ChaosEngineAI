@@ -50,7 +50,11 @@ export function useBoardPositions(story: UseStoryboardResult, project: Storyboar
     const moved = draftsRef.current;
     const ids = Object.keys(moved);
     if (ids.length === 0) return;
-    const positions = Object.fromEntries(ids.map((id) => [id, moved[id]]));
+    // Cards still on their grid place are saved where they show now, so a later reorder (which changes the grid
+    // places) does not move cards the user arranged around.
+    const placed = layout(cards, saved ?? {});
+    const unsaved = Object.fromEntries(cards.filter((c) => !saved?.[c.id] && !moved[c.id]).map((c) => [c.id, placed[c.id]]));
+    const positions = { ...unsaved, ...Object.fromEntries(ids.map((id) => [id, moved[id]])) };
     void story.op("place_cards", { positions }).finally(() => {
       // Drop only the drafts this save carried, unless the card moved again meanwhile.
       setDrafts((current) => {
@@ -59,16 +63,17 @@ export function useBoardPositions(story: UseStoryboardResult, project: Storyboar
         return next;
       });
     });
-  }, [story]);
+  }, [story, cards, saved]);
 
-  const saveSoon = useCallback(() => {
-    if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(save, KEY_SAVE_MS);
-  }, [save]);
-
-  // Leaving the tab with an arrow move waiting saves it rather than dropping it.
+  // The timer runs the newest `save`, which sees the newest project and moves.
   const saveRef = useRef(save);
   saveRef.current = save;
+  const saveSoon = useCallback(() => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => saveRef.current(), KEY_SAVE_MS);
+  }, []);
+
+  // Leaving the tab with an arrow move waiting saves it rather than dropping it.
   useEffect(() => () => {
     if (timer.current) saveRef.current();
   }, []);

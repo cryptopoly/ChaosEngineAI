@@ -45,6 +45,8 @@ export function SongLyrics({ story, song, projectId }: { story: UseStoryboardRes
     void story.op("edit_song", { lyrics: lines });
   }
 
+  // Not disabled while the project is busy: leaving the lyrics box saves them on the way to this click, and the
+  // op queue runs the timing after that save, so the click must not be lost to the save's busy moment.
   async function time() {
     if (!story.call) return;
     setWorking(true);
@@ -89,11 +91,11 @@ export function SongLyrics({ story, song, projectId }: { story: UseStoryboardRes
             <option value="speech" disabled={speech !== null && !speech.ready}>{t("board.song.timingSpeech", { defaultValue: "By ear (speech-to-text)" })}</option>
           </select>
         </label>
-        <button type="button" className="secondary-button" disabled={working || story.busy || lines.length === 0 || noClip} onClick={() => void time()}>
+        <button type="button" className="secondary-button" disabled={working || lines.length === 0 || noClip} onClick={() => void time()}>
           {working ? t("board.song.timingWorking", { defaultValue: "Timing the lyrics…" }) : t("board.song.timeLyrics", { defaultValue: "Time the lyrics" })}
         </button>
       </div>
-      {speech && !speech.ready && speech.reason ? <p className="muted-text">{speech.reason}</p> : null}
+      {speech && !speech.ready && speech.reason && !result ? <p className="muted-text">{speech.reason}</p> : null}
       {noClip ? <p className="muted-text">{t("board.song.noClip", { defaultValue: "The song is not on the mixer, so there is no clip to put captions on. Attach it again with the mixer on." })}</p> : null}
       {problem ? <p className="plan-error" role="alert">{problem}</p> : null}
       {result ? (

@@ -8,7 +8,7 @@ import { useTranslation } from "react-i18next";
 import type { StoryboardSong } from "../../../types";
 import { SongRuler } from "../song/SongRuler";
 import { BoardCard } from "./BoardCard";
-import { toBoard, type Pos } from "./boardLogic";
+import { CARD_H, CARD_W, toBoard, type Pos } from "./boardLogic";
 import type { BoardPositions } from "./useBoardPositions";
 import type { BoardSelection, useBoardInput } from "./useBoardInput";
 import type { BoardViewControls } from "./useBoardView";
@@ -59,7 +59,9 @@ export function BoardCanvas({ projectId, viewport, positions, view, selection, i
         setOver(false);
         const files = Array.from(event.dataTransfer.files).filter((file) => file.type.startsWith("image/"));
         const rect = viewport.current?.getBoundingClientRect();
-        if (files.length > 0) onDropPictures(files, toBoard(view.view, event.clientX - (rect?.left ?? 0), event.clientY - (rect?.top ?? 0)));
+        // The first card lands centred under the pointer.
+        const at = toBoard(view.view, event.clientX - (rect?.left ?? 0), event.clientY - (rect?.top ?? 0));
+        if (files.length > 0) onDropPictures(files, { x: at.x - CARD_W / 2, y: at.y - CARD_H / 2 });
       }}
     >
       <div className="board-plane" style={{ transform: `translate(${x}px, ${y}px) scale(${zoom})` }}>

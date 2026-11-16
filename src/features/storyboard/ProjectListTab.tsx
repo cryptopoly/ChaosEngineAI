@@ -5,13 +5,14 @@
  */
 import { useEffect, useRef, useState, type DragEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { createStoryboardProject, deleteStoryboardProject, importStoryboardBundle, runStoryboardOp } from "../../api";
+import { createStoryboardProject, deleteStoryboardProject, importStoryboardBundle, installStoryboardSample, runStoryboardOp } from "../../api";
 import { PlusIcon } from "../../components/icons/ActionIcons";
 import { Panel } from "../../components/Panel";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { ProjectCard } from "./ProjectCard";
 import type { ModelChoice } from "./ProjectDefaultsPanel";
 import { ProjectDialog, type ProjectDialogResult } from "./ProjectDialog";
+import { SampleProjectCard } from "./SampleProjectCard";
 import { newProjectDefaults, type VideoFitSource } from "./formatLogic";
 import { downloadProjectBundle, formatBundleBytes } from "./projectFiles";
 import { LIST_SORTS, filterAndSort, isBundleName, readListSort, writeListSort, type ListSort } from "./projectShellLogic";
@@ -65,6 +66,7 @@ export function ProjectListTab({ backendOnline, onOpenProject, videoFit, imageMo
   }
 
   async function createProject(result: ProjectDialogResult) {
+    if (templateById(result.template).sample) return (await installStoryboardSample(result.name)).project.id;
     const defaults = { ...newProjectDefaults(result.aspect, result.resolution, result.fps), imageModel: result.imageModel, videoModel: result.videoModel };
     let payload = await createStoryboardProject(result.name, defaults);
     const shots = templateShotArgs(templateById(result.template), (shot) => ({
@@ -283,6 +285,9 @@ export function ProjectListTab({ backendOnline, onOpenProject, videoFit, imageMo
               </div>
               <p className="muted-text">{t("projectList.dropHint", { defaultValue: "Or drop a .chaosfilm file here." })}</p>
             </div>
+          ) : null}
+          {backendOnline && !loading && cards.length === 0 && !error ? (
+            <SampleProjectCard onOpened={(id) => onOpenProject(id)} />
           ) : null}
           {cards.length > 0 && shown.length === 0 ? (
             <p className="muted-text">{t("projectList.noMatch", { defaultValue: "No project matches {query}.", query })}</p>

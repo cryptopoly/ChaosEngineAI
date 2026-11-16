@@ -260,6 +260,8 @@ export function StoryboardTab({ story, project, timeline, imageGallery, videoGal
                 onRerun={() => rerun(shot)}
                 onRetry={() => void story.startBatch("both", [shot.id])}
                 onMakeClip={running ? undefined : () => void story.startBatch("clip", [shot.id])}
+                onRedoClip={running ? undefined : () => void story.startBatch("redo-clip", [shot.id])}
+                onRedoStill={running ? undefined : () => void story.startBatch("redo-still", [shot.id])}
                 onUseAsReference={() => void useAsReference(shot, index)}
                 onRemove={() => setRemoveId(shot.id)}
                 onDragStart={setDragId}
@@ -315,6 +317,7 @@ export function StoryboardTab({ story, project, timeline, imageGallery, videoGal
           batchRunning={running}
           op={story.op}
           onMake={(shotId) => void story.startBatch("both", [shotId])}
+          onRedo={(what, shotId) => void story.startBatch(what, [shotId])}
           onClose={() => setEditingId(null)}
         />
       ) : null}

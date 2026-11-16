@@ -1758,6 +1758,81 @@
       "toggle": null,
       "none": null,
       "short": null
+    },
+    "compare": {
+      "facts": {
+        "pass": null,
+        "stillModel": null,
+        "stillSeed": null,
+        "clipModel": null,
+        "clipSeed": null,
+        "size": null,
+        "length": null
+      },
+      "draft": null,
+      "final": null,
+      "notRecorded": null,
+      "summary": {
+        "sameStill": null,
+        "sameClip": null,
+        "identical": null,
+        "different": null
+      },
+      "picked": null,
+      "left": null,
+      "right": null,
+      "pickSide": null,
+      "option": null,
+      "inUse": null,
+      "clipOf": null,
+      "stillOf": null,
+      "noClip": null,
+      "noStill": null,
+      "stillShown": null,
+      "inUseButton": null,
+      "use": null,
+      "title": null,
+      "viewLabel": null,
+      "clips": null,
+      "stills": null,
+      "transport": null,
+      "pause": null,
+      "playBoth": null,
+      "position": null,
+      "time": null,
+      "sound": null,
+      "soundOff": null,
+      "factsCaption": null,
+      "setting": null,
+      "differs": null,
+      "open": null,
+      "openTitle": null,
+      "short": null
+    },
+    "remake": {
+      "clip": null,
+      "still": null,
+      "outdatedStatus": null,
+      "outdatedTitle": null,
+      "outdatedAction": null,
+      "timed": null,
+      "untimed": null,
+      "label": null,
+      "clipTitle": null,
+      "stillTitle": null,
+      "outdatedBadge": null
+    },
+    "sample": {
+      "projectName": null,
+      "meta": null,
+      "posterAlt": null,
+      "eyebrow": null,
+      "title": null,
+      "body": null,
+      "opening": null,
+      "open": null,
+      "failed": null,
+      "templateNote": null
     }
   },
   "storyProjects": {
@@ -2458,7 +2533,8 @@
     "story": "짧은 이야기",
     "vertical": "세로 소셜",
     "metaFormat": null,
-    "sets": "{name}이(가) 형식을 {aspect}, {resolution}, {fps}fps로 설정했습니다. 아래에서 바꿀 수 있습니다."
+    "sets": "{name}이(가) 형식을 {aspect}, {resolution}, {fps}fps로 설정했습니다. 아래에서 바꿀 수 있습니다.",
+    "sample": null
   },
   "voicePicker": {
     "automatic": "음성 없음(자동)",

@@ -3,7 +3,8 @@
 A generated take records a fingerprint (``basis``) of what it was made from: the shot's own prompts and
 timing, the references it uses, the picture defaults and, for ``startFrom: previous-shot``, the previous
 shot's active take and clip hash. A shot is stale when its active take's basis no longer matches, or when
-it chains from a shot that is stale (so redoing C marks every chained shot after it). Uploaded takes have
+it chains from a shot that is stale (so redoing C marks every chained shot after it), or when its clip was made
+from an older still than the take now holds (``clip_outdated``, after Redo still only). Uploaded takes have
 no basis and are never stale. The user decides what to re-run.
 """
 
@@ -52,13 +53,26 @@ def fingerprint(project: Project, shot: Shot) -> str:
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:32]
 
 
+def clip_outdated(shot: Shot) -> bool:
+    """The active take's clip was made from another still than the one the take now holds (after Redo still only).
+
+    The clip records the hash of the still it started from (``settings.clipStill``); takes made before that have
+    none and are never outdated by this rule."""
+    take = shot.active()
+    if take is None or not take.clip:
+        return False
+    made_from = (take.settings or {}).get("clipStill")
+    still = take.hashes.get("still")
+    return isinstance(made_from, str) and bool(still) and made_from != still
+
+
 def stale_shots(project: Project) -> set[str]:
     stale: set[str] = set()
     prev: Shot | None = None
     for shot in project.shots:
         take = shot.active()
         if take is not None and take.basis is not None:
-            if take.basis != fingerprint(project, shot):
+            if take.basis != fingerprint(project, shot) or clip_outdated(shot):
                 stale.add(shot.id)
             elif shot.startFrom == "previous-shot" and prev is not None and prev.id in stale:
                 stale.add(shot.id)

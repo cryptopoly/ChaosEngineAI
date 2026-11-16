@@ -2,13 +2,15 @@
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { CloseIcon } from "../../components/icons/ActionIcons";
-import { RunEstimateStrip } from "../../components/RunEstimateStrip";
+import { RunEstimateStrip, formatDuration, memoryRisk } from "../../components/RunEstimateStrip";
 import { ConfirmDialog } from "./ConfirmDialog";
-import type { ImageOutputArtifact, StoryboardProject, StoryboardShot, VideoOutputArtifact } from "../../types";
+import type { ImageOutputArtifact, StoryboardBatchWhat, StoryboardProject, StoryboardShot, VideoOutputArtifact } from "../../types";
 import { PathField } from "./PathField";
 import { ReferenceImagePicker } from "./ReferenceImagePicker";
 import { ProjectImage } from "./ProjectMedia";
 import type { RunOp } from "./useStoryboard";
+import { canRedoClip, canRedoStill } from "./remakeLogic";
+import { useShotEstimates } from "./useShotEstimates";
 import {
   draftFromShot,
   drawerEscapeAction,
@@ -33,11 +35,13 @@ export interface ShotEditorDrawerProps {
   batchRunning: boolean;
   op: RunOp;
   onMake: (shotId: string) => void;
+  /** Redo clip only / Redo still only (S11). */
+  onRedo?: (what: "redo-clip" | "redo-still", shotId: string) => void;
   onClose: () => void;
 }
 
 export function ShotEditorDrawer({
-  project, shot, index, imageGallery, videoGallery, busy, batchRunning, op, onMake, onClose,
+  project, shot, index, imageGallery, videoGallery, busy, batchRunning, op, onMake, onRedo, onClose,
 }: ShotEditorDrawerProps) {
   const { t } = useTranslation("studio");
   const [draft, setDraft] = useState<ShotDraft>(() => draftFromShot(shot));
@@ -50,6 +54,29 @@ export function ShotEditorDrawer({
   const patch = shotPatchFromDraft(shot, draft);
   const dirty = Object.keys(patch).length > 0;
   const number = index + 1;
+  const redoClip = Boolean(onRedo) && canRedoClip(shot);
+  const redoStill = Boolean(onRedo) && canRedoStill(shot);
+  const kinds: StoryboardBatchWhat[] = ["both", ...(redoClip ? ["redo-clip" as const] : []), ...(redoStill ? ["redo-still" as const] : [])];
+  const estimates = useShotEstimates(project.id, project.revision, shot.id, kinds, !batchRunning && !shot.locked);
+  const make = estimates.both ?? null;
+  const tf = t as unknown as (key: string, options: Record<string, unknown>) => string;
+  const blocked = busy || batchRunning || shot.locked || dirty;
+  const blockedTitle = shot.locked
+    ? t("board.shot.lockedNote", { defaultValue: "Locked shots are skipped by Make shots." })
+    : dirty
+      ? t("board.editor.saveFirst", { defaultValue: "Save your changes first." })
+      : undefined;
+  /** "Redo clip only · about 1 min 8 s", or the plain words when the time is not known. */
+  function redoLabel(what: "redo-clip" | "redo-still") {
+    const name = what === "redo-clip"
+      ? t("board.remake.clip", { defaultValue: "Redo clip only" })
+      : t("board.remake.still", { defaultValue: "Redo still only" });
+    const seconds = estimates[what]?.seconds;
+    if (estimates[what] === undefined) return name;
+    return seconds != null
+      ? t("board.remake.timed", { defaultValue: "{action} · about {time}", action: name, time: formatDuration(tf, seconds) })
+      : t("board.remake.untimed", { defaultValue: "{action} · time unknown", action: name });
+  }
 
   // Focus goes into the drawer, and back to the card that opened it when it closes.
   useEffect(() => {
@@ -343,26 +370,46 @@ export function ShotEditorDrawer({
       </div>
 
       <div className="drawer__foot">
+        {redoClip || redoStill ? (
+          <div className="shot-editor__redo" role="group" aria-label={t("board.remake.label", { defaultValue: "Redo one half of the take" })}>
+            {redoClip ? (
+              <button
+                type="button"
+                className="secondary-button"
+                disabled={blocked}
+                title={blockedTitle ?? t("board.remake.clipTitle", { defaultValue: "A new take that keeps this still and makes a new clip with a new seed." })}
+                onClick={() => onRedo?.("redo-clip", shot.id)}
+              >
+                {redoLabel("redo-clip")}
+              </button>
+            ) : null}
+            {redoStill ? (
+              <button
+                type="button"
+                className="secondary-button"
+                disabled={blocked}
+                title={blockedTitle ?? t("board.remake.stillTitle", { defaultValue: "A new still with a new seed. The clip stays until you redo it, and the shot shows it is behind." })}
+                onClick={() => onRedo?.("redo-still", shot.id)}
+              >
+                {redoLabel("redo-still")}
+              </button>
+            ) : null}
+          </div>
+        ) : null}
         <RunEstimateStrip
           compactUnknown
-          seconds={null}
-          peakGb={null}
-          totalGb={null}
-          diskMb={null}
-          basis={null}
-          risk="safe"
+          seconds={make?.seconds ?? null}
+          peakGb={make?.peakGb ?? null}
+          totalGb={make?.totalGb ?? null}
+          diskMb={make?.diskMb ?? null}
+          basis={make?.basis ?? null}
+          risk={memoryRisk(make?.peakGb ?? null, make?.totalGb ?? null, "safe")}
           action={
             <button
               type="button"
               className="primary-button"
-              disabled={busy || batchRunning || shot.locked || dirty}
-              title={
-                shot.locked
-                  ? t("board.shot.lockedNote", { defaultValue: "Locked shots are skipped by Make shots." })
-                  : dirty
-                    ? t("board.editor.saveFirst", { defaultValue: "Save your changes first." })
-                    : undefined
-              }
+              disabled={blocked}
+              title={blockedTitle}
               onClick={() => onMake(shot.id)}
             >
               {t("board.makeOne", { defaultValue: "Make this shot" })}

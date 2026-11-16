@@ -221,6 +221,15 @@ derived from Lightricks LTX-2.3 under the LTX-2 community licence (free below
 US$10 million annual revenue), and ``mlx-community/gemma-3-12b-it-4bit`` (the
 text encoder) is under the Gemma terms of use. Neither is bundled.
 
+### Sample film (bundled media)
+
+`backend_service/storyboard/sample/film/` ships a four-shot sample project (about 1.4 MB) that this app made on
+2026-11-15: the stills with Iris-3B Turbo (Sperid Labs, Apache 2.0) and the clips with LTX-2.5 distilled q4 through
+`ltx-2-mlx` (weights under the LTX-2 community licence, whose section 5 says the licensor claims no rights in the
+output). No model weights are bundled. The clips are shipped as the model wrote them, with their metadata unchanged
+(section 6 of that licence asks that disclosures and provenance on outputs are kept); the stills were resized to
+854 x 480 JPEG. The prompts are original to this project.
+
 ---
 
 ## Ported Algorithms

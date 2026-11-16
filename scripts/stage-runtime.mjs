@@ -57,6 +57,11 @@ const BUNDLED_CLI_SCRIPTS = ["chaosengine-cli"];
 // backend_service/mcp_bridge/guide.py finds it for GET /api/agent/guide and the chaosengine://guide resource.
 const BUNDLED_ROOT_DOCS = ["AGENTS.md"];
 
+// The sample film the Projects list offers on a new install (S12): project.json and its media, copied with
+// ``backend_service``. Staging fails if any file the sample's project.json names did not make it into the
+// bundle (tests/test_stage_runtime_scripts.py checks no ignore rule would drop one).
+const BUNDLED_SAMPLE_FILM = "backend_service/storyboard/sample/film";
+
 // The llama.cpp release whose prebuilt binaries are bundled. Pinned (not
 // "latest") and kept equal to LLAMA_CPP_REF in scripts/update-llama-cpp.sh, which
 // tests/test_stage_runtime_scripts.py checks. The v0.9.8 build asked GitHub for
@@ -119,6 +124,7 @@ function main() {
   for (const relativePath of ["backend_service", "cache_compression", "dflash", "turboquant_mlx"]) {
     copyTree(path.join(workspaceRoot, relativePath), path.join(backendDest, relativePath));
   }
+  verifyBundledSampleFilm();
   for (const relativeFile of ["README.md", "pyproject.toml", ...BUNDLED_ROOT_DOCS]) {
     copyFile(path.join(workspaceRoot, relativeFile), path.join(backendDest, relativeFile));
   }
@@ -1220,6 +1226,26 @@ function isMachOFile(targetPath) {
     return false;
   } finally {
     try { fs.closeSync(fd); } catch { /* ignore */ }
+  }
+}
+
+function verifyBundledSampleFilm() {
+  const staged = path.join(backendDest, BUNDLED_SAMPLE_FILM);
+  const projectFile = path.join(staged, "project.json");
+  if (!fs.existsSync(projectFile)) {
+    throw new Error(`The sample film was not staged: ${projectFile} is missing.`);
+  }
+  const project = JSON.parse(fs.readFileSync(projectFile, "utf8"));
+  const wanted = new Set();
+  for (const shot of project.shots ?? []) {
+    for (const take of shot.takes ?? []) {
+      if (take.still) wanted.add(take.still);
+      if (take.clip) wanted.add(take.clip);
+    }
+  }
+  const missing = [...wanted].filter((rel) => !fs.existsSync(path.join(staged, rel)));
+  if (missing.length > 0) {
+    throw new Error(`The sample film is missing staged files: ${missing.join(", ")}`);
   }
 }
 

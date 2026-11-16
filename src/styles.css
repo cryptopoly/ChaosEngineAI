@@ -15827,6 +15827,27 @@ select.music-library__select {
   outline: none;
 }
 .rough-cut__head {
+/* S10 take compare and S11 redo one half (package S-F). */
+.takes-strip__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.takes-strip__row .takes-strip {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.takes-strip__compare {
+  flex: 0 0 auto;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+}
+.modal-content.take-compare {
+  width: min(1120px, 96vw);
+  max-height: 92vh;
+}
+.take-compare__head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -15962,6 +15983,96 @@ select.music-library__select {
   transition: width 0.2s ease;
 }
 .rough-cut__transport {
+.take-compare__views {
+  display: inline-flex;
+  align-self: flex-start;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.take-compare__view {
+  padding: 5px 14px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+}
+.take-compare__view.active {
+  background: var(--panel-alt);
+  color: var(--text);
+}
+.take-compare__view:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.take-compare__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.take-compare__pane {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+.take-compare__pane--active {
+  border-color: var(--accent);
+}
+.take-compare__pane-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.take-compare__select {
+  flex: 1 1 160px;
+  min-width: 0;
+  width: auto;
+}
+.take-compare__frame {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background: #000;
+}
+.take-compare__media {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.take-compare__none {
+  padding: 12px;
+  color: var(--muted);
+  font-size: 0.85rem;
+  text-align: center;
+}
+.take-compare__note {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--app-bg) 78%, transparent);
+  color: var(--muted-strong);
+  font-size: 0.75rem;
+}
+.take-compare__use {
+  align-self: flex-start;
+}
+.take-compare__transport {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -16106,5 +16217,151 @@ select.music-library__select {
   }
   .rough-cut__keys {
     display: none;
+.take-compare__scrub {
+  flex: 1 1 200px;
+  min-width: 120px;
+  accent-color: var(--accent);
+}
+.take-compare__time {
+  min-width: 7.5em;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+.take-compare__sound {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.take-compare__sound .text-input {
+  width: auto;
+}
+.take-compare__facts {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.take-compare__facts th,
+.take-compare__facts td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+.take-compare__facts thead th {
+  color: var(--muted);
+  font-weight: 500;
+}
+.take-compare__facts tbody th {
+  width: 26%;
+  color: var(--muted-strong);
+  font-weight: 500;
+}
+.take-compare__differs td {
+  color: var(--text);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+.take-compare__differs th::after {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  vertical-align: middle;
+}
+.shot-editor__redo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+@media (max-width: 820px) {
+  .take-compare__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .modal-content.take-compare {
+    width: 100%;
+    max-height: 92vh;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+  /* The panes stack: keep Play both in reach while scrolling between them. */
+  .take-compare__transport {
+    position: sticky;
+    bottom: -20px;
+    z-index: 1;
+    margin: 0 -20px;
+    padding: 10px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--panel);
+  }
+}
+/* S12: the sample film card on an empty Projects list. */
+.sample-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+  margin-top: 14px;
+  padding: var(--panel-padding);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--panel-alt);
+}
+.sample-card__poster {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--muted);
+}
+.sample-card__poster img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.sample-card__body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+.sample-card__body h3 {
+  margin: 0;
+  color: var(--text);
+  font-size: 1.1rem;
+  letter-spacing: -0.01em;
+}
+.sample-card__body p {
+  margin: 0;
+}
+.sample-card__meta {
+  color: var(--muted-strong);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+.sample-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+.sample-card .callout {
+  width: 100%;
+}
+@media (max-width: 820px) {
+  .sample-card {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

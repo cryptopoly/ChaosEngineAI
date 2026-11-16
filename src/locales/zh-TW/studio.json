@@ -1758,6 +1758,81 @@
       "toggle": null,
       "none": null,
       "short": null
+    },
+    "compare": {
+      "facts": {
+        "pass": null,
+        "stillModel": null,
+        "stillSeed": null,
+        "clipModel": null,
+        "clipSeed": null,
+        "size": null,
+        "length": null
+      },
+      "draft": null,
+      "final": null,
+      "notRecorded": null,
+      "summary": {
+        "sameStill": null,
+        "sameClip": null,
+        "identical": null,
+        "different": null
+      },
+      "picked": null,
+      "left": null,
+      "right": null,
+      "pickSide": null,
+      "option": null,
+      "inUse": null,
+      "clipOf": null,
+      "stillOf": null,
+      "noClip": null,
+      "noStill": null,
+      "stillShown": null,
+      "inUseButton": null,
+      "use": null,
+      "title": null,
+      "viewLabel": null,
+      "clips": null,
+      "stills": null,
+      "transport": null,
+      "pause": null,
+      "playBoth": null,
+      "position": null,
+      "time": null,
+      "sound": null,
+      "soundOff": null,
+      "factsCaption": null,
+      "setting": null,
+      "differs": null,
+      "open": null,
+      "openTitle": null,
+      "short": null
+    },
+    "remake": {
+      "clip": null,
+      "still": null,
+      "outdatedStatus": null,
+      "outdatedTitle": null,
+      "outdatedAction": null,
+      "timed": null,
+      "untimed": null,
+      "label": null,
+      "clipTitle": null,
+      "stillTitle": null,
+      "outdatedBadge": null
+    },
+    "sample": {
+      "projectName": null,
+      "meta": null,
+      "posterAlt": null,
+      "eyebrow": null,
+      "title": null,
+      "body": null,
+      "opening": null,
+      "open": null,
+      "failed": null,
+      "templateNote": null
     }
   },
   "storyProjects": {
@@ -2458,7 +2533,8 @@
     "story": "短篇故事",
     "vertical": "直式社群",
     "metaFormat": null,
-    "sets": "{name} 已將格式設為 {aspect}、{resolution}、{fps} fps。可在下方變更。"
+    "sets": "{name} 已將格式設為 {aspect}、{resolution}、{fps} fps。可在下方變更。",
+    "sample": null
   },
   "voicePicker": {
     "automatic": "無聲音（自動）",

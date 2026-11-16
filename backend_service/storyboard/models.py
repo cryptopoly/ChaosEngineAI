@@ -274,7 +274,8 @@ class BatchResult(_Model):
 
 class BatchRecord(_Model):
     id: Id
-    what: Literal["still", "clip", "both", "final"]  # final: kept shots again with the quality model, then clips
+    # final: kept shots again with the quality model, then clips; redo-clip / redo-still: one half again, new seed (S11)
+    what: Literal["still", "clip", "both", "final", "redo-clip", "redo-still"]
     force: bool = False
     draft: bool = False  # a "Make drafts" run: the fast model at a smaller size
     state: Literal["queued", "running", "done", "failed", "cancelled", "interrupted"] = "queued"

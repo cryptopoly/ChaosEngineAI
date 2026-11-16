@@ -211,7 +211,7 @@ export type StoryboardListRow =
   | { id: string; error: string; name?: undefined; revision?: undefined; shots?: undefined; createdAt?: undefined };
 
 /** `final`: the kept shots again with the quality model, then their clips. */
-export type StoryboardBatchWhat = "still" | "clip" | "both" | "final";
+export type StoryboardBatchWhat = "still" | "clip" | "both" | "final" | "redo-clip" | "redo-still";
 
 export interface StoryboardBatchStatus {
   batch: StoryboardBatchRecord;

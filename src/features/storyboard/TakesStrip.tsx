@@ -14,16 +14,18 @@ export interface TakesStripProps {
   activeId: string | null;
   onPick: (takeId: string) => void;
   disabled?: boolean;
+  /** Opens the side-by-side compare (S10); shown from two takes up. */
+  onCompare?: () => void;
 }
 
-export function TakesStrip({ projectId, takes, activeId, onPick, disabled }: TakesStripProps) {
+export function TakesStrip({ projectId, takes, activeId, onPick, disabled, onCompare }: TakesStripProps) {
   const { t } = useTranslation("studio");
   const buttons = useRef<(HTMLButtonElement | null)[]>([]);
   const [focused, setFocused] = useState<number | null>(null);
   if (takes.length === 0) return null;
   const tabbable = rovingTakeIndex(takes.map((take) => take.id), activeId, focused);
 
-  return (
+  const strip = (
     <div
       className="takes-strip"
       role="radiogroup"
@@ -67,6 +69,20 @@ export function TakesStrip({ projectId, takes, activeId, onPick, disabled }: Tak
           </button>
         );
       })}
+    </div>
+  );
+  if (!onCompare || takes.length < 2) return strip;
+  return (
+    <div className="takes-strip__row">
+      {strip}
+      <button
+        type="button"
+        className="secondary-button takes-strip__compare"
+        title={t("board.compare.openTitle", { defaultValue: "Two takes side by side, with what made each one." })}
+        onClick={onCompare}
+      >
+        {t("board.compare.short", { defaultValue: "Compare" })}
+      </button>
     </div>
   );
 }

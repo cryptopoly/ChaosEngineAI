@@ -131,7 +131,8 @@
     "groupTabsAriaLabel": "{group} タブ",
     "primaryNavAriaLabel": "メイン",
     "sectionMake": "作成",
-    "sectionRun": "実行"
+    "sectionRun": "実行",
+    "menuButton": null
   },
   "slashCommands": {
     "menuAriaLabel": "スラッシュコマンド"

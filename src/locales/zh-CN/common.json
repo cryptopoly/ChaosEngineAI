@@ -131,7 +131,8 @@
     "groupTabsAriaLabel": "{group} 标签页",
     "primaryNavAriaLabel": "主导航",
     "sectionMake": "创作",
-    "sectionRun": "运行"
+    "sectionRun": "运行",
+    "menuButton": null
   },
   "slashCommands": {
     "menuAriaLabel": "斜杠命令"

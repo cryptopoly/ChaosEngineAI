@@ -20,9 +20,24 @@ export async function openApp(page: Page): Promise<void> {
   await expect(page.getByRole("dialog", { name: "Terms of use" })).toBeHidden();
 }
 
+/**
+ * The sidebar's nav. Below 1180 px it sits in a drawer behind the top bar's menu button, which this opens first;
+ * choosing a tab closes the drawer again.
+ */
+export async function primaryNav(page: Page) {
+  await openMenuIfCompact(page);
+  return page.getByRole("navigation", { name: "Primary" });
+}
+
+/** Opens the compact layout's nav drawer; does nothing at 1180 px and wider, or when it is already open. */
+export async function openMenuIfCompact(page: Page): Promise<void> {
+  const menu = page.locator(".sidebar-menu-button");
+  if ((await menu.isVisible()) && (await menu.getAttribute("aria-expanded")) !== "true") await menu.click();
+}
+
 /** Click a sidebar group (when closed) and then one of its children. */
 export async function openTab(page: Page, group: string, child: string): Promise<void> {
-  const nav = page.getByRole("navigation", { name: "Primary" });
+  const nav = await primaryNav(page);
   const header = nav.locator(".nav-group-header", { hasText: group });
   if ((await header.getAttribute("aria-expanded")) !== "true") await header.click();
   await nav.locator(".nav-child-button", { hasText: new RegExp(`^${child}$`) }).click();
@@ -36,7 +51,7 @@ export async function goTo(page: Page, group: string, child: string): Promise<vo
 /** The one Projects entry (D-65): opens the project list, leaving a project that was still open. */
 export async function goToProjects(page: Page): Promise<void> {
   await openApp(page);
-  await page.getByRole("navigation", { name: "Primary" }).locator(".nav-button", { hasText: /^Projects/ }).click();
+  await (await primaryNav(page)).locator(".nav-button", { hasText: /^Projects/ }).click();
   const back = page.locator(".project-shell__back");
   if (await back.isVisible()) await back.click();
   await expect(page.getByRole("heading", { name: "Projects", exact: true }).last()).toBeVisible();

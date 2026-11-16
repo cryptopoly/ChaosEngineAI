@@ -6121,19 +6121,145 @@ select.text-input {
   background: rgba(143, 207, 159, 0.12);
 }
 
-@media (max-width: 1180px) {
+/* Compact layout (phones, iPads, narrow windows): the sidebar is a slim top bar with a menu button, and its nav
+   opens as a drawer over the page from the left, so the page keeps the full width. At 1180 px and wider the
+   sidebar is the column above (the menu button is hidden and the panel's box is dissolved). */
+.sidebar-menu-button {
+  display: none;
+}
+
+.sidebar-panel {
+  display: contents;
+}
+
+@media (max-width: 1179.98px) {
+  /* Sizes are divided by the UI scale (the shell's zoom) so the bar and the 44 px button keep their size on screen. */
   .app-shell {
-    grid-template-columns: 1fr;
+    --compact-bar-height: calc(56px / var(--ui-scale, 1));
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
   }
 
   .sidebar {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    height: var(--compact-bar-height);
+    padding: 6px 12px;
     border-right: 0;
     border-bottom: 1px solid var(--border);
+    overflow: visible;
   }
 
+  .sidebar .brand-block {
+    min-width: 0;
+  }
+
+  .sidebar .brand-kicker {
+    display: none;
+  }
+
+  .sidebar .brand-logo {
+    width: 28px;
+    height: 28px;
+  }
+
+  .sidebar .brand-block h1 {
+    font-size: 1.1rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .sidebar-menu-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: calc(44px / var(--ui-scale, 1));
+    height: calc(44px / var(--ui-scale, 1));
+    padding: 0;
+    color: var(--text);
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+  }
+
+  .sidebar-menu-button:hover,
+  .sidebar--open .sidebar-menu-button {
+    background: var(--panel);
+  }
+
+  .sidebar-panel {
+    position: fixed;
+    top: var(--compact-bar-height);
+    bottom: 0;
+    left: 0;
+    z-index: 90;
+    width: min(320px, 86vw);
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding: 16px;
+    background: #11151a;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    transform: translateX(-100%);
+    visibility: hidden;
+    transition: transform 160ms ease, visibility 0s linear 160ms;
+  }
+
+  .sidebar--open .sidebar-panel {
+    transform: none;
+    visibility: visible;
+    transition: transform 160ms ease;
+  }
+
+  .sidebar-panel .nav-list {
+    overflow: visible;
+  }
+
+  .sidebar-backdrop {
+    position: fixed;
+    top: var(--compact-bar-height);
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 89;
+    background: rgba(0, 0, 0, 0.45);
+  }
+}
+
+@media (max-width: 1179.98px) and (prefers-reduced-motion: reduce) {
+  .sidebar-panel,
+  .sidebar--open .sidebar-panel {
+    transition: none;
+  }
+}
+
+/* A finger needs 44 px rows in the drawer. */
+@media (max-width: 1179.98px) and (pointer: coarse) {
+  .sidebar-panel :is(.nav-button, .nav-group-header, .nav-child-button) {
+    min-height: calc(44px / var(--ui-scale, 1));
+  }
+}
+
+@media (max-width: 1180px) {
   .chat-layout,
   .chat-layout-2col {
     grid-template-columns: 1fr;
+  }
+
+  /* Stacked, the thread list took half the height even with no threads and squeezed the active thread. It now
+     takes what it needs up to about a third (its list scrolls) and the thread gets the rest. */
+  .chat-layout-2col {
+    grid-template-rows: fit-content(34%) minmax(0, 1fr);
+  }
+
+  .chat-layout-2col--sidebar-collapsed {
+    grid-template-rows: minmax(0, 1fr);
   }
 
   .server-screen {

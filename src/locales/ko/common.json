@@ -131,7 +131,8 @@
     "groupTabsAriaLabel": "{group} 탭",
     "primaryNavAriaLabel": "기본",
     "sectionMake": "만들기",
-    "sectionRun": "실행"
+    "sectionRun": "실행",
+    "menuButton": null
   },
   "slashCommands": {
     "menuAriaLabel": "슬래시 명령"

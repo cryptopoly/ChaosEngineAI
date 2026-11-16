@@ -131,7 +131,8 @@
     "groupTabsAriaLabel": "Вкладки {group}",
     "primaryNavAriaLabel": "Основная",
     "sectionMake": "Создание",
-    "sectionRun": "Запуск"
+    "sectionRun": "Запуск",
+    "menuButton": null
   },
   "slashCommands": {
     "menuAriaLabel": "Слэш-команды"

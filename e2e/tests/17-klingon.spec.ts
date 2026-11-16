@@ -2,7 +2,7 @@ import { mkdirSync, statSync } from "node:fs";
 import path from "node:path";
 import type { Page } from "@playwright/test";
 import { test, expect } from "./fixtures";
-import { openApp, SHOTS_DIR } from "./helpers";
+import { openApp, openMenuIfCompact, SHOTS_DIR } from "./helpers";
 
 // D-69: the Klingon locale (tlh). Picks it in Settings, checks the community note and that the
 // shell re-renders in Klingon, then saves a screenshot per widest surface (Settings general,
@@ -26,6 +26,7 @@ async function look(page: Page, name: string) {
 async function openSettings(page: Page) {
   // The Settings entry is the last standalone nav button; find it by its tab id class-free: it is
   // the only nav button whose label is "Settings" in English or "SeHlaw" in Klingon.
+  await openMenuIfCompact(page);
   const nav = page.getByRole("navigation", { name: /Primary|He Hal/ });
   await nav.locator(".nav-button", { hasText: /^(Settings|SeHlaw)/ }).click();
   await expect(page.locator(".settings-subtab-bar")).toBeVisible();
@@ -49,11 +50,13 @@ async function surfaces(page: Page, suffix: string) {
   await look(page, `settings-diagnostics${suffix}`);
   await settingsSection(page, 6); // Accelerators: hosts the Setup install strings
   await look(page, `settings-accelerators${suffix}`);
+  await openMenuIfCompact(page);
   const nav = page.getByRole("navigation", { name: /Primary|He Hal/ });
   await nav.locator(".nav-button").first().click(); // Dashboard
   await look(page, `dashboard${suffix}`);
   const groups = nav.locator(".nav-group-header");
   for (const [groupIndex, name] of [[0, "chat"], [1, "models"]] as const) {
+    await openMenuIfCompact(page);
     const header = groups.nth(groupIndex);
     if ((await header.getAttribute("aria-expanded")) !== "true") await header.click();
     await nav.locator(".nav-child-button").first().click();

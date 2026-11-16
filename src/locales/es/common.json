@@ -131,7 +131,8 @@
     "groupTabsAriaLabel": "Pestañas {group}",
     "primaryNavAriaLabel": "Principal",
     "sectionMake": "Crear",
-    "sectionRun": "Ejecutar"
+    "sectionRun": "Ejecutar",
+    "menuButton": null
   },
   "slashCommands": {
     "menuAriaLabel": "Comandos de barra"

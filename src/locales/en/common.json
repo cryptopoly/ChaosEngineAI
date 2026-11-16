@@ -131,7 +131,8 @@
     "groupTabsAriaLabel": "{group} tabs",
     "primaryNavAriaLabel": "Primary",
     "sectionMake": "Make",
-    "sectionRun": "Run"
+    "sectionRun": "Run",
+    "menuButton": "Menu"
   },
   "slashCommands": {
     "menuAriaLabel": "Slash commands"

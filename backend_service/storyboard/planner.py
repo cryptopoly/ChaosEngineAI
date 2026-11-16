@@ -14,6 +14,7 @@ from __future__ import annotations
 import base64
 import io
 import json
+import math
 import re
 import threading
 import time
@@ -103,9 +104,14 @@ def _seconds(value: Any, default: float = 4.0) -> float:
         number = float(value)
     except (TypeError, ValueError):
         return default
-    if number != number:  # NaN
-        return default
+    if not math.isfinite(number):  # NaN or infinity (a model can write 1e999)
+        return default if number != number else (10.0 if number > 0 else 1.0)
     return max(1.0, min(10.0, round(number * 2) / 2))  # a clip model makes about 10 s at most
+
+
+def _items(value: Any) -> list[Any]:
+    """A list from the model's answer, or an empty one when it wrote something else there (a number, a word)."""
+    return value if isinstance(value, list) else []
 
 
 def clean_shot(raw: Any) -> dict[str, Any] | None:
@@ -250,7 +256,7 @@ def propose(state: Any, project: Project, folder: Path, brief: str, film_seconds
               'finish. Answer as {"shots": [{"title": ..., "stillPrompt": ..., "motionPrompt": ..., "seconds": ...}], '
               '"note": "one sentence on the idea"}.')
     reply, facts = ask(state, project, folder, prompt, PROPOSE_SCHEMA)
-    shots = [s for s in (clean_shot(raw) for raw in reply.get("shots") or []) if s][:MAX_SHOTS + 4]
+    shots = [s for s in (clean_shot(raw) for raw in _items(reply.get("shots"))) if s][:MAX_SHOTS + 4]
     if not shots:
         raise PlanError("The model answered without any shots. Try again, or say more in the brief.", "bad-reply")
     return {"shots": shots, "note": _text(reply.get("note"), 400), **facts}
@@ -278,7 +284,7 @@ def rework(state: Any, project: Project, folder: Path, shot: Shot, message: str,
 def _number_to_id(project: Project, value: Any) -> str | None:
     try:
         number = int(value)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return None
     return project.shots[number - 1].id if 1 <= number <= len(project.shots) else None
 
@@ -307,7 +313,7 @@ def direct(state: Any, project: Project, folder: Path, message: str) -> dict[str
     reply, facts = ask(state, project, folder, prompt, DIRECT_SCHEMA, _history(chat))
     locked = {s.id for s in project.shots if s.locked}
     edits = []
-    for raw in reply.get("edits") or []:
+    for raw in _items(reply.get("edits")):
         shot_id = _number_to_id(project, raw.get("shot")) if isinstance(raw, dict) else None
         if not shot_id or shot_id in locked:
             continue
@@ -319,10 +325,10 @@ def direct(state: Any, project: Project, folder: Path, message: str) -> dict[str
             change["seconds"] = _seconds(raw["seconds"])
         if len(change) > 1:
             edits.append(change)
-    remove = [sid for sid in dict.fromkeys(_number_to_id(project, n) for n in reply.get("remove") or [])
+    remove = [sid for sid in dict.fromkeys(_number_to_id(project, n) for n in _items(reply.get("remove")))
               if sid and sid not in locked]
     add = []
-    for raw in (reply.get("add") or [])[:12]:
+    for raw in _items(reply.get("add"))[:12]:
         shot = clean_shot(raw)
         if shot is None:
             continue

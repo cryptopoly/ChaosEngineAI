@@ -71,7 +71,7 @@ export function OverviewTab({ story, project, timeline, deps, render, onTab, onO
   const clips = clipCount(project);
   const stills = stillOnlyCount(project);
   const stale = staleCount(project);
-  const cast = project.references.characters.length + project.references.places.length;
+  const cast = project.references.characters.length + project.references.places.length + (project.references.styles?.length ?? 0);
   const rendered = readRenderedRevision(project.id);
   const previewCurrent = (render?.preview != null || rendered != null) && !previewIsStale(rendered, project.revision);
   const exported = useHasFilm(project.id, render?.exported?.renderId ?? null) || render?.exported != null;
@@ -173,7 +173,12 @@ export function OverviewTab({ story, project, timeline, deps, render, onTab, onO
             <h3 id="overview-next-title">{text.title}</h3>
             <p className="muted-text">{text.body}</p>
             <div className="overview-tab__actions">
-              <button type="button" className="primary-button" disabled={story.busy} onClick={act}>
+              {step.id === "writeShots" ? (
+                <button type="button" className="primary-button" onClick={() => onTab("plan")}>
+                  {t("board.plan.overviewButton", { defaultValue: "Plan from an idea" })}
+                </button>
+              ) : null}
+              <button type="button" className={step.id === "writeShots" ? "secondary-button" : "primary-button"} disabled={story.busy} onClick={act}>
                 {text.button}
               </button>
               {step.id === "writeShots" ? (

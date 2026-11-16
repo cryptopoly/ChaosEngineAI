@@ -20,6 +20,8 @@ MAX_AUDIO = 500
 MAX_TAKES = 50
 MAX_CAPTIONS = 2000
 MAX_REF_IMAGES = 4  # pictures per character or place (front, side, detail...)
+MAX_PALETTE = 8  # colours kept per style reference (S15)
+MAX_PLAN_CHAT = 60  # direction chat messages kept with the project (S8)
 
 _ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
 PROJECT_ID_RE = re.compile(r"^[0-9a-f]{16}$")
@@ -27,6 +29,7 @@ _HASH_RE = re.compile(r"^[0-9a-f]{64}$")
 _SCHEME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9+.\-]*:")
 _CONTROL_RE = re.compile(r"[\x00-\x08\x0b-\x1f\x7f]")
 _LINE_BREAK_RE = re.compile(r"[\r\n\t]")
+HEX_COLOUR_RE = re.compile(r"^#[0-9a-f]{6}$")
 
 
 def new_id(prefix: str) -> str:
@@ -86,6 +89,7 @@ Prompt = Annotated[str, Field(max_length=4000), AfterValidator(check_text)]
 Sha256 = Annotated[str, AfterValidator(check_hash)]
 Scalar = Union[bool, int, float, Annotated[str, Field(max_length=4000), AfterValidator(check_text)], None]
 Seconds = Annotated[float, Field(ge=0, le=3600)]
+HexColour = Annotated[str, Field(pattern=HEX_COLOUR_RE.pattern)]
 
 
 class _Model(BaseModel):
@@ -117,17 +121,58 @@ class RefImage(_Model):
 
 
 class Reference(_Model):
-    """A character or place: a name, a few words and up to four pictures (format 3; format 2 held one ``image``)."""
+    """A character, place or style: a name, a few words and up to four pictures (format 3; format 2 held one
+    ``image``). A style also keeps the main colours read from its pictures (``palette``, S15)."""
 
     id: Id
     name: Line = ""
     description: Prompt = ""
     images: list[RefImage] = Field(default_factory=list, max_length=MAX_REF_IMAGES)
+    palette: list[HexColour] = Field(default_factory=list, max_length=MAX_PALETTE)
 
 
 class References(_Model):
     characters: list[Reference] = Field(default_factory=list, max_length=50)
     places: list[Reference] = Field(default_factory=list, max_length=50)
+    styles: list[Reference] = Field(default_factory=list, max_length=20)  # the look of the film (S15)
+
+    def all(self) -> list[Reference]:
+        return self.characters + self.places + self.styles
+
+
+class CaptionLook(_Model):
+    """How captions look when they are drawn into the picture: a font family from this machine (None: the
+    default), a colour and a place on the frame."""
+
+    font: Line | None = None
+    colour: HexColour = "#ffffff"
+    position: Literal["bottom", "middle", "top"] = "bottom"
+
+
+class Brand(_Model):
+    """The project's small brand kit (S15): an optional logo, the caption look, and how the style references
+    reach the still model (``auto``: as reference pictures when the model takes them, else as words)."""
+
+    logo: RefImage | None = None
+    logoCorner: Literal["top-left", "top-right", "bottom-left", "bottom-right"] = "bottom-right"
+    captions: CaptionLook = Field(default_factory=CaptionLook)
+    styleUse: Literal["auto", "words", "off"] = "auto"
+
+
+class Plan(_Model):
+    """The idea behind the film (S8): a free-text brief and the length the user aims for."""
+
+    brief: Prompt = ""
+    filmSeconds: float | None = Field(None, ge=5, le=600)
+
+
+class PlanMessage(_Model):
+    """One line of the project's direction chat with the chat model."""
+
+    id: Id
+    role: Literal["user", "assistant"]
+    text: Prompt
+    at: float = 0.0
 
 
 class Transition(_Model):
@@ -292,6 +337,9 @@ class Project(_Model):
     createdAt: float = 0.0
     defaults: Defaults = Field(default_factory=Defaults)
     references: References = Field(default_factory=References)
+    plan: Plan = Field(default_factory=Plan)
+    brand: Brand = Field(default_factory=Brand)
+    planChat: list[PlanMessage] = Field(default_factory=list, max_length=MAX_PLAN_CHAT)  # not undoable
     shots: list[Shot] = Field(default_factory=list, max_length=MAX_SHOTS)
     audio: list[AudioClip] = Field(default_factory=list, max_length=MAX_AUDIO)
     export: ExportSettings = Field(default_factory=ExportSettings)
@@ -321,7 +369,7 @@ class Project(_Model):
         return next((a for a in self.audio if a.id == clip_id), None)
 
     def reference(self, ref_id: str) -> Reference | None:
-        return next((r for r in self.references.characters + self.references.places if r.id == ref_id), None)
+        return next((r for r in self.references.all() if r.id == ref_id), None)
 
     def has_cloned_voice(self) -> bool:
         return any(a.source.clonedVoice for a in self.audio)

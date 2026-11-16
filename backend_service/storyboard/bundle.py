@@ -46,9 +46,11 @@ class BundleError(StoreError):
 def referenced(project: Project) -> dict[str, str | None]:
     """Every media path the project uses, with its expected sha256 when known."""
     files: dict[str, str | None] = {}
-    for ref in project.references.characters + project.references.places:
+    for ref in project.references.all():
         for img in ref.images:
             files[img.path] = img.hash
+    if project.brand.logo is not None:
+        files[project.brand.logo.path] = project.brand.logo.hash
     for shot in project.shots:
         if shot.endImage:
             files.setdefault(shot.endImage, None)

@@ -1,6 +1,6 @@
 /**
  * One open project (D-65): the header with the back link, the name, Undo / Redo and the conflict chip, then
- * five tabs in the order of the work: Overview, Cast, Storyboard, Mixer, Export. The shell owns the project
+ * six tabs in the order of the work: Overview, Plan, Cast, Storyboard, Mixer, Export. The shell owns the project
  * state, so every tab works on this project only, and handles the offline, loading, not-found and error
  * states once for all of them.
  */
@@ -12,6 +12,7 @@ import { ExportTab } from "./ExportTab";
 import type { VideoFitSource } from "./formatLogic";
 import { MixerTab } from "./mixer/MixerTab";
 import { OverviewTab } from "./OverviewTab";
+import { PlanTab, type PlanChatDeps } from "./PlanTab";
 import type { ModelChoice } from "./ProjectDefaultsPanel";
 import { setProjectName, type ProjectTabId } from "./projectRoute";
 import { ProjectShellHeader } from "./ProjectShellHeader";
@@ -28,6 +29,8 @@ export interface ProjectWorkspaceDeps {
   videoFit?: VideoFitSource;
   /** The app's data directory, to build a path for "Copy path". */
   dataDirectory?: string;
+  /** The Plan tab's chat model: what is loaded and how to load one from there (S8). */
+  chat?: PlanChatDeps;
 }
 
 export interface ProjectShellProps {
@@ -43,7 +46,7 @@ export interface ProjectShellProps {
 
 export type ShellState = "offline" | "notFound" | "error" | "loading" | "ready";
 
-/** What the shell shows instead of (or above) the tabs: handled once here for all five tabs. */
+/** What the shell shows instead of (or above) the tabs: handled once here for all six tabs. */
 export function shellState(input: { backendOnline: boolean; notFound: boolean; loaded: boolean; error: string | null }): ShellState {
   if (!input.backendOnline) return "offline";
   if (input.notFound) return "notFound";
@@ -103,6 +106,7 @@ export function ProjectShell({ projectId, fallbackName, tab, backendOnline, deps
           </div>
         ) : null}
         {tab === "overview" ? <OverviewTab story={story} project={project} timeline={timeline} deps={deps} render={render} onTab={onTab} onOpenShot={openShot} settingsRequest={settingsRequest} /> : null}
+        {tab === "plan" ? <PlanTab story={story} project={project} imageGallery={deps.imageGallery} chat={deps.chat ?? {}} onTab={onTab} /> : null}
         {tab === "cast" ? <CastTab story={story} project={project} imageGallery={deps.imageGallery} /> : null}
         {tab === "storyboard" ? (
           <StoryboardTab

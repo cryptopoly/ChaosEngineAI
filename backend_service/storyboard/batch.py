@@ -37,7 +37,7 @@ MakeStill = Callable[[Shot, Project], GenResult]
 MakeClip = Callable[[Shot, Project, "Path | None"], GenResult]
 # ``stillSeconds`` / ``clipSeconds``: how long making that still or clip took here (the estimate reads them).
 _SETTING_KEYS = ("model", "seed", "steps", "width", "height", "frames", "fps", "guidance", "stillSeconds", "clipSeconds",
-                 "stillModel", "clipModel", "stillSeed", "clipSeed")
+                 "stillModel", "clipModel", "stillSeed", "clipSeed", "style")
 KEEP_BATCHES = 20
 BATCHES: dict[str, "Batch"] = {}
 _BATCHES_LOCK = threading.Lock()

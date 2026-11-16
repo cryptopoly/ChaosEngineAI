@@ -578,6 +578,13 @@ OPS: dict[str, tuple[type[_Args], Callable[[Project, Path, Any], None], bool]] =
 }
 
 
+# The plan and brand ops (S8, S15) live in plan_ops; imported here, after the helpers they use, and registered.
+from backend_service.storyboard.plan_ops import PLAN_FILE_ARGS, PLAN_OPS  # noqa: E402
+
+OPS.update(PLAN_OPS)
+_FILE_ARGS.update(PLAN_FILE_ARGS)
+
+
 def parse_args(op: str, args: dict[str, Any]) -> Any:
     if op not in OPS:
         raise OpError(f"Unknown op '{op}'. Ops: {', '.join(OPS)}.")

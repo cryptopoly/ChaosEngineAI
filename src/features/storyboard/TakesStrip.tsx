@@ -16,9 +16,11 @@ export interface TakesStripProps {
   disabled?: boolean;
   /** Opens the side-by-side compare (S10); shown from two takes up. */
   onCompare?: () => void;
+  /** False while the card is not the shot list's current card: no take is a Tab stop then. */
+  tabStops?: boolean;
 }
 
-export function TakesStrip({ projectId, takes, activeId, onPick, disabled, onCompare }: TakesStripProps) {
+export function TakesStrip({ projectId, takes, activeId, onPick, disabled, onCompare, tabStops = true }: TakesStripProps) {
   const { t } = useTranslation("studio");
   const buttons = useRef<(HTMLButtonElement | null)[]>([]);
   const [focused, setFocused] = useState<number | null>(null);
@@ -42,7 +44,7 @@ export function TakesStrip({ projectId, takes, activeId, onPick, disabled, onCom
             type="button"
             role="radio"
             aria-checked={active}
-            tabIndex={index === tabbable ? 0 : -1}
+            tabIndex={tabStops && index === tabbable ? 0 : -1}
             disabled={disabled}
             className={`takes-strip__take${active ? " takes-strip__take--active" : ""}`}
             title={active ? t("board.takes.active", { defaultValue: "Active take" }) : t("board.takes.pick", { defaultValue: "Use this take" })}

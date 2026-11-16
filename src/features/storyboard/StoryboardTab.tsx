@@ -149,6 +149,14 @@ export function StoryboardTab({ story, project, timeline, imageGallery, videoGal
         event.preventDefault();
         focusCard(ids[Math.max(0, index - 1)]);
         break;
+      case "Home":
+        event.preventDefault();
+        focusCard(ids[0]);
+        break;
+      case "End":
+        event.preventDefault();
+        focusCard(ids[ids.length - 1]);
+        break;
       case "Enter":
         event.preventDefault();
         setEditingId(id);

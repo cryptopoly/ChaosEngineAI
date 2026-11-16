@@ -138,6 +138,7 @@ class Batch:
         draft: bool = False,
         draft_sizes: dict[str, tuple[int, int]] | None = None,
         final_image_model: str | None = None,
+        draft_image_model: str | None = None,
     ) -> None:
         if what not in WHATS:
             raise BatchRefused("what must be still, clip, both or final.")
@@ -150,6 +151,7 @@ class Batch:
         self.shot_ids, self.force = shot_ids, force
         # Passes (S6): drafts are made at ``draft_sizes`` ({"still"|"clip": (w, h)}); a final pass uses the quality model.
         self.draft, self.draft_sizes, self.final_image_model = draft, dict(draft_sizes or {}), final_image_model
+        self.draft_image_model = draft_image_model  # a draft still uses this (fast) model when set, else the project's
         self.render_pass = "draft" if draft else "final"
         self._shot_pass: dict[str, str] = {}  # redo kinds: shot id -> the pass of the take being redone
         # Why the project's video model cannot start a clip from an image (None when it can or is unknown).
@@ -243,6 +245,8 @@ class Batch:
         changes: dict[str, Any] = {}
         if self._pass(shot_id) == "draft" and kind in self.draft_sizes:
             changes["width"], changes["height"] = self.draft_sizes[kind]
+            if kind == "still" and self.draft_image_model:
+                changes["imageModel"] = self.draft_image_model
         if self.what == "final" and kind == "still":
             changes["imageModel"] = self.final_image_model or project.defaults.finalImageModel or project.defaults.imageModel
         if not changes:

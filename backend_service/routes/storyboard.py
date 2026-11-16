@@ -128,10 +128,12 @@ def start_batch(request: Request, project_id: str, revision: int | None, what: s
         final_image, why = _project_variant(request, "image", _final_model(request, project))
         if final_image is None:
             raise store_module.StoreError(why or "No image model is installed for the final pass.")
+    draft_image = _draft_variant(request, project, image)
     batch = Batch(store, project_id, what, make_still=lambda s, p: None, make_clip=lambda s, p, i: None,
                   shot_ids=shot_ids, force=force, draft=draft,
+                  draft_image_model=str(draft_image["id"]) if draft_image and draft_image is not image else None,
                   # A redo keeps the pass of the take it redoes, so a draft take is redone at the draft size.
-                  draft_sizes=_draft_sizes(project, image, video) if draft or what.startswith("redo-") else None,
+                  draft_sizes=_draft_sizes(project, draft_image, video) if draft or what.startswith("redo-") else None,
                   final_image_model=str(final_image["id"]) if final_image else None)
     wiring = studio_generators(request, batch.id, folder)
     batch.make_still, batch.make_clip = wiring["make_still"], wiring["make_clip"]
@@ -243,6 +245,32 @@ def _final_model(request: Request, project: Any) -> str | None:
     return str(picked["id"]) if picked else None
 
 
+def _draft_variant(request: Request, project: Any, image: dict[str, Any] | None) -> dict[str, Any] | None:
+    """The still model for drafts: the fastest installed one when it beats the project's model at this size,
+    else the project's own. A draft is for speed; the final pass uses the quality model."""
+    from backend_service.helpers.time_estimate import variant_seconds
+    from backend_service.mcp_bridge import models as bridge_models
+
+    state = request.app.state.chaosengine
+    if state is None:
+        return image
+    try:
+        fast = bridge_models.default_model(state, "image")
+    except Exception:  # noqa: BLE001 - the catalogue pick is a speed-up; any lookup problem keeps the project's model
+        return image
+    if not fast or str(fast["id"]) == str(project.defaults.imageModel):
+        return image
+    fast_variant = _project_variant(request, "image", str(fast["id"]))[0]
+    if fast_variant is None:
+        return image
+    w, h = project.defaults.width, project.defaults.height
+    fast_s = variant_seconds(fast_variant, "image", w, h)
+    own_s = variant_seconds(image, "image", w, h) if image is not None else None
+    if fast_s is not None and (image is None or (own_s is not None and fast_s < own_s)):
+        return fast_variant
+    return image  # a time that is not known for either model changes nothing
+
+
 def _min_side(variant: dict[str, Any] | None) -> int | None:
     value = (variant or {}).get("minSide")
     return int(value) if isinstance(value, (int, float)) and value > 0 else None
@@ -298,15 +326,17 @@ def estimate_batch(request: Request, project_id: str, body: EstimateRequest) -> 
     if any(kind == "clip" for _, kind in steps):
         missing += [why_video] if why_video else []
     folder = store.folder(project_id)
-    sizes = _draft_sizes(project, image, video)
+    draft_image = _draft_variant(request, project, image)
+    sizes = _draft_sizes(project, draft_image, video)
     # A redo is made in the pass of the takes it redoes: priced as a draft when every one of them is a draft.
     redone = [shot.active() for shot, _ in steps] if body.what.startswith("redo-") else []
     draft = body.draft or (bool(redone) and all(t is not None and t.renderPass == "draft" for t in redone))
     out = estimate(project, folder, what=body.what, shot_ids=body.shotIds,
-                   image_variant=final_image if body.what == "final" else image, video_variant=video, missing=missing,
+                   image_variant=final_image if body.what == "final" else (draft_image if draft else image), video_variant=video,
+                   missing=missing,
                    render_pass="draft" if draft else "final", sizes=sizes if draft else None)
     out["passes"] = passes(project, folder, shot_ids=body.shotIds if body.what in ("still", "clip", "both") else None,
-                           draft_variant=image, final_variant=final_image, video_variant=video, draft_sizes=sizes)
+                           draft_variant=draft_image, final_variant=final_image, video_variant=video, draft_sizes=sizes)
     return out
 
 

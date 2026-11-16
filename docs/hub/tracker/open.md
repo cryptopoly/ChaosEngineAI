@@ -1,13 +1,22 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 105 rows with work, decisions or watch items still open, newest first.
+summary: 106 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-189 · Drafts use the fastest installed still model — Done</summary>
+
+**Status or trigger:** Done
+
+**Notes:** S-K found Make drafts still used the project's own (slow) still model at half size, about 6 min per still with Qwen-Image. Drafts now use the fastest installed model when it beats the project's at that size (`_draft_variant` in `routes/storyboard.py`, `Batch.draft_image_model`); the estimate prices the same model; a redo of a draft take uses it too. Final pass unchanged (quality model). Open from S-K: the Overview next-step card still makes Make primary on a slow fresh film; the Length chips can lose a click right after typing the brief (the Plan suggestion link was fixed); suggestion reads length words in English only.
+
+</details>
 
 <details>
 <summary>FU-188 · Eight closing improvements (D-84) — In progress</summary>

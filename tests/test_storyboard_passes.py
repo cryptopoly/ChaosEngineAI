@@ -123,6 +123,16 @@ class PassBatchTests(StoreCase):
         self.assertEqual(p.shot(a).active().renderPass, "final")
 
 
+    def test_drafts_use_the_fast_still_model_when_one_is_given(self):
+        p = self.new(shots=2)
+        gens = RecordingGenerators(self.src)
+        _, p = self._run(p, gens, what="still", draft=True, draft_sizes={"still": (640, 384)}, draft_image_model="fast")
+        self.assertEqual({s[2] for s in gens.seen}, {"fast"})
+        self.assertNotEqual(p.defaults.imageModel, "fast")  # the stored project keeps its own model
+        gens = RecordingGenerators(self.src)
+        _, p = self._run(self.new(shots=1), gens, what="still", draft=True, draft_sizes={"still": (640, 384)})
+        self.assertNotEqual({s[2] for s in gens.seen}, {"fast"})  # no draft model given: the project's own
+
     def test_a_clip_made_after_drafts_keeps_the_draft_still_and_its_pass(self):
         """Make after "Make drafts" used to start a "final" take with no still: no Draft warning, no Redo clip."""
         p = self.new(shots=1)

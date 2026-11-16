@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
 import { AgentAccessPanel } from "./AgentAccessPanel";
 import { SkillsPanel } from "./SkillsPanel";
+import { CleanupPanel } from "./CleanupPanel";
 import { AcceleratorsPanel, DiagnosticsPanel, DiskUsagePanel } from "./DiagnosticsPanel";
 import { LanguagePanel } from "./LanguagePanel";
 import { AccessibilityPanel } from "./AccessibilityPanel";
@@ -671,7 +672,12 @@ export function SettingsTab({
             : activeSection === "accelerators"
               ? <AcceleratorsPanel backendOnline={backendOnline} hostSystem={hostSystem} />
               : activeSection === "disk"
-                ? <DiskUsagePanel backendOnline={backendOnline} />
+                ? (
+                  <>
+                    <DiskUsagePanel backendOnline={backendOnline} />
+                    <CleanupPanel backendOnline={backendOnline} />
+                  </>
+                )
                 : diagnosticsPanels;
 
   // Horizontal sub-tab bar, always — the vertical side-menu variant we

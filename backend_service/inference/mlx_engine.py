@@ -305,7 +305,16 @@ class MLXWorkerEngine(BaseInferenceEngine):
             payload["reasoningEffort"] = reasoning_effort
         if json_schema:
             payload["jsonSchema"] = json_schema
-        result = self.worker.request(payload)
+        # A non-streaming reply sends nothing until it is whole, so the wait must
+        # cover the longest reply the request allows (2 tok/s worst case), not a
+        # fixed 120 s: past that the worker was killed and the model lost.
+        reply_timeout = min(max(self.worker.timeout, 60.0 + max(int(max_tokens or 0), 0) * 0.5), 1800.0)
+        try:
+            result = self.worker.request(payload, timeout=reply_timeout)
+        except RuntimeError:
+            if not self.worker.is_alive():
+                self.loaded_model = None  # the worker is gone, so the model is too: say so
+            raise
         elapsed = max(time.perf_counter() - started_at, 1e-6)
         return GenerationResult(
             text=str(result.get("text") or ""),

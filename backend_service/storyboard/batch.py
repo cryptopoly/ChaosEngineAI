@@ -515,13 +515,16 @@ class Batch:
         take = shot.take(self._takes.get(shot_id))
         active = shot.active()
         render_pass = self._pass(shot_id)
-        same_pass = active is not None and active.renderPass == render_pass
-        if take is None and kind == "clip" and active is not None and active.still and not active.clip and same_pass:
+        # A clip is always made from the active take's still, so it keeps that still's pass: a clip made after
+        # "Make drafts" belongs to a draft take and Export still warns, whatever pass the clip batch itself is.
+        from_still = take is None and kind == "clip" and active is not None and bool(active.still)
+        if from_still and not active.clip:  # type: ignore[union-attr]
             take = active  # the clip completes the still-only take instead of starting a new one
             self._takes[shot_id] = take.id
         if take is None:
             take = Take(id=new_id("t"), createdAt=time.time(), origin="batch", renderPass=render_pass)  # type: ignore[arg-type]
-            if kind == "clip" and same_pass and shot.active().still:  # type: ignore[union-attr]
+            if from_still:
+                take.renderPass = shot.active().renderPass  # type: ignore[union-attr]
                 old = shot.active()
                 take.still, take.hashes = old.still, {"still": old.hashes["still"]} if "still" in old.hashes else {}  # type: ignore[union-attr]
                 take.settings = {k: v for k, v in old.settings.items() if k in ("stillModel", "stillSeed")}  # type: ignore[union-attr]

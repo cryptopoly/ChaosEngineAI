@@ -145,7 +145,7 @@ describe("isChatLibraryItem()", () => {
   });
 
   it("keeps speech, transcription and image-only models out of the chat list", () => {
-    for (const repo of ["mlx-community/Qwen3-TTS-12Hz-0.6B-Base-bf16", "prince-canuma/Kokoro-82M", "mlx-community/whisper-small-mlx", "speridlabs/iris-3b"]) {
+    for (const repo of ["mlx-community/Qwen3-TTS-12Hz-0.6B-Base-bf16", "prince-canuma/Kokoro-82M", "mlx-community/whisper-small-mlx", "speridlabs/iris-3b", "ResembleAI/chatterbox", "canopylabs/orpheus-3b-0.1-ft", "openbmb/VoxCPM2", "FunAudioLLM/S3TokenizerV2"]) {
       const dir = repo.replace("/", "--");
       expect(isChatLibraryItem(makeItem({ name: repo, path: `/hf/models--${dir}/snapshots/1`, modelType: null })), repo).toBe(false);
     }

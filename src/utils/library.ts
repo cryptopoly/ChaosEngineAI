@@ -111,6 +111,11 @@ const AUDIO_LIBRARY_KEYWORDS = [
   "stable-audio",
   "pyannote",
   "speaker-embedding",
+  "chatterbox",
+  "orpheus",
+  "voxcpm",
+  "s3tokenizer",
+  "-tts",
 ];
 
 export function isChatLibraryItem(item: LibraryItem): boolean {

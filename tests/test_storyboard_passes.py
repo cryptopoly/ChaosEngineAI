@@ -123,6 +123,21 @@ class PassBatchTests(StoreCase):
         self.assertEqual(p.shot(a).active().renderPass, "final")
 
 
+    def test_a_clip_made_after_drafts_keeps_the_draft_still_and_its_pass(self):
+        """Make after "Make drafts" used to start a "final" take with no still: no Draft warning, no Redo clip."""
+        p = self.new(shots=1)
+        a = p.shots[0].id
+        _, p = self._run(p, RecordingGenerators(self.src), what="still", draft=True, draft_sizes={"still": (640, 384)})
+        draft_take = p.shot(a).active()
+        _, p = self._run(p, RecordingGenerators(self.src), what="clip")
+        take = p.shot(a).active()
+        self.assertEqual((take.id, take.renderPass, bool(take.still), bool(take.clip)), (draft_take.id, "draft", True, True))
+        # A later clip batch that needs a new take (the shot already has a clip) copies the still and its pass.
+        _, p = self._run(p, RecordingGenerators(self.src), what="redo-clip")
+        take = p.shot(a).active()
+        self.assertEqual((take.renderPass, bool(take.still), bool(take.clip)), ("draft", True, True))
+
+
 class PassEstimateTests(StoreCase):
     def test_measured_times_count_only_for_their_own_pass(self):
         p = self.new(shots=2)

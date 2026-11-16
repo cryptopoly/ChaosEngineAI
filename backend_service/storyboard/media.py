@@ -67,7 +67,19 @@ def resolve_source(raw: str, allowed: set[str]) -> Path:
     size = path.stat().st_size
     if size == 0 or size > MAX_MEDIA_BYTES:
         raise MediaError(f"File is empty or larger than {MAX_MEDIA_BYTES // 1024**3} GB: {path.name}")
+    if kind == "image" and not _looks_like_picture(path):
+        raise MediaError(f"Not a picture (PNG, JPEG or WebP) despite its extension: {path.name}")
     return path
+
+
+def _looks_like_picture(path: Path) -> bool:
+    """True when the first bytes are a PNG, JPEG or WebP header (a text file named .png is refused)."""
+    try:
+        with path.open("rb") as handle:
+            head = handle.read(12)
+    except OSError:
+        return False
+    return head.startswith((b"\x89PNG\r\n\x1a\n", b"\xff\xd8\xff")) or (head[:4] == b"RIFF" and head[8:12] == b"WEBP")
 
 
 def inside(folder: Path, rel: str, must_exist: bool = True) -> Path:

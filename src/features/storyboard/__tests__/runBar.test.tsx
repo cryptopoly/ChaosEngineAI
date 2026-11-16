@@ -70,6 +70,16 @@ describe("Storyboard run bar: draft and final passes", () => {
     expect(html).toContain("Mark shots with Keep for final to choose them for the final pass.");
   });
 
+  it("has exactly one primary: Make drafts when told so, else Make missing", () => {
+    const drafts = bar({ estimate: estimate({ passes }), onMakeDrafts: noop, onFinalPass: noop, primary: "drafts" });
+    expect(drafts.match(/class="primary-button"/g)).toHaveLength(1);
+    expect(drafts).toMatch(/class="primary-button"[^>]*>Make drafts · about 45 s</);
+    expect(drafts).toMatch(/class="secondary-button">Make 3 missing/);
+    const make = bar({ estimate: estimate({ passes }), onMakeDrafts: noop, onFinalPass: noop, primary: "make" });
+    expect(make.match(/class="primary-button"/g)).toHaveLength(1);
+    expect(make).toMatch(/class="primary-button">Make 3 missing/);
+  });
+
   it("has no passes row when the screen does not offer them", () => {
     expect(bar()).not.toContain("Make drafts");
   });

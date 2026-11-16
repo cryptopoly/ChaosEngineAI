@@ -1,7 +1,7 @@
 /**
  * Project settings on Overview: aspect ratio, resolution, frame rate, the models that make stills and clips, and the
  * voice. Each still model shows its time per still at the project size; Automatic picks the fastest for Make and
- * drafts and the best quality for the final pass (S2, S6).
+ * drafts and the best quality for the final pass (S2, S6). A slower saved still model gets "Use the fast model".
  */
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -12,6 +12,7 @@ import type { StoryboardProject } from "../../types";
 import { FormatFields } from "./FormatFields";
 import { RESOLUTION_ALIAS, fitContext, formatPatch, type VideoFitSource } from "./formatLogic";
 import { stillModelPick } from "./storyboardLogic";
+import { UseFastModelButton } from "./UseFastModelButton";
 import { useStillModels } from "./useStillModels";
 import type { RunOp } from "./useStoryboard";
 import { VoicePicker, voiceDisplayName } from "./VoicePicker";
@@ -158,6 +159,12 @@ export function ProjectDefaultsPanel({ project, busy, op, imageModels, videoMode
           automaticLabel={fastLabels.automaticLabel}
           secondsOf={secondsOf}
           hint={fastLabels.hint}
+        />
+        <UseFastModelButton
+          models={stills}
+          saved={d.imageModel}
+          disabled={busy}
+          onUse={(id) => void op("edit_project", { defaults: { imageModel: id } })}
         />
         <ModelSelect
           label={t("board.defaults.finalImageModel", { defaultValue: "Final pass image model" })}

@@ -12499,6 +12499,13 @@ button.licence-chip:focus-visible {
   flex-direction: column;
   gap: 12px;
 }
+.project-defaults__fast {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: -6px;
+}
 .references-panel__head {
   display: flex;
   align-items: center;

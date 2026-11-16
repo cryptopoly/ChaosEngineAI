@@ -1,7 +1,8 @@
 /**
  * Pure rules for the Plan tab and the style and brand kit (S8, S15): the length choices, how a proposal's
  * length compares with the aim, what the direction chat's changes say in words, which fields a reworked shot
- * changes, where a brief picture goes, and the brand kit with its defaults filled in for older projects.
+ * changes, where a brief picture goes, the brand kit with its defaults filled in for older projects, and the shot
+ * count suggested from the brief's length (`shotSuggestion`).
  * No React here so the rules are unit-tested directly.
  */
 import type {
@@ -19,6 +20,8 @@ import { MAX_PICTURES } from "./pickerLogic";
 export const LENGTH_CHOICES = [15, 30, 60, 90, 120] as const;
 /** Shot counts the model may be asked for; null lets it choose between 4 and 8. */
 export const SHOT_COUNT_CHOICES = [4, 5, 6, 7, 8] as const;
+/** The most shots one proposal writes (mirrors MAX_SHOTS in planner.py). */
+export const MAX_PROPOSE_SHOTS = 8;
 /** Style references a project keeps (mirrors References.styles in models.py). */
 export const MAX_STYLES = 20;
 /** Colours kept per style (mirrors MAX_PALETTE in models.py). */
@@ -168,4 +171,66 @@ export function takeStyle(shot: Pick<StoryboardShot, "takes" | "activeTake">): "
   const take = shot.takes.find((t) => t.id === shot.activeTake);
   const value = take?.settings?.style;
   return value === "pictures" || value === "words" ? value : null;
+}
+
+// ---- shot count and length suggestion (FU-188 item 5) ----
+export type FilmKind = "ad" | "trailer" | "film";
+
+/** Seconds per shot the suggestion assumes: a shot of 4 to 5 s reads well and fits every clip model. */
+export const SUGGEST_SHOT_SECONDS = { short: 4, long: 5 } as const;
+/** A usual length when the brief states none: an ad 30 s, a trailer 60 s, anything else 30 s. */
+export const TYPICAL_SECONDS: Record<FilmKind, number> = { ad: 30, trailer: 60, film: 30 };
+
+const NUMBER_WORDS: Record<string, number> = {
+  one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
+  fifteen: 15, twenty: 20, thirty: 30, forty: 40, "forty-five": 45, fifty: 50, sixty: 60, ninety: 90,
+};
+const LENGTH_RE = new RegExp(
+  `\\b(\\d+(?:\\.\\d+)?|${Object.keys(NUMBER_WORDS).join("|")})[\\s-]*(seconds?|secs?|s|minutes?|mins?)\\b`,
+  "i",
+);
+
+/** The film length a brief states ("a 30 s ad", "a one-minute advert", "90 seconds"), in seconds, or null. */
+export function briefSeconds(brief: string): number | null {
+  const match = LENGTH_RE.exec(brief);
+  if (!match) return null;
+  const amount = NUMBER_WORDS[match[1].toLowerCase()] ?? Number(match[1]);
+  const seconds = /^m/i.test(match[2]) ? amount * 60 : amount;
+  return Number.isFinite(seconds) && seconds >= 2 && seconds <= 600 ? Math.round(seconds) : null;
+}
+
+/** What kind of film a brief asks for, from a few words: an ad, a trailer, or any other film. */
+export function briefKind(brief: string): FilmKind {
+  if (/\b(ad|ads|advert|adverts|advertisement|commercial|promo)\b/i.test(brief)) return "ad";
+  if (/\btrailer\b/i.test(brief)) return "trailer";
+  return "film";
+}
+
+export interface ShotSuggestion {
+  seconds: number;
+  /** Where the length came from: the brief's words, the Length choice, or the usual length for the kind. */
+  source: "brief" | "target" | "typical";
+  kind: FilmKind;
+  low: number;
+  high: number;
+}
+
+/**
+ * A rule-of-thumb shot count for the Plan tab, labelled as a suggestion: a length stated in the brief wins, then the
+ * project's Length choice, then the usual length for the kind of film; shots of 4 to 5 s give the range
+ * (30 s is about 6 to 8 shots). Null while the brief is empty and no length is chosen.
+ */
+export function shotSuggestion(brief: string, target: number | null | undefined): ShotSuggestion | null {
+  const text = brief.trim();
+  const kind = briefKind(text);
+  const stated = briefSeconds(text);
+  let seconds: number;
+  let source: ShotSuggestion["source"];
+  if (stated != null) [seconds, source] = [stated, "brief"];
+  else if (target) [seconds, source] = [target, "target"];
+  else if (text) [seconds, source] = [TYPICAL_SECONDS[kind], "typical"];
+  else return null;
+  const low = Math.max(1, Math.ceil(seconds / SUGGEST_SHOT_SECONDS.long));
+  const high = Math.max(low, Math.ceil(seconds / SUGGEST_SHOT_SECONDS.short));
+  return { seconds, source, kind, low, high };
 }

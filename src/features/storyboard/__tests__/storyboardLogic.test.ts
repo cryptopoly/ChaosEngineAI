@@ -8,6 +8,7 @@ import {
   drawerEscapeAction,
   effectiveShotStatus,
   emptyThumbState,
+  fasterStillModel,
   importKindOf,
   isBareKey,
   liveShotStates,
@@ -15,9 +16,12 @@ import {
   missingShotIds,
   moveItem,
   nextTakeIndex,
+  primaryPass,
   reorderByDrop,
   reorderByStep,
   rovingTakeIndex,
+  SLOW_STILL_SECONDS,
+  secondsPerStill,
   shotCardClassName,
   shotNeedsWork,
   shotPatchFromDraft,
@@ -314,5 +318,56 @@ describe("emptyThumbState", () => {
     expect(emptyThumbState({ shots: [] })).toBe("noShots");
     expect(emptyThumbState({ shots: [shot("a"), shot("b")] })).toBe("noTakes");
     expect(emptyThumbState({ shots: [shot("a"), shot("b", { takes: [take("t")] })] })).toBe("noPreview");
+  });
+});
+
+describe("primary pass button (FU-188 item 3)", () => {
+  const fresh = [shot("a"), shot("b"), shot("c")];
+  const slow = { stills: 3, stillSeconds: 3 * 540 };
+  const fast = { stills: 3, stillSeconds: 3 * 15 };
+
+  it("makes drafts primary on a fresh film whose still model is slow", () => {
+    expect(primaryPass(fresh, 3, slow)).toBe("drafts");
+    expect(primaryPass(fresh, 3, { stills: 1, stillSeconds: SLOW_STILL_SECONDS })).toBe("drafts");
+  });
+
+  it("keeps Make primary with a fast or unknown still model", () => {
+    expect(primaryPass(fresh, 3, fast)).toBe("make");
+    expect(primaryPass(fresh, 3, null)).toBe("make");
+    expect(primaryPass(fresh, 3, { stills: 3, stillSeconds: null })).toBe("make");
+    expect(primaryPass(fresh, 3, { stills: 0, stillSeconds: 0 })).toBe("make");
+  });
+
+  it("keeps Make primary once any shot has a take, and has no primary with nothing missing", () => {
+    const started = [shot("a", { takes: [take("t")], activeTake: "t" }), shot("b"), shot("c")];
+    expect(primaryPass(started, 2, slow)).toBe("make");
+    expect(primaryPass(fresh, 0, slow)).toBeNull();
+    expect(primaryPass([], 0, slow)).toBeNull();
+  });
+
+  it("reads seconds per still from the estimate", () => {
+    expect(secondsPerStill({ stills: 4, stillSeconds: 100 })).toBe(25);
+    expect(secondsPerStill(undefined)).toBeNull();
+  });
+});
+
+describe("Use the fast model (FU-188 item 4)", () => {
+  const models = [
+    { id: "qwen", name: "Qwen-Image 2.1", fit: null, territoryRestricted: false, secondsPerStill: 540 },
+    { id: "iris", name: "Iris-3B Turbo", fit: null, territoryRestricted: false, secondsPerStill: 15 },
+    { id: "odd", name: "Odd", fit: null, territoryRestricted: false, secondsPerStill: null },
+  ];
+
+  it("offers the fastest model when the project saved a slower one", () => {
+    expect(fasterStillModel(models, "qwen", "iris")).toMatchObject({ id: "iris", name: "Iris-3B Turbo", seconds: 15 });
+    expect(fasterStillModel(models, "odd", "iris")?.id).toBe("iris");
+  });
+
+  it("offers nothing on Automatic, on the fast model itself, or when nothing is faster", () => {
+    expect(fasterStillModel(models, null, "iris")).toBeNull();
+    expect(fasterStillModel(models, "iris", "iris")).toBeNull();
+    expect(fasterStillModel(models, "qwen", null)).toBeNull();
+    expect(fasterStillModel(models, "iris", "qwen")).toBeNull();
+    expect(fasterStillModel(models, "qwen", "odd")).toBeNull();
   });
 });

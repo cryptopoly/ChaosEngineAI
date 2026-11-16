@@ -12,6 +12,7 @@ import type { ImageOutputArtifact, StoryboardProject } from "../../types";
 import { PaletteSwatches } from "./PaletteSwatches";
 import { MAX_PICTURES, picturesFrom } from "./pickerLogic";
 import { LENGTH_CHOICES, SHOT_COUNT_CHOICES, lengthLabel, planOf, projectPalette, styleWithRoom, stylesOf } from "./planLogic";
+import { PlanSuggestion } from "./PlanSuggestion";
 import { ProjectImage } from "./ProjectMedia";
 import { ReferenceImagePicker } from "./ReferenceImagePicker";
 import type { UseStoryboardResult } from "./useStoryboard";
@@ -162,6 +163,7 @@ export function PlanBrief({ story, project, imageGallery, canPropose, proposing,
           </select>
         </label>
       </div>
+      <PlanSuggestion brief={brief} target={plan.filmSeconds} lengthText={lengthText} onUseLength={setLength} />
 
       <div
         className={`plan-pictures${over ? " is-over" : ""}`}

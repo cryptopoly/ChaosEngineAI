@@ -23,6 +23,7 @@ import {
   keptShotIds,
   liveShotStates,
   missingShotIds,
+  primaryPass,
   reorderByDrop,
   reorderByStep,
   staleAfterShot,
@@ -148,6 +149,14 @@ export function StoryboardTab({ story, project, timeline, imageGallery, videoGal
       case "ArrowLeft":
         event.preventDefault();
         focusCard(ids[Math.max(0, index - 1)]);
+        break;
+      case "Home":
+        event.preventDefault();
+        focusCard(ids[0]);
+        break;
+      case "End":
+        event.preventDefault();
+        focusCard(ids[ids.length - 1]);
         break;
       case "Enter":
         event.preventDefault();
@@ -305,6 +314,7 @@ export function StoryboardTab({ story, project, timeline, imageGallery, videoGal
           finalShots={finalIds.length}
           onMakeDrafts={(withClips) => void story.startBatch(withClips ? "both" : "still", missing, false, true)}
           onFinalPass={() => void story.startBatch("final", finalIds)}
+          primary={primaryPass(shots, missing.length, estimate)}
         />
       ) : null}
       <p className="sr-only" role="status" aria-live="polite">{announce}</p>

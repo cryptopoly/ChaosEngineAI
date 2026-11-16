@@ -1567,7 +1567,9 @@
       "automaticFast": "Automatic: fastest ({name})",
       "automaticQuality": "Automatic: best quality ({name})",
       "stillTime": "{name}: about {time} per still at {width} x {height}",
-      "finalImageModel": "Final pass image model"
+      "finalImageModel": "Final pass image model",
+      "useFast": "Use the fast model",
+      "useFastHint": "{name}, about {time} per still"
     },
     "defaultsSummary": "{aspect} · {resolution} · {fps} fps · {imageModel} · {videoModel} · voice {voice}",
     "defaultsTitle": "Project defaults",
@@ -1958,7 +1960,17 @@
         "title": "Shots",
         "toBoard": "Make them in Storyboard"
       },
-      "tab": "Plan"
+      "tab": "Plan",
+      "suggest": {
+        "label": "Suggestion:",
+        "count": "{kind, select, ad {An ad} trailer {A trailer} other {A film}} of {length} is about {shots}.",
+        "typical": "{kind, select, ad {An ad} trailer {A trailer} other {A short film}} usually runs about {length}, which is about {shots}.",
+        "shotsOne": "{n, plural, one {# shot} other {# shots}}",
+        "shotsRange": "{low} to {high} shots",
+        "title": "A rule of thumb from the length: shots of 4 to 5 s. The model may choose differently.",
+        "useLength": "Use {length}",
+        "overCap": "Propose writes at most {max} shots; add the rest on the Storyboard tab."
+      }
     },
     "style": {
       "add": "Add style",

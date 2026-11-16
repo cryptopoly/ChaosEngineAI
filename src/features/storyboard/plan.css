@@ -94,6 +94,14 @@
   gap: 12px 20px;
   align-items: flex-end;
 }
+.plan-suggest {
+  margin: 0;
+  font-size: 0.85rem;
+}
+.plan-suggest strong {
+  color: var(--text);
+  font-weight: 600;
+}
 .plan-brief__option {
   display: flex;
   flex-direction: column;

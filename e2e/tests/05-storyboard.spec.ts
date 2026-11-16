@@ -171,7 +171,7 @@ test("a project with no cast: add a shot and nothing asks for a character", asyn
   await expect(page.getByText("1 shot · 4 s · 0 stale")).toBeVisible();
   await expect(page.getByRole("button", { name: /^Make \d+ missing/ })).toBeEnabled();
   await openProjectTab(page, "Cast");
-  await expect(page.getByText(/Optional\./)).toBeVisible();
+  await expect(page.getByText(/^Optional\. A name, a few words/)).toBeVisible();
   await expect(page.getByText(/None yet\./)).toHaveCount(2);
 });
 
@@ -318,15 +318,15 @@ test("takes: pick another take, then lock the shot and the strip follows", async
   await expect(page.locator(".shot-card__status")).toHaveText("Still only");
 });
 
-test("tabs: arrow keys move between the five tabs and the project reopens on its last tab", async ({ page, request }) => {
+test("tabs: arrow keys move between the six tabs and the project reopens on its last tab", async ({ page, request }) => {
   const project = await seedProject(request, { name: "Keys Film", shots: 1 });
   await openProject(page, project.name, "Overview");
   const tabs = page.getByRole("tablist", { name: "Project" });
-  await expect(tabs.getByRole("tab")).toHaveText([/^Overview/, /^Cast/, /^Storyboard/, /^Mixer/, /^Export/]);
+  await expect(tabs.getByRole("tab")).toHaveText([/^Overview/, /^Plan/, /^Cast/, /^Storyboard/, /^Mixer/, /^Export/]);
   await tabs.getByRole("tab", { name: "Overview" }).focus();
   await page.keyboard.press("ArrowRight");
-  await expect(tabs.getByRole("tab", { name: /^Cast/ })).toHaveAttribute("aria-selected", "true");
-  await expect(tabs.getByRole("tab", { name: /^Cast/ })).toBeFocused();
+  await expect(tabs.getByRole("tab", { name: /^Plan/ })).toHaveAttribute("aria-selected", "true");
+  await expect(tabs.getByRole("tab", { name: /^Plan/ })).toBeFocused();
   await page.keyboard.press("End");
   await expect(tabs.getByRole("tab", { name: "Export" })).toHaveAttribute("aria-selected", "true");
   // Leave and come back through the sidebar: the project is still open, on Export.

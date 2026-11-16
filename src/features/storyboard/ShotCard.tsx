@@ -1,5 +1,5 @@
 /** One shot on the Board (UX spec D.5): thumbnail, status, takes, lock, redo, transition, ordering. */
-import { useEffect, useState, type DragEvent } from "react";
+import { useEffect, useRef, useState, type DragEvent } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ChevronDownIcon,
@@ -15,6 +15,7 @@ import { ProjectImage, ProjectVideo } from "./ProjectMedia";
 import { StaleBadge, TransitionPicker } from "./ShotParts";
 import { TakeCompare } from "./TakeCompare";
 import { TakesStrip } from "./TakesStrip";
+import { useCardTabStops } from "./useCardTabStops";
 import { canRedoClip, canRedoStill, clipOutdated } from "./remakeLogic";
 import { activeTakeOf, isDraftTake, shotCardClassName, thumbnailOf } from "./storyboardLogic";
 
@@ -34,7 +35,7 @@ export interface ShotCardProps {
   kept: boolean;
   /** Why the last batch failed this shot, if it did. */
   failure: string | null;
-  /** Roving tabindex: only one card in the list is a tab stop. */
+  /** Roving tabindex: only one card in the list is a tab stop, and only its inner controls are in the Tab order. */
   tabbable: boolean;
   dragOver: boolean;
   disabled: boolean;
@@ -75,6 +76,8 @@ export function ShotCard(props: ShotCardProps) {
   const [title, setTitle] = useState(shot.title);
   const [playing, setPlaying] = useState(false);
   const [comparing, setComparing] = useState(false);
+  const cardRef = useRef<HTMLElement>(null);
+  useCardTabStops(cardRef, tabbable);
   const take = activeTakeOf(shot);
   const thumb = thumbnailOf(shot);
   const number = index + 1;
@@ -143,6 +146,7 @@ export function ShotCard(props: ShotCardProps) {
 
   return (
     <article
+      ref={cardRef}
       className={`${shotCardClassName(status, shot.locked)}${dragOver ? " shot-card--drop" : ""}${shot.redo ? " shot-card--redo" : ""}`}
       data-shot-id={shot.id}
       // The number is drawn aria-hidden and the title is an input: name the card "Shot 3 · Title" so a screen
@@ -358,6 +362,7 @@ export function ShotCard(props: ShotCardProps) {
         onPick={props.onPickTake}
         disabled={disabled}
         onCompare={() => setComparing(true)}
+        tabStops={tabbable}
       />
 
       <div className="shot-card__actions">

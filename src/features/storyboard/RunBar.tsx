@@ -4,6 +4,7 @@
  * and time on the primary one, a red state with an acknowledgement when it will not fit, and the batch progress
  * with Cancel while a batch runs. Below them the two passes (S6): Make drafts (the fast still model at a smaller
  * size, clips optional) and Final pass on kept shots (the quality model at full size, then clips), each with its time.
+ * One of Make missing and Make drafts is primary, as `primaryPass` in storyboardLogic decides.
  */
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -11,6 +12,7 @@ import type { StoryboardEstimate } from "../../api/storyboard";
 import { RunEstimateStrip, formatDuration, memoryRisk } from "../../components/RunEstimateStrip";
 import type { JobProgress, StoryboardBatchRecord } from "../../types";
 import { BatchBar } from "./BatchBar";
+import type { PrimaryPass } from "./storyboardLogic";
 
 export interface RunBarProps {
   missing: number;
@@ -30,11 +32,13 @@ export interface RunBarProps {
   finalShots?: number;
   onMakeDrafts?: (withClips: boolean) => void;
   onFinalPass?: () => void;
+  /** Which button is primary (`primaryPass`); left out, Make missing is. */
+  primary?: PrimaryPass;
 }
 
 type TFn = (key: string, options: Record<string, unknown>) => string;
 
-function PassesRow({ missing, kept = 0, finalShots = 0, estimate, busy, onMakeDrafts, onFinalPass }: RunBarProps) {
+function PassesRow({ missing, kept = 0, finalShots = 0, estimate, busy, onMakeDrafts, onFinalPass, primary }: RunBarProps) {
   const { t } = useTranslation("studio");
   const [withClips, setWithClips] = useState(false);
   const draft = estimate?.passes?.draft;
@@ -82,7 +86,7 @@ function PassesRow({ missing, kept = 0, finalShots = 0, estimate, busy, onMakeDr
             <input type="checkbox" checked={withClips} disabled={busy} onChange={(event) => setWithClips(event.target.checked)} />
             {t("board.passes.withClips", { defaultValue: "Drafts with clips" })}
           </label>
-          <button type="button" className="secondary-button" disabled={busy} title={draftTitle}
+          <button type="button" className={primary === "drafts" ? "primary-button" : "secondary-button"} disabled={busy} title={draftTitle}
             onClick={() => onMakeDrafts?.(withClips)}>
             {draftLabel}
           </button>
@@ -185,7 +189,12 @@ export function RunBar(props: RunBarProps) {
         action={
           <div className="board-estimate__actions">
             {makeAll}
-            <button type="button" className="primary-button" disabled={busy || missing === 0 || blockedByRisk} onClick={onMakeMissing}>
+            <button
+              type="button"
+              className={props.primary === "drafts" ? "secondary-button" : "primary-button"}
+              disabled={busy || missing === 0 || blockedByRisk}
+              onClick={onMakeMissing}
+            >
               {makeLabel}
             </button>
           </div>

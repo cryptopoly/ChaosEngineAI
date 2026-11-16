@@ -388,6 +388,7 @@ export function useChat(
     const sanitizedSpeculative = sanitizeSpeculativeSelection({
       dflashInfo: workspace.system.dflash,
       tensorfoldInfo: workspace.system.tensorfold,
+      mtplxInfo: workspace.system.mtplx,
       selectedBackend: nextOption.backend,
       modelRef: nextOption.modelRef,
       canonicalRepo: nextOption.canonicalRepo ?? null,

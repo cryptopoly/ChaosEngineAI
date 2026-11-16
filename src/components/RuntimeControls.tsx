@@ -399,10 +399,13 @@ export function RuntimeControls({
     // don't let the DFlash-availability guard clear it for those models.
     // A checkpoint TensorFold serves keeps it on for the same reason: the
     // backend routes it to TensorFold or falls back to standard decoding.
-    if (!dflashAvailable && !ggufSpecSupported && !tensorfoldShown) {
+    // MTPLX has no DFlash drafter either (it uses the model's own MTP head),
+    // so a model it serves keeps the flag on or the MTPLX box can never stay ticked.
+    const mtplxServes = (mtplxInfo?.modelSupported ?? false) && (mtplxInfo?.available ?? false);
+    if (!dflashAvailable && !ggufSpecSupported && !tensorfoldShown && !mtplxServes) {
       onChange("speculativeDecoding", false);
     }
-  }, [dflashAvailable, ggufSpecSupported, onChange, settings.speculativeDecoding, tensorfoldShown]);
+  }, [dflashAvailable, ggufSpecSupported, mtplxInfo?.available, mtplxInfo?.modelSupported, onChange, settings.speculativeDecoding, tensorfoldShown]);
 
   // TensorFold manages its own KV caches, so whatever strategy was selected
   // for another model must not ride along into the request.

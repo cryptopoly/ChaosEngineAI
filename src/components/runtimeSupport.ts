@@ -222,9 +222,20 @@ export function isMtpGgufRepo(repo: string | null | undefined): boolean {
   return lower.includes("mtp") && lower.includes("gguf");
 }
 
+/** True when the MTPLX venv is installed and the checkpoint is one of the models it serves (baked-in MTP head). */
+export function mtplxServesModel(
+  mtplxInfo: SystemStats["mtplx"] | undefined,
+  refs: Array<string | null | undefined>,
+): boolean {
+  if (!mtplxInfo?.available || !mtplxInfo.supportedModels?.length) return false;
+  const modelKeys = candidateKeys(refs);
+  return mtplxInfo.supportedModels.some((ref) => candidateKeys([ref]).some((key) => modelKeys.includes(key)));
+}
+
 export function sanitizeSpeculativeSelection({
   dflashInfo,
   tensorfoldInfo,
+  mtplxInfo,
   selectedBackend,
   modelRef,
   canonicalRepo,
@@ -234,6 +245,7 @@ export function sanitizeSpeculativeSelection({
 }: {
   dflashInfo?: SystemStats["dflash"];
   tensorfoldInfo?: SystemStats["tensorfold"];
+  mtplxInfo?: SystemStats["mtplx"];
   selectedBackend?: string | null;
   modelRef?: string | null;
   canonicalRepo?: string | null;
@@ -266,6 +278,12 @@ export function sanitizeSpeculativeSelection({
   // or falls back to standard decoding, so DFlash support is irrelevant.
   // DDTree is a DFlash feature and never applies there.
   if (resolveTensorfoldSupport(tensorfoldInfo, [canonicalRepo, modelRef])) {
+    return { speculativeDecoding, treeBudget: 0, support };
+  }
+  // MTPLX uses the model's own MTP head, so it needs no DFlash drafter; a
+  // checkpoint it serves keeps the user's choice (the MTPLX box was ticked
+  // and cleared again on load otherwise).
+  if (mtplxServesModel(mtplxInfo, [canonicalRepo, modelRef])) {
     return { speculativeDecoding, treeBudget: 0, support };
   }
   if (!speculativeDecoding || support.enabled) {

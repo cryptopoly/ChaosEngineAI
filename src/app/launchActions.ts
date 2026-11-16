@@ -148,6 +148,7 @@ export function sanitizeSpeculativeForSystem(system: WorkspaceData["system"], pa
   return sanitizeSpeculativeSelection({
     dflashInfo: system.dflash,
     tensorfoldInfo: system.tensorfold,
+    mtplxInfo: system.mtplx,
     selectedBackend: params.backend,
     modelRef: params.modelRef,
     canonicalRepo: params.canonicalRepo ?? null,

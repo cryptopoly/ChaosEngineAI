@@ -167,6 +167,24 @@ describe("sanitizeSpeculativeSelection()", () => {
     expect(result.speculativeDecoding).toBe(true);
     expect(result.treeBudget).toBe(0);
   });
+
+  it("keeps the flag on for a model MTPLX serves, even with no DFlash drafter", () => {
+    // Regression: ticking MTPLX on mlx-community/Qwen3.8-27B-4bit set the flag and
+    // it was cleared again at once, so the box could not be ticked.
+    const mtplxInfo = { available: true, supportedModels: ["Qwen/Qwen3.8-27B"] };
+    const args = {
+      dflashInfo,
+      selectedBackend: "mlx",
+      modelRef: "mlx-community/Qwen3.8-27B-4bit",
+      canonicalRepo: "Qwen/Qwen3.8-27B",
+      modelName: "Qwen3.8-27B-4bit",
+      speculativeDecoding: true,
+      treeBudget: 64,
+    };
+    expect(sanitizeSpeculativeSelection({ ...args, mtplxInfo }).speculativeDecoding).toBe(true);
+    expect(sanitizeSpeculativeSelection({ ...args, mtplxInfo: { ...mtplxInfo, available: false } }).speculativeDecoding).toBe(false);
+    expect(sanitizeSpeculativeSelection({ ...args, mtplxInfo: undefined }).speculativeDecoding).toBe(false);
+  });
 });
 
 describe("strategy compatibility helpers", () => {

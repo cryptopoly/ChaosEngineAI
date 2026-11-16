@@ -179,6 +179,17 @@ export function OverviewTab({ story, project, timeline, deps, render, onTab, onO
                 : t("board.batch.starting", { defaultValue: "Starting…" })}
             </p>
             <div className="overview-tab__actions">
+              {story.pauseBatch ? (
+                <button
+                  type="button"
+                  className="secondary-button"
+                  disabled={story.pausing}
+                  title={t("board.pause.pauseTitle", { defaultValue: "Stops after the step in progress. The rest waits, also across a restart, until you resume." })}
+                  onClick={() => void story.pauseBatch?.()}
+                >
+                  {story.pausing ? t("board.pause.pausing", { defaultValue: "Pausing after this step…" }) : t("board.pause.pause", { defaultValue: "Pause" })}
+                </button>
+              ) : null}
               <button type="button" className="secondary-button" onClick={() => void story.cancelBatch()}>
                 {t("board.batch.cancel", { defaultValue: "Cancel batch" })}
               </button>

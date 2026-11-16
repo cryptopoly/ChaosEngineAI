@@ -27,8 +27,8 @@ const project = {
 } as unknown as StoryboardProject;
 const timeline = { clips: [], seconds: 16 } as unknown as StoryboardTimeline;
 
-function render(batch: StoryboardBatchRecord | null) {
-  const story = { batch, batchProgress: null, busy: false, op: vi.fn(), startBatch: vi.fn(), cancelBatch: vi.fn(), resumeBatch: vi.fn() } as unknown as UseStoryboardResult;
+function render(batch: StoryboardBatchRecord | null, extra: Record<string, unknown> = {}) {
+  const story = { batch, batchProgress: null, busy: false, op: vi.fn(), startBatch: vi.fn(), cancelBatch: vi.fn(), resumeBatch: vi.fn(), pauseBatch: vi.fn(), ...extra } as unknown as UseStoryboardResult;
   const deps = { imageGallery: [], videoGallery: [], imageModels: [], videoModels: [] };
   return renderToStaticMarkup(
     <OverviewTab story={story} project={project} timeline={timeline} deps={deps} onTab={vi.fn()} onOpenShot={vi.fn()} />,
@@ -70,5 +70,12 @@ describe("Overview next-step card (S-N)", () => {
     const html = render(null);
     expect(html).toMatch(/class="primary-button">Make 4 missing</);
     expect(html).not.toContain("Make drafts");
+  });
+
+  it("offers Pause next to Cancel while a batch runs, like the run bar", () => {
+    estimateNow = null;
+    const running = { ...paused, state: "running", pauseReason: null } as unknown as StoryboardBatchRecord;
+    expect(render(running)).toMatch(/>Pause<\/button>/);
+    expect(render(running, { pausing: true })).toContain("Pausing after this step…");
   });
 });

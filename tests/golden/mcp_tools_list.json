@@ -504,7 +504,7 @@
       "readOnlyHint": false,
       "title": "Storyboard project"
     },
-    "description": "Edit: film projects. create(name, aspect, resolution, fps), list, get, edit(fields: name, defaults, export; or aspect, resolution, fps, upscale), undo, redo, delete, export, import, add_ref/edit_ref/remove_ref (cast).",
+    "description": "Edit: film projects. create(name, aspect, resolution, fps), list, get, edit(fields, or aspect, resolution, fps, upscale), undo, redo, delete, export, import, add_ref/edit_ref/remove_ref (cast, style), plan, brand.",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
@@ -521,7 +521,9 @@
             "import",
             "add_ref",
             "edit_ref",
-            "remove_ref"
+            "remove_ref",
+            "plan",
+            "brand"
           ],
           "type": "string"
         },
@@ -539,6 +541,15 @@
           ],
           "type": "string"
         },
+        "brief": {
+          "description": "plan: the idea of the film.",
+          "maxLength": 4000,
+          "type": "string"
+        },
+        "caption": {
+          "description": "brand: caption look {font (installed family, \"\" for default), colour #RRGGBB, position bottom|middle|top}; also the card typeface and colour.",
+          "type": "object"
+        },
         "description": {
           "description": "add_ref, edit_ref: what it looks like.",
           "maxLength": 4000,
@@ -551,6 +562,12 @@
         "file": {
           "description": "Bundle file name an export returned, with its project_id (import).",
           "type": "string"
+        },
+        "film_seconds": {
+          "description": "plan: target length (5 to 600); 0 clears.",
+          "maximum": 600,
+          "minimum": 0,
+          "type": "number"
         },
         "fps": {
           "description": "24, 25, 30, 48, 50 or 60.",
@@ -568,10 +585,25 @@
           "type": "array"
         },
         "kind": {
-          "description": "add_ref. A project may have no cast at all.",
+          "description": "add_ref. style: the look of the whole film (pictures, words, palette read from them).",
           "enum": [
             "character",
-            "place"
+            "place",
+            "style"
+          ],
+          "type": "string"
+        },
+        "logo": {
+          "description": "brand: logo picture (upload: handle or output file); \"\" removes.",
+          "maxLength": 4096,
+          "type": "string"
+        },
+        "logo_corner": {
+          "enum": [
+            "top-left",
+            "top-right",
+            "bottom-left",
+            "bottom-right"
           ],
           "type": "string"
         },
@@ -579,6 +611,15 @@
           "maxLength": 200,
           "minLength": 1,
           "type": "string"
+        },
+        "palette": {
+          "description": "edit_ref on a style: its colours, trimmed.",
+          "items": {
+            "maxLength": 7,
+            "type": "string"
+          },
+          "maxItems": 8,
+          "type": "array"
         },
         "path": {
           "description": "Path of a .chaosfilm file in a storyboard exports folder (import).",
@@ -621,6 +662,15 @@
             "16:9",
             "9:16",
             "1:1"
+          ],
+          "type": "string"
+        },
+        "style_use": {
+          "description": "brand: how shots take the style.",
+          "enum": [
+            "auto",
+            "words",
+            "off"
           ],
           "type": "string"
         },

@@ -21,18 +21,28 @@ _FIELDS = {"type": "object", "description": "Fields to set, as in the project JS
 STORYBOARD_TOOLS: list[dict[str, Any]] = [
     {
         "name": "storyboard_project",
-        "description": "Edit: film projects. create(name, aspect, resolution, fps), list, get, edit(fields: name, defaults, "
-        "export; or aspect, resolution, fps, upscale), undo, redo, delete, export, import, add_ref/edit_ref/remove_ref (cast).",
+        "description": "Edit: film projects. create(name, aspect, resolution, fps), list, get, edit(fields, or aspect, "
+        "resolution, fps, upscale), undo, redo, delete, export, import, add_ref/edit_ref/remove_ref (cast, style), plan, brand.",
         "inputSchema": _obj({
             "action": {"type": "string", "enum": ["create", "list", "get", "edit", "undo", "redo", "delete", "export", "import",
-                                                  "add_ref", "edit_ref", "remove_ref"]},
-            "kind": {"type": "string", "enum": ["character", "place"], "description": "add_ref. A project may have no cast at all."},
+                                                  "add_ref", "edit_ref", "remove_ref", "plan", "brand"]},
+            "kind": {"type": "string", "enum": ["character", "place", "style"],
+                     "description": "add_ref. style: the look of the whole film (pictures, words, palette read from them)."},
             "ref_id": {"type": "string", "maxLength": 64, "description": "edit_ref, remove_ref. Shots use it in fields.referenceImages."},
             "description": {"type": "string", "maxLength": 4000, "description": "add_ref, edit_ref: what it looks like."},
             "images": {"type": "array", "maxItems": 4, "items": {"type": "string", "maxLength": 4096},
                        "description": "add_ref: up to 4 pictures (upload: handles, output files, or a take's media/ still)."},
             "add_image": {"type": "string", "maxLength": 4096, "description": "edit_ref: one more picture (4 at most)."},
             "remove_image": {"type": "integer", "minimum": 0, "maximum": 3, "description": "edit_ref: position of a picture to drop."},
+            "palette": {"type": "array", "maxItems": 8, "items": {"type": "string", "maxLength": 7},
+                        "description": "edit_ref on a style: its colours, trimmed."},
+            "brief": {"type": "string", "maxLength": 4000, "description": "plan: the idea of the film."},
+            "film_seconds": {"type": "number", "minimum": 0, "maximum": 600, "description": "plan: target length (5 to 600); 0 clears."},
+            "logo": {"type": "string", "maxLength": 4096, "description": "brand: logo picture (upload: handle or output file); \"\" removes."},
+            "logo_corner": {"type": "string", "enum": ["top-left", "top-right", "bottom-left", "bottom-right"]},
+            "style_use": {"type": "string", "enum": ["auto", "words", "off"], "description": "brand: how shots take the style."},
+            "caption": {"type": "object", "description": "brand: caption look {font (installed family, \"\" for default), colour #RRGGBB, "
+                        "position bottom|middle|top}; also the card typeface and colour."},
             "project_id": _PID, "revision": _REV,
             "name": {"type": "string", "minLength": 1, "maxLength": 200},
             "fields": _FIELDS,
@@ -145,7 +155,8 @@ def _summary(project: Any, extra: dict[str, Any] | None = None) -> dict[str, Any
                   for s in project.shots],
         "audio": [{"id": a.id, "kind": a.kind, "status": a.status, "start": starts.get(a.id)} for a in project.audio],
         "cast": [{"id": r.id, "kind": kind, "name": r.name, "pictures": len(r.images)}
-                 for kind, refs in (("character", project.references.characters), ("place", project.references.places))
+                 for kind, refs in (("character", project.references.characters), ("place", project.references.places),
+                                    ("style", project.references.styles))
                  for r in refs],
         **(extra or {}),
     }
@@ -220,6 +231,57 @@ def _format_fields(args: dict[str, Any]) -> dict[str, Any]:
     return fields
 
 
+def _plan_args(args: dict[str, Any]) -> dict[str, Any]:
+    out: dict[str, Any] = {}
+    if "brief" in args:
+        out["brief"] = str(args["brief"] or "")
+    if "film_seconds" in args:
+        if not args["film_seconds"]:
+            out["clearFilmSeconds"] = True
+        else:
+            out["filmSeconds"] = args["film_seconds"]
+    if not out:
+        raise ToolError("plan needs brief or film_seconds.")
+    return out
+
+
+def _brand_args(args: dict[str, Any]) -> dict[str, Any]:
+    """set_brand arguments from the tool's: the logo is an agent input (upload handle or output file), the caption font
+    must be installed on this computer."""
+    out: dict[str, Any] = {}
+    if "logo" in args:
+        if args["logo"] is None or str(args["logo"]).strip() == "":
+            out["clearLogo"] = True
+        else:
+            out["logo"] = _cast_source(args["logo"])
+    if args.get("logo_corner") is not None:
+        out["logoCorner"] = args["logo_corner"]
+    if args.get("style_use") is not None:
+        out["styleUse"] = args["style_use"]
+    caption = args.get("caption")
+    if caption is not None:
+        if not isinstance(caption, dict) or set(caption) - {"font", "colour", "position"}:
+            raise ToolError("caption takes font, colour and position.")
+        look: dict[str, Any] = {k: caption[k] for k in ("colour", "position") if caption.get(k) is not None}
+        if isinstance(look.get("colour"), str):
+            look["colour"] = look["colour"].lower()
+        if "font" in caption:
+            font = str(caption["font"] or "").strip()
+            if not font:
+                look["clearFont"] = True
+            else:
+                from backend_service.storyboard.fonts import installed_fonts
+
+                if font not in installed_fonts():
+                    raise ToolError(f"The font '{font[:64]}' is not installed on this computer. Use an installed family "
+                                    "or \"\" for the default.")
+                look["font"] = font
+        out["captions"] = look
+    if not out:
+        raise ToolError("brand needs logo, logo_corner, style_use or caption.")
+    return out
+
+
 def storyboard_project(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
     from backend_service.mcp_bridge.files import download_info
     from backend_service.storyboard import bundle
@@ -270,8 +332,7 @@ def storyboard_project(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
                    "images": [_cast_source(x) for x in args.get("images") or []]}
         before = _run(lambda: store.load(pid))
         after = _op(args, "add_reference", op_args)
-        added = next((r.id for r in after.references.characters + after.references.places
-                      if before.reference(r.id) is None), None)
+        added = next((r.id for r in after.references.all() if before.reference(r.id) is None), None)
         return _summary(after, {"refId": added})
     if action in ("edit_ref", "remove_ref"):
         _need(args, "ref_id")
@@ -282,7 +343,13 @@ def storyboard_project(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
             changes["addImage"] = _cast_source(args["add_image"])
         if "remove_image" in args:
             changes["removeImage"] = args["remove_image"]
+        if "palette" in args:
+            changes["palette"] = list(args["palette"] or [])
         return _summary(_op(args, "edit_reference", {"refId": args["ref_id"], **changes}))
+    if action == "plan":
+        return _summary(_op(args, "set_plan", _plan_args(args)))
+    if action == "brand":
+        return _summary(_op(args, "set_brand", _brand_args(args)))
     if action == "undo":
         return _summary(_run(lambda: store.undo(pid, rev)))
     if action == "redo":

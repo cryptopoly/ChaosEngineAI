@@ -253,6 +253,79 @@ class StoryboardToolTests(unittest.TestCase):
                                              "shot_id": info["shots"][0]["id"], "path": str(outside)}, error=True)
         self.assertIn("upload: handle", text)
 
+    def get(self, pid):
+        return self.call("storyboard_project", {"action": "get", "project_id": pid})["project"]
+
+    def test_agent_sets_the_plan_brief_and_length(self):
+        info = self.project(shots=0)
+        pid = info["projectId"]
+        info = self.call("storyboard_project", {"action": "plan", "project_id": pid, "revision": info["revision"],
+                                                "brief": "A calm tea-shop advert", "film_seconds": 30})
+        self.assertEqual(self.get(pid)["plan"], {"brief": "A calm tea-shop advert", "filmSeconds": 30.0})
+        info = self.call("storyboard_project", {"action": "plan", "project_id": pid, "revision": info["revision"], "film_seconds": 0})
+        self.assertIsNone(self.get(pid)["plan"]["filmSeconds"])
+        info = self.call("storyboard_project", {"action": "undo", "project_id": pid, "revision": info["revision"]})
+        self.assertEqual(self.get(pid)["plan"]["filmSeconds"], 30.0)
+        self.assertIn("revision", self.call("storyboard_project", {"action": "plan", "project_id": pid, "revision": 1,
+                                                                   "brief": "x"}, error=True))
+        self.assertIn("brief or film_seconds", self.call("storyboard_project", {"action": "plan", "project_id": pid,
+                                                                                "revision": info["revision"]}, error=True))
+
+    def test_agent_adds_a_style_reference_and_trims_its_palette(self):
+        info = self.project(shots=0)
+        pid = info["projectId"]
+        pic = png(self.src / "look.png", (200, 120, 40))
+        info = self.call("storyboard_project", {"action": "add_ref", "project_id": pid, "revision": info["revision"],
+                                                "kind": "style", "name": "Shop", "description": "warm wood", "images": [str(pic)]})
+        ref_id = info["refId"]
+        self.assertIn({"id": ref_id, "kind": "style", "name": "Shop", "pictures": 1}, info["cast"])
+        style = self.get(pid)["references"]["styles"][0]
+        self.assertTrue(style["palette"])
+        info = self.call("storyboard_project", {"action": "edit_ref", "project_id": pid, "revision": info["revision"],
+                                                "ref_id": ref_id, "palette": ["#112233"]})
+        self.assertEqual(self.get(pid)["references"]["styles"][0]["palette"], ["#112233"])
+        outside = png(self.base / "elsewhere" / "p.png")
+        text = self.call("storyboard_project", {"action": "add_ref", "project_id": pid, "revision": info["revision"],
+                                                "kind": "style", "images": [str(outside)]}, error=True)
+        self.assertIn("upload: handle", text)
+
+    def test_agent_sets_the_brand_kit(self):
+        from backend_service.storyboard import fonts
+
+        info = self.project(shots=0)
+        pid = info["projectId"]
+        logo = png(self.src / "logo.png", (10, 200, 10))
+        family = (fonts.installed_fonts() or [None])[0]
+        caption = {"colour": "#FFD700", "position": "top", **({"font": family} if family else {})}
+        info = self.call("storyboard_project", {"action": "brand", "project_id": pid, "revision": info["revision"],
+                                                "logo": str(logo), "logo_corner": "top-left", "style_use": "words",
+                                                "caption": caption})
+        brand = self.get(pid)["brand"]
+        self.assertTrue(brand["logo"]["path"].startswith("media/brand/logo-"))
+        self.assertEqual((brand["logoCorner"], brand["styleUse"], brand["captions"]["position"]), ("top-left", "words", "top"))
+        self.assertEqual(brand["captions"]["colour"].upper(), "#FFD700")
+        self.assertEqual(brand["captions"]["font"], family)
+        for bad, needle in (({"caption": {"font": "No Such Font 123"}}, "not installed"),
+                            ({"caption": {"size": "huge"}}, "font, colour and position"),
+                            ({"logo": str(png(self.base / "elsewhere" / "l.png"))}, "upload: handle"),
+                            ({}, "brand needs")):
+            text = self.call("storyboard_project", {"action": "brand", "project_id": pid, "revision": info["revision"], **bad},
+                             error=True)
+            self.assertIn(needle, text)
+        info = self.call("storyboard_project", {"action": "brand", "project_id": pid, "revision": info["revision"], "logo": "",
+                                                "caption": {"font": ""}})
+        brand = self.get(pid)["brand"]
+        self.assertIsNone(brand["logo"])
+        self.assertIsNone(brand["captions"]["font"])
+        self.call("storyboard_project", {"action": "undo", "project_id": pid, "revision": info["revision"]})
+        self.assertIsNotNone(self.get(pid)["brand"]["logo"])
+
+    def test_plan_and_brand_need_the_generate_scope(self):
+        from backend_service.mcp_bridge.scopes import required_scope
+
+        for action in ("plan", "brand", "add_ref", "edit_ref"):
+            self.assertEqual(required_scope("storyboard_project", {"action": action}), "generate")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -30,7 +30,7 @@ export function BatchBar({
   onCancel,
 }: {
   batch: StoryboardBatchRecord;
-  /** Live progress from the backend: "clip 2 of 4", elapsed, time left from the clips made so far. */
+  /** Live progress from the backend: "clip 2 of 4", elapsed, time left timed on this machine. */
   progress?: JobProgress | null;
   onCancel: () => void;
 }) {
@@ -41,7 +41,13 @@ export function BatchBar({
   return (
     <div className="batch-bar" role="status" aria-live="polite">
       <div className="batch-bar__text">
-        <strong>{t("board.batch.title", { defaultValue: "Making shots" })}</strong>
+        <strong>
+          {batch.draft
+            ? t("board.batch.titleDraft", { defaultValue: "Making drafts" })
+            : batch.what === "final"
+              ? t("board.batch.titleFinal", { defaultValue: "Final pass" })
+              : t("board.batch.title", { defaultValue: "Making shots" })}
+        </strong>
         <span>{progress ? batchProgressText(t as unknown as TFn, progress) : t("board.batch.starting", { defaultValue: "Starting…" })}</span>
         {progress ? (
           <span className="batch-bar__count">

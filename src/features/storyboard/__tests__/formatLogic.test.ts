@@ -126,6 +126,12 @@ describe("format fields", () => {
     expect(out).toContain("Will not fit");
   });
 
+  it("says the peak memory with one unit", () => {
+    const out = html();
+    expect(out).toMatch(/about [\d.]+ GB at peak/);
+    expect(out).not.toContain("GB GB");
+  });
+
   it("notes a capped size and a frame-rate conversion", () => {
     const out = html({ resolution: "2160p", fps: 30 });
     expect(out).toContain("scaled up to 3840 × 2160");

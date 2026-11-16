@@ -35,10 +35,14 @@ describe("Storyboard run bar", () => {
     expect(html).toMatch(/class="primary-button" disabled="">Make 3 missing/);
   });
 
-  it("says when nothing is missing", () => {
-    const html = bar({ missing: 0, stills: 0, estimate: null });
+  it("says when nothing is missing, with no dead Make button or unknown estimate", () => {
+    const html = bar({ missing: 0, stills: 0, estimate: null, onMakeDrafts: noop, onFinalPass: noop });
     expect(html).toContain("Every unlocked shot has a take.");
-    expect(html).toMatch(/disabled="">Make missing/);
+    expect(html).not.toContain("Make missing");
+    expect(html).not.toContain("unknown until the first run");
+    expect(html).not.toContain("Make drafts");
+    expect(html).toContain("Make all unlocked");
+    expect(html).toContain("Final pass on 0 kept shots");
   });
 });
 
@@ -63,7 +67,7 @@ describe("Storyboard run bar: draft and final passes", () => {
     const html = bar({ estimate: estimate({ passes: { ...passes, final: { ...passes.final, assumedAllKept: true } } }),
       kept: 0, finalShots: 0, onMakeDrafts: noop, onFinalPass: noop });
     expect(html).toMatch(/disabled="" title="[^"]*">Final pass on 0 kept shots</);
-    expect(html).toContain("Mark shots with Keep to choose them for the final pass.");
+    expect(html).toContain("Mark shots with Keep for final to choose them for the final pass.");
   });
 
   it("has no passes row when the screen does not offer them", () => {

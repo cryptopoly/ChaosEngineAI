@@ -199,6 +199,9 @@ export function StoryboardTab({ story, project, timeline, imageGallery, videoGal
                 key={span.id}
                 type="button"
                 className={`length-strip__part length-strip__part--${shots[index].status}`}
+                // A pointer shortcut: keyboard users move between the cards with the arrow keys, so the strip
+                // adds no tab stop per shot.
+                tabIndex={-1}
                 style={{ flexGrow: Math.max(0.2, span.duration) }}
                 title={t("board.lengthStripPart", { defaultValue: "Shot {n} · {seconds} s", n: index + 1, seconds: Math.round(span.duration * 10) / 10 })}
                 aria-label={t("board.lengthStripPart", { defaultValue: "Shot {n} · {seconds} s", n: index + 1, seconds: Math.round(span.duration * 10) / 10 })}

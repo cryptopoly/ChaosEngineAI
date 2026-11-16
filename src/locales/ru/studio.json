@@ -1553,7 +1553,9 @@
       "shotOf": "Шот {n} из {total}",
       "starting": "Запуск…",
       "stillsThenClips": "{kind}, затем клипы",
-      "title": "Создание шотов"
+      "title": "Создание шотов",
+      "titleDraft": null,
+      "titleFinal": null
     },
     "conflictNotice": "Изменено в другом месте; показана последняя версия",
     "defaults": {
@@ -1651,7 +1653,9 @@
         "edit": "Изменить промпты",
         "import": "Импортировать материал",
         "up": "Переместить вверх",
-        "useAsReference": "Использовать кадр как образец"
+        "useAsReference": "Использовать кадр как образец",
+        "markNewTake": null,
+        "unmarkNewTake": null
       },
       "missingNote": "Файл дубля отсутствует. Привяжите заново или создайте новый дубль.",
       "moreActions": "Другие действия для шота {n}",
@@ -1688,7 +1692,6 @@
       "unlock": "Разблокировать этот шот",
       "untitled": "Шот {n}",
       "castLabel": "Персонажи в этом плане",
-      "newTake": "Новый дубль",
       "newTakeMarked": "Новый дубль при следующем запуске",
       "newTakeTitle": null,
       "noPrompt": "Промпта пока нет. Нажмите Enter или «Изменить промпты».",

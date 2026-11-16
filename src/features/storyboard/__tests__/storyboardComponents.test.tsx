@@ -45,6 +45,8 @@ describe("ShotCard", () => {
     const plain = card({ status: "done", shot: shot({ takes: [{ ...take("t1"), clip: "media/c.mp4" }], activeTake: "t1" }), onToggleKept: noop });
     expect(plain).not.toContain(">Draft</span>");
     expect(plain).toMatch(/aria-pressed="false"[^>]*>Keep for final/);
+    // Nothing to keep before the first take.
+    expect(card({ shot: shot(), onToggleKept: noop })).not.toContain("Keep for final");
   });
 
   it("carries the state class and the status sentence for each state", () => {
@@ -71,7 +73,8 @@ describe("ShotCard", () => {
     expect(html).toContain("A lighthouse at dusk");
     expect(html).toContain("Mara");
     expect(card()).toContain("No prompt yet.");
-    expect(card()).toContain("New take");
+    // Making a new take lives in the menu with the other remakes; the card row keeps Keep for final.
+    expect(card()).not.toContain(">New take<");
   });
 
   it("offers Re-run and Keep on a stale shot until Keep is chosen", () => {
@@ -79,8 +82,13 @@ describe("ShotCard", () => {
     const html = card({ status: "stale", shot: stale, staleAfter: 0 });
     expect(html).toContain("Stale · after shot 1");
     expect(html).toContain("Re-run");
-    expect(html).toContain("Keep");
+    expect(html).toContain("Keep as is");
     expect(card({ status: "stale", shot: stale, staleAfter: 0, kept: true })).not.toContain("Re-run");
+  });
+
+  it("names the card by its number and title, also with no title", () => {
+    expect(card()).toContain('aria-label="Shot 2 · Arrival"');
+    expect(card({ shot: shot({ title: "" }) })).toContain('aria-label="Shot 2"');
   });
 
   it("marks a locked shot with aria-pressed and a Locked badge", () => {
@@ -144,6 +152,13 @@ describe("BatchBar", () => {
     expect(html).toContain("Shot 3 of 8 · stills, then clips");
     expect(html).toContain("Cancel batch");
     expect(html).toContain("2 of 8 done");
+  });
+
+  it("names the pass it runs: drafts, the final pass, or plain shots", () => {
+    const results = [r("s1", "still", "running")];
+    expect(renderToStaticMarkup(<BatchBar batch={{ ...record(results), what: "still", draft: true }} onCancel={noop} />)).toContain("Making drafts");
+    expect(renderToStaticMarkup(<BatchBar batch={{ ...record(results), what: "final" }} onCancel={noop} />)).toContain("Final pass");
+    expect(renderToStaticMarkup(<BatchBar batch={record(results)} onCancel={noop} />)).toContain("Making shots");
   });
 
   it("drops 'then clips' once clips are being made", () => {

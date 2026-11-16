@@ -275,14 +275,6 @@ export function ProjectListTab({ backendOnline, onOpenProject, videoFit, imageMo
                   defaultValue: "No projects yet. A project holds your shots, takes and sound in one folder you can move or back up.",
                 })}
               </p>
-              <div className="overview-tab__actions">
-                <button type="button" className="primary-button" onClick={openCreate}>
-                  {t("storyProjects.new", { defaultValue: "New project" })}
-                </button>
-                <button type="button" className="secondary-button" disabled={working} onClick={() => fileInput.current?.click()}>
-                  {t("storyProjects.import", { defaultValue: "Import bundle" })}
-                </button>
-              </div>
               <p className="muted-text">{t("projectList.dropHint", { defaultValue: "Or drop a .chaosfilm file here." })}</p>
             </div>
           ) : null}

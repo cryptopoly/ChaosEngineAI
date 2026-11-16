@@ -4,7 +4,7 @@
  * Undo); on a project that has shots already it offers "Add after" or "Replace", and Replace asks first when
  * shots with pictures would leave the board (they stay in Undo).
  */
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { StoryboardProposal } from "../../api/storyboardPlan";
 import type { StoryboardProject } from "../../types";
@@ -29,13 +29,23 @@ export function PlanProposal({ proposal, project, target, busy, onUse, onAgain, 
   const existing = project.shots.length;
   const withTakes = replaceLosesTakes(project);
   const locked = lockedCount(project);
+  const heading = useRef<HTMLHeadingElement>(null);
+  // A proposal lands below the brief, often off screen: bring it into view and put focus on its heading so a
+  // screen reader reads it and Tab goes on to "Use these shots".
+  useEffect(() => {
+    const el = heading.current;
+    if (!el) return;
+    const still = typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    el.scrollIntoView?.({ block: "start", behavior: still ? "auto" : "smooth" });
+    el.focus({ preventScroll: true });
+  }, [proposal]);
 
   return (
     <section className="plan-proposal" aria-labelledby="plan-proposal-title">
       <div className="plan-section-head plan-proposal__head">
         <div>
           <span className="eyebrow">{t("board.plan.proposal.eyebrow", { defaultValue: "Proposed by {model} in {n} s", model: proposal.model, n: Math.round(proposal.seconds) })}</span>
-          <h3 id="plan-proposal-title">
+          <h3 id="plan-proposal-title" ref={heading} tabIndex={-1}>
             {t("board.plan.proposal.title", { defaultValue: "{n, plural, one {# shot} other {# shots}} · {total} s", n: proposal.shots.length, total })}
           </h3>
           {proposal.note ? <p className="plan-proposal__note">{proposal.note}</p> : null}

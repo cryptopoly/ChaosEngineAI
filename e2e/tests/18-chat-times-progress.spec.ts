@@ -7,7 +7,7 @@ import { goTo, SHOTS_DIR } from "./helpers";
 // Times and long-job progress in Chat. No model runs: the workspace says a tool-capable model is loaded
 // and the chat stream is a scripted stream the test feeds event by event (as in spec 15). Covers: a running
 // wait_for_job card with its start time and a ticking elapsed time, the progress line ("clip 2 of 4", time
-// left from the clips made so far), 24 polls of one job shown as ONE card, the send time on messages (full
+// left timed on this machine), 24 polls of one job shown as ONE card, the send time on messages (full
 // date on hover, date when not today) and an old message without a time showing none.
 
 type Workspace = { runtime: Record<string, unknown> };
@@ -94,7 +94,7 @@ test("a long wait shows start time, ticking elapsed time and the clip progress; 
   const line = page.getByTestId("job-progress-line").first();
   await expect(line).toContainText("clip 2 of 4");
   await expect(line).toContainText("elapsed");
-  await expect(line).toContainText("left (from the clips made so far)");
+  await expect(line).toContainText("left (timed on this machine)");
   mkdirSync(SHOTS_DIR, { recursive: true });
   await page.locator(".message-bubble.assistant").last().screenshot({ path: path.join(SHOTS_DIR, "chat-wait-progress.png") });
 

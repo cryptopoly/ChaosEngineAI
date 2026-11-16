@@ -75,20 +75,25 @@ function PassesRow({ missing, kept = 0, finalShots = 0, estimate, busy, onMakeDr
     : undefined;
   return (
     <div className="run-bar__passes" role="group" aria-label={t("board.passes.label", { defaultValue: "Draft and final passes" })}>
-      <label className="run-bar__passes-clips">
-        <input type="checkbox" checked={withClips} disabled={busy} onChange={(event) => setWithClips(event.target.checked)} />
-        {t("board.passes.withClips", { defaultValue: "Drafts with clips" })}
-      </label>
-      <button type="button" className="secondary-button" disabled={busy || missing === 0} title={draftTitle}
-        onClick={() => onMakeDrafts?.(withClips)}>
-        {draftLabel}
-      </button>
+      {/* Drafts only make what is missing: with every shot made they would be a dead control. */}
+      {missing > 0 ? (
+        <>
+          <label className="run-bar__passes-clips">
+            <input type="checkbox" checked={withClips} disabled={busy} onChange={(event) => setWithClips(event.target.checked)} />
+            {t("board.passes.withClips", { defaultValue: "Drafts with clips" })}
+          </label>
+          <button type="button" className="secondary-button" disabled={busy} title={draftTitle}
+            onClick={() => onMakeDrafts?.(withClips)}>
+            {draftLabel}
+          </button>
+        </>
+      ) : null}
       <button type="button" className="secondary-button" disabled={busy || finalShots === 0} title={finalTitle}
         onClick={onFinalPass}>
         {finalLabel}
       </button>
       {kept === 0 ? (
-        <span className="muted-text">{t("board.passes.keepHint", { defaultValue: "Mark shots with Keep to choose them for the final pass." })}</span>
+        <span className="muted-text">{t("board.passes.keepHint", { defaultValue: "Mark shots with Keep for final to choose them for the final pass." })}</span>
       ) : null}
     </div>
   );
@@ -132,6 +137,18 @@ export function RunBar(props: RunBarProps) {
             n: missing,
           });
 
+  const makeAll = (
+    <button
+      type="button"
+      className="secondary-button"
+      disabled={busy || unlocked === 0}
+      title={t("board.makeAllTitle", { defaultValue: "Adds a new take to every unlocked shot. Nothing is overwritten." })}
+      onClick={onMakeAll}
+    >
+      {t("board.makeAll", { defaultValue: "Make all unlocked" })}
+    </button>
+  );
+
   return (
     <div className={`run-bar${risk === "danger" ? " run-bar--danger" : ""}`} role="region" aria-label={t("runBar.label", { defaultValue: "Make shots" })}>
       <p className="run-bar__need">
@@ -145,6 +162,17 @@ export function RunBar(props: RunBarProps) {
           ))}
         </ul>
       ) : null}
+      {missing === 0 ? (
+        // Nothing to make: no estimate to show and no disabled primary button, only the deliberate remake.
+        <div className="run-estimate run-estimate--safe">
+          <div className="run-estimate__row">
+            <div className="run-estimate__items" />
+            <div className="run-estimate__action">
+              <div className="board-estimate__actions">{makeAll}</div>
+            </div>
+          </div>
+        </div>
+      ) : (
       <RunEstimateStrip
         compactUnknown
         seconds={missing > 0 ? seconds : null}
@@ -156,21 +184,14 @@ export function RunBar(props: RunBarProps) {
         ack={{ checked: ack, onChange: setAck }}
         action={
           <div className="board-estimate__actions">
-            <button
-              type="button"
-              className="secondary-button"
-              disabled={busy || unlocked === 0}
-              title={t("board.makeAllTitle", { defaultValue: "Adds a new take to every unlocked shot. Nothing is overwritten." })}
-              onClick={onMakeAll}
-            >
-              {t("board.makeAll", { defaultValue: "Make all unlocked" })}
-            </button>
+            {makeAll}
             <button type="button" className="primary-button" disabled={busy || missing === 0 || blockedByRisk} onClick={onMakeMissing}>
               {makeLabel}
             </button>
           </div>
         }
       />
+      )}
       {props.onMakeDrafts ? <PassesRow {...props} /> : null}
     </div>
   );

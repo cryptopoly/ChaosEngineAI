@@ -1553,7 +1553,9 @@
       "shotOf": "'ay' {n}, Hoch {total}",
       "starting": "taghlI'…",
       "stillsThenClips": "{kind}, ghIq mIllogh vIH",
-      "title": "'ay' chenmoHlI'"
+      "title": "'ay' chenmoHlI'",
+      "titleDraft": null,
+      "titleFinal": null
     },
     "conflictNotice": "latlh DaqDaq choHlu'ta'; Qav cha'lu'",
     "defaults": {
@@ -1651,7 +1653,9 @@
         "edit": "QIn yIchoH",
         "import": "mIllogh vIH yIqem",
         "up": "DungDaq yIvIHmoH",
-        "useAsReference": "mIllogh Hal yIlo'"
+        "useAsReference": "mIllogh Hal yIlo'",
+        "markNewTake": null,
+        "unmarkNewTake": null
       },
       "missingNote": "nID nav Hutlh. yIrarqa' pagh nID chu' yIchenmoH.",
       "moreActions": "'ay' {n} latlh Qu'",
@@ -1688,7 +1692,6 @@
       "unlock": "'ay'vam yIngaQHa'moH",
       "untitled": "'ay' {n}",
       "castLabel": "'ay'vam ghot ghom",
-      "newTake": "nID chu'",
       "newTakeMarked": "chu'qa'DI' nID chu'",
       "newTakeTitle": "yIchenmoH veb 'ay'vam nID chu' chel. pagh Qaw'lu'.",
       "noPrompt": "wej QIn tu'lu'. Enter yI'uy pagh QIn yIchoH yIwIv.",

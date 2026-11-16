@@ -12326,6 +12326,11 @@ button.licence-chip:focus-visible {
 .transition-picker select {
   padding: 6px 8px;
 }
+/* On a shot card the picker shares one row with Lock, Keep for final and the menu. */
+.shot-card__actions .transition-picker select {
+  padding: 5px 4px;
+  font-size: 0.85rem;
+}
 .transition-picker__seconds {
   display: inline-flex;
   align-items: center;
@@ -15238,7 +15243,9 @@ select.music-library__select {
 }
 .length-strip__part {
   flex-basis: 0;
-  min-width: 14px;
+  /* Many shots on a phone: parts shrink below their number rather than push the page sideways. */
+  min-width: 0;
+  overflow: hidden;
   padding: 2px 0;
   border: 0;
   border-radius: 4px;
@@ -15251,6 +15258,7 @@ select.music-library__select {
 }
 .length-strip__part--idle {
   background: var(--panel-alt);
+  box-shadow: inset 0 0 0 1px var(--border);
 }
 .length-strip__part--stale {
   background: color-mix(in srgb, var(--warning) 35%, var(--panel-alt));
@@ -15827,27 +15835,6 @@ select.music-library__select {
   outline: none;
 }
 .rough-cut__head {
-/* S10 take compare and S11 redo one half (package S-F). */
-.takes-strip__row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-.takes-strip__row .takes-strip {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-.takes-strip__compare {
-  flex: 0 0 auto;
-  padding: 4px 10px;
-  font-size: 0.8rem;
-}
-.modal-content.take-compare {
-  width: min(1120px, 96vw);
-  max-height: 92vh;
-}
-.take-compare__head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -15982,97 +15969,12 @@ select.music-library__select {
   background: var(--accent);
   transition: width 0.2s ease;
 }
+@media (prefers-reduced-motion: reduce) {
+  .rough-cut__loading-bar span {
+    transition: none;
+  }
+}
 .rough-cut__transport {
-.take-compare__views {
-  display: inline-flex;
-  align-self: flex-start;
-  gap: 4px;
-  padding: 3px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-}
-.take-compare__view {
-  padding: 5px 14px;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--muted);
-  font: inherit;
-  cursor: pointer;
-}
-.take-compare__view.active {
-  background: var(--panel-alt);
-  color: var(--text);
-}
-.take-compare__view:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
-}
-.take-compare__grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-}
-.take-compare__pane {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-width: 0;
-  padding: 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--surface);
-}
-.take-compare__pane--active {
-  border-color: var(--accent);
-}
-.take-compare__pane-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-}
-.take-compare__select {
-  flex: 1 1 160px;
-  min-width: 0;
-  width: auto;
-}
-.take-compare__frame {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  overflow: hidden;
-  border-radius: var(--radius-sm);
-  background: #000;
-}
-.take-compare__media {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
-.take-compare__none {
-  padding: 12px;
-  color: var(--muted);
-  font-size: 0.85rem;
-  text-align: center;
-}
-.take-compare__note {
-  position: absolute;
-  left: 8px;
-  bottom: 8px;
-  padding: 2px 8px;
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--app-bg) 78%, transparent);
-  color: var(--muted-strong);
-  font-size: 0.75rem;
-}
-.take-compare__use {
-  align-self: flex-start;
-}
-.take-compare__transport {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -16217,6 +16119,129 @@ select.music-library__select {
   }
   .rough-cut__keys {
     display: none;
+  }
+}
+/* S10 take compare and S11 redo one half (package S-F). */
+.takes-strip__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.takes-strip__row .takes-strip {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.takes-strip__compare {
+  flex: 0 0 auto;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+}
+.modal-content.take-compare {
+  width: min(1120px, 96vw);
+  max-height: 92vh;
+}
+.take-compare__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.take-compare__views {
+  display: inline-flex;
+  align-self: flex-start;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.take-compare__view {
+  padding: 5px 14px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+}
+.take-compare__view.active {
+  background: var(--panel-alt);
+  color: var(--text);
+}
+.take-compare__view:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.take-compare__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.take-compare__pane {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+.take-compare__pane--active {
+  border-color: var(--accent);
+}
+.take-compare__pane-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.take-compare__select {
+  flex: 1 1 160px;
+  min-width: 0;
+  width: auto;
+}
+.take-compare__frame {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background: #000;
+}
+.take-compare__media {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.take-compare__none {
+  padding: 12px;
+  color: var(--muted);
+  font-size: 0.85rem;
+  text-align: center;
+}
+.take-compare__note {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--app-bg) 78%, transparent);
+  color: var(--muted-strong);
+  font-size: 0.75rem;
+}
+.take-compare__use {
+  align-self: flex-start;
+}
+.take-compare__transport {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
 .take-compare__scrub {
   flex: 1 1 200px;
   min-width: 120px;

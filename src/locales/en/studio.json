@@ -1553,7 +1553,9 @@
       "shotOf": "Shot {n} of {total}",
       "starting": "Starting…",
       "stillsThenClips": "{kind}, then clips",
-      "title": "Making shots"
+      "title": "Making shots",
+      "titleDraft": "Making drafts",
+      "titleFinal": "Final pass"
     },
     "conflictNotice": "Changed elsewhere; showing the latest",
     "defaults": {
@@ -1642,7 +1644,7 @@
     "shot": {
       "drag": "Drag to reorder",
       "failedNote": "The shot did not render. Try again or edit the prompts.",
-      "keep": "Keep",
+      "keep": "Keep as is",
       "lock": "Lock this shot",
       "lockedNote": "Locked shots are skipped by Make shots.",
       "menu": {
@@ -1651,7 +1653,9 @@
         "edit": "Edit prompts",
         "import": "Import footage",
         "up": "Move up",
-        "useAsReference": "Use still as reference"
+        "useAsReference": "Use still as reference",
+        "markNewTake": "Make a new take next run",
+        "unmarkNewTake": "Cancel the new take"
       },
       "missingNote": "Take file missing. Relink or make a new take.",
       "moreActions": "More actions for shot {n}",
@@ -1688,7 +1692,6 @@
       "unlock": "Unlock this shot",
       "untitled": "Shot {n}",
       "castLabel": "Cast in this shot",
-      "newTake": "New take",
       "newTakeMarked": "New take next run",
       "newTakeTitle": "The next Make adds a new take of this shot. Nothing is overwritten.",
       "noPrompt": "No prompt yet. Press Enter or Edit prompts.",
@@ -1723,7 +1726,7 @@
       "finalTitle": "Makes each kept shot again with {model} at {width} x {height}, then its clip from the new still.",
       "label": "Draft and final passes",
       "withClips": "Drafts with clips",
-      "keepHint": "Mark shots with Keep to choose them for the final pass."
+      "keepHint": "Mark shots with Keep for final to choose them for the final pass."
     },
     "exportDrafts": "{n, plural, one {# shot uses a draft take.} other {# shots use a draft take.}} Keep them and run the final pass for full quality, or export the drafts as they are.",
     "preview": {
@@ -1786,7 +1789,7 @@
       "inUse": "In use",
       "clipOf": "Clip of {take}",
       "stillOf": "Still of {take}",
-      "noClip": "No clip in this take yet.",
+      "noClip": "No clip",
       "noStill": "No still in this take.",
       "stillShown": "No clip yet: its still is shown.",
       "inUseButton": "In use",

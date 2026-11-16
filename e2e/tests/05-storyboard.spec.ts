@@ -305,14 +305,14 @@ test("takes: pick another take, then lock the shot and the strip follows", async
   await expect(page.getByText("Locked", { exact: true })).toBeVisible();
   // A locked shot is skipped, so there is nothing left for either Make button.
   await expect(page.getByRole("button", { name: "Make all unlocked" })).toBeDisabled();
-  await expect(page.getByRole("button", { name: "Make missing", exact: true })).toBeDisabled();
+  // With nothing to make, the run bar shows no dead Make missing button.
+  await expect(page.getByRole("button", { name: "Make missing", exact: true })).toHaveCount(0);
   await unlock.click();
   await expect(page.getByRole("button", { name: "Make all unlocked" })).toBeEnabled();
 
-  // The card's toggle says "New take", so it is not confused with Redo in the header.
-  const newTake = page.locator(".shot-card").getByRole("button", { name: "New take" });
-  await newTake.click();
-  await expect(newTake).toHaveAttribute("aria-pressed", "true");
+  // A new take is asked for from the shot menu, beside the other remakes; the card then says so.
+  await page.locator(".shot-card").getByRole("button", { name: /^More actions for shot/ }).click();
+  await page.getByRole("menuitem", { name: "Make a new take next run" }).click();
   await expect(page.getByText("New take next run")).toBeVisible();
   // These takes are stills without a clip: they say so instead of "Done".
   await expect(page.locator(".shot-card__status")).toHaveText("Still only");

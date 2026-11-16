@@ -1553,7 +1553,9 @@
       "shotOf": "샷 {n} / {total}",
       "starting": "시작 중…",
       "stillsThenClips": "{kind}, 그다음 클립",
-      "title": "샷 만드는 중"
+      "title": "샷 만드는 중",
+      "titleDraft": null,
+      "titleFinal": null
     },
     "conflictNotice": "다른 곳에서 변경됨. 최신 내용을 표시합니다",
     "defaults": {
@@ -1651,7 +1653,9 @@
         "edit": "프롬프트 편집",
         "import": "영상 가져오기",
         "up": "위로 이동",
-        "useAsReference": "스틸을 참조로 사용"
+        "useAsReference": "스틸을 참조로 사용",
+        "markNewTake": null,
+        "unmarkNewTake": null
       },
       "missingNote": "테이크 파일이 없습니다. 다시 연결하거나 새 테이크를 만드세요.",
       "moreActions": "샷 {n}의 추가 작업",
@@ -1688,7 +1692,6 @@
       "unlock": "이 샷 잠금 해제",
       "untitled": "샷 {n}",
       "castLabel": "이 샷의 등장인물",
-      "newTake": "새 테이크",
       "newTakeMarked": "다음 실행 때 새 테이크",
       "newTakeTitle": null,
       "noPrompt": "아직 프롬프트가 없습니다. Enter를 누르거나 프롬프트 편집을 사용하세요.",

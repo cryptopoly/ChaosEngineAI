@@ -1553,7 +1553,9 @@
       "shotOf": "第 {n} 個鏡頭，共 {total} 個",
       "starting": "正在開始…",
       "stillsThenClips": "{kind}，然後是影片片段",
-      "title": "正在製作鏡頭"
+      "title": "正在製作鏡頭",
+      "titleDraft": null,
+      "titleFinal": null
     },
     "conflictNotice": "已在別處變更；顯示的是最新版本",
     "defaults": {
@@ -1651,7 +1653,9 @@
         "edit": "編輯提示詞",
         "import": "匯入素材",
         "up": "上移",
-        "useAsReference": "將靜態畫面用作參考"
+        "useAsReference": "將靜態畫面用作參考",
+        "markNewTake": null,
+        "unmarkNewTake": null
       },
       "missingNote": "版本檔案遺失。請重新連結或製作新版本。",
       "moreActions": "鏡頭 {n} 的更多操作",
@@ -1688,7 +1692,6 @@
       "unlock": "解鎖此鏡頭",
       "untitled": "鏡頭 {n}",
       "castLabel": "此鏡頭中的角色",
-      "newTake": "新拍一條",
       "newTakeMarked": "下次執行時新拍一條",
       "newTakeTitle": null,
       "noPrompt": "還沒有提示詞。按 Enter 或編輯提示詞。",

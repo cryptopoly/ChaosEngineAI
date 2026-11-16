@@ -1553,7 +1553,9 @@
       "shotOf": "Plan {n} sur {total}",
       "starting": "Démarrage…",
       "stillsThenClips": "{kind}, puis clips",
-      "title": "Création des plans"
+      "title": "Création des plans",
+      "titleDraft": null,
+      "titleFinal": null
     },
     "conflictNotice": "Modifié ailleurs ; affichage de la dernière version",
     "defaults": {
@@ -1651,7 +1653,9 @@
         "edit": "Modifier les prompts",
         "import": "Importer des images",
         "up": "Monter",
-        "useAsReference": "Utiliser l'image comme référence"
+        "useAsReference": "Utiliser l'image comme référence",
+        "markNewTake": null,
+        "unmarkNewTake": null
       },
       "missingNote": "Fichier de prise manquant. Reliez-le ou créez une nouvelle prise.",
       "moreActions": "Plus d'actions pour le plan {n}",
@@ -1688,7 +1692,6 @@
       "unlock": "Déverrouiller ce plan",
       "untitled": "Plan {n}",
       "castLabel": "Distribution de ce plan",
-      "newTake": "Nouvelle prise",
       "newTakeMarked": "Nouvelle prise au prochain lancement",
       "newTakeTitle": null,
       "noPrompt": "Pas encore de prompt. Appuyez sur Entrée ou Modifier les prompts.",

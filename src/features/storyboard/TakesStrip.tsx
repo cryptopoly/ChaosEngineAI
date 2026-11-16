@@ -59,7 +59,7 @@ export function TakesStrip({ projectId, takes, activeId, onPick, disabled, onCom
             }}
           >
             {take.still ? (
-              <ProjectImage projectId={projectId} rel={take.still} version={take.hashes.still} className="takes-strip__thumb" />
+              <ProjectImage projectId={projectId} rel={take.still} version={take.hashes.still} className="takes-strip__thumb" thumb={128} />
             ) : take.clip ? (
               <ProjectVideo projectId={projectId} rel={take.clip} version={take.hashes.clip} className="takes-strip__thumb" />
             ) : (

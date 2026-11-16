@@ -21,6 +21,7 @@ import {
 } from "./overviewLogic";
 import { ProjectDefaultsPanel } from "./ProjectDefaultsPanel";
 import { ProjectImage } from "./ProjectMedia";
+import { RoughCutButton } from "./preview/RoughCutButton";
 import type { ProjectWorkspaceDeps } from "./ProjectShell";
 import type { ProjectTabId } from "./projectRoute";
 import { batchProgress, filmSeconds, isBatchRunning, missingShotIds, relativeTime, staleCount, thumbnailOf } from "./storyboardLogic";
@@ -186,6 +187,8 @@ export function OverviewTab({ story, project, timeline, deps, render, onTab, onO
                   {t("overview.addCast", { defaultValue: "Add a cast (optional)" })}
                 </button>
               ) : null}
+              {/* Once a clip exists the film can be watched at once, without a render (S9). */}
+              {clips > 0 && step.id !== "writeShots" ? <RoughCutButton project={project} timeline={timeline} /> : null}
             </div>
           </>
         )}

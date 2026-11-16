@@ -7,7 +7,6 @@ import {
   GripIcon,
   LockIcon,
   PlayIcon,
-  RedoIcon,
   UnlockIcon,
 } from "../../components/icons/ActionIcons";
 import type { StoryboardShot, StoryboardShotStatus, StoryboardTransition } from "../../types";
@@ -81,10 +80,20 @@ export function ShotCard(props: ShotCardProps) {
   const number = index + 1;
   const showStale = status === "stale" && !kept;
   const outdated = status === "stale" && clipOutdated(shot);
+  // Every way to make this shot again lives in the menu, next to each other (S6, S11): the card keeps one
+  // pass action (Keep for final) so the row fits one line.
   const redoItems = [
     ...(shot.takes.length > 1
       ? [{ id: "compare", label: t("board.compare.open", { defaultValue: "Compare takes" }), onSelect: () => setComparing(true) }]
       : []),
+    {
+      id: "new-take",
+      label: shot.redo
+        ? t("board.shot.menu.unmarkNewTake", { defaultValue: "Cancel the new take" })
+        : t("board.shot.menu.markNewTake", { defaultValue: "Make a new take next run" }),
+      onSelect: props.onToggleRedo,
+      disabled,
+    },
     ...(props.onRedoClip && canRedoClip(shot)
       ? [{ id: "redo-clip", label: t("board.remake.clip", { defaultValue: "Redo clip only" }), onSelect: props.onRedoClip, disabled }]
       : []),
@@ -136,7 +145,13 @@ export function ShotCard(props: ShotCardProps) {
     <article
       className={`${shotCardClassName(status, shot.locked)}${dragOver ? " shot-card--drop" : ""}${shot.redo ? " shot-card--redo" : ""}`}
       data-shot-id={shot.id}
-      aria-labelledby={titleId}
+      // The number is drawn aria-hidden and the title is an input: name the card "Shot 3 · Title" so a screen
+      // reader says which shot it is, also while the title is empty.
+      aria-label={
+        shot.title
+          ? `${t("board.shot.untitled", { defaultValue: "Shot {n}", n: number })} · ${shot.title}`
+          : t("board.shot.untitled", { defaultValue: "Shot {n}", n: number })
+      }
       aria-describedby={statusId}
       tabIndex={tabbable ? 0 : -1}
       onDragOver={(event) => {
@@ -169,6 +184,7 @@ export function ShotCard(props: ShotCardProps) {
           className="shot-card__title"
           type="text"
           value={title}
+          title={title || undefined}
           maxLength={200}
           placeholder={t("board.shot.untitled", { defaultValue: "Shot {n}", n: number })}
           aria-label={t("board.shot.titleLabel", { defaultValue: "Shot {n} title", n: number })}
@@ -217,7 +233,7 @@ export function ShotCard(props: ShotCardProps) {
           ) : thumb ? (
             <>
               {thumb.kind === "still" ? (
-                <ProjectImage projectId={projectId} rel={thumb.path} version={take?.hashes.still} className="shot-card__thumb" />
+                <ProjectImage projectId={projectId} rel={thumb.path} version={take?.hashes.still} className="shot-card__thumb" thumb={512} />
               ) : (
                 <ProjectVideo projectId={projectId} rel={thumb.path} version={take?.hashes.clip} className="shot-card__thumb" />
               )}
@@ -252,7 +268,11 @@ export function ShotCard(props: ShotCardProps) {
           {shot.seed != null ? (
             <p className="shot-card__meta">{t("board.shot.seed", { defaultValue: "seed {seed}", seed: shot.seed })}</p>
           ) : null}
-          {shot.redo ? <span className="badge accent">{t("board.shot.newTakeMarked", { defaultValue: "New take next run" })}</span> : null}
+          {shot.redo ? (
+            <span className="badge accent" title={t("board.shot.newTakeTitle", { defaultValue: "The next Make adds a new take of this shot. Nothing is overwritten." })}>
+              {t("board.shot.newTakeMarked", { defaultValue: "New take next run" })}
+            </span>
+          ) : null}
           {shot.locked ? <span className="badge muted">{t("board.shot.status.locked", { defaultValue: "Locked" })}</span> : null}
           {isDraftTake(take) ? (
             <span className="badge muted" title={t("board.shot.draftTitle", { defaultValue: "A quick draft. Keep this shot and run the final pass for the full-quality take." })}>
@@ -302,7 +322,7 @@ export function ShotCard(props: ShotCardProps) {
             </button>
           )}
           <button type="button" className="secondary-button" onClick={props.onKeep}>
-            {t("board.shot.keep", { defaultValue: "Keep" })}
+            {t("board.shot.keep", { defaultValue: "Keep as is" })}
           </button>
         </div>
       ) : null}
@@ -356,17 +376,8 @@ export function ShotCard(props: ShotCardProps) {
         >
           {shot.locked ? <LockIcon /> : <UnlockIcon />}
         </button>
-        <button
-          type="button"
-          className={`secondary-button${shot.redo ? " is-active" : ""}`}
-          aria-pressed={shot.redo}
-          title={t("board.shot.newTakeTitle", { defaultValue: "The next Make adds a new take of this shot. Nothing is overwritten." })}
-          disabled={disabled}
-          onClick={props.onToggleRedo}
-        >
-          <RedoIcon /> {t("board.shot.newTake", { defaultValue: "New take" })}
-        </button>
-        {props.onToggleKept ? (
+        {/* Keep for final picks a take worth redoing at full quality: nothing to keep before the first take. */}
+        {props.onToggleKept && (take || shot.kept) ? (
           <button
             type="button"
             className={`secondary-button${shot.kept ? " is-active" : ""}`}

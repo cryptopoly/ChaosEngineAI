@@ -53,6 +53,7 @@ export function PlanTab({ story, project, imageGallery, chat, onTab }: PlanTabPr
   const [loading, setLoading] = useState(false);
   const elapsed = useElapsed(proposing);
   const modelBar = useRef<HTMLDivElement>(null);
+  const toBoard = useRef<HTMLButtonElement>(null);
   const lastAsk = useRef<{ brief: string; filmSeconds: number | null; shots: number | null } | null>(null);
   const chatModel = status?.chatModel ?? null;
   const canAsk = Boolean(chatModel);
@@ -78,7 +79,11 @@ export function PlanTab({ story, project, imageGallery, chat, onTab }: PlanTabPr
       mode,
       shots: proposal.shots.map((shot) => ({ title: shot.title, stillPrompt: shot.stillPrompt, motionPrompt: shot.motionPrompt, seconds: shot.seconds })),
     });
-    if (ok) setProposal(null);
+    if (ok) {
+      setProposal(null);
+      // The proposal and its buttons are gone: land on the next step instead of the page.
+      requestAnimationFrame(() => toBoard.current?.focus());
+    }
   }
 
   async function load(key: string) {
@@ -129,6 +134,7 @@ export function PlanTab({ story, project, imageGallery, chat, onTab }: PlanTabPr
           proposing={proposing}
           elapsed={elapsed}
           modelName={chatModel?.name ?? null}
+          hasProposal={proposal != null || project.shots.length > 0}
           onPropose={(brief, filmSeconds, shots) => void propose(brief, filmSeconds, shots)}
           onOpenCast={() => onTab("cast")}
         />
@@ -158,7 +164,7 @@ export function PlanTab({ story, project, imageGallery, chat, onTab }: PlanTabPr
               {styleLine ? <p className="muted-text plan-shots__style" title={style?.words || undefined}>{styleLine}</p> : null}
             </div>
             {project.shots.length > 0 ? (
-              <button type="button" className="secondary-button" onClick={() => onTab("storyboard")}>
+              <button type="button" className="primary-button" ref={toBoard} onClick={() => onTab("storyboard")}>
                 {t("board.plan.shots.toBoard", { defaultValue: "Make them in Storyboard" })}
               </button>
             ) : null}

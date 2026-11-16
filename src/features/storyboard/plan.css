@@ -834,3 +834,7 @@ button.palette-swatch {
     max-width: 100%;
   }
 }
+/* The proposal heading takes focus when the proposal arrives (a reading point, not a control). */
+.plan-proposal h3[tabindex="-1"]:focus {
+  outline: none;
+}

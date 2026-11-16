@@ -15,7 +15,7 @@ Newest dated update first. Each update has the same sections: Done, Open for Cla
 
 **Open for Claude:**
 - After the Windows and Linux passes: fix what they find, recut `test/rtx4090`, run CI builds on all three platforms, full `e2e_test_suite.py` and the Playwright suite once more on the final tree.
-- Upstreams behind (FU-169): llama.cpp b12387 to b12441, TensorFold 1.2.8 to 1.2.9, sd.cpp `5dcfa79` to `532d2c15` (a bump needs a real Qwen-Image 2.1 image on old and new builds). Bump or write down why not.
+- Upstreams (FU-169): bumped 2026-11-16 to llama.cpp b12441, TensorFold 1.2.9, sd.cpp `532d2c1`; all current, notes in `docs/progress/v0100-bump-*.md`. Windows/Linux CUDA installs of the new pins are untested.
 - FU-178 (FP8 KV, MTP), FU-187 (Qwen 4 not released), FU-176, FU-177, FU-139 server-side refusal, release notes (Music Mac-only, H3 hidden, `sd` not in release bundles, stronger borders on by default, no old-format project migration needed).
 - Not seen: the packaged app's window (no screen capture), the compact drawer in the light theme and in the real Tauri window.
 
@@ -30,7 +30,7 @@ Newest dated update first. Each update has the same sections: Done, Open for Cla
 - **TensorFold (R9, FU-168):** family table now comes from the binary's `capabilities --json`; four CUDA-only families listed, not offered; Gemma 4 26B-A4B stays on the Python install (`native_refuses`).
 - **Music (R10, FU-139):** wording route only: one sentence, "Mac-only in this version", install and download hidden. The CUDA build is not done.
 - **First-clip ETA (R7, FU-153):** catalogue estimate shows from the first clip of a batch; wired into `start_batch`.
-- **MiniMax H3 (B, FU-166):** territory gate, licence screen and H3 video row built behind `licence_gate.H3_RELEASED = False`. sd.cpp pinned at `5dcfa79` (bumped 2026-11-14, checked with a real Qwen-Image 2.1 image on old and new builds). No H3-Image row; release bundles carry no `sd`. H3 was never downloaded or run.
+- **MiniMax H3 (B, FU-166):** territory gate, licence screen and H3 video row built behind `licence_gate.H3_RELEASED = False`. sd.cpp pinned at `532d2c1` (was `5dcfa79` when H3 was built) (bumped 2026-11-14, checked with a real Qwen-Image 2.1 image on old and new builds). No H3-Image row; release bundles carry no `sd`. H3 was never downloaded or run.
 
 **Open for Claude:**
 - Run the full suites on the merged tree (pytest, vitest, tsc, i18n, full `e2e_test_suite.py`, Playwright, upstreams, audits), build the Mac installer and check the manifest, then recut `test/rtx4090` (plan section 5).

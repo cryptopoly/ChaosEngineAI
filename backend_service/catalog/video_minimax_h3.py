@@ -10,7 +10,7 @@ Comfy-Org/MiniMax-H3 at 54472221), and the flags from ``docs/minimax_h3.md`` at 
 Nothing here was run: the maintainers are in an excluded territory. Memory is the sum of the weights (estimated),
 and there is no time estimate.
 
-H3-Image is not offered: the pinned sd.cpp build predates its support (upstream 32d516c).
+H3-Image is not offered: no row is shipped (the pinned sd.cpp build already carries its support, upstream 32d516c).
 """
 
 from __future__ import annotations

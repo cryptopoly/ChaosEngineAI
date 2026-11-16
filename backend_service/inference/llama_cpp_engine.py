@@ -69,6 +69,7 @@ from backend_service.inference.base import (
     StreamChunk,
 )
 from backend_service.helpers.gpu import nvidia_shared_memory
+from cache_compression.native import native_llama_cache_type
 from backend_service.helpers.request_guards import friendly_llama_error, llama_error
 from backend_service.reasoning_split import (
     ThinkingTokenFilter,
@@ -310,6 +311,60 @@ def _llama_server_cache_types(binary_path: str | None) -> frozenset[str]:
     return types
 
 
+# Cache types llama-server lists in --help but only runs on CUDA (FU-178):
+# b12387 aborts on Metal when it allocates an f8_e4m3 cache (SET_ROWS is not
+# supported on MTL0, with or without flash attention), so pre-validation
+# against --help alone would let it through.
+_CUDA_ONLY_CACHE_TYPES: frozenset[str] = frozenset({"f8_e4m3"})
+
+
+def _refused_cache_type(cache_type: str) -> str | None:
+    """Why ``cache_type`` cannot run on this host, or None when it can."""
+    if cache_type not in _CUDA_ONLY_CACHE_TYPES:
+        return None
+    try:
+        from backend_service.helpers.hardware_class import host_hardware_class  # noqa: PLC0415
+
+        if host_hardware_class().kind == "cuda":
+            return None
+    except Exception:  # noqa: BLE001
+        pass
+    return (
+        f"The {cache_type} (FP8) KV cache needs an NVIDIA GPU: llama-server stops at load "
+        "with it on Apple Silicon and the CPU. Using f16 cache."
+    )
+
+
+# llama-server prints one line per finished request that drafted anything
+# (``server_slot::print_timings``), e.g.
+# ``slot print_timing: id  0 | task 0 | draft acceptance = 0.63158 (  120 accepted /   190 generated), mean len =  2.71``
+_DRAFT_ACCEPTANCE_RE = re.compile(
+    r"draft acceptance = ([0-9.]+) \(\s*(\d+) accepted /\s*(\d+) generated\), mean len =\s*([0-9.]+)"
+)
+
+
+def _draft_acceptance(timings: Any, log_text: str | None) -> float | None:
+    """Average draft tokens the target accepted per verify round, or None.
+
+    That is the unit ``dflashAcceptanceRate`` carries on every lane ("N avg
+    accepted"). The reply's ``timings`` give the drafted and accepted counts
+    (``draft_n`` / ``draft_n_accepted``) but not the number of verify rounds;
+    the server log's ``draft acceptance`` line for the same request does, as
+    ``mean len`` = 1 + accepted / rounds. The line is matched on both counts,
+    so a line left by an earlier request is never used.
+    """
+    if not isinstance(timings, dict):
+        return None
+    drafted = timings.get("draft_n")
+    accepted = timings.get("draft_n_accepted")
+    if not isinstance(drafted, int) or not isinstance(accepted, int) or drafted <= 0:
+        return None
+    for match in reversed(list(_DRAFT_ACCEPTANCE_RE.finditer(log_text or ""))):
+        if int(match.group(2)) == accepted and int(match.group(3)) == drafted:
+            return round(max(float(match.group(4)) - 1.0, 0.0), 2)
+    return None
+
+
 def _resolve_mmproj_path(model_gguf_path: str | None) -> str | None:
     """Locate the mmproj projector sibling for a vision-capable GGUF.
 
@@ -360,15 +415,17 @@ def _speculative_args(
 ) -> tuple[list[str], str | None]:
     """llama-server speculative-decoding flags for a GGUF load.
 
-    Preference order (FU-047 / FU-089):
+    Preference order (FU-047 / FU-089 / FU-178):
 
-    1. Baked-in MTP heads in the model itself → ``draft-mtp``.
-    2. A drafter the author publishes in a repo of its own (pinned by repo
-       id), else a sidecar beside the GGUF → ``-md <file>`` + its type,
-       in llama.cpp's own order (mtp- > dspark- > dflash- > eagle3-).
-       DFlash 2 drafters are ``dflash-`` files; llama.cpp detects v2
-       from the file's metadata, so the flags are the same.
-    3. Nothing to draft with → ``ngram-mod``: draft-free n-gram lookup,
+    1. A block drafter (DFlash / DFlash 2 / DSpark): one the author publishes
+       in a repo of its own (pinned by repo id), else a ``dspark-`` /
+       ``dflash-`` sidecar beside the GGUF → ``-md <file>`` + its type.
+       Measured ahead of MTP on Qwen3.8-27B (M4 Max: 55-59 tok/s against
+       32-34 for the baked-in MTP head and 15 without drafting). DFlash 2 drafters
+       run as ``draft-dflash``: llama.cpp reads the variant from the file.
+    2. Baked-in MTP heads in the model itself → ``draft-mtp``.
+    3. Any other sidecar (``mtp-``, ``eagle3-``), in llama.cpp's order.
+    4. Nothing to draft with → ``ngram-mod``: draft-free n-gram lookup,
        lossless, ~16 MB, pays off on repetitive text (code edits,
        summaries, reasoning echoed in the answer).
 
@@ -376,6 +433,7 @@ def _speculative_args(
     llama-server gets standard decode plus a note, never a startup error.
     """
     from backend_service.helpers.text_gguf import (  # noqa: PLC0415
+        BLOCK_DRAFT_TYPES,
         resolve_pinned_drafter,
         resolve_spec_sidecar,
     )
@@ -395,7 +453,33 @@ def _speculative_args(
     def supports(spec_type: str) -> bool:
         return _llama_server_supports(binary, spec_type)
 
-    # 1. Baked-in MTP heads. Authoritative check peeks the GGUF tensors
+    def drafter_args(spec_type: str, sidecar_path: str) -> tuple[list[str], str]:
+        args = ["--model-draft", sidecar_path, "--spec-type", spec_type]
+        if spec_type == "draft-mtp":
+            args += ["--spec-draft-n-max", str(get_mtp_draft_n(repo) or 2)]
+        elif spec_type in BLOCK_DRAFT_TYPES:
+            # Block drafters: ask for a full block; llama.cpp clamps to
+            # the drafter's trained block size (15 for a b16 DFlash).
+            args += ["--spec-draft-n-max", "15"]
+        return args, (
+            f"Speculative decoding active ({spec_type} with drafter "
+            f"{Path(sidecar_path).name})."
+        )
+
+    sidecar = resolve_pinned_drafter(repo, resolved_gguf) or resolve_spec_sidecar(resolved_gguf)
+    sidecar_note: str | None = None
+    if sidecar is not None and not supports(sidecar[0]):
+        sidecar_note = (
+            f"Found drafter {Path(sidecar[1]).name} but the installed "
+            f"llama-server has no {sidecar[0]}; run scripts/update-llama-cpp.sh."
+        )
+        sidecar = None
+
+    # 1. A block drafter in hand.
+    if sidecar is not None and sidecar[0] in BLOCK_DRAFT_TYPES:
+        return drafter_args(*sidecar)
+
+    # 2. Baked-in MTP heads. Authoritative check peeks the GGUF tensors
     # when a local path is supplied; repo-name aliases otherwise.
     tensor_probe = model_has_mtp_tensors(path)
     has_mtp_tensors = tensor_probe if tensor_probe is not None else is_mtp_gguf_repo(repo)
@@ -407,31 +491,11 @@ def _speculative_args(
             "D2H embedding transfers (per upstream PR #22673)."
         )
 
-    # 2. A drafter the model's author published in a repo of its own, then a
-    # sidecar beside the model file.
-    sidecar = resolve_pinned_drafter(repo, resolved_gguf) or resolve_spec_sidecar(resolved_gguf)
+    # 3. Any other drafter (an mtp- or eagle3- sidecar).
     if sidecar is not None:
-        spec_type, sidecar_path = sidecar
-        if supports(spec_type):
-            args = ["--model-draft", sidecar_path, "--spec-type", spec_type]
-            if spec_type == "draft-mtp":
-                args += ["--spec-draft-n-max", str(get_mtp_draft_n(repo) or 2)]
-            elif spec_type in ("draft-dflash", "draft-dspark"):
-                # Block drafters: ask for a full block; llama.cpp clamps to
-                # the drafter's trained block size (15 for a b16 DFlash).
-                args += ["--spec-draft-n-max", "15"]
-            return args, (
-                f"Speculative decoding active ({spec_type} with drafter "
-                f"{Path(sidecar_path).name})."
-            )
-        sidecar_note = (
-            f"Found drafter {Path(sidecar_path).name} but the installed "
-            f"llama-server has no {spec_type}; run scripts/update-llama-cpp.sh."
-        )
-    else:
-        sidecar_note = None
+        return drafter_args(*sidecar)
 
-    # 3. Draft-free n-gram lookup.
+    # 4. Draft-free n-gram lookup.
     if supports("ngram-mod"):
         note = (
             "Speculative decoding active (ngram-mod: no draft model; speeds up "
@@ -657,6 +721,12 @@ class LlamaCppEngine(BaseInferenceEngine):
             for i, flag in enumerate(cache_flags):
                 if flag.startswith("--cache-type-") and i + 1 < len(cache_flags):
                     cache_type = cache_flags[i + 1]
+                    refusal = _refused_cache_type(cache_type)
+                    if refusal is not None:
+                        runtime_note = refusal
+                        cache_flags = ["--cache-type-k", "f16", "--cache-type-v", "f16"]
+                        fell_back_to_native = True
+                        break
                     if cache_type not in supported:
                         variant = strategy.required_llama_binary()
                         if variant == "turbo" and not self.capabilities.llamaServerTurboPath:
@@ -783,7 +853,8 @@ class LlamaCppEngine(BaseInferenceEngine):
         # behaviour at the boundary is unchanged for users.
         cache_strategy = _strategy_registry.resolve_legacy_id(cache_strategy)
         attempts: list[tuple[str, bool, bool]] = [(cache_strategy, fit_model_in_memory, False)]
-        if cache_strategy != "native":
+        native_quantized = cache_strategy == "native" and native_llama_cache_type(cache_bits) != "f16"
+        if cache_strategy != "native" or native_quantized:
             attempts.append(("native", False, True))
         last_error: str | None = None
 
@@ -820,6 +891,8 @@ class LlamaCppEngine(BaseInferenceEngine):
                 self._wait_for_server()
                 runtime_note = attempt_note
                 actual_strategy = "native" if prevalidation_fallback else strategy_id
+                # Native at f16 after a refused / unsupported / failed quantized cache.
+                actual_native_f16 = prevalidation_fallback or is_fallback
                 actual_fit = fit_enabled
                 if is_fallback and failed_strategy_name is not None:
                     fallback_strat = _strategy_registry.get(strategy_id) or _strategy_registry.default()
@@ -835,13 +908,23 @@ class LlamaCppEngine(BaseInferenceEngine):
             except RuntimeError as exc:
                 last_error = str(exc)
                 if not is_fallback:
-                    failed_strategy_name = strategy.name
+                    failed_strategy_name = (
+                        strategy.label(cache_bits, 0) if strategy_id == "native" else strategy.name
+                    )
                 self._cleanup_process()
         else:
             raise RuntimeError(last_error or "llama.cpp server failed to start.")
 
         strat = _strategy_registry.get(actual_strategy) or _strategy_registry.default()
-        actual_cache_bits = cache_bits if actual_strategy != "native" else 0
+        if actual_strategy != "native":
+            actual_cache_bits = cache_bits
+        else:
+            # Native keeps 8 / 4 bits when llama-server runs q8_0 / q4_0 (FU-178).
+            actual_cache_bits = (
+                cache_bits
+                if not actual_native_f16 and native_llama_cache_type(cache_bits) != "f16"
+                else 0
+            )
         # The current llama.cpp / llama-server cache-type interface only exposes a
         # uniform KV dtype per cache (for example ``turbo3`` or ``q4_0``).  It does
         # not accept the mixed-precision ``fp16Layers`` split used by other backends.
@@ -884,6 +967,21 @@ class LlamaCppEngine(BaseInferenceEngine):
     def unload_model(self) -> None:
         self._cleanup_process()
         self.loaded_model = None
+
+    def _acceptance_rate(self, timings: Any) -> float | None:
+        """``dflashAcceptanceRate`` for a finished reply (``_draft_acceptance``).
+
+        llama-server writes the log line just before it sends the final reply;
+        its logger runs on a thread of its own, so give it a moment to land.
+        """
+        if not isinstance(timings, dict) or not timings.get("draft_n"):
+            return None
+        for _ in range(5):
+            rate = _draft_acceptance(timings, _read_text_tail(self.log_path, 120))
+            if rate is not None:
+                return rate
+            time.sleep(0.05)
+        return None
 
     def generate(
         self,
@@ -971,6 +1069,7 @@ class LlamaCppEngine(BaseInferenceEngine):
                 else self.loaded_model.runtimeNote
             ),
             tool_calls=tool_calls or None,
+            dflashAcceptanceRate=self._acceptance_rate(response.get("timings")),
         )
 
     def stream_generate(
@@ -1046,6 +1145,7 @@ class LlamaCppEngine(BaseInferenceEngine):
         # (--reasoning-format deepseek), and some models reason even with
         # --reasoning off. Track whether that channel still needs closing.
         server_reasoning_open = False
+        timings: Any = None
         try:
             for raw_line in resp:
                 line = raw_line.decode("utf-8", errors="ignore").strip()
@@ -1108,6 +1208,8 @@ class LlamaCppEngine(BaseInferenceEngine):
                 fr = choice.get("finish_reason")
                 if fr:
                     finish_reason = fr
+                if chunk.get("timings"):
+                    timings = chunk["timings"]
                 usage = chunk.get("usage")
                 if usage:
                     prompt_tokens = int(usage.get("prompt_tokens") or 0)
@@ -1144,4 +1246,5 @@ class LlamaCppEngine(BaseInferenceEngine):
             total_tokens=prompt_tokens + completion_tokens,
             tok_s=tok_s,
             runtime_note=runtime_note,
+            dflash_acceptance_rate=self._acceptance_rate(timings),
         )

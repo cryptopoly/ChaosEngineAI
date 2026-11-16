@@ -6,6 +6,7 @@ import type { MtplxJobState, TensorfoldExtra, TensorfoldJobState } from "../api"
 import { InstallLogPanel } from "./InstallLogPanel";
 import { TensorfoldLaunchControl } from "./TensorfoldLaunchControl";
 import { tensorfoldEngaged, type TensorfoldLaunchInfo } from "./tensorfoldSupport";
+import { NativeKvTypeField } from "./NativeKvTypeField";
 import { SliderField } from "./SliderField";
 import { PerformancePreview } from "./PerformancePreview";
 import {
@@ -363,6 +364,13 @@ export function RuntimeControls({
   };
   const selectedStrategyRuntimeAvailable = selectedStrategy ? isStrategyRuntimeAvailable(selectedStrategy) : false;
 
+  // Native's q8_0 / q4_0 KV (cacheBits 8 / 4) exists only on llama.cpp.
+  useEffect(() => {
+    if ((!isGgufBackend || tensorfoldRuns) && settings.cacheStrategy === "native" && settings.cacheBits !== 0) {
+      onChange("cacheBits", 0);
+    }
+  }, [isGgufBackend, onChange, settings.cacheBits, settings.cacheStrategy, tensorfoldRuns]);
+
   useEffect(() => {
     if (isGgufBackend && settings.fp16Layers !== 0) {
       onChange("fp16Layers", 0);
@@ -627,6 +635,9 @@ export function RuntimeControls({
             formatValue={(v) => `${v}-bit`}
             onChange={(v) => onChange("cacheBits", v)}
           />
+        ) : null}
+        {isGgufBackend && selectedStrategy?.id === "native" && !tensorfoldRuns ? (
+          <NativeKvTypeField cacheBits={settings.cacheBits} onChange={(bits) => onChange("cacheBits", bits)} />
         ) : null}
         {fp16LayersSupported ? (
           <SliderField

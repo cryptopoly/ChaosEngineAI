@@ -42,16 +42,24 @@ def gguf_file_pattern(gguf_file: str) -> str:
 
 # Speculative-decoding sidecars ggml-org packs ship beside the main GGUF
 # (llama.cpp ``common/download.cpp``: ``find_best_{mtp,dspark,dflash,eagle3}``).
-# Order = llama.cpp's own preference when it infers the type from a draft
-# repo (``common/arg.cpp``): an MTP head first, DSpark over DFlash (its
-# sidecar carries the extra Markov head), EAGLE-3 last. DFlash 2 drafters
-# are ``dflash-`` files — llama.cpp tells them apart by GGUF metadata.
+# Order = which one the app runs when several are on disk. llama.cpp's own
+# order puts an MTP head first; the app puts the block drafters first
+# (FU-178): on Qwen3.8-27B Q4 on an M4 Max the DFlash 2 drafter decoded
+# 55-59 tok/s against 32-34 for its MTP head at N=3 and 15 without drafting.
+# DSpark stays over DFlash (its sidecar carries the extra Markov head),
+# EAGLE-3 last. DFlash 2 drafters are ``dflash-`` files: ``draft-dflash``
+# runs every DFlash-family drafter and llama.cpp picks the DFlash 2 code
+# from the file's metadata (``llama_model_dflash_variant``), while
+# ``draft-dflash2`` only refuses a drafter that is not DFlash 2.
 SPEC_SIDECAR_TYPES: tuple[tuple[str, str], ...] = (
-    ("mtp-", "draft-mtp"),
     ("dspark-", "draft-dspark"),
     ("dflash-", "draft-dflash"),
+    ("mtp-", "draft-mtp"),
     ("eagle3-", "draft-eagle3"),
 )
+# Spec types that draft a whole block per pass (the engine asks for a full
+# block; llama.cpp clamps it to the drafter's trained block size).
+BLOCK_DRAFT_TYPES: frozenset[str] = frozenset({"draft-dflash", "draft-dflash2", "draft-dspark"})
 
 _SIDECAR_PREFIXES = tuple(prefix for prefix, _ in SPEC_SIDECAR_TYPES)
 _QUANT_TAG_RE = re.compile(r"[-.]([A-Z0-9_]+)$", re.IGNORECASE)
@@ -62,12 +70,18 @@ _QUANT_TAG_RE = re.compile(r"[-.]([A-Z0-9_]+)$", re.IGNORECASE)
 # carries no ``dflash-`` prefix). Paired with the target by exact repo id,
 # never by file name, so a stranger's drafter is never loaded against the
 # wrong model. ``(drafter repo, drafter file, llama.cpp spec type)``.
+# The catalog's Qwen3.8-27B GGUF that ships no drafter of its own gets z-lab's
+# DFlash 2 GGUF (Apache-2.0, a mirror of incoai/Qwen3.8-27B-DFlash2-GGUF);
+# its Q8_0 decoded about 10 % faster than its Q4_K_M for 0.9 GB more (FU-178).
+_QWEN38_DFLASH2 = ("z-lab/Qwen3.8-27B-DFlash2-GGUF", "Qwen3.8-27B-DFlash2-Q8_0.gguf", "draft-dflash")
+
 PINNED_DRAFTERS: dict[str, tuple[str, str, str]] = {
     "nvidia/NVIDIA-Nemotron-3.5-Bolt-E4B-4GB": (
         "nvidia/NVIDIA-Nemotron-3.5-Bolt-E4B-4GB-DFlash",
         "Nemotron-3.5-Bolt-E4B-DFlash-BF16.gguf",
         "draft-dflash",
     ),
+    "lmstudio-community/Qwen3.8-27B-GGUF": _QWEN38_DFLASH2,
 }
 
 

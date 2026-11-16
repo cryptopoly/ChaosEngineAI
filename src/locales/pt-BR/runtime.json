@@ -61,7 +61,9 @@
     "cacheStrategyTensorfoldNote": "(o TensorFold gerencia o próprio KV cache)",
     "moreInfo": "Mais informações",
     "requiresLabel": "Requer:",
-    "installLabel": "Instalação:"
+    "installLabel": "Instalação:",
+    "kvCacheTypeGguf": null,
+    "kvCacheTypeGgufHint": null
   },
   "notes": {
     "binaryRequired": "Requer {binary}.",

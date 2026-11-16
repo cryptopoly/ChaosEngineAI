@@ -61,7 +61,9 @@
     "cacheStrategyTensorfoldNote": "(KV cacheDaj SeH TensorFold)",
     "moreInfo": "De' law'",
     "requiresLabel": "poQ:",
-    "installLabel": "jom:"
+    "installLabel": "jom:",
+    "kvCacheTypeGguf": null,
+    "kvCacheTypeGgufHint": null
   },
   "notes": {
     "binaryRequired": "{binary} poQ.",

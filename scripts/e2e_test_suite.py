@@ -693,6 +693,8 @@ def _load_unload_prompt(ref: str, *, path: str | None = None, backend: str = "au
         "treeBudget": loaded.get("treeBudget") or 0,
         "dflashDraftModel": loaded.get("dflashDraftModel"),
         "visionEnabled": bool(loaded.get("visionEnabled")),
+        "cacheBits": loaded.get("cacheBits"),
+        "dflashAcceptanceRate": gen.get("dflashAcceptanceRate"),
     }
     if tok_s and tok_s > 0:
         return "pass", "", detail
@@ -1269,6 +1271,62 @@ def phase_1(cap: Capability) -> PhaseResult:
             return "fail", f"sidecar present but note names no DFlash 2 drafter: {note[:160]}", detail
         return "pass", "", detail
 
+    # 1e6. A GGUF with the MTP head baked into the main file (no "mtp" in the
+    # name, e.g. unsloth's Qwen3.8-27B): the tensor probe must find it, the
+    # server must run draft-mtp, and the reply must carry the acceptance the
+    # engine reads from llama-server (FU-178). Skips without such a file.
+    def _gguf_mtp_baked_acceptance():
+        if not cap.gguf_available:
+            return "skip", "GGUF backend not available", {}
+        if not cap.gguf_mtp_available:
+            return "skip", "llama-server lacks --spec-type (run scripts/update-llama-cpp.sh)", {}
+        def model_has_mtp_tensors(path: str) -> bool:
+            # Same marker the engine's probe reads (``<arch>.nextn_predict_layers``).
+            try:
+                with open(path, "rb") as fh:
+                    return b"nextn_predict" in fh.read(2 * 1024 * 1024)
+            except OSError:
+                return False
+
+        baked = [
+            (ref, p) for (ref, p) in cap.local_gguf_files
+            if not Path(p).name.lower().startswith(("mtp-", "dflash-", "mmproj")) and model_has_mtp_tensors(p)
+        ]
+        if not baked:
+            return "skip", "no GGUF with a baked-in MTP head on disk", {}
+        ref, gguf_path = min(baked, key=lambda item: Path(item[1]).stat().st_size)
+        status, reason, detail = _load_unload_prompt(
+            ref, path=gguf_path, backend="gguf", spec=True, fused=True,
+            cache_strategy="native", context=4096, max_tokens=96,
+            prompt="Count from 1 to 40, separated by commas.", load_timeout=900.0,
+        )
+        if status != "pass":
+            return status, reason, detail
+        if "draft-mtp" not in (detail.get("runtimeNote") or ""):
+            return "fail", f"baked-in MTP head but no draft-mtp: {detail.get('runtimeNote', '')[:160]}", detail
+        rate = detail.get("dflashAcceptanceRate")
+        if not isinstance(rate, (int, float)) or rate <= 0:
+            return "fail", f"draft-mtp ran but the reply carries no acceptance rate ({rate!r})", detail
+        return "pass", "", detail
+
+    # 1e7. Native q8_0 KV on llama.cpp (cacheBits 8, FU-178): the load must
+    # report cacheBits 8 and a "Native q8_0" note, not a silent f16 fallback.
+    def _gguf_native_q8_kv():
+        if not cap.gguf_available:
+            return "skip", "GGUF backend not available", {}
+        if not cap.local_gguf_files:
+            return "skip", "no .gguf files on disk", {}
+        ref, gguf_path = min(cap.local_gguf_files, key=lambda item: Path(item[1]).stat().st_size)
+        status, reason, detail = _load_unload_prompt(
+            ref, path=gguf_path, backend="gguf", fused=True, cache_strategy="native", cache_bits=8,
+            context=4096, max_tokens=24, load_timeout=600.0,
+        )
+        if status != "pass":
+            return status, reason, detail
+        if detail.get("cacheBits") != 8 or "Native q8_0" not in (detail.get("runtimeNote") or ""):
+            return "fail", f"asked for q8_0, got cacheBits={detail.get('cacheBits')}: {detail.get('runtimeNote', '')[:160]}", detail
+        return "pass", "", detail
+
     # 1f. Long context cache preview
     def _long_context_preview():
         pick = _pick_model_by_ref_prefix(cap.local_mlx_models, "Qwen3") \
@@ -1431,6 +1489,8 @@ def phase_1(cap: Capability) -> PhaseResult:
         ("GGUF MTP speculative", _gguf_mtp),
         ("GGUF speculative lane (sidecar / ngram-mod)", _gguf_spec_lane),
         ("Qwen3.8-27B DFlash 2 drafter (GGUF sidecar)", _qwen38_dflash2),
+        ("GGUF baked-in MTP head + draft acceptance", _gguf_mtp_baked_acceptance),
+        ("GGUF native q8_0 KV cache", _gguf_native_q8_kv),
         ("GGUF Nemotron 3.5 Bolt + pinned DFlash drafter", _bolt_drafter),
         ("long context cache-preview", _long_context_preview),
         ("fused attention flag", _fused_attention),

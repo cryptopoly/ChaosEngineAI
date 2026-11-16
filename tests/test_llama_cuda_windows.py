@@ -73,14 +73,14 @@ class WindowsAssetTests(unittest.TestCase):
         self.assertIsNone(pick("x64", None, 546))
 
     def test_asset_names_match_the_published_release(self) -> None:
-        # Names as published with llama.cpp b12387: the cudart zip carries no tag.
+        # Names as published with llama.cpp b12441: the cudart zip carries no tag.
         self.assertEqual(
-            llama_cuda.asset_names("x64", "13.5", "b12387", "windows"),
-            ("llama-b12387-bin-win-cuda-13.5-x64.zip", "cudart-llama-bin-win-cuda-13.5-x64.zip"),
+            llama_cuda.asset_names("x64", "13.5", "b12441", "windows"),
+            ("llama-b12441-bin-win-cuda-13.5-x64.zip", "cudart-llama-bin-win-cuda-13.5-x64.zip"),
         )
         self.assertEqual(
-            llama_cuda.asset_names("x64", "12.4", "b12387", "windows"),
-            ("llama-b12387-bin-win-cuda-12.4-x64.zip", "cudart-llama-bin-win-cuda-12.4-x64.zip"),
+            llama_cuda.asset_names("x64", "12.4", "b12441", "windows"),
+            ("llama-b12441-bin-win-cuda-12.4-x64.zip", "cudart-llama-bin-win-cuda-12.4-x64.zip"),
         )
 
     def test_pinned_checksums_cover_every_asset_we_can_pick(self) -> None:
@@ -89,9 +89,9 @@ class WindowsAssetTests(unittest.TestCase):
                 self.assertRegex(llama_cuda._PINNED_SHA256.get(name, ""), r"^[0-9a-f]{64}$", name)
 
     def test_expected_sha256_prefers_the_pin_then_the_release(self) -> None:
-        name = "llama-b12387-bin-win-cuda-13.5-x64.zip"
+        name = "llama-b12441-bin-win-cuda-13.5-x64.zip"
         never = mock.Mock(side_effect=AssertionError("pin should win"))
-        self.assertEqual(llama_cuda.expected_sha256(name, "b12387", never), llama_cuda._PINNED_SHA256[name])
+        self.assertEqual(llama_cuda.expected_sha256(name, "b12441", never), llama_cuda._PINNED_SHA256[name])
         self.assertEqual(llama_cuda.expected_sha256("x.zip", "b99999", lambda _t: {"x.zip": "ab"}), "ab")
         self.assertIsNone(llama_cuda.expected_sha256("x.zip", "b99999", lambda _t: {}))
 

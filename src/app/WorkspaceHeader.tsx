@@ -23,9 +23,10 @@ export function WorkspaceHeader({
   if (openName) {
     return (
       <header className="workspace-header">
-        <div>
+        <div className="workspace-header__project">
           <span className="eyebrow">{tCommon("tabs.projects", { defaultValue: "Projects" })}</span>
-          <h2>{openName}</h2>
+          {/* A long name keeps to two lines here (the project's own header shows it in full on hover). */}
+          <h2 title={openName}>{openName}</h2>
         </div>
         <div className="header-badges">
           <span className="badge muted">{system.platform}</span>

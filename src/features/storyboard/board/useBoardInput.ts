@@ -114,7 +114,9 @@ export function useBoardInput(
     const key = event.key;
     if (isArrow(key)) {
       event.preventDefault();
-      if (selected.includes(id)) {
+      // Alt (Option) + arrow always goes to the next card, so a second card can be reached and selected after the
+      // first one: plain arrows move a selected card (S-N, keyboard multi-select for "Order these").
+      if (selected.includes(id) && !event.altKey) {
         const { dx, dy } = arrowDelta(key, event.shiftKey);
         const from = Object.fromEntries(selected.filter((s) => pos[s]).map((s) => [s, pos[s]]));
         positions.moveTo(from, dx, dy);

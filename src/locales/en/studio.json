@@ -2069,7 +2069,7 @@
       "empty": "No pictures yet. Drop pictures here, or add shots and cast in the other tabs.",
       "fit": "Fit",
       "fitTitle": "Show every card",
-      "keysHint": "Drag cards anywhere. Keys: arrows go to the next card; Space selects; arrows move selected cards (Shift for a bigger step); Escape clears.",
+      "keysHint": "Drag cards anywhere. Keys: arrows go to the next card; Space selects; arrows move selected cards (Shift for a bigger step, Alt goes to the next card instead); Escape clears.",
       "kindCharacter": "Character",
       "kindPlace": "Place",
       "kindStyle": "Style",

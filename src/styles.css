@@ -415,6 +415,19 @@ strong {
   font-size: 0.95rem;
 }
 
+.workspace-header__project {
+  min-width: 0;
+}
+
+.workspace-header__project h2 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
 .header-badges {
   display: flex;
   flex-wrap: wrap;

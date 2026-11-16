@@ -416,8 +416,12 @@ def export_captions(project_id: str) -> dict[str, Any]:
 
     store = get_store()
     project = _guard(store.load, project_id)
-    items = captions.cues(project, compute_timeline(project, ready_only=True))
+    timeline = compute_timeline(project, ready_only=True)
+    items = captions.cues(project, timeline)
     if not items:
+        if project.captions:
+            raise HTTPException(status_code=400, detail=(
+                f"The captions start after the film ends ({timeline.total:.1f} s). Make the clips under them first."))
         raise HTTPException(status_code=400, detail="There are no captions to export.")
     path = captions.write_srt(project, store.folder(project_id), items)
     return {"file": f"exports/{path.name}", "cues": len(items)}

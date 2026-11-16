@@ -187,4 +187,23 @@ def make(store: Any, project_id: str, revision: int, timing: str = "auto", langu
         cues = by_sections(song, list(song.lyrics))
         notes.append("Each sung section shares the lines evenly; adjust single captions if a line comes early or late.")
     saved = run_op(store, project_id, project.revision, "set_captions", {"clipId": song.clipId, "cues": cues})
+    note = past_film_end_note(saved, song.clipId)
+    if note:
+        notes.append(note)
     return saved, used, notes
+
+
+def past_film_end_note(project: Project, clip_id: str) -> str | None:
+    """A note when lyric lines fall past the film's current end (only shots with a clip count, as in the render):
+    the captions are kept, but burn-in and the .srt leave out what the film does not reach yet."""
+    from backend_service.storyboard.captions import cues
+    from backend_service.storyboard.timeline import compute_timeline
+
+    timeline = compute_timeline(project, ready_only=True)
+    mine = [caption.id for caption in project.captions if caption.clipId == clip_id]
+    shown = {cue.id for cue in cues(project, timeline)}
+    late = sum(1 for caption_id in mine if caption_id not in shown)
+    if not late:
+        return None
+    return (f"{late} of {len(mine)} lines fall after the film's current end ({timeline.total:.1f} s); they show once "
+            "clips cover that part of the song (a cut plan gives the song its shots).")

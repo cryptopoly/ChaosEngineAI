@@ -33,24 +33,32 @@ from backend_service.storyboard import ffmpeg_bin
 from backend_service.storyboard.assemble_graphs import (  # noqa: F401 - re-exported for callers and tests
     ENGINE_VERSION,
     SAMPLE_RATE,
+    CardLayout,
     JoinTiming,
     Lane,
+    LogoOverlay,
     _f,
     _samples,
     anchored_audio,
     atempo_chain,
+    build_card_graph,
     build_mix_graph,
     build_shot_graph,
     build_xfade_graphs,
     caption_force_style,
+    card_cache_key,
+    card_frames,
+    card_layout,
     compute_join_offsets,
     concat_list,
     parse_loudnorm,
     shot_cache_key,
+    shift_unanchored,
     shot_frames,
 )
+from backend_service.storyboard.cards import text_width
 from backend_service.storyboard.media import replace_file
-from backend_service.storyboard.render_plan import RenderPlan, Transition
+from backend_service.storyboard.render_plan import CardInput, RenderPlan, Transition
 
 META_PREFIX = "chaosengine"  # same tag convention as helpers/output_metadata.py
 
@@ -237,7 +245,12 @@ def _required_filters(plan: RenderPlan, has_voice_duck: bool) -> set[str]:
         needed.add("aloop")
     if plan.captions_srt:
         needed.add("subtitles")
-    return needed
+    cards = [c for c in (plan.title_card, plan.end_card) if c is not None]
+    if cards:
+        needed |= {"color"}
+    if plan.logo or any(c.logo for c in cards):
+        needed |= {"overlay"}
+    return needed  # drawtext is optional: without it a card shows its colour and logo, and the render says so
 
 
 def intermediate_names(plan: RenderPlan) -> list[str]:
@@ -293,6 +306,74 @@ def _write_stems(plan: RenderPlan, work: Path, film_input: list[str], lanes: lis
     return written
 
 
+def _file_stamp(path: str | None) -> str:
+    """Name, size and time of a file a card uses, so a changed font or logo makes a new card."""
+    if not path:
+        return ""
+    try:
+        info = Path(path).stat()
+    except OSError:
+        return path
+    return f"{path}:{info.st_size}:{int(info.st_mtime)}"
+
+
+def _caption_fonts_dir(plan: RenderPlan, work: Path, run_id: str, scratch: list[Path]) -> str | None:
+    """A work folder holding the caption font's file, for libass to find the brand typeface by name (None without one)."""
+    from backend_service.storyboard import fonts
+
+    family = (plan.captions_style or {}).get("font")
+    path = fonts.font_file(family) if family else None
+    if not path:
+        return None
+    folder = work / f"{run_id}-fonts"
+    folder.mkdir(exist_ok=True)
+    target = folder / f"caption{Path(path).suffix.lower()}"
+    shutil.copyfile(path, target)
+    scratch += [target, folder]
+    return folder.name
+
+
+def _render_card(card: CardInput, which: str, plan: RenderPlan, work: Path, run_id: str, script: Callable[[str, str], str],
+                 scratch: list[Path], report: Callable[[float], None], cancel_event: threading.Event | None,
+                 warnings: list[str]) -> tuple[str, int, bool]:
+    """A title or end card as a cached intermediate like a shot's. Returns (file name, frames, made now)."""
+    frames = card_frames(card, plan.fps)
+    has_text = bool(card.text)
+    if has_text and "drawtext" not in ffmpeg_bin.ffmpeg_filters():
+        warnings.append(f"The {which} card shows no text: this build of ffmpeg has no 'drawtext' filter.")
+        has_text = False
+    if not has_text:
+        card = dataclasses.replace(card, text="")
+    layout: CardLayout = card_layout(card, plan.width, plan.height, text_width(card.font_file, card.text),
+                                     card.logo is not None)
+    key = card_cache_key(card, plan, layout, _file_stamp(card.font_file), _file_stamp(card.logo))
+    name = f"card-{key[:32]}.mov"
+    target = work / name
+    if target.is_file() and target.stat().st_size > 0:
+        report(1.0)
+        return name, frames, False
+    text_name = font_name = None
+    if has_text:
+        text_name = script(f"{which}-card.txt", card.text)  # drawtext reads it with expansion off
+        if card.font_file:
+            font_name = f"{run_id}-{which}-font{Path(card.font_file).suffix.lower()}"
+            shutil.copyfile(card.font_file, work / font_name)
+            scratch.append(work / font_name)
+    args: list[str] = []
+    logo_input = None
+    if card.logo and layout.logo_height:
+        args += _inp(card.logo)
+        logo_input = 0
+    graph = script(f"{which}-card-graph.txt", build_card_graph(card, plan, frames, layout, text_name, font_name, logo_input))
+    tmp = work / f"{run_id}-{name}"
+    scratch.append(tmp)
+    _run([*args, _filter_script_flag(), graph, "-map", "[v]", "-map", "[a]", *_codec_args(plan), "-c:a", "pcm_s16le",
+          "-map_metadata", "-1", "-f", "mov", tmp.name], cwd=work, expected_s=frames / plan.fps, report=report,
+         cancel_event=cancel_event)
+    os.replace(tmp, target)
+    return name, frames, True
+
+
 def render(plan: RenderPlan, progress_cb: ProgressCb | None = None,
            cancel_event: threading.Event | None = None) -> RenderResult:
     plan = plan.validate()
@@ -307,6 +388,11 @@ def render(plan: RenderPlan, progress_cb: ProgressCb | None = None,
         plan = dataclasses.replace(plan, captions_srt=None)
     out = Path(plan.out_path)
     inputs = {str(Path(s.video)) for s in plan.shots} | {a.path for a in plan.audio}
+    brand_files = [plan.logo.path] if plan.logo else []
+    for card in (plan.title_card, plan.end_card):
+        if card is not None:
+            brand_files += [p for p in (card.logo, card.font_file) if p]
+    inputs |= set(brand_files)
     if plan.captions_srt:
         inputs.add(plan.captions_srt)
     if out.exists() and str(out.resolve()) in inputs:
@@ -362,12 +448,33 @@ def render(plan: RenderPlan, progress_cb: ProgressCb | None = None,
             os.replace(tmp, target)
             rendered += 1
         transitions = [s.transition_in for s in plan.shots]
+        fade_frames = [0] + [_fade_frames(t, plan.fps) for t in transitions[1:]]
+
+        # Stage 1b: the title and end cards (S15) join the film by a cut, before and after the shots.
+        lead = 0  # segments before the first shot
+        for which, card in (("title", plan.title_card), ("end", plan.end_card)):
+            if card is None:
+                continue
+            card_name, card_count, made = _render_card(card, which, plan, work, run_id, script, scratch,
+                                                       lambda f: progress("shots", 1.0), cancel_event, warnings)
+            rendered += int(made)
+            cached += int(not made)
+            if which == "title":
+                names.insert(0, card_name)
+                frames_list.insert(0, card_count)
+                fade_frames = [0, 0, *fade_frames[1:]]
+                lead = 1
+            else:
+                names.append(card_name)
+                frames_list.append(card_count)
+                fade_frames.append(0)
+        title_s = frames_list[0] / plan.fps if lead else 0.0
 
         # Stage 2a: group runs of cuts; crossfade between groups.
-        fade_frames = [0] + [_fade_frames(t, plan.fps) for t in transitions[1:]]
         timing = compute_join_offsets([f / plan.fps for f in frames_list],
                                       [f / plan.fps for f in fade_frames])
         total_samples = round(timing.total * SAMPLE_RATE)
+        shots_end_s = timing.starts[-1] if plan.end_card else timing.total
         groups: list[list[int]] = []
         for i in range(len(names)):
             if i == 0 or fade_frames[i] > 0:
@@ -421,18 +528,26 @@ def render(plan: RenderPlan, progress_cb: ProgressCb | None = None,
         # Stage 2b: one audio mix graph over the joined film and the lanes.
         lane_args: list[str] = []
         lanes: list[Lane] = []
-        placed = anchored_audio(plan.audio, [s.id for s in plan.shots], timing.starts[:len(plan.shots)])
+        placed = shift_unanchored(anchored_audio(plan.audio, [s.id for s in plan.shots],
+                                                 timing.starts[lead:lead + len(plan.shots)]), title_s)
         for n, clip in enumerate(placed):
             info = ffmpeg_bin.probe(clip.path)
             if not info["has_audio"]:
                 raise RenderError(f"audio {clip.id}: the file has no audio stream")
             lanes.append(Lane(clip, n + 1, info["duration"]))
             lane_args += _inp(clip.path)
-        captions_name = None
+        captions_name = captions_fonts = None
         if plan.captions_srt:
             captions_name = f"{run_id}-captions.srt"
             shutil.copyfile(plan.captions_srt, work / captions_name)
             scratch.append(work / captions_name)
+            captions_fonts = _caption_fonts_dir(plan, work, run_id, scratch)
+        logo = None
+        if plan.logo:
+            lane_args += _inp(plan.logo.path)
+            cards = plan.title_card is not None or plan.end_card is not None
+            logo = LogoOverlay(len(lanes) + 1, plan.logo.corner, plan.width, plan.height,
+                               title_s if cards else None, shots_end_s if cards else None)
 
         loudness: dict[str, Any] | None = None
         target = plan.loudness_lufs
@@ -465,10 +580,11 @@ def render(plan: RenderPlan, progress_cb: ProgressCb | None = None,
 
         upscale_to = None if plan.preview else plan.upscale_to
         style = caption_force_style(plan.captions_style, plan.width, plan.height) if captions_name and plan.captions_style else None
-        graph_text, mix_warnings = build_mix_graph(lanes, total_samples, loudnorm, captions_name, upscale_to, style)
+        graph_text, mix_warnings = build_mix_graph(lanes, total_samples, loudnorm, captions_name, upscale_to, style,
+                                                   logo, captions_fonts)
         warnings += mix_warnings
         graph = script("mix.txt", graph_text)
-        video_args = (["-map", "[vout]", *_codec_args(plan)] if captions_name or upscale_to
+        video_args = (["-map", "[vout]", *_codec_args(plan)] if captions_name or upscale_to or logo
                       else ["-map", "0:v", "-c:v", "copy"])
         meta_args = []
         if plan.metadata:
@@ -498,4 +614,10 @@ def render(plan: RenderPlan, progress_cb: ProgressCb | None = None,
     finally:
         _unlink(out_tmp)
         for path in scratch:
-            _unlink(path)
+            if path.is_dir() and not path.is_symlink():
+                try:
+                    path.rmdir()  # emptied first: its files come before it in the list
+                except OSError:
+                    pass
+            else:
+                _unlink(path)

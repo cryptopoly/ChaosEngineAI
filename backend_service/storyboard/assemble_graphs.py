@@ -12,9 +12,9 @@ import json
 import math
 import re
 from dataclasses import dataclass
-from typing import Sequence
+from typing import Callable, Sequence
 
-from backend_service.storyboard.render_plan import AudioInput, RenderPlan, ShotInput, Transition
+from backend_service.storyboard.render_plan import AudioInput, CardInput, RenderPlan, ShotInput, Transition
 
 ENGINE_VERSION = "1"
 SAMPLE_RATE = 48000
@@ -190,8 +190,10 @@ def caption_force_style(look: dict[str, str], width: int, height: int) -> str:
 def build_mix_graph(lanes: Sequence[Lane], total_samples: int, loudnorm: str | None,
                     captions_name: str | None = None,
                     upscale_to: tuple[int, int] | None = None,
-                    captions_style: str | None = None) -> tuple[str, list[str]]:
-    """The audio graph (plus captions burn-in when asked). Returns (graph, warnings)."""
+                    captions_style: str | None = None,
+                    logo: "LogoOverlay | None" = None,
+                    captions_fonts: str | None = None) -> tuple[str, list[str]]:
+    """The audio graph (plus the corner logo and captions burn-in when asked). Returns (graph, warnings)."""
     total = total_samples / SAMPLE_RATE
     warnings: list[str] = []
     lines = [f"[0:a]aresample={SAMPLE_RATE},aformat=sample_fmts=fltp:channel_layouts=stereo,"
@@ -267,14 +269,19 @@ def build_mix_graph(lanes: Sequence[Lane], total_samples: int, loudnorm: str | N
     else:
         joined = "".join(f"[{x}]" for x in mix_inputs)
         lines.append(f"{joined}amix=inputs={len(mix_inputs)}:normalize=0:duration=first,{tail}")
-    if captions_name or upscale_to:
+    if captions_name or upscale_to or logo:
+        source = "0:v"
+        if logo:  # under the captions, so a caption is never hidden by the logo
+            lines.append(logo_chain(logo, "0:v", "vlogo"))
+            source = "vlogo"
         video = []  # captions are drawn at the project size, before any upscale
         if captions_name:
             styled = f":force_style='{captions_style}'" if captions_style else ""
-            video.append(f"subtitles=filename={captions_name}{styled}")
+            fonts = f":fontsdir={captions_fonts}" if captions_fonts else ""
+            video.append(f"subtitles=filename={captions_name}{fonts}{styled}")
         if upscale_to:
             video.append(upscale_filter(upscale_to))
-        lines.append(f"[0:v]{','.join(video)}[vout]")
+        lines.append(f"[{source}]{','.join(video) or 'null'}[vout]")
     return ";\n".join(lines) + "\n", warnings
 
 
@@ -316,3 +323,126 @@ def parse_loudnorm(stderr: str) -> dict[str, str] | None:
     except ValueError:
         return None
     return {str(k): str(v) for k, v in data.items()}
+
+
+# ---------------------------------------------------------------------------------------------
+# The brand kit on the film (S15): title and end cards, the corner logo
+
+
+def card_frames(card: CardInput, fps: int) -> int:
+    """A card's length in whole frames (at least one)."""
+    return max(1, round(card.seconds * fps))
+
+
+def card_seconds(card: CardInput | None, fps: int) -> float:
+    """What a card adds to the film, frame-exact (0 without one)."""
+    return card_frames(card, fps) / fps if card is not None else 0.0
+
+
+@dataclass(frozen=True)
+class CardLayout:
+    font_size: int
+    text_y: int  # the centre line of the text
+    logo_height: int  # 0: no logo
+    logo_y: int  # the top of the logo
+
+
+def card_layout(card: CardInput, width: int, height: int, text_width: "Callable[[int], float] | None",
+                has_logo: bool) -> CardLayout:
+    """Where the logo and text sit on a card. The text starts at 9 % of the frame height and shrinks until it fits 84 %
+    of the width (``text_width(size)`` measures it in the card's typeface; None keeps the start size). With a logo, the
+    logo sits above the middle and the text below; alone, either one is centred."""
+    size = max(12, round(height * 0.09))
+    if text_width is not None and card.text:
+        limit = width * 0.84
+        while size > 12 and text_width(size) > limit:
+            size = max(12, int(size * 0.92))
+    logo_h = (round(height * 0.22) // 2) * 2 if has_logo else 0
+    if has_logo and card.text:
+        return CardLayout(size, round(height * 0.66), logo_h, round(height * 0.44) - logo_h)
+    return CardLayout(size, round(height / 2), logo_h, round((height - logo_h) / 2))
+
+
+def card_cache_key(card: CardInput, plan: RenderPlan, layout: CardLayout, font_stamp: str, logo_stamp: str) -> str:
+    payload = json.dumps([ENGINE_VERSION, "card", plan.width, plan.height, plan.fps, plan.preview, card.text, card.background,
+                          card.colour, card.seconds, dataclasses.astuple(layout), font_stamp, logo_stamp],
+                         separators=(",", ":"))
+    return hashlib.sha256(payload.encode()).hexdigest()
+
+
+def _hex_ff(colour: str) -> str:
+    """#RRGGBB as ffmpeg's 0xRRGGBB (the value was checked by the render plan)."""
+    if not re.fullmatch(r"#[0-9A-Fa-f]{6}", colour):
+        raise ValueError(f"not a colour: {colour!r}")
+    return "0x" + colour[1:].upper()
+
+
+_SAFE_NAME = re.compile(r"[A-Za-z0-9_][A-Za-z0-9_.-]*")
+
+
+def _safe_name(name: str) -> str:
+    """A file name in the work folder that can sit in a filter option as is (no quoting, no separators)."""
+    if not _SAFE_NAME.fullmatch(name):
+        raise ValueError(f"unsafe file name {name!r}")
+    return name
+
+
+def build_card_graph(card: CardInput, plan: RenderPlan, frames: int, layout: CardLayout,
+                     text_name: str | None, font_name: str | None, logo_input: int | None) -> str:
+    """One card as an intermediate like a shot's: a plain colour, the logo (input ``logo_input``) and the text,
+    which ``drawtext`` reads from ``text_name`` (a file in the work folder) with expansion off, so no text the user
+    typed is ever part of the graph. Silent stereo sound of the same length."""
+    w, h = plan.width, plan.height
+    samples = _samples(frames, plan.fps)
+    lines = [f"color=c={_hex_ff(card.background)}:s={w}x{h}:r={plan.fps},format=yuv420p,trim=end_frame={frames}[bg]"]
+    video = "bg"
+    if logo_input is not None and layout.logo_height:
+        lines.append(f"[{logo_input}:v]format=rgba,scale=-1:{layout.logo_height}[cardlogo]")
+        lines.append(f"[{video}][cardlogo]overlay=x=(W-w)/2:y={layout.logo_y}:eof_action=repeat[withlogo]")
+        video = "withlogo"
+    chain = f"[{video}]"
+    if text_name:
+        font = f"fontfile={_safe_name(font_name)}:" if font_name else ""
+        chain += (f"drawtext={font}textfile={_safe_name(text_name)}:expansion=none:fontcolor={_hex_ff(card.colour)}:"
+                  f"fontsize={layout.font_size}:x=(w-text_w)/2:y={layout.text_y}-text_h/2,")
+    chain += f"fps={plan.fps},format=yuv420p,setsar=1,settb=AVTB,trim=end_frame={frames},setpts=N/(FRAME_RATE*TB)[v]"
+    lines.append(chain)
+    lines.append(f"anullsrc=channel_layout=stereo:sample_rate={SAMPLE_RATE},aformat=sample_fmts=s16,"
+                 f"atrim=end_sample={samples},asetpts=N/SR/TB[a]")
+    return ";\n".join(lines) + "\n"
+
+
+@dataclass(frozen=True)
+class LogoOverlay:
+    input_index: int
+    corner: str
+    width: int  # the film frame
+    height: int
+    start: float | None = None  # shown from here to ``end`` (the shots, not the cards); None: the whole film
+    end: float | None = None
+
+
+_CORNERS = {"top-left": ("M", "M"), "top-right": ("W-w-M", "M"), "bottom-left": ("M", "H-h-M"),
+            "bottom-right": ("W-w-M", "H-h-M")}
+
+
+def logo_chain(logo: LogoOverlay, source: str, out: str) -> str:
+    """The corner logo: 12 % of the frame height, a margin of 4 % of the short side, over the shots only."""
+    if logo.corner not in _CORNERS:
+        raise ValueError(f"unknown corner {logo.corner!r}")
+    logo_h = max(8, (round(logo.height * 0.12) // 2) * 2)
+    margin = str(max(4, round(min(logo.width, logo.height) * 0.04)))
+    x, y = (part.replace("M", margin) for part in _CORNERS[logo.corner])
+    enable = ""
+    if logo.start is not None and logo.end is not None:
+        enable = f":enable='between(t,{_f(logo.start)},{_f(logo.end)})'"
+    return (f"[{logo.input_index}:v]format=rgba,scale=-1:{logo_h}[logo];"
+            f"\n[{source}][logo]overlay=x={x}:y={y}:eof_action=repeat{enable}[{out}]")
+
+
+def shift_unanchored(clips: Sequence[AudioInput], seconds: float) -> list[AudioInput]:
+    """Clips placed by time (not anchored to a shot) moved later by ``seconds``: the title card in front of the film."""
+    if seconds <= 0:
+        return list(clips)
+    return [clip if clip.anchor_shot is not None else dataclasses.replace(clip, start=clip.start + seconds)
+            for clip in clips]

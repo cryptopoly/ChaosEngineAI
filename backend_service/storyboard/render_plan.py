@@ -243,6 +243,83 @@ class AudioInput:
         return out
 
 
+_HEX = re.compile(r"^#[0-9A-Fa-f]{6}$")
+FONT_SUFFIXES = (".ttf", ".otf", ".ttc")
+LOGO_SUFFIXES = (".png", ".jpg", ".jpeg", ".webp")
+LOGO_CORNERS = ("top-left", "top-right", "bottom-left", "bottom-right")
+MAX_CARD_TEXT = 200
+# Anything but a printable character or a plain space (control characters, line and paragraph separators, BOM).
+_CARD_TEXT_BAD = re.compile(r"[\x00-\x1f\x7f-\x9f  ﻿]")
+
+
+def _colour(value: Any, where: str) -> str:
+    if not isinstance(value, str) or not _HEX.match(value):
+        raise _fail(where, "must be a colour like #1A2B3C")
+    return value.upper()
+
+
+def _suffixed_file(value: Any, where: str, suffixes: tuple[str, ...]) -> str:
+    path = check_input_file(value, where)
+    if Path(path).suffix.lower() not in suffixes:
+        raise _fail(where, f"must be one of {', '.join(suffixes)}")
+    return path
+
+
+@dataclass
+class CardInput:
+    """A title or end card: one line of text on a plain colour, in the brand typeface, with the logo above it.
+
+    The text never reaches a filter: the assembler writes it to a file that ``drawtext`` reads with expansion
+    off. It is still limited here to one printable line."""
+
+    text: str
+    seconds: float = 2.0
+    background: str = "#000000"
+    colour: str = "#FFFFFF"
+    font_file: str | None = None
+    logo: str | None = None
+
+    @classmethod
+    def from_dict(cls, data: Any, where: str) -> "CardInput":
+        data = _mapping(data, where)
+        text = data.get("text", "")
+        if not isinstance(text, str) or len(text) > MAX_CARD_TEXT or _CARD_TEXT_BAD.search(text):
+            raise _fail(f"{where}.text", f"must be one printable line of at most {MAX_CARD_TEXT} characters")
+        font = data.get("font_file")
+        logo = data.get("logo")
+        return cls(
+            text=text.strip(),
+            seconds=_num(data.get("seconds", 2.0), f"{where}.seconds", lo=0.5, hi=10.0),
+            background=_colour(data.get("background", "#000000"), f"{where}.background"),
+            colour=_colour(data.get("colour", "#FFFFFF"), f"{where}.colour"),
+            font_file=_suffixed_file(font, f"{where}.font_file", FONT_SUFFIXES) if font is not None else None,
+            logo=_suffixed_file(logo, f"{where}.logo", LOGO_SUFFIXES) if logo is not None else None,
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"text": self.text, "seconds": self.seconds, "background": self.background, "colour": self.colour,
+                "font_file": self.font_file, "logo": self.logo}
+
+
+@dataclass
+class LogoInput:
+    """The brand logo drawn in a corner of every shot (not over the cards)."""
+
+    path: str
+    corner: str = "bottom-right"
+
+    @classmethod
+    def from_dict(cls, data: Any, where: str = "logo") -> "LogoInput":
+        data = _mapping(data, where)
+        corner = data.get("corner", "bottom-right")
+        if corner not in LOGO_CORNERS:
+            raise _fail(f"{where}.corner", f"must be one of {', '.join(LOGO_CORNERS)}")
+        return cls(path=_suffixed_file(data.get("path"), f"{where}.path", LOGO_SUFFIXES), corner=corner)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"path": self.path, "corner": self.corner}
+
+
 @dataclass
 class RenderPlan:
     width: int
@@ -259,6 +336,9 @@ class RenderPlan:
     captions_style: dict[str, str] | None = None  # the burnt-in look (captions.check_look fields)
     stems_base: str | None = None  # write each audio lane as ``<stems_base>-stem-<lane>.wav`` (a full render only)
     upscale_to: tuple[int, int] | None = None  # scale the finished film to this size (lanczos) at the final encode
+    title_card: CardInput | None = None  # before the first shot (S15)
+    end_card: CardInput | None = None  # after the last shot
+    logo: LogoInput | None = None  # in a corner of every shot
 
     @classmethod
     def from_dict(cls, data: Any) -> "RenderPlan":
@@ -318,6 +398,9 @@ class RenderPlan:
             upscale_to = (_int(upscale_raw[0], "upscale_to", 16, 7680), _int(upscale_raw[1], "upscale_to", 16, 7680))
             if upscale_to[0] % 2 or upscale_to[1] % 2:
                 raise _fail("upscale_to", "must be even (yuv420p)")
+        cards = {key: CardInput.from_dict(data[key], key) if data.get(key) is not None else None
+                 for key in ("title_card", "end_card")}
+        logo = LogoInput.from_dict(data["logo"]) if data.get("logo") is not None else None
         return cls(
             width=width,
             height=height,
@@ -333,6 +416,9 @@ class RenderPlan:
             captions_style=captions_style,
             stems_base=stems_base,
             upscale_to=upscale_to,
+            title_card=cards["title_card"],
+            end_card=cards["end_card"],
+            logo=logo,
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -346,6 +432,9 @@ class RenderPlan:
             "captions_style": dict(self.captions_style) if self.captions_style else None,
             "stems_base": self.stems_base,
             "upscale_to": list(self.upscale_to) if self.upscale_to else None,
+            "title_card": self.title_card.to_dict() if self.title_card else None,
+            "end_card": self.end_card.to_dict() if self.end_card else None,
+            "logo": self.logo.to_dict() if self.logo else None,
         }
 
     def validate(self) -> "RenderPlan":

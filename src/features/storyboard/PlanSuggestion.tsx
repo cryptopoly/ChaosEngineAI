@@ -12,11 +12,10 @@ export interface PlanSuggestionProps {
   target: number | null;
   /** The length formatted as the Length chips show it ("30 s", "1 min"). */
   lengthText: (seconds: number) => string;
-  disabled: boolean;
   onUseLength: (seconds: number) => void;
 }
 
-export function PlanSuggestion({ brief, target, lengthText, disabled, onUseLength }: PlanSuggestionProps) {
+export function PlanSuggestion({ brief, target, lengthText, onUseLength }: PlanSuggestionProps) {
   const { t } = useTranslation("studio");
   const suggestion = shotSuggestion(brief, target);
   if (!suggestion) return null;
@@ -50,7 +49,9 @@ export function PlanSuggestion({ brief, target, lengthText, disabled, onUseLengt
       {offerLength ? (
         <>
           {" "}
-          <button type="button" className="plan-link" disabled={disabled} onClick={() => onUseLength(seconds)}>
+          {/* Never disabled while busy: a click right after typing the brief blurs it first (its save makes the tab
+              busy), and the op queue runs the length after the brief anyway. */}
+          <button type="button" className="plan-link" onClick={() => onUseLength(seconds)}>
             {t("board.plan.suggest.useLength", { defaultValue: "Use {length}", length })}
           </button>
         </>

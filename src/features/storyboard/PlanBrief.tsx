@@ -163,7 +163,7 @@ export function PlanBrief({ story, project, imageGallery, canPropose, proposing,
           </select>
         </label>
       </div>
-      <PlanSuggestion brief={brief} target={plan.filmSeconds} lengthText={lengthText} disabled={story.busy} onUseLength={setLength} />
+      <PlanSuggestion brief={brief} target={plan.filmSeconds} lengthText={lengthText} onUseLength={setLength} />
 
       <div
         className={`plan-pictures${over ? " is-over" : ""}`}

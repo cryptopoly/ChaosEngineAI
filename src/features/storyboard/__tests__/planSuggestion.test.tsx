@@ -36,7 +36,7 @@ describe("shot count suggestion rule (FU-188 item 5)", () => {
 describe("PlanSuggestion", () => {
   const lengthText = (s: number) => (s >= 60 && s % 60 === 0 ? `${s / 60} min` : `${s} s`);
   const render = (brief: string, target: number | null) =>
-    renderToStaticMarkup(<PlanSuggestion brief={brief} target={target} lengthText={lengthText} disabled={false} onUseLength={() => undefined} />);
+    renderToStaticMarkup(<PlanSuggestion brief={brief} target={target} lengthText={lengthText} onUseLength={() => undefined} />);
 
   it("labels the line as a suggestion and offers the brief's length", () => {
     const html = render("A 30 s ad for a tea shop", null);

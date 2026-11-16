@@ -15,6 +15,20 @@
   max-width: 80%;
   object-fit: contain;
 }
+/* With a logo the two sit where the export draws them: logo from 22 % to 44 % of the height, text centred at 66 %. */
+.rough-cut__brand-card--logo .rough-cut__brand-card-logo {
+  position: absolute;
+  top: 22cqh;
+  left: 50%;
+  transform: translateX(-50%);
+}
+.rough-cut__brand-card--logo .rough-cut__brand-card-text {
+  position: absolute;
+  top: 66cqh;
+  left: 8%;
+  right: 8%;
+  transform: translateY(-50%);
+}
 .rough-cut__brand-card-text {
   font-size: 9cqh;
   line-height: 1.15;
@@ -88,11 +102,13 @@
 }
 .brand-cards__seconds {
   display: flex;
+  white-space: nowrap;
   align-items: center;
   gap: 8px;
 }
-.brand-cards__select {
+.brand-cards .brand-cards__select {
   width: auto;
+  min-width: 6rem;
 }
 .brand-cards__sample {
   display: flex;

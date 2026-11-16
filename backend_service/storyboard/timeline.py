@@ -243,6 +243,8 @@ def build_render_plan(project: Project, preview: bool, folder: Path | None = Non
     from backend_service.storyboard.cards import plan_entries
 
     brand = plan_entries(project, folder)
+    if preview:  # the Mixer plays a preview against its own timeline, which has no cards; the logo stays
+        brand["title_card"] = brand["end_card"] = None
     # The title card goes in front of the film, so the captions start that much later (whole frames, like the card).
     lead = round(brand["title_card"]["seconds"] * project.defaults.fps) / project.defaults.fps if brand["title_card"] else 0.0
     cue_list = captions_module.cues(project, compute_timeline(project, ready_only=True))

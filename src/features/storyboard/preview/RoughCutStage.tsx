@@ -60,7 +60,7 @@ export function RoughCutStage({ cut, player, width, height, caption, captionLook
             <div
               key={piece.shotId}
               ref={(el) => player.registerLayer(piece.shotId, el)}
-              className="rough-cut__layer rough-cut__brand-card"
+              className={`rough-cut__layer rough-cut__brand-card${cardLogoUrl && piece.media.text ? " rough-cut__brand-card--logo" : ""}`}
               style={{ background: look?.background, color: look?.colour, fontFamily: fontStack(look?.font) }}
               data-card={piece.media.which}
             >

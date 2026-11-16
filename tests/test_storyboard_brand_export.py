@@ -206,6 +206,9 @@ class ProjectChoiceTests(unittest.TestCase):
         srt = Path(plan["captions_srt"]).read_text(encoding="utf-8")
         self.assertIn("00:00:02,500 --> 00:00:03,500", srt)
         self.assertIn("00:00:02,500", plan["sidecar_srt"]["text"])
+        preview = build_render_plan(p, preview=True, folder=self.folder)
+        self.assertIsNone(preview["title_card"])  # the Mixer's preview stays on its timeline
+        self.assertIn("00:00:00,500", Path(preview["captions_srt"]).read_text(encoding="utf-8"))
         (self.folder / "exports").mkdir()
         RenderPlan.from_dict(plan)  # the plan passes its own checks
 
@@ -248,6 +251,9 @@ class BrandRenderTests(unittest.TestCase):
         })
         result = render(plan)
         self.assertAlmostEqual(result.duration_s, 4.0, delta=0.06)  # 1 s + 2 s + 1 s
+        counted = subprocess.run([self.exe, "-hide_banner", "-i", result.path, "-map", "0:v", "-f", "null", "-"],
+                                 capture_output=True, text=True).stderr
+        self.assertIn("frame=   96", counted)  # whole frames: 24 + 48 + 24, none lost to the logo overlay
         title = self.grab(Path(result.path), 0.5)
         self.assertGreater(title(5, 5)[0], 150)  # red background
         self.assertGreater(title(160, 60)[1], 150)  # the logo, centred above the text

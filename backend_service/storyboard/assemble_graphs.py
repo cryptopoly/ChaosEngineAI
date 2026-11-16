@@ -364,7 +364,7 @@ def card_layout(card: CardInput, width: int, height: int, text_width: "Callable[
 
 
 def card_cache_key(card: CardInput, plan: RenderPlan, layout: CardLayout, font_stamp: str, logo_stamp: str) -> str:
-    payload = json.dumps([ENGINE_VERSION, "card", plan.width, plan.height, plan.fps, plan.preview, card.text, card.background,
+    payload = json.dumps([ENGINE_VERSION, "card-2", plan.width, plan.height, plan.fps, plan.preview, card.text, card.background,
                           card.colour, card.seconds, dataclasses.astuple(layout), font_stamp, logo_stamp],
                          separators=(",", ":"))
     return hashlib.sha256(payload.encode()).hexdigest()
@@ -394,7 +394,8 @@ def build_card_graph(card: CardInput, plan: RenderPlan, frames: int, layout: Car
     typed is ever part of the graph. Silent stereo sound of the same length."""
     w, h = plan.width, plan.height
     samples = _samples(frames, plan.fps)
-    lines = [f"color=c={_hex_ff(card.background)}:s={w}x{h}:r={plan.fps},format=yuv420p,trim=end_frame={frames}[bg]"]
+    # The colour runs on and is cut to length at the end: trimmed before the logo overlay, the overlay drops a frame.
+    lines = [f"color=c={_hex_ff(card.background)}:s={w}x{h}:r={plan.fps},format=yuv420p[bg]"]
     video = "bg"
     if logo_input is not None and layout.logo_height:
         lines.append(f"[{logo_input}:v]format=rgba,scale=-1:{layout.logo_height}[cardlogo]")

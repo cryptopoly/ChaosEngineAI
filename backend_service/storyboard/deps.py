@@ -2,7 +2,8 @@
 
 A generated take records a fingerprint (``basis``) of what it was made from: the shot's own prompts and
 timing, the references it uses, the picture defaults and, for ``startFrom: previous-shot``, the previous
-shot's active take and clip hash. A shot is stale when its active take's basis no longer matches, or when
+shot's active take and clip hash, and, for a take that used the project's style (``settings.style``), the style as
+it went in (S15). A shot is stale when its active take's basis no longer matches, or when
 it chains from a shot that is stale (so redoing C marks every chained shot after it), or when its clip was made
 from an older still than the take now holds (``clip_outdated``, after Redo still only). Uploaded takes have
 no basis and are never stale. The user decides what to re-run.
@@ -22,6 +23,20 @@ _PICTURE_DEFAULTS = ("width", "height", "fps", "imageModel", "videoModel")
 def previous_shot(project: Project, shot: Shot) -> Shot | None:
     index = next((i for i, s in enumerate(project.shots) if s.id == shot.id), 0)
     return project.shots[index - 1] if index > 0 else None
+
+
+def style_basis(project: Project, shot: Shot, used: str) -> list[Any]:
+    """What of the project's style a take used (S15): the first picture of each style when it went in as pictures,
+    the style's words and palette when it went in as words, and the brand kit's choice of how styles are used.
+    The logo and caption look are left out: they are drawn on the export, not into a shot."""
+    from backend_service.storyboard.style import styles_in_use
+
+    styles = [r for r in styles_in_use(project) if r.id not in shot.referenceImages]
+    if used == "pictures":
+        parts: list[Any] = [[r.id, r.images[0].hash if r.images else None] for r in styles]
+    else:
+        parts = [[r.id, r.description.strip(), list(r.palette)] for r in styles]
+    return [project.brand.styleUse, parts]
 
 
 def fingerprint(project: Project, shot: Shot) -> str:
@@ -45,6 +60,10 @@ def fingerprint(project: Project, shot: Shot) -> str:
         "refs": refs,
         "defaults": [getattr(project.defaults, key) for key in _PICTURE_DEFAULTS],
     }
+    take = shot.active()
+    used = (take.settings or {}).get("style") if take is not None else None
+    if used in ("pictures", "words"):  # only a take that used the style turns stale when the style changes
+        basis["style"] = style_basis(project, shot, str(used))
     if shot.startFrom == "previous-shot":
         prev = previous_shot(project, shot)
         take = prev.active() if prev else None

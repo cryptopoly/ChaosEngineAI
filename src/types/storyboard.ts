@@ -420,7 +420,7 @@ export interface StoryboardOpArgs {
   /** S8: planned shots in one step (one Undo); up to 500 (a cut plan). */
   apply_plan: { mode: "replace" | "append"; shots: StoryboardPlannedShot[] };
   /** S-M1: change the attached song by hand (sections, lyrics, tempo, title). */
-  edit_song: { title?: string; bpm?: number | null; sections?: StoryboardSongSection[]; lyrics?: string[] };
+  edit_song: { title?: string; bpm?: number; clearBpm?: boolean; sections?: StoryboardSongSection[]; lyrics?: string[] };
   /** S-M1: take the song off the project (and, by default, its mixer clip). */
   clear_song: { removeClip?: boolean };
   /** S8: the direction chat's changes in one step (one Undo). */

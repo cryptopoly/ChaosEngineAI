@@ -22,6 +22,10 @@ def starts_job(name: str, args: dict[str, Any] | None = None) -> bool:
     name = ALIASES.get(name, name)
     if name == "storyboard_captions":
         return (args or {}).get("action") == "generate"
+    if name == "storyboard_batch":
+        return (args or {}).get("action") == "resume"
+    if name == "storyboard_song":
+        return (args or {}).get("action") == "lyric_captions"  # speech-to-text runs as a job
     return name in JOB_TOOLS
 
 ALIASES = {"upload_image": "upload_file"}
@@ -41,6 +45,10 @@ def required_scope(name: str, args: dict[str, Any] | None = None) -> str:
         return "files" if (args or {}).get("action") == "export_srt" else "generate"
     if name == "music_library":
         return "read" if (args or {}).get("action") in _READ_ACTIONS else "generate"
+    if name == "storyboard_batch":
+        return "read" if (args or {}).get("action") == "status" else "generate"
+    if name == "storyboard_song":
+        return "read" if (args or {}).get("action") in ("get", "cut_plan") and not (args or {}).get("apply") else "generate"
     if name == "storyboard_project":
         action = (args or {}).get("action")
         if action in _READ_ACTIONS:
@@ -52,7 +60,7 @@ def required_scope(name: str, args: dict[str, Any] | None = None) -> str:
 
 def lowest_scope(name: str) -> str:
     """The scope that shows a tool in tools/list (storyboard_project has read actions)."""
-    return "read" if name in ("storyboard_project", "music_library") else required_scope(name)
+    return "read" if name in ("storyboard_project", "music_library", "storyboard_batch", "storyboard_song") else required_scope(name)
 
 
 def scope_error(name: str, scope: str) -> str:
@@ -88,6 +96,8 @@ ANNOTATIONS: dict[str, dict[str, Any]] = {
     "storyboard_shot": _ann("Storyboard shot", destructive=True),
     "storyboard_audio": _ann("Storyboard audio", destructive=True),
     "storyboard_generate": _ann("Storyboard generate"),
+    "storyboard_batch": _ann("Storyboard batch (pause, resume)"),
+    "storyboard_song": _ann("Storyboard song and cut plan", destructive=True),
     "storyboard_render": _ann("Storyboard render"),
     "storyboard_captions": _ann("Storyboard captions", destructive=True),
     "storyboard_export_otio": _ann("Export timeline (OTIO)", idempotent=True),

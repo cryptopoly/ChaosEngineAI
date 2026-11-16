@@ -58,8 +58,8 @@ class StoryboardToolTests(unittest.TestCase):
 
     def test_descriptions_stay_short_and_names_are_grouped(self):
         self.assertEqual([t["name"] for t in STORYBOARD_TOOLS],
-                         ["storyboard_project", "storyboard_shot", "storyboard_audio", "storyboard_generate", "storyboard_render",
-                          "storyboard_captions", "storyboard_export_otio"])
+                         ["storyboard_project", "storyboard_shot", "storyboard_audio", "storyboard_generate", "storyboard_batch",
+                          "storyboard_song", "storyboard_render", "storyboard_captions", "storyboard_export_otio"])
         for tool in STORYBOARD_TOOLS:
             self.assertLess(len(tool["description"]), 220, tool["name"])
 
@@ -325,6 +325,86 @@ class StoryboardToolTests(unittest.TestCase):
 
         for action in ("plan", "brand", "add_ref", "edit_ref"):
             self.assertEqual(required_scope("storyboard_project", {"action": action}), "generate")
+
+    def test_agent_pauses_and_resumes_a_batch(self):
+        import threading
+
+        info = self.project(shots=2)
+        pid = info["projectId"]
+        release = threading.Event()
+
+        class Slow(FakeGenerators):
+            def make_still(inner, shot, project):  # noqa: N805
+                release.wait(5)
+                return super().make_still(shot, project)
+
+        with mock.patch("backend_service.storyboard.generators.studio_generators", fake_wiring(Slow(self.src))):
+            job = self.call("storyboard_generate", {"project_id": pid, "revision": info["revision"], "what": "still"})
+            project = self.call("storyboard_project", {"action": "get", "project_id": pid})["project"]
+            bid = project["batches"][-1]["id"]
+            self.assertTrue(self.call("storyboard_batch", {"action": "pause", "project_id": pid, "batch_id": bid})["pausing"])
+            release.set()
+            done = self.call("wait_for_job", {"job_id": job["jobId"], "timeout_seconds": 10})
+            self.assertEqual(done["output"]["state"], "paused")
+            status = self.call("storyboard_batch", {"action": "status", "project_id": pid, "batch_id": bid})
+            self.assertEqual(status["progress"]["remainingSteps"], 1)
+            self.assertIn("not running", self.call("storyboard_batch", {"action": "pause", "project_id": pid, "batch_id": bid},
+                                                   error=True))
+            again = self.call("storyboard_batch", {"action": "resume", "project_id": pid, "batch_id": bid,
+                                                   "revision": status["revision"]})
+            done = self.call("wait_for_job", {"job_id": again["jobId"], "timeout_seconds": 10})
+        self.assertEqual(done["output"]["state"], "done")
+        self.assertIn("Unknown batch", self.call("storyboard_batch", {"action": "status", "project_id": pid, "batch_id": "b_nope0000"},
+                                                 error=True))
+
+    def test_agent_attaches_a_song_and_cuts_to_it(self):
+        from backend_service.storyboard import song as song_module
+
+        info = self.project(shots=1)
+        pid = info["projectId"]
+        found = {"seconds": 12.0, "bpm": 120.0, "beats": [k * 0.5 for k in range(24)], "rough": True, "note": "rough",
+                 "sections": [{"start": 0.0, "end": 6.0, "label": "A", "energy": 0.2},
+                              {"start": 6.0, "end": 12.0, "label": "B", "energy": 1.0}]}
+        outside = self.base / "elsewhere.wav"
+        fake_wav(outside)
+        self.assertIn("output folders", self.call("storyboard_song", {"action": "attach", "project_id": pid,
+                                                                       "revision": info["revision"], "path": str(outside)}, error=True))
+        with mock.patch.object(song_module, "analyse", return_value=found):
+            info = self.call("storyboard_song", {"action": "attach", "project_id": pid, "revision": info["revision"],
+                                                 "path": str(fake_wav(self.src / "song.wav")), "title": "Tune"})
+        self.assertEqual(info["song"]["bpm"], 120.0)
+        got = self.call("storyboard_song", {"action": "get", "project_id": pid})
+        self.assertEqual((got["song"]["title"], got["song"]["beats"]), ("Tune", 24))
+        info = self.call("storyboard_song", {"action": "edit", "project_id": pid, "revision": got["revision"],
+                                             "lyrics": ["one", "two"]})
+        plan = self.call("storyboard_song", {"action": "cut_plan", "project_id": pid, "max_shot_seconds": 3})
+        self.assertAlmostEqual(sum(s["seconds"] for s in plan["shots"]), 12.0, places=2)
+        applied = self.call("storyboard_song", {"action": "cut_plan", "project_id": pid, "max_shot_seconds": 3, "apply": True,
+                                                "revision": info["revision"]})
+        self.assertEqual(len(applied["shots"]), len(plan["shots"]))
+        from backend_service.storyboard import lyrics
+
+        with mock.patch.object(lyrics, "speech_status", return_value=(False, "not installed")):
+            self.assertIn("not installed", self.call("storyboard_song", {"action": "lyric_captions", "project_id": pid,
+                                                                          "revision": applied["revision"], "timing": "speech"}, error=True))
+            job = self.call("storyboard_song", {"action": "lyric_captions", "project_id": pid, "revision": applied["revision"]})
+            done = self.call("wait_for_job", {"job_id": job["jobId"], "timeout_seconds": 10})
+        self.assertEqual(done["output"]["timing"], "sections")
+        self.assertEqual(done["output"]["captions"], 2)
+        removed = self.call("storyboard_song", {"action": "remove", "project_id": pid, "revision": done["output"]["revision"]})
+        self.assertEqual(removed["audio"], [])
+
+    def test_batch_and_song_scopes(self):
+        from backend_service.mcp_bridge.scopes import lowest_scope, required_scope, starts_job
+
+        self.assertEqual(required_scope("storyboard_batch", {"action": "status"}), "read")
+        self.assertEqual(required_scope("storyboard_batch", {"action": "resume"}), "generate")
+        self.assertEqual(required_scope("storyboard_song", {"action": "get"}), "read")
+        self.assertEqual(required_scope("storyboard_song", {"action": "cut_plan", "apply": True}), "generate")
+        self.assertEqual(lowest_scope("storyboard_song"), "read")
+        self.assertTrue(starts_job("storyboard_batch", {"action": "resume"}))
+        self.assertFalse(starts_job("storyboard_batch", {"action": "pause"}))
+        self.assertTrue(starts_job("storyboard_song", {"action": "lyric_captions"}))
 
 
 if __name__ == "__main__":

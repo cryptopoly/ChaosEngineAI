@@ -196,7 +196,7 @@ def tempo(onset: Any, hint: float | None = None) -> tuple[float | None, float]:
         if denom != 0:
             lag += 0.5 * (a - c) / denom
     strength = float(max(0.0, ac[int(round(lag))] - np.median(ac[lo:hi + 1])))
-    return round(60 * FPS / lag, 1), min(1.0, strength * 2)
+    return round(float(60 * FPS / lag), 1), min(1.0, strength * 2)
 
 
 def track_beats(onset: Any, bpm: float, tightness: float = 100.0) -> list[float]:

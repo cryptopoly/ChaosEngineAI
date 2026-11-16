@@ -9,6 +9,18 @@ summary: Read this first in every session.
 
 Newest dated update first. Each update has the same sections: Done, Open for Claude, Open for Dan.
 
+## Update 2026-11-16 (v0.10.0 closing): the eight improvements, S-N/S-O/S-P/S-Q fixes and the Mac DMG are on `release/v0.10.0` and pushed; Windows and Linux passes are next.
+
+**Done:** the eight improvements (D-84: Chat plan card, Storyboard UX, clean-up panel, durable batch queue with pause, song and cut plan, lyric captions, freestyle Board, QA); S-O (CLI token with auth on, unsaved text kept, Plan tab one Tab stop per row); S-P (real Qwen3.8-27B `storyboard_song`, real Music track to burnt-in export, pause/resume/cancel on a real Iris-3B batch, touch in the iOS Simulator against the web UI; 12 defects fixed); S-Q (compact sidebar drawer below 1180 px, Export caption count, music test gate). Mac DMG built from `500590a6`: manifest complete, `warnings` empty, four installer scripts staged, packaged backend answers health and the smoke suite passes. tsc, 1776 vitest, i18n, full pytest and Playwright pass.
+
+**Open for Claude:**
+- After the Windows and Linux passes: fix what they find, recut `test/rtx4090`, run CI builds on all three platforms, full `e2e_test_suite.py` and the Playwright suite once more on the final tree.
+- Upstreams behind (FU-169): llama.cpp b12387 to b12441, TensorFold 1.2.8 to 1.2.9, sd.cpp `5dcfa79` to `532d2c15` (a bump needs a real Qwen-Image 2.1 image on old and new builds). Bump or write down why not.
+- FU-178 (FP8 KV, MTP), FU-187 (Qwen 4 not released), FU-176, FU-177, FU-139 server-side refusal, release notes (Music Mac-only, H3 hidden, `sd` not in release bundles, stronger borders on by default, no old-format project migration needed).
+- Not seen: the packaged app's window (no screen capture), the compact drawer in the light theme and in the real Tauri window.
+
+**Open for Dan:** Windows 4090 and Linux passes (`docs/plans/rtx4090-test.md`, rows 1 to 37); legal read of the MiniMax H3 licence, then flip `licence_gate.H3_RELEASED`; the R5 voice call with a microphone; listen to the clones; release steps (tag, publish) when ready.
+
 ## Update 2026-11-14 (v0.10.0 all-singing): waves 1 and 2 are merged on `release/v0.10.0`; not pushed, Windows pass and release steps still ahead.
 
 **Done:**

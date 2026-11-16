@@ -24,11 +24,13 @@ export interface PlanBriefProps {
   proposing: boolean;
   elapsed: number;
   modelName: string | null;
+  /** A proposal waits below, or shots exist: "Use these shots" or "Make them in Storyboard" is the main action then, so Propose steps back. */
+  hasProposal?: boolean;
   onPropose: (brief: string, filmSeconds: number | null, shots: number | null) => void;
   onOpenCast: () => void;
 }
 
-export function PlanBrief({ story, project, imageGallery, canPropose, proposing, elapsed, modelName, onPropose, onOpenCast }: PlanBriefProps) {
+export function PlanBrief({ story, project, imageGallery, canPropose, proposing, elapsed, modelName, hasProposal, onPropose, onOpenCast }: PlanBriefProps) {
   const { t } = useTranslation("studio");
   const plan = planOf(project);
   const [brief, setBrief] = useState(plan.brief);
@@ -215,7 +217,7 @@ export function PlanBrief({ story, project, imageGallery, canPropose, proposing,
       <div className="plan-brief__actions">
         <button
           type="button"
-          className="primary-button"
+          className={hasProposal ? "secondary-button" : "primary-button"}
           disabled={!canPropose || proposing || !trimmed}
           aria-describedby="plan-propose-hint"
           onClick={() => {

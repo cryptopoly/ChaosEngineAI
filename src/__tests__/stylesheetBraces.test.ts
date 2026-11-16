@@ -3,17 +3,10 @@
  * browser reads every later rule as nested inside the open one, so whole features (take compare, the sample
  * card) silently lose their layout.
  */
-import { readFileSync, readdirSync, statSync } from "node:fs";
-import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-function cssFiles(dir: string): string[] {
-  return readdirSync(dir).flatMap((name) => {
-    const path = join(dir, name);
-    if (statSync(path).isDirectory()) return name === "node_modules" ? [] : cssFiles(path);
-    return name.endsWith(".css") ? [path] : [];
-  });
-}
+/** Every stylesheet under src, as text, keyed by its path. */
+const sheets = import.meta.glob("../**/*.css", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
 
 /** The first line where a top-level rule starts while another rule is still open, or null. */
 function firstUnclosed(source: string): number | null {
@@ -33,11 +26,11 @@ function firstUnclosed(source: string): number | null {
 }
 
 describe("stylesheets", () => {
-  const files = cssFiles(join(__dirname, ".."));
+  const files = Object.keys(sheets);
   it("finds the stylesheets", () => {
     expect(files.some((f) => f.endsWith("styles.css"))).toBe(true);
   });
   it.each(files)("%s closes every rule before the next top-level rule", (file) => {
-    expect(firstUnclosed(readFileSync(file, "utf8"))).toBeNull();
+    expect(firstUnclosed(sheets[file])).toBeNull();
   });
 });

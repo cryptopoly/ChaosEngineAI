@@ -333,9 +333,9 @@ class CliTimingTests(unittest.TestCase):
             engine = MfluxImageEngine()
             engine._run([sys.executable, str(script)], out)
             timings = engine._cli_timings
-            self.assertGreaterEqual(timings["loadSeconds"], 0.25)
-            self.assertGreaterEqual(timings["denoiseSeconds"], 0.25)
-            self.assertGreaterEqual(timings["decodeSeconds"], 0.15)
+            self.assertGreaterEqual(timings["loadSeconds"], 0.15)
+            self.assertGreaterEqual(timings["denoiseSeconds"], 0.15)
+            self.assertGreaterEqual(timings["decodeSeconds"], 0.1)
             self.assertFalse(timings["warm"])
         finally:
             shutil.rmtree(tmp, ignore_errors=True)

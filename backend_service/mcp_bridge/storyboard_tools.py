@@ -199,14 +199,29 @@ def _summary(project: Any, extra: dict[str, Any] | None = None) -> dict[str, Any
 def _run(fn: Callable[[], Any]) -> Any:
     from backend_service.storyboard.media import MediaError
     from backend_service.storyboard.render_adapter import RenderBusy
-    from backend_service.storyboard.store import RevisionConflict, StoreError
+    from backend_service.storyboard.store import ProjectNotFound, RevisionConflict, StoreError
 
     try:
         return fn()
     except RevisionConflict as exc:
         raise ToolError(f"The project is at revision {exc.current.revision} now. Call storyboard_project get and retry.") from exc
+    except ProjectNotFound as exc:
+        raise ToolError(f"{exc} {_project_id_hint(str(exc))}") from exc
     except (StoreError, MediaError, RenderBusy, ValueError) as exc:
         raise ToolError(str(exc)) from exc
+
+
+def _project_id_hint(message: str) -> str:
+    """How to fix a project name passed as project_id (S-P: chat models of every size sent the name first, and a
+    1.7B model never recovered): the id of the project with that name, or where ids come from."""
+    import re
+
+    asked = re.search(r"'(.*)'", message)
+    name = asked.group(1).strip().casefold() if asked else ""
+    rows = [r for r in _store().list() if str(r.get("name", "")).strip().casefold() == name] if name else []
+    if len(rows) == 1:
+        return f"project_id is the project's id, not its name: '{rows[0]['name']}' has the id {rows[0]['id']}."
+    return "project_id is the id from storyboard_project list, not the project's name."
 
 
 def _op(args: dict[str, Any], op: str, op_args: dict[str, Any]) -> Any:

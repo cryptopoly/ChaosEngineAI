@@ -81,6 +81,58 @@ def _base_url(args: argparse.Namespace) -> str:
     return f"http://{args.host}:{args.port}"
 
 
+# The backend refuses /api/* without the app token when requireApiAuth is on (the default). Like the MCP relay,
+# the CLI then asks the app's loopback session route for the token and tries once more. The token is only sent as
+# a header, only to a loopback backend (CHAOSENGINE_API_TOKEN, set on purpose, goes to any host), and never printed.
+_LOOPBACK_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
+_SESSION_TOKENS: dict[str, str] = {}
+
+
+def _origin(url: str) -> tuple[str, str]:
+    parts = urllib.parse.urlsplit(url)
+    return f"{parts.scheme}://{parts.netloc}", (parts.hostname or "")
+
+
+def _session_token(url: str, *, refresh: bool = False) -> str | None:
+    """CHAOSENGINE_API_TOKEN if set, else the loopback app's session token (cached per backend)."""
+    explicit = os.environ.get("CHAOSENGINE_API_TOKEN", "").strip()
+    if explicit:
+        return explicit
+    origin, host = _origin(url)
+    if host not in _LOOPBACK_HOSTS:
+        return None
+    if not refresh and origin in _SESSION_TOKENS:
+        return _SESSION_TOKENS[origin]
+    try:
+        with urllib.request.urlopen(f"{origin}/api/auth/session", timeout=5.0) as resp:
+            payload = json.loads(resp.read().decode("utf-8", errors="replace"))
+    except (urllib.error.URLError, OSError, ValueError):
+        return None
+    token = str(payload.get("apiToken") or "") if isinstance(payload, dict) else ""
+    if not token:
+        return None
+    _SESSION_TOKENS[origin] = token
+    return token
+
+
+def _open(req: urllib.request.Request, timeout: float):
+    """urlopen that adds the app token: a known one up front, a fresh one after a 401 (one retry)."""
+    known = os.environ.get("CHAOSENGINE_API_TOKEN", "").strip() or _SESSION_TOKENS.get(_origin(req.full_url)[0])
+    if known:
+        req.add_header("Authorization", f"Bearer {known}")
+    try:
+        return urllib.request.urlopen(req, timeout=timeout)
+    except urllib.error.HTTPError as exc:
+        if exc.code != 401:
+            raise
+        fresh = _session_token(req.full_url, refresh=True)
+        if not fresh or fresh == known:
+            raise
+        exc.close()
+        req.add_header("Authorization", f"Bearer {fresh}")
+        return urllib.request.urlopen(req, timeout=timeout)
+
+
 def _request(
     method: str,
     url: str,
@@ -105,7 +157,7 @@ def _request(
         headers = {}
     req = urllib.request.Request(url, data=data, method=method, headers=headers)
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
+        with _open(req, timeout=timeout) as resp:
             raw = resp.read().decode("utf-8", errors="replace")
             status = resp.status
     except urllib.error.HTTPError as exc:
@@ -124,7 +176,7 @@ def _stream(url: str, body: dict[str, Any] | None, *, method: str = "POST", time
     data = json.dumps(body).encode("utf-8") if body is not None else None
     headers = {"Content-Type": "application/json", "Accept": "text/event-stream"}
     req = urllib.request.Request(url, data=data, headers=headers, method=method)
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
+    with _open(req, timeout=timeout) as resp:
         for raw in resp:
             line = raw.decode("utf-8", errors="replace")
             if not line.startswith("data: "):
@@ -1123,7 +1175,7 @@ def cmd_challenges_file(args: argparse.Namespace) -> int:
     url = f"{_base_url(args)}/api/chat/html-challenges/{args.challenge_id}/files/{args.slot_id}"
     req = urllib.request.Request(url, method="GET")
     try:
-        with urllib.request.urlopen(req, timeout=30.0) as resp:
+        with _open(req, timeout=30.0) as resp:
             data = resp.read()
             content_type = resp.headers.get("Content-Type", "")
     except urllib.error.HTTPError as exc:
@@ -1263,7 +1315,7 @@ def cmd_video_output_file(args: argparse.Namespace) -> int:
     url = f"{_base_url(args)}/api/video/outputs/{args.artifact_id}/file"
     req = urllib.request.Request(url, method="GET")
     try:
-        with urllib.request.urlopen(req, timeout=60.0) as resp:
+        with _open(req, timeout=60.0) as resp:
             data = resp.read()
             content_type = resp.headers.get("Content-Type", "")
     except urllib.error.HTTPError as exc:

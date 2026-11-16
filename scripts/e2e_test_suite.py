@@ -2255,11 +2255,11 @@ def phase_6(cap: Capability) -> PhaseResult:
     # it's safe in this read-only phase.
     def _vllm_wsl_status():
         try:
-            with urllib.request.urlopen(
-                f"http://{_HOST}:{_PORT}/api/setup/install-vllm-wsl/status",
-                timeout=10.0,
-            ) as resp:
-                payload = json.loads(resp.read())
+            # With the app token (requireApiAuth is on by default); the bare urlopen got 401.
+            code, raw = _voice_http("GET", "/api/setup/install-vllm-wsl/status", timeout=10.0)
+            if code != 200:
+                raise RuntimeError(f"HTTP {code}")
+            payload = json.loads(raw)
         except Exception as exc:  # noqa: BLE001
             return "fail", f"vllm-wsl status fetch failed: {exc}", {}
         if not isinstance(payload, dict) or "phase" not in payload:

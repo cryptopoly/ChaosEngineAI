@@ -33,7 +33,7 @@ from backend_service.storyboard.models import PROJECT_ID_RE, SCHEMA_VERSION, Def
 PROJECT_FILE = "project.json"
 MAX_PROJECT_BYTES = 16 * 1024 * 1024
 HISTORY_KEEP = 500
-_TOP_KEYS = ("name", "defaults", "references", "export", "plan", "brand", "song")
+_TOP_KEYS = ("name", "defaults", "references", "export", "plan", "brand", "song", "board")
 _LIST_KEYS = ("shots", "audio", "captions")
 
 # schemaVersion n -> function turning an n dict into an n+1 dict. Add one entry per format change.

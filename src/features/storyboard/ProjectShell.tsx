@@ -1,12 +1,14 @@
 /**
  * One open project (D-65): the header with the back link, the name, Undo / Redo and the conflict chip, then
- * six tabs in the order of the work: Overview, Plan, Cast, Storyboard, Mixer, Export. The shell owns the project
+ * seven tabs in the order of the work: Overview, Plan, Cast, Storyboard, Board (the freestyle board, S-M2), Mixer,
+ * Export. The shell owns the project
  * state, so every tab works on this project only, and handles the offline, loading, not-found and error
  * states once for all of them.
  */
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { ImageOutputArtifact, VideoOutputArtifact } from "../../types";
+import { BoardTab } from "./board/BoardTab";
 import { CastTab } from "./CastTab";
 import { ExportTab } from "./ExportTab";
 import type { VideoFitSource } from "./formatLogic";
@@ -46,7 +48,7 @@ export interface ProjectShellProps {
 
 export type ShellState = "offline" | "notFound" | "error" | "loading" | "ready";
 
-/** What the shell shows instead of (or above) the tabs: handled once here for all six tabs. */
+/** What the shell shows instead of (or above) the tabs: handled once here for all seven tabs. */
 export function shellState(input: { backendOnline: boolean; notFound: boolean; loaded: boolean; error: string | null }): ShellState {
   if (!input.backendOnline) return "offline";
   if (input.notFound) return "notFound";
@@ -119,6 +121,7 @@ export function ProjectShell({ projectId, fallbackName, tab, backendOnline, deps
             onFocused={() => setFocusShotId(null)}
           />
         ) : null}
+        {tab === "freestyle" ? <BoardTab story={story} project={project} chat={deps.chat ?? {}} onTab={onTab} /> : null}
         {tab === "mixer" ? (
           <MixerTab story={story} project={project} timeline={timeline} dataDirectory={deps.dataDirectory} onOpenShot={openShot} render={render} />
         ) : null}

@@ -1,5 +1,6 @@
 /**
- * Where the Projects entry opens (D-65): the project list, or one project on one of its six tabs (Plan, S8). The route
+ * Where the Projects entry opens (D-65): the project list, or one project on one of its seven tabs (Plan, S8; Board,
+ * S-M2, whose id is `freestyle` because old routes may hold the retired id `board`). The route
  * lives in local storage so the sidebar entry reopens where the user left off, and each project remembers
  * its own last tab. Anything that sends the user into a project (a gallery's "Use in storyboard", an old tab
  * id) writes the route first and then moves to the "storyboard" tab; an already open view hears the change
@@ -7,7 +8,7 @@
  */
 import { useCallback, useEffect, useState } from "react";
 
-export const PROJECT_TABS = ["overview", "plan", "cast", "storyboard", "mixer", "export"] as const;
+export const PROJECT_TABS = ["overview", "plan", "cast", "storyboard", "freestyle", "mixer", "export"] as const;
 export type ProjectTabId = (typeof PROJECT_TABS)[number];
 
 export interface ProjectRoute {

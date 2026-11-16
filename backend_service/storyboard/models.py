@@ -26,6 +26,7 @@ MAX_SONG_SECONDS = 1200.0  # a song a project can be cut to (S-M1): 20 minutes
 MAX_BEATS = 8000  # 20 minutes at 400 beats a minute
 MAX_SECTIONS = 200
 MAX_LYRICS = 500
+BOARD_EXTENT = 100000.0  # how far a freestyle board card can sit from the origin, in board pixels (S-M2)
 
 _ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
 PROJECT_ID_RE = re.compile(r"^[0-9a-f]{16}$")
@@ -393,6 +394,20 @@ class BatchRecord(_Model):
     resumes: int = Field(0, ge=0, le=10000)
 
 
+class BoardPos(_Model):
+    """Where one card sits on the freestyle board (S-M2), in board pixels at zoom 1."""
+
+    x: float = Field(0.0, ge=-BOARD_EXTENT, le=BOARD_EXTENT)
+    y: float = Field(0.0, ge=-BOARD_EXTENT, le=BOARD_EXTENT)
+
+
+class Board(_Model):
+    """The freestyle board (S-M2): card positions by shot or reference id. A card with no position is laid out
+    by the app; positions of shots or references that are gone are ignored (and dropped on the next move)."""
+
+    pos: dict[Id, BoardPos] = Field(default_factory=dict, max_length=2 * MAX_SHOTS)
+
+
 class Project(_Model):
     schemaVersion: int = SCHEMA_VERSION
     revision: int = Field(1, ge=1)
@@ -405,6 +420,7 @@ class Project(_Model):
     brand: Brand = Field(default_factory=Brand)
     planChat: list[PlanMessage] = Field(default_factory=list, max_length=MAX_PLAN_CHAT)  # not undoable
     song: Song | None = None  # the song a music video is cut to (S-M1)
+    board: Board = Field(default_factory=Board)  # freestyle board card positions (S-M2)
     shots: list[Shot] = Field(default_factory=list, max_length=MAX_SHOTS)
     audio: list[AudioClip] = Field(default_factory=list, max_length=MAX_AUDIO)
     export: ExportSettings = Field(default_factory=ExportSettings)

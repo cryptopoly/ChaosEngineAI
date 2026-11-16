@@ -318,11 +318,11 @@ test("takes: pick another take, then lock the shot and the strip follows", async
   await expect(page.locator(".shot-card__status")).toHaveText("Still only");
 });
 
-test("tabs: arrow keys move between the six tabs and the project reopens on its last tab", async ({ page, request }) => {
+test("tabs: arrow keys move between the seven tabs and the project reopens on its last tab", async ({ page, request }) => {
   const project = await seedProject(request, { name: "Keys Film", shots: 1 });
   await openProject(page, project.name, "Overview");
   const tabs = page.getByRole("tablist", { name: "Project" });
-  await expect(tabs.getByRole("tab")).toHaveText([/^Overview/, /^Plan/, /^Cast/, /^Storyboard/, /^Mixer/, /^Export/]);
+  await expect(tabs.getByRole("tab")).toHaveText([/^Overview/, /^Plan/, /^Cast/, /^Storyboard/, /^Board/, /^Mixer/, /^Export/]);
   await tabs.getByRole("tab", { name: "Overview" }).focus();
   await page.keyboard.press("ArrowRight");
   await expect(tabs.getByRole("tab", { name: /^Plan/ })).toHaveAttribute("aria-selected", "true");

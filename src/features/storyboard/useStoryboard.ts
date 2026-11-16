@@ -9,7 +9,9 @@ import {
   cancelStoryboardBatch,
   getStoryboardBatch,
   getStoryboardProject,
+  pauseStoryboardBatch,
   redoStoryboard,
+  resumeStoryboardBatch,
   runStoryboardOp,
   startStoryboardBatch,
   undoStoryboard,
@@ -20,11 +22,12 @@ import type {
   StoryboardBatchWhat,
   StoryboardOpArgs,
   StoryboardOpName,
+  StoryboardPausedProgress,
   StoryboardProject,
   StoryboardProjectPayload,
   StoryboardTimeline,
 } from "../../types";
-import { classifyFailure, isBatchRunning } from "./storyboardLogic";
+import { classifyFailure, isBatchPaused, isBatchRunning } from "./storyboardLogic";
 
 export const BATCH_POLL_MS = 1500;
 
@@ -47,8 +50,10 @@ export interface UseStoryboardResult {
   /** True while an op, undo or redo is in flight. */
   busy: boolean;
   batch: StoryboardBatchRecord | null;
-  /** Live progress of the running batch (step, elapsed, time left); null when it reports none. */
-  batchProgress?: JobProgress | null;
+  /** Live progress of the running batch (step, elapsed, time left), or a paused batch's steps left; null when none. */
+  batchProgress?: JobProgress | StoryboardPausedProgress | null;
+  /** True from Pause until the batch stops after its current step (S-M2). */
+  pausing?: boolean;
   reload: () => Promise<void>;
   op: <K extends StoryboardOpName>(name: K, args: StoryboardOpArgs[K]) => Promise<boolean>;
   /**
@@ -64,6 +69,16 @@ export interface UseStoryboardResult {
   /** `draft`: Make drafts (the fast still model at a smaller size); `what: "final"` redoes the kept shots. */
   startBatch: (what: StoryboardBatchWhat, shotIds?: string[], force?: boolean, draft?: boolean) => Promise<boolean>;
   cancelBatch: () => Promise<void>;
+  /** Stop the running batch after the step in progress; it keeps its remaining steps (S-M1 route). */
+  pauseBatch?: () => Promise<void>;
+  /** Carry on with the paused batch from its remaining steps. */
+  resumeBatch?: () => Promise<boolean>;
+  /**
+   * Run a project route that answers with the project (attach a song, lyric captions) in the same queue as the
+   * ops, against the newest revision; a stale revision adopts the server's project like an op (resolves false).
+   * Any other failure rejects, so the caller shows it where it was asked.
+   */
+  call?: (run: (projectId: string, revision: number) => Promise<StoryboardProjectPayload>) => Promise<boolean>;
 }
 
 function message(err: unknown): string {
@@ -80,7 +95,8 @@ export function useStoryboard(enabled: boolean, projectId: string | null): UseSt
   const [notice, setNotice] = useState<StoryboardNotice>(null);
   const [busy, setBusy] = useState(false);
   const [batch, setBatch] = useState<StoryboardBatchRecord | null>(null);
-  const [batchProgress, setBatchProgress] = useState<JobProgress | null>(null);
+  const [batchProgress, setBatchProgress] = useState<JobProgress | StoryboardPausedProgress | null>(null);
+  const [pausing, setPausing] = useState(false);
 
   const projectRef = useRef<StoryboardProject | null>(null);
   const idRef = useRef<string | null>(projectId);
@@ -93,7 +109,8 @@ export function useStoryboard(enabled: boolean, projectId: string | null): UseSt
     setTimeline(payload.timeline);
     const latest = payload.project.batches[payload.project.batches.length - 1] ?? null;
     setBatch((current) => {
-      if (isBatchRunning(latest)) return latest;
+      // A running batch, or one paused (by Pause or a restart) that can still carry on: the bar shows it.
+      if (isBatchRunning(latest) || isBatchPaused(latest)) return latest;
       return current && latest && current.id === latest.id ? latest : current;
     });
   }, []);
@@ -150,7 +167,10 @@ export function useStoryboard(enabled: boolean, projectId: string | null): UseSt
 
   /** Run one change after the previous one finished, always against the newest revision. */
   const mutate = useCallback(
-    (run: (id: string, revision: number, project: StoryboardProject) => Promise<StoryboardProjectPayload> | null): Promise<boolean> => {
+    (
+      run: (id: string, revision: number, project: StoryboardProject) => Promise<StoryboardProjectPayload> | null,
+      rethrow = false,
+    ): Promise<boolean> => {
       const task = queue.current.then(async () => {
         const id = idRef.current;
         const current = projectRef.current;
@@ -163,6 +183,8 @@ export function useStoryboard(enabled: boolean, projectId: string | null): UseSt
           setError(null);
           return true;
         } catch (err) {
+          // `call` hands every failure but a stale revision back to its caller, to show where it was asked.
+          if (rethrow && classifyFailure(err).kind !== "conflict") throw err;
           await handleFailure(err);
           return false;
         } finally {
@@ -217,10 +239,48 @@ export function useStoryboard(enabled: boolean, projectId: string | null): UseSt
     if (!id || !batch) return;
     try {
       await cancelStoryboardBatch(id, batch.id);
+      // Nothing polls a paused batch: read the cancelled record and the project back now.
+      if (isBatchPaused(batch)) {
+        setBatchProgress(null);
+        await reload();
+      }
+    } catch (err) {
+      setError(message(err));
+    }
+  }, [batch, reload]);
+
+  const pauseBatch = useCallback(async () => {
+    const id = idRef.current;
+    if (!id || !batch || !isBatchRunning(batch)) return;
+    try {
+      await pauseStoryboardBatch(id, batch.id);
+      setPausing(true);
     } catch (err) {
       setError(message(err));
     }
   }, [batch]);
+
+  const resumeBatch = useCallback(async () => {
+    const id = idRef.current;
+    const current = projectRef.current;
+    if (!id || !current || !batch || !isBatchPaused(batch)) return false;
+    try {
+      const resumed = await resumeStoryboardBatch(id, batch.id, current.revision);
+      setBatch(resumed.batch);
+      setBatchProgress(null);
+      projectRef.current = { ...current, revision: resumed.revision };
+      setError(null);
+      return true;
+    } catch (err) {
+      await handleFailure(err);
+      return false;
+    }
+  }, [batch, handleFailure]);
+
+  const call = useCallback(
+    (run: (projectId: string, revision: number) => Promise<StoryboardProjectPayload>) => mutate((id, revision) => run(id, revision), true),
+    [mutate],
+  );
 
   // Poll the batch while it runs; reload the project when its revision moved (new takes) and at the end.
   const batchId = batch?.id ?? null;
@@ -234,7 +294,9 @@ export function useStoryboard(enabled: boolean, projectId: string | null): UseSt
         const status = await getStoryboardBatch(projectId, batchId);
         if (stopped) return;
         setBatch(status.batch);
-        setBatchProgress(isBatchRunning(status.batch) ? status.progress ?? null : null);
+        const live = isBatchRunning(status.batch);
+        setBatchProgress(live || isBatchPaused(status.batch) ? status.progress ?? null : null);
+        if (!live) setPausing(false);
         const moved = status.revision !== projectRef.current?.revision;
         if (moved || !isBatchRunning(status.batch)) await reload();
         if (!stopped && isBatchRunning(status.batch)) timer = setTimeout(() => void tick(), BATCH_POLL_MS);
@@ -252,6 +314,21 @@ export function useStoryboard(enabled: boolean, projectId: string | null): UseSt
     };
   }, [enabled, projectId, batchId, running, reload]);
 
+  // A paused batch is not polled: read its bar data (steps left, time left) once.
+  const paused = isBatchPaused(batch);
+  useEffect(() => {
+    if (!enabled || !projectId || !batchId || !paused) return;
+    let stopped = false;
+    getStoryboardBatch(projectId, batchId)
+      .then((status) => {
+        if (!stopped && isBatchPaused(status.batch)) setBatchProgress(status.progress ?? null);
+      })
+      .catch(() => undefined);
+    return () => {
+      stopped = true;
+    };
+  }, [enabled, projectId, batchId, paused]);
+
   return {
     projectId,
     project,
@@ -264,6 +341,7 @@ export function useStoryboard(enabled: boolean, projectId: string | null): UseSt
     busy,
     batch,
     batchProgress,
+    pausing,
     reload,
     op,
     opFrom,
@@ -271,5 +349,8 @@ export function useStoryboard(enabled: boolean, projectId: string | null): UseSt
     redo,
     startBatch,
     cancelBatch,
+    pauseBatch,
+    resumeBatch,
+    call,
   };
 }

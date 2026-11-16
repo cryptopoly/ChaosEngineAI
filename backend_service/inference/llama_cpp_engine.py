@@ -415,15 +415,17 @@ def _speculative_args(
 ) -> tuple[list[str], str | None]:
     """llama-server speculative-decoding flags for a GGUF load.
 
-    Preference order (FU-047 / FU-089):
+    Preference order (FU-047 / FU-089 / FU-178):
 
-    1. Baked-in MTP heads in the model itself → ``draft-mtp``.
-    2. A drafter the author publishes in a repo of its own (pinned by repo
-       id), else a sidecar beside the GGUF → ``-md <file>`` + its type,
-       in llama.cpp's own order (mtp- > dspark- > dflash- > eagle3-).
-       DFlash 2 drafters are ``dflash-`` files; llama.cpp detects v2
-       from the file's metadata, so the flags are the same.
-    3. Nothing to draft with → ``ngram-mod``: draft-free n-gram lookup,
+    1. A block drafter (DFlash / DFlash 2 / DSpark): one the author publishes
+       in a repo of its own (pinned by repo id), else a ``dspark-`` /
+       ``dflash-`` sidecar beside the GGUF → ``-md <file>`` + its type.
+       Measured ahead of MTP on Qwen3.8-27B (M4 Max: 36-40 tok/s against 19
+       for the baked-in MTP head and 9 without drafting). DFlash 2 drafters
+       run as ``draft-dflash``: llama.cpp reads the variant from the file.
+    2. Baked-in MTP heads in the model itself → ``draft-mtp``.
+    3. Any other sidecar (``mtp-``, ``eagle3-``), in llama.cpp's order.
+    4. Nothing to draft with → ``ngram-mod``: draft-free n-gram lookup,
        lossless, ~16 MB, pays off on repetitive text (code edits,
        summaries, reasoning echoed in the answer).
 
@@ -431,6 +433,7 @@ def _speculative_args(
     llama-server gets standard decode plus a note, never a startup error.
     """
     from backend_service.helpers.text_gguf import (  # noqa: PLC0415
+        BLOCK_DRAFT_TYPES,
         resolve_pinned_drafter,
         resolve_spec_sidecar,
     )
@@ -450,7 +453,33 @@ def _speculative_args(
     def supports(spec_type: str) -> bool:
         return _llama_server_supports(binary, spec_type)
 
-    # 1. Baked-in MTP heads. Authoritative check peeks the GGUF tensors
+    def drafter_args(spec_type: str, sidecar_path: str) -> tuple[list[str], str]:
+        args = ["--model-draft", sidecar_path, "--spec-type", spec_type]
+        if spec_type == "draft-mtp":
+            args += ["--spec-draft-n-max", str(get_mtp_draft_n(repo) or 2)]
+        elif spec_type in BLOCK_DRAFT_TYPES:
+            # Block drafters: ask for a full block; llama.cpp clamps to
+            # the drafter's trained block size (15 for a b16 DFlash).
+            args += ["--spec-draft-n-max", "15"]
+        return args, (
+            f"Speculative decoding active ({spec_type} with drafter "
+            f"{Path(sidecar_path).name})."
+        )
+
+    sidecar = resolve_pinned_drafter(repo, resolved_gguf) or resolve_spec_sidecar(resolved_gguf)
+    sidecar_note: str | None = None
+    if sidecar is not None and not supports(sidecar[0]):
+        sidecar_note = (
+            f"Found drafter {Path(sidecar[1]).name} but the installed "
+            f"llama-server has no {sidecar[0]}; run scripts/update-llama-cpp.sh."
+        )
+        sidecar = None
+
+    # 1. A block drafter in hand.
+    if sidecar is not None and sidecar[0] in BLOCK_DRAFT_TYPES:
+        return drafter_args(*sidecar)
+
+    # 2. Baked-in MTP heads. Authoritative check peeks the GGUF tensors
     # when a local path is supplied; repo-name aliases otherwise.
     tensor_probe = model_has_mtp_tensors(path)
     has_mtp_tensors = tensor_probe if tensor_probe is not None else is_mtp_gguf_repo(repo)
@@ -462,31 +491,11 @@ def _speculative_args(
             "D2H embedding transfers (per upstream PR #22673)."
         )
 
-    # 2. A drafter the model's author published in a repo of its own, then a
-    # sidecar beside the model file.
-    sidecar = resolve_pinned_drafter(repo, resolved_gguf) or resolve_spec_sidecar(resolved_gguf)
+    # 3. Any other drafter (an mtp- or eagle3- sidecar).
     if sidecar is not None:
-        spec_type, sidecar_path = sidecar
-        if supports(spec_type):
-            args = ["--model-draft", sidecar_path, "--spec-type", spec_type]
-            if spec_type == "draft-mtp":
-                args += ["--spec-draft-n-max", str(get_mtp_draft_n(repo) or 2)]
-            elif spec_type in ("draft-dflash", "draft-dspark"):
-                # Block drafters: ask for a full block; llama.cpp clamps to
-                # the drafter's trained block size (15 for a b16 DFlash).
-                args += ["--spec-draft-n-max", "15"]
-            return args, (
-                f"Speculative decoding active ({spec_type} with drafter "
-                f"{Path(sidecar_path).name})."
-            )
-        sidecar_note = (
-            f"Found drafter {Path(sidecar_path).name} but the installed "
-            f"llama-server has no {spec_type}; run scripts/update-llama-cpp.sh."
-        )
-    else:
-        sidecar_note = None
+        return drafter_args(*sidecar)
 
-    # 3. Draft-free n-gram lookup.
+    # 4. Draft-free n-gram lookup.
     if supports("ngram-mod"):
         note = (
             "Speculative decoding active (ngram-mod: no draft model; speeds up "

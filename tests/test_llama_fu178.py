@@ -269,3 +269,50 @@ class Qwen38SpeculativeTests(unittest.TestCase):
                 path="/m/Qwen3.8-27B-UD-Q4_K_M.gguf", repo="unsloth/Qwen3.8-27B-GGUF",
             )
         self.assertEqual(args, ["--spec-type", "draft-mtp", "--spec-draft-n-max", "3"])
+
+
+class DFlash2PreferenceTests(unittest.TestCase):
+    """llama.cpp's ``draft-dflash`` runs every DFlash-family drafter and picks
+    the DFlash 2 code from the drafter's metadata (b12441 logs ``adding
+    speculative implementation 'draft-dflash2'``), so the app keeps emitting
+    ``draft-dflash``; a block drafter now outranks a baked-in MTP head."""
+
+    def _args(self, *, drafter, mtp: bool):
+        from backend_service.inference.llama_cpp_engine import _speculative_args
+
+        with (
+            mock.patch("backend_service.inference.llama_cpp_engine._llama_server_supports", return_value=True),
+            mock.patch("backend_service.inference._mtp.model_has_mtp_tensors", return_value=mtp),
+            mock.patch("backend_service.helpers.text_gguf.resolve_pinned_drafter", return_value=drafter),
+            mock.patch("backend_service.helpers.text_gguf.resolve_spec_sidecar", return_value=None),
+        ):
+            return _speculative_args(
+                "/bin/llama-server", resolved_gguf="/m/Qwen3.8-27B-Q4_K_M.gguf",
+                path="/m/Qwen3.8-27B-Q4_K_M.gguf", repo="lmstudio-community/Qwen3.8-27B-GGUF",
+            )
+
+    def test_catalog_qwen38_gguf_is_paired_with_the_dflash2_drafter(self):
+        from backend_service.helpers.text_gguf import pinned_drafter
+
+        self.assertEqual(
+            pinned_drafter("lmstudio-community/Qwen3.8-27B-GGUF"),
+            ("z-lab/Qwen3.8-27B-DFlash2-GGUF", "Qwen3.8-27B-DFlash2-Q8_0.gguf", "draft-dflash"),
+        )
+
+    def test_block_drafter_outranks_a_baked_in_mtp_head(self):
+        args, note = self._args(drafter=("draft-dflash", "/d/Qwen3.8-27B-DFlash2-Q8_0.gguf"), mtp=True)
+        self.assertEqual(
+            args,
+            ["--model-draft", "/d/Qwen3.8-27B-DFlash2-Q8_0.gguf", "--spec-type", "draft-dflash", "--spec-draft-n-max", "15"],
+        )
+        self.assertIn("Qwen3.8-27B-DFlash2-Q8_0.gguf", note)
+
+    def test_explicit_dflash2_type_also_asks_for_a_full_block(self):
+        # Without the full block llama.cpp drafts 3 tokens and the drafter
+        # lost a third of its speed (26 against 37 tok/s on the M4 Max).
+        args, _ = self._args(drafter=("draft-dflash2", "/d/x.gguf"), mtp=False)
+        self.assertEqual(args[-2:], ["--spec-draft-n-max", "15"])
+
+    def test_mtp_head_still_used_without_a_drafter(self):
+        args, _ = self._args(drafter=None, mtp=True)
+        self.assertEqual(args[:2], ["--spec-type", "draft-mtp"])

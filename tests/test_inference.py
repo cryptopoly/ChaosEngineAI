@@ -258,9 +258,19 @@ class LlamaCppCommandTests(unittest.TestCase):
         self.assertEqual(command[command.index("--spec-type") + 1], "draft-dflash")
         self.assertEqual(command[command.index("--spec-draft-n-max") + 1], "15")
 
-    def test_mtp_sidecar_outranks_dflash(self):
+    def test_dflash_sidecar_outranks_mtp(self):
+        # FU-178: the block drafter decoded about twice as fast as the MTP head
+        # on Qwen3.8-27B, so it wins when both sidecars are on disk.
         command, _note, root = self._build_with_dir(
             ["M-Q4_K_M.gguf", "dflash-M-Q4_K_M.gguf", "mtp-M-Q4_K_M.gguf"],
+            "M-Q4_K_M.gguf",
+        )
+        self.assertEqual(command[command.index("--spec-type") + 1], "draft-dflash")
+        self.assertEqual(command[command.index("--model-draft") + 1], str(Path(root, "dflash-M-Q4_K_M.gguf")))
+
+    def test_mtp_sidecar_used_without_a_block_drafter(self):
+        command, _note, root = self._build_with_dir(
+            ["M-Q4_K_M.gguf", "eagle3-M.gguf", "mtp-M-Q4_K_M.gguf"],
             "M-Q4_K_M.gguf",
         )
         self.assertEqual(command[command.index("--spec-type") + 1], "draft-mtp")

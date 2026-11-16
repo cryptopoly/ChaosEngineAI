@@ -58,7 +58,7 @@ class PlatformAndAssets(unittest.TestCase):
         self.assertEqual(asset.name, "tensorfold-1.2.7-linux-x86_64.tar.gz")
         self.assertTrue(asset.url.endswith("/v1.2.7/tensorfold-1.2.7-linux-x86_64.tar.gz"))
         self.assertEqual(asset.sha256_url, asset.url + ".sha256")
-        self.assertEqual(native.release_asset("linux-aarch64").name, "tensorfold-1.2.8-linux-aarch64.tar.gz")
+        self.assertEqual(native.release_asset("linux-aarch64").name, "tensorfold-1.2.9-linux-aarch64.tar.gz")
 
     def test_windows_has_no_asset_unless_self_hosted(self):
         self.assertIsNone(native.release_asset("windows-x86_64", environ={}))

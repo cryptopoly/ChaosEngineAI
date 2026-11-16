@@ -24,7 +24,7 @@ Every fact below was taken from TensorFold's source at v0.6.6 (the last
 Python release: ``src/tensorfold/families/*/__init__.py`` ``MODEL_TYPES`` /
 ``MODELS`` / ``DRAFTER``), then checked against the native binary's
 ``tensorfold capabilities --json`` and recipe docs (1.2.7, re-checked at
-1.2.8). Families the native binary does not serve carry ``native=False``. The
+1.2.8 and 1.2.9). Families the native binary does not serve carry ``native=False``. The
 rows after Ternary Bonsai 2 were added from the 1.2.7 binary itself (FU-168),
 Flint from 1.2.8; a row with no ``tested_repos`` accounts for a family the
 binary reports that the app cannot offer, and its ``note`` says why. The last
@@ -76,10 +76,10 @@ class TensorFoldFamily:
     repo_aliases: tuple[str, ...] = ()
     # False when the native 1.x binary does not serve this checkpoint (its
     # ``capabilities --json`` lacks the family, or its docs say it refuses
-    # it); only the older Python install (0.6.6) can. Checked at v1.2.8.
+    # it); only the older Python install (0.6.6) can. Checked at v1.2.9.
     native: bool = True
     # True when the binary lists this row's ``model_type`` yet refuses its
-    # checkpoint by name (1.2.7 and 1.2.8 serve the dense Gemma 4 31B and 12B
+    # checkpoint by name (1.2.7 to 1.2.9 serve the dense Gemma 4 31B and 12B
     # under ``gemma4`` and refuse the 26B-A4B: ``GemmaMoeNotServed`` on
     # ``enable_moe_block``), so the binary's family list is no evidence that
     # it serves this row. Re-check when NATIVE_VERSION moves.
@@ -192,7 +192,7 @@ TENSORFOLD_FAMILIES: tuple[TensorFoldFamily, ...] = (
         # `capabilities --json` lists lfm3_vl and `info` admits the official
         # LFM3-VL-2B MLX checkpoints, but 1.2.7 refuses to serve them (checked
         # 2026-11-11 on LiquidAI/LFM3-VL-2B-MLX-4bit, with and without --vision);
-        # 1.2.8 still carries the same refusal (zig/src/native/lfm3.zig).
+        # 1.2.8 and 1.2.9 still carry the same refusal (zig/src/native/lfm3.zig).
         # List the repos here once a release serves them, with vision=True.
         key="lfm3_vl",
         title="LFM3-VL",

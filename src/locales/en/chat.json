@@ -488,7 +488,9 @@
       "stepOf": "step {step} of {total}",
       "tookFor": "took {elapsed}",
       "clipOf": "clip {n} of {total}",
-      "stillOf": "still {n} of {total}"
+      "stillOf": "still {n} of {total}",
+      "notStarted": "Not started",
+      "notStartedHint": "The model was told why and can fix the call."
     },
     "kind": {
       "image": "Image",
@@ -504,6 +506,10 @@
       "label": "Renders auto-approved",
       "tooltip": "Renders in this chat run without a plan card. This ends after {hours} hours or when the app restarts.",
       "off": "Turn off"
+    },
+    "detached": {
+      "waiting": "This reply is waiting for your answer to the plan below.",
+      "running": "This reply is still being made. It shows here when it is done."
     }
   },
   "skillsChat": {

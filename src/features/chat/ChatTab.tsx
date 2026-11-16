@@ -11,6 +11,7 @@ import { readKvStrategyOverride, writeKvStrategyOverride, type KvStrategyOverrid
  */
 type WarmModelType = WarmModel;
 import type { ChatModelOption } from "../../types/chat";
+import type { DetachedTurn } from "./detachedTurn";
 import { ChatSidebar } from "./ChatSidebar";
 import { ChatHeader } from "./ChatHeader";
 import { ChatThread } from "./ChatThread";
@@ -50,6 +51,8 @@ export interface ChatTabProps {
   draftMessage: string;
   pendingImages: string[];
   chatBusySessionId: string | null;
+  /** S-J: this thread's turn that runs on after a window reload, with the plan cards it waits on. */
+  detachedTurn?: DetachedTurn | null;
   busy: boolean;
   busyAction: string | null;
   chatScrollRef: Ref<HTMLDivElement>;
@@ -155,6 +158,7 @@ export function ChatTab({
   draftMessage,
   pendingImages,
   chatBusySessionId,
+  detachedTurn = null,
   busy,
   busyAction,
   chatScrollRef,
@@ -493,6 +497,7 @@ export function ChatTab({
         <ChatThread
           activeChat={activeChat}
           chatBusySessionId={chatBusySessionId}
+          detachedTurn={detachedTurn}
           chatScrollRef={chatScrollRef}
           serverLoading={serverLoading}
           engineLabel={engineLabel}

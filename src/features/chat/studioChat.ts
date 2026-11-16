@@ -244,6 +244,12 @@ export function studioJobId(toolCall: ToolCallInfo): string | null {
   return typeof id === "string" && id ? id : null;
 }
 
+/** The reason a studio call was refused before it started (the pre-check, or the tool's own refusal), or null. */
+export function refusalReason(toolCall: ToolCallInfo): string | null {
+  const error = toolCall.data?.error;
+  return toolCall.renderAs === "studio" && !toolCall.running && typeof error === "string" && error ? error : null;
+}
+
 export function isFinished(job: Pick<StudioJob, "state">): boolean {
   return ["done", "failed", "cancelled", "interrupted"].includes(job.state);
 }

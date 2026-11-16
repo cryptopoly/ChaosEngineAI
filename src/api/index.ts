@@ -683,6 +683,7 @@ export {
   fetchBusyAdvice,
   fetchStudioJob,
   fetchStudioJobMedia,
+  fetchStudioTurn,
   forkChatSession,
   generateChat,
   generateChatStream,
@@ -695,6 +696,7 @@ export type {
   SessionDocument,
   StreamCallbacks,
   StudioPlanDecisionBody,
+  StudioTurn,
 } from "./chat";
 
 export {

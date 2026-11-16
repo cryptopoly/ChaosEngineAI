@@ -21,6 +21,7 @@
 
 import type { Dispatch, SetStateAction } from "react";
 import type { ChatSession, WorkspaceData } from "../../types";
+import { titleFromPrompt } from "../../utils/chat";
 
 
 type WorkspaceSetter = Dispatch<SetStateAction<WorkspaceData>>;
@@ -38,6 +39,11 @@ export function appendOptimisticTurn(
       session.id === sessionId
         ? {
             ...session,
+            // The first message names the thread at once (the backend does the same when the turn starts), so a
+            // running thread is not listed as "New chat" until its reply ends.
+            title: isUntitledFirstTurn(session)
+              ? titleFromPrompt(prompt, current.chatSessions, session.id)
+              : session.title,
             updatedAt,
             messages: [
               ...session.messages,
@@ -58,6 +64,11 @@ export function appendOptimisticTurn(
         : session,
     ),
   }));
+}
+
+
+function isUntitledFirstTurn(session: ChatSession): boolean {
+  return (session.title ?? "").trim() === "New chat" && !session.messages.some((m) => m.role === "user");
 }
 
 

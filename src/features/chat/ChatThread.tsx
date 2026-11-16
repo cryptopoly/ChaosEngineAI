@@ -15,7 +15,8 @@ import { ToolCallCard } from "../../components/ToolCallCard";
 import { ChatEmptyStateBanner } from "./ChatEmptyStateBanner";
 import { StudioJobCard } from "./StudioJobCard";
 import { StudioPlanCard } from "./StudioPlanCard";
-import { mergeToolCalls, studioJobId } from "./studioChat";
+import { mergeToolCalls, refusalReason, studioJobId } from "./studioChat";
+import type { DetachedTurn } from "./detachedTurn";
 import { formatClock, formatFullTime, isValidTime } from "../../utils/chatTime";
 import type { ChatSession, ChatMessageVariant, LaunchPreferences, ModelLoadingState, WarmModel } from "../../types";
 import { number } from "../../utils";
@@ -43,6 +44,8 @@ import {
 export interface ChatThreadProps {
   activeChat: ChatSession | undefined;
   chatBusySessionId: string | null;
+  /** S-J: this thread's turn that runs on after a window reload, with the plan cards it waits on. */
+  detachedTurn?: DetachedTurn | null;
   chatScrollRef: Ref<HTMLDivElement>;
   serverLoading: ModelLoadingState | null;
   engineLabel: string;
@@ -93,6 +96,7 @@ export interface ChatThreadProps {
 export function ChatThread({
   activeChat,
   chatBusySessionId,
+  detachedTurn = null,
   chatScrollRef,
   serverLoading,
   engineLabel,
@@ -330,7 +334,7 @@ export function ChatThread({
               {message.toolCalls?.length ? (
                 <div style={{ margin: "4px 0" }}>
                   {mergeToolCalls(message.toolCalls).map((tc) =>
-                    tc.renderAs === "studio" && (studioJobId(tc) || tc.data?.declined) ? (
+                    tc.renderAs === "studio" && (studioJobId(tc) || tc.data?.declined || refusalReason(tc)) ? (
                       <StudioJobCard key={tc.id} toolCall={tc} />
                     ) : (
                       <ToolCallCard key={tc.id} toolCall={tc} />
@@ -525,6 +529,26 @@ export function ChatThread({
           )}
         </div>
       )}
+      {detachedTurn && detachedTurn.sessionId === activeChat?.id ? (
+        <div className="message-bubble assistant message-bubble--detached" data-testid="detached-turn">
+          <div className="message-header">
+            <span className="eyebrow">{t("thread.roleAgent", { defaultValue: "Agent" })}</span>
+          </div>
+          <p className="message-detached-note" role="status">
+            {detachedTurn.plans.length
+              ? t("studioChat.detached.waiting", { defaultValue: "This reply is waiting for your answer to the plan below." })
+              : t("studioChat.detached.running", { defaultValue: "This reply is still being made. It shows here when it is done." })}
+          </p>
+          {detachedTurn.plans.length ? (
+            <div className="studio-plan-stack">
+              {detachedTurn.plans.map((plan) => (
+                <StudioPlanCard key={plan.planId} plan={plan} sessionId={activeChat?.id}
+                  onEditByChat={() => document.querySelector<HTMLTextAreaElement>(".composer textarea")?.focus()} />
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
       {serverLoading ? (
         <div className="message-bubble assistant">
           <span className="eyebrow">{t("thread.roleAgent", { defaultValue: "Agent" })}</span>

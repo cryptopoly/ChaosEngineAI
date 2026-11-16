@@ -5,7 +5,7 @@ import type { StudioJob, ToolCallInfo } from "../../types";
 import { JobProgressLine } from "../../components/JobProgressLine";
 import { formatDuration, isValidTime, formatClock, formatFullTime } from "../../utils/chatTime";
 import { openProjectAt } from "../storyboard/projectRoute";
-import { isFinished, jobPercent, libraryTab, mediaKind, openAppTab, studioJobId } from "./studioChat";
+import { isFinished, jobPercent, libraryTab, mediaKind, openAppTab, refusalReason, studioJobId } from "./studioChat";
 
 const POLL_MS = 1500;
 
@@ -16,6 +16,26 @@ function DeclinedCard({ toolCall }: { toolCall: ToolCallInfo }) {
     <div className="studio-job-card studio-job-card--declined">
       <span className="studio-job-card__tool">{toolCall.name}</span>
       <span>{t("studioChat.job.declined", { defaultValue: "Declined. Nothing was made." })}</span>
+    </div>
+  );
+}
+
+/**
+ * A call refused before it started (the pre-check: bad argument, stale revision, nothing to do). The reason
+ * shows in full; the model got the same words as the call's answer.
+ */
+function RefusedCard({ toolCall, reason }: { toolCall: ToolCallInfo; reason: string }) {
+  const { t } = useTranslation("chat");
+  return (
+    <div className="studio-job-card studio-job-card--refused" role="note">
+      <div className="studio-job-card__head">
+        <span className="studio-job-card__tool">{toolCall.name}</span>
+        <span className="studio-job-card__state">{t("studioChat.job.notStarted", { defaultValue: "Not started" })}</span>
+      </div>
+      <p className="studio-job-card__error">{reason}</p>
+      <small className="studio-job-card__hint">
+        {t("studioChat.job.notStartedHint", { defaultValue: "The model was told why and can fix the call." })}
+      </small>
     </div>
   );
 }
@@ -74,6 +94,8 @@ export function StudioJobCard({ toolCall }: { toolCall: ToolCallInfo }) {
   }, [jobId, job?.state, kind]);
 
   if (toolCall.data?.declined) return <DeclinedCard toolCall={toolCall} />;
+  const refused = refusalReason(toolCall);
+  if (refused) return <RefusedCard toolCall={toolCall} reason={refused} />;
   if (!jobId) return null;
 
   const percent = job ? jobPercent(job) : null;

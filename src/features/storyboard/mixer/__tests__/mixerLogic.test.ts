@@ -3,6 +3,7 @@ import type { StoryboardProject, StoryboardRenderJob, StoryboardTimeline, VoiceL
 import {
   captionRows,
   captionsExportPatch,
+  filmCaptionCount,
   resumeProgress,
   EXPORT_PRESET_ORDER,
   RENDER_PHASES,
@@ -395,6 +396,19 @@ describe("captions, stems and resuming", () => {
     expect(rows.find((r) => r.id === "late")).toMatchObject({ start: 5, end: 6, fromClip: true });
     expect(rows.find((r) => r.id === "cut")).toMatchObject({ start: 4, end: 4.5 });
     expect(rows.find((r) => r.id === "gone")).toMatchObject({ start: null, end: null });
+  });
+
+  it("counts only the captions inside the film: a 240 s song's 84 lyric lines on a 15 s cut show about 6", () => {
+    // The song clip is trimmed to the film by the timeline (span duration 15 s of 240 s).
+    const tl = { total: 15, shots: [], problems: [], audio: [{ id: "song", start: 0, duration: 15, trim_in: 0, end: 15 }] } as unknown as StoryboardTimeline;
+    const lyrics = Array.from({ length: 84 }, (_, i) => ({ id: `l${i}`, clipId: "song", start: i * 2.6, end: i * 2.6 + 2.4, text: `line ${i}` }));
+    const project = { audio: [{ id: "song", loop: false }], captions: lyrics } as unknown as StoryboardProject;
+    expect(filmCaptionCount(project, tl)).toBe(6); // starts 0, 2.6, 5.2, 7.8, 10.4, 13.0
+    // A hand-made caption past the end is left out; one inside counts; a cue cut under 0.05 s by the end is dropped.
+    const more = { ...project, captions: [...lyrics, { id: "h1", clipId: null, start: 20, end: 22, text: "x" }, { id: "h2", clipId: null, start: 1, end: 2, text: "y" }, { id: "h3", clipId: null, start: 14.97, end: 16, text: "z" }] } as unknown as StoryboardProject;
+    expect(filmCaptionCount(more, tl)).toBe(7);
+    // A looped clip's captions are not exported.
+    expect(filmCaptionCount({ ...project, audio: [{ id: "song", loop: true }] } as unknown as StoryboardProject, tl)).toBe(0);
   });
 
   it("reports how many shots an interrupted render keeps, and nothing for a running or finished one", () => {

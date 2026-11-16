@@ -50,6 +50,14 @@ describe("Before you export", () => {
   });
 });
 
+describe("Before you export: captions", () => {
+  it("counts the captions the film shows when given, not every caption of the project", () => {
+    const p = { ...project([shot("a", { clip: "c.mp4" })]), captions: Array.from({ length: 84 }, () => ({})), export: { loudnessLufs: null, captionsBurn: true, aiLabel: { embedTag: false } } } as unknown as StoryboardProject;
+    const line = preflight(p, { leftOut: 0, previewStale: false, clonedVoice: false, captions: 6 }).find((l) => l.id === "captions");
+    expect(line).toMatchObject({ n: 6, detail: "burn" });
+  });
+});
+
 describe("Before you export: drafts", () => {
   it("warns when an active take is a draft, after the stale line", () => {
     const draft = shot("a", { clip: "c.mp4" });

@@ -437,6 +437,21 @@ export function captionRows(project: Pick<StoryboardProject, "captions">, timeli
   return rows.sort((a, b) => (a.start ?? Infinity) - (b.start ?? Infinity));
 }
 
+/**
+ * How many captions the exported film shows: those that fall inside it (a song's lyric lines past the film's end
+ * are left out), as the export's own cue list counts them (backend `captions.cues`): a looped clip's captions are
+ * left out and a cue cut to under 0.05 s by the film's end is dropped.
+ */
+export function filmCaptionCount(project: Pick<StoryboardProject, "captions" | "audio">, timeline: StoryboardTimeline): number {
+  const looped = new Set((project.audio ?? []).filter((clip) => clip.loop).map((clip) => clip.id));
+  const captions = (project.captions ?? []).filter((caption) => caption.clipId == null || !looped.has(caption.clipId));
+  return captionRows({ captions }, timeline).filter((row) => {
+    if (row.start === null || row.end === null) return false;
+    const end = timeline.total ? Math.min(row.end, timeline.total) : row.end;
+    return end - row.start >= 0.05;
+  }).length;
+}
+
 /** How many shots of an interrupted render are already finished, as `[ready, total]`; null when it cannot resume. */
 export function resumeProgress(job: StoryboardRenderJob | null): [number, number] | null {
   if (!job || !job.resumable || job.state === "running" || job.state === "done") return null;

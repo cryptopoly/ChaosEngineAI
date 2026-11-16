@@ -98,6 +98,8 @@ export function preflight(
     format?: string;
     /** The upscaled size, when the export scales the film up. */
     upscaledTo?: string | null;
+    /** Captions that fall inside the film (`filmCaptionCount`); every caption of the project when not given. */
+    captions?: number;
   },
 ): PreflightLine[] {
   const shots = project.shots.length;
@@ -112,7 +114,7 @@ export function preflight(
   const lufs = project.export?.loudnessLufs;
   lines.push({ id: "loudness", ok: true, n: lufs ?? 0, total: 0, tab: null, detail: lufs == null ? "" : String(lufs) });
   const kinds = [project.export?.captionsSrt ? "srt" : "", project.export?.captionsBurn ? "burn" : ""].filter(Boolean).join("+");
-  lines.push({ id: "captions", ok: true, n: project.captions.length, total: 0, tab: "mixer", detail: kinds });
+  lines.push({ id: "captions", ok: true, n: facts.captions ?? project.captions.length, total: 0, tab: "mixer", detail: kinds });
   lines.push({ id: "aiTag", ok: true, n: facts.clonedVoice || project.export?.aiLabel?.embedTag ? 1 : 0, total: 0, tab: null });
   if (facts.previewStale) lines.push({ id: "preview", ok: false, n: 0, total: 0, tab: "mixer" });
   if (facts.clonedVoice) lines.push({ id: "cloned", ok: true, n: 0, total: 0, tab: null });

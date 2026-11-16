@@ -83,15 +83,6 @@ html {
   text-size-adjust: 100%;
 }
 
-/* A touch screen: iOS Safari zooms the whole page into any field under 16 px when it takes focus (the app's 14 px
-   fields did, and the page stayed zoomed after the keyboard closed; S-P). */
-@media (pointer: coarse) {
-  input,
-  textarea,
-  select {
-    font-size: max(16px, 1em);
-  }
-}
 
 button,
 input,
@@ -16559,5 +16550,13 @@ select.music-library__select {
 
   .project-shell :is(.secondary-button, .primary-button, .icon-button) {
     min-width: calc(44px / var(--ui-scale, 1));
+  }
+
+  /* iOS Safari zooms the whole page into any field under 16 px when it takes focus (the app's 13 to 14 px fields did;
+     S-P). Important: the fields' own sizes are set by more specific rules all over the app. */
+  input,
+  textarea,
+  select {
+    font-size: max(calc(16px / var(--ui-scale, 1)), 1em) !important;
   }
 }

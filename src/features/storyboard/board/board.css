@@ -1,0 +1,272 @@
+/* The freestyle board (S-M2). Tokens only; buttons, fields, chats and dialogs come from styles.css and plan.css.
+   Card size matches CARD_W and CARD_H in boardLogic.ts. */
+
+.board-tab {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--panel-gap);
+  align-items: start;
+}
+@media (min-width: 1100px) {
+  .board-tab {
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
+  }
+  .board-side {
+    position: sticky;
+    top: 0;
+  }
+}
+.board-tab__main,
+.board-side {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.board-tab__hint,
+.board-tab__notice {
+  margin: 0;
+  font-size: 0.85rem;
+}
+.board-tab__notice:empty {
+  display: none;
+}
+
+/* ---- toolbar ---- */
+.board-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+}
+.board-toolbar__group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.board-toolbar__group--end {
+  margin-left: auto;
+}
+.board-toolbar__zoom {
+  min-width: 3.4em;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted-strong);
+}
+.board-toolbar .is-on {
+  border-color: var(--accent);
+  color: var(--accent-strong);
+  background: color-mix(in srgb, var(--accent) 14%, var(--panel-alt));
+}
+
+/* ---- canvas ---- */
+.board-viewport {
+  position: relative;
+  height: min(68vh, 640px);
+  min-height: 320px;
+  overflow: hidden;
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-md);
+  background-color: var(--surface);
+  background-image: radial-gradient(color-mix(in srgb, var(--muted) 28%, transparent) 1px, transparent 1px);
+  background-size: 24px 24px;
+  touch-action: none;
+  user-select: none;
+  cursor: grab;
+}
+.board-viewport:active {
+  cursor: grabbing;
+}
+.board-viewport.is-drop-target {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+.board-plane {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  transform-origin: 0 0;
+}
+.board-viewport__empty,
+.board-viewport__drop {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 24px;
+  text-align: center;
+  pointer-events: none;
+}
+.board-viewport__drop {
+  color: var(--accent-strong);
+  font-weight: 600;
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+}
+.board-viewport__song {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  cursor: default;
+}
+.board-viewport__song .song-ruler {
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+}
+
+/* ---- cards ---- */
+.board-card {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  width: 176px;
+  height: 140px;
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-sm);
+  background: var(--panel-alt);
+  overflow: hidden;
+  cursor: grab;
+  transition: transform 120ms ease-out, box-shadow 120ms ease-out;
+}
+.board-card.is-dragging {
+  cursor: grabbing;
+  transition: none;
+  box-shadow: 0 10px 24px rgb(0 0 0 / 0.45);
+  z-index: 2;
+}
+.board-card.is-selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
+  z-index: 1;
+}
+.board-card:focus-visible {
+  outline: 3px solid var(--accent-strong);
+  outline-offset: 2px;
+}
+.board-card__picture {
+  position: relative;
+  flex: none;
+  height: 99px;
+  background: var(--surface);
+}
+.board-card__picture img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  pointer-events: none;
+}
+.board-card__empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--muted);
+}
+.board-card__number {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--app-bg) 82%, transparent);
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.board-card__label {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0;
+  flex: 1;
+  min-width: 0;
+  padding: 2px 8px;
+  line-height: 1.25;
+}
+.board-card__kind {
+  color: var(--muted-strong);
+  font-size: 0.72rem;
+}
+.board-card__kind:empty {
+  display: none;
+}
+.board-card__title {
+  font-size: 0.85rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.board-card--character,
+.board-card--place,
+.board-card--style {
+  border-style: dashed;
+}
+
+/* ---- side and dialogs ---- */
+.board-side__ref {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--panel-alt);
+}
+.board-side__ref p {
+  margin: 0;
+}
+.board-card-chat__prompt {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.board-add__files {
+  margin: 0 0 8px;
+  word-break: break-word;
+}
+.board-add__choices {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+.board-add__choices legend {
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+.board-add__choice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+@media (max-width: 640px) {
+  .board-viewport {
+    height: 60vh;
+  }
+  .board-toolbar__group--end {
+    margin-left: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .board-card {
+    transition: none;
+  }
+}

@@ -98,6 +98,7 @@ export function ProjectShellHeader({
     plan: t("board.plan.tab", { defaultValue: "Plan" }),
     cast: t("projectShell.tab.cast", { defaultValue: "Cast" }),
     storyboard: t("projectShell.tab.storyboard", { defaultValue: "Storyboard" }),
+    freestyle: t("board.freestyle.tab", { defaultValue: "Board" }),
     mixer: t("projectShell.tab.mixer", { defaultValue: "Mixer" }),
     export: t("projectShell.tab.export", { defaultValue: "Export" }),
   };

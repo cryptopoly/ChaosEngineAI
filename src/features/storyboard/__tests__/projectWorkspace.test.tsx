@@ -276,14 +276,15 @@ describe("project shell header and cast card", () => {
     shots: [shot("s1", { status: "stale" })],
   } as unknown as StoryboardProject;
 
-  it("renders six tabs as a tab list with the active one selected and counts on Cast and Storyboard", () => {
+  it("renders seven tabs as a tab list with the active one selected and counts on Cast and Storyboard", () => {
     const html = renderToStaticMarkup(
       <ProjectShellHeader name="Lighthouse" project={project} tab="cast" busy={false} conflict
         onDismissConflict={() => undefined} onBack={() => undefined} onRename={() => undefined}
         onUndo={() => undefined} onRedo={() => undefined} onTab={() => undefined} />,
     );
     expect(html).toContain('role="tablist"');
-    expect(html.match(/role="tab"/g)).toHaveLength(6);
+    expect(html.match(/role="tab"/g)).toHaveLength(7);
+    expect(html).toContain(">Board<");
     expect(html).toMatch(/aria-selected="true"[^>]*>Cast/);
     expect(html).toContain("1 stale");
     expect(html).toContain("9:16");

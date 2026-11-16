@@ -124,6 +124,25 @@ for (const width of [1180, 1440]) {
   });
 }
 
+test.describe("375 px with the first-launch language banner", () => {
+  test.use({ viewport: { width: 375, height: 812 }, locale: "de-DE" });
+
+  test("the banner sits above the bar and the page still ends at the bottom of the window", async ({ page }) => {
+    await openApp(page);
+    const banner = page.locator(".locale-banner");
+    await expect(banner).toBeVisible();
+    const top = (await banner.boundingBox())!;
+    const bar = (await page.locator("aside.sidebar").boundingBox())!;
+    const main = (await page.locator("main.workspace").boundingBox())!;
+    expect(bar.y).toBeGreaterThanOrEqual(top.y + top.height - 1);
+    expect(bar.height).toBeLessThanOrEqual(60);
+    expect(main.y).toBeGreaterThanOrEqual(bar.y + bar.height - 1);
+    expect(main.y + main.height).toBeLessThanOrEqual(813);
+    expect(main.width).toBeGreaterThanOrEqual(374);
+    await shoot(page, "375-locale-banner");
+  });
+});
+
 test.describe("touch, 768 px", () => {
   test.use({ hasTouch: true, isMobile: true, viewport: { width: 768, height: 1024 } });
 

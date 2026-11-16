@@ -6134,10 +6134,23 @@ select.text-input {
 
 @media (max-width: 1179.98px) {
   /* Sizes are divided by the UI scale (the shell's zoom) so the bar and the 44 px button keep their size on screen. */
+  /* A column of flex boxes rather than grid rows, so the first-launch language banner (a child of the shell when it
+     shows) sits above the bar instead of taking the bar's row. */
   .app-shell {
     --compact-bar-height: calc(56px / var(--ui-scale, 1));
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto minmax(0, 1fr);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .app-shell > .sidebar,
+  .app-shell > .locale-banner {
+    flex: none;
+  }
+
+  .app-shell > .workspace {
+    flex: 1 1 0;
+    height: auto;
+    min-height: 0;
   }
 
   .sidebar {

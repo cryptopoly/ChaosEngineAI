@@ -1,6 +1,6 @@
 import { test, expect } from "./fixtures";
 import type { Page } from "@playwright/test";
-import { openApp } from "./helpers";
+import { openApp, primaryNav } from "./helpers";
 
 // Stronger borders on fields and buttons (Settings > General > Accessibility). On by default: a .text-input
 // border is --border-control (#66727f); with the switch off it is the panel border (#27303a). The setting
@@ -10,7 +10,7 @@ const STRONG = "rgb(102, 114, 127)";
 const WEAK = "rgb(39, 48, 58)";
 
 async function openSettings(page: Page) {
-  await page.getByRole("navigation", { name: "Primary" }).getByRole("button", { name: "Settings", exact: true }).click();
+  await (await primaryNav(page)).getByRole("button", { name: "Settings", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Accessibility" })).toBeVisible();
 }
 

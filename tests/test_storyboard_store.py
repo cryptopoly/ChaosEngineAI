@@ -716,6 +716,38 @@ class DepsAndBatchTests(StoreCase):
                 with self.assertRaises(RuntimeError):
                     wiring["make_clip"](shot, p, None)  # but a shot that asked for a still is still refused
 
+    def test_a_shot_cut_to_the_beat_gets_a_clip_at_least_as_long_as_the_shot(self):
+        # S-P: LTX-2.5 rounds frames to 8k+1; rounding down made every cut-plan clip a few frames short (3.646 s asked,
+        # 3.375 s made), so a 15 s cut came out 13.5 s off the beat. A shot with an out point now rounds up.
+        from backend_service.helpers.generation_limits import align_video_frames_up
+        from backend_service.storyboard import generators
+
+        self.assertEqual(align_video_frames_up("dgrauet/ltx-2.5-mlx-q4", 88), 89)
+        self.assertEqual(align_video_frames_up("dgrauet/ltx-2.5-mlx-q4", 89), 89)
+        self.assertEqual(align_video_frames_up("dgrauet/ltx-2.5-mlx-q4", 256), 257)
+        self.assertEqual(align_video_frames_up("dgrauet/ltx-2.5-mlx-q4", 250, cap=249), 249)  # never past the cap
+        p = self.new(shots=1)
+        shot = p.shots[0]
+        ltx = {"id": "ltx", "name": "LTX-2.5", "repo": "dgrauet/ltx-2.5-mlx-q4"}
+        sent = []
+
+        def fake_generate(request, body):
+            sent.append(body)
+            return {"artifact": {"videoPath": "out.mp4", "numFrames": body.numFrames, "fps": body.fps,
+                                 "width": body.width, "height": body.height}}
+
+        shot.startFrom = "text"
+        with mock.patch("backend_service.mcp_bridge.tools._recommended", return_value={}), \
+                mock.patch("backend_service.routes.video._generate_video_locked", side_effect=fake_generate), \
+                mock.patch.object(generators, "_variant", return_value=ltx):
+            wiring = generators.studio_generators(mock.Mock(), "b_1", self.folder(p))
+            shot.seconds, shot.trimOut = 3.646, 3.646
+            wiring["make_clip"](shot, p, None)
+            self.assertGreaterEqual(sent[-1].numFrames / p.defaults.fps, 3.646)
+            shot.trimOut = None  # a plain shot keeps the old rule: never longer than asked
+            wiring["make_clip"](shot, p, None)
+            self.assertLessEqual(sent[-1].numFrames / p.defaults.fps, 3.646)
+
     def test_chained_clips_leave_no_last_frame_folders(self):
         import tempfile
 

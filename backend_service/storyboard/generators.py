@@ -8,6 +8,8 @@ and the batch's own Cancel reaches its running and waiting tickets. Heavy import
 
 from __future__ import annotations
 
+import math
+
 import shutil
 import subprocess
 import tempfile
@@ -99,7 +101,7 @@ def studio_generators(request: Any, batch_id: str, folder: Path) -> dict[str, Ca
     def make_clip(shot: Shot, project: Project, still: Path | None) -> tuple[str, dict[str, Any]]:
         from fastapi import HTTPException
 
-        from backend_service.helpers.generation_limits import align_video_frames
+        from backend_service.helpers.generation_limits import align_video_frames, align_video_frames_up
         from backend_service.mcp_bridge.tools import _recommended
         from backend_service.models import VideoGenerationRequest
         from backend_service.video_runtime.repos import image_input_support
@@ -115,7 +117,14 @@ def studio_generators(request: Any, batch_id: str, folder: Path) -> dict[str, Ca
         variant = _variant(request, "video", project.defaults.videoModel)
         settings = _recommended(variant)
         fps = project.defaults.fps
-        frames, _ = align_video_frames(str(variant.get("repo") or ""), max(8, min(257, round(shot.seconds * fps))))
+        repo = str(variant.get("repo") or "")
+        if shot.trimOut is not None:
+            # A shot with an out point (a cut plan's shot on the song's beats): the clip must cover it and is trimmed
+            # back. Rounding the frames down made every clip a few frames short, so a 15 s cut came out 13.5 s and
+            # the cuts drifted off the beat (S-P, LTX-2.5: 3.646 s asked, 3.375 s made).
+            frames = align_video_frames_up(repo, max(8, min(257, math.ceil(shot.seconds * fps - 1e-6))))
+        else:
+            frames, _ = align_video_frames(repo, max(8, min(257, round(shot.seconds * fps))))
         fields: dict[str, Any] = {"modelId": variant["id"], "prompt": prompt, "numFrames": frames, "fps": fps,
                                   "width": project.defaults.width, "height": project.defaults.height}
         takes_start, takes_end = image_input_support(str(variant.get("repo") or ""))

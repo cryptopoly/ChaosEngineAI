@@ -83,6 +83,11 @@ def by_sections(song: Song, lines: list[str]) -> list[dict[str, Any]]:
                 end = min(start + MIN_LINE_SECONDS, song.seconds)
             cues.append({"start": round(start, 3), "end": round(end, 3), "text": lines[index]})
             index += 1
+    # A start snapped back onto a beat came before the previous line's end: two captions showed at once (S-P, a real
+    # song: 46 of 84 lines overlapped). Each line ends where the next one starts.
+    for cue, after in zip(cues, cues[1:]):
+        if cue["end"] > after["start"]:
+            cue["end"] = after["start"]
     return cues
 
 
@@ -205,5 +210,19 @@ def past_film_end_note(project: Project, clip_id: str) -> str | None:
     late = sum(1 for caption_id in mine if caption_id not in shown)
     if not late:
         return None
-    return (f"{late} of {len(mine)} lines fall after the film's current end ({timeline.total:.1f} s); they show once "
-            "clips cover that part of the song (a cut plan gives the song its shots).")
+    planned = compute_timeline(project)
+    if planned.total <= timeline.total + 0.01:
+        return (f"{late} of {len(mine)} lines fall after the film's current end ({timeline.total:.1f} s); they show once "
+                "clips cover that part of the song (a cut plan gives the song its shots).")
+    # S-P: a 15 s cut of a 4 min song said "84 of 84 lines fall after the film's current end (0.0 s) ... a cut plan
+    # gives the song its shots" right after the cut plan was applied: tell the lines the planned film never reaches
+    # apart from the ones waiting for clips.
+    shown_planned = {cue.id for cue in cues(project, planned)}
+    beyond = sum(1 for caption_id in mine if caption_id not in shown_planned)
+    parts = []
+    if beyond:
+        parts.append(f"{beyond} of {len(mine)} lines fall after the film's end ({planned.total:.1f} s), so they do not "
+                     "show; a longer film or a cut over more of the song shows them.")
+    if late > beyond:
+        parts.append(f"{late - beyond} more show once their shots have clips (the film reaches {timeline.total:.1f} s now).")
+    return " ".join(parts)

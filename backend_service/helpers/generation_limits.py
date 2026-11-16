@@ -296,6 +296,19 @@ def align_video_frames(repo: str, frames: int) -> tuple[int, str | None]:
     return frames, None
 
 
+def align_video_frames_up(repo: str, frames: int, cap: int = 257) -> int:
+    """The smallest valid ``step * k + offset`` frame count at or above ``frames`` (at most ``cap``; past it, the count
+    rounded down). For a clip that is trimmed back to an exact length, like a shot cut to a song's beats."""
+    down, _ = align_video_frames(repo, frames)
+    if down >= frames:
+        return down
+    for tag, step, offset in _FRAME_RULES:
+        if tag in repo.lower():
+            up = down + step
+            return up if up <= cap else down
+    return down
+
+
 def distilled_steps_note(model_name: str, requested: int, tuned: int | None) -> str | None:
     """A note when a few-step model is asked for many more steps than it was tuned for.
 

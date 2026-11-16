@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { promptEvalTimeoutMs } from "./promptEvalWatchdog";
 import {
   addMessageVariant,
   cancelChatGeneration,
@@ -914,9 +915,10 @@ export function useChat(
           if (phase === "prompt_eval") {
             if (promptEvalTimeoutRef.current) {
               clearTimeout(promptEvalTimeoutRef.current);
+              promptEvalTimeoutRef.current = null;
             }
-            const PROMPT_EVAL_TIMEOUT_MS = 60_000;
-            promptEvalTimeoutRef.current = setTimeout(() => {
+            const timeoutMs = promptEvalTimeoutMs(streamPayload);
+            if (timeoutMs !== null) promptEvalTimeoutRef.current = setTimeout(() => {
               promptEvalTimeoutRef.current = null;
               setError(
                 "Prompt processing exceeded 60 seconds without producing a token. " +
@@ -931,7 +933,7 @@ export function useChat(
                 streamAbortRef.current = null;
               }
               setChatBusySessionId(null);
-            }, PROMPT_EVAL_TIMEOUT_MS);
+            }, timeoutMs);
           } else if (phase === "generating") {
             if (promptEvalTimeoutRef.current) {
               clearTimeout(promptEvalTimeoutRef.current);

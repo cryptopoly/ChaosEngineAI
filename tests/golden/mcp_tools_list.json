@@ -927,7 +927,7 @@
       "readOnlyHint": false,
       "title": "Storyboard song and cut plan"
     },
-    "description": "Edit: the song a music video is cut to. attach(library_id or path), get, edit(lyrics, sections, bpm, title), remove, cut_plan (shots on its beats; apply: true replaces the shots), lyric_captions(timing).",
+    "description": "Edit: the song a music video is cut to. attach(library_id or path), get, edit(lyrics, sections, bpm, title), remove, cut_plan(seconds; shots on its beats; apply: true replaces shots, one undo), lyric_captions(timing).",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
@@ -988,6 +988,12 @@
           "description": "Project revision you last saw (from get).",
           "minimum": 1,
           "type": "integer"
+        },
+        "seconds": {
+          "description": "cut_plan: the film's length (a 30 s ad: 30); only the song's first seconds are cut.",
+          "maximum": 3600,
+          "minimum": 1,
+          "type": "number"
         },
         "sections": {
           "description": "edit: [{start, end, label}] seconds.",

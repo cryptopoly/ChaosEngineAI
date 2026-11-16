@@ -76,6 +76,14 @@ body {
   min-width: 320px;
 }
 
+/* iOS Safari inflates text in narrow scrolling boxes (the sidebar's caption and status grew to 2-3 times their
+   size on an iPhone and pushed rows past the right edge; S-P). Keep the sizes the CSS sets. */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+
 button,
 input,
 textarea,
@@ -1759,15 +1767,18 @@ select.text-input {
 
 .thread-toolbar {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: flex-end;
   gap: 12px;
   flex-shrink: 0;
 }
 
+/* Keeps a usable width: with a model's capability badges the actions took the whole row and squeezed the field to
+   0 px, its label showing under the buttons (S-P). The row wraps instead. */
 .thread-title-field {
-  flex: 1;
-  min-width: 0;
+  flex: 1 1 180px;
+  min-width: 160px;
 }
 
 .thread-toolbar-actions {
@@ -16525,4 +16536,27 @@ select.music-library__select {
 
 .cleanup-group .cleanup-row input[type="checkbox"] {
   margin-top: 3px;
+}
+
+/* Touch screens (S-P): in a project the buttons, tabs, chips and menus were 25 to 34 px tall, under the 44 px a finger
+   needs (an iPad measured every tab). A coarse pointer gets 44 px targets on screen (the shell's UI scale zooms CSS
+   pixels, hence the division); a mouse keeps the compact sizes. */
+@media (pointer: coarse) {
+  .project-shell :is(.primary-button, .secondary-button, .icon-button, .project-shell__tab, .project-shell__back,
+      .plan-chip, .preset-pill, .takes-strip__take),
+  .project-shell select {
+    min-height: calc(44px / var(--ui-scale, 1));
+  }
+
+  .project-shell :is(.secondary-button, .primary-button, .icon-button) {
+    min-width: calc(44px / var(--ui-scale, 1));
+  }
+
+  /* iOS Safari zooms the whole page into any field under 16 px when it takes focus (the app's 13 to 14 px fields did;
+     S-P). Important: the fields' own sizes are set by more specific rules all over the app. */
+  input,
+  textarea,
+  select {
+    font-size: max(calc(16px / var(--ui-scale, 1)), 1em) !important;
+  }
 }

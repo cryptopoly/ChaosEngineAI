@@ -220,6 +220,21 @@ class CutPlanTests(StoreCase):
         undone = self.store.undo(applied.id, applied.revision)
         self.assertEqual([s.title for s in undone.shots], ["shot 0", "shot 1"])
 
+    def test_a_length_cuts_only_the_songs_first_seconds(self):
+        # S-P: "cut it into a 30 s ad" with a 240 s song; before, the plan always covered the whole song, so a chat
+        # model built the shots one by one (12 ops, 12 undos).
+        project = self.project_with_song()
+        plan = cutplan.plan_cuts(project, clip_seconds=4.0, length_seconds=25.0)
+        lengths = [s["seconds"] for s in plan["shots"]]
+        self.assertAlmostEqual(sum(lengths), 25.0, places=2)
+        self.assertTrue(all(2.0 <= x <= 4.0 + 1e-6 for x in lengths), lengths)
+        self.assertEqual(plan["totalSeconds"], 25.0)
+        self.assertEqual(plan["sections"][-1]["end"], 25.0)
+        self.assertIn("first 25 s of 40 s", plan["note"])
+        self.assertEqual(cutplan.plan_cuts(project, 4.0, length_seconds=99.0)["totalSeconds"], 40.0)  # longer: all of it
+        applied = self.op(project, "apply_plan", mode="replace", shots=plan["shots"])
+        self.assertAlmostEqual(compute_timeline(applied).total, 25.0, places=2)
+
     def test_no_beats_split_evenly_and_no_song_is_refused(self):
         project = self.project_with_song(bpm=None)
         plan = cutplan.plan_cuts(project, clip_seconds=3.0)
@@ -260,6 +275,16 @@ class LyricTests(StoreCase):
         self.assertIn("00:00:04,000 --> ", srt)
         undone = self.store.undo(saved.id, saved.revision)
         self.assertEqual(undone.captions, [])
+
+    def test_section_timing_never_shows_two_lines_at_once(self):
+        # S-P: a real song (240 s, 84 lines): starts snapped back onto beats came before the previous line's end.
+        from backend_service.storyboard.models import Song
+
+        song = Song(path="media/song/a.wav", seconds=60.0, beats=[round(0.5 + 0.668 * i, 3) for i in range(88)],
+                    sections=[{"start": 0.0, "end": 60.0, "label": "A"}])
+        cues = lyrics.by_sections(song, [f"line {i}" for i in range(23)])
+        self.assertTrue(all(a["end"] <= b["start"] for a, b in zip(cues, cues[1:])), cues)
+        self.assertTrue(all(c["end"] > c["start"] for c in cues))
 
     def test_speech_timing_matches_the_words_in_order_and_spaces_the_rest(self):
         project = self.project_with_lyrics(["hello night", "we drive on", "nothing heard here", "under the stars"])
@@ -329,6 +354,15 @@ class SongRouteTests(unittest.TestCase):
         self.assertEqual(stored["title"], "song")
         self.assertAlmostEqual(stored["seconds"], 40.0, delta=0.1)
         self.assertEqual(attached["project"]["audio"][0]["id"], stored["clipId"])
+        # S-P: the Plan tab's Length (filmSeconds) limits the cut; an asked length wins over it.
+        planned = self.post(f"/projects/{pid}/ops", {"revision": attached["project"]["revision"], "op": "set_plan",
+                                                     "args": {"filmSeconds": 20}})
+        short = self.post(f"/projects/{pid}/cut-plan", {"maxShotSeconds": 4})
+        self.assertAlmostEqual(sum(s["seconds"] for s in short["shots"]), 20.0, places=1)
+        asked = self.post(f"/projects/{pid}/cut-plan", {"maxShotSeconds": 4, "lengthSeconds": 12})
+        self.assertAlmostEqual(sum(s["seconds"] for s in asked["shots"]), 12.0, places=1)
+        attached["project"] = self.post(f"/projects/{pid}/ops", {"revision": planned["project"]["revision"], "op": "set_plan",
+                                                                 "args": {"clearFilmSeconds": True}})["project"]
         plan = self.post(f"/projects/{pid}/cut-plan", {"maxShotSeconds": 4})
         self.assertIn(plan["clipSecondsSource"], ("request", "model"))  # the installed video model may make shorter clips
         self.assertTrue(all(s["seconds"] <= plan["clipSeconds"] + 1e-6 for s in plan["shots"]))

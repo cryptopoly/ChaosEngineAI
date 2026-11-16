@@ -72,7 +72,11 @@
   background-image: radial-gradient(color-mix(in srgb, var(--muted) 28%, transparent) 1px, transparent 1px);
   background-size: 24px 24px;
   touch-action: none;
+  /* Safari needs the prefixed names: without them a long press on a card on an iPad selected its title and opened
+     the text loupe (S-P). The callout is the press-and-hold picture menu. */
+  -webkit-user-select: none;
   user-select: none;
+  -webkit-touch-callout: none;
   cursor: grab;
 }
 .board-viewport:active {

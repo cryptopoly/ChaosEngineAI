@@ -137,6 +137,9 @@ class StoryboardToolTests(unittest.TestCase):
             ("storyboard_shot", {"action": "import", "project_id": pid, "revision": info["revision"], "shot_id": sid,
                                  "path": str(self._text_file())}, "not a"),
             ("storyboard_project", {"action": "get", "project_id": "../x"}, "Unknown project"),
+            # S-P: a chat model passing the project's name gets its id back (small models never found it otherwise).
+            ("storyboard_project", {"action": "get", "project_id": "ad"}, f"'Ad' has the id {pid}"),
+            ("storyboard_song", {"action": "cut_plan", "project_id": "Some film"}, "id from storyboard_project list"),
             ("storyboard_shot", {"action": "edit", "project_id": pid, "revision": 1, "fields": "x"}, "must be object"),
         ):
             self.assertIn(needle, self.call(name, arguments, error=True), arguments)
@@ -382,6 +385,8 @@ class StoryboardToolTests(unittest.TestCase):
         applied = self.call("storyboard_song", {"action": "cut_plan", "project_id": pid, "max_shot_seconds": 3, "apply": True,
                                                 "revision": info["revision"]})
         self.assertEqual(len(applied["shots"]), len(plan["shots"]))
+        short = self.call("storyboard_song", {"action": "cut_plan", "project_id": pid, "max_shot_seconds": 3, "seconds": 6})
+        self.assertAlmostEqual(sum(s["seconds"] for s in short["shots"]), 6.0, places=2)  # S-P: a length for a short ad
         from backend_service.storyboard import lyrics
 
         with mock.patch.object(lyrics, "speech_status", return_value=(False, "not installed")):

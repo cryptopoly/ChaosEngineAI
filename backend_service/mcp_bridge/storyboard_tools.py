@@ -109,7 +109,7 @@ STORYBOARD_TOOLS: list[dict[str, Any]] = [
     {
         "name": "storyboard_song",
         "description": "Edit: the song a music video is cut to. attach(library_id or path), get, edit(lyrics, sections, bpm, "
-        "title), remove, cut_plan (shots on its beats; apply: true replaces the shots), lyric_captions(timing).",
+        "title), remove, cut_plan(seconds; shots on its beats; apply: true replaces shots, one undo), lyric_captions(timing).",
         "inputSchema": _obj({
             "action": {"type": "string", "enum": ["attach", "get", "edit", "remove", "cut_plan", "lyric_captions"]},
             "project_id": _PID, "revision": _REV,
@@ -122,6 +122,8 @@ STORYBOARD_TOOLS: list[dict[str, Any]] = [
                          "description": "edit: [{start, end, label}] seconds."},
             "bpm": {"type": "number", "minimum": 0, "maximum": 400, "description": "edit: 0 clears."},
             "max_shot_seconds": {"type": "number", "minimum": 0.5, "maximum": 60, "description": "cut_plan: lower cap."},
+            "seconds": {"type": "number", "minimum": 1, "maximum": 3600,
+                        "description": "cut_plan: the film's length (a 30 s ad: 30); only the song's first seconds are cut."},
             "apply": {"type": "boolean", "description": "cut_plan: replace the shots with the plan (one undo)."},
             "timing": {"type": "string", "enum": ["auto", "sections", "speech"],
                        "description": "lyric_captions: speech needs speech-to-text installed."},
@@ -197,14 +199,29 @@ def _summary(project: Any, extra: dict[str, Any] | None = None) -> dict[str, Any
 def _run(fn: Callable[[], Any]) -> Any:
     from backend_service.storyboard.media import MediaError
     from backend_service.storyboard.render_adapter import RenderBusy
-    from backend_service.storyboard.store import RevisionConflict, StoreError
+    from backend_service.storyboard.store import ProjectNotFound, RevisionConflict, StoreError
 
     try:
         return fn()
     except RevisionConflict as exc:
         raise ToolError(f"The project is at revision {exc.current.revision} now. Call storyboard_project get and retry.") from exc
+    except ProjectNotFound as exc:
+        raise ToolError(f"{exc} {_project_id_hint(str(exc))}") from exc
     except (StoreError, MediaError, RenderBusy, ValueError) as exc:
         raise ToolError(str(exc)) from exc
+
+
+def _project_id_hint(message: str) -> str:
+    """How to fix a project name passed as project_id (S-P: chat models of every size sent the name first, and a
+    1.7B model never recovered): the id of the project with that name, or where ids come from."""
+    import re
+
+    asked = re.search(r"'(.*)'", message)
+    name = asked.group(1).strip().casefold() if asked else ""
+    rows = [r for r in _store().list() if str(r.get("name", "")).strip().casefold() == name] if name else []
+    if len(rows) == 1:
+        return f"project_id is the project's id, not its name: '{rows[0]['name']}' has the id {rows[0]['id']}."
+    return "project_id is the id from storyboard_project list, not the project's name."
 
 
 def _op(args: dict[str, Any], op: str, op_args: dict[str, Any]) -> Any:
@@ -532,7 +549,8 @@ def storyboard_song(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
             song["beats"] = len(song["beats"])  # the count; the list is long and an agent rarely needs it
         return {"projectId": pid, "revision": project.revision, "song": song}
     if action == "cut_plan":
-        plan = _run(lambda: storyboard_long.cut_plan(ctx.request, pid, args.get("max_shot_seconds")))
+        plan = _run(lambda: storyboard_long.cut_plan(ctx.request, pid, args.get("max_shot_seconds"),
+                                                    length_seconds=args.get("seconds")))
         if not args.get("apply"):
             return plan
         _need(args, "revision")

@@ -112,6 +112,28 @@ class LyricsPastTheFilmTests(unittest.TestCase):
         refused = self.post(f"/projects/{pid}/captions/export", {}, code=400)
         self.assertIn("The captions start after the film ends (0.0 s)", refused["detail"])
 
+    def test_lines_the_planned_film_never_reaches_are_told_apart_from_lines_waiting_for_clips(self):
+        # S-P: a 15 s cut of a long song said every line fell after "the film's current end (0.0 s)" and asked for a
+        # cut plan that was already applied.
+        from backend_service.storyboard import lyrics
+        from tests.test_storyboard_song import song_samples, write_wav
+
+        data = self.post("/projects", {"name": "Short cut"})
+        pid = data["project"]["id"]
+        wav = write_wav(self.base / "in" / "song.wav", song_samples())
+        attached = self.post(f"/projects/{pid}/song", {"revision": data["project"]["revision"], "path": str(wav)})
+        plan = self.post(f"/projects/{pid}/cut-plan", {"maxShotSeconds": 4, "lengthSeconds": 10})
+        applied = self.post(f"/projects/{pid}/ops", {"revision": attached["project"]["revision"], "op": "apply_plan",
+                                                     "args": {"mode": "replace", "shots": plan["shots"]}})
+        lyric = self.post(f"/projects/{pid}/ops", {"revision": applied["project"]["revision"], "op": "edit_song",
+                                                   "args": {"lyrics": [f"line {i}" for i in range(8)]}})
+        with mock.patch.object(lyrics, "speech_status", return_value=(False, None)):
+            made = self.post(f"/projects/{pid}/lyrics/captions", {"revision": lyric["project"]["revision"], "timing": "sections"})
+        note = " ".join(made["notes"])
+        self.assertRegex(note, r"\d of 8 lines fall after the film's end \(10\.0 s\), so they do not show")
+        self.assertRegex(note, r"\d more show once their shots have clips \(the film reaches 0\.0 s now\)")
+        self.assertNotIn("a cut plan gives the song its shots", note)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -15,6 +15,7 @@ import {
   layout,
   nearestCard,
   orderShots,
+  pinchStep,
   readingOrder,
   sameOrder,
   titleFromFile,
@@ -119,5 +120,26 @@ describe("view", () => {
   it("names a dropped picture after its file", () => {
     expect(titleFromFile("/Users/me/Pictures/night_drive-01.png")).toBe("night drive 01");
     expect(titleFromFile("C:\\pics\\Sunset.webp")).toBe("Sunset");
+  });
+});
+
+describe("pinchStep (two fingers)", () => {
+  const view = { x: 10, y: 20, zoom: 1 };
+
+  it("pans with the midpoint when the fingers keep their distance (S-P: it zoomed instead)", () => {
+    const next = pinchStep(view, { mid: { x: 100, y: 100 }, distance: 80 }, { mid: { x: 160, y: 70 }, distance: 80 });
+    expect(next).toEqual({ x: 70, y: -10, zoom: 1 });
+  });
+
+  it("zooms by the change in distance and keeps the board point under the fingers", () => {
+    const prev = { mid: { x: 100, y: 100 }, distance: 50 };
+    const next = pinchStep(view, prev, { mid: { x: 120, y: 100 }, distance: 100 });
+    expect(next.zoom).toBe(2);
+    const under = toBoard(view, 100, 100);
+    expect(toBoard(next, 120, 100)).toEqual(under);
+  });
+
+  it("ignores a zero distance", () => {
+    expect(pinchStep(view, { mid: { x: 0, y: 0 }, distance: 0 }, { mid: { x: 5, y: 5 }, distance: 10 })).toBe(view);
   });
 });

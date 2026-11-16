@@ -590,6 +590,12 @@ from backend_service.storyboard.song_ops import SONG_FILE_ARGS, SONG_OPS  # noqa
 OPS.update(SONG_OPS)
 _FILE_ARGS.update(SONG_FILE_ARGS)
 
+# The freestyle board ops (S-M2) live in board_ops, registered the same way.
+from backend_service.storyboard.board_ops import BOARD_FILE_ARGS, BOARD_OPS  # noqa: E402
+
+OPS.update(BOARD_OPS)
+_FILE_ARGS.update(BOARD_FILE_ARGS)
+
 
 def parse_args(op: str, args: dict[str, Any]) -> Any:
     if op not in OPS:

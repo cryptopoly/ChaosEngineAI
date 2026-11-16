@@ -252,6 +252,16 @@ export interface StoryboardSong {
   analysedAt: number;
 }
 
+/** Where one card sits on the freestyle board, in board pixels at zoom 1 (S-M2). */
+export interface StoryboardBoardPos {
+  x: number;
+  y: number;
+}
+
+export interface StoryboardBoard {
+  pos: Record<string, StoryboardBoardPos>;
+}
+
 export interface StoryboardProject {
   schemaVersion: number;
   revision: number;
@@ -266,6 +276,8 @@ export interface StoryboardProject {
   planChat?: StoryboardPlanMessage[];
   /** S-M1: the song the film is cut to; absent or null when none. */
   song?: StoryboardSong | null;
+  /** S-M2: the freestyle board's card positions (shot or reference id to board pixels); absent in older projects. */
+  board?: StoryboardBoard;
   shots: StoryboardShot[];
   audio: StoryboardAudioClip[];
   export: StoryboardExportSettings;
@@ -423,6 +435,10 @@ export interface StoryboardOpArgs {
   edit_song: { title?: string; bpm?: number; clearBpm?: boolean; sections?: StoryboardSongSection[]; lyrics?: string[] };
   /** S-M1: take the song off the project (and, by default, its mixer clip). */
   clear_song: { removeClip?: boolean };
+  /** S-M2: move freestyle board cards (shot or reference ids), one Undo. */
+  place_cards: { positions: Record<string, StoryboardBoardPos> };
+  /** S-M2: a picture (path, `upload:` handle) as a new shot with that still as its take, placed on the board; one Undo. */
+  board_add_shot: { still: string; title?: string; index?: number; x?: number; y?: number };
   /** S8: the direction chat's changes in one step (one Undo). */
   plan_changes: StoryboardPlanChanges;
   add_plan_message: { role: "user" | "assistant"; text: string };

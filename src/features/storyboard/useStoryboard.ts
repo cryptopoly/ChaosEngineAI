@@ -27,6 +27,7 @@ import type {
   StoryboardProjectPayload,
   StoryboardTimeline,
 } from "../../types";
+import { createBusyGate } from "./busyGate";
 import { classifyFailure, isBatchPaused, isBatchRunning } from "./storyboardLogic";
 
 export const BATCH_POLL_MS = 1500;
@@ -94,6 +95,9 @@ export function useStoryboard(enabled: boolean, projectId: string | null): UseSt
   const [notFound, setNotFound] = useState(false);
   const [notice, setNotice] = useState<StoryboardNotice>(null);
   const [busy, setBusy] = useState(false);
+  // Busy shows only after a short grace, so a click that follows a blur-save is not lost (busyGate.ts).
+  const [busyGate] = useState(() => createBusyGate(setBusy));
+  useEffect(() => () => busyGate.dispose(), [busyGate]);
   const [batch, setBatch] = useState<StoryboardBatchRecord | null>(null);
   const [batchProgress, setBatchProgress] = useState<JobProgress | StoryboardPausedProgress | null>(null);
   const [pausing, setPausing] = useState(false);
@@ -177,7 +181,7 @@ export function useStoryboard(enabled: boolean, projectId: string | null): UseSt
         if (!id || !current) return false;
         const request = run(id, current.revision, current);
         if (!request) return false;
-        setBusy(true);
+        busyGate.begin();
         try {
           adopt(await request);
           setError(null);
@@ -188,13 +192,13 @@ export function useStoryboard(enabled: boolean, projectId: string | null): UseSt
           await handleFailure(err);
           return false;
         } finally {
-          setBusy(false);
+          busyGate.end();
         }
       });
       queue.current = task.catch(() => false);
       return task;
     },
-    [adopt, handleFailure],
+    [adopt, handleFailure, busyGate],
   );
 
   const op = useCallback(

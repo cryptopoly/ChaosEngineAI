@@ -1968,7 +1968,8 @@
         "shotsOne": null,
         "shotsRange": null,
         "title": null,
-        "useLength": null
+        "useLength": null,
+        "overCap": null
       }
     },
     "style": {

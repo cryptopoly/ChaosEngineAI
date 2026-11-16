@@ -20,6 +20,8 @@ import { MAX_PICTURES } from "./pickerLogic";
 export const LENGTH_CHOICES = [15, 30, 60, 90, 120] as const;
 /** Shot counts the model may be asked for; null lets it choose between 4 and 8. */
 export const SHOT_COUNT_CHOICES = [4, 5, 6, 7, 8] as const;
+/** The most shots one proposal writes (mirrors MAX_SHOTS in planner.py). */
+export const MAX_PROPOSE_SHOTS = 8;
 /** Style references a project keeps (mirrors References.styles in models.py). */
 export const MAX_STYLES = 20;
 /** Colours kept per style (mirrors MAX_PALETTE in models.py). */

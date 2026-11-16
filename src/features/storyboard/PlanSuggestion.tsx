@@ -2,10 +2,10 @@
  * The shot count suggestion under the brief (FU-188 item 5): "Suggestion: an ad of 30 s is about 6 to 8 shots."
  * Rule based (`shotSuggestion`): the length the brief states, else the Length choice, else the usual length for
  * the kind of film. When the length came from the brief or the usual length and is one of the Length choices, a
- * button sets it. The model is free to choose differently.
+ * button sets it. The model is free to choose differently; past what one proposal writes, the line says so.
  */
 import { useTranslation } from "react-i18next";
-import { LENGTH_CHOICES, shotSuggestion } from "./planLogic";
+import { LENGTH_CHOICES, MAX_PROPOSE_SHOTS, shotSuggestion } from "./planLogic";
 
 export interface PlanSuggestionProps {
   brief: string;
@@ -54,6 +54,15 @@ export function PlanSuggestion({ brief, target, lengthText, onUseLength }: PlanS
           <button type="button" className="plan-link" onClick={() => onUseLength(seconds)}>
             {t("board.plan.suggest.useLength", { defaultValue: "Use {length}", length })}
           </button>
+        </>
+      ) : null}
+      {low > MAX_PROPOSE_SHOTS ? (
+        <>
+          {" "}
+          {t("board.plan.suggest.overCap", {
+            defaultValue: "Propose writes at most {max} shots; add the rest on the Storyboard tab.",
+            max: MAX_PROPOSE_SHOTS,
+          })}
         </>
       ) : null}
     </p>

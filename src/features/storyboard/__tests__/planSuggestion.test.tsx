@@ -48,6 +48,8 @@ describe("PlanSuggestion", () => {
     const html = render("A quiet film", 60);
     expect(html).toContain("A film of 1 min is about 12 to 15 shots.");
     expect(html).not.toContain("Use ");
+    expect(html).toContain("Propose writes at most 8 shots; add the rest on the Storyboard tab.");
+    expect(render("A 30 s ad", null)).not.toContain("Propose writes at most");
   });
 
   it("says the usual length when the brief states none, and stays away with no brief", () => {

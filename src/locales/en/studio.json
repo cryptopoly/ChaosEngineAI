@@ -1968,7 +1968,8 @@
         "shotsOne": "{n, plural, one {# shot} other {# shots}}",
         "shotsRange": "{low} to {high} shots",
         "title": "A rule of thumb from the length: shots of 4 to 5 s. The model may choose differently.",
-        "useLength": "Use {length}"
+        "useLength": "Use {length}",
+        "overCap": "Propose writes at most {max} shots; add the rest on the Storyboard tab."
       }
     },
     "style": {

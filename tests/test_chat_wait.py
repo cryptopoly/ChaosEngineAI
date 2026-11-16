@@ -265,6 +265,7 @@ class BatchProgressTests(unittest.TestCase):
         b.steps, b._finished_steps, b._current, b._processed = steps, finished, current, processed
         b._began = time.monotonic() - 400
         b._variants, b._prices = (None, None), {}  # no models named: priced only from finished steps
+        b._prior = {"still": 0, "clip": 0}  # no steps before a resume (S-M1)
         return b
 
     def test_first_clip_running_has_no_eta_then_later_clips_use_the_measured_time(self):

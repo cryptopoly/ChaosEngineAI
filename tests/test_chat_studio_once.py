@@ -56,6 +56,9 @@ class OneApprovalTests(unittest.TestCase):
         base = Path(tmp.name)
         (base / "src").mkdir()
         self.gens = BlockingGenerators(base / "src")
+        from backend_service.storyboard.batch import BATCHES
+
+        self.old_batches = set(BATCHES)  # batches other tests left behind are not this test's to wait for
         self.addCleanup(self.finish_batches)
         patches = [
             mock.patch.dict(os.environ, {"CHAOSENGINE_STORYBOARDS_DIR": str(base / "storyboards")}),
@@ -78,8 +81,9 @@ class OneApprovalTests(unittest.TestCase):
         from backend_service.storyboard.batch import BATCHES
 
         self.gens.release.set()
-        for batch in list(BATCHES.values()):
-            batch.done.wait(10)
+        for batch_id, batch in list(BATCHES.items()):
+            if batch_id not in self.old_batches:
+                batch.done.wait(10)
 
     def tool(self, tool_name, **args):
         out = self.registry.get(tool_name).execute_structured(**args)

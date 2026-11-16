@@ -2,8 +2,8 @@
 
 Two canned reports drive these tests:
 
-* ``tensorfold_caps_macos_1_2_8.json`` is the macOS 1.2.8 Metal build's real
-  output, verbatim (M4 Max, 2026-11-14).
+* ``tensorfold_caps_macos_1_2_9.json`` is the macOS 1.2.9 Metal build's real
+  output, verbatim (M4 Max, 2026-11-16; same families as 1.2.8).
 * ``tensorfold_caps_cuda_1_2_8.json`` is assembled from the v1.2.7 source (the
   CUDA registry in ``zig/src/native/cuda_families.zig``) and the formats of the
   GB10 receipts in ``docs/receipts``; it carries the four CUDA-only families the
@@ -54,7 +54,7 @@ def _with_families(caps: native.NativeCapabilities, **extra: tuple[str, ...]) ->
     return native.NativeCapabilities(caps.version, caps.chip, caps.backends, {**caps.families, **extra}, caps.flags)
 
 
-MAC = _caps("tensorfold_caps_macos_1_2_8.json")
+MAC = _caps("tensorfold_caps_macos_1_2_9.json")
 CUDA = _caps("tensorfold_caps_cuda_1_2_8.json")
 
 
@@ -344,7 +344,7 @@ class CheckUpstreamsTests(unittest.TestCase):
             with mock.patch.object(native, "find_binary", lambda environ=None: Path("/fake/tensorfold-native")), mock.patch.object(
                 native, "probe_capabilities", lambda binary, timeout=30.0, caps=caps: caps
             ):
-                self.assertEqual(module.unlisted_families(), ("1.2.8", expected))
+                self.assertEqual(module.unlisted_families(), (caps.version, expected))
 
 
 if __name__ == "__main__":

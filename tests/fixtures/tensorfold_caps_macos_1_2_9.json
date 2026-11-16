@@ -1,7 +1,7 @@
 {
  "schema": 1,
  "engine": "zig",
- "version": "1.2.8",
+ "version": "1.2.9",
  "chip": "apple-m4",
  "backends": [
   "metal"
@@ -190,6 +190,7 @@
    "--allowed-origin": {},
    "--allowed-controls": {},
    "--port": {},
+   "--config": {},
    "--unix-socket": {},
    "--name": {},
    "--chat-template": {},
@@ -1411,5 +1412,8 @@
     "on_with": null
    }
   ]
- }
+ },
+ "token_stream_versions": [
+  1
+ ]
 }

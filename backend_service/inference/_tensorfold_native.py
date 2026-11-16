@@ -38,10 +38,10 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from backend_service.inference._tensorfold import TensorFoldFamily
 
-NATIVE_VERSION = "1.2.8"
+NATIVE_VERSION = "1.2.9"
 RELEASE_BASE = "https://github.com/ashhart/TensorFold/releases/download"
 
-# Platform key -> archive name. Windows has no release archive (1.2.8 ships
+# Platform key -> archive name. Windows has no release archive (1.2.9 ships
 # Linux x86_64 / aarch64 and macOS arm64 only): its binary is a source build
 # the user adopts, or a self-hosted archive named by the two env vars below.
 _ASSETS: dict[str, str] = {

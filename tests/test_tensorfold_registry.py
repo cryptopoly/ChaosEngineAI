@@ -41,9 +41,9 @@ class RegistryInvariantTests(unittest.TestCase):
                 # only Step-5-Preview: its checkpoint is a local conversion
                 self.assertEqual(family.key, "step5_preview")
 
-    def test_every_model_type_the_128_binary_serves_is_listed(self) -> None:
-        # ``capabilities --json`` families of the macOS 1.2.8 build (2026-11-14);
-        # 1.2.8 added ``flint`` to 1.2.7's list.
+    def test_every_model_type_the_129_binary_serves_is_listed(self) -> None:
+        # ``capabilities --json`` families of the macOS 1.2.9 build (2026-11-16,
+        # unchanged from 1.2.8); 1.2.8 added ``flint`` to 1.2.7's list.
         served = {
             "kimi_k3", "kimi_k31", "qwen4", "qwen4_text", "fish_omni", "nemotron_h", "qwen4_exp", "glm5_next",
             "qwen3_5", "qwen3_5_moe", "lfm3", "lfm3_vl", "lfm2_moe", "glm_moe_dsa", "gemma4", "gemma4_unified",

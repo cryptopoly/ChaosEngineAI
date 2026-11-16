@@ -74,6 +74,13 @@ describe("length and kind words in the shipping languages (S-N)", () => {
     expect(briefSeconds("一个1分钟的广告")).toBe(60);
     expect(briefSeconds("30초 광고")).toBe(30);
     expect(briefSeconds("2,5 min")).toBe(150);
+    // Han numerals (S-Q).
+    expect(briefSeconds("三十秒的广告")).toBe(30);
+    expect(briefSeconds("一分钟的广告")).toBe(60);
+    expect(briefSeconds("十五秒のCM")).toBe(15);
+    expect(briefSeconds("九十秒の予告編")).toBe(90);
+    expect(briefSeconds("两分鐘")).toBe(120);
+    expect(briefSeconds("一个故事")).toBeNull();
   });
 
   it("still ignores numbers that are not a length", () => {

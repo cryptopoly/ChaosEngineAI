@@ -150,7 +150,8 @@ def build_batch(request: Request, project_id: str, what: str, shot_ids: list[str
     batch.unload, batch.last_frame, batch.stop_running = wiring["unload"], wiring["last_frame"], wiring["stop_running"]
     batch.clip_image_refusal = wiring.get("clip_image_refusal")
     # Name the project's models so the first step of each kind shows a time left before any step has finished.
-    batch.use_models(final_image or image, video)
+    # A draft batch prices its stills with the draft (fast) model, not the project's slow one (S-N).
+    batch.use_models(final_image or (draft_image if draft and draft_image else image), video)
     return batch
 
 
@@ -415,8 +416,12 @@ def export_captions(project_id: str) -> dict[str, Any]:
 
     store = get_store()
     project = _guard(store.load, project_id)
-    items = captions.cues(project, compute_timeline(project, ready_only=True))
+    timeline = compute_timeline(project, ready_only=True)
+    items = captions.cues(project, timeline)
     if not items:
+        if project.captions:
+            raise HTTPException(status_code=400, detail=(
+                f"The captions start after the film ends ({timeline.total:.1f} s). Make the clips under them first."))
         raise HTTPException(status_code=400, detail="There are no captions to export.")
     path = captions.write_srt(project, store.folder(project_id), items)
     return {"file": f"exports/{path.name}", "cues": len(items)}

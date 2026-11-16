@@ -105,7 +105,7 @@
     "pin": "Fixar",
     "deleteChat": "Excluir chat",
     "forkedFrom": "Bifurcado de outra conversa na mensagem #{number}",
-    "forkBadge": "⑂ fork",
+    "forkBadge": "fork",
     "modelReadyTooltip": "O modelo já está carregado — este chat responderá na hora, sem tempo de recarga.",
     "readyBadge": "pronto"
   },
@@ -402,7 +402,7 @@
     "changeVoice": null
   },
   "emptyBanner": {
-    "welcomeTitle": "👋 Bem-vindo ao Chat do ChaosEngineAI",
+    "welcomeTitle": "Bem-vindo ao Chat do ChaosEngineAI",
     "welcomeBody": "Escolha um modelo de chat em Chat > Modelos para começar. Recomendamos uma variante pequena do Qwen3 ou do Llama 3 para a primeira execução — elas baixam em um ou dois minutos e rodam em qualquer notebook.",
     "browseDiscover": "Navegar pelos modelos",
     "noModelLoaded": "É preciso carregar um modelo antes de conversar. Escolha um da sua biblioteca para carregá-lo na memória.",

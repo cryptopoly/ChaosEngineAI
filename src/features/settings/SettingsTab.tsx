@@ -673,10 +673,12 @@ export function SettingsTab({
               ? <AcceleratorsPanel backendOnline={backendOnline} hostSystem={hostSystem} />
               : activeSection === "disk"
                 ? (
-                  <>
+                  // One scrolling column at natural heights: as two flex children of .settings-content the panels
+                  // split the height, leaving Disk usage half empty and Clean up scrolling in a small box (S-N).
+                  <div className="settings-disk-stack">
                     <DiskUsagePanel backendOnline={backendOnline} />
                     <CleanupPanel backendOnline={backendOnline} />
-                  </>
+                  </div>
                 )
                 : diagnosticsPanels;
 

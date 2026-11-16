@@ -105,7 +105,7 @@
     "pin": "ピン留め",
     "deleteChat": "チャットを削除",
     "forkedFrom": "別のスレッドのメッセージ #{number} から分岐",
-    "forkBadge": "⑂ 分岐",
+    "forkBadge": "分岐",
     "modelReadyTooltip": "モデルは読み込み済みです — このチャットは再読み込みの待ち時間なしですぐに応答します。",
     "readyBadge": "準備完了"
   },
@@ -402,7 +402,7 @@
     "changeVoice": null
   },
   "emptyBanner": {
-    "welcomeTitle": "👋 ChaosEngineAI チャットへようこそ",
+    "welcomeTitle": "ChaosEngineAI チャットへようこそ",
     "welcomeBody": "始めるには、チャット > モデルからチャットモデルを選んでください。最初は小さめの Qwen3 または Llama 3 のバリアントがおすすめです。1〜2 分でダウンロードでき、どのノート PC でも動作します。",
     "browseDiscover": "モデルを見る",
     "noModelLoaded": "チャットを始めるには、モデルを読み込む必要があります。ライブラリから選んでメモリに読み込んでください。",

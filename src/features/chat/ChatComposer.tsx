@@ -11,6 +11,7 @@ import type { SlashCommand } from "./slashCommands";
 import { ChatComposerDflashHint } from "./ChatComposerDflashHint";
 import { AUTO_APPROVE_HOURS, useStudioAutoApprove, writeStudioAutoApprove } from "./studioChat";
 import { ChatSkillsSwitch } from "./ChatSkillsSwitch";
+import { PaperclipIcon } from "../../components/icons/ActionIcons";
 
 /**
  * Phase 2.1: extracted from ChatTab.tsx. The composer area — image
@@ -275,11 +276,13 @@ export function ChatComposer({
               className="secondary-button composer-attach-btn"
               title={t("attachments.image", { defaultValue: "Attach image" })}
             >
+              {/* Visually hidden, not `hidden`: the input stays in the Tab order and the label shows its focus. */}
               <input
                 type="file"
                 accept="image/*"
                 multiple
-                hidden
+                className="sr-only"
+                aria-label={t("attachments.image", { defaultValue: "Attach image" })}
                 onChange={(event) => {
                   const files = event.target.files;
                   if (!files) return;
@@ -298,7 +301,7 @@ export function ChatComposer({
                   event.target.value = "";
                 }}
               />
-              {"📎"}
+              <PaperclipIcon />
             </label>
           ) : null}
           {showThinkingControl ? (

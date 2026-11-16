@@ -95,7 +95,7 @@ export function BoardTab({ story, project, chat, onTab }: BoardTabProps) {
           onAddFiles={(files) => setAdding({ files, at: centre() })}
         />
         <p id="board-keys-hint" className="muted-text board-tab__hint">
-          {t("board.freestyle.keysHint", { defaultValue: "Drag cards anywhere. Keys: arrows go to the next card; Space selects; arrows move selected cards (Shift for a bigger step); Escape clears." })}
+          {t("board.freestyle.keysHint", { defaultValue: "Drag cards anywhere. Keys: arrows go to the next card; Space selects; arrows move selected cards (Shift for a bigger step, Alt goes to the next card instead); Escape clears." })}
         </p>
         <BoardCanvas
           projectId={project.id}

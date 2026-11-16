@@ -49,8 +49,7 @@ export function PlanSuggestion({ brief, target, lengthText, onUseLength }: PlanS
       {offerLength ? (
         <>
           {" "}
-          {/* Never disabled while busy: a click right after typing the brief blurs it first (its save makes the tab
-              busy), and the op queue runs the length after the brief anyway. */}
+          {/* Not disabled while busy: the op queue runs the length after the brief's blur-save (see busyGate.ts). */}
           <button type="button" className="plan-link" onClick={() => onUseLength(seconds)}>
             {t("board.plan.suggest.useLength", { defaultValue: "Use {length}", length })}
           </button>

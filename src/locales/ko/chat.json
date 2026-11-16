@@ -105,7 +105,7 @@
     "pin": "고정",
     "deleteChat": "채팅 삭제",
     "forkedFrom": "다른 대화의 메시지 #{number}에서 분기됨",
-    "forkBadge": "⑂ 포크",
+    "forkBadge": "포크",
     "modelReadyTooltip": "모델이 이미 로드되어 있어 이 채팅은 다시 로드할 필요 없이 즉시 응답합니다.",
     "readyBadge": "준비됨"
   },
@@ -402,7 +402,7 @@
     "changeVoice": null
   },
   "emptyBanner": {
-    "welcomeTitle": "👋 ChaosEngineAI 채팅에 오신 것을 환영합니다",
+    "welcomeTitle": "ChaosEngineAI 채팅에 오신 것을 환영합니다",
     "welcomeBody": "시작하려면 채팅 > 모델에서 채팅 모델을 선택하세요. 처음에는 작은 Qwen3 또는 Llama 3 모델을 추천합니다. 1~2분이면 다운로드되고 어떤 노트북에서도 실행됩니다.",
     "browseDiscover": "모델 둘러보기",
     "noModelLoaded": "채팅하려면 먼저 모델을 로드해야 합니다. 라이브러리에서 모델을 선택해 메모리에 로드하세요.",

@@ -181,7 +181,7 @@ def storyboard_estimate(args: dict[str, Any], state: Any | None) -> dict[str, An
     when the project cannot be read; a missing model is named in ``missing``, never guessed."""
     from types import SimpleNamespace
 
-    from backend_service.routes.storyboard import _draft_sizes, _final_model, _project_variant, get_store
+    from backend_service.routes.storyboard import _draft_sizes, _draft_variant, _final_model, _project_variant, get_store
     from backend_service.storyboard.batch import needs_work
     from backend_service.storyboard.estimate import estimate, plan_steps
 
@@ -204,6 +204,10 @@ def storyboard_estimate(args: dict[str, Any], state: Any | None) -> dict[str, An
         model = _final_model(request, project) if what == "final" else project.defaults.imageModel
         image, why = _project_variant(request, "image", model)
         missing += [why] if why else []
+        if draft:
+            # Drafts run on the fastest installed still model, as the batch does (S-N: the card priced the
+            # project's slow model, "about 114 min" for stills that take seconds).
+            image = _draft_variant(request, project, image)
     if any(kind == "clip" for _, kind in steps):
         video, why = _project_variant(request, "video", project.defaults.videoModel)
         missing += [why] if why else []

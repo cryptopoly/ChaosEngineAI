@@ -108,6 +108,20 @@ test("Board: cards, drag, keyboard moves and Order these with Undo", async ({ pa
   await page.keyboard.press("Escape");
   await expect(page.locator(".board-card[aria-pressed='true']")).toHaveCount(0);
 
+  // S-N: with a card selected, Alt+arrow still goes to the next card (plain arrows move the selected one), so two
+  // cards can be selected from the keyboard and "Order these 2" is reachable.
+  const moved = (await load(request, project.id)).board?.pos[focusedId!];
+  await page.keyboard.press("Space");
+  await page.keyboard.press("Alt+ArrowLeft");
+  const secondId = await page.evaluate(() => (document.activeElement as HTMLElement | null)?.dataset.cardId ?? null);
+  expect(secondId).toBeTruthy();
+  expect(secondId).not.toBe(focusedId);
+  await page.keyboard.press("Space");
+  await expect(page.locator(".board-card[aria-pressed='true']")).toHaveCount(2);
+  await expect(page.getByRole("button", { name: "Order these 2" })).toBeVisible();
+  expect((await load(request, project.id)).board?.pos[focusedId!]).toEqual(moved);
+  await page.keyboard.press("Escape");
+
   // One shot selected: its card chat; none: the board (direction) chat.
   await card(page, project.shots[1].title).click();
   await expect(page.locator(".board-card-chat")).toBeVisible();

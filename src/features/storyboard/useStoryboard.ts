@@ -27,6 +27,7 @@ import type {
   StoryboardProjectPayload,
   StoryboardTimeline,
 } from "../../types";
+import { createBusyGate, type BusyGate } from "./busyGate";
 import { classifyFailure, isBatchPaused, isBatchRunning } from "./storyboardLogic";
 
 export const BATCH_POLL_MS = 1500;
@@ -94,6 +95,16 @@ export function useStoryboard(enabled: boolean, projectId: string | null): UseSt
   const [notFound, setNotFound] = useState(false);
   const [notice, setNotice] = useState<StoryboardNotice>(null);
   const [busy, setBusy] = useState(false);
+  // A blur-save made by a mouse press shows busy only after that press's click, so the click is not lost (busyGate.ts).
+  const busyGate = useRef<BusyGate | null>(null);
+  useEffect(() => {
+    const gate = createBusyGate(setBusy);
+    busyGate.current = gate;
+    return () => {
+      gate.dispose();
+      busyGate.current = null;
+    };
+  }, []);
   const [batch, setBatch] = useState<StoryboardBatchRecord | null>(null);
   const [batchProgress, setBatchProgress] = useState<JobProgress | StoryboardPausedProgress | null>(null);
   const [pausing, setPausing] = useState(false);
@@ -177,7 +188,9 @@ export function useStoryboard(enabled: boolean, projectId: string | null): UseSt
         if (!id || !current) return false;
         const request = run(id, current.revision, current);
         if (!request) return false;
-        setBusy(true);
+        const gate = busyGate.current;
+        if (gate) gate.begin();
+        else setBusy(true);
         try {
           adopt(await request);
           setError(null);
@@ -188,7 +201,8 @@ export function useStoryboard(enabled: boolean, projectId: string | null): UseSt
           await handleFailure(err);
           return false;
         } finally {
-          setBusy(false);
+          if (gate) gate.end();
+          else setBusy(false);
         }
       });
       queue.current = task.catch(() => false);

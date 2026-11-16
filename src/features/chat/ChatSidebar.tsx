@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
 import type { ChatSession, WarmModel } from "../../types";
 import { filterSessions } from "./sessionSearch";
+import { BoltIcon, ForkIcon } from "../../components/icons/ActionIcons";
 
 /**
  * Phase 2.1: extracted from ChatTab.tsx. Sidebar listing chat sessions
@@ -140,7 +141,7 @@ export function ChatSidebar({
                         defaultValue: "Forked from another thread at message #{number}",
                       })}
                     >
-                      {t("sidebar.forkBadge", { defaultValue: "⑂ fork" })}
+                      <ForkIcon width={12} height={12} /> {t("sidebar.forkBadge", { defaultValue: "fork" })}
                     </span>
                   ) : null}
                   {session.modelRef && warmModels.some((w) => w.ref === session.modelRef) ? (
@@ -150,7 +151,7 @@ export function ChatSidebar({
                         defaultValue: "Model is already loaded — this chat will respond instantly with no reload time.",
                       })}
                     >
-                      {"⚡"} {t("sidebar.readyBadge", { defaultValue: "ready" })}
+                      <BoltIcon width={12} height={12} /> {t("sidebar.readyBadge", { defaultValue: "ready" })}
                     </span>
                   ) : null}
                 </div>

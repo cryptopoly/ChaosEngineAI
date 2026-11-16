@@ -58,3 +58,42 @@ describe("PlanSuggestion", () => {
     expect(render("", null)).toBe("");
   });
 });
+
+describe("length and kind words in the shipping languages (S-N)", () => {
+  it("reads a stated length in German, French, Spanish, Portuguese, Russian, Japanese, Chinese and Korean", () => {
+    expect(briefSeconds("Ein Werbespot von 30 Sekunden für ein Café")).toBe(30);
+    expect(briefSeconds("eine Minute über den Hafen")).toBe(60);
+    expect(briefSeconds("une publicité de 45 secondes")).toBe(45);
+    expect(briefSeconds("un anuncio de un minuto")).toBe(60);
+    expect(briefSeconds("um comercial de 20 segundos")).toBe(20);
+    expect(briefSeconds("рекламный ролик на 30 секунд")).toBe(30);
+    expect(briefSeconds("30-секундный ролик")).toBe(30);
+    expect(briefSeconds("одну минуту")).toBe(60);
+    expect(briefSeconds("30秒の広告")).toBe(30);
+    expect(briefSeconds("1分間の予告編")).toBe(60);
+    expect(briefSeconds("一个1分钟的广告")).toBe(60);
+    expect(briefSeconds("30초 광고")).toBe(30);
+    expect(briefSeconds("2,5 min")).toBe(150);
+  });
+
+  it("still ignores numbers that are not a length", () => {
+    expect(briefSeconds("Vier Einstellungen vom Hafen")).toBeNull();
+    expect(briefSeconds("Paris 2024")).toBeNull();
+    expect(briefSeconds("a film about bus 15")).toBeNull();
+  });
+
+  it("knows an ad or a trailer in the shipping languages", () => {
+    expect(briefKind("Werbung für ein Café")).toBe("ad");
+    expect(briefKind("une publicité pour le thé")).toBe("ad");
+    expect(briefKind("un anuncio de té")).toBe("ad");
+    expect(briefKind("рекламный ролик")).toBe("ad");
+    expect(briefKind("お茶の広告")).toBe("ad");
+    expect(briefKind("茶馆广告")).toBe("ad");
+    expect(briefKind("차 광고")).toBe("ad");
+    expect(briefKind("une bande-annonce")).toBe("trailer");
+    expect(briefKind("трейлер игры")).toBe("trailer");
+    expect(briefKind("ゲームの予告編")).toBe("trailer");
+    expect(briefKind("A film about a pub")).toBe("film");
+    expect(shotSuggestion("30秒の広告", null)).toEqual({ seconds: 30, source: "brief", kind: "ad", low: 6, high: 8 });
+  });
+});

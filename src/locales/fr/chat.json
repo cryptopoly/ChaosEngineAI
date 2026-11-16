@@ -105,7 +105,7 @@
     "pin": "Épingler",
     "deleteChat": "Supprimer la discussion",
     "forkedFrom": "Dérivé d'un autre fil au message #{number}",
-    "forkBadge": "⑂ dérivé",
+    "forkBadge": "dérivé",
     "modelReadyTooltip": "Le modèle est déjà chargé — cette discussion répondra instantanément, sans temps de rechargement.",
     "readyBadge": "prêt"
   },
@@ -402,7 +402,7 @@
     "changeVoice": null
   },
   "emptyBanner": {
-    "welcomeTitle": "👋 Bienvenue dans le chat ChaosEngineAI",
+    "welcomeTitle": "Bienvenue dans le chat ChaosEngineAI",
     "welcomeBody": "Choisissez un modèle de chat dans Discussion > Modèles pour commencer. Nous recommandons une petite variante de Qwen3 ou de Llama 3 pour un premier essai : elle se télécharge en une à deux minutes et tourne sur n'importe quel ordinateur portable.",
     "browseDiscover": "Parcourir les modèles",
     "noModelLoaded": "Un modèle doit être chargé avant de pouvoir discuter. Choisissez-en un dans votre bibliothèque pour le charger en mémoire.",

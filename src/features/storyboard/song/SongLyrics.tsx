@@ -45,8 +45,7 @@ export function SongLyrics({ story, song, projectId }: { story: UseStoryboardRes
     void story.op("edit_song", { lyrics: lines });
   }
 
-  // Not disabled while the project is busy: leaving the lyrics box saves them on the way to this click, and the
-  // op queue runs the timing after that save, so the click must not be lost to the save's busy moment.
+  // Not disabled while the project is busy: the op queue runs the timing after the lyrics' blur-save (busyGate.ts).
   async function time() {
     if (!story.call) return;
     setWorking(true);

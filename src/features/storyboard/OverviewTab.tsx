@@ -12,6 +12,7 @@ import {
   checklist,
   checklistComplete,
   clipCount,
+  nextCardMode,
   nextStep,
   recentActivity,
   stillOnlyCount,
@@ -19,12 +20,14 @@ import {
   type ChecklistId,
   type NextStepId,
 } from "./overviewLogic";
+import { pausedCounts, pausedProgressOf, pausedReasonText } from "./PausedBatchBar";
 import { ProjectDefaultsPanel } from "./ProjectDefaultsPanel";
 import { ProjectImage } from "./ProjectMedia";
 import { RoughCutButton } from "./preview/RoughCutButton";
 import type { ProjectWorkspaceDeps } from "./ProjectShell";
 import type { ProjectTabId } from "./projectRoute";
-import { batchProgress, filmSeconds, isBatchRunning, missingShotIds, relativeTime, staleCount, thumbnailOf } from "./storyboardLogic";
+import { batchProgress, filmSeconds, missingShotIds, primaryPass, relativeTime, staleCount, thumbnailOf } from "./storyboardLogic";
+import { useProjectEstimate } from "./useProjectEstimate";
 import type { UseStoryboardResult } from "./useStoryboard";
 import type { UseStoryboardRenderResult } from "./useStoryboardRender";
 
@@ -79,8 +82,15 @@ export function OverviewTab({ story, project, timeline, deps, render, onTab, onO
   const facts = { previewCurrent, exported };
   const step = nextStep(project, facts);
   const rows = checklist(project, facts);
-  const running = isBatchRunning(story.batch);
+  const missingIds = missingShotIds(shots);
+  // The same estimate and rule as the run bar (`primaryPass`), so the two never name different primaries.
+  const batchState = story.batch?.state ?? null;
+  const idle = batchState !== "queued" && batchState !== "running" && batchState !== "paused";
+  const estimate = useProjectEstimate(project.id, project.revision, missingIds, idle && step.id === "makeMissing");
+  const mode = nextCardMode({ batchState, step: step.id, primary: primaryPass(shots, missingIds.length, estimate) });
+  const running = mode === "running";
   const progress = running && story.batch ? batchProgress(story.batch) : null;
+  const paused = mode === "paused" && story.batch ? pausedCounts(story.batch, pausedProgressOf(story.batchProgress)) : null;
 
   const stepText: Record<NextStepId, { title: string; body: string; button: string }> = {
     writeShots: {
@@ -146,9 +156,14 @@ export function OverviewTab({ story, project, timeline, deps, render, onTab, onO
 
   function act() {
     if (step.id === "makeMissing") {
-      void story.startBatch("both", missingShotIds(shots));
+      void story.startBatch("both", missingIds);
     }
     onTab(step.tab);
+  }
+
+  function makeDrafts() {
+    void story.startBatch("still", missingIds, false, true);
+    onTab("storyboard");
   }
 
   return (
@@ -164,7 +179,39 @@ export function OverviewTab({ story, project, timeline, deps, render, onTab, onO
                 : t("board.batch.starting", { defaultValue: "Starting…" })}
             </p>
             <div className="overview-tab__actions">
+              {story.pauseBatch ? (
+                <button
+                  type="button"
+                  className="secondary-button"
+                  disabled={story.pausing}
+                  title={t("board.pause.pauseTitle", { defaultValue: "Stops after the step in progress. The rest waits, also across a restart, until you resume." })}
+                  onClick={() => void story.pauseBatch?.()}
+                >
+                  {story.pausing ? t("board.pause.pausing", { defaultValue: "Pausing after this step…" }) : t("board.pause.pause", { defaultValue: "Pause" })}
+                </button>
+              ) : null}
               <button type="button" className="secondary-button" onClick={() => void story.cancelBatch()}>
+                {t("board.batch.cancel", { defaultValue: "Cancel batch" })}
+              </button>
+            </div>
+          </>
+        ) : paused && story.batch ? (
+          <>
+            <h3 id="overview-next-title">{t("board.pause.title", { defaultValue: "Paused" })}</h3>
+            <p className="muted-text" role="status">
+              {pausedReasonText(t as unknown as (key: string, options: Record<string, unknown>) => string, story.batch.pauseReason ?? null)}{" "}
+              {t("board.pause.steps", {
+                defaultValue: "{done} of {total} steps done, {left, plural, one {# left} other {# left}}",
+                done: paused.done,
+                total: paused.total,
+                left: paused.left,
+              })}
+            </p>
+            <div className="overview-tab__actions">
+              <button type="button" className="primary-button" disabled={story.busy || paused.left === 0} onClick={() => void story.resumeBatch?.()}>
+                {t("board.pause.resume", { defaultValue: "Resume" })}
+              </button>
+              <button type="button" className="secondary-button" disabled={story.busy} onClick={() => void story.cancelBatch()}>
                 {t("board.batch.cancel", { defaultValue: "Cancel batch" })}
               </button>
             </div>
@@ -173,13 +220,25 @@ export function OverviewTab({ story, project, timeline, deps, render, onTab, onO
           <>
             <h3 id="overview-next-title">{text.title}</h3>
             <p className="muted-text">{text.body}</p>
+            {mode === "drafts" ? (
+              <p className="muted-text">
+                {t("overview.next.makeMissing.draftsHint", {
+                  defaultValue: "The still model is slow. Make quick drafts first, mark the shots you like with Keep, then run the final pass.",
+                })}
+              </p>
+            ) : null}
             <div className="overview-tab__actions">
               {step.id === "writeShots" ? (
                 <button type="button" className="primary-button" onClick={() => onTab("plan")}>
                   {t("board.plan.overviewButton", { defaultValue: "Plan from an idea" })}
                 </button>
               ) : null}
-              <button type="button" className={step.id === "writeShots" ? "secondary-button" : "primary-button"} disabled={story.busy} onClick={act}>
+              {mode === "drafts" ? (
+                <button type="button" className="primary-button" disabled={story.busy} onClick={makeDrafts}>
+                  {t("board.passes.draft", { defaultValue: "Make drafts" })}
+                </button>
+              ) : null}
+              <button type="button" className={step.id === "writeShots" || mode === "drafts" ? "secondary-button" : "primary-button"} disabled={story.busy} onClick={act}>
                 {text.button}
               </button>
               {step.id === "writeShots" ? (

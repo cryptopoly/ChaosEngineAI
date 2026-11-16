@@ -105,7 +105,7 @@
     "pin": "yIbagh",
     "deleteChat": "ja'chuq yIQaw'",
     "forkedFrom": "latlh ja'chuqvo' chenta', QIn #{number}",
-    "forkBadge": "⑂ 'ay'",
+    "forkBadge": "'ay'",
     "modelReadyTooltip": "yab chu'lu'ta'; SIbI' jang ja'chuqvam, chu'qa' poQbe'.",
     "readyBadge": "ghuH"
   },
@@ -402,7 +402,7 @@
     "changeVoice": null
   },
   "emptyBanner": {
-    "welcomeTitle": "👋 ChaosEngineAI ja'chuqDaq nuqneH",
+    "welcomeTitle": "ChaosEngineAI ja'chuqDaq nuqneH",
     "welcomeBody": "DataghmeH ja'chuq > yabvo' ja'chuq yab yIwIv. nIDlIj wa'DIchvaD Qwen3 mach pagh Llama 3 mach wIchup: wa' tup cha' tup joq lI'lu' 'ej Hoch De'wI'Daq Qap.",
     "browseDiscover": "yab yInej",
     "noModelLoaded": "bIja'chuqpa' yab chu'lu'nIS. ghomlIjvo' wa' yIwIv 'ej qawHaqDaq yIqem.",

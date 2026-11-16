@@ -2069,7 +2069,7 @@
       "empty": "No pictures yet. Drop pictures here, or add shots and cast in the other tabs.",
       "fit": "Fit",
       "fitTitle": "Show every card",
-      "keysHint": "Drag cards anywhere. Keys: arrows go to the next card; Space selects; arrows move selected cards (Shift for a bigger step); Escape clears.",
+      "keysHint": "Drag cards anywhere. Keys: arrows go to the next card; Space selects; arrows move selected cards (Shift for a bigger step, Alt goes to the next card instead); Escape clears.",
       "kindCharacter": "Character",
       "kindPlace": "Place",
       "kindStyle": "Style",
@@ -2687,7 +2687,8 @@
         "body": "{n, plural, one {# shot has no take yet.} other {# shots have no take yet.}} Making them adds a still, then a clip, for each.",
         "button": "{n, plural, one {Make # missing} other {Make # missing}}",
         "title": "{n, plural, one {Make # shot} other {Make # shots}}",
-        "bodyStills": "{none, plural, =0 {} one {# shot has no take; } other {# shots have no take; }}{stills, plural, one {# has a still but no clip.} other {# have a still but no clip.}} Making them adds what is missing: a still and a clip, or just the clip."
+        "bodyStills": "{none, plural, =0 {} one {# shot has no take; } other {# shots have no take; }}{stills, plural, one {# has a still but no clip.} other {# have a still but no clip.}} Making them adds what is missing: a still and a clip, or just the clip.",
+        "draftsHint": "The still model is slow. Make quick drafts first, mark the shots you like with Keep, then run the final pass."
       },
       "making": "Making shots",
       "makingProgress": "Shot {n} of {total}",

@@ -4,6 +4,7 @@ import { InfoTooltip } from "../../components/InfoTooltip";
 import type { ChatSession, ModelCapabilities, ModelLoadingState } from "../../types";
 import { RagStatusBadge } from "../../components/RagStatusBadge";
 import { downloadExport, type ExportFormat } from "./exportThread";
+import { DocumentIcon } from "../../components/icons/ActionIcons";
 
 const CAPABILITY_BADGES: Array<{
   flag: keyof ModelCapabilities;
@@ -271,7 +272,7 @@ export function ChatHeader({
           <div className="session-documents">
             {activeChat.documents.map((doc) => (
               <span key={doc.id} className="session-document-chip" title={`${doc.chunkCount} chunks · ${(doc.sizeBytes / 1024).toFixed(0)} KB`}>
-                {"📄"} {doc.originalName}
+                <DocumentIcon width={14} height={14} /> {doc.originalName}
                 <button
                   type="button"
                   className="session-document-remove"

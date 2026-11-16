@@ -7,6 +7,7 @@ import {
   type AcceleratorMeta,
   isPlatformCompatible,
 } from "./acceleratorCatalog";
+import { BoltIcon, CheckIcon } from "./icons/ActionIcons";
 
 /**
  * Reusable card for the six CUDA-side accelerators (FU-056 Phase 2).
@@ -19,7 +20,7 @@ import {
  *     claim, applies-to copy, size pill, primary action. Lives in the
  *     Diagnostics Boost Pack and the Image / Video Studio runtime
  *     banners.
- *   - ``pill`` — compact horizontal chip with "🚀 Label +Nx [Install]"
+ *   - ``pill`` — compact horizontal chip with "Label +Nx [Install]" with a bolt icon
  *     copy. Lives on catalog variant cards in the Discover / Models
  *     tabs.
  *   - ``row`` — table-friendly form with name + applies-to + status +
@@ -213,7 +214,7 @@ export function AcceleratorCard(props: AcceleratorCardProps) {
         data-accelerator-id={meta.id}
       >
         <span className="accelerator-card-pill-label">
-          {installed ? "✓ " : "🚀 "}
+          {installed ? <CheckIcon width={12} height={12} /> : <BoltIcon width={12} height={12} />}{" "}
           {meta.shortLabel}
         </span>
         {!installed && !readOnly && (
@@ -279,7 +280,7 @@ export function AcceleratorCard(props: AcceleratorCardProps) {
     >
       <header className="accelerator-card-header">
         <h3 className="accelerator-card-title">
-          {installed ? "✓ " : "🚀 "}
+          {installed ? <CheckIcon width={14} height={14} /> : <BoltIcon width={14} height={14} />}{" "}
           {meta.label}
         </h3>
         {statusBadge}

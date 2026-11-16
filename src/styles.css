@@ -4778,6 +4778,17 @@ select.text-input {
   min-height: 0;
 }
 
+.settings-disk-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-gap);
+  overflow-y: auto;
+}
+
+.settings-disk-stack > .panel {
+  flex: 0 0 auto;
+}
+
 /* When only one section panel is showing (e.g. General = Appearance only)
    let it consume the full width rather than leaving the 2-col grid's
    second column empty. content-grid's 2-col default is still right for
@@ -16485,4 +16496,20 @@ select.music-library__select {
 
 .cleanup-result p {
   margin: 0 0 6px;
+}
+
+/* S-N: the panel sits in a .control-stack, whose "label { flex-direction: column }" stacked each checkbox above its
+   text and centred Select all. Rows are checkbox, text, size on one line. */
+.cleanup-group label.check-row {
+  flex-direction: row;
+  align-items: center;
+  color: inherit;
+}
+
+.cleanup-group label.cleanup-row {
+  align-items: flex-start;
+}
+
+.cleanup-group .cleanup-row input[type="checkbox"] {
+  margin-top: 3px;
 }

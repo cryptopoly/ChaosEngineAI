@@ -27,7 +27,7 @@ import type {
   StoryboardProjectPayload,
   StoryboardTimeline,
 } from "../../types";
-import { createBusyGate } from "./busyGate";
+import { createBusyGate, type BusyGate } from "./busyGate";
 import { classifyFailure, isBatchPaused, isBatchRunning } from "./storyboardLogic";
 
 export const BATCH_POLL_MS = 1500;
@@ -95,9 +95,16 @@ export function useStoryboard(enabled: boolean, projectId: string | null): UseSt
   const [notFound, setNotFound] = useState(false);
   const [notice, setNotice] = useState<StoryboardNotice>(null);
   const [busy, setBusy] = useState(false);
-  // Busy shows only after a short grace, so a click that follows a blur-save is not lost (busyGate.ts).
-  const [busyGate] = useState(() => createBusyGate(setBusy));
-  useEffect(() => () => busyGate.dispose(), [busyGate]);
+  // A blur-save made by a mouse press shows busy only after that press's click, so the click is not lost (busyGate.ts).
+  const busyGate = useRef<BusyGate | null>(null);
+  useEffect(() => {
+    const gate = createBusyGate(setBusy);
+    busyGate.current = gate;
+    return () => {
+      gate.dispose();
+      busyGate.current = null;
+    };
+  }, []);
   const [batch, setBatch] = useState<StoryboardBatchRecord | null>(null);
   const [batchProgress, setBatchProgress] = useState<JobProgress | StoryboardPausedProgress | null>(null);
   const [pausing, setPausing] = useState(false);
@@ -181,7 +188,9 @@ export function useStoryboard(enabled: boolean, projectId: string | null): UseSt
         if (!id || !current) return false;
         const request = run(id, current.revision, current);
         if (!request) return false;
-        busyGate.begin();
+        const gate = busyGate.current;
+        if (gate) gate.begin();
+        else setBusy(true);
         try {
           adopt(await request);
           setError(null);
@@ -192,13 +201,14 @@ export function useStoryboard(enabled: boolean, projectId: string | null): UseSt
           await handleFailure(err);
           return false;
         } finally {
-          busyGate.end();
+          if (gate) gate.end();
+          else setBusy(false);
         }
       });
       queue.current = task.catch(() => false);
       return task;
     },
-    [adopt, handleFailure, busyGate],
+    [adopt, handleFailure],
   );
 
   const op = useCallback(

@@ -8,11 +8,22 @@ import { useTranslation } from "react-i18next";
 import { getLyricsSpeechStatus, makeStoryboardLyricCaptions } from "../../../api/storyboard";
 import type { StoryboardSong } from "../../../types";
 import type { UseStoryboardResult } from "../useStoryboard";
-import { lyricsToLines, sameLines } from "./songLogic";
+import { useUnsavedText } from "../useUnsavedText";
+import { clock, lyricsToLines, sameLines, songLonger } from "./songLogic";
 
 type Timing = "auto" | "sections" | "speech";
 
-export function SongLyrics({ story, song, projectId }: { story: UseStoryboardResult; song: StoryboardSong; projectId: string }) {
+export interface SongLyricsProps {
+  story: UseStoryboardResult;
+  song: StoryboardSong;
+  projectId: string;
+  /** The shots' seconds added up: a longer song gets a note beside "Time the lyrics" and the cut plan offered there. */
+  filmSeconds?: number;
+  onCutPlan?: () => void;
+  cutDisabled?: boolean;
+}
+
+export function SongLyrics({ story, song, projectId, filmSeconds, onCutPlan, cutDisabled }: SongLyricsProps) {
   const { t } = useTranslation("studio");
   const [text, setText] = useState(song.lyrics.join("\n"));
   const saved = useRef(song.lyrics);
@@ -38,11 +49,18 @@ export function SongLyrics({ story, song, projectId }: { story: UseStoryboardRes
     };
   }, []);
 
+  const unsaved = useUnsavedText("song:lyrics", {
+    text,
+    dirty: !sameLines(lyricsToLines(text), saved.current),
+    send: (value) => story.op("edit_song", { lyrics: lyricsToLines(value) }),
+    restore: setText,
+  });
+
   function save() {
     const lines = lyricsToLines(text);
     if (sameLines(lines, saved.current)) return;
     saved.current = lines;
-    void story.op("edit_song", { lyrics: lines });
+    unsaved.save(text);
   }
 
   // Not disabled while the project is busy: the op queue runs the timing after the lyrics' blur-save (busyGate.ts).
@@ -81,6 +99,7 @@ export function SongLyrics({ story, song, projectId }: { story: UseStoryboardRes
         onChange={(event) => setText(event.target.value)}
         onBlur={save}
       />
+      {unsaved.notice}
       <div className="song-lyrics__row">
         <label className="song-lyrics__timing">
           <span>{t("board.song.timing", { defaultValue: "Timing" })}</span>
@@ -94,6 +113,22 @@ export function SongLyrics({ story, song, projectId }: { story: UseStoryboardRes
           {working ? t("board.song.timingWorking", { defaultValue: "Timing the lyrics…" }) : t("board.song.timeLyrics", { defaultValue: "Time the lyrics" })}
         </button>
       </div>
+      {songLonger(song.seconds, filmSeconds) ? (
+        <div className="song-lyrics__longer">
+          <p className="muted-text">
+            {t("board.song.longerThanFilm", {
+              defaultValue: "The song runs {song}; the shots add up to {film}. Lines after {film} do not show until the film is that long.",
+              song: clock(song.seconds),
+              film: clock(filmSeconds ?? 0),
+            })}
+          </p>
+          {onCutPlan ? (
+            <button type="button" className="secondary-button" disabled={cutDisabled} onClick={onCutPlan}>
+              {t("board.song.cutPlan", { defaultValue: "Make a cut plan" })}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
       {speech && !speech.ready && speech.reason && !result ? <p className="muted-text">{speech.reason}</p> : null}
       {noClip ? <p className="muted-text">{t("board.song.noClip", { defaultValue: "The song is not on the mixer, so there is no clip to put captions on. Attach it again with the mixer on." })}</p> : null}
       {problem ? <p className="plan-error" role="alert">{problem}</p> : null}

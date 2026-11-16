@@ -13,9 +13,11 @@ import { PaletteSwatches } from "./PaletteSwatches";
 import { MAX_PICTURES, picturesFrom } from "./pickerLogic";
 import { LENGTH_CHOICES, SHOT_COUNT_CHOICES, lengthLabel, planOf, projectPalette, styleWithRoom, stylesOf } from "./planLogic";
 import { PlanSuggestion } from "./PlanSuggestion";
+import { songLength } from "./song/songLogic";
 import { ProjectImage } from "./ProjectMedia";
 import { ReferenceImagePicker } from "./ReferenceImagePicker";
 import type { UseStoryboardResult } from "./useStoryboard";
+import { useUnsavedText } from "./useUnsavedText";
 
 export interface PlanBriefProps {
   story: UseStoryboardResult;
@@ -51,10 +53,17 @@ export function PlanBrief({ story, project, imageGallery, canPropose, proposing,
   const pictures = styles.flatMap((ref) => ref.images.map((image, index) => ({ ref, image, index })));
   const palette = projectPalette(project);
 
+  const unsaved = useUnsavedText("plan:brief", {
+    text: brief,
+    dirty: brief !== saved.current,
+    send: (text) => story.op("set_plan", { brief: text }),
+    restore: setBrief,
+  });
+
   function saveBrief() {
     if (brief === saved.current) return;
     saved.current = brief;
-    void story.op("set_plan", { brief });
+    unsaved.save(brief);
   }
 
   function setLength(seconds: number | null) {
@@ -98,6 +107,10 @@ export function PlanBrief({ story, project, imageGallery, canPropose, proposing,
     return t("board.plan.length.minutesSeconds", { defaultValue: "{m} min {s} s", m: minutes, s: rest });
   };
   const trimmed = brief.trim();
+  // An attached song and the Length disagree (15 s chosen, a 64 s song): offer the song's length (S-O).
+  const songSeconds = songLength(project.song?.seconds);
+  const songDiffers = songSeconds !== null && plan.filmSeconds !== null && Math.abs(plan.filmSeconds - songSeconds) >= 1;
+  const customLength = plan.filmSeconds !== null && !(LENGTH_CHOICES as readonly number[]).includes(plan.filmSeconds);
 
   return (
     <section className="plan-brief" aria-labelledby="plan-brief-title">
@@ -123,6 +136,7 @@ export function PlanBrief({ story, project, imageGallery, canPropose, proposing,
           <span className="muted-text plan-brief__count">{t("board.plan.brief.count", { defaultValue: "{n} of 4000 characters", n: brief.length })}</span>
         ) : null}
       </label>
+      {unsaved.notice}
 
       <div className="plan-brief__options">
         <div className="plan-brief__option" role="group" aria-labelledby="plan-length-label">
@@ -149,7 +163,19 @@ export function PlanBrief({ story, project, imageGallery, canPropose, proposing,
                 {lengthText(seconds)}
               </button>
             ))}
+            {customLength && plan.filmSeconds !== null ? (
+              <span className="plan-chip is-active">{lengthText(Math.round(plan.filmSeconds))}</span>
+            ) : null}
           </div>
+          {songDiffers && songSeconds !== null ? (
+            <p className="plan-brief__song-length muted-text">
+              {t("board.plan.length.songDiffers", { defaultValue: "The song runs {length}.", length: lengthText(songSeconds) })}{" "}
+              {/* Not disabled while busy: the op queue runs it after the brief's blur-save (busyGate.ts). */}
+              <button type="button" className="plan-link" onClick={() => setLength(songSeconds)}>
+                {t("board.plan.length.useSong", { defaultValue: "Use the song's length" })}
+              </button>
+            </p>
+          ) : null}
         </div>
         <label className="plan-brief__option">
           <span className="plan-brief__option-label">{t("board.plan.count.label", { defaultValue: "Shots" })}</span>

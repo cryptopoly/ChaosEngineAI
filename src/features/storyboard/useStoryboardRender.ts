@@ -29,6 +29,12 @@ export interface UseStoryboardRenderResult {
   exported: StoryboardRenderJob | null;
   /** Bumps whenever a preview finishes, so the player reloads the (same-named) file. */
   previewVersion: number;
+  /**
+   * Whether exports/preview.mp4 may be there, from the first status read: null until it answers; true when the
+   * backend says so, does not say (an older one) or could not be asked. The Mixer asks for the file only when true
+   * or after a preview finished (S-O).
+   */
+  hasPreview?: boolean | null;
   start: (revision: number, preview: boolean) => Promise<boolean>;
   cancel: () => Promise<void>;
   clearError: () => void;
@@ -52,6 +58,7 @@ export function useStoryboardRender(
   const [preview, setPreview] = useState<StoryboardRenderJob | null>(null);
   const [exported, setExported] = useState<StoryboardRenderJob | null>(null);
   const [previewVersion, setPreviewVersion] = useState(0);
+  const [hasPreview, setHasPreview] = useState<boolean | null>(null);
   const seen = useRef<string | null>(null);
   const finished = useRef<string | null>(null);
   const staleRef = useRef(onStale);
@@ -78,16 +85,20 @@ export function useStoryboardRender(
     setPreview(null);
     setExported(null);
     setError(null);
+    setHasPreview(null);
     seen.current = null;
     finished.current = null;
     if (!enabled || !projectId) return;
     let cancelled = false;
     getStoryboardRender(projectId)
       .then((status) => {
-        if (!cancelled) adopt(status.render);
+        if (cancelled) return;
+        adopt(status.render);
+        setHasPreview(status.hasPreview !== false);
       })
       .catch(() => {
         // no render history is not an error
+        if (!cancelled) setHasPreview(true);
       });
     return () => {
       cancelled = true;
@@ -161,6 +172,7 @@ export function useStoryboardRender(
     preview,
     exported,
     previewVersion,
+    hasPreview,
     start,
     cancel,
     clearError: () => {

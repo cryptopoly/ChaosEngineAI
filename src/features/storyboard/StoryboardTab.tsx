@@ -260,7 +260,7 @@ export function StoryboardTab({ story, project, timeline, imageGallery, videoGal
                 dragOver={overId === shot.id && dragId !== shot.id}
                 disabled={busy}
                 castNames={castNamesOf(shot)}
-                onRename={(title) => void story.op("edit_shot", { shotId: shot.id, title })}
+                onRename={(title) => story.op("edit_shot", { shotId: shot.id, title })}
                 onPickTake={(takeId) => void story.op("pick_take", { shotId: shot.id, takeId })}
                 onToggleLock={() => void story.op("lock", { shotId: shot.id, locked: !shot.locked })}
                 onToggleRedo={() => void story.op("mark_redo", { shotId: shot.id, redo: !shot.redo })}

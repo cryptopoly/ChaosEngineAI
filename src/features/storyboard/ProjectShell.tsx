@@ -21,6 +21,7 @@ import { ProjectShellHeader } from "./ProjectShellHeader";
 import { StoryboardTab } from "./StoryboardTab";
 import { useStoryboard } from "./useStoryboard";
 import { useStoryboardRender } from "./useStoryboardRender";
+import { UnsavedTextContext } from "./unsavedText";
 
 /** What the tabs need from the rest of the app. */
 export interface ProjectWorkspaceDeps {
@@ -131,29 +132,31 @@ export function ProjectShell({ projectId, fallbackName, tab, backendOnline, deps
   }
 
   return (
-    <div className="content-grid storyboard-page">
-      <section className="panel span-2 project-shell">
-        <ProjectShellHeader
-          name={project?.name ?? fallbackName ?? ""}
-          project={project}
-          tab={tab}
-          busy={story.busy}
-          conflict={story.notice === "conflict"}
-          onDismissConflict={story.dismissNotice}
-          onBack={onBack}
-          onRename={(name) => void story.op("edit_project", { name })}
-          onUndo={() => void story.undo()}
-          onRedo={() => void story.redo()}
-          onTab={onTab}
-          onOpenSettings={() => {
-            setSettingsRequest((n) => n + 1);
-            onTab("overview");
-          }}
-        />
-        <div className="project-shell__panel" role="tabpanel" id={`project-panel-${tab}`} aria-labelledby={`project-tab-${tab}`}>
-          {body}
-        </div>
-      </section>
-    </div>
+    <UnsavedTextContext.Provider value={story.unsaved ?? null}>
+      <div className="content-grid storyboard-page">
+        <section className="panel span-2 project-shell">
+          <ProjectShellHeader
+            name={project?.name ?? fallbackName ?? ""}
+            project={project}
+            tab={tab}
+            busy={story.busy}
+            conflict={story.notice === "conflict"}
+            onDismissConflict={story.dismissNotice}
+            onBack={onBack}
+            onRename={(name) => story.op("edit_project", { name })}
+            onUndo={() => void story.undo()}
+            onRedo={() => void story.redo()}
+            onTab={onTab}
+            onOpenSettings={() => {
+              setSettingsRequest((n) => n + 1);
+              onTab("overview");
+            }}
+          />
+          <div className="project-shell__panel" role="tabpanel" id={`project-panel-${tab}`} aria-labelledby={`project-tab-${tab}`}>
+            {body}
+          </div>
+        </section>
+      </div>
+    </UnsavedTextContext.Provider>
   );
 }

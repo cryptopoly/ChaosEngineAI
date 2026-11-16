@@ -24,6 +24,7 @@ import { pausedCounts, pausedProgressOf, pausedReasonText } from "./PausedBatchB
 import { ProjectDefaultsPanel } from "./ProjectDefaultsPanel";
 import { ProjectImage } from "./ProjectMedia";
 import { RoughCutButton } from "./preview/RoughCutButton";
+import { draftPassTitle, type TFn } from "./RunBar";
 import type { ProjectWorkspaceDeps } from "./ProjectShell";
 import type { ProjectTabId } from "./projectRoute";
 import { batchProgress, filmSeconds, missingShotIds, primaryPass, relativeTime, staleCount, thumbnailOf } from "./storyboardLogic";
@@ -234,7 +235,13 @@ export function OverviewTab({ story, project, timeline, deps, render, onTab, onO
                 </button>
               ) : null}
               {mode === "drafts" ? (
-                <button type="button" className="primary-button" disabled={story.busy} onClick={makeDrafts}>
+                <button
+                  type="button"
+                  className="primary-button"
+                  disabled={story.busy}
+                  title={draftPassTitle(t as unknown as TFn, estimate?.passes?.draft)}
+                  onClick={makeDrafts}
+                >
                   {t("board.passes.draft", { defaultValue: "Make drafts" })}
                 </button>
               ) : null}

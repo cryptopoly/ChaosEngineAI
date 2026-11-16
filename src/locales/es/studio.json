@@ -1728,7 +1728,8 @@
       "finalTitle": null,
       "label": null,
       "withClips": null,
-      "keepHint": null
+      "keepHint": null,
+      "draftPer": null
     },
     "exportDrafts": null,
     "preview": {
@@ -1891,7 +1892,9 @@
         "label": null,
         "minutes": null,
         "minutesSeconds": null,
-        "seconds": null
+        "seconds": null,
+        "songDiffers": null,
+        "useSong": null
       },
       "locked": null,
       "model": {
@@ -2144,7 +2147,18 @@
       "timingSpeech": null,
       "timingWorking": null,
       "title": null,
-      "untitled": null
+      "untitled": null,
+      "longerThanFilm": null
+    },
+    "unsaved": {
+      "title": null,
+      "conflict": null,
+      "failed": null,
+      "empty": null,
+      "putBack": null,
+      "retry": null,
+      "keepLatest": null,
+      "discard": null
     }
   },
   "storyProjects": {

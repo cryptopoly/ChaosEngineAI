@@ -16,6 +16,8 @@ import { StaleBadge, TransitionPicker } from "./ShotParts";
 import { TakeCompare } from "./TakeCompare";
 import { TakesStrip } from "./TakesStrip";
 import { useCardTabStops } from "./useCardTabStops";
+import type { SaveResult } from "./unsavedText";
+import { useUnsavedText } from "./useUnsavedText";
 import { canRedoClip, canRedoStill, clipOutdated } from "./remakeLogic";
 import { activeTakeOf, isDraftTake, shotCardClassName, thumbnailOf } from "./storyboardLogic";
 
@@ -41,7 +43,8 @@ export interface ShotCardProps {
   disabled: boolean;
   /** Names of the characters and places this shot uses, shown as chips. */
   castNames?: string[];
-  onRename: (title: string) => void;
+  /** Saves the title; a promise of whether it landed lets the card keep refused text (S-O). */
+  onRename: (title: string) => SaveResult;
   onPickTake: (takeId: string) => void;
   onToggleLock: () => void;
   onToggleRedo: () => void;
@@ -74,6 +77,12 @@ export function ShotCard(props: ShotCardProps) {
   } = props;
   const { t } = useTranslation("studio");
   const [title, setTitle] = useState(shot.title);
+  const unsavedTitle = useUnsavedText(`card:${shot.id}:title`, {
+    text: title,
+    dirty: title !== shot.title,
+    send: (text) => props.onRename(text),
+    restore: setTitle,
+  });
   const [playing, setPlaying] = useState(false);
   const [comparing, setComparing] = useState(false);
   const cardRef = useRef<HTMLElement>(null);
@@ -195,7 +204,7 @@ export function ShotCard(props: ShotCardProps) {
           disabled={disabled}
           onChange={(event) => setTitle(event.target.value)}
           onBlur={() => {
-            if (title !== shot.title) props.onRename(title.trim());
+            if (title !== shot.title) unsavedTitle.save(title.trim());
           }}
           onKeyDown={(event) => {
             event.stopPropagation();
@@ -229,6 +238,7 @@ export function ShotCard(props: ShotCardProps) {
           </button>
         </div>
       </div>
+      {unsavedTitle.notice}
 
       <div className="shot-card__body">
         <div className="shot-card__media">

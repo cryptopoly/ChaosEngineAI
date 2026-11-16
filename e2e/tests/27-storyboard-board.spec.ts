@@ -146,7 +146,8 @@ test("Song: attach a WAV, rename a section, review and apply a cut plan; the boa
   await panel.locator(".song-ruler__input").press("Enter");
   await expect(panel.locator("button.song-ruler__label").first()).toHaveText("verse");
 
-  await panel.getByRole("button", { name: "Make a cut plan" }).click();
+  // The panel's own button (a song longer than the shots also offers one beside Time the lyrics, S-O).
+  await panel.locator(".song-panel__actions").getByRole("button", { name: "Make a cut plan" }).click();
   const review = page.locator(".cut-plan");
   await expect(review).toContainText("Cut plan:");
   const use = review.getByRole("button", { name: /^Use (these \d+ shots|this shot)$/ });

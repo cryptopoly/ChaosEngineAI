@@ -11,6 +11,8 @@ import { RESOLUTION_ALIAS } from "./formatLogic";
 import { PROJECT_TABS, type ProjectTabId } from "./projectRoute";
 import { nextTabIndex } from "./projectShellLogic";
 import { staleCount } from "./storyboardLogic";
+import type { SaveResult } from "./unsavedText";
+import { useUnsavedText } from "./useUnsavedText";
 
 export interface ProjectShellHeaderProps {
   name: string;
@@ -20,7 +22,8 @@ export interface ProjectShellHeaderProps {
   conflict: boolean;
   onDismissConflict: () => void;
   onBack: () => void;
-  onRename: (name: string) => void;
+  /** Saves the name; a promise of whether it landed keeps a refused name for "Put it back" (S-O). */
+  onRename: (name: string) => SaveResult;
   onUndo: () => void;
   onRedo: () => void;
   onTab: (tab: ProjectTabId) => void;
@@ -36,11 +39,17 @@ function ChevronLeft() {
   );
 }
 
-function ProjectName({ name, disabled, onRename }: { name: string; disabled: boolean; onRename: (name: string) => void }) {
+function ProjectName({ name, disabled, onRename }: { name: string; disabled: boolean; onRename: (name: string) => SaveResult }) {
   const { t } = useTranslation("studio");
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(name);
   const input = useRef<HTMLInputElement>(null);
+  const unsaved = useUnsavedText("project:name", {
+    text: value,
+    dirty: editing && value.trim() !== name,
+    send: (text) => onRename(text),
+    restore: setValue,
+  });
   useEffect(() => {
     if (!editing) setValue(name);
   }, [name, editing]);
@@ -51,7 +60,7 @@ function ProjectName({ name, disabled, onRename }: { name: string; disabled: boo
   function finish(save: boolean) {
     setEditing(false);
     const trimmed = value.trim();
-    if (save && trimmed && trimmed !== name) onRename(trimmed);
+    if (save && trimmed && trimmed !== name) unsaved.save(trimmed);
     else setValue(name);
   }
 
@@ -76,15 +85,18 @@ function ProjectName({ name, disabled, onRename }: { name: string; disabled: boo
     );
   }
   return (
-    <button
-      type="button"
-      className="project-shell__name"
-      disabled={disabled}
-      title={t("projectShell.rename", { defaultValue: "Rename" })}
-      onClick={() => setEditing(true)}
-    >
-      <h2>{name}</h2>
-    </button>
+    <>
+      <button
+        type="button"
+        className="project-shell__name"
+        disabled={disabled}
+        title={t("projectShell.rename", { defaultValue: "Rename" })}
+        onClick={() => setEditing(true)}
+      >
+        <h2>{name}</h2>
+      </button>
+      {unsaved.notice}
+    </>
   );
 }
 

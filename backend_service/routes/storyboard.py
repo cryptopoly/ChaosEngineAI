@@ -388,7 +388,8 @@ def render_status(project_id: str) -> dict[str, Any]:
 
     folder = _guard(get_store().folder, project_id)
     job = RENDERS.status(folder.name, folder)
-    return {"render": job.describe() if job else None}
+    # The Mixer loads exports/preview.mp4 only when there is one, so a project never rendered asks for nothing (S-O).
+    return {"render": job.describe() if job else None, "hasPreview": (folder / "exports" / "preview.mp4").is_file()}
 
 
 @router.post("/api/storyboard/projects/{project_id}/render/cancel")

@@ -1,0 +1,45 @@
+/* "Your text was not saved" under a blur-save field (S-O). Tokens only. */
+.unsaved-text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--warning);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--warning) 8%, var(--panel));
+  font-size: 0.85rem;
+  min-width: 0;
+}
+.unsaved-text__head {
+  margin: 0;
+}
+.unsaved-text__text {
+  margin: 0;
+  padding: 4px 8px;
+  border-left: 2px solid var(--border);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 6.5em;
+  overflow: auto;
+}
+.unsaved-text__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+.unsaved-text__dismiss {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.unsaved-text__dismiss:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

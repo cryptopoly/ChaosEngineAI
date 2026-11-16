@@ -9,6 +9,8 @@ import { useTranslation } from "react-i18next";
 import type { StoryboardProject } from "../../types";
 import { cardLook, cardText } from "./preview/brandCards";
 import { fontStack } from "./preview/RoughCutStage";
+import type { SaveResult } from "./unsavedText";
+import { useUnsavedText } from "./useUnsavedText";
 import "./preview/brand.css";
 
 export const CARD_SECONDS = [1, 1.5, 2, 3, 4, 5];
@@ -16,37 +18,47 @@ export const CARD_SECONDS = [1, 1.5, 2, 3, 4, 5];
 export interface BrandCardsPanelProps {
   project: StoryboardProject;
   disabled: boolean;
-  onChange: (change: Partial<StoryboardProject["export"]>) => void;
+  onChange: (change: Partial<StoryboardProject["export"]>) => SaveResult;
   onOpenCast: () => void;
 }
 
-function CardTextField({ value, placeholder, label, disabled, onSave }: {
+function CardTextField({ id, value, placeholder, label, disabled, onSave }: {
+  id: string;
   value: string;
   placeholder: string;
   label: string;
   disabled: boolean;
-  onSave: (text: string) => void;
+  onSave: (text: string) => SaveResult;
 }) {
   const [draft, setDraft] = useState(value);
   useEffect(() => setDraft(value), [value]);
+  const unsaved = useUnsavedText(`cards:${id}`, {
+    text: draft,
+    dirty: draft.replace(/\s+/g, " ").trim() !== value,
+    send: onSave,
+    restore: setDraft,
+  });
   return (
-    <input
-      type="text"
-      className="text-input brand-cards__text"
-      value={draft}
-      placeholder={placeholder}
-      maxLength={200}
-      aria-label={label}
-      disabled={disabled}
-      onChange={(event) => setDraft(event.target.value)}
-      onBlur={() => {
-        const next = draft.replace(/\s+/g, " ").trim();
-        if (next !== value) onSave(next);
-      }}
-      onKeyDown={(event) => {
-        if (event.key === "Enter") (event.target as HTMLInputElement).blur();
-      }}
-    />
+    <>
+      <input
+        type="text"
+        className="text-input brand-cards__text"
+        value={draft}
+        placeholder={placeholder}
+        maxLength={200}
+        aria-label={label}
+        disabled={disabled}
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={() => {
+          const next = draft.replace(/\s+/g, " ").trim();
+          if (next !== value) unsaved.save(next);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") (event.target as HTMLInputElement).blur();
+        }}
+      />
+      {unsaved.notice}
+    </>
   );
 }
 
@@ -84,6 +96,7 @@ export function BrandCardsPanel({ project, disabled, onChange, onOpenCast }: Bra
             {t("board.brandFilm.titleCard", { defaultValue: "Title card at the start" })}
           </label>
           <CardTextField
+            id="title"
             value={settings.titleText ?? ""}
             placeholder={project.name}
             label={t("board.brandFilm.titleText", { defaultValue: "Title card text (empty: the project name)" })}
@@ -97,6 +110,7 @@ export function BrandCardsPanel({ project, disabled, onChange, onOpenCast }: Bra
             {t("board.brandFilm.endCard", { defaultValue: "End card at the end" })}
           </label>
           <CardTextField
+            id="end"
             value={settings.endText ?? ""}
             placeholder={project.name}
             label={t("board.brandFilm.endText", { defaultValue: "End card text (empty: the project name)" })}

@@ -1728,7 +1728,8 @@
       "finalTitle": "Makes each kept shot again with {model} at {width} x {height}, then its clip from the new still.",
       "label": "Draft and final passes",
       "withClips": "Drafts with clips",
-      "keepHint": "Mark shots with Keep for final to choose them for the final pass."
+      "keepHint": "Mark shots with Keep for final to choose them for the final pass.",
+      "draftPer": "About {time} per draft."
     },
     "exportDrafts": "{n, plural, one {# shot uses a draft take.} other {# shots use a draft take.}} Keep them and run the final pass for full quality, or export the drafts as they are.",
     "preview": {
@@ -1891,7 +1892,9 @@
         "label": "Length",
         "minutes": "{n} min",
         "minutesSeconds": "{m} min {s} s",
-        "seconds": "{n} s"
+        "seconds": "{n} s",
+        "songDiffers": "The song runs {length}.",
+        "useSong": "Use the song's length"
       },
       "locked": "Locked",
       "model": {
@@ -2144,7 +2147,18 @@
       "timingSpeech": "By ear (speech-to-text)",
       "timingWorking": "Timing the lyrics…",
       "title": "Song",
-      "untitled": "Untitled"
+      "untitled": "Untitled",
+      "longerThanFilm": "The song runs {song}; the shots add up to {film}. Lines after {film} do not show until the film is that long."
+    },
+    "unsaved": {
+      "title": "Your text was not saved",
+      "conflict": "It changed elsewhere first; the field shows the latest.",
+      "failed": "The backend did not answer.",
+      "empty": "(empty)",
+      "putBack": "Put it back",
+      "retry": "Retry",
+      "keepLatest": "Keep the latest",
+      "discard": "Discard my text"
     }
   },
   "storyProjects": {

@@ -108,6 +108,9 @@
   gap: 6px;
   min-width: 0;
 }
+.plan-brief__song-length {
+  margin: 0;
+}
 .plan-brief__option-label {
   color: var(--muted-strong);
   font-size: 0.92rem;
@@ -335,6 +338,10 @@ img.plan-pictures__thumb {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--panel);
+}
+.plan-shot:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 .plan-shot.is-open {
   border-color: color-mix(in srgb, var(--accent-storyboard) 55%, var(--border));

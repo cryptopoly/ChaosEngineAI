@@ -3,11 +3,14 @@
  * speech model, fix the wording, add one by hand, write an .srt. Burning them in is a switch in the
  * Export panel. A caption made from a voice clip moves with that clip.
  */
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { StoryboardProject, StoryboardTimeline } from "../../../types";
 import { captionRows } from "./mixerLogic";
 import { fileNameOf } from "./mixerLogic";
 import { formatTimecode } from "./timelineGeometry";
+import type { SaveResult } from "../unsavedText";
+import { useUnsavedText } from "../useUnsavedText";
 
 export interface CaptionsState {
   busy: boolean;
@@ -26,7 +29,8 @@ export interface CaptionsPanelProps {
   revealLabel: string;
   onGenerate: () => void;
   onAdd: (startS: number) => void;
-  onEditText: (id: string, text: string) => void;
+  /** Saves a caption's words; a promise of whether it landed keeps refused words for "Put it back" (S-O). */
+  onEditText: (id: string, text: string) => SaveResult;
   onRemove: (id: string) => void;
   onExportSrt: () => void;
   onReveal: (file: string) => void;
@@ -81,17 +85,7 @@ export function CaptionsPanel(props: CaptionsPanelProps) {
                   ? t("mixer.captions.trimmedAway", { defaultValue: "Trimmed away" })
                   : `${formatTimecode(row.start)} – ${formatTimecode(row.end ?? row.start)}`}
               </span>
-              <input
-                type="text"
-                defaultValue={row.text}
-                maxLength={500}
-                disabled={working}
-                aria-label={t("mixer.captions.textLabel", { defaultValue: "Caption text" })}
-                onBlur={(event) => {
-                  const text = event.target.value.trim();
-                  if (text && text !== row.text) props.onEditText(row.id, text);
-                }}
-              />
+              <CaptionText id={row.id} saved={row.text} disabled={working} label={t("mixer.captions.textLabel", { defaultValue: "Caption text" })} onEditText={props.onEditText} />
               <button type="button" className="secondary-button" disabled={working} onClick={() => props.onRemove(row.id)}>
                 {t("mixer.captions.remove", { defaultValue: "Remove" })}
               </button>
@@ -100,5 +94,39 @@ export function CaptionsPanel(props: CaptionsPanelProps) {
         </ul>
       </div>
     </details>
+  );
+}
+
+/** One caption's words, saved when the field is left; refused words stay with "Put it back" (S-O). */
+function CaptionText({ id, saved, disabled, label, onEditText }: {
+  id: string;
+  saved: string;
+  disabled: boolean;
+  label: string;
+  onEditText: (id: string, text: string) => SaveResult;
+}) {
+  const [text, setText] = useState(saved);
+  const unsaved = useUnsavedText(`caption:${id}`, {
+    text,
+    dirty: Boolean(text.trim()) && text.trim() !== saved,
+    send: (value) => onEditText(id, value),
+    restore: setText,
+  });
+  return (
+    <div className="captions-panel__text">
+      <input
+        type="text"
+        value={text}
+        maxLength={500}
+        disabled={disabled}
+        aria-label={label}
+        onChange={(event) => setText(event.target.value)}
+        onBlur={() => {
+          const value = text.trim();
+          if (value && value !== saved) unsaved.save(value);
+        }}
+      />
+      {unsaved.notice}
+    </div>
   );
 }

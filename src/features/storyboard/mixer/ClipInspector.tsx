@@ -8,7 +8,9 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CloseIcon, DuckIcon, LoopIcon, TrashIcon } from "../../../components/icons/ActionIcons";
 import type { StoryboardAudioClip, StoryboardShot, StoryboardShotSpan } from "../../../types";
+import type { SaveResult } from "../unsavedText";
 import type { RunOp } from "../useStoryboard";
+import { useUnsavedText } from "../useUnsavedText";
 import {
   anchorPatchFor,
   clampNumber,
@@ -29,40 +31,51 @@ interface NumberFieldProps {
   step: number;
   suffix?: string;
   disabled?: boolean;
-  onCommit: (value: number) => void;
+  /** Where a refused number is kept for "Put it back" (S-O), e.g. `clip:<id>:fadeIn`. */
+  draftKey: string;
+  onCommit: (value: number) => SaveResult;
 }
 
-function NumberField({ label, value, min, max, step, suffix, disabled, onCommit }: NumberFieldProps) {
+function NumberField({ label, value, min, max, step, suffix, disabled, draftKey, onCommit }: NumberFieldProps) {
   const [text, setText] = useState(String(value));
   useEffect(() => setText(String(value)), [value]);
+  const unsaved = useUnsavedText(draftKey, {
+    text,
+    dirty: text !== String(value),
+    send: (typed) => onCommit(Number(typed)),
+    restore: setText,
+  });
   const commit = () => {
     const next = clampNumber(text, min, max, value);
     setText(String(next));
-    if (next !== value) onCommit(next);
+    if (next !== value) unsaved.save(String(next));
   };
   return (
-    <label className="clip-inspector__field">
-      <span className="eyebrow">{label}</span>
-      <span className="clip-inspector__number">
-        <input
-          type="number"
-          min={min}
-          max={max}
-          step={step}
-          value={text}
-          disabled={disabled}
-          onChange={(event) => setText(event.target.value)}
-          onBlur={commit}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              event.preventDefault();
-              commit();
-            }
-          }}
-        />
-        {suffix ? <span aria-hidden="true">{suffix}</span> : null}
-      </span>
-    </label>
+    <>
+      <label className="clip-inspector__field">
+        <span className="eyebrow">{label}</span>
+        <span className="clip-inspector__number">
+          <input
+            type="number"
+            min={min}
+            max={max}
+            step={step}
+            value={text}
+            disabled={disabled}
+            onChange={(event) => setText(event.target.value)}
+            onBlur={commit}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                commit();
+              }
+            }}
+          />
+          {suffix ? <span aria-hidden="true">{suffix}</span> : null}
+        </span>
+      </label>
+      {unsaved.notice}
+    </>
   );
 }
 
@@ -116,7 +129,7 @@ export interface ClipInspectorProps {
 
 export function ClipInspector({ clip, span, shots, shotSpans, disabled, op, onRemove, onClose }: ClipInspectorProps) {
   const { t } = useTranslation("studio");
-  const edit = (fields: Record<string, unknown>) => void op("edit_audio", { clipId: clip.id, ...fields });
+  const edit = (fields: Record<string, unknown>) => op("edit_audio", { clipId: clip.id, ...fields });
   const anchoredIndex = clip.anchor ? shots.findIndex((s) => s.id === clip.anchor?.shotId) : -1;
   const untitled = (index: number) => t("board.shot.untitled", { defaultValue: "Shot {n}", n: index + 1 });
   const sourceLength = clip.source.measuredSeconds;
@@ -165,6 +178,7 @@ export function ClipInspector({ clip, span, shots, shotSpans, disabled, op, onRe
           step={0.1}
           suffix="s"
           disabled={disabled}
+          draftKey={`clip:${clip.id}:fadeIn`}
           onCommit={(fadeIn) => edit({ fadeIn })}
         />
         <NumberField
@@ -175,6 +189,7 @@ export function ClipInspector({ clip, span, shots, shotSpans, disabled, op, onRe
           step={0.1}
           suffix="s"
           disabled={disabled}
+          draftKey={`clip:${clip.id}:fadeOut`}
           onCommit={(fadeOut) => edit({ fadeOut })}
         />
       </div>
@@ -187,6 +202,7 @@ export function ClipInspector({ clip, span, shots, shotSpans, disabled, op, onRe
           step={0.1}
           suffix="s"
           disabled={disabled}
+          draftKey={`clip:${clip.id}:trimIn`}
           onCommit={(value) => edit({ trimIn: clampTrimIn(clip, value) })}
         />
         <NumberField
@@ -197,6 +213,7 @@ export function ClipInspector({ clip, span, shots, shotSpans, disabled, op, onRe
           step={0.1}
           suffix="s"
           disabled={disabled || clip.loop}
+          draftKey={`clip:${clip.id}:trimOut`}
           onCommit={(value) => edit({ trimOut: clampTrimOut(clip, value) })}
         />
       </div>
@@ -241,6 +258,7 @@ export function ClipInspector({ clip, span, shots, shotSpans, disabled, op, onRe
               step={0.1}
               suffix="s"
               disabled={disabled}
+              draftKey={`clip:${clip.id}:offset`}
               onCommit={(offset) => edit({ anchor: { shotId: clip.anchor?.shotId ?? "", offset } })}
             />
           ) : (
@@ -252,6 +270,7 @@ export function ClipInspector({ clip, span, shots, shotSpans, disabled, op, onRe
               step={0.1}
               suffix="s"
               disabled={disabled}
+              draftKey={`clip:${clip.id}:start`}
               onCommit={(start) => edit({ start })}
             />
           )}

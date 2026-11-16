@@ -8,7 +8,7 @@
  */
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { StoryboardEstimate } from "../../api/storyboard";
+import type { StoryboardEstimate, StoryboardPassEstimate } from "../../api/storyboard";
 import { RunEstimateStrip, formatDuration, memoryRisk } from "../../components/RunEstimateStrip";
 import type { JobProgress, StoryboardBatchRecord, StoryboardPausedProgress } from "../../types";
 import { BatchBar } from "./BatchBar";
@@ -41,7 +41,27 @@ export interface RunBarProps {
   pausing?: boolean;
 }
 
-type TFn = (key: string, options: Record<string, unknown>) => string;
+export type TFn = (key: string, options: Record<string, unknown>) => string;
+
+/**
+ * The Make drafts tooltip: the draft model, its size and the time per draft. The run bar and the Overview's next-step
+ * card both use it, so they say the same numbers (S-O). Undefined until the estimate names the draft model.
+ */
+export function draftPassTitle(t: TFn, draft: StoryboardPassEstimate | null | undefined): string | undefined {
+  if (!draft?.imageModel) return undefined;
+  const base = t("board.passes.draftTitle", {
+    defaultValue: "Quick stills with {model} at {width} x {height}. Mark the shots you like with Keep, then run the final pass.",
+    model: draft.imageModel,
+    width: draft.width,
+    height: draft.height,
+  });
+  if (draft.stillSeconds == null || !draft.stills) return base;
+  const per = t("board.passes.draftPer", {
+    defaultValue: "About {time} per draft.",
+    time: formatDuration(t, draft.stillSeconds / draft.stills),
+  });
+  return `${base} ${per}`;
+}
 
 function PassesRow({ missing, kept = 0, finalShots = 0, estimate, busy, onMakeDrafts, onFinalPass, primary }: RunBarProps) {
   const { t } = useTranslation("studio");
@@ -66,14 +86,7 @@ function PassesRow({ missing, kept = 0, finalShots = 0, estimate, busy, onMakeDr
           defaultValue: "Final pass on {n, plural, one {# kept shot} other {# kept shots}}",
           n: finalShots,
         });
-  const draftTitle = draft?.imageModel
-    ? t("board.passes.draftTitle", {
-        defaultValue: "Quick stills with {model} at {width} x {height}. Mark the shots you like with Keep, then run the final pass.",
-        model: draft.imageModel,
-        width: draft.width,
-        height: draft.height,
-      })
-    : undefined;
+  const draftTitle = draftPassTitle(tf, draft);
   const finalTitle = final?.imageModel
     ? t("board.passes.finalTitle", {
         defaultValue: "Makes each kept shot again with {model} at {width} x {height}, then its clip from the new still.",

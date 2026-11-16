@@ -255,6 +255,17 @@ class PlanEstimateTests(OneApprovalTests):
         board = self.item(draft=True, what="still")["estimate"]  # priced as drafts, not refused
         self.assertIsNotNone(board["seconds"])
 
+    def test_drafts_are_priced_with_the_draft_model_the_batch_uses(self):
+        """S-N: the card for draft stills priced the project's slow model ("about 114 min") while the batch runs
+        the fastest installed one."""
+        fast = {"name": "Fast Draft", "estimatedGenerationSeconds": 2}
+        with mock.patch("backend_service.routes.storyboard._draft_variant", lambda request, project, image: fast):
+            board = self.item(draft=True, what="still")["estimate"]
+            plain = self.item(what="still")["estimate"]
+        self.assertEqual(board["imageModel"], "Fast Draft")
+        self.assertLess(board["seconds"], plain["seconds"])
+        self.assertEqual(plain["imageModel"], "Iris-3B Turbo")
+
     def test_a_missing_model_is_named_not_guessed(self):
         with mock.patch("backend_service.routes.storyboard._project_variant",
                         lambda request, kind, model: (None, "No video model is installed.") if kind == "video" else (IMAGE, None)):

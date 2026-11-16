@@ -8,6 +8,7 @@ import {
   drawerEscapeAction,
   effectiveShotStatus,
   emptyThumbState,
+  fasterStillModel,
   importKindOf,
   isBareKey,
   liveShotStates,
@@ -347,5 +348,26 @@ describe("primary pass button (FU-188 item 3)", () => {
   it("reads seconds per still from the estimate", () => {
     expect(secondsPerStill({ stills: 4, stillSeconds: 100 })).toBe(25);
     expect(secondsPerStill(undefined)).toBeNull();
+  });
+});
+
+describe("Use the fast model (FU-188 item 4)", () => {
+  const models = [
+    { id: "qwen", name: "Qwen-Image 2.1", fit: null, territoryRestricted: false, secondsPerStill: 540 },
+    { id: "iris", name: "Iris-3B Turbo", fit: null, territoryRestricted: false, secondsPerStill: 15 },
+    { id: "odd", name: "Odd", fit: null, territoryRestricted: false, secondsPerStill: null },
+  ];
+
+  it("offers the fastest model when the project saved a slower one", () => {
+    expect(fasterStillModel(models, "qwen", "iris")).toMatchObject({ id: "iris", name: "Iris-3B Turbo", seconds: 15 });
+    expect(fasterStillModel(models, "odd", "iris")?.id).toBe("iris");
+  });
+
+  it("offers nothing on Automatic, on the fast model itself, or when nothing is faster", () => {
+    expect(fasterStillModel(models, null, "iris")).toBeNull();
+    expect(fasterStillModel(models, "iris", "iris")).toBeNull();
+    expect(fasterStillModel(models, "qwen", null)).toBeNull();
+    expect(fasterStillModel(models, "iris", "qwen")).toBeNull();
+    expect(fasterStillModel(models, "qwen", "odd")).toBeNull();
   });
 });

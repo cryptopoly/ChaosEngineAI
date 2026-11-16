@@ -254,6 +254,24 @@ export function stillModelPick(
   return { id: id ?? null, name: row?.name ?? id ?? null, seconds: row?.secondsPerStill ?? null, automatic: !saved };
 }
 
+/**
+ * The faster still model "Use the fast model" switches to (FU-188 item 4): what Automatic picks for Make
+ * (`fastId`, the fastest installed), offered only when the project's own choice is another model that is slower
+ * or has no known time. Null when there is nothing faster to switch to.
+ */
+export function fasterStillModel(
+  models: StoryboardStillModel[],
+  saved: string | null | undefined,
+  fastId: string | null,
+): StillModelPick | null {
+  if (!saved || !fastId || saved === fastId) return null;
+  const fast = stillModelPick(models, fastId, null);
+  const current = stillModelPick(models, saved, null);
+  if (fast.seconds == null) return null;
+  if (current.seconds != null && current.seconds <= fast.seconds) return null;
+  return fast;
+}
+
 // ---- reorder ----
 /** Move the item at `from` to position `to` (both clamped); returns a new array. */
 export function moveItem<T>(items: T[], from: number, to: number): T[] {

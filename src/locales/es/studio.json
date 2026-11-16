@@ -1567,7 +1567,9 @@
       "automaticFast": null,
       "automaticQuality": null,
       "stillTime": null,
-      "finalImageModel": null
+      "finalImageModel": null,
+      "useFast": null,
+      "useFastHint": null
     },
     "defaultsSummary": null,
     "defaultsTitle": "Valores predeterminados del proyecto",
@@ -1958,7 +1960,16 @@
         "title": null,
         "toBoard": null
       },
-      "tab": null
+      "tab": null,
+      "suggest": {
+        "label": null,
+        "count": null,
+        "typical": null,
+        "shotsOne": null,
+        "shotsRange": null,
+        "title": null,
+        "useLength": null
+      }
     },
     "style": {
       "add": null,

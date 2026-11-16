@@ -13,7 +13,8 @@ the backend on this machine: the reconcile check leaves a project file in the "r
 opens it, and the Open route check puts a symlink in that project. The folder is the backend's data directory plus
 ``storyboards`` unless ``CHAOSENGINE_STORYBOARDS_DIR`` is set for the suite as it is for the backend. The plan-card
 pre-check runs the Chat gate in this process against a temporary store, because no chat model is needed to prove
-that a call that cannot run gets no card. Every project made here is deleted at the end.
+that a call that cannot run gets no card; the reload check asks the backend's turn route and runs the gate in this
+process the same way. Every project made here is deleted at the end.
 
 Called from ``scripts/e2e_test_suite.py`` as ``run(cap, suite)``.
 """
@@ -472,6 +473,40 @@ def run(cap: Any, suite: Any):
             else:
                 os.environ["CHAOSENGINE_STORYBOARDS_DIR"] = old
 
+    def _plan_card_reload():
+        """S-J: the turn route the reloaded window asks, a waiting plan listed for its chat and answered there, and
+        a refused call's reason kept in the next turn's history."""
+        if str(ROOT) not in sys.path:
+            sys.path.insert(0, str(ROOT))
+        from backend_service.state._helpers import _build_history_with_reasoning
+        from backend_service.tools import studio_gate
+
+        code, body = api("GET", "/api/chat/studio/sessions/e2e-no-such-chat/turn")
+        if code != 200 or (body or {}).get("running") is not False or (body or {}).get("plans") != []:
+            return "fail", f"turn route answered {code} {body}", {}
+        gate = studio_gate.StudioGate("e2e-reload", poll_seconds=0.01)
+        call = {"id": "c1", "type": "function", "function": {"name": "generate_image", "arguments": json.dumps({"prompt": "rose"})}}
+        review = gate.review([call])
+        first = next(review)
+        listed = studio_gate.pending_for_session("e2e-reload")
+        if "studio_plan" not in first or [p["planId"] for p in listed] != [first["studio_plan"]["planId"]]:
+            review.close()
+            return "fail", "a waiting plan is not listed for its chat", {}
+        studio_gate.decide(listed[0]["planId"], {"c1": "approve"})
+        try:
+            while True:
+                next(review)
+        except StopIteration as done:
+            answers = done.value or {}
+        if answers or studio_gate.pending_for_session("e2e-reload"):
+            return "fail", f"the answered plan did not let the call run: {answers}", {}
+        reason = "'what' must be one of still, clip, both."
+        history = _build_history_with_reasoning([{"role": "assistant", "text": "", "toolCalls": [
+            {"name": "storyboard_generate", "renderAs": "studio", "data": {"error": reason}}]}], preserve_reasoning=False)
+        if reason not in history[0]["text"]:
+            return "fail", "a refused call's reason is not in the next turn's history", {}
+        return "pass", "turn route on the backend; gate and history in this process, no chat model", {}
+
     # ---- real models (skip when not installed) ----
     def _models() -> tuple[str | None, bool]:
         if "models" not in state:
@@ -578,6 +613,7 @@ def run(cap: Any, suite: Any):
             ("/api/workspace carries activeGenerations", _workspace_field),
             ("the Open route refuses files outside the app folders, non-media and symlinks out", _open_route),
             ("Chat plan card: a call that cannot run gets no card", _plan_card_precheck),
+            ("Chat plan card: a waiting card is listed for a reloaded window and answered there", _plan_card_reload),
             ("real draft with the fast still model; the busy engine shows in /api/workspace", _draft_run),
             ("a cancelled Redo clip keeps the take in use (FU-181)", _cancel_keeps_take),
             ("Redo still keeps the old clip and marks it behind its still", _redo_still_stale),

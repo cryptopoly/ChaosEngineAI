@@ -8,6 +8,9 @@ estimated time and memory) and waits until the user decides in the app (``POST
 plain "declined" result for the model. A decision covers the listed calls of this turn only; "Always allow
 renders in this chat" (off by default) lets later render calls of the turn run, and the app sends it on
 later turns of the same chat. Read-only and edit tools never reach the gate.
+
+The turn does not end with its stream (S-J): after a window reload ``pending_for_session`` gives the waiting
+plans back to the app, which shows the card again; the click answers the same waiting turn.
 """
 
 from __future__ import annotations
@@ -83,6 +86,35 @@ _PLANS: dict[str, PendingPlan] = {}
 def pending(plan_id: str) -> PendingPlan | None:
     with _LOCK:
         return _PLANS.get(plan_id)
+
+
+def pending_for_session(session_id: str) -> list[dict[str, Any]]:
+    """The plans of a chat that still wait for a click, oldest first: a reloaded window shows them again (S-J)."""
+    with _LOCK:
+        return [p.payload() for p in _PLANS.values() if p.session_id == session_id and not p.event.is_set()]
+
+
+# Chats whose studio turn is running (the turn goes on when its stream closes, S-J): session id -> turns.
+_TURNS: dict[str, int] = {}
+
+
+def turn_started(session_id: str) -> None:
+    with _LOCK:
+        _TURNS[session_id] = _TURNS.get(session_id, 0) + 1
+
+
+def turn_ended(session_id: str) -> None:
+    with _LOCK:
+        left = _TURNS.get(session_id, 0) - 1
+        if left > 0:
+            _TURNS[session_id] = left
+        else:
+            _TURNS.pop(session_id, None)
+
+
+def turn_running(session_id: str) -> bool:
+    with _LOCK:
+        return _TURNS.get(session_id, 0) > 0
 
 
 def decide(plan_id: str, decisions: dict[str, str], edit: bool = False, always_allow: bool = False) -> PendingPlan | None:
@@ -416,7 +448,8 @@ class StudioGate:
                     last_ping = now
                     yield {"keepalive": True}
         finally:
-            # Also on a closed stream (window reload): the plan is gone, and a late click gets a 404.
+            # Also when the turn itself is cancelled (Stop) or closed: the plan is gone, and a late click gets a 404.
+            # A window reload does not close it: the turn runs on (S-J) and the reloaded window lists the plan.
             with _LOCK:
                 _PLANS.pop(plan.id, None)
                 plan.event.set()

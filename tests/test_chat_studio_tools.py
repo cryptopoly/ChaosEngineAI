@@ -541,7 +541,48 @@ class ChatStreamTests(unittest.TestCase):
             self.assertEqual(anonymous.get("/api/chat/studio/jobs/job-1", headers=agent).status_code, 401)
         self.assertEqual(self.client.post("/api/chat/studio/plans/plan-x/decision", json={}).status_code, 404)
 
-    def test_closing_the_stream_cancels_a_waiting_plan(self):
+    def test_closing_the_stream_leaves_the_plan_waiting_for_the_reloaded_window(self):
+        """S-J: a window reload closes the stream; the turn runs on, the card is listed again and still answers."""
+        from backend_service.mcp_bridge.tools import HANDLERS
+        from backend_service.state import generation
+
+        self.runtime.replies = [result("", [call("generate_image", {"prompt": "rose"}, "c1")]), result("The rose is queued.")]
+        handlers = mock.patch.dict(HANDLERS, {"generate_image": lambda ctx, args: {"jobId": "job-1", "state": "queued"}})
+        handlers.start()
+        self.addCleanup(handlers.stop)
+        captured = {}
+        with mock.patch.object(generation, "StreamingResponse", lambda body, **kw: captured.setdefault("body", body)):
+            self.client.app.state.chaosengine.generate_stream(
+                generation.GenerateRequest(sessionId=self.session["id"], prompt="go", studioTools=True),
+                app_request=SimpleNamespace(app=self.client.app))
+        body = captured["body"]
+        for chunk in body:
+            if "studioPlan" in chunk:
+                break
+        body.close()  # the client went away (window reload)
+        turn = self.client.get(f"/api/chat/studio/sessions/{self.session['id']}/turn").json()
+        self.assertTrue(turn["running"])
+        self.assertEqual([p["items"][0]["callId"] for p in turn["plans"]], ["c1"])
+        self.assertFalse(self.client.app.state.chaosengine.is_chat_cancel_requested(self.session["id"]))
+        # The reloaded window lists the thread with the user's message and no reply yet.
+        listed = next(s for s in self.client.get("/api/workspace").json()["chatSessions"] if s["id"] == self.session["id"])
+        self.assertEqual(listed["messages"][-1]["role"], "user")
+        answer = self.client.post(f"/api/chat/studio/plans/{turn['plans'][0]['planId']}/decision",
+                                  json={"decisions": {"c1": "approve"}})
+        self.assertEqual(answer.status_code, 200)
+        deadline = time.monotonic() + 5
+        while studio_gate.turn_running(self.session["id"]) and time.monotonic() < deadline:
+            time.sleep(0.02)
+        self.assertFalse(studio_gate.turn_running(self.session["id"]))
+        after = self.client.get(f"/api/chat/studio/sessions/{self.session['id']}/turn").json()
+        self.assertEqual((after["running"], after["plans"]), (False, []))
+        session = next(s for s in self.client.app.state.chaosengine.chat_sessions if s["id"] == self.session["id"])
+        reply = session["messages"][-1]
+        self.assertEqual(reply["text"], "The rose is queued.")
+        self.assertEqual(reply["studioPlans"][0]["decisions"], {"c1": "approve"})
+        self.assertEqual(json.loads(reply["toolCalls"][0]["result"])["jobId"], "job-1")
+
+    def test_stop_still_cancels_a_waiting_plan(self):
         from backend_service.state import generation
 
         self.runtime.replies = [result("", [call("generate_image", {"prompt": "rose"}, "c1")]), result("ok")]
@@ -554,12 +595,12 @@ class ChatStreamTests(unittest.TestCase):
         for chunk in body:
             if "studioPlan" in chunk:
                 break
-        with studio_gate._LOCK:
-            self.assertEqual(len(studio_gate._PLANS), 1)
-        body.close()  # the client went away
+        self.client.app.state.chaosengine.request_cancel_chat(self.session["id"])
+        rest = "".join(body)
+        self.assertIn('"cancelled": true', rest)
         with studio_gate._LOCK:
             self.assertEqual(studio_gate._PLANS, {})
-        self.assertTrue(self.client.app.state.chaosengine.is_chat_cancel_requested(self.session["id"]))
+        self.assertFalse(studio_gate.turn_running(self.session["id"]))
 
     def test_auto_approve_runs_without_a_plan(self):
         from backend_service.mcp_bridge.tools import HANDLERS

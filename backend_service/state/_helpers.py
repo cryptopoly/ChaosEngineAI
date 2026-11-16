@@ -108,6 +108,31 @@ def _history_token_budget(
     return max(512, int(context_tokens or 0) - reserved)
 
 
+def _with_refusal_notes(text: str, tool_calls: Any) -> str:
+    """Chat's studio calls refused before they ran (the pre-check's reason, e.g. a ``what`` the tool does not
+    take) stay in the history as one line each, so the next turn knows why nothing was made. The history keeps
+    no other tool results. A refusal the model fixed later in the same turn (the same tool ran) is left out."""
+    calls = [c for c in tool_calls if isinstance(c, dict)] if isinstance(tool_calls, list) else []
+
+    def refusal(call: dict[str, Any]) -> str | None:
+        data = call.get("data")
+        if call.get("renderAs") == "studio" and isinstance(data, dict) and isinstance(data.get("error"), str):
+            return data["error"]
+        return None
+
+    notes = []
+    for index, call in enumerate(calls):
+        reason = refusal(call)
+        if reason is None:
+            continue
+        if any(later.get("name") == call.get("name") and refusal(later) is None for later in calls[index + 1:]):
+            continue
+        notes.append(f"[{call.get('name') or 'tool'} was not run: {reason}]")
+    if not notes:
+        return text
+    return "\n\n".join([text, *notes]) if text else "\n".join(notes)
+
+
 def _build_history_with_reasoning(
     messages: list[dict[str, Any]],
     *,
@@ -144,6 +169,8 @@ def _build_history_with_reasoning(
             reasoning_str = str(message["reasoning"]).strip()
             if reasoning_str:
                 text = f"<think>\n{reasoning_str}\n</think>\n\n{text}"
+        if role == "assistant":
+            text = _with_refusal_notes(text, message.get("toolCalls"))
         history.append({"role": role, "text": text})
 
     if token_budget is None or token_budget <= 0:

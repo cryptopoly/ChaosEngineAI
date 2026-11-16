@@ -76,6 +76,23 @@ body {
   min-width: 320px;
 }
 
+/* iOS Safari inflates text in narrow scrolling boxes (the sidebar's caption and status grew to 2-3 times their
+   size on an iPhone and pushed rows past the right edge; S-P). Keep the sizes the CSS sets. */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* A touch screen: iOS Safari zooms the whole page into any field under 16 px when it takes focus (the app's 14 px
+   fields did, and the page stayed zoomed after the keyboard closed; S-P). */
+@media (pointer: coarse) {
+  input,
+  textarea,
+  select {
+    font-size: max(16px, 1em);
+  }
+}
+
 button,
 input,
 textarea,
@@ -1759,15 +1776,18 @@ select.text-input {
 
 .thread-toolbar {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: flex-end;
   gap: 12px;
   flex-shrink: 0;
 }
 
+/* Keeps a usable width: with a model's capability badges the actions took the whole row and squeezed the field to
+   0 px, its label showing under the buttons (S-P). The row wraps instead. */
 .thread-title-field {
-  flex: 1;
-  min-width: 0;
+  flex: 1 1 180px;
+  min-width: 160px;
 }
 
 .thread-toolbar-actions {

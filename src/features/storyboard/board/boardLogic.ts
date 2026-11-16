@@ -170,6 +170,25 @@ export function zoomAbout(view: View, factor: number, cx: number, cy: number): V
   return { zoom, x: cx - (cx - view.x) * k, y: cy - (cy - view.y) * k };
 }
 
+/** Two fingers on the board: where they were and where they are (midpoint in viewport pixels, finger distance). */
+export interface PinchState {
+  mid: Pos;
+  distance: number;
+}
+
+/**
+ * One step of a two-finger gesture: zoom by the change in finger distance and pan with the midpoint, so the board
+ * point that was under the fingers stays under them. Moving both fingers together pans without zooming (S-P: the
+ * board zoomed about the midpoint only, so a two-finger pan did not pan and drifted the zoom).
+ */
+export function pinchStep(view: View, prev: PinchState, next: PinchState): View {
+  if (prev.distance <= 0 || next.distance <= 0) return view;
+  const zoom = clampZoom(view.zoom * (next.distance / prev.distance));
+  const bx = (prev.mid.x - view.x) / view.zoom;
+  const by = (prev.mid.y - view.y) / view.zoom;
+  return { zoom, x: next.mid.x - bx * zoom, y: next.mid.y - by * zoom };
+}
+
 /** A view that shows every card in a `width` x `height` viewport with a margin; zoom at most 1. */
 export function fitView(pos: Pos[], width: number, height: number, margin = 24): View {
   if (pos.length === 0 || width <= 0 || height <= 0) return { x: margin, y: margin, zoom: 1 };

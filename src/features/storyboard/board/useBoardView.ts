@@ -1,10 +1,10 @@
 /**
  * Pan and zoom of the freestyle board (S-M2). The wheel pans; with Ctrl or Cmd (and a trackpad pinch, which the
  * browser sends as a Ctrl wheel) it zooms about the pointer. A drag on the empty board pans with a mouse, a pen or one
- * finger; two fingers pinch to zoom. The zoom buttons zoom about the middle, and Fit shows every card.
+ * finger; two fingers pinch to zoom and pan together. The zoom buttons zoom about the middle, and Fit shows every card.
  */
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type RefObject } from "react";
-import { CARD_H, CARD_W, fitView, zoomAbout, type Pos, type View } from "./boardLogic";
+import { CARD_H, CARD_W, fitView, pinchStep, zoomAbout, type PinchState, type Pos, type View } from "./boardLogic";
 
 export interface BoardViewControls {
   view: View;
@@ -22,11 +22,17 @@ export function useBoardView(viewport: RefObject<HTMLElement | null>): BoardView
   const viewRef = useRef(view);
   viewRef.current = view;
   const pointers = useRef(new Map<number, { x: number; y: number }>());
-  const pinch = useRef<{ distance: number } | null>(null);
+  const pinch = useRef<PinchState | null>(null);
 
   const local = (clientX: number, clientY: number) => {
     const rect = viewport.current?.getBoundingClientRect();
     return { x: clientX - (rect?.left ?? 0), y: clientY - (rect?.top ?? 0) };
+  };
+
+  /** The first two fingers' midpoint (viewport pixels) and distance. */
+  const pinchOf = (): PinchState => {
+    const [a, b] = [...pointers.current.values()];
+    return { mid: local((a.x + b.x) / 2, (a.y + b.y) / 2), distance: Math.hypot(a.x - b.x, a.y - b.y) };
   };
 
   useEffect(() => {
@@ -87,10 +93,7 @@ export function useBoardView(viewport: RefObject<HTMLElement | null>): BoardView
   const onPanStart = (event: ReactPointerEvent<HTMLElement>) => {
     pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
     event.currentTarget.setPointerCapture?.(event.pointerId);
-    if (pointers.current.size === 2) {
-      const [a, b] = [...pointers.current.values()];
-      pinch.current = { distance: Math.hypot(a.x - b.x, a.y - b.y) };
-    }
+    if (pointers.current.size === 2) pinch.current = pinchOf();
   };
 
   const onPanMove = (event: ReactPointerEvent<HTMLElement>) => {
@@ -99,14 +102,10 @@ export function useBoardView(viewport: RefObject<HTMLElement | null>): BoardView
     const now = { x: event.clientX, y: event.clientY };
     pointers.current.set(event.pointerId, now);
     if (pointers.current.size >= 2 && pinch.current) {
-      const [a, b] = [...pointers.current.values()];
-      const distance = Math.hypot(a.x - b.x, a.y - b.y);
-      if (pinch.current.distance > 0 && distance > 0) {
-        const mid = local((a.x + b.x) / 2, (a.y + b.y) / 2);
-        const factor = distance / pinch.current.distance;
-        setView((v) => zoomAbout(v, factor, mid.x, mid.y));
-      }
-      pinch.current = { distance };
+      const prev = pinch.current;
+      const next = pinchOf();
+      setView((v) => pinchStep(v, prev, next));
+      pinch.current = next;
       return;
     }
     setView((v) => ({ ...v, x: v.x + now.x - last.x, y: v.y + now.y - last.y }));

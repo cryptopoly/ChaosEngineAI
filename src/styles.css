@@ -16546,3 +16546,18 @@ select.music-library__select {
 .cleanup-group .cleanup-row input[type="checkbox"] {
   margin-top: 3px;
 }
+
+/* Touch screens (S-P): in a project the buttons, tabs, chips and menus were 25 to 34 px tall, under the 44 px a finger
+   needs (an iPad measured every tab). A coarse pointer gets 44 px targets on screen (the shell's UI scale zooms CSS
+   pixels, hence the division); a mouse keeps the compact sizes. */
+@media (pointer: coarse) {
+  .project-shell :is(.primary-button, .secondary-button, .icon-button, .project-shell__tab, .project-shell__back,
+      .plan-chip, .preset-pill, .takes-strip__take),
+  .project-shell select {
+    min-height: calc(44px / var(--ui-scale, 1));
+  }
+
+  .project-shell :is(.secondary-button, .primary-button, .icon-button) {
+    min-width: calc(44px / var(--ui-scale, 1));
+  }
+}

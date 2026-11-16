@@ -37,7 +37,14 @@ test.describe("touch screen", () => {
     await openProject(page, "Touch film", "Board");
     const zoom = page.locator(".board-toolbar__zoom");
     await expect(zoom).toHaveText(/\d+%/);
-    const start = parseInt(await zoom.innerText(), 10);
+    // The board fits its cards once laid out: wait for the zoom to settle before measuring from it.
+    let start = 0;
+    await expect.poll(async () => {
+      const now = parseInt(await zoom.innerText(), 10);
+      const settled = now === start;
+      start = now;
+      return settled;
+    }, { intervals: [300] }).toBe(true);
     const box = (await page.locator(".board-viewport").boundingBox())!;
     const y = box.y + box.height - 40; // below the cards: the empty board
     const before = await planeOffset(page);

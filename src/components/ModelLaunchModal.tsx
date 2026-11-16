@@ -181,6 +181,9 @@ export function ModelLaunchModal({
   const mtplxModelSupported = (() => {
     if (!mtplxSystemInfo?.supportedModels?.length) return false;
     const modelKeys = candidateKeys([selectedOption?.canonicalRepo, selectedOption?.modelRef]);
+    // The name list covers every conversion of a family; a checkpoint the library scan found
+    // without MTP weights (a stock 4-bit conversion) is not an MTPLX model.
+    if (selectedOption?.mtpHeads === false) return false;
     return mtplxSystemInfo.supportedModels.some((ref) =>
       candidateKeys([ref]).some((k) => modelKeys.includes(k))
     );
@@ -296,7 +299,7 @@ export function ModelLaunchModal({
               selectedCanonicalRepo={selectedOption?.canonicalRepo}
               selectedModelName={selectedOption?.model}
               turboInstalled={turboInstalled}
-              mtplxInfo={mtplxSystemInfo ? { available: mtplxSystemInfo.available, modelSupported: mtplxModelSupported } : undefined}
+              mtplxInfo={mtplxSystemInfo ? { available: mtplxSystemInfo.available, outdated: mtplxSystemInfo.outdated, modelSupported: mtplxModelSupported } : undefined}
               onInstallMtplx={onInstallMtplx}
               installingMtplx={installingMtplx}
               mtplxJob={mtplxJob}

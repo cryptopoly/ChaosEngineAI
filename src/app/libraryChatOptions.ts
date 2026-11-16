@@ -51,6 +51,7 @@ export function buildLibraryChatOptions(
         format: displayFormat,
         quantization: displayQuantization ?? undefined,
         maxContext: item.maxContext ?? matched?.maxContext ?? null,
+        mtpHeads: item.mtpHeads ?? null,
         // Phase 2.11: resolve typed capabilities so the picker can show
         // capability badges per option without re-deriving in each view.
         capabilities: resolveCapabilities(canonicalRepo ?? item.name, matched?.capabilities ?? null),

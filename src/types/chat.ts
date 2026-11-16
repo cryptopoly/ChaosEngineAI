@@ -430,6 +430,8 @@ export interface ChatModelOption {
   format?: string;
   quantization?: string;
   maxContext?: number | null;
+  /** From the library scan: false when an MLX checkpoint has no MTP weights (MTPLX cannot run it). */
+  mtpHeads?: boolean | null;
   /** Phase 2.11: typed capabilities resolved from catalog tags + ref. */
   capabilities?: ModelCapabilities | null;
 }

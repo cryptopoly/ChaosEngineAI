@@ -193,7 +193,8 @@
     "requiresBody": "Apple Silicon + MTPLX isolated venv. Model must have baked-in MTP heads (Qwen3.5/3.6, DeepSeek V3/R1, Qwen3-Coder-Next).",
     "statusLabel": "Status:",
     "statusInstalled": "Installed — active when speculative decoding is ticked.",
-    "statusNotInstalled": "Not installed. Click Install MTPLX to set up the isolated venv (~500 MB)."
+    "statusNotInstalled": "Not installed. Click Install MTPLX to set up the isolated venv (~500 MB).",
+    "statusOutdated": "Installed version is too old for current MTPLX models. Click Install MTPLX to update the isolated venv (~500 MB)."
   },
   "ggufMtp": {
     "tooltip": "GGUF MTP speculative decoding: uses the model's baked-in MTP heads via llama.cpp --spec-type draft-mtp for ~1.8-2.2x faster generation with zero quality loss.",

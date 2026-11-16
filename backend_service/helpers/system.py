@@ -162,10 +162,11 @@ def _build_system_snapshot(
 
     def _get_mtplx_info():
         from backend_service.inference._mtp import MTP_MODEL_MAP, _MTP_ALIASES
-        from backend_service.inference.capabilities import _detect_mtplx
+        from backend_service.inference.capabilities import _detect_mtplx, mtplx_outdated
         available, _ = _detect_mtplx()
         supported_models = list(MTP_MODEL_MAP.keys()) + list(_MTP_ALIASES.keys())
-        return {"available": available, "supportedModels": supported_models}
+        # ``outdated``: a venv from before MTPLX 2.12 exists; the Setup button rebuilds it.
+        return {"available": available, "outdated": mtplx_outdated(), "supportedModels": supported_models}
 
     def _get_tensorfold_info():
         from backend_service.inference._tensorfold import (

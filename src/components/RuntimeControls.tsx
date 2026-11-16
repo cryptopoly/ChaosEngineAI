@@ -175,6 +175,8 @@ interface RuntimeControlsProps {
   turboUpdateAvailable?: boolean;
   /** MTPLX install state + model compatibility for the current selection. */
   mtplxInfo?: {
+    /** A venv from before MTPLX 2.12 exists: reinstall to update it. */
+    outdated?: boolean;
     available: boolean;
     modelSupported: boolean;
   };
@@ -992,7 +994,9 @@ export function RuntimeControls({
               <span>
                 {mtplxInfo.available
                   ? t("mtplx.statusInstalled", { defaultValue: "Installed — active when speculative decoding is ticked." })
-                  : t("mtplx.statusNotInstalled", { defaultValue: "Not installed. Click Install MTPLX to set up the isolated venv (~500 MB)." })}
+                  : mtplxInfo.outdated
+                    ? t("mtplx.statusOutdated", { defaultValue: "Installed version is too old for current MTPLX models. Click Install MTPLX to update the isolated venv (~500 MB)." })
+                    : t("mtplx.statusNotInstalled", { defaultValue: "Not installed. Click Install MTPLX to set up the isolated venv (~500 MB)." })}
               </span>
             </div>
           </div>

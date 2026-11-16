@@ -10,6 +10,7 @@ Extracted from ``inference/__init__.py`` as part of the v0.8.0 refactor.
 
 from __future__ import annotations
 
+import re
 import time
 from threading import RLock
 
@@ -54,15 +55,47 @@ _capability_cache: tuple[float, BackendCapabilities] | None = None
 _capability_lock = RLock()
 
 
+# MtplxEngine targets MTPLX 2.12 (the install script's floor). An older venv
+# (a 0.3.x install from before the floor) cannot read current checkpoints
+# ("unknown MTPLX profile"), so it is reported as needing an update.
+MTPLX_MIN_VERSION: tuple[int, int, int] = (2, 12, 0)
+
+
+def _parse_version(text: str) -> tuple[int, int, int] | None:
+    parts = re.match(r"\s*(\d+)\.(\d+)(?:\.(\d+))?", text or "")
+    if parts is None:
+        return None
+    return (int(parts.group(1)), int(parts.group(2)), int(parts.group(3) or 0))
+
+
+def mtplx_outdated() -> bool:
+    """True when an MTPLX venv exists but is older than ``MTPLX_MIN_VERSION``.
+
+    The version file's first line is the version ``install-mtplx.sh`` wrote. An
+    unreadable or unparsable file is not called outdated (nothing to compare).
+    """
+    python = _MTPLX_VENV / "bin" / "python"
+    if not (_MTPLX_VERSION_FILE.exists() and python.exists()):
+        return False
+    try:
+        first = _MTPLX_VERSION_FILE.read_text(encoding="utf-8", errors="ignore").splitlines()[0]
+    except (OSError, IndexError):
+        return False
+    version = _parse_version(first)
+    return version is not None and version < MTPLX_MIN_VERSION
+
+
 def _detect_mtplx() -> tuple[bool, str | None]:
     """Return (available, python_path) for the MTPLX isolated venv.
 
     Cheap file-existence check — no subprocess spawn.  The version file is
     written by install-mtplx.sh on clean install; its presence together with
-    the venv python binary is sufficient to confirm a usable install.
+    the venv python binary is sufficient to confirm a usable install, as long
+    as it is not older than ``MTPLX_MIN_VERSION`` (then the Setup install
+    button rebuilds it).
     """
     python = _MTPLX_VENV / "bin" / "python"
-    if _MTPLX_VERSION_FILE.exists() and python.exists():
+    if _MTPLX_VERSION_FILE.exists() and python.exists() and not mtplx_outdated():
         return True, str(python)
     return False, None
 

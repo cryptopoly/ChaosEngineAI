@@ -193,7 +193,8 @@
     "requiresBody": "Apple Silicon + MTPLX 独立 venv。模型必须内置 MTP 头（Qwen3.5/3.6、DeepSeek V3/R1、Qwen3-Coder-Next）。",
     "statusLabel": "状态:",
     "statusInstalled": "已安装 — 启用推测解码后生效。",
-    "statusNotInstalled": "未安装。点击“安装 MTPLX”以设置独立 venv（约 500 MB）。"
+    "statusNotInstalled": "未安装。点击“安装 MTPLX”以设置独立 venv（约 500 MB）。",
+    "statusOutdated": null
   },
   "ggufMtp": {
     "tooltip": "GGUF MTP 推测解码：通过 llama.cpp 的 --spec-type draft-mtp 使用模型内置的 MTP 头，在不损失质量的前提下将生成速度提升约 1.8-2.2 倍。",

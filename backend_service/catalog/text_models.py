@@ -267,7 +267,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "Vontra/Qwen3.8-27B-MLX-4bit",
-                "name": "Qwen3.8 27B MLX 4-bit (MTP head)",
+                "name": "Qwen3.8 27B MLX 4-bit (TensorFold)",
                 "repo": "Vontra/Qwen3.8-27B-MLX-4bit",
                 "link": "https://huggingface.co/Vontra/Qwen3.8-27B-MLX-4bit",
                 "paramsB": 27.0,
@@ -278,7 +278,28 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "note": (
                     "TensorFold's Qwen3.8 conversion. Runs on standard MLX like the community 4-bit; "
                     "with TensorFold installed, ticking speculative decoding in the launch settings decodes "
-                    "with exact drafts (MTP head + z-lab DFlash2 draft model) — replies identical to serial decoding."
+                    "with exact drafts (z-lab DFlash2 draft model) — replies identical to serial decoding. "
+                    "This conversion holds no MTP weights, so MTPLX cannot run it."
+                ),
+                "contextWindow": "262K",
+                "launchMode": "direct",
+                "backend": "mlx",
+                "releaseDate": "2026-08",
+            },
+            {
+                "id": "Youssofal/Qwen3.8-27B-MTPLX-Optimized-Speed",
+                "name": "Qwen3.8 27B MLX 4-bit (MTPLX)",
+                "repo": "Youssofal/Qwen3.8-27B-MTPLX-Optimized-Speed",
+                "link": "https://huggingface.co/Youssofal/Qwen3.8-27B-MTPLX-Optimized-Speed",
+                "paramsB": 27.0,
+                "sizeGb": 20.7,
+                "format": "MLX",
+                "quantization": "4-bit",
+                "capabilities": ["reasoning", "coding", "agents", "tool-use", "vision"],
+                "note": (
+                    "Qwen3.8-27B with its MTP head grafted in, for MTPLX (Apple Silicon, MTPLX 2.12 or newer). "
+                    "Tick MTPLX in the launch settings: about 60 tok/s on code and 40 on prose on an M4 Max "
+                    "against about 25 plain, replies identical to normal decoding."
                 ),
                 "contextWindow": "262K",
                 "launchMode": "direct",

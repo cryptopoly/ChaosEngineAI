@@ -79,6 +79,8 @@ export interface LibraryItem {
   directoryLabel?: string;
   directoryPath?: string;
   maxContext?: number | null;
+  /** MLX checkpoint holds MTP weights (MTPLX needs them); null/absent = unknown. */
+  mtpHeads?: boolean | null;
   broken?: boolean;
   brokenReason?: string | null;
 }

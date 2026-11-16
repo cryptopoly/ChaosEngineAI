@@ -47,6 +47,15 @@ from backend_service.helpers.snapshot_integrity import (
 )
 
 
+def _mlx_mtp_heads(path: str) -> bool | None:
+    """True / False when the checkpoint's safetensors index says it has MTP tensors, None if unreadable."""
+    try:
+        from backend_service.inference._mtp import model_has_mtp_tensors
+        return model_has_mtp_tensors(path)
+    except Exception:
+        return None
+
+
 def _path_size_bytes(path: Path, *, seen: set[tuple[int, int]] | None = None) -> int:
     visited = seen if seen is not None else set()
     zero_inode_dirs: set[str] = set()
@@ -474,6 +483,9 @@ def _discover_local_models(model_directories: list[dict[str, Any]], limit: int =
                 broken, broken_reason = _detect_broken_library_item(child, file_format, source_kind)
                 quantization = _detect_model_quantization(child, file_format, name_hint=name)
                 backend = "llama.cpp" if file_format == "GGUF" else "mlx"
+                # Whether the MLX checkpoint holds MTP weights (MTPLX needs them). Index
+                # read only; GGUF files are not probed here (a 2 MB header read each).
+                mtp_heads = _mlx_mtp_heads(path_key) if file_format != "GGUF" else None
                 if _looks_like_video_model(name):
                     model_type = "video"
                 elif _looks_like_image_model(child, name):
@@ -504,6 +516,7 @@ def _discover_local_models(model_directories: list[dict[str, Any]], limit: int =
                         "directoryLabel": directory_label,
                         "directoryPath": str(root),
                         "maxContext": max_context,
+                        "mtpHeads": mtp_heads,
                         "broken": broken,
                         "brokenReason": broken_reason,
                     }

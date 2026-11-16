@@ -100,6 +100,8 @@ export interface SystemStats {
   };
   mtplx?: {
     available: boolean;
+    /** A venv from before MTPLX 2.12 exists: the Install button rebuilds it. */
+    outdated?: boolean;
     supportedModels: string[];
   };
   // TensorFold engine (exact speculative decoding, Apple Silicon). The repo

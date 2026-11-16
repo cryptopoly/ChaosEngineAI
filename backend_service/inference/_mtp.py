@@ -32,6 +32,11 @@ MTP_MODEL_MAP: dict[str, int] = {
     "Youssofal/Qwen3.6-27B-MTPLX-Optimized-Speed": 3,
     "Youssofal/Qwen3.6-27B-MTPLX-Optimized-Speed-FP16": 3,
     "Youssofal/Qwen3.6-27B-MTPLX-Optimized-Quality": 3,
+    # Qwen3.8-27B with the MTP head grafted in (mtp.safetensors, 4-bit body).
+    # Measured 2026-11-16 on an M4 Max through MtplxEngine (MTPLX 2.12.3):
+    # 59-63 tok/s code, 40.5 prose. The stock mlx-community / Vontra 4-bit
+    # conversions carry no MTP tensors, so they are not MTPLX models.
+    "Youssofal/Qwen3.8-27B-MTPLX-Optimized-Speed": 3,
     # ----- Qwen3.5 family -----
     "Qwen/Qwen3.5-4B": 1,
     "Qwen/Qwen3.5-7B": 1,

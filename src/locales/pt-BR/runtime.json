@@ -193,7 +193,8 @@
     "requiresBody": "Apple Silicon + venv isolado do MTPLX. O modelo precisa ter cabeças MTP embutidas (Qwen3.5/3.6, DeepSeek V3/R1, Qwen3-Coder-Next).",
     "statusLabel": "Status:",
     "statusInstalled": "Instalado — ativo quando a decodificação especulativa está ativada.",
-    "statusNotInstalled": "Não instalado. Clique em Instalar MTPLX para configurar o venv isolado (~500 MB)."
+    "statusNotInstalled": "Não instalado. Clique em Instalar MTPLX para configurar o venv isolado (~500 MB).",
+    "statusOutdated": null
   },
   "ggufMtp": {
     "tooltip": "Decodificação especulativa GGUF MTP: usa as cabeças MTP embutidas do modelo via llama.cpp --spec-type draft-mtp para uma geração ~1,8–2,2× mais rápida sem perda de qualidade.",

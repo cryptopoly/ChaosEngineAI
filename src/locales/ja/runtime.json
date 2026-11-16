@@ -193,7 +193,8 @@
     "requiresBody": "Apple Silicon + MTPLX 用の独立した venv。モデルに MTP ヘッドが組み込まれている必要があります（Qwen3.5/3.6、DeepSeek V3/R1、Qwen3-Coder-Next）。",
     "statusLabel": "ステータス:",
     "statusInstalled": "インストール済み — 投機的デコーディングを有効にすると動作します。",
-    "statusNotInstalled": "未インストールです。「MTPLX をインストール」をクリックして、独立した venv（約 500 MB）をセットアップしてください。"
+    "statusNotInstalled": "未インストールです。「MTPLX をインストール」をクリックして、独立した venv（約 500 MB）をセットアップしてください。",
+    "statusOutdated": null
   },
   "ggufMtp": {
     "tooltip": "GGUF MTP 投機的デコーディング: モデルに組み込まれた MTP ヘッドを llama.cpp の --spec-type draft-mtp 経由で利用し、品質を損なわず約 1.8-2.2 倍高速に生成します。",

@@ -804,12 +804,14 @@
           "type": "array"
         },
         "what": {
-          "description": "final: redo only the shots marked Keep for final, with the quality image model.",
+          "description": "final: redo only the shots marked Keep for final, with the quality image model. redo-clip: new clip from the current still; redo-still: new still, old clip kept until remade.",
           "enum": [
             "still",
             "clip",
             "both",
-            "final"
+            "final",
+            "redo-clip",
+            "redo-still"
           ],
           "type": "string"
         }

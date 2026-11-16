@@ -131,7 +131,8 @@
     "groupTabsAriaLabel": "Abas {group}",
     "primaryNavAriaLabel": "Principal",
     "sectionMake": "Criar",
-    "sectionRun": "Executar"
+    "sectionRun": "Executar",
+    "menuButton": null
   },
   "slashCommands": {
     "menuAriaLabel": "Comandos de barra"

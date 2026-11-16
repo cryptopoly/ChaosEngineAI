@@ -2,7 +2,7 @@ import { mkdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { test, expect } from "./fixtures";
 import type { Page } from "@playwright/test";
-import { goTo, goToProjects, openProjectTab, openTab, SHOTS_DIR, seedProject } from "./helpers";
+import { goTo, goToProjects, openProjectTab, openTab, primaryNav, SHOTS_DIR, seedProject } from "./helpers";
 
 // 375 px wide (a phone). The page must not scroll sideways and nothing visible may stick out past the
 // right edge. A screenshot of each screen is saved to e2e/screenshots/ (git-ignored) so the layout can be
@@ -105,7 +105,7 @@ test("375 px: Music Studio and Voice Library", async ({ page }) => {
 
 test("375 px: Settings with the terms panel", async ({ page }) => {
   await goTo(page, "Images", "Gallery");
-  await page.getByRole("navigation", { name: "Primary" }).getByRole("button", { name: "Settings", exact: true }).click();
+  await (await primaryNav(page)).getByRole("button", { name: "Settings", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Terms of use" })).toBeVisible();
   await look(page, "settings");
 });

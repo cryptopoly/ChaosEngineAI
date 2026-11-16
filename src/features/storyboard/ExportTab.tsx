@@ -19,6 +19,7 @@ import {
   presetPatch,
   exportSize,
   exportedSeconds,
+  filmCaptionCount,
   previewIsStale,
   readRenderedRevision,
 } from "./mixer/mixerLogic";
@@ -122,6 +123,7 @@ export function ExportTab({ story, project, timeline, dataDirectory, onTab, rend
     clonedVoice: hasClonedVoice(project),
     format: `${film.width} × ${film.height} · ${project.defaults.fps} fps`,
     upscaledTo: scaled ? `${scaled.width} × ${scaled.height}` : null,
+    captions: filmCaptionCount(project, timeline),
   });
   const lineText = (line: PreflightLine): string => {
     switch (line.id) {

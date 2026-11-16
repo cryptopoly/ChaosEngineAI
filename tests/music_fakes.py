@@ -4,7 +4,8 @@ The fake engine is loaded by ``backend_service/music_worker.py`` through ``CHAOS
 exactly like the ACE-Step engine, so the worker's JSON-lines loop, threads, cancel, busy, events and path
 rules run for real without ACE-Step. Words in the caption steer it: ``delay=0.2`` (seconds per step),
 ``stubborn`` (ignores cancel and sits in "decode"), ``fail``, ``escape`` (returns a path outside the data
-folder), ``noisy`` (prints to stdout, which must not reach the protocol).
+folder), ``noisy`` (prints to stdout, which must not reach the protocol), ``gate=<path>`` (holds the job after its
+first step until that file exists, so a test can act while it is surely running).
 """
 
 from __future__ import annotations
@@ -54,7 +55,13 @@ class Engine:
         hooks.stage("encode")
         delay = float(caption.split("delay=")[1].split()[0]) if "delay=" in caption else 0.0
         total = int(request.get("steps") or 8)
+        gate = caption.split("gate=")[1].split()[0] if "gate=" in caption else None
         for index in range(total):
+            if gate and index == 1:
+                deadline = time.time() + 60
+                while not os.path.exists(gate) and time.time() < deadline:
+                    hooks.check_cancel()
+                    time.sleep(0.02)
             if "stubborn" not in caption:
                 hooks.check_cancel()
             time.sleep(delay)

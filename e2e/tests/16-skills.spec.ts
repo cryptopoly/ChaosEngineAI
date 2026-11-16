@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { test, expect } from "./fixtures";
 import type { Page } from "@playwright/test";
-import { API_BASE, RUN_HOME, TOKEN, goTo, openApp, openTab, SHOTS_DIR } from "./helpers";
+import { API_BASE, RUN_HOME, TOKEN, goTo, openApp, openTab, primaryNav, SHOTS_DIR } from "./helpers";
 
 // D-62: skills import. The import runs against the run's own backend (throwaway HOME) with the sample
 // skill in docs/examples/skills, so the real validation and store are exercised; no model runs. Chat is
@@ -19,7 +19,7 @@ async function removeSkill(page: Page) {
 }
 
 async function openSkillsSettings(page: Page) {
-  await page.getByRole("navigation", { name: "Primary" }).getByRole("button", { name: "Settings", exact: true }).click();
+  await (await primaryNav(page)).getByRole("button", { name: "Settings", exact: true }).click();
   await page.getByRole("tablist", { name: "Settings sections" }).getByRole("tab", { name: "Skills" }).click();
   await expect(page.getByRole("heading", { name: "Skills", exact: true })).toBeVisible();
 }

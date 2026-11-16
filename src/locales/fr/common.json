@@ -131,7 +131,8 @@
     "groupTabsAriaLabel": "Onglets {group}",
     "primaryNavAriaLabel": "Principale",
     "sectionMake": "Créer",
-    "sectionRun": "Exécuter"
+    "sectionRun": "Exécuter",
+    "menuButton": null
   },
   "slashCommands": {
     "menuAriaLabel": "Commandes barre oblique"

@@ -131,7 +131,8 @@
     "groupTabsAriaLabel": "{group} 分頁",
     "primaryNavAriaLabel": "主導覽",
     "sectionMake": "創作",
-    "sectionRun": "執行"
+    "sectionRun": "執行",
+    "menuButton": null
   },
   "slashCommands": {
     "menuAriaLabel": "斜線命令"

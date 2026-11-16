@@ -182,7 +182,9 @@ export const SUGGEST_SHOT_SECONDS = { short: 4, long: 5 } as const;
 export const TYPICAL_SECONDS: Record<FilmKind, number> = { ad: 30, trailer: 60, film: 30 };
 
 // Length and kind words in the shipping languages (S-N): a brief in German, Japanese or Russian gets the same
-// suggestion as one in English. Digits work in any language; number words are English plus "one"/"a" in the others.
+// suggestion as one in English. Digits work in any language; number words are English plus "one"/"a" (and a few
+// tens) in the others, and Han numerals ("三十秒", "一分钟") in Chinese and Japanese. Not read: other number words
+// spelled out ("fünfundvierzig Sekunden", Korean "삼십 초"); digits work there.
 const NUMBER_WORDS: Record<string, number> = {
   one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
   fifteen: 15, twenty: 20, thirty: 30, forty: 40, "forty-five": 45, fifty: 50, sixty: 60, ninety: 90,
@@ -196,16 +198,34 @@ const MINUTE_UNITS = "minutes?|mins?|minuten?|minutos?|минут\\p{L}*|мин"
 const CJK_UNITS = "秒|分钟|分鐘|分間|分|초|분";
 // Digits may follow a CJK letter ("一个1分钟"), not a Latin or Cyrillic one ("mp4s"); number words stand alone.
 const NUMBER = `(?<![\\p{Script=Latin}\\p{Script=Cyrillic}\\p{N}.,])\\d+(?:[.,]\\d+)?|(?<![\\p{L}\\p{N}])(?:${Object.keys(NUMBER_WORDS).join("|")})`;
+// Han numerals before a CJK unit ("三十秒", "一分钟", "九十秒"), up to 99.
+const HAN_DIGITS: Record<string, number> = { 一: 1, 二: 2, 两: 2, 兩: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9 };
+const HAN_NUMBER = "[一二两兩三四五六七八九十]{1,3}";
 const LENGTH_RE = new RegExp(
-  `(${NUMBER})(?:[\\s-]*(${SECOND_UNITS}|${MINUTE_UNITS})(?![\\p{L}])|\\s*(${CJK_UNITS}))`,
+  `(${NUMBER})(?:[\\s-]*(${SECOND_UNITS}|${MINUTE_UNITS})(?![\\p{L}])|\\s*(${CJK_UNITS}))|(${HAN_NUMBER})\\s*(${CJK_UNITS})`,
   "iu",
 );
+
+/** "三十" 30, "十五" 15, "九十" 90, "五" 5; NaN for anything else. */
+function hanNumber(text: string): number {
+  const [tens, ones] = text.includes("十") ? text.split("十") : ["", text];
+  if (text.includes("十") && (tens.length > 1 || ones.length > 1)) return Number.NaN;
+  if (!text.includes("十")) return text.length === 1 ? (HAN_DIGITS[text] ?? Number.NaN) : Number.NaN;
+  const t = tens === "" ? 1 : HAN_DIGITS[tens];
+  const o = ones === "" ? 0 : HAN_DIGITS[ones];
+  return t === undefined || o === undefined ? Number.NaN : t * 10 + o;
+}
 const MINUTE_RE = new RegExp(`^(?:${MINUTE_UNITS}|分钟|分鐘|分間|分|분)$`, "iu");
 
 /** The film length a brief states ("a 30 s ad", "a one-minute advert", "90 Sekunden", "30秒の広告"), in seconds, or null. */
 export function briefSeconds(brief: string): number | null {
   const match = LENGTH_RE.exec(brief);
   if (!match) return null;
+  if (match[4]) {
+    const amount = hanNumber(match[4]);
+    const seconds = MINUTE_RE.test(match[5]) ? amount * 60 : amount;
+    return Number.isFinite(seconds) && seconds >= 2 && seconds <= 600 ? Math.round(seconds) : null;
+  }
   const word = match[1].toLowerCase();
   const amount = NUMBER_WORDS[word] ?? Number(word.replace(",", "."));
   const unit = match[2] ?? match[3];

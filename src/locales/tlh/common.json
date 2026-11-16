@@ -131,7 +131,8 @@
     "groupTabsAriaLabel": "{group} 'echlet",
     "primaryNavAriaLabel": "He Hal",
     "sectionMake": "yIchenmoH",
-    "sectionRun": "yIchu'"
+    "sectionRun": "yIchu'",
+    "menuButton": null
   },
   "slashCommands": {
     "menuAriaLabel": "ra' tetlh"

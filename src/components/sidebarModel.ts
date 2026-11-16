@@ -100,3 +100,19 @@ export function resolveGroupTarget(
   }
   return children[0]?.id ?? null;
 }
+
+/** Below this width the sidebar is a top bar with a menu button and a drawer. Matches the CSS media query. */
+export const COMPACT_SIDEBAR_QUERY = "(max-width: 1179.98px)";
+
+/**
+ * Focus trap of the open drawer: the menu button and the drawer's controls, in order. Tab on the last one goes
+ * to the first, Shift+Tab on the first goes to the last; anywhere else (or focus outside the list) the browser's
+ * own order is fine unless focus has left the trap, which goes back to the first.
+ */
+export function trapFocusIndex(current: number, count: number, backwards: boolean): number | null {
+  if (count === 0) return null;
+  if (current < 0) return backwards ? count - 1 : 0;
+  if (backwards && current === 0) return count - 1;
+  if (!backwards && current === count - 1) return 0;
+  return null;
+}

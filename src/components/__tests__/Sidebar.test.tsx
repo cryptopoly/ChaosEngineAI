@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { Sidebar } from "../Sidebar";
-import { arrangeRows, buildItems, resolveGroupTarget, visibleSidebarTabs } from "../sidebarModel";
+import { arrangeRows, buildItems, COMPACT_SIDEBAR_QUERY, resolveGroupTarget, trapFocusIndex, visibleSidebarTabs } from "../sidebarModel";
 import { HOME_STUDIO_ENABLED, tabs } from "../../constants";
 import type { ActiveGeneration, TabId } from "../../types";
 
@@ -90,7 +90,7 @@ describe("sidebar sections and accordion", () => {
   it("keeps every group open when the setting is on", () => {
     const html = render({ activeTab: "video-studio", keepAllOpen: true });
     expect(openGroupIds(html).length).toBeGreaterThan(3);
-    expect(html).not.toContain('aria-expanded="false"');
+    expect(html).not.toMatch(/class="nav-group-header" aria-expanded="false"/);
   });
 
   it("keeps group headers keyboard reachable with aria attributes", () => {
@@ -116,5 +116,31 @@ describe("footer status while an engine is busy", () => {
     const html = render({ loadedModelName: "Gemma 4", activeGenerations: [still] });
     expect(html).toContain("Gemma 4");
     expect(html).toContain("Image engine busy");
+  });
+});
+
+describe("compact layout (below 1180 px)", () => {
+  it("renders a closed menu button that controls the nav panel", () => {
+    const html = render();
+    expect(html).toMatch(/<button[^>]*class="sidebar-menu-button"[^>]*aria-expanded="false"[^>]*aria-controls="sidebar-panel"[^>]*aria-label="Menu"/);
+    expect(html).toContain('id="sidebar-panel"');
+    // The nav and the footer live in the panel; no backdrop while closed.
+    expect(html.indexOf('id="sidebar-panel"')).toBeLessThan(html.indexOf('class="nav-list"'));
+    expect(html).not.toContain("sidebar-backdrop");
+  });
+
+  it("switches below 1180 px only", () => {
+    expect(COMPACT_SIDEBAR_QUERY).toBe("(max-width: 1179.98px)");
+  });
+
+  it("keeps Tab inside the drawer", () => {
+    // 4 items: the menu button then three drawer controls.
+    expect(trapFocusIndex(3, 4, false)).toBe(0);
+    expect(trapFocusIndex(0, 4, true)).toBe(3);
+    expect(trapFocusIndex(1, 4, false)).toBeNull();
+    expect(trapFocusIndex(2, 4, true)).toBeNull();
+    expect(trapFocusIndex(-1, 4, false)).toBe(0);
+    expect(trapFocusIndex(-1, 4, true)).toBe(3);
+    expect(trapFocusIndex(0, 0, false)).toBeNull();
   });
 });

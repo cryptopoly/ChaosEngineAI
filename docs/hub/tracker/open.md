@@ -1,13 +1,31 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 102 rows with work, decisions or watch items still open, newest first.
+summary: 104 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-187 · Watch Qwen 4 — Open</summary>
+
+**Status or trigger:** Open
+
+**Notes:** Announced at Apsara (2026-09-22: Max, Flash, Plus, 27B), no weights or date as of 2026-11-16; Qwen3.8-Flash-Next (125B MoE, 6B active) previews the architecture. On release: catalogue rows, `DRAFT_MODEL_MAP`, vendored MLX architecture if mlx-lm lacks it, llama.cpp support check, matrix run.
+
+</details>
+
+<details>
+<summary>FU-186 · Storyboard QA leftovers fixed for 0.10.0 — Done</summary>
+
+**Status or trigger:** Done
+
+**Notes:** Owner chose all four (2026-11-16). (1) A clip made after Make drafts completes the draft still-only take and keeps its pass (draft badge and Export warning stay; Redo clip works; the final pass picks the shot up). (2) MLX non-streaming generate waits 60 s plus 0.5 s per allowed token (cap 1800 s) instead of a fixed 120 s, and a worker that dies mid-request clears the loaded model so the workspace stops saying loaded. (3) Path import of a picture checks the PNG, JPEG or WebP header. (4) Speech and tokenizer repos (chatterbox, orpheus, VoxCPM, S3Tokenizer, any `-tts`) no longer appear in chat model lists. Tests: `tests/test_v0100_closing_fixes.py`, `tests/test_storyboard_passes.py`, `src/utils/__tests__/library.test.ts`. Not tested: a real long reply on a big MLX model.
+
+</details>
 
 <details>
 <summary>FU-185 · Matrix run on the 0.10.0 tree: legacy ids and the TensorFold check — Done</summary>

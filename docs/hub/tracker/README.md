@@ -8,13 +8,15 @@ summary: Every FU row from FOLLOW_UPS.md, split into open and closed.
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here.
 
-- [Open and live follow-ups](open.md): **102** rows.
+- [Open and live follow-ups](open.md): **104** rows.
 - [Closed follow-ups](closed.md): **81** rows.
 
 ## Newest ten
 
 | Row | Item | Status |
 |---|---|---|
+| [FU-187](open.md) | Watch Qwen 4 | Open |
+| [FU-186](open.md) | Storyboard QA leftovers fixed for 0.10.0 | Done |
 | [FU-185](open.md) | Matrix run on the 0.10.0 tree: legacy ids and the TensorFold check | Done |
 | [FU-184](open.md) | Storyboard polish S8 to S13 and S15 | Done (gaps listed) |
 | [FU-183](open.md) | Storyboard polish S1 to S7 | Done |
@@ -23,5 +25,3 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 | [FU-180](open.md) | A job started elsewhere shows no progress in the studios | Done |
 | [FU-179](open.md) | Chat storyboard run: two render approvals, slow default still model | Open |
 | [FU-178](open.md) | llama.cpp 1.0 features not wired | Open |
-| [FU-177](open.md) | Show the TensorFold family report in Setup and Models | Open (2026-11-14): backend done (FU-168), no UI. |
-| [FU-176](open.md) | Wan 2.1 via stable-diffusion.cpp: the video path is not wired | Open (2026-11-14): found by v0.10.0 task B, not changed. |

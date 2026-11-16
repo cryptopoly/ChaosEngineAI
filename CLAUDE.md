@@ -166,6 +166,7 @@ Add a row there when you defer work, edit it when you ship, then run
 | Request guards (chat settings, pipeline kwargs, sizes and frames, STT language fallback) | `test_request_guards.py`, `test_voice_library.py` | `pytest tests/test_request_guards.py tests/test_voice_library.py -v` |
 | LTX-2.3 MLX engine (ltx-2-mlx) routing, catalog, command line | `test_ltx2_mlx_runtime.py` | `pytest tests/test_ltx2_mlx_runtime.py -v` |
 | Music (ACE-Step catalog and fit, music venv, worker protocol, client cancel, library and FLAC tags, routes, `make_music`) | `test_music_*.py` | `pytest tests/test_music_catalog.py tests/test_music_env.py tests/test_music_worker.py tests/test_music_client.py tests/test_music_library.py tests/test_music_routes.py -v` |
+| llama.cpp MTP/DFlash 2 drafter order, draft acceptance parsing, native q8_0/q4_0 KV (FU-178) | `test_llama_fu178.py` | `pytest tests/test_llama_fu178.py -v` |
 | Cross-strategy E2E matrix runner | `test_cache_strategy_matrix_runner.py` | `pytest tests/test_cache_strategy_matrix_runner.py -v` |
 | Cache speed calibration script | `test_calibrate_cache_speed.py` | `pytest tests/test_calibrate_cache_speed.py -v` |
 | Dependency audit script (CVSS scoring, accepted risks, exit codes) | `test_audit_dependencies.py` | `pytest tests/test_audit_dependencies.py -v` |

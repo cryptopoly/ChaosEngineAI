@@ -4,6 +4,7 @@ import {
   resolveDflashSupport,
 } from "../../components/runtimeSupport";
 import type { SystemStats } from "../../types";
+import { BoltIcon } from "../../components/icons/ActionIcons";
 
 /**
  * Inline nudge bar above the prompt textarea (FU-056 Phase 5).
@@ -93,7 +94,7 @@ export function ChatComposerDflashHint({
       role="status"
       aria-live="polite"
     >
-      <span className="composer-dflash-hint-icon" aria-hidden="true">⚡</span>
+      <span className="composer-dflash-hint-icon" aria-hidden="true"><BoltIcon width={14} height={14} /></span>
       <span className="composer-dflash-hint-text">
         {t("dflash.composerHint", {
           defaultValue:

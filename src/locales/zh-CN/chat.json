@@ -105,7 +105,7 @@
     "pin": "置顶",
     "deleteChat": "删除对话",
     "forkedFrom": "从另一个线程的第 #{number} 条消息分支",
-    "forkBadge": "⑂ 分支",
+    "forkBadge": "分支",
     "modelReadyTooltip": "模型已加载 — 此对话无需重新加载，会立即响应。",
     "readyBadge": "就绪"
   },
@@ -402,7 +402,7 @@
     "changeVoice": null
   },
   "emptyBanner": {
-    "welcomeTitle": "👋 欢迎使用 ChaosEngineAI 对话",
+    "welcomeTitle": "欢迎使用 ChaosEngineAI 对话",
     "welcomeBody": "请先在“对话 > 模型”中选择一个聊天模型。首次使用推荐较小的 Qwen3 或 Llama 3 变体，下载只需一两分钟，任何笔记本电脑都能运行。",
     "browseDiscover": "浏览模型",
     "noModelLoaded": "需要先加载模型才能聊天。请从模型库中选择一个，将其载入内存。",

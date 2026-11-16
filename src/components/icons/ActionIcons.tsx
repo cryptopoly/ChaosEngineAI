@@ -199,3 +199,51 @@ export function SearchIcon(props: IconProps) {
     </svg>
   );
 }
+
+/** A branch: a chat thread forked from another. */
+export function ForkIcon(props: IconProps) {
+  return (
+    <svg {...baseProps} {...props}>
+      <circle cx="6" cy="5" r="2" />
+      <circle cx="18" cy="5" r="2" />
+      <circle cx="12" cy="19" r="2" />
+      <path d="M6 7v2a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3V7" />
+      <path d="M12 12v5" />
+    </svg>
+  );
+}
+
+/** Speed: a model already loaded, a faster decoder, an accelerator. */
+export function BoltIcon(props: IconProps) {
+  return (
+    <svg {...baseProps} {...props}>
+      <path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z" />
+    </svg>
+  );
+}
+
+export function PaperclipIcon(props: IconProps) {
+  return (
+    <svg {...baseProps} {...props}>
+      <path d="m21 11-8.6 8.6a5 5 0 0 1-7.1-7.1l8.6-8.6a3.3 3.3 0 0 1 4.7 4.7l-8.6 8.6a1.7 1.7 0 0 1-2.4-2.4l7.9-7.9" />
+    </svg>
+  );
+}
+
+export function DocumentIcon(props: IconProps) {
+  return (
+    <svg {...baseProps} {...props}>
+      <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+      <path d="M14 3v5h5" />
+      <path d="M9 13h6M9 17h6" />
+    </svg>
+  );
+}
+
+export function CheckIcon(props: IconProps) {
+  return (
+    <svg {...baseProps} {...props}>
+      <polyline points="5 12 10 17 19 7" />
+    </svg>
+  );
+}

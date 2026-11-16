@@ -44,7 +44,7 @@ export function ChatEmptyStateBanner({
       <div className="chat-empty-banner" role="region" aria-label={t("emptyBanner.getStartedAriaLabel", { defaultValue: "Get started with chat" })}>
         <h3 className="chat-empty-banner-title">
           {t("emptyBanner.welcomeTitle", {
-            defaultValue: "👋 Welcome to ChaosEngineAI Chat",
+            defaultValue: "Welcome to ChaosEngineAI Chat",
           })}
         </h3>
         <p className="chat-empty-banner-body">

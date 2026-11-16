@@ -105,7 +105,7 @@
     "pin": "Anheften",
     "deleteChat": "Chat löschen",
     "forkedFrom": "Von einem anderen Thread bei Nachricht #{number} abgezweigt",
-    "forkBadge": "⑂ abgezweigt",
+    "forkBadge": "abgezweigt",
     "modelReadyTooltip": "Das Modell ist bereits geladen — dieser Chat antwortet sofort, ohne erneute Ladezeit.",
     "readyBadge": "bereit"
   },
@@ -402,7 +402,7 @@
     "changeVoice": null
   },
   "emptyBanner": {
-    "welcomeTitle": "👋 Willkommen im ChaosEngineAI-Chat",
+    "welcomeTitle": "Willkommen im ChaosEngineAI-Chat",
     "welcomeBody": "Wähle unter Chat > Modelle ein Chat-Modell aus, um loszulegen. Für den ersten Start empfehlen wir eine kleine Qwen3- oder Llama-3-Variante — sie ist in ein bis zwei Minuten heruntergeladen und läuft auf jedem Laptop.",
     "browseDiscover": "Modelle durchsuchen",
     "noModelLoaded": "Zum Chatten muss zuerst ein Modell geladen sein. Wähle eines aus deiner Bibliothek, um es in den Speicher zu laden.",

@@ -162,6 +162,16 @@ class SongOpTests(StoreCase):
         self.assertIsNone(kept.song.clipId)
         self.assertEqual(len(kept.audio), 1)  # the earlier clip stays as an ordinary music clip
 
+    def test_a_bundle_carries_the_song_file(self):
+        from backend_service.storyboard import bundle
+
+        project = self.attach(self.new(), addToMixer=False)
+        self.assertEqual(bundle.referenced(project)[project.song.path], project.song.hash)
+        path = bundle.export_bundle(self.store, project.id)
+        copy = bundle.import_bundle(self.store, path)
+        self.assertEqual(copy.song.path, project.song.path)
+        self.assertTrue((self.folder(copy) / copy.song.path).is_file())
+
     def test_edit_song_and_clear_song(self):
         project = self.attach(self.new())
         edited = self.op(project, "edit_song", lyrics=["one", "two"], sections=[

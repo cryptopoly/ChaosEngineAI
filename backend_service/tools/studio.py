@@ -50,6 +50,7 @@ STUDIO_TOOL_NAMES = (
     "storyboard_generate",
     "storyboard_render",
     "storyboard_captions",
+    "storyboard_song",
     "music_library",
 )
 
@@ -58,6 +59,8 @@ STUDIO_TOOL_NAMES = (
 _DROPPED_ACTIONS = {
     "storyboard_project": {"export", "import", "delete"},
     "storyboard_captions": {"export_srt"},
+    # Timing lyrics by speech runs a job with no plan card in Chat; the user does that in the app.
+    "storyboard_song": {"lyric_captions"},
     "music_library": {"delete"},
 }
 # Arguments taken out of a schema for Chat (base64 previews cost a small model its whole context).

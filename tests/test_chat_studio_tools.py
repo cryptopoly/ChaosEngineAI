@@ -73,6 +73,16 @@ class ToolListTests(unittest.TestCase):
                      "storyboard_render", "music_library", "list_models", "system_status", "wait_for_job"):
             self.assertIn(name, names)
         self.assertIn("calculator", names)  # the usual chat tools stay
+
+    def test_chat_gets_the_song_tool_without_the_speech_timing_action(self):
+        """storyboard_song lets Chat build a film to a track; timing lyrics by speech runs a job with no plan card."""
+        reg = studio_registry(APP, base_registry, None)
+        self.assertIn("storyboard_song", reg.available_names())
+        self.assertNotIn("storyboard_batch", reg.available_names())  # the batch bar has pause and resume
+        tool = next(t for t in studio_tools(APP) if t.name == "storyboard_song")
+        actions = json.dumps(tool._schema)
+        self.assertIn("cut_plan", actions)
+        self.assertNotIn("lyric_captions", actions)
         only_studio = studio_registry(APP, base_registry, [])
         self.assertNotIn("calculator", only_studio.available_names())
 

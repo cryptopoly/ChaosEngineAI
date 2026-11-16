@@ -935,7 +935,9 @@ class LlamaCppEngine(BaseInferenceEngine):
             response = _http_json(
                 self._server_url("/v1/chat/completions"),
                 payload=payload,
-                timeout=DEFAULT_LLAMA_TIMEOUT_SECONDS,
+                # A non-streaming reply sends nothing until it is whole: wait for the longest reply the request
+                # allows (2 tok/s worst case), not a fixed 120 s (the same cut-off the MLX path had, FU-186).
+                timeout=min(max(DEFAULT_LLAMA_TIMEOUT_SECONDS, 60.0 + max(int(max_tokens or 0), 0) * 0.5), 1800.0),
             )
         except urllib.error.HTTPError as exc:
             detail = exc.read().decode("utf-8", errors="ignore")

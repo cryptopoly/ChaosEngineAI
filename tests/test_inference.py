@@ -506,6 +506,20 @@ class LlamaCppToolCallTests(unittest.TestCase):
             "function": {"name": "calculator", "arguments": "{\"expression\":\"1234 * 5678\"}"},
         }])
 
+    def test_the_wait_covers_the_longest_reply_the_request_allows(self):
+        """A non-streaming reply sends nothing until whole, so a fixed 120 s cut a long tool-loop reply off."""
+        waits = []
+
+        def fake_http(url, payload=None, timeout=None):
+            waits.append(timeout)
+            return {"choices": [{"message": {"content": "ok"}}]}
+
+        for max_tokens in (16, 2048, 1_000_000):
+            engine = self._engine()
+            with mock.patch("backend_service.inference.llama_cpp_engine._http_json", side_effect=fake_http):
+                engine.generate(prompt="hi", history=[], system_prompt=None, max_tokens=max_tokens, temperature=0.1)
+        self.assertEqual(waits, [120.0, 60.0 + 2048 * 0.5, 1800.0])
+
     def test_a_plain_reply_has_no_tool_calls(self):
         response = {"choices": [{"message": {"content": "Hello."}}]}
         result, _ = self._generate(self._engine(), response, prompt="hi", history=[])

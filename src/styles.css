@@ -15161,6 +15161,11 @@ select.music-library__select {
   min-height: 0;
   overflow-y: auto;
 }
+/* Its sections keep their height and the body scrolls; shrunk (control-stack has min-height: 0) they overlapped
+   at 720 px tall once the templates wrapped to three rows. */
+.project-dialog .modal-body > * {
+  flex-shrink: 0;
+}
 .project-dialog .modal-footer {
   flex: 0 0 auto;
 }

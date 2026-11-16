@@ -1,13 +1,22 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 100 rows with work, decisions or watch items still open, newest first.
+summary: 101 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-184 · Storyboard polish S8 to S13 and S15 — Done (gaps listed)</summary>
+
+**Status or trigger:** Done (gaps listed)
+
+**Notes:** Progress `docs/progress/v0100-{d,e,f}.md`. S8 Plan tab (brief, style pictures, proposed shots, Rework with the model, direction chat, all as ops with Undo); S15 `style` reference kind, local palette, brand kit (logo, caption look), style as pictures or words per shot; S9 rough-cut player (Play film on Storyboard, Mixer, Export; picture follows the audio clock, 22 to 28 ms median); S13 caption look burnt in, .srt beside the file; S10 take compare; S11 Redo clip only and Redo still only (clip knows which still it came from); S12 bundled sample film "The Lighthouse" (1.4 MB) with a Try card on the empty project list. Open: Export does not yet draw the brand logo or a title and end card; a style change does not mark shots stale; agent tools cannot set brief, style or brand; lyric captions not built; the Mixer's own transport still plays a rendered preview only; style as reference pictures unit-tested only (Iris takes none); rough-cut sync not measured in the desktop webview; sample film not opened from a packaged build; LTX 832x512 clips get narrow black bars in a 854x480 film. S14 (long music video on a freestyle board) is the 0.11.0 proposal in the plan.
+
+</details>
 
 <details>
 <summary>FU-183 · Storyboard polish S1 to S7 — Done</summary>

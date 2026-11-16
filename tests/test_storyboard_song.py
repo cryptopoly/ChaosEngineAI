@@ -344,6 +344,15 @@ class SongRouteTests(unittest.TestCase):
         self.assertEqual(stored["title"], "song")
         self.assertAlmostEqual(stored["seconds"], 40.0, delta=0.1)
         self.assertEqual(attached["project"]["audio"][0]["id"], stored["clipId"])
+        # S-P: the Plan tab's Length (filmSeconds) limits the cut; an asked length wins over it.
+        planned = self.post(f"/projects/{pid}/ops", {"revision": attached["project"]["revision"], "op": "set_plan",
+                                                     "args": {"filmSeconds": 20}})
+        short = self.post(f"/projects/{pid}/cut-plan", {"maxShotSeconds": 4})
+        self.assertAlmostEqual(sum(s["seconds"] for s in short["shots"]), 20.0, places=1)
+        asked = self.post(f"/projects/{pid}/cut-plan", {"maxShotSeconds": 4, "lengthSeconds": 12})
+        self.assertAlmostEqual(sum(s["seconds"] for s in asked["shots"]), 12.0, places=1)
+        attached["project"] = self.post(f"/projects/{pid}/ops", {"revision": planned["project"]["revision"], "op": "set_plan",
+                                                                 "args": {"clearFilmSeconds": True}})["project"]
         plan = self.post(f"/projects/{pid}/cut-plan", {"maxShotSeconds": 4})
         self.assertIn(plan["clipSecondsSource"], ("request", "model"))  # the installed video model may make shorter clips
         self.assertTrue(all(s["seconds"] <= plan["clipSeconds"] + 1e-6 for s in plan["shots"]))

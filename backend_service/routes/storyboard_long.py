@@ -112,7 +112,9 @@ def cut_plan(request: Request, project_id: str, max_shot_seconds: float | None =
     project = shared.get_store().load(project_id)
     variant, _ = shared._project_variant(request, "video", project.defaults.videoModel)
     cap, source = cutplan.clip_seconds_for(variant, project.defaults.fps, max_shot_seconds)
-    plan = cutplan.plan_cuts(project, cap, min_shot_seconds, keep_prompts, length_seconds)
+    # No length asked: the film's length from the Plan tab (its Length chips), so "30 s" and a long song give a 30 s cut.
+    length = length_seconds if length_seconds is not None else project.plan.filmSeconds
+    plan = cutplan.plan_cuts(project, cap, min_shot_seconds, keep_prompts, length)
     return {**plan, "clipSeconds": round(cap, 3), "clipSecondsSource": source,
             "videoModel": (variant or {}).get("name")}
 

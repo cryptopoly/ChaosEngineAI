@@ -35,7 +35,7 @@ def plan_steps(project: Project, what: str, shot_ids: list[str] | None) -> list[
         steps += [(shot, "still") for shot in shots if shot.startFrom == "generate"]
         return steps + [(shot, "clip") for shot in shots if shot.startFrom != "upload"]
     if what == "redo-still":
-        return [(shot, "still") for shot in shots if shot.startFrom == "generate"]
+        return [(shot, "still") for shot in shots if shot.startFrom == "generate" and shot.active() is not None]
     if what == "redo-clip":
         return [(shot, "clip") for shot in shots if shot.startFrom != "upload"
                 and not (shot.startFrom == "generate" and not (shot.active() and shot.active().still))]  # type: ignore[union-attr]

@@ -217,7 +217,9 @@ class Batch:
     def _plan_redo(self, project: Project, shots: list[Shot]) -> list[tuple[str, str, str | None]]:
         """One step per shot: a new still (shots that start from one) or a new clip (from the active still)."""
         if self.what == "redo-still":
-            return [(s.id, "still", None if s.startFrom == "generate" else f"starts from {s.startFrom}; no still to make")
+            # Named shots get the same rule as the form without ids: a redo needs a take to redo (FU-188 item 7).
+            return [(s.id, "still", f"starts from {s.startFrom}; no still to make" if s.startFrom != "generate"
+                     else None if s.active() is not None else "no take yet; make the shot first")
                     for s in shots]
         refusal = self._image_refusal(project)
         steps = []

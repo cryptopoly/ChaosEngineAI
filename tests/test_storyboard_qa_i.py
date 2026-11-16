@@ -58,6 +58,27 @@ class RedoNothingMessageTests(StoreCase):
                 batch.start(project.revision)
             self.assertIn("no take", str(caught.exception))
 
+    def test_redo_still_with_shot_ids_refuses_shots_with_no_take(self):
+        """S-I finding 11 (FU-188 item 7): named shots that were never made got plain stills from a redo-still,
+        while the form without ids refused. Both now refuse in the same words, and the estimate prices nothing."""
+        from backend_service.storyboard.batch import NOTHING_TO_REDO, Batch, BatchRefused
+        from backend_service.storyboard.estimate import plan_steps
+        from backend_service.storyboard.ops import run_op
+        from backend_service.tools import studio
+
+        project = self.store.create("Redo ids")
+        project = run_op(self.store, project.id, project.revision, "add_shot", {"title": "a", "stillPrompt": "tea"})
+        ids = [project.shots[0].id]
+        args = {"project_id": project.id, "revision": project.revision, "what": "redo-still"}
+        self.assertEqual(studio.precheck("storyboard_generate", {**args, "shot_ids": ids}), NOTHING_TO_REDO)
+        self.assertEqual(studio.precheck("storyboard_generate", args), NOTHING_TO_REDO)
+        batch = Batch(self.store, project.id, "redo-still", make_still=lambda s, p: None, make_clip=lambda s, p, i: None, shot_ids=ids)
+        self.assertEqual(batch.plan(project), [(ids[0], "still", "no take yet; make the shot first")])
+        with self.assertRaises(BatchRefused) as caught:
+            batch.start(project.revision)
+        self.assertEqual(str(caught.exception), NOTHING_TO_REDO)
+        self.assertEqual(plan_steps(project, "redo-still", ids), [])
+
 
 class MalformedPlanReplyTests(StoreCase):
     """A small chat model answers with valid JSON of the wrong shape; the plan routes must answer a readable

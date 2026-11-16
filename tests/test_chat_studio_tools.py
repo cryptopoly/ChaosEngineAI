@@ -80,7 +80,7 @@ class ToolListTests(unittest.TestCase):
         self.assertIn("storyboard_song", reg.available_names())
         self.assertNotIn("storyboard_batch", reg.available_names())  # the batch bar has pause and resume
         tool = next(t for t in studio_tools(APP) if t.name == "storyboard_song")
-        actions = json.dumps(tool._schema)
+        actions = tool._schema["properties"]["action"]["enum"]
         self.assertIn("cut_plan", actions)
         self.assertNotIn("lyric_captions", actions)
         only_studio = studio_registry(APP, base_registry, [])

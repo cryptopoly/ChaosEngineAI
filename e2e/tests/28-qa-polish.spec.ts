@@ -152,3 +152,23 @@ test("Board: Alt+arrow reaches a second card while one is selected", async ({ pa
   await expect(page.getByRole("button", { name: "Order these 2" })).toBeVisible();
   await openProjectTab(page, "Overview");
 });
+
+test("Storyboard run bar: the Make buttons stay inside the estimate box in the side column", async ({ page, request }) => {
+  await planned(request, "Run bar fit", 19);
+  await page.route("**/api/storyboard/projects/*/estimate", (route) =>
+    route.fulfill({
+      json: {
+        what: "both", shots: 19, stills: 19, clips: 19, seconds: 13920, stillSeconds: 9000, clipSeconds: 4920, peakGb: 17, totalGb: 51.8,
+        diskMb: null, basis: "estimated", missing: [], imageModel: "Slow One", videoModel: "Vid",
+      },
+    }),
+  );
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await openProject(page, "Run bar fit", "Storyboard");
+  const box = page.locator(".run-bar .run-estimate");
+  const make = page.locator(".run-bar").getByRole("button", { name: /^Make 19 missing/ });
+  await expect(make).toBeVisible();
+  const outer = await box.boundingBox();
+  const inner = await make.boundingBox();
+  expect(inner!.x + inner!.width).toBeLessThanOrEqual(outer!.x + outer!.width + 0.5);
+});

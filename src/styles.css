@@ -15289,6 +15289,19 @@ select.music-library__select {
   align-items: center;
   gap: 6px;
 }
+/* S-N: in the narrow side column the Make buttons wrap inside the estimate box instead of running past its edge. */
+.run-bar .run-estimate__action {
+  flex: 1 1 auto;
+  min-width: 0;
+  justify-content: flex-end;
+}
+.run-bar .board-estimate__actions {
+  justify-content: flex-end;
+}
+.run-bar .board-estimate__actions > button {
+  max-width: 100%;
+  white-space: normal;
+}
 .run-bar--running {
   padding: 0;
   border: 0;

@@ -6,7 +6,7 @@ until the user confirms the territory statement (``backend_service/licence_gate.
 
 Files and sizes were read from the Hub file lists on 2026-11-14 (leejet/MiniMax-H3-GGUF at eee1dd2f,
 Comfy-Org/MiniMax-H3 at 54472221), and the flags from ``docs/minimax_h3.md`` at sd.cpp 3f8527a
-(re-read unchanged in ``docs/models/minimax_h3.md`` at the pin 5dcfa79).
+(re-read unchanged in ``docs/models/minimax_h3.md`` at 5dcfa79 and at the pin 532d2c1).
 Nothing here was run: the maintainers are in an excluded territory. Memory is the sum of the weights (estimated),
 and there is no time estimate.
 

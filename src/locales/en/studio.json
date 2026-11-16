@@ -2687,7 +2687,8 @@
         "body": "{n, plural, one {# shot has no take yet.} other {# shots have no take yet.}} Making them adds a still, then a clip, for each.",
         "button": "{n, plural, one {Make # missing} other {Make # missing}}",
         "title": "{n, plural, one {Make # shot} other {Make # shots}}",
-        "bodyStills": "{none, plural, =0 {} one {# shot has no take; } other {# shots have no take; }}{stills, plural, one {# has a still but no clip.} other {# have a still but no clip.}} Making them adds what is missing: a still and a clip, or just the clip."
+        "bodyStills": "{none, plural, =0 {} one {# shot has no take; } other {# shots have no take; }}{stills, plural, one {# has a still but no clip.} other {# have a still but no clip.}} Making them adds what is missing: a still and a clip, or just the clip.",
+        "draftsHint": "The still model is slow. Make quick drafts first, mark the shots you like with Keep, then run the final pass."
       },
       "making": "Making shots",
       "makingProgress": "Shot {n} of {total}",

@@ -2687,7 +2687,8 @@
         "body": "{n, plural, other {wej nID ghaj # 'ay'.}} chenmoHlu'DI', Hoch mIllogh chel, ghIq mIllogh vIH.",
         "button": "{n, plural, other {Hutlhbogh # tIchenmoH}}",
         "title": "{n, plural, other {# 'ay' tIchenmoH}}",
-        "bodyStills": "{none, plural, =0 {} other {nID ghajbe' # 'ay'; }}{stills, plural, other {mIllogh ghaj 'ach mIllogh vIH ghajbe' #.}} chenmoHlu'DI', Hutlhbogh Doch chellu': mIllogh 'ej mIllogh vIH, pagh mIllogh vIH neH."
+        "bodyStills": "{none, plural, =0 {} other {nID ghajbe' # 'ay'; }}{stills, plural, other {mIllogh ghaj 'ach mIllogh vIH ghajbe' #.}} chenmoHlu'DI', Hutlhbogh Doch chellu': mIllogh 'ej mIllogh vIH, pagh mIllogh vIH neH.",
+        "draftsHint": null
       },
       "making": "'ay' chenmoHlI'",
       "makingProgress": "'ay' {n}, Hoch {total}",

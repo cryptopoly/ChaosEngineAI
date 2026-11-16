@@ -3,9 +3,9 @@
  * happens. Cast is never required: its row is marked optional and the next step never asks for it. No React
  * here so the rules are unit-tested directly.
  */
-import type { StoryboardProject } from "../../types";
+import type { StoryboardBatchRecord, StoryboardProject } from "../../types";
 import type { ProjectTabId } from "./projectRoute";
-import { activeTakeOf, draftShotIds, missingShotIds } from "./storyboardLogic";
+import { activeTakeOf, draftShotIds, missingShotIds, type PrimaryPass } from "./storyboardLogic";
 
 export type NextStepId = "writeShots" | "makeMissing" | "makeClips" | "addSound" | "renderPreview" | "export" | "done";
 
@@ -141,6 +141,25 @@ export function recentActivity(project: Pick<StoryboardProject, "batches">, limi
       failed: new Set(batch.results.filter((r) => r.state === "failed").map((r) => r.shotId)).size,
       at: batch.finishedAt ?? batch.createdAt,
     }));
+}
+
+/**
+ * What the Overview's next-step card shows (FU-188 item 3 and S-M2's paused batch), matching the run bar so the two
+ * never disagree: a running batch shows its progress; a paused one shows Paused with Resume primary (never a new
+ * Make that would start a second batch beside it); a fresh film with a slow still model makes "Make drafts" the
+ * primary button and "Make N missing" the secondary one (`primaryPass` gives "drafts"); otherwise the step itself.
+ */
+export type NextCardMode = "running" | "paused" | "drafts" | "step";
+
+export function nextCardMode(input: {
+  batchState: StoryboardBatchRecord["state"] | null | undefined;
+  step: NextStepId;
+  primary: PrimaryPass;
+}): NextCardMode {
+  if (input.batchState === "queued" || input.batchState === "running") return "running";
+  if (input.batchState === "paused") return "paused";
+  if (input.step === "makeMissing" && input.primary === "drafts") return "drafts";
+  return "step";
 }
 
 /** The checklist hides once every row that is not optional is ticked. */

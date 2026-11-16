@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { StoryboardProject, StoryboardShot } from "../../../types";
-import { checklist, checklistComplete, nextStep, preflight, recentActivity, stillOnlyCount } from "../overviewLogic";
+import { checklist, checklistComplete, nextCardMode, nextStep, preflight, recentActivity, stillOnlyCount } from "../overviewLogic";
 
 function shot(id: string, take?: { still?: string; clip?: string }): StoryboardShot {
   const takes = take ? [{ id: `${id}-t`, still: take.still ?? null, clip: take.clip ?? null, hashes: {}, settings: {}, measuredSeconds: 4, createdAt: 0, origin: "upload" as const, basis: null }] : [];
@@ -108,5 +108,21 @@ describe("Overview next step", () => {
     expect(checklistComplete(rows)).toBe(true);
     expect(checklistComplete(checklist(made, none))).toBe(false);
     expect(checklist(project([shot("a", { still: "s.png" })]), none).find((r) => r.id === "takes")?.done).toBe(false);
+  });
+});
+
+describe("Overview next-step card matches the run bar (S-N)", () => {
+  it("shows a paused batch with Resume, never a new Make beside it", () => {
+    expect(nextCardMode({ batchState: "paused", step: "makeMissing", primary: "make" })).toBe("paused");
+    expect(nextCardMode({ batchState: "paused", step: "makeMissing", primary: "drafts" })).toBe("paused");
+  });
+  it("shows a running or queued batch's progress", () => {
+    expect(nextCardMode({ batchState: "running", step: "makeMissing", primary: "make" })).toBe("running");
+    expect(nextCardMode({ batchState: "queued", step: "export", primary: null })).toBe("running");
+  });
+  it("makes Make drafts primary on a fresh film with a slow still model, like the run bar", () => {
+    expect(nextCardMode({ batchState: null, step: "makeMissing", primary: "drafts" })).toBe("drafts");
+    expect(nextCardMode({ batchState: "done", step: "makeMissing", primary: "make" })).toBe("step");
+    expect(nextCardMode({ batchState: "cancelled", step: "export", primary: null })).toBe("step");
   });
 });

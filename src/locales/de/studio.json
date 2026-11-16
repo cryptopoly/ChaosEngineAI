@@ -2687,7 +2687,8 @@
         "body": null,
         "button": null,
         "title": null,
-        "bodyStills": null
+        "bodyStills": null,
+        "draftsHint": null
       },
       "making": "Einstellungen werden erstellt",
       "makingProgress": null,

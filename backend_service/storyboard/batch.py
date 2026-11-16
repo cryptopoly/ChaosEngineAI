@@ -48,6 +48,8 @@ class BatchRefused(StoreError):
 
 
 REDO = ("redo-clip", "redo-still")
+NOTHING_TO_REDO = ("Nothing to redo: no unlocked shot has a take with that half yet (or it is an upload). "
+                   "To make shots that have no take, use what: still, clip or both.")
 WHATS = ("still", "clip", "both", "final", *REDO)
 __all__ = ["clip_outdated"]
 
@@ -264,6 +266,8 @@ class Batch:
                     raise BatchRefused(refusal)
                 if self.what == "final":
                     raise BatchRefused("Nothing for a final pass: mark the shots to keep first (or every kept shot already has a final take).")
+                if self.what in REDO:
+                    raise BatchRefused(NOTHING_TO_REDO)
                 raise BatchRefused("Nothing to generate: every shot is done, locked or an upload.")
             results = [BatchResult(shotId=s, kind=k, state="skipped" if r else "queued", error=r) for s, k, r in steps]  # type: ignore[arg-type]
             self.steps = [(s, k) for s, k, r in steps if r is None]

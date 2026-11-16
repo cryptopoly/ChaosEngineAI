@@ -39,6 +39,26 @@ class PrecheckDraftTests(StoreCase):
         self.assertIn("draft", problem)
 
 
+class RedoNothingMessageTests(StoreCase):
+    def test_a_redo_on_shots_with_no_take_says_to_make_them_first(self):
+        """A Chat model asked a redo for shots never made and read "every shot is done", then told the user
+        the shots were done. The refusal must say there is nothing to redo yet and what to ask for instead."""
+        from backend_service.storyboard.batch import Batch, BatchRefused
+        from backend_service.storyboard.ops import run_op
+        from backend_service.tools import studio
+
+        project = self.store.create("Redo check")
+        project = run_op(self.store, project.id, project.revision, "add_shot", {"title": "a", "stillPrompt": "tea"})
+        for what in ("redo-still", "redo-clip"):
+            problem = studio.precheck("storyboard_generate", {"project_id": project.id, "revision": project.revision, "what": what})
+            self.assertIn("no take", problem)
+            self.assertNotIn("every shot is done", problem)
+            batch = Batch(self.store, project.id, what, make_still=lambda s, p: None, make_clip=lambda s, p, i: None)
+            with self.assertRaises(BatchRefused) as caught:
+                batch.start(project.revision)
+            self.assertIn("no take", str(caught.exception))
+
+
 class MalformedPlanReplyTests(StoreCase):
     """A small chat model answers with valid JSON of the wrong shape; the plan routes must answer a readable
     error or a cleaned plan, never a 500."""

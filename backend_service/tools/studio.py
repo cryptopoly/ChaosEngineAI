@@ -184,7 +184,9 @@ def _storyboard_problem(name: str, args: dict[str, Any], check_revision: bool) -
     except BatchRefused as exc:
         return str(exc)
     if not any(reason is None for _, _, reason in steps):
-        return "Nothing to generate: every shot is done, locked or an upload."
+        from backend_service.storyboard.batch import NOTHING_TO_REDO, REDO
+
+        return NOTHING_TO_REDO if batch.what in REDO else "Nothing to generate: every shot is done, locked or an upload."
     return None
 
 

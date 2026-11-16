@@ -45,6 +45,10 @@ MTP_MODEL_MAP: dict[str, int] = {
     # upstream PR #22673 reports ~72% acceptance @ N=3 on Qwen3.6-27B.
     "Qwen/Qwen3.6-27B": 3,
     "Qwen/Qwen3.6-35B-A3B": 3,
+    # ----- Qwen3.8 family -----
+    # N=3 measured on the GGUF lane (FU-178, M4 Max, b12387): see
+    # docs/progress/v0100-fu178.md for the N=2 / N=3 numbers.
+    "Qwen/Qwen3.8-27B": 3,
     # ----- Qwen3-Coder-Next -----
     "Qwen/Qwen3-Coder-Next": 1,
     # ----- DeepSeek V3 / R1 -----
@@ -85,6 +89,10 @@ _MTP_ALIASES: dict[str, str] = {
     "ggml-org/Qwen3.6-35B-A3B-MTP-GGUF": "Qwen/Qwen3.6-35B-A3B",
     "am17an/Qwen3.6-27B-MTP-GGUF": "Qwen/Qwen3.6-27B",
     "am17an/Qwen3.6-35BA3B-MTP-GGUF": "Qwen/Qwen3.6-35B-A3B",
+    # Qwen3.8-27B GGUF builds that keep the MTP head in the main file
+    # (``qwen35.nextn_predict_layers`` in the header; the tensor probe finds
+    # it). The alias only sets the draft count.
+    "unsloth/Qwen3.8-27B-GGUF": "Qwen/Qwen3.8-27B",
 }
 
 

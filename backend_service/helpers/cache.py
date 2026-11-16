@@ -82,6 +82,14 @@ def _strategy_quality_base(strategy: str) -> dict[int, float]:
     return maps.get(strategy, {1: 87.0, 2: 90.0, 3: 92.0, 4: 95.6})
 
 
+# Native q8_0 / q4_0 on llama.cpp against the f16 cache, both with flash
+# attention (FU-178, measured on an M4 Max; see docs/progress/v0100-fu178.md).
+NATIVE_LLAMA_QUANT_SPEED_RATIO: dict[str, float] = {"q8_0": 0.95, "q4_0": 0.92}
+# Not measured: llama.cpp's own perplexity tables put q8_0 KV at f16 quality
+# and q4_0 KV a little below; these mirror the 8 / 4-bit rows above.
+NATIVE_LLAMA_QUANT_QUALITY: dict[str, float] = {"q8_0": 99.5, "q4_0": 97.0}
+
+
 def compute_cache_preview(
     *,
     bits: int = 3,
@@ -134,7 +142,19 @@ def compute_cache_preview(
 
     strat = _cache_registry.get(strategy) or _cache_registry.default()
 
-    if strategy == "native" or bits <= 0:
+    # Native on llama.cpp can run the quantized q8_0 / q4_0 cache (FU-178).
+    from cache_compression.native import native_llama_cache_type
+
+    native_cache_type = native_llama_cache_type(bits) if strategy == "native" and lane == "llama.cpp" else "f16"
+    if native_cache_type != "f16":
+        baseline_bytes, optimized_bytes = strat.estimate_cache_bytes(
+            num_layers, num_heads, hidden_size, context_tokens, bits, 0, num_kv_heads,
+        )
+        compression_ratio = baseline_bytes / optimized_bytes if optimized_bytes else 1.0
+        speed_ratio = NATIVE_LLAMA_QUANT_SPEED_RATIO[native_cache_type]
+        quality_percent = NATIVE_LLAMA_QUANT_QUALITY[native_cache_type]
+        fp16_layers = 0
+    elif strategy == "native" or bits <= 0:
         # Native FP16: no compression
         baseline_bytes, optimized_bytes = strat.estimate_cache_bytes(
             num_layers, num_heads, hidden_size, context_tokens, 0, 0, num_kv_heads,
@@ -209,7 +229,7 @@ def compute_cache_preview(
     disk_size_gb = round(params_b * 1.2, 1)
 
     strat_label = strat.label(bits, fp16_layers) if bits > 0 else "Native f16"
-    if strategy == "native" or bits <= 0:
+    if native_cache_type == "f16" and (strategy == "native" or bits <= 0):
         summary = (
             f"Native f16 cache uses {_bytes_to_gb(baseline_bytes):.1f} GB "
             f"with an estimated {estimated_tok_s:.1f} tok/s on this machine."

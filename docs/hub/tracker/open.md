@@ -1,13 +1,22 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 106 rows with work, decisions or watch items still open, newest first.
+summary: 107 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-190 · Real-model, pause, Music track and touch pass (S-O, S-P) — Done</summary>
+
+**Status or trigger:** Done
+
+**Notes:** S-O (CLI token, unsaved text, Plan tab stops, Mixer probe, length chips) and S-P (Qwen3.8-27B `storyboard_song`, real Music track to cut plan to burnt-in export, pause/resume/cancel on a real Iris-3B Turbo batch, iOS 27 Simulator touch) merged; 12 defects fixed with tests (cut plan now takes `seconds`, 60 s prefill watchdog off for tool turns, lyric overlap, LTX clips 0.3 s short, touch targets 44 px). Notes in `docs/progress/v0100-o.md` and `v0100-p.md`. Open: LFM3-1.7B cannot drive `storyboard_song` (safe, nothing made); Qwen3-4B not tool-capable in the app; sidebar stacks above the page below 1180 px on phones and iPads; Export says "84 captions" for a short cut; `test_unload_while_a_track_is_made_is_refused_and_the_job_finishes` flaked once under load (0.25 s timing window).
+
+</details>
 
 <details>
 <summary>FU-189 · Drafts use the fastest installed still model — Done</summary>

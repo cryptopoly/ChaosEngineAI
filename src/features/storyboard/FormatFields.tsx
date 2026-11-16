@@ -1,7 +1,6 @@
 /** Aspect ratio, Resolution and Frame rate pickers with a fit hint per choice (D-64). Shared by the New project dialog and Project defaults. */
 import { useTranslation } from "react-i18next";
 import type { StoryboardExportPreset, StoryboardResolution } from "../../types";
-import { formatCapacityGb } from "../video/videoCapacity";
 import {
   ASPECTS,
   FPS_CHOICES,
@@ -44,7 +43,9 @@ export function FormatFields({ aspect, resolution, fps, disabled, fit, onAspect,
   } else if (selected.peakGb == null) {
     fitNote = "";
   } else {
-    const args = { model: modelName, peak: formatCapacityGb(selected.peakGb), seconds: HINT_CLIP_SECONDS };
+    // The sentence carries the unit ("about {peak} GB"): pass the number only.
+    const peak = selected.peakGb >= 10 ? selected.peakGb.toFixed(0) : selected.peakGb.toFixed(1);
+    const args = { model: modelName, peak, seconds: HINT_CLIP_SECONDS };
     fitNote =
       selected.level === "safe"
         ? t("storyProjects.format.note.safe", { defaultValue: "{model}: about {peak} GB at peak for a {seconds}-second clip. This fits.", ...args })

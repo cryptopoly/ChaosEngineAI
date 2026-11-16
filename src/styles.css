@@ -15243,7 +15243,9 @@ select.music-library__select {
 }
 .length-strip__part {
   flex-basis: 0;
-  min-width: 14px;
+  /* Many shots on a phone: parts shrink below their number rather than push the page sideways. */
+  min-width: 0;
+  overflow: hidden;
   padding: 2px 0;
   border: 0;
   border-radius: 4px;

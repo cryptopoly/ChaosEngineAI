@@ -220,6 +220,21 @@ class CutPlanTests(StoreCase):
         undone = self.store.undo(applied.id, applied.revision)
         self.assertEqual([s.title for s in undone.shots], ["shot 0", "shot 1"])
 
+    def test_a_length_cuts_only_the_songs_first_seconds(self):
+        # S-P: "cut it into a 30 s ad" with a 240 s song; before, the plan always covered the whole song, so a chat
+        # model built the shots one by one (12 ops, 12 undos).
+        project = self.project_with_song()
+        plan = cutplan.plan_cuts(project, clip_seconds=4.0, length_seconds=25.0)
+        lengths = [s["seconds"] for s in plan["shots"]]
+        self.assertAlmostEqual(sum(lengths), 25.0, places=2)
+        self.assertTrue(all(2.0 <= x <= 4.0 + 1e-6 for x in lengths), lengths)
+        self.assertEqual(plan["totalSeconds"], 25.0)
+        self.assertEqual(plan["sections"][-1]["end"], 25.0)
+        self.assertIn("first 25 s of 40 s", plan["note"])
+        self.assertEqual(cutplan.plan_cuts(project, 4.0, length_seconds=99.0)["totalSeconds"], 40.0)  # longer: all of it
+        applied = self.op(project, "apply_plan", mode="replace", shots=plan["shots"])
+        self.assertAlmostEqual(compute_timeline(applied).total, 25.0, places=2)
+
     def test_no_beats_split_evenly_and_no_song_is_refused(self):
         project = self.project_with_song(bpm=None)
         plan = cutplan.plan_cuts(project, clip_seconds=3.0)

@@ -43,6 +43,7 @@ class CutPlanRequest(_Body):
     maxShotSeconds: float | None = Field(None, ge=0.5, le=60)
     minShotSeconds: float = Field(2.0, ge=0.5, le=30)
     keepPrompts: bool = True
+    lengthSeconds: float | None = Field(None, ge=1, le=3600)  # cut only the song's first seconds (a short ad)
 
 
 class LyricCaptionsRequest(_Body):
@@ -103,7 +104,7 @@ def attach_song(project_id: str, revision: int, library_id: str | None, path: st
 
 
 def cut_plan(request: Request, project_id: str, max_shot_seconds: float | None = None, min_shot_seconds: float = 2.0,
-             keep_prompts: bool = True) -> dict[str, Any]:
+             keep_prompts: bool = True, length_seconds: float | None = None) -> dict[str, Any]:
     """Shots cut to the song, capped by the project's video model clip length; nothing is written."""
     from backend_service.storyboard import cutplan
 
@@ -111,7 +112,7 @@ def cut_plan(request: Request, project_id: str, max_shot_seconds: float | None =
     project = shared.get_store().load(project_id)
     variant, _ = shared._project_variant(request, "video", project.defaults.videoModel)
     cap, source = cutplan.clip_seconds_for(variant, project.defaults.fps, max_shot_seconds)
-    plan = cutplan.plan_cuts(project, cap, min_shot_seconds, keep_prompts)
+    plan = cutplan.plan_cuts(project, cap, min_shot_seconds, keep_prompts, length_seconds)
     return {**plan, "clipSeconds": round(cap, 3), "clipSecondsSource": source,
             "videoModel": (variant or {}).get("name")}
 
@@ -148,7 +149,8 @@ def attach(project_id: str, body: SongRequest) -> dict[str, Any]:
 def propose_cut_plan(request: Request, project_id: str, body: CutPlanRequest) -> dict[str, Any]:
     """Shots from the song's sections and beats, in the Plan tab's shape; apply with ``apply_plan`` (replace)."""
     shared = _shared()
-    return shared._guard(cut_plan, request, project_id, body.maxShotSeconds, body.minShotSeconds, body.keepPrompts)
+    return shared._guard(cut_plan, request, project_id, body.maxShotSeconds, body.minShotSeconds, body.keepPrompts,
+                         body.lengthSeconds)
 
 
 @router.get("/api/storyboard/lyrics/speech")

@@ -382,6 +382,8 @@ class StoryboardToolTests(unittest.TestCase):
         applied = self.call("storyboard_song", {"action": "cut_plan", "project_id": pid, "max_shot_seconds": 3, "apply": True,
                                                 "revision": info["revision"]})
         self.assertEqual(len(applied["shots"]), len(plan["shots"]))
+        short = self.call("storyboard_song", {"action": "cut_plan", "project_id": pid, "max_shot_seconds": 3, "seconds": 6})
+        self.assertAlmostEqual(sum(s["seconds"] for s in short["shots"]), 6.0, places=2)  # S-P: a length for a short ad
         from backend_service.storyboard import lyrics
 
         with mock.patch.object(lyrics, "speech_status", return_value=(False, "not installed")):

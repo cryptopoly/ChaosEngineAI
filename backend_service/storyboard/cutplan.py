@@ -80,18 +80,20 @@ def split_section(start: float, end: float, beats: list[float], cap: float, low:
 
 
 def plan_cuts(project: Project, clip_seconds: float, min_seconds: float = DEFAULT_MIN_SECONDS,
-              keep_prompts: bool = True) -> dict[str, Any]:
-    """Planned shots (``StoryboardPlannedShot`` with ``trimOut``) and the sections they came from."""
+              keep_prompts: bool = True, length_seconds: float | None = None) -> dict[str, Any]:
+    """Planned shots (``StoryboardPlannedShot`` with ``trimOut``) and the sections they came from. With
+    ``length_seconds`` only the song's first that many seconds are cut (a 30 s ad from a long song)."""
     song = project.song
     if song is None:
         raise CutPlanError("This project has no song. Attach one first (Song > Attach).")
     cap = max(0.5, min(60.0, float(clip_seconds)))
     low = max(0.5, min(float(min_seconds), cap))
-    sections = [{"start": s.start, "end": min(s.end, song.seconds), "label": s.label} for s in song.sections]
+    total = song.seconds if length_seconds is None else max(low, min(song.seconds, float(length_seconds)))
+    sections = [{"start": s.start, "end": min(s.end, total), "label": s.label} for s in song.sections if s.start < total]
     if not sections or sections[0]["start"] > 0.01:
-        sections.insert(0, {"start": 0.0, "end": sections[0]["start"] if sections else song.seconds, "label": "intro"})
-    if sections[-1]["end"] < song.seconds - 0.01:
-        sections.append({"start": sections[-1]["end"], "end": song.seconds, "label": "outro"})
+        sections.insert(0, {"start": 0.0, "end": sections[0]["start"] if sections else total, "label": "intro"})
+    if sections[-1]["end"] < total - 0.01:
+        sections.append({"start": sections[-1]["end"], "end": total, "label": "outro"})
     sections = _merge_short([s for s in sections if s["end"] > s["start"]], low)
     old = list(project.shots)
     shots: list[dict[str, Any]] = []
@@ -127,5 +129,7 @@ def plan_cuts(project: Project, clip_seconds: float, min_seconds: float = DEFAUL
     note += " The song's sections and beats are estimates: edit them and make the plan again if a cut feels off."
     if keep_prompts and old:
         note += f" The first {min(len(old), len(shots))} shots keep the prompts of the shots already in the project."
-    return {"shots": shots, "mode": "replace", "totalSeconds": song.seconds, "sections": summary, "note": note,
+    if total < song.seconds - 0.01:
+        note += f" Only the song's first {total:g} s of {song.seconds:g} s are cut."
+    return {"shots": shots, "mode": "replace", "totalSeconds": round(total, 3), "sections": summary, "note": note,
             "rough": song.rough}

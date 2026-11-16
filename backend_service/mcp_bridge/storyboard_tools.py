@@ -109,7 +109,7 @@ STORYBOARD_TOOLS: list[dict[str, Any]] = [
     {
         "name": "storyboard_song",
         "description": "Edit: the song a music video is cut to. attach(library_id or path), get, edit(lyrics, sections, bpm, "
-        "title), remove, cut_plan (shots on its beats; apply: true replaces the shots), lyric_captions(timing).",
+        "title), remove, cut_plan(seconds; shots on its beats; apply: true replaces shots, one undo), lyric_captions(timing).",
         "inputSchema": _obj({
             "action": {"type": "string", "enum": ["attach", "get", "edit", "remove", "cut_plan", "lyric_captions"]},
             "project_id": _PID, "revision": _REV,
@@ -122,6 +122,8 @@ STORYBOARD_TOOLS: list[dict[str, Any]] = [
                          "description": "edit: [{start, end, label}] seconds."},
             "bpm": {"type": "number", "minimum": 0, "maximum": 400, "description": "edit: 0 clears."},
             "max_shot_seconds": {"type": "number", "minimum": 0.5, "maximum": 60, "description": "cut_plan: lower cap."},
+            "seconds": {"type": "number", "minimum": 1, "maximum": 3600,
+                        "description": "cut_plan: the film's length (a 30 s ad: 30); only the song's first seconds are cut."},
             "apply": {"type": "boolean", "description": "cut_plan: replace the shots with the plan (one undo)."},
             "timing": {"type": "string", "enum": ["auto", "sections", "speech"],
                        "description": "lyric_captions: speech needs speech-to-text installed."},
@@ -532,7 +534,8 @@ def storyboard_song(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
             song["beats"] = len(song["beats"])  # the count; the list is long and an agent rarely needs it
         return {"projectId": pid, "revision": project.revision, "song": song}
     if action == "cut_plan":
-        plan = _run(lambda: storyboard_long.cut_plan(ctx.request, pid, args.get("max_shot_seconds")))
+        plan = _run(lambda: storyboard_long.cut_plan(ctx.request, pid, args.get("max_shot_seconds"),
+                                                    length_seconds=args.get("seconds")))
         if not args.get("apply"):
             return plan
         _need(args, "revision")

@@ -355,7 +355,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "quantization": "Q4_K_M",
                 "ggufFile": "Qwen3.8-27B-Q4_K_M.gguf",
                 "capabilities": ["reasoning", "coding", "agents", "tool-use", "vision"],
-                "note": "Q4_K_M plus mmproj for vision. Only the pinned quant downloads (repo also has Q6_K / Q8_0), together with z-lab's DFlash 2 drafter (Q8_0, 2.1 GB) for speculative decoding: on an M4 Max a Qwen3.8-27B Q4 build decoded about 40 tok/s with it against 9 without (FU-178).",
+                "note": "Q4_K_M plus mmproj for vision. Only the pinned quant downloads (repo also has Q6_K / Q8_0), together with z-lab's DFlash 2 drafter (Q8_0, 2.1 GB) for speculative decoding: on an M4 Max a Qwen3.8-27B Q4 build decoded about 57 tok/s with it against 15 without (FU-178).",
                 "contextWindow": "262K",
                 "launchMode": "direct",
                 "backend": "llama.cpp",

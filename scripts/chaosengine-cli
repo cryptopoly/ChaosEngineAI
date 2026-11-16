@@ -574,6 +574,7 @@ def cmd_prompt(args: argparse.Namespace) -> int:
                 "wallSeconds": round(time.perf_counter() - start, 3),
                 "runtimeNote": metrics.get("runtimeNote"),
                 "finishReason": metrics.get("finishReason"),
+                "dflashAcceptanceRate": metrics.get("dflashAcceptanceRate"),
             })
         return 0
 
@@ -591,14 +592,19 @@ def cmd_prompt(args: argparse.Namespace) -> int:
     if not args.quiet:
         sys.stdout.write("\n")
     if args.metrics:
+        # The final event is {done, session: {messages: [..., {role: assistant, metrics}]}}.
+        messages = (final.get("session") or {}).get("messages") or []
+        reply = messages[-1].get("metrics") if messages and isinstance(messages[-1], dict) else None
+        metrics = reply if isinstance(reply, dict) else final.get("metrics", {})
         _ok({
-            "tokS": final.get("tokS") or final.get("metrics", {}).get("tokS"),
-            "promptTokens": final.get("promptTokens"),
-            "completionTokens": final.get("completionTokens"),
-            "responseSeconds": final.get("responseSeconds"),
+            "tokS": final.get("tokS") or metrics.get("tokS"),
+            "promptTokens": final.get("promptTokens") or metrics.get("promptTokens"),
+            "completionTokens": final.get("completionTokens") or metrics.get("completionTokens"),
+            "responseSeconds": final.get("responseSeconds") or metrics.get("responseSeconds"),
             "wallSeconds": round(time.perf_counter() - start, 3),
             "completionChars": completion_chars,
-            "runtimeNote": final.get("runtimeNote"),
+            "runtimeNote": final.get("runtimeNote") or metrics.get("runtimeNote"),
+            "dflashAcceptanceRate": metrics.get("dflashAcceptanceRate"),
         })
     return 0
 

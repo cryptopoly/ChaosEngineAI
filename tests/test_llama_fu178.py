@@ -76,7 +76,8 @@ class NativeQuantizedKvTests(unittest.TestCase):
         self.assertAlmostEqual(q4["optimizedCacheGb"], f16["baselineCacheGb"] * 4.5 / 16, delta=0.1)
         self.assertEqual(q8["bits"], 8)
         self.assertIn("Native q8_0", q8["summary"])
-        self.assertLess(q8["estimatedTokS"], f16["estimatedTokS"])
+        self.assertLessEqual(q8["estimatedTokS"], f16["estimatedTokS"])
+        self.assertLess(q4["estimatedTokS"], f16["estimatedTokS"])
         # MLX keeps its own f16 cache whatever cacheBits says.
         self.assertEqual(mlx["optimizedCacheGb"], mlx["baselineCacheGb"])
         self.assertEqual(mlx["bits"], 0)

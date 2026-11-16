@@ -420,8 +420,8 @@ def _speculative_args(
     1. A block drafter (DFlash / DFlash 2 / DSpark): one the author publishes
        in a repo of its own (pinned by repo id), else a ``dspark-`` /
        ``dflash-`` sidecar beside the GGUF → ``-md <file>`` + its type.
-       Measured ahead of MTP on Qwen3.8-27B (M4 Max: 36-40 tok/s against 19
-       for the baked-in MTP head and 9 without drafting). DFlash 2 drafters
+       Measured ahead of MTP on Qwen3.8-27B (M4 Max: 55-59 tok/s against
+       32-34 for the baked-in MTP head and 15 without drafting). DFlash 2 drafters
        run as ``draft-dflash``: llama.cpp reads the variant from the file.
     2. Baked-in MTP heads in the model itself → ``draft-mtp``.
     3. Any other sidecar (``mtp-``, ``eagle3-``), in llama.cpp's order.

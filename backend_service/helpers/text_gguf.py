@@ -45,7 +45,7 @@ def gguf_file_pattern(gguf_file: str) -> str:
 # Order = which one the app runs when several are on disk. llama.cpp's own
 # order puts an MTP head first; the app puts the block drafters first
 # (FU-178): on Qwen3.8-27B Q4 on an M4 Max the DFlash 2 drafter decoded
-# 36-40 tok/s against 19 for its MTP head at N=3 and 9 without drafting.
+# 55-59 tok/s against 32-34 for its MTP head at N=3 and 15 without drafting.
 # DSpark stays over DFlash (its sidecar carries the extra Markov head),
 # EAGLE-3 last. DFlash 2 drafters are ``dflash-`` files: ``draft-dflash``
 # runs every DFlash-family drafter and llama.cpp picks the DFlash 2 code

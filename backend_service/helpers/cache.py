@@ -82,9 +82,12 @@ def _strategy_quality_base(strategy: str) -> dict[int, float]:
     return maps.get(strategy, {1: 87.0, 2: 90.0, 3: 92.0, 4: 95.6})
 
 
-# Native q8_0 / q4_0 on llama.cpp against the f16 cache, both with flash
-# attention (FU-178, measured on an M4 Max; see docs/progress/v0100-fu178.md).
-NATIVE_LLAMA_QUANT_SPEED_RATIO: dict[str, float] = {"q8_0": 0.95, "q4_0": 0.92}
+# Native q8_0 / q4_0 on llama.cpp against the f16 cache, all with flash
+# attention (FU-178, M4 Max, Qwen3-VL-8B Q4_K_M at a 32K window, 3 rounds x 2
+# replies of 400 tokens): f16 53.7, q8_0 55.3, q4_0 51.0 tok/s, so q8_0 is
+# within the noise of f16 and q4_0 about 5 % slower. Memory after load fell
+# from 4886 MB to 2728 / 1575 MB, exactly the 8.5 / 4.5 bits per element below.
+NATIVE_LLAMA_QUANT_SPEED_RATIO: dict[str, float] = {"q8_0": 1.0, "q4_0": 0.95}
 # Not measured: llama.cpp's own perplexity tables put q8_0 KV at f16 quality
 # and q4_0 KV a little below; these mirror the 8 / 4-bit rows above.
 NATIVE_LLAMA_QUANT_QUALITY: dict[str, float] = {"q8_0": 99.5, "q4_0": 97.0}

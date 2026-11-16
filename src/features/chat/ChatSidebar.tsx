@@ -112,7 +112,9 @@ export function ChatSidebar({
                       onClick={(e) => { e.stopPropagation(); void onToggleThreadPin(session); }}
                       onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); void onToggleThreadPin(session); } }}
                     >
-                      {"📌"}
+                      <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M9.5 2.5l4 4-2 .5-2.5 2.5.5 3-1 1-2.5-2.5L3 13.5 2.5 13l3.5-3.5L3.5 7l1-1 3 .5L10 4z" />
+                      </svg>
                     </span>
                     <span
                       className="session-delete-icon"
@@ -122,7 +124,9 @@ export function ChatSidebar({
                       onClick={(e) => { e.stopPropagation(); void onDeleteSession(session.id); }}
                       onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); void onDeleteSession(session.id); } }}
                     >
-                      {"✕"}
+                      <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
+                        <path d="M4 4l8 8M12 4l-8 8" />
+                      </svg>
                     </span>
                   </span>
                 </div>

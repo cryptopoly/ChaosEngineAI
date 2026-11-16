@@ -1,13 +1,22 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 104 rows with work, decisions or watch items still open, newest first.
+summary: 105 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-188 · Eight closing improvements (D-84) — In progress</summary>
+
+**Status or trigger:** In progress
+
+**Notes:** Packages S-J (Chat plan card), S-K (Storyboard UX), S-L (clean-up panel), S-M1 (durable queue, song, cut plan, lyric captions), S-M2 (freestyle board), S-N (QA). Plan `docs/plans/v0.10.0-eight-improvements.md`; progress `docs/progress/v0100-{j,k,l,m1,m2,n}.md`.
+
+</details>
 
 <details>
 <summary>FU-187 · Watch Qwen 4 — Open</summary>

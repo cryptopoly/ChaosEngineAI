@@ -8,13 +8,14 @@ summary: Every FU row from FOLLOW_UPS.md, split into open and closed.
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here.
 
-- [Open and live follow-ups](open.md): **104** rows.
+- [Open and live follow-ups](open.md): **105** rows.
 - [Closed follow-ups](closed.md): **81** rows.
 
 ## Newest ten
 
 | Row | Item | Status |
 |---|---|---|
+| [FU-188](open.md) | Eight closing improvements (D-84) | In progress |
 | [FU-187](open.md) | Watch Qwen 4 | Open |
 | [FU-186](open.md) | Storyboard QA leftovers fixed for 0.10.0 | Done |
 | [FU-185](open.md) | Matrix run on the 0.10.0 tree: legacy ids and the TensorFold check | Done |
@@ -24,4 +25,3 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 | [FU-181](open.md) | Two bugs found by the owner on the Mac (2026-11-15) | Done |
 | [FU-180](open.md) | A job started elsewhere shows no progress in the studios | Done |
 | [FU-179](open.md) | Chat storyboard run: two render approvals, slow default still model | Open |
-| [FU-178](open.md) | llama.cpp 1.0 features not wired | Open |

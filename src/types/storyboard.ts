@@ -1,5 +1,7 @@
 /** Storyboard project schema and API payloads (mirrors backend_service/storyboard/models.py). */
 
+import type { JobProgress } from "./chat";
+
 /** The aspect ratio (called the export preset in the stored project). */
 export type StoryboardExportPreset = "16:9" | "9:16" | "1:1";
 export type StoryboardResolution = "480p" | "720p" | "1080p" | "1440p" | "2160p";
@@ -181,7 +183,8 @@ export interface StoryboardCaption {
   text: string;
 }
 
-export type StoryboardBatchState = "queued" | "running" | "done" | "failed" | "cancelled" | "interrupted";
+/** `paused`: stopped between steps (Pause, or the app stopped while it ran) and keeps its remaining steps (S-M1). */
+export type StoryboardBatchState = "queued" | "running" | "paused" | "done" | "failed" | "cancelled" | "interrupted";
 
 export interface StoryboardBatchResult {
   shotId: string;
@@ -201,6 +204,52 @@ export interface StoryboardBatchRecord {
   createdAt: number;
   finishedAt: number | null;
   results: StoryboardBatchResult[];
+  /** S-M1: the last pause (epoch seconds), why it paused, the last resume and how many resumes. */
+  pausedAt?: number | null;
+  pauseReason?: "user" | "restart" | null;
+  resumedAt?: number | null;
+  resumes?: number;
+}
+
+/** A paused batch's bar data (`GET .../batches/{id}` `progress`). */
+export interface StoryboardPausedProgress extends JobProgress {
+  paused: true;
+  pauseReason?: "user" | "restart" | null;
+  totalSteps: number;
+  step: number;
+  remainingSteps: number;
+  remaining: { still: number; clip: number };
+  etaSeconds?: number;
+  /** "clips": from steps this batch finished; "project": from other takes of this project. */
+  etaBasis?: "clips" | "project";
+}
+
+/** One part of the attached song (S-M1). Labels: intro, outro, or a letter (parts that sound alike share it). */
+export interface StoryboardSongSection {
+  start: number;
+  end: number;
+  label: string;
+  /** 0 to 1: how loud this part is within the song. */
+  energy?: number | null;
+}
+
+/** The song a music video is cut to (S-M1). */
+export interface StoryboardSong {
+  path: string;
+  hash: string | null;
+  title: string;
+  seconds: number;
+  bpm: number | null;
+  beats: number[];
+  sections: StoryboardSongSection[];
+  lyrics: string[];
+  /** The music clip it put on the mixer, or null. */
+  clipId: string | null;
+  libraryId: string | null;
+  /** The analysis is an estimate. */
+  rough: boolean;
+  note: string;
+  analysedAt: number;
 }
 
 export interface StoryboardProject {
@@ -215,6 +264,8 @@ export interface StoryboardProject {
   plan?: StoryboardPlan;
   brand?: StoryboardBrand;
   planChat?: StoryboardPlanMessage[];
+  /** S-M1: the song the film is cut to; absent or null when none. */
+  song?: StoryboardSong | null;
   shots: StoryboardShot[];
   audio: StoryboardAudioClip[];
   export: StoryboardExportSettings;
@@ -268,8 +319,9 @@ export type StoryboardBatchWhat = "still" | "clip" | "both" | "final" | "redo-cl
 export interface StoryboardBatchStatus {
   batch: StoryboardBatchRecord;
   revision: number;
-  /** Live batches only: where the run is, elapsed seconds, and time left when earlier steps give a basis. */
-  progress?: import("./chat").JobProgress | null;
+  /** Where the run is, elapsed seconds, and time left when earlier steps give a basis; a paused batch gives its
+   *  remaining steps instead (S-M1). */
+  progress?: import("./chat").JobProgress | StoryboardPausedProgress | null;
 }
 
 export type StoryboardRenderState = "running" | "done" | "failed" | "cancelled" | "interrupted";
@@ -365,8 +417,12 @@ export interface StoryboardOpArgs {
   remove_caption: { captionId: string };
   /** S8: the brief and the length aimed for. */
   set_plan: { brief?: string; filmSeconds?: number; clearFilmSeconds?: boolean };
-  /** S8: planned shots in one step (one Undo). */
+  /** S8: planned shots in one step (one Undo); up to 500 (a cut plan). */
   apply_plan: { mode: "replace" | "append"; shots: StoryboardPlannedShot[] };
+  /** S-M1: change the attached song by hand (sections, lyrics, tempo, title). */
+  edit_song: { title?: string; bpm?: number | null; sections?: StoryboardSongSection[]; lyrics?: string[] };
+  /** S-M1: take the song off the project (and, by default, its mixer clip). */
+  clear_song: { removeClip?: boolean };
   /** S8: the direction chat's changes in one step (one Undo). */
   plan_changes: StoryboardPlanChanges;
   add_plan_message: { role: "user" | "assistant"; text: string };
@@ -388,6 +444,31 @@ export interface StoryboardPlannedShot {
   motionPrompt: string;
   seconds: number;
   referenceImages?: string[];
+  /** A cut plan sets the out point so the clip ends on the music (S-M1). */
+  trimOut?: number | null;
+}
+
+/** `POST .../cut-plan`: shots cut to the song; apply with `apply_plan` (mode replace). */
+export interface StoryboardCutPlan {
+  shots: StoryboardPlannedShot[];
+  mode: "replace";
+  totalSeconds: number;
+  clipSeconds: number;
+  clipSecondsSource: "model" | "request" | "default";
+  videoModel: string | null;
+  sections: (StoryboardSongSection & { shots: number })[];
+  note: string;
+  rough: boolean;
+}
+
+/** What `POST .../song` found in the audio. */
+export interface StoryboardSongAnalysis {
+  seconds: number;
+  bpm: number | null;
+  beats: number;
+  sections: StoryboardSongSection[];
+  rough: boolean;
+  note: string;
 }
 
 export interface StoryboardPlanChanges {

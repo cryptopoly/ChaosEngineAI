@@ -149,6 +149,13 @@ describe("BatchBar", () => {
     expect(html).toContain("2 of 8 done");
   });
 
+  it("names the pass it runs: drafts, the final pass, or plain shots", () => {
+    const results = [r("s1", "still", "running")];
+    expect(renderToStaticMarkup(<BatchBar batch={{ ...record(results), what: "still", draft: true }} onCancel={noop} />)).toContain("Making drafts");
+    expect(renderToStaticMarkup(<BatchBar batch={{ ...record(results), what: "final" }} onCancel={noop} />)).toContain("Final pass");
+    expect(renderToStaticMarkup(<BatchBar batch={record(results)} onCancel={noop} />)).toContain("Making shots");
+  });
+
   it("drops 'then clips' once clips are being made", () => {
     const t = (key: string, options: Record<string, unknown>) => String(options.defaultValue)
       .replace("{n}", String(options.n)).replace("{total}", String(options.total)).replace("{kind}", String(options.kind));

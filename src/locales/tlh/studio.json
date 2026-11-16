@@ -1553,7 +1553,9 @@
       "shotOf": "'ay' {n}, Hoch {total}",
       "starting": "taghlI'…",
       "stillsThenClips": "{kind}, ghIq mIllogh vIH",
-      "title": "'ay' chenmoHlI'"
+      "title": "'ay' chenmoHlI'",
+      "titleDraft": null,
+      "titleFinal": null
     },
     "conflictNotice": "latlh DaqDaq choHlu'ta'; Qav cha'lu'",
     "defaults": {

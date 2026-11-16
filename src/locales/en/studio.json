@@ -1553,7 +1553,9 @@
       "shotOf": "Shot {n} of {total}",
       "starting": "Starting…",
       "stillsThenClips": "{kind}, then clips",
-      "title": "Making shots"
+      "title": "Making shots",
+      "titleDraft": "Making drafts",
+      "titleFinal": "Final pass"
     },
     "conflictNotice": "Changed elsewhere; showing the latest",
     "defaults": {

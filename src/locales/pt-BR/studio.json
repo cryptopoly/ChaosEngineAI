@@ -1553,7 +1553,9 @@
       "shotOf": "Plano {n} de {total}",
       "starting": "Iniciando…",
       "stillsThenClips": "{kind}, depois clipes",
-      "title": "Criando planos"
+      "title": "Criando planos",
+      "titleDraft": null,
+      "titleFinal": null
     },
     "conflictNotice": "Alterado em outro lugar; mostrando a versão mais recente",
     "defaults": {

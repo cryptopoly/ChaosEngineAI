@@ -1553,7 +1553,9 @@
       "shotOf": "Шот {n} из {total}",
       "starting": "Запуск…",
       "stillsThenClips": "{kind}, затем клипы",
-      "title": "Создание шотов"
+      "title": "Создание шотов",
+      "titleDraft": null,
+      "titleFinal": null
     },
     "conflictNotice": "Изменено в другом месте; показана последняя версия",
     "defaults": {

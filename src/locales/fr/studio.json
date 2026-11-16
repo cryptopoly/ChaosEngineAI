@@ -1553,7 +1553,9 @@
       "shotOf": "Plan {n} sur {total}",
       "starting": "Démarrage…",
       "stillsThenClips": "{kind}, puis clips",
-      "title": "Création des plans"
+      "title": "Création des plans",
+      "titleDraft": null,
+      "titleFinal": null
     },
     "conflictNotice": "Modifié ailleurs ; affichage de la dernière version",
     "defaults": {

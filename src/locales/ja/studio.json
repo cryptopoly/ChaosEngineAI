@@ -1553,7 +1553,9 @@
       "shotOf": "ショット {n} / {total}",
       "starting": "開始中…",
       "stillsThenClips": "{kind}、その後クリップ",
-      "title": "ショットを作成中"
+      "title": "ショットを作成中",
+      "titleDraft": null,
+      "titleFinal": null
     },
     "conflictNotice": "他の場所で変更されました。最新の内容を表示しています",
     "defaults": {

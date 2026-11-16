@@ -1553,7 +1553,9 @@
       "shotOf": "第 {n} 個鏡頭，共 {total} 個",
       "starting": "正在開始…",
       "stillsThenClips": "{kind}，然後是影片片段",
-      "title": "正在製作鏡頭"
+      "title": "正在製作鏡頭",
+      "titleDraft": null,
+      "titleFinal": null
     },
     "conflictNotice": "已在別處變更；顯示的是最新版本",
     "defaults": {

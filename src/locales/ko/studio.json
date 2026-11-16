@@ -1553,7 +1553,9 @@
       "shotOf": "샷 {n} / {total}",
       "starting": "시작 중…",
       "stillsThenClips": "{kind}, 그다음 클립",
-      "title": "샷 만드는 중"
+      "title": "샷 만드는 중",
+      "titleDraft": null,
+      "titleFinal": null
     },
     "conflictNotice": "다른 곳에서 변경됨. 최신 내용을 표시합니다",
     "defaults": {

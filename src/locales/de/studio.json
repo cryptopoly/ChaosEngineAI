@@ -1553,7 +1553,9 @@
       "shotOf": "Einstellung {n} von {total}",
       "starting": "Wird gestartet…",
       "stillsThenClips": "{kind}, danach Clips",
-      "title": "Einstellungen werden erstellt"
+      "title": "Einstellungen werden erstellt",
+      "titleDraft": null,
+      "titleFinal": null
     },
     "conflictNotice": "Anderswo geändert; die neueste Version wird angezeigt",
     "defaults": {

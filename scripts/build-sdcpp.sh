@@ -20,11 +20,12 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SDCPP_REPO="https://github.com/leejet/stable-diffusion.cpp.git"
-# Pinned commit (no longer floating ``master``). 5dcfa79 = master-1104 (2026-11-14), moved from 3f8527a
-# (master-929): MiniMax H3 video and H3-Image docs under docs/models/. Moving the pin means rerunning the sd.cpp
+# Pinned commit (no longer floating ``master``). 532d2c1 = master-1106 (2026-11-15), moved from 5dcfa79
+# (master-1104): C API refactor only, CLI flags unchanged (seed and video frames now default in the library;
+# the app always passes both). Moving the pin means rerunning the sd.cpp
 # tests plus one real Qwen-Image 2.1 sd.cpp image on the old and the new build; bump it with
 # scripts/update-sdcpp.sh and the sd.cpp row in scripts/check-upstreams.py.
-SDCPP_REF="${SDCPP_REF:-5dcfa79801213f23e27b3e83617350ebb8ea93aa}"
+SDCPP_REF="${SDCPP_REF:-532d2c15c430a785a712b2d94281f04e733008a4}"
 SDCPP_DIR="${SDCPP_DIR:-/tmp/stable-diffusion.cpp}"
 INSTALL_DIR="${CHAOSENGINE_BIN_DIR:-$HOME/.chaosengine/bin}"
 

@@ -50,7 +50,8 @@ export function useBoardInput(
   const focusCard = (id: string) => {
     setCurrent(id);
     if (pos[id]) view.reveal(pos[id]);
-    requestAnimationFrame(() => viewport.current?.querySelector<HTMLElement>(`[data-card-id="${CSS.escape(id)}"]`)?.focus({ preventScroll: true }));
+    // At once, not on the next frame: a fast second key press must reach the card it moved to.
+    viewport.current?.querySelector<HTMLElement>(`[data-card-id="${CSS.escape(id)}"]`)?.focus({ preventScroll: true });
   };
 
   const onCardPointerDown = (event: ReactPointerEvent<HTMLDivElement>, id: string) => {

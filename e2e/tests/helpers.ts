@@ -42,7 +42,7 @@ export async function goToProjects(page: Page): Promise<void> {
   await expect(page.getByRole("heading", { name: "Projects", exact: true }).last()).toBeVisible();
 }
 
-export type ProjectTab = "Overview" | "Cast" | "Storyboard" | "Mixer" | "Export";
+export type ProjectTab = "Overview" | "Plan" | "Cast" | "Storyboard" | "Board" | "Mixer" | "Export";
 
 /** Open a project from the list by its card, then one of its tabs. */
 export async function openProject(page: Page, name: string, tab?: ProjectTab): Promise<void> {

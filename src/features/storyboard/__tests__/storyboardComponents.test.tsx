@@ -45,6 +45,8 @@ describe("ShotCard", () => {
     const plain = card({ status: "done", shot: shot({ takes: [{ ...take("t1"), clip: "media/c.mp4" }], activeTake: "t1" }), onToggleKept: noop });
     expect(plain).not.toContain(">Draft</span>");
     expect(plain).toMatch(/aria-pressed="false"[^>]*>Keep for final/);
+    // Nothing to keep before the first take.
+    expect(card({ shot: shot(), onToggleKept: noop })).not.toContain("Keep for final");
   });
 
   it("carries the state class and the status sentence for each state", () => {

@@ -370,7 +370,8 @@ export function ShotCard(props: ShotCardProps) {
         >
           {shot.locked ? <LockIcon /> : <UnlockIcon />}
         </button>
-        {props.onToggleKept ? (
+        {/* Keep for final picks a take worth redoing at full quality: nothing to keep before the first take. */}
+        {props.onToggleKept && (take || shot.kept) ? (
           <button
             type="button"
             className={`secondary-button${shot.kept ? " is-active" : ""}`}

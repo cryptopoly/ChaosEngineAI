@@ -15258,6 +15258,7 @@ select.music-library__select {
 }
 .length-strip__part--idle {
   background: var(--panel-alt);
+  box-shadow: inset 0 0 0 1px var(--border);
 }
 .length-strip__part--stale {
   background: color-mix(in srgb, var(--warning) 35%, var(--panel-alt));

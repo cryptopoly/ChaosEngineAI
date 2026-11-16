@@ -2,6 +2,13 @@
  * Pure helpers for the Storyboard Projects and Board screens: shot card state and class names, the
  * takes strip keyboard model, batch progress, reorder, which shots a batch should make, and project
  * summaries. No React here so the rules are unit-tested directly.
+ *
+ * Which pass button is primary in the run bar (`primaryPass`, FU-188 item 3), one primary at a time:
+ * - nothing is missing: no primary (only the deliberate "Make all unlocked" remains);
+ * - a fresh planned film (shots, and no shot has a take yet) whose still model is slow, at least
+ *   `SLOW_STILL_SECONDS` per still by the estimate for Make missing: "Make drafts" is primary, "Make N missing"
+ *   steps back, so the first look at the film costs minutes, not hours;
+ * - otherwise (a fast still model, an unknown time, or a film that already has takes): "Make N missing".
  */
 import { StoryboardRevisionConflict, type StoryboardStillModel } from "../../api/storyboard";
 import type {
@@ -203,6 +210,29 @@ export function finalPassShotIds(shots: StoryboardShot[]): string[] {
       return !finished || s.redo || s.status === "stale" || s.status === "failed";
     })
     .map((s) => s.id);
+}
+
+/** A still model at or above this many seconds per still is slow: a fresh film starts with drafts. */
+export const SLOW_STILL_SECONDS = 60;
+
+export type PrimaryPass = "make" | "drafts" | null;
+
+/** Seconds per still the Make missing estimate gives, or null when it does not know. */
+export function secondsPerStill(estimate: { stills: number; stillSeconds?: number | null } | null | undefined): number | null {
+  if (!estimate || estimate.stills <= 0 || estimate.stillSeconds == null) return null;
+  return estimate.stillSeconds / estimate.stills;
+}
+
+/** The one primary pass button (see the rule in the file header). */
+export function primaryPass(
+  shots: readonly StoryboardShot[],
+  missing: number,
+  estimate: { stills: number; stillSeconds?: number | null } | null | undefined,
+): PrimaryPass {
+  if (missing <= 0) return null;
+  const fresh = shots.length > 0 && shots.every((shot) => shot.takes.length === 0);
+  const perStill = secondsPerStill(estimate);
+  return fresh && perStill != null && perStill >= SLOW_STILL_SECONDS ? "drafts" : "make";
 }
 
 export interface StillModelPick {

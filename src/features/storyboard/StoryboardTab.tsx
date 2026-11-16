@@ -23,6 +23,7 @@ import {
   keptShotIds,
   liveShotStates,
   missingShotIds,
+  primaryPass,
   reorderByDrop,
   reorderByStep,
   staleAfterShot,
@@ -313,6 +314,7 @@ export function StoryboardTab({ story, project, timeline, imageGallery, videoGal
           finalShots={finalIds.length}
           onMakeDrafts={(withClips) => void story.startBatch(withClips ? "both" : "still", missing, false, true)}
           onFinalPass={() => void story.startBatch("final", finalIds)}
+          primary={primaryPass(shots, missing.length, estimate)}
         />
       ) : null}
       <p className="sr-only" role="status" aria-live="polite">{announce}</p>

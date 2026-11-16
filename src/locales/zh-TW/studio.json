@@ -1755,7 +1755,10 @@
       "missingNote": null,
       "draftNote": null,
       "failed": null,
-      "noSound": null
+      "noSound": null,
+      "titleCard": null,
+      "endCard": null,
+      "legendCard": null
     },
     "captions": {
       "toggle": null,
@@ -2019,6 +2022,20 @@
       "usedPicturesHint": null,
       "usedWords": null,
       "usedWordsHint": null
+    },
+    "brandFilm": {
+      "title": null,
+      "editKit": null,
+      "noLogo": null,
+      "logo": null,
+      "logoNone": null,
+      "titleCard": null,
+      "titleText": null,
+      "endCard": null,
+      "endText": null,
+      "seconds": null,
+      "secondsValue": null,
+      "lookNote": null
     }
   },
   "storyProjects": {
@@ -2246,11 +2263,17 @@
       "stop": "停止",
       "timeOf": "{current} / {total}",
       "zoomIn": "放大",
-      "zoomOut": "縮小"
+      "zoomOut": "縮小",
+      "loadingCut": null
     },
     "emptyShots": "還沒有可混音的內容。請先在分鏡標籤頁中製作鏡頭。",
     "openInStoryboard": "在分鏡中開啟",
-    "openStoryboard": "開啟分鏡"
+    "openStoryboard": "開啟分鏡",
+    "source": {
+      "label": null,
+      "cut": null,
+      "render": null
+    }
   },
   "aiLabel": {
     "forced": "此專案使用了複製聲音，因此一律會寫入 AI 標籤。",

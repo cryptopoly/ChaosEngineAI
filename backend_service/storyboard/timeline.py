@@ -240,8 +240,15 @@ def build_render_plan(project: Project, preview: bool, folder: Path | None = Non
     work_dir = folder / "cache" / "render"
     captions_srt, sidecar = None, None
     from backend_service.storyboard import captions as captions_module
+    from backend_service.storyboard.cards import plan_entries
 
-    srt_text = captions_module.to_srt(captions_module.cues(project, compute_timeline(project, ready_only=True)))
+    brand = plan_entries(project, folder)
+    if preview:  # the Mixer plays a preview against its own timeline, which has no cards; the logo stays
+        brand["title_card"] = brand["end_card"] = None
+    # The title card goes in front of the film, so the captions start that much later (whole frames, like the card).
+    lead = round(brand["title_card"]["seconds"] * project.defaults.fps) / project.defaults.fps if brand["title_card"] else 0.0
+    cue_list = captions_module.cues(project, compute_timeline(project, ready_only=True))
+    srt_text = captions_module.to_srt(captions_module.shifted(cue_list, lead))
     if srt_text and project.export.captionsBurn:
         work_dir.mkdir(parents=True, exist_ok=True)
         captions_srt = work_dir / "captions.srt"
@@ -266,5 +273,6 @@ def build_render_plan(project: Project, preview: bool, folder: Path | None = Non
         "captions_style": captions_module.look_for(project, srt_text).as_dict() if captions_srt else None,
         "stems_base": stems_base,
         "upscale_to": None if preview else upscale_target(project, (width, height)),
+        **brand,
         "sidecar_srt": sidecar,  # not read by RenderPlan: the render manager writes it once the film exists
     }

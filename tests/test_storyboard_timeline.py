@@ -11,7 +11,8 @@ from backend_service.storyboard.timeline import build_render_plan, compute_timel
 SHOT_KEYS = {"id", "video", "hash", "trim_in", "trim_out", "speed", "native_sound_db", "transition_in"}
 AUDIO_KEYS = {"id", "kind", "path", "start", "duration", "trim_in", "gain_db", "fade_in", "fade_out", "duck", "loop"}
 PLAN_KEYS = {"width", "height", "fps", "preview", "loudness_lufs", "out_path", "work_dir", "shots", "audio",
-             "metadata", "captions_srt", "captions_style", "stems_base", "upscale_to", "sidecar_srt"}
+             "metadata", "captions_srt", "captions_style", "stems_base", "upscale_to", "sidecar_srt",
+             "title_card", "end_card", "logo"}
 
 
 def shot(sid, measured=4.0, **fields):

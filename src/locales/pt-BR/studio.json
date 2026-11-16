@@ -1755,7 +1755,10 @@
       "missingNote": null,
       "draftNote": null,
       "failed": null,
-      "noSound": null
+      "noSound": null,
+      "titleCard": null,
+      "endCard": null,
+      "legendCard": null
     },
     "captions": {
       "toggle": null,
@@ -2019,6 +2022,20 @@
       "usedPicturesHint": null,
       "usedWords": null,
       "usedWordsHint": null
+    },
+    "brandFilm": {
+      "title": null,
+      "editKit": null,
+      "noLogo": null,
+      "logo": null,
+      "logoNone": null,
+      "titleCard": null,
+      "titleText": null,
+      "endCard": null,
+      "endText": null,
+      "seconds": null,
+      "secondsValue": null,
+      "lookNote": null
     }
   },
   "storyProjects": {
@@ -2246,11 +2263,17 @@
       "stop": "Parar",
       "timeOf": "{current} de {total}",
       "zoomIn": "Ampliar",
-      "zoomOut": "Reduzir"
+      "zoomOut": "Reduzir",
+      "loadingCut": null
     },
     "emptyShots": "Nada para mixar ainda. Crie cenas na aba Storyboard primeiro.",
     "openInStoryboard": "Abrir no Storyboard",
-    "openStoryboard": "Abrir Storyboard"
+    "openStoryboard": "Abrir Storyboard",
+    "source": {
+      "label": null,
+      "cut": null,
+      "render": null
+    }
   },
   "aiLabel": {
     "forced": "Este projeto usa uma voz clonada, então a tag de IA é sempre gravada.",

@@ -1,0 +1,132 @@
+/* The brand kit in the rough cut (S15): cards and the corner logo, sized like the export draws them
+   (cards: text 9 % of the frame height, logo 22 %; corner logo 12 % of the height). */
+.rough-cut__brand-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4cqh;
+  padding: 0 8%;
+  text-align: center;
+}
+.rough-cut__brand-card-logo {
+  height: 22cqh;
+  width: auto;
+  max-width: 80%;
+  object-fit: contain;
+}
+/* With a logo the two sit where the export draws them: logo from 22 % to 44 % of the height, text centred at 66 %. */
+.rough-cut__brand-card--logo .rough-cut__brand-card-logo {
+  position: absolute;
+  top: 22cqh;
+  left: 50%;
+  transform: translateX(-50%);
+}
+.rough-cut__brand-card--logo .rough-cut__brand-card-text {
+  position: absolute;
+  top: 66cqh;
+  left: 8%;
+  right: 8%;
+  transform: translateY(-50%);
+}
+.rough-cut__brand-card-text {
+  font-size: 9cqh;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+.rough-cut__brand-logo {
+  position: absolute;
+  height: 12cqh;
+  width: auto;
+  pointer-events: none;
+}
+.rough-cut__caption--top {
+  top: 7.6cqh;
+  bottom: auto;
+}
+.rough-cut__caption--middle {
+  top: 50%;
+  bottom: auto;
+  transform: translateY(-50%);
+}
+.rough-cut__marker--card {
+  background: color-mix(in srgb, var(--text) 18%, var(--panel));
+}
+.mixer__stage .rough-cut__stage {
+  width: auto;
+  height: 100%;
+  margin: 0;
+  border-radius: 0;
+}
+
+/* Export tab: the brand on the film. */
+.brand-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: var(--panel-gap);
+  border-top: 1px solid var(--border);
+}
+.brand-cards__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.brand-cards__head h4 {
+  margin: 0;
+}
+.brand-cards__options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.brand-cards__card-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+}
+.brand-cards__card-row .check-row {
+  min-width: 13rem;
+}
+.brand-cards__text {
+  flex: 1 1 14rem;
+  min-width: 0;
+  max-width: 28rem;
+}
+.brand-cards__seconds {
+  display: flex;
+  white-space: nowrap;
+  align-items: center;
+  gap: 8px;
+}
+.brand-cards .brand-cards__select {
+  width: auto;
+  min-width: 6rem;
+}
+.brand-cards__sample {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.brand-cards__swatch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 160px;
+  max-width: 100%;
+  aspect-ratio: 16 / 9;
+  padding: 6px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 6px);
+  font-size: 0.9rem;
+  text-align: center;
+}

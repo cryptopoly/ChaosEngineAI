@@ -285,6 +285,13 @@ class ExportSettings(_Model):
     captionsBurn: bool = False  # draw the captions into the picture
     stems: bool = False  # also write each audio lane as its own .wav
     upscale: Literal["none", "1440p", "2160p"] = "none"  # scale the final film up (lanczos); never below the project size
+    # The brand kit on the film (S15): the logo in its corner, a title card first and an end card last.
+    showLogo: bool = True  # draw brand.logo in brand.logoCorner when there is one
+    titleCard: bool = False
+    endCard: bool = False
+    titleText: Line = ""  # empty: the project name
+    endText: Line = ""  # empty: the project name
+    cardSeconds: float = Field(2.0, ge=1.0, le=5.0)
 
     @model_validator(mode="before")
     @classmethod

@@ -1755,7 +1755,10 @@
       "missingNote": "{n, plural, one {# shot has no clip yet. It holds its still here (or a card) for its planned length; the export leaves it out.} other {# shots have no clip yet. They hold their still here (or a card) for their planned length; the export leaves them out.}}",
       "draftNote": "{n, plural, one {# shot plays a draft take.} other {# shots play a draft take.}} Run the final pass on kept shots for full quality.",
       "failed": "{n, plural, one {# file could not be read; its part plays blank or silent.} other {# files could not be read; their parts play blank or silent.}}",
-      "noSound": "This window cannot play sound, so the rough cut plays without it."
+      "noSound": "This window cannot play sound, so the rough cut plays without it.",
+      "titleCard": "Title card",
+      "endCard": "End card",
+      "legendCard": "Title or end card (brand kit)"
     },
     "captions": {
       "toggle": "Show captions (C)",
@@ -2019,6 +2022,20 @@
       "usedPicturesHint": "The still model took the style pictures as references.",
       "usedWords": "Style as words",
       "usedWordsHint": "The still model cannot take reference pictures, so the style went into the prompt as words."
+    },
+    "brandFilm": {
+      "title": "Brand on the film",
+      "editKit": "Edit the brand kit",
+      "noLogo": "Add a logo in the brand kit on the Cast tab first.",
+      "logo": "Logo in the corner of every shot",
+      "logoNone": "Logo in the corner (no logo in the brand kit yet)",
+      "titleCard": "Title card at the start",
+      "titleText": "Title card text (empty: the project name)",
+      "endCard": "End card at the end",
+      "endText": "End card text (empty: the project name)",
+      "seconds": "Each card lasts",
+      "secondsValue": "{seconds} s",
+      "lookNote": "Typeface and text colour from the brand kit, background from the style pictures. Play film shows the cards too."
     }
   },
   "storyProjects": {
@@ -2246,11 +2263,17 @@
       "stop": "Stop",
       "timeOf": "{current} of {total}",
       "zoomIn": "Zoom in",
-      "zoomOut": "Zoom out"
+      "zoomOut": "Zoom out",
+      "loadingCut": "Loading the takes to play the film…"
     },
     "emptyShots": "Nothing to mix yet. Make shots on the Storyboard tab first.",
     "openInStoryboard": "Open in Storyboard",
-    "openStoryboard": "Open Storyboard"
+    "openStoryboard": "Open Storyboard",
+    "source": {
+      "label": "What Play plays",
+      "cut": "Rough cut",
+      "render": "Rendered preview"
+    }
   },
   "aiLabel": {
     "forced": "This project uses a cloned voice, so the AI tag is always written.",

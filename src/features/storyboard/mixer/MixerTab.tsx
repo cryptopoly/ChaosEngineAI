@@ -56,6 +56,10 @@ import {
 } from "./timelineGeometry";
 import { Transport } from "./Transport";
 import { RoughCutButton } from "../preview/RoughCutButton";
+import { RoughCutStage } from "../preview/RoughCutStage";
+import { captionAt, pieceIndexAt, type CutPiece } from "../preview/roughCutLogic";
+import { useMixerRoughCut } from "./useMixerRoughCut";
+import "./mixerCut.css";
 import { VideoToolsPrompt } from "../../videotools/VideoToolsPrompt";
 import { useVideoTools } from "../../videotools/useVideoTools";
 
@@ -106,6 +110,10 @@ export function MixerTab({ story, project, timeline, dataDirectory, onOpenShot, 
   const [playheadS, setPlayheadS] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [loop, setLoop] = useState(false);
+  const loopRef = useRef(loop);
+  loopRef.current = loop;
+  // What the transport plays: the rough cut from the takes (no render needed), or the rendered preview file.
+  const [source, setSource] = useState<"cut" | "render">("cut");
   const [selection, setSelection] = useState<Selection>(null);
   const [addLane, setAddLane] = useState<AudioLaneId | null>(null);
   const [relinkId, setRelinkId] = useState<string | null>(null);
@@ -128,6 +136,7 @@ export function MixerTab({ story, project, timeline, dataDirectory, onOpenShot, 
   const previewOwned = useRef<string | null>(null);
   const startedRevision = useRef<number | null>(null);
 
+  const { cut, player: cutPlayer } = useMixerRoughCut(project, timeline, loopRef);
   const pps = pxPerSecond(zoomIndex);
   ppsRef.current = pps;
   const spans = timeline.shots;
@@ -144,6 +153,9 @@ export function MixerTab({ story, project, timeline, dataDirectory, onOpenShot, 
   const size = exportSize(project.defaults, project.defaults.exportPreset, true);
   const rendering = isRenderRunning(render.job) || render.starting;
   const hasPreview = previewUrl !== null;
+  const onCut = source === "cut" || !hasPreview;
+  const isPlaying = onCut ? cutPlayer.playing : playing;
+  const canPlay = onCut ? cut.total > 0 && cutPlayer.ready : hasPreview;
   const stale = hasPreview && previewIsStale(previewRevision, project.revision);
   const leftOut = leftOutShotCount(timeline);
   const selectedClip = selection?.type === "clip" ? clipById(project, selection.id) : null;
@@ -210,27 +222,35 @@ export function MixerTab({ story, project, timeline, dataDirectory, onOpenShot, 
     }
   }, []);
 
-  // The playhead follows the video while it plays.
+  // The playhead follows the video (or the rough cut's clock) while it plays.
+  const cutNow = cutPlayer.now;
+  const cutNowRef = useRef(cutNow);
+  cutNowRef.current = cutNow;
   useEffect(() => {
-    if (!playing) return;
+    if (!isPlaying) return;
     let frame = 0;
     const tick = () => {
-      const el = video.current;
-      if (el) movePlayhead(el.currentTime, false);
+      if (onCut) movePlayhead(cutNowRef.current(), false);
+      else if (video.current) movePlayhead(video.current.currentTime, false);
       frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [playing, movePlayhead]);
+  }, [isPlaying, onCut, movePlayhead]);
+  // When the rough cut stops by itself (the end of the film), the playhead shows where.
+  const cutPlaying = cutPlayer.playing;
+  useEffect(() => {
+    if (!cutPlaying && onCut) movePlayhead(cutNowRef.current(), true);
+  }, [cutPlaying, onCut, movePlayhead]);
 
   // Keep the playhead on screen while it moves.
   useEffect(() => {
     const el = scroller.current;
-    if (!el || !playing) return;
+    if (!el || !isPlaying) return;
     const x = playheadS * pps;
     const view = el.clientWidth - LABEL_COLUMN_PX;
     if (x < el.scrollLeft || x > el.scrollLeft + view - 24) el.scrollLeft = Math.max(0, x - 48);
-  }, [playheadS, playing, pps]);
+  }, [playheadS, isPlaying, pps]);
 
   // A clip added from this screen is selected once the project comes back with it.
   const audioCount = project.audio.length;
@@ -252,13 +272,19 @@ export function MixerTab({ story, project, timeline, dataDirectory, onOpenShot, 
     (timeS: number) => {
       const next = Math.max(0, Math.min(total, timeS));
       movePlayhead(next, true);
+      cutPlayer.seek(next);
       const el = video.current;
       if (el && Number.isFinite(el.duration)) el.currentTime = Math.min(next, el.duration);
     },
-    [total, movePlayhead],
+    [total, movePlayhead, cutPlayer],
   );
 
   const togglePlay = useCallback(async () => {
+    if (onCut) {
+      if (!cutPlayer.playing) cutPlayer.seek(playheadRef.current);
+      cutPlayer.toggle();
+      return;
+    }
     const el = video.current;
     if (!el) return;
     if (!el.paused) {
@@ -271,9 +297,11 @@ export function MixerTab({ story, project, timeline, dataDirectory, onOpenShot, 
     } catch {
       setPlaying(false);
     }
-  }, []);
+  }, [onCut, cutPlayer]);
 
   const stop = useCallback(() => {
+    cutPlayer.pause();
+    cutPlayer.seek(0);
     const el = video.current;
     if (el) {
       el.pause();
@@ -281,7 +309,14 @@ export function MixerTab({ story, project, timeline, dataDirectory, onOpenShot, 
     }
     setPlaying(false);
     movePlayhead(0, true);
-  }, [movePlayhead]);
+  }, [movePlayhead, cutPlayer]);
+
+  function chooseSource(next: "cut" | "render") {
+    if (next === source) return;
+    cutPlayer.pause();
+    video.current?.pause();
+    setSource(next);
+  }
 
   const zoom = useCallback((direction: 1 | -1) => setZoomIndex((z) => clampZoom(z + direction)), []);
 
@@ -367,7 +402,7 @@ export function MixerTab({ story, project, timeline, dataDirectory, onOpenShot, 
   function runAction(action: MixerKeyAction) {
     switch (action.type) {
       case "toggle-play":
-        if (hasPreview) void togglePlay();
+        if (canPlay) void togglePlay();
         break;
       case "seek":
         seek(seekedTime(playheadRef.current, action.deltaS, total));
@@ -467,6 +502,10 @@ export function MixerTab({ story, project, timeline, dataDirectory, onOpenShot, 
     if (problem) setAnnounce(problem);
   }
 
+  const cutShotLabel = (piece: CutPiece) =>
+    piece.title.trim()
+      ? t("board.preview.shotTitled", { defaultValue: "Shot {n} · {title}", n: piece.index + 1, title: piece.title })
+      : t("board.preview.shot", { defaultValue: "Shot {n}", n: piece.index + 1 });
   const previewJob = render.job?.preview ? render.job : null;
   const empty = project.shots.length === 0;
   const ratio = { "--stage-w": size.width, "--stage-h": size.height } as CSSProperties; // preview frame shape: computed from the export size
@@ -496,8 +535,29 @@ export function MixerTab({ story, project, timeline, dataDirectory, onOpenShot, 
           <>
             <div className="mixer__top">
               <div className="mixer__stage-wrap">
+                {hasPreview ? (
+                  <div className="mixer__source" role="group" aria-label={t("mixer.source.label", { defaultValue: "What Play plays" })}>
+                    <button type="button" className={`secondary-button${onCut ? " active" : ""}`} aria-pressed={onCut} onClick={() => chooseSource("cut")}>
+                      {t("mixer.source.cut", { defaultValue: "Rough cut" })}
+                    </button>
+                    <button type="button" className={`secondary-button${onCut ? "" : " active"}`} aria-pressed={!onCut} onClick={() => chooseSource("render")}>
+                      {t("mixer.source.render", { defaultValue: "Rendered preview" })}
+                    </button>
+                  </div>
+                ) : null}
                 <div className="mixer__stage" style={ratio}>
-                  {previewUrl ? (
+                  {onCut ? (
+                    <RoughCutStage
+                      cut={cut}
+                      player={cutPlayer}
+                      width={size.width}
+                      height={size.height}
+                      caption={captionAt(cut, playheadS)}
+                      captionLook={project.brand?.captions ?? null}
+                      current={cut.pieces[pieceIndexAt(cut, playheadS)]}
+                      shotLabel={cutShotLabel}
+                    />
+                  ) : previewUrl ? (
                     <video
                       ref={video}
                       className="mixer__video"
@@ -611,11 +671,12 @@ export function MixerTab({ story, project, timeline, dataDirectory, onOpenShot, 
             </div>
 
             <Transport
-              playing={playing}
+              playing={isPlaying}
               timeS={playheadS}
               durationS={total}
               loop={loop}
-              canPlay={hasPreview}
+              canPlay={canPlay}
+              disabledHint={onCut ? t("mixer.transport.loadingCut", { defaultValue: "Loading the takes to play the film…" }) : undefined}
               canZoomIn={zoomIndex < ZOOM_LEVELS.length - 1}
               canZoomOut={zoomIndex > 0}
               onPlay={() => void togglePlay()}

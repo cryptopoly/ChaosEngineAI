@@ -3,7 +3,7 @@
  * straight from the project's files, before any export. Shot markers on the scrubber show what each
  * shot will play (a clip, a draft, a held still, or nothing yet); the stage labels the shot playing.
  */
-import { useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
+import { useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { CloseIcon, PauseIcon, PlayIcon } from "../../../components/icons/ActionIcons";
 import { useDialogFocus } from "../../../hooks/useDialogFocus";
@@ -20,6 +20,7 @@ import {
   type CutPiece,
   type MarkerState,
 } from "./roughCutLogic";
+import { RoughCutStage } from "./RoughCutStage";
 import { useRoughCut } from "./useRoughCut";
 
 export interface RoughCutPlayerProps {
@@ -45,13 +46,16 @@ export function RoughCutPlayer({ project, timeline, onClose }: RoughCutPlayerPro
 
   const markers = useMemo(() => cutMarkers(cut), [cut]);
   const size = exportSize(project.defaults, project.defaults.exportPreset);
-  const stageStyle = { "--cut-w": size.width, "--cut-h": size.height } as CSSProperties; // stage shape: the export frame
   const { timeS, playing, ready } = player;
   const current: CutPiece | undefined = cut.pieces[pieceIndexAt(cut, timeS)];
   const caption = captionsOn ? captionAt(cut, timeS) : null;
   const total = cut.total;
   const shotLabel = (piece: CutPiece) =>
-    piece.title.trim()
+    piece.media.kind === "card"
+      ? piece.media.which === "title"
+        ? t("board.preview.titleCard", { defaultValue: "Title card" })
+        : t("board.preview.endCard", { defaultValue: "End card" })
+      : piece.title.trim()
       ? t("board.preview.shotTitled", { defaultValue: "Shot {n} · {title}", n: piece.index + 1, title: piece.title })
       : t("board.preview.shot", { defaultValue: "Shot {n}", n: piece.index + 1 });
   const stateLabel = (state: MarkerState) =>
@@ -61,6 +65,8 @@ export function RoughCutPlayer({ project, timeline, onClose }: RoughCutPlayerPro
         ? t("board.preview.legendStill", { defaultValue: "No clip yet: still held" })
         : state === "none"
           ? t("board.preview.legendNone", { defaultValue: "No picture yet" })
+          : state === "card"
+            ? t("board.preview.legendCard", { defaultValue: "Title or end card (brand kit)" })
           : t("board.preview.legendClip", { defaultValue: "Clip" });
   const states = [...new Set(markers.map((m) => m.state))];
 
@@ -129,7 +135,7 @@ export function RoughCutPlayer({ project, timeline, onClose }: RoughCutPlayerPro
               {t("board.preview.subtitle", {
                 defaultValue: "{name} · {shots, plural, one {# shot} other {# shots}} · {seconds} s · played from the takes, nothing is rendered",
                 name: project.name,
-                shots: cut.pieces.length,
+                shots: cut.pieces.filter((p) => p.media.kind !== "card").length,
                 seconds: Math.round(total * 10) / 10,
               })}
             </p>
@@ -145,64 +151,16 @@ export function RoughCutPlayer({ project, timeline, onClose }: RoughCutPlayerPro
           </button>
         </div>
 
-        <div className="rough-cut__stage" style={stageStyle}>
-          {cut.pieces.map((piece) => {
-            const label = shotLabel(piece);
-            if (piece.media.kind === "clip") {
-              const url = player.urlOf(piece.media.clip);
-              return (
-                <video
-                  key={piece.shotId}
-                  ref={(el) => player.registerLayer(piece.shotId, el)}
-                  className="rough-cut__layer"
-                  src={url ?? undefined}
-                  muted
-                  playsInline
-                  preload="auto"
-                  aria-hidden="true"
-                />
-              );
-            }
-            if (piece.media.kind === "still") {
-              const url = player.urlOf(piece.media.still);
-              return (
-                <div key={piece.shotId} ref={(el) => player.registerLayer(piece.shotId, el)} className="rough-cut__layer rough-cut__layer--still">
-                  {url ? <img src={url} alt="" /> : null}
-                  <span className="rough-cut__hold">
-                    {t("board.preview.heldStill", { defaultValue: "No clip yet · still held for {seconds} s", seconds: Math.round(piece.duration * 10) / 10 })}
-                  </span>
-                </div>
-              );
-            }
-            return (
-              <div key={piece.shotId} ref={(el) => player.registerLayer(piece.shotId, el)} className="rough-cut__layer rough-cut__layer--card">
-                <strong>{label}</strong>
-                <span>{t("board.preview.noPicture", { defaultValue: "No picture yet · {seconds} s", seconds: Math.round(piece.duration * 10) / 10 })}</span>
-              </div>
-            );
-          })}
-          {current ? (
-            <div className="rough-cut__badges">
-              <span className="rough-cut__chip">{shotLabel(current)}</span>
-              {current.draft ? <span className="rough-cut__chip rough-cut__chip--draft">{t("board.preview.draft", { defaultValue: "Draft" })}</span> : null}
-            </div>
-          ) : null}
-          {caption ? (
-            <p className="rough-cut__caption" aria-live="off">
-              {caption}
-            </p>
-          ) : null}
-          {!ready ? (
-            <div className="rough-cut__loading" role="status">
-              <span>
-                {t("board.preview.loading", { defaultValue: "Loading the film: {done} of {total} files", done: player.load.done, total: player.load.total })}
-              </span>
-              <span className="rough-cut__loading-bar" aria-hidden="true">
-                <span style={{ width: `${player.load.total ? (player.load.done / player.load.total) * 100 : 0}%` }} />
-              </span>
-            </div>
-          ) : null}
-        </div>
+        <RoughCutStage
+          cut={cut}
+          player={player}
+          width={size.width}
+          height={size.height}
+          caption={caption}
+          captionLook={project.brand?.captions ?? null}
+          current={current}
+          shotLabel={shotLabel}
+        />
 
         <div className="rough-cut__transport">
           <button
@@ -245,7 +203,7 @@ export function RoughCutPlayer({ project, timeline, onClose }: RoughCutPlayerPro
                 style={{ left: `${marker.left}%`, width: `${marker.width}%` }}
                 title={`${shotLabel(cut.pieces.find((p) => p.shotId === marker.shotId) as CutPiece)} · ${stateLabel(marker.state)}`}
               >
-                <span className="rough-cut__marker-n" aria-hidden="true">{marker.index + 1}</span>
+                {marker.state === "card" ? null : <span className="rough-cut__marker-n" aria-hidden="true">{marker.index + 1}</span>}
               </span>
             ))}
             <span className="rough-cut__played" style={{ width: `${percent}%` }} aria-hidden="true" />

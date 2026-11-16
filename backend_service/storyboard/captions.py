@@ -54,6 +54,13 @@ def cues(project: Project, timeline: Timeline) -> list[Cue]:
     return sorted(out, key=lambda c: (c.start, c.end))
 
 
+def shifted(items: list[Cue], seconds: float) -> list[Cue]:
+    """The cues moved later by ``seconds`` (the title card in front of the exported film)."""
+    if seconds <= 0:
+        return items
+    return [Cue(c.id, round(c.start + seconds, 3), round(c.end + seconds, 3), c.text) for c in items]
+
+
 def _stamp(seconds: float) -> str:
     millis = max(0, round(seconds * 1000))
     return f"{millis // 3600000:02d}:{millis // 60000 % 60:02d}:{millis // 1000 % 60:02d},{millis % 1000:03d}"
@@ -200,9 +207,10 @@ def _field(look: Any, *names: str) -> Any:
 
 def _project_look(project: Any) -> Any:
     """The project's own caption look (the brand kit, S15), or None while a project has none."""
-    for holder in (getattr(project, "brand", None), getattr(project, "export", None)):
-        look = _field(holder, "captionLook") if holder is not None else None
-        if look is not None:
+    brand = getattr(project, "brand", None)
+    for holder, names in ((brand, ("captionLook", "captions")), (getattr(project, "export", None), ("captionLook",))):
+        look = _field(holder, *names) if holder is not None else None
+        if look is not None and not isinstance(look, list):  # project.captions is the cue list, not a look
             return look
     return None
 

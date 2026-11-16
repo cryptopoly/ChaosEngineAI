@@ -161,6 +161,15 @@ export interface StoryboardExportSettings {
   stems: boolean;
   /** Scale the finished film up (lanczos) at the final encode; "none" keeps the project size. */
   upscale: StoryboardUpscale;
+  /** The brand kit on the film (S15); absent in projects saved before it. Draw the brand logo in its corner. */
+  showLogo?: boolean;
+  /** A title card before the first shot and an end card after the last, each `cardSeconds` long. */
+  titleCard?: boolean;
+  endCard?: boolean;
+  /** Card text; empty means the project name. */
+  titleText?: string;
+  endText?: string;
+  cardSeconds?: number;
 }
 
 /** One caption. With `clipId` the times are seconds in that clip's source; without, seconds on the timeline. */

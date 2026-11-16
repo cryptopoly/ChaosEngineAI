@@ -29,6 +29,8 @@ import type { ProjectTabId } from "./projectRoute";
 import type { UseStoryboardResult } from "./useStoryboard";
 import { useStoryboardRender, type UseStoryboardRenderResult } from "./useStoryboardRender";
 import { RoughCutButton } from "./preview/RoughCutButton";
+import { BrandCardsPanel } from "./BrandCardsPanel";
+import { brandSeconds } from "./preview/brandCards";
 import { VideoToolsPrompt } from "../videotools/VideoToolsPrompt";
 import { useVideoTools } from "../videotools/useVideoTools";
 
@@ -219,9 +221,15 @@ export function ExportTab({ story, project, timeline, dataDirectory, onTab, rend
           </button>
         </div>
       ) : null}
+      <BrandCardsPanel
+        project={project}
+        disabled={story.busy || rendering}
+        onChange={(change) => void story.op("edit_project", { export: change })}
+        onOpenCast={() => onTab("cast")}
+      />
       <ExportPanel
         project={project}
-        filmSeconds={exportedSeconds(timeline)}
+        filmSeconds={exportedSeconds(timeline) + (canRender(timeline) ? brandSeconds(project) : 0)}
         empty={!canRender(timeline)}
         rendering={rendering}
         exportJob={exportJob}

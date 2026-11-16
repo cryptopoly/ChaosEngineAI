@@ -222,20 +222,26 @@ class MusicRouteTests(_RouteBox):
 
     def test_unload_while_a_track_is_made_is_refused_and_the_job_finishes(self) -> None:
         result: dict = {}
+        # The fake engine holds the job after its first step until the gate file exists, so the unload below
+        # always lands while the track is being made (a 0.25 s step delay alone failed once under load).
+        gate = self.box.root / "gate"
 
         def make() -> None:
-            response = self.client.post("/api/music/generate", json={**INSTRUMENTAL, "caption": "slow delay=0.25"})
+            response = self.client.post("/api/music/generate", json={**INSTRUMENTAL, "caption": f"slow gate={gate}"})
             result["status"] = response.status_code
 
         thread = threading.Thread(target=make)
         thread.start()
-        deadline = time.monotonic() + 20
+        deadline = time.monotonic() + 30
         while not self.worker.busy() and time.monotonic() < deadline:
             time.sleep(0.05)
-        self.assertTrue(self.worker.busy())
-        response = self.client.post("/api/music/unload")
-        self.assertEqual(response.status_code, 409)
-        self.assertIn("Cancel it first", response.json()["detail"])
+        try:
+            self.assertTrue(self.worker.busy())
+            response = self.client.post("/api/music/unload")
+            self.assertEqual(response.status_code, 409)
+            self.assertIn("Cancel it first", response.json()["detail"])
+        finally:
+            gate.touch()
         thread.join(timeout=30)
         self.assertEqual(result.get("status"), 200)  # not reported as "worker exited"
         self.assertTrue(self.worker.running())

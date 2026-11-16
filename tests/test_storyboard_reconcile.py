@@ -1,4 +1,7 @@
-"""A project left running or queued by a crash or a power cut is made honest again (FU-179, plan S3)."""
+"""A project left running or queued by a crash or a power cut is made honest again (FU-179, plan S3).
+
+Since S-M1 the batch is ``paused`` with its unfinished steps queued for a resume; only a batch with nothing it can
+resume is ``interrupted`` (its steps ``cancelled`` with a note)."""
 
 import json
 import threading
@@ -42,15 +45,45 @@ class ReconcileOnLoadTests(ReconcileCase):
         loaded = self.store.load(project.id)
         self.assertEqual([s.status for s in loaded.shots], ["done", "idle", "idle"])
         batch = loaded.batches[0]
+        self.assertEqual(batch.state, "paused")
+        self.assertEqual(batch.pauseReason, "restart")
+        self.assertIsNotNone(batch.pausedAt)
+        self.assertIsNone(batch.finishedAt)
+        self.assertEqual([r.state for r in batch.results], ["done", "queued", "queued", "skipped"])
+        for result in batch.results[1:3]:
+            self.assertIsNone(result.error)
+        self.assertEqual(batch.results[3].error, "locked")
+        on_disk = json.loads(path.read_text())
+        self.assertEqual(on_disk["batches"][0]["state"], "paused")
+        self.assertEqual(on_disk["shots"][0]["status"], "done")
+
+    def test_steps_that_cannot_resume_are_cancelled_and_a_batch_with_none_left_is_interrupted(self):
+        project, path = self.stale_project()
+        data = json.loads(path.read_text())
+        removed = data["shots"].pop(1)  # the queued still's shot is gone
+        data["shots"][0]["takes"][0]["still"] = "media/gone.png"  # and the clip's still file
+        path.write_text(json.dumps(data))
+        loaded = self.store.load(project.id)
+        batch = loaded.batches[0]
         self.assertEqual(batch.state, "interrupted")
         self.assertIsNotNone(batch.finishedAt)
         self.assertEqual([r.state for r in batch.results], ["done", "cancelled", "cancelled", "skipped"])
+        self.assertEqual(batch.results[2].shotId, removed["id"])
         for result in batch.results[1:3]:
-            self.assertEqual(result.error, store_module.INTERRUPTED_NOTE)
-        self.assertEqual(batch.results[3].error, "locked")
-        on_disk = json.loads(path.read_text())
-        self.assertEqual(on_disk["batches"][0]["state"], "interrupted")
-        self.assertEqual(on_disk["shots"][0]["status"], "done")
+            self.assertEqual(result.error, store_module.CANNOT_RESUME_NOTE)
+
+    def test_a_paused_batch_stays_paused_and_loses_only_a_step_whose_shot_is_gone(self):
+        project, path = self.stale_project()
+        self.store.load(project.id)
+        before = path.read_bytes()
+        self.assertEqual(self.store.load(project.id).batches[0].state, "paused")
+        self.assertEqual(path.read_bytes(), before)  # a paused batch is not rewritten on every open
+        data = json.loads(path.read_text())
+        data["shots"].pop(1)
+        path.write_text(json.dumps(data))
+        batch = self.store.load(project.id).batches[0]
+        self.assertEqual(batch.state, "paused")
+        self.assertEqual([r.state for r in batch.results], ["done", "queued", "cancelled", "skipped"])
 
     def test_it_runs_again_on_a_later_open_not_only_the_first(self):
         project, path = self.stale_project()
@@ -85,7 +118,7 @@ class ReconcileOnLoadTests(ReconcileCase):
         LIVE_BATCHES.add("b_99999999")
         self.addCleanup(LIVE_BATCHES.discard, "b_99999999")
         loaded = self.store.load(project.id)
-        self.assertEqual([b.state for b in loaded.batches], ["interrupted", "running"])
+        self.assertEqual([b.state for b in loaded.batches], ["paused", "running"])
         self.assertEqual([s.status for s in loaded.shots], ["done", "idle", "running"])
 
 
@@ -96,7 +129,7 @@ class ReconcileAtStartTests(ReconcileCase):
         self.assertEqual(self.store.reconcile_all(), 2)
         for path in (first_path, second_path):
             data = json.loads(path.read_text())
-            self.assertEqual(data["batches"][0]["state"], "interrupted")
+            self.assertEqual(data["batches"][0]["state"], "paused")
             self.assertEqual([s["status"] for s in data["shots"]], ["done", "idle", "idle"])
         self.assertEqual(self.store.reconcile_all(), 0)
 
@@ -106,7 +139,7 @@ class ReconcileAtStartTests(ReconcileCase):
         broken.mkdir()
         (broken / "project.json").write_text("{not json")
         self.assertEqual(self.store.reconcile_all(), 1)
-        self.assertEqual(json.loads(path.read_text())["batches"][0]["state"], "interrupted")
+        self.assertEqual(json.loads(path.read_text())["batches"][0]["state"], "paused")
 
     def test_the_app_reconciles_when_it_starts(self):
         from starlette.testclient import TestClient
@@ -125,7 +158,7 @@ class ReconcileAtStartTests(ReconcileCase):
                 mock.patch.object(store_module.ProjectStore, "reconcile_all", spy):
             with TestClient(create_app(state=mock.MagicMock(), api_token="t")):
                 self.assertTrue(done.wait(10))
-        self.assertEqual(json.loads(path.read_text())["batches"][0]["state"], "interrupted")
+        self.assertEqual(json.loads(path.read_text())["batches"][0]["state"], "paused")
 
 
 if __name__ == "__main__":

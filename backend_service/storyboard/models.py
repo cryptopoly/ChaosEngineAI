@@ -22,6 +22,10 @@ MAX_CAPTIONS = 2000
 MAX_REF_IMAGES = 4  # pictures per character or place (front, side, detail...)
 MAX_PALETTE = 8  # colours kept per style reference (S15)
 MAX_PLAN_CHAT = 60  # direction chat messages kept with the project (S8)
+MAX_SONG_SECONDS = 1200.0  # a song a project can be cut to (S-M1): 20 minutes
+MAX_BEATS = 8000  # 20 minutes at 400 beats a minute
+MAX_SECTIONS = 200
+MAX_LYRICS = 500
 
 _ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
 PROJECT_ID_RE = re.compile(r"^[0-9a-f]{16}$")
@@ -324,16 +328,69 @@ class BatchResult(_Model):
     error: Annotated[str, Field(max_length=1000)] | None = None
 
 
+class SongSection(_Model):
+    """One part of the song (S-M1): seconds in the song, a short label and how loud it is within the song (0 to 1)."""
+
+    start: Annotated[float, Field(ge=0, le=MAX_SONG_SECONDS)]
+    end: Annotated[float, Field(ge=0, le=MAX_SONG_SECONDS)]
+    label: Annotated[str, Field(max_length=40), AfterValidator(check_line)] = ""
+    energy: float | None = Field(None, ge=0, le=1)
+
+    @model_validator(mode="after")
+    def _ordered(self) -> "SongSection":
+        if self.end <= self.start:
+            raise ValueError("a section must end after it starts")
+        return self
+
+
+class Song(_Model):
+    """The song a music video is cut to (S-M1): its file in the project, what the analysis found (tempo, beats,
+    sections, all estimates: ``rough`` and ``note`` say so), the lyrics, and the mixer clip it was put on."""
+
+    path: RelPath
+    hash: Sha256 | None = None
+    title: Line = ""
+    seconds: float = Field(gt=0, le=MAX_SONG_SECONDS)
+    bpm: float | None = Field(None, ge=30, le=400)
+    beats: list[Annotated[float, Field(ge=0, le=MAX_SONG_SECONDS)]] = Field(default_factory=list, max_length=MAX_BEATS)
+    sections: list[SongSection] = Field(default_factory=list, max_length=MAX_SECTIONS)
+    lyrics: list[Line] = Field(default_factory=list, max_length=MAX_LYRICS)
+    clipId: Id | None = None
+    libraryId: Annotated[str, Field(pattern=r"^\d+_[0-9a-f]{8}$")] | None = None
+    rough: bool = True
+    note: Annotated[str, Field(max_length=600), AfterValidator(check_text)] = ""
+    analysedAt: float = 0.0
+
+    @model_validator(mode="after")
+    def _ordered(self) -> "Song":
+        if any(b < a for a, b in zip(self.beats, self.beats[1:])):
+            raise ValueError("beats must be in time order")
+        if any(b.start < a.start for a, b in zip(self.sections, self.sections[1:])):
+            raise ValueError("sections must be in time order")
+        if any(s.end > self.seconds + 0.5 for s in self.sections):
+            raise ValueError("a section ends after the song")
+        return self
+
+
+BatchState = Literal["queued", "running", "paused", "done", "failed", "cancelled", "interrupted"]
+
+
 class BatchRecord(_Model):
     id: Id
     # final: kept shots again with the quality model, then clips; redo-clip / redo-still: one half again, new seed (S11)
     what: Literal["still", "clip", "both", "final", "redo-clip", "redo-still"]
     force: bool = False
     draft: bool = False  # a "Make drafts" run: the fast model at a smaller size
-    state: Literal["queued", "running", "done", "failed", "cancelled", "interrupted"] = "queued"
+    # paused: stopped between two steps (Pause, or the app stopped while it ran); its queued results are the
+    # steps a resume runs. interrupted: stopped with nothing left it can resume (S3).
+    state: BatchState = "queued"
     createdAt: float = 0.0
     finishedAt: float | None = None
     results: list[BatchResult] = Field(default_factory=list, max_length=2 * MAX_SHOTS)
+    pausedAt: float | None = None
+    pauseReason: Literal["user", "restart"] | None = None
+    resumedAt: float | None = None
+    resumes: int = Field(0, ge=0, le=10000)
 
 
 class Project(_Model):
@@ -347,6 +404,7 @@ class Project(_Model):
     plan: Plan = Field(default_factory=Plan)
     brand: Brand = Field(default_factory=Brand)
     planChat: list[PlanMessage] = Field(default_factory=list, max_length=MAX_PLAN_CHAT)  # not undoable
+    song: Song | None = None  # the song a music video is cut to (S-M1)
     shots: list[Shot] = Field(default_factory=list, max_length=MAX_SHOTS)
     audio: list[AudioClip] = Field(default_factory=list, max_length=MAX_AUDIO)
     export: ExportSettings = Field(default_factory=ExportSettings)

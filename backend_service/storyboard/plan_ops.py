@@ -48,14 +48,15 @@ class PlannedShot(_Args):
     motionPrompt: Prompt = ""
     seconds: float = Field(4.0, ge=0.5, le=60)
     referenceImages: list[Id] = Field(default_factory=list, max_length=8)
+    trimOut: float | None = Field(None, ge=0, le=3600)  # a cut plan ends the clip on the music (S-M1)
 
 
 class ApplyPlan(_Args):
     """``replace``: the planned shots take the place of every shot (they stay in Undo); ``append``: they go
-    after the shots already there."""
+    after the shots already there. Up to ``MAX_SHOTS``: a cut plan from a song (S-M1) has one shot per cut."""
 
     mode: Literal["replace", "append"] = "append"
-    shots: list[PlannedShot] = Field(min_length=1, max_length=MAX_PLANNED_SHOTS)
+    shots: list[PlannedShot] = Field(min_length=1, max_length=MAX_SHOTS)
 
 
 class ShotChange(_Args):
@@ -117,7 +118,7 @@ def _check_refs(p: Project, ids: list[str]) -> None:
 def _new_shot(p: Project, planned: PlannedShot) -> Shot:
     _check_refs(p, planned.referenceImages)
     return Shot(id=new_id("s"), title=planned.title, stillPrompt=planned.stillPrompt, motionPrompt=planned.motionPrompt,
-                seconds=planned.seconds, referenceImages=list(planned.referenceImages))
+                seconds=planned.seconds, referenceImages=list(planned.referenceImages), trimOut=planned.trimOut)
 
 
 def set_plan(p: Project, folder: Path, a: SetPlan) -> None:

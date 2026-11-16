@@ -17,6 +17,11 @@ Redo one half (S11): ``what="redo-clip"`` makes a new take that keeps the active
 ``what="redo-still"`` makes a new take with a new still that keeps the old clip until it is remade (the clip records
 the still it started from, so ``deps.clip_outdated`` marks the shot stale and the next Make remakes only the clip).
 Both ask the makers for a new seed (the shot's own seed is left alone) and keep the pass of the take they redo.
+
+Pause and resume (S-M1): ``pause`` stops the run after the step in progress; the record becomes ``paused`` and its
+``queued`` results are the steps left. A record a dead process left running is made ``paused`` by the store's
+reconcile. ``resume`` continues a paused record under its own id from those steps; a still made before the pause
+still gets its clip in the same take (the done result keeps its ``takeId``). Progress counts the whole batch.
 """
 
 from __future__ import annotations
@@ -156,7 +161,9 @@ class Batch:
         self.clip_image_refusal = clip_image_refusal
         self._refusal: tuple[str | None, str | None] | None = None  # (video model, reason) cache
         self.cancel_event = threading.Event()
+        self.pause_event = threading.Event()
         self.done = threading.Event()
+        self._prior = {"still": 0, "clip": 0}  # steps of each kind that ended before a resume (S-M1)
         self.steps: list[tuple[str, str]] = []  # (shot id, still|clip), stills first
         self._takes: dict[str, str] = {}  # shot id -> take made in this run
         self._began: float | None = None  # monotonic start of ``run``
@@ -294,6 +301,19 @@ class Batch:
             BATCHES[self.id] = self
         return project
 
+    def resume(self, batch_id: str, expected_revision: int | None) -> Project:
+        """Take over the paused record ``batch_id`` and queue its remaining steps (revision-checked); then ``run``."""
+        from backend_service.storyboard.batch_queue import resume_record
+
+        return resume_record(self, batch_id, expected_revision)
+
+    def pause(self) -> bool:
+        """Stop after the step in progress; the record becomes ``paused`` with its remaining steps kept."""
+        if self.done.is_set():
+            return False
+        self.pause_event.set()
+        return True
+
     def start_thread(self) -> None:
         threading.Thread(target=self.run, name=f"storyboard-{self.id}", daemon=True).start()
 
@@ -357,16 +377,17 @@ class Batch:
         steps, now = list(self.steps), time.monotonic()
         current = self._current
         finished = list(self._finished_steps)
-        info: dict[str, Any] = {"totalSteps": len(steps)}
+        prior = dict(self._prior)
+        info: dict[str, Any] = {"totalSteps": len(steps) + sum(prior.values())}
         if self._began is not None:
             info["elapsedSeconds"] = round(now - self._began, 1)
         done_by_kind = {k: sum(1 for kk, _ in finished if kk == k) for k in ("still", "clip")}
-        total_by_kind = {k: sum(1 for _, kk in steps if kk == k) for k in ("still", "clip")}
+        total_by_kind = {k: sum(1 for _, kk in steps if kk == k) + prior[k] for k in ("still", "clip")}
         processed = min(self._processed, len(steps))
-        info["step"] = min(len(steps), processed + (1 if current else 0))
+        info["step"] = min(len(steps), processed + (1 if current else 0)) + sum(prior.values())
         if current is not None:
             kind = current[1]
-            index = sum(1 for _, kk in steps[:processed] if kk == kind) + 1
+            index = sum(1 for _, kk in steps[:processed] if kk == kind) + 1 + prior[kind]
             info["phase"] = f"{kind} {index} of {total_by_kind[kind]}"
             info["kind"], info["kindIndex"], info["kindTotal"], info["shotId"] = kind, index, total_by_kind[kind], current[0]
             info["stepElapsedSeconds"] = round(now - current[2], 1)
@@ -411,6 +432,9 @@ class Batch:
             for shot_id, kind in self.steps:
                 if self.cancel_event.is_set():
                     state = "cancelled"
+                    break
+                if self.pause_event.is_set():
+                    state = "paused"
                     break
                 if kind == "clip" and ran_still:
                     self.unload("image")
@@ -566,7 +590,12 @@ class Batch:
     def _finish(self, state: str) -> None:
         def change(p: Project, folder: Path) -> None:
             record = next((b for b in p.batches if b.id == self.id), None)
-            if record is not None:
+            if record is not None and state == "paused":
+                record.state, record.pausedAt, record.pauseReason = "paused", time.time(), "user"
+                for result in record.results:
+                    if result.state == "running":
+                        result.state = "queued"
+            elif record is not None:
                 record.state, record.finishedAt = state, time.time()  # type: ignore[assignment]
                 for result in record.results:
                     if result.state in ("queued", "running"):

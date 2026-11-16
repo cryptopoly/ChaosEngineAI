@@ -32,6 +32,7 @@ def register_routes(app: FastAPI) -> None:
     from .agent import router as agent_router
     from .storyboard import router as storyboard_router
     from .storyboard_films import router as storyboard_films_router
+    from .storyboard_long import router as storyboard_long_router
     from .music import router as music_router
     from .music_library import router as music_library_router
     from .skills import router as skills_router
@@ -63,6 +64,7 @@ def register_routes(app: FastAPI) -> None:
     app.include_router(agent_router)
     app.include_router(storyboard_router)
     app.include_router(storyboard_films_router)
+    app.include_router(storyboard_long_router)
     app.include_router(music_router)
     app.include_router(music_library_router)
     app.include_router(skills_router)

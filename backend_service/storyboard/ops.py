@@ -584,6 +584,12 @@ from backend_service.storyboard.plan_ops import PLAN_FILE_ARGS, PLAN_OPS  # noqa
 OPS.update(PLAN_OPS)
 _FILE_ARGS.update(PLAN_FILE_ARGS)
 
+# The song ops (S-M1) live in song_ops, registered the same way.
+from backend_service.storyboard.song_ops import SONG_FILE_ARGS, SONG_OPS  # noqa: E402
+
+OPS.update(SONG_OPS)
+_FILE_ARGS.update(SONG_FILE_ARGS)
+
 
 def parse_args(op: str, args: dict[str, Any]) -> Any:
     if op not in OPS:

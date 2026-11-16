@@ -29,6 +29,7 @@ import type {
 } from "../../types";
 import { createBusyGate, type BusyGate } from "./busyGate";
 import { classifyFailure, isBatchPaused, isBatchRunning } from "./storyboardLogic";
+import { createUnsavedTextStore, type UnsavedTextStore } from "./unsavedText";
 
 export const BATCH_POLL_MS = 1500;
 
@@ -80,6 +81,8 @@ export interface UseStoryboardResult {
    * Any other failure rejects, so the caller shows it where it was asked.
    */
   call?: (run: (projectId: string, revision: number) => Promise<StoryboardProjectPayload>) => Promise<boolean>;
+  /** Typed text whose save did not land, per field, for this project (S-O, `useUnsavedText`). */
+  unsaved?: UnsavedTextStore;
 }
 
 function message(err: unknown): string {
@@ -108,6 +111,7 @@ export function useStoryboard(enabled: boolean, projectId: string | null): UseSt
   const [batch, setBatch] = useState<StoryboardBatchRecord | null>(null);
   const [batchProgress, setBatchProgress] = useState<JobProgress | StoryboardPausedProgress | null>(null);
   const [pausing, setPausing] = useState(false);
+  const [unsaved] = useState(createUnsavedTextStore);
 
   const projectRef = useRef<StoryboardProject | null>(null);
   const idRef = useRef<string | null>(projectId);
@@ -197,7 +201,10 @@ export function useStoryboard(enabled: boolean, projectId: string | null): UseSt
           return true;
         } catch (err) {
           // `call` hands every failure but a stale revision back to its caller, to show where it was asked.
-          if (rethrow && classifyFailure(err).kind !== "conflict") throw err;
+          const kind = classifyFailure(err).kind;
+          if (rethrow && kind !== "conflict") throw err;
+          // Read by a field whose save this was, right after the change resolves false (useUnsavedText).
+          unsaved.lastFailure = kind === "conflict" ? "conflict" : "failed";
           await handleFailure(err);
           return false;
         } finally {
@@ -208,7 +215,7 @@ export function useStoryboard(enabled: boolean, projectId: string | null): UseSt
       queue.current = task.catch(() => false);
       return task;
     },
-    [adopt, handleFailure],
+    [adopt, handleFailure, unsaved],
   );
 
   const op = useCallback(
@@ -366,5 +373,6 @@ export function useStoryboard(enabled: boolean, projectId: string | null): UseSt
     pauseBatch,
     resumeBatch,
     call,
+    unsaved,
   };
 }

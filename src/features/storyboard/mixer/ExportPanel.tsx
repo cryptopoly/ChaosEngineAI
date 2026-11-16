@@ -34,6 +34,8 @@ import {
 } from "./mixerLogic";
 import { formatTimecode } from "./timelineGeometry";
 import { FilmList } from "../FilmList";
+import type { SaveResult } from "../unsavedText";
+import { useUnsavedText } from "../useUnsavedText";
 
 // ---- AI label ----
 export interface AiLabelNoticeProps {
@@ -137,10 +139,16 @@ function ResumeCard({ job, disabled, onResume }: { job: StoryboardRenderJob; dis
 }
 
 // ---- loudness ----
-function LoudnessField({ value, disabled, onCommit }: { value: number | null; disabled: boolean; onCommit: (lufs: number | null) => void }) {
+function LoudnessField({ value, disabled, onCommit }: { value: number | null; disabled: boolean; onCommit: (lufs: number | null) => SaveResult }) {
   const { t } = useTranslation("studio");
   const [text, setText] = useState(value == null ? "" : String(value));
   useEffect(() => setText(value == null ? "" : String(value)), [value]);
+  const unsaved = useUnsavedText("export:loudness", {
+    text,
+    dirty: text !== (value == null ? "" : String(value)),
+    send: (typed) => onCommit(typed === "" ? null : Number(typed)),
+    restore: setText,
+  });
   const commit = () => {
     const parsed = parseLoudness(text);
     if (parsed === undefined) {
@@ -148,38 +156,41 @@ function LoudnessField({ value, disabled, onCommit }: { value: number | null; di
       return;
     }
     setText(parsed == null ? "" : String(parsed));
-    if (parsed !== value) onCommit(parsed);
+    if (parsed !== value) unsaved.save(parsed == null ? "" : String(parsed));
   };
   return (
-    <label className="export-panel__loudness">
-      <span className="eyebrow">{t("mixer.export.loudness", { defaultValue: "Loudness target" })}</span>
-      <span className="clip-inspector__number">
-        <input
-          type="number"
-          min={-40}
-          max={-5}
-          step={0.5}
-          value={text}
-          disabled={disabled}
-          placeholder={t("mixer.export.loudnessOff", { defaultValue: "Off" })}
-          onChange={(event) => setText(event.target.value)}
-          onBlur={commit}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              event.preventDefault();
-              commit();
-            }
-          }}
-        />
-        <span aria-hidden="true">LUFS</span>
-      </span>
-      <span className="muted-text export-panel__hint">
-        {t("mixer.export.loudnessHint", {
-          defaultValue: "{target} LUFS suits web video. Empty leaves the mix as it is.",
-          target: LOUDNESS_SUGGESTED,
-        })}
-      </span>
-    </label>
+    <>
+      <label className="export-panel__loudness">
+        <span className="eyebrow">{t("mixer.export.loudness", { defaultValue: "Loudness target" })}</span>
+        <span className="clip-inspector__number">
+          <input
+            type="number"
+            min={-40}
+            max={-5}
+            step={0.5}
+            value={text}
+            disabled={disabled}
+            placeholder={t("mixer.export.loudnessOff", { defaultValue: "Off" })}
+            onChange={(event) => setText(event.target.value)}
+            onBlur={commit}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                commit();
+              }
+            }}
+          />
+          <span aria-hidden="true">LUFS</span>
+        </span>
+        <span className="muted-text export-panel__hint">
+          {t("mixer.export.loudnessHint", {
+            defaultValue: "{target} LUFS suits web video. Empty leaves the mix as it is.",
+            target: LOUDNESS_SUGGESTED,
+          })}
+        </span>
+      </label>
+      {unsaved.notice}
+    </>
   );
 }
 
@@ -215,7 +226,7 @@ export interface ExportPanelProps {
   onPreset: (preset: StoryboardExportPreset) => void;
   onUpscale: (upscale: StoryboardUpscale) => void;
   onAiLabel: (change: { metadata?: boolean }) => void;
-  onLoudness: (lufs: number | null) => void;
+  onLoudness: (lufs: number | null) => SaveResult;
   onExport: () => void;
   onCaptionOptions: (change: CaptionsExportChange) => void;
   editor: EditorExportState;

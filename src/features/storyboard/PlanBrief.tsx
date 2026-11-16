@@ -16,6 +16,7 @@ import { PlanSuggestion } from "./PlanSuggestion";
 import { ProjectImage } from "./ProjectMedia";
 import { ReferenceImagePicker } from "./ReferenceImagePicker";
 import type { UseStoryboardResult } from "./useStoryboard";
+import { useUnsavedText } from "./useUnsavedText";
 
 export interface PlanBriefProps {
   story: UseStoryboardResult;
@@ -51,10 +52,17 @@ export function PlanBrief({ story, project, imageGallery, canPropose, proposing,
   const pictures = styles.flatMap((ref) => ref.images.map((image, index) => ({ ref, image, index })));
   const palette = projectPalette(project);
 
+  const unsaved = useUnsavedText("plan:brief", {
+    text: brief,
+    dirty: brief !== saved.current,
+    send: (text) => story.op("set_plan", { brief: text }),
+    restore: setBrief,
+  });
+
   function saveBrief() {
     if (brief === saved.current) return;
     saved.current = brief;
-    void story.op("set_plan", { brief });
+    unsaved.save(brief);
   }
 
   function setLength(seconds: number | null) {
@@ -123,6 +131,7 @@ export function PlanBrief({ story, project, imageGallery, canPropose, proposing,
           <span className="muted-text plan-brief__count">{t("board.plan.brief.count", { defaultValue: "{n} of 4000 characters", n: brief.length })}</span>
         ) : null}
       </label>
+      {unsaved.notice}
 
       <div className="plan-brief__options">
         <div className="plan-brief__option" role="group" aria-labelledby="plan-length-label">

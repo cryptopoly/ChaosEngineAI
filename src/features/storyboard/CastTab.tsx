@@ -153,7 +153,7 @@ export function CastTab({ story, project, imageGallery }: CastTabProps) {
                   usedBy={usedByCount(project, reference.id)}
                   disabled={busy}
                   autoFocus={reference.id === addedId}
-                  onEdit={(patch) => void story.op("edit_reference", { refId: reference.id, ...patch })}
+                  onEdit={(patch) => story.op("edit_reference", { refId: reference.id, ...patch })}
                   onRemove={() => void story.op("remove_reference", { refId: reference.id })}
                   onRemovePicture={(index) => void story.op("edit_reference", { refId: reference.id, removeImage: index })}
                   onOpenPicker={() => setPickerFor(reference)}

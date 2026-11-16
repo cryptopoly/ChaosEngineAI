@@ -8,6 +8,7 @@ import { useTranslation } from "react-i18next";
 import { getLyricsSpeechStatus, makeStoryboardLyricCaptions } from "../../../api/storyboard";
 import type { StoryboardSong } from "../../../types";
 import type { UseStoryboardResult } from "../useStoryboard";
+import { useUnsavedText } from "../useUnsavedText";
 import { lyricsToLines, sameLines } from "./songLogic";
 
 type Timing = "auto" | "sections" | "speech";
@@ -38,11 +39,18 @@ export function SongLyrics({ story, song, projectId }: { story: UseStoryboardRes
     };
   }, []);
 
+  const unsaved = useUnsavedText("song:lyrics", {
+    text,
+    dirty: !sameLines(lyricsToLines(text), saved.current),
+    send: (value) => story.op("edit_song", { lyrics: lyricsToLines(value) }),
+    restore: setText,
+  });
+
   function save() {
     const lines = lyricsToLines(text);
     if (sameLines(lines, saved.current)) return;
     saved.current = lines;
-    void story.op("edit_song", { lyrics: lines });
+    unsaved.save(text);
   }
 
   // Not disabled while the project is busy: the op queue runs the timing after the lyrics' blur-save (busyGate.ts).
@@ -81,6 +89,7 @@ export function SongLyrics({ story, song, projectId }: { story: UseStoryboardRes
         onChange={(event) => setText(event.target.value)}
         onBlur={save}
       />
+      {unsaved.notice}
       <div className="song-lyrics__row">
         <label className="song-lyrics__timing">
           <span>{t("board.song.timing", { defaultValue: "Timing" })}</span>

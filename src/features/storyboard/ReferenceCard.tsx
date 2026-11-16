@@ -10,6 +10,8 @@ import type { StoryboardRefImage, StoryboardReference } from "../../types";
 import { PaletteSwatches } from "./PaletteSwatches";
 import { MAX_PICTURES, isSmallPicture, picturesFrom } from "./pickerLogic";
 import { useProjectFileUrl } from "./ProjectMedia";
+import type { SaveResult } from "./unsavedText";
+import { useUnsavedText } from "./useUnsavedText";
 
 export interface ReferenceCardProps {
   projectId: string;
@@ -18,7 +20,8 @@ export interface ReferenceCardProps {
   disabled: boolean;
   /** Focus the name field on arrival (a card just added). */
   autoFocus?: boolean;
-  onEdit: (patch: { name?: string; description?: string }) => void;
+  /** Saves the name and / or description; a promise of whether it landed keeps refused text (S-O). */
+  onEdit: (patch: { name?: string; description?: string }) => SaveResult;
   onRemove: () => void;
   onRemovePicture: (index: number) => void;
   onOpenPicker: () => void;
@@ -89,13 +92,27 @@ export function ReferenceCard({
   useEffect(() => {
     if (autoFocus) nameField.current?.focus();
   }, [autoFocus]);
+  const unsavedName = useUnsavedText(`ref:${reference.id}:name`, {
+    text: name,
+    dirty: name !== saved.current.name,
+    send: (text) => onEdit({ name: text }),
+    restore: setName,
+  });
+  const unsavedDescription = useUnsavedText(`ref:${reference.id}:description`, {
+    text: description,
+    dirty: description !== saved.current.description,
+    send: (text) => onEdit({ description: text }),
+    restore: setDescription,
+  });
   function flush() {
     const patch: { name?: string; description?: string } = {};
     if (name !== saved.current.name) patch.name = name;
     if (description !== saved.current.description) patch.description = description;
     if (Object.keys(patch).length === 0) return;
     saved.current = { name, description };
-    onEdit(patch);
+    const result = onEdit(patch);
+    if (patch.name !== undefined) unsavedName.track(name, result);
+    if (patch.description !== undefined) unsavedDescription.track(description, result);
   }
 
   function onDrop(event: DragEvent) {
@@ -175,6 +192,7 @@ export function ReferenceCard({
             if (event.key === "Enter") flush();
           }}
         />
+        {unsavedName.notice}
         <textarea
           className="text-area"
           rows={2}
@@ -185,6 +203,7 @@ export function ReferenceCard({
           onChange={(event) => setDescription(event.target.value)}
           onBlur={flush}
         />
+        {unsavedDescription.notice}
         {palette !== undefined ? (
           palette.length > 0 ? (
             <div className="cast-card__palette">

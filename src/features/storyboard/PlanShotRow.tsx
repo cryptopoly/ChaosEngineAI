@@ -11,6 +11,7 @@ import { takeStyle } from "./planLogic";
 import { PlanReworkChat } from "./PlanReworkChat";
 import type { UseStoryboardResult } from "./useStoryboard";
 import { useRework } from "./useRework";
+import { useUnsavedText } from "./useUnsavedText";
 
 export interface PlanShotRowProps {
   story: UseStoryboardResult;
@@ -41,11 +42,30 @@ export function PlanShotRow({ story, projectId, shot, number, canAsk, onModelMis
   const [open, setOpen] = useState(false);
   const rework = useRework(story, projectId, shot, canAsk, onModelMissing);
 
+  // Each field keeps its text when the save is refused (S-O): the latest shows, with "Put it back" under it.
+  const textField = (key: "title" | "stillPrompt" | "motionPrompt") => ({
+    text: fields[key],
+    dirty: fields[key] !== saved.current[key],
+    send: (text: string) => story.op("edit_shot", { shotId: shot.id, [key]: text }),
+    restore: (text: string) => setFields((current) => ({ ...current, [key]: text })),
+  });
+  const unsaved = {
+    title: useUnsavedText(`plan:${shot.id}:title`, textField("title")),
+    stillPrompt: useUnsavedText(`plan:${shot.id}:stillPrompt`, textField("stillPrompt")),
+    motionPrompt: useUnsavedText(`plan:${shot.id}:motionPrompt`, textField("motionPrompt")),
+  };
+  const unsavedSeconds = useUnsavedText(`plan:${shot.id}:seconds`, {
+    text: fields.seconds,
+    dirty: Number(fields.seconds) !== saved.current.seconds,
+    send: (text) => story.op("edit_shot", { shotId: shot.id, seconds: Math.round(Number(text) * 10) / 10 }),
+    restore: (text) => setFields((current) => ({ ...current, seconds: text })),
+  });
+
   function save(key: "title" | "stillPrompt" | "motionPrompt") {
     const value = fields[key];
     if (value === saved.current[key]) return;
     saved.current = { ...saved.current, [key]: value };
-    void story.op("edit_shot", { shotId: shot.id, [key]: value });
+    unsaved[key].save(value);
   }
 
   function saveSeconds() {
@@ -56,7 +76,7 @@ export function PlanShotRow({ story, projectId, shot, number, canAsk, onModelMis
     }
     if (value === saved.current.seconds) return;
     saved.current = { ...saved.current, seconds: value };
-    void story.op("edit_shot", { shotId: shot.id, seconds: value });
+    unsavedSeconds.save(String(value));
   }
   const style = takeStyle(shot);
   const rowId = `plan-shot-${shot.id}`;
@@ -103,6 +123,8 @@ export function PlanShotRow({ story, projectId, shot, number, canAsk, onModelMis
             </span>
           ) : null}
         </div>
+        {unsaved.title.notice}
+        {unsavedSeconds.notice}
         <textarea
           className="text-area plan-shot__prompt"
           rows={3}
@@ -114,6 +136,7 @@ export function PlanShotRow({ story, projectId, shot, number, canAsk, onModelMis
           onChange={(event) => setFields({ ...fields, stillPrompt: event.target.value })}
           onBlur={() => save("stillPrompt")}
         />
+        {unsaved.stillPrompt.notice}
         <textarea
           className="text-area plan-shot__motion"
           rows={1}
@@ -125,6 +148,7 @@ export function PlanShotRow({ story, projectId, shot, number, canAsk, onModelMis
           onChange={(event) => setFields({ ...fields, motionPrompt: event.target.value })}
           onBlur={() => save("motionPrompt")}
         />
+        {unsaved.motionPrompt.notice}
         <div className="plan-shot__actions">
           <button
             type="button"

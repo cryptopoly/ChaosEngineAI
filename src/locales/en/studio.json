@@ -2145,6 +2145,16 @@
       "timingWorking": "Timing the lyrics…",
       "title": "Song",
       "untitled": "Untitled"
+    },
+    "unsaved": {
+      "title": "Your text was not saved",
+      "conflict": "It changed elsewhere first; the field shows the latest.",
+      "failed": "The backend did not answer.",
+      "empty": "(empty)",
+      "putBack": "Put it back",
+      "retry": "Retry",
+      "keepLatest": "Keep the latest",
+      "discard": "Discard my text"
     }
   },
   "storyProjects": {

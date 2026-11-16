@@ -112,7 +112,7 @@ export function SongPanel({ story, project }: { story: UseStoryboardResult; proj
             disabled={busy}
             onRename={(index, label) => {
               const sections = relabel(song.sections, index, label);
-              if (sections) void story.op("edit_song", { sections });
+              return sections ? story.op("edit_song", { sections }) : undefined;
             }}
           />
           {song.rough ? (

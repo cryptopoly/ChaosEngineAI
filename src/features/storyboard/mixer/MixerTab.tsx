@@ -752,7 +752,7 @@ export function MixerTab({ story, project, timeline, dataDirectory, onOpenShot, 
               onAdd={(startS) =>
                 void story.op("add_caption", { start: startS, end: startS + 2, text: t("mixer.captions.newText", { defaultValue: "New caption" }) })
               }
-              onEditText={(id, text) => void story.op("edit_caption", { captionId: id, text })}
+              onEditText={(id, text) => story.op("edit_caption", { captionId: id, text })}
               onRemove={(id) => void story.op("remove_caption", { captionId: id })}
               onExportSrt={() => void writeSrt()}
               onReveal={(file) => void chooseReveal(file)}

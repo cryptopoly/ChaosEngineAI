@@ -224,7 +224,7 @@ export function ExportTab({ story, project, timeline, dataDirectory, onTab, rend
       <BrandCardsPanel
         project={project}
         disabled={story.busy || rendering}
-        onChange={(change) => void story.op("edit_project", { export: change })}
+        onChange={(change) => story.op("edit_project", { export: change })}
         onOpenCast={() => onTab("cast")}
       />
       <ExportPanel
@@ -244,7 +244,7 @@ export function ExportTab({ story, project, timeline, dataDirectory, onTab, rend
           if (patch) void story.op("edit_project", patch);
         }}
         onUpscale={(upscale) => void story.op("edit_project", { export: { upscale } })}
-        onLoudness={(lufs) => void story.op("edit_project", { export: { loudnessLufs: lufs } })}
+        onLoudness={(lufs) => story.op("edit_project", { export: { loudnessLufs: lufs } })}
         onExport={() => void render.start(project.revision, false)}
         onCaptionOptions={(change) => {
           const patch = captionsExportPatch(change);

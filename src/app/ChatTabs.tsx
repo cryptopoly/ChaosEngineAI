@@ -33,6 +33,7 @@ export function ChatView({ ctx }: { ctx: AppTabContext }) {
     draftMessage,
     setDraftMessage,
     chatBusySessionId,
+    detachedTurn,
     pendingImages,
     setPendingImages,
     chatScrollRef,
@@ -70,6 +71,7 @@ export function ChatView({ ctx }: { ctx: AppTabContext }) {
       draftMessage={draftMessage}
       pendingImages={pendingImages}
       chatBusySessionId={chatBusySessionId}
+      detachedTurn={detachedTurn}
       busy={busy}
       busyAction={busyAction}
       chatScrollRef={chatScrollRef}

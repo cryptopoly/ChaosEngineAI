@@ -488,7 +488,9 @@
       "stepOf": null,
       "tookFor": null,
       "clipOf": null,
-      "stillOf": null
+      "stillOf": null,
+      "notStarted": null,
+      "notStartedHint": null
     },
     "kind": {
       "image": null,
@@ -504,6 +506,10 @@
       "label": null,
       "tooltip": null,
       "off": null
+    },
+    "detached": {
+      "waiting": null,
+      "running": null
     }
   },
   "skillsChat": {

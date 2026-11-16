@@ -371,6 +371,17 @@ export async function decideStudioPlan(planId: string, body: StudioPlanDecisionB
   await postJson(`/api/chat/studio/plans/${encodeURIComponent(planId)}/decision`, body, 10000);
 }
 
+/** S-J: whether a chat's studio turn still runs (it goes on after a window reload) and the cards it waits on. */
+export interface StudioTurn {
+  sessionId: string;
+  running: boolean;
+  plans: StudioPlan[];
+}
+
+export async function fetchStudioTurn(sessionId: string): Promise<StudioTurn> {
+  return fetchJson<StudioTurn>(`/api/chat/studio/sessions/${encodeURIComponent(sessionId)}/turn`, 10000);
+}
+
 export async function fetchStudioJob(jobId: string): Promise<StudioJob> {
   const result = await fetchJson<{ job: StudioJob }>(`/api/chat/studio/jobs/${encodeURIComponent(jobId)}`, 10000);
   return result.job;

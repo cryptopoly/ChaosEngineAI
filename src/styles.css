@@ -14667,6 +14667,12 @@ select.music-library__select {
   color: var(--accent);
 }
 
+.message-detached-note {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 4px 0;
+}
+
 .studio-plan-stack {
   display: flex;
   flex-direction: column;
@@ -14849,6 +14855,21 @@ select.music-library__select {
   flex-wrap: wrap;
   gap: 8px;
   color: var(--muted);
+}
+
+.studio-job-card--refused {
+  border-left: 3px solid var(--danger);
+}
+
+.studio-job-card--refused .studio-job-card__error {
+  font-size: 13px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.studio-job-card__hint {
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .studio-job-card__head {

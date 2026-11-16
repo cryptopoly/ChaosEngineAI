@@ -46,6 +46,7 @@ import {
   writeStudioToolsEnabled,
 } from "../features/chat/studioChat";
 import { readChatSkillsEnabled } from "../features/chat/skillsChat";
+import { useDetachedTurn } from "../features/chat/detachedTurn";
 import type {
   ChatMessage,
   ChatSession,
@@ -135,6 +136,10 @@ export function useChat(
 
   const sortedChatSessions = sortSessions(workspace.chatSessions).filter((session) => !isUnsavedEmptySession(session));
   const activeChat = workspace.chatSessions.find((session) => session.id === activeChatId) ?? sortedChatSessions[0];
+  // S-J: a studio turn of this thread that runs on after a window reload: its waiting cards show again, the
+  // thread counts as busy (Stop cancels it) and the reply is loaded when it is saved.
+  const detachedTurn = useDetachedTurn(activeChat, chatBusySessionId, (sessionId) => void refreshWorkspace(sessionId));
+  const busySessionId = chatBusySessionId ?? detachedTurn?.sessionId ?? null;
   const activeThinkingMode: ChatThinkingMode = activeChat?.thinkingMode === "auto" ? "auto" : "off";
   const activeRuntimeProfile = resolveChatRuntimeProfile(activeChat, launchSettings);
   const activeRuntimeProfileMatchesLaunchSettings = (() => {
@@ -1091,7 +1096,7 @@ export function useChat(
     // First, ask the backend to flip the cancel flag for the active session
     // so the streaming loop stops generating tokens. Then abort the local
     // fetch so the client stops decoding remaining buffered output.
-    const activeSessionId = chatBusySessionId;
+    const activeSessionId = busySessionId;
     if (activeSessionId) {
       void cancelChatGeneration(activeSessionId).catch(() => {
         // Backend may already be done or unreachable; client-side abort still applies
@@ -1111,7 +1116,8 @@ export function useChat(
     setThreadTitleDraft,
     draftMessage,
     setDraftMessage,
-    chatBusySessionId,
+    chatBusySessionId: busySessionId,
+    detachedTurn,
     pendingImages,
     setPendingImages,
     enableTools,

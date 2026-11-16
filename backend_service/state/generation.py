@@ -466,6 +466,9 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest, app_reque
                 if requested_title and requested_title != "New chat"
                 else state._auto_session_title(request.prompt, exclude_session_id=session["id"])
             )
+        # Saved now, not when the reply ends: a reload while the turn runs (or waits on a plan card) lists the
+        # thread by its first message, not "New chat".
+        state._persist_sessions()
         model_tag = state.runtime.loaded_model.name
         state.add_log("chat", "info", f"[{model_tag}] Streaming response...")
         state.active_requests += 1
@@ -1035,16 +1038,46 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest, app_reque
                 done_payload["cancelled"] = True
         yield f"data: {json.dumps(done_payload)}\n\n"
 
-    def _studio_guarded_stream():
-        # D-60: a closed stream (window reload, lost connection) ends a plan's wait instead of letting it sit 30 min.
+    def _studio_detached_stream():
+        # S-J: with studio tools the turn runs on its own thread and the response only relays its frames. A closed
+        # stream (window reload, lost connection) leaves the turn running: a plan card that waits is listed for the
+        # reloaded window (GET /api/chat/studio/sessions/{id}/turn) and can still be answered, and the reply is
+        # saved to the thread when it ends. Stop in the app cancels it as before; an unanswered card still gives
+        # up after the gate's 30 minutes.
+        import queue
+        import threading
+
+        from backend_service.tools.studio_gate import turn_ended, turn_started
+
+        frames: queue.Queue[str | None] = queue.Queue()
+        listening = threading.Event()
+        listening.set()
+
+        def produce() -> None:
+            try:
+                for frame in _sse_stream():
+                    if listening.is_set():
+                        frames.put(frame)
+            except Exception as exc:  # noqa: BLE001 - the relay must always end
+                chaosengine.add_log("chat", "error", f"[{model_tag}] Studio turn failed: {exc}")
+                frames.put(f"data: {json.dumps({'error': str(exc)})}\n\n")
+            finally:
+                turn_ended(session_id_for_cancel)
+                frames.put(None)
+
+        turn_started(session_id_for_cancel)
+        threading.Thread(target=produce, name=f"chat-turn-{session_id_for_cancel}", daemon=True).start()
         try:
-            yield from _sse_stream()
-        except GeneratorExit:
-            chaosengine.request_cancel_chat(session_id_for_cancel)
-            raise
+            while True:
+                frame = frames.get()
+                if frame is None:
+                    return
+                yield frame
+        finally:
+            listening.clear()  # nobody reads any more: the turn goes on without buffering its frames
 
     return StreamingResponse(
-        _studio_guarded_stream() if studio_gate is not None else _sse_stream(),
+        _studio_detached_stream() if studio_gate is not None else _sse_stream(),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
     )

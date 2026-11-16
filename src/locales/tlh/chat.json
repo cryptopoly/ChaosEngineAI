@@ -488,7 +488,9 @@
       "stepOf": null,
       "tookFor": null,
       "clipOf": null,
-      "stillOf": null
+      "stillOf": null,
+      "notStarted": null,
+      "notStartedHint": null
     },
     "kind": {
       "image": "mIllogh",
@@ -504,6 +506,10 @@
       "label": "chenmoH lajlu' nIteb",
       "tooltip": "ja'chuqvamDaq nab 'echlet Hutlh chenmoH. {hours} rep qaSpu'DI' pagh taghqa'DI' De'wI' pat rIn.",
       "off": "yIchu'Ha'"
+    },
+    "detached": {
+      "waiting": null,
+      "running": null
     }
   },
   "skillsChat": {

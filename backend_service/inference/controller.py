@@ -1015,6 +1015,11 @@ class RuntimeController:
         return free >= required_free_bytes
 
     def load_model(self, **kwargs: Any) -> LoadedModelInfo:
+        # FU-030: the dropped ChaosEngine and RotorQuant ids load as TurboQuant, and say so, on every engine.
+        if isinstance(kwargs.get("cache_strategy"), str):
+            from cache_compression import registry as _strategy_registry
+
+            kwargs["cache_strategy"] = _strategy_registry.resolve_legacy_id(kwargs["cache_strategy"])
         key = self._warm_pool_key(
             model_ref=kwargs["model_ref"],
             runtime_target=kwargs.get("runtime_target"),

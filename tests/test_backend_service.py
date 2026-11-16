@@ -164,6 +164,7 @@ class FakeRuntime:
                 "model_ref": model_ref,
                 "runtime_target": runtime_target,
                 "keep_warm_previous": keep_warm_previous,
+                "cache_strategy": cache_strategy,
             }
         )
         if callable(progress_callback):
@@ -1216,6 +1217,17 @@ class ChaosEngineBackendTests(unittest.TestCase):
         self.assertEqual(state.runtime.clear_warm_pool_calls, 1)
         self.assertEqual(state.runtime._warm_pool, {})
         self.assertFalse(state.runtime.load_requests[-1]["keep_warm_previous"])
+
+    def test_dropped_strategy_ids_load_as_turboquant_at_the_route(self):
+        state = self.client.app.state.chaosengine
+        for legacy in ("chaosengine", "rotorquant"):
+            response = self.client.post(
+                "/api/models/load",
+                json={"modelRef": "google/gemma-4-E4B-it", "modelName": "Gemma 4 E4B Instruct", "source": "catalog",
+                      "backend": "mock", "cacheStrategy": legacy, "cacheBits": 3, "fp16Layers": 0},
+            )
+            self.assertEqual(response.status_code, 200, legacy)
+            self.assertEqual(state.runtime.load_requests[-1]["cache_strategy"], "turboquant", legacy)
 
     def test_repeated_auto_generated_session_titles_get_numbered(self):
         self.client.post(

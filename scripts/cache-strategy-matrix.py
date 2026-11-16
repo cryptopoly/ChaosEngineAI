@@ -417,7 +417,7 @@ def run_cell(cell: MatrixCell, *, port: int) -> CellResult:
             )
             result.duration_seconds = round(time.monotonic() - started, 2)
             return result
-        if cell.spec_decode == "tensorfold" and loaded.get("engine") != "tensorfold":
+        if cell.spec_decode == "tensorfold" and loaded.get("engine") not in ("tensorfold", "tensorfold-native"):
             # A standard-MLX fallback would still produce text and pass the
             # non-empty check, so assert the engine the load actually chose.
             result.error = (

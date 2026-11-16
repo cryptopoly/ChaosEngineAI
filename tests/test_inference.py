@@ -778,6 +778,17 @@ class RuntimeControllerWarmPoolTests(unittest.TestCase):
         self.assertEqual(loaded.contextTokens, 8192)
         self.assertEqual(engine_a.unload_calls, 0)
 
+    def test_a_dropped_strategy_id_loads_and_reports_as_turboquant(self):
+        controller = self._controller()
+        controller._select_engine = mock.Mock(return_value=DummyEngine("A"))
+        for legacy in ("chaosengine", "rotorquant"):
+            loaded = controller.load_model(
+                model_ref="model-a", model_name="model-a", source="catalog", backend="mlx", path=None,
+                runtime_target="model-a", cache_strategy=legacy, cache_bits=3, fp16_layers=0, fused_attention=False,
+                fit_model_in_memory=True, context_tokens=8192, keep_warm_previous=False,
+            )
+            self.assertEqual(loaded.cacheStrategy, "turboquant", legacy)
+
     def test_profile_change_does_not_reuse_stale_warm_model(self):
         controller = self._controller()
         engine_a_8k = DummyEngine("A-8k")

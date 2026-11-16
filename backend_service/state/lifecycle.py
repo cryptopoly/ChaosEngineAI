@@ -141,7 +141,11 @@ def load_model(
         # When speculative decoding is active, force native cache strategy
         # because DFLASH manages its own KV caches with rollback, which
         # conflicts with compression strategies.
-        effective_cache_strategy = request.cacheStrategy
+        # FU-030: the dropped ChaosEngine and RotorQuant ids mean TurboQuant everywhere below, including the
+        # same-model profile check that never reaches the controller's own coercion.
+        from cache_compression import registry as _strategy_registry
+
+        effective_cache_strategy = _strategy_registry.resolve_legacy_id(request.cacheStrategy)
         effective_cache_bits = request.cacheBits
         effective_fp16_layers = request.fp16Layers
         if speculative_decoding or resolved_backend == "tensorfold":

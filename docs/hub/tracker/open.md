@@ -1,13 +1,22 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 101 rows with work, decisions or watch items still open, newest first.
+summary: 102 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-185 · Matrix run on the 0.10.0 tree: legacy ids and the TensorFold check — Done</summary>
+
+**Status or trigger:** Done
+
+**Notes:** First full matrix on this Mac (2026-11-16, Qwen3-0.6B/4B, Qwen3.5-4B, Qwen3.8-27B): 11 of 11 runnable cells pass (native, TurboQuant, TriAttention, DFlash, DDTree, MTPLX, TensorFold, GGUF native and TurboQuant); skipped: four vLLM cells (no vLLM on a Mac) and GGUF MTP (29 GB model not downloaded). Found and fixed: (1) the dropped `chaosengine` and `rotorquant` ids ran as TurboQuant but reported the old id on the MLX engine, because only the GGUF engine coerced them; now coerced at the load route (`state/lifecycle.py`) and again at the controller, tests in `test_backend_service.py` and `test_inference.py`. (2) The runner expected engine `tensorfold`, but the native lane reports `tensorfold-native`; it accepts both.
+
+</details>
 
 <details>
 <summary>FU-184 · Storyboard polish S8 to S13 and S15 — Done (gaps listed)</summary>

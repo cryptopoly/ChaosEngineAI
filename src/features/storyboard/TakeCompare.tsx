@@ -179,7 +179,10 @@ export function TakeCompare({ projectId, shot, number, disabled, onPick, onClose
     take.renderPass === "draft"
       ? t("board.compare.draft", { defaultValue: "Draft" })
       : t("board.compare.final", { defaultValue: "Final" });
-  const factValue = (key: CompareKey, value: string | null) => {
+  const factValue = (key: CompareKey, value: string | null, take: StoryboardTake) => {
+    // A still-only take (a draft, say) has no clip facts to record: say so instead of "Not recorded".
+    if (value === null && !take.clip && (key === "clipModel" || key === "clipSeed" || key === "length"))
+      return t("board.compare.noClip", { defaultValue: "No clip" });
     if (value === null) return t("board.compare.notRecorded", { defaultValue: "Not recorded" });
     if (key === "pass") return value === "draft" ? t("board.compare.draft", { defaultValue: "Draft" }) : t("board.compare.final", { defaultValue: "Final" });
     return value;
@@ -385,8 +388,8 @@ export function TakeCompare({ projectId, shot, number, disabled, onPick, onClose
                     {factLabels[row.key]}
                     {row.differs ? <span className="sr-only"> {t("board.compare.differs", { defaultValue: "(differs)" })}</span> : null}
                   </th>
-                  <td>{factValue(row.key, row.a)}</td>
-                  <td>{factValue(row.key, row.b)}</td>
+                  <td>{factValue(row.key, row.a, left)}</td>
+                  <td>{factValue(row.key, row.b, right)}</td>
                 </tr>
               ))}
             </tbody>

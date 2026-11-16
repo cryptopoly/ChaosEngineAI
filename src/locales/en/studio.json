@@ -1789,7 +1789,7 @@
       "inUse": "In use",
       "clipOf": "Clip of {take}",
       "stillOf": "Still of {take}",
-      "noClip": "No clip in this take yet.",
+      "noClip": "No clip",
       "noStill": "No still in this take.",
       "stillShown": "No clip yet: its still is shown.",
       "inUseButton": "In use",

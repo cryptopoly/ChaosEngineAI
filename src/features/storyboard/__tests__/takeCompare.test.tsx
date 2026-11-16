@@ -64,6 +64,20 @@ describe("TakeCompare", () => {
   });
 });
 
+describe("TakeCompare with a still-only draft", () => {
+  it("says No clip for the draft's clip facts, not Not recorded", () => {
+    const takes = [
+      take("t1", { createdAt: 1, settings: { clipSeed: 11, clipModel: "LTX-2.5" } }),
+      take("t2", { createdAt: 2, renderPass: "draft", clip: null, hashes: { still: S2 }, measuredSeconds: 0 }),
+    ];
+    const out = renderToStaticMarkup(
+      <TakeCompare projectId="p" shot={shot({ takes, activeTake: "t1" })} number={1} onPick={noop} onClose={noop} />,
+    );
+    expect(out).toContain("No clip");
+    expect(out).not.toContain("Not recorded");
+  });
+});
+
 describe("TakesStrip compare button", () => {
   it("shows Compare from two takes up when asked for", () => {
     const two = renderToStaticMarkup(<TakesStrip projectId="p" takes={[take("t1"), take("t2")]} activeId="t1" onPick={noop} onCompare={noop} />);

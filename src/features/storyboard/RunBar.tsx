@@ -10,8 +10,9 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { StoryboardEstimate } from "../../api/storyboard";
 import { RunEstimateStrip, formatDuration, memoryRisk } from "../../components/RunEstimateStrip";
-import type { JobProgress, StoryboardBatchRecord } from "../../types";
+import type { JobProgress, StoryboardBatchRecord, StoryboardPausedProgress } from "../../types";
 import { BatchBar } from "./BatchBar";
+import { PausedBatchBar } from "./PausedBatchBar";
 import type { PrimaryPass } from "./storyboardLogic";
 
 export interface RunBarProps {
@@ -21,7 +22,7 @@ export interface RunBarProps {
   unlocked: number;
   estimate: StoryboardEstimate | null;
   batch: StoryboardBatchRecord | null;
-  batchProgress?: JobProgress | null;
+  batchProgress?: JobProgress | StoryboardPausedProgress | null;
   running: boolean;
   busy: boolean;
   onMakeMissing: () => void;
@@ -34,6 +35,10 @@ export interface RunBarProps {
   onFinalPass?: () => void;
   /** Which button is primary (`primaryPass`); left out, Make missing is. */
   primary?: PrimaryPass;
+  /** Pause and resume (S-M2): a paused batch shows its own bar with Resume and Cancel. */
+  onPause?: () => void;
+  onResume?: () => void;
+  pausing?: boolean;
 }
 
 type TFn = (key: string, options: Record<string, unknown>) => string;
@@ -110,7 +115,14 @@ export function RunBar(props: RunBarProps) {
   if (running && batch) {
     return (
       <div className="run-bar run-bar--running">
-        <BatchBar batch={batch} progress={batchProgress ?? null} onCancel={onCancel} />
+        <BatchBar batch={batch} progress={(batchProgress as JobProgress | null) ?? null} onCancel={onCancel} onPause={props.onPause} pausing={props.pausing} />
+      </div>
+    );
+  }
+  if (batch?.state === "paused" && props.onResume) {
+    return (
+      <div className="run-bar run-bar--running">
+        <PausedBatchBar batch={batch} progress={batchProgress ?? null} busy={busy} onResume={props.onResume} onCancel={onCancel} />
       </div>
     );
   }

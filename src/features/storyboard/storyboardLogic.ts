@@ -135,6 +135,11 @@ export function isBatchRunning(batch: StoryboardBatchRecord | null | undefined):
   return !!batch && (batch.state === "queued" || batch.state === "running");
 }
 
+/** A batch stopped between steps (Pause, or the app closed while it ran) that can carry on (S-M1). */
+export function isBatchPaused(batch: StoryboardBatchRecord | null | undefined): boolean {
+  return !!batch && batch.state === "paused";
+}
+
 /** Progress of a batch for the sticky bar: stills first, then clips. Null for an empty batch. */
 export function batchProgress(batch: StoryboardBatchRecord): BatchProgress | null {
   const stills = batch.results.filter((r) => r.kind === "still");

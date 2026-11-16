@@ -1,8 +1,12 @@
-/** The sticky bar while a batch runs: where it is, and one Cancel for the whole batch. */
+/**
+ * The sticky bar while a batch runs: where it is, Pause (stops after the step in progress and keeps the rest, S-M2)
+ * and one Cancel for the whole batch.
+ */
 import { useTranslation } from "react-i18next";
 import { JobProgressLine } from "../../components/JobProgressLine";
 import type { JobProgress, StoryboardBatchRecord } from "../../types";
 import { batchProgress, type BatchProgress } from "./storyboardLogic";
+import "./pause.css";
 
 type TFn = (key: string, options: Record<string, unknown>) => string;
 
@@ -28,11 +32,17 @@ export function BatchBar({
   batch,
   progress: live = null,
   onCancel,
+  onPause,
+  pausing = false,
 }: {
   batch: StoryboardBatchRecord;
   /** Live progress from the backend: "clip 2 of 4", elapsed, time left timed on this machine. */
   progress?: JobProgress | null;
   onCancel: () => void;
+  /** Left out, there is no Pause button. */
+  onPause?: () => void;
+  /** Pause was pressed: the step in progress finishes first. */
+  pausing?: boolean;
 }) {
   const { t } = useTranslation("studio");
   const progress = batchProgress(batch);
@@ -57,9 +67,22 @@ export function BatchBar({
       </div>
       <JobProgressLine progress={live} running startedAt={batch.createdAt ? batch.createdAt * 1000 : null} />
       <progress className="batch-bar__meter" max={Math.max(1, total)} value={done} aria-hidden="true" />
-      <button type="button" className="secondary-button" onClick={onCancel}>
-        {t("board.batch.cancel", { defaultValue: "Cancel batch" })}
-      </button>
+      <div className="batch-bar__actions">
+        {onPause ? (
+          <button
+            type="button"
+            className="secondary-button"
+            disabled={pausing}
+            title={t("board.pause.pauseTitle", { defaultValue: "Stops after the step in progress. The rest waits, also across a restart, until you resume." })}
+            onClick={onPause}
+          >
+            {pausing ? t("board.pause.pausing", { defaultValue: "Pausing after this step…" }) : t("board.pause.pause", { defaultValue: "Pause" })}
+          </button>
+        ) : null}
+        <button type="button" className="secondary-button" onClick={onCancel}>
+          {t("board.batch.cancel", { defaultValue: "Cancel batch" })}
+        </button>
+      </div>
     </div>
   );
 }

@@ -1,0 +1,9 @@
+/* Batch bar Pause and the paused bar (S-M2). Tokens only. */
+.batch-bar__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.batch-bar--paused {
+  border-color: var(--warning);
+}

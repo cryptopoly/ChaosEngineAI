@@ -6,12 +6,11 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { reworkStoryboardShot, type StoryboardChatTurn, type StoryboardRework } from "../../api/storyboardPlan";
-import { SendIcon } from "../../components/icons/ActionIcons";
 import type { StoryboardShot } from "../../types";
-import { changedFields, reworkEdit, takeStyle, type ShotField } from "./planLogic";
-import { failureOf, useElapsed } from "./usePlan";
+import { takeStyle } from "./planLogic";
+import { PlanReworkChat } from "./PlanReworkChat";
 import type { UseStoryboardResult } from "./useStoryboard";
+import { useRework } from "./useRework";
 
 export interface PlanShotRowProps {
   story: UseStoryboardResult;
@@ -21,8 +20,6 @@ export interface PlanShotRowProps {
   canAsk: boolean;
   onModelMissing: () => void;
 }
-
-type Turn = StoryboardChatTurn & { suggestion?: StoryboardRework; applied?: boolean };
 
 export function PlanShotRow({ story, projectId, shot, number, canAsk, onModelMissing }: PlanShotRowProps) {
   const { t } = useTranslation("studio");
@@ -42,15 +39,7 @@ export function PlanShotRow({ story, projectId, shot, number, canAsk, onModelMis
   }, [shot.title, shot.stillPrompt, shot.motionPrompt, shot.seconds]);
 
   const [open, setOpen] = useState(false);
-  const [turns, setTurns] = useState<Turn[]>([]);
-  const [ask, setAsk] = useState("");
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const elapsed = useElapsed(pending);
-  const askField = useRef<HTMLTextAreaElement>(null);
-  useEffect(() => {
-    if (open) askField.current?.focus();
-  }, [open]);
+  const rework = useRework(story, projectId, shot, canAsk, onModelMissing);
 
   function save(key: "title" | "stillPrompt" | "motionPrompt") {
     const value = fields[key];
@@ -69,46 +58,9 @@ export function PlanShotRow({ story, projectId, shot, number, canAsk, onModelMis
     saved.current = { ...saved.current, seconds: value };
     void story.op("edit_shot", { shotId: shot.id, seconds: value });
   }
-
-  async function send() {
-    const message = ask.trim();
-    if (!message || pending) return;
-    if (!canAsk) {
-      onModelMissing();
-      return;
-    }
-    const history: StoryboardChatTurn[] = turns.map(({ role, text }) => ({ role, text }));
-    setTurns((current) => [...current, { role: "user", text: message }]);
-    setAsk("");
-    setPending(true);
-    setError(null);
-    try {
-      const answer = await reworkStoryboardShot(projectId, shot.id, message, history);
-      setTurns((current) => [...current, { role: "assistant", text: answer.why, suggestion: answer }]);
-    } catch (err) {
-      const failure = failureOf(err);
-      if (failure.code === "no-model") onModelMissing();
-      setError(failure.message);
-    } finally {
-      setPending(false);
-    }
-  }
-
-  async function use(index: number, suggestion: StoryboardRework) {
-    const args = reworkEdit(shot, suggestion.shot);
-    if (Object.keys(args).length > 1 && !(await story.op("edit_shot", args))) return;
-    setTurns((current) => current.map((turn, i) => (i === index ? { ...turn, applied: true } : turn)));
-  }
-
-  const fieldLabel: Record<ShotField, string> = {
-    title: t("board.plan.field.title", { defaultValue: "Title" }),
-    stillPrompt: t("board.plan.field.still", { defaultValue: "Picture" }),
-    motionPrompt: t("board.plan.field.motion", { defaultValue: "Movement" }),
-    seconds: t("board.plan.field.seconds", { defaultValue: "Length" }),
-  };
   const style = takeStyle(shot);
   const rowId = `plan-shot-${shot.id}`;
-  const lastSuggestion = [...turns].reverse().find((turn) => turn.suggestion && !turn.applied);
+  const lastSuggestion = rework.waiting;
 
   return (
     <li className={`plan-shot${open ? " is-open" : ""}${shot.locked ? " is-locked" : ""}`} aria-labelledby={`${rowId}-label`}>
@@ -188,80 +140,7 @@ export function PlanShotRow({ story, projectId, shot, number, canAsk, onModelMis
         </div>
 
         {open ? (
-          <div className="plan-rework" id={`${rowId}-chat`} role="region" aria-label={t("board.plan.rework.label", { defaultValue: "Rework shot {n}", n: number })}>
-            {turns.length === 0 ? (
-              <p className="muted-text">{t("board.plan.rework.intro", { defaultValue: "Say what should change, for example \"closer, warmer light\" or \"show the cup, not the pot\". The model rewrites this shot and says why." })}</p>
-            ) : (
-              <ol className="plan-chat__list" aria-live="polite">
-                {turns.map((turn, index) => (
-                  <li key={index} className={`plan-chat__line plan-chat__line--${turn.role}`}>
-                    {turn.suggestion ? (
-                      <div className="plan-suggestion">
-                        <p className="plan-suggestion__why">{turn.text}</p>
-                        {changedFields(shot, turn.suggestion.shot).length === 0 && !turn.applied ? (
-                          <p className="muted-text">{t("board.plan.rework.same", { defaultValue: "This matches the shot as it is now." })}</p>
-                        ) : null}
-                        <dl className="plan-suggestion__fields">
-                          {(turn.applied ? (["stillPrompt"] as ShotField[]) : changedFields(shot, turn.suggestion.shot)).map((key) => (
-                            <div key={key}>
-                              <dt>{fieldLabel[key]}</dt>
-                              <dd>{key === "seconds" ? t("board.plan.seconds", { defaultValue: "{n} s", n: turn.suggestion!.shot.seconds }) : turn.suggestion!.shot[key]}</dd>
-                            </div>
-                          ))}
-                        </dl>
-                        {turn.applied ? (
-                          <p className="plan-suggestion__applied">{t("board.plan.rework.applied", { defaultValue: "Used. Undo puts the old prompt back." })}</p>
-                        ) : changedFields(shot, turn.suggestion.shot).length > 0 ? (
-                          <div className="plan-suggestion__actions">
-                            <button type="button" className="primary-button" disabled={story.busy} onClick={() => void use(index, turn.suggestion!)}>
-                              {t("board.plan.rework.use", { defaultValue: "Use this" })}
-                            </button>
-                          </div>
-                        ) : null}
-                      </div>
-                    ) : (
-                      <p>{turn.text}</p>
-                    )}
-                  </li>
-                ))}
-                {pending ? (
-                  <li className="plan-chat__line plan-chat__line--assistant plan-chat__line--pending" role="status">
-                    <span className="plan-typing" aria-hidden="true"><span /><span /><span /></span>
-                    {t("board.plan.rework.thinking", { defaultValue: "Rewriting… {n} s", n: elapsed })}
-                  </li>
-                ) : null}
-              </ol>
-            )}
-            {error ? <p className="plan-error" role="alert">{error}</p> : null}
-            <form
-              className="plan-chat__form"
-              onSubmit={(event) => {
-                event.preventDefault();
-                void send();
-              }}
-            >
-              <textarea
-                ref={askField}
-                className="text-area"
-                rows={1}
-                maxLength={2000}
-                value={ask}
-                placeholder={t("board.plan.rework.placeholder", { defaultValue: "What should change?" })}
-                aria-label={t("board.plan.rework.ask", { defaultValue: "What should change in shot {n}?", n: number })}
-                onChange={(event) => setAsk(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
-                    event.preventDefault();
-                    void send();
-                  }
-                  if (event.key === "Escape") setOpen(false);
-                }}
-              />
-              <button type="submit" className="primary-button icon-button plan-chat__send" disabled={!ask.trim() || pending} aria-label={t("board.plan.send", { defaultValue: "Send" })} title={t("board.plan.send", { defaultValue: "Send" })}>
-                <SendIcon aria-hidden="true" />
-              </button>
-            </form>
-          </div>
+          <PlanReworkChat id={`${rowId}-chat`} shot={shot} number={number} rework={rework} busy={story.busy} onClose={() => setOpen(false)} />
         ) : null}
       </div>
     </li>

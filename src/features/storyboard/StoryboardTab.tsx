@@ -310,6 +310,9 @@ export function StoryboardTab({ story, project, timeline, imageGallery, videoGal
           onMakeMissing={() => void story.startBatch("both", missing)}
           onMakeAll={() => void story.startBatch("both", unlocked)}
           onCancel={() => void story.cancelBatch()}
+          onPause={story.pauseBatch ? () => void story.pauseBatch?.() : undefined}
+          onResume={story.resumeBatch ? () => void story.resumeBatch?.() : undefined}
+          pausing={story.pausing}
           kept={keptCount}
           finalShots={finalIds.length}
           onMakeDrafts={(withClips) => void story.startBatch(withClips ? "both" : "still", missing, false, true)}

@@ -18,6 +18,7 @@ import { planOf, stylesOf } from "./planLogic";
 import { PlanModelBar, type ChatModelChoice } from "./PlanModelBar";
 import { PlanProposal } from "./PlanProposal";
 import { PlanShotRow } from "./PlanShotRow";
+import { SongPanel } from "./song/SongPanel";
 import type { ProjectTabId } from "./projectRoute";
 import { failureOf, useElapsed, usePlanStatus } from "./usePlan";
 import type { UseStoryboardResult } from "./useStoryboard";
@@ -144,6 +145,8 @@ export function PlanTab({ story, project, imageGallery, chat, onTab }: PlanTabPr
             <p>{problem}</p>
           </div>
         ) : null}
+
+        <SongPanel story={story} project={project} />
 
         {proposal ? (
           <PlanProposal

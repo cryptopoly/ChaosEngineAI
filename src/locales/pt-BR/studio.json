@@ -1651,7 +1651,9 @@
         "edit": "Editar prompts",
         "import": "Importar filmagens",
         "up": "Mover para cima",
-        "useAsReference": "Usar a imagem como referência"
+        "useAsReference": "Usar a imagem como referência",
+        "markNewTake": null,
+        "unmarkNewTake": null
       },
       "missingNote": "Arquivo do take ausente. Revincule ou crie um novo take.",
       "moreActions": "Mais ações para o plano {n}",
@@ -1688,7 +1690,6 @@
       "unlock": "Desbloquear este plano",
       "untitled": "Plano {n}",
       "castLabel": "Elenco desta cena",
-      "newTake": "Nova tomada",
       "newTakeMarked": "Nova tomada na próxima execução",
       "newTakeTitle": null,
       "noPrompt": "Ainda sem prompt. Pressione Enter ou Editar prompts.",

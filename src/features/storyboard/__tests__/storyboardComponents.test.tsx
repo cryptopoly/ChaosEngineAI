@@ -71,7 +71,8 @@ describe("ShotCard", () => {
     expect(html).toContain("A lighthouse at dusk");
     expect(html).toContain("Mara");
     expect(card()).toContain("No prompt yet.");
-    expect(card()).toContain("New take");
+    // Making a new take lives in the menu with the other remakes; the card row keeps Keep for final.
+    expect(card()).not.toContain(">New take<");
   });
 
   it("offers Re-run and Keep on a stale shot until Keep is chosen", () => {
@@ -79,7 +80,7 @@ describe("ShotCard", () => {
     const html = card({ status: "stale", shot: stale, staleAfter: 0 });
     expect(html).toContain("Stale · after shot 1");
     expect(html).toContain("Re-run");
-    expect(html).toContain("Keep");
+    expect(html).toContain("Keep as is");
     expect(card({ status: "stale", shot: stale, staleAfter: 0, kept: true })).not.toContain("Re-run");
   });
 

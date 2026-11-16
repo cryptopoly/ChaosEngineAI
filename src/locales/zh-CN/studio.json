@@ -1651,7 +1651,9 @@
         "edit": "编辑提示词",
         "import": "导入素材",
         "up": "上移",
-        "useAsReference": "将静帧用作参考"
+        "useAsReference": "将静帧用作参考",
+        "markNewTake": null,
+        "unmarkNewTake": null
       },
       "missingNote": "版本文件缺失。请重新链接或制作新版本。",
       "moreActions": "镜头 {n} 的更多操作",
@@ -1688,7 +1690,6 @@
       "unlock": "解锁此镜头",
       "untitled": "镜头 {n}",
       "castLabel": "此镜头中的角色",
-      "newTake": "新拍一条",
       "newTakeMarked": "下次运行时新拍一条",
       "newTakeTitle": null,
       "noPrompt": "还没有提示词。按回车或编辑提示词。",

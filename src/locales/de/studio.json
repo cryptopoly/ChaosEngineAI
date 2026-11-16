@@ -1651,7 +1651,9 @@
         "edit": "Prompts bearbeiten",
         "import": "Material importieren",
         "up": "Nach oben",
-        "useAsReference": "Standbild als Referenz verwenden"
+        "useAsReference": "Standbild als Referenz verwenden",
+        "markNewTake": null,
+        "unmarkNewTake": null
       },
       "missingNote": "Take-Datei fehlt. Neu verknüpfen oder neuen Take erstellen.",
       "moreActions": "Weitere Aktionen für Einstellung {n}",
@@ -1688,7 +1690,6 @@
       "unlock": "Diese Einstellung entsperren",
       "untitled": "Einstellung {n}",
       "castLabel": "Besetzung in dieser Einstellung",
-      "newTake": "Neue Aufnahme",
       "newTakeMarked": "Neue Aufnahme beim nächsten Lauf",
       "newTakeTitle": null,
       "noPrompt": "Noch kein Prompt. Drücke Enter oder Prompts bearbeiten.",

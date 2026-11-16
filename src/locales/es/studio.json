@@ -1651,7 +1651,9 @@
         "edit": "Editar prompts",
         "import": "Importar material",
         "up": "Mover arriba",
-        "useAsReference": "Usar la imagen como referencia"
+        "useAsReference": "Usar la imagen como referencia",
+        "markNewTake": null,
+        "unmarkNewTake": null
       },
       "missingNote": "Falta el archivo de la toma. Vuelve a vincularlo o crea una toma nueva.",
       "moreActions": "Más acciones para el plano {n}",
@@ -1688,7 +1690,6 @@
       "unlock": "Desbloquear este plano",
       "untitled": "Plano {n}",
       "castLabel": "Reparto de este plano",
-      "newTake": "Nueva toma",
       "newTakeMarked": "Nueva toma en la próxima ejecución",
       "newTakeTitle": null,
       "noPrompt": "Aún no hay prompt. Pulsa Intro o Editar prompts.",

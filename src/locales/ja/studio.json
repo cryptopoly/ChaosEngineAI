@@ -1651,7 +1651,9 @@
         "edit": "プロンプトを編集",
         "import": "素材をインポート",
         "up": "上へ移動",
-        "useAsReference": "静止画を参照に使う"
+        "useAsReference": "静止画を参照に使う",
+        "markNewTake": null,
+        "unmarkNewTake": null
       },
       "missingNote": "テイクのファイルが見つかりません。再リンクするか、新しいテイクを作成してください。",
       "moreActions": "ショット {n} のその他の操作",
@@ -1688,7 +1690,6 @@
       "unlock": "このショットのロックを解除",
       "untitled": "ショット {n}",
       "castLabel": "このショットのキャスト",
-      "newTake": "新しいテイク",
       "newTakeMarked": "次の実行で新しいテイク",
       "newTakeTitle": null,
       "noPrompt": "まだプロンプトがありません。Enter を押すか、プロンプトを編集してください。",

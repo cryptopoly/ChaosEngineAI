@@ -201,8 +201,9 @@ function signFlatArtifact(targetPath) {
 }
 
 function verifySignedApp(appPath) {
+  // Gatekeeper (spctl) only accepts the app once it is notarised, so it is
+  // checked on the DMG after notarisation, not here.
   run("codesign", ["--verify", "--deep", "--strict", "--verbose=2", appPath]);
-  run("spctl", ["--assess", "--type", "execute", "-vv", appPath]);
 }
 
 function createDistributionDmg(appPath, dmgPath) {
@@ -247,6 +248,7 @@ function notarizeArtifact(targetPath, authArgs) {
 
   run("xcrun", ["stapler", "staple", "-v", targetPath]);
   run("xcrun", ["stapler", "validate", "-v", targetPath]);
+  run("spctl", ["--assess", "--type", "open", "--context", "context:primary-signature", "-vv", targetPath]);
 }
 
 function run(command, commandArgs, options = {}) {

@@ -1,4 +1,4 @@
-"""The controller's view of the running app (FU-188): starting a nudge turn through the normal chat path, and
+"""The controller's view of the running app (FU-191): starting a nudge turn through the normal chat path, and
 reading turns, plan cards, chat jobs, the project and the thread. Tests replace this with fakes."""
 
 from __future__ import annotations

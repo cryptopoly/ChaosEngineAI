@@ -1,4 +1,4 @@
-"""Keep going for Studio chats (FU-188): an opt-in, per-chat run the app drives turn after turn.
+"""Keep going for Studio chats (FU-191): an opt-in, per-chat run the app drives turn after turn.
 
 The controller (``controller.KeepGoing``) decides after every Studio turn whether to stop with a plain reason
 or send the next nudge, a user-role message the app writes from the saved project. ``for_state`` returns the

@@ -395,7 +395,7 @@ class StudioGate:
     ) -> None:
         self.session_id = session_id
         self.auto_approve = auto_approve
-        # Keep going's run grant (FU-188): auto-approval ends at this epoch time, even mid-turn. None: no end.
+        # Keep going's run grant (FU-191): auto-approval ends at this epoch time, even mid-turn. None: no end.
         self.auto_until = auto_until
         self.is_cancelled = is_cancelled
         self.state = state

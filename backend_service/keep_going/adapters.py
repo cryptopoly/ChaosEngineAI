@@ -1,4 +1,4 @@
-"""What a Keep going run counts as progress, what its nudge says and when its goal is done (FU-188).
+"""What a Keep going run counts as progress, what its nudge says and when its goal is done (FU-191).
 
 Everything else a run does (the nudge cap, the no-progress guard, the same-error stop, the grant, Stop,
 cancel on a user message, persistence and Resume) lives in the controller and does not depend on the kind of
@@ -43,11 +43,11 @@ class StoryboardAdapter:
 
     name = "storyboard"
 
-    def __init__(self, reader: Callable[[str | None], FilmState | None] = read_film_state) -> None:
+    def __init__(self, reader: Callable[[str | None], FilmState | None] | None = None) -> None:
         self.reader = reader
 
     def read(self, *, goal: str, project_id: str | None, outcome: TurnOutcome | None, last_reply: str) -> View:
-        film = self.reader(project_id)
+        film = (self.reader or read_film_state)(project_id)
         if film is None:
             done = None
             if outcome is not None and claims_done(outcome.text) and not outcome.max_iterations:

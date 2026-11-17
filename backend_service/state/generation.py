@@ -326,10 +326,10 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest, app_reque
     """SSE streaming version of generate(). Returns a StreamingResponse.
 
     ``app_request`` (the route's Request) is what the studio tools run with when ``studioTools`` is on.
-    ``keep_going`` marks a Keep going nudge (FU-188: run id, nudge number, cap, abort event, approval end);
+    ``keep_going`` marks a Keep going nudge (FU-191: run id, nudge number, cap, abort event, approval end);
     ``background`` runs a Studio turn on its thread without a response to relay (returns None).
     """
-    # FU-188: a message the user sent starts an armed Keep going run (it is the brief) or stops an active one.
+    # FU-191: a message the user sent starts an armed Keep going run (it is the brief) or stops an active one.
     # Called before the state lock: the controller never waits on it while holding its own.
     if keep_going is None:
         from backend_service import keep_going as _keep_going
@@ -551,7 +551,7 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest, app_reque
         )
         studio_gate = StudioGate(
             session_id_for_cancel,
-            # A Keep going run's grant approves renders until it expires (FU-188); the chat's own
+            # A Keep going run's grant approves renders until it expires (FU-191); the chat's own
             # "Always allow" (the app's flag on a user turn) keeps its old meaning.
             auto_approve=request.studioAutoApprove or kg_auto_until is not None,
             auto_until=kg_auto_until if keep_going is not None or not request.studioAutoApprove else None,
@@ -571,7 +571,7 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest, app_reque
             enable_tools = True
             available_tools = None
 
-    # How this turn ended, for Keep going (FU-188): filled in by _sse_stream, read when the turn is over.
+    # How this turn ended, for Keep going (FU-191): filled in by _sse_stream, read when the turn is over.
     turn_result: dict[str, Any] = {"error": None, "cancelled": False, "assistant": None, "prompt_tokens": 0,
                                    "max_iterations": False}
 

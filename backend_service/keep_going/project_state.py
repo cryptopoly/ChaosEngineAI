@@ -1,4 +1,4 @@
-"""What a Storyboard project still lacks, read from the saved project (Keep going, FU-188).
+"""What a Storyboard project still lacks, read from the saved project (Keep going, FU-191).
 
 The run controller asks this after every Studio turn: which shots have no still or no clip, which audio lanes
 are missing, whether the final film is rendered and current. ``FilmState`` is plain data so the nudge text, the

@@ -625,7 +625,7 @@ def run_agent_loop_streaming(
             tools=tools,
         )
 
-        # The prompt size of the newest step: Keep going (FU-188) stops before the context fills up.
+        # The prompt size of the newest step: Keep going (FU-191) stops before the context fills up.
         last_prompt_tokens = int(getattr(result, "promptTokens", 0) or 0)
         tool_calls = getattr(result, "tool_calls", None)
         if not tool_calls and result.text:

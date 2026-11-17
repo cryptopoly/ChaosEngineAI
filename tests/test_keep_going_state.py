@@ -1,4 +1,4 @@
-"""Keep going (FU-188): reading a Storyboard project, the nudge text, the adapters and the gate's grant end."""
+"""Keep going (FU-191): reading a Storyboard project, the nudge text, the adapters and the gate's grant end."""
 
 import json
 import os

@@ -1,4 +1,4 @@
-"""Keep going (FU-188): the run controller's state machine with fake app hooks. No models, no threads unless a
+"""Keep going (FU-191): the run controller's state machine with fake app hooks. No models, no threads unless a
 test starts them on purpose."""
 
 import json

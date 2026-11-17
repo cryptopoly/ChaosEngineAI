@@ -1,4 +1,4 @@
-"""The Keep going run controller (FU-188): the app, not the model, decides whether a Studio chat goes on.
+"""The Keep going run controller (FU-191): the app, not the model, decides whether a Studio chat goes on.
 
 A run belongs to one chat. Turned on, it is ``armed``: the user's next message is the brief (the goal) and
 starts it. After each Studio turn of a ``running`` run the controller reads how the turn ended and the saved

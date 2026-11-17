@@ -1,4 +1,4 @@
-"""Reading a finished Studio turn and writing the next Keep going message (FU-188).
+"""Reading a finished Studio turn and writing the next Keep going message (FU-191).
 
 ``TurnOutcome`` is what the chat turn hands the controller when it ends. The helpers here pull out what the
 controller decides on (tool errors the model left unfixed, a declined plan, the project the run works on, a

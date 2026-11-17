@@ -1,4 +1,4 @@
-"""Keep going routes (FU-188): turn a chat's run on, read its state, stop it, resume it.
+"""Keep going routes (FU-191): turn a chat's run on, read its state, stop it, resume it.
 
 Under /api/, so only the app's own token reaches them. Starting is idempotent (one active run per chat); the
 render grant is chosen on every start and Resume and never survives an app restart.

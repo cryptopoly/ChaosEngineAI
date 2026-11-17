@@ -123,7 +123,7 @@ def delete_session(request: Request, session_id: str) -> dict[str, Any]:
     result = state.delete_session(session_id)
     from backend_service import keep_going
 
-    keep_going.for_state(state).forget(session_id)  # FU-188: a deleted chat takes its Keep going run with it
+    keep_going.for_state(state).forget(session_id)  # FU-191: a deleted chat takes its Keep going run with it
     return result
 
 
@@ -150,7 +150,7 @@ def cancel_generate(request: Request, session_id: str) -> dict[str, Any]:
     state = request.app.state.chaosengine
     from backend_service import keep_going
 
-    keep_going.on_chat_cancel(state, session_id)  # FU-188: Stop in the chat also ends a Keep going run
+    keep_going.on_chat_cancel(state, session_id)  # FU-191: Stop in the chat also ends a Keep going run
     return state.request_cancel_chat(session_id)
 
 

@@ -69,8 +69,8 @@
     "plugins": "擴充功能與外掛程式系統",
     "logs": "執行階段事件",
     "settings": "目錄與預設值",
-    "voiceStudio": null,
-    "voiceModels": null,
+    "voiceStudio": "說話、選擇聲音與轉錄",
+    "voiceModels": "語音模型與語音執行階段",
     "voiceLibrary": "你建立的轉寫與語音",
     "chatModels": "尋找、下載並管理語言模型",
     "imageModelsPage": "尋找、下載並管理影像模型",
@@ -132,7 +132,7 @@
     "primaryNavAriaLabel": "主導覽",
     "sectionMake": "創作",
     "sectionRun": "執行",
-    "menuButton": null
+    "menuButton": "選單"
   },
   "slashCommands": {
     "menuAriaLabel": "斜線命令"
@@ -315,13 +315,13 @@
       "ollamaHint": "將應用程式的 Ollama 主機 / 基礎網址設定為下方的位址 — 原生 /api 端點會與 /v1 一同提供。"
     },
     "engineBusy": {
-      "step": null,
-      "image": null,
-      "imageBare": null,
-      "video": null,
-      "videoBare": null,
-      "music": null,
-      "musicBare": null
+      "step": "第 {step} 步,共 {total} 步",
+      "image": "圖像引擎忙碌:{detail}",
+      "imageBare": "圖像引擎忙碌",
+      "video": "影片引擎忙碌:{detail}",
+      "videoBare": "影片引擎忙碌",
+      "music": "音樂引擎忙碌:{detail}",
+      "musicBare": "音樂引擎忙碌"
     }
   },
   "conversionTab": {
@@ -657,7 +657,7 @@
     "clockHint": "系統遵循您語言的預設設定(美式英語為 12 小時制,其他為 24 小時制)。如想覆寫,請選擇其中一項。",
     "helpImprove": "協助改進翻譯",
     "openOnGithub": "在 GitHub 上開啟 {locale} →",
-    "communityNote": null
+    "communityNote": "社群翻譯,借助機器翻譯完成,歡迎指正。"
   },
   "imageOutputCard": {
     "huggingFace": "Hugging Face",
@@ -846,7 +846,7 @@
       "storage": "儲存",
       "providers": "提供者",
       "integrations": "整合",
-      "skills": null,
+      "skills": "技能",
       "diagnostics": "診斷",
       "accelerators": "加速器",
       "disk": "磁碟用量"
@@ -941,37 +941,37 @@
       "readTokenLabel": "唯讀權杖（Claude Code）"
     },
     "skills": {
-      "title": null,
-      "subtitle": null,
-      "safety": null,
-      "pathPlaceholder": null,
-      "pathLabel": null,
-      "pickTitle": null,
-      "noDialog": null,
-      "chooseFolder": null,
-      "chooseZip": null,
-      "import": null,
-      "imported": null,
-      "empty": null,
-      "listLabel": null,
-      "enabled": null,
-      "files": null,
-      "skippedTitle": null,
-      "confirmDelete": null,
-      "cancel": null,
-      "delete": null,
-      "scanNote": null,
+      "title": "技能",
+      "subtitle": "向對話模型教授一個流程:一個包含 SKILL.md 與選用文字檔的資料夾,或其 .zip 壓縮檔。",
+      "safety": "技能中的腳本永遠不會執行。模型只會將技能的文字當作參考來讀取。新技能預設為關閉:開啟前請先閱讀說明與檔案清單。",
+      "pathPlaceholder": "/路徑/到/技能資料夾 或 skill.zip",
+      "pathLabel": "技能資料夾或 .zip 路徑",
+      "pickTitle": "選擇技能",
+      "noDialog": "此處無法使用檔案對話框,請直接輸入路徑。",
+      "chooseFolder": "選擇資料夾",
+      "chooseZip": "選擇 .zip",
+      "import": "匯入",
+      "imported": "已匯入 {name}:保留 {files, plural, other {# 個檔案}},{skipped, plural, =0 {未略過任何項目} other {略過 # 個}}。開啟前會保持關閉。",
+      "empty": "尚未匯入任何技能。",
+      "listLabel": "已匯入的技能",
+      "enabled": "在對話中可用",
+      "files": "{count, plural, other {# 個檔案}}",
+      "skippedTitle": "已略過(未匯入):",
+      "confirmDelete": "永久刪除 {name}",
+      "cancel": "取消",
+      "delete": "刪除",
+      "scanNote": "每次匯入都會進行安全掃描,評級為低、中或高。掃描以規則為基礎,在此電腦上執行,資料不會離開此電腦。這是一種啟發式判斷,並非保證。",
       "scan": {
-        "chipTitle": null,
-        "chip": null,
-        "low": null,
-        "medium": null,
-        "high": null,
-        "findings": null,
-        "where": null,
-        "truncated": null,
-        "disclaimer": null,
-        "acknowledge": null
+        "chipTitle": "依本機規則進行的安全掃描。這是一種啟發式判斷,並非保證。",
+        "chip": "掃描:{rating}",
+        "low": "低",
+        "medium": "中",
+        "high": "高",
+        "findings": "{count, plural, =0 {無發現項目} other {# 項發現}}",
+        "where": "{file},第 {line} 行",
+        "truncated": "僅顯示前 {count} 項發現。",
+        "disclaimer": "這是一種啟發式判斷,並非保證:固定規則會檢查可疑用語、隱藏字元、連結、編碼文字及內附腳本。掃描在此電腦上執行,資料不會離開此電腦。「低」僅代表沒有符合任何規則,不代表該技能是安全的。",
+        "acknowledge": "我已閱讀掃描結果。掃描將此技能評為高風險;勾選此項即可開啟。"
       }
     },
     "integrations": {
@@ -981,34 +981,34 @@
       "copyButton": "複製"
     },
     "cleanup": {
-      "title": null,
-      "subtitle": null,
-      "note": null,
-      "refresh": null,
-      "loading": null,
-      "loadError": null,
-      "groupProjects": null,
-      "groupThreads": null,
-      "groupOutputs": null,
-      "empty": null,
-      "selectAll": null,
-      "projectDetail": null,
-      "threadDetail": null,
-      "outputDetail": null,
-      "kindImage": null,
-      "kindVideo": null,
-      "unknownDate": null,
-      "delete": null,
-      "deleting": null,
-      "selected": null,
-      "deleteError": null,
-      "resultNone": null,
-      "resultDone": null,
-      "resultRefused": null,
-      "confirmTitle": null,
-      "confirmBody": null,
-      "confirmBreakdown": null,
-      "confirmButton": null
+      "title": "清理",
+      "subtitle": "刪除您不再需要的分鏡專案、對話串與圖庫中的圖片和片段。",
+      "note": "目前未勾選任何項目。請勾選要刪除的項目,然後確認。已刪除的項目無法復原。",
+      "refresh": "重新整理清單",
+      "loading": "正在載入清單…",
+      "loadError": "無法載入清單:{message}",
+      "groupProjects": "分鏡專案",
+      "groupThreads": "對話串",
+      "groupOutputs": "圖庫圖片與片段",
+      "empty": "這裡沒有項目。",
+      "selectAll": "全選:{group}",
+      "projectDetail": "{shots, plural, other {# 個鏡頭}},編輯於 {date}",
+      "threadDetail": "{count, plural, other {# 則訊息}},最後使用於 {date}",
+      "outputDetail": "{kind},{date}",
+      "kindImage": "圖片",
+      "kindVideo": "片段",
+      "unknownDate": "未知",
+      "delete": "刪除已勾選的項目",
+      "deleting": "刪除中…",
+      "selected": "{count, plural, =0 {未勾選任何項目} other {# 個項目已勾選,{size}}}",
+      "deleteError": "無法刪除:{message}",
+      "resultNone": "未刪除任何項目。",
+      "resultDone": "已刪除 {count, plural, other {# 個項目}},釋出 {size}。",
+      "resultRefused": "{count, plural, other {# 個項目}}未被刪除:",
+      "confirmTitle": "刪除 {count, plural, other {# 個項目}}?",
+      "confirmBody": "這將從此電腦刪除 {count, plural, other {# 個項目}}({size})。此操作無法復原。",
+      "confirmBreakdown": "專案:{projects}。對話串:{threads}。圖庫檔案:{outputs}。",
+      "confirmButton": "永久刪除"
     }
   },
   "modelLaunchModal": {
@@ -1378,8 +1378,8 @@
     "storyboard": "分鏡功能即將推出。"
   },
   "llamaCuda": {
-    "description": null,
-    "driverTooOld": null,
+    "description": "使用 CUDA {cuda}(llama.cpp {tag})在 NVIDIA GPU 上執行 GGUF 對話模型。下載內容包含 CUDA 執行階段。",
+    "driverTooOld": "NVIDIA 驅動程式版本過舊,無法執行 CUDA 版 llama-server。請更新驅動程式後再重新安裝。",
     "inUse": "使用中：GGUF 模型在 NVIDIA GPU 上執行。",
     "install": "安裝",
     "installedNoDevice": "已安裝，但找不到 CUDA 裝置。請檢查 NVIDIA 驅動程式（nvidia-smi）。",
@@ -1405,10 +1405,10 @@
     }
   },
   "accessibilityPanel": {
-    "title": null,
-    "strongBorders": null,
-    "note": null,
-    "on": null,
-    "off": null
+    "title": "無障礙",
+    "strongBorders": "欄位與按鈕加上較粗的邊框",
+    "note": "以高對比線條勾勒輸入框與按鈕,使其更容易辨識。立即生效。",
+    "on": "開啟",
+    "off": "關閉"
   }
 }

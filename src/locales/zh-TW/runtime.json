@@ -62,8 +62,8 @@
     "moreInfo": "更多資訊",
     "requiresLabel": "需要:",
     "installLabel": "安裝:",
-    "kvCacheTypeGguf": null,
-    "kvCacheTypeGgufHint": null
+    "kvCacheTypeGguf": "KV 快取類型",
+    "kvCacheTypeGgufHint": "q8_0 讓 KV 快取佔用的記憶體約為 f16 的一半,q4_0 約為四分之一。解碼速度會稍慢。"
   },
   "notes": {
     "binaryRequired": "需要 {binary}。",
@@ -161,13 +161,13 @@
     "body": "TensorFold 是一款本地推論引擎，為每個模型系列配備手寫核心。它一次產生多個草稿 token（來自模型本身的 MTP 頭，部分系列還會用到小型草稿模型），並以目標模型逐一驗證每個草稿，因此回覆與逐個 token 解碼的結果逐位元組相同。",
     "requiresLabel": "需要:",
     "requiresBody": "Apple Silicon，以及獨立的 TensorFold Python 環境（在此面板中安裝）。僅支援經過測試的檢查點。",
-    "requiresBodyNative": null,
+    "requiresBodyNative": "需要 NVIDIA GPU(Ampere 或更新世代)、R580 或更新版本的驅動程式,以及 TensorFold 原生二進位檔(從此面板安裝;Windows 需自行從原始碼建置)。僅支援已測試過的模型檢查點。",
     "memoryLabel": "記憶體:",
     "memoryBody": "{needed} GB 或更多的統一記憶體。",
     "statusLabel": "狀態:",
     "statusInstalled": "已安裝{version} — 勾選推測解碼後生效。",
     "statusNotInstalled": "尚未安裝。點擊「安裝 TensorFold」以設定其獨立環境。",
-    "statusNotInstalledNative": null,
+    "statusNotInstalledNative": "尚未安裝。點擊「安裝 TensorFold」:將下載並驗證原生二進位檔,同時讀取您的 GPU 與驅動程式;若此電腦無法執行,會說明原因。",
     "visionLabel": "影像輸入:",
     "visionInstalled": "已安裝（實驗性）— 勾選 TensorFold 時，可在聊天中附加影像。含影像的請求會從全新的 KV 快取開始。",
     "visionNotInstalled": "尚未安裝。使用模型本身的視覺編碼器讀取影像。會加入 Pillow、transformers 和 mlx-vlm；TensorFold 的作者仍將其標示為實驗性。",
@@ -194,7 +194,7 @@
     "statusLabel": "狀態:",
     "statusInstalled": "已安裝 — 啟用推測解碼後生效。",
     "statusNotInstalled": "尚未安裝。點擊「安裝 MTPLX」以設定獨立 venv（約 500 MB）。",
-    "statusOutdated": null
+    "statusOutdated": "已安裝的版本過舊,無法用於目前的 MTPLX 模型。點擊「安裝 MTPLX」即可更新獨立虛擬環境(約 500 MB)。"
   },
   "ggufMtp": {
     "tooltip": "GGUF MTP 推測解碼：透過 llama.cpp 的 --spec-type draft-mtp 使用模型內建的 MTP 頭，在不損失品質的前提下將生成速度提升約 1.8-2.2 倍。",

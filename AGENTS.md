@@ -103,15 +103,28 @@ One line per tool: what it does and the arguments that matter. `*` marks a requi
 Every film edit carries the project `revision` from the last answer. A stale one is refused with the current number:
 call `storyboard_project` get and retry.
 
-- `storyboard_project`: `action`* is `create` (`name`, `aspect` 16:9, 9:16 or 1:1, `resolution` 480p to 2160p default 720p, `fps` 24 to 60),
-  `list`, `get`, `edit`, `undo`, `redo`, `delete`, `export`, `import`, and the cast actions `add_ref`, `edit_ref`, `remove_ref`.
-  `edit` with `fields.export` sets what a render writes next to the film: `captionsBurn`, `captionsSrt`, `stems`.
+- `storyboard_project`: `action`* is `create`, `list`, `get`, `edit`, `undo`, `redo`, `delete`, `export`, `import`, and the cast actions
+  `add_ref`, `edit_ref`, `remove_ref`. `create` and `edit` take:
+  - the size: `size` as `WIDTHxHEIGHT` (for example `1024x576`; even, 64 to 4096; it sets the aspect too), or `aspect` (16:9, 9:16
+    or 1:1, default 16:9) with `resolution` (480p to 2160p, default 720p, which is 1280x720 at 16:9). LTX video models make clips at
+    multiples of 64 and fit them to the film size, so 1280x720 clips are made at 1280x704; a size such as 1024x576 needs no resize.
+  - `fps`: 24 (default), 25, 30, 48, 50 or 60.
+  - the models: `image_model` (stills) and `video_model` (clips), ids from `list_models`; unset picks the fastest or best-fitting
+    installed model. `voice`: the project's default narration voice id from `list_voices`. Music is not a project setting.
+  - `fields.export` for what a render writes: `captionsBurn` (draw the captions into the picture; off by default), `captionsSrt`,
+    `stems`, `upscale`. `fields.defaults` takes the same project fields by their JSON names (`width`, `height`, `imageModel`, ...).
+
+  The `create` answer (and an `edit` that changes these) has `settings`: the size, aspect, fps, models, voice and caption export the
+  project got, with `notes` on what they mean (the model generate will use, a size LTX resizes, captions not burned in). Read it
+  instead of assuming the request landed.
 - `storyboard_shot`: `action`* is `add`, `edit`, `remove`, `reorder`, `lock`, `unlock`, `pick_take`, `redo`, `import`.
   Fields: `title`, `stillPrompt`, `motionPrompt`, `seconds`, `seed`, `startFrom` (`generate`, `upload` or `previous-shot`),
   `referenceImages` (cast ids), `trimIn`, `trimOut`, `speed`, `transition`, `nativeSoundDb`.
-- `storyboard_audio`: `action`* is `add`, `edit`, `remove`; `kind` is `music`, `sfx`, `voice` or `import`; `path` is an `upload:` handle or a file
-  in the app's output folders. `fields`: `anchor {shotId, offset}` (sound follows the shot), `start`, `gainDb`, `fadeIn`, `fadeOut`,
-  `duck`, `loop`, `trimIn`, `trimOut`, `label`.
+- `storyboard_audio`: `action`* is `add`, `edit`, `remove`; `kind` is `music`, `sfx`, `voice` or `import`. `add` takes `path` (the output path
+  `speak`, `make_music` (`tracks[0].path`) or `make_sound` returned, an `upload:` handle or a file in the app's output folders) or
+  `library_id` (a Music library track id, `make_music` `tracks[].id`). A made sound is not in the film until it is added. The `add`
+  answer has `clipId` and `lanes` (clips per lane). `fields`: `anchor {shotId, offset}` (sound follows the shot), `start`, `gainDb`,
+  `fadeIn`, `fadeOut`, `duck`, `loop`, `trimIn`, `trimOut`, `label`.
 - `storyboard_generate`: new takes, all stills then all clips, for shots that need work (`shot_ids`, `what` is `still`, `clip` or `both`,
   `force` to include locked shots). Returns a job id.
 - `storyboard_batch`: `action`* is `status`, `pause` (stops after the step in progress), `resume` (`revision`; a job id) or `cancel`, with
@@ -119,8 +132,9 @@ call `storyboard_project` get and retry.
 - `storyboard_song`: a music video. `attach` (`library_id` of a Music library track, or `path`; tempo, beats and sections are estimated),
   `get`, `edit` (`lyrics`, `sections`, `bpm`, `title`), `remove`, `cut_plan` (shots on the beats, each at most one clip long; `apply: true`
   replaces the shots, one undo), `lyric_captions` (`timing` `auto`, `sections` or `speech`; a job).
-- `storyboard_render`: render to MP4 (`preview` is small and fast, `notify` shows a banner). A failed render names how many shots are
-  done; call again to resume.
+- `storyboard_render`: render to MP4. `preview` is true by default: a small fast draft, not the finished film; pass `preview: false` for
+  the final MP4. `notify` shows a banner. The answer and the job output carry `warnings`: no audio lanes (a silent film), captions
+  that are not burned in, a preview. A failed render names how many shots are done; call again to resume.
 - `storyboard_captions`: `generate` (a job; transcribes the voice clips), `export_srt`, `set`, `add`, `edit`, `remove`.
 - `storyboard_export_otio`: the cut as an OpenTimelineIO file for Resolve or Premiere.
 
@@ -133,9 +147,14 @@ call `storyboard_project` get and retry.
 ## Make a short film: the order of calls
 
 1. `system_status`, then `list_models` for `image` and `video` (and `voice`, `music` if you want sound).
-2. `storyboard_project` create (`name`, `aspect`, `resolution`). Keep the returned `projectId` and `revision`.
-3. Cast (optional, for the same face or place across shots): `storyboard_project` add_ref with `kind` `character` or `place`, a
-   `description` and up to 4 `images`. Shots use the ref id in `fields.referenceImages`. Leave `seed` unset on shots that use a cast reference (the reference's own seed makes the still a copy of it). A film can have no cast.
+2. `storyboard_project` create with `name` and everything the person asked for: `size` (or `aspect` and `resolution`), `fps`,
+   `image_model`, `video_model`, `voice`, and `fields.export.captionsBurn: true` for burned-in captions. Check the answer's `settings`
+   and `notes`. Keep the returned `projectId` and `revision`.
+3. Cast (optional, for the same face or place across shots): first make one hero picture of the character or place with
+   `generate_image` and `wait_for_job`. Then `storyboard_project` add_ref with `kind` `character` or `place`, a `name` (required), a
+   `description` and that picture's output path in `images` (up to 4). Shots list the ref id in `fields.referenceImages`; leave `seed`
+   unset on them (the reference's own seed makes the still a copy of it). A cast entry with no picture cannot keep the likeness, and
+   the answer warns. A film can have no cast.
 4. Shots: `storyboard_shot` add once per beat with `title`, `stillPrompt`, `motionPrompt` (one clear motion), `seconds`. Use
    `startFrom: "previous-shot"` to continue from the last frame.
 5. Voice: `list_voices`, then `speak` for each line, `wait_for_job`, then `storyboard_audio` add with `kind: "voice"`, the output `path`, and
@@ -146,8 +165,8 @@ call `storyboard_project` get and retry.
 7. Generate: `storyboard_generate`, `wait_for_job`, `storyboard_project` get to check each shot's take. For a weak shot: `storyboard_shot` redo
    then `storyboard_generate` again. Other shots are untouched; shots that continue from a redone one go stale. `lock` the good ones.
 8. Mix: `storyboard_audio` edit (`gainDb`, `fadeIn`, `fadeOut`, `duck`) and `storyboard_shot` edit (`nativeSoundDb`, `trimIn`, `trimOut`, `transition`).
-9. Preview then final: `storyboard_render` with `preview: true`, `wait_for_job`, look at it, then `preview: false`. Give the person the file name
-   and `download`.
+9. Preview then final: `storyboard_render` (a preview by default), `wait_for_job`, read the `warnings`, look at it, then `preview: false`
+   for the finished film. Only that one is the film; give the person its file name and `download`.
 10. Export: `storyboard_project` export (a `.chaosfilm` bundle), `storyboard_export_otio`, or captions with `export_srt`.
 
 `storyboard_project` undo and redo step the project history.

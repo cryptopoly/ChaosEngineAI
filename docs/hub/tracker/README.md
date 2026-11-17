@@ -8,13 +8,14 @@ summary: Every FU row from FOLLOW_UPS.md, split into open and closed.
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here.
 
-- [Open and live follow-ups](open.md): **109** rows.
+- [Open and live follow-ups](open.md): **110** rows.
 - [Closed follow-ups](closed.md): **105** rows.
 
 ## Newest ten
 
 | Row | Item | Status |
 |---|---|---|
+| [FU-217](open.md) | Flaky music test in the full suite: test_unload_while_a_track_is_made_is_refused_and_the_j | Queued (2026-11-17), test isolation |
 | [FU-216](closed.md) | Narration not clearly over the music bed | Shipped 2026-11-17 (branch fix/audio-defaults). |
 | [FU-215](closed.md) | Film ends abruptly on the last shot's own sound | Shipped 2026-11-17 (branch fix/audio-defaults). |
 | [FU-214](closed.md) | Chat messages hidden at phone width | Shipped 2026-11-17 (branch fix/storyboard-timing). |
@@ -24,4 +25,3 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 | [FU-210](closed.md) | Storyboard shot comes out shorter than asked | Shipped 2026-11-17 (branch fix/storyboard-timing). |
 | [FU-209](closed.md) | Storyboard tool results misled the model | Shipped 2026-11-17 (branch fix/jobs-stall). |
 | [FU-208](closed.md) | A Keep going nudge turn was invisible in the open chat | Shipped 2026-11-17 (branch fix/jobs-stall). |
-| [FU-207](closed.md) | Keep going waited 76 minutes on a hung job | Shipped 2026-11-17 (branch fix/jobs-stall). |

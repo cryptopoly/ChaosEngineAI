@@ -1,13 +1,22 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 109 rows with work, decisions or watch items still open, newest first.
+summary: 110 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-217 · Flaky music test in the full suite: test_unload_while_a_track_is_made_is_refused_and_the_job_finishes — Queued (2026-11-17), test isolation</summary>
+
+**Status or trigger:** Queued (2026-11-17), test isolation
+
+**Notes:** Fails with `200 != 409` in about one full-suite run in three and passes alone and with its file (three runs, then the whole file). `unload()` asks `get_worker()` (the module singleton) while the test holds its own `self.worker`, so a worker left by an earlier test can make the two differ. Not a product fault as far as read. **To do:** make the test use the singleton the route uses (or patch `music_client._WORKER` in setUp and restore it in tearDown), then run the full suite five times.
+
+</details>
 
 <details>
 <summary>FU-199 · Live check of the Keep going fixes with a small model — Done 2026-11-17 (branch fix/keep-going-recovery).</summary>

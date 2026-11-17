@@ -62,8 +62,8 @@
     "moreInfo": "更多信息",
     "requiresLabel": "需要:",
     "installLabel": "安装:",
-    "kvCacheTypeGguf": null,
-    "kvCacheTypeGgufHint": null
+    "kvCacheTypeGguf": "KV 缓存类型",
+    "kvCacheTypeGgufHint": "q8_0 占用的 KV 缓存内存约为 f16 的一半，q4_0 约为四分之一。解码速度略慢。"
   },
   "notes": {
     "binaryRequired": "需要 {binary}。",
@@ -161,13 +161,13 @@
     "body": "TensorFold 是一款本地推理引擎，为每个模型系列配备手写内核。它一次生成多个草稿 token（来自模型自带的 MTP 头，部分系列还会用到小型草稿模型），并用目标模型逐一验证每个草稿，因此回复与逐个 token 解码的结果逐字节一致。",
     "requiresLabel": "需要:",
     "requiresBody": "Apple Silicon，以及独立的 TensorFold Python 环境（在此面板中安装）。仅支持经过测试的检查点。",
-    "requiresBodyNative": null,
+    "requiresBodyNative": "需要 NVIDIA GPU（Ampere 或更新架构）和 R580 或更高版本的驱动，以及 TensorFold 原生二进制文件（可从此面板安装；Windows 需要从源码构建）。仅提供经过测试的检查点。",
     "memoryLabel": "内存:",
     "memoryBody": "{needed} GB 或更多统一内存。",
     "statusLabel": "状态:",
     "statusInstalled": "已安装{version} — 勾选推测解码后生效。",
     "statusNotInstalled": "未安装。点击“安装 TensorFold”以设置其独立环境。",
-    "statusNotInstalledNative": null,
+    "statusNotInstalledNative": "未安装。点击“安装 TensorFold”：它会下载并校验原生二进制文件，同时先检测 GPU 和驱动；如果本机无法运行，会说明原因。",
     "visionLabel": "图像输入:",
     "visionInstalled": "已安装（实验性）— 勾选 TensorFold 时，可在聊天中附加图像。带图像的请求会从全新的 KV 缓存开始。",
     "visionNotInstalled": "未安装。使用模型自带的视觉编码器读取图像。会添加 Pillow、transformers 和 mlx-vlm；TensorFold 的作者仍将其标记为实验性。",
@@ -194,7 +194,7 @@
     "statusLabel": "状态:",
     "statusInstalled": "已安装 — 启用推测解码后生效。",
     "statusNotInstalled": "未安装。点击“安装 MTPLX”以设置独立 venv（约 500 MB）。",
-    "statusOutdated": null
+    "statusOutdated": "已安装版本过旧，无法运行当前 MTPLX 模型。点击“安装 MTPLX”即可更新隔离的虚拟环境（约 500 MB）。"
   },
   "ggufMtp": {
     "tooltip": "GGUF MTP 推测解码：通过 llama.cpp 的 --spec-type draft-mtp 使用模型内置的 MTP 头，在不损失质量的前提下将生成速度提升约 1.8-2.2 倍。",

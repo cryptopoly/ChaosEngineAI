@@ -69,8 +69,8 @@
     "plugins": "扩展和插件系统",
     "logs": "运行时事件",
     "settings": "目录和默认值",
-    "voiceStudio": null,
-    "voiceModels": null,
+    "voiceStudio": "朗读、选择语音并转写",
+    "voiceModels": "语音模型和语音运行时",
     "voiceLibrary": "你创建的转写和语音",
     "chatModels": "查找、下载和管理语言模型",
     "imageModelsPage": "查找、下载和管理图像模型",
@@ -132,7 +132,7 @@
     "primaryNavAriaLabel": "主导航",
     "sectionMake": "创作",
     "sectionRun": "运行",
-    "menuButton": null
+    "menuButton": "菜单"
   },
   "slashCommands": {
     "menuAriaLabel": "斜杠命令"
@@ -315,13 +315,13 @@
       "ollamaHint": "将应用的 Ollama 主机 / 基础 URL 设置为下方的地址 — 原生 /api 端点与 /v1 一同提供。"
     },
     "engineBusy": {
-      "step": null,
-      "image": null,
-      "imageBare": null,
-      "video": null,
-      "videoBare": null,
-      "music": null,
-      "musicBare": null
+      "step": "第 {step} 步，共 {total} 步",
+      "image": "图像引擎忙碌：{detail}",
+      "imageBare": "图像引擎忙碌",
+      "video": "视频引擎忙碌：{detail}",
+      "videoBare": "视频引擎忙碌",
+      "music": "音乐引擎忙碌：{detail}",
+      "musicBare": "音乐引擎忙碌"
     }
   },
   "conversionTab": {
@@ -657,7 +657,7 @@
     "clockHint": "系统遵循您语言的默认设置（美式英语为 12 小时制，其他为 24 小时制）。如想覆盖，请选择其中一项。",
     "helpImprove": "帮助改进翻译",
     "openOnGithub": "在 GitHub 上打开 {locale} →",
-    "communityNote": null
+    "communityNote": "社区翻译，借助机器完成，欢迎指正。"
   },
   "imageOutputCard": {
     "huggingFace": "Hugging Face",
@@ -846,7 +846,7 @@
       "storage": "存储",
       "providers": "提供商",
       "integrations": "集成",
-      "skills": null,
+      "skills": "技能",
       "diagnostics": "诊断",
       "accelerators": "加速器",
       "disk": "磁盘占用"
@@ -941,37 +941,37 @@
       "readTokenLabel": "只读令牌（Claude Code）"
     },
     "skills": {
-      "title": null,
-      "subtitle": null,
-      "safety": null,
-      "pathPlaceholder": null,
-      "pathLabel": null,
-      "pickTitle": null,
-      "noDialog": null,
-      "chooseFolder": null,
-      "chooseZip": null,
-      "import": null,
-      "imported": null,
-      "empty": null,
-      "listLabel": null,
-      "enabled": null,
-      "files": null,
-      "skippedTitle": null,
-      "confirmDelete": null,
-      "cancel": null,
-      "delete": null,
-      "scanNote": null,
+      "title": "技能",
+      "subtitle": "教对话模型一套流程：一个包含 SKILL.md 和可选文本文件的文件夹，或其 .zip 压缩包。",
+      "safety": "技能中的脚本从不运行。模型只把技能的文本当作参考来读取。新技能默认关闭：开启前请先阅读描述和文件列表。",
+      "pathPlaceholder": "/path/to/skill-folder 或 skill.zip",
+      "pathLabel": "技能文件夹或 .zip 路径",
+      "pickTitle": "选择技能",
+      "noDialog": "此处无法打开文件选择框。请直接输入路径。",
+      "chooseFolder": "选择文件夹",
+      "chooseZip": "选择 .zip",
+      "import": "导入",
+      "imported": "已导入 {name}：保留 {files, plural, other {# 个文件}}，{skipped, plural, =0 {未跳过任何内容} other {跳过 #}}。开启前处于关闭状态。",
+      "empty": "尚未导入任何技能。",
+      "listLabel": "已导入的技能",
+      "enabled": "在对话中可用",
+      "files": "{count, plural, other {# 个文件}}",
+      "skippedTitle": "已跳过（未导入）：",
+      "confirmDelete": "永久删除 {name}",
+      "cancel": "取消",
+      "delete": "删除",
+      "scanNote": "每次导入都会进行安全扫描，评级为低、中或高。扫描基于规则，在本机运行，任何内容都不会离开本机。这只是启发式检测，并不保证安全。",
       "scan": {
-        "chipTitle": null,
-        "chip": null,
-        "low": null,
-        "medium": null,
-        "high": null,
-        "findings": null,
-        "where": null,
-        "truncated": null,
-        "disclaimer": null,
-        "acknowledge": null
+        "chipTitle": "本地规则安全扫描。仅为启发式检测，不作保证。",
+        "chip": "扫描：{rating}",
+        "low": "低",
+        "medium": "中",
+        "high": "高",
+        "findings": "{count, plural, =0 {未发现问题} other {# 项发现}}",
+        "where": "{file}，第 {line} 行",
+        "truncated": "仅显示前 {count} 项发现。",
+        "disclaimer": "这只是启发式检测，不作保证：固定规则会查找有风险的措辞、隐藏字符、链接、编码文本和随附脚本。扫描在本机运行，任何内容都不会离开本机。“低”仅表示没有规则命中，并不代表技能安全。",
+        "acknowledge": "我已阅读扫描结果。扫描将此技能评为“高”；勾选此项后才能开启它。"
       }
     },
     "integrations": {
@@ -981,34 +981,34 @@
       "copyButton": "复制"
     },
     "cleanup": {
-      "title": null,
-      "subtitle": null,
-      "note": null,
-      "refresh": null,
-      "loading": null,
-      "loadError": null,
-      "groupProjects": null,
-      "groupThreads": null,
-      "groupOutputs": null,
-      "empty": null,
-      "selectAll": null,
-      "projectDetail": null,
-      "threadDetail": null,
-      "outputDetail": null,
-      "kindImage": null,
-      "kindVideo": null,
-      "unknownDate": null,
-      "delete": null,
-      "deleting": null,
-      "selected": null,
-      "deleteError": null,
-      "resultNone": null,
-      "resultDone": null,
-      "resultRefused": null,
-      "confirmTitle": null,
-      "confirmBody": null,
-      "confirmBreakdown": null,
-      "confirmButton": null
+      "title": "清理",
+      "subtitle": "删除你不再需要的分镜项目、对话线程，以及图库中的图片和片段。",
+      "note": "默认未勾选任何项。勾选要删除的内容，然后确认。删除后无法恢复。",
+      "refresh": "刷新列表",
+      "loading": "正在加载列表…",
+      "loadError": "无法加载列表：{message}",
+      "groupProjects": "分镜项目",
+      "groupThreads": "对话线程",
+      "groupOutputs": "图库中的图片和片段",
+      "empty": "这里没有内容。",
+      "selectAll": "全选：{group}",
+      "projectDetail": "{shots, plural, other {# 个镜头}}，编辑于 {date}",
+      "threadDetail": "{count, plural, other {# 条消息}}，最近使用于 {date}",
+      "outputDetail": "{kind}，{date}",
+      "kindImage": "图片",
+      "kindVideo": "片段",
+      "unknownDate": "未知",
+      "delete": "删除已勾选的项目",
+      "deleting": "正在删除…",
+      "selected": "{count, plural, =0 {未勾选任何项} other {已勾选 # 项，{size}}}",
+      "deleteError": "无法删除：{message}",
+      "resultNone": "未删除任何内容。",
+      "resultDone": "已删除 {count, plural, other {# 项}}，释放 {size}。",
+      "resultRefused": "{count, plural, other {# 项未删除}}：",
+      "confirmTitle": "删除 {count, plural, other {# 项}}？",
+      "confirmBody": "这将从本机删除 {count, plural, other {# 项}}（{size}）。此操作无法撤销。",
+      "confirmBreakdown": "项目：{projects}。对话线程：{threads}。图库文件：{outputs}。",
+      "confirmButton": "永久删除"
     }
   },
   "modelLaunchModal": {
@@ -1378,8 +1378,8 @@
     "storyboard": "分镜功能即将推出。"
   },
   "llamaCuda": {
-    "description": null,
-    "driverTooOld": null,
+    "description": "使用 CUDA {cuda}（llama.cpp {tag}）在 NVIDIA GPU 上运行 GGUF 对话模型。下载内容包含 CUDA 运行时。",
+    "driverTooOld": "NVIDIA 驱动程序版本过旧，无法运行 CUDA llama-server。请更新驱动后重新安装。",
     "inUse": "使用中：GGUF 模型在 NVIDIA GPU 上运行。",
     "install": "安装",
     "installedNoDevice": "已安装，但未找到 CUDA 设备。请检查 NVIDIA 驱动程序（nvidia-smi）。",
@@ -1405,10 +1405,10 @@
     }
   },
   "accessibilityPanel": {
-    "title": null,
-    "strongBorders": null,
-    "note": null,
-    "on": null,
-    "off": null
+    "title": "无障碍",
+    "strongBorders": "输入框和按钮使用更醒目的边框",
+    "note": "用更高对比度的线条勾勒输入框和按钮，使其更容易辨认。立即生效。",
+    "on": "开",
+    "off": "关"
   }
 }

@@ -69,8 +69,8 @@
     "plugins": "Extensões e sistema de plugins",
     "logs": "Eventos do runtime",
     "settings": "Diretórios e padrões",
-    "voiceStudio": null,
-    "voiceModels": null,
+    "voiceStudio": "Fale, escolha vozes e transcreva",
+    "voiceModels": "Modelos de fala e o runtime de voz",
     "voiceLibrary": "Suas transcrições e falas geradas",
     "chatModels": "Encontre, baixe e gerencie modelos de linguagem",
     "imageModelsPage": "Encontre, baixe e gerencie modelos de imagem",
@@ -132,7 +132,7 @@
     "primaryNavAriaLabel": "Principal",
     "sectionMake": "Criar",
     "sectionRun": "Executar",
-    "menuButton": null
+    "menuButton": "Menu"
   },
   "slashCommands": {
     "menuAriaLabel": "Comandos de barra"
@@ -315,13 +315,13 @@
       "ollamaHint": "Defina o host / URL base do Ollama do app como o endereço abaixo — os endpoints nativos /api são servidos junto com /v1."
     },
     "engineBusy": {
-      "step": null,
-      "image": null,
-      "imageBare": null,
-      "video": null,
-      "videoBare": null,
-      "music": null,
-      "musicBare": null
+      "step": "passo {step} de {total}",
+      "image": "Motor de imagem ocupado: {detail}",
+      "imageBare": "Motor de imagem ocupado",
+      "video": "Motor de vídeo ocupado: {detail}",
+      "videoBare": "Motor de vídeo ocupado",
+      "music": "Motor de música ocupado: {detail}",
+      "musicBare": "Motor de música ocupado"
     }
   },
   "conversionTab": {
@@ -657,7 +657,7 @@
     "clockHint": "Sistema segue o padrão do seu idioma (12 horas para inglês dos EUA, 24 horas nos demais). Escolha um lado se quiser sobrescrever.",
     "helpImprove": "Ajude a melhorar as traduções",
     "openOnGithub": "Abrir {locale} no GitHub →",
-    "communityNote": null
+    "communityNote": "Tradução da comunidade, com auxílio de máquina. Correções são bem-vindas."
   },
   "imageOutputCard": {
     "huggingFace": "Hugging Face",
@@ -846,7 +846,7 @@
       "storage": "Armazenamento",
       "providers": "Provedores",
       "integrations": "Integrações",
-      "skills": null,
+      "skills": "Skills",
       "diagnostics": "Diagnóstico",
       "accelerators": "Aceleradores",
       "disk": "Uso de disco"
@@ -941,37 +941,37 @@
       "readTokenLabel": "Token somente leitura (Claude Code)"
     },
     "skills": {
-      "title": null,
-      "subtitle": null,
-      "safety": null,
-      "pathPlaceholder": null,
-      "pathLabel": null,
-      "pickTitle": null,
-      "noDialog": null,
-      "chooseFolder": null,
-      "chooseZip": null,
-      "import": null,
-      "imported": null,
-      "empty": null,
-      "listLabel": null,
-      "enabled": null,
-      "files": null,
-      "skippedTitle": null,
-      "confirmDelete": null,
-      "cancel": null,
-      "delete": null,
-      "scanNote": null,
+      "title": "Skills",
+      "subtitle": "Ensine ao modelo do chat um procedimento: uma pasta com um SKILL.md e arquivos de texto opcionais, ou um .zip dela.",
+      "safety": "Scripts em uma skill nunca são executados. O modelo apenas lê o texto da skill, como referência. Novas skills começam desativadas: leia a descrição e a lista de arquivos antes de ativar uma.",
+      "pathPlaceholder": "/caminho/para/pasta-da-skill ou skill.zip",
+      "pathLabel": "Caminho da pasta ou do .zip da skill",
+      "pickTitle": "Escolha uma skill",
+      "noDialog": "A janela de arquivos não está disponível aqui. Digite o caminho.",
+      "chooseFolder": "Escolher pasta",
+      "chooseZip": "Escolher .zip",
+      "import": "Importar",
+      "imported": "Importada {name}: {files, plural, one {# arquivo mantido} other {# arquivos mantidos}}, {skipped, plural, =0 {nada ignorado} one {# ignorado} other {# ignorados}}. Ela fica desativada até você ativá-la.",
+      "empty": "Nenhuma skill importada ainda.",
+      "listLabel": "Skills importadas",
+      "enabled": "Disponível no Chat",
+      "files": "{count, plural, one {# arquivo} other {# arquivos}}",
+      "skippedTitle": "Ignorados (não importados):",
+      "confirmDelete": "Excluir {name} definitivamente",
+      "cancel": "Cancelar",
+      "delete": "Excluir",
+      "scanNote": "Cada importação recebe uma verificação de segurança classificada como Baixo, Médio ou Alto. Ela é baseada em regras, roda neste computador e nada sai daqui. É uma heurística, não uma garantia.",
       "scan": {
-        "chipTitle": null,
-        "chip": null,
-        "low": null,
-        "medium": null,
-        "high": null,
-        "findings": null,
-        "where": null,
-        "truncated": null,
-        "disclaimer": null,
-        "acknowledge": null
+        "chipTitle": "Verificação de segurança por regras locais. Uma heurística, não uma garantia.",
+        "chip": "Verificação: {rating}",
+        "low": "Baixo",
+        "medium": "Médio",
+        "high": "Alto",
+        "findings": "{count, plural, =0 {nenhum achado} one {# achado} other {# achados}}",
+        "where": "{file}, linha {line}",
+        "truncated": "Só os primeiros {count} achados são mostrados.",
+        "disclaimer": "Uma heurística, não uma garantia: regras fixas procuram linguagem arriscada, caracteres ocultos, links, texto codificado e scripts incluídos. Roda neste computador e nada sai daqui. Baixo significa que nenhuma regra foi acionada, não que a skill é segura.",
+        "acknowledge": "Li os achados. A verificação classificou esta skill como Alto; marque para poder ativá-la."
       }
     },
     "integrations": {
@@ -981,34 +981,34 @@
       "copyButton": "Copiar"
     },
     "cleanup": {
-      "title": null,
-      "subtitle": null,
-      "note": null,
-      "refresh": null,
-      "loading": null,
-      "loadError": null,
-      "groupProjects": null,
-      "groupThreads": null,
-      "groupOutputs": null,
-      "empty": null,
-      "selectAll": null,
-      "projectDetail": null,
-      "threadDetail": null,
-      "outputDetail": null,
-      "kindImage": null,
-      "kindVideo": null,
-      "unknownDate": null,
-      "delete": null,
-      "deleting": null,
-      "selected": null,
-      "deleteError": null,
-      "resultNone": null,
-      "resultDone": null,
-      "resultRefused": null,
-      "confirmTitle": null,
-      "confirmBody": null,
-      "confirmBreakdown": null,
-      "confirmButton": null
+      "title": "Limpeza",
+      "subtitle": "Exclua projetos de storyboard, threads de chat e imagens e clipes da galeria que você não quer mais.",
+      "note": "Nada está marcado. Marque o que quer excluir e confirme. Itens excluídos não podem ser recuperados.",
+      "refresh": "Atualizar a lista",
+      "loading": "Carregando a lista...",
+      "loadError": "Não foi possível carregar a lista: {message}",
+      "groupProjects": "Projetos de storyboard",
+      "groupThreads": "Threads de chat",
+      "groupOutputs": "Imagens e clipes da galeria",
+      "empty": "Nada aqui.",
+      "selectAll": "Selecionar tudo: {group}",
+      "projectDetail": "{shots, plural, one {# plano} other {# planos}}, editado em {date}",
+      "threadDetail": "{count, plural, one {# mensagem} other {# mensagens}}, último uso em {date}",
+      "outputDetail": "{kind}, {date}",
+      "kindImage": "Imagem",
+      "kindVideo": "Clipe",
+      "unknownDate": "desconhecida",
+      "delete": "Excluir os itens marcados",
+      "deleting": "Excluindo...",
+      "selected": "{count, plural, =0 {Nada marcado} one {# item marcado, {size}} other {# itens marcados, {size}}}",
+      "deleteError": "Não foi possível excluir: {message}",
+      "resultNone": "Nada foi excluído.",
+      "resultDone": "Excluído {count, plural, one {# item} other {# itens}} e liberado {size}.",
+      "resultRefused": "{count, plural, one {# item não foi excluído:} other {# itens não foram excluídos:}}",
+      "confirmTitle": "Excluir {count, plural, one {# item} other {# itens}}?",
+      "confirmBody": "Isto exclui {count, plural, one {# item} other {# itens}} ({size}) deste computador. Não é possível desfazer.",
+      "confirmBreakdown": "Projetos: {projects}. Threads de chat: {threads}. Arquivos da galeria: {outputs}.",
+      "confirmButton": "Excluir definitivamente"
     }
   },
   "modelLaunchModal": {
@@ -1378,8 +1378,8 @@
     "storyboard": "O storyboard chegará em breve."
   },
   "llamaCuda": {
-    "description": null,
-    "driverTooOld": null,
+    "description": "Executa modelos de chat GGUF na sua GPU NVIDIA com CUDA {cuda} (llama.cpp {tag}). O download inclui o runtime do CUDA.",
+    "driverTooOld": "O driver NVIDIA é antigo demais para o llama-server com CUDA. Atualize o driver e instale de novo.",
     "inUse": "Em uso: os modelos GGUF rodam na GPU NVIDIA.",
     "install": "Instalar",
     "installedNoDevice": "Instalado, mas nenhum dispositivo CUDA foi encontrado. Verifique o driver da NVIDIA (nvidia-smi).",
@@ -1405,10 +1405,10 @@
     }
   },
   "accessibilityPanel": {
-    "title": null,
-    "strongBorders": null,
-    "note": null,
-    "on": null,
-    "off": null
+    "title": "Acessibilidade",
+    "strongBorders": "Bordas mais fortes em campos e botões",
+    "note": "Contorna campos e botões com uma linha de maior contraste para facilitar a visualização. Aplica-se imediatamente.",
+    "on": "Ligado",
+    "off": "Desligado"
   }
 }

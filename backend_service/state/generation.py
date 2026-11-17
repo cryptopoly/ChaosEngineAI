@@ -46,6 +46,12 @@ if TYPE_CHECKING:
 
 
 def generate(state: ChaosEngineState, request: GenerateRequest) -> dict[str, Any]:
+    # FU-194: a message sent here stops an active Keep going run, as on the streaming path. This path has no
+    # Studio tools, so it never starts an armed run (studioTools is forced off for the controller).
+    from backend_service import keep_going as _keep_going
+
+    _keep_going.on_user_turn(
+        state, request.sessionId, {**request.model_dump(exclude_none=True), "studioTools": False}, request.prompt)
     with state._lock:
         session = state._ensure_session(request.sessionId, request.title)
         launch_preferences = state._launch_preferences()

@@ -239,6 +239,20 @@ class ScriptedRunTests(Harness):
                 self.assertEqual(messages[index + 1]["role"], "assistant", [m["role"] for m in messages])
         self.assertEqual(messages[-1]["role"], "assistant")
 
+    def test_a_non_streaming_message_stops_a_run_but_never_starts_one(self):
+        # FU-194: the non-streaming route stops an active run like the streaming one does.
+        self.client.post(f"/api/chat/keepgoing/{self.sid}/start", json={})
+        reply = self.client.post("/api/chat/generate", json={"sessionId": self.sid, "prompt": "Hi", "studioTools": True})
+        self.assertEqual(reply.status_code, 200, reply.text)
+        self.assertEqual(self.status()["state"], "armed")  # no Studio tools on this path: not taken as the brief
+        controller = keep_going.for_state(self.state)
+        controller.on_user_turn(self.sid, {"studioTools": True, "maxTokens": 512}, "Make a film.", None)
+        self.assertEqual(self.status()["state"], "running")
+        reply = self.client.post("/api/chat/generate", json={"sessionId": self.sid, "prompt": "Stop, a poster instead."})
+        self.assertEqual(reply.status_code, 200, reply.text)
+        run = self.status()
+        self.assertEqual((run["state"], run["stopCode"]), ("stopped", "user_message"))
+
     def test_restart_shows_resume_and_never_restarts_by_itself(self):
         started = {"n": 0}
 

@@ -99,8 +99,8 @@ STORYBOARD_TOOLS: list[dict[str, Any]] = [
                      "returned, an upload: handle, or a file in the app's output folders."},
             "library_id": {"type": "string", "maxLength": 40, "description": "add: a Music library track id (make_music tracks[].id) "
                            "instead of path."},
-            "fields": {**_FIELDS, "description": "anchor{shotId,offset} or start, trimIn, trimOut, gainDb (a voice starts at 0 to +12 dB, measured from its file so it sits over the music; "
-                       "your value wins, 0 too), fadeIn, fadeOut, duck (music ducks under voice unless duck=false), loop, label."},
+            "fields": {**_FIELDS, "description": "anchor{shotId,offset} or start, trimIn, trimOut, gainDb (leave it unset on a voice: the app measures the file and sets 0 to +12 dB so it sits over the music; "
+                       "a value you give wins, 0 too), fadeIn, fadeOut, duck (music ducks under voice unless duck=false), loop, label."},
         }, ["action", "project_id", "revision"]),
     },
     {

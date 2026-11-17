@@ -20,6 +20,25 @@ _CAPTION_WORDS = re.compile(r"\b(caption\w*|subtitle\w*)\b", re.I)
 _SRT_WORDS = re.compile(r"\b(srt|subtitle file|caption file)\b", re.I)
 
 
+# "2-minute film", "two minutes", "about 120 s": the length the brief asks for. Short numbers (a 4 s shot) are
+# not a film length; the largest figure of 15 s or more is.
+_WORD_NUMBERS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10}
+_LENGTH = re.compile(r"\b(\d+(?:\.\d+)?|" + "|".join(_WORD_NUMBERS) + r")\s*-?\s*(minutes?|mins?|seconds?|secs?|s)\b", re.I)
+_MIN_FILM_SECONDS = 15.0
+SHORT_FILM_RATIO = 0.85  # a film under this share of the asked length is "too short"
+
+
+def target_seconds(goal: str) -> float | None:
+    """The film length the brief asks for, in seconds, or None when it names none."""
+    best: float | None = None
+    for number, unit in _LENGTH.findall(goal or ""):
+        value = _WORD_NUMBERS.get(number.lower()) if number.lower() in _WORD_NUMBERS else float(number)
+        seconds = value * 60 if unit.lower().startswith("min") else value
+        if seconds >= _MIN_FILM_SECONDS and (best is None or seconds > best):
+            best = float(seconds)
+    return best
+
+
 def wants_voice(goal: str) -> bool:
     return bool(_VOICE_WORDS.search(goal or ""))
 
@@ -34,6 +53,7 @@ class FilmState:
     name: str
     revision: int
     shots: int
+    seconds: float = 0.0  # the shots' lengths added up
     needs_still: list[int] = field(default_factory=list)  # shot numbers, 1-based in film order
     needs_clip: list[int] = field(default_factory=list)
     needs_redo: list[int] = field(default_factory=list)  # stale (inputs changed) or failed
@@ -63,11 +83,24 @@ class FilmState:
     def shots_done(self) -> bool:
         return self.shots > 0 and not (self.needs_still or self.needs_clip or self.needs_redo or self.missing_files)
 
+    def too_short(self, goal: str) -> float | None:
+        """The length the brief asks for when the shots add up to clearly less than it, else None."""
+        target = target_seconds(goal)
+        return target if target and self.shots and self.seconds > 0 and self.seconds < target * SHORT_FILM_RATIO else None
+
+    def extra_shots(self, target: float) -> int:
+        average = self.seconds / self.shots if self.shots else 4.0
+        return max(1, round((target - self.seconds) / max(average, 0.5)))
+
     def lacks(self, goal: str) -> list[str]:
         """What is still missing, as short phrases, in the order the work is done."""
         out: list[str] = []
         if self.shots == 0:
             out.append("no shots yet")
+        target = self.too_short(goal)
+        if target:
+            out.append(f"film length ({self.seconds:.0f} s of the {target:.0f} s the brief asks for: about "
+                       f"{self.extra_shots(target)} more shots)")
         if self.needs_still:
             out.append(f"still for shot {_numbers(self.needs_still)}")
         if self.needs_clip:
@@ -107,6 +140,11 @@ class FilmState:
             return f"Resume the paused batch: storyboard_batch action resume, project_id {pid}, batch_id {self.batch_paused}."
         if self.shots == 0:
             return f"Add the shots from the brief with storyboard_shot add (project_id {pid})."
+        target = self.too_short(goal)
+        if target:
+            return (f"The film is {self.seconds:.0f} s, the brief asks for about {target:.0f} s. Add about "
+                    f"{self.extra_shots(target)} more shots with storyboard_shot add (project_id {pid}) to fill the "
+                    "story, then make them.")
         if self.missing_files:
             return (f"Shot {_numbers(self.missing_files)} lost its files: storyboard_generate with shot_ids for "
                     "those shots, or ask the user.")
@@ -136,7 +174,8 @@ class FilmState:
             return "The render is running: call wait_for_job on its job id."
         if self.render != "done":
             return f"storyboard_render with project_id {pid} and preview false, then wait_for_job."
-        return "Everything looks done. Check the film once and say in one line that it is finished."
+        return (f"Everything looks done and the film is rendered ({self.seconds:.0f} s long). Do not render again. "
+                "Say in one line that it is finished, with its real length.")
 
     def summary(self, goal: str) -> str:
         head = f'Project "{self.name}" (id {self.project_id}, revision {self.revision}): {self.shots} shots.'
@@ -204,7 +243,8 @@ def _render_state(folder: Path, newest_change: float) -> tuple[str, str | None, 
 def film_state(project: Any, folder: Path) -> FilmState:
     """Read one loaded project (``storyboard.models.Project``) and its folder."""
     shots = sorted(project.shots, key=lambda s: s.order)
-    state = FilmState(project_id=project.id, name=project.name, revision=project.revision, shots=len(shots))
+    state = FilmState(project_id=project.id, name=project.name, revision=project.revision, shots=len(shots),
+                      seconds=sum(float(s.seconds) for s in shots))
     newest = 0.0
     for number, shot in enumerate(shots, start=1):
         state.takes += len(shot.takes)

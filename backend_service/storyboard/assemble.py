@@ -44,6 +44,7 @@ from backend_service.storyboard.assemble_graphs import (  # noqa: F401 - re-expo
     build_card_graph,
     build_mix_graph,
     end_fade,
+    video_end_fade,
     native_fade_filter,
     build_shot_graph,
     build_xfade_graphs,
@@ -556,6 +557,10 @@ def render(plan: RenderPlan, progress_cb: ProgressCb | None = None,
         if plan.shots:
             last = lead + len(plan.shots) - 1
             native_fade = end_fade(plan.shots[-1], timing.starts[last], shots_end_s)
+        # A final film without an end card ends on a fade to black over the same stretch as the sound's fade, so
+        # the picture does not hold on a bright frame while the sound dies away. A preview keeps its fast copy.
+        video_fade = (video_end_fade(timing.starts[lead + len(plan.shots) - 1], shots_end_s)
+                      if plan.shots and not plan.preview and plan.end_card is None else None)
         loudness: dict[str, Any] | None = None
         target = plan.loudness_lufs
         loudnorm = None
@@ -589,10 +594,10 @@ def render(plan: RenderPlan, progress_cb: ProgressCb | None = None,
         upscale_to = None if plan.preview else plan.upscale_to
         style = caption_force_style(plan.captions_style, plan.width, plan.height) if captions_name and plan.captions_style else None
         graph_text, mix_warnings = build_mix_graph(lanes, total_samples, loudnorm, captions_name, upscale_to, style,
-                                                   logo, captions_fonts, native_fade)
+                                                   logo, captions_fonts, native_fade, video_fade)
         warnings += mix_warnings
         graph = script("mix.txt", graph_text)
-        video_args = (["-map", "[vout]", *_codec_args(plan)] if captions_name or upscale_to or logo
+        video_args = (["-map", "[vout]", *_codec_args(plan)] if captions_name or upscale_to or logo or video_fade
                       else ["-map", "0:v", "-c:v", "copy"])
         meta_args = []
         if plan.metadata:

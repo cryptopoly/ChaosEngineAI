@@ -200,6 +200,12 @@ def end_fade(shot: ShotInput, shot_start: float, shot_end: float) -> tuple[float
     return shot_end - length, length
 
 
+def video_end_fade(shot_start: float, shot_end: float) -> tuple[float, float] | None:
+    """(start, length) of the fade to black over the last shot's end, whatever its sound does."""
+    length = min(END_FADE_SECONDS, shot_end - shot_start)
+    return None if length <= 0.01 else (shot_end - length, length)
+
+
 def native_fade_filter(fade: tuple[float, float]) -> str:
     return f"afade=t=out:st={_f(fade[0])}:d={_f(fade[1])}"
 
@@ -210,10 +216,13 @@ def build_mix_graph(lanes: Sequence[Lane], total_samples: int, loudnorm: str | N
                     captions_style: str | None = None,
                     logo: "LogoOverlay | None" = None,
                     captions_fonts: str | None = None,
-                    native_fade: tuple[float, float] | None = None) -> tuple[str, list[str]]:
+                    native_fade: tuple[float, float] | None = None,
+                    video_fade: tuple[float, float] | None = None) -> tuple[str, list[str]]:
     """The audio graph (plus the corner logo and captions burn-in when asked). Returns (graph, warnings).
 
-    ``native_fade`` is the (start, length) of the fade-out on the shots' own sound at the film's end."""
+    ``native_fade`` is the (start, length) of the fade-out on the shots' own sound at the film's end.
+    ``video_fade`` is the (start, length) of a fade to black on the picture at the film's end (the film is
+    re-encoded then; the caller passes it for a final render only)."""
     total = total_samples / SAMPLE_RATE
     warnings: list[str] = []
     lines = [f"[0:a]aresample={SAMPLE_RATE},aformat=sample_fmts=fltp:channel_layouts=stereo,"
@@ -290,7 +299,7 @@ def build_mix_graph(lanes: Sequence[Lane], total_samples: int, loudnorm: str | N
     else:
         joined = "".join(f"[{x}]" for x in mix_inputs)
         lines.append(f"{joined}amix=inputs={len(mix_inputs)}:normalize=0:duration=first,{tail}")
-    if captions_name or upscale_to or logo:
+    if captions_name or upscale_to or logo or video_fade:
         source = "0:v"
         if logo:  # under the captions, so a caption is never hidden by the logo
             lines.append(logo_chain(logo, "0:v", "vlogo"))
@@ -302,6 +311,8 @@ def build_mix_graph(lanes: Sequence[Lane], total_samples: int, loudnorm: str | N
             video.append(f"subtitles=filename={captions_name}{fonts}{styled}")
         if upscale_to:
             video.append(upscale_filter(upscale_to))
+        if video_fade:  # last, so the fade also covers the captions and the logo
+            video.append(f"fade=t=out:st={_f(video_fade[0])}:d={_f(video_fade[1])}")
         lines.append(f"[{source}]{','.join(video) or 'null'}[vout]")
     return ";\n".join(lines) + "\n", warnings
 

@@ -16,7 +16,7 @@ from backend_service.keep_going.nudge import (
     project_id_from,
     unfixed_errors,
 )
-from backend_service.keep_going.project_state import FilmState, film_state, wants_captions, wants_voice
+from backend_service.keep_going.project_state import FilmState, film_state, target_seconds, wants_captions, wants_voice
 from backend_service.storyboard.models import AudioClip, AudioSource, Caption, Project, Shot, Take
 from backend_service.tools.studio_gate import StudioGate
 
@@ -80,7 +80,7 @@ class FilmStateTests(unittest.TestCase):
         self.render()
         f = film_state(p, self.folder)
         self.assertEqual(f.render, "done")
-        self.assertTrue(f.complete("a 30 second ad"))
+        self.assertTrue(f.complete("an ad"))
         self.assertFalse(f.complete("an ad with narration"))  # the brief asks for a voice lane
         self.assertIn("speak the voiceover", f.next_step("an ad with narration"))
 
@@ -216,6 +216,36 @@ class GateGrantTests(unittest.TestCase):
             # Expired mid-turn: the next render shows a card again.
             self.assertEqual(self.run_review(StudioGate("s", auto_approve=True, auto_until=time.time() - 1))[0], "card")
             self.assertEqual(self.run_review(StudioGate("s", auto_approve=True))[0], "auto")
+
+
+class FilmLengthTests(unittest.TestCase):
+    """The brief's length is checked against the shots (the 80 s film made for a 120 s brief, 2026-11-17)."""
+
+    def test_the_length_a_brief_asks_for(self):
+        self.assertEqual(target_seconds("a 2-minute film (~120 s), 4 s shots, 1024x576 at 24 fps, 30 shots"), 120.0)
+        self.assertEqual(target_seconds("Make it two minutes long"), 120.0)
+        self.assertEqual(target_seconds("about 90 seconds"), 90.0)
+        self.assertIsNone(target_seconds("4 s shots at 24 fps, 8 h of rendering, 1024x576"))
+        self.assertIsNone(target_seconds(""))
+
+    def film(self, shots, seconds):
+        return FilmState(project_id="p1", name="n", revision=1, shots=shots, seconds=seconds, music=True, render="done")
+
+    def test_a_short_film_is_not_complete_and_says_how_many_shots_to_add(self):
+        goal = "a 2-minute film"
+        state = self.film(20, 80.0)
+        self.assertFalse(state.complete(goal))
+        self.assertIn("film length (80 s of the 120 s the brief asks for: about 10 more shots)", state.lacks(goal)[0])
+        self.assertIn("Add about 10 more shots", state.next_step(goal))
+
+    def test_a_film_near_the_length_is_complete(self):
+        state = self.film(28, 112.0)
+        self.assertTrue(state.complete("a 2-minute film"))
+        self.assertIn("112 s long", state.next_step("a 2-minute film"))
+        self.assertIn("Do not render again", state.next_step("a 2-minute film"))
+
+    def test_no_length_in_the_brief_means_no_check(self):
+        self.assertTrue(self.film(3, 12.0).complete("a short film"))
 
 
 if __name__ == "__main__":

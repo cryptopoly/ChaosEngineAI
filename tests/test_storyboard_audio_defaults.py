@@ -71,6 +71,15 @@ class EndFadeMathTests(unittest.TestCase):
         plain, _ = build_mix_graph([], 48000 * 12, None)
         self.assertNotIn("afade", plain)
 
+    def test_the_picture_fades_to_black_when_asked(self):
+        from backend_service.storyboard.assemble_graphs import video_end_fade
+
+        graph, _ = build_mix_graph([], 48000 * 12, None, video_fade=(11.4, 0.6))
+        self.assertIn("[0:v]fade=t=out:st=11.4:d=0.6[vout]", graph)
+        self.assertNotIn("[vout]", build_mix_graph([], 48000 * 12, None)[0])
+        self.assertEqual(video_end_fade(8.0, 12.0), (11.4, 0.6))
+        self.assertIsNone(video_end_fade(8.0, 8.005))
+
 
 @unittest.skipIf(_ffmpeg() is None, "the bundled ffmpeg is not installed")
 class EndFadeRenderTests(unittest.TestCase):

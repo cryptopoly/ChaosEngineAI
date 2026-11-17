@@ -257,7 +257,7 @@ def nudge_text(
     if last_error is not None:
         step = f"Fix that error first, then: {step[0].lower()}{step[1:]}"
     lines.append(f"Next step: {step}")
-    lines.append("Do it now with the tools. When everything in the brief is done, say so in one line.")
+    lines.append("Do it now with a tool call, not with a text reply. When everything in the brief is done, say so in one line.")
     return "\n".join(lines)
 
 

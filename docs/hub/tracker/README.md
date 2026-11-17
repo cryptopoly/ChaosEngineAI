@@ -9,12 +9,13 @@ summary: Every FU row from FOLLOW_UPS.md, split into open and closed.
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here.
 
 - [Open and live follow-ups](open.md): **111** rows.
-- [Closed follow-ups](closed.md): **105** rows.
+- [Closed follow-ups](closed.md): **106** rows.
 
 ## Newest ten
 
 | Row | Item | Status |
 |---|---|---|
+| [FU-219](closed.md) | Full-film showcase run (2026-11-17): film 80 s for a 120 s brief, wrong "2-minute" claim,  | Shipped 2026-11-17 (branch release/v0.10.0). |
 | [FU-218](open.md) | Narration level: the fixed +8 dB (FU-216) suited one file, not the next | Shipped 2026-11-17 (branch fix/voice-level). |
 | [FU-217](open.md) | Flaky music test in the full suite: test_unload_while_a_track_is_made_is_refused_and_the_j | Queued (2026-11-17), test isolation |
 | [FU-216](closed.md) | Narration not clearly over the music bed | Shipped 2026-11-17 (branch fix/audio-defaults). |
@@ -24,4 +25,3 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 | [FU-212](closed.md) | Narration barely over the music bed | Shipped 2026-11-17 (branch fix/storyboard-timing). |
 | [FU-211](closed.md) | Music fade-out past the film's end | Shipped 2026-11-17 (branch fix/storyboard-timing), tests only. |
 | [FU-210](closed.md) | Storyboard shot comes out shorter than asked | Shipped 2026-11-17 (branch fix/storyboard-timing). |
-| [FU-209](closed.md) | Storyboard tool results misled the model | Shipped 2026-11-17 (branch fix/jobs-stall). |

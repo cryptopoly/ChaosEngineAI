@@ -1,13 +1,22 @@
 ---
 title: Closed follow-ups
 order: 3
-summary: 105 shipped, obsoleted or dropped rows, newest first.
+summary: 106 shipped, obsoleted or dropped rows, newest first.
 ---
 
 # Closed follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Shipped, obsoleted or dropped rows (struck through, or marked shipped with no open points left). Kept as the history of why things are the way they are.
 
+
+<details>
+<summary>FU-219 · Full-film showcase run (2026-11-17): film 80 s for a 120 s brief, wrong "2-minute" claim, wasted nudges, bright last frame — Shipped 2026-11-17 (branch release/v0.10.0).</summary>
+
+**Status or trigger:** **Shipped 2026-11-17 (branch `release/v0.10.0`).**
+
+**Notes:** **Found** in the hands-off run (Qwen3.8 27B, 1 h 37 min, stop `complete`): the model planned 20 shots, the progress check said "Nothing is missing" against a ~120 s brief, two nudges got text-only replies, the final nudge said "Check the film once" and the model rendered twice, the picture held on a bright frame while the sound faded, the model set a voice `gainDb` itself (+8) so the measured level was never used. **Done:** the project state reads the length from the brief (`target_seconds`) and counts a film under 85 % of it as unfinished, with a next step that says how many shots to add; the done step gives the real length and says not to render again; every nudge says to answer with a tool call, not text; the final render fades the picture to black over the last 0.6 s (no end card, not a preview); the `storyboard_audio` description tells the model to leave a voice `gainDb` unset. **Left:** clip batches still block a chat turn in `wait_for_job` when the GPU swap rule says they fit (by design; the stall guard covers a hang); captions come from speech-to-text so a made-up brand name is misspelt; the model's own shot errors (wrong person in shot 2, reversed motion in shot 19) are model quality, not app logic; narration placement relative to shots is the model's choice.
+
+</details>
 
 <details>
 <summary>FU-216 · Narration not clearly over the music bed — Shipped 2026-11-17 (branch fix/audio-defaults).</summary>

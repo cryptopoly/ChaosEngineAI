@@ -62,8 +62,8 @@
     "moreInfo": "Plus d'informations",
     "requiresLabel": "Requiert :",
     "installLabel": "Installation :",
-    "kvCacheTypeGguf": null,
-    "kvCacheTypeGgufHint": null
+    "kvCacheTypeGguf": "Type de cache KV",
+    "kvCacheTypeGgufHint": "q8_0 occupe environ deux fois moins de mémoire que f16 pour le cache KV, q4_0 environ quatre fois moins. Le décodage est un peu plus lent."
   },
   "notes": {
     "binaryRequired": "Nécessite {binary}.",
@@ -161,13 +161,13 @@
     "body": "TensorFold est un moteur d'inférence local doté de noyaux écrits à la main pour chaque famille de modèles. Il propose plusieurs tokens à la fois (issus de la tête MTP du modèle et, pour certaines familles, d'un petit modèle de brouillon) et vérifie chaque brouillon avec le modèle cible, de sorte que la réponse est identique, octet pour octet, à un décodage token par token.",
     "requiresLabel": "Requiert :",
     "requiresBody": "Apple Silicon et un environnement Python TensorFold distinct (installé depuis ce panneau). Ne prend en charge que les checkpoints avec lesquels il a été testé.",
-    "requiresBodyNative": null,
+    "requiresBodyNative": "Un GPU NVIDIA (Ampere ou plus récent) avec le pilote R580 ou plus récent, et le binaire natif TensorFold (installé depuis ce panneau ; Windows nécessite une version compilée à partir des sources). Ne prend en charge que les points de contrôle pour lesquels il a été testé.",
     "memoryLabel": "Mémoire :",
     "memoryBody": "{needed} Go de mémoire unifiée ou plus.",
     "statusLabel": "Statut :",
     "statusInstalled": "Installé{version} — actif lorsque le décodage spéculatif est coché.",
     "statusNotInstalled": "Non installé. Cliquez sur Installer TensorFold pour configurer son environnement distinct.",
-    "statusNotInstalledNative": null,
+    "statusNotInstalledNative": "Non installé. Cliquez sur Installer TensorFold : il télécharge et vérifie le binaire natif, lit d'abord votre GPU et votre pilote, et indique la raison si cette machine ne peut pas l'exécuter.",
     "visionLabel": "Entrée d'images :",
     "visionInstalled": "Installé (expérimental) — joignez des images dans le chat tant que TensorFold est coché. Une requête avec images repart d'un cache KV vierge.",
     "visionNotInstalled": "Non installé. Lit les images avec l'encodeur de vision propre au modèle. Ajoute Pillow, transformers et mlx-vlm ; les auteurs de TensorFold le considèrent encore comme expérimental.",
@@ -194,7 +194,7 @@
     "statusLabel": "Statut :",
     "statusInstalled": "Installé — actif lorsque le décodage spéculatif est activé.",
     "statusNotInstalled": "Non installé. Cliquez sur Installer MTPLX pour configurer le venv isolé (~500 Mo).",
-    "statusOutdated": null
+    "statusOutdated": "La version installée est trop ancienne pour les modèles MTPLX actuels. Cliquez sur Installer MTPLX pour mettre à jour l'environnement virtuel isolé (environ 500 Mo)."
   },
   "ggufMtp": {
     "tooltip": "Décodage spéculatif GGUF MTP : utilise les têtes MTP intégrées du modèle via llama.cpp --spec-type draft-mtp pour une génération ~1,8–2,2× plus rapide sans perte de qualité.",

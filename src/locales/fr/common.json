@@ -69,8 +69,8 @@
     "plugins": "Extensions et système de plugins",
     "logs": "Événements d'exécution",
     "settings": "Répertoires et valeurs par défaut",
-    "voiceStudio": null,
-    "voiceModels": null,
+    "voiceStudio": "Parler, choisir des voix et transcrire",
+    "voiceModels": "Modèles de parole et runtime vocal",
     "voiceLibrary": "Vos transcriptions et synthèses vocales",
     "chatModels": "Trouver, télécharger et gérer des modèles de langage",
     "imageModelsPage": "Trouver, télécharger et gérer des modèles d'images",
@@ -132,7 +132,7 @@
     "primaryNavAriaLabel": "Principale",
     "sectionMake": "Créer",
     "sectionRun": "Exécuter",
-    "menuButton": null
+    "menuButton": "Menu"
   },
   "slashCommands": {
     "menuAriaLabel": "Commandes barre oblique"
@@ -315,13 +315,13 @@
       "ollamaHint": "Définissez l'hôte Ollama / l'URL de base de l'application sur l'adresse ci-dessous — les points d'accès natifs /api sont servis en plus de /v1."
     },
     "engineBusy": {
-      "step": null,
-      "image": null,
-      "imageBare": null,
-      "video": null,
-      "videoBare": null,
-      "music": null,
-      "musicBare": null
+      "step": "étape {step} sur {total}",
+      "image": "Moteur d'image occupé : {detail}",
+      "imageBare": "Moteur d'image occupé",
+      "video": "Moteur vidéo occupé : {detail}",
+      "videoBare": "Moteur vidéo occupé",
+      "music": "Moteur musique occupé : {detail}",
+      "musicBare": "Moteur musique occupé"
     }
   },
   "conversionTab": {
@@ -657,7 +657,7 @@
     "clockHint": "Système suit la valeur par défaut de votre langue (12 heures pour l'anglais US, 24 heures ailleurs). Choisissez un côté pour le remplacer.",
     "helpImprove": "Aider à améliorer les traductions",
     "openOnGithub": "Ouvrir {locale} sur GitHub →",
-    "communityNote": null
+    "communityNote": "Traduction de la communauté, assistée par machine ; les corrections sont les bienvenues."
   },
   "imageOutputCard": {
     "huggingFace": "Hugging Face",
@@ -846,7 +846,7 @@
       "storage": "Stockage",
       "providers": "Fournisseurs",
       "integrations": "Intégrations",
-      "skills": null,
+      "skills": "Compétences",
       "diagnostics": "Diagnostic",
       "accelerators": "Accélérateurs",
       "disk": "Utilisation du disque"
@@ -941,37 +941,37 @@
       "readTokenLabel": "Jeton en lecture seule (Claude Code)"
     },
     "skills": {
-      "title": null,
-      "subtitle": null,
-      "safety": null,
-      "pathPlaceholder": null,
-      "pathLabel": null,
-      "pickTitle": null,
-      "noDialog": null,
-      "chooseFolder": null,
-      "chooseZip": null,
-      "import": null,
-      "imported": null,
-      "empty": null,
-      "listLabel": null,
-      "enabled": null,
-      "files": null,
-      "skippedTitle": null,
-      "confirmDelete": null,
-      "cancel": null,
-      "delete": null,
-      "scanNote": null,
+      "title": "Compétences",
+      "subtitle": "Apprenez au modèle de discussion une procédure : un dossier contenant un SKILL.md et des fichiers texte facultatifs, ou une archive .zip de ce dossier.",
+      "safety": "Les scripts d'une compétence ne sont jamais exécutés. Le modèle lit seulement le texte d'une compétence, à titre de référence. Les nouvelles compétences sont désactivées au départ : lisez la description et la liste des fichiers avant de l'activer.",
+      "pathPlaceholder": "/chemin/vers/dossier-competence ou skill.zip",
+      "pathLabel": "Chemin du dossier de compétence ou du .zip",
+      "pickTitle": "Choisir une compétence",
+      "noDialog": "La boîte de dialogue de fichiers n'est pas disponible ici. Saisissez le chemin à la place.",
+      "chooseFolder": "Choisir un dossier",
+      "chooseZip": "Choisir un .zip",
+      "import": "Importer",
+      "imported": "{name} importée : {files, plural, one {# fichier conservé} other {# fichiers conservés}}, {skipped, plural, =0 {rien d'ignoré} one {# ignoré} other {# ignorés}}. Elle reste désactivée tant que vous ne l'avez pas activée.",
+      "empty": "Aucune compétence importée pour l'instant.",
+      "listLabel": "Compétences importées",
+      "enabled": "Disponible dans la discussion",
+      "files": "{count, plural, one {# fichier} other {# fichiers}}",
+      "skippedTitle": "Ignorées (non importées) :",
+      "confirmDelete": "Supprimer définitivement {name}",
+      "cancel": "Annuler",
+      "delete": "Supprimer",
+      "scanNote": "Chaque importation fait l'objet d'une analyse de sécurité notée Faible, Moyen ou Élevé. Elle repose sur des règles et s'exécute sur cet ordinateur ; rien n'en sort. Il s'agit d'une heuristique, pas d'une garantie.",
       "scan": {
-        "chipTitle": null,
-        "chip": null,
-        "low": null,
-        "medium": null,
-        "high": null,
-        "findings": null,
-        "where": null,
-        "truncated": null,
-        "disclaimer": null,
-        "acknowledge": null
+        "chipTitle": "Analyse de sécurité par règles locales. Une heuristique, pas une garantie.",
+        "chip": "Analyse : {rating}",
+        "low": "Faible",
+        "medium": "Moyen",
+        "high": "Élevé",
+        "findings": "{count, plural, =0 {aucun résultat} one {# résultat} other {# résultats}}",
+        "where": "{file}, ligne {line}",
+        "truncated": "Seuls les {count} premiers résultats sont affichés.",
+        "disclaimer": "Une heuristique, pas une garantie : des règles fixes repèrent les formulations risquées, les caractères cachés, les liens, le texte encodé et les scripts fournis. L'analyse s'exécute sur cet ordinateur et rien n'en sort. Faible signifie qu'aucune règle n'a été déclenchée, pas que la compétence est sûre.",
+        "acknowledge": "J'ai lu les résultats. L'analyse a noté cette compétence Élevé ; cochez pour pouvoir l'activer."
       }
     },
     "integrations": {
@@ -981,34 +981,34 @@
       "copyButton": "Copier"
     },
     "cleanup": {
-      "title": null,
-      "subtitle": null,
-      "note": null,
-      "refresh": null,
-      "loading": null,
-      "loadError": null,
-      "groupProjects": null,
-      "groupThreads": null,
-      "groupOutputs": null,
-      "empty": null,
-      "selectAll": null,
-      "projectDetail": null,
-      "threadDetail": null,
-      "outputDetail": null,
-      "kindImage": null,
-      "kindVideo": null,
-      "unknownDate": null,
-      "delete": null,
-      "deleting": null,
-      "selected": null,
-      "deleteError": null,
-      "resultNone": null,
-      "resultDone": null,
-      "resultRefused": null,
-      "confirmTitle": null,
-      "confirmBody": null,
-      "confirmBreakdown": null,
-      "confirmButton": null
+      "title": "Nettoyer",
+      "subtitle": "Supprimer les projets storyboard, fils de discussion, images et clips de la galerie dont vous ne voulez plus.",
+      "note": "Rien n'est coché. Cochez ce que vous voulez supprimer, puis confirmez. Les éléments supprimés ne pourront pas être restaurés.",
+      "refresh": "Actualiser la liste",
+      "loading": "Chargement de la liste...",
+      "loadError": "Impossible de charger la liste : {message}",
+      "groupProjects": "Projets storyboard",
+      "groupThreads": "Fils de discussion",
+      "groupOutputs": "Images et clips de la galerie",
+      "empty": "Rien ici.",
+      "selectAll": "Tout sélectionner : {group}",
+      "projectDetail": "{shots, plural, one {# plan} other {# plans}}, modifié le {date}",
+      "threadDetail": "{count, plural, one {# message} other {# messages}}, dernière utilisation le {date}",
+      "outputDetail": "{kind}, {date}",
+      "kindImage": "Image",
+      "kindVideo": "Clip",
+      "unknownDate": "inconnue",
+      "delete": "Supprimer les éléments cochés",
+      "deleting": "Suppression...",
+      "selected": "{count, plural, =0 {Rien de coché} one {# élément coché, {size}} other {# éléments cochés, {size}}}",
+      "deleteError": "Impossible de supprimer : {message}",
+      "resultNone": "Rien n'a été supprimé.",
+      "resultDone": "{count, plural, one {# élément supprimé} other {# éléments supprimés}}, {size} libérés.",
+      "resultRefused": "{count, plural, one {# élément n'a pas été supprimé} other {# éléments n'ont pas été supprimés}} :",
+      "confirmTitle": "Supprimer {count, plural, one {# élément} other {# éléments}} ?",
+      "confirmBody": "Cela supprime {count, plural, one {# élément} other {# éléments}} ({size}) de cet ordinateur. Action irréversible.",
+      "confirmBreakdown": "Projets : {projects}. Fils de discussion : {threads}. Fichiers de la galerie : {outputs}.",
+      "confirmButton": "Supprimer définitivement"
     }
   },
   "modelLaunchModal": {
@@ -1378,8 +1378,8 @@
     "storyboard": "Le storyboard arrive bientôt."
   },
   "llamaCuda": {
-    "description": null,
-    "driverTooOld": null,
+    "description": "Exécute les modèles de discussion GGUF sur votre GPU NVIDIA avec CUDA {cuda} (llama.cpp {tag}). Le téléchargement inclut le runtime CUDA.",
+    "driverTooOld": "Le pilote NVIDIA est trop ancien pour le llama-server CUDA. Mettez à jour le pilote, puis réinstallez.",
     "inUse": "Utilisé : les modèles GGUF s'exécutent sur le GPU NVIDIA.",
     "install": "Installer",
     "installedNoDevice": "Installé, mais aucun appareil CUDA n'a été trouvé. Vérifiez le pilote NVIDIA (nvidia-smi).",
@@ -1405,10 +1405,10 @@
     }
   },
   "accessibilityPanel": {
-    "title": null,
-    "strongBorders": null,
-    "note": null,
-    "on": null,
-    "off": null
+    "title": "Accessibilité",
+    "strongBorders": "Bordures plus marquées sur les champs et les boutons",
+    "note": "Entoure les champs et les boutons d'un trait à contraste plus élevé pour mieux les voir. S'applique immédiatement.",
+    "on": "Activé",
+    "off": "Désactivé"
   }
 }

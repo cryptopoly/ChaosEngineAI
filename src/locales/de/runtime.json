@@ -62,8 +62,8 @@
     "moreInfo": "Weitere Infos",
     "requiresLabel": "Erfordert:",
     "installLabel": "Installation:",
-    "kvCacheTypeGguf": null,
-    "kvCacheTypeGgufHint": null
+    "kvCacheTypeGguf": "KV-Cache-Typ",
+    "kvCacheTypeGgufHint": "q8_0 hält den KV-Cache mit etwa der halben Speichermenge von f16, q4_0 mit etwa einem Viertel. Die Dekodierung ist etwas langsamer."
   },
   "notes": {
     "binaryRequired": "Erfordert {binary}.",
@@ -161,13 +161,13 @@
     "body": "TensorFold ist eine lokale Inferenz-Engine mit handgeschriebenen Kernels für jede Modellfamilie. Sie schlägt mehrere Tokens auf einmal vor (aus dem MTP-Head des Modells und bei manchen Familien aus einem kleinen Draft-Modell) und prüft jeden Vorschlag gegen das Zielmodell, sodass die Antwort byte-identisch mit einer Decodierung Token für Token ist.",
     "requiresLabel": "Erfordert:",
     "requiresBody": "Apple Silicon und eine separate Python-Umgebung für TensorFold (wird über dieses Panel installiert). Bedient nur die Checkpoints, mit denen es getestet wurde.",
-    "requiresBodyNative": null,
+    "requiresBodyNative": "Eine NVIDIA-GPU (Ampere oder neuer) mit Treiber R580 oder neuer und das native TensorFold-Binary (wird über dieses Panel installiert; unter Windows muss es aus dem Quellcode gebaut werden). Läuft nur mit den Checkpoints, mit denen es getestet wurde.",
     "memoryLabel": "Speicher:",
     "memoryBody": "{needed} GB Unified Memory oder mehr.",
     "statusLabel": "Status:",
     "statusInstalled": "Installiert{version} — aktiv, wenn die spekulative Decodierung angehakt ist.",
     "statusNotInstalled": "Nicht installiert. Klicke auf „TensorFold installieren“, um die separate Umgebung einzurichten.",
-    "statusNotInstalledNative": null,
+    "statusNotInstalledNative": "Nicht installiert. Klicke auf TensorFold installieren: Es lädt das native Binary herunter, prüft es und liest zuerst deine GPU und den Treiber. Falls dieser Rechner es nicht ausführen kann, sagt es dir, warum.",
     "visionLabel": "Bildeingabe:",
     "visionInstalled": "Installiert (experimentell) — hänge im Chat Bilder an, solange TensorFold angehakt ist. Eine Anfrage mit Bildern beginnt mit einem frischen KV-Cache.",
     "visionNotInstalled": "Nicht installiert. Liest Bilder mit dem Vision-Encoder des Modells selbst. Fügt Pillow, transformers und mlx-vlm hinzu; die Autoren von TensorFold stufen es weiterhin als experimentell ein.",
@@ -194,7 +194,7 @@
     "statusLabel": "Status:",
     "statusInstalled": "Installiert — aktiv, wenn die spekulative Decodierung aktiviert ist.",
     "statusNotInstalled": "Nicht installiert. Klicke auf „MTPLX installieren“, um die isolierte venv einzurichten (~500 MB).",
-    "statusOutdated": null
+    "statusOutdated": "Die installierte Version ist zu alt für aktuelle MTPLX-Modelle. Klicke auf MTPLX installieren, um die isolierte venv zu aktualisieren (~500 MB)."
   },
   "ggufMtp": {
     "tooltip": "Spekulative GGUF-MTP-Decodierung: nutzt die eingebauten MTP-Heads des Modells über llama.cpp --spec-type draft-mtp für ~1,8–2,2× schnellere Generierung ohne Qualitätsverlust.",

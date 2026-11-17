@@ -69,8 +69,8 @@
     "plugins": "Erweiterungen und Plugin-System",
     "logs": "Laufzeitereignisse",
     "settings": "Verzeichnisse und Standardwerte",
-    "voiceStudio": null,
-    "voiceModels": null,
+    "voiceStudio": "Sprechen, Stimmen wählen und transkribieren",
+    "voiceModels": "Sprachmodelle und die Stimm-Laufzeit",
     "voiceLibrary": "Deine Transkripte und Sprachausgaben",
     "chatModels": "Sprachmodelle finden, herunterladen und verwalten",
     "imageModelsPage": "Bildmodelle finden, herunterladen und verwalten",
@@ -132,7 +132,7 @@
     "primaryNavAriaLabel": "Primär",
     "sectionMake": "Erstellen",
     "sectionRun": "Ausführen",
-    "menuButton": null
+    "menuButton": "Menü"
   },
   "slashCommands": {
     "menuAriaLabel": "Slash-Befehle"
@@ -315,13 +315,13 @@
       "ollamaHint": "Setze den Ollama-Host bzw. die Basis-URL der App auf die Adresse unten — native /api-Endpunkte werden neben /v1 bereitgestellt."
     },
     "engineBusy": {
-      "step": null,
-      "image": null,
-      "imageBare": null,
-      "video": null,
-      "videoBare": null,
-      "music": null,
-      "musicBare": null
+      "step": "Schritt {step} von {total}",
+      "image": "Bild-Engine belegt: {detail}",
+      "imageBare": "Bild-Engine belegt",
+      "video": "Video-Engine belegt: {detail}",
+      "videoBare": "Video-Engine belegt",
+      "music": "Musik-Engine belegt: {detail}",
+      "musicBare": "Musik-Engine belegt"
     }
   },
   "conversionTab": {
@@ -657,7 +657,7 @@
     "clockHint": "System folgt dem Standard Ihrer Sprache (12 Stunden für US-Englisch, 24 Stunden sonst). Wählen Sie eine Seite, wenn Sie dies überschreiben möchten.",
     "helpImprove": "Übersetzungen verbessern",
     "openOnGithub": "{locale} auf GitHub öffnen →",
-    "communityNote": null
+    "communityNote": "Fan-Übersetzung, maschinell unterstützt. Korrekturen sind willkommen."
   },
   "imageOutputCard": {
     "huggingFace": "Hugging Face",
@@ -846,7 +846,7 @@
       "storage": "Speicher",
       "providers": "Anbieter",
       "integrations": "Integrationen",
-      "skills": null,
+      "skills": "Skills",
       "diagnostics": "Diagnose",
       "accelerators": "Beschleuniger",
       "disk": "Speicherplatznutzung"
@@ -941,37 +941,37 @@
       "readTokenLabel": "Schreibgeschütztes Token (Claude Code)"
     },
     "skills": {
-      "title": null,
-      "subtitle": null,
-      "safety": null,
-      "pathPlaceholder": null,
-      "pathLabel": null,
-      "pickTitle": null,
-      "noDialog": null,
-      "chooseFolder": null,
-      "chooseZip": null,
-      "import": null,
-      "imported": null,
-      "empty": null,
-      "listLabel": null,
-      "enabled": null,
-      "files": null,
-      "skippedTitle": null,
-      "confirmDelete": null,
-      "cancel": null,
-      "delete": null,
-      "scanNote": null,
+      "title": "Skills",
+      "subtitle": "Bring dem Chat-Modell einen Ablauf bei: ein Ordner mit einer SKILL.md und optionalen Textdateien oder eine .zip davon.",
+      "safety": "Skripte in einem Skill werden nie ausgeführt. Das Modell liest den Text eines Skills nur als Referenz. Neue Skills starten ausgeschaltet: Lies Beschreibung und Dateiliste, bevor du einen einschaltest.",
+      "pathPlaceholder": "/pfad/zum/skill-ordner oder skill.zip",
+      "pathLabel": "Pfad zum Skill-Ordner oder zur .zip",
+      "pickTitle": "Skill auswählen",
+      "noDialog": "Der Dateidialog ist hier nicht verfügbar. Gib stattdessen den Pfad ein.",
+      "chooseFolder": "Ordner wählen",
+      "chooseZip": ".zip wählen",
+      "import": "Importieren",
+      "imported": "{name} importiert: {files, plural, one {# Datei} other {# Dateien}} übernommen, {skipped, plural, =0 {nichts übersprungen} one {# übersprungen} other {# übersprungen}}. Er ist aus, bis du ihn einschaltest.",
+      "empty": "Noch keine Skills importiert.",
+      "listLabel": "Importierte Skills",
+      "enabled": "Im Chat verfügbar",
+      "files": "{count, plural, one {# Datei} other {# Dateien}}",
+      "skippedTitle": "Übersprungen (nicht importiert):",
+      "confirmDelete": "{name} endgültig löschen",
+      "cancel": "Abbrechen",
+      "delete": "Löschen",
+      "scanNote": "Jeder Import bekommt eine Sicherheitsprüfung mit der Bewertung Niedrig, Mittel oder Hoch. Sie arbeitet regelbasiert und läuft auf diesem Computer; nichts verlässt ihn. Sie ist eine Heuristik, keine Garantie.",
       "scan": {
-        "chipTitle": null,
-        "chip": null,
-        "low": null,
-        "medium": null,
-        "high": null,
-        "findings": null,
-        "where": null,
-        "truncated": null,
-        "disclaimer": null,
-        "acknowledge": null
+        "chipTitle": "Sicherheitsprüfung nach lokalen Regeln. Eine Heuristik, keine Garantie.",
+        "chip": "Prüfung: {rating}",
+        "low": "Niedrig",
+        "medium": "Mittel",
+        "high": "Hoch",
+        "findings": "{count, plural, =0 {keine Befunde} one {# Befund} other {# Befunde}}",
+        "where": "{file}, Zeile {line}",
+        "truncated": "Nur die ersten {count} Befunde werden angezeigt.",
+        "disclaimer": "Eine Heuristik, keine Garantie: Feste Regeln suchen nach riskanten Formulierungen, versteckten Zeichen, Links, kodiertem Text und mitgelieferten Skripten. Die Prüfung läuft auf diesem Computer, nichts verlässt ihn. Niedrig heißt nur, dass keine Regel zutraf, nicht dass der Skill sicher ist.",
+        "acknowledge": "Ich habe die Befunde gelesen. Die Prüfung hat diesen Skill als Hoch bewertet; setze den Haken, um ihn einschalten zu können."
       }
     },
     "integrations": {
@@ -981,34 +981,34 @@
       "copyButton": "Kopieren"
     },
     "cleanup": {
-      "title": null,
-      "subtitle": null,
-      "note": null,
-      "refresh": null,
-      "loading": null,
-      "loadError": null,
-      "groupProjects": null,
-      "groupThreads": null,
-      "groupOutputs": null,
-      "empty": null,
-      "selectAll": null,
-      "projectDetail": null,
-      "threadDetail": null,
-      "outputDetail": null,
-      "kindImage": null,
-      "kindVideo": null,
-      "unknownDate": null,
-      "delete": null,
-      "deleting": null,
-      "selected": null,
-      "deleteError": null,
-      "resultNone": null,
-      "resultDone": null,
-      "resultRefused": null,
-      "confirmTitle": null,
-      "confirmBody": null,
-      "confirmBreakdown": null,
-      "confirmButton": null
+      "title": "Aufräumen",
+      "subtitle": "Lösche Storyboard-Projekte, Chat-Verläufe sowie Galeriebilder und Clips, die du nicht mehr willst.",
+      "note": "Nichts ist angehakt. Hake an, was gelöscht werden soll, und bestätige dann. Gelöschte Einträge lassen sich nicht wiederherstellen.",
+      "refresh": "Liste aktualisieren",
+      "loading": "Liste wird geladen …",
+      "loadError": "Liste konnte nicht geladen werden: {message}",
+      "groupProjects": "Storyboard-Projekte",
+      "groupThreads": "Chat-Verläufe",
+      "groupOutputs": "Galeriebilder und Clips",
+      "empty": "Hier ist nichts.",
+      "selectAll": "Alle auswählen: {group}",
+      "projectDetail": "{shots, plural, one {# Shot} other {# Shots}}, bearbeitet {date}",
+      "threadDetail": "{count, plural, one {# Nachricht} other {# Nachrichten}}, zuletzt genutzt {date}",
+      "outputDetail": "{kind}, {date}",
+      "kindImage": "Bild",
+      "kindVideo": "Clip",
+      "unknownDate": "unbekannt",
+      "delete": "Angehakte Einträge löschen",
+      "deleting": "Wird gelöscht …",
+      "selected": "{count, plural, =0 {Nichts angehakt} one {# Eintrag angehakt, {size}} other {# Einträge angehakt, {size}}}",
+      "deleteError": "Konnte nicht gelöscht werden: {message}",
+      "resultNone": "Nichts wurde gelöscht.",
+      "resultDone": "{count, plural, one {# Eintrag} other {# Einträge}} gelöscht und {size} freigegeben.",
+      "resultRefused": "{count, plural, one {# Eintrag wurde} other {# Einträge wurden}} nicht gelöscht:",
+      "confirmTitle": "{count, plural, one {# Eintrag} other {# Einträge}} löschen?",
+      "confirmBody": "Das löscht {count, plural, one {# Eintrag} other {# Einträge}} ({size}) von diesem Computer. Das lässt sich nicht rückgängig machen.",
+      "confirmBreakdown": "Projekte: {projects}. Chat-Verläufe: {threads}. Galeriedateien: {outputs}.",
+      "confirmButton": "Endgültig löschen"
     }
   },
   "modelLaunchModal": {
@@ -1378,8 +1378,8 @@
     "storyboard": "Storyboard kommt bald."
   },
   "llamaCuda": {
-    "description": null,
-    "driverTooOld": null,
+    "description": "Führt GGUF-Chatmodelle auf deiner NVIDIA-GPU mit CUDA {cuda} aus (llama.cpp {tag}). Der Download enthält die CUDA-Laufzeit.",
+    "driverTooOld": "Der NVIDIA-Treiber ist zu alt für den CUDA-llama-server. Aktualisiere den Treiber und installiere dann neu.",
     "inUse": "In Benutzung: GGUF-Modelle laufen auf der NVIDIA-GPU.",
     "install": "Installieren",
     "installedNoDevice": "Installiert, aber es wurde kein CUDA-Gerät gefunden. Prüfe den NVIDIA-Treiber (nvidia-smi).",
@@ -1405,10 +1405,10 @@
     }
   },
   "accessibilityPanel": {
-    "title": null,
-    "strongBorders": null,
-    "note": null,
-    "on": null,
-    "off": null
+    "title": "Barrierefreiheit",
+    "strongBorders": "Stärkere Rahmen an Feldern und Schaltflächen",
+    "note": "Umrandet Eingabefelder und Schaltflächen mit einer kontrastreicheren Linie, damit sie besser zu erkennen sind. Gilt sofort.",
+    "on": "An",
+    "off": "Aus"
   }
 }

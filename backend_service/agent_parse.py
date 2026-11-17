@@ -185,8 +185,60 @@ def _parse_tool_calls_from_response(
     }]
 
 
+def read_calls(
+    response_text: str,
+    names: Any,
+    truncated: bool = False,
+) -> tuple[list[dict[str, Any]] | None, agent_call_repair.Unreadable | None]:
+    """The calls in a reply in the order written, and a call beside them that could not be read (FU-205).
+
+    When nothing parses this is ``_parse_tool_calls_from_response`` (the single-call repair) and no fragment: the
+    loop reports a lone unreadable call itself. When a call parses, the text it came from is blanked out and the
+    rest is read again: one call that only lacks its closing braces is mended (the same rules as a lone call), and
+    the first call-like fragment left is returned with its place among the calls, so the model can be told."""
+    found = _strict_call_spans(response_text) if response_text else []
+    if not found or not names:
+        return _parse_tool_calls_from_response(response_text, names, truncated), None
+    masked = list(response_text)
+    for _call, start, end in found:
+        masked[start:end] = " " * (end - start)
+    rest = "".join(masked)
+    repaired = agent_call_repair.repair_call(rest, names, truncated=truncated)
+    if repaired is not None:
+        payload, start, end = repaired
+        logger.info("Read a tool call for %s that lacked its closing braces", payload.get("name"))
+        found.append((_call_dict(payload["name"], payload.get("arguments", payload.get("parameters"))), start, end))
+        rest = rest[:start] + " " * (end - start) + rest[end:]
+    found.sort(key=lambda item: item[1])
+    bad = agent_call_repair.unreadable_call(rest, names, truncated=truncated)
+    if bad is not None:
+        bad.position = 1 + sum(1 for _call, start, _end in found if start < bad.at)
+    return [call for call, _start, _end in found], bad
+
+
+def _call_dict(name: Any, arguments: Any) -> dict[str, Any]:
+    if isinstance(arguments, str):
+        try:
+            arguments = json.loads(arguments)
+        except json.JSONDecodeError:
+            arguments = {"raw": arguments}
+    return {
+        "id": f"call_{uuid.uuid4().hex[:8]}",
+        "type": "function",
+        "function": {
+            "name": name,
+            "arguments": json.dumps(arguments) if isinstance(arguments, dict) else str(arguments),
+        },
+    }
+
+
 def _parse_tool_calls_strict(response_text: str) -> list[dict[str, Any]] | None:
-    lfm = agent_lfm_calls.parse_calls(response_text)  # FU-192: LFM2.5 ``<|tool_call_start|>[name(k=v)]``
+    return [call for call, _start, _end in _strict_call_spans(response_text)] or None
+
+
+def _strict_call_spans(response_text: str) -> list[tuple[dict[str, Any], int, int]]:
+    """Every call the strict parser reads, with the span of text it came from."""
+    lfm = agent_lfm_calls.call_spans(response_text)  # FU-192: LFM2.5 ``<|tool_call_start|>[name(k=v)]``
     if lfm:
         return lfm
     bare = _bare_call_span(response_text)
@@ -194,23 +246,11 @@ def _parse_tool_calls_strict(response_text: str) -> list[dict[str, Any]] | None:
         # Same shape handling as below, for the call that lost its opener.
         payload = bare[0]
         arguments = payload.get("arguments") or payload.get("parameters") or {}
-        if isinstance(arguments, str):
-            try:
-                arguments = json.loads(arguments)
-            except json.JSONDecodeError:
-                arguments = {"raw": arguments}
-        return [{
-            "id": f"call_{uuid.uuid4().hex[:8]}",
-            "type": "function",
-            "function": {
-                "name": payload.get("name") or payload.get("function"),
-                "arguments": json.dumps(arguments) if isinstance(arguments, dict) else str(arguments),
-            },
-        }]
+        return [(_call_dict(payload.get("name") or payload.get("function"), arguments), bare[1], bare[2])]
     if "<tool_call>" not in response_text.lower():
-        return None
+        return []
 
-    calls: list[dict[str, Any]] = []
+    calls: list[tuple[dict[str, Any], int, int]] = []
     decoder = json.JSONDecoder()
     cursor = 0
     while True:
@@ -243,18 +283,7 @@ def _parse_tool_calls_strict(response_text: str) -> list[dict[str, Any]] | None:
         if not name:
             continue
         arguments = payload.get("arguments") or payload.get("parameters") or {}
-        if isinstance(arguments, str):
-            try:
-                arguments = json.loads(arguments)
-            except json.JSONDecodeError:
-                arguments = {"raw": arguments}
-        calls.append({
-            "id": f"call_{uuid.uuid4().hex[:8]}",
-            "type": "function",
-            "function": {
-                "name": name,
-                "arguments": json.dumps(arguments) if isinstance(arguments, dict) else str(arguments),
-            },
-        })
+        close = _TOOL_CALL_CLOSE.match(response_text, end)
+        calls.append((_call_dict(name, arguments), match.start(), close.end() if close else end))
 
-    return calls if calls else None
+    return calls

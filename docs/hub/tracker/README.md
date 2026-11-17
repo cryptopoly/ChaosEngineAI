@@ -9,12 +9,13 @@ summary: Every FU row from FOLLOW_UPS.md, split into open and closed.
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here.
 
 - [Open and live follow-ups](open.md): **109** rows.
-- [Closed follow-ups](closed.md): **93** rows.
+- [Closed follow-ups](closed.md): **94** rows.
 
 ## Newest ten
 
 | Row | Item | Status |
 |---|---|---|
+| [FU-205](closed.md) | Chat tool loop drops a broken call beside one that reads | Shipped 2026-11-17 (branch fix/mixed-calls). |
 | [FU-204](closed.md) | Small chat and dashboard defects from the rehearsal | Shipped 2026-11-17 (branch fix/storyboard-guidance). |
 | [FU-203](closed.md) | storyboard_audio add: say how to attach a made sound and show that it landed | Shipped 2026-11-17 (branch fix/storyboard-guidance). |
 | [FU-202](closed.md) | storyboard_render made a preview the model reported as the film | Shipped 2026-11-17 (branch fix/storyboard-guidance). |
@@ -24,4 +25,3 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 | [FU-198](closed.md) | Keep going stop reason hides why a run stalled | Shipped 2026-11-17 (branch fix/keep-going-recovery). |
 | [FU-197](closed.md) | Keep going nudges: stale errors, false "done", unread calls, assets made but not attached | Shipped 2026-11-17 (branch fix/keep-going-recovery). |
 | [FU-196](closed.md) | Chat tool loop drops a tool call it cannot read | Shipped 2026-11-17 (branch fix/keep-going-recovery). |
-| [FU-195](closed.md) | Dev setup: frontend gets 401s after a backend restart until the page is reloaded | Shipped 2026-11-17 (branch fix/fu-192-195). |

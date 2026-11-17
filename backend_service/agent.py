@@ -71,6 +71,7 @@ from backend_service.agent_parse import (  # noqa: E402,F401
     _parse_tool_calls_from_response,
     _parse_tool_calls_strict,
     _strip_tool_call_xml,
+    read_calls,
 )
 
 
@@ -219,11 +220,10 @@ def _truncated(result: Any) -> bool:
     return getattr(result, "finishReason", None) == "length"
 
 
-def _unreadable_turn(bad: agent_call_repair.Unreadable, reply_text: str) -> tuple[ToolCallResult, list[dict[str, Any]]]:
-    """The error record for a call that could not be read (FU-196) and the two messages that tell the model: its
-    reply as it wrote it, then the error in the ``<tool_response>`` wrapping a tool result gets. The error goes in
-    a user turn because no call id exists to pair a ``tool`` turn with, which some chat templates require."""
-    record = ToolCallResult(
+def _unreadable_record(bad: agent_call_repair.Unreadable) -> ToolCallResult:
+    """The error record for a call that could not be read (FU-196)."""
+    logger.info("Tool call could not be read (%s): %s", bad.tool, bad.reason)
+    return ToolCallResult(
         tool_call_id=f"call_{uuid.uuid4().hex[:12]}",
         tool_name=bad.tool or "tool_call",
         arguments={"unreadable": bad.fragment},
@@ -231,11 +231,35 @@ def _unreadable_turn(bad: agent_call_repair.Unreadable, reply_text: str) -> tupl
         elapsed_seconds=0.0,
         started_at=int(time.time() * 1000),
     )
-    logger.info("Tool call could not be read (%s): %s", bad.tool, bad.reason)
-    return record, [
-        {"role": "assistant", "text": reply_text},
-        {"role": "user", "text": f"<tool_response>\n{bad.message}\n</tool_response>"},
-    ]
+
+
+def _unreadable_notice(bad: agent_call_repair.Unreadable) -> dict[str, Any]:
+    """The error in the ``<tool_response>`` wrapping a tool result gets. It goes in a user turn because no call id
+    exists to pair a ``tool`` turn with, which some chat templates require."""
+    return {"role": "user", "text": f"<tool_response>\n{bad.message}\n</tool_response>"}
+
+
+def _unreadable_turn(bad: agent_call_repair.Unreadable, reply_text: str) -> tuple[ToolCallResult, list[dict[str, Any]]]:
+    """The error record for a reply whose only call could not be read and the two messages that tell the model:
+    its reply as it wrote it, then the error."""
+    return _unreadable_record(bad), [{"role": "assistant", "text": reply_text}, _unreadable_notice(bad)]
+
+
+def _in_reply_order(tool_calls: list[dict[str, Any]], beside: agent_call_repair.Unreadable | None) -> list[Any]:
+    """The calls with the one that could not be read in its place among them (FU-205)."""
+    items: list[Any] = list(tool_calls)
+    if beside is not None:
+        items.insert(min(max((beside.position or 1) - 1, 0), len(items)), beside)
+    return items
+
+
+def _record_events(record: ToolCallResult) -> Iterator[dict[str, Any]]:
+    yield {"tool_call_start": {"id": record.tool_call_id, "name": record.tool_name,
+                               "arguments": json.dumps(record.arguments), "startedAt": record.started_at}}
+    yield {"tool_call_result": {"id": record.tool_call_id, "name": record.tool_name,
+                                "arguments": record.arguments, "result": record.result,
+                                "elapsed": 0.0, "startedAt": record.started_at,
+                                "renderAs": None, "data": None}}
 
 
 def run_agent_loop(
@@ -334,9 +358,11 @@ def run_agent_loop(
         # Check for tool calls in the structured response
         tool_calls = getattr(result, "tool_calls", None)
 
-        # If no structured tool calls, try parsing from text
+        # If no structured tool calls, try parsing from text. ``beside`` is a call next to the ones read that
+        # could not be read itself (FU-205): the read ones run and the model is told about it in the same turn.
+        beside = None
         if not tool_calls and result.text:
-            tool_calls = _parse_tool_calls_from_response(result.text, names, _truncated(result))
+            tool_calls, beside = read_calls(result.text, names, _truncated(result))
 
         if not tool_calls and unreadable < _UNREADABLE_LIMIT:
             bad = agent_call_repair.unreadable_call(result.text or "", names, truncated=_truncated(result))
@@ -370,7 +396,10 @@ def run_agent_loop(
             "tool_calls": tool_calls,
         })
 
-        for tc in tool_calls:
+        for tc in _in_reply_order(tool_calls, beside):
+            if isinstance(tc, agent_call_repair.Unreadable):
+                all_tool_results.append(_unreadable_record(tc))
+                continue
             tc_result = _execute_tool_call(tc, reg)
             all_tool_results.append(tc_result)
 
@@ -381,6 +410,8 @@ def run_agent_loop(
                 "tool_call_id": tc_result.tool_call_id,
                 "name": tc_result.tool_name,
             })
+        if beside is not None:
+            messages.append(_unreadable_notice(beside))
 
     # Max iterations reached — return whatever we have
     final_text = "I've reached the maximum number of tool-use iterations. Here's what I found:\n\n"
@@ -474,8 +505,9 @@ def run_agent_loop_streaming(
         # The prompt size of the newest step: Keep going (FU-191) stops before the context fills up.
         last_prompt_tokens = int(getattr(result, "promptTokens", 0) or 0)
         tool_calls = getattr(result, "tool_calls", None)
+        beside = None  # a call next to the read ones that could not be read (FU-205)
         if not tool_calls and result.text:
-            tool_calls = _parse_tool_calls_from_response(result.text, names, _truncated(result))
+            tool_calls, beside = read_calls(result.text, names, _truncated(result))
 
         if not tool_calls and unreadable < _UNREADABLE_LIMIT:
             # FU-196: a call that could not be read is never dropped silently: the model is told why, and the
@@ -487,12 +519,7 @@ def run_agent_loop_streaming(
                 record, told = _unreadable_turn(bad, result.text or "")
                 all_tool_results.append(record)
                 messages.extend(told)
-                yield {"tool_call_start": {"id": record.tool_call_id, "name": record.tool_name,
-                                           "arguments": json.dumps(record.arguments), "startedAt": record.started_at}}
-                yield {"tool_call_result": {"id": record.tool_call_id, "name": record.tool_name,
-                                            "arguments": record.arguments, "result": record.result,
-                                            "elapsed": 0.0, "startedAt": record.started_at,
-                                            "renderAs": None, "data": None}}
+                yield from _record_events(record)
                 continue
         if tool_calls:
             unreadable = 0
@@ -560,7 +587,12 @@ def run_agent_loop_streaming(
         if gate is not None:
             denials = yield from gate.review(tool_calls)
 
-        for tc in tool_calls:
+        for tc in _in_reply_order(tool_calls, beside):
+            if isinstance(tc, agent_call_repair.Unreadable):
+                record = _unreadable_record(tc)
+                all_tool_results.append(record)
+                yield from _record_events(record)
+                continue
             func = tc.get("function", {})
             started_ms = int(time.time() * 1000)
             yield {
@@ -601,6 +633,8 @@ def run_agent_loop_streaming(
                 "tool_call_id": tc_result.tool_call_id,
                 "name": tc_result.tool_name,
             })
+        if beside is not None:
+            messages.append(_unreadable_notice(beside))
 
     # Max iterations
     yield {"token": "\n\n(Reached maximum tool-use iterations)"}

@@ -477,8 +477,10 @@ def add_audio(p: Project, folder: Path, a: AddAudio) -> None:
     cloned = a.clonedVoice or bool((voice_clone_safety.read_wav_tag(folder / rel) or {}).get("clonedVoice"))
     source = AudioSource(path=rel, hash=digest, measuredSeconds=_seconds(folder, rel),
                          clonedVoice=cloned, label=a.label or "")
+    # A new music clip ducks under the narration unless the caller says duck: false (FU-212); a clip that is
+    # already in a project keeps what it has.
     clip = AudioClip(id=clip_id, kind=a.kind, source=source, anchor=a.anchor,
-                     start=a.start if a.anchor is None else None)
+                     start=a.start if a.anchor is None else None, duck=a.kind == "music")
     if clip.anchor is None and clip.start is None:
         clip.start = 0.0
     _set_fields(clip, a, {"kind", "path", "clonedVoice", "label", "anchor", "start"})

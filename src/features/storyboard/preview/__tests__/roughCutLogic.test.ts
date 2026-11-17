@@ -174,6 +174,17 @@ describe("sound timing", () => {
     expect(envelopePoints(voice, 0)).toEqual([{ t: 3.5, value: 1 }, { t: 5.5, value: 1 }]); // no fade: full level until it stops
   });
 
+  it("ends a fade-out at the film's end when the track runs past it (FU-211)", () => {
+    // A 14 s track in an 11 s film: the timeline cuts it at 11 s, so the 3 s fade runs 8 to 11 s.
+    const long = audio("m2", { fadeOut: 3, source: { path: "media/audio/m2.wav", hash: null, measuredSeconds: 14, clonedVoice: false, label: "" } });
+    const short: StoryboardTimeline = { ...timeline, total: 11, audio: [{ id: "m2", start: 0, duration: 11, trim_in: 0, end: 11 }] };
+    const sound = buildRoughCut(project([s1], [long]), short).sounds.find((s) => s.id === "m2")!;
+    expect(sound.start + sound.duration).toBe(11);
+    expect(envelopeAt(sound, 8)).toBe(1);
+    expect(envelopeAt(sound, 9.5)).toBeCloseTo(0.5);
+    expect(envelopeAt(sound, 11)).toBe(0);
+  });
+
   it("ducks under merged voice lines", () => {
     const two = { ...cut, sounds: [...cut.sounds, { ...voice, id: "v2", start: 5, duration: 2 }, { ...voice, id: "v3", start: 8, duration: 0.5 }] };
     expect(duckWindows(two)).toEqual([[3.5, 7], [8, 8.5]]);

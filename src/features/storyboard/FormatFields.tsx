@@ -1,6 +1,6 @@
 /** Aspect ratio, Resolution and Frame rate pickers with a fit hint per choice (D-64). Shared by the New project dialog and Project defaults. */
 import { useTranslation } from "react-i18next";
-import type { StoryboardExportPreset, StoryboardResolution } from "../../types";
+import type { StoryboardExportPreset, StoryboardResolution, StoryboardResolutionLabel } from "../../types";
 import {
   ASPECTS,
   FPS_CHOICES,
@@ -16,7 +16,7 @@ import {
 
 export interface FormatFieldsProps {
   aspect: StoryboardExportPreset;
-  resolution: StoryboardResolution;
+  resolution: StoryboardResolutionLabel;
   fps: number;
   disabled?: boolean;
   fit: VideoFitContext;

@@ -1,13 +1,58 @@
 ---
 title: Closed follow-ups
 order: 3
-summary: 98 shipped, obsoleted or dropped rows, newest first.
+summary: 103 shipped, obsoleted or dropped rows, newest first.
 ---
 
 # Closed follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Shipped, obsoleted or dropped rows (struck through, or marked shipped with no open points left). Kept as the history of why things are the way they are.
 
+
+<details>
+<summary>FU-214 · Chat messages hidden at phone width — Shipped 2026-11-17 (branch fix/storyboard-timing).</summary>
+
+**Status or trigger:** **Shipped 2026-11-17 (branch `fix/storyboard-timing`).**
+
+**Notes:** **Found** at 375 px: `.message-list` 0 px tall inside the thread panel. **Cause:** at 900 px and below the thread toolbar is a column, so `.thread-title-field { flex: 1 1 180px }` made the name field 180 px tall; with the composer (251 px) the panel had no room and the list shrank to 0. **Done** in [styles.css](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/src/styles.css), `@media (max-width: 900px)` only: the title field is auto height and full width, the list keeps a floor of `min(220px, 35vh)` and grows into spare room, and the panel scrolls to the composer when the floor does not fit. Checked in a browser tab with a seeded 60-message thread: 375x812 list 220 px and scrollable (panel scrolls to the composer), 768x1024 list 229 px with no panel scroll, 1440x900 and 1024 wide unchanged (rules not applied, list 559 px). Dark theme only (there is no light theme). Regression note: the project has no layout tests; re-check `.message-list` height at 375 px after changing the thread toolbar or composer.
+
+</details>
+
+<details>
+<summary>FU-213 · defaults.resolution says 720p for a 1024x576 project — Shipped 2026-11-17 (branch fix/storyboard-timing).</summary>
+
+**Status or trigger:** **Shipped 2026-11-17 (branch `fix/storyboard-timing`).**
+
+**Notes:** **Done:** [formats.py](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/backend_service/storyboard/formats.py) `resolution_label` derives the label from the real size whenever width and height are known: the preset name, `"<short side>p"` when it is the aspect's frame at another short side (1024x576 is `576p`), else `custom`; a stored project reads with the right label. `Defaults.resolution` is a pattern string now; picking a preset still sets the size, and `576p` sizes a new aspect. The agent's settings echo reads the field, so `storyboard_guidance.py` needed no change. Frontend: `StoryboardResolutionLabel`, `sizeFor` reads any `Np` label, `resolutionText` shows the real size for `custom` (no new strings). Tests: `tests/test_storyboard_format.py` (labels, edits, the settings echo), `formatLogic.test.ts`. Not covered: changing the aspect of a `custom` project starts from 720p.
+
+</details>
+
+<details>
+<summary>FU-212 · Narration barely over the music bed — Shipped 2026-11-17 (branch fix/storyboard-timing).</summary>
+
+**Status or trigger:** **Shipped 2026-11-17 (branch `fix/storyboard-timing`).**
+
+**Notes:** **Found** in rehearsal 2: narration at about -22.6 dB under music at -12 to -18 dB with ducking off. **Done:** `add_audio` ([ops.py](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/backend_service/storyboard/ops.py)) and a song added to the mixer ([song_ops.py](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/backend_service/storyboard/song_ops.py)) store `duck: true` on a new music clip unless the call says `duck: false`; stored clips and projects keep what they have (the model default stays false). The duck itself is unchanged: the 10:1 sidechain compressor keyed by the voice lane, threshold 0.02, attack 10 ms, release 300 ms, which takes about 9.5 dB off the music under a -22.6 dB voice. Documented in the `storyboard_audio` fields description and AGENTS.md. Tests: `tests/test_storyboard_timing_mix.py` (rendered: music 8 to 16 dB lower under the narration, back after it, `duck: false` keeps it level; op defaults per kind). Not covered: with a music bed at -12 dB a 10 dB duck still leaves it near the voice; a quieter default music gain is an owner decision.
+
+</details>
+
+<details>
+<summary>FU-211 · Music fade-out past the film's end — Shipped 2026-11-17 (branch fix/storyboard-timing), tests only.</summary>
+
+**Status or trigger:** **Shipped 2026-11-17 (branch `fix/storyboard-timing`), tests only.**
+
+**Notes:** **Found** in rehearsal 2: the film ended at about -25 dB instead of silence, read as a 3 s music fade sitting at 11 to 14 s. **Checked:** the export graph already clamps a clip to the film (`timeline` span duration, then `build_mix_graph` `min(length, room)`) before placing the fade, and the rough cut fades over the clamped span: re-rendering a copy of the rehearsal project with only the music lane ends at -59.6 dB. The level at the end came from the last shot's own sound (the LTX-2.5 clip's audio, -22.9 dB in its last 0.5 s, `nativeSoundDb` 0), which no fade covers. **Done:** guard tests, no code change: `tests/test_storyboard_timing_mix.py` (14 s track, 11 s film, fadeOut 3 ends near silence in the last 0.1 s; a shorter track fades on its own end; fadeIn at the start; both fades on a 1 s clip) and a rough cut case in `roughCutLogic.test.ts`. Open question for the owner: fade or lower the shots' own sound at the film's end.
+
+</details>
+
+<details>
+<summary>FU-210 · Storyboard shot comes out shorter than asked — Shipped 2026-11-17 (branch fix/storyboard-timing).</summary>
+
+**Status or trigger:** **Shipped 2026-11-17 (branch `fix/storyboard-timing`).**
+
+**Notes:** **Found** in rehearsal 2: three 4 s LTX shots at 24 fps were made 89 frames (3.708 s), so the film was 11.125 s, not 12 s (`align_video_frames` rounded 96 down; LTX needs 8n+1). **Done:** [generation_limits.py](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/backend_service/helpers/generation_limits.py) `shot_clip_frames` rounds up to the model's own rule for every shot (97 for 4 s at 24 fps, 105 at 25 fps), used by `generators.make_clip` and `estimate._clip_frames` so the estimate asks for the same frames; the frame rules themselves are unchanged (Wan stays 4n+1). [timeline.py](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/backend_service/storyboard/timeline.py) cuts a generated take (origin not `upload`, no `trimOut`) at the shot's seconds, so the timeline, export, Mixer and rough cut (all read the backend spans) agree; an imported clip keeps its own length and a take made too short keeps its length. No mismatch warning exists for a clip longer than its shot, and none is added. Tests: `tests/test_storyboard_timing_mix.py` (frame math 4 s at 24/25 fps, 1, 8, 10 s; timeline total = sum of seconds; a rendered film of three synthetic 97-frame clips is 288 frames, 12.0 s), `tests/test_storyboard_store.py` (a plain shot now rounds up). Not covered: `startFrom: previous-shot` still takes the clip's last frame (frame 97), one frame past the cut; no live model run.
+
+</details>
 
 <details>
 <summary>FU-209 · Storyboard tool results misled the model — Shipped 2026-11-17 (branch fix/jobs-stall).</summary>

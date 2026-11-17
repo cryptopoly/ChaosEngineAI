@@ -57,6 +57,45 @@ class MigrationTests(unittest.TestCase):
         d = Defaults.model_validate({"width": 832, "height": 480, "exportPreset": "16:9"})
         self.assertEqual((d.width, d.height), (832, 480))
 
+    def test_resolution_is_the_label_of_the_real_size(self):
+        # FU-213: a rehearsal project set by size 1024x576 still read "720p".
+        self.assertEqual(Defaults(width=1024, height=576).resolution, "576p")
+        self.assertEqual(Defaults(width=1024, height=576, resolution="720p").resolution, "576p")  # the size wins
+        self.assertEqual(Defaults(width=832, height=480).resolution, "custom")
+        self.assertEqual(Defaults(aspect="9:16", width=1080, height=1920).resolution, "1080p")
+        self.assertEqual(Defaults(aspect="1:1", width=576, height=576).resolution, "576p")
+        stored = dump(project([shot("a")]))
+        stored["defaults"].update(width=1024, height=576, resolution="720p")  # a project saved before the fix
+        self.assertEqual(Project.model_validate(stored).defaults.resolution, "576p")
+        with self.assertRaises(ValueError):
+            Defaults(resolution="custom")  # nothing to make a size from
+        with self.assertRaises(ValueError):
+            Defaults(resolution="720x")
+
+    def test_edits_keep_the_label_on_the_size(self):
+        p = project([shot("a")])
+        edit_project(p, None, EditProject(defaults={"width": 1024, "height": 576}))
+        self.assertEqual((p.defaults.resolution, p.defaults.width, p.defaults.height), ("576p", 1024, 576))
+        edit_project(p, None, EditProject(defaults={"fps": 25}))
+        self.assertEqual(p.defaults.resolution, "576p")
+        edit_project(p, None, EditProject(defaults={"aspect": "9:16"}))  # the label decides the new size
+        self.assertEqual((p.defaults.width, p.defaults.height, p.defaults.resolution), (576, 1024, "576p"))
+        edit_project(p, None, EditProject(defaults={"resolution": "1080p"}))
+        self.assertEqual((p.defaults.width, p.defaults.height, p.defaults.resolution), (1080, 1920, "1080p"))
+
+    def test_the_agent_settings_echo_says_the_real_size(self):
+        from unittest import mock
+
+        import backend_service.mcp_bridge.tools  # noqa: F401 - loads the bridge in its own order
+        from backend_service.mcp_bridge.storyboard_guidance import settings_info
+
+        p = project([shot("a")])
+        edit_project(p, None, EditProject(defaults={"width": 1024, "height": 576}))
+        with mock.patch("backend_service.mcp_bridge.storyboard_guidance.model_note", return_value=None):
+            info = settings_info(mock.Mock(), p, False)
+        echo = info.get("settings", info)
+        self.assertEqual((echo["size"], echo["resolution"]), ("1024x576", "576p"))
+
     def test_aspect_and_old_shape_are_names_for_the_preset(self):
         self.assertEqual(Defaults(aspect="9:16", resolution="1080p").model_dump()["width"], 1080)
         self.assertEqual(Defaults(shape="1:1").exportPreset, "1:1")

@@ -4,7 +4,7 @@
  * catalog's per-model size and frame-rate rows; nothing here is a number of its own. No React here so
  * the rules are unit-tested directly.
  */
-import type { StoryboardExportPreset, StoryboardResolution, StoryboardUpscale, VideoModelVariant } from "../../types";
+import type { StoryboardExportPreset, StoryboardResolution, StoryboardResolutionLabel, StoryboardUpscale, VideoModelVariant } from "../../types";
 import { assessVideoGenerationSafety } from "../../utils/videos";
 
 export const ASPECTS: StoryboardExportPreset[] = ["16:9", "9:16", "1:1"];
@@ -19,9 +19,23 @@ const SHORT_SIDE: Record<StoryboardResolution, number> = { "480p": 480, "720p": 
 /** Marketing name next to the resolution where one is in common use. */
 export const RESOLUTION_ALIAS: Partial<Record<StoryboardResolution, string>> = { "2160p": "4K" };
 
-/** Mirror of `size_for` in backend_service/storyboard/formats.py. */
-export function sizeFor(aspect: StoryboardExportPreset, resolution: StoryboardResolution): { width: number; height: number } {
-  const short = SHORT_SIDE[resolution];
+/** The short side a resolution label names ("576p" is 576); null for "custom". */
+function shortSide(resolution: StoryboardResolutionLabel): number | null {
+  if (resolution in SHORT_SIDE) return SHORT_SIDE[resolution as StoryboardResolution];
+  const match = /^(\d+)p$/.exec(resolution);
+  return match ? Number(match[1]) : null;
+}
+
+/** The resolution as shown: the preset or label ("4K" for 2160p), or the real size for a custom one. */
+export function resolutionText(d: { width: number; height: number; resolution: StoryboardResolutionLabel }): string {
+  if (d.resolution === "custom") return `${d.width} × ${d.height}`;
+  return RESOLUTION_ALIAS[d.resolution as StoryboardResolution] ?? d.resolution;
+}
+
+/** Mirror of `size_for` in backend_service/storyboard/formats.py. A "custom" size has no frame of its own, so a
+ * format change from it starts at the default resolution. */
+export function sizeFor(aspect: StoryboardExportPreset, resolution: StoryboardResolutionLabel): { width: number; height: number } {
+  const short = shortSide(resolution) ?? SHORT_SIDE[DEFAULT_RESOLUTION];
   if (aspect === "1:1") return { width: short, height: short };
   const long = short === 480 ? 854 : Math.round((short * 16) / 9);
   return aspect === "16:9" ? { width: long, height: short } : { width: short, height: long };
@@ -34,7 +48,7 @@ export function newProjectDefaults(aspect: StoryboardExportPreset, resolution: S
 
 /** The `edit_project` defaults for a changed aspect or resolution: the size follows the format. */
 export function formatPatch(
-  current: { exportPreset: StoryboardExportPreset; resolution: StoryboardResolution },
+  current: { exportPreset: StoryboardExportPreset; resolution: StoryboardResolutionLabel },
   change: { aspect?: StoryboardExportPreset; resolution?: StoryboardResolution },
 ): { defaults: Record<string, unknown> } {
   const aspect = change.aspect ?? current.exportPreset;
@@ -100,7 +114,7 @@ export function modelSizeFor(
 export function resolutionFit(
   ctx: VideoFitContext,
   aspect: StoryboardExportPreset,
-  resolution: StoryboardResolution,
+  resolution: StoryboardResolutionLabel,
   fps: number,
 ): ResolutionFit {
   const model = ctx.model;

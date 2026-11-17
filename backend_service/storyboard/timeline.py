@@ -1,7 +1,8 @@
 """The film's timeline from measured take durations, and the render plan the assembler consumes.
 
 Pure functions. Each shot's length is its active take's measured seconds (planned seconds only when a
-take was never measured), cut to its in and out points (``trimIn`` / ``trimOut`` are positions in the
+take was never measured; a generated take is cut to the shot's seconds, since its clip is made a few frames
+long to fit the model's frame rule), cut to its in and out points (``trimIn`` / ``trimOut`` are positions in the
 source, seconds) and divided by ``speed``. A crossfade into a shot overlaps the previous shot, so it
 shortens the film by its length; it is clamped to half the shorter of the two shots. Audio anchored to
 a shot starts at that shot's start plus the offset, so it follows the shot when earlier shots change
@@ -79,6 +80,13 @@ def _source_seconds(shot: Shot) -> tuple[float, bool]:
     return float(shot.seconds), False
 
 
+def _made(shot: Shot) -> bool:
+    """The active take was generated here, so its clip was asked for the shot's seconds (rounded up to the model's
+    frame rule). An imported clip keeps its own length."""
+    take = shot.active()
+    return take is not None and take.origin != "upload"
+
+
 def compute_timeline(project: Project, ready_only: bool = False) -> Timeline:
     """Shot and audio positions in seconds. ``ready_only`` keeps only shots with a playable clip (the render)."""
     timeline = Timeline(total=0.0)
@@ -90,7 +98,12 @@ def compute_timeline(project: Project, ready_only: bool = False) -> Timeline:
             continue
         length, measured = _source_seconds(shot)
         source_in = min(shot.trimIn, length)
-        source_out = min(shot.trimOut, length) if shot.trimOut is not None else length
+        if shot.trimOut is not None:
+            source_out = min(shot.trimOut, length)
+        elif measured and _made(shot):
+            source_out = min(shot.seconds, length)  # a made clip covers the shot and is cut back to it (FU-210)
+        else:
+            source_out = length
         if source_out - source_in < MIN_SHOT_SECONDS:
             timeline.problems.append(f"shot {shot.id}: trims leave nothing; trims ignored")
             source_in, source_out = 0.0, length

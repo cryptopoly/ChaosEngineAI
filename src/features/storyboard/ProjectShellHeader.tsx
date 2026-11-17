@@ -7,7 +7,7 @@ import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { CloseIcon, RedoIcon, UndoIcon } from "../../components/icons/ActionIcons";
 import type { StoryboardProject } from "../../types";
-import { RESOLUTION_ALIAS } from "./formatLogic";
+import { resolutionText } from "./formatLogic";
 import { PROJECT_TABS, type ProjectTabId } from "./projectRoute";
 import { nextTabIndex } from "./projectShellLogic";
 import { staleCount } from "./storyboardLogic";
@@ -153,7 +153,7 @@ export function ProjectShellHeader({
             onClick={() => (onOpenSettings ? onOpenSettings() : onTab("overview"))}
           >
             <span className="project-shell__chip">{d.exportPreset}</span>
-            <span className="project-shell__chip">{RESOLUTION_ALIAS[d.resolution] ?? d.resolution}</span>
+            <span className="project-shell__chip">{resolutionText(d)}</span>
             <span className="project-shell__chip">{d.fps} fps</span>
           </button>
         ) : null}

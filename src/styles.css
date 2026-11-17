@@ -1787,6 +1787,25 @@ select.text-input {
   min-width: 160px;
 }
 
+/* Narrow windows (FU-214). The toolbar is a column here, so the 180 px basis above became a 180 px height. The
+   thread's toolbar and composer then filled the panel and the message list shrank to 0 px at 375 px wide: the list
+   keeps a floor and grows into spare room, and the panel scrolls to the composer when the floor does not fit. */
+@media (max-width: 900px) {
+  .thread-toolbar .thread-title-field {
+    flex: 0 0 auto;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .panel.chat-thread {
+    overflow-y: auto;
+  }
+
+  .panel.chat-thread > .message-list {
+    flex: 1 0 min(220px, 35vh);
+  }
+}
+
 .thread-toolbar-actions {
   display: flex;
   align-items: center;

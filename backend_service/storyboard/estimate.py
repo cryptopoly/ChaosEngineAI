@@ -51,10 +51,9 @@ def plan_steps(project: Project, what: str, shot_ids: list[str] | None) -> list[
 
 def _clip_frames(variant: dict[str, Any], shot: Shot, fps: int) -> int:
     """Frames the batch would ask for, as ``generators.make_clip`` picks them."""
-    from backend_service.helpers.generation_limits import align_video_frames
+    from backend_service.helpers.generation_limits import shot_clip_frames
 
-    frames, _ = align_video_frames(str(variant.get("repo") or ""), max(8, min(257, round(shot.seconds * fps))))
-    return frames
+    return shot_clip_frames(str(variant.get("repo") or ""), shot.seconds, fps)
 
 
 def _measured(project: Project, kind: str, model_name: str | None, render_pass: str = "final") -> list[float]:

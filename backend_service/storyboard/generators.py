@@ -8,8 +8,6 @@ and the batch's own Cancel reaches its running and waiting tickets. Heavy import
 
 from __future__ import annotations
 
-import math
-
 import shutil
 import subprocess
 import tempfile
@@ -101,7 +99,7 @@ def studio_generators(request: Any, batch_id: str, folder: Path) -> dict[str, Ca
     def make_clip(shot: Shot, project: Project, still: Path | None) -> tuple[str, dict[str, Any]]:
         from fastapi import HTTPException
 
-        from backend_service.helpers.generation_limits import align_video_frames, align_video_frames_up
+        from backend_service.helpers.generation_limits import shot_clip_frames
         from backend_service.mcp_bridge.tools import _recommended
         from backend_service.models import VideoGenerationRequest
         from backend_service.video_runtime.repos import image_input_support
@@ -118,13 +116,10 @@ def studio_generators(request: Any, batch_id: str, folder: Path) -> dict[str, Ca
         settings = _recommended(variant)
         fps = project.defaults.fps
         repo = str(variant.get("repo") or "")
-        if shot.trimOut is not None:
-            # A shot with an out point (a cut plan's shot on the song's beats): the clip must cover it and is trimmed
-            # back. Rounding the frames down made every clip a few frames short, so a 15 s cut came out 13.5 s and
-            # the cuts drifted off the beat (S-P, LTX-2.5: 3.646 s asked, 3.375 s made).
-            frames = align_video_frames_up(repo, max(8, min(257, math.ceil(shot.seconds * fps - 1e-6))))
-        else:
-            frames, _ = align_video_frames(repo, max(8, min(257, round(shot.seconds * fps))))
+        # The clip must cover the whole shot and is trimmed back to it (the timeline caps a made take at the shot's
+        # seconds). Rounding the frames down made every clip a few frames short: a 15 s cut came out 13.5 s (S-P)
+        # and three 4 s LTX shots at 24 fps made an 11.1 s film (89 frames each, FU-210).
+        frames = shot_clip_frames(repo, shot.seconds, fps)
         fields: dict[str, Any] = {"modelId": variant["id"], "prompt": prompt, "numFrames": frames, "fps": fps,
                                   "width": project.defaults.width, "height": project.defaults.height}
         takes_start, takes_end = image_input_support(str(variant.get("repo") or ""))

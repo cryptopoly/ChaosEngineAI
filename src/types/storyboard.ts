@@ -5,6 +5,8 @@ import type { JobProgress } from "./chat";
 /** The aspect ratio (called the export preset in the stored project). */
 export type StoryboardExportPreset = "16:9" | "9:16" | "1:1";
 export type StoryboardResolution = "480p" | "720p" | "1080p" | "1440p" | "2160p";
+/** What a project's size reads as: a preset, another short side ("576p" for 1024x576) or "custom" (FU-213). */
+export type StoryboardResolutionLabel = StoryboardResolution | `${number}p` | "custom";
 export type StoryboardUpscale = "none" | "1440p" | "2160p";
 
 export interface StoryboardDefaults {
@@ -18,7 +20,7 @@ export interface StoryboardDefaults {
   videoModel: string | null;
   voice: string | null;
   exportPreset: StoryboardExportPreset;
-  resolution: StoryboardResolution;
+  resolution: StoryboardResolutionLabel;
 }
 
 /** One picture of a character or place (project format 3). */

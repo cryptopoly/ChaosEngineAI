@@ -594,7 +594,8 @@
       "turn_failed": "le modèle de discussion a échoué deux fois de suite : {detail}",
       "app_restart": "l'application a redémarré pendant son exécution.",
       "studio_off": "Les outils Studio ont été désactivés.",
-      "gpu_reload_failed": "le modèle de discussion n'a pas pu être rechargé après un rendu : {detail}"
+      "gpu_reload_failed": "le modèle de discussion n'a pas pu être rechargé après un rendu : {detail}",
+      "job_stalled": null
     },
     "gpu": {
       "label": "Libérer la mémoire GPU pendant les rendus",
@@ -602,6 +603,7 @@
       "auto": "Auto",
       "always": "Toujours",
       "never": "Jamais"
-    }
+    },
+    "waitingOn": null
   }
 }

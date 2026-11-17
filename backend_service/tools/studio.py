@@ -303,8 +303,11 @@ class StudioTool(BaseTool):
 
     def __init__(self, tool: dict[str, Any], handler: Any, app_request: Any,
                  is_cancelled: Callable[[], bool] | None = None, revisions: TurnRevisions | None = None,
-                 defer: Callable[[str, dict[str, Any]], StructuredToolOutput | None] | None = None) -> None:
+                 defer: Callable[[str, dict[str, Any]], StructuredToolOutput | None] | None = None,
+                 watch: Any = None) -> None:
         self._tool = tool
+        # Keep going's stall guard (FU-207, ``keep_going.stall.TurnWatch``): ends a wait on a job without progress.
+        self._watch = watch
         # Keep going's "free GPU memory while rendering" (FU-191): an approved render may be kept for after the
         # turn; ``defer`` returns the answer for the model then, or None to run it now.
         self._defer = defer
@@ -358,15 +361,26 @@ class StudioTool(BaseTool):
 
         job = STORE.get(str(args["job_id"]))
         started = time.monotonic()
-        cancelled = False
-        while not job.done.wait(_WAIT_SLICE_SECONDS):
-            if self._is_cancelled():
-                cancelled = True
-                break
-            if time.monotonic() - started >= CHAT_WAIT_CAP_SECONDS:
-                break
+        cancelled = stalled = False
+        try:
+            while not job.done.wait(_WAIT_SLICE_SECONDS):
+                if self._watch is not None and self._watch.stalled(job):
+                    stalled = True
+                    break
+                if self._is_cancelled():
+                    cancelled = True
+                    break
+                if time.monotonic() - started >= CHAT_WAIT_CAP_SECONDS:
+                    break
+        finally:
+            if self._watch is not None:
+                self._watch.finish()
         info = trim_result(job.describe())
-        if cancelled:
+        if stalled:
+            info["stalled"] = True
+            info["next"] = (f"Keep going stopped. {self._watch.reason} The job was left as it is. Tell the user, "
+                            "then end your turn.")
+        elif cancelled:
             info["next"] = "The user stopped the chat. The job keeps running; do not call wait_for_job again unless asked."
         elif not job.done.is_set():
             info["next"] = "Still running after 30 minutes. Call wait_for_job again to keep waiting."
@@ -463,22 +477,24 @@ def _own_jobs(args: dict[str, Any]) -> dict[str, Any]:
 
 
 def studio_tools(app_request: Any, is_cancelled: Callable[[], bool] | None = None,
-                 defer: Callable[[str, dict[str, Any]], StructuredToolOutput | None] | None = None) -> list[StudioTool]:
+                 defer: Callable[[str, dict[str, Any]], StructuredToolOutput | None] | None = None,
+                 watch: Any = None) -> list[StudioTool]:
     tools, handlers = _bridge()
     by_name = {t["name"]: t for t in tools}
     revisions = TurnRevisions()  # one per chat turn, shared by its storyboard tools
-    return [StudioTool(by_name[n], handlers[n], app_request, is_cancelled, revisions, defer)
+    return [StudioTool(by_name[n], handlers[n], app_request, is_cancelled, revisions, defer, watch)
             for n in STUDIO_TOOL_NAMES if n in by_name and n in handlers]
 
 
 def studio_registry(app_request: Any, base: ToolRegistry, available: list[str] | None,
                     is_cancelled: Callable[[], bool] | None = None,
-                    defer: Callable[[str, dict[str, Any]], StructuredToolOutput | None] | None = None) -> ToolRegistry:
+                    defer: Callable[[str, dict[str, Any]], StructuredToolOutput | None] | None = None,
+                    watch: Any = None) -> ToolRegistry:
     """The chat tools (``available`` of ``base``, all when None) plus the studio tools."""
     registry = ToolRegistry()
     for tool in base.list_tools():
         if available is None or tool.name in available:
             registry.register(tool)
-    for tool in studio_tools(app_request, is_cancelled, defer):
+    for tool in studio_tools(app_request, is_cancelled, defer, watch):
         registry.register(tool)
     return registry

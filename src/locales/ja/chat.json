@@ -594,7 +594,8 @@
       "turn_failed": "チャットモデルが2回続けて失敗しました: {detail}",
       "app_restart": "実行中にアプリが再起動しました。",
       "studio_off": "スタジオツールがオフになりました。",
-      "gpu_reload_failed": "生成後にチャットモデルを再読み込みできませんでした: {detail}"
+      "gpu_reload_failed": "生成後にチャットモデルを再読み込みできませんでした: {detail}",
+      "job_stalled": null
     },
     "gpu": {
       "label": "生成中に GPU メモリを解放",
@@ -602,6 +603,7 @@
       "auto": "自動",
       "always": "常に",
       "never": "しない"
-    }
+    },
+    "waitingOn": null
   }
 }

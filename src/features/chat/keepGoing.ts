@@ -36,6 +36,7 @@ export const KEEP_GOING_STOP_CODES = [
   "app_restart",
   "studio_off",
   "gpu_reload_failed",
+  "job_stalled",
 ] as const;
 
 export function isActive(run: KeepGoingRun | null | undefined): boolean {

@@ -594,7 +594,8 @@
       "turn_failed": null,
       "app_restart": null,
       "studio_off": null,
-      "gpu_reload_failed": null
+      "gpu_reload_failed": null,
+      "job_stalled": null
     },
     "gpu": {
       "label": null,
@@ -602,6 +603,7 @@
       "auto": null,
       "always": null,
       "never": null
-    }
+    },
+    "waitingOn": null
   }
 }

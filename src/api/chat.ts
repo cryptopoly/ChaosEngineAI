@@ -397,7 +397,7 @@ export async function fetchKeepGoing(sessionId: string): Promise<KeepGoingRun | 
 
 export async function startKeepGoing(
   sessionId: string,
-  body: { cap: number; grant: KeepGoingGrant; hours: number; gpuMode?: KeepGoingGpuMode },
+  body: { cap: number; grant: KeepGoingGrant; hours: number; gpuMode?: KeepGoingGpuMode; stallMinutes?: number },
 ): Promise<KeepGoingRun | null> {
   return (await postJson<{ run: KeepGoingRun | null }>(keepGoingPath(sessionId, "start"), body, 10000)).run;
 }
@@ -408,7 +408,7 @@ export async function stopKeepGoing(sessionId: string, studioOff = false): Promi
 
 export async function resumeKeepGoing(
   sessionId: string,
-  body: { grant: KeepGoingGrant; hours: number; cap?: number },
+  body: { grant: KeepGoingGrant; hours: number; cap?: number; stallMinutes?: number },
 ): Promise<KeepGoingRun | null> {
   return (await postJson<{ run: KeepGoingRun | null }>(keepGoingPath(sessionId, "resume"), body, 10000)).run;
 }

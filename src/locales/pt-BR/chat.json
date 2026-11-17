@@ -594,7 +594,8 @@
       "turn_failed": "o modelo do chat falhou duas vezes seguidas: {detail}",
       "app_restart": "o app foi reiniciado durante a execução.",
       "studio_off": "As ferramentas do Estúdio foram desativadas.",
-      "gpu_reload_failed": "o modelo do chat não pôde ser carregado de novo após uma renderização: {detail}"
+      "gpu_reload_failed": "o modelo do chat não pôde ser carregado de novo após uma renderização: {detail}",
+      "job_stalled": null
     },
     "gpu": {
       "label": "Liberar memória da GPU durante a renderização",
@@ -602,6 +603,7 @@
       "auto": "Auto",
       "always": "Sempre",
       "never": "Nunca"
-    }
+    },
+    "waitingOn": null
   }
 }

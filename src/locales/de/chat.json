@@ -594,7 +594,8 @@
       "turn_failed": "das Chat-Modell ist zweimal in Folge fehlgeschlagen: {detail}",
       "app_restart": "die App wurde während des Laufs neu gestartet.",
       "studio_off": "die Studio-Werkzeuge wurden ausgeschaltet.",
-      "gpu_reload_failed": "das Chat-Modell ließ sich nach einem Rendering nicht erneut laden: {detail}"
+      "gpu_reload_failed": "das Chat-Modell ließ sich nach einem Rendering nicht erneut laden: {detail}",
+      "job_stalled": null
     },
     "gpu": {
       "label": "GPU-Speicher beim Rendern freigeben",
@@ -602,6 +603,7 @@
       "auto": "Auto",
       "always": "Immer",
       "never": "Nie"
-    }
+    },
+    "waitingOn": null
   }
 }

@@ -493,6 +493,10 @@ export interface KeepGoingRun {
   gpuMode: KeepGoingGpuMode;
   /** Phase 2: the chat model is unloaded around a render (unloading, rendering, reloading). */
   swapPhase?: "unloading" | "rendering" | "reloading" | null;
+  /** FU-207: a waited job with no progress for this many minutes stops the run (job_stalled). */
+  stallMinutes?: number;
+  /** FU-207: the job a turn or the run waits on now, and for how long it has shown no progress. */
+  waitingOn?: { jobId: string; label: string; since: number; minutes: number } | null;
   turnRunning: boolean;
   pendingPlans: number;
   messageCount: number;

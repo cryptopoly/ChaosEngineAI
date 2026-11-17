@@ -336,6 +336,13 @@ def _keep_going_defer(state: ChaosEngineState, session_id: str) -> Any:
     return defer
 
 
+def _keep_going_watch(state: ChaosEngineState, session_id: str) -> Any:
+    from backend_service import keep_going
+    from backend_service.keep_going.stall import TurnWatch
+
+    return TurnWatch(keep_going.for_state(state), session_id)
+
+
 def generate_stream(state: ChaosEngineState, request: GenerateRequest, app_request: Any = None, *,
                     keep_going: dict[str, Any] | None = None, background: bool = False):
     """SSE streaming version of generate(). Returns a StreamingResponse.
@@ -565,6 +572,8 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest, app_reque
             is_cancelled=_cancel_requested,
             # FU-191: a Keep going run may keep a heavy render for after the turn, with the chat model unloaded.
             defer=_keep_going_defer(chaosengine, session_id_for_cancel),
+            # FU-207: a wait on a job without progress stops the run (only while a run drives this turn).
+            watch=_keep_going_watch(chaosengine, session_id_for_cancel),
         )
         studio_gate = StudioGate(
             session_id_for_cancel,

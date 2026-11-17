@@ -9,6 +9,8 @@ and never mends a reply that was cut off at the token limit (that call is incomp
 ``unreadable_call`` finds what is left: a call-looking fragment that still cannot be read, with a plain reason
 and the call format the model was using, so the agent loop can tell the model instead of dropping the call.
 Prose is left alone, and so is a complete call object inside a fenced code block (one the user asked to see).
+In a reply where other calls were read, both run on the text left once those are blanked out (FU-205,
+``agent_parse.read_calls``), and the fragment carries its place among the calls for the message.
 """
 
 from __future__ import annotations
@@ -43,12 +45,23 @@ class Unreadable:
     reason: str
     style: str  # json | xml | lfm (the FORMATS key)
     fragment: str
+    at: int = 0  # where the fragment starts in the text
+    position: int | None = None  # its place among the calls of a reply where other calls were read (FU-205)
 
     @property
     def message(self) -> str:
         """The tool-style error the model gets back."""
         hint = FORMATS[self.style].format(tool=self.tool or "TOOL_NAME")
-        return f"Error: your tool call could not be read, so nothing ran: {self.reason}; send it again as {hint}."
+        where = f" (the {_ordinal(self.position)} call in your reply)" if self.position else ""
+        return (f"Error: your tool call could not be read, so nothing ran{where}: {self.reason}; "
+                f"send it again as {hint}.")
+
+
+_ORDINALS = ("first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth")
+
+
+def _ordinal(n: int) -> str:
+    return _ORDINALS[n - 1] if 1 <= n <= len(_ORDINALS) else f"number {n}"
 
 
 def _missing_closers(body: str) -> list[str] | str | None:
@@ -186,7 +199,7 @@ def _lfm(text: str, names: Collection[str]) -> Unreadable | None:
     else:
         reason = "the block is not a list of calls like name(key=\"value\") with plain values"
     fragment = text[start:end + len(agent_lfm_calls.CLOSE) if end >= 0 else len(text)]
-    return Unreadable(tool, reason, "lfm", fragment[:2000])
+    return Unreadable(tool, reason, "lfm", fragment[:2000], start)
 
 
 def unreadable_call(text: str, names: Collection[str], *, truncated: bool = False) -> Unreadable | None:
@@ -207,16 +220,20 @@ def unreadable_call(text: str, names: Collection[str], *, truncated: bool = Fals
             if xml is not None:
                 tool = xml.group(1).strip()
                 return Unreadable(tool, "the <function=...> block is not closed with </function>", "xml",
-                                  text[xml.start():][:2000])
+                                  text[xml.start():][:2000], tagged_at)
             first_json = text.find("{", opener.end() if opener else 0)
             if calls:
                 first_json = calls[0].start()
             if first_json < 0 or (closer is not None and first_json > closer.start()):
                 return Unreadable(None, "there is no call object next to the <tool_call> tag", "json",
-                                  text[tagged_at:][:2000])
+                                  text[tagged_at:][:2000], tagged_at)
             body_end = closer.start() if closer is not None and closer.start() > first_json else len(text)
             tool, reason = _json_reason(text, first_json, body_end, names, truncated)
-            return Unreadable(tool, reason, "json", text[first_json:body_end][:2000])
+            if reason == "it was not wrapped in <tool_call> tags" and opener is not None and not text[
+                    opener.end():first_json].strip():
+                # A whole, tagged call is only left over when calls in another format were read from the reply.
+                reason = "the reply mixed two call formats and only the other one was read"
+            return Unreadable(tool, reason, "json", text[first_json:body_end][:2000], tagged_at)
     for match in calls:
         start = match.start()
         if '"arguments"' not in text[start:] and '"parameters"' not in text[start:]:
@@ -224,5 +241,5 @@ def unreadable_call(text: str, names: Collection[str], *, truncated: bool = Fals
         tool, reason = _json_reason(text, start, len(text), names, truncated)
         if _in_fence(text, start) and reason == "it was not wrapped in <tool_call> tags":
             continue  # a complete call shown in a code block: the user asked to see it
-        return Unreadable(tool, reason, "json", text[start:][:2000])
+        return Unreadable(tool, reason, "json", text[start:][:2000], start)
     return None

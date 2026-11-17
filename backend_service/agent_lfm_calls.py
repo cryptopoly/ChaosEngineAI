@@ -76,20 +76,28 @@ def _blocks(text: str) -> list[tuple[int, int, list[tuple[str, dict[str, Any]]]]
         cursor = end + len(CLOSE)
 
 
-def parse_calls(text: str) -> list[dict[str, Any]] | None:
-    """The calls in ``text`` in the OpenAI ``tool_calls`` shape, or None when it holds none."""
+def call_spans(text: str) -> list[tuple[dict[str, Any], int, int]]:
+    """Each call in ``text`` in the OpenAI ``tool_calls`` shape with the span of the block it came from."""
     if OPEN not in text:
-        return None
-    calls = [
-        {
-            "id": f"call_{uuid.uuid4().hex[:8]}",
-            "type": "function",
-            "function": {"name": name, "arguments": json.dumps(arguments)},
-        }
-        for _start, _end, block in _blocks(text)
+        return []
+    return [
+        (
+            {
+                "id": f"call_{uuid.uuid4().hex[:8]}",
+                "type": "function",
+                "function": {"name": name, "arguments": json.dumps(arguments)},
+            },
+            start,
+            end,
+        )
+        for start, end, block in _blocks(text)
         for name, arguments in block
     ]
-    return calls or None
+
+
+def parse_calls(text: str) -> list[dict[str, Any]] | None:
+    """The calls in ``text`` in the OpenAI ``tool_calls`` shape, or None when it holds none."""
+    return [call for call, _start, _end in call_spans(text)] or None
 
 
 def strip_calls(text: str) -> str:

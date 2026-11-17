@@ -112,6 +112,9 @@ export function isCard(piece: CutPiece): boolean {
 /** How far a ducked sound drops under a voice line (about -12 dB, close to the export's compressor). */
 export const DUCK_GAIN = 0.25;
 
+/** The last shot's own sound fades out over this long at the film's end (the export does the same). */
+export const END_FADE_SECONDS = 0.6;
+
 export function dbToGain(db: number): number {
   if (!Number.isFinite(db)) return 0;
   return Math.pow(10, db / 20);
@@ -158,7 +161,7 @@ export function buildRoughCut(project: StoryboardProject, timeline: StoryboardTi
       rate: piece.speed,
       gain: dbToGain(shot?.nativeSoundDb ?? 0),
       fadeIn: piece.fadeIn,
-      fadeOut: pieces[i + 1]?.fadeIn ?? 0,
+      fadeOut: i === pieces.length - 1 ? Math.min(END_FADE_SECONDS, piece.duration) : (pieces[i + 1]?.fadeIn ?? 0),
       duck: false,
       loop: false,
     });

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { StoryboardAudioClip, StoryboardProject, StoryboardShot, StoryboardTimeline } from "../../../../types";
 import {
   DUCK_GAIN,
+  END_FADE_SECONDS,
   buildRoughCut,
   captionAt,
   cutMarkers,
@@ -90,6 +91,19 @@ describe("buildRoughCut", () => {
       ["native:s2", 3, 3, 1, 2, 1, 0],
     ]);
     expect(natives[0].gain).toBeCloseTo(0.501, 3);
+  });
+
+  it("fades only the last shot's own sound out at the film's end, 0.6 s or its length if shorter", () => {
+    const span = (id: string, start: number, duration: number) => ({
+      id, start, end: start + duration, duration, source_in: 0, source_out: duration, transition_type: "cut" as const, transition_seconds: 0, measured: true, ready: true,
+    });
+    const fades = (c: ReturnType<typeof buildRoughCut>) => c.sounds.filter((x) => x.kind === "native").map((x) => [x.id, x.fadeOut]);
+    const two = buildRoughCut(project([shot("a"), shot("b")]), { ...timeline, total: 8, shots: [span("a", 0, 4), span("b", 4, 4)], audio: [] });
+    expect(fades(two)).toEqual([["native:a", 0], ["native:b", END_FADE_SECONDS]]);
+    const one = buildRoughCut(project([shot("a")]), { ...timeline, total: 4, shots: [span("a", 0, 4)], audio: [] });
+    expect(fades(one)).toEqual([["native:a", END_FADE_SECONDS]]);
+    const short = buildRoughCut(project([shot("a")]), { ...timeline, total: 0.4, shots: [span("a", 0, 0.4)], audio: [] });
+    expect(fades(short)).toEqual([["native:a", 0.4]]);
   });
 
   it("places audio clips where the timeline does, ducks only non-voice sounds", () => {

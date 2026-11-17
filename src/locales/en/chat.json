@@ -534,5 +534,72 @@
     "title": "Voice in Chat: which voice reads, calls and dictation",
     "fallback": "Fallback",
     "noFallback": "None set"
+  },
+  "keepGoing": {
+    "label": "Keep going",
+    "toggleTooltip": "The app sends the next step after each turn until the film is done or a stop rule applies.",
+    "counter": "nudge {n} of {cap}",
+    "stopped": "Keep going stopped:",
+    "resume": "Resume",
+    "dismiss": "Hide this note",
+    "stopButton": "Stop",
+    "phase": {
+      "armed": "send your brief",
+      "turn": "the model is working",
+      "awaitingApproval": "waiting for your approval",
+      "waitingJob": "waiting for a job to finish",
+      "nudging": "sending the next step",
+      "gpuSwap": "chat model unloaded while a render runs"
+    },
+    "grant": {
+      "legend": "How are renders approved in this run?",
+      "manual": "I approve each plan card (the run waits for me)",
+      "auto": "Approve renders automatically for this run",
+      "hours": "for up to this many hours (at most {max})",
+      "note": "Automatic approval ends when the run stops, when the hours run out (the run then pauses) or when the app restarts.",
+      "pick": "Choose how renders are approved first",
+      "manualChip": "you approve each plan",
+      "autoChip": "renders auto-approved",
+      "autoChipLeft": "renders auto-approved, {hours} h {minutes} min left"
+    },
+    "panel": {
+      "title": "Keep going",
+      "resumeTitle": "Resume Keep going",
+      "hint": "After each turn the app reads the project and sends the next step, until the film is done or a stop rule applies. Your next message is the brief.",
+      "resumeHint": "The next step is rebuilt from your brief and the saved project. Choose again how renders are approved.",
+      "cap": "Stop after at most this many nudges",
+      "cancel": "Cancel",
+      "start": "Turn on"
+    },
+    "thread": {
+      "label": "Keep going: app message",
+      "labelCount": "Keep going: app message {n} of {cap}"
+    },
+    "stop": {
+      "complete": "the film looks finished (every shot has a clip, the audio is in, the final film is rendered).",
+      "complete_no_project": "the model says it is finished and no job is running.",
+      "cap_reached": "reached the limit of {cap} nudges.",
+      "no_progress": "nothing changed after 3 nudges in a row.",
+      "repeated_error": "the same error came back 3 times: {detail}",
+      "context_full": "the chat is nearly out of context ({detail}). Start a new chat to go on; the project is saved.",
+      "plan_declined": "you declined the plan.",
+      "plan_edit": "you asked to change the plan.",
+      "plan_unanswered": "a plan waited without an answer, so nothing was made.",
+      "approval_expired": "approval expired. Resume to approve again.",
+      "user_stopped": "you stopped it.",
+      "user_message": "you sent a message.",
+      "model_unavailable": "the chat model is not loaded and could not be loaded again: {detail}",
+      "turn_failed": "the chat model failed twice in a row: {detail}",
+      "app_restart": "the app restarted while it ran.",
+      "studio_off": "Studio tools were turned off.",
+      "gpu_reload_failed": "the chat model could not be loaded again after a render: {detail}"
+    },
+    "gpu": {
+      "label": "Free GPU memory while rendering",
+      "hint": "Auto unloads the chat model during a render only when both do not fit, then loads it again.",
+      "auto": "Auto",
+      "always": "Always",
+      "never": "Never"
+    }
   }
 }

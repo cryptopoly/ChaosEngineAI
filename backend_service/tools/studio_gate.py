@@ -391,15 +391,21 @@ class StudioGate:
         wait_timeout: float = WAIT_TIMEOUT_SECONDS,
         poll_seconds: float = 0.25,
         keepalive_seconds: float = KEEPALIVE_SECONDS,
+        auto_until: float | None = None,
     ) -> None:
         self.session_id = session_id
         self.auto_approve = auto_approve
+        # Keep going's run grant (FU-191): auto-approval ends at this epoch time, even mid-turn. None: no end.
+        self.auto_until = auto_until
         self.is_cancelled = is_cancelled
         self.state = state
         self.wait_timeout = wait_timeout
         self.poll_seconds = poll_seconds
         self.keepalive_seconds = keepalive_seconds
         self.resolved: list[dict[str, Any]] = []
+
+    def _auto_now(self) -> bool:
+        return self.auto_approve and (self.auto_until is None or time.time() < self.auto_until)
 
     def review(self, tool_calls: list[dict[str, Any]]) -> Iterator[dict[str, Any]]:
         """Generator: yields plan events while waiting; returns ``{call_id: answer}`` for calls not to run, where
@@ -432,7 +438,7 @@ class StudioGate:
             if signature is not None:
                 leaders[signature] = str(tc.get("id"))
             planned.append(tc)
-        if not planned or self.auto_approve:
+        if not planned or self._auto_now():
             return answers
         items = [plan_item(tc, self.state) for tc in planned]
         plan = PendingPlan(id=f"plan-{uuid.uuid4().hex[:10]}", session_id=self.session_id, items=items,
@@ -465,6 +471,7 @@ class StudioGate:
                 denials[item["callId"]] = EDIT_TEXT if plan.edit else DECLINED_TEXT
         if answered and plan.always_allow:
             self.auto_approve = True
+            self.auto_until = None  # the user's own click on this card: the rest of the turn, as before
         status = "unanswered" if not answered else ("edit" if plan.edit else "decided")
         resolved = {
             **plan.payload(),

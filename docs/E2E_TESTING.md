@@ -55,6 +55,11 @@ Concrete, not "feels right":
   actually have routed through the speculative engine.
 - Phase 7 asserts `recentOrphanedWorkers` is empty (no subprocess leak)
   and runtime state is one of `idle` / `loaded` (not `error`).
+- Phase 7 also drives the Keep going run API (FU-191) on a throwaway chat:
+  start is armed and idempotent, the cap and grant hours are bounded, Stop
+  ends the run and drops the render grant, Resume refuses a run that never
+  had a brief, and deleting the chat drops the run. No model, nothing renders
+  (`scripts/e2e_phases/keep_going.py`).
 
 ## Skip semantics
 

@@ -534,5 +534,72 @@
     "title": null,
     "fallback": null,
     "noFallback": null
+  },
+  "keepGoing": {
+    "label": null,
+    "toggleTooltip": null,
+    "counter": null,
+    "stopped": null,
+    "resume": null,
+    "dismiss": null,
+    "stopButton": null,
+    "phase": {
+      "armed": null,
+      "turn": null,
+      "awaitingApproval": null,
+      "waitingJob": null,
+      "nudging": null,
+      "gpuSwap": null
+    },
+    "grant": {
+      "legend": null,
+      "manual": null,
+      "auto": null,
+      "hours": null,
+      "note": null,
+      "pick": null,
+      "manualChip": null,
+      "autoChip": null,
+      "autoChipLeft": null
+    },
+    "panel": {
+      "title": null,
+      "resumeTitle": null,
+      "hint": null,
+      "resumeHint": null,
+      "cap": null,
+      "cancel": null,
+      "start": null
+    },
+    "thread": {
+      "label": null,
+      "labelCount": null
+    },
+    "stop": {
+      "complete": null,
+      "complete_no_project": null,
+      "cap_reached": null,
+      "no_progress": null,
+      "repeated_error": null,
+      "context_full": null,
+      "plan_declined": null,
+      "plan_edit": null,
+      "plan_unanswered": null,
+      "approval_expired": null,
+      "user_stopped": null,
+      "user_message": null,
+      "model_unavailable": null,
+      "turn_failed": null,
+      "app_restart": null,
+      "studio_off": null,
+      "gpu_reload_failed": null
+    },
+    "gpu": {
+      "label": null,
+      "hint": null,
+      "auto": null,
+      "always": null,
+      "never": null
+    }
   }
 }

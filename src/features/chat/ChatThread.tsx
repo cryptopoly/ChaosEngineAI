@@ -21,6 +21,8 @@ import { formatClock, formatFullTime, isValidTime } from "../../utils/chatTime";
 import type { ChatSession, ChatMessageVariant, LaunchPreferences, ModelLoadingState, WarmModel } from "../../types";
 import { number } from "../../utils";
 import { VariantPickerButton } from "./VariantPickerButton";
+import { KeepGoingEyebrow } from "./ChatKeepGoing";
+import { nudgeBody } from "./keepGoing";
 import {
   requestedCacheLabel,
   requestedSpeculativeMode,
@@ -159,13 +161,15 @@ export function ChatThread({
               ? t("thread.fitInMemory.on", { defaultValue: "On" })
               : t("thread.fitInMemory.off", { defaultValue: "Off" });
           return (
-            <div className={`message-bubble ${message.role}`} key={`${message.role}-${index}`}>
+            <div className={`message-bubble ${message.role}${message.keepGoing ? " message-bubble--keep-going" : ""}`} key={`${message.role}-${index}`}>
               <div className="message-header">
                 <span className="message-header__who">
                   <span className="eyebrow">
                     {message.role === "assistant"
                       ? t("thread.roleAgent", { defaultValue: "Agent" })
-                      : t("thread.roleUser", { defaultValue: "User" })}
+                      : message.keepGoing
+                        ? <KeepGoingEyebrow nudge={message.keepGoing.nudge} cap={message.keepGoing.cap} />
+                        : t("thread.roleUser", { defaultValue: "User" })}
                   </span>
                   {isValidTime(message.createdAt) ? (
                     <time
@@ -321,7 +325,7 @@ export function ChatThread({
                   <RichMarkdown>{message.text || "​"}</RichMarkdown>
                 </div>
               ) : (
-                <p>{message.text}</p>
+                <p>{message.keepGoing ? nudgeBody(message.text) : message.text}</p>
               )}
               {message.studioPlans?.length ? (
                 <div className="studio-plan-stack">

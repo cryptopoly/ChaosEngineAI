@@ -74,7 +74,7 @@ export interface ChatTabProps {
   onThinkingModeChange: (mode: ChatThinkingMode) => void;
   onDraftMessageChange: (message: string) => void;
   onPendingImagesChange: React.Dispatch<React.SetStateAction<string[]>>;
-  onCreateSession: () => void;
+  onCreateSession: () => void | string | Promise<void | string>;
   onToggleThreadPin: (session: ChatSession) => void;
   onDeleteSession: (sessionId: string) => void;
   onRenameActiveThread: () => void;
@@ -534,6 +534,9 @@ export function ChatTab({
           enableTools={enableTools}
           studioTools={studioTools}
           onToggleStudioTools={onToggleStudioTools}
+          ownStreaming={Boolean(activeChat) && chatBusySessionId === activeChat?.id && detachedTurn?.sessionId !== activeChat?.id}
+          onRefreshWorkspace={onRefreshWorkspace}
+          onCreateSession={onCreateSession}
           chatBusySessionId={chatBusySessionId}
           activeChat={activeChat}
           launchSettings={launchSettings}

@@ -203,6 +203,8 @@ export interface ChatMessage {
   citations?: CitationInfo[];
   /** D-60: plan cards shown in this turn (studio tools). */
   studioPlans?: StudioPlan[];
+  /** FU-191: a message the app wrote for a Keep going run (shown apart from the user's own messages). */
+  keepGoing?: { runId?: string | null; nudge?: number | null; cap?: number | null } | null;
   /**
    * Live phase tracker for the streaming assistant message (Phase 2.0).
    * Cleared once the message finalises via the backend's done event. Used
@@ -463,3 +465,35 @@ export type SettingsDraft = {
   // FU-042 — clock format override. ``"system"`` honours locale default.
   clockFormat: "system" | "12h" | "24h";
 };
+
+/** FU-191: a chat's Keep going run as the backend reports it. */
+export type KeepGoingState = "armed" | "running" | "waiting" | "stopped";
+export type KeepGoingPhase = KeepGoingState | "turn" | "awaiting_approval" | "nudging" | "waiting_job" | "gpu_swap";
+
+export type KeepGoingGpuMode = "auto" | "always" | "never";
+
+export interface KeepGoingRun {
+  runId: string;
+  sessionId: string;
+  state: KeepGoingState;
+  phase: KeepGoingPhase;
+  nudges: number;
+  cap: number;
+  goal: string;
+  projectId: string | null;
+  startedAt: number;
+  updatedAt: number;
+  noProgress: number;
+  stopCode: string | null;
+  stopReason: string | null;
+  stopDetail: string | null;
+  stoppedAt: number | null;
+  resumable: boolean;
+  grant: { mode: "auto" | "manual"; until: number | null; secondsLeft: number | null } | null;
+  gpuMode: KeepGoingGpuMode;
+  /** Phase 2: the chat model is unloaded around a render (unloading, rendering, reloading). */
+  swapPhase?: "unloading" | "rendering" | "reloading" | null;
+  turnRunning: boolean;
+  pendingPlans: number;
+  messageCount: number;
+}

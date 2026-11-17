@@ -1,13 +1,22 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 107 rows with work, decisions or watch items still open, newest first.
+summary: 108 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-191 · Keep going for Studio chats (D-86) — In progress</summary>
+
+**Status or trigger:** In progress
+
+**Notes:** Branch `feat/keep-going`. Opt-in per chat, off by default, Studio chats only. A backend run controller (`backend_service/keep_going/`) reads each finished Studio turn and the saved Storyboard project, then stops with a plain reason or sends the next nudge (an app-written user message: what the project lacks, the last error word for word, one next step; the brief only when the history lost it). Stops: goal complete, nudge cap (default 20, 1 to 100), 3 nudges without progress, the same error 3 times, context nearly full, plan declined, edited or unanswered, approval expired, Stop, a new user message, model not loadable, two turn failures, app restart (Resume). Never nudges while a turn, plan card or chat job runs. Runs saved in `keep_going_runs.json` beside the chat sessions; the render grant (auto-approve for up to 12 h, or each plan card, nothing preselected) lives in memory and ends with the run. Progress and completion sit behind an adapter (Storyboard ships; a generic tool-chat adapter exists, not offered). Tests: `tests/test_keep_going_*.py`, `src/features/chat/__tests__/keepGoing.test.tsx`, E2E phase 7. Phase 2, free GPU memory while rendering: a run setting Auto / Always / Never (Auto: swap only when the render's estimated peak does not fit the free GPU memory, or unified memory on a Mac, but fits with the chat model's share freed). An approved render in a run's turn is kept for after the turn; the controller unloads the chat model, runs the renders, waits for their jobs, loads the same model with the same launch settings, then nudges; a model that does not load again stops the run (`gpu_reload_failed`), never retried (`keep_going/gpu_swap.py`, `swap_run.py`, `tests/test_keep_going_swap.py`). The real CUDA path is untested (no NVIDIA card here): the 4090 pass should run one Keep going film with Qwen3.8-27B and LTX on Auto. Not tested: the packaged window, other locales, a real long run with a strong tool model. Neighbour defect found: LFM2.5 tool calls written as `<|tool_call_start|>[name(args)]<|tool_call_end|>` text are not parsed by the agent loop.
+
+</details>
 
 <details>
 <summary>FU-190 · Real-model, pause, Music track and touch pass (S-O, S-P) — Done</summary>

@@ -2221,7 +2221,7 @@
         "safe": "{model}: unos {peak} GB como pico para un clip de {seconds} segundos. Cabe.",
         "tight": "{model}: unos {peak} GB como pico para un clip de {seconds} segundos. Está cerca del límite de este equipo.",
         "wontfit": "{model}: unos {peak} GB como pico para un clip de {seconds} segundos. No cabe en este equipo.",
-        "estimated": "Cabe, Ajustado y No cabe son estimaciones; cada tamaño sigue siendo seleccionable."
+        "estimated": "Cabe, Justo y No cabe son estimaciones; cada tamaño sigue siendo seleccionable."
       }
     },
     "openNamed": "Abrir {name}",

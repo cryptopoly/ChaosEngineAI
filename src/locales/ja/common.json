@@ -69,8 +69,8 @@
     "plugins": "拡張機能とプラグインシステム",
     "logs": "ランタイムイベント",
     "settings": "ディレクトリとデフォルト",
-    "voiceStudio": null,
-    "voiceModels": null,
+    "voiceStudio": "話す、声を選ぶ、文字起こしをする",
+    "voiceModels": "音声モデルと音声ランタイム",
     "voiceLibrary": "作成した文字起こしと音声",
     "chatModels": "言語モデルを検索・ダウンロード・管理",
     "imageModelsPage": "画像モデルを検索・ダウンロード・管理",
@@ -132,7 +132,7 @@
     "primaryNavAriaLabel": "メイン",
     "sectionMake": "作成",
     "sectionRun": "実行",
-    "menuButton": null
+    "menuButton": "メニュー"
   },
   "slashCommands": {
     "menuAriaLabel": "スラッシュコマンド"
@@ -315,13 +315,13 @@
       "ollamaHint": "アプリの Ollama ホスト / ベース URL を下のアドレスに設定してください。ネイティブの /api エンドポイントも /v1 と並行して提供されます。"
     },
     "engineBusy": {
-      "step": null,
-      "image": null,
-      "imageBare": null,
-      "video": null,
-      "videoBare": null,
-      "music": null,
-      "musicBare": null
+      "step": "ステップ {step} / {total}",
+      "image": "画像エンジンは使用中です: {detail}",
+      "imageBare": "画像エンジンは使用中です",
+      "video": "動画エンジンは使用中です: {detail}",
+      "videoBare": "動画エンジンは使用中です",
+      "music": "ミュージックエンジンは使用中です: {detail}",
+      "musicBare": "ミュージックエンジンは使用中です"
     }
   },
   "conversionTab": {
@@ -657,7 +657,7 @@
     "clockHint": "システムはお使いの言語のデフォルトに従います(米英語は 12 時間、その他は 24 時間)。上書きしたい場合はどちらかを選んでください。",
     "helpImprove": "翻訳の改善に協力",
     "openOnGithub": "GitHub で {locale} を開く →",
-    "communityNote": null
+    "communityNote": "ファンによる翻訳（機械支援）です。修正のご提案を歓迎します。"
   },
   "imageOutputCard": {
     "huggingFace": "Hugging Face",
@@ -846,7 +846,7 @@
       "storage": "ストレージ",
       "providers": "プロバイダー",
       "integrations": "連携",
-      "skills": null,
+      "skills": "スキル",
       "diagnostics": "診断",
       "accelerators": "アクセラレータ",
       "disk": "ディスク使用量"
@@ -941,37 +941,37 @@
       "readTokenLabel": "読み取り専用トークン（Claude Code）"
     },
     "skills": {
-      "title": null,
-      "subtitle": null,
-      "safety": null,
-      "pathPlaceholder": null,
-      "pathLabel": null,
-      "pickTitle": null,
-      "noDialog": null,
-      "chooseFolder": null,
-      "chooseZip": null,
-      "import": null,
-      "imported": null,
-      "empty": null,
-      "listLabel": null,
-      "enabled": null,
-      "files": null,
-      "skippedTitle": null,
-      "confirmDelete": null,
-      "cancel": null,
-      "delete": null,
-      "scanNote": null,
+      "title": "スキル",
+      "subtitle": "チャットモデルに手順を教えます。SKILL.md と任意のテキストファイルを含むフォルダー、またはそれを圧縮した .zip を指定します。",
+      "safety": "スキル内のスクリプトは実行されません。モデルはスキルのテキストを参考として読み取るだけです。新しいスキルはオフの状態で始まります。オンにする前に、説明とファイル一覧を確認してください。",
+      "pathPlaceholder": "/path/to/skill-folder または skill.zip",
+      "pathLabel": "スキルのフォルダーまたは .zip のパス",
+      "pickTitle": "スキルを選択",
+      "noDialog": "ここではファイル選択ダイアログを利用できません。パスを直接入力してください。",
+      "chooseFolder": "フォルダーを選択",
+      "chooseZip": ".zip を選択",
+      "import": "インポート",
+      "imported": "{name} をインポートしました: {files, plural, other {# 個のファイル}} を保持、{skipped, plural, =0 {スキップなし} other {# 個をスキップ}}。オンにするまでオフのままです。",
+      "empty": "スキルはまだインポートされていません。",
+      "listLabel": "インポート済みのスキル",
+      "enabled": "チャットで利用可能",
+      "files": "{count, plural, other {# 個のファイル}}",
+      "skippedTitle": "スキップ（インポートされず）:",
+      "confirmDelete": "{name} を完全に削除",
+      "cancel": "キャンセル",
+      "delete": "削除",
+      "scanNote": "インポートするたびに、低・中・高のいずれかで評価されるセキュリティスキャンが行われます。ルールベースで、このコンピューター上で実行され、データは外部に送信されません。経験則に基づくものであり、安全を保証するものではありません。",
       "scan": {
-        "chipTitle": null,
-        "chip": null,
-        "low": null,
-        "medium": null,
-        "high": null,
-        "findings": null,
-        "where": null,
-        "truncated": null,
-        "disclaimer": null,
-        "acknowledge": null
+        "chipTitle": "ローカルルールによるセキュリティスキャン。経験則に基づくもので、保証はありません。",
+        "chip": "スキャン: {rating}",
+        "low": "低",
+        "medium": "中",
+        "high": "高",
+        "findings": "{count, plural, =0 {検出なし} other {# 件の検出}}",
+        "where": "{file}、{line} 行目",
+        "truncated": "最初の {count} 件の検出のみ表示しています。",
+        "disclaimer": "経験則に基づくもので、保証はありません。固定ルールで、危険な表現、隠し文字、リンク、エンコードされたテキスト、同梱されたスクリプトを検出します。このコンピューター上で実行され、データは外部に送信されません。低は「ルールに一致しなかった」という意味であり、スキルが安全であるという意味ではありません。",
+        "acknowledge": "検出内容を確認しました。スキャンでこのスキルは「高」と評価されました。オンにするにはチェックを入れてください。"
       }
     },
     "integrations": {
@@ -981,34 +981,34 @@
       "copyButton": "コピー"
     },
     "cleanup": {
-      "title": null,
-      "subtitle": null,
-      "note": null,
-      "refresh": null,
-      "loading": null,
-      "loadError": null,
-      "groupProjects": null,
-      "groupThreads": null,
-      "groupOutputs": null,
-      "empty": null,
-      "selectAll": null,
-      "projectDetail": null,
-      "threadDetail": null,
-      "outputDetail": null,
-      "kindImage": null,
-      "kindVideo": null,
-      "unknownDate": null,
-      "delete": null,
-      "deleting": null,
-      "selected": null,
-      "deleteError": null,
-      "resultNone": null,
-      "resultDone": null,
-      "resultRefused": null,
-      "confirmTitle": null,
-      "confirmBody": null,
-      "confirmBreakdown": null,
-      "confirmButton": null
+      "title": "整理",
+      "subtitle": "不要になったストーリーボードのプロジェクト、チャットのスレッド、ギャラリーの画像とクリップを削除します。",
+      "note": "何もチェックされていません。削除したい項目にチェックを入れてから、確認してください。削除した項目は元に戻せません。",
+      "refresh": "一覧を更新",
+      "loading": "一覧を読み込み中...",
+      "loadError": "一覧を読み込めませんでした: {message}",
+      "groupProjects": "ストーリーボードのプロジェクト",
+      "groupThreads": "チャットのスレッド",
+      "groupOutputs": "ギャラリーの画像とクリップ",
+      "empty": "項目はありません。",
+      "selectAll": "すべて選択: {group}",
+      "projectDetail": "{shots, plural, other {# ショット}}、編集日 {date}",
+      "threadDetail": "{count, plural, other {# 件のメッセージ}}、最終使用日 {date}",
+      "outputDetail": "{kind}、{date}",
+      "kindImage": "画像",
+      "kindVideo": "クリップ",
+      "unknownDate": "不明",
+      "delete": "チェックした項目を削除",
+      "deleting": "削除中...",
+      "selected": "{count, plural, =0 {チェックなし} other {# 件を選択、{size}}}",
+      "deleteError": "削除できませんでした: {message}",
+      "resultNone": "何も削除されませんでした。",
+      "resultDone": "{count, plural, other {# 件}} を削除し、{size} を解放しました。",
+      "resultRefused": "{count, plural, other {# 件}} は削除されませんでした:",
+      "confirmTitle": "{count, plural, other {# 件}} を削除しますか？",
+      "confirmBody": "このコンピューターから {count, plural, other {# 件}}（{size}）を削除します。この操作は元に戻せません。",
+      "confirmBreakdown": "プロジェクト: {projects}。チャットのスレッド: {threads}。ギャラリーのファイル: {outputs}。",
+      "confirmButton": "完全に削除"
     }
   },
   "modelLaunchModal": {
@@ -1378,8 +1378,8 @@
     "storyboard": "ストーリーボードは近日公開です。"
   },
   "llamaCuda": {
-    "description": null,
-    "driverTooOld": null,
+    "description": "CUDA {cuda}（llama.cpp {tag}）を使い、NVIDIA GPU で GGUF チャットモデルを実行します。ダウンロードには CUDA ランタイムが含まれます。",
+    "driverTooOld": "NVIDIA ドライバーが CUDA 版 llama-server には古すぎます。ドライバーを更新してから、もう一度インストールしてください。",
     "inUse": "使用中：GGUF モデルは NVIDIA GPU で実行されます。",
     "install": "インストール",
     "installedNoDevice": "インストール済みですが、CUDA デバイスが見つかりませんでした。NVIDIA ドライバー（nvidia-smi）を確認してください。",
@@ -1405,10 +1405,10 @@
     }
   },
   "accessibilityPanel": {
-    "title": null,
-    "strongBorders": null,
-    "note": null,
-    "on": null,
-    "off": null
+    "title": "アクセシビリティ",
+    "strongBorders": "入力欄とボタンの枠線を強調",
+    "note": "入力欄とボタンの枠線をコントラストの高い線で囲み、見やすくします。すぐに反映されます。",
+    "on": "オン",
+    "off": "オフ"
   }
 }

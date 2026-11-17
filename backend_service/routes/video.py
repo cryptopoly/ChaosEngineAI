@@ -535,9 +535,11 @@ def _generate_video_locked(request: Request, body: VideoGenerationRequest) -> di
         f"Generated video with {variant['name']} via {runtime.get('activeEngine', 'unknown')} "
         f"in {artifact.get('durationSeconds')}s.",
     )
+    # The size and frames the clip was made at: the runtime may snap the request (1280x720 to 1280x704 for LTX).
     state.add_activity(
         "Video generated",
-        f"{variant['name']} \u00b7 {body.width}x{body.height} \u00b7 {body.numFrames}f",
+        f"{variant['name']} \u00b7 {artifact.get('width') or body.width}x{artifact.get('height') or body.height} "
+        f"\u00b7 {artifact.get('numFrames') or body.numFrames}f",
     )
     return {"artifact": artifact, "outputs": _load_video_outputs(), "runtime": runtime}
 

@@ -24,6 +24,7 @@ import { VariantPickerButton } from "./VariantPickerButton";
 import { KeepGoingEyebrow } from "./ChatKeepGoing";
 import { nudgeBody } from "./keepGoing";
 import {
+  hasDecodeSpeed,
   requestedCacheLabel,
   requestedSpeculativeMode,
   resolvedCacheBits,
@@ -325,7 +326,7 @@ export function ChatThread({
                   <RichMarkdown>{message.text || "​"}</RichMarkdown>
                 </div>
               ) : (
-                <p>{message.keepGoing ? nudgeBody(message.text) : message.text}</p>
+                <p className="message-text">{message.keepGoing ? nudgeBody(message.text) : message.text}</p>
               )}
               {message.studioPlans?.length ? (
                 <div className="studio-plan-stack">
@@ -377,7 +378,8 @@ export function ChatThread({
                   <summary>
                     <span>{t("thread.details.summary", { defaultValue: "Model details" })}</span>
                     <small className="message-meta">
-                      {(message.metrics.model ?? activeChat?.model) || t("thread.details.unknown", { defaultValue: "Unknown" })} | {number(message.metrics.tokS)} tok/s
+                      {(message.metrics.model ?? activeChat?.model) || t("thread.details.unknown", { defaultValue: "Unknown" })}
+                      {hasDecodeSpeed(message.metrics.tokS) ? ` | ${number(message.metrics.tokS)} tok/s` : ""}
                       {message.metrics.dflashAcceptanceRate != null ? ` | ${t("thread.details.dflashAccepted", { value: number(message.metrics.dflashAcceptanceRate), defaultValue: "DFLASH {value} avg accepted" })}` : ""}
                       {messageSpeculativeMode && messageSpeculativeMode !== "Off" ? ` | ${messageSpeculativeMode}` : ""}
                       {messageRuntimeWarning ? ` | ${messageRuntimeWarning}` : ""}
@@ -429,10 +431,12 @@ export function ChatThread({
                       <span className="eyebrow">{t("thread.details.responseTime", { defaultValue: "Response time" })}</span>
                       <p>{number(message.metrics.responseSeconds ?? 0)} s</p>
                     </div>
-                    <div>
-                      <span className="eyebrow">{t("thread.details.decodeSpeed", { defaultValue: "Decode speed" })}</span>
-                      <p>{number(message.metrics.tokS)} tok/s</p>
-                    </div>
+                    {hasDecodeSpeed(message.metrics.tokS) ? (
+                      <div>
+                        <span className="eyebrow">{t("thread.details.decodeSpeed", { defaultValue: "Decode speed" })}</span>
+                        <p>{number(message.metrics.tokS)} tok/s</p>
+                      </div>
+                    ) : null}
                     <div>
                       <span className="eyebrow">{t("thread.details.dflashDdtree", { defaultValue: "DFlash / DDTree" })}</span>
                       <p>{messageSpeculativeMode}</p>
@@ -578,7 +582,7 @@ function VariantCard({ variant }: { variant: ChatMessageVariant }) {
     <div className="variant-card">
       <div className="variant-card__header">
         <span className="variant-card__model">{variant.modelName}</span>
-        {tokS != null ? (
+        {hasDecodeSpeed(tokS) ? (
           <small className="variant-card__metric">{number(tokS)} tok/s</small>
         ) : null}
         {responseSeconds != null ? (

@@ -1,13 +1,58 @@
 ---
 title: Closed follow-ups
 order: 3
-summary: 85 shipped, obsoleted or dropped rows, newest first.
+summary: 90 shipped, obsoleted or dropped rows, newest first.
 ---
 
 # Closed follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Shipped, obsoleted or dropped rows (struck through, or marked shipped with no open points left). Kept as the history of why things are the way they are.
 
+
+<details>
+<summary>FU-204 · Small chat and dashboard defects from the rehearsal — Shipped 2026-11-17 (branch fix/storyboard-guidance).</summary>
+
+**Status or trigger:** **Shipped 2026-11-17 (branch `fix/storyboard-guidance`).**
+
+**Notes:** (a) "0.0 tok/s" on every Studio turn: the agent loop (`backend_service/agent.py`) passes no decode speed or completion tokens, so the streaming metrics carry `tokS` 0. Model details now leaves the speed out when it is 0 (`hasDecodeSpeed` in [runtimeDetails.ts](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/src/features/chat/runtimeDetails.ts)); a real figure needs the agent loop to report its generate calls' tokens and time (agent.py owner). (b) The activity feed prints the size (and frames) the image or clip was made at, from the artifact. (c) A user message keeps blank lines (`.message-text`, `white-space: pre-wrap`). (d) The thread-name field follows the title the first message gives a new chat unless the person is editing it (`followTitle`). Checked in a browser with seeded messages at desktop and phone width; (b) and (d) only by unit tests (they need a generation). Found, not fixed: at phone width the message list of the active thread has zero height.
+
+</details>
+
+<details>
+<summary>FU-203 · storyboard_audio add: say how to attach a made sound and show that it landed — Shipped 2026-11-17 (branch fix/storyboard-guidance).</summary>
+
+**Status or trigger:** **Shipped 2026-11-17 (branch `fix/storyboard-guidance`).**
+
+**Notes:** **Done:** `path` names the `speak`, `make_music` (`tracks[0].path`) and `make_sound` outputs; new `library_id` takes a Music library track id; the description says a made sound plays only once added; the add answer has `lanes` (clips per lane) beside `clipId` and the audio list. Tests: `tests/test_storyboard_guidance.py`.
+
+</details>
+
+<details>
+<summary>FU-202 · storyboard_render made a preview the model reported as the film — Shipped 2026-11-17 (branch fix/storyboard-guidance).</summary>
+
+**Status or trigger:** **Shipped 2026-11-17 (branch `fix/storyboard-guidance`).**
+
+**Notes:** **Done:** the `preview` schema says it is true by default and a draft, not the finished film; the submit answer and the job output carry `warnings` for no audio lanes, captions with `captionsBurn` off, and a preview. Golden tools list updated. Tests: `tests/test_storyboard_guidance.py`, `tests/test_mcp_contract.py`.
+
+</details>
+
+<details>
+<summary>FU-201 · Storyboard cast: a name is required and a cast entry with no picture warns — Shipped 2026-11-17 (branch fix/storyboard-guidance).</summary>
+
+**Status or trigger:** **Shipped 2026-11-17 (branch `fix/storyboard-guidance`).**
+
+**Notes:** **Done:** `add_ref` refuses an empty `name`; a character or place with no picture answers with a warning that shots cannot keep the likeness; the answer says to list the ref id in `fields.referenceImages` and leave `seed` unset; the `images` description says to make one hero picture with `generate_image` first. AGENTS.md workflow step 3 rewritten. Tests: `tests/test_storyboard_guidance.py`.
+
+</details>
+
+<details>
+<summary>FU-200 · Storyboard project tools: say which fields set size, rate and models, and echo what the project got — Shipped 2026-11-17 (branch fix/storyboard-guidance).</summary>
+
+**Status or trigger:** **Shipped 2026-11-17 (branch `fix/storyboard-guidance`).**
+
+**Notes:** A rehearsal model asked for 1024x576 with named models got 16:9 720p (1280x704 clips) and no models. **Done:** `storyboard_project` create and edit take `size` (`WIDTHxHEIGHT`, even, 64 to 4096; sets the aspect), `image_model`, `video_model`, `voice`; the `fields` schema names the `defaults` and `export` keys (`captionsBurn` among them). The answer carries `settings` (size, aspect, fps, models, voice, caption export) and `notes`: the model generate will use or why a named one cannot run, the multiple-of-64 size LTX makes clips at when the film size is not one, captions not burned in, music made and added separately. Helpers in [storyboard_guidance.py](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/backend_service/mcp_bridge/storyboard_guidance.py); AGENTS.md updated. Tests: `tests/test_storyboard_guidance.py`. Not tested with a real model.
+
+</details>
 
 <details>
 <summary>FU-195 · Dev setup: frontend gets 401s after a backend restart until the page is reloaded — Shipped 2026-11-17 (branch fix/fu-192-195).</summary>

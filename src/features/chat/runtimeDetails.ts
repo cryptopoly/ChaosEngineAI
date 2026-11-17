@@ -169,3 +169,11 @@ export function runtimeOutcomeWarning(metrics: GenerationMetrics): string | null
 
   return null;
 }
+
+/**
+ * Whether a turn measured its decode speed. Tool-using turns (the agent loop) report 0 because the speed of their
+ * several generate calls is not passed on, so the panel leaves the figure out rather than print "0.0 tok/s".
+ */
+export function hasDecodeSpeed(tokS: number | null | undefined): tokS is number {
+  return typeof tokS === "number" && tokS > 0;
+}

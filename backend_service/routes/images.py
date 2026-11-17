@@ -415,9 +415,10 @@ def _generate_image_locked(request: Request, body: ImageGenerationRequest) -> di
         "info",
         f"Generated {len(artifacts)} image(s) with {variant['name']} via {runtime.get('activeEngine', 'unknown')}.",
     )
+    made = artifacts[0] if artifacts else {}  # the size the runtime made, which may differ from the request
     state.add_activity(
         "Image generated",
-        f"{variant['name']} \u00b7 {body.width}x{body.height}",
+        f"{variant['name']} \u00b7 {made.get('width') or body.width}x{made.get('height') or body.height}",
     )
     return {"artifacts": artifacts, "outputs": _load_image_outputs(), "runtime": runtime}
 

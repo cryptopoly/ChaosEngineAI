@@ -635,6 +635,24 @@ class VideoGenerateRouteTests(unittest.TestCase):
         self.assertEqual(len(listing), 1)
         self.assertEqual(listing[0]["artifactId"], artifact["artifactId"])
 
+    def test_the_activity_feed_prints_the_size_the_clip_was_made_at(self):
+        """FU-204: a runtime that snaps the request (LTX makes 1280x720 at 1280x704) is reported at the made size."""
+        import dataclasses
+
+        state = self.client.app.state.chaosengine
+        capabilities = {
+            "activeEngine": "diffusers", "realGenerationAvailable": True, "message": "Ready",
+            "missingDependencies": [], "loadedModelRepo": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+        }
+        made = dataclasses.replace(self._fake_generated_video(), width=768, height=448)
+        state.video_runtime.generate = mock.MagicMock(return_value=(made, capabilities))  # type: ignore[method-assign]
+        with mock.patch.object(video_routes, "_video_variant_available_locally", return_value=True):
+            response = self.client.post("/api/video/generate", json=self._payload())
+        self.assertEqual(response.status_code, 200, response.text)
+        latest = next(item for item in state.activity if item["title"] == "Video generated")
+        self.assertIn("768x448", latest["detail"])
+        self.assertNotIn("768x512", latest["detail"])
+
     def test_generate_forwards_the_cache_strategy_to_the_runtime(self):
         """The Studio's cache choice used to stop at the request model, so no video ever ran cached."""
         state = self.client.app.state.chaosengine

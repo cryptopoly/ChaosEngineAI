@@ -62,8 +62,8 @@
     "moreInfo": "詳細情報",
     "requiresLabel": "必須:",
     "installLabel": "インストール:",
-    "kvCacheTypeGguf": null,
-    "kvCacheTypeGgufHint": null
+    "kvCacheTypeGguf": "KV キャッシュタイプ",
+    "kvCacheTypeGgufHint": "q8_0 は KV キャッシュを f16 の約半分のメモリで保持し、q4_0 は約4分の1で保持します。デコードはやや遅くなります。"
   },
   "notes": {
     "binaryRequired": "{binary} が必要です。",
@@ -161,13 +161,13 @@
     "body": "TensorFold は、モデルファミリーごとに手書きされたカーネルを備えたローカル推論エンジンです。一度に複数のトークンをドラフトし（モデル自身の MTP ヘッド、一部のファミリーでは小さなドラフトモデルを利用）、すべてのドラフトをターゲットモデルで検証するため、返信は 1 トークンずつのデコーディングとバイト単位で一致します。",
     "requiresLabel": "必須:",
     "requiresBody": "Apple Silicon と、独立した TensorFold 用の Python 環境（このパネルからインストール）。動作確認済みのチェックポイントのみ提供します。",
-    "requiresBodyNative": null,
+    "requiresBodyNative": "ドライバー R580 以降の NVIDIA GPU（Ampere 以降）と、TensorFold ネイティブバイナリ（このパネルからインストール。Windows ではソースからビルドしたものが必要）。テスト済みのチェックポイントのみ提供します。",
     "memoryLabel": "メモリ:",
     "memoryBody": "{needed} GB 以上のユニファイドメモリ。",
     "statusLabel": "ステータス:",
     "statusInstalled": "インストール済み{version} — 投機的デコーディングにチェックを入れると有効になります。",
     "statusNotInstalled": "未インストールです。「TensorFold をインストール」をクリックして、独立した環境をセットアップしてください。",
-    "statusNotInstalledNative": null,
+    "statusNotInstalledNative": "未インストールです。「TensorFold をインストール」をクリックしてください。ネイティブバイナリのダウンロードと検証を行い、先に GPU とドライバーを確認します。このマシンで実行できない場合は、その理由を表示します。",
     "visionLabel": "画像入力:",
     "visionInstalled": "インストール済み（実験的）— TensorFold にチェックを入れている間、チャットで画像を添付できます。画像付きのリクエストは新しい KV キャッシュから開始されます。",
     "visionNotInstalled": "未インストールです。モデル自身の画像エンコーダーで画像を読み取ります。Pillow、transformers、mlx-vlm が追加されます。TensorFold の作者は現時点でもこれを実験的としています。",
@@ -194,7 +194,7 @@
     "statusLabel": "ステータス:",
     "statusInstalled": "インストール済み — 投機的デコーディングを有効にすると動作します。",
     "statusNotInstalled": "未インストールです。「MTPLX をインストール」をクリックして、独立した venv（約 500 MB）をセットアップしてください。",
-    "statusOutdated": null
+    "statusOutdated": "インストール済みのバージョンは現在の MTPLX モデルには古すぎます。「MTPLX をインストール」をクリックして、隔離された venv を更新してください（約 500 MB）。"
   },
   "ggufMtp": {
     "tooltip": "GGUF MTP 投機的デコーディング: モデルに組み込まれた MTP ヘッドを llama.cpp の --spec-type draft-mtp 経由で利用し、品質を損なわず約 1.8-2.2 倍高速に生成します。",

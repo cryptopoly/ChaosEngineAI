@@ -253,6 +253,22 @@ def voice_clip_ids(project: Project) -> list[str]:
     return [c.id for c in project.audio if c.kind == "voice" and c.status != "missing" and not c.loop]
 
 
+def check_clip_ids(project: Project, clip_ids: list[str]) -> None:
+    """Every id must be an audio clip of the project; the error lists the valid ones (a model sent shot ids)."""
+    from backend_service.storyboard.ops import OpError
+
+    known = {c.id for c in project.audio}
+    unknown = [str(c) for c in clip_ids if str(c) not in known]
+    if not unknown:
+        return
+    voice = voice_clip_ids(project)
+    valid = ", ".join(c.id for c in project.audio) or "none"
+    raise OpError(
+        f"Unknown audio clip '{unknown[0]}'. clip_ids takes audio clip ids, not shot ids. The project's audio clips: "
+        f"{valid} (voice: {', '.join(voice) or 'none'}). Omit clip_ids to caption every voice lane."
+    )
+
+
 def generate(store: Any, project_id: str, revision: int, clip_ids: list[str] | None = None,
              language: str = "", transcribe: Transcribe | None = None) -> tuple[Any, list[str]]:
     """Transcribe voice clips and store the result as captions. Returns (project, notes).
@@ -270,6 +286,7 @@ def generate(store: Any, project_id: str, revision: int, clip_ids: list[str] | N
         raise RevisionConflict(project)
     folder = store.folder(project_id)
     wanted = clip_ids if clip_ids else voice_clip_ids(project)
+    check_clip_ids(project, wanted)
     if not wanted:
         raise OpError("There is no voice clip to caption. Add speech to the voice lane first.")
     notes: list[str] = []

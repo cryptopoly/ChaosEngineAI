@@ -660,8 +660,14 @@ def storyboard_render(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
     from backend_service.routes.storyboard import start_render
     from backend_service.storyboard.render_adapter import RENDERS
 
+    from backend_service.mcp_bridge.jobs import CURRENT_OWNER
+    from backend_service.tools.studio import CHAT_OWNER
+
     pid = str(args["project_id"])
     preview = bool(args.get("preview", True))
+    # Chat's model talks to the user at this computer: it gets the absolute path to say word for word (it once
+    # made one up, FU-209). An external agent gets the file name and download only, as every bridge answer.
+    local = CURRENT_OWNER.get() == CHAT_OWNER
     before = render_warnings(_run(lambda: _store().load(pid)), preview)
     job = _run(lambda: start_render(pid, int(args["revision"]), preview, bool(args.get("notify", False))))
 
@@ -684,7 +690,10 @@ def storyboard_render(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
         warnings = [*before, *job.warnings]
         if warnings:
             output["warnings"] = warnings
-        return output, warnings
+        if not local:
+            return output, warnings
+        path = str(job.out_path.resolve())
+        return {"path": path, **output}, [f"The film is saved at {path}. Tell the user this exact path.", *warnings]
 
     def progress() -> dict[str, Any]:
         import time
@@ -718,6 +727,9 @@ def storyboard_captions(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
     clip = {"clipId": args["clip_id"]} if "clip_id" in args else {}
     if action == "generate":
         language, clip_ids = str(args.get("language") or ""), list(args["clip_ids"]) if "clip_ids" in args else None
+        if clip_ids:  # an unknown id fails now, with the valid ones, not later as a failed job (FU-209)
+            project = _run(lambda: store.load(pid))
+            _run(lambda: captions.check_clip_ids(project, clip_ids))
 
         def run() -> tuple[dict[str, Any], list[str]]:
             project, notes = captions.generate(store, pid, rev, clip_ids, language)

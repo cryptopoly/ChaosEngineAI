@@ -134,8 +134,9 @@ call `storyboard_project` get and retry.
   replaces the shots, one undo), `lyric_captions` (`timing` `auto`, `sections` or `speech`; a job).
 - `storyboard_render`: render to MP4. `preview` is true by default: a small fast draft, not the finished film; pass `preview: false` for
   the final MP4. `notify` shows a banner. The answer and the job output carry `warnings`: no audio lanes (a silent film), captions
-  that are not burned in, a preview. A failed render names how many shots are done; call again to resume.
-- `storyboard_captions`: `generate` (a job; transcribes the voice clips), `export_srt`, `set`, `add`, `edit`, `remove`.
+  that are not burned in, burn-in on with no captions, a preview. A failed render names how many shots are done; call again to resume.
+- `storyboard_captions`: `generate` (a job; transcribes the voice clips; `clip_ids` takes audio clip ids, not shot ids, and is best
+  left out: every voice lane), `export_srt`, `set`, `add`, `edit`, `remove`.
 - `storyboard_export_otio`: the cut as an OpenTimelineIO file for Resolve or Premiere.
 
 ### Library and files

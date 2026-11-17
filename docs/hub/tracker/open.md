@@ -1,13 +1,22 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 108 rows with work, decisions or watch items still open, newest first.
+summary: 109 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-199 · Live check of the Keep going fixes with a small model — Done 2026-11-17 (branch fix/keep-going-recovery).</summary>
+
+**Status or trigger:** **Done 2026-11-17 (branch `fix/keep-going-recovery`).**
+
+**Notes:** Isolated backend (port 8981, throwaway HOME), LFM2.5-24B-A2B MLX 4-bit (about 14 GB resident, the only model loaded), Chat with Studio tools and Keep going on (cap 2, renders by plan card). Brief: a 2-shot 'Kettle ad' project, create only the project and shots this turn. The model hit the rehearsal's fault on its own: an untagged `storyboard_project create` call one closing brace short. The loop told it twice ('your tool call could not be read, so nothing ran: the JSON is missing 1 closing brace; send it again as <tool_call>...'), then the turn ended on the fragment and nudge 1 read: "Your last tool call (storyboard_project) could not be read, so it did not run: the JSON is missing 1 closing brace. Send it again as a tool call: storyboard_project." followed by "No storyboard project yet" and the create step. The next turn sent it as a proper call, created the project and both shots; the run was stopped by hand at the next plan card. A first attempt with a brief that went straight to `make_music` only showed plan cards (declined, run stopped `plan_declined`), no nudge. Not repaired because that call had no tag at all, as designed. Honest limits: a 24B-A2B model is a weak stand-in for Qwen3.8-27B; the mended path (`repair_call`, call with a close tag) was not seen live, only in tests on the real Qwen replies; assets listing, captions, preview and the FU-198 stop reasons were not reached live. Qwen3.8-27B not loaded (another agent was running).
+
+</details>
 
 <details>
 <summary>FU-191 · Keep going for Studio chats (D-86) — In progress</summary>

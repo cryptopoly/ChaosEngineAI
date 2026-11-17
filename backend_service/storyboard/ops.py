@@ -124,6 +124,10 @@ class Relink(_Args):
 # The gain a new voice lane starts with when its file cannot be measured (FU-216). A measurable file gets the gain
 # that brings its RMS to a target instead (audio_level, FU-218).
 VOICE_GAIN_DB = audio_level.FALLBACK_GAIN_DB
+# A new music bed starts 6 dB down so narration clears it even where the music is not ducked (FU-218: a quiet
+# narration file could not reach 6 dB over the bed outside its window with any allowed voice gain). The export
+# loudness step lifts a music-only film back to its target, so nothing gets quieter in the finished file.
+MUSIC_GAIN_DB = -6.0
 
 
 class AudioFields(_Args):
@@ -502,7 +506,8 @@ def add_audio(p: Project, folder: Path, a: AddAudio) -> None:
     # explicit values win and a clip that is already in a project keeps what it has.
     clip = AudioClip(id=clip_id, kind=a.kind, source=source, anchor=a.anchor,
                      start=a.start if a.anchor is None else None, duck=a.kind == "music",
-                     gainDb=_voice_gain(folder, rel) if a.kind == "voice" and a.gainDb is None else 0.0)
+                     gainDb=_voice_gain(folder, rel) if a.kind == "voice" and a.gainDb is None
+                     else MUSIC_GAIN_DB if a.kind == "music" and a.gainDb is None else 0.0)
     if clip.anchor is None and clip.start is None:
         clip.start = 0.0
     _set_fields(clip, a, {"kind", "path", "clonedVoice", "label", "anchor", "start"})

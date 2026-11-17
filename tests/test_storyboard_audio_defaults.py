@@ -20,7 +20,7 @@ from backend_service.storyboard.assemble import render
 from backend_service.storyboard.assemble_graphs import END_FADE_SECONDS, build_mix_graph, end_fade
 from backend_service.storyboard.models import Anchor, AudioClip, AudioSource, Defaults, Project, Shot, Take, Transition
 from backend_service.storyboard.audio_level import Level
-from backend_service.storyboard.ops import VOICE_GAIN_DB
+from backend_service.storyboard.ops import MUSIC_GAIN_DB, VOICE_GAIN_DB
 from backend_service.storyboard.render_plan import RenderPlan, ShotInput
 from backend_service.storyboard.timeline import build_render_plan
 from tests.storyboard_fixtures import StoreCase, fake_wav
@@ -185,7 +185,7 @@ class VoiceDefaultTests(StoreCase):
         p = self.new(shots=1)
         for kind in ("voice", "music", "sfx", "import"):
             p = self.op(p, "add_audio", kind=kind, path=str(fake_wav(self.src / f"{kind}.wav")))
-        self.assertEqual(self.lanes(p), [("voice", VOICE_GAIN_DB), ("music", 0.0), ("sfx", 0.0), ("import", 0.0)])
+        self.assertEqual(self.lanes(p), [("voice", VOICE_GAIN_DB), ("music", MUSIC_GAIN_DB), ("sfx", 0.0), ("import", 0.0)])
         self.assertGreater(VOICE_GAIN_DB, 0)
 
     def test_the_order_of_voice_and_music_does_not_matter(self):
@@ -297,7 +297,7 @@ class VoiceLevelMeasuredTests(StoreCase):
         p = self.new(shots=1)
         with mock.patch.object(audio_level, "measure", side_effect=AssertionError("measured")):
             p = self.op(p, "add_audio", kind="music", path=str(self.src / "quiet.wav"))
-        self.assertEqual(p.audio[0].gainDb, 0.0)
+        self.assertEqual(p.audio[0].gainDb, MUSIC_GAIN_DB)
 
     def test_a_measurement_that_fails_falls_back_to_the_fixed_gain(self):
         p = self.new(shots=1)

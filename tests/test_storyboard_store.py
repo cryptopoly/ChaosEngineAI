@@ -14,7 +14,7 @@ from backend_service.storyboard.batch import Batch, BatchRefused
 from backend_service.storyboard.deps import stale_shots
 from backend_service.storyboard.media import sha256_file
 from backend_service.storyboard.models import SCHEMA_VERSION
-from backend_service.storyboard.ops import VOICE_GAIN_DB, OpError
+from backend_service.storyboard.ops import MUSIC_GAIN_DB, VOICE_GAIN_DB, OpError
 from backend_service.storyboard.store import RevisionConflict, StoreError, migrate, parse_project
 from tests.storyboard_fixtures import FakeGenerators, StoreCase, fake_mp4, fake_wav, png
 
@@ -207,11 +207,11 @@ class UndoRedoTests(StoreCase):
         p = self.new(shots=1)
         p = self.op(p, "add_audio", kind="music", path=str(fake_wav(self.src / "m.wav")))
         cid = p.audio[0].id
-        p = self.op(p, "edit_audio", clipId=cid, gainDb=-6)
+        p = self.op(p, "edit_audio", clipId=cid, gainDb=-3)
         p = self.op(p, "relink", id=cid, path=str(fake_wav(self.src / "m2.wav")))
         relinked = p.clip(cid).source.path
         p = self.store.undo(p.id, p.revision)
-        self.assertEqual(p.clip(cid).gainDb, 0)
+        self.assertEqual(p.clip(cid).gainDb, MUSIC_GAIN_DB)
         self.assertEqual(p.clip(cid).source.path, relinked)
 
     def test_undo_then_redo_of_add_shot_brings_back_its_batch_takes(self):

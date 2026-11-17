@@ -14,7 +14,7 @@ from backend_service.storyboard.batch import Batch, BatchRefused
 from backend_service.storyboard.deps import stale_shots
 from backend_service.storyboard.media import sha256_file
 from backend_service.storyboard.models import SCHEMA_VERSION
-from backend_service.storyboard.ops import OpError
+from backend_service.storyboard.ops import VOICE_GAIN_DB, OpError
 from backend_service.storyboard.store import RevisionConflict, StoreError, migrate, parse_project
 from tests.storyboard_fixtures import FakeGenerators, StoreCase, fake_mp4, fake_wav, png
 
@@ -148,7 +148,7 @@ class UndoRedoTests(StoreCase):
         p = self.op(p, "add_audio", kind="voice", path=str(fake_wav(self.src / "v.wav")), anchor={"shotId": sid, "offset": 0.5})
         cid = p.audio[0].id
         p = self._undo_round_trip(p, "edit_audio", lambda x: self.assertEqual(x.clip(cid).gainDb, -6),
-                                  lambda x: self.assertEqual(x.clip(cid).gainDb, 0), clipId=cid, gainDb=-6)
+                                  lambda x: self.assertEqual(x.clip(cid).gainDb, VOICE_GAIN_DB), clipId=cid, gainDb=-6)
         self._undo_round_trip(p, "remove_audio", lambda x: self.assertEqual(x.audio, []),
                               lambda x: self.assertEqual(x.audio[0].id, cid), clipId=cid)
 

@@ -18,6 +18,7 @@ from backend_service.storyboard.render_plan import AudioInput, CardInput, Render
 
 ENGINE_VERSION = "1"
 SAMPLE_RATE = 48000
+END_FADE_SECONDS = 0.6  # the last shot's own sound fades out over this long (or its length, if shorter)
 
 
 @dataclass
@@ -187,17 +188,37 @@ def caption_force_style(look: dict[str, str], width: int, height: int) -> str:
     return ",".join(parts)
 
 
+def end_fade(shot: ShotInput, shot_start: float, shot_end: float) -> tuple[float, float] | None:
+    """(start, length) in film seconds of the fade-out on the last shot's own sound, or None when it has none.
+
+    The film's music and voice lanes keep their own fades; without this the last shot's sound stops dead at the
+    cut. The fade is ``END_FADE_SECONDS`` long, clamped to the shot's length, and ends where the shot ends.
+    """
+    length = min(END_FADE_SECONDS, shot_end - shot_start)
+    if shot.native_sound_db == -math.inf or length <= 0.01:
+        return None
+    return shot_end - length, length
+
+
+def native_fade_filter(fade: tuple[float, float]) -> str:
+    return f"afade=t=out:st={_f(fade[0])}:d={_f(fade[1])}"
+
+
 def build_mix_graph(lanes: Sequence[Lane], total_samples: int, loudnorm: str | None,
                     captions_name: str | None = None,
                     upscale_to: tuple[int, int] | None = None,
                     captions_style: str | None = None,
                     logo: "LogoOverlay | None" = None,
-                    captions_fonts: str | None = None) -> tuple[str, list[str]]:
-    """The audio graph (plus the corner logo and captions burn-in when asked). Returns (graph, warnings)."""
+                    captions_fonts: str | None = None,
+                    native_fade: tuple[float, float] | None = None) -> tuple[str, list[str]]:
+    """The audio graph (plus the corner logo and captions burn-in when asked). Returns (graph, warnings).
+
+    ``native_fade`` is the (start, length) of the fade-out on the shots' own sound at the film's end."""
     total = total_samples / SAMPLE_RATE
     warnings: list[str] = []
     lines = [f"[0:a]aresample={SAMPLE_RATE},aformat=sample_fmts=fltp:channel_layouts=stereo,"
-             f"apad=whole_len={total_samples},atrim=end_sample={total_samples}[nat]"]
+             f"apad=whole_len={total_samples},atrim=end_sample={total_samples}"
+             f"{',' + native_fade_filter(native_fade) if native_fade else ''}[nat]"]
     voice, ducked, plain = [], [], []
     for n, lane in enumerate(lanes):
         clip = lane.clip

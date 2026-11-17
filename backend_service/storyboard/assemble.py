@@ -43,6 +43,8 @@ from backend_service.storyboard.assemble_graphs import (  # noqa: F401 - re-expo
     atempo_chain,
     build_card_graph,
     build_mix_graph,
+    end_fade,
+    native_fade_filter,
     build_shot_graph,
     build_xfade_graphs,
     caption_force_style,
@@ -263,7 +265,7 @@ STEMS = (("voice", "voice"), ("music", "music"), ("sfx", "sfx"), ("import", "imp
 
 def _write_stems(plan: RenderPlan, work: Path, film_input: list[str], lanes: list[Lane], total_samples: int,
                  total: float, progress: ProgressCb, cancel_event: threading.Event | None,
-                 warnings: list[str]) -> list[str]:
+                 warnings: list[str], native_fade: tuple[float, float] | None = None) -> list[str]:
     """Each audio lane as its own 48 kHz stereo WAV the length of the film, plus the shots' own sound.
 
     A stem is the lane's clips with their gain, fades, trims, loops and positions, and nothing else: no
@@ -271,7 +273,8 @@ def _write_stems(plan: RenderPlan, work: Path, film_input: list[str], lanes: lis
     """
     assert plan.stems_base
     base = Path(plan.stems_base)
-    jobs: list[tuple[str, list[str]]] = [("shot-sound", [*film_input, "-map", "0:a"])]
+    shot_sound = [*film_input, *(["-af", native_fade_filter(native_fade)] if native_fade else []), "-map", "0:a"]
+    jobs: list[tuple[str, list[str]]] = [("shot-sound", shot_sound)]
     scripts: list[Path] = []
     for kind, name in STEMS:
         mine = [lane for lane in lanes if lane.clip.kind == kind]
@@ -549,6 +552,10 @@ def render(plan: RenderPlan, progress_cb: ProgressCb | None = None,
             logo = LogoOverlay(len(lanes) + 1, plan.logo.corner, plan.width, plan.height,
                                title_s if cards else None, shots_end_s if cards else None)
 
+        native_fade = None
+        if plan.shots:
+            last = lead + len(plan.shots) - 1
+            native_fade = end_fade(plan.shots[-1], timing.starts[last], shots_end_s)
         loudness: dict[str, Any] | None = None
         target = plan.loudness_lufs
         loudnorm = None
@@ -558,7 +565,8 @@ def render(plan: RenderPlan, progress_cb: ProgressCb | None = None,
                 loudnorm = base
                 loudness = {"passes": 1, "target_lufs": target}
             else:
-                graph_text, _ = build_mix_graph(lanes, total_samples, f"{base}:print_format=json")
+                graph_text, _ = build_mix_graph(lanes, total_samples, f"{base}:print_format=json",
+                                                     native_fade=native_fade)
                 graph = script("measure.txt", graph_text)
                 stderr = _run([*film_input, *lane_args, _filter_script_flag(), graph,
                                "-map", "[aout]", "-f", "null", "-"], cwd=work, expected_s=timing.total,
@@ -581,7 +589,7 @@ def render(plan: RenderPlan, progress_cb: ProgressCb | None = None,
         upscale_to = None if plan.preview else plan.upscale_to
         style = caption_force_style(plan.captions_style, plan.width, plan.height) if captions_name and plan.captions_style else None
         graph_text, mix_warnings = build_mix_graph(lanes, total_samples, loudnorm, captions_name, upscale_to, style,
-                                                   logo, captions_fonts)
+                                                   logo, captions_fonts, native_fade)
         warnings += mix_warnings
         graph = script("mix.txt", graph_text)
         video_args = (["-map", "[vout]", *_codec_args(plan)] if captions_name or upscale_to or logo
@@ -605,7 +613,7 @@ def render(plan: RenderPlan, progress_cb: ProgressCb | None = None,
         if plan.stems_base and not plan.preview:
             try:
                 stems = _write_stems(plan, work, film_input, lanes, total_samples, timing.total, progress,
-                                     cancel_event, warnings)
+                                     cancel_event, warnings, native_fade)
             except RenderError as exc:  # the film is done; say the stems are not
                 warnings.append(f"Stems were not written: {exc}")
         return RenderResult(path=str(out), duration_s=duration, shots_rendered=rendered,

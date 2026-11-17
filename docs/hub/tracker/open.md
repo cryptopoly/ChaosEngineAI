@@ -1,13 +1,22 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 110 rows with work, decisions or watch items still open, newest first.
+summary: 111 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-218 · Narration level: the fixed +8 dB (FU-216) suited one file, not the next — Shipped 2026-11-17 (branch fix/voice-level).</summary>
+
+**Status or trigger:** **Shipped 2026-11-17 (branch `fix/voice-level`).**
+
+**Notes:** **Found** in rehearsal 3: the Kokoro narration (voice library `1794914768_8c5f6778.wav`) measures -28.6 dB RMS (-29.2 over the whole file), peak -10.5 dB, so +8 dB left it about 0 dB over the music right outside its window (measured through the real two-pass export: 0.0 dB raw, 0.6 dB normalised, narration window against the bed the 0.3 to 1.8 s after it). **Done:** a new voice lane (`add_audio`, kind `voice`, no `gainDb`) is measured once with the bundled ffmpeg (about 25 ms for 3 s, in the staging step before the project lock, off every job slot) and stored in `gainDb` like any value ([audio_level.py](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/backend_service/storyboard/audio_level.py)): the gain that brings the file's RMS to -14 dB, between 0 and +12, never past a +6 dBFS peak, +8 when the file cannot be measured (no ffmpeg, unreadable or silent file). Explicit `gainDb` (0 too) wins, stored lanes keep what they have, nothing is measured at render time. Description, AGENTS.md and MCP golden updated. **Measured** (real files, real `build_mix_graph` export, lead = narration over the ducked bed in its window, FU-216's 0.7 to 3.1 s window and convention): rehearsal 2 narration (-22.1 dB RMS, peak -3.7): +8 gave 11.2 dB, now +8.1 gives the same; rehearsal 3 narration: +8 gave 12.1 dB over the ducked bed and 0.0 dB (raw) / 0.6 dB (normalised) over the bed outside the window, now +12.0 gives 19.6 dB and 3.6 / 2.6 dB. **Not as asked, and why:** the brief said target -18 dB RMS and a -1 dBFS peak ceiling. Both fail its own check on rehearsal 2: -18 and -1 give +2.7 dB there, a lead of 4.5 dB (was 11.2), the bug again; the +8 of FU-216 on its -22.6 dB file landed at -14.6 dB, so the target is -14 and the peak ceiling a +6 dBFS backstop (the export normaliser limits peaks; with it off a hot narration can clip, as FU-216 already noted). The brief's +14 cap is +12: `gainDb` cannot hold more (model, mixer slider). **Open:** rehearsal 3 does not reach 6 dB over the bed outside the window with any gain: +12 gives 2.6 dB normalised (3.6 raw), +14 would give about 4.2 (5.4 raw). What it needs is a quieter bed: a music lane default near -4 to -5 dB (with the voice at +12, normalised: -4 dB gives 5.9, -6 dB gives 6.6; the bed is lowered at creation, order dependent, or the duck depth raised). Not added; the owner's call. Tests: `tests/test_storyboard_audio_defaults.py` (gain maths, real-file measurement, quiet file boosted more than a louder one, loud file left at 0, cap, peak limit, explicit value wins, measured once, failed or silent measurement falls back to +8, the synthetic 10 dB lead holds with the measured gain).
+
+</details>
 
 <details>
 <summary>FU-217 · Flaky music test in the full suite: test_unload_while_a_track_is_made_is_refused_and_the_job_finishes — Queued (2026-11-17), test isolation</summary>

@@ -1,5 +1,5 @@
 """Storyboard audio defaults: the last shot's own sound fades out at the film's end (FU-215) and a new voice lane
-starts louder so the narration sits clearly over the ducked music bed (FU-216).
+starts louder so the narration sits clearly over the ducked music bed (FU-216), by what its own file measures (FU-218).
 
 The render checks build a project folder with synthetic media made by the bundled ffmpeg (lavfi sources, 160x90), turn
 it into a render plan with ``build_render_plan`` and measure the film's sound with ``astats``. They skip when ffmpeg
@@ -15,10 +15,11 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from backend_service.storyboard import assemble_graphs, ffmpeg_bin
+from backend_service.storyboard import assemble_graphs, audio_level, ffmpeg_bin, ops
 from backend_service.storyboard.assemble import render
 from backend_service.storyboard.assemble_graphs import END_FADE_SECONDS, build_mix_graph, end_fade
 from backend_service.storyboard.models import Anchor, AudioClip, AudioSource, Defaults, Project, Shot, Take, Transition
+from backend_service.storyboard.audio_level import Level
 from backend_service.storyboard.ops import VOICE_GAIN_DB
 from backend_service.storyboard.render_plan import RenderPlan, ShotInput
 from backend_service.storyboard.timeline import build_render_plan
@@ -180,6 +181,7 @@ class VoiceDefaultTests(StoreCase):
         return [(c.kind, c.gainDb) for c in p.audio]
 
     def test_new_voice_lanes_start_louder_and_other_kinds_do_not(self):
+        # The test files are not real audio, so they cannot be measured and the voice lane gets the fallback gain.
         p = self.new(shots=1)
         for kind in ("voice", "music", "sfx", "import"):
             p = self.op(p, "add_audio", kind=kind, path=str(fake_wav(self.src / f"{kind}.wav")))
@@ -214,6 +216,111 @@ class VoiceDefaultTests(StoreCase):
         p = self.new(shots=1)
         p = self.op(p, "set_song", path=str(fake_wav(self.src / "song.wav")), title="Song", seconds=2.0, addToMixer=True)
         self.assertEqual([(c.kind, c.gainDb) for c in p.audio], [("music", 0.0)])
+
+
+class VoiceGainMathTests(unittest.TestCase):
+    """``gain_for``: the gain that brings a narration to the target, within the limits (FU-218)."""
+
+    def gain(self, rms: float, peak: float) -> float:
+        return audio_level.gain_for(Level(rms, peak))
+
+    def test_a_quiet_file_is_boosted_more_than_a_louder_one(self):
+        quiet, louder = self.gain(-24.0, -12.0), self.gain(-19.0, -6.0)
+        self.assertGreater(quiet, louder)
+        self.assertAlmostEqual(quiet, audio_level.TARGET_RMS_DB + 24.0, delta=0.1)
+        self.assertAlmostEqual(louder, audio_level.TARGET_RMS_DB + 19.0, delta=0.1)
+
+    def test_a_file_at_or_over_the_target_is_never_attenuated(self):
+        self.assertEqual(self.gain(audio_level.TARGET_RMS_DB, -3.0), 0.0)
+        self.assertEqual(self.gain(-8.0, -1.0), 0.0)
+
+    def test_the_boost_is_capped(self):
+        self.assertEqual(self.gain(-50.0, -40.0), audio_level.MAX_GAIN_DB)
+        self.assertLessEqual(audio_level.MAX_GAIN_DB, 12.0)  # AudioClip.gainDb cannot hold more
+
+    def test_the_peak_ceiling_limits_the_boost(self):
+        peak = audio_level.PEAK_CEILING_DB - 3.0
+        self.assertEqual(self.gain(-40.0, peak), 3.0)  # the target alone would call for the cap
+        self.assertEqual(self.gain(-40.0, audio_level.PEAK_CEILING_DB + 2.0), 0.0)  # already over: no boost, no cut
+
+    def test_a_file_that_could_not_be_measured_gets_the_fallback(self):
+        self.assertEqual(audio_level.gain_for(None), audio_level.FALLBACK_GAIN_DB)
+        self.assertEqual(VOICE_GAIN_DB, audio_level.FALLBACK_GAIN_DB)
+
+
+@unittest.skipIf(_ffmpeg() is None, "the bundled ffmpeg is not installed")
+class VoiceLevelMeasuredTests(StoreCase):
+    """A new voice lane's gain comes from the real file, measured with the bundled ffmpeg when the lane is created."""
+
+    def setUp(self):
+        super().setUp()
+        # lavfi sine is 1/8 full scale (-21 dB RMS at volume 1): 0.6 is a quiet narration, 3 a loud one
+        for name, volume in (("quiet", 0.6), ("mid", 1.0), ("loud", 3.0)):
+            _Synth.tone(self.src / f"{name}.wav", 440, 2.0, volume)
+
+    def add(self, p, name, **fields):
+        return self.op(p, "add_audio", kind="voice", path=str(self.src / f"{name}.wav"), **fields)
+
+    def test_the_measurement_matches_the_file(self):
+        level = audio_level.measure(self.src / "mid.wav")
+        self.assertAlmostEqual(level.rms_db, -21.0, delta=0.3)
+        self.assertAlmostEqual(level.peak_db, -18.0, delta=0.3)
+
+    def test_a_quiet_file_gets_more_gain_than_a_louder_one_and_a_loud_one_none(self):
+        p = self.new(shots=1)
+        for name in ("quiet", "mid", "loud"):
+            p = self.add(p, name)
+        quiet, mid, loud = (c.gainDb for c in p.audio)
+        self.assertGreater(quiet, mid)
+        self.assertGreater(mid, 0)
+        self.assertEqual(loud, 0.0)
+        self.assertAlmostEqual(mid, audio_level.TARGET_RMS_DB + 21.0, delta=0.5)
+
+    def test_a_clip_is_measured_once_at_creation_and_never_again(self):
+        p = self.new(shots=1)
+        p = self.add(p, "quiet")
+        gain = p.audio[0].gainDb
+        with mock.patch.object(audio_level, "measure", side_effect=AssertionError("measured again")):
+            p = self.op(p, "edit_audio", clipId=p.audio[0].id, fadeOut=1.0)
+            p = self.op(p, "edit_audio", clipId=p.audio[0].id, gainDb=-2.0)
+            self.assertEqual(self.store.load(p.id).audio[0].gainDb, -2.0)
+        self.assertGreater(gain, 0)
+
+    def test_an_explicit_gain_wins_and_is_not_measured(self):
+        p = self.new(shots=1)
+        with mock.patch.object(audio_level, "measure", side_effect=AssertionError("measured")):
+            for name, gain in (("quiet", 0.0), ("quiet", -3.0), ("loud", 6.0)):
+                p = self.add(p, name, gainDb=gain)
+        self.assertEqual([c.gainDb for c in p.audio], [0.0, -3.0, 6.0])
+
+    def test_only_a_voice_lane_is_measured(self):
+        p = self.new(shots=1)
+        with mock.patch.object(audio_level, "measure", side_effect=AssertionError("measured")):
+            p = self.op(p, "add_audio", kind="music", path=str(self.src / "quiet.wav"))
+        self.assertEqual(p.audio[0].gainDb, 0.0)
+
+    def test_a_measurement_that_fails_falls_back_to_the_fixed_gain(self):
+        p = self.new(shots=1)
+        with mock.patch.object(audio_level, "measure", return_value=None):
+            p = self.add(p, "quiet")
+        self.assertEqual(p.audio[0].gainDb, VOICE_GAIN_DB)
+        with mock.patch.object(ops.media, "ffmpeg_exe", return_value=None):  # no ffmpeg at all
+            self.assertIsNone(audio_level.measure(self.src / "quiet.wav"))
+            p = self.add(p, "quiet")
+        self.assertEqual(p.audio[1].gainDb, VOICE_GAIN_DB)
+
+    def test_a_silent_file_gets_the_fallback(self):
+        _Synth.tone(self.src / "silent.wav", 440, 2.0, 0.0)
+        self.assertIsNone(audio_level.measure(self.src / "silent.wav"))
+        p = self.add(self.new(shots=1), "silent")
+        self.assertEqual(p.audio[0].gainDb, VOICE_GAIN_DB)
+
+    def test_the_measurement_is_quick(self):
+        import time
+
+        start = time.perf_counter()
+        audio_level.measure(self.src / "quiet.wav")
+        self.assertLess(time.perf_counter() - start, 2.0)
 
 
 @unittest.skipIf(_ffmpeg() is None, "the bundled ffmpeg is not installed")
@@ -256,14 +363,18 @@ class NarrationOverBedRenderTests(unittest.TestCase):
         """How far the narration sits over the ducked bed while it speaks (4.8 to 6.6 s), in dB."""
         return rms_db(film, 4.8, 1.8, self.SPEECH) - rms_db(film, 4.8, 1.8, self.BED)
 
+    def default_gain(self) -> float:
+        """What a new voice lane would get for this narration (it measures about -22.6 dB RMS)."""
+        return audio_level.voice_gain_db(self.media / "voice3.wav")
+
     def test_the_new_voice_default_puts_the_narration_10_db_over_the_ducked_bed(self):
         before = self.lead(self.film(0.0))
-        after = self.lead(self.film(VOICE_GAIN_DB))
+        after = self.lead(self.film(self.default_gain()))
         self.assertLess(before, 10, f"unity gain already leads by {before:.1f} dB: the default would be needless")
         self.assertGreaterEqual(after, 10, f"narration leads the ducked bed by {after:.1f} dB (was {before:.1f} dB)")
 
     def test_the_lead_survives_the_loudness_normaliser(self):
-        film = self.film(VOICE_GAIN_DB, loudness=-16.0)
+        film = self.film(self.default_gain(), loudness=-16.0)
         self.assertGreaterEqual(self.lead(film), 10)
         # The bed away from the narration is not pushed down to nothing by the louder voice.
         self.assertGreater(rms_db(film, 1.0, 2.0, self.BED), -30)

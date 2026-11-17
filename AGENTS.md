@@ -126,7 +126,8 @@ call `storyboard_project` get and retry.
   answer has `clipId` and `lanes` (clips per lane). `fields`: `anchor {shotId, offset}` (sound follows the shot), `start`, `gainDb`,
   `fadeIn`, `fadeOut`, `duck`, `loop`, `trimIn`, `trimOut`, `label`. A music clip added from now on ducks under the voice lane
   (about 10 dB while someone speaks) unless `fields.duck` is `false`; clips already in a project keep their setting. A voice clip added
-  from now on starts at `gainDb` +8 so the narration sits about 10 dB over the ducked music; an explicit `fields.gainDb` (0 too) wins.
+  from now on starts at a `gainDb` measured from its file (0 to +12 dB, about -14 dB RMS for the narration, +8 when the file cannot be
+  measured) so the narration sits clearly over the ducked music; an explicit `fields.gainDb` (0 too) wins.
   The last shot's own sound always fades out over 0.6 s at the film's end (export and rough cut); music and voice keep their own fades.
 - `storyboard_generate`: new takes, all stills then all clips, for shots that need work (`shot_ids`, `what` is `still`, `clip` or `both`,
   `force` to include locked shots). Returns a job id.

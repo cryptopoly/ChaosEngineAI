@@ -18,7 +18,7 @@ from typing import Any, Callable, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from backend_service.storyboard import media
+from backend_service.storyboard import audio_level, media
 from backend_service.storyboard.models import (
     Anchor,
     AudioClip,
@@ -121,10 +121,9 @@ class Relink(_Args):
     path: str = Field(min_length=1, max_length=4096)
 
 
-# The gain a new voice lane starts with. Measured on a real narration (about -22.6 dB RMS) over a real music bed
-# (ducked by the export's 10:1 sidechain): +8 dB puts the narration about 10.8 dB over the bed while it speaks, where
-# +0 dB left it under 1 dB over. A louder voice also ducks the bed harder, so each dB of gain buys about 1.3 dB.
-VOICE_GAIN_DB = 8.0
+# The gain a new voice lane starts with when its file cannot be measured (FU-216). A measurable file gets the gain
+# that brings its RMS to a target instead (audio_level, FU-218).
+VOICE_GAIN_DB = audio_level.FALLBACK_GAIN_DB
 
 
 class AudioFields(_Args):
@@ -214,6 +213,7 @@ class _Staged:
     path: Path
     digest: str
     seconds: float | None
+    level: audio_level.Level | None = None  # a new voice lane's file, measured before the lock (FU-218)
 
 
 @dataclass
@@ -258,7 +258,7 @@ def _stage(op: str, parsed: Any, folder: Path) -> _Staging:
             value = getattr(parsed, name, None)
             for raw in value if isinstance(value, list) else [value]:
                 if raw and raw not in staging.files:
-                    _stage_one(staging, folder, raw, allowed)
+                    _stage_one(staging, folder, raw, allowed, measure=_starts_a_voice_lane(op, parsed))
     except media.MediaError as exc:
         staging.undo(folder)
         raise OpError(str(exc)) from exc
@@ -276,13 +276,19 @@ def _source(folder: Path, raw: str, allowed: set[str]) -> Path:
     return media.resolve_source(raw, allowed)
 
 
-def _stage_one(staging: "_Staging", folder: Path, raw: str, allowed: set[str]) -> None:
+def _starts_a_voice_lane(op: str, parsed: Any) -> bool:
+    return op == "add_audio" and parsed.kind == "voice" and parsed.gainDb is None
+
+
+def _stage_one(staging: "_Staging", folder: Path, raw: str, allowed: set[str], measure: bool = False) -> None:
     src = _source(folder, raw, allowed)
     path = media.stage(folder, src)
     staging.files[raw] = _Staged(src, path, "", None)
     staging.files[raw].digest = media.sha256_file(path)
     if media.kind_of(src) in ("video", "audio"):
         staging.files[raw].seconds = media.probe_seconds(path)
+    if measure:
+        staging.files[raw].level = audio_level.measure(path)
 
 
 def _import(folder: Path, raw: str, allowed: set[str], rel_stem: str) -> tuple[str, str, Path]:
@@ -471,6 +477,14 @@ def _position(clip_fields: AudioFields) -> None:
         raise OpError("Give an anchor or a start, not both.")
 
 
+def _voice_gain(folder: Path, rel: str) -> float:
+    """The starting gain of a new voice lane, from the level measured while the file was staged (or now, when it was not)."""
+    staging: _Staging | None = getattr(_STAGING, "current", None)
+    if staging is not None and rel in staging.placed:
+        return audio_level.gain_for(staging.placed[rel].level)
+    return audio_level.voice_gain_db(media.inside(folder, rel))
+
+
 def add_audio(p: Project, folder: Path, a: AddAudio) -> None:
     _position(a)
     if a.anchor is not None:
@@ -484,11 +498,11 @@ def add_audio(p: Project, folder: Path, a: AddAudio) -> None:
     source = AudioSource(path=rel, hash=digest, measuredSeconds=_seconds(folder, rel),
                          clonedVoice=cloned, label=a.label or "")
     # A new music clip ducks under the narration unless the caller says duck: false (FU-212), and a new voice clip
-    # starts VOICE_GAIN_DB louder so the narration sits clearly over the ducked bed (FU-216); explicit values win and
-    # a clip that is already in a project keeps what it has.
+    # starts louder by what its own level needs so the narration sits clearly over the ducked bed (FU-216, FU-218);
+    # explicit values win and a clip that is already in a project keeps what it has.
     clip = AudioClip(id=clip_id, kind=a.kind, source=source, anchor=a.anchor,
                      start=a.start if a.anchor is None else None, duck=a.kind == "music",
-                     gainDb=VOICE_GAIN_DB if a.kind == "voice" else 0.0)
+                     gainDb=_voice_gain(folder, rel) if a.kind == "voice" and a.gainDb is None else 0.0)
     if clip.anchor is None and clip.start is None:
         clip.start = 0.0
     _set_fields(clip, a, {"kind", "path", "clonedVoice", "label", "anchor", "start"})

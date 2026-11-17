@@ -744,9 +744,9 @@ class DepsAndBatchTests(StoreCase):
             shot.seconds, shot.trimOut = 3.646, 3.646
             wiring["make_clip"](shot, p, None)
             self.assertGreaterEqual(sent[-1].numFrames / p.defaults.fps, 3.646)
-            shot.trimOut = None  # a plain shot keeps the old rule: never longer than asked
+            shot.trimOut = None  # a plain shot rounds up too, and the timeline cuts the clip back (FU-210)
             wiring["make_clip"](shot, p, None)
-            self.assertLessEqual(sent[-1].numFrames / p.defaults.fps, 3.646)
+            self.assertGreaterEqual(sent[-1].numFrames / p.defaults.fps, 3.646)
 
     def test_chained_clips_leave_no_last_frame_folders(self):
         import tempfile

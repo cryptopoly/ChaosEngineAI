@@ -309,6 +309,13 @@ def align_video_frames_up(repo: str, frames: int, cap: int = 257) -> int:
     return down
 
 
+def shot_clip_frames(repo: str, seconds: float, fps: int) -> int:
+    """Frames to ask for a storyboard shot of ``seconds``: the smallest valid count that covers the whole shot
+    (8 to 257), so the clip is never short and the timeline trims it back to exactly the shot's length.
+    Rounding down made a 4 s LTX shot at 24 fps 89 frames (3.708 s) instead of 97 trimmed to 96 (FU-210)."""
+    return align_video_frames_up(repo, max(8, min(257, math.ceil(seconds * fps - 1e-6))))
+
+
 def distilled_steps_note(model_name: str, requested: int, tuned: int | None) -> str | None:
     """A note when a few-step model is asked for many more steps than it was tuned for.
 

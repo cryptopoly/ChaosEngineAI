@@ -1,13 +1,31 @@
 ---
 title: Closed follow-ups
 order: 3
-summary: 103 shipped, obsoleted or dropped rows, newest first.
+summary: 105 shipped, obsoleted or dropped rows, newest first.
 ---
 
 # Closed follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Shipped, obsoleted or dropped rows (struck through, or marked shipped with no open points left). Kept as the history of why things are the way they are.
 
+
+<details>
+<summary>FU-216 · Narration not clearly over the music bed — Shipped 2026-11-17 (branch fix/audio-defaults).</summary>
+
+**Status or trigger:** **Shipped 2026-11-17 (branch `fix/audio-defaults`).**
+
+**Notes:** **Measured** with the rehearsal's narration (`a_4ea4c13b.wav`, -22.6 dB RMS, peak -3.7 dB) and music bed (`a_267a5f85.flac`) through the real `build_mix_graph` (ducked, 10:1 sidechain), narration window 0.7 to 3.1 s: narration over the ducked bed was **0.6 dB** with the new duck default (bed ducked from -15.8 to -22.4 dB) and -6.0 dB with no duck. A louder voice also ducks the bed harder (about 1.3 dB of lead per dB of gain), a quieter bed gives 1 dB per dB. **Done:** a new voice lane starts at `gainDb` +8 (`VOICE_GAIN_DB` in [ops.py](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/backend_service/storyboard/ops.py), `add_audio`): lead **10.8 dB** on the real files (+7 gives 9.5). One change on the voice side because it holds in either order (music first or voice first) and leaves music-only films untouched (music-only film: -14.9 dB RMS before and after, -18.5 after loudnorm -16 either way). Explicit `gainDb` (0 too) wins, stored lanes keep what they have, a song added to the mixer stays at 0 dB. The lead is a ratio, so the loudness normaliser keeps it: real two-pass render at -16 LUFS, narration window -21.7 dB before, -19.3 dB after, bed alone -16.6 to -17.2 dB. Documented in the `storyboard_audio` fields description and AGENTS.md; MCP golden regenerated. Tests: `tests/test_storyboard_audio_defaults.py` (synthetic signals through the export: lead under 10 dB at unity gain, at least 10 dB with the default, also after loudnorm; op defaults, order independence, explicit values win, stored lane unchanged). **Risk:** the +8 dB narration peaks at +4.3 dBFS before the normaliser on that file; with `loudnessLufs` set (the default) the normaliser limits it (two-pass `dynamic`, peak -1.6 dB), with it off the film peaked at +0.9 dBFS in the measured render. Fallback if that matters: voice +5 with a music default of -4 dB set at creation while a voice lane exists (order dependent).
+
+</details>
+
+<details>
+<summary>FU-215 · Film ends abruptly on the last shot's own sound — Shipped 2026-11-17 (branch fix/audio-defaults).</summary>
+
+**Status or trigger:** **Shipped 2026-11-17 (branch `fix/audio-defaults`).**
+
+**Notes:** **Found** in the hands-off rehearsal film (the open question in FU-211): the music lane faded to -59.6 dB, but the last shot's LTX sound sat at -22.9 dB to the last frame and was cut. **Done:** the sound of the last shot in the timeline fades out over 0.6 s (`END_FADE_SECONDS`, clamped to that shot's length, ending where the shot ends) in the export ([assemble_graphs.py](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/backend_service/storyboard/assemble_graphs.py) `end_fade`, an `afade` on the film's own-sound input of `build_mix_graph`, also on the `shot-sound` stem) and in the rough cut and Mixer preview ([roughCutLogic.ts](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/src/features/storyboard/preview/roughCutLogic.ts) `END_FADE_SECONDS`, the last native sound's `fadeOut`). Only that sound: music and voice lanes keep their own fades, earlier shots keep their cuts and crossfades, a muted last shot (`-inf`) or one with no audio stream gets no filter and renders byte-identical. Measured on a synthetic film whose last clip is a -12.5 dB tone: last 0.1 s -14.6 dB before, -34.8 dB after (last 0.03 s -45.4 dB). Tests: `tests/test_storyboard_audio_defaults.py` (loud last clip, one-shot film, 2x-speed and trimmed last shot, last shot shorter than the fade, crossfaded last shot, silent and muted last shot unchanged, music lane unfaded) and a rough cut case in `roughCutLogic.test.ts`. With an end card the fade ends where the last shot ends.
+
+</details>
 
 <details>
 <summary>FU-214 · Chat messages hidden at phone width — Shipped 2026-11-17 (branch fix/storyboard-timing).</summary>

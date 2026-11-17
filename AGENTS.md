@@ -125,7 +125,9 @@ call `storyboard_project` get and retry.
   `library_id` (a Music library track id, `make_music` `tracks[].id`). A made sound is not in the film until it is added. The `add`
   answer has `clipId` and `lanes` (clips per lane). `fields`: `anchor {shotId, offset}` (sound follows the shot), `start`, `gainDb`,
   `fadeIn`, `fadeOut`, `duck`, `loop`, `trimIn`, `trimOut`, `label`. A music clip added from now on ducks under the voice lane
-  (about 10 dB while someone speaks) unless `fields.duck` is `false`; clips already in a project keep their setting.
+  (about 10 dB while someone speaks) unless `fields.duck` is `false`; clips already in a project keep their setting. A voice clip added
+  from now on starts at `gainDb` +8 so the narration sits about 10 dB over the ducked music; an explicit `fields.gainDb` (0 too) wins.
+  The last shot's own sound always fades out over 0.6 s at the film's end (export and rough cut); music and voice keep their own fades.
 - `storyboard_generate`: new takes, all stills then all clips, for shots that need work (`shot_ids`, `what` is `still`, `clip` or `both`,
   `force` to include locked shots). Returns a job id.
 - `storyboard_batch`: `action`* is `status`, `pause` (stops after the step in progress), `resume` (`revision`; a job id) or `cancel`, with

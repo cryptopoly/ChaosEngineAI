@@ -803,7 +803,7 @@
           "type": "string"
         },
         "fields": {
-          "description": "anchor{shotId,offset} or start, trimIn, trimOut, gainDb, fadeIn, fadeOut, duck (music ducks under voice unless duck=false), loop, label.",
+          "description": "anchor{shotId,offset} or start, trimIn, trimOut, gainDb (voice starts at +8 dB so it sits over the music; your value wins), fadeIn, fadeOut, duck (music ducks under voice unless duck=false), loop, label.",
           "type": "object"
         },
         "kind": {

@@ -80,7 +80,7 @@ def set_song(p: Project, folder: Path, a: SetSong) -> None:
         clip_id = new_id("a")
         source = AudioSource(path=rel, hash=digest, measuredSeconds=_seconds(folder, rel) or a.seconds,
                              label=a.title or "Song")
-        p.audio.append(AudioClip(id=clip_id, kind="music", source=source, start=0.0))
+        p.audio.append(AudioClip(id=clip_id, kind="music", source=source, start=0.0, duck=True))  # under voice (FU-212)
     # Without addToMixer an earlier song's clip stays on the mixer as an ordinary music clip.
     try:
         p.song = Song(path=rel, hash=digest, title=a.title, seconds=a.seconds, bpm=a.bpm, beats=list(a.beats),

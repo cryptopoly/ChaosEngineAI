@@ -124,7 +124,8 @@ call `storyboard_project` get and retry.
   `speak`, `make_music` (`tracks[0].path`) or `make_sound` returned, an `upload:` handle or a file in the app's output folders) or
   `library_id` (a Music library track id, `make_music` `tracks[].id`). A made sound is not in the film until it is added. The `add`
   answer has `clipId` and `lanes` (clips per lane). `fields`: `anchor {shotId, offset}` (sound follows the shot), `start`, `gainDb`,
-  `fadeIn`, `fadeOut`, `duck`, `loop`, `trimIn`, `trimOut`, `label`.
+  `fadeIn`, `fadeOut`, `duck`, `loop`, `trimIn`, `trimOut`, `label`. A music clip added from now on ducks under the voice lane
+  (about 10 dB while someone speaks) unless `fields.duck` is `false`; clips already in a project keep their setting.
 - `storyboard_generate`: new takes, all stills then all clips, for shots that need work (`shot_ids`, `what` is `still`, `clip` or `both`,
   `force` to include locked shots). Returns a job id.
 - `storyboard_batch`: `action`* is `status`, `pause` (stops after the step in progress), `resume` (`revision`; a job id) or `cancel`, with
@@ -160,7 +161,7 @@ call `storyboard_project` get and retry.
 5. Voice: `list_voices`, then `speak` for each line, `wait_for_job`, then `storyboard_audio` add with `kind: "voice"`, the output `path`, and
    `fields.anchor` set to its shot so it moves with the shot. Optionally `storyboard_captions` generate.
 6. Music: `make_music` (`instrumental: true`, `seconds` close to the film length), `wait_for_job`, then `storyboard_audio` add with `kind: "music"`,
-   the track path from `output.tracks[0].path`, `fields.duck: true`, `fields.fadeOut`. Ask clips for "no music" in the motion prompt so
+   the track path from `output.tracks[0].path` and `fields.fadeOut` (music ducks under the narration by default). Ask clips for "no music" in the motion prompt so
    they do not fight the soundtrack. Sound effects: `make_sound`, then `storyboard_audio` add `kind: "sfx"`.
 7. Generate: `storyboard_generate`, `wait_for_job`, `storyboard_project` get to check each shot's take. For a weak shot: `storyboard_shot` redo
    then `storyboard_generate` again. Other shots are untouched; shots that continue from a redone one go stale. `lock` the good ones.

@@ -19,6 +19,7 @@ import type {
   CreateSessionResponse,
   GeneratePayload,
   GenerateResponse,
+  KeepGoingRun,
   StudioJob,
   StudioPlan,
   ToolCallInfo,
@@ -380,6 +381,35 @@ export interface StudioTurn {
 
 export async function fetchStudioTurn(sessionId: string): Promise<StudioTurn> {
   return fetchJson<StudioTurn>(`/api/chat/studio/sessions/${encodeURIComponent(sessionId)}/turn`, 10000);
+}
+
+// FU-191: Keep going runs.
+export type KeepGoingGrant = "auto" | "manual";
+
+function keepGoingPath(sessionId: string, action = ""): string {
+  return `/api/chat/keepgoing/${encodeURIComponent(sessionId)}${action ? `/${action}` : ""}`;
+}
+
+export async function fetchKeepGoing(sessionId: string): Promise<KeepGoingRun | null> {
+  return (await fetchJson<{ run: KeepGoingRun | null }>(keepGoingPath(sessionId), 10000)).run;
+}
+
+export async function startKeepGoing(
+  sessionId: string,
+  body: { cap: number; grant: KeepGoingGrant; hours: number },
+): Promise<KeepGoingRun | null> {
+  return (await postJson<{ run: KeepGoingRun | null }>(keepGoingPath(sessionId, "start"), body, 10000)).run;
+}
+
+export async function stopKeepGoing(sessionId: string, studioOff = false): Promise<KeepGoingRun | null> {
+  return (await postJson<{ run: KeepGoingRun | null }>(keepGoingPath(sessionId, studioOff ? "studio-off" : "stop"), {}, 10000)).run;
+}
+
+export async function resumeKeepGoing(
+  sessionId: string,
+  body: { grant: KeepGoingGrant; hours: number; cap?: number },
+): Promise<KeepGoingRun | null> {
+  return (await postJson<{ run: KeepGoingRun | null }>(keepGoingPath(sessionId, "resume"), body, 10000)).run;
 }
 
 export async function fetchStudioJob(jobId: string): Promise<StudioJob> {

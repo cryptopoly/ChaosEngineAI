@@ -9,7 +9,7 @@ import { MidThreadSwapMenu } from "./MidThreadSwapMenu";
 import type { KvStrategyOverride } from "./kvStrategyOverride";
 import type { SlashCommand } from "./slashCommands";
 import { ChatComposerDflashHint } from "./ChatComposerDflashHint";
-import { AUTO_APPROVE_HOURS, useStudioAutoApprove, writeStudioAutoApprove } from "./studioChat";
+import { ChatKeepGoing } from "./ChatKeepGoing";
 import { ChatSkillsSwitch } from "./ChatSkillsSwitch";
 import { PaperclipIcon } from "../../components/icons/ActionIcons";
 
@@ -38,6 +38,9 @@ export interface ChatComposerProps {
   /** D-60: studio tools for the chat model; renders wait for the plan card. */
   studioTools?: boolean;
   onToggleStudioTools?: (enabled: boolean) => void;
+  /** FU-191: this window streams the active chat's turn itself (Keep going reloads the thread otherwise). */
+  ownStreaming?: boolean;
+  onRefreshWorkspace?: (sessionId?: string) => Promise<void>;
   chatBusySessionId: string | null;
   activeChat: ChatSession | undefined;
   warmModels: WarmModel[];
@@ -94,6 +97,8 @@ export function ChatComposer({
   enableTools,
   studioTools = false,
   onToggleStudioTools,
+  ownStreaming = false,
+  onRefreshWorkspace,
   chatBusySessionId,
   activeChat,
   warmModels,
@@ -136,8 +141,6 @@ export function ChatComposer({
   const { t } = useTranslation("chat");
   // The dictated draft, for auto-send (the draft prop updates a render later).
   const dictatedRef = useRef("");
-  // D-60: "Always allow renders in this chat" is visible while on, with a way to turn it off.
-  const studioAutoApprove = useStudioAutoApprove(activeChat?.id);
   // Phase 2.11: when capabilities are known, hide affordances the loaded
   // model can't honour. When capabilities are absent (unknown model or
   // freshly downloaded HF entry without a catalog mapping) all
@@ -434,18 +437,9 @@ export function ChatComposer({
             </button>
           ) : null}
           {showToolsToggle ? <ChatSkillsSwitch sessionId={activeChat?.id} /> : null}
-          {showToolsToggle && studioTools && studioAutoApprove ? (
-            <span className="composer-studio-auto" role="status">
-              <span title={t("studioChat.auto.tooltip", {
-                hours: AUTO_APPROVE_HOURS,
-                defaultValue: "Renders in this chat run without a plan card. This ends after {hours} hours or when the app restarts.",
-              })}>
-                {t("studioChat.auto.label", { defaultValue: "Renders auto-approved" })}
-              </span>
-              <button type="button" className="composer-studio-auto__off" onClick={() => writeStudioAutoApprove(activeChat?.id, false)}>
-                {t("studioChat.auto.off", { defaultValue: "Turn off" })}
-              </button>
-            </span>
+          {showToolsToggle ? (
+            <ChatKeepGoing sessionId={activeChat?.id} studioTools={studioTools}
+              messageCount={activeChat?.messages?.length ?? 0} ownStreaming={ownStreaming} onRefresh={(id) => void onRefreshWorkspace?.(id)} />
           ) : null}
         </div>
         <div className="composer-button-group composer-button-group--right">

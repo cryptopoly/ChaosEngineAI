@@ -681,6 +681,7 @@ export {
   deleteSession,
   deleteSessionDocument,
   fetchBusyAdvice,
+  fetchKeepGoing,
   fetchStudioJob,
   fetchStudioJobMedia,
   fetchStudioTurn,
@@ -688,6 +689,9 @@ export {
   generateChat,
   generateChatStream,
   listSessionDocuments,
+  resumeKeepGoing,
+  startKeepGoing,
+  stopKeepGoing,
   updateSession,
   uploadSessionDocument,
 } from "./chat";
@@ -695,6 +699,7 @@ export type {
   ChatStreamPhase,
   SessionDocument,
   StreamCallbacks,
+  KeepGoingGrant,
   StudioPlanDecisionBody,
   StudioTurn,
 } from "./chat";

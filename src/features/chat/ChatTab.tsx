@@ -534,6 +534,8 @@ export function ChatTab({
           enableTools={enableTools}
           studioTools={studioTools}
           onToggleStudioTools={onToggleStudioTools}
+          ownStreaming={Boolean(activeChat) && chatBusySessionId === activeChat?.id && detachedTurn?.sessionId !== activeChat?.id}
+          onRefreshWorkspace={onRefreshWorkspace}
           chatBusySessionId={chatBusySessionId}
           activeChat={activeChat}
           launchSettings={launchSettings}

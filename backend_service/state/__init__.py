@@ -890,8 +890,10 @@ class ChaosEngineState:
     def generate(self, request: GenerateRequest) -> dict[str, Any]:
         return _generation.generate(self, request)
 
-    def generate_stream(self, request: GenerateRequest, app_request: Any = None):
-        return _generation.generate_stream(self, request, app_request=app_request)
+    def generate_stream(self, request: GenerateRequest, app_request: Any = None, *,
+                        keep_going: dict[str, Any] | None = None, background: bool = False):
+        return _generation.generate_stream(self, request, app_request=app_request, keep_going=keep_going,
+                                           background=background)
 
     def start_download(
         self,

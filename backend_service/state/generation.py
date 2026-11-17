@@ -321,11 +321,24 @@ def generate(state: ChaosEngineState, request: GenerateRequest) -> dict[str, Any
         }
 
 
-def generate_stream(state: ChaosEngineState, request: GenerateRequest, app_request: Any = None):
+def generate_stream(state: ChaosEngineState, request: GenerateRequest, app_request: Any = None, *,
+                    keep_going: dict[str, Any] | None = None, background: bool = False):
     """SSE streaming version of generate(). Returns a StreamingResponse.
 
     ``app_request`` (the route's Request) is what the studio tools run with when ``studioTools`` is on.
+    ``keep_going`` marks a Keep going nudge (FU-188: run id, nudge number, cap, abort event, approval end);
+    ``background`` runs a Studio turn on its thread without a response to relay (returns None).
     """
+    # FU-188: a message the user sent starts an armed Keep going run (it is the brief) or stops an active one.
+    # Called before the state lock: the controller never waits on it while holding its own.
+    if keep_going is None:
+        from backend_service import keep_going as _keep_going
+
+        kg_auto_until = _keep_going.on_user_turn(
+            state, request.sessionId, request.model_dump(exclude_none=True), request.prompt, app_request)
+    else:
+        kg_auto_until = keep_going.get("autoUntil")
+    kg_abort = keep_going.get("abort") if keep_going is not None else None
     with state._lock:
         session = state._ensure_session(request.sessionId, request.title)
         launch_preferences = state._launch_preferences()
@@ -428,7 +441,12 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest, app_reque
                 prompt=request.prompt,
             ),
         )
-        session["messages"].append({"role": "user", "text": request.prompt, "metrics": None, "createdAt": int(time.time() * 1000)})
+        user_message: dict[str, Any] = {"role": "user", "text": request.prompt, "metrics": None,
+                                        "createdAt": int(time.time() * 1000)}
+        if keep_going is not None:  # shown in the thread as the app's message, not the user's
+            user_message["keepGoing"] = {"runId": keep_going.get("runId"), "nudge": keep_going.get("nudge"),
+                                         "cap": keep_going.get("cap")}
+        session["messages"].append(user_message)
         session["updatedAt"] = state._time_label()
         # Phase 2.12: if `oneTurnOverride` is set, skip persisting the
         # active runtime's model identity onto the session so the
@@ -513,6 +531,11 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest, app_reque
     # generation isn't aborted before it starts.
     chaosengine.clear_chat_cancel(session["id"])
     session_id_for_cancel = session["id"]
+
+    def _cancel_requested() -> bool:
+        # Stop in the app, or (a Keep going nudge) the run ended meanwhile: the user's new message wins.
+        return chaosengine.is_chat_cancel_requested(session_id_for_cancel) or bool(kg_abort and kg_abort.is_set())
+
     # D-60: studio tools for this turn, with the approve-the-plan gate.
     studio_registry = None
     studio_gate = None
@@ -524,12 +547,15 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest, app_reque
         studio_registry = _studio_registry(
             app_request, _base_registry, available_tools if enable_tools else [],
             # Stop in the chat ends a wait_for_job at once (the job itself keeps running).
-            is_cancelled=lambda: chaosengine.is_chat_cancel_requested(session_id_for_cancel),
+            is_cancelled=_cancel_requested,
         )
         studio_gate = StudioGate(
             session_id_for_cancel,
-            auto_approve=request.studioAutoApprove,
-            is_cancelled=lambda: chaosengine.is_chat_cancel_requested(session_id_for_cancel),
+            # A Keep going run's grant approves renders until it expires (FU-188); the chat's own
+            # "Always allow" (the app's flag on a user turn) keeps its old meaning.
+            auto_approve=request.studioAutoApprove or kg_auto_until is not None,
+            auto_until=kg_auto_until if keep_going is not None or not request.studioAutoApprove else None,
+            is_cancelled=_cancel_requested,
             state=chaosengine,
         )
         effective_system_prompt = f"{effective_system_prompt}\n\n{STUDIO_HINT}" if effective_system_prompt else STUDIO_HINT
@@ -544,6 +570,10 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest, app_reque
         if chat_registry is not None:
             enable_tools = True
             available_tools = None
+
+    # How this turn ended, for Keep going (FU-188): filled in by _sse_stream, read when the turn is over.
+    turn_result: dict[str, Any] = {"error": None, "cancelled": False, "assistant": None, "prompt_tokens": 0,
+                                   "max_iterations": False}
 
     def _sse_stream():
         full_text = ""
@@ -593,6 +623,7 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest, app_reque
                         session["updatedAt"] = chaosengine._time_label()
                         chaosengine._persist_sessions()
                     chaosengine.active_requests = max(0, chaosengine.active_requests - 1)
+                turn_result["error"] = refusal["message"]
                 yield f"data: {json.dumps({'error': refusal['message']})}\n\n"
                 return
         except Exception as exc:
@@ -707,7 +738,7 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest, app_reque
                     **({"tool_registry": chat_registry, "gate": studio_gate, "max_iterations": 30}
                        if chat_registry is not None else {}),
                 ):
-                    if chaosengine.is_chat_cancel_requested(session_id_for_cancel):
+                    if _cancel_requested():
                         cancelled = True
                         break
                     if "token" in event:
@@ -764,7 +795,8 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest, app_reque
                         yield ": keepalive\n\n"  # SSE comment: keeps the stream open while the plan waits
                     elif event.get("done"):
                         # Agent loop finished — handled below
-                        pass
+                        turn_result["prompt_tokens"] = int(event.get("prompt_tokens") or 0)
+                        turn_result["max_iterations"] = bool(event.get("max_iterations_reached"))
             else:
                 for chunk in chaosengine.runtime.stream_generate(
                     prompt=request.prompt, history=history,
@@ -948,6 +980,7 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest, app_reque
                     chaosengine._persist_sessions()
                 chaosengine.active_requests = max(0, chaosengine.active_requests - 1)
                 chaosengine.add_log("chat", "error", f"[{model_tag}] Streaming failed: {exc}")
+            turn_result["error"] = str(exc)
             chaosengine.clear_chat_cancel(session_id_for_cancel)
             _f = _flush_tokens()
             if _f:
@@ -1036,6 +1069,8 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest, app_reque
             }
             if cancelled:
                 done_payload["cancelled"] = True
+            turn_result["assistant"] = assistant_message
+            turn_result["cancelled"] = cancelled and not runaway_triggered and not stall_triggered
         yield f"data: {json.dumps(done_payload)}\n\n"
 
     def _studio_detached_stream():
@@ -1060,13 +1095,18 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest, app_reque
                         frames.put(frame)
             except Exception as exc:  # noqa: BLE001 - the relay must always end
                 chaosengine.add_log("chat", "error", f"[{model_tag}] Studio turn failed: {exc}")
+                turn_result["error"] = turn_result["error"] or str(exc)
                 frames.put(f"data: {json.dumps({'error': str(exc)})}\n\n")
             finally:
                 turn_ended(session_id_for_cancel)
                 frames.put(None)
+                _turn_finished()
 
         turn_started(session_id_for_cancel)
         threading.Thread(target=produce, name=f"chat-turn-{session_id_for_cancel}", daemon=True).start()
+        if background:
+            listening.clear()  # a Keep going nudge: nobody relays this turn's frames
+            return
         try:
             while True:
                 frame = frames.get()
@@ -1076,6 +1116,31 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest, app_reque
         finally:
             listening.clear()  # nobody reads any more: the turn goes on without buffering its frames
 
+    def _turn_finished() -> None:
+        """Tell Keep going how this Studio turn ended (it decides whether to nudge again)."""
+        from backend_service import keep_going as _keep_going
+
+        loaded = chaosengine.runtime.loaded_model
+        error = turn_result["error"]
+        _keep_going.on_turn_finished(chaosengine, _keep_going.TurnOutcome(
+            session_id=session_id_for_cancel,
+            assistant=turn_result["assistant"],
+            cancelled=bool(turn_result["cancelled"]),
+            error=error,
+            prompt_tokens=int(turn_result["prompt_tokens"] or 0),
+            context_tokens=int(getattr(loaded, "contextTokens", 0) or 0),
+            max_iterations=bool(turn_result["max_iterations"]),
+            nudge=keep_going is not None,
+            extra={"runId": keep_going.get("runId") if keep_going else None,
+                   "modelMissing": bool(error) and loaded is None},
+        ))
+
+    if background:
+        if studio_gate is None:
+            raise HTTPException(status_code=400, detail="A background turn needs the studio tools.")
+        for _ in _studio_detached_stream():  # starts the turn's thread and returns at once
+            break
+        return None
     return StreamingResponse(
         _studio_detached_stream() if studio_gate is not None else _sse_stream(),
         media_type="text/event-stream",

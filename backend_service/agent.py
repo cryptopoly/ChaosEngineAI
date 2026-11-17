@@ -607,6 +607,7 @@ def run_agent_loop_streaming(
     messages.append({"role": "user", "text": prompt})
 
     used = 0  # iterations that count against ``max_iterations``
+    last_prompt_tokens = 0
     free = 0  # replies that only waited on a job already waited on this turn
     seen_waits: set[str] = set()
     iteration = -1
@@ -624,6 +625,8 @@ def run_agent_loop_streaming(
             tools=tools,
         )
 
+        # The prompt size of the newest step: Keep going (FU-188) stops before the context fills up.
+        last_prompt_tokens = int(getattr(result, "promptTokens", 0) or 0)
         tool_calls = getattr(result, "tool_calls", None)
         if not tool_calls and result.text:
             tool_calls = _parse_tool_calls_from_response(result.text)
@@ -657,6 +660,7 @@ def run_agent_loop_streaming(
                     for tr in all_tool_results
                 ],
                 "iterations": iteration + 1,
+                "prompt_tokens": last_prompt_tokens,
             }
             return
 
@@ -734,7 +738,8 @@ def run_agent_loop_streaming(
 
     # Max iterations
     yield {"token": "\n\n(Reached maximum tool-use iterations)"}
-    yield {"done": True, "tool_calls": [], "iterations": max_iterations}
+    yield {"done": True, "tool_calls": [], "iterations": max_iterations, "max_iterations_reached": True,
+           "prompt_tokens": last_prompt_tokens}
 
 
 def _passthrough_stream(

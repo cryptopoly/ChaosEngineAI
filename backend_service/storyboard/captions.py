@@ -139,7 +139,9 @@ Transcribe = Callable[[Path, str], dict[str, Any]]
 
 
 def transcribe_with_studio(path: Path, language: str) -> dict[str, Any]:
-    """The Voice Studio's speech-to-text on one file, queued behind other heavy jobs like the transcribe route."""
+    """The Voice Studio's speech-to-text on one file, queued behind other heavy jobs like the transcribe route.
+
+    Inside an agent job (which already holds the heavy-job slot) the slot is re-entrant: it runs at once."""
     from backend_service.helpers.job_queue import HEAVY_JOBS
     from backend_service.voice_runtime import transcribe_file
 

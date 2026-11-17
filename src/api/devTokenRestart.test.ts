@@ -66,7 +66,7 @@ describe("apiFetch with a build-time token after a backend restart", () => {
   });
 
   it("does not loop when the backend still refuses: one session read and one retry per request", async () => {
-    const fetchMock = vi.fn(async (url: string) =>
+    const fetchMock = vi.fn(async (url: string, _init?: RequestInit) =>
       url.endsWith("/api/auth/session") ? json(403, { detail: "origin" }) : json(401, { detail: "no" }));
     vi.stubGlobal("fetch", fetchMock);
     const { apiFetch } = await loadApi();
@@ -78,7 +78,7 @@ describe("apiFetch with a build-time token after a backend restart", () => {
   });
 
   it("keeps the build-time token when the backend still uses it", async () => {
-    const fetchMock = vi.fn(async () => json(200, { ok: true }));
+    const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => json(200, { ok: true }));
     vi.stubGlobal("fetch", fetchMock);
     const { apiFetch } = await loadApi();
 

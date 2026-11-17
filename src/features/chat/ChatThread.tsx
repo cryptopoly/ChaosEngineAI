@@ -11,12 +11,10 @@ import { AcceptedTokenOverlay } from "../../components/AcceptedTokenOverlay";
 import { ChatPerfStrip } from "../../components/ChatPerfStrip";
 import { LogprobSummary } from "../../components/LogprobSummary";
 import { SubstrateRoutingBadge } from "../../components/SubstrateRoutingBadge";
-import { ToolCallCard } from "../../components/ToolCallCard";
 import { ChatEmptyStateBanner } from "./ChatEmptyStateBanner";
-import { StudioJobCard } from "./StudioJobCard";
 import { StudioPlanCard } from "./StudioPlanCard";
-import { mergeToolCalls, refusalReason, studioJobId } from "./studioChat";
 import type { DetachedTurn } from "./detachedTurn";
+import { DetachedTurnBubble, ToolCallList } from "./DetachedTurnBubble";
 import { formatClock, formatFullTime, isValidTime } from "../../utils/chatTime";
 import type { ChatSession, ChatMessageVariant, LaunchPreferences, ModelLoadingState, WarmModel } from "../../types";
 import { number } from "../../utils";
@@ -336,17 +334,7 @@ export function ChatThread({
                   ))}
                 </div>
               ) : null}
-              {message.toolCalls?.length ? (
-                <div style={{ margin: "4px 0" }}>
-                  {mergeToolCalls(message.toolCalls).map((tc) =>
-                    tc.renderAs === "studio" && (studioJobId(tc) || tc.data?.declined || refusalReason(tc)) ? (
-                      <StudioJobCard key={tc.id} toolCall={tc} />
-                    ) : (
-                      <ToolCallCard key={tc.id} toolCall={tc} />
-                    ),
-                  )}
-                </div>
-              ) : null}
+              {message.toolCalls?.length ? <ToolCallList calls={message.toolCalls} /> : null}
               {message.citations?.length ? (
                 <CitationBadge citations={message.citations} />
               ) : null}
@@ -538,24 +526,7 @@ export function ChatThread({
         </div>
       )}
       {detachedTurn && detachedTurn.sessionId === activeChat?.id ? (
-        <div className="message-bubble assistant message-bubble--detached" data-testid="detached-turn">
-          <div className="message-header">
-            <span className="eyebrow">{t("thread.roleAgent", { defaultValue: "Agent" })}</span>
-          </div>
-          <p className="message-detached-note" role="status">
-            {detachedTurn.plans.length
-              ? t("studioChat.detached.waiting", { defaultValue: "This reply is waiting for your answer to the plan below." })
-              : t("studioChat.detached.running", { defaultValue: "This reply is still being made. It shows here when it is done." })}
-          </p>
-          {detachedTurn.plans.length ? (
-            <div className="studio-plan-stack">
-              {detachedTurn.plans.map((plan) => (
-                <StudioPlanCard key={plan.planId} plan={plan} sessionId={activeChat?.id}
-                  onEditByChat={() => document.querySelector<HTMLTextAreaElement>(".composer textarea")?.focus()} />
-              ))}
-            </div>
-          ) : null}
-        </div>
+        <DetachedTurnBubble turn={detachedTurn} sessionId={activeChat?.id} />
       ) : null}
       {serverLoading ? (
         <div className="message-bubble assistant">

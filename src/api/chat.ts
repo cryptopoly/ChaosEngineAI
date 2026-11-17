@@ -378,6 +378,8 @@ export interface StudioTurn {
   sessionId: string;
   running: boolean;
   plans: StudioPlan[];
+  /** FU-208: the reply so far while the turn runs (the same events the stream carries, folded). */
+  partial?: { text: string; reasoning: string; toolCalls: ToolCallInfo[] } | null;
 }
 
 export async function fetchStudioTurn(sessionId: string): Promise<StudioTurn> {

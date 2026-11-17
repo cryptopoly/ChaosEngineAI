@@ -1118,15 +1118,19 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest, app_reque
         import queue
         import threading
 
+        from backend_service.tools import studio_live
         from backend_service.tools.studio_gate import turn_ended, turn_started
 
         frames: queue.Queue[str | None] = queue.Queue()
+        # FU-208: the reply so far, for a window that does not relay this turn (a nudge, a reloaded window).
+        live = studio_live.begin(session_id_for_cancel)
         listening = threading.Event()
         listening.set()
 
         def produce() -> None:
             try:
                 for frame in _sse_stream():
+                    live.feed(frame)
                     if listening.is_set():
                         frames.put(frame)
             except Exception as exc:  # noqa: BLE001 - the relay must always end
@@ -1135,6 +1139,7 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest, app_reque
                 frames.put(f"data: {json.dumps({'error': str(exc)})}\n\n")
             finally:
                 turn_ended(session_id_for_cancel)
+                studio_live.end(session_id_for_cancel, live)
                 frames.put(None)
                 _turn_finished()
 

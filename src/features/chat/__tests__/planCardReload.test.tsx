@@ -194,3 +194,60 @@ describe("plan card after a reload", () => {
     expect(other).not.toContain("detached-turn");
   });
 });
+
+describe("FU-208: a nudge turn shows as it happens", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  const waitCall: ToolCallInfo = {
+    id: "w1",
+    name: "wait_for_job",
+    arguments: { job_id: "job-36" },
+    result: "",
+    elapsed: 0,
+    running: true,
+    renderAs: "studio",
+    data: { state: "running", label: "captions p1", progress: { phase: "transcribing", step: 1, totalSteps: 3 } },
+  };
+  const startCall: ToolCallInfo = {
+    id: "c1",
+    name: "storyboard_captions",
+    arguments: { action: "generate" },
+    result: "{}",
+    elapsed: 0.2,
+    renderAs: "studio",
+    data: { tool: "storyboard_captions", jobId: "job-36", state: "queued" },
+  };
+
+  it("passes the reply so far from the poll", async () => {
+    const partial = { text: "Adding captions.", reasoning: "", toolCalls: [startCall] };
+    const fetchTurn = vi.fn(async () => ({ sessionId: "s1", running: true, plans: [], partial }));
+    const turns: unknown[] = [];
+    const stop = watchDetachedTurn("s1", (t) => turns.push(t), vi.fn(), fetchTurn);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(turns[0]).toEqual({ sessionId: "s1", plans: [], partial });
+    stop();
+  });
+
+  it("draws the partial text and the same tool cards as a streamed turn", () => {
+    const chat = session({ messages: [{ role: "user", text: "Keep going (automatic message 2 of 20).\nAdd captions.", metrics: null }] });
+    const html = renderToStaticMarkup(
+      <ChatThread {...threadProps({
+        activeChat: chat,
+        detachedTurn: { sessionId: "s1", plans: [], partial: { text: "Adding captions now.", reasoning: "", toolCalls: [startCall, waitCall] } },
+      })} />,
+    );
+    expect(html).toContain("Adding captions now.");
+    expect(html).not.toContain("still being made");
+    expect(html).toContain("studio-job-card");  // the job the call started, as in a streamed turn
+    expect(html).toContain("wait_for_job");
+  });
+
+  it("keeps the note while nothing has arrived yet", () => {
+    const chat = session({ messages: [{ role: "user", text: "go", metrics: null }] });
+    const html = renderToStaticMarkup(
+      <ChatThread {...threadProps({ activeChat: chat, detachedTurn: { sessionId: "s1", plans: [], partial: { text: "", reasoning: "", toolCalls: [] } } })} />,
+    );
+    expect(html).toContain("still being made");
+  });
+});

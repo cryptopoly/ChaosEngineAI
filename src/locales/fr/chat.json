@@ -459,7 +459,7 @@
       "less": "moins",
       "memoryLoaded": "{model} reste chargé : environ {gb} Go libres.",
       "memoryFree": "Environ {gb} Go libres.",
-      "approveThisLabel": "Approuver uniquement ce {kind} : {prompt}",
+      "approveThisLabel": "Approuver uniquement cet élément ({kind}) : {prompt}",
       "perShot": "Temps par plan",
       "shotNumber": "Plan {n}",
       "shotStill": "image fixe : {time}",

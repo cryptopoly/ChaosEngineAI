@@ -77,8 +77,10 @@ class KeepGoing:
         threaded: bool = True,
         poll_seconds: float = 2.0,
         adapters: Callable[[str], Any] = adapter_for,
+        swap: Any = None,
     ) -> None:
         self.adapters = adapters
+        self.swap = swap  # gpu_swap.AppSwap in the app; None turns the GPU swap off
         self.path = path
         self.hooks = hooks
         self.clock = clock
@@ -141,10 +143,13 @@ class KeepGoing:
             view = run.record()
             grant = run.grant
             dispatching = run.dispatching
+            swap_phase = run.swap_phase
         now = self.clock()
         turn = self.hooks.turn_running(session_id)
         pending = self.hooks.pending_plans(session_id) if turn else 0
-        if view["state"] == "running":
+        if swap_phase:
+            phase = "gpu_swap"
+        elif view["state"] == "running":
             phase = ("awaiting_approval" if pending else "turn") if turn else ("nudging" if dispatching else "turn")
         elif view["state"] == "waiting":
             phase = "waiting_job"
@@ -173,6 +178,7 @@ class KeepGoing:
                 "secondsLeft": max(0, int(grant.until - now)) if grant.until else None,
             },
             "gpuMode": view["gpu_mode"],
+            "swapPhase": swap_phase,
             "turnRunning": turn,
             "pendingPlans": pending,
             "messageCount": self.hooks.message_count(session_id),
@@ -360,6 +366,9 @@ class KeepGoing:
             if streak >= REPEATED_ERROR_LIMIT:
                 return "repeated_error", sig.split(":", 1)[1] if ":" in sig else sig
         run.last_error = list(errors[-1]) if errors else None
+        if run.deferred:
+            run.nudge_why = "swap"  # renders kept for after the turn: they are the progress; they run next
+            return None
         # Progress since the last nudge: a project edit, a take, audio, a render, a finished chat job.
         snapshot = {"work": view.signature, "jobs": _finished_ids(jobs)}
         if run.nudges > 0 and run.snapshot is not None:
@@ -396,6 +405,7 @@ class KeepGoing:
         run.stopped_at = run.updated_at = now
         run.grant = None  # the grant ends the moment the run stops
         run.turn_pending = False
+        run.deferred = []  # renders kept for a GPU swap that has not started are dropped with the run
         run.abort.set()
         self._save()
         self.hooks.log("info" if code in ("complete", "complete_no_project", "user_stopped", "user_message")
@@ -447,7 +457,45 @@ class KeepGoing:
                 threading.Thread(target=self._watch, args=(session_id,), name=f"keep-going-wait-{session_id}",
                                  daemon=True).start()
             return
-        self._send_nudge(session_id)
+        self._next(session_id)
+
+    def _next(self, session_id: str) -> None:
+        """Nothing in flight: run the renders kept for after the turn (GPU swap), else nudge."""
+        with self._lock:
+            run = self._runs.get(session_id)
+            deferred = bool(run and run.deferred)
+        if deferred:
+            from backend_service.keep_going.swap_run import run_swap
+
+            run_swap(self, session_id)
+        else:
+            self._send_nudge(session_id)
+
+    def defer_render(self, session_id: str, name: str, args: dict[str, Any]) -> bool:
+        """Called in a run's turn for an approved render: True keeps it for after the turn, when the chat model is
+        unloaded (the GPU swap rule says it does not fit beside it, or the run's mode is Always)."""
+        from backend_service.keep_going.gpu_swap import swap_decision
+
+        with self._lock:
+            run = self._runs.get(session_id)
+            if self.swap is None or run is None or run.state != "running" or not run.turn_pending:
+                return False
+            mode, already = run.gpu_mode, bool(run.deferred)
+        if already:  # one swap for the whole reply: the rest of its renders wait with the first
+            keep, why = True, "with the first"
+        else:
+            choice = swap_decision(mode, job_gb=self.swap.job_gb(name, args), free_gb=self.swap.free_gb(),
+                                   chat_gb=self.swap.chat_gb())
+            keep, why = choice.swap, choice.why
+        self.hooks.log("info", f"Keep going GPU swap for {name} in chat {session_id}: "
+                               f"{'unload the chat model' if keep else 'no swap'} ({mode}, {why}).")
+        if not keep:
+            return False
+        with self._lock:
+            if run.state != "running":
+                return False
+            run.deferred.append((name, dict(args)))
+        return True
 
     def poll_waiting(self) -> None:
         """One pass over waiting runs (the watcher thread's body; tests call it directly)."""
@@ -455,7 +503,7 @@ class KeepGoing:
             waiting = [sid for sid, r in self._runs.items() if r.state == "waiting"]
         for sid in waiting:
             if self._blocked(sid) is None:
-                self._send_nudge(sid)
+                self._next(sid)
 
     def _watch(self, session_id: str) -> None:
         try:
@@ -466,7 +514,7 @@ class KeepGoing:
                     if run is None or run.state != "waiting":
                         return
                 if self._blocked(session_id) is None:
-                    self._send_nudge(session_id)
+                    self._next(session_id)
                     return
         finally:
             with self._lock:

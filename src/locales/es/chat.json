@@ -548,7 +548,8 @@
       "turn": null,
       "awaitingApproval": null,
       "waitingJob": null,
-      "nudging": null
+      "nudging": null,
+      "gpuSwap": null
     },
     "grant": {
       "legend": null,
@@ -592,6 +593,13 @@
       "app_restart": null,
       "studio_off": null,
       "gpu_reload_failed": null
+    },
+    "gpu": {
+      "label": null,
+      "hint": null,
+      "auto": null,
+      "always": null,
+      "never": null
     }
   }
 }

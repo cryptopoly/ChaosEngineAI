@@ -321,6 +321,15 @@ def generate(state: ChaosEngineState, request: GenerateRequest) -> dict[str, Any
         }
 
 
+def _keep_going_defer(state: ChaosEngineState, session_id: str) -> Any:
+    def defer(name: str, args: dict[str, Any]) -> Any:
+        from backend_service import keep_going
+
+        return keep_going.defer_render(state, session_id, name, args)
+
+    return defer
+
+
 def generate_stream(state: ChaosEngineState, request: GenerateRequest, app_request: Any = None, *,
                     keep_going: dict[str, Any] | None = None, background: bool = False):
     """SSE streaming version of generate(). Returns a StreamingResponse.
@@ -548,6 +557,8 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest, app_reque
             app_request, _base_registry, available_tools if enable_tools else [],
             # Stop in the chat ends a wait_for_job at once (the job itself keeps running).
             is_cancelled=_cancel_requested,
+            # FU-191: a Keep going run may keep a heavy render for after the turn, with the chat model unloaded.
+            defer=_keep_going_defer(chaosengine, session_id_for_cancel),
         )
         studio_gate = StudioGate(
             session_id_for_cancel,

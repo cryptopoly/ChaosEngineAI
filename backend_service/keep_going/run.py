@@ -115,6 +115,8 @@ class Run:
     nudge_why: str = "stopped"
     abort: threading.Event = field(default_factory=threading.Event)
     app_request: Any = None
+    deferred: list[tuple[str, dict[str, Any]]] = field(default_factory=list)  # renders kept for the GPU swap
+    swap_phase: str | None = None  # unloading | rendering | reloading while a GPU swap runs
 
     _SAVED = ("id", "session_id", "state", "cap", "goal", "project_id", "nudges", "started_at", "updated_at",
               "stop_code", "stop_reason", "stop_detail", "stopped_at", "template", "snapshot", "no_progress",

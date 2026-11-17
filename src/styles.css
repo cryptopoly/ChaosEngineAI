@@ -15192,6 +15192,16 @@ select.music-library__select {
   gap: 10px;
 }
 
+.keep-going-panel__note--block {
+  display: block;
+  margin-top: 2px;
+}
+
+.keep-going-panel__row select {
+  flex: 0 0 auto;
+  padding: 4px 6px;
+}
+
 .keep-going-panel__row input {
   width: 72px;
   flex: 0 0 auto;

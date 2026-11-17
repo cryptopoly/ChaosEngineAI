@@ -9,7 +9,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { KeepGoingGrant } from "../../api";
-import type { KeepGoingRun } from "../../types";
+import type { KeepGoingGpuMode, KeepGoingRun } from "../../types";
 import {
   KEEP_GOING_DEFAULT_CAP,
   KEEP_GOING_DEFAULT_HOURS,
@@ -105,10 +105,10 @@ export function ChatKeepGoing({ sessionId, studioTools, messageCount, ownStreami
               run={run}
               busy={controls.busy}
               onCancel={() => setPanel(null)}
-              onSubmit={async (cap, grant, hours) => {
+              onSubmit={async (cap, grant, hours, gpuMode) => {
                 if (panel === "start") {
                   const id = sessionId ?? (await onCreateSession?.()) ?? null;
-                  if (id) await controls.start(cap, grant, hours, id);
+                  if (id) await controls.start(cap, grant, hours, id, gpuMode);
                 }
                 else await controls.resume(grant, hours, cap);
                 setPanel(null);
@@ -181,6 +181,8 @@ function phaseText(t: T, run: KeepGoingRun): string {
       return t("keepGoing.phase.waitingJob", { defaultValue: "waiting for a job to finish" });
     case "nudging":
       return t("keepGoing.phase.nudging", { defaultValue: "sending the next step" });
+    case "gpu_swap":
+      return t("keepGoing.phase.gpuSwap", { defaultValue: "chat model unloaded while a render runs" });
     default:
       return t("keepGoing.phase.turn", { defaultValue: "the model is working" });
   }
@@ -230,13 +232,14 @@ export function KeepGoingPanel({ mode, run, busy, onCancel, onSubmit }: {
   run: KeepGoingRun | null;
   busy: boolean;
   onCancel: () => void;
-  onSubmit: (cap: number, grant: KeepGoingGrant, hours: number) => Promise<void>;
+  onSubmit: (cap: number, grant: KeepGoingGrant, hours: number, gpuMode: KeepGoingGpuMode) => Promise<void>;
 }) {
   const { t } = useTranslation("chat");
   const id = useId();
   const [cap, setCap] = useState(mode === "resume" && run ? run.cap : KEEP_GOING_DEFAULT_CAP);
   const [grant, setGrant] = useState<KeepGoingGrant | null>(null);
   const [hours, setHours] = useState(KEEP_GOING_DEFAULT_HOURS);
+  const [gpuMode, setGpuMode] = useState<KeepGoingGpuMode>(run?.gpuMode ?? "auto");
   const first = useRef<HTMLInputElement>(null);
   useEffect(() => {
     first.current?.focus();
@@ -307,6 +310,23 @@ export function KeepGoingPanel({ mode, run, busy, onCancel, onSubmit }: {
           })}
         </small>
       </fieldset>
+      {mode === "start" ? (
+        <label className="keep-going-panel__row" htmlFor={`${id}-gpu`}>
+          <span>
+            {t("keepGoing.gpu.label", { defaultValue: "Free GPU memory while rendering" })}
+            <small className="keep-going-panel__note keep-going-panel__note--block">
+              {t("keepGoing.gpu.hint", {
+                defaultValue: "Auto unloads the chat model during a render only when both do not fit, then loads it again.",
+              })}
+            </small>
+          </span>
+          <select id={`${id}-gpu`} value={gpuMode} onChange={(event) => setGpuMode(event.target.value as KeepGoingGpuMode)}>
+            <option value="auto">{t("keepGoing.gpu.auto", { defaultValue: "Auto" })}</option>
+            <option value="always">{t("keepGoing.gpu.always", { defaultValue: "Always" })}</option>
+            <option value="never">{t("keepGoing.gpu.never", { defaultValue: "Never" })}</option>
+          </select>
+        </label>
+      ) : null}
       <div className="keep-going-panel__actions">
         <button type="button" className="secondary-button" onClick={onCancel}>
           {t("keepGoing.panel.cancel", { defaultValue: "Cancel" })}
@@ -316,7 +336,7 @@ export function KeepGoingPanel({ mode, run, busy, onCancel, onSubmit }: {
           className="primary-button"
           disabled={busy || grant === null}
           title={grant === null ? t("keepGoing.grant.pick", { defaultValue: "Choose how renders are approved first" }) : undefined}
-          onClick={() => grant && void onSubmit(cap, grant, hours)}
+          onClick={() => grant && void onSubmit(cap, grant, hours, gpuMode)}
         >
           {mode === "start"
             ? t("keepGoing.panel.start", { defaultValue: "Turn on" })

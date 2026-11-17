@@ -19,6 +19,7 @@ import type {
   CreateSessionResponse,
   GeneratePayload,
   GenerateResponse,
+  KeepGoingGpuMode,
   KeepGoingRun,
   StudioJob,
   StudioPlan,
@@ -396,7 +397,7 @@ export async function fetchKeepGoing(sessionId: string): Promise<KeepGoingRun | 
 
 export async function startKeepGoing(
   sessionId: string,
-  body: { cap: number; grant: KeepGoingGrant; hours: number },
+  body: { cap: number; grant: KeepGoingGrant; hours: number; gpuMode?: KeepGoingGpuMode },
 ): Promise<KeepGoingRun | null> {
   return (await postJson<{ run: KeepGoingRun | null }>(keepGoingPath(sessionId, "start"), body, 10000)).run;
 }

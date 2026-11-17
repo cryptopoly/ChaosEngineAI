@@ -154,6 +154,7 @@ def nudge_text(
         "claimed": "You said the work is finished, but the project disagrees.",
         "error": "Your last turn ended after a tool error.",
         "resume": "Resuming after a pause. Rebuild your picture from the project state below, not from memory.",
+        "swap_done": "The renders you queued ran while the chat model was unloaded; their results are below.",
     }.get(why)
     if intro:
         lines.append(intro)

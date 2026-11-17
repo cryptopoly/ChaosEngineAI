@@ -157,6 +157,15 @@ describe("Keep going in the composer", () => {
     expect(html).toContain('value="6"');
   });
 
+  it("offers the GPU swap setting (Auto by default) when turning on", () => {
+    const html = renderToStaticMarkup(<KeepGoingPanel mode="start" run={null} busy={false} onCancel={() => undefined} onSubmit={async () => undefined} />);
+    expect(html).toContain("Free GPU memory while rendering");
+    expect(html).toMatch(/<option value="auto" selected="">Auto<\/option>/);
+    expect(html).toContain('value="never"');
+    const chip = renderToStaticMarkup(<ActiveChip run={run({ phase: "gpu_swap", swapPhase: "rendering" })} busy={false} onStop={() => undefined} />);
+    expect(chip).toContain("chat model unloaded while a render runs");
+  });
+
   it("the resume panel keeps the run's cap", () => {
     const html = renderToStaticMarkup(<KeepGoingPanel mode="resume" run={run({ cap: 40 })} busy={false} onCancel={() => undefined} onSubmit={async () => undefined} />);
     expect(html).toContain("Resume Keep going");

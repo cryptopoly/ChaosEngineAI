@@ -548,7 +548,8 @@
       "turn": "the model is working",
       "awaitingApproval": "waiting for your approval",
       "waitingJob": "waiting for a job to finish",
-      "nudging": "sending the next step"
+      "nudging": "sending the next step",
+      "gpuSwap": "chat model unloaded while a render runs"
     },
     "grant": {
       "legend": "How are renders approved in this run?",
@@ -592,6 +593,13 @@
       "app_restart": "the app restarted while it ran.",
       "studio_off": "Studio tools were turned off.",
       "gpu_reload_failed": "the chat model could not be loaded again after a render: {detail}"
+    },
+    "gpu": {
+      "label": "Free GPU memory while rendering",
+      "hint": "Auto unloads the chat model during a render only when both do not fit, then loads it again.",
+      "auto": "Auto",
+      "always": "Always",
+      "never": "Never"
     }
   }
 }

@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchKeepGoing, resumeKeepGoing, startKeepGoing, stopKeepGoing } from "../../api";
 import type { KeepGoingGrant } from "../../api";
-import type { KeepGoingRun } from "../../types";
+import type { KeepGoingGpuMode, KeepGoingRun } from "../../types";
 
 export const KEEP_GOING_DEFAULT_CAP = 20;
 export const KEEP_GOING_MAX_CAP = 100;
@@ -114,7 +114,7 @@ export interface KeepGoingControls {
   busy: boolean;
   error: string | null;
   /** ``forSession``: a chat made a moment ago, before this hook has its id. */
-  start: (cap: number, grant: KeepGoingGrant, hours: number, forSession?: string) => Promise<void>;
+  start: (cap: number, grant: KeepGoingGrant, hours: number, forSession?: string, gpuMode?: KeepGoingGpuMode) => Promise<void>;
   stop: () => Promise<void>;
   resume: (grant: KeepGoingGrant, hours: number, cap?: number) => Promise<void>;
   studioOff: () => Promise<void>;
@@ -182,9 +182,9 @@ export function useKeepGoing(
     run: run && run.sessionId === sessionId ? run : null,
     busy,
     error,
-    start: (cap, grant, hours, forSession) => {
+    start: (cap, grant, hours, forSession, gpuMode = "auto") => {
       const id = forSession ?? sessionId;
-      return id ? act(() => api.startKeepGoing(id, { cap: clampCap(cap), grant, hours: clampHours(hours) })) : Promise.resolve();
+      return id ? act(() => api.startKeepGoing(id, { cap: clampCap(cap), grant, hours: clampHours(hours), gpuMode })) : Promise.resolve();
     },
     stop: () => (sessionId ? act(() => api.stopKeepGoing(sessionId)) : Promise.resolve()),
     resume: (grant, hours, cap) =>

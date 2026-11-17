@@ -302,8 +302,12 @@ class StudioTool(BaseTool):
     """One bridge tool, run in process with Chat's scopes and job owner."""
 
     def __init__(self, tool: dict[str, Any], handler: Any, app_request: Any,
-                 is_cancelled: Callable[[], bool] | None = None, revisions: TurnRevisions | None = None) -> None:
+                 is_cancelled: Callable[[], bool] | None = None, revisions: TurnRevisions | None = None,
+                 defer: Callable[[str, dict[str, Any]], StructuredToolOutput | None] | None = None) -> None:
         self._tool = tool
+        # Keep going's "free GPU memory while rendering" (FU-191): an approved render may be kept for after the
+        # turn; ``defer`` returns the answer for the model then, or None to run it now.
+        self._defer = defer
         self._revisions = revisions or TurnRevisions()
         self._is_cancelled = is_cancelled or (lambda: False)
         self._handler = handler
@@ -386,6 +390,10 @@ class StudioTool(BaseTool):
         refused = _chat_input_problem(self.name, args) or _foreign_job_problem(self.name, args)
         if refused:
             return self._error(refused)
+        if self._defer is not None and needs_approval(self.name, args):
+            kept = self._defer(self.name, args)
+            if kept is not None:
+                return kept
         token = CURRENT_OWNER.set(CHAT_OWNER)
         try:
             if needs_approval(self.name, args):
@@ -454,21 +462,23 @@ def _own_jobs(args: dict[str, Any]) -> dict[str, Any]:
     return {"jobs": [j.describe() for j in jobs[: int(args.get("limit", 20))]]}
 
 
-def studio_tools(app_request: Any, is_cancelled: Callable[[], bool] | None = None) -> list[StudioTool]:
+def studio_tools(app_request: Any, is_cancelled: Callable[[], bool] | None = None,
+                 defer: Callable[[str, dict[str, Any]], StructuredToolOutput | None] | None = None) -> list[StudioTool]:
     tools, handlers = _bridge()
     by_name = {t["name"]: t for t in tools}
     revisions = TurnRevisions()  # one per chat turn, shared by its storyboard tools
-    return [StudioTool(by_name[n], handlers[n], app_request, is_cancelled, revisions)
+    return [StudioTool(by_name[n], handlers[n], app_request, is_cancelled, revisions, defer)
             for n in STUDIO_TOOL_NAMES if n in by_name and n in handlers]
 
 
 def studio_registry(app_request: Any, base: ToolRegistry, available: list[str] | None,
-                    is_cancelled: Callable[[], bool] | None = None) -> ToolRegistry:
+                    is_cancelled: Callable[[], bool] | None = None,
+                    defer: Callable[[str, dict[str, Any]], StructuredToolOutput | None] | None = None) -> ToolRegistry:
     """The chat tools (``available`` of ``base``, all when None) plus the studio tools."""
     registry = ToolRegistry()
     for tool in base.list_tools():
         if available is None or tool.name in available:
             registry.register(tool)
-    for tool in studio_tools(app_request, is_cancelled):
+    for tool in studio_tools(app_request, is_cancelled, defer):
         registry.register(tool)
     return registry

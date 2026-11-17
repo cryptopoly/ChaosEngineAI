@@ -29,8 +29,10 @@ def for_state(state: Any) -> KeepGoing:
         if controller is None:
             from backend_service.keep_going.hooks import AppHooks
 
+            from backend_service.keep_going.gpu_swap import AppSwap
+
             path = Path(state._chat_sessions_path).parent / RUNS_FILE
-            controller = KeepGoing(path, AppHooks(state))
+            controller = KeepGoing(path, AppHooks(state), swap=AppSwap(state))
             state._keep_going = controller
     return controller
 
@@ -50,6 +52,22 @@ def on_turn_finished(state: Any, outcome: TurnOutcome) -> None:
             state.add_log("chat", "error", f"Keep going failed after a turn: {type(exc).__name__}: {exc}")
         except Exception:  # noqa: BLE001
             pass
+
+
+def defer_render(state: Any, session_id: str, name: str, args: dict[str, Any]) -> Any:
+    """An approved render in a run's turn: kept for after the turn (the answer for the model) or None to run now."""
+    from backend_service.keep_going.gpu_swap import DEFERRED_TEXT
+    from backend_service.tools import StructuredToolOutput
+
+    try:
+        kept = for_state(state).defer_render(session_id, name, args)
+    except Exception as exc:  # noqa: BLE001 - a swap bug never blocks the render: it runs as before
+        state.add_log("chat", "warning", f"Keep going could not plan a GPU swap: {exc}")
+        return None
+    if not kept:
+        return None
+    return StructuredToolOutput(text=DEFERRED_TEXT, render_as="studio",
+                                data={"tool": name, "deferred": True, "next": DEFERRED_TEXT})
 
 
 def on_chat_cancel(state: Any, session_id: str) -> None:

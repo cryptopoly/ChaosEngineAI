@@ -468,7 +468,9 @@ export type SettingsDraft = {
 
 /** FU-191: a chat's Keep going run as the backend reports it. */
 export type KeepGoingState = "armed" | "running" | "waiting" | "stopped";
-export type KeepGoingPhase = KeepGoingState | "turn" | "awaiting_approval" | "nudging" | "waiting_job";
+export type KeepGoingPhase = KeepGoingState | "turn" | "awaiting_approval" | "nudging" | "waiting_job" | "gpu_swap";
+
+export type KeepGoingGpuMode = "auto" | "always" | "never";
 
 export interface KeepGoingRun {
   runId: string;
@@ -488,7 +490,9 @@ export interface KeepGoingRun {
   stoppedAt: number | null;
   resumable: boolean;
   grant: { mode: "auto" | "manual"; until: number | null; secondsLeft: number | null } | null;
-  gpuMode: "auto" | "always" | "never";
+  gpuMode: KeepGoingGpuMode;
+  /** Phase 2: the chat model is unloaded around a render (unloading, rendering, reloading). */
+  swapPhase?: "unloading" | "rendering" | "reloading" | null;
   turnRunning: boolean;
   pendingPlans: number;
   messageCount: number;

@@ -52,6 +52,7 @@ export type {
   SamplerOverrides,
   SessionDocument,
   StudioJob,
+  KeepGoingGpuMode,
   KeepGoingPhase,
   KeepGoingRun,
   KeepGoingState,

@@ -821,11 +821,16 @@ def create_app(
         provided_token = _extract_auth_token(request)
         expected_token = str(app.state.chaosengine_api_token)
         if not provided_token or not secrets.compare_digest(provided_token, expected_token):
+            # FU-195: this middleware sits outside CORSMiddleware, so without these headers the app's window
+            # (another origin) saw a network error instead of the 401 and never re-read the token.
+            origin = request.headers.get("origin", "").strip()
+            cors = {"Access-Control-Allow-Origin": origin, "Vary": "Origin"} if origin in allowed_origins else {}
             return JSONResponse(
                 status_code=401,
                 content={
                     "detail": "Unauthorized. Supply the ChaosEngineAI API token as a Bearer token.",
                 },
+                headers=cors,
             )
         return await call_next(request)
 

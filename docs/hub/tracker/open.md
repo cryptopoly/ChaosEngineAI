@@ -1,49 +1,13 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 112 rows with work, decisions or watch items still open, newest first.
+summary: 108 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
-
-<details>
-<summary>FU-195 · Dev setup: frontend gets 401s after a backend restart until the page is reloaded — Queued (2026-11-17), likely dev-only</summary>
-
-**Status or trigger:** Queued (2026-11-17), likely dev-only
-
-**Notes:** The dev backend gets a new API token on each start while the open page holds the old one, so every poll (Keep going, the detached-turn poll) fails with 401. **To do:** confirm whether the packaged app can hit it (the shell hands the token over at start); if only dev, make the frontend reload or re-read the token once on a 401 after a restart, or print the reload hint in the dev console.
-
-</details>
-
-<details>
-<summary>FU-194 · Non-streaming chat does not stop a Keep going run on a new message — Queued (2026-11-17), theoretical</summary>
-
-**Status or trigger:** Queued (2026-11-17), theoretical
-
-**Notes:** The app always streams, so only a direct caller of `generate()` through the non-streaming route is affected. **To do:** call the same run-cancel hook from the non-streaming path in [generation.py](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/backend_service/state/generation.py), with a test.
-
-</details>
-
-<details>
-<summary>FU-193 · Enter in the chat composer sends while a background turn runs — Queued (2026-11-17), found by the Keep going live check</summary>
-
-**Status or trigger:** Queued (2026-11-17), found by the Keep going live check
-
-**Notes:** Only the Send button respects the busy state; Enter sends anyway, so a second turn can start on a chat that is still answering (and, with Keep going on, it cancels the run as a user message). **To do:** make Enter follow the same busy rule as the button in [ChatComposer.tsx](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/src/features/chat/ChatComposer.tsx), with a test for both keys.
-
-</details>
-
-<details>
-<summary>FU-192 · LFM2.5 text-style tool calls are not parsed by the agent loop — Queued (2026-11-17), found by the Keep going live check</summary>
-
-**Status or trigger:** Queued (2026-11-17), found by the Keep going live check
-
-**Notes:** LFM2.5 writes tool calls as text, `<|tool_call_start|>[name(args)]<|tool_call_end|>`, and the loop in [agent.py](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/backend_service/agent.py) treats that as plain reply text, so the call never runs and the model's next turn goes on without a result. **To do:** parse that format next to the existing ones (arguments as Python-style keyword calls, several calls in one block), with tests for a good call, two calls, bad arguments and an unclosed marker; check the Studio-tools path with LFM2.5-24B-A2B.
-
-</details>
 
 <details>
 <summary>FU-191 · Keep going for Studio chats (D-86) — In progress</summary>

@@ -25,6 +25,24 @@ import { PaperclipIcon } from "../../components/icons/ActionIcons";
  */
 export type ReasoningEffortLevel = "low" | "medium" | "high";
 
+/**
+ * FU-193: the one busy rule for the Send button, Enter and dictation's auto-send. A message can go only with a
+ * model loaded and idle and no turn running: ``chatBusySessionId`` covers this window's own turn and a detached
+ * turn (a background turn or a Keep going nudge), so a second turn never starts on a chat that is answering.
+ */
+export function canSendNow(loadedModelRef: string | null | undefined, modelLoading: boolean,
+  chatBusySessionId: string | null): boolean {
+  return Boolean(loadedModelRef) && !modelLoading && chatBusySessionId === null;
+}
+
+/** What Enter does in the composer: send, swallow (busy: no send and no newline), or the browser default
+ * (Shift+Enter inserts a newline; Enter during IME composition confirms the composition). */
+export function composerEnterKey(key: { key: string; shiftKey: boolean; isComposing: boolean },
+  canSend: boolean): "send" | "swallow" | "default" {
+  if (key.key !== "Enter" || key.shiftKey || key.isComposing) return "default";
+  return canSend ? "send" : "swallow";
+}
+
 export interface ChatComposerProps {
   draftMessage: string;
   pendingImages: string[];
@@ -148,6 +166,7 @@ export function ChatComposer({
   // model can't honour. When capabilities are absent (unknown model or
   // freshly downloaded HF entry without a catalog mapping) all
   // affordances stay visible so the user isn't blocked from trying.
+  const canSend = canSendNow(loadedModelRef, modelLoading, chatBusySessionId);
   const showImageAttach = !loadedModelCapabilities || loadedModelCapabilities.supportsVision;
   const showToolsToggle = !loadedModelCapabilities || loadedModelCapabilities.supportsTools;
   const showThinkingControl = !loadedModelCapabilities || loadedModelCapabilities.supportsReasoning;
@@ -258,13 +277,10 @@ export function ChatComposer({
                 return;
               }
             }
-            if (event.key === "Enter" && !event.shiftKey && !isComposing) {
-              event.preventDefault();
-              // Mirror the Send button's disabled state — no-op when no
-              // model is loaded so users don't trigger a confusing 500.
-              if (!loadedModelRef || modelLoading) return;
-              void onSendMessage();
-            }
+            const enter = composerEnterKey({ key: event.key, shiftKey: event.shiftKey, isComposing }, canSend);
+            if (enter === "default") return;
+            event.preventDefault();
+            if (enter === "send") void onSendMessage();
           }}
           onDrop={(event) => {
             const files = event.dataTransfer?.files;
@@ -455,7 +471,7 @@ export function ChatComposer({
               onDraftMessageChange(next);
             }}
             onAutoSend={() => {
-              if (loadedModelRef && !modelLoading && chatBusySessionId === null) onSendMessage(dictatedRef.current);
+              if (canSend) onSendMessage(dictatedRef.current);
             }}
           />
           <button className="secondary-button" type="button" onClick={onClearDraft}>
@@ -475,7 +491,7 @@ export function ChatComposer({
               className="primary-button"
               type="button"
               onClick={() => void onSendMessage()}
-              disabled={!loadedModelRef || modelLoading}
+              disabled={!canSend}
               title={
                 modelLoading
                   ? t("composer.sendLoadingTooltip", {

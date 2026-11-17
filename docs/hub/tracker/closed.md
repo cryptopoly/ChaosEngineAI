@@ -1,13 +1,49 @@
 ---
 title: Closed follow-ups
 order: 3
-summary: 81 shipped, obsoleted or dropped rows, newest first.
+summary: 85 shipped, obsoleted or dropped rows, newest first.
 ---
 
 # Closed follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Shipped, obsoleted or dropped rows (struck through, or marked shipped with no open points left). Kept as the history of why things are the way they are.
 
+
+<details>
+<summary>FU-195 · Dev setup: frontend gets 401s after a backend restart until the page is reloaded — Shipped 2026-11-17 (branch fix/fu-192-195).</summary>
+
+**Status or trigger:** **Shipped 2026-11-17 (branch `fix/fu-192-195`).**
+
+**Notes:** **Found:** the auth middleware's 401 had no CORS headers (it sits outside `CORSMiddleware`), so the window, another origin in dev and in the packaged webview alike, saw a network error, never the 401, and the existing re-read-and-retry-once in `apiFetch` never ran. The dev case that stuck: a page built with `VITE_CHAOSENGINE_API_TOKEN` kept that token forever, even on the forced re-read. The packaged app sets no build-time token and the shell hands over a fresh token on its own restarts, so it was exposed only when it ended up holding a stale or empty token (for example a restart that timed out before the token was read). **Done:** the 401 carries `Access-Control-Allow-Origin` for allowed origins only ([app.py](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/backend_service/app.py)); a build-time token is replaced by the backend's session token after a 401 when the session token differs, one session read and one retry per request, one dev console hint ([src/api/index.ts](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/src/api/index.ts)). Tests: `src/api/devTokenRestart.test.ts`, `tests/test_backend_service.py` (401 CORS). Live (dev, ports 8971/8972): a page built with token A healed without a reload after the backend restarted with token B. Not tested in the packaged app.
+
+</details>
+
+<details>
+<summary>FU-194 · Non-streaming chat does not stop a Keep going run on a new message — Shipped 2026-11-17 (branch fix/fu-192-195).</summary>
+
+**Status or trigger:** **Shipped 2026-11-17 (branch `fix/fu-192-195`).**
+
+**Notes:** **Done:** `generate()` in [generation.py](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/backend_service/state/generation.py) calls `keep_going.on_user_turn` before its lock, like the streaming path, so a message on `POST /api/chat/generate` stops an active run (`user_message`). That path has no Studio tools, so it passes `studioTools: false` and never starts an armed run. Test: `tests/test_keep_going_integration.py` (non-streaming case).
+
+</details>
+
+<details>
+<summary>FU-193 · Enter in the chat composer sends while a background turn runs — Shipped 2026-11-17 (branch fix/fu-192-195).</summary>
+
+**Status or trigger:** **Shipped 2026-11-17 (branch `fix/fu-192-195`).**
+
+**Notes:** Enter sent while a background turn ran. **Done:** [ChatComposer.tsx](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/src/features/chat/ChatComposer.tsx) has one predicate, `canSendNow` (model loaded, not loading, no turn running: `chatBusySessionId` covers the window's own turn, a detached turn and a Keep going nudge), used by the Send button, Enter and dictation's auto-send; `composerEnterKey` swallows Enter while busy, leaves Shift+Enter (newline) and IME composition alone. Tests: `src/features/chat/__tests__/composerEnter.test.tsx`. Not tested in the window.
+
+</details>
+
+<details>
+<summary>FU-192 · LFM2.5 text-style tool calls are not parsed by the agent loop — Shipped 2026-11-17 (branch fix/fu-192-195).</summary>
+
+**Status or trigger:** **Shipped 2026-11-17 (branch `fix/fu-192-195`).**
+
+**Notes:** LFM2.5 writes tool calls as text, `<|tool_call_start|>[name(args)]<|tool_call_end|>`. **Done:** [agent_lfm_calls.py](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/backend_service/agent_lfm_calls.py) reads that block next to the existing formats, for both agent loops: keyword arguments read with `ast.literal_eval` only (strings, numbers, booleans, None, lists, tuples, dicts, plus JSON `true`/`false`/`null`, which the LFM2.5 template writes back), several calls in one block or several blocks, and the parsed block is removed from the visible reply. A block that does not read cleanly (a name, a call, positional or `**` arguments, a set) or has no end marker is not a call and stays as the reply, as a broken `<tool_call>` body does; an unknown tool name gets the usual tool error. Tests: `tests/test_agent_lfm_calls.py`. Live (Mac, LFM2.5-24B-A2B MLX 4-bit, Studio tools): create and list Storyboard projects ran, but the model wrote `<tool_call>` JSON every time (the MLX worker's tool prompt asks for it), so the native block was not seen live; it is covered by the unit tests only. The streaming loop decodes tool steps whole, so a block split across tokens does not occur there.
+
+</details>
 
 <details>
 <summary>FU-162 · Storyboard end frames: a picker in the shot editor and an end_image action in the agent's storyboard_shot tool — Shipped 2026-11-13 (Mac): the shot editor has an End frame section (choose from file, gallery or a project sti…</summary>

@@ -96,9 +96,30 @@ async function fetchSessionToken(apiBase: string): Promise<string | null> {
   }
 }
 
+// FU-195: a dev page built with VITE_CHAOSENGINE_API_TOKEN keeps that token after the backend restarts with
+// another one, so every request answered 401 until vite was restarted. On a 401 (the forced read) the page
+// asks the backend for its session token once; when that differs, it uses it from then on, like the packaged
+// app does. The packaged app sets no build-time token and never takes this branch.
+let configuredTokenReplaced = false;
+
 export async function resolveApiToken(force = false): Promise<string | null> {
-  if (CONFIGURED_API_TOKEN) {
-    return CONFIGURED_API_TOKEN;
+  if (CONFIGURED_API_TOKEN && !configuredTokenReplaced) {
+    if (!force) {
+      return CONFIGURED_API_TOKEN;
+    }
+    const fresh = await fetchSessionToken(await resolveApiBase());
+    if (!fresh || fresh === CONFIGURED_API_TOKEN) {
+      return CONFIGURED_API_TOKEN;
+    }
+    apiTokenPromise = Promise.resolve(fresh);
+    if (!configuredTokenReplaced) {  // several polls can be refused at once: say it once
+      configuredTokenReplaced = true;
+      console.warn(
+        "The backend's API token changed (it restarted), so this page now uses its session token. "
+          + "Restart vite with the new VITE_CHAOSENGINE_API_TOKEN to silence this.",
+      );
+    }
+    return fresh;
   }
   if (force) {
     apiTokenPromise = null;

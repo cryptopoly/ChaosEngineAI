@@ -69,8 +69,8 @@
     "plugins": "Расширения и плагины",
     "logs": "События среды выполнения",
     "settings": "Каталоги и значения по умолчанию",
-    "voiceStudio": null,
-    "voiceModels": null,
+    "voiceStudio": "Говорите, выбирайте голоса и расшифровывайте речь",
+    "voiceModels": "Модели речи и среда выполнения голоса",
     "voiceLibrary": "Ваши расшифровки и озвучки",
     "chatModels": "Поиск, загрузка и управление языковыми моделями",
     "imageModelsPage": "Поиск, загрузка и управление моделями изображений",
@@ -132,7 +132,7 @@
     "primaryNavAriaLabel": "Основная",
     "sectionMake": "Создание",
     "sectionRun": "Запуск",
-    "menuButton": null
+    "menuButton": "Меню"
   },
   "slashCommands": {
     "menuAriaLabel": "Слэш-команды"
@@ -315,13 +315,13 @@
       "ollamaHint": "Укажите в приложении адрес ниже как хост Ollama / базовый URL — нативные эндпоинты /api работают наряду с /v1."
     },
     "engineBusy": {
-      "step": null,
-      "image": null,
-      "imageBare": null,
-      "video": null,
-      "videoBare": null,
-      "music": null,
-      "musicBare": null
+      "step": "шаг {step} из {total}",
+      "image": "Движок изображений занят: {detail}",
+      "imageBare": "Движок изображений занят",
+      "video": "Движок видео занят: {detail}",
+      "videoBare": "Движок видео занят",
+      "music": "Движок музыки занят: {detail}",
+      "musicBare": "Движок музыки занят"
     }
   },
   "conversionTab": {
@@ -657,7 +657,7 @@
     "clockHint": "Системный использует значение по умолчанию для вашего языка (12 часов для US English, 24 часа в остальных случаях). Выберите вариант, если хотите переопределить.",
     "helpImprove": "Помочь с переводами",
     "openOnGithub": "Открыть {locale} на GitHub →",
-    "communityNote": null
+    "communityNote": "Любительский перевод, выполнен с помощью машины, исправления приветствуются."
   },
   "imageOutputCard": {
     "huggingFace": "Hugging Face",
@@ -846,7 +846,7 @@
       "storage": "Хранилище",
       "providers": "Провайдеры",
       "integrations": "Интеграции",
-      "skills": null,
+      "skills": "Навыки",
       "diagnostics": "Диагностика",
       "accelerators": "Ускорители",
       "disk": "Использование диска"
@@ -941,37 +941,37 @@
       "readTokenLabel": "Токен только для чтения (Claude Code)"
     },
     "skills": {
-      "title": null,
-      "subtitle": null,
-      "safety": null,
-      "pathPlaceholder": null,
-      "pathLabel": null,
-      "pickTitle": null,
-      "noDialog": null,
-      "chooseFolder": null,
-      "chooseZip": null,
-      "import": null,
-      "imported": null,
-      "empty": null,
-      "listLabel": null,
-      "enabled": null,
-      "files": null,
-      "skippedTitle": null,
-      "confirmDelete": null,
-      "cancel": null,
-      "delete": null,
-      "scanNote": null,
+      "title": "Навыки",
+      "subtitle": "Научите модель чата процедуре: папка с SKILL.md и необязательными текстовыми файлами или .zip с такой папкой.",
+      "safety": "Скрипты в навыке никогда не запускаются. Модель только читает текст навыка как справочный материал. Новые навыки выключены: прочитайте описание и список файлов, прежде чем включить навык.",
+      "pathPlaceholder": "/путь/к/папке-навыка или skill.zip",
+      "pathLabel": "Путь к папке навыка или .zip",
+      "pickTitle": "Выберите навык",
+      "noDialog": "Диалог выбора файла здесь недоступен. Введите путь вручную.",
+      "chooseFolder": "Выбрать папку",
+      "chooseZip": "Выбрать .zip",
+      "import": "Импортировать",
+      "imported": "Импортирован {name}: сохранено {files, plural, one {# файл} few {# файла} many {# файлов} other {# файла}}, {skipped, plural, =0 {ничего не пропущено} one {пропущен # элемент} few {пропущено # элемента} many {пропущено # элементов} other {пропущено # элемента}}. Навык выключен, пока вы его не включите.",
+      "empty": "Навыки пока не импортированы.",
+      "listLabel": "Импортированные навыки",
+      "enabled": "Доступно в чате",
+      "files": "{count, plural, one {# файл} few {# файла} many {# файлов} other {# файла}}",
+      "skippedTitle": "Пропущено (не импортировано):",
+      "confirmDelete": "Удалить навык {name} без возможности восстановления",
+      "cancel": "Отмена",
+      "delete": "Удалить",
+      "scanNote": "Каждый импорт проходит проверку безопасности с оценкой «Низкий», «Средний» или «Высокий». Проверка основана на правилах и выполняется на этом компьютере; ничего не покидает его. Это эвристика, а не гарантия.",
       "scan": {
-        "chipTitle": null,
-        "chip": null,
-        "low": null,
-        "medium": null,
-        "high": null,
-        "findings": null,
-        "where": null,
-        "truncated": null,
-        "disclaimer": null,
-        "acknowledge": null
+        "chipTitle": "Проверка безопасности по локальным правилам. Эвристика, а не гарантия.",
+        "chip": "Проверка: {rating}",
+        "low": "Низкий",
+        "medium": "Средний",
+        "high": "Высокий",
+        "findings": "{count, plural, =0 {замечаний нет} one {# замечание} few {# замечания} many {# замечаний} other {# замечания}}",
+        "where": "{file}, строка {line}",
+        "truncated": "Показаны только первые замечания: {count}.",
+        "disclaimer": "Эвристика, а не гарантия: фиксированные правила ищут рискованные формулировки, скрытые символы, ссылки, закодированный текст и вложенные скрипты. Проверка выполняется на этом компьютере, и ничто не покидает его. «Низкий» означает, что ни одно правило не сработало, а не что навык безопасен.",
+        "acknowledge": "Я ознакомился с замечаниями. Проверка оценила этот навык как «Высокий»; отметьте, чтобы можно было его включить."
       }
     },
     "integrations": {
@@ -981,34 +981,34 @@
       "copyButton": "Копировать"
     },
     "cleanup": {
-      "title": null,
-      "subtitle": null,
-      "note": null,
-      "refresh": null,
-      "loading": null,
-      "loadError": null,
-      "groupProjects": null,
-      "groupThreads": null,
-      "groupOutputs": null,
-      "empty": null,
-      "selectAll": null,
-      "projectDetail": null,
-      "threadDetail": null,
-      "outputDetail": null,
-      "kindImage": null,
-      "kindVideo": null,
-      "unknownDate": null,
-      "delete": null,
-      "deleting": null,
-      "selected": null,
-      "deleteError": null,
-      "resultNone": null,
-      "resultDone": null,
-      "resultRefused": null,
-      "confirmTitle": null,
-      "confirmBody": null,
-      "confirmBreakdown": null,
-      "confirmButton": null
+      "title": "Очистка",
+      "subtitle": "Удалите проекты раскадровок, потоки чата и изображения и клипы из галереи, которые вам больше не нужны.",
+      "note": "Ничего не отмечено. Отметьте то, что хотите удалить, затем подтвердите. Удалённое нельзя вернуть.",
+      "refresh": "Обновить список",
+      "loading": "Загрузка списка...",
+      "loadError": "Не удалось загрузить список: {message}",
+      "groupProjects": "Проекты раскадровок",
+      "groupThreads": "Потоки чата",
+      "groupOutputs": "Изображения и клипы галереи",
+      "empty": "Здесь пусто.",
+      "selectAll": "Выбрать все: {group}",
+      "projectDetail": "{shots, plural, one {# кадр} few {# кадра} many {# кадров} other {# кадра}}, изменён {date}",
+      "threadDetail": "{count, plural, one {# сообщение} few {# сообщения} many {# сообщений} other {# сообщения}}, последнее использование: {date}",
+      "outputDetail": "{kind}, {date}",
+      "kindImage": "Изображение",
+      "kindVideo": "Клип",
+      "unknownDate": "неизвестно",
+      "delete": "Удалить отмеченное",
+      "deleting": "Удаление...",
+      "selected": "{count, plural, =0 {Ничего не отмечено} one {# элемент отмечен, {size}} few {# элемента отмечено, {size}} many {# элементов отмечено, {size}} other {# элемента отмечено, {size}}}",
+      "deleteError": "Не удалось удалить: {message}",
+      "resultNone": "Ничего не удалено.",
+      "resultDone": "Удалено: {count, plural, one {# элемент} few {# элемента} many {# элементов} other {# элемента}}, освобождено {size}.",
+      "resultRefused": "{count, plural, one {# элемент не удалён} few {# элемента не удалены} many {# элементов не удалено} other {# элемента не удалены}}:",
+      "confirmTitle": "Удалить {count, plural, one {# элемент} few {# элемента} many {# элементов} other {# элемента}}?",
+      "confirmBody": "С этого компьютера будет удалено {count, plural, one {# элемент} few {# элемента} many {# элементов} other {# элемента}} ({size}). Это действие нельзя отменить.",
+      "confirmBreakdown": "Проекты: {projects}. Потоки чата: {threads}. Файлы галереи: {outputs}.",
+      "confirmButton": "Удалить без возможности восстановления"
     }
   },
   "modelLaunchModal": {
@@ -1378,8 +1378,8 @@
     "storyboard": "Раскадровка скоро появится."
   },
   "llamaCuda": {
-    "description": null,
-    "driverTooOld": null,
+    "description": "Запускает модели чата GGUF на вашем GPU NVIDIA с CUDA {cuda} (llama.cpp {tag}). Загрузка включает среду выполнения CUDA.",
+    "driverTooOld": "Драйвер NVIDIA слишком старый для llama-server с CUDA. Обновите драйвер и установите заново.",
     "inUse": "Используется: модели GGUF работают на видеокарте NVIDIA.",
     "install": "Установить",
     "installedNoDevice": "Установлено, но устройство CUDA не найдено. Проверьте драйвер NVIDIA (nvidia-smi).",
@@ -1405,10 +1405,10 @@
     }
   },
   "accessibilityPanel": {
-    "title": null,
-    "strongBorders": null,
-    "note": null,
-    "on": null,
-    "off": null
+    "title": "Доступность",
+    "strongBorders": "Более заметные границы полей и кнопок",
+    "note": "Обводит поля и кнопки линией с более высокой контрастностью, чтобы их было легче увидеть. Применяется сразу.",
+    "on": "Вкл",
+    "off": "Выкл"
   }
 }

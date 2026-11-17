@@ -13,6 +13,7 @@ from typing import Any, Callable
 
 from backend_service.mcp_bridge.jobs import STORE
 from backend_service.mcp_bridge.tools import ToolError, _obj, _submitted
+from backend_service.mcp_bridge.storyboard_guidance import lanes, parse_size, render_warnings, settings_info
 
 _PID = {"type": "string", "description": "Project id."}
 _REV = {"type": "integer", "minimum": 1, "description": "Project revision you last saw (from get)."}
@@ -21,17 +22,20 @@ _FIELDS = {"type": "object", "description": "Fields to set, as in the project JS
 STORYBOARD_TOOLS: list[dict[str, Any]] = [
     {
         "name": "storyboard_project",
-        "description": "Edit: film projects. create(name, aspect, resolution, fps), list, get, edit(fields, or aspect, "
-        "resolution, fps, upscale), undo, redo, delete, export, import, add_ref/edit_ref/remove_ref (cast, style), plan, brand.",
+        "description": "Edit: film projects. create(name, size or aspect+resolution, fps, image_model, video_model, voice), "
+        "list, get, edit(same, or fields), undo, redo, delete, export, import, add_ref/edit_ref/remove_ref (cast), plan, brand.",
         "inputSchema": _obj({
             "action": {"type": "string", "enum": ["create", "list", "get", "edit", "undo", "redo", "delete", "export", "import",
                                                   "add_ref", "edit_ref", "remove_ref", "plan", "brand"]},
             "kind": {"type": "string", "enum": ["character", "place", "style"],
-                     "description": "add_ref. style: the look of the whole film (pictures, words, palette read from them)."},
+                     "description": "add_ref. character, place: keeps a face or place the same across shots. style: the look of "
+                     "the whole film (pictures, words, palette read from them)."},
             "ref_id": {"type": "string", "maxLength": 64, "description": "edit_ref, remove_ref. Shots use it in fields.referenceImages."},
             "description": {"type": "string", "maxLength": 4000, "description": "add_ref, edit_ref: what it looks like."},
             "images": {"type": "array", "maxItems": 4, "items": {"type": "string", "maxLength": 4096},
-                       "description": "add_ref: up to 4 pictures (upload: handles, output files, or a take's media/ still)."},
+                       "description": "add_ref: up to 4 pictures (upload: handles, output files, or a take's media/ still). Make one "
+                       "hero picture first with generate_image and pass its output path. Shots then list the ref id in "
+                       "fields.referenceImages and leave seed unset."},
             "add_image": {"type": "string", "maxLength": 4096, "description": "edit_ref: one more picture (4 at most)."},
             "remove_image": {"type": "integer", "minimum": 0, "maximum": 3, "description": "edit_ref: position of a picture to drop."},
             "palette": {"type": "array", "maxItems": 8, "items": {"type": "string", "maxLength": 7},
@@ -44,12 +48,24 @@ STORYBOARD_TOOLS: list[dict[str, Any]] = [
             "caption": {"type": "object", "description": "brand: caption look {font (installed family, \"\" for default), colour #RRGGBB, "
                         "position bottom|middle|top}; also the card typeface and colour."},
             "project_id": _PID, "revision": _REV,
-            "name": {"type": "string", "minLength": 1, "maxLength": 200},
-            "fields": _FIELDS,
-            "aspect": {"type": "string", "enum": ["16:9", "9:16", "1:1"], "description": "Aspect ratio."},
+            "name": {"type": "string", "minLength": 1, "maxLength": 200,
+                     "description": "create: the project's name. add_ref (required), edit_ref: the cast entry's name."},
+            "fields": {**_FIELDS, "description": "edit: fields as in the project JSON. defaults{width, height, fps, imageModel, "
+                       "finalImageModel, videoModel, voice, exportPreset, resolution}; export{captionsBurn (draw captions into "
+                       "the picture), captionsSrt, stems, upscale, loudnessLufs}."},
+            "size": {"type": "string", "maxLength": 16, "description": "create, edit: exact film size WIDTHxHEIGHT, e.g. 1024x576 "
+                     "(even, 64 to 4096; sets the aspect too). Multiples of 64 need no resize for LTX clips."},
+            "aspect": {"type": "string", "enum": ["16:9", "9:16", "1:1"], "description": "Aspect ratio (default 16:9)."},
             "shape": {"type": "string", "enum": ["16:9", "9:16", "1:1"], "description": "Old name for aspect."},
-            "resolution": {"type": "string", "enum": ["480p", "720p", "1080p", "1440p", "2160p"], "description": "Default 720p."},
-            "fps": {"type": "integer", "minimum": 24, "maximum": 60, "description": "24, 25, 30, 48, 50 or 60."},
+            "resolution": {"type": "string", "enum": ["480p", "720p", "1080p", "1440p", "2160p"],
+                           "description": "Size from the aspect: 720p (default) at 16:9 is 1280x720. size overrides it."},
+            "fps": {"type": "integer", "minimum": 24, "maximum": 60, "description": "24 (default), 25, 30, 48, 50 or 60."},
+            "image_model": {"type": "string", "maxLength": 200,
+                            "description": "create, edit: image model id for stills (list_models image). Unset: the fastest installed."},
+            "video_model": {"type": "string", "maxLength": 200,
+                            "description": "create, edit: video model id for clips (list_models video). Unset: the best installed fit."},
+            "voice": {"type": "string", "maxLength": 200,
+                      "description": "create, edit: the project's default narration voice id (list_voices)."},
             "upscale": {"type": "string", "enum": ["none", "1440p", "2160p"], "description": "Export upscale; none keeps the project size."},
             "path": {"type": "string", "description": "Path of a .chaosfilm file in a storyboard exports folder (import)."},
             "file": {"type": "string", "description": "Bundle file name an export returned, with its project_id (import)."},
@@ -73,13 +89,16 @@ STORYBOARD_TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "storyboard_audio",
-        "description": "Edit: audio lanes. add(kind, path, fields), edit(clip_id, fields), remove(clip_id). Anchor to a shot "
-        "with fields.anchor {shotId, offset} so the sound follows it.",
+        "description": "Edit: audio lanes. add(kind, path or library_id, fields), edit(clip_id, fields), remove(clip_id). "
+        "A made sound plays only once added. Anchor to a shot with fields.anchor {shotId, offset}.",
         "inputSchema": _obj({
             "action": {"type": "string", "enum": ["add", "edit", "remove"]},
             "project_id": _PID, "revision": _REV, "clip_id": {"type": "string"},
             "kind": {"type": "string", "enum": ["music", "sfx", "voice", "import"]},
-            "path": {"type": "string", "description": "upload: handle, or a file in the app's output folders."},
+            "path": {"type": "string", "description": "add: the output path speak, make_music (tracks[0].path) or make_sound "
+                     "returned, an upload: handle, or a file in the app's output folders."},
+            "library_id": {"type": "string", "maxLength": 40, "description": "add: a Music library track id (make_music tracks[].id) "
+                           "instead of path."},
             "fields": {**_FIELDS, "description": "anchor{shotId,offset} or start, trimIn, trimOut, gainDb, fadeIn, fadeOut, duck, loop, label."},
         }, ["action", "project_id", "revision"]),
     },
@@ -133,9 +152,11 @@ STORYBOARD_TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "storyboard_render",
-        "description": "Make: render the film to MP4 (preview: small and fast). Returns a job id; the output has the file, download, "
-        "warnings and extras (captions, stems). A failed render can be resumed by calling again.",
-        "inputSchema": _obj({"project_id": _PID, "revision": _REV, "preview": {"type": "boolean"},
+        "description": "Make: render the film to MP4 (preview by default). Returns a job id and warnings; the output has the file, "
+        "download, warnings and extras (captions, stems). A failed render resumes when called again.",
+        "inputSchema": _obj({"project_id": _PID, "revision": _REV,
+                             "preview": {"type": "boolean", "description": "true (default) makes a small fast draft, not the finished "
+                                         "film; pass preview: false for the final MP4."},
                              "notify": {"type": "boolean", "description": "Show a system banner on this computer when it ends."}},
                             ["project_id", "revision"]),
     },
@@ -267,13 +288,27 @@ def _added(before: Any, after: Any, attr: str) -> str | None:
     return next((x.id for x in getattr(after, attr) if x.id not in old), None)
 
 
+# Top-level arguments that set a project default, and the project field each one sets.
+_DEFAULT_ARGS = {"aspect": "aspect", "shape": "shape", "resolution": "resolution", "fps": "fps",
+                 "image_model": "imageModel", "video_model": "videoModel", "voice": "voice"}
+
+
 def _format_fields(args: dict[str, Any]) -> dict[str, Any]:
-    """``fields`` with the top-level format arguments (aspect, shape, resolution, fps, upscale) folded in."""
+    """``fields`` with the top-level format and model arguments (size, aspect, shape, resolution, fps, image_model,
+    video_model, voice, upscale) folded in. An exact ``size`` sets width and height, and the aspect when none is given."""
     fields = dict(args.get("fields") or {})
     defaults = dict(fields.get("defaults") or {})
-    for key in ("aspect", "shape", "resolution", "fps"):
+    for key, field in _DEFAULT_ARGS.items():
         if args.get(key) is not None:
-            defaults[key] = args[key]
+            defaults[field] = args[key]
+    if args.get("size") is not None:
+        width, height = parse_size(args["size"])
+        shape = "16:9" if width > height else "9:16" if width < height else "1:1"
+        asked = defaults.get("aspect", defaults.get("shape"))
+        if asked is not None and asked != shape:
+            raise ToolError(f"size {width}x{height} does not fit aspect {asked}; leave aspect out and size sets it.")
+        defaults.pop("shape", None)
+        defaults.update(width=width, height=height, aspect=shape)
     if defaults:
         fields["defaults"] = defaults
     if args.get("upscale") is not None:
@@ -347,7 +382,7 @@ def storyboard_project(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
         created = _run(lambda: store.create(str(args["name"]), fields.get("defaults")))
         if fields.get("export"):
             created = _op({"project_id": created.id, "revision": created.revision}, "edit_project", {"export": fields["export"]})
-        return _summary(created)
+        return _summary(created, settings_info(ctx, created, True))
     if action == "import":
         from pathlib import Path
 
@@ -375,15 +410,25 @@ def storyboard_project(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
     _need(args, "revision")
     rev = int(args["revision"])
     if action == "edit":
-        return _summary(_op(args, "edit_project", _format_fields(args)))
+        fields = _format_fields(args)
+        edited = _op(args, "edit_project", fields)
+        return _summary(edited, settings_info(ctx, edited, False) if {"defaults", "export"} & fields.keys() else None)
     if action == "add_ref":
         _need(args, "kind")
-        op_args = {"kind": args["kind"], "name": str(args.get("name") or ""), "description": str(args.get("description") or ""),
+        name = " ".join(str(args.get("name") or "").split())
+        if not name:
+            raise ToolError("add_ref needs a name (the character, place or style as shots refer to it).")
+        op_args = {"kind": args["kind"], "name": name, "description": str(args.get("description") or ""),
                    "images": [_cast_source(x) for x in args.get("images") or []]}
         before = _run(lambda: store.load(pid))
         after = _op(args, "add_reference", op_args)
         added = next((r.id for r in after.references.all() if before.reference(r.id) is None), None)
-        return _summary(after, {"refId": added})
+        extra: dict[str, Any] = {"refId": added, "next": f"Shots keep it when fields.referenceImages lists '{added}'; "
+                                 "leave seed unset on them."}
+        if not op_args["images"] and args["kind"] != "style":
+            extra["warning"] = (f"This {args['kind']} has no picture, so shots cannot keep the likeness. Make one with "
+                                f"generate_image, then edit_ref add_image with its output path.")
+        return _summary(after, extra)
     if action in ("edit_ref", "remove_ref"):
         _need(args, "ref_id")
         if action == "remove_ref":
@@ -451,14 +496,28 @@ def storyboard_shot(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
     return _summary(_op(args, "import_take", {**shot, ("still" if is_image else "clip"): source}))
 
 
+def _library_audio(item_id: str) -> str:
+    """The audio file of a Music library track, checked like any agent input."""
+    from backend_service import music_library
+
+    path = music_library.audio_path(item_id) if music_library.is_valid_id(item_id) else None
+    if path is None:
+        raise ToolError(f"No Music library track '{item_id[:40]}'. Use the id make_music or music_library list returned.")
+    return _agent_source(str(path))
+
+
 def storyboard_audio(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
     action = args["action"]
     fields = dict(args.get("fields") or {})
     if action == "add":
-        _need(args, "kind", "path")
+        _need(args, "kind")
+        if ("path" in args) == ("library_id" in args):
+            raise ToolError("add needs path (the output path speak, make_music or make_sound returned) or library_id "
+                            "(a Music library track id), one of them.")
+        source = _library_audio(str(args["library_id"])) if "library_id" in args else _agent_source(args["path"])
         before = _run(lambda: _store().load(str(args["project_id"])))
-        after = _op(args, "add_audio", {**fields, "kind": args["kind"], "path": _agent_source(args["path"])})
-        return _summary(after, {"clipId": _added(before, after, "audio")})
+        after = _op(args, "add_audio", {**fields, "kind": args["kind"], "path": source})
+        return _summary(after, {"clipId": _added(before, after, "audio"), "lanes": lanes(after)})
     _need(args, "clip_id")
     if action == "edit":
         return _summary(_op(args, "edit_audio", {**fields, "clipId": args["clip_id"]}))
@@ -602,7 +661,9 @@ def storyboard_render(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
     from backend_service.storyboard.render_adapter import RENDERS
 
     pid = str(args["project_id"])
-    job = _run(lambda: start_render(pid, int(args["revision"]), bool(args.get("preview", True)), bool(args.get("notify", False))))
+    preview = bool(args.get("preview", True))
+    before = render_warnings(_run(lambda: _store().load(pid)), preview)
+    job = _run(lambda: start_render(pid, int(args["revision"]), preview, bool(args.get("notify", False))))
 
     def run() -> tuple[dict[str, Any], list[str]]:
         job.done.wait()
@@ -620,9 +681,10 @@ def storyboard_render(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
         # The file name and the download, not the local path (the job store adds download only for "path").
         output: dict[str, Any] = {"file": job.out_path.name, "preview": job.preview, "projectId": pid,
                                   "download": download_info(job.out_path), "extras": _extras(pid, job.extras)}
-        if job.warnings:
-            output["warnings"] = list(job.warnings)
-        return output, list(job.warnings)
+        warnings = [*before, *job.warnings]
+        if warnings:
+            output["warnings"] = warnings
+        return output, warnings
 
     def progress() -> dict[str, Any]:
         import time
@@ -634,7 +696,8 @@ def storyboard_render(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
             info["etaSeconds"], info["etaBasis"] = round(elapsed / fraction * (1 - fraction)), "steps"
         return info
 
-    return _submitted(STORE.submit("storyboard", f"render {pid}", run, cancel=lambda: RENDERS.cancel(pid), progress=progress))
+    submitted = _submitted(STORE.submit("storyboard", f"render {pid}", run, cancel=lambda: RENDERS.cancel(pid), progress=progress))
+    return {**submitted, "warnings": before} if before else submitted
 
 
 def storyboard_captions(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:

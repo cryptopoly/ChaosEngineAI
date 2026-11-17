@@ -67,6 +67,15 @@ export function appendOptimisticTurn(
 }
 
 
+/**
+ * The thread-name field's text after the thread's title changes from ``previousTitle`` to ``nextTitle`` (the first
+ * message names a new chat): an untouched draft follows the title, one the person is editing stays as typed.
+ */
+export function followTitle(draft: string, previousTitle: string, nextTitle: string): string {
+  return draft === previousTitle ? nextTitle : draft;
+}
+
+
 function isUntitledFirstTurn(session: ChatSession): boolean {
   return (session.title ?? "").trim() === "New chat" && !session.messages.some((m) => m.role === "user");
 }

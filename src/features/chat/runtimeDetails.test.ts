@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { GenerationMetrics } from "../../types";
 import {
+  hasDecodeSpeed,
   resolvedSpeculativeMode,
   runtimeOutcomeWarning,
 } from "./runtimeDetails";
@@ -55,5 +56,14 @@ describe("runtimeOutcomeWarning()", () => {
     });
 
     expect(runtimeOutcomeWarning(metrics)).toBe("TurboQ 3-bit 4+4 requested, ran Native f16 cache");
+  });
+});
+
+describe("hasDecodeSpeed", () => {
+  it("leaves out a speed the turn did not measure (tool-using turns report 0)", () => {
+    expect(hasDecodeSpeed(0)).toBe(false);
+    expect(hasDecodeSpeed(null)).toBe(false);
+    expect(hasDecodeSpeed(undefined)).toBe(false);
+    expect(hasDecodeSpeed(31.4)).toBe(true);
   });
 });

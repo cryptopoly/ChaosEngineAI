@@ -504,7 +504,7 @@
       "readOnlyHint": false,
       "title": "Storyboard project"
     },
-    "description": "Edit: film projects. create(name, aspect, resolution, fps), list, get, edit(fields, or aspect, resolution, fps, upscale), undo, redo, delete, export, import, add_ref/edit_ref/remove_ref (cast, style), plan, brand.",
+    "description": "Edit: film projects. create(name, size or aspect+resolution, fps, image_model, video_model, voice), list, get, edit(same, or fields), undo, redo, delete, export, import, add_ref/edit_ref/remove_ref (cast), plan, brand.",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
@@ -533,7 +533,7 @@
           "type": "string"
         },
         "aspect": {
-          "description": "Aspect ratio.",
+          "description": "Aspect ratio (default 16:9).",
           "enum": [
             "16:9",
             "9:16",
@@ -556,7 +556,7 @@
           "type": "string"
         },
         "fields": {
-          "description": "Fields to set, as in the project JSON.",
+          "description": "edit: fields as in the project JSON. defaults{width, height, fps, imageModel, finalImageModel, videoModel, voice, exportPreset, resolution}; export{captionsBurn (draw captions into the picture), captionsSrt, stems, upscale, loudnessLufs}.",
           "type": "object"
         },
         "file": {
@@ -570,13 +570,18 @@
           "type": "number"
         },
         "fps": {
-          "description": "24, 25, 30, 48, 50 or 60.",
+          "description": "24 (default), 25, 30, 48, 50 or 60.",
           "maximum": 60,
           "minimum": 24,
           "type": "integer"
         },
+        "image_model": {
+          "description": "create, edit: image model id for stills (list_models image). Unset: the fastest installed.",
+          "maxLength": 200,
+          "type": "string"
+        },
         "images": {
-          "description": "add_ref: up to 4 pictures (upload: handles, output files, or a take's media/ still).",
+          "description": "add_ref: up to 4 pictures (upload: handles, output files, or a take's media/ still). Make one hero picture first with generate_image and pass its output path. Shots then list the ref id in fields.referenceImages and leave seed unset.",
           "items": {
             "maxLength": 4096,
             "type": "string"
@@ -585,7 +590,7 @@
           "type": "array"
         },
         "kind": {
-          "description": "add_ref. style: the look of the whole film (pictures, words, palette read from them).",
+          "description": "add_ref. character, place: keeps a face or place the same across shots. style: the look of the whole film (pictures, words, palette read from them).",
           "enum": [
             "character",
             "place",
@@ -608,6 +613,7 @@
           "type": "string"
         },
         "name": {
+          "description": "create: the project's name. add_ref (required), edit_ref: the cast entry's name.",
           "maxLength": 200,
           "minLength": 1,
           "type": "string"
@@ -641,7 +647,7 @@
           "type": "integer"
         },
         "resolution": {
-          "description": "Default 720p.",
+          "description": "Size from the aspect: 720p (default) at 16:9 is 1280x720. size overrides it.",
           "enum": [
             "480p",
             "720p",
@@ -665,6 +671,11 @@
           ],
           "type": "string"
         },
+        "size": {
+          "description": "create, edit: exact film size WIDTHxHEIGHT, e.g. 1024x576 (even, 64 to 4096; sets the aspect too). Multiples of 64 need no resize for LTX clips.",
+          "maxLength": 16,
+          "type": "string"
+        },
         "style_use": {
           "description": "brand: how shots take the style.",
           "enum": [
@@ -681,6 +692,16 @@
             "1440p",
             "2160p"
           ],
+          "type": "string"
+        },
+        "video_model": {
+          "description": "create, edit: video model id for clips (list_models video). Unset: the best installed fit.",
+          "maxLength": 200,
+          "type": "string"
+        },
+        "voice": {
+          "description": "create, edit: the project's default narration voice id (list_voices).",
+          "maxLength": 200,
           "type": "string"
         }
       },
@@ -766,7 +787,7 @@
       "readOnlyHint": false,
       "title": "Storyboard audio"
     },
-    "description": "Edit: audio lanes. add(kind, path, fields), edit(clip_id, fields), remove(clip_id). Anchor to a shot with fields.anchor {shotId, offset} so the sound follows it.",
+    "description": "Edit: audio lanes. add(kind, path or library_id, fields), edit(clip_id, fields), remove(clip_id). A made sound plays only once added. Anchor to a shot with fields.anchor {shotId, offset}.",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
@@ -794,8 +815,13 @@
           ],
           "type": "string"
         },
+        "library_id": {
+          "description": "add: a Music library track id (make_music tracks[].id) instead of path.",
+          "maxLength": 40,
+          "type": "string"
+        },
         "path": {
-          "description": "upload: handle, or a file in the app's output folders.",
+          "description": "add: the output path speak, make_music (tracks[0].path) or make_sound returned, an upload: handle, or a file in the app's output folders.",
           "type": "string"
         },
         "project_id": {
@@ -1033,7 +1059,7 @@
       "readOnlyHint": false,
       "title": "Storyboard render"
     },
-    "description": "Make: render the film to MP4 (preview: small and fast). Returns a job id; the output has the file, download, warnings and extras (captions, stems). A failed render can be resumed by calling again.",
+    "description": "Make: render the film to MP4 (preview by default). Returns a job id and warnings; the output has the file, download, warnings and extras (captions, stems). A failed render resumes when called again.",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
@@ -1042,6 +1068,7 @@
           "type": "boolean"
         },
         "preview": {
+          "description": "true (default) makes a small fast draft, not the finished film; pass preview: false for the final MP4.",
           "type": "boolean"
         },
         "project_id": {

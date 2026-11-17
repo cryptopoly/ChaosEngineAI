@@ -30,6 +30,7 @@ import { sanitizeSpeculativeSelection } from "../components/runtimeSupport";
 import { readKvStrategyOverride } from "../features/chat/kvStrategyOverride";
 import {
   appendOptimisticTurn,
+  followTitle,
   mergeSessionMetadata,
   replaceOptimisticAssistant,
   rollbackOptimisticTurn,
@@ -168,12 +169,19 @@ export function useChat(
     }
   }, [workspace.chatSessions, activeChatId]);
 
-  // Active chat title sync
+  // Active chat title sync: a new chat's draft follows the thread's title when the first message names it, unless the
+  // person has started editing the name.
+  const activeTitle = (workspace.chatSessions.find((session) => session.id === activeChatId) ?? workspace.chatSessions[0])?.title ?? "";
+  const syncedTitle = useRef({ chatId: "", title: "" });
   useEffect(() => {
-    const nextActiveChat = workspace.chatSessions.find((session) => session.id === activeChatId) ?? workspace.chatSessions[0];
-    setThreadTitleDraft(nextActiveChat?.title ?? "");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeChatId]);
+    const previous = syncedTitle.current;
+    syncedTitle.current = { chatId: activeChatId, title: activeTitle };
+    if (previous.chatId !== activeChatId) {
+      setThreadTitleDraft(activeTitle);
+      return;
+    }
+    setThreadTitleDraft((draft) => followTitle(draft, previous.title, activeTitle));
+  }, [activeChatId, activeTitle]);
 
   function sessionModelPayload(session?: ChatSession | null) {
     if (session?.modelRef) {

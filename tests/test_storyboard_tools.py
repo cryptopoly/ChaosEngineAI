@@ -289,7 +289,7 @@ class StoryboardToolTests(unittest.TestCase):
         self.assertEqual(self.get(pid)["references"]["styles"][0]["palette"], ["#112233"])
         outside = png(self.base / "elsewhere" / "p.png")
         text = self.call("storyboard_project", {"action": "add_ref", "project_id": pid, "revision": info["revision"],
-                                                "kind": "style", "images": [str(outside)]}, error=True)
+                                                "kind": "style", "name": "Away", "images": [str(outside)]}, error=True)
         self.assertIn("upload: handle", text)
 
     def test_agent_sets_the_brand_kit(self):

@@ -1633,6 +1633,12 @@ select.text-input {
   border-color: #314361;
 }
 
+/* A user message is plain text: keep its line breaks and blank lines as typed, and wrap long words. */
+.message-bubble .message-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .reasoning-panel {
   margin: 0 0 10px;
   border: 1px solid rgba(255, 255, 255, 0.08);

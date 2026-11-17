@@ -1333,6 +1333,23 @@ class ChaosEngineBackendTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200, response.text)
         state.video_runtime.unload.assert_called_once_with()
 
+    def test_image_activity_prints_the_size_the_picture_was_made_at(self):
+        """FU-204: the activity feed shows the made size, not the requested one."""
+        state = self.client.app.state.chaosengine
+        made = [{"width": 1024, "height": 576}]
+        with mock.patch(
+            "backend_service.routes.images._generate_image_artifacts",
+            return_value=(made, {"activeEngine": "diffusers", "loadedModelRepo": "black-forest-labs/FLUX.1-schnell"}),
+        ):
+            response = self.client.post(
+                "/api/images/generate",
+                json={"modelId": "black-forest-labs/FLUX.1-schnell", "prompt": "A pier", "width": 1000,
+                      "height": 560, "steps": 4, "guidance": 3.5},
+            )
+        self.assertEqual(response.status_code, 200, response.text)
+        latest = next(item for item in state.activity if item["title"] == "Image generated")
+        self.assertIn("1024x576", latest["detail"])
+
     def test_image_memory_gate_runs_after_the_idle_video_model_is_unloaded(self):
         state = self.client.app.state.chaosengine
         unload = mock.Mock(return_value={"loadedModelRepo": None})

@@ -19,6 +19,7 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any, Iterator
 
+from backend_service import agent_lfm_calls
 from backend_service.tools import StructuredToolOutput, ToolRegistry, registry as default_registry
 
 logger = logging.getLogger(__name__)
@@ -125,6 +126,7 @@ def _strip_tool_call_xml(text: str) -> str:
     """
     if not text:
         return text
+    text = agent_lfm_calls.strip_calls(text)  # FU-192: LFM2.5 ``<|tool_call_start|>`` blocks
     bare = _bare_call_span(text)
     if bare is not None:
         return re.sub(r"\n{3,}", "\n\n", text[:bare[1]] + text[bare[2]:]).strip()
@@ -199,6 +201,9 @@ def _parse_tool_calls_from_response(response_text: str) -> list[dict[str, Any]] 
     """
     if not response_text:
         return None
+    lfm = agent_lfm_calls.parse_calls(response_text)  # FU-192: LFM2.5 ``<|tool_call_start|>[name(k=v)]``
+    if lfm:
+        return lfm
     bare = _bare_call_span(response_text)
     if bare is not None:
         # Same shape handling as below, for the call that lost its opener.

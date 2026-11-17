@@ -47,6 +47,7 @@ from backend_service.keep_going.run import (  # noqa: F401 - re-exported for cal
     CONTEXT_FULL_SHARE,
     DEFAULT_CAP,
     DEFAULT_GRANT_HOURS,
+    DEFAULT_STALL_MINUTES,
     FILE_VERSION,
     MAX_CAP,
     MAX_GRANT_HOURS,
@@ -68,6 +69,7 @@ from backend_service.keep_going.run import (  # noqa: F401 - re-exported for cal
     _template,
     clamp_cap,
     clamp_hours,
+    clamp_stall,
     reason_text,
 )
 
@@ -93,6 +95,7 @@ class KeepGoing:
         self.poll_seconds = poll_seconds
         self._lock = threading.RLock()
         self._runs: dict[str, Run] = {}
+        self.wait_marks: dict[str, tuple[str, float]] = {}  # waiting runs: (jobs signature, when it changed)
         self._load()
 
     # -- persistence -------------------------------------------------------
@@ -149,7 +152,10 @@ class KeepGoing:
             grant = run.grant
             dispatching = run.dispatching
             swap_phase = run.swap_phase
+            waiting_on = dict(run.waiting_on) if run.waiting_on and view["state"] in ("running", "waiting") else None
         now = self.clock()
+        if waiting_on is not None:
+            waiting_on["minutes"] = max(0, int((now - float(waiting_on.get("since") or now)) // 60))
         turn = self.hooks.turn_running(session_id)
         pending = self.hooks.pending_plans(session_id) if turn else 0
         if swap_phase:
@@ -184,6 +190,8 @@ class KeepGoing:
             },
             "gpuMode": view["gpu_mode"],
             "swapPhase": swap_phase,
+            "stallMinutes": view["stall_minutes"],
+            "waitingOn": waiting_on,
             "turnRunning": turn,
             "pendingPlans": pending,
             "messageCount": self.hooks.message_count(session_id),
@@ -192,7 +200,8 @@ class KeepGoing:
     # -- user actions ------------------------------------------------------
 
     def start(self, session_id: str, *, cap: Any = DEFAULT_CAP, grant_mode: str = "manual",
-              hours: Any = DEFAULT_GRANT_HOURS, app_request: Any = None, gpu_mode: str = "auto") -> Run:
+              hours: Any = DEFAULT_GRANT_HOURS, app_request: Any = None, gpu_mode: str = "auto",
+              stall_minutes: Any = DEFAULT_STALL_MINUTES) -> Run:
         """Turn Keep going on for a chat. Idempotent: an active run is returned unchanged (a reloaded page or a
         double click never starts a second one)."""
         turn = self.hooks.turn_running(session_id)
@@ -204,7 +213,8 @@ class KeepGoing:
                 return run
             now = self.clock()
             run = Run(id=f"kg-{uuid.uuid4().hex[:10]}", session_id=session_id, cap=clamp_cap(cap),
-                      started_at=now, updated_at=now, gpu_mode=_gpu_mode(gpu_mode))
+                      started_at=now, updated_at=now, gpu_mode=_gpu_mode(gpu_mode),
+                      stall_minutes=clamp_stall(stall_minutes))
             run.grant = _grant(grant_mode, hours, now)
             run.app_request = app_request
             run.seen_jobs = _finished_ids(jobs)
@@ -232,7 +242,7 @@ class KeepGoing:
         return run
 
     def resume(self, session_id: str, *, grant_mode: str = "manual", hours: Any = DEFAULT_GRANT_HOURS,
-               cap: Any = None, app_request: Any = None) -> Run:
+               cap: Any = None, app_request: Any = None, stall_minutes: Any = None) -> Run:
         """Pick a stopped run up again: counters start over, the grant is asked again, and the next nudge
         rebuilds the context from the brief plus the saved project."""
         with self._lock:
@@ -246,6 +256,7 @@ class KeepGoing:
             now = self.clock()
             run.state = "running"
             run.cap = clamp_cap(cap) if cap is not None else run.cap
+            run.stall_minutes = clamp_stall(stall_minutes) if stall_minutes is not None else run.stall_minutes
             run.nudges = 0
             run.no_progress = 0
             run.error_streaks = {}
@@ -265,6 +276,33 @@ class KeepGoing:
         self.hooks.log("info", f"Keep going resumed for chat {session_id} ({run.id}).")
         self._schedule(session_id)
         return run
+
+    # -- stall guard (FU-207) -----------------------------------------------
+
+    def stall_seconds(self, session_id: str) -> float | None:
+        """How long a waited job may show no progress in this chat's turn: None when no run drives the turn."""
+        with self._lock:
+            run = self._runs.get(session_id)
+            if run is None or run.state != "running" or not run.turn_pending:
+                return None
+            return run.stall_minutes * 60.0
+
+    def set_waiting(self, session_id: str, info: dict[str, Any] | None) -> None:
+        """The job a turn of this chat's run waits on now (jobId, label, since), or None once the wait ends."""
+        with self._lock:
+            run = self._runs.get(session_id)
+            if run is not None:
+                run.waiting_on = info
+
+    def job_stalled(self, session_id: str, label: str) -> None:
+        """A waited job made no progress for the run's limit: stop the run and leave the job as it is. The turn
+        ends through the run's abort event."""
+        self.stop(session_id, "job_stalled", label, cancel_turn=False)
+
+    def _waiting_stalled(self, session_id: str) -> bool:
+        from backend_service.keep_going.stall import waiting_stalled
+
+        return waiting_stalled(self, session_id)
 
     def forget(self, session_id: str) -> None:
         """The chat was deleted: stop its run and drop the record."""
@@ -434,9 +472,10 @@ class KeepGoing:
         run.state = "stopped"
         run.stop_code = code
         run.stop_detail = (detail or "")[:600] or None
-        run.stop_reason = reason_text(code, cap=run.cap, detail=detail)
+        run.stop_reason = reason_text(code, cap=run.cap, detail=detail, minutes=run.stall_minutes)
         run.stopped_at = run.updated_at = now
         run.grant = None  # the grant ends the moment the run stops
+        run.waiting_on = None
         run.turn_pending = False
         run.deferred = []  # renders kept for a GPU swap that has not started are dropped with the run
         run.abort.set()
@@ -537,6 +576,8 @@ class KeepGoing:
         for sid in waiting:
             if self._blocked(sid) is None:
                 self._next(sid)
+            else:
+                self._waiting_stalled(sid)
 
     def _watch(self, session_id: str) -> None:
         try:
@@ -548,6 +589,8 @@ class KeepGoing:
                         return
                 if self._blocked(session_id) is None:
                     self._next(session_id)
+                    return
+                if self._waiting_stalled(session_id):
                     return
         finally:
             with self._lock:

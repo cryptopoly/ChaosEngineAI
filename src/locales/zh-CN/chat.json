@@ -594,7 +594,8 @@
       "turn_failed": "对话模型连续两次失败：{detail}",
       "app_restart": "运行期间应用重启了。",
       "studio_off": "工作室工具已关闭。",
-      "gpu_reload_failed": "渲染后无法重新加载对话模型：{detail}"
+      "gpu_reload_failed": "渲染后无法重新加载对话模型：{detail}",
+      "job_stalled": null
     },
     "gpu": {
       "label": "渲染时释放 GPU 内存",
@@ -602,6 +603,7 @@
       "auto": "自动",
       "always": "始终",
       "never": "从不"
-    }
+    },
+    "waitingOn": null
   }
 }

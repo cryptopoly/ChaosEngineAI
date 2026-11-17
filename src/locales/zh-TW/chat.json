@@ -594,7 +594,8 @@
       "turn_failed": "對話模型連續兩次失敗:{detail}",
       "app_restart": "應用程式在執行期間重新啟動。",
       "studio_off": "工作室工具已關閉。",
-      "gpu_reload_failed": "轉譯後無法再次載入對話模型:{detail}"
+      "gpu_reload_failed": "轉譯後無法再次載入對話模型:{detail}",
+      "job_stalled": null
     },
     "gpu": {
       "label": "轉譯時釋放 GPU 記憶體",
@@ -602,6 +603,7 @@
       "auto": "自動",
       "always": "一律",
       "never": "從不"
-    }
+    },
+    "waitingOn": null
   }
 }

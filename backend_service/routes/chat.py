@@ -223,10 +223,14 @@ def decide_studio_plan(request: Request, plan_id: str, body: StudioPlanDecision)
 @router.get("/api/chat/studio/sessions/{session_id}/turn")
 def studio_turn(session_id: str) -> dict[str, Any]:
     """S-J: whether a chat's studio turn is still running and the plan cards it waits on. A reloaded window
-    asks this for a thread whose last message has no reply yet, shows the cards again and waits for the reply."""
+    asks this for a thread whose last message has no reply yet, shows the cards again and waits for the reply.
+    ``partial`` is the reply so far (text, reasoning, tool calls) while it runs (FU-208)."""
     from backend_service.tools.studio_gate import pending_for_session, turn_running
+    from backend_service.tools.studio_live import partial
 
-    return {"sessionId": session_id, "running": turn_running(session_id), "plans": pending_for_session(session_id)}
+    running = turn_running(session_id)
+    return {"sessionId": session_id, "running": running, "plans": pending_for_session(session_id),
+            "partial": partial(session_id) if running else None}
 
 
 def _chat_job(request: Request, job_id: str) -> Any:

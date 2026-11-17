@@ -4,11 +4,20 @@ The Studios and the agent bridge both take a slot here before they touch a model
 jobs never run side by side (six images, five clips and browser renders at once crashed a Mac).
 Slots are granted first come, first served. A waiting job can be cancelled; its caller then gets
 ``GenerationCancelled``.
+
+A slot is re-entrant for the job that holds it (FU-206): code that runs inside a held slot (an agent job's
+runner, a Studio route) and asks for a slot again gets the one it already holds, instead of queueing behind
+itself forever. The holder is known by context (``_HELD``, set where the slot is granted), so a nested call
+needs no flag passed down. Waiting for a different ticket while holding the slot can never be granted, so it
+raises ``HeavyJobDeadlock`` at once. A waiter blocked longer than ``WAIT_WARN_SECONDS`` is logged once and the
+snapshot says whom it waits behind.
 """
 
 from __future__ import annotations
 
+import contextvars
 import itertools
+import logging
 import threading
 import time
 from contextlib import contextmanager
@@ -16,6 +25,15 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Iterator
 
 from backend_service.progress import GenerationCancelled
+
+logger = logging.getLogger(__name__)
+
+# A waiter blocked this long is logged once and marked in the snapshot ("waiting behind ...").
+WAIT_WARN_SECONDS = 10 * 60
+
+
+class HeavyJobDeadlock(RuntimeError):
+    """A job that holds the heavy-job slot waited for another ticket, which could never start."""
 
 
 @dataclass
@@ -28,6 +46,7 @@ class _Ticket:
     started_at: float | None = None
     cancelled: bool = False
     batch: str | None = None  # a storyboard batch id: one Cancel for all of its tickets
+    warned: bool = False  # the long-wait warning was logged
 
     def describe(self) -> dict[str, Any]:
         return {
@@ -39,6 +58,15 @@ class _Ticket:
             "startedAt": self.started_at,
             "batch": self.batch,
         }
+
+
+# The ticket the current context holds (granted by ``wait_turn``), for re-entrant slots. Job threads start with
+# an empty context; ``asyncio.to_thread`` and similar copies carry it, which is the same job.
+_HELD: contextvars.ContextVar[_Ticket | None] = contextvars.ContextVar("heavy_job_held", default=None)
+
+
+def _minutes(seconds: float) -> int:
+    return max(0, int(seconds // 60))
 
 
 class HeavyJobQueue:
@@ -53,9 +81,23 @@ class HeavyJobQueue:
         """Call ``listener(kind)`` when a job starts (warm workers of other kinds then free their memory)."""
         self._start_listeners.append(listener)
 
+    def held(self) -> _Ticket | None:
+        """The running ticket of this queue that the current context holds, or None."""
+        ticket = _HELD.get()
+        with self._cond:
+            return ticket if ticket is not None and self._running is ticket else None
+
     @contextmanager
     def slot(self, kind: str, source: str = "ui", label: str = "", batch: str | None = None) -> Iterator[_Ticket]:
-        """Block until this job is first in line and nothing else runs; release on exit."""
+        """Block until this job is first in line and nothing else runs; release on exit.
+
+        Inside a slot this context already holds, it yields that ticket and leaves it held on exit (the outer
+        holder releases it): one job never waits behind itself.
+        """
+        outer = self.held()
+        if outer is not None:
+            yield outer
+            return
         ticket = self.enqueue(kind, source, label, batch)
         try:
             self.wait_turn(ticket)
@@ -70,23 +112,52 @@ class HeavyJobQueue:
             return ticket
 
     def wait_turn(self, ticket: _Ticket) -> None:
+        holder = _HELD.get()
         with self._cond:
             while True:
                 if ticket.cancelled:
                     raise GenerationCancelled("cancelled while waiting in the queue")
+                if holder is not None and holder is self._running and holder is not ticket:
+                    if ticket in self._waiting:
+                        self._waiting.remove(ticket)
+                        self._cond.notify_all()
+                    raise HeavyJobDeadlock(
+                        f"'{ticket.label or ticket.kind}' was asked for while '{holder.label or holder.kind}' holds the "
+                        "heavy-job slot in the same job; it would wait forever, so it stopped. Report this as a bug."
+                    )
                 if self._running is None and self._waiting and self._waiting[0] is ticket:
                     self._waiting.pop(0)
                     ticket.started_at = time.time()
                     self._running = ticket
                     break
+                self._warn_if_long(ticket)
                 self._cond.wait(timeout=1.0)
+        _HELD.set(ticket)
         for listener in list(self._start_listeners):  # outside the lock: a listener may stop a process
             try:
                 listener(ticket.kind)
             except Exception:  # noqa: BLE001 - a listener never blocks the job
                 pass
 
+    def _warn_if_long(self, ticket: _Ticket) -> None:
+        """Log once that a waiter is blocked past ``WAIT_WARN_SECONDS``. Called with the lock held."""
+        if ticket.warned or time.time() - ticket.queued_at < WAIT_WARN_SECONDS:
+            return
+        ticket.warned = True
+        logger.warning("Heavy job '%s' has waited %d min: %s", ticket.label or ticket.kind,
+                       _minutes(time.time() - ticket.queued_at), self._behind_note() or "nothing runs")
+
+    def _behind_note(self) -> str | None:
+        """'waiting behind <label> (running M min)', or None when nothing runs. Called with the lock held."""
+        running = self._running
+        if running is None:
+            return None
+        since = running.started_at or running.queued_at
+        return f"waiting behind {running.label or running.kind} (running {_minutes(time.time() - since)} min)"
+
     def release(self, ticket: _Ticket) -> None:
+        if _HELD.get() is ticket:
+            _HELD.set(None)
         with self._cond:
             if self._running is ticket:
                 self._running = None
@@ -157,11 +228,16 @@ class HeavyJobQueue:
             return -1
 
     def snapshot(self) -> dict[str, Any]:
+        """The running ticket and the waiters; a waiter blocked past ``WAIT_WARN_SECONDS`` carries ``waitNote``."""
+        now = time.time()
         with self._cond:
-            return {
-                "running": self._running.describe() if self._running else None,
-                "waiting": [t.describe() for t in self._waiting],
-            }
+            waiting = []
+            for ticket in self._waiting:
+                row = ticket.describe()
+                if now - ticket.queued_at >= WAIT_WARN_SECONDS:
+                    row["waitNote"] = self._behind_note()
+                waiting.append(row)
+            return {"running": self._running.describe() if self._running else None, "waiting": waiting}
 
     def queue_state(self, kind: str) -> dict[str, Any]:
         """What the Studio of this kind shows: is its request waiting, where, and on whom."""

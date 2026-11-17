@@ -76,6 +76,9 @@ def render_warnings(project: Any, preview: bool) -> list[str]:
     if not project.audio:
         out.append("The project has no audio lanes, so the film is silent apart from the clips' own sound. Add speak or "
                    "make_music output with storyboard_audio add.")
+    if project.export.captionsBurn and not project.captions:
+        out.append("Captions burn-in is on but the project has no captions: add them with storyboard_captions first "
+                   "(generate from the voice lane, or add), or the film has no captions.")
     if project.captions and not project.export.captionsBurn:
         out.append("The project has captions but captionsBurn is off, so they are not drawn into the picture. Set it with "
                    "storyboard_project edit fields.export.captionsBurn true.")

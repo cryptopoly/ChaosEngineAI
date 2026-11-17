@@ -5,14 +5,22 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { fetchStudioTurn } from "../../api";
-import type { ChatSession, StudioPlan } from "../../types";
+import type { ChatSession, StudioPlan, ToolCallInfo } from "../../types";
 
 export const DETACHED_POLL_MS = 2000;
 const RETRY_MS = 5000;
 
+/** FU-208: the reply so far of a turn this window does not stream (text, reasoning, tool calls). */
+export interface DetachedPartial {
+  text: string;
+  reasoning: string;
+  toolCalls: ToolCallInfo[];
+}
+
 export interface DetachedTurn {
   sessionId: string;
   plans: StudioPlan[];
+  partial?: DetachedPartial;
 }
 
 /** The thread's last message is the user's, with no reply yet: a turn may be running elsewhere. */
@@ -40,7 +48,7 @@ export function watchDetachedTurn(
       if (stopped) return;
       if (next.running) {
         seenRunning = true;
-        onTurn({ sessionId, plans: next.plans ?? [] });
+        onTurn({ sessionId, plans: next.plans ?? [], ...(next.partial ? { partial: next.partial } : {}) });
         timer = setTimeout(() => void poll(), DETACHED_POLL_MS);
         return;
       }

@@ -336,6 +336,13 @@ def _keep_going_defer(state: ChaosEngineState, session_id: str) -> Any:
     return defer
 
 
+def _keep_going_watch(state: ChaosEngineState, session_id: str) -> Any:
+    from backend_service import keep_going
+    from backend_service.keep_going.stall import TurnWatch
+
+    return TurnWatch(keep_going.for_state(state), session_id)
+
+
 def generate_stream(state: ChaosEngineState, request: GenerateRequest, app_request: Any = None, *,
                     keep_going: dict[str, Any] | None = None, background: bool = False):
     """SSE streaming version of generate(). Returns a StreamingResponse.
@@ -565,6 +572,8 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest, app_reque
             is_cancelled=_cancel_requested,
             # FU-191: a Keep going run may keep a heavy render for after the turn, with the chat model unloaded.
             defer=_keep_going_defer(chaosengine, session_id_for_cancel),
+            # FU-207: a wait on a job without progress stops the run (only while a run drives this turn).
+            watch=_keep_going_watch(chaosengine, session_id_for_cancel),
         )
         studio_gate = StudioGate(
             session_id_for_cancel,
@@ -1109,15 +1118,19 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest, app_reque
         import queue
         import threading
 
+        from backend_service.tools import studio_live
         from backend_service.tools.studio_gate import turn_ended, turn_started
 
         frames: queue.Queue[str | None] = queue.Queue()
+        # FU-208: the reply so far, for a window that does not relay this turn (a nudge, a reloaded window).
+        live = studio_live.begin(session_id_for_cancel)
         listening = threading.Event()
         listening.set()
 
         def produce() -> None:
             try:
                 for frame in _sse_stream():
+                    live.feed(frame)
                     if listening.is_set():
                         frames.put(frame)
             except Exception as exc:  # noqa: BLE001 - the relay must always end
@@ -1126,6 +1139,7 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest, app_reque
                 frames.put(f"data: {json.dumps({'error': str(exc)})}\n\n")
             finally:
                 turn_ended(session_id_for_cancel)
+                studio_live.end(session_id_for_cancel, live)
                 frames.put(None)
                 _turn_finished()
 

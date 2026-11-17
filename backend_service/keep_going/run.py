@@ -21,6 +21,9 @@ TURN_FAILURE_LIMIT = 2
 DEFAULT_GRANT_HOURS = 6
 MAX_GRANT_HOURS = 12
 CONTEXT_FULL_SHARE = 0.85
+# FU-207: a job a run waits on that shows no progress for this long stops the run (``job_stalled``).
+DEFAULT_STALL_MINUTES = 20
+MIN_STALL_MINUTES, MAX_STALL_MINUTES = 5, 240
 FILE_VERSION = 1
 
 ACTIVE = ("armed", "running", "waiting")
@@ -47,6 +50,7 @@ STOP_CODES: dict[str, str] = {
     "app_restart": "The app restarted while Keep going ran.",
     "studio_off": "Studio tools were turned off.",
     "gpu_reload_failed": "The chat model could not be loaded again after a render: {detail}",
+    "job_stalled": "A job has made no progress for {minutes} minutes: {detail}",
 }
 # Stops a Resume can pick up from (the others need a new brief or a new chat).
 RESUMABLE = frozenset(STOP_CODES) - {"complete", "complete_no_project", "user_message", "context_full", "studio_off"}
@@ -121,11 +125,13 @@ class Run:
     deferred: list[tuple[str, dict[str, Any]]] = field(default_factory=list)  # renders kept for the GPU swap
     swap_phase: str | None = None  # unloading | rendering | reloading while a GPU swap runs
     stall: list[str] = field(default_factory=list)  # why each turn without progress made none (FU-198)
+    stall_minutes: int = DEFAULT_STALL_MINUTES  # FU-207: no progress on a waited job this long stops the run
+    waiting_on: dict[str, Any] | None = None  # the job a turn or the run waits on: jobId, label, since
 
     _SAVED = ("id", "session_id", "state", "cap", "goal", "project_id", "nudges", "started_at", "updated_at",
               "stop_code", "stop_reason", "stop_detail", "stopped_at", "template", "snapshot", "no_progress",
               "error_streaks", "turn_failures", "last_error", "seen_jobs", "resumes", "gpu_mode",
-              "adapter", "last_reply")
+              "adapter", "last_reply", "stall_minutes")
 
     def record(self) -> dict[str, Any]:
         return {k: copy.deepcopy(getattr(self, k)) for k in self._SAVED}
@@ -135,6 +141,7 @@ class Run:
         known = {k: data[k] for k in cls._SAVED if k in data}
         run = cls(**known)
         run.cap = clamp_cap(run.cap)
+        run.stall_minutes = clamp_stall(run.stall_minutes)
         return run
 
 
@@ -146,6 +153,14 @@ def clamp_cap(value: Any) -> int:
     return max(MIN_CAP, min(MAX_CAP, number))
 
 
+def clamp_stall(value: Any) -> int:
+    try:
+        number = int(value)
+    except (TypeError, ValueError):
+        return DEFAULT_STALL_MINUTES
+    return max(MIN_STALL_MINUTES, min(MAX_STALL_MINUTES, number))
+
+
 def clamp_hours(value: Any) -> float:
     try:
         number = float(value)
@@ -154,12 +169,13 @@ def clamp_hours(value: Any) -> float:
     return max(0.25, min(float(MAX_GRANT_HOURS), number))
 
 
-def reason_text(code: str, *, cap: int = DEFAULT_CAP, detail: str | None = None) -> str:
+def reason_text(code: str, *, cap: int = DEFAULT_CAP, detail: str | None = None,
+                minutes: int = DEFAULT_STALL_MINUTES) -> str:
     template = STOP_CODES.get(code, code)
     limit = {"no_progress": NO_PROGRESS_LIMIT, "repeated_error": REPEATED_ERROR_LIMIT,
              "turn_failed": TURN_FAILURE_LIMIT, "calls_unreadable": NO_PROGRESS_LIMIT,
              "call_refused": NO_PROGRESS_LIMIT}.get(code, 0)
-    return template.format(cap=cap, limit=limit, detail=(detail or "").strip() or "no details")
+    return template.format(cap=cap, limit=limit, minutes=minutes, detail=(detail or "").strip() or "no details")
 
 
 def _finished_ids(jobs: list[Any]) -> list[str]:

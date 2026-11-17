@@ -299,6 +299,8 @@ class JobStore:
                 "estimatedSeconds": round(estimate) if estimate else None,
                 "estimatedStartInSeconds": None if running or wait is None else round(wait),
             }
+            if row.get("waitNote"):
+                entry["waitNote"] = row["waitNote"]  # blocked a long time: whom it waits behind (FU-206)
             if running and estimate:
                 entry["estimatedRemainingSeconds"] = max(0, round(estimate - (now - (row.get("startedAt") or now))))
             entries.append(entry)

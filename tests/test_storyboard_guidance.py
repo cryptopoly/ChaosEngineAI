@@ -138,6 +138,68 @@ class StoryboardGuidanceTests(unittest.TestCase):
                                                                                 "library_id": "nope"}, error=True))
         self.assertIn("make_music", _schema("storyboard_audio")["path"]["description"])
 
+    # FU-209
+    def _rendered_project(self):
+        info = self.project(shots=1)
+        pid = info["projectId"]
+        info = self.call("storyboard_shot", {"action": "import", "project_id": pid, "revision": info["revision"],
+                                             "shot_id": info["shots"][0]["id"], "path": str(fake_mp4(self.src / "c.mp4"))})
+        return pid, info
+
+    def test_render_in_chat_carries_the_exact_path_and_the_bridge_does_not(self):
+        from backend_service.mcp_bridge.jobs import CURRENT_OWNER, STORE
+        from backend_service.mcp_bridge.storyboard_tools import storyboard_render
+
+        pid, info = self._rendered_project()
+
+        def fake_render(plan, progress, cancel_event):
+            Path(plan["out_path"]).write_bytes(b"film")
+
+        with mock.patch("backend_service.storyboard.render_adapter.render", fake_render):
+            token = CURRENT_OWNER.set("chat")
+            try:
+                submitted = storyboard_render(None, {"project_id": pid, "revision": info["revision"], "preview": False})
+            finally:
+                CURRENT_OWNER.reset(token)
+            job = STORE.get(submitted["jobId"])
+            self.assertTrue(job.done.wait(10))
+        path = Path(job.output["path"])
+        self.assertTrue(path.is_absolute())
+        self.assertEqual(path.parent, (self.base / "storyboards" / pid / "exports").resolve())
+        self.assertEqual(job.notes[0], f"The film is saved at {path}. Tell the user this exact path.")
+        with mock.patch("backend_service.storyboard.render_adapter.render", fake_render):
+            job = self.call("storyboard_render", {"project_id": pid, "revision": info["revision"], "preview": False})
+            done = self.call("wait_for_job", {"job_id": job["jobId"], "timeout_seconds": 10})
+        self.assertNotIn("path", done["output"])
+        self.assertFalse(any("exact path" in n for n in done["notes"]))
+
+    def test_render_warns_when_burn_in_is_on_but_there_are_no_captions(self):
+        pid, info = self._rendered_project()
+        info = self.call("storyboard_project", {"action": "edit", "project_id": pid, "revision": info["revision"],
+                                                "fields": {"export": {"captionsBurn": True}}})
+
+        def fake_render(plan, progress, cancel_event):
+            Path(plan["out_path"]).write_bytes(b"film")
+
+        with mock.patch("backend_service.storyboard.render_adapter.render", fake_render):
+            job = self.call("storyboard_render", {"project_id": pid, "revision": info["revision"]})
+            self.call("wait_for_job", {"job_id": job["jobId"], "timeout_seconds": 10})
+        self.assertIn("captions burn-in is on but the project has no captions: add them with storyboard_captions first",
+                      " ".join(job["warnings"]).lower())
+
+    def test_captions_generate_with_shot_ids_names_the_audio_clips(self):
+        info = self.project(shots=2)
+        pid = info["projectId"]
+        info = self.call("storyboard_audio", {"action": "add", "project_id": pid, "revision": info["revision"],
+                                              "kind": "voice", "path": str(fake_wav(self.src / "v.wav"))})
+        voice = self.get(pid)["audio"][0]["id"]
+        shots = [s["id"] for s in self.get(pid)["shots"]]
+        error = self.call("storyboard_captions", {"action": "generate", "project_id": pid, "revision": info["revision"],
+                                                  "clip_ids": shots}, error=True)
+        self.assertIn(f"Unknown audio clip '{shots[0]}'", error)
+        self.assertIn(f"voice: {voice}", error)
+        self.assertIn("Omit clip_ids to caption every voice lane.", error)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -166,6 +166,7 @@ export function stopReason(t: T, run: KeepGoingRun): string {
   if (!(KEEP_GOING_STOP_CODES as readonly string[]).includes(code)) return run.stopReason ?? "";
   return t(`keepGoing.stop.${code}`, {
     cap: run.cap,
+    minutes: run.stallMinutes ?? 20,
     detail: run.stopDetail ?? "",
     defaultValue: run.stopReason ?? code,
   });
@@ -217,6 +218,15 @@ export function ActiveChip({ run, busy, onStop }: { run: KeepGoingRun; busy: boo
           <span>{t("keepGoing.counter", { n: run.nudges, cap: run.cap, defaultValue: "nudge {n} of {cap}" })}</span>
         )}
         <span>{phaseText(t, run)}</span>
+        {run.waitingOn ? (
+          <span className="keep-going-chip__waiting">
+            {t("keepGoing.waitingOn", {
+              label: run.waitingOn.label,
+              minutes: run.waitingOn.minutes,
+              defaultValue: "waiting on {label} ({minutes} min)",
+            })}
+          </span>
+        ) : null}
         {grant ? <span className="keep-going-chip__grant">{grant}</span> : null}
       </span>
       <button type="button" className="keep-going-chip__button keep-going-chip__stop" onClick={onStop} disabled={busy}>

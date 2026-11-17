@@ -22,12 +22,14 @@ class KeepGoingStart(BaseModel):
     grant: Literal["auto", "manual"] = "manual"
     hours: float = Field(6, ge=0.25, le=12)
     gpuMode: Literal["auto", "always", "never"] = "auto"
+    stallMinutes: int = Field(20, ge=5, le=240)  # FU-207: no progress on a waited job this long stops the run
 
 
 class KeepGoingResume(BaseModel):
     grant: Literal["auto", "manual"] = "manual"
     hours: float = Field(6, ge=0.25, le=12)
     cap: int | None = Field(None, ge=1, le=100)
+    stallMinutes: int | None = Field(None, ge=5, le=240)
 
 
 def _controller(request: Request) -> Any:
@@ -61,7 +63,7 @@ def keep_going_start(request: Request, session_id: str, body: KeepGoingStart) ->
         raise HTTPException(status_code=404, detail=localized_detail(request, "Session not found."))
     controller = _controller(request)
     controller.start(session_id, cap=body.cap, grant_mode=body.grant, hours=body.hours, app_request=request,
-                     gpu_mode=body.gpuMode)
+                     gpu_mode=body.gpuMode, stall_minutes=body.stallMinutes)
     return {"run": controller.status(session_id)}
 
 
@@ -84,7 +86,8 @@ def keep_going_studio_off(request: Request, session_id: str) -> dict[str, Any]:
 def keep_going_resume(request: Request, session_id: str, body: KeepGoingResume) -> dict[str, Any]:
     controller = _controller(request)
     try:
-        controller.resume(session_id, grant_mode=body.grant, hours=body.hours, cap=body.cap, app_request=request)
+        controller.resume(session_id, grant_mode=body.grant, hours=body.hours, cap=body.cap, app_request=request,
+                          stall_minutes=body.stallMinutes)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=localized_detail(request, str(exc))) from exc
     except ValueError as exc:

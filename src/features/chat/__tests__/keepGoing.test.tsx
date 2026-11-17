@@ -173,6 +173,19 @@ describe("Keep going in the composer", () => {
     expect(chip).toContain("chat model unloaded while a render runs");
   });
 
+  it("FU-207: a stalled job's stop reason and the chip's waiting line", async () => {
+    const i18n = await initI18n({ forceLocale: "en" });
+    const tr = i18n.getFixedT("en", "chat") as unknown as typeof t;
+    expect(stopReason(tr, run({ state: "stopped", stopCode: "job_stalled", stallMinutes: 20, stopDetail: "captions 7271" }))).toBe(
+      "a job has made no progress for 20 minutes: captions 7271",
+    );
+    const chip = renderToStaticMarkup(
+      <ActiveChip run={run({ waitingOn: { jobId: "job-36", label: "render p1", since: 1, minutes: 12 } })} busy={false} onStop={() => undefined} />,
+    );
+    expect(chip).toContain("waiting on render p1 (12 min)");
+    expect(renderToStaticMarkup(<ActiveChip run={run()} busy={false} onStop={() => undefined} />)).not.toContain("waiting on");
+  });
+
   it("the resume panel keeps the run's cap", () => {
     const html = renderToStaticMarkup(<KeepGoingPanel mode="resume" run={run({ cap: 40 })} busy={false} onCancel={() => undefined} onSubmit={async () => undefined} />);
     expect(html).toContain("Resume Keep going");

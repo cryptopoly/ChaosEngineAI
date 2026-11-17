@@ -594,7 +594,8 @@
       "turn_failed": "the chat model failed twice in a row: {detail}",
       "app_restart": "the app restarted while it ran.",
       "studio_off": "Studio tools were turned off.",
-      "gpu_reload_failed": "the chat model could not be loaded again after a render: {detail}"
+      "gpu_reload_failed": "the chat model could not be loaded again after a render: {detail}",
+      "job_stalled": "a job has made no progress for {minutes} minutes: {detail}"
     },
     "gpu": {
       "label": "Free GPU memory while rendering",
@@ -602,6 +603,7 @@
       "auto": "Auto",
       "always": "Always",
       "never": "Never"
-    }
+    },
+    "waitingOn": "waiting on {label} ({minutes} min)"
   }
 }

@@ -1,13 +1,49 @@
 ---
 title: Closed follow-ups
 order: 3
-summary: 94 shipped, obsoleted or dropped rows, newest first.
+summary: 98 shipped, obsoleted or dropped rows, newest first.
 ---
 
 # Closed follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Shipped, obsoleted or dropped rows (struck through, or marked shipped with no open points left). Kept as the history of why things are the way they are.
 
+
+<details>
+<summary>FU-209 · Storyboard tool results misled the model — Shipped 2026-11-17 (branch fix/jobs-stall).</summary>
+
+**Status or trigger:** **Shipped 2026-11-17 (branch `fix/jobs-stall`).**
+
+**Notes:** (a) The model invented the film's path. **Done:** in Chat, the `storyboard_render` job output carries the absolute `path` and its first note says "Tell the user this exact path". External agents still get the file name and `download` only: every Storyboard bridge answer avoids local paths by design, so that rule was kept. (b) **Done:** the render warns "Captions burn-in is on but the project has no captions: add them with storyboard_captions first" ([storyboard_guidance.py](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/backend_service/mcp_bridge/storyboard_guidance.py)). (c) **Done:** `storyboard_captions generate` checks `clip_ids` before it starts a job; an unknown id (the model sent shot ids) fails with the project's audio clip ids, the voice ones, and "Omit clip_ids to caption every voice lane." ([captions.py](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/backend_service/storyboard/captions.py)). AGENTS.md updated; tool descriptions unchanged (golden as before). **Tests:** three in [test_storyboard_guidance.py](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/tests/test_storyboard_guidance.py).
+
+</details>
+
+<details>
+<summary>FU-208 · A Keep going nudge turn was invisible in the open chat — Shipped 2026-11-17 (branch fix/jobs-stall).</summary>
+
+**Status or trigger:** **Shipped 2026-11-17 (branch `fix/jobs-stall`).**
+
+**Notes:** The first turn streamed its tool calls; a nudge (no response stream) showed only "This reply is still being made" for 76 minutes. **Done** ([studio_live.py](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/backend_service/tools/studio_live.py), [generation.py](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/backend_service/state/generation.py), [DetachedTurnBubble.tsx](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/src/features/chat/DetachedTurnBubble.tsx)): each running Studio turn folds its own SSE frames (tokens, reasoning, tool call start, progress, result) into a partial reply; `GET /api/chat/studio/sessions/{id}/turn` returns it as `partial`; the detached bubble draws it with the same text and tool cards as a streamed turn (no second protocol: the existing 2 s poll). **Tests:** [test_chat_studio_live.py](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/tests/test_chat_studio_live.py) (frame folding, JSON-text arguments, lifetime, the route shape through the real chat path), planCardReload.test.tsx. Checked in a browser tab at 1280 px against a scripted backend (no model): a background turn's tool cards appear and the wait card's elapsed time moves. Not covered: a reply's text tokens in a live model turn (the scripted model sends tool calls only).
+
+</details>
+
+<details>
+<summary>FU-207 · Keep going waited 76 minutes on a hung job — Shipped 2026-11-17 (branch fix/jobs-stall).</summary>
+
+**Status or trigger:** **Shipped 2026-11-17 (branch `fix/jobs-stall`).**
+
+**Notes:** `wait_for_job` blocks up to 30 minutes and repeat waits cost no step, so the hung captions job (FU-206) kept one Keep going turn alive with no stop. **Done** ([stall.py](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/backend_service/keep_going/stall.py), [controller.py](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/backend_service/keep_going/controller.py), [studio.py](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/backend_service/tools/studio.py)): while a run drives the turn, the wait reads the job every 5 s; progress is a change of state, queue place, phase or step, output, or another chat job finishing (elapsed and ETA do not count). After the run's `stall_minutes` (default 20, 5 to 240, `stallMinutes` on start and resume) without progress the run stops with `job_stalled` ("A job has made no progress for N minutes: <label>"), the wait returns that reason to the model and the job is left as it is; Resume works. A run waiting between turns follows the same rule. The chip shows "waiting on <label> (M min)" (`waitingOn` in the run status). New strings in English, `null` elsewhere. **Tests:** [test_keep_going_stall.py](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/tests/test_keep_going_stall.py) (never progresses, slow progress, finishes, elapsed is not progress, limit from the run, resume, waiting run, the Chat wait), keepGoing.test.tsx. Not covered: no UI control for the minutes (API only); no live model run.
+
+</details>
+
+<details>
+<summary>FU-206 · Captions job deadlocked the heavy-job queue — Shipped 2026-11-17 (branch fix/jobs-stall).</summary>
+
+**Status or trigger:** **Shipped 2026-11-17 (branch `fix/jobs-stall`).**
+
+**Notes:** Rehearsal 2: an agent `storyboard_captions generate` took the heavy-job slot in `STORE.submit`, then `captions.transcribe_with_studio` asked for another slot, so job-36 waited behind itself (still "running" at 4346 s) and every later heavy job queued behind it until restart. `storyboard_song` lyric timing by speech had the same path. **Done** ([job_queue.py](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/backend_service/helpers/job_queue.py)): a slot is re-entrant for the context that holds it (a context variable set where the slot is granted, so nothing is passed down); waiting for another ticket while holding the slot raises `HeavyJobDeadlock` at once; a waiter blocked over 10 minutes is logged once and the queue snapshot and `system_status` carry `waitNote` ("waiting behind <label> (running M min)"). Other nested acquires checked: the music, speech and cloned-speech agent jobs call the `_locked` / slot-free code; storyboard batches and renders take no ticket in `submit`. **Tests** ([test_job_queue_reentrant.py](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/tests/test_job_queue_reentrant.py)): the deadlock through the real submit path with a stub transcriber (fails before the fix), nested same-job, different-job fail-fast, another thread still queues, release on exception and on cancel, the watchdog. Not covered: a holder that hands work to another thread and waits for it (that thread queues normally, so it would still wait); no live model run.
+
+</details>
 
 <details>
 <summary>FU-205 · Chat tool loop drops a broken call beside one that reads — Shipped 2026-11-17 (branch fix/mixed-calls).</summary>

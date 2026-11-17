@@ -594,7 +594,8 @@
       "turn_failed": "채팅 모델이 2번 연속 실패했습니다: {detail}",
       "app_restart": "실행 중에 앱이 다시 시작되었습니다.",
       "studio_off": "스튜디오 도구가 꺼졌습니다.",
-      "gpu_reload_failed": "렌더링 후 채팅 모델을 다시 로드할 수 없습니다: {detail}"
+      "gpu_reload_failed": "렌더링 후 채팅 모델을 다시 로드할 수 없습니다: {detail}",
+      "job_stalled": null
     },
     "gpu": {
       "label": "렌더링 중 GPU 메모리 비우기",
@@ -602,6 +603,7 @@
       "auto": "자동",
       "always": "항상",
       "never": "안 함"
-    }
+    },
+    "waitingOn": null
   }
 }

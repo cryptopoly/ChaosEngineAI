@@ -54,6 +54,19 @@ def on_turn_finished(state: Any, outcome: TurnOutcome) -> None:
             pass
 
 
+def on_tool_result(state: Any, session_id: str | None, call: dict[str, Any]) -> None:
+    """A Studio tool answered in a chat turn: a running run binds the project it names (FU-197)."""
+    if not session_id:
+        return
+    try:
+        for_state(state).on_tool_result(session_id, call)
+    except Exception as exc:  # noqa: BLE001 - never breaks the chat turn
+        try:
+            state.add_log("chat", "warning", f"Keep going could not read a tool result: {exc}")
+        except Exception:  # noqa: BLE001
+            pass
+
+
 def defer_render(state: Any, session_id: str, name: str, args: dict[str, Any]) -> Any:
     """An approved render in a run's turn: kept for after the turn (the answer for the model) or None to run now."""
     from backend_service.keep_going.gpu_swap import DEFERRED_TEXT
@@ -74,4 +87,4 @@ def on_chat_cancel(state: Any, session_id: str) -> None:
     for_state(state).on_chat_cancel(session_id)
 
 
-__all__ = ["KeepGoing", "TurnOutcome", "for_state", "on_chat_cancel", "on_turn_finished", "on_user_turn"]
+__all__ = ["KeepGoing", "TurnOutcome", "for_state", "on_chat_cancel", "on_tool_result", "on_turn_finished", "on_user_turn"]

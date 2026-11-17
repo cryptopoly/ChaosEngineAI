@@ -27,14 +27,19 @@ from pathlib import Path
 from typing import Any, Callable
 
 from backend_service.keep_going.nudge import (
+    UNREADABLE_PREFIX,
     TurnOutcome,
     claims_done,
     error_signature,
     finished_job_lines,
+    last_tool_error,
     nudge_text,
     plan_outcome,
     project_id_from,
+    stall_cause,
+    stall_stop,
     unfixed_errors,
+    unreadable,
 )
 from backend_service.keep_going.adapters import View, adapter_for
 from backend_service.keep_going.run import (  # noqa: F401 - re-exported for callers and tests
@@ -244,6 +249,7 @@ class KeepGoing:
             run.nudges = 0
             run.no_progress = 0
             run.error_streaks = {}
+            run.stall = []
             run.turn_failures = 0
             run.stop_code = run.stop_reason = run.stop_detail = None
             run.stopped_at = None
@@ -297,6 +303,21 @@ class KeepGoing:
             self._stop_locked(run, "user_message", None)
         return None
 
+    def on_tool_result(self, session_id: str, call: dict[str, Any]) -> None:
+        """A tool of a run's turn answered: bind the run to the project it names as soon as one shows up, so the
+        first turn's project is known even when that turn fails or is stopped (FU-197)."""
+        with self._lock:
+            run = self._runs.get(session_id)
+            if run is None or run.state not in ("running", "waiting") or run.project_id:
+                return
+        found = project_id_from(TurnOutcome(session_id=session_id, assistant={"toolCalls": [call]}))
+        if not found:
+            return
+        with self._lock:
+            if run.project_id is None and run.state in ("running", "waiting"):
+                run.project_id = found
+                self._save()
+
     def on_chat_cancel(self, session_id: str) -> None:
         """Stop in the chat: the run ends too (the turn is already being cancelled)."""
         self.stop(session_id, "user_stopped", cancel_turn=False)
@@ -314,9 +335,9 @@ class KeepGoing:
             run.turn_pending = False
             project_id = project_id_from(outcome) or run.project_id
         # Read the work outside the lock (disk); decide inside it.
-        view = self.adapters(run.adapter).read(goal=run.goal, project_id=project_id, outcome=outcome,
-                                                last_reply=outcome.text)
         jobs = self.hooks.chat_jobs()
+        view = self.adapters(run.adapter).read(goal=run.goal, project_id=project_id, outcome=outcome,
+                                                last_reply=outcome.text, jobs=jobs, since=run.started_at)
         with self._lock:
             if run.state != "running":
                 return
@@ -360,12 +381,19 @@ class KeepGoing:
         counts: dict[str, int] = {}
         for tool, text in errors:
             sig = error_signature(tool, text)
-            counts[sig] = counts.get(sig, 0) + 1
+            # A call that could not be read is reported up to twice inside one turn: count it once per turn.
+            counts[sig] = 1 if text.startswith(UNREADABLE_PREFIX) else counts.get(sig, 0) + 1
         run.error_streaks = {sig: run.error_streaks.get(sig, 0) + n for sig, n in counts.items()}
         for sig, streak in run.error_streaks.items():
             if streak >= REPEATED_ERROR_LIMIT:
-                return "repeated_error", sig.split(":", 1)[1] if ":" in sig else sig
-        run.last_error = list(errors[-1]) if errors else None
+                tool, _sep, text = sig.partition(":")
+                if text.startswith(UNREADABLE_PREFIX):  # FU-198: say why nothing ran
+                    return "calls_unreadable", f"{tool}: {text}"
+                return "repeated_error", text if _sep else sig
+        # Only the turn's last tool result is repeated in the nudge: an earlier error the model moved past is stale.
+        last = last_tool_error(outcome)
+        bad = unreadable(outcome)
+        run.last_error = list(last) if last else None
         if run.deferred:
             run.nudge_why = "swap"  # renders kept for after the turn: they are the progress; they run next
             return None
@@ -374,22 +402,27 @@ class KeepGoing:
         if run.nudges > 0 and run.snapshot is not None:
             if snapshot == run.snapshot:
                 run.no_progress += 1
+                run.stall.append(stall_cause(outcome, bad, last))
                 if run.no_progress >= NO_PROGRESS_LIMIT:
-                    return "no_progress", None
+                    return stall_stop(run.stall[-NO_PROGRESS_LIMIT:], NO_PROGRESS_LIMIT, bad, last)
             else:
                 run.no_progress = 0
+                run.stall = []
         run.snapshot = snapshot
         running_job = any(getattr(j, "state", "") in ("queued", "running") for j in jobs)
-        if view.complete and not running_job and not errors:
+        if view.complete and not running_job and last is None and bad is None:
             return view.complete, None
         if run.nudges >= run.cap:
             return "cap_reached", None
         if run.grant is not None and run.grant.mode == "auto" and not run.grant.live(self.clock()):
             return "approval_expired", None
-        if errors:
-            run.nudge_why = "error"
-        elif outcome.max_iterations:
+        if outcome.max_iterations:
             run.nudge_why = "cap"
+        elif bad is not None:
+            run.nudge_why = "unreadable"
+            run.last_error = [bad[0] or "", bad[1]]
+        elif last is not None:
+            run.nudge_why = "error"
         elif claims_done(outcome.text):
             run.nudge_why = "claimed"
         else:
@@ -541,9 +574,9 @@ class KeepGoing:
             seen = set(run.seen_jobs)
         # Gather outside the lock: the project on disk, finished jobs, whether the brief is still in the history.
         try:
-            view = self.adapters(run.adapter).read(goal=goal, project_id=project_id, outcome=None,
-                                                    last_reply=run.last_reply)
             jobs = self.hooks.chat_jobs()
+            view = self.adapters(run.adapter).read(goal=goal, project_id=project_id, outcome=None,
+                                                    last_reply=run.last_reply, jobs=jobs, since=run.started_at)
             include_goal = why == "resume" or not self.hooks.goal_in_history(run)
         except Exception as exc:  # noqa: BLE001 - a failed read must not leave the run stuck in "dispatching"
             with self._lock:
@@ -562,7 +595,8 @@ class KeepGoing:
                 run.snapshot = {"work": view.signature, "jobs": _finished_ids(jobs)}
             prompt = nudge_text(number=number, cap=run.cap, goal=goal, include_goal=include_goal,
                                 summary=view.summary, next_step=view.next_step,
-                                last_error=last_error, finished_jobs=finished_job_lines(finished), why=why)
+                                last_error=last_error, finished_jobs=finished_job_lines(finished), why=why,
+                                assets=view.assets)
             run.turn_pending = True
             run.abort = threading.Event()
             auto_until = run.grant.until if run.grant and run.grant.live(self.clock()) else None

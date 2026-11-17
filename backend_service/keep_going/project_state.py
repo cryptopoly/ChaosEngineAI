@@ -16,6 +16,8 @@ from typing import Any
 # Words in the brief that ask for a voice lane or captions. Music is always expected (an ad film has a bed).
 _VOICE_WORDS = re.compile(r"\b(voice|voiceover|voice-over|narrat\w*|speech|spoken|speak\w*|dialogue|presenter)\b", re.I)
 _CAPTION_WORDS = re.compile(r"\b(caption\w*|subtitle\w*)\b", re.I)
+# A brief that asks for a subtitle file accepts captions written as an .srt instead of drawn into the picture.
+_SRT_WORDS = re.compile(r"\b(srt|subtitle file|caption file)\b", re.I)
 
 
 def wants_voice(goal: str) -> bool:
@@ -45,6 +47,17 @@ class FilmState:
     render_finished_at: float | None = None
     batch_running: bool = False
     batch_paused: str | None = None  # id of a paused batch a resume would finish
+    captions_burn: bool = False  # export setting: captions drawn into the picture
+    captions_srt: bool = False  # export setting: captions written as an .srt beside the film
+    hashes: set[str] = field(default_factory=set)  # sha256 of every still, clip and audio file in the project
+    made: set[str] = field(default_factory=set)  # audio this run's chat made ("music", "voice"); set by the adapter
+
+    def captions_ok(self, goal: str) -> bool:
+        """Captions that exist show in the film: burned in, or an .srt when the brief asks for a file."""
+        return self.captions == 0 or self.captions_burn or (self.captions_srt and bool(_SRT_WORDS.search(goal or "")))
+
+    def wants_voice(self, goal: str) -> bool:
+        return wants_voice(goal) or "voice" in self.made
 
     @property
     def shots_done(self) -> bool:
@@ -65,10 +78,12 @@ class FilmState:
             out.append(f"files missing for shot {_numbers(self.missing_files)}")
         if not self.music:
             out.append("music")
-        if wants_voice(goal) and not self.voice:
+        if self.wants_voice(goal) and not self.voice:
             out.append("voice")
         if wants_captions(goal) and self.captions == 0:
             out.append("captions")
+        elif not self.captions_ok(goal):
+            out.append("captions burned into the picture")
         if self.render != "done":
             out.append({"stale": "a new render (the film changed after the last one)",
                         "preview": "the final render (only a preview exists)",
@@ -81,9 +96,11 @@ class FilmState:
         last change, as far as the saved project can tell."""
         return self.shots_done and not self.lacks(goal)
 
-    def next_step(self, goal: str) -> str:
-        """One concrete next step, naming the tool and the arguments that matter."""
+    def next_step(self, goal: str, made: dict[str, str] | None = None) -> str:
+        """One concrete next step, naming the tool and the arguments that matter. ``made`` maps "music" and
+        "voice" to a file this chat already made and the project lacks: attach it rather than make it again."""
         pid = self.project_id
+        made = made or {}
         if self.batch_running:
             return "A generate batch is running: call wait_for_job on its job id, then check the project again."
         if self.batch_paused:
@@ -99,13 +116,22 @@ class FilmState:
         if self.needs_clip or self.needs_redo:
             shots = sorted(set(self.needs_clip) | set(self.needs_redo))
             return f"storyboard_generate with project_id {pid}, what \"clip\" (shots {_numbers(shots)}), then wait_for_job."
+        if not self.music and made.get("music"):
+            return (f'storyboard_audio add with project_id {pid}, kind "music", path "{made["music"]}" (the track '
+                    "this chat already made; do not make new music).")
         if not self.music:
             return (f"make_music for the film's length, wait_for_job, then storyboard_audio add kind \"music\" with the "
                     f"track's path (project_id {pid}).")
-        if wants_voice(goal) and not self.voice:
+        if self.wants_voice(goal) and not self.voice and made.get("voice"):
+            return (f'storyboard_audio add with project_id {pid}, kind "voice", path "{made["voice"]}" (the voice '
+                    "line this chat already made; do not speak it again).")
+        if self.wants_voice(goal) and not self.voice:
             return f"speak the voiceover, wait_for_job, then storyboard_audio add kind \"voice\" (project_id {pid})."
         if wants_captions(goal) and self.captions == 0:
             return f"storyboard_captions to make the captions (project_id {pid}), then wait_for_job."
+        if not self.captions_ok(goal):
+            return (f'storyboard_project edit with project_id {pid} and fields {{"export": {{"captionsBurn": true}}}} '
+                    "so the captions show in the film, then render.")
         if self.render == "running":
             return "The render is running: call wait_for_job on its job id."
         if self.render != "done":
@@ -156,6 +182,8 @@ def _render_state(folder: Path, newest_change: float) -> tuple[str, str | None, 
         return data if isinstance(data, dict) else None
 
     export = read("manifest-export.json")
+    if export is not None and (export.get("preview") or Path(str(export.get("out") or "")).name == "preview.mp4"):
+        export = None  # a preview is never the finished film, whatever file it came from
     if export is None:
         return ("preview" if (read("manifest-preview.json") or {}).get("state") == "done" else "none"), None, None
     state = str(export.get("state") or "")
@@ -181,6 +209,7 @@ def film_state(project: Any, folder: Path) -> FilmState:
     for number, shot in enumerate(shots, start=1):
         state.takes += len(shot.takes)
         newest = max([newest, *(t.createdAt for t in shot.takes)])
+        state.hashes.update(h for t in shot.takes for h in t.hashes.values())
         take = shot.active()
         if shot.status == "missing":
             state.missing_files.append(number)
@@ -194,6 +223,11 @@ def film_state(project: Any, folder: Path) -> FilmState:
     state.music = any(a.kind == "music" for a in ok_audio) or project.song is not None
     state.voice = any(a.kind == "voice" for a in ok_audio)
     state.captions = len(project.captions)
+    state.captions_burn = bool(project.export.captionsBurn)
+    state.captions_srt = bool(project.export.captionsSrt)
+    state.hashes.update(a.source.hash for a in project.audio if a.source.hash)
+    if project.song is not None and project.song.hash:
+        state.hashes.add(project.song.hash)
     for batch in project.batches:
         if batch.state in ("queued", "running"):
             state.batch_running = True

@@ -32,6 +32,9 @@ STOP_CODES: dict[str, str] = {
     "cap_reached": "Reached the limit of {cap} nudges.",
     "no_progress": "Nothing changed after {limit} nudges in a row (no project edit, finished job or new file).",
     "repeated_error": "The same error came back {limit} times: {detail}",
+    # FU-198: a stall with a known cause says it.
+    "calls_unreadable": "The model's tool calls could not be read {limit} turns in a row, so they never ran: {detail}",
+    "call_refused": "The same call was refused {limit} turns in a row, so nothing changed: {detail}",
     "context_full": "The chat is nearly out of context ({detail}). Start a new chat to go on; the project is saved.",
     "plan_declined": "You declined the plan.",
     "plan_edit": "You asked to change the plan.",
@@ -117,6 +120,7 @@ class Run:
     app_request: Any = None
     deferred: list[tuple[str, dict[str, Any]]] = field(default_factory=list)  # renders kept for the GPU swap
     swap_phase: str | None = None  # unloading | rendering | reloading while a GPU swap runs
+    stall: list[str] = field(default_factory=list)  # why each turn without progress made none (FU-198)
 
     _SAVED = ("id", "session_id", "state", "cap", "goal", "project_id", "nudges", "started_at", "updated_at",
               "stop_code", "stop_reason", "stop_detail", "stopped_at", "template", "snapshot", "no_progress",
@@ -153,7 +157,8 @@ def clamp_hours(value: Any) -> float:
 def reason_text(code: str, *, cap: int = DEFAULT_CAP, detail: str | None = None) -> str:
     template = STOP_CODES.get(code, code)
     limit = {"no_progress": NO_PROGRESS_LIMIT, "repeated_error": REPEATED_ERROR_LIMIT,
-             "turn_failed": TURN_FAILURE_LIMIT}.get(code, 0)
+             "turn_failed": TURN_FAILURE_LIMIT, "calls_unreadable": NO_PROGRESS_LIMIT,
+             "call_refused": NO_PROGRESS_LIMIT}.get(code, 0)
     return template.format(cap=cap, limit=limit, detail=(detail or "").strip() or "no details")
 
 

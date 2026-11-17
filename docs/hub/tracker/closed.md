@@ -1,7 +1,7 @@
 ---
 title: Closed follow-ups
 order: 3
-summary: 90 shipped, obsoleted or dropped rows, newest first.
+summary: 93 shipped, obsoleted or dropped rows, newest first.
 ---
 
 # Closed follow-ups
@@ -51,6 +51,33 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 **Status or trigger:** **Shipped 2026-11-17 (branch `fix/storyboard-guidance`).**
 
 **Notes:** A rehearsal model asked for 1024x576 with named models got 16:9 720p (1280x704 clips) and no models. **Done:** `storyboard_project` create and edit take `size` (`WIDTHxHEIGHT`, even, 64 to 4096; sets the aspect), `image_model`, `video_model`, `voice`; the `fields` schema names the `defaults` and `export` keys (`captionsBurn` among them). The answer carries `settings` (size, aspect, fps, models, voice, caption export) and `notes`: the model generate will use or why a named one cannot run, the multiple-of-64 size LTX makes clips at when the film size is not one, captions not burned in, music made and added separately. Helpers in [storyboard_guidance.py](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/backend_service/mcp_bridge/storyboard_guidance.py); AGENTS.md updated. Tests: `tests/test_storyboard_guidance.py`. Not tested with a real model.
+
+</details>
+
+<details>
+<summary>FU-198 · Keep going stop reason hides why a run stalled — Shipped 2026-11-17 (branch fix/keep-going-recovery).</summary>
+
+**Status or trigger:** **Shipped 2026-11-17 (branch `fix/keep-going-recovery`).**
+
+**Notes:** **Done:** two stop codes in [run.py](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/backend_service/keep_going/run.py): `calls_unreadable` ("the model's tool calls could not be read 3 turns in a row, so they never ran: tool: reason") when every stalled turn ended on an unread call, or the same "could not be read" error came back 3 times (counted once per turn); `call_refused` ("the same call was refused 3 turns in a row") when every stalled turn ended on the same call (tool and arguments) failing. Mixed causes stay `no_progress`. Both resumable; en text in `chat.json`, `null` in the other locales; `KEEP_GOING_STOP_CODES` lists them. Tests: `tests/test_keep_going_recovery.py` (StallReasonTests), `src/features/chat/__tests__/keepGoing.test.tsx`.
+
+</details>
+
+<details>
+<summary>FU-197 · Keep going nudges: stale errors, false "done", unread calls, assets made but not attached — Shipped 2026-11-17 (branch fix/keep-going-recovery).</summary>
+
+**Status or trigger:** **Shipped 2026-11-17 (branch `fix/keep-going-recovery`).**
+
+**Notes:** From the same rehearsal. **Done** ([nudge.py](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/backend_service/keep_going/nudge.py), [controller.py](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/backend_service/keep_going/controller.py), [project_state.py](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/backend_service/keep_going/project_state.py), [adapters.py](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/backend_service/keep_going/adapters.py), new [assets.py](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/backend_service/keep_going/assets.py)): "Your last turn stopped at the step limit." when that is the cause; an error is repeated (and "Fix that error first") only when it was the turn's last tool result. A done claim needs a done phrase in the last two sentences, no word about going on ("now let me", "next", "still needs") and no call fragment; a claim the project disagrees with gets "The project is not finished yet." A last reply holding an unread call gets "Your last tool call (tool) could not be read, so it did not run: reason. Send it again as a tool call: tool." Finished chat jobs since the run started whose files the project lacks (by sha256, as imports keep it) are listed with "Attach with storyboard_audio add path=... or storyboard_shot import path=...; do not make it again", and the next step attaches music or voice instead of making it again (only kinds the film still lacks; chat jobs are not per chat, so two Studio chats running at once would see each other's files). Finished now needs a non-preview export (a manifest marked preview or naming `preview.mp4` never counts), a voice lane when the run made a voice line, and captions burned in (or an .srt when the brief asks for a file) when captions exist; the next step names `storyboard_project edit fields {"export": {"captionsBurn": true}}`. The run binds its project from the first tool result that names it (`on_tool_result`, called from the Studio stream). Tests: `tests/test_keep_going_recovery.py` (wording cases, assets, preview, captions, binding, three scripted runs on a real project replaying the broken call: mended and finished; told and fixed; never fixed and stopped). Neighbour, not changed: `storyboard_render` defaults to `preview: true`, so a model that leaves it out gets a 1-second preview (the rehearsal did); the nudge already says `preview false`.
+
+</details>
+
+<details>
+<summary>FU-196 · Chat tool loop drops a tool call it cannot read — Shipped 2026-11-17 (branch fix/keep-going-recovery).</summary>
+
+**Status or trigger:** **Shipped 2026-11-17 (branch `fix/keep-going-recovery`).**
+
+**Notes:** **Found** in a Keep going rehearsal (Qwen3.8-27B 4-bit, 3-shot 12 s ad): every `storyboard_audio add` came out without its `<tool_call>` opener and one closing brace short; the parser dropped it, nothing ran, the model was never told, blamed a "stale revision" and sent the same call 7 times. **Done:** [agent_call_repair.py](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/backend_service/agent_call_repair.py) `repair_call` appends only missing closing braces/brackets to the one call object next to a `<tool_call>` tag, and keeps it only when the result parses, names an available tool and has an object for `arguments`; never on a reply cut at the token limit (`finishReason == "length"`), never when a bracket mismatches, a string is open or a trailing comma remains. Anything still call-shaped that cannot be read (a `<tool_call>` tag, an LFM `<|tool_call_start|>` marker, an XML `<function=` body, or a JSON object naming an available tool with `arguments`) goes back to the model as an error with the reason and its own call format, counted in the iteration budget, at most 2 such replies in a row; then the turn ends with the fragment visible. Prose and a complete call shown in a fenced code block are left alone (a broken one naming a tool is reported). The error is a user turn wrapped in `<tool_response>` (what MLX renders a tool turn as) because there is no call id to pair a `tool` turn with on llama.cpp templates. Text-call parsing moved to [agent_parse.py](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/backend_service/agent_parse.py), re-exported from `agent.py`. Tests: `tests/test_agent_call_repair.py` (the 9 real replies in `tests/fixtures/keep_going_qwen_unclosed_calls.json`, refused repairs, prose and code blocks, the cap, both loops), `tests/test_agent_lfm_calls.py` updated (a bad LFM block is now reported, not silent). Not covered: a reply where one call parses and another beside it does not (the parsed one runs, the broken one is still dropped).
 
 </details>
 

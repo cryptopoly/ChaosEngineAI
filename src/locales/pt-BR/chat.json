@@ -581,6 +581,8 @@
       "cap_reached": null,
       "no_progress": null,
       "repeated_error": null,
+      "calls_unreadable": null,
+      "call_refused": null,
       "context_full": null,
       "plan_declined": null,
       "plan_edit": null,

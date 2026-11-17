@@ -98,6 +98,13 @@ describe("keep going helpers", () => {
     expect(stopReason(t, run({ state: "stopped", stopCode: "cap_reached", stopReason: "Reached the limit of 20 nudges." }))).toContain("20 nudges");
     expect(stopReason(tr, run({ state: "stopped", stopCode: "repeated_error", stopDetail: "no video model" }))).toContain("no video model");
     expect(stopReason(t, run({ state: "stopped", stopCode: "new_code", stopReason: "English reason" }))).toBe("English reason");
+    // FU-198: a stall says why nothing changed.
+    expect(stopReason(tr, run({ state: "stopped", stopCode: "calls_unreadable", stopDetail: "storyboard_audio: x" }))).toBe(
+      "the model's tool calls could not be read 3 turns in a row, so they never ran: storyboard_audio: x",
+    );
+    expect(stopReason(tr, run({ state: "stopped", stopCode: "call_refused", stopDetail: "storyboard_audio: y" }))).toContain(
+      "the same call was refused",
+    );
   });
 });
 

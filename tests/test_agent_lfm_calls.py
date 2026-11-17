@@ -115,10 +115,13 @@ class LoopTests(unittest.TestCase):
         self.assertEqual(self.maker.seen, [{"opts": {"n": [1, None]}, "ok": True}])
         self.assertEqual(result.text, "All done.")
 
-    def test_a_bad_block_ends_the_turn_with_its_text(self):
+    def test_a_bad_block_is_reported_then_ends_the_turn_with_its_text(self):
+        # FU-196: the model is told twice that the block could not be read; the third reply ends the turn.
         bad = f"{S}[echo(text=nope)]{E}"
         result = self.run_loop(bad)
-        self.assertEqual((result.tool_calls, result.text, result.iterations), ([], bad, 1))
+        self.assertEqual((result.text, result.iterations), (bad, 3))
+        self.assertEqual([t.tool_name for t in result.tool_calls], ["echo", "echo"])
+        self.assertTrue(all("could not be read" in t.result for t in result.tool_calls))
 
     def test_unknown_tool_is_a_clear_tool_error(self):
         result = self.run_loop(f'{S}[nope(x=1)]{E}', "ok")
@@ -128,10 +131,13 @@ class LoopTests(unittest.TestCase):
         events = list(run_agent_loop_streaming(
             generate_fn=scripted(f'Checking. {S}[echo(text="a, [b]")]{E}', f'It said "a, [b]". {S}[broken'),
             stream_generate_fn=None, prompt="go", history=[], system_prompt=None, max_tokens=64,
-            temperature=0.0, tool_registry=self.registry, max_iterations=3))
+            temperature=0.0, tool_registry=self.registry, max_iterations=5))
         results = [e["tool_call_result"] for e in events if "tool_call_result" in e]
-        self.assertEqual([(r["name"], r["arguments"], r["result"]) for r in results],
+        self.assertEqual([(r["name"], r["arguments"], r["result"]) for r in results[:1]],
                          [("echo", {"text": "a, [b]"}, "echo: a, [b]")])
+        # FU-196: the unclosed block is reported to the model twice, then the turn ends on it.
+        self.assertEqual(len(results), 3)
+        self.assertTrue(all("has no <|tool_call_end|>" in r["result"] for r in results[1:]))
         reply = "".join(e["token"] for e in events if "token" in e)
         self.assertEqual(reply, f'It said "a, [b]". {S}[broken')  # the unclosed tail stays as text
         self.assertNotIn(E, reply)

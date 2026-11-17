@@ -581,6 +581,8 @@
       "cap_reached": "reached the limit of {cap} nudges.",
       "no_progress": "nothing changed after 3 nudges in a row.",
       "repeated_error": "the same error came back 3 times: {detail}",
+      "calls_unreadable": "the model's tool calls could not be read 3 turns in a row, so they never ran: {detail}",
+      "call_refused": "the same call was refused 3 turns in a row, so nothing changed: {detail}",
       "context_full": "the chat is nearly out of context ({detail}). Start a new chat to go on; the project is saved.",
       "plan_declined": "you declined the plan.",
       "plan_edit": "you asked to change the plan.",

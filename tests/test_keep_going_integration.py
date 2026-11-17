@@ -197,8 +197,8 @@ class ScriptedRunTests(Harness):
         self.assertTrue(all(t.startswith("Keep going (automatic message") for t in texts))
         self.assertIn('Project "Bakery ad"', texts[0])
         self.assertIn("Last error (storyboard_shot): The project is at revision 1 now.", texts[1])
-        self.assertIn("reached the tool-step limit", texts[2])
-        self.assertIn("You said the work is finished, but the project disagrees.", texts[3])
+        self.assertIn("Your last turn stopped at the step limit.", texts[2])
+        self.assertIn("The project is not finished yet.", texts[3])
         # The user's own brief is not marked; every nudge got a saved reply.
         self.assertNotIn("keepGoing", self.messages()[0])
         self.assertEqual(self.messages()[-1]["role"], "assistant")

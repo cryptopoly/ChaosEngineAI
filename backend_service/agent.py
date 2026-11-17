@@ -12,14 +12,13 @@ from __future__ import annotations
 
 import json
 import logging
-import re
 import threading
 import time
 import uuid
 from dataclasses import dataclass, field
 from typing import Any, Iterator
 
-from backend_service import agent_lfm_calls
+from backend_service import agent_call_repair
 from backend_service.tools import StructuredToolOutput, ToolRegistry, registry as default_registry
 
 logger = logging.getLogger(__name__)
@@ -29,6 +28,9 @@ _DEFAULT_MAX_ITERATIONS = 10
 # bounds them anyway: a model that polls forever still ends, after about a day of 30-minute waits.
 _FREE_WAIT_LIMIT = 48
 _PROGRESS_SECONDS = 2.0
+# Replies in a row whose tool call could not be read and got an error back (FU-196); the next one ends the turn,
+# so a model that cannot format a call does not loop until the iteration budget runs out.
+_UNREADABLE_LIMIT = 2
 
 
 @dataclass
@@ -60,219 +62,16 @@ class AgentResult:
     total_completion_tokens: int = 0
 
 
-_TOOL_CALL_OPEN = re.compile(r"<tool_call>\s*", re.IGNORECASE)
-_TOOL_CALL_CLOSE = re.compile(r"\s*</tool_call>", re.IGNORECASE)
-# XML call body used by LFM3 and Qwen3-Coder chat templates:
-# <function=NAME><parameter=KEY>VALUE</parameter>...</function>
-_XML_FUNCTION = re.compile(r"<function=([^>\n]+)>(.*?)</function>", re.DOTALL)
-_XML_PARAMETER = re.compile(r"<parameter=([^>\n]+)>\n?(.*?)\n?</parameter>", re.DOTALL)
-
-
-def _decode_xml_tool_call(text: str, start: int) -> tuple[dict[str, Any], int] | None:
-    """Decode an XML call body at ``start``, as ``({"name", "arguments"}, end)``.
-
-    Parameter values are read as JSON where they parse (numbers, lists,
-    objects) and kept as text otherwise, as the templates' own parser does.
-    """
-    match = _XML_FUNCTION.match(text, start)
-    if match is None:
-        return None
-    arguments: dict[str, Any] = {}
-    for key, value in _XML_PARAMETER.findall(match.group(2)):
-        try:
-            arguments[key.strip()] = json.loads(value)
-        except json.JSONDecodeError:
-            arguments[key.strip()] = value
-    return {"name": match.group(1).strip(), "arguments": arguments}, match.end()
-
-
-def _bare_call_span(text: str) -> tuple[dict[str, Any], int, int] | None:
-    """A call whose ``<tool_call>`` opener the model dropped: ``{"name": ..., "arguments": ...}</tool_call>``.
-
-    Qwen3.8 does this on some turns (seen on a Storyboard chat, 2026-11-15): JSON that runs straight into the
-    close tag. Only accepted when the text holds no opener at all and a call object is followed directly by the
-    close tag, so ordinary prose with braces in it is left alone. Returns ``(payload, start, end)``.
-    """
-    if "<tool_call>" in text.lower() or "</tool_call>" not in text.lower():
-        return None
-    start = text.find("{")
-    if start < 0:
-        return None
-    try:
-        payload, end = json.JSONDecoder().raw_decode(text, start)
-    except json.JSONDecodeError:
-        return None
-    close = _TOOL_CALL_CLOSE.match(text, end)
-    if close is None or not isinstance(payload, dict) or not (payload.get("name") or payload.get("function")):
-        return None
-    return payload, start, close.end()
-
-
-def _strip_tool_call_xml(text: str) -> str:
-    """Remove every ``<tool_call>...`` blob from a model response.
-
-    FU-040: the chat UI shows ``result.text`` verbatim in the assistant
-    bubble, so when a model emits a ``<tool_call>`` block AND we
-    execute the call (either via the engine's structured field or via
-    ``_parse_tool_calls_from_response``), the user sees the same call
-    twice — once as raw XML noise and once as a ``ToolCallCard``. We
-    strip the XML from the text we hand back to the streaming layer.
-
-    Uses the same ``JSONDecoder.raw_decode`` walk as the parser so we
-    only remove the well-formed-JSON region the parser actually
-    consumed; everything around it (the model's natural-language
-    framing) stays put. A trailing ``</tool_call>`` close tag, when
-    present, is also swallowed.
-    """
-    if not text:
-        return text
-    text = agent_lfm_calls.strip_calls(text)  # FU-192: LFM2.5 ``<|tool_call_start|>`` blocks
-    bare = _bare_call_span(text)
-    if bare is not None:
-        return re.sub(r"\n{3,}", "\n\n", text[:bare[1]] + text[bare[2]:]).strip()
-    if "<tool_call>" not in text.lower():
-        return text
-    decoder = json.JSONDecoder()
-    out: list[str] = []
-    cursor = 0
-    while True:
-        match = _TOOL_CALL_OPEN.search(text, cursor)
-        if match is None:
-            out.append(text[cursor:])
-            break
-        out.append(text[cursor:match.start()])
-        start = match.end()
-        while start < len(text) and text[start].isspace():
-            start += 1
-        if start >= len(text):
-            break
-        try:
-            _payload, end = _decode_xml_tool_call(text, start) or decoder.raw_decode(text, start)
-        except json.JSONDecodeError:
-            # Malformed JSON after ``<tool_call>`` — drop the opener
-            # alone and continue. The garbage payload stays so the
-            # operator can see what the model emitted.
-            cursor = match.end()
-            continue
-        cursor = end
-        close = _TOOL_CALL_CLOSE.match(text, cursor)
-        if close is not None:
-            cursor = close.end()
-    cleaned = "".join(out)
-    # Collapse the double-blank-line that can appear when we strip a
-    # mid-paragraph tool_call. ``\n\n\n+`` → ``\n\n`` keeps paragraph
-    # breaks intact while removing the visible gap.
-    return re.sub(r"\n{3,}", "\n\n", cleaned).strip()
-
-
-def _parse_tool_calls_from_response(response_text: str) -> list[dict[str, Any]] | None:
-    """Attempt to extract tool calls from a text response.
-
-    Models using the OpenAI tool-calling protocol return structured
-    tool_calls in the response object. For models that embed tool calls
-    in their text output (e.g. Hermes / NousResearch / Qwen3-Coder-Next),
-    we parse them from the ``<tool_call>...</tool_call>`` XML-ish
-    convention.
-
-    FU-040 (2026-05-10): widened to handle three real-world shapes
-    Coder-Next emitted in a single chat session:
-
-      1. ``<tool_call>{"name": "x", "arguments": {...}}</tool_call>``
-         — the canonical Hermes shape. Always worked.
-      2. ``<tool_call>{"name": "x", "arguments": {...}}`` — no
-         closing tag. The previous regex required ``</tool_call>``
-         and silently dropped these, so the model's tool call
-         rendered as raw XML text in the assistant bubble with no
-         execution.
-      3. ``<tool_call> [ {url: ...}, {url: ...} ]`` — model
-         hallucinated a JSON ARRAY of pseudo-results instead of a
-         call object. Rejected (the array shape has no ``name`` /
-         ``arguments`` keys to dispatch from), but we keep parsing
-         so any well-formed call later in the same message still
-         lands.
-
-    The parser walks each ``<tool_call>`` opener and uses the stdlib
-    ``json.JSONDecoder.raw_decode`` to consume exactly the next valid
-    JSON value (object OR array) — that handles both shapes (1) and
-    (2) without requiring a closing tag, and shape (3) decodes to a
-    list which we discard. ``raw_decode`` also correctly skips nested
-    braces inside argument string values that a naive regex would
-    choke on.
-    """
-    if not response_text:
-        return None
-    lfm = agent_lfm_calls.parse_calls(response_text)  # FU-192: LFM2.5 ``<|tool_call_start|>[name(k=v)]``
-    if lfm:
-        return lfm
-    bare = _bare_call_span(response_text)
-    if bare is not None:
-        # Same shape handling as below, for the call that lost its opener.
-        payload = bare[0]
-        arguments = payload.get("arguments") or payload.get("parameters") or {}
-        if isinstance(arguments, str):
-            try:
-                arguments = json.loads(arguments)
-            except json.JSONDecodeError:
-                arguments = {"raw": arguments}
-        return [{
-            "id": f"call_{uuid.uuid4().hex[:8]}",
-            "type": "function",
-            "function": {
-                "name": payload.get("name") or payload.get("function"),
-                "arguments": json.dumps(arguments) if isinstance(arguments, dict) else str(arguments),
-            },
-        }]
-    if "<tool_call>" not in response_text.lower():
-        return None
-
-    calls: list[dict[str, Any]] = []
-    decoder = json.JSONDecoder()
-    cursor = 0
-    while True:
-        match = _TOOL_CALL_OPEN.search(response_text, cursor)
-        if match is None:
-            break
-        start = match.end()
-        # Find the first non-whitespace character; ``raw_decode`` needs
-        # to start at the JSON token itself, not at preceding spaces.
-        while start < len(response_text) and response_text[start].isspace():
-            start += 1
-        if start >= len(response_text):
-            break
-        try:
-            payload, end = (
-                _decode_xml_tool_call(response_text, start)
-                or decoder.raw_decode(response_text, start)
-            )
-        except json.JSONDecodeError:
-            cursor = start + 1
-            continue
-        cursor = end
-        # Shape (3): the model emitted hallucinated results as a list.
-        # No ``name`` to dispatch from — skip without aborting the
-        # outer loop so a later well-formed call in the same message
-        # still gets picked up.
-        if not isinstance(payload, dict):
-            continue
-        name = payload.get("name") or payload.get("function")
-        if not name:
-            continue
-        arguments = payload.get("arguments") or payload.get("parameters") or {}
-        if isinstance(arguments, str):
-            try:
-                arguments = json.loads(arguments)
-            except json.JSONDecodeError:
-                arguments = {"raw": arguments}
-        calls.append({
-            "id": f"call_{uuid.uuid4().hex[:8]}",
-            "type": "function",
-            "function": {
-                "name": name,
-                "arguments": json.dumps(arguments) if isinstance(arguments, dict) else str(arguments),
-            },
-        })
-
-    return calls if calls else None
+# Text-call parsing lives in agent_parse.py; re-exported here for existing callers and tests.
+from backend_service.agent_parse import (  # noqa: E402,F401
+    _TOOL_CALL_CLOSE,
+    _TOOL_CALL_OPEN,
+    _bare_call_span,
+    _decode_xml_tool_call,
+    _parse_tool_calls_from_response,
+    _parse_tool_calls_strict,
+    _strip_tool_call_xml,
+)
 
 
 def _execute_tool_call(
@@ -412,6 +211,33 @@ def _coerce_arguments(raw_args: Any) -> dict[str, Any]:
     return {}
 
 
+def _tool_names(tools: list[dict[str, Any]]) -> set[str]:
+    return {str((t.get("function") or {}).get("name") or "") for t in tools} - {""}
+
+
+def _truncated(result: Any) -> bool:
+    return getattr(result, "finishReason", None) == "length"
+
+
+def _unreadable_turn(bad: agent_call_repair.Unreadable, reply_text: str) -> tuple[ToolCallResult, list[dict[str, Any]]]:
+    """The error record for a call that could not be read (FU-196) and the two messages that tell the model: its
+    reply as it wrote it, then the error in the ``<tool_response>`` wrapping a tool result gets. The error goes in
+    a user turn because no call id exists to pair a ``tool`` turn with, which some chat templates require."""
+    record = ToolCallResult(
+        tool_call_id=f"call_{uuid.uuid4().hex[:12]}",
+        tool_name=bad.tool or "tool_call",
+        arguments={"unreadable": bad.fragment},
+        result=bad.message,
+        elapsed_seconds=0.0,
+        started_at=int(time.time() * 1000),
+    )
+    logger.info("Tool call could not be read (%s): %s", bad.tool, bad.reason)
+    return record, [
+        {"role": "assistant", "text": reply_text},
+        {"role": "user", "text": f"<tool_response>\n{bad.message}\n</tool_response>"},
+    ]
+
+
 def run_agent_loop(
     *,
     generate_fn: Any,
@@ -488,6 +314,8 @@ def run_agent_loop(
     # Add the current user message
     messages.append({"role": "user", "text": prompt})
 
+    names = _tool_names(tools)
+    unreadable = 0  # replies in a row that got a "could not be read" error back
     for iteration in range(max_iterations):
         # Generate with tools
         result = generate_fn(
@@ -508,7 +336,18 @@ def run_agent_loop(
 
         # If no structured tool calls, try parsing from text
         if not tool_calls and result.text:
-            tool_calls = _parse_tool_calls_from_response(result.text)
+            tool_calls = _parse_tool_calls_from_response(result.text, names, _truncated(result))
+
+        if not tool_calls and unreadable < _UNREADABLE_LIMIT:
+            bad = agent_call_repair.unreadable_call(result.text or "", names, truncated=_truncated(result))
+            if bad is not None:
+                unreadable += 1
+                record, told = _unreadable_turn(bad, result.text or "")
+                all_tool_results.append(record)
+                messages.extend(told)
+                continue
+        if tool_calls:
+            unreadable = 0
 
         if not tool_calls:
             # Model is done — return the final text. Strip any
@@ -616,6 +455,8 @@ def run_agent_loop_streaming(
     free = 0  # replies that only waited on a job already waited on this turn
     seen_waits: set[str] = set()
     iteration = -1
+    names = _tool_names(tools)
+    unreadable = 0  # replies in a row that got a "could not be read" error back
     while used < max_iterations:
         iteration += 1
         # Use non-streaming generate for tool-calling iterations
@@ -634,7 +475,27 @@ def run_agent_loop_streaming(
         last_prompt_tokens = int(getattr(result, "promptTokens", 0) or 0)
         tool_calls = getattr(result, "tool_calls", None)
         if not tool_calls and result.text:
-            tool_calls = _parse_tool_calls_from_response(result.text)
+            tool_calls = _parse_tool_calls_from_response(result.text, names, _truncated(result))
+
+        if not tool_calls and unreadable < _UNREADABLE_LIMIT:
+            # FU-196: a call that could not be read is never dropped silently: the model is told why, and the
+            # reply counts against the iteration budget like any other step.
+            bad = agent_call_repair.unreadable_call(result.text or "", names, truncated=_truncated(result))
+            if bad is not None:
+                unreadable += 1
+                used += 1
+                record, told = _unreadable_turn(bad, result.text or "")
+                all_tool_results.append(record)
+                messages.extend(told)
+                yield {"tool_call_start": {"id": record.tool_call_id, "name": record.tool_name,
+                                           "arguments": json.dumps(record.arguments), "startedAt": record.started_at}}
+                yield {"tool_call_result": {"id": record.tool_call_id, "name": record.tool_name,
+                                            "arguments": record.arguments, "result": record.result,
+                                            "elapsed": 0.0, "startedAt": record.started_at,
+                                            "renderAs": None, "data": None}}
+                continue
+        if tool_calls:
+            unreadable = 0
 
         if not tool_calls:
             # Final response — stream it token by token for the user

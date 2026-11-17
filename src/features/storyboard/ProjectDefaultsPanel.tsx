@@ -10,7 +10,7 @@ import { formatDuration } from "../../components/RunEstimateStrip";
 import { Disclosure } from "../../components/Disclosure";
 import type { StoryboardProject } from "../../types";
 import { FormatFields } from "./FormatFields";
-import { RESOLUTION_ALIAS, fitContext, formatPatch, type VideoFitSource } from "./formatLogic";
+import { fitContext, formatPatch, resolutionText, type VideoFitSource } from "./formatLogic";
 import { stillModelPick } from "./storyboardLogic";
 import { UseFastModelButton } from "./UseFastModelButton";
 import { useStillModels } from "./useStillModels";
@@ -132,7 +132,7 @@ export function ProjectDefaultsPanel({ project, busy, op, imageModels, videoMode
       summary={t("board.defaultsSummary", {
         defaultValue: "{aspect} · {resolution} · {fps} fps · {imageModel} · {videoModel} · voice {voice}",
         aspect: d.exportPreset,
-        resolution: RESOLUTION_ALIAS[d.resolution] ?? d.resolution,
+        resolution: resolutionText(d),
         fps: d.fps,
         imageModel: nameOf(imageModels, d.imageModel),
         videoModel: nameOf(videoModels, d.videoModel),

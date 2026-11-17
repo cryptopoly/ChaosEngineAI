@@ -110,7 +110,9 @@ class Defaults(_Model):
     videoModel: Line | None = None
     voice: Line | None = None
     exportPreset: Literal["16:9", "9:16", "1:1"] = "16:9"  # the aspect ratio (called "shape" before D-64)
-    resolution: Literal["480p", "720p", "1080p", "1440p", "2160p"] = "720p"
+    # A preset ("480p" to "2160p"), another short side ("576p" for 1024x576) or "custom": always the label of
+    # width x height (formats.resolution_label), so it never contradicts the real size (FU-213).
+    resolution: Annotated[str, Field(pattern=r"^([1-9][0-9]{1,3}p|custom)$")] = "720p"
 
     @model_validator(mode="before")
     @classmethod

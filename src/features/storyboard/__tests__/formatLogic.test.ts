@@ -16,6 +16,7 @@ import {
   modelSizeFor,
   newProjectDefaults,
   resolutionFit,
+  resolutionText,
   sizeFor,
   upscaleSize,
   type VideoFitContext,
@@ -51,6 +52,18 @@ describe("size table", () => {
     expect(formatPatch({ exportPreset: "9:16", resolution: "720p" }, { resolution: "480p" })).toEqual({
       defaults: { width: 480, height: 854, exportPreset: "9:16", resolution: "480p" },
     });
+  });
+
+  it("reads a size label like the backend (FU-213): 576p is 1024 x 576, custom shows the real size", () => {
+    expect(sizeFor("16:9", "576p")).toEqual({ width: 1024, height: 576 });
+    expect(sizeFor("9:16", "576p")).toEqual({ width: 576, height: 1024 });
+    expect(sizeFor("16:9", "custom")).toEqual({ width: 1280, height: 720 });
+    expect(formatPatch({ exportPreset: "16:9", resolution: "576p" }, { aspect: "9:16" })).toEqual({
+      defaults: { width: 576, height: 1024, exportPreset: "9:16", resolution: "576p" },
+    });
+    expect(resolutionText({ width: 1024, height: 576, resolution: "576p" })).toBe("576p");
+    expect(resolutionText({ width: 832, height: 480, resolution: "custom" })).toBe("832 × 480");
+    expect(resolutionText({ width: 3840, height: 2160, resolution: "2160p" })).toBe("4K");
   });
 
   it("upscales only to a larger size", () => {

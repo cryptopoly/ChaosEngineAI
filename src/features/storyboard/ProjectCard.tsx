@@ -2,7 +2,7 @@
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import { ActionMenu } from "../../components/ActionMenu";
-import { RESOLUTION_ALIAS } from "./formatLogic";
+import { resolutionText } from "./formatLogic";
 import { ProjectImage, ProjectVideo } from "./ProjectMedia";
 import { emptyThumbState, filmSeconds, relativeTime, staleCount, thumbnailOf } from "./storyboardLogic";
 import type { ProjectCardData } from "./useStoryboardProjects";
@@ -48,7 +48,7 @@ export function ProjectCard({ card, now, onOpen, onExport, onRename, onDelete, e
   const stale = staleCount(project);
   const shots = project.shots.length;
   const d = project.defaults;
-  const format = `${d.exportPreset} · ${RESOLUTION_ALIAS[d.resolution] ?? d.resolution} · ${d.fps} fps`;
+  const format = `${d.exportPreset} · ${resolutionText(d)} · ${d.fps} fps`;
 
   return (
     <article className="project-card" aria-label={card.name}>

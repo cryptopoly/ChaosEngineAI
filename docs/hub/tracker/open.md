@@ -1,13 +1,22 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 111 rows with work, decisions or watch items still open, newest first.
+summary: 112 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-220 · Overnight whole-app review: audit Benchmarks, Conversion, Fine Tuning, Prompts, Plugins, Logs and Server; redesign Server and Logs; demo path for the podcast (D-87, D-88) — Planned 2026-11-17, not started</summary>
+
+**Status or trigger:** **Planned 2026-11-17, not started; waits for the owner's launch and a frozen green tree.**
+
+**Notes:** Plan, streams A to G, safety rules, verdict rubric and morning deliverables: [docs/plans/overnight-e2e-review.md](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/docs/plans/overnight-e2e-review.md). No end-to-end check exists today for the seven features (no `e2e_test_suite.py` phase, no Playwright spec; unit tests only for Plugins and Prompts); the run adds `phase_21` and a Playwright spec per tab touched. Nothing is deleted overnight.
+
+</details>
 
 <details>
 <summary>FU-218 · Narration level: the fixed +8 dB (FU-216) suited one file, not the next — Shipped 2026-11-17 (branch fix/voice-level).</summary>

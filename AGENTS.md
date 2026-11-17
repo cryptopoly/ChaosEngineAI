@@ -135,7 +135,7 @@ call `storyboard_project` get and retry.
 1. `system_status`, then `list_models` for `image` and `video` (and `voice`, `music` if you want sound).
 2. `storyboard_project` create (`name`, `aspect`, `resolution`). Keep the returned `projectId` and `revision`.
 3. Cast (optional, for the same face or place across shots): `storyboard_project` add_ref with `kind` `character` or `place`, a
-   `description` and up to 4 `images`. Shots use the ref id in `fields.referenceImages`. A film can have no cast.
+   `description` and up to 4 `images`. Shots use the ref id in `fields.referenceImages`. Leave `seed` unset on shots that use a cast reference (the reference's own seed makes the still a copy of it). A film can have no cast.
 4. Shots: `storyboard_shot` add once per beat with `title`, `stillPrompt`, `motionPrompt` (one clear motion), `seconds`. Use
    `startFrom: "previous-shot"` to continue from the last frame.
 5. Voice: `list_voices`, then `speak` for each line, `wait_for_job`, then `storyboard_audio` add with `kind: "voice"`, the output `path`, and
@@ -218,7 +218,7 @@ refused, tell the person what the error says. Never try to create a voice.
 
 ## Prompts that work
 
-- Images: subject, style, light, framing in plain words. Keep one seed to keep a set matching; change only composition.
+- Images: subject, style, light, framing in plain words. Without a reference, keep one seed to keep a set matching; change only composition. With `reference_images`, never reuse the seed of the picture that is the reference: that seed gives back a near copy of the reference and ignores the new scene. Leave `seed` unset or pick a new one.
 - Video: one clear motion per clip; describe sound too for LTX models. Poster to clip: `start_image` set to the poster path.
 - Same subject in new scenes: `generate_image` with `reference_images` (FLUX 3 Klein takes up to four; FLUX.1, FLUX.2 Klein and Qwen Image take one).
 - Music: `caption` describes the sound (genre, instruments, mood), not an artist. Write your own lyrics with `[verse]` and `[chorus]` tags.

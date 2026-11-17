@@ -719,7 +719,7 @@
           "type": "string"
         },
         "fields": {
-          "description": "title, stillPrompt, motionPrompt, startFrom (generate|upload|previous-shot|text), seconds, seed, trimIn, trimOut, speed, transition{type,seconds}, nativeSoundDb, index.",
+          "description": "title, stillPrompt, motionPrompt, startFrom (generate|upload|previous-shot|text), seconds, seed (leave unset on shots with referenceImages: the reference's seed returns a copy of it), trimIn, trimOut, speed, transition{type,seconds}, nativeSoundDb, index.",
           "type": "object"
         },
         "order": {

@@ -6,6 +6,7 @@ render grant is chosen on every start and Resume and never survives an app resta
 
 from __future__ import annotations
 
+import re
 from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException, Request
@@ -35,10 +36,18 @@ def _controller(request: Request) -> Any:
     return keep_going.for_state(request.app.state.chaosengine)
 
 
-def _session_exists(request: Request, session_id: str) -> bool:
+_SESSION_ID = re.compile(r"^[A-Za-z0-9_-]{1,80}$")
+
+
+def _ensure_session(request: Request, session_id: str) -> bool:
+    """The chat exists, or is a new chat the app has not sent yet (a draft id): it is created empty, as the
+    first message would create it, so Keep going can be armed before the brief is sent."""
+    if not _SESSION_ID.match(session_id):
+        return False
     state = request.app.state.chaosengine
     with state._lock:
-        return any(s.get("id") == session_id for s in state.chat_sessions)
+        state._ensure_session(session_id)
+    return True
 
 
 @router.get("/api/chat/keepgoing/{session_id}")
@@ -48,7 +57,7 @@ def keep_going_status(request: Request, session_id: str) -> dict[str, Any]:
 
 @router.post("/api/chat/keepgoing/{session_id}/start")
 def keep_going_start(request: Request, session_id: str, body: KeepGoingStart) -> dict[str, Any]:
-    if not _session_exists(request, session_id):
+    if not _ensure_session(request, session_id):
         raise HTTPException(status_code=404, detail=localized_detail(request, "Session not found."))
     controller = _controller(request)
     controller.start(session_id, cap=body.cap, grant_mode=body.grant, hours=body.hours, app_request=request,

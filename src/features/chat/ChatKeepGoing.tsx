@@ -55,11 +55,13 @@ export interface ChatKeepGoingProps {
   /** This window streams the chat's turn itself (its frames arrive here; no reload needed). */
   ownStreaming: boolean;
   onRefresh: (sessionId: string) => void;
+  /** A new chat has no id yet: make one so the run can be armed before the brief is sent. */
+  onCreateSession?: () => void | string | Promise<void | string>;
 }
 
 type Mode = "start" | "resume";
 
-export function ChatKeepGoing({ sessionId, studioTools, messageCount, ownStreaming, onRefresh }: ChatKeepGoingProps) {
+export function ChatKeepGoing({ sessionId, studioTools, messageCount, ownStreaming, onRefresh, onCreateSession }: ChatKeepGoingProps) {
   const { t } = useTranslation("chat");
   const controls = useKeepGoing(sessionId, messageCount, ownStreaming, onRefresh);
   const { run } = controls;
@@ -76,7 +78,7 @@ export function ChatKeepGoing({ sessionId, studioTools, messageCount, ownStreami
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [studioTools, active]);
 
-  if (!sessionId || !studioTools) return null;
+  if (!studioTools || (!sessionId && !onCreateSession)) return null;
   const showStopped = run && run.state === "stopped" && dismissed !== run.runId + String(run.stoppedAt);
   return (
     <>
@@ -104,7 +106,10 @@ export function ChatKeepGoing({ sessionId, studioTools, messageCount, ownStreami
               busy={controls.busy}
               onCancel={() => setPanel(null)}
               onSubmit={async (cap, grant, hours) => {
-                if (panel === "start") await controls.start(cap, grant, hours);
+                if (panel === "start") {
+                  const id = sessionId ?? (await onCreateSession?.()) ?? null;
+                  if (id) await controls.start(cap, grant, hours, id);
+                }
                 else await controls.resume(grant, hours, cap);
                 setPanel(null);
               }}

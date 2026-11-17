@@ -15241,12 +15241,11 @@ select.music-library__select {
 .keep-going-chip {
   display: inline-flex;
   align-items: center;
-  flex-wrap: wrap;
   gap: 6px;
   max-width: 100%;
-  padding: 2px 4px 2px 10px;
+  padding: 3px 4px 3px 10px;
   border: 1px solid var(--accent);
-  border-radius: 999px;
+  border-radius: 14px;
   color: var(--accent);
   font-size: 12px;
 }
@@ -15265,11 +15264,16 @@ select.music-library__select {
   border-radius: 12px;
 }
 
+.keep-going-chip > svg {
+  flex: 0 0 auto;
+}
+
 .keep-going-chip__text {
   display: inline-flex;
   flex-wrap: wrap;
   gap: 2px 8px;
   min-width: 0;
+  flex: 1 1 auto;
 }
 
 .keep-going-chip__text > span + span::before,
@@ -15284,6 +15288,7 @@ select.music-library__select {
 }
 
 .keep-going-chip__button {
+  flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
   gap: 4px;

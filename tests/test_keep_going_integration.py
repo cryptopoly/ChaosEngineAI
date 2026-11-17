@@ -111,7 +111,10 @@ class RouteTests(Harness):
         self.assertFalse(stopped["resumable"])  # never got a brief, so nothing to resume
 
     def test_bad_requests(self):
-        self.assertEqual(self.client.post("/api/chat/keepgoing/nope/start", json={}).status_code, 404)
+        self.assertEqual(self.client.post("/api/chat/keepgoing/no%20such/start", json={}).status_code, 404)
+        # A new chat the app has not sent yet (a draft id) is created, so the run can be armed before the brief.
+        draft = self.client.post("/api/chat/keepgoing/draft-123/start", json={}).json()["run"]
+        self.assertEqual(draft["state"], "armed")
         self.assertEqual(self.client.post(f"/api/chat/keepgoing/{self.sid}/start", json={"cap": 101}).status_code, 422)
         self.assertEqual(self.client.post(f"/api/chat/keepgoing/{self.sid}/start", json={"hours": 13}).status_code, 422)
         self.assertEqual(self.client.post(f"/api/chat/keepgoing/{self.sid}/resume", json={}).status_code, 404)
@@ -227,6 +230,14 @@ class ScriptedRunTests(Harness):
         self.assertEqual(run["stopCode"], "user_message")
         texts = [m["text"] for m in self.messages() if m["role"] == "user"]
         self.assertIn("Stop, make it a poster instead.", texts)
+        deadline = time.monotonic() + 5
+        while studio_gate.turn_running(self.sid) and time.monotonic() < deadline:
+            time.sleep(0.05)
+        messages = self.messages()
+        for index, message in enumerate(messages):  # every nudge keeps its own reply right after it
+            if message.get("keepGoing"):
+                self.assertEqual(messages[index + 1]["role"], "assistant", [m["role"] for m in messages])
+        self.assertEqual(messages[-1]["role"], "assistant")
 
     def test_restart_shows_resume_and_never_restarts_by_itself(self):
         started = {"n": 0}

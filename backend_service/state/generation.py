@@ -1049,7 +1049,13 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest, app_reque
                 assistant_message["studioPlans"] = studio_gate.resolved
             if stream_rag_citations:
                 assistant_message["citations"] = stream_rag_citations
-            session["messages"].append(assistant_message)
+            position = next((n for n, m in enumerate(session["messages"]) if m is user_message), None)
+            if keep_going is not None and position is not None and position < len(session["messages"]) - 1:
+                # A user message arrived while this nudge ran (it stopped the run): the reply goes right after its
+                # own nudge, so the thread still alternates and the user's message keeps its own reply.
+                session["messages"].insert(position + 1, assistant_message)
+            else:
+                session["messages"].append(assistant_message)
             session["updatedAt"] = chaosengine._time_label()
             chaosengine._promote_session(session)
             chaosengine.add_log(

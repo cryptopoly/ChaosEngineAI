@@ -113,7 +113,8 @@ export interface KeepGoingControls {
   run: KeepGoingRun | null;
   busy: boolean;
   error: string | null;
-  start: (cap: number, grant: KeepGoingGrant, hours: number) => Promise<void>;
+  /** ``forSession``: a chat made a moment ago, before this hook has its id. */
+  start: (cap: number, grant: KeepGoingGrant, hours: number, forSession?: string) => Promise<void>;
   stop: () => Promise<void>;
   resume: (grant: KeepGoingGrant, hours: number, cap?: number) => Promise<void>;
   studioOff: () => Promise<void>;
@@ -181,8 +182,10 @@ export function useKeepGoing(
     run: run && run.sessionId === sessionId ? run : null,
     busy,
     error,
-    start: (cap, grant, hours) =>
-      sessionId ? act(() => api.startKeepGoing(sessionId, { cap: clampCap(cap), grant, hours: clampHours(hours) })) : Promise.resolve(),
+    start: (cap, grant, hours, forSession) => {
+      const id = forSession ?? sessionId;
+      return id ? act(() => api.startKeepGoing(id, { cap: clampCap(cap), grant, hours: clampHours(hours) })) : Promise.resolve();
+    },
     stop: () => (sessionId ? act(() => api.stopKeepGoing(sessionId)) : Promise.resolve()),
     resume: (grant, hours, cap) =>
       sessionId

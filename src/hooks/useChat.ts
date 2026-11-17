@@ -299,6 +299,7 @@ export function useChat(
     }));
     setActiveChatId(localSession.id);
     setThreadTitleDraft(localSession.title);
+    return localSession.id;
   }
 
   async function ensureBackendAvailable(preferredChatId?: string): Promise<{

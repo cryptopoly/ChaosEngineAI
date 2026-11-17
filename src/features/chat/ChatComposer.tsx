@@ -41,6 +41,8 @@ export interface ChatComposerProps {
   /** FU-191: this window streams the active chat's turn itself (Keep going reloads the thread otherwise). */
   ownStreaming?: boolean;
   onRefreshWorkspace?: (sessionId?: string) => Promise<void>;
+  /** Makes a new (draft) chat and returns its id, so Keep going can be armed before the first message. */
+  onCreateSession?: () => void | string | Promise<void | string>;
   chatBusySessionId: string | null;
   activeChat: ChatSession | undefined;
   warmModels: WarmModel[];
@@ -99,6 +101,7 @@ export function ChatComposer({
   onToggleStudioTools,
   ownStreaming = false,
   onRefreshWorkspace,
+  onCreateSession,
   chatBusySessionId,
   activeChat,
   warmModels,
@@ -439,7 +442,8 @@ export function ChatComposer({
           {showToolsToggle ? <ChatSkillsSwitch sessionId={activeChat?.id} /> : null}
           {showToolsToggle ? (
             <ChatKeepGoing sessionId={activeChat?.id} studioTools={studioTools}
-              messageCount={activeChat?.messages?.length ?? 0} ownStreaming={ownStreaming} onRefresh={(id) => void onRefreshWorkspace?.(id)} />
+              messageCount={activeChat?.messages?.length ?? 0} ownStreaming={ownStreaming} onRefresh={(id) => void onRefreshWorkspace?.(id)}
+              onCreateSession={onCreateSession} />
           ) : null}
         </div>
         <div className="composer-button-group composer-button-group--right">

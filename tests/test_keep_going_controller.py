@@ -188,7 +188,7 @@ class StartAndNudgeTests(Base):
     def test_cap_and_tool_limit_wording(self):
         self.begin()
         self.finish(max_iterations=True)
-        self.assertIn("reached the tool-step limit", self.hooks.turns[0].prompt)
+        self.assertIn("Your last turn stopped at the step limit.", self.hooks.turns[0].prompt)
 
 
 class StopConditionTests(Base):
@@ -210,7 +210,7 @@ class StopConditionTests(Base):
     def test_done_claim_without_project_state_agreeing_nudges_instead(self):
         self.begin()
         self.finish(text="The film is finished.")
-        self.assertIn("You said the work is finished, but the project disagrees.", self.hooks.turns[0].prompt)
+        self.assertIn("The project is not finished yet.", self.hooks.turns[0].prompt)
 
     def test_done_claim_with_no_project_stops(self):
         self.film = None

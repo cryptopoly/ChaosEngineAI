@@ -15,6 +15,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any, Callable, Protocol
 
+from backend_service.keep_going import assets as kg_assets
 from backend_service.keep_going.nudge import TurnOutcome, claims_done
 from backend_service.keep_going.project_state import FilmState, read_film_state
 
@@ -28,6 +29,7 @@ class View:
     next_step: str = ""  # one concrete step for the nudge
     complete: str | None = None  # a stop code when the goal looks done ("complete", "complete_no_project")
     project_id: str | None = None
+    assets: str = ""  # files the chat already made that the work lacks, as a line for the nudge
     extra: dict[str, Any] = field(default_factory=dict)
 
 
@@ -35,7 +37,7 @@ class Adapter(Protocol):
     name: str
 
     def read(self, *, goal: str, project_id: str | None, outcome: TurnOutcome | None,
-             last_reply: str) -> View: ...
+             last_reply: str, jobs: list[Any] | None = None, since: float = 0.0) -> View: ...
 
 
 class StoryboardAdapter:
@@ -46,7 +48,8 @@ class StoryboardAdapter:
     def __init__(self, reader: Callable[[str | None], FilmState | None] | None = None) -> None:
         self.reader = reader
 
-    def read(self, *, goal: str, project_id: str | None, outcome: TurnOutcome | None, last_reply: str) -> View:
+    def read(self, *, goal: str, project_id: str | None, outcome: TurnOutcome | None, last_reply: str,
+             jobs: list[Any] | None = None, since: float = 0.0) -> View:
         film = (self.reader or read_film_state)(project_id)
         if film is None:
             done = None
@@ -56,9 +59,26 @@ class StoryboardAdapter:
                         next_step="Create the storyboard project with storyboard_project create, then add the "
                                   "shots from the brief.",
                         complete=done, project_id=project_id)
-        return View(signature=film.snapshot(), summary=film.summary(goal), next_step=film.next_step(goal),
+        # What the chat made since the run started: audio it made must be in the film, and a file the project
+        # lacks is named so the model attaches it instead of making it again.
+        made = kg_assets.made_files(jobs or [], since)
+        film.made = {a.kind for a in made if a.kind in ("music", "voice")}
+        wanted = set()
+        if not film.music:
+            wanted.add("music")
+        if film.wants_voice(goal) and not film.voice:
+            wanted.add("voice")
+        if film.needs_still or film.needs_redo:
+            wanted.add("image")
+        if film.needs_clip or film.needs_redo:
+            wanted.add("video")
+        loose = kg_assets.loose(made, film.hashes, wanted) if wanted else []
+        first = {}
+        for asset in loose:
+            first.setdefault(asset.kind, asset.path)
+        return View(signature=film.snapshot(), summary=film.summary(goal), next_step=film.next_step(goal, first),
                     complete="complete" if film.complete(goal) else None, project_id=film.project_id,
-                    extra={"film": film})
+                    assets=kg_assets.asset_line(loose), extra={"film": film})
 
 
 _NEXT = re.compile(r"[^.!?\n]*\b(next|then I will|I will now|I'll now|remaining|still to do|to do)\b[^.!?\n]*[.!?]?", re.I)
@@ -77,7 +97,8 @@ class GenericAdapter:
 
     name = "generic"
 
-    def read(self, *, goal: str, project_id: str | None, outcome: TurnOutcome | None, last_reply: str) -> View:
+    def read(self, *, goal: str, project_id: str | None, outcome: TurnOutcome | None, last_reply: str,
+             jobs: list[Any] | None = None, since: float = 0.0) -> View:
         calls = outcome.tool_calls if outcome is not None else []
         results = sorted(
             f"{c.get('name')}:{hashlib.sha256(str(c.get('result') or '').encode('utf-8')).hexdigest()[:16]}"

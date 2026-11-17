@@ -22,6 +22,8 @@ export const KEEP_GOING_STOP_CODES = [
   "cap_reached",
   "no_progress",
   "repeated_error",
+  "calls_unreadable",
+  "call_refused",
   "context_full",
   "plan_declined",
   "plan_edit",

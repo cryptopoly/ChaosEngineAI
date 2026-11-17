@@ -794,6 +794,10 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest, app_reque
                         if _f:
                             yield _f
                         agent_tool_calls.append(event["tool_call_result"])
+                        if studio_gate is not None:  # Keep going binds the run's project as soon as it shows up
+                            from backend_service import keep_going as _keep_going
+
+                            _keep_going.on_tool_result(chaosengine, session_id_for_cancel, event["tool_call_result"])
                         yield f"data: {json.dumps({'toolCallResult': event['tool_call_result']})}\n\n"
                     elif "tool_call_progress" in event:
                         yield f"data: {json.dumps({'toolCallProgress': event['tool_call_progress']})}\n\n"

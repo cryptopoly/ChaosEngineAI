@@ -111,12 +111,14 @@ export async function resolveApiToken(force = false): Promise<string | null> {
     if (!fresh || fresh === CONFIGURED_API_TOKEN) {
       return CONFIGURED_API_TOKEN;
     }
-    configuredTokenReplaced = true;
     apiTokenPromise = Promise.resolve(fresh);
-    console.warn(
-      "The backend's API token changed (it restarted), so this page now uses its session token. "
-        + "Restart vite with the new VITE_CHAOSENGINE_API_TOKEN to silence this.",
-    );
+    if (!configuredTokenReplaced) {  // several polls can be refused at once: say it once
+      configuredTokenReplaced = true;
+      console.warn(
+        "The backend's API token changed (it restarted), so this page now uses its session token. "
+          + "Restart vite with the new VITE_CHAOSENGINE_API_TOKEN to silence this.",
+      );
+    }
     return fresh;
   }
   if (force) {

@@ -491,6 +491,20 @@ class ChaosEngineBackendTests(unittest.TestCase):
         response = client.post("/api/chat/sessions", json={"title": "Blocked"})
         self.assertEqual(response.status_code, 401)
 
+    def test_unauthorized_reply_is_readable_by_the_app_window(self):
+        # FU-195: the app's window is another origin; without CORS headers it sees a network error, not the 401
+        # that makes it read the token again.
+        client = TestClient(create_app(state=ChaosEngineState(
+            system_snapshot_provider=fake_system_snapshot, library_provider=fake_library,
+            settings_path=self.settings_path, benchmarks_path=self.benchmarks_path,
+            chat_sessions_path=self.chat_sessions_path), api_token=TEST_API_TOKEN))
+        allowed = client.get("/api/workspace", headers={"Origin": "tauri://localhost", "Authorization": "Bearer old"})
+        self.assertEqual(allowed.status_code, 401)
+        self.assertEqual(allowed.headers.get("access-control-allow-origin"), "tauri://localhost")
+        stranger = client.get("/api/workspace", headers={"Origin": "https://example.com"})
+        self.assertEqual(stranger.status_code, 401)
+        self.assertNotIn("access-control-allow-origin", stranger.headers)
+
     def test_protected_route_allows_missing_auth_when_require_api_auth_disabled(self):
         state = ChaosEngineState(
             system_snapshot_provider=fake_system_snapshot,

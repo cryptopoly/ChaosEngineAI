@@ -51,6 +51,20 @@ describe("apiFetch with a build-time token after a backend restart", () => {
     expect(console.warn).toHaveBeenCalledTimes(1);
   });
 
+  it("heals several polls refused at once, each retried once, with one console hint", async () => {
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.endsWith("/api/auth/session")) return json(200, { apiToken: "new" });
+      return authOf(init) === "Bearer new" ? json(200, { ok: true }) : json(401, { detail: "no" });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const { apiFetch } = await loadApi();
+
+    const replies = await Promise.all(["/a", "/b", "/c"].map((path) => apiFetch(path)));
+    expect(replies.map((r) => r.status)).toEqual([200, 200, 200]);
+    expect(fetchMock.mock.calls.filter(([url]) => !url.endsWith("/api/auth/session"))).toHaveLength(6);
+    expect(console.warn).toHaveBeenCalledTimes(1);
+  });
+
   it("does not loop when the backend still refuses: one session read and one retry per request", async () => {
     const fetchMock = vi.fn(async (url: string) =>
       url.endsWith("/api/auth/session") ? json(403, { detail: "origin" }) : json(401, { detail: "no" }));

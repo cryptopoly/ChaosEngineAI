@@ -613,7 +613,11 @@
     "applyToChat": "Auf Chat anwenden",
     "selectOrCreate": "Vorlage aus der Liste auswählen oder neue erstellen.",
     "nameRequired": null,
-    "saveFailed": null
+    "saveFailed": null,
+    "loadFailed": null,
+    "empty": null,
+    "noMatches": null,
+    "deleteConfirm": null
   },
   "fineTuning": {
     "loadingAdapters": "Adapter werden geladen...",
@@ -638,6 +642,7 @@
     "toggleOff": "AUS",
     "externalIntro": "Plugin-Verzeichnisse mit einer manifest.json ablegen unter:",
     "externalManifestHint": "Jedes Plugin benötigt eine manifest.json mit den Feldern id, name, type und entry_point.",
+    "loadFailed": null,
     "types": {
       "cacheStrategy": "Cache-Strategien",
       "inferenceEngine": "Inferenz-Engines",

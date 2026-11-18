@@ -613,7 +613,11 @@
     "applyToChat": "ja'chuqDaq yIlan",
     "selectOrCreate": "tetlhvo' velqa' yIwIv pagh velqa' chu' yIchenmoH.",
     "nameRequired": null,
-    "saveFailed": null
+    "saveFailed": null,
+    "loadFailed": null,
+    "empty": null,
+    "noMatches": null,
+    "deleteConfirm": null
   },
   "fineTuning": {
     "loadingAdapters": "chelwI' qemlI'...",
@@ -638,6 +642,7 @@
     "toggleOff": "chu'Ha'",
     "externalIntro": "manifest.json ghajbogh chelwI' nav ghom naDev yIlan:",
     "externalManifestHint": "manifest.json poQ chelwI' Hoch; id, name, type, entry_point je ghajnIS.",
+    "loadFailed": null,
     "types": {
       "cacheStrategy": "cache mIw",
       "inferenceEngine": "jonta'",

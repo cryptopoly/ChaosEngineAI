@@ -613,7 +613,11 @@
     "applyToChat": "应用到对话",
     "selectOrCreate": "从列表中选择模板或新建一个。",
     "nameRequired": null,
-    "saveFailed": null
+    "saveFailed": null,
+    "loadFailed": null,
+    "empty": null,
+    "noMatches": null,
+    "deleteConfirm": null
   },
   "fineTuning": {
     "loadingAdapters": "正在加载适配器...",
@@ -638,6 +642,7 @@
     "toggleOff": "关闭",
     "externalIntro": "将带有 manifest.json 的插件目录放在:",
     "externalManifestHint": "每个插件都需要包含 id、name、type 和 entry_point 字段的 manifest.json。",
+    "loadFailed": null,
     "types": {
       "cacheStrategy": "缓存策略",
       "inferenceEngine": "推理引擎",

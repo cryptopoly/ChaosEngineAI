@@ -84,6 +84,8 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
   const [fillOpen, setFillOpen] = useState(false);
   // Shown under the editor when a save is refused; a refused save used to do nothing at all.
   const [saveError, setSaveError] = useState<string | null>(null);
+  // A failed load used to look like an empty library.
+  const [loadFailed, setLoadFailed] = useState(false);
 
   const selected = templates.find((t) => t.id === selectedId) ?? null;
   const selectedVariables = useMemo(() => selected?.variables ?? [], [selected]);
@@ -95,8 +97,11 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
   useEffect(() => {
     if (!backendOnline) return;
     fetchJson<{ templates?: PromptTemplate[] }>("/api/prompts")
-      .then((data) => setTemplates(data.templates ?? []))
-      .catch(() => {});
+      .then((data) => {
+        setTemplates(data.templates ?? []);
+        setLoadFailed(false);
+      })
+      .catch(() => setLoadFailed(true));
   }, [backendOnline]);
 
   const filtered = templates.filter((template) => matchesTemplateSearch(template, searchQuery));
@@ -215,6 +220,11 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
   }
 
   async function handleDelete(id: string) {
+    const name = templates.find((template) => template.id === id)?.name ?? "";
+    const confirmed = window.confirm(
+      t("promptLibrary.deleteConfirm", { name, defaultValue: "Delete the template \"{name}\"? This cannot be undone." }),
+    );
+    if (!confirmed) return;
     try {
       const response = await apiFetch(`/api/prompts/${encodeURIComponent(id)}`, { method: "DELETE" });
       if (!response.ok) {
@@ -263,6 +273,17 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
               <div style={{ fontSize: 11, color: "#7a8594" }}>{t.category} {t.tags.length ? `| ${t.tags.join(", ")}` : ""}</div>
             </button>
           ))}
+          {loadFailed ? (
+            <p role="alert" className="error-text" style={{ padding: "8px 10px", fontSize: 12 }}>
+              {t("promptLibrary.loadFailed", { defaultValue: "The templates could not be loaded. Check that the backend is running." })}
+            </p>
+          ) : filtered.length === 0 ? (
+            <p className="muted-text" style={{ padding: "8px 10px", fontSize: 12 }}>
+              {searchQuery.trim()
+                ? t("promptLibrary.noMatches", { defaultValue: "No template matches the search." })
+                : t("promptLibrary.empty", { defaultValue: "No templates yet. Use New to make one." })}
+            </p>
+          ) : null}
         </div>
       </Panel>
 

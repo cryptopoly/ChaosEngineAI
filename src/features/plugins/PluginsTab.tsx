@@ -37,15 +37,21 @@ export function PluginsTab({ backendOnline }: PluginsTabProps) {
   const { t } = useTranslation("common");
   const [plugins, setPlugins] = useState<Record<string, PluginInfo[]>>({});
   const [loading, setLoading] = useState(true);
+  // A failed load used to read "No plugins found."
+  const [loadFailed, setLoadFailed] = useState(false);
 
   useEffect(() => {
     if (!backendOnline) return;
     fetchJson<unknown>("/api/plugins")
       .then((data) => {
         setPlugins(groupedPlugins(data));
+        setLoadFailed(false);
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch(() => {
+        setLoadFailed(true);
+        setLoading(false);
+      });
   }, [backendOnline]);
 
   async function togglePlugin(pluginId: string, currentlyEnabled: boolean) {
@@ -84,6 +90,10 @@ export function PluginsTab({ backendOnline }: PluginsTabProps) {
       >
         {loading ? (
           <p className="muted-text" style={{ padding: 16 }}>{t("pluginsTab.discovering", { defaultValue: "Discovering plugins..." })}</p>
+        ) : loadFailed ? (
+          <p role="alert" className="error-text" style={{ padding: 24, textAlign: "center" }}>
+            {t("pluginsTab.loadFailed", { defaultValue: "The plugin list could not be loaded. Check that the backend is running." })}
+          </p>
         ) : totalCount === 0 ? (
           <p className="muted-text" style={{ padding: 24, textAlign: "center" }}>{t("pluginsTab.noPlugins", { defaultValue: "No plugins found." })}</p>
         ) : (

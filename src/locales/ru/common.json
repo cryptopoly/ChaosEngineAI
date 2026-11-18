@@ -613,7 +613,11 @@
     "applyToChat": "Применить к чату",
     "selectOrCreate": "Выберите шаблон из списка или создайте новый.",
     "nameRequired": null,
-    "saveFailed": null
+    "saveFailed": null,
+    "loadFailed": null,
+    "empty": null,
+    "noMatches": null,
+    "deleteConfirm": null
   },
   "fineTuning": {
     "loadingAdapters": "Загрузка адаптеров...",
@@ -638,6 +642,7 @@
     "toggleOff": "ВЫКЛ",
     "externalIntro": "Поместите каталоги плагинов с manifest.json в:",
     "externalManifestHint": "Каждому плагину нужен manifest.json с полями id, name, type и entry_point.",
+    "loadFailed": null,
     "types": {
       "cacheStrategy": "Стратегии кэша",
       "inferenceEngine": "Движки инференса",

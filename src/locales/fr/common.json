@@ -613,7 +613,11 @@
     "applyToChat": "Appliquer à la discussion",
     "selectOrCreate": "Sélectionnez un modèle dans la liste ou créez-en un nouveau.",
     "nameRequired": null,
-    "saveFailed": null
+    "saveFailed": null,
+    "loadFailed": null,
+    "empty": null,
+    "noMatches": null,
+    "deleteConfirm": null
   },
   "fineTuning": {
     "loadingAdapters": "Chargement des adaptateurs...",
@@ -638,6 +642,7 @@
     "toggleOff": "DÉSACTIVÉ",
     "externalIntro": "Placez les répertoires de plugins avec un manifest.json dans :",
     "externalManifestHint": "Chaque plugin a besoin d'un manifest.json avec les champs id, name, type et entry_point.",
+    "loadFailed": null,
     "types": {
       "cacheStrategy": "Stratégies de cache",
       "inferenceEngine": "Moteurs d'inférence",

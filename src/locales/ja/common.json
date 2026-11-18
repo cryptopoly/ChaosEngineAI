@@ -613,7 +613,11 @@
     "applyToChat": "チャットに適用",
     "selectOrCreate": "リストからテンプレートを選択するか、新規作成してください。",
     "nameRequired": null,
-    "saveFailed": null
+    "saveFailed": null,
+    "loadFailed": null,
+    "empty": null,
+    "noMatches": null,
+    "deleteConfirm": null
   },
   "fineTuning": {
     "loadingAdapters": "アダプターを読み込み中...",
@@ -638,6 +642,7 @@
     "toggleOff": "オフ",
     "externalIntro": "manifest.json を含むプラグインディレクトリを配置する場所:",
     "externalManifestHint": "各プラグインには id、name、type、entry_point フィールドを持つ manifest.json が必要です。",
+    "loadFailed": null,
     "types": {
       "cacheStrategy": "キャッシュ戦略",
       "inferenceEngine": "推論エンジン",

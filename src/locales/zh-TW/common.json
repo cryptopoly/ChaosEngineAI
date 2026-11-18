@@ -613,7 +613,11 @@
     "applyToChat": "套用至對話",
     "selectOrCreate": "從清單中選擇範本或建立新範本。",
     "nameRequired": null,
-    "saveFailed": null
+    "saveFailed": null,
+    "loadFailed": null,
+    "empty": null,
+    "noMatches": null,
+    "deleteConfirm": null
   },
   "fineTuning": {
     "loadingAdapters": "正在載入介面卡...",
@@ -638,6 +642,7 @@
     "toggleOff": "關",
     "externalIntro": "將含 manifest.json 的外掛程式目錄放入:",
     "externalManifestHint": "每個外掛程式都需要一個 manifest.json,包含 id、name、type 與 entry_point 欄位。",
+    "loadFailed": null,
     "types": {
       "cacheStrategy": "快取策略",
       "inferenceEngine": "推論引擎",

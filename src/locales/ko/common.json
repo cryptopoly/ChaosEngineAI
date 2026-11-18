@@ -613,7 +613,11 @@
     "applyToChat": "채팅에 적용",
     "selectOrCreate": "목록에서 템플릿을 선택하거나 새 템플릿을 만드세요.",
     "nameRequired": null,
-    "saveFailed": null
+    "saveFailed": null,
+    "loadFailed": null,
+    "empty": null,
+    "noMatches": null,
+    "deleteConfirm": null
   },
   "fineTuning": {
     "loadingAdapters": "어댑터 로딩 중...",
@@ -638,6 +642,7 @@
     "toggleOff": "꺼짐",
     "externalIntro": "다음 위치에 manifest.json이 있는 플러그인 디렉터리를 두세요:",
     "externalManifestHint": "각 플러그인에는 id, name, type, entry_point 필드가 포함된 manifest.json이 필요합니다.",
+    "loadFailed": null,
     "types": {
       "cacheStrategy": "캐시 전략",
       "inferenceEngine": "추론 엔진",

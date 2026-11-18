@@ -613,7 +613,11 @@
     "applyToChat": "Aplicar al chat",
     "selectOrCreate": "Selecciona una plantilla de la lista o crea una nueva.",
     "nameRequired": null,
-    "saveFailed": null
+    "saveFailed": null,
+    "loadFailed": null,
+    "empty": null,
+    "noMatches": null,
+    "deleteConfirm": null
   },
   "fineTuning": {
     "loadingAdapters": "Cargando adaptadores...",
@@ -638,6 +642,7 @@
     "toggleOff": "OFF",
     "externalIntro": "Coloca directorios de plugins con un manifest.json en:",
     "externalManifestHint": "Cada plugin necesita un manifest.json con campos id, name, type y entry_point.",
+    "loadFailed": null,
     "types": {
       "cacheStrategy": "Estrategias de caché",
       "inferenceEngine": "Motores de inferencia",

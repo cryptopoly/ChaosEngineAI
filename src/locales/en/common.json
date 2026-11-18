@@ -613,7 +613,11 @@
     "applyToChat": "Apply to chat",
     "selectOrCreate": "Select a template from the list or create a new one.",
     "nameRequired": "Give the template a name before saving.",
-    "saveFailed": "The template was not saved. Check the fields and try again."
+    "saveFailed": "The template was not saved. Check the fields and try again.",
+    "loadFailed": "The templates could not be loaded. Check that the backend is running.",
+    "empty": "No templates yet. Use New to make one.",
+    "noMatches": "No template matches the search.",
+    "deleteConfirm": "Delete the template \"{name}\"? This cannot be undone."
   },
   "fineTuning": {
     "loadingAdapters": "Loading adapters...",
@@ -638,6 +642,7 @@
     "toggleOff": "OFF",
     "externalIntro": "Place plugin directories with a manifest.json in:",
     "externalManifestHint": "Each plugin needs a manifest.json with id, name, type, and entry_point fields.",
+    "loadFailed": "The plugin list could not be loaded. Check that the backend is running.",
     "types": {
       "cacheStrategy": "Cache Strategies",
       "inferenceEngine": "Inference Engines",

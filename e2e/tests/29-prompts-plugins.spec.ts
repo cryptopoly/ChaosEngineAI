@@ -11,7 +11,8 @@ import { API_BASE, TOKEN, goTo, openTab, SHOTS_DIR } from "./helpers";
 //
 // Prompts: the five built-ins show, dates are dates (not epoch seconds), a save with no name says why, a
 // template with a variable is created, found by its prompt text, filled in, and "Apply to chat" lands in Chat
-// with the filled prompt sent as the system prompt; edit and delete; the page stacks at 375 px.
+// with the filled prompt sent as the system prompt; edit and delete (with a confirm); the page stacks at
+// 375 px; a failed load says so on both pages.
 // Plugins: the page lists what GET /api/plugins registers (it used to read a key the route never sent and
 // said "No plugins found"), the last row can be reached, a switch flips and flips back, 375 px fits.
 
@@ -105,6 +106,9 @@ test("Prompts: built-ins, dates, a refused save, variables, search, use in Chat,
   await list.getByPlaceholder("Search templates...").fill("quokka");
   await expect(list.locator(".session-button")).toHaveCount(1);
   await expect(list.locator(".session-button")).toContainText(NAME);
+  await list.getByPlaceholder("Search templates...").fill("no-such-template-text");
+  await expect(list.locator(".session-button")).toHaveCount(0);
+  await expect(list).toContainText("No template matches the search.");
   await list.getByPlaceholder("Search templates...").fill("");
 
   // Use in Chat: fill the variable, see the resolved prompt, apply. Chat opens and the next message carries it.
@@ -126,6 +130,13 @@ test("Prompts: built-ins, dates, a refused save, variables, search, use in Chat,
   await detail(page).locator("input.text-input").nth(0).fill(`${NAME} v2`);
   await detail(page).getByRole("button", { name: "Save", exact: true }).click();
   await expect(list.locator(".session-button", { hasText: `${NAME} v2` })).toHaveCount(1);
+  // Delete asks first: dismissing keeps the template, accepting removes it.
+  const asked: string[] = [];
+  page.once("dialog", (dialog) => { asked.push(dialog.message()); void dialog.dismiss(); });
+  await detail(page).getByRole("button", { name: "Delete", exact: true }).click();
+  await expect(list.locator(".session-button")).toHaveCount(6);
+  expect(asked[0]).toBe(`Delete the template "${NAME} v2"? This cannot be undone.`);
+  page.once("dialog", (dialog) => void dialog.accept());
   await detail(page).getByRole("button", { name: "Delete", exact: true }).click();
   await expect(list.locator(".session-button")).toHaveCount(5);
   const after = await (await page.request.get(`${API_BASE}/api/prompts`, { headers: AUTH })).json();
@@ -145,6 +156,17 @@ test("Prompts stacks at 375 px with no sideways scroll", async ({ page }) => {
   await expect(detail(page).getByRole("button", { name: "Use in Chat", exact: true })).toBeInViewport();
   mkdirSync(SHOTS_DIR, { recursive: true });
   await page.screenshot({ path: path.join(SHOTS_DIR, "29-prompts-375.png"), fullPage: true });
+});
+
+test("a failed load says so on both pages instead of looking empty", async ({ page }) => {
+  await page.route("**/api/prompts", (route) => route.fulfill({ status: 500, json: { detail: "boom" } }));
+  await page.route("**/api/plugins", (route) => route.fulfill({ status: 500, json: { detail: "boom" } }));
+  await goTo(page, "Tools", "Prompts");
+  await expect(layout(page).getByRole("alert")).toHaveText("The templates could not be loaded. Check that the backend is running.");
+  await openTab(page, "Tools", "Plugins");
+  const pluginPage = page.locator(".plugins-page");
+  await expect(pluginPage.getByRole("alert")).toHaveText("The plugin list could not be loaded. Check that the backend is running.");
+  await expect(pluginPage).not.toContainText("No plugins found.");
 });
 
 test("Plugins: lists what the backend registers, every row is reachable, a switch flips", async ({ page }) => {

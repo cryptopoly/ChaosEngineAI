@@ -4882,14 +4882,6 @@ select.text-input {
   .directory-add-row {
     grid-template-columns: minmax(0, 1fr);
   }
-
-  .settings-storage-col {
-    min-height: min-content;
-  }
-
-  .settings-storage-col > .panel {
-    flex-shrink: 0;
-  }
 }
 
 .settings-disk-stack {
@@ -4933,13 +4925,6 @@ select.text-input {
   overflow-y: auto;
 }
 
-/* The rule above is more specific than the general one-column rule at 900 px, so Storage stayed in two
-   columns of about 160 px on a phone and its rows were cut. */
-@media (max-width: 900px) {
-  .settings-layout .settings-storage-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
 
 .settings-storage-col {
   display: flex;
@@ -4947,6 +4932,21 @@ select.text-input {
   gap: var(--app-gap);
   min-width: 0;
   min-height: 0;
+}
+
+/* Below 900 px Storage is one column that scrolls as a whole. The grid rule above is more specific than
+   the general one-column rule of that breakpoint, so Storage stayed in two columns of about 160 px on a
+   phone and its rows were cut; as a plain column nothing shrinks and nothing overlaps. */
+@media (max-width: 900px) {
+  .settings-layout .settings-storage-grid {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .settings-layout .settings-storage-grid > *,
+  .settings-layout .settings-storage-grid .settings-storage-col > .panel {
+    flex-shrink: 0;
+  }
 }
 
 /* Pair a field label with an inline status badge (e.g. "default") on the

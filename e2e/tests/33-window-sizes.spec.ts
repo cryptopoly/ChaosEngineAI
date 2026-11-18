@@ -160,11 +160,11 @@ test.describe("375 px", () => {
     await openApp(page);
     await openSettings(page);
     await settingsSection(page, "Storage");
-    const columns = page.locator(".settings-storage-col");
-    const first = (await columns.nth(0).boundingBox())!;
-    const second = (await columns.nth(1).boundingBox())!;
+    // The folder panels on the left, the Model Directories panel on the right when there is room.
+    const first = (await page.locator(".settings-storage-col").boundingBox())!;
+    const second = (await page.locator(".settings-storage-grid > .panel").boundingBox())!;
     expect(first.width).toBeGreaterThan(300);
-    expect(second.y, "the two Storage columns are still side by side").toBeGreaterThan(first.y + 50);
+    expect(second.y, "Storage is still in two columns").toBeGreaterThanOrEqual(first.y + first.height);
     const squeezed = await page.evaluate(() =>
       [...document.querySelectorAll(".settings-storage-grid button")]
         .filter((button) => button.clientWidth > 0 && button.scrollWidth > button.clientWidth + 2)

@@ -17,13 +17,31 @@ import os
 from pathlib import Path
 
 
+def hub_dir_for_home(hf_home: Path) -> Path:
+    """The hub directory for a chosen cache folder.
+
+    Huggingface_hub appends ``hub`` to ``HF_HOME``. A folder the user picked
+    that already holds ``models--*`` repos (and has no ``hub`` folder) is the
+    hub itself, so use it as is instead of looking in an empty ``hub``.
+    """
+    hub = hf_home / "hub"
+    try:
+        if hub.is_dir():
+            return hub
+        if hf_home.is_dir() and any(p.name.startswith("models--") for p in hf_home.iterdir()):
+            return hf_home
+    except OSError:
+        pass
+    return hub
+
+
 def _hf_hub_cache_root() -> Path:
     explicit = os.environ.get("HUGGINGFACE_HUB_CACHE") or os.environ.get("HF_HUB_CACHE")
     if explicit:
         return Path(os.path.expanduser(explicit)).expanduser()
     hf_home = os.environ.get("HF_HOME")
     if hf_home:
-        return Path(os.path.expanduser(hf_home)).expanduser() / "hub"
+        return hub_dir_for_home(Path(os.path.expanduser(hf_home)).expanduser())
     # Use huggingface_hub's own cache constant when available -- it handles
     # platform differences (Windows uses LOCALAPPDATA or userprofile).
     try:

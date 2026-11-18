@@ -187,6 +187,7 @@ export interface StorageSettingsSnapshot {
   effectivePath: string;
   effectiveHubPath: string;
   defaultPath: string;
+  lmstudioDir?: string;
   currentHubSizeBytes: number;
   currentFreeBytes: number | null;
   moveJob: ModelMoveJobState;
@@ -208,6 +209,10 @@ export async function updateHfCachePath(path: string): Promise<UpdateStoragePath
     { hfCachePath: path },
     20000,
   );
+}
+
+export async function updateLmStudioDir(path: string): Promise<{ lmstudioDir: string }> {
+  return await postJson<{ lmstudioDir: string }>("/api/settings/lmstudio-dir", { path }, 20000);
 }
 
 export async function startModelMove(

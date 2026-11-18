@@ -7,6 +7,7 @@ import {
   getStorageSettings,
   startModelMove,
   updateHfCachePath,
+  updateLmStudioDir,
   type ModelMoveJobState,
   type StorageSettingsSnapshot,
 } from "../../api";
@@ -98,6 +99,23 @@ export function ModelStoragePanel({
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [startingMove, setStartingMove] = useState(false);
+  const [lmDraft, setLmDraft] = useState<string | null>(null);
+  const [lmSaving, setLmSaving] = useState(false);
+
+  async function handleSaveLmStudioDir() {
+    if (lmSaving || lmDraft === null) return;
+    setLmSaving(true);
+    setError(null);
+    try {
+      await updateLmStudioDir(lmDraft.trim());
+      setLmDraft(null);
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLmSaving(false);
+    }
+  }
 
   const refresh = useCallback(async () => {
     if (!backendOnline) return;
@@ -349,6 +367,46 @@ export function ModelStoragePanel({
               </div>
             </div>
           ) : null}
+
+          <div className="field-label-row" style={{ marginTop: 14 }}>
+            <label className="field-label">{t("modelStoragePanel.lmstudioDir", { defaultValue: "LM Studio models folder" })}</label>
+          </div>
+          <p className="help-text" style={{ margin: "0 0 6px" }}>
+            {t("modelStoragePanel.lmstudioHint", {
+              defaultValue: "Used by Share with LM Studio, which links a GGUF into <publisher>\\<model>\\ here without copying it. Keep it on the same drive as your models.",
+            })}
+          </p>
+          <div className="directory-add-row">
+            <input
+              className="text-input directory-add-path mono-text"
+              type="text"
+              placeholder="E:\AI Models\lmstudio"
+              value={lmDraft ?? snapshot.lmstudioDir ?? ""}
+              onChange={(event) => setLmDraft(event.target.value)}
+              disabled={lmSaving}
+            />
+            <button
+              className="secondary-button"
+              type="button"
+              onClick={async () => {
+                const next = await onPickDirectory(lmDraft ?? snapshot.lmstudioDir ?? "");
+                if (next) setLmDraft(next);
+              }}
+              disabled={lmSaving}
+            >
+              {t("modelStoragePanel.browse", { defaultValue: "Browse..." })}
+            </button>
+            <button
+              className="primary-button"
+              type="button"
+              onClick={() => void handleSaveLmStudioDir()}
+              disabled={lmSaving || lmDraft === null}
+            >
+              {lmSaving
+                ? t("modelStoragePanel.saving", { defaultValue: "Saving..." })
+                : t("modelStoragePanel.saveLmstudioDir", { defaultValue: "Save folder" })}
+            </button>
+          </div>
 
           {moveJob && (moveActive || moveDone || moveError) ? (
             <div className="callout image-callout" style={{ marginTop: 14 }}>

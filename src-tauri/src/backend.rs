@@ -197,6 +197,20 @@ impl BackendManager {
             // setting it later via os.environ has no effect.
             if let Some(hf_home) = saved_hf_cache_path() {
                 command.env("HF_HOME", &hf_home);
+                // HF appends `hub` to HF_HOME. When the chosen folder already
+                // holds `models--*` repos and has no `hub` folder, it is the
+                // hub itself, so point the hub cache at it directly.
+                let home_path = std::path::Path::new(&hf_home);
+                if !home_path.join("hub").is_dir() {
+                    let holds_repos = std::fs::read_dir(home_path)
+                        .map(|entries| {
+                            entries.flatten().any(|e| e.file_name().to_string_lossy().starts_with("models--"))
+                        })
+                        .unwrap_or(false);
+                    if holds_repos {
+                        command.env("HF_HUB_CACHE", &hf_home);
+                    }
+                }
             }
 
             if let Some(runtime) = embedded_runtime.as_ref() {

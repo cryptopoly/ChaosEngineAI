@@ -15,6 +15,7 @@ export type ActionIconName =
   | "retry"
   | "reveal"
   | "server"
+  | "share"
   | "star"
   | "starOutline";
 
@@ -169,6 +170,13 @@ export function ModelActionIcon({ name, className }: IconProps) {
           <path d="M3.5 7.5h6l2 2H20a1.5 1.5 0 0 1 1.5 1.5v6A2.5 2.5 0 0 1 19 19.5H5A2.5 2.5 0 0 1 2.5 17V9A1.5 1.5 0 0 1 4 7.5z" />
           <path d="M13 15h6" />
           <path d="m16.5 12 2.5 3-2.5 3" />
+        </Svg>
+      );
+    case "share":
+      return (
+        <Svg className={className}>
+          <path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1" />
+          <path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" />
         </Svg>
       );
     case "server":

@@ -1410,5 +1410,11 @@
     "note": "入力欄とボタンの枠線をコントラストの高い線で囲み、見やすくします。すぐに反映されます。",
     "on": "オン",
     "off": "オフ"
+  },
+  "statusBanners": {
+    "backendOffline": {
+      "title": null,
+      "detail": null
+    }
   }
 }

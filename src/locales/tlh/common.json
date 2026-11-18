@@ -1410,5 +1410,11 @@
     "note": null,
     "on": null,
     "off": null
+  },
+  "statusBanners": {
+    "backendOffline": {
+      "title": null,
+      "detail": null
+    }
   }
 }

@@ -457,7 +457,11 @@ export async function getCachePreview(options: {
     search.set("weights_gb", String(options.weightsGb));
   }
 
+  // Before the first workspace answer the model shape is all zeros. The backend refuses that (422), so
+  // every launch logged a failed request; the answer is the same fallback, without the round trip.
+  const hasShape = options.numLayers >= 1 && options.numHeads >= 1 && options.hiddenSize >= 1;
   try {
+    if (!hasShape) throw new Error("no model shape yet");
     return await fetchJson<PreviewMetrics>(`/api/cache/preview?${search.toString()}`);
   } catch {
     return {

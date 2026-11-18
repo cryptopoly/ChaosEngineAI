@@ -1410,5 +1410,11 @@
     "note": "以高對比線條勾勒輸入框與按鈕,使其更容易辨識。立即生效。",
     "on": "開啟",
     "off": "關閉"
+  },
+  "statusBanners": {
+    "backendOffline": {
+      "title": null,
+      "detail": null
+    }
   }
 }

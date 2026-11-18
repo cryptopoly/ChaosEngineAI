@@ -51,6 +51,14 @@ describe("getCachePreview", () => {
     expect(url.searchParams.has("model_path")).toBe(false);
     expect(url.searchParams.has("model_repo")).toBe(false);
   });
+
+  it("asks nothing before a model shape is known (the backend answered 422 on every launch)", async () => {
+    const fetchMock = stubFetch();
+    const preview = await getCachePreview({ ...base, numLayers: 0, numHeads: 0, hiddenSize: 0, paramsB: 0 });
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes("/api/cache/preview"))).toBe(false);
+    expect(preview.archSource).toBe("estimate");
+    expect(preview.baselineCacheGb).toBe(0);
+  });
 });
 
 describe("checkModelMemory", () => {

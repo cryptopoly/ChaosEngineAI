@@ -1410,5 +1410,11 @@
     "note": "Umrandet Eingabefelder und Schaltflächen mit einer kontrastreicheren Linie, damit sie besser zu erkennen sind. Gilt sofort.",
     "on": "An",
     "off": "Aus"
+  },
+  "statusBanners": {
+    "backendOffline": {
+      "title": null,
+      "detail": null
+    }
   }
 }

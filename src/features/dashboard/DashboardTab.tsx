@@ -41,7 +41,7 @@ export function DashboardTab({ system, recommendation, runtime, activity, backen
   const battery = system.battery;
 
   return (
-    <div className="content-grid">
+    <div className="content-grid dashboard-page">
       <Panel
         title={t("liveStats.title")}
         subtitle={t("liveStats.subtitle")}
@@ -261,7 +261,7 @@ export function DashboardTab({ system, recommendation, runtime, activity, backen
         </div>
       </Panel>
 
-      <Panel title={t("activityFeed.title")} subtitle={t("activityFeed.subtitle")}>
+      <Panel title={t("activityFeed.title")} subtitle={t("activityFeed.subtitle")} className="dashboard-feed">
         <div className="list scrollable-list">
           {activity.map((item, idx) => {
             const localTitle = item.titleKey

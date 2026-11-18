@@ -953,6 +953,7 @@ export default function App() {
           handleRebuildLlamaCpp={handleRebuildLlamaCpp}
           rebuildOutput={rebuildOutput}
           setRebuildOutput={setRebuildOutput}
+          backendOffline={!loading && !backendOnline}
         />
 
         {sidebarPrefs.mode === "tabs" ? (

@@ -116,7 +116,7 @@ export function FirstLaunchLocaleBanner({
         <button type="button" className="primary-button" onClick={handleSwitch}>
           {t("localeBanner.switch", { endonym, defaultValue: "Switch to {endonym}" })}
         </button>
-        <button type="button" className="ghost-button" onClick={handleKeepEnglish}>
+        <button type="button" className="secondary-button" onClick={handleKeepEnglish}>
           {t("localeBanner.keep", { defaultValue: "Keep English" })}
         </button>
       </div>

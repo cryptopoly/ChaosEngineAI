@@ -190,7 +190,7 @@ export function LanguagePanel({
             </a>
             <button
               type="button"
-              className="ghost-button"
+              className="secondary-button"
               onClick={() => onCopyText(githubUrl)}
             >
               {t("actions.copy")}

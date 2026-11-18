@@ -1410,5 +1410,11 @@
     "note": "Outlines inputs and buttons with a higher-contrast line so they are easier to see. Applies immediately.",
     "on": "On",
     "off": "Off"
+  },
+  "statusBanners": {
+    "backendOffline": {
+      "title": "The backend is not answering.",
+      "detail": "What you see may be out of date and actions will fail until it is back. The app reconnects by itself."
+    }
   }
 }

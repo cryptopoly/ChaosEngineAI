@@ -2533,6 +2533,13 @@ select.text-input {
   flex: 1;
   min-width: 0;
 }
+
+/* The backend-offline notice: title and sentence read as one line of text, not pushed to the two edges. */
+.backend-offline-banner {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
 .rebuild-output {
   max-height: 240px;
   overflow: auto;
@@ -2561,6 +2568,14 @@ select.text-input {
 .check-row input[type="checkbox"] {
   margin: 0;
   accent-color: var(--accent);
+}
+
+/* ".control-stack label" and ".field-grid label" stack a label over its field and are more specific than
+   .check-row, so a tick box inside them sat centred above its own text (Settings > General, Integrations). */
+.control-stack label.check-row,
+.field-grid label.check-row {
+  flex-direction: row;
+  align-items: center;
 }
 
 .toggle-column {
@@ -4814,6 +4829,52 @@ select.text-input {
   min-height: 0;
 }
 
+/* The Dashboard and the Settings sections are grids locked to the window height and .panel clips what
+   does not fit, so at the smallest window (1100 x 760) the lower controls of a panel (language, UI scale,
+   the storage folders, half the live stats) could not be reached at all. A row is now never shorter than
+   its content and the grid scrolls when the rows do not fit; when they fit, nothing changes. */
+.content-grid.dashboard-page,
+.settings-layout .settings-section-grid {
+  grid-auto-rows: minmax(min-content, 1fr);
+  overflow-y: auto;
+}
+
+/* The activity feed keeps scrolling inside its panel: it takes the row's height, it does not set it. */
+.content-grid.dashboard-page > .dashboard-feed {
+  height: 0;
+  min-height: 100%;
+}
+
+/* The left Storage column (the small folder panels) keeps its content's height; the Model Directories
+   panel beside it still fills the row and scrolls its own list. */
+.settings-storage-col:first-child {
+  min-height: min-content;
+}
+
+.settings-storage-col:first-child > .panel {
+  flex-shrink: 0;
+}
+
+@media (max-width: 900px) {
+  /* One column: the feed has a row to itself, so it sizes to its list, capped. */
+  .content-grid.dashboard-page > .dashboard-feed {
+    height: auto;
+    min-height: 0;
+  }
+
+  .content-grid.dashboard-page > .dashboard-feed .scrollable-list {
+    max-height: 22rem;
+  }
+
+  .settings-storage-col {
+    min-height: min-content;
+  }
+
+  .settings-storage-col > .panel {
+    flex-shrink: 0;
+  }
+}
+
 .settings-disk-stack {
   display: flex;
   flex-direction: column;
@@ -4850,7 +4911,9 @@ select.text-input {
   min-height: 0;
   height: 100%;
   width: 100%;
-  overflow: hidden;
+  /* Scrolls when the folder panels do not fit (they were clipped at the smallest window). */
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .settings-storage-col {
@@ -7414,7 +7477,10 @@ select.text-input {
 
 .image-page-grid {
   align-items: start;
-  grid-auto-rows: auto;
+  /* max-content, not auto: the frame stretches this grid to its own height, and auto rows then share that
+     height instead of taking their content's (panels have min-height 0). Side by side nobody saw it; stacked
+     (1100 px and narrower) the Prompt form was drawn over the header and under Recent Outputs. */
+  grid-auto-rows: max-content;
   height: auto;
   min-height: 100%;
   align-content: start;

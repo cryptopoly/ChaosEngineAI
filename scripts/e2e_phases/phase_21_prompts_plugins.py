@@ -106,7 +106,6 @@ def run(cap: Any, suite: Any):
                 {"name": "animal", "type": "colour", "default": "quokka"},  # unknown type becomes string
                 {"name": "language", "type": "string"},  # duplicate name is dropped
                 {"type": "string"},  # no name is dropped
-                "not an object",
             ],
             "presetSamplers": {"topP": 0.9},
             "presetModelRef": "any/model",
@@ -155,9 +154,11 @@ def run(cap: Any, suite: Any):
             "no name": api("POST", "/api/prompts", {"systemPrompt": "x"})[0],
             "prompt over 16000 characters": api("POST", "/api/prompts", {"name": f"{name}-long", "systemPrompt": "x" * 16001})[0],
             "tags not a list": api("POST", "/api/prompts", {"name": f"{name}-tags", "tags": "one"})[0],
+            "a variable that is not an object": api("POST", "/api/prompts", {"name": f"{name}-var", "variables": ["x"]})[0],
             "delete unknown": api("DELETE", f"/api/prompts/no-such-template-{tag}")[0],
         }
-        wanted = {"empty name": 422, "no name": 422, "prompt over 16000 characters": 422, "tags not a list": 422, "delete unknown": 404}
+        wanted = {"empty name": 422, "no name": 422, "prompt over 16000 characters": 422, "tags not a list": 422,
+                  "a variable that is not an object": 422, "delete unknown": 404}
         if answers != wanted:
             return "fail", f"got {answers}, wanted {wanted}", {}
         return "pass", "", answers
@@ -275,7 +276,11 @@ def run(cap: Any, suite: Any):
     def token_needed():
         # With auth on (the default), both routes refuse a call that carries no token.
         answers = {}
+        anonymous = getattr(suite, "_anonymous_http", None)  # the in-process test supplies its own client
         for path in ("/api/prompts", "/api/plugins"):
+            if anonymous is not None:
+                answers[path] = anonymous(path)
+                continue
             try:
                 with urllib.request.urlopen(f"http://{suite._HOST}:{suite._PORT}{path}", timeout=10.0) as resp:
                     answers[path] = resp.status
@@ -294,7 +299,7 @@ def run(cap: Any, suite: Any):
             ("GET /api/prompts lists templates with their fields", prompts_list),
             ("a template with variables and presets saves, with bad variable rows dropped", prompts_create),
             ("an update keeps the id, and search finds it by text, tag and category", prompts_update_and_search),
-            ("a missing name, an oversized prompt, bad tags and an unknown delete are refused", prompts_refusals),
+            ("a missing name, an oversized prompt, bad tags, a bad variable and an unknown delete are refused", prompts_refusals),
             ("delete removes the template and a second delete is 404", prompts_delete),
             ("GET /api/plugins is the type-to-rows map with the built-in strategies and tools", plugins_list),
             ("a plugin switch round-trips and is put back", plugins_switch),

@@ -209,10 +209,14 @@ class PromptsRouteTests(_RouteContractCase):
 
     def setUp(self):
         super().setUp()
-        # The library is module-level; reset between test classes so
-        # tests don't see seeded templates from a previous test's tempdir.
+        # The library is module-level and, left to itself, opens the real data directory
+        # (``DATA_LOCATION``, not this test's tempdir): every run of this class used to add a
+        # "Phase 0 test template" row to the developer's own Prompts page (505 of them were found
+        # on 2026-11-18). Point it at the tempdir, and drop it again afterwards.
+        from backend_service.helpers.prompts import PromptLibrary
         from backend_service.routes import prompts as prompts_module
-        prompts_module._library = None
+        prompts_module._library = PromptLibrary(Path(self.tempdir.name))
+        self.addCleanup(setattr, prompts_module, "_library", None)
 
     def test_list_prompts_returns_seeded_templates(self):
         resp = self.client.get("/api/prompts")
@@ -235,6 +239,9 @@ class PromptsRouteTests(_RouteContractCase):
         body = resp.json()
         self.assertTrue(body["created"])
         self.assertEqual(body["template"]["name"], "Phase 0 test template")
+        # It was written to this test's folder, not to the real library.
+        stored = (Path(self.tempdir.name) / "prompt_templates.json").read_text(encoding="utf-8")
+        self.assertIn("Phase 0 test template", stored)
 
     def test_delete_unknown_prompt_returns_404(self):
         resp = self.client.delete("/api/prompts/no-such-template")

@@ -82,6 +82,28 @@ class ScorecardTests(unittest.TestCase):
         wrong_tool = sc.score_reply(size, message([("generate_image", {"prompt": "waves"})]), self.schemas)
         self.assertFalse(wrong_tool.right_tool)
 
+    def test_a_look_up_before_an_action_is_counted_as_such(self):
+        # The Studio hint tells the model to check the installed models first.
+        size = next(p for p in sc.PROMPTS if p.id == "video-size")
+        first = sc.score_reply(size, message([("system_status", {}), ("list_models", {"kind": "video"})]),
+                               self.schemas)
+        self.assertFalse(first.right_tool)
+        self.assertTrue(first.looked_up)
+        wrong = sc.score_reply(size, message([("generate_image", {"prompt": "waves"})]), self.schemas)
+        self.assertFalse(wrong.looked_up)
+        # Where a look-up is the answer, a different look-up is just the wrong tool.
+        jobs = next(p for p in sc.PROMPTS if p.id == "jobs-failed")
+        self.assertFalse(sc.score_reply(jobs, message([("system_status", {})]), self.schemas).looked_up)
+
+    def test_an_extra_look_up_beside_the_right_call_is_fine_an_extra_action_is_not(self):
+        kind = next(p for p in sc.PROMPTS if p.id == "kind-video")
+        both = sc.score_reply(kind, message([("system_status", {}), ("list_models", {"kind": "video"})]), self.schemas)
+        self.assertTrue(both.right_values)
+        image = next(p for p in sc.PROMPTS if p.id == "image-prompt")
+        extra = sc.score_reply(image, message([("generate_image", {"prompt": "a red fox"}),
+                                               ("speak", {"text": "a red fox"})]), self.schemas)
+        self.assertFalse(extra.right_tool)
+
     def test_two_calls_need_both(self):
         prompt = next(p for p in sc.PROMPTS if p.id == "two-calls")
         half = sc.score_reply(prompt, message([("generate_image", {"prompt": "a lighthouse at night"})]), self.schemas)
@@ -98,10 +120,10 @@ class ScorecardTests(unittest.TestCase):
 
     def test_summary_reports_counts(self):
         rows = [{"model": "m", "prompt": "kind-video", "tests": "enum", "called": 1, "right_tool": 1, "valid": 1,
-                 "right_values": v, "unreadable": 0, "seconds": 1.0, "prompt_tokens": 900, "problems": ""}
-                for v in (1, 0)]
+                 "right_values": v, "looked_up": 0, "unreadable": 0, "seconds": 1.0, "prompt_tokens": 900,
+                 "problems": ""} for v in (1, 0)]
         table = sc.summary(rows)
-        self.assertIn("| `m` | 2 | 2 of 2 | 2 of 2 | 2 of 2 | 1 of 2 | 0 of 2 |", table)
+        self.assertIn("| `m` | 2 | 2 of 2 | 2 of 2 | 2 of 2 | 1 of 2 | 0 of 2 | 0 of 2 |", table)
 
 
 if __name__ == "__main__":

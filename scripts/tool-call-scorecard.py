@@ -126,7 +126,13 @@ class Score:
     right_tool: bool = False
     valid: bool = False
     right_values: bool = False
+    looked_up: bool = False  # only read-only look-ups where an action was asked: what the Studio hint tells it to do
     problems: list[str] = field(default_factory=list)
+
+
+# Read-only tools the Studio hint tells the model to call before acting ("call list_models first when you need a
+# model id"). A reply of only these, where the prompt asks for an action, is a first step, not a wrong tool.
+LOOKUPS = frozenset({"system_status", "list_models", "list_voices", "list_jobs", "job_status", "music_library"})
 
 
 def score_reply(prompt: Prompt, message: dict[str, Any], schemas: dict[str, dict[str, Any]]) -> Score:
@@ -155,12 +161,15 @@ def score_reply(prompt: Prompt, message: dict[str, Any], schemas: dict[str, dict
             score.valid = False
             score.problems.append(f"{name}: {problem}")
     names = [name for name, _args in calls]
-    score.right_tool = all(any(name in want.tools for name in names) for want in prompt.expect)
-    if len(prompt.expect) == 1:
-        score.right_tool = score.right_tool and names[0] in prompt.expect[0].tools
+    # Every expected tool is called; anything else in the reply is a read-only look-up, never another action.
+    wanted = {tool for want in prompt.expect for tool in want.tools}
+    score.right_tool = (all(any(name in want.tools for name in names) for want in prompt.expect)
+                        and all(name in wanted or name in LOOKUPS for name in names))
     score.right_values = score.right_tool and score.valid and all(
         any(name in want.tools and isinstance(args, dict) and want.check(args) for name, args in calls)
         for want in prompt.expect)
+    asked_action = any(not set(want.tools) <= LOOKUPS for want in prompt.expect)
+    score.looked_up = not score.right_tool and asked_action and all(name in LOOKUPS for name in names)
     return score
 
 
@@ -218,7 +227,7 @@ def run_model(backend: Backend, ref: str, args: argparse.Namespace, tools: list[
                 "model": ref, "run": run, "prompt": prompt.id, "tests": prompt.tests,
                 "called": int(score.called), "right_tool": int(score.right_tool), "valid": int(score.valid),
                 "right_values": int(score.right_values), "unreadable": int(score.unreadable),
-                "finish": choice.get("finish_reason") or "", "seconds": seconds,
+                "looked_up": int(score.looked_up), "finish": choice.get("finish_reason") or "", "seconds": seconds,
                 "prompt_tokens": usage.get("prompt_tokens") or 0, "completion_tokens": usage.get("completion_tokens") or 0,
                 "calls": json.dumps([[c.get("function", {}).get("name"), c.get("function", {}).get("arguments")]
                                      for c in message.get("tool_calls") or []])[:600],
@@ -232,16 +241,16 @@ def run_model(backend: Backend, ref: str, args: argparse.Namespace, tools: list[
 
 def summary(rows: list[dict[str, Any]]) -> str:
     """The Markdown table: one line per model, counts out of every reply."""
-    lines = ["| Model | Replies | Call came back | Right tool | Valid arguments | Right values | Unreadable | "
-             "Median s | Prompt tokens |", "|---|---|---|---|---|---|---|---|---|"]
+    lines = ["| Model | Replies | Call came back | Right tool | Valid arguments | Right values | Looked up first | "
+             "Unreadable | Median s | Prompt tokens |", "|---|---|---|---|---|---|---|---|---|---|"]
     for model in dict.fromkeys(row["model"] for row in rows):
         mine = [row for row in rows if row["model"] == model]
         n = len(mine)
         seconds = sorted(row["seconds"] for row in mine)
         median = seconds[n // 2] if seconds else 0
         lines.append(f"| `{model}` | {n} | " + " | ".join(
-            f"{sum(row[key] for row in mine)} of {n}" for key in ("called", "right_tool", "valid", "right_values",
-                                                                    "unreadable"))
+            f"{sum(row.get(key, 0) for row in mine)} of {n}"
+            for key in ("called", "right_tool", "valid", "right_values", "looked_up", "unreadable"))
                      + f" | {median} | {max((row['prompt_tokens'] for row in mine), default=0)} |")
     lines += ["", "| Model | Prompt | Tests | Right values | Valid | Problems seen |", "|---|---|---|---|---|---|"]
     for model in dict.fromkeys(row["model"] for row in rows):

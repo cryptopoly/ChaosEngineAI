@@ -134,6 +134,29 @@ def _peek_hf_model_type(
         return None
 
 
+def _resolve_local_model_dir(path: str) -> str:
+    """Folder to hand to ``mlx_lm convert`` for a local source.
+
+    A Hugging Face cache folder (``models--owner--name``) keeps its files
+    under ``snapshots/<revision>/``, so the folder itself has no
+    ``config.json`` and the converter fails on it. Return the newest
+    snapshot that has one; any other path comes back unchanged.
+    """
+    candidate = Path(path)
+    if not candidate.is_dir() or (candidate / "config.json").is_file():
+        return path
+    snapshots = candidate / "snapshots"
+    if not snapshots.is_dir():
+        return path
+    try:
+        revisions = [rev for rev in snapshots.iterdir() if (rev / "config.json").is_file()]
+    except OSError:
+        return path
+    if not revisions:
+        return path
+    return str(max(revisions, key=lambda rev: rev.stat().st_mtime))
+
+
 def _nearest_supported_arch(requested: str, supported: frozenset[str]) -> str | None:
     """Suggest the closest supported architecture for a given model_type.
 
@@ -163,6 +186,21 @@ def _nearest_supported_arch(requested: str, supported: frozenset[str]) -> str | 
 
     candidates.sort(key=_score, reverse=True)
     return candidates[0]
+
+
+def _conversion_source_name(source_label: str) -> str:
+    """Short model name for the default output folder.
+
+    ``Path.stem`` cut ``Qwen3.5-4B`` down to ``Qwen3`` and kept the cache
+    prefix, so a cache folder ``models--Qwen--Qwen3.5-4B`` became
+    ``models--Qwen--Qwen3``. Only a ``.gguf`` suffix is dropped here.
+    """
+    name = Path(source_label).name
+    if name.lower().endswith(".gguf"):
+        name = name[: -len(".gguf")]
+    if name.startswith("models--"):
+        name = name.split("--")[-1]
+    return name or "model"
 
 
 def _default_conversion_output(source_label: str) -> str:

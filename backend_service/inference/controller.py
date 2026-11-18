@@ -87,11 +87,13 @@ from backend_service.inference.capabilities import (
 from backend_service.inference.conversion import (
     _MLX_LM_SUPPORTED_CACHE,
     _bytes_to_gb,
+    _conversion_source_name,
     _default_conversion_output,
     _mlx_lm_supported_model_types,
     _nearest_supported_arch,
     _path_size_bytes,
     _peek_hf_model_type,
+    _resolve_local_model_dir,
 )
 from backend_service.inference.jsonrpc import JsonRpcProcess
 from backend_service.inference.llama_cpp_engine import (
@@ -1520,7 +1522,8 @@ class RuntimeController:
             # path directly to mlx_lm, which accepts local paths for
             # --hf-path. This avoids mis-using the library item's display
             # name as an HF repo identifier (which fails auth at the hub).
-            hf_path_arg = source_path
+            # A Hugging Face cache folder is resolved to its snapshot.
+            hf_path_arg = _resolve_local_model_dir(source_path)
             if resolved_hf_repo is None:
                 resolved_hf_repo = source_ref  # purely for display / logs
         elif resolved_hf_repo is None:
@@ -1608,7 +1611,7 @@ class RuntimeController:
                 candidate = Path.home() / "Models" / output_path
             target_output = str(candidate.resolve(strict=False))
         else:
-            target_output = _default_conversion_output(Path(source_label).stem)
+            target_output = _default_conversion_output(_conversion_source_name(source_label))
 
         command = [
             self.capabilities.pythonExecutable,
@@ -1710,7 +1713,7 @@ class RuntimeController:
             "qBits": q_bits,
             "qGroupSize": q_group_size,
             "dtype": dtype,
-            "sourceSizeGb": _bytes_to_gb(_path_size_bytes(source_path)) if source_path else None,
+            "sourceSizeGb": _bytes_to_gb(_path_size_bytes(_resolve_local_model_dir(source_path))) if source_path else None,
             "outputSizeGb": _bytes_to_gb(_path_size_bytes(target_output)),
             "ggufMetadata": gguf_metadata,
             "log": (completed.stdout or "").strip(),

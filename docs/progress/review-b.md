@@ -77,3 +77,31 @@ Checks after the fixes: `npx vitest run src/features/finetuning` 4 passed; `npx 
 - `scripts/e2e_phases/phase_21_finetuning.py`, registered in `scripts/e2e_test_suite.py` with one import line and one `PHASES` line, under **key 212** (not 21) so it cannot silently replace another stream's phase 21 at merge. Run: `CHAOSENGINE_PORT=8901 .venv/bin/python scripts/e2e_test_suite.py --phases 212`. Result: 5 of 5 pass in 0.02 s. Against the backend before commit `b8dab48f` the last check failed as it should ("the route accepted a run").
 - `e2e/tests/28-finetuning.spec.ts`: empty, loaded (adapter folder under the run's `~/Models`), a row with fields missing, a failing list, 375 px. Run: `cd e2e && E2E_PYTHON=/Users/dan/ChaosEngineAI/.venv/bin/python E2E_WEB_PORT=8951 E2E_API_PORT=8952 npx playwright test tests/01-smoke.spec.ts tests/28-finetuning.spec.ts --workers=1`. Result: 8 passed (41 s). `E2E_PYTHON` is needed in a worktree with no `.venv` above it.
 - Row added to `docs/E2E_TESTING.md` and `e2e/README.md`.
+
+## 7. What is missing before the tab does what it says (hide-until-wired list)
+
+Nothing on the page trains, and an adapter cannot be used. In the order a build would need them:
+
+1. **A training worker.** A subprocess like the MLX worker (never in the FastAPI parent), started by `POST /api/finetuning/start`, that runs mlx-lm's LoRA trainer and reports each step. Today the route answers 501. It must release a loaded chat model first (two models in memory is the RAM bug CLAUDE.md warns about) and go through the busy-advice and job queue paths the studios use.
+2. **Progress, loss and cancel.** `GET /api/finetuning/status` returns a fixed dict; there is no loss, no step count, no ETA, no log tail, no cancel route (`/cancel` and `/stop` answer 404), and the tab reads the status once on mount. Section 3 shows what mlx-lm prints and what a cancel leaves on disk.
+3. **A dataset path in.** No upload route, no file picker, no validation report. `prepare_dataset` exists but nothing calls it, and it flattens every row to plain text (see section 3 for what that costs in Chat). Paths in the request are not checked against any allowed folder (CLAUDE.md security rule for user-controlled paths).
+4. **A configure form.** Model picker (MLX text models from the library only), dataset, iterations or epochs, rank, learning rate, batch size, with a memory and time estimate.
+5. **Output location.** Default is `Path(modelPath).parent / "lora-<id>"`, which for a Hugging Face cache snapshot is inside the cache's `snapshots` folder. Adapters need their own folder under the data directory (for example `adapters/`), which the scan already reads first.
+6. **Applying an adapter.** `LoadModelRequest.adapterPath` is accepted and ignored: nothing in `inference/controller.py`, the MLX worker or the engines reads it. Chat needs an adapter choice at load time (mlx-lm's `load(..., adapter_path=...)`), the load reply and the model badge must name the adapter, and the base model must be checked against the adapter's.
+7. **The llama.cpp half of the sentence.** "or via llama.cpp" has no code at all, and the app ships only `llama-server` builds. GGUF users would need a merge-and-convert step (fuse the adapter, convert to GGUF) or a GGUF LoRA passed to the server; neither exists.
+8. **The scan.** It walks the data folder, the whole Hugging Face cache, `~/.cache/mlx` and `~/Models` on every open (4.15 s here), with no cache, and does not read the user's own model directories from Settings although the hint says "your model directories".
+9. **Adapter cards.** Read-only: no use, reveal, rename or delete.
+10. **Public claims.** `README.md` line 96 ("Fine-tuning with LoRA adapter support for MLX models") and line 167 ("LoRA adapter discovery plus fine-tuning hooks for local training workflows"), the sidebar caption "LoRA adapters and training", and the CLI help line listing `finetuning-start`.
+
+## 8. Note only: what a "no-code fine-tuning" feature would need (not built)
+
+The engine is the easy part (section 3: mlx-lm trains a 0.5B model here in about a minute). The product work is everything around it:
+
+- **Data without JSONL.** Start from what the user already has in the app: chosen chat threads ("teach it to answer like these"), a folder of documents (the app already ingests documents for chat), or a pasted table of question and answer pairs. Show the rows it built, let the user delete bad ones, keep a held-out slice automatically. Use the chat `messages` format so the trainer applies the model's own chat template.
+- **One decision, not six.** Presets (Quick taste: about 2 minutes; Balanced; Thorough) that set iterations, rank, layers and learning rate from the model size and the row count. The numbers stay behind an Advanced fold.
+- **Fit and time before Start.** Peak memory and minutes from the model size, the same strip the studios use, plus the busy advice. Refuse models that cannot train on this machine with the reason.
+- **A run the user can read.** Step counter, a loss line that says "learning" or "not learning" in words, ETA, Pause and Cancel that keep the last checkpoint, resume after a restart, a notification at the end.
+- **Proof it worked.** A side-by-side on held-out prompts: base model answer against tuned answer, in the existing Compare view. Without this the user cannot tell a good adapter from a bad one.
+- **Use it in one click.** "Chat with this" loads base plus adapter; the adapter shows as its own entry in the model picker with its base named. Optional "Make a standalone model" (fuse, and convert to GGUF for the llama.cpp lane).
+- **House rules.** Adapters live in one folder under the data directory with a small metadata file (base model, dataset fingerprint, settings, date). Training data never leaves the machine and the page says so. Licence of the base model is carried onto the adapter card.
+- **Scope for a first version.** Apple Silicon, MLX text models up to about 8B at 4-bit, LoRA only, one run at a time, English UI strings through i18n. CUDA (a PEFT lane) is a second project.

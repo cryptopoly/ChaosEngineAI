@@ -70,7 +70,8 @@ Started 2026-11-18 09:14, finished about 10:35.
 | 13 | A model path that is not on disk | PASS | "Model files not found at /nonexistent/e2e-model. Pick the model again from the library, or download it first." |
 | 14 | E2E phase 211, real models | PASS | 12 checks, 67 s; report `<scratchpad>/review-a2/e2e-report/e2e-20261118-100941.md` |
 | 15 | Real UI pass (Chromium on vite 8950 against backend 8920, LFM3-1.7B and Qwen3.5-4B) | PASS | dialog "9 of 2000 questions, 4 correct", Cancel gives "Benchmark cancelled ... Nothing was saved ... The model was unloaded"; a throughput run finishes with no Quality card; conversion shows "2.22 GB written, about 2.4 GB expected (estimate)", "1 of 2 models scored", then "3.9x smaller on disk", "4.503 (measured by the converter)", "+3.8% perplexity vs the source". Screenshots in `<scratchpad>/review-a2/shots/` |
-| 16 | Playwright spec 27 | PASS | 21 tests |
+| 16 | Playwright spec 27 | PASS | 21 tests; with `01-smoke`: 24 passed |
+| 17 | Full suites on the final tree | PASS | pytest (throwaway HOME): 6004 run, 0 failed, 0 errors, 17 skipped, 420 s (tree at `d495b940`; after it only `tests/test_benchmark_cancel.py` gained one test, run on its own: 14 passed); vitest 155 files, 1836 passed; `tsc --noEmit` clean; `i18n:validate` OK |
 
 ## Commands
 
@@ -112,5 +113,5 @@ worktree without its own `e2e/node_modules`.
 ## State at the end
 
 - Backend (8920) and Vite (8950) stopped; model lock released; no model process of mine left.
-- Throwaway home holds three converted folders under `Models/` (about 6.7 GB) and the two datasets; delete
-  `<scratchpad>/review-a2-home` when done.
+- The three converted folders under the throwaway home's `Models/` were removed (my own output, 6.7 GB). The
+  home still holds the model links and the two datasets; delete `<scratchpad>/review-a2-home` when done.

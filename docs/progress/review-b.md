@@ -44,7 +44,31 @@ curl -s -H 'Authorization: Bearer review-b-token' -H 'Content-Type: application/
 
 ## 3. Real training run under the app (mlx-lm directly)
 
-Waiting for the shared model lock: stream A held it 07:40 to 07:51, stream F from 07:51 (still held at 08:08). The run script is queued (`scratchpad/review-b/real_run.py`, retries every 60 s) and releases the lock in a `finally`.
+The app cannot start a job, so the "shortest real job" was run one layer down, with the trainer the page names:
+`python -m mlx_lm lora` from the app's own `.venv` (mlx-lm 0.32.2), on the smallest local MLX text model,
+`mlx-community/Qwen2.5-0.5B-Instruct-4bit` (276 MB). This shows what the Mac can do and what the app would have to wrap.
+Model lock: queued 07:41, held by streams A, F and C until 08:14:49, **held by B 08:14:49 to 08:15:50 (61 s)**, released in a `finally`.
+Script: `scratchpad/review-b/real_run.py`; full log: `scratchpad/review-b/real_run.log`.
+
+Dataset: 40 rows in the format the page promises (`{"prompt": ..., "completion": ...}`), four phrasings of one made-up question
+("What is the pass phrase of the Harbour Lantern Society?") with one answer ("... is copper-heron-nine.").
+
+| Step | Result | Evidence |
+|---|---|---|
+| App helper `prepare_dataset` on the 40 rows | PASS | `{'total_records': 40, 'train_records': 36, 'valid_records': 4}`; first line `{"text": "What is the pass phrase ...?\nThe pass phrase ... is copper-heron-nine."}` (plain text, no chat template) |
+| Base model, no adapter | baseline | "I'm sorry, but I don't have access to specific information about a particular society or organization. ..." |
+| Train A: helper's text format, 60 iterations, batch 4, 8 layers, lr 1e-4, rank 8 | PASS | rc 0, **8.5 s** wall including model load; trainable 0.297 % (1.466M of 494.033M); val loss 6.156 at iter 1, 0.001 at 30, 0.000 at 60; about 3,400 tokens/s |
+| Train B: the same rows as `prompt`/`completion` (mlx-lm applies the chat template itself) | PASS | rc 0, **6.2 s**; val loss 4.874, then 0.025 at 30 and 60; about 4,700 tokens/s |
+| Output | PASS | `adapter_config.json` (1.4 KB, mlx-lm's training arguments), `adapters.safetensors` 5.9 MB, plus one 5.9 MB checkpoint per `--save-every` (30): 17 MB for a 60-iteration run |
+| Adapter applied by mlx-lm (`mlx_lm generate --adapter-path`) | PASS | A and B both answer "The pass phrase of the Harbour Lantern Society is copper-heron-nine." (A with and without the chat template) |
+| Cancel (`SIGINT` after 25 s of a 5,000-iteration run) | works, rough | rc -2 with a `KeyboardInterrupt` traceback; checkpoints 30 to 390 and `adapters.safetensors` stay on disk (79 MB), so the last checkpoint is usable, but nothing prunes them and nothing says "cancelled" |
+| App lists the result (`GET /api/adapters`, adapters written to the throwaway `~/Models`) | PASS after fixes | both listed; before the fixes this list crashed the tab, and the base model read as the cache snapshot path (now `mlx-community/Qwen2.5-0.5B-Instruct-4bit`). `lora_rank` is null for an mlx-lm adapter (the rank is under `lora_parameters.rank`), and the size counts the checkpoints (16.8 MB shown for a 5.9 MB adapter) |
+| **Load the result in Chat** (`POST /api/models/load` with `adapterPath`, then `POST /api/chat/generate` with the question) | **FAIL** | load 200, the word "adapter" is nowhere in the load reply, and the chat reply is the base model's, word for word: "I'm sorry, but I don't have access to specific information ..." The adapter is ignored. |
+| Unload | PASS | 200; no MLX worker of stream B left (the two running belong to streams A and E by their working folder) |
+
+What this proves: the Mac and the bundled mlx-lm can fine-tune (a 0.5B model learns a fact in under 10 s), so nothing is missing below the app. What it does not prove: quality on real data, memory on larger models (peak memory was not recorded), or that the helper's plain-text format is good enough outside a memorisation toy. The helper turns chat `messages` rows into made-up `<|role|>` markers instead of the model's chat template; mlx-lm reads `messages` and `prompt`/`completion` rows itself, so the helper should pass them through.
+
+Also seen: `adapter_config.json` from mlx-lm holds the absolute paths of the dataset and the output folder, and `GET /api/adapters` returns that whole file in `config`.
 
 ## 4. UI states (dev server on port 8931 against the backend on 8901, built-in browser, own tab)
 

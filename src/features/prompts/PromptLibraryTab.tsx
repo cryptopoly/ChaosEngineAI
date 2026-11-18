@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { apiFetch, fetchJson } from "../../api";
 import { Panel } from "../../components/Panel";
+import { formatTemplateTime, jsonBoxProblem, matchesTemplateSearch } from "./promptLogic";
 
 /**
  * Phase 2.7: variable declaration shape. `default` is the seed value
@@ -27,8 +28,9 @@ interface PromptTemplate {
   variables?: PromptVariable[];
   presetSamplers?: Record<string, unknown> | null;
   presetModelRef?: string | null;
-  createdAt: string;
-  updatedAt: string;
+  // Epoch seconds from the backend (older builds typed this as a string).
+  createdAt: number | string;
+  updatedAt: number | string;
 }
 
 /**
@@ -56,10 +58,13 @@ function applyVariables(
 interface PromptLibraryTabProps {
   backendOnline: boolean;
   onApplyTemplate: (systemPrompt: string) => void;
+  /** The system prompt Chat is sending now ("" when none). Chat itself does not show it. */
+  activeSystemPrompt?: string;
+  onClearSystemPrompt?: () => void;
 }
 
-export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibraryTabProps) {
-  const { t } = useTranslation("common");
+export function PromptLibraryTab({ backendOnline, onApplyTemplate, activeSystemPrompt = "", onClearSystemPrompt }: PromptLibraryTabProps) {
+  const { t, i18n } = useTranslation("common");
   const [templates, setTemplates] = useState<PromptTemplate[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -80,6 +85,10 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
   // composer.
   const [fillValues, setFillValues] = useState<Record<string, string | number | boolean>>({});
   const [fillOpen, setFillOpen] = useState(false);
+  // Shown under the editor when a save is refused; a refused save used to do nothing at all.
+  const [saveError, setSaveError] = useState<string | null>(null);
+  // A failed load used to look like an empty library.
+  const [loadFailed, setLoadFailed] = useState(false);
 
   const selected = templates.find((t) => t.id === selectedId) ?? null;
   const selectedVariables = useMemo(() => selected?.variables ?? [], [selected]);
@@ -91,22 +100,18 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
   useEffect(() => {
     if (!backendOnline) return;
     fetchJson<{ templates?: PromptTemplate[] }>("/api/prompts")
-      .then((data) => setTemplates(data.templates ?? []))
-      .catch(() => {});
+      .then((data) => {
+        setTemplates(data.templates ?? []);
+        setLoadFailed(false);
+      })
+      .catch(() => setLoadFailed(true));
   }, [backendOnline]);
 
-  const filtered = templates.filter((t) => {
-    if (!searchQuery) return true;
-    const q = searchQuery.toLowerCase();
-    return (
-      t.name.toLowerCase().includes(q) ||
-      t.category.toLowerCase().includes(q) ||
-      t.tags.some((tag) => tag.toLowerCase().includes(q))
-    );
-  });
+  const filtered = templates.filter((template) => matchesTemplateSearch(template, searchQuery));
 
   function startEdit(template: PromptTemplate | null) {
     setEditMode(true);
+    setSaveError(null);
     setEditName(template?.name ?? "");
     setEditPrompt(template?.systemPrompt ?? "");
     setEditCategory(template?.category ?? "General");
@@ -174,6 +179,20 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
   }
 
   async function handleSave() {
+    if (!editName.trim()) {
+      setSaveError(t("promptLibrary.nameRequired", { defaultValue: "Give the template a name before saving." }));
+      return;
+    }
+    if (jsonBoxProblem(editVariables, "array")) {
+      setSaveError(t("promptLibrary.variablesInvalid", { defaultValue: "Variables must be a JSON array (a list in square brackets). Nothing was saved." }));
+      return;
+    }
+    if (jsonBoxProblem(editPresetSamplers, "object")) {
+      setSaveError(t("promptLibrary.samplersInvalid", { defaultValue: "Preset samplers must be a JSON object (names and values in curly brackets). Nothing was saved." }));
+      return;
+    }
+    const failed = t("promptLibrary.saveFailed", { defaultValue: "The template was not saved. Check the fields and try again." });
+    setSaveError(null);
     const body: Record<string, unknown> = {
       name: editName,
       systemPrompt: editPrompt,
@@ -192,6 +211,7 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
         body: JSON.stringify(body),
       });
       if (!resp.ok) {
+        setSaveError(failed);
         return;
       }
       const data = await resp.json();
@@ -203,11 +223,19 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
         });
         setSelectedId(data.template.id);
       }
-    } catch { /* ignore */ }
+    } catch {
+      setSaveError(failed);
+      return;
+    }
     setEditMode(false);
   }
 
   async function handleDelete(id: string) {
+    const name = templates.find((template) => template.id === id)?.name ?? "";
+    const confirmed = window.confirm(
+      t("promptLibrary.deleteConfirm", { name, defaultValue: "Delete the template \"{name}\"? This cannot be undone." }),
+    );
+    if (!confirmed) return;
     try {
       const response = await apiFetch(`/api/prompts/${encodeURIComponent(id)}`, { method: "DELETE" });
       if (!response.ok) {
@@ -219,7 +247,7 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
   }
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "300px 1fr", gap: 12, height: "100%" }}>
+    <div className="prompt-library-layout">
       {/* Left: Template list */}
       <Panel
         title={t("panels.templates", { defaultValue: "Templates" })}
@@ -237,6 +265,7 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
           <input
             type="text"
             className="text-input"
+            aria-label={t("promptLibrary.searchPlaceholder", { defaultValue: "Search templates..." })}
             placeholder={t("promptLibrary.searchPlaceholder", { defaultValue: "Search templates..." })}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -256,11 +285,23 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
               <div style={{ fontSize: 11, color: "#7a8594" }}>{t.category} {t.tags.length ? `| ${t.tags.join(", ")}` : ""}</div>
             </button>
           ))}
+          {loadFailed ? (
+            <p role="alert" className="error-text" style={{ padding: "8px 10px", fontSize: 12 }}>
+              {t("promptLibrary.loadFailed", { defaultValue: "The templates could not be loaded. Check that the backend is running." })}
+            </p>
+          ) : filtered.length === 0 ? (
+            <p className="muted-text" style={{ padding: "8px 10px", fontSize: 12 }}>
+              {searchQuery.trim()
+                ? t("promptLibrary.noMatches", { defaultValue: "No template matches the search." })
+                : t("promptLibrary.empty", { defaultValue: "No templates yet. Use New to make one." })}
+            </p>
+          ) : null}
         </div>
       </Panel>
 
-      {/* Right: Detail/Editor */}
+      {/* Right: Detail/Editor. It scrolls inside itself: the editor is taller than a short window. */}
       <Panel
+        className="panel-scroll"
         title={
           editMode
             ? selectedId
@@ -270,24 +311,40 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
         }
         subtitle=""
       >
+        {activeSystemPrompt ? (
+          <div className="callout quiet prompt-in-use" role="status">
+            <p>
+              {t("promptLibrary.inUseNote", {
+                defaultValue: "Chat is using this system prompt in every thread until you stop it or restart the app:",
+              })}
+            </p>
+            <pre style={{ whiteSpace: "pre-wrap", fontSize: 12, margin: "6px 0", maxHeight: 96, overflow: "auto" }}>{activeSystemPrompt}</pre>
+            {onClearSystemPrompt ? (
+              <button className="secondary-button" type="button" onClick={onClearSystemPrompt} style={{ alignSelf: "flex-start" }}>
+                {t("promptLibrary.stopUsing", { defaultValue: "Stop using it" })}
+              </button>
+            ) : null}
+          </div>
+        ) : null}
         {editMode ? (
           <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
             <div>
               <label style={{ fontSize: 11, color: "#7a8594", display: "block", marginBottom: 4 }}>{t("promptLibrary.editor.name", { defaultValue: "Name" })}</label>
-              <input className="text-input" value={editName} onChange={(e) => setEditName(e.target.value)} style={{ width: "100%" }} />
+              <input className="text-input" aria-label={t("promptLibrary.editor.name", { defaultValue: "Name" })} value={editName} onChange={(e) => setEditName(e.target.value)} style={{ width: "100%" }} />
             </div>
             <div>
               <label style={{ fontSize: 11, color: "#7a8594", display: "block", marginBottom: 4 }}>{t("promptLibrary.editor.category", { defaultValue: "Category" })}</label>
-              <input className="text-input" value={editCategory} onChange={(e) => setEditCategory(e.target.value)} style={{ width: "100%" }} />
+              <input className="text-input" aria-label={t("promptLibrary.editor.category", { defaultValue: "Category" })} value={editCategory} onChange={(e) => setEditCategory(e.target.value)} style={{ width: "100%" }} />
             </div>
             <div>
               <label style={{ fontSize: 11, color: "#7a8594", display: "block", marginBottom: 4 }}>{t("promptLibrary.editor.tags", { defaultValue: "Tags (comma-separated)" })}</label>
-              <input className="text-input" value={editTags} onChange={(e) => setEditTags(e.target.value)} style={{ width: "100%" }} />
+              <input className="text-input" aria-label={t("promptLibrary.editor.tags", { defaultValue: "Tags (comma-separated)" })} value={editTags} onChange={(e) => setEditTags(e.target.value)} style={{ width: "100%" }} />
             </div>
             <div style={{ flex: 1 }}>
               <label style={{ fontSize: 11, color: "#7a8594", display: "block", marginBottom: 4 }}>{t("promptLibrary.editor.systemPrompt", { defaultValue: "System Prompt" })}</label>
               <textarea
                 className="text-input"
+                aria-label={t("promptLibrary.editor.systemPrompt", { defaultValue: "System Prompt" })}
                 value={editPrompt}
                 onChange={(e) => setEditPrompt(e.target.value)}
                 style={{ width: "100%", minHeight: 200, resize: "vertical", fontFamily: "monospace", fontSize: 12 }}
@@ -298,10 +355,11 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
             </div>
             <div>
               <label style={{ fontSize: 11, color: "#7a8594", display: "block", marginBottom: 4 }}>
-                {t("promptLibrary.editor.variables", { defaultValue: "Variables (JSON array — Phase 2.7)" })}
+                {t("promptLibrary.editor.variables", { defaultValue: "Variables (JSON array)" })}
               </label>
               <textarea
                 className="text-input"
+                aria-label={t("promptLibrary.editor.variables", { defaultValue: "Variables (JSON array)" })}
                 value={editVariables}
                 onChange={(e) => setEditVariables(e.target.value)}
                 placeholder={'[{"name": "topic", "type": "string", "default": "AI"}]'}
@@ -314,6 +372,7 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
               </label>
               <input
                 className="text-input"
+                aria-label={t("promptLibrary.editor.presetModelRef", { defaultValue: "Preset model ref (optional)" })}
                 value={editPresetModelRef}
                 onChange={(e) => setEditPresetModelRef(e.target.value)}
                 placeholder={t("promptLibrary.editor.presetModelRefPlaceholder", { defaultValue: "e.g. Qwen3-7B-Instruct" })}
@@ -326,12 +385,14 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
               </label>
               <textarea
                 className="text-input"
+                aria-label={t("promptLibrary.editor.presetSamplers", { defaultValue: "Preset samplers (JSON object — optional)" })}
                 value={editPresetSamplers}
                 onChange={(e) => setEditPresetSamplers(e.target.value)}
                 placeholder={'{"topP": 0.9, "topK": 40}'}
                 style={{ width: "100%", minHeight: 60, resize: "vertical", fontFamily: "monospace", fontSize: 11 }}
               />
             </div>
+            {saveError ? <p role="alert" className="error-text" style={{ margin: 0, fontSize: 12 }}>{saveError}</p> : null}
             <div style={{ display: "flex", gap: 8 }}>
               <button className="primary-button" type="button" onClick={() => void handleSave()}>{t("promptLibrary.editor.save", { defaultValue: "Save" })}</button>
               <button className="secondary-button" type="button" onClick={() => setEditMode(false)}>{t("promptLibrary.editor.cancel", { defaultValue: "Cancel" })}</button>
@@ -343,7 +404,7 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
               <span className="badge">{selected.category}</span>
               {selected.tags.map((tag) => <span key={tag} className="badge" style={{ background: "#1e3a5f", color: "#8fb4ff" }}>{tag}</span>)}
               {selected.presetModelRef ? (
-                <span className="badge" style={{ background: "#1f2a44", color: "#9bc7ff" }} title={t("promptLibrary.presetModelTitle", { defaultValue: "Preset model — applied when you Use in Chat" })}>
+                <span className="badge" style={{ background: "#1f2a44", color: "#9bc7ff" }} title={t("promptLibrary.presetModelTitle", { defaultValue: "Saved with the template. Chat does not apply it yet." })}>
                   {t("promptLibrary.presetLabel", { ref: selected.presetModelRef, defaultValue: "preset: {ref}" })}
                 </span>
               ) : null}
@@ -372,7 +433,7 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
               <button className="secondary-button message-action-delete" type="button" onClick={() => void handleDelete(selected.id)}>{t("promptLibrary.delete", { defaultValue: "Delete" })}</button>
             </div>
             <div style={{ marginTop: 12, fontSize: 11, color: "#5a6574" }}>
-              {t("promptLibrary.createdUpdated", { created: selected.createdAt, updated: selected.updatedAt, defaultValue: "Created: {created} | Updated: {updated}" })}
+              {t("promptLibrary.createdUpdated", { created: formatTemplateTime(selected.createdAt, i18n.language), updated: formatTemplateTime(selected.updatedAt, i18n.language), defaultValue: "Created: {created} | Updated: {updated}" })}
             </div>
             {fillOpen && selectedVariables.length ? (
               <div style={{ marginTop: 16, padding: 12, background: "#0f1215", borderRadius: 8, border: "1px solid #1f2a3a" }}>
@@ -387,6 +448,7 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
                       {variable.type === "boolean" ? (
                         <input
                           type="checkbox"
+                          aria-label={variable.name}
                           checked={Boolean(fillValues[variable.name])}
                           onChange={(e) => setFillValues((prev) => ({ ...prev, [variable.name]: e.target.checked }))}
                         />
@@ -394,6 +456,7 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
                         <input
                           type="number"
                           className="text-input"
+                          aria-label={variable.name}
                           value={Number(fillValues[variable.name] ?? 0)}
                           onChange={(e) => setFillValues((prev) => ({ ...prev, [variable.name]: parseFloat(e.target.value) || 0 }))}
                           style={{ width: "100%" }}
@@ -401,6 +464,7 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
                       ) : (
                         <textarea
                           className="text-input"
+                          aria-label={variable.name}
                           value={String(fillValues[variable.name] ?? "")}
                           onChange={(e) => setFillValues((prev) => ({ ...prev, [variable.name]: e.target.value }))}
                           rows={2}

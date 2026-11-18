@@ -3636,6 +3636,7 @@ from e2e_phases.phase_14 import phase_14  # noqa: E402
 from e2e_phases import time_estimate as _time_estimate  # noqa: E402
 from e2e_phases import territory_gate as _territory_gate  # noqa: E402
 from e2e_phases.phase_15 import phase_15  # noqa: E402
+from e2e_phases import phase_21_prompts_plugins as _phase_21_prompts_plugins  # noqa: E402
 
 PHASES[14] = phase_14
 PHASES[15] = phase_15
@@ -3643,6 +3644,7 @@ from e2e_phases.phase_21_benchmarks_conversion import phase_21_benchmarks_conver
 PHASES[211] = phase_21_benchmarks_conversion  # overnight review, stream A (21 = the review group, 1 = stream A)
 from e2e_phases import phase_21_finetuning as _phase_21_finetuning  # noqa: E402
 PHASES[_phase_21_finetuning.PHASE_KEY] = _phase_21_finetuning.bind(sys.modules[__name__])
+PHASES[21] = _phase_21_prompts_plugins.joined(PHASES.get(21), sys.modules[__name__])  # review C; other streams join the same number
 
 
 def _write_reports(report_dir: Path, started: datetime, ended: datetime,

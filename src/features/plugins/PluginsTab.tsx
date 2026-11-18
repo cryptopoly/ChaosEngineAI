@@ -3,16 +3,7 @@ import { useTranslation } from "react-i18next";
 import { apiFetch, fetchJson } from "../../api";
 import { Panel } from "../../components/Panel";
 
-interface PluginInfo {
-  id: string;
-  name: string;
-  type: string;
-  version: string;
-  author: string;
-  description: string;
-  builtin: boolean;
-  enabled: boolean;
-}
+import { groupedPlugins, type PluginInfo } from "./pluginsLogic";
 
 interface PluginsTabProps {
   backendOnline: boolean;
@@ -46,15 +37,21 @@ export function PluginsTab({ backendOnline }: PluginsTabProps) {
   const { t } = useTranslation("common");
   const [plugins, setPlugins] = useState<Record<string, PluginInfo[]>>({});
   const [loading, setLoading] = useState(true);
+  // A failed load used to read "No plugins found."
+  const [loadFailed, setLoadFailed] = useState(false);
 
   useEffect(() => {
     if (!backendOnline) return;
-    fetchJson<{ plugins?: Record<string, PluginInfo[]> }>("/api/plugins")
+    fetchJson<unknown>("/api/plugins")
       .then((data) => {
-        setPlugins(data.plugins ?? {});
+        setPlugins(groupedPlugins(data));
+        setLoadFailed(false);
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch(() => {
+        setLoadFailed(true);
+        setLoading(false);
+      });
   }, [backendOnline]);
 
   async function togglePlugin(pluginId: string, currentlyEnabled: boolean) {
@@ -79,7 +76,7 @@ export function PluginsTab({ backendOnline }: PluginsTabProps) {
   const totalCount = Object.values(plugins).reduce((sum, list) => sum + list.length, 0);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+    <div className="plugins-page">
       <Panel
         title={t("panels.pluginSystem", { defaultValue: "Plugin System" })}
         subtitle={
@@ -93,6 +90,10 @@ export function PluginsTab({ backendOnline }: PluginsTabProps) {
       >
         {loading ? (
           <p className="muted-text" style={{ padding: 16 }}>{t("pluginsTab.discovering", { defaultValue: "Discovering plugins..." })}</p>
+        ) : loadFailed ? (
+          <p role="alert" className="error-text" style={{ padding: 24, textAlign: "center" }}>
+            {t("pluginsTab.loadFailed", { defaultValue: "The plugin list could not be loaded. Check that the backend is running." })}
+          </p>
         ) : totalCount === 0 ? (
           <p className="muted-text" style={{ padding: 24, textAlign: "center" }}>{t("pluginsTab.noPlugins", { defaultValue: "No plugins found." })}</p>
         ) : (
@@ -106,7 +107,7 @@ export function PluginsTab({ backendOnline }: PluginsTabProps) {
               <h4 style={{ color: TYPE_COLORS[type] ?? "#c8d0da", fontSize: 13, marginBottom: 8, fontWeight: 600 }}>
                 {typeLabel} ({list.length})
               </h4>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 8 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(280px, 100%), 1fr))", gap: 8 }}>
                 {list.map((plugin) => (
                   <div
                     key={plugin.id}
@@ -162,17 +163,17 @@ export function PluginsTab({ backendOnline }: PluginsTabProps) {
 
       <Panel
         title={t("panels.externalPlugins", { defaultValue: "External Plugins" })}
-        subtitle={t("panels.installFromDirectory", { defaultValue: "Install from directory" })}
+        subtitle={t("panels.installFromDirectory", { defaultValue: "Not available in this version" })}
       >
         <div style={{ padding: 24, textAlign: "center" }}>
           <p className="muted-text" style={{ marginBottom: 8 }}>
-            {t("pluginsTab.externalIntro", { defaultValue: "Place plugin directories with a manifest.json in:" })}
+            {t("pluginsTab.externalIntro", { defaultValue: "External plugins are not loaded in this version. Folders placed here are ignored:" })}
           </p>
           <code style={{ background: "#0f1215", padding: "4px 12px", borderRadius: 6, color: "#8fb4ff", fontSize: 12 }}>
             ~/.chaosengine/plugins/
           </code>
           <p style={{ color: "#5a6574", fontSize: 12, marginTop: 8 }}>
-            {t("pluginsTab.externalManifestHint", { defaultValue: "Each plugin needs a manifest.json with id, name, type, and entry_point fields." })}
+            {t("pluginsTab.externalManifestHint", { defaultValue: "The entries above are the cache strategies and chat tools built into the app." })}
           </p>
         </div>
       </Panel>

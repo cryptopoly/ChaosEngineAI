@@ -157,3 +157,75 @@ class PluginRegistryTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PluginDirectoryDiscoveryTests(unittest.TestCase):
+    """What a folder dropped into the plugins directory can and cannot do (review C).
+
+    The registry reads manifests only. Nothing calls ``discover_from_directory`` in the app today, and even
+    when it is called an ``entry_point`` is never imported: a dropped folder cannot run code.
+    """
+
+    def setUp(self):
+        import tempfile
+        from pathlib import Path
+
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        self.folder = self.root / "sample"
+        self.folder.mkdir()
+        (self.folder / "plugin.py").write_text(
+            "from pathlib import Path\n"
+            "Path(__file__).with_name('IMPORTED.marker').write_text('imported')\n"
+            "def register():\n"
+            "    Path(__file__).with_name('REGISTERED.marker').write_text('registered')\n",
+            encoding="utf-8",
+        )
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def _manifest(self, **overrides):
+        import json
+
+        data = {"id": "review.sample", "name": "Review Sample", "type": "tool", "entry_point": "plugin:register"}
+        data.update(overrides)
+        (self.folder / "manifest.json").write_text(json.dumps(data), encoding="utf-8")
+
+    def test_manifest_is_listed_but_its_code_is_never_imported(self):
+        self._manifest()
+        registry = PluginRegistry()
+        registry.discover_from_directory(self.root)
+        manifest, instance = registry.get("review.sample")
+        self.assertEqual(manifest.entry_point, "plugin:register")
+        self.assertFalse(manifest.builtin)
+        self.assertIsNone(instance)
+        self.assertEqual(sorted(p.name for p in self.folder.iterdir()), ["manifest.json", "plugin.py"])
+
+    def test_bad_manifests_are_skipped(self):
+        registry = PluginRegistry()
+        (self.folder / "manifest.json").write_text("{not json", encoding="utf-8")
+        registry.discover_from_directory(self.root)
+        self._manifest(type="not_a_type")
+        registry.discover_from_directory(self.root)
+        (self.folder / "manifest.json").write_text('{"name": "no id", "type": "tool"}', encoding="utf-8")
+        registry.discover_from_directory(self.root)
+        self.assertEqual(registry.list_all(), [])
+
+    def test_missing_directory_is_not_an_error(self):
+        registry = PluginRegistry()
+        registry.discover_from_directory(self.root / "nope")
+        self.assertEqual(registry.list_all(), [])
+
+    def test_the_app_registry_does_not_scan_any_directory(self):
+        # The Plugins page tells people to put folders in ~/.chaosengine/plugins/. Nothing reads that
+        # folder: if a caller is ever added, it must come with a trust model, and this test must change.
+        import subprocess
+        from pathlib import Path
+
+        root = Path(__file__).resolve().parents[1]
+        hits = subprocess.run(
+            ["git", "grep", "-l", "discover_from_directory", "--", "backend_service", "src-tauri", "scripts"],
+            cwd=root, capture_output=True, text=True, check=False,
+        ).stdout.split()
+        self.assertEqual(hits, ["backend_service/plugins/__init__.py"])

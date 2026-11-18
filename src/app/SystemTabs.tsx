@@ -169,8 +169,13 @@ export function FineTuningView({ ctx }: { ctx: AppTabContext }) {
 
 export function PromptLibraryView({ ctx }: { ctx: AppTabContext }) {
   const { backendOnline, setActiveTab } = ctx;
-  const { setSystemPrompt } = ctx.settings;
-  return <PromptLibraryTab backendOnline={backendOnline} onApplyTemplate={(prompt) => { setSystemPrompt(prompt); setActiveTab("chat"); }} />;
+  const { systemPrompt, setSystemPrompt } = ctx.settings;
+  return <PromptLibraryTab
+    backendOnline={backendOnline}
+    onApplyTemplate={(prompt) => { setSystemPrompt(prompt); setActiveTab("chat"); }}
+    activeSystemPrompt={systemPrompt}
+    onClearSystemPrompt={() => setSystemPrompt("")}
+  />;
 }
 
 export function PluginsView({ ctx }: { ctx: AppTabContext }) {

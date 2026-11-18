@@ -248,10 +248,14 @@ class PromptsRouteTests(_RouteContractCase):
 
     def setUp(self):
         super().setUp()
-        # The library is module-level; reset between test classes so
-        # tests don't see seeded templates from a previous test's tempdir.
+        # The library is module-level and, left to itself, opens the real data directory
+        # (``DATA_LOCATION``, not this test's tempdir): every run of this class used to add a
+        # "Phase 0 test template" row to the developer's own Prompts page (505 of them were found
+        # on 2026-11-18). Point it at the tempdir, and drop it again afterwards.
+        from backend_service.helpers.prompts import PromptLibrary
         from backend_service.routes import prompts as prompts_module
-        prompts_module._library = None
+        prompts_module._library = PromptLibrary(Path(self.tempdir.name))
+        self.addCleanup(setattr, prompts_module, "_library", None)
 
     def test_list_prompts_returns_seeded_templates(self):
         resp = self.client.get("/api/prompts")
@@ -274,10 +278,63 @@ class PromptsRouteTests(_RouteContractCase):
         body = resp.json()
         self.assertTrue(body["created"])
         self.assertEqual(body["template"]["name"], "Phase 0 test template")
+        # It was written to this test's folder, not to the real library.
+        stored = (Path(self.tempdir.name) / "prompt_templates.json").read_text(encoding="utf-8")
+        self.assertIn("Phase 0 test template", stored)
 
     def test_delete_unknown_prompt_returns_404(self):
         resp = self.client.delete("/api/prompts/no-such-template")
         self.assertEqual(resp.status_code, 404)
+
+
+class PluginsRouteTests(_RouteContractCase):
+    """``/api/plugins``: the answer is the type-to-rows map itself, with no wrapper key (review C).
+
+    The Plugins page read a ``plugins`` key for six months and showed "No plugins found"; the shape is
+    pinned here so the page and the route cannot drift apart again.
+    """
+
+    def tearDown(self):
+        from backend_service.plugins import plugin_registry
+
+        for manifest in plugin_registry.list_all():
+            manifest.enabled = True
+        super().tearDown()
+
+    def test_list_is_a_map_of_type_to_rows(self):
+        resp = self.client.get("/api/plugins")
+        self.assertEqual(resp.status_code, 200)
+        body = resp.json()
+        self.assertNotIn("plugins", body)
+        self.assertIn("cache_strategy", body)
+        self.assertIn("tool", body)
+        row = body["cache_strategy"][0]
+        self.assertEqual(
+            sorted(row), ["author", "builtin", "description", "enabled", "id", "name", "type", "version"])
+        self.assertTrue(row["builtin"])
+        self.assertIn("cache.native", [r["id"] for r in body["cache_strategy"]])
+
+    def test_disable_then_enable_round_trip(self):
+        resp = self.client.post("/api/plugins/tool.calculator/disable")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json(), {"ok": True, "plugin_id": "tool.calculator", "enabled": False})
+        rows = {r["id"]: r for r in self.client.get("/api/plugins").json()["tool"]}
+        self.assertFalse(rows["tool.calculator"]["enabled"])
+        resp = self.client.post("/api/plugins/tool.calculator/enable")
+        self.assertEqual(resp.json()["enabled"], True)
+
+    def test_unknown_plugin_is_404(self):
+        for action in ("enable", "disable"):
+            resp = self.client.post(f"/api/plugins/no-such-plugin/{action}")
+            self.assertEqual(resp.status_code, 404)
+
+    @unittest.expectedFailure
+    def test_switching_a_tool_off_takes_it_away_from_chat(self):
+        # Known gap (review C): the switch only changes the row. /api/tools (what Chat offers the model)
+        # does not read it, so a tool switched off is still offered. Remove expectedFailure when it is wired.
+        self.client.post("/api/plugins/tool.calculator/disable")
+        names = [tool["name"] for tool in self.client.get("/api/tools").json()["tools"]]
+        self.assertNotIn("calculator", names)
 
 
 if __name__ == "__main__":

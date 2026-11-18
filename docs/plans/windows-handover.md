@@ -4,7 +4,7 @@ For a fresh Claude Code session on the Windows PC (RTX 4090, 1 TB drive; Ubuntu 
 
 ## The first three things to do
 
-1. **Update 2026-11-18: `review/integrate` is merged into `release/v0.10.0` (tip `c544a536`) and `test/rtx4090` is fast-forwarded to it; start on `test/rtx4090`.** (Original text follows.) Ask the owner whether `review/integrate` has been merged into `release/v0.10.0`. The coordinator merges it on the owner's yes; this session never merges into `release/v0.10.0`, `staging` or `main`, never tags and never force-pushes. If it is merged, recut `test/rtx4090` from the new `release/v0.10.0` tip. If not, cut a branch `test/rtx4090-integrate` from `review/integrate` and work there.
+1. **Start on `test/rtx4090`.** `review/integrate` is merged into `release/v0.10.0` and `test/rtx4090` is fast-forwarded to the same tip (2026-11-18). Run `git fetch && git switch test/rtx4090 && git pull`. This session never merges into `release/v0.10.0`, `staging` or `main`, never tags and never force-pushes; push `test/rtx4090` only.
 2. **Set up a throwaway data folder before running anything** (the test suite once wrote 505 junk rows into a real prompt library): in PowerShell `$t = Join-Path $env:TEMP ("ce-" + [guid]::NewGuid()); New-Item -ItemType Directory $t | Out-Null; $env:HOME = $t; $env:USERPROFILE = $t` for every `pytest` and `e2e_test_suite.py` run. The Mac's model library paths (`/Users/dan/...`) do not exist here; link or point to the PC's own Hugging Face cache read-only, never a datasets folder.
 3. **Run the gate in section 2 once on the cut branch**, record PASS / FAIL / SKIP with one line of evidence per item in `docs/progress/rtx4090-progress.md`, commit and push the branch, then work down section 4.
 
@@ -32,7 +32,7 @@ All worktrees named here live on the Mac only. On the PC only the pushed branche
 | `review/plan` | `1ce012ab` | Keep going and tools v2 plan (docs only) | `review/integrate` | same |
 | `review/routing` | `1ac81af9` | Backend takes the repo from the model's own folder and ignores a disagreeing `canonicalRepo` (L-16, FU-248); the CLI prints `cacheBits`. Behaviour change: a local copy matched to another uploader's catalogue row now loads under its own repo, so a drafter pinned (`PINNED_DRAFTERS`) to the other uploader's repo id is not used for it | `review/integrate` (`599802fe`) | same |
 | `review/i18nfix` | `b5f681c6` | Diagnostics strings translated in nine locales (L-2, FU-249), language banner wording (L-1, D-94, FU-250), Chat welcome and Compare labels (L-4, L-5 frontend part), Language panel title and visible labels (L-7); 891 machine translations nobody has read yet (FU-254) | `review/integrate` (`ba1c5e4d`) | same |
-| `review/integrate` | see `git log` | Everything above, plus the experimental-tabs switch, key masking, Dashboard copy | **not merged**: the owner decides | after it is merged into `release/v0.10.0`, the merge hash is confirmed there and pushed |
+| `review/integrate` | `c544a536` | Everything above, plus the experimental-tabs switch, key masking, Dashboard copy | `release/v0.10.0` (fast-forward, 2026-11-18) | the Mac coordinator deletes the review worktrees and branches; nothing to do on the PC |
 | `test/rtx4090` | `c544a536` | The Windows pass branch (fast-forwarded to release 2026-11-18) | yes | never |
 
 Deleting a worktree or branch (local and remote) happens only once the merge hash is confirmed on the target and pushed, and never for a branch that is unmerged, in use or has uncommitted tracked changes.
@@ -43,7 +43,7 @@ The commands in [rtx4090-test.md](rtx4090-test.md), "Start here", still hold:
 
 ```powershell
 git fetch
-git switch -c test/rtx4090-integrate origin/review/integrate   # or recut test/rtx4090 from release/v0.10.0 once merged
+git switch test/rtx4090 && git pull   # already at the merged release tip
 py -3.11 -m venv .venv
 .venv\Scripts\python -m pip install -c release-constraints.txt -e .   # plus the CUDA extras the README names
 npm install

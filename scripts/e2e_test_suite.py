@@ -3641,6 +3641,8 @@ PHASES[14] = phase_14
 PHASES[15] = phase_15
 from e2e_phases.phase_gguf_routing import phase_gguf_routing  # noqa: E402
 PHASES[213] = phase_gguf_routing  # overnight review, stream GGUF: format from files, not names
+from e2e_phases.phase_routing_hints import phase_routing_hints  # noqa: E402
+PHASES[214] = phase_routing_hints  # overnight review, stream ROUTING: the path decides the repo, not hints (L-16)
 
 
 def _write_reports(report_dir: Path, started: datetime, ended: datetime,

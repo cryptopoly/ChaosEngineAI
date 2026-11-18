@@ -58,9 +58,12 @@ function applyVariables(
 interface PromptLibraryTabProps {
   backendOnline: boolean;
   onApplyTemplate: (systemPrompt: string) => void;
+  /** The system prompt Chat is sending now ("" when none). Chat itself does not show it. */
+  activeSystemPrompt?: string;
+  onClearSystemPrompt?: () => void;
 }
 
-export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibraryTabProps) {
+export function PromptLibraryTab({ backendOnline, onApplyTemplate, activeSystemPrompt = "", onClearSystemPrompt }: PromptLibraryTabProps) {
   const { t, i18n } = useTranslation("common");
   const [templates, setTemplates] = useState<PromptTemplate[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -308,6 +311,21 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
         }
         subtitle=""
       >
+        {activeSystemPrompt ? (
+          <div className="callout quiet prompt-in-use" role="status">
+            <p>
+              {t("promptLibrary.inUseNote", {
+                defaultValue: "Chat is using this system prompt in every thread until you stop it or restart the app:",
+              })}
+            </p>
+            <pre style={{ whiteSpace: "pre-wrap", fontSize: 12, margin: "6px 0", maxHeight: 96, overflow: "auto" }}>{activeSystemPrompt}</pre>
+            {onClearSystemPrompt ? (
+              <button className="secondary-button" type="button" onClick={onClearSystemPrompt} style={{ alignSelf: "flex-start" }}>
+                {t("promptLibrary.stopUsing", { defaultValue: "Stop using it" })}
+              </button>
+            ) : null}
+          </div>
+        ) : null}
         {editMode ? (
           <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
             <div>

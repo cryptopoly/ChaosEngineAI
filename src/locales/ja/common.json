@@ -619,7 +619,9 @@
     "noMatches": null,
     "deleteConfirm": null,
     "variablesInvalid": null,
-    "samplersInvalid": null
+    "samplersInvalid": null,
+    "inUseNote": null,
+    "stopUsing": null
   },
   "fineTuning": {
     "loadingAdapters": "アダプターを読み込み中...",

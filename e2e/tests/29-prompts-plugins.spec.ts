@@ -35,7 +35,8 @@ async function scriptChatStream(page: Page) {
       const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
       if (!url.includes("/api/chat/generate/stream")) return original(input, init);
       w.__promptPayload = JSON.parse(String(init?.body ?? "{}"));
-      const body = new ReadableStream<Uint8Array>({ start: () => undefined });
+      // The stream ends at once, so the composer is free for the next message.
+      const body = new ReadableStream<Uint8Array>({ start: (controller) => controller.close() });
       return Promise.resolve(new Response(body, { status: 200, headers: { "Content-Type": "text/event-stream" } }));
     };
   });
@@ -129,6 +130,21 @@ test("Prompts: built-ins, dates, a refused save, variables, search, use in Chat,
   await page.waitForFunction(() => Boolean((window as unknown as { __promptPayload?: unknown }).__promptPayload));
   const payload = await page.evaluate(() => (window as unknown as { __promptPayload: Record<string, unknown> }).__promptPayload);
   expect(payload.systemPrompt).toBe("Answer only in Welsh. Keep quokkas in mind.");
+
+  // Chat does not show the prompt, so the Prompts page does, with a way to stop it: the next message has none.
+  await openTab(page, "Tools", "Prompts");
+  const inUse = detail(page).locator(".prompt-in-use");
+  await expect(inUse).toContainText("Chat is using this system prompt in every thread");
+  await expect(inUse).toContainText("Answer only in Welsh. Keep quokkas in mind.");
+  await inUse.getByRole("button", { name: "Stop using it", exact: true }).click();
+  await expect(inUse).toHaveCount(0);
+  await openTab(page, "Chat", "Chat");
+  await page.evaluate(() => { (window as unknown as { __promptPayload?: unknown }).__promptPayload = undefined; });
+  await page.locator(".composer textarea").fill("hello again");
+  await page.getByRole("button", { name: "Send", exact: true }).click();
+  await page.waitForFunction(() => Boolean((window as unknown as { __promptPayload?: unknown }).__promptPayload));
+  const cleared = await page.evaluate(() => (window as unknown as { __promptPayload: Record<string, unknown> }).__promptPayload);
+  expect(cleared.systemPrompt).toBeUndefined();
 
   // Edit, then delete; the backend agrees.
   await openTab(page, "Tools", "Prompts");

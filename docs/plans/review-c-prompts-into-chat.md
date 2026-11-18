@@ -73,6 +73,11 @@ model. It belongs next to the composer, where the Skills switch and the slash me
 Size: about two days with tests. Risk: `useChat.ts` (1166 lines) and `ChatTab.tsx` are over the soft cap, so the
 change should add the new file and thread it through, not grow them.
 
+### Done on `review/c` as a stopgap
+
+The Prompts page shows the prompt Chat is sending and has "Stop using it" (`PromptLibraryTab.tsx`,
+`SystemTabs.tsx`). It does not change where the prompt lives; step 1 above replaces it.
+
 ### If the owner prefers the smallest change
 
 Keep the page, and do only step 1 (per-thread prompt, visible chip with a clear button). That removes the one

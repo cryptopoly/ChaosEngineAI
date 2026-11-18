@@ -231,7 +231,8 @@ def imported_dir(data_dir: Path) -> Path:
 
 
 def _slug(value: str) -> str:
-    cleaned = _SLUG_RE.sub("-", value).strip("-")
+    # Dots are kept (``llama3.2``) but never lead or trail, so ``..`` cannot survive as a folder name.
+    cleaned = _SLUG_RE.sub("-", value).strip("-.")
     return cleaned or "model"
 
 
@@ -254,5 +255,81 @@ def import_by_reference(*, source: str, path: str, name: str, data_dir: Path) ->
     if dest.exists() or dest.is_symlink():
         return {"importedPath": str(dest), "alreadyImported": True, "importedDir": str(imported_dir(data_dir))}
 
-    os.symlink(src, dest)
+    _link_or_copy(src, dest)
     return {"importedPath": str(dest), "alreadyImported": False, "importedDir": str(imported_dir(data_dir))}
+
+
+_HF_REPO_DIR_RE = re.compile(r"^models--(?P<owner>[^-].*?)--(?P<name>.+)$")
+
+
+def lmstudio_publisher_and_model(path: Path, repo: str | None = None) -> tuple[str, str]:
+    """``(publisher, model)`` folder names LM Studio expects for a GGUF.
+
+    Taken from ``repo`` (``owner/name``) when given, else from a
+    ``models--owner--name`` folder in the file's path (the Hugging Face cache
+    layout), else ``("chaosengine", <file stem>)``.
+    """
+    if repo and "/" in repo:
+        owner, _, name = repo.partition("/")
+        if owner and name:
+            return _slug(owner), _slug(name.replace("/", "-"))
+    for part in path.parts:
+        match = _HF_REPO_DIR_RE.match(part)
+        if match:
+            return _slug(match.group("owner")), _slug(match.group("name"))
+    return "chaosengine", _slug(path.stem)
+
+
+def share_with_lmstudio(*, path: str, lmstudio_dir: Path, repo: str | None = None) -> dict[str, Any]:
+    """Link a GGUF into LM Studio's ``<publisher>/<model>/<file>.gguf`` layout.
+
+    A hard link (same drive, no privilege, no extra space) with a symlink as
+    the fallback. Never copies: a multi-GB copy would silently double the disk
+    use, so a different drive is an error the caller reports. Raises
+    ``FileNotFoundError`` for a missing source and ``OSError`` when no link
+    can be made.
+    """
+    src = Path(path).expanduser().resolve()
+    if not src.is_file() or src.suffix.lower() != ".gguf":
+        raise FileNotFoundError(f"Not a GGUF file: {src}")
+    publisher, model = lmstudio_publisher_and_model(Path(path), repo)
+    dest_dir = lmstudio_dir.expanduser() / publisher / model
+    dest = dest_dir / _slug(src.name)
+    if dest.exists() or dest.is_symlink():
+        return {"path": str(dest), "alreadyShared": True, "publisher": publisher, "model": model, "linkType": "existing"}
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        os.link(src, dest)
+        link_type = "hardlink"
+    except OSError:
+        os.symlink(src, dest)
+        link_type = "symlink"
+    return {"path": str(dest), "alreadyShared": False, "publisher": publisher, "model": model, "linkType": link_type}
+
+
+def _link_or_copy(src: Path, dest: Path) -> None:
+    """Place ``src`` at ``dest``: symlink, else hard link, else copy.
+
+    Windows refuses symlinks without Developer Mode or elevation
+    (WinError 1314). A hard link needs no privilege but only works on the
+    same volume; the copy is the last resort for a different drive.
+    """
+    try:
+        os.symlink(src, dest)
+        return
+    except OSError:
+        pass
+    try:
+        os.link(src, dest)
+        return
+    except OSError:
+        pass
+    import shutil
+
+    partial = dest.with_name(dest.name + ".partial")
+    try:
+        shutil.copyfile(src, partial)
+        os.replace(partial, dest)
+    except BaseException:
+        partial.unlink(missing_ok=True)
+        raise

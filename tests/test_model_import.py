@@ -114,6 +114,48 @@ class ScannerTests(unittest.TestCase):
         self.assertTrue(found[0].path.endswith(".gguf"))
 
 
+class ShareWithLmStudioTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name)
+        snap = self.root / "hub" / "models--ggml-org--Qwen3.8-27B-GGUF" / "snapshots" / "abc"
+        snap.mkdir(parents=True)
+        self.gguf = snap / "Qwen3.8-27B-Q4_K_M.gguf"
+        self.gguf.write_bytes(b"GGUF" + b"0" * 64)
+        self.lm = self.root / "lmstudio"
+
+    def test_layout_from_hf_cache_path(self):
+        out = mi.share_with_lmstudio(path=str(self.gguf), lmstudio_dir=self.lm)
+        dest = Path(out["path"])
+        self.assertEqual(dest, self.lm / "ggml-org" / "Qwen3.8-27B-GGUF" / "Qwen3.8-27B-Q4_K_M.gguf")
+        self.assertEqual(dest.read_bytes(), self.gguf.read_bytes())
+        self.assertEqual(out["linkType"], "hardlink")
+        self.assertFalse(out["alreadyShared"])
+
+    def test_repo_overrides_path_and_second_share_is_idempotent(self):
+        out = mi.share_with_lmstudio(path=str(self.gguf), lmstudio_dir=self.lm, repo="acme/Thing")
+        self.assertEqual((out["publisher"], out["model"]), ("acme", "Thing"))
+        again = mi.share_with_lmstudio(path=str(self.gguf), lmstudio_dir=self.lm, repo="acme/Thing")
+        self.assertTrue(again["alreadyShared"])
+
+    def test_plain_path_falls_back_to_chaosengine_publisher(self):
+        plain = self.root / "x.gguf"
+        plain.write_bytes(b"GGUF")
+        out = mi.share_with_lmstudio(path=str(plain), lmstudio_dir=self.lm)
+        self.assertEqual((out["publisher"], out["model"]), ("chaosengine", "x"))
+
+    def test_traversal_in_repo_is_neutralised(self):
+        out = mi.share_with_lmstudio(path=str(self.gguf), lmstudio_dir=self.lm, repo="../../evil/..")
+        self.assertTrue(Path(out["path"]).resolve().is_relative_to(self.lm.resolve()))
+
+    def test_non_gguf_rejected(self):
+        other = self.root / "a.bin"
+        other.write_bytes(b"x")
+        with self.assertRaises(FileNotFoundError):
+            mi.share_with_lmstudio(path=str(other), lmstudio_dir=self.lm)
+
+
 class ImportByReferenceTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -127,9 +169,28 @@ class ImportByReferenceTests(unittest.TestCase):
         result = mi.import_by_reference(source="ollama", path=str(blob), name="llama3.2:latest", data_dir=data_dir)
         dest = Path(result["importedPath"])
         self.assertFalse(result["alreadyImported"])
-        self.assertTrue(dest.is_symlink())
+        self.assertTrue(dest.is_file())
         self.assertEqual(dest.suffix, ".gguf")
-        self.assertEqual(dest.resolve(), blob.resolve())
+        self.assertTrue(dest.samefile(blob))
+
+    def test_hard_link_when_symlink_refused(self):
+        models = _build_ollama_store(self.root)
+        blob = models / "blobs" / f"sha256-{HEX}"
+        with mock.patch("os.symlink", side_effect=OSError(1314, "privilege not held")):
+            result = mi.import_by_reference(source="ollama", path=str(blob), name="m", data_dir=self.root / "data")
+        dest = Path(result["importedPath"])
+        self.assertFalse(dest.is_symlink())
+        self.assertTrue(dest.samefile(blob))
+
+    def test_copy_when_no_link_is_possible(self):
+        models = _build_ollama_store(self.root)
+        blob = models / "blobs" / f"sha256-{HEX}"
+        with mock.patch("os.symlink", side_effect=OSError("no")), mock.patch("os.link", side_effect=OSError("no")):
+            result = mi.import_by_reference(source="ollama", path=str(blob), name="m", data_dir=self.root / "data")
+        dest = Path(result["importedPath"])
+        self.assertFalse(dest.samefile(blob))
+        self.assertEqual(dest.read_bytes(), blob.read_bytes())
+        self.assertEqual(list(dest.parent.glob("*.partial")), [])
 
     def test_second_import_is_idempotent(self):
         models = _build_ollama_store(self.root)
@@ -195,6 +256,53 @@ class ImportRouteTests(unittest.TestCase):
         state = self.client.app.state.chaosengine
         paths = [d.get("path") for d in state.settings["modelDirectories"]]
         self.assertIn(str(data_dir / "imported-models"), paths)
+
+
+class ShareRouteTests(unittest.TestCase):
+    """Share with LM Studio over HTTP, using the saved ``lmstudioDir`` setting (runs on Windows too)."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name)
+        state = ChaosEngineState(
+            system_snapshot_provider=_fake_system_snapshot,
+            settings_path=self.root / "settings.json",
+            benchmarks_path=self.root / "benchmarks.json",
+            chat_sessions_path=self.root / "chats.json",
+        )
+        self.state = state
+        self.client = TestClient(create_app(state=state, api_token=TEST_API_TOKEN))
+        self.client.headers.update({"Authorization": f"Bearer {TEST_API_TOKEN}"})
+        snap = self.root / "hub" / "models--ggml-org--Qwen3.8-27B-GGUF" / "snapshots" / "abc"
+        snap.mkdir(parents=True)
+        self.gguf = snap / "m.gguf"
+        self.gguf.write_bytes(b"GGUF")
+
+    def test_unset_folder_is_a_clear_error(self):
+        with mock.patch.dict(os.environ, {"CHAOSENGINE_LMSTUDIO_DIR": str(self.root / "missing")}):
+            resp = self.client.post("/api/models/share-lmstudio", json={"path": str(self.gguf)})
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("LM Studio", resp.json()["detail"]["message"])
+
+    def test_saved_folder_is_used_and_persisted(self):
+        lm = self.root / "lmstudio"
+        saved = self.client.post("/api/settings/lmstudio-dir", json={"path": str(lm)})
+        self.assertEqual(saved.status_code, 200)
+        self.assertEqual(self.client.get("/api/settings/storage").json()["lmstudioDir"], str(lm.resolve()))
+        resp = self.client.post("/api/models/share-lmstudio", json={"path": str(self.gguf)})
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue((lm / "ggml-org" / "Qwen3.8-27B-GGUF" / "m.gguf").is_file())
+
+    def test_relative_folder_rejected(self):
+        resp = self.client.post("/api/settings/lmstudio-dir", json={"path": "relative/dir"})
+        self.assertEqual(resp.status_code, 400)
+
+    def test_missing_gguf_is_404(self):
+        resp = self.client.post(
+            "/api/models/share-lmstudio", json={"path": str(self.root / "no.gguf"), "lmstudioDir": str(self.root / "lm")}
+        )
+        self.assertEqual(resp.status_code, 404)
 
 
 if __name__ == "__main__":

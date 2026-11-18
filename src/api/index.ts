@@ -683,6 +683,7 @@ export {
   updateAgentAccess,
   startModelMove,
   updateHfCachePath,
+  updateLmStudioDir,
 } from "./admin";
 export type {
   AgentAccess,
@@ -741,6 +742,7 @@ export {
   downloadModel,
   getDownloadStatus,
   importModel,
+  shareWithLmStudio,
   listHubFiles,
   loadModel,
   resolveHfModel,

@@ -1273,8 +1273,8 @@
         "detail": "Launching the ChaosEngineAI runtime."
       },
       "extractingRuntime": {
-        "title": "Extracting embedded runtime",
-        "detail": "First launch only — unpacking the bundled Python runtime and llama.cpp into the app cache."
+        "title": "Preparing runtime",
+        "detail": "Locating the bundled Python runtime and llama.cpp. After an update this can include unpacking them once."
       },
       "startingPython": {
         "title": "Starting Python runtime",

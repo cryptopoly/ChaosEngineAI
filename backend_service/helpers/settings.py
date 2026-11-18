@@ -243,6 +243,9 @@ def _default_settings(default_port: int, data_dir: Path) -> dict[str, Any]:
         # drive. Moving existing models between locations is handled by
         # the ``/api/settings/storage/move`` endpoint.
         "hfCachePath": "",
+        # LM Studio's models folder, the target of "Share with LM Studio".
+        # Empty = look for LM Studio's default folders.
+        "lmstudioDir": "",
         # Phase 3.3: advanced-mode logprobs flag. Off by default.
         "advancedLogprobs": False,
         # FU-042: persisted UI locale.  ``"system"`` (default) means
@@ -395,7 +398,7 @@ def _load_settings(path: Path, default_port: int, data_dir: Path) -> dict[str, A
             os.environ["HF_TOKEN"] = hf_token
             os.environ["HUGGING_FACE_HUB_TOKEN"] = hf_token
 
-    for key in ("imageOutputsDirectory", "videoOutputsDirectory", "hfCachePath"):
+    for key in ("imageOutputsDirectory", "videoOutputsDirectory", "hfCachePath", "lmstudioDir"):
         raw = payload.get(key)
         if isinstance(raw, str):
             settings[key] = raw.strip()

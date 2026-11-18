@@ -98,7 +98,9 @@ def _free_bytes_on_drive(path: Path) -> int | None:
 
 def _hub_tree(hf_home: Path) -> Path:
     """The ``hub/`` subdir under any HF_HOME — where all model blobs live."""
-    return hf_home / "hub"
+    from backend_service.helpers.hf_cache_paths import hub_dir_for_home
+
+    return hub_dir_for_home(hf_home)
 
 
 def _directory_size(path: Path) -> int:
@@ -175,6 +177,7 @@ def storage_settings(request: Request) -> dict[str, Any]:
         "effectivePath": str(effective),
         "effectiveHubPath": str(hub_dir),
         "defaultPath": str(_default_hf_home()),
+        "lmstudioDir": str(state.settings.get("lmstudioDir") or ""),
         "currentHubSizeBytes": current_hub_size,
         "currentFreeBytes": current_free,
         "moveJob": _MOVE_JOB.to_dict(),
@@ -183,6 +186,33 @@ def storage_settings(request: Request) -> dict[str, Any]:
 
 class UpdateStoragePath(BaseModel):
     hfCachePath: str
+
+
+class UpdateLmStudioDir(BaseModel):
+    path: str
+
+
+@router.post("/api/settings/lmstudio-dir")
+def update_lmstudio_dir(request: Request, body: UpdateLmStudioDir) -> dict[str, Any]:
+    """Save LM Studio's models folder (empty clears it). Created if missing."""
+    from backend_service.helpers.settings import _save_settings
+
+    state = request.app.state.chaosengine
+    cleaned = (body.path or "").strip()
+    if cleaned:
+        resolved = _validate_target_path(cleaned)
+        try:
+            resolved.mkdir(parents=True, exist_ok=True)
+        except OSError as exc:
+            raise HTTPException(
+                status_code=400,
+                detail=localized_detail(request, f"Could not create {resolved}: {exc}"),
+            ) from exc
+        cleaned = str(resolved)
+    with state._lock:
+        state.settings["lmstudioDir"] = cleaned
+        _save_settings(state.settings, state._settings_path)
+    return {"lmstudioDir": cleaned}
 
 
 @router.post("/api/settings/storage")
@@ -218,7 +248,7 @@ def update_storage_path(request: Request, body: UpdateStoragePath) -> dict[str, 
     live_hub = Path(os.path.expanduser(
         os.environ.get("HUGGINGFACE_HUB_CACHE")
         or os.environ.get("HF_HUB_CACHE")
-        or (str(effective) + "/hub")
+        or str(_hub_tree(effective))
     )).resolve()
     running_hub = _hf_hub_cache_root()
     restart_required = Path(str(running_hub)).resolve() != live_hub

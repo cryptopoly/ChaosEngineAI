@@ -114,10 +114,10 @@ function pickPhase(
   }
   if (!sidecarSpawned && elapsedSeconds < 15) {
     return {
-      title: t("startupProgress.phase.extractingRuntime.title", { defaultValue: "Extracting embedded runtime" }),
+      title: t("startupProgress.phase.extractingRuntime.title", { defaultValue: "Preparing runtime" }),
       detail: t("startupProgress.phase.extractingRuntime.detail", {
         defaultValue:
-          "First launch only — unpacking the bundled Python runtime and llama.cpp into the app cache.",
+          "Locating the bundled Python runtime and llama.cpp. After an update this can include unpacking them once.",
       }),
     };
   }

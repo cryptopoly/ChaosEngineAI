@@ -352,17 +352,10 @@ class ChaosEngineState:
         from backend_service.app import app_version
 
         system = self._system_snapshot()
-        recommendation = _best_fit_recommendation(system)
         self.add_log("chaosengine", "info", f"Workspace booted in {system['backendLabel']} mode.")
         self.add_log("chaosengine", "info", f"ChaosEngine v{app_version} detected.")
-        # Hardware profile uses `recommendation["title"]` raw because the title
-        # is dynamically composed backend-side. Frontend renders it verbatim;
-        # localizing requires a follow-up structured payload for the recommender.
-        self.add_activity(
-            "Hardware profile refreshed",
-            recommendation["title"],
-            title_key="activity.hardwareProfile.title",
-        )
+        # The hardware profile is logged with the readiness line, once the MLX probe has finished: from the boot
+        # snapshot an MLX Mac read as a GGUF machine ("Recommended target: 70B GGUF").
         self._announce_backend_readiness_when_known(system)
         self._kick_library_scan()
 
@@ -374,6 +367,14 @@ class ChaosEngineState:
         """
 
         def announce(snapshot: dict[str, Any]) -> None:
+            # Hardware profile uses `recommendation["title"]` raw because the title
+            # is dynamically composed backend-side. Frontend renders it verbatim;
+            # localizing requires a follow-up structured payload for the recommender.
+            self.add_activity(
+                "Hardware profile refreshed",
+                _best_fit_recommendation(snapshot)["title"],
+                title_key="activity.hardwareProfile.title",
+            )
             self.add_activity(
                 "Backend readiness",
                 " / ".join(

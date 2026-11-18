@@ -80,7 +80,7 @@
     }
   },
   "recommendation": {
-    "mlxTitle": "ngoQ chuplu'bogh: {modelSize} Seg @ {cacheLabel}",
+    "mlxTitle": null,
     "mlxDetail": "{hardware}Daq {modelSize} Seg ngoQ chuplu'bogh bop noHvam; ja'chuq yab wIvlu'ta'bogh bopbe'.",
     "ggufTitle": "ngoQ chuplu'bogh: {modelSize} GGUF",
     "ggufDetail": "mIqta' law' QapmeH llama.cpp GGUF maS pat law' mIw."

@@ -80,7 +80,7 @@
     }
   },
   "recommendation": {
-    "mlxTitle": "Recommended target: {modelSize} class @ {cacheLabel}",
+    "mlxTitle": "Recommended target: {modelSize} class at 4-bit",
     "mlxDetail": "This forecast is relative to a recommended {modelSize} class local target on {hardware}, not a currently selected chat model.",
     "ggufTitle": "Recommended target: {modelSize} GGUF",
     "ggufDetail": "Cross-platform mode will prefer llama.cpp GGUF for broad hardware support."

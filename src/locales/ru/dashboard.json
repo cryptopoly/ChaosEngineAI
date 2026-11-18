@@ -80,7 +80,7 @@
     }
   },
   "recommendation": {
-    "mlxTitle": "Рекомендуемая цель: класс {modelSize} @ {cacheLabel}",
+    "mlxTitle": null,
     "mlxDetail": "Этот прогноз относится к рекомендуемой локальной цели класса {modelSize} на {hardware}, а не к текущей выбранной модели чата.",
     "ggufTitle": "Рекомендуемая цель: {modelSize} GGUF",
     "ggufDetail": "Кросс-платформенный режим предпочитает llama.cpp GGUF для широкой аппаратной поддержки."

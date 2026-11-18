@@ -320,7 +320,8 @@ def _best_fit_recommendation(system_stats: dict[str, Any]) -> dict[str, Any]:
         headroom_percent = 43
 
     if is_macos_mlx:
-        title = f"Recommended target: {model_size} class @ {cache_label}"
+        # The weights fit at 4-bit; the cache label is the KV cache, not the weights, so it stays out of the title.
+        title = f"Recommended target: {model_size} class at 4-bit"
         detail = (
             f"This forecast is relative to a recommended {model_size} class local target on "
             f"{system_stats['hardwareSummary']}, not a currently selected chat model."

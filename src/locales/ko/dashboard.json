@@ -80,7 +80,7 @@
     }
   },
   "recommendation": {
-    "mlxTitle": "권장 대상: {modelSize} 클래스 @ {cacheLabel}",
+    "mlxTitle": null,
     "mlxDetail": "이 예측은 {hardware}의 권장 {modelSize} 클래스 로컬 대상에 대한 것이며, 현재 선택된 채팅 모델에 대한 것이 아닙니다.",
     "ggufTitle": "권장 대상: {modelSize} GGUF",
     "ggufDetail": "크로스 플랫폼 모드는 광범위한 하드웨어 지원을 위해 llama.cpp GGUF를 선호합니다."

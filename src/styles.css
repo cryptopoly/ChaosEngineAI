@@ -1096,6 +1096,19 @@ strong {
   flex-shrink: 0;
 }
 
+/* The three columns above are for "label, path, button". A row that starts with the path itself (Data
+   Directory, Delivery Folders, Model Storage) left the path a third of the width and gave Browse two
+   thirds, so the folder could not be read. The path now takes the room and the buttons keep their size. */
+.directory-add-row:has(> .directory-add-path:first-child) {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.directory-add-row:has(> .directory-add-path:first-child) > .directory-add-path {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
 .directory-list {
   display: flex;
   flex-direction: column;
@@ -4866,6 +4879,10 @@ select.text-input {
     max-height: 22rem;
   }
 
+  .directory-add-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .settings-storage-col {
     min-height: min-content;
   }
@@ -4914,6 +4931,14 @@ select.text-input {
   /* Scrolls when the folder panels do not fit (they were clipped at the smallest window). */
   overflow-x: hidden;
   overflow-y: auto;
+}
+
+/* The rule above is more specific than the general one-column rule at 900 px, so Storage stayed in two
+   columns of about 160 px on a phone and its rows were cut. */
+@media (max-width: 900px) {
+  .settings-layout .settings-storage-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .settings-storage-col {
@@ -6320,6 +6345,9 @@ select.text-input {
 
   .sidebar-panel .nav-list {
     overflow: visible;
+    /* The drawer scrolls, not the list. Left to shrink, the list spilled over the status footer: at
+       1100 x 760 with the Chat or Tools group open, Settings sat under the footer and could not be clicked. */
+    flex-shrink: 0;
   }
 
   .sidebar-backdrop {

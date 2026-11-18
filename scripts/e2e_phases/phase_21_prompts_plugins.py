@@ -186,7 +186,11 @@ def run(cap: Any, suite: Any):
             return "fail", f"load {ref} rc={rc}: {(err or '')[:200]}", {}
         try:
             replies: dict[str, tuple[int, str]] = {}
-            for label, extra in (("plain", {}), ("template", {"systemPrompt": made["template"]["systemPrompt"]})):
+            # "plain" carries a two-word system prompt too: a chat template with a default system prompt (Qwen2.5:
+            # "You are Qwen, created by Alibaba Cloud...") swaps it for ours, so no system prompt at all would make
+            # the template look like it added nothing.
+            for label, extra in (("plain", {"systemPrompt": "Be brief."}),
+                                 ("template", {"systemPrompt": made["template"]["systemPrompt"]})):
                 body = {"sessionId": f"e2e-p21-{tag}-{label}", "prompt": "What is the capital of France?",
                         "modelRef": ref, "backend": "mlx", "cacheStrategy": "native", "maxTokens": 48,
                         "temperature": 0.0, "thinkingMode": "off", **extra}
@@ -206,7 +210,7 @@ def run(cap: Any, suite: Any):
         detail = {"model": ref, "promptTokens": {"plain": plain_tokens, "template": template_tokens},
                   "followed": MARKER in template_text.upper(), "reply": template_text[:80]}
         # The hard check does not depend on how obedient a small model is: the prompt the model saw is
-        # longer by about the template's length (at least 10 tokens for this 20-word template).
+        # longer by about the template's length (at least 10 tokens for this 20-word template against "Be brief.").
         if template_tokens - plain_tokens < 10:
             return "fail", f"the prompt did not grow with the template: {plain_tokens} then {template_tokens} tokens", detail
         if MARKER in plain_text.upper():

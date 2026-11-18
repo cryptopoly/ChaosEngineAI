@@ -536,7 +536,7 @@
       "note": null
     },
     "statTokens": null,
-    "promptTokensHint": null
+    "ofMaxTokens": null
   },
   "benchmarkHistory": {
     "subtitle": "{count, plural, one {# запуск} few {# запуска} many {# запусков} other {# запуска}}{filterSuffix}",

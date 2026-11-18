@@ -243,7 +243,7 @@ export function BenchmarkRunTab({
             <StatCard
               label={t("benchmarkTab.statTokens", { defaultValue: "Tokens generated" })}
               value={`${latestRun.completionTokens}`}
-              hint={t("benchmarkTab.promptTokensHint", { count: latestRun.promptTokens, defaultValue: "{count} prompt tokens" })}
+              hint={t("benchmarkTab.ofMaxTokens", { max: latestRun.maxTokens, defaultValue: "of {max} allowed" })}
             />
             <StatCard
               label={t("benchmarkTab.statContext", { defaultValue: "Context" })}

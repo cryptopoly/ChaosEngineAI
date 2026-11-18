@@ -536,7 +536,7 @@
       "note": "The answer is the choice letter the model scores highest as its next token. Runs saved before this change generated the answer as text; their accuracy is not comparable with new runs."
     },
     "statTokens": "Tokens generated",
-    "promptTokensHint": "{count} prompt tokens"
+    "ofMaxTokens": "of {max} allowed"
   },
   "benchmarkHistory": {
     "subtitle": "{count, plural, one {# run} other {# runs}}{filterSuffix}",

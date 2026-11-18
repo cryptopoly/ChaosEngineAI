@@ -536,7 +536,7 @@
       "note": null
     },
     "statTokens": null,
-    "promptTokensHint": null
+    "ofMaxTokens": null
   },
   "benchmarkHistory": {
     "subtitle": "{count, plural, other {실행 #회}}{filterSuffix}",

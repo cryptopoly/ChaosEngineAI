@@ -536,7 +536,7 @@
       "note": null
     },
     "statTokens": null,
-    "promptTokensHint": null
+    "ofMaxTokens": null
   },
   "benchmarkHistory": {
     "subtitle": "{count, plural, one {# Lauf} other {# Läufe}}{filterSuffix}",

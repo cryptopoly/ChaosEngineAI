@@ -725,6 +725,10 @@ class ChaosEngineState:
                 _routing_log.debug("Ignoring canonicalRepo %r: model %r is %s.", cleaned, model_ref, row_repo)
                 return row_repo
             return cleaned or row_repo
+        if cleaned is not None and str(path or "").strip():
+            # A path was named but is not on disk: it says nothing, so neither may a hint.
+            _routing_log.debug("Ignoring canonicalRepo %r: %s is not on disk.", cleaned, path)
+            return None
         return cleaned
 
     def _resolve_model_target(

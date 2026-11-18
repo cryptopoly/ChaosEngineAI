@@ -124,8 +124,11 @@ test.describe("first launch on a German system", () => {
 
 for (const locale of LOCALES) {
   test(`${locale}: boots with no raw keys, no leftover placeholders and no sideways scroll`, async ({ page, request }) => {
+    // In English first, so the terms are accepted when this spec runs on its own: their button is not
+    // "I agree" in this language, and with the dialog up every locale test ran into its 180 s timeout.
+    await openApp(page);
     await saveLocale(request, locale);
-    await openApp(page).catch(() => undefined); // the terms button is not "I agree" in this language; they are accepted already
+    await openApp(page).catch(() => undefined);
     await expect(page.locator("aside.sidebar")).toBeVisible();
     await expect(page.locator("html")).toHaveAttribute("lang", locale, { timeout: 15_000 });
     await expect(page.locator(".error-boundary")).toHaveCount(0);

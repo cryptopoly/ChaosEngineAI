@@ -202,7 +202,7 @@
   },
   "localeBanner": {
     "ariaLabel": "Preferência de idioma",
-    "inUse": "O aplicativo está em {endonym}, o idioma do seu sistema.",
+    "inUse": "O aplicativo usa o idioma do seu sistema: {endonym}.",
     "changeHint": "Você pode alterar isso a qualquer momento em Preferências → Idioma.",
     "keepCurrent": "Manter {endonym}",
     "useEnglish": "Use English"

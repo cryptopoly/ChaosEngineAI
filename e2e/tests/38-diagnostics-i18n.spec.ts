@@ -183,4 +183,11 @@ test("de: the Language panel has its own title and labelled rows; Chat welcome a
   await expect(picker.getByRole("button", { name: "Für Modell A verwenden", exact: true })).toBeVisible();
   await expect(picker.getByText(/Use for Model A|Select Model A/)).toHaveCount(0);
   await page.keyboard.press("Escape");
+  await expect(picker).toBeHidden();
+
+  // HTML Challenge (third tab) shares the slot names.
+  await openMenuIfCompact(page);
+  await nav.locator(".nav-group.open .nav-child-button").nth(2).click();
+  await expect(page.locator(".eyebrow", { hasText: /^Modell A$/ })).toBeVisible();
+  await expect(page.getByText("Model A", { exact: true })).toHaveCount(0);
 });

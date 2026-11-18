@@ -8,7 +8,7 @@ import type { ChatModelOption } from "../../types/chat";
 import {
   buildComparePayload,
   cloneLaunchSettings,
-  compareTargetLabels,
+  compareSlotLabels,
   compareTargets,
   modelUsesMtplx,
   modelUsesTensorfold,
@@ -901,7 +901,7 @@ export function HtmlChallengeTab({
     const manifestSlot = manifest?.slots.find((item) => item.slotId === slot.id);
     const modelLabel = option?.label ?? manifestSlot?.displayLabel ?? manifestSlot?.modelName ?? "";
     const subtitle = slotSubtitle(state) || manifestSlot?.status || "";
-    const waitingLabel = slotBusyMessage(slot, index, manifestSlot, slots, slotStates, manifest?.slots, compareTargetLabels);
+    const waitingLabel = slotBusyMessage(slot, index, manifestSlot, slots, slotStates, manifest?.slots, compareSlotLabels(t));
     const showLatestButton = !streamAtBottom[slot.id] && Boolean(state.text) && !state.html;
     const retryable = isRetryableState(state);
     const repairable = isRepairableState(state);

@@ -40,6 +40,15 @@ export const compareTargetLabels: Record<CompareTarget, string> = {
   d: "Model D",
 };
 
+/** The slot names in the app's language; ``t`` is the chat namespace's (keys ``compareView.slot.*``). */
+export function compareSlotLabels(
+  t: (key: string, options: { defaultValue: string }) => string,
+): Record<CompareTarget, string> {
+  return Object.fromEntries(
+    compareTargets.map((id) => [id, t(`compareView.slot.${id}`, { defaultValue: compareTargetLabels[id] })]),
+  ) as Record<CompareTarget, string>;
+}
+
 interface CompareSlot {
   id: CompareTarget;
   modelKey: string;
@@ -608,10 +617,8 @@ export function CompareView({
     setPickerTarget(target);
   }
 
-  /** "Model A" in the app's language. */
-  function slotName(id: CompareTarget): string {
-    return t(`compareView.slot.${id}`, { defaultValue: compareTargetLabels[id] });
-  }
+  const slotLabels = compareSlotLabels(t);
+  const slotName = (id: CompareTarget) => slotLabels[id];
 
   function renderModelCard(slot: CompareSlot) {
     const option = selectedBySlot[slot.id];

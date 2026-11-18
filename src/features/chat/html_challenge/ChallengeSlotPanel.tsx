@@ -11,7 +11,7 @@ import { type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { Panel } from "../../../components/Panel";
 import { ReasoningPanel } from "../../../components/ReasoningPanel";
-import { compareTargetLabels, type CompareTarget } from "../CompareView";
+import { compareSlotLabels, type CompareTarget } from "../CompareView";
 import {
   type ChallengeSlot,
   type ChallengeSlotState,
@@ -235,7 +235,7 @@ export function ChallengeSlotPanel({
 
   return (
     <Panel
-      title={compareTargetLabels[slot.id]}
+      title={compareSlotLabels(t)[slot.id]}
       subtitle={subtitle}
       className={`html-challenge-preview-panel${isExpanded ? " html-challenge-preview-panel--expanded" : ""}`}
       actions={panelActions}
@@ -321,7 +321,7 @@ export function ChallengeSlotPanel({
                   ref={(element) => onAttachFrame(slot.id, element)}
                   className="html-challenge-frame"
                   title={t("htmlChallenge.slotPanel.previewTitle", {
-                    label: compareTargetLabels[slot.id],
+                    label: compareSlotLabels(t)[slot.id],
                     defaultValue: "{label} HTML preview",
                   })}
                   srcDoc={previewSrcDoc(state.html, slot.id)}

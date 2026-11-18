@@ -8,7 +8,7 @@
  */
 
 import { useTranslation } from "react-i18next";
-import { compareTargetLabels, type CompareTarget } from "../CompareView";
+import { compareSlotLabels, type CompareTarget } from "../CompareView";
 import {
   type ChallengeSlot,
   type HtmlChallengeManifestSlot,
@@ -66,7 +66,7 @@ export function ChallengeModelCard({
 
   return (
     <div key={slot.id}>
-      <span className="eyebrow">{compareTargetLabels[slot.id]}</span>
+      <span className="eyebrow">{compareSlotLabels(t)[slot.id]}</span>
       <div className="model-selected-card model-selected-card--compact">
         <div className="model-selected-info">
           <div className="html-challenge-slot-headline">

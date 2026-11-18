@@ -44,3 +44,22 @@ posts to it), chat generate (loads per message), Compare, HTML Challenge, keep-g
 | 7 | Live: `chaosengine-cli --port 8940 load ... --canonical-repo Vontra/...` | PASS | state loaded, engine `mlx`, loadedRef Qwen2.5 |
 | 8 | E2E phase 214 (new) and 213 | PASS | 214: 3 checks, each load fresh (2.6 s, 2.6 s, chat "Paris"); 213: 4 checks |
 | 9 | tsc, vitest | PASS | tsc clean; 151 files, 1816 tests |
+| 10 | `./scripts/e2e_test_suite.py --smoke` (port 8940) | PASS | phases 0, 3, 4, 5, 6, 7, 8 |
+| 11 | Full `./scripts/e2e_test_suite.py` (throwaway HOME, three small models) | PASS after one fix | 21 phases, 61 s: 20 pass, phase 1 failed one check, "GGUF native q8_0 KV cache: asked for q8_0, got cacheBits=None" although the note said Native q8_0. Not routing: `chaosengine-cli load` never printed `cacheBits`, so the check could not pass from any tree. The CLI now prints it; phase 1 rerun: PASS, 25 checks (11 pass, 14 skip for models or runtimes not in this home) |
+| 12 | Full pytest, throwaway HOME | PASS | 4628 passed, 17 skipped, 0 failed |
+
+Model lock taken 10:28:28, released 10:32:23 after unloading; backend on 8940 stopped; the old-code worktree used
+for the reproduction was removed.
+
+## Not tested
+
+- The full E2E suite ran on a throwaway home with three small models (Qwen2.5-0.5B and Qwen3-0.6B MLX, Qwen3-0.6B
+  GGUF), so 46 of 199 checks skipped: DFlash, MTPLX, TensorFold, Kolibri, LFM3, Bolt and Qwen3.8 drafters, image
+  and video renders. None of them was run against the owner's full library.
+- Windows and Linux paths (drive letters, `\`): Mac only. `path_names_repo` and the library path match use
+  `pathlib`, but nothing was run off the Mac.
+- The app's UI after the change (vitest and tsc only; no frontend code changed).
+- Behaviour change to know about: a local copy the app matched to a catalogue row from another uploader
+  (D-13's "same model under another uploader") now loads with its own repo, so a drafter pinned to the other
+  uploader's repo id (`PINNED_DRAFTERS`, exact by design) is no longer used for it; a conversion of a base repo
+  loses the base repo as its `canonicalRepo` unless the folder is named after it.

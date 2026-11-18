@@ -399,6 +399,7 @@ def cmd_load(args: argparse.Namespace) -> int:
         "loadedRef": loaded.get("ref"),
         "loadedPath": loaded.get("path"),
         "runtimeNote": runtime.get("runtimeNote"),
+        "cacheBits": loaded.get("cacheBits"),
         "speculativeDecoding": loaded.get("speculativeDecoding"),
         # Surface the structured spec-dec / vision signals so the E2E
         # suite can assert genuine engagement (FU-075) rather than

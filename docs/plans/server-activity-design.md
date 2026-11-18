@@ -21,7 +21,7 @@ Status: **spec 2026-11-18, building on `review/e`.** Plan: [overnight review](ov
 New module `backend_service/model_events.py`: `ModelEventLog`.
 
 - **Event shape** (JSON): `id` (monotonic int), `ts` (epoch seconds, float), `time` (ISO local), `kind`, `level`, `model` (display name), `modelRef`, `requestId`, `engine`, `cacheStrategy`, `speculative` (method or null), `message` (one line), `data` (numbers: `bytes`, `seconds`, `memoryBytes`, `prefillSeconds`, `tokS`, `promptTokens`, `completionTokens`, `reason`, `finishReason`), `detail` (strings: `command`, `env`, `stderr`, `error`).
-- **Kinds:** `requested`, `resolving`, `loading`, `loaded`, `load_failed`, `first_token`, `generation`, `generation_failed`, `idle`, `unloaded` (`data.reason`: `user`, `swap`, `idle`, `error`, `memory`). `idle` is emitted when the last in-flight generation on the loaded model ends; there is no idle auto-unload today, so `reason: idle` is reserved and documented, not invented.
+- **Kinds:** `requested`, `resolving`, `loading`, `loaded`, `load_failed`, `parked` (moved to the warm pool), `first_token`, `generation`, `generation_failed`, `idle`, `unloaded` (`data.reason`: `user`, `swap`, `idle`, `error`, `memory`). `idle` is emitted when the last in-flight generation on the loaded model ends; there is no idle auto-unload today, so `reason: idle` is reserved and documented, not invented.
 - **Storage:** an in-memory ring (`deque`, 1000 events) plus a JSONL file `<data dir>/logs/model-events.jsonl` rotated at 1 MB with 3 backups (`.1` to `.3`), so the disk use is capped near 4 MB. A daemon writer thread drains a bounded queue (2000); a full queue drops the disk write (never the ring entry) and counts it. At start the ring is filled from the newest lines of the current file, so a restart keeps the history.
 - **Redaction** at emit time, on `message` and every `detail` string: Hugging Face tokens (`hf_...`), `Bearer ...`, `sk-...` keys, values after `--api-key`, `--hf-token`, `token=`, env values whose name contains TOKEN, SECRET, KEY, PASSWORD or AUTH, paths of secret files (`.../huggingface/token`, `.netrc`, `.ssh/...`, `*.pem`, `*.key`) and the home folder written as `~`.
 - **Cost on the hot path:** none per token. A stream emits at most two events (first token, end). `emit` builds a dict, appends to the ring under a lock and `put_nowait`s to the writer queue and subscriber queues.
@@ -37,7 +37,7 @@ New module `backend_service/model_events.py`: `ModelEventLog`.
 | unloaded (swap, memory) | `RuntimeController._park_active_engine_or_unload` and `_pop_oldest_warm_entry` | Where a load pushes a model out |
 | first_token, generation, generation_failed, idle | `RuntimeController.generate` and `stream_generate` | Every caller (Chat, OpenAI-compatible API, agents, Storyboard planner, benchmarks) goes through them |
 
-The controller gets an optional `events` attribute (None in tests and FakeRuntime); `ChaosEngineState` sets it. The controller file is over the size cap, so the emit helpers live in `model_events.py` and the controller gets only one-line calls.
+The controller gets an optional `events` attribute (None in tests and FakeRuntime); `ChaosEngineState` sets it. The controller file is over the size cap, so the hooks live in `model_event_hooks.py` (decorators on `load_model`, `generate`, `stream_generate`, one-line calls elsewhere) and the store in `model_events.py`.
 
 ### Routes (added; nothing removed)
 

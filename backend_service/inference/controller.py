@@ -40,7 +40,7 @@ from backend_service.helpers.request_guards import (
     strip_json_fence,
 )
 from backend_service.model_resolution import resolve_dflash_target_ref
-from backend_service import model_events as _events
+from backend_service import model_event_hooks as _events
 
 from backend_service.inference._constants import (
     CAPABILITY_CACHE_TTL_SECONDS,

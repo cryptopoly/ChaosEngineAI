@@ -12,7 +12,7 @@ from unittest import mock
 
 from fastapi.testclient import TestClient
 
-from backend_service import model_events
+from backend_service import model_event_hooks as model_events
 from backend_service.app import create_app
 from backend_service.inference import BackendCapabilities, RuntimeController
 from backend_service.inference.base import GenerationResult, LoadedModelInfo, StreamChunk

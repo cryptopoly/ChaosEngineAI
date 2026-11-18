@@ -44,7 +44,7 @@ curl -s -H 'Authorization: Bearer review-b-token' -H 'Content-Type: application/
 
 ## 3. Real training run under the app (mlx-lm directly)
 
-Pending.
+Waiting for the shared model lock: stream A held it 07:40 to 07:51, stream F from 07:51 (still held at 08:08). The run script is queued (`scratchpad/review-b/real_run.py`, retries every 60 s) and releases the lock in a `finally`.
 
 ## 4. UI states (dev server on port 8931 against the backend on 8901, built-in browser, own tab)
 
@@ -71,6 +71,8 @@ Pending.
 
 Checks after the fixes: `npx vitest run src/features/finetuning` 4 passed; `npx tsc --noEmit` clean; `npm run i18n:validate` OK;
 `pytest tests/test_finetuning_helpers.py tests/test_route_contracts.py tests/test_cli_smoke.py` all passed (throwaway HOME).
+Whole suites on the branch tip `e9b03468`: `npx vitest run` 152 files, 1817 tests passed; `pytest tests/ -q -x` exit 0 (throwaway HOME, one skip).
+CLI: `chaosengine-cli finetuning-start --body ...` now prints the 501 message and exits 1; `adapters-list` and `finetuning-status` unchanged.
 
 ## 6. E2E coverage added
 

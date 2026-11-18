@@ -1496,7 +1496,10 @@
     "starting": "正在开始...",
     "moveModels": "将现有模型移动到新路径",
     "filesProgress": "{copied} / {total} 个文件",
-    "restartBackend": "重启后端"
+    "restartBackend": "重启后端",
+    "lmstudioDir": null,
+    "lmstudioHint": null,
+    "saveLmstudioDir": null
   },
   "videoPlaceholderTab": {
     "engines": {

@@ -1496,7 +1496,10 @@
     "starting": "Démarrage...",
     "moveModels": "Déplacer les modèles existants vers le nouveau chemin",
     "filesProgress": "{copied} / {total} fichiers",
-    "restartBackend": "Redémarrer le backend"
+    "restartBackend": "Redémarrer le backend",
+    "lmstudioDir": null,
+    "lmstudioHint": null,
+    "saveLmstudioDir": null
   },
   "videoPlaceholderTab": {
     "engines": {

@@ -780,6 +780,11 @@
         "modifiedDesc": "更新が新しい順",
         "modifiedAsc": "更新が古い順",
         "status": "ステータス"
+      },
+      "share": {
+        "action": null,
+        "done": null,
+        "already": null
       }
     }
   }

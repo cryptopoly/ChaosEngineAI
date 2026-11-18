@@ -373,14 +373,14 @@ export function ModelStoragePanel({
           </div>
           <p className="help-text" style={{ margin: "0 0 6px" }}>
             {t("modelStoragePanel.lmstudioHint", {
-              defaultValue: "Used by Share with LM Studio, which links a GGUF into <publisher>\\<model>\\ here without copying it. Keep it on the same drive as your models.",
+              defaultValue: "Used by Share with LM Studio, which links a GGUF into <publisher>/<model>/ here without copying it. Keep it on the same drive as your models.",
             })}
           </p>
           <div className="directory-add-row">
             <input
               className="text-input directory-add-path mono-text"
               type="text"
-              placeholder="E:\AI Models\lmstudio"
+              placeholder="~/.lmstudio/models"
               value={lmDraft ?? snapshot.lmstudioDir ?? ""}
               onChange={(event) => setLmDraft(event.target.value)}
               disabled={lmSaving}

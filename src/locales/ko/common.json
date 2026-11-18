@@ -1496,7 +1496,10 @@
     "starting": "시작 중...",
     "moveModels": "기존 모델을 새 경로로 이동",
     "filesProgress": "{copied} / {total}개 파일",
-    "restartBackend": "백엔드 다시 시작"
+    "restartBackend": "백엔드 다시 시작",
+    "lmstudioDir": null,
+    "lmstudioHint": null,
+    "saveLmstudioDir": null
   },
   "videoPlaceholderTab": {
     "engines": {

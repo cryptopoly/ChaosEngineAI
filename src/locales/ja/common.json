@@ -1496,7 +1496,10 @@
     "starting": "開始中...",
     "moveModels": "既存のモデルを新しいパスに移動",
     "filesProgress": "{copied} / {total} ファイル",
-    "restartBackend": "バックエンドを再起動"
+    "restartBackend": "バックエンドを再起動",
+    "lmstudioDir": null,
+    "lmstudioHint": null,
+    "saveLmstudioDir": null
   },
   "videoPlaceholderTab": {
     "engines": {

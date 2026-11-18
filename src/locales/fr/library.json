@@ -780,6 +780,11 @@
         "modifiedDesc": "modifiés récemment d'abord",
         "modifiedAsc": "modifiés le moins récemment d'abord",
         "status": "Statut"
+      },
+      "share": {
+        "action": null,
+        "done": null,
+        "already": null
       }
     }
   }

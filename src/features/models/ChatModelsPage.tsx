@@ -350,7 +350,7 @@ export function ChatModelsPage({
     async (path: string, repo?: string) => {
       try {
         const result = await shareWithLmStudio({ path, repo });
-        const where = `${result.shared.publisher}\\${result.shared.model}`;
+        const where = `${result.shared.publisher}/${result.shared.model}`;
         setShareNotice({
           ok: true,
           text: result.shared.alreadyShared

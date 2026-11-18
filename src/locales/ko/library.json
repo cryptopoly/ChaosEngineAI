@@ -780,6 +780,11 @@
         "modifiedDesc": "최근 수정부터",
         "modifiedAsc": "오래전 수정부터",
         "status": "상태"
+      },
+      "share": {
+        "action": null,
+        "done": null,
+        "already": null
       }
     }
   }

@@ -780,6 +780,11 @@
         "modifiedDesc": "qen choHlu'pu' wa'DIch",
         "modifiedAsc": "ngo'qu' choHlu'pu' wa'DIch",
         "status": "Dotlh"
+      },
+      "share": {
+        "action": null,
+        "done": null,
+        "already": null
       }
     }
   }

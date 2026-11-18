@@ -780,6 +780,11 @@
         "modifiedDesc": "сначала недавно изменённые",
         "modifiedAsc": "сначала давно не изменявшиеся",
         "status": "Статус"
+      },
+      "share": {
+        "action": null,
+        "done": null,
+        "already": null
       }
     }
   }

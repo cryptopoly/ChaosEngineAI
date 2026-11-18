@@ -875,6 +875,7 @@ class LlamaCppEngine(BaseInferenceEngine):
                 model_ref=model_ref,
             )
 
+            self.last_command = list(command)  # read by the Activity view's detail row (D-88)
             temp_log = tempfile.NamedTemporaryFile(prefix="chaosengine-llama-", suffix=".log", delete=False)
             temp_log.close()
             self.log_path = Path(temp_log.name)

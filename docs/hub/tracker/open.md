@@ -1,7 +1,7 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 143 rows with work, decisions or watch items still open, newest first.
+summary: 142 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
@@ -33,15 +33,6 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 **Status or trigger:** When Diagnostics is next touched
 
 **Notes:** Review D, L-2. The `diagnostics` namespace has 78 keys but the panel's table labels are literals. Route them through `t()`; keep the copied markdown in English for support.
-
-</details>
-
-<details>
-<summary>FU-248 · Backend trusts the canonicalRepo a client sends over the model's own folder — Next change to inference routing (needs the full E2E suite)</summary>
-
-**Status or trigger:** Next change to inference routing (needs the full E2E suite)
-
-**Notes:** Review D, L-16. D-13 (a small Qwen loaded as "Qwen3.8 Flash Next runs only on TensorFold") is fixed in the app's catalogue match, but `controller.py` `_tensorfold_match` still believes a `canonicalRepo` from the agent bridge, the CLI or an older window. When `path` is a Hugging Face cache folder, derive the repo from it and ignore a `canonicalRepo` that disagrees.
 
 </details>
 

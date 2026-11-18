@@ -1,13 +1,22 @@
 ---
 title: Closed follow-ups
 order: 3
-summary: 106 shipped, obsoleted or dropped rows, newest first.
+summary: 107 shipped, obsoleted or dropped rows, newest first.
 ---
 
 # Closed follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Shipped, obsoleted or dropped rows (struck through, or marked shipped with no open points left). Kept as the history of why things are the way they are.
 
+
+<details>
+<summary>FU-248 · Backend trusts the canonicalRepo a client sends over the model's own folder — Shipped 2026-11-18 (branch review/routing, merged into review/integrate at 599802fe).</summary>
+
+**Status or trigger:** **Shipped 2026-11-18 (branch `review/routing`, merged into `review/integrate` at `599802fe`).**
+
+**Notes:** Review D, L-16. D-13 (a small Qwen loaded as "Qwen3.8 Flash Next runs only on TensorFold") is fixed in the app's catalogue match, but `controller.py` `_tensorfold_match` still believes a `canonicalRepo` from the agent bridge, the CLI or an older window. When `path` is a Hugging Face cache folder, derive the repo from it and ignore a `canonicalRepo` that disagrees. **Done:** an HF cache path is its own repo; a hint is kept only when the folder is named exactly the repo; a `modelRef` naming another row is replaced by the path's library entry (`state/lifecycle.py` `align_model_ref_with_path`); E2E phase 216, `tests/test_routing_hints.py`. A local copy matched to another uploader's row now loads under its own repo, so a drafter pinned to the other repo id is not used for it.
+
+</details>
 
 <details>
 <summary>FU-219 · Full-film showcase run (2026-11-17): film 80 s for a 120 s brief, wrong "2-minute" claim, wasted nudges, bright last frame — Shipped 2026-11-17 (branch release/v0.10.0).</summary>

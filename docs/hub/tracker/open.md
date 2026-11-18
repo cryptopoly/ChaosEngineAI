@@ -1,13 +1,40 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 143 rows with work, decisions or watch items still open, newest first.
+summary: 146 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-257 · Tests that make symlinks fail on Windows without Developer Mode — Owner's answer to D-96</summary>
+
+**Status or trigger:** Owner's answer to D-96
+
+**Notes:** 31 pytest tests (WinError 1314): `test_routing_hints` 17, `test_gguf_routing` 4, `test_discovery_layouts` 3, `test_model_import` 2, one each in `test_agent_files`, `test_diagnostics_routes`, `test_storyboard_store`, `test_voice_model_files`, `test_mlx_video`. If Developer Mode stays off: a shared `can_symlink()` probe and a skip with that reason; tests that only build a fake cache could fall back to copies and keep running.
+
+</details>
+
+<details>
+<summary>FU-256 · Host-bound tests that fail on Windows by design of the test — Next pass on the Windows or Linux box, or when each spec is touched</summary>
+
+**Status or trigger:** Next pass on the Windows or Linux box, or when each spec is touched
+
+**Notes:** From the 2026-11-18 Windows gate (`docs/progress/rtx4090-progress.md`). Playwright, 18: `04-music-sounds-licence` 2 and `14-voice-speak` 1 (Mac-only text), `06-busy-advice` 3 and `37-chat-local-model` 1 (the mocked model is MLX, so Windows will not start it; a GGUF mock runs everywhere), `21-slow-row-labels` 1 (fakes darwin, no Mac row to label), `27-benchmarks-conversion` 10 (Conversion is Apple Silicon only; the perplexity run mocks an MLX model). pytest: `test_licence_gate` H3 2 (a shell script as the `sd` stand-in, WinError 193), `test_music_env` mirror 3, `test_time_estimate` 1 (Mac-only catalogue row), `test_chat_studio_once` 1 (a batch thread still writing `project.json` at tear-down).
+
+</details>
+
+<details>
+<summary>FU-255 · A Windows path written unescaped in a model's tool call gets the wrong advice — When agent_call_repair is next touched, or a Windows Studio chat shows it</summary>
+
+**Status or trigger:** When `agent_call_repair` is next touched, or a Windows Studio chat shows it
+
+**Notes:** Found on the 4090 (2026-11-18): a call holding `C:\Users\...` with single backslashes does not parse as JSON, and the repair says "the JSON is missing 1 closing brace", so the model resends the same path. Either mend lone backslashes inside a string value (only where the result then parses and names a real tool), or say "write each backslash in a path as two". `tests/test_keep_going_recovery.py` now escapes its path, so it no longer shows this.
+
+</details>
 
 <details>
 <summary>FU-254 · Native-speaker review of the review's 891 machine translations — Before the release notes claim the nine locales</summary>

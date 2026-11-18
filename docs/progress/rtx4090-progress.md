@@ -1574,3 +1574,67 @@ Installed app on 8876 (runtime `windows-x86_64-f1afdca7`), measured with `nvidia
 **LTX-2.5 small clip slower: the card is on PCIe 4.0 x8.** During the warm runs the GPU was busy in only 8 to 11 of the 28 s samples, 64 to 67 % average util at about 220 W; this pipeline runs with model CPU offload, so it moves weights over PCIe every step. `nvidia-smi` reports link width **8** of a maximum 16 (gen 4) under load, and a pinned host-to-device copy measures **12.1 GB/s** (x16 gives about 24). The code since `a8b0051e` adds only the speech-worker release (called once per load or generate) and the download sizing, and Klein, which stays on the card, is unchanged. Most likely the link dropped to x8 (slot, riser or BIOS lane sharing), not the code; earlier link width was never recorded, so not proven. Worth checking the slot before the next speed comparison.
 
 All loaded models unloaded at the end (image, video, voice workers, LLM, music); the installed app left running, backend 3.5 GB private, GPU 1.2 GB (desktop only). C: free 73.6 GB.
+
+## Section 2 gate on the merged release tip `3be6e496` (2026-11-18, Windows handover)
+
+Branch `test/rtx4090` at `3be6e496` (`review/integrate` merged into `release/v0.10.0`, fast-forwarded here). Every pytest and E2E run used a throwaway `HOME` and `USERPROFILE` under `%TEMP%`.
+
+**Machine since the last pass:** the checkout moved to `E:\ChaosEngineAI` with a fresh `.venv` (Python 3.12.10, made 2026-11-18). NVIDIA driver **621.24** (was 591.86), CUDA UMD 13.5. The card still reports PCIe link width **x8**. `~/.chaosengine` holds no voice venv or llama binaries any more. The PC's Hugging Face cache is `E:\AI Models` (`hfCachePath`), with `models--*` folders at the top and no `hub` folder.
+
+**Uncommitted work found at the start:** model-storage changes from before this merge (hub folder detection for a chosen cache path, linking a GGUF into another app's models folder). They were 158 commits behind, so they were saved untouched to their own branch, `wip/model-storage-share` (`e3c8a870`, pushed). They are not on this branch. See D-95.
+
+**Environment provisioning (no app change):**
+- `pip install -c release-constraints.txt -e .[desktop,images,dev,ffmpeg]` installs the **CPU** torch 2.11.0 from PyPI. The earlier note's `--no-deps` reinstall from the cu128 index then says "Requirement already satisfied" and keeps the CPU build; it needs `--force-reinstall`: `pip install --no-deps --force-reinstall torch==2.11.0 torchvision==0.26.0 --index-url https://download.pytorch.org/whl/cu128` gives `2.11.0+cu128`, `cuda.is_available()` True.
+- The dev install has none of the GPU bundle's packages; the app installs them through Setup > GPU runtime. Added to `.venv` by hand: `imageio`, `transformers`, `accelerate`, `bitsandbytes`, `gguf`, `torchao`, `sentencepiece`, `tiktoken`, `protobuf`, `ftfy` (and `soundfile`, `librosa` as before). The first smoke run failed phase 5 on each of these in turn ("missing imageio", then bitsandbytes, then transformers); the backend has to restart after `bitsandbytes` and `transformers` arrive, because diffusers caches the import check.
+- Models for the E2E runs: `HF_HUB_CACHE=E:\tmp\ce-hub`, a folder of junctions to the repos in `E:\AI Models`, so new files land outside the real cache. The voice-model junctions were taken out again: the app refuses a repo folder that links outside the cache (by design, `RepoPathTests`), so phase 8's delete-plan check got 404 for `qwen3-tts-0.6b-cuda`. No real model folder was touched (26 folders before and after).
+
+| Gate | Result | Evidence |
+|---|---|---|
+| `pytest tests/ -q` | **FAIL: 46 failed**, 4526 passed, 141 skipped, 1 xfailed (9 min) | Run before the GPU bundle packages were added. Breakdown below; none is a new app-logic failure, and one real Windows problem was found and fixed (model event log). |
+| `npx vitest run` | PASS | 169 files, 1936 tests (the Mac's count on `review/integrate`). The four Windows-only failures of the 2026-11-09 run are gone. |
+| `npx tsc --noEmit` | PASS | exit 0 |
+| `npm run i18n:validate` | PASS | `[i18n-validate] OK`; shipping locales 96.6 % (5018/5196), `tlh` 78.2 % (experimental, outside the gate) |
+| `e2e_test_suite.py --smoke` | **PASS, 7 of 7** (after provisioning) | Own backend on 8910. Phase 4 image `generate` 26.7 s (FLUX.2 Klein 4B, diffusers, CUDA); phase 5 `generate` 111.5 s and LTX-2.5 4-bit on load 27.2 s (Lightricks LTX-2.5 diffusers weights, CUDA). |
+| `e2e_test_suite.py` (full) | **PASS after two suite fixes** | First run: 22 phases pass, phases 1 and 20 fail, 216 skips; 170 checks pass, 8 fail, 53 skip. Phase 1: seven checks that load with backend `mlx` failed on Windows because an MLX folder is on disk (`mlx-community/Qwen3.5-2B-MLX-4bit`); they now skip with "MLX is not usable here (Apple Silicon only)" when `mlxUsable` is false (`scripts/e2e_test_suite.py`). Phase 20: the Open-route check made a symlink, WinError 1314 without Developer Mode; it now runs the other cases and notes why the symlink case did not run (`scripts/e2e_phases/phase_20.py`). Re-run of phases 1, 20 and 216: PASS, PASS, SKIP (216 needs an MLX model; row 49 has no GGUF variant of it). Phase 1 on the CUDA llama-server: `GGUF llama.cpp`, `GGUF speculative lane`, `GGUF native q8_0 KV cache`, `CUDA llama-server lane`, `long context cache-preview` pass. Report `e2e-20261118-130428.{json,md}` in the throwaway home. |
+| Playwright `--workers=1` | **FAIL: 30 failed, 224 passed** (19.4 min); 12 fixed here, 18 host-bound | The Mac passed 254 on the same tree. Breakdown below: 10 failed because the Vite watcher locked the test backend's folders (fixed in `vite.config.ts`), 2 were spec issues (fixed), 18 are specs that mock an Apple Silicon host (FU-256). Re-run of the affected specs after the fixes: 16, 25, 26, 27-storyboard-board, 29, 34, 40 all pass; 37 fails as expected (MLX mock). |
+| `check-upstreams.py` | PASS (report only) | 1 behind: **llama.cpp b12441, newest with prebuilt archives b12503**. Everything else current (TensorFold 1.2.9, sd.cpp `532d2c1`, mflux 0.24.0, dflash-mlx, ACE-Step, TriAttention, Chatterbox, Playwright 1.65.1; ltx-2-mlx one CI-only commit). |
+| `audit-dependencies.py` | PASS | No blocking advisory. Not blocking: npm `picomatch@4.0.4` ReDoS (high, dev only), `katex@0.16.47` (low), 8 more. 109 packages behind, 26 by a major version. |
+| `cargo test` (src-tauri) | PASS | 8 passed, 33 s |
+| `scripts/pre-build-check.sh` (Git Bash, throwaway `HOME`, nothing on 8876) | **FAIL 1, as expected** after a fix | First run: its pytest, cache-check, upstream and audit steps called `.venv/bin/python`, which a Windows venv does not have (`Scripts/python.exe`), so pytest and the audit reported FAIL without running. Fixed: one `PY` variable, `bin/` first, then `Scripts/python.exe`. Second run: 10 passed, 1 failed (pytest: the known Windows failures above, now minus the fixed ones), 4 warnings (no llama-server or turbo in the throwaway home; E2E smoke skipped because nothing listens on 8876, by design). |
+
+**Row 44, llama.cpp b12441 CUDA through the app:** `POST /api/setup/install-llama-cuda` on driver 621 picked the **CUDA 13.5** build: `llama-b12441-bin-win-cuda-13.5-x64.zip` and `cudart-llama-bin-win-cuda-13.5-x64.zip`, both sha256-verified, 95 s, 775 MB in 57 files. `llama-server --version`: build 12441 (`164ab018f`); `--list-devices`: `CUDA0: NVIDIA GeForce RTX 4090`. Status `in-use`, `verified: true`. The E2E GGUF checks above ran on it. Not run: the CUDA 12.4 archives (this driver gets 13.5), TensorFold 1.2.9 native, sd.cpp `532d2c1`.
+
+**Bug found and fixed: GGUF stayed off after the CUDA install on a machine with no other llama-server.** The install job says "GGUF models now run on the NVIDIA GPU" and `refresh_install_detection` re-points `llamaServerPath`, but `ggufAvailable` stayed false until a restart (`/api/health` showed the path and `ggufAvailable: false`). Only a source checkout or a bundle whose llama-server staging failed hits it. Fixed in `inference/capabilities.py`; test `test_install_turns_gguf_on_when_no_server_was_found_before` in `tests/test_llama_cuda_windows.py`.
+
+**Bug found and fixed: the model event log held its file open for the life of the app.** `ModelEventLog._write_loop` opened `logs/model-events.jsonl` once and kept it open. Windows locks an open file, so the data folder could not be moved or deleted while the app ran, and four `test_model_events` tests failed at clean-up (WinError 32). The writer now closes the file when its queue is empty (each burst of events reopens it). Test `test_the_file_is_not_held_open_between_writes` (moves the file between two writes).
+
+### pytest: the 46 failures
+
+| Cause | Tests | Kind |
+|---|---|---|
+| **Symlinks need Developer Mode** (WinError 1314). This account cannot create symlinks now (the 2026-11-09 run could). | 31: `test_routing_hints` 17, `test_gguf_routing` 4, `test_discovery_layouts` 3, `test_model_import` 2, and one each in `test_agent_files`, `test_diagnostics_routes`, `test_storyboard_store`, `test_voice_model_files`, `test_mlx_video` | Environment. Turning on Developer Mode is the owner's call (D-96). |
+| Model event log kept its file open (WinError 32) | 4 in `test_model_events` | **App, Windows. Fixed** (above). |
+| A test put a raw Windows path into a model's JSON reply, so the call no longer parsed | `test_keep_going_recovery` 1 | Test, fixed (the path is JSON-escaped as a model writes it). Real-world note: a model that writes an unescaped Windows path in a call is told "the JSON is missing 1 closing brace", which is the wrong advice (FU-255). |
+| H3 tests run a shell script as the `sd` binary (WinError 193) | `test_licence_gate` 2 | Test portability (needs a `.cmd` or Python stand-in on Windows); H3 stays hidden. Not fixed. |
+| Music venv mirror expects links | `test_music_env` 3 | Music is Apple Silicon only (D-80). Not fixed. |
+| `transformers` was not installed when pytest ran | `test_qwen_tts_fast` 2, `test_video_ltx25` 1 | Environment; all pass once the GPU bundle packages are in (targeted re-run of 40 files: only the expected symlink test failed, plus `test_storyboard_v2` export once under load, which passes alone). |
+| Mac-only catalogue row (`speridlabs/iris-3b-mflux`) | `test_time_estimate` 1 | Test assumes the Mac catalogue. Not fixed. |
+| A batch thread still writing `project.json` at tear-down (WinError 32) | `test_chat_studio_once` 1 | Test race on Windows (in-process reads and writes share the project lock). Not fixed. |
+
+Host-bound rows not fixed here are listed in FU-256; the symlink rows in FU-257.
+
+### Playwright: the 30 failures
+
+**Harness bug found and fixed: the Vite dev server locked the test backend's folders.** Ten specs failed because `/api/storyboard/sample` (Sample film template) and `POST /api/skills/import` answered 500: `PermissionError: [WinError 5] Access is denied: '...\.chaosengine\storyboards\.import-…' -> '...\<project id>'`, and once `settings.tmp -> settings.json`. The Playwright config starts Vite from the repo root, and its watcher also watched the backend's throwaway home in `e2e/.run/home`; on Windows a watched folder cannot be renamed. Proof: the same import code in a separate process succeeds every time (3 sample installs, 20 folder renames each on E: and C:), a 3 s rename retry did not help (the lock lasts as long as the watch), and with `server.watch.ignored: ["**/e2e/.run/**"]` in `vite.config.ts` the re-run has **0** "Access is denied" lines (was dozens). The packaged app is not affected (no Vite, data folder outside the repo); a developer who points the data folder inside the checkout while `tauri dev` runs would be.
+
+| Spec | Count | Cause | Now |
+|---|---|---|---|
+| `25-storyboard-polish`, `26-storyboard-keyboard`, `27-storyboard-board`, `29-touch` | 9 | Vite watcher lock (sample project could not be made) | PASS on re-run |
+| `16-skills` (375 px) | 1 | Vite watcher lock (skill import) | PASS on re-run |
+| `34-locales` zh-TW | 1 | The raw-key check read `python.exe` on the Dashboard as a translation key | Spec fixed (`exe` added to the file-name list); PASS |
+| `40-experimental-tabs` (remembered hidden tab) | 1 | On Windows Tools has one listed page (Conversion is Apple Silicon only), so there is no tab bar; the app correctly opened Prompts | Spec fixed (one listed page: checks that page's heading); PASS |
+| `27-benchmarks-conversion` | 10 | Conversion is hidden off Apple Silicon; the two Benchmark runs mock an MLX model for a perplexity run | Host-bound, FU-256 |
+| `06-busy-advice` 3, `37-chat-local-model` 1 | 4 | The mocked library model is MLX; Windows shows "Cannot run on this machine", so nothing is sent | Host-bound, FU-256 |
+| `04-music-sounds-licence` 2, `14-voice-speak` 1, `21-slow-row-labels` 1 | 4 | Same as the 2026-11-09 run: Mac-only text and rows | Host-bound, FU-256 |
+
+The warm-up page load (`e2e/warmup.ts`) timed out twice at 180 s when Playwright was started from a PowerShell whose current folder was `e2e`, and passed every time from the repo root; not explained.

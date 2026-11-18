@@ -9,6 +9,14 @@ summary: Read this first in every session.
 
 Newest dated update first. Each update has the same sections: Done, Open for Claude, Open for Dan.
 
+## Update 2026-11-18 (Windows 4090, `test/rtx4090`): section 2 gate run on the merged tip `3be6e496`; three Windows bugs fixed.
+
+**Done:** vitest 1936, tsc, i18n, cargo, upstreams (llama.cpp b12441 behind b12503) and the audit pass. E2E smoke 7 of 7 and full E2E (22 phases pass, 216 skips) after two suite fixes; real FLUX.2 Klein and LTX-2.5 renders on CUDA. llama.cpp b12441 CUDA 13.5 installed through the app (row 44, part). Fixed: the model event log held its file open (Windows could not move the data folder), GGUF stayed off after the CUDA install until a restart, and the Vite watcher locked the browser tests' app folder (10 Playwright failures). Details: `docs/progress/rtx4090-progress.md`, last section.
+
+**Open for Claude:** section 4 of `docs/plans/windows-handover.md`; host-bound tests (FU-256); a model's unescaped Windows path in a tool call (FU-255); rows 44 (TensorFold 1.2.9, sd.cpp), 45 to 51.
+
+**Open for Dan:** D-96 (Developer Mode on the PC: 31 symlink tests fail without it); D-95 (the saved model-storage work on `wip/model-storage-share`, 158 commits behind).
+
 ## Update 2026-11-18 (overnight review): every review stream is merged on `review/integrate`, green on the Mac gate; not merged into `release/v0.10.0`. Next session is on Windows: read `docs/plans/windows-handover.md` first.
 
 **Done:** the overnight whole-app review (FU-220): streams A, A2, B, C, D, E, F, GGUF, ROUTING, PLAN and I18NFIX merged into `review/integrate`. Verdicts (D-87): Benchmarks and Conversion keep (fixed), Prompts keep for now (merge into Chat later), Fine Tuning and Plugins hidden behind Settings > General > Appearance > "Show experimental tabs" (commit `41f5a92a`, reverts alone), Logs folded into the redesigned Server page (D-88). API keys masked on screen until Reveal; Dashboard says "70B class at 4-bit"; GGUF or MLX read from the files; the backend ignores a disagreeing `canonicalRepo`; a critical catalogue match (a small Qwen loaded as another model) fixed. Report: `docs/progress/overnight-review-report.md`; evidence: `docs/progress/review-integrate.md`. Keep going and tools v2 planned (D-89 to D-92, FU-230 to FU-246; D-92's two open points answered).

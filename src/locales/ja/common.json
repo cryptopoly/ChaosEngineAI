@@ -521,7 +521,14 @@
       "balanced": "バランスの取れた要約",
       "reasoning": "推論チェック",
       "coding": "コーディングの回答"
-    }
+    },
+    "scoring": {
+      "nextToken": null,
+      "generated": null,
+      "note": null
+    },
+    "statTokens": null,
+    "promptTokensHint": null
   },
   "benchmarkHistory": {
     "subtitle": "{count, plural, other {# 件の実行}}{filterSuffix}",
@@ -558,7 +565,8 @@
       "quality": "品質",
       "compression": "圧縮",
       "context": "コンテキスト",
-      "strategy": "戦略"
+      "strategy": "戦略",
+      "scoring": null
     },
     "table": {
       "metric": "メトリック",

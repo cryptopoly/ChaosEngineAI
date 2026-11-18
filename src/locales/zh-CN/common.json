@@ -521,7 +521,14 @@
       "balanced": "均衡总结",
       "reasoning": "推理检验",
       "coding": "编程回复"
-    }
+    },
+    "scoring": {
+      "nextToken": null,
+      "generated": null,
+      "note": null
+    },
+    "statTokens": null,
+    "promptTokensHint": null
   },
   "benchmarkHistory": {
     "subtitle": "{count, plural, other {# 次运行}}{filterSuffix}",
@@ -558,7 +565,8 @@
       "quality": "质量",
       "compression": "压缩",
       "context": "上下文",
-      "strategy": "策略"
+      "strategy": "策略",
+      "scoring": null
     },
     "table": {
       "metric": "指标",

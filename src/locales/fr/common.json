@@ -521,7 +521,14 @@
       "balanced": "Résumé équilibré",
       "reasoning": "Test de raisonnement",
       "coding": "Réponse de code"
-    }
+    },
+    "scoring": {
+      "nextToken": null,
+      "generated": null,
+      "note": null
+    },
+    "statTokens": null,
+    "promptTokensHint": null
   },
   "benchmarkHistory": {
     "subtitle": "{count, plural, one {# exécution} other {# exécutions}}{filterSuffix}",
@@ -558,7 +565,8 @@
       "quality": "Qualité",
       "compression": "Compression",
       "context": "Contexte",
-      "strategy": "Stratégie"
+      "strategy": "Stratégie",
+      "scoring": null
     },
     "table": {
       "metric": "Métrique",

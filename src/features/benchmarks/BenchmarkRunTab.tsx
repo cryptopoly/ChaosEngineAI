@@ -13,7 +13,7 @@ import type { MtplxJobState } from "../../api";
 import type { TensorfoldLaunchControls } from "../../components/tensorfoldSupport";
 import { BENCHMARK_PROMPTS } from "../../constants";
 import { number, sizeLabel, signedDelta } from "../../utils";
-import { latestRunSpeedComparison } from "../../utils/benchmarkCompare";
+import { latestRunSpeedComparison, taskScoringMethod } from "../../utils/benchmarkCompare";
 import { benchmarkPhaseIds, countedItems } from "../../utils/jobProgress";
 import { useGenerationProgress } from "../../hooks/useGenerationProgress";
 
@@ -211,7 +211,11 @@ export function BenchmarkRunTab({
             <StatCard
               label={t("benchmarkTab.statTask", { defaultValue: "Task" })}
               value={(latestRun.taskName ?? "mmlu").toUpperCase()}
-              hint={t("benchmarkTab.shotsHint", { shots: latestRun.taskNumShots ?? 5, defaultValue: "{shots}-shot" })}
+              hint={`${t("benchmarkTab.shotsHint", { shots: latestRun.taskNumShots ?? 5, defaultValue: "{shots}-shot" })} \u00B7 ${
+                taskScoringMethod(latestRun) === "next_token"
+                  ? t("benchmarkTab.scoring.nextToken", { defaultValue: "next-token choice" })
+                  : t("benchmarkTab.scoring.generated", { defaultValue: "generated text (older method)" })
+              }`}
             />
             <StatCard
               label={t("benchmarkTab.statEvalTime", { defaultValue: "Eval time" })}
@@ -389,6 +393,7 @@ export function BenchmarkRunTab({
               <div className="callout quiet benchmark-prompt-preview">
                 <span className="eyebrow">{t("benchmarkTab.taskAccuracy", { defaultValue: "Task Accuracy" })}</span>
                 <p>{t("benchmarkTab.taskAccuracyDescription", { defaultValue: "Runs multiple-choice questions and scores the model's answers. Higher accuracy is better." })}</p>
+                <p className="muted-text">{t("benchmarkTab.scoring.note", { defaultValue: "The answer is the choice letter the model scores highest as its next token. Runs saved before this change generated the answer as text; their accuracy is not comparable with new runs." })}</p>
               </div>
             ) : null}
 

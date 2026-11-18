@@ -401,6 +401,9 @@ def _run_benchmark(state: ChaosEngineState, request: BenchmarkRunRequest, run: _
             "taskName": eval_result["taskName"],
             "taskAccuracy": eval_result["accuracy"],
             "taskCorrect": eval_result["correct"],
+            # How the answer was picked. Runs saved before this field used "generated"
+            # (three generated tokens searched for a letter); the UI says so when two runs differ.
+            "taskScoringMethod": eval_result.get("scoringMethod") or "generated",
             "taskTotal": eval_result["total"],
             "taskNumShots": eval_result["numShots"],
             "evalSeconds": eval_result["evalSeconds"],

@@ -18,6 +18,17 @@ export function latestRunSpeedComparison(benchmarks: BenchmarkResult[]): {
   return { previous, fastest };
 }
 
+/** How a task-accuracy run picked its answers; a run saved before the field existed generated text. */
+export function taskScoringMethod(run: BenchmarkResult): "next_token" | "generated" | null {
+  if (run.mode !== "task_accuracy") return null;
+  return run.taskScoringMethod ?? "generated";
+}
+
+/** False when two accuracy runs were scored by different methods: their accuracy must not be compared. */
+export function accuracyComparable(left: BenchmarkResult, right: BenchmarkResult): boolean {
+  return taskScoringMethod(left) === taskScoringMethod(right);
+}
+
 const CSV_COLUMNS: Array<[string, (run: BenchmarkResult) => string | number | null | undefined]> = [
   ["measuredAt", (run) => run.measuredAt],
   ["label", (run) => run.label],
@@ -35,6 +46,7 @@ const CSV_COLUMNS: Array<[string, (run: BenchmarkResult) => string | number | nu
   ["taskCorrect", (run) => run.taskCorrect],
   ["taskTotal", (run) => run.taskTotal],
   ["taskNumShots", (run) => run.taskNumShots],
+  ["taskScoringMethod", (run) => taskScoringMethod(run)],
   ["responseSeconds", (run) => run.responseSeconds],
   ["loadSeconds", (run) => run.loadSeconds],
   ["promptTokens", (run) => run.promptTokens],

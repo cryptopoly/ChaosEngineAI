@@ -521,7 +521,14 @@
       "balanced": "Del motlh",
       "reasoning": "meq nuD",
       "coding": "ngoq jang"
-    }
+    },
+    "scoring": {
+      "nextToken": null,
+      "generated": null,
+      "note": null
+    },
+    "statTokens": null,
+    "promptTokensHint": null
   },
   "benchmarkHistory": {
     "subtitle": "{count, plural, other {# may''}}{filterSuffix}",
@@ -558,7 +565,8 @@
       "quality": "patlh",
       "compression": "machmoH",
       "context": "ghu'",
-      "strategy": "mIw"
+      "strategy": "mIw",
+      "scoring": null
     },
     "table": {
       "metric": "juv",

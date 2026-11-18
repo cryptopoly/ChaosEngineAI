@@ -109,6 +109,12 @@ export interface BenchmarkResult {
   taskTotal?: number | null;
   taskNumShots?: number | null;
 }
+  /**
+   * How the answer was picked: "next_token" (the choice letter the model scores highest) or
+   * "generated" (three generated tokens searched for a letter). Runs saved before the field
+   * existed used "generated"; accuracy from the two methods is not comparable.
+   */
+  taskScoringMethod?: "next_token" | "generated" | null;
 
 export interface BenchmarkRunPayload {
   mode?: BenchmarkMode;

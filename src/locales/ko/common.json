@@ -521,7 +521,14 @@
       "balanced": "균형 잡힌 요약",
       "reasoning": "추론 점검",
       "coding": "코딩 답변"
-    }
+    },
+    "scoring": {
+      "nextToken": null,
+      "generated": null,
+      "note": null
+    },
+    "statTokens": null,
+    "promptTokensHint": null
   },
   "benchmarkHistory": {
     "subtitle": "{count, plural, other {실행 #회}}{filterSuffix}",
@@ -558,7 +565,8 @@
       "quality": "품질",
       "compression": "압축",
       "context": "컨텍스트",
-      "strategy": "전략"
+      "strategy": "전략",
+      "scoring": null
     },
     "table": {
       "metric": "메트릭",

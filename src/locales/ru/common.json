@@ -521,7 +521,14 @@
       "balanced": "Сбалансированное резюме",
       "reasoning": "Проверка рассуждений",
       "coding": "Ответ по программированию"
-    }
+    },
+    "scoring": {
+      "nextToken": null,
+      "generated": null,
+      "note": null
+    },
+    "statTokens": null,
+    "promptTokensHint": null
   },
   "benchmarkHistory": {
     "subtitle": "{count, plural, one {# запуск} few {# запуска} many {# запусков} other {# запуска}}{filterSuffix}",
@@ -558,7 +565,8 @@
       "quality": "Качество",
       "compression": "Сжатие",
       "context": "Контекст",
-      "strategy": "Стратегия"
+      "strategy": "Стратегия",
+      "scoring": null
     },
     "table": {
       "metric": "Метрика",

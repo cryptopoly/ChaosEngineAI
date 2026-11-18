@@ -5,7 +5,7 @@ import { StatCard } from "../../components/StatCard";
 import { BenchmarkScatter } from "../../components/BenchmarkScatter";
 import type { BenchmarkResult } from "../../types";
 import { number } from "../../utils";
-import { benchmarkRunsToCsv } from "../../utils/benchmarkCompare";
+import { accuracyComparable, benchmarkRunsToCsv, taskScoringMethod } from "../../utils/benchmarkCompare";
 
 export interface BenchmarkHistoryTabProps {
   benchmarks: BenchmarkResult[];
@@ -71,6 +71,11 @@ export function BenchmarkHistoryTab({
 
   type DeltaRow = { label: string; selected: string; baseline: string; delta: number; pct: number; lowerIsBetter?: boolean; unit?: string };
 
+  const scoringLabel = (run: BenchmarkResult) =>
+    taskScoringMethod(run) === "next_token"
+      ? t("benchmarkTab.scoring.nextToken", { defaultValue: "next-token choice" })
+      : t("benchmarkTab.scoring.generated", { defaultValue: "generated text (older method)" });
+
   function buildComparisonRows(): DeltaRow[] {
     if (!effectiveSelected || !effectiveCompare) return [];
     const s = effectiveSelected;
@@ -88,6 +93,15 @@ export function BenchmarkHistoryTab({
       rows.push({ label: t("benchmarkHistory.metric.correct", { defaultValue: "Correct" }), selected: `${s.taskCorrect ?? 0}/${s.taskTotal ?? 0}`, baseline: `${c.taskCorrect ?? 0}/${c.taskTotal ?? 0}`, delta: (s.taskCorrect ?? 0) - (c.taskCorrect ?? 0), pct: 0 });
     } else {
       rows.push({ label: t("benchmarkHistory.metric.speed", { defaultValue: "Speed" }), selected: `${number(s.tokS)} tok/s`, baseline: `${number(c.tokS)} tok/s`, delta: s.tokS - c.tokS, pct: pct(s.tokS, c.tokS) });
+      if (c.mode === "task_accuracy" && !accuracyComparable(s, c)) {
+        // One run picked the highest-scoring letter, the other searched generated text: both values
+        // are shown, but a difference between them would say nothing about the models.
+        for (const row of rows) {
+          row.delta = 0;
+          row.pct = 0;
+        }
+      }
+      rows.push({ label: t("benchmarkHistory.metric.scoring", { defaultValue: "Scoring" }), selected: scoringLabel(s), baseline: c.mode === "task_accuracy" ? scoringLabel(c) : "\u2014", delta: 0, pct: 0 });
       rows.push({ label: t("benchmarkHistory.metric.response", { defaultValue: "Response" }), selected: `${number(s.responseSeconds)} s`, baseline: `${number(c.responseSeconds)} s`, delta: s.responseSeconds - c.responseSeconds, pct: pct(s.responseSeconds, c.responseSeconds), lowerIsBetter: true });
     }
     if ((c.mode ?? "throughput") !== mode) {

@@ -521,7 +521,14 @@
       "balanced": "Balanced summary",
       "reasoning": "Reasoning check",
       "coding": "Coding reply"
-    }
+    },
+    "scoring": {
+      "nextToken": "next-token choice",
+      "generated": "generated text (older method)",
+      "note": "The answer is the choice letter the model scores highest as its next token. Runs saved before this change generated the answer as text; their accuracy is not comparable with new runs."
+    },
+    "statTokens": "Tokens generated",
+    "promptTokensHint": "{count} prompt tokens"
   },
   "benchmarkHistory": {
     "subtitle": "{count, plural, one {# run} other {# runs}}{filterSuffix}",
@@ -558,7 +565,8 @@
       "quality": "Quality",
       "compression": "Compression",
       "context": "Context",
-      "strategy": "Strategy"
+      "strategy": "Strategy",
+      "scoring": "Scoring"
     },
     "table": {
       "metric": "Metric",

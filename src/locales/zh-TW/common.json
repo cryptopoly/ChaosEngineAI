@@ -517,6 +517,8 @@
       "both": "兩者"
     },
     "swap": "交換",
+    "copyCsv": null,
+    "csvCopied": null,
     "summary": {
       "totalRuns": "總執行次數",
       "persistentHistory": "持續性歷史",

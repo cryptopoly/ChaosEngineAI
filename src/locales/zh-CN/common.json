@@ -517,6 +517,8 @@
       "both": "两者"
     },
     "swap": "交换",
+    "copyCsv": null,
+    "csvCopied": null,
     "summary": {
       "totalRuns": "总运行",
       "persistentHistory": "持久化历史",

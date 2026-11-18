@@ -6759,6 +6759,20 @@ select.text-input {
   font-size: 12px;
 }
 
+/* The model filter has a fixed basis and gives way first; the view switch and the buttons keep their
+   width and one line. (The panel-wide rule sizes a field in percent of the toolbar, which made the
+   toolbar narrower than its content: the view switch was clipped to "Table | Ch".) */
+.bm-toolbar .bm-model-filter {
+  flex: 0 1 220px;
+  width: 220px;
+  min-width: 140px;
+}
+.bm-toolbar > .secondary-button,
+.bm-toolbar > .bm-view-toggle {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
 .bm-view-toggle {
   display: flex;
   border: 1px solid var(--border);

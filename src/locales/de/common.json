@@ -517,6 +517,8 @@
       "both": "Beide"
     },
     "swap": "Tauschen",
+    "copyCsv": null,
+    "csvCopied": null,
     "summary": {
       "totalRuns": "Läufe gesamt",
       "persistentHistory": "Persistenter Verlauf",

@@ -1,10 +1,11 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
 import { StatCard } from "../../components/StatCard";
 import { BenchmarkScatter } from "../../components/BenchmarkScatter";
 import type { BenchmarkResult } from "../../types";
 import { number } from "../../utils";
+import { benchmarkRunsToCsv } from "../../utils/benchmarkCompare";
 
 export interface BenchmarkHistoryTabProps {
   benchmarks: BenchmarkResult[];
@@ -17,6 +18,7 @@ export interface BenchmarkHistoryTabProps {
   onSelectedBenchmarkIdChange: (id: string) => void;
   onCompareBenchmarkIdChange: (id: string) => void;
   onDeleteBenchmark: (id: string) => void;
+  onCopyText: (text: string) => void;
 }
 
 export function BenchmarkHistoryTab({
@@ -30,9 +32,11 @@ export function BenchmarkHistoryTab({
   onSelectedBenchmarkIdChange,
   onCompareBenchmarkIdChange,
   onDeleteBenchmark,
+  onCopyText,
 }: BenchmarkHistoryTabProps) {
   const { t } = useTranslation("common");
   const beforeClickSelectedRef = useRef<string | null>(null);
+  const [csvCopied, setCsvCopied] = useState(false);
   const benchmarkModels = [...new Set(benchmarks.map(b => b.model))];
   const filteredBenchmarks = benchmarkModelFilter
     ? benchmarks.filter(b => b.model === benchmarkModelFilter)
@@ -153,6 +157,21 @@ export function BenchmarkHistoryTab({
                 </button>
               ))}
             </div>
+            <button
+              className="secondary-button"
+              type="button"
+              disabled={filteredBenchmarks.length === 0}
+              onClick={() => {
+                // The runs on screen (the model filter applies), newest first.
+                onCopyText(benchmarkRunsToCsv(filteredBenchmarks));
+                setCsvCopied(true);
+                window.setTimeout(() => setCsvCopied(false), 1500);
+              }}
+            >
+              {csvCopied
+                ? t("benchmarkHistory.csvCopied", { defaultValue: "Copied" })
+                : t("benchmarkHistory.copyCsv", { defaultValue: "Copy CSV" })}
+            </button>
             <button
               className="secondary-button"
               type="button"

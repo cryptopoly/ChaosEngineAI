@@ -517,6 +517,8 @@
       "both": "Both"
     },
     "swap": "Swap",
+    "copyCsv": "Copy CSV",
+    "csvCopied": "Copied",
     "summary": {
       "totalRuns": "Total runs",
       "persistentHistory": "Persistent history",

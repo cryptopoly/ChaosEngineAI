@@ -211,6 +211,26 @@ test("Benchmark History: list, filter by model, select, compare and delete", asy
   await expect(rows).toHaveCount(4);
   await shot(page, "27-benchmark-history-loaded");
 
+  // The toolbar keeps the three views and both buttons on one line at the default window width.
+  await expect(page.getByRole("button", { name: "Both", exact: true })).toBeVisible();
+  const toolbar = await page.locator(".bm-toolbar").boundingBox();
+  for (const name of ["Both", "Copy CSV", "Swap"]) {
+    const box = await page.getByRole("button", { name, exact: true }).boundingBox();
+    expect(box!.height).toBeLessThan(40);
+    expect(box!.x + box!.width).toBeLessThanOrEqual(toolbar!.x + toolbar!.width + 1);
+  }
+
+  // Copy CSV: the runs on screen go to the clipboard, a header line and one line per run.
+  await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.getByRole("button", { name: "Copy CSV" }).click();
+  await expect(page.getByRole("button", { name: "Copied" })).toBeVisible();
+  const csv = await page.evaluate(() => navigator.clipboard.readText());
+  const csvLines = csv.trimEnd().split("\n");
+  expect(csvLines).toHaveLength(5);
+  expect(csvLines[0].startsWith("measuredAt,label,model,")).toBe(true);
+  expect(csvLines[1]).toContain("task_accuracy");
+  expect(csvLines[3]).toContain("327.5");
+
   // Delete the selected run: asks first, then the run leaves the list (the backend answer is mocked).
   let deleted = "";
   await page.route("**/api/benchmarks/*", async (route) => {

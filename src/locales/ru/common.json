@@ -517,6 +517,8 @@
       "both": "Оба"
     },
     "swap": "Поменять",
+    "copyCsv": null,
+    "csvCopied": null,
     "summary": {
       "totalRuns": "Всего запусков",
       "persistentHistory": "Постоянная история",

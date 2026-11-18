@@ -517,6 +517,8 @@
       "both": "모두"
     },
     "swap": "교체",
+    "copyCsv": null,
+    "csvCopied": null,
     "summary": {
       "totalRuns": "총 실행",
       "persistentHistory": "영구 기록",

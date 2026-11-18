@@ -517,6 +517,8 @@
       "both": "両方"
     },
     "swap": "入れ替え",
+    "copyCsv": null,
+    "csvCopied": null,
     "summary": {
       "totalRuns": "合計実行数",
       "persistentHistory": "永続的な履歴",

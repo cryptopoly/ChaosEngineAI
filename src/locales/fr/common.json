@@ -517,6 +517,8 @@
       "both": "Les deux"
     },
     "swap": "Permuter",
+    "copyCsv": null,
+    "csvCopied": null,
     "summary": {
       "totalRuns": "Total d'exécutions",
       "persistentHistory": "Historique persistant",

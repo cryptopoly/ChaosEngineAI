@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { latestRunSpeedComparison } from "../benchmarkCompare";
+import { benchmarkRunsToCsv, latestRunSpeedComparison } from "../benchmarkCompare";
 import type { BenchmarkResult } from "../../types";
 
 function makeRun(overrides: Partial<BenchmarkResult>): BenchmarkResult {
@@ -70,5 +70,39 @@ describe("latestRunSpeedComparison", () => {
     const runs = [makeRun({ id: "latest", tokS: 70 }), makeRun({ id: "old", mode: undefined, tokS: 60 })];
     expect(latestRunSpeedComparison(runs).previous?.id).toBe("old");
     expect(latestRunSpeedComparison([])).toEqual({ previous: null, fastest: null });
+  });
+});
+
+describe("benchmarkRunsToCsv", () => {
+  it("writes a header and one line per run, with each run's own measure", () => {
+    const csv = benchmarkRunsToCsv([
+      makeRun({ id: "speed", tokS: 120.5, label: "Speed run" }),
+      makeRun({ id: "ppl", mode: "perplexity", tokS: 5200, perplexity: 21.4, perplexityStdError: 0.6, perplexityDataset: "wikitext-2" }),
+      makeRun({ id: "mmlu", mode: "task_accuracy", tokS: 0, taskName: "mmlu", taskAccuracy: 0.41, taskCorrect: 41, taskTotal: 100, taskNumShots: 5 }),
+    ]);
+    const lines = csv.trimEnd().split("\n");
+    expect(lines).toHaveLength(4);
+    const header = lines[0].split(",");
+    const cell = (line: number, name: string) => lines[line].split(",")[header.indexOf(name)];
+    expect(cell(1, "mode")).toBe("throughput");
+    expect(cell(1, "tokS")).toBe("120.5");
+    expect(cell(2, "tokS")).toBe(""); // eval tokens per second is not a generation speed
+    expect(cell(2, "perplexity")).toBe("21.4");
+    expect(cell(3, "taskAccuracy")).toBe("0.41");
+    expect(cell(3, "taskCorrect")).toBe("41");
+    expect(csv.endsWith("\n")).toBe(true);
+  });
+
+  it("quotes commas, quotes and line breaks, and defuses cells that start like a formula", () => {
+    const csv = benchmarkRunsToCsv([
+      makeRun({ label: 'Model "A", 8K ctx', notes: "line one\nline two", model: "=HYPERLINK(1)" }),
+    ]);
+    expect(csv).toContain('"Model ""A"", 8K ctx"');
+    expect(csv).toContain('"line one\nline two"');
+    expect(csv).toContain("'=HYPERLINK(1)");
+  });
+
+  it("gives only the header for an empty history", () => {
+    expect(benchmarkRunsToCsv([]).trimEnd().split("\n")).toHaveLength(1);
   });
 });

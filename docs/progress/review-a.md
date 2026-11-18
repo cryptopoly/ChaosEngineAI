@@ -31,8 +31,8 @@ Started 2026-11-18. Deadline shortened by the coordinator to about 3.5 hours.
 | 13 | Bad input: repo that does not exist, local path that does not exist | FAIL | both answer "This model is gated on Hugging Face ... set HF_TOKEN" (wrong cause) |
 | 14 | Bad input: dtype not in the list | FAIL | raw argparse usage text |
 | 15 | Low disk (output on a 300 MB disk image) | FAIL | raw traceback ending `RuntimeError: [write] Unable to write 11796480 bytes to file.`; a 297 MB partial `model.safetensors` is left behind, so a retry hits "already exists" |
-| 16 | Cancel a conversion | FAIL (missing) | no cancel in the UI or the API. A GGUF source starts a download of the base repo with no size shown and no progress (`LiquidAI/LFM3-1.7B-Base`, stalled at 0 bytes for 100 s here; I stopped the converter process, the API then returned raw progress-bar text as the error) |
-| 17 | GGUF to MLX end to end | SKIP | not completed: the base-repo download stalled; not retried with a larger download |
+| 16 | Cancel a conversion | FAIL (missing) at HEAD, added later (row 38) | no cancel in the UI or the API. A GGUF source starts a download of the base repo with no size shown and no progress (`LiquidAI/LFM3-1.7B-Base`, stalled at 0 bytes for 100 s here; I stopped the converter process, the API then returned raw progress-bar text as the error) |
+| 17 | GGUF to MLX end to end | SKIP in the first pass, PASS later (row 40) | first try: the base-repo download stalled and I stopped the converter |
 | 18 | After fixes: repo that does not exist, missing local path, dtype not in the list | PASS | "Hugging Face repository not found: nobody/does-not-exist-xyz-123. ...", "Source path not found: /nope/missing-model. ...", 422 `Input should be 'float16', 'bfloat16' or 'float32'` |
 | 19 | After fixes: low disk (300 MB image) | PASS | "Not enough free disk space for the converted model: about 1.22 GB needed, 0.01 GB free for .../tinyvol/out2-mlx. ..." and no folder is created |
 | 20 | UI, Benchmarks Run, real GGUF run in the browser (port 8930) | PASS | progress dialog with phases, then "Benchmark complete", 324.8 tok/s |
@@ -43,7 +43,7 @@ Started 2026-11-18. Deadline shortened by the coordinator to about 3.5 hours.
 | 25 | UI, Conversion: pick a GGUF source | FAIL at HEAD, PASS after fix | source card stayed on "Select a model to convert..." with Convert enabled (draft path is the `.gguf` file, the library lists the folder) |
 | 26 | UI, Conversion states: empty, loaded, error dialog, 375 px | PASS | Playwright spec 27, 12 tests; screenshots in `e2e/screenshots/27-*.png` (git-ignored) |
 | 27 | Light theme | SKIP | the app has one theme (dark); there is no light theme to test (`grep -c "prefers-color-scheme\|data-theme" src/styles.css` is 0) |
-| 28 | History: double-click to set the baseline | FAIL (left) | the two clicks select the row first, so the baseline falls back to another run; right-click and the Baseline dropdown work |
+| 28 | History: double-click to set the baseline | FAIL at HEAD, PASS after fix | the two clicks selected the row first, so the baseline fell back to another run |
 
 ## Fixes (each with a test)
 
@@ -54,6 +54,9 @@ Started 2026-11-18. Deadline shortened by the coordinator to about 3.5 hours.
 | `62688aed` | Result dialog in the run's own mode, History cards, narrow Run layout, GGUF source card, `DELETE /api/benchmarks/{id}`, mode check, phase 211, spec 27 | `tests/test_route_contracts.py`, `src/utils/__tests__/conversionSource.test.ts`, `e2e/tests/27-benchmarks-conversion.spec.ts` |
 | `7d7efc7f` | Benchmark cache size from the model's own layout, GGUF note on the Conversion page, docs | `tests/test_benchmark_eval.py`, spec 27 |
 | `5d21f48a` | Delete run in History (asks first) | `src/api.test.ts`, spec 27 |
+| `59b157df` | History: double click sets the baseline, a baseline of another kind shows no made-up delta; Run: perplexity and accuracy say they need an MLX model | spec 27 |
+| `0c93785e` | Default output folder keeps dots | `tests/test_conversion_helpers.py` |
+| `266a6acc` | Cancel conversion (route, button, pre-flight and mid-run), no `-GGUF` in the MLX folder name, GGUF source size | `tests/test_conversion_helpers.py`, `tests/test_route_contracts.py`, spec 27, phase 211 |
 
 ## Commands
 
@@ -67,12 +70,25 @@ Started 2026-11-18. Deadline shortened by the coordinator to about 3.5 hours.
 | # | Check | Result | Evidence |
 |---|---|---|---|
 | 29 | Perplexity, MLX, WikiText-2 | PASS | 8 x 128: 64.86 +/- 7.38; default 64 x 512: 31.49 +/- 0.60, the same value on a second run (3.6 s) |
-| 30 | Perplexity on a GGUF model | FAIL (left) | 400 "Perplexity evaluation is not supported by the llama.cpp backend." The Run tab offers the mode for GGUF models anyway |
+| 30 | Perplexity on a GGUF model | FAIL at HEAD, PASS after fix | 400 "Perplexity evaluation is not supported by the llama.cpp backend." after the model was loaded; the Run tab now says the two modes need an MLX model and disables Run |
 | 31 | Benchmark cache size after the fix | PASS | Qwen3-0.6B at 8K: 0.88 GB (was 4.0 GB from the 7B guess) |
 | 32 | Cancel a benchmark | FAIL (left) | the client stops waiting, the UI says "Benchmark cancelled.", but the backend finishes the run, saves it (history went 12 to 13 with my label `cancelled-by-client`) and keeps the model loaded |
 | 33 | E2E phase 211 with real models | PASS | 10 checks, 55 s: MLX 245.7 tok/s (Qwen2.5-0.5B), GGUF 161.8 tok/s, perplexity 41.7, MMLU 3/10, history 12 before and 12 after, Qwen3.5-4B converted (8.7 to 2.22 GB), second run refused, converted model answered at 178.7 tok/s. Report: `<scratchpad>/review-a/e2e-report/e2e-20261118-082340.md` |
 | 34 | UI, real conversion in the browser | PASS | progress dialog, then "Conversion complete", `.../Models/Qwen3-5-4B-mlx-2`, 8.7 GB to 2.2 GB. The dialog has no Cancel and its phases are timed, not real |
 | 35 | Full suites on the branch | PASS | pytest 4637 run, 0 failed, 17 skipped (tree at `7d7efc7f`, no Python change after it except the phase file); vitest 1822 passed; `tsc --noEmit` clean; `i18n:validate` OK; Playwright spec 27: 12 passed |
+
+## Second pass (08:27 to 08:46)
+
+| # | Check | Result | Evidence |
+|---|---|---|---|
+| 36 | History: compare a speed run with an accuracy run | FAIL at HEAD, PASS after fix | "Speed 100.5 tok/s vs 0.0 tok/s"; now the baseline cell and the delta are a dash |
+| 37 | Default output folder name | PASS after fix | `Qwen3.5-4B-mlx` (was `Qwen3-5-4B-mlx`, and `models--Qwen--Qwen3-mlx` at HEAD) |
+| 38 | Cancel a real conversion (new `POST /api/models/convert/cancel` and a Cancel button) | PASS | cancel 1 s in (pre-flight) and 2.5 s into the write: both answer `{"cancelled":true}`, the convert request answers "Conversion cancelled. Nothing was kept at .../cancel-me-mlx.", the half-written folder is gone, no converter process is left, a second cancel answers `false` |
+| 39 | Value check: 4-bit against 8-bit of the same model | PASS | Qwen3.5-4B converted here: 4-bit perplexity 13.29 +/- 0.22, 125.5 tok/s, 2.2 GB; 8-bit 12.56 +/- 0.20, 91.4 tok/s, 4.2 GB |
+| 40 | GGUF to MLX end to end (`lmstudio-community/Qwen3-0.6B-GGUF`) | PASS after fixes | without a base repo: "GGUF-to-MLX conversion needs a base Hugging Face model repo ..." (this file has no base-model metadata); with `hfRepo: Qwen/Qwen3-0.6B`: 72 s including a 1.5 GB download into the throwaway cache (download noted here, under 2 GB), 0.32 GB output |
+| 41 | The GGUF-derived MLX model loads | FAIL at first, PASS after fix | the default folder `Qwen3-0.6B-GGUF-mlx` failed to load: "No .gguf weights found inside ..." (the loader reads "gguf" anywhere in a path as a GGUF model). The default name no longer carries `-GGUF`: `Qwen3-0.6B-mlx` loads on MLX and answers at 291.7 tok/s. A folder name chosen by the user with "gguf" in it still fails (left, see the report) |
+| 42 | E2E phase 211 with the cancel check | PASS | 11 checks, 54 s; report `<scratchpad>/review-a/e2e-report/e2e-20261118-084440.md` |
+| 43 | Playwright spec 27 | PASS | 14 tests |
 
 ## Incident (cleaned up)
 
@@ -81,14 +97,13 @@ The throwaway home linked the real `datasets--Salesforce--wikitext` cache folder
 ## State at the end
 
 - Backend (8900) and Vite (8930) still run for the integrator; stop with `kill $(cat <scratchpad>/review-a/backend.pid) $(cat <scratchpad>/review-a/vite.pid)`.
-- Model lock released 08:26. No model loaded.
-- Throwaway home holds three converted folders under `Models/` (about 8.6 GB) and a stub `models--LiquidAI--LFM3-1.7B-Base` (100 KB, the stalled download); delete the home when done.
+- Model lock released 08:45. No model loaded.
+- Throwaway home holds four converted folders under `Models/` (about 9 GB), the downloaded `models--Qwen--Qwen3-0.6B` (1.5 GB) and a stub `models--LiquidAI--LFM3-1.7B-Base` (100 KB, the stalled download); delete the home when done.
 
 ## Not tested
 
-- GGUF to MLX end to end (the base-repo download stalled; not retried).
+- A GGUF whose header names its base repo (the one tested has none, so the repo was typed in).
 - A mid-write disk-full run after the fix (the free-space check now stops it first; the clean-up path is covered by a unit test only).
 - Conversion of a gated repo, of a model over 10 GB, and with a real Hugging Face token.
 - The packaged app window, Windows and Linux, other locales in the browser.
 - `./scripts/e2e_test_suite.py --smoke` and the full suite (stream G).
-- 08:40 download under 2 GB: Qwen/Qwen3-0.6B (about 1.5 GB) into the throwaway cache, as the base repo for the GGUF to MLX check

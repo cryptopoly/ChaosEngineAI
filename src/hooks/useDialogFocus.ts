@@ -21,16 +21,29 @@ export interface DialogFocusOptions {
   onEscape?: () => void;
   /** "first" (default): the first control, or the one marked data-autofocus. "container": the dialog itself (give it tabIndex -1). */
   initialFocus?: "first" | "container";
+  /** For a dialog that stays mounted and renders nothing while closed: whether it is open now. Default true. */
+  active?: boolean;
 }
 
 export function useDialogFocus(ref: RefObject<HTMLElement | null>, options: DialogFocusOptions = {}) {
   const escape = useRef(options.onEscape);
   escape.current = options.onEscape;
   const initial = options.initialFocus ?? "first";
+  const active = options.active ?? true;
+  // What had focus before the dialog opened, read on the render that opens it: a field with autoFocus
+  // inside the dialog takes focus before the effect below runs, and focus could then never go back.
+  const opener = useRef<HTMLElement | null>(null);
+  const wasActive = useRef(false);
+  if (active && !wasActive.current && typeof document !== "undefined") {
+    opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  }
+  wasActive.current = active;
 
   useEffect(() => {
+    if (!active) return undefined;
     const dialog = ref.current;
-    const back = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const focused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const back = focused && !dialog?.contains(focused) ? focused : opener.current;
     if (dialog && !dialog.contains(document.activeElement)) {
       if (initial === "container") dialog.focus();
       else (dialog.querySelector<HTMLElement>("[data-autofocus]") ?? dialog.querySelector<HTMLElement>(DIALOG_FOCUSABLE))?.focus();
@@ -56,5 +69,5 @@ export function useDialogFocus(ref: RefObject<HTMLElement | null>, options: Dial
       document.removeEventListener("keydown", onKey);
       if (back && back.isConnected) back.focus();
     };
-  }, [ref, initial]);
+  }, [ref, initial, active]);
 }

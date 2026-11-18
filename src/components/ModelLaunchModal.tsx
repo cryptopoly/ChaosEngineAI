@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { RuntimeControls } from "./RuntimeControls";
 import { number, sizeLabel } from "../utils";
@@ -6,6 +6,7 @@ import type { BusyAdvice, LaunchPreferences, ModelCapabilities, PreviewMetrics, 
 import type { ChatModelOption } from "../types/chat";
 import { fetchBusyAdvice, type MtplxJobState } from "../api";
 import { BusyAdviceNotice } from "./BusyAdviceNotice";
+import { useDialogFocus } from "../hooks/useDialogFocus";
 import { isVisibleAdvice, needsConfirmation } from "./busyAdvice";
 import { candidateKeys } from "./runtimeSupport";
 import { tensorfoldLaunchInfoFor, type TensorfoldLaunchControls } from "./tensorfoldSupport";
@@ -160,6 +161,11 @@ export function ModelLaunchModal({
     };
   }, [open, sizeGbForAdvice]);
 
+  // Escape closes it (the same as a click outside), Tab stays inside and focus goes back to the opener.
+  const dialog = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  useDialogFocus(dialog, { active: open, onEscape: onClose });
+
   if (!open) return null;
 
   const searchLower = search.toLowerCase();
@@ -191,9 +197,16 @@ export function ModelLaunchModal({
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content modal-wide" onClick={(event) => event.stopPropagation()}>
+      <div
+        ref={dialog}
+        className="modal-content modal-wide"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        onClick={(event) => event.stopPropagation()}
+      >
         <div className="modal-header">
-          <h3>{resolvedTitle}</h3>
+          <h3 id={titleId}>{resolvedTitle}</h3>
         </div>
         <div className="modal-body">
           {selectedOption ? (

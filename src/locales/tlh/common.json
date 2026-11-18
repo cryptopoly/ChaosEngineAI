@@ -499,7 +499,13 @@
       "terminalHint": "terminalDaq; stderr naQ Dalegh.",
       "close": "yISoQmoH",
       "ok": "lu'",
-      "cancel": "waH yIqIl"
+      "cancel": "waH yIqIl",
+      "titleCancelled": null,
+      "cancelling": null,
+      "cancelledNothingSaved": null,
+      "cancelledModelUnloaded": null,
+      "cancelledModelKept": null,
+      "cancelUnconfirmed": null
     },
     "promptPresets": {
       "balanced": "Del motlh",

@@ -401,6 +401,7 @@ class BaseInferenceEngine:
         seq_length: int = 512,
         batch_size: int = 4,
         progress_callback: Callable[[dict[str, Any]], None] | None = None,
+        cancel_file: str | None = None,
     ) -> dict[str, Any]:
         raise RuntimeError(f"Perplexity evaluation is not supported by the {self.engine_name} backend.")
 
@@ -411,6 +412,7 @@ class BaseInferenceEngine:
         limit: int = 100,
         num_shots: int = 5,
         progress_callback: Callable[[dict[str, Any]], None] | None = None,
+        cancel_file: str | None = None,
     ) -> dict[str, Any]:
         raise RuntimeError(f"Task accuracy evaluation is not supported by the {self.engine_name} backend.")
 

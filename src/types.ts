@@ -91,6 +91,7 @@ export type {
   BenchmarkMode,
   BenchmarkResult,
   BenchmarkRunPayload,
+  BenchmarkCancelOutcome,
   BenchmarkRunResponse,
   GenerationMetrics,
   PerfTelemetry,

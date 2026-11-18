@@ -727,6 +727,7 @@ export type {
 
 export {
   cancelDownload,
+  cancelBenchmark,
   cancelConversion,
   convertModel,
   deleteModelDownload,

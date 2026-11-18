@@ -499,7 +499,13 @@
       "terminalHint": "在終端機中以取得完整 stderr。",
       "close": "關閉",
       "ok": "確定",
-      "cancel": "取消基準測試"
+      "cancel": "取消基準測試",
+      "titleCancelled": null,
+      "cancelling": null,
+      "cancelledNothingSaved": null,
+      "cancelledModelUnloaded": null,
+      "cancelledModelKept": null,
+      "cancelUnconfirmed": null
     },
     "promptPresets": {
       "balanced": "均衡摘要",

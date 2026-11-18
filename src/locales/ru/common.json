@@ -499,7 +499,13 @@
       "terminalHint": "в Terminal для полного stderr.",
       "close": "Закрыть",
       "ok": "OK",
-      "cancel": "Отменить бенчмарк"
+      "cancel": "Отменить бенчмарк",
+      "titleCancelled": null,
+      "cancelling": null,
+      "cancelledNothingSaved": null,
+      "cancelledModelUnloaded": null,
+      "cancelledModelKept": null,
+      "cancelUnconfirmed": null
     },
     "promptPresets": {
       "balanced": "Сбалансированное резюме",

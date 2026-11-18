@@ -499,7 +499,13 @@
       "terminalHint": "dans le Terminal pour le stderr complet.",
       "close": "Fermer",
       "ok": "OK",
-      "cancel": "Annuler le benchmark"
+      "cancel": "Annuler le benchmark",
+      "titleCancelled": null,
+      "cancelling": null,
+      "cancelledNothingSaved": null,
+      "cancelledModelUnloaded": null,
+      "cancelledModelKept": null,
+      "cancelUnconfirmed": null
     },
     "promptPresets": {
       "balanced": "Résumé équilibré",

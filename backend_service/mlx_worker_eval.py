@@ -18,6 +18,7 @@ wrap these so the IPC contract is unchanged.
 
 from __future__ import annotations
 
+import os
 import time
 from typing import Any
 
@@ -30,6 +31,21 @@ from backend_service.mlx_worker_io import emit_progress
 PERPLEXITY_DATASETS: dict[str, tuple[str, str, str]] = {
     "wikitext-2": ("Salesforce/wikitext", "wikitext-2-raw-v1", "test"),
 }
+
+
+CANCELLED_MESSAGE = "Benchmark cancelled."
+
+
+def raise_if_cancelled(request: dict[str, Any]) -> None:
+    """Stop between two items when the app has asked for it.
+
+    The worker reads one request at a time from stdin, so a cancel cannot
+    arrive as a message while an eval runs. The app names a file in the
+    request (``cancelFile``) and creates it to cancel; the model stays loaded.
+    """
+    cancel_file = request.get("cancelFile")
+    if cancel_file and os.path.exists(str(cancel_file)):
+        raise RuntimeError(CANCELLED_MESSAGE)
 
 
 def perplexity_dataset_spec(dataset: str) -> tuple[str, str, str]:
@@ -94,23 +110,31 @@ def eval_perplexity(
     seq_length = int(request.get("seqLength", 512))
     batch_size = int(request.get("batchSize", 4))
 
-    emit_progress("loading_data", 10.0, "Loading evaluation dataset...")
+    emit_progress("dataset", None, "Loading the evaluation text")
     data = load_perplexity_data(tokenizer, dataset, num_samples, seq_length)
+    raise_if_cancelled(request)
 
-    emit_progress("evaluating", 20.0, f"Evaluating perplexity on {len(data)} samples...")
+    total_samples = len(data)
+    emit_progress("evaluating", 0.0, f"Sample 0/{total_samples}", step=0, total=total_samples)
     start = time.monotonic()
 
     all_losses: list[mx.array] = []
-    num_batches = (len(data) + batch_size - 1) // batch_size
     for i in range(0, len(data), batch_size):
+        raise_if_cancelled(request)
         batch = data[i : i + batch_size]
         logits = model(batch[:, :-1]).astype(mx.float32)
         losses = nn.losses.cross_entropy(logits, batch[:, 1:], reduction="none")
         mx.eval(losses)
         all_losses.append(losses.flatten())
 
-        pct = 20.0 + (i / len(data)) * 70.0
-        emit_progress("evaluating", pct, f"Batch {i // batch_size + 1}/{num_batches}")
+        done = min(total_samples, i + batch_size)
+        emit_progress(
+            "evaluating",
+            done / total_samples * 100.0,
+            f"Sample {done}/{total_samples}",
+            step=done,
+            total=total_samples,
+        )
 
     all_losses_cat = mx.concatenate(all_losses)
     mean_loss = all_losses_cat.mean().item()
@@ -150,15 +174,18 @@ def eval_task_accuracy(
     limit = int(request.get("limit", 100))
     num_shots = int(request.get("numShots", 5))
 
-    emit_progress("loading_tasks", 10.0, f"Loading {task_name} task data...")
+    emit_progress("dataset", None, f"Loading the {task_name} questions")
     tasks = load_task_data(task_name, limit, num_shots)
+    raise_if_cancelled(request)
 
     sampler = make_sampler(temp=0.0)  # greedy for accuracy
     correct = 0
     total = len(tasks)
     start = time.monotonic()
 
+    emit_progress("evaluating", 0.0, f"Question 0/{total}", step=0, total=total, correct=0)
     for idx, task in enumerate(tasks):
+        raise_if_cancelled(request)
         text_parts: list[str] = []
         for resp in mlx_stream_generate(
             model,
@@ -174,10 +201,13 @@ def eval_task_accuracy(
         if score_answer(task_name, answer, task["correct_answer"], task.get("choices")):
             correct += 1
 
-        pct = 10.0 + ((idx + 1) / total) * 85.0
         emit_progress(
-            "evaluating", pct,
-            f"Question {idx + 1}/{total} — {correct}/{idx + 1} correct",
+            "evaluating",
+            (idx + 1) / total * 100.0,
+            f"Question {idx + 1}/{total}, {correct} correct",
+            step=idx + 1,
+            total=total,
+            correct=correct,
         )
 
     elapsed = time.monotonic() - start

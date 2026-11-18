@@ -499,7 +499,13 @@
       "terminalHint": "전체 stderr는 터미널에서 확인하세요.",
       "close": "닫기",
       "ok": "확인",
-      "cancel": "벤치마크 취소"
+      "cancel": "벤치마크 취소",
+      "titleCancelled": null,
+      "cancelling": null,
+      "cancelledNothingSaved": null,
+      "cancelledModelUnloaded": null,
+      "cancelledModelKept": null,
+      "cancelUnconfirmed": null
     },
     "promptPresets": {
       "balanced": "균형 잡힌 요약",

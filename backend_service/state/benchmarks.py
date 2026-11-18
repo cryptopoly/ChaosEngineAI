@@ -19,8 +19,12 @@ Extracted as part of the v0.8.0 Phase 1a-5 refactor.
 
 from __future__ import annotations
 
+import tempfile
+import threading
 import time
 import uuid
+from dataclasses import dataclass, field
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from backend_service.helpers.formatting import _benchmark_label
@@ -30,6 +34,7 @@ from backend_service.helpers.persistence import (
     _save_benchmark_runs,
 )
 from backend_service.models import BenchmarkRunRequest, LoadModelRequest
+from backend_service.progress import BENCHMARK_PROGRESS
 
 
 if TYPE_CHECKING:
@@ -73,7 +78,146 @@ def delete_benchmark_run(state: ChaosEngineState, run_id: str) -> bool:
         return True
 
 
+class BenchmarkCancelled(RuntimeError):
+    """The user stopped the run. Nothing is saved for it."""
+
+
+class BenchmarkBusy(RuntimeError):
+    """A benchmark is already running; the app runs one at a time."""
+
+
+@dataclass
+class _ActiveRun:
+    """The one benchmark in flight: what ``cancel_benchmark`` needs to stop it."""
+
+    cancel_file: Path
+    # True once this run started loading a model: that model is unloaded on cancel.
+    # A model that was already loaded with the same profile is left alone when the
+    # run can stop between items.
+    loaded_by_benchmark: bool = False
+    # True when cancel ended the model process to stop the run (see ``cancel_benchmark``).
+    hard_stopped: bool = False
+    done: threading.Event = field(default_factory=threading.Event)
+
+
+_RUN_LOCK = threading.Lock()
+_ACTIVE_RUN: _ActiveRun | None = None
+
+# How long a cancel waits for the worker to stop between two items before it ends the model process.
+_COOPERATIVE_CANCEL_SECONDS = 8.0
+# Phases in which the MLX worker checks the cancel file between items.
+_COOPERATIVE_PHASES = {"dataset", "evaluating"}
+
+CANCELLED_MESSAGE = "Benchmark cancelled. Nothing was saved."
+CANCELLED_UNLOADED_NOTE = "The model was unloaded."
+CANCELLED_KEPT_NOTE = "The model that was loaded before the run stays loaded."
+
+
+def cancel_benchmark(state: ChaosEngineState) -> bool:
+    """Stop the benchmark in flight. True when one was told to stop.
+
+    Perplexity and task accuracy stop between two items (the worker reads a
+    cancel file), so a model that was loaded before the run survives. A model
+    load or a throughput generation cannot be interrupted from outside, so
+    there the model process is ended: that is also what unloads a model the
+    run loaded itself. Takes no state lock: the run thread may hold it.
+    """
+    run = _ACTIVE_RUN
+    if run is None or not BENCHMARK_PROGRESS.request_cancel():
+        return False
+    try:
+        run.cancel_file.touch()
+    except OSError:
+        pass
+    cooperative = not run.loaded_by_benchmark and BENCHMARK_PROGRESS.phase() in _COOPERATIVE_PHASES
+    if cooperative and run.done.wait(_COOPERATIVE_CANCEL_SECONDS):
+        return True
+    if not run.done.is_set():
+        run.hard_stopped = True
+        try:
+            state.runtime.unload_model()
+        except Exception:  # noqa: BLE001 - the run thread unloads again and reports
+            pass
+    return True
+
+
+def _raise_if_cancelled() -> None:
+    if BENCHMARK_PROGRESS.is_cancelled():
+        raise BenchmarkCancelled(CANCELLED_MESSAGE)
+
+
+def _worker_progress(payload: dict[str, Any]) -> None:
+    """Progress lines from the MLX worker's eval loops, copied onto the tracker."""
+    phase = str(payload.get("phase") or "")
+    if phase in {"dataset", "evaluating"} and BENCHMARK_PROGRESS.phase() != phase:
+        BENCHMARK_PROGRESS.set_phase(phase, str(payload.get("message") or ""))
+    step, total = payload.get("step"), payload.get("total")
+    if isinstance(step, int) and isinstance(total, int):
+        BENCHMARK_PROGRESS.set_step(step, total)
+        if payload.get("message"):
+            BENCHMARK_PROGRESS.set_message(str(payload["message"]))
+    correct = payload.get("correct")
+    if isinstance(correct, int):
+        BENCHMARK_PROGRESS.set_detail(correct=correct)
+
+
 def run_benchmark(state: ChaosEngineState, request: BenchmarkRunRequest) -> dict[str, Any]:
+    """Run one benchmark; a second request while one runs is refused.
+
+    A cancelled run answers ``{"cancelled": True, "result": None, ...}`` and
+    leaves no entry in the history.
+    """
+    global _ACTIVE_RUN
+    if not _RUN_LOCK.acquire(blocking=False):
+        raise BenchmarkBusy("A benchmark is already running. Wait for it to finish or cancel it first.")
+    run = _ActiveRun(cancel_file=Path(tempfile.gettempdir()) / f"chaosengine-benchmark-cancel-{uuid.uuid4().hex}")
+    try:
+        BENCHMARK_PROGRESS.begin(run_label=request.mode, phase="preparing")
+        _ACTIVE_RUN = run
+        try:
+            return _run_benchmark(state, request, run)
+        except BenchmarkCancelled:
+            return _cancelled_response(state, run)
+        except Exception:
+            if BENCHMARK_PROGRESS.is_cancelled():
+                # Ending the model process makes the load or the generation fail: that is the cancel, not an error.
+                return _cancelled_response(state, run)
+            raise
+    finally:
+        run.done.set()
+        _ACTIVE_RUN = None
+        BENCHMARK_PROGRESS.finish()
+        try:
+            run.cancel_file.unlink(missing_ok=True)
+        except OSError:
+            pass
+        _RUN_LOCK.release()
+
+
+def _cancelled_response(state: ChaosEngineState, run: _ActiveRun) -> dict[str, Any]:
+    model_unloaded = run.loaded_by_benchmark or run.hard_stopped
+    if model_unloaded:
+        try:
+            state.runtime.unload_model()
+        except Exception as exc:  # noqa: BLE001 - report the cancel either way
+            state.add_log("benchmark", "warning", f"Unload after a cancelled benchmark failed: {exc}")
+    note = CANCELLED_UNLOADED_NOTE if model_unloaded else CANCELLED_KEPT_NOTE
+    with state._lock:
+        state.add_log("benchmark", "info", f"{CANCELLED_MESSAGE} {note}")
+        return {
+            "cancelled": True,
+            "modelUnloaded": model_unloaded,
+            "message": f"{CANCELLED_MESSAGE} {note}",
+            "result": None,
+            "benchmarks": state.benchmark_runs,
+            "runtime": state.runtime.status(
+                active_requests=state.active_requests,
+                requests_served=state.requests_served,
+            ),
+        }
+
+
+def _run_benchmark(state: ChaosEngineState, request: BenchmarkRunRequest, run: _ActiveRun) -> dict[str, Any]:
     from backend_service.app import compute_cache_preview
 
     with state._lock:
@@ -127,6 +271,9 @@ def run_benchmark(state: ChaosEngineState, request: BenchmarkRunRequest) -> dict
         speculative_decoding=request.speculativeDecoding,
         tree_budget=0,
     ):
+        _raise_if_cancelled()
+        run.loaded_by_benchmark = True
+        BENCHMARK_PROGRESS.set_phase("loading", f"Loading {model_name}")
         load_started = time.perf_counter()
         state.load_model(
             LoadModelRequest(
@@ -150,6 +297,7 @@ def run_benchmark(state: ChaosEngineState, request: BenchmarkRunRequest) -> dict
             )
         )
         load_seconds = round(time.perf_counter() - load_started, 2)
+    _raise_if_cancelled()
 
     with state._lock:
         params_b = (
@@ -202,13 +350,16 @@ def run_benchmark(state: ChaosEngineState, request: BenchmarkRunRequest) -> dict
     }
 
     if request.mode == "perplexity":
+        BENCHMARK_PROGRESS.set_phase("dataset", "Loading the evaluation text")
         eval_result = state.runtime.engine.eval_perplexity(
             dataset=request.perplexityDataset,
             num_samples=request.perplexityNumSamples,
             seq_length=request.perplexitySeqLength,
             batch_size=request.perplexityBatchSize,
+            progress_callback=_worker_progress,
+            cancel_file=str(run.cancel_file),
         )
-        run = {
+        run_record = {
             **base_run,
             "label": request.label or f"{model_name} / Perplexity / {request.perplexityDataset}",
             "perplexity": eval_result["perplexity"],
@@ -231,13 +382,16 @@ def run_benchmark(state: ChaosEngineState, request: BenchmarkRunRequest) -> dict
             ),
         }
     elif request.mode == "task_accuracy":
+        BENCHMARK_PROGRESS.set_phase("dataset", "Loading the questions")
         eval_result = state.runtime.engine.eval_task_accuracy(
             task_name=request.taskName,
             limit=request.taskLimit,
             num_shots=request.taskNumShots,
+            progress_callback=_worker_progress,
+            cancel_file=str(run.cancel_file),
         )
         accuracy_pct = round(eval_result["accuracy"] * 100, 1)
-        run = {
+        run_record = {
             **base_run,
             "label": (
                 request.label
@@ -267,6 +421,8 @@ def run_benchmark(state: ChaosEngineState, request: BenchmarkRunRequest) -> dict
         prompt = request.prompt or (
             "Summarize the practical trade-offs of this runtime profile for a local desktop user in six short bullets."
         )
+        # One blocking call: the engine reports no token count until it returns.
+        BENCHMARK_PROGRESS.set_phase("generating", f"Generating up to {request.maxTokens} tokens")
         result = state.runtime.generate(
             prompt=prompt,
             history=[],
@@ -274,7 +430,7 @@ def run_benchmark(state: ChaosEngineState, request: BenchmarkRunRequest) -> dict
             max_tokens=request.maxTokens,
             temperature=request.temperature,
         )
-        run = {
+        run_record = {
             **base_run,
             "label": request.label
             or _benchmark_label(
@@ -294,19 +450,21 @@ def run_benchmark(state: ChaosEngineState, request: BenchmarkRunRequest) -> dict
             "notes": result.runtimeNote,
         }
 
+    _raise_if_cancelled()
+    BENCHMARK_PROGRESS.set_phase("saving", "Saving the result")
     with state._lock:
-        append_benchmark_run(state, run)
+        append_benchmark_run(state, run_record)
         mode_label = {"perplexity": "Perplexity", "task_accuracy": "Task accuracy"}.get(
             request.mode, "Throughput"
         )
         state.add_log(
             "benchmark",
             "info",
-            f"{mode_label} benchmark completed for {model_name}: {run.get('notes', '')}",
+            f"{mode_label} benchmark completed for {model_name}: {run_record.get('notes', '')}",
         )
-        state.add_activity("Benchmark completed", run["label"])
+        state.add_activity("Benchmark completed", run_record["label"])
         return {
-            "result": run,
+            "result": run_record,
             "benchmarks": state.benchmark_runs,
             "runtime": state.runtime.status(
                 active_requests=state.active_requests,

@@ -499,7 +499,13 @@
       "terminalHint": "を Terminal で実行すると完全な stderr が表示されます。",
       "close": "閉じる",
       "ok": "OK",
-      "cancel": "ベンチマークをキャンセル"
+      "cancel": "ベンチマークをキャンセル",
+      "titleCancelled": null,
+      "cancelling": null,
+      "cancelledNothingSaved": null,
+      "cancelledModelUnloaded": null,
+      "cancelledModelKept": null,
+      "cancelUnconfirmed": null
     },
     "promptPresets": {
       "balanced": "バランスの取れた要約",

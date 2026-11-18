@@ -7,7 +7,7 @@ import { RuntimeControls } from "../../components/RuntimeControls";
 import { ModelLaunchModal } from "../../components/ModelLaunchModal";
 import { StatCard } from "../../components/StatCard";
 import { BenchmarkGauge } from "../../components/BenchmarkGauge";
-import type { BenchmarkResult, BenchmarkRunPayload, LibraryItem, PreviewMetrics, StrategyInstallLog, SystemStats } from "../../types";
+import type { BenchmarkCancelOutcome, BenchmarkResult, BenchmarkRunPayload, LibraryItem, PreviewMetrics, StrategyInstallLog, SystemStats } from "../../types";
 import type { ChatModelOption } from "../../types/chat";
 import type { MtplxJobState } from "../../api";
 import type { TensorfoldLaunchControls } from "../../components/tensorfoldSupport";
@@ -38,6 +38,10 @@ export interface BenchmarkRunTabProps {
   busyAction: string | null;
   benchmarkStartedAt: number | null;
   benchmarkError: string | null;
+  /** Cancel was pressed; the dialog waits for the backend to confirm the stop. */
+  benchmarkCancelling?: boolean;
+  /** Set when the last run ended by Cancel. */
+  benchmarkCancelOutcome?: BenchmarkCancelOutcome | null;
   showBenchmarkPicker: boolean;
   showBenchmarkModal: boolean;
   installingPackage: string | null;
@@ -74,6 +78,8 @@ export function BenchmarkRunTab({
   busyAction,
   benchmarkStartedAt,
   benchmarkError,
+  benchmarkCancelling = false,
+  benchmarkCancelOutcome = null,
   showBenchmarkPicker,
   showBenchmarkModal,
   installingPackage,
@@ -439,9 +445,11 @@ export function BenchmarkRunTab({
               <h3>
                 {busyAction === "Running benchmark..."
                   ? t("benchmarkTab.modal.titleRunning", { defaultValue: "Running benchmark" })
-                  : benchmarkError
-                    ? t("benchmarkTab.modal.titleFailed", { defaultValue: "Benchmark failed" })
-                    : t("benchmarkTab.modal.titleComplete", { defaultValue: "Benchmark complete" })}
+                  : benchmarkCancelOutcome
+                    ? t("benchmarkTab.modal.titleCancelled", { defaultValue: "Benchmark cancelled" })
+                    : benchmarkError
+                      ? t("benchmarkTab.modal.titleFailed", { defaultValue: "Benchmark failed" })
+                      : t("benchmarkTab.modal.titleComplete", { defaultValue: "Benchmark complete" })}
               </h3>
             </div>
             <div className="modal-body">
@@ -465,11 +473,29 @@ export function BenchmarkRunTab({
                       type="button"
                       className="secondary-button danger-button"
                       onClick={onCancelBenchmark}
+                      disabled={benchmarkCancelling}
                     >
-                      {t("benchmarkTab.modal.cancel", { defaultValue: "Cancel benchmark" })}
+                      {benchmarkCancelling
+                        ? t("benchmarkTab.modal.cancelling", { defaultValue: "Stopping the run..." })
+                        : t("benchmarkTab.modal.cancel", { defaultValue: "Cancel benchmark" })}
                     </button>
                   </div>
                 </>
+              ) : benchmarkCancelOutcome ? (
+                <div className="callout quiet" role="status" data-testid="benchmark-cancelled">
+                  {benchmarkCancelOutcome.confirmed ? (
+                    <>
+                      <p>{t("benchmarkTab.modal.cancelledNothingSaved", { defaultValue: "The run was stopped. Nothing was saved to the history." })}</p>
+                      <p>
+                        {benchmarkCancelOutcome.modelUnloaded
+                          ? t("benchmarkTab.modal.cancelledModelUnloaded", { defaultValue: "The model was unloaded." })
+                          : t("benchmarkTab.modal.cancelledModelKept", { defaultValue: "The model that was loaded before the run stays loaded." })}
+                      </p>
+                    </>
+                  ) : (
+                    <p>{t("benchmarkTab.modal.cancelUnconfirmed", { defaultValue: "The app stopped waiting, but could not reach the backend to stop the run. It may still be running: check the Server page." })}</p>
+                  )}
+                </div>
               ) : benchmarkError ? (
                 <div className="callout error">
                   <h3>{t("benchmarkTab.modal.titleFailed", { defaultValue: "Benchmark failed" })}</h3>
@@ -508,7 +534,7 @@ export function BenchmarkRunTab({
                   type="button"
                   onClick={() => onShowBenchmarkModalChange(false)}
                 >
-                  {benchmarkError
+                  {benchmarkError || benchmarkCancelOutcome
                     ? t("benchmarkTab.modal.close", { defaultValue: "Close" })
                     : t("benchmarkTab.modal.ok", { defaultValue: "OK" })}
                 </button>

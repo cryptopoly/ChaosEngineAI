@@ -143,7 +143,18 @@ export interface BenchmarkRunPayload {
 }
 
 export interface BenchmarkRunResponse {
-  result: BenchmarkResult;
+  /** The saved run, or null when the run was cancelled (nothing is saved then). */
+  result: BenchmarkResult | null;
   benchmarks: BenchmarkResult[];
   runtime: RuntimeStatus;
+  /** True when Cancel stopped the run. */
+  cancelled?: boolean;
+  /** With ``cancelled``: the model was unloaded (the run loaded it, or stopping the run needed it). */
+  modelUnloaded?: boolean;
+}
+
+/** How a cancelled benchmark ended, for the dialog. ``confirmed`` is false when the backend never answered the cancel. */
+export interface BenchmarkCancelOutcome {
+  confirmed: boolean;
+  modelUnloaded: boolean;
 }

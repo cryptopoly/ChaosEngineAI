@@ -303,3 +303,56 @@ VIDEO_PROGRESS = ProgressTracker(kind="video")
 # compose (diffusion steps), decode audio, save into the library.
 MUSIC_PHASES = ("load", "encode", "compose", "decode", "save")
 MUSIC_PROGRESS = ProgressTracker(kind="music")
+
+
+class JobProgressTracker(ProgressTracker):
+    """A tracker for the long text-model jobs (a benchmark run, a conversion to MLX).
+
+    Adds ``detail``: a small dict of measured numbers the phase carries besides
+    ``step`` / ``totalSteps`` (bytes written, questions answered correctly).
+    Only measured values go in; a job that cannot count leaves ``totalSteps``
+    at 0 and the UI shows an indeterminate bar with the phase text.
+    """
+
+    def __init__(self, *, kind: str) -> None:
+        super().__init__(kind=kind)
+        self._detail: dict[str, Any] = {}
+
+    def begin(self, **kwargs: Any) -> None:
+        with self._lock:
+            self._detail = {}
+            super().begin(**kwargs)
+
+    def set_phase(self, phase: str, message: str = "") -> None:
+        with self._lock:
+            super().set_phase(phase, message)
+            self._total_steps = 0
+            self._detail = {}
+
+    def set_detail(self, **detail: Any) -> None:
+        with self._lock:
+            if not self._active:
+                return
+            self._detail = {**self._detail, **detail}
+            self._updated_at = time.time()
+
+    def finish(self, *, message: str = "") -> None:
+        with self._lock:
+            super().finish(message=message)
+            self._detail = {}
+
+    def phase(self) -> str:
+        with self._lock:
+            return self._phase
+
+    def snapshot(self) -> dict[str, Any]:
+        with self._lock:
+            return {**super().snapshot(), "detail": dict(self._detail)}
+
+
+# Benchmark phases, in order: ``preparing``, ``loading`` (the model), ``dataset`` (evaluation text or
+# questions), then ``generating`` (throughput) or ``evaluating`` (perplexity, task accuracy), ``saving``.
+BENCHMARK_PROGRESS = JobProgressTracker(kind="benchmark")
+# Conversion phases, in order: ``preparing``, ``downloading`` (a Hub source), ``loading``,
+# ``quantizing``, ``saving``.
+CONVERSION_PROGRESS = JobProgressTracker(kind="conversion")

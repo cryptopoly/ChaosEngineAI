@@ -499,7 +499,13 @@
       "terminalHint": "im Terminal für vollständige stderr.",
       "close": "Schließen",
       "ok": "OK",
-      "cancel": "Benchmark abbrechen"
+      "cancel": "Benchmark abbrechen",
+      "titleCancelled": null,
+      "cancelling": null,
+      "cancelledNothingSaved": null,
+      "cancelledModelUnloaded": null,
+      "cancelledModelKept": null,
+      "cancelUnconfirmed": null
     },
     "promptPresets": {
       "balanced": "Ausgewogene Zusammenfassung",

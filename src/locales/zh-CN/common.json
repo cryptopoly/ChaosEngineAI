@@ -499,7 +499,13 @@
       "terminalHint": "在终端中以查看完整 stderr。",
       "close": "关闭",
       "ok": "确定",
-      "cancel": "取消基准测试"
+      "cancel": "取消基准测试",
+      "titleCancelled": null,
+      "cancelling": null,
+      "cancelledNothingSaved": null,
+      "cancelledModelUnloaded": null,
+      "cancelledModelKept": null,
+      "cancelUnconfirmed": null
     },
     "promptPresets": {
       "balanced": "均衡总结",

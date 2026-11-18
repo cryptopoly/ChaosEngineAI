@@ -499,7 +499,13 @@
       "terminalHint": "in Terminal for full stderr.",
       "close": "Close",
       "ok": "OK",
-      "cancel": "Cancel benchmark"
+      "cancel": "Cancel benchmark",
+      "titleCancelled": "Benchmark cancelled",
+      "cancelling": "Stopping the run...",
+      "cancelledNothingSaved": "The run was stopped. Nothing was saved to the history.",
+      "cancelledModelUnloaded": "The model was unloaded.",
+      "cancelledModelKept": "The model that was loaded before the run stays loaded.",
+      "cancelUnconfirmed": "The app stopped waiting, but could not reach the backend to stop the run. It may still be running: check the Server page."
     },
     "promptPresets": {
       "balanced": "Balanced summary",

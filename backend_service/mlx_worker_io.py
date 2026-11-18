@@ -62,7 +62,13 @@ def _emit(payload: dict[str, Any]) -> None:
     _JSON_OUT.flush()
 
 
-def emit_progress(phase: str, percent: float | None, message: str | None = None) -> None:
+def emit_progress(
+    phase: str,
+    percent: float | None,
+    message: str | None = None,
+    **counts: int,
+) -> None:
+    """One progress line. ``counts`` carries measured numbers (``step``, ``total``, ``correct``)."""
     try:
         _emit(
             {
@@ -71,6 +77,7 @@ def emit_progress(phase: str, percent: float | None, message: str | None = None)
                     "phase": phase,
                     "percent": percent,
                     "message": message,
+                    **counts,
                 },
             }
         )

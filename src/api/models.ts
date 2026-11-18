@@ -142,10 +142,15 @@ export async function runBenchmark(
   // No client-side timeout — a benchmark on a cold 70B model legitimately
   // takes >120s (cold load + prompt processing + N-token generation +
   // measurement). The backend has its own per-phase ceilings.
-  // `options.signal` enables the Cancel button on the running-benchmark
-  // modal to abort the in-flight request without waiting for the backend
-  // to finish.
+  // Cancel goes through `cancelBenchmark`; this request then answers
+  // `cancelled: true`. `options.signal` only stops the wait when the
+  // backend cannot be reached to confirm the cancel.
   return await postJson<BenchmarkRunResponse>("/api/benchmarks/run", payload, null, options?.signal);
+}
+
+/** Ask the backend to stop the benchmark in progress; the waiting run request then answers ``cancelled: true``. */
+export async function cancelBenchmark(): Promise<{ cancelled: boolean }> {
+  return await postJson<{ cancelled: boolean }>("/api/benchmarks/cancel", undefined, 60000);
 }
 
 /** Remove one saved run from the benchmark history; answers with the runs that are left. */

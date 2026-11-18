@@ -9,6 +9,14 @@ summary: Read this first in every session.
 
 Newest dated update first. Each update has the same sections: Done, Open for Claude, Open for Dan.
 
+## Update 2026-11-18 (overnight review): every review stream is merged on `review/integrate`, green on the Mac gate; not merged into `release/v0.10.0`. Next session is on Windows: read [windows-handover.md](../plans/windows-handover.md) first.
+
+**Done:** the overnight whole-app review (FU-220): streams A, A2, B, C, D, E, F, GGUF, ROUTING, PLAN and I18NFIX merged into `review/integrate`. Verdicts (D-87): Benchmarks and Conversion keep (fixed), Prompts keep for now (merge into Chat later), Fine Tuning and Plugins hidden behind Settings > General > Appearance > "Show experimental tabs" (commit `41f5a92a`, reverts alone), Logs folded into the redesigned Server page (D-88). API keys masked on screen until Reveal; Dashboard says "70B class at 4-bit"; GGUF or MLX read from the files; the backend ignores a disagreeing `canonicalRepo`; a critical catalogue match (a small Qwen loaded as another model) fixed. Report: [overnight-review-report.md](../progress/overnight-review-report.md); evidence: [review-integrate.md](../progress/review-integrate.md). Keep going and tools v2 planned (D-89 to D-92, FU-230 to FU-246; D-92's two open points answered).
+
+**Open for Claude:** the Windows pass on the merged tree ([windows-handover.md](../plans/windows-handover.md): setup, gate, Windows-only risks, rows 45 to 51 added to the 4090 plan), then Linux on Ubuntu 26; FU-221 to FU-251 as ranked in the report; Keep going v2 starting with the scorecard (FU-230).
+
+**Open for Dan:** say yes to merging `review/integrate` into `release/v0.10.0` (then `test/rtx4090` is recut); decide Plugins removal and Prompts into Chat (D-87); turn LAN access off for any demo on foreign Wi-Fi; yes or no to the 505 junk prompt rows clean-up (command in `docs/progress/review-c.md`); the H3 licence read, the microphone voice call, listening to voices and music.
+
 ## Update 2026-11-16 (v0.10.0 closing): the eight improvements, S-N/S-O/S-P/S-Q fixes and the Mac DMG are on `release/v0.10.0` and pushed; Windows and Linux passes are next.
 
 **Done:** the eight improvements (D-84: Chat plan card, Storyboard UX, clean-up panel, durable batch queue with pause, song and cut plan, lyric captions, freestyle Board, QA); S-O (CLI token with auth on, unsaved text kept, Plan tab one Tab stop per row); S-P (real Qwen3.8-27B `storyboard_song`, real Music track to burnt-in export, pause/resume/cancel on a real Iris-3B batch, touch in the iOS Simulator against the web UI; 12 defects fixed); S-Q (compact sidebar drawer below 1180 px, Export caption count, music test gate). Mac DMG built from `500590a6`: manifest complete, `warnings` empty, four installer scripts staged, packaged backend answers health and the smoke suite passes. tsc, 1776 vitest, i18n, full pytest and Playwright pass.

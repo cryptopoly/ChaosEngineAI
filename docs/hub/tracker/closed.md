@@ -1,13 +1,31 @@
 ---
 title: Closed follow-ups
 order: 3
-summary: 107 shipped, obsoleted or dropped rows, newest first.
+summary: 109 shipped, obsoleted or dropped rows, newest first.
 ---
 
 # Closed follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Shipped, obsoleted or dropped rows (struck through, or marked shipped with no open points left). Kept as the history of why things are the way they are.
 
+
+<details>
+<summary>FU-250 · Language banner asks to switch to the language the app is already in — Shipped 2026-11-18 (branch review/i18nfix, D-94)</summary>
+
+**Status or trigger:** **Shipped 2026-11-18 (branch `review/i18nfix`, D-94).** The banner states the language in use; "Use English" is always in English.
+
+**Notes:** Review D, L-1. On a German system it asks "Switch the app to Deutsch?" in German (`main.tsx` starts in the detected language). Start in English until it is answered, or say "The app is in {language}, your system language" with Keep and Use English.
+
+</details>
+
+<details>
+<summary>FU-249 · Settings &gt; Diagnostics shows about 100 English strings in every language — Shipped 2026-11-18 (branch review/i18nfix, merged into review/integrate at ba1c5e4d)</summary>
+
+**Status or trigger:** **Shipped 2026-11-18 (branch `review/i18nfix`, merged into `review/integrate` at `ba1c5e4d`).** 80 keys under `diagnostics.json` `panel`, nine locales; spec 38 and `DiagnosticsPanel.i18n.test.tsx`.
+
+**Notes:** Review D, L-2. The `diagnostics` namespace has 78 keys but the panel's table labels are literals. Route them through `t()`; keep the copied markdown in English for support.
+
+</details>
 
 <details>
 <summary>FU-248 · Backend trusts the canonicalRepo a client sends over the model's own folder — Shipped 2026-11-18 (branch review/routing, merged into review/integrate at 599802fe).</summary>

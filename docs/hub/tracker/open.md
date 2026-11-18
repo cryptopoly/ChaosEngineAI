@@ -1,7 +1,7 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 142 rows with work, decisions or watch items still open, newest first.
+summary: 143 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
@@ -10,29 +10,38 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 
 
 <details>
+<summary>FU-254 · Native-speaker review of the review's 891 machine translations — Before the release notes claim the nine locales</summary>
+
+**Status or trigger:** Before the release notes claim the nine locales
+
+**Notes:** `docs/progress/review-i18nfix.md`, "Needs native-speaker review": 23 items (destructive-action confirms in Diagnostics, terms such as release, machine and warm pool, gender and plural agreement, the banner's endonym after a colon, the Russian slot names in Compare, German du and Sie mixed).
+
+</details>
+
+<details>
+<summary>FU-253 · npm run i18n:extract cannot be the "zero new keys" check — Before the next release checklist run</summary>
+
+**Status or trigger:** Before the next release checklist run
+
+**Notes:** CLAUDE.md section 6 asks for it, but the script ignores the namespace given to `useTranslation("...")`: on an untouched tree it reports 2977 keys missing and 4086 unreferenced (for example `diskUsage.title`, which exists), and the tracked `.extract-report.json` is stale. Teach it namespaces or replace the checklist line with `i18n:validate --strict`.
+
+</details>
+
+<details>
+<summary>FU-252 · Backend-made text is not translated — When the activity feed or the catalogue labels are next touched (about half a day)</summary>
+
+**Status or trigger:** When the activity feed or the catalogue labels are next touched (about half a day)
+
+**Notes:** Review D, L-5, backend part (`docs/progress/review-i18nfix.md`): activity feed lines, model directory labels, "Released Nov 2026" (about 20 hand-written `updatedLabel` strings in `backend_service/catalog/*.py` in three shapes), the DFlash row in Accelerators. The backend sends a key plus values; the frontend formats dates with `Intl`.
+
+</details>
+
+<details>
 <summary>FU-251 · Copy, i18n and accessibility leftovers from the whole-app sweep — When each area is next touched</summary>
 
 **Status or trigger:** When each area is next touched
 
-**Notes:** Review D, ranked in `docs/progress/review-d.md`: Image Studio says "no image models" for the first seconds after a start (L-20, needs a loading state in `useImageState`, Video too) and repeats its empty state three times with "Stub diffusion pipeline" (L-3); Chat welcome names old models (L-4); backend-made text untranslated (L-5); after a load Enter with no model says nothing (L-18, second half; the placeholder half is fixed); generation dialogs, the data-folder restart dialog and the Mixer overlay lack dialog role and Escape (L-13); the catalogue word match is loose outside the HF cache (L-19); 375 px overflow in Compare and Diagnostics (L-6); panel header buttons wrap (L-14); the Language panel is titled "Settings" (L-7). The light theme (L-9) and other instances' workers (L-11, FU-247) are noted elsewhere; L-12 (key in clear text) is fixed on `review/integrate`.
-
-</details>
-
-<details>
-<summary>FU-250 · Language banner asks to switch to the language the app is already in — Owner's call on wording (new strings in ten locales)</summary>
-
-**Status or trigger:** Owner's call on wording (new strings in ten locales)
-
-**Notes:** Review D, L-1. On a German system it asks "Switch the app to Deutsch?" in German (`main.tsx` starts in the detected language). Start in English until it is answered, or say "The app is in {language}, your system language" with Keep and Use English.
-
-</details>
-
-<details>
-<summary>FU-249 · Settings &gt; Diagnostics shows about 100 English strings in every language — When Diagnostics is next touched</summary>
-
-**Status or trigger:** When Diagnostics is next touched
-
-**Notes:** Review D, L-2. The `diagnostics` namespace has 78 keys but the panel's table labels are literals. Route them through `t()`; keep the copied markdown in English for support.
+**Notes:** Review D, ranked in `docs/progress/review-d.md`: Image Studio says "no image models" for the first seconds after a start (L-20, needs a loading state in `useImageState`, Video too) and repeats its empty state three times with "Stub diffusion pipeline" (L-3); backend-made text untranslated (L-5, FU-252; the frontend part, the Chat welcome L-4 and the Language panel title L-7 were fixed by `review/i18nfix`); after a load Enter with no model says nothing (L-18, second half; the placeholder half is fixed); generation dialogs, the data-folder restart dialog and the Mixer overlay lack dialog role and Escape (L-13); the catalogue word match is loose outside the HF cache (L-19); 375 px overflow in Compare and Diagnostics (L-6); panel header buttons wrap (L-14). The light theme (L-9) and other instances' workers (L-11, FU-247) are noted elsewhere; L-12 (key in clear text) is fixed on `review/integrate`.
 
 </details>
 

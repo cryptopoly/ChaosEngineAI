@@ -64,6 +64,9 @@ is copied, downloaded or deleted.
 | 33 | Plugins page text | **FAIL**, wording fixed | "Place plugin directories with a manifest.json in ~/.chaosengine/plugins/" pointed at a folder nothing reads (and the wrong folder when the data directory is moved). Now "External plugins are not loaded in this version." (`ac9ead34`, en only; other locales fall back to en). The README still makes the promise (lines 97, 168, 286 to 288) |
 | 34 | Phase 21 (prompts and plugins part), in process | PASS | `tests/test_prompts_plugins_e2e_phase.py`: 9 checks pass, the real-model check skips (no model in the test), nothing left behind. The in-process run caught a mistake in the phase itself (a non-object variable is a 422, not a dropped row) |
 | 35 | Prompts editor: text that is not valid JSON in the Variables or Preset samplers box | **FAIL**, fixed | Save succeeded and silently dropped what was typed (`parseEditVariables` returned `[]` on a parse error). Save is now refused with a sentence and nothing is lost |
+| 36 | **Phase 21 against the running backend, with a real model** (model lock held 08:11 to 08:14) | PASS | `scripts/e2e_test_suite.py --phases 21`: 10 checks pass in 6.4 s. Real-model check: `mlx-community/Qwen3-0.6B-4bit`, prompt 19 tokens without the template and 43 with it, reply "pineapple" (the template's one word). Model unloaded after |
+| 37 | **Prompts to Chat in the UI with a real model** | PASS, with the defect of check 31 | Template "reply with exactly one word: {{word}}", filled with MANGO in the form (the preview showed the resolved text), Apply to chat, asked "What is the capital of France?": the reply was "MANGO" (426 tok/s). **A new thread** asked for a planet also answered "mango": the prompt is app-wide. **After a reload** the same question answered "One planet in our solar system is Mars.": the prompt is gone, with nothing on screen in either case |
+| 38 | Full `pytest tests/` (throwaway HOME) | PASS | exit 0, no FAILED or ERROR line; one expected failure (the plugin switch, on purpose) |
 
 ## Commands
 
@@ -112,7 +115,7 @@ cd e2e && E2E_PYTHON=/Users/dan/ChaosEngineAI/.venv/bin/python E2E_WEB_PORT=8952
 - `src/styles.css`: one block added after `.workspace-content-frame:has(.discover-page)` (`.prompt-library-layout`,
   `.plugins-page`).
 - Locale files: nine new keys under `common.promptLibrary` and one under `common.pluginsTab`, en filled and null
-  elsewhere; three keys reworded in en and set to null elsewhere (`promptLibrary.presetModelTitle`,
+  elsewhere; four keys reworded in en and set to null elsewhere (`promptLibrary.presetModelTitle`,
   `pluginsTab.externalIntro`, `pluginsTab.externalManifestHint`, `panels.installFromDirectory`); the " — Phase 2.7"
   suffix removed from `promptLibrary.editor.variables` in every locale.
 - CLAUDE.md's testing table has no row for Prompts and Plugins; suggested row (not added, the file is the lead's):

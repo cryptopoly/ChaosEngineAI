@@ -93,6 +93,9 @@ export function FirstLaunchLocaleBanner({
   };
 
   const handleKeepEnglish = () => {
+    // The app already started in the detected language, so "keep English" has to switch now;
+    // it used to stay in that language until the next settings poll came back (up to 5 s).
+    void changeLocale("en");
     finalise("en");
   };
 

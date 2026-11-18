@@ -10241,6 +10241,18 @@ html[lang="ko"] select {
   line-height: 1.4;
 }
 
+/* The banner is a child of the shell's two-column grid. With no column span it took the sidebar's cell,
+   pushed the sidebar into the workspace column and the workspace into a 216 px cell on a second row, so
+   the first launch on any non-English system was unusable until one of its two buttons was pressed.
+   (Below 1180 px the shell is a flex column and these two rules do nothing.) */
+.app-shell > .locale-banner {
+  grid-column: 1 / -1;
+}
+
+.app-shell:has(> .locale-banner) {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
 .locale-banner__copy {
   display: flex;
   flex-direction: column;

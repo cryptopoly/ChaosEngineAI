@@ -160,6 +160,16 @@ export function ModelLaunchModal({
     };
   }, [open, sizeGbForAdvice]);
 
+  // Escape closes the picker, as it does every other dialog in the app.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
   if (!open) return null;
 
   const searchLower = search.toLowerCase();
@@ -191,7 +201,7 @@ export function ModelLaunchModal({
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content modal-wide" onClick={(event) => event.stopPropagation()}>
+      <div className="modal-content modal-wide" role="dialog" aria-modal="true" aria-label={resolvedTitle} onClick={(event) => event.stopPropagation()}>
         <div className="modal-header">
           <h3>{resolvedTitle}</h3>
         </div>

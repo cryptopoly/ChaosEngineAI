@@ -1,13 +1,49 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 139 rows with work, decisions or watch items still open, newest first.
+summary: 143 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-251 · Copy, i18n and accessibility leftovers from the whole-app sweep — When each area is next touched</summary>
+
+**Status or trigger:** When each area is next touched
+
+**Notes:** Review D, ranked in `docs/progress/review-d.md`: Image Studio says "no image models" for the first seconds after a start (L-20, needs a loading state in `useImageState`, Video too) and repeats its empty state three times with "Stub diffusion pipeline" (L-3); Chat welcome names old models (L-4); backend-made text untranslated (L-5); after a load Enter with no model says nothing (L-18, second half; the placeholder half is fixed); generation dialogs, the data-folder restart dialog and the Mixer overlay lack dialog role and Escape (L-13); the catalogue word match is loose outside the HF cache (L-19); 375 px overflow in Compare and Diagnostics (L-6); panel header buttons wrap (L-14); the Language panel is titled "Settings" (L-7). The light theme (L-9) and other instances' workers (L-11, FU-247) are noted elsewhere; L-12 (key in clear text) is fixed on `review/integrate`.
+
+</details>
+
+<details>
+<summary>FU-250 · Language banner asks to switch to the language the app is already in — Owner's call on wording (new strings in ten locales)</summary>
+
+**Status or trigger:** Owner's call on wording (new strings in ten locales)
+
+**Notes:** Review D, L-1. On a German system it asks "Switch the app to Deutsch?" in German (`main.tsx` starts in the detected language). Start in English until it is answered, or say "The app is in {language}, your system language" with Keep and Use English.
+
+</details>
+
+<details>
+<summary>FU-249 · Settings &gt; Diagnostics shows about 100 English strings in every language — When Diagnostics is next touched</summary>
+
+**Status or trigger:** When Diagnostics is next touched
+
+**Notes:** Review D, L-2. The `diagnostics` namespace has 78 keys but the panel's table labels are literals. Route them through `t()`; keep the copied markdown in English for support.
+
+</details>
+
+<details>
+<summary>FU-248 · Backend trusts the canonicalRepo a client sends over the model's own folder — Next change to inference routing (needs the full E2E suite)</summary>
+
+**Status or trigger:** Next change to inference routing (needs the full E2E suite)
+
+**Notes:** Review D, L-16. D-13 (a small Qwen loaded as "Qwen3.8 Flash Next runs only on TensorFold") is fixed in the app's catalogue match, but `controller.py` `_tensorfold_match` still believes a `canonicalRepo` from the agent bridge, the CLI or an older window. When `path` is a Hugging Face cache folder, derive the repo from it and ignore a `canonicalRepo` that disagrees.
+
+</details>
 
 <details>
 <summary>FU-247 · No-backend splash and other backends' workers — When the shell start-up is next touched</summary>

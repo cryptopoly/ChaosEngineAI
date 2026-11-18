@@ -592,7 +592,7 @@
       "tags": "태그 (쉼표로 구분)",
       "systemPrompt": "시스템 프롬프트",
       "placeholderHint": "아래에 선언한 변수에 '{{'name'}}' 자리 표시자를 사용하세요.",
-      "variables": "변수 (JSON 배열 — Phase 2.7)",
+      "variables": "변수 (JSON 배열)",
       "presetModelRef": "프리셋 모델 ref (선택 사항)",
       "presetModelRefPlaceholder": "예: Qwen3-7B-Instruct",
       "presetSamplers": "프리셋 샘플러 (JSON 객체 — 선택 사항)",

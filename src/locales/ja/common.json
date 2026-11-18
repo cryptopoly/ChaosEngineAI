@@ -592,7 +592,7 @@
       "tags": "タグ(カンマ区切り)",
       "systemPrompt": "システムプロンプト",
       "placeholderHint": "下で宣言する変数には '{{'name'}}' プレースホルダーを使用してください。",
-      "variables": "変数(JSON 配列 — Phase 2.7)",
+      "variables": "変数(JSON 配列)",
       "presetModelRef": "プリセットモデル参照(任意)",
       "presetModelRefPlaceholder": "例:Qwen3-7B-Instruct",
       "presetSamplers": "プリセットサンプラー(JSON オブジェクト — 任意)",

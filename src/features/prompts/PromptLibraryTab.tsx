@@ -254,6 +254,7 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
           <input
             type="text"
             className="text-input"
+            aria-label={t("promptLibrary.searchPlaceholder", { defaultValue: "Search templates..." })}
             placeholder={t("promptLibrary.searchPlaceholder", { defaultValue: "Search templates..." })}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -303,20 +304,21 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
           <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
             <div>
               <label style={{ fontSize: 11, color: "#7a8594", display: "block", marginBottom: 4 }}>{t("promptLibrary.editor.name", { defaultValue: "Name" })}</label>
-              <input className="text-input" value={editName} onChange={(e) => setEditName(e.target.value)} style={{ width: "100%" }} />
+              <input className="text-input" aria-label={t("promptLibrary.editor.name", { defaultValue: "Name" })} value={editName} onChange={(e) => setEditName(e.target.value)} style={{ width: "100%" }} />
             </div>
             <div>
               <label style={{ fontSize: 11, color: "#7a8594", display: "block", marginBottom: 4 }}>{t("promptLibrary.editor.category", { defaultValue: "Category" })}</label>
-              <input className="text-input" value={editCategory} onChange={(e) => setEditCategory(e.target.value)} style={{ width: "100%" }} />
+              <input className="text-input" aria-label={t("promptLibrary.editor.category", { defaultValue: "Category" })} value={editCategory} onChange={(e) => setEditCategory(e.target.value)} style={{ width: "100%" }} />
             </div>
             <div>
               <label style={{ fontSize: 11, color: "#7a8594", display: "block", marginBottom: 4 }}>{t("promptLibrary.editor.tags", { defaultValue: "Tags (comma-separated)" })}</label>
-              <input className="text-input" value={editTags} onChange={(e) => setEditTags(e.target.value)} style={{ width: "100%" }} />
+              <input className="text-input" aria-label={t("promptLibrary.editor.tags", { defaultValue: "Tags (comma-separated)" })} value={editTags} onChange={(e) => setEditTags(e.target.value)} style={{ width: "100%" }} />
             </div>
             <div style={{ flex: 1 }}>
               <label style={{ fontSize: 11, color: "#7a8594", display: "block", marginBottom: 4 }}>{t("promptLibrary.editor.systemPrompt", { defaultValue: "System Prompt" })}</label>
               <textarea
                 className="text-input"
+                aria-label={t("promptLibrary.editor.systemPrompt", { defaultValue: "System Prompt" })}
                 value={editPrompt}
                 onChange={(e) => setEditPrompt(e.target.value)}
                 style={{ width: "100%", minHeight: 200, resize: "vertical", fontFamily: "monospace", fontSize: 12 }}
@@ -327,10 +329,11 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
             </div>
             <div>
               <label style={{ fontSize: 11, color: "#7a8594", display: "block", marginBottom: 4 }}>
-                {t("promptLibrary.editor.variables", { defaultValue: "Variables (JSON array — Phase 2.7)" })}
+                {t("promptLibrary.editor.variables", { defaultValue: "Variables (JSON array)" })}
               </label>
               <textarea
                 className="text-input"
+                aria-label={t("promptLibrary.editor.variables", { defaultValue: "Variables (JSON array)" })}
                 value={editVariables}
                 onChange={(e) => setEditVariables(e.target.value)}
                 placeholder={'[{"name": "topic", "type": "string", "default": "AI"}]'}
@@ -343,6 +346,7 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
               </label>
               <input
                 className="text-input"
+                aria-label={t("promptLibrary.editor.presetModelRef", { defaultValue: "Preset model ref (optional)" })}
                 value={editPresetModelRef}
                 onChange={(e) => setEditPresetModelRef(e.target.value)}
                 placeholder={t("promptLibrary.editor.presetModelRefPlaceholder", { defaultValue: "e.g. Qwen3-7B-Instruct" })}
@@ -355,6 +359,7 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
               </label>
               <textarea
                 className="text-input"
+                aria-label={t("promptLibrary.editor.presetSamplers", { defaultValue: "Preset samplers (JSON object — optional)" })}
                 value={editPresetSamplers}
                 onChange={(e) => setEditPresetSamplers(e.target.value)}
                 placeholder={'{"topP": 0.9, "topK": 40}'}
@@ -417,6 +422,7 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
                       {variable.type === "boolean" ? (
                         <input
                           type="checkbox"
+                          aria-label={variable.name}
                           checked={Boolean(fillValues[variable.name])}
                           onChange={(e) => setFillValues((prev) => ({ ...prev, [variable.name]: e.target.checked }))}
                         />
@@ -424,6 +430,7 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
                         <input
                           type="number"
                           className="text-input"
+                          aria-label={variable.name}
                           value={Number(fillValues[variable.name] ?? 0)}
                           onChange={(e) => setFillValues((prev) => ({ ...prev, [variable.name]: parseFloat(e.target.value) || 0 }))}
                           style={{ width: "100%" }}
@@ -431,6 +438,7 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
                       ) : (
                         <textarea
                           className="text-input"
+                          aria-label={variable.name}
                           value={String(fillValues[variable.name] ?? "")}
                           onChange={(e) => setFillValues((prev) => ({ ...prev, [variable.name]: e.target.value }))}
                           rows={2}

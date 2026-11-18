@@ -592,7 +592,7 @@
       "tags": "Теги (через запятую)",
       "systemPrompt": "Системный промпт",
       "placeholderHint": "Используйте плейсхолдеры '{{'name'}}' для переменных, которые вы объявите ниже.",
-      "variables": "Переменные (JSON-массив — Phase 2.7)",
+      "variables": "Переменные (JSON-массив)",
       "presetModelRef": "Ссылка пресет-модели (опционально)",
       "presetModelRefPlaceholder": "напр. Qwen3-7B-Instruct",
       "presetSamplers": "Пресет сэмплеров (JSON-объект — опционально)",

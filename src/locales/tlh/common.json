@@ -592,7 +592,7 @@
       "tags": "per (comma chev)",
       "systemPrompt": "pat QIn",
       "placeholderHint": "bIng mu' DaqonmeH '{{'name'}}' yIlo'.",
-      "variables": "mu' (JSON array — Phase 2.7)",
+      "variables": "mu' (JSON array)",
       "presetModelRef": "yab ref wIvlu'ta' (wIvlaH)",
       "presetModelRefPlaceholder": "velqa': Qwen3-7B-Instruct",
       "presetSamplers": "sampler wIvlu'ta' (JSON object — wIvlaH)",

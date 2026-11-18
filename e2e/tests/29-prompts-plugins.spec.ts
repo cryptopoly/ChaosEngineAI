@@ -91,29 +91,29 @@ test("Prompts: built-ins, dates, a refused save, variables, search, use in Chat,
   await expect(detail(page).getByRole("alert")).toHaveText("Give the template a name before saving.");
 
   // Create a template with one variable.
-  const inputs = detail(page).locator("input.text-input");
-  const areas = detail(page).locator("textarea");
-  await inputs.nth(0).fill(NAME);
-  await inputs.nth(1).fill("Review");
-  await inputs.nth(2).fill("e2e, review");
-  await areas.nth(0).fill("Answer only in {{language}}. Keep quokkas in mind.");
-  await areas.nth(1).fill('[{"name": "language", "type": "string", "default": "French"}]');
+  // Every editor field has its visible label as its accessible name (none had one).
+  await detail(page).getByRole("textbox", { name: "Name", exact: true }).fill(NAME);
+  await detail(page).getByRole("textbox", { name: "Category", exact: true }).fill("Review");
+  await detail(page).getByRole("textbox", { name: "Tags (comma-separated)" }).fill("e2e, review");
+  await detail(page).getByRole("textbox", { name: "System Prompt" }).fill("Answer only in {{language}}. Keep quokkas in mind.");
+  await detail(page).getByRole("textbox", { name: "Variables (JSON array)", exact: true })
+    .fill('[{"name": "language", "type": "string", "default": "French"}]');
   await detail(page).getByRole("button", { name: "Save", exact: true }).click();
   await expect(list.locator(".session-button")).toHaveCount(6);
   await expect(detail(page)).toContainText("1 variable");
 
   // Search reads the prompt text, not only the name and tags.
-  await list.getByPlaceholder("Search templates...").fill("quokka");
+  await list.getByRole("textbox", { name: "Search templates..." }).fill("quokka");
   await expect(list.locator(".session-button")).toHaveCount(1);
   await expect(list.locator(".session-button")).toContainText(NAME);
-  await list.getByPlaceholder("Search templates...").fill("no-such-template-text");
+  await list.getByRole("textbox", { name: "Search templates..." }).fill("no-such-template-text");
   await expect(list.locator(".session-button")).toHaveCount(0);
   await expect(list).toContainText("No template matches the search.");
-  await list.getByPlaceholder("Search templates...").fill("");
+  await list.getByRole("textbox", { name: "Search templates..." }).fill("");
 
   // Use in Chat: fill the variable, see the resolved prompt, apply. Chat opens and the next message carries it.
   await detail(page).getByRole("button", { name: "Use in Chat...", exact: true }).click();
-  await detail(page).locator("textarea").fill("Welsh");
+  await detail(page).getByRole("textbox", { name: "language", exact: true }).fill("Welsh");
   await expect(detail(page).locator("pre").last()).toHaveText("Answer only in Welsh. Keep quokkas in mind.");
   await detail(page).getByRole("button", { name: "Apply to chat", exact: true }).click();
   await page.locator(".composer textarea").waitFor();
@@ -127,7 +127,7 @@ test("Prompts: built-ins, dates, a refused save, variables, search, use in Chat,
   await openTab(page, "Tools", "Prompts");
   await list.locator(".session-button", { hasText: NAME }).click();
   await detail(page).getByRole("button", { name: "Edit", exact: true }).click();
-  await detail(page).locator("input.text-input").nth(0).fill(`${NAME} v2`);
+  await detail(page).getByRole("textbox", { name: "Name", exact: true }).fill(`${NAME} v2`);
   await detail(page).getByRole("button", { name: "Save", exact: true }).click();
   await expect(list.locator(".session-button", { hasText: `${NAME} v2` })).toHaveCount(1);
   // Delete asks first: dismissing keeps the template, accepting removes it.

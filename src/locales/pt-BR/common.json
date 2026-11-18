@@ -592,7 +592,7 @@
       "tags": "Tags (separadas por vírgula)",
       "systemPrompt": "Prompt de sistema",
       "placeholderHint": "Use marcadores '{{'nome'}}' para variáveis declaradas abaixo.",
-      "variables": "Variáveis (array JSON — Fase 2.7)",
+      "variables": "Variáveis (array JSON)",
       "presetModelRef": "Ref de modelo predefinido (opcional)",
       "presetModelRefPlaceholder": "ex.: Qwen3-7B-Instruct",
       "presetSamplers": "Samplers predefinidos (objeto JSON — opcional)",

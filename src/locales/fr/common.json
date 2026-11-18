@@ -592,7 +592,7 @@
       "tags": "Étiquettes (séparées par des virgules)",
       "systemPrompt": "Invite système",
       "placeholderHint": "Utilisez les espaces réservés '{{'nom'}}' pour les variables que vous déclarez ci-dessous.",
-      "variables": "Variables (tableau JSON — Phase 2.7)",
+      "variables": "Variables (tableau JSON)",
       "presetModelRef": "Réf. de modèle préréglée (optionnel)",
       "presetModelRefPlaceholder": "p. ex. Qwen3-7B-Instruct",
       "presetSamplers": "Échantillonneurs préréglés (objet JSON — optionnel)",

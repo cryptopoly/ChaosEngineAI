@@ -592,7 +592,7 @@
       "tags": "Tags (comma-separated)",
       "systemPrompt": "System Prompt",
       "placeholderHint": "Use '{{'name'}}' placeholders for variables you declare below.",
-      "variables": "Variables (JSON array — Phase 2.7)",
+      "variables": "Variables (JSON array)",
       "presetModelRef": "Preset model ref (optional)",
       "presetModelRefPlaceholder": "e.g. Qwen3-7B-Instruct",
       "presetSamplers": "Preset samplers (JSON object — optional)",

@@ -592,7 +592,7 @@
       "tags": "標籤(以逗號分隔)",
       "systemPrompt": "系統提示詞",
       "placeholderHint": "為下方宣告的變數使用 '{{'name'}}' 預留位置。",
-      "variables": "變數(JSON 陣列 — Phase 2.7)",
+      "variables": "變數(JSON 陣列)",
       "presetModelRef": "預設模型 ref(選填)",
       "presetModelRefPlaceholder": "例如:Qwen3-7B-Instruct",
       "presetSamplers": "預設取樣器(JSON 物件 — 選填)",

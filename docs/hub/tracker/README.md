@@ -8,20 +8,20 @@ summary: Every FU row from FOLLOW_UPS.md, split into open and closed.
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here.
 
-- [Open and live follow-ups](open.md): **112** rows.
+- [Open and live follow-ups](open.md): **122** rows.
 - [Closed follow-ups](closed.md): **106** rows.
 
 ## Newest ten
 
 | Row | Item | Status |
 |---|---|---|
-| [FU-220](open.md) | Overnight whole-app review: audit Benchmarks, Conversion, Fine Tuning, Prompts, Plugins, L | Started 2026-11-18 on the v0.10.0 tip (streams A to F running) |
-| [FU-219](closed.md) | Full-film showcase run (2026-11-17): film 80 s for a 120 s brief, wrong "2-minute" claim,  | Shipped 2026-11-17 (branch release/v0.10.0). |
-| [FU-218](open.md) | Narration level: the fixed +8 dB (FU-216) suited one file, not the next | Shipped 2026-11-17 (branch fix/voice-level). |
-| [FU-217](open.md) | Flaky music test in the full suite: test_unload_while_a_track_is_made_is_refused_and_the_j | Queued (2026-11-17), test isolation |
-| [FU-216](closed.md) | Narration not clearly over the music bed | Shipped 2026-11-17 (branch fix/audio-defaults). |
-| [FU-215](closed.md) | Film ends abruptly on the last shot's own sound | Shipped 2026-11-17 (branch fix/audio-defaults). |
-| [FU-214](closed.md) | Chat messages hidden at phone width | Shipped 2026-11-17 (branch fix/storyboard-timing). |
-| [FU-213](closed.md) | defaults.resolution says 720p for a 1024x576 project | Shipped 2026-11-17 (branch fix/storyboard-timing). |
-| [FU-212](closed.md) | Narration barely over the music bed | Shipped 2026-11-17 (branch fix/storyboard-timing). |
-| [FU-211](closed.md) | Music fade-out past the film's end | Shipped 2026-11-17 (branch fix/storyboard-timing), tests only. |
+| [FU-230](open.md) | No-backend splash and other backends' workers | When the shell start-up is next touched |
+| [FU-229](open.md) | Video Studio heads-up overstates the chat model | When Video Studio is next touched |
+| [FU-228](open.md) | Studio plan latency and video size in Chat | Before a demo that uses Studio |
+| [FU-227](open.md) | Logs page code left after the fold into Server | Owner agrees to delete |
+| [FU-226](open.md) | Hard-coded colours in the Fine-Tuning, Prompts and Plugins tabs | With FU-223 / FU-224 / FU-225 |
+| [FU-225](open.md) | Plugins: remove, or build a real loader | Owner's call (D-87) |
+| [FU-224](open.md) | Prompts: the applied prompt is app-wide and invisible | Owner's call on docs/plans/review-c-prompts-into-chat.md (D-87) |
+| [FU-223](open.md) | Fine-Tuning page leftovers | When the tab is next touched |
+| [FU-222](open.md) | Fine-Tuning: an adapter cannot be applied | With FU-221 |
+| [FU-221](open.md) | Fine-Tuning: training is not built | Hidden behind "Show experimental tabs" (D-87) until wired |

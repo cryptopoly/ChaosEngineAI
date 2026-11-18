@@ -1,7 +1,7 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 112 rows with work, decisions or watch items still open, newest first.
+summary: 122 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
@@ -10,9 +10,99 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 
 
 <details>
-<summary>FU-220 · Overnight whole-app review: audit Benchmarks, Conversion, Fine Tuning, Prompts, Plugins, Logs and Server; redesign Server and Logs; demo path for the podcast (D-87, D-88) — Started 2026-11-18 on the v0.10.0 tip (streams A to F running)</summary>
+<summary>FU-230 · No-backend splash and other backends' workers — When the shell start-up is next touched</summary>
 
-**Status or trigger:** **Started 2026-11-18 on the v0.10.0 tip (streams A to F running); results merge after the Windows and Linux fixes.**
+**Status or trigger:** When the shell start-up is next touched
+
+**Notes:** Review B: in a browser with no backend a reload shows "Extracting embedded runtime, first launch only", which is not what happens; the Dashboard process list shows other backends' Python workers with Stop buttons.
+
+</details>
+
+<details>
+<summary>FU-229 · Video Studio heads-up overstates the chat model — When Video Studio is next touched</summary>
+
+**Status or trigger:** When Video Studio is next touched
+
+**Notes:** Says "A loaded chat model holds about 30 GB" with a 15 GB Qwen loaded (review F).
+
+</details>
+
+<details>
+<summary>FU-228 · Studio plan latency and video size in Chat — Before a demo that uses Studio</summary>
+
+**Status or trigger:** Before a demo that uses Studio
+
+**Notes:** Review F: with Qwen3.8 27B the plan card takes 40 to 60 s (15 to 20 s processing the studio tool list): cache the studio prompt or shorten tool descriptions, measure before and after. The model picks 1280x720 unless told, doubling the render: default `generate_video` to the recommended size (tool description and golden list change). Keep going is not demo-ready with small models.
+
+</details>
+
+<details>
+<summary>FU-227 · Logs page code left after the fold into Server — Owner agrees to delete</summary>
+
+**Status or trigger:** Owner agrees to delete
+
+**Notes:** `src/features/logs/LogsTab.tsx`, `LogsIcon`, locale keys `diagnostics.logsTab.*`, `common.tabs.logs`, `common.tabCaptions.logs` are unreferenced since D-88; `src/hooks/useServerLog.ts` was unused before. Also: no agent-bridge tool reads the model events yet (a `server_events` tool would let an agent see why a load failed).
+
+</details>
+
+<details>
+<summary>FU-226 · Hard-coded colours in the Fine-Tuning, Prompts and Plugins tabs — With FU-223 / FU-224 / FU-225</summary>
+
+**Status or trigger:** With FU-223 / FU-224 / FU-225
+
+**Notes:** About 30 inline hex colours instead of theme tokens, so the stronger-borders switch and any later theme do not reach them.
+
+</details>
+
+<details>
+<summary>FU-225 · Plugins: remove, or build a real loader — Owner's call (D-87)</summary>
+
+**Status or trigger:** Owner's call (D-87); hidden behind "Show experimental tabs" now
+
+**Notes:** The page lists the 9 cache strategies and 3 chat tools the app already has; ON/OFF changes nothing and is forgotten on restart (`tests/test_route_contracts.py` has the expected-failure test); no code loads an outside plugin. Remove after v0.10.0 (files in `docs/progress/review-c.md`) unless a loader with a trust model is planned. README reworded in `41f5a92a`.
+
+</details>
+
+<details>
+<summary>FU-224 · Prompts: the applied prompt is app-wide and invisible — Owner's call on docs/plans/review-c-prompts-into-chat.md (D-87)</summary>
+
+**Status or trigger:** Owner's call on `docs/plans/review-c-prompts-into-chat.md` (D-87)
+
+**Notes:** "Use in Chat" sets one app-wide system prompt: Chat never shows it, every thread gets it, nothing clears it but the Prompts page's new "Stop using it", a reload drops it. Proposal: per-thread prompt with a chip in Chat, then fold the page into Chat. Preset model, samplers and few-shot examples are stored and never applied (apply or drop); no import or export.
+
+</details>
+
+<details>
+<summary>FU-223 · Fine-Tuning page leftovers — When the tab is next touched</summary>
+
+**Status or trigger:** When the tab is next touched
+
+**Notes:** Adapter scan walks the whole HF cache on every open (4.15 s, uncached) and skips the Settings model directories; size counts checkpoints and `lora_rank` is null for mlx-lm adapters; `GET /api/adapters` returns the whole `adapter_config.json` (absolute dataset path); the sidebar caption "LoRA adapters and training", "or via llama.cpp", the empty hint and the CLI help still promise training; inline hex colours, not tokens.
+
+</details>
+
+<details>
+<summary>FU-222 · Fine-Tuning: an adapter cannot be applied — With FU-221</summary>
+
+**Status or trigger:** With FU-221
+
+**Notes:** `LoadModelRequest.adapterPath` is accepted and ignored (base-model reply word for word). Wire through `state/lifecycle.py`, `inference/controller.py` (warm-pool key must include the adapter), the MLX worker `load(..., adapter_path=)`, the load reply and the model badge; refuse with a reason on GGUF, TensorFold and speculative paths. Touches inference routing: needs the full E2E suite.
+
+</details>
+
+<details>
+<summary>FU-221 · Fine-Tuning: training is not built — Hidden behind "Show experimental tabs" (D-87) until wired</summary>
+
+**Status or trigger:** Hidden behind "Show experimental tabs" (D-87) until wired
+
+**Notes:** From review B (`docs/progress/review-b.md` sections 7 and 8). Needs a training worker subprocess (never in the FastAPI parent, releases the chat model first, goes through busy advice and the job queue), progress, loss and cancel, a dataset path in (no upload today; `prepare_dataset` unused and flattens chat rows), a configure form, adapters under the data directory. mlx-lm trains a 0.5B model here in under 10 s, so the engine is not the gap. `POST /api/finetuning/start` answers 501 meanwhile.
+
+</details>
+
+<details>
+<summary>FU-220 · Overnight whole-app review: audit Benchmarks, Conversion, Fine Tuning, Prompts, Plugins, Logs and Server; redesign Server and Logs; demo path for the podcast (D-87, D-88) — Run done 2026-11-18; everything is on review/integrate (not merged to the release branch)</summary>
+
+**Status or trigger:** **Run done 2026-11-18; everything is on `review/integrate` (not merged to the release branch). Owner reads `docs/progress/overnight-review-report.md`, then merges.**
 
 **Notes:** Plan, streams A to G, safety rules, verdict rubric and morning deliverables: [docs/plans/overnight-e2e-review.md](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/docs/plans/overnight-e2e-review.md). No end-to-end check exists today for the seven features (no `e2e_test_suite.py` phase, no Playwright spec; unit tests only for Plugins and Prompts); the run adds `phase_21` and a Playwright spec per tab touched. Nothing is deleted overnight.
 

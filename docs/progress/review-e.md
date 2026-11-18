@@ -21,3 +21,17 @@ Order (coordinator, 07:40): backend events, collapsed connect block, timeline an
 | 08:18 | Models unloaded, lock released (08:18:06) | DONE | no stream E worker left; the remaining `mlx_worker` (PID 3081) belongs to stream A's backend on 8900 |
 | 08:19 | Fix: a warm model that answers stays warm on the timeline (was drawn as loaded-idle); detail fields labelled through i18n | PASS | vitest `src/features/server` 24 passed |
 | 08:20 | Screenshots of the real timeline and detail | DONE | `docs/progress/review-e/timeline-real-load-*.png`, `server-activity-*.png`, `server-activity-detail-dark.png` |
+| 08:22 | Full pytest (throwaway HOME) | PASS | `pytest tests/ -q -rfE`: exit 0, no FAILED or ERROR |
+| 08:24 | Playwright 01-smoke, 31-compact-sidebar, 31-server-activity on 8904/8924 | PASS | 19 passed |
+| 08:25 | Docs: README Server Activity, `docs/usage/server-mode.md` views, routes, CLI | DONE | |
+| 08:27 | A load replaced or cancelled is a `warning` (reason `cancelled`), not an error | PASS | `tests/test_model_events.py` 27 passed |
+| 08:30 | Arrow keys on the Overview/Activity tabs | PASS | Playwright 31-server-activity 6 passed; vitest 153 files, 1839 tests |
+
+## Left for the owner or a follow-up
+
+- Delete after the owner agrees: `src/features/logs/LogsTab.tsx`, `LogsIcon` in `src/components/icons/SidebarIcons.tsx`, locale keys `diagnostics.logsTab.*`, `common.tabs.logs`, `common.tabCaptions.logs` (all unreferenced now). `src/hooks/useServerLog.ts` was already unused before this stream.
+- No agent-bridge tool reads the events yet (golden MCP list unchanged); a `server_events` tool would let an agent see why a load failed.
+- The app has one (dark) theme; the light screenshots show it ignores `prefers-color-scheme`. The new CSS uses theme tokens only.
+- Pre-existing editorial issue moved, not added: the connect snippets are titled with other apps' names (`serverTab.connect.openWebui`, `ollamaApps`, `ollamaHint`, `continueDev`). Rename needs the owner's call (it touches 10 locales).
+- `PHASES[21]` may clash with stream D's planned phase 21; the integrator renumbers one of them.
+- Not run: `e2e_test_suite.py --smoke` and the full suite (stream G), Windows and Linux, the packaged Tauri window.

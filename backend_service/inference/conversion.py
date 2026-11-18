@@ -226,9 +226,10 @@ def _estimate_conversion_output_bytes(
     """Rough size of the converted model, for the free-space check.
 
     Only a local source can be measured. The source width comes from
-    ``config.json`` (``torch_dtype`` / ``dtype``); when it is not stated the
-    source is taken as 32-bit, which gives the smaller estimate, so the
-    check can miss a tight case but never refuses one that would fit.
+    ``config.json`` (``torch_dtype`` / ``dtype``); when it is not stated, or
+    any block states a wider type, the source is taken as 32-bit, which gives
+    the smaller estimate, so the check can miss a tight case but never
+    refuses one that would fit.
     """
     if not source_dir:
         return None
@@ -240,12 +241,13 @@ def _estimate_conversion_output_bytes(
         return None
     source_bits = 32
     try:
-        config = json.loads((root / "config.json").read_text(encoding="utf-8"))
-        stated = str(config.get("torch_dtype") or config.get("dtype") or "").lower()
-        if "16" in stated:
-            source_bits = 16
-    except (OSError, json.JSONDecodeError, AttributeError):
-        pass
+        config_text = (root / "config.json").read_text(encoding="utf-8")
+    except OSError:
+        config_text = ""
+    # The width may sit in a nested block (``text_config``), so the whole file is searched.
+    stated = re.findall(r'"(?:torch_)?dtype"\s*:\s*"([A-Za-z0-9_]+)"', config_text)
+    if stated and all("16" in value for value in stated):
+        source_bits = 16
     if quantize:
         target_bits = q_bits + 0.5  # mlx-lm reports about half a bit of overhead per weight
     else:

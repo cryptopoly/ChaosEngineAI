@@ -360,6 +360,8 @@
     "reQuantizingTitle": "既に量子化されたソースを再量子化中",
     "backendNote": "バックエンドの注意",
     "reQuantizingDetail": "ソースは既に約 {bits} ビットです。さらに低くすると品質の劣化が累積します — 最高の結果を得るには元の FP16/BF16 重みから変換してください。",
+    "ggufSourceTitle": null,
+    "ggufSourceDetail": null,
     "mlxLmAvailable": "アクティブなバックエンドで mlx-lm 変換が利用可能です。",
     "startNativeSidecar": "変換を有効化するためにネイティブサイドカーを起動してください。",
     "converting": "変換中...",

@@ -360,6 +360,8 @@
     "reQuantizingTitle": "正在对已量化的源重新量化",
     "backendNote": "后端备注",
     "reQuantizingDetail": "源已经是约 {bits} 位。降低位数会累积质量损失 — 为获得最佳效果,请从原始 FP16/BF16 权重转换。",
+    "ggufSourceTitle": null,
+    "ggufSourceDetail": null,
     "mlxLmAvailable": "活动后端支持 mlx-lm 转换。",
     "startNativeSidecar": "启动原生 sidecar 以启用转换。",
     "converting": "转换中...",

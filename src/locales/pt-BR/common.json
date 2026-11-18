@@ -360,6 +360,8 @@
     "reQuantizingTitle": "Re-quantizando uma fonte já quantizada",
     "backendNote": "Observação do backend",
     "reQuantizingDetail": "A fonte já está em ~{bits} bits. Ir mais baixo agrava a perda de qualidade — para melhores resultados, converta a partir dos pesos FP16/BF16 originais.",
+    "ggufSourceTitle": null,
+    "ggufSourceDetail": null,
     "mlxLmAvailable": "A conversão mlx-lm está disponível no backend ativo.",
     "startNativeSidecar": "Inicie o sidecar nativo para habilitar a conversão.",
     "converting": "Convertendo...",

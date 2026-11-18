@@ -360,6 +360,8 @@
     "reQuantizingTitle": "Erneute Quantisierung einer bereits quantisierten Quelle",
     "backendNote": "Backend-Hinweis",
     "reQuantizingDetail": "Quelle ist bereits ~{bits}-Bit. Weiter herunterzugehen verstärkt den Qualitätsverlust — für beste Ergebnisse aus den originalen FP16/BF16-Gewichten konvertieren.",
+    "ggufSourceTitle": null,
+    "ggufSourceDetail": null,
     "mlxLmAvailable": "mlx-lm-Konvertierung ist im aktiven Backend verfügbar.",
     "startNativeSidecar": "Nativen Sidecar starten, um Konvertierung zu aktivieren.",
     "converting": "Wird konvertiert...",

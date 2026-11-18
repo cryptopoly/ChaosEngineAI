@@ -360,6 +360,8 @@
     "reQuantizingTitle": "이미 양자화된 소스를 재양자화 중",
     "backendNote": "백엔드 참고",
     "reQuantizingDetail": "소스는 이미 약 {bits}비트입니다. 더 낮추면 품질 손실이 누적됩니다 — 최상의 결과를 얻으려면 원본 FP16/BF16 가중치에서 변환하세요.",
+    "ggufSourceTitle": null,
+    "ggufSourceDetail": null,
     "mlxLmAvailable": "활성 백엔드에서 mlx-lm 변환을 사용할 수 있습니다.",
     "startNativeSidecar": "변환을 활성화하려면 네이티브 사이드카를 시작하세요.",
     "converting": "변환 중...",

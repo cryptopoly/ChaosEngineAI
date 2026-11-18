@@ -360,6 +360,8 @@
     "reQuantizingTitle": "Hal quant chenmoHlu'ta'bogh quant chenmoHqa'",
     "backendNote": "qoD pat qeS",
     "reQuantizingDetail": "tlhoS {bits}-bit Hal. bit puS DawIvchugh patlh law' lujlu'; FP16/BF16 ngI' Halvo' yIchoH vaj pov ngoD.",
+    "ggufSourceTitle": null,
+    "ggufSourceDetail": null,
     "mlxLmAvailable": "qoD pat QaptaHbogh mlx-lm choH tu'lu'.",
     "startNativeSidecar": "choH chu'meH sidecar Hal yItagh.",
     "converting": "choHlI'...",

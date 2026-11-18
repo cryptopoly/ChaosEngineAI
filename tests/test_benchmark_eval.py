@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+import json
+import tempfile
 import unittest
+from pathlib import Path
 
 from backend_service.mlx_worker_eval import (
     PERPLEXITY_DATASETS,
     perplexity_dataset_spec,
     perplexity_windows,
 )
+from backend_service.state.benchmarks import _local_kv_architecture
 from backend_service.task_datasets import score_answer
 
 
@@ -64,6 +68,48 @@ class ScoreAnswerTests(unittest.TestCase):
     def test_no_letter_is_wrong(self):
         self.assertFalse(score_answer("mmlu", "Let's analyze", "A"))
         self.assertFalse(score_answer("mmlu", "", "A"))
+
+
+class BenchmarkCacheSizingTests(unittest.TestCase):
+    """The reported cache size comes from the model's own layout, not from a 7B guess."""
+
+    CONFIG = {
+        "model_type": "qwen3",
+        "num_hidden_layers": 28,
+        "num_attention_heads": 16,
+        "num_key_value_heads": 8,
+        "hidden_size": 1024,
+        "head_dim": 128,
+    }
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.root = Path(self._tmp.name)
+
+    def _preview(self, arch):
+        from backend_service.app import compute_cache_preview
+
+        return compute_cache_preview(
+            bits=4, fp16_layers=0, context_tokens=8192, params_b=7.0,
+            system_stats={"totalMemoryGb": 64, "availableMemoryGb": 32}, arch=arch,
+        )
+
+    def test_plain_folder_and_cache_folder_are_both_read(self):
+        plain = self.root / "plain"
+        plain.mkdir()
+        (plain / "config.json").write_text(json.dumps(self.CONFIG))
+        snapshot = self.root / "models--org--small" / "snapshots" / "abc"
+        snapshot.mkdir(parents=True)
+        (snapshot / "config.json").write_text(json.dumps(self.CONFIG))
+        for path in (plain, self.root / "models--org--small"):
+            arch = _local_kv_architecture(str(path))
+            self.assertIsNotNone(arch, path)
+            self.assertLess(self._preview(arch)["baselineCacheGb"], self._preview(None)["baselineCacheGb"])
+
+    def test_missing_path_falls_back_to_the_guess(self):
+        self.assertIsNone(_local_kv_architecture(None))
+        self.assertIsNone(_local_kv_architecture(str(self.root / "gone")))
 
 
 if __name__ == "__main__":

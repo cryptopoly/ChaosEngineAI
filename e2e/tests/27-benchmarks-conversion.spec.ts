@@ -332,6 +332,11 @@ test("Conversion: a GGUF picked as one weights file still shows as the source", 
   await expect(page.locator(".model-selected-card")).toContainText(GGUF_ITEM.name);
   await expect(page.getByRole("button", { name: "Select a model to convert..." })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Convert to MLX" })).toBeEnabled();
+  // The page says what really happens with a GGUF: the original model is downloaded and converted.
+  // It used to warn about "re-quantizing an already quantized source", which is not what runs.
+  const note = page.locator(".callout.warning", { hasText: "A GGUF source is downloaded again in full size" });
+  await expect(note).toContainText("downloaded from Hugging Face");
+  await expect(page.getByText("Re-quantizing an already quantized source")).toHaveCount(0);
 });
 
 test("Conversion: a backend error is shown in the dialog", async ({ page }) => {

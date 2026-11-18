@@ -360,6 +360,8 @@
     "reQuantizingTitle": "重新量化已量化的來源",
     "backendNote": "後端註記",
     "reQuantizingDetail": "來源已經是約 {bits} 位元。再往下會累積品質損失 — 為了最佳結果,請從原始的 FP16/BF16 權重轉換。",
+    "ggufSourceTitle": null,
+    "ggufSourceDetail": null,
     "mlxLmAvailable": "mlx-lm 轉換在使用中的後端可用。",
     "startNativeSidecar": "啟動原生 sidecar 以啟用轉換。",
     "converting": "正在轉換...",

@@ -95,7 +95,10 @@ export function ConversionTab({
     return 16; // safe default — assume bf16
   };
   const sourceBpw = detectSourceBpw();
-  const isReQuantizing = sourceBpw < 12; // source is already quantized
+  // A GGUF source is not re-quantized: the backend downloads the original model named in the
+  // file and converts that, so the "going lower compounds quality loss" note does not apply.
+  const isGgufSource = (conversionSource?.format ?? "").toUpperCase() === "GGUF" || conversionDraft.path.toLowerCase().endsWith(".gguf");
+  const isReQuantizing = !isGgufSource && sourceBpw < 12; // source is already quantized
 
   const dtypeBytes = conversionDraft.dtype === "float32" ? 4 : 2;
   // Group quantization adds ~16 bits scale/zero per group, amortized per weight
@@ -259,12 +262,16 @@ export function ConversionTab({
                     />
                     {t("conversionTab.quantizeConvertedWeights", { defaultValue: "Quantize converted weights" })}
                   </label>
-                  <div className={`callout ${isReQuantizing ? "warning" : "quiet"} compact-callout`}>
-                    <h3>{isReQuantizing
+                  <div className={`callout ${isReQuantizing || isGgufSource ? "warning" : "quiet"} compact-callout`}>
+                    <h3>{isGgufSource
+                      ? t("conversionTab.ggufSourceTitle", { defaultValue: "A GGUF source is downloaded again in full size" })
+                      : isReQuantizing
                       ? t("conversionTab.reQuantizingTitle", { defaultValue: "Re-quantizing an already quantized source" })
                       : t("conversionTab.backendNote", { defaultValue: "Backend note" })}</h3>
                     <p>
-                      {isReQuantizing
+                      {isGgufSource
+                        ? t("conversionTab.ggufSourceDetail", { defaultValue: "A GGUF file cannot be turned into MLX directly. The original model named in the file is downloaded from Hugging Face and converted, so this needs a network connection and disk space for the full-size weights. The download shows no progress and cannot be cancelled once started." })
+                        : isReQuantizing
                         ? t("conversionTab.reQuantizingDetail", { bits: Math.round(sourceBpw), defaultValue: "Source is already ~{bits}-bit. Going lower compounds quality loss — for best results convert from the original FP16/BF16 weights." })
                         : conversionReady
                           ? t("conversionTab.mlxLmAvailable", { defaultValue: "mlx-lm conversion is available in the active backend." })

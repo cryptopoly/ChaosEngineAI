@@ -994,7 +994,13 @@
       },
       "speechLanguage": null,
       "changeVoice": null,
-      "noVoice": null
+      "noVoice": null,
+      "queue": {
+        "video": null,
+        "image": null,
+        "music": null,
+        "other": null
+      }
     },
     "stop": "yImev",
     "studio": {

@@ -345,6 +345,18 @@ def synthesize(request: Request, body: SynthesizeRequest) -> Response:
     return Response(content=result["wav"], media_type="audio/wav")
 
 
+@router.get("/api/voice/speak/queue")
+def speak_queue(request: Request) -> dict[str, Any]:
+    """Whether the Speak screen's request waits behind another heavy job (a video render, an image, music), and
+    which: ``{waiting, position, agentAhead, runningKind}``. Speech shares the one heavy-job slot, so without this
+    the screen showed a still progress bar for the whole render."""
+    from backend_service.helpers.job_queue import HEAVY_JOBS  # noqa: PLC0415
+
+    state = HEAVY_JOBS.queue_state("voice")
+    running = HEAVY_JOBS.snapshot().get("running") or {}
+    return {**state, "runningKind": running.get("kind") if state["waiting"] else None}
+
+
 @router.post("/api/voice/speak/cancel")
 def speak_cancel(request: Request) -> dict[str, Any]:
     """The Speak screen's Cancel: stop the screen's own running speech job and drop its waiting ones.

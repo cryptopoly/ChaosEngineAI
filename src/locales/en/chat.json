@@ -1,7 +1,7 @@
 {
   "composer": {
     "placeholderReady": "Type a message... (Enter to send, Shift+Enter for new line, / for commands)",
-    "placeholderNoModel": "Load a model first — pick one from Chat > Models, then hit CHAT.",
+    "placeholderNoModel": "Load a model first: click Select Model above, or Load Model.",
     "send": "Send",
     "stop": "Stop",
     "clear": "Clear",

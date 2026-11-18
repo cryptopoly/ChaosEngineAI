@@ -517,7 +517,8 @@ export function ChatTab({
           noChatModelsInstalled={noChatModelsInstalled}
           loadedModelRef={loadedModelRef}
           onBrowseDiscover={onBrowseDiscover}
-          onOpenModels={onOpenModels}
+          // "Load Model" opens the same library picker as Select Model, not the catalogue page.
+          onOpenModels={onOpenModels ? () => onOpenModelSelector("chat") : undefined}
         />
         <SpeechPlayerBar />
         {busyNotice && busyNotice.key !== dismissedAdviceKey ? (

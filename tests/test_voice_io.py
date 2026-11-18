@@ -498,6 +498,34 @@ class VoiceRouteTests(unittest.TestCase):
         for key in ("lane", "installed", "sttModels", "ttsVoices", "settings", "install"):
             self.assertIn(key, body)
 
+    def test_speak_queue_names_the_job_ahead(self) -> None:
+        # Speech waits for the heavy-job slot; the Speak screen asks what it waits for (review F: a video render
+        # held a Speak request for a minute with no word on screen).
+        import threading
+
+        from backend_service.helpers.job_queue import HEAVY_JOBS
+
+        self.assertEqual(self.client.get("/api/voice/speak/queue").json()["waiting"], False)
+        release = threading.Event()
+        holding = threading.Event()
+
+        def hold_video() -> None:
+            with HEAVY_JOBS.slot("video", "ui", "clip"):
+                holding.set()
+                release.wait(5)
+
+        video = threading.Thread(target=hold_video)
+        video.start()
+        holding.wait(5)
+        ticket = HEAVY_JOBS.enqueue("voice", "ui", "speech")
+        try:
+            body = self.client.get("/api/voice/speak/queue").json()
+            self.assertEqual((body["waiting"], body["position"], body["runningKind"]), (True, 1, "video"))
+        finally:
+            HEAVY_JOBS.cancel_waiting(ticket_id=ticket.id)
+            release.set()
+            video.join(5)
+
     def test_transcribe_rejects_empty_and_unknown_model(self) -> None:
         empty = self.client.post("/api/voice/transcribe", files={"audio": ("a.wav", b"", "audio/wav")})
         self.assertEqual(empty.status_code, 400)

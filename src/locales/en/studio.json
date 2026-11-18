@@ -994,7 +994,13 @@
       },
       "speechLanguage": "Speech language",
       "changeVoice": "Change voice",
-      "noVoice": "No voice chosen"
+      "noVoice": "No voice chosen",
+      "queue": {
+        "video": "Waiting for the video render to finish. Speech starts right after it.",
+        "image": "Waiting for the image job to finish. Speech starts right after it.",
+        "music": "Waiting for the music job to finish. Speech starts right after it.",
+        "other": "Waiting for another job to finish. Speech starts right after it."
+      }
     },
     "stop": "Stop",
     "studio": {

@@ -994,7 +994,13 @@
       },
       "speechLanguage": "音声の言語",
       "changeVoice": "ボイスを変更",
-      "noVoice": "ボイスが選択されていません"
+      "noVoice": "ボイスが選択されていません",
+      "queue": {
+        "video": null,
+        "image": null,
+        "music": null,
+        "other": null
+      }
     },
     "stop": "停止",
     "studio": {

@@ -321,6 +321,13 @@ describe("shell states and the picker", () => {
     expect(shellState({ ...base, loaded: true, error: "a later op failed" })).toBe("ready");
   });
 
+  it("goes back to the list for a remembered project that never loaded, keeps the card for one deleted while open", async () => {
+    const { leaveMissingProject } = await import("../ProjectShell");
+    expect(leaveMissingProject("notFound", false)).toBe(true); // review F: Projects opened on a dead end after a data folder change
+    expect(leaveMissingProject("notFound", true)).toBe(false);
+    expect(leaveMissingProject("loading", false)).toBe(false);
+  });
+
   it("offers this computer, the gallery and shot stills, with a paste box and Paste from clipboard", async () => {
     const { ReferenceImagePicker } = await import("../ReferenceImagePicker");
     const project = { id: "p1", shots: [shot("s1", { takes: [take("t1", "media/shots/s1/t1/still.png")], activeTake: "t1" })] } as unknown as StoryboardProject;

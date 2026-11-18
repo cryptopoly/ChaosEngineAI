@@ -175,11 +175,17 @@ export function libraryVariantMatchScore(item: LibraryItem, variant: ModelVarian
   const variantScaleTokens = paramScaleTokens(`${variant.repo} ${variant.name}`);
   if (itemScaleTokens.size > 0 && variantScaleTokens.size > 0) {
     const sameScale = [...itemScaleTokens].some((token) => variantScaleTokens.has(token));
-    score += sameScale ? 18 : -24;
+    // Different parameter scales are different models (a 0.6B file is not the 27B row of the same family).
+    if (!sameScale) return 0;
+    score += 18;
   }
 
   const hits = tokenSet(`${variant.repo} ${variant.name}`).filter((token) => haystack.includes(token));
   score += hits.length * 6;
+  // Format and quantization alone are not a match: without a shared name a 0.6B GGUF picked up a 39.8B row's size.
+  if (hits.length === 0 && score < 40) {
+    return 0;
+  }
 
   const itemFormat = libraryItemFormat(item).toLowerCase();
   if (itemFormat && variant.format) {

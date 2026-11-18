@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { SendToStoryboardMenu } from "../../../components/SendToStoryboardMenu";
 import { encodeMp3, getLibraryAudio, getLibraryItem, saveSpeech } from "../../../api";
@@ -45,6 +45,11 @@ export function SpeakResultRow({
   const [savedId, setSavedId] = useState<string | null>(output.libraryId);
   const [busyExport, setBusyExport] = useState(false);
   const fail = (err: unknown) => onError(err instanceof Error ? err.message : String(err));
+  const rowRef = useRef<HTMLDivElement>(null);
+  // The player lands under the Generate button, below the fold in a short window: bring each new clip into view.
+  useEffect(() => {
+    rowRef.current?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+  }, [output.url]);
 
   const exportMp3 = async () => {
     setBusyExport(true);
@@ -84,7 +89,7 @@ export function SpeakResultRow({
   };
 
   return (
-    <div className="voice-studio__result">
+    <div className="voice-studio__result" ref={rowRef}>
       <audio controls src={output.url} />
       <div className="button-row">
         <span className="muted-text">{formatClock(output.durationS)}</span>

@@ -35,6 +35,7 @@ import { InstallVoiceCard } from "./InstallVoiceCard";
 import { useCostText } from "./costText";
 import type { VoiceCatalog } from "./useVoiceCatalog";
 import { useVoiceSample } from "./useVoiceSample";
+import { speakQueueLineKey, useSpeakQueue } from "./speakQueue";
 
 function base64ToBytes(data: string): Uint8Array<ArrayBuffer> {
   const binary = atob(data);
@@ -85,6 +86,7 @@ export function SpeakScreen({
   const [pitch, setPitch] = useState(0);
   const [seed, setSeed] = useState("");
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  const queueLine = speakQueueLineKey(useSpeakQueue(progress !== null));
   const [error, setError] = useState<string | null>(null);
   const [notes, setNotes] = useState<string[]>([]);
   const [output, setOutput] = useState<SpeakOutput | null>(null);
@@ -480,6 +482,11 @@ export function SpeakScreen({
               <button type="button" className="secondary-button" onClick={cancel}>
                 {t("voice.cancel", { defaultValue: "Cancel" })}
               </button>
+              {queueLine ? (
+                <span className="muted-text" aria-live="polite">
+                  {t(`voice.speak.queue.${queueLine}`, { defaultValue: "Waiting for another job to finish. Speech starts right after it." })}
+                </span>
+              ) : null}
             </>
           ) : (
             <button type="button" className="primary-button" disabled={!ready || parts.length === 0} onClick={() => void generate()}>

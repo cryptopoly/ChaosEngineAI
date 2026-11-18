@@ -52,6 +52,15 @@ class CalculatorToolTests(unittest.TestCase):
         result = self.calc.execute()
         self.assertIn("Error", result)
 
+    def test_bare_string_arguments_are_the_expression(self):
+        # A small model sent the expression as a plain string; the call used to fail with "no expression provided".
+        result = self.calc.execute(raw="sum([2, 3, 5, 7])")
+        self.assertEqual(result, "sum([2, 3, 5, 7]) = 17")
+
+    def test_sum_takes_separate_numbers_too(self):
+        self.assertEqual(self.calc.execute(expression="sum(2, 3, 5, 7)"), "sum(2, 3, 5, 7) = 17")
+        self.assertEqual(self.calc.execute(expression="sum((1, 2))"), "sum((1, 2)) = 3")
+
     def test_unsupported_function(self):
         result = self.calc.execute(expression="__import__('os')")
         self.assertIn("Error", result)

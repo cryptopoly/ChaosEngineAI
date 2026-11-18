@@ -994,7 +994,13 @@
       },
       "speechLanguage": "語音語言",
       "changeVoice": "變更語音",
-      "noVoice": "未選擇語音"
+      "noVoice": "未選擇語音",
+      "queue": {
+        "video": null,
+        "image": null,
+        "music": null,
+        "other": null
+      }
     },
     "stop": "停止",
     "studio": {

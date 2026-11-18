@@ -5,7 +5,7 @@
  * state, so every tab works on this project only, and handles the offline, loading, not-found and error
  * states once for all of them.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { ImageOutputArtifact, VideoOutputArtifact } from "../../types";
 import { BoardTab } from "./board/BoardTab";
@@ -57,6 +57,12 @@ export function shellState(input: { backendOnline: boolean; notFound: boolean; l
   return input.error ? "error" : "loading";
 }
 
+/** A remembered project that never loaded here (deleted, or the data folder changed) goes straight back to the list
+ * instead of a dead-end card; one that disappears while open keeps the card, so the user sees why it closed. */
+export function leaveMissingProject(state: ShellState, everLoaded: boolean): boolean {
+  return state === "notFound" && !everLoaded;
+}
+
 export function ProjectShell({ projectId, fallbackName, tab, backendOnline, deps, onBack, onTab }: ProjectShellProps) {
   const { t } = useTranslation("studio");
   const story = useStoryboard(backendOnline, projectId);
@@ -77,6 +83,12 @@ export function ProjectShell({ projectId, fallbackName, tab, backendOnline, deps
   };
 
   const state = shellState({ backendOnline, notFound: story.notFound, loaded: Boolean(project && timeline), error: story.error });
+  const everLoaded = useRef(false);
+  if (state === "ready") everLoaded.current = true;
+  const leave = leaveMissingProject(state, everLoaded.current);
+  useEffect(() => {
+    if (leave) onBack();
+  }, [leave, onBack]);
   let body: React.ReactNode;
   if (state === "offline") {
     body = <p className="muted-text">{t("storyboard.offline", { defaultValue: "Waiting for the backend…" })}</p>;

@@ -1,13 +1,22 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 146 rows with work, decisions or watch items still open, newest first.
+summary: 147 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-258 · /v1/chat/completions with stream: true drops tool calls — When the OpenAI-compatible server is next touched, or a client that streams tools reports it</summary>
+
+**Status or trigger:** When the OpenAI-compatible server is next touched, or a client that streams tools reports it
+
+**Notes:** Found on the 4090 (2026-11-18). The non-streamed reply now returns `tool_calls` (structured from llama-server, or read from the text on the MLX path), but `StreamChunk` has no field for calls and the llama.cpp stream ignores `delta.tool_calls`, so a streaming client gets an empty reply with `finish_reason` stop. Needs a calls field on the final chunk and the OpenAI `delta.tool_calls` chunks.
+
+</details>
 
 <details>
 <summary>FU-257 · Tests that make symlinks fail on Windows without Developer Mode — Owner's answer to D-96</summary>
@@ -226,11 +235,11 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 </details>
 
 <details>
-<summary>FU-230 · Tool-call scorecard: a script that scores chat models on calls read, arguments valid and task done — Queued (2026-11-18), D-90</summary>
+<summary>FU-230 · Tool-call scorecard: a script that scores chat models on calls read, arguments valid and task done — Tier 1 built (2026-11-18, test/rtx4090); tiers 2 and 3 and the Mac runs open</summary>
 
-**Status or trigger:** Queued (2026-11-18), D-90. First: it gates FU-231 to FU-236
+**Status or trigger:** **Tier 1 built (2026-11-18, `test/rtx4090`)**; tiers 2 and 3 and the Mac runs open. D-90. First: it gates FU-231 to FU-236
 
-**Notes:** `scripts/tool-call-scorecard.py`, three tiers (one call through the OpenAI-compatible endpoint with the Studio schemas; a short Studio task with no render; the demo film). Models on disk: Qwen3.8 27B MLX 4-bit, LFM2.5 24B-A2B MLX 4-bit, Qwen3 8B 4-bit, Qwen3 4B; extra: Qwen3.8 27B GGUF, the MTPLX speed build, LFM3 1.7B. Five runs each, counts not percentages, one model loaded at a time. Claims C1 to C11 and the proposed tool bar in [the plan](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/docs/plans/keep-going-and-tools-v2.md); the same run makes the render measurements C10 and C12 to C15 for D-92. Output in `docs/research/tool-call-scorecard-2026-11.md`.
+**Notes:** Tier 1 is in `scripts/tool-call-scorecard.py` (12 prompts, scored with the bridge's `validate`; `tests/test_tool_call_scorecard.py`). It needed `/v1/chat/completions` to return `tool_calls` at all (fixed the same day; streaming is FU-258). First run, Qwen3-0.6B GGUF on the 4090: 33 of 60 right values, 46 of 60 calls, all 46 valid, and the 20 tools cost 7,141 prompt tokens on the llama.cpp path; details in the research page. Not run: the four MLX models (Mac), Qwen3.8 27B GGUF (not on the PC, about 17 GB). Plan: `scripts/tool-call-scorecard.py`, three tiers (one call through the OpenAI-compatible endpoint with the Studio schemas; a short Studio task with no render; the demo film). Models on disk: Qwen3.8 27B MLX 4-bit, LFM2.5 24B-A2B MLX 4-bit, Qwen3 8B 4-bit, Qwen3 4B; extra: Qwen3.8 27B GGUF, the MTPLX speed build, LFM3 1.7B. Five runs each, counts not percentages, one model loaded at a time. Claims C1 to C11 and the proposed tool bar in [the plan](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/docs/plans/keep-going-and-tools-v2.md); the same run makes the render measurements C10 and C12 to C15 for D-92. Output in `docs/research/tool-call-scorecard-2026-11.md`.
 
 </details>
 

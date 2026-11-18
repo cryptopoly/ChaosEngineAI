@@ -2,7 +2,7 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { test, expect } from "./fixtures";
 import type { Page } from "@playwright/test";
-import { goTo, RUN_HOME, showExperimentalTabs } from "./helpers";
+import { goTo, RUN_HOME } from "./helpers";
 
 // Tools > Fine-Tuning. The app has no training backend, so the page must say so: Start is off, one sentence
 // explains it, and nothing is sent to /api/finetuning/start. The adapter list is real: a folder with an
@@ -26,8 +26,6 @@ async function openFineTuning(page: Page) {
   await expect(page.getByRole("heading", { name: "LoRA Adapters" })).toBeVisible();
 }
 
-// Fine-Tuning is an experimental tab: listed only with Settings > "Show experimental tabs" on.
-test.beforeEach(({ page }) => showExperimentalTabs(page));
 test.afterEach(() => rmSync(ADAPTER_DIR, { recursive: true, force: true }));
 
 test("empty state: no adapters, and the page says training is not built", async ({ page }) => {

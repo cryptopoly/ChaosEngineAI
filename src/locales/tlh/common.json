@@ -629,7 +629,9 @@
     "step3Body": "luj mI' ruch je DaH yIbej",
     "startButton": "qeq yItagh",
     "notAvailable": null,
-    "notAvailableBody": null
+    "notAvailableBody": null,
+    "offline": null,
+    "loadError": null
   },
   "pluginsTab": {
     "discovering": "chelwI' nejlI'...",

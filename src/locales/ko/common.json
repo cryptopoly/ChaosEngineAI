@@ -629,7 +629,9 @@
     "step3Body": "손실과 진행 상황을 실시간으로 모니터링하세요",
     "startButton": "파인 튜닝 시작",
     "notAvailable": null,
-    "notAvailableBody": null
+    "notAvailableBody": null,
+    "offline": null,
+    "loadError": null
   },
   "pluginsTab": {
     "discovering": "플러그인 검색 중...",

@@ -42,16 +42,21 @@ export function FineTuningTab({ backendOnline }: FineTuningTabProps) {
   const { t } = useTranslation("common");
   const [adapters, setAdapters] = useState<Adapter[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [trainingStatus, setTrainingStatus] = useState<string | null>(null);
 
   useEffect(() => {
     if (!backendOnline) return;
+    setLoadError(null);
     fetchJson<{ adapters?: Adapter[] }>("/api/adapters")
       .then((data) => {
         setAdapters(data.adapters ?? []);
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch((error: unknown) => {
+        setLoadError(error instanceof Error ? error.message : String(error));
+        setLoading(false);
+      });
   }, [backendOnline]);
 
   useEffect(() => {
@@ -65,13 +70,17 @@ export function FineTuningTab({ backendOnline }: FineTuningTabProps) {
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <Panel
         title={t("panels.loraAdapters", { defaultValue: "LoRA Adapters" })}
-        subtitle={t("panels.loraAdaptersFound", {
+        subtitle={loading || loadError ? undefined : t("panels.loraAdaptersFound", {
           count: adapters.length,
           defaultValue: "{{count}} adapters found",
         })}
       >
-        {loading ? (
+        {loading && !backendOnline ? (
+          <p className="muted-text">{t("fineTuning.offline", { defaultValue: "The backend is offline. Adapters are listed when it is back." })}</p>
+        ) : loading ? (
           <p className="muted-text">{t("fineTuning.loadingAdapters", { defaultValue: "Loading adapters..." })}</p>
+        ) : loadError ? (
+          <p className="muted-text" role="alert">{t("fineTuning.loadError", { message: loadError, defaultValue: "Could not load the adapter list: {message}" })}</p>
         ) : adapters.length === 0 ? (
           <div style={{ padding: 24, textAlign: "center" }}>
             <p className="muted-text" style={{ marginBottom: 8 }}>{t("fineTuning.noAdapters", { defaultValue: "No LoRA adapters found." })}</p>

@@ -629,7 +629,9 @@
     "step3Body": "实时监控损失和进度",
     "startButton": "开始微调",
     "notAvailable": null,
-    "notAvailableBody": null
+    "notAvailableBody": null,
+    "offline": null,
+    "loadError": null
   },
   "pluginsTab": {
     "discovering": "正在发现插件...",

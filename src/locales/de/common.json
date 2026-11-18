@@ -629,7 +629,9 @@
     "step3Body": "Loss und Fortschritt in Echtzeit überwachen",
     "startButton": "Fine-Tuning starten",
     "notAvailable": null,
-    "notAvailableBody": null
+    "notAvailableBody": null,
+    "offline": null,
+    "loadError": null
   },
   "pluginsTab": {
     "discovering": "Plugins werden gesucht...",

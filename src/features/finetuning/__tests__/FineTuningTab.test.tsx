@@ -35,6 +35,14 @@ describe("AdapterCard", () => {
 });
 
 describe("FineTuningTab", () => {
+  it("says the backend is offline instead of 'Loading adapters...' for ever, and shows no count yet", () => {
+    const offline = renderToStaticMarkup(<FineTuningTab backendOnline={false} />);
+    expect(offline).toContain("The backend is offline");
+    expect(offline).not.toContain("Loading adapters");
+    expect(offline).not.toContain("adapters found");
+    expect(renderToStaticMarkup(<FineTuningTab backendOnline />)).toContain("Loading adapters");
+  });
+
   it("says training is not built and keeps Start off, instead of a button that did nothing", () => {
     const html = renderToStaticMarkup(<FineTuningTab backendOnline />);
     expect(html).toContain("Not available in this version");

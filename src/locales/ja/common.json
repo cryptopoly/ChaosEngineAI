@@ -629,7 +629,9 @@
     "step3Body": "損失と進行状況をリアルタイムで監視",
     "startButton": "ファインチューニングを開始",
     "notAvailable": null,
-    "notAvailableBody": null
+    "notAvailableBody": null,
+    "offline": null,
+    "loadError": null
   },
   "pluginsTab": {
     "discovering": "プラグインを検出中...",

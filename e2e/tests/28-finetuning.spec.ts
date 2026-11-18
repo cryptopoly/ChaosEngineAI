@@ -70,6 +70,9 @@ test("a row with fields missing still renders", async ({ page }) => {
 test("error state: a failing adapter list leaves the page standing", async ({ page }) => {
   await page.route("**/api/adapters", (route) => route.fulfill({ status: 500, json: { detail: "boom" } }));
   await openFineTuning(page);
+  // It used to read "No LoRA adapters found.", as if the list were empty.
+  await expect(page.getByRole("alert").filter({ hasText: "Could not load the adapter list" })).toBeVisible();
+  await expect(page.getByText("No LoRA adapters found.")).toHaveCount(0);
   await expect(page.getByText("Loading adapters...")).toHaveCount(0);
   await expect(page.getByText("Fine-Tuning crashed")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Start Fine-Tuning" })).toBeDisabled();

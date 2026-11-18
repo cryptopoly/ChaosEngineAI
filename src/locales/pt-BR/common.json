@@ -629,7 +629,9 @@
     "step3Body": "Monitore perda e progresso em tempo real",
     "startButton": "Iniciar ajuste fino",
     "notAvailable": null,
-    "notAvailableBody": null
+    "notAvailableBody": null,
+    "offline": null,
+    "loadError": null
   },
   "pluginsTab": {
     "discovering": "Descobrindo plugins...",

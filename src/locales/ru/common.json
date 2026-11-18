@@ -629,7 +629,9 @@
     "step3Body": "Следите за loss и прогрессом в реальном времени",
     "startButton": "Начать дообучение",
     "notAvailable": null,
-    "notAvailableBody": null
+    "notAvailableBody": null,
+    "offline": null,
+    "loadError": null
   },
   "pluginsTab": {
     "discovering": "Поиск плагинов...",

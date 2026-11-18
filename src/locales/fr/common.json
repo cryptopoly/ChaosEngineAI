@@ -629,7 +629,9 @@
     "step3Body": "Surveillez la perte et la progression en temps réel",
     "startButton": "Démarrer l'affinage",
     "notAvailable": null,
-    "notAvailableBody": null
+    "notAvailableBody": null,
+    "offline": null,
+    "loadError": null
   },
   "pluginsTab": {
     "discovering": "Découverte des plugins...",

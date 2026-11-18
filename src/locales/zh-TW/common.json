@@ -629,7 +629,9 @@
     "step3Body": "即時監控損失與進度",
     "startButton": "開始微調",
     "notAvailable": null,
-    "notAvailableBody": null
+    "notAvailableBody": null,
+    "offline": null,
+    "loadError": null
   },
   "pluginsTab": {
     "discovering": "正在探索外掛程式...",

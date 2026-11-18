@@ -170,6 +170,26 @@ def _mlx_expected_on_this_host() -> bool:
     return sys.platform == "darwin" and platform.machine() == "arm64"
 
 
+def _raise_if_folder_has_no_weights(target: str | None) -> None:
+    """Name what a local model folder holds when it has no weights any engine reads."""
+    if not target:
+        return
+    from backend_service.helpers.weights_format import describe_contents, weights_format
+
+    folder = Path(os.path.expanduser(target))
+    try:
+        if not folder.is_dir():
+            return
+    except OSError:
+        return
+    if weights_format(folder) is None:
+        raise RuntimeError(
+            f"No model weights found in {target} (found: {describe_contents(folder)}). "
+            "A chat model needs .safetensors (MLX or Transformers) or .gguf weights. "
+            "The download may be incomplete: re-download the model or pick another folder."
+        )
+
+
 class RuntimeController:
     # Hard upper bound on the warm pool independently of memory accounting —
     # if psutil isn't available we still want a sane cap.
@@ -801,6 +821,7 @@ class RuntimeController:
 
         if hint in {"remote", "openai", "cloud"}:
             return RemoteOpenAIEngine(self.capabilities)
+        _raise_if_folder_has_no_weights(target)
         tensorfold = self._select_tensorfold(
             hint=hint,
             target=target,

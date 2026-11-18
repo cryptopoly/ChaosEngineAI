@@ -136,7 +136,10 @@ export function libraryItemFormat(item: LibraryItem, matchedVariant?: ModelVaria
     return explicit;
   }
   const haystack = `${item.name} ${item.path}`.toLowerCase();
-  if (item.backend === "llama.cpp" || haystack.includes("gguf")) return "GGUF";
+  // The scan's backend comes from the files; "gguf" in a folder name is only
+  // a hint when there is no backend at all (an MLX folder may say "gguf").
+  if (item.backend === "llama.cpp") return "GGUF";
+  if (!item.backend && haystack.includes("gguf")) return "GGUF";
   if (explicit.toLowerCase() === "mlx" || /(^|[^a-z])mlx([^a-z]|$)|mlx-community/.test(haystack)) return "MLX";
   if (matchedVariant?.format) return matchedVariant.format;
   return explicit || "Unknown";

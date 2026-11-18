@@ -831,10 +831,26 @@ class LlamaCppEngine(BaseInferenceEngine):
         if _is_local_target(path) or _is_local_target(runtime_target):
             resolved_preflight = _resolve_gguf_path(path, runtime_target)
             if resolved_preflight is None:
+                from backend_service.helpers.weights_format import describe_contents, weights_format
+
+                source = path or runtime_target
+                found_format = weights_format(source) if source else None
+                if found_format in {"safetensors", "pytorch"}:
+                    hint = "It holds a safetensors checkpoint: load it with the MLX backend instead."
+                else:
+                    hint = (
+                        "The download may be incomplete or corrupt. Re-download the model, "
+                        "or pick a specific .gguf file from the source directory."
+                    )
                 raise RuntimeError(
-                    f"No .gguf weights found inside {path or runtime_target}. "
-                    f"The download may be incomplete or corrupt. Re-download the model, "
-                    f"or pick a specific .gguf file from the source directory."
+                    f"No .gguf weights found inside {source} (found: {describe_contents(source)}). {hint}"
+                )
+            from backend_service.helpers.weights_format import has_gguf_magic
+
+            if has_gguf_magic(Path(resolved_preflight)) is False:
+                raise RuntimeError(
+                    f"{resolved_preflight} is not a GGUF file: it does not start with the GGUF header. "
+                    "It may be an unfinished download or a Git LFS pointer. Re-download the model."
                 )
 
         self.unload_model()

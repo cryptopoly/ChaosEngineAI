@@ -39,6 +39,7 @@ from backend_service.helpers.quantization import (
     _unsupported_mlx_quantization_reason,
 )
 from backend_service.helpers.settings import _normalize_slug
+from backend_service.helpers.weights_format import weights_format
 from backend_service.helpers.snapshot_integrity import (
     _SHARDED_WEIGHT_RE,
     _incomplete_gguf_directory_reason,
@@ -224,7 +225,9 @@ def _detect_storage_format(path: Path, *, name_hint: str = "") -> str:
     lowered_hint = f"{name_hint} {path}".lower()
     if path.is_file() and path.suffix.lower() == ".gguf":
         return "GGUF"
-    if _model_has_files(path, "*.gguf"):
+    # Read from the files: a folder with config.json and safetensors is a
+    # checkpoint even with a stray .gguf beside it, whatever its name says.
+    if path.is_dir() and weights_format(path) == "gguf":
         return "GGUF"
 
     config = _read_model_config(path)
@@ -290,7 +293,7 @@ def _detect_directory_model(path: Path) -> tuple[str, str, str] | None:
     if source_kind == "HF cache":
         detected_format = _detect_storage_format(path, name_hint=name)
         return (name, detected_format, source_kind) if detected_format != "unknown" else (name, "Transformers", source_kind)
-    if any(path.glob("*.gguf")) or any(path.glob("*.gguf.part")):
+    if (any(path.glob("*.gguf")) or any(path.glob("*.gguf.part"))) and weights_format(path) != "safetensors":
         return (name, "GGUF", source_kind)
     if (path / "config.json").exists() or (path / "tokenizer.json").exists():
         return (name, _detect_storage_format(path, name_hint=name), source_kind)

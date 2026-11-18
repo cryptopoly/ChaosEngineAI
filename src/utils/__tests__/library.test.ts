@@ -5,6 +5,8 @@ import {
   estimateLibraryItemResidentGb,
   findCatalogVariantForLibraryItem,
   isChatLibraryItem,
+  libraryItemBackend,
+  libraryItemFormat,
 } from "../library";
 import type { LibraryItem, ModelFamily, ModelVariant } from "../../types";
 
@@ -275,5 +277,23 @@ describe("estimateLibraryItemCompressedGb()", () => {
     expect(small).not.toBeNull();
     expect(big).not.toBeNull();
     expect(big! > small!).toBe(true);
+  });
+});
+
+describe("libraryItemFormat()", () => {
+  it("does not call an MLX folder GGUF because its name says gguf", () => {
+    const item = makeItem({ name: "my-gguf-notes-mlx", path: "/models/my-gguf-notes-mlx", format: "unknown", backend: "mlx" });
+    expect(libraryItemFormat(item)).not.toBe("GGUF");
+    expect(libraryItemBackend(item)).toBe("mlx");
+  });
+
+  it("keeps GGUF for a llama.cpp entry wherever it lives", () => {
+    const item = makeItem({ name: "model.gguf", path: "/models/mlx/model.gguf", format: "unknown", backend: "llama.cpp" });
+    expect(libraryItemFormat(item)).toBe("GGUF");
+  });
+
+  it("reads the name only when the entry has no backend", () => {
+    const item = makeItem({ name: "Qwen3-0.6B-GGUF", path: "/hf/models--x--Qwen3-0.6B-GGUF", format: "", backend: "" });
+    expect(libraryItemFormat(item)).toBe("GGUF");
   });
 });

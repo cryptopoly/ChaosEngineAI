@@ -458,11 +458,16 @@
       "title": "正在转换模型",
       "phases": {
         "resolve": "正在解析来源",
-        "download": "正在获取权重",
         "load": "正在加载到 MLX",
         "quantize": "正在量化为 {bits} 位 g{group}",
         "shard": "正在分片并写入 safetensors",
-        "verify": "正在验证输出"
+        "measuring": null
+      },
+      "detail": {
+        "files": null,
+        "written": null,
+        "writtenOfAbout": null,
+        "modelsScored": null
       }
     },
     "varies": "因情况而异",
@@ -519,13 +524,9 @@
     "targetProfile": "目标配置",
     "bitProfile": "{bits} 位 g{group}",
     "unquantized": "未量化",
-    "qualityEstimate": "质量估计",
     "lastConversion": "上次转换",
     "baseRepo": "基础仓库",
     "architecture": "架构",
-    "compression": "压缩",
-    "cacheReduction": "{ratio}x 缓存减少",
-    "quality": "质量",
     "diskBeforeAfter": "磁盘 转换前 → 转换后",
     "modal": {
       "titleConverting": "正在转换模型",
@@ -546,17 +547,36 @@
       "terminalHint": "在终端中以查看完整 stderr。",
       "close": "关闭",
       "ok": "确定"
-    }
+    },
+    "measureQuality": null,
+    "measureQualityHint": null,
+    "qualityMeasured": null,
+    "qualityChange": null,
+    "qualityDetail": null,
+    "qualityAfterConverting": null,
+    "qualityNotMeasured": null,
+    "qualityOff": null,
+    "bitsPerWeight": null,
+    "bitsPerWeightValue": null,
+    "sizeOnDisk": null,
+    "pickSourceFirst": null
   },
   "benchmarkTab": {
     "progress": {
       "title": "正在运行基准测试",
       "phases": {
         "load": "正在将模型加载到内存",
-        "warm": "正在预热 KV 缓存",
-        "prompt": "正在处理提示词",
-        "generate": "正在生成 {tokens} 个 token",
-        "measure": "正在测量统计数据"
+        "datasetPerplexity": null,
+        "datasetAccuracy": null,
+        "evaluatingPerplexity": null,
+        "evaluatingAccuracy": null,
+        "generating": null,
+        "saving": null
+      },
+      "detail": {
+        "samples": null,
+        "questions": null,
+        "generating": null
       }
     },
     "modelLabel": "基准模型",
@@ -605,8 +625,6 @@
     "loadSeconds": "加载 {value} 秒",
     "statResponseTime": "响应时间",
     "statCacheFootprint": "缓存占用",
-    "statQuality": "质量",
-    "tokensGenerated": "生成 {count} 个 token",
     "statContext": "上下文",
     "maxTokensHint": "最大 {max}",
     "deltaVsPrev": "与上次 {cache} 运行相比 {delta} tok/s",
@@ -628,13 +646,26 @@
       "terminalHint": "在终端中以查看完整 stderr。",
       "close": "关闭",
       "ok": "确定",
-      "cancel": "取消基准测试"
+      "cancel": "取消基准测试",
+      "titleCancelled": null,
+      "cancelling": null,
+      "cancelledNothingSaved": null,
+      "cancelledModelUnloaded": null,
+      "cancelledModelKept": null,
+      "cancelUnconfirmed": null
     },
     "promptPresets": {
       "balanced": "均衡总结",
       "reasoning": "推理检验",
       "coding": "编程回复"
-    }
+    },
+    "scoring": {
+      "nextToken": null,
+      "generated": null,
+      "note": null
+    },
+    "statTokens": null,
+    "ofMaxTokens": null
   },
   "benchmarkHistory": {
     "subtitle": "{count, plural, other {# 次运行}}{filterSuffix}",
@@ -656,8 +687,9 @@
       "noRuns": "无运行",
       "fastest": "最快",
       "leanestCache": "最精简缓存",
-      "bestQuality": "最佳质量",
-      "bestValue": "最佳性价比"
+      "bestValue": "最佳性价比",
+      "lowestPerplexity": null,
+      "noPerplexityRuns": null
     },
     "metric": {
       "perplexity": "困惑度",
@@ -668,10 +700,10 @@
       "speed": "速度",
       "response": "响应",
       "cache": "缓存",
-      "quality": "质量",
       "compression": "压缩",
       "context": "上下文",
-      "strategy": "策略"
+      "strategy": "策略",
+      "scoring": null
     },
     "table": {
       "metric": "指标",
@@ -707,8 +739,8 @@
       "strategy": "策略",
       "bits": "位",
       "context": "上下文",
-      "quality": "质量",
-      "pplValue": "{value} ppl"
+      "pplValue": "{value} ppl",
+      "load": null
     },
     "modeLabel": {
       "ppl": "PPL",
@@ -828,13 +860,12 @@
     "emptyState": "运行一些基准测试以填充散点图。",
     "xAxisLabel": "缓存 (GB) →",
     "yAxisLabel": "↑ tokens/sec",
-    "pointTooltip": "{label}\n{tokS} tok/s · {cacheGb} GB · {quality}% 质量",
     "legend1Bit": "1 位",
     "legend2Bit": "2 位",
     "legend3Bit": "3 位",
     "legend4Bit": "4 位",
     "legendNativeF16": "原生 f16",
-    "legendDotSize": "点大小 = 质量 %"
+    "pointTooltipMeasured": null
   },
   "logprobSummary": {
     "title": "token 置信度",

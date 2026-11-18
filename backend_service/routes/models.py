@@ -189,6 +189,19 @@ def convert_model(request: Request, body: ConvertModelRequest) -> dict[str, Any]
         raise HTTPException(status_code=400, detail=localized_detail(request, detail)) from exc
 
 
+@router.get("/api/models/convert/progress")
+def conversion_progress() -> dict[str, Any]:
+    """What the running conversion is doing: its phase, files downloaded of total, bytes written so far.
+
+    Read from the converter's own output and the output folder. ``totalSteps`` is 0 for a phase
+    that cannot be counted; ``detail.expectedBytes`` is an estimate and is labelled as one in the UI.
+    """
+    from backend_service.progress import CONVERSION_PROGRESS
+
+    # No state lock: the convert request holds it until it returns.
+    return {"progress": CONVERSION_PROGRESS.snapshot()}
+
+
 @router.post("/api/models/convert/cancel")
 def cancel_conversion(request: Request) -> dict[str, Any]:
     """Stop the conversion that is running. The waiting convert request then answers 400 "Conversion cancelled"."""

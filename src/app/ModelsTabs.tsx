@@ -170,7 +170,7 @@ export function ConversionView({ ctx }: { ctx: AppTabContext }) {
       onConversionDraftReset={() =>
         setConversionDraft({
           modelRef: "", path: "", hfRepo: "", outputPath: "",
-          quantize: true, qBits: 4, qGroupSize: 64, dtype: "float16",
+          quantize: true, qBits: 4, qGroupSize: 64, dtype: "float16", measureQuality: true,
         })
       }
       onConvertModel={() => void handleConvertModel()}

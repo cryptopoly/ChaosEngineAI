@@ -458,11 +458,16 @@
       "title": "Converting model",
       "phases": {
         "resolve": "Resolving source",
-        "download": "Fetching weights",
         "load": "Loading into MLX",
         "quantize": "Quantizing to {bits}-bit g{group}",
         "shard": "Sharding & writing safetensors",
-        "verify": "Verifying output"
+        "measuring": "Measuring quality on a short text sample"
+      },
+      "detail": {
+        "files": "downloading the source: {done} of {total} files",
+        "written": "{written} GB written",
+        "writtenOfAbout": "{written} GB written, about {expected} GB expected (estimate)",
+        "modelsScored": "{done} of {total} models scored"
       }
     },
     "varies": "Varies",
@@ -519,13 +524,9 @@
     "targetProfile": "Target profile",
     "bitProfile": "{bits}-bit g{group}",
     "unquantized": "Unquantized",
-    "qualityEstimate": "Quality estimate",
     "lastConversion": "Last conversion",
     "baseRepo": "Base repo",
     "architecture": "Architecture",
-    "compression": "Compression",
-    "cacheReduction": "{ratio}x cache reduction",
-    "quality": "Quality",
     "diskBeforeAfter": "Disk before → after",
     "modal": {
       "titleConverting": "Converting model",
@@ -546,17 +547,36 @@
       "terminalHint": "in Terminal for full stderr.",
       "close": "Close",
       "ok": "OK"
-    }
+    },
+    "measureQuality": "Measure quality after converting",
+    "measureQualityHint": "Loads the converted model and the source once each and compares their perplexity on a short WikiText-2 sample. Skipped when either does not fit in free memory.",
+    "qualityMeasured": "Quality (measured)",
+    "qualityChange": "{change}% perplexity vs the source",
+    "qualityDetail": "Perplexity on {samples} samples of {dataset}: source {source}, converted {converted}. Lower is better.",
+    "qualityAfterConverting": "Measured after converting",
+    "qualityNotMeasured": "Not measured",
+    "qualityOff": "Not measured (switched off)",
+    "bitsPerWeight": "Bits per weight",
+    "bitsPerWeightValue": "{bits} (measured by the converter)",
+    "sizeOnDisk": "Size on disk",
+    "pickSourceFirst": "Pick a source first"
   },
   "benchmarkTab": {
     "progress": {
       "title": "Running benchmark",
       "phases": {
         "load": "Loading model into memory",
-        "warm": "Warming up KV cache",
-        "prompt": "Processing prompt",
-        "generate": "Generating {tokens} tokens",
-        "measure": "Measuring stats"
+        "datasetPerplexity": "Loading the evaluation text",
+        "datasetAccuracy": "Loading the questions",
+        "evaluatingPerplexity": "Scoring text samples",
+        "evaluatingAccuracy": "Answering questions",
+        "generating": "Generating up to {tokens} tokens",
+        "saving": "Saving the result"
+      },
+      "detail": {
+        "samples": "{done} of {total} samples",
+        "questions": "{done} of {total} questions, {correct} correct",
+        "generating": "running; the engine reports the token count when it finishes"
       }
     },
     "modelLabel": "Benchmark model",
@@ -605,8 +625,6 @@
     "loadSeconds": "{value} s load",
     "statResponseTime": "Response time",
     "statCacheFootprint": "Cache footprint",
-    "statQuality": "Quality",
-    "tokensGenerated": "{count} tokens generated",
     "statContext": "Context",
     "maxTokensHint": "{max} max",
     "deltaVsPrev": "{delta} tok/s vs your previous {cache} run",
@@ -628,13 +646,26 @@
       "terminalHint": "in Terminal for full stderr.",
       "close": "Close",
       "ok": "OK",
-      "cancel": "Cancel benchmark"
+      "cancel": "Cancel benchmark",
+      "titleCancelled": "Benchmark cancelled",
+      "cancelling": "Stopping the run...",
+      "cancelledNothingSaved": "The run was stopped. Nothing was saved to the history.",
+      "cancelledModelUnloaded": "The model was unloaded.",
+      "cancelledModelKept": "The model that was loaded before the run stays loaded.",
+      "cancelUnconfirmed": "The app stopped waiting, but could not reach the backend to stop the run. It may still be running: check the Server page."
     },
     "promptPresets": {
       "balanced": "Balanced summary",
       "reasoning": "Reasoning check",
       "coding": "Coding reply"
-    }
+    },
+    "scoring": {
+      "nextToken": "next-token choice",
+      "generated": "generated text (older method)",
+      "note": "The answer is the choice letter the model scores highest as its next token. Runs saved before this change generated the answer as text; their accuracy is not comparable with new runs."
+    },
+    "statTokens": "Tokens generated",
+    "ofMaxTokens": "of {max} allowed"
   },
   "benchmarkHistory": {
     "subtitle": "{count, plural, one {# run} other {# runs}}{filterSuffix}",
@@ -656,8 +687,9 @@
       "noRuns": "No runs",
       "fastest": "Fastest",
       "leanestCache": "Leanest cache",
-      "bestQuality": "Best quality",
-      "bestValue": "Best value"
+      "bestValue": "Best value",
+      "lowestPerplexity": "Lowest perplexity",
+      "noPerplexityRuns": "No perplexity runs"
     },
     "metric": {
       "perplexity": "Perplexity",
@@ -668,10 +700,10 @@
       "speed": "Speed",
       "response": "Response",
       "cache": "Cache",
-      "quality": "Quality",
       "compression": "Compression",
       "context": "Context",
-      "strategy": "Strategy"
+      "strategy": "Strategy",
+      "scoring": "Scoring"
     },
     "table": {
       "metric": "Metric",
@@ -707,8 +739,8 @@
       "strategy": "Strategy",
       "bits": "Bits",
       "context": "Context",
-      "quality": "Quality",
-      "pplValue": "{value} ppl"
+      "pplValue": "{value} ppl",
+      "load": "Load"
     },
     "modeLabel": {
       "ppl": "PPL",
@@ -828,13 +860,12 @@
     "emptyState": "Run some benchmarks to populate the scatter plot.",
     "xAxisLabel": "Cache (GB) →",
     "yAxisLabel": "↑ Tokens/sec",
-    "pointTooltip": "{label}\n{tokS} tok/s · {cacheGb} GB · {quality}% quality",
     "legend1Bit": "1-bit",
     "legend2Bit": "2-bit",
     "legend3Bit": "3-bit",
     "legend4Bit": "4-bit",
     "legendNativeF16": "Native f16",
-    "legendDotSize": "Dot size = quality %"
+    "pointTooltipMeasured": "{label}\n{tokS} tok/s · {cacheGb} GB"
   },
   "logprobSummary": {
     "title": "Token confidence",

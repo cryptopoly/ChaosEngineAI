@@ -731,6 +731,9 @@ export type {
 
 export {
   cancelDownload,
+  cancelBenchmark,
+  getBenchmarkProgress,
+  getConversionProgress,
   cancelConversion,
   convertModel,
   deleteModelDownload,

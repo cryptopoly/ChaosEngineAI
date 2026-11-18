@@ -7,6 +7,8 @@ import { ModelPicker } from "../../components/ModelPicker";
 import { SliderField } from "../../components/SliderField";
 import type { ConversionResult, LibraryItem, ModelVariant, NativeBackendStatus, PreviewMetrics } from "../../types";
 import { number, sizeLabel, libraryItemFormat } from "../../utils";
+import { conversionDialogPhase, conversionPhaseIds, conversionProgressNumbers } from "../../utils/jobProgress";
+import { useGenerationProgress } from "../../hooks/useGenerationProgress";
 
 export interface ConversionDraft {
   modelRef: string;
@@ -17,6 +19,8 @@ export interface ConversionDraft {
   qBits: number;
   qGroupSize: number;
   dtype: string;
+  /** Compare the converted model with the source after converting. */
+  measureQuality: boolean;
 }
 
 export interface ConversionTabProps {
@@ -80,6 +84,26 @@ export function ConversionTab({
   onRevealPath,
 }: ConversionTabProps) {
   const { t } = useTranslation("common");
+  // The converter's own progress: its phase, files downloaded, bytes written. Nothing in the dialog is timed.
+  const conversionProgress = useGenerationProgress("conversion", busyAction === "Converting model..." && Boolean(conversionStartedAt));
+  const conversionPhaseLabels: Record<string, string> = {
+    preparing: t("conversionTab.progress.phases.resolve", { defaultValue: "Resolving source" }),
+    loading: t("conversionTab.progress.phases.load", { defaultValue: "Loading into MLX" }),
+    quantizing: t("conversionTab.progress.phases.quantize", { bits: conversionDraft.qBits, group: conversionDraft.qGroupSize, defaultValue: "Quantizing to {bits}-bit g{group}" }),
+    saving: t("conversionTab.progress.phases.shard", { defaultValue: "Sharding & writing safetensors" }),
+    measuring: t("conversionTab.progress.phases.measuring", { defaultValue: "Measuring quality on a short text sample" }),
+  };
+  const measureQuality = conversionDraft.measureQuality;
+  const conversionNumbers = conversionProgressNumbers(conversionProgress);
+  const conversionProgressDetail = conversionProgress?.phase === "measuring" && conversionProgress.totalSteps > 0
+    ? t("conversionTab.progress.detail.modelsScored", { done: conversionProgress.step, total: conversionProgress.totalSteps, defaultValue: "{done} of {total} models scored" })
+    : conversionNumbers.files
+    ? t("conversionTab.progress.detail.files", { done: conversionNumbers.files.done, total: conversionNumbers.files.total, defaultValue: "downloading the source: {done} of {total} files" })
+    : conversionNumbers.writtenGb !== null
+      ? conversionNumbers.expectedGb !== null
+        ? t("conversionTab.progress.detail.writtenOfAbout", { written: number(conversionNumbers.writtenGb, 2), expected: number(conversionNumbers.expectedGb, 1), defaultValue: "{written} GB written, about {expected} GB expected (estimate)" })
+        : t("conversionTab.progress.detail.written", { written: number(conversionNumbers.writtenGb, 2), defaultValue: "{written} GB written" })
+      : null;
   const beforeSize = conversionSource?.sizeGb ?? lastConversion?.sourceSizeGb ?? null;
   const estimatedContext = lastConversion?.contextWindow ?? conversionVariant?.contextWindow ?? t("conversionTab.varies", { defaultValue: "Varies" });
 
@@ -113,29 +137,39 @@ export function ConversionTab({
   const projectedDiskGb = beforeSize ? beforeSize * (effectiveBitsPerWeight / sourceBpw) : null;
   const afterSize = lastConversion?.outputSizeGb ?? projectedDiskGb;
 
-  // Quality model: anchored to MLX-LM published recovery numbers (vs FP16 reference)
-  const qualityByBits: Record<number, number> = { 2: 78, 3: 90, 4: 96.5, 5: 98.5, 6: 99.3, 8: 99.85 };
-  const baseQuality = conversionDraft.quantize ? (qualityByBits[conversionDraft.qBits] ?? 95) : 100;
-  // Smaller groups = higher quality (up to +1.5); larger groups = up to -1.5
-  const groupQualityShift = conversionDraft.quantize ? Math.max(-1.5, Math.min(1.5, ((64 - conversionDraft.qGroupSize) / 32) * 0.75)) : 0;
-  // Re-quantization penalty: requantizing an already-quantized source loses additional quality
-  let reQuantPenalty = 0;
-  if (isReQuantizing && conversionDraft.quantize) {
-    if (conversionDraft.qBits >= sourceBpw - 0.5) {
-      reQuantPenalty = 0.5; // round-trip noise
-    } else {
-      // Going lower than source — losses compound
-      const drop = sourceBpw - conversionDraft.qBits;
-      reQuantPenalty = Math.min(20, drop * 6);
-    }
-  }
-  const projectedQualityPercent = Math.min(100, Math.max(0, baseQuality + groupQualityShift - reQuantPenalty));
+  // Quality is measured after the conversion (perplexity against the source), never projected here:
+  // the table of "recovery" percentages this page used to show was not a measurement of any model.
+  const measuredQuality = lastConversion?.quality ?? null;
+  const signedPercent = (value: number) => `${value > 0 ? "+" : ""}${number(value, 1)}`;
+  const qualityHeadline = measuredQuality?.status === "measured" && typeof measuredQuality.changePercent === "number"
+    ? t("conversionTab.qualityChange", { change: signedPercent(measuredQuality.changePercent), defaultValue: "{change}% perplexity vs the source" })
+    : measuredQuality?.status === "skipped" || (lastConversion && !measuredQuality)
+      ? t("conversionTab.qualityNotMeasured", { defaultValue: "Not measured" })
+      : measureQuality
+        ? t("conversionTab.qualityAfterConverting", { defaultValue: "Measured after converting" })
+        : t("conversionTab.qualityOff", { defaultValue: "Not measured (switched off)" });
+  const qualityDetail = measuredQuality?.status === "measured"
+    ? t("conversionTab.qualityDetail", {
+        samples: measuredQuality.samples ?? 0,
+        dataset: measuredQuality.dataset ?? "",
+        source: number(measuredQuality.sourcePerplexity ?? 0, 2),
+        converted: number(measuredQuality.convertedPerplexity ?? 0, 2),
+        defaultValue: "Perplexity on {samples} samples of {dataset}: source {source}, converted {converted}. Lower is better.",
+      })
+    : measuredQuality?.status === "skipped"
+      ? measuredQuality.reason ?? null
+      : null;
+  const measuredDiskRatio = lastConversion?.diskRatio
+    ? t("conversionTab.smallerOnDisk", { ratio: number(lastConversion.diskRatio), defaultValue: "{ratio}x smaller on disk" })
+    : "\u2014";
+  // Nothing is projected until there is something to project from.
+  const hasConversionSubject = Boolean(conversionSource || lastConversion);
 
   // Speed projection: memory-bandwidth bound, scales inversely with effective bytes/weight vs source
   const speedupVsSource = sourceBpw / effectiveBitsPerWeight;
-  const baseTokS = preview.estimatedTokS > 0 ? preview.estimatedTokS : 35;
-  const projectedTokS = baseTokS * speedupVsSource;
-  const estimatedTokS = lastConversion?.estimatedTokS ?? projectedTokS;
+  // No estimate from the preview means no figure: this used to fall back to a fixed 35 tok/s.
+  const projectedTokS = preview.estimatedTokS > 0 ? preview.estimatedTokS * speedupVsSource : null;
+  const estimatedTokS = hasConversionSubject ? lastConversion?.estimatedTokS ?? projectedTokS : null;
 
   const cacheBefore = lastConversion?.baselineCacheGb ?? preview.baselineCacheGb;
   const cacheAfter = lastConversion?.optimizedCacheGb ?? preview.optimizedCacheGb;
@@ -264,6 +298,14 @@ export function ConversionTab({
                     />
                     {t("conversionTab.quantizeConvertedWeights", { defaultValue: "Quantize converted weights" })}
                   </label>
+                  <label className="check-row" title={t("conversionTab.measureQualityHint", { defaultValue: "Loads the converted model and the source once each and compares their perplexity on a short WikiText-2 sample. Skipped when either does not fit in free memory." })}>
+                    <input
+                      type="checkbox"
+                      checked={measureQuality}
+                      onChange={(event) => onConversionDraftChange("measureQuality", event.target.checked)}
+                    />
+                    {t("conversionTab.measureQuality", { defaultValue: "Measure quality after converting" })}
+                  </label>
                   <div className={`callout ${isReQuantizing || isGgufSource ? "warning" : "quiet"} compact-callout`}>
                     <h3>{isGgufSource
                       ? t("conversionTab.ggufSourceTitle", { defaultValue: "A GGUF source is downloaded again in full size" })
@@ -328,8 +370,10 @@ export function ConversionTab({
               />
               <StatCard
                 label={t("conversionTab.estTokS", { defaultValue: "Est. tok/s" })}
-                value={`${number(estimatedTokS)} tok/s`}
-                hint={t("conversionTab.usingCache", { cache: launchCacheLabel, defaultValue: "Using {cache}" })}
+                value={estimatedTokS !== null ? `${number(estimatedTokS)} tok/s` : "\u2014"}
+                hint={hasConversionSubject
+                  ? t("conversionTab.usingCache", { cache: launchCacheLabel, defaultValue: "Using {cache}" })
+                  : t("conversionTab.pickSourceFirst", { defaultValue: "Pick a source first" })}
               />
             </div>
 
@@ -351,10 +395,12 @@ export function ConversionTab({
                     <span>{t("conversionTab.context", { defaultValue: "Context" })}</span>
                     <strong>{estimatedContext}</strong>
                   </div>
-                  <div className="metric-row">
-                    <span>{t("conversionTab.cacheFootprint", { defaultValue: "Cache footprint" })}</span>
-                    <strong>{number(cacheBefore)} GB</strong>
-                  </div>
+                  {hasConversionSubject ? (
+                    <div className="metric-row">
+                      <span>{t("conversionTab.cacheFootprint", { defaultValue: "Cache footprint" })}</span>
+                      <strong>{number(cacheBefore)} GB</strong>
+                    </div>
+                  ) : null}
                 </div>
               </div>
 
@@ -379,24 +425,34 @@ export function ConversionTab({
                     <span>{t("conversionTab.onDiskSize", { defaultValue: "On-disk size" })}</span>
                     <strong>{afterSize ? sizeLabel(afterSize) : t("conversionTab.pending", { defaultValue: "Pending" })}</strong>
                   </div>
-                  <div className="metric-row">
-                    <span>{t("conversionTab.cacheFootprint", { defaultValue: "Cache footprint" })}</span>
-                    <strong>{number(cacheAfter)} GB</strong>
+                  {hasConversionSubject ? (
+                    <div className="metric-row">
+                      <span>{t("conversionTab.cacheFootprint", { defaultValue: "Cache footprint" })}</span>
+                      <strong>{number(cacheAfter)} GB</strong>
+                    </div>
+                  ) : null}
+                  <div className="metric-row" data-testid="conversion-quality-row">
+                    <span>{t("conversionTab.qualityMeasured", { defaultValue: "Quality (measured)" })}</span>
+                    <strong>{qualityHeadline}</strong>
                   </div>
-                  <div className="metric-row">
-                    <span>{t("conversionTab.qualityEstimate", { defaultValue: "Quality estimate" })}</span>
-                    <strong>{number(lastConversion?.qualityPercent ?? projectedQualityPercent, 1)}%</strong>
-                  </div>
+                  {lastConversion?.bitsPerWeight ? (
+                    <div className="metric-row">
+                      <span>{t("conversionTab.bitsPerWeight", { defaultValue: "Bits per weight" })}</span>
+                      <strong>{t("conversionTab.bitsPerWeightValue", { bits: number(lastConversion.bitsPerWeight, 3), defaultValue: "{bits} (measured by the converter)" })}</strong>
+                    </div>
+                  ) : null}
                 </div>
               </div>
             </div>
 
-            <PerformancePreview
-              preview={preview}
-              availableMemoryGb={workspace.system.availableMemoryGb}
-              totalMemoryGb={workspace.system.totalMemoryGb}
-              gpuVramTotalGb={workspace.system.gpuVramTotalGb}
-            />
+            {hasConversionSubject ? (
+              <PerformancePreview
+                preview={preview}
+                availableMemoryGb={workspace.system.availableMemoryGb}
+                totalMemoryGb={workspace.system.totalMemoryGb}
+                gpuVramTotalGb={workspace.system.gpuVramTotalGb}
+              />
+            ) : null}
 
             {lastConversion && !busy ? (
               <div className="callout">
@@ -417,10 +473,8 @@ export function ConversionTab({
                     <p>{lastConversion.contextWindow ?? estimatedContext}</p>
                   </div>
                   <div>
-                    <span className="eyebrow">{t("conversionTab.compression", { defaultValue: "Compression" })}</span>
-                    <p>{lastConversion.compressionRatio
-                      ? t("conversionTab.cacheReduction", { ratio: number(lastConversion.compressionRatio), defaultValue: "{ratio}x cache reduction" })
-                      : conversionCompression}</p>
+                    <span className="eyebrow">{t("conversionTab.sizeOnDisk", { defaultValue: "Size on disk" })}</span>
+                    <p>{measuredDiskRatio}</p>
                   </div>
                 </div>
               </div>
@@ -461,13 +515,11 @@ export function ConversionTab({
                   subtitle={conversionSource?.name ?? conversionDraft.modelRef ?? undefined}
                   startedAt={conversionStartedAt}
                   accent="convert"
+                  measuredOnly
+                  realProgress={conversionDialogPhase(conversionProgress)}
+                  activeDetail={conversionProgressDetail}
                   phases={[
-                    { id: "resolve", label: t("conversionTab.progress.phases.resolve", { defaultValue: "Resolving source" }), estimatedSeconds: 3 },
-                    { id: "download", label: t("conversionTab.progress.phases.download", { defaultValue: "Fetching weights" }), estimatedSeconds: 60 },
-                    { id: "load", label: t("conversionTab.progress.phases.load", { defaultValue: "Loading into MLX" }), estimatedSeconds: 15 },
-                    { id: "quantize", label: t("conversionTab.progress.phases.quantize", { bits: conversionDraft.qBits, group: conversionDraft.qGroupSize, defaultValue: `Quantizing to ${conversionDraft.qBits}-bit g${conversionDraft.qGroupSize}` }), estimatedSeconds: 45 },
-                    { id: "shard", label: t("conversionTab.progress.phases.shard", { defaultValue: "Sharding & writing safetensors" }), estimatedSeconds: 10 },
-                    { id: "verify", label: t("conversionTab.progress.phases.verify", { defaultValue: "Verifying output" }), estimatedSeconds: 5 },
+                    ...conversionPhaseIds(conversionDraft.quantize, measureQuality).map((id) => ({ id, label: conversionPhaseLabels[id] ?? id, estimatedSeconds: 0 })),
                   ] as LiveProgressPhase[]}
                 />
                 <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12 }}>
@@ -541,14 +593,19 @@ export function ConversionTab({
                       <p>{lastConversion.contextWindow ?? t("conversionTab.varies", { defaultValue: "Varies" })}</p>
                     </div>
                     <div>
-                      <span className="eyebrow">{t("conversionTab.compression", { defaultValue: "Compression" })}</span>
-                      <p>{lastConversion.compressionRatio
-                        ? t("conversionTab.cacheReduction", { ratio: number(lastConversion.compressionRatio), defaultValue: "{ratio}x cache reduction" })
-                        : "\u2014"}</p>
+                      <span className="eyebrow">{t("conversionTab.sizeOnDisk", { defaultValue: "Size on disk" })}</span>
+                      <p>{measuredDiskRatio}</p>
                     </div>
-                    <div>
-                      <span className="eyebrow">{t("conversionTab.quality", { defaultValue: "Quality" })}</span>
-                      <p>{number(lastConversion.qualityPercent ?? 0, 1)}%</p>
+                    {lastConversion.bitsPerWeight ? (
+                      <div>
+                        <span className="eyebrow">{t("conversionTab.bitsPerWeight", { defaultValue: "Bits per weight" })}</span>
+                        <p>{t("conversionTab.bitsPerWeightValue", { bits: number(lastConversion.bitsPerWeight, 3), defaultValue: "{bits} (measured by the converter)" })}</p>
+                      </div>
+                    ) : null}
+                    <div data-testid="conversion-quality-result">
+                      <span className="eyebrow">{t("conversionTab.qualityMeasured", { defaultValue: "Quality (measured)" })}</span>
+                      <p>{qualityHeadline}</p>
+                      {qualityDetail ? <p className="muted-text">{qualityDetail}</p> : null}
                     </div>
                     <div>
                       <span className="eyebrow">{t("conversionTab.diskBeforeAfter", { defaultValue: "Disk before \u2192 after" })}</span>

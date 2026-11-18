@@ -20,16 +20,33 @@ interface LiveProgressProps {
    * active phase is whichever phase ID matches ``snapshot.phase``, and the
    * fill percentage is driven by ``step / totalSteps`` during diffusion.
    *
-   * Pass ``null`` (or omit) to keep the legacy pure-estimate behaviour —
-   * benchmark and convert modals don't have a backend signal yet.
+   * Pass ``null`` (or omit) to keep the pure-estimate behaviour.
    */
   realProgress?: GenerationProgressSnapshot | null;
+  /**
+   * Benchmarks and conversion: show only what the job reports. The phase comes from
+   * ``realProgress``; the bar has a value only while the phase counts items
+   * (``totalSteps`` > 0) and is indeterminate otherwise. No time estimate is used,
+   * so ``estimatedSeconds`` of the phases is ignored.
+   */
+  measuredOnly?: boolean;
+  /** With ``measuredOnly``: the measured text next to the active phase ("12 of 100 questions"). */
+  activeDetail?: string | null;
 }
 
 function formatElapsed(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
   return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+}
+
+/**
+ * Bar state for a job that reports its own progress (``measuredOnly``): a percentage only
+ * while the current phase counts items, indeterminate for every phase that cannot.
+ */
+export function measuredBar(progress: GenerationProgressSnapshot | null | undefined): { fillPct: number; indeterminate: boolean } {
+  if (!progress?.active || !(progress.totalSteps > 0)) return { fillPct: 0, indeterminate: true };
+  return { fillPct: Math.max(0, Math.min(100, (progress.step / progress.totalSteps) * 100)), indeterminate: false };
 }
 
 /** Whole-number percent for the progress bar, or undefined while the length is unknown (the bar is indeterminate). */
@@ -44,6 +61,8 @@ export function LiveProgress({
   startedAt,
   accent = "benchmark",
   realProgress,
+  measuredOnly = false,
+  activeDetail = null,
 }: LiveProgressProps) {
   const { t } = useTranslation("common");
   const [now, setNow] = useState(() => Date.now());
@@ -61,7 +80,10 @@ export function LiveProgress({
   // exactly the step they're on. Otherwise fall back to time-based estimates.
   const realPhase = realProgress?.active ? realProgress.phase : null;
   let activeIndex: number;
-  if (realPhase) {
+  if (measuredOnly) {
+    // Before the first poll answers, the job is on its first phase.
+    activeIndex = Math.max(0, realPhase ? phases.findIndex((phase) => phase.id === realPhase) : 0);
+  } else if (realPhase) {
     const matched = phases.findIndex((phase) => phase.id === realPhase);
     activeIndex = matched >= 0 ? matched : 0;
   } else {
@@ -87,7 +109,11 @@ export function LiveProgress({
 
   let fillPct: number;
   let overrunning: boolean;
-  if (realStepFraction !== null) {
+  if (measuredOnly) {
+    const bar = measuredBar(realProgress);
+    fillPct = bar.fillPct;
+    overrunning = bar.indeterminate;
+  } else if (realStepFraction !== null) {
     // Distribute fill across the phases proportionally to their estimates so
     // diffusion fills its own slice of the bar rather than stretching to 100%.
     const cumulativeBefore = phases.slice(0, activeIndex).reduce((acc, p) => acc + p.estimatedSeconds, 0);
@@ -205,7 +231,11 @@ export function LiveProgress({
               <span className="live-progress__phase-dot" />
               <span className="live-progress__phase-label">{phase.label}</span>
               {state === "active" ? (
-                showLiveStepLabel ? (
+                measuredOnly ? (
+                  <span className="live-progress__phase-elapsed">
+                    {activeDetail || t("liveProgress.inProgress", { defaultValue: "in progress…" })}
+                  </span>
+                ) : showLiveStepLabel ? (
                   <span className="live-progress__phase-elapsed">
                     {t("liveProgress.stepCounter", {
                       defaultValue: "step {current} / {total}",

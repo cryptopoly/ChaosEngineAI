@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { getImageGenerationProgress, getMusicProgress, getVideoGenerationProgress } from "../api";
+import {
+  getBenchmarkProgress,
+  getConversionProgress,
+  getImageGenerationProgress,
+  getMusicProgress,
+  getVideoGenerationProgress,
+} from "../api";
 import type { GenerationProgressSnapshot } from "../types";
 
 const POLL_INTERVAL_MS = 500;
@@ -7,7 +13,7 @@ const POLL_INTERVAL_MS = 500;
 const MUSIC_POLL_INTERVAL_MS = 1000;
 
 /**
- * Polls the backend's image / video / music progress endpoint while a generation is
+ * Polls the backend's image / video / music / benchmark / conversion progress endpoint while a job is
  * in flight. The poll only runs while ``active`` is true so we don't pester
  * the backend in the idle case — the modal flips ``active`` on as soon as it
  * fires the generation request, and off again after the response lands.
@@ -16,7 +22,7 @@ const MUSIC_POLL_INTERVAL_MS = 1000;
  * LiveProgress component knows to fall back to its time-based estimates.
  */
 export function useGenerationProgress(
-  kind: "image" | "video" | "music",
+  kind: "image" | "video" | "music" | "benchmark" | "conversion",
   active: boolean,
   /** Poll slower than the default, for a screen that only watches for a run it did not start. */
   intervalMs?: number,
@@ -33,8 +39,13 @@ export function useGenerationProgress(
       return;
     }
 
-    const fetcher =
-      kind === "image" ? getImageGenerationProgress : kind === "music" ? getMusicProgress : getVideoGenerationProgress;
+    const fetcher = {
+      image: getImageGenerationProgress,
+      video: getVideoGenerationProgress,
+      music: getMusicProgress,
+      benchmark: getBenchmarkProgress,
+      conversion: getConversionProgress,
+    }[kind];
     const interval = intervalMs ?? (kind === "music" ? MUSIC_POLL_INTERVAL_MS : POLL_INTERVAL_MS);
     let timer: number | null = null;
 

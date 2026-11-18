@@ -91,6 +91,7 @@ export type {
   BenchmarkMode,
   BenchmarkResult,
   BenchmarkRunPayload,
+  BenchmarkCancelOutcome,
   BenchmarkRunResponse,
   GenerationMetrics,
   PerfTelemetry,
@@ -153,6 +154,21 @@ export interface ConvertModelPayload {
   qBits?: number;
   qGroupSize?: number;
   dtype?: string;
+  /** Compare the converted model's perplexity with the source's after converting. */
+  measureQuality?: boolean;
+}
+
+/** Perplexity of the converted model against the source on the same short sample, or why it was not measured. */
+export interface ConversionQuality {
+  status: "measured" | "skipped";
+  reason?: string | null;
+  dataset?: string;
+  samples?: number;
+  seqLength?: number;
+  sourcePerplexity?: number;
+  convertedPerplexity?: number;
+  /** Above zero: the converted model predicts the text worse than the source. */
+  changePercent?: number;
 }
 
 export interface ConversionResult {
@@ -174,8 +190,12 @@ export interface ConversionResult {
   estimatedTokS?: number | null;
   baselineCacheGb?: number | null;
   optimizedCacheGb?: number | null;
-  compressionRatio?: number | null;
-  qualityPercent?: number | null;
+  /** Measured: source size over output size on disk. */
+  diskRatio?: number | null;
+  /** Measured by the converter for a quantized model. */
+  bitsPerWeight?: number | null;
+  /** Null when the measurement was not asked for. */
+  quality?: ConversionQuality | null;
   ggufMetadata?: {
     architecture?: string | null;
     baseModelRepo?: string | null;

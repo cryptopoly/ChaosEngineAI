@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { benchmarkRunsToCsv, latestRunSpeedComparison } from "../benchmarkCompare";
+import { accuracyComparable, benchmarkRunsToCsv, latestRunSpeedComparison, taskScoringMethod } from "../benchmarkCompare";
 import type { BenchmarkResult } from "../../types";
 
 function makeRun(overrides: Partial<BenchmarkResult>): BenchmarkResult {
@@ -73,6 +73,24 @@ describe("latestRunSpeedComparison", () => {
   });
 });
 
+describe("task accuracy scoring method", () => {
+  const accuracy = (overrides: Partial<Parameters<typeof makeRun>[0]>) =>
+    makeRun({ mode: "task_accuracy", tokS: 0, taskName: "mmlu", taskAccuracy: 0.4, ...overrides });
+
+  it("reads the recorded method and takes an older run as generated text", () => {
+    expect(taskScoringMethod(accuracy({ taskScoringMethod: "next_token" }))).toBe("next_token");
+    expect(taskScoringMethod(accuracy({}))).toBe("generated");
+    expect(taskScoringMethod(makeRun({ id: "speed" }))).toBeNull();
+  });
+
+  it("compares accuracy only between runs scored the same way", () => {
+    const next = accuracy({ id: "new", taskScoringMethod: "next_token" });
+    expect(accuracyComparable(next, accuracy({ id: "new-2", taskScoringMethod: "next_token" }))).toBe(true);
+    expect(accuracyComparable(next, accuracy({ id: "old" }))).toBe(false);
+    expect(accuracyComparable(accuracy({ id: "old-1" }), accuracy({ id: "old-2", taskScoringMethod: "generated" }))).toBe(true);
+  });
+});
+
 describe("benchmarkRunsToCsv", () => {
   it("writes a header and one line per run, with each run's own measure", () => {
     const csv = benchmarkRunsToCsv([
@@ -90,6 +108,9 @@ describe("benchmarkRunsToCsv", () => {
     expect(cell(2, "perplexity")).toBe("21.4");
     expect(cell(3, "taskAccuracy")).toBe("0.41");
     expect(cell(3, "taskCorrect")).toBe("41");
+    // A run saved before the scoring method was recorded generated its answers as text.
+    expect(cell(3, "taskScoringMethod")).toBe("generated");
+    expect(cell(1, "taskScoringMethod")).toBe("");
     expect(csv.endsWith("\n")).toBe(true);
   });
 

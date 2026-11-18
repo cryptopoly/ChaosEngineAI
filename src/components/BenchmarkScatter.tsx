@@ -19,11 +19,11 @@ export function BenchmarkScatter({ runs, selectedId, compareId, onSelect }: {
 
   const maxCache = Math.max(1, ...runs.map((r) => r.cacheGb));
   const maxTokS = Math.max(1, ...runs.map((r) => r.tokS));
-  const maxQuality = 100;
 
   const xScale = (v: number) => (v / maxCache) * innerW;
   const yScale = (v: number) => innerH - (v / maxTokS) * innerH;
-  const rScale = (q: number) => 4 + (q / maxQuality) * 6;
+  // One size for every run: the dot used to grow with a "quality %" that was never measured.
+  const pointRadius = 7;
 
   const bitColor = (bits: number, strategy: string) => {
     if (strategy === "native" || bits >= 16) return "#8fb4ff";
@@ -78,7 +78,7 @@ export function BenchmarkScatter({ runs, selectedId, compareId, onSelect }: {
         {runs.map((run) => {
           const cx = padding.left + xScale(run.cacheGb);
           const cy = padding.top + yScale(run.tokS);
-          const r = rScale(run.quality);
+          const r = pointRadius;
           const isSelected = run.id === selectedId;
           const isCompare = run.id === compareId;
           return (
@@ -96,12 +96,11 @@ export function BenchmarkScatter({ runs, selectedId, compareId, onSelect }: {
                 onClick={() => onSelect(run.id)}
                 style={{ cursor: "pointer" }}
               >
-                <title>{t("benchmarkScatter.pointTooltip", {
-                  defaultValue: "{label}\n{tokS} tok/s · {cacheGb} GB · {quality}% quality",
+                <title>{t("benchmarkScatter.pointTooltipMeasured", {
+                  defaultValue: "{label}\n{tokS} tok/s · {cacheGb} GB",
                   label: run.label,
                   tokS: run.tokS.toFixed(1),
                   cacheGb: run.cacheGb.toFixed(1),
-                  quality: run.quality,
                 })}</title>
               </circle>
             </g>
@@ -114,7 +113,6 @@ export function BenchmarkScatter({ runs, selectedId, compareId, onSelect }: {
         <span className="scatter-legend-item"><span className="scatter-dot" style={{ background: "#facc15" }} />{t("benchmarkScatter.legend3Bit", { defaultValue: "3-bit" })}</span>
         <span className="scatter-legend-item"><span className="scatter-dot" style={{ background: "#8fcf9f" }} />{t("benchmarkScatter.legend4Bit", { defaultValue: "4-bit" })}</span>
         <span className="scatter-legend-item"><span className="scatter-dot" style={{ background: "#8fb4ff" }} />{t("benchmarkScatter.legendNativeF16", { defaultValue: "Native f16" })}</span>
-        <span className="scatter-legend-item scatter-legend-spacer">{t("benchmarkScatter.legendDotSize", { defaultValue: "Dot size = quality %" })}</span>
       </div>
     </div>
   );

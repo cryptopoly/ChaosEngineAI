@@ -334,6 +334,9 @@ class ConvertModelRequest(BaseModel):
     qBits: int = Field(default=4, ge=2, le=8)
     qGroupSize: int = Field(default=64, ge=32, le=128)
     dtype: Literal["float16", "bfloat16", "float32"] = "float16"
+    # After converting, load the converted model and the source once each and compare their
+    # perplexity on a short text sample. Skipped (with the reason) when it cannot be done.
+    measureQuality: bool = False
 
 
 class BenchmarkRunRequest(BaseModel):

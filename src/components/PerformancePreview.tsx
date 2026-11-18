@@ -165,6 +165,12 @@ export function PerformancePreview({ preview, availableMemoryGb, totalMemoryGb, 
                   defaultValue: "{value}%",
                   value: fmt(preview.qualityPercent, 1),
                 })}</strong>
+                {preview.qualityPercent < 100 ? (
+                  // A compressed cache's quality comes from a table per bit width, not from this model.
+                  <span className="perf-preview__speed-source muted-text" data-testid="perf-quality-estimate">
+                    {t("performancePreview.speedEstimate", { defaultValue: "est." })}
+                  </span>
+                ) : null}
                 {qualityDelta < -0.1 ? (
                   <span className="delta-badge delta-badge--negative">
                     {t("performancePreview.percentValue", {

@@ -458,11 +458,16 @@
       "title": "yab choHlI'",
       "phases": {
         "resolve": "Hal SamlI'",
-        "download": "ngI' qemlI'",
         "load": "MLXDaq chu'lI'",
         "quantize": "{bits}-bit g{group} quant chenmoHlI'",
         "shard": "safetensors chev 'ej ghItlhlI'",
-        "verify": "ngoD 'ollI'"
+        "measuring": null
+      },
+      "detail": {
+        "files": null,
+        "written": null,
+        "writtenOfAbout": null,
+        "modelsScored": null
       }
     },
     "varies": "pIm",
@@ -519,13 +524,9 @@
     "targetProfile": "ngoQ mIw",
     "bitProfile": "{bits}-bit g{group}",
     "unquantized": "quant Hutlh",
-    "qualityEstimate": "patlh noH",
     "lastConversion": "choH Qav",
     "baseRepo": "Hal Daq Hal",
     "architecture": "chen",
-    "compression": "machmoH",
-    "cacheReduction": "cache {ratio}logh mach",
-    "quality": "patlh",
     "diskBeforeAfter": "polmeH Daq nung → veb",
     "modal": {
       "titleConverting": "yab choHlI'",
@@ -546,17 +547,36 @@
       "terminalHint": "terminalDaq; stderr naQ Dalegh.",
       "close": "yISoQmoH",
       "ok": "lu'"
-    }
+    },
+    "measureQuality": null,
+    "measureQualityHint": null,
+    "qualityMeasured": null,
+    "qualityChange": null,
+    "qualityDetail": null,
+    "qualityAfterConverting": null,
+    "qualityNotMeasured": null,
+    "qualityOff": null,
+    "bitsPerWeight": null,
+    "bitsPerWeightValue": null,
+    "sizeOnDisk": null,
+    "pickSourceFirst": null
   },
   "benchmarkTab": {
     "progress": {
       "title": "waH QaptaH",
       "phases": {
         "load": "qawHaqDaq yab chu'lI'",
-        "warm": "KV cache tujmoHlI'",
-        "prompt": "QIn nuDlI'",
-        "generate": "{tokens} token chenmoHlI'",
-        "measure": "De' juvlI'"
+        "datasetPerplexity": null,
+        "datasetAccuracy": null,
+        "evaluatingPerplexity": null,
+        "evaluatingAccuracy": null,
+        "generating": null,
+        "saving": null
+      },
+      "detail": {
+        "samples": null,
+        "questions": null,
+        "generating": null
       }
     },
     "modelLabel": "waH yab",
@@ -605,8 +625,6 @@
     "loadSeconds": "{value} lup chu'",
     "statResponseTime": "jang poH",
     "statCacheFootprint": "cache tInghach",
-    "statQuality": "patlh",
-    "tokensGenerated": "{count} token chenmoHlu'ta'",
     "statContext": "ghu'",
     "maxTokensHint": "{max} 'aqroS",
     "deltaVsPrev": "{delta} tok/s; {cache} may'lIj nung",
@@ -628,13 +646,26 @@
       "terminalHint": "terminalDaq; stderr naQ Dalegh.",
       "close": "yISoQmoH",
       "ok": "lu'",
-      "cancel": "waH yIqIl"
+      "cancel": "waH yIqIl",
+      "titleCancelled": null,
+      "cancelling": null,
+      "cancelledNothingSaved": null,
+      "cancelledModelUnloaded": null,
+      "cancelledModelKept": null,
+      "cancelUnconfirmed": null
     },
     "promptPresets": {
       "balanced": "Del motlh",
       "reasoning": "meq nuD",
       "coding": "ngoq jang"
-    }
+    },
+    "scoring": {
+      "nextToken": null,
+      "generated": null,
+      "note": null
+    },
+    "statTokens": null,
+    "ofMaxTokens": null
   },
   "benchmarkHistory": {
     "subtitle": "{count, plural, other {# may''}}{filterSuffix}",
@@ -656,8 +687,9 @@
       "noRuns": "may' tu'lu'be'",
       "fastest": "nomqu'",
       "leanestCache": "cache machqu'",
-      "bestQuality": "patlh povqu'",
-      "bestValue": "lo'laHqu'"
+      "bestValue": "lo'laHqu'",
+      "lowestPerplexity": null,
+      "noPerplexityRuns": null
     },
     "metric": {
       "perplexity": "perplexity",
@@ -668,10 +700,10 @@
       "speed": "Do",
       "response": "jang",
       "cache": "cache",
-      "quality": "patlh",
       "compression": "machmoH",
       "context": "ghu'",
-      "strategy": "mIw"
+      "strategy": "mIw",
+      "scoring": null
     },
     "table": {
       "metric": "juv",
@@ -707,8 +739,8 @@
       "strategy": "mIw",
       "bits": "bit",
       "context": "ghu'",
-      "quality": "patlh",
-      "pplValue": "{value} ppl"
+      "pplValue": "{value} ppl",
+      "load": null
     },
     "modeLabel": {
       "ppl": "PPL",
@@ -828,13 +860,12 @@
     "emptyState": "mIllogh tebmeH waH yIchu'.",
     "xAxisLabel": "cache (GB) →",
     "yAxisLabel": "↑ token/lup",
-    "pointTooltip": "{label}\n{tokS} tok/s · {cacheGb} GB · {quality}% patlh",
     "legend1Bit": "1-bit",
     "legend2Bit": "2-bit",
     "legend3Bit": "3-bit",
     "legend4Bit": "4-bit",
     "legendNativeF16": "Native f16",
-    "legendDotSize": "Doch tInghach = patlh %"
+    "pointTooltipMeasured": null
   },
   "logprobSummary": {
     "title": "token Har",

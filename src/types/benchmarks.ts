@@ -85,7 +85,8 @@ export interface BenchmarkResult {
   baselineCacheGb: number;
   compression: number;
   tokS: number;
-  quality: number;
+  /** Runs saved before v0.10.0 carry an estimated "quality %" here. It was never measured and is not shown. */
+  quality?: number | null;
   responseSeconds: number;
   loadSeconds: number;
   totalSeconds: number;
@@ -108,6 +109,12 @@ export interface BenchmarkResult {
   taskCorrect?: number | null;
   taskTotal?: number | null;
   taskNumShots?: number | null;
+  /**
+   * How the answer was picked: "next_token" (the choice letter the model scores highest) or
+   * "generated" (three generated tokens searched for a letter). Runs saved before the field
+   * existed used "generated"; accuracy from the two methods is not comparable.
+   */
+  taskScoringMethod?: "next_token" | "generated" | null;
 }
 
 export interface BenchmarkRunPayload {
@@ -143,7 +150,18 @@ export interface BenchmarkRunPayload {
 }
 
 export interface BenchmarkRunResponse {
-  result: BenchmarkResult;
+  /** The saved run, or null when the run was cancelled (nothing is saved then). */
+  result: BenchmarkResult | null;
   benchmarks: BenchmarkResult[];
   runtime: RuntimeStatus;
+  /** True when Cancel stopped the run. */
+  cancelled?: boolean;
+  /** With ``cancelled``: the model was unloaded (the run loaded it, or stopping the run needed it). */
+  modelUnloaded?: boolean;
+}
+
+/** How a cancelled benchmark ended, for the dialog. ``confirmed`` is false when the backend never answered the cancel. */
+export interface BenchmarkCancelOutcome {
+  confirmed: boolean;
+  modelUnloaded: boolean;
 }

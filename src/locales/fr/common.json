@@ -458,11 +458,16 @@
       "title": "Conversion du modèle",
       "phases": {
         "resolve": "Résolution de la source",
-        "download": "Récupération des poids",
         "load": "Chargement dans MLX",
         "quantize": "Quantification en {bits} bits g{group}",
         "shard": "Partitionnement et écriture des safetensors",
-        "verify": "Vérification de la sortie"
+        "measuring": null
+      },
+      "detail": {
+        "files": null,
+        "written": null,
+        "writtenOfAbout": null,
+        "modelsScored": null
       }
     },
     "varies": "Variable",
@@ -519,13 +524,9 @@
     "targetProfile": "Profil cible",
     "bitProfile": "{bits} bits g{group}",
     "unquantized": "Non quantifié",
-    "qualityEstimate": "Estimation de qualité",
     "lastConversion": "Dernière conversion",
     "baseRepo": "Repo de base",
     "architecture": "Architecture",
-    "compression": "Compression",
-    "cacheReduction": "Réduction du cache {ratio}×",
-    "quality": "Qualité",
     "diskBeforeAfter": "Disque avant → après",
     "modal": {
       "titleConverting": "Conversion du modèle",
@@ -546,17 +547,36 @@
       "terminalHint": "dans le Terminal pour le stderr complet.",
       "close": "Fermer",
       "ok": "OK"
-    }
+    },
+    "measureQuality": null,
+    "measureQualityHint": null,
+    "qualityMeasured": null,
+    "qualityChange": null,
+    "qualityDetail": null,
+    "qualityAfterConverting": null,
+    "qualityNotMeasured": null,
+    "qualityOff": null,
+    "bitsPerWeight": null,
+    "bitsPerWeightValue": null,
+    "sizeOnDisk": null,
+    "pickSourceFirst": null
   },
   "benchmarkTab": {
     "progress": {
       "title": "Benchmark en cours",
       "phases": {
         "load": "Chargement du modèle en mémoire",
-        "warm": "Préchauffage du cache KV",
-        "prompt": "Traitement de l'invite",
-        "generate": "Génération de {tokens} tokens",
-        "measure": "Mesure des statistiques"
+        "datasetPerplexity": null,
+        "datasetAccuracy": null,
+        "evaluatingPerplexity": null,
+        "evaluatingAccuracy": null,
+        "generating": null,
+        "saving": null
+      },
+      "detail": {
+        "samples": null,
+        "questions": null,
+        "generating": null
       }
     },
     "modelLabel": "Modèle de benchmark",
@@ -605,8 +625,6 @@
     "loadSeconds": "{value} s de chargement",
     "statResponseTime": "Temps de réponse",
     "statCacheFootprint": "Empreinte cache",
-    "statQuality": "Qualité",
-    "tokensGenerated": "{count} tokens générés",
     "statContext": "Contexte",
     "maxTokensHint": "{max} max",
     "deltaVsPrev": "{delta} tok/s vs votre exécution {cache} précédente",
@@ -628,13 +646,26 @@
       "terminalHint": "dans le Terminal pour le stderr complet.",
       "close": "Fermer",
       "ok": "OK",
-      "cancel": "Annuler le benchmark"
+      "cancel": "Annuler le benchmark",
+      "titleCancelled": null,
+      "cancelling": null,
+      "cancelledNothingSaved": null,
+      "cancelledModelUnloaded": null,
+      "cancelledModelKept": null,
+      "cancelUnconfirmed": null
     },
     "promptPresets": {
       "balanced": "Résumé équilibré",
       "reasoning": "Test de raisonnement",
       "coding": "Réponse de code"
-    }
+    },
+    "scoring": {
+      "nextToken": null,
+      "generated": null,
+      "note": null
+    },
+    "statTokens": null,
+    "ofMaxTokens": null
   },
   "benchmarkHistory": {
     "subtitle": "{count, plural, one {# exécution} other {# exécutions}}{filterSuffix}",
@@ -656,8 +687,9 @@
       "noRuns": "Aucune exécution",
       "fastest": "Plus rapide",
       "leanestCache": "Cache le plus léger",
-      "bestQuality": "Meilleure qualité",
-      "bestValue": "Meilleur compromis"
+      "bestValue": "Meilleur compromis",
+      "lowestPerplexity": null,
+      "noPerplexityRuns": null
     },
     "metric": {
       "perplexity": "Perplexité",
@@ -668,10 +700,10 @@
       "speed": "Vitesse",
       "response": "Réponse",
       "cache": "Cache",
-      "quality": "Qualité",
       "compression": "Compression",
       "context": "Contexte",
-      "strategy": "Stratégie"
+      "strategy": "Stratégie",
+      "scoring": null
     },
     "table": {
       "metric": "Métrique",
@@ -707,8 +739,8 @@
       "strategy": "Stratégie",
       "bits": "Bits",
       "context": "Contexte",
-      "quality": "Qualité",
-      "pplValue": "{value} ppl"
+      "pplValue": "{value} ppl",
+      "load": null
     },
     "modeLabel": {
       "ppl": "PPL",
@@ -828,13 +860,12 @@
     "emptyState": "Lancez quelques benchmarks pour remplir le nuage de points.",
     "xAxisLabel": "Cache (Go) →",
     "yAxisLabel": "↑ Tokens/sec",
-    "pointTooltip": "{label}\n{tokS} tok/s · {cacheGb} Go · qualité {quality} %",
     "legend1Bit": "1 bit",
     "legend2Bit": "2 bits",
     "legend3Bit": "3 bits",
     "legend4Bit": "4 bits",
     "legendNativeF16": "f16 natif",
-    "legendDotSize": "Taille du point = qualité %"
+    "pointTooltipMeasured": null
   },
   "logprobSummary": {
     "title": "Confiance des tokens",

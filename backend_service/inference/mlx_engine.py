@@ -458,6 +458,7 @@ class MLXWorkerEngine(BaseInferenceEngine):
         seq_length: int = 512,
         batch_size: int = 4,
         progress_callback: Callable[[dict[str, Any]], None] | None = None,
+        cancel_file: str | None = None,
     ) -> dict[str, Any]:
         if self.loaded_model is None:
             raise RuntimeError("No model is loaded.")
@@ -468,6 +469,7 @@ class MLXWorkerEngine(BaseInferenceEngine):
                 "numSamples": num_samples,
                 "seqLength": seq_length,
                 "batchSize": batch_size,
+                "cancelFile": cancel_file,
             },
             on_progress=progress_callback,
             timeout=600,
@@ -480,6 +482,7 @@ class MLXWorkerEngine(BaseInferenceEngine):
         limit: int = 100,
         num_shots: int = 5,
         progress_callback: Callable[[dict[str, Any]], None] | None = None,
+        cancel_file: str | None = None,
     ) -> dict[str, Any]:
         if self.loaded_model is None:
             raise RuntimeError("No model is loaded.")
@@ -489,6 +492,7 @@ class MLXWorkerEngine(BaseInferenceEngine):
                 "taskName": task_name,
                 "limit": limit,
                 "numShots": num_shots,
+                "cancelFile": cancel_file,
             },
             on_progress=progress_callback,
             timeout=900,

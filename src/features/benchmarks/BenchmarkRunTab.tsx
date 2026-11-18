@@ -7,13 +7,15 @@ import { RuntimeControls } from "../../components/RuntimeControls";
 import { ModelLaunchModal } from "../../components/ModelLaunchModal";
 import { StatCard } from "../../components/StatCard";
 import { BenchmarkGauge } from "../../components/BenchmarkGauge";
-import type { BenchmarkResult, BenchmarkRunPayload, LibraryItem, PreviewMetrics, StrategyInstallLog, SystemStats } from "../../types";
+import type { BenchmarkCancelOutcome, BenchmarkResult, BenchmarkRunPayload, LibraryItem, PreviewMetrics, StrategyInstallLog, SystemStats } from "../../types";
 import type { ChatModelOption } from "../../types/chat";
 import type { MtplxJobState } from "../../api";
 import type { TensorfoldLaunchControls } from "../../components/tensorfoldSupport";
 import { BENCHMARK_PROMPTS } from "../../constants";
 import { number, sizeLabel, signedDelta } from "../../utils";
-import { latestRunSpeedComparison } from "../../utils/benchmarkCompare";
+import { latestRunSpeedComparison, taskScoringMethod } from "../../utils/benchmarkCompare";
+import { benchmarkPhaseIds, countedItems } from "../../utils/jobProgress";
+import { useGenerationProgress } from "../../hooks/useGenerationProgress";
 
 export interface BenchmarkRunTabProps {
   workspace: {
@@ -38,6 +40,10 @@ export interface BenchmarkRunTabProps {
   busyAction: string | null;
   benchmarkStartedAt: number | null;
   benchmarkError: string | null;
+  /** Cancel was pressed; the dialog waits for the backend to confirm the stop. */
+  benchmarkCancelling?: boolean;
+  /** Set when the last run ended by Cancel. */
+  benchmarkCancelOutcome?: BenchmarkCancelOutcome | null;
   showBenchmarkPicker: boolean;
   showBenchmarkModal: boolean;
   installingPackage: string | null;
@@ -74,6 +80,8 @@ export function BenchmarkRunTab({
   busyAction,
   benchmarkStartedAt,
   benchmarkError,
+  benchmarkCancelling = false,
+  benchmarkCancelOutcome = null,
   showBenchmarkPicker,
   showBenchmarkModal,
   installingPackage,
@@ -98,6 +106,37 @@ export function BenchmarkRunTab({
 }: BenchmarkRunTabProps) {
   const { t } = useTranslation("common");
   const [benchmarkPickerSearch, setBenchmarkPickerSearch] = useState("");
+  const benchmarkRunning = busyAction === "Running benchmark..." && Boolean(benchmarkStartedAt);
+  // The run's own progress: phase and items done. Nothing in the dialog is timed.
+  const benchmarkProgress = useGenerationProgress("benchmark", benchmarkRunning);
+  const runMode = benchmarkDraft.mode ?? "throughput";
+  const progressPhaseLabels: Record<string, string> = {
+    loading: t("benchmarkTab.progress.phases.load", { defaultValue: "Loading model into memory" }),
+    dataset: runMode === "perplexity"
+      ? t("benchmarkTab.progress.phases.datasetPerplexity", { defaultValue: "Loading the evaluation text" })
+      : t("benchmarkTab.progress.phases.datasetAccuracy", { defaultValue: "Loading the questions" }),
+    evaluating: runMode === "perplexity"
+      ? t("benchmarkTab.progress.phases.evaluatingPerplexity", { defaultValue: "Scoring text samples" })
+      : t("benchmarkTab.progress.phases.evaluatingAccuracy", { defaultValue: "Answering questions" }),
+    generating: t("benchmarkTab.progress.phases.generating", { tokens: benchmarkDraft.maxTokens, defaultValue: "Generating up to {tokens} tokens" }),
+    saving: t("benchmarkTab.progress.phases.saving", { defaultValue: "Saving the result" }),
+  };
+  const counted = countedItems(benchmarkProgress);
+  const benchmarkProgressDetail =
+    benchmarkProgress?.phase === "evaluating" && counted
+      ? runMode === "perplexity"
+        ? t("benchmarkTab.progress.detail.samples", { done: counted.done, total: counted.total, defaultValue: "{done} of {total} samples" })
+        : t("benchmarkTab.progress.detail.questions", {
+            done: counted.done,
+            total: counted.total,
+            correct: benchmarkProgress.detail?.correct ?? 0,
+            defaultValue: "{done} of {total} questions, {correct} correct",
+          })
+      : benchmarkProgress?.phase === "generating"
+        ? t("benchmarkTab.progress.detail.generating", { defaultValue: "running; the engine reports the token count when it finishes" })
+        : benchmarkProgress?.phase === "loading" && benchmarkProgress.message
+          ? benchmarkProgress.message
+          : null;
   const latestRun = workspace.benchmarks[0] ?? null;
   const selectedPrompt = BENCHMARK_PROMPTS.find((p) => p.id === benchmarkPromptId) ?? BENCHMARK_PROMPTS[0];
   // Speed is compared only between speed runs: an accuracy run stores 0 tok/s and used to
@@ -172,7 +211,11 @@ export function BenchmarkRunTab({
             <StatCard
               label={t("benchmarkTab.statTask", { defaultValue: "Task" })}
               value={(latestRun.taskName ?? "mmlu").toUpperCase()}
-              hint={t("benchmarkTab.shotsHint", { shots: latestRun.taskNumShots ?? 5, defaultValue: "{shots}-shot" })}
+              hint={`${t("benchmarkTab.shotsHint", { shots: latestRun.taskNumShots ?? 5, defaultValue: "{shots}-shot" })} \u00B7 ${
+                taskScoringMethod(latestRun) === "next_token"
+                  ? t("benchmarkTab.scoring.nextToken", { defaultValue: "next-token choice" })
+                  : t("benchmarkTab.scoring.generated", { defaultValue: "generated text (older method)" })
+              }`}
             />
             <StatCard
               label={t("benchmarkTab.statEvalTime", { defaultValue: "Eval time" })}
@@ -198,9 +241,9 @@ export function BenchmarkRunTab({
               hint={t("benchmarkTab.compressionRatio", { ratio: number(latestRun.compression), defaultValue: "{ratio}x compression" })}
             />
             <StatCard
-              label={t("benchmarkTab.statQuality", { defaultValue: "Quality" })}
-              value={`${latestRun.quality}%`}
-              hint={t("benchmarkTab.tokensGenerated", { count: latestRun.completionTokens, defaultValue: "{count} tokens generated" })}
+              label={t("benchmarkTab.statTokens", { defaultValue: "Tokens generated" })}
+              value={`${latestRun.completionTokens}`}
+              hint={t("benchmarkTab.ofMaxTokens", { max: latestRun.maxTokens, defaultValue: "of {max} allowed" })}
             />
             <StatCard
               label={t("benchmarkTab.statContext", { defaultValue: "Context" })}
@@ -350,6 +393,7 @@ export function BenchmarkRunTab({
               <div className="callout quiet benchmark-prompt-preview">
                 <span className="eyebrow">{t("benchmarkTab.taskAccuracy", { defaultValue: "Task Accuracy" })}</span>
                 <p>{t("benchmarkTab.taskAccuracyDescription", { defaultValue: "Runs multiple-choice questions and scores the model's answers. Higher accuracy is better." })}</p>
+                <p className="muted-text">{t("benchmarkTab.scoring.note", { defaultValue: "The answer is the choice letter the model scores highest as its next token. Runs saved before this change generated the answer as text; their accuracy is not comparable with new runs." })}</p>
               </div>
             ) : null}
 
@@ -439,9 +483,11 @@ export function BenchmarkRunTab({
               <h3>
                 {busyAction === "Running benchmark..."
                   ? t("benchmarkTab.modal.titleRunning", { defaultValue: "Running benchmark" })
-                  : benchmarkError
-                    ? t("benchmarkTab.modal.titleFailed", { defaultValue: "Benchmark failed" })
-                    : t("benchmarkTab.modal.titleComplete", { defaultValue: "Benchmark complete" })}
+                  : benchmarkCancelOutcome
+                    ? t("benchmarkTab.modal.titleCancelled", { defaultValue: "Benchmark cancelled" })
+                    : benchmarkError
+                      ? t("benchmarkTab.modal.titleFailed", { defaultValue: "Benchmark failed" })
+                      : t("benchmarkTab.modal.titleComplete", { defaultValue: "Benchmark complete" })}
               </h3>
             </div>
             <div className="modal-body">
@@ -452,12 +498,11 @@ export function BenchmarkRunTab({
                     subtitle={benchmarkOption?.model ?? undefined}
                     startedAt={benchmarkStartedAt}
                     accent="benchmark"
+                    measuredOnly
+                    realProgress={benchmarkProgress}
+                    activeDetail={benchmarkProgressDetail}
                     phases={[
-                      { id: "load", label: t("benchmarkTab.progress.phases.load", { defaultValue: "Loading model into memory" }), estimatedSeconds: 12 },
-                      { id: "warm", label: t("benchmarkTab.progress.phases.warm", { defaultValue: "Warming up KV cache" }), estimatedSeconds: 4 },
-                      { id: "prompt", label: t("benchmarkTab.progress.phases.prompt", { defaultValue: "Processing prompt" }), estimatedSeconds: 3 },
-                      { id: "generate", label: t("benchmarkTab.progress.phases.generate", { tokens: benchmarkDraft.maxTokens, defaultValue: `Generating ${benchmarkDraft.maxTokens} tokens` }), estimatedSeconds: Math.max(8, benchmarkDraft.maxTokens / 25) },
-                      { id: "measure", label: t("benchmarkTab.progress.phases.measure", { defaultValue: "Measuring stats" }), estimatedSeconds: 2 },
+                      ...benchmarkPhaseIds(runMode).map((id) => ({ id, label: progressPhaseLabels[id] ?? id, estimatedSeconds: 0 })),
                     ] as LiveProgressPhase[]}
                   />
                   <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12 }}>
@@ -465,11 +510,29 @@ export function BenchmarkRunTab({
                       type="button"
                       className="secondary-button danger-button"
                       onClick={onCancelBenchmark}
+                      disabled={benchmarkCancelling}
                     >
-                      {t("benchmarkTab.modal.cancel", { defaultValue: "Cancel benchmark" })}
+                      {benchmarkCancelling
+                        ? t("benchmarkTab.modal.cancelling", { defaultValue: "Stopping the run..." })
+                        : t("benchmarkTab.modal.cancel", { defaultValue: "Cancel benchmark" })}
                     </button>
                   </div>
                 </>
+              ) : benchmarkCancelOutcome ? (
+                <div className="callout quiet" role="status" data-testid="benchmark-cancelled">
+                  {benchmarkCancelOutcome.confirmed ? (
+                    <>
+                      <p>{t("benchmarkTab.modal.cancelledNothingSaved", { defaultValue: "The run was stopped. Nothing was saved to the history." })}</p>
+                      <p>
+                        {benchmarkCancelOutcome.modelUnloaded
+                          ? t("benchmarkTab.modal.cancelledModelUnloaded", { defaultValue: "The model was unloaded." })
+                          : t("benchmarkTab.modal.cancelledModelKept", { defaultValue: "The model that was loaded before the run stays loaded." })}
+                      </p>
+                    </>
+                  ) : (
+                    <p>{t("benchmarkTab.modal.cancelUnconfirmed", { defaultValue: "The app stopped waiting, but could not reach the backend to stop the run. It may still be running: check the Server page." })}</p>
+                  )}
+                </div>
               ) : benchmarkError ? (
                 <div className="callout error">
                   <h3>{t("benchmarkTab.modal.titleFailed", { defaultValue: "Benchmark failed" })}</h3>
@@ -508,7 +571,7 @@ export function BenchmarkRunTab({
                   type="button"
                   onClick={() => onShowBenchmarkModalChange(false)}
                 >
-                  {benchmarkError
+                  {benchmarkError || benchmarkCancelOutcome
                     ? t("benchmarkTab.modal.close", { defaultValue: "Close" })
                     : t("benchmarkTab.modal.ok", { defaultValue: "OK" })}
                 </button>

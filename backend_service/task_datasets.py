@@ -1,13 +1,13 @@
 """Lightweight task dataset loaders for MMLU and HellaSwag benchmarks.
 
 Downloads from Hugging Face datasets on first use. No external eval
-framework required — just prompt→answer→score.
+framework required: each task is a prompt that ends in ``Answer:`` and the
+letter of the right choice. ``mlx_worker_eval.eval_task_accuracy`` scores it.
 """
 
 from __future__ import annotations
 
 import random
-import re
 from typing import Any
 
 
@@ -21,26 +21,6 @@ def load_task_data(task_name: str, limit: int, num_shots: int) -> list[dict[str,
         return _load_hellaswag(limit, num_shots)
     else:
         raise ValueError(f"Unknown task: {task_name}. Supported: mmlu, hellaswag")
-
-
-def score_answer(
-    task_name: str,
-    model_output: str,
-    correct: str,
-    choices: list[str] | None = None,
-) -> bool:
-    """Extract the answer letter from model output and compare."""
-    output = model_output.strip()
-    # Try to find a letter in common patterns: "A", "(A)", "A.", "A)", "The answer is A"
-    match = re.search(r"\b([A-D])\b", output)
-    if match:
-        return match.group(1).upper() == correct.upper()
-    # A lower-case letter on its own at the start ("b", "b.", "(b)") still counts. A word
-    # does not: "Based on the passage" used to score as answer B.
-    leading = re.match(r"\(?([a-d])\)?(?![A-Za-z])", output)
-    if leading:
-        return leading.group(1).upper() == correct.upper()
-    return False
 
 
 def _load_mmlu(limit: int, num_shots: int) -> list[dict[str, Any]]:
@@ -83,7 +63,6 @@ def _load_mmlu(limit: int, num_shots: int) -> list[dict[str, Any]]:
             "prompt": prompt,
             "correct_answer": correct_letter,
             "choices": choices,
-            "max_tokens": 3,
         })
 
     return tasks
@@ -136,7 +115,6 @@ def _load_hellaswag(limit: int, num_shots: int) -> list[dict[str, Any]]:
             "prompt": prompt,
             "correct_answer": correct_letter,
             "choices": endings,
-            "max_tokens": 3,
         })
 
     return tasks

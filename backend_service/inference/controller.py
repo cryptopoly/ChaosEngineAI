@@ -99,6 +99,7 @@ from backend_service.inference.conversion import (
     _resolve_local_model_dir,
     _summarise_convert_failure,
 )
+from backend_service.inference.conversion_progress import parse_bits_per_weight
 from backend_service.inference.jsonrpc import JsonRpcProcess
 from backend_service.inference.llama_cpp_engine import (
     LlamaCppEngine,
@@ -1515,7 +1516,30 @@ class RuntimeController:
         return payload
 
     def _run_converter(self, command: list[str], env: dict[str, str]) -> subprocess.CompletedProcess:
-        """Run ``mlx_lm convert`` and keep a handle on it so ``cancel_conversion`` can stop it."""
+        """Run ``mlx_lm convert``, keep a handle on it so ``cancel_conversion`` can stop it, and report its progress."""
+        from backend_service.inference.conversion_progress import ConverterWatch, run_watched
+        from backend_service.progress import CONVERSION_PROGRESS
+
+        process = subprocess.Popen(
+            command,
+            cwd=str(WORKSPACE_ROOT),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            # The converter's "[INFO]" lines are the phase signal: without this they sit in its buffer until it exits.
+            env={**env, "PYTHONUNBUFFERED": "1"},
+        )
+        self._convert_process = process
+        output_dir, expected_bytes = getattr(self, "_convert_watch_target", (None, None))
+        watch = ConverterWatch(CONVERSION_PROGRESS, output_dir=output_dir, expected_bytes=expected_bytes)
+        try:
+            stdout, stderr = run_watched(process, watch, timeout=3600)
+        finally:
+            self._convert_process = None
+        return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
+
+    def _run_quality_probe(self, model_path: str, env: dict[str, str]) -> subprocess.CompletedProcess:
+        """Score one model in a process of its own; ``cancel_conversion`` can stop it like the converter."""
+        command = [self.capabilities.pythonExecutable, "-m", "backend_service.inference.conversion_quality", model_path]
         process = subprocess.Popen(
             command,
             cwd=str(WORKSPACE_ROOT),
@@ -1526,14 +1550,59 @@ class RuntimeController:
         )
         self._convert_process = process
         try:
-            stdout, stderr = process.communicate(timeout=3600)
+            stdout, stderr = process.communicate(timeout=900)
         except subprocess.TimeoutExpired:
             process.kill()
-            process.communicate()
-            raise
+            stdout, stderr = process.communicate()
+            return subprocess.CompletedProcess(command, -9, stdout, "The measurement ran past 15 minutes and was stopped.")
         finally:
             self._convert_process = None
         return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
+
+    def _measure_conversion_quality(
+        self,
+        *,
+        source_dir: str | None,
+        output_dir: str,
+        env: dict[str, str],
+    ) -> dict[str, Any]:
+        """Perplexity of the converted model against the source on the same short sample, or why it was not measured.
+
+        The conversion itself is finished and kept whatever happens here.
+        """
+        from backend_service.inference import conversion_quality as quality
+        from backend_service.progress import CONVERSION_PROGRESS
+
+        try:
+            import psutil
+
+            available: int | None = int(psutil.virtual_memory().available)
+        except Exception:  # noqa: BLE001 - no reading means no measurement, never a failed conversion
+            available = None
+        skipped = quality.quality_plan(source_dir, output_dir, available)
+        if skipped is not None:
+            return skipped
+        CONVERSION_PROGRESS.set_phase("measuring", "Measuring quality on a short text sample")
+        measured: list[float] = []
+        # The converted model first: it is the smaller one, and a failure there says the most.
+        for index, (label, path) in enumerate((("converted model", output_dir), ("source", str(source_dir)))):
+            CONVERSION_PROGRESS.set_step(index, 2)
+            stopped = "Stopped by Cancel before the measurement finished. The converted model was kept."
+            if getattr(self, "_convert_cancel_requested", False):
+                return quality.quality_skipped(stopped)
+            try:
+                completed = self._run_quality_probe(path, env)
+            except OSError as exc:
+                return quality.quality_skipped(f"The measurement could not start: {exc}")
+            if getattr(self, "_convert_cancel_requested", False):
+                return quality.quality_skipped(stopped)
+            value = quality.parse_measurement(completed.stdout or "") if completed.returncode == 0 else None
+            if value is None:
+                detail = _summarise_convert_failure(completed.stderr or "", "", completed.returncode or 1)
+                return quality.quality_skipped(f"The {label} could not be scored: {detail[:300]}")
+            measured.append(value)
+        CONVERSION_PROGRESS.set_step(2, 2)
+        return quality.quality_summary(source_perplexity=measured[1], converted_perplexity=measured[0])
 
     def cancel_conversion(self) -> bool:
         """Stop the conversion in progress, if there is one. True when one was told to stop.
@@ -1545,6 +1614,9 @@ class RuntimeController:
         if not getattr(self, "_convert_active", False):
             return False
         self._convert_cancel_requested = True
+        from backend_service.progress import CONVERSION_PROGRESS
+
+        CONVERSION_PROGRESS.request_cancel()
         process = getattr(self, "_convert_process", None)
         if process is not None and process.poll() is None:
             process.terminate()
@@ -1561,9 +1633,14 @@ class RuntimeController:
         q_bits: int,
         dtype: str,
         q_group_size: int = 64,
+        measure_quality: bool = False,
     ) -> dict[str, Any]:
+        from backend_service.progress import CONVERSION_PROGRESS
+
         self._convert_cancel_requested = False
         self._convert_active = True
+        self._convert_watch_target = (None, None)
+        CONVERSION_PROGRESS.begin(run_label=source_path or source_ref, phase="preparing", message="Checking the source")
         try:
             return self._convert_model(
                 source_ref=source_ref,
@@ -1574,9 +1651,11 @@ class RuntimeController:
                 q_bits=q_bits,
                 dtype=dtype,
                 q_group_size=q_group_size,
+                measure_quality=measure_quality,
             )
         finally:
             self._convert_active = False
+            CONVERSION_PROGRESS.finish()
 
     def _convert_model(
         self,
@@ -1589,6 +1668,7 @@ class RuntimeController:
         q_bits: int,
         dtype: str,
         q_group_size: int = 64,
+        measure_quality: bool = False,
     ) -> dict[str, Any]:
         self.refresh_capabilities(force=True)
         if not self.capabilities.converterAvailable:
@@ -1777,6 +1857,8 @@ class RuntimeController:
         cancelled_message = f"Conversion cancelled. Nothing was kept at {target_output}."
         if getattr(self, "_convert_cancel_requested", False):
             raise RuntimeError(cancelled_message)
+        # What the progress watcher measures: bytes in a folder this run creates (never one that was already there).
+        self._convert_watch_target = (None if output_existed else target_output, needed_bytes)
         try:
             completed = self._run_converter(command, convert_env)
         except (OSError, subprocess.TimeoutExpired) as exc:
@@ -1861,6 +1943,18 @@ class RuntimeController:
                 )
             raise RuntimeError(detail or "mlx_lm.convert failed.")
 
+        # Measured, not estimated: the two sizes on disk, and (when asked for) the perplexity of both models.
+        source_bytes = _path_size_bytes(size_source) if size_source else 0
+        output_bytes = _path_size_bytes(target_output)
+        quality = (
+            self._measure_conversion_quality(
+                source_dir=hf_path_arg if hf_path_arg and Path(hf_path_arg).is_dir() else None,
+                output_dir=target_output,
+                env=convert_env,
+            )
+            if measure_quality
+            else None
+        )
         return {
             "sourceRef": source_ref,
             "sourcePath": source_path,
@@ -1871,9 +1965,16 @@ class RuntimeController:
             "qBits": q_bits,
             "qGroupSize": q_group_size,
             "dtype": dtype,
-            "sourceSizeGb": _bytes_to_gb(_path_size_bytes(size_source)) if size_source else None,
-            "outputSizeGb": _bytes_to_gb(_path_size_bytes(target_output)),
+            "sourceSizeGb": _bytes_to_gb(source_bytes) if size_source else None,
+            "outputSizeGb": _bytes_to_gb(output_bytes),
+            # Source size over output size; None when either is unknown.
+            "diskRatio": round(source_bytes / output_bytes, 2) if source_bytes > 0 and output_bytes > 0 else None,
+            # None when the measurement was not asked for; otherwise "measured" with both perplexities,
+            # or "skipped" with the reason.
+            "quality": quality,
             "ggufMetadata": gguf_metadata,
+            # Measured by the converter itself; None for a run without quantization.
+            "bitsPerWeight": parse_bits_per_weight(completed.stdout or ""),
             "log": (completed.stdout or "").strip(),
         }
 

@@ -25,6 +25,8 @@ export function BenchmarkRunView({ ctx }: { ctx: AppTabContext }) {
     benchmarkPromptId,
     benchmarkStartedAt,
     benchmarkError,
+    benchmarkCancelling,
+    benchmarkCancelOutcome,
     showBenchmarkPicker,
     showBenchmarkModal,
     updateBenchmarkDraft,
@@ -65,6 +67,8 @@ export function BenchmarkRunView({ ctx }: { ctx: AppTabContext }) {
       busyAction={busyAction}
       benchmarkStartedAt={benchmarkStartedAt}
       benchmarkError={benchmarkError}
+      benchmarkCancelling={benchmarkCancelling}
+      benchmarkCancelOutcome={benchmarkCancelOutcome}
       showBenchmarkPicker={showBenchmarkPicker}
       showBenchmarkModal={showBenchmarkModal}
       installingPackage={installingPackage}

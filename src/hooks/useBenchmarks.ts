@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { deleteBenchmark, runBenchmark } from "../api";
+import { cancelBenchmark, deleteBenchmark, runBenchmark } from "../api";
 import { emptyWorkspace } from "../defaults";
 import { BENCHMARK_PROMPTS } from "../constants";
 import { syncRuntime } from "../utils";
 import type {
+  BenchmarkCancelOutcome,
   BenchmarkRunPayload,
   LaunchPreferences,
   TabId,
@@ -40,6 +41,9 @@ export function useBenchmarks(
   const [benchmarkPromptId, setBenchmarkPromptId] = useState(BENCHMARK_PROMPTS[0]?.id ?? "balanced");
   const [benchmarkStartedAt, setBenchmarkStartedAt] = useState<number | null>(null);
   const [benchmarkError, setBenchmarkError] = useState<string | null>(null);
+  // Cancel was pressed and the backend has not answered the run request yet.
+  const [benchmarkCancelling, setBenchmarkCancelling] = useState(false);
+  const [benchmarkCancelOutcome, setBenchmarkCancelOutcome] = useState<BenchmarkCancelOutcome | null>(null);
   const [showBenchmarkPicker, setShowBenchmarkPicker] = useState(false);
   const [showBenchmarkModal, setShowBenchmarkModal] = useState(false);
 
@@ -97,13 +101,18 @@ export function useBenchmarks(
     }));
   }
 
-  // AbortController for the in-flight benchmark — cleared when the
-  // request resolves so a stale controller can't accidentally abort the
-  // next run.
+  // Only used when the backend cannot be reached to cancel: it stops the wait, nothing more.
   const benchmarkAbortRef = useRef<AbortController | null>(null);
 
-  function handleCancelBenchmark() {
-    benchmarkAbortRef.current?.abort();
+  async function handleCancelBenchmark() {
+    if (!benchmarkAbortRef.current || benchmarkCancelling) return;
+    setBenchmarkCancelling(true);
+    try {
+      // The run request itself answers once the backend has stopped: that answer ends the dialog.
+      await cancelBenchmark();
+    } catch {
+      benchmarkAbortRef.current?.abort();
+    }
   }
 
   async function handleRunBenchmark(benchmarkOption: ChatModelOption | null) {
@@ -117,6 +126,8 @@ export function useBenchmarks(
     setBenchmarkStartedAt(Date.now());
     setShowBenchmarkModal(true);
     setBenchmarkError(null);
+    setBenchmarkCancelling(false);
+    setBenchmarkCancelOutcome(null);
     const controller = new AbortController();
     benchmarkAbortRef.current = controller;
 
@@ -143,16 +154,21 @@ export function useBenchmarks(
           response.runtime,
         ),
       );
-      setSelectedBenchmarkId(response.result.id);
-      setCompareBenchmarkId((current) => (current === response.result.id ? selectedBenchmarkId : current));
+      const result = response.result;
+      if (response.cancelled || !result) {
+        // The backend stopped the run and saved nothing; the runtime above already reflects an unload.
+        setBenchmarkCancelOutcome({ confirmed: true, modelUnloaded: Boolean(response.modelUnloaded) });
+        return;
+      }
+      setSelectedBenchmarkId(result.id);
+      setCompareBenchmarkId((current) => (current === result.id ? selectedBenchmarkId : current));
     } catch (actionError) {
-      const cancelled =
+      const stoppedWaiting =
         controller.signal.aborted ||
         (actionError instanceof Error && actionError.message === "Request cancelled");
-      if (cancelled) {
-        const cancelMsg = "Benchmark cancelled.";
-        setError(cancelMsg);
-        setBenchmarkError(cancelMsg);
+      if (stoppedWaiting) {
+        // The cancel never reached the backend, so the run may still be going there.
+        setBenchmarkCancelOutcome({ confirmed: false, modelUnloaded: false });
       } else {
         const message = actionError instanceof Error ? actionError.message : "Failed to run benchmark.";
         setError(message);
@@ -162,6 +178,7 @@ export function useBenchmarks(
       if (benchmarkAbortRef.current === controller) benchmarkAbortRef.current = null;
       setBusyAction(null);
       setBenchmarkStartedAt(null);
+      setBenchmarkCancelling(false);
     }
   }
 
@@ -205,6 +222,8 @@ export function useBenchmarks(
     setBenchmarkPromptId,
     benchmarkStartedAt,
     benchmarkError,
+    benchmarkCancelling,
+    benchmarkCancelOutcome,
     showBenchmarkPicker,
     setShowBenchmarkPicker,
     showBenchmarkModal,

@@ -5,7 +5,7 @@ vi.mock("@tauri-apps/api/core", () => ({
   isTauri: vi.fn(() => false),
 }));
 
-import { checkBackend, convertModel, deleteBenchmark, generateChat, getWorkspace, loadModel, searchHubModels } from "./api";
+import { cancelBenchmark, checkBackend, convertModel, deleteBenchmark, generateChat, getWorkspace, loadModel, searchHubModels } from "./api";
 import { mockWorkspace } from "./mockData";
 
 const stubSession = {
@@ -98,6 +98,17 @@ describe("desktop api helpers", () => {
     expect(result.assistant.role).toBe("assistant");
     expect(fetchMock).toHaveBeenCalledWith(
       "http://127.0.0.1:8876/api/chat/generate",
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
+
+  it("asks the backend to stop the running benchmark", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ cancelled: true }) });
+    vi.stubGlobal("fetch", fetchMock);
+
+    expect(await cancelBenchmark()).toEqual({ cancelled: true });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8876/api/benchmarks/cancel",
       expect.objectContaining({ method: "POST" }),
     );
   });

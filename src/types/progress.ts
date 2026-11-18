@@ -1,7 +1,10 @@
 export interface GenerationProgressSnapshot {
-  kind: "image" | "video" | "music";
+  kind: "image" | "video" | "music" | "benchmark" | "conversion";
   active: boolean;
-  phase: "idle" | "loading" | "encoding" | "diffusing" | "decoding" | "saving" | "load" | "encode" | "compose" | "decode" | "save";
+  phase:
+    | "idle" | "loading" | "encoding" | "diffusing" | "decoding" | "saving" | "load" | "encode" | "compose" | "decode" | "save"
+    // Benchmarks and conversion (text-model jobs).
+    | "preparing" | "dataset" | "evaluating" | "generating" | "downloading" | "quantizing" | "measuring";
   message: string;
   step: number;
   totalSteps: number;
@@ -18,6 +21,12 @@ export interface GenerationProgressSnapshot {
   cancelRequested?: boolean;
   /** A notice code for the run in flight: the job runs on the CPU, or fell back to it after the GPU failed. */
   warning?: "cpu" | "cpu-fallback" | null;
+  /**
+   * Benchmarks and conversion: measured numbers of the current phase besides ``step`` / ``totalSteps``
+   * (``correct`` answers so far, ``bytesWritten``, ``bitsPerWeight``). ``expectedBytes`` is the one
+   * estimate in here and is shown as one.
+   */
+  detail?: Record<string, number>;
   /** Shared job queue: set while this request waits behind another heavy job. */
   queue?: { waiting: boolean; position: number; agentAhead: boolean };
 }

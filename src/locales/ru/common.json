@@ -458,11 +458,16 @@
       "title": "Конвертация модели",
       "phases": {
         "resolve": "Определение источника",
-        "download": "Загрузка весов",
         "load": "Загрузка в MLX",
         "quantize": "Квантизация в {bits} бит g{group}",
         "shard": "Шардирование и запись safetensors",
-        "verify": "Проверка вывода"
+        "measuring": null
+      },
+      "detail": {
+        "files": null,
+        "written": null,
+        "writtenOfAbout": null,
+        "modelsScored": null
       }
     },
     "varies": "Варьируется",
@@ -519,13 +524,9 @@
     "targetProfile": "Целевой профиль",
     "bitProfile": "{bits}-бит g{group}",
     "unquantized": "Не квантизовано",
-    "qualityEstimate": "Оценка качества",
     "lastConversion": "Последняя конвертация",
     "baseRepo": "Базовый репозиторий",
     "architecture": "Архитектура",
-    "compression": "Сжатие",
-    "cacheReduction": "Сжатие кэша в {ratio}x",
-    "quality": "Качество",
     "diskBeforeAfter": "Диск до → после",
     "modal": {
       "titleConverting": "Конвертация модели",
@@ -546,17 +547,36 @@
       "terminalHint": "в Terminal для полного stderr.",
       "close": "Закрыть",
       "ok": "OK"
-    }
+    },
+    "measureQuality": null,
+    "measureQualityHint": null,
+    "qualityMeasured": null,
+    "qualityChange": null,
+    "qualityDetail": null,
+    "qualityAfterConverting": null,
+    "qualityNotMeasured": null,
+    "qualityOff": null,
+    "bitsPerWeight": null,
+    "bitsPerWeightValue": null,
+    "sizeOnDisk": null,
+    "pickSourceFirst": null
   },
   "benchmarkTab": {
     "progress": {
       "title": "Запуск бенчмарка",
       "phases": {
         "load": "Загрузка модели в память",
-        "warm": "Прогрев KV cache",
-        "prompt": "Обработка запроса",
-        "generate": "Генерация {tokens} токенов",
-        "measure": "Измерение статистики"
+        "datasetPerplexity": null,
+        "datasetAccuracy": null,
+        "evaluatingPerplexity": null,
+        "evaluatingAccuracy": null,
+        "generating": null,
+        "saving": null
+      },
+      "detail": {
+        "samples": null,
+        "questions": null,
+        "generating": null
       }
     },
     "modelLabel": "Модель для бенчмарка",
@@ -605,8 +625,6 @@
     "loadSeconds": "{value} с загрузка",
     "statResponseTime": "Время ответа",
     "statCacheFootprint": "Объём кэша",
-    "statQuality": "Качество",
-    "tokensGenerated": "Сгенерировано токенов: {count}",
     "statContext": "Контекст",
     "maxTokensHint": "макс. {max}",
     "deltaVsPrev": "{delta} tok/s против вашего предыдущего запуска {cache}",
@@ -628,13 +646,26 @@
       "terminalHint": "в Terminal для полного stderr.",
       "close": "Закрыть",
       "ok": "OK",
-      "cancel": "Отменить бенчмарк"
+      "cancel": "Отменить бенчмарк",
+      "titleCancelled": null,
+      "cancelling": null,
+      "cancelledNothingSaved": null,
+      "cancelledModelUnloaded": null,
+      "cancelledModelKept": null,
+      "cancelUnconfirmed": null
     },
     "promptPresets": {
       "balanced": "Сбалансированное резюме",
       "reasoning": "Проверка рассуждений",
       "coding": "Ответ по программированию"
-    }
+    },
+    "scoring": {
+      "nextToken": null,
+      "generated": null,
+      "note": null
+    },
+    "statTokens": null,
+    "ofMaxTokens": null
   },
   "benchmarkHistory": {
     "subtitle": "{count, plural, one {# запуск} few {# запуска} many {# запусков} other {# запуска}}{filterSuffix}",
@@ -656,8 +687,9 @@
       "noRuns": "Запусков нет",
       "fastest": "Самый быстрый",
       "leanestCache": "Самый компактный кэш",
-      "bestQuality": "Лучшее качество",
-      "bestValue": "Лучшее соотношение"
+      "bestValue": "Лучшее соотношение",
+      "lowestPerplexity": null,
+      "noPerplexityRuns": null
     },
     "metric": {
       "perplexity": "Перплексия",
@@ -668,10 +700,10 @@
       "speed": "Скорость",
       "response": "Ответ",
       "cache": "Кэш",
-      "quality": "Качество",
       "compression": "Сжатие",
       "context": "Контекст",
-      "strategy": "Стратегия"
+      "strategy": "Стратегия",
+      "scoring": null
     },
     "table": {
       "metric": "Метрика",
@@ -707,8 +739,8 @@
       "strategy": "Стратегия",
       "bits": "Биты",
       "context": "Контекст",
-      "quality": "Качество",
-      "pplValue": "{value} ppl"
+      "pplValue": "{value} ppl",
+      "load": null
     },
     "modeLabel": {
       "ppl": "PPL",
@@ -828,13 +860,12 @@
     "emptyState": "Запустите несколько бенчмарков, чтобы заполнить точечный график.",
     "xAxisLabel": "Кэш (ГБ) →",
     "yAxisLabel": "↑ Токенов/сек",
-    "pointTooltip": "{label}\n{tokS} tok/s · {cacheGb} ГБ · качество {quality}%",
     "legend1Bit": "1-бит",
     "legend2Bit": "2-бит",
     "legend3Bit": "3-бит",
     "legend4Bit": "4-бит",
     "legendNativeF16": "Нативный f16",
-    "legendDotSize": "Размер точки = качество %"
+    "pointTooltipMeasured": null
   },
   "logprobSummary": {
     "title": "Уверенность по токенам",

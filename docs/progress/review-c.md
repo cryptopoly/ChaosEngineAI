@@ -1,0 +1,67 @@
+# Overnight review, stream C: Prompts and Plugins
+
+Branch `review/c`, cut from `release/v0.10.0` at `b31c4ea5`. Not merged. Plan: `docs/plans/overnight-e2e-review.md`.
+Started 2026-11-18 07:36. Budget cut by the coordinator to 3.5 hours (report due about 11:05).
+
+How to resume: backend on port 8902 with a throwaway HOME (below), Vite on 8942 (8903 was taken by another
+stream's backend). Model work needs the shared lock `review-lock/model.lock` in the session scratchpad.
+
+```
+S=<scratchpad>/review-c
+HOME=$S/home CHAOSENGINE_PORT=8902 CHAOSENGINE_HOST=127.0.0.1 CHAOSENGINE_API_TOKEN=review-c-token \
+  CHAOSENGINE_ALLOWED_ORIGINS=http://127.0.0.1:8942 HF_HUB_OFFLINE=1 HF_TOKEN= \
+  /Users/dan/ChaosEngineAI/.venv/bin/python -m backend_service.app
+VITE_CHAOSENGINE_API_BASE=http://127.0.0.1:8902 VITE_CHAOSENGINE_API_TOKEN=review-c-token \
+  npx vite --host 127.0.0.1 --port 8942 --strictPort
+```
+
+Two small MLX models are linked into the throwaway HOME's Hub cache (`Qwen3-0.6B-4bit`, `Qwen3-8B-4bit`); nothing
+is copied, downloaded or deleted.
+
+## Verdict (plan rubric)
+
+| Feature | Works | Honest | Valuable | Clutter cost | Verdict |
+|---|---|---|---|---|---|
+| **Prompts** | Partly. Save, edit, delete, search, variables and "Use in Chat" work (see the log). The page had five defects that are fixed here; four remain (below). | No. It shows a "preset model, applied when you Use in Chat" badge and stores preset samplers and few-shot examples, and none of the three is ever applied. "Use in Chat" sets a system prompt that Chat never shows. | Yes, in one respect: it is the **only** way in the app to give Chat a system prompt. The template store itself (five generic personas, tags, categories) is not something a user would miss. | One sidebar slot under Tools; 438 + 301 + 104 lines; raw JSON boxes for variables and samplers; a label that still says "Phase 2.7". | **Merge into Chat**, then remove the sidebar entry. Proposal: `docs/plans/review-c-prompts-into-chat.md`. Until then keep it (it works after the fixes). |
+| **Plugins** | No. Until this branch the page always said "No plugins found" (it read a key the route never sent; broken since the first release in April). With that fixed it lists the 9 cache strategies and 3 chat tools the app already has, with ON/OFF switches that change nothing and are forgotten on restart. A folder put where the page says is never read. | No. The page, the README (three places) and the docs promise external plugins "discovered from the app's plugin directory" and five extension types. No code path loads a plugin; three of the five types have no rows and no consumer. | No. Nothing a user can do needs it: chat tools from outside come through MCP servers (`settings.mcpServers`, `backend_service/mcp/loader.py`), instructions through Skills, outside agents through the bridge (`/mcp`), cache strategies through the model launch settings. | One sidebar slot; 181 + 132 + 50 lines; a public promise that is false. | **Hide behind the experimental switch now; remove after v0.10.0** unless a real plugin loader with a trust model is planned. Files that go with it are listed below. |
+
+## Log
+
+| # | Check | Result | Evidence |
+|---|---|---|---|
+| 1 | `GET /api/plugins` on a fresh data dir | PASS | 12 rows: `cache_strategy` 9, `tool` 3; the answer is the map itself, no `plugins` key |
+| 2 | Plugins page, before the fix | **FAIL** | "0 plugins registered / No plugins found." with 12 rows in the backend. `PluginsTab.tsx` read `data.plugins`; the route has returned the bare map since `1d50fb51` (2026-04-14). Fixed in `01d79f7f` |
+| 3 | Plugins page, after the fix | PASS | "12 plugins registered", all rows; screenshot looked at |
+| 4 | Plugins page rows cut off | **FAIL**, fixed | The panels sat in a flex column inside a clipped frame: scroll height 876 in a 679 px panel, no scrollbar, the tools row unreachable at 1400 x 900. Fixed in `9cbb2dc9` (`.plugins-page` grid that scrolls) |
+| 5 | Install a sample plugin | **FAIL** (nothing loads) | Wrote `<data>/plugins/review-sample/manifest.json` (`type: tool`, `entry_point: plugin:register`) and `plugin.py` that writes a marker file when imported. Restarted the backend. `GET /api/plugins` still 12 rows, no `review.sample`; no marker file. `discover_from_directory` has no caller (`git grep`), and it would only read the manifest: `entry_point` is never imported |
+| 6 | Run a plugin | SKIP | Nothing can be run; there is no loader |
+| 7 | Switch a built-in off | **FAIL** (no effect) | `POST /api/plugins/tool.calculator/disable` answers `enabled: false`; `GET /api/tools` still offers `calculator`. `cache.native` switched off still shows as the active strategy in the header. The flag is in memory only (back on after a restart) |
+| 8 | Error path | PASS | Unknown id: 404 with a localized message. A path-shaped id (`..%2F..%2Fetc`): 404. No token: 401 on list and on enable |
+| 9 | Uninstall | SKIP | There is no install, so nothing to uninstall; deleting the folder changes nothing |
+| 10 | Trust and permission model | n/a | There is none because no outside code is loaded. That is the safe state. A unit test now pins it: a manifest is listed without importing its code, and nothing in the app scans a plugin folder (`tests/test_plugins.py`) |
+| 11 | Safe-mode story | n/a | Nothing to disable at start-up: the registry is rebuilt from built-ins on every start |
+| 12 | `GET /api/prompts` on a fresh data dir | PASS | 5 built-ins seeded into `<data>/prompt_templates.json` |
+| 13 | Prompts page: dates | **FAIL**, fixed | "Created: 1794987548.93451 \| Updated: 1794987548.93451" (epoch seconds printed raw). Fixed in `01d79f7f` |
+| 14 | Prompts page: save with no name | **FAIL**, fixed | The route answers 422 and the page did nothing: no message, editor still open. Now "Give the template a name before saving." (and a sentence for any other refused save) |
+| 15 | Prompts page: search | **FAIL**, fixed | Search read name, category and tags, not the prompt text (the route's `query` does). Now it reads the text too |
+| 16 | Delete every template, restart | **FAIL**, fixed | The five built-ins came back, because an empty library was re-seeded on load. Now only a missing or unreadable file seeds |
+| 17 | Hand-edited library file with a bad row | **FAIL**, fixed | A row that is a number made every `/api/prompts` call a 500 (`TypeError` in `load`). Bad rows are now skipped |
+| 18 | Prompts at 375 px | **FAIL**, fixed | The detail panel was 65 px wide beside a fixed 300 px list. The two now stack below 760 px and the page scrolls; the editor scrolls inside its panel on a short window (`9cbb2dc9`) |
+| 19 | Plugins at 375 px | PASS after #4 | No sideways scroll, every row reachable |
+| 20 | Light theme | n/a | The app has one theme (`color-scheme: dark`, no light tokens). Both tabs hard-code about 30 hex colours instead of the tokens, which will matter the day a light theme exists |
+| 21 | Playwright `29-prompts-plugins` | PASS | 4 passed (25.6 s): built-ins, dates, refused save, variables, search by text, Use in Chat sends the filled prompt as `systemPrompt`, edit, delete; 375 px for both pages; Plugins lists what the backend registers and a switch round-trips |
+| 22 | Import and export of templates | SKIP | The feature does not exist (no route, no button). The brief asked for it to be tested |
+| 23 | Use from Studio | SKIP | Not offered: templates are Chat system prompts only. Image, Video, Voice and Music studios have their own presets and no link to this page |
+
+## Commands
+
+```
+HOME=$(mktemp -d) .venv/bin/python -m pytest tests/test_prompts.py tests/test_plugins.py tests/test_route_contracts.py -q
+npx vitest run src/features/plugins src/features/prompts
+npx tsc --noEmit
+npm run i18n:validate
+cd e2e && E2E_PYTHON=/Users/dan/ChaosEngineAI/.venv/bin/python E2E_WEB_PORT=8952 E2E_API_PORT=8953 \
+  npx playwright test tests/29-prompts-plugins.spec.ts --workers=1
+```
+
+(`e2e/node_modules` in this worktree is a link to the main checkout's, like the root `node_modules`; nothing was installed.)

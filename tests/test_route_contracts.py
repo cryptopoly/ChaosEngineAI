@@ -241,5 +241,55 @@ class PromptsRouteTests(_RouteContractCase):
         self.assertEqual(resp.status_code, 404)
 
 
+class PluginsRouteTests(_RouteContractCase):
+    """``/api/plugins``: the answer is the type-to-rows map itself, with no wrapper key (review C).
+
+    The Plugins page read a ``plugins`` key for six months and showed "No plugins found"; the shape is
+    pinned here so the page and the route cannot drift apart again.
+    """
+
+    def tearDown(self):
+        from backend_service.plugins import plugin_registry
+
+        for manifest in plugin_registry.list_all():
+            manifest.enabled = True
+        super().tearDown()
+
+    def test_list_is_a_map_of_type_to_rows(self):
+        resp = self.client.get("/api/plugins")
+        self.assertEqual(resp.status_code, 200)
+        body = resp.json()
+        self.assertNotIn("plugins", body)
+        self.assertIn("cache_strategy", body)
+        self.assertIn("tool", body)
+        row = body["cache_strategy"][0]
+        self.assertEqual(
+            sorted(row), ["author", "builtin", "description", "enabled", "id", "name", "type", "version"])
+        self.assertTrue(row["builtin"])
+        self.assertIn("cache.native", [r["id"] for r in body["cache_strategy"]])
+
+    def test_disable_then_enable_round_trip(self):
+        resp = self.client.post("/api/plugins/tool.calculator/disable")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json(), {"ok": True, "plugin_id": "tool.calculator", "enabled": False})
+        rows = {r["id"]: r for r in self.client.get("/api/plugins").json()["tool"]}
+        self.assertFalse(rows["tool.calculator"]["enabled"])
+        resp = self.client.post("/api/plugins/tool.calculator/enable")
+        self.assertEqual(resp.json()["enabled"], True)
+
+    def test_unknown_plugin_is_404(self):
+        for action in ("enable", "disable"):
+            resp = self.client.post(f"/api/plugins/no-such-plugin/{action}")
+            self.assertEqual(resp.status_code, 404)
+
+    @unittest.expectedFailure
+    def test_switching_a_tool_off_takes_it_away_from_chat(self):
+        # Known gap (review C): the switch only changes the row. /api/tools (what Chat offers the model)
+        # does not read it, so a tool switched off is still offered. Remove expectedFailure when it is wired.
+        self.client.post("/api/plugins/tool.calculator/disable")
+        names = [tool["name"] for tool in self.client.get("/api/tools").json()["tools"]]
+        self.assertNotIn("calculator", names)
+
+
 if __name__ == "__main__":
     unittest.main()

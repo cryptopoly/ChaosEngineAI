@@ -26,6 +26,7 @@ export function AdapterCard({ adapter }: { adapter: Adapter }) {
         borderRadius: 8,
         padding: 12,
         background: "#1a1f26",
+        overflowWrap: "anywhere",
       }}
     >
       <div style={{ fontWeight: 600, color: "#c8d0da", marginBottom: 4 }}>{adapter.name}</div>

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import time
 import uuid
 from dataclasses import dataclass, field, asdict
@@ -87,6 +88,22 @@ def list_adapters(data_dir: Path) -> list[dict[str, Any]]:
     return results
 
 
+_HF_SNAPSHOT = re.compile(r"models--([^/\\]+?)--([^/\\]+)[/\\]snapshots[/\\]")
+
+
+def _base_model_label(value: Any) -> str:
+    """The base model as a person would name it.
+
+    mlx-lm records the path it trained from; for a model in the Hugging Face cache that is
+    ``.../models--org--name/snapshots/<40 hex>``, which the card cannot show. Give ``org/name`` instead.
+    """
+    text = str(value or "").strip()
+    if not text:
+        return "unknown"
+    match = _HF_SNAPSHOT.search(text)
+    return f"{match.group(1)}/{match.group(2)}" if match else text
+
+
 def _read_adapter_meta(adapter_dir: Path) -> dict[str, Any]:
     """Read adapter_config.json and build a summary dict."""
     config_path = adapter_dir / "adapter_config.json"
@@ -111,7 +128,7 @@ def _read_adapter_meta(adapter_dir: Path) -> dict[str, Any]:
         "name": adapter_dir.name,
         "path": str(adapter_dir),
         # PEFT names the base model ``base_model_name_or_path``; mlx-lm saves its training arguments, where it is ``model``.
-        "base_model": config.get("base_model_name_or_path") or config.get("model") or "unknown",
+        "base_model": _base_model_label(config.get("base_model_name_or_path") or config.get("model")),
         "created": created,
         "lora_rank": config.get("r", config.get("lora_rank")),
         "lora_alpha": config.get("lora_alpha"),

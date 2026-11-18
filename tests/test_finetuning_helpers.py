@@ -40,6 +40,14 @@ class AdapterMetaTests(unittest.TestCase):
         meta = _read_adapter_meta(self._adapter("mlx", {"model": "/models/qwen-0.5b", "lora_parameters": {"rank": 8}}))
         self.assertEqual(meta["base_model"], "/models/qwen-0.5b")
 
+    def test_base_model_from_a_hub_cache_path_is_the_repo_name(self) -> None:
+        # Seen in the real run: mlx-lm saved the snapshot path, and its 40-character hash ran out of the card.
+        snapshot = "/Users/someone/.cache/huggingface/hub/models--mlx-community--Qwen2.5-0.5B-Instruct-4bit/snapshots/" + "a" * 40
+        meta = _read_adapter_meta(self._adapter("cached", {"model": snapshot}))
+        self.assertEqual(meta["base_model"], "mlx-community/Qwen2.5-0.5B-Instruct-4bit")
+        windows = "C:\\Users\\x\\.cache\\huggingface\\hub\\models--org--name\\snapshots\\" + "b" * 40
+        self.assertEqual(_read_adapter_meta(self._adapter("win", {"model": windows}))["base_model"], "org/name")
+
     def test_unreadable_config_still_lists(self) -> None:
         folder = self._adapter("broken", {})
         (folder / "adapter_config.json").write_text("{not json", encoding="utf-8")

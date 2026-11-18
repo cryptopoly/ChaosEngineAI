@@ -3639,6 +3639,8 @@ from e2e_phases.phase_15 import phase_15  # noqa: E402
 
 PHASES[14] = phase_14
 PHASES[15] = phase_15
+from e2e_phases import phase_21_finetuning as _phase_21_finetuning  # noqa: E402
+PHASES[_phase_21_finetuning.PHASE_KEY] = _phase_21_finetuning.bind(sys.modules[__name__])
 
 
 def _write_reports(report_dir: Path, started: datetime, ended: datetime,

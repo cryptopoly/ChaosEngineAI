@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { chatErrorText } from "../features/chat/chatErrors";
 import { promptEvalTimeoutMs } from "./promptEvalWatchdog";
 import {
   addMessageVariant,
@@ -1060,7 +1061,7 @@ export function useChat(
             clearTimeout(promptEvalTimeoutRef.current);
             promptEvalTimeoutRef.current = null;
           }
-          setError(`Chat error: ${errMsg}`);
+          setError(chatErrorText(errMsg));
           if (streamingChatId) {
             setWorkspace((current) => ({
               ...current,
@@ -1097,7 +1098,7 @@ export function useChat(
       if (detail.includes("Load a model") || detail.includes("409")) {
         setError("No model is loaded. Select a model and try again.");
       } else {
-        setError(`Chat error: ${detail}`);
+        setError(chatErrorText(detail));
       }
       if (sendingSessionId) {
         setWorkspace((current) => ({

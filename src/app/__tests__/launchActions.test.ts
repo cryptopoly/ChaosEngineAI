@@ -61,12 +61,13 @@ describe("performConfirmLaunch, Chat in a new thread", () => {
     expect(all.setActiveTab).toHaveBeenCalledWith("chat");
   });
 
-  it("a catalogue row still starts its thread from the variant", async () => {
+  it("a catalogue row starts its thread from the variant and loads too", async () => {
     const variant = { id: local.modelRef, repo: local.modelRef, name: "Qwen2.5 0.5B", familyId: "qwen" } as unknown as ModelVariant;
     const family = { id: "qwen", name: "Qwen", variants: [variant] } as unknown as ModelFamily;
     const { all, calls } = deps({ featuredModels: [family] });
     await performConfirmLaunch(local.key, all);
-    expect(calls).toEqual(["thread:variant"]);
+    expect(calls).toEqual(["thread:variant", "load"]);
+    expect(all.handleLoadModel).toHaveBeenCalledWith(expect.objectContaining({ modelRef: local.modelRef, path: local.path }));
   });
 });
 

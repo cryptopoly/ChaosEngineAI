@@ -15,11 +15,15 @@
  *     dependency yet).  Catches: hardcoded ``margin-left`` instead of
  *     ``margin-inline-start`` in CSS.
  *
- * Both pseudo-locales are *dev-only* — they're hidden behind the
- * ``?devLocale=en-XA`` URL param + ``CHAOSENGINE_I18N_DEV_MODE=1`` env
- * var so they don't leak into shipped builds.  This script regenerates
- * the trees on demand; commit the output if you want CI checks against
+ * Both pseudo-locales are *dev-only*.  This script regenerates the
+ * trees on demand; commit the output if you want CI checks against
  * them, otherwise it's a local-only artefact.
+ *
+ * Nothing in ``src/`` loads them: the ``?devLocale=en-XA`` switch this
+ * comment used to describe was never wired, and ``SUPPORTED_LOCALES``
+ * does not list them.  The layout check the build checklist asks for
+ * runs in ``e2e/tests/34-locales.spec.ts``, which answers the German
+ * catalogue requests with accented, 40 % longer English.
  */
 
 import { promises as fs } from "node:fs";

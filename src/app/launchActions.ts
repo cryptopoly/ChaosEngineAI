@@ -81,20 +81,20 @@ export async function performConfirmLaunch(selectedKey: string, deps: ConfirmLau
   else if (action === "server") setActiveTab("server");
   if (action === "thread") {
     const variant = findVariantForReference(featuredModels, option.modelRef, option.model);
-    if (variant) { await handleStartThreadWithVariant(variant); }
-    else {
-      // A local model that is not a catalogue row. It used to be loaded with no new thread, so the page
-      // showed the last thread, and the first message went to that thread and swapped its own model back in.
-      await handleStartThreadWithOption(option);
-      await handleLoadModel({
-        modelRef: option.modelRef,
-        modelName: option.model,
-        canonicalRepo: option.canonicalRepo,
-        source: option.source,
-        backend: option.backend,
-        path: option.path ?? undefined,
-      });
-    }
+    // A new thread bound to the model, then the load. Two things were wrong here: a local model that is not
+    // a catalogue row was loaded with no new thread (the page showed the last thread, and the first message
+    // went into it and swapped that thread's own model back in), and a catalogue row got its thread but no
+    // load, so "Start Chat" ended on "Load a model first".
+    if (variant) await handleStartThreadWithVariant(variant);
+    else await handleStartThreadWithOption(option);
+    await handleLoadModel({
+      modelRef: option.modelRef,
+      modelName: option.model,
+      canonicalRepo: option.canonicalRepo,
+      source: option.source,
+      backend: option.backend,
+      path: option.path ?? undefined,
+    });
   } else if (action === "chat") {
     if (activeChat) {
       const sanitizedSpeculative = sanitizeSpeculativeForModel({

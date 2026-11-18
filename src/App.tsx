@@ -615,6 +615,30 @@ export default function App() {
     });
     return () => cancelAnimationFrame(handle);
   }, [activeTab, activeChat?.id, activeChat?.messages.length, lastMessageLength, chatScrollRef]);
+  // Tool calls, plan cards, job cards and media grow the thread without changing the reply text, so the
+  // effect above missed them and the newest card sat below the fold. Follow any growth while the follow is on.
+  useEffect(() => {
+    if (activeTab !== "chat") return;
+    const el = chatScrollRef.current;
+    if (!el || typeof MutationObserver === "undefined") return;
+    let handle = 0;
+    const follow = () => {
+      cancelAnimationFrame(handle);
+      handle = requestAnimationFrame(() => {
+        if (chatSticky.current.stuck) stickToBottom(el, chatSticky.current);
+      });
+    };
+    const observer = new MutationObserver(follow);
+    observer.observe(el, { childList: true, subtree: true, characterData: true });
+    el.addEventListener("loadedmetadata", follow, true);
+    el.addEventListener("load", follow, true);
+    return () => {
+      observer.disconnect();
+      el.removeEventListener("loadedmetadata", follow, true);
+      el.removeEventListener("load", follow, true);
+      cancelAnimationFrame(handle);
+    };
+  }, [activeTab, activeChat?.id, chatScrollRef]);
 
   // Re-anchor previewControls when benchmark/conversion model changes
   useEffect(() => {

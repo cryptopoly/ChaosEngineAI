@@ -200,8 +200,30 @@ function VideoOutputCard({
   const activeUrlRef = useRef<string | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [soundMuted, setSoundMuted] = useState(true);
+  // A clip is fetched whole, as a blob. Every card used to fetch on mount, so opening a gallery of 133
+  // clips pulled all 133 files into memory (about 100 MB) before the first one played. A card now waits
+  // until it scrolls into view; once loaded it stays loaded.
+  const cardRef = useRef<HTMLElement | null>(null);
+  const [near, setNear] = useState(false);
+  useEffect(() => {
+    if (near) return undefined;
+    const card = cardRef.current;
+    if (!card || typeof IntersectionObserver === "undefined") {
+      setNear(true);
+      return undefined;
+    }
+    const seen = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        setNear(true);
+        seen.disconnect();
+      }
+    }, { rootMargin: "300px" });
+    seen.observe(card);
+    return () => seen.disconnect();
+  }, [near]);
 
   useEffect(() => {
+    if (!near) return undefined;
     let cancelled = false;
     setLoadError(null);
     fetchVideoOutputBlobUrl(artifact.artifactId)
@@ -229,7 +251,7 @@ function VideoOutputCard({
         activeUrlRef.current = null;
       }
     };
-  }, [artifact.artifactId, tStudio]);
+  }, [artifact.artifactId, tStudio, near]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -273,7 +295,7 @@ function VideoOutputCard({
   const clipSeconds = artifact.clipDurationSeconds || artifact.numFrames / Math.max(1, artifact.fps);
   const previewAspect = artifact.width > 0 && artifact.height > 0 ? `${artifact.width} / ${artifact.height}` : undefined;
   return (
-    <article className={`image-output-card video-output-card${expanded ? " video-output-card--expanded" : ""}`}>
+    <article ref={cardRef} className={`image-output-card video-output-card${expanded ? " video-output-card--expanded" : ""}`}>
       {expanded ? (
         <button
           className="secondary-button video-gallery-collapse-button"

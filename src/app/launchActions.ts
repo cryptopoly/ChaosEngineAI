@@ -26,6 +26,7 @@ export interface ConfirmLaunchDeps {
   setError: (msg: string | null) => void;
   setActiveTab: (request: TabRequest) => void;
   handleStartThreadWithVariant: (variant: ModelVariant) => Promise<void>;
+  handleStartThreadWithOption: (option: ChatModelOption) => Promise<void>;
   handleLoadModel: (payload: LoadModelPayload) => Promise<LoadModelActionResult>;
   persistSessionChanges: (sessionId: string, patch: Partial<ChatSession>) => Promise<unknown>;
   sanitizeSpeculativeForModel: (params: {
@@ -42,7 +43,7 @@ export interface ConfirmLaunchDeps {
 export async function performConfirmLaunch(selectedKey: string, deps: ConfirmLaunchDeps) {
   const {
     pendingLaunch, threadModelOptions, launchSettings, previewControls, featuredModels, activeChat,
-    setPendingLaunch, setError, setActiveTab, handleStartThreadWithVariant, handleLoadModel,
+    setPendingLaunch, setError, setActiveTab, handleStartThreadWithVariant, handleStartThreadWithOption, handleLoadModel,
     persistSessionChanges, sanitizeSpeculativeForModel,
   } = deps;
   if (!pendingLaunch) return;
@@ -82,6 +83,9 @@ export async function performConfirmLaunch(selectedKey: string, deps: ConfirmLau
     const variant = findVariantForReference(featuredModels, option.modelRef, option.model);
     if (variant) { await handleStartThreadWithVariant(variant); }
     else {
+      // A local model that is not a catalogue row. It used to be loaded with no new thread, so the page
+      // showed the last thread, and the first message went to that thread and swapped its own model back in.
+      await handleStartThreadWithOption(option);
       await handleLoadModel({
         modelRef: option.modelRef,
         modelName: option.model,

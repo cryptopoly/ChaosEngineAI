@@ -1036,6 +1036,25 @@ export function useChat(
           );
           setActiveChatId(response.session.id);
         },
+        // Stopped by the user (the Stop button, or the backend saying so): not an error. A reply that had
+        // not produced any text yet leaves no empty bubble behind.
+        onCancelled: () => {
+          if (promptEvalTimeoutRef.current) {
+            clearTimeout(promptEvalTimeoutRef.current);
+            promptEvalTimeoutRef.current = null;
+          }
+          if (streamingChatId) {
+            setWorkspace((current) => ({
+              ...current,
+              chatSessions: current.chatSessions.map((s) => {
+                if (s.id !== streamingChatId) return s;
+                const last = s.messages[s.messages.length - 1];
+                const empty = last?.role === "assistant" && !last.text && !last.reasoning && !(last.toolCalls?.length);
+                return empty ? { ...s, messages: s.messages.slice(0, -1) } : s;
+              }),
+            }));
+          }
+        },
         onError: (errMsg) => {
           if (promptEvalTimeoutRef.current) {
             clearTimeout(promptEvalTimeoutRef.current);

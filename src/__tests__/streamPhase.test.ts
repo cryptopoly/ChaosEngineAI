@@ -164,3 +164,58 @@ describe("generateChatStream phase events (Phase 2.0)", () => {
     expect(phaseCalls).toEqual([]);
   });
 });
+
+describe("generateChatStream: Stop is not a timeout", () => {
+  function abortableFetch() {
+    return vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      if (url.includes("/api/auth/session")) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ apiToken: null }), { status: 200, headers: { "Content-Type": "application/json" } }),
+        );
+      }
+      // A stream that never answers until it is aborted, like a reply that is still generating.
+      return new Promise((_resolve, reject) => {
+        const fail = () => reject(new DOMException("aborted", "AbortError"));
+        if (init?.signal?.aborted) fail();
+        else init?.signal?.addEventListener("abort", fail);
+      });
+    });
+  }
+
+  it("an abort from the Stop button calls onCancelled and raises no error", async () => {
+    const fetchMock = abortableFetch();
+    vi.stubGlobal("fetch", fetchMock);
+    const stop = new AbortController();
+    const errors: string[] = [];
+    let cancelled = 0;
+    const run = generateChatStream(
+      { prompt: "count to 400" },
+      { onToken: () => {}, onDone: () => {}, onError: (message) => errors.push(message), onCancelled: () => { cancelled += 1; } },
+      stop,
+    );
+    await vi.waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).includes("/api/chat/generate/stream"))).toBe(true));
+    stop.abort();
+    await run;
+    expect(errors).toEqual([]);
+    expect(cancelled).toBe(1);
+  });
+
+  it("the 5-minute timeout still reports Streaming timed out", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.stubGlobal("fetch", abortableFetch());
+      const errors: string[] = [];
+      let cancelled = 0;
+      const run = generateChatStream(
+        { prompt: "hi" },
+        { onToken: () => {}, onDone: () => {}, onError: (message) => errors.push(message), onCancelled: () => { cancelled += 1; } },
+      );
+      await vi.advanceTimersByTimeAsync(300_000);
+      await run;
+      expect(errors).toEqual(["Streaming timed out"]);
+      expect(cancelled).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});

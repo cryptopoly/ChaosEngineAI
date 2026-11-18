@@ -20,7 +20,7 @@ import {
   prepareLibraryConversion as prepareLibraryConversionAction,
 } from "./features/app/conversionActions";
 import { performDeleteModel, performUnloadModel } from "./features/app/modelActions";
-import { threadPatchFromVariant } from "./features/app/variantPayloads";
+import { threadPatchFromOption, threadPatchFromVariant } from "./features/app/variantPayloads";
 import { } from "./components/LaunchModal";
 import { } from "./components/runtimeSupport";
 import { } from "./components/ImageGenerationModal";
@@ -783,12 +783,21 @@ export default function App() {
   }
 
   async function handleStartThreadWithVariant(variant: ModelVariant) {
+    startThread(threadPatchFromVariantLocal(variant));
+  }
+
+  /** New thread for a local model that is not a catalogue row (Chat in a new thread on the Models page). */
+  async function handleStartThreadWithOption(option: ChatModelOption) {
+    startThread(threadPatchFromOption(option, { launchSettings, launchCacheLabel, sanitizeSpeculativeForModel }));
+  }
+
+  function startThread(patch: ReturnType<typeof threadPatchFromVariantLocal>) {
     const localSession: ChatSession = {
       id: `draft-${Date.now()}`,
       title: "New chat",
       pinned: false,
       messages: [],
-      ...threadPatchFromVariantLocal(variant),
+      ...patch,
     };
     setWorkspace((current) => ({
       ...current,
@@ -825,6 +834,7 @@ export default function App() {
       setError,
       setActiveTab,
       handleStartThreadWithVariant,
+      handleStartThreadWithOption,
       handleLoadModel,
       persistSessionChanges,
       sanitizeSpeculativeForModel,

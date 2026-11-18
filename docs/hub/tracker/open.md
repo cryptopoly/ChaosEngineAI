@@ -1,7 +1,7 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 122 rows with work, decisions or watch items still open, newest first.
+summary: 139 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
@@ -10,11 +10,164 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 
 
 <details>
-<summary>FU-230 · No-backend splash and other backends' workers — When the shell start-up is next touched</summary>
+<summary>FU-247 · No-backend splash and other backends' workers — When the shell start-up is next touched</summary>
 
 **Status or trigger:** When the shell start-up is next touched
 
 **Notes:** Review B: in a browser with no backend a reload shows "Extracting embedded runtime, first launch only", which is not what happens; the Dashboard process list shows other backends' Python workers with Stop buttons.
+
+</details>
+
+<details>
+<summary>FU-246 · Stills-first approval for costly clip plans; first-frame preview for a single clip — Queued (2026-11-18), D-92</summary>
+
+**Status or trigger:** Queued (2026-11-18), D-92. After FU-241
+
+**Notes:** A plan whose clips cost over 5 minutes (proposed) is approved in two steps: the stills, then the clips, so the cheap look comes before the expensive render. Skipped when renders are auto-approved. For a single clip in Chat, an option on the card to make the first frame as a still first, for video models that take a start image.
+
+</details>
+
+<details>
+<summary>FU-245 · Follow the draft: the final still starts from the kept draft still — Prototype after FU-244</summary>
+
+**Status or trigger:** Prototype after FU-244; offered only if claim C12 holds
+
+**Notes:** A draft and its final are different pictures today: another still model, another size, a new seed. Use the kept draft still as the reference picture of the final still where the quality model takes one; elsewhere keep the prompt and the locked seed and say on the card that the picture may differ. A clip's first frame already matches, because it starts from the shot's still; the motion is not promised. Stop: if the owner does not call two of three test shots the same picture, ship the seed lock alone.
+
+</details>
+
+<details>
+<summary>FU-244 · Final for chosen shots from Chat and Keep going — Queued (2026-11-18), D-92</summary>
+
+**Status or trigger:** Queued (2026-11-18), D-92. After FU-241
+
+**Notes:** The Final card lists the shots with ticks, kept ones ticked. A `keep` action on `storyboard_shot` (the operation `set_kept` exists; only the tool action is missing; the bridge's golden tool list changes once). Keeping a shot locks its seed to the kept take's. Keep going takes a tier in its panel; on Draft the run stops with a new resumable code `review_ready` ("drafts are ready: pick the shots to keep, then Resume"). The upscale tick sits on the Final film card. Open point in D-92: films of more than 8 shots start on Draft.
+
+</details>
+
+<details>
+<summary>FU-243 · Whole-project estimate before the first render: time, memory, disk and free space — Queued (2026-11-18), D-92</summary>
+
+**Status or trigger:** Queued (2026-11-18), D-92. After FU-241
+
+**Notes:** `storyboard/estimate.py` prices one batch today and the Chat card drops its disk figure. Add one figure for the film at its tier: both passes, music, voice, captions and the film render, with peak memory, disk and free space. Disk from this film's own files, else from this model's earlier outputs of a similar size, else "not estimated" (never a guess). A warning when the estimate is more than the free space less 5 GB (proposed); no free-disk check exists today. Shown on the first card of a film and in the Keep going preflight; the Storyboard run bar keeps its strip. Checked by claim C14. E2E: the estimate's shape for a new film in the storyboard phase.
+
+</details>
+
+<details>
+<summary>FU-242 · Grammar-constrained tool calls on MLX — Parked. Revisit when the demo model is under 54 of 60 valid calls after FU-231 to FU-234, or claim C7 shows th…</summary>
+
+**Status or trigger:** Parked. Revisit when the demo model is under 54 of 60 valid calls after FU-231 to FU-234, or claim C7 shows the llama.cpp path clearly better, or mlx-lm ships structured output
+
+**Notes:** The MLX worker does not read `jsonSchema` today. Needs a new dependency (licence check and `THIRD_PARTY_NOTICES.md` per CLAUDE.md), a logits processor in the worker and care with the prompt cache. Cannot fix a valid but wrong choice, such as a large size.
+
+</details>
+
+<details>
+<summary>FU-241 · Quality tiers (Draft, Standard, Final) in Chat: one definition, applied to every render, switch and Expert fields on the card — Queued (2026-11-18), D-91 and D-92</summary>
+
+**Status or trigger:** Queued (2026-11-18), D-91 and D-92. After FU-240 and claims C10 and C13
+
+**Notes:** New `tools/studio_tiers.py` returns each tier's size, fps, steps, model per pass and upscale for a model or a film: Draft is half size with the fast still model (24 fps, clips only when asked), Standard the model's recommended size or the film's size, Final the largest that fits or the film's size with the quality still model. The same table maps to `draft: true`, `what: both` and `what: final`, so no new render path. Chat applies the chat's tier (Standard by default; a tier word or a size in the message sets it); a call above the tier runs at the tier with a note in the result and on the job card. The card gets three buttons with time and disk each, Expert fields (size, length, fps, steps, seed, model), validated overrides on the decision, and "use for the rest of this chat" with a chip. External agents are unchanged. `GET /api/chat/studio/tiers` with an E2E check. Layout checked at 90 % and 125 % UI scale. Stop: no Draft tier for single clips if it is under 1.5x faster than Standard.
+
+</details>
+
+<details>
+<summary>FU-240 · Plan card: always show tier, size, length, frames, fps, steps, and a time for those settings — Queued (2026-11-18), D-91</summary>
+
+**Status or trigger:** Queued (2026-11-18), D-91
+
+**Notes:** Today size, frames, fps and steps show only when the model passed them, and the time is the catalogue figure "at the recommended size" (a 3 min 36 s render was shown against a 1 min 29 s figure). Price with `variant_seconds` for the settings that will run; show disk when known. `tools/studio_gate.plan_item`, `StudioPlanCard.tsx`. Checked at 90 % and 125 % UI scale.
+
+</details>
+
+<details>
+<summary>FU-239 · Keep going preflight panel — Queued (2026-11-18), D-89</summary>
+
+**Status or trigger:** Queued (2026-11-18), D-89. After FU-235
+
+**Notes:** Before Turn on: model loaded and its tool verdict, context size (warn under 16K), models and ffmpeg installed for the brief, memory against the largest job, the time and disk estimate for the film at the run's tier against the budget and free space (FU-243 when it lands), render approval chosen. Warns; only "no model loaded" blocks. Checked at 90 % and 125 % UI scale. `GET /api/chat/keepgoing/{id}/preflight`; E2E in `scripts/e2e_phases/keep_going.py`.
+
+</details>
+
+<details>
+<summary>FU-238 · Keep going: time budget, wrap-up, step list, status line, resume after a stall — Queued (2026-11-18), D-89</summary>
+
+**Status or trigger:** Queued (2026-11-18), D-89. After FU-237
+
+**Notes:** `budgetMinutes` (off by default), a wrap-up at 80 % that renders the shots that are ready (the render already leaves unfinished shots out), a new resumable stop `time_up`. Status gains steps, elapsed, budget and one sentence ("Making clip 2 of 2, about 1 min 10 s left"), shown in the chip and the thread. After `job_stalled`, Resume offers to cancel the stuck job and redo the step (today it waits on the same job again). Strings in `en`, `null` elsewhere.
+
+</details>
+
+<details>
+<summary>FU-237 · Keep going guided run: app-made project, stage tools, demo preset — Queued (2026-11-18), D-89</summary>
+
+**Status or trigger:** Queued (2026-11-18), D-89. After FU-231
+
+**Notes:** The app creates and binds the Storyboard project when it takes the brief; `create` is not offered in that run. Each nudge turn gets the tools of the film's stage (Plan, Make, Sound, Finish) plus job and read tools. Demo preset: two 3 s shots, music, cap 8, budget 10 minutes; it never preselects render approval. Fixes a nudge that names `storyboard_batch`, which Chat does not offer. New `keep_going/guided.py`. Ends with three timed rehearsals: live only if all three finish in the budget, else the recording.
+
+</details>
+
+<details>
+<summary>FU-236 · Benchmarks mode "Tool calls" — After D-87 keeps Benchmarks and FU-230 has proven the figures</summary>
+
+**Status or trigger:** After D-87 keeps Benchmarks and FU-230 has proven the figures
+
+**Notes:** Tiers 1 and 2 of the scorecard as a benchmark mode with history: calls read, arguments valid, tasks done. E2E in the benchmarks phase.
+
+</details>
+
+<details>
+<summary>FU-235 · Tool capability probe (3 calls, cached per model) and its API — Queued (2026-11-18), D-89 and D-90</summary>
+
+**Status or trigger:** Queued (2026-11-18), D-89 and D-90. After FU-231
+
+**Notes:** Three calls with canned answers on the loaded model: an enum, a nested object with a number, a recovery from an error. Verdict Good, Risky or Not for tools, saved per model, quantisation, engine and tool-prompt version. `GET` and `POST /api/chat/tools/probe`. Also reports a model on the vision runtime, which gets no tool list today. The catalogue's tools flag is then set from measured results. E2E: phase 7 (no model) and the model-loaded phase.
+
+</details>
+
+<details>
+<summary>FU-234 · Native tool-call format on MLX for templates that take tools — Only if the scorecard still fails a family after FU-231 and FU-233</summary>
+
+**Status or trigger:** Only if the scorecard still fails a family after FU-231 and FU-233; LFM2.5 first
+
+**Notes:** Pass the tools to the model's own template, keep the text block as the fallback, send results in the template's role. Readers for the three formats exist. As JSON schema the list is 23,540 characters, so this follows the staged list. First check: the LFM2.5 template accepts tools. Stop if tier 1 stays under 54 of 60.
+
+</details>
+
+<details>
+<summary>FU-233 · Agent loop: stop repeated calls, repair harmless argument faults — Queued (2026-11-18), D-90</summary>
+
+**Status or trigger:** Queued (2026-11-18), D-90
+
+**Notes:** No guard exists: a Studio turn allows 30 steps and a run 3 idle nudges, about 120 calls. Same tool, arguments and result twice: a corrective message; a third time ends the turn with a reason (`wait_for_job` exempt). Safe repairs only (a number as text, enum letter case, a value one step outside a range moved to the limit with a note); other faults stay errors that name the allowed values. New `agent_guard.py` (`agent.py` is over the soft cap).
+
+</details>
+
+<details>
+<summary>FU-232 · Prompt cache: keep the fixed tool prefix across turns on hybrid models — Queued (2026-11-18), D-90</summary>
+
+**Status or trigger:** Queued (2026-11-18), D-90. After FU-230 proves the miss (claim C2)
+
+**Notes:** `mlx_worker_prompt_cache.py` saves the recurrent state only at the last prompt token, so a new user turn or a Keep going nudge re-processes the whole prompt with Qwen3.5, 3.6 and 3.8 (read from the code, not timed). Add a second saved state at the end of the system message and a log line per call (prompt tokens, reused, seconds). Must equal a fresh prefill in tests or it is not merged.
+
+</details>
+
+<details>
+<summary>FU-231 · Honest, staged tool prompt on the MLX path — Queued (2026-11-18), D-90</summary>
+
+**Status or trigger:** Queued (2026-11-18), D-90. After the FU-230 baseline
+
+**Notes:** The text block prints allowed values, ranges, defaults and nested keys (today `list_models` shows `kind: string (required)` and nothing else; `generate_video` shows no limits). Core Studio tools always; the seven Storyboard tools (7,814 of 14,708 characters) only when the message asks for a film, a project is bound, or the model calls one. The history budget counts the tool block (it reserves 512 tokens against about 4,000). Tool steps at temperature 0.2 if claim C5 holds. The bridge's tool list and its golden test are unchanged.
+
+</details>
+
+<details>
+<summary>FU-230 · Tool-call scorecard: a script that scores chat models on calls read, arguments valid and task done — Queued (2026-11-18), D-90</summary>
+
+**Status or trigger:** Queued (2026-11-18), D-90. First: it gates FU-231 to FU-236
+
+**Notes:** `scripts/tool-call-scorecard.py`, three tiers (one call through the OpenAI-compatible endpoint with the Studio schemas; a short Studio task with no render; the demo film). Models on disk: Qwen3.8 27B MLX 4-bit, LFM2.5 24B-A2B MLX 4-bit, Qwen3 8B 4-bit, Qwen3 4B; extra: Qwen3.8 27B GGUF, the MTPLX speed build, LFM3 1.7B. Five runs each, counts not percentages, one model loaded at a time. Claims C1 to C11 and the proposed tool bar in [the plan](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/docs/plans/keep-going-and-tools-v2.md); the same run makes the render measurements C10 and C12 to C15 for D-92. Output in `docs/research/tool-call-scorecard-2026-11.md`.
 
 </details>
 
@@ -28,11 +181,11 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 </details>
 
 <details>
-<summary>FU-228 · Studio plan latency and video size in Chat — Before a demo that uses Studio</summary>
+<summary>FU-228 · Studio plan latency and video size in Chat — Covered by the Keep going and tools v2 plan (D-89 to D-92)</summary>
 
-**Status or trigger:** Before a demo that uses Studio
+**Status or trigger:** Covered by the Keep going and tools v2 plan (D-89 to D-92)
 
-**Notes:** Review F: with Qwen3.8 27B the plan card takes 40 to 60 s (15 to 20 s processing the studio tool list): cache the studio prompt or shorten tool descriptions, measure before and after. The model picks 1280x720 unless told, doubling the render: default `generate_video` to the recommended size (tool description and golden list change). Keep going is not demo-ready with small models.
+**Notes:** Review F: with Qwen3.8 27B the plan card takes 40 to 60 s (15 to 20 s processing the studio tool list), and the model picks 1280x720 unless told, doubling the render. Work items: FU-231 and FU-232 (tool prompt and its cache), FU-240 and FU-241 (size from the quality tier), FU-237 (Keep going demo run). Close this row when those land.
 
 </details>
 

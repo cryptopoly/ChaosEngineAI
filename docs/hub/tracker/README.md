@@ -8,20 +8,20 @@ summary: Every FU row from FOLLOW_UPS.md, split into open and closed.
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here.
 
-- [Open and live follow-ups](open.md): **122** rows.
+- [Open and live follow-ups](open.md): **139** rows.
 - [Closed follow-ups](closed.md): **106** rows.
 
 ## Newest ten
 
 | Row | Item | Status |
 |---|---|---|
-| [FU-230](open.md) | No-backend splash and other backends' workers | When the shell start-up is next touched |
-| [FU-229](open.md) | Video Studio heads-up overstates the chat model | When Video Studio is next touched |
-| [FU-228](open.md) | Studio plan latency and video size in Chat | Before a demo that uses Studio |
-| [FU-227](open.md) | Logs page code left after the fold into Server | Owner agrees to delete |
-| [FU-226](open.md) | Hard-coded colours in the Fine-Tuning, Prompts and Plugins tabs | With FU-223 / FU-224 / FU-225 |
-| [FU-225](open.md) | Plugins: remove, or build a real loader | Owner's call (D-87) |
-| [FU-224](open.md) | Prompts: the applied prompt is app-wide and invisible | Owner's call on docs/plans/review-c-prompts-into-chat.md (D-87) |
-| [FU-223](open.md) | Fine-Tuning page leftovers | When the tab is next touched |
-| [FU-222](open.md) | Fine-Tuning: an adapter cannot be applied | With FU-221 |
-| [FU-221](open.md) | Fine-Tuning: training is not built | Hidden behind "Show experimental tabs" (D-87) until wired |
+| [FU-247](open.md) | No-backend splash and other backends' workers | When the shell start-up is next touched |
+| [FU-246](open.md) | Stills-first approval for costly clip plans; first-frame preview for a single clip | Queued (2026-11-18), D-92 |
+| [FU-245](open.md) | Follow the draft: the final still starts from the kept draft still | Prototype after FU-244 |
+| [FU-244](open.md) | Final for chosen shots from Chat and Keep going | Queued (2026-11-18), D-92 |
+| [FU-243](open.md) | Whole-project estimate before the first render: time, memory, disk and free space | Queued (2026-11-18), D-92 |
+| [FU-242](open.md) | Grammar-constrained tool calls on MLX | Parked. Revisit when the demo model is under 54 of 60 valid calls after FU-231 to FU-234, or claim C7 shows th… |
+| [FU-241](open.md) | Quality tiers (Draft, Standard, Final) in Chat: one definition, applied to every render, s | Queued (2026-11-18), D-91 and D-92 |
+| [FU-240](open.md) | Plan card: always show tier, size, length, frames, fps, steps, and a time for those settin | Queued (2026-11-18), D-91 |
+| [FU-239](open.md) | Keep going preflight panel | Queued (2026-11-18), D-89 |
+| [FU-238](open.md) | Keep going: time budget, wrap-up, step list, status line, resume after a stall | Queued (2026-11-18), D-89 |

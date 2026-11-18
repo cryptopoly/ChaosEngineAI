@@ -49,6 +49,8 @@ Traces contain request bodies and headers; do not share them from a run that use
 - `33-window-sizes`: every tab outside Benchmarks, Tools, Server and Logs at 1100 x 760 (the smallest window), 1400 x 920 and 375 px: no panel cuts its content, no two panels overlap, no crash. Plus Settings in the drawer with the Chat or Tools group open, the Settings > General controls, and the Storage folder rows.
 - `34-locales`: the first-launch language banner on a German system, every shipped locale (no raw keys, no leftover placeholders, no sideways scroll), and a pseudo-locale (accented, 40 % longer, served in place of the German catalogue) on Settings General, Storage, Diagnostics and Accelerators.
 - `35-keyboard-dialogs`: first-run terms by keyboard, Select Model in Chat and Compare as real dialogs (Tab stays inside, Escape closes, focus returns), the read-only terms, and the Chat composer with no model loaded.
+- `36-video-gallery-lazy`: forty mocked clips; only the cards in view ask for their file, the last one only after scrolling to it.
+- `37-chat-local-model`: a local model that is not a catalogue row (added to the workspace answer): Chat in a new thread sends the model's own repo, not a look-alike catalogue row's, and opens a new thread.
 
 A sibling worktree without its own `.venv` needs `E2E_PYTHON=/path/to/.venv/bin/python`. Stop a run with `kill -9` on the `playwright test` process: after a plain `kill` the runner outlives its two servers and runs the remaining tests against whatever listens on the same ports.
 

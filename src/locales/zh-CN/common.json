@@ -1018,7 +1018,9 @@
       "uiScaleAria": "界面缩放",
       "uiScaleHelp": "界面缩放会立即更改应用界面的密度。媒体预览保持各自的纵横比尺寸。",
       "keepGroupsOpen": "保持所有侧边栏分组展开",
-      "keepGroupsOpenHelp": "默认关闭：只有你正在使用的分组保持展开。开启后所有分组都会展开。"
+      "keepGroupsOpenHelp": "默认关闭：只有你正在使用的分组保持展开。开启后所有分组都会展开。",
+      "showExperimentalTabs": null,
+      "showExperimentalTabsHelp": null
     },
     "dataDirectory": {
       "title": "数据目录",

@@ -54,6 +54,8 @@ interface SidebarProps {
   readyGroups?: ReadonlySet<SidebarGroupId>;
   /** Show the Music and Storyboard groups. Defaults to the build-time flag. */
   homeStudioEnabled?: boolean;
+  /** Settings > General > "Show experimental tabs" (off by default). */
+  showExperimentalTabs?: boolean;
 }
 
 export function Sidebar({
@@ -73,6 +75,7 @@ export function Sidebar({
   keepAllOpen = false,
   readyGroups,
   homeStudioEnabled = HOME_STUDIO_ENABLED,
+  showExperimentalTabs = false,
 }: SidebarProps) {
   const { t } = useTranslation("common");
   const compact = useCompactLayout();
@@ -115,8 +118,8 @@ export function Sidebar({
   }, [drawerOpen, closeMenu]);
   const busyLines = busyEngineLines(t, activeGenerations);
   const visibleTabs = useMemo(
-    () => visibleSidebarTabs(allTabs, platform, homeStudioEnabled),
-    [platform, homeStudioEnabled],
+    () => visibleSidebarTabs(allTabs, platform, homeStudioEnabled, showExperimentalTabs),
+    [platform, homeStudioEnabled, showExperimentalTabs],
   );
 
   const rows = useMemo(() => arrangeRows(buildItems(visibleTabs)), [visibleTabs]);

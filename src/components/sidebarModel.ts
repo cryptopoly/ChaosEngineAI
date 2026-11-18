@@ -19,10 +19,12 @@ export function visibleSidebarTabs(
   allTabs: TabConfig[],
   platform: string | undefined,
   homeStudioEnabled: boolean = HOME_STUDIO_ENABLED,
+  showExperimental: boolean = false,
 ): TabConfig[] {
   return allTabs.filter((tab) => {
     if (tab.id === "conversion" && platform && platform !== "Darwin") return false;
     if (!homeStudioEnabled && isHomeStudioTab(tab.id)) return false;
+    if (tab.experimental && !showExperimental) return false;
     return true;
   });
 }

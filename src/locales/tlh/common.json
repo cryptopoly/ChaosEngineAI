@@ -1018,7 +1018,9 @@
       "uiScaleAria": "HaSta tInghach",
       "uiScaleHelp": "SIbI' app chen tInghach choH. mIllogh legh nung chenDaj pol.",
       "keepGroupsOpen": "Hoch retlh tetlh ghom poStaH",
-      "keepGroupsOpenHelp": "motlh chu'Ha': ghom Dalo'taHbogh neH poStaH. Hoch ghom poSmoHmeH yIchu'."
+      "keepGroupsOpenHelp": "motlh chu'Ha': ghom Dalo'taHbogh neH poStaH. Hoch ghom poSmoHmeH yIchu'.",
+      "showExperimentalTabs": null,
+      "showExperimentalTabsHelp": null
     },
     "dataDirectory": {
       "title": "De' nav ghom",

@@ -1018,7 +1018,9 @@
       "uiScaleAria": "Escala de la interfaz",
       "uiScaleHelp": "La escala de la interfaz cambia la densidad del cromo de la app inmediatamente. Las vistas previas de medios conservan su propio dimensionamiento por relación de aspecto.",
       "keepGroupsOpen": "Mantener abiertos todos los grupos de la barra lateral",
-      "keepGroupsOpenHelp": "Desactivado por defecto: solo el grupo en el que trabajas permanece abierto. Actívalo para mantener todos los grupos expandidos."
+      "keepGroupsOpenHelp": "Desactivado por defecto: solo el grupo en el que trabajas permanece abierto. Actívalo para mantener todos los grupos expandidos.",
+      "showExperimentalTabs": null,
+      "showExperimentalTabsHelp": null
     },
     "dataDirectory": {
       "title": "Directorio de datos",

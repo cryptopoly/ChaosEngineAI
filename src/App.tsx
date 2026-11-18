@@ -59,7 +59,7 @@ import type {
   VoiceRuntime,
 } from "./types";
 import type { ChatModelOption } from "./types/chat";
-import { modelsAreaForTab, resolveTabRequest, tabs } from "./constants";
+import { modelsAreaForTab, resolveTabRequest, tabs, visibleTabRequest } from "./constants";
 import type { TabRequest } from "./constants";
 import { HOME_STUDIO_ENABLED } from "./constants/features";
 import { applyStoryboardNavigation, readReopenProjects, writeLastAppTab } from "./features/storyboard/projectRoute";
@@ -138,12 +138,21 @@ export default function App() {
   const setAreaAvailability = useCallback((area: ModelsArea, value: ModelAvailabilityFilter) => {
     setModelsAvailability((previous) => (previous[area] === value ? previous : { ...previous, [area]: value }));
   }, []);
+  const sidebarPrefs = useSidebarPrefs();
+  // Read through a ref so the tab setter keeps one identity; the effect moves off a tab the switch just hid.
+  const showExperimentalRef = useRef(sidebarPrefs.showExperimentalTabs);
+  showExperimentalRef.current = sidebarPrefs.showExperimentalTabs;
+  useEffect(() => {
+    setActiveTabState((current) => visibleTabRequest(current, sidebarPrefs.showExperimentalTabs));
+  }, [sidebarPrefs.showExperimentalTabs]);
   // The one tab setter every caller gets. Old Discover / My Models ids
   // redirect to the area's Models page with a preset filter
   // (``constants/tabRedirects.ts``).
   const setActiveTab = useCallback((request: TabRequest) => {
     const navigation = resolveTabRequest(request);
     if (!navigation) return;
+    // A tab behind "Show experimental tabs" opens the Dashboard while the switch is off.
+    navigation.tab = visibleTabRequest(navigation.tab, showExperimentalRef.current);
     const area = modelsAreaForTab(navigation.tab);
     if (area && navigation.modelsPreset) setAreaAvailability(area, navigation.modelsPreset);
     if (navigation.storyboard) applyStoryboardNavigation(navigation.storyboard);
@@ -153,7 +162,6 @@ export default function App() {
   const [apiToken, setApiToken] = useState<string | null>(null);
   const [voiceRuntime, setVoiceRuntime] = useState<VoiceRuntime | null>(null);
   const [voiceOpenRequest, setVoiceOpenRequest] = useState<VoiceOpenRequest | null>(null);
-  const sidebarPrefs = useSidebarPrefs();
   const uiScalePrefs = useUiScale();
   const gpuStatus = useGpuStatus(backendOnline);
   const { i18n: i18nInstance } = useTranslation();
@@ -963,6 +971,7 @@ export default function App() {
         mode={sidebarPrefs.mode}
         collapsedGroups={sidebarPrefs.collapsedGroups}
         keepAllOpen={sidebarPrefs.keepAllOpen}
+        showExperimentalTabs={sidebarPrefs.showExperimentalTabs}
         onToggleGroupCollapsed={sidebarPrefs.toggleGroupCollapsed}
         lastChildByGroup={sidebarPrefs.lastChildByGroup}
         onRememberLastChild={sidebarPrefs.rememberLastChild}
@@ -995,6 +1004,7 @@ export default function App() {
             onTabChange={(tabId) => { setActiveTab(tabId); setError(null); }}
             platform={workspace.system.platform}
             onRememberLastChild={sidebarPrefs.rememberLastChild}
+            showExperimentalTabs={sidebarPrefs.showExperimentalTabs}
           />
         ) : null}
 

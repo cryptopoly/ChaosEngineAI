@@ -1018,7 +1018,9 @@
       "uiScaleAria": "Échelle de l'interface",
       "uiScaleHelp": "L'échelle de l'interface change la densité du chrome de l'app immédiatement. Les aperçus média conservent leur propre dimensionnement par ratio.",
       "keepGroupsOpen": "Garder tous les groupes de la barre latérale ouverts",
-      "keepGroupsOpenHelp": "Désactivé par défaut : seul le groupe dans lequel vous travaillez reste ouvert. Activez pour garder tous les groupes déployés."
+      "keepGroupsOpenHelp": "Désactivé par défaut : seul le groupe dans lequel vous travaillez reste ouvert. Activez pour garder tous les groupes déployés.",
+      "showExperimentalTabs": null,
+      "showExperimentalTabsHelp": null
     },
     "dataDirectory": {
       "title": "Répertoire de données",

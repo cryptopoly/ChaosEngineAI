@@ -9,9 +9,11 @@ interface SubtabBarProps {
   onTabChange: (tabId: TabId) => void;
   platform?: string;
   onRememberLastChild: (group: SidebarGroupId, tabId: string) => void;
+  /** Settings > General > "Show experimental tabs" (off by default). */
+  showExperimentalTabs?: boolean;
 }
 
-export function SubtabBar({ activeTab, onTabChange, platform, onRememberLastChild }: SubtabBarProps) {
+export function SubtabBar({ activeTab, onTabChange, platform, onRememberLastChild, showExperimentalTabs = false }: SubtabBarProps) {
   const { t } = useTranslation("common");
   const activeTabConfig = allTabs.find((t) => t.id === activeTab);
   const groupId = activeTabConfig?.group;
@@ -23,6 +25,7 @@ export function SubtabBar({ activeTab, onTabChange, platform, onRememberLastChil
   const children: TabConfig[] = allTabs.filter((t) => {
     if (t.group !== groupId) return false;
     if (t.id === "conversion" && platform && platform !== "Darwin") return false;
+    if (t.experimental && !showExperimentalTabs) return false;
     return true;
   });
 

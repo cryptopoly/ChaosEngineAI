@@ -27,6 +27,9 @@ export interface TabConfig {
   shortLabel?: string;
   /** i18n key under ``common.tabShortLabels.<key>``. */
   shortLabelKey?: string;
+  /** Listed only when Settings > General > "Show experimental tabs" is on (off by default). The page and its
+   * routes stay; a request for a hidden tab lands on the Dashboard (``visibleTabRequest``). */
+  experimental?: boolean;
 }
 
 export const tabs: TabConfig[] = [
@@ -61,3 +64,13 @@ export const tabs: TabConfig[] = [
   { id: "plugins", label: "Plugins", labelKey: "tabs.plugins", caption: "Extensions and plugin system", captionKey: "tabCaptions.plugins", group: "tools", shortLabel: "Plugins", shortLabelKey: "tabShortLabels.plugins" },
   { id: "settings", label: "Settings", labelKey: "tabs.settings", caption: "Directories and defaults", captionKey: "tabCaptions.settings" },
 ];
+
+/** True for a tab that only shows when the "Show experimental tabs" setting is on. */
+export function isExperimentalTab(tabId: string): boolean {
+  return tabs.some((tab) => tab.id === tabId && tab.experimental === true);
+}
+
+/** ``tabId`` when it can show, else the Dashboard: a remembered or requested experimental tab with the switch off. */
+export function visibleTabRequest(tabId: TabId, showExperimental: boolean): TabId {
+  return !showExperimental && isExperimentalTab(tabId) ? "dashboard" : tabId;
+}

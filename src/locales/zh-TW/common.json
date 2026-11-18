@@ -1018,7 +1018,9 @@
       "uiScaleAria": "UI 縮放",
       "uiScaleHelp": "UI 縮放會立即改變應用程式介面的密度。媒體預覽會保留自身的長寬比尺寸。",
       "keepGroupsOpen": "保持所有側邊欄群組展開",
-      "keepGroupsOpenHelp": "預設關閉：只有你正在使用的群組保持展開。開啟後所有群組都會展開。"
+      "keepGroupsOpenHelp": "預設關閉：只有你正在使用的群組保持展開。開啟後所有群組都會展開。",
+      "showExperimentalTabs": null,
+      "showExperimentalTabsHelp": null
     },
     "dataDirectory": {
       "title": "資料目錄",

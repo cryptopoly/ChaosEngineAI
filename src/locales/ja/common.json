@@ -1018,7 +1018,9 @@
       "uiScaleAria": "UI スケール",
       "uiScaleHelp": "UI スケールはアプリのクロームの密度を即座に変更します。メディアプレビューは独自のアスペクト比に基づくサイズを維持します。",
       "keepGroupsOpen": "サイドバーのグループをすべて開いたままにする",
-      "keepGroupsOpenHelp": "デフォルトはオフ：作業中のグループだけが開いたままになります。オンにすると、すべてのグループが展開されます。"
+      "keepGroupsOpenHelp": "デフォルトはオフ：作業中のグループだけが開いたままになります。オンにすると、すべてのグループが展開されます。",
+      "showExperimentalTabs": null,
+      "showExperimentalTabsHelp": null
     },
     "dataDirectory": {
       "title": "データディレクトリ",

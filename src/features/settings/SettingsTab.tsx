@@ -41,6 +41,9 @@ export interface SettingsTabProps {
   onSidebarModeChange: (mode: SidebarMode) => void;
   sidebarKeepAllOpen: boolean;
   onSidebarKeepAllOpenChange: (value: boolean) => void;
+  /** "Show experimental tabs" (off by default; remembered with the sidebar preferences). */
+  showExperimentalTabs?: boolean;
+  onShowExperimentalTabsChange?: (value: boolean) => void;
   uiScale: UiScale;
   onUiScaleChange: (scale: UiScale) => void;
   // Diagnostics subtab needs the same online/restart wiring the rest of
@@ -107,6 +110,8 @@ export function SettingsTab({
   onSidebarModeChange,
   sidebarKeepAllOpen,
   onSidebarKeepAllOpenChange,
+  showExperimentalTabs = false,
+  onShowExperimentalTabsChange,
   uiScale,
   onUiScaleChange,
   backendOnline,
@@ -193,6 +198,21 @@ export function SettingsTab({
             {t("settingsTab.appearance.keepGroupsOpenHelp", {
               defaultValue:
                 "Off by default: only the group you are working in stays open. Turn it on to keep every group expanded.",
+            })}
+          </p>
+          <label className="check-row">
+            <input
+              type="checkbox"
+              data-testid="show-experimental-tabs"
+              checked={showExperimentalTabs}
+              onChange={(event) => onShowExperimentalTabsChange?.(event.target.checked)}
+            />
+            {t("settingsTab.appearance.showExperimentalTabs", { defaultValue: "Show experimental tabs" })}
+          </label>
+          <p className="muted-text">
+            {t("settingsTab.appearance.showExperimentalTabsHelp", {
+              defaultValue:
+                "Off by default. Lists pages that are not finished yet in the sidebar. Their pages and routes stay either way.",
             })}
           </p>
           <div

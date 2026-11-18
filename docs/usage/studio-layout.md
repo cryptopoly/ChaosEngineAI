@@ -75,3 +75,7 @@ switched on.
 The sidebar is an accordion. Only the group you are working in stays open, so the list fits a small window.
 To keep every group open, go to **Settings > Appearance** and turn on **Keep all sidebar groups open**. The
 switch applies to the **Collapsible** sidebar style.
+
+Pages that are not finished yet are marked experimental and are left out of the sidebar. To list them, turn on
+**Show experimental tabs** in **Settings > Appearance** (off by default, remembered). Their pages and routes stay
+either way; a link to a hidden page opens the Dashboard.

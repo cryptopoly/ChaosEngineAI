@@ -1018,7 +1018,9 @@
       "uiScaleAria": "UI-Skalierung",
       "uiScaleHelp": "Die UI-Skalierung ändert die Dichte der App-Chrome sofort. Medien-Vorschauen behalten ihre eigene Seitenverhältnis-Anpassung.",
       "keepGroupsOpen": "Alle Seitenleistengruppen geöffnet lassen",
-      "keepGroupsOpenHelp": "Standardmäßig aus: Nur die Gruppe, in der du arbeitest, bleibt offen. Einschalten, um jede Gruppe aufgeklappt zu lassen."
+      "keepGroupsOpenHelp": "Standardmäßig aus: Nur die Gruppe, in der du arbeitest, bleibt offen. Einschalten, um jede Gruppe aufgeklappt zu lassen.",
+      "showExperimentalTabs": null,
+      "showExperimentalTabsHelp": null
     },
     "dataDirectory": {
       "title": "Datenverzeichnis",

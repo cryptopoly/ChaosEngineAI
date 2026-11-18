@@ -1018,7 +1018,9 @@
       "uiScaleAria": "UI scale",
       "uiScaleHelp": "UI scale changes the app chrome density immediately. Media previews keep their own aspect-ratio sizing.",
       "keepGroupsOpen": "Keep all sidebar groups open",
-      "keepGroupsOpenHelp": "Off by default: only the group you are working in stays open. Turn it on to keep every group expanded."
+      "keepGroupsOpenHelp": "Off by default: only the group you are working in stays open. Turn it on to keep every group expanded.",
+      "showExperimentalTabs": "Show experimental tabs",
+      "showExperimentalTabsHelp": "Off by default. Lists pages that are not finished yet in the sidebar. Their pages and routes stay either way."
     },
     "dataDirectory": {
       "title": "Data Directory",

@@ -8,6 +8,7 @@ interface StoredPrefs {
   mode?: SidebarMode;
   collapsedGroups?: SidebarGroupId[];
   keepAllOpen?: boolean;
+  showExperimentalTabs?: boolean;
   lastChildByGroup?: Partial<Record<SidebarGroupId, string>>;
 }
 
@@ -16,6 +17,9 @@ interface SidebarPrefs {
   collapsedGroups: Set<SidebarGroupId>;
   keepAllOpen: boolean;
   setKeepAllOpen: (value: boolean) => void;
+  /** Settings > General > "Show experimental tabs"; off unless saved as on. */
+  showExperimentalTabs: boolean;
+  setShowExperimentalTabs: (value: boolean) => void;
   lastChildByGroup: Partial<Record<SidebarGroupId, string>>;
   toggleGroupCollapsed: (group: SidebarGroupId) => void;
   setMode: (mode: SidebarMode) => void;
@@ -51,6 +55,9 @@ export function useSidebarPrefs(): SidebarPrefs {
     () => new Set(readStoredSidebarPrefs().collapsedGroups ?? []),
   );
   const [keepAllOpen, setKeepAllOpen] = useState<boolean>(() => readStoredSidebarPrefs().keepAllOpen === true);
+  const [showExperimentalTabs, setShowExperimentalTabs] = useState<boolean>(
+    () => readStoredSidebarPrefs().showExperimentalTabs === true,
+  );
   const [lastChildByGroup, setLastChildByGroup] = useState<Partial<Record<SidebarGroupId, string>>>(
     () => readStoredSidebarPrefs().lastChildByGroup ?? {},
   );
@@ -60,9 +67,10 @@ export function useSidebarPrefs(): SidebarPrefs {
       mode,
       collapsedGroups: Array.from(collapsedGroups),
       keepAllOpen,
+      showExperimentalTabs,
       lastChildByGroup,
     });
-  }, [mode, collapsedGroups, keepAllOpen, lastChildByGroup]);
+  }, [mode, collapsedGroups, keepAllOpen, showExperimentalTabs, lastChildByGroup]);
 
   const toggleGroupCollapsed = useCallback((group: SidebarGroupId) => {
     setCollapsedGroups((prev) => {
@@ -86,6 +94,8 @@ export function useSidebarPrefs(): SidebarPrefs {
     collapsedGroups,
     keepAllOpen,
     setKeepAllOpen,
+    showExperimentalTabs,
+    setShowExperimentalTabs,
     lastChildByGroup,
     toggleGroupCollapsed,
     setMode,

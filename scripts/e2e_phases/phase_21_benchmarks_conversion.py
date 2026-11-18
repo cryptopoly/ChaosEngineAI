@@ -8,8 +8,12 @@ Benchmarks
 2. a throughput run on the smallest local MLX text model and on the smallest local GGUF text model gives a
    speed above zero, generated tokens, and lands first in the saved history;
 3. a perplexity run (WikiText-2, 8 samples of 128 tokens) gives a finite perplexity above 1;
-4. a task-accuracy run (MMLU, 10 questions, five-shot) answers every question and gives an accuracy
-   between 0 and 1;
+4. a task-accuracy run (MMLU, 10 questions, five-shot) answers every question, gives an accuracy
+   between 0 and 1 and records next-token scoring; no run carries the old invented ``quality`` figure;
+4a. cancel: with nothing running it answers ``cancelled: false``; a long accuracy run on the loaded model
+   reports real progress (questions done of total) and, cancelled mid-way, answers ``cancelled: true``,
+   saves nothing and keeps the model that was already loaded; a throughput generation cancelled mid-way
+   saves nothing and leaves no model loaded;
 5. the saved history survives a fresh ``GET /api/workspace``, one run can be deleted, and every run this
    phase made is removed again.
 
@@ -18,7 +22,9 @@ Conversion
    exist and a GGUF-only repo as the base are each refused with their own message, and none starts a run;
 7. real conversion of the smallest local Transformers checkpoint (10 GB at most, never downloaded) to
    4-bit MLX in a temporary folder: the folder holds ``config.json`` and safetensors, the log names the
-   bits per weight, and the size is reported;
+   bits per weight, and the size is reported; the progress endpoint reports phases while it runs; the
+   result carries the measured size ratio, the converter's bits per weight and a quality comparison
+   (perplexity of both models, or the reason it was skipped) and no KV-cache "quality" figure;
 8. converting into the same folder again is refused ("already exists") and leaves the folder alone;
 9. a cancel with nothing running answers ``cancelled: false``; a second conversion is cancelled as soon
    as it is under way, answers 400 "Conversion cancelled" and leaves no output folder;
@@ -113,8 +119,8 @@ def phase_21_benchmarks_conversion(cap: Any):
             if isinstance(body, dict) and isinstance(body.get("result"), dict):
                 state["runs"].append(body["result"]["id"])
             return "fail", "a model that is not on disk produced a benchmark result", {}
-        if code != 400 or "Traceback" in _detail(body):
-            return "fail", f"missing model: expected a plain 400, got {code}: {_detail(body)[:160]}", {}
+        if code != 400 or "Traceback" in _detail(body) or "not found at" not in _detail(body):
+            return "fail", f"missing model: expected a 400 that names the path, got {code}: {_detail(body)[:160]}", {}
         return "pass", "", {"missingModel": _detail(body)[:120]}
 
     def _throughput(fmt: str, backend_ok: bool, why: str):
@@ -137,6 +143,8 @@ def phase_21_benchmarks_conversion(cap: Any):
                 problems.append("run is not first in the history")
             if result.get("mode") != "throughput":
                 problems.append(f"mode {result.get('mode')}")
+            if "quality" in result:
+                problems.append("the run carries a 'quality' figure nothing measured")
             state[f"speed_{fmt}"] = item
             detail = {"model": item["name"], "tokS": result.get("tokS"), "completionTokens": result.get("completionTokens"),
                       "loadSeconds": result.get("loadSeconds"), "engine": result.get("engineLabel")}
@@ -176,7 +184,97 @@ def phase_21_benchmarks_conversion(cap: Any):
         accuracy = result.get("taskAccuracy")
         if result.get("taskTotal") != 10 or not isinstance(accuracy, (int, float)) or not 0 <= accuracy <= 1:
             return "fail", f"total {result.get('taskTotal')}, accuracy {accuracy}", {}
+        if result.get("taskScoringMethod") != "next_token":
+            return "fail", f"scoring method {result.get('taskScoringMethod')!r}, expected 'next_token'", {}
+        state["accuracy_ok"] = True
         return "pass", "", {"accuracy": accuracy, "correct": result.get("taskCorrect")}
+
+    def _progress(path: str) -> dict[str, Any]:
+        code, body = _json("GET", path, timeout=10.0)
+        return (body or {}).get("progress") or {} if code == 200 and isinstance(body, dict) else {}
+
+    def _history_ids() -> list[str]:
+        code, body = _json("GET", "/api/workspace", timeout=60.0)
+        return [run.get("id") for run in (body or {}).get("benchmarks") or []] if code == 200 else []
+
+    def _cancel_run(item: dict[str, Any], ready, **extra: Any):
+        """Start a run, wait until ``ready(progress)`` is true, cancel it. Returns (answer, snapshots, told)."""
+        answer: dict[str, Any] = {}
+
+        def run() -> None:
+            answer["code"], answer["body"] = _run(item, **extra)
+
+        worker = threading.Thread(target=run, daemon=True)
+        worker.start()
+        snapshots: list[dict[str, Any]] = []
+        told = False
+        deadline = time.monotonic() + 600.0
+        while time.monotonic() < deadline and worker.is_alive():
+            snapshot = _progress("/api/benchmarks/progress")
+            if snapshot.get("active"):
+                snapshots.append(snapshot)
+                if ready(snapshot):
+                    code, body = _json("POST", "/api/benchmarks/cancel", {}, timeout=60.0)
+                    told = code == 200 and bool((body or {}).get("cancelled"))
+                    break
+            time.sleep(0.1)
+        worker.join(timeout=120.0)
+        answer["returned"] = not worker.is_alive()
+        return answer, snapshots, told
+
+    def _bench_cancel():
+        code, body = _json("POST", "/api/benchmarks/cancel", {})
+        if code != 200 or body != {"cancelled": False}:
+            return "fail", f"cancel with nothing running: HTTP {code} {body}", {}
+        item = state.get("speed_MLX")
+        if item is None or not state.get("accuracy_ok"):
+            return "skip", "no accuracy run was made, so no real run to cancel (the idle answer was checked)", {}
+        before = _history_ids()
+        detail: dict[str, Any] = {}
+
+        # 1. Between questions: the model that is already loaded stays loaded.
+        answer, snapshots, told = _cancel_run(
+            item, lambda p: p.get("phase") == "evaluating" and (p.get("step") or 0) >= 20,
+            mode="task_accuracy", taskName="mmlu", taskLimit=2000, taskNumShots=5,
+        )
+        if not answer.get("returned"):
+            return "fail", "the accuracy run did not return after the cancel", {}
+        counted = [p for p in snapshots if p.get("phase") == "evaluating" and p.get("totalSteps") == 2000]
+        if not counted or max(p.get("step") or 0 for p in counted) < 20:
+            return "fail", f"no real progress was reported (phases seen: {sorted({p.get('phase') for p in snapshots})})", {}
+        if "correct" not in (counted[-1].get("detail") or {}):
+            return "fail", "progress carries no count of correct answers", {}
+        body = answer.get("body") if isinstance(answer.get("body"), dict) else {}
+        if not told or answer.get("code") != 200 or body.get("cancelled") is not True or body.get("result") is not None:
+            return "fail", f"accuracy cancel: told={told}, HTTP {answer.get('code')}, {str(body)[:160]}", {}
+        if body.get("modelUnloaded") is not False or not (body.get("runtime") or {}).get("loadedModel"):
+            return "fail", "a model that was loaded before the run was unloaded by the cancel", {}
+        detail["questionsDoneAtCancel"] = counted[-1].get("step")
+
+        # 2. Mid-generation: the engine cannot be interrupted, so its process is ended and nothing stays loaded.
+        answer, snapshots, told = _cancel_run(
+            item, lambda p: p.get("phase") == "generating" and (p.get("elapsedSeconds") or 0) > 0,
+            mode="throughput", maxTokens=8192,
+            prompt="Count from 1 to 3000 in words, one number per line. Do not stop early and do not summarise.",
+        )
+        if not answer.get("returned"):
+            return "fail", "the throughput run did not return after the cancel", {}
+        body = answer.get("body") if isinstance(answer.get("body"), dict) else {}
+        if told:
+            if answer.get("code") != 200 or body.get("cancelled") is not True or body.get("result") is not None:
+                return "fail", f"throughput cancel: HTTP {answer.get('code')}, {str(body)[:160]}", {}
+            if body.get("modelUnloaded") is not True or (body.get("runtime") or {}).get("loadedModel"):
+                return "fail", "the cancelled generation left its model loaded", {}
+            detail["generationCancelled"] = True
+        else:
+            # The model answered before the cancel could land: a finished run, saved like any other.
+            detail["generationCancelled"] = "finished first"
+        if _progress("/api/benchmarks/progress").get("active"):
+            return "fail", "the progress endpoint still reports a run after the cancel", {}
+        after = [run_id for run_id in _history_ids() if run_id not in state["runs"]]
+        if after != [run_id for run_id in before if run_id not in state["runs"]]:
+            return "fail", "a cancelled run was saved to the history", {}
+        return "pass", "", detail
 
     def _history():
         if not state["runs"]:
@@ -242,10 +340,28 @@ def phase_21_benchmarks_conversion(cap: Any):
         tried = []
         for item in candidates[:4]:
             output = workdir / "converted-4bit-mlx"
-            code, body = _convert({
-                "modelRef": item["name"], "path": item["path"], "hfRepo": item["name"], "outputPath": str(output),
-                "quantize": True, "qBits": 4, "qGroupSize": 64, "dtype": "float16",
-            }, timeout=3600.0)
+            seen: list[dict[str, Any]] = []
+            watching = threading.Event()
+
+            def watch() -> None:
+                while not watching.is_set():
+                    snapshot = _progress("/api/models/convert/progress")
+                    if snapshot.get("active"):
+                        seen.append(snapshot)
+                    time.sleep(0.2)
+
+            watcher = threading.Thread(target=watch, daemon=True)
+            watcher.start()
+            started = time.monotonic()
+            try:
+                code, body = _convert({
+                    "modelRef": item["name"], "path": item["path"], "hfRepo": item["name"], "outputPath": str(output),
+                    "quantize": True, "qBits": 4, "qGroupSize": 64, "dtype": "float16", "measureQuality": True,
+                }, timeout=3600.0)
+            finally:
+                watching.set()
+                watcher.join(timeout=10.0)
+            took = time.monotonic() - started
             if code != 200:
                 tried.append(f"{item['name']}: {_detail(body)[:110]}")
                 if "does not support architecture" in _detail(body):
@@ -263,9 +379,32 @@ def phase_21_benchmarks_conversion(cap: Any):
                 problems.append(f"outputSizeGb {conversion.get('outputSizeGb')}")
             if conversion.get("qBits") != 4:
                 problems.append(f"qBits {conversion.get('qBits')}")
+            # Measured values, and none of the KV-cache figures the result used to carry.
+            if not (conversion.get("diskRatio") or 0) > 1:
+                problems.append(f"diskRatio {conversion.get('diskRatio')}")
+            if not 4 <= (conversion.get("bitsPerWeight") or 0) <= 5.5:
+                problems.append(f"bitsPerWeight {conversion.get('bitsPerWeight')}")
+            for stale in ("qualityPercent", "compressionRatio"):
+                if stale in conversion:
+                    problems.append(f"the result still carries '{stale}'")
+            quality = conversion.get("quality") or {}
+            if quality.get("status") == "measured":
+                if not ((quality.get("sourcePerplexity") or 0) > 1 and (quality.get("convertedPerplexity") or 0) > 1):
+                    problems.append(f"quality perplexities {quality.get('sourcePerplexity')} / {quality.get('convertedPerplexity')}")
+            elif quality.get("status") != "skipped" or not quality.get("reason"):
+                problems.append(f"quality {quality}")
+            # Real progress: the endpoint named phases of this run while it ran, and counted bytes while it wrote.
+            phases = [p.get("phase") for p in seen]
+            if took > 3 and not set(phases) & {"preparing", "loading", "quantizing", "saving", "measuring"}:
+                problems.append(f"no progress was reported during a {took:.0f} s run (phases seen: {sorted(set(phases))})")
+            written = max(((p.get("detail") or {}).get("bytesWritten") or 0 for p in seen), default=0)
+            if _progress("/api/models/convert/progress").get("active"):
+                problems.append("the progress endpoint still reports a run after it finished")
             state["converted"] = {"path": str(output), "source": item}
             detail = {"source": item["name"], "sourceSizeGb": conversion.get("sourceSizeGb"),
-                      "outputSizeGb": conversion.get("outputSizeGb")}
+                      "outputSizeGb": conversion.get("outputSizeGb"), "diskRatio": conversion.get("diskRatio"),
+                      "bitsPerWeight": conversion.get("bitsPerWeight"), "quality": quality,
+                      "phasesSeen": sorted(set(phases)), "bytesWrittenSeen": written}
             return ("fail", ", ".join(problems), detail) if problems else ("pass", "", detail)
         return "skip", "no local checkpoint has an architecture this mlx-lm converts: " + "; ".join(tried), {}
 
@@ -335,6 +474,7 @@ def phase_21_benchmarks_conversion(cap: Any):
             ("throughput on the smallest GGUF model", _throughput("GGUF", cap.gguf_available, "llama.cpp not available")),
             ("perplexity on WikiText-2", _perplexity),
             ("task accuracy on MMLU", _task_accuracy),
+            ("benchmark cancelled mid-run with real progress, nothing saved", _bench_cancel),
             ("history saved, one run deleted, phase runs removed", _history),
             ("conversion request guards", _convert_guards),
             ("Transformers checkpoint converted to 4-bit MLX", _convert_real),

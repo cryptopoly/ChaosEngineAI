@@ -57,6 +57,7 @@ Started 2026-11-18. Deadline shortened by the coordinator to about 3.5 hours.
 | `59b157df` | History: double click sets the baseline, a baseline of another kind shows no made-up delta; Run: perplexity and accuracy say they need an MLX model | spec 27 |
 | `0c93785e` | Default output folder keeps dots | `tests/test_conversion_helpers.py` |
 | `266a6acc` | Cancel conversion (route, button, pre-flight and mid-run), no `-GGUF` in the MLX folder name, GGUF source size | `tests/test_conversion_helpers.py`, `tests/test_route_contracts.py`, spec 27, phase 211 |
+| `6a310808` | Copy CSV in History, toolbar on one line | `src/utils/__tests__/benchmarkCompare.test.ts`, spec 27 |
 
 ## Commands
 
@@ -77,7 +78,7 @@ Started 2026-11-18. Deadline shortened by the coordinator to about 3.5 hours.
 | 34 | UI, real conversion in the browser | PASS | progress dialog, then "Conversion complete", `.../Models/Qwen3-5-4B-mlx-2`, 8.7 GB to 2.2 GB. The dialog has no Cancel and its phases are timed, not real |
 | 35 | Full suites on the branch | PASS | pytest 4637 run, 0 failed, 17 skipped (tree at `7d7efc7f`, no Python change after it except the phase file); vitest 1822 passed; `tsc --noEmit` clean; `i18n:validate` OK; Playwright spec 27: 12 passed |
 
-## Second pass (08:27 to 08:46)
+## Second pass (08:27 to 08:55)
 
 | # | Check | Result | Evidence |
 |---|---|---|---|
@@ -88,7 +89,9 @@ Started 2026-11-18. Deadline shortened by the coordinator to about 3.5 hours.
 | 40 | GGUF to MLX end to end (`lmstudio-community/Qwen3-0.6B-GGUF`) | PASS after fixes | without a base repo: "GGUF-to-MLX conversion needs a base Hugging Face model repo ..." (this file has no base-model metadata); with `hfRepo: Qwen/Qwen3-0.6B`: 72 s including a 1.5 GB download into the throwaway cache (download noted here, under 2 GB), 0.32 GB output |
 | 41 | The GGUF-derived MLX model loads | FAIL at first, PASS after fix | the default folder `Qwen3-0.6B-GGUF-mlx` failed to load: "No .gguf weights found inside ..." (the loader reads "gguf" anywhere in a path as a GGUF model). The default name no longer carries `-GGUF`: `Qwen3-0.6B-mlx` loads on MLX and answers at 291.7 tok/s. A folder name chosen by the user with "gguf" in it still fails (left, see the report) |
 | 42 | E2E phase 211 with the cancel check | PASS | 11 checks, 54 s; report `<scratchpad>/review-a/e2e-report/e2e-20261118-084440.md` |
-| 43 | Playwright spec 27 | PASS | 14 tests |
+| 43 | Playwright spec 27 | PASS | 14 tests; `01-smoke`, `09-mobile` and `31-compact-sidebar` also pass on the branch (18 tests) |
+| 44 | History: Copy CSV (new) | PASS | the runs on screen go to the clipboard, header plus one line per run; toolbar stays on one line at 1280 px and wraps at 375 px |
+| 45 | Full suites on the final tree | PASS | pytest 4644 run, 0 failed, 17 skipped (tree at `266a6acc`; the commit after it is frontend only); vitest 1825 passed; `tsc --noEmit` clean; `i18n:validate` OK |
 
 ## Incident (cleaned up)
 
@@ -96,7 +99,7 @@ The throwaway home linked the real `datasets--Salesforce--wikitext` cache folder
 
 ## State at the end
 
-- Backend (8900) and Vite (8930) still run for the integrator; stop with `kill $(cat <scratchpad>/review-a/backend.pid) $(cat <scratchpad>/review-a/vite.pid)`.
+- Backend (8900) and Vite (8930) stopped at 08:55 (my own PIDs only). Start again with `<scratchpad>/review-a/backend.sh` and `<scratchpad>/review-a/vite.sh`.
 - Model lock released 08:45. No model loaded.
 - Throwaway home holds four converted folders under `Models/` (about 9 GB), the downloaded `models--Qwen--Qwen3-0.6B` (1.5 GB) and a stub `models--LiquidAI--LFM3-1.7B-Base` (100 KB, the stalled download); delete the home when done.
 

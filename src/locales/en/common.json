@@ -225,7 +225,7 @@
     "pluginSystem": "Plugin System",
     "pluginsRegistered": "{count, plural, one {# plugin registered} other {# plugins registered}}",
     "externalPlugins": "External Plugins",
-    "installFromDirectory": "Install from directory",
+    "installFromDirectory": "Not available in this version",
     "noModelsMatchFilters": "No models match the current filters",
     "savedOutputs": "Saved Outputs",
     "installedImageModels": "Installed Image Models",
@@ -599,7 +599,7 @@
       "save": "Save",
       "cancel": "Cancel"
     },
-    "presetModelTitle": "Preset model — applied when you Use in Chat",
+    "presetModelTitle": "Saved with the template. Chat does not apply it yet.",
     "presetLabel": "preset: {ref}",
     "hasPlaceholders": "Template has variable placeholders",
     "variableCount": "{count, plural, one {# variable} other {# variables}}",
@@ -640,8 +640,8 @@
     "noPlugins": "No plugins found.",
     "toggleOn": "ON",
     "toggleOff": "OFF",
-    "externalIntro": "Place plugin directories with a manifest.json in:",
-    "externalManifestHint": "Each plugin needs a manifest.json with id, name, type, and entry_point fields.",
+    "externalIntro": "External plugins are not loaded in this version. Folders placed here are ignored:",
+    "externalManifestHint": "The entries above are the cache strategies and chat tools built into the app.",
     "loadFailed": "The plugin list could not be loaded. Check that the backend is running.",
     "types": {
       "cacheStrategy": "Cache Strategies",

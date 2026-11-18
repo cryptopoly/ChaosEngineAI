@@ -163,17 +163,17 @@ export function PluginsTab({ backendOnline }: PluginsTabProps) {
 
       <Panel
         title={t("panels.externalPlugins", { defaultValue: "External Plugins" })}
-        subtitle={t("panels.installFromDirectory", { defaultValue: "Install from directory" })}
+        subtitle={t("panels.installFromDirectory", { defaultValue: "Not available in this version" })}
       >
         <div style={{ padding: 24, textAlign: "center" }}>
           <p className="muted-text" style={{ marginBottom: 8 }}>
-            {t("pluginsTab.externalIntro", { defaultValue: "Place plugin directories with a manifest.json in:" })}
+            {t("pluginsTab.externalIntro", { defaultValue: "External plugins are not loaded in this version. Folders placed here are ignored:" })}
           </p>
           <code style={{ background: "#0f1215", padding: "4px 12px", borderRadius: 6, color: "#8fb4ff", fontSize: 12 }}>
             ~/.chaosengine/plugins/
           </code>
           <p style={{ color: "#5a6574", fontSize: 12, marginTop: 8 }}>
-            {t("pluginsTab.externalManifestHint", { defaultValue: "Each plugin needs a manifest.json with id, name, type, and entry_point fields." })}
+            {t("pluginsTab.externalManifestHint", { defaultValue: "The entries above are the cache strategies and chat tools built into the app." })}
           </p>
         </div>
       </Panel>

@@ -225,7 +225,7 @@
     "pluginSystem": "プラグインシステム",
     "pluginsRegistered": "{count, plural, other {# 個のプラグインが登録されています}}",
     "externalPlugins": "外部プラグイン",
-    "installFromDirectory": "ディレクトリからインストール",
+    "installFromDirectory": null,
     "noModelsMatchFilters": "現在のフィルターに一致するモデルはありません",
     "savedOutputs": "保存された出力",
     "installedImageModels": "インストール済みの画像モデル",
@@ -599,7 +599,7 @@
       "save": "保存",
       "cancel": "キャンセル"
     },
-    "presetModelTitle": "プリセットモデル — チャットで使用するときに適用されます",
+    "presetModelTitle": null,
     "presetLabel": "プリセット:{ref}",
     "hasPlaceholders": "テンプレートには変数プレースホルダーがあります",
     "variableCount": "{count, plural, other {# 個の変数}}",
@@ -640,8 +640,8 @@
     "noPlugins": "プラグインが見つかりません。",
     "toggleOn": "オン",
     "toggleOff": "オフ",
-    "externalIntro": "manifest.json を含むプラグインディレクトリを配置する場所:",
-    "externalManifestHint": "各プラグインには id、name、type、entry_point フィールドを持つ manifest.json が必要です。",
+    "externalIntro": null,
+    "externalManifestHint": null,
     "loadFailed": null,
     "types": {
       "cacheStrategy": "キャッシュ戦略",

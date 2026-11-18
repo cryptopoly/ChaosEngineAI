@@ -183,6 +183,10 @@ test("Plugins: lists what the backend registers, every row is reachable, a switc
   await expect(pluginPage).toContainText(`${rows.length} plugins registered`);
   await expect(pluginPage.getByRole("button", { name: /^(ON|OFF)$/ })).toHaveCount(rows.length);
 
+  // The page no longer tells people to install plugins into a folder that nothing reads.
+  await expect(pluginPage).toContainText("External plugins are not loaded in this version.");
+  await expect(pluginPage).not.toContainText("Place plugin directories");
+
   // The last row (a tool) used to be cut off by a panel that could not scroll.
   const last = pluginPage.getByText(rows[rows.length - 1].name, { exact: true });
   await last.scrollIntoViewIfNeeded();

@@ -225,7 +225,7 @@
     "pluginSystem": "플러그인 시스템",
     "pluginsRegistered": "{count, plural, other {플러그인 #개 등록됨}}",
     "externalPlugins": "외부 플러그인",
-    "installFromDirectory": "디렉터리에서 설치",
+    "installFromDirectory": null,
     "noModelsMatchFilters": "현재 필터와 일치하는 모델이 없습니다",
     "savedOutputs": "저장된 출력",
     "installedImageModels": "설치된 이미지 모델",
@@ -599,7 +599,7 @@
       "save": "저장",
       "cancel": "취소"
     },
-    "presetModelTitle": "프리셋 모델 — 채팅에서 사용 시 적용됩니다",
+    "presetModelTitle": null,
     "presetLabel": "프리셋: {ref}",
     "hasPlaceholders": "템플릿에 변수 자리 표시자가 있습니다",
     "variableCount": "{count, plural, other {변수 #개}}",
@@ -640,8 +640,8 @@
     "noPlugins": "플러그인을 찾을 수 없습니다.",
     "toggleOn": "켜짐",
     "toggleOff": "꺼짐",
-    "externalIntro": "다음 위치에 manifest.json이 있는 플러그인 디렉터리를 두세요:",
-    "externalManifestHint": "각 플러그인에는 id, name, type, entry_point 필드가 포함된 manifest.json이 필요합니다.",
+    "externalIntro": null,
+    "externalManifestHint": null,
     "loadFailed": null,
     "types": {
       "cacheStrategy": "캐시 전략",

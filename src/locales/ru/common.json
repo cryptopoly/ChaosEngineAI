@@ -225,7 +225,7 @@
     "pluginSystem": "Система плагинов",
     "pluginsRegistered": "{count, plural, one {Зарегистрирован # плагин} few {Зарегистрировано # плагина} many {Зарегистрировано # плагинов} other {Зарегистрировано # плагина}}",
     "externalPlugins": "Внешние плагины",
-    "installFromDirectory": "Установить из каталога",
+    "installFromDirectory": null,
     "noModelsMatchFilters": "Ни одна модель не соответствует текущим фильтрам",
     "savedOutputs": "Сохранённые выводы",
     "installedImageModels": "Установленные модели изображений",
@@ -599,7 +599,7 @@
       "save": "Сохранить",
       "cancel": "Отмена"
     },
-    "presetModelTitle": "Пресет-модель — применяется при выборе «Использовать в чате»",
+    "presetModelTitle": null,
     "presetLabel": "пресет: {ref}",
     "hasPlaceholders": "В шаблоне есть плейсхолдеры переменных",
     "variableCount": "{count, plural, one {# переменная} few {# переменные} many {# переменных} other {# переменные}}",
@@ -640,8 +640,8 @@
     "noPlugins": "Плагины не найдены.",
     "toggleOn": "ВКЛ",
     "toggleOff": "ВЫКЛ",
-    "externalIntro": "Поместите каталоги плагинов с manifest.json в:",
-    "externalManifestHint": "Каждому плагину нужен manifest.json с полями id, name, type и entry_point.",
+    "externalIntro": null,
+    "externalManifestHint": null,
     "loadFailed": null,
     "types": {
       "cacheStrategy": "Стратегии кэша",

@@ -225,7 +225,7 @@
     "pluginSystem": "Sistema de plugins",
     "pluginsRegistered": "{count, plural, one {# plugin registrado} other {# plugins registrados}}",
     "externalPlugins": "Plugins externos",
-    "installFromDirectory": "Instalar desde directorio",
+    "installFromDirectory": null,
     "noModelsMatchFilters": "Ningún modelo coincide con los filtros actuales",
     "savedOutputs": "Salidas guardadas",
     "installedImageModels": "Modelos de imagen instalados",
@@ -599,7 +599,7 @@
       "save": "Guardar",
       "cancel": "Cancelar"
     },
-    "presetModelTitle": "Modelo preestablecido — se aplica al usar en Chat",
+    "presetModelTitle": null,
     "presetLabel": "preestablecido: {ref}",
     "hasPlaceholders": "La plantilla tiene marcadores de variables",
     "variableCount": "{count, plural, one {# variable} other {# variables}}",
@@ -640,8 +640,8 @@
     "noPlugins": "No se encontraron plugins.",
     "toggleOn": "ON",
     "toggleOff": "OFF",
-    "externalIntro": "Coloca directorios de plugins con un manifest.json en:",
-    "externalManifestHint": "Cada plugin necesita un manifest.json con campos id, name, type y entry_point.",
+    "externalIntro": null,
+    "externalManifestHint": null,
     "loadFailed": null,
     "types": {
       "cacheStrategy": "Estrategias de caché",

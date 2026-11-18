@@ -225,7 +225,7 @@
     "pluginSystem": "插件系统",
     "pluginsRegistered": "{count, plural, other {已注册 # 个插件}}",
     "externalPlugins": "外部插件",
-    "installFromDirectory": "从目录安装",
+    "installFromDirectory": null,
     "noModelsMatchFilters": "没有模型符合当前筛选条件",
     "savedOutputs": "已保存的输出",
     "installedImageModels": "已安装的图像模型",
@@ -599,7 +599,7 @@
       "save": "保存",
       "cancel": "取消"
     },
-    "presetModelTitle": "预设模型 — 在用于对话时应用",
+    "presetModelTitle": null,
     "presetLabel": "预设:{ref}",
     "hasPlaceholders": "模板包含变量占位符",
     "variableCount": "{count, plural, other {# 个变量}}",
@@ -640,8 +640,8 @@
     "noPlugins": "未找到插件。",
     "toggleOn": "开启",
     "toggleOff": "关闭",
-    "externalIntro": "将带有 manifest.json 的插件目录放在:",
-    "externalManifestHint": "每个插件都需要包含 id、name、type 和 entry_point 字段的 manifest.json。",
+    "externalIntro": null,
+    "externalManifestHint": null,
     "loadFailed": null,
     "types": {
       "cacheStrategy": "缓存策略",

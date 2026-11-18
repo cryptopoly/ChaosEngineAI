@@ -225,7 +225,7 @@
     "pluginSystem": "chelwI' pat",
     "pluginsRegistered": "{count, plural, other {# chelwI' qonlu'ta''}}",
     "externalPlugins": "Hur chelwI'",
-    "installFromDirectory": "nav ghomvo' yIjom",
+    "installFromDirectory": null,
     "noModelsMatchFilters": "chevwI'vamvaD yab tu'lu'be'",
     "savedOutputs": "ngoD pollu'ta'bogh",
     "installedImageModels": "mIllogh yab jomlu'ta'bogh",
@@ -599,7 +599,7 @@
       "save": "yIpol",
       "cancel": "yIqIl"
     },
-    "presetModelTitle": "yab wIvlu'ta'; ja'chuqDaq yIlo' Da'uyDI' lo'lu'",
+    "presetModelTitle": null,
     "presetLabel": "wIv: {ref}",
     "hasPlaceholders": "mu' Daq ghaj velqa'",
     "variableCount": "{count, plural, other {# mu''}}",
@@ -640,8 +640,8 @@
     "noPlugins": "chelwI' tu'lu'be'.",
     "toggleOn": "chu'",
     "toggleOff": "chu'Ha'",
-    "externalIntro": "manifest.json ghajbogh chelwI' nav ghom naDev yIlan:",
-    "externalManifestHint": "manifest.json poQ chelwI' Hoch; id, name, type, entry_point je ghajnIS.",
+    "externalIntro": null,
+    "externalManifestHint": null,
     "loadFailed": null,
     "types": {
       "cacheStrategy": "cache mIw",

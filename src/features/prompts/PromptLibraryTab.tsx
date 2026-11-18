@@ -378,7 +378,7 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
               <span className="badge">{selected.category}</span>
               {selected.tags.map((tag) => <span key={tag} className="badge" style={{ background: "#1e3a5f", color: "#8fb4ff" }}>{tag}</span>)}
               {selected.presetModelRef ? (
-                <span className="badge" style={{ background: "#1f2a44", color: "#9bc7ff" }} title={t("promptLibrary.presetModelTitle", { defaultValue: "Preset model — applied when you Use in Chat" })}>
+                <span className="badge" style={{ background: "#1f2a44", color: "#9bc7ff" }} title={t("promptLibrary.presetModelTitle", { defaultValue: "Saved with the template. Chat does not apply it yet." })}>
                   {t("promptLibrary.presetLabel", { ref: selected.presetModelRef, defaultValue: "preset: {ref}" })}
                 </span>
               ) : null}

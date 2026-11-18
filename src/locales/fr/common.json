@@ -225,7 +225,7 @@
     "pluginSystem": "Système de plugins",
     "pluginsRegistered": "{count, plural, one {# plugin enregistré} other {# plugins enregistrés}}",
     "externalPlugins": "Plugins externes",
-    "installFromDirectory": "Installer depuis un répertoire",
+    "installFromDirectory": null,
     "noModelsMatchFilters": "Aucun modèle ne correspond aux filtres actuels",
     "savedOutputs": "Sorties enregistrées",
     "installedImageModels": "Modèles image installés",
@@ -599,7 +599,7 @@
       "save": "Enregistrer",
       "cancel": "Annuler"
     },
-    "presetModelTitle": "Modèle préréglé — appliqué lorsque vous utilisez dans la discussion",
+    "presetModelTitle": null,
     "presetLabel": "préréglage : {ref}",
     "hasPlaceholders": "Le modèle contient des espaces réservés de variables",
     "variableCount": "{count, plural, one {# variable} other {# variables}}",
@@ -640,8 +640,8 @@
     "noPlugins": "Aucun plugin trouvé.",
     "toggleOn": "ACTIVÉ",
     "toggleOff": "DÉSACTIVÉ",
-    "externalIntro": "Placez les répertoires de plugins avec un manifest.json dans :",
-    "externalManifestHint": "Chaque plugin a besoin d'un manifest.json avec les champs id, name, type et entry_point.",
+    "externalIntro": null,
+    "externalManifestHint": null,
     "loadFailed": null,
     "types": {
       "cacheStrategy": "Stratégies de cache",

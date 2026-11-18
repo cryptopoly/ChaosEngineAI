@@ -38,7 +38,8 @@ test("first-run terms: Escape does not close them, Tab stays on Quit and I agree
 test("Chat: Select Model is a dialog; Tab stays inside, Escape closes it and focus returns to the button", async ({ page }) => {
   await openApp(page);
   await openTab(page, "Chat", "Chat");
-  const opener = page.getByRole("button", { name: "Select Model" });
+  // The button reads "Select Model", or the thread's model when an earlier spec left a thread with one.
+  const opener = page.locator(".thread-toolbar-actions > button.secondary-button").first();
   await opener.click();
   const dialog = page.getByRole("dialog", { name: "Select Model" });
   await expect(dialog).toBeVisible();
@@ -93,7 +94,7 @@ test("Chat: the thread search, New thread and the composer are reachable by keyb
   const composer = page.locator("textarea").last();
   await expect(composer).toHaveAttribute("placeholder", /Load a model first/);
   let sent = false;
-  page.on("request", (r) => { if (r.method() === "POST" && /\/api\/chat\//.test(r.url())) sent = true; });
+  page.on("request", (r) => { if (r.method() === "POST" && /\/api\/chat\/generate/.test(r.url())) sent = true; });
   await composer.fill("hello");
   await page.keyboard.press("Enter");
   await page.waitForTimeout(800);

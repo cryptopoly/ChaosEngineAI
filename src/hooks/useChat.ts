@@ -643,9 +643,11 @@ export function useChat(
     const { online: isOnline, startupError } = await ensureBackendAvailable(sendingSessionId ?? undefined);
 
     if (!isOnline) {
+      // Shown in the thread in place of a reply. It used to speak of "the desktop shell", "this local
+      // fallback" and "the FastAPI sidecar", which told a user nothing about what to do.
       const offlineMessage = startupError
-        ? `The desktop shell is offline, so this local fallback kept the chat moving. Restart the FastAPI sidecar to route prompts through the runtime endpoints. Startup error: ${startupError}`
-        : "The desktop shell is offline, so this local fallback kept the chat moving. Start the FastAPI sidecar to route prompts through the runtime endpoints.";
+        ? `The backend is not answering, so this message did not reach a model. It could not be restarted: ${startupError}`
+        : "The backend is not answering, so this message did not reach a model. Send it again when the notice at the top of the page has cleared.";
       if (startupError) {
         setError(`API service restart failed: ${startupError}`);
       }

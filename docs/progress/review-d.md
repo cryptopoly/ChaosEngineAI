@@ -37,7 +37,13 @@ On every page the scripts look for: a crash (error boundary), console errors and
 | 08:14 | Every sidebar button reachable, en / de / ru, four sizes | FAIL before the fix | at 1100 x 760 with the Chat or Tools group open, Settings sits under the status footer (D-5) |
 | 08:20 | First launch with a German system language, 1400 x 920 | FAIL before the fix | the language banner takes the sidebar's grid cell: banner 216 x 577, sidebar 1184 wide, workspace 216 x 343 at the bottom left (D-1). Keyboard on the terms dialog: focus starts on the dialog, Escape does not close it, Tab cycles Quit and I agree only. |
 | 08:11 | vitest (full) after the first fixes | PASS | 152 files, 1817 tests |
-| 08:22 | New specs 32, 33, 34 | see below | |
+| 08:22 | New specs 32, 33, 34, first run | 19 pass, 4 fail | failures were real: Storage at 375 px overlapped by 266 px, and "System default" in the language list did not switch the app back (D-10, D-6). Fixed, re-run of the failed ones: 5 of 5 pass. |
+| 08:30 | Every shipped locale boots (zh-CN, zh-TW, ja, de, ru, ko, fr, es, pt-BR, tlh) | PASS | spec 34: no raw key, no leftover placeholder, no sideways scroll on Dashboard, every Chat, Images, Video, Voice and Music tab and all eight Settings sections |
+| 08:34 | Keyboard flows with two tiny local models in the library (Chat, Select Model, Compare, thread search, New thread, Chat Models filter and search, Run from Hugging Face with a bad repo, read-only terms) | FAIL before the fix | Select Model (Chat, Compare) and the family details had no dialog role, Escape did nothing and focus was lost (D-11). After the fix Escape closes and focus returns. A bad repo shows "Hugging Face refused access ... (HTTP 401)" under the field. |
+| 08:40 | Error states: the backend answers 500 to Save settings, the clock format, New project, Install voice runtime, image and video Download | PASS | each page shows the backend's own sentence (error banner or inline), nothing crashes |
+| 08:42 | Sample project, all seven tabs, 1100 x 760 and 1400 x 920 | PASS | no cut panel, nothing past the edge, no console error |
+| 08:43 | Sidebar style Tabs, every in-scope group and sub-tab, 1400 and 1100 | PASS | no crash, sub-tab bar fits, arrow keys move between sub-tabs |
+| 08:44 | Full Playwright suite on the branch (with the shared helper no longer waiting 5 s per test) | see the end of this file | |
 
 ## Defects fixed on `review/d` (ranked)
 
@@ -51,6 +57,9 @@ On every page the scripts look for: a crash (error boundary), console errors and
 | D-6 | Medium | Settings > Storage: the folder path had a third of the row and Browse two thirds, so the path could not be read; below 900 px Storage stayed in two 160 px columns and its buttons were slivers. | Rows that start with the path give it the room; one column below 900 px. | `c52f1ea4` | `33-window-sizes.spec.ts` |
 | D-7 | Low | Settings > General: the "Keep all sidebar groups open" tick box sat centred above its own label (same in Integrations). | `.check-row` inside a control stack is a row again. | `ee71969f` | `33-window-sizes.spec.ts` |
 | D-8 | Low | Two buttons had a class with no style and showed as raw grey browser buttons: Copy beside "Open en on GitHub", and "Keep English" in the language banner. | `secondary-button`. | `ee71969f` | `33`, `34` |
+| D-10 | Medium | Settings > General > Language: picking "System default" left the app in the language chosen before, until the next launch. | It applies the detected system language at once. | `060b0f3e` | `34-locales.spec.ts` (pseudo-locale test ends on it) |
+| D-11 | Medium, keyboard | Select Model (Chat, Compare, HTML Challenge), the model picker and the model family details were plain overlays: no dialog role for a screen reader, Escape did nothing, Tab walked into the page behind, focus was lost on close. | They use `useDialogFocus` (new `active` flag for dialogs that stay mounted while closed; the opener is remembered before an autoFocus field takes focus). | `fix(a11y)` | `35-keyboard-dialogs.spec.ts` |
+| D-12 | Medium, backend stop | A chat message sent while the backend is down got a fake reply: "The desktop shell is offline, so this local fallback kept the chat moving. Start the FastAPI sidecar to route prompts through the runtime endpoints." | Plain words: the message did not reach a model, send it again when the notice has cleared. Not seen live (needs a loaded model and a stopped backend); the string only. | see the log | none (string only) |
 | D-9 | Low | Every launch sent a cache preview request with an all-zero model shape and logged a 422. | No request until a model shape is known; same fallback value. | `ee71969f` | `cachePreview.test.ts` |
 
 ## Left for the owner (ranked, not fixed)
@@ -66,7 +75,11 @@ On every page the scripts look for: a crash (error boundary), console errors and
 | L-7 | Low | The Language panel in Settings is titled "Settings"; the clock-format and UI-scale button rows have no visible label. | Title "Language and time"; add labels. |
 | L-8 | Low | `scripts/i18n-pseudo.mjs` documents `?devLocale=en-XA`; nothing in `src/` reads it, so the checklist item "pseudo-locale smoke-tested on Setup + Diagnostics" could not be done by hand. Spec 34 now does it by answering the German catalogue requests with pseudo text. | Fix the comment or wire the switch. |
 | L-9 | Low | There is no light theme (`color-scheme: dark`, no switch). The brief asked for light and dark. | Nothing to do unless a light theme is wanted. |
-| L-10 | Low | `e2e/tests/helpers.ts` `openApp` waits 5 s for the terms dialog on every test, accepted or not: about 15 of the suite's 18 minutes. | Ask the backend (`/api/workspace`) whether the terms are accepted before waiting. |
+| L-10 | Done | `e2e/tests/helpers.ts` `openApp` waited 5 s for the terms dialog on every test, accepted or not: about 15 of the suite's 18 minutes. | Fixed on this branch: it waits for the startup panel to go, then looks once. |
+| L-12 | Medium (demo) | Settings > Integrations prints the API token in clear text inside every snippet (Authorization header, `apiKey`, `OPENAI_API_KEY`). On a screen share or a recording the token is readable. | Mask it in the snippets with a Show switch; Copy still copies the real value. |
+| L-13 | Low | The generation dialogs (`ImageGenerationModal`, `VideoGenerationModal`), `DataDirRestartModal` and the Mixer's overlay have no dialog role and no Escape or focus handling either. | Same `useDialogFocus` treatment; decide first what Escape means while a render runs (hide, not cancel). |
+| L-14 | Low | Panel header buttons wrap onto two lines when the title text is long ("Save settings", "+ Add Provider", "Stop idle" in German). | `white-space: nowrap` on the buttons plus `flex-wrap` on `.panel-actions`; needs a look at every panel header. |
+| L-15 | Low | With a library but no model loaded, Enter in the Chat composer does nothing and says nothing (the Send button's tooltip has the reason). | Focus the Load Model button or show the reason under the composer. |
 | L-11 | Info | The Dashboard's process table lists `llama-server` and `python` processes of other ChaosEngineAI instances on the machine as "ChaosEngineAI" with Stop buttons (seen: the other review streams' backends). | Mark processes this backend did not start, or leave them out of Stop idle. |
 
 ## Not tested

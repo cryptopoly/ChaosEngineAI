@@ -46,14 +46,34 @@ curl -s -H 'Authorization: Bearer review-b-token' -H 'Content-Type: application/
 
 Pending.
 
-## 4. UI states
+## 4. UI states (dev server on port 8931 against the backend on 8901, built-in browser, own tab)
 
-Pending.
+| State | Result | Evidence |
+|---|---|---|
+| Empty (no adapters), 1400 px | PASS after fixes | "0 adapters found", "No LoRA adapters found.", three step cards, Start button. Before the fixes the lower panel's subtitle was the raw status word (`idle`, or `accepted` after any start call). |
+| Start button | FAIL before, fixed | A click sent nothing: the network log shows only the two `GET /api/finetuning/status` calls from mount. Now the button is off with a sentence under it. |
+| Loaded (one adapter folder in `~/Models`) | FAIL before, fixed | Whole tab replaced by "Fine-Tuning crashed. TypeError: Cannot read properties of undefined (reading 'toFixed')" (`FineTuningTab.tsx:74`). After the fix: "1 adapter found", card with name, base, size, created. |
+| Backend stopped mid-use, then tab opened | FAIL before, fixed | "0 adapters found" and "Loading adapters..." for good. Now "The backend is offline. Adapters are listed when it is back." |
+| Backend stopped, page reloaded | not this tab | The shell shows its own start-up splash ("Extracting embedded runtime"); the tab is not reached. In a plain browser with no backend that text is wrong (nothing is being extracted), but it is the shell's, not Fine-Tuning's. |
+| Failing `GET /api/adapters` (500, mocked in the Playwright spec) | FAIL before, fixed | Read "No LoRA adapters found." as if the list were empty. Now an alert line with the error. |
+| Narrow (375 x 812) | PASS | `scrollWidth` 375 = `clientWidth` 375, step cards stack, nothing sticks out (also asserted in the spec). |
+| Light and dark | one look only | The app is dark-only (`styles.css` line 2 `color-scheme: dark`, no light theme anywhere in `src`). With `prefers-color-scheme: light` emulated the page is unchanged. |
+| Design tokens | FAIL (cosmetic, left) | The tab paints with hard-coded hex colours in inline styles (`#27303a`, `#1a1f26`, `#8fb4ff`, `#7a8594`, `#5a6574`, `#c8d0da`), so the strong-border switch and any later theme do not reach it. |
+| Adapter card | no action | A card is read-only: no "use in Chat", no reveal in Finder, no delete, no path shown. |
 
-## 5. Bugs fixed
+## 5. Bugs fixed (each with a test)
 
-Pending.
+| Commit | Fix | Tests |
+|---|---|---|
+| `c6b17ab9` | The tab crashed whenever one adapter was on disk (it read `id` and `size_mb`, the backend sends `path` and `size_bytes`). Card is now `AdapterCard`; the backend row gains `created` and reads the base model of an mlx-lm adapter (`model`). `GET /api/adapters` is a plain `def`, so the 4 s walk no longer stalls the event loop. | `src/features/finetuning/__tests__/FineTuningTab.test.tsx`, `tests/test_finetuning_helpers.py` |
+| `b8dab48f` | Honesty, in its own commit so it can be reverted alone: Start is off with one sentence, the subtitle no longer prints `idle`, and `POST /api/finetuning/start` answers 501 and changes no state (it answered 200 "accepted" for a job that never ran). Two en strings, null in the other ten locales. | same vitest file, `tests/test_route_contracts.py` |
+| `e9b03468` | Offline and failed-list states say what happened; the count shows only once the list has loaded. Two en strings, null elsewhere. | same vitest file, Playwright spec |
+
+Checks after the fixes: `npx vitest run src/features/finetuning` 4 passed; `npx tsc --noEmit` clean; `npm run i18n:validate` OK;
+`pytest tests/test_finetuning_helpers.py tests/test_route_contracts.py tests/test_cli_smoke.py` all passed (throwaway HOME).
 
 ## 6. E2E coverage added
 
-Pending.
+- `scripts/e2e_phases/phase_21_finetuning.py`, registered in `scripts/e2e_test_suite.py` with one import line and one `PHASES` line, under **key 212** (not 21) so it cannot silently replace another stream's phase 21 at merge. Run: `CHAOSENGINE_PORT=8901 .venv/bin/python scripts/e2e_test_suite.py --phases 212`. Result: 5 of 5 pass in 0.02 s. Against the backend before commit `b8dab48f` the last check failed as it should ("the route accepted a run").
+- `e2e/tests/28-finetuning.spec.ts`: empty, loaded (adapter folder under the run's `~/Models`), a row with fields missing, a failing list, 375 px. Run: `cd e2e && E2E_PYTHON=/Users/dan/ChaosEngineAI/.venv/bin/python E2E_WEB_PORT=8951 E2E_API_PORT=8952 npx playwright test tests/01-smoke.spec.ts tests/28-finetuning.spec.ts --workers=1`. Result: 8 passed (41 s). `E2E_PYTHON` is needed in a worktree with no `.venv` above it.
+- Row added to `docs/E2E_TESTING.md` and `e2e/README.md`.

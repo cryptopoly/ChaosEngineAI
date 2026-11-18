@@ -201,11 +201,11 @@
     "hours": "{value, plural, one {# hora} other {# horas}}"
   },
   "localeBanner": {
-    "detected": "{endonym} detectado.",
-    "prompt": "¿Cambiar la aplicación a {endonym}? Puedes cambiarlo en cualquier momento en Preferencias → Idioma.",
-    "switch": "Cambiar a {endonym}",
-    "keep": "Mantener inglés",
-    "ariaLabel": "Preferencia de idioma"
+    "ariaLabel": "Preferencia de idioma",
+    "inUse": "La aplicación está en {endonym}, el idioma de tu sistema.",
+    "changeHint": "Puedes cambiarlo en cualquier momento en Preferencias → Idioma.",
+    "keepCurrent": "Mantener {endonym}",
+    "useEnglish": "Use English"
   },
   "panels": {
     "mlxConversion": "Conversión MLX",
@@ -645,7 +645,7 @@
     }
   },
   "languagePanel": {
-    "title": "Configuración",
+    "title": "Idioma y hora",
     "subtitle": "Elige el idioma usado en toda la app y cómo se muestran las horas. Los cambios se aplican al instante y se guardan con tus demás ajustes.",
     "label": "Idioma",
     "systemDefault": "Predeterminado del sistema",
@@ -1413,8 +1413,8 @@
   },
   "statusBanners": {
     "backendOffline": {
-      "title": null,
-      "detail": null
+      "title": "El backend no responde.",
+      "detail": "Lo que ves puede estar desactualizado y las acciones fallarán hasta que vuelva. La aplicación se reconecta sola."
     }
   }
 }

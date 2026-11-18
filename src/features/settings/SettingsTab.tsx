@@ -195,23 +195,28 @@ export function SettingsTab({
                 "Off by default: only the group you are working in stays open. Turn it on to keep every group expanded.",
             })}
           </p>
-          <div
-            className="segmented"
-            role="radiogroup"
-            aria-label={t("settingsTab.appearance.uiScaleAria", { defaultValue: "UI scale" })}
-          >
-            {([0.85, 0.9, 0.95, 1] as UiScale[]).map((scale) => (
-              <button
-                key={scale}
-                type="button"
-                role="radio"
-                aria-checked={uiScale === scale}
-                className={uiScale === scale ? "segment active" : "segment"}
-                onClick={() => onUiScaleChange(scale)}
-              >
-                {Math.round(scale * 100)}%
-              </button>
-            ))}
+          <div className="field">
+            <span id="settings-ui-scale-label">
+              {t("settingsTab.appearance.uiScaleAria", { defaultValue: "UI scale" })}
+            </span>
+            <div
+              className="segmented"
+              role="radiogroup"
+              aria-labelledby="settings-ui-scale-label"
+            >
+              {([0.85, 0.9, 0.95, 1] as UiScale[]).map((scale) => (
+                <button
+                  key={scale}
+                  type="button"
+                  role="radio"
+                  aria-checked={uiScale === scale}
+                  className={uiScale === scale ? "segment active" : "segment"}
+                  onClick={() => onUiScaleChange(scale)}
+                >
+                  {Math.round(scale * 100)}%
+                </button>
+              ))}
+            </div>
           </div>
           <p className="help-text">
             {t("settingsTab.appearance.uiScaleHelp", {

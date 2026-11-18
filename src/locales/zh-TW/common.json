@@ -201,11 +201,11 @@
     "hours": "{value, plural, other {# 小時}}"
   },
   "localeBanner": {
-    "detected": "偵測到 {endonym}。",
-    "prompt": "將應用程式切換至 {endonym}?您可以隨時在 偏好設定 → 語言 中變更。",
-    "switch": "切換至 {endonym}",
-    "keep": "保持英文",
-    "ariaLabel": "語言偏好"
+    "ariaLabel": "語言偏好",
+    "inUse": "應用程式目前使用 {endonym}（您的系統語言）。",
+    "changeHint": "您可以隨時在 偏好設定 → 語言 中變更。",
+    "keepCurrent": "繼續使用 {endonym}",
+    "useEnglish": "Use English"
   },
   "panels": {
     "mlxConversion": "MLX 轉換",
@@ -645,7 +645,7 @@
     }
   },
   "languagePanel": {
-    "title": "設定",
+    "title": "語言與時間",
     "subtitle": "選擇應用程式使用的語言以及時間顯示方式。新選擇會立即套用,並隨其他設定一起儲存。",
     "label": "語言",
     "systemDefault": "系統預設",
@@ -1413,8 +1413,8 @@
   },
   "statusBanners": {
     "backendOffline": {
-      "title": null,
-      "detail": null
+      "title": "後端沒有回應。",
+      "detail": "您看到的內容可能已過時，在後端恢復之前操作會失敗。應用程式會自動重新連線。"
     }
   }
 }

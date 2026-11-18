@@ -360,7 +360,15 @@
     "duplicateNote": "Mesmo modelo selecionado em vários slots; útil para testes A/B de perfil de runtime.",
     "promptPlaceholder": "Digite um prompt para comparar...",
     "cancel": "Cancelar",
-    "compareButton": "Comparar"
+    "compareButton": "Comparar",
+    "loading": "Carregando...",
+    "generating": "Gerando...",
+    "waiting": "Aguardando...",
+    "waitingFor": "Aguardando {slot} terminar...",
+    "pickerTitleForSlot": "Selecionar {slot}",
+    "pickerTitle": "Selecionar modelo",
+    "useForSlot": "Usar para {slot}",
+    "useModel": "Usar modelo"
   },
   "voice": {
     "heardNothing": "Nenhuma fala foi detectada. Tente de novo mais perto do microfone.",
@@ -403,7 +411,7 @@
   },
   "emptyBanner": {
     "welcomeTitle": "Bem-vindo ao Chat do ChaosEngineAI",
-    "welcomeBody": "Escolha um modelo de chat em Chat > Modelos para começar. Recomendamos uma variante pequena do Qwen3 ou do Llama 3 para a primeira execução — elas baixam em um ou dois minutos e rodam em qualquer notebook.",
+    "welcomeBody": "Escolha um modelo de chat em Chat > Modelos para começar. Para a primeira execução, escolha um dos modelos pequenos (1 a 2 GB): eles baixam em um ou dois minutos e rodam em qualquer notebook.",
     "browseDiscover": "Navegar pelos modelos",
     "noModelLoaded": "É preciso carregar um modelo antes de conversar. Escolha um da sua biblioteca para carregá-lo na memória.",
     "loadModel": "Carregar modelo",
@@ -595,7 +603,7 @@
       "app_restart": "o app foi reiniciado durante a execução.",
       "studio_off": "As ferramentas do Estúdio foram desativadas.",
       "gpu_reload_failed": "o modelo do chat não pôde ser carregado de novo após uma renderização: {detail}",
-      "job_stalled": null
+      "job_stalled": "um trabalho não avançou em {minutes} minutos: {detail}"
     },
     "gpu": {
       "label": "Liberar memória da GPU durante a renderização",
@@ -604,6 +612,6 @@
       "always": "Sempre",
       "never": "Nunca"
     },
-    "waitingOn": null
+    "waitingOn": "aguardando {label} ({minutes} min)"
   }
 }

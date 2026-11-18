@@ -360,7 +360,15 @@
     "duplicateNote": "複数のスロットで同じモデルが選択されています。ランタイムプロファイル A/B テストに便利です。",
     "promptPlaceholder": "比較するプロンプトを入力...",
     "cancel": "キャンセル",
-    "compareButton": "比較"
+    "compareButton": "比較",
+    "loading": "読み込み中...",
+    "generating": "生成中...",
+    "waiting": "待機中...",
+    "waitingFor": "{slot} の完了を待っています...",
+    "pickerTitleForSlot": "{slot} を選択",
+    "pickerTitle": "モデルを選択",
+    "useForSlot": "{slot} に使用",
+    "useModel": "モデルを使用"
   },
   "voice": {
     "heardNothing": "音声が聞き取れませんでした。マイクに近づいてもう一度お試しください。",
@@ -403,7 +411,7 @@
   },
   "emptyBanner": {
     "welcomeTitle": "ChaosEngineAI チャットへようこそ",
-    "welcomeBody": "始めるには、チャット > モデルからチャットモデルを選んでください。最初は小さめの Qwen3 または Llama 3 のバリアントがおすすめです。1〜2 分でダウンロードでき、どのノート PC でも動作します。",
+    "welcomeBody": "始めるには、チャット > モデルからチャットモデルを選んでください。最初は小さめのモデル（1〜2 GB）がおすすめです。1〜2 分でダウンロードでき、どのノート PC でも動作します。",
     "browseDiscover": "モデルを見る",
     "noModelLoaded": "チャットを始めるには、モデルを読み込む必要があります。ライブラリから選んでメモリに読み込んでください。",
     "loadModel": "モデルを読み込む",
@@ -595,7 +603,7 @@
       "app_restart": "実行中にアプリが再起動しました。",
       "studio_off": "スタジオツールがオフになりました。",
       "gpu_reload_failed": "生成後にチャットモデルを再読み込みできませんでした: {detail}",
-      "job_stalled": null
+      "job_stalled": "ジョブが {minutes} 分間進んでいません: {detail}"
     },
     "gpu": {
       "label": "生成中に GPU メモリを解放",
@@ -604,6 +612,6 @@
       "always": "常に",
       "never": "しない"
     },
-    "waitingOn": null
+    "waitingOn": "{label} を待っています（{minutes} 分）"
   }
 }

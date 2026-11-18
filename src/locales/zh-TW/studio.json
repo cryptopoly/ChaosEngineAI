@@ -1299,7 +1299,7 @@
     "size": "尺寸",
     "resolution": "解析度",
     "overLimit": "超出此模型的尺寸上限。",
-    "underLimit": null,
+    "underLimit": "低於此模型的最小尺寸（{min} px）。",
     "current": "目前尺寸：{width} x {height}（{megapixels} MP）"
   },
   "estimate": {

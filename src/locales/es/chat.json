@@ -360,7 +360,15 @@
     "duplicateNote": "El mismo modelo seleccionado en múltiples ranuras; útil para pruebas A/B de perfil de runtime.",
     "promptPlaceholder": "Introducir una indicación para comparar...",
     "cancel": "Cancelar",
-    "compareButton": "Comparar"
+    "compareButton": "Comparar",
+    "loading": "Cargando...",
+    "generating": "Generando...",
+    "waiting": "Esperando...",
+    "waitingFor": "Esperando a que termine {slot}...",
+    "pickerTitleForSlot": "Seleccionar {slot}",
+    "pickerTitle": "Seleccionar modelo",
+    "useForSlot": "Usar para {slot}",
+    "useModel": "Usar modelo"
   },
   "voice": {
     "heardNothing": "No se oyó nada. Inténtalo de nuevo más cerca del micrófono.",
@@ -403,7 +411,7 @@
   },
   "emptyBanner": {
     "welcomeTitle": "Te damos la bienvenida al chat de ChaosEngineAI",
-    "welcomeBody": "Elige un modelo de chat en Chat > Modelos para empezar. Para la primera vez recomendamos una variante pequeña de Qwen3 o Llama 3: se descarga en uno o dos minutos y funciona en cualquier portátil.",
+    "welcomeBody": "Elige un modelo de chat en Chat > Modelos para empezar. Para la primera vez, elige uno de los modelos pequeños (de 1 a 2 GB): se descargan en uno o dos minutos y funcionan en cualquier portátil.",
     "browseDiscover": "Explorar modelos",
     "noModelLoaded": "Hay que cargar un modelo antes de poder chatear. Elige uno de tu biblioteca para cargarlo en memoria.",
     "loadModel": "Cargar modelo",
@@ -595,7 +603,7 @@
       "app_restart": "la app se reinició mientras se ejecutaba.",
       "studio_off": "Las herramientas de estudio se desactivaron.",
       "gpu_reload_failed": "el modelo de chat no se pudo volver a cargar tras una generación: {detail}",
-      "job_stalled": null
+      "job_stalled": "un trabajo no ha avanzado en {minutes} minutos: {detail}"
     },
     "gpu": {
       "label": "Liberar memoria de GPU al generar",
@@ -604,6 +612,6 @@
       "always": "Siempre",
       "never": "Nunca"
     },
-    "waitingOn": null
+    "waitingOn": "esperando {label} ({minutes} min)"
   }
 }

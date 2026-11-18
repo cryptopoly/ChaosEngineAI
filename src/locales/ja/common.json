@@ -201,11 +201,11 @@
     "hours": "{value, plural, other {# 時間}}"
   },
   "localeBanner": {
-    "detected": "{endonym} を検出しました。",
-    "prompt": "アプリを {endonym} に切り替えますか?設定 → 言語 でいつでも変更できます。",
-    "switch": "{endonym} に切り替え",
-    "keep": "英語のまま",
-    "ariaLabel": "言語設定"
+    "ariaLabel": "言語設定",
+    "inUse": "アプリはシステムの言語である {endonym} で表示されています。",
+    "changeHint": "設定 → 言語 でいつでも変更できます。",
+    "keepCurrent": "{endonym} のまま使う",
+    "useEnglish": "Use English"
   },
   "panels": {
     "mlxConversion": "MLX 変換",
@@ -645,7 +645,7 @@
     }
   },
   "languagePanel": {
-    "title": "設定",
+    "title": "言語と時刻",
     "subtitle": "アプリ全体で使う言語と時刻の表示形式を選びます。新しい選択は即時に適用され、他の設定と一緒に保存されます。",
     "label": "言語",
     "systemDefault": "システムのデフォルト",
@@ -1413,8 +1413,8 @@
   },
   "statusBanners": {
     "backendOffline": {
-      "title": null,
-      "detail": null
+      "title": "バックエンドが応答していません。",
+      "detail": "表示されている内容は古い可能性があり、バックエンドが復帰するまで操作は失敗します。アプリは自動的に再接続します。"
     }
   }
 }

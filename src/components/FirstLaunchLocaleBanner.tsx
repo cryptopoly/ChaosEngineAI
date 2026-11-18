@@ -10,12 +10,21 @@
  *   3. The dismissal flag (``localStorage`` key
  *      ``chaosengine.localeBannerDismissed``) hasn't been set yet.
  *
- * Either choice (Switch / Keep English) marks the dismissal flag so
- * the banner never re-appears.  Picking "Switch" also calls
- * ``changeLocale`` (live) and persists via ``onPersistLocale`` so the
- * choice survives a restart.  Picking "Keep English" persists the
- * sentinel ``"en"`` so the user's explicit choice is recorded and the
- * detection logic doesn't fire again.
+ * The app has already started in the detected language by the time
+ * the banner shows (``main.tsx`` boots i18n with the same
+ * ``detectLocale()``), so the banner does not ask whether to switch to
+ * it (review L-1: "Switch the app to Deutsch?" in German read as
+ * nonsense). It states what happened, in that language, and offers the
+ * way back:
+ *
+ *   "The app is in {endonym}, your system language."
+ *   [Keep {endonym}]   [Use English]
+ *
+ * "Use English" is always written in English, whatever the app
+ * language, so someone who cannot read the detected language can still
+ * find it. Either choice marks the dismissal flag so the banner never
+ * re-appears, and persists the pick via ``onPersistLocale`` (the
+ * detected locale, or ``"en"``) so the detection does not fire again.
  */
 
 import { useEffect, useState } from "react";
@@ -87,13 +96,13 @@ export function FirstLaunchLocaleBanner({
     onPersistLocale(next);
   };
 
-  const handleSwitch = () => {
+  const handleKeep = () => {
     void changeLocale(detected);
     finalise(detected);
   };
 
-  const handleKeepEnglish = () => {
-    // The app already started in the detected language, so "keep English" has to switch now;
+  const handleUseEnglish = () => {
+    // The app already started in the detected language, so this has to switch now;
     // it used to stay in that language until the next settings poll came back (up to 5 s).
     void changeLocale("en");
     finalise("en");
@@ -107,20 +116,21 @@ export function FirstLaunchLocaleBanner({
       aria-label={t("localeBanner.ariaLabel", { defaultValue: "Language preference" })}
     >
       <div className="locale-banner__copy">
-        <strong>{t("localeBanner.detected", { endonym, defaultValue: "Detected {endonym}." })}</strong>
+        <strong>
+          {t("localeBanner.inUse", { endonym, defaultValue: "The app is in {endonym}, your system language." })}
+        </strong>
         <span>
-          {t("localeBanner.prompt", {
-            endonym,
-            defaultValue: "Switch the app to {endonym}? You can change this any time in Settings → Language.",
+          {t("localeBanner.changeHint", {
+            defaultValue: "You can change this any time in Settings → Language.",
           })}
         </span>
       </div>
       <div className="locale-banner__actions">
-        <button type="button" className="primary-button" onClick={handleSwitch}>
-          {t("localeBanner.switch", { endonym, defaultValue: "Switch to {endonym}" })}
+        <button type="button" className="primary-button" onClick={handleKeep}>
+          {t("localeBanner.keepCurrent", { endonym, defaultValue: "Keep {endonym}" })}
         </button>
-        <button type="button" className="secondary-button" onClick={handleKeepEnglish}>
-          {t("localeBanner.keep", { defaultValue: "Keep English" })}
+        <button type="button" className="secondary-button" lang="en" onClick={handleUseEnglish}>
+          {t("localeBanner.useEnglish", { lng: "en", defaultValue: "Use English" })}
         </button>
       </div>
     </div>

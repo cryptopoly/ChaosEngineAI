@@ -360,7 +360,15 @@
     "duplicateNote": "多個槽位選擇了同一模型；對執行階段設定檔 A/B 測試很有用。",
     "promptPlaceholder": "輸入要比較的提示...",
     "cancel": "取消",
-    "compareButton": "比較"
+    "compareButton": "比較",
+    "loading": "正在載入...",
+    "generating": "正在生成...",
+    "waiting": "等待中...",
+    "waitingFor": "正在等待 {slot} 完成...",
+    "pickerTitleForSlot": "選擇 {slot}",
+    "pickerTitle": "選擇模型",
+    "useForSlot": "用於 {slot}",
+    "useModel": "使用模型"
   },
   "voice": {
     "heardNothing": "沒有聽到語音。請靠近麥克風再試一次。",
@@ -403,7 +411,7 @@
   },
   "emptyBanner": {
     "welcomeTitle": "歡迎使用 ChaosEngineAI 對話",
-    "welcomeBody": "請先在「對話 > 模型」中選擇一個聊天模型。首次使用建議選擇較小的 Qwen3 或 Llama 3 變體，下載只需一兩分鐘，任何筆記型電腦都能執行。",
+    "welcomeBody": "請先在「對話 > 模型」中選擇一個聊天模型。首次使用建議選擇較小的模型（1 到 2 GB），下載只需一兩分鐘，任何筆記型電腦都能執行。",
     "browseDiscover": "瀏覽模型",
     "noModelLoaded": "需要先載入模型才能聊天。請從模型庫中選擇一個，將它載入記憶體。",
     "loadModel": "載入模型",
@@ -595,7 +603,7 @@
       "app_restart": "應用程式在執行期間重新啟動。",
       "studio_off": "工作室工具已關閉。",
       "gpu_reload_failed": "轉譯後無法再次載入對話模型:{detail}",
-      "job_stalled": null
+      "job_stalled": "某個工作已 {minutes} 分鐘沒有進展:{detail}"
     },
     "gpu": {
       "label": "轉譯時釋放 GPU 記憶體",
@@ -604,6 +612,6 @@
       "always": "一律",
       "never": "從不"
     },
-    "waitingOn": null
+    "waitingOn": "正在等待 {label}（{minutes} 分鐘）"
   }
 }

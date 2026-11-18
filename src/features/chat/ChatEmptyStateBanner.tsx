@@ -50,7 +50,7 @@ export function ChatEmptyStateBanner({
         <p className="chat-empty-banner-body">
           {t("emptyBanner.welcomeBody", {
             defaultValue:
-              "Pick a chat model from Chat > Models to get started. We recommend a small Qwen3 or Llama 3 variant for your first run — they download in a minute or two and run on any laptop.",
+              "Pick a chat model from Chat > Models to get started. For a first run, choose one of the small models (1 to 2 GB): they download in a minute or two and run on any laptop.",
           })}
         </p>
         <div className="chat-empty-banner-actions">

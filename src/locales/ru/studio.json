@@ -1299,7 +1299,7 @@
     "size": "Размер",
     "resolution": "Разрешение",
     "overLimit": "Превышает предел размера этой модели.",
-    "underLimit": null,
+    "underLimit": "Меньше минимального размера этой модели ({min} px).",
     "current": "Текущий размер: {width} x {height} ({megapixels} Мп)"
   },
   "estimate": {

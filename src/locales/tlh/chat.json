@@ -360,7 +360,15 @@
     "duplicateNote": "DaqmeyDaq yab rap wIvlu'ta'; jonta' wIv A/B waHmeH lI'.",
     "promptPlaceholder": "'ovmeH QIn yIghItlh...",
     "cancel": "yIqIl",
-    "compareButton": "yI'ov"
+    "compareButton": "yI'ov",
+    "loading": null,
+    "generating": null,
+    "waiting": null,
+    "waitingFor": null,
+    "pickerTitleForSlot": null,
+    "pickerTitle": null,
+    "useForSlot": null,
+    "useModel": null
   },
   "voice": {
     "heardNothing": "QIch Qoybe'lu'. QoywI' DaSumchoHDI' yInIDqa'.",
@@ -403,7 +411,7 @@
   },
   "emptyBanner": {
     "welcomeTitle": "ChaosEngineAI ja'chuqDaq nuqneH",
-    "welcomeBody": "DataghmeH ja'chuq > yabvo' ja'chuq yab yIwIv. nIDlIj wa'DIchvaD Qwen3 mach pagh Llama 3 mach wIchup: wa' tup cha' tup joq lI'lu' 'ej Hoch De'wI'Daq Qap.",
+    "welcomeBody": null,
     "browseDiscover": "yab yInej",
     "noModelLoaded": "bIja'chuqpa' yab chu'lu'nIS. ghomlIjvo' wa' yIwIv 'ej qawHaqDaq yIqem.",
     "loadModel": "yab yIchu'",

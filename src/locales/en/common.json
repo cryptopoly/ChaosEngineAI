@@ -201,11 +201,11 @@
     "hours": "{value, plural, one {# hour} other {# hours}}"
   },
   "localeBanner": {
-    "detected": "Detected {endonym}.",
-    "prompt": "Switch the app to {endonym}? You can change this any time in Settings → Language.",
-    "switch": "Switch to {endonym}",
-    "keep": "Keep English",
-    "ariaLabel": "Language preference"
+    "ariaLabel": "Language preference",
+    "inUse": "The app is in {endonym}, your system language.",
+    "changeHint": "You can change this any time in Settings → Language.",
+    "keepCurrent": "Keep {endonym}",
+    "useEnglish": "Use English"
   },
   "panels": {
     "mlxConversion": "MLX Conversion",
@@ -645,7 +645,7 @@
     }
   },
   "languagePanel": {
-    "title": "Settings",
+    "title": "Language and time",
     "subtitle": "Choose the language used across the app and how clock times are shown. New choices apply immediately and save with your other settings.",
     "label": "Language",
     "systemDefault": "System default",

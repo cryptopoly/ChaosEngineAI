@@ -1299,7 +1299,7 @@
     "size": "Tamaño",
     "resolution": "Resolución",
     "overLimit": "Supera el límite de tamaño de este modelo.",
-    "underLimit": null,
+    "underLimit": "Por debajo del tamaño mínimo de este modelo ({min} px).",
     "current": "Tamaño actual: {width} x {height} ({megapixels} MP)"
   },
   "estimate": {

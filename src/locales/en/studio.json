@@ -1305,6 +1305,7 @@
     "size": "Size",
     "resolution": "Resolution",
     "overLimit": "Above this model's size limit.",
+    "underLimit": "Below this model's smallest size ({min} px).",
     "current": "Current size: {width} x {height} ({megapixels} MP)"
   },
   "estimate": {

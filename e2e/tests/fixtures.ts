@@ -14,6 +14,13 @@ export const test = base.extend({
     });
     await use(context);
   },
+  page: async ({ page }, use) => {
+    await use(page);
+    // A poll answered through a spec's own route (`route.fetch()` on /api/workspace, say) can still be in
+    // flight when the test body ends, and Playwright then fails the finished test with "route.fetch: Test
+    // ended". It showed once the shared openApp stopped waiting 5 s; dropping the routes here ignores it.
+    await page.unrouteAll({ behavior: "ignoreErrors" });
+  },
 });
 
 export { expect };

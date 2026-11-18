@@ -1565,6 +1565,12 @@
     "on": "Вкл",
     "off": "Выкл"
   },
+  "statusBanners": {
+    "backendOffline": {
+      "title": null,
+      "detail": null
+    }
+  },
   "secretMask": {
     "note": null
   }

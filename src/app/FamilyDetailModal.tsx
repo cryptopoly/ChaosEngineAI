@@ -1,4 +1,6 @@
+import { useId, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import { useDialogFocus } from "../hooks/useDialogFocus";
 import { CapabilityStrip } from "../components/CapabilityStrip";
 import { downloadProgressLabel, findLibraryItemForVariant, number, sizeLabel } from "../utils";
 import type { AppTabContext } from "./context";
@@ -11,16 +13,26 @@ export function FamilyDetailModal({ ctx }: { ctx: AppTabContext }) {
     detailFamilyId, setDetailFamilyId, activeDownloads,
     handleDownloadModel, handleCancelModelDownload, handleDeleteModelDownload,
   } = ctx.models;
-  if (!detailFamilyId) return null;
-  const family = workspace.featuredModels.find((f) => f.id === detailFamilyId);
+  const family = detailFamilyId ? workspace.featuredModels.find((f) => f.id === detailFamilyId) : undefined;
+  // Escape closes it, Tab stays inside and focus goes back to the row that opened it.
+  const dialog = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  useDialogFocus(dialog, { active: Boolean(family), onEscape: () => setDetailFamilyId(null) });
   if (!family) return null;
   const localCount = family.variants.filter((v) => v.availableLocally).length;
   return (
     <div className="modal-overlay" onClick={() => setDetailFamilyId(null)}>
-      <div className="modal-content modal-wide detail-modal" onClick={(e) => e.stopPropagation()}>
+      <div
+        ref={dialog}
+        className="modal-content modal-wide detail-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="modal-header">
           <div className="detail-header-main">
-            <h3>{family.name}</h3>
+            <h3 id={titleId}>{family.name}</h3>
             <div className="detail-header-badges">
               <span className="badge muted">{family.provider}</span>
               {family.variants.map((v) => v.format).filter((f, i, a) => a.indexOf(f) === i).map((f) => (

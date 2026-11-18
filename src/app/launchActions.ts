@@ -26,6 +26,7 @@ export interface ConfirmLaunchDeps {
   setError: (msg: string | null) => void;
   setActiveTab: (request: TabRequest) => void;
   handleStartThreadWithVariant: (variant: ModelVariant) => Promise<void>;
+  handleStartThreadWithOption: (option: ChatModelOption) => Promise<void>;
   handleLoadModel: (payload: LoadModelPayload) => Promise<LoadModelActionResult>;
   persistSessionChanges: (sessionId: string, patch: Partial<ChatSession>) => Promise<unknown>;
   sanitizeSpeculativeForModel: (params: {
@@ -42,7 +43,7 @@ export interface ConfirmLaunchDeps {
 export async function performConfirmLaunch(selectedKey: string, deps: ConfirmLaunchDeps) {
   const {
     pendingLaunch, threadModelOptions, launchSettings, previewControls, featuredModels, activeChat,
-    setPendingLaunch, setError, setActiveTab, handleStartThreadWithVariant, handleLoadModel,
+    setPendingLaunch, setError, setActiveTab, handleStartThreadWithVariant, handleStartThreadWithOption, handleLoadModel,
     persistSessionChanges, sanitizeSpeculativeForModel,
   } = deps;
   if (!pendingLaunch) return;
@@ -80,17 +81,20 @@ export async function performConfirmLaunch(selectedKey: string, deps: ConfirmLau
   else if (action === "server") setActiveTab("server");
   if (action === "thread") {
     const variant = findVariantForReference(featuredModels, option.modelRef, option.model);
-    if (variant) { await handleStartThreadWithVariant(variant); }
-    else {
-      await handleLoadModel({
-        modelRef: option.modelRef,
-        modelName: option.model,
-        canonicalRepo: option.canonicalRepo,
-        source: option.source,
-        backend: option.backend,
-        path: option.path ?? undefined,
-      });
-    }
+    // A new thread bound to the model, then the load. Two things were wrong here: a local model that is not
+    // a catalogue row was loaded with no new thread (the page showed the last thread, and the first message
+    // went into it and swapped that thread's own model back in), and a catalogue row got its thread but no
+    // load, so "Start Chat" ended on "Load a model first".
+    if (variant) await handleStartThreadWithVariant(variant);
+    else await handleStartThreadWithOption(option);
+    await handleLoadModel({
+      modelRef: option.modelRef,
+      modelName: option.model,
+      canonicalRepo: option.canonicalRepo,
+      source: option.source,
+      backend: option.backend,
+      path: option.path ?? undefined,
+    });
   } else if (action === "chat") {
     if (activeChat) {
       const sanitizedSpeculative = sanitizeSpeculativeForModel({

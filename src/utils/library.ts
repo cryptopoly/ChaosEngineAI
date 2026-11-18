@@ -160,15 +160,28 @@ export function libraryVariantMatchScore(item: LibraryItem, variant: ModelVarian
   const exactCandidates = [variant.id, variant.repo, variant.name, variant.link]
     .map((value) => value.toLowerCase())
     .filter(Boolean);
-  if (exactCandidates.some((candidate) => haystack.includes(candidate))) {
+  const namedExactly = exactCandidates.some((candidate) => haystack.includes(candidate));
+  if (namedExactly) {
     score += 80;
   }
 
   const compactCandidates = exactCandidates
     .flatMap((candidate) => [candidate.split("/").pop() ?? "", candidate.replace(/\//g, "-")])
     .filter(Boolean);
-  if (compactCandidates.some((candidate) => haystack.includes(candidate))) {
+  const namedByFile = compactCandidates.some((candidate) => haystack.includes(candidate));
+  if (namedByFile) {
     score += 40;
+  }
+
+  // A Hugging Face cache folder names the repo it holds. When that name is not this variant's (not the
+  // same repo, and not the same model name under another uploader), the two are different models however
+  // many words, sizes and formats they share. Without this, half of a real library matched some other
+  // catalogue row: mlx-community/Qwen3-0.6B-4bit took the repo of Qwen3.8 Flash Next (58 points from
+  // "qwen", "4bit", MLX and 4-bit alone), that repo went to the backend as the model's own, and the load
+  // was refused with "Qwen3.8 Flash Next runs only on TensorFold". A file outside the cache has no repo
+  // in its path, so the looser match stays for it.
+  if (!namedExactly && !namedByFile && inferHfRepoFromLocalPath(item.path)) {
+    return 0;
   }
 
   const itemScaleTokens = paramScaleTokens(haystack);

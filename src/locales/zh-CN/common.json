@@ -1565,6 +1565,12 @@
     "on": "开",
     "off": "关"
   },
+  "statusBanners": {
+    "backendOffline": {
+      "title": null,
+      "detail": null
+    }
+  },
   "secretMask": {
     "note": null
   }

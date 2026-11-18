@@ -14,9 +14,12 @@ export const SHOTS_DIR = path.resolve(__dirname, "..", "screenshots");
 export async function openApp(page: Page): Promise<void> {
   await page.goto("/");
   await expect(page.locator("aside.sidebar")).toBeVisible();
+  // The sidebar paints before the workspace has loaded; the terms dialog comes with the loaded workspace, in the
+  // same render that removes the startup panel. Waiting for that panel to go tells at once whether the terms are
+  // up, where a fixed 5 s wait for the dialog cost every test 5 s once they were accepted (15 minutes a run).
+  await expect(page.locator(".loading-state")).toHaveCount(0, { timeout: 60_000 });
   const agree = page.getByRole("dialog", { name: "Terms of use" }).getByRole("button", { name: "I agree" });
-  // isVisible() does not wait; on a cold start the dialog appears a moment after the sidebar.
-  if (await agree.waitFor({ state: "visible", timeout: 5000 }).then(() => true, () => false)) await agree.click();
+  if (await agree.isVisible()) await agree.click();
   await expect(page.getByRole("dialog", { name: "Terms of use" })).toBeHidden();
 }
 

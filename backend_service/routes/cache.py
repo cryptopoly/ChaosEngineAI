@@ -98,7 +98,8 @@ def cache_preview(
     num_kv_heads: int = Query(0, ge=0, le=256),
     hidden_size: int = Query(4096, ge=256, le=32768),
     context_tokens: int = Query(8192, ge=256, le=4_194_304),
-    params_b: float = Query(7.0, ge=0.5, le=1000.0),
+    # Down to 0.05: a 0.5B model reports 0.48 and was refused (422), so the launch dialog had no preview.
+    params_b: float = Query(7.0, ge=0.05, le=1000.0),
     strategy: str = Query("native"),
     model_path: str | None = Query(None, max_length=4096),
     model_repo: str | None = Query(None, max_length=256),

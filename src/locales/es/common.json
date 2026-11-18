@@ -1565,6 +1565,12 @@
     "on": "Sí",
     "off": "No"
   },
+  "statusBanners": {
+    "backendOffline": {
+      "title": null,
+      "detail": null
+    }
+  },
   "secretMask": {
     "note": null
   }

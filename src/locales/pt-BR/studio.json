@@ -1305,6 +1305,7 @@
     "size": "Tamanho",
     "resolution": "Resolução",
     "overLimit": "Acima do limite de tamanho deste modelo.",
+    "underLimit": null,
     "current": "Tamanho atual: {width} x {height} ({megapixels} MP)"
   },
   "estimate": {

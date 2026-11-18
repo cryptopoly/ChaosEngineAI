@@ -112,3 +112,45 @@ export function threadPatchFromVariant(
     updatedAt: new Date().toLocaleString(),
   };
 }
+
+/**
+ * The same thread fields for a local model that is not a catalogue row. The picker's option already
+ * names the exact file and repo, so nothing is looked up.
+ */
+export function threadPatchFromOption(
+  option: { model: string; modelRef: string; canonicalRepo?: string | null; source: string; path?: string | null; backend: string },
+  deps: {
+    launchSettings: LaunchPreferences;
+    launchCacheLabel: string;
+    sanitizeSpeculativeForModel: SanitizeSpeculativeFn;
+  },
+): ReturnType<typeof threadPatchFromVariant> {
+  const { launchSettings, launchCacheLabel, sanitizeSpeculativeForModel } = deps;
+  const sanitizedSpeculative = sanitizeSpeculativeForModel({
+    backend: option.backend,
+    modelRef: option.modelRef,
+    canonicalRepo: option.canonicalRepo ?? null,
+    modelName: option.model,
+    speculativeDecoding: launchSettings.speculativeDecoding,
+    treeBudget: launchSettings.treeBudget,
+  });
+  return {
+    model: option.model,
+    modelRef: option.modelRef,
+    canonicalRepo: option.canonicalRepo ?? null,
+    modelSource: option.source,
+    modelPath: option.path ?? null,
+    modelBackend: option.backend,
+    cacheLabel: launchCacheLabel,
+    cacheStrategy: launchSettings.cacheStrategy,
+    cacheBits: launchSettings.cacheBits,
+    fp16Layers: launchSettings.fp16Layers,
+    fusedAttention: launchSettings.fusedAttention,
+    fitModelInMemory: launchSettings.fitModelInMemory,
+    contextTokens: launchSettings.contextTokens,
+    speculativeDecoding: sanitizedSpeculative.speculativeDecoding,
+    dflashDraftModel: null,
+    treeBudget: sanitizedSpeculative.treeBudget,
+    updatedAt: new Date().toLocaleString(),
+  };
+}

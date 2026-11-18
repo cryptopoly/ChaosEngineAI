@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { chatErrorText } from "../features/chat/chatErrors";
 import { promptEvalTimeoutMs } from "./promptEvalWatchdog";
 import {
   addMessageVariant,
@@ -643,9 +644,11 @@ export function useChat(
     const { online: isOnline, startupError } = await ensureBackendAvailable(sendingSessionId ?? undefined);
 
     if (!isOnline) {
+      // Shown in the thread in place of a reply. It used to speak of "the desktop shell", "this local
+      // fallback" and "the FastAPI sidecar", which told a user nothing about what to do.
       const offlineMessage = startupError
-        ? `The desktop shell is offline, so this local fallback kept the chat moving. Restart the FastAPI sidecar to route prompts through the runtime endpoints. Startup error: ${startupError}`
-        : "The desktop shell is offline, so this local fallback kept the chat moving. Start the FastAPI sidecar to route prompts through the runtime endpoints.";
+        ? `The backend is not answering, so this message did not reach a model. It could not be restarted: ${startupError}`
+        : "The backend is not answering, so this message did not reach a model. Send it again when the notice at the top of the page has cleared.";
       if (startupError) {
         setError(`API service restart failed: ${startupError}`);
       }
@@ -1034,12 +1037,31 @@ export function useChat(
           );
           setActiveChatId(response.session.id);
         },
+        // Stopped by the user (the Stop button, or the backend saying so): not an error. A reply that had
+        // not produced any text yet leaves no empty bubble behind.
+        onCancelled: () => {
+          if (promptEvalTimeoutRef.current) {
+            clearTimeout(promptEvalTimeoutRef.current);
+            promptEvalTimeoutRef.current = null;
+          }
+          if (streamingChatId) {
+            setWorkspace((current) => ({
+              ...current,
+              chatSessions: current.chatSessions.map((s) => {
+                if (s.id !== streamingChatId) return s;
+                const last = s.messages[s.messages.length - 1];
+                const empty = last?.role === "assistant" && !last.text && !last.reasoning && !(last.toolCalls?.length);
+                return empty ? { ...s, messages: s.messages.slice(0, -1) } : s;
+              }),
+            }));
+          }
+        },
         onError: (errMsg) => {
           if (promptEvalTimeoutRef.current) {
             clearTimeout(promptEvalTimeoutRef.current);
             promptEvalTimeoutRef.current = null;
           }
-          setError(`Chat error: ${errMsg}`);
+          setError(chatErrorText(errMsg));
           if (streamingChatId) {
             setWorkspace((current) => ({
               ...current,
@@ -1076,7 +1098,7 @@ export function useChat(
       if (detail.includes("Load a model") || detail.includes("409")) {
         setError("No model is loaded. Select a model and try again.");
       } else {
-        setError(`Chat error: ${detail}`);
+        setError(chatErrorText(detail));
       }
       if (sendingSessionId) {
         setWorkspace((current) => ({

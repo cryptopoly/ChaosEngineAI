@@ -18,7 +18,7 @@ import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
 import { Panel } from "../../components/Panel";
 import { updateSettings } from "../../api";
-import { changeLocale, EXPERIMENTAL_LOCALES, SUPPORTED_LOCALES, type SupportedLocale } from "../../i18n";
+import { changeLocale, detectLocale, EXPERIMENTAL_LOCALES, SUPPORTED_LOCALES, type SupportedLocale } from "../../i18n";
 import enMeta from "../../locales/en/meta.json";
 import type { SettingsDraft } from "../../types/chat";
 import type { SetStateAction } from "react";
@@ -82,15 +82,12 @@ export function LanguagePanel({
     // fire-and-forget; on failure the user simply sees the dropdown
     // revert to the previous value on next cold start.
     void updateSettings({ locale: next });
-    // Apply live so the UI flips immediately.  ``"system"`` maps to the
-    // detected default (already what i18next has loaded) so the
-    // ``changeLocale`` call is a no-op in that case — but we still call
-    // it to surface the layout pass for the *current* navigator default.
+    // Apply live so the UI flips immediately.
     if (next === "system") {
-      // Re-detect from navigator on the fly. Simplest impl: do nothing —
-      // i18next stays on whatever it picked at init.  The persisted
-      // ``"system"`` value means future cold-starts will re-detect; the
-      // live session stays on the current pick.
+      // Back to the system language now, the same one a cold start would
+      // pick. Doing nothing here left the app in the language chosen
+      // before until the next launch, so the option looked broken.
+      void changeLocale(detectLocale());
       return;
     }
     if (SUPPORTED_LOCALES.includes(next as SupportedLocale)) {
@@ -190,7 +187,7 @@ export function LanguagePanel({
             </a>
             <button
               type="button"
-              className="ghost-button"
+              className="secondary-button"
               onClick={() => onCopyText(githubUrl)}
             >
               {t("actions.copy")}

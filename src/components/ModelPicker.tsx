@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { LibraryItem } from "../types";
 import { fetchJson } from "../api";
+import { useDialogFocus } from "../hooks/useDialogFocus";
 
 export interface WeightFile {
   name: string;
@@ -56,6 +57,10 @@ export function ModelPicker({ open, title, library, filter, selectedPath, onSele
       setSubPickError(null);
     }
   }, [open]);
+
+  // Escape closes it, Tab stays inside and focus goes back to the button that opened it.
+  const dialog = useRef<HTMLDivElement>(null);
+  useDialogFocus(dialog, { active: open, onEscape: onClose });
 
   if (!open) return null;
 
@@ -113,7 +118,14 @@ export function ModelPicker({ open, title, library, filter, selectedPath, onSele
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+      <div
+        ref={dialog}
+        className="modal-content"
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="modal-header">
           <h3>
             {subPickItem

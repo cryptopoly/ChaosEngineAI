@@ -202,13 +202,19 @@ export async function generateChatStream(
   abortSignal?: AbortController,
 ): Promise<void> {
   const controller = abortSignal ?? new AbortController();
-  let timer = setTimeout(() => controller.abort(), 300000);
+  // The Stop button aborts this same controller, so an abort alone does not mean the 5 minutes ran out.
+  let timedOut = false;
+  const onTimeout = () => {
+    timedOut = true;
+    controller.abort();
+  };
+  let timer = setTimeout(onTimeout, 300000);
   // With studio tools a turn can wait on the plan card and on long jobs, so the 5 minutes count from the
   // last thing the backend sent (it sends a keepalive while a plan waits), not from the start.
   const bumpTimer = () => {
     if (!payload.studioTools) return;
     clearTimeout(timer);
-    timer = setTimeout(() => controller.abort(), 300000);
+    timer = setTimeout(onTimeout, 300000);
   };
 
   try {
@@ -350,7 +356,9 @@ export async function generateChatStream(
     }
   } catch (err) {
     if (err instanceof DOMException && err.name === "AbortError") {
-      callbacks.onError("Streaming timed out");
+      // Stop used to land here too and every stopped reply raised "Chat error: Streaming timed out".
+      if (timedOut) callbacks.onError("Streaming timed out");
+      else callbacks.onCancelled?.();
     } else {
       callbacks.onError(err instanceof Error ? err.message : "Unknown streaming error");
     }

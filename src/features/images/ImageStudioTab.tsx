@@ -442,6 +442,11 @@ export function ImageStudioTab({
     : DEFAULT_MAX_SIDE;
   const imageMinSide = Math.max(DEFAULT_MIN_SIDE, selectedImageVariant?.minSide ?? DEFAULT_MIN_SIDE);
   const imageSizeLimit = { maxSide: imageMaxSide, maxPixels: selectedImageVariant?.maxPixels ?? null, minSide: imageMinSide };
+  // Why a size button is off: a size under the model's smallest side used to say "Above this model's size limit".
+  const sizeOffReason = (size: { width: number; height: number }) =>
+    Math.min(size.width, size.height) < imageMinSide
+      ? t("sizePresets.underLimit", { min: imageMinSide, defaultValue: "Below this model's smallest size ({min} px)." })
+      : t("sizePresets.overLimit");
   const activeImageAspect = nearestAspect(imageWidth, imageHeight, IMAGE_ASPECTS);
   const activeImageMegapixels = nearestMegapixels(imageWidth, imageHeight);
   useEffect(() => {
@@ -889,7 +894,7 @@ export function ImageStudioTab({
                     className={activeImageAspect?.id === aspect.id ? "pill-button active" : "pill-button"}
                     type="button"
                     disabled={!ok}
-                    title={ok ? `${size.width} x ${size.height}` : t("sizePresets.overLimit")}
+                    title={ok ? `${size.width} x ${size.height}` : sizeOffReason(size)}
                     onClick={() => {
                       onImageWidthChange(size.width);
                       onImageHeightChange(size.height);
@@ -912,7 +917,7 @@ export function ImageStudioTab({
                     className={activeImageMegapixels?.id === option.id ? "pill-button active" : "pill-button"}
                     type="button"
                     disabled={!ok}
-                    title={ok ? `${size.width} x ${size.height}` : t("sizePresets.overLimit")}
+                    title={ok ? `${size.width} x ${size.height}` : sizeOffReason(size)}
                     onClick={() => {
                       onImageWidthChange(size.width);
                       onImageHeightChange(size.height);

@@ -145,6 +145,16 @@ class CachePreviewRouteTests(_RouteContractCase):
         resp = self.client.get("/api/cache/preview", params={"bits": 99})
         self.assertEqual(resp.status_code, 422)
 
+    def test_cache_preview_accepts_a_model_under_half_a_billion_parameters(self):
+        # Qwen2.5-0.5B reports 0.48; the old lower bound of 0.5 answered 422.
+        resp = self.client.get(
+            "/api/cache/preview",
+            params={"bits": 0, "fp16_layers": 0, "num_layers": 24, "num_heads": 14, "hidden_size": 896,
+                    "context_tokens": 8192, "params_b": 0.48, "num_kv_heads": 2, "strategy": "native"},
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()["paramsB"], 0.48)
+
 
 class FineTuningRouteTests(_RouteContractCase):
     def test_get_adapters_returns_list(self):

@@ -93,6 +93,9 @@ export function FirstLaunchLocaleBanner({
   };
 
   const handleKeepEnglish = () => {
+    // The app already started in the detected language, so "keep English" has to switch now;
+    // it used to stay in that language until the next settings poll came back (up to 5 s).
+    void changeLocale("en");
     finalise("en");
   };
 
@@ -116,7 +119,7 @@ export function FirstLaunchLocaleBanner({
         <button type="button" className="primary-button" onClick={handleSwitch}>
           {t("localeBanner.switch", { endonym, defaultValue: "Switch to {endonym}" })}
         </button>
-        <button type="button" className="ghost-button" onClick={handleKeepEnglish}>
+        <button type="button" className="secondary-button" onClick={handleKeepEnglish}>
           {t("localeBanner.keep", { defaultValue: "Keep English" })}
         </button>
       </div>

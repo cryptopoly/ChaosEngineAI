@@ -549,6 +549,8 @@
     "compareAgainst": "Сравнить с:",
     "pickBaseline": "Выберите базовый запуск...",
     "runAnother": "Запустите ещё один бенчмарк, чтобы включить сравнение.",
+    "deleteRun": null,
+    "deleteRunConfirm": null,
     "properties": {
       "heading": "Параметры запуска",
       "model": "Модель",

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { runBenchmark } from "../api";
+import { deleteBenchmark, runBenchmark } from "../api";
 import { emptyWorkspace } from "../defaults";
 import { BENCHMARK_PROMPTS } from "../constants";
 import { syncRuntime } from "../utils";
@@ -165,6 +165,15 @@ export function useBenchmarks(
     }
   }
 
+  async function handleDeleteBenchmark(runId: string) {
+    try {
+      const response = await deleteBenchmark(runId);
+      setWorkspace((current) => ({ ...current, benchmarks: response.benchmarks }));
+    } catch (actionError) {
+      setError(actionError instanceof Error ? actionError.message : "Failed to delete the benchmark run.");
+    }
+  }
+
   // Computed
   const selectedBenchmark = workspace.benchmarks.find((item) => item.id === selectedBenchmarkId) ?? workspace.benchmarks[0] ?? null;
   const compareBenchmark =
@@ -203,6 +212,7 @@ export function useBenchmarks(
     updateBenchmarkDraft,
     handleRunBenchmark,
     handleCancelBenchmark,
+    handleDeleteBenchmark,
     selectedBenchmark,
     compareBenchmark,
     benchmarkSpeedDelta,

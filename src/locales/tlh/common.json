@@ -549,6 +549,8 @@
     "compareAgainst": "'ovmeH:",
     "pickBaseline": "Hal may' yIwIv...",
     "runAnother": "'ovmeH latlh waH yIchu'.",
+    "deleteRun": null,
+    "deleteRunConfirm": null,
     "properties": {
       "heading": "may' De'",
       "model": "yab",

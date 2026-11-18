@@ -13,8 +13,9 @@
  * Extracted from ``api.ts`` as part of the v0.8.0 refactor.
  */
 
-import { fetchJson, postJson } from "./index";
+import { deleteJson, fetchJson, postJson } from "./index";
 import type {
+  BenchmarkResult,
   BenchmarkRunPayload,
   BenchmarkRunResponse,
   ConvertModelPayload,
@@ -140,6 +141,15 @@ export async function runBenchmark(
   // modal to abort the in-flight request without waiting for the backend
   // to finish.
   return await postJson<BenchmarkRunResponse>("/api/benchmarks/run", payload, null, options?.signal);
+}
+
+/** Remove one saved run from the benchmark history; answers with the runs that are left. */
+export async function deleteBenchmark(runId: string): Promise<{ deleted: string; benchmarks: BenchmarkResult[] }> {
+  return await deleteJson<{ deleted: string; benchmarks: BenchmarkResult[] }>(
+    `/api/benchmarks/${encodeURIComponent(runId)}`,
+    undefined,
+    30000,
+  );
 }
 
 export async function revealModelPath(path: string): Promise<void> {

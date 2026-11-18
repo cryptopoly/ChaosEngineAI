@@ -159,8 +159,9 @@ test("Benchmarks, loaded: an accuracy run shows its score and no tok/s compariso
   await expect(card).not.toContainText("tok/s vs");
 });
 
-test("Benchmark History: list, filter by model, select and compare", async ({ page }) => {
-  await mockWorkspace(page, [ACCURACY, SPEED_NEW, SPEED_GGUF, SPEED_OLD]);
+test("Benchmark History: list, filter by model, select, compare and delete", async ({ page }) => {
+  const saved = [ACCURACY, SPEED_NEW, SPEED_GGUF, SPEED_OLD];
+  await mockWorkspace(page, saved);
   await goTo(page, "Benchmarks", "History");
   await expect(page.getByText("4 runs")).toBeVisible();
   // Latest is the accuracy run: its card shows the score, not "0.0 tok/s"; Fastest is a speed run.
@@ -194,6 +195,28 @@ test("Benchmark History: list, filter by model, select and compare", async ({ pa
   await page.getByRole("button", { name: "Table", exact: true }).click();
   await expect(rows).toHaveCount(4);
   await shot(page, "27-benchmark-history-loaded");
+
+  // Delete the selected run: asks first, then the run leaves the list (the backend answer is mocked).
+  let deleted = "";
+  await page.route("**/api/benchmarks/*", async (route) => {
+    if (route.request().method() !== "DELETE") return route.fallback();
+    deleted = decodeURIComponent(new URL(route.request().url()).pathname.split("/").pop() ?? "");
+    saved.splice(saved.indexOf(SPEED_GGUF), 1); // the workspace poll answers without it from now on
+    await route.fulfill({ json: { deleted, benchmarks: saved } });
+  });
+  await rows.nth(2).click();
+  page.once("dialog", (dialog) => void dialog.dismiss());
+  await page.getByRole("button", { name: "Delete run" }).click();
+  await expect(rows).toHaveCount(4);
+  expect(deleted).toBe("");
+  page.once("dialog", (dialog) => {
+    expect(dialog.message()).toContain("GGUF speed run");
+    void dialog.accept();
+  });
+  await page.getByRole("button", { name: "Delete run" }).click();
+  await expect(rows).toHaveCount(3);
+  expect(deleted).toBe("bench-speed-gguf");
+  await expect(page.locator(".benchmark-history-list")).not.toContainText("GGUF speed run");
 });
 
 test("Benchmark run: the chosen mode is sent, the result card and the history follow", async ({ page }) => {

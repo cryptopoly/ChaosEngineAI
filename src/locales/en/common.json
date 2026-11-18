@@ -549,6 +549,8 @@
     "compareAgainst": "Compare against:",
     "pickBaseline": "Pick a baseline run...",
     "runAnother": "Run another benchmark to enable comparison.",
+    "deleteRun": "Delete run",
+    "deleteRunConfirm": "Delete the saved run \"{label}\"? This cannot be undone.",
     "properties": {
       "heading": "Run properties",
       "model": "Model",

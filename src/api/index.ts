@@ -740,6 +740,7 @@ export {
   revealModelPath,
   openMediaFile,
   runBenchmark,
+  deleteBenchmark,
   searchHubModels,
   searchModels,
   stopIdleModelProcesses,

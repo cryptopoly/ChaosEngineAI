@@ -549,6 +549,8 @@
     "compareAgainst": "비교 대상:",
     "pickBaseline": "기준 실행을 선택하세요...",
     "runAnother": "비교를 활성화하려면 다른 벤치마크를 실행하세요.",
+    "deleteRun": null,
+    "deleteRunConfirm": null,
     "properties": {
       "heading": "실행 속성",
       "model": "모델",

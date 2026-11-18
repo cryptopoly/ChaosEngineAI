@@ -549,6 +549,8 @@
     "compareAgainst": "对比基准:",
     "pickBaseline": "选择基线运行...",
     "runAnother": "再运行一次基准测试以启用对比。",
+    "deleteRun": null,
+    "deleteRunConfirm": null,
     "properties": {
       "heading": "运行属性",
       "model": "模型",

@@ -549,6 +549,8 @@
     "compareAgainst": "Comparar com:",
     "pickBaseline": "Escolha uma execução de referência...",
     "runAnother": "Execute outro benchmark para habilitar a comparação.",
+    "deleteRun": null,
+    "deleteRunConfirm": null,
     "properties": {
       "heading": "Propriedades da execução",
       "model": "Modelo",

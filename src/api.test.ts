@@ -5,7 +5,7 @@ vi.mock("@tauri-apps/api/core", () => ({
   isTauri: vi.fn(() => false),
 }));
 
-import { checkBackend, convertModel, generateChat, getWorkspace, loadModel, searchHubModels } from "./api";
+import { checkBackend, convertModel, deleteBenchmark, generateChat, getWorkspace, loadModel, searchHubModels } from "./api";
 import { mockWorkspace } from "./mockData";
 
 const stubSession = {
@@ -99,6 +99,22 @@ describe("desktop api helpers", () => {
     expect(fetchMock).toHaveBeenCalledWith(
       "http://127.0.0.1:8876/api/chat/generate",
       expect.objectContaining({ method: "POST" }),
+    );
+  });
+
+  it("deletes one benchmark run by id and returns the runs that are left", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ deleted: "bench-1/odd id", benchmarks: [] }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await deleteBenchmark("bench-1/odd id");
+
+    expect(result).toEqual({ deleted: "bench-1/odd id", benchmarks: [] });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8876/api/benchmarks/bench-1%2Fodd%20id",
+      expect.objectContaining({ method: "DELETE" }),
     );
   });
 

@@ -549,6 +549,8 @@
     "compareAgainst": "Vergleichen mit:",
     "pickBaseline": "Baseline-Lauf wählen...",
     "runAnother": "Weiteren Benchmark ausführen, um Vergleich zu aktivieren.",
+    "deleteRun": null,
+    "deleteRunConfirm": null,
     "properties": {
       "heading": "Lauf-Eigenschaften",
       "model": "Modell",

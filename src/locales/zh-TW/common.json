@@ -549,6 +549,8 @@
     "compareAgainst": "比較對象:",
     "pickBaseline": "選擇基準執行...",
     "runAnother": "執行另一次基準測試以啟用比較。",
+    "deleteRun": null,
+    "deleteRunConfirm": null,
     "properties": {
       "heading": "執行屬性",
       "model": "模型",

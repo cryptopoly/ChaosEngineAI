@@ -15,6 +15,7 @@ export interface BenchmarkHistoryTabProps {
   onBenchmarkViewModeChange: (mode: "table" | "chart" | "both") => void;
   onSelectedBenchmarkIdChange: (id: string) => void;
   onCompareBenchmarkIdChange: (id: string) => void;
+  onDeleteBenchmark: (id: string) => void;
 }
 
 export function BenchmarkHistoryTab({
@@ -27,6 +28,7 @@ export function BenchmarkHistoryTab({
   onBenchmarkViewModeChange,
   onSelectedBenchmarkIdChange,
   onCompareBenchmarkIdChange,
+  onDeleteBenchmark,
 }: BenchmarkHistoryTabProps) {
   const { t } = useTranslation("common");
   const benchmarkModels = [...new Set(benchmarks.map(b => b.model))];
@@ -287,6 +289,21 @@ export function BenchmarkHistoryTab({
                   <div><span>{t("benchmarkHistory.properties.maxTokens", { defaultValue: "Max tokens" })}</span><span>{effectiveSelected.maxTokens}</span></div>
                   <div><span>{t("benchmarkHistory.properties.measured", { defaultValue: "Measured" })}</span><span>{effectiveSelected.measuredAt}</span></div>
                   {effectiveSelected.notes ? <div className="bm-prop-full"><span>{t("benchmarkHistory.properties.notes", { defaultValue: "Notes" })}</span><span>{effectiveSelected.notes}</span></div> : null}
+                </div>
+                <div className="button-row">
+                  <button
+                    className="secondary-button danger-button"
+                    type="button"
+                    onClick={() => {
+                      const question = t("benchmarkHistory.deleteRunConfirm", {
+                        label: effectiveSelected.label,
+                        defaultValue: "Delete the saved run \"{label}\"? This cannot be undone.",
+                      });
+                      if (window.confirm(question)) onDeleteBenchmark(effectiveSelected.id);
+                    }}
+                  >
+                    {t("benchmarkHistory.deleteRun", { defaultValue: "Delete run" })}
+                  </button>
                 </div>
               </div>
             </div>

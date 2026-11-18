@@ -1,7 +1,7 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 147 rows with work, decisions or watch items still open, newest first.
+summary: 146 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
@@ -15,15 +15,6 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 **Status or trigger:** When the OpenAI-compatible server is next touched, or a client that streams tools reports it
 
 **Notes:** Found on the 4090 (2026-11-18). The non-streamed reply now returns `tool_calls` (structured from llama-server, or read from the text on the MLX path), but `StreamChunk` has no field for calls and the llama.cpp stream ignores `delta.tool_calls`, so a streaming client gets an empty reply with `finish_reason` stop. Needs a calls field on the final chunk and the OpenAI `delta.tool_calls` chunks.
-
-</details>
-
-<details>
-<summary>FU-257 · Tests that make symlinks fail on Windows without Developer Mode — Owner's answer to D-96</summary>
-
-**Status or trigger:** Owner's answer to D-96
-
-**Notes:** 31 pytest tests (WinError 1314): `test_routing_hints` 17, `test_gguf_routing` 4, `test_discovery_layouts` 3, `test_model_import` 2, one each in `test_agent_files`, `test_diagnostics_routes`, `test_storyboard_store`, `test_voice_model_files`, `test_mlx_video`. If Developer Mode stays off: a shared `can_symlink()` probe and a skip with that reason; tests that only build a fake cache could fall back to copies and keep running.
 
 </details>
 

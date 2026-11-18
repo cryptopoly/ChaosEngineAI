@@ -15,7 +15,7 @@ Newest dated update first. Each update has the same sections: Done, Open for Cla
 
 **Open for Claude:** section 4 of `docs/plans/windows-handover.md`; host-bound tests (FU-256); a model's unescaped Windows path in a tool call (FU-255); rows 44 (TensorFold 1.2.9, sd.cpp), 45 to 51.
 
-**Open for Dan:** D-96 (Developer Mode on the PC: 31 symlink tests fail without it); D-95 (the saved model-storage work on `wip/model-storage-share`, 158 commits behind).
+**Open for Dan:** merge `feat/model-storage-share` into `release/v0.10.0` (D-95: ported onto the release tip and tested, ready). D-96 is done: Developer Mode is on and the 31 symlink tests pass.
 
 ## Update 2026-11-18 (overnight review): every review stream is merged on `review/integrate`, green on the Mac gate; not merged into `release/v0.10.0`. Next session is on Windows: read `docs/plans/windows-handover.md` first.
 

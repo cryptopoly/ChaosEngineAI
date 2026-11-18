@@ -239,7 +239,10 @@ def _pick_variant(ctx: Any, kind: str, model: str | None) -> dict[str, Any]:
                 "which to download from ChaosEngineAI > Models."
             )
         model = str(picked["id"])
-    installed = {str(r["id"]) for r in bridge_models.installed_models(_state(ctx), kind)}
+    rows = bridge_models.installed_models(_state(ctx), kind)
+    installed = {str(r["id"]) for r in rows}
+    if model not in installed:
+        model = _id_for_model_name(rows, model)
     if model not in installed:
         raise ToolError(
             f"'{model}' is not an installed {kind} model. Installed: {', '.join(sorted(installed)) or 'none'}."
@@ -254,6 +257,20 @@ def _pick_variant(ctx: Any, kind: str, model: str | None) -> dict[str, Any]:
     except licence_gate.LicenceGateError as exc:
         raise ToolError(exc.message) from None
     return variant
+
+
+def _id_for_model_name(rows: list[dict[str, Any]], model: str) -> str:
+    """Chat models often pass the name they read in list_models ("LTX-2.5") instead of its id.
+    Take it when it names exactly one installed row (the whole name, the family or the name's first
+    word group); otherwise keep what was given, so the caller's error lists the ids."""
+    wanted = model.strip().casefold()
+    hits = {
+        str(row["id"])
+        for row in rows
+        for label in (row.get("name"), row.get("family"))
+        if label and (str(label).casefold() == wanted or str(label).casefold().startswith(wanted + " "))
+    }
+    return hits.pop() if len(hits) == 1 else model
 
 
 def _recommended(variant: dict[str, Any]) -> dict[str, Any]:

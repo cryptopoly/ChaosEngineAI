@@ -113,6 +113,20 @@ class McpBridgeTests(unittest.TestCase):
         self.assertIn("/tmp/x.png", text)
         self.assertIn("Rendered at 512x512", text)
 
+    def test_model_name_from_list_models_is_taken_for_its_id(self):
+        # A chat model passed "LTX-2.5" (the name list_models shows) and the render was refused (review F).
+        from backend_service.mcp_bridge.tools import _id_for_model_name
+
+        rows = [
+            {"id": "dgrauet/ltx-2.5-mlx-q4", "name": "LTX-2.5 · distilled q4 (ltx-2-mlx)", "family": "LTX-2"},
+            {"id": "other/wan", "name": "Wan 2.1 I2V", "family": "Wan"},
+        ]
+        self.assertEqual(_id_for_model_name(rows, "LTX-2.5"), "dgrauet/ltx-2.5-mlx-q4")
+        self.assertEqual(_id_for_model_name(rows, "ltx-2.5 · distilled q4 (ltx-2-mlx)"), "dgrauet/ltx-2.5-mlx-q4")
+        self.assertEqual(_id_for_model_name(rows, "Flux"), "Flux")  # no match: unchanged, the caller refuses
+        two = rows + [{"id": "x/ltx-q8", "name": "LTX-2.5 q8", "family": "LTX-2"}]
+        self.assertEqual(_id_for_model_name(two, "LTX-2.5"), "LTX-2.5")  # ambiguous: unchanged
+
     def test_generate_image_without_model_points_to_recommend(self):
         access.set_enabled(True)
         with mock.patch("backend_service.mcp_bridge.models.installed_models", return_value=[]):

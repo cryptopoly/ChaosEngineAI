@@ -2,7 +2,7 @@ import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { test, expect } from "./fixtures";
 import type { Page } from "@playwright/test";
-import { API_BASE, TOKEN, goTo, openTab, SHOTS_DIR } from "./helpers";
+import { API_BASE, TOKEN, goTo, openTab, SHOTS_DIR, showExperimentalTabs } from "./helpers";
 
 // Overnight review, stream C: the Prompts and Plugins pages (Tools group). Both run against the run's own
 // backend (throwaway HOME), so the real prompt store and plugin registry answer; no model runs. Chat is faked
@@ -67,6 +67,8 @@ async function mockLoadedModel(page: Page) {
 const layout = (page: Page) => page.locator(".prompt-library-layout");
 const detail = (page: Page) => layout(page).locator(".panel").nth(1);
 
+// Plugins is an experimental tab: listed only with Settings > "Show experimental tabs" on.
+test.beforeEach(({ page }) => showExperimentalTabs(page));
 test.afterEach(async ({ page }) => {
   await removeTemplates(page);
 });

@@ -93,8 +93,6 @@ ChaosEngineAI is a desktop control plane for running large language models local
 - 🪄 **MTPLX** Multi-Token Prediction speculative decoding (Apple Silicon) — 1.8-2.2× speedup with zero quality loss for trained-with-MTP models (Qwen3.5/3.6, DeepSeek V3/R1, Qwen3-Coder-Next, Youssofal MTPLX-Optimized variants)
 - 🧵 **TensorFold** exact speculative decoding (Apple Silicon) — every draft is verified against the target, so replies match serial decoding; also the only runtime for architectures stock MLX cannot load (Qwen3.8 Flash Next, GLM-5.3-Flash, DeepSeek-V4-Flash, Ternary Bonsai 2)
 - 🔧 **Agent tools** — web search, calculator, code executor, and file reader for tool-augmented conversations
-- 🎓 **Fine-tuning** with LoRA adapter support for MLX models
-- 🧩 **Plugin system** with 5 extension types: cache strategies, inference engines, tools, model sources, and post-processors
 - 🔌 **Integrations** with copy-paste connection snippets for Continue.dev, Goose, Cursor, and Claude Code via the local API
 
 ---
@@ -164,8 +162,7 @@ ChaosEngineAI is a desktop control plane for running large language models local
 - Diffusion cache strategies — FBCache + TeaCache + TaylorSeer + MagCache + PyramidAttentionBroadcast (PAB) + FasterCache — applied to image + video DiTs (FLUX, SD3.5, Wan2.1/2.2, HunyuanVideo, LTX-Video, CogVideoX, Mochi)
 - Runtime controls for cache bits, FP16 layers, fused attention, fit-in-memory behavior, context length, and speculative tree budget
 - Benchmark modes for throughput, perplexity, and task accuracy (MMLU / HellaSwag), with persistent history, scatter plots, and diff tables
-- LoRA adapter discovery plus fine-tuning hooks for local training workflows
-- Plugin system spanning cache strategies, inference engines, tools, model sources, and post-processors
+- LoRA adapter discovery (Fine-Tuning, an experimental tab; training is not built yet)
 - Live logs, backend health, hardware telemetry, and orphaned-worker cleanup reporting
 
 ### Settings & integrations
@@ -283,9 +280,9 @@ Layer-by-layer live progress while the conversion runs — bit budget per block,
 
 Search, create, edit, tag, and delete reusable prompt templates, including five built-in starter personas. Any template can be applied to Chat with one click so you can switch between coding, summarization, translation, and other system-prompt presets without copy-paste.
 
-### Plugins — *Extensions and plugin system*
+### Plugins — *Experimental*
 
-Inspect built-in and external plugins across cache strategies, inference engines, tools, model sources, and post-processors. Plugins can be enabled or disabled from the UI, and external plugins are discovered from the app's plugin directory.
+Lists the built-in cache strategies and chat tools. External plugins are not loaded in this version, and the page is hidden unless **Settings > Appearance > Show experimental tabs** is on. Fine-Tuning is hidden the same way: it lists LoRA adapters on disk, and training is not built yet.
 
 ### Server > Activity — *What the models did*
 

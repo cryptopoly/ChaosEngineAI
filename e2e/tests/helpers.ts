@@ -43,6 +43,20 @@ export async function openTab(page: Page, group: string, child: string): Promise
   await nav.locator(".nav-child-button", { hasText: new RegExp(`^${child}$`) }).click();
 }
 
+/** Turns on Settings > "Show experimental tabs" before the page loads, keeping the other sidebar preferences. */
+export async function showExperimentalTabs(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const key = "chaosengine.sidebar.prefs.v1";
+    let prefs: Record<string, unknown> = {};
+    try {
+      prefs = JSON.parse(window.localStorage.getItem(key) ?? "{}") ?? {};
+    } catch {
+      prefs = {};
+    }
+    window.localStorage.setItem(key, JSON.stringify({ ...prefs, showExperimentalTabs: true }));
+  });
+}
+
 export async function goTo(page: Page, group: string, child: string): Promise<void> {
   await openApp(page);
   await openTab(page, group, child);

@@ -58,10 +58,12 @@ export const tabs: TabConfig[] = [
   { id: "server", label: "Server", labelKey: "tabs.server", caption: "OpenAI-compatible local API", captionKey: "tabCaptions.server" },
   { id: "benchmarks", label: "Benchmarks", labelKey: "tabs.benchmarks", caption: "Run a new benchmark", captionKey: "tabCaptions.benchmarks", group: "benchmarks", shortLabel: "Run", shortLabelKey: "tabShortLabels.benchmarks" },
   { id: "benchmark-history", label: "History", labelKey: "tabs.benchmarkHistory", caption: "Compare saved runs", captionKey: "tabCaptions.benchmarkHistory", group: "benchmarks", shortLabel: "History", shortLabelKey: "tabShortLabels.benchmarkHistory" },
+  // Fine-Tuning and Plugins are experimental (overnight review, D-87): Fine-Tuning trains nothing yet and Plugins
+  // loads no outside code, so both stay out of the sidebar until Settings > "Show experimental tabs" is on.
   { id: "conversion", label: "Conversion", labelKey: "tabs.conversion", caption: "Convert models to MLX format", captionKey: "tabCaptions.conversion", group: "tools", shortLabel: "Conversion", shortLabelKey: "tabShortLabels.conversion" },
-  { id: "finetuning", label: "Fine-Tuning", labelKey: "tabs.fineTuning", caption: "LoRA adapters and training", captionKey: "tabCaptions.fineTuning", group: "tools", shortLabel: "Fine-Tuning", shortLabelKey: "tabShortLabels.fineTuning" },
+  { id: "finetuning", label: "Fine-Tuning", labelKey: "tabs.fineTuning", caption: "LoRA adapters and training", captionKey: "tabCaptions.fineTuning", group: "tools", shortLabel: "Fine-Tuning", shortLabelKey: "tabShortLabels.fineTuning", experimental: true },
   { id: "prompt-library", label: "Prompts", labelKey: "tabs.promptLibrary", caption: "Reusable prompt templates", captionKey: "tabCaptions.promptLibrary", group: "tools", shortLabel: "Prompts", shortLabelKey: "tabShortLabels.promptLibrary" },
-  { id: "plugins", label: "Plugins", labelKey: "tabs.plugins", caption: "Extensions and plugin system", captionKey: "tabCaptions.plugins", group: "tools", shortLabel: "Plugins", shortLabelKey: "tabShortLabels.plugins" },
+  { id: "plugins", label: "Plugins", labelKey: "tabs.plugins", caption: "Extensions and plugin system", captionKey: "tabCaptions.plugins", group: "tools", shortLabel: "Plugins", shortLabelKey: "tabShortLabels.plugins", experimental: true },
   { id: "settings", label: "Settings", labelKey: "tabs.settings", caption: "Directories and defaults", captionKey: "tabCaptions.settings" },
 ];
 

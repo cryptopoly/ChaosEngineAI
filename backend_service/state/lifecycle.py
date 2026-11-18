@@ -28,6 +28,7 @@ Extracted as part of the v0.8.0 Phase 1a-12 refactor.
 
 from __future__ import annotations
 
+import logging
 import os
 import time
 from pathlib import Path
@@ -36,11 +37,46 @@ from typing import TYPE_CHECKING, Any
 from fastapi import HTTPException
 
 from backend_service.helpers.formatting import _parse_context_label
+from backend_service.model_resolution import infer_hf_repo_from_local_path, looks_like_repo_id, names_a_location
 from backend_service.models import ConvertModelRequest, LoadModelRequest
 
 
 if TYPE_CHECKING:
     from backend_service.state import ChaosEngineState
+
+_log = logging.getLogger(__name__)
+
+
+def align_model_ref_with_path(state: ChaosEngineState, request: LoadModelRequest) -> LoadModelRequest:
+    """The request with a ``modelRef`` that names what its ``path`` is (L-16).
+
+    A ``modelRef`` naming a catalogue row, or a repo id, that the path does
+    not name (another client's stale or wrong pick) is replaced by the path's
+    own library name, Hugging Face repo or folder name, so the catalogue row,
+    engine and drafters are chosen for the model actually loaded. A plain
+    name, or a ``modelRef`` the path agrees with, is kept as sent.
+    """
+    path = (request.path or "").strip()
+    ref = (request.modelRef or "").strip()
+    if not ref or not names_a_location(path):
+        return request
+    row = state._find_catalog_entry(ref)
+    if row is None and not looks_like_repo_id(ref):
+        return request
+    if state._repo_hint_for_path(ref, path) is not None:
+        return request
+    entry = state._find_library_entry(path, None)
+    replacement = (
+        (str(entry.get("name") or "").strip() if entry is not None else "")
+        or infer_hf_repo_from_local_path(path)
+        or Path(path).expanduser().name
+        or ref
+    )
+    _log.debug("Ignoring modelRef %r: the model at %s is %s.", ref, path, replacement)
+    model_name = request.modelName
+    if model_name is not None and (model_name == ref or (row is not None and model_name == row.get("name"))):
+        model_name = None
+    return request.model_copy(update={"modelRef": replacement, "modelName": model_name})
 
 
 def load_model(
@@ -50,6 +86,7 @@ def load_model(
     keep_warm_previous: bool = True,
 ) -> dict[str, Any]:
     with state._lock:
+        request = align_model_ref_with_path(state, request)
         catalog_entry = state._find_catalog_entry(request.modelRef)
         library_entry = state._find_library_entry(request.path, request.modelRef)
         effective_canonical_repo = state._resolve_canonical_repo(

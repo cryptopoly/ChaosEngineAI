@@ -45,6 +45,16 @@ if TYPE_CHECKING:
     from backend_service.state import ChaosEngineState
 
 
+
+def _apply_canonical_hint(state: Any, hint: str | None) -> None:
+    """Record a client's repo hint on the loaded model only when the model's own path agrees (L-16)."""
+    loaded = state.runtime.loaded_model
+    if not hint or loaded is None:
+        return
+    checked = state._resolve_canonical_repo(model_ref=loaded.ref, path=loaded.path, canonical_repo=hint)
+    if checked and loaded.canonicalRepo != checked:
+        loaded.canonicalRepo = checked
+
 def generate(state: ChaosEngineState, request: GenerateRequest) -> dict[str, Any]:
     # FU-194: a message sent here stops an active Keep going run, as on the streaming path. This path has no
     # Studio tools, so it never starts an armed run (studioTools is forced off for the controller).
@@ -148,8 +158,7 @@ def generate(state: ChaosEngineState, request: GenerateRequest) -> dict[str, Any
         if state.runtime.loaded_model is None:
             raise HTTPException(status_code=409, detail="Load a model before sending prompts.")
 
-        if effective_canonical_repo and state.runtime.loaded_model.canonicalRepo != effective_canonical_repo:
-            state.runtime.loaded_model.canonicalRepo = effective_canonical_repo
+        _apply_canonical_hint(state, effective_canonical_repo)
 
         history = _build_history_with_reasoning(
             session["messages"],
@@ -446,8 +455,7 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest, app_reque
         if state.runtime.loaded_model is None:
             raise HTTPException(status_code=409, detail="Load a model before sending prompts.")
 
-        if effective_canonical_repo and state.runtime.loaded_model.canonicalRepo != effective_canonical_repo:
-            state.runtime.loaded_model.canonicalRepo = effective_canonical_repo
+        _apply_canonical_hint(state, effective_canonical_repo)
 
         history = _build_history_with_reasoning(
             session["messages"],

@@ -235,6 +235,17 @@ class ControllerEventTests(unittest.TestCase):
         self.assertIn("out of memory", failed["detail"]["error"])
         self.assertEqual(failed["detail"]["stderr"], ["worker exited: out of memory", "line two"])
 
+    def test_a_cancelled_load_is_a_warning_not_an_error(self):
+        log = ModelEventLog()
+        controller = _controller(log)
+        engine = _Engine()
+        engine.load_model = mock.Mock(side_effect=RuntimeError("Model load cancelled."))
+        controller._select_engine = mock.Mock(return_value=engine)
+        with self.assertRaises(RuntimeError):
+            _load(controller, "model-a")
+        failed = log.events()[-1]
+        self.assertEqual((failed["kind"], failed["level"], failed["data"]["reason"]), ("load_failed", "warning", "cancelled"))
+
     def test_swap_and_user_unload_carry_a_reason(self):
         log = ModelEventLog()
         controller = _controller(log)

@@ -258,6 +258,11 @@ def traced_stream(method: Callable[..., Iterator[Any]]) -> Callable[..., Iterato
     return wrapper
 
 
+def _is_cancelled_load(error: BaseException) -> bool:
+    text = str(error)
+    return "replaced this one" in text or text.startswith("Model load cancelled")
+
+
 # The load in flight on this thread: its request id and when the engine started loading.
 _current = threading.local()
 
@@ -296,11 +301,13 @@ def traced_load(method: Callable[..., Any]) -> Callable[..., Any]:
         try:
             info = method(self, *args, **kwargs)
         except BaseException as exc:
+            # A load replaced by a newer request, or cancelled by an unload, is not a failure of the model.
+            cancelled = _is_cancelled_load(exc)
             log.emit(
                 "load_failed",
-                level="error",
+                level="warning" if cancelled else "error",
                 message=str(exc).splitlines()[0][:300] if str(exc) else type(exc).__name__,
-                data={"seconds": round(time.perf_counter() - started, 3), "reason": "error"},
+                data={"seconds": round(time.perf_counter() - started, 3), "reason": "cancelled" if cancelled else "error"},
                 detail=engine_detail(getattr(self, "engine", None), exc),
                 engine=getattr(getattr(self, "engine", None), "engine_name", None),
                 **base,

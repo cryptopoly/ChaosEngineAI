@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -91,6 +92,22 @@ class EventLogTests(unittest.TestCase):
             again = ModelEventLog(path)
             self.assertEqual([e["kind"] for e in again.events()], ["requested", "loading", "loaded"])
             self.assertEqual(again.emit("idle")["id"], 4)
+            self.assertTrue(again.flush())
+
+    def test_the_file_is_not_held_open_between_writes(self):
+        # Windows refuses to move or delete an open file; the data folder must stay movable while the app runs.
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "logs" / "model-events.jsonl"
+            log = ModelEventLog(path)
+            log.emit("loaded", model="M")
+            self.assertTrue(log.flush())
+            moved = path.with_name("moved.jsonl")
+            os.replace(path, moved)
+            log.emit("idle", model="M")
+            self.assertTrue(log.flush())
+            self.assertTrue(path.exists())
+            os.remove(path)
+            os.remove(moved)
 
     def test_subscribers_get_new_events_and_full_queues_do_not_block(self):
         log = ModelEventLog()

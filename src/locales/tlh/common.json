@@ -1564,5 +1564,8 @@
     "note": null,
     "on": null,
     "off": null
+  },
+  "secretMask": {
+    "note": null
   }
 }

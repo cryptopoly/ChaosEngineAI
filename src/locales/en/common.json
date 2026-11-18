@@ -1564,5 +1564,8 @@
     "note": "Outlines inputs and buttons with a higher-contrast line so they are easier to see. Applies immediately.",
     "on": "On",
     "off": "Off"
+  },
+  "secretMask": {
+    "note": "The key is hidden on screen. Copy always copies the real key."
   }
 }

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { maskSecret } from "../../utils/secretMask";
 import { useTranslation } from "react-i18next";
 import { StatCard } from "../../components/StatCard";
 import { ModelLoadingProgress } from "../../components/ModelLoadingProgress";
@@ -66,7 +67,7 @@ export function ServerOverview({
     return () => window.clearTimeout(timer);
   }, [latestOrphanPid]);
 
-  const maskedToken = apiToken ? `${apiToken.slice(0, 4)}${"•".repeat(Math.max(apiToken.length - 8, 4))}${apiToken.slice(-4)}` : null;
+  const maskedToken = apiToken ? maskSecret(apiToken) : null;
   const loadingRef = serverLoading?.modelRef ?? null;
   const connectModel =
     warmModels.find((m) => m.active)?.ref ?? warmModels[0]?.ref ?? "your-model-id";

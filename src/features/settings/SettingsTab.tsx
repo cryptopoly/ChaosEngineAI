@@ -1,4 +1,6 @@
 import { useState, type SetStateAction } from "react";
+import { RevealSecretButton } from "../../components/RevealSecretButton";
+import { maskSecretsIn } from "../../utils/secretMask";
 import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
 import { AgentAccessPanel } from "./AgentAccessPanel";
@@ -121,6 +123,8 @@ export function SettingsTab({
 }: SettingsTabProps) {
   const { t } = useTranslation("common");
   const integrationApiToken = apiToken ?? "<chaosengine-api-token>";
+  // The key in the integration snippets is masked on screen until Reveal; Copy copies the real snippet.
+  const [revealIntegrationKey, setRevealIntegrationKey] = useState(false);
   // Section selection lives in component state because it's purely a UI
   // concern — there's no need to thread it through the App-level workspace
   // or persist it across reloads (the user lands on "General" each time,
@@ -646,6 +650,11 @@ export function SettingsTab({
             })}{" "}
             <span className="mono-text">{serverLocalhostUrl ?? `http://127.0.0.1:${serverPort}/v1`}</span>.
           </p>
+          {apiToken ? (
+            <div className="button-row">
+              <RevealSecretButton revealed={revealIntegrationKey} onToggle={() => setRevealIntegrationKey((v) => !v)} />
+            </div>
+          ) : null}
           {[
             { name: "Continue.dev (VS Code)", config: `{\n  "models": [{\n    "title": "ChaosEngineAI",\n    "provider": "openai",\n    "model": "${loadedModelName ?? "current-model"}",\n    "apiBase": "${serverLocalhostUrl ?? `http://127.0.0.1:${serverPort}/v1`}",\n    "apiKey": "${integrationApiToken}"\n  }]\n}` },
             { name: "Goose", config: `# In ~/.config/goose/config.yaml\nGOOSE_PROVIDER: openai\nGOOSE_MODEL: ${loadedModelName ?? "current-model"}\nOPENAI_BASE_URL: ${serverLocalhostUrl ?? `http://127.0.0.1:${serverPort}/v1`}\nOPENAI_API_KEY: ${integrationApiToken}` },
@@ -659,7 +668,7 @@ export function SettingsTab({
                   {t("settingsTab.integrations.copyButton", { defaultValue: "Copy" })}
                 </button>
               </div>
-              <pre className="integration-snippet">{item.config}</pre>
+              <pre className="integration-snippet">{revealIntegrationKey ? item.config : maskSecretsIn(item.config, [apiToken])}</pre>
             </div>
           ))}
         </div>

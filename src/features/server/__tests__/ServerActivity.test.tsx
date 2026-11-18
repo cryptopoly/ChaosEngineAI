@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { ConnectPanel, CONNECT_OPEN_KEY, readConnectOpen } from "../ConnectPanel";
+import { ConnectPanel, CONNECT_OPEN_KEY, connectSnippets, readConnectOpen } from "../ConnectPanel";
 import { EventList } from "../EventList";
 import { ModelTimeline } from "../ModelTimeline";
 import { ServerActivity } from "../ServerActivity";
@@ -86,6 +86,18 @@ describe("ConnectPanel", () => {
   it("reads closed when storage is unavailable", () => {
     vi.stubGlobal("window", {});
     expect(readConnectOpen()).toBe(false);
+  });
+
+  it("masks the API key in the samples (last 4 only), while Copy gets the real key", () => {
+    stubWindow({ [CONNECT_OPEN_KEY]: "1" });
+    const key = "ce_7f3a9b2c1d0e4f5a6b7c8d9e";
+    const html = renderToStaticMarkup(<ConnectPanel {...connectProps} apiToken={key} />);
+    expect(html).not.toContain(key);
+    expect(html).toContain("••••••••8d9e");
+    expect(html).toContain('aria-pressed="false"');
+    expect(html).toContain("Reveal");
+    const real = connectSnippets(connectProps.localServerUrl, key, connectProps.connectModel);
+    for (const snippet of [real.pythonSnippet, real.jsSnippet, real.continueSnippet]) expect(snippet).toContain(key);
   });
 });
 

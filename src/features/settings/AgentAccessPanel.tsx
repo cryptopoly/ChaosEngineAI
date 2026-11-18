@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
+import { RevealSecretButton } from "../../components/RevealSecretButton";
+import { maskSecretsIn } from "../../utils/secretMask";
 import { useTranslation } from "react-i18next";
 import { getAgentAccess, updateAgentAccess } from "../../api";
 import type { AgentAccess } from "../../api";
@@ -45,6 +47,9 @@ export function AgentAccessPanel({ backendOnline, onCopyText }: AgentAccessPanel
   const [access, setAccess] = useState<AgentAccess | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Tokens in the snippets are masked on screen until Reveal; Copy copies the real snippet.
+  const [revealTokens, setRevealTokens] = useState(false);
+  const shown = (snippet: string) => (revealTokens || !access ? snippet : maskSecretsIn(snippet, [access.token, access.readToken]));
 
   useEffect(() => {
     if (!backendOnline) return;
@@ -100,6 +105,9 @@ export function AgentAccessPanel({ backendOnline, onCopyText }: AgentAccessPanel
         {error ? <p className="error-text">{error}</p> : null}
         {access ? (
           <>
+            <div className="button-row">
+              <RevealSecretButton revealed={revealTokens} onToggle={() => setRevealTokens((v) => !v)} />
+            </div>
             <div className="integration-card">
               <div className="integration-card-header">
                 <strong>{t("settingsTab.agentAccess.claudeCode", { defaultValue: "Claude Code" })}</strong>
@@ -107,7 +115,7 @@ export function AgentAccessPanel({ backendOnline, onCopyText }: AgentAccessPanel
                   {t("settingsTab.integrations.copyButton", { defaultValue: "Copy" })}
                 </button>
               </div>
-              <pre className="integration-snippet">{agentConfigLine(access)}</pre>
+              <pre className="integration-snippet">{shown(agentConfigLine(access))}</pre>
             </div>
             <div className="integration-card">
               <div className="integration-card-header">
@@ -116,7 +124,7 @@ export function AgentAccessPanel({ backendOnline, onCopyText }: AgentAccessPanel
                   {t("settingsTab.integrations.copyButton", { defaultValue: "Copy" })}
                 </button>
               </div>
-              <pre className="integration-snippet">{agentConfigJson(access)}</pre>
+              <pre className="integration-snippet">{shown(agentConfigJson(access))}</pre>
             </div>
             {agentStdioLine(access) ? (
               <div className="integration-card">
@@ -126,7 +134,7 @@ export function AgentAccessPanel({ backendOnline, onCopyText }: AgentAccessPanel
                     {t("settingsTab.integrations.copyButton", { defaultValue: "Copy" })}
                   </button>
                 </div>
-                <pre className="integration-snippet">{agentStdioLine(access)}</pre>
+                <pre className="integration-snippet">{shown(agentStdioLine(access) ?? "")}</pre>
               </div>
             ) : null}
             <details className="integration-card">
@@ -173,7 +181,7 @@ export function AgentAccessPanel({ backendOnline, onCopyText }: AgentAccessPanel
                       {t("settingsTab.integrations.copyButton", { defaultValue: "Copy" })}
                     </button>
                   </div>
-                  <pre className="integration-snippet">{agentConfigLine(access, access.readToken)}</pre>
+                  <pre className="integration-snippet">{shown(agentConfigLine(access, access.readToken))}</pre>
                   <button className="secondary-button" type="button" disabled={busy} onClick={() => void apply({ readToken: false })}>
                     {t("settingsTab.agentAccess.readTokenRemove", { defaultValue: "Remove the read-only token" })}
                   </button>

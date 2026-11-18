@@ -1,4 +1,7 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { RevealSecretButton } from "../../components/RevealSecretButton";
+import { maskSecretsIn } from "../../utils/secretMask";
 import { Panel } from "../../components/Panel";
 import type { ActiveGeneration, LogEntry, ModelLoadingState, OrphanedWorker, WarmModel } from "../../types";
 import type { SettingsDraft } from "../../types/chat";
@@ -77,6 +80,9 @@ export function ServerTab(props: ServerTabProps) {
   } = props;
   const { t } = useTranslation("common");
   const [view, setView] = useServerView();
+  // The test commands carry the key; it is masked on screen until Reveal, and Copy copies the real command.
+  const [revealKey, setRevealKey] = useState(false);
+  const shown = (command: string) => (revealKey ? command : maskSecretsIn(command, [apiToken]));
   const feed = useModelEvents(backendOnline);
 
   function copyText(text: string) {
@@ -144,6 +150,7 @@ export function ServerTab(props: ServerTabProps) {
                 {t("serverTab.testModal.subtitle", { defaultValue: "Copy these commands to test the server from a terminal." })}
                 {testModelId ? ` ${t("serverTab.testModal.preFilledFor", { id: testModelId, defaultValue: "Pre-filled for {id}." })}` : ""}
               </p>
+              {apiToken ? <RevealSecretButton revealed={revealKey} onToggle={() => setRevealKey((v) => !v)} /> : null}
             </div>
             <div className="modal-body">
               <div className="server-command-list">
@@ -152,14 +159,14 @@ export function ServerTab(props: ServerTabProps) {
                     <strong>{t("serverTab.testModal.healthCheck", { defaultValue: "Health check" })}</strong>
                     <button className="secondary-button" type="button" onClick={() => copyText(localHealthCurl)}>{t("serverTab.copy", { defaultValue: "Copy" })}</button>
                   </div>
-                  <p className="mono-text">{localHealthCurl}</p>
+                  <p className="mono-text">{shown(localHealthCurl)}</p>
                 </div>
                 <div className="server-command">
                   <div className="server-command-header">
                     <strong>{t("serverTab.testModal.listModels", { defaultValue: "List models" })}</strong>
                     <button className="secondary-button" type="button" onClick={() => copyText(localModelsCurl)}>{t("serverTab.copy", { defaultValue: "Copy" })}</button>
                   </div>
-                  <p className="mono-text">{localModelsCurl}</p>
+                  <p className="mono-text">{shown(localModelsCurl)}</p>
                 </div>
                 {testModelId ? (() => {
                   const authFlag = apiToken
@@ -172,7 +179,7 @@ export function ServerTab(props: ServerTabProps) {
                         <strong>{t("serverTab.testModal.chatCompletion", { id: testModelId, defaultValue: "Chat completion ({id})" })}</strong>
                         <button className="secondary-button" type="button" onClick={() => copyText(cmd)}>{t("serverTab.copy", { defaultValue: "Copy" })}</button>
                       </div>
-                      <p className="mono-text">{cmd}</p>
+                      <p className="mono-text">{shown(cmd)}</p>
                     </div>
                   );
                 })() : null}
@@ -183,7 +190,7 @@ export function ServerTab(props: ServerTabProps) {
                         <strong>{t("serverTab.testModal.remoteHealth", { defaultValue: "Remote health" })}</strong>
                         <button className="secondary-button" type="button" onClick={() => copyText(remoteHealthCurl)}>{t("serverTab.copy", { defaultValue: "Copy" })}</button>
                       </div>
-                      <p className="mono-text">{remoteHealthCurl}</p>
+                      <p className="mono-text">{shown(remoteHealthCurl)}</p>
                     </div>
                     {remoteModelsCurl ? (
                       <div className="server-command">
@@ -191,7 +198,7 @@ export function ServerTab(props: ServerTabProps) {
                           <strong>{t("serverTab.testModal.remoteModels", { defaultValue: "Remote models" })}</strong>
                           <button className="secondary-button" type="button" onClick={() => copyText(remoteModelsCurl)}>{t("serverTab.copy", { defaultValue: "Copy" })}</button>
                         </div>
-                        <p className="mono-text">{remoteModelsCurl}</p>
+                        <p className="mono-text">{shown(remoteModelsCurl)}</p>
                       </div>
                     ) : null}
                   </>

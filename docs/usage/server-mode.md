@@ -35,6 +35,9 @@ The Server tab in the desktop app has two views, Overview and Activity
 - **Live counters** — request count, active connections.
 - **Remote test panel** — copyable curl commands for `/health`, `/models`,
   and `/chat/completions`.
+- **API key on screen**: the key field, the Connect snippets, the test
+  commands and Settings > Integrations show the key masked (dots and its last
+  4 characters) until you press **Reveal**. **Copy** always copies the real key.
 
 **Activity** (this was the Logs page):
 

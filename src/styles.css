@@ -2199,6 +2199,14 @@ select.text-input {
   margin: 0;
 }
 
+.server-connect-sub-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .server-code-block {
   margin: 0;
   padding: 8px 10px;

@@ -1564,5 +1564,8 @@
     "note": "Entoure les champs et les boutons d'un trait à contraste plus élevé pour mieux les voir. S'applique immédiatement.",
     "on": "Activé",
     "off": "Désactivé"
+  },
+  "secretMask": {
+    "note": null
   }
 }

@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ChevronDownIcon } from "../../components/icons/ActionIcons";
+import { RevealSecretButton } from "../../components/RevealSecretButton";
+import { maskSecretsIn } from "../../utils/secretMask";
 
 export const CONNECT_OPEN_KEY = "chaosengine.server.connectOpen";
 
@@ -28,17 +30,8 @@ export interface ConnectPanelProps {
   onCopy: (text: string) => void;
 }
 
-/** "Connect your app": one line with the base URL and Copy; opens to the snippets. Closed by default, remembered. */
-export function ConnectPanel({ localServerUrl, apiToken, connectModel, onCopy }: ConnectPanelProps) {
-  const { t } = useTranslation("common");
-  const [open, setOpen] = useState<boolean>(() => readConnectOpen());
-  const toggle = () => {
-    setOpen((current) => {
-      writeConnectOpen(!current);
-      return !current;
-    });
-  };
-
+/** The snippets with the real key: what Copy puts on the clipboard. The page draws them masked until Reveal. */
+export function connectSnippets(localServerUrl: string, apiToken: string | null, connectModel: string) {
   const connectKey = apiToken ?? "<chaosengine-api-token>";
   const ollamaBase = localServerUrl.replace(/\/v1\/?$/, "");
   const pythonSnippet = `from openai import OpenAI
@@ -68,6 +61,24 @@ console.log(resp.choices[0].message.content);`;
     }
   ]
 }`;
+  return { pythonSnippet, jsSnippet, continueSnippet, ollamaBase };
+}
+
+/** "Connect your app": one line with the base URL and Copy; opens to the snippets. Closed by default, remembered. */
+export function ConnectPanel({ localServerUrl, apiToken, connectModel, onCopy }: ConnectPanelProps) {
+  const { t } = useTranslation("common");
+  const [open, setOpen] = useState<boolean>(() => readConnectOpen());
+  // The key in the samples is masked on screen until Reveal; Copy copies the real snippet.
+  const [revealKey, setRevealKey] = useState(false);
+  const shown = (snippet: string) => (revealKey ? snippet : maskSecretsIn(snippet, [apiToken]));
+  const toggle = () => {
+    setOpen((current) => {
+      writeConnectOpen(!current);
+      return !current;
+    });
+  };
+
+  const { pythonSnippet, jsSnippet, continueSnippet, ollamaBase } = connectSnippets(localServerUrl, apiToken, connectModel);
   const copyLabel = t("serverTab.copy", { defaultValue: "Copy" });
 
   return (
@@ -90,29 +101,32 @@ console.log(resp.choices[0].message.content);`;
       </div>
       {open ? (
         <div className="server-connect-body" id="server-connect-body">
-          <p className="muted-text server-connect-sub">
-            {t("serverTab.connect.subtitle", { defaultValue: "OpenAI-compatible endpoint. Point any OpenAI SDK or compatible app at the base URL below with the API key above." })}
-          </p>
+          <div className="server-connect-sub-row">
+            <p className="muted-text server-connect-sub">
+              {t("serverTab.connect.subtitle", { defaultValue: "OpenAI-compatible endpoint. Point any OpenAI SDK or compatible app at the base URL below with the API key above." })}
+            </p>
+            {apiToken ? <RevealSecretButton revealed={revealKey} onToggle={() => setRevealKey((v) => !v)} /> : null}
+          </div>
           <div className="server-command">
             <div className="server-command-header">
               <strong>{t("serverTab.connect.python", { defaultValue: "Python · openai" })}</strong>
               <button className="secondary-button" type="button" onClick={() => onCopy(pythonSnippet)}>{copyLabel}</button>
             </div>
-            <pre className="mono-text server-code-block">{pythonSnippet}</pre>
+            <pre className="mono-text server-code-block">{shown(pythonSnippet)}</pre>
           </div>
           <div className="server-command">
             <div className="server-command-header">
               <strong>{t("serverTab.connect.javascript", { defaultValue: "JavaScript · openai" })}</strong>
               <button className="secondary-button" type="button" onClick={() => onCopy(jsSnippet)}>{copyLabel}</button>
             </div>
-            <pre className="mono-text server-code-block">{jsSnippet}</pre>
+            <pre className="mono-text server-code-block">{shown(jsSnippet)}</pre>
           </div>
           <div className="server-command">
             <div className="server-command-header">
               <strong>{t("serverTab.connect.continueDev", { defaultValue: "Continue.dev (config)" })}</strong>
               <button className="secondary-button" type="button" onClick={() => onCopy(continueSnippet)}>{copyLabel}</button>
             </div>
-            <pre className="mono-text server-code-block">{continueSnippet}</pre>
+            <pre className="mono-text server-code-block">{shown(continueSnippet)}</pre>
           </div>
           <div className="server-command">
             <div className="server-command-header">

@@ -1564,5 +1564,8 @@
     "note": "Contorna los campos y botones con una línea de mayor contraste para que se vean mejor. Se aplica de inmediato.",
     "on": "Sí",
     "off": "No"
+  },
+  "secretMask": {
+    "note": null
   }
 }

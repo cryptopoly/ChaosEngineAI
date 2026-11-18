@@ -627,7 +627,9 @@
     "step2Body": "Defina taxa de aprendizado, épocas, rank LoRA e tamanho do batch",
     "step3Title": "3. Treinar",
     "step3Body": "Monitore perda e progresso em tempo real",
-    "startButton": "Iniciar ajuste fino"
+    "startButton": "Iniciar ajuste fino",
+    "notAvailable": null,
+    "notAvailableBody": null
   },
   "pluginsTab": {
     "discovering": "Descobrindo plugins...",

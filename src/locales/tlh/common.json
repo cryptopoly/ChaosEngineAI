@@ -627,7 +627,9 @@
     "step2Body": "ghoj Do, epoch, LoRA rank, batch tInghach je yIwIv",
     "step3Title": "3. yIqeq",
     "step3Body": "luj mI' ruch je DaH yIbej",
-    "startButton": "qeq yItagh"
+    "startButton": "qeq yItagh",
+    "notAvailable": null,
+    "notAvailableBody": null
   },
   "pluginsTab": {
     "discovering": "chelwI' nejlI'...",

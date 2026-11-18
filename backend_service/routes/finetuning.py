@@ -11,7 +11,6 @@ from backend_service.i18n import localized_detail
 from backend_service.helpers.finetuning import (
     list_adapters,
     prepare_dataset,
-    FineTuneConfig,
 )
 
 router = APIRouter(prefix="/api", tags=["finetuning"])
@@ -69,54 +68,19 @@ async def start_finetuning(
     body: StartFineTuneRequest,
     request: Request,
 ) -> dict[str, Any]:
-    """Start a fine-tuning run (placeholder).
+    """Refuse a fine-tuning run: no training backend is wired in yet.
 
-    In a full implementation this would launch an mlx-lm or similar
-    training subprocess.  For now it validates the config and returns
-    an accepted status.
+    The request is still validated (422 on a bad body). It used to answer 200 "accepted" for a job that
+    never ran, for any path, and left the status at "accepted" for good. Now it says so: 501, nothing
+    started, status unchanged. When training is built, launch the subprocess here.
     """
-    global _training_state
-
-    if _training_state["status"] == "training":
-        raise HTTPException(
-            status_code=409,
-            detail=localized_detail(request, "A training run is already in progress."),
-        )
-
-    import uuid
-
-    output_path = body.outputPath or str(
-        Path(body.modelPath).parent / f"lora-{uuid.uuid4().hex[:8]}"
+    raise HTTPException(
+        status_code=501,
+        detail=localized_detail(
+            request,
+            "Fine-tuning is not available in this version: no training backend is wired in. Nothing was started.",
+        ),
     )
-
-    config = FineTuneConfig(
-        model_path=body.modelPath,
-        dataset_path=body.datasetPath,
-        output_path=output_path,
-        learning_rate=body.learningRate,
-        epochs=body.epochs,
-        lora_rank=body.loraRank,
-        batch_size=body.batchSize,
-        lora_alpha=body.loraAlpha,
-    )
-
-    _training_state = {
-        "status": "preparing",
-        "progress": 0.0,
-        "config": config.to_dict(),
-        "error": None,
-        "run_id": uuid.uuid4().hex,
-    }
-
-    # TODO: Actually launch training in a background thread/process
-    _training_state["status"] = "accepted"
-
-    return {
-        "status": _training_state["status"],
-        "run_id": _training_state["run_id"],
-        "config": _training_state["config"],
-        "message": "Fine-tuning request accepted. Training backend not yet wired.",
-    }
 
 
 @router.get("/finetuning/status")

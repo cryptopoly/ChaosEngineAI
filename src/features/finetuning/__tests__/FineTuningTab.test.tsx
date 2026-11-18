@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn(), isTauri: vi.fn(() => false) }));
 
-import { AdapterCard, type Adapter } from "../FineTuningTab";
+import { AdapterCard, FineTuningTab, type Adapter } from "../FineTuningTab";
 
 /** The row shape GET /api/adapters really returns (no id, no size_mb). */
 function row(over: Partial<Adapter> = {}): Adapter {
@@ -31,5 +31,14 @@ describe("AdapterCard", () => {
     const html = renderToStaticMarkup(<AdapterCard adapter={row({ created: undefined, size_bytes: undefined as never })} />);
     expect(html).not.toContain("Created:");
     expect(html).toContain("Size: 0.0 MB");
+  });
+});
+
+describe("FineTuningTab", () => {
+  it("says training is not built and keeps Start off, instead of a button that did nothing", () => {
+    const html = renderToStaticMarkup(<FineTuningTab backendOnline />);
+    expect(html).toContain("Not available in this version");
+    expect(html).toContain("Training is not built yet");
+    expect(html).toMatch(/<button[^>]*disabled=""[^>]*>Start Fine-Tuning<\/button>/);
   });
 });

@@ -627,7 +627,9 @@
     "step2Body": "Задайте скорость обучения, эпохи, ранг LoRA и размер батча",
     "step3Title": "3. Обучение",
     "step3Body": "Следите за loss и прогрессом в реальном времени",
-    "startButton": "Начать дообучение"
+    "startButton": "Начать дообучение",
+    "notAvailable": null,
+    "notAvailableBody": null
   },
   "pluginsTab": {
     "discovering": "Поиск плагинов...",

@@ -90,7 +90,7 @@ export function FineTuningTab({ backendOnline }: FineTuningTabProps) {
 
       <Panel
         title={t("tabs.fineTuning")}
-        subtitle={trainingStatus ?? t("status.ready")}
+        subtitle={trainingStatus && trainingStatus !== "idle" ? trainingStatus : t("fineTuning.notAvailable", { defaultValue: "Not available in this version" })}
       >
         <div style={{ padding: 24, textAlign: "center" }}>
           <p className="muted-text" style={{ marginBottom: 12 }}>
@@ -110,15 +110,15 @@ export function FineTuningTab({ backendOnline }: FineTuningTabProps) {
               <p style={{ fontSize: 12, color: "#7a8594" }}>{t("fineTuning.step3Body", { defaultValue: "Monitor loss and progress in real-time" })}</p>
             </div>
           </div>
-          <button
-            className="primary-button"
-            type="button"
-            style={{ marginTop: 16 }}
-            disabled={!backendOnline}
-            onClick={() => {/* TODO: open training config modal */}}
-          >
+          {/* No training backend exists yet (POST /api/finetuning/start answers 501), so the button stays off. */}
+          <button className="primary-button" type="button" style={{ marginTop: 16 }} disabled aria-describedby="finetuning-not-available">
             {t("fineTuning.startButton", { defaultValue: "Start Fine-Tuning" })}
           </button>
+          <p id="finetuning-not-available" className="muted-text" style={{ marginTop: 12, fontSize: 12 }}>
+            {t("fineTuning.notAvailableBody", {
+              defaultValue: "Training is not built yet: this page only lists the adapters it finds on disk, and an adapter cannot be applied to a model yet. The steps above show what is planned.",
+            })}
+          </p>
         </div>
       </Panel>
     </div>

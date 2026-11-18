@@ -627,7 +627,9 @@
     "step2Body": "학습률, 에폭, LoRA 랭크, 배치 크기를 설정하세요",
     "step3Title": "3. 학습",
     "step3Body": "손실과 진행 상황을 실시간으로 모니터링하세요",
-    "startButton": "파인 튜닝 시작"
+    "startButton": "파인 튜닝 시작",
+    "notAvailable": null,
+    "notAvailableBody": null
   },
   "pluginsTab": {
     "discovering": "플러그인 검색 중...",

@@ -142,6 +142,16 @@ class FineTuningRouteTests(_RouteContractCase):
         )
         self.assertEqual(resp.status_code, 422)
 
+    def test_finetuning_start_says_it_is_not_built(self):
+        # It used to answer 200 "accepted" for a job that never ran and left the status at "accepted".
+        resp = self.client.post(
+            "/api/finetuning/start",
+            json={"modelPath": "/nonexistent/model", "datasetPath": "/nonexistent/ds.jsonl"},
+        )
+        self.assertEqual(resp.status_code, 501)
+        self.assertIn("not available", resp.json()["detail"]["message"])
+        self.assertEqual(self.client.get("/api/finetuning/status").json()["status"], "idle")
+
 
 class MetricsRouteTests(_RouteContractCase):
     def test_gpu_metrics_returns_dict(self):

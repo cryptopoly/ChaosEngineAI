@@ -3,17 +3,39 @@ import { useTranslation } from "react-i18next";
 import { fetchJson } from "../../api";
 import { Panel } from "../../components/Panel";
 
-interface Adapter {
-  id: string;
+/** One row of GET /api/adapters (backend_service/helpers/finetuning.py `_read_adapter_meta`). */
+export interface Adapter {
   name: string;
+  path: string;
   base_model: string;
-  created: string;
-  size_mb: number;
+  created?: string;
+  size_bytes: number;
   config: Record<string, unknown>;
 }
 
 interface FineTuningTabProps {
   backendOnline: boolean;
+}
+
+export function AdapterCard({ adapter }: { adapter: Adapter }) {
+  const { t } = useTranslation("common");
+  return (
+    <div
+      style={{
+        border: "1px solid #27303a",
+        borderRadius: 8,
+        padding: 12,
+        background: "#1a1f26",
+      }}
+    >
+      <div style={{ fontWeight: 600, color: "#c8d0da", marginBottom: 4 }}>{adapter.name}</div>
+      <div style={{ fontSize: 12, color: "#7a8594" }}>{t("fineTuning.adapterBase", { value: adapter.base_model, defaultValue: "Base: {value}" })}</div>
+      <div style={{ fontSize: 12, color: "#7a8594" }}>{t("fineTuning.adapterSize", { value: ((adapter.size_bytes ?? 0) / 1048576).toFixed(1), defaultValue: "Size: {value} MB" })}</div>
+      {adapter.created ? (
+        <div style={{ fontSize: 11, color: "#5a6574", marginTop: 4 }}>{t("fineTuning.adapterCreated", { value: adapter.created, defaultValue: "Created: {value}" })}</div>
+      ) : null}
+    </div>
+  );
 }
 
 export function FineTuningTab({ backendOnline }: FineTuningTabProps) {
@@ -60,20 +82,7 @@ export function FineTuningTab({ backendOnline }: FineTuningTabProps) {
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 12, padding: 8 }}>
             {adapters.map((adapter) => (
-              <div
-                key={adapter.id}
-                style={{
-                  border: "1px solid #27303a",
-                  borderRadius: 8,
-                  padding: 12,
-                  background: "#1a1f26",
-                }}
-              >
-                <div style={{ fontWeight: 600, color: "#c8d0da", marginBottom: 4 }}>{adapter.name}</div>
-                <div style={{ fontSize: 12, color: "#7a8594" }}>{t("fineTuning.adapterBase", { value: adapter.base_model, defaultValue: "Base: {value}" })}</div>
-                <div style={{ fontSize: 12, color: "#7a8594" }}>{t("fineTuning.adapterSize", { value: adapter.size_mb.toFixed(1), defaultValue: "Size: {value} MB" })}</div>
-                <div style={{ fontSize: 11, color: "#5a6574", marginTop: 4 }}>{t("fineTuning.adapterCreated", { value: adapter.created, defaultValue: "Created: {value}" })}</div>
-              </div>
+              <AdapterCard key={adapter.path} adapter={adapter} />
             ))}
           </div>
         )}

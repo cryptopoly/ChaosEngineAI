@@ -48,8 +48,12 @@ class StartFineTuneRequest(BaseModel):
 # ---------------------------------------------------------------------------
 
 @router.get("/adapters")
-async def get_adapters(request: Request) -> dict[str, Any]:
-    """List available LoRA adapters found on disk."""
+def get_adapters(request: Request) -> dict[str, Any]:
+    """List available LoRA adapters found on disk.
+
+    A plain ``def`` on purpose: the scan walks the whole model cache (4 s on a 270 GB cache), and FastAPI runs
+    a plain function in a worker thread, so the walk no longer stalls every other request.
+    """
     state = request.app.state.chaosengine
     data_dir = Path(state.settings.get("dataDirectory", "")).expanduser()
     if not data_dir.is_dir():

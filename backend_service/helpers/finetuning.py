@@ -102,10 +102,17 @@ def _read_adapter_meta(adapter_dir: Path) -> dict[str, Any]:
         if f.is_file():
             total_bytes += f.stat().st_size
 
+    try:
+        created = time.strftime("%Y-%m-%d %H:%M", time.localtime(config_path.stat().st_mtime))
+    except OSError:
+        created = ""
+
     return {
         "name": adapter_dir.name,
         "path": str(adapter_dir),
-        "base_model": config.get("base_model_name_or_path", "unknown"),
+        # PEFT names the base model ``base_model_name_or_path``; mlx-lm saves its training arguments, where it is ``model``.
+        "base_model": config.get("base_model_name_or_path") or config.get("model") or "unknown",
+        "created": created,
         "lora_rank": config.get("r", config.get("lora_rank")),
         "lora_alpha": config.get("lora_alpha"),
         "target_modules": config.get("target_modules", []),

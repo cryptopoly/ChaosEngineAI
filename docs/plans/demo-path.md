@@ -1,6 +1,6 @@
 # Podcast demo path (v0.10.0, Mac)
 
-Status: **rehearsed three times with real models on 2026-11-18; R3 ran the script below end to end with no stumble left unfixed.** Stream F of the overnight review (`docs/plans/overnight-e2e-review.md`). Evidence and every stumble: `docs/progress/review-f.md`.
+Status: **rehearsed four times with real models on 2026-11-18; R3 and R4 ran the script below end to end, twice in a row, with no stumble left unfixed.** Stream F of the overnight review (`docs/plans/overnight-e2e-review.md`). Evidence and every stumble: `docs/progress/review-f.md`.
 
 A six to eight minute live path on the M4 Max (64 GB) that shows ChaosEngineAI at its best: a fresh start, a fast local answer, a tool call, a film clip made from one sentence in chat, the sample film, a spoken line, and the OpenAI-compatible server. Nothing in the path downloads anything.
 
@@ -9,15 +9,15 @@ A six to eight minute live path on the M4 Max (64 GB) that shows ChaosEngineAI a
 | # | Step | Clicks | R3 time |
 |---|---|---|---|
 | 1 | First screen | Launch, I agree | 1 to 3 s |
-| 2 | Load a model | Chat > Chat > Load Model > Qwen3.8 27B 4-bit > Load for Chat | 10 s |
+| 2 | Load a model | Chat > Chat > Load Model > Qwen3.8 27B 4-bit > Load for Chat | 7 to 10 s |
 | 3 | Fast answer, then a tool | type, Enter; Tools, type, Enter | 2 s, then 6 s |
-| 4 | A film clip from chat | Studio, type, Enter, Approve | plan card in 40 to 60 s, render 1 min 43 s |
+| 4 | A film clip from chat | Studio, type, Enter, Approve | plan card in 38 to 60 s, render about 1 min 40 s |
 | 5 | While it renders: Server | Server (collapse Connect your app) | instant |
 | 6 | While it renders: the sample film | Projects > Open the sample > Play film | about 1 s |
 | 7 | Back to the clip | Chat (the thread opens at the clip) | instant |
 | 8 | Voice | Voice > Studio, type, Excited, Generate audio | 5 to 15 s |
 
-R3 took 4 min 50 s of clicks from opening Chat to the spoken line, with no talking. With talking it fills six to eight minutes.
+R3 took 4 min 50 s and R4 3 min 44 s of clicks from opening Chat to the spoken line, with no talking. With talking it fills six to eight minutes.
 
 ## Before going on air (15 minutes, off camera)
 
@@ -105,21 +105,25 @@ R1: 1280x720, UI scale 90 %, LFM2.5 24B-A2B, 8K context. R2: 1920x1080, 125 %, Q
 
 R3: 1920x1080, 125 %, Qwen3.8 27B, 8K, the script above, all fixes in, a fresh data folder (terms accepted once before the timed run). The full pytest suite was running in the background during R3.
 
-| Step | R1 | R2 | R3 |
-|---|---|---|---|
-| Terms dialog shown after window | about 2 s | about 1 s | (accepted before) |
-| I agree closes | about 3 s | 1.3 s | (accepted before) |
-| Dashboard after reload | 2 s | 2 s | 2.6 s |
-| Model load | 10 to 18 s (LFM2.5) | 8.6 s (Qwen3.8 27B) | 10.4 s |
-| Fast answer | 2.7 s, 114 tok/s | 2.3 s, 29.6 tok/s | 2.0 s, 29.5 tok/s |
-| Tool answer | 23 s, 4 calls, 2 failed | 18.3 s (primes, 3 calls); 6.9 s (calculator prompt, 1 call) | 5.8 s, 1 call |
-| Studio plan card shown | 71 s and a failed call, then 7 s after "make it 3 seconds" | 34 s | 40 to 60 s |
-| Clip render | 1 min 48 s, 768x512, after a second Approve (model name refused) | 3 min 36 s, 1280x704 | 1 min 43 s, 768x512 |
-| Server page | instant | instant | instant |
-| Sample film open | under 1 s | about 2 s | about 1 s (after the dead-end fix) |
-| Speech | 12 to 16 s | 15 s after a 3 min wait behind the render | 4.8 s |
-| Speech started during a render | not tried | 3 min, still bar, no word | says "Waiting for the video render to finish", done 28 s later |
-| Keep going | stopped at 90 s, no project | not run | not run |
+R4: the same as R3 from a true first launch (new data folder and the window's storage cleared), with the Playwright suite running in the background.
+
+| Step | R1 | R2 | R3 | R4 |
+|---|---|---|---|---|
+| Backend ready (health) | about 3 s | 2.7 s | not timed | 2.5 s |
+| Terms dialog shown after window | about 2 s | about 1 s | (accepted before) | 1.0 s |
+| I agree closes | about 3 s | 1.3 s | (accepted before) | 1.3 s |
+| Dashboard after reload | 2 s | 2 s | 2.6 s | (first launch) |
+| Model load | 10 to 18 s (LFM2.5) | 8.6 s (Qwen3.8 27B) | 10.4 s | 7.0 s |
+| Fast answer | 2.7 s, 114 tok/s | 2.3 s, 29.6 tok/s | 2.0 s, 29.5 tok/s | 2.2 s, 29.7 tok/s |
+| Tool answer | 23 s, 4 calls, 2 failed | 18.3 s (primes, 3 calls); 6.9 s (calculator prompt, 1 call) | 5.8 s, 1 call | 7.2 s, 1 call |
+| Studio plan card shown | 71 s and a failed call, then 7 s after "make it 3 seconds" | 34 s | 40 to 60 s | 37.9 s |
+| Clip render | 1 min 48 s, 768x512, after a second Approve (model name refused) | 3 min 36 s, 1280x704 | 1 min 43 s, 768x512 | 1 min 38 s, 768x512 |
+| Server page | instant | instant | instant | instant |
+| Sample film open | under 1 s | about 2 s | about 1 s (after the dead-end fix) | about 1 s |
+| Speech | 12 to 16 s | 15 s after a 3 min wait behind the render | 4.8 s | 6.2 s |
+| Speech started during a render | not tried | 3 min, still bar, no word | says "Waiting for the video render to finish", done 28 s later | not tried |
+| Keep going | stopped at 90 s, no project | not run | not run | not run |
+| Stumbles left | many (fixed after) | voice wait (fixed after) | Projects dead end (fixed during) | none |
 
 ## Fixed in this branch (`review/f`)
 

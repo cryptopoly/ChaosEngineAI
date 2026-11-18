@@ -31,7 +31,7 @@ All worktrees named here live on the Mac only. On the PC only the pushed branche
 | `review/gguf` | `f7283367` | GGUF or MLX from the files | `review/integrate` | same |
 | `review/plan` | `1ce012ab` | Keep going and tools v2 plan (docs only) | `review/integrate` | same |
 | `review/routing` | `1ac81af9` | Backend takes the repo from the model's own folder and ignores a disagreeing `canonicalRepo` (L-16, FU-248); the CLI prints `cacheBits`. Behaviour change: a local copy matched to another uploader's catalogue row now loads under its own repo, so a drafter pinned (`PINNED_DRAFTERS`) to the other uploader's repo id is not used for it | `review/integrate` (`599802fe`) | same |
-| `review/i18nfix` | I18NFIX_TIP | Diagnostics strings translated (L-2, FU-249), language banner wording (L-1, FU-250) | I18NFIX_MERGED | same |
+| `review/i18nfix` | `b5f681c6` | Diagnostics strings translated in nine locales (L-2, FU-249), language banner wording (L-1, D-94, FU-250), Chat welcome and Compare labels (L-4, L-5 frontend part), Language panel title and visible labels (L-7); 891 machine translations nobody has read yet (FU-254) | `review/integrate` (`ba1c5e4d`) | same |
 | `review/integrate` | see `git log` | Everything above, plus the experimental-tabs switch, key masking, Dashboard copy | **not merged**: the owner decides | after it is merged into `release/v0.10.0`, the merge hash is confirmed there and pushed |
 | `test/rtx4090` | `878901fa` | The Windows pass branch | n/a | never; recut it from `release/v0.10.0` |
 
@@ -60,7 +60,7 @@ Installer: build it the way `release.yml` does, from a clean Python 3.12 venv wi
 
 | Row | Change |
 |---|---|
-| 1 | Still the gate, now larger: `e2e_test_suite.py` has phases 211 (Benchmarks and Conversion), 212 (Fine Tuning), 213 (Prompts and Plugins), 214 (Server Activity), 215 (GGUF routing), 216 (routing from the model's path); Playwright has specs 27 to 39 |
+| 1 | Still the gate, now larger: `e2e_test_suite.py` has phases 211 (Benchmarks and Conversion), 212 (Fine Tuning), 213 (Prompts and Plugins), 214 (Server Activity), 215 (GGUF routing), 216 (routing from the model's path); Playwright has specs 27 to 40 |
 | 3 | **Superseded by row 44**: the CUDA llama-server pin is now `b12441` (CUDA 12.4 and 13.5 archives), not `b12317` |
 | 12 | Unchanged; the new "Show experimental tabs" sits in Settings > General > Appearance next to it |
 | 44 | Unchanged and still open: new pins on CUDA (llama.cpp `b12441`, TensorFold 1.2.9, sd.cpp `532d2c1`) |
@@ -107,7 +107,7 @@ cargo test --manifest-path src-tauri/Cargo.toml
 
 1. **Owner decisions waiting** (D-87): remove Plugins after v0.10.0 or plan a loader (FU-225); move Prompts into Chat or only show the applied prompt per thread (FU-224, proposal `docs/plans/review-c-prompts-into-chat.md`).
 2. **Keep going and tools v2** ([plan](keep-going-and-tools-v2.md), D-89 to D-92, FU-230 to FU-246): start with the scorecard (FU-230), then the honest staged tool prompt (FU-231) and its cache (FU-232), the plan card showing the real settings (FU-240) and the quality tiers (FU-241). D-92: the "start on Draft and stop for picks" behaviour for films over 8 shots is an option, off by default; the thresholds (5 minutes, 5 GB, 10 %) are the starting values.
-3. **Review leftovers:** FU-249 and FU-250 (if `review/i18nfix` has not closed them), FU-251 (copy, i18n and accessibility leftovers from review D), FU-221 and FU-222 (Fine Tuning: training worker and applying an adapter), FU-223, FU-226, FU-227 (Logs code to delete once the owner agrees), FU-228, FU-229, FU-247.
+3. **Review leftovers:** FU-251 (copy, i18n and accessibility leftovers from review D), FU-221 and FU-222 (Fine Tuning: training worker and applying an adapter), FU-223, FU-226, FU-227 (Logs code to delete once the owner agrees), FU-228, FU-229, FU-247, FU-252 (backend-made text untranslated), FU-253 (`i18n:extract` is not a usable check), FU-254 (native-speaker review of 891 translations).
 4. **Benchmarks and Conversion:** verdict keep; the a2 follow-up is merged. Conversion is Apple Silicon only.
 5. **The podcast demo path:** `docs/plans/demo-path.md` (rehearsed four times on the Mac; on-air risks ranked there).
 

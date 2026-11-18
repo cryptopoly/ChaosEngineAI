@@ -1,31 +1,124 @@
 # Podcast demo path (v0.10.0, Mac)
 
-Status: **draft, rehearsal pending.** Stream F of the overnight review (`docs/plans/overnight-e2e-review.md`). Progress and evidence: `docs/progress/review-f.md`.
+Status: **rehearsed twice with real models on 2026-11-18 (R1, R2); the final script below is R3.** Stream F of the overnight review (`docs/plans/overnight-e2e-review.md`). Evidence and every stumble: `docs/progress/review-f.md`.
 
-A five to eight minute live path on the M4 Max (64 GB) that shows ChaosEngineAI at its best. Every step has the exact clicks, what to say, the time it took in rehearsal and a fallback.
+A six to eight minute live path on the M4 Max (64 GB) that shows ChaosEngineAI at its best: a fresh start, a fast local answer, a tool call, a film clip made from one sentence in chat, the sample film, a spoken line, and the OpenAI-compatible server. Nothing in the path downloads anything.
 
-## Before going on air (10 minutes, off camera)
+## The short version
 
-Do these in order. None of them is part of the show.
+| # | Step | Clicks | R3 time |
+|---|---|---|---|
+| 1 | First screen | Launch, I agree | see table below |
+| 2 | Load a model | Chat > Chat > Load Model > Qwen3.8 27B 4-bit > Load for Chat | |
+| 3 | Fast answer, then a tool | type, Enter; Tools, type, Enter | |
+| 4 | A film clip from chat | Studio, type, Enter, Approve | |
+| 5 | While it renders: Server | Server (Connect your app collapsed) | |
+| 6 | While it renders: the sample film | Projects > Open the sample > Play film | |
+| 7 | Back to the clip | Chat (the clip plays in the thread) | |
+| 8 | Voice | Voice > Studio, type, Excited, Generate audio | |
 
-1. **Screen.** Share one window, not the desktop. Window size 1920x1080 with **Settings > Appearance > UI scale 125 %**, or 1440x900 at 100 %. At 1280x720 keep 90 % and collapse the Chats list (the `<` button next to New thread): the thread area is too short otherwise.
-2. **Sidebar.** Settings > Appearance > turn on **Keep all sidebar groups open**. With it off, opening one group closes the other and every item below moves, so a click lands on the wrong row.
-3. **Close other apps** that hold memory, quit any running model. Activity Monitor memory pressure green. The demo peaks at about 35 GB (chat model plus the video model).
-4. **Warm the disk cache**: load the chat model once and unload it, run one Video Studio clip, speak one line in Voice Studio. A cold first load after a reboot is two to three times slower.
-5. **Nothing personal on screen.** Do not open Settings > Data Directory, Server > Connect your app (its code samples print the API key in clear text), Logs, or Diagnostics on air. The paths there start with your home folder.
-6. **Partial download.** Chat > Models shows "Downloading 1" from a paused partial download (Nemotron 3.5 Bolt E4B OptiQ, 0.1 of 17.8 GB). Cancel it or leave Chat > Models off the path.
-7. Turn notifications off (Focus mode).
+## Before going on air (15 minutes, off camera)
 
-## The path
+1. **Model choice: Qwen3.8 27B MLX 4-bit (`mlx-community/Qwen3.8-27B-4bit`), context 32K.** In rehearsal it answered at about 30 tok/s, called the calculator once and cleanly, and made a correct Studio plan first time. LFM2.5 24B-A2B is four times faster (114 tok/s) but in R1 it sent malformed tool calls (four calculator cards, two marked "raw" and "unreadable"), asked for an 8-frame clip, and in Keep going it called `list_models` in a loop without making a project. Do not use it on air.
+2. **Screen share at 1920x1080 with Settings > General > Appearance > UI scale 125 %** (new in this branch). At 1280x720 keep 90 % and collapse the Chats list (the `<` button next to New thread); at 720p and 110 % or more the thread has no room for messages.
+3. **Settings > General > Appearance > Keep all sidebar groups open: on.** With it off, opening one group closes the one above and every row below moves while the pointer is on its way; in R1 three clicks landed on the wrong item.
+4. **Warm up once:** load Qwen3.8 27B, ask one question, unload; run one Video Studio clip at SD; speak one line. A cold first load after a reboot is slower than the times below.
+5. **Quit everything else that uses memory.** The path peaks at about 37 GB (chat model 15 GB, LTX-2.5 about 17 GB, speech 3.5 GB).
+6. **Never open on air:** Server > Connect your app (expanded, its code samples and the Test dialog print the API key in clear text), Settings > Data Directory and Storage, Logs, Diagnostics, Chat > Models row details (paths start with your home folder). Collapse Connect your app before the show; it re-opens when you leave the page and come back, so collapse it again on the way in (step 5).
+7. **Chat > Models shows "Downloading 1"**: a paused partial download (Nemotron 3.5 Bolt E4B OptiQ, 0.1 of 17.8 GB) in your Hugging Face cache. Cancel it or keep Chat > Models off the path. The path below never opens it.
+8. The model list contains a test model (`optimum-intel-internal-testing/tiny-random-lfm3`, 0.0 GB). Type in the search box rather than scrolling the list.
+9. Focus mode on, notifications off, a second browser tab with the R3 clip open as the fallback video.
 
-| # | Step | Target time |
-|---|---|---|
-| 1 | Launch and first screen | 0:30 |
-| 2 | Pick a model already on disk and load it | 0:45 |
-| 3 | Chat: a fast answer, then a tool call | 1:00 |
-| 4 | Studio chat: a short film clip from one sentence | 2:00 (render runs while you talk) |
-| 5 | Voice: speak a line | 0:45 |
-| 6 | Server page | 0:45 |
-| 7 | Wow: the sample film, then Keep going | 1:30 |
+## The script
 
-Details, timings and fallbacks: filled in from the rehearsals below.
+### 1. First screen (target 0:20)
+
+- **Click:** launch the app. Terms of use appears (about 1 s after the window). Click **I agree** (closes in about 1.3 s).
+- **Say:** "This is ChaosEngineAI. Everything here runs on this laptop: chat, images, video, voice, music. No account, nothing leaves the machine."
+- **Shows:** Dashboard: memory in use, model disk, the hardware fit card.
+- **Fallback:** if the window stays on "Starting backend sidecar" past 20 s, quit and relaunch once; then go on from the Chat page, which needs only the backend.
+- Do not read the Hardware Fit card aloud: "Recommended target: 70B class @ Native f16" reads like a 70B model at 16-bit, which does not fit in 64 GB (it means the f16 KV cache).
+
+### 2. Load a model already on disk (target 0:30)
+
+- **Click:** sidebar **Chat > Chat**, then **Load Model** in the empty thread (it opens the model picker; before this branch it went to the 131-row catalogue). Type `Qwen3.8-27B-4bit` in the search, click the row, click **Load for Chat**. Context: drag the slider to 32K beforehand (step 4 of the prep remembers it), or leave 8K: rehearsal used 32K.
+- **Say:** "I already have a few dozen models on disk. I pick one, it loads into memory, about ten seconds."
+- **Shows:** the picker with size, format, context and capability chips; the header reads the model name and READY.
+- **Fallback:** if the load passes 30 s, press **Cancel load** and pick `LiquidAI/LFM2.5-24B-A2B-MLX-4bit` (loads in under 20 s; plain chat only, skip step 4's Studio part and show the sample film instead).
+
+### 3. A fast answer, then a tool (target 0:45)
+
+- **Type:** `In two sentences: why does running AI on your own computer matter?` Enter.
+- **Shows:** the reply streams in about 2 s; the chips under it show the speed (about 30 tok/s) and memory free.
+- **Click:** **Tools** (turns blue, "Tools ON"). **Type:** `Use the calculator: what is 17.5% of 48,250, plus the square root of 7,921?` Enter.
+- **Say:** "It can use tools: here a calculator, it also has code, web search and file reading."
+- **Shows:** one calculator card with the expression, then the answer 8,532.75. About 7 s.
+- **Fallback:** if the model answers without calling the tool, say "it did that one in its head" and move on. Avoid "Run Python to ...": the model routes it to the calculator with a list comprehension, which fails twice before it gets there (18 s, three cards).
+
+### 4. A film clip from one sentence (target 1:00 of talk, render runs on)
+
+- **Click:** **Studio** (turns blue, "Studio ON"; a **Keep going** button appears next to it).
+- **Type:** `Make a 3-second video clip at 768x512: a lighthouse at dusk, waves crashing on the rocks, seagulls overhead.` Enter.
+- **Shows:** "Processing prompt" for about 15 s (the studio tools make a long prompt), then a **Plan to approve** card: model LTX-2.5, size, length, time estimate, memory. Nothing renders until you approve.
+- **Say:** "It plans first and asks. Nothing runs until I say yes."
+- **Click:** **Approve**. A job card shows the step, elapsed time and time left.
+- **Time:** about 1 min 50 s at 768x512 (R1: 1 min 48 s); 3 min 36 s at 1280x720 (R2, when the prompt did not name a size). Name the size.
+- **Fallback:** if a red "Invalid input" card appears, the model fixes the call itself on the next turn; wait for the second plan card. If no plan card after 60 s, press **Stop**, and open the fallback tab with the R3 clip.
+
+### 5. While it renders: the server (target 0:45)
+
+- **Click:** sidebar **Server**. If **Connect your app** is open, click its title first to collapse it (it holds the API key in clear text).
+- **Say:** "The same models are an OpenAI-compatible server on localhost. Any app that speaks the OpenAI API can point here instead of the cloud."
+- **Shows:** RUNNING, the address `http://127.0.0.1:8876/v1`, the loaded model card with its model id, port, warm pool, request count.
+- **Do not click:** Test (its dialog prints the key), Reveal, Copy next to the key.
+
+### 6. While it renders: the sample film (target 1:00)
+
+- **Click:** sidebar **Projects**, **Open the sample** (about 2 s), **Play film**.
+- **Say:** "Chat can also plan whole films: shots, stills, clips, sound. This four-shot sample was made by the app on this Mac."
+- **Shows:** The Lighthouse rough cut, 6.8 s, shot markers, captions button.
+- **Fallback:** none needed; it plays files already on disk.
+
+### 7. Back to the clip (target 0:30)
+
+- **Click:** sidebar **Chat > Chat**. The clip is in the thread with a player and Open in Library. Click play.
+- **Say:** "Text to video, on a laptop, in under two minutes."
+- **Fallback:** if it is still rendering, read the time left from the job card and do step 8 first; come back after.
+
+### 8. Voice (target 0:45)
+
+- **Click:** sidebar **Voice > Studio**. **Type:** `Everything you just saw ran on this laptop. No cloud, no account, no meter running.` Click the **Excited** style chip, then **Generate audio**.
+- **Shows:** about 10 to 15 s (first use loads the speech model), then the player scrolls into view (new in this branch). Click play.
+- **Do not** start it while the video renders: speech waits for the render to finish (R2: 3 min). This branch now says so on screen ("Waiting for the video render to finish").
+- **Fallback:** pick a quick voice (Change voice > a Kokoro voice) if the natural voice is slow.
+
+### Optional wow: Keep going (only with time to spare, and only rehearsed again)
+
+Keep going lets the app send the next step after each turn until a film is done. With Qwen3.8 27B a two-shot film needs several nudges and minutes of rendering. It was not rehearsed end to end with Qwen in this run (R1 with LFM2.5 stalled), so do not run it live. Talk over a recording instead.
+
+## Rehearsal timings
+
+R1: 1280x720, UI scale 90 %, LFM2.5 24B-A2B, 8K context. R2: 1920x1080, 125 %, Qwen3.8 27B, 32K. R3: the script above.
+
+| Step | R1 | R2 | R3 |
+|---|---|---|---|
+| Terms dialog shown after window | about 2 s | about 1 s | |
+| I agree closes | about 3 s | 1.3 s | |
+| Model load | 10 to 18 s (LFM2.5) | 8.6 s (Qwen3.8 27B) | |
+| Fast answer | 2.7 s, 114 tok/s | 2.3 s, 29.6 tok/s | |
+| Tool answer | 23 s, 4 calls, 2 failed | 18.3 s (primes, 3 calls); 6.9 s (calculator prompt, 1 call) | |
+| Studio plan card shown | 71 s and a failed call, then 7 s after "make it 3 seconds" | 34 s | |
+| Clip render | 1 min 48 s, 768x512, after a second Approve (model name refused) | 3 min 36 s, 1280x704 | |
+| Speech (first use) | 12 to 16 s | 15 s after a 3 min wait behind the render | |
+| Sample film open | under 1 s | about 2 s | |
+| Keep going | stopped at 90 s, no project | not run | not run |
+
+## Fixed in this branch (`review/f`)
+
+- Chat model picker gave `Qwen3-0.6B-GGUF` the size and badges of a 39.8B catalogue row, then of the 27B row (format and quantization alone counted as a match).
+- Empty-chat Load Model opened the catalogue page; it now opens the picker. Escape closes the picker.
+- UI scale 110 % and 125 %.
+- Calculator takes a bare-string expression and `sum(1, 2, 3)` (R1's failed cards).
+- Studio tools accept an installed model's name ("LTX-2.5") for its id (R1's refused Approve).
+- The chat thread follows tool cards, plan cards and job cards as they arrive (R1 and R2: the newest card sat below the fold).
+- Speak scrolls the finished clip into view, and says when it waits behind another job.

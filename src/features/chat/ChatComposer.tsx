@@ -35,6 +35,13 @@ export function canSendNow(loadedModelRef: string | null | undefined, modelLoadi
   return Boolean(loadedModelRef) && !modelLoading && chatBusySessionId === null;
 }
 
+/** Which placeholder the composer shows. While a model is still loading it says so, not "Type a message", because
+ * Send and Enter stay off until the load finishes (review D, L-18). */
+export function composerPlaceholderKind(loadedModelRef: string | null | undefined, modelLoading: boolean): "loading" | "ready" | "noModel" {
+  if (modelLoading) return "loading";
+  return loadedModelRef ? "ready" : "noModel";
+}
+
 /** What Enter does in the composer: send, swallow (busy: no send and no newline), or the browser default
  * (Shift+Enter inserts a newline; Enter during IME composition confirms the composition). */
 export function composerEnterKey(key: { key: string; shiftKey: boolean; isComposing: boolean },
@@ -227,7 +234,9 @@ export function ChatComposer({
         <textarea
           className="text-area"
           placeholder={
-            loadedModelRef
+            composerPlaceholderKind(loadedModelRef, modelLoading) === "loading"
+              ? t("composer.sendLoadingTooltip", { defaultValue: "Wait for the model to finish loading" })
+              : composerPlaceholderKind(loadedModelRef, modelLoading) === "ready"
               ? t("composer.placeholderReady", {
                   defaultValue: "Type a message... (Enter to send, Shift+Enter for new line, / for commands)",
                 })

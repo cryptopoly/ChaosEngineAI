@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn(), isTauri: vi.fn(() => false) }));
 vi.mock("../../voice/ComposerMicButton", () => ({ ComposerMicButton: () => null }));
 
-import { canSendNow, composerEnterKey } from "../ChatComposer";
+import { canSendNow, composerEnterKey, composerPlaceholderKind } from "../ChatComposer";
 
 // FU-193: Enter follows the Send button's busy rule.
 const enter = { key: "Enter", shiftKey: false, isComposing: false };
@@ -38,5 +38,15 @@ describe("composerEnterKey", () => {
 
   it("ignores other keys", () => {
     expect(composerEnterKey({ key: "a", shiftKey: false, isComposing: false }, true)).toBe("default");
+  });
+});
+
+// Review D, L-18: right after a load the composer said "Type a message" while Send was still off.
+describe("composerPlaceholderKind", () => {
+  it("says the model is loading until the load finishes, then invites a message", () => {
+    expect(composerPlaceholderKind("m", true)).toBe("loading");
+    expect(composerPlaceholderKind(undefined, true)).toBe("loading");
+    expect(composerPlaceholderKind("m", false)).toBe("ready");
+    expect(composerPlaceholderKind(null, false)).toBe("noModel");
   });
 });

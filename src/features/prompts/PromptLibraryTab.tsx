@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { apiFetch, fetchJson } from "../../api";
 import { Panel } from "../../components/Panel";
-import { formatTemplateTime, matchesTemplateSearch } from "./promptLogic";
+import { formatTemplateTime, jsonBoxProblem, matchesTemplateSearch } from "./promptLogic";
 
 /**
  * Phase 2.7: variable declaration shape. `default` is the seed value
@@ -178,6 +178,14 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
   async function handleSave() {
     if (!editName.trim()) {
       setSaveError(t("promptLibrary.nameRequired", { defaultValue: "Give the template a name before saving." }));
+      return;
+    }
+    if (jsonBoxProblem(editVariables, "array")) {
+      setSaveError(t("promptLibrary.variablesInvalid", { defaultValue: "Variables must be a JSON array (a list in square brackets). Nothing was saved." }));
+      return;
+    }
+    if (jsonBoxProblem(editPresetSamplers, "object")) {
+      setSaveError(t("promptLibrary.samplersInvalid", { defaultValue: "Preset samplers must be a JSON object (names and values in curly brackets). Nothing was saved." }));
       return;
     }
     const failed = t("promptLibrary.saveFailed", { defaultValue: "The template was not saved. Check the fields and try again." });

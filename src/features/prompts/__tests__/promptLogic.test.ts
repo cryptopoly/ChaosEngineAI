@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatTemplateTime, matchesTemplateSearch } from "../promptLogic";
+import { formatTemplateTime, jsonBoxProblem, matchesTemplateSearch } from "../promptLogic";
 
 describe("formatTemplateTime", () => {
   it("turns the backend's epoch seconds into a date, not a raw number", () => {
@@ -35,5 +35,21 @@ describe("matchesTemplateSearch", () => {
   it("matches everything on an empty query and nothing on a miss", () => {
     expect(matchesTemplateSearch(template, "  ")).toBe(true);
     expect(matchesTemplateSearch(template, "sql")).toBe(false);
+  });
+});
+
+describe("jsonBoxProblem", () => {
+  it("accepts an empty box and the expected shape", () => {
+    expect(jsonBoxProblem("  ", "array")).toBe(false);
+    expect(jsonBoxProblem('[{"name": "topic"}]', "array")).toBe(false);
+    expect(jsonBoxProblem('{"topP": 0.9}', "object")).toBe(false);
+  });
+
+  it("reports text that would have been dropped on save", () => {
+    expect(jsonBoxProblem('[{"name": "topic"}', "array")).toBe(true);
+    expect(jsonBoxProblem('{"name": "topic"}', "array")).toBe(true);
+    expect(jsonBoxProblem("[1, 2]", "object")).toBe(true);
+    expect(jsonBoxProblem("null", "object")).toBe(true);
+    expect(jsonBoxProblem("topP: 0.9", "object")).toBe(true);
   });
 });

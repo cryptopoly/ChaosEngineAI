@@ -91,6 +91,13 @@ test("Prompts: built-ins, dates, a refused save, variables, search, use in Chat,
   await expect(detail(page).getByRole("alert")).toHaveText("Give the template a name before saving.");
 
   // Create a template with one variable.
+  // Text in the variables box that is not a JSON array is reported; it used to be dropped on save.
+  await detail(page).getByRole("textbox", { name: "Name", exact: true }).fill(NAME);
+  await detail(page).getByRole("textbox", { name: "Variables (JSON array)", exact: true }).fill('[{"name": "language"');
+  await detail(page).getByRole("button", { name: "Save", exact: true }).click();
+  await expect(detail(page).getByRole("alert")).toContainText("Variables must be a JSON array");
+  await expect(list.locator(".session-button")).toHaveCount(5);
+
   // Every editor field has its visible label as its accessible name (none had one).
   await detail(page).getByRole("textbox", { name: "Name", exact: true }).fill(NAME);
   await detail(page).getByRole("textbox", { name: "Category", exact: true }).fill("Review");

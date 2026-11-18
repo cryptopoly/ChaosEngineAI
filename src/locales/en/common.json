@@ -617,7 +617,9 @@
     "loadFailed": "The templates could not be loaded. Check that the backend is running.",
     "empty": "No templates yet. Use New to make one.",
     "noMatches": "No template matches the search.",
-    "deleteConfirm": "Delete the template \"{name}\"? This cannot be undone."
+    "deleteConfirm": "Delete the template \"{name}\"? This cannot be undone.",
+    "variablesInvalid": "Variables must be a JSON array (a list in square brackets). Nothing was saved.",
+    "samplersInvalid": "Preset samplers must be a JSON object (names and values in curly brackets). Nothing was saved."
   },
   "fineTuning": {
     "loadingAdapters": "Loading adapters...",

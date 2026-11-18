@@ -617,7 +617,9 @@
     "loadFailed": null,
     "empty": null,
     "noMatches": null,
-    "deleteConfirm": null
+    "deleteConfirm": null,
+    "variablesInvalid": null,
+    "samplersInvalid": null
   },
   "fineTuning": {
     "loadingAdapters": "正在加载适配器...",

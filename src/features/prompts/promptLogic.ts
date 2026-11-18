@@ -35,3 +35,18 @@ export function matchesTemplateSearch(template: SearchableTemplate, query: strin
     (template.systemPrompt ?? "").toLowerCase().includes(q)
   );
 }
+
+/**
+ * What the editor's two JSON boxes hold. An empty box is fine (no variables, no samplers); text that is not
+ * the expected JSON shape is reported instead of being dropped on save, which is what used to happen.
+ */
+export function jsonBoxProblem(text: string, shape: "array" | "object"): boolean {
+  if (!text.trim()) return false;
+  try {
+    const parsed: unknown = JSON.parse(text);
+    if (shape === "array") return !Array.isArray(parsed);
+    return !parsed || typeof parsed !== "object" || Array.isArray(parsed);
+  } catch {
+    return true;
+  }
+}

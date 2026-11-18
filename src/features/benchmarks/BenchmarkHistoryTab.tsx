@@ -34,13 +34,25 @@ export function BenchmarkHistoryTab({
     ? benchmarks.filter(b => b.model === benchmarkModelFilter)
     : benchmarks;
 
+  // What a run measured, in its own unit: an accuracy or perplexity run has no tok/s (stored as 0).
+  const runResultLabel = (result: BenchmarkResult): string => {
+    const mode = result.mode ?? "throughput";
+    if (mode === "perplexity") {
+      return t("benchmarkHistory.list.pplValue", { value: number(result.perplexity ?? 0), defaultValue: "{value} ppl" });
+    }
+    if (mode === "task_accuracy") return `${((result.taskAccuracy ?? 0) * 100).toFixed(1)}%`;
+    return `${number(result.tokS)} tok/s`;
+  };
+  // Speed cards (Fastest, Best value) rank speed runs only.
+  const speedRuns = filteredBenchmarks.filter((b) => (b.mode ?? "throughput") === "throughput");
+
   const latestRun = filteredBenchmarks[0] ?? null;
-  const fastestRun = [...filteredBenchmarks].sort((left, right) => right.tokS - left.tokS)[0] ?? null;
+  const fastestRun = [...speedRuns].sort((left, right) => right.tokS - left.tokS)[0] ?? null;
   const mostEfficientRun = [...filteredBenchmarks].sort(
     (left, right) => left.cacheGb - right.cacheGb || right.quality - left.quality,
   )[0] ?? null;
   const bestQualityRun = [...filteredBenchmarks].sort((a, b) => b.quality - a.quality)[0] ?? null;
-  const bestValueRun = [...filteredBenchmarks].sort(
+  const bestValueRun = [...speedRuns].sort(
     (a, b) => (b.tokS / Math.max(b.cacheGb, 0.1)) - (a.tokS / Math.max(a.cacheGb, 0.1)),
   )[0] ?? null;
 
@@ -154,7 +166,7 @@ export function BenchmarkHistoryTab({
             />
             <StatCard
               label={t("benchmarkHistory.summary.latest", { defaultValue: "Latest" })}
-              value={latestRun ? `${number(latestRun.tokS)} tok/s` : t("benchmarkHistory.summary.none", { defaultValue: "None" })}
+              value={latestRun ? runResultLabel(latestRun) : t("benchmarkHistory.summary.none", { defaultValue: "None" })}
               hint={latestRun?.cacheLabel ?? t("benchmarkHistory.summary.noRuns", { defaultValue: "No runs" })}
               onClick={latestRun ? () => onSelectedBenchmarkIdChange(latestRun.id) : undefined}
             />
@@ -308,11 +320,7 @@ export function BenchmarkHistoryTab({
                       const isSelected = result.id === effectiveSelected?.id;
                       const isCompare = result.id === effectiveCompare?.id;
                       const mode = result.mode ?? "throughput";
-                      const resultValue = mode === "perplexity"
-                        ? t("benchmarkHistory.list.pplValue", { value: number(result.perplexity ?? 0), defaultValue: "{value} ppl" })
-                        : mode === "task_accuracy"
-                        ? `${((result.taskAccuracy ?? 0) * 100).toFixed(1)}%`
-                        : `${number(result.tokS)} tok/s`;
+                      const resultValue = runResultLabel(result);
                       const modeLabel = mode === "perplexity"
                         ? t("benchmarkHistory.modeLabel.ppl", { defaultValue: "PPL" })
                         : mode === "task_accuracy"

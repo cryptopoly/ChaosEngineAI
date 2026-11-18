@@ -105,6 +105,118 @@ export function BenchmarkRunTab({
   const { previous: prevForModel, fastest: fastestRun } = latestRunSpeedComparison(workspace.benchmarks);
   const speedDeltaVsPrev = latestRun && prevForModel ? latestRun.tokS - prevForModel.tokS : null;
 
+  // One summary for the page card and the result dialog. The dialog had its own copy that knew only
+  // the speed layout, so a perplexity or accuracy run finished on a "tok/s" gauge.
+  const latestRunSummary = latestRun ? (
+    <>
+      <div className="benchmark-last-run-header">
+        <span className="eyebrow">{t("benchmarkTab.latestRun", { defaultValue: "Latest run" })}</span>
+        <span className="badge muted">{latestRun.measuredAt}</span>
+      </div>
+      <h3>{latestRun.model}</h3>
+      <p className="muted-text">{latestRun.cacheLabel} {"\u00B7"} {latestRun.engineLabel}</p>
+
+      {latestRun.mode === "perplexity" ? (
+        <BenchmarkGauge
+          value={latestRun.perplexity ?? 0}
+          max={50}
+          label={t("benchmarkTab.gauge.perplexityLabel", { defaultValue: "perplexity" })}
+          subtitle={t("benchmarkTab.gauge.lowerBetter", { defaultValue: "lower is better" })}
+        />
+      ) : latestRun.mode === "task_accuracy" ? (
+        <BenchmarkGauge
+          value={(latestRun.taskAccuracy ?? 0) * 100}
+          max={100}
+          label={t("benchmarkTab.gauge.accuracyLabel", { defaultValue: "% accuracy" })}
+        />
+      ) : (
+        <BenchmarkGauge value={latestRun.tokS} max={40} label="tok/s" />
+      )}
+
+      <div className="stat-grid compact-grid benchmark-last-run-stats">
+        {latestRun.mode === "perplexity" ? (
+          <>
+            <StatCard
+              label={t("benchmarkTab.statPerplexity", { defaultValue: "Perplexity" })}
+              value={`${number(latestRun.perplexity ?? 0)}`}
+              hint={t("benchmarkTab.perplexityStdErr", { value: number(latestRun.perplexityStdError ?? 0), defaultValue: "\u00B1 {value} SE" })}
+            />
+            <StatCard
+              label={t("benchmarkTab.statEvalSpeed", { defaultValue: "Eval speed" })}
+              value={`${number(latestRun.evalTokensPerSecond ?? 0)} tok/s`}
+              hint={t("benchmarkTab.evalSecondsTotal", { value: number(latestRun.evalSeconds ?? 0), defaultValue: "{value} s total" })}
+            />
+            <StatCard
+              label={t("benchmarkTab.statDataset", { defaultValue: "Dataset" })}
+              value={latestRun.perplexityDataset ?? "wikitext-2"}
+              hint={t("benchmarkTab.samplesCount", { count: latestRun.perplexityNumSamples ?? 0, defaultValue: "{count} samples" })}
+            />
+            <StatCard
+              label={t("benchmarkTab.statCache", { defaultValue: "Cache" })}
+              value={`${number(latestRun.cacheGb)} GB`}
+              hint={t("benchmarkTab.compressionRatio", { ratio: number(latestRun.compression), defaultValue: "{ratio}x compression" })}
+            />
+          </>
+        ) : latestRun.mode === "task_accuracy" ? (
+          <>
+            <StatCard
+              label={t("benchmarkTab.statAccuracy", { defaultValue: "Accuracy" })}
+              value={`${((latestRun.taskAccuracy ?? 0) * 100).toFixed(1)}%`}
+              hint={t("benchmarkTab.correctOutOf", { correct: latestRun.taskCorrect, total: latestRun.taskTotal, defaultValue: "{correct}/{total} correct" })}
+            />
+            <StatCard
+              label={t("benchmarkTab.statTask", { defaultValue: "Task" })}
+              value={(latestRun.taskName ?? "mmlu").toUpperCase()}
+              hint={t("benchmarkTab.shotsHint", { shots: latestRun.taskNumShots ?? 5, defaultValue: "{shots}-shot" })}
+            />
+            <StatCard
+              label={t("benchmarkTab.statEvalTime", { defaultValue: "Eval time" })}
+              value={`${number(latestRun.evalSeconds ?? 0)} s`}
+              hint={t("benchmarkTab.loadSeconds", { value: number(latestRun.loadSeconds), defaultValue: "{value} s load" })}
+            />
+            <StatCard
+              label={t("benchmarkTab.statCache", { defaultValue: "Cache" })}
+              value={`${number(latestRun.cacheGb)} GB`}
+              hint={t("benchmarkTab.compressionRatio", { ratio: number(latestRun.compression), defaultValue: "{ratio}x compression" })}
+            />
+          </>
+        ) : (
+          <>
+            <StatCard
+              label={t("benchmarkTab.statResponseTime", { defaultValue: "Response time" })}
+              value={`${number(latestRun.responseSeconds)} s`}
+              hint={t("benchmarkTab.loadSeconds", { value: number(latestRun.loadSeconds), defaultValue: "{value} s load" })}
+            />
+            <StatCard
+              label={t("benchmarkTab.statCacheFootprint", { defaultValue: "Cache footprint" })}
+              value={`${number(latestRun.cacheGb)} GB`}
+              hint={t("benchmarkTab.compressionRatio", { ratio: number(latestRun.compression), defaultValue: "{ratio}x compression" })}
+            />
+            <StatCard
+              label={t("benchmarkTab.statQuality", { defaultValue: "Quality" })}
+              value={`${latestRun.quality}%`}
+              hint={t("benchmarkTab.tokensGenerated", { count: latestRun.completionTokens, defaultValue: "{count} tokens generated" })}
+            />
+            <StatCard
+              label={t("benchmarkTab.statContext", { defaultValue: "Context" })}
+              value={`${latestRun.contextTokens.toLocaleString()}`}
+              hint={t("benchmarkTab.maxTokensHint", { max: latestRun.maxTokens, defaultValue: "{max} max" })}
+            />
+          </>
+        )}
+      </div>
+
+      {speedDeltaVsPrev !== null && prevForModel ? (
+        <div className="callout quiet benchmark-delta-note">
+          <p>
+            {t("benchmarkTab.deltaVsPrev", { delta: signedDelta(speedDeltaVsPrev), cache: prevForModel.cacheLabel, defaultValue: "{delta} tok/s vs your previous {cache} run" })}
+            {fastestRun && fastestRun.id !== latestRun.id ? ` \u00B7 ${t("benchmarkTab.deltaVsFastest", { delta: signedDelta(latestRun.tokS - fastestRun.tokS), cache: fastestRun.cacheLabel, defaultValue: "{delta} tok/s vs fastest ({cache})" })}` : ""}
+          </p>
+        </div>
+      ) : null}
+    </>
+  ) : null;
+
   return (
     <div className="content-grid">
       <Panel
@@ -285,111 +397,7 @@ export function BenchmarkRunTab({
 
             {latestRun ? (
               <div className="benchmark-last-run-card">
-                <div className="benchmark-last-run-header">
-                  <span className="eyebrow">{t("benchmarkTab.latestRun", { defaultValue: "Latest run" })}</span>
-                  <span className="badge muted">{latestRun.measuredAt}</span>
-                </div>
-                <h3>{latestRun.model}</h3>
-                <p className="muted-text">{latestRun.cacheLabel} {"\u00B7"} {latestRun.engineLabel}</p>
-
-                {latestRun.mode === "perplexity" ? (
-                  <BenchmarkGauge
-                    value={latestRun.perplexity ?? 0}
-                    max={50}
-                    label={t("benchmarkTab.gauge.perplexityLabel", { defaultValue: "perplexity" })}
-                    subtitle={t("benchmarkTab.gauge.lowerBetter", { defaultValue: "lower is better" })}
-                  />
-                ) : latestRun.mode === "task_accuracy" ? (
-                  <BenchmarkGauge
-                    value={(latestRun.taskAccuracy ?? 0) * 100}
-                    max={100}
-                    label={t("benchmarkTab.gauge.accuracyLabel", { defaultValue: "% accuracy" })}
-                  />
-                ) : (
-                  <BenchmarkGauge value={latestRun.tokS} max={40} label="tok/s" />
-                )}
-
-                <div className="stat-grid compact-grid benchmark-last-run-stats">
-                  {latestRun.mode === "perplexity" ? (
-                    <>
-                      <StatCard
-                        label={t("benchmarkTab.statPerplexity", { defaultValue: "Perplexity" })}
-                        value={`${number(latestRun.perplexity ?? 0)}`}
-                        hint={t("benchmarkTab.perplexityStdErr", { value: number(latestRun.perplexityStdError ?? 0), defaultValue: "\u00B1 {value} SE" })}
-                      />
-                      <StatCard
-                        label={t("benchmarkTab.statEvalSpeed", { defaultValue: "Eval speed" })}
-                        value={`${number(latestRun.evalTokensPerSecond ?? 0)} tok/s`}
-                        hint={t("benchmarkTab.evalSecondsTotal", { value: number(latestRun.evalSeconds ?? 0), defaultValue: "{value} s total" })}
-                      />
-                      <StatCard
-                        label={t("benchmarkTab.statDataset", { defaultValue: "Dataset" })}
-                        value={latestRun.perplexityDataset ?? "wikitext-2"}
-                        hint={t("benchmarkTab.samplesCount", { count: latestRun.perplexityNumSamples ?? 0, defaultValue: "{count} samples" })}
-                      />
-                      <StatCard
-                        label={t("benchmarkTab.statCache", { defaultValue: "Cache" })}
-                        value={`${number(latestRun.cacheGb)} GB`}
-                        hint={t("benchmarkTab.compressionRatio", { ratio: number(latestRun.compression), defaultValue: "{ratio}x compression" })}
-                      />
-                    </>
-                  ) : latestRun.mode === "task_accuracy" ? (
-                    <>
-                      <StatCard
-                        label={t("benchmarkTab.statAccuracy", { defaultValue: "Accuracy" })}
-                        value={`${((latestRun.taskAccuracy ?? 0) * 100).toFixed(1)}%`}
-                        hint={t("benchmarkTab.correctOutOf", { correct: latestRun.taskCorrect, total: latestRun.taskTotal, defaultValue: "{correct}/{total} correct" })}
-                      />
-                      <StatCard
-                        label={t("benchmarkTab.statTask", { defaultValue: "Task" })}
-                        value={(latestRun.taskName ?? "mmlu").toUpperCase()}
-                        hint={t("benchmarkTab.shotsHint", { shots: latestRun.taskNumShots ?? 5, defaultValue: "{shots}-shot" })}
-                      />
-                      <StatCard
-                        label={t("benchmarkTab.statEvalTime", { defaultValue: "Eval time" })}
-                        value={`${number(latestRun.evalSeconds ?? 0)} s`}
-                        hint={t("benchmarkTab.loadSeconds", { value: number(latestRun.loadSeconds), defaultValue: "{value} s load" })}
-                      />
-                      <StatCard
-                        label={t("benchmarkTab.statCache", { defaultValue: "Cache" })}
-                        value={`${number(latestRun.cacheGb)} GB`}
-                        hint={t("benchmarkTab.compressionRatio", { ratio: number(latestRun.compression), defaultValue: "{ratio}x compression" })}
-                      />
-                    </>
-                  ) : (
-                    <>
-                      <StatCard
-                        label={t("benchmarkTab.statResponseTime", { defaultValue: "Response time" })}
-                        value={`${number(latestRun.responseSeconds)} s`}
-                        hint={t("benchmarkTab.loadSeconds", { value: number(latestRun.loadSeconds), defaultValue: "{value} s load" })}
-                      />
-                      <StatCard
-                        label={t("benchmarkTab.statCacheFootprint", { defaultValue: "Cache footprint" })}
-                        value={`${number(latestRun.cacheGb)} GB`}
-                        hint={t("benchmarkTab.compressionRatio", { ratio: number(latestRun.compression), defaultValue: "{ratio}x compression" })}
-                      />
-                      <StatCard
-                        label={t("benchmarkTab.statQuality", { defaultValue: "Quality" })}
-                        value={`${latestRun.quality}%`}
-                        hint={t("benchmarkTab.tokensGenerated", { count: latestRun.completionTokens, defaultValue: "{count} tokens generated" })}
-                      />
-                      <StatCard
-                        label={t("benchmarkTab.statContext", { defaultValue: "Context" })}
-                        value={`${latestRun.contextTokens.toLocaleString()}`}
-                        hint={t("benchmarkTab.maxTokensHint", { max: latestRun.maxTokens, defaultValue: "{max} max" })}
-                      />
-                    </>
-                  )}
-                </div>
-
-                {speedDeltaVsPrev !== null && prevForModel ? (
-                  <div className="callout quiet benchmark-delta-note">
-                    <p>
-                      {t("benchmarkTab.deltaVsPrev", { delta: signedDelta(speedDeltaVsPrev), cache: prevForModel.cacheLabel, defaultValue: "{delta} tok/s vs your previous {cache} run" })}
-                      {fastestRun && fastestRun.id !== latestRun.id ? ` \u00B7 ${t("benchmarkTab.deltaVsFastest", { delta: signedDelta(latestRun.tokS - fastestRun.tokS), cache: fastestRun.cacheLabel, defaultValue: "{delta} tok/s vs fastest ({cache})" })}` : ""}
-                    </p>
-                  </div>
-                ) : null}
+                {latestRunSummary}
 
                 <div className="button-row">
                   <button
@@ -479,46 +487,7 @@ export function BenchmarkRunTab({
                 </div>
               ) : latestRun ? (
                 <div className="benchmark-last-run-card">
-                  <div className="benchmark-last-run-header">
-                    <span className="eyebrow">{t("benchmarkTab.latestRun", { defaultValue: "Latest run" })}</span>
-                    <span className="badge muted">{latestRun.measuredAt}</span>
-                  </div>
-                  <h3>{latestRun.model}</h3>
-                  <p className="muted-text">{latestRun.cacheLabel} {"\u00B7"} {latestRun.engineLabel}</p>
-
-                  <BenchmarkGauge value={latestRun.tokS} max={40} label="tok/s" />
-
-                  <div className="stat-grid compact-grid benchmark-last-run-stats">
-                    <StatCard
-                      label={t("benchmarkTab.statResponseTime", { defaultValue: "Response time" })}
-                      value={`${number(latestRun.responseSeconds)} s`}
-                      hint={t("benchmarkTab.loadSeconds", { value: number(latestRun.loadSeconds), defaultValue: "{value} s load" })}
-                    />
-                    <StatCard
-                      label={t("benchmarkTab.statCacheFootprint", { defaultValue: "Cache footprint" })}
-                      value={`${number(latestRun.cacheGb)} GB`}
-                      hint={t("benchmarkTab.compressionRatio", { ratio: number(latestRun.compression), defaultValue: "{ratio}x compression" })}
-                    />
-                    <StatCard
-                      label={t("benchmarkTab.statQuality", { defaultValue: "Quality" })}
-                      value={`${latestRun.quality}%`}
-                      hint={t("benchmarkTab.tokensGenerated", { count: latestRun.completionTokens, defaultValue: "{count} tokens generated" })}
-                    />
-                    <StatCard
-                      label={t("benchmarkTab.statContext", { defaultValue: "Context" })}
-                      value={`${latestRun.contextTokens.toLocaleString()}`}
-                      hint={t("benchmarkTab.maxTokensHint", { max: latestRun.maxTokens, defaultValue: "{max} max" })}
-                    />
-                  </div>
-
-                  {speedDeltaVsPrev !== null && prevForModel ? (
-                    <div className="callout quiet benchmark-delta-note">
-                      <p>
-                        {t("benchmarkTab.deltaVsPrev", { delta: signedDelta(speedDeltaVsPrev), cache: prevForModel.cacheLabel, defaultValue: "{delta} tok/s vs your previous {cache} run" })}
-                        {fastestRun && fastestRun.id !== latestRun.id ? ` \u00B7 ${t("benchmarkTab.deltaVsFastest", { delta: signedDelta(latestRun.tokS - fastestRun.tokS), cache: fastestRun.cacheLabel, defaultValue: "{delta} tok/s vs fastest ({cache})" })}` : ""}
-                      </p>
-                    </div>
-                  ) : null}
+                  {latestRunSummary}
                 </div>
               ) : null}
             </div>

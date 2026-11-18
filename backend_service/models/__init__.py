@@ -337,7 +337,7 @@ class ConvertModelRequest(BaseModel):
 
 
 class BenchmarkRunRequest(BaseModel):
-    mode: str = "throughput"  # "throughput" | "perplexity" | "task_accuracy"
+    mode: Literal["throughput", "perplexity", "task_accuracy"] = "throughput"
     modelRef: str | None = None
     modelName: str | None = None
     source: str = "catalog"

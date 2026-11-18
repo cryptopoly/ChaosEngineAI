@@ -15,6 +15,7 @@ the refactor, not deep behaviour coverage.
 
 from __future__ import annotations
 
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -99,6 +100,25 @@ class BenchmarkRouteTests(_RouteContractCase):
             self.assertIsInstance(body, dict)
         else:
             self.assertIn("detail", body)
+
+    def test_unknown_mode_is_refused_not_run_as_throughput(self):
+        resp = self.client.post("/api/benchmarks/run", json={"mode": "nonsense"})
+        self.assertEqual(resp.status_code, 422)
+
+    def test_delete_removes_one_saved_run_and_persists(self):
+        self.state._append_benchmark_run({"id": "bench-keep", "label": "Keep"})
+        self.state._append_benchmark_run({"id": "bench-drop", "label": "Drop"})
+        resp = self.client.delete("/api/benchmarks/bench-drop")
+        self.assertEqual(resp.status_code, 200)
+        body = resp.json()
+        self.assertEqual(body["deleted"], "bench-drop")
+        self.assertEqual([run["id"] for run in body["benchmarks"]], ["bench-keep"])
+        saved = json.loads(Path(self.state._benchmarks_path).read_text(encoding="utf-8"))
+        self.assertEqual([run["id"] for run in saved], ["bench-keep"])
+
+    def test_delete_unknown_run_is_404(self):
+        resp = self.client.delete("/api/benchmarks/bench-missing")
+        self.assertEqual(resp.status_code, 404)
 
 
 class CachePreviewRouteTests(_RouteContractCase):

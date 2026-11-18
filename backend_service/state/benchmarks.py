@@ -44,6 +44,17 @@ def append_benchmark_run(state: ChaosEngineState, run: dict[str, Any]) -> None:
     _save_benchmark_runs(state.benchmark_runs, state._benchmarks_path)
 
 
+def delete_benchmark_run(state: ChaosEngineState, run_id: str) -> bool:
+    """Drop one run from the saved history. False when no run has that id."""
+    with state._lock:
+        kept = [item for item in state.benchmark_runs if item.get("id") != run_id]
+        if len(kept) == len(state.benchmark_runs):
+            return False
+        state.benchmark_runs = kept
+        _save_benchmark_runs(state.benchmark_runs, state._benchmarks_path)
+        return True
+
+
 def run_benchmark(state: ChaosEngineState, request: BenchmarkRunRequest) -> dict[str, Any]:
     from backend_service.app import compute_cache_preview
 

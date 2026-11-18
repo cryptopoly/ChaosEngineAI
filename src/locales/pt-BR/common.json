@@ -360,6 +360,8 @@
     "reQuantizingTitle": "Re-quantizando uma fonte já quantizada",
     "backendNote": "Observação do backend",
     "reQuantizingDetail": "A fonte já está em ~{bits} bits. Ir mais baixo agrava a perda de qualidade — para melhores resultados, converta a partir dos pesos FP16/BF16 originais.",
+    "ggufSourceTitle": null,
+    "ggufSourceDetail": null,
     "mlxLmAvailable": "A conversão mlx-lm está disponível no backend ativo.",
     "startNativeSidecar": "Inicie o sidecar nativo para habilitar a conversão.",
     "converting": "Convertendo...",
@@ -398,6 +400,7 @@
     "diskBeforeAfter": "Disco antes → depois",
     "modal": {
       "titleConverting": "Convertendo modelo",
+      "cancel": null,
       "titleFailed": "Falha na conversão",
       "titleComplete": "Conversão concluída",
       "debugDetails": "Detalhes de depuração",
@@ -434,6 +437,7 @@
     "modeThroughput": "Vazão (tok/s)",
     "modePerplexity": "Perplexidade (qualidade)",
     "modeTaskAccuracy": "Acurácia em tarefa (MMLU / HellaSwag)",
+    "evalNeedsMlx": null,
     "promptPreset": "Predefinição de prompt",
     "dataset": "Dataset",
     "samples": "Amostras",
@@ -513,6 +517,8 @@
       "both": "Ambos"
     },
     "swap": "Trocar",
+    "copyCsv": null,
+    "csvCopied": null,
     "summary": {
       "totalRuns": "Total de execuções",
       "persistentHistory": "Histórico persistente",
@@ -547,6 +553,8 @@
     "compareAgainst": "Comparar com:",
     "pickBaseline": "Escolha uma execução de referência...",
     "runAnother": "Execute outro benchmark para habilitar a comparação.",
+    "deleteRun": null,
+    "deleteRunConfirm": null,
     "properties": {
       "heading": "Propriedades da execução",
       "model": "Modelo",

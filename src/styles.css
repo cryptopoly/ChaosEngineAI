@@ -6334,10 +6334,6 @@ select.text-input {
     grid-template-columns: 1fr;
   }
 
-  .benchmark-run-header-grid {
-    grid-template-columns: 1fr;
-  }
-
   .span-2 {
     grid-column: span 1;
   }
@@ -6411,6 +6407,13 @@ select.text-input {
   flex-direction: column;
   gap: 14px;
   min-width: 0;
+}
+/* Has to follow the base rule: the copy inside the 900 px block further up lost to it (same weight,
+   earlier in the file), so on a narrow window the model card was squeezed under the mode fields. */
+@media (max-width: 900px) {
+  .benchmark-run-header-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 .benchmark-prompt-preview p {
   margin: 6px 0 0;
@@ -6754,6 +6757,20 @@ select.text-input {
   min-width: 180px;
   max-width: 280px;
   font-size: 12px;
+}
+
+/* The model filter has a fixed basis and gives way first; the view switch and the buttons keep their
+   width and one line. (The panel-wide rule sizes a field in percent of the toolbar, which made the
+   toolbar narrower than its content: the view switch was clipped to "Table | Ch".) */
+.bm-toolbar .bm-model-filter {
+  flex: 0 1 220px;
+  width: 220px;
+  min-width: 140px;
+}
+.bm-toolbar > .secondary-button,
+.bm-toolbar > .bm-view-toggle {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .bm-view-toggle {

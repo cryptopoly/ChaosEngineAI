@@ -360,6 +360,8 @@
     "reQuantizingTitle": "Hal quant chenmoHlu'ta'bogh quant chenmoHqa'",
     "backendNote": "qoD pat qeS",
     "reQuantizingDetail": "tlhoS {bits}-bit Hal. bit puS DawIvchugh patlh law' lujlu'; FP16/BF16 ngI' Halvo' yIchoH vaj pov ngoD.",
+    "ggufSourceTitle": null,
+    "ggufSourceDetail": null,
     "mlxLmAvailable": "qoD pat QaptaHbogh mlx-lm choH tu'lu'.",
     "startNativeSidecar": "choH chu'meH sidecar Hal yItagh.",
     "converting": "choHlI'...",
@@ -398,6 +400,7 @@
     "diskBeforeAfter": "polmeH Daq nung → veb",
     "modal": {
       "titleConverting": "yab choHlI'",
+      "cancel": null,
       "titleFailed": "choH luj",
       "titleComplete": "choH rIn",
       "debugDetails": "nuD De'",
@@ -434,6 +437,7 @@
     "modeThroughput": "Do (tok/s)",
     "modePerplexity": "perplexity (patlh)",
     "modeTaskAccuracy": "Qu' qar (MMLU / HellaSwag)",
+    "evalNeedsMlx": null,
     "promptPreset": "QIn wIv",
     "dataset": "De' ghom",
     "samples": "waH mI'",
@@ -513,6 +517,8 @@
       "both": "cha'"
     },
     "swap": "yItam",
+    "copyCsv": null,
+    "csvCopied": null,
     "summary": {
       "totalRuns": "may' naQ",
       "persistentHistory": "qun pollu'",
@@ -547,6 +553,8 @@
     "compareAgainst": "'ovmeH:",
     "pickBaseline": "Hal may' yIwIv...",
     "runAnother": "'ovmeH latlh waH yIchu'.",
+    "deleteRun": null,
+    "deleteRunConfirm": null,
     "properties": {
       "heading": "may' De'",
       "model": "yab",

@@ -833,6 +833,9 @@ class ChaosEngineState:
     def run_benchmark(self, request: BenchmarkRunRequest) -> dict[str, Any]:
         return _benchmarks.run_benchmark(self, request)
 
+    def delete_benchmark_run(self, run_id: str) -> bool:
+        return _benchmarks.delete_benchmark_run(self, run_id)
+
     def load_model(
         self,
         request: LoadModelRequest,

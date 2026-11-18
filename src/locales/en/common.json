@@ -360,6 +360,8 @@
     "reQuantizingTitle": "Re-quantizing an already quantized source",
     "backendNote": "Backend note",
     "reQuantizingDetail": "Source is already ~{bits}-bit. Going lower compounds quality loss — for best results convert from the original FP16/BF16 weights.",
+    "ggufSourceTitle": "A GGUF source is downloaded again in full size",
+    "ggufSourceDetail": "A GGUF file cannot be turned into MLX directly. The original model named in the file is downloaded from Hugging Face and converted, so this needs a network connection and disk space for the full-size weights. The download shows no progress; Cancel stops it.",
     "mlxLmAvailable": "mlx-lm conversion is available in the active backend.",
     "startNativeSidecar": "Start the native sidecar to enable conversion.",
     "converting": "Converting...",
@@ -398,6 +400,7 @@
     "diskBeforeAfter": "Disk before → after",
     "modal": {
       "titleConverting": "Converting model",
+      "cancel": "Cancel conversion",
       "titleFailed": "Conversion failed",
       "titleComplete": "Conversion complete",
       "debugDetails": "Debug details",
@@ -434,6 +437,7 @@
     "modeThroughput": "Throughput (tok/s)",
     "modePerplexity": "Perplexity (quality)",
     "modeTaskAccuracy": "Task Accuracy (MMLU / HellaSwag)",
+    "evalNeedsMlx": "Perplexity and task accuracy run on MLX models only. Pick an MLX model, or switch the mode to Throughput.",
     "promptPreset": "Prompt preset",
     "dataset": "Dataset",
     "samples": "Samples",
@@ -513,6 +517,8 @@
       "both": "Both"
     },
     "swap": "Swap",
+    "copyCsv": "Copy CSV",
+    "csvCopied": "Copied",
     "summary": {
       "totalRuns": "Total runs",
       "persistentHistory": "Persistent history",
@@ -547,6 +553,8 @@
     "compareAgainst": "Compare against:",
     "pickBaseline": "Pick a baseline run...",
     "runAnother": "Run another benchmark to enable comparison.",
+    "deleteRun": "Delete run",
+    "deleteRunConfirm": "Delete the saved run \"{label}\"? This cannot be undone.",
     "properties": {
       "heading": "Run properties",
       "model": "Model",

@@ -3639,6 +3639,8 @@ from e2e_phases.phase_15 import phase_15  # noqa: E402
 
 PHASES[14] = phase_14
 PHASES[15] = phase_15
+from e2e_phases.phase_21_benchmarks_conversion import phase_21_benchmarks_conversion  # noqa: E402
+PHASES[211] = phase_21_benchmarks_conversion  # overnight review, stream A (21 = the review group, 1 = stream A)
 
 
 def _write_reports(report_dir: Path, started: datetime, ended: datetime,

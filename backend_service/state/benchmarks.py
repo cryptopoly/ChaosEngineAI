@@ -44,6 +44,35 @@ def append_benchmark_run(state: ChaosEngineState, run: dict[str, Any]) -> None:
     _save_benchmark_runs(state.benchmark_runs, state._benchmarks_path)
 
 
+def _local_kv_architecture(path: str | None) -> Any:
+    """Attention layout of the benchmarked model, read from its own files.
+
+    ``None`` (no path, or a layout that cannot be read) leaves the cache size
+    to the parameter-count guess, as before.
+    """
+    if not path:
+        return None
+    try:
+        from backend_service.helpers.model_arch import read_kv_architecture
+        from backend_service.inference.conversion import _resolve_local_model_dir
+
+        # A Hugging Face cache folder keeps config.json under snapshots/<revision>/.
+        return read_kv_architecture(path) or read_kv_architecture(_resolve_local_model_dir(path))
+    except Exception:  # noqa: BLE001 - sizing is best effort, the run itself must not fail on it
+        return None
+
+
+def delete_benchmark_run(state: ChaosEngineState, run_id: str) -> bool:
+    """Drop one run from the saved history. False when no run has that id."""
+    with state._lock:
+        kept = [item for item in state.benchmark_runs if item.get("id") != run_id]
+        if len(kept) == len(state.benchmark_runs):
+            return False
+        state.benchmark_runs = kept
+        _save_benchmark_runs(state.benchmark_runs, state._benchmarks_path)
+        return True
+
+
 def run_benchmark(state: ChaosEngineState, request: BenchmarkRunRequest) -> dict[str, Any]:
     from backend_service.app import compute_cache_preview
 
@@ -134,6 +163,9 @@ def run_benchmark(state: ChaosEngineState, request: BenchmarkRunRequest) -> dict
             context_tokens=request.contextTokens,
             params_b=params_b,
             system_stats=state._system_snapshot(),
+            # Sized from the model's own config, like the preview next to the Run button. Without it a
+            # model outside the catalog was sized as a 7B one (4 GB of cache reported for a 0.6B model).
+            arch=_local_kv_architecture(effective_path),
         )
         use_compressed = request.cacheBits > 0
         cache_gb = preview["optimizedCacheGb"] if use_compressed else preview["baselineCacheGb"]

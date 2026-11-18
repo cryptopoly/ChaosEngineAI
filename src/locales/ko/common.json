@@ -360,6 +360,8 @@
     "reQuantizingTitle": "이미 양자화된 소스를 재양자화 중",
     "backendNote": "백엔드 참고",
     "reQuantizingDetail": "소스는 이미 약 {bits}비트입니다. 더 낮추면 품질 손실이 누적됩니다 — 최상의 결과를 얻으려면 원본 FP16/BF16 가중치에서 변환하세요.",
+    "ggufSourceTitle": null,
+    "ggufSourceDetail": null,
     "mlxLmAvailable": "활성 백엔드에서 mlx-lm 변환을 사용할 수 있습니다.",
     "startNativeSidecar": "변환을 활성화하려면 네이티브 사이드카를 시작하세요.",
     "converting": "변환 중...",
@@ -398,6 +400,7 @@
     "diskBeforeAfter": "디스크 변환 전 → 후",
     "modal": {
       "titleConverting": "모델 변환 중",
+      "cancel": null,
       "titleFailed": "변환 실패",
       "titleComplete": "변환 완료",
       "debugDetails": "디버그 세부 정보",
@@ -434,6 +437,7 @@
     "modeThroughput": "처리량 (tok/s)",
     "modePerplexity": "퍼플렉시티 (품질)",
     "modeTaskAccuracy": "태스크 정확도 (MMLU / HellaSwag)",
+    "evalNeedsMlx": null,
     "promptPreset": "프롬프트 프리셋",
     "dataset": "데이터셋",
     "samples": "샘플",
@@ -513,6 +517,8 @@
       "both": "모두"
     },
     "swap": "교체",
+    "copyCsv": null,
+    "csvCopied": null,
     "summary": {
       "totalRuns": "총 실행",
       "persistentHistory": "영구 기록",
@@ -547,6 +553,8 @@
     "compareAgainst": "비교 대상:",
     "pickBaseline": "기준 실행을 선택하세요...",
     "runAnother": "비교를 활성화하려면 다른 벤치마크를 실행하세요.",
+    "deleteRun": null,
+    "deleteRunConfirm": null,
     "properties": {
       "heading": "실행 속성",
       "model": "모델",

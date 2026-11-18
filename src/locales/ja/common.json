@@ -360,6 +360,8 @@
     "reQuantizingTitle": "既に量子化されたソースを再量子化中",
     "backendNote": "バックエンドの注意",
     "reQuantizingDetail": "ソースは既に約 {bits} ビットです。さらに低くすると品質の劣化が累積します — 最高の結果を得るには元の FP16/BF16 重みから変換してください。",
+    "ggufSourceTitle": null,
+    "ggufSourceDetail": null,
     "mlxLmAvailable": "アクティブなバックエンドで mlx-lm 変換が利用可能です。",
     "startNativeSidecar": "変換を有効化するためにネイティブサイドカーを起動してください。",
     "converting": "変換中...",
@@ -398,6 +400,7 @@
     "diskBeforeAfter": "ディスク 変換前 → 変換後",
     "modal": {
       "titleConverting": "モデルを変換中",
+      "cancel": null,
       "titleFailed": "変換に失敗しました",
       "titleComplete": "変換完了",
       "debugDetails": "デバッグ詳細",
@@ -434,6 +437,7 @@
     "modeThroughput": "スループット(tok/s)",
     "modePerplexity": "パープレキシティ(品質)",
     "modeTaskAccuracy": "タスク精度(MMLU / HellaSwag)",
+    "evalNeedsMlx": null,
     "promptPreset": "プロンプトプリセット",
     "dataset": "データセット",
     "samples": "サンプル数",
@@ -513,6 +517,8 @@
       "both": "両方"
     },
     "swap": "入れ替え",
+    "copyCsv": null,
+    "csvCopied": null,
     "summary": {
       "totalRuns": "合計実行数",
       "persistentHistory": "永続的な履歴",
@@ -547,6 +553,8 @@
     "compareAgainst": "比較対象:",
     "pickBaseline": "ベースライン実行を選択...",
     "runAnother": "比較を有効にするには別のベンチマークを実行してください。",
+    "deleteRun": null,
+    "deleteRunConfirm": null,
     "properties": {
       "heading": "実行プロパティ",
       "model": "モデル",

@@ -87,11 +87,16 @@ from backend_service.inference.capabilities import (
 from backend_service.inference.conversion import (
     _MLX_LM_SUPPORTED_CACHE,
     _bytes_to_gb,
+    _conversion_source_name,
     _default_conversion_output,
+    _estimate_conversion_output_bytes,
+    _free_disk_bytes,
     _mlx_lm_supported_model_types,
     _nearest_supported_arch,
     _path_size_bytes,
     _peek_hf_model_type,
+    _resolve_local_model_dir,
+    _summarise_convert_failure,
 )
 from backend_service.inference.jsonrpc import JsonRpcProcess
 from backend_service.inference.llama_cpp_engine import (
@@ -1469,7 +1474,71 @@ class RuntimeController:
             raise RuntimeError(message or "Failed to read GGUF metadata.")
         return payload
 
+    def _run_converter(self, command: list[str], env: dict[str, str]) -> subprocess.CompletedProcess:
+        """Run ``mlx_lm convert`` and keep a handle on it so ``cancel_conversion`` can stop it."""
+        process = subprocess.Popen(
+            command,
+            cwd=str(WORKSPACE_ROOT),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            env=env,
+        )
+        self._convert_process = process
+        try:
+            stdout, stderr = process.communicate(timeout=3600)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.communicate()
+            raise
+        finally:
+            self._convert_process = None
+        return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
+
+    def cancel_conversion(self) -> bool:
+        """Stop the conversion in progress, if there is one. True when one was told to stop.
+
+        The request counts from the first pre-flight check on, not only once the
+        converter process exists: a cancel that arrives early stops the run
+        before the process is started.
+        """
+        if not getattr(self, "_convert_active", False):
+            return False
+        self._convert_cancel_requested = True
+        process = getattr(self, "_convert_process", None)
+        if process is not None and process.poll() is None:
+            process.terminate()
+        return True
+
     def convert_model(
+        self,
+        *,
+        source_ref: str | None,
+        source_path: str | None,
+        output_path: str | None,
+        hf_repo: str | None,
+        quantize: bool,
+        q_bits: int,
+        dtype: str,
+        q_group_size: int = 64,
+    ) -> dict[str, Any]:
+        self._convert_cancel_requested = False
+        self._convert_active = True
+        try:
+            return self._convert_model(
+                source_ref=source_ref,
+                source_path=source_path,
+                output_path=output_path,
+                hf_repo=hf_repo,
+                quantize=quantize,
+                q_bits=q_bits,
+                dtype=dtype,
+                q_group_size=q_group_size,
+            )
+        finally:
+            self._convert_active = False
+
+    def _convert_model(
         self,
         *,
         source_ref: str | None,
@@ -1493,12 +1562,20 @@ class RuntimeController:
         # OR a local directory/file path. Figure out which one to hand to
         # mlx_lm.convert based on what the caller actually gave us.
         hf_path_arg: str | None = None
+        size_source: str | None = _resolve_local_model_dir(source_path) if source_path else None
+
+        if source_path and not _looks_like_gguf(source_path) and not Path(source_path).expanduser().exists():
+            raise RuntimeError(
+                f"Source path not found: {source_path}. Pick the model again "
+                f"from the library, or enter a Hugging Face repo instead."
+            )
 
         if source_path and _looks_like_gguf(source_path):
             # HF cache layouts point at the repo root, not the .gguf file.
             # Resolve to the concrete .gguf before reading metadata so
             # extract_gguf_metadata never gets handed a directory.
             resolved_gguf_file = _resolve_gguf_path(source_path, source_ref) or source_path
+            size_source = resolved_gguf_file  # the one weights file, not the cache folder around it
             try:
                 gguf_metadata = self.extract_gguf_metadata(resolved_gguf_file)
             except Exception as exc:
@@ -1520,7 +1597,8 @@ class RuntimeController:
             # path directly to mlx_lm, which accepts local paths for
             # --hf-path. This avoids mis-using the library item's display
             # name as an HF repo identifier (which fails auth at the hub).
-            hf_path_arg = source_path
+            # A Hugging Face cache folder is resolved to its snapshot.
+            hf_path_arg = _resolve_local_model_dir(source_path)
             if resolved_hf_repo is None:
                 resolved_hf_repo = source_ref  # purely for display / logs
         elif resolved_hf_repo is None:
@@ -1608,7 +1686,30 @@ class RuntimeController:
                 candidate = Path.home() / "Models" / output_path
             target_output = str(candidate.resolve(strict=False))
         else:
-            target_output = _default_conversion_output(Path(source_label).stem)
+            target_output = _default_conversion_output(_conversion_source_name(source_label))
+
+        # Free-space check before a run that loads the whole model: a full
+        # disk used to end in a traceback and a half-written folder.
+        needed_bytes = _estimate_conversion_output_bytes(
+            hf_path_arg if hf_path_arg and Path(hf_path_arg).is_dir() else None,
+            quantize=quantize,
+            q_bits=q_bits,
+            dtype=dtype,
+        )
+        free_bytes = _free_disk_bytes(target_output)
+        if needed_bytes is not None and free_bytes is not None and free_bytes < needed_bytes:
+            raise RuntimeError(
+                f"Not enough free disk space for the converted model: about "
+                f"{_bytes_to_gb(needed_bytes)} GB needed, {_bytes_to_gb(free_bytes)} GB free "
+                f"for {target_output}. Free some space or choose another Output path."
+            )
+        output_existed = Path(target_output).exists()
+
+        def _discard_partial_output() -> None:
+            # Only a folder this run created; an existing folder is never touched.
+            if not output_existed and Path(target_output).is_dir():
+                import shutil
+                shutil.rmtree(target_output, ignore_errors=True)
 
         command = [
             self.capabilities.pythonExecutable,
@@ -1633,21 +1734,20 @@ class RuntimeController:
             if _tok_val:
                 convert_env[_tok_var] = _tok_val
 
+        cancelled_message = f"Conversion cancelled. Nothing was kept at {target_output}."
+        if getattr(self, "_convert_cancel_requested", False):
+            raise RuntimeError(cancelled_message)
         try:
-            completed = subprocess.run(
-                command,
-                cwd=str(WORKSPACE_ROOT),
-                check=False,
-                capture_output=True,
-                text=True,
-                timeout=3600,
-                env=convert_env,
-            )
+            completed = self._run_converter(command, convert_env)
         except (OSError, subprocess.TimeoutExpired) as exc:
+            _discard_partial_output()
             raise RuntimeError(str(exc)) from exc
 
         if completed.returncode != 0:
-            detail = (completed.stderr or completed.stdout).strip()
+            _discard_partial_output()
+            if getattr(self, "_convert_cancel_requested", False):
+                raise RuntimeError(cancelled_message)
+            detail = _summarise_convert_failure(completed.stderr or "", completed.stdout or "", completed.returncode)
             combined = ((completed.stderr or "") + "\n" + (completed.stdout or "")).lower()
             # Specific, low-false-positive markers only. The previous
             # version matched "token" anywhere, which triggered on every
@@ -1676,6 +1776,27 @@ class RuntimeController:
                 "cannot save to the path",
                 "already exists",
             )
+            disk_full_markers = (
+                "unable to write",
+                "no space left on device",
+            )
+            # Without a token the Hub answers 401 for a repo that does not
+            # exist, so the missing-repo error is checked before the gated one.
+            if completed.returncode > 0 and (
+                "repositorynotfounderror" in combined or "repository not found" in combined
+            ):
+                raise RuntimeError(
+                    f"Hugging Face repository not found: {resolved_hf_repo}. "
+                    f"Check the spelling and the owner prefix. If the repo is private "
+                    f"or gated, accept its licence and set HF_TOKEN in Settings."
+                )
+            if completed.returncode > 0 and any(marker in combined for marker in disk_full_markers):
+                raise RuntimeError(
+                    f"Ran out of disk space while writing the converted model to "
+                    f"{target_output}. Free some space or choose another Output path."
+                )
+            if completed.returncode < 0:
+                raise RuntimeError(detail)
             if any(marker in combined for marker in gated_markers):
                 raise RuntimeError(
                     f"This model is gated on Hugging Face. Accept the licence at "
@@ -1703,14 +1824,14 @@ class RuntimeController:
         return {
             "sourceRef": source_ref,
             "sourcePath": source_path,
-            "sourceLabel": Path(source_label).name,
+            "sourceLabel": _conversion_source_name(source_label),
             "hfRepo": resolved_hf_repo,
             "outputPath": target_output,
             "quantize": quantize,
             "qBits": q_bits,
             "qGroupSize": q_group_size,
             "dtype": dtype,
-            "sourceSizeGb": _bytes_to_gb(_path_size_bytes(source_path)) if source_path else None,
+            "sourceSizeGb": _bytes_to_gb(_path_size_bytes(size_source)) if size_source else None,
             "outputSizeGb": _bytes_to_gb(_path_size_bytes(target_output)),
             "ggufMetadata": gguf_metadata,
             "log": (completed.stdout or "").strip(),

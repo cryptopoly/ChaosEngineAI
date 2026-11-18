@@ -24,6 +24,58 @@ from typing import Any
 from backend_service.mlx_worker_io import emit_progress
 
 
+# Dataset name the UI sends -> (Hub repo, config, split). ``wikitext/wikitext-2-raw-v1``,
+# the id used before, is not a Hub repo, so every perplexity run failed with
+# "doesn't exist on the Hub".
+PERPLEXITY_DATASETS: dict[str, tuple[str, str, str]] = {
+    "wikitext-2": ("Salesforce/wikitext", "wikitext-2-raw-v1", "test"),
+}
+
+
+def perplexity_dataset_spec(dataset: str) -> tuple[str, str, str]:
+    spec = PERPLEXITY_DATASETS.get(dataset)
+    if spec is None:
+        supported = ", ".join(sorted(PERPLEXITY_DATASETS))
+        raise RuntimeError(f"Unknown perplexity dataset: {dataset}. Supported: {supported}.")
+    return spec
+
+
+def perplexity_windows(
+    tokens: list[int],
+    num_samples: int,
+    seq_length: int,
+    *,
+    seed: int = 123,
+) -> list[list[int]]:
+    """Cut a token stream into ``seq_length`` windows and pick ``num_samples`` of them.
+
+    The pick is seeded, so two runs on the same model score the same text.
+    """
+    import random
+
+    total = len(tokens) // seq_length
+    if total < 1:
+        raise RuntimeError(
+            f"The evaluation text is shorter than one sample of {seq_length} tokens."
+        )
+    order = list(range(total))
+    random.Random(seed).shuffle(order)
+    picked = sorted(order[: max(1, num_samples)])
+    return [tokens[i * seq_length : (i + 1) * seq_length] for i in picked]
+
+
+def load_perplexity_data(tokenizer: Any, dataset: str, num_samples: int, seq_length: int) -> Any:
+    """Tokenised evaluation windows as an ``mx.array`` of shape (samples, seq_length)."""
+    import mlx.core as mx
+    from datasets import load_dataset
+
+    repo, config, split = perplexity_dataset_spec(dataset)
+    rows = load_dataset(repo, config, split=split)
+    text = "\n\n".join(line for line in rows["text"] if line.strip())
+    tokens = list(tokenizer.encode(text))
+    return mx.array(perplexity_windows(tokens, num_samples, seq_length))
+
+
 def eval_perplexity(
     *,
     model: Any,
@@ -36,22 +88,14 @@ def eval_perplexity(
     import math
     import mlx.core as mx
     import mlx.nn as nn
-    import numpy as np
 
     dataset = request.get("dataset", "wikitext-2")
     num_samples = int(request.get("numSamples", 64))
     seq_length = int(request.get("seqLength", 512))
     batch_size = int(request.get("batchSize", 4))
 
-    dataset_map = {
-        "wikitext-2": "wikitext/wikitext-2-raw-v1",
-    }
-    data_path = dataset_map.get(dataset, dataset)
-
     emit_progress("loading_data", 10.0, "Loading evaluation dataset...")
-    from mlx_lm.perplexity import load_data
-    np.random.seed(123)
-    data = load_data(tokenizer, data_path, num_samples, seq_length)
+    data = load_perplexity_data(tokenizer, dataset, num_samples, seq_length)
 
     emit_progress("evaluating", 20.0, f"Evaluating perplexity on {len(data)} samples...")
     start = time.monotonic()

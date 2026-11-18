@@ -120,6 +120,7 @@ export interface AppTabContext {
   prepareCatalogConversion: (model: ModelVariant) => void;
   prepareLibraryConversion: (item: LibraryItem, resolvedPath?: string) => void;
   handleConvertModel: () => Promise<unknown>;
+  handleCancelConversion: () => Promise<void>;
   handlePickConversionOutputDir: () => Promise<unknown>;
   openModelSelector: (action: "chat" | "server" | "thread", preselectedKey?: string) => void;
   handleDetailsToggle: ReturnType<typeof useDetailsWindowResize>["handleDetailsToggle"];

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import { useTranslation } from "react-i18next";
 import {
   checkBackend,
+  cancelConversion,
   convertModel,
   getVoiceRuntime,
   saveVoiceSettings,
@@ -759,6 +760,14 @@ export default function App() {
     });
   }
 
+  async function handleCancelConversion() {
+    try {
+      await cancelConversion();
+    } catch (cancelError) {
+      setError(cancelError instanceof Error ? cancelError.message : "Could not cancel the conversion.");
+    }
+  }
+
   async function handlePickConversionOutputDir() {
     return pickConversionOutputDir({
       conversionSource,
@@ -849,7 +858,7 @@ export default function App() {
     fileRevealLabel, conversionReady, launchCacheLabel,
     handleRevealPath, handleOpenFilePath, handleOpenExternalUrl, handleLoadModel, handleUnloadModel,
     handleUnloadWarmModel, handleDeleteModel, prepareCatalogConversion, prepareLibraryConversion,
-    handleConvertModel, handlePickConversionOutputDir, openModelSelector, handleDetailsToggle, copyText,
+    handleConvertModel, handleCancelConversion, handlePickConversionOutputDir, openModelSelector, handleDetailsToggle, copyText,
     conversionStartedAt, conversionError, showConversionPicker, setShowConversionPicker,
     showConversionModal, setShowConversionModal,
     apiToken, showRemoteTest, setShowRemoteTest, testModelId, setTestModelId, logQuery, setLogQuery,

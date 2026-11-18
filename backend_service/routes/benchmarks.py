@@ -22,3 +22,12 @@ def run_benchmark(request: Request, body: BenchmarkRunRequest) -> dict[str, Any]
             status_code=400,
             detail=localized_detail(request, detail),
         ) from exc
+
+
+@router.delete("/api/benchmarks/{run_id}")
+def delete_benchmark(request: Request, run_id: str) -> dict[str, Any]:
+    """Remove one saved run from the history."""
+    state = request.app.state.chaosengine
+    if not state.delete_benchmark_run(run_id):
+        raise HTTPException(status_code=404, detail="Benchmark run not found.")
+    return {"deleted": run_id, "benchmarks": state.benchmark_runs}

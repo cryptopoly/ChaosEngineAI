@@ -116,6 +116,8 @@ export function BenchmarkHistoryView({ ctx }: { ctx: AppTabContext }) {
       onBenchmarkViewModeChange={setBenchmarkViewMode}
       onSelectedBenchmarkIdChange={setSelectedBenchmarkId}
       onCompareBenchmarkIdChange={setCompareBenchmarkId}
+      onDeleteBenchmark={(runId) => void benchmarks.handleDeleteBenchmark(runId)}
+      onCopyText={ctx.copyText}
     />
   );
 }

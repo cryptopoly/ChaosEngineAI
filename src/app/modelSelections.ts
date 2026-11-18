@@ -7,6 +7,7 @@ import {
   findCatalogVariantForLibraryItem,
   libraryItemFormat,
 } from "../utils";
+import { findConversionSource } from "../utils/conversionSource";
 
 /**
  * Which model option each surface (chat thread, server, benchmark, conversion)
@@ -56,7 +57,7 @@ export function deriveModelSelections({
     return libraryChatOptions.find((option) => option.path === localItem.path) ?? selectedServerOptionBase;
   })();
   const convertibleLibrary = chatLibrary.filter((item) => libraryItemFormat(item) !== "MLX");
-  const conversionSource = convertibleLibrary.find((item) => item.path === conversionDraft.path) ?? null;
+  const conversionSource = findConversionSource(convertibleLibrary, conversionDraft.path);
   const conversionVariant =
     (conversionSource ? findCatalogVariantForLibraryItem(workspace.featuredModels, conversionSource) : null) ??
     findVariantForReference(workspace.featuredModels, conversionDraft.modelRef, conversionDraft.modelRef) ??

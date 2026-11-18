@@ -360,6 +360,8 @@
     "reQuantizingTitle": "Повторная квантизация уже квантизованного источника",
     "backendNote": "Примечание по бэкенду",
     "reQuantizingDetail": "Источник уже ~{bits}-битный. Понижение усиливает потерю качества — для лучшего результата конвертируйте из исходных весов FP16/BF16.",
+    "ggufSourceTitle": null,
+    "ggufSourceDetail": null,
     "mlxLmAvailable": "Конвертация mlx-lm доступна в активном бэкенде.",
     "startNativeSidecar": "Запустите нативный сайдкар для включения конвертации.",
     "converting": "Конвертация...",
@@ -398,6 +400,7 @@
     "diskBeforeAfter": "Диск до → после",
     "modal": {
       "titleConverting": "Конвертация модели",
+      "cancel": null,
       "titleFailed": "Конвертация не удалась",
       "titleComplete": "Конвертация завершена",
       "debugDetails": "Отладочная информация",
@@ -434,6 +437,7 @@
     "modeThroughput": "Пропускная способность (tok/s)",
     "modePerplexity": "Перплексия (качество)",
     "modeTaskAccuracy": "Точность задачи (MMLU / HellaSwag)",
+    "evalNeedsMlx": null,
     "promptPreset": "Пресет промпта",
     "dataset": "Датасет",
     "samples": "Сэмплы",
@@ -513,6 +517,8 @@
       "both": "Оба"
     },
     "swap": "Поменять",
+    "copyCsv": null,
+    "csvCopied": null,
     "summary": {
       "totalRuns": "Всего запусков",
       "persistentHistory": "Постоянная история",
@@ -547,6 +553,8 @@
     "compareAgainst": "Сравнить с:",
     "pickBaseline": "Выберите базовый запуск...",
     "runAnother": "Запустите ещё один бенчмарк, чтобы включить сравнение.",
+    "deleteRun": null,
+    "deleteRunConfirm": null,
     "properties": {
       "heading": "Параметры запуска",
       "model": "Модель",

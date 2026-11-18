@@ -360,6 +360,8 @@
     "reQuantizingTitle": "重新量化已量化的來源",
     "backendNote": "後端註記",
     "reQuantizingDetail": "來源已經是約 {bits} 位元。再往下會累積品質損失 — 為了最佳結果,請從原始的 FP16/BF16 權重轉換。",
+    "ggufSourceTitle": null,
+    "ggufSourceDetail": null,
     "mlxLmAvailable": "mlx-lm 轉換在使用中的後端可用。",
     "startNativeSidecar": "啟動原生 sidecar 以啟用轉換。",
     "converting": "正在轉換...",
@@ -398,6 +400,7 @@
     "diskBeforeAfter": "磁碟用量(前 → 後)",
     "modal": {
       "titleConverting": "正在轉換模型",
+      "cancel": null,
       "titleFailed": "轉換失敗",
       "titleComplete": "轉換完成",
       "debugDetails": "除錯詳細資訊",
@@ -434,6 +437,7 @@
     "modeThroughput": "吞吐量 (tok/s)",
     "modePerplexity": "困惑度(品質)",
     "modeTaskAccuracy": "任務準確度 (MMLU / HellaSwag)",
+    "evalNeedsMlx": null,
     "promptPreset": "提示詞預設",
     "dataset": "資料集",
     "samples": "樣本數",
@@ -513,6 +517,8 @@
       "both": "兩者"
     },
     "swap": "交換",
+    "copyCsv": null,
+    "csvCopied": null,
     "summary": {
       "totalRuns": "總執行次數",
       "persistentHistory": "持續性歷史",
@@ -547,6 +553,8 @@
     "compareAgainst": "比較對象:",
     "pickBaseline": "選擇基準執行...",
     "runAnother": "執行另一次基準測試以啟用比較。",
+    "deleteRun": null,
+    "deleteRunConfirm": null,
     "properties": {
       "heading": "執行屬性",
       "model": "模型",

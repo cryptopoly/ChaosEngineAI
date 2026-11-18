@@ -727,6 +727,7 @@ export type {
 
 export {
   cancelDownload,
+  cancelConversion,
   convertModel,
   deleteModelDownload,
   deleteModelPath,
@@ -740,6 +741,7 @@ export {
   revealModelPath,
   openMediaFile,
   runBenchmark,
+  deleteBenchmark,
   searchHubModels,
   searchModels,
   stopIdleModelProcesses,

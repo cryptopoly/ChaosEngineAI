@@ -360,6 +360,8 @@
     "reQuantizingTitle": "正在对已量化的源重新量化",
     "backendNote": "后端备注",
     "reQuantizingDetail": "源已经是约 {bits} 位。降低位数会累积质量损失 — 为获得最佳效果,请从原始 FP16/BF16 权重转换。",
+    "ggufSourceTitle": null,
+    "ggufSourceDetail": null,
     "mlxLmAvailable": "活动后端支持 mlx-lm 转换。",
     "startNativeSidecar": "启动原生 sidecar 以启用转换。",
     "converting": "转换中...",
@@ -398,6 +400,7 @@
     "diskBeforeAfter": "磁盘 转换前 → 转换后",
     "modal": {
       "titleConverting": "正在转换模型",
+      "cancel": null,
       "titleFailed": "转换失败",
       "titleComplete": "转换完成",
       "debugDetails": "调试详情",
@@ -434,6 +437,7 @@
     "modeThroughput": "吞吐量 (tok/s)",
     "modePerplexity": "困惑度(质量)",
     "modeTaskAccuracy": "任务准确率 (MMLU / HellaSwag)",
+    "evalNeedsMlx": null,
     "promptPreset": "提示词预设",
     "dataset": "数据集",
     "samples": "样本",
@@ -513,6 +517,8 @@
       "both": "两者"
     },
     "swap": "交换",
+    "copyCsv": null,
+    "csvCopied": null,
     "summary": {
       "totalRuns": "总运行",
       "persistentHistory": "持久化历史",
@@ -547,6 +553,8 @@
     "compareAgainst": "对比基准:",
     "pickBaseline": "选择基线运行...",
     "runAnother": "再运行一次基准测试以启用对比。",
+    "deleteRun": null,
+    "deleteRunConfirm": null,
     "properties": {
       "heading": "运行属性",
       "model": "模型",

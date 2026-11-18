@@ -1,9 +1,11 @@
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
 import { StatCard } from "../../components/StatCard";
 import { BenchmarkScatter } from "../../components/BenchmarkScatter";
 import type { BenchmarkResult } from "../../types";
 import { number } from "../../utils";
+import { benchmarkRunsToCsv } from "../../utils/benchmarkCompare";
 
 export interface BenchmarkHistoryTabProps {
   benchmarks: BenchmarkResult[];
@@ -15,6 +17,8 @@ export interface BenchmarkHistoryTabProps {
   onBenchmarkViewModeChange: (mode: "table" | "chart" | "both") => void;
   onSelectedBenchmarkIdChange: (id: string) => void;
   onCompareBenchmarkIdChange: (id: string) => void;
+  onDeleteBenchmark: (id: string) => void;
+  onCopyText: (text: string) => void;
 }
 
 export function BenchmarkHistoryTab({
@@ -27,20 +31,36 @@ export function BenchmarkHistoryTab({
   onBenchmarkViewModeChange,
   onSelectedBenchmarkIdChange,
   onCompareBenchmarkIdChange,
+  onDeleteBenchmark,
+  onCopyText,
 }: BenchmarkHistoryTabProps) {
   const { t } = useTranslation("common");
+  const beforeClickSelectedRef = useRef<string | null>(null);
+  const [csvCopied, setCsvCopied] = useState(false);
   const benchmarkModels = [...new Set(benchmarks.map(b => b.model))];
   const filteredBenchmarks = benchmarkModelFilter
     ? benchmarks.filter(b => b.model === benchmarkModelFilter)
     : benchmarks;
 
+  // What a run measured, in its own unit: an accuracy or perplexity run has no tok/s (stored as 0).
+  const runResultLabel = (result: BenchmarkResult): string => {
+    const mode = result.mode ?? "throughput";
+    if (mode === "perplexity") {
+      return t("benchmarkHistory.list.pplValue", { value: number(result.perplexity ?? 0), defaultValue: "{value} ppl" });
+    }
+    if (mode === "task_accuracy") return `${((result.taskAccuracy ?? 0) * 100).toFixed(1)}%`;
+    return `${number(result.tokS)} tok/s`;
+  };
+  // Speed cards (Fastest, Best value) rank speed runs only.
+  const speedRuns = filteredBenchmarks.filter((b) => (b.mode ?? "throughput") === "throughput");
+
   const latestRun = filteredBenchmarks[0] ?? null;
-  const fastestRun = [...filteredBenchmarks].sort((left, right) => right.tokS - left.tokS)[0] ?? null;
+  const fastestRun = [...speedRuns].sort((left, right) => right.tokS - left.tokS)[0] ?? null;
   const mostEfficientRun = [...filteredBenchmarks].sort(
     (left, right) => left.cacheGb - right.cacheGb || right.quality - left.quality,
   )[0] ?? null;
   const bestQualityRun = [...filteredBenchmarks].sort((a, b) => b.quality - a.quality)[0] ?? null;
-  const bestValueRun = [...filteredBenchmarks].sort(
+  const bestValueRun = [...speedRuns].sort(
     (a, b) => (b.tokS / Math.max(b.cacheGb, 0.1)) - (a.tokS / Math.max(a.cacheGb, 0.1)),
   )[0] ?? null;
 
@@ -69,6 +89,15 @@ export function BenchmarkHistoryTab({
     } else {
       rows.push({ label: t("benchmarkHistory.metric.speed", { defaultValue: "Speed" }), selected: `${number(s.tokS)} tok/s`, baseline: `${number(c.tokS)} tok/s`, delta: s.tokS - c.tokS, pct: pct(s.tokS, c.tokS) });
       rows.push({ label: t("benchmarkHistory.metric.response", { defaultValue: "Response" }), selected: `${number(s.responseSeconds)} s`, baseline: `${number(c.responseSeconds)} s`, delta: s.responseSeconds - c.responseSeconds, pct: pct(s.responseSeconds, c.responseSeconds), lowerIsBetter: true });
+    }
+    if ((c.mode ?? "throughput") !== mode) {
+      // The baseline measured something else (accuracy against speed, say): no value and no delta,
+      // instead of "0.0 tok/s" and a made-up percentage.
+      for (const row of rows) {
+        row.baseline = "\u2014";
+        row.delta = 0;
+        row.pct = 0;
+      }
     }
     rows.push({ label: t("benchmarkHistory.metric.cache", { defaultValue: "Cache" }), selected: `${number(s.cacheGb)} GB`, baseline: `${number(c.cacheGb)} GB`, delta: s.cacheGb - c.cacheGb, pct: pct(s.cacheGb, c.cacheGb), lowerIsBetter: true });
     rows.push({ label: t("benchmarkHistory.metric.quality", { defaultValue: "Quality" }), selected: `${s.quality}%`, baseline: `${c.quality}%`, delta: s.quality - c.quality, pct: pct(s.quality, c.quality) });
@@ -131,6 +160,21 @@ export function BenchmarkHistoryTab({
             <button
               className="secondary-button"
               type="button"
+              disabled={filteredBenchmarks.length === 0}
+              onClick={() => {
+                // The runs on screen (the model filter applies), newest first.
+                onCopyText(benchmarkRunsToCsv(filteredBenchmarks));
+                setCsvCopied(true);
+                window.setTimeout(() => setCsvCopied(false), 1500);
+              }}
+            >
+              {csvCopied
+                ? t("benchmarkHistory.csvCopied", { defaultValue: "Copied" })
+                : t("benchmarkHistory.copyCsv", { defaultValue: "Copy CSV" })}
+            </button>
+            <button
+              className="secondary-button"
+              type="button"
               onClick={() => {
                 if (!effectiveSelected || !effectiveCompare) return;
                 const a = effectiveSelected.id;
@@ -154,7 +198,7 @@ export function BenchmarkHistoryTab({
             />
             <StatCard
               label={t("benchmarkHistory.summary.latest", { defaultValue: "Latest" })}
-              value={latestRun ? `${number(latestRun.tokS)} tok/s` : t("benchmarkHistory.summary.none", { defaultValue: "None" })}
+              value={latestRun ? runResultLabel(latestRun) : t("benchmarkHistory.summary.none", { defaultValue: "None" })}
               hint={latestRun?.cacheLabel ?? t("benchmarkHistory.summary.noRuns", { defaultValue: "No runs" })}
               onClick={latestRun ? () => onSelectedBenchmarkIdChange(latestRun.id) : undefined}
             />
@@ -276,6 +320,21 @@ export function BenchmarkHistoryTab({
                   <div><span>{t("benchmarkHistory.properties.measured", { defaultValue: "Measured" })}</span><span>{effectiveSelected.measuredAt}</span></div>
                   {effectiveSelected.notes ? <div className="bm-prop-full"><span>{t("benchmarkHistory.properties.notes", { defaultValue: "Notes" })}</span><span>{effectiveSelected.notes}</span></div> : null}
                 </div>
+                <div className="button-row">
+                  <button
+                    className="secondary-button danger-button"
+                    type="button"
+                    onClick={() => {
+                      const question = t("benchmarkHistory.deleteRunConfirm", {
+                        label: effectiveSelected.label,
+                        defaultValue: "Delete the saved run \"{label}\"? This cannot be undone.",
+                      });
+                      if (window.confirm(question)) onDeleteBenchmark(effectiveSelected.id);
+                    }}
+                  >
+                    {t("benchmarkHistory.deleteRun", { defaultValue: "Delete run" })}
+                  </button>
+                </div>
               </div>
             </div>
           ) : (
@@ -308,11 +367,7 @@ export function BenchmarkHistoryTab({
                       const isSelected = result.id === effectiveSelected?.id;
                       const isCompare = result.id === effectiveCompare?.id;
                       const mode = result.mode ?? "throughput";
-                      const resultValue = mode === "perplexity"
-                        ? t("benchmarkHistory.list.pplValue", { value: number(result.perplexity ?? 0), defaultValue: "{value} ppl" })
-                        : mode === "task_accuracy"
-                        ? `${((result.taskAccuracy ?? 0) * 100).toFixed(1)}%`
-                        : `${number(result.tokS)} tok/s`;
+                      const resultValue = runResultLabel(result);
                       const modeLabel = mode === "perplexity"
                         ? t("benchmarkHistory.modeLabel.ppl", { defaultValue: "PPL" })
                         : mode === "task_accuracy"
@@ -323,8 +378,19 @@ export function BenchmarkHistoryTab({
                           key={result.id}
                           type="button"
                           className={`table-row table-button-row benchmark-history-row bm-history-row-wide${isSelected ? " active" : ""}${isCompare ? " compare" : ""}`}
-                          onClick={() => onSelectedBenchmarkIdChange(result.id)}
-                          onDoubleClick={() => onCompareBenchmarkIdChange(result.id)}
+                          onClick={(e) => {
+                            // A double click sends two clicks first. Only the first one selects, and it
+                            // remembers what was selected, so the double click can make this row the
+                            // baseline and put the selection back.
+                            if (e.detail > 1) return;
+                            beforeClickSelectedRef.current = effectiveSelected?.id ?? null;
+                            onSelectedBenchmarkIdChange(result.id);
+                          }}
+                          onDoubleClick={() => {
+                            const previous = beforeClickSelectedRef.current;
+                            onCompareBenchmarkIdChange(result.id);
+                            if (previous && previous !== result.id) onSelectedBenchmarkIdChange(previous);
+                          }}
                           onContextMenu={(e) => { e.preventDefault(); onCompareBenchmarkIdChange(result.id); }}
                         >
                           <div>

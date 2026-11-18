@@ -134,6 +134,29 @@ def _peek_hf_model_type(
         return None
 
 
+def _resolve_local_model_dir(path: str) -> str:
+    """Folder to hand to ``mlx_lm convert`` for a local source.
+
+    A Hugging Face cache folder (``models--owner--name``) keeps its files
+    under ``snapshots/<revision>/``, so the folder itself has no
+    ``config.json`` and the converter fails on it. Return the newest
+    snapshot that has one; any other path comes back unchanged.
+    """
+    candidate = Path(path)
+    if not candidate.is_dir() or (candidate / "config.json").is_file():
+        return path
+    snapshots = candidate / "snapshots"
+    if not snapshots.is_dir():
+        return path
+    try:
+        revisions = [rev for rev in snapshots.iterdir() if (rev / "config.json").is_file()]
+    except OSError:
+        return path
+    if not revisions:
+        return path
+    return str(max(revisions, key=lambda rev: rev.stat().st_mtime))
+
+
 def _nearest_supported_arch(requested: str, supported: frozenset[str]) -> str | None:
     """Suggest the closest supported architecture for a given model_type.
 
@@ -165,17 +188,107 @@ def _nearest_supported_arch(requested: str, supported: frozenset[str]) -> str | 
     return candidates[0]
 
 
+def _conversion_source_name(source_label: str) -> str:
+    """Short model name for the default output folder.
+
+    ``Path.stem`` cut ``Qwen3.5-4B`` down to ``Qwen3`` and kept the cache
+    prefix, so a cache folder ``models--Qwen--Qwen3.5-4B`` became
+    ``models--Qwen--Qwen3``. Only a ``.gguf`` suffix and a trailing
+    ``-GGUF`` in a repo name are dropped here.
+    """
+    name = Path(source_label).name
+    if name.lower().endswith(".gguf"):
+        name = name[: -len(".gguf")]
+    if name.startswith("models--"):
+        name = name.split("--")[-1]
+    # A repo named "...-GGUF" must not carry that into the MLX folder name: the model loader
+    # takes any path with "gguf" in it for a GGUF model and then finds no .gguf file there.
+    name = re.sub(r"[-_.]?gguf$", "", name, flags=re.IGNORECASE)
+    return name or "model"
+
+
 def _default_conversion_output(source_label: str) -> str:
     home_models = Path.home() / "Models"
     home_models.mkdir(parents=True, exist_ok=True)
-    base = "".join(character if character.isalnum() or character in {"-", "_"} else "-" for character in source_label)
-    base = base.strip("-_") or "model"
+    # Dots are kept so "Qwen3.5-4B" stays readable (it became "Qwen3-5-4B"); the label is one
+    # path component either way, since every separator turns into "-".
+    base = "".join(character if character.isalnum() or character in {"-", "_", "."} else "-" for character in source_label)
+    base = base.strip("-_.") or "model"
     candidate = home_models / f"{base}-mlx"
     suffix = 2
     while candidate.exists():
         candidate = home_models / f"{base}-mlx-{suffix}"
         suffix += 1
     return str(candidate)
+
+
+def _estimate_conversion_output_bytes(
+    source_dir: str | None,
+    *,
+    quantize: bool,
+    q_bits: int,
+    dtype: str,
+) -> int | None:
+    """Rough size of the converted model, for the free-space check.
+
+    Only a local source can be measured. The source width comes from
+    ``config.json`` (``torch_dtype`` / ``dtype``); when it is not stated, or
+    any block states a wider type, the source is taken as 32-bit, which gives
+    the smaller estimate, so the check can miss a tight case but never
+    refuses one that would fit.
+    """
+    if not source_dir:
+        return None
+    root = Path(source_dir)
+    if not root.is_dir():
+        return None
+    source_bytes = _path_size_bytes(root)
+    if source_bytes <= 0:
+        return None
+    source_bits = 32
+    try:
+        config_text = (root / "config.json").read_text(encoding="utf-8")
+    except OSError:
+        config_text = ""
+    # The width may sit in a nested block (``text_config``), so the whole file is searched.
+    stated = re.findall(r'"(?:torch_)?dtype"\s*:\s*"([A-Za-z0-9_]+)"', config_text)
+    if stated and all("16" in value for value in stated):
+        source_bits = 16
+    if quantize:
+        target_bits = q_bits + 0.5  # mlx-lm reports about half a bit of overhead per weight
+    else:
+        target_bits = 32 if dtype == "float32" else 16
+    return int(source_bytes * target_bits / source_bits)
+
+
+def _free_disk_bytes(path: str) -> int | None:
+    """Free bytes on the volume that will hold ``path`` (nearest existing parent)."""
+    import shutil
+
+    candidate = Path(path)
+    for parent in (candidate, *candidate.parents):
+        if parent.exists():
+            try:
+                return int(shutil.disk_usage(parent).free)
+            except OSError:
+                return None
+    return None
+
+
+def _summarise_convert_failure(stderr: str, stdout: str, returncode: int) -> str:
+    """One readable line for a failed ``mlx_lm convert`` run.
+
+    A Python traceback is cut down to its last line (the error itself);
+    a process ended by a signal says so instead of echoing progress bars.
+    """
+    if returncode < 0:
+        return f"The conversion was stopped before it finished (signal {-returncode})."
+    text = (stderr or stdout or "").strip()
+    if "Traceback (most recent call last)" in text:
+        lines = [line.strip() for line in text.splitlines() if line.strip()]
+        if lines:
+            return lines[-1]
+    return text or "mlx_lm.convert failed."
 
 
 def _bytes_to_gb(value: int | float) -> float:

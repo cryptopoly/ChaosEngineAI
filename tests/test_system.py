@@ -64,6 +64,17 @@ class RunningProcessListTests(unittest.TestCase):
         attrs = set(scan.call_args.args[0])
         self.assertEqual(attrs, {"pid", "name", "cmdline"})
 
+    def test_a_process_psutil_cannot_read_does_not_break_the_snapshot(self):
+        # Seen in a full pytest run on macOS: psutil's C reader raised SystemError for a process that
+        # changed while it was read, inside process_iter, and app start-up failed with it.
+        def broken_scan(_attrs):
+            yield self._process(1, "Python", ["/x/Python", "-m", "backend_service.mlx_worker"])
+            raise SystemError("<built-in function proc_cmdline> returned a result with an exception set")
+
+        with mock.patch("backend_service.helpers.system_processes.platform.system", return_value="Linux"), \
+                mock.patch("backend_service.helpers.system_processes.psutil.process_iter", side_effect=broken_scan):
+            self.assertEqual(_list_llm_processes(), [])
+
     def test_macos_top_is_not_run_when_no_model_process_exists(self):
         # Startup and every idle UI poll paid 0.7 s for a ``top`` call nobody read.
         with mock.patch("backend_service.helpers.system_processes.platform.system", return_value="Darwin"), \

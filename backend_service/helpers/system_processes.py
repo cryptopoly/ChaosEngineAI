@@ -242,9 +242,11 @@ def _list_llm_processes(limit: int = 12) -> list[dict[str, Any]]:
                 described = _describe_process(pid, top_mem=top_mem)
                 if described is not None:
                     matches.append(described)
-            except (psutil.NoSuchProcess, psutil.AccessDenied, PermissionError, OSError):
+            except (psutil.NoSuchProcess, psutil.AccessDenied, PermissionError, OSError, SystemError):
                 continue
-    except (psutil.Error, PermissionError, OSError):
+    # SystemError: on macOS psutil's C reader can fail on a process that changes while it is read
+    # ("proc_cmdline returned a result with an exception set"); the scan must not take the snapshot down.
+    except (psutil.Error, PermissionError, OSError, SystemError):
         return []
 
     matches.sort(key=lambda item: (item["memoryGb"], item["cpuPercent"]), reverse=True)

@@ -404,7 +404,7 @@ class ChaosEngineState:
 
         def wait_then_announce() -> None:
             deadline = time.monotonic() + 120.0
-            while time.monotonic() < deadline and getattr(self.runtime.capabilities, "probing", False):
+            while time.monotonic() < deadline and getattr(getattr(self.runtime, "capabilities", None), "probing", False):
                 time.sleep(1.0)
             try:
                 announce(self._system_snapshot())

@@ -12,7 +12,7 @@ import threading
 import time
 import unittest
 from pathlib import Path
-from types import SimpleNamespace
+from unittest import mock
 
 from fastapi.testclient import TestClient
 
@@ -35,11 +35,16 @@ class _Engine:
     def __init__(self) -> None:
         self.started = threading.Event()
         self.progress: list[dict] = []
+        # A worker stuck inside one item (a dataset download, a very long batch) never looks at the cancel file.
+        self.ignore_cancel_file = False
+        self.process_ended = threading.Event()
 
     def _loop(self, progress_callback, cancel_file, total):
         self.started.set()
         for step in range(1, total + 1):
-            if cancel_file and os.path.exists(cancel_file):
+            if self.process_ended.is_set():
+                raise RuntimeError("MLX worker exited unexpectedly: worker exited with code -9")
+            if not self.ignore_cancel_file and cancel_file and os.path.exists(cancel_file):
                 raise RuntimeError(CANCELLED_MESSAGE)
             if progress_callback:
                 progress_callback({"phase": "evaluating", "step": step, "total": total, "correct": step // 2})
@@ -90,6 +95,7 @@ class _Runtime(FakeRuntime):
     def unload_model(self) -> None:
         self.unload_calls += 1
         self.stopped.set()
+        self.engine.process_ended.set()
         super().unload_model()
 
 
@@ -162,6 +168,21 @@ class BenchmarkCancelTests(unittest.TestCase):
         self.assertEqual(self.runtime.unload_calls, 0)
         self.assertIsNotNone(self.runtime.loaded_model)
         self.assertFalse(BENCHMARK_PROGRESS.snapshot()["active"])
+
+    def test_a_worker_that_does_not_stop_between_items_has_its_process_ended(self):
+        self._preload()
+        self.runtime.engine.ignore_cancel_file = True
+        thread = self._start(mode="task_accuracy", taskLimit=5000)
+        self.assertTrue(self.runtime.engine.started.wait(5))
+        with mock.patch.object(bench, "_COOPERATIVE_CANCEL_SECONDS", 0.2):
+            self.assertTrue(bench.cancel_benchmark(self.state))
+        thread.join(10)
+        self.assertFalse(thread.is_alive())
+        response = self.result["value"]
+        self.assertTrue(response["cancelled"])
+        self.assertTrue(response["modelUnloaded"])  # the price of a stop the worker did not take
+        self.assertGreaterEqual(self.runtime.unload_calls, 1)
+        self.assertEqual(self.state.benchmark_runs, [])
 
     def test_cancel_mid_eval_unloads_the_model_the_run_loaded(self):
         thread = self._start(mode="perplexity", perplexityNumSamples=1024)

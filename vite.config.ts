@@ -16,5 +16,8 @@ export default defineConfig({
     host: "127.0.0.1",
     port: 5174,
     strictPort: true,
+    // The browser tests keep a throwaway app home in e2e/.run. On Windows a watched folder cannot be renamed or
+    // replaced into, so watching it made the backend's project, skill and settings saves fail with "Access is denied".
+    watch: { ignored: ["**/e2e/.run/**"] },
   },
 });

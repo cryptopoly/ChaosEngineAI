@@ -65,6 +65,11 @@ test("a remembered hidden tab is not reopened: the Tools group opens on a listed
   await openApp(page);
   await (await primaryNav(page)).locator(".nav-button", { hasText: "Tools" }).click();
   const bar = page.locator(".subtab-bar");
-  await expect(bar.getByRole("tab", { selected: true })).toHaveCount(1);
+  // Conversion is listed on Apple Silicon only; one listed page left shows no tab bar, just that page.
+  const listedHere = listedTools.filter(
+    (label) => label !== "Conversion" || (process.platform === "darwin" && process.arch === "arm64"),
+  );
+  if (listedHere.length > 1) await expect(bar.getByRole("tab", { selected: true })).toHaveCount(1);
+  else await expect(page.getByRole("heading", { name: listedHere[0], level: 2 })).toBeVisible();
   for (const label of hiddenTools) await expect(bar.getByRole("tab", { name: label })).toHaveCount(0);
 });

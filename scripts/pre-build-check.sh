@@ -13,6 +13,9 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$REPO_ROOT"
+# The venv keeps python in bin/ on macOS and Linux, in Scripts/ on Windows (Git Bash).
+PY=.venv/bin/python
+[[ -x "$PY" ]] || PY=.venv/Scripts/python.exe
 
 PASS=0
 FAIL=0
@@ -30,7 +33,7 @@ echo
 # 1. Python tests
 # ------------------------------------------------------------------
 echo "[1/10] Python tests..."
-if .venv/bin/python -m pytest tests/ -q --tb=line 2>&1 | tail -3; then
+if "$PY" -m pytest tests/ -q --tb=line 2>&1 | tail -3; then
   pass "Python tests"
 else
   fail "Python tests — see output above"
@@ -88,7 +91,7 @@ echo
 # 5. Cache strategy validation
 # ------------------------------------------------------------------
 echo "[5/10] Cache strategy validation..."
-CACHE_CHECK=$(.venv/bin/python -c "
+CACHE_CHECK=$("$PY" -c "
 from cache_compression import registry
 registry.discover()
 valid = {'f32','f16','bf16','q8_0','q4_0','q4_1','iq4_nl','q5_0','q5_1'}
@@ -197,8 +200,8 @@ echo
 # scripts/dependency-audit-ignore.json (reason + expiry). Packages behind the
 # newest release are listed but never block. Needs network access.
 echo "[7/10] Dependency audit (osv.dev)..."
-.venv/bin/python scripts/check-upstreams.py || warn "upstream freshness report could not run"
-.venv/bin/python scripts/audit-dependencies.py
+"$PY" scripts/check-upstreams.py || warn "upstream freshness report could not run"
+"$PY" scripts/audit-dependencies.py
 AUDIT_RC=$?
 if [[ $AUDIT_RC -eq 0 ]]; then
   pass "dependency audit — no blocking advisories"

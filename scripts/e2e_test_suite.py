@@ -1471,6 +1471,10 @@ def phase_1(cap: Capability) -> PhaseResult:
             "graceful full-reprocess degradation, logic unit-tested separately"
         ), {"pt1": pt1, "pt2": pt2}
 
+    mlx_only = {
+        "MLX native cache", "MLX TurboQuant cache", "MLX DFlash on a hybrid model (FU-135)", "fused attention flag",
+        "modern samplers (DRY+XTC)", "unusable settings are corrected with a note", "MLX prompt-cache reuse",
+    }
     for name, fn in [
         ("MLX native cache", _mlx_native),
         ("MLX TurboQuant cache", _mlx_turboquant),
@@ -1498,6 +1502,10 @@ def phase_1(cap: Capability) -> PhaseResult:
         ("unusable settings are corrected with a note", _hostile_settings),
         ("MLX prompt-cache reuse", _mlx_prompt_cache_reuse),
     ]:
+        # These load with backend mlx: an MLX folder on disk (a Windows or Linux box can hold one) is not enough.
+        if name in mlx_only and not cap.mlx_usable:
+            phase.checks.append(CheckResult(name, "skip", reason="MLX is not usable here (Apple Silicon only)"))
+            continue
         phase.checks.append(_check(name, fn))
     fails = [c for c in phase.checks if c.status == "fail"]
     phase.status = "fail" if fails else ("skip" if all(c.status == "skip" for c in phase.checks) else "pass")

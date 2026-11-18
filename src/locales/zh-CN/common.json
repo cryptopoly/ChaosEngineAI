@@ -324,6 +324,117 @@
       "musicBare": "音乐引擎忙碌"
     }
   },
+  "serverActivity": {
+    "views": {
+      "label": null,
+      "overview": null,
+      "activity": null
+    },
+    "summary": {
+      "requested": null,
+      "resolving": null,
+      "loading": null,
+      "loaded": null,
+      "loadedWarm": null,
+      "parked": null,
+      "firstToken": null,
+      "generation": null,
+      "idle": null,
+      "unloaded": null
+    },
+    "reason": {
+      "user": null,
+      "swap": null,
+      "memory": null,
+      "idle": null,
+      "error": null
+    },
+    "kind": {
+      "requested": null,
+      "resolving": null,
+      "loading": null,
+      "loaded": null,
+      "load_failed": null,
+      "parked": null,
+      "first_token": null,
+      "generation": null,
+      "generation_failed": null,
+      "idle": null,
+      "unloaded": null
+    },
+    "phase": {
+      "loading": null,
+      "ready": null,
+      "generating": null,
+      "idle": null,
+      "warm": null,
+      "failed": null
+    },
+    "timeline": {
+      "title": null,
+      "window": null,
+      "windows": {
+        "15m": null,
+        "1h": null,
+        "24h": null,
+        "all": null
+      },
+      "empty": null,
+      "live": null,
+      "legend": null
+    },
+    "list": {
+      "title": null,
+      "empty": null,
+      "select": null
+    },
+    "detail": {
+      "request": null,
+      "modelRef": null,
+      "engine": null,
+      "cache": null,
+      "speculative": null,
+      "message": null,
+      "error": null,
+      "command": null,
+      "stderr": null,
+      "env": null
+    },
+    "copyEvent": null,
+    "paused": null,
+    "live": null,
+    "offline": null,
+    "filter": {
+      "model": null,
+      "allModels": null,
+      "level": null,
+      "allLevels": null,
+      "request": null,
+      "search": null
+    },
+    "level": {
+      "info": null,
+      "warning": null,
+      "error": null
+    },
+    "pause": null,
+    "resume": null,
+    "latestFailure": null,
+    "selectAll": null,
+    "selectNone": null,
+    "copySelected": null,
+    "exportSelected": null,
+    "lines": {
+      "title": null,
+      "filter": null,
+      "noMatch": null
+    },
+    "recent": {
+      "title": null,
+      "open": null,
+      "empty": null
+    }
+  },
   "conversionTab": {
     "progress": {
       "title": "正在转换模型",

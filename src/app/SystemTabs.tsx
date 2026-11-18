@@ -43,7 +43,6 @@ export function ServerView({ ctx }: { ctx: AppTabContext }) {
     openModelSelector, handleLoadModel, handleUnloadWarmModel,
   } = ctx;
   const { settingsDraft, setSettingsDraft, handleRestartServer, handleStopServer, handleSaveSettings } = ctx.settings;
-  const serverLogEntries = workspace.logs.slice(0, 120).reverse();
   const remoteAccessRequested = settingsDraft.allowRemoteConnections;
   const remoteAccessActive = workspace.server.remoteAccessActive ?? false;
   const serverLanUrls = workspace.server.lanUrls ?? [];
@@ -79,7 +78,7 @@ export function ServerView({ ctx }: { ctx: AppTabContext }) {
       engineLabel={workspace.runtime.engineLabel}
       activeGenerations={workspace.system.activeGenerations}
       settingsDraft={settingsDraft}
-      serverLogEntries={serverLogEntries}
+      logEntries={workspace.logs}
       showRemoteTest={showRemoteTest}
       testModelId={testModelId}
       apiToken={apiToken}

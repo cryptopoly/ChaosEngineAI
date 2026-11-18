@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
-import { StatCard } from "../../components/StatCard";
-import { ModelLoadingProgress } from "../../components/ModelLoadingProgress";
 import type { ActiveGeneration, LogEntry, ModelLoadingState, OrphanedWorker, WarmModel } from "../../types";
-import { busyEngineLines } from "../../utils/busyEngine";
 import type { SettingsDraft } from "../../types/chat";
+import { useModelEvents } from "../../hooks/useModelEvents";
+import { ServerActivity } from "./ServerActivity";
+import { ServerOverview } from "./ServerOverview";
+import { useServerView, type ServerViewId } from "./serverView";
 
 export interface ServerTabProps {
   serverStatus: "running" | "idle";
@@ -27,7 +27,8 @@ export interface ServerTabProps {
   /** Image, video or music runs in flight: the API reads "idle" while one holds the GPU. */
   activeGenerations?: ActiveGeneration[];
   settingsDraft: SettingsDraft;
-  serverLogEntries: LogEntry[];
+  /** Plain log lines, newest first (the old Logs page); shown under Activity. */
+  logEntries: LogEntry[];
   showRemoteTest: boolean;
   testModelId: string | null;
   apiToken: string | null;
@@ -55,124 +56,36 @@ export interface ServerTabProps {
   onTestModelIdChange: (id: string | null) => void;
 }
 
-export function ServerTab({
-  serverStatus,
-  serverPort,
-  localServerUrl,
-  primaryLanUrl,
-  primaryLanOrigin,
-  remoteAccessActive,
-  remoteAccessRequested,
-  preferredPortUnavailable,
-  busyAction,
-  busy,
-  backendOnline,
-  warmModels,
-  serverLoading,
-  requestsServed,
-  activeConnections,
-  engineLabel,
-  activeGenerations,
-  settingsDraft,
-  serverLogEntries,
-  showRemoteTest,
-  testModelId,
-  apiToken,
-  localHealthCurl,
-  localModelsCurl,
-  remoteHealthCurl,
-  remoteModelsCurl,
-  recentOrphanedWorkers,
-  selectedServerOptionKey,
-  onOpenModelSelector,
-  onRestartServer,
-  onStopServer,
-  onLoadModel,
-  onUnloadWarmModel,
-  onSaveSettings,
-  onSettingsDraftChange,
-  onShowRemoteTestChange,
-  onTestModelIdChange,
-}: ServerTabProps) {
+const VIEWS: ServerViewId[] = ["overview", "activity"];
+
+/** The Server page: Overview (status, connect, warm models, settings) and Activity (model events and log lines). */
+export function ServerTab(props: ServerTabProps) {
+  const {
+    backendOnline,
+    localServerUrl,
+    apiToken,
+    logEntries,
+    showRemoteTest,
+    testModelId,
+    localHealthCurl,
+    localModelsCurl,
+    remoteHealthCurl,
+    remoteModelsCurl,
+    remoteAccessActive,
+    onShowRemoteTestChange,
+  } = props;
   const { t } = useTranslation("common");
-  const serverLogRef = useRef<HTMLDivElement>(null);
-  const [serverLogAtBottom, setServerLogAtBottom] = useState(true);
-  const [orphansDismissed, setOrphansDismissed] = useState(false);
-
-  // Reset the local dismissal whenever a fresh batch of orphans arrives
-  // (first PID in the list changes = new event), and auto-hide the banner
-  // 12s after the latest batch so it behaves like a notification instead
-  // of persistent state.
-  const latestOrphanPid = recentOrphanedWorkers[0]?.pid;
-  useEffect(() => {
-    if (latestOrphanPid == null) return;
-    setOrphansDismissed(false);
-    const timer = window.setTimeout(() => setOrphansDismissed(true), 12_000);
-    return () => window.clearTimeout(timer);
-  }, [latestOrphanPid]);
-
-  function handleServerLogScroll() {
-    const el = serverLogRef.current;
-    if (!el) return;
-    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 32;
-    setServerLogAtBottom(atBottom);
-  }
-
-  function scrollServerLogToBottom() {
-    if (serverLogRef.current) {
-      serverLogRef.current.scrollTop = serverLogRef.current.scrollHeight;
-      setServerLogAtBottom(true);
-    }
-  }
-
-  useEffect(() => {
-    if (serverLogAtBottom && serverLogRef.current) {
-      serverLogRef.current.scrollTop = serverLogRef.current.scrollHeight;
-    }
-  }, [serverLogEntries, serverLogAtBottom]);
+  const [view, setView] = useServerView();
+  const feed = useModelEvents(backendOnline);
 
   function copyText(text: string) {
     void navigator.clipboard.writeText(text);
   }
 
-  const [showApiToken, setShowApiToken] = useState(false);
-  const maskedToken = apiToken ? `${apiToken.slice(0, 4)}${"•".repeat(Math.max(apiToken.length - 8, 4))}${apiToken.slice(-4)}` : null;
-
-  const loadingRef = serverLoading?.modelRef ?? null;
-
-  // "Connect your app" snippets (#2). Built from the live server URL,
-  // API key, and an active/warm model id so they're copy-paste runnable.
-  const connectKey = apiToken ?? "<chaosengine-api-token>";
-  const connectModel =
-    warmModels.find((m) => m.active)?.ref ?? warmModels[0]?.ref ?? "your-model-id";
-  const ollamaBase = localServerUrl.replace(/\/v1\/?$/, "");
-  const pythonSnippet = `from openai import OpenAI
-
-client = OpenAI(base_url="${localServerUrl}", api_key="${connectKey}")
-resp = client.chat.completions.create(
-    model="${connectModel}",
-    messages=[{"role": "user", "content": "Hello"}],
-)
-print(resp.choices[0].message.content)`;
-  const jsSnippet = `import OpenAI from "openai";
-
-const client = new OpenAI({ baseURL: "${localServerUrl}", apiKey: "${connectKey}" });
-const resp = await client.chat.completions.create({
-  model: "${connectModel}",
-  messages: [{ role: "user", content: "Hello" }],
-});
-console.log(resp.choices[0].message.content);`;
-  const continueSnippet = `{
-  "models": [
-    {
-      "title": "ChaosEngineAI",
-      "provider": "openai",
-      "model": "${connectModel}",
-      "apiBase": "${localServerUrl}",
-      "apiKey": "${connectKey}"
-    }
-  ]
-}`;
+  const viewLabel = (id: ServerViewId) =>
+    id === "overview"
+      ? t("serverActivity.views.overview", { defaultValue: "Overview" })
+      : t("serverActivity.views.activity", { defaultValue: "Activity" });
 
   return (
     <div className="content-grid">
@@ -180,371 +93,36 @@ console.log(resp.choices[0].message.content);`;
         title={t("tabs.server")}
         subtitle={t("tabCaptions.server")}
         className="span-2"
-      >
-        <div className="server-layout">
-          <div className="server-main-col">
-            <div className="server-status-strip">
-              <div className="server-status-copy">
-                <div className="server-status-heading">
-                  <span className={`badge ${serverStatus === "running" ? "success" : "warning"}`}>
-                    {serverStatus.toUpperCase()}
-                  </span>
-                  <h3>{localServerUrl}</h3>
-                </div>
-                {remoteAccessActive && primaryLanUrl && (
-                  <p className="mono-text muted-text">{primaryLanUrl}</p>
-                )}
-                {busyAction ? (
-                  <p className="busy-indicator"><span className="busy-dot" />{busyAction}</p>
-                ) : null}
-                {busyEngineLines(t, activeGenerations).map((line) => (
-                  <p key={line} className="busy-indicator" role="status"><span className="busy-dot" />{line}</p>
-                ))}
-              </div>
-              <div className="button-row server-actions">
-                <button
-                  className="primary-button"
-                  type="button"
-                  onClick={() => onOpenModelSelector("server", selectedServerOptionKey)}
-                  disabled={busy || !backendOnline}
-                >
-                  {t("serverTab.loadModel", { defaultValue: "Load Model" })}
-                </button>
-                <button
-                  className="secondary-button"
-                  type="button"
-                  onClick={() => void onRestartServer()}
-                  disabled={busy || !backendOnline}
-                >
-                  {t("serverTab.restart", { defaultValue: "Restart" })}
-                </button>
-                <button
-                  className="secondary-button danger-button"
-                  type="button"
-                  onClick={() => void onStopServer()}
-                  disabled={busy || !backendOnline}
-                >
-                  {t("serverTab.stop", { defaultValue: "Stop" })}
-                </button>
-                <button
-                  className="secondary-button"
-                  type="button"
-                  onClick={() => { onTestModelIdChange(null); onShowRemoteTestChange(true); }}
-                >
-                  {t("serverTab.test", { defaultValue: "Test" })}
-                </button>
-              </div>
-            </div>
-
-            <div className="server-api-token-row">
-              <div className="server-api-token-label">
-                <strong>{t("serverTab.apiKey", { defaultValue: "API key" })}</strong>
-                <small className="muted-text">{t("serverTab.apiKeyHint", { defaultValue: "Required as Authorization: Bearer … on every /v1 and /api call." })}</small>
-              </div>
-              <div className="server-api-token-value">
-                <span className="mono-text">
-                  {apiToken
-                    ? (showApiToken ? apiToken : maskedToken)
-                    : t("serverTab.waitingForBackend", { defaultValue: "(waiting for backend…)" })}
-                </span>
-                <div className="button-row">
-                  <button
-                    className="secondary-button"
-                    type="button"
-                    disabled={!apiToken}
-                    onClick={() => setShowApiToken((v) => !v)}
-                  >
-                    {showApiToken
-                      ? t("serverTab.hide", { defaultValue: "Hide" })
-                      : t("serverTab.reveal", { defaultValue: "Reveal" })}
-                  </button>
-                  <button
-                    className="secondary-button"
-                    type="button"
-                    disabled={!apiToken}
-                    onClick={() => apiToken && copyText(apiToken)}
-                  >
-                    {t("serverTab.copy", { defaultValue: "Copy" })}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <details className="server-connect-panel" open>
-              <summary>{t("serverTab.connect.title", { defaultValue: "Connect your app" })}</summary>
-              <p className="muted-text server-connect-sub">
-                {t("serverTab.connect.subtitle", { defaultValue: "OpenAI-compatible endpoint. Point any OpenAI SDK or compatible app at the base URL below with the API key above." })}
-              </p>
-              <div className="server-command">
-                <div className="server-command-header">
-                  <strong>{t("serverTab.connect.baseUrl", { defaultValue: "Base URL" })}</strong>
-                  <button className="secondary-button" type="button" onClick={() => copyText(localServerUrl)}>{t("serverTab.copy", { defaultValue: "Copy" })}</button>
-                </div>
-                <p className="mono-text">{localServerUrl}</p>
-              </div>
-              <div className="server-command">
-                <div className="server-command-header">
-                  <strong>{t("serverTab.connect.python", { defaultValue: "Python · openai" })}</strong>
-                  <button className="secondary-button" type="button" onClick={() => copyText(pythonSnippet)}>{t("serverTab.copy", { defaultValue: "Copy" })}</button>
-                </div>
-                <pre className="mono-text server-code-block">{pythonSnippet}</pre>
-              </div>
-              <div className="server-command">
-                <div className="server-command-header">
-                  <strong>{t("serverTab.connect.javascript", { defaultValue: "JavaScript · openai" })}</strong>
-                  <button className="secondary-button" type="button" onClick={() => copyText(jsSnippet)}>{t("serverTab.copy", { defaultValue: "Copy" })}</button>
-                </div>
-                <pre className="mono-text server-code-block">{jsSnippet}</pre>
-              </div>
-              <div className="server-command">
-                <div className="server-command-header">
-                  <strong>{t("serverTab.connect.continueDev", { defaultValue: "Continue.dev (config)" })}</strong>
-                  <button className="secondary-button" type="button" onClick={() => copyText(continueSnippet)}>{t("serverTab.copy", { defaultValue: "Copy" })}</button>
-                </div>
-                <pre className="mono-text server-code-block">{continueSnippet}</pre>
-              </div>
-              <div className="server-command">
-                <div className="server-command-header">
-                  <strong>{t("serverTab.connect.openWebui", { defaultValue: "Open WebUI" })}</strong>
-                </div>
-                <p className="muted-text">
-                  {t("serverTab.connect.openWebuiHint", { base: localServerUrl, defaultValue: "Admin → Settings → Connections → OpenAI API. Base URL: {base} — use the API key above." })}
-                </p>
-              </div>
-              <div className="server-command">
-                <div className="server-command-header">
-                  <strong>{t("serverTab.connect.ollamaApps", { defaultValue: "Ollama-compatible apps" })}</strong>
-                  <button className="secondary-button" type="button" onClick={() => copyText(ollamaBase)}>{t("serverTab.copy", { defaultValue: "Copy" })}</button>
-                </div>
-                <p className="muted-text">
-                  {t("serverTab.connect.ollamaHint", { defaultValue: "Set the app's Ollama host / base URL to the address below — native /api endpoints are served alongside /v1." })}
-                </p>
-                <p className="mono-text">{ollamaBase}</p>
-              </div>
-            </details>
-
-            {recentOrphanedWorkers.length > 0 && !orphansDismissed ? (
-              <div className="callout warning server-warning-callout">
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                  <strong>{t("serverTab.orphans.title", { defaultValue: "Orphaned backend workers were cleaned up" })}</strong>
-                  <button
-                    type="button"
-                    className="callout-dismiss-btn"
-                    onClick={() => setOrphansDismissed(true)}
-                    title={t("serverTab.orphans.dismiss", { defaultValue: "Dismiss" })}
-                    aria-label={t("serverTab.orphans.dismissAria", { defaultValue: "Dismiss orphan worker notification" })}
-                  >
-                    &times;
-                  </button>
-                </div>
-                <p>
-                  {t("serverTab.orphans.body", {
-                    count: recentOrphanedWorkers.length,
-                    defaultValue: "{count, plural, one {ChaosEngineAI recently found and terminated # untracked worker left behind by an older load or crash.} other {ChaosEngineAI recently found and terminated # untracked workers left behind by an older load or crash.}}",
-                  })}
-                </p>
-                <p className="mono-text muted-text">
-                  {recentOrphanedWorkers
-                    .slice(0, 4)
-                    .map((worker) => `${worker.label} pid ${worker.pid} (${worker.action})`)
-                    .join(" · ")}
-                </p>
-              </div>
-            ) : null}
-
-            {(() => {
-              const loadingName = serverLoading?.modelName ?? null;
-              if (warmModels.length === 0) {
-                return null;
-              }
-              return (
-                <div className="warm-pool-list">
-                  {warmModels.map((w) => {
-                    const isLoading = loadingRef === w.ref;
-                    const badgeClass = w.active ? "success" : isLoading ? "accent" : "muted";
-                    const badgeLabel = w.active
-                      ? t("serverTab.badgeActive", { defaultValue: "ACTIVE" })
-                      : isLoading
-                        ? t("serverTab.badgeLoading", { defaultValue: "LOADING" })
-                        : t("serverTab.badgeWarm", { defaultValue: "WARM" });
-                    const endpoint = `${localServerUrl}  ${w.ref}`;
-                    return (
-                      <div key={w.ref} className={`warm-pool-row${w.active ? " active" : ""}${isLoading ? " loading" : ""}`}>
-                        <div className="row-meta">
-                          <div className="row-meta-head">
-                            <span className={`badge ${badgeClass}`}>{badgeLabel}</span>
-                            <h4>{w.name}</h4>
-                            <small className="row-engine">{w.engine}</small>
-                          </div>
-                          <div className="row-endpoint">
-                            <p className="mono-text">{localServerUrl}</p>
-                            <p className="mono-text muted-text">{t("serverTab.modelIdLabel", { ref: w.ref, defaultValue: "model id: {ref}" })}</p>
-                            <button
-                              className="secondary-button"
-                              type="button"
-                              onClick={() => copyText(endpoint)}
-                            >
-                              {t("serverTab.copy", { defaultValue: "Copy" })}
-                            </button>
-                          </div>
-                          {isLoading && serverLoading ? (
-                            <ModelLoadingProgress loading={serverLoading} />
-                          ) : null}
-                        </div>
-                        <div className="row-actions button-row">
-                          <button
-                            className="primary-button"
-                            type="button"
-                            disabled={w.active || busy || !backendOnline}
-                            onClick={() => void onLoadModel({ modelRef: w.ref, modelName: w.name, source: "warm-pool" })}
-                          >
-                            {t("serverTab.activate", { defaultValue: "Activate" })}
-                          </button>
-                          <button
-                            className="secondary-button"
-                            type="button"
-                            disabled={busy || !backendOnline}
-                            onClick={() => void onUnloadWarmModel(w.ref)}
-                          >
-                            {t("serverTab.unload", { defaultValue: "Unload" })}
-                          </button>
-                          <button
-                            className="secondary-button"
-                            type="button"
-                            onClick={() => { onTestModelIdChange(w.ref); onShowRemoteTestChange(true); }}
-                          >
-                            {t("serverTab.test", { defaultValue: "Test" })}
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              );
-            })()}
-
-            <div className="stat-grid server-stat-grid">
-              <StatCard
-                label={t("serverTab.stat.port", { defaultValue: "Port" })}
-                value={String(serverPort)}
-                hint={preferredPortUnavailable
-                  ? t("serverTab.stat.portBusy", { defaultValue: "Preferred port is busy" })
-                  : t("serverTab.stat.portActive", { defaultValue: "Active" })}
-              />
-              <StatCard
-                label={t("serverTab.stat.active", { defaultValue: "Active" })}
-                value={warmModels.find((m) => m.active)?.name ?? t("serverTab.stat.none", { defaultValue: "None" })}
-                hint={engineLabel}
-              />
-              <StatCard
-                label={t("serverTab.stat.warmPool", { defaultValue: "Warm pool" })}
-                value={String(warmModels.length)}
-                hint={t("serverTab.stat.warmCount", { count: warmModels.filter((m) => m.warm).length, defaultValue: "{count} warm" })}
-              />
-              <StatCard
-                label={t("serverTab.stat.lan", { defaultValue: "LAN" })}
-                value={remoteAccessActive
-                  ? t("serverTab.stat.lanEnabled", { defaultValue: "Enabled" })
-                  : t("serverTab.stat.lanLocalOnly", { defaultValue: "Local only" })}
-                hint={
-                  remoteAccessRequested && !remoteAccessActive
-                    ? t("serverTab.stat.restartToEnableLan", { defaultValue: "Restart to enable LAN" })
-                    : remoteAccessActive
-                      ? primaryLanOrigin ?? "0.0.0.0"
-                      : t("serverTab.stat.localhost", { defaultValue: "Localhost" })
-                }
-              />
-              <StatCard
-                label={t("serverTab.stat.requests", { defaultValue: "Requests" })}
-                value={String(requestsServed)}
-                hint={t("serverTab.stat.activeConnections", { count: activeConnections, defaultValue: "{count} active" })}
-              />
-            </div>
-
-            <div className="server-compact-settings">
-              <div className="server-settings-row">
-                <label>
-                  {t("serverTab.settings.port", { defaultValue: "Port" })}
-                  <input
-                    className="text-input"
-                    type="number"
-                    min="1024"
-                    max="65535"
-                    disabled={busy}
-                    value={settingsDraft.preferredServerPort}
-                    onChange={(event) => onSettingsDraftChange((c) => ({ ...c, preferredServerPort: Number(event.target.value) }))}
-                  />
-                </label>
-                <label className="check-row">
-                  <input
-                    type="checkbox"
-                    checked={settingsDraft.allowRemoteConnections}
-                    disabled={busy}
-                    onChange={(event) => onSettingsDraftChange((c) => ({ ...c, allowRemoteConnections: event.target.checked }))}
-                  />
-                  {t("serverTab.settings.lanAccess", { defaultValue: "LAN access" })}
-                </label>
-                <label
-                  className="check-row"
-                  title={t("serverTab.settings.requireApiAuthTooltip", { defaultValue: "Disable to let external clients (OpenWebUI, curl, other apps) hit /api and /v1 without a bearer token. Leave on for local-only use." })}
-                >
-                  <input
-                    type="checkbox"
-                    checked={settingsDraft.requireApiAuth}
-                    disabled={busy}
-                    onChange={(event) => onSettingsDraftChange((c) => ({ ...c, requireApiAuth: event.target.checked }))}
-                  />
-                  {t("serverTab.settings.requireApiToken", { defaultValue: "Require API token" })}
-                </label>
-                <label className="check-row">
-                  <input
-                    type="checkbox"
-                    checked={settingsDraft.autoStartServer}
-                    disabled={busy}
-                    onChange={(event) => onSettingsDraftChange((c) => ({ ...c, autoStartServer: event.target.checked }))}
-                  />
-                  {t("serverTab.settings.autoStart", { defaultValue: "Auto-start" })}
-                </label>
-                <button
-                  className="secondary-button"
-                  type="button"
-                  onClick={() => void onSaveSettings()}
-                  disabled={busy || !backendOnline}
-                >
-                  {t("serverTab.settings.save", { defaultValue: "Save" })}
-                </button>
-              </div>
-            </div>
-
-            <div className="server-log-panel">
-              <span className="eyebrow">{t("serverTab.devLog", { defaultValue: "Dev Log" })}</span>
-              <div className="server-log-scroll" ref={serverLogRef} onScroll={handleServerLogScroll}>
-                {serverLogEntries.length > 0 ? (
-                  serverLogEntries.map((entry, i) => (
-                    <div className="server-log-line" key={`${entry.ts}-${entry.source}-${i}`}>
-                      <small className="server-log-ts">{entry.ts}</small>
-                      <small className="mono-text muted-text">/{entry.source}</small>
-                      <span className={`log-level ${entry.level}`}>{entry.level}</span>
-                      <span>{entry.message}</span>
-                    </div>
-                  ))
-                ) : (
-                  <div className="server-log-line">
-                    <span className="server-log-placeholder">{t("serverTab.noLogLines", { defaultValue: "No log lines yet." })}</span>
-                  </div>
-                )}
-              </div>
-              {!serverLogAtBottom && serverLogEntries.length > 0 ? (
-                <button
-                  className="server-log-jump"
-                  type="button"
-                  onClick={scrollServerLogToBottom}
-                >
-                  {t("serverTab.latest", { defaultValue: "Latest" })}
-                </button>
-              ) : null}
-            </div>
+        actions={
+          <div className="segmented server-view-switch" role="tablist" aria-label={t("serverActivity.views.label", { defaultValue: "Server views" })}>
+            {VIEWS.map((id) => (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                id={`server-view-${id}`}
+                aria-selected={view === id}
+                aria-controls="server-view-panel"
+                className={`segment${view === id ? " active" : ""}`}
+                onClick={() => setView(id)}
+              >
+                {viewLabel(id)}
+              </button>
+            ))}
           </div>
+        }
+      >
+        <div className="server-layout" id="server-view-panel" role="tabpanel" aria-labelledby={`server-view-${view}`}>
+          {view === "activity" ? (
+            <ServerActivity feed={feed} logEntries={logEntries} onCopy={copyText} />
+          ) : (
+            <ServerOverview
+              {...props}
+              recentEvents={feed.events}
+              onOpenActivity={() => setView("activity")}
+              copyText={copyText}
+            />
+          )}
         </div>
       </Panel>
 

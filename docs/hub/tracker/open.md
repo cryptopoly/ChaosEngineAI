@@ -10,9 +10,9 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 
 
 <details>
-<summary>FU-220 · Overnight whole-app review: audit Benchmarks, Conversion, Fine Tuning, Prompts, Plugins, Logs and Server; redesign Server and Logs; demo path for the podcast (D-87, D-88) — Planned 2026-11-17, not started</summary>
+<summary>FU-220 · Overnight whole-app review: audit Benchmarks, Conversion, Fine Tuning, Prompts, Plugins, Logs and Server; redesign Server and Logs; demo path for the podcast (D-87, D-88) — Started 2026-11-18 on the v0.10.0 tip (streams A to F running)</summary>
 
-**Status or trigger:** **Planned 2026-11-17, not started; waits for the owner's launch and a frozen green tree.**
+**Status or trigger:** **Started 2026-11-18 on the v0.10.0 tip (streams A to F running); results merge after the Windows and Linux fixes.**
 
 **Notes:** Plan, streams A to G, safety rules, verdict rubric and morning deliverables: [docs/plans/overnight-e2e-review.md](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/docs/plans/overnight-e2e-review.md). No end-to-end check exists today for the seven features (no `e2e_test_suite.py` phase, no Playwright spec; unit tests only for Plugins and Prompts); the run adds `phase_21` and a Playwright spec per tab touched. Nothing is deleted overnight.
 

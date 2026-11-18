@@ -15,7 +15,7 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 
 | Row | Item | Status |
 |---|---|---|
-| [FU-220](open.md) | Overnight whole-app review: audit Benchmarks, Conversion, Fine Tuning, Prompts, Plugins, L | Planned 2026-11-17, not started |
+| [FU-220](open.md) | Overnight whole-app review: audit Benchmarks, Conversion, Fine Tuning, Prompts, Plugins, L | Started 2026-11-18 on the v0.10.0 tip (streams A to F running) |
 | [FU-219](closed.md) | Full-film showcase run (2026-11-17): film 80 s for a 120 s brief, wrong "2-minute" claim,  | Shipped 2026-11-17 (branch release/v0.10.0). |
 | [FU-218](open.md) | Narration level: the fixed +8 dB (FU-216) suited one file, not the next | Shipped 2026-11-17 (branch fix/voice-level). |
 | [FU-217](open.md) | Flaky music test in the full suite: test_unload_while_a_track_is_made_is_refused_and_the_j | Queued (2026-11-17), test isolation |

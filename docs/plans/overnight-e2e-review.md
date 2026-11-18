@@ -1,6 +1,6 @@
 # Overnight whole-app review (v0.10.0)
 
-Status: **planned 2026-11-17, not started.** Owner asked for a run that works through the night and leaves a morning report. Decisions D-87 and D-88, follow-up FU-220.
+Status: **started 2026-11-18 on the `release/v0.10.0` tip `b31c4ea5` (owner's call: Windows and Linux fixes not ready; owner back in about 3.5 hours).** Streams A to F running as background agents in worktrees `/Users/dan/ChaosEngineAI-review-{a..f}`, branches `review/a` to `review/f`; G (verify) and the integration branch `review/integrate` follow when they finish. Fixes from the Windows and Linux passes will need merging into the streams' result afterwards. Owner asked for a run that works through the night and leaves a morning report. Decisions D-87 and D-88, follow-up FU-220.
 
 ## Why
 

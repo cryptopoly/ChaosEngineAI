@@ -130,3 +130,23 @@ cd e2e && E2E_PYTHON=/Users/dan/ChaosEngineAI/.venv/bin/python E2E_WEB_PORT=8952
   4. README and docs promise a plugin system with five extension types and discovery from a folder.
   5. Both tabs hard-code about 30 hex colours instead of the theme tokens.
   6. No "Show experimental tabs" switch exists yet; the plan's "hide" verdicts need it.
+
+## Not tested
+
+- The packaged app and the real Tauri window (browser against the Vite dev server only).
+- Windows and Linux.
+- A light theme (the app has none) and the other ten locales by eye (parity and ICU checks pass; new strings fall
+  back to English there).
+- A larger chat model with a template (only `Qwen3-0.6B-4bit` was loaded), a template with a voice call, and
+  whether a tool switched off on the Plugins page is still called by a real model (`/api/tools` still offers it,
+  which is what Chat reads).
+- MCP-server tools in the plugin list (none were configured; by the code the list is built once and would not show
+  them).
+- The full `e2e_test_suite.py` and its smoke pass, and the whole Playwright suite: only phase 21 and specs 01, 09,
+  17, 29-prompts-plugins and 31 were run (26 passed). Full pytest, vitest, tsc and `i18n:validate` pass.
+- The owner's real data directory was read once (the template count), never written.
+
+## State at hand-back (2026-11-18 08:30)
+
+Everything is committed and pushed on `review/c`. The model lock is released, the test backend (8902) and the Vite
+server (8942) are stopped. The throwaway data directory is in the session scratchpad (`review-c/`).

@@ -611,7 +611,9 @@
     "fillTitle": "Заполните переменные шаблона",
     "resolvedPreview": "Предпросмотр готового промпта",
     "applyToChat": "Применить к чату",
-    "selectOrCreate": "Выберите шаблон из списка или создайте новый."
+    "selectOrCreate": "Выберите шаблон из списка или создайте новый.",
+    "nameRequired": null,
+    "saveFailed": null
   },
   "fineTuning": {
     "loadingAdapters": "Загрузка адаптеров...",

@@ -611,7 +611,9 @@
     "fillTitle": "Remplir les variables du modèle",
     "resolvedPreview": "Aperçu de l'invite résolue",
     "applyToChat": "Appliquer à la discussion",
-    "selectOrCreate": "Sélectionnez un modèle dans la liste ou créez-en un nouveau."
+    "selectOrCreate": "Sélectionnez un modèle dans la liste ou créez-en un nouveau.",
+    "nameRequired": null,
+    "saveFailed": null
   },
   "fineTuning": {
     "loadingAdapters": "Chargement des adaptateurs...",

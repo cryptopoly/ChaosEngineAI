@@ -611,7 +611,9 @@
     "fillTitle": "템플릿 변수 채우기",
     "resolvedPreview": "해석된 프롬프트 미리보기",
     "applyToChat": "채팅에 적용",
-    "selectOrCreate": "목록에서 템플릿을 선택하거나 새 템플릿을 만드세요."
+    "selectOrCreate": "목록에서 템플릿을 선택하거나 새 템플릿을 만드세요.",
+    "nameRequired": null,
+    "saveFailed": null
   },
   "fineTuning": {
     "loadingAdapters": "어댑터 로딩 중...",

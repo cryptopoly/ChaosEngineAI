@@ -611,7 +611,9 @@
     "fillTitle": "velqa' mu' yIteb",
     "resolvedPreview": "QIn naQ legh nung",
     "applyToChat": "ja'chuqDaq yIlan",
-    "selectOrCreate": "tetlhvo' velqa' yIwIv pagh velqa' chu' yIchenmoH."
+    "selectOrCreate": "tetlhvo' velqa' yIwIv pagh velqa' chu' yIchenmoH.",
+    "nameRequired": null,
+    "saveFailed": null
   },
   "fineTuning": {
     "loadingAdapters": "chelwI' qemlI'...",

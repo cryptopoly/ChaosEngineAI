@@ -611,7 +611,9 @@
     "fillTitle": "Preencher variáveis do modelo",
     "resolvedPreview": "Pré-visualização do prompt resolvido",
     "applyToChat": "Aplicar ao chat",
-    "selectOrCreate": "Selecione um modelo na lista ou crie um novo."
+    "selectOrCreate": "Selecione um modelo na lista ou crie um novo.",
+    "nameRequired": null,
+    "saveFailed": null
   },
   "fineTuning": {
     "loadingAdapters": "Carregando adaptadores...",

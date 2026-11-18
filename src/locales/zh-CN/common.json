@@ -611,7 +611,9 @@
     "fillTitle": "填充模板变量",
     "resolvedPreview": "已解析提示词预览",
     "applyToChat": "应用到对话",
-    "selectOrCreate": "从列表中选择模板或新建一个。"
+    "selectOrCreate": "从列表中选择模板或新建一个。",
+    "nameRequired": null,
+    "saveFailed": null
   },
   "fineTuning": {
     "loadingAdapters": "正在加载适配器...",

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { apiFetch, fetchJson } from "../../api";
 import { Panel } from "../../components/Panel";
+import { formatTemplateTime, matchesTemplateSearch } from "./promptLogic";
 
 /**
  * Phase 2.7: variable declaration shape. `default` is the seed value
@@ -27,8 +28,9 @@ interface PromptTemplate {
   variables?: PromptVariable[];
   presetSamplers?: Record<string, unknown> | null;
   presetModelRef?: string | null;
-  createdAt: string;
-  updatedAt: string;
+  // Epoch seconds from the backend (older builds typed this as a string).
+  createdAt: number | string;
+  updatedAt: number | string;
 }
 
 /**
@@ -59,7 +61,7 @@ interface PromptLibraryTabProps {
 }
 
 export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibraryTabProps) {
-  const { t } = useTranslation("common");
+  const { t, i18n } = useTranslation("common");
   const [templates, setTemplates] = useState<PromptTemplate[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -80,6 +82,8 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
   // composer.
   const [fillValues, setFillValues] = useState<Record<string, string | number | boolean>>({});
   const [fillOpen, setFillOpen] = useState(false);
+  // Shown under the editor when a save is refused; a refused save used to do nothing at all.
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const selected = templates.find((t) => t.id === selectedId) ?? null;
   const selectedVariables = useMemo(() => selected?.variables ?? [], [selected]);
@@ -95,18 +99,11 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
       .catch(() => {});
   }, [backendOnline]);
 
-  const filtered = templates.filter((t) => {
-    if (!searchQuery) return true;
-    const q = searchQuery.toLowerCase();
-    return (
-      t.name.toLowerCase().includes(q) ||
-      t.category.toLowerCase().includes(q) ||
-      t.tags.some((tag) => tag.toLowerCase().includes(q))
-    );
-  });
+  const filtered = templates.filter((template) => matchesTemplateSearch(template, searchQuery));
 
   function startEdit(template: PromptTemplate | null) {
     setEditMode(true);
+    setSaveError(null);
     setEditName(template?.name ?? "");
     setEditPrompt(template?.systemPrompt ?? "");
     setEditCategory(template?.category ?? "General");
@@ -174,6 +171,12 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
   }
 
   async function handleSave() {
+    if (!editName.trim()) {
+      setSaveError(t("promptLibrary.nameRequired", { defaultValue: "Give the template a name before saving." }));
+      return;
+    }
+    const failed = t("promptLibrary.saveFailed", { defaultValue: "The template was not saved. Check the fields and try again." });
+    setSaveError(null);
     const body: Record<string, unknown> = {
       name: editName,
       systemPrompt: editPrompt,
@@ -192,6 +195,7 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
         body: JSON.stringify(body),
       });
       if (!resp.ok) {
+        setSaveError(failed);
         return;
       }
       const data = await resp.json();
@@ -203,7 +207,10 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
         });
         setSelectedId(data.template.id);
       }
-    } catch { /* ignore */ }
+    } catch {
+      setSaveError(failed);
+      return;
+    }
     setEditMode(false);
   }
 
@@ -332,6 +339,7 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
                 style={{ width: "100%", minHeight: 60, resize: "vertical", fontFamily: "monospace", fontSize: 11 }}
               />
             </div>
+            {saveError ? <p role="alert" className="error-text" style={{ margin: 0, fontSize: 12 }}>{saveError}</p> : null}
             <div style={{ display: "flex", gap: 8 }}>
               <button className="primary-button" type="button" onClick={() => void handleSave()}>{t("promptLibrary.editor.save", { defaultValue: "Save" })}</button>
               <button className="secondary-button" type="button" onClick={() => setEditMode(false)}>{t("promptLibrary.editor.cancel", { defaultValue: "Cancel" })}</button>
@@ -372,7 +380,7 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
               <button className="secondary-button message-action-delete" type="button" onClick={() => void handleDelete(selected.id)}>{t("promptLibrary.delete", { defaultValue: "Delete" })}</button>
             </div>
             <div style={{ marginTop: 12, fontSize: 11, color: "#5a6574" }}>
-              {t("promptLibrary.createdUpdated", { created: selected.createdAt, updated: selected.updatedAt, defaultValue: "Created: {created} | Updated: {updated}" })}
+              {t("promptLibrary.createdUpdated", { created: formatTemplateTime(selected.createdAt, i18n.language), updated: formatTemplateTime(selected.updatedAt, i18n.language), defaultValue: "Created: {created} | Updated: {updated}" })}
             </div>
             {fillOpen && selectedVariables.length ? (
               <div style={{ marginTop: 16, padding: 12, background: "#0f1215", borderRadius: 8, border: "1px solid #1f2a3a" }}>

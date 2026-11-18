@@ -3,16 +3,7 @@ import { useTranslation } from "react-i18next";
 import { apiFetch, fetchJson } from "../../api";
 import { Panel } from "../../components/Panel";
 
-interface PluginInfo {
-  id: string;
-  name: string;
-  type: string;
-  version: string;
-  author: string;
-  description: string;
-  builtin: boolean;
-  enabled: boolean;
-}
+import { groupedPlugins, type PluginInfo } from "./pluginsLogic";
 
 interface PluginsTabProps {
   backendOnline: boolean;
@@ -49,9 +40,9 @@ export function PluginsTab({ backendOnline }: PluginsTabProps) {
 
   useEffect(() => {
     if (!backendOnline) return;
-    fetchJson<{ plugins?: Record<string, PluginInfo[]> }>("/api/plugins")
+    fetchJson<unknown>("/api/plugins")
       .then((data) => {
-        setPlugins(data.plugins ?? {});
+        setPlugins(groupedPlugins(data));
         setLoading(false);
       })
       .catch(() => setLoading(false));

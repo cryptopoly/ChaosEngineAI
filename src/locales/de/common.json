@@ -611,7 +611,9 @@
     "fillTitle": "Vorlagen-Variablen ausfüllen",
     "resolvedPreview": "Aufgelöste Prompt-Vorschau",
     "applyToChat": "Auf Chat anwenden",
-    "selectOrCreate": "Vorlage aus der Liste auswählen oder neue erstellen."
+    "selectOrCreate": "Vorlage aus der Liste auswählen oder neue erstellen.",
+    "nameRequired": null,
+    "saveFailed": null
   },
   "fineTuning": {
     "loadingAdapters": "Adapter werden geladen...",

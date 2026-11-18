@@ -611,7 +611,9 @@
     "fillTitle": "填入範本變數",
     "resolvedPreview": "解析後的提示詞預覽",
     "applyToChat": "套用至對話",
-    "selectOrCreate": "從清單中選擇範本或建立新範本。"
+    "selectOrCreate": "從清單中選擇範本或建立新範本。",
+    "nameRequired": null,
+    "saveFailed": null
   },
   "fineTuning": {
     "loadingAdapters": "正在載入介面卡...",

@@ -140,6 +140,39 @@ class PromptLibraryTests(unittest.TestCase):
             self.assertIsInstance(tmpl["createdAt"], float)
 
 
+class PromptLibraryLoadTests(unittest.TestCase):
+    """Loading a library file a user has emptied or hand-edited (review C)."""
+
+    def setUp(self):
+        self.tmpdir = tempfile.TemporaryDirectory()
+        self.data_dir = Path(self.tmpdir.name)
+
+    def tearDown(self):
+        self.tmpdir.cleanup()
+
+    def test_deleting_every_template_does_not_bring_the_builtins_back(self):
+        library = PromptLibrary(self.data_dir)
+        for tmpl in list(library.list_all()):
+            self.assertTrue(library.delete(tmpl["id"]))
+        self.assertEqual(PromptLibrary(self.data_dir).list_all(), [])
+
+    def test_unreadable_file_falls_back_to_the_builtins(self):
+        (self.data_dir / "prompt_templates.json").write_text("{not json", encoding="utf-8")
+        self.assertEqual(len(PromptLibrary(self.data_dir).list_all()), 5)
+
+    def test_bad_rows_are_skipped_not_fatal(self):
+        rows = [7, "text", None, {"name": "no id"}, {"id": 3, "name": "numeric id"},
+                {"id": "kept", "name": "Kept", "systemPrompt": "x", "tags": [], "category": "General"}]
+        (self.data_dir / "prompt_templates.json").write_text(json.dumps(rows), encoding="utf-8")
+        library = PromptLibrary(self.data_dir)
+        self.assertEqual([t["id"] for t in library.list_all()], ["kept"])
+
+    def test_dict_shaped_file_is_read_by_its_rows(self):
+        rows = {"whatever": {"id": "a", "name": "A"}, "other": "not a row"}
+        (self.data_dir / "prompt_templates.json").write_text(json.dumps(rows), encoding="utf-8")
+        self.assertEqual([t["id"] for t in PromptLibrary(self.data_dir).list_all()], ["a"])
+
+
 class VariableSubstitutionTests(unittest.TestCase):
     def test_extract_placeholders_returns_unique_in_order(self):
         text = "Hi {{name}}, you owe {{amount}}. Thanks {{name}}."

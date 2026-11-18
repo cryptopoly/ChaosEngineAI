@@ -611,7 +611,9 @@
     "fillTitle": "Fill template variables",
     "resolvedPreview": "Resolved prompt preview",
     "applyToChat": "Apply to chat",
-    "selectOrCreate": "Select a template from the list or create a new one."
+    "selectOrCreate": "Select a template from the list or create a new one.",
+    "nameRequired": "Give the template a name before saving.",
+    "saveFailed": "The template was not saved. Check the fields and try again."
   },
   "fineTuning": {
     "loadingAdapters": "Loading adapters...",

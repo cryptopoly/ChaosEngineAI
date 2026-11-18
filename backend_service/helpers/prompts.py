@@ -93,18 +93,28 @@ class PromptLibrary:
     def load(self) -> None:
         """Load templates from disk, seeding with built-ins if empty."""
         with self._lock:
+            # A readable file is the user's library, even when it is empty: deleting every template
+            # must not bring the built-ins back on the next start.
+            user_file_read = False
             if self._file.is_file():
                 try:
                     raw = json.loads(self._file.read_text(encoding="utf-8"))
+                    if isinstance(raw, dict):
+                        raw = list(raw.values())
                     if isinstance(raw, list):
-                        self._templates = {t["id"]: t for t in raw if "id" in t}
-                    elif isinstance(raw, dict):
-                        self._templates = raw
+                        # Entries that are not objects with a string id are skipped, so one bad row in a
+                        # hand-edited file cannot take every /api/prompts call down.
+                        self._templates = {
+                            t["id"]: t
+                            for t in raw
+                            if isinstance(t, dict) and isinstance(t.get("id"), str) and t["id"]
+                        }
+                        user_file_read = True
                 except (json.JSONDecodeError, OSError):
                     self._templates = {}
 
-            # Seed built-ins if we have no templates at all
-            if not self._templates:
+            # Seed built-ins on a first run (no file) or when the file could not be read
+            if not self._templates and not user_file_read:
                 now = time.time()
                 for tmpl in _SEED_TEMPLATES:
                     entry = {**tmpl, "createdAt": now, "updatedAt": now}

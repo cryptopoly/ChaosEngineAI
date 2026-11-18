@@ -611,7 +611,9 @@
     "fillTitle": "Rellenar variables de la plantilla",
     "resolvedPreview": "Vista previa del prompt resuelto",
     "applyToChat": "Aplicar al chat",
-    "selectOrCreate": "Selecciona una plantilla de la lista o crea una nueva."
+    "selectOrCreate": "Selecciona una plantilla de la lista o crea una nueva.",
+    "nameRequired": null,
+    "saveFailed": null
   },
   "fineTuning": {
     "loadingAdapters": "Cargando adaptadores...",

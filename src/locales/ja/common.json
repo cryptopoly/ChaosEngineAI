@@ -611,7 +611,9 @@
     "fillTitle": "テンプレート変数を入力",
     "resolvedPreview": "解決済みプロンプトのプレビュー",
     "applyToChat": "チャットに適用",
-    "selectOrCreate": "リストからテンプレートを選択するか、新規作成してください。"
+    "selectOrCreate": "リストからテンプレートを選択するか、新規作成してください。",
+    "nameRequired": null,
+    "saveFailed": null
   },
   "fineTuning": {
     "loadingAdapters": "アダプターを読み込み中...",

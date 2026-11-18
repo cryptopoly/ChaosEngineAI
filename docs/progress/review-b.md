@@ -3,6 +3,20 @@
 Branch `review/b`, worktree `/Users/dan/ChaosEngineAI-review-b`, cut from `release/v0.10.0` at `b31c4ea5`.
 Plan: [overnight-e2e-review.md](../plans/overnight-e2e-review.md). Budget cut to 3.5 hours by the coordinator at the start of the run.
 
+## Verdict
+
+**Hide behind the experimental switch until wired.** No real job can be started from the app on this Mac, or on any machine: the page was a mock-up with a dead button, and an adapter cannot be applied to a model. The engine under it works (section 3), so this is a "not built" feature, not a broken one. Do not remove: the adapter scan, the dataset helper and the request model are a fair start, and section 7 lists what is missing.
+
+| Rubric | Answer | Evidence |
+|---|---|---|
+| Works | **No.** Training: nothing runs. Use an adapter in Chat: ignored. List adapters: yes, after the crash fix. | Sections 1, 2 and 3; `POST /api/finetuning/start` was a placeholder; base-model answer returned with `adapterPath` set |
+| Honest | **No before, mostly after.** The page, the status line and the route now say it is not built. Still promising: `README.md` lines 96 and 167, the sidebar caption "LoRA adapters and training", the page's "or via llama.cpp", the hint "use the fine-tuning feature below", the CLI help. | Sections 1, 4, 5, 7 |
+| Valuable | **Not as built** (a read-only list, zero adapters on the owner's machine, nothing to do with one). **Yes if built**: a 0.5B model learned a fact in under 10 s here, and no other page covers it. | Section 3 |
+| Clutter cost | One of four slots under Tools; 136 lines of tab, 95 of routes, 220 of helper; 18 strings in 11 locales; 3 CLI commands; 2 README lines. Low upkeep, but a visible slot for a page that does nothing, weeks before a podcast demo. | `src/constants/tabs.ts` line 59 |
+| Verdict | **Hide behind the experimental switch** (one line in `src/constants/tabs.ts`, plus the README lines); keep routes, helper and tests. Build it later as its own project (section 8). | |
+
+If the tab is hidden, the honesty commit `b8dab48f` still matters for the CLI and the API (501 instead of a false "accepted"), so keep it.
+
 Setup used for every check below:
 - Backend on port 8901, throwaway `HOME` (scratchpad `review-b/home`), token `review-b-token`, `HF_HUB_OFFLINE=1`, empty HF tokens.
 - The throwaway Hugging Face cache holds one symlink to the real `models--mlx-community--Qwen2.5-0.5B-Instruct-4bit` snapshot folder. Nothing copied, nothing deleted.
@@ -131,3 +145,36 @@ The engine is the easy part (section 3: mlx-lm trains a 0.5B model here in about
 - **Use it in one click.** "Chat with this" loads base plus adapter; the adapter shows as its own entry in the model picker with its base named. Optional "Make a standalone model" (fuse, and convert to GGUF for the llama.cpp lane).
 - **House rules.** Adapters live in one folder under the data directory with a small metadata file (base model, dataset fingerprint, settings, date). Training data never leaves the machine and the page says so. Licence of the base model is carried onto the adapter card.
 - **Scope for a first version.** Apple Silicon, MLX text models up to about 8B at 4-bit, LoRA only, one run at a time, English UI strings through i18n. CUDA (a PEFT lane) is a second project.
+
+## 9. Defects left, ranked by user impact
+
+1. **Nothing trains** (P1 for the feature, by design today). Section 7, items 1 to 5.
+2. **An adapter cannot be applied in Chat** (P1 for the feature). `LoadModelRequest.adapterPath` is dropped. Path to wire it: `backend_service/state/lifecycle.py` (pass it on), `backend_service/inference/controller.py` `load_model` (the warm-pool key must include the adapter, or a warm base model answers an adapter request), the MLX engine, `backend_service/mlx_worker_lifecycle.py` line 152 (`load(local_path, adapter_path=...)`), the load reply and the model badge; refuse it with a reason on GGUF, TensorFold and the speculative paths. It touches inference routing, so it needs the full E2E suite, which is why it was not done overnight.
+3. **Public claims** (P2): `README.md` lines 96 and 167 advertise fine-tuning; the sidebar caption says "training"; the page still says "or via llama.cpp" and the empty hint still says "use the fine-tuning feature below". Suggested README wording for line 96 if the tab is hidden: drop the bullet; for line 167: "LoRA adapter discovery".
+4. **Adapter scan cost** (P2): every open of the tab walks the whole model cache (4.15 s here), uncached; it no longer blocks other requests, but the tab still waits. The CLI's `adapters-list` has a 10 s timeout. Prune `blobs` folders, or cache with the library scan.
+5. **Scan misses the user's model directories** (P3) although the hint points there: only the data folder, the Hugging Face cache, `~/.cache/mlx` and `~/Models` are read.
+6. **Adapter size counts checkpoints** and `lora_rank` is null for mlx-lm adapters (P3): 16.8 MB shown for a 5.9 MB adapter.
+7. **`GET /api/adapters` returns the whole `adapter_config.json`** (P3): for an mlx-lm adapter that includes the absolute dataset path. The tab does not use `config`.
+8. **`prepare_dataset`** (P3, unused today): flattens rows to plain text, invents `<|role|>` markers for chat rows, drops bad lines without counting them, no shuffle before the split.
+9. **Hard-coded colours** in the tab's inline styles (P3): not on design tokens, so the border switch does not reach it.
+10. **`prepare_dataset` is imported and unused** in `routes/finetuning.py` (was so before this review; left alone).
+11. **Outside this tab** (for stream D or the integrator): with no backend, a browser reload shows the "Extracting embedded runtime, first launch only" splash, which is not what is happening; the Dashboard's process list shows other backends' Python workers with Stop buttons (other review streams' workers were listed in stream B's Dashboard, on a different backend and data folder).
+
+## 10. Not tested
+
+- Training through the app: impossible, there is no code path.
+- Larger models, real datasets, peak memory, thermal behaviour, a run next to a loaded chat model.
+- CUDA or Windows and Linux (`mlx-lm` is Apple Silicon only; the page's llama.cpp path does not exist).
+- The packaged Tauri app window; only the web UI in the built-in browser and headless Chromium.
+- A light theme: the app has none.
+- The other ten locales' rendering of the four new strings (null, so English shows; `i18n:validate` passes).
+- `pre-build-check.sh`, the full `e2e_test_suite.py`, the cargo tests and the audits were not run (stream G); full pytest, full vitest, tsc, `i18n:validate`, phase 212 and the Playwright suite were.
+
+## 11. Housekeeping
+
+- Lock: taken once, 08:14:49 to 08:15:50, released. No MLX worker of this stream is left.
+- Nothing downloaded, no model deleted or copied. The throwaway home (`scratchpad/review-b/home`, about 115 MB of test adapters with `cancelled-lora`) can be deleted.
+- Backend (port 8901) and Vite (port 8931) of this stream are stopped at the end; only their own PIDs were killed.
+- `e2e/node_modules` in this worktree is a symlink to the main checkout's (git-ignored), made to run the spec.
+- Hub pages (`docs/hub/status.md`, decisions, FU rows) were not edited, to keep the merge with the other streams clean; the integrator has the verdict above for D-87 and D-88.
+- One stray click: the built-in browser's tab was shared at first. Another stream navigated it to its own server (port 8942, Plugins page) between two of this stream's calls, and one click meant for "Try again" landed at about (450, 220) of a 1400 x 900 view of that page, near the "Native f16" card's name, not on its switch. No change was visible in the screenshot. From then on this stream used its own tab (`tab-13`) and no coordinate clicks.

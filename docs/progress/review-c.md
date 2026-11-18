@@ -52,6 +52,8 @@ is copied, downloaded or deleted.
 | 21 | Playwright `29-prompts-plugins` | PASS | 4 passed (25.6 s): built-ins, dates, refused save, variables, search by text, Use in Chat sends the filled prompt as `systemPrompt`, edit, delete; 375 px for both pages; Plugins lists what the backend registers and a switch round-trips |
 | 22 | Import and export of templates | SKIP | The feature does not exist (no route, no button). The brief asked for it to be tested |
 | 23 | Use from Studio | SKIP | Not offered: templates are Chat system prompts only. Image, Video, Voice and Music studios have their own presets and no link to this page |
+| 24 | CLI: `prompts-list`, `prompts-create`, `prompts-delete` | PASS | list 5; create answers the template; delete rc 0; delete of an unknown id rc 1 with the 404 text |
+| 25 | CLI: `plugins-list`, `plugins-disable`, `plugins-enable` | PASS | `{'cache_strategy': 9, 'tool': 3}`; switch off and on rc 0; unknown id rc 1 with the 404 text |
 
 ## Commands
 

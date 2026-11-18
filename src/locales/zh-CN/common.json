@@ -635,7 +635,11 @@
     "step2Body": "设置学习率、训练轮数、LoRA rank 和批大小",
     "step3Title": "3. 训练",
     "step3Body": "实时监控损失和进度",
-    "startButton": "开始微调"
+    "startButton": "开始微调",
+    "notAvailable": null,
+    "notAvailableBody": null,
+    "offline": null,
+    "loadError": null
   },
   "pluginsTab": {
     "discovering": "正在发现插件...",

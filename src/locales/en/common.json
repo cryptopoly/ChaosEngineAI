@@ -635,7 +635,11 @@
     "step2Body": "Set learning rate, epochs, LoRA rank, and batch size",
     "step3Title": "3. Train",
     "step3Body": "Monitor loss and progress in real-time",
-    "startButton": "Start Fine-Tuning"
+    "startButton": "Start Fine-Tuning",
+    "notAvailable": "Not available in this version",
+    "notAvailableBody": "Training is not built yet: this page only lists the adapters it finds on disk, and an adapter cannot be applied to a model yet. The steps above show what is planned.",
+    "offline": "The backend is offline. Adapters are listed when it is back.",
+    "loadError": "Could not load the adapter list: {message}"
   },
   "pluginsTab": {
     "discovering": "Discovering plugins...",

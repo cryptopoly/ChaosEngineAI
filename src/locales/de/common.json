@@ -635,7 +635,11 @@
     "step2Body": "Lernrate, Epochen, LoRA-Rang und Batch-Größe festlegen",
     "step3Title": "3. Trainieren",
     "step3Body": "Loss und Fortschritt in Echtzeit überwachen",
-    "startButton": "Fine-Tuning starten"
+    "startButton": "Fine-Tuning starten",
+    "notAvailable": null,
+    "notAvailableBody": null,
+    "offline": null,
+    "loadError": null
   },
   "pluginsTab": {
     "discovering": "Plugins werden gesucht...",

@@ -635,7 +635,11 @@
     "step2Body": "設定學習率、epochs、LoRA rank 與批次大小",
     "step3Title": "3. 訓練",
     "step3Body": "即時監控損失與進度",
-    "startButton": "開始微調"
+    "startButton": "開始微調",
+    "notAvailable": null,
+    "notAvailableBody": null,
+    "offline": null,
+    "loadError": null
   },
   "pluginsTab": {
     "discovering": "正在探索外掛程式...",

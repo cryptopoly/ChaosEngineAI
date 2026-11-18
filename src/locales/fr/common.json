@@ -635,7 +635,11 @@
     "step2Body": "Définissez le taux d'apprentissage, les époques, le rang LoRA et la taille du lot",
     "step3Title": "3. Entraîner",
     "step3Body": "Surveillez la perte et la progression en temps réel",
-    "startButton": "Démarrer l'affinage"
+    "startButton": "Démarrer l'affinage",
+    "notAvailable": null,
+    "notAvailableBody": null,
+    "offline": null,
+    "loadError": null
   },
   "pluginsTab": {
     "discovering": "Découverte des plugins...",

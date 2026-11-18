@@ -3,12 +3,13 @@ import { useTranslation } from "react-i18next";
 import { fetchJson } from "../../api";
 import { Panel } from "../../components/Panel";
 
-interface Adapter {
-  id: string;
+/** One row of GET /api/adapters (backend_service/helpers/finetuning.py `_read_adapter_meta`). */
+export interface Adapter {
   name: string;
+  path: string;
   base_model: string;
-  created: string;
-  size_mb: number;
+  created?: string;
+  size_bytes: number;
   config: Record<string, unknown>;
 }
 
@@ -16,20 +17,47 @@ interface FineTuningTabProps {
   backendOnline: boolean;
 }
 
+export function AdapterCard({ adapter }: { adapter: Adapter }) {
+  const { t } = useTranslation("common");
+  return (
+    <div
+      style={{
+        border: "1px solid #27303a",
+        borderRadius: 8,
+        padding: 12,
+        background: "#1a1f26",
+        overflowWrap: "anywhere",
+      }}
+    >
+      <div style={{ fontWeight: 600, color: "#c8d0da", marginBottom: 4 }}>{adapter.name}</div>
+      <div style={{ fontSize: 12, color: "#7a8594" }}>{t("fineTuning.adapterBase", { value: adapter.base_model, defaultValue: "Base: {value}" })}</div>
+      <div style={{ fontSize: 12, color: "#7a8594" }}>{t("fineTuning.adapterSize", { value: ((adapter.size_bytes ?? 0) / 1048576).toFixed(1), defaultValue: "Size: {value} MB" })}</div>
+      {adapter.created ? (
+        <div style={{ fontSize: 11, color: "#5a6574", marginTop: 4 }}>{t("fineTuning.adapterCreated", { value: adapter.created, defaultValue: "Created: {value}" })}</div>
+      ) : null}
+    </div>
+  );
+}
+
 export function FineTuningTab({ backendOnline }: FineTuningTabProps) {
   const { t } = useTranslation("common");
   const [adapters, setAdapters] = useState<Adapter[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [trainingStatus, setTrainingStatus] = useState<string | null>(null);
 
   useEffect(() => {
     if (!backendOnline) return;
+    setLoadError(null);
     fetchJson<{ adapters?: Adapter[] }>("/api/adapters")
       .then((data) => {
         setAdapters(data.adapters ?? []);
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch((error: unknown) => {
+        setLoadError(error instanceof Error ? error.message : String(error));
+        setLoading(false);
+      });
   }, [backendOnline]);
 
   useEffect(() => {
@@ -43,13 +71,17 @@ export function FineTuningTab({ backendOnline }: FineTuningTabProps) {
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <Panel
         title={t("panels.loraAdapters", { defaultValue: "LoRA Adapters" })}
-        subtitle={t("panels.loraAdaptersFound", {
+        subtitle={loading || loadError ? undefined : t("panels.loraAdaptersFound", {
           count: adapters.length,
           defaultValue: "{{count}} adapters found",
         })}
       >
-        {loading ? (
+        {loading && !backendOnline ? (
+          <p className="muted-text">{t("fineTuning.offline", { defaultValue: "The backend is offline. Adapters are listed when it is back." })}</p>
+        ) : loading ? (
           <p className="muted-text">{t("fineTuning.loadingAdapters", { defaultValue: "Loading adapters..." })}</p>
+        ) : loadError ? (
+          <p className="muted-text" role="alert">{t("fineTuning.loadError", { message: loadError, defaultValue: "Could not load the adapter list: {message}" })}</p>
         ) : adapters.length === 0 ? (
           <div style={{ padding: 24, textAlign: "center" }}>
             <p className="muted-text" style={{ marginBottom: 8 }}>{t("fineTuning.noAdapters", { defaultValue: "No LoRA adapters found." })}</p>
@@ -60,20 +92,7 @@ export function FineTuningTab({ backendOnline }: FineTuningTabProps) {
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 12, padding: 8 }}>
             {adapters.map((adapter) => (
-              <div
-                key={adapter.id}
-                style={{
-                  border: "1px solid #27303a",
-                  borderRadius: 8,
-                  padding: 12,
-                  background: "#1a1f26",
-                }}
-              >
-                <div style={{ fontWeight: 600, color: "#c8d0da", marginBottom: 4 }}>{adapter.name}</div>
-                <div style={{ fontSize: 12, color: "#7a8594" }}>{t("fineTuning.adapterBase", { value: adapter.base_model, defaultValue: "Base: {value}" })}</div>
-                <div style={{ fontSize: 12, color: "#7a8594" }}>{t("fineTuning.adapterSize", { value: adapter.size_mb.toFixed(1), defaultValue: "Size: {value} MB" })}</div>
-                <div style={{ fontSize: 11, color: "#5a6574", marginTop: 4 }}>{t("fineTuning.adapterCreated", { value: adapter.created, defaultValue: "Created: {value}" })}</div>
-              </div>
+              <AdapterCard key={adapter.path} adapter={adapter} />
             ))}
           </div>
         )}
@@ -81,7 +100,7 @@ export function FineTuningTab({ backendOnline }: FineTuningTabProps) {
 
       <Panel
         title={t("tabs.fineTuning")}
-        subtitle={trainingStatus ?? t("status.ready")}
+        subtitle={trainingStatus && trainingStatus !== "idle" ? trainingStatus : t("fineTuning.notAvailable", { defaultValue: "Not available in this version" })}
       >
         <div style={{ padding: 24, textAlign: "center" }}>
           <p className="muted-text" style={{ marginBottom: 12 }}>
@@ -101,15 +120,15 @@ export function FineTuningTab({ backendOnline }: FineTuningTabProps) {
               <p style={{ fontSize: 12, color: "#7a8594" }}>{t("fineTuning.step3Body", { defaultValue: "Monitor loss and progress in real-time" })}</p>
             </div>
           </div>
-          <button
-            className="primary-button"
-            type="button"
-            style={{ marginTop: 16 }}
-            disabled={!backendOnline}
-            onClick={() => {/* TODO: open training config modal */}}
-          >
+          {/* No training backend exists yet (POST /api/finetuning/start answers 501), so the button stays off. */}
+          <button className="primary-button" type="button" style={{ marginTop: 16 }} disabled aria-describedby="finetuning-not-available">
             {t("fineTuning.startButton", { defaultValue: "Start Fine-Tuning" })}
           </button>
+          <p id="finetuning-not-available" className="muted-text" style={{ marginTop: 12, fontSize: 12 }}>
+            {t("fineTuning.notAvailableBody", {
+              defaultValue: "Training is not built yet: this page only lists the adapters it finds on disk, and an adapter cannot be applied to a model yet. The steps above show what is planned.",
+            })}
+          </p>
         </div>
       </Panel>
     </div>

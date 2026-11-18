@@ -331,12 +331,14 @@
         "resolve": "Resolving source",
         "load": "Loading into MLX",
         "quantize": "Quantizing to {bits}-bit g{group}",
-        "shard": "Sharding & writing safetensors"
+        "shard": "Sharding & writing safetensors",
+        "measuring": "Measuring quality on a short text sample"
       },
       "detail": {
         "files": "downloading the source: {done} of {total} files",
         "written": "{written} GB written",
-        "writtenOfAbout": "{written} GB written, about {expected} GB expected (estimate)"
+        "writtenOfAbout": "{written} GB written, about {expected} GB expected (estimate)",
+        "modelsScored": "{done} of {total} models scored"
       }
     },
     "varies": "Varies",
@@ -393,13 +395,9 @@
     "targetProfile": "Target profile",
     "bitProfile": "{bits}-bit g{group}",
     "unquantized": "Unquantized",
-    "qualityEstimate": "Quality estimate",
     "lastConversion": "Last conversion",
     "baseRepo": "Base repo",
     "architecture": "Architecture",
-    "compression": "Compression",
-    "cacheReduction": "{ratio}x cache reduction",
-    "quality": "Quality",
     "diskBeforeAfter": "Disk before → after",
     "modal": {
       "titleConverting": "Converting model",
@@ -420,7 +418,19 @@
       "terminalHint": "in Terminal for full stderr.",
       "close": "Close",
       "ok": "OK"
-    }
+    },
+    "measureQuality": "Measure quality after converting",
+    "measureQualityHint": "Loads the converted model and the source once each and compares their perplexity on a short WikiText-2 sample. Skipped when either does not fit in free memory.",
+    "qualityMeasured": "Quality (measured)",
+    "qualityChange": "{change}% perplexity vs the source",
+    "qualityDetail": "Perplexity on {samples} samples of {dataset}: source {source}, converted {converted}. Lower is better.",
+    "qualityAfterConverting": "Measured after converting",
+    "qualityNotMeasured": "Not measured",
+    "qualityOff": "Not measured (switched off)",
+    "bitsPerWeight": "Bits per weight",
+    "bitsPerWeightValue": "{bits} (measured by the converter)",
+    "sizeOnDisk": "Size on disk",
+    "pickSourceFirst": "Pick a source first"
   },
   "benchmarkTab": {
     "progress": {
@@ -486,8 +496,6 @@
     "loadSeconds": "{value} s load",
     "statResponseTime": "Response time",
     "statCacheFootprint": "Cache footprint",
-    "statQuality": "Quality",
-    "tokensGenerated": "{count} tokens generated",
     "statContext": "Context",
     "maxTokensHint": "{max} max",
     "deltaVsPrev": "{delta} tok/s vs your previous {cache} run",
@@ -550,8 +558,9 @@
       "noRuns": "No runs",
       "fastest": "Fastest",
       "leanestCache": "Leanest cache",
-      "bestQuality": "Best quality",
-      "bestValue": "Best value"
+      "bestValue": "Best value",
+      "lowestPerplexity": "Lowest perplexity",
+      "noPerplexityRuns": "No perplexity runs"
     },
     "metric": {
       "perplexity": "Perplexity",
@@ -562,7 +571,6 @@
       "speed": "Speed",
       "response": "Response",
       "cache": "Cache",
-      "quality": "Quality",
       "compression": "Compression",
       "context": "Context",
       "strategy": "Strategy",
@@ -602,8 +610,8 @@
       "strategy": "Strategy",
       "bits": "Bits",
       "context": "Context",
-      "quality": "Quality",
-      "pplValue": "{value} ppl"
+      "pplValue": "{value} ppl",
+      "load": "Load"
     },
     "modeLabel": {
       "ppl": "PPL",
@@ -708,13 +716,12 @@
     "emptyState": "Run some benchmarks to populate the scatter plot.",
     "xAxisLabel": "Cache (GB) →",
     "yAxisLabel": "↑ Tokens/sec",
-    "pointTooltip": "{label}\n{tokS} tok/s · {cacheGb} GB · {quality}% quality",
     "legend1Bit": "1-bit",
     "legend2Bit": "2-bit",
     "legend3Bit": "3-bit",
     "legend4Bit": "4-bit",
     "legendNativeF16": "Native f16",
-    "legendDotSize": "Dot size = quality %"
+    "pointTooltipMeasured": "{label}\n{tokS} tok/s · {cacheGb} GB"
   },
   "logprobSummary": {
     "title": "Token confidence",

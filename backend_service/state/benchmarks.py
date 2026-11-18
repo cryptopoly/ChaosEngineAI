@@ -321,7 +321,6 @@ def _run_benchmark(state: ChaosEngineState, request: BenchmarkRunRequest, run: _
         compression = (
             round(baseline_cache_gb / cache_gb, 1) if use_compressed and cache_gb else 1.0
         )
-        quality = int(round(preview["qualityPercent"])) if use_compressed else 100
         cache_label = state._cache_label(
             cache_strategy=request.cacheStrategy,
             bits=request.cacheBits,
@@ -368,7 +367,6 @@ def _run_benchmark(state: ChaosEngineState, request: BenchmarkRunRequest, run: _
             "perplexityNumSamples": eval_result["numSamples"],
             "evalTokensPerSecond": eval_result["evalTokensPerSecond"],
             "evalSeconds": eval_result["evalSeconds"],
-            "quality": quality,
             "tokS": eval_result["evalTokensPerSecond"],
             "responseSeconds": eval_result["evalSeconds"],
             "totalSeconds": round(load_seconds + eval_result["evalSeconds"], 2),
@@ -401,13 +399,12 @@ def _run_benchmark(state: ChaosEngineState, request: BenchmarkRunRequest, run: _
             "taskName": eval_result["taskName"],
             "taskAccuracy": eval_result["accuracy"],
             "taskCorrect": eval_result["correct"],
+            "taskTotal": eval_result["total"],
+            "taskNumShots": eval_result["numShots"],
             # How the answer was picked. Runs saved before this field used "generated"
             # (three generated tokens searched for a letter); the UI says so when two runs differ.
             "taskScoringMethod": eval_result.get("scoringMethod") or "generated",
-            "taskTotal": eval_result["total"],
-            "taskNumShots": eval_result["numShots"],
             "evalSeconds": eval_result["evalSeconds"],
-            "quality": quality,
             "tokS": 0,
             "responseSeconds": eval_result["evalSeconds"],
             "totalSeconds": round(load_seconds + eval_result["evalSeconds"], 2),
@@ -444,7 +441,6 @@ def _run_benchmark(state: ChaosEngineState, request: BenchmarkRunRequest, run: _
                 context_tokens=request.contextTokens,
             ),
             "tokS": round(result.tokS, 1),
-            "quality": quality,
             "responseSeconds": round(result.responseSeconds, 2),
             "totalSeconds": round(load_seconds + result.responseSeconds, 2),
             "promptTokens": result.promptTokens,

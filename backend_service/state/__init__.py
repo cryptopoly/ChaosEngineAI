@@ -826,8 +826,9 @@ class ChaosEngineState:
             "estimatedTokS": preview["estimatedTokS"] if preview is not None else None,
             "baselineCacheGb": preview["baselineCacheGb"] if preview is not None else None,
             "optimizedCacheGb": preview["optimizedCacheGb"] if preview is not None else None,
-            "compressionRatio": preview["compressionRatio"] if preview is not None else None,
-            "qualityPercent": preview["qualityPercent"] if preview is not None else None,
+            # No "compressionRatio" / "qualityPercent" here any more: those were the KV-cache preview's
+            # numbers for the launch settings, shown as if the conversion had measured them. The measured
+            # values are "diskRatio", "bitsPerWeight" and "quality" from the conversion itself.
         }
 
     def run_benchmark(self, request: BenchmarkRunRequest) -> dict[str, Any]:

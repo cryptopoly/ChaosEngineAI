@@ -1497,6 +1497,73 @@ class RuntimeController:
             self._convert_process = None
         return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
 
+    def _run_quality_probe(self, model_path: str, env: dict[str, str]) -> subprocess.CompletedProcess:
+        """Score one model in a process of its own; ``cancel_conversion`` can stop it like the converter."""
+        command = [self.capabilities.pythonExecutable, "-m", "backend_service.inference.conversion_quality", model_path]
+        process = subprocess.Popen(
+            command,
+            cwd=str(WORKSPACE_ROOT),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            env=env,
+        )
+        self._convert_process = process
+        try:
+            stdout, stderr = process.communicate(timeout=900)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            stdout, stderr = process.communicate()
+            return subprocess.CompletedProcess(command, -9, stdout, "The measurement ran past 15 minutes and was stopped.")
+        finally:
+            self._convert_process = None
+        return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
+
+    def _measure_conversion_quality(
+        self,
+        *,
+        source_dir: str | None,
+        output_dir: str,
+        env: dict[str, str],
+    ) -> dict[str, Any]:
+        """Perplexity of the converted model against the source on the same short sample, or why it was not measured.
+
+        The conversion itself is finished and kept whatever happens here.
+        """
+        from backend_service.inference import conversion_quality as quality
+        from backend_service.progress import CONVERSION_PROGRESS
+
+        try:
+            import psutil
+
+            available: int | None = int(psutil.virtual_memory().available)
+        except Exception:  # noqa: BLE001 - no reading means no measurement, never a failed conversion
+            available = None
+        skipped = quality.quality_plan(source_dir, output_dir, available)
+        if skipped is not None:
+            return skipped
+        CONVERSION_PROGRESS.set_phase("measuring", "Measuring quality on a short text sample")
+        measured: list[float] = []
+        # The converted model first: it is the smaller one, and a failure there says the most.
+        for index, (label, path) in enumerate((("converted model", output_dir), ("source", str(source_dir)))):
+            CONVERSION_PROGRESS.set_step(index, 2)
+            stopped = "Stopped by Cancel before the measurement finished. The converted model was kept."
+            if getattr(self, "_convert_cancel_requested", False):
+                return quality.quality_skipped(stopped)
+            try:
+                completed = self._run_quality_probe(path, env)
+            except OSError as exc:
+                return quality.quality_skipped(f"The measurement could not start: {exc}")
+            if getattr(self, "_convert_cancel_requested", False):
+                return quality.quality_skipped(stopped)
+            value = quality.parse_measurement(completed.stdout or "") if completed.returncode == 0 else None
+            if value is None:
+                detail = _summarise_convert_failure(completed.stderr or "", "", completed.returncode or 1)
+                return quality.quality_skipped(f"The {label} could not be scored: {detail[:300]}")
+            measured.append(value)
+        CONVERSION_PROGRESS.set_step(2, 2)
+        return quality.quality_summary(source_perplexity=measured[1], converted_perplexity=measured[0])
+
     def cancel_conversion(self) -> bool:
         """Stop the conversion in progress, if there is one. True when one was told to stop.
 
@@ -1526,6 +1593,7 @@ class RuntimeController:
         q_bits: int,
         dtype: str,
         q_group_size: int = 64,
+        measure_quality: bool = False,
     ) -> dict[str, Any]:
         from backend_service.progress import CONVERSION_PROGRESS
 
@@ -1543,6 +1611,7 @@ class RuntimeController:
                 q_bits=q_bits,
                 dtype=dtype,
                 q_group_size=q_group_size,
+                measure_quality=measure_quality,
             )
         finally:
             self._convert_active = False
@@ -1559,6 +1628,7 @@ class RuntimeController:
         q_bits: int,
         dtype: str,
         q_group_size: int = 64,
+        measure_quality: bool = False,
     ) -> dict[str, Any]:
         self.refresh_capabilities(force=True)
         if not self.capabilities.converterAvailable:
@@ -1833,6 +1903,18 @@ class RuntimeController:
                 )
             raise RuntimeError(detail or "mlx_lm.convert failed.")
 
+        # Measured, not estimated: the two sizes on disk, and (when asked for) the perplexity of both models.
+        source_bytes = _path_size_bytes(size_source) if size_source else 0
+        output_bytes = _path_size_bytes(target_output)
+        quality = (
+            self._measure_conversion_quality(
+                source_dir=hf_path_arg if hf_path_arg and Path(hf_path_arg).is_dir() else None,
+                output_dir=target_output,
+                env=convert_env,
+            )
+            if measure_quality
+            else None
+        )
         return {
             "sourceRef": source_ref,
             "sourcePath": source_path,
@@ -1843,8 +1925,13 @@ class RuntimeController:
             "qBits": q_bits,
             "qGroupSize": q_group_size,
             "dtype": dtype,
-            "sourceSizeGb": _bytes_to_gb(_path_size_bytes(size_source)) if size_source else None,
-            "outputSizeGb": _bytes_to_gb(_path_size_bytes(target_output)),
+            "sourceSizeGb": _bytes_to_gb(source_bytes) if size_source else None,
+            "outputSizeGb": _bytes_to_gb(output_bytes),
+            # Source size over output size; None when either is unknown.
+            "diskRatio": round(source_bytes / output_bytes, 2) if source_bytes > 0 and output_bytes > 0 else None,
+            # None when the measurement was not asked for; otherwise "measured" with both perplexities,
+            # or "skipped" with the reason.
+            "quality": quality,
             "ggufMetadata": gguf_metadata,
             # Measured by the converter itself; None for a run without quantization.
             "bitsPerWeight": parse_bits_per_weight(completed.stdout or ""),

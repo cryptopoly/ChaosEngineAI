@@ -354,6 +354,7 @@ def convert_model(state: ChaosEngineState, request: ConvertModelRequest) -> dict
             q_bits=request.qBits,
             q_group_size=request.qGroupSize,
             dtype=request.dtype,
+            measure_quality=request.measureQuality,
         )
         conversion = state._conversion_details(request=request, conversion=conversion)
         state.add_log(

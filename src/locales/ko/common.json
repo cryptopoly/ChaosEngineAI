@@ -331,12 +331,14 @@
         "resolve": "소스 확인 중",
         "load": "MLX에 로드 중",
         "quantize": "{bits}비트 g{group}로 양자화 중",
-        "shard": "샤딩 및 safetensors 작성"
+        "shard": "샤딩 및 safetensors 작성",
+        "measuring": null
       },
       "detail": {
         "files": null,
         "written": null,
-        "writtenOfAbout": null
+        "writtenOfAbout": null,
+        "modelsScored": null
       }
     },
     "varies": "다양함",
@@ -393,13 +395,9 @@
     "targetProfile": "대상 프로필",
     "bitProfile": "{bits}비트 g{group}",
     "unquantized": "양자화되지 않음",
-    "qualityEstimate": "품질 추정",
     "lastConversion": "마지막 변환",
     "baseRepo": "베이스 repo",
     "architecture": "아키텍처",
-    "compression": "압축",
-    "cacheReduction": "{ratio}배 캐시 감소",
-    "quality": "품질",
     "diskBeforeAfter": "디스크 변환 전 → 후",
     "modal": {
       "titleConverting": "모델 변환 중",
@@ -420,7 +418,19 @@
       "terminalHint": "전체 stderr는 터미널에서 확인하세요.",
       "close": "닫기",
       "ok": "확인"
-    }
+    },
+    "measureQuality": null,
+    "measureQualityHint": null,
+    "qualityMeasured": null,
+    "qualityChange": null,
+    "qualityDetail": null,
+    "qualityAfterConverting": null,
+    "qualityNotMeasured": null,
+    "qualityOff": null,
+    "bitsPerWeight": null,
+    "bitsPerWeightValue": null,
+    "sizeOnDisk": null,
+    "pickSourceFirst": null
   },
   "benchmarkTab": {
     "progress": {
@@ -486,8 +496,6 @@
     "loadSeconds": "{value}초 로드",
     "statResponseTime": "응답 시간",
     "statCacheFootprint": "캐시 풋프린트",
-    "statQuality": "품질",
-    "tokensGenerated": "토큰 {count}개 생성됨",
     "statContext": "컨텍스트",
     "maxTokensHint": "최대 {max}",
     "deltaVsPrev": "이전 {cache} 실행 대비 {delta} tok/s",
@@ -550,8 +558,9 @@
       "noRuns": "실행 없음",
       "fastest": "가장 빠름",
       "leanestCache": "최소 캐시",
-      "bestQuality": "최상의 품질",
-      "bestValue": "최상의 가성비"
+      "bestValue": "최상의 가성비",
+      "lowestPerplexity": null,
+      "noPerplexityRuns": null
     },
     "metric": {
       "perplexity": "퍼플렉시티",
@@ -562,7 +571,6 @@
       "speed": "속도",
       "response": "응답",
       "cache": "캐시",
-      "quality": "품질",
       "compression": "압축",
       "context": "컨텍스트",
       "strategy": "전략",
@@ -602,8 +610,8 @@
       "strategy": "전략",
       "bits": "비트",
       "context": "컨텍스트",
-      "quality": "품질",
-      "pplValue": "{value} ppl"
+      "pplValue": "{value} ppl",
+      "load": null
     },
     "modeLabel": {
       "ppl": "PPL",
@@ -708,13 +716,12 @@
     "emptyState": "산점도를 채우려면 벤치마크를 실행하세요.",
     "xAxisLabel": "캐시 (GB) →",
     "yAxisLabel": "↑ 토큰/초",
-    "pointTooltip": "{label}\n{tokS} tok/s · {cacheGb} GB · 품질 {quality}%",
     "legend1Bit": "1비트",
     "legend2Bit": "2비트",
     "legend3Bit": "3비트",
     "legend4Bit": "4비트",
     "legendNativeF16": "네이티브 f16",
-    "legendDotSize": "점 크기 = 품질 %"
+    "pointTooltipMeasured": null
   },
   "logprobSummary": {
     "title": "토큰 신뢰도",

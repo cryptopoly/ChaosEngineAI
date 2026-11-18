@@ -92,6 +92,40 @@ def load_perplexity_data(tokenizer: Any, dataset: str, num_samples: int, seq_len
     return mx.array(perplexity_windows(tokens, num_samples, seq_length))
 
 
+def perplexity_of(
+    model: Any,
+    data: Any,
+    batch_size: int,
+    on_batch: Any = None,
+) -> tuple[float, float]:
+    """Perplexity and its standard error for ``data`` (an ``mx.array`` of token windows).
+
+    ``on_batch(done_samples)`` is called before each batch (with the samples done so far)
+    and after the last one; it may raise to stop the run.
+    """
+    import math
+    import mlx.core as mx
+    import mlx.nn as nn
+
+    all_losses: list[mx.array] = []
+    total = len(data)
+    for i in range(0, total, batch_size):
+        if on_batch is not None:
+            on_batch(i)
+        batch = data[i : i + batch_size]
+        logits = model(batch[:, :-1]).astype(mx.float32)
+        losses = nn.losses.cross_entropy(logits, batch[:, 1:], reduction="none")
+        mx.eval(losses)
+        all_losses.append(losses.flatten())
+    if on_batch is not None:
+        on_batch(total)
+
+    all_losses_cat = mx.concatenate(all_losses)
+    ppl = math.exp(all_losses_cat.mean().item())
+    std_dev = mx.sqrt(mx.var(all_losses_cat, ddof=1)).item()
+    return ppl, ppl * (std_dev / math.sqrt(all_losses_cat.size))
+
+
 def eval_perplexity(
     *,
     model: Any,
@@ -100,10 +134,6 @@ def eval_perplexity(
 ) -> dict[str, Any]:
     if model is None or tokenizer is None:
         raise RuntimeError("No MLX model is loaded.")
-
-    import math
-    import mlx.core as mx
-    import mlx.nn as nn
 
     dataset = request.get("dataset", "wikitext-2")
     num_samples = int(request.get("numSamples", 64))
@@ -115,19 +145,11 @@ def eval_perplexity(
     raise_if_cancelled(request)
 
     total_samples = len(data)
-    emit_progress("evaluating", 0.0, f"Sample 0/{total_samples}", step=0, total=total_samples)
     start = time.monotonic()
 
-    all_losses: list[mx.array] = []
-    for i in range(0, len(data), batch_size):
-        raise_if_cancelled(request)
-        batch = data[i : i + batch_size]
-        logits = model(batch[:, :-1]).astype(mx.float32)
-        losses = nn.losses.cross_entropy(logits, batch[:, 1:], reduction="none")
-        mx.eval(losses)
-        all_losses.append(losses.flatten())
-
-        done = min(total_samples, i + batch_size)
+    def on_batch(done: int) -> None:
+        if done < total_samples:
+            raise_if_cancelled(request)
         emit_progress(
             "evaluating",
             done / total_samples * 100.0,
@@ -136,11 +158,7 @@ def eval_perplexity(
             total=total_samples,
         )
 
-    all_losses_cat = mx.concatenate(all_losses)
-    mean_loss = all_losses_cat.mean().item()
-    ppl = math.exp(mean_loss)
-    std_dev = mx.sqrt(mx.var(all_losses_cat, ddof=1)).item()
-    se_ppl = ppl * (std_dev / math.sqrt(all_losses_cat.size))
+    ppl, se_ppl = perplexity_of(model, data, batch_size, on_batch)
 
     elapsed = time.monotonic() - start
     tokens_eval = data.shape[0] * (data.shape[1] - 1)

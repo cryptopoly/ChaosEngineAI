@@ -68,6 +68,8 @@ export function useSettings(
     qBits: 4,
     qGroupSize: 64,
     dtype: "float16",
+    // Compare the converted model with the source after converting (perplexity on a short sample).
+    measureQuality: true,
   });
   const [lastConversion, setLastConversion] = useState<ConversionResult | null>(null);
   const [systemPrompt, setSystemPrompt] = useState("");

@@ -56,10 +56,12 @@ export function BenchmarkHistoryTab({
 
   const latestRun = filteredBenchmarks[0] ?? null;
   const fastestRun = [...speedRuns].sort((left, right) => right.tokS - left.tokS)[0] ?? null;
-  const mostEfficientRun = [...filteredBenchmarks].sort(
-    (left, right) => left.cacheGb - right.cacheGb || right.quality - left.quality,
-  )[0] ?? null;
-  const bestQualityRun = [...filteredBenchmarks].sort((a, b) => b.quality - a.quality)[0] ?? null;
+  const mostEfficientRun = [...filteredBenchmarks].sort((left, right) => left.cacheGb - right.cacheGb)[0] ?? null;
+  // Quality as measured: the lowest perplexity among the perplexity runs. The card used to rank a
+  // "quality %" that no run measured (100 for every native-cache run).
+  const lowestPerplexityRun = [...filteredBenchmarks]
+    .filter((b) => b.mode === "perplexity" && typeof b.perplexity === "number")
+    .sort((a, b) => (a.perplexity ?? 0) - (b.perplexity ?? 0))[0] ?? null;
   const bestValueRun = [...speedRuns].sort(
     (a, b) => (b.tokS / Math.max(b.cacheGb, 0.1)) - (a.tokS / Math.max(a.cacheGb, 0.1)),
   )[0] ?? null;
@@ -69,12 +71,12 @@ export function BenchmarkHistoryTab({
   const effectiveCompare = filteredBenchmarks.find(b => b.id === compareBenchmarkId && b.id !== effectiveSelected?.id)
     ?? filteredBenchmarks.find(b => b.id !== effectiveSelected?.id) ?? null;
 
-  type DeltaRow = { label: string; selected: string; baseline: string; delta: number; pct: number; lowerIsBetter?: boolean; unit?: string };
-
   const scoringLabel = (run: BenchmarkResult) =>
     taskScoringMethod(run) === "next_token"
       ? t("benchmarkTab.scoring.nextToken", { defaultValue: "next-token choice" })
       : t("benchmarkTab.scoring.generated", { defaultValue: "generated text (older method)" });
+
+  type DeltaRow = { label: string; selected: string; baseline: string; delta: number; pct: number; lowerIsBetter?: boolean; unit?: string };
 
   function buildComparisonRows(): DeltaRow[] {
     if (!effectiveSelected || !effectiveCompare) return [];
@@ -91,8 +93,6 @@ export function BenchmarkHistoryTab({
     } else if (mode === "task_accuracy") {
       rows.push({ label: t("benchmarkHistory.metric.accuracy", { defaultValue: "Accuracy" }), selected: `${((s.taskAccuracy ?? 0) * 100).toFixed(1)}%`, baseline: `${((c.taskAccuracy ?? 0) * 100).toFixed(1)}%`, delta: (s.taskAccuracy ?? 0) - (c.taskAccuracy ?? 0), pct: pct(s.taskAccuracy ?? 0, c.taskAccuracy ?? 0) });
       rows.push({ label: t("benchmarkHistory.metric.correct", { defaultValue: "Correct" }), selected: `${s.taskCorrect ?? 0}/${s.taskTotal ?? 0}`, baseline: `${c.taskCorrect ?? 0}/${c.taskTotal ?? 0}`, delta: (s.taskCorrect ?? 0) - (c.taskCorrect ?? 0), pct: 0 });
-    } else {
-      rows.push({ label: t("benchmarkHistory.metric.speed", { defaultValue: "Speed" }), selected: `${number(s.tokS)} tok/s`, baseline: `${number(c.tokS)} tok/s`, delta: s.tokS - c.tokS, pct: pct(s.tokS, c.tokS) });
       if (c.mode === "task_accuracy" && !accuracyComparable(s, c)) {
         // One run picked the highest-scoring letter, the other searched generated text: both values
         // are shown, but a difference between them would say nothing about the models.
@@ -102,6 +102,8 @@ export function BenchmarkHistoryTab({
         }
       }
       rows.push({ label: t("benchmarkHistory.metric.scoring", { defaultValue: "Scoring" }), selected: scoringLabel(s), baseline: c.mode === "task_accuracy" ? scoringLabel(c) : "\u2014", delta: 0, pct: 0 });
+    } else {
+      rows.push({ label: t("benchmarkHistory.metric.speed", { defaultValue: "Speed" }), selected: `${number(s.tokS)} tok/s`, baseline: `${number(c.tokS)} tok/s`, delta: s.tokS - c.tokS, pct: pct(s.tokS, c.tokS) });
       rows.push({ label: t("benchmarkHistory.metric.response", { defaultValue: "Response" }), selected: `${number(s.responseSeconds)} s`, baseline: `${number(c.responseSeconds)} s`, delta: s.responseSeconds - c.responseSeconds, pct: pct(s.responseSeconds, c.responseSeconds), lowerIsBetter: true });
     }
     if ((c.mode ?? "throughput") !== mode) {
@@ -114,7 +116,6 @@ export function BenchmarkHistoryTab({
       }
     }
     rows.push({ label: t("benchmarkHistory.metric.cache", { defaultValue: "Cache" }), selected: `${number(s.cacheGb)} GB`, baseline: `${number(c.cacheGb)} GB`, delta: s.cacheGb - c.cacheGb, pct: pct(s.cacheGb, c.cacheGb), lowerIsBetter: true });
-    rows.push({ label: t("benchmarkHistory.metric.quality", { defaultValue: "Quality" }), selected: `${s.quality}%`, baseline: `${c.quality}%`, delta: s.quality - c.quality, pct: pct(s.quality, c.quality) });
     rows.push({ label: t("benchmarkHistory.metric.compression", { defaultValue: "Compression" }), selected: `${number(s.compression)}x`, baseline: `${number(c.compression)}x`, delta: s.compression - c.compression, pct: pct(s.compression, c.compression) });
     rows.push({ label: t("benchmarkHistory.metric.context", { defaultValue: "Context" }), selected: `${Math.round((s.contextTokens ?? 0) / 1024)}K`, baseline: `${Math.round((c.contextTokens ?? 0) / 1024)}K`, delta: 0, pct: 0 });
     rows.push({ label: t("benchmarkHistory.metric.strategy", { defaultValue: "Strategy" }), selected: s.cacheLabel, baseline: c.cacheLabel, delta: 0, pct: 0 });
@@ -229,10 +230,10 @@ export function BenchmarkHistoryTab({
               onClick={mostEfficientRun ? () => onSelectedBenchmarkIdChange(mostEfficientRun.id) : undefined}
             />
             <StatCard
-              label={t("benchmarkHistory.summary.bestQuality", { defaultValue: "Best quality" })}
-              value={bestQualityRun ? `${bestQualityRun.quality}%` : t("benchmarkHistory.summary.none", { defaultValue: "None" })}
-              hint={bestQualityRun?.cacheLabel ?? t("benchmarkHistory.summary.noRuns", { defaultValue: "No runs" })}
-              onClick={bestQualityRun ? () => onSelectedBenchmarkIdChange(bestQualityRun.id) : undefined}
+              label={t("benchmarkHistory.summary.lowestPerplexity", { defaultValue: "Lowest perplexity" })}
+              value={lowestPerplexityRun ? number(lowestPerplexityRun.perplexity ?? 0, 2) : t("benchmarkHistory.summary.none", { defaultValue: "None" })}
+              hint={lowestPerplexityRun?.label ?? t("benchmarkHistory.summary.noPerplexityRuns", { defaultValue: "No perplexity runs" })}
+              onClick={lowestPerplexityRun ? () => onSelectedBenchmarkIdChange(lowestPerplexityRun.id) : undefined}
             />
             <StatCard
               label={t("benchmarkHistory.summary.bestValue", { defaultValue: "Best value" })}
@@ -372,7 +373,7 @@ export function BenchmarkHistoryTab({
                         <span>{t("benchmarkHistory.list.strategy", { defaultValue: "Strategy" })}</span>
                         <span>{t("benchmarkHistory.list.bits", { defaultValue: "Bits" })}</span>
                         <span>{t("benchmarkHistory.list.context", { defaultValue: "Context" })}</span>
-                        <span>{t("benchmarkHistory.list.quality", { defaultValue: "Quality" })}</span>
+                        <span>{t("benchmarkHistory.list.load", { defaultValue: "Load" })}</span>
                       </>
                     ) : null}
                   </div>
@@ -420,7 +421,7 @@ export function BenchmarkHistoryTab({
                               <span>{result.cacheStrategy}</span>
                               <span>{result.bits > 0 ? `${result.bits}-bit / ${result.fp16Layers}` : "\u2014"}</span>
                               <span>{Math.round((result.contextTokens ?? 0) / 1024)}K</span>
-                              <span>{result.quality}%</span>
+                              <span>{number(result.loadSeconds ?? 0)} s</span>
                             </>
                           ) : null}
                         </button>

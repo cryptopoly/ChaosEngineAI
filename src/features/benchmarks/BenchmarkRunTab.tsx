@@ -241,9 +241,9 @@ export function BenchmarkRunTab({
               hint={t("benchmarkTab.compressionRatio", { ratio: number(latestRun.compression), defaultValue: "{ratio}x compression" })}
             />
             <StatCard
-              label={t("benchmarkTab.statQuality", { defaultValue: "Quality" })}
-              value={`${latestRun.quality}%`}
-              hint={t("benchmarkTab.tokensGenerated", { count: latestRun.completionTokens, defaultValue: "{count} tokens generated" })}
+              label={t("benchmarkTab.statTokens", { defaultValue: "Tokens generated" })}
+              value={`${latestRun.completionTokens}`}
+              hint={t("benchmarkTab.promptTokensHint", { count: latestRun.promptTokens, defaultValue: "{count} prompt tokens" })}
             />
             <StatCard
               label={t("benchmarkTab.statContext", { defaultValue: "Context" })}

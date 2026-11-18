@@ -19,9 +19,12 @@ export function countedItems(
   return { done: Math.min(progress.step, progress.totalSteps), total: progress.totalSteps };
 }
 
-/** Phase ids of a conversion, in order. A run without quantization has no quantizing phase. */
-export function conversionPhaseIds(quantize: boolean): string[] {
-  return quantize ? ["preparing", "loading", "quantizing", "saving"] : ["preparing", "loading", "saving"];
+/**
+ * Phase ids of a conversion, in order. A run without quantization has no quantizing phase;
+ * the quality comparison is a phase of its own only when it was asked for.
+ */
+export function conversionPhaseIds(quantize: boolean, measureQuality = false): string[] {
+  return ["preparing", "loading", ...(quantize ? ["quantizing"] : []), "saving", ...(measureQuality ? ["measuring"] : [])];
 }
 
 /** The dialog has no phase of its own for a Hub download: it happens while the source is read. */

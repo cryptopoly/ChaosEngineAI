@@ -4,7 +4,7 @@ export interface GenerationProgressSnapshot {
   phase:
     | "idle" | "loading" | "encoding" | "diffusing" | "decoding" | "saving" | "load" | "encode" | "compose" | "decode" | "save"
     // Benchmarks and conversion (text-model jobs).
-    | "preparing" | "dataset" | "evaluating" | "generating" | "downloading" | "quantizing";
+    | "preparing" | "dataset" | "evaluating" | "generating" | "downloading" | "quantizing" | "measuring";
   message: string;
   step: number;
   totalSteps: number;

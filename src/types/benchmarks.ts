@@ -85,7 +85,8 @@ export interface BenchmarkResult {
   baselineCacheGb: number;
   compression: number;
   tokS: number;
-  quality: number;
+  /** Runs saved before v0.10.0 carry an estimated "quality %" here. It was never measured and is not shown. */
+  quality?: number | null;
   responseSeconds: number;
   loadSeconds: number;
   totalSeconds: number;
@@ -108,13 +109,13 @@ export interface BenchmarkResult {
   taskCorrect?: number | null;
   taskTotal?: number | null;
   taskNumShots?: number | null;
-}
   /**
    * How the answer was picked: "next_token" (the choice letter the model scores highest) or
    * "generated" (three generated tokens searched for a letter). Runs saved before the field
    * existed used "generated"; accuracy from the two methods is not comparable.
    */
   taskScoringMethod?: "next_token" | "generated" | null;
+}
 
 export interface BenchmarkRunPayload {
   mode?: BenchmarkMode;

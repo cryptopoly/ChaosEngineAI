@@ -34,6 +34,8 @@ type ConversionDraft = {
   qBits: number;
   qGroupSize: number;
   dtype: string;
+  /** Compare the converted model with the source after converting. */
+  measureQuality: boolean;
 };
 
 type SetLastConversion = Dispatch<SetStateAction<ConversionResult | null>>;
@@ -81,6 +83,7 @@ export function prepareLibraryConversion(
     qBits: 4,
     qGroupSize: 64,
     dtype: "float16",
+    measureQuality: true,
   });
   deps.setLastConversion(null);
   deps.setActiveTab("conversion");
@@ -133,6 +136,7 @@ export async function performConvertModel(deps: {
       qBits: conversionDraft.qBits,
       qGroupSize: conversionDraft.qGroupSize,
       dtype: conversionDraft.dtype,
+      measureQuality: conversionDraft.measureQuality,
     });
     setLastConversion(response.conversion);
     setWorkspace((current) =>

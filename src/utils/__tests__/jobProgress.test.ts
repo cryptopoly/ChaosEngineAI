@@ -55,6 +55,9 @@ describe("conversion progress", () => {
   it("has a quantizing phase only when the run quantizes", () => {
     expect(conversionPhaseIds(true)).toEqual(["preparing", "loading", "quantizing", "saving"]);
     expect(conversionPhaseIds(false)).toEqual(["preparing", "loading", "saving"]);
+    // The quality comparison is a phase of its own only when it was asked for.
+    expect(conversionPhaseIds(true, true)).toEqual(["preparing", "loading", "quantizing", "saving", "measuring"]);
+    expect(conversionPhaseIds(false, true)).toEqual(["preparing", "loading", "saving", "measuring"]);
   });
 
   it("shows a Hub download under the loading phase with its file count", () => {

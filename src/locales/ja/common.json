@@ -331,12 +331,14 @@
         "resolve": "ソースを解決中",
         "load": "MLX に読み込み中",
         "quantize": "{bits} ビット g{group} に量子化中",
-        "shard": "シャーディングと safetensors の書き込み"
+        "shard": "シャーディングと safetensors の書き込み",
+        "measuring": null
       },
       "detail": {
         "files": null,
         "written": null,
-        "writtenOfAbout": null
+        "writtenOfAbout": null,
+        "modelsScored": null
       }
     },
     "varies": "変動",
@@ -393,13 +395,9 @@
     "targetProfile": "ターゲットプロファイル",
     "bitProfile": "{bits} ビット g{group}",
     "unquantized": "未量子化",
-    "qualityEstimate": "品質推定",
     "lastConversion": "最後の変換",
     "baseRepo": "ベースリポジトリ",
     "architecture": "アーキテクチャ",
-    "compression": "圧縮",
-    "cacheReduction": "{ratio}x キャッシュ削減",
-    "quality": "品質",
     "diskBeforeAfter": "ディスク 変換前 → 変換後",
     "modal": {
       "titleConverting": "モデルを変換中",
@@ -420,7 +418,19 @@
       "terminalHint": "を Terminal で実行すると完全な stderr が表示されます。",
       "close": "閉じる",
       "ok": "OK"
-    }
+    },
+    "measureQuality": null,
+    "measureQualityHint": null,
+    "qualityMeasured": null,
+    "qualityChange": null,
+    "qualityDetail": null,
+    "qualityAfterConverting": null,
+    "qualityNotMeasured": null,
+    "qualityOff": null,
+    "bitsPerWeight": null,
+    "bitsPerWeightValue": null,
+    "sizeOnDisk": null,
+    "pickSourceFirst": null
   },
   "benchmarkTab": {
     "progress": {
@@ -486,8 +496,6 @@
     "loadSeconds": "{value} 秒読み込み",
     "statResponseTime": "応答時間",
     "statCacheFootprint": "キャッシュ使用量",
-    "statQuality": "品質",
-    "tokensGenerated": "{count} トークン生成",
     "statContext": "コンテキスト",
     "maxTokensHint": "最大 {max}",
     "deltaVsPrev": "前回の {cache} 実行と比較して {delta} tok/s",
@@ -550,8 +558,9 @@
       "noRuns": "実行なし",
       "fastest": "最速",
       "leanestCache": "最小キャッシュ",
-      "bestQuality": "最高品質",
-      "bestValue": "最良バリュー"
+      "bestValue": "最良バリュー",
+      "lowestPerplexity": null,
+      "noPerplexityRuns": null
     },
     "metric": {
       "perplexity": "パープレキシティ",
@@ -562,7 +571,6 @@
       "speed": "速度",
       "response": "応答",
       "cache": "キャッシュ",
-      "quality": "品質",
       "compression": "圧縮",
       "context": "コンテキスト",
       "strategy": "戦略",
@@ -602,8 +610,8 @@
       "strategy": "戦略",
       "bits": "ビット",
       "context": "コンテキスト",
-      "quality": "品質",
-      "pplValue": "{value} ppl"
+      "pplValue": "{value} ppl",
+      "load": null
     },
     "modeLabel": {
       "ppl": "PPL",
@@ -708,13 +716,12 @@
     "emptyState": "散布図を表示するには、いくつかベンチマークを実行してください。",
     "xAxisLabel": "キャッシュ (GB) →",
     "yAxisLabel": "↑ トークン/秒",
-    "pointTooltip": "{label}\n{tokS} tok/s · {cacheGb} GB · 品質 {quality}%",
     "legend1Bit": "1 ビット",
     "legend2Bit": "2 ビット",
     "legend3Bit": "3 ビット",
     "legend4Bit": "4 ビット",
     "legendNativeF16": "ネイティブ f16",
-    "legendDotSize": "ドットサイズ = 品質 %"
+    "pointTooltipMeasured": null
   },
   "logprobSummary": {
     "title": "トークン信頼度",

@@ -400,6 +400,7 @@
     "diskBeforeAfter": "디스크 변환 전 → 후",
     "modal": {
       "titleConverting": "모델 변환 중",
+      "cancel": null,
       "titleFailed": "변환 실패",
       "titleComplete": "변환 완료",
       "debugDetails": "디버그 세부 정보",

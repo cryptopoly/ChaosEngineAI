@@ -20,7 +20,9 @@ Conversion
    4-bit MLX in a temporary folder: the folder holds ``config.json`` and safetensors, the log names the
    bits per weight, and the size is reported;
 8. converting into the same folder again is refused ("already exists") and leaves the folder alone;
-9. the converted model loads and answers a prompt.
+9. a cancel with nothing running answers ``cancelled: false``; a second conversion is cancelled as soon
+   as it is under way, answers 400 "Conversion cancelled" and leaves no output folder;
+10. the converted model loads and answers a prompt.
 The temporary folder is removed at the end. Nothing is downloaded by the conversion checks; the two
 dataset checks (3, 4) need the Hub once and skip when it cannot be reached.
 """
@@ -31,6 +33,8 @@ import json
 import math
 import shutil
 import tempfile
+import threading
+import time
 from pathlib import Path
 from typing import Any
 
@@ -280,6 +284,43 @@ def phase_21_benchmarks_conversion(cap: Any):
             return "fail", "the existing output folder was changed by the refused run", {}
         return "pass", "", {}
 
+    def _convert_cancel():
+        code, body = _json("POST", "/api/models/convert/cancel", {})
+        if code != 200 or body != {"cancelled": False}:
+            return "fail", f"cancel with nothing running: HTTP {code} {body}", {}
+        converted = state.get("converted")
+        if not converted:
+            return "skip", "nothing was converted, so no real run to cancel (the idle answer was checked)", {}
+        item = converted["source"]
+        output = Path(converted["path"]).with_name("cancelled-4bit-mlx")
+        answer: dict[str, Any] = {}
+
+        def run() -> None:
+            answer["code"], answer["body"] = _convert({
+                "modelRef": item["name"], "path": item["path"], "hfRepo": item["name"], "outputPath": str(output),
+                "quantize": True, "qBits": 4,
+            }, timeout=3600.0)
+
+        worker = threading.Thread(target=run, daemon=True)
+        worker.start()
+        deadline = time.monotonic() + 60.0
+        told = False
+        while time.monotonic() < deadline and worker.is_alive() and not told:
+            code, body = _json("POST", "/api/models/convert/cancel", {})
+            told = code == 200 and bool((body or {}).get("cancelled"))
+            if not told:
+                time.sleep(0.2)
+        worker.join(timeout=120.0)
+        if worker.is_alive():
+            return "fail", "the convert request did not return after the cancel", {}
+        if not told:
+            return "fail", f"cancel never took hold; the run ended with HTTP {answer.get('code')}", {}
+        if answer.get("code") != 400 or "Conversion cancelled" not in _detail(answer.get("body")):
+            return "fail", f"expected 400 'Conversion cancelled', got {answer.get('code')}: {_detail(answer.get('body'))[:160]}", {}
+        if output.exists():
+            return "fail", "the cancelled run left its output folder behind", {}
+        return "pass", "", {}
+
     def _converted_chats():
         converted = state.get("converted")
         if not converted:
@@ -298,6 +339,7 @@ def phase_21_benchmarks_conversion(cap: Any):
             ("conversion request guards", _convert_guards),
             ("Transformers checkpoint converted to 4-bit MLX", _convert_real),
             ("existing output folder refused and untouched", _convert_again),
+            ("conversion cancelled mid-run, nothing left behind", _convert_cancel),
             ("converted model loads and answers", _converted_chats),
         ):
             phase.checks.append(suite._check(name, fn))

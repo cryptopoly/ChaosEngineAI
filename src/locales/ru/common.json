@@ -400,6 +400,7 @@
     "diskBeforeAfter": "Диск до → после",
     "modal": {
       "titleConverting": "Конвертация модели",
+      "cancel": null,
       "titleFailed": "Конвертация не удалась",
       "titleComplete": "Конвертация завершена",
       "debugDetails": "Отладочная информация",

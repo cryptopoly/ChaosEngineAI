@@ -121,6 +121,15 @@ class BenchmarkRouteTests(_RouteContractCase):
         self.assertEqual(resp.status_code, 404)
 
 
+class ConversionCancelRouteTests(_RouteContractCase):
+    def test_cancel_reports_whether_a_conversion_was_stopped(self):
+        self.state.runtime.cancel_conversion = lambda: False  # type: ignore[attr-defined]
+        resp = self.client.post("/api/models/convert/cancel")
+        self.assertEqual((resp.status_code, resp.json()), (200, {"cancelled": False}))
+        self.state.runtime.cancel_conversion = lambda: True  # type: ignore[attr-defined]
+        self.assertEqual(self.client.post("/api/models/convert/cancel").json(), {"cancelled": True})
+
+
 class CachePreviewRouteTests(_RouteContractCase):
     def test_cache_preview_default_params_returns_shape(self):
         # The preview no longer builds a system snapshot (speed comes from

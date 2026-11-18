@@ -418,6 +418,36 @@ test("Conversion: a backend error is shown in the dialog", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Convert to MLX" })).toBeEnabled();
 });
 
+test("Conversion: Cancel stops the run and the dialog says it was cancelled", async ({ page }) => {
+  await mockWorkspace(page, []);
+  const message = "Conversion cancelled. Nothing was kept at /mock/Models/Mock-Model-4B-mlx.";
+  let release: () => void = () => {};
+  const cancelled = new Promise<void>((resolve) => { release = resolve; });
+  let cancelCalls = 0;
+  // The convert request stays open until Cancel is pressed, as the real one does.
+  await page.route("**/api/models/convert", async (route) => {
+    await cancelled;
+    await route.fulfill({ status: 400, json: { detail: { message, localized: message } } });
+  });
+  await page.route("**/api/models/convert/cancel", async (route) => {
+    cancelCalls += 1;
+    await route.fulfill({ json: { cancelled: true } });
+    release();
+  });
+  await goTo(page, "Tools", "Conversion");
+  await page.getByRole("button", { name: "Select a model to convert..." }).click();
+  await page.locator(".model-select-item", { hasText: TRANSFORMERS_ITEM.name }).click();
+  await page.getByRole("button", { name: "Convert to MLX" }).click();
+  const modal = page.locator(".conversion-result-modal");
+  await expect(modal.getByRole("heading", { name: "Converting model" }).first()).toBeVisible();
+  await modal.getByRole("button", { name: "Cancel conversion" }).click();
+  await expect(modal).toContainText("Conversion cancelled. Nothing was kept");
+  await expect(modal.getByRole("button", { name: "Cancel conversion" })).toHaveCount(0);
+  expect(cancelCalls).toBe(1);
+  await modal.getByRole("button", { name: /Close|OK/ }).click();
+  await expect(page.getByRole("button", { name: "Convert to MLX" })).toBeEnabled();
+});
+
 test("Conversion at 375 px: no sideways scroll", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 800 });
   await mockWorkspace(page, []);

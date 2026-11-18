@@ -91,3 +91,4 @@ The throwaway home linked the real `datasets--Salesforce--wikitext` cache folder
 - Conversion of a gated repo, of a model over 10 GB, and with a real Hugging Face token.
 - The packaged app window, Windows and Linux, other locales in the browser.
 - `./scripts/e2e_test_suite.py --smoke` and the full suite (stream G).
+- 08:40 download under 2 GB: Qwen/Qwen3-0.6B (about 1.5 GB) into the throwaway cache, as the base repo for the GGUF to MLX check

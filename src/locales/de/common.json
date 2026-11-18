@@ -400,6 +400,7 @@
     "diskBeforeAfter": "Festplatte vorher → nachher",
     "modal": {
       "titleConverting": "Modell wird konvertiert",
+      "cancel": null,
       "titleFailed": "Konvertierung fehlgeschlagen",
       "titleComplete": "Konvertierung abgeschlossen",
       "debugDetails": "Debug-Details",

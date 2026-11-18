@@ -400,6 +400,7 @@
     "diskBeforeAfter": "polmeH Daq nung → veb",
     "modal": {
       "titleConverting": "yab choHlI'",
+      "cancel": null,
       "titleFailed": "choH luj",
       "titleComplete": "choH rIn",
       "debugDetails": "nuD De'",

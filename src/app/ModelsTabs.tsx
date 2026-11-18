@@ -135,6 +135,7 @@ export function ConversionView({ ctx }: { ctx: AppTabContext }) {
     setShowConversionPicker,
     setShowConversionModal,
     handleConvertModel,
+    handleCancelConversion,
     handlePickConversionOutputDir,
     prepareLibraryConversion,
     handleRevealPath,
@@ -173,6 +174,7 @@ export function ConversionView({ ctx }: { ctx: AppTabContext }) {
         })
       }
       onConvertModel={() => void handleConvertModel()}
+      onCancelConversion={() => void handleCancelConversion()}
       onPickConversionOutputDir={() => void handlePickConversionOutputDir()}
       onShowConversionPickerChange={setShowConversionPicker}
       onShowConversionModalChange={setShowConversionModal}

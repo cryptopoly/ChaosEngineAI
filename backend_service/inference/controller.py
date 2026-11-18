@@ -1474,7 +1474,71 @@ class RuntimeController:
             raise RuntimeError(message or "Failed to read GGUF metadata.")
         return payload
 
+    def _run_converter(self, command: list[str], env: dict[str, str]) -> subprocess.CompletedProcess:
+        """Run ``mlx_lm convert`` and keep a handle on it so ``cancel_conversion`` can stop it."""
+        process = subprocess.Popen(
+            command,
+            cwd=str(WORKSPACE_ROOT),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            env=env,
+        )
+        self._convert_process = process
+        try:
+            stdout, stderr = process.communicate(timeout=3600)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.communicate()
+            raise
+        finally:
+            self._convert_process = None
+        return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
+
+    def cancel_conversion(self) -> bool:
+        """Stop the conversion in progress, if there is one. True when one was told to stop.
+
+        The request counts from the first pre-flight check on, not only once the
+        converter process exists: a cancel that arrives early stops the run
+        before the process is started.
+        """
+        if not getattr(self, "_convert_active", False):
+            return False
+        self._convert_cancel_requested = True
+        process = getattr(self, "_convert_process", None)
+        if process is not None and process.poll() is None:
+            process.terminate()
+        return True
+
     def convert_model(
+        self,
+        *,
+        source_ref: str | None,
+        source_path: str | None,
+        output_path: str | None,
+        hf_repo: str | None,
+        quantize: bool,
+        q_bits: int,
+        dtype: str,
+        q_group_size: int = 64,
+    ) -> dict[str, Any]:
+        self._convert_cancel_requested = False
+        self._convert_active = True
+        try:
+            return self._convert_model(
+                source_ref=source_ref,
+                source_path=source_path,
+                output_path=output_path,
+                hf_repo=hf_repo,
+                quantize=quantize,
+                q_bits=q_bits,
+                dtype=dtype,
+                q_group_size=q_group_size,
+            )
+        finally:
+            self._convert_active = False
+
+    def _convert_model(
         self,
         *,
         source_ref: str | None,
@@ -1498,6 +1562,7 @@ class RuntimeController:
         # OR a local directory/file path. Figure out which one to hand to
         # mlx_lm.convert based on what the caller actually gave us.
         hf_path_arg: str | None = None
+        size_source: str | None = _resolve_local_model_dir(source_path) if source_path else None
 
         if source_path and not _looks_like_gguf(source_path) and not Path(source_path).expanduser().exists():
             raise RuntimeError(
@@ -1510,6 +1575,7 @@ class RuntimeController:
             # Resolve to the concrete .gguf before reading metadata so
             # extract_gguf_metadata never gets handed a directory.
             resolved_gguf_file = _resolve_gguf_path(source_path, source_ref) or source_path
+            size_source = resolved_gguf_file  # the one weights file, not the cache folder around it
             try:
                 gguf_metadata = self.extract_gguf_metadata(resolved_gguf_file)
             except Exception as exc:
@@ -1668,22 +1734,19 @@ class RuntimeController:
             if _tok_val:
                 convert_env[_tok_var] = _tok_val
 
+        cancelled_message = f"Conversion cancelled. Nothing was kept at {target_output}."
+        if getattr(self, "_convert_cancel_requested", False):
+            raise RuntimeError(cancelled_message)
         try:
-            completed = subprocess.run(
-                command,
-                cwd=str(WORKSPACE_ROOT),
-                check=False,
-                capture_output=True,
-                text=True,
-                timeout=3600,
-                env=convert_env,
-            )
+            completed = self._run_converter(command, convert_env)
         except (OSError, subprocess.TimeoutExpired) as exc:
             _discard_partial_output()
             raise RuntimeError(str(exc)) from exc
 
         if completed.returncode != 0:
             _discard_partial_output()
+            if getattr(self, "_convert_cancel_requested", False):
+                raise RuntimeError(cancelled_message)
             detail = _summarise_convert_failure(completed.stderr or "", completed.stdout or "", completed.returncode)
             combined = ((completed.stderr or "") + "\n" + (completed.stdout or "")).lower()
             # Specific, low-false-positive markers only. The previous
@@ -1768,7 +1831,7 @@ class RuntimeController:
             "qBits": q_bits,
             "qGroupSize": q_group_size,
             "dtype": dtype,
-            "sourceSizeGb": _bytes_to_gb(_path_size_bytes(_resolve_local_model_dir(source_path))) if source_path else None,
+            "sourceSizeGb": _bytes_to_gb(_path_size_bytes(size_source)) if size_source else None,
             "outputSizeGb": _bytes_to_gb(_path_size_bytes(target_output)),
             "ggufMetadata": gguf_metadata,
             "log": (completed.stdout or "").strip(),

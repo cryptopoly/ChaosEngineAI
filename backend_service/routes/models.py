@@ -189,6 +189,13 @@ def convert_model(request: Request, body: ConvertModelRequest) -> dict[str, Any]
         raise HTTPException(status_code=400, detail=localized_detail(request, detail)) from exc
 
 
+@router.post("/api/models/convert/cancel")
+def cancel_conversion(request: Request) -> dict[str, Any]:
+    """Stop the conversion that is running. The waiting convert request then answers 400 "Conversion cancelled"."""
+    # No state lock and no log line here: the convert request holds the state lock until it returns.
+    return {"cancelled": bool(request.app.state.chaosengine.runtime.cancel_conversion())}
+
+
 @router.post("/api/models/reveal")
 def reveal_model_path(request: Request, body: RevealPathRequest) -> dict[str, Any]:
     state = request.app.state.chaosengine

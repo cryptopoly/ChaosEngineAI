@@ -400,6 +400,7 @@
     "diskBeforeAfter": "Disco antes → depois",
     "modal": {
       "titleConverting": "Convertendo modelo",
+      "cancel": null,
       "titleFailed": "Falha na conversão",
       "titleComplete": "Conversão concluída",
       "debugDetails": "Detalhes de depuração",

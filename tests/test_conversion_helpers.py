@@ -3,8 +3,12 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
+import sys
 import tempfile
+import threading
+import time
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -63,6 +67,10 @@ class ConversionHelperTests(unittest.TestCase):
         self.assertEqual(_conversion_source_name("Qwen/Qwen3.5-4B"), "Qwen3.5-4B")
         self.assertEqual(_conversion_source_name("/x/Qwen3-0.6B-Q4_K_M.gguf"), "Qwen3-0.6B-Q4_K_M")
         self.assertEqual(_conversion_source_name(""), "model")
+        # "Qwen3-0.6B-GGUF-mlx" could not be loaded: the loader reads "gguf" in a path as a GGUF model.
+        self.assertEqual(_conversion_source_name("/x/hub/models--lmstudio-community--Qwen3-0.6B-GGUF"), "Qwen3-0.6B")
+        self.assertEqual(_conversion_source_name("org/Model_gguf"), "Model")
+        self.assertNotIn("gguf", _conversion_source_name("/x/Qwen3-0.6B-GGUF/qwen3-0.6b-q4_k_m.gguf").lower())
 
     def test_default_output_folder_keeps_dots_and_stays_inside_models(self):
         with mock.patch.object(Path, "home", return_value=self.root):
@@ -154,7 +162,7 @@ class ConvertModelCommandTests(unittest.TestCase):
         params = dict(source_ref="Qwen/Qwen3.5-4B", source_path=None, output_path=None, hf_repo=None,
                       quantize=True, q_bits=4, dtype="float16")
         params.update(kwargs)
-        with mock.patch.object(controller_module.subprocess, "run", fake_run), \
+        with mock.patch.object(self.controller, "_run_converter", lambda command, _env: fake_run(command)), \
                 mock.patch.object(controller_module, "_free_disk_bytes", lambda _path: free):
             try:
                 return self.controller.convert_model(**params), calls
@@ -226,6 +234,93 @@ class ConvertModelCommandTests(unittest.TestCase):
         result, _calls = self._run(failed, source_ref="org/model")
         self.assertIn("stopped before it finished", str(result))
         self.assertNotIn("Fetching", str(result))
+
+
+class ConversionCancelTests(unittest.TestCase):
+    """The converter runs as a process that ``cancel_conversion`` can stop."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.root = Path(self._tmp.name)
+        self.controller = RuntimeController.__new__(RuntimeController)
+
+    def test_nothing_running_means_nothing_to_cancel(self):
+        self.assertFalse(self.controller.cancel_conversion())
+
+    def test_converter_output_and_exit_code_are_returned(self):
+        done = self.controller._run_converter(
+            [sys.executable, "-c", "import sys; print('out'); sys.stderr.write('err'); sys.exit(3)"], dict(os.environ),
+        )
+        self.assertEqual((done.returncode, done.stdout.strip(), done.stderr), (3, "out", "err"))
+        self.assertIsNone(self.controller._convert_process)
+
+    def test_cancel_stops_the_running_converter(self):
+        marker = self.root / "started"
+        script = f"import pathlib, time; pathlib.Path({str(marker)!r}).write_text('1'); time.sleep(60)"
+        result: dict[str, subprocess.CompletedProcess] = {}
+        worker = threading.Thread(
+            target=lambda: result.update(done=self.controller._run_converter([sys.executable, "-c", script], dict(os.environ))),
+        )
+        worker.start()
+        deadline = time.monotonic() + 20
+        while not marker.exists() and time.monotonic() < deadline:
+            time.sleep(0.05)
+        self.assertTrue(marker.exists(), "the converter process did not start")
+        self.controller._convert_active = True  # set by convert_model for the length of a run
+        self.assertTrue(self.controller.cancel_conversion())
+        worker.join(timeout=20)
+        self.assertFalse(worker.is_alive())
+        self.assertNotEqual(result["done"].returncode, 0)
+        self.assertTrue(self.controller._convert_cancel_requested)
+        self.controller._convert_active = False
+        self.assertFalse(self.controller.cancel_conversion())
+
+    def test_cancel_during_the_pre_flight_stops_the_run_before_the_converter_starts(self):
+        self.controller.capabilities = SimpleNamespace(
+            converterAvailable=True, pythonExecutable="python", mlxLmVersion="0", mlxMessage=None,
+        )
+        self.controller.refresh_capabilities = lambda force=False: None  # type: ignore[method-assign]
+        started: list[list[str]] = []
+
+        def cancel_while_checking(*_args, **_kwargs):
+            # The model-type peek is one of the pre-flight steps; the user cancels during it.
+            self.assertTrue(self.controller.cancel_conversion())
+            return None
+
+        with mock.patch.object(controller_module, "_peek_hf_model_type", cancel_while_checking), \
+                mock.patch.object(self.controller, "_run_converter", lambda command, _env: started.append(command)):
+            with self.assertRaises(RuntimeError) as ctx:
+                self.controller.convert_model(
+                    source_ref="org/model", source_path=None, output_path=str(self.root / "out-mlx"), hf_repo=None,
+                    quantize=True, q_bits=4, dtype="float16",
+                )
+        self.assertIn("Conversion cancelled", str(ctx.exception))
+        self.assertEqual(started, [])
+        self.assertFalse(self.controller.cancel_conversion())
+
+    def test_cancelled_run_says_cancelled_and_keeps_nothing(self):
+        target = self.root / "out-mlx"
+        self.controller.capabilities = SimpleNamespace(
+            converterAvailable=True, pythonExecutable="python", mlxLmVersion="0", mlxMessage=None,
+        )
+        self.controller.refresh_capabilities = lambda force=False: None  # type: ignore[method-assign]
+
+        def cancelled_run(command, _env):
+            target.mkdir()
+            (target / "model.safetensors").write_bytes(b"\0" * 10)
+            self.assertTrue(self.controller.cancel_conversion())
+            return subprocess.CompletedProcess(command, -15, "", "Fetching 10 files:  80%")
+
+        with mock.patch.object(controller_module, "_peek_hf_model_type", lambda *a, **k: None), \
+                mock.patch.object(self.controller, "_run_converter", cancelled_run):
+            with self.assertRaises(RuntimeError) as ctx:
+                self.controller.convert_model(
+                    source_ref="org/model", source_path=None, output_path=str(target), hf_repo=None,
+                    quantize=True, q_bits=4, dtype="float16",
+                )
+        self.assertIn("Conversion cancelled", str(ctx.exception))
+        self.assertFalse(target.exists())
 
 
 if __name__ == "__main__":

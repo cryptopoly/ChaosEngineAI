@@ -361,7 +361,7 @@
     "backendNote": "Backend note",
     "reQuantizingDetail": "Source is already ~{bits}-bit. Going lower compounds quality loss — for best results convert from the original FP16/BF16 weights.",
     "ggufSourceTitle": "A GGUF source is downloaded again in full size",
-    "ggufSourceDetail": "A GGUF file cannot be turned into MLX directly. The original model named in the file is downloaded from Hugging Face and converted, so this needs a network connection and disk space for the full-size weights. The download shows no progress and cannot be cancelled once started.",
+    "ggufSourceDetail": "A GGUF file cannot be turned into MLX directly. The original model named in the file is downloaded from Hugging Face and converted, so this needs a network connection and disk space for the full-size weights. The download shows no progress; Cancel stops it.",
     "mlxLmAvailable": "mlx-lm conversion is available in the active backend.",
     "startNativeSidecar": "Start the native sidecar to enable conversion.",
     "converting": "Converting...",
@@ -400,6 +400,7 @@
     "diskBeforeAfter": "Disk before → after",
     "modal": {
       "titleConverting": "Converting model",
+      "cancel": "Cancel conversion",
       "titleFailed": "Conversion failed",
       "titleComplete": "Conversion complete",
       "debugDetails": "Debug details",

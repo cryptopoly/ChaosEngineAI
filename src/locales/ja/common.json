@@ -400,6 +400,7 @@
     "diskBeforeAfter": "ディスク 変換前 → 変換後",
     "modal": {
       "titleConverting": "モデルを変換中",
+      "cancel": null,
       "titleFailed": "変換に失敗しました",
       "titleComplete": "変換完了",
       "debugDetails": "デバッグ詳細",

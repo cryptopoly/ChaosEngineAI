@@ -400,6 +400,7 @@
     "diskBeforeAfter": "磁碟用量(前 → 後)",
     "modal": {
       "titleConverting": "正在轉換模型",
+      "cancel": null,
       "titleFailed": "轉換失敗",
       "titleComplete": "轉換完成",
       "debugDetails": "除錯詳細資訊",

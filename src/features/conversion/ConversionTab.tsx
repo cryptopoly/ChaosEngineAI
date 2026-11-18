@@ -43,6 +43,7 @@ export interface ConversionTabProps {
   onConversionDraftChange: <K extends keyof ConversionDraft>(key: K, value: ConversionDraft[K]) => void;
   onConversionDraftReset: () => void;
   onConvertModel: () => void;
+  onCancelConversion: () => void;
   onPickConversionOutputDir: () => void;
   onShowConversionPickerChange: (open: boolean) => void;
   onShowConversionModalChange: (open: boolean) => void;
@@ -71,6 +72,7 @@ export function ConversionTab({
   onConversionDraftChange,
   onConversionDraftReset,
   onConvertModel,
+  onCancelConversion,
   onPickConversionOutputDir,
   onShowConversionPickerChange,
   onShowConversionModalChange,
@@ -270,7 +272,7 @@ export function ConversionTab({
                       : t("conversionTab.backendNote", { defaultValue: "Backend note" })}</h3>
                     <p>
                       {isGgufSource
-                        ? t("conversionTab.ggufSourceDetail", { defaultValue: "A GGUF file cannot be turned into MLX directly. The original model named in the file is downloaded from Hugging Face and converted, so this needs a network connection and disk space for the full-size weights. The download shows no progress and cannot be cancelled once started." })
+                        ? t("conversionTab.ggufSourceDetail", { defaultValue: "A GGUF file cannot be turned into MLX directly. The original model named in the file is downloaded from Hugging Face and converted, so this needs a network connection and disk space for the full-size weights. The download shows no progress; Cancel stops it." })
                         : isReQuantizing
                         ? t("conversionTab.reQuantizingDetail", { bits: Math.round(sourceBpw), defaultValue: "Source is already ~{bits}-bit. Going lower compounds quality loss — for best results convert from the original FP16/BF16 weights." })
                         : conversionReady
@@ -453,6 +455,7 @@ export function ConversionTab({
             </div>
             <div className="modal-body">
               {busyAction === "Converting model..." && conversionStartedAt ? (
+                <>
                 <LiveProgress
                   title={t("conversionTab.progress.title", { defaultValue: "Converting model" })}
                   subtitle={conversionSource?.name ?? conversionDraft.modelRef ?? undefined}
@@ -467,6 +470,12 @@ export function ConversionTab({
                     { id: "verify", label: t("conversionTab.progress.phases.verify", { defaultValue: "Verifying output" }), estimatedSeconds: 5 },
                   ] as LiveProgressPhase[]}
                 />
+                <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12 }}>
+                  <button type="button" className="secondary-button danger-button" onClick={onCancelConversion}>
+                    {t("conversionTab.modal.cancel", { defaultValue: "Cancel conversion" })}
+                  </button>
+                </div>
+                </>
               ) : conversionError ? (
                 <div className="callout error">
                   <h3>{t("conversionTab.modal.titleFailed", { defaultValue: "Conversion failed" })}</h3>

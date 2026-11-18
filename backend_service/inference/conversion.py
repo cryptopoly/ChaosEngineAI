@@ -193,13 +193,17 @@ def _conversion_source_name(source_label: str) -> str:
 
     ``Path.stem`` cut ``Qwen3.5-4B`` down to ``Qwen3`` and kept the cache
     prefix, so a cache folder ``models--Qwen--Qwen3.5-4B`` became
-    ``models--Qwen--Qwen3``. Only a ``.gguf`` suffix is dropped here.
+    ``models--Qwen--Qwen3``. Only a ``.gguf`` suffix and a trailing
+    ``-GGUF`` in a repo name are dropped here.
     """
     name = Path(source_label).name
     if name.lower().endswith(".gguf"):
         name = name[: -len(".gguf")]
     if name.startswith("models--"):
         name = name.split("--")[-1]
+    # A repo named "...-GGUF" must not carry that into the MLX folder name: the model loader
+    # takes any path with "gguf" in it for a GGUF model and then finds no .gguf file there.
+    name = re.sub(r"[-_.]?gguf$", "", name, flags=re.IGNORECASE)
     return name or "model"
 
 

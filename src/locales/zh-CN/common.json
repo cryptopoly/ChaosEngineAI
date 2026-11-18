@@ -400,6 +400,7 @@
     "diskBeforeAfter": "磁盘 转换前 → 转换后",
     "modal": {
       "titleConverting": "正在转换模型",
+      "cancel": null,
       "titleFailed": "转换失败",
       "titleComplete": "转换完成",
       "debugDetails": "调试详情",

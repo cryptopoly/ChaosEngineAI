@@ -130,6 +130,11 @@ export async function convertModel(payload: ConvertModelPayload): Promise<Conver
   return await postJson<ConvertModelResponse>("/api/models/convert", payload, null);
 }
 
+/** Ask the backend to stop the conversion in progress; the waiting convert request then fails with "Conversion cancelled". */
+export async function cancelConversion(): Promise<{ cancelled: boolean }> {
+  return await postJson<{ cancelled: boolean }>("/api/models/convert/cancel", undefined, 30000);
+}
+
 export async function runBenchmark(
   payload: BenchmarkRunPayload,
   options?: { signal?: AbortSignal },

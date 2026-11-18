@@ -1,4 +1,4 @@
-"""Phase 21: Server Activity (D-88). The structured model events appear for a real load, answer and unload.
+"""Phase 214: Server Activity (D-88). The structured model events appear for a real load, answer and unload.
 
 Loads the smallest local Qwen3 0.6B or Qwen2.5 0.5B MLX model through the CLI (load, one prompt, unload), then reads
 ``/api/server/events`` since the newest id seen before the load and checks the model's life is there: requested,
@@ -6,7 +6,7 @@ loading, loaded (with seconds and memory), a generation with tokens per second, 
 events sharing one request id. Also reads the first line of the event stream and of the old log stream (kept for
 the CLI and the agent bridge). Skips the model part with the reason when no small MLX model is installed.
 
-Called from ``scripts/e2e_test_suite.py`` as ``phase_21_server_activity(cap)``.
+Called from ``scripts/e2e_test_suite.py`` as ``phase_21_server_activity(cap)`` under key 214 (review group 21, stream E).
 """
 
 from __future__ import annotations
@@ -51,10 +51,10 @@ def _first_sse_line(suite: Any, path: str, timeout: float = 10.0) -> str:
 def phase_21_server_activity(cap: Any):
     import e2e_test_suite as suite  # scripts/ is on sys.path when the suite runs
 
-    phase = suite.PhaseResult(phase=21, name="Server Activity (model events)")
+    phase = suite.PhaseResult(phase=214, name="Server Activity (model events)")
     if not cap.backend_reachable:
         phase.status = "skip"
-        phase.checks.append(suite.CheckResult("phase 21", "skip", reason="backend not reachable"))
+        phase.checks.append(suite.CheckResult("phase 214", "skip", reason="backend not reachable"))
         return phase
     state: dict[str, Any] = {}
 

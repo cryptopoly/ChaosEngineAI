@@ -1,4 +1,4 @@
-"""Review C: run E2E phase 21 (Prompts and Plugins part) against an in-process app, so the phase itself is checked.
+"""Review C: run E2E phase 213 (Prompts and Plugins) against an in-process app, so the phase itself is checked.
 
 The prompt library is pointed at a temporary folder (left alone, the route opens the real data directory). The
 real-model check skips here: the capability object lists no MLX model.
@@ -64,15 +64,11 @@ class PhaseTwentyOnePromptsPluginsTests(unittest.TestCase):
         self.assertEqual({t["id"] for t in prompts_module._library.list_all()}, before)
         self.assertTrue(all(manifest.enabled for manifest in plugin_registry.list_all()))
 
-    def test_registered_under_21_and_joins_an_earlier_part(self):
-        self.assertIn(21, self.suite_mod.PHASES)
-        other = self.suite_mod.PhaseResult(phase=21, name="Another stream", status="fail")
-        other.checks.append(self.suite_mod.CheckResult("their check", "fail", reason="broken"))
-        joined = self.phase_mod.joined(lambda cap: other, self.suite)(self.cap)
-        self.assertEqual(joined.status, "fail")  # a failure in either part fails the phase
-        self.assertEqual(joined.checks[0].name, "their check")
-        self.assertEqual(len(joined.checks), 11)
-        self.assertIn("Prompts and Plugins", joined.name)
+    def test_registered_under_213_with_the_other_review_phases(self):
+        self.assertEqual(self.phase_mod.PHASE_KEY, 213)
+        self.assertEqual(self.suite_mod.PHASES[213].__name__, "phase_21_prompts_plugins")
+        self.assertNotIn(21, self.suite_mod.PHASES)  # each review stream has its own key, nothing is joined
+        self.assertTrue({211, 212, 213, 214} <= set(self.suite_mod.PHASES))
 
     def test_backend_not_reachable_skips(self):
         phase = self.phase_mod.run(SimpleNamespace(backend_reachable=False), self.suite)

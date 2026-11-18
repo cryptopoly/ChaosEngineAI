@@ -1,4 +1,4 @@
-"""Phase 21 (part: Prompts and Plugins), from the overnight whole-app review, stream C.
+"""Phase 213 (Prompts and Plugins), from the overnight whole-app review, stream C.
 
 Prompts: the template store behind the Prompts page (list, create with variables, update, search, the
 refusals, delete), and one real-model check: a template's text sent as ``systemPrompt`` reaches the chat
@@ -9,8 +9,8 @@ are in it, a switch round-trips and an unknown id is refused.
 Every template made here has a unique name and is deleted at the end; switches are put back. The real-model
 check loads the smallest MLX text model on disk and unloads it, and skips with the reason when there is none.
 
-Called from ``scripts/e2e_test_suite.py``. Other streams add their own parts of phase 21 (the seven features
-of the review); ``joined`` runs this part after whatever is already registered under the same number.
+Called from ``scripts/e2e_test_suite.py`` under key 213 (review group 21, stream C; the other review streams
+have 211, 212 and 214).
 """
 
 from __future__ import annotations
@@ -22,25 +22,18 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-NAME = "Phase 21: Prompts and Plugins"
+PHASE_KEY = 213
+NAME = "Phase 213: Prompts and Plugins"
 MARKER = "PINEAPPLE"
 
 
-def joined(previous: Any, suite: Any):
-    """A phase function that runs ``previous`` (another stream's phase 21, if any) and then this part."""
+def bind(suite: Any):
+    """The suite's ``PHASES`` entry: a named function of ``cap``, so the run log prints its name."""
 
-    def phase_21(cap: Any):
-        mine = run(cap, suite)
-        if previous is None:
-            return mine
-        first = previous(cap)
-        first.checks.extend(mine.checks)
-        statuses = {first.status, mine.status}
-        first.status = "fail" if "fail" in statuses else ("pass" if "pass" in statuses else "skip")
-        first.name = f"{first.name}; Prompts and Plugins"
-        return first
+    def phase_21_prompts_plugins(cap: Any):
+        return run(cap, suite)
 
-    return phase_21
+    return phase_21_prompts_plugins
 
 
 def _folder_bytes(path: str, limit: int = 4000) -> int:
@@ -58,7 +51,7 @@ def _folder_bytes(path: str, limit: int = 4000) -> int:
 
 
 def run(cap: Any, suite: Any):
-    phase = suite.PhaseResult(phase=21, name=NAME)
+    phase = suite.PhaseResult(phase=PHASE_KEY, name=NAME)
     if not cap.backend_reachable:
         phase.status = "skip"
         phase.checks.append(suite.CheckResult("phase 21 prompts and plugins", "skip", reason="backend not reachable"))

@@ -106,6 +106,8 @@ Also seen: `adapter_config.json` from mlx-lm holds the absolute paths of the dat
 | `c6b17ab9` | The tab crashed whenever one adapter was on disk (it read `id` and `size_mb`, the backend sends `path` and `size_bytes`). Card is now `AdapterCard`; the backend row gains `created` and reads the base model of an mlx-lm adapter (`model`). `GET /api/adapters` is a plain `def`, so the 4 s walk no longer stalls the event loop. | `src/features/finetuning/__tests__/FineTuningTab.test.tsx`, `tests/test_finetuning_helpers.py` |
 | `b8dab48f` | Honesty, in its own commit so it can be reverted alone: Start is off with one sentence, the subtitle no longer prints `idle`, and `POST /api/finetuning/start` answers 501 and changes no state (it answered 200 "accepted" for a job that never ran). Two en strings, null in the other ten locales. | same vitest file, `tests/test_route_contracts.py` |
 | `e9b03468` | Offline and failed-list states say what happened; the count shows only once the list has loaded. Two en strings, null elsewhere. | same vitest file, Playwright spec |
+| `c76b05bd` | Found with a real mlx-lm adapter: the card showed the base model as the cache snapshot path and its 40-character hash ran out of the card. The row gives `org/name` for a cache path; the card wraps long text. | `tests/test_finetuning_helpers.py` |
+| `6a9dbb23` | Test race, not app code: `e2e/tests/17-klingon.spec.ts` ended before the fire-and-forget locale save landed, so on a busy machine the shared backend stayed in Klingon and specs 18 to 20 timed out one after another (9 failures before the run was stopped). `pickLocale` now waits for the `PATCH /api/settings` answer. | whole Playwright suite: 184 passed (21.4 min, `--workers=1`) |
 
 Checks after the fixes: `npx vitest run src/features/finetuning` 4 passed; `npx tsc --noEmit` clean; `npm run i18n:validate` OK;
 `pytest tests/test_finetuning_helpers.py tests/test_route_contracts.py tests/test_cli_smoke.py` all passed (throwaway HOME).
@@ -117,6 +119,7 @@ CLI: `chaosengine-cli finetuning-start --body ...` now prints the 501 message an
 - `scripts/e2e_phases/phase_21_finetuning.py`, registered in `scripts/e2e_test_suite.py` with one import line and one `PHASES` line, under **key 212** (not 21) so it cannot silently replace another stream's phase 21 at merge. Run: `CHAOSENGINE_PORT=8901 .venv/bin/python scripts/e2e_test_suite.py --phases 212`. Result: 5 of 5 pass in 0.02 s. Against the backend before commit `b8dab48f` the last check failed as it should ("the route accepted a run").
 - `e2e/tests/28-finetuning.spec.ts`: empty, loaded (adapter folder under the run's `~/Models`), a row with fields missing, a failing list, 375 px. Run: `cd e2e && E2E_PYTHON=/Users/dan/ChaosEngineAI/.venv/bin/python E2E_WEB_PORT=8951 E2E_API_PORT=8952 npx playwright test tests/01-smoke.spec.ts tests/28-finetuning.spec.ts --workers=1`. Result: 8 passed (41 s). `E2E_PYTHON` is needed in a worktree with no `.venv` above it.
 - Row added to `docs/E2E_TESTING.md` and `e2e/README.md`.
+- Whole Playwright suite on the branch tip `6a9dbb23`, ports 8951 and 8952, `--workers=1`: **184 passed** in 21.4 min (log: `scratchpad/review-b/playwright-full2.log`). The first whole run failed from spec 18 on because of the Klingon race above, not because of this stream's changes; spec 17 followed by 18 passes alone and in the full run after the fix.
 
 ## 7. What is missing before the tab does what it says (hide-until-wired list)
 
@@ -174,7 +177,7 @@ The engine is the easy part (section 3: mlx-lm trains a 0.5B model here in about
 
 - Lock: taken once, 08:14:49 to 08:15:50, released. No MLX worker of this stream is left.
 - Nothing downloaded, no model deleted or copied. The throwaway home (`scratchpad/review-b/home`, about 115 MB of test adapters with `cancelled-lora`) can be deleted.
-- Backend (port 8901) and Vite (port 8931) of this stream are stopped at the end; only their own PIDs were killed.
+- Backend (port 8901, PID 60342) and Vite (port 8931, PIDs 59537 and 59565) of this stream are stopped; only its own PIDs were killed (the first Playwright run was stopped by its own PID 71762). The browser tab this stream opened is closed.
 - `e2e/node_modules` in this worktree is a symlink to the main checkout's (git-ignored), made to run the spec.
 - Hub pages (`docs/hub/status.md`, decisions, FU rows) were not edited, to keep the merge with the other streams clean; the integrator has the verdict above for D-87 and D-88.
 - One stray click: the built-in browser's tab was shared at first. Another stream navigated it to its own server (port 8942, Plugins page) between two of this stream's calls, and one click meant for "Try again" landed at about (450, 220) of a 1400 x 900 view of that page, near the "Native f16" card's name, not on its switch. No change was visible in the screenshot. From then on this stream used its own tab (`tab-13`) and no coordinate clicks.

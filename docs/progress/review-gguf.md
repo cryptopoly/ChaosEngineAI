@@ -33,3 +33,19 @@ named e.g. `my-gguf-notes-mlx` fails with "No .gguf weights found".
 | 3 | `test_inference`, `test_backend_service`, `test_services`, `test_cache_strategies`, `test_gguf_routing` | PASS | 303 passed |
 | 4 | vitest, tsc | PASS | 151 files, 1816 tests; tsc clean |
 | 5 | Library on a throwaway home (port 8921) | PASS | `my-gguf-notes-mlx` (link to Qwen3-0.6B-4bit snapshot) listed MLX/mlx; `mlx` folder holding the Qwen3-0.6B GGUF listed GGUF/llama.cpp; HF cache GGUF repo listed GGUF |
+| 6 | Full pytest | PASS after a fixture fix | first run 4609 passed, 2 failed: two TensorFold routing tests used config-only folders, which the new guard refuses; fixtures now carry a weights file (`8e0f4864`), both files 56 passed |
+| 7 | Live, OLD code (`e0306d5a`, port 8922): library entry `my-gguf-notes-mlx`, backend `mlx` | FAIL (bug reproduced) | HTTP 500 "No .gguf weights found inside .../models--mlx-community--Qwen3-0.6B-4bit/snapshots/73e3e38d..." |
+| 8 | Live, NEW code (port 8921): same entry, backend `mlx` and `auto` | PASS | engine `mlx` both; reply "France's capital is **Paris**." |
+| 9 | Live: HF cache `lmstudio-community/Qwen3-0.6B-GGUF`, backend `llama.cpp` and `auto` | PASS | engine `llama.cpp` both; reply "**Paris**" |
+| 10 | E2E phase 213 (real models) | PASS | 4 checks, 6.8 s: MLX link `my-gguf-notes-mlx` on mlx (auto, explicit), GGUF in folder `mlx` on llama.cpp, config-only folder refused naming `config.json` |
+| 11 | `./scripts/e2e_test_suite.py --smoke` (port 8921) | PASS | phases 0, 3, 4, 5, 6, 7, 8 all pass |
+
+Model lock taken 10:11:05, models unloaded, both backends stopped, lock released. Commands: `<scratchpad>/review-gguf/live.sh`
+(loads, chats, phase 213, smoke). Reports in `<scratchpad>/review-gguf/e2e-report/`.
+
+## Not tested
+
+- Windows and Linux (paths, symlinks): Mac only.
+- The UI badge in a running app (vitest covers `libraryItemFormat`).
+- Conversion from a GGUF source after the change (the conversion path calls the same `_looks_like_gguf`; stream A's phase 211 covers it on `review/a`).
+- A remote-only Hub repo id (nothing in the cache): still decided by its name, as before.

@@ -70,7 +70,7 @@ export function PluginsTab({ backendOnline }: PluginsTabProps) {
   const totalCount = Object.values(plugins).reduce((sum, list) => sum + list.length, 0);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+    <div className="plugins-page">
       <Panel
         title={t("panels.pluginSystem", { defaultValue: "Plugin System" })}
         subtitle={
@@ -97,7 +97,7 @@ export function PluginsTab({ backendOnline }: PluginsTabProps) {
               <h4 style={{ color: TYPE_COLORS[type] ?? "#c8d0da", fontSize: 13, marginBottom: 8, fontWeight: 600 }}>
                 {typeLabel} ({list.length})
               </h4>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 8 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(280px, 100%), 1fr))", gap: 8 }}>
                 {list.map((plugin) => (
                   <div
                     key={plugin.id}

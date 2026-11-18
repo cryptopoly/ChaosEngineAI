@@ -226,7 +226,7 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
   }
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "300px 1fr", gap: 12, height: "100%" }}>
+    <div className="prompt-library-layout">
       {/* Left: Template list */}
       <Panel
         title={t("panels.templates", { defaultValue: "Templates" })}
@@ -266,8 +266,9 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
         </div>
       </Panel>
 
-      {/* Right: Detail/Editor */}
+      {/* Right: Detail/Editor. It scrolls inside itself: the editor is taller than a short window. */}
       <Panel
+        className="panel-scroll"
         title={
           editMode
             ? selectedId

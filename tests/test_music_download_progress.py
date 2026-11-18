@@ -61,6 +61,25 @@ class MusicDownloadProgressTests(unittest.TestCase):
         row = self._start(TURBO, {}, lambda repo, patterns=None: 0)
         self.assertEqual(row["totalGb"], 6.0)
 
+    def test_a_text_gguf_total_includes_its_pinned_drafter(self) -> None:
+        # The Qwen3.8 27B row read "16.52 of 16.52 GB" with the 1.9 GB DFlash 2 drafter still to come.
+        target, drafter = "lmstudio-community/Qwen3.8-27B-GGUF", "z-lab/Qwen3.8-27B-DFlash2-GGUF"
+        files = {
+            target: [
+                {"path": "Qwen3.8-27B-Q4_K_M.gguf", "sizeBytes": 15 * GB},
+                {"path": "Qwen3.8-27B-Q8_0.gguf", "sizeBytes": 28 * GB},
+            ],
+            drafter: [
+                {"path": "Qwen3.8-27B-DFlash2-Q8_0.gguf", "sizeBytes": 2 * GB},
+                {"path": "Qwen3.8-27B-DFlash2-Q4_K_M.gguf", "sizeBytes": 1 * GB},
+            ],
+        }
+        with mock.patch("backend_service.helpers.text_gguf.text_repo_allow_patterns",
+                        return_value=["Qwen3.8-27B-Q4_K_M.gguf"]):
+            row = self._start(target, files, lambda repo, patterns=None: GB if repo == drafter else 0)
+        self.assertAlmostEqual(row["totalGb"], 17.0, places=1)
+        self.assertAlmostEqual(row["downloadedGb"], 1.0, places=1)
+
 
 if __name__ == "__main__":
     unittest.main()

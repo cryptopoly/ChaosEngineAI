@@ -33,7 +33,12 @@ async function openSettings(page: Page) {
 }
 
 async function pickLocale(page: Page, code: string) {
+  // The app saves the pick with a fire-and-forget PATCH. Wait for it: a test that ends before the save lands
+  // leaves the shared backend in the old language, and every later spec then runs in Klingon and times out
+  // (seen on a busy machine: 17 passed, then 18 to 20 failed one after another).
+  const saved = page.waitForResponse((response) => response.url().endsWith("/api/settings") && response.request().method() === "PATCH");
   await page.locator("#settings-language-select").selectOption(code);
+  expect((await saved).ok()).toBe(true);
 }
 
 async function settingsSection(page: Page, index: number) {

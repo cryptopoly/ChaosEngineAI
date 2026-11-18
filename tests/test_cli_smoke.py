@@ -120,6 +120,8 @@ class CLIParserTests(unittest.TestCase):
             ["session-documents", "s1"],
             ["server-status"],
             ["server-shutdown"],
+            ["server-logs"],
+            ["server-events"],
             ["image-generate", "neon city"],
             ["image-progress"],
             ["image-cancel"],

@@ -13,6 +13,7 @@ import type { MtplxJobState } from "../../api";
 import type { TensorfoldLaunchControls } from "../../components/tensorfoldSupport";
 import { BENCHMARK_PROMPTS } from "../../constants";
 import { number, sizeLabel, signedDelta } from "../../utils";
+import { latestRunSpeedComparison } from "../../utils/benchmarkCompare";
 
 export interface BenchmarkRunTabProps {
   workspace: {
@@ -98,12 +99,10 @@ export function BenchmarkRunTab({
   const { t } = useTranslation("common");
   const [benchmarkPickerSearch, setBenchmarkPickerSearch] = useState("");
   const latestRun = workspace.benchmarks[0] ?? null;
-  const fastestRun = [...workspace.benchmarks].sort((left, right) => right.tokS - left.tokS)[0] ?? null;
   const selectedPrompt = BENCHMARK_PROMPTS.find((p) => p.id === benchmarkPromptId) ?? BENCHMARK_PROMPTS[0];
-  // Find the most recent run for the currently selected model, if any
-  const prevForModel = benchmarkOption
-    ? workspace.benchmarks.find((b) => b.modelRef === benchmarkOption.modelRef && b.id !== latestRun?.id) ?? null
-    : null;
+  // Speed is compared only between speed runs: an accuracy run stores 0 tok/s and used to
+  // show "-327.5 tok/s vs your previous run".
+  const { previous: prevForModel, fastest: fastestRun } = latestRunSpeedComparison(workspace.benchmarks);
   const speedDeltaVsPrev = latestRun && prevForModel ? latestRun.tokS - prevForModel.tokS : null;
 
   return (

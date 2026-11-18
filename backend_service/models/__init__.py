@@ -333,7 +333,7 @@ class ConvertModelRequest(BaseModel):
     quantize: bool = True
     qBits: int = Field(default=4, ge=2, le=8)
     qGroupSize: int = Field(default=64, ge=32, le=128)
-    dtype: str = Field(default="float16", min_length=3, max_length=16)
+    dtype: Literal["float16", "bfloat16", "float32"] = "float16"
 
 
 class BenchmarkRunRequest(BaseModel):

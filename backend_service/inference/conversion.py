@@ -216,6 +216,73 @@ def _default_conversion_output(source_label: str) -> str:
     return str(candidate)
 
 
+def _estimate_conversion_output_bytes(
+    source_dir: str | None,
+    *,
+    quantize: bool,
+    q_bits: int,
+    dtype: str,
+) -> int | None:
+    """Rough size of the converted model, for the free-space check.
+
+    Only a local source can be measured. The source width comes from
+    ``config.json`` (``torch_dtype`` / ``dtype``); when it is not stated the
+    source is taken as 32-bit, which gives the smaller estimate, so the
+    check can miss a tight case but never refuses one that would fit.
+    """
+    if not source_dir:
+        return None
+    root = Path(source_dir)
+    if not root.is_dir():
+        return None
+    source_bytes = _path_size_bytes(root)
+    if source_bytes <= 0:
+        return None
+    source_bits = 32
+    try:
+        config = json.loads((root / "config.json").read_text(encoding="utf-8"))
+        stated = str(config.get("torch_dtype") or config.get("dtype") or "").lower()
+        if "16" in stated:
+            source_bits = 16
+    except (OSError, json.JSONDecodeError, AttributeError):
+        pass
+    if quantize:
+        target_bits = q_bits + 0.5  # mlx-lm reports about half a bit of overhead per weight
+    else:
+        target_bits = 32 if dtype == "float32" else 16
+    return int(source_bytes * target_bits / source_bits)
+
+
+def _free_disk_bytes(path: str) -> int | None:
+    """Free bytes on the volume that will hold ``path`` (nearest existing parent)."""
+    import shutil
+
+    candidate = Path(path)
+    for parent in (candidate, *candidate.parents):
+        if parent.exists():
+            try:
+                return int(shutil.disk_usage(parent).free)
+            except OSError:
+                return None
+    return None
+
+
+def _summarise_convert_failure(stderr: str, stdout: str, returncode: int) -> str:
+    """One readable line for a failed ``mlx_lm convert`` run.
+
+    A Python traceback is cut down to its last line (the error itself);
+    a process ended by a signal says so instead of echoing progress bars.
+    """
+    if returncode < 0:
+        return f"The conversion was stopped before it finished (signal {-returncode})."
+    text = (stderr or stdout or "").strip()
+    if "Traceback (most recent call last)" in text:
+        lines = [line.strip() for line in text.splitlines() if line.strip()]
+        if lines:
+            return lines[-1]
+    return text or "mlx_lm.convert failed."
+
+
 def _bytes_to_gb(value: int | float) -> float:
     """Convert a byte count to gigabytes, rounded to 2 decimal places."""
     try:

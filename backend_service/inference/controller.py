@@ -89,11 +89,14 @@ from backend_service.inference.conversion import (
     _bytes_to_gb,
     _conversion_source_name,
     _default_conversion_output,
+    _estimate_conversion_output_bytes,
+    _free_disk_bytes,
     _mlx_lm_supported_model_types,
     _nearest_supported_arch,
     _path_size_bytes,
     _peek_hf_model_type,
     _resolve_local_model_dir,
+    _summarise_convert_failure,
 )
 from backend_service.inference.jsonrpc import JsonRpcProcess
 from backend_service.inference.llama_cpp_engine import (
@@ -1496,6 +1499,12 @@ class RuntimeController:
         # mlx_lm.convert based on what the caller actually gave us.
         hf_path_arg: str | None = None
 
+        if source_path and not _looks_like_gguf(source_path) and not Path(source_path).expanduser().exists():
+            raise RuntimeError(
+                f"Source path not found: {source_path}. Pick the model again "
+                f"from the library, or enter a Hugging Face repo instead."
+            )
+
         if source_path and _looks_like_gguf(source_path):
             # HF cache layouts point at the repo root, not the .gguf file.
             # Resolve to the concrete .gguf before reading metadata so
@@ -1613,6 +1622,29 @@ class RuntimeController:
         else:
             target_output = _default_conversion_output(_conversion_source_name(source_label))
 
+        # Free-space check before a run that loads the whole model: a full
+        # disk used to end in a traceback and a half-written folder.
+        needed_bytes = _estimate_conversion_output_bytes(
+            hf_path_arg if hf_path_arg and Path(hf_path_arg).is_dir() else None,
+            quantize=quantize,
+            q_bits=q_bits,
+            dtype=dtype,
+        )
+        free_bytes = _free_disk_bytes(target_output)
+        if needed_bytes is not None and free_bytes is not None and free_bytes < needed_bytes:
+            raise RuntimeError(
+                f"Not enough free disk space for the converted model: about "
+                f"{_bytes_to_gb(needed_bytes)} GB needed, {_bytes_to_gb(free_bytes)} GB free "
+                f"for {target_output}. Free some space or choose another Output path."
+            )
+        output_existed = Path(target_output).exists()
+
+        def _discard_partial_output() -> None:
+            # Only a folder this run created; an existing folder is never touched.
+            if not output_existed and Path(target_output).is_dir():
+                import shutil
+                shutil.rmtree(target_output, ignore_errors=True)
+
         command = [
             self.capabilities.pythonExecutable,
             "-m",
@@ -1647,10 +1679,12 @@ class RuntimeController:
                 env=convert_env,
             )
         except (OSError, subprocess.TimeoutExpired) as exc:
+            _discard_partial_output()
             raise RuntimeError(str(exc)) from exc
 
         if completed.returncode != 0:
-            detail = (completed.stderr or completed.stdout).strip()
+            _discard_partial_output()
+            detail = _summarise_convert_failure(completed.stderr or "", completed.stdout or "", completed.returncode)
             combined = ((completed.stderr or "") + "\n" + (completed.stdout or "")).lower()
             # Specific, low-false-positive markers only. The previous
             # version matched "token" anywhere, which triggered on every
@@ -1679,6 +1713,27 @@ class RuntimeController:
                 "cannot save to the path",
                 "already exists",
             )
+            disk_full_markers = (
+                "unable to write",
+                "no space left on device",
+            )
+            # Without a token the Hub answers 401 for a repo that does not
+            # exist, so the missing-repo error is checked before the gated one.
+            if completed.returncode > 0 and (
+                "repositorynotfounderror" in combined or "repository not found" in combined
+            ):
+                raise RuntimeError(
+                    f"Hugging Face repository not found: {resolved_hf_repo}. "
+                    f"Check the spelling and the owner prefix. If the repo is private "
+                    f"or gated, accept its licence and set HF_TOKEN in Settings."
+                )
+            if completed.returncode > 0 and any(marker in combined for marker in disk_full_markers):
+                raise RuntimeError(
+                    f"Ran out of disk space while writing the converted model to "
+                    f"{target_output}. Free some space or choose another Output path."
+                )
+            if completed.returncode < 0:
+                raise RuntimeError(detail)
             if any(marker in combined for marker in gated_markers):
                 raise RuntimeError(
                     f"This model is gated on Hugging Face. Accept the licence at "
@@ -1706,7 +1761,7 @@ class RuntimeController:
         return {
             "sourceRef": source_ref,
             "sourcePath": source_path,
-            "sourceLabel": Path(source_label).name,
+            "sourceLabel": _conversion_source_name(source_label),
             "hfRepo": resolved_hf_repo,
             "outputPath": target_output,
             "quantize": quantize,

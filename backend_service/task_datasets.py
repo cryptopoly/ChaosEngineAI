@@ -35,9 +35,11 @@ def score_answer(
     match = re.search(r"\b([A-D])\b", output)
     if match:
         return match.group(1).upper() == correct.upper()
-    # Fallback: check if the output starts with the correct letter
-    if output and output[0].upper() in CHOICE_LETTERS:
-        return output[0].upper() == correct.upper()
+    # A lower-case letter on its own at the start ("b", "b.", "(b)") still counts. A word
+    # does not: "Based on the passage" used to score as answer B.
+    leading = re.match(r"\(?([a-d])\)?(?![A-Za-z])", output)
+    if leading:
+        return leading.group(1).upper() == correct.upper()
     return False
 
 

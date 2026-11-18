@@ -23,3 +23,6 @@ pytest always with a throwaway `HOME`.
 | 13 | Full pytest on `68e35083` (throwaway HOME) | PASS | exit 0: 4684 passed, 17 skipped, 1 xfailed (counted from the progress line; the repo's `addopts` plus `-q` hides the summary). The real `~/.chaosengine/prompt_templates.json` was not touched (mtime 08:25, before the run) |
 | 14 | `e2e_test_suite.py --smoke` (own backend 8910, throwaway HOME, `HF_HUB_OFFLINE=1`) | PASS | phases 0, 3, 4, 5, 6, 7, 8: 81 checks; phase 212 alone: 5 checks |
 | 15 | Merge `review/plan` (`1ce012ab`, one plan file) | PASS | clean. Its rows D-89 to D-92 and FU-230 to FU-246 added (links repointed from `review/plan` to `release/v0.10.0`); the integrator's own owner-decision row moved from D-89 to D-93 and its FU-230 to FU-247 (FU-221 to FU-229 did not clash). Hub rebuilt, 0 warnings; `test_hub_tracker.py` 5 passed |
+| 16 | Full Playwright suite on `0e1d6fdb` (A, B, C, E, F merged; switch, hide, masking, Dashboard), `--workers=1`, ports 8919/8910 | PASS | 213 passed in 25.1 min, no retries |
+| 17 | `scripts/check-upstreams.py` | PASS (report only) | 1 behind: llama.cpp pinned b12441, newest b12503 (pre-existing; not this run's to bump) |
+| 18 | `scripts/audit-dependencies.py` | PASS | 1006 packages; nothing blocking (one high, `picomatch` 4.0.4 ReDoS, is dev-only); 109 out of date, 26 by a major version |

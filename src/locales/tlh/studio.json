@@ -1299,6 +1299,7 @@
     "size": "tInghach",
     "resolution": "Resolution",
     "overLimit": "yabvam tInghach veH Dung.",
+    "underLimit": null,
     "current": "DaH tInghach: {width} x {height} ({megapixels} MP)"
   },
   "estimate": {

@@ -1299,6 +1299,7 @@
     "size": "サイズ",
     "resolution": "解像度",
     "overLimit": "このモデルのサイズ上限を超えています。",
+    "underLimit": null,
     "current": "現在のサイズ：{width} x {height}（{megapixels} MP）"
   },
   "estimate": {

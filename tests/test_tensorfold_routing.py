@@ -102,6 +102,7 @@ class SelectEngineTests(unittest.TestCase):
             model = Path(tmp) / "my-converted-model"
             model.mkdir()
             (model / "config.json").write_text(json.dumps({"model_type": "glm5_next"}))
+            (model / "model.safetensors").write_bytes(b"x")  # a folder without weights is refused before routing
             engine = _select(_controller(tensorfold=True), "local/my-converted-model", path=str(model), runtime_target=str(model))
             self.assertIsInstance(engine, TensorFoldEngine)
             with self.assertRaises(RuntimeError):

@@ -128,10 +128,10 @@ def _find_open_port() -> int:
 
 
 def _looks_like_gguf(value: str | None) -> bool:
-    if not value:
-        return False
-    lowered = value.lower()
-    return lowered.endswith(".gguf") or "gguf" in lowered
+    """True when ``value`` holds GGUF weights, read from its files rather than its name."""
+    from backend_service.helpers.weights_format import looks_like_gguf  # noqa: PLC0415
+
+    return looks_like_gguf(value)
 
 
 def _resolve_gguf_path(path: str | None, runtime_target: str | None) -> str | None:

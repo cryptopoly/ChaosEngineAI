@@ -298,6 +298,7 @@ class LegacyRoutingTests(unittest.TestCase):
             model = Path(tmp) / "Kolibri-1-MLX-4bit"
             model.mkdir()
             (model / "config.json").write_text(json.dumps({"model_type": "kolibri1"}))
+            (model / "model.safetensors").write_bytes(b"x")  # a folder without weights is refused before routing
             with mock.patch.object(tf, "_stock_mlx_loads", return_value=False):
                 engine = self._route(
                     "velaia/Kolibri-1-MLX-4bit", CUDA, path=str(model), runtime_target=str(model)

@@ -657,12 +657,17 @@ class ChaosEngineState:
         backend: str,
     ) -> tuple[str | None, str]:
         from backend_service.app import _hf_repo_from_link
+        from backend_service.inference._utils import _looks_like_gguf
 
         if model_ref in _CATALOG_REF_ALIASES:
             model_ref = _CATALOG_REF_ALIASES[model_ref]
         resolved_backend = backend
         runtime_target = path
-        explicit_gguf_path = bool(path and path.lower().endswith(".gguf"))
+        # A .gguf file loads on llama.cpp whatever folder it sits in. A folder
+        # is judged by its files below, never by "gguf" in its name.
+        explicit_gguf_path = bool(
+            path and path.lower().endswith(".gguf") and not Path(path).expanduser().is_dir()
+        )
         catalog_entry = self._find_catalog_entry(model_ref) if model_ref else None
         library_entry = self._find_library_entry(path, model_ref)
 
@@ -689,10 +694,14 @@ class ChaosEngineState:
                 resolved_backend = "llama.cpp" if catalog_entry.get("format") == "GGUF" else "mlx"
         elif library_entry is not None:
             lib_format = library_entry.get("format", "")
-            lib_name = library_entry.get("name", "")
             lib_path = library_entry.get("path", "")
             lib_source_kind = library_entry.get("sourceKind", "")
-            is_gguf = lib_format == "GGUF" or "gguf" in lib_name.lower() or "gguf" in lib_path.lower()
+            # The library scan read the files; only an entry it could not
+            # classify is read again here.
+            if lib_format in {"GGUF", "MLX", "Transformers"}:
+                is_gguf = lib_format == "GGUF"
+            else:
+                is_gguf = _looks_like_gguf(lib_path)
             if backend == "auto":
                 resolved_backend = "llama.cpp" if is_gguf else "mlx"
             if lib_source_kind == "HF cache":
@@ -702,14 +711,10 @@ class ChaosEngineState:
         elif path and path.lower().endswith(".gguf") and backend == "auto":
             resolved_backend = "llama.cpp"
 
-        # Last-resort GGUF detection
+        # Last-resort GGUF detection: a local path by its files, a repo id by
+        # its Hugging Face cache copy (by its name only with nothing on disk).
         if resolved_backend in {"auto", "mlx"}:
-            haystack = " ".join(
-                str(value).lower()
-                for value in (runtime_target, model_ref, path)
-                if value
-            )
-            if "gguf" in haystack:
+            if any(_looks_like_gguf(value) for value in (runtime_target, path, model_ref) if value):
                 resolved_backend = "llama.cpp"
 
         return runtime_target or model_ref, resolved_backend

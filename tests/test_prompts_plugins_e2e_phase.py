@@ -68,7 +68,7 @@ class PhaseTwentyOnePromptsPluginsTests(unittest.TestCase):
         self.assertEqual(self.phase_mod.PHASE_KEY, 213)
         self.assertEqual(self.suite_mod.PHASES[213].__name__, "phase_21_prompts_plugins")
         self.assertNotIn(21, self.suite_mod.PHASES)  # each review stream has its own key, nothing is joined
-        self.assertTrue({211, 212, 213, 214} <= set(self.suite_mod.PHASES))
+        self.assertTrue({211, 212, 213, 214, 215} <= set(self.suite_mod.PHASES))
 
     def test_backend_not_reachable_skips(self):
         phase = self.phase_mod.run(SimpleNamespace(backend_reachable=False), self.suite)

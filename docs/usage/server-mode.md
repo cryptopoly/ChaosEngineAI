@@ -19,8 +19,14 @@ strategy reporting, runtime telemetry. See the
 
 ## Starting the server
 
-The Server tab in the desktop app surfaces:
+The Server tab in the desktop app has two views, Overview and Activity
+(the view you last used is remembered).
 
+**Overview:**
+
+- **Connect your app**: one line with the base URL and Copy; open it for the
+  Python, JavaScript and config snippets (it stays open or closed as you left it).
+- **Recent activity**: the last few model events, with a way into Activity.
 - **Bind address** (default `127.0.0.1:8876`).
 - **Preferred port** override.
 - **LAN exposure** toggle — flips the bind to `0.0.0.0`.
@@ -29,6 +35,27 @@ The Server tab in the desktop app surfaces:
 - **Live counters** — request count, active connections.
 - **Remote test panel** — copyable curl commands for `/health`, `/models`,
   and `/chat/completions`.
+
+**Activity** (this was the Logs page):
+
+- **Model timeline**: one bar per model with its loading, ready, generating,
+  idle and warm phases, over 15 minutes, an hour, a day or everything kept.
+- **Events**: requested, resolving, loading (weights size), loaded (seconds,
+  memory), kept warm, first token (prefill time), generation (tokens per
+  second), idle, unloaded (by you, another model, to free memory) and
+  failures, each with its request id, engine, cache strategy and speculative
+  method. Filter by model, level, request id or text; open a row for the full
+  command line, the engine's environment and its last output.
+- **Copy selected**, **Export selected** (JSON), **Pause** the live tail,
+  **Latest failure**.
+- **Log lines**: the plain backend log, searchable.
+
+Events are kept in memory (the newest 1000) and in
+`<data dir>/logs/model-events.jsonl` (rotated at 1 MB, three old files kept).
+Tokens, API keys, secret file paths and the home folder are hidden before an
+event is stored. Read them with `GET /api/server/events` (filters `model`,
+`level`, `kind`, `requestId`, `since`, `limit`), the stream
+`GET /api/server/events/stream`, or `chaosengine-cli server-events`.
 
 Headless install? `./scripts/chaosengine-cli serve` runs the same backend
 without the Tauri shell.

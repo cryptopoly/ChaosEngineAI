@@ -77,7 +77,7 @@ ChaosEngineAI is a desktop control plane for running large language models local
 - 🎯 **Wan 2.1 / 2.2 mlx-video runtime** on Apple Silicon — one-shot convert pipeline, GUI install panel, runtime routing for the Wan 2.1 and Wan 2.2 A14B repos
 - 🩺 **Diagnostics panel** in Settings — per-section error fallback, platform-aware repair actions, and a one-click reinstall for the Apple Silicon mlx-video runtime
 - 📊 **Benchmarks** with throughput, perplexity, and task-accuracy modes plus a history view for A/B comparisons
-- 📜 **Logs** streaming straight from the Python runtime
+- 📜 **Server Activity**: a timeline per model and structured events (load, first token, generation, unload) with the plain log lines underneath
 - ⚙️ **Settings** for data directories, Hugging Face tokens, remote providers, integrations, default launch preferences, and runtime tuning
 - 🔍 **UI scale** — segmented 75% / 100% / 125% / 150% control in Settings → Display, applied app-wide via `useUiScale`
 - ☁️ **Remote providers** for OpenAI-compatible APIs, with keys stored locally and masked in the UI
@@ -287,10 +287,9 @@ Search, create, edit, tag, and delete reusable prompt templates, including five 
 
 Inspect built-in and external plugins across cache strategies, inference engines, tools, model sources, and post-processors. Plugins can be enabled or disabled from the UI, and external plugins are discovered from the app's plugin directory.
 
-### Logs — *Runtime events*
-![Logs](./Screenshots/19.%20Logs_v2.png)
+### Server > Activity — *What the models did*
 
-A live tail of the backend log stream — load events, server requests, errors, and runtime warnings — with level filtering. The first place to look when something feels off.
+The old Logs page is now the Activity view of the Server page. A timeline per model shows loading, ready, generating, idle and warm phases; the event list (requested, loading, loaded, first token, generation, unloaded, failures) filters by model, level and request id, and a row opens to the command line, environment and last engine output. Copy or export selected events, pause the live tail, or jump to the latest failure. The plain log lines are listed underneath. The first place to look when something feels off.
 
 ### Settings — *Directories and defaults*
 ![Settings](./Screenshots/20.%20Settings_v2.png)

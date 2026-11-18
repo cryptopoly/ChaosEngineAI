@@ -41,3 +41,11 @@ pytest always with a throwaway `HOME`.
 | 31 | Merge `review/i18nfix` (`b5f681c6`, contains D) | PASS | conflicts: `SettingsTab.tsx` (kept the experimental-tabs switch and i18nfix's visible "UI scale" label, with F's `UI_SCALES` list including 110 % and 125 % instead of its fixed four), `e2e/README.md`; its spec 38 kept, mine renamed `40-experimental-tabs`. Locale JSON merged clean. tsc clean; vitest 169 files, 1936 tests; `i18n:validate` and `--strict` OK; `tests/i18n` 16 passed; Playwright 01, 08, 32 to 40: 43 passed |
 | 32 | Decisions and FU rows | DONE | D-94 (banner wording, L-1); FU-249 and FU-250 shipped; FU-252 (backend-made text), FU-253 (`i18n:extract` unusable as the zero-new-keys check), FU-254 (native-speaker review list, also in the report); hub links in `status.md` turned into paths (the builder refuses links that leave the hub: 4 errors, now 0) |
 | 33 | `scripts/pre-build-check.sh` on `06c52231` (throwaway HOME, `.venv` linked, nothing on 8876) | PASS | 13 passed, 0 failed, 3 warnings: `llama-server-turbo` not under the throwaway HOME (twice), E2E smoke skipped (no backend on 8876, by design). Its pytest step passes under `pipefail` |
+| 34 | Final full Playwright on `e23b8c48` (code as `ba1c5e4d`) | PASS | 254 passed in 10.9 min |
+| 35 | Final full `e2e_test_suite.py` with real models on `e23b8c48` (lock 11:29:49 to 11:31:51) | PASS | 25 of 25 phases, 178 checks pass, 53 skip with reasons, 105 s; no model left loaded, backend stopped, no process of mine left |
+| 36 | Report, hub, handover | DONE | `docs/progress/overnight-review-report.md`, `docs/plans/windows-handover.md`, status entry, D-87, D-88, D-89 to D-94, FU-221 to FU-254; hub 0 warnings, 0 errors |
+
+## Not run
+
+- `cargo test`: no Rust file changed on any review branch.
+- The packaged app, Windows, Linux, real renders on this branch.

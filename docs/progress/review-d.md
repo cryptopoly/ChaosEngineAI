@@ -1,101 +1,154 @@
 # Review stream D: whole-app sweep
 
-Branch `review/d`, worktree `/Users/dan/ChaosEngineAI-review-d`, cut from `release/v0.10.0` at `b31c4ea5`.
+Branch `review/d` (pushed), worktree `/Users/dan/ChaosEngineAI-review-d`, cut from `release/v0.10.0` at `b31c4ea5`.
 Plan: `docs/plans/overnight-e2e-review.md`. Scope: every tab except Benchmarks, Conversion, Fine Tuning, Prompts, Plugins, Logs and Server.
-Budget cut by the coordinator to 3.5 hours (start 07:36, 2026-11-18, report due about 11:05), so the sweep is ordered by user impact:
-Chat, Models, Studios, first run, backend-down recovery, then the long tail.
+The coordinator cut the budget to 3.5 hours (start 07:36 on 2026-11-18), so the sweep went by user impact: Chat, Models, Studios, first run, backend stop, then the rest.
+
+## Headline
+
+The app holds up on a clean first run in English at a large window. It did not hold up in four places a user reaches in the first minutes, all fixed on this branch with tests:
+
+1. **A local model that is not a catalogue row could be refused or routed as another model** (D-13). Found with a real 0.5B model; on the owner's own library 9 of 20 chat models were matched to a different model.
+2. **First launch on a non-English system showed a broken layout** until the language banner was answered (D-1).
+3. **At the smallest window the app allows (1100 x 760)** panels cut their controls, Image Studio drew its panels over each other, and Settings could not be clicked in the menu (D-2, D-3, D-5).
+4. **A stopped backend was not announced** where the sidebar is a drawer, and Stop in Chat always raised an error (D-4, D-15).
+
+Final state: tsc clean, vitest 154 files / 1828 tests, `i18n:validate` OK, Playwright 209 tests (179 old, 30 new in specs 32 to 37), result at the end of this file.
 
 ## Setup (how to resume)
 
 - Python: `/Users/dan/ChaosEngineAI/.venv/bin/python`. This worktree has no `.venv`, so Playwright needs `E2E_PYTHON` set to it.
 - `e2e/node_modules` is a symlink to the main checkout's (git-ignored), Playwright 1.65.1, Chromium headless shell already installed.
 - Ports: backend 8903, Vite 8933. One backend at a time: the Playwright run and the hand walk both use 8903, never together.
-- Playwright: `cd e2e && E2E_PYTHON=/Users/dan/ChaosEngineAI/.venv/bin/python E2E_WEB_PORT=8933 E2E_API_PORT=8903 npx playwright test --workers=1`
-- Hand walk: backend with a throwaway `HOME` in the scratchpad, `CHAOSENGINE_PORT=8903`, a dummy token; Vite with `VITE_CHAOSENGINE_API_BASE=http://127.0.0.1:8903`. The walk is driven by small Playwright scripts in the scratchpad (`review-d/walk.cjs`, `down.cjs`, `pseudo.cjs`, `navreach.cjs`, `firstrun.cjs`), headless, which save a screenshot per page and print what they measure. The desktop app's Browser pane was not used after the first minute: another stream drives the same pane and navigated my tab away.
-- Warning for the next agent: `kill <playwright pid>` (SIGTERM) leaves the runner alive after its two servers stop, and it then runs its remaining tests against whatever listens on the same ports. Use `kill -9` on the runner and check `pgrep -fl "playwright test"` before starting anything else on 8903.
-
-## What was checked, and how
-
-Sizes: 1440 x 900, 1400 x 920 (default window), 1100 x 760 (the smallest window `tauri.conf.json` allows), 1024 x 768, 768 x 1024, 375 x 812.
-On every page the scripts look for: a crash (error boundary), console errors and failed requests, raw i18n keys and leftover `{placeholders}`, sideways scroll, elements past the right edge, panels that cut their own content with nothing to scroll, sibling panels drawn over each other. Screenshots were looked at for Dashboard, Chat, Chat Models, Image Studio, Video Studio, Voice Studio and Models, Music Studio, Projects, Settings (General, Storage, Diagnostics, Accelerators).
+- Playwright: `cd e2e && E2E_PYTHON=/Users/dan/ChaosEngineAI/.venv/bin/python E2E_WEB_PORT=8933 E2E_API_PORT=8903 npx playwright test --workers=1` (about 12 minutes).
+- Hand walk: backend with a throwaway `HOME` in the scratchpad, `CHAOSENGINE_PORT=8903`, a dummy token, `HF_HUB_OFFLINE=1`; Vite with `VITE_CHAOSENGINE_API_BASE=http://127.0.0.1:8903`. The walk is driven by small headless Playwright scripts in the scratchpad folder `review-d/` (`walk.cjs` every tab with layout probes, `down.cjs` and `chatdown.cjs` backend stop and restart, `pseudo.cjs`, `navreach.cjs`, `firstrun.cjs`, `flows.cjs` keyboard, `errors.cjs` forced 500s, `realchat.cjs`, `compare.cjs`, `libs.cjs`). Each saves screenshots and prints what it measures. The desktop app's Browser pane was dropped after the first minute: another stream drives the same pane and navigated my tab away.
+- Data used: (a) empty throwaway homes for first run; (b) a home with two tiny local models linked in; (c) a **copy** of the real data dir's chat sessions, images, videos, music, voice and storyboards (1.3 GB, no `settings.json`, so no token) with the Hugging Face cache and the installed image engine linked read-only. Nothing was written to `~/.chaosengine`.
+- Model lock (`review-lock/model.lock`) held by this stream 09:04 to 09:08, 09:12 to 09:22 and 09:37 to 09:41. Models loaded: Qwen2.5-0.5B MLX, Qwen3-0.6B MLX, LFM3-1.7B GGUF, and once, by the fault in D-14, Qwen3.8-27B MLX for about a minute.
+- Warning for the next agent: `kill <playwright pid>` (SIGTERM) leaves the runner alive after its two servers stop, and it then runs its remaining tests against whatever listens on the same ports. Use `kill -9` on the runner and check `pgrep -fl "playwright test"` first.
 
 ## Log (newest last)
 
 | Time | Check | Result | Evidence |
 |---|---|---|---|
-| 07:40 | `npx tsc --noEmit`, untouched tip | PASS | exit 0 |
-| 07:40 | `npm run i18n:validate`, untouched tip | PASS | en 4951/4951, nine locales 4947/4951, tlh 82.6 % (outside the gate) |
-| 07:41 | First Playwright start | FAIL (setup) | `ModuleNotFoundError: No module named 'fastapi'`: no `.venv` beside this worktree. Fixed by `E2E_PYTHON`. |
-| 07:42 | Baseline Playwright on the untouched tip | PARTIAL | 78 of 179 passed (specs 01 to 14), 0 failed, then stopped by me to free port 8903 for the hand walk. The rest of the log is not a result (see the warning above). |
-| 07:50 | First run on a clean data dir, 1440 x 900 | PASS with one finding | terms dialog shows, Quit and I agree; `GET /api/cache/preview?...num_layers=0...` answers 422 on every launch (D-9) |
-| 07:52 | All in-scope tabs, empty state, 1440 x 900 | PASS | no crash, no raw key, no console error beyond D-9 and the updater warning that belongs to the browser build |
-| 07:55 | All in-scope tabs, 375 x 812 | FAIL | Image Studio and Image Gallery panels drawn over each other (D-2); Dashboard and Settings General cut (D-3); Storage in two 160 px columns (D-6); Compare and Diagnostics a few px past the edge (L-6) |
-| 07:58 | All in-scope tabs, 1100 x 760 | FAIL | Dashboard 309 of 468 px shown, Settings General 280 of 374, Storage 129 of 174 / 213 of 307 / 201 of 288 (D-3); Image Studio overlap 36 px and 272 px (D-2) |
-| 08:00 | Backend killed mid-use, 1440 x 900 (`kill` of my backend PID, restart with another token) | PASS with one finding | badge says Offline within 4 s; Voice Studio, Music Studio and Projects say "Waiting for the backend"; Chat, Chat Models, Image Studio, Video Studio, Settings and Dashboard keep their last data with no word about it (D-4). Restart with a different token: one round of 401, then the page reads `/api/auth/session` and every later request passes; badge back to Backend online within 8 s. Done twice (second and third token). |
-| 08:03 | Same at 1100 x 760 | FAIL before the fix | the badge is inside the closed drawer, so nothing on screen said the backend was down (D-4). After the fix the notice shows on every tab and clears on restart. |
-| 08:10 | Pseudo-locale (accented, +40 %) on Settings General, Storage, Diagnostics, Accelerators, Disk usage, Dashboard, Chat, Chat Models at 1440, 1100 and 375 | PASS for layout | no sideways scroll, no cut button text at 1440 and 1100. Text that never goes through i18n: about 100 strings on Diagnostics (L-2), backend activity lines and folder labels, "Released Nov 2026". |
-| 08:14 | Every sidebar button reachable, en / de / ru, four sizes | FAIL before the fix | at 1100 x 760 with the Chat or Tools group open, Settings sits under the status footer (D-5) |
-| 08:20 | First launch with a German system language, 1400 x 920 | FAIL before the fix | the language banner takes the sidebar's grid cell: banner 216 x 577, sidebar 1184 wide, workspace 216 x 343 at the bottom left (D-1). Keyboard on the terms dialog: focus starts on the dialog, Escape does not close it, Tab cycles Quit and I agree only. |
-| 08:11 | vitest (full) after the first fixes | PASS | 152 files, 1817 tests |
-| 08:22 | New specs 32, 33, 34, first run | 19 pass, 4 fail | failures were real: Storage at 375 px overlapped by 266 px, and "System default" in the language list did not switch the app back (D-10, D-6). Fixed, re-run of the failed ones: 5 of 5 pass. |
-| 08:30 | Every shipped locale boots (zh-CN, zh-TW, ja, de, ru, ko, fr, es, pt-BR, tlh) | PASS | spec 34: no raw key, no leftover placeholder, no sideways scroll on Dashboard, every Chat, Images, Video, Voice and Music tab and all eight Settings sections |
-| 08:34 | Keyboard flows with two tiny local models in the library (Chat, Select Model, Compare, thread search, New thread, Chat Models filter and search, Run from Hugging Face with a bad repo, read-only terms) | FAIL before the fix | Select Model (Chat, Compare) and the family details had no dialog role, Escape did nothing and focus was lost (D-11). After the fix Escape closes and focus returns. A bad repo shows "Hugging Face refused access ... (HTTP 401)" under the field. |
-| 08:40 | Error states: the backend answers 500 to Save settings, the clock format, New project, Install voice runtime, image and video Download | PASS | each page shows the backend's own sentence (error banner or inline), nothing crashes |
-| 08:42 | Sample project, all seven tabs, 1100 x 760 and 1400 x 920 | PASS | no cut panel, nothing past the edge, no console error |
-| 08:43 | Sidebar style Tabs, every in-scope group and sub-tab, 1400 and 1100 | PASS | no crash, sub-tab bar fits, arrow keys move between sub-tabs |
-| 08:56 | Full Playwright suite on the branch (the shared helper no longer waits 5 s per test) | 205 pass, 2 fail, 11.1 min | both failures were test faults, fixed: spec 15 failed on a route still in flight at the end of the test (shown up by the faster helper; the page fixture now drops routes), spec 35 looked for a button label that changes with the thread. Re-run of 01, 08, 15, 18, 26, 35: 16 of 16. |
-| 09:00 | Loaded state on a copy of the real data dir (chat sessions, images, videos, music, voice, storyboards; 1.3 GB copied into the scratchpad, the Hugging Face cache linked read-only; 67 models, 200 chat sessions, 315 images, 133 clips, 29 tracks, 11 projects), every in-scope tab at 1400 x 920 and 1100 x 760 | PASS for layout | no crash, no cut or overlapping panel. Video Gallery fetched all 133 clips at once: 266 requests, 205 MB (D-16). |
-| 09:05 | Real model, with the model lock: `mlx-community/Qwen2.5-0.5B-Instruct-4bit` from Chat Models > Chat in a new thread > Start Chat | FAIL | `POST /api/models/load` 500: "Qwen3.8 Flash Next runs only on TensorFold, which is not installed". The request carried `canonicalRepo: Vontra/Qwen3.8-Flash-Next-MLX-4bit-MTP` for the 0.5B model (D-13). On the real library 10 of 20 chat models matched some other catalogue row. |
-| 09:13 | Same after the fix | PASS, then a second fault | the 0.5B loaded in about 1.5 s, but no thread was opened: the message went into the last thread and that thread's model (Qwen3.8-27B, 20 s load) answered it (D-14). Stop raised "Chat error: Streaming timed out" (D-15). |
-| 09:21 | Same after both fixes | PASS | new empty thread, 0.5B loaded, Shift+Enter makes a new line, Enter sends, reply from the 0.5B at about 370 tok/s, Stop with no error and no empty bubble, next message sends, Unload frees it. Backend stopped afterwards and the lock released (held 09:04 to 09:08 and 09:12 to 09:22). |
-| 09:23 | Full Playwright suite again | see the end of this file | |
+| 07:40 | `npx tsc --noEmit`, `npm run i18n:validate`, untouched tip | PASS | exit 0; en 4951/4951, nine locales 4947/4951 |
+| 07:42 | Baseline Playwright on the untouched tip | PARTIAL | 78 of 179 passed (specs 01 to 14), 0 failed, then stopped by me to free port 8903 |
+| 07:50 | First run on a clean data dir, 1440 x 900 | PASS, one finding | terms dialog with Quit and I agree; a 422 on every launch (D-9) |
+| 07:52 | Every in-scope tab, empty state, 1440 x 900 | PASS | no crash, no raw key, no console error beyond D-9 |
+| 07:55 | Every in-scope tab, 375 x 812 | FAIL | Image Studio and Gallery overlap (D-2), Dashboard and Settings cut (D-3), Storage in two 160 px columns (D-6) |
+| 07:58 | Every in-scope tab, 1100 x 760 | FAIL | Dashboard shows 309 of 468 px, Settings General 280 of 374, Storage 129 of 174; Image Studio overlap 36 and 272 px |
+| 08:00 | Backend killed mid-use and restarted with another token, 1440 x 900 | PASS, one finding | badge says Offline within 4 s; six pages keep old data with no word (D-4); after restart one round of 401, then the page reads `/api/auth/session` and carries on within 8 s; done twice |
+| 08:03 | Same at 1100 x 760 | FAIL before the fix | the badge is inside the closed drawer; nothing on screen said the backend was down |
+| 08:10 | Pseudo-locale (accented, +40 %) on Settings General, Storage, Diagnostics, Accelerators, Disk usage, Dashboard, Chat, Chat Models | PASS for layout | no sideways scroll, no cut text at 1440 and 1100; about 100 Diagnostics strings never go through i18n (L-2) |
+| 08:14 | Every sidebar button reachable, en / de / ru, four sizes | FAIL before the fix | Settings under the footer at 1100 x 760 with Chat or Tools open (D-5) |
+| 08:20 | First launch with a German system language, 1400 x 920 | FAIL before the fix | banner 216 x 577 in the sidebar's cell, sidebar 1184 wide, workspace 216 x 343 (D-1). Terms by keyboard: Escape does not close, Tab cycles Quit and I agree, Enter accepts |
+| 08:30 | Every shipped locale boots (zh-CN, zh-TW, ja, de, ru, ko, fr, es, pt-BR, tlh) | PASS | spec 34: no raw key, no leftover placeholder, no sideways scroll on 25 pages each |
+| 08:34 | Keyboard flows (Chat, Select Model, Compare, thread search, New thread, Models filter and search, a bad repo, read-only terms) | FAIL before the fix | the model dialogs had no role, no Escape, no focus return (D-11) |
+| 08:40 | Error states: 500 on Save settings, clock format, New project, Install voice runtime, image and video Download | PASS | each page shows the backend's sentence; nothing crashes |
+| 08:42 | Sample project, seven tabs, 1100 x 760 and 1400 x 920; sidebar style Tabs, every group | PASS | no cut panel, no crash, arrow keys move between sub-tabs |
+| 08:56 | Full Playwright (helper no longer waits 5 s per test) | 205 pass, 2 fail | both test faults, fixed (route in flight at test end; a label that changes with the thread) |
+| 09:00 | Loaded state on the data copy: 67 models, 200 chat sessions, 315 images, 133 clips, 29 tracks, 11 projects; every in-scope tab at 1400 x 920 and 1100 x 760 | PASS for layout | no crash, no cut or overlapping panel; Video Gallery fetched all 133 clips at once, 205 MB (D-16) |
+| 09:05 | Real model: `mlx-community/Qwen2.5-0.5B-Instruct-4bit`, Chat Models > Chat in a new thread > Start Chat | FAIL | 500 "Qwen3.8 Flash Next runs only on TensorFold"; the request carried another model's repo (D-13) |
+| 09:13 | Same after the fix | PASS, then two more faults | loaded in 1.5 s, but no thread opened and Qwen3.8-27B answered (D-14); Stop raised "Streaming timed out" (D-15) |
+| 09:21 | Same after those fixes | PASS | new thread, Shift+Enter new line, Enter sends, reply at about 370 tok/s, Stop with no error, next message sends, Unload frees it |
+| 09:35 | Full Playwright | PASS | 208 passed, 11.5 min |
+| 09:38 | Real model that is a catalogue row: LFM3-1.7B GGUF, Start Chat | PASS after the fix | thread opened and model loaded (before: thread only, "Load a model first") |
+| 09:39 | Backend killed mid-chat with that model loaded, messages sent while down, restart | PASS | notice shows; a send in the first second says the backend is not answering (was "Chat error: Failed to fetch"); a later send gets the plain in-thread note (D-12); after restart the page says No model loaded and keeps the typed text; no orphan `llama-server` |
+| 09:40 | Compare with Qwen2.5-0.5B and Qwen3-0.6B, Enter in the prompt | PASS | each loads alone (2.9 s, 3.1 s), answers (396 and 404 tok/s) and is unloaded |
+| 09:46 | Image Studio with three installed models (form only, no render) | PASS, two findings | estimate strip and Generate state right; a size under the model's minimum said "Above this model's size limit" (D-18); "No models installed" shows for the first seconds after a backend start (L-20) |
+| 09:49 | Galleries and libraries on the data copy: search, empty search, expand, load audio, list view, filters, 200-thread search (0.6 s), export menu, HTML Challenge prompt library | PASS | no crash, no console error |
+| 09:50 | Full Playwright on the final tree; pytest `test_backend_service`, `test_cache_strategies`, `test_route_contracts`, `test_hub_tracker` | see the end of this file | pytest: 206 passed |
 
 ## Defects fixed on `review/d` (ranked)
 
 | Id | Impact | What a user saw | Fix | Commit | Test |
 |---|---|---|---|---|---|
-| D-13 | Critical, Chat | A local model that is not itself a catalogue row could not be loaded, or was routed as another model. The app joins a library item to a catalogue row by a word score with a threshold of 12; "qwen", "4bit", the same format and the same bits are worth 50 to 70. `mlx-community/Qwen3-0.6B-4bit`, `Qwen2.5-0.5B-Instruct-4bit` and `Qwen3-8B-4bit` all took the repo of Qwen3.8 Flash Next (a TensorFold-only row), that repo went to the backend as the model's own, and the load answered "Qwen3.8 Flash Next runs only on TensorFold". Other wrong pairs on the real library: LFM3-VL to MiniCPM5, a Qwen3-VL GGUF to Granite Switch, Qwen3-0.6B GGUF to Flint, Nemotron Bolt to Nemotron Lightning 30B. The launch dialog also showed the wrong row's context ("256K") and capability badges. | A Hugging Face cache folder names its own repo: when neither the row's repo nor its model name is in the item's name or path, the score is 0. Same repo, the same model under another uploader, and a conversion of a base repo still match (checked against the real library: 9 exact, 1 cross-uploader, 10 now unmatched, and every row the backend marks as local keeps its item). | `fix(models)` | `library.test.ts` (4 new), real load |
-| D-14 | High, Chat | Chat Models > Chat in a new thread on such a model loaded it but opened no thread. The page showed the last thread; the first message went into it and that thread's own model was loaded back in its place. | It starts the thread from the picker's option, then loads. | `17d2044b` | `launchActions.test.ts`, real run |
-| D-15 | High, Chat | Every press of Stop raised "Chat error: Streaming timed out" (Stop aborts the same controller as the 5-minute timeout). | Only the timer is an error; a stopped reply with no text leaves no empty bubble. | `17d2044b` | `streamPhase.test.ts` (2 new), real run |
-| D-16 | Medium, speed | Video Gallery fetched every clip whole when it opened: 133 clips, about 100 MB into memory on the real library (twice that in a dev build). | A card fetches its clip when it scrolls into view: 8 requests, 11 MB for the first screen. | `17d2044b` | `36-video-gallery-lazy.spec.ts` |
-| D-17 | Low | The launch dialog's cache preview answered 422 for a model under 0.5B parameters (0.48 for Qwen2.5-0.5B). | Lower bound 0.05. | see the log | `test_route_contracts.py` |
-| D-1 | High, first run | On a system set to any of the nine other languages, the first launch at 1180 px and wider showed a broken app: the language banner sat in the sidebar's place, the sidebar filled the page and the workspace was a 216 px column in the corner, until a banner button was pressed. | The banner spans both grid columns and gets its own row. "Keep English" now switches at once (the app had already started in the detected language and stayed in it for up to 5 s). | `fix(first run)` | `34-locales.spec.ts` |
-| D-2 | High, smallest window | Image Studio at 1100 px wide and narrower: the Prompt form was drawn over the header and under Recent Outputs, so the prompt box was covered. Image Gallery the same at phone width. | `.image-page-grid` rows are `max-content` (the frame stretched the grid and `auto` rows shared its height). | `ee71969f` | `33-window-sizes.spec.ts` |
-| D-3 | High, smallest window | Dashboard and Settings (General, Storage) cut the lower part of their panels at 1100 x 760 with nothing to scroll: UI scale, clock format, the translations link, the storage folders, swap, CPU and power. The Dashboard lost its Power row even at the default 1400 x 920. | Rows never go below their content and the grid scrolls when they do not fit; the activity feed still scrolls inside its panel. | `ee71969f` | `33-window-sizes.spec.ts` |
-| D-4 | High, backend stop | A stopped backend showed only as the small badge at the foot of the sidebar; below 1180 px that badge is inside the closed drawer, so nothing said so. Chat, Models, Image and Video Studio, Settings and Dashboard kept showing old data. | A notice at the top of the workspace until the backend answers (`statusBanners.backendOffline.*`, en filled, ten locales `null`). One line in `App.tsx` passes the state. | `ee71969f` | `statusBanners.test.tsx`, `32-backend-offline.spec.ts` |
-| D-5 | High, smallest window | In the menu drawer at 1100 x 760 with the Chat or Tools group open (Chat is open whenever you are in Chat), Settings was under the status footer and could not be clicked. | The drawer scrolls; the nav list no longer shrinks under the footer. | `c52f1ea4` | `33-window-sizes.spec.ts` |
-| D-6 | Medium | Settings > Storage: the folder path had a third of the row and Browse two thirds, so the path could not be read; below 900 px Storage stayed in two 160 px columns and its buttons were slivers. | Rows that start with the path give it the room; one column below 900 px. | `c52f1ea4` | `33-window-sizes.spec.ts` |
-| D-7 | Low | Settings > General: the "Keep all sidebar groups open" tick box sat centred above its own label (same in Integrations). | `.check-row` inside a control stack is a row again. | `ee71969f` | `33-window-sizes.spec.ts` |
-| D-8 | Low | Two buttons had a class with no style and showed as raw grey browser buttons: Copy beside "Open en on GitHub", and "Keep English" in the language banner. | `secondary-button`. | `ee71969f` | `33`, `34` |
-| D-10 | Medium | Settings > General > Language: picking "System default" left the app in the language chosen before, until the next launch. | It applies the detected system language at once. | `060b0f3e` | `34-locales.spec.ts` (pseudo-locale test ends on it) |
-| D-11 | Medium, keyboard | Select Model (Chat, Compare, HTML Challenge), the model picker and the model family details were plain overlays: no dialog role for a screen reader, Escape did nothing, Tab walked into the page behind, focus was lost on close. | They use `useDialogFocus` (new `active` flag for dialogs that stay mounted while closed; the opener is remembered before an autoFocus field takes focus). | `fix(a11y)` | `35-keyboard-dialogs.spec.ts` |
-| D-12 | Medium, backend stop | A chat message sent while the backend is down got a fake reply: "The desktop shell is offline, so this local fallback kept the chat moving. Start the FastAPI sidecar to route prompts through the runtime endpoints." | Plain words: the message did not reach a model, send it again when the notice has cleared. Not seen live (needs a loaded model and a stopped backend); the string only. | see the log | none (string only) |
-| D-9 | Low | Every launch sent a cache preview request with an all-zero model shape and logged a 422. | No request until a model shape is known; same fallback value. | `ee71969f` | `cachePreview.test.ts` |
+| D-13 | Critical, Chat | A local model that is not itself a catalogue row could not be loaded, or was routed as another model. The app joins a library item to a catalogue row by a word score with a threshold of 12; "qwen", "4bit", the same format and the same bits are worth 50 to 70. `mlx-community/Qwen3-0.6B-4bit`, `Qwen2.5-0.5B-Instruct-4bit` and `Qwen3-8B-4bit` all took the repo of Qwen3.8 Flash Next (a TensorFold-only row), that repo went to the backend as the model's own, and the load answered "Qwen3.8 Flash Next runs only on TensorFold". Other wrong pairs on the real library: LFM3-VL to MiniCPM5, a Qwen3-VL GGUF to Granite Switch, Qwen3-0.6B GGUF to Flint, Nemotron Bolt to Nemotron Lightning 30B. The launch dialog also showed the wrong row's context ("256K") and badges. | A Hugging Face cache folder names its own repo: when neither the row's repo nor its model name is in the item's name or path, the score is 0. Same repo, the same model under another uploader, and a conversion of a base repo still match. Checked against the real library: 9 exact, 1 cross-uploader, 10 now unmatched, and every row the backend marks local keeps its item. | `b4cfaf70` | `library.test.ts` (4), `37-chat-local-model.spec.ts`, real load |
+| D-1 | High, first run | On a system set to any of the nine other languages, the first launch at 1180 px and wider showed a broken app: the language banner sat in the sidebar's place, the sidebar filled the page and the workspace was a 216 px column in the corner, until a banner button was pressed. | The banner spans both grid columns and gets its own row. "Keep English" switches at once. | `25b20b71` | `34-locales.spec.ts` |
+| D-14 | High, Chat | Chat Models > Chat in a new thread on a model with no catalogue row loaded it but opened no thread: the first message went into the last thread and that thread's own model was loaded back in its place. For a catalogue row it was the other way round: thread opened, nothing loaded, "Load a model first". | Both paths open the thread from what the picker names, then load. | `17d2044b`, `cab15024` | `launchActions.test.ts` (3), spec 37, real runs |
+| D-15 | High, Chat | Every press of Stop raised "Chat error: Streaming timed out". | Only the 5-minute timer is an error; a stopped reply with no text leaves no empty bubble. | `17d2044b` | `streamPhase.test.ts` (2), real run |
+| D-2 | High, smallest window | Image Studio at 1100 px and narrower: the Prompt form was drawn over the header and under Recent Outputs. Image Gallery the same at phone width. | `.image-page-grid` rows are `max-content`. | `ee71969f` | `33-window-sizes.spec.ts` |
+| D-3 | High, smallest window | Dashboard and Settings (General, Storage) cut the lower part of their panels at 1100 x 760 with nothing to scroll: UI scale, clock format, storage folders, swap, CPU, power. | Rows never go below their content and the grid scrolls; the activity feed still scrolls inside its panel. | `ee71969f` | spec 33 |
+| D-4 | High, backend stop | A stopped backend showed only as the sidebar badge, which is inside the closed drawer below 1180 px. Chat, Models, Image and Video Studio, Settings and Dashboard kept old data. | A notice at the top of the workspace until the backend answers (`statusBanners.backendOffline.*`, en filled, ten locales `null`). One line in `App.tsx`. | `ee71969f` | `statusBanners.test.tsx`, `32-backend-offline.spec.ts` |
+| D-5 | High, smallest window | In the menu drawer at 1100 x 760 with the Chat or Tools group open, Settings was under the status footer and could not be clicked. | The drawer scrolls; the nav no longer shrinks under the footer. | `c52f1ea4` | spec 33 |
+| D-12 | Medium, backend stop | A chat message sent while the backend is down got a fake reply about "the desktop shell", "this local fallback" and "the FastAPI sidecar"; a send in the first second showed "Chat error: Failed to fetch". | Plain words in both places. | `d621e699`, `cab15024` | `chatErrors.test.ts`, real run |
+| D-11 | Medium, keyboard | Select Model (Chat, Compare, HTML Challenge), the model picker and the family details were plain overlays: no dialog role, Escape did nothing, Tab walked into the page behind, focus lost on close. | `useDialogFocus` with a new `active` flag; the opener is remembered before an autoFocus field takes focus. These two components are also used by Benchmarks and Conversion, which gain the same behaviour. | `617d8f80` | `35-keyboard-dialogs.spec.ts` |
+| D-16 | Medium, speed | Video Gallery fetched every clip whole when it opened: 133 clips, about 100 MB. | A card fetches its clip when it scrolls into view: 8 requests, 11 MB for the first screen. | `17d2044b` | `36-video-gallery-lazy.spec.ts` |
+| D-10 | Medium | Settings > Language: "System default" left the app in the language chosen before, until the next launch. | Applies the system language at once. | `060b0f3e` | spec 34 |
+| D-6 | Medium | Settings > Storage: the folder path had a third of the row and Browse two thirds; below 900 px Storage stayed in two 160 px columns. | The path takes the room; one scrolling column below 900 px. | `c52f1ea4`, `060b0f3e` | spec 33 |
+| D-17 | Low | The launch dialog's cache preview answered 422 for a model under 0.5B parameters. | Lower bound 0.05. | `806e24a0` | `test_route_contracts.py` |
+| D-18 | Low | Image Studio: a size under a model's smallest side (Iris-3B, 768 px) was off with the reason "Above this model's size limit". | Its own reason (`sizePresets.underLimit`, en filled, ten locales `null`). | `6a10c1fd` | none (string) |
+| D-7 | Low | Settings: a tick box inside a control stack sat centred above its own label. | A row again. | `ee71969f` | spec 33 |
+| D-8 | Low | Two buttons with a class that has no style (Copy beside the translations link, "Keep English" in the banner). | `secondary-button`. | `ee71969f` | specs 33, 34 |
+| D-9 | Low | Every launch sent a cache preview request with an all-zero model shape (422). | No request until a shape is known. | `ee71969f` | `cachePreview.test.ts` |
+| T-1 | Tests | `openApp` waited 5 s for the terms dialog on every test; a spec route still in flight failed a finished test. | Waits for the startup panel, then looks once; the page fixture drops routes. The suite runs 209 tests in about 12 minutes where 179 took about 18. | `d621e699` | the suite |
 
 ## Left for the owner (ranked, not fixed)
 
 | Id | Impact | Finding | Recommendation |
 |---|---|---|---|
-| L-1 | Medium | The language banner asks "Switch the app to Deutsch?" in German while the app is already in German (`main.tsx` starts in the detected language). The question makes no sense as worded. | Either start in English until the banner is answered, or reword to "The app is in {language}, your system language" with Keep and Use English. Needs new strings in ten locales. |
-| L-2 | Medium | Settings > Diagnostics shows about 100 English strings in every language (Refresh, Copy diagnostics, System, Hardware, CPU logical cores and the rest). The `diagnostics` namespace has 78 keys but the panel's table labels are literals. | Route the labels through `t()`; keep the copied markdown in English for support. |
-| L-3 | Medium | Image Studio empty state says the same thing three times (runtime callout, "no image models", "FLUX.1 Schnell is not installed locally"), calls the engine "Stub diffusion pipeline" and the empty gallery "the first saved image artifact for this branch". | One notice with one button; plain words. |
-| L-4 | Low | Chat welcome text recommends "a small Qwen3 or Llama 3 variant"; the catalogue is on Qwen 3.6 / 3.8, LFM3, Kolibri. The offline chat fallback text says "Restart the FastAPI sidecar". | Refresh the copy; no model names in the welcome, or read the first recommended row. |
-| L-5 | Low | Backend-made text is not translated: activity feed lines ("Settings updated", "0 models discovered..."), model directory labels, "Released Nov 2026" in Chat Models, the DFlash row in Accelerators. | Send keys plus values, format dates with `Intl`. |
-| L-6 | Low | 375 px: Chat > Compare's second slot and the Compare button run 33 px past the edge; Diagnostics values run 5 px past. Sideways scroll stays 0. | Stack the slots below 640 px; `overflow-wrap: anywhere` on the values. |
-| L-7 | Low | The Language panel in Settings is titled "Settings"; the clock-format and UI-scale button rows have no visible label. | Title "Language and time"; add labels. |
-| L-8 | Low | `scripts/i18n-pseudo.mjs` documents `?devLocale=en-XA`; nothing in `src/` reads it, so the checklist item "pseudo-locale smoke-tested on Setup + Diagnostics" could not be done by hand. Spec 34 now does it by answering the German catalogue requests with pseudo text. | Fix the comment or wire the switch. |
-| L-9 | Low | There is no light theme (`color-scheme: dark`, no switch). The brief asked for light and dark. | Nothing to do unless a light theme is wanted. |
-| L-10 | Done | `e2e/tests/helpers.ts` `openApp` waited 5 s for the terms dialog on every test, accepted or not: about 15 of the suite's 18 minutes. | Fixed on this branch: it waits for the startup panel to go, then looks once. |
-| L-16 | Medium | The backend trusts the `canonicalRepo` it is sent over the model's own path when it picks an engine (`controller.py` `_tensorfold_match`). D-13 is fixed in the app, but any other client (agent bridge, CLI, an old window) can still send a repo that is not the folder's. | When `path` is a Hugging Face cache folder, derive the repo from it and ignore a `canonicalRepo` that disagrees. Inference routing: needs the full E2E suite, so not done here. |
-| L-17 | Medium | For a model that is a catalogue row, Chat in a new thread > Start Chat opens the thread but does not load the model: the composer then says "Load a model first, pick one from Chat > Models, then hit CHAT", which is what the user just did, and they must press Load model. | Load on Start Chat, as the non-catalogue path does. Behaviour since the first release, so left for a decision. |
-| L-18 | Low | For a second or two after a load the composer already says "Type a message" while Send is still disabled ("Wait for the model to finish loading"); Enter in that window is swallowed and the text stays. | Keep the loading placeholder until the same flag clears. |
-| L-19 | Low | The word-score match is still loose for model files outside the Hugging Face cache (no repo in the path), in both directions. | Require a shared model name there too, once there is a set of real file names to test against. |
-| L-12 | Medium (demo) | Settings > Integrations prints the API token in clear text inside every snippet (Authorization header, `apiKey`, `OPENAI_API_KEY`). On a screen share or a recording the token is readable. | Mask it in the snippets with a Show switch; Copy still copies the real value. |
-| L-13 | Low | The generation dialogs (`ImageGenerationModal`, `VideoGenerationModal`), `DataDirRestartModal` and the Mixer's overlay have no dialog role and no Escape or focus handling either. | Same `useDialogFocus` treatment; decide first what Escape means while a render runs (hide, not cancel). |
-| L-14 | Low | Panel header buttons wrap onto two lines when the title text is long ("Save settings", "+ Add Provider", "Stop idle" in German). | `white-space: nowrap` on the buttons plus `flex-wrap` on `.panel-actions`; needs a look at every panel header. |
-| L-15 | Low | With a library but no model loaded, Enter in the Chat composer does nothing and says nothing (the Send button's tooltip has the reason). | Focus the Load Model button or show the reason under the composer. |
-| L-11 | Info | The Dashboard's process table lists `llama-server` and `python` processes of other ChaosEngineAI instances on the machine as "ChaosEngineAI" with Stop buttons (seen: the other review streams' backends). | Mark processes this backend did not start, or leave them out of Stop idle. |
+| L-16 | Medium | The backend trusts the `canonicalRepo` it is sent over the model's own path when it picks an engine (`controller.py` `_tensorfold_match`). D-13 is fixed in the app, but another client (agent bridge, CLI, an older window) can still send a repo that is not the folder's. | When `path` is a Hugging Face cache folder, derive the repo from it and ignore a `canonicalRepo` that disagrees. Inference routing, so it needs the full E2E suite. |
+| L-1 | Medium | The language banner asks "Switch the app to Deutsch?" in German while the app is already in German. | Start in English until it is answered, or reword to "The app is in {language}, your system language" with Keep and Use English. New strings in ten locales. |
+| L-12 | Medium (demo) | Settings > Integrations prints the API token in clear text inside every snippet. On a screen share or a recording it is readable. | Mask it with a Show switch; Copy still copies the real value. |
+| L-2 | Medium | Settings > Diagnostics shows about 100 English strings in every language. | Route the table labels through `t()`; keep the copied markdown in English. |
+| L-20 | Medium | For the first seconds after a backend start Image Studio says "You don't have any image models downloaded yet" and disables the model list, then the real list appears. | A loading state in `useImageState` ("Checking your image models"). The same check is worth making for Video. |
+| L-3 | Medium | Image Studio's empty state says the same thing three times, calls the engine "Stub diffusion pipeline" and the empty gallery "the first saved image artifact for this branch". | One notice, one button, plain words. |
+| L-4 | Low | The Chat welcome recommends "a small Qwen3 or Llama 3 variant". | Refresh the copy, or read the first recommended row. |
+| L-5 | Low | Backend-made text is not translated: activity feed lines, folder labels, "Released Nov 2026", the DFlash row, Compare's "Use for Model A". | Send keys plus values; format dates with `Intl`. |
+| L-18 | Low | For a second or two after a load the composer says "Type a message" while Send is still disabled; Enter in that window is swallowed. With a library but no model loaded, Enter does nothing and says nothing. | Keep the loading placeholder until the same flag clears; show the Send reason under the composer. |
+| L-13 | Low | The generation dialogs (`ImageGenerationModal`, `VideoGenerationModal`), `DataDirRestartModal` and the Mixer's overlay have no dialog role, Escape or focus handling. Escape does not collapse an expanded Video Gallery card or close the thread Export menu. | Same `useDialogFocus` treatment; decide what Escape means while a render runs. |
+| L-19 | Low | The word-score match is still loose for model files outside the Hugging Face cache, in both directions. | Require a shared model name there too, tested against real file names. |
+| L-6 | Low | 375 px: Compare's second slot and button run 33 px past the edge; Diagnostics values 5 px. | Stack the slots below 640 px; `overflow-wrap: anywhere`. |
+| L-14 | Low | Panel header buttons wrap onto two lines ("Save settings", "+ Add Provider", "Inaktive stoppen"). | `white-space: nowrap` plus `flex-wrap` on `.panel-actions`, checked on every panel header. |
+| L-7 | Low | The Language panel in Settings is titled "Settings"; the clock-format and UI-scale rows have no visible label. | Title "Language and time"; add labels. |
+| L-9 | Info | There is no light theme (`color-scheme: dark`, no switch); the brief asked for light and dark. An OS set to light changes nothing. | Nothing to do unless a light theme is wanted. |
+| L-11 | Info | The Dashboard's process table lists `llama-server` and `python` processes of other ChaosEngineAI instances as "ChaosEngineAI" with Stop buttons (seen: the other review streams' backends). | Mark processes this backend did not start, or leave them out of Stop idle. |
+| L-21 | Info | The plan gave this stream a `phase_21` in `scripts/e2e_test_suite.py` for the seven features. Streams A, B, C and E each register their own phase 21 part for their features, so none was added here. | The integrator joins the four parts. |
+
+## Per-tab result
+
+PASS means: empty state, loaded state (on the data copy), 1100 x 760, 1400 x 920 and 375 px, backend stopped and back, no crash, after the fixes above. "Loaded" for the studios means the forms with installed models; no image, video, voice or music was rendered.
+
+| Area | Result | Notes |
+|---|---|---|
+| First run and terms | PASS after D-1 | clean data dir; keyboard on the terms |
+| Onboarding language banner | PASS after D-1, D-8 | wording left (L-1) |
+| Dashboard | PASS after D-3 | L-11 |
+| Chat | PASS after D-13, D-14, D-15, D-12 | real model: load, reply, stop, backend stop, unload |
+| Chat > Compare | PASS | real run with two models; L-6 at 375 px |
+| Chat > HTML Challenge | PASS (pages and dialogs only) | no challenge was run |
+| Chat > Studio tools, Keep going | not run by hand | covered only by the existing specs 15 and 26, which pass |
+| Chat Models and library | PASS after D-13, D-11, D-17 | search, filters, bad repo, launch dialog |
+| Image Models, Studio, Gallery | PASS after D-2, D-18 | no render; L-20, L-3 |
+| Video Models, Studio, Gallery | PASS after D-16 | no render |
+| Video tools (FFmpeg row) | PASS (display) | install, download and remove not pressed |
+| Voice Models, Studio, Library | PASS | runtime not installed in the test homes, so Studio was only its install prompt; library loaded |
+| Music and Audio Models, Studio, Library | PASS | same: pack not installed; library loaded, audio loads |
+| Projects (Storyboard) | PASS | sample project and the copy's 11 projects, seven tabs; nothing rendered |
+| Settings (8 sections) | PASS after D-3, D-5, D-6, D-7, D-10 | L-2, L-12 |
+| Setup (Accelerators) and Diagnostics | PASS | pseudo-locale at two sizes; no installer was run |
+| Locales | PASS | ten locales boot; pseudo-locale layout |
+| Backend stop and 401 recovery | PASS after D-4 | real kill and restart three times, plus spec 32 |
 
 ## Not tested
 
-See the final report section at the end of this file (filled in when the run ends).
+- Any real render: image, video, voice, speech-to-text, cloning, music, sound effects, storyboard render and export. The Studios were checked as forms only. One Iris-3B image was prepared but the model lock was held by another stream from 09:42 and the run was dropped.
+- Chat with Studio tools on, Keep going, a voice call, attachments, documents (RAG), tool calls: only the existing mocked specs.
+- Any install, download, delete or update button (voice runtime, music pack, LTX engine, TensorFold, video tools, model downloads, Delete model, Cleanup). The model downloads' error path was checked with a forced 500 only.
+- The packaged Tauri app and its window: everything ran in headless Chromium against Vite. WebKit differences (the app's real web view) were not seen. Native dialogs (Choose folder, Reveal) were not opened.
+- Windows and Linux.
+- Screen readers. Keyboard was checked for the terms, the model dialogs, the sub-tab bar and the Chat composer, not for every control; Tab order was not walked page by page.
+- Locales: boot and layout only. No translation was read for sense, and right-to-left was not tried (no such locale ships).
+- The seven features owned by other streams, including the pages that share `ModelLaunchModal` and `ModelPicker` with Chat (their dialogs changed with D-11 and were not opened here).
+- The full pytest suite and the full `e2e_test_suite.py` (stream G). Run here: four pytest files, 206 passed.
+- The hub pages were not rebuilt and no FU rows were added, to keep the streams' branches from colliding in `FOLLOW_UPS.md` and `docs/hub`; this file is the record.
+
+## Final checks (tree at the last code commit, `6a10c1fd`)
+
+| Check | Result |
+|---|---|
+| `npx tsc --noEmit` | PASS, exit 0 |
+| `npx vitest run` | PASS, 154 files, 1828 tests |
+| `npm run i18n:validate` | PASS, en 4954/4954, nine locales 4947/4954 (the seven nulls: four from before, three new strings of this branch), tlh outside the gate |
+| Playwright, whole suite, one worker (10:04) | PASS, 209 passed, 0 failed, 12.2 min |
+| pytest `test_backend_service`, `test_cache_strategies`, `test_route_contracts`, `test_hub_tracker`, `test_model_arch` | PASS, 206 + 45 passed |
+| Processes and ports | my backend and Vite stopped, 8903 and 8933 free, model lock released, no model worker of mine left |

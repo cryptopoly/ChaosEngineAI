@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 import subprocess
@@ -95,7 +96,12 @@ from backend_service.helpers.persistence import (
     _save_library_cache,
     MAX_BENCHMARK_RUNS,
 )
-from backend_service.model_resolution import infer_hf_repo_from_local_path
+from backend_service.model_resolution import (
+    infer_hf_repo_from_local_path,
+    looks_like_repo_id,
+    names_a_location,
+    path_names_repo,
+)
 from backend_service.helpers.documents import (
     _sanitize_filename,
     _extract_text_from_file,
@@ -111,6 +117,26 @@ from backend_service.helpers.formatting import (
 from backend_service.helpers.network import (
     _local_ipv4_addresses,
 )
+
+_routing_log = logging.getLogger(__name__)
+
+
+def _path_key(path: str) -> tuple[Path, ...]:
+    """The request path as written (made absolute) and with its links followed."""
+    try:
+        written = Path(os.path.normpath(os.path.abspath(os.path.expanduser(path))))
+        return (written, written.resolve())
+    except (OSError, RuntimeError, ValueError):
+        return ()
+
+
+def _path_within(wanted: tuple[Path, ...], entry_path: str | None) -> bool:
+    """True when the request path is the library entry's path or a file or folder inside it."""
+    if not entry_path:
+        return False
+    root = Path(entry_path)
+    return any(candidate == root or root in candidate.parents for candidate in wanted)
+
 
 class ChaosEngineState:
     def __init__(
@@ -615,9 +641,16 @@ class ChaosEngineState:
         # cancelled download) shouldn't shadow a healthy on-disk copy
         # under a different ``modelDirectories`` root.
         broken_fallback: dict[str, Any] | None = None
+        # A path names the model: only the entry at (or holding) that path
+        # matches it, never another entry that shares the request's name (L-16).
+        # A path that is not on disk names nothing, so the name still finds the entry.
+        by_path = bool(path) and names_a_location(path)
+        wanted = _path_key(path) if by_path else ()
         for entry in self._library():
-            matches = (path and entry["path"] == path) or (
-                model_ref and entry["name"] == model_ref
+            matches = (
+                (path and entry["path"] == path)
+                or _path_within(wanted, entry.get("path"))
+                or (not by_path and bool(model_ref) and entry["name"] == model_ref)
             )
             if not matches:
                 continue
@@ -628,6 +661,31 @@ class ChaosEngineState:
             return entry
         return broken_fallback
 
+    def _repo_hint_for_path(self, hint: str | None, path: str) -> str | None:
+        """``hint`` when the model at ``path`` is that repo (or catalogue row), else ``None``."""
+        from backend_service.app import _hf_repo_from_link
+
+        cleaned = str(hint or "").strip()
+        if not cleaned:
+            return None
+        row = self._find_catalog_entry(cleaned)
+        repos = [cleaned] if looks_like_repo_id(cleaned) else []
+        if row is not None:
+            repos += [r for r in (str(row.get("repo") or "").strip(), _hf_repo_from_link(row.get("link"))) if r]
+        pinned = str(row.get("ggufFile") or "").strip() or None if row is not None else None
+        for repo in repos:
+            if path_names_repo(path, repo, pinned_file=pinned):
+                return repo
+        return None
+
+    def _model_location(self, *, model_ref: str | None, path: str | None) -> str | None:
+        """Where the requested model is on disk: the request's path, else its library entry's."""
+        cleaned = str(path or "").strip()
+        if names_a_location(cleaned):
+            return cleaned
+        entry = self._find_library_entry(None, model_ref) if model_ref else None
+        return str(entry.get("path") or "").strip() or None if entry is not None else None
+
     def _resolve_canonical_repo(
         self,
         *,
@@ -635,19 +693,48 @@ class ChaosEngineState:
         path: str | None,
         canonical_repo: str | None,
     ) -> str | None:
+        """The repo the model is, from where it lives; a client hint only when it agrees (L-16).
+
+        A Hugging Face cache path is its own repo. A path elsewhere keeps the
+        hint (or the catalogue row ``model_ref`` names) only when the folder
+        or pinned file names it exactly. With nothing on disk, a catalogue
+        row's own repo wins over a hint that disagrees.
+        """
         from backend_service.app import _hf_repo_from_link
 
         cleaned = str(canonical_repo or "").strip() or None
-        if cleaned is not None:
-            return cleaned
+        location = self._model_location(model_ref=model_ref, path=path)
+        if location is not None:
+            derived = infer_hf_repo_from_local_path(location)
+            if derived is not None:
+                if cleaned is not None and cleaned.lower() != derived.lower():
+                    _routing_log.debug("Ignoring canonicalRepo %r: the model at %s is %s.", cleaned, location, derived)
+                return derived
+            for hint in (cleaned, model_ref):
+                agreed = self._repo_hint_for_path(hint, location)
+                if agreed is not None:
+                    return agreed
+            if cleaned is not None:
+                _routing_log.debug("Ignoring canonicalRepo %r: %s does not name it.", cleaned, location)
+            return None
         catalog_entry = self._find_catalog_entry(model_ref) if model_ref else None
         if catalog_entry is not None:
-            return (
+            row_repo = (
                 _hf_repo_from_link(catalog_entry.get("link"))
                 or str(catalog_entry.get("repo") or "").strip()
                 or None
             )
-        return infer_hf_repo_from_local_path(path)
+            if cleaned is not None and row_repo is not None and cleaned.lower() not in {
+                row_repo.lower(), str(catalog_entry.get("repo") or "").lower(), str(catalog_entry.get("id") or "").lower(),
+            }:
+                _routing_log.debug("Ignoring canonicalRepo %r: model %r is %s.", cleaned, model_ref, row_repo)
+                return row_repo
+            return cleaned or row_repo
+        if cleaned is not None and str(path or "").strip():
+            # A path was named but is not on disk: it says nothing, so neither may a hint.
+            _routing_log.debug("Ignoring canonicalRepo %r: %s is not on disk.", cleaned, path)
+            return None
+        return cleaned
 
     def _resolve_model_target(
         self,

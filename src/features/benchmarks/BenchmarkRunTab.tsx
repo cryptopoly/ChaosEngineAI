@@ -104,6 +104,11 @@ export function BenchmarkRunTab({
   // show "-327.5 tok/s vs your previous run".
   const { previous: prevForModel, fastest: fastestRun } = latestRunSpeedComparison(workspace.benchmarks);
   const speedDeltaVsPrev = latestRun && prevForModel ? latestRun.tokS - prevForModel.tokS : null;
+  // Perplexity and task accuracy exist in the MLX worker only; a GGUF model answered with a 400
+  // after it had been loaded.
+  const evalNeedsMlx =
+    (benchmarkDraft.mode === "perplexity" || benchmarkDraft.mode === "task_accuracy") &&
+    (benchmarkOption?.format ?? "").toUpperCase() === "GGUF";
 
   // One summary for the page card and the result dialog. The dialog had its own copy that knew only
   // the speed layout, so a perplexity or accuracy run finished on a "tok/s" gauge.
@@ -371,8 +376,13 @@ export function BenchmarkRunTab({
               showPreview={false}
             />
 
+            {evalNeedsMlx ? (
+              <div className="callout warning compact-callout" role="status">
+                <p>{t("benchmarkTab.evalNeedsMlx", { defaultValue: "Perplexity and task accuracy run on MLX models only. Pick an MLX model, or switch the mode to Throughput." })}</p>
+              </div>
+            ) : null}
             <div className="button-row">
-              <button className="primary-button benchmark-run-btn" type="button" onClick={() => void onRunBenchmark()} disabled={busy}>
+              <button className="primary-button benchmark-run-btn" type="button" onClick={() => void onRunBenchmark()} disabled={busy || evalNeedsMlx}>
                 {busy
                   ? t("benchmarkTab.running", { defaultValue: "Running..." })
                   : t("benchmarkTab.runBenchmark", { defaultValue: "\u25B6 Run benchmark" })}

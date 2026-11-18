@@ -436,6 +436,7 @@
     "modeThroughput": "スループット(tok/s)",
     "modePerplexity": "パープレキシティ(品質)",
     "modeTaskAccuracy": "タスク精度(MMLU / HellaSwag)",
+    "evalNeedsMlx": null,
     "promptPreset": "プロンプトプリセット",
     "dataset": "データセット",
     "samples": "サンプル数",

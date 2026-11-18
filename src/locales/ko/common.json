@@ -436,6 +436,7 @@
     "modeThroughput": "처리량 (tok/s)",
     "modePerplexity": "퍼플렉시티 (품질)",
     "modeTaskAccuracy": "태스크 정확도 (MMLU / HellaSwag)",
+    "evalNeedsMlx": null,
     "promptPreset": "프롬프트 프리셋",
     "dataset": "데이터셋",
     "samples": "샘플",

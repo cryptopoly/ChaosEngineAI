@@ -436,6 +436,7 @@
     "modeThroughput": "Пропускная способность (tok/s)",
     "modePerplexity": "Перплексия (качество)",
     "modeTaskAccuracy": "Точность задачи (MMLU / HellaSwag)",
+    "evalNeedsMlx": null,
     "promptPreset": "Пресет промпта",
     "dataset": "Датасет",
     "samples": "Сэмплы",

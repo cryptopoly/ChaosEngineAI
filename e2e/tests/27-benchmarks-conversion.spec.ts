@@ -182,6 +182,21 @@ test("Benchmark History: list, filter by model, select, compare and delete", asy
   await expect(speedRow).toContainText("327.5 tok/s");
   await expect(speedRow).toContainText("100.5 tok/s");
 
+  // A double click makes a row the baseline and keeps the selection (it used to select the row
+  // as well, so the baseline fell back to some other run).
+  await rows.nth(1).dblclick();
+  await expect(speedRow).toContainText("327.5 tok/s");
+  await expect(speedRow).toContainText("120.5 tok/s");
+  await expect(rows.nth(2)).toHaveClass(/active/);
+  await expect(rows.nth(1)).toHaveClass(/compare/);
+
+  // A baseline that measured something else gives no value and no delta, not "0.0 tok/s".
+  await rows.nth(0).click({ button: "right" });
+  await expect(speedRow).toContainText("327.5 tok/s");
+  await expect(speedRow).not.toContainText("0.0 tok/s");
+  await expect(speedRow).not.toContainText("%");
+  await rows.nth(3).click({ button: "right" });
+
   // Filter to one model.
   await page.locator("select.bm-model-filter").selectOption("Mock-Model-1B-GGUF");
   await expect(rows).toHaveCount(1);
@@ -249,6 +264,30 @@ test("Benchmark run: the chosen mode is sent, the result card and the history fo
   await openTab(page, "Benchmarks", "History");
   await expect(page.locator(".benchmark-history-list button")).toHaveCount(2);
   await expect(page.locator(".benchmark-history-list button").first()).toContainText("PPL");
+});
+
+test("Benchmark run: perplexity and task accuracy are MLX only, and the page says so for a GGUF model", async ({ page }) => {
+  // With a GGUF model the run used to load the model and then fail with a 400.
+  await mockWorkspace(page, [], [GGUF_ITEM]);
+  let asked = false;
+  await page.route("**/api/benchmarks/run", (route) => {
+    asked = true;
+    return route.fulfill({ status: 400, json: { detail: "Perplexity evaluation is not supported by the llama.cpp backend." } });
+  });
+  await goTo(page, "Benchmarks", "Run");
+  await expect(page.locator(".benchmark-run-header-grid .model-selected-card")).toContainText(GGUF_ITEM.name);
+  const mode = page.locator(".benchmark-run-mode-stack select").first();
+  const runButton = page.getByRole("button", { name: /Run benchmark/ });
+  await expect(runButton).toBeEnabled();
+  for (const value of ["perplexity", "task_accuracy"]) {
+    await mode.selectOption(value);
+    await expect(page.getByText("Perplexity and task accuracy run on MLX models only.")).toBeVisible();
+    await expect(runButton).toBeDisabled();
+  }
+  await mode.selectOption("throughput");
+  await expect(page.getByText("Perplexity and task accuracy run on MLX models only.")).toHaveCount(0);
+  await expect(runButton).toBeEnabled();
+  expect(asked).toBe(false);
 });
 
 test("Benchmark run: a backend error is shown in the dialog, not lost", async ({ page }) => {

@@ -436,6 +436,7 @@
     "modeThroughput": "Débit (tok/s)",
     "modePerplexity": "Perplexité (qualité)",
     "modeTaskAccuracy": "Précision de tâche (MMLU / HellaSwag)",
+    "evalNeedsMlx": null,
     "promptPreset": "Préréglage d'invite",
     "dataset": "Jeu de données",
     "samples": "Échantillons",

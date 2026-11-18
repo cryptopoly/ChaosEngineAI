@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
 import { StatCard } from "../../components/StatCard";
@@ -31,6 +32,7 @@ export function BenchmarkHistoryTab({
   onDeleteBenchmark,
 }: BenchmarkHistoryTabProps) {
   const { t } = useTranslation("common");
+  const beforeClickSelectedRef = useRef<string | null>(null);
   const benchmarkModels = [...new Set(benchmarks.map(b => b.model))];
   const filteredBenchmarks = benchmarkModelFilter
     ? benchmarks.filter(b => b.model === benchmarkModelFilter)
@@ -83,6 +85,15 @@ export function BenchmarkHistoryTab({
     } else {
       rows.push({ label: t("benchmarkHistory.metric.speed", { defaultValue: "Speed" }), selected: `${number(s.tokS)} tok/s`, baseline: `${number(c.tokS)} tok/s`, delta: s.tokS - c.tokS, pct: pct(s.tokS, c.tokS) });
       rows.push({ label: t("benchmarkHistory.metric.response", { defaultValue: "Response" }), selected: `${number(s.responseSeconds)} s`, baseline: `${number(c.responseSeconds)} s`, delta: s.responseSeconds - c.responseSeconds, pct: pct(s.responseSeconds, c.responseSeconds), lowerIsBetter: true });
+    }
+    if ((c.mode ?? "throughput") !== mode) {
+      // The baseline measured something else (accuracy against speed, say): no value and no delta,
+      // instead of "0.0 tok/s" and a made-up percentage.
+      for (const row of rows) {
+        row.baseline = "\u2014";
+        row.delta = 0;
+        row.pct = 0;
+      }
     }
     rows.push({ label: t("benchmarkHistory.metric.cache", { defaultValue: "Cache" }), selected: `${number(s.cacheGb)} GB`, baseline: `${number(c.cacheGb)} GB`, delta: s.cacheGb - c.cacheGb, pct: pct(s.cacheGb, c.cacheGb), lowerIsBetter: true });
     rows.push({ label: t("benchmarkHistory.metric.quality", { defaultValue: "Quality" }), selected: `${s.quality}%`, baseline: `${c.quality}%`, delta: s.quality - c.quality, pct: pct(s.quality, c.quality) });
@@ -348,8 +359,19 @@ export function BenchmarkHistoryTab({
                           key={result.id}
                           type="button"
                           className={`table-row table-button-row benchmark-history-row bm-history-row-wide${isSelected ? " active" : ""}${isCompare ? " compare" : ""}`}
-                          onClick={() => onSelectedBenchmarkIdChange(result.id)}
-                          onDoubleClick={() => onCompareBenchmarkIdChange(result.id)}
+                          onClick={(e) => {
+                            // A double click sends two clicks first. Only the first one selects, and it
+                            // remembers what was selected, so the double click can make this row the
+                            // baseline and put the selection back.
+                            if (e.detail > 1) return;
+                            beforeClickSelectedRef.current = effectiveSelected?.id ?? null;
+                            onSelectedBenchmarkIdChange(result.id);
+                          }}
+                          onDoubleClick={() => {
+                            const previous = beforeClickSelectedRef.current;
+                            onCompareBenchmarkIdChange(result.id);
+                            if (previous && previous !== result.id) onSelectedBenchmarkIdChange(previous);
+                          }}
                           onContextMenu={(e) => { e.preventDefault(); onCompareBenchmarkIdChange(result.id); }}
                         >
                           <div>

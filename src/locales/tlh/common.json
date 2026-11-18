@@ -436,6 +436,7 @@
     "modeThroughput": "Do (tok/s)",
     "modePerplexity": "perplexity (patlh)",
     "modeTaskAccuracy": "Qu' qar (MMLU / HellaSwag)",
+    "evalNeedsMlx": null,
     "promptPreset": "QIn wIv",
     "dataset": "De' ghom",
     "samples": "waH mI'",

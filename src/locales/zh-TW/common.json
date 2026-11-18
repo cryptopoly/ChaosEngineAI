@@ -436,6 +436,7 @@
     "modeThroughput": "吞吐量 (tok/s)",
     "modePerplexity": "困惑度(品質)",
     "modeTaskAccuracy": "任務準確度 (MMLU / HellaSwag)",
+    "evalNeedsMlx": null,
     "promptPreset": "提示詞預設",
     "dataset": "資料集",
     "samples": "樣本數",

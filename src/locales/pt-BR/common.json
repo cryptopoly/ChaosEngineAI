@@ -436,6 +436,7 @@
     "modeThroughput": "Vazão (tok/s)",
     "modePerplexity": "Perplexidade (qualidade)",
     "modeTaskAccuracy": "Acurácia em tarefa (MMLU / HellaSwag)",
+    "evalNeedsMlx": null,
     "promptPreset": "Predefinição de prompt",
     "dataset": "Dataset",
     "samples": "Amostras",

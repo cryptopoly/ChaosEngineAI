@@ -248,6 +248,13 @@ def _run_benchmark(state: ChaosEngineState, request: BenchmarkRunRequest, run: _
             if request.path is not None
             else (library_entry.get("path") if library_entry is not None else None)
         )
+        if effective_path and not Path(effective_path).expanduser().exists():
+            # Without this the MLX loader took the path for a Hub repo id and answered
+            # "Repo id must be in the form 'repo_name' or 'namespace/repo_name'".
+            raise RuntimeError(
+                f"Model files not found at {effective_path}. Pick the model again from the library, "
+                f"or download it first."
+            )
         effective_backend = request.backend or (
             "llama.cpp"
             if (library_entry and library_entry.get("format") == "GGUF")

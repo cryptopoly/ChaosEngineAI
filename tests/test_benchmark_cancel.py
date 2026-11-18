@@ -109,9 +109,12 @@ class BenchmarkCancelTests(unittest.TestCase):
         self.runtime = _Runtime()
         self.state.runtime = self.runtime
         self.result: dict = {}
+        # A benchmark refuses a model path that is not on disk, so the fake model has a real folder.
+        self.model_path = str(root / "model")
+        Path(self.model_path).mkdir()
 
     def _start(self, **fields):
-        request = BenchmarkRunRequest(modelRef="org/model", modelName="Model", path="/models/model", **fields)
+        request = BenchmarkRunRequest(modelRef="org/model", modelName="Model", path=self.model_path, **fields)
 
         def target():
             try:
@@ -124,7 +127,7 @@ class BenchmarkCancelTests(unittest.TestCase):
         return thread
 
     def _preload(self):
-        self.runtime.load_model(model_ref="org/model", model_name="Model", path="/models/model")
+        self.runtime.load_model(model_ref="org/model", model_name="Model", path=self.model_path)
         self.runtime.unload_calls = 0
 
     def test_cancel_with_nothing_running_answers_false(self):
@@ -134,7 +137,7 @@ class BenchmarkCancelTests(unittest.TestCase):
     def test_run_that_finishes_is_saved_and_reports_no_cancel(self):
         self._preload()
         response = self.state.run_benchmark(
-            BenchmarkRunRequest(modelRef="org/model", path="/models/model", mode="task_accuracy", taskLimit=10)
+            BenchmarkRunRequest(modelRef="org/model", path=self.model_path, mode="task_accuracy", taskLimit=10)
         )
         self.assertNotIn("cancelled", response)
         self.assertEqual(len(self.state.benchmark_runs), 1)
@@ -201,11 +204,19 @@ class BenchmarkCancelTests(unittest.TestCase):
         self.assertIsNone(self.runtime.loaded_model)
         self.assertEqual(self.state.benchmark_runs, [])
 
+    def test_a_model_path_that_is_not_on_disk_is_named_before_anything_loads(self):
+        with self.assertRaises(RuntimeError) as ctx:
+            self.state.run_benchmark(BenchmarkRunRequest(modelRef="org/gone", path="/nonexistent/e2e-model"))
+        self.assertIn("Model files not found at /nonexistent/e2e-model", str(ctx.exception))
+        self.assertNotIn("Repo id", str(ctx.exception))
+        self.assertEqual(self.runtime.load_requests, [])
+        self.assertFalse(BENCHMARK_PROGRESS.snapshot()["active"])
+
     def test_a_real_failure_is_still_an_error_not_a_cancel(self):
         self._preload()
         self.runtime.engine.eval_perplexity = lambda **kwargs: (_ for _ in ()).throw(RuntimeError("dataset missing"))
         with self.assertRaises(RuntimeError) as ctx:
-            self.state.run_benchmark(BenchmarkRunRequest(modelRef="org/model", path="/models/model", mode="perplexity"))
+            self.state.run_benchmark(BenchmarkRunRequest(modelRef="org/model", path=self.model_path, mode="perplexity"))
         self.assertIn("dataset missing", str(ctx.exception))
         self.assertFalse(BENCHMARK_PROGRESS.snapshot()["active"])
 
@@ -215,7 +226,7 @@ class BenchmarkCancelTests(unittest.TestCase):
         self.assertTrue(self.runtime.engine.started.wait(5))
         try:
             with self.assertRaises(bench.BenchmarkBusy):
-                self.state.run_benchmark(BenchmarkRunRequest(modelRef="org/model", path="/models/model"))
+                self.state.run_benchmark(BenchmarkRunRequest(modelRef="org/model", path=self.model_path))
         finally:
             bench.cancel_benchmark(self.state)
             thread.join(10)
@@ -231,7 +242,7 @@ class BenchmarkCancelTests(unittest.TestCase):
 
         self.runtime.engine.eval_task_accuracy = spy
         self.state.run_benchmark(
-            BenchmarkRunRequest(modelRef="org/model", path="/models/model", mode="task_accuracy", taskLimit=10)
+            BenchmarkRunRequest(modelRef="org/model", path=self.model_path, mode="task_accuracy", taskLimit=10)
         )
         self.assertEqual(len(seen), 1)
         self.assertFalse(os.path.exists(seen[0]))
@@ -247,7 +258,7 @@ class BenchmarkCancelTests(unittest.TestCase):
         thread = self._start(mode="task_accuracy", taskLimit=5000)
         self.assertTrue(self.runtime.engine.started.wait(5))
         try:
-            busy = client.post("/api/benchmarks/run", json={"modelRef": "org/model", "path": "/models/model"})
+            busy = client.post("/api/benchmarks/run", json={"modelRef": "org/model", "path": self.model_path})
             self.assertEqual(busy.status_code, 409)
             cancelled = client.post("/api/benchmarks/cancel")
             self.assertEqual(cancelled.json(), {"cancelled": True})

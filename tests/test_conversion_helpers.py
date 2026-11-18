@@ -16,6 +16,7 @@ from backend_service.inference import controller as controller_module
 from backend_service.inference.controller import RuntimeController
 from backend_service.inference.conversion import (
     _conversion_source_name,
+    _default_conversion_output,
     _estimate_conversion_output_bytes,
     _free_disk_bytes,
     _resolve_local_model_dir,
@@ -62,6 +63,17 @@ class ConversionHelperTests(unittest.TestCase):
         self.assertEqual(_conversion_source_name("Qwen/Qwen3.5-4B"), "Qwen3.5-4B")
         self.assertEqual(_conversion_source_name("/x/Qwen3-0.6B-Q4_K_M.gguf"), "Qwen3-0.6B-Q4_K_M")
         self.assertEqual(_conversion_source_name(""), "model")
+
+    def test_default_output_folder_keeps_dots_and_stays_inside_models(self):
+        with mock.patch.object(Path, "home", return_value=self.root):
+            target = Path(_default_conversion_output("Qwen3.5-4B"))
+            self.assertEqual(target, self.root / "Models" / "Qwen3.5-4B-mlx")
+            target.mkdir()
+            self.assertEqual(Path(_default_conversion_output("Qwen3.5-4B")).name, "Qwen3.5-4B-mlx-2")
+            for hostile in ("../../etc", "..", "a/b\\c", ""):
+                picked = Path(_default_conversion_output(hostile))
+                self.assertEqual(picked.parent, self.root / "Models", hostile)
+                self.assertNotIn("..", picked.name.replace("...", ""), hostile)
 
     def test_output_estimate_follows_bits_and_source_width(self):
         repo = _make_cache_repo(self.root, weight_bytes=16_000)

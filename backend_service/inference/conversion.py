@@ -206,8 +206,10 @@ def _conversion_source_name(source_label: str) -> str:
 def _default_conversion_output(source_label: str) -> str:
     home_models = Path.home() / "Models"
     home_models.mkdir(parents=True, exist_ok=True)
-    base = "".join(character if character.isalnum() or character in {"-", "_"} else "-" for character in source_label)
-    base = base.strip("-_") or "model"
+    # Dots are kept so "Qwen3.5-4B" stays readable (it became "Qwen3-5-4B"); the label is one
+    # path component either way, since every separator turns into "-".
+    base = "".join(character if character.isalnum() or character in {"-", "_", "."} else "-" for character in source_label)
+    base = base.strip("-_.") or "model"
     candidate = home_models / f"{base}-mlx"
     suffix = 2
     while candidate.exists():

@@ -433,6 +433,24 @@
       "title": null,
       "open": null,
       "empty": null
+    },
+    "field": {
+      "seconds": null,
+      "totalSeconds": null,
+      "memoryBytes": null,
+      "contextTokens": null,
+      "warm": null,
+      "bytes": null,
+      "prefillSeconds": null,
+      "tokS": null,
+      "promptTokens": null,
+      "completionTokens": null,
+      "finishReason": null,
+      "streaming": null,
+      "reason": null,
+      "backend": null,
+      "speculativeDecoding": null,
+      "source": null
     }
   },
   "conversionTab": {

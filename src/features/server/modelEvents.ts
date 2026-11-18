@@ -196,8 +196,10 @@ export function buildTimeline(events: ModelEvent[], now: number): TimelineRow[] 
         break;
       }
       case "idle":
-        if (row.open && (row.open.phase === "ready" || row.open.phase === "idle")) row.open.phase = "idle";
-        else open("idle", event.ts);
+        // A warm model answering a request goes back to warm, not to loaded-and-idle.
+        if (row.open && (row.open.phase === "ready" || row.open.phase === "idle" || row.open.phase === "warm")) {
+          if (row.open.phase === "ready") row.open.phase = "idle";
+        } else open("idle", event.ts);
         break;
       case "parked":
         open("warm", event.ts);

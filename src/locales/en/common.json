@@ -433,6 +433,24 @@
       "title": "Recent activity",
       "open": "Open Activity",
       "empty": "Nothing yet. Model loads, answers and unloads show here."
+    },
+    "field": {
+      "seconds": "Seconds",
+      "totalSeconds": "Total seconds",
+      "memoryBytes": "Memory",
+      "contextTokens": "Context",
+      "warm": "From warm pool",
+      "bytes": "Weights",
+      "prefillSeconds": "Prefill",
+      "tokS": "Tokens per second",
+      "promptTokens": "Prompt tokens",
+      "completionTokens": "Completion tokens",
+      "finishReason": "Finish reason",
+      "streaming": "Streaming",
+      "reason": "Reason",
+      "backend": "Backend",
+      "speculativeDecoding": "Speculative decoding",
+      "source": "Source"
     }
   },
   "conversionTab": {

@@ -123,6 +123,20 @@ describe("buildTimeline", () => {
     expect(rows[0].model).toBe("Live");
   });
 
+  it("keeps a warm model warm after it answers a request", () => {
+    const [row] = buildTimeline(
+      [
+        ev("loaded", 10, { data: { seconds: 1 } }),
+        ev("parked", 20),
+        ev("generation", 31, { data: { seconds: 1 } }),
+        ev("idle", 31),
+        ev("unloaded", 40, { data: { reason: "user" } }),
+      ],
+      50,
+    );
+    expect(row.segments.map((s) => s.phase)).toEqual(["loading", "ready", "warm", "generating", "warm"]);
+  });
+
   it("draws a warm switch-back as a short load", () => {
     const [row] = buildTimeline([ev("loaded", 50, { data: { seconds: 0.01, warm: true } })], 60);
     expect(row.segments[0].phase).toBe("loading");

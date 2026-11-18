@@ -45,7 +45,7 @@ function EventDetail({ event, onCopy }: { event: ModelEvent; onCopy: (text: stri
         ))}
         {data.map(([key, value]) => (
           <div key={key}>
-            <dt>{key}</dt>
+            <dt>{t(`serverActivity.field.${key}`, { defaultValue: key })}</dt>
             <dd className="mono-text">{fieldValue(key, value)}</dd>
           </div>
         ))}

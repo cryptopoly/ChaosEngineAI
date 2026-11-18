@@ -1,16 +1,26 @@
 import { useCallback, useState } from "react";
 
-export type UiScale = 0.85 | 0.9 | 0.95 | 1;
+export type UiScale = 0.85 | 0.9 | 0.95 | 1 | 1.1 | 1.25;
+
+/** The choices in Settings > Appearance. 110 % and 125 % make text readable on a shared screen or a projector. */
+export const UI_SCALES: UiScale[] = [0.85, 0.9, 0.95, 1, 1.1, 1.25];
 
 const STORAGE_KEY = "chaosengine.uiScale.v1";
 const DEFAULT_UI_SCALE: UiScale = 0.9;
-const VALID_UI_SCALES = new Set<number>([0.85, 0.9, 0.95, 1]);
+const VALID_UI_SCALES = new Set<number>(UI_SCALES);
+
+export function parseUiScale(raw: string | null): UiScale {
+  const value = raw ? Number(raw) : DEFAULT_UI_SCALE;
+  return VALID_UI_SCALES.has(value) ? value as UiScale : DEFAULT_UI_SCALE;
+}
 
 function readStoredScale(): UiScale {
   if (typeof window === "undefined") return DEFAULT_UI_SCALE;
-  const raw = window.localStorage.getItem(STORAGE_KEY);
-  const value = raw ? Number(raw) : DEFAULT_UI_SCALE;
-  return VALID_UI_SCALES.has(value) ? value as UiScale : DEFAULT_UI_SCALE;
+  try {
+    return parseUiScale(window.localStorage.getItem(STORAGE_KEY));
+  } catch {
+    return DEFAULT_UI_SCALE;
+  }
 }
 
 function writeStoredScale(scale: UiScale) {

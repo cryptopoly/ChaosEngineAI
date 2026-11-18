@@ -13,7 +13,7 @@ import { ModelStoragePanel } from "./ModelStoragePanel";
 import type { SettingsDraft } from "../../types/chat";
 import type { SidebarMode } from "../../types";
 import type { SystemStats } from "../../types/system";
-import type { UiScale } from "../../hooks";
+import { UI_SCALES, type UiScale } from "../../hooks";
 
 export interface SettingsTabProps {
   terms?: TermsSettings | null;
@@ -200,7 +200,7 @@ export function SettingsTab({
             role="radiogroup"
             aria-label={t("settingsTab.appearance.uiScaleAria", { defaultValue: "UI scale" })}
           >
-            {([0.85, 0.9, 0.95, 1] as UiScale[]).map((scale) => (
+            {UI_SCALES.map((scale) => (
               <button
                 key={scale}
                 type="button"

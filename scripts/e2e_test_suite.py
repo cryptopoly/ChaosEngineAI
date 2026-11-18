@@ -3639,6 +3639,8 @@ from e2e_phases.phase_15 import phase_15  # noqa: E402
 
 PHASES[14] = phase_14
 PHASES[15] = phase_15
+from e2e_phases.phase_gguf_routing import phase_gguf_routing  # noqa: E402
+PHASES[213] = phase_gguf_routing  # overnight review, stream GGUF: format from files, not names
 
 
 def _write_reports(report_dir: Path, started: datetime, ended: datetime,

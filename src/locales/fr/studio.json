@@ -994,7 +994,13 @@
       },
       "speechLanguage": "Langue de la parole",
       "changeVoice": "Changer de voix",
-      "noVoice": "Aucune voix choisie"
+      "noVoice": "Aucune voix choisie",
+      "queue": {
+        "video": null,
+        "image": null,
+        "music": null,
+        "other": null
+      }
     },
     "stop": "Arrêter",
     "studio": {

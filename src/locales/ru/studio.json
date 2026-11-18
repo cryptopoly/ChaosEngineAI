@@ -994,7 +994,13 @@
       },
       "speechLanguage": "Язык речи",
       "changeVoice": "Сменить голос",
-      "noVoice": "Голос не выбран"
+      "noVoice": "Голос не выбран",
+      "queue": {
+        "video": null,
+        "image": null,
+        "music": null,
+        "other": null
+      }
     },
     "stop": "Остановить",
     "studio": {

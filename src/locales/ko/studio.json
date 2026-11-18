@@ -994,7 +994,13 @@
       },
       "speechLanguage": "말하기 언어",
       "changeVoice": "음성 변경",
-      "noVoice": "선택된 음성 없음"
+      "noVoice": "선택된 음성 없음",
+      "queue": {
+        "video": null,
+        "image": null,
+        "music": null,
+        "other": null
+      }
     },
     "stop": "중지",
     "studio": {
